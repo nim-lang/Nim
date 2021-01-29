@@ -376,8 +376,14 @@ it's subtle.
 
 The simple case of ``x = x`` cannot be turned
 into ``=sink(x, x); wasMoved(x)`` because that would lose ``x``'s value.
-The solution is that simple self-assignments are simply transformed into
-an empty statement that does nothing.
+The solution is that simple self-assignments that consist of
+
+- Symbols: ``x = x``
+- Field access: ``x.f = x.f``
+- Array, sequence or string access with indices known at compile-time: ``x[0] = x[0]``
+
+are transformed into an empty statement that does nothing.
+The compiler is free to optimize further cases.
 
 The complex case looks like a variant of ``x = f(x)``, we consider
 ``x = select(rand() < 0.5, x, y)`` here:

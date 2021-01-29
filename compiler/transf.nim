@@ -496,7 +496,7 @@ proc transformConv(c: PTransf, n: PNode): PNode =
   of tyOpenArray, tyVarargs:
     result = transform(c, n[1])
     #result = transformSons(c, n)
-    result.typ = takeType(n.typ, n[1].typ, c.idgen)
+    result.typ = takeType(n.typ, n[1].typ, c.graph, c.idgen)
     #echo n.info, " came here and produced ", typeToString(result.typ),
     #   " from ", typeToString(n.typ), " and ", typeToString(n[1].typ)
   of tyCString:
@@ -524,6 +524,7 @@ proc transformConv(c: PTransf, n: PNode): PNode =
         result[0] = transform(c, n[1])
       else:
         result = transform(c, n[1])
+        result.typ = n.typ
     else:
       result = transformSons(c, n)
   of tyObject:
@@ -536,6 +537,7 @@ proc transformConv(c: PTransf, n: PNode): PNode =
       result[0] = transform(c, n[1])
     else:
       result = transform(c, n[1])
+      result.typ = n.typ
   of tyGenericParam, tyOrdinal:
     result = transform(c, n[1])
     # happens sometimes for generated assignments, etc.
@@ -609,6 +611,8 @@ proc isSimpleIteratorVar(c: PTransf; iter: PSym): bool =
   var dangerousYields = 0
   rec(getBody(c.graph, iter), iter, dangerousYields)
   result = dangerousYields == 0
+
+template destructor(t: PType): PSym = getAttachedOp(c.graph, t, attachedDestructor)
 
 proc transformFor(c: PTransf, n: PNode): PNode =
   # generate access statements for the parameters (unless they are constant)

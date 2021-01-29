@@ -274,3 +274,19 @@ ggg(hello)
 var z = 10'u8
 echo z < 9 # Works
 echo z > 9 # Error: type mismatch
+
+
+# bug #5993
+template foo(p: proc) =
+  var bla = 5
+  p(bla)
+
+foo() do(t: var int):
+  discard
+  t = 5
+
+proc bar(t: var int) =
+  t = 5
+
+foo(bar)
+

@@ -452,3 +452,60 @@ block: # VM wrong register free causes errors in unrelated code
     proc main() =
       processAux(bar(globOpt(initGlobOpt(dir))))
     static: main()
+
+block: # bug #8015
+  block:
+    type Foo = object
+      case b: bool
+      of false: v1: int
+      of true: v2: int
+    const t = [Foo(b: false, v1: 1), Foo(b: true, v2: 2)]
+    doAssert $t == "[(b: false, v1: 1), (b: true, v2: 2)]"
+    doAssert $t[0] == "(b: false, v1: 1)" # was failing
+
+  block:
+    type
+      CostKind = enum
+        Fixed,
+        Dynamic
+
+      Cost = object
+        case kind*: CostKind
+        of Fixed:
+          cost*: int
+        of Dynamic:
+          handler*: proc(): int {.nimcall.}
+
+    proc foo1(): int {.nimcall.} =
+      100
+
+    proc foo2(): int {.nimcall.} =
+      200
+
+    # Change to `let` and it doesn't crash
+    const costTable = [
+      0: Cost(kind: Fixed, cost: 999),
+      1: Cost(kind: Dynamic, handler: foo1),
+      2: Cost(kind: Dynamic, handler: foo2)
+    ]
+
+    doAssert $costTable[0] == "(kind: Fixed, cost: 999)"
+    doAssert costTable[1].handler() == 100
+    doAssert costTable[2].handler() == 200
+
+    # Now trying to carry the table as an object field
+    type
+      Wrapper = object
+        table: array[3, Cost]
+
+    proc procNewWrapper(): Wrapper =
+      result.table = costTable
+
+    # Alternatively, change to `const` and it doesn't crash
+    let viaProc = procNewWrapper()
+
+    doAssert viaProc.table[1].handler != nil
+    doAssert viaProc.table[2].handler != nil
+    doAssert $viaProc.table[0] == "(kind: Fixed, cost: 999)"
+    doAssert viaProc.table[1].handler() == 100
+    doAssert viaProc.table[2].handler() == 200
