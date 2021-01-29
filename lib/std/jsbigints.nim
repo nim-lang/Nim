@@ -190,17 +190,18 @@ proc high*(_: typedesc[JsBigInt]): JsBigInt {.error:
 
 
 runnableExamples:
-  let big1: JsBigInt = big"2147483647"
-  let big2: JsBigInt = big"666"
-  doAssert JsBigInt isnot int
-  doAssert big1 != big2
-  doAssert big1 > big2
-  doAssert big1 >= big2
-  doAssert big2 < big1
-  doAssert big2 <= big1
-  doAssert not(big1 == big2)
-  let z = JsBigInt.default
-  doAssert $z == "0n"
+  block:
+    let big1: JsBigInt = big"2147483647"
+    let big2: JsBigInt = big"666"
+    doAssert JsBigInt isnot int
+    doAssert big1 != big2
+    doAssert big1 > big2
+    doAssert big1 >= big2
+    doAssert big2 < big1
+    doAssert big2 <= big1
+    doAssert not(big1 == big2)
+    let z = JsBigInt.default
+    doAssert $z == "0n"
   block:
     var a: seq[JsBigInt]
     a.setLen 2
@@ -209,3 +210,6 @@ runnableExamples:
     var b: JsBigInt
     doAssert b == big"0"
     doAssert b == JsBigInt.default
+  block `octal binary hexadecimal`:
+    doAssert big"0xffffffffffffffff" == (1.big shl 64.big) - 1.big
+    doAssert 0b1111100111.big == 0o1747.big and 0o1747.big == 999.big
