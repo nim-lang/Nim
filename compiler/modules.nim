@@ -109,6 +109,8 @@ proc compileModule*(graph: ModuleGraph; fileIdx: FileIndex; flags: TSymFlags): P
       registerModule(graph, result)
       processModuleAux()
     else:
+      if sfSystemModule in flags:
+        graph.systemModule = result
       partialInitModule(result, graph, fileIdx, filename)
       replayStateChanges(result, graph)
       replayGenericCacheInformation(graph, fileIdx.int)
