@@ -2498,7 +2498,7 @@ template `^^`(s, i: untyped): untyped =
 template `[]`*(s: string; i: int): char = arrGet(s, i)
 template `[]=`*(s: string; i: int; val: char) = arrPut(s, i, val)
 
-proc `[]`*[T, U](s: string, x: HSlice[T, U]): string {.inline.} =
+proc `[]`*[T, U: Ordinal](s: string, x: HSlice[T, U]): string {.inline.} =
   ## Slice operation for strings.
   ## Returns the inclusive range `[s[x.a], s[x.b]]`:
   ##
@@ -2510,7 +2510,7 @@ proc `[]`*[T, U](s: string, x: HSlice[T, U]): string {.inline.} =
   result = newString(L)
   for i in 0 ..< L: result[i] = s[i + a]
 
-proc `[]=`*[T, U](s: var string, x: HSlice[T, U], b: string) =
+proc `[]=`*[T, U: Ordinal](s: var string, x: HSlice[T, U], b: string) =
   ## Slice assignment for strings.
   ##
   ## If ``b.len`` is not exactly the number of elements that are referred to
@@ -2528,7 +2528,7 @@ proc `[]=`*[T, U](s: var string, x: HSlice[T, U], b: string) =
   else:
     spliceImpl(s, a, L, b)
 
-proc `[]`*[Idx, T, U, V](a: array[Idx, T], x: HSlice[U, V]): seq[T] =
+proc `[]`*[Idx, T; U, V: Ordinal](a: array[Idx, T], x: HSlice[U, V]): seq[T] =
   ## Slice operation for arrays.
   ## Returns the inclusive range `[a[x.a], a[x.b]]`:
   ##
@@ -2540,7 +2540,7 @@ proc `[]`*[Idx, T, U, V](a: array[Idx, T], x: HSlice[U, V]): seq[T] =
   result = newSeq[T](L)
   for i in 0..<L: result[i] = a[Idx(i + xa)]
 
-proc `[]=`*[Idx, T, U, V](a: var array[Idx, T], x: HSlice[U, V], b: openArray[T]) =
+proc `[]=`*[Idx, T; U, V: Ordinal](a: var array[Idx, T], x: HSlice[U, V], b: openArray[T]) =
   ## Slice assignment for arrays.
   ##
   ## .. code-block:: Nim
@@ -2554,7 +2554,7 @@ proc `[]=`*[Idx, T, U, V](a: var array[Idx, T], x: HSlice[U, V], b: openArray[T]
   else:
     sysFatal(RangeDefect, "different lengths for slice assignment")
 
-proc `[]`*[T, U, V](s: openArray[T], x: HSlice[U, V]): seq[T] =
+proc `[]`*[T; U, V: Ordinal](s: openArray[T], x: HSlice[U, V]): seq[T] =
   ## Slice operation for sequences.
   ## Returns the inclusive range `[s[x.a], s[x.b]]`:
   ##
@@ -2566,7 +2566,7 @@ proc `[]`*[T, U, V](s: openArray[T], x: HSlice[U, V]): seq[T] =
   newSeq(result, L)
   for i in 0 ..< L: result[i] = s[i + a]
 
-proc `[]=`*[T, U, V](s: var seq[T], x: HSlice[U, V], b: openArray[T]) =
+proc `[]=`*[T; U, V: Ordinal](s: var seq[T], x: HSlice[U, V], b: openArray[T]) =
   ## Slice assignment for sequences.
   ##
   ## If ``b.len`` is not exactly the number of elements that are referred to
