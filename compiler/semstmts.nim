@@ -1237,10 +1237,7 @@ proc typeSectionRightSidePass(c: PContext, n: PNode) =
             var body = s.typ.lastSon
             if body.kind == tyObject:
               # erases all declared fields
-              when defined(nimNoNilSeqs):
-                body.n.sons = @[]
-              else:
-                body.n.sons = nil
+              body.n.sons = @[]
 
       popOwner(c)
       closeScope(c)

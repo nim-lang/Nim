@@ -100,3 +100,5 @@ htmldocs
 
 ## these are not needed anymore unless checkout old older versions
 nimdoc.out.css
+# except here:
+!/nimdoc/testproject/expected/*

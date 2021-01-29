@@ -329,8 +329,7 @@ proc genRecCommentAux(d: PDoc, n: PNode): Rope =
         result = genRecCommentAux(d, n[i])
         if result != nil: return
   else:
-    when defined(nimNoNilSeqs): n.comment = ""
-    else: n.comment = nil
+    n.comment = ""
 
 proc genRecComment(d: PDoc, n: PNode): Rope =
   if n == nil: return nil

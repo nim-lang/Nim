@@ -1559,11 +1559,8 @@ proc len*[U: Ordinal; V: Ordinal](x: HSlice[U, V]): int {.noSideEffect, inline.}
   ##   assert((5..2).len == 0)
   result = max(0, ord(x.b) - ord(x.a) + 1)
 
-when defined(nimNoNilSeqs2):
-  when not compileOption("nilseqs"):
-    {.pragma: nilError, error.}
-  else:
-    {.pragma: nilError.}
+when not compileOption("nilseqs"):
+  {.pragma: nilError, error.}
 else:
   {.pragma: nilError.}
 
@@ -2498,7 +2495,7 @@ template `^^`(s, i: untyped): untyped =
 template `[]`*(s: string; i: int): char = arrGet(s, i)
 template `[]=`*(s: string; i: int; val: char) = arrPut(s, i, val)
 
-proc `[]`*[T, U](s: string, x: HSlice[T, U]): string {.inline.} =
+proc `[]`*[T, U: Ordinal](s: string, x: HSlice[T, U]): string {.inline.} =
   ## Slice operation for strings.
   ## Returns the inclusive range `[s[x.a], s[x.b]]`:
   ##
@@ -2510,7 +2507,7 @@ proc `[]`*[T, U](s: string, x: HSlice[T, U]): string {.inline.} =
   result = newString(L)
   for i in 0 ..< L: result[i] = s[i + a]
 
-proc `[]=`*[T, U](s: var string, x: HSlice[T, U], b: string) =
+proc `[]=`*[T, U: Ordinal](s: var string, x: HSlice[T, U], b: string) =
   ## Slice assignment for strings.
   ##
   ## If ``b.len`` is not exactly the number of elements that are referred to
@@ -2528,7 +2525,7 @@ proc `[]=`*[T, U](s: var string, x: HSlice[T, U], b: string) =
   else:
     spliceImpl(s, a, L, b)
 
-proc `[]`*[Idx, T, U, V](a: array[Idx, T], x: HSlice[U, V]): seq[T] =
+proc `[]`*[Idx, T; U, V: Ordinal](a: array[Idx, T], x: HSlice[U, V]): seq[T] =
   ## Slice operation for arrays.
   ## Returns the inclusive range `[a[x.a], a[x.b]]`:
   ##
@@ -2540,7 +2537,7 @@ proc `[]`*[Idx, T, U, V](a: array[Idx, T], x: HSlice[U, V]): seq[T] =
   result = newSeq[T](L)
   for i in 0..<L: result[i] = a[Idx(i + xa)]
 
-proc `[]=`*[Idx, T, U, V](a: var array[Idx, T], x: HSlice[U, V], b: openArray[T]) =
+proc `[]=`*[Idx, T; U, V: Ordinal](a: var array[Idx, T], x: HSlice[U, V], b: openArray[T]) =
   ## Slice assignment for arrays.
   ##
   ## .. code-block:: Nim
@@ -2554,7 +2551,7 @@ proc `[]=`*[Idx, T, U, V](a: var array[Idx, T], x: HSlice[U, V], b: openArray[T]
   else:
     sysFatal(RangeDefect, "different lengths for slice assignment")
 
-proc `[]`*[T, U, V](s: openArray[T], x: HSlice[U, V]): seq[T] =
+proc `[]`*[T; U, V: Ordinal](s: openArray[T], x: HSlice[U, V]): seq[T] =
   ## Slice operation for sequences.
   ## Returns the inclusive range `[s[x.a], s[x.b]]`:
   ##
@@ -2566,7 +2563,7 @@ proc `[]`*[T, U, V](s: openArray[T], x: HSlice[U, V]): seq[T] =
   newSeq(result, L)
   for i in 0 ..< L: result[i] = s[i + a]
 
-proc `[]=`*[T, U, V](s: var seq[T], x: HSlice[U, V], b: openArray[T]) =
+proc `[]=`*[T; U, V: Ordinal](s: var seq[T], x: HSlice[U, V], b: openArray[T]) =
   ## Slice assignment for sequences.
   ##
   ## If ``b.len`` is not exactly the number of elements that are referred to
@@ -2942,19 +2939,16 @@ proc `==`*(x, y: cstring): bool {.magic: "EqCString", noSideEffect,
   elif x.isNil or y.isNil: result = false
   else: result = strcmp(x, y) == 0
 
-when defined(nimNoNilSeqs2) and not compileOption("nilseqs"):
-  when defined(nimHasUserErrors):
-    # bug #9149; ensure that 'type(nil)' does not match *too* well by using 'type(nil) | type(nil)'.
-    # Eventually (in 0.20?) we will be able to remove this hack completely.
-    proc `==`*(x: string; y: type(nil) | type(nil)): bool {.
-        error: "'nil' is now invalid for 'string'; compile with --nilseqs:on for a migration period".} =
-      discard
-    proc `==`*(x: type(nil) | type(nil); y: string): bool {.
-        error: "'nil' is now invalid for 'string'; compile with --nilseqs:on for a migration period".} =
-      discard
-  else:
-    proc `==`*(x: string; y: type(nil) | type(nil)): bool {.error.} = discard
-    proc `==`*(x: type(nil) | type(nil); y: string): bool {.error.} = discard
+when not compileOption("nilseqs"):
+  # bug #9149; ensure that 'type(nil)' does not match *too* well by using 'type(nil) | type(nil)',
+  # especially for converters, see tests/overload/tconverter_to_string.nim
+  # Eventually we will be able to remove this hack completely.
+  proc `==`*(x: string; y: type(nil) | type(nil)): bool {.
+      error: "'nil' is now invalid for 'string'; compile with --nilseqs:on for a migration period".} =
+    discard
+  proc `==`*(x: type(nil) | type(nil); y: string): bool {.
+      error: "'nil' is now invalid for 'string'; compile with --nilseqs:on for a migration period".} =
+    discard
 
 template closureScope*(body: untyped): untyped =
   ## Useful when creating a closure in a loop to capture local loop variables by

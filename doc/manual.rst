@@ -7214,6 +7214,19 @@ will generate this code:
   __interrupt void myinterrupt()
 
 
+`cppNonPod` pragma
+------------------
+
+The `.cppNonPod` pragma should be used for non-POD `importcpp` types so that they
+work properly (in particular regarding constructor and destructor) for
+`.threadvar` variables. This requires `--tlsEmulation:off`.
+
+.. code-block:: nim
+  type Foo {.cppNonPod, importcpp, header: "funs.h".} = object
+    x: cint
+  proc main()=
+    var a {.threadvar.}: Foo
+
 InjectStmt pragma
 -----------------
 

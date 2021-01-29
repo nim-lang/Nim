@@ -820,14 +820,28 @@ proc gTypeClassTy(g: var TSrcGen, n: PNode) =
   dedent(g)
 
 proc gblock(g: var TSrcGen, n: PNode) =
+  # you shouldn't simplify it to `n.len < 2`
+  # because the following codes should be executed
+  # even when block stmt has only one child for getting
+  # better error messages.
+  if n.len == 0:
+    return
+
   var c: TContext
   initContext(c)
+
   if n[0].kind != nkEmpty:
     putWithSpace(g, tkBlock, "block")
     gsub(g, n[0])
   else:
     put(g, tkBlock, "block")
+
+  # block stmt should have two children
+  if n.len == 1:
+    return
+
   putWithSpace(g, tkColon, ":")
+
   if longMode(g, n) or (lsub(g, n[1]) + g.lineLen > MaxLineLen):
     incl(c.flags, rfLongMode)
   gcoms(g)
