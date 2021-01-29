@@ -1559,11 +1559,8 @@ proc len*[U: Ordinal; V: Ordinal](x: HSlice[U, V]): int {.noSideEffect, inline.}
   ##   assert((5..2).len == 0)
   result = max(0, ord(x.b) - ord(x.a) + 1)
 
-when defined(nimNoNilSeqs2):
-  when not compileOption("nilseqs"):
-    {.pragma: nilError, error.}
-  else:
-    {.pragma: nilError.}
+when not compileOption("nilseqs"):
+  {.pragma: nilError, error.}
 else:
   {.pragma: nilError.}
 
@@ -2942,7 +2939,7 @@ proc `==`*(x, y: cstring): bool {.magic: "EqCString", noSideEffect,
   elif x.isNil or y.isNil: result = false
   else: result = strcmp(x, y) == 0
 
-when defined(nimNoNilSeqs2) and not compileOption("nilseqs"):
+when not compileOption("nilseqs"):
   # bug #9149; ensure that 'type(nil)' does not match *too* well by using 'type(nil) | type(nil)',
   # especially for converters, see tests/overload/tconverter_to_string.nim
   # Eventually we will be able to remove this hack completely.

@@ -72,7 +72,7 @@ proc initDefines*(symbols: StringTableRef) =
   defineSymbol("nimIncrSeqV3")
   defineSymbol("nimAshr")
   defineSymbol("nimNoNilSeqs")
-  defineSymbol("nimNoNilSeqs2")
+  defineSymbol("nimNoNilSeqs2") # deadcode
   defineSymbol("nimHasUserErrors") # deadcode
   defineSymbol("nimUncheckedArrayTyp")
   defineSymbol("nimHasTypeof")
