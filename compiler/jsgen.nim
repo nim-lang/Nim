@@ -2152,7 +2152,7 @@ proc genSetConstr(p: PProc, n: PNode, r: var TCompRes) =
 
 proc genArrayConstr(p: PProc, n: PNode, r: var TCompRes) =
   ## Constructs array or sequence.
-  ## Nim array(except array of `int64`, `bool`, `emum` etc. kind) maps to JS typed arrays.
+  ## Nim array of uint8..uint32, int8..int32 maps to JS typed arrays.
   ## Nim sequence maps to JS array.
   var t = skipTypes(n.typ, abstractInst)
   let e = elemType(t)
