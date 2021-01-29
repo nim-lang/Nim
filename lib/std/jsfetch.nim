@@ -48,20 +48,6 @@ type
     headers: Headers
 
 
-proc fetchMethodToCstring(metod: HttpMethod): cstring =
-  ## proc that takes an `HttpMethod` and returns an *Uppercase* `cstring`,
-  ## but *only* for the HTTP Methods that are supported by the fetch API.
-  ## High performance and minimal code compared to just `$(HttpMethod)`.
-  assert metod notin {HttpTrace, HttpOptions, HttpConnect}, "HTTP Method not supported by Fetch API"
-  case metod
-  of HttpHead:   "HEAD".cstring
-  of HttpGet:    "GET".cstring
-  of HttpPost:   "POST".cstring
-  of HttpPut:    "PUT".cstring
-  of HttpDelete: "DELETE".cstring
-  of HttpPatch:  "PATCH".cstring
-  else:          "GET".cstring
-
 func unsafeNewFetchOptions*(metod, body, mode, credentials, cache, referrerPolicy: cstring,
     keepalive: bool, redirect = "follow".cstring, referrer = "client".cstring, integrity = "".cstring): FetchOptions {.importjs:
     "{method: #, body: #, mode: #, credentials: #, cache: #, referrerPolicy: #, keepalive: #, redirect: #, referrer: #, integrity: #}".}
@@ -71,9 +57,19 @@ func newfetchOptions*(metod: HttpMethod, body: cstring,
     mode: FetchModes, credentials: FetchCredentials, cache: FetchCaches, referrerPolicy: FetchReferrerPolicies,
     keepalive: bool, redirect = frFollow, referrer = "client".cstring, integrity = "".cstring): FetchOptions =
   ## Constructor for `FetchOptions`.
-  result = FetchOptions(metod: fetchMethodToCstring(metod), body: body, mode: $mode,
-    credentials: $credentials, cache: $cache, referrerPolicy: $referrerPolicy,
-    keepalive: keepalive, redirect: $redirect , referrer: referrer, integrity: integrity)
+  result = FetchOptions(
+    body: body, mode: $mode, credentials: $credentials, cache: $cache, referrerPolicy: $referrerPolicy,
+    keepalive: keepalive, redirect: $redirect, referrer: referrer, integrity: integrity,
+    metod: (case metod
+      of HttpHead:   "HEAD".cstring
+      of HttpGet:    "GET".cstring
+      of HttpPost:   "POST".cstring
+      of HttpPut:    "PUT".cstring
+      of HttpDelete: "DELETE".cstring
+      of HttpPatch:  "PATCH".cstring
+      else:          "GET".cstring
+    )
+  )
 
 func fetchToCstring*(url: cstring): Future[cstring] {.importjs: "fetch(#).then(response => response.text()).then(text => text)".}
   ## Convenience func for `fetch()` API that returns a `cstring` directly.
@@ -95,6 +91,7 @@ func `$`*(this: FetchOptions or Response): string = $toCstring(this)
 runnableExamples:
   import httpcore
   if defined(nimJsFetchTests):
+
     block:
       let options0: FetchOptions = unsafeNewFetchOptions(
         metod = "POST".cstring,
@@ -118,6 +115,7 @@ runnableExamples:
       doAssert options0.redirect == "follow".cstring
       doAssert options0.referrer == "client".cstring
       doAssert options0.integrity == "".cstring
+
     block:
       let options1: FetchOptions = newFetchOptions(
         metod =  HttpPost,
@@ -141,3 +139,14 @@ runnableExamples:
       doAssert options1.redirect == $frFollow
       doAssert options1.referrer == "client".cstring
       doAssert options1.integrity == "".cstring
+
+    when not defined(nodejs):
+      proc doFetch(): Future[Response] {.async.} =
+        fetch "http:httpbin.org/get"
+
+      proc example() {.async.} =
+        let response: Response = await doFetch()
+        doAssert response.ok
+        doAssert response.status == 200.cint
+
+      waitFor example()
