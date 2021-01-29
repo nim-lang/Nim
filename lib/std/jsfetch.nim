@@ -134,7 +134,7 @@ runnableExamples:
       doAssert options1.body == """{"key": "value"}""".cstring
       doAssert options1.mode == $fmNoCors
       doAssert options1.credentials == $fcOmit
-      doAssert options1.cache == $fchNoCimport
+      doAssert options1.cache == $fchNoCache
       doAssert options1.referrerPolicy == $frpNoReferrer
       doAssert options1.redirect == $frFollow
       doAssert options1.referrer == "client".cstring
