@@ -1982,6 +1982,23 @@ proc genMove(p: PProc; n: PNode; r: var TCompRes) =
   genReset(p, n)
   #lineF(p, "$1 = $2;$n", [dest.rdLoc, src.rdLoc])
 
+proc genJSArrayConstr(p: PProc, n: PNode, r: var TCompRes) =
+  var a: TCompRes
+  r.res = rope("[")
+  r.kind = resExpr
+  for i in 0 ..< n.len:
+    if i > 0: r.res.add(", ")
+    gen(p, n[i], a)
+    if a.typ == etyBaseIndex:
+      r.res.addf("[$1, $2]", [a.address, a.res])
+    else:
+      if not needsNoCopy(p, n[i]):
+        let typ = n[i].typ.skipTypes(abstractInst)
+        useMagic(p, "nimCopy")
+        a.res = "nimCopy(null, $1, $2)" % [a.rdLoc, genTypeInfo(p, typ)]
+      r.res.add(a.res)
+  r.res.add("]")
+
 proc genMagic(p: PProc, n: PNode, r: var TCompRes) =
   var
     a: TCompRes
@@ -2045,10 +2062,10 @@ proc genMagic(p: PProc, n: PNode, r: var TCompRes) =
   of mArrToSeq:
     # initializing typed arrays doesn't need copy
     if needsNoCopy(p, n[1]):
-      # we change the kind from tyArray to tySequence because 
-      # `genArrayConstr` needs it.
-      skipTypes(n[1].typ, abstractVarRange).kind = tySequence
-      gen(p, n[1], r)
+      if n[1].kind == nkBracket:
+        genJSArrayConstr(p, n[1], r)
+      else:
+        gen(p, n[1], r)
     else:
       var x: TCompRes
       gen(p, n[1], x)
@@ -2158,7 +2175,7 @@ proc genArrayConstr(p: PProc, n: PNode, r: var TCompRes) =
   let e = elemType(t)
   let jsTyp = arrayTypeForElemType(e)
   # we need to check whether the kind of type is tySequence.
-  if skipTypes(n.typ, abstractVarRange).kind != tySequence and jsTyp.len > 0:
+  if jsTyp.len > 0:
     # generate typed array
     # for example Nim generates `new Uint8Array([1, 2, 3])` for `[byte(1), 2, 3]`
     var a: TCompRes
@@ -2170,21 +2187,7 @@ proc genArrayConstr(p: PProc, n: PNode, r: var TCompRes) =
       r.res.add(a.res)
     r.res.add("])")
   else:
-    var a: TCompRes
-    r.res = rope("[")
-    r.kind = resExpr
-    for i in 0 ..< n.len:
-      if i > 0: r.res.add(", ")
-      gen(p, n[i], a)
-      if a.typ == etyBaseIndex:
-        r.res.addf("[$1, $2]", [a.address, a.res])
-      else:
-        if not needsNoCopy(p, n[i]):
-          let typ = n[i].typ.skipTypes(abstractInst)
-          useMagic(p, "nimCopy")
-          a.res = "nimCopy(null, $1, $2)" % [a.rdLoc, genTypeInfo(p, typ)]
-        r.res.add(a.res)
-    r.res.add("]")
+    genJSArrayConstr(p, n, r)
 
 proc genTupleConstr(p: PProc, n: PNode, r: var TCompRes) =
   var a: TCompRes

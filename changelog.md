@@ -140,7 +140,7 @@ with other backends. see #9125. Use `-d:nimLegacyJsRound` for previous behavior.
 - TLS: OSX now uses native TLS (`--tlsEmulation:off`), TLS now works with importcpp non-POD types,
   such types must use `.cppNonPod` and `--tlsEmulation:off`should be used.
 
-- Now array literals(JS backend) uses JS typed arrays, for example `[byte(1), 2, 3]` generates `new Uint8Array([1, 2, 3])`.
+- Now array literals(JS backend) uses JS typed arrays when the corresponding js typed array exists, for example `[byte(1), 2, 3]` generates `new Uint8Array([1, 2, 3])`.
 
 
 ## Tool changes
