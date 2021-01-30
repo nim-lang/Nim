@@ -139,16 +139,15 @@ when defined(js):
       P1 = big"0xe7037ed1a0b428db"
       P58 = big"0xeb44accab455d16d" # big"0xeb44accab455d165" xor big"8"
       res = hiXorLoJs(hiXorLoJs(P0, x xor P1), P58)
-      maxSafeInteger = big"0x1FFFFFFFFFFFFF" # (big"1" shl big"53") - big"1"
-    cast[Hash](toNumber((res and maxSafeInteger))) and cast[Hash](0xFFFFFFFF)
+    cast[Hash](toNumber(wrapToInt(res, 32)))
 
-  template asBigInt(x: float): JsBigInt =
+  template asBigInt(num: float): JsBigInt =
     let
-      buffer = newArrayBuffer(8)
-      floatBuffer = newFloat64Array(buffer)
-      uintBuffer = newBigUint64Array(buffer)
-    floatBuffer[0] = x
-    uintBuffer[0]
+      x = newArrayBuffer(8)
+      y = newFloat64Array(x)
+      z = newBigUint64Array(x)
+    y[0] = num
+    z[0]
 
 proc hashWangYi1*(x: int64|uint64|Hash): Hash {.inline.} =
   ## Wang Yi's hash_v1 for 64-bit ints (see https://github.com/rurban/smhasher for
