@@ -130,16 +130,16 @@ when defined(js):
   proc hiXorLoJs(a, b: JsBigInt): JsBigInt =
     let
       prod = a * b
-      mask = big"0xffffffffffffffff" # mask = (big"1" shl big"64") - big"1"
+      mask = big"0xffffffffffffffff" # (big"1" shl big"64") - big"1"
     result = (prod shr big"64") xor (prod and mask)
 
   template hashWangYiJS(x: JsBigInt): Hash =
     let
       P0 = big"0xa0761d6478bd642f"
       P1 = big"0xe7037ed1a0b428db"
-      P58 = big"0xeb44accab455d165" xor big"8"
+      P58 = big"0xeb44accab455d16d" # big"0xeb44accab455d165" xor big"8"
       res = hiXorLoJs(hiXorLoJs(P0, x xor P1), P58)
-      maxSafeInteger = (big"1" shl big"53") - big"1"
+      maxSafeInteger = big"0x1FFFFFFFFFFFFF" # (big"1" shl big"53") - big"1"
     cast[Hash](toNumber((res and maxSafeInteger))) and cast[Hash](0xFFFFFFFF)
 
   template asBigInt(x: float): JsBigInt =
