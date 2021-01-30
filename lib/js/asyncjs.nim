@@ -154,3 +154,25 @@ proc newPromise*[T](handler: proc(resolve: proc(response: T))): Future[T] {.impo
 proc newPromise*(handler: proc(resolve: proc())): Future[void] {.importcpp: "(new Promise(#))".}
   ## A helper for wrapping callback-based functions
   ## into promises and async procedures.
+
+type OnReject* = proc(reason: JsObject)
+
+proc then*[T, T2](future: Future[T], onSuccess: proc(value: T): T2, onReject: OnReject = nil): Future[T2] =
+  ## See https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Promise/then
+  asm "`result` = `future`.then(`onSuccess`, `onReject`)"
+
+proc then*[T](future: Future[T], onSuccess: proc(value: T), onReject: OnReject = nil): Future[void] =
+  ## See https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Promise/then
+  asm "`result` = `future`.then(`onSuccess`, `onReject`)"
+
+proc then*(future: Future[void], onSuccess: proc(), onReject: OnReject = nil): Future[void] =
+  ## See https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Promise/then
+  asm "`result` = `future`.then(`onSuccess`, `onReject`)"
+
+proc then*[T2](future: Future[void], onSuccess: proc(): T2, onReject: OnReject = nil): Future[T2] =
+  ## See https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Promise/then
+  asm "`result` = `future`.then(`onSuccess`, `onReject`)"
+
+proc catch*[T](a: Future[T], onReject: OnReject): Future[void] =
+  ## See https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Promise/catch
+  asm "`result` = `a`.catch(`onReject`)"
