@@ -82,6 +82,7 @@ proc compileOption*(option, arg: string): bool {.
   ## * `define pragmas <manual.html#implementation-specific-pragmas-compileminustime-define-pragmas>`_
   ##
   ## Example:
+  ##
   ## .. code-block:: Nim
   ##
   ##   when compileOption("opt", "size") and compileOption("gc", "boehm"):
