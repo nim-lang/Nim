@@ -60,9 +60,9 @@ proc compileOption*(option: string): bool {.
   ## Can be used to determine an `on|off` compile-time option.
   ##
   ## See also:
-  ## * `compileOption <#string,string>`_ for enum options
+  ## * `compileOption <#compileOption,string,string>`_ for enum options
   ## * `declared <#declared,untyped>`_
-  ## * `defined <#string>`_
+  ## * `defined <#defined,string>`_
   ## * `define pragmas <manual.html#implementation-specific-pragmas-compileminustime-define-pragmas>`_
   ##
   ## Example:
