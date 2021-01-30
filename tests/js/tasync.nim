@@ -32,6 +32,7 @@ block:
   discard x(2)
 
 import sugar
+
 block:
   proc fn(n: int): Future[int] {.async.} =
     if n > 0:
@@ -42,5 +43,7 @@ block:
       return 10
   discard fn(4)
   var witness: seq[string]
-  discard fn(4).
-    then((a: int) => (witness.add $a; a.float*2)).then((a: float) => (witness.add $a)).then(()=>(echo witness)).then(()=>1)
+  discard fn(3)
+    .then((a: int) => (witness.add $a; a.float*2))
+    .then((a: float) => (witness.add $a))
+    .then(()=>(echo witness)).then(()=>1)
