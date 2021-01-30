@@ -15,3 +15,6 @@ when defined(js):
   func `[]`*(arr: Uint32Array, i: int): uint32 {.importjs: "#[#]".}
   func `[]`*(arr: BigUint64Array, i: int): JsBigInt {.importjs: "#[#]".}
   func `[]=`*(arr: Float64Array, i: int, v: float) {.importjs: "#[#] = #".}
+
+  proc hasJsBigInt*(): bool =
+    asm """`result` = typeof BigInt == 'undefined'"""

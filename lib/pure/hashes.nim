@@ -127,26 +127,26 @@ when defined(js):
   import std/jsbigints
   import std/private/jsutils
 
-  proc noBigInt(): bool =
-    asm """`result` = typeof BigInt == 'undefined'"""
-
   proc hiXorLoJs(a, b: JsBigInt): JsBigInt =
-    let prod = a * b
-    let mask = (big"1" shl big"64") - big"1"
+    let
+      prod = a * b
+      mask = big"0xffffffffffffffff" # mask = (big"1" shl big"64") - big"1"
     result = (prod shr big"64") xor (prod and mask)
 
   template hashWangYiJS(x: JsBigInt): Hash =
-    let P0 = (big"0xa0761d64" shl big"32") or big"0x78bd642f"
-    let P1 = (big"0xe7037ed1" shl big"32") or big"0xa0b428db"
-    let P58 = (big"0xeb44acca" shl big"32") or (big"0xb455d165" xor big"8")
-    let res = hiXorLoJs(hiXorLoJs(P0, x xor P1), P58)
-    let maxSafeInterger = (big"1" shl big"53") - big"1"
+    let
+      P0 = big"0xa0761d6478bd642f"
+      P1 = big"0xe7037ed1a0b428db"
+      P58 = big"0xeb44accab455d165" xor big"8"
+      res = hiXorLoJs(hiXorLoJs(P0, x xor P1), P58)
+      maxSafeInterger = (big"1" shl big"53") - big"1"
     cast[Hash](toNumber((res and maxSafeInterger))) and cast[Hash](0xFFFFFFFF)
 
   template asBigInt(x: float): JsBigInt =
-    let buffer = newArrayBuffer(8)
-    let floatBuffer = newFloat64Array(buffer)
-    let uintBuffer = newBigUint64Array(buffer)
+    let
+      buffer = newArrayBuffer(8)
+      floatBuffer = newFloat64Array(buffer)
+      uintBuffer = newBigUint64Array(buffer)
     floatBuffer[0] = x
     uintBuffer[0]
 
@@ -166,7 +166,7 @@ proc hashWangYi1*(x: int64|uint64|Hash): Hash {.inline.} =
       result = cast[Hash](h(x))
   else:
     when defined(js):
-      if noBigInt():
+      if hasJsBigInt():
         result = cast[Hash](x) and cast[Hash](0xFFFFFFFF)
       else:
         result = hashWangYiJS(big(x))
