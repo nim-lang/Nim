@@ -2060,12 +2060,9 @@ proc genMagic(p: PProc, n: PNode, r: var TCompRes) =
   of mNew, mNewFinalize: genNew(p, n)
   of mChr: gen(p, n[1], r)
   of mArrToSeq:
-    # initializing typed arrays doesn't need copy
-    if needsNoCopy(p, n[1]):
-      if n[1].kind == nkBracket:
-        genJSArrayConstr(p, n[1], r)
-      else:
-        gen(p, n[1], r)
+    # only array literals doesn't need copy
+    if n[1].kind == nkBracket:
+      genJSArrayConstr(p, n[1], r)
     else:
       var x: TCompRes
       gen(p, n[1], x)

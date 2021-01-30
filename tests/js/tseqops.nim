@@ -49,3 +49,8 @@ var test = @[Test(a: "1", b: 1), Test(a: "2", b: 2)]
 test.insert(@[Test(a: "3", b: 3)], 0)
 
 echo test
+
+proc hello(): array[5, int] = discard
+var x = @(hello())
+x.add(2)
+doAssert x == @[0, 0, 0, 0, 0, 2]
