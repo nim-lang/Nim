@@ -167,9 +167,9 @@ proc hashWangYi1*(x: int64|uint64|Hash): Hash {.inline.} =
   else:
     when defined(js):
       if hasJsBigInt():
-        result = cast[Hash](x) and cast[Hash](0xFFFFFFFF)
-      else:
         result = hashWangYiJS(big(x))
+      else:
+        result = cast[Hash](x) and cast[Hash](0xFFFFFFFF)
     else:
       result = cast[Hash](h(x))
 
