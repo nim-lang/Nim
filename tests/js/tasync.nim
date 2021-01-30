@@ -41,15 +41,6 @@ block:
     else:
       return 10
   discard fn(4)
-  # discard fn(4).then(a=>a*3)
-  # discard fn(4).then((a: int) => (echo "gook1"))
-  # discard fn(4).then((a: int) => (echo "gook1")).then((a: int) => (echo "gook2"))
-  # discard fn(4).then((a: int) => (echo "gook1")).then(() => (echo "gook2"))
-
-  # discard fn(4).then((a: int) => (echo "gook1"; a*a)).then((a: int) => (echo a))
-  # discard fn(4).then((a: int) => (echo "gook1"; float(a*a))).then((a: float) => (echo a))
-  # discard fn(4).then((a: int) => a*10).then((a: int) => (echo a))
-  # discard fn(4).then(a => a*10).then((a: int) => (echo a))
-
   var witness: seq[string]
-  discard fn(4).then((a: int) => (witness.add $a; a.float*2)).then((a: float) => (witness.add $a)).then(()=>(echo witness)).then(()=>1)
+  discard fn(4).
+    then((a: int) => (witness.add $a; a.float*2)).then((a: float) => (witness.add $a)).then(()=>(echo witness)).then(()=>1)
