@@ -62,10 +62,11 @@ proc compileOption*(option: string): bool {.
   ## See also:
   ## * `compileOption <#compileOption,string,string>`_ for enum options
   ## * `declared <#declared,untyped>`_
-  ## * `defined <#defined,string>`_
+  ## * `defined <#defined,untyped>`_
   ## * `define pragmas <manual.html#implementation-specific-pragmas-compileminustime-define-pragmas>`_
   ##
   ## Example:
+  ##
   ## .. code-block:: Nim
   ##   when compileOption("floatchecks"):
   ##     echo "compiled with floating point NaN and Inf checks"
@@ -77,11 +78,12 @@ proc compileOption*(option, arg: string): bool {.
   ## See also:
   ## * `compileOption <#compileOption,string>`_ for `on|off` options
   ## * `declared <#declared,untyped>`_
-  ## * `defined <#defined,string>`_
+  ## * `defined <#defined,untyped>`_
   ## * `define pragmas <manual.html#implementation-specific-pragmas-compileminustime-define-pragmas>`_
   ##
   ## Example:
   ## .. code-block:: Nim
+  ##
   ##   when compileOption("opt", "size") and compileOption("gc", "boehm"):
   ##     echo "compiled with optimization for size and uses Boehm's GC"
 
