@@ -139,8 +139,8 @@ when defined(js):
       P1 = big"0xe7037ed1a0b428db"
       P58 = big"0xeb44accab455d165" xor big"8"
       res = hiXorLoJs(hiXorLoJs(P0, x xor P1), P58)
-      maxSafeInterger = (big"1" shl big"53") - big"1"
-    cast[Hash](toNumber((res and maxSafeInterger))) and cast[Hash](0xFFFFFFFF)
+      maxSafeInteger = (big"1" shl big"53") - big"1"
+    cast[Hash](toNumber((res and maxSafeInteger))) and cast[Hash](0xFFFFFFFF)
 
   template asBigInt(x: float): JsBigInt =
     let
