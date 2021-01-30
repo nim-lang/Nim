@@ -111,6 +111,9 @@ with other backends. see #9125. Use `-d:nimLegacyJsRound` for previous behavior.
 
 - Removed the optional `longestMatch` parameter of the `critbits._WithPrefix` iterators (it never worked reliably)
 
+- Add `jsformdata`, `jssets`, `jsxmlhttprequest`, `jsxmlserializer` for JavaScript target.
+
+
 ## Language changes
 
 - `nimscript` now handles `except Exception as e`.
