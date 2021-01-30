@@ -16,6 +16,11 @@ func big*(integer: cstring): JsBigInt {.importjs: "BigInt(#)".} =
   ## Constructor for `JsBigInt`.
   runnableExamples:
     doAssert big"-1" == big"1" - big"2"
+    # supports decimal, binary, octal, hex:
+    doAssert big"12" == 12.big
+    doAssert big"0b101" == 0b101.big
+    doAssert big"0o701" == 0o701.big
+    doAssert big"0xdeadbeaf" == 0xdeadbeaf.big
     doAssert big"0xffffffffffffffff" == (1.big shl 64.big) - 1.big
 
 func toCstring*(this: JsBigInt; radix: 2..36): cstring {.importjs: "#.toString(#)".} =
