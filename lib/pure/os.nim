@@ -1634,6 +1634,19 @@ proc setFilePermissions*(filename: string, permissions: set[FilePermission]) {.
       var res2 = setFileAttributesA(filename, res)
     if res2 == - 1'i32: raiseOSError(osLastError(), $(filename, permissions))
 
+const hasCopyfileBsd = defined(osx) or defined(bsd)
+when hasCopyfileBsd:
+  {.push nodecl, header: "<copyfile.h>".}
+  type copyfile_state_t = ptr object
+  type copyfile_flags_t = cint
+  proc copyfile_state_alloc(): copyfile_state_t
+  proc copyfile_state_free(state: copyfile_state_t): cint
+  proc c_copyfile(src, dst: cstring,  state: copyfile_state_t, flags: copyfile_flags_t): cint {.importc: "copyfile".}
+  # let COPYFILE_DATA: copyfile_flags_t # xxx bug: push nodecl didn't apply to let
+  let COPYFILE_DATA {.nodecl.}: copyfile_flags_t
+  let COPYFILE_XATTR {.nodecl.}: copyfile_flags_t
+  {.pop.}
+
 proc copyFile*(source, dest: string) {.rtl, extern: "nos$1",
   tags: [ReadIOEffect, WriteIOEffect], noWeirdTarget.} =
   ## Copies a file from `source` to `dest`, where `dest.parentDir` must exist.
@@ -1668,9 +1681,17 @@ proc copyFile*(source, dest: string) {.rtl, extern: "nos$1",
       if copyFileW(s, d, 0'i32) == 0'i32: raiseOSError(osLastError(), $(source, dest))
     else:
       if copyFileA(source, dest, 0'i32) == 0'i32: raiseOSError(osLastError(), $(source, dest))
+  elif hasCopyfileBsd:
+    let state = copyfile_state_alloc()
+    var status = c_copyfile(source.cstring, dest.cstring, state, COPYFILE_DATA)
+    if status != 0: raiseOSError(osLastError(), $(source, dest))
+    status = copyfile_state_free(state)
+    if status != 0: raiseOSError(osLastError(), $(source, dest))
   else:
     # generic version of copyFile which works for any platform:
-    const bufSize = 8000 # better for memory manager
+    const bufSize = 8192
+      # This could be refined dynamically if `source` turns out to be a large file
+      # Another good default would be based on `getFileInfo(a).blockSize`.
     var d, s: File
     if not open(s, source): raiseOSError(osLastError(), source)
     if not open(d, dest, fmWrite):
