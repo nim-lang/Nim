@@ -220,7 +220,7 @@ const
     (name: "arm", intSize: 32, endian: littleEndian, floatSize: 64, bit: 32),
     (name: "arm64", intSize: 64, endian: littleEndian, floatSize: 64, bit: 64),
     (name: "js", intSize: 32, endian: littleEndian, floatSize: 64, bit: 32),
-    (name: "nimvm", intSize: 32, endian: littleEndian, floatSize: 64, bit: 32),
+    (name: "nimvm", intSize: 32, endian: bigEndian, floatSize: 64, bit: 32),
       # xxx this seems buggy; on a 64bit machine, sizeof(int) is 64 in nimvm.
     (name: "avr", intSize: 16, endian: littleEndian, floatSize: 32, bit: 16),
     (name: "msp430", intSize: 16, endian: littleEndian, floatSize: 32, bit: 16),
