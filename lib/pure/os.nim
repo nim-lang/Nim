@@ -1635,17 +1635,29 @@ proc setFilePermissions*(filename: string, permissions: set[FilePermission]) {.
     if res2 == - 1'i32: raiseOSError(osLastError(), $(filename, permissions))
 
 const hasCopyfileBsd = defined(osx) or defined(bsd)
+
+const nimHasImportcLet = compiles(block:
+  let foo {.nodecl, importc.}: cint) # xxx move, and replace with `nimVersionCT`
+    # pending bootstrap >= https://github.com/nim-lang/Nim/pull/14258, remove this
+
 when hasCopyfileBsd:
-  {.push nodecl, header: "<copyfile.h>".}
+  when defined(nimHasStyleChecks):
+    # {.push nodecl, header: "<copyfile.h>", styleChecksOff2.} # xxx how come this even compiles?
+    {.push nodecl, header: "<copyfile.h>", styleChecks: off.}
+  else:
+    {.push nodecl, header: "<copyfile.h>".}
   type copyfile_state_t = ptr object
   type copyfile_flags_t = cint
   proc copyfile_state_alloc(): copyfile_state_t
   proc copyfile_state_free(state: copyfile_state_t): cint
   proc c_copyfile(src, dst: cstring,  state: copyfile_state_t, flags: copyfile_flags_t): cint {.importc: "copyfile".}
   # let COPYFILE_DATA: copyfile_flags_t # xxx bug: push nodecl didn't apply to let
-  # pending bootstrap >= https://github.com/nim-lang/Nim/pull/14258, remove initializer
-  let COPYFILE_DATA {.nodecl.}: copyfile_flags_t = 0
-  let COPYFILE_XATTR {.nodecl.}: copyfile_flags_t = 0
+  when nimHasImportcLet:
+    let COPYFILE_DATA {.nodecl.}: copyfile_flags_t
+    let COPYFILE_XATTR {.nodecl.}: copyfile_flags_t
+  else:
+    var COPYFILE_DATA {.nodecl.}: copyfile_flags_t
+    var COPYFILE_XATTR {.nodecl.}: copyfile_flags_t
   {.pop.}
 
 proc copyFile*(source, dest: string) {.rtl, extern: "nos$1",
