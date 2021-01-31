@@ -1635,6 +1635,7 @@ proc setFilePermissions*(filename: string, permissions: set[FilePermission]) {.
     if res2 == - 1'i32: raiseOSError(osLastError(), $(filename, permissions))
 
 const hasCopyfileOsx = defined(osx) # since osx 10.5
+# const hasCopyfileOsx = false
 
 const nimHasImportcLet = compiles(block:
   let foo {.nodecl, importc.}: cint) # xxx move, and replace with `nimVersionCT`
@@ -1646,7 +1647,8 @@ when hasCopyfileOsx:
     {.push nodecl, header: "<copyfile.h>", styleChecks: off.}
   else:
     {.push nodecl, header: "<copyfile.h>".}
-  type copyfile_state_t = ptr object
+  type copyfile_state_t {.nodecl.} = object
+    # xxx it really should be a ptr object but not sure how to do that
   type copyfile_flags_t = cint
   proc copyfile_state_alloc(): copyfile_state_t
   proc copyfile_state_free(state: copyfile_state_t): cint
