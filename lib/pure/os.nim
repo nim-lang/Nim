@@ -1634,31 +1634,23 @@ proc setFilePermissions*(filename: string, permissions: set[FilePermission]) {.
       var res2 = setFileAttributesA(filename, res)
     if res2 == - 1'i32: raiseOSError(osLastError(), $(filename, permissions))
 
-const hasCopyfileOsx = defined(osx) # since osx 10.5
+const hasCCopyfile = defined(osx) # since osx 10.5
 
-const nimHasImportcLet = compiles(block:
-  let foo {.nodecl, importc.}: cint) # xxx move, and replace with `nimVersionCT`
-    # pending bootstrap >= https://github.com/nim-lang/Nim/pull/14258, remove this
-
-when hasCopyfileOsx:
-  when defined(nimHasStyleChecks):
-    # {.push nodecl, header: "<copyfile.h>", styleChecksOff2.} # xxx how come this even compiles?
-    {.push nodecl, header: "<copyfile.h>", styleChecks: off.}
-  else:
-    {.push nodecl, header: "<copyfile.h>".}
-  type copyfile_state_t {.nodecl.} = object
-    # xxx it really should be a ptr object but not sure how to do that
-  type copyfile_flags_t = cint
+when hasCCopyfile:
+  {.push nodecl, header: "<copyfile.h>".}
+  when defined(nimHasStyleChecks): {.push styleChecks: off.}
+  else: {.push.}
+  type
+    copyfile_state_t {.nodecl.} = pointer
+    copyfile_flags_t = cint
   proc copyfile_state_alloc(): copyfile_state_t
   proc copyfile_state_free(state: copyfile_state_t): cint
   proc c_copyfile(src, dst: cstring,  state: copyfile_state_t, flags: copyfile_flags_t): cint {.importc: "copyfile".}
-  # let COPYFILE_DATA: copyfile_flags_t # xxx bug: push nodecl didn't apply to let
-  when nimHasImportcLet:
-    let COPYFILE_DATA {.nodecl.}: copyfile_flags_t
-    let COPYFILE_XATTR {.nodecl.}: copyfile_flags_t
-  else:
-    var COPYFILE_DATA {.nodecl.}: copyfile_flags_t
-    var COPYFILE_XATTR {.nodecl.}: copyfile_flags_t
+  # replace with `let` pending bootstrap >= 1.4.0
+  var
+    COPYFILE_DATA {.nodecl.}: copyfile_flags_t
+    COPYFILE_XATTR {.nodecl.}: copyfile_flags_t
+  {.pop.}
   {.pop.}
 
 proc copyFile*(source, dest: string) {.rtl, extern: "nos$1",
@@ -1695,12 +1687,16 @@ proc copyFile*(source, dest: string) {.rtl, extern: "nos$1",
       if copyFileW(s, d, 0'i32) == 0'i32: raiseOSError(osLastError(), $(source, dest))
     else:
       if copyFileA(source, dest, 0'i32) == 0'i32: raiseOSError(osLastError(), $(source, dest))
-  elif hasCopyfileOsx:
+  elif hasCCopyfile:
     let state = copyfile_state_alloc()
-    var status = c_copyfile(source.cstring, dest.cstring, state, COPYFILE_DATA)
-    if status != 0: raiseOSError(osLastError(), $(source, dest))
-    status = copyfile_state_free(state)
-    if status != 0: raiseOSError(osLastError(), $(source, dest))
+    # xxx `COPYFILE_STAT` could be used for one-shot `copyFileWithPermissions`.
+    let status = c_copyfile(source.cstring, dest.cstring, state, COPYFILE_DATA)
+    if status != 0:
+      let err = osLastError()
+      discard copyfile_state_free(state)
+      raiseOSError(err, $(source, dest))
+    let status2 = copyfile_state_free(state)
+    if status2 != 0: raiseOSError(osLastError(), $(source, dest))
   else:
     # generic version of copyFile which works for any platform:
     const bufSize = 8192
