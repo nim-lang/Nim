@@ -119,6 +119,7 @@ with other backends. see #9125. Use `-d:nimLegacyJsRound` for previous behavior.
 
 - nil dereference is not allowed at compile time. `cast[ptr int](nil)[]` is rejected at compile time.
 
+- `typetraits.distinctBase` now is identity instead of error for non distinct types.
 
 ## Compiler changes
 
