@@ -1738,8 +1738,8 @@ proc compiles*(x: untyped): bool {.magic: "Compiles", noSideEffect, compileTime.
   discard
 
 when notJSnotNims:
-  import "system/ansi_c"
-  import "system/memory"
+  import system/ansi_c
+  import system/memory
 
 
 {.push stackTrace: off.}
