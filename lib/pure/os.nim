@@ -1643,8 +1643,9 @@ when hasCopyfileBsd:
   proc copyfile_state_free(state: copyfile_state_t): cint
   proc c_copyfile(src, dst: cstring,  state: copyfile_state_t, flags: copyfile_flags_t): cint {.importc: "copyfile".}
   # let COPYFILE_DATA: copyfile_flags_t # xxx bug: push nodecl didn't apply to let
-  let COPYFILE_DATA {.nodecl.}: copyfile_flags_t
-  let COPYFILE_XATTR {.nodecl.}: copyfile_flags_t
+  # pending bootstrap >= https://github.com/nim-lang/Nim/pull/14258, remove initializer
+  let COPYFILE_DATA {.nodecl.}: copyfile_flags_t = 0
+  let COPYFILE_XATTR {.nodecl.}: copyfile_flags_t = 0
   {.pop.}
 
 proc copyFile*(source, dest: string) {.rtl, extern: "nos$1",
