@@ -1635,7 +1635,6 @@ proc setFilePermissions*(filename: string, permissions: set[FilePermission]) {.
     if res2 == - 1'i32: raiseOSError(osLastError(), $(filename, permissions))
 
 const hasCopyfileOsx = defined(osx) # since osx 10.5
-# const hasCopyfileOsx = false
 
 const nimHasImportcLet = compiles(block:
   let foo {.nodecl, importc.}: cint) # xxx move, and replace with `nimVersionCT`
