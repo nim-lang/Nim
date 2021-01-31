@@ -1634,13 +1634,13 @@ proc setFilePermissions*(filename: string, permissions: set[FilePermission]) {.
       var res2 = setFileAttributesA(filename, res)
     if res2 == - 1'i32: raiseOSError(osLastError(), $(filename, permissions))
 
-const hasCopyfileBsd = defined(osx) or defined(freebsd)
+const hasCopyfileOsx = defined(osx) # since osx 10.5
 
 const nimHasImportcLet = compiles(block:
   let foo {.nodecl, importc.}: cint) # xxx move, and replace with `nimVersionCT`
     # pending bootstrap >= https://github.com/nim-lang/Nim/pull/14258, remove this
 
-when hasCopyfileBsd:
+when hasCopyfileOsx:
   when defined(nimHasStyleChecks):
     # {.push nodecl, header: "<copyfile.h>", styleChecksOff2.} # xxx how come this even compiles?
     {.push nodecl, header: "<copyfile.h>", styleChecks: off.}
@@ -1694,7 +1694,7 @@ proc copyFile*(source, dest: string) {.rtl, extern: "nos$1",
       if copyFileW(s, d, 0'i32) == 0'i32: raiseOSError(osLastError(), $(source, dest))
     else:
       if copyFileA(source, dest, 0'i32) == 0'i32: raiseOSError(osLastError(), $(source, dest))
-  elif hasCopyfileBsd:
+  elif hasCopyfileOsx:
     let state = copyfile_state_alloc()
     var status = c_copyfile(source.cstring, dest.cstring, state, COPYFILE_DATA)
     if status != 0: raiseOSError(osLastError(), $(source, dest))
