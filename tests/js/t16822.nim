@@ -1,4 +1,4 @@
-# bug #16884
+# bug #16822
 var scores: seq[(set[char], int)] = @{{'/'} : 10}
 
 var x: set[char]
