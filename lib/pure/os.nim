@@ -1638,8 +1638,6 @@ const hasCCopyfile = defined(osx) # since osx 10.5
 
 when hasCCopyfile:
   {.push nodecl, header: "<copyfile.h>".}
-  when defined(nimHasStyleChecks): {.push styleChecks: off.}
-  else: {.push.}
   type
     copyfile_state_t {.nodecl.} = pointer
     copyfile_flags_t = cint
@@ -1650,7 +1648,6 @@ when hasCCopyfile:
   var
     COPYFILE_DATA {.nodecl.}: copyfile_flags_t
     COPYFILE_XATTR {.nodecl.}: copyfile_flags_t
-  {.pop.}
   {.pop.}
 
 proc copyFile*(source, dest: string) {.rtl, extern: "nos$1",
