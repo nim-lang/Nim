@@ -1634,7 +1634,7 @@ proc setFilePermissions*(filename: string, permissions: set[FilePermission]) {.
       var res2 = setFileAttributesA(filename, res)
     if res2 == - 1'i32: raiseOSError(osLastError(), $(filename, permissions))
 
-const hasCopyfileBsd = defined(osx) or defined(bsd)
+const hasCopyfileBsd = defined(osx) or defined(freebsd)
 
 const nimHasImportcLet = compiles(block:
   let foo {.nodecl, importc.}: cint) # xxx move, and replace with `nimVersionCT`
