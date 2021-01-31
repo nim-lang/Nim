@@ -247,6 +247,10 @@ Coding Conventions
   variables remain immutable, and gives those who read the code a better idea
   of the code's purpose.
 
+- Do not use `float` for money.
+
+- Do not use `Natural` or `Positive` as return type, use `int` or `uint` as return type instead.
+
 
 Conventions for multi-line statements and expressions
 -----------------------------------------------------
