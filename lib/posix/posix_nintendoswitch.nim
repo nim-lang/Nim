@@ -12,7 +12,6 @@
 const
   hasSpawnH = true
   hasAioH = false
-  hasLchmod* = false
 
 type
   DIR* {.importc: "DIR", header: "<dirent.h>",

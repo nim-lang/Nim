@@ -118,7 +118,7 @@ with other backends. see #9125. Use `-d:nimLegacyJsRound` for previous behavior.
   symlinks point to).
 - `copyDir` and `copyDirWithPermissions` copy symlinks as symlinks (instead of
   skipping them as it was before).
-- `moveFile` and `moveDir` move symlinks as they are (instead of skipping them
+- `moveFile` and `moveDir` move symlinks as symlinks (instead of skipping them
   sometimes as it was before).
 - Added optional `followSymlinks` argument to `setFilePermissions`.
 

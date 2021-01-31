@@ -26,6 +26,7 @@ Raises
 # test os path creation, iteration, and deletion
 
 import os, strutils, pathnorm
+from stdtest/specialpaths import buildDir
 
 block fileOperations:
   let files = @["these.txt", "are.x", "testing.r", "files.q"]
@@ -162,13 +163,12 @@ block fileOperations:
     else:
       const checkExpandSymlink = false
 
-    const buildDir = currentSourcePath.parentDir.parentDir/"build"
     const dname = buildDir/"D20210116T140629"
     const subDir = dname/"sub"
     const subDir2 = dname/"sub2"
     const brokenSymlinkName = "D20210101T191320_BROKEN_SYMLINK"
     const brokenSymlink = dname/brokenSymlinkName
-    const brokenSymlinkSrc = "D20210101T191320_I_DO_NOT_EXIST"
+    const brokenSymlinkSrc = "D20210101T191320_nonexistant"
     const brokenSymlinkCopy = brokenSymlink & "_COPY"
     const brokenSymlinkInSubDir = subDir/brokenSymlinkName
     const brokenSymlinkInSubDir2 = subDir2/brokenSymlinkName

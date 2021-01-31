@@ -1598,10 +1598,11 @@ proc setFilePermissions*(filename: string, permissions: set[FilePermission],
    noWeirdTarget.} =
   ## Sets the file permissions for `filename`.
   ##
-  ## If ``followSymlinks`` set to true (default) and ``filename`` points to a
+  ## If `followSymlinks` set to true (default) and ``filename`` points to a
   ## symlink, permissions are set to the file symlink points to.
-  ## ``followSymlinks`` set to false do not affect on Windows and some POSIX
-  ## systems (including Linux) which do not have ``lchmod`` available.
+  ## `followSymlinks` set to false is a noop on Windows and some POSIX
+  ## systems (including Linux) on which `lchmod` is either unavailable or always
+  ## fails, given that symlinks permissions there are not observed.
   ##
   ## `OSError` is raised in case of an error.
   ## On Windows, only the ``readonly`` flag is changed, depending on
@@ -1625,7 +1626,7 @@ proc setFilePermissions*(filename: string, permissions: set[FilePermission],
     if fpOthersExec in permissions: p = p or S_IXOTH.Mode
 
     if not followSymlinks and filename.symlinkExists:
-      when hasLchmod:
+      when declared(lchmod):
         if lchmod(filename, cast[Mode](p)) != 0:
           raiseOSError(osLastError(), $(filename, permissions))
     else:
@@ -1653,16 +1654,16 @@ proc createSymlink*(src, dest: string) {.noWeirdTarget.} =
   ##
   ## **Warning**:
   ## Some OS's (such as Microsoft Windows) restrict the creation
-  ## of symlinks to root users (administrators).
+  ## of symlinks to root users (administrators) or users with developper mode enabled.
   ##
   ## See also:
   ## * `createHardlink proc <#createHardlink,string,string>`_
   ## * `expandSymlink proc <#expandSymlink,string>`_
 
   when defined(Windows):
-    # 2 is the SYMBOLIC_LINK_FLAG_ALLOW_UNPRIVILEGED_CREATE. This allows
-    # anyone with developer mode on to create a link
-    let flag = dirExists(src).int32 or 2
+    const SYMBOLIC_LINK_FLAG_ALLOW_UNPRIVILEGED_CREATE = 2
+    # allows anyone with developer mode on to create a link
+    let flag = dirExists(src).int32 or SYMBOLIC_LINK_FLAG_ALLOW_UNPRIVILEGED_CREATE
     when useWinUnicode:
       var wSrc = newWideCString(src)
       var wDst = newWideCString(dest)
@@ -1678,7 +1679,7 @@ proc createSymlink*(src, dest: string) {.noWeirdTarget.} =
 proc expandSymlink*(symlinkPath: string): string {.noWeirdTarget.} =
   ## Returns a string representing the path to which the symbolic link points.
   ##
-  ## On Windows this is a noop, ``symlinkPath`` is simply returned.
+  ## On Windows this is a noop, `symlinkPath` is simply returned.
   ##
   ## See also:
   ## * `createSymlink proc <#createSymlink,string,string>`_
@@ -1761,16 +1762,27 @@ proc copyFile*(source, dest: string, options = {cfSymlinkFollow}) {.rtl,
   if isSymlink and cfSymlinkIgnore in options:
     return
   when defined(Windows):
+    proc handleOSError =
+      const ERROR_PRIVILEGE_NOT_HELD = 1314
+      let errCode = osLastError()
+      let context = $(source, dest, options)
+      if isSymlink and errCode.int32 == ERROR_PRIVILEGE_NOT_HELD:
+        stderr.write("Failed copy the symlink: error " & $errCode & ": " &
+                     osErrorMsg(errCode) & "Additional info: " & context &
+                     "\n")
+      else:
+        raiseOSError(errCode, context)
+
     let dwCopyFlags = if cfSymlinkAsIs in options: COPY_FILE_COPY_SYMLINK else: 0'i32
     var pbCancel = 0'i32
     when useWinUnicode:
       let s = newWideCString(source)
       let d = newWideCString(dest)
       if copyFileExW(s, d, nil, nil, addr pbCancel, dwCopyFlags) == 0'i32:
-        raiseOSError(osLastError(), $(source, dest, options))
+        handleOSError()
     else:
       if copyFileExA(source, dest, nil, nil, addr pbCancel, dwCopyFlags) == 0'i32:
-        raiseOSError(osLastError(), $(source, dest, options))
+        handleOSError()
   elif hasCCopyfile:
     let state = copyfile_state_alloc()
     # xxx `COPYFILE_STAT` could be used for one-shot `copyFileWithPermissions`.

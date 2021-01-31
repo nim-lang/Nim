@@ -3,6 +3,8 @@
 
 {.warning[UnusedImport]: off.}
 
+from stdtest/specialpaths import buildDir
+
 import std/[
   # Core:
   bitops, typetraits, lenientops, macros, volatile,
@@ -88,8 +90,7 @@ block:
   except Exception as e:
     discard
 
-block:  # #16709
-  const buildDir = currentSourcePath.parentDir.parentDir/"build"
+block:  # cpDir, cpFile, dirExists, fileExists, mkDir, mvDir, mvFile, rmDir, rmFile
   const dname = buildDir/"D20210121T175016"
   const subDir = dname/"sub"
   const subDir2 = dname/"sub2"
