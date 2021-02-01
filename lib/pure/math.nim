@@ -991,7 +991,33 @@ func euclMod*[T: SomeNumber](x, y: T): T {.since: (1, 5, 1).} =
   if result < 0:
     result += abs(y)
 
-func frexp*[T: float32|float64](x: T, exponent: var int): T =
+func frexp[T: float32|float64](x: T): tuple[frac: T, exp: int] {.inline.} =
+  ## Splits a number into mantissa and exponent.
+  ## The mathematical formula for this method is: number = frac * 2 ^ exp.
+  when not defined(js):
+    var exp: cint
+    result.frac = c_frexp2(x, exp)
+    result.exp = exp
+  else:
+    if x == 0.0:
+      result = (0.0, 0)
+    elif x < 0.0:
+      result = frexp(-x)
+      result.frac = -result.frac
+    else:
+      var ex = trunc(log2(x))
+      result.exp = int(ex)
+      result.frac = x / pow(2.0, ex)
+      if abs(result.frac) >= 1:
+        inc(result.exp)
+        result.frac = result.frac / 2
+      if result.exp == 1024 and result.frac == 0.0:
+        result.frac = 0.99999999999999988898
+
+since (1, 5, 1):
+  export frexp
+
+func frexp*[T: float32|float64](x: T, exponent: var int): T {.inline.} =
   ## Splits a number into mantissa and exponent.
   ##
   ## `frexp` calculates the mantissa m (a float greater than or equal to 0.5
@@ -1003,30 +1029,8 @@ func frexp*[T: float32|float64](x: T, exponent: var int): T =
     var x: int
     doAssert frexp(5.0, x) == 0.625
     doAssert x == 3
+  (result, exponent) = frexp(x)
 
-  when not defined(js):
-    var exp: cint
-    result = c_frexp2(x, exp)
-    exponent = exp
-  else:
-    if x == 0.0:
-      exponent = 0
-      result = 0.0
-    elif x < 0.0:
-      result = -frexp(-x, exponent)
-    else:
-      var ex = trunc(log2(x))
-      exponent = int(ex)
-      result = x / pow(2.0, ex)
-      if abs(result) >= 1:
-        inc(exponent)
-        result = result / 2
-      if exponent == 1024 and result == 0.0:
-        result = 0.99999999999999988898
-
-func frexp*[T: float32|float64](x: T): tuple[frac: T, exp: int] {.inline, since: (1, 5, 1).} =
-  ## Splits a number into mantissa and exponent.
-  result.frac = frexp(x, result.exp)
 
 when not defined(js):
   when windowsCC89:
