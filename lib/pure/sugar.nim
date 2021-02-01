@@ -53,8 +53,7 @@ proc createProcType(p, b: NimNode): NimNode {.compileTime.} =
   result.add prag
 
 macro `=>`*(p, b: untyped): untyped =
-  ## Syntax sugar for anonymous procedures.
-  ## It also supports pragmas.
+  ## Syntax sugar for anonymous procedures. It also supports pragmas.
   runnableExamples:
     proc passTwoAndTwo(f: (int, int) -> int): int = f(2, 2)
 
@@ -62,7 +61,7 @@ macro `=>`*(p, b: untyped): untyped =
 
     type
       Bot = object
-        call: proc (name: string): string {.noSideEffect.}
+        call: (string {.noSideEffect.} -> string)
 
     var myBot = Bot()
 
@@ -140,14 +139,19 @@ macro `=>`*(p, b: untyped): untyped =
                    procType = kind)
 
 macro `->`*(p, b: untyped): untyped =
-  ## Syntax sugar for procedure types.
+  ## Syntax sugar for procedure types. It also supports pragmas.
   runnableExamples:
     proc passTwoAndTwo(f: (int, int) -> int): int = f(2, 2)
-
     # is the same as:
     # proc passTwoAndTwo(f: proc (x, y: int): int): int = f(2, 2)
 
     doAssert passTwoAndTwo((x, y) => x + y) == 4
+
+    proc passOne(f: (int {.noSideEffect.} -> int)): int = f(1)
+    # is the same as:
+    # proc passOne(f: proc (x, y: int): int {.noSideEffect.}): int = f(1)
+
+    doAssert passOne(x {.noSideEffect.} => x + 1) == 2
 
   result = createProcType(p, b)
 

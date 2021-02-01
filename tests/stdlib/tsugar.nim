@@ -22,6 +22,9 @@ template main() =
       f4()
       doAssert x == 12
 
+      let f5 = () => (discard) # simplest proc that returns void
+      f5()
+
     block:
       proc call1(f: () -> int): int = f()
       doAssert call1(() => 12) == 12
@@ -41,6 +44,9 @@ template main() =
       call4((x: int) => (a = x))
       doAssert a == 42
 
+      proc call5(f: (int {.noSideEffect.} -> int)): int = f(42)
+      doAssert call5(x {.noSideEffect.} => x + 1) == 43
+
   block: # `->`
     doAssert $(() -> int) == "proc (): int{.closure.}"
     doAssert $(float -> int) == "proc (i0: float): int{.closure.}"
@@ -51,6 +57,11 @@ template main() =
     doAssert $(float -> void) == "proc (i0: float){.closure.}"
     doAssert $((float) -> void) == "proc (i0: float){.closure.}"
     doAssert $((float, bool) -> void) == "proc (i0: float, i1: bool){.closure.}"
+
+    doAssert $(() {.inline.} -> int) == "proc (): int{.inline.}"
+    doAssert $(float {.inline.} -> int) == "proc (i0: float): int{.inline.}"
+    doAssert $((float) {.inline.} -> int) == "proc (i0: float): int{.inline.}"
+    doAssert $((float, bool) {.inline.} -> int) == "proc (i0: float, i1: bool): int{.inline.}"
 
   block: # capture
     var closure1: () -> int
@@ -116,9 +127,8 @@ template main() =
     let data = @["bird", "word"] # if this gets stuck in your head, its not my fault
 
     doAssert collect(newSeq, for (i, d) in data.pairs: (if i mod 2 == 0: d)) == @["bird"]
-    when false: # bug #12595
-      doAssert collect(initTable(2), for (i, d) in data.pairs: {i: d}) ==
-        {0: "bird", 1: "word"}.toTable
+    doAssert collect(initTable(2), for (i, d) in data.pairs: {i: d}) ==
+      {0: "bird", 1: "word"}.toTable
     doAssert collect(initHashSet(), for d in data.items: {d}) == data.toHashSet
 
     block:
@@ -173,9 +183,8 @@ template main() =
     block:
       doAssert collect(for (i, d) in pairs(data): (i, d)) == @[(0, "bird"), (1, "word")]
       doAssert collect(for d in data.items: (try: parseInt(d) except: 0)) == @[0, 0]
-      when false: # bug #12595
-        doAssert collect(for (i, d) in pairs(data): {i: d}) ==
-          {1: "word", 0: "bird"}.toTable
+      doAssert collect(for (i, d) in pairs(data): {i: d}) ==
+        {1: "word", 0: "bird"}.toTable
       doAssert collect(for d in data.items: {d}) == data.toHashSet
 
     block: # bug #14332
@@ -183,33 +192,16 @@ template main() =
         discard collect(newSeq, for i in 1..3: i)
       foo()
 
-static: main()
-main()
-
-block: # dump
-  # symbols in templates are gensym'd
-  static:
+proc mainProc() =
+  block: # dump
+    # symbols in templates are gensym'd
     let
       x = 10
       y = 20
     dump(x + y) # x + y = 30
 
-  let
-    x = 10
-    y = 20
-  dump(x + y) # x + y = 30
-
-# TODO: remove this and `when false` above once #12595 is fixed
-block:
-  static:
-    let data = @["bird", "word"]
-    doAssert collect(initTable(2), for (i, d) in data.pairs: {i: d}) ==
-      {0: "bird", 1: "word"}.toTable
-    doAssert collect(for (i, d) in pairs(data): {i: d}) ==
-      {1: "word", 0: "bird"}.toTable
-
-  let data = @["bird", "word"]
-  doAssert collect(initTable(2), for (i, d) in data.pairs: {i: d}) ==
-    {0: "bird", 1: "word"}.toTable
-  doAssert collect(for (i, d) in pairs(data): {i: d}) ==
-    {1: "word", 0: "bird"}.toTable
+static:
+  main()
+  mainProc()
+main()
+mainProc()
