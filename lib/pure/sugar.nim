@@ -157,7 +157,7 @@ macro dump*(x: untyped): untyped =
   ## of the tree representing the expression - as it would appear in
   ## source code - together with the value of the expression.
   ##
-  ## Deprecated: use `dumpToString` which is more convenient and useful since
+  ## See also: `dumpToString` which is more convenient and useful since
   ## it expands intermediate templates/macros, returns a string instead of
   ## calling `echo`, and works with statements and expressions.
   runnableExamples:
