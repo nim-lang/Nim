@@ -406,6 +406,98 @@ StmtList
           DiscardStmt
             Empty
       IntLit 0
+  Command
+    Ident "foo390"
+    Call
+      Ident "x"
+      Do
+        Empty
+        Empty
+        Empty
+        FormalParams
+          Empty
+          IdentDefs
+            Ident "y"
+            Empty
+            Empty
+        Empty
+        Empty
+        StmtList
+          DiscardStmt
+            Empty
+      Do
+        Empty
+        Empty
+        Empty
+        FormalParams
+          Ident "int"
+          IdentDefs
+            Ident "z"
+            Empty
+            Empty
+        Empty
+        Empty
+        StmtList
+          DiscardStmt
+            Empty
+      Do
+        Empty
+        Empty
+        Empty
+        FormalParams
+          Ident "int"
+          IdentDefs
+            Ident "w"
+            Ident "int"
+            Empty
+        Empty
+        Empty
+        StmtList
+          DiscardStmt
+            Empty
+      StmtList
+        DiscardStmt
+          Empty
+      OfBranch
+        Ident "a"
+        StmtList
+          DiscardStmt
+            Empty
+      OfBranch
+        Par
+          Ident "a"
+          Ident "b"
+        StmtList
+          DiscardStmt
+            Empty
+      ElifBranch
+        Ident "a"
+        StmtList
+          DiscardStmt
+            Empty
+      ElifBranch
+        Par
+          Ident "a"
+          Ident "b"
+        StmtList
+          DiscardStmt
+            Empty
+      ExceptBranch
+        Ident "a"
+        StmtList
+          DiscardStmt
+            Empty
+      ExceptBranch
+        Par
+          Ident "a"
+          Ident "b"
+        StmtList
+          DiscardStmt
+            Empty
+      Finally
+        StmtList
+          DiscardStmt
+            Empty
 '''
 """
 
@@ -540,3 +632,26 @@ dumpTree:
   foo380.add((quote do:
     discard
   )[0])
+
+  foo390 x do (y):
+    discard
+  do (z) -> int:
+    discard
+  do (w: int) -> int:
+    discard
+  do:
+    discard
+  of a:
+    discard
+  of (a, b):
+    discard
+  elif a:
+    discard
+  elif (a, b):
+    discard
+  except a:
+    discard
+  except (a, b):
+    discard
+  finally:
+    discard
