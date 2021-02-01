@@ -86,8 +86,6 @@ block largeSize: # longer than 4 characters
   doAssert hash(xx, 0, 3) == hash(ssl, 0, 3)
 
 proc main() =
-
-
   doAssert hash(0.0) == hash(0)
   doAssert hash(cstring"abracadabra") == 97309975
   doAssert hash(cstring"abracadabra") == hash("abracadabra")
@@ -115,6 +113,22 @@ proc main() =
     doAssert hash(-9999.283456) != 0
     doAssert hash(84375674.0) != 0
 
+  block: # bug #16555
+    proc fn(): auto =
+      # avoids hardcoding values
+      var a = "abc\0def"
+      var b = a.cstring
+      result = (hash(a), hash(b))
+      doAssert result[0] != result[1]
+    when not defined(js):
+      doAssert fn() == static(fn())
+    else:
+      # xxx this is a tricky case; consistency of hashes for cstring's containing
+      # '\0\' matters for c backend but less for js backend since such strings
+      # are much less common in js backend; we make vm for js backend consistent
+      # with c backend instead of js backend because FFI code (or other) could
+      # run at CT, expecting c semantics.
+      discard
 
 static: main()
 main()

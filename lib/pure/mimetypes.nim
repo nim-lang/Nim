@@ -8,7 +8,25 @@
 #
 
 ## This module implements a mimetypes database
-import strtabs, std/private/since
+
+runnableExamples:
+  var m = newMimetypes()
+  doAssert m.getMimetype("mp4") == "video/mp4"
+  doAssert m.getExt("text/html") == "html"
+  ## Values can be uppercase too.
+  doAssert m.getMimetype("MP4") == "video/mp4"
+  doAssert m.getExt("TEXT/HTML") == "html"
+  ## If values are invalid then ``default`` is returned.
+  doAssert m.getMimetype("INVALID") == "text/plain"
+  doAssert m.getExt("INVALID/NONEXISTENT") == "txt"
+  doAssert m.getMimetype("") == "text/plain"
+  doAssert m.getExt("") == "txt"
+  ## Register new Mimetypes.
+  m.register(ext = "fakext", mimetype = "text/fakelang")
+  doAssert m.getMimetype("fakext") == "text/fakelang"
+  doAssert m.getMimetype("FaKeXT") == "text/fakelang"
+
+import strtabs
 from strutils import startsWith, toLowerAscii, strip
 
 type
@@ -1916,49 +1934,3 @@ func register*(mimedb: var MimeDB, ext: string, mimetype: string) =
   assert mimetype.strip.len > 0, "mimetype argument can not be empty string"
   {.noSideEffect.}:
     mimedb.mimes[ext.toLowerAscii()] = mimetype.toLowerAscii()
-
-
-since (1, 5):
-  func mimesLongest(): array[2, int] {.compiletime.} =
-    runnableExamples:
-      static:
-        doAssert mimesLongest() >= (ext: 24, mime: 73)
-    var currentKeyLength, currentValLength: int
-    for item in mimes:
-      currentKeyLength = item[0].len
-      currentValLength = item[1].len
-      if currentKeyLength > result[0]: result[0] = currentKeyLength
-      if currentValLength > result[1]: result[1] = currentValLength
-
-  const
-    ctValue = mimesLongest() # Use 2 const instead of func, save tuple unpack.
-    mimesExtMaxLen*: int = ctValue[0] ## \
-      ## The length of the longest "ext" from `mimes`,
-      ## this is useful for optimizations with `newStringOfCap` and `newString`.
-    mimesMaxLen*: int = ctValue[1] ## \
-      ## The length of the longest "mime" from `mimes`,
-      ## this is useful for optimizations with `newStringOfCap` and `newString`.
-      ##
-      ## See also:
-      ## * `newStringOfCap <system.html#newStringOfCap>`_
-      ## * `newString <system.html#newString>`_
-
-
-runnableExamples:
-  static:
-    block:
-      var m = newMimetypes()
-      doAssert m.getMimetype("mp4") == "video/mp4"
-      doAssert m.getExt("text/html") == "html"
-      ## Values can be uppercase too.
-      doAssert m.getMimetype("MP4") == "video/mp4"
-      doAssert m.getExt("TEXT/HTML") == "html"
-      ## If values are invalid then ``default`` is returned.
-      doAssert m.getMimetype("INVALID") == "text/plain"
-      doAssert m.getExt("INVALID/NONEXISTENT") == "txt"
-      doAssert m.getMimetype("") == "text/plain"
-      doAssert m.getExt("") == "txt"
-      ## Register new Mimetypes.
-      m.register(ext = "fakext", mimetype = "text/fakelang")
-      doAssert m.getMimetype("fakext") == "text/fakelang"
-      doAssert m.getMimetype("FaKeXT") == "text/fakelang"

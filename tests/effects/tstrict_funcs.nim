@@ -7,6 +7,7 @@ import tables, streams, parsecsv
 # They are otherwise unused in this file.
 import
   complex,
+  critbits,
   httpcore,
   math,
   nre,

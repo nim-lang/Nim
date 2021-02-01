@@ -43,6 +43,7 @@ runnableExamples:
 
 import asyncnet, asyncdispatch, parseutils, uri, strutils
 import httpcore
+import std/private/since
 
 export httpcore except parseHeader
 
@@ -70,6 +71,22 @@ type
     reusePort: bool
     maxBody: int ## The maximum content-length that will be read for the body.
     maxFDs: int
+
+func getSocket*(a: AsyncHttpServer): AsyncSocket {.since: (1, 5, 1).} =
+  ## Returns the ``AsyncHttpServer``s internal ``AsyncSocket`` instance.
+  ## 
+  ## Useful for identifying what port the AsyncHttpServer is bound to, if it
+  ## was chosen automatically.
+  runnableExamples:
+    from asyncdispatch import Port
+    from asyncnet import getFd
+    from nativesockets import getLocalAddr, AF_INET
+    let server = newAsyncHttpServer()
+    server.listen(Port(0)) # Socket is not bound until this point
+    let port = getLocalAddr(server.getSocket.getFd, AF_INET)[1]
+    doAssert uint16(port) > 0
+    server.close()
+  a.socket
 
 proc newAsyncHttpServer*(reuseAddr = true, reusePort = false,
                          maxBody = 8388608): AsyncHttpServer =
@@ -300,9 +317,13 @@ proc processRequest(
           break
 
         # Read bytesToRead and add to body
-        # Note we add +2 because the line must be terminated by \r\n
-        let chunk = await client.recv(bytesToRead + 2)
-        request.body = request.body & chunk
+        let chunk = await client.recv(bytesToRead)
+        request.body.add(chunk)
+        # Skip \r\n (chunk terminating bytes per spec)
+        let separator = await client.recv(2)
+        if separator != "\r\n":
+          await request.respond(Http400, "Bad Request. Encoding separator must be \\r\\n")
+          return true
 
       inc sizeOrData
   elif request.reqMethod == HttpPost:

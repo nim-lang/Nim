@@ -537,8 +537,6 @@ proc semVarOrLet(c: PContext, n: PNode, symkind: TSymKind): PNode =
       typFlags.incl taConcept
     typeAllowedCheck(c, a.info, typ, symkind, typFlags)
 
-    when false: liftTypeBoundOps(c, typ, a.info)
-    instAllTypeBoundOp(c, a.info)
     var tup = skipTypes(typ, {tyGenericInst, tyAlias, tySink})
     if a.kind == nkVarTuple:
       if tup.kind != tyTuple:
@@ -1239,10 +1237,7 @@ proc typeSectionRightSidePass(c: PContext, n: PNode) =
             var body = s.typ.lastSon
             if body.kind == tyObject:
               # erases all declared fields
-              when defined(nimNoNilSeqs):
-                body.n.sons = @[]
-              else:
-                body.n.sons = nil
+              body.n.sons = @[]
 
       popOwner(c)
       closeScope(c)
@@ -1695,12 +1690,13 @@ proc bindTypeHook(c: PContext; s: PSym; n: PNode; op: TTypeAttachedOp) =
       else: break
     if obj.kind in {tyObject, tyDistinct, tySequence, tyString}:
       obj = canonType(c, obj)
-      if obj.attachedOps[op] == s:
+      let ao = getAttachedOp(c.graph, obj, op)
+      if ao == s:
         discard "forward declared destructor"
-      elif obj.attachedOps[op].isNil and tfCheckedForDestructor notin obj.flags:
-        obj.attachedOps[op] = s
+      elif ao.isNil and tfCheckedForDestructor notin obj.flags:
+        setAttachedOp(c.graph, c.module.position, obj, op, s)
       else:
-        prevDestructor(c, obj.attachedOps[op], obj, n.info)
+        prevDestructor(c, ao, obj, n.info)
       noError = true
       if obj.owner.getModule != s.getModule:
         localError(c.config, n.info, errGenerated,
@@ -1728,7 +1724,8 @@ proc semOverride(c: PContext, s: PSym, n: PNode) =
         elif t.kind == tyGenericInvocation: t = t[0]
         else: break
       if t.kind in {tyObject, tyDistinct, tyEnum, tySequence, tyString}:
-        if t.attachedOps[attachedDeepCopy].isNil: t.attachedOps[attachedDeepCopy] = s
+        if getAttachedOp(c.graph, t, attachedDeepCopy).isNil:
+          setAttachedOp(c.graph, c.module.position, t, attachedDeepCopy, s)
         else:
           localError(c.config, n.info, errGenerated,
                      "cannot bind another 'deepCopy' to: " & typeToString(t))
@@ -1768,12 +1765,13 @@ proc semOverride(c: PContext, s: PSym, n: PNode) =
         obj = canonType(c, obj)
         #echo "ATTACHING TO ", obj.id, " ", s.name.s, " ", cast[int](obj)
         let k = if name == "=" or name == "=copy": attachedAsgn else: attachedSink
-        if obj.attachedOps[k] == s:
+        let ao = getAttachedOp(c.graph, obj, k)
+        if ao == s:
           discard "forward declared op"
-        elif obj.attachedOps[k].isNil and tfCheckedForDestructor notin obj.flags:
-          obj.attachedOps[k] = s
+        elif ao.isNil and tfCheckedForDestructor notin obj.flags:
+          setAttachedOp(c.graph, c.module.position, obj, k, s)
         else:
-          prevDestructor(c, obj.attachedOps[k], obj, n.info)
+          prevDestructor(c, ao, obj, n.info)
         if obj.owner.getModule != s.getModule:
           localError(c.config, n.info, errGenerated,
             "type bound operation `" & name & "` can be defined only in the same module with its type (" & obj.typeToString() & ")")
@@ -1813,7 +1811,7 @@ proc hasObjParam(s: PSym): bool =
 
 proc finishMethod(c: PContext, s: PSym) =
   if hasObjParam(s):
-    methodDef(c.graph, c.idgen, s, false)
+    methodDef(c.graph, c.idgen, s)
 
 proc semMethodPrototype(c: PContext; s: PSym; n: PNode) =
   if isGenericRoutine(s):
@@ -1829,7 +1827,7 @@ proc semMethodPrototype(c: PContext; s: PSym; n: PNode) =
                                       tyAlias, tySink, tyOwned})
         if x.kind == tyObject and t.len-1 == n[genericParamsPos].len:
           foundObj = true
-          x.methods.add((col,s))
+          addMethodToGeneric(c.graph, c.module.position, x, col, s)
     message(c.config, n.info, warnDeprecated, "generic methods are deprecated")
     #if not foundObj:
     #  message(c.config, n.info, warnDeprecated, "generic method not attachable to object type is deprecated")
@@ -1838,7 +1836,7 @@ proc semMethodPrototype(c: PContext; s: PSym; n: PNode) =
     # no sense either.
     # and result[bodyPos].kind != nkEmpty:
     if hasObjParam(s):
-      methodDef(c.graph, c.idgen, s, fromCache=false)
+      methodDef(c.graph, c.idgen, s)
     else:
       localError(c.config, n.info, "'method' needs a parameter that has an object type")
 

@@ -22,6 +22,10 @@
   literals remain in the "raw" string form so that client code can easily treat
   small and large numbers uniformly.
 
+- Added `BackwardsIndex` overload for `JsonNode`.
+
+- added `jsonutils.jsonTo` overload with `opt = Joptions()` param.
+
 - Added an overload for the `collect` macro that inferes the container type based
   on the syntax of the last expression. Works with std seqs, tables and sets.
 
@@ -46,8 +50,8 @@
 - Added `asyncdispatch.activeDescriptors` that returns the number of currently
   active async event handles/file descriptors.
 
-- ``--gc:orc`` is now 10% faster than previously for common workloads. If
-  you have trouble with its changed behavior, compile with ``-d:nimOldOrc``.
+- `--gc:orc` is now 10% faster than previously for common workloads. If
+  you have trouble with its changed behavior, compile with `-d:nimOldOrc`.
 
 
 - `os.FileInfo` (returned by `getFileInfo`) now contains `blockSize`,
@@ -72,6 +76,8 @@
 - `echo` and `debugEcho` will now raise `IOError` if writing to stdout fails.  Previous behavior
   silently ignored errors.  See #16366.  Use `-d:nimLegacyEchoNoRaise` for previous behavior.
 
+- Added `jsbigints` module, arbitrary precision integers for JavaScript target.
+
 - Added `math.copySign`.
 - Added new operations for singly- and doubly linked lists: `lists.toSinglyLinkedList`
   and `lists.toDoublyLinkedList` convert from `openArray`s; `lists.copy` implements
@@ -84,20 +90,25 @@
 - Added `httpcore.is1xx` and missing HTTP codes.
 - Added `jsconsole.jsAssert` for JavaScript target.
 
-- Added `mimetypes.mimesExtMaxLen` thats equal to the length of the longest "ext" from `mimes`.
-- Added `mimetypes.mimesMaxLen` thats equal to the length of the longest "mime" from `mimes`.
-
 - Added `posix_utils.osReleaseFile` to get system identification from `os-release` file on Linux and the BSDs.
   https://www.freedesktop.org/software/systemd/man/os-release.html
-
-- Added `BackwardsIndex` overload for `JsonNode`.
 
 - `math.round` now is rounded "away from zero" in JS backend which is consistent
 with other backends. see #9125. Use `-d:nimLegacyJsRound` for previous behavior.
 - Added `socketstream` module that wraps sockets in the stream interface
 
+- Changed the behavior of `uri.decodeQuery` when there are unencoded `=`
+  characters in the decoded values. Prior versions would raise an error. This is
+  no longer the case to comply with the HTML spec and other languages
+  implementations. Old behavior can be obtained with
+  `-d:nimLegacyParseQueryStrict`. `cgi.decodeData` which uses the same
+  underlying code is also updated the same way.
+
 
 - Added `math.signbit`.
+
+
+- Removed the optional `longestMatch` parameter of the `critbits._WithPrefix` iterators (it never worked reliably)
 
 - Added `math.frexp` overload procs. Deprecate `c_frexp`, use `frexp` instead.
 
@@ -109,10 +120,13 @@ with other backends. see #9125. Use `-d:nimLegacyJsRound` for previous behavior.
 
 - nil dereference is not allowed at compile time. `cast[ptr int](nil)[]` is rejected at compile time.
 
+- `typetraits.distinctBase` now is identity instead of error for non distinct types.
 
 ## Compiler changes
 
 - Added `--declaredlocs` to show symbol declaration location in messages.
+
+- Deprecated `TaintedString` and `--taintmode`.
 
 - Source+Edit links now appear on top of every docgen'd page when
   `nim doc --git.url:url ...` is given.
@@ -120,9 +134,13 @@ with other backends. see #9125. Use `-d:nimLegacyJsRound` for previous behavior.
 - Added `nim --eval:cmd` to evaluate a command directly, see `nim --help`.
 
 - VM now supports `addr(mystring[ind])` (index + index assignment)
+
 - Type mismatch errors now show more context, use `-d:nimLegacyTypeMismatch` for previous
   behavior.
 
+- Added `--hintAsError` with similar semantics as `--warningAsError`.
+- TLS: OSX now uses native TLS (`--tlsEmulation:off`), TLS now works with importcpp non-POD types,
+  such types must use `.cppNonPod` and `--tlsEmulation:off`should be used.
 
 ## Tool changes
 

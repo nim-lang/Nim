@@ -1072,7 +1072,7 @@ proc lookupInRecordAndBuildCheck(c: PContext, n, r: PNode, field: PIdent,
           s = newNodeIT(nkCurly, n.info, setType)
           for j in 0..<it.len - 1: s.add copyTree(it[j])
           var inExpr = newNodeIT(nkCall, n.info, getSysType(c.graph, n.info, tyBool))
-          inExpr.add newSymNode(c.graph.opContains, n.info)
+          inExpr.add newSymNode(getSysMagic(c.graph, n.info, "contains", mInSet), n.info)
           inExpr.add s
           inExpr.add copyTree(r[0])
           check.add inExpr
@@ -1085,11 +1085,11 @@ proc lookupInRecordAndBuildCheck(c: PContext, n, r: PNode, field: PIdent,
             check = newNodeI(nkCheckedFieldExpr, n.info)
             check.add c.graph.emptyNode # make space for access node
           var inExpr = newNodeIT(nkCall, n.info, getSysType(c.graph, n.info, tyBool))
-          inExpr.add newSymNode(c.graph.opContains, n.info)
+          inExpr.add newSymNode(getSysMagic(c.graph, n.info, "contains", mInSet), n.info)
           inExpr.add s
           inExpr.add copyTree(r[0])
           var notExpr = newNodeIT(nkCall, n.info, getSysType(c.graph, n.info, tyBool))
-          notExpr.add newSymNode(c.graph.opNot, n.info)
+          notExpr.add newSymNode(getSysMagic(c.graph, n.info, "not", mNot), n.info)
           notExpr.add inExpr
           check.add notExpr
           return
@@ -2641,6 +2641,14 @@ proc hoistParamsUsedInDefault(c: PContext, call, letSection, defExpr: var PNode)
     for i in 0..<defExpr.safeLen:
       hoistParamsUsedInDefault(c, call, letSection, defExpr[i])
 
+proc getNilType(c: PContext): PType =
+  result = c.nilTypeCache
+  if result == nil:
+    result = newTypeS(tyNil, c)
+    result.size = c.config.target.ptrSize
+    result.align = c.config.target.ptrSize.int16
+    c.nilTypeCache = result
+
 proc semExpr(c: PContext, n: PNode, flags: TExprFlags = {}): PNode =
   when defined(nimCompilerStackraceHints):
     setFrameMsg c.config$n.info & " " & $n.kind
@@ -2676,9 +2684,9 @@ proc semExpr(c: PContext, n: PNode, flags: TExprFlags = {}): PNode =
   of nkEmpty, nkNone, nkCommentStmt, nkType:
     discard
   of nkNilLit:
-    if result.typ == nil: result.typ = getSysType(c.graph, n.info, tyNil)
+    if result.typ == nil: result.typ = getNilType(c)
   of nkIntLit:
-    if result.typ == nil: setIntLitType(c.graph, result)
+    if result.typ == nil: setIntLitType(c, result)
   of nkInt8Lit:
     if result.typ == nil: result.typ = getSysType(c.graph, n.info, tyInt8)
   of nkInt16Lit:

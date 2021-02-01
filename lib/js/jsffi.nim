@@ -180,6 +180,7 @@ proc `<`  *(x, y: JsObject): JsObject {.importcpp: "(# < #)".}
 proc `>=` *(x, y: JsObject): JsObject {.importcpp: "(# >= #)".}
 proc `<=` *(x, y: JsObject): JsObject {.importcpp: "(# <= #)".}
 proc `**` *(x, y: JsObject): JsObject {.importcpp: "((#) ** #)".}
+  # (#) needed, refs https://github.com/nim-lang/Nim/pull/16409#issuecomment-760550812
 proc `and`*(x, y: JsObject): JsObject {.importcpp: "(# && #)".}
 proc `or` *(x, y: JsObject): JsObject {.importcpp: "(# || #)".}
 proc `not`*(x:    JsObject): JsObject {.importcpp: "(!#)".}

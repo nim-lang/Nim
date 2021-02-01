@@ -1,9 +1,13 @@
 discard """
   cmd: "nim c --threads:on -d:ssl $file"
-  exitcode: 0
-  output: "OK"
-  disabled: true
+  disabled: "openbsd"
+  disabled: "freebsd"
+  disabled: "windows"
 """
+
+#[
+disabled: see https://github.com/timotheecour/Nim/issues/528
+]#
 
 import strutils
 from net import TimeoutError
@@ -144,6 +148,12 @@ proc syncTest() =
 
   client.close()
 
+  # SIGSEGV on HEAD body read: issue #16743
+  block:
+    let client = newHttpClient()
+    let resp = client.head("http://httpbin.org/head")
+    doAssert(resp.body == "")
+
   when false:
     # Disabled for now because it causes troubles with AppVeyor
     # Timeout test.
@@ -168,5 +178,3 @@ proc ipv6Test() =
 ipv6Test()
 syncTest()
 waitFor(asyncTest())
-
-echo "OK"

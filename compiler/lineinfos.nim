@@ -279,3 +279,4 @@ proc initMsgConfig*(): MsgConfig =
   result.filenameToIndexTbl = initTable[string, FileIndex]()
   result.fileInfos = @[]
   result.errorOutputs = {eStdOut, eStdErr}
+  result.filenameToIndexTbl["???"] = FileIndex(-1)

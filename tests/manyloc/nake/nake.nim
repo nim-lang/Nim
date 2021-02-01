@@ -60,7 +60,8 @@ when true:
     args.add " "
   quit(shell("nim", "c", "-r", "nakefile.nim", args))
 else:
-  addQuitProc(proc() {.noconv.} =
+  import std/exitprocs
+  addExitProc(proc() {.noconv.} =
     var
       task: string
       printTaskList: bool
