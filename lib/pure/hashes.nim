@@ -123,6 +123,32 @@ proc hiXorLo(a, b: uint64): uint64 {.inline.} =
     else:
       result = hiXorLoFallback64(a, b)
 
+when defined(js):
+  import std/jsbigints
+  import std/private/jsutils
+
+  proc hiXorLoJs(a, b: JsBigInt): JsBigInt =
+    let
+      prod = a * b
+      mask = big"0xffffffffffffffff" # (big"1" shl big"64") - big"1"
+    result = (prod shr big"64") xor (prod and mask)
+
+  template hashWangYiJS(x: JsBigInt): Hash =
+    let
+      P0 = big"0xa0761d6478bd642f"
+      P1 = big"0xe7037ed1a0b428db"
+      P58 = big"0xeb44accab455d16d" # big"0xeb44accab455d165" xor big"8"
+      res = hiXorLoJs(hiXorLoJs(P0, x xor P1), P58)
+    cast[Hash](toNumber(wrapToInt(res, 32)))
+
+  template asBigInt(num: float): JsBigInt =
+    let
+      x = newArrayBuffer(8)
+      y = newFloat64Array(x)
+      z = newBigUint64Array(x)
+    y[0] = num
+    z[0]
+
 proc hashWangYi1*(x: int64|uint64|Hash): Hash {.inline.} =
   ## Wang Yi's hash_v1 for 64-bit ints (see https://github.com/rurban/smhasher for
   ## more details). This passed all scrambling tests in Spring 2019 and is simple.
@@ -139,22 +165,10 @@ proc hashWangYi1*(x: int64|uint64|Hash): Hash {.inline.} =
       result = cast[Hash](h(x))
   else:
     when defined(js):
-      asm """
-        if (typeof BigInt == 'undefined') {
-          `result` = `x`; // For Node < 10.4, etc. we do the old identity hash
-        } else {          // Otherwise we match the low 32-bits of C/C++ hash
-          function hi_xor_lo_js(a, b) {
-            const prod = BigInt(a) * BigInt(b);
-            const mask = (BigInt(1) << BigInt(64)) - BigInt(1);
-            return (prod >> BigInt(64)) ^ (prod & mask);
-          }
-          const P0  = BigInt(0xa0761d64)<<BigInt(32)|BigInt(0x78bd642f);
-          const P1  = BigInt(0xe7037ed1)<<BigInt(32)|BigInt(0xa0b428db);
-          const P58 = BigInt(0xeb44acca)<<BigInt(32)|BigInt(0xb455d165)^BigInt(8);
-          var res   = hi_xor_lo_js(hi_xor_lo_js(P0, BigInt(`x`) ^ P1), P58);
-          `result`  = Number(res & ((BigInt(1) << BigInt(53)) - BigInt(1)));
-        }"""
-      result = result and cast[Hash](0xFFFFFFFF)
+      if hasJsBigInt():
+        result = hashWangYiJS(big(x))
+      else:
+        result = cast[Hash](x) and cast[Hash](0xFFFFFFFF)
     else:
       result = cast[Hash](h(x))
 
@@ -213,18 +227,6 @@ else:
     ## Efficient hashing of integers.
     hashWangYi1(uint64(ord(x)))
 
-when defined(js):
-  proc asBigInt(x: float): int64 =
-    # result is a `BigInt` type in js, but we cheat the type system
-    # and say it is a `int64` type.
-    # TODO: refactor it using bigInt once jsBigInt is ready, pending pr #1640
-    asm """
-    const buffer = new ArrayBuffer(8);
-    const floatBuffer = new Float64Array(buffer);
-    const uintBuffer = new BigUint64Array(buffer);
-    floatBuffer[0] = `x`;
-    `result` = uintBuffer[0];"""
-
 proc hash*(x: float): Hash {.inline.} =
   ## Efficient hashing of floats.
   let y = x + 0.0 # for denormalization
@@ -235,7 +237,7 @@ proc hash*(x: float): Hash {.inline.} =
     when not defined(js):
       result = hashWangYi1(cast[Hash](y))
     else:
-      result = hashWangYi1(asBigInt(y))
+      result = hashWangYiJS(asBigInt(y))
 
 # Forward declarations before methods that hash containers. This allows
 # containers to contain other containers
