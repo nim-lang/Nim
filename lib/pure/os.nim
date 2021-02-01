@@ -1696,9 +1696,7 @@ proc copyFile*(source, dest: string) {.rtl, extern: "nos$1",
     if status2 != 0: raiseOSError(osLastError(), $(source, dest))
   else:
     # generic version of copyFile which works for any platform:
-    const bufSize = 8192
-      # This could be refined dynamically if `source` turns out to be a large file
-      # Another good default would be based on `getFileInfo(a).blockSize`.
+    const bufSize = 8000 # better for memory manager
     var d, s: File
     if not open(s, source): raiseOSError(osLastError(), source)
     if not open(d, dest, fmWrite):
