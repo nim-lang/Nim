@@ -54,6 +54,7 @@ proc createProcType(p, b: NimNode): NimNode {.compileTime.} =
 
 macro `=>`*(p, b: untyped): untyped =
   ## Syntax sugar for anonymous procedures. It also supports pragmas.
+  # TODO: xxx pending #13491: uncomment in runnableExamples
   runnableExamples:
     proc passTwoAndTwo(f: (int, int) -> int): int = f(2, 2)
 
@@ -67,6 +68,9 @@ macro `=>`*(p, b: untyped): untyped =
 
     myBot.call = (name: string) {.noSideEffect.} => "Hello " & name & ", I'm a bot."
     doAssert myBot.call("John") == "Hello John, I'm a bot."
+
+    # let f = () => (discard) # simplest proc that returns void
+    # f()
 
   var
     params = @[ident"auto"]
@@ -149,7 +153,7 @@ macro `->`*(p, b: untyped): untyped =
 
     proc passOne(f: (int {.noSideEffect.} -> int)): int = f(1)
     # is the same as:
-    # proc passOne(f: proc (x, y: int): int {.noSideEffect.}): int = f(1)
+    # proc passOne(f: proc (x: int): int {.noSideEffect.}): int = f(1)
 
     doAssert passOne(x {.noSideEffect.} => x + 1) == 2
 
