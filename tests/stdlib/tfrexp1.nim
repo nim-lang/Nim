@@ -1,9 +1,8 @@
 discard """
   targets: "js c cpp"
-  output: '''ok'''
 """
 
-import math
+import std/math
 
 const manualTest = false
 
@@ -43,4 +42,5 @@ when manualTest:
 else:
   frexp_test(-200000.0, 200000.0, 0.125)
 
-echo "ok"
+
+doAssert frexp(8.0) == (0.5, 4)
