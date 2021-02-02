@@ -121,6 +121,10 @@ with other backends. see #9125. Use `-d:nimLegacyJsRound` for previous behavior.
 
 - `typetraits.distinctBase` now is identity instead of error for non distinct types.
 
+- `os.copyFile` is now 2.5x faster on OSX, by using `copyfile` from `copyfile.h`;
+  use `-d:nimLegacyCopyFile` for OSX < 10.5.
+
+
 ## Compiler changes
 
 - Added `--declaredlocs` to show symbol declaration location in messages.
