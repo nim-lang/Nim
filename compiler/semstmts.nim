@@ -1042,7 +1042,7 @@ proc typeSectionTypeName(c: PContext; n: PNode): PNode =
   if result.kind != nkSym: illFormedAst(n, c.config)
 
 proc typeDefLeftSidePass(c: PContext, typeSection: PNode, i: int) =
-  let typeDef= typeSection[i]
+  let typeDef = typeSection[i]
   checkSonsLen(typeDef, 3, c.config)
   var name = typeDef[0]
   var s: PSym
