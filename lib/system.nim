@@ -300,14 +300,9 @@ type
   seq*[T]{.magic: "Seq".}             ## Generic type to construct sequences.
   set*[T]{.magic: "Set".}             ## Generic type to construct bit sets.
 
-when defined(nimUncheckedArrayTyp):
-  type
-    UncheckedArray*[T]{.magic: "UncheckedArray".}
-    ## Array with no bounds checking.
-else:
-  type
-    UncheckedArray*[T]{.unchecked.} = array[0,T]
-    ## Array with no bounds checking.
+type
+  UncheckedArray*[T]{.magic: "UncheckedArray".}
+  ## Array with no bounds checking.
 
 type sink*[T]{.magic: "BuiltinType".}
 type lent*[T]{.magic: "BuiltinType".}
