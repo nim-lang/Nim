@@ -84,10 +84,6 @@ import std/private/since
 
 import macros
 
-when not defined(nimhygiene):
-  {.pragma: dirty.}
-
-
 macro evalOnceAs(expAlias, exp: untyped,
                  letAssigneable: static[bool]): untyped =
   ## Injects `expAlias` in caller scope, to avoid bugs involving multiple

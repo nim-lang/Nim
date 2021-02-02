@@ -1158,9 +1158,6 @@ proc findAll*(s: string, pattern: Peg, start = 0): seq[string] {.
   result = @[]
   for it in findAll(s, pattern, start): result.add it
 
-when not defined(nimhygiene):
-  {.pragma: inject.}
-
 template `=~`*(s: string, pattern: Peg): bool =
   ## This calls ``match`` with an implicit declared ``matches`` array that
   ## can be used in the scope of the ``=~`` call:

@@ -2788,9 +2788,6 @@ when compileOption("rangechecks"):
 else:
   template rangeCheck*(cond) = discard
 
-when not defined(nimhygiene):
-  {.pragma: inject.}
-
 proc shallow*[T](s: var seq[T]) {.noSideEffect, inline.} =
   ## Marks a sequence `s` as `shallow`:idx:. Subsequent assignments will not
   ## perform deep copies of `s`.

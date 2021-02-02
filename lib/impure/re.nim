@@ -386,9 +386,6 @@ proc findAll*(s: string, pattern: Regex, start = 0): seq[string] {.inline.} =
   result = @[]
   for x in findAll(s, pattern, start): result.add x
 
-when not defined(nimhygiene):
-  {.pragma: inject.}
-
 template `=~` *(s: string, pattern: Regex): untyped =
   ## This calls ``match`` with an implicit declared ``matches`` array that
   ## can be used in the scope of the ``=~`` call:
