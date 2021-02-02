@@ -993,7 +993,10 @@ func euclMod*[T: SomeNumber](x, y: T): T {.since: (1, 5, 1).} =
 
 func frexp[T: float32|float64](x: T): tuple[frac: T, exp: int] {.inline.} =
   ## Splits a number into mantissa and exponent.
-  ## The mathematical formula for this method is: number = frac * 2 ^ exp.
+  ## The mathematical formula for this method is: `x = frac * 2 ^ exp`
+  runnableExamples:
+    doAssert frexp(8.0) == (0.5, 4)
+    doAssert frexp(0.0) == (0.0, 0)
   when not defined(js):
     var exp: cint
     result.frac = c_frexp2(x, exp)
@@ -1022,8 +1025,10 @@ func frexp*[T: float32|float64](x: T, exponent: var int): T {.inline.} =
   ##
   ## `frexp` calculates the mantissa m (a float greater than or equal to 0.5
   ## and less than 1) and the integer value n such that `x` (the original
-  ## float value) equals `m * 2**n`. frexp stores n in `exponent` and returns
+  ## float value) equals `m * 2 ^ n`. `frexp` stores n in `exponent` and returns
   ## m.
+  ##
+  ## overload of `frexp` that calls `(result, exponent) = frexp(x)`
   ##
   runnableExamples:
     var x: int
