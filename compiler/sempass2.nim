@@ -10,7 +10,7 @@
 import
   intsets, ast, astalgo, msgs, renderer, magicsys, types, idents, trees,
   wordrecg, strutils, options, guards, lineinfos, semfold, semdata,
-  modulegraphs, varpartitions, typeallowed, nilcheck
+  modulegraphs, varpartitions, typeallowed, nilcheck, errorhandling
 
 when defined(useDfa):
   import dfa
@@ -23,6 +23,7 @@ include sinkparameter_inference
 
 * effect+exception tracking
 * "usage before definition" checking
+* error reporting of `nkError` nodes
 * also now calls the "lift destructor logic" at strategic positions, this
   is about to be put into the spec:
 
@@ -1133,6 +1134,8 @@ proc track(tracked: PEffects, n: PNode) =
     dec tracked.leftPartOfAsgn
     for i in 1 ..< n.len: track(tracked, n[i])
     inc tracked.leftPartOfAsgn
+  of nkError:
+    localError(tracked.config, n.info, errorToString(tracked.config, n))
   else:
     for i in 0..<n.safeLen: track(tracked, n[i])
 
