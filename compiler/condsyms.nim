@@ -67,7 +67,7 @@ proc initDefines*(symbols: StringTableRef) =
   defineSymbol("nimNoZeroTerminator") # deadcode
   defineSymbol("nimNotNil") # deadcode
   defineSymbol("nimVmExportFixed")
-  defineSymbol("nimHasSymOwnerInMacro")
+  defineSymbol("nimHasSymOwnerInMacro") # deadcode
   defineSymbol("nimNewRuntime")
   defineSymbol("nimIncrSeqV3")
   defineSymbol("nimAshr")

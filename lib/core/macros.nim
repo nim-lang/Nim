@@ -266,17 +266,16 @@ when (NimMajor, NimMinor, NimPatch) >= (1, 3, 5) or defined(nimSymImplTransform)
     ## note that code transformations are implementation dependent and subject to change.
     ## See an example in `tests/macros/tmacros_various.nim`.
 
-when defined(nimHasSymOwnerInMacro):
-  proc owner*(sym: NimNode): NimNode {.magic: "SymOwner", noSideEffect.}
-    ## Accepts a node of kind `nnkSym` and returns its owner's symbol.
-    ## The meaning of 'owner' depends on `sym`'s `NimSymKind` and declaration
-    ## context. For top level declarations this is an `nskModule` symbol,
-    ## for proc local variables an `nskProc` symbol, for enum/object fields an
-    ## `nskType` symbol, etc. For symbols without an owner, `nil` is returned.
-    ##
-    ## See also:
-    ## * `symKind proc<#symKind,NimNode>`_ to get the kind of a symbol
-    ## * `getImpl proc<#getImpl,NimNode>`_ to get the declaration of a symbol
+proc owner*(sym: NimNode): NimNode {.magic: "SymOwner", noSideEffect.}
+  ## Accepts a node of kind `nnkSym` and returns its owner's symbol.
+  ## The meaning of 'owner' depends on `sym`'s `NimSymKind` and declaration
+  ## context. For top level declarations this is an `nskModule` symbol,
+  ## for proc local variables an `nskProc` symbol, for enum/object fields an
+  ## `nskType` symbol, etc. For symbols without an owner, `nil` is returned.
+  ##
+  ## See also:
+  ## * `symKind proc<#symKind,NimNode>`_ to get the kind of a symbol
+  ## * `getImpl proc<#getImpl,NimNode>`_ to get the declaration of a symbol
 
 when defined(nimHasInstantiationOfInMacro):
   proc isInstantiationOf*(instanceProcSym, genProcSym: NimNode): bool {.magic: "SymIsInstantiationOf", noSideEffect.}
