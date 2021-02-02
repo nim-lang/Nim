@@ -625,6 +625,164 @@ Test1
     doAssert "endOfNote</div>" in output3
     doAssert "class=\"admonition admonition-info\"" in output3
 
+  test "RST internal links":
+    let input1 = dedent """
+      Start.
+
+      .. _target000:
+
+      Paragraph.
+
+      .. _target001:
+
+      * bullet list
+      * Y
+
+      .. _target002:
+
+      1. enumeration list
+      2. Y
+
+      .. _target003:
+
+      term 1
+        Definition list 1.
+
+      .. _target004:
+
+      | line block
+
+      .. _target005:
+
+      :a: field list value
+
+      .. _target006:
+
+      -a  option description
+
+      .. _target007:
+
+      ::
+
+        Literal block
+
+      .. _target008:
+
+      Doctest blocks are not implemented.
+
+      .. _target009:
+
+          block quote
+
+      .. _target010:
+
+      =====  =====  =======
+        A      B    A and B
+      =====  =====  =======
+      False  False  False
+      =====  =====  =======
+
+      .. _target100:
+
+      .. CAUTION:: admonition
+
+      .. _target101:
+
+      .. code:: nim
+
+         const pi = 3.14
+
+      .. _target102:
+
+      .. code-block::
+
+         const pi = 3.14
+
+      Paragraph2.
+
+      .. _target202:
+
+      ----
+
+      That was a transition.
+    """
+    let output1 = rstToHtml(input1, {roSupportMarkdown}, defaultConfig())
+    doAssert "<p id=\"target000\""     in output1
+    doAssert "<ul id=\"target001\""    in output1
+    doAssert "<ol id=\"target002\""    in output1
+    doAssert "<dl id=\"target003\""    in output1
+    doAssert "<p id=\"target004\""     in output1
+    doAssert "<table id=\"target005\"" in output1  # field list
+    doAssert "<table id=\"target006\"" in output1  # option list
+    doAssert "<pre id=\"target007\""   in output1
+    doAssert "<blockquote id=\"target009\"" in output1
+    doAssert "<table id=\"target010\"" in output1  # just table
+    doAssert "<span id=\"target100\""  in output1
+    doAssert "<pre id=\"target101\""   in output1  # code
+    doAssert "<pre id=\"target102\""   in output1  # code-block
+    doAssert "<hr id=\"target202\""    in output1
+
+  test "RST internal links for sections":
+    let input1 = dedent """
+      .. _target101:
+      .. _target102:
+
+      Section xyz
+      -----------
+
+      Ref. target101_
+    """
+    let output1 = rstToHtml(input1, {roSupportMarkdown}, defaultConfig())
+    # "target101" should be erased and changed to "section-xyz":
+    doAssert "href=\"#target101\"" notin output1
+    doAssert "id=\"target101\""    notin output1
+    doAssert "href=\"#target102\"" notin output1
+    doAssert "id=\"target102\""    notin output1
+    doAssert "id=\"section-xyz\""     in output1
+    doAssert "href=\"#section-xyz\""  in output1
+
+    let input2 = dedent """
+      .. _target300:
+
+      Section xyz
+      ===========
+
+      .. _target301:
+
+      SubsectionA
+      -----------
+
+      Ref. target300_ and target301_.
+    """
+    let output2 = rstToHtml(input2, {roSupportMarkdown}, defaultConfig())
+    # "target101" should be erased and changed to "section-xyz":
+    doAssert "href=\"#target300\"" notin output2
+    doAssert "id=\"target300\""    notin output2
+    doAssert "href=\"#target301\"" notin output2
+    doAssert "id=\"target301\""    notin output2
+    doAssert "<h1 id=\"section-xyz\"" in output2
+    doAssert "<h2 id=\"subsectiona\"" in output2
+    # links should preserve their original names but point to section labels:
+    doAssert "href=\"#section-xyz\">target300" in output2
+    doAssert "href=\"#subsectiona\">target301" in output2
+
+    let output2l = rstToLatex(input2, {})
+    doAssert "\\label{section-xyz}\\hypertarget{section-xyz}{}" in output2l
+    doAssert "\\hyperlink{section-xyz}{target300}"  in output2l
+    doAssert "\\hyperlink{subsectiona}{target301}"  in output2l
+
+  test "RST internal links (inline)":
+    let input1 = dedent """
+      Paragraph with _`some definition`.
+
+      Ref. `some definition`_.
+    """
+    let output1 = rstToHtml(input1, {roSupportMarkdown}, defaultConfig())
+    doAssert "<span class=\"target\" " &
+        "id=\"some-definition\">some definition</span>" in output1
+    doAssert "Ref. <a class=\"reference internal\" " &
+        "href=\"#some-definition\">some definition</a>" in output1
+
 suite "RST/Code highlight":
   test "Basic Python code highlight":
     let pythonCode = """

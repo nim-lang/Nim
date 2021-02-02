@@ -65,3 +65,17 @@ block t9322:
   proc mystr(s: string) =
     echo s
   mystr($Fix("apr"))
+
+
+block: # bug #13517
+  type MyUint64 = distinct uint64
+
+  proc `==`(a: MyUint64, b: uint64): bool = uint64(a) == b
+
+  block:
+    doAssert MyUint64.high is MyUint64
+    doAssert MyUint64.high == 18446744073709551615'u64
+
+  static:
+    doAssert MyUint64.high is MyUint64
+    doAssert MyUint64.high == 18446744073709551615'u64

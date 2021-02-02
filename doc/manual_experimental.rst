@@ -204,7 +204,7 @@ Automatic dereferencing
 =======================
 
 Automatic dereferencing is performed for the first argument of a routine call.
-This feature has to be only enabled via ``{.experimental: "implicitDeref".}``:
+This feature has to be enabled via ``{.experimental: "implicitDeref".}``:
 
 .. code-block:: nim
   {.experimental: "implicitDeref".}
@@ -1710,34 +1710,12 @@ e.g. when rewriting term to same term plus extra content.
 e.g. with given example ``echo("ab")`` will be rewritten just once:
 
 .. code-block:: nim
-  template pwnEcho{echo(x)}(x: expr) =
+  template pwnEcho{echo(x)}(x: untyped) =
     {.noRewrite.}: echo("pwned!")
 
   echo "ab"
 
 ``noRewrite`` pragma can be useful to control term-rewriting macros recursion.
-
-
-Taint mode
-==========
-
-The Nim compiler and most parts of the standard library support
-a taint mode. Input strings are declared with the `TaintedString`:idx:
-string type declared in the ``system`` module.
-
-If the taint mode is turned on (via the ``--taintMode:on`` command line
-option) it is a distinct string type which helps to detect input
-validation errors:
-
-.. code-block:: nim
-  echo "your name: "
-  var name: TaintedString = stdin.readline
-  # it is safe here to output the name without any input validation, so
-  # we simply convert `name` to string to make the compiler happy:
-  echo "hi, ", name.string
-
-If the taint mode is turned off, ``TaintedString`` is simply an alias for
-``string``.
 
 
 Aliasing restrictions in parameter passing

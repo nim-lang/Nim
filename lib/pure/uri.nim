@@ -160,23 +160,27 @@ func encodeQuery*(query: openArray[(string, string)], usePlus = true,
       result.add('=')
       result.add(encodeUrl(val, usePlus))
 
-iterator decodeQuery*(data: string): tuple[key, value: TaintedString] =
-  ## Reads and decodes query string ``data`` and yields the (key, value) pairs the
-  ## data consists of.
+iterator decodeQuery*(data: string): tuple[key, value: string] =
+  ## Reads and decodes query string `data` and yields the `(key, value)` pairs
+  ## the data consists of. If compiled with `-d:nimLegacyParseQueryStrict`, an
+  ## error is raised when there is an unencoded `=` character in a decoded
+  ## value, which was the behavior in Nim < 1.5.1
   runnableExamples:
-    import std/sugar
-    let s = collect(newSeq):
-      for k, v in decodeQuery("foo=1&bar=2"): (k, v)
-    doAssert s == @[("foo", "1"), ("bar", "2")]
+    import std/sequtils
+    doAssert toSeq(decodeQuery("foo=1&bar=2=3")) == @[("foo", "1"), ("bar", "2=3")]
+    doAssert toSeq(decodeQuery("&a&=b&=&&")) == @[("", ""), ("a", ""), ("", "b"), ("", ""), ("", "")]
 
-  proc parseData(data: string, i: int, field: var string): int =
+  proc parseData(data: string, i: int, field: var string, sep: char): int =
     result = i
     while result < data.len:
-      case data[result]
+      let c = data[result]
+      case c
       of '%': add(field, decodePercent(data, result))
       of '+': add(field, ' ')
-      of '=', '&': break
-      else: add(field, data[result])
+      of '&': break
+      else:
+        if c == sep: break
+        else: add(field, data[result])
       inc(result)
 
   var i = 0
@@ -185,16 +189,20 @@ iterator decodeQuery*(data: string): tuple[key, value: TaintedString] =
   # decode everything in one pass:
   while i < data.len:
     setLen(name, 0) # reuse memory
-    i = parseData(data, i, name)
+    i = parseData(data, i, name, '=')
     setLen(value, 0) # reuse memory
     if i < data.len and data[i] == '=':
       inc(i) # skip '='
-      i = parseData(data, i, value)
-    yield (name.TaintedString, value.TaintedString)
-    if i < data.len:
-      if data[i] == '&': inc(i)
+      when defined(nimLegacyParseQueryStrict):
+        i = parseData(data, i, value, '=')
       else:
-        uriParseError("'&' expected at index '$#' for '$#'" % [$i, data])
+        i = parseData(data, i, value, '&')
+    yield (name, value)
+    if i < data.len:
+      when defined(nimLegacyParseQueryStrict):
+        if data[i] != '&':
+          uriParseError("'&' expected at index '$#' for '$#'" % [$i, data])
+      inc(i)
 
 func parseAuthority(authority: string, result: var Uri) =
   var i = 0

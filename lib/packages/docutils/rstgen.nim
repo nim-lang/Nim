@@ -272,13 +272,25 @@ proc renderRstToOut*(d: var RstGenerator, n: PRstNode, result: var string)
 proc renderAux(d: PDoc, n: PRstNode, result: var string) =
   for i in countup(0, len(n)-1): renderRstToOut(d, n.sons[i], result)
 
-proc renderAux(d: PDoc, n: PRstNode, frmtA, frmtB: string, result: var string) =
+template idS(txt: string): string =
+  if txt == "": ""
+  else:
+    case d.target
+    of outHtml:
+      " id=\"" & txt & "\""
+    of outLatex:
+      "\\label{" & txt & "}\\hypertarget{" & txt & "}{}"
+        # we add \label for page number references via \pageref, while
+        # \hypertarget is for clickable links via \hyperlink.
+
+proc renderAux(d: PDoc, n: PRstNode, html, tex: string, result: var string) =
+  # formats sons of `n` as substitution variable $1 inside strings `html` and
+  # `tex`, internal target (anchor) is provided as substitute $2.
   var tmp = ""
   for i in countup(0, len(n)-1): renderRstToOut(d, n.sons[i], tmp)
-  if d.target != outLatex:
-    result.addf(frmtA, [tmp])
-  else:
-    result.addf(frmtB, [tmp])
+  case d.target
+  of outHtml:  result.addf(html, [tmp, n.anchor.idS])
+  of outLatex: result.addf(tex,  [tmp, n.anchor.idS])
 
 # ---------------- index handling --------------------------------------------
 
@@ -746,13 +758,13 @@ proc renderHeadline(d: PDoc, n: PRstNode, result: var string) =
     d.tocPart[length].n = n
     d.tocPart[length].header = tmp
 
-    dispA(d.target, result, "\n<h$1><a class=\"toc-backref\" " &
-      "id=\"$2\" href=\"#$2\">$3</a></h$1>", "\\rsth$4{$3}\\label{$2}\n",
-      [$n.level, d.tocPart[length].refname, tmp, $chr(n.level - 1 + ord('A'))])
+    dispA(d.target, result, "\n<h$1><a class=\"toc-backref\"" &
+      "$2 href=\"#$5\">$3</a></h$1>", "\\rsth$4{$3}$2\n",
+      [$n.level, refname.idS, tmp, $chr(n.level - 1 + ord('A')), refname])
   else:
-    dispA(d.target, result, "\n<h$1 id=\"$2\">$3</h$1>",
-                            "\\rsth$4{$3}\\label{$2}\n", [
-        $n.level, refname, tmp,
+    dispA(d.target, result, "\n<h$1$2>$3</h$1>",
+                            "\\rsth$4{$3}$2\n", [
+        $n.level, refname.idS, tmp,
         $chr(n.level - 1 + ord('A'))])
 
   # Generate index entry using spaces to indicate TOC level for the output HTML.
@@ -781,9 +793,9 @@ proc renderOverline(d: PDoc, n: PRstNode, result: var string) =
     var tmp = ""
     for i in countup(0, len(n) - 1): renderRstToOut(d, n.sons[i], tmp)
     d.currentSection = tmp
-    dispA(d.target, result, "<h$1 id=\"$2\"><center>$3</center></h$1>",
-                   "\\rstov$4{$3}\\label{$2}\n", [$n.level,
-        rstnodeToRefname(n), tmp, $chr(n.level - 1 + ord('A'))])
+    dispA(d.target, result, "<h$1$2><center>$3</center></h$1>",
+                   "\\rstov$4{$3}$2\n", [$n.level,
+        rstnodeToRefname(n).idS, tmp, $chr(n.level - 1 + ord('A'))])
 
 
 proc renderTocEntry(d: PDoc, e: TocEntry, result: var string) =
@@ -841,12 +853,12 @@ proc renderImage(d: PDoc, n: PRstNode, result: var string) =
   if arg.endsWith(".mp4") or arg.endsWith(".ogg") or
      arg.endsWith(".webm"):
     htmlOut = """
-      <video src="$1"$2 autoPlay='true' loop='true' muted='true'>
+      <video$3 src="$1"$2 autoPlay='true' loop='true' muted='true'>
       Sorry, your browser doesn't support embedded videos
       </video>
     """
   else:
-    htmlOut = "<img src=\"$1\"$2/>"
+    htmlOut = "<img$3 src=\"$1\"$2/>"
 
   # support for `:target:` links for images:
   var target = esc(d.target, getFieldValue(n, "target").strip())
@@ -859,8 +871,8 @@ proc renderImage(d: PDoc, n: PRstNode, result: var string) =
       "\\href{$2}{$1}", [htmlOut, target])
     htmlOut = htmlOutWithLink
 
-  dispA(d.target, result, htmlOut, "\\includegraphics$2{$1}",
-        [esc(d.target, arg), options])
+  dispA(d.target, result, htmlOut, "$3\\includegraphics$2{$1}",
+        [esc(d.target, arg), options, n.anchor.idS])
   if len(n) >= 3: renderRstToOut(d, n.sons[2], result)
 
 proc renderSmiley(d: PDoc, n: PRstNode, result: var string) =
@@ -925,7 +937,8 @@ proc parseCodeBlockParams(d: PDoc, n: PRstNode): CodeBlockParams =
   if result.langStr != "":
     result.lang = getSourceLanguage(result.langStr)
 
-proc buildLinesHtmlTable(d: PDoc; params: CodeBlockParams, code: string):
+proc buildLinesHtmlTable(d: PDoc; params: CodeBlockParams, code: string,
+                         idStr: string):
     tuple[beginTable, endTable: string] =
   ## Returns the necessary tags to start/end a code block in HTML.
   ##
@@ -937,21 +950,22 @@ proc buildLinesHtmlTable(d: PDoc; params: CodeBlockParams, code: string):
   let id = $d.listingCounter
   if not params.numberLines:
     result = (d.config.getOrDefault"doc.listing_start" %
-                [id, sourceLanguageToStr[params.lang]],
+                [id, sourceLanguageToStr[params.lang], idStr],
               d.config.getOrDefault"doc.listing_end" % id)
     return
 
   var codeLines = code.strip.countLines
   assert codeLines > 0
-  result.beginTable = """<table class="line-nums-table"><tbody><tr><td class="blob-line-nums"><pre class="line-nums">"""
+  result.beginTable = """<table$1 class="line-nums-table">""" % [idStr] &
+      """<tbody><tr><td class="blob-line-nums"><pre class="line-nums">"""
   var line = params.startLine
   while codeLines > 0:
     result.beginTable.add($line & "\n")
     line.inc
     codeLines.dec
-  result.beginTable.add("</pre></td><td>" & (
+  result.beginTable.add("</pre$3></td><td>" & (
       d.config.getOrDefault"doc.listing_start" %
-        [id, sourceLanguageToStr[params.lang]]))
+        [id, sourceLanguageToStr[params.lang], idStr]))
   result.endTable = (d.config.getOrDefault"doc.listing_end" % id) &
       "</td></tr></tbody></table>" & (
       d.config.getOrDefault"doc.listing_button" % id)
@@ -975,9 +989,10 @@ proc renderCodeBlock(d: PDoc, n: PRstNode, result: var string) =
   if params.testCmd.len > 0 and d.onTestSnippet != nil:
     d.onTestSnippet(d, params.filename, params.testCmd, params.status, m.text)
 
-  let (blockStart, blockEnd) = buildLinesHtmlTable(d, params, m.text)
-
-  dispA(d.target, result, blockStart, "\\begin{rstpre}\n", [])
+  let (blockStart, blockEnd) = buildLinesHtmlTable(d, params, m.text,
+                                                   n.anchor.idS)
+  dispA(d.target, result, blockStart,
+        "\\begin{rstpre}\n" & n.anchor.idS & "\n", [])
   if params.lang == langNone:
     if len(params.langStr) > 0:
       d.msgHandler(d.filename, 1, 0, mwUnsupportedLanguage, params.langStr)
@@ -1075,8 +1090,8 @@ proc renderEnumList(d: PDoc, n: PRstNode, result: var string) =
       if n.text[i1] != first:
         specStart = " start=\"$1\"" % [ $(ord(n.text[i1]) - ord(first) + 1) ]
       specifier = labelDef & specStart
-  renderAux(d, n, "<ol " & specifier & ">$1</ol>\n",
-            "\\begin{enumerate}" & specifier & "$1\\end{enumerate}\n",
+  renderAux(d, n, "<ol$2 " & specifier & ">$1</ol>\n",
+            "\\begin{enumerate}" & specifier & "$2$1\\end{enumerate}\n",
             result)
 
 proc renderAdmonition(d: PDoc, n: PRstNode, result: var string) =
@@ -1095,9 +1110,9 @@ proc renderAdmonition(d: PDoc, n: PRstNode, result: var string) =
   let txt = n.text.capitalizeAscii()
   let htmlHead = "<div class=\"admonition " & htmlCls & "\">"
   renderAux(d, n,
-      htmlHead & "<span class=\"" & htmlCls & "-text\"><b>" & txt &
+      htmlHead & "<span$2 class=\"" & htmlCls & "-text\"><b>" & txt &
         ":</b></span>\n" & "$1</div>\n",
-      "\n\n\\begin{mdframed}[linecolor=" & texColor & "]\n" &
+      "\n\n\\begin{mdframed}[linecolor=" & texColor & "]$2\n" &
         "{" & texSz & "\\color{" & texColor & "}{\\textbf{" & txt & ":}}} " &
         "$1\n\\end{mdframed}\n",
       result)
@@ -1108,33 +1123,33 @@ proc renderRstToOut(d: PDoc, n: PRstNode, result: var string) =
   of rnInner: renderAux(d, n, result)
   of rnHeadline: renderHeadline(d, n, result)
   of rnOverline: renderOverline(d, n, result)
-  of rnTransition: renderAux(d, n, "<hr />\n", "\\hrule\n", result)
-  of rnParagraph: renderAux(d, n, "<p>$1</p>\n", "$1\n\n", result)
+  of rnTransition: renderAux(d, n, "<hr$2 />\n", "\\hrule$2\n", result)
+  of rnParagraph: renderAux(d, n, "<p$2>$1</p>\n", "$2\n$1\n\n", result)
   of rnBulletList:
-    renderAux(d, n, "<ul class=\"simple\">$1</ul>\n",
-                    "\\begin{itemize}$1\\end{itemize}\n", result)
+    renderAux(d, n, "<ul$2 class=\"simple\">$1</ul>\n",
+                    "\\begin{itemize}\n$2\n$1\\end{itemize}\n", result)
   of rnBulletItem, rnEnumItem:
-    renderAux(d, n, "<li>$1</li>\n", "\\item $1\n", result)
+    renderAux(d, n, "<li$2>$1</li>\n", "\\item $2$1\n", result)
   of rnEnumList: renderEnumList(d, n, result)
   of rnDefList:
-    renderAux(d, n, "<dl class=\"docutils\">$1</dl>\n",
-                       "\\begin{description}$1\\end{description}\n", result)
+    renderAux(d, n, "<dl$2 class=\"docutils\">$1</dl>\n",
+                    "\\begin{description}\n$2\n$1\\end{description}\n", result)
   of rnDefItem: renderAux(d, n, result)
-  of rnDefName: renderAux(d, n, "<dt>$1</dt>\n", "\\item[$1] ", result)
-  of rnDefBody: renderAux(d, n, "<dd>$1</dd>\n", "$1\n", result)
+  of rnDefName: renderAux(d, n, "<dt$2>$1</dt>\n", "$2\\item[$1] ", result)
+  of rnDefBody: renderAux(d, n, "<dd$2>$1</dd>\n", "$2\n$1\n", result)
   of rnFieldList:
     var tmp = ""
     for i in countup(0, len(n) - 1):
       renderRstToOut(d, n.sons[i], tmp)
     if tmp.len != 0:
       dispA(d.target, result,
-          "<table class=\"docinfo\" frame=\"void\" rules=\"none\">" &
+          "<table$2 class=\"docinfo\" frame=\"void\" rules=\"none\">" &
           "<col class=\"docinfo-name\" />" &
           "<col class=\"docinfo-content\" />" &
           "<tbody valign=\"top\">$1" &
           "</tbody></table>",
-          "\\begin{description}$1\\end{description}\n",
-          [tmp])
+          "\\begin{description}\n$2\n$1\\end{description}\n",
+          [tmp, n.anchor.idS])
   of rnField: renderField(d, n, result)
   of rnFieldName:
     renderAux(d, n, "<th class=\"docinfo-name\">$1:</th>",
@@ -1144,8 +1159,8 @@ proc renderRstToOut(d: PDoc, n: PRstNode, result: var string) =
   of rnIndex:
     renderRstToOut(d, n.sons[2], result)
   of rnOptionList:
-    renderAux(d, n, "<table frame=\"void\">$1</table>",
-      "\\begin{description}\n$1\\end{description}\n", result)
+    renderAux(d, n, "<table$2 frame=\"void\">$1</table>",
+      "\\begin{description}\n$2\n$1\\end{description}\n", result)
   of rnOptionListItem:
     renderAux(d, n, "<tr>$1</tr>\n", "$1", result)
   of rnOptionGroup:
@@ -1155,16 +1170,17 @@ proc renderRstToOut(d: PDoc, n: PRstNode, result: var string) =
   of rnOption, rnOptionString, rnOptionArgument:
     doAssert false, "renderRstToOut"
   of rnLiteralBlock:
-    renderAux(d, n, "<pre>$1</pre>\n",
-                    "\\begin{rstpre}\n$1\n\\end{rstpre}\n", result)
+    renderAux(d, n, "<pre$2>$1</pre>\n",
+                    "\\begin{rstpre}\n$2\n$1\n\\end{rstpre}\n", result)
   of rnQuotedLiteralBlock:
     doAssert false, "renderRstToOut"
   of rnLineBlock:
     if n.sons.len == 1 and n.sons[0].text == "\n":
       # whole line block is one empty line, no need to add extra spacing
-      renderAux(d, n, "<p>$1</p> ", "\n\n$1", result)
+      renderAux(d, n, "<p$2>$1</p> ", "\n\n$2\n$1", result)
     else:  # add extra spacing around the line block for Latex
-      renderAux(d, n, "<p>$1</p>", "\n\\vspace{0.5em}\n$1\\vspace{0.5em}\n", result)
+      renderAux(d, n, "<p$2>$1</p>",
+        "\n\\vspace{0.5em}$2\n$1\\vspace{0.5em}\n", result)
   of rnLineBlockItem:
     if n.text.len == 0:  # normal case - no additional indentation
       renderAux(d, n, "$1<br/>", "\\noindent $1\n\n", result)
@@ -1176,13 +1192,13 @@ proc renderRstToOut(d: PDoc, n: PRstNode, result: var string) =
         "<span style=\"margin-left: " & indent & "\">$1</span><br/>",
         "\\noindent\\hspace{" & indent & "}$1\n\n", result)
   of rnBlockQuote:
-    renderAux(d, n, "<blockquote><p>$1</p></blockquote>\n",
-                    "\\begin{quote}$1\\end{quote}\n", result)
+    renderAux(d, n, "<blockquote$2><p>$1</p></blockquote>\n",
+                    "\\begin{quote}\n$2\n$1\\end{quote}\n", result)
   of rnAdmonition: renderAdmonition(d, n, result)
   of rnTable, rnGridTable, rnMarkdownTable:
     renderAux(d, n,
-      "<table border=\"1\" class=\"docutils\">$1</table>",
-      "\\begin{table}\\begin{rsttab}{" &
+      "<table$2 border=\"1\" class=\"docutils\">$1</table>",
+      "\\begin{table}\n$2\n\\begin{rsttab}{" &
         texColumns(n) & "|}\n\\hline\n$1\\end{rsttab}\\end{table}", result)
   of rnTableRow:
     if len(n) >= 1:
@@ -1217,6 +1233,12 @@ proc renderRstToOut(d: PDoc, n: PRstNode, result: var string) =
     renderAux(d, n,
       "<a class=\"reference external\" href=\"$1\">$1</a>",
       "\\href{$1}{$1}", result)
+  of rnInternalRef:
+    var tmp = ""
+    renderAux(d, n.sons[0], tmp)
+    dispA(d.target, result,
+      "<a class=\"reference internal\" href=\"#$2\">$1</a>",
+      "\\hyperlink{$2}{$1} (p.~\\pageref{$2})", [tmp, n.sons[1].text])
   of rnHyperlink:
     var tmp0 = ""
     var tmp1 = ""
@@ -1261,6 +1283,13 @@ proc renderRstToOut(d: PDoc, n: PRstNode, result: var string) =
     renderAux(d, n,
       "<tt class=\"docutils literal\"><span class=\"pre\">$1</span></tt>",
       "\\texttt{$1}", result)
+  of rnInlineTarget:
+    var tmp = ""
+    renderAux(d, n, tmp)
+    dispA(d.target, result,
+      "<span class=\"target\" id=\"$2\">$1</span>",
+      "\\label{$2}\\hypertarget{$2}{$1}",
+      [tmp, rstnodeToRefname(n)])
   of rnSmiley: renderSmiley(d, n, result)
   of rnLeaf: result.add(esc(d.target, n.text))
   of rnContents: d.hasToc = true
@@ -1396,7 +1425,7 @@ $moduledesc
 $content
 </div>
 """)
-  setConfigVar("doc.listing_start", "<pre class = \"listing\">")
+  setConfigVar("doc.listing_start", "<pre$3 class = \"listing\">")
   setConfigVar("doc.listing_end", "</pre>")
   setConfigVar("doc.listing_button", "</pre>")
   setConfigVar("doc.body_no_toc", "$moduledesc $content")

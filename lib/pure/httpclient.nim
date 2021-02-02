@@ -124,7 +124,7 @@
 ## ``nim c -d:ssl ...``.
 ##
 ## Certificate validation is NOT performed by default.
-## This will change in future.
+## This will change in the future.
 ##
 ## A set of directories and files from the `ssl_certs <ssl_certs.html>`_
 ## module are scanned to locate CA certificates.
@@ -832,17 +832,22 @@ proc parseResponse(client: HttpClient | AsyncHttpClient,
   if not fullyRead:
     httpError("Connection was closed before full request has been made")
 
+  when client is HttpClient:
+    result.bodyStream = newStringStream()
+  else:
+    result.bodyStream = newFutureStream[string]("parseResponse")
+
   if getBody and result.code != Http204:
+    client.bodyStream = result.bodyStream
     when client is HttpClient:
-      client.bodyStream = newStringStream()
-      result.bodyStream = client.bodyStream
       parseBody(client, result.headers, result.version)
     else:
-      client.bodyStream = newFutureStream[string]("parseResponse")
-      result.bodyStream = client.bodyStream
       assert(client.parseBodyFut.isNil or client.parseBodyFut.finished)
+      # do not wait here for the body request to complete
       client.parseBodyFut = parseBody(client, result.headers, result.version)
-        # do not wait here for the body request to complete
+      client.parseBodyFut.addCallback do():
+        if client.parseBodyFut.failed:
+          client.bodyStream.fail(client.parseBodyFut.error)
 
 proc newConnection(client: HttpClient | AsyncHttpClient,
                    url: Uri) {.multisync.} =
@@ -973,15 +978,6 @@ proc requestAux(client: HttpClient | AsyncHttpClient, url: Uri,
   if url.scheme == "":
     raise newException(ValueError, "No uri scheme supplied.")
 
-  var data: seq[string]
-  if multipart != nil and multipart.content.len > 0:
-    data = await client.format(multipart)
-  else:
-    if body.len != 0:
-      client.headers["Content-Length"] = $body.len
-    elif httpMethod notin [HttpGet, HttpHead] and not client.headers.hasKey("Content-Length"):
-      client.headers["Content-Length"] = "0"
-
   when client is AsyncHttpClient:
     if not client.parseBodyFut.isNil:
       # let the current operation finish before making another request
@@ -991,6 +987,18 @@ proc requestAux(client: HttpClient | AsyncHttpClient, url: Uri,
   await newConnection(client, url)
 
   let newHeaders = client.headers.override(headers)
+
+  var data: seq[string]
+  if multipart != nil and multipart.content.len > 0:
+    data = await client.format(multipart)
+  else:
+    # Only change headers if they have not been specified already
+    if not newHeaders.hasKey("Content-Length"):
+      if body.len != 0:
+        newHeaders["Content-Length"] = $body.len
+      elif httpMethod notin {HttpGet, HttpHead}:
+        newHeaders["Content-Length"] = "0"
+
   if not newHeaders.hasKey("user-agent") and client.userAgent.len > 0:
     newHeaders["User-Agent"] = client.userAgent
 
@@ -1037,6 +1045,9 @@ proc request*(client: HttpClient | AsyncHttpClient, url: Uri | string,
   ##
   ## You need to make sure that the ``url`` doesn't contain any newline
   ## characters. Failing to do so will raise ``AssertionDefect``.
+  ##
+  ## `headers` are HTTP headers that override the `client.headers` for
+  ## this specific request only and will not be persisted.
   ##
   ## **Deprecated since v1.5**: use HttpMethod enum instead; string parameter httpMethod is deprecated
   when url is string:
@@ -1218,27 +1229,30 @@ proc downloadFile*(client: HttpClient, url: Uri | string, filename: string) =
   if resp.code.is4xx or resp.code.is5xx:
     raise newException(HttpRequestError, resp.status)
 
+proc downloadFileEx(client: AsyncHttpClient,
+                    url: Uri | string, filename: string): Future[void] {.async.} =
+  ## Downloads ``url`` and saves it to ``filename``.
+  client.getBody = false
+  let resp = await client.get(url)
+
+  client.bodyStream = newFutureStream[string]("downloadFile")
+  var file = openAsync(filename, fmWrite)
+  defer: file.close()
+  # Let `parseBody` write response data into client.bodyStream in the
+  # background.
+  let parseBodyFut = parseBody(client, resp.headers, resp.version)
+  parseBodyFut.addCallback do():
+    if parseBodyFut.failed:
+      client.bodyStream.fail(parseBodyFut.error)
+  # The `writeFromStream` proc will complete once all the data in the
+  # `bodyStream` has been written to the file.
+  await file.writeFromStream(client.bodyStream)
+
+  if resp.code.is4xx or resp.code.is5xx:
+    raise newException(HttpRequestError, resp.status)
+
 proc downloadFile*(client: AsyncHttpClient, url: Uri | string,
                    filename: string): Future[void] =
-  proc downloadFileEx(client: AsyncHttpClient,
-                      url: Uri | string, filename: string): Future[void] {.async.} =
-    ## Downloads ``url`` and saves it to ``filename``.
-    client.getBody = false
-    let resp = await client.get(url)
-
-    client.bodyStream = newFutureStream[string]("downloadFile")
-    var file = openAsync(filename, fmWrite)
-    # Let `parseBody` write response data into client.bodyStream in the
-    # background.
-    asyncCheck parseBody(client, resp.headers, resp.version)
-    # The `writeFromStream` proc will complete once all the data in the
-    # `bodyStream` has been written to the file.
-    await file.writeFromStream(client.bodyStream)
-    file.close()
-
-    if resp.code.is4xx or resp.code.is5xx:
-      raise newException(HttpRequestError, resp.status)
-
   result = newFuture[void]("downloadFile")
   try:
     result = downloadFileEx(client, url, filename)

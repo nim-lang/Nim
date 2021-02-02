@@ -256,7 +256,7 @@ discard foo()
 type
   IteratorF*[In] = iterator() : In {.closure.}
 
-template foof(In: untyped) : untyped = 
+template foof(In: untyped) : untyped =
   proc ggg*(arg: IteratorF[In]) =
     for i in arg():
       echo "foo"
@@ -265,7 +265,7 @@ template foof(In: untyped) : untyped =
 iterator hello() : int {.closure.} =
   for i in 1 .. 3:
     yield i
-    
+
 foof(int)
 ggg(hello)
 
@@ -274,3 +274,25 @@ ggg(hello)
 var z = 10'u8
 echo z < 9 # Works
 echo z > 9 # Error: type mismatch
+
+
+# bug #5993
+template foo(p: proc) =
+  var bla = 5
+  p(bla)
+
+foo() do(t: var int):
+  discard
+  t = 5
+
+proc bar(t: var int) =
+  t = 5
+
+foo(bar)
+
+block: # bug #12595
+  template test() =
+    let i = 42
+    discard {i: ""}
+
+  test()

@@ -1077,10 +1077,10 @@ proc genAsgnAux(p: PProc, x, y: PNode, noCopyNeeded: bool) =
       # supports proc getF(): var T
       if x.kind in {nkHiddenDeref, nkDerefExpr} and x[0].kind in nkCallKinds:
           lineF(p, "nimCopy($1, $2, $3);$n",
-                [a.res, b.res, genTypeInfo(p, y.typ)])
+                [a.res, b.res, genTypeInfo(p, x.typ)])
       else:
         lineF(p, "$1 = nimCopy($1, $2, $3);$n",
-              [a.res, b.res, genTypeInfo(p, y.typ)])
+              [a.res, b.res, genTypeInfo(p, x.typ)])
   of etyBaseIndex:
     if a.typ != etyBaseIndex or b.typ != etyBaseIndex:
       if y.kind == nkCall:
@@ -2485,7 +2485,10 @@ proc gen(p: PProc, n: PNode, r: var TCompRes) =
     let f = n.floatVal
     case classify(f)
     of fcNan:
-      r.res = rope"NaN"
+      if signbit(f):
+        r.res = rope"-NaN"
+      else:
+        r.res = rope"NaN"
     of fcNegZero:
       r.res = rope"-0.0"
     of fcZero:

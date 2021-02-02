@@ -1034,7 +1034,10 @@ proc genMagic(c: PCtx; n: PNode; dest: var TDest; m: TMagic) =
   of mLengthOpenArray, mLengthArray, mLengthSeq:
     genUnaryABI(c, n, dest, opcLenSeq)
   of mLengthStr:
-    genUnaryABI(c, n, dest, opcLenStr)
+    case n[1].typ.kind
+    of tyString: genUnaryABI(c, n, dest, opcLenStr)
+    of tyCString: genUnaryABI(c, n, dest, opcLenCstring)
+    else: doAssert false, $n[1].typ.kind
   of mIncl, mExcl:
     unused(c, n, dest)
     var d = c.genx(n[1])
@@ -1178,10 +1181,9 @@ proc genMagic(c: PCtx; n: PNode; dest: var TDest; m: TMagic) =
     if dest < 0: dest = c.getTemp(n.typ)
     let tmp = c.genx(n[1])
     case n[1].typ.skipTypes(abstractVar-{tyTypeDesc}).kind:
-    of tyString, tyCString:
-      c.gABI(n, opcLenStr, dest, tmp, 1)
-    else:
-      c.gABI(n, opcLenSeq, dest, tmp, 1)
+    of tyString: c.gABI(n, opcLenStr, dest, tmp, 1)
+    of tyCString: c.gABI(n, opcLenCstring, dest, tmp, 1)
+    else: c.gABI(n, opcLenSeq, dest, tmp, 1)
     c.freeTemp(tmp)
   of mEcho:
     unused(c, n, dest)

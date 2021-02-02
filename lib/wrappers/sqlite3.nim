@@ -26,7 +26,7 @@ else:
 
 when defined(staticSqlite):
   {.pragma: mylib.}
-  {.compile: "sqlite3.c".}
+  {.compile("sqlite3.c", "-O3").}
 else:
   {.pragma: mylib, dynlib: Lib.}
 

@@ -70,11 +70,11 @@ proc cmpSuggestions(a, b: Suggest): int =
     result = b.field.int - a.field.int
     if result != 0: return result
 
-  cf scope
   cf prefix
+  cf contextFits
+  cf scope
   # when the first type matches, it's better when it's a generic match:
   cf quality
-  cf contextFits
   cf localUsages
   cf globalUsages
   # if all is equal, sort alphabetically for deterministic output,
@@ -258,17 +258,22 @@ proc fieldVisible*(c: PContext, f: PSym): bool {.inline.} =
       result = true
       break
 
-proc suggestField(c: PContext, s: PSym; f: PNode; info: TLineInfo; outputs: var Suggestions) =
-  var pm: PrefixMatch
-  if filterSym(s, f, pm) and fieldVisible(c, s):
-    outputs.add(symToSuggest(c.graph, s, isLocal=true, ideSug, info, 100, pm, c.inTypeContext > 0, 0))
-
 proc getQuality(s: PSym): range[0..100] =
+  result = 100
   if s.typ != nil and s.typ.len > 1:
     var exp = s.typ[1].skipTypes({tyGenericInst, tyVar, tyLent, tyAlias, tySink})
     if exp.kind == tyVarargs: exp = elemType(exp)
-    if exp.kind in {tyUntyped, tyTyped, tyGenericParam, tyAnything}: return 50
-  return 100
+    if exp.kind in {tyUntyped, tyTyped, tyGenericParam, tyAnything}: result = 50
+
+  # penalize deprecated symbols
+  if sfDeprecated in s.flags:
+    result = result - 5
+
+proc suggestField(c: PContext, s: PSym; f: PNode; info: TLineInfo; outputs: var Suggestions) =
+  var pm: PrefixMatch
+  if filterSym(s, f, pm) and fieldVisible(c, s):
+    outputs.add(symToSuggest(c.graph, s, isLocal=true, ideSug, info,
+                              s.getQuality, pm, c.inTypeContext > 0, 0))
 
 template wholeSymTab(cond, section: untyped) {.dirty.} =
   for (item, scopeN, isLocal) in allSyms(c):
@@ -298,6 +303,7 @@ proc suggestObject(c: PContext, n, f: PNode; info: TLineInfo, outputs: var Sugge
 proc nameFits(c: PContext, s: PSym, n: PNode): bool =
   var op = if n.kind in nkCallKinds: n[0] else: n
   if op.kind in {nkOpenSymChoice, nkClosedSymChoice}: op = op[0]
+  if op.kind == nkDotExpr: op = op[1]
   var opr: PIdent
   case op.kind
   of nkSym: opr = op.sym.name
@@ -346,8 +352,8 @@ proc suggestEverything(c: PContext, n, f: PNode, outputs: var Suggestions) =
   for (it, scopeN, isLocal) in allSyms(c):
     var pm: PrefixMatch
     if filterSym(it, f, pm):
-      outputs.add(symToSuggest(c.graph, it, isLocal = isLocal, ideSug, n.info, 0, pm,
-                                c.inTypeContext > 0, scopeN))
+      outputs.add(symToSuggest(c.graph, it, isLocal = isLocal, ideSug, n.info,
+                               it.getQuality, pm, c.inTypeContext > 0, scopeN))
 
 proc suggestFieldAccess(c: PContext, n, field: PNode, outputs: var Suggestions) =
   # special code that deals with ``myObj.``. `n` is NOT the nkDotExpr-node, but
@@ -367,9 +373,12 @@ proc suggestFieldAccess(c: PContext, n, field: PNode, outputs: var Suggestions) 
         else:
           for it in allSyms(c.graph, n.sym):
             if filterSym(it, field, pm):
-              outputs.add(symToSuggest(c.graph, it, isLocal=false, ideSug, n.info, 100, pm, c.inTypeContext > 0, -100))
-          outputs.add(symToSuggest(c.graph, m, isLocal=false, ideMod, n.info, 100, PrefixMatch.None,
-            c.inTypeContext > 0, -99))
+              outputs.add(symToSuggest(c.graph, it, isLocal=false, ideSug,
+                                        n.info, it.getQuality, pm,
+                                        c.inTypeContext > 0, -100))
+          outputs.add(symToSuggest(c.graph, m, isLocal=false, ideMod, n.info,
+                                    100, PrefixMatch.None, c.inTypeContext > 0,
+                                    -99))
 
   if typ == nil:
     # a module symbol has no type for example:
@@ -378,25 +387,29 @@ proc suggestFieldAccess(c: PContext, n, field: PNode, outputs: var Suggestions) 
         # all symbols accessible, because we are in the current module:
         for it in items(c.topLevelScope.symbols):
           if filterSym(it, field, pm):
-            outputs.add(symToSuggest(c.graph, it, isLocal=false, ideSug, n.info, 100, pm, c.inTypeContext > 0, -99))
+            outputs.add(symToSuggest(c.graph, it, isLocal=false, ideSug,
+                                      n.info, it.getQuality, pm,
+                                      c.inTypeContext > 0, -99))
       else:
         for it in allSyms(c.graph, n.sym):
           if filterSym(it, field, pm):
-            outputs.add(symToSuggest(c.graph, it, isLocal=false, ideSug, n.info, 100, pm, c.inTypeContext > 0, -99))
+            outputs.add(symToSuggest(c.graph, it, isLocal=false, ideSug,
+                                      n.info, it.getQuality, pm,
+                                      c.inTypeContext > 0, -99))
     else:
       # fallback:
       suggestEverything(c, n, field, outputs)
-  elif typ.kind == tyEnum and n.kind == nkSym and n.sym.kind == skType:
-    # look up if the identifier belongs to the enum:
-    var t = typ
-    while t != nil:
-      suggestSymList(c, t.n, field, n.info, outputs)
-      t = t[0]
-    suggestOperations(c, n, field, typ, outputs)
   else:
-    let orig = typ # skipTypes(typ, {tyGenericInst, tyAlias, tySink})
-    typ = skipTypes(typ, {tyGenericInst, tyVar, tyLent, tyPtr, tyRef, tyAlias, tySink, tyOwned})
-    if typ.kind == tyObject:
+    let orig = typ
+    typ = skipTypes(orig, {tyTypeDesc, tyGenericInst, tyVar, tyLent, tyPtr, tyRef, tyAlias, tySink, tyOwned})
+
+    if typ.kind == tyEnum and n.kind == nkSym and n.sym.kind == skType:
+      # look up if the identifier belongs to the enum:
+      var t = typ
+      while t != nil:
+        suggestSymList(c, t.n, field, n.info, outputs)
+        t = t[0]
+    elif typ.kind == tyObject:
       var t = typ
       while true:
         suggestObject(c, t.n, field, n.info, outputs)
@@ -404,6 +417,7 @@ proc suggestFieldAccess(c: PContext, n, field: PNode, outputs: var Suggestions) 
         t = skipTypes(t[0], skipPtrs)
     elif typ.kind == tyTuple and typ.n != nil:
       suggestSymList(c, typ.n, field, n.info, outputs)
+    
     suggestOperations(c, n, field, orig, outputs)
     if typ != orig:
       suggestOperations(c, n, field, typ, outputs)
@@ -598,6 +612,11 @@ proc sugExpr(c: PContext, n: PNode, outputs: var Suggestions) =
     #if optIdeDebug in gGlobalOptions:
     #  echo "expression ", renderTree(obj), " has type ", typeToString(obj.typ)
     #writeStackTrace()
+  elif n.kind == nkIdent:
+    let
+      prefix = if c.config.m.trackPosAttached: nil else: n
+      info = n.info
+    wholeSymTab(filterSym(it, prefix, pm), ideSug)
   else:
     let prefix = if c.config.m.trackPosAttached: nil else: n
     suggestEverything(c, n, prefix, outputs)
@@ -660,7 +679,7 @@ proc suggestSentinel*(c: PContext) =
     var pm: PrefixMatch
     if filterSymNoOpr(it, nil, pm):
       outputs.add(symToSuggest(c.graph, it, isLocal = isLocal, ideSug,
-          newLineInfo(c.config.m.trackPos.fileIndex, 0, -1), 0,
+          newLineInfo(c.config.m.trackPos.fileIndex, 0, -1), it.getQuality,
           PrefixMatch.None, false, scopeN))
 
   dec(c.compilesContextId)

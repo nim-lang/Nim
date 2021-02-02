@@ -33,9 +33,28 @@ are rod-file specific too.
 Global state
 ------------
 
-Global persistent state will be kept in a project specific `.rod` file.
+There is no global state.
 
 Rod File Format
 ---------------
 
 It's a simple binary file format. `rodfiles.nim` contains some details.
+
+
+Backend
+-------
+
+Nim programmers have to come to enjoy whole-program dead code elimination,
+by default. Since this is a "whole program" optimization, it does break
+modularity. However, thanks to the packed AST representation we can perform
+this global analysis without having to unpack anything. This is basically
+a mark&sweep GC algorithm:
+
+- Start with the top level statements. Every symbol that is referenced
+  from a top level statement is not "dead" and needs to be compiled by
+  the backend.
+- Every symbol referenced from a referenced symbol also has to be
+  compiled.
+
+Caching logic: Only if the set of alive symbols is different from the
+last run, the module has to be regenerated.

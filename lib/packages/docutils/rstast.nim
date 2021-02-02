@@ -42,7 +42,7 @@ type
     rnLabel,                  # used for footnotes and other things
     rnFootnote,               # a footnote
     rnCitation,               # similar to footnote
-    rnStandaloneHyperlink, rnHyperlink, rnRef,
+    rnStandaloneHyperlink, rnHyperlink, rnRef, rnInternalRef,
     rnDirective,              # a general directive
     rnDirArg,                 # a directive argument (for some directives).
                               # here are directives that are not rnDirective:
@@ -62,6 +62,7 @@ type
     rnTripleEmphasis,         # "***"
     rnInterpretedText,        # "`"
     rnInlineLiteral,          # "``"
+    rnInlineTarget,           # "_`target`"
     rnSubstitutionReferences, # "|"
     rnSmiley,                 # some smiley
     rnLeaf                    # a leaf; the node's text field contains the
@@ -75,7 +76,9 @@ type
     text*: string             ## valid for leafs in the AST; and the title of
                               ## the document or the section; and rnEnumList
                               ## and rnAdmonition; and rnLineBlockItem
-    level*: int               ## valid for some node kinds
+    level*: int               ## valid for headlines/overlines only
+    anchor*: string           ## anchor, internal link target
+                              ## (aka HTML id tag, aka Latex label/hypertarget)
     sons*: RstNodeSeq        ## the node's sons
 
 proc len*(n: PRstNode): int =
@@ -330,8 +333,9 @@ proc renderRstToStr*(node: PRstNode, indent=0): string =
   if node == nil:
     result.add " ".repeat(indent) & "[nil]\n"
     return
-  result.add " ".repeat(indent) & $node.kind & "\t" &
-      (if node.text == "": "" else: "'" & node.text & "'") &
-      (if node.level == 0: "" else: "\tlevel=" & $node.level) & "\n"
+  result.add " ".repeat(indent) & $node.kind &
+      (if node.text == "":   "" else: "\t'" & node.text & "'") &
+      (if node.level == 0:   "" else: "\tlevel=" & $node.level) &
+      (if node.anchor == "": "" else: "\tanchor='" & node.anchor & "'") & "\n"
   for son in node.sons:
     result.add renderRstToStr(son, indent=indent+2)

@@ -723,7 +723,7 @@ proc checkLe(c: PEffects; a, b: PNode) =
 
 proc checkBounds(c: PEffects; arr, idx: PNode) =
   checkLe(c, lowBound(c.config, arr), idx)
-  checkLe(c, idx, highBound(c.config, arr, c.guards.o))
+  checkLe(c, idx, highBound(c.config, arr, c.guards.g.operators))
 
 proc checkRange(c: PEffects; value: PNode; typ: PType) =
   let t = typ.skipTypes(abstractInst - {tyRange})
@@ -818,9 +818,9 @@ proc trackCall(tracked: PEffects; n: PNode) =
     if opKind != -1:
       # rebind type bounds operations after createTypeBoundOps call
       let t = n[1].typ.skipTypes({tyAlias, tyVar})
-      if a.sym != t.attachedOps[TTypeAttachedOp(opKind)]:
+      if a.sym != getAttachedOp(tracked.graph, t, TTypeAttachedOp(opKind)):
         createTypeBoundOps(tracked, t, n.info)
-        let op = t.attachedOps[TTypeAttachedOp(opKind)]
+        let op = getAttachedOp(tracked.graph, t, TTypeAttachedOp(opKind))
         if op != nil:
           n[0].sym = op
 
@@ -1236,7 +1236,7 @@ proc initEffects(g: ModuleGraph; effects: PNode; s: PSym; t: var TEffects; c: PC
   t.ownerModule = s.getModule
   t.init = @[]
   t.guards.s = @[]
-  t.guards.o = initOperators(g)
+  t.guards.g = g
   when defined(drnim):
     t.currOptions = g.config.options + s.options - {optStaticBoundsCheck}
   else:
@@ -1310,7 +1310,7 @@ proc trackProc*(c: PContext; s: PSym, body: PNode) =
     var goals: set[Goal] = {}
     if strictFuncs in c.features: goals.incl constParameters
     if views in c.features: goals.incl borrowChecking
-    var partitions = computeGraphPartitions(s, body, g.config, goals)
+    var partitions = computeGraphPartitions(s, body, g, goals)
     if not t.hasSideEffect and t.hasDangerousAssign:
       t.hasSideEffect = varpartitions.hasSideEffect(partitions, mutationInfo)
     if views in c.features:
@@ -1344,7 +1344,7 @@ proc trackProc*(c: PContext; s: PSym, body: PNode) =
   when defined(useDfa):
     if s.name.s == "testp":
       dataflowAnalysis(s, body)
-                                                                                                                   
+
       when false: trackWrites(s, body)
   if strictNotNil in c.features and s.kind == skProc:
     checkNil(s, body, g.config, c.idgen)

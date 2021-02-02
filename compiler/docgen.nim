@@ -57,6 +57,11 @@ type
 
   PDoc* = ref TDocumentor ## Alias to type less.
 
+proc prettyString(a: object): string =
+  # xxx pending std/prettyprint refs https://github.com/nim-lang/RFCs/issues/203#issuecomment-602534906
+  for k, v in fieldPairs(a):
+    result.add k & ": " & $v & "\n"
+
 proc presentationPath*(conf: ConfigRef, file: AbsoluteFile, isTitle = false): RelativeFile =
   ## returns a relative file that will be appended to outDir
   let file2 = $file
@@ -324,8 +329,7 @@ proc genRecCommentAux(d: PDoc, n: PNode): Rope =
         result = genRecCommentAux(d, n[i])
         if result != nil: return
   else:
-    when defined(nimNoNilSeqs): n.comment = ""
-    else: n.comment = nil
+    n.comment = ""
 
 proc genRecComment(d: PDoc, n: PNode): Rope =
   if n == nil: return nil
@@ -480,7 +484,7 @@ proc runAllExamples(d: PDoc) =
       "docCmd", group.docCmd,
     ]
     if os.execShellCmd(cmd) != 0:
-      quit "[runnableExamples] failed: generated file: '$1' group: '$2' cmd: $3" % [outp.string, $group[], cmd]
+      quit "[runnableExamples] failed: generated file: '$1' group: '$2' cmd: $3" % [outp.string, group[].prettyString, cmd]
     else:
       # keep generated source file `outp` to allow inspection.
       rawMessage(d.conf, hintSuccess, ["runnableExamples: " & outp.string])
@@ -560,7 +564,7 @@ proc getAllRunnableExamplesImpl(d: PDoc; n: PNode, dest: var Rope, state: Runnab
           "\n\\textbf{$1}\n", [msg.rope])
       inc d.listingCounter
       let id = $d.listingCounter
-      dest.add(d.config.getOrDefault"doc.listing_start" % [id, "langNim"])
+      dest.add(d.config.getOrDefault"doc.listing_start" % [id, "langNim", ""])
       var dest2 = ""
       renderNimCode(dest2, code, isLatex = d.conf.cmd == cmdRst2tex)
       dest.add dest2
