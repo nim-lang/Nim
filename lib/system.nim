@@ -62,6 +62,7 @@ proc compileOption*(option: string): bool {.
   ## See also:
   ## * `compileOption <#compileOption,string,string>`_ for enum options
   ## * `defined <#defined,untyped>`_
+  ## * `std/compilesettings module <compilesettings.html>`_
   ## * `define pragmas <manual.html#implementation-specific-pragmas-compileminustime-define-pragmas>`_
   ##
   ## Example:
@@ -77,6 +78,7 @@ proc compileOption*(option, arg: string): bool {.
   ## See also:
   ## * `compileOption <#compileOption,string>`_ for `on|off` options
   ## * `defined <#defined,untyped>`_
+  ## * `std/compilesettings module <compilesettings.html>`_
   ## * `define pragmas <manual.html#implementation-specific-pragmas-compileminustime-define-pragmas>`_
   ##
   ## Example:
