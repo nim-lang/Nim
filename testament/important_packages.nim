@@ -22,7 +22,7 @@ pkg "coco", "", true
 pkg "combparser"
 pkg "compactdict"
 pkg "comprehension", "", false, "https://github.com/alehander42/comprehension"
-pkg "criterion"
+# pkg "criterion"
 pkg "dashing", "nim c tests/functional.nim"
 pkg "docopt"
 pkg "easygl", "nim c -o:egl -r src/easygl.nim", true, "https://github.com/jackmott/easygl"
