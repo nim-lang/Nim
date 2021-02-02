@@ -82,7 +82,6 @@ proc compileOption*(option, arg: string): bool {.
   ## Example:
   ##
   ## .. code-block:: Nim
-  ##
   ##   when compileOption("opt", "size") and compileOption("gc", "boehm"):
   ##     echo "compiled with optimization for size and uses Boehm's GC"
 
