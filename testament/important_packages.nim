@@ -24,7 +24,7 @@ pkg "coco", true
 pkg "combparser"
 pkg "compactdict"
 pkg "comprehension", false, "nimble test", "https://github.com/alehander42/comprehension"
-pkg "criterion"
+# pkg "criterion"
 pkg "dashing", false, "nim c tests/functional.nim"
 pkg "docopt"
 pkg "easygl", true, "nim c -o:egl -r src/easygl.nim", "https://github.com/jackmott/easygl"
@@ -55,7 +55,7 @@ pkg "nimfp", true, "nim c -o:nfp -r src/fp.nim"
 pkg "nimgame2", true, "nim c nimgame2/nimgame.nim"
 pkg "nimgen", true, "nim c -o:nimgenn -r src/nimgen/runcfg.nim"
 # pkg "nimlsp", true
-pkg "nimly", true
+# pkg "nimly", true
 # pkg "nimongo", true, "nimble test_ci"
 pkg "nimpy", false, "nim c -r tests/nimfrompy.nim"
 pkg "nimquery"
