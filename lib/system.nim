@@ -222,24 +222,18 @@ proc unsafeAddr*[T](x: T): ptr T {.magic: "Addr", noSideEffect.} =
   ## Cannot be overloaded.
   discard
 
-when defined(nimNewTypedesc):
-  type
-    `static`*[T] {.magic: "Static".}
-      ## Meta type representing all values that can be evaluated at compile-time.
-      ##
-      ## The type coercion `static(x)` can be used to force the compile-time
-      ## evaluation of the given expression `x`.
+type
+  `static`*[T] {.magic: "Static".}
+    ## Meta type representing all values that can be evaluated at compile-time.
+    ##
+    ## The type coercion `static(x)` can be used to force the compile-time
+    ## evaluation of the given expression `x`.
 
-    `type`*[T] {.magic: "Type".}
-      ## Meta type representing the type of all type values.
-      ##
-      ## The coercion `type(x)` can be used to obtain the type of the given
-      ## expression `x`.
-else:
-  proc `type`*(x: untyped): typedesc {.magic: "TypeOf", noSideEffect, compileTime.} =
-    ## Builtin `type` operator for accessing the type of an expression.
-    ## Cannot be overloaded.
-    discard
+  `type`*[T] {.magic: "Type".}
+    ## Meta type representing the type of all type values.
+    ##
+    ## The coercion `type(x)` can be used to obtain the type of the given
+    ## expression `x`.
 
 when defined(nimHasTypeof):
   type
@@ -522,10 +516,6 @@ proc `..`*[T](b: sink T): HSlice[int, T] {.noSideEffect, inline, magic: "DotDot"
   ##   echo a[.. 2] # @[10, 20, 30]
   result = HSlice[int, T](a: 0, b: b)
 
-when not defined(niminheritable):
-  {.pragma: inheritable.}
-when not defined(nimunion):
-  {.pragma: unchecked.}
 when not defined(nimHasHotCodeReloading):
   {.pragma: nonReloadable.}
 when defined(hotCodeReloading):

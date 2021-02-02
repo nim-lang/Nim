@@ -35,14 +35,14 @@ proc initDefines*(symbols: StringTableRef) =
   # for bootstrapping purposes and old code:
   template defineSymbol(s) = symbols.defineSymbol(s)
   defineSymbol("nimhygiene") # deadcode
-  defineSymbol("niminheritable")
-  defineSymbol("nimmixin")
-  defineSymbol("nimeffects")
+  defineSymbol("niminheritable") # deadcode
+  defineSymbol("nimmixin") # deadcode
+  defineSymbol("nimeffects") # deadcode
   defineSymbol("nimbabel") # deadcode
-  defineSymbol("nimcomputedgoto")
-  defineSymbol("nimunion")
-  defineSymbol("nimnewshared")
-  defineSymbol("nimNewTypedesc")
+  defineSymbol("nimcomputedgoto") # deadcode
+  defineSymbol("nimunion") # deadcode
+  defineSymbol("nimnewshared") # deadcode
+  defineSymbol("nimNewTypedesc") # deadcode
   defineSymbol("nimrequiresnimframe")
   defineSymbol("nimparsebiggestfloatmagic")
   defineSymbol("nimalias")
