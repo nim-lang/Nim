@@ -1634,9 +1634,11 @@ proc setFilePermissions*(filename: string, permissions: set[FilePermission]) {.
       var res2 = setFileAttributesA(filename, res)
     if res2 == - 1'i32: raiseOSError(osLastError(), $(filename, permissions))
 
-const hasCCopyfile = defined(osx) # since osx 10.5
+const hasCCopyfile = defined(osx) and not defined(nimLegacyCopyFile)
+  # xxx instead of `nimLegacyCopyFile`, support something like: `when osxVersion >= (10, 5)`
 
 when hasCCopyfile:
+  # `copyfile` API available since osx 10.5.
   {.push nodecl, header: "<copyfile.h>".}
   type
     copyfile_state_t {.nodecl.} = pointer
@@ -1669,6 +1671,9 @@ proc copyFile*(source, dest: string) {.rtl, extern: "nos$1",
   ##
   ## If `dest` already exists, the file attributes
   ## will be preserved and the content overwritten.
+  ## 
+  ## On OSX, `copyfile` C api will be used (available since OSX 10.5) unless
+  ## `-d:nimLegacyCopyFile` is used.
   ##
   ## See also:
   ## * `copyDir proc <#copyDir,string,string>`_
