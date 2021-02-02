@@ -19,7 +19,7 @@ when declared(math.copySign):
 when declared(math.signbit):
   from math import signbit
 
-from os import getEnv, existsEnv, dirExists, fileExists, putEnv, walkDir, getAppFilename
+from os import getEnv, existsEnv, dirExists, fileExists, putEnv, walkDir, getAppFilename, DirSep
 from md5 import getMD5
 from sighashes import symBodyDigest
 from times import cpuTime
@@ -220,6 +220,9 @@ proc registerAdditionalOps*(c: PCtx) =
 
   registerCallback c, "stdlib.os.getCurrentCompilerExe", proc (a: VmArgs) {.nimcall.} =
     setResult(a, getAppFilename())
+
+  registerCallback c, "stdlib.os.dirSepImpl", proc (a: VmArgs) {.nimcall.} =
+    setResult(a, DirSep())
 
   registerCallback c, "stdlib.macros.symBodyHash", proc (a: VmArgs) =
     let n = getNode(a, 0)

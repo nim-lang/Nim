@@ -507,7 +507,7 @@ proc parentDir*(path: string): string {.
       assert parentDir("/./foo//./") == "/"
       assert parentDir("a//./") == "."
       assert parentDir("a/b/c/..") == "a"
-  result = pathnorm.normalizePath(path)
+  result = pathnorm.normalizePath(path, DirSep)
   var sepPos = parentDirPos(result)
   if sepPos >= 0:
     result = substr(result, 0, sepPos)

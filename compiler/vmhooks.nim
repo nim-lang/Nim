@@ -19,6 +19,10 @@ proc setResult*(a: VmArgs; v: bool) =
   let v = v.ord
   setX(rkInt, intVal)
 
+proc setResult*(a: VmArgs; v: char) =
+  let v = v.ord
+  setX(rkInt, intVal)
+
 proc setResult*(a: VmArgs; v: string) =
   a.slots[a.ra].ensureKind(rkNode)
   a.slots[a.ra].node = newNode(nkStrLit)

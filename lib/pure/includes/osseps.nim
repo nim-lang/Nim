@@ -24,15 +24,19 @@ const
     ##
     ## For example: `".."` for POSIX or `"::"` for the classic Macintosh.
 
-  DirSep* =
-    when defined(macos): ':'
-    elif doslikeFileSystem or defined(vxworks): '\\'
-    elif defined(RISCOS): '.'
-    else: '/'
-    ## The character used by the operating system to separate pathname
-    ## components, for example: `'/'` for POSIX, `':'` for the classic
-    ## Macintosh, and `'\\'` on Windows.
+proc dirSepImpl(): char {.inline.} =
+  when defined(macos): ':'
+  elif doslikeFileSystem or defined(vxworks): '\\'
+  elif defined(RISCOS): '.'
+  else: '/'
 
+template DirSep*(): untyped = dirSepImpl()
+  ## The character used by the operating system to separate pathname
+  ## components, for example: `'/'` for POSIX, `':'` for the classic
+  ## Macintosh, and `'\\'` on Windows.
+  # xxx: simplify this pattern, allowing `vmops` to apply to const symbols instead of just procs
+
+const
   AltSep* =
     when doslikeFileSystem: '/'
     else: DirSep
