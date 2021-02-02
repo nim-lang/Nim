@@ -113,7 +113,6 @@ proc defined*(x: untyped): bool {.magic: "Defined", noSideEffect, compileTime.}
   ## See also:
   ## * `compileOption <#compileOption,string>`_ for `on|off` options
   ## * `compileOption <#compileOption,string,string>`_ for enum options
-  ## * `declared <#declared,untyped>`_
   ## * `define pragmas <manual.html#implementation-specific-pragmas-compileminustime-define-pragmas>`_
   ##
   ## `x` is an external symbol introduced through the compiler's
