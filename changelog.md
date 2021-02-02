@@ -110,7 +110,7 @@ with other backends. see #9125. Use `-d:nimLegacyJsRound` for previous behavior.
 
 - Removed the optional `longestMatch` parameter of the `critbits._WithPrefix` iterators (it never worked reliably)
 
-- Added `math.frexp` overload procs. Deprecate `c_frexp`, use `frexp` instead.
+- Added `math.frexp` overload procs. Deprecated `c_frexp`, use `frexp` instead.
 
 ## Language changes
 
