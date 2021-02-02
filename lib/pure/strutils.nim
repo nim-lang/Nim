@@ -75,9 +75,8 @@ from math import pow, floor, log10
 from algorithm import reverse
 import std/enumutils
 
-when defined(nimVmExportFixed):
-  from unicode import toLower, toUpper
-  export toLower, toUpper
+from unicode import toLower, toUpper
+export toLower, toUpper
 
 include "system/inclrtl"
 import std/private/since
