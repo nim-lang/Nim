@@ -645,8 +645,7 @@ template offsetOf*[T](value: T; member: untyped): int =
 
 #proc offsetOf*(memberaccess: typed): int {.magic: "OffsetOf", noSideEffect.}
 
-when defined(nimtypedescfixed):
-  proc sizeof*(x: typedesc): int {.magic: "SizeOf", noSideEffect.}
+proc sizeof*(x: typedesc): int {.magic: "SizeOf", noSideEffect.}
 
 
 proc newSeq*[T](s: var seq[T], len: Natural) {.magic: "NewSeq", noSideEffect.}
@@ -2064,34 +2063,28 @@ elif hasAlloc:
         inc(i)
   {.pop.}
 
-when defined(nimvarargstyped):
-  proc echo*(x: varargs[typed, `$`]) {.magic: "Echo", tags: [WriteIOEffect],
-    benign, sideEffect.}
-    ## Writes and flushes the parameters to the standard output.
-    ##
-    ## Special built-in that takes a variable number of arguments. Each argument
-    ## is converted to a string via `$`, so it works for user-defined
-    ## types that have an overloaded `$` operator.
-    ## It is roughly equivalent to `writeLine(stdout, x); flushFile(stdout)`, but
-    ## available for the JavaScript target too.
-    ##
-    ## Unlike other IO operations this is guaranteed to be thread-safe as
-    ## `echo` is very often used for debugging convenience. If you want to use
-    ## `echo` inside a `proc without side effects
-    ## <manual.html#pragmas-nosideeffect-pragma>`_ you can use `debugEcho
-    ## <#debugEcho,varargs[typed,]>`_ instead.
+proc echo*(x: varargs[typed, `$`]) {.magic: "Echo", tags: [WriteIOEffect],
+  benign, sideEffect.}
+  ## Writes and flushes the parameters to the standard output.
+  ##
+  ## Special built-in that takes a variable number of arguments. Each argument
+  ## is converted to a string via `$`, so it works for user-defined
+  ## types that have an overloaded `$` operator.
+  ## It is roughly equivalent to `writeLine(stdout, x); flushFile(stdout)`, but
+  ## available for the JavaScript target too.
+  ##
+  ## Unlike other IO operations this is guaranteed to be thread-safe as
+  ## `echo` is very often used for debugging convenience. If you want to use
+  ## `echo` inside a `proc without side effects
+  ## <manual.html#pragmas-nosideeffect-pragma>`_ you can use `debugEcho
+  ## <#debugEcho,varargs[typed,]>`_ instead.
 
-  proc debugEcho*(x: varargs[typed, `$`]) {.magic: "Echo", noSideEffect,
-                                            tags: [], raises: [].}
-    ## Same as `echo <#echo,varargs[typed,]>`_, but as a special semantic rule,
-    ## `debugEcho` pretends to be free of side effects, so that it can be used
-    ## for debugging routines marked as `noSideEffect
-    ## <manual.html#pragmas-nosideeffect-pragma>`_.
-else:
-  proc echo*(x: varargs[untyped, `$`]) {.magic: "Echo", tags: [WriteIOEffect],
-    benign, sideEffect.}
-  proc debugEcho*(x: varargs[untyped, `$`]) {.magic: "Echo", noSideEffect,
-                                             tags: [], raises: [].}
+proc debugEcho*(x: varargs[typed, `$`]) {.magic: "Echo", noSideEffect,
+                                          tags: [], raises: [].}
+  ## Same as `echo <#echo,varargs[typed,]>`_, but as a special semantic rule,
+  ## `debugEcho` pretends to be free of side effects, so that it can be used
+  ## for debugging routines marked as `noSideEffect
+  ## <manual.html#pragmas-nosideeffect-pragma>`_.
 
 template newException*(exceptn: typedesc, message: string;
                        parentException: ref Exception = nil): untyped =
