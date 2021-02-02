@@ -229,15 +229,6 @@ proc intVal*(n: NimNode): BiggestInt {.magic: "NIntVal", noSideEffect.}
 proc floatVal*(n: NimNode): BiggestFloat {.magic: "NFloatVal", noSideEffect.}
   ## Returns a float from any floating point literal.
 
-{.push warnings: off.}
-
-proc ident*(n: NimNode): NimIdent {.magic: "NIdent", noSideEffect, deprecated:
-  "Deprecated since version 0.18.1; All functionality is defined on 'NimNode'.".}
-
-proc symbol*(n: NimNode): NimSym {.magic: "NSymbol", noSideEffect, deprecated:
-  "Deprecated since version 0.18.1; All functionality is defined on 'NimNode'.".}
-
-proc getImpl*(s: NimSym): NimNode {.magic: "GetImpl", noSideEffect, deprecated: "use `getImpl: NimNode -> NimNode` instead".}
 
 proc symKind*(symbol: NimNode): NimSymKind {.magic: "NSymKind", noSideEffect.}
 proc getImpl*(symbol: NimNode): NimNode {.magic: "GetImpl", noSideEffect.}
@@ -247,6 +238,16 @@ proc strVal*(n: NimNode): string  {.magic: "NStrVal", noSideEffect.}
   ##
   ## See also:
   ## * `strVal= proc<#strVal=,NimNode,string>`_ for setting the string value.
+
+{.push warnings: off.} # silence `deprecated`
+
+proc ident*(n: NimNode): NimIdent {.magic: "NIdent", noSideEffect, deprecated:
+  "Deprecated since version 0.18.1; All functionality is defined on 'NimNode'.".}
+
+proc symbol*(n: NimNode): NimSym {.magic: "NSymbol", noSideEffect, deprecated:
+  "Deprecated since version 0.18.1; All functionality is defined on 'NimNode'.".}
+
+proc getImpl*(s: NimSym): NimNode {.magic: "GetImpl", noSideEffect, deprecated: "use `getImpl: NimNode -> NimNode` instead".}
 
 proc `$`*(i: NimIdent): string {.magic: "NStrVal", noSideEffect, deprecated:
   "Deprecated since version 0.18.1; Use 'strVal' instead.".}
