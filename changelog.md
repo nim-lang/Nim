@@ -104,6 +104,7 @@ with other backends. see #9125. Use `-d:nimLegacyJsRound` for previous behavior.
   `-d:nimLegacyParseQueryStrict`. `cgi.decodeData` which uses the same
   underlying code is also updated the same way.
 
+- Added `sugar.dumpToString` which improves on `sugar.dump`.
 
 
 
@@ -120,6 +121,10 @@ with other backends. see #9125. Use `-d:nimLegacyJsRound` for previous behavior.
 - nil dereference is not allowed at compile time. `cast[ptr int](nil)[]` is rejected at compile time.
 
 - `typetraits.distinctBase` now is identity instead of error for non distinct types.
+
+- `os.copyFile` is now 2.5x faster on OSX, by using `copyfile` from `copyfile.h`;
+  use `-d:nimLegacyCopyFile` for OSX < 10.5.
+
 
 ## Compiler changes
 

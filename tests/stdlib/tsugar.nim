@@ -63,6 +63,16 @@ template main() =
     doAssert $((float) {.inline.} -> int) == "proc (i0: float): int{.inline.}"
     doAssert $((float, bool) {.inline.} -> int) == "proc (i0: float, i1: bool): int{.inline.}"
 
+  block: # dumpToString
+    template square(x): untyped = x * x
+    let x = 10
+    doAssert dumpToString(square(x)) == "square(x): x * x = 100"
+    let s = dumpToString(doAssert 1+1 == 2)
+    doAssert "failedAssertImpl" in s
+    let s2 = dumpToString:
+      doAssertRaises(AssertionDefect): doAssert false
+    doAssert "except AssertionDefect" in s2
+
   block: # capture
     var closure1: () -> int
     for i in 0 .. 10:

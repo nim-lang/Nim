@@ -151,7 +151,7 @@ proc semEnum(c: PContext, n: PNode, prev: PType): PType =
       wrongRedefinition(c, e.info, e.name.s, conflict.info)
     inc(counter)
   if isPure and sfExported in result.sym.flags:
-    addPureEnum(c, result.sym)
+    addPureEnum(c, LazySym(sym: result.sym))
   if tfNotNil in e.typ.flags and not hasNull:
     result.flags.incl tfRequiresInit
   setToStringProc(c.graph, result, genEnumToStrProc(result, n.info, c.graph, c.idgen))
