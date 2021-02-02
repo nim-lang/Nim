@@ -43,10 +43,10 @@ proc initDefines*(symbols: StringTableRef) =
   defineSymbol("nimunion") # deadcode
   defineSymbol("nimnewshared") # deadcode
   defineSymbol("nimNewTypedesc") # deadcode
-  defineSymbol("nimrequiresnimframe")
-  defineSymbol("nimparsebiggestfloatmagic")
-  defineSymbol("nimalias")
-  defineSymbol("nimlocks")
+  defineSymbol("nimrequiresnimframe") # deadcode
+  defineSymbol("nimparsebiggestfloatmagic") # deadcode
+  defineSymbol("nimalias") # deadcode
+  defineSymbol("nimlocks") # deadcode
   defineSymbol("nimnode")
   defineSymbol("nimvarargstyped") # deadcode
   defineSymbol("nimtypedescfixed") # deadcode
