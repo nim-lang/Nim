@@ -239,41 +239,22 @@ proc symbol*(n: NimNode): NimSym {.magic: "NSymbol", noSideEffect, deprecated:
 
 proc getImpl*(s: NimSym): NimNode {.magic: "GetImpl", noSideEffect, deprecated: "use `getImpl: NimNode -> NimNode` instead".}
 
-when defined(nimSymKind):
-  proc symKind*(symbol: NimNode): NimSymKind {.magic: "NSymKind", noSideEffect.}
-  proc getImpl*(symbol: NimNode): NimNode {.magic: "GetImpl", noSideEffect.}
-    ## Returns a copy of the declaration of a symbol or `nil`.
-  proc strVal*(n: NimNode): string  {.magic: "NStrVal", noSideEffect.}
-    ## Returns the string value of an identifier, symbol, comment, or string literal.
-    ##
-    ## See also:
-    ## * `strVal= proc<#strVal=,NimNode,string>`_ for setting the string value.
+proc symKind*(symbol: NimNode): NimSymKind {.magic: "NSymKind", noSideEffect.}
+proc getImpl*(symbol: NimNode): NimNode {.magic: "GetImpl", noSideEffect.}
+  ## Returns a copy of the declaration of a symbol or `nil`.
+proc strVal*(n: NimNode): string  {.magic: "NStrVal", noSideEffect.}
+  ## Returns the string value of an identifier, symbol, comment, or string literal.
+  ##
+  ## See also:
+  ## * `strVal= proc<#strVal=,NimNode,string>`_ for setting the string value.
 
-  proc `$`*(i: NimIdent): string {.magic: "NStrVal", noSideEffect, deprecated:
-    "Deprecated since version 0.18.1; Use 'strVal' instead.".}
-    ## Converts a Nim identifier to a string.
+proc `$`*(i: NimIdent): string {.magic: "NStrVal", noSideEffect, deprecated:
+  "Deprecated since version 0.18.1; Use 'strVal' instead.".}
+  ## Converts a Nim identifier to a string.
 
-  proc `$`*(s: NimSym): string {.magic: "NStrVal", noSideEffect, deprecated:
-    "Deprecated since version 0.18.1; Use 'strVal' instead.".}
-    ## Converts a Nim symbol to a string.
-
-else: # bootstrapping substitute
-  proc getImpl*(symbol: NimNode): NimNode =
-    symbol.symbol.getImpl
-
-  proc strValOld(n: NimNode): string {.magic: "NStrVal", noSideEffect.}
-
-  proc `$`*(s: NimSym): string {.magic: "IdentToStr", noSideEffect.}
-
-  proc `$`*(i: NimIdent): string {.magic: "IdentToStr", noSideEffect.}
-
-  proc strVal*(n: NimNode): string =
-    if n.kind == nnkIdent:
-      $n.ident
-    elif n.kind == nnkSym:
-      $n.symbol
-    else:
-      n.strValOld
+proc `$`*(s: NimSym): string {.magic: "NStrVal", noSideEffect, deprecated:
+  "Deprecated since version 0.18.1; Use 'strVal' instead.".}
+  ## Converts a Nim symbol to a string.
 
 {.pop.}
 
