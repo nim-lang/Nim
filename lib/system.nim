@@ -470,25 +470,24 @@ proc shallowCopy*[T](x: var T, y: T) {.noSideEffect, magic: "ShallowCopy".}
   ## There is a reason why the default assignment does a deep copy of sequences
   ## and strings.
 
-when defined(nimArrIdx):
-  # :array|openArray|string|seq|cstring|tuple
-  proc `[]`*[I: Ordinal;T](a: T; i: I): T {.
-    noSideEffect, magic: "ArrGet".}
-  proc `[]=`*[I: Ordinal;T,S](a: T; i: I;
-    x: sink S) {.noSideEffect, magic: "ArrPut".}
-  proc `=`*[T](dest: var T; src: T) {.noSideEffect, magic: "Asgn".}
+# :array|openArray|string|seq|cstring|tuple
+proc `[]`*[I: Ordinal;T](a: T; i: I): T {.
+  noSideEffect, magic: "ArrGet".}
+proc `[]=`*[I: Ordinal;T,S](a: T; i: I;
+  x: sink S) {.noSideEffect, magic: "ArrPut".}
+proc `=`*[T](dest: var T; src: T) {.noSideEffect, magic: "Asgn".}
 
-  proc arrGet[I: Ordinal;T](a: T; i: I): T {.
-    noSideEffect, magic: "ArrGet".}
-  proc arrPut[I: Ordinal;T,S](a: T; i: I;
-    x: S) {.noSideEffect, magic: "ArrPut".}
+proc arrGet[I: Ordinal;T](a: T; i: I): T {.
+  noSideEffect, magic: "ArrGet".}
+proc arrPut[I: Ordinal;T,S](a: T; i: I;
+  x: S) {.noSideEffect, magic: "ArrPut".}
 
-  proc `=destroy`*[T](x: var T) {.inline, magic: "Destroy".} =
-    ## Generic `destructor`:idx: implementation that can be overridden.
-    discard
-  proc `=sink`*[T](x: var T; y: T) {.inline, magic: "Asgn".} =
-    ## Generic `sink`:idx: implementation that can be overridden.
-    shallowCopy(x, y)
+proc `=destroy`*[T](x: var T) {.inline, magic: "Destroy".} =
+  ## Generic `destructor`:idx: implementation that can be overridden.
+  discard
+proc `=sink`*[T](x: var T; y: T) {.inline, magic: "Asgn".} =
+  ## Generic `sink`:idx: implementation that can be overridden.
+  shallowCopy(x, y)
 
 type
   HSlice*[T, U] = object   ## "Heterogeneous" slice type.

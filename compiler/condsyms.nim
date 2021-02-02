@@ -47,14 +47,14 @@ proc initDefines*(symbols: StringTableRef) =
   defineSymbol("nimparsebiggestfloatmagic") # deadcode
   defineSymbol("nimalias") # deadcode
   defineSymbol("nimlocks") # deadcode
-  defineSymbol("nimnode")
+  defineSymbol("nimnode") # deadcode pending tests/deps/opengl-1.1.0/opengl.nim
   defineSymbol("nimvarargstyped") # deadcode
   defineSymbol("nimtypedescfixed") # deadcode
   defineSymbol("nimKnowsNimvm") # deadcode
-  defineSymbol("nimArrIdx")
+  defineSymbol("nimArrIdx") # deadcode
   defineSymbol("nimHasalignOf") # deadcode
-  defineSymbol("nimDistros")
-  defineSymbol("nimHasCppDefine")
+  defineSymbol("nimDistros") # deadcode
+  defineSymbol("nimHasCppDefine") # deadcode
   defineSymbol("nimGenericInOutFlags")
   when false: defineSymbol("nimHasOpt")
   defineSymbol("nimNoArrayToCstringConversion") # deadcode
