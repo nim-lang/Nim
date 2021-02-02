@@ -52,7 +52,7 @@ proc initDefines*(symbols: StringTableRef) =
   defineSymbol("nimtypedescfixed")
   defineSymbol("nimKnowsNimvm")
   defineSymbol("nimArrIdx")
-  defineSymbol("nimHasalignOf")
+  defineSymbol("nimHasalignOf") # deadcode
   defineSymbol("nimDistros")
   defineSymbol("nimHasCppDefine")
   defineSymbol("nimGenericInOutFlags")

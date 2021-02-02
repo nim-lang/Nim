@@ -631,20 +631,19 @@ proc sizeof*[T](x: T): int {.magic: "SizeOf", noSideEffect.}
   ##  sizeof('A') # => 1
   ##  sizeof(2) # => 8
 
-when defined(nimHasalignOf):
-  proc alignof*[T](x: T): int {.magic: "AlignOf", noSideEffect.}
-  proc alignof*(x: typedesc): int {.magic: "AlignOf", noSideEffect.}
+proc alignof*[T](x: T): int {.magic: "AlignOf", noSideEffect.}
+proc alignof*(x: typedesc): int {.magic: "AlignOf", noSideEffect.}
 
-  proc offsetOfDotExpr(typeAccess: typed): int {.magic: "OffsetOf", noSideEffect, compileTime.}
+proc offsetOfDotExpr(typeAccess: typed): int {.magic: "OffsetOf", noSideEffect, compileTime.}
 
-  template offsetOf*[T](t: typedesc[T]; member: untyped): int =
-    var tmp {.noinit.}: ptr T
-    offsetOfDotExpr(tmp[].member)
+template offsetOf*[T](t: typedesc[T]; member: untyped): int =
+  var tmp {.noinit.}: ptr T
+  offsetOfDotExpr(tmp[].member)
 
-  template offsetOf*[T](value: T; member: untyped): int =
-    offsetOfDotExpr(value.member)
+template offsetOf*[T](value: T; member: untyped): int =
+  offsetOfDotExpr(value.member)
 
-  #proc offsetOf*(memberaccess: typed): int {.magic: "OffsetOf", noSideEffect.}
+#proc offsetOf*(memberaccess: typed): int {.magic: "OffsetOf", noSideEffect.}
 
 when defined(nimtypedescfixed):
   proc sizeof*(x: typedesc): int {.magic: "SizeOf", noSideEffect.}
