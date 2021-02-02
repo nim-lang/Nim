@@ -57,7 +57,7 @@ proc initDefines*(symbols: StringTableRef) =
   defineSymbol("nimHasCppDefine")
   defineSymbol("nimGenericInOutFlags")
   when false: defineSymbol("nimHasOpt")
-  defineSymbol("nimNoArrayToCstringConversion")
+  defineSymbol("nimNoArrayToCstringConversion") # deadcode
   defineSymbol("nimHasRunnableExamples")
   defineSymbol("nimNewDot")
   defineSymbol("nimHasNilChecks")

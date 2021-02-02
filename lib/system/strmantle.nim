@@ -329,11 +329,7 @@ proc nimParseBiggestFloat(s: string, number: var BiggestFloat,
   t[ti-2] = ('0'.ord + absExponent mod 10).char
   absExponent = absExponent div 10
   t[ti-3] = ('0'.ord + absExponent mod 10).char
-
-  when defined(nimNoArrayToCstringConversion):
-    number = c_strtod(addr t, nil)
-  else:
-    number = c_strtod(t, nil)
+  number = c_strtod(addr t, nil)
 
 when defined(nimHasInvariant):
   {.pop.} # staticBoundChecks

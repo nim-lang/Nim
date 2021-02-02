@@ -2341,17 +2341,11 @@ func formatBiggestFloat*(f: BiggestFloat, format: FloatFormatMode = ffDefault,
       frmtstr[3] = '*'
       frmtstr[4] = floatFormatToChar[format]
       frmtstr[5] = '\0'
-      when defined(nimNoArrayToCstringConversion):
-        L = c_sprintf(addr buf, addr frmtstr, precision, f)
-      else:
-        L = c_sprintf(buf, frmtstr, precision, f)
+      L = c_sprintf(addr buf, addr frmtstr, precision, f)
     else:
       frmtstr[1] = floatFormatToChar[format]
       frmtstr[2] = '\0'
-      when defined(nimNoArrayToCstringConversion):
-        L = c_sprintf(addr buf, addr frmtstr, f)
-      else:
-        L = c_sprintf(buf, frmtstr, f)
+      L = c_sprintf(addr buf, addr frmtstr, f)
     result = newString(L)
     for i in 0 ..< L:
       # Depending on the locale either dot or comma is produced,

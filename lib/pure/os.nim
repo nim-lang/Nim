@@ -2262,10 +2262,7 @@ iterator walkDir*(dir: string; relative = false, checkDir = false):
         while true:
           var x = readdir(d)
           if x == nil: break
-          when defined(nimNoArrayToCstringConversion):
-            var y = $cstring(addr x.d_name)
-          else:
-            var y = $x.d_name.cstring
+          var y = $cstring(addr x.d_name)
           if y != "." and y != "..":
             var s: Stat
             let path = dir / y
