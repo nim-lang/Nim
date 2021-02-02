@@ -667,7 +667,7 @@ proc processCategory(r: var TResults, cat: Category,
       testNimInAction(r, cat, options)
     of "untestable":
       # These require special treatment e.g. because they depend on a third party
-      # dependency; see `trunner_thirdparty` which runs some of those.
+      # dependency; see `trunner_special` which runs some of those.
       discard
     else:
       handled = false
