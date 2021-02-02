@@ -87,7 +87,7 @@ iterator items*[T: enum](E: typedesc[T]): T =
   for v in low(E) .. high(E):
     yield v
 
-iterator items*[T](s: HSlice[T, T]): T =
+iterator items*[T: Ordinal](s: Slice[T]): T =
   ## Iterates over the slice `s`, yielding each value between `s.a` and `s.b`
   ## (inclusively).
   for x in s.a .. s.b:

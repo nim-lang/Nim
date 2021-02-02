@@ -12,15 +12,15 @@ proc `[]`(s: var string; i: BackwardsIndex): var char
   first type mismatch at position: 0
 proc `[]`[I: Ordinal; T](a: T; i: I): T
   first type mismatch at position: 0
-proc `[]`[Idx, T, U, V](a: array[Idx, T]; x: HSlice[U, V]): seq[T]
+proc `[]`[Idx, T; U, V: Ordinal](a: array[Idx, T]; x: HSlice[U, V]): seq[T]
   first type mismatch at position: 0
 proc `[]`[Idx, T](a: array[Idx, T]; i: BackwardsIndex): T
   first type mismatch at position: 0
 proc `[]`[Idx, T](a: var array[Idx, T]; i: BackwardsIndex): var T
   first type mismatch at position: 0
-proc `[]`[T, U, V](s: openArray[T]; x: HSlice[U, V]): seq[T]
+proc `[]`[T, U: Ordinal](s: string; x: HSlice[T, U]): string
   first type mismatch at position: 0
-proc `[]`[T, U](s: string; x: HSlice[T, U]): string
+proc `[]`[T; U, V: Ordinal](s: openArray[T]; x: HSlice[U, V]): seq[T]
   first type mismatch at position: 0
 proc `[]`[T](s: openArray[T]; i: BackwardsIndex): T
   first type mismatch at position: 0

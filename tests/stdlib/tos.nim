@@ -40,20 +40,25 @@ block fileOperations:
     doAssertRaises(OSError): copyFile(dname/"nonexistant.txt", dname/"nonexistant.txt")
     let fname = "D20201009T112235"
     let fname2 = "D20201009T112235.2"
-    writeFile(dname/fname, "foo")
+    let str = "foo1\0foo2\nfoo3\0"
+    let file = dname/fname
+    let file2 = dname/fname2
+    writeFile(file, str)
+    doAssert readFile(file) == str
     let sub = "sub"
-    doAssertRaises(OSError): copyFile(dname/fname, dname/sub/fname2)
-    doAssertRaises(OSError): copyFileToDir(dname/fname, dname/sub)
-    doAssertRaises(ValueError): copyFileToDir(dname/fname, "")
-    copyFile(dname/fname, dname/fname2)
-    doAssert fileExists(dname/fname2)
+    doAssertRaises(OSError): copyFile(file, dname/sub/fname2)
+    doAssertRaises(OSError): copyFileToDir(file, dname/sub)
+    doAssertRaises(ValueError): copyFileToDir(file, "")
+    copyFile(file, file2)
+    doAssert fileExists(file2)
+    doAssert readFile(file2) == str
     createDir(dname/sub)
-    copyFileToDir(dname/fname, dname/sub)
+    copyFileToDir(file, dname/sub)
     doAssert fileExists(dname/sub/fname)
     removeDir(dname/sub)
     doAssert not dirExists(dname/sub)
-    removeFile(dname/fname)
-    removeFile(dname/fname2)
+    removeFile(file)
+    removeFile(file2)
 
   # Test creating files and dirs
   for dir in dirs:

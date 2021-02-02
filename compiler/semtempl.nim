@@ -555,6 +555,10 @@ proc semTemplBody(c: var TemplCtx, n: PNode): PNode =
       result[1] = semTemplBody(c, n[1])
     else:
       result = semTemplBodySons(c, n)
+  of nkTableConstr:
+    # also transform the keys (bug #12595)
+    for i in 0..<n.len:
+      result[i] = semTemplBodySons(c, n[i])
   else:
     result = semTemplBodySons(c, n)
 

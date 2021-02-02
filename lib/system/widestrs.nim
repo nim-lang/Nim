@@ -142,6 +142,9 @@ iterator runes(s: cstring, L: int): int =
     fastRuneAt(s, i, L, result, true)
     yield result
 
+proc newWideCString*(size: int): WideCStringObj =
+  createWide(result, size * 2 + 2)
+
 proc newWideCString*(source: cstring, L: int): WideCStringObj =
   createWide(result, L * 2 + 2)
   var d = 0

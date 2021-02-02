@@ -1634,6 +1634,24 @@ proc setFilePermissions*(filename: string, permissions: set[FilePermission]) {.
       var res2 = setFileAttributesA(filename, res)
     if res2 == - 1'i32: raiseOSError(osLastError(), $(filename, permissions))
 
+const hasCCopyfile = defined(osx) and not defined(nimLegacyCopyFile)
+  # xxx instead of `nimLegacyCopyFile`, support something like: `when osxVersion >= (10, 5)`
+
+when hasCCopyfile:
+  # `copyfile` API available since osx 10.5.
+  {.push nodecl, header: "<copyfile.h>".}
+  type
+    copyfile_state_t {.nodecl.} = pointer
+    copyfile_flags_t = cint
+  proc copyfile_state_alloc(): copyfile_state_t
+  proc copyfile_state_free(state: copyfile_state_t): cint
+  proc c_copyfile(src, dst: cstring,  state: copyfile_state_t, flags: copyfile_flags_t): cint {.importc: "copyfile".}
+  # replace with `let` pending bootstrap >= 1.4.0
+  var
+    COPYFILE_DATA {.nodecl.}: copyfile_flags_t
+    COPYFILE_XATTR {.nodecl.}: copyfile_flags_t
+  {.pop.}
+
 proc copyFile*(source, dest: string) {.rtl, extern: "nos$1",
   tags: [ReadIOEffect, WriteIOEffect], noWeirdTarget.} =
   ## Copies a file from `source` to `dest`, where `dest.parentDir` must exist.
@@ -1653,6 +1671,9 @@ proc copyFile*(source, dest: string) {.rtl, extern: "nos$1",
   ##
   ## If `dest` already exists, the file attributes
   ## will be preserved and the content overwritten.
+  ## 
+  ## On OSX, `copyfile` C api will be used (available since OSX 10.5) unless
+  ## `-d:nimLegacyCopyFile` is used.
   ##
   ## See also:
   ## * `copyDir proc <#copyDir,string,string>`_
@@ -1668,6 +1689,16 @@ proc copyFile*(source, dest: string) {.rtl, extern: "nos$1",
       if copyFileW(s, d, 0'i32) == 0'i32: raiseOSError(osLastError(), $(source, dest))
     else:
       if copyFileA(source, dest, 0'i32) == 0'i32: raiseOSError(osLastError(), $(source, dest))
+  elif hasCCopyfile:
+    let state = copyfile_state_alloc()
+    # xxx `COPYFILE_STAT` could be used for one-shot `copyFileWithPermissions`.
+    let status = c_copyfile(source.cstring, dest.cstring, state, COPYFILE_DATA)
+    if status != 0:
+      let err = osLastError()
+      discard copyfile_state_free(state)
+      raiseOSError(err, $(source, dest))
+    let status2 = copyfile_state_free(state)
+    if status2 != 0: raiseOSError(osLastError(), $(source, dest))
   else:
     # generic version of copyFile which works for any platform:
     const bufSize = 8000 # better for memory manager

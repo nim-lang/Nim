@@ -1077,10 +1077,10 @@ proc genAsgnAux(p: PProc, x, y: PNode, noCopyNeeded: bool) =
       # supports proc getF(): var T
       if x.kind in {nkHiddenDeref, nkDerefExpr} and x[0].kind in nkCallKinds:
           lineF(p, "nimCopy($1, $2, $3);$n",
-                [a.res, b.res, genTypeInfo(p, y.typ)])
+                [a.res, b.res, genTypeInfo(p, x.typ)])
       else:
         lineF(p, "$1 = nimCopy($1, $2, $3);$n",
-              [a.res, b.res, genTypeInfo(p, y.typ)])
+              [a.res, b.res, genTypeInfo(p, x.typ)])
   of etyBaseIndex:
     if a.typ != etyBaseIndex or b.typ != etyBaseIndex:
       if y.kind == nkCall:
