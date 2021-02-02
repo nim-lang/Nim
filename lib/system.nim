@@ -57,7 +57,14 @@ include "system/basic_types"
 
 proc compileOption*(option: string): bool {.
   magic: "CompileOption", noSideEffect.}
-  ## Can be used to determine an `on|off` compile-time option. Example:
+  ## Can be used to determine an `on|off` compile-time option.
+  ##
+  ## See also:
+  ## * `compileOption <#compileOption,string,string>`_ for enum options
+  ## * `defined <#defined,untyped>`_
+  ## * `std/compilesettings module <compilesettings.html>`_
+  ##
+  ## Example:
   ##
   ## .. code-block:: Nim
   ##   when compileOption("floatchecks"):
@@ -65,7 +72,14 @@ proc compileOption*(option: string): bool {.
 
 proc compileOption*(option, arg: string): bool {.
   magic: "CompileOptionArg", noSideEffect.}
-  ## Can be used to determine an enum compile-time option. Example:
+  ## Can be used to determine an enum compile-time option.
+  ##
+  ## See also:
+  ## * `compileOption <#compileOption,string>`_ for `on|off` options
+  ## * `defined <#defined,untyped>`_
+  ## * `std/compilesettings module <compilesettings.html>`_
+  ##
+  ## Example:
   ##
   ## .. code-block:: Nim
   ##   when compileOption("opt", "size") and compileOption("gc", "boehm"):
@@ -94,6 +108,11 @@ type
 proc defined*(x: untyped): bool {.magic: "Defined", noSideEffect, compileTime.}
   ## Special compile-time procedure that checks whether `x` is
   ## defined.
+  ##
+  ## See also:
+  ## * `compileOption <#compileOption,string>`_ for `on|off` options
+  ## * `compileOption <#compileOption,string,string>`_ for enum options
+  ## * `define pragmas <manual.html#implementation-specific-pragmas-compileminustime-define-pragmas>`_
   ##
   ## `x` is an external symbol introduced through the compiler's
   ## `-d:x switch <nimc.html#compiler-usage-compileminustime-symbols>`_ to enable
