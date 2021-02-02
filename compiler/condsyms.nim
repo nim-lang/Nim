@@ -38,7 +38,7 @@ proc initDefines*(symbols: StringTableRef) =
   defineSymbol("niminheritable")
   defineSymbol("nimmixin")
   defineSymbol("nimeffects")
-  defineSymbol("nimbabel")
+  defineSymbol("nimbabel") # deadcode
   defineSymbol("nimcomputedgoto")
   defineSymbol("nimunion")
   defineSymbol("nimnewshared")
