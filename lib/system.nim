@@ -944,52 +944,42 @@ proc cmp*(x, y: string): int {.noSideEffect.}
   ## **Note**: The precise result values depend on the used C runtime library and
   ## can differ between operating systems!
 
-when defined(nimHasDefault):
-  proc `@`* [IDX, T](a: sink array[IDX, T]): seq[T] {.
-    magic: "ArrToSeq", noSideEffect.}
-    ## Turns an array into a sequence.
-    ##
-    ## This most often useful for constructing
-    ## sequences with the array constructor: `@[1, 2, 3]` has the type
-    ## `seq[int]`, while `[1, 2, 3]` has the type `array[0..2, int]`.
-    ##
-    ## .. code-block:: Nim
-    ##   let
-    ##     a = [1, 3, 5]
-    ##     b = "foo"
-    ##
-    ##   echo @a # => @[1, 3, 5]
-    ##   echo @b # => @['f', 'o', 'o']
+proc `@`* [IDX, T](a: sink array[IDX, T]): seq[T] {.magic: "ArrToSeq", noSideEffect.}
+  ## Turns an array into a sequence.
+  ##
+  ## This most often useful for constructing
+  ## sequences with the array constructor: `@[1, 2, 3]` has the type
+  ## `seq[int]`, while `[1, 2, 3]` has the type `array[0..2, int]`.
+  ##
+  ## .. code-block:: Nim
+  ##   let
+  ##     a = [1, 3, 5]
+  ##     b = "foo"
+  ##
+  ##   echo @a # => @[1, 3, 5]
+  ##   echo @b # => @['f', 'o', 'o']
 
-  proc default*(T: typedesc): T {.magic: "Default", noSideEffect.} =
-    ## returns the default value of the type `T`.
-    runnableExamples:
-      assert (int, float).default == (0, 0.0)
-      # note: `var a = default(T)` is usually the same as `var a: T` and (currently) generates
-      # a value whose binary representation is all 0, regardless of whether this
-      # would violate type constraints such as `range`, `not nil`, etc. This
-      # property is required to implement certain algorithms efficiently which
-      # may require intermediate invalid states.
-      type Foo = object
-        a: range[2..6]
-      var a1: range[2..6] # currently, this compiles
-      # var a2: Foo # currently, this errors: Error: The Foo type doesn't have a default value.
-      # var a3 = Foo() # ditto
-      var a3 = Foo.default # this works, but generates a `UnsafeDefault` warning.
-    # note: the doc comment also explains why `default` can't be implemented
-    # via: `template default*[T](t: typedesc[T]): T = (var v: T; v)`
+proc default*(T: typedesc): T {.magic: "Default", noSideEffect.} =
+  ## returns the default value of the type `T`.
+  runnableExamples:
+    assert (int, float).default == (0, 0.0)
+    # note: `var a = default(T)` is usually the same as `var a: T` and (currently) generates
+    # a value whose binary representation is all 0, regardless of whether this
+    # would violate type constraints such as `range`, `not nil`, etc. This
+    # property is required to implement certain algorithms efficiently which
+    # may require intermediate invalid states.
+    type Foo = object
+      a: range[2..6]
+    var a1: range[2..6] # currently, this compiles
+    # var a2: Foo # currently, this errors: Error: The Foo type doesn't have a default value.
+    # var a3 = Foo() # ditto
+    var a3 = Foo.default # this works, but generates a `UnsafeDefault` warning.
+  # note: the doc comment also explains why `default` can't be implemented
+  # via: `template default*[T](t: typedesc[T]): T = (var v: T; v)`
 
-  proc reset*[T](obj: var T) {.noSideEffect.} =
-    ## Resets an object `obj` to its default value.
-    obj = default(typeof(obj))
-
-else:
-  proc `@`* [IDX, T](a: array[IDX, T]): seq[T] {.
-    magic: "ArrToSeq", noSideEffect.}
-  when defined(nimV2):
-    proc reset*[T](obj: var T) {.magic: "Destroy", noSideEffect.}
-  else:
-    proc reset*[T](obj: var T) {.magic: "Reset", noSideEffect.}
+proc reset*[T](obj: var T) {.noSideEffect.} =
+  ## Resets an object `obj` to its default value.
+  obj = default(typeof(obj))
 
 proc setLen*[T](s: var seq[T], newlen: Natural) {.
   magic: "SetLengthSeq", noSideEffect.}

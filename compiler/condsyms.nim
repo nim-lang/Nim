@@ -81,7 +81,7 @@ proc initDefines*(symbols: StringTableRef) =
   defineSymbol("nimHasHotCodeReloading") # deadcode
   defineSymbol("nimHasNilSeqs") # deadcode
   defineSymbol("nimHasSignatureHashInMacro") # deadcode
-  defineSymbol("nimHasDefault")
+  defineSymbol("nimHasDefault") # deadcode
   defineSymbol("nimMacrosSizealignof")
   defineSymbol("nimNoZeroExtendMagic")
   defineSymbol("nimMacrosGetNodeId")
