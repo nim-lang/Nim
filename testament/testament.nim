@@ -683,7 +683,7 @@ proc main() =
     case p.key.normalize
     of "print", "verbose": optPrintResults = true
     of "failing": optFailing = true
-    of "pedantic": discard "now always enabled" # deadcode
+    of "pedantic": discard # deadcode
     of "targets":
       targetsStr = p.val
       gTargets = parseTargets(targetsStr)
