@@ -62,6 +62,7 @@ type
     position*: int
     offset*: int
     externalName*: LitId # instead of TLoc
+    locFlags*: TLocFlags
     annex*: PackedLib
     when hasFFI:
       cname*: LitId

@@ -2532,9 +2532,9 @@ proc semExportExcept(c: PContext, n: PNode): PNode =
 
 proc semExport(c: PContext, n: PNode): PNode =
   proc specialSyms(c: PContext; s: PSym) {.inline.} =
-    if s.kind == skConverter: addConverter(c, s)
+    if s.kind == skConverter: addConverter(c, LazySym(sym: s))
     elif s.kind == skType and s.typ != nil and s.typ.kind == tyEnum and sfPure in s.flags:
-      addPureEnum(c, s)
+      addPureEnum(c, LazySym(sym: s))
 
   result = newNodeI(nkExportStmt, n.info)
   for i in 0..<n.len:
