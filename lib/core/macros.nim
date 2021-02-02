@@ -1396,45 +1396,26 @@ proc copy*(node: NimNode): NimNode {.compileTime.} =
   ## An alias for `copyNimTree<#copyNimTree,NimNode>`_.
   return node.copyNimTree()
 
-when defined(nimVmEqIdent):
-  proc eqIdent*(a: string; b: string): bool {.magic: "EqIdent", noSideEffect.}
-    ## Style insensitive comparison.
+proc eqIdent*(a: string; b: string): bool {.magic: "EqIdent", noSideEffect.}
+  ## Style insensitive comparison.
 
-  proc eqIdent*(a: NimNode; b: string): bool {.magic: "EqIdent", noSideEffect.}
-    ## Style insensitive comparison.  ``a`` can be an identifier or a
-    ## symbol. ``a`` may be wrapped in an export marker
-    ## (``nnkPostfix``) or quoted with backticks (``nnkAccQuoted``),
-    ## these nodes will be unwrapped.
+proc eqIdent*(a: NimNode; b: string): bool {.magic: "EqIdent", noSideEffect.}
+  ## Style insensitive comparison.  ``a`` can be an identifier or a
+  ## symbol. ``a`` may be wrapped in an export marker
+  ## (``nnkPostfix``) or quoted with backticks (``nnkAccQuoted``),
+  ## these nodes will be unwrapped.
 
-  proc eqIdent*(a: string; b: NimNode): bool {.magic: "EqIdent", noSideEffect.}
-    ## Style insensitive comparison.  ``b`` can be an identifier or a
-    ## symbol. ``b`` may be wrapped in an export marker
-    ## (``nnkPostfix``) or quoted with backticks (``nnkAccQuoted``),
-    ## these nodes will be unwrapped.
+proc eqIdent*(a: string; b: NimNode): bool {.magic: "EqIdent", noSideEffect.}
+  ## Style insensitive comparison.  ``b`` can be an identifier or a
+  ## symbol. ``b`` may be wrapped in an export marker
+  ## (``nnkPostfix``) or quoted with backticks (``nnkAccQuoted``),
+  ## these nodes will be unwrapped.
 
-  proc eqIdent*(a: NimNode; b: NimNode): bool {.magic: "EqIdent", noSideEffect.}
-    ## Style insensitive comparison.  ``a`` and ``b`` can be an
-    ## identifier or a symbol. Both may be wrapped in an export marker
-    ## (``nnkPostfix``) or quoted with backticks (``nnkAccQuoted``),
-    ## these nodes will be unwrapped.
-
-else:
-  from std/private/strimpl import cmpNimIdentifier
-
-  proc eqIdent*(a, b: string): bool = cmpNimIdentifier(a, b) == 0
-    ## Check if two idents are equal.
-
-  proc eqIdent*(node: NimNode; s: string): bool {.compileTime.} =
-    ## Check if node is some identifier node (``nnkIdent``, ``nnkSym``, etc.)
-    ## is the same as ``s``. Note that this is the preferred way to check! Most
-    ## other ways like ``node.ident`` are much more error-prone, unfortunately.
-    case node.kind
-    of nnkSym, nnkIdent:
-      result = eqIdent(node.strVal, s)
-    of nnkOpenSymChoice, nnkClosedSymChoice:
-      result = eqIdent($node[0], s)
-    else:
-      result = false
+proc eqIdent*(a: NimNode; b: NimNode): bool {.magic: "EqIdent", noSideEffect.}
+  ## Style insensitive comparison.  ``a`` and ``b`` can be an
+  ## identifier or a symbol. Both may be wrapped in an export marker
+  ## (``nnkPostfix``) or quoted with backticks (``nnkAccQuoted``),
+  ## these nodes will be unwrapped.
 
 proc expectIdent*(n: NimNode, name: string) {.compileTime, since: (1,1).} =
   ## Check that ``eqIdent(n,name)`` holds true. If this is not the
