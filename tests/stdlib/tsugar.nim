@@ -108,3 +108,13 @@ doAssert collect(for d in data.items: {d}) == data.toHashSet
 template foo =
   discard collect(newSeq, for i in 1..3: i)
 foo()
+
+block: # dumpToString
+  template square(x): untyped = x * x
+  let x = 10
+  doAssert dumpToString(square(x)) == "square(x): x * x = 100"
+  let s = dumpToString(doAssert 1+1 == 2)
+  doAssert "failedAssertImpl" in s
+  let s2 = dumpToString:
+    doAssertRaises(AssertionDefect): doAssert false
+  doAssert "except AssertionDefect" in s2
