@@ -231,33 +231,32 @@ type
     ## The coercion `type(x)` can be used to obtain the type of the given
     ## expression `x`.
 
-when defined(nimHasTypeof):
-  type
-    TypeOfMode* = enum ## Possible modes of `typeof`.
-      typeOfProc,      ## Prefer the interpretation that means `x` is a proc call.
-      typeOfIter       ## Prefer the interpretation that means `x` is an iterator call.
+type
+  TypeOfMode* = enum ## Possible modes of `typeof`.
+    typeOfProc,      ## Prefer the interpretation that means `x` is a proc call.
+    typeOfIter       ## Prefer the interpretation that means `x` is an iterator call.
 
-  proc typeof*(x: untyped; mode = typeOfIter): typedesc {.
-    magic: "TypeOf", noSideEffect, compileTime.} =
-    ## Builtin `typeof` operation for accessing the type of an expression.
-    ## Since version 0.20.0.
-    runnableExamples:
-      proc myFoo(): float = 0.0
-      iterator myFoo(): string = yield "abc"
-      iterator myFoo2(): string = yield "abc"
-      iterator myFoo3(): string {.closure.} = yield "abc"
-      doAssert type(myFoo()) is string
-      doAssert typeof(myFoo()) is string
-      doAssert typeof(myFoo(), typeOfIter) is string
-      doAssert typeof(myFoo3) is "iterator"
+proc typeof*(x: untyped; mode = typeOfIter): typedesc {.
+  magic: "TypeOf", noSideEffect, compileTime.} =
+  ## Builtin `typeof` operation for accessing the type of an expression.
+  ## Since version 0.20.0.
+  runnableExamples:
+    proc myFoo(): float = 0.0
+    iterator myFoo(): string = yield "abc"
+    iterator myFoo2(): string = yield "abc"
+    iterator myFoo3(): string {.closure.} = yield "abc"
+    doAssert type(myFoo()) is string
+    doAssert typeof(myFoo()) is string
+    doAssert typeof(myFoo(), typeOfIter) is string
+    doAssert typeof(myFoo3) is "iterator"
 
-      doAssert typeof(myFoo(), typeOfProc) is float
-      doAssert typeof(0.0, typeOfProc) is float
-      doAssert typeof(myFoo3, typeOfProc) is "iterator"
-      doAssert not compiles(typeof(myFoo2(), typeOfProc))
-        # this would give: Error: attempting to call routine: 'myFoo2'
-        # since `typeOfProc` expects a typed expression and `myFoo2()` can
-        # only be used in a `for` context.
+    doAssert typeof(myFoo(), typeOfProc) is float
+    doAssert typeof(0.0, typeOfProc) is float
+    doAssert typeof(myFoo3, typeOfProc) is "iterator"
+    doAssert not compiles(typeof(myFoo2(), typeOfProc))
+      # this would give: Error: attempting to call routine: 'myFoo2'
+      # since `typeOfProc` expects a typed expression and `myFoo2()` can
+      # only be used in a `for` context.
 
 const ThisIsSystem = true
 
