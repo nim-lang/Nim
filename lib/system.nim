@@ -135,39 +135,35 @@ else:
     OrdinalImpl[T] {.magic: Ordinal.}
     Ordinal* = OrdinalImpl | uint | uint64
 
-when defined(nimHasRunnableExamples):
-  proc runnableExamples*(rdoccmd = "", body: untyped) {.magic: "RunnableExamples".}
-    ## A section you should use to mark `runnable example`:idx: code with.
-    ##
-    ## - In normal debug and release builds code within
-    ##   a `runnableExamples` section is ignored.
-    ## - The documentation generator is aware of these examples and considers them
-    ##   part of the `##` doc comment. As the last step of documentation
-    ##   generation each runnableExample is put in its own file `$file_examples$i.nim`,
-    ##   compiled and tested. The collected examples are
-    ##   put into their own module to ensure the examples do not refer to
-    ##   non-exported symbols.
-    ##
-    ## Usage:
-    ##
-    ## .. code-block:: Nim
-    ##   proc double*(x: int): int =
-    ##     ## This proc doubles a number.
-    ##     runnableExamples:
-    ##       ## at module scope
-    ##       assert double(5) == 10
-    ##       block: ## at block scope
-    ##         defer: echo "done"
-    ##     result = 2 * x
-    ##     runnableExamples "-d:foo -b:cpp":
-    ##       import std/compilesettings
-    ##       doAssert querySetting(backend) == "cpp"
-    ##     runnableExamples "-r:off": ## this one is only compiled
-    ##        import std/browsers
-    ##        openDefaultBrowser "https://forum.nim-lang.org/"
-else:
-  template runnableExamples*(doccmd = "", body: untyped) =
-    discard
+proc runnableExamples*(rdoccmd = "", body: untyped) {.magic: "RunnableExamples".}
+  ## A section you should use to mark `runnable example`:idx: code with.
+  ##
+  ## - In normal debug and release builds code within
+  ##   a `runnableExamples` section is ignored.
+  ## - The documentation generator is aware of these examples and considers them
+  ##   part of the `##` doc comment. As the last step of documentation
+  ##   generation each runnableExample is put in its own file `$file_examples$i.nim`,
+  ##   compiled and tested. The collected examples are
+  ##   put into their own module to ensure the examples do not refer to
+  ##   non-exported symbols.
+  ##
+  ## Usage:
+  ##
+  ## .. code-block:: Nim
+  ##   proc double*(x: int): int =
+  ##     ## This proc doubles a number.
+  ##     runnableExamples:
+  ##       ## at module scope
+  ##       assert double(5) == 10
+  ##       block: ## at block scope
+  ##         defer: echo "done"
+  ##     result = 2 * x
+  ##     runnableExamples "-d:foo -b:cpp":
+  ##       import std/compilesettings
+  ##       doAssert querySetting(backend) == "cpp"
+  ##     runnableExamples "-r:off": ## this one is only compiled
+  ##        import std/browsers
+  ##        openDefaultBrowser "https://forum.nim-lang.org/"
 
 when defined(nimHasDeclaredMagic):
   proc declared*(x: untyped): bool {.magic: "Declared", noSideEffect, compileTime.}
