@@ -74,7 +74,7 @@ elif defined(posix):
 else:
   {.error: "OS module not ported to your operating system!".}
 
-when weirdTarget and defined(nimErrorProcCanHaveBody):
+when weirdTarget:
   {.pragma: noWeirdTarget, error: "this proc is not available on the NimScript/js target".}
 else:
   {.pragma: noWeirdTarget.}
