@@ -4,7 +4,7 @@ discard """
 
 # targets include `cpp` because in the past, there were several cpp-specific bugs with tuples.
 
-import tables
+import std/tables
 
 template main() =
   block: # bug #4479
