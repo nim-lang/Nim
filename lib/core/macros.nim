@@ -277,11 +277,10 @@ proc owner*(sym: NimNode): NimNode {.magic: "SymOwner", noSideEffect.}
   ## * `symKind proc<#symKind,NimNode>`_ to get the kind of a symbol
   ## * `getImpl proc<#getImpl,NimNode>`_ to get the declaration of a symbol
 
-when defined(nimHasInstantiationOfInMacro):
-  proc isInstantiationOf*(instanceProcSym, genProcSym: NimNode): bool {.magic: "SymIsInstantiationOf", noSideEffect.}
-    ## Checks if a proc symbol is an instance of the generic proc symbol.
-    ## Useful to check proc symbols against generic symbols
-    ## returned by `bindSym`.
+proc isInstantiationOf*(instanceProcSym, genProcSym: NimNode): bool {.magic: "SymIsInstantiationOf", noSideEffect.}
+  ## Checks if a proc symbol is an instance of the generic proc symbol.
+  ## Useful to check proc symbols against generic symbols
+  ## returned by `bindSym`.
 
 proc getType*(n: NimNode): NimNode {.magic: "NGetType", noSideEffect.}
   ## With 'getType' you can access the node's `type`:idx:. A Nim type is

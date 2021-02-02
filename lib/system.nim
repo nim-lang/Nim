@@ -505,8 +505,6 @@ proc `..`*[T](b: sink T): HSlice[int, T] {.noSideEffect, inline, magic: "DotDot"
   ##   echo a[.. 2] # @[10, 20, 30]
   result = HSlice[int, T](a: 0, b: b)
 
-when not defined(nimHasHotCodeReloading):
-  {.pragma: nonReloadable.}
 when defined(hotCodeReloading):
   {.pragma: hcrInline, inline.}
 else:
