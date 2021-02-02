@@ -83,6 +83,8 @@ proc initDefines*(symbols: StringTableRef) =
   defineSymbol("nimHasSignatureHashInMacro") # deadcode
   defineSymbol("nimHasDefault") # deadcode
   defineSymbol("nimMacrosSizealignof") # deadcode
+
+  # > 0.20.0
   defineSymbol("nimNoZeroExtendMagic")
   defineSymbol("nimMacrosGetNodeId")
   for f in Feature:
