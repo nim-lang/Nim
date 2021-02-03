@@ -10,11 +10,18 @@ func big*(integer: SomeInteger): JsBigInt {.importjs: "BigInt(#)".} =
   ## Constructor for `JsBigInt`.
   runnableExamples:
     doAssert big(1234567890) == big"1234567890"
+    doAssert 0b1111100111.big == 0o1747.big and 0o1747.big == 999.big
 
 func big*(integer: cstring): JsBigInt {.importjs: "BigInt(#)".} =
   ## Constructor for `JsBigInt`.
   runnableExamples:
     doAssert big"-1" == big"1" - big"2"
+    # supports decimal, binary, octal, hex:
+    doAssert big"12" == 12.big
+    doAssert big"0b101" == 0b101.big
+    doAssert big"0o701" == 0o701.big
+    doAssert big"0xdeadbeaf" == 0xdeadbeaf.big
+    doAssert big"0xffffffffffffffff" == (1.big shl 64.big) - 1.big
 
 func toCstring*(this: JsBigInt; radix: 2..36): cstring {.importjs: "#.toString(#)".} =
   ## Converts from `JsBigInt` to `cstring` representation.
@@ -105,6 +112,14 @@ func `**`*(x, y: JsBigInt): JsBigInt {.importjs: "((#) $1 #)".} =
   # pending https://github.com/nim-lang/Nim/pull/15940, simplify to:
   # doAssertRaises: discard big"2" ** big"-1" # raises foreign `RangeError`
 
+func `and`*(x, y: JsBigInt): JsBigInt {.importjs: "(# & #)".} =
+  runnableExamples:
+    doAssert (big"555" and big"2") == big"2"
+
+func `or`*(x, y: JsBigInt): JsBigInt {.importjs: "(# | #)".} =
+  runnableExamples:
+    doAssert (big"555" or big"2") == big"555"
+
 func `xor`*(x, y: JsBigInt): JsBigInt {.importjs: "(# ^ #)".} =
   runnableExamples:
     doAssert (big"555" xor big"2") == big"553"
@@ -182,17 +197,18 @@ proc high*(_: typedesc[JsBigInt]): JsBigInt {.error:
 
 
 runnableExamples:
-  let big1: JsBigInt = big"2147483647"
-  let big2: JsBigInt = big"666"
-  doAssert JsBigInt isnot int
-  doAssert big1 != big2
-  doAssert big1 > big2
-  doAssert big1 >= big2
-  doAssert big2 < big1
-  doAssert big2 <= big1
-  doAssert not(big1 == big2)
-  let z = JsBigInt.default
-  doAssert $z == "0n"
+  block:
+    let big1: JsBigInt = big"2147483647"
+    let big2: JsBigInt = big"666"
+    doAssert JsBigInt isnot int
+    doAssert big1 != big2
+    doAssert big1 > big2
+    doAssert big1 >= big2
+    doAssert big2 < big1
+    doAssert big2 <= big1
+    doAssert not(big1 == big2)
+    let z = JsBigInt.default
+    doAssert $z == "0n"
   block:
     var a: seq[JsBigInt]
     a.setLen 2
