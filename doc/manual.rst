@@ -4803,7 +4803,6 @@ type class           matches
 ``set``              any set type
 ``seq``              any seq type
 ``auto``             any type
-``any``              distinct auto (see below)
 ==================   ===================================================
 
 Furthermore, every generic type automatically creates a type class of the same
