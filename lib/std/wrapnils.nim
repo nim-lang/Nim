@@ -6,6 +6,8 @@
 ## Unstable API.
 
 runnableExamples:
+  {.experimental: "dotOperators".}
+  
   type Foo = ref object
     x1: string
     x2: Foo
