@@ -2174,6 +2174,7 @@ proc genArrayConstr(p: PProc, n: PNode, r: var TCompRes) =
   if skipTypes(n.typ, abstractVarRange).kind != tySequence and jsTyp.len > 0:
     # generate typed array
     # for example Nim generates `new Uint8Array([1, 2, 3])` for `[byte(1), 2, 3]`
+    # TODO use `set` or loop to initialize typed array which improves performances in some situation
     var a: TCompRes
     r.res = "new $1([" % [rope(jsTyp)]
     r.kind = resExpr
