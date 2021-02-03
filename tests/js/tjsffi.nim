@@ -9,6 +9,8 @@ Event { name: 'updates: test' }
 '''
 """
 
+{.experimental: "dotOperators".}
+
 import jsffi, jsconsole
 
 # Tests for JsObject

@@ -38,6 +38,8 @@ true
 # xxx instead of maintaining this near-duplicate test file, just have tests
 # that check that importc, importcpp, importjs work and remove this file.
 
+{.experimental: "dotOperators".}
+
 import jsffi, jsconsole
 
 # Tests for JsObject

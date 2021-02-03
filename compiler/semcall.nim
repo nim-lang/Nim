@@ -405,6 +405,17 @@ proc resolveOverloads(c: PContext, n, orig: PNode,
         n.sons[0..1] = [callOp, n[1], calleeName]
         orig.sons[0..1] = [callOp, orig[1], calleeName]
         pickBest(callOp)
+    else:
+      # preserve error messages
+      if nfDotSetter in n.flags:
+        let op = newIdentNode(getIdent(c.cache, "."), n.info)
+        n.sons[0..1] = [op, n[1], f]
+        orig.sons[0..1] = [op, orig[1], f]
+      elif nfDotSetter in n.flags and f.kind == nkIdent and n.len == 3:
+        let calleeName = newIdentNode(getIdent(c.cache, f.ident.s[0..^2]), n.info)
+        let callOp = newIdentNode(getIdent(c.cache, ".="), n.info)
+        n.sons[0..1] = [callOp, n[1], calleeName]
+        orig.sons[0..1] = [callOp, orig[1], calleeName]
 
     if overloadsState == csEmpty and result.state == csEmpty:
       if efNoUndeclared notin flags: # for tests/pragmas/tcustom_pragma.nim
@@ -415,7 +426,7 @@ proc resolveOverloads(c: PContext, n, orig: PNode,
         localError(c.config, n.info, "expression '$1' cannot be called" %
                    renderTree(n, {renderNoComments}))
       else:
-        if dotOperators in c.features and {nfDotField, nfDotSetter} * n.flags != {}:
+        if {nfDotField, nfDotSetter} * n.flags != {}:
           # clean up the inserted ops
           n.sons.delete(2)
           n[0] = f

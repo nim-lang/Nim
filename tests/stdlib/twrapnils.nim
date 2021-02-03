@@ -1,5 +1,7 @@
 import std/wrapnils
 
+{.experimental: "dotOperators".}
+
 const wrapnilExtendedExports = declared(wrapnil)
   # for now, wrapnil, isValid, unwrap are not exported
 
