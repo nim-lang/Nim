@@ -415,7 +415,7 @@ proc resolveOverloads(c: PContext, n, orig: PNode,
         localError(c.config, n.info, "expression '$1' cannot be called" %
                    renderTree(n, {renderNoComments}))
       else:
-        if {nfDotField, nfDotSetter} * n.flags != {}:
+        if dotOperators in c.features and {nfDotField, nfDotSetter} * n.flags != {}:
           # clean up the inserted ops
           n.sons.delete(2)
           n[0] = f
