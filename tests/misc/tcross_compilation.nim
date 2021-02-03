@@ -9,18 +9,19 @@ discard """
 import os, strutils
 
 proc main() =
-  doAssert not defined(posix)
-  doAssert defined(windows)
-  doAssert "foo" / "bar" == "foo/bar"
-  const s = currentSourcePath
-  doAssert '\\' notin s
-  doAssert '/' in s
-  doAssert DirSep == '/'
-  let s2 = currentSourcePath
-  doAssert s2 == s
-  let s3 = s2.parentDir / "baz"
-  doAssert s3.endsWith "tests/misc/baz"
-  doAssert s3.isAbsolute
+  block: # bug #16702
+    doAssert not defined(posix)
+    doAssert defined(windows)
+    doAssert "foo" / "bar" == "foo/bar"
+    const s = currentSourcePath
+    doAssert '\\' notin s
+    doAssert '/' in s
+    doAssert DirSep == '/'
+    let s2 = currentSourcePath
+    doAssert s2 == s
+    let s3 = s2.parentDir / "baz"
+    doAssert s3.endsWith "tests/misc/baz"
+    doAssert s3.isAbsolute
 
 static: main()
 main()
