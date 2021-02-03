@@ -46,7 +46,7 @@ type
 
   void* {.magic: "VoidType".}    ## Meta type to denote the absence of any type.
   auto* {.magic: Expr.}          ## Meta type for automatic type determination.
-  # any* {.deprecated: "Deprecated since v1.5; Use auto instead.".} = distinct auto  ## Deprecated; Use `auto` instead. See https://github.com/nim-lang/RFCs/issues/281
+  any* {.deprecated: "Deprecated since v1.5; Use auto instead.".} = distinct auto  ## Deprecated; Use `auto` instead. See https://github.com/nim-lang/RFCs/issues/281
   untyped* {.magic: Expr.}       ## Meta type to denote an expression that
                                  ## is not resolved (for templates).
   typed* {.magic: Stmt.}         ## Meta type to denote an expression that
