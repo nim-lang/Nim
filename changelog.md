@@ -187,3 +187,6 @@ with other backends. see #9125. Use `-d:nimLegacyJsRound` for previous behavior.
   - cell alignment is not supported, i.e. alignment annotations in a delimiter
     row (`:---`, `:--:`, `---:`) are ignored,
   - every table row must start with `|`, e.g. `| cell 1 | cell 2 |`.
+
+- `fusion` is now un-bundled from nim, `./koch fusion` will result in an error.
+  `nimble install fusion` should be used instead.
