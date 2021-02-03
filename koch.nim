@@ -66,7 +66,7 @@ Possible Commands:
                            e.g. nimble)
                            doesn't require network connectivity
   nimble                   builds the Nimble tool
-  fusion                   clone fusion into the working tree
+
 Boot options:
   -d:release               produce a release version of the compiler
   -d:nimUseLinenoise       use the linenoise library for interactive mode
@@ -179,12 +179,6 @@ proc bundleWinTools(args: string) =
     # not yet a tool worth including
     nimCompile(r"tools\downloader.nim",
                options = r"--cc:vcc --app:gui -d:ssl --noNimblePath --path:..\ui " & args)
-
-proc bundleFusion(latest: bool) =
-  let commit = if latest: "HEAD" else: FusionStableCommit
-  cloneDependency(distDir, "https://github.com/nim-lang/fusion.git", commit,
-                  allowBundled = true)
-  copyDir(distDir / "fusion" / "src" / "fusion", "lib" / "fusion")
 
 proc zip(latest: bool; args: string) =
   bundleFusion(latest)
@@ -699,7 +693,7 @@ when isMainModule:
       of "valgrind": valgrind(op.cmdLineRest)
       of "c2nim": bundleC2nim(op.cmdLineRest)
       of "drnim": buildDrNim(op.cmdLineRest)
-      of "fusion": bundleFusion(latest)
+      of "fusion": doAssert false, "`./koch fusion` was deprecated, use `nimble install fusion` instead"
       else: showHelp()
       break
     of cmdEnd: break
