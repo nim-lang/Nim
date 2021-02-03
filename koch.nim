@@ -11,7 +11,6 @@
 
 const
   NimbleStableCommit = "324de9202fb3db82b266e7350731d1ec41013a2b" # master
-  FusionStableCommit = "372ee4313827ef9f2ea388840f7d6b46c2b1b014"
 
 when not defined(windows):
   const
@@ -181,7 +180,6 @@ proc bundleWinTools(args: string) =
                options = r"--cc:vcc --app:gui -d:ssl --noNimblePath --path:..\ui " & args)
 
 proc zip(latest: bool; args: string) =
-  bundleFusion(latest)
   bundleNimbleExe(latest, args)
   bundleNimsuggest(args)
   bundleNimpretty(args)
@@ -221,7 +219,6 @@ proc buildTools(args: string = "") =
                  options = "-d:release " & args)
 
 proc nsis(latest: bool; args: string) =
-  bundleFusion(latest)
   bundleNimbleExe(latest, args)
   bundleNimsuggest(args)
   bundleWinTools(args)
@@ -688,7 +685,6 @@ when isMainModule:
       of "tools":
         buildTools(op.cmdLineRest)
         bundleNimbleExe(latest, op.cmdLineRest)
-        bundleFusion(latest)
       of "pushcsource", "pushcsources": pushCsources()
       of "valgrind": valgrind(op.cmdLineRest)
       of "c2nim": bundleC2nim(op.cmdLineRest)
