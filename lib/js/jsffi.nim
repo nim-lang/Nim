@@ -26,6 +26,7 @@ runnableExamples:
   # Use jQuery to make the following code run, after the document is ready.
   # This uses an experimental `.()` operator for `JsObject`, to emit
   # JavaScript calls, when no corresponding proc exists for `JsObject`.
+  {.experimental: "dotOperators".}
   proc main =
     jq(document).ready(proc() =
       console.log("Hello JavaScript!")
@@ -448,8 +449,10 @@ macro `{}`*(typ: typedesc, xs: varargs[untyped]): auto =
     return `a`
 
   result = quote do:
+    {.push experimental: "dotOperators".}
     proc inner(): `typ` {.gensym.} =
       `body`
+    {.pop.}
     inner()
 
 # Macro to build a lambda using JavaScript's `this`
