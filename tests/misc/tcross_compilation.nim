@@ -4,11 +4,19 @@ discard """
   disabled: windows # so that test runs on posix host but windows target
 """
 
+#[
+Tests for cross compilation.
+]#
+
 # xxx add a way to test this at RT to make sure windows semantics are used.
 
 import os, strutils
 
 proc main() =
+  block:
+    const dir = "foo" / "bar"
+    static: doAssert dir == "foo/bar"
+
   block: # bug #16702
     doAssert not defined(posix)
     doAssert defined(windows)
