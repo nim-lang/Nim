@@ -112,6 +112,9 @@ with other backends. see #9125. Use `-d:nimLegacyJsRound` for previous behavior.
 
 - Removed the optional `longestMatch` parameter of the `critbits._WithPrefix` iterators (it never worked reliably)
 
+- Deprecated `any`. See https://github.com/nim-lang/RFCs/issues/281
+
+
 ## Language changes
 
 - `nimscript` now handles `except Exception as e`.
