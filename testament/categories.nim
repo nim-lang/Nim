@@ -499,6 +499,49 @@ proc testNimblePackages(r: var TResults; cat: Category; packageFilter: string, p
   finally:
     if errors == 0: removeDir(packagesDir)
 
+# ---------------- IC tests ---------------------------------------------
+
+proc icTests(r: var TResults; testsDir: string, cat: Category, options: string) =
+  const
+    tooltests = ["compiler/nim.nim", "tools/nimgrep.nim"]
+    writeOnly = " --incremental:writeonly "
+    readOnly = " --incremental:readonly "
+    incrementalOn = " --incremental:on "
+
+  template test(x: untyped) =
+    testSpecWithNimcache(r, makeRawTest(file, x & options, cat), nimcache)
+
+  template editedTest(x: untyped) =
+    var test = makeTest(file, x & options, cat)
+    test.spec.targets = {getTestSpecTarget()}
+    testSpecWithNimcache(r, test, nimcache)
+
+  const tempExt = "_temp.nim"
+  for it in walkDirRec(testsDir / "ic"):
+    if isTestFile(it) and not it.endsWith(tempExt):
+      let nimcache = nimcacheDir(it, options, getTestSpecTarget())
+      removeDir(nimcache)
+
+      let content = readFile(it)
+      for fragment in content.split("#!EDIT!#"):
+        let file = it.replace(".nim", tempExt)
+        writeFile(file, fragment)
+        let oldPassed = r.passed
+        editedTest incrementalOn
+        if r.passed != oldPassed+1: break
+
+  when false:
+    for file in tooltests:
+      let nimcache = nimcacheDir(file, options, getTestSpecTarget())
+      removeDir(nimcache)
+
+      let oldPassed = r.passed
+      test writeOnly
+
+      if r.passed == oldPassed+1:
+        test readOnly
+        if r.passed == oldPassed+2:
+          test readOnly
 
 # ----------------------------------------------------------------------------
 
@@ -665,6 +708,8 @@ proc processCategory(r: var TResults, cat: Category,
       testNimblePackages(r, cat, options, ppTwo)
     of "niminaction":
       testNimInAction(r, cat, options)
+    of "ic":
+      icTests(r, testsDir, cat, options)
     of "untestable":
       # We can't test it because it depends on a third party.
       discard # TODO: Move untestable tests to someplace else, i.e. nimble repo.

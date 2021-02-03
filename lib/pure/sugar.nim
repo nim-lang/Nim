@@ -156,16 +156,45 @@ macro dump*(x: untyped): untyped =
   ## It accepts any expression and prints a textual representation
   ## of the tree representing the expression - as it would appear in
   ## source code - together with the value of the expression.
+  ##
+  ## See also: `dumpToString` which is more convenient and useful since
+  ## it expands intermediate templates/macros, returns a string instead of
+  ## calling `echo`, and works with statements and expressions.
   runnableExamples:
     let
       x = 10
       y = 20
-    dump(x + y) # will print `x + y = 30`
+    if false: dump(x + y) # if true would print `x + y = 30`
 
   let s = x.toStrLit
-  let r = quote do:
+  result = quote do:
     debugEcho `s`, " = ", `x`
-  return r
+
+macro dumpToStringImpl(s: static string, x: typed): string =
+  let s2 = x.toStrLit
+  if x.typeKind == ntyVoid:
+    result = quote do:
+      `s` & ": " & `s2`
+  else:
+    result = quote do:
+      `s` & ": " & `s2` & " = " & $`x`
+
+macro dumpToString*(x: untyped): string =
+  ## Returns the content of a statement or expression `x` after semantic analysis,
+  ## useful for debugging.
+  runnableExamples:
+    const a = 1
+    let x = 10
+    doAssert dumpToString(a + 2) == "a + 2: 3 = 3"
+    doAssert dumpToString(a + x) == "a + x: 1 + x = 11"
+    template square(x): untyped = x * x
+    doAssert dumpToString(square(x)) == "square(x): x * x = 100"
+    doAssert not compiles dumpToString(1 + nonexistant)
+    import std/strutils
+    doAssert "failedAssertImpl" in dumpToString(doAssert true) # example with a statement
+  result = newCall(bindSym"dumpToStringImpl")
+  result.add newLit repr(x)
+  result.add x
 
 # TODO: consider exporting this in macros.nim
 proc freshIdentNodes(ast: NimNode): NimNode =

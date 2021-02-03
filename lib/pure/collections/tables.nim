@@ -2277,7 +2277,6 @@ proc `[]`*[A](t: CountTable[A], key: A): int =
   ## See also:
   ## * `getOrDefault<#getOrDefault,CountTable[A],A,int>`_ to return
   ##   a custom value if the key doesn't exist
-  ## * `mget proc<#mget,CountTable[A],A>`_
   ## * `[]= proc<#[]%3D,CountTable[A],A,int>`_ for inserting a new
   ##   (key, value) pair in the table
   ## * `hasKey proc<#hasKey,CountTable[A],A>`_ for checking if a key

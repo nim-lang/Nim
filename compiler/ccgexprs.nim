@@ -2362,6 +2362,7 @@ proc genMagicExpr(p: BProc, e: PNode, d: var TLoc, op: TMagic) =
     #   somehow forward-declared from some other usage, but it is *possible*
     if lfNoDecl notin opr.loc.flags:
       let prc = magicsys.getCompilerProc(p.module.g.graph, $opr.loc.r)
+      assert prc != nil, $opr.loc.r
       # HACK:
       # Explicitly add this proc as declared here so the cgsym call doesn't
       # add a forward declaration - without this we could end up with the same

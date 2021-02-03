@@ -330,27 +330,31 @@ proc addPragmaComputation*(c: PContext; n: PNode) =
   if c.config.symbolFiles != disabledSf:
     addPragmaComputation(c.encoder, c.packedRepr, n)
 
-proc inclSym(sq: var seq[PSym], s: PSym) =
+proc inclSym(sq: var seq[PSym], s: PSym): bool =
   for i in 0..<sq.len:
-    if sq[i].id == s.id: return
+    if sq[i].id == s.id: return false
   sq.add s
+  result = true
 
-proc addConverter*(c: PContext, conv: PSym) =
-  inclSym(c.converters, conv)
-  inclSym(c.graph.ifaces[c.module.position].converters, conv)
+proc addConverter*(c: PContext, conv: LazySym) =
+  assert conv.sym != nil
+  if inclSym(c.converters, conv.sym):
+    add(c.graph.ifaces[c.module.position].converters, conv)
   if c.config.symbolFiles != disabledSf:
-    addConverter(c.encoder, c.packedRepr, conv)
+    addConverter(c.encoder, c.packedRepr, conv.sym)
 
-proc addPureEnum*(c: PContext, e: PSym) =
-  inclSym(c.graph.ifaces[c.module.position].pureEnums, e)
+proc addPureEnum*(c: PContext, e: LazySym) =
+  assert e.sym != nil
+  add(c.graph.ifaces[c.module.position].pureEnums, e)
   if c.config.symbolFiles != disabledSf:
-    addPureEnum(c.encoder, c.packedRepr, e)
+    addPureEnum(c.encoder, c.packedRepr, e.sym)
 
-proc addPattern*(c: PContext, p: PSym) =
-  inclSym(c.patterns, p)
-  inclSym(c.graph.ifaces[c.module.position].patterns, p)
+proc addPattern*(c: PContext, p: LazySym) =
+  assert p.sym != nil
+  if inclSym(c.patterns, p.sym):
+    add(c.graph.ifaces[c.module.position].patterns, p)
   if c.config.symbolFiles != disabledSf:
-    addTrmacro(c.encoder, c.packedRepr, p)
+    addTrmacro(c.encoder, c.packedRepr, p.sym)
 
 proc exportSym*(c: PContext; s: PSym) =
   strTableAdd(c.module.semtab(c.graph), s)
@@ -421,7 +425,7 @@ proc makeTypeSymNode*(c: PContext, typ: PType, info: TLineInfo): PNode =
   typedesc.addSonSkipIntLit(typ, c.idgen)
   let sym = newSym(skType, c.cache.idAnon, nextSymId(c.idgen), getCurrOwner(c), info,
                    c.config.options).linkTo(typedesc)
-  return newSymNode(sym, info)
+  result = newSymNode(sym, info)
 
 proc makeTypeFromExpr*(c: PContext, n: PNode): PType =
   result = newTypeS(tyFromExpr, c)
@@ -581,4 +585,4 @@ proc saveRodFile*(c: PContext) =
       # debug code, but maybe a good idea for production? Could reduce the compiler's
       # memory consumption considerably at the cost of more loads from disk.
       simulateCachedModule(c.graph, c.module, c.packedRepr)
-    c.graph.packed[c.module.position].status = loaded
+      c.graph.packed[c.module.position].status = loaded

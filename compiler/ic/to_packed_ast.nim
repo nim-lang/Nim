@@ -32,8 +32,8 @@ type
     #producedGenerics*: Table[GenericKey, SymId]
     exports*: seq[(LitId, int32)]
     reexports*: seq[(LitId, PackedItemId)]
-    compilerProcs*, trmacros*, converters*, pureEnums*: seq[(LitId, int32)]
-    methods*: seq[int32]
+    compilerProcs*: seq[(LitId, int32)]
+    converters*, methods*, trmacros*, pureEnums*: seq[int32]
     macroUsages*: seq[(PackedItemId, PackedLineInfo)]
 
     typeInstCache*: seq[(PackedItemId, PackedItemId)]
@@ -154,17 +154,14 @@ proc addExported*(c: var PackedEncoder; m: var PackedModule; s: PSym) =
   m.exports.add((nameId, s.itemId.item))
 
 proc addConverter*(c: var PackedEncoder; m: var PackedModule; s: PSym) =
-  let nameId = getOrIncl(m.sh.strings, s.name.s)
-  m.converters.add((nameId, s.itemId.item))
+  m.converters.add(s.itemId.item)
 
 proc addTrmacro*(c: var PackedEncoder; m: var PackedModule; s: PSym) =
-  let nameId = getOrIncl(m.sh.strings, s.name.s)
-  m.trmacros.add((nameId, s.itemId.item))
+  m.trmacros.add(s.itemId.item)
 
 proc addPureEnum*(c: var PackedEncoder; m: var PackedModule; s: PSym) =
-  let nameId = getOrIncl(m.sh.strings, s.name.s)
   assert s.kind == skType
-  m.pureEnums.add((nameId, s.itemId.item))
+  m.pureEnums.add(s.itemId.item)
 
 proc addMethod*(c: var PackedEncoder; m: var PackedModule; s: PSym) =
   m.methods.add s.itemId.item
@@ -349,6 +346,7 @@ proc storeSym*(s: PSym; c: var PackedEncoder; m: var PackedModule): PackedItemId
       p.alignment = s.alignment
 
     p.externalName = toLitId(if s.loc.r.isNil: "" else: $s.loc.r, m)
+    p.locFlags = s.loc.flags
     c.addMissing s.typ
     p.typ = s.typ.storeType(c, m)
     c.addMissing s.owner
@@ -453,7 +451,7 @@ proc toPackedNodeTopLevel*(n: PNode, encoder: var PackedEncoder; m: var PackedMo
   flush encoder, m
 
 proc loadError(err: RodFileError; filename: AbsoluteFile) =
-  echo "Error: ", $err, "\nloading file: ", filename.string
+  echo "Error: ", $err, " loading file: ", filename.string
 
 proc loadRodFile*(filename: AbsoluteFile; m: var PackedModule; config: ConfigRef): RodFileError =
   m.sh = Shared()
@@ -751,6 +749,7 @@ proc symBodyFromPacked(c: var PackedDecoder; g: var PackedModuleGraph;
   let externalName = g[si].fromDisk.sh.strings[s.externalName]
   if externalName != "":
     result.loc.r = rope externalName
+  result.loc.flags = s.locFlags
 
 proc loadSym(c: var PackedDecoder; g: var PackedModuleGraph; thisModule: int; s: PackedItemId): PSym =
   if s == nilItemId:
@@ -819,6 +818,17 @@ proc loadType(c: var PackedDecoder; g: var PackedModuleGraph; thisModule: int; t
       result = g[si].types[t.item]
     assert result.itemId.item > 0
 
+proc newPackage(config: ConfigRef; cache: IdentCache; fileIdx: FileIndex): PSym =
+  let filename = AbsoluteFile toFullPath(config, fileIdx)
+  let name = getIdent(cache, splitFile(filename).name)
+  let info = newLineInfo(fileIdx, 1, 1)
+  let
+    pck = getPackageName(config, filename.string)
+    pck2 = if pck.len > 0: pck else: "unknown"
+    pack = getIdent(cache, pck2)
+  result = newSym(skPackage, getIdent(cache, pck2),
+    ItemId(module: PackageModuleId, item: int32(fileIdx)), nil, info)
+
 proc setupLookupTables(g: var PackedModuleGraph; conf: ConfigRef; cache: IdentCache;
                        fileIdx: FileIndex; m: var LoadedModule) =
   m.iface = initTable[PIdent, seq[PackedItemId]]()
@@ -836,6 +846,7 @@ proc setupLookupTables(g: var PackedModuleGraph; conf: ConfigRef; cache: IdentCa
                   name: getIdent(cache, splitFile(filename).name),
                   info: newLineInfo(fileIdx, 1, 1),
                   position: int(fileIdx))
+  m.module.owner = newPackage(conf, cache, fileIdx)
 
 proc loadToReplayNodes(g: var PackedModuleGraph; conf: ConfigRef; cache: IdentCache;
                        fileIdx: FileIndex; m: var LoadedModule) =
@@ -851,7 +862,7 @@ proc loadToReplayNodes(g: var PackedModuleGraph; conf: ConfigRef; cache: IdentCa
       m.module.ast.add loadNodes(decoder, g, int(fileIdx), m.fromDisk.toReplay, p)
 
 proc needsRecompile(g: var PackedModuleGraph; conf: ConfigRef; cache: IdentCache;
-                    fileIdx: FileIndex): bool =
+                    fileIdx: FileIndex; cachedModules: var seq[FileIndex]): bool =
   # Does the file belong to the fileIdx need to be recompiled?
   let m = int(fileIdx)
   if m >= g.len:
@@ -870,11 +881,12 @@ proc needsRecompile(g: var PackedModuleGraph; conf: ConfigRef; cache: IdentCache
         let fid = toFileIndex(dep, g[m].fromDisk, conf)
         # Warning: we need to traverse the full graph, so
         # do **not use break here**!
-        if needsRecompile(g, conf, cache, fid):
+        if needsRecompile(g, conf, cache, fid, cachedModules):
           result = true
 
       if not result:
         setupLookupTables(g, conf, cache, fileIdx, g[m])
+        cachedModules.add fileIdx
       g[m].status = if result: outdated else: loaded
     else:
       loadError(err, rod)
@@ -887,14 +899,16 @@ proc needsRecompile(g: var PackedModuleGraph; conf: ConfigRef; cache: IdentCache
     result = true
 
 proc moduleFromRodFile*(g: var PackedModuleGraph; conf: ConfigRef; cache: IdentCache;
-                        fileIdx: FileIndex): PSym =
+                        fileIdx: FileIndex; cachedModules: var seq[FileIndex]): PSym =
   ## Returns 'nil' if the module needs to be recompiled.
-  if needsRecompile(g, conf, cache, fileIdx):
+  if needsRecompile(g, conf, cache, fileIdx, cachedModules):
     result = nil
   else:
     result = g[int fileIdx].module
     assert result != nil
-    loadToReplayNodes(g, conf, cache, fileIdx, g[int fileIdx])
+    assert result.position == int(fileIdx)
+    for m in cachedModules:
+      loadToReplayNodes(g, conf, cache, m, g[int m])
 
 template setupDecoder() {.dirty.} =
   var decoder = PackedDecoder(
@@ -919,7 +933,10 @@ proc loadProcBody*(config: ConfigRef, cache: IdentCache;
 
 proc loadTypeFromId*(config: ConfigRef, cache: IdentCache;
                      g: var PackedModuleGraph; module: int; id: PackedItemId): PType =
-  result = g[module].types[id.item]
+  if id.item < g[module].types.len:
+    result = g[module].types[id.item]
+  else:
+    result = nil
   if result == nil:
     var decoder = PackedDecoder(
       lastModule: int32(-1),
@@ -931,7 +948,10 @@ proc loadTypeFromId*(config: ConfigRef, cache: IdentCache;
 
 proc loadSymFromId*(config: ConfigRef, cache: IdentCache;
                     g: var PackedModuleGraph; module: int; id: PackedItemId): PSym =
-  result = g[module].syms[id.item]
+  if id.item < g[module].syms.len:
+    result = g[module].syms[id.item]
+  else:
+    result = nil
   if result == nil:
     var decoder = PackedDecoder(
       lastModule: int32(-1),
