@@ -1422,7 +1422,10 @@ proc dotTransformation(c: PContext, n: PNode): PNode =
   else:
     var i = considerQuotedIdent(c, n[1], n)
     result = newNodeI(nkDotCall, n.info)
-    result.flags.incl nfDotField
+    # we only want to do the dotField transform once per node, so the new node
+    # should not keep the nfDotField flag, as it's the result of a transform.
+    if nfDotField notin n.flags:
+      result.flags.incl nfDotField
     result.add newIdentNode(i, n[1].info)
     result.add copyTree(n[0])
 
