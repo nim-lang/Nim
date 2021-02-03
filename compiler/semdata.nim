@@ -13,7 +13,8 @@ import std / tables
 
 import
   intsets, options, ast, astalgo, msgs, idents, renderer,
-  magicsys, vmdef, modulegraphs, lineinfos, sets, pathutils
+  magicsys, vmdef, modulegraphs, lineinfos, sets, pathutils,
+  errorhandling
 
 import ic / to_packed_ast
 
@@ -502,8 +503,8 @@ proc errorType*(c: PContext): PType =
   result.flags.incl tfCheckedForDestructor
 
 proc errorNode*(c: PContext, n: PNode): PNode =
-  result = newNodeI(nkEmpty, n.info)
-  result.typ = errorType(c)
+  # XXX see why this is produced for tests\macros\treturnsempty.nim
+  result = newError(n, "type mismatch")
 
 proc fillTypeS*(dest: PType, kind: TTypeKind, c: PContext) =
   dest.kind = kind

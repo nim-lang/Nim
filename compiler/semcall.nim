@@ -270,27 +270,25 @@ const
   errBadRoutine = "attempting to call routine: '$1'$2"
   errAmbiguousCallXYZ = "ambiguous call; both $1 and $2 match for: $3"
 
-proc notFoundError*(c: PContext, n: PNode, errors: CandidateErrors) =
+proc notFoundError*(c: PContext, n: PNode, errors: CandidateErrors): PNode =
   # Gives a detailed error message; this is separated from semOverloadedCall,
   # as semOverlodedCall is already pretty slow (and we need this information
   # only in case of an error).
   if c.config.m.errorOutputs == {}:
     # fail fast:
-    globalError(c.config, n.info, "type mismatch")
-    return
+    return newError(n, RawTypeMismatchError)
   if errors.len == 0:
-    localError(c.config, n.info, "expression '$1' cannot be called" % n[0].renderTree)
-    return
+    return newError(n, ExpressionCannotBeCalled)
 
   let (prefer, candidates) = presentFailedCandidates(c, n, errors)
-  var result = errTypeMismatch
-  result.add(describeArgs(c, n, 1, prefer))
-  result.add('>')
+  var m = errTypeMismatch
+  m.add(describeArgs(c, n, 1, prefer))
+  m.add('>')
   if candidates != "":
-    result.add("\n" & errButExpected & "\n" & candidates)
-  localError(c.config, n.info, result & "\nexpression: " & $n)
+    m.add("\n" & errButExpected & "\n" & candidates)
+  result = newError(n, m & "\nexpression: " & $n)
 
-proc bracketNotFoundError(c: PContext; n: PNode) =
+proc bracketNotFoundError(c: PContext; n: PNode): PNode =
   var errors: CandidateErrors = @[]
   var o: TOverloadIter
   let headSymbol = n[0]
@@ -303,9 +301,9 @@ proc bracketNotFoundError(c: PContext; n: PNode) =
                                 enabled: false))
     symx = nextOverloadIter(o, c, headSymbol)
   if errors.len == 0:
-    localError(c.config, n.info, "could not resolve: " & $n)
+    result = newError(n, "could not resolve: " & $n)
   else:
-    notFoundError(c, n, errors)
+    result = notFoundError(c, n, errors)
 
 proc getMsgDiagnostic(c: PContext, flags: TExprFlags, n, f: PNode): string =
   if c.compilesContextId > 0:
@@ -591,14 +589,14 @@ proc semOverloadedCall(c: PContext, n, nOrig: PNode,
         # this time enabling all the diagnostic output (this should fail again)
         discard semOverloadedCall(c, n, nOrig, filter, flags + {efExplain})
       elif efNoUndeclared notin flags:
-        notFoundError(c, n, errors)
+        result = notFoundError(c, n, errors)
   else:
     if efExplain notin flags:
       # repeat the overload resolution,
       # this time enabling all the diagnostic output (this should fail again)
       discard semOverloadedCall(c, n, nOrig, filter, flags + {efExplain})
     elif efNoUndeclared notin flags:
-      notFoundError(c, n, errors)
+      result = notFoundError(c, n, errors)
 
 proc explicitGenericInstError(c: PContext; n: PNode): PNode =
   localError(c.config, getCallLineInfo(n), errCannotInstantiateX % renderTree(n))

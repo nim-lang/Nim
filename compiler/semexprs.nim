@@ -1693,11 +1693,9 @@ proc semAsgn(c: PContext, n: PNode; mode=asgnNormal): PNode =
       result = buildOverloadedSubscripts(n[0], getIdent(c.cache, "[]="))
       result.add(n[1])
       if mode == noOverloadedSubscript:
-        bracketNotFoundError(c, result)
-        return n
+        return bracketNotFoundError(c, result)
       else:
-        result = semExprNoType(c, result)
-        return result
+        return semExprNoType(c, result)
   of nkCurlyExpr:
     # a{i} = x -->  `{}=`(a, i, x)
     result = buildOverloadedSubscripts(n[0], getIdent(c.cache, "{}="))
@@ -2139,7 +2137,8 @@ proc semCompiles(c: PContext, n: PNode, flags: TExprFlags): PNode =
   # we replace this node by a 'true' or 'false' node:
   if n.len != 2: return semDirectOp(c, n, flags)
 
-  result = newIntNode(nkIntLit, ord(tryExpr(c, n[1], flags) != nil))
+  let x = tryExpr(c, n[1], flags)
+  result = newIntNode(nkIntLit, ord(x != nil and x.kind != nkError and not hasSubnodeWith(x, nkError)))
   result.info = n.info
   result.typ = getSysType(c.graph, n.info, tyBool)
 
