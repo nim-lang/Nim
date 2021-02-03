@@ -1,5 +1,7 @@
 discard """
-  output: 'yes'
+  output: '''
+yes
+'''
 """
 
 {.experimental: "caseStmtMacros".}
