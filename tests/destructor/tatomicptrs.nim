@@ -14,6 +14,8 @@ deallocating
 joinable: false
 """
 
+{.experimental: "dotOperators".}
+
 type
   SharedPtr*[T] = object
     x: ptr T

@@ -1975,13 +1975,14 @@ proc semProcAux(c: PContext, n: PNode, kind: TSymKind,
     pushOwner(c, s)
 
   if sfOverriden in s.flags or s.name.s[0] == '=': semOverride(c, s, n)
-  if s.name.s[0] in {'.', '('}:
-    if s.name.s in [".", ".()", ".="] and {Feature.destructor, dotOperators} * c.features == {}:
-      localError(c.config, n.info, "the overloaded " & s.name.s &
-        " operator has to be enabled with {.experimental: \"dotOperators\".}")
-    elif s.name.s == "()" and callOperator notin c.features:
-      localError(c.config, n.info, "the overloaded " & s.name.s &
-        " operator has to be enabled with {.experimental: \"callOperator\".}")
+  when false:
+    if s.name.s[0] in {'.', '('}:
+      if s.name.s in [".", ".()", ".="] and {Feature.destructor, dotOperators} * c.features == {}:
+        localError(c.config, n.info, "the overloaded " & s.name.s &
+          " operator has to be enabled with {.experimental: \"dotOperators\".}")
+      elif s.name.s == "()" and callOperator notin c.features:
+        localError(c.config, n.info, "the overloaded " & s.name.s &
+          " operator has to be enabled with {.experimental: \"callOperator\".}")
 
   if n[bodyPos].kind != nkEmpty and sfError notin s.flags:
     # for DLL generation we allow sfImportc to have a body, for use in VM

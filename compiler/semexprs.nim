@@ -981,7 +981,8 @@ proc semIndirectOp(c: PContext, n: PNode, flags: TExprFlags): PNode =
     if n.len == 1: return semObjConstr(c, n, flags)
     return semConv(c, n)
   else:
-    result = overloadedCallOpr(c, n)
+    if callOperator in c.features:
+      result = overloadedCallOpr(c, n)
     # Now that nkSym does not imply an iteration over the proc/iterator space,
     # the old ``prc`` (which is likely an nkIdent) has to be restored:
     if result == nil:

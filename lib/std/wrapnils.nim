@@ -34,8 +34,6 @@ template unwrap(a: Wrapnil): untyped =
   ## See top-level example.
   a.valueImpl
 
-{.push experimental: "dotOperators".}
-
 template `.`*(a: Wrapnil, b): untyped =
   ## See top-level example.
   let a1 = a # to avoid double evaluations
@@ -52,8 +50,6 @@ template `.`*(a: Wrapnil, b): untyped =
   else:
     # nil is "sticky"; this is needed, see tests
     default(T)
-
-{.pop.}
 
 proc isValid(a: Wrapnil): bool =
   ## Returns true if `a` didn't contain intermediate `nil` values (note that

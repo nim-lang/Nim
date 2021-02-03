@@ -17,6 +17,8 @@ one param call to c with 10
 '''
 """
 
+{.experimental: "dotOperators".}
+
 type
   T1 = object
     x*: int

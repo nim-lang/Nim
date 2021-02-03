@@ -217,11 +217,11 @@ proc `==`*(x, y: JsRoot): bool {.importcpp: "(# === #)".}
   ## like in JavaScript, so if your JsObjects are in fact JavaScript Objects,
   ## and not strings or numbers, this is a *comparison of references*.
 
-{.experimental.}
 macro `.`*(obj: JsObject, field: untyped): JsObject =
   ## Experimental dot accessor (get) for type JsObject.
   ## Returns the value of a property of name `field` from a JsObject `x`.
   runnableExamples:
+    {.experimental: "dotOperators".}
     let obj = newJsObject()
     obj.a = 20
     assert obj.a.to(int) == 20
