@@ -52,6 +52,9 @@ Options:
 
 On Azure Pipelines, testament will also publish test results via Azure Pipelines' Test Management API
 provided that System.AccessToken is made available via the environment variable SYSTEM_ACCESSTOKEN.
+
+Experimental: using environment variable `NIM_TESTAMENT_REMOTE_NETWORKING=1` enables
+tests with remote networking (as in CI).
 """ % resultsFile
 
 proc isNimRepoTests(): bool =
@@ -680,7 +683,7 @@ proc main() =
     case p.key.normalize
     of "print", "verbose": optPrintResults = true
     of "failing": optFailing = true
-    of "pedantic": discard "now always enabled"
+    of "pedantic": discard # deadcode
     of "targets":
       targetsStr = p.val
       gTargets = parseTargets(targetsStr)

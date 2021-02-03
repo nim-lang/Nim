@@ -1,5 +1,6 @@
 import std/private/miscdollars
 import std/strutils
+from std/os import getEnv
 
 template flakyAssert*(cond: untyped, msg = "", notifySuccess = true) =
   ## API to deal with flaky or failing tests. This avoids disabling entire tests
@@ -34,3 +35,10 @@ proc greedyOrderedSubsetLines*(lhs, rhs: string): bool =
     if currentPos < 0:
       return false
   return true
+
+template enableRemoteNetworking*: bool =
+  ## Allows contolling whether to run some test at a statement-level granularity.
+  ## Using environment variables simplifies propagating this all the way across
+  ## process calls, e.g. `testament all` calls itself, which in turns invokes
+  ## a `nim` invocation (possibly via additional intermediate processes).
+  getEnv("NIM_TESTAMENT_REMOTE_NETWORKING") == "1"
