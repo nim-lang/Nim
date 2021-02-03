@@ -125,6 +125,8 @@ with other backends. see #9125. Use `-d:nimLegacyJsRound` for previous behavior.
 - `os.copyFile` is now 2.5x faster on OSX, by using `copyfile` from `copyfile.h`;
   use `-d:nimLegacyCopyFile` for OSX < 10.5.
 
+- The required name of case statement macros for the experimental
+  `caseStmtMacros` feature has changed from `match` to `` `case` ``.
 
 ## Compiler changes
 
