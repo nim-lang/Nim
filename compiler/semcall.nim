@@ -377,6 +377,7 @@ proc resolveOverloads(c: PContext, n, orig: PNode,
         excl n.flags, nfExprCall
       else: return
 
+    var insertedOp = false
     if dotOperators in c.features:
       if nfDotField in n.flags:
         internalAssert c.config, f.kind == nkIdent and n.len >= 2
@@ -385,6 +386,7 @@ proc resolveOverloads(c: PContext, n, orig: PNode,
         # we are going to try multiple variants
         n.sons[0..1] = [nil, n[1], f]
         orig.sons[0..1] = [nil, orig[1], f]
+        insertedOp = true
 
         template tryOp(x) =
           let op = newIdentNode(getIdent(c.cache, x), n.info)
@@ -404,18 +406,21 @@ proc resolveOverloads(c: PContext, n, orig: PNode,
         let callOp = newIdentNode(getIdent(c.cache, ".="), n.info)
         n.sons[0..1] = [callOp, n[1], calleeName]
         orig.sons[0..1] = [callOp, orig[1], calleeName]
+        insertedOp = true
         pickBest(callOp)
     else:
       # preserve error messages
-      if nfDotSetter in n.flags:
+      if nfDotField in n.flags:
         let op = newIdentNode(getIdent(c.cache, "."), n.info)
         n.sons[0..1] = [op, n[1], f]
         orig.sons[0..1] = [op, orig[1], f]
+        insertedOp = true
       elif nfDotSetter in n.flags and f.kind == nkIdent and n.len == 3:
         let calleeName = newIdentNode(getIdent(c.cache, f.ident.s[0..^2]), n.info)
         let callOp = newIdentNode(getIdent(c.cache, ".="), n.info)
         n.sons[0..1] = [callOp, n[1], calleeName]
         orig.sons[0..1] = [callOp, orig[1], calleeName]
+        insertedOp = true
 
     if overloadsState == csEmpty and result.state == csEmpty:
       if efNoUndeclared notin flags: # for tests/pragmas/tcustom_pragma.nim
@@ -426,7 +431,7 @@ proc resolveOverloads(c: PContext, n, orig: PNode,
         localError(c.config, n.info, "expression '$1' cannot be called" %
                    renderTree(n, {renderNoComments}))
       else:
-        if {nfDotField, nfDotSetter} * n.flags != {}:
+        if insertedOp:
           # clean up the inserted ops
           n.sons.delete(2)
           n[0] = f
