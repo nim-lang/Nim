@@ -24,7 +24,7 @@ runnableExamples:
   assert ?.(f2.x2.x2).x3[] == 0
 
   assert (?.f2.x2.x2).x3 == nil  # this terminates ?. early
-  import segfaults
+  import segfaults # enable `NilAccessDefect` exceptions
   doAssertRaises(NilAccessDefect): echo (?.f2.x2.x2).x3[]
 
 type Wrapnil[T] = object
