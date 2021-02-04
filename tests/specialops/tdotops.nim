@@ -17,6 +17,16 @@ one param call to c with 10
 '''
 """
 
+block:
+  type Foo = object
+  var a: Foo
+  {.push experimental: "dotOperators".}
+  template `.`(a: Foo, b: untyped): untyped = astToStr(b)
+  template callme(a, f): untyped = a.f
+  doAssert callme(a, f2) == "f2" # not `f`
+  doAssert a.callme(f3) == "f3"
+  {.pop.}
+
 {.experimental: "dotOperators".}
 
 type

@@ -1,22 +1,3 @@
-discard """
-  nimout: '''
-()
-Sym "b"
-()
-Sym "a"
-()
-Sym "b"
-()
-StmtList
-'''
-  output: '''
-hello
-hello again
-'''
-"""
-
-{.experimental: "callOperator".}
-
 import macros
 
 type Foo[T: proc] = object
@@ -27,23 +8,29 @@ macro `()`(foo: Foo, args: varargs[untyped]): untyped =
   for a in args:
     result.add(a)
 
-var f = Foo[proc()](callback: proc() = echo "hello")
+{.experimental: "callOperator".}
+
+var f1Calls = 0
+var f = Foo[proc()](callback: proc() = inc f1Calls)
+doAssert f1Calls == 0
 f()
-f.callback = proc() = echo "hello again"
+doAssert f1Calls == 1
+var f2Calls = 0
+f.callback = proc() = inc f2Calls
+doAssert f2Calls == 0
 f()
+doAssert f2Calls == 1
 
 let g = Foo[proc (x: int): int](callback: proc (x: int): int = x * 2 + 1)
 doAssert g(15) == 31
 
-macro `()`(foo: untyped, args: varargs[untyped]): untyped =
-  result = newStmtList()
-  echo "()"
-  echo foo.treeRepr
+template `()`(foo: string, args: varargs[untyped]): string =
+  astToStr(foo)
 
-let a = 1
-let b = 2
-let c = 3
+let a = "1"
+let b = "2"
+let c = "3"
 
-a.b(c)
-a(b)
-(a.b)(c)
+doAssert a.b(c) == "b"
+doAssert a(b) == "a"
+doAssert (a.b)(c) == "\"b\""

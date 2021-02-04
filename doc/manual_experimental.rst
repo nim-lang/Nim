@@ -436,30 +436,38 @@ This operator will be matched against assignments to missing fields.
 
 Call operator
 -------------
-The call operator, `()`, matches all kinds of unresolved calls, however
-it does not match missing proc overloads. It must be enabled with
-``{.experimental: "callOperator".}`` to use.
+The call operator, `()`, matches all kinds of unresolved calls and takes
+precedence over dot operators, however it does not match missing overloads
+for existing routines. The experimental `callOperator` switch must be enabled
+to use this operator, but does not have to be enabled to define it.
 
 .. code-block:: nim
-  block:
-    let a = 1
-    let b = 2
-    a.b # becomes `()`(a, b)
+  template `()`(a: int, b: float): untyped = $(a, b)
 
   block:
-    let a = 1
+    let a = 1.0
+    let b = 2
+    {.push experimental: "callOperator".}
+    doAssert b(a) == `()`(b, a)
+    doAssert a.b == `()`(b, a)
+    {.pop.}
+    doAssert not compiles(a.b)
+
+  {.experimental: "callOperator".}
+
+  block:
+    let a = 1.0
     proc b(): int = 2
-    a.b # becomes `.`(a, b)
+    doAssert not compiles(b(a))
+    doAssert not compiles(a.b) # `()` not called
   
   block:
-    let a = 1
-    proc b(x: int): int = x + 1
-    let c = 3
+    let a = 1.0
+    proc b(x: float): int = int(x + 1)
+    let c = 3.0
 
-    a.b(c) # becomes `.`(a, b, c)
-    a(b) # becomes `()`(a, b)
-    (a.b)(c) # becomes `()`(a.b, c)
-    a.b # becomes b(a), must discard
+    doAssert not compiles(a.b(c)) # gives a type mismatch error same as b(a, c)
+    doAssert (a.b)(c) == `()`(a.b, c)
 
 Not nil annotation
 ==================
