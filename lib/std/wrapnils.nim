@@ -30,13 +30,18 @@ type Wrapnil[T] = object
   valueImpl: T
   validImpl: bool
 
-proc wrapnil[T](a: T): Wrapnil[T] =
+template wrapnil[T](a: T): Wrapnil[T] =
   ## See top-level example.
   Wrapnil[T](valueImpl: a, validImpl: true)
 
-template unwrap(a: Wrapnil): untyped =
+template get*[T](a: Wrapnil[T]): T =
   ## See top-level example.
   a.valueImpl
+
+proc isSome*(a: Wrapnil): bool {.inline.} =
+  ## Returns true if `a` didn't contain intermediate `nil` values (note that
+  ## `a.valueImpl` itself can be nil even in that case)
+  a.validImpl
 
 template fakeDot*(a: Wrapnil, b): untyped =
   ## See top-level example.
@@ -54,11 +59,6 @@ template fakeDot*(a: Wrapnil, b): untyped =
   else:
     # nil is "sticky"; this is needed, see tests
     default(T)
-
-proc isValid(a: Wrapnil): bool =
-  ## Returns true if `a` didn't contain intermediate `nil` values (note that
-  ## `a.valueImpl` itself can be nil even in that case)
-  a.validImpl
 
 template `[]`*[I](a: Wrapnil, i: I): untyped =
   ## See top-level example.
@@ -109,3 +109,21 @@ macro `?.`*(a: untyped): untyped =
   result = replace(a)
   result = quote do:
     `result`.valueImpl
+
+macro `??.`*(a: untyped): untyped =
+  ## Same as `?.` but returns an option-like object that can be unboxed with `get`.
+  ## or checked for validity with `isSome`.
+  runnableExamples:
+    type Foo = ref object
+      x1: ref int
+      x2: int
+    # ?. can't distinguish between a valid vs invalid default value, but `??.` can:
+    var f1 = Foo(x1: int.new, x2: 2)
+    doAssert ??.f1.x1[].get == 0 # not enough to tell when the chain was valid.
+    doAssert ??.f1.x1[].isSome # a nil didn't occur in the chain
+    doAssert ??.f2.x2.get == 2
+
+    var f2: Foo
+    doAssert not ??.f2.x1[].isSome # f2 was nil
+
+  result = replace(a)

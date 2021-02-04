@@ -174,6 +174,8 @@ provided by the operating system.
 - Added `strip` and `setSlice` to `std/strbasics`.
 
 
+- Added to `wrapnils` an option-like API via `??.`, `isSome`, `get`.
+
 ## Language changes
 
 - `nimscript` now handles `except Exception as e`.
