@@ -117,7 +117,7 @@ macro `??.`*(a: untyped): untyped =
     type Foo = ref object
       x1: ref int
       x2: int
-    # ?. can't distinguish between a valid vs invalid default value, but `??.` can:
+    # `?.` can't distinguish between a valid vs invalid default value, but `??.` can:
     var f1 = Foo(x1: int.new, x2: 2)
     doAssert ??.f1.x1[].get == 0 # not enough to tell when the chain was valid.
     doAssert ??.f1.x1[].isSome # a nil didn't occur in the chain
