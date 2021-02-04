@@ -34,14 +34,14 @@ template wrapnil[T](a: T): Wrapnil[T] =
   ## See top-level example.
   Wrapnil[T](valueImpl: a, validImpl: true)
 
-template get*[T](a: Wrapnil[T]): T =
-  ## Unbox `a`.
-  a.valueImpl
+template get*[T](self: Wrapnil[T]): T =
+  ## Unwraps the value contained in `self`.
+  self.valueImpl
 
-proc isSome*(a: Wrapnil): bool {.inline.} =
-  ## Returns true if `a` didn't contain intermediate `nil` values (note that
-  ## `a.get` itself can be nil even in that case)
-  a.validImpl
+func isSome*(self: Wrapnil): bool {.inline.} =
+  ## Returns true if `self` didn't contain intermediate `nil` values (note that
+  ## `self.get` itself can be nil even in that case)
+  self.validImpl
 
 template fakeDot*(a: Wrapnil, b): untyped =
   ## See top-level example.
@@ -84,7 +84,7 @@ template `[]`*(a: Wrapnil): untyped =
 
 import std/macros
 
-proc replace(n: NimNode): NimNode =
+func replace(n: NimNode): NimNode =
   if n.kind == nnkDotExpr:
     result = newCall(bindSym"fakeDot", replace(n[0]), n[1])
   elif n.kind == nnkPar:
@@ -111,7 +111,7 @@ macro `?.`*(a: untyped): untyped =
     `result`.valueImpl
 
 macro `??.`*(a: untyped): untyped =
-  ## Same as `?.` but returns an option-like object that can be unboxed with `get`
+  ## Same as `?.` but returns an option-like object that can be unwrapped with `get`
   ## or checked for validity with `isSome`.
   runnableExamples:
     type Foo = ref object
