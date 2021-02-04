@@ -1725,8 +1725,9 @@ proc copyFile*(source, dest: string, options = {cfSymlinkFollow}) {.rtl,
   noWeirdTarget.} =
   ## Copies a file from `source` to `dest`, where `dest.parentDir` must exist.
   ##
-  ## `options` specify the way file is copied; by default, if `source` is a
-  ## symlink, copies the file symlink points to.
+  ## On non-Windows OSes, `options` specify the way file is copied; by default,
+  ## if `source` is a symlink, copies the file symlink points to. `options` is
+  ## ignored on Windows: symlinks are skipped.
   ##
   ## If this fails, `OSError` is raised.
   ##
@@ -1759,73 +1760,64 @@ proc copyFile*(source, dest: string, options = {cfSymlinkFollow}) {.rtl,
   doAssert card(copyFlagSymlink * options) == 1, "There should be exactly " &
                                                  "one cfSymlink* in options"
   let isSymlink = source.symlinkExists
-  if isSymlink and cfSymlinkIgnore in options:
+  if isSymlink and (cfSymlinkIgnore in options or defined(windows)):
     return
   when defined(Windows):
-    proc handleOSError =
-      const ERROR_PRIVILEGE_NOT_HELD = 1314
-      let errCode = osLastError()
-      let context = $(source, dest, options)
-      if isSymlink and errCode.int32 == ERROR_PRIVILEGE_NOT_HELD:
-        stderr.write("Failed copy the symlink: error " & $errCode & ": " &
-                     osErrorMsg(errCode) & "Additional info: " & context &
-                     "\n")
-      else:
-        raiseOSError(errCode, context)
-
-    let dwCopyFlags = if cfSymlinkAsIs in options: COPY_FILE_COPY_SYMLINK else: 0'i32
-    var pbCancel = 0'i32
     when useWinUnicode:
       let s = newWideCString(source)
       let d = newWideCString(dest)
-      if copyFileExW(s, d, nil, nil, addr pbCancel, dwCopyFlags) == 0'i32:
-        handleOSError()
+      if copyFileW(s, d, 0'i32) == 0'i32:
+        raiseOSError(osLastError(), $(source, dest))
     else:
-      if copyFileExA(source, dest, nil, nil, addr pbCancel, dwCopyFlags) == 0'i32:
-        handleOSError()
-  elif hasCCopyfile:
-    let state = copyfile_state_alloc()
-    # xxx `COPYFILE_STAT` could be used for one-shot `copyFileWithPermissions`.
-    let status = c_copyfile(source.cstring, dest.cstring, state, COPYFILE_DATA)
-    if status != 0:
-      let err = osLastError()
-      discard copyfile_state_free(state)
-      raiseOSError(err, $(source, dest))
-    let status2 = copyfile_state_free(state)
-    if status2 != 0: raiseOSError(osLastError(), $(source, dest))
+      if copyFileA(source, dest, 0'i32) == 0'i32:
+        raiseOSError(osLastError(), $(source, dest))
   else:
     if isSymlink and cfSymlinkAsIs in options:
       createSymlink(expandSymlink(source), dest)
     else:
-      # generic version of copyFile which works for any platform:
-      const bufSize = 8000 # better for memory manager
-      var d, s: File
-      if not open(s, source): raiseOSError(osLastError(), source)
-      if not open(d, dest, fmWrite):
+      when hasCCopyfile:
+        let state = copyfile_state_alloc()
+        # xxx `COPYFILE_STAT` could be used for one-shot
+        # `copyFileWithPermissions`.
+        let status = c_copyfile(source.cstring, dest.cstring, state,
+                                COPYFILE_DATA)
+        if status != 0:
+          let err = osLastError()
+          discard copyfile_state_free(state)
+          raiseOSError(err, $(source, dest))
+        let status2 = copyfile_state_free(state)
+        if status2 != 0: raiseOSError(osLastError(), $(source, dest))
+      else:
+        # generic version of copyFile which works for any platform:
+        const bufSize = 8000 # better for memory manager
+        var d, s: File
+        if not open(s, source):raiseOSError(osLastError(), source)
+        if not open(d, dest, fmWrite):
+          close(s)
+          raiseOSError(osLastError(), dest)
+        var buf = alloc(bufSize)
+        while true:
+          var bytesread = readBuffer(s, buf, bufSize)
+          if bytesread > 0:
+            var byteswritten = writeBuffer(d, buf, bytesread)
+            if bytesread != byteswritten:
+              dealloc(buf)
+              close(s)
+              close(d)
+              raiseOSError(osLastError(), dest)
+          if bytesread != bufSize: break
+        dealloc(buf)
         close(s)
-        raiseOSError(osLastError(), dest)
-      var buf = alloc(bufSize)
-      while true:
-        var bytesread = readBuffer(s, buf, bufSize)
-        if bytesread > 0:
-          var byteswritten = writeBuffer(d, buf, bytesread)
-          if bytesread != byteswritten:
-            dealloc(buf)
-            close(s)
-            close(d)
-            raiseOSError(osLastError(), dest)
-        if bytesread != bufSize: break
-      dealloc(buf)
-      close(s)
-      flushFile(d)
-      close(d)
+        flushFile(d)
+        close(d)
 
 proc copyFileToDir*(source, dir: string, options = {cfSymlinkFollow})
   {.noWeirdTarget, since: (1,3,7).} =
   ## Copies a file `source` into directory `dir`, which must exist.
   ##
-  ## `options` specify the way file is copied; by default, if `source` is a
-  ## symlink, copies the file symlink points to.
+  ## On non-Windows OSes, `options` specify the way file is copied; by default,
+  ## if `source` is a symlink, copies the file symlink points to. `options` is
+  ## ignored on Windows: symlinks are skipped.
   ##
   ## See also:
   ## * `CopyFlag enum <#CopyFlag>`_
@@ -2460,7 +2452,8 @@ proc copyDir*(source, dest: string) {.rtl, extern: "nos$1",
   tags: [ReadDirEffect, WriteIOEffect, ReadIOEffect], benign, noWeirdTarget.} =
   ## Copies a directory from `source` to `dest`.
   ##
-  ## Symlinks are copied as symlinks.
+  ## On non-Windows OSes, symlinks are copied as symlinks. On Windows, symlinks
+  ## are skipped.
   ##
   ## If this fails, `OSError` is raised.
   ##
@@ -2491,8 +2484,8 @@ proc copyDir*(source, dest: string) {.rtl, extern: "nos$1",
 proc moveDir*(source, dest: string) {.tags: [ReadIOEffect, WriteIOEffect], noWeirdTarget.} =
   ## Moves a directory from `source` to `dest`.
   ##
-  ## Symlinks are not followed: if `source` contains symlinks, they itself are
-  ## moved, not theirs target.
+  ## Symlinks are not followed: if `source` contains symlinks, they themself are
+  ## moved, not their target.
   ##
   ## If this fails, `OSError` is raised.
   ##
@@ -2536,8 +2529,9 @@ proc copyFileWithPermissions*(source, dest: string,
                               options = {cfSymlinkFollow}) {.noWeirdTarget.} =
   ## Copies a file from `source` to `dest` preserving file permissions.
   ##
-  ## `options` specify the way file is copied; by default, if `source` is a
-  ## symlink, copies the file symlink points to.
+  ## On non-Windows OSes, `options` specify the way file is copied; by default,
+  ## if `source` is a symlink, copies the file symlink points to. `options` is
+  ## ignored on Windows: symlinks are skipped.
   ##
   ## This is a wrapper proc around `copyFile <#copyFile,string,string>`_,
   ## `getFilePermissions <#getFilePermissions,string>`_ and
@@ -2576,7 +2570,8 @@ proc copyDirWithPermissions*(source, dest: string,
    benign, noWeirdTarget.} =
   ## Copies a directory from `source` to `dest` preserving file permissions.
   ##
-  ## Symlinks are copied as symlinks.
+  ## On non-Windows OSes, symlinks are copied as symlinks. On Windows, symlinks
+  ## are skipped.
   ##
   ## If this fails, `OSError` is raised. This is a wrapper proc around `copyDir
   ## <#copyDir,string,string>`_ and `copyFileWithPermissions
