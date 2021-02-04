@@ -26,7 +26,6 @@ type
     owner: PSym
     g: ControlFlowGraph
     graph: ModuleGraph
-    otherRead: PNode
     inLoop, inSpawn, inLoopCond: int
     uninit: IntSet # set of uninit'ed vars
     uninitComputed: bool
@@ -78,7 +77,7 @@ type PNodeSet = HashSet[PNode]
 
 proc hash(n: PNode): Hash = hash(cast[pointer](n))
 
-proc collectLastReads(cfg: ControlFlowGraph; alreadySeen, lastReads, potLastReads: var PNodeSet; pc, until: int): int =
+proc collectLastReads(config: ConfigRef, cfg: ControlFlowGraph; alreadySeen, lastReads, potLastReads: var PNodeSet; pc, until: int): int =
   var pc = pc
   while pc < cfg.len and pc < until:
     case cfg[pc].kind
@@ -91,7 +90,7 @@ proc collectLastReads(cfg: ControlFlowGraph; alreadySeen, lastReads, potLastRead
         elif r.aliases(cfg[pc].n) != no:
           # only partially writes to 's' --> can't sink 's', so this def reads 's'
           # or maybe writes to 's' --> can't sink 's'
-          discard
+          r.comment = '\n' & config $ cfg[pc].n.info
         else:
           newPotLastReads.incl r
       potLastReads = newPotLastReads
@@ -110,7 +109,7 @@ proc collectLastReads(cfg: ControlFlowGraph; alreadySeen, lastReads, potLastRead
       var newPotLastReads: PNodeSet
       for r in potLastReads:
         if cfg[pc].n.aliases(r) != no or r.aliases(cfg[pc].n) != no:
-          discard
+          r.comment = '\n' & config $ cfg[pc].n.info
         else:
           newPotLastReads.incl r
       potLastReads = newPotLastReads
@@ -130,9 +129,9 @@ proc collectLastReads(cfg: ControlFlowGraph; alreadySeen, lastReads, potLastRead
       var alreadySeenA, alreadySeenB = alreadySeen
       while variantA != variantB and max(variantA, variantB) < cfg.len and min(variantA, variantB) < until:
         if variantA < variantB:
-          variantA = collectLastReads(cfg, alreadySeenA, lastReadsA, potLastReadsA, variantA, min(variantB, until))
+          variantA = collectLastReads(config, cfg, alreadySeenA, lastReadsA, potLastReadsA, variantA, min(variantB, until))
         else:
-          variantB = collectLastReads(cfg, alreadySeenB, lastReadsB, potLastReadsB, variantB, min(variantA, until))
+          variantB = collectLastReads(config, cfg, alreadySeenB, lastReadsB, potLastReadsB, variantB, min(variantA, until))
 
       alreadySeen.incl alreadySeenA
       alreadySeen.incl alreadySeenB
@@ -218,9 +217,9 @@ proc checkForErrorPragma(c: Con; t: PType; ri: PNode; opname: string) =
     m.add "; requires a copy because it's not the last read of '"
     m.add renderTree(ri)
     m.add '\''
-    if c.otherRead != nil:
+    if ri.comment.startsWith('\n'):
       m.add "; another read is done here: "
-      m.add c.graph.config $ c.otherRead.info
+      m.add ri.comment[1..^1]
     elif ri.kind == nkSym and ri.sym.kind == skParam and not isSinkType(ri.sym.typ):
       m.add "; try to make "
       m.add renderTree(ri)
@@ -334,7 +333,6 @@ proc genCopy(c: var Con; dest, ri: PNode): PNode =
   let t = dest.typ
   if tfHasOwned in t.flags and ri.kind != nkNilLit:
     # try to improve the error message here:
-    if c.otherRead == nil: discard isLastRead(ri, c)
     c.checkForErrorPragma(t, ri, "=copy")
   result = c.genCopyNoCheck(dest, ri)
 
@@ -1078,7 +1076,7 @@ proc injectDestructorCalls*(g: ModuleGraph; idgen: IdGenerator; owner: PSym; n: 
 
   block:
     var alreadySeen, lastReads, potLastReads: PNodeSet
-    discard collectLastReads(c.g, alreadySeen, lastReads, potLastReads, 0, c.g.len)
+    discard collectLastReads(c.graph.config, c.g, alreadySeen, lastReads, potLastReads, 0, c.g.len)
     lastReads.incl potLastReads
     for r in lastReads: r.flags.incl nfLastRead
 
