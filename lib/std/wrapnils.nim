@@ -19,8 +19,13 @@ runnableExamples:
   assert ?.f2.x1 == "a" # same as f2.x1 (no nil LHS in this chain)
   assert ?.Foo(x1: "a").x1 == "a" # can use constructor inside
 
-  # when you know a sub-expression is not nil, you can scope it as follows:
-  assert ?.(f2.x2.x2).x3[] == 0 # because `f` is nil
+  # when you know a sub-expression doesn't involve a `nil` (e.g. `f2.x2.x2`),
+  # you can scope it as follows:
+  assert ?.(f2.x2.x2).x3[] == 0
+
+  assert (?.f2.x2.x2).x3 == nil  # this terminates ?. early
+  import segfaults # enable `NilAccessDefect` exceptions
+  doAssertRaises(NilAccessDefect): echo (?.f2.x2.x2).x3[]
 
 type Wrapnil[T] = object
   valueImpl: T
