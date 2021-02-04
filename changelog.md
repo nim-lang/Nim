@@ -112,6 +112,18 @@ with other backends. see #9125. Use `-d:nimLegacyJsRound` for previous behavior.
 
 - Removed the optional `longestMatch` parameter of the `critbits._WithPrefix` iterators (it never worked reliably)
 
+
+- Added optional `options` argument to `copyFile`, `copyFileToDir`, and
+  `copyFileWithPermissions`. By default, on non-Windows OSes, symlinks are
+  followed (copy files symlinks point to); on Windows, `options` argument is
+  ignored and symlinks are skipped.
+- On non-Windows OSes, `copyDir` and `copyDirWithPermissions` copy symlinks as
+  symlinks (instead of skipping them as it was before); on Windows symlinks are
+  skipped.
+- On non-Windows OSes, `moveFile` and `moveDir` move symlinks as symlinks
+  (instead of skipping them sometimes as it was before).
+- Added optional `followSymlinks` argument to `setFilePermissions`.
+
 ## Language changes
 
 - `nimscript` now handles `except Exception as e`.
