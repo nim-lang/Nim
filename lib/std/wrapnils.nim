@@ -111,7 +111,7 @@ macro `?.`*(a: untyped): untyped =
     `result`.valueImpl
 
 macro `??.`*(a: untyped): untyped =
-  ## Same as `?.` but returns an option-like object that can be unboxed with `get`.
+  ## Same as `?.` but returns an option-like object that can be unboxed with `get`
   ## or checked for validity with `isSome`.
   runnableExamples:
     type Foo = ref object
