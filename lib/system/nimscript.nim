@@ -175,7 +175,7 @@ template `--`*(key, val: untyped) =
   switch(strip(astToStr(key)), strip(astToStr(val)))
 
 template `--`*(key: untyped) =
-  ## A shortcut for `switch <#switch,string>`_
+  ## A shortcut for `switch <#switch,string,string>`_
   ## Example:
   ##
   ## .. code-block:: nim
