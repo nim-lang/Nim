@@ -35,12 +35,12 @@ template wrapnil[T](a: T): Wrapnil[T] =
   Wrapnil[T](valueImpl: a, validImpl: true)
 
 template get*[T](a: Wrapnil[T]): T =
-  ## See top-level example.
+  ## Unbox `a`.
   a.valueImpl
 
 proc isSome*(a: Wrapnil): bool {.inline.} =
   ## Returns true if `a` didn't contain intermediate `nil` values (note that
-  ## `a.valueImpl` itself can be nil even in that case)
+  ## `a.get` itself can be nil even in that case)
   a.validImpl
 
 template fakeDot*(a: Wrapnil, b): untyped =
@@ -121,9 +121,10 @@ macro `??.`*(a: untyped): untyped =
     var f1 = Foo(x1: int.new, x2: 2)
     doAssert ??.f1.x1[].get == 0 # not enough to tell when the chain was valid.
     doAssert ??.f1.x1[].isSome # a nil didn't occur in the chain
-    doAssert ??.f2.x2.get == 2
+    doAssert ??.f1.x2.get == 2
 
     var f2: Foo
     doAssert not ??.f2.x1[].isSome # f2 was nil
+    doAssert ??.f2.x1[].get == 0
 
   result = replace(a)
