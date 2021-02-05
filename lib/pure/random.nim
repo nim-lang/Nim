@@ -462,6 +462,22 @@ proc sample*[T](a: openArray[T]): T =
     doAssert sample(marbles) == "red"
   result = a[rand(a.low..a.high)]
 
+proc rand*[T](a: openArray[T]): T =
+  ## Alias for `sample proc<#sample,openArray[T]>`_
+  sample(a)
+
+proc rand*[T](r: var Rand; a: openArray[T]): T =
+  ## Alias for `sample proc<#sample,Rand,openArray[T]>`_`
+  sample(r, a)
+
+proc rand*[T](s: set[T]): T =
+  ## Alias for `sample proc<#sample,set[T]>`_
+  sample(s)
+
+proc rand*[T](r: var Rand; s: set[T]): T =
+  ## Alias for `sample proc<#sample,Rand,set[T]>`_
+  sample(r, s)
+
 proc sample*[T, U](r: var Rand; a: openArray[T]; cdf: openArray[U]): T =
   ## Returns an element from ``a`` using a cumulative distribution function
   ## (CDF) and the given state.
