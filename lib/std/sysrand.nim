@@ -8,6 +8,7 @@
 #
 
 ## `std/sysrand` generates random numbers from a secure source provided by the operating system.
+## It is also called Cryptographically secure pseudorandom number generator.
 ## It should be unpredictable enough for cryptographic applications,
 ## though its exact quality depends on the OS implementation.
 ##
@@ -224,14 +225,13 @@ elif defined(ios):
   proc secRandomCopyBytes(
     rnd: SecRandomRef, count: csize_t, bytes: pointer
     ): cint {.importc: "SecRandomCopyBytes", header: "<Security/SecRandom.h>".}
-    ## Generates an array of cryptographically secure random bytes.
+    ## https://developer.apple.com/documentation/security/1399291-secrandomcopybytes
 
   template urandomImpl(result: var int, dest: var openArray[byte]) =
     let size = dest.len
     if size == 0:
       return
 
-    # `kSecRandomDefault` is a synonym for NULL.
     result = secRandomCopyBytes(nil, csize_t(size), addr dest[0])
 
 elif defined(macosx):
@@ -271,6 +271,10 @@ else:
           inc(result, batchSize)
 
         result = posix.read(fd, addr dest[result], left)
+      else:
+        result = -1
+    else:
+      result = -1
 
 proc urandomInternalImpl(dest: var openArray[byte]): int {.inline.} =
   when batchImplOS:
