@@ -125,7 +125,8 @@ type
     cmdParse # parse a single file (for debugging)
     cmdRod # .rod to some text representation (for debugging)
     cmdIdeTools # ide tools (e.g. nimsuggest)
-    cmdNimscript # evaluate nimscript
+    cmdNimscriptSecure # evaluate nimscript
+    cmdNimscriptDanger # evaluate nimscript including 'gorge' and 'writeFile'
     cmdDoc0
     cmdDoc2
     cmdRst2html # convert a reStructuredText file to HTML

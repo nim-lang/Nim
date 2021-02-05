@@ -407,7 +407,8 @@ proc parseCommand*(command: string): Command =
   of "r": cmdCrun
   of "run": cmdTcc
   of "check": cmdCheck
-  of "e": cmdNimscript
+  of "e": cmdNimscriptSecure
+  of "edanger": cmdNimscriptDanger
   of "doc0": cmdDoc0
   of "doc2", "doc": cmdDoc2
   of "rst2html": cmdRst2html
@@ -428,7 +429,10 @@ proc parseCommand*(command: string): Command =
 proc setCmd*(conf: ConfigRef, cmd: Command) =
   ## sets cmd, backend so subsequent flags can query it (e.g. so --gc:arc can be ignored for backendJs)
   # Note that `--backend` can override the backend, so the logic here must remain reversible.
-  conf.cmd = cmd
+  if cmd != cmdNimscriptSecure:
+    # you cannot override 'cmdNimscriptSecure' as it would allow to disable
+    # the VM's sandboxing behavior.
+    conf.cmd = cmd
   case cmd
   of cmdCompileToC, cmdCrun, cmdTcc: conf.backend = backendC
   of cmdCompileToCpp: conf.backend = backendCpp
@@ -458,7 +462,7 @@ proc processSwitch*(switch, arg: string, pass: TCmdLinePass, info: TLineInfo;
     conf.cmdInput = arg # can be empty (a nim file with empty content is valid too)
     if conf.cmd == cmdNone:
       conf.command = "e"
-      conf.setCmd cmdNimscript # better than `cmdCrun` as a default
+      conf.setCmd cmdNimscriptSecure # better than `cmdCrun` as a default
       conf.implicitCmd = true
   of "path", "p":
     expectArg(conf, switch, arg, pass, info)
@@ -1003,7 +1007,7 @@ proc processArgument*(pass: TCmdLinePass; p: OptParser;
   if argsCount == 0:
     # nim filename.nims  is the same as "nim e filename.nims":
     if p.key.endsWith(".nims"):
-      config.setCmd cmdNimscript
+      config.setCmd cmdNimscriptSecure
       incl(config.globalOptions, optWasNimscript)
       config.projectName = unixToNativePath(p.key)
       config.arguments = cmdLineRest(p)

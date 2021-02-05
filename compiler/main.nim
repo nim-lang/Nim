@@ -330,7 +330,7 @@ proc mainCommand*(graph: ModuleGraph) =
     commandView(graph)
     #msgWriteln(conf, "Beware: Indentation tokens depend on the parser's state!")
   of cmdInteractive: commandInteractive(graph)
-  of cmdNimscript:
+  of cmdNimscriptSecure, cmdNimscriptDanger:
     if conf.projectIsCmd or conf.projectIsStdin: discard
     elif not fileExists(conf.projectFull):
       rawMessage(conf, errGenerated, "NimScript file does not exist: " & conf.projectFull.string)

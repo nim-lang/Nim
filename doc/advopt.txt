@@ -3,7 +3,8 @@ Advanced commands:
   //compileToCpp, cpp       compile project to C++ code
   //compileToOC, objc       compile project to Objective C code
   //js                      compile project to Javascript
-  //e                       run a Nimscript file
+  //e                       run a Nimscript file in the sandbox
+  //edanger                 run a Nimscript file **without** the sandbox
   //rst2html                convert a reStructuredText file to HTML
                             use `--docCmd:skip` to skip compiling snippets
   //rst2tex                 convert a reStructuredText file to TeX
