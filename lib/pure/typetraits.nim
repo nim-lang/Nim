@@ -86,26 +86,26 @@ proc isNamedTuple*(T: typedesc): bool {.magic: "TypeTrait".} =
     doAssert isNamedTuple(tuple[name: string, age: int])
 
 proc distinctBase*(T: typedesc): typedesc {.magic: "TypeTrait".} =
-  ## Returns the base type for distinct types. This works only
-  ## for distinct types and produces a compile time error otherwise.
+  ## Returns the base type for distinct types, or the type itself otherwise.
   ##
   ## **See also:**
   ## * `distinctBase template <#distinctBase.t,T>`_
   runnableExamples:
     type MyInt = distinct int
-
     doAssert distinctBase(MyInt) is int
-    doAssert not compiles(distinctBase(int))
+    doAssert distinctBase(int) is int
 
 since (1, 1):
   template distinctBase*[T](a: T): untyped =
     ## Overload of `distinctBase <#distinctBase,typedesc>`_ for values.
     runnableExamples:
       type MyInt = distinct int
-
       doAssert 12.MyInt.distinctBase == 12
-
-    distinctBase(type(a))(a)
+      doAssert 12.distinctBase == 12
+    when T is distinct:
+      distinctBase(type(a))(a)
+    else: # avoids hint ConvFromXtoItselfNotNeeded
+      a
 
   proc tupleLen*(T: typedesc[tuple]): int {.magic: "TypeTrait".} =
     ## Returns the number of elements of the tuple type `T`.

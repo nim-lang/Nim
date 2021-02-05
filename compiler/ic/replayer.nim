@@ -127,3 +127,19 @@ proc replayGenericCacheInformation*(g: ModuleGraph; module: int) =
     let sym = loadSymFromId(g.config, g.cache, g.packed, module,
                             PackedItemId(module: LitId(0), item: it))
     methodDef(g, g.idgen, sym)
+
+  for it in mitems(g.packed[module].fromDisk.compilerProcs):
+    let symId = FullId(module: module, packed: PackedItemId(module: LitId(0), item: it[1]))
+    g.lazyCompilerprocs[g.packed[module].fromDisk.sh.strings[it[0]]] = symId
+
+  for it in mitems(g.packed[module].fromDisk.converters):
+    let symId = FullId(module: module, packed: PackedItemId(module: LitId(0), item: it))
+    g.ifaces[module].converters.add LazySym(id: symId, sym: nil)
+
+  for it in mitems(g.packed[module].fromDisk.trmacros):
+    let symId = FullId(module: module, packed: PackedItemId(module: LitId(0), item: it))
+    g.ifaces[module].patterns.add LazySym(id: symId, sym: nil)
+
+  for it in mitems(g.packed[module].fromDisk.pureEnums):
+    let symId = FullId(module: module, packed: PackedItemId(module: LitId(0), item: it))
+    g.ifaces[module].pureEnums.add LazySym(id: symId, sym: nil)

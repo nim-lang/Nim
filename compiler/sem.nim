@@ -562,6 +562,7 @@ proc isEmptyTree(n: PNode): bool =
 proc semStmtAndGenerateGenerics(c: PContext, n: PNode): PNode =
   if c.topStmts == 0 and not isImportSystemStmt(c.graph, n):
     if sfSystemModule notin c.module.flags and not isEmptyTree(n):
+      assert c.graph.systemModule != nil
       c.moduleScope.addSym c.graph.systemModule # import the "System" identifier
       importAllSymbols(c, c.graph.systemModule)
       inc c.topStmts

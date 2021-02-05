@@ -42,8 +42,7 @@ template fn() =
 
   block:
     testRoundtrip({"z": "Z", "y": "Y"}.toOrderedTable): """{"z":"Z","y":"Y"}"""
-    when not defined(js): # pending https://github.com/nim-lang/Nim/issues/14574
-      testRoundtrip({"z": (f1: 'f'), }.toTable): """{"z":{"f1":102}}"""
+    testRoundtrip({"z": (f1: 'f'), }.toTable): """{"z":{"f1":102}}"""
 
   block:
     testRoundtrip({"name": "John", "city": "Monaco"}.newStringTable): """{"mode":"modeCaseSensitive","table":{"city":"Monaco","name":"John"}}"""
