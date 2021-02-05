@@ -904,14 +904,31 @@ template disarm*(x: typed) =
   ## experimental API!
   x = nil
 
-proc `of`*[T, S](x: typedesc[T], y: typedesc[S]): bool {.magic: "Of", noSideEffect.}
-proc `of`*[T, S](x: T, y: typedesc[S]): bool {.magic: "Of", noSideEffect.}
-proc `of`*[T, S](x: T, y: S): bool {.magic: "Of", noSideEffect.}
-  ## Checks if `x` has a type of `y`.
-  ##
-  ## .. code-block:: Nim
-  ##   assert(FloatingPointDefect of Exception)
-  ##   assert(DivByZeroDefect of Exception)
+proc `of`*[T, S](x: T, y: typedesc[S]): bool {.magic: "Of", noSideEffect.} =
+  ## Checks if `x` is an instance of `y`.
+  runnableExamples:
+    type
+      Base = ref object of RootObj
+      Sub1 = ref object of Base
+      Sub2 = ref object of Base
+      Unrelated = ref object
+
+    var base: Base = Sub1() # downcast
+    doAssert base of Base # generates `CondTrue` (statically true)
+    doAssert base of Sub1
+    doAssert base isnot Sub1
+    doAssert not (base of Sub2)
+
+    base = Sub2() # re-assign
+    doAssert base of Sub2
+    doAssert Sub2(base) != nil # upcast
+    doAssertRaises(ObjectConversionDefect): discard Sub1(base)
+
+    var sub1 = Sub1()
+    doAssert sub1 of Base
+    doAssert sub1.Base of Sub1
+
+    doAssert not compiles(base of Unrelated)
 
 proc cmp*[T](x, y: T): int =
   ## Generic compare proc.
