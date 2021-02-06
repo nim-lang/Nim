@@ -1360,7 +1360,7 @@ proc genMainProc(m: BModule) =
       "}$N$N"
 
     NimMainProc =
-      "N_CDECL(void, NimMain)(void) {$N" &
+      "N_LIB_PRIVATE N_CDECL(void, NimMain)(void) {$N" &
         "\tvoid (*volatile inner)(void);$N" &
         "$4" &
         "\tinner = NimMainInner;$N" &
