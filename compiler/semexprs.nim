@@ -1419,6 +1419,12 @@ proc dotTransformation(c: PContext, n: PNode): PNode =
     result = newNodeI(nkDotCall, n.info)
     result.add n[1]
     result.add copyTree(n[0])
+  elif n[0].typ != nil and n[0].typ.kind == tyError:
+    # XXX: this hack avoids the issue where we keep reevaluating the same
+    # dot expression over and over again, when we have dot operator enabled
+    # and the left operand has an error. The real fixes are likely in overload
+    # resolution and friends.
+    result = errorNode(c, n)
   else:
     var i = considerQuotedIdent(c, n[1], n)
     result = newNodeI(nkDotCall, n.info)
