@@ -2019,7 +2019,7 @@ proc finalCodegenActions*(graph: ModuleGraph; m: BModule; n: PNode) =
     if m.config.exc == excGoto and getCompilerProc(graph, "nimTestErrorFlag") != nil:
       discard cgsym(m, "nimTestErrorFlag")
 
-    if {optGenStaticLib, optGenDynLib, optNoMain} * m.config.globalOptions == {}:
+    if {optGenStaticLib, optGenDynLib, optNoMain, optNoNimMain} * m.config.globalOptions == {}:
       for i in countdown(high(graph.globalDestructors), 0):
         n.add graph.globalDestructors[i]
   if passes.skipCodegen(m.config, n): return
