@@ -124,6 +124,8 @@ with other backends. see #9125. Use `-d:nimLegacyJsRound` for previous behavior.
   (instead of skipping them sometimes as it was before).
 - Added optional `followSymlinks` argument to `setFilePermissions`.
 
+- Added `random.initRand()` overload with no argument which uses the current time as a seed.
+
 ## Language changes
 
 - `nimscript` now handles `except Exception as e`.
