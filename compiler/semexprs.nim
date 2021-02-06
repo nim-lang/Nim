@@ -1570,7 +1570,7 @@ proc propertyWriteAccess(c: PContext, n, nOrig, a: PNode): PNode =
   let orig = newTreeI(nkCall, n.info, setterId, aOrig[0], nOrig[1])
   result = semOverloadedCallAnalyseEffects(c, result, orig, {})
 
-  if result != nil:
+  if result != nil and result.kind != nkError:
     result = afterCallActions(c, result, nOrig, {})
     #fixAbstractType(c, result)
     #analyseIfAddressTakenInCall(c, result)
