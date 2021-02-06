@@ -635,25 +635,43 @@ proc shuffle*[T](x: var openArray[T]) =
 
 when not defined(nimscript) and not defined(standalone):
   import times
+  
+  proc initRand(): Rand =
+    ## Initializes a new Rand state with a seed based on the current time.
+    ##
+    ## The resulting state is independent of the default random number generator's state.
+    ##
+    ## **Note:** Does not work for NimScript or the compile-time VM.
+    ##
+    ## See also:
+    ## * `initRand proc<#initRand,int64>`_ that accepts a seed for a new Rand state
+    ## * `randomize proc<#randomize>`_ that initializes the default random
+    ##   number generator using the current time
+    ## * `randomize proc<#randomize,int64>`_ that accepts a seed for the default
+    ##   random number generator
+    when defined(js):
+      let time = int64(times.epochTime() * 1000) and 0x7fff_ffff
+      result = initRand(time)
+    else:
+      let now = times.getTime()
+      result = initRand(convert(Seconds, Nanoseconds, now.toUnix) + now.nanosecond)
+  
+  since (1, 5, 1):
+    export initRand
 
   proc randomize*() {.benign.} =
-    ## Initializes the default random number generator with a value based on
+    ## Initializes the default random number generator with a seed based on
     ## the current time.
     ##
     ## This proc only needs to be called once, and it should be called before
     ## the first usage of procs from this module that use the default random
     ## number generator.
     ##
-    ## **Note:** Does not work for NimScript.
+    ## **Note:** Does not work for NimScript or the compile-time VM.
     ##
     ## See also:
     ## * `randomize proc<#randomize,int64>`_ that accepts a seed
     ## * `initRand proc<#initRand,int64>`_
-    when defined(js):
-      let time = int64(times.epochTime() * 1000) and 0x7fff_ffff
-      randomize(time)
-    else:
-      let now = times.getTime()
-      randomize(convert(Seconds, Nanoseconds, now.toUnix) + now.nanosecond)
+    state = initRand()
 
 {.pop.}
