@@ -19,13 +19,19 @@ type
     CustomError
 
 proc newError*(wrongNode: PNode; k: ErrorKind; args: varargs[PNode]): PNode =
-  result = newNodeI(nkError, wrongNode.info)
+  assert wrongNode.kind != nkError
+  if wrongNode.hasSubnodeWith(nkError):
+    return wrongNode
+  result = newNodeIT(nkError, wrongNode.info, newType(tyError, ItemId(module: -1, item: -1), nil))
   result.add newIntNode(nkIntLit, ord(k))
   result.add wrongNode
   for a in args: result.add a
 
 proc newError*(wrongNode: PNode; msg: string): PNode =
-  result = newNodeI(nkError, wrongNode.info)
+  assert wrongNode.kind != nkError
+  if wrongNode.hasSubnodeWith(nkError):
+    return wrongNode
+  result = newNodeIT(nkError, wrongNode.info, newType(tyError, ItemId(module: -1, item: -1), nil))
   result.add newIntNode(nkIntLit, ord(CustomError))
   result.add wrongNode
   result.add newStrNode(msg, wrongNode.info)

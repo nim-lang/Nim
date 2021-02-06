@@ -75,7 +75,9 @@ proc semExprCheck(c: PContext, n: PNode, flags: TExprFlags): PNode =
 
 proc semExprWithType(c: PContext, n: PNode, flags: TExprFlags = {}): PNode =
   result = semExprCheck(c, n, flags)
-  if result.typ == nil or result.typ == c.enforceVoidContext:
+  if result.kind == nkError:
+    discard
+  elif result.typ == nil or result.typ == c.enforceVoidContext:
     localError(c.config, n.info, errExprXHasNoType %
                 renderTree(result, {renderNoComments}))
     result.typ = errorType(c)
@@ -1006,7 +1008,7 @@ proc semDirectOp(c: PContext, n: PNode, flags: TExprFlags): PNode =
   let nOrig = n.copyTree
   #semLazyOpAux(c, n)
   result = semOverloadedCallAnalyseEffects(c, n, nOrig, flags)
-  if result.kind in nkCallKinds:
+  if result.kind in nkCallKinds and result[0].kind == nkSym:
     result = afterCallActions(c, result, nOrig, flags)
 
 proc buildEchoStmt(c: PContext, n: PNode): PNode =
