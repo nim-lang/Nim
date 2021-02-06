@@ -21,7 +21,6 @@ else:
     file = currentSourcePath
     nim = getCurrentCompilerExe()
     mode = querySetting(backend)
-
   proc test(lib, options: string) =
     runCmd fmt"{nim} {mode} -o:{lib} --nomain {options} -f {file}"
     runCmd fmt"{nim} r -b:{mode} --passl:{lib} -d:caseMain -f {file}"
