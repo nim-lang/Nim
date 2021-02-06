@@ -548,7 +548,7 @@ proc runCI(cmd: string) =
     #[
     BUG: with initOptParser, `--batch:'' all` interprets `all` as the argument of --batch
     ]#
-    execFold("Run tester", "nim c -r -d:nimCoroutines testament/testament --pedantic --batch:$1 all -d:nimCoroutines" % ["NIM_TESTAMENT_BATCH".getEnv("_")])
+    execFold("Run tester", "nim c -r -d:nimCoroutines --putenv:NIM_TESTAMENT_REMOTE_NETWORKING:1 testament/testament --batch:$1 all -d:nimCoroutines" % ["NIM_TESTAMENT_BATCH".getEnv("_")])
 
     block CT_FFI:
       when defined(posix): # windows can be handled in future PR's
