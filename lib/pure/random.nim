@@ -566,6 +566,7 @@ proc initRand*(seed: int64): Rand =
   ## generator's state.
   ##
   ## See also:
+  ## * `initRand proc<#initRand>`_ that uses the current time
   ## * `randomize proc<#randomize,int64>`_ that accepts a seed for the default
   ##   random number generator
   ## * `randomize proc<#randomize>`_ that initializes the default random
@@ -589,8 +590,11 @@ proc randomize*(seed: int64) {.benign.} =
   ## the same results for that seed each time.
   ##
   ## See also:
-  ## * `initRand proc<#initRand,int64>`_
+  ## * `initRand proc<#initRand,int64>`_ that initializes a Rand state
+  ##   with a given seed
   ## * `randomize proc<#randomize>`_ that uses the current time instead
+  ## * `initRand proc<#initRand>`_ that initializes a Rand state using
+  ##   the current time
   runnableExamples:
     from times import getTime, toUnix, nanosecond
 
@@ -671,7 +675,10 @@ when not defined(nimscript) and not defined(standalone):
     ##
     ## See also:
     ## * `randomize proc<#randomize,int64>`_ that accepts a seed
-    ## * `initRand proc<#initRand,int64>`_
+    ## * `initRand proc<#initRand>`_ that initializes a Rand state using
+    ##   the current time
+    ## * `initRand proc<#initRand,int64>`_ that initializes a Rand state
+    ##   with a given seed
     state = initRand()
 
 {.pop.}
