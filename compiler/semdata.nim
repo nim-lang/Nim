@@ -503,8 +503,7 @@ proc errorType*(c: PContext): PType =
   result.flags.incl tfCheckedForDestructor
 
 proc errorNode*(c: PContext, n: PNode): PNode =
-  # XXX see why this is produced for tests\macros\treturnsempty.nim
-  result = newError(n, "type mismatch")
+  result = newError(n, "<error node>")
 
 proc fillTypeS*(dest: PType, kind: TTypeKind, c: PContext) =
   dest.kind = kind

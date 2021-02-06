@@ -708,6 +708,7 @@ proc analyseIfAddressTakenInCall(c: PContext, n: PNode) =
       mAppendSeqElem, mNewSeq, mReset, mShallowCopy, mDeepCopy, mMove,
       mWasMoved}
 
+  if n[0].typ == nil: return
   # get the real type of the callee
   # it may be a proc var with a generic alias type, so we skip over them
   var t = n[0].typ.skipTypes({tyGenericInst, tyAlias, tySink})
@@ -849,10 +850,7 @@ proc semOverloadedCallAnalyseEffects(c: PContext, n: PNode, nOrig: PNode,
     result = semOverloadedCall(c, n, nOrig,
       {skProc, skFunc, skMethod, skConverter, skMacro, skTemplate}, flags)
 
-  if result != nil:
-    if result[0].kind != nkSym:
-      internalError(c.config, "semOverloadedCallAnalyseEffects")
-      return
+  if result.kind in nkCallKinds and result[0].kind == nkSym:
     let callee = result[0].sym
     case callee.kind
     of skMacro, skTemplate: discard
@@ -1008,8 +1006,8 @@ proc semDirectOp(c: PContext, n: PNode, flags: TExprFlags): PNode =
   let nOrig = n.copyTree
   #semLazyOpAux(c, n)
   result = semOverloadedCallAnalyseEffects(c, n, nOrig, flags)
-  if result != nil: result = afterCallActions(c, result, nOrig, flags)
-  else: result = errorNode(c, n)
+  if result.kind in nkCallKinds:
+    result = afterCallActions(c, result, nOrig, flags)
 
 proc buildEchoStmt(c: PContext, n: PNode): PNode =
   # we MUST not check 'n' for semantics again here! But for now we give up:

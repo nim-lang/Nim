@@ -587,15 +587,17 @@ proc semOverloadedCall(c: PContext, n, nOrig: PNode,
       if efExplain notin flags:
         # repeat the overload resolution,
         # this time enabling all the diagnostic output (this should fail again)
-        discard semOverloadedCall(c, n, nOrig, filter, flags + {efExplain})
-      elif efNoUndeclared notin flags:
+        result = semOverloadedCall(c, n, nOrig, filter, flags + {efExplain})
+      else:
+        #if efNoUndeclared notin flags:
         result = notFoundError(c, n, errors)
   else:
     if efExplain notin flags:
       # repeat the overload resolution,
       # this time enabling all the diagnostic output (this should fail again)
-      discard semOverloadedCall(c, n, nOrig, filter, flags + {efExplain})
-    elif efNoUndeclared notin flags:
+      result = semOverloadedCall(c, n, nOrig, filter, flags + {efExplain})
+    else:
+      #if efNoUndeclared notin flags:
       result = notFoundError(c, n, errors)
 
 proc explicitGenericInstError(c: PContext; n: PNode): PNode =
