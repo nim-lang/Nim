@@ -1361,9 +1361,8 @@ proc genMainProc(m: BModule) =
         "$1" &
       "}$N$N"
 
-
     NimMainProc =
-      "N_LIB_WEAK N_CDECL(void, NimMain)(void) /*zook1*/ {$N" &
+      "N_LIB_WEAK_MAYBE N_CDECL(void, NimMain)(void) /*zook1*/ {$N" &
         "\tvoid (*volatile inner)(void);$N" &
         "$4" &
         "\tinner = NimMainInner;$N" &
@@ -1856,7 +1855,7 @@ proc writeHeader(m: BModule) =
 
   if optGenDynLib in m.config.globalOptions:
     result.add("N_LIB_IMPORT ")
-  result.addf("N_LIB_PRIVATE N_CDECL(void, NimMain)(void);$n", [])
+  result.addf("N_LIB_WEAK_MAYBE N_CDECL(void, NimMain)(void);$n", [])
   if m.config.cppCustomNamespace.len > 0: result.add closeNamespaceNim()
   result.addf("#endif /* $1 */$n", [guard])
   if not writeRope(result, m.filename):

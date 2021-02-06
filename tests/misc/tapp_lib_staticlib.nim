@@ -3,6 +3,7 @@ joinable: false
 """
 
 # bug #16949
+# bug #15955
 
 when defined case1:
   proc foo(): int {.exportc.} = 10
@@ -20,8 +21,10 @@ else:
     file = currentSourcePath
     nim = getCurrentCompilerExe()
     mode = querySetting(backend)
+
   proc test(lib, options: string) =
     runCmd fmt"{nim} {mode} -o:{lib} --nomain {options} -f {file}"
-    # runCmd fmt"{nim} r -b:{mode} --passl:{lib} -d:caseMain -f {file}" # pending https://github.com/nim-lang/Nim/pull/16945
+    runCmd fmt"{nim} r -b:{mode} --passl:{lib} -d:caseMain -f {file}"
+
   test(buildDir / "libD20210205T172314.a", "--app:staticlib -d:nimLinkerWeakSymbols -d:case1")
   test(buildDir / DynlibFormat % "D20210205T172720", "--app:lib -d:case2")

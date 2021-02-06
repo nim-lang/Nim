@@ -177,13 +177,12 @@ __AVR__
   // semantics differ a bit from __attribute__((weak)),
   // see https://stackoverflow.com/questions/2290587/gcc-style-weak-linking-in-visual-studio
   // for alternative based on `/alternatename:` if this isn't enough.
-#  define N_LIB_WEAK __declspec(selectany)
-#  define N_LIB_PRIVATE
+#  define N_LIB_WEAK_MAYBE __declspec(selectany)
 #  else
-#  define N_LIB_WEAK
-#  define N_LIB_PRIVATE
+#  define N_LIB_WEAK_MAYBE
 #  endif
 
+#  define N_LIB_PRIVATE N_LIB_WEAK_MAYBE
 #  define N_CDECL(rettype, name) rettype __cdecl name
 #  define N_STDCALL(rettype, name) rettype __stdcall name
 #  define N_SYSCALL(rettype, name) rettype __syscall name
@@ -205,19 +204,17 @@ __AVR__
 #  endif
 #  define N_LIB_EXPORT_VAR  __declspec(dllexport)
 #  define N_LIB_IMPORT  extern __declspec(dllimport)
+
 #else
-#  define N_LIB_WEAK __attribute__((weak))
-// #  define N_LIB_PRIVATE N_LIB_WEAK
-// #  define N_LIB_PRIVATE __attribute__((visibility("hidden")))
-// #  define N_LIB_PRIVATE __attribute__((visibility("hidden"))) __attribute__((weak))
-// #  define N_LIB_PRIVATE __attribute__((weak))
+
 #  ifdef NIM_nimLinkerWeakSymbols
-#  define N_LIB_WEAK __attribute__((weak))
-#  define N_LIB_PRIVATE __attribute__((weak)) __attribute__((visibility("hidden")))
+#  define N_LIB_WEAK_MAYBE __attribute__((weak))
 #  else
-#  define N_LIB_WEAK
-#  define N_LIB_PRIVATE __attribute__((visibility("hidden")))
+#  define N_LIB_WEAK_MAYBE
 #  endif
+
+#  define N_LIB_PRIVATE N_LIB_WEAK_MAYBE __attribute__((visibility("hidden")))
+
 #  if defined(__GNUC__)
 #    define N_CDECL(rettype, name) rettype name
 #    define N_STDCALL(rettype, name) rettype name
