@@ -28,7 +28,7 @@ type Rational*[T] = object
   num*, den*: T
 
 func reduce*[T: SomeInteger](x: var Rational[T]) =
-  ## Reduce the rational number `x`, so that the numerator and denominator
+  ## Reduces the rational number `x`, so that the numerator and denominator
   ## have no common divisors other than 1 (and -1).
   ## If `x` is 0, raises `DivByZeroDefect`.
   ##
@@ -50,7 +50,7 @@ func reduce*[T: SomeInteger](x: var Rational[T]) =
     raise newException(DivByZeroDefect, "division by zero")
 
 func initRational*[T: SomeInteger](num, den: T): Rational[T] =
-  ## Create a new rational number with numerator `num` and denominator `den`.
+  ## Creates a new rational number with numerator `num` and denominator `den`.
   ## `den` must not be 0.
   ##
   ## **Note:** `den != 0` is not checked when assertions are turned off.
@@ -68,14 +68,14 @@ func `//`*[T](num, den: T): Rational[T] =
   initRational[T](num, den)
 
 func `$`*[T](x: Rational[T]): string =
-  ## Turn a rational number into a string.
+  ## Turns a rational number into a string.
   runnableExamples:
     doAssert $(1 // 2) == "1/2"
 
   result = $x.num & "/" & $x.den
 
 func toRational*[T: SomeInteger](x: T): Rational[T] =
-  ## Convert some integer `x` to a rational number.
+  ## Converts some integer `x` to a rational number.
   runnableExamples:
     doAssert toRational(42) == 42 // 1
 
@@ -92,9 +92,8 @@ func toRational*(x: float,
   # David Eppstein / UC Irvine / 8 Aug 1993
   # With corrections from Arno Formella, May 2008
   runnableExamples:
-    import std/math
-
-    doAssert almostEqual(PI.toRational.toFloat, PI)
+    let x = 1.2
+    doAssert x.toRational.toFloat == x
 
   var
     m11, m22 = 1
@@ -113,40 +112,40 @@ func toRational*(x: float,
   result = m11 // m21
 
 func toFloat*[T](x: Rational[T]): float =
-  ## Convert a rational number `x` to a `float`.
+  ## Converts a rational number `x` to a `float`.
   x.num / x.den
 
 func toInt*[T](x: Rational[T]): int =
-  ## Convert a rational number `x` to an `int`. Conversion rounds towards 0 if
+  ## Converts a rational number `x` to an `int`. Conversion rounds towards 0 if
   ## `x` does not contain an integer value.
   x.num div x.den
 
 func `+`*[T](x, y: Rational[T]): Rational[T] =
-  ## Add two rational numbers.
+  ## Adds two rational numbers.
   let common = lcm(x.den, y.den)
   result.num = common div x.den * x.num + common div y.den * y.num
   result.den = common
   reduce(result)
 
 func `+`*[T](x: Rational[T], y: T): Rational[T] =
-  ## Add the rational `x` to the int `y`.
+  ## Adds the rational `x` to the int `y`.
   result.num = x.num + y * x.den
   result.den = x.den
 
 func `+`*[T](x: T, y: Rational[T]): Rational[T] =
-  ## Add the int `x` to the rational `y`.
+  ## Adds the int `x` to the rational `y`.
   result.num = x * y.den + y.num
   result.den = y.den
 
 func `+=`*[T](x: var Rational[T], y: Rational[T]) =
-  ## Add the rational `y` to the rational `x` in-place.
+  ## Adds the rational `y` to the rational `x` in-place.
   let common = lcm(x.den, y.den)
   x.num = common div x.den * x.num + common div y.den * y.num
   x.den = common
   reduce(x)
 
 func `+=`*[T](x: var Rational[T], y: T) =
-  ## Add the int `y` to the rational `x` in-place.
+  ## Adds the int `y` to the rational `x` in-place.
   x.num += y * x.den
 
 func `-`*[T](x: Rational[T]): Rational[T] =
@@ -155,64 +154,64 @@ func `-`*[T](x: Rational[T]): Rational[T] =
   result.den = x.den
 
 func `-`*[T](x, y: Rational[T]): Rational[T] =
-  ## Subtract two rational numbers.
+  ## Subtracts two rational numbers.
   let common = lcm(x.den, y.den)
   result.num = common div x.den * x.num - common div y.den * y.num
   result.den = common
   reduce(result)
 
 func `-`*[T](x: Rational[T], y: T): Rational[T] =
-  ## Subtract the int `y` from the rational `x`.
+  ## Subtracts the int `y` from the rational `x`.
   result.num = x.num - y * x.den
   result.den = x.den
 
 func `-`*[T](x: T, y: Rational[T]): Rational[T] =
-  ## Subtract the rational `y` from the int `x`.
+  ## Subtracts the rational `y` from the int `x`.
   result.num = x * y.den - y.num
   result.den = y.den
 
 func `-=`*[T](x: var Rational[T], y: Rational[T]) =
-  ## Subtract the rational `y` from the rational `x` in-place.
+  ## Subtracts the rational `y` from the rational `x` in-place.
   let common = lcm(x.den, y.den)
   x.num = common div x.den * x.num - common div y.den * y.num
   x.den = common
   reduce(x)
 
 func `-=`*[T](x: var Rational[T], y: T) =
-  ## Subtract the int `y` from the rational `x` in-place.
+  ## Subtracts the int `y` from the rational `x` in-place.
   x.num -= y * x.den
 
 func `*`*[T](x, y: Rational[T]): Rational[T] =
-  ## Multiply two rational numbers.
+  ## Multiplies two rational numbers.
   result.num = x.num * y.num
   result.den = x.den * y.den
   reduce(result)
 
 func `*`*[T](x: Rational[T], y: T): Rational[T] =
-  ## Multiply the rational `x` with the int `y`.
+  ## Multiplies the rational `x` with the int `y`.
   result.num = x.num * y
   result.den = x.den
   reduce(result)
 
 func `*`*[T](x: T, y: Rational[T]): Rational[T] =
-  ## Multiply the int `x` with the rational `y`.
+  ## Multiplies the int `x` with the rational `y`.
   result.num = x * y.num
   result.den = y.den
   reduce(result)
 
 func `*=`*[T](x: var Rational[T], y: Rational[T]) =
-  ## Multiply the rational `x` by `y` in-place.
+  ## Multiplies the rational `x` by `y` in-place.
   x.num *= y.num
   x.den *= y.den
   reduce(x)
 
 func `*=`*[T](x: var Rational[T], y: T) =
-  ## Multiply the rational `x` by the int `y` in-place.
+  ## Multiplies the rational `x` by the int `y` in-place.
   x.num *= y
   reduce(x)
 
 func reciprocal*[T](x: Rational[T]): Rational[T] =
-  ## Calculate the reciprocal of `x` (`1/x`).
+  ## Calculates the reciprocal of `x` (`1/x`).
   ## If `x` is 0, raises `DivByZeroDefect`.
   if x.num > 0:
     result.num = x.den
@@ -224,31 +223,31 @@ func reciprocal*[T](x: Rational[T]): Rational[T] =
     raise newException(DivByZeroDefect, "division by zero")
 
 func `/`*[T](x, y: Rational[T]): Rational[T] =
-  ## Divide the rational `x` by the rational `y`.
+  ## Divides the rational `x` by the rational `y`.
   result.num = x.num * y.den
   result.den = x.den * y.num
   reduce(result)
 
 func `/`*[T](x: Rational[T], y: T): Rational[T] =
-  ## Divide the rational `x` by the int `y`.
+  ## Divides the rational `x` by the int `y`.
   result.num = x.num
   result.den = x.den * y
   reduce(result)
 
 func `/`*[T](x: T, y: Rational[T]): Rational[T] =
-  ## Divide the int `x` by the rational `y`.
+  ## Divides the int `x` by the rational `y`.
   result.num = x * y.den
   result.den = y.num
   reduce(result)
 
 func `/=`*[T](x: var Rational[T], y: Rational[T]) =
-  ## Divide the rational `x` by the rational `y` in-place.
+  ## Divides the rational `x` by the rational `y` in-place.
   x.num *= y.den
   x.den *= y.num
   reduce(x)
 
 func `/=`*[T](x: var Rational[T], y: T) =
-  ## Divide the rational `x` by the int `y` in-place.
+  ## Divides the rational `x` by the int `y` in-place.
   x.den *= y
   reduce(x)
 
