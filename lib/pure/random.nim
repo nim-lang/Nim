@@ -656,7 +656,6 @@ when not defined(nimscript) and not defined(standalone):
       let now = times.getTime()
       randomize(convert(Seconds, Nanoseconds, now.toUnix) + now.nanosecond)
 
-
 const cb64safe = {
   'A', 'B', 'C', 'D', 'E', 'F', 'G', 'H', 'I', 'J', 'K', 'L', 'M',
   'N', 'O', 'P', 'Q', 'R', 'S', 'T', 'U', 'V', 'W', 'X', 'Y', 'Z',
