@@ -295,7 +295,7 @@ proc instantiateProcType(c: PContext, pt: TIdTable,
         # We are replacing the default value with an error node in case
         # the user calls an explicit instantiation of the proc (this is
         # the only way the default value might be inserted).
-        param.ast = errorNode(c, def)
+        param.ast = newNodeIT(nkEmpty, def.info, errorType(c))
       else:
         param.ast = fitNodePostMatch(c, typeToFit, converted)
       param.typ = result[i]

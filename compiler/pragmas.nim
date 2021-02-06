@@ -765,7 +765,7 @@ proc semCustomPragma(c: PContext, n: PNode): PNode =
     return n
 
   let r = c.semOverloadedCall(c, callNode, n, {skTemplate}, {efNoUndeclared})
-  if r.isNil or sfCustomPragma notin r[0].sym.flags:
+  if r.isNil or r.kind == nkError or sfCustomPragma notin r[0].sym.flags:
     invalidPragma(c, n)
     return n
 
