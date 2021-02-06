@@ -1361,9 +1361,9 @@ proc genMainProc(m: BModule) =
         "$1" &
       "}$N$N"
 
+
     NimMainProc =
-      # "N_CDECL(void, NimMain)(void) {$N" &
-      "N_LIB_PRIVATE N_CDECL(void, NimMain)(void) /*zook1*/ {$N" &
+      "N_LIB_WEAK N_CDECL(void, NimMain)(void) /*zook1*/ {$N" &
         "\tvoid (*volatile inner)(void);$N" &
         "$4" &
         "\tinner = NimMainInner;$N" &

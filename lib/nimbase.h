@@ -172,14 +172,18 @@ __AVR__
 #endif
 
 #if defined(WIN32) || defined(_WIN32) /* only Windows has this mess... */
+
 #  ifdef NIM_nimLinkerWeakSymbols
   // semantics differ a bit from __attribute__((weak)),
   // see https://stackoverflow.com/questions/2290587/gcc-style-weak-linking-in-visual-studio
   // for alternative based on `/alternatename:` if this isn't enough.
 #  define N_LIB_WEAK __declspec(selectany)
+#  define N_LIB_PRIVATE
 #  else
+#  define N_LIB_WEAK
 #  define N_LIB_PRIVATE
 #  endif
+
 #  define N_CDECL(rettype, name) rettype __cdecl name
 #  define N_STDCALL(rettype, name) rettype __stdcall name
 #  define N_SYSCALL(rettype, name) rettype __syscall name
@@ -208,8 +212,10 @@ __AVR__
 // #  define N_LIB_PRIVATE __attribute__((visibility("hidden"))) __attribute__((weak))
 // #  define N_LIB_PRIVATE __attribute__((weak))
 #  ifdef NIM_nimLinkerWeakSymbols
+#  define N_LIB_WEAK __attribute__((weak))
 #  define N_LIB_PRIVATE __attribute__((weak)) __attribute__((visibility("hidden")))
 #  else
+#  define N_LIB_WEAK
 #  define N_LIB_PRIVATE __attribute__((visibility("hidden")))
 #  endif
 #  if defined(__GNUC__)
