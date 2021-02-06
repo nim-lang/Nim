@@ -1513,23 +1513,23 @@ proc readLine*(socket: Socket, line: var string, timeout = -1,
 
   template addNLIfEmpty() =
     if line.len == 0:
-      line.string.add("\c\L")
+      line.add("\c\L")
 
   template raiseSockError() {.dirty.} =
     let lastError = getSocketError(socket)
     if flags.isDisconnectionError(lastError):
-      setLen(line.string, 0)
+      setLen(line, 0)
     socket.socketError(n, lastError = lastError, flags = flags)
 
   var waited: Duration
 
-  setLen(line.string, 0)
+  setLen(line, 0)
   while true:
     var c: char
     discard waitFor(socket, waited, timeout, 1, "readLine")
     var n = recv(socket, addr(c), 1)
     if n < 0: raiseSockError()
-    elif n == 0: setLen(line.string, 0); return
+    elif n == 0: setLen(line, 0); return
     if c == '\r':
       discard waitFor(socket, waited, timeout, 1, "readLine")
       n = peekChar(socket, c)
@@ -1541,10 +1541,10 @@ proc readLine*(socket: Socket, line: var string, timeout = -1,
     elif c == '\L':
       addNLIfEmpty()
       return
-    add(line.string, c)
+    add(line, c)
 
     # Verify that this isn't a DOS attack: #3847.
-    if line.string.len > maxLength: break
+    if line.len > maxLength: break
 
 proc recvLine*(socket: Socket, timeout = -1,
                flags = {SocketFlag.SafeDisconn},

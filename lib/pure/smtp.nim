@@ -103,7 +103,7 @@ proc debugRecv*(smtp: Smtp | AsyncSmtp): Future[string] {.multisync.} =
 
   result = await smtp.sock.recvLine()
   if smtp.debug:
-    echo("S:" & result.string)
+    echo("S:" & result)
 
 proc quitExcpt(smtp: Smtp, msg: string) =
   smtp.debugSend("QUIT")

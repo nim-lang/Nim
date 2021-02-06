@@ -46,7 +46,7 @@ proc loadUnidecodeTable*(datafile = "unidecode.dat") =
     newSeq(translationTable, 0xffff)
     var i = 0
     for line in lines(datafile):
-      translationTable[i] = line.string
+      translationTable[i] = line
       inc(i)
 
 proc unidecode*(s: string): string =
