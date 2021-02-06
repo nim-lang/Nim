@@ -662,6 +662,7 @@ proc addExternalFileToCompile*(conf: ConfigRef; filename: AbsoluteFile) =
 proc getLinkCmd(conf: ConfigRef; output: AbsoluteFile,
                 objfiles: string, isDllBuild: bool): string =
   if optGenStaticLib in conf.globalOptions:
+    removeFile output # fixes: bug #16947
     result = CC[conf.cCompiler].buildLib % ["libfile", quoteShell(output),
                                             "objfiles", objfiles]
   else:
