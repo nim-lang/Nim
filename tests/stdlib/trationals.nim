@@ -96,5 +96,7 @@ template main() =
   doAssert floorMod(3 // 10, 1 // 1) == 3 // 10
   doAssert floorMod(-3 // 10, 1 // 1) == 7 // 10
 
+  doAssert almostEqual(PI.toRational.toFloat, PI)
+
 static: main()
 main()
