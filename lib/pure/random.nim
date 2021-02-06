@@ -656,4 +656,23 @@ when not defined(nimscript) and not defined(standalone):
       let now = times.getTime()
       randomize(convert(Seconds, Nanoseconds, now.toUnix) + now.nanosecond)
 
+
+const cb64safe = {
+  'A', 'B', 'C', 'D', 'E', 'F', 'G', 'H', 'I', 'J', 'K', 'L', 'M',
+  'N', 'O', 'P', 'Q', 'R', 'S', 'T', 'U', 'V', 'W', 'X', 'Y', 'Z',
+  'a', 'b', 'c', 'd', 'e', 'f', 'g', 'h', 'i', 'j', 'k', 'l', 'm',
+  'n', 'o', 'p', 'q', 'r', 's', 't', 'u', 'v', 'w', 'x', 'y', 'z',
+  '0', '1', '2', '3', '4', '5', '6', '7', '8', '9', '-', '_',
+} # Copied from base64.nim URL-Safe to be compatible.
+
+proc randToken*(buffer: var openArray[char]; alphabet = cb64safe) {.inline, since: (1, 5).} =
+  ## Generate a random ASCII URL-Safe `buffer` containing `alphabet` chars.
+  # Inspired but not copied from Python 3.10 "secrets.token_urlsafe()".
+  runnableExamples:
+    var token = "12345678"  ## lenght is 8.
+    randToken(token)        ## Use sugar.dup for out-place.
+    doAssert token != "12345678" and token.len == 8  ## Random URL-Safe string.
+  for c in buffer.mitems: c = sample alphabet
+
+
 {.pop.}
