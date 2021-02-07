@@ -124,7 +124,7 @@ with other backends. see #9125. Use `-d:nimLegacyJsRound` for previous behavior.
   (instead of skipping them sometimes as it was before).
 - Added optional `followSymlinks` argument to `setFilePermissions`.
 
-- Add `random.randToken` to in-place generate a random ASCII URL-Safe string of specified lenght and chars.
+- Add `random.randToken` to in-place generate a random ASCII URL-Safe string of specified length and chars.
 
 
 ## Language changes
