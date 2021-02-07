@@ -665,7 +665,8 @@ const cb64safe = {
 } # Copied from base64.nim URL-Safe to be compatible.
 
 proc randToken*(buffer: var openArray[char]; alphabet = cb64safe) {.inline, since: (1, 5).} =
-  ## Generate a random ASCII URL-Safe `buffer` containing `alphabet` chars.
+  ## Populates `buffer` with random samples from `alphabet`; the default
+  ## `cb64safe` will be ASCII and URL-Safe.
   # Inspired but not copied from Python 3.10 "secrets.token_urlsafe()".
   runnableExamples:
     import std/sugar
