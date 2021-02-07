@@ -674,7 +674,7 @@ proc randToken*(buffer: var openArray[char]; alphabet = cb64safe) {.inline, sinc
   # Inspired but not copied from Python 3.10 "secrets.token_urlsafe()".
   runnableExamples:
     import std/sugar
-    var token = "12345678"  ## lenght is 8.
+    var token = "12345678"  ## Length is 8.
     randToken(token)        ## Use sugar.dup for out-place.
     doAssert token != "12345678" and token.len == 8  ## Random URL-Safe string.
     doAssert newString(8).dup(randToken) != newString(8).dup(randToken)
