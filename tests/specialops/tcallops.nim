@@ -24,13 +24,16 @@ doAssert f2Calls == 1
 let g = Foo[proc (x: int): int](callback: proc (x: int): int = x * 2 + 1)
 doAssert g(15) == 31
 
-template `()`(foo: string, args: varargs[untyped]): string =
-  astToStr(foo)
+proc `()`(args: varargs[string]): string =
+  result = "("
+  for a in args: result.add(a)
+  result.add(')')
 
 let a = "1"
 let b = "2"
 let c = "3"
 
-doAssert a.b(c) == "b"
-doAssert a(b) == "a"
-doAssert (a.b)(c) == "\"b\""
+doAssert a(b) == "(12)"
+doAssert a.b(c) == `()`(b, a, c)
+doAssert (a.b)(c) == `()`(a.b, c)
+doAssert `()`(a.b, c) == `()`(`()`(b, a), c)

@@ -378,49 +378,37 @@ proc resolveOverloads(c: PContext, n, orig: PNode,
       else: return
 
     var insertedOp = false
-    if dotOperators in c.features:
-      if nfDotField in n.flags:
-        internalAssert c.config, f.kind == nkIdent and n.len >= 2
+    if nfDotField in n.flags:
+      internalAssert c.config, f.kind == nkIdent and n.len >= 2
 
-        # leave the op head symbol empty,
-        # we are going to try multiple variants
-        n.sons[0..1] = [nil, n[1], f]
-        orig.sons[0..1] = [nil, orig[1], f]
-        insertedOp = true
+      # leave the op head symbol empty,
+      # we are going to try multiple variants
+      n.sons[0..1] = [nil, n[1], f]
+      orig.sons[0..1] = [nil, orig[1], f]
+      insertedOp = true
 
-        template tryOp(x) =
-          let op = newIdentNode(getIdent(c.cache, x), n.info)
-          n[0] = op
-          orig[0] = op
+      template tryOp(x) =
+        let op = newIdentNode(getIdent(c.cache, x), n.info)
+        n[0] = op
+        orig[0] = op
+        if dotOperators in c.features:
           pickBest(op)
 
-        if nfExplicitCall in n.flags:
-          tryOp ".()"
+      if nfExplicitCall in n.flags:
+        tryOp ".()"
 
-        if result.state in {csEmpty, csNoMatch}:
-          tryOp "."
+      if result.state in {csEmpty, csNoMatch}:
+        tryOp "."
 
-      elif nfDotSetter in n.flags and f.kind == nkIdent and n.len == 3:
-        # we need to strip away the trailing '=' here:
-        let calleeName = newIdentNode(getIdent(c.cache, f.ident.s[0..^2]), n.info)
-        let callOp = newIdentNode(getIdent(c.cache, ".="), n.info)
-        n.sons[0..1] = [callOp, n[1], calleeName]
-        orig.sons[0..1] = [callOp, orig[1], calleeName]
-        insertedOp = true
+    elif nfDotSetter in n.flags and f.kind == nkIdent and n.len == 3:
+      # we need to strip away the trailing '=' here:
+      let calleeName = newIdentNode(getIdent(c.cache, f.ident.s[0..^2]), n.info)
+      let callOp = newIdentNode(getIdent(c.cache, ".="), n.info)
+      n.sons[0..1] = [callOp, n[1], calleeName]
+      orig.sons[0..1] = [callOp, orig[1], calleeName]
+      insertedOp = true
+      if dotOperators in c.features:
         pickBest(callOp)
-    else:
-      # preserve error messages
-      if nfDotField in n.flags:
-        let op = newIdentNode(getIdent(c.cache, "."), n.info)
-        n.sons[0..1] = [op, n[1], f]
-        orig.sons[0..1] = [op, orig[1], f]
-        insertedOp = true
-      elif nfDotSetter in n.flags and f.kind == nkIdent and n.len == 3:
-        let calleeName = newIdentNode(getIdent(c.cache, f.ident.s[0..^2]), n.info)
-        let callOp = newIdentNode(getIdent(c.cache, ".="), n.info)
-        n.sons[0..1] = [callOp, n[1], calleeName]
-        orig.sons[0..1] = [callOp, orig[1], calleeName]
-        insertedOp = true
 
     if overloadsState == csEmpty and result.state == csEmpty:
       if efNoUndeclared notin flags: # for tests/pragmas/tcustom_pragma.nim

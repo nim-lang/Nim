@@ -29,3 +29,13 @@ block:
 
   doAssert not compiles(x.y)
   doAssert not compiles(x.z)
+
+import musewithoutexperimental
+
+let x = 1.0
+let y = 2.0
+doAssert not compiles(x.y)
+
+{.experimental: "callOperator".}
+
+doAssert compiles(x.y)
