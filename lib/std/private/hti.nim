@@ -10,7 +10,7 @@
 type
   # This should be the same as ast.TTypeKind
   # many enum fields are not used at runtime
-  TNimKind = enum
+  TNimKind* = enum
     tyNone,
     tyBool,
     tyChar,
@@ -72,8 +72,8 @@ type
     tyOptDeprecated,
     tyVoidHidden
 
-  TNimNodeKind = enum nkNone, nkSlot, nkList, nkCase
-  TNimNode {.compilerproc.} = object
+  TNimNodeKind* = enum nkNone, nkSlot, nkList, nkCase
+  TNimNode* {.compilerproc.} = object
     kind: TNimNodeKind
     offset: int
     typ: ptr TNimType

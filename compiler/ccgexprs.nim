@@ -1706,7 +1706,7 @@ proc genGetTypeInfo(p: BProc, e: PNode, d: var TLoc) =
 
 proc genDynamicGetTypeInfo(p: BProc, e: PNode, d: var TLoc, oldMagic: bool) =
   let t = e[1].typ
-  let enforceV1 = not p.config.isDefined("nimV2")
+  let enforceV1 = p.config.isDefined("nimEnforceV1") or not p.config.isDefined("nimV2")
   if isFinal(t) or (oldMagic and e[0].sym.name.s != "getDynamicTypeInfo"):
       # hack: e[0].sym.name.s seems needed because of this code:
       # let typInfo = genBuiltin(c.g, mGetTypeInfoV2, "getTypeInfoV2", newNodeIT(nkType, x.info, elemType))`

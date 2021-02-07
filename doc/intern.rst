@@ -111,7 +111,7 @@ Complex assignments
 
 We already know the type information as a graph in the compiler.
 Thus we need to serialize this graph as RTTI for C code generation.
-Look at the file ``lib/system/hti.nim`` for more information.
+Look at the file ``std/private/hti`` for more information.
 
 Rebuilding the compiler
 ========================

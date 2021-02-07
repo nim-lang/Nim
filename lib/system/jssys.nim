@@ -545,7 +545,7 @@ proc chckNilDisp(p: pointer) {.compilerproc.} =
   if p == nil:
     sysFatal(NilAccessDefect, "cannot dispatch; dispatcher is nil")
 
-include "system/hti"
+import std/private/hti
 
 proc isFatPointer(ti: PNimType): bool =
   # This has to be consistent with the code generator!

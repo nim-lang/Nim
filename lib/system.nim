@@ -557,7 +557,7 @@ when notJSnotNims and not defined(nimSeqsV2):
     s.reserved and not (seqShallowFlag or strlitFlag)
 
 when notJSnotNims:
-  include "system/hti"
+  import std/private/hti
 
 type
   byte* = uint8 ## This is an alias for ``uint8``, that is an unsigned

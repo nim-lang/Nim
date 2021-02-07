@@ -23,38 +23,9 @@
 {.push hints: off.}
 
 include "system/inclrtl.nim"
-include "system/hti.nim"
+import std/private/hti
 
 {.pop.}
-
-when false:
-  export PNimType
-
-  # when not defined(js) and defined(nimV2):
-  when defined(nimV2):
-    type
-      TNimTypeV2 {.compilerproc.} = object
-        destructor: pointer
-        size*: int
-        align: int
-        name*: cstring
-        traceImpl: pointer
-        disposeImpl: pointer
-        typeInfoV1*: pointer # for backwards compat, usually nil
-        # typeInfoV1*: PNimType
-      PNimTypeV2 = ptr TNimTypeV2
-      PNimTypeAlt = PNimTypeV2
-  else:
-    PNimTypeAlt = PNimType
-
-  proc getDynamicTypeInfoImpl[T](x: T): PNimTypeAlt {.magic: "GetDynamicTypeInfo", noSideEffect, locks: 0.}
-
-  proc getDynamicTypeInfo*[T](x: T): PNimTypeAlt =
-    when T is ref:
-      if x != nil: 
-        result = getDynamicTypeInfoImpl(x[])
-    else:
-      result = getDynamicTypeInfoImpl(x)
 
 type
   AnyKind* = enum      ## what kind of ``any`` it is
