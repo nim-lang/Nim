@@ -10,7 +10,8 @@
 ## Template evaluation engine. Now hygienic.
 
 import
-  strutils, options, ast, astalgo, msgs, renderer, lineinfos, idents
+  strutils, options, ast, astalgo, msgs, renderer, lineinfos, idents,
+  errorhandling
 
 type
   TemplCtx = object
@@ -132,8 +133,9 @@ proc evalTemplateArgs(n: PNode, s: PSym; conf: ConfigRef; fromHlo: bool): PNode 
   for i in givenRegularParams+1..expectedRegularParams:
     let default = s.typ.n[i].sym.ast
     if default.isNil or default.kind == nkEmpty:
-      localError(conf, n.info, errWrongNumberOfArguments)
-      result.add newNodeI(nkEmpty, n.info)
+      #localError(conf, n.info, errWrongNumberOfArguments)
+      #result.add newNodeI(nkEmpty, n.info)
+      return newError(n, WrongNumberOfArguments)
     else:
       result.add default.copyTree
 
@@ -178,6 +180,7 @@ proc evalTemplate*(n: PNode, tmpl, genSymOwner: PSym;
 
   # replace each param by the corresponding node:
   var args = evalTemplateArgs(n, tmpl, conf, fromHlo)
+  if args.kind == nkError: return args
   var ctx: TemplCtx
   ctx.owner = tmpl
   ctx.genSymOwner = genSymOwner

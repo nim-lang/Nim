@@ -766,6 +766,7 @@ proc evalAtCompileTime(c: PContext, n: PNode): PNode =
         allConst = false
         a = n[i]
         if a.kind == nkHiddenStdConv: a = a[1]
+        if a.kind == nkError: return a
       call.add(a)
     if allConst:
       result = semfold.getConstExpr(c.module, call, c.idgen, c.graph)
@@ -2926,6 +2927,8 @@ proc semExpr(c: PContext, n: PNode, flags: TExprFlags = {}): PNode =
     for i in 0..<n.len:
       n[i] = semExpr(c, n[i])
   of nkComesFrom: discard "ignore the comes from information for now"
+  of nkError:
+    localError(c.config, n.info, errorToString(c.config, n))
   else:
     localError(c.config, n.info, "invalid expression: " &
                renderTree(n, {renderNoComments}))

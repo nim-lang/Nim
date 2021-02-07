@@ -426,17 +426,7 @@ proc resolveOverloads(c: PContext, n, orig: PNode,
       # quick error message for performance of 'compiles' built-in:
       globalError(c.config, n.info, errGenerated, "ambiguous call")
     elif c.config.errorCounter == 0:
-      # don't cascade errors
-      var args = "("
-      for i in 1..<n.len:
-        if i > 1: args.add(", ")
-        args.add(typeToString(n[i].typ))
-      args.add(")")
-
-      localError(c.config, n.info, errAmbiguousCallXYZ % [
-        getProcHeader(c.config, result.calleeSym),
-        getProcHeader(c.config, alt.calleeSym),
-        args])
+      result.call = newError(n, AmbiguousCall, newSymNode(result.calleeSym), newSymNode(alt.calleeSym))
 
 proc instGenericConvertersArg*(c: PContext, a: PNode, x: TCandidate) =
   let a = if a.kind == nkHiddenDeref: a[0] else: a
