@@ -656,31 +656,16 @@ when not defined(nimscript) and not defined(standalone):
       let now = times.getTime()
       randomize(convert(Seconds, Nanoseconds, now.toUnix) + now.nanosecond)
 
-const cb64safe = {
-  'A', 'B', 'C', 'D', 'E', 'F', 'G', 'H', 'I', 'J', 'K', 'L', 'M',
-  'N', 'O', 'P', 'Q', 'R', 'S', 'T', 'U', 'V', 'W', 'X', 'Y', 'Z',
-  'a', 'b', 'c', 'd', 'e', 'f', 'g', 'h', 'i', 'j', 'k', 'l', 'm',
-  'n', 'o', 'p', 'q', 'r', 's', 't', 'u', 'v', 'w', 'x', 'y', 'z',
-  '0', '1', '2', '3', '4', '5', '6', '7', '8', '9', '-', '_',
-} # Copied from base64.nim URL-Safe to be compatible.
 
-proc randToken*(buffer: var openArray[char]; alphabet = cb64safe) {.inline, since: (1, 5).} =
-  ## Populates `buffer` with random samples from `alphabet`; the default
-  ## `cb64safe` will be ASCII and URL-Safe.
-  ##
-  ## See also:
-  ## * `Base64 module <base64.html>`_
-  ##
+proc sampleBuffer*[T](r: var Rand, buffer: var openArray[T]; alphabet: set[T]) {.inline, since: (1, 5).} =
+  ## Populates `buffer` with random samples from `alphabet`.
+  ## Can be used to generate random ASCII URL-Safe strings of specified length and chars.
   # Inspired but not copied from Python 3.10 "secrets.token_urlsafe()".
   runnableExamples:
     import std/sugar
-    var token = "12345678"  ## Length is 8.
-    randToken(token)        ## Use sugar.dup for out-place.
-    doAssert token != "12345678" and token.len == 8  ## Random URL-Safe string.
-    doAssert newString(8).dup(randToken) != newString(8).dup(randToken)
-    if false: doAssert newString(8).dup(randToken) == "W43k7tBy"
-    if false: doAssert newString(5).dup(randToken({'0'..'9'})) == "71266"
-  for c in buffer.mitems: c = sample alphabet
+    var r = initRand(666)
+    doAssert newString(8).dup(sampleBuffer(r, _, {'0'..'9'})).len == 8
+  for c in buffer.mitems: c = sample(r, alphabet)
 
 
 {.pop.}
