@@ -1704,17 +1704,20 @@ proc genGetTypeInfo(p: BProc, e: PNode, d: var TLoc) =
   # ordinary static type information
   putIntoDest(p, d, e, genTypeInfoV1(p.module, t, e.info))
 
-proc genGetTypeInfoV2(p: BProc, e: PNode, d: var TLoc) =
+proc genDynamicGetTypeInfo(p: BProc, e: PNode, d: var TLoc, oldMagic: bool) =
   let t = e[1].typ
-  if isFinal(t) or e[0].sym.name.s != "getDynamicTypeInfo":
+  let enforceV1 = not p.config.isDefined("nimV2")
+  if isFinal(t) or (oldMagic and e[0].sym.name.s != "getDynamicTypeInfo"):
+      # hack: e[0].sym.name.s seems needed because of this code:
+      # let typInfo = genBuiltin(c.g, mGetTypeInfoV2, "getTypeInfoV2", newNodeIT(nkType, x.info, elemType))`
     # ordinary static type information
-    putIntoDest(p, d, e, genTypeInfoV2(p.module, t, e.info))
+    putIntoDest(p, d, e, if enforceV1: genTypeInfoV1(p.module, t, e.info) else: genTypeInfoV2(p.module, t, e.info))
   else:
     var a: TLoc
     initLocExpr(p, e[1], a)
     var nilCheck = Rope(nil)
     # use the dynamic type stored at offset 0:
-    putIntoDest(p, d, e, rdMType(p, a, nilCheck))
+    putIntoDest(p, d, e, rdMType(p, a, nilCheck, enforceV1 = enforceV1))
 
 template genDollar(p: BProc, n: PNode, d: var TLoc, frmt: string) =
   var a: TLoc
@@ -2254,7 +2257,8 @@ proc genMagicExpr(p: BProc, e: PNode, d: var TLoc, op: TMagic) =
   of mAddI..mPred: binaryArithOverflow(p, e, d, op)
   of mRepr: genRepr(p, e, d)
   of mGetTypeInfo: genGetTypeInfo(p, e, d)
-  of mGetTypeInfoV2: genGetTypeInfoV2(p, e, d)
+  of mGetTypeInfoV2: genDynamicGetTypeInfo(p, e, d, oldMagic = true)
+  of mGetDynamicTypeInfo: genDynamicGetTypeInfo(p, e, d, oldMagic = false)
   of mSwap: genSwap(p, e, d)
   of mInc, mDec:
     const opr: array[mInc..mDec, string] = ["+=", "-="]

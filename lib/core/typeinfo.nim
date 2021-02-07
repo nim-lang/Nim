@@ -27,6 +27,35 @@ include "system/hti.nim"
 
 {.pop.}
 
+when false:
+  export PNimType
+
+  # when not defined(js) and defined(nimV2):
+  when defined(nimV2):
+    type
+      TNimTypeV2 {.compilerproc.} = object
+        destructor: pointer
+        size*: int
+        align: int
+        name*: cstring
+        traceImpl: pointer
+        disposeImpl: pointer
+        typeInfoV1*: pointer # for backwards compat, usually nil
+        # typeInfoV1*: PNimType
+      PNimTypeV2 = ptr TNimTypeV2
+      PNimTypeAlt = PNimTypeV2
+  else:
+    PNimTypeAlt = PNimType
+
+  proc getDynamicTypeInfoImpl[T](x: T): PNimTypeAlt {.magic: "GetDynamicTypeInfo", noSideEffect, locks: 0.}
+
+  proc getDynamicTypeInfo*[T](x: T): PNimTypeAlt =
+    when T is ref:
+      if x != nil: 
+        result = getDynamicTypeInfoImpl(x[])
+    else:
+      result = getDynamicTypeInfoImpl(x)
+
 type
   AnyKind* = enum      ## what kind of ``any`` it is
     akNone = 0,         ## invalid any
@@ -94,7 +123,7 @@ else:
 from std/private/strimpl import cmpNimIdentifier
 
 when not defined(js):
-  template rawType(x: Any): PNimType =
+  template rawType*(x: Any): PNimType =
     cast[PNimType](x.rawTypePtr)
 
   template `rawType=`(x: var Any, p: PNimType) =

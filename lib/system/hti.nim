@@ -91,7 +91,7 @@ type
       head*: pointer
     size*: int
     align*: int
-    kind: TNimKind
+    kind*: TNimKind
     flags: set[TNimTypeFlag]
     base*: ptr TNimType
     node: ptr TNimNode # valid for tyRecord, tyObject, tyTuple, tyEnum
@@ -101,7 +101,7 @@ type
     when defined(nimSeqsV2):
       typeInfoV2*: pointer
     when defined(nimTypeNames):
-      name: cstring
+      name*: cstring
       nextType: ptr TNimType
       instances: int # count the number of instances
       sizes: int # sizes of all instances in bytes
