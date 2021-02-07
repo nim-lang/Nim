@@ -656,7 +656,6 @@ when not defined(nimscript) and not defined(standalone):
       let now = times.getTime()
       randomize(convert(Seconds, Nanoseconds, now.toUnix) + now.nanosecond)
 
-
 proc sampleBuffer*[T](r: var Rand, buffer: var openArray[T]; alphabet: set[T]) {.inline, since: (1, 5).} =
   ## Populates `buffer` with random samples from `alphabet`.
   ## Can be used to generate random ASCII URL-Safe strings of specified length and chars.
