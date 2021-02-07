@@ -722,7 +722,8 @@ proc orderFootnotes(p: var RstParser) =
   else:
     # fill gaps between manually numbered footnotes in ascending order
     manuallyN.sort()  # sort by number - its first field
-    var lst = manuallyN.toSinglyLinkedList()
+    var lst = initSinglyLinkedList[FootnoteSubst]()
+    for elem in manuallyN: lst.append(elem)
     var firstAuto = 0
     if lst.head == nil or lst.head.value.number != 1:
       # no manual footnote [1], start numeration from 1 for auto-numbered
@@ -731,7 +732,7 @@ proc orderFootnotes(p: var RstParser) =
     var curNode = lst.head
     var nextNode: SinglyLinkedNode[FootnoteSubst]
     # go simultaneously through `autoN` and `lst` looking for gaps
-    for (kind, _, autoNumIdx, _, label) in autoN[firstAuto .. ^1]:
+    for (kind, x, autoNumIdx, y, label) in autoN[firstAuto .. ^1]:
       while (nextNode = curNode.next; nextNode != nil):
         if nextNode.value.number - curNode.value.number > 1:
           # gap found, insert new node `n` between curNode and nextNode:
