@@ -443,9 +443,9 @@ iterator lines*(mfile: MemFile, buf: var string, delim = '\l',
   ##     echo line
 
   for ms in memSlices(mfile, delim, eat):
-    setLen(buf, ms.size)
+    setLen(buf.string, ms.size)
     if ms.size > 0:
-      copyMem(addr buf[0], ms.data, ms.size)
+      copyMem(addr string(buf)[0], ms.data, ms.size)
     yield buf
 
 iterator lines*(mfile: MemFile, delim = '\l', eat = '\r'): string {.inline.} =

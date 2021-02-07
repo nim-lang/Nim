@@ -1870,7 +1870,7 @@ proc dirInclude(p: var RstParser): PRstNode =
       result = newRstNode(rnLiteralBlock)
       result.add(newRstNode(rnLeaf, readFile(path)))
     else:
-      let inputString = readFile(path)
+      let inputString = readFile(path).string()
       let startPosition =
         block:
           let searchFor = n.getFieldValue("start-after").strip()

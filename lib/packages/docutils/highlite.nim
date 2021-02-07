@@ -917,7 +917,7 @@ when isMainModule:
   # Try to work running in both the subdir or at the root.
   for filename in ["doc/keywords.txt", "../../../doc/keywords.txt"]:
     try:
-      let input = readFile(filename)
+      let input = string(readFile(filename))
       keywords = input.splitWhitespace()
       break
     except:

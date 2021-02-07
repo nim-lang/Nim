@@ -415,7 +415,7 @@ proc addFiles*(p: MultipartData, xs: openArray[tuple[name, file: string]],
     let (_, fName, ext) = splitFile(file)
     if ext.len > 0:
       contentType = mimeDb.getMimetype(ext[1..ext.high], "")
-    let content = if useStream: file else: readFile(file)
+    let content = if useStream: file else: readFile(file).string
     p.add(name, content, fName & ext, contentType, useStream = useStream)
   result = p
 
@@ -455,8 +455,8 @@ proc sendFile(socket: Socket | AsyncSocket,
   var buffer: string
   while true:
     buffer =
-      when socket is AsyncSocket: (await read(file, chunkSize))
-      else: readStr(file, chunkSize)
+      when socket is AsyncSocket: (await read(file, chunkSize)).string
+      else: readStr(file, chunkSize).string
     if buffer.len == 0: break
     await socket.send(buffer)
   file.close()
@@ -690,7 +690,7 @@ proc parseChunks(client: HttpClient | AsyncHttpClient): Future[void]
                  {.multisync.} =
   while true:
     var chunkSize = 0
-    var chunkSizeStr = await client.socket.recvLine()
+    var chunkSizeStr = (await client.socket.recvLine()).string
     var i = 0
     if chunkSizeStr == "":
       httpError("Server terminated connection prematurely")
@@ -789,9 +789,9 @@ proc parseResponse(client: HttpClient | AsyncHttpClient,
   while true:
     linei = 0
     when client is HttpClient:
-      line = await client.socket.recvLine(client.timeout)
+      line = (await client.socket.recvLine(client.timeout)).string
     else:
-      line = await client.socket.recvLine()
+      line = (await client.socket.recvLine()).string
     if line == "":
       # We've been disconnected.
       client.close()

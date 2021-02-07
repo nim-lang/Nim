@@ -63,11 +63,11 @@ proc cgiError*(msg: string) {.noreturn.} =
   raise newException(CgiError, msg)
 
 proc getEncodedData(allowedMethods: set[RequestMethod]): string =
-  case getEnv("REQUEST_METHOD")
+  case getEnv("REQUEST_METHOD").string
   of "POST":
     if methodPost notin allowedMethods:
       cgiError("'REQUEST_METHOD' 'POST' is not supported")
-    var L = parseInt(getEnv("CONTENT_LENGTH"))
+    var L = parseInt(getEnv("CONTENT_LENGTH").string)
     if L == 0:
       return ""
     result = newString(L)
@@ -76,7 +76,7 @@ proc getEncodedData(allowedMethods: set[RequestMethod]): string =
   of "GET":
     if methodGet notin allowedMethods:
       cgiError("'REQUEST_METHOD' 'GET' is not supported")
-    result = getEnv("QUERY_STRING")
+    result = getEnv("QUERY_STRING").string
   else:
     if methodNone notin allowedMethods:
       cgiError("'REQUEST_METHOD' must be 'POST' or 'GET'")
@@ -102,13 +102,13 @@ proc readData*(allowedMethods: set[RequestMethod] =
   ## `allowedMethods` set, a `CgiError` exception is raised.
   result = newStringTable()
   for name, value in decodeData(allowedMethods):
-    result[name] = value
+    result[name.string] = value.string
 
 proc readData*(data: string): StringTableRef =
   ## Reads CGI data from a string.
   result = newStringTable()
   for name, value in decodeData(data):
-    result[name] = value
+    result[name.string] = value.string
 
 proc validateData*(data: StringTableRef, validKeys: varargs[string]) =
   ## Validates data; raises `CgiError` if this fails. This checks that each variable
@@ -119,131 +119,131 @@ proc validateData*(data: StringTableRef, validKeys: varargs[string]) =
 
 proc getContentLength*(): string =
   ## Returns contents of the `CONTENT_LENGTH` environment variable.
-  return getEnv("CONTENT_LENGTH")
+  return getEnv("CONTENT_LENGTH").string
 
 proc getContentType*(): string =
   ## Returns contents of the `CONTENT_TYPE` environment variable.
-  return getEnv("CONTENT_Type")
+  return getEnv("CONTENT_Type").string
 
 proc getDocumentRoot*(): string =
   ## Returns contents of the `DOCUMENT_ROOT` environment variable.
-  return getEnv("DOCUMENT_ROOT")
+  return getEnv("DOCUMENT_ROOT").string
 
 proc getGatewayInterface*(): string =
   ## Returns contents of the `GATEWAY_INTERFACE` environment variable.
-  return getEnv("GATEWAY_INTERFACE")
+  return getEnv("GATEWAY_INTERFACE").string
 
 proc getHttpAccept*(): string =
   ## Returns contents of the `HTTP_ACCEPT` environment variable.
-  return getEnv("HTTP_ACCEPT")
+  return getEnv("HTTP_ACCEPT").string
 
 proc getHttpAcceptCharset*(): string =
   ## Returns contents of the `HTTP_ACCEPT_CHARSET` environment variable.
-  return getEnv("HTTP_ACCEPT_CHARSET")
+  return getEnv("HTTP_ACCEPT_CHARSET").string
 
 proc getHttpAcceptEncoding*(): string =
   ## Returns contents of the `HTTP_ACCEPT_ENCODING` environment variable.
-  return getEnv("HTTP_ACCEPT_ENCODING")
+  return getEnv("HTTP_ACCEPT_ENCODING").string
 
 proc getHttpAcceptLanguage*(): string =
   ## Returns contents of the `HTTP_ACCEPT_LANGUAGE` environment variable.
-  return getEnv("HTTP_ACCEPT_LANGUAGE")
+  return getEnv("HTTP_ACCEPT_LANGUAGE").string
 
 proc getHttpConnection*(): string =
   ## Returns contents of the `HTTP_CONNECTION` environment variable.
-  return getEnv("HTTP_CONNECTION")
+  return getEnv("HTTP_CONNECTION").string
 
 proc getHttpCookie*(): string =
   ## Returns contents of the `HTTP_COOKIE` environment variable.
-  return getEnv("HTTP_COOKIE")
+  return getEnv("HTTP_COOKIE").string
 
 proc getHttpHost*(): string =
   ## Returns contents of the `HTTP_HOST` environment variable.
-  return getEnv("HTTP_HOST")
+  return getEnv("HTTP_HOST").string
 
 proc getHttpReferer*(): string =
   ## Returns contents of the `HTTP_REFERER` environment variable.
-  return getEnv("HTTP_REFERER")
+  return getEnv("HTTP_REFERER").string
 
 proc getHttpUserAgent*(): string =
   ## Returns contents of the `HTTP_USER_AGENT` environment variable.
-  return getEnv("HTTP_USER_AGENT")
+  return getEnv("HTTP_USER_AGENT").string
 
 proc getPathInfo*(): string =
   ## Returns contents of the `PATH_INFO` environment variable.
-  return getEnv("PATH_INFO")
+  return getEnv("PATH_INFO").string
 
 proc getPathTranslated*(): string =
   ## Returns contents of the `PATH_TRANSLATED` environment variable.
-  return getEnv("PATH_TRANSLATED")
+  return getEnv("PATH_TRANSLATED").string
 
 proc getQueryString*(): string =
   ## Returns contents of the `QUERY_STRING` environment variable.
-  return getEnv("QUERY_STRING")
+  return getEnv("QUERY_STRING").string
 
 proc getRemoteAddr*(): string =
   ## Returns contents of the `REMOTE_ADDR` environment variable.
-  return getEnv("REMOTE_ADDR")
+  return getEnv("REMOTE_ADDR").string
 
 proc getRemoteHost*(): string =
   ## Returns contents of the `REMOTE_HOST` environment variable.
-  return getEnv("REMOTE_HOST")
+  return getEnv("REMOTE_HOST").string
 
 proc getRemoteIdent*(): string =
   ## Returns contents of the `REMOTE_IDENT` environment variable.
-  return getEnv("REMOTE_IDENT")
+  return getEnv("REMOTE_IDENT").string
 
 proc getRemotePort*(): string =
   ## Returns contents of the `REMOTE_PORT` environment variable.
-  return getEnv("REMOTE_PORT")
+  return getEnv("REMOTE_PORT").string
 
 proc getRemoteUser*(): string =
   ## Returns contents of the `REMOTE_USER` environment variable.
-  return getEnv("REMOTE_USER")
+  return getEnv("REMOTE_USER").string
 
 proc getRequestMethod*(): string =
   ## Returns contents of the `REQUEST_METHOD` environment variable.
-  return getEnv("REQUEST_METHOD")
+  return getEnv("REQUEST_METHOD").string
 
 proc getRequestURI*(): string =
   ## Returns contents of the `REQUEST_URI` environment variable.
-  return getEnv("REQUEST_URI")
+  return getEnv("REQUEST_URI").string
 
 proc getScriptFilename*(): string =
   ## Returns contents of the `SCRIPT_FILENAME` environment variable.
-  return getEnv("SCRIPT_FILENAME")
+  return getEnv("SCRIPT_FILENAME").string
 
 proc getScriptName*(): string =
   ## Returns contents of the `SCRIPT_NAME` environment variable.
-  return getEnv("SCRIPT_NAME")
+  return getEnv("SCRIPT_NAME").string
 
 proc getServerAddr*(): string =
   ## Returns contents of the `SERVER_ADDR` environment variable.
-  return getEnv("SERVER_ADDR")
+  return getEnv("SERVER_ADDR").string
 
 proc getServerAdmin*(): string =
   ## Returns contents of the `SERVER_ADMIN` environment variable.
-  return getEnv("SERVER_ADMIN")
+  return getEnv("SERVER_ADMIN").string
 
 proc getServerName*(): string =
   ## Returns contents of the `SERVER_NAME` environment variable.
-  return getEnv("SERVER_NAME")
+  return getEnv("SERVER_NAME").string
 
 proc getServerPort*(): string =
   ## Returns contents of the `SERVER_PORT` environment variable.
-  return getEnv("SERVER_PORT")
+  return getEnv("SERVER_PORT").string
 
 proc getServerProtocol*(): string =
   ## Returns contents of the `SERVER_PROTOCOL` environment variable.
-  return getEnv("SERVER_PROTOCOL")
+  return getEnv("SERVER_PROTOCOL").string
 
 proc getServerSignature*(): string =
   ## Returns contents of the `SERVER_SIGNATURE` environment variable.
-  return getEnv("SERVER_SIGNATURE")
+  return getEnv("SERVER_SIGNATURE").string
 
 proc getServerSoftware*(): string =
   ## Returns contents of the `SERVER_SOFTWARE` environment variable.
-  return getEnv("SERVER_SOFTWARE")
+  return getEnv("SERVER_SOFTWARE").string
 
 proc setTestData*(keysvalues: varargs[string]) =
   ## Fills the appropriate environment variables to test your CGI application.

@@ -141,7 +141,7 @@ proc expectReply(ftp: AsyncFtpClient): Future[string] {.async.} =
   while line.len > 3 and line[3] == '-':
     ## Multi-line reply.
     line = await ftp.csock.recvLine()
-    result.add("\n" & line)
+    string(result).add("\n" & line)
     count.inc()
     if count >= multiLineLimit:
       raise newException(ReplyError, "Reached maximum multi-line reply count.")
@@ -163,7 +163,7 @@ proc assertReply(received: string, expected: varargs[string]) =
     if received.startsWith(i): return
   raise newException(ReplyError,
                      "Expected reply '$1' got: $2" %
-                      [expected.join("' or '"), received])
+                      [expected.join("' or '"), received.string])
 
 proc pasv(ftp: AsyncFtpClient) {.async.} =
   ## Negotiate a data connection.
@@ -171,7 +171,7 @@ proc pasv(ftp: AsyncFtpClient) {.async.} =
 
   var pasvMsg = (await ftp.send("PASV")).strip
   assertReply(pasvMsg, "227")
-  var betweenParens = captureBetween(pasvMsg, '(', ')')
+  var betweenParens = captureBetween(pasvMsg.string, '(', ')')
   var nums = betweenParens.split(',')
   var ip = nums[0 .. ^3]
   var port = nums[^2 .. ^1]
@@ -187,7 +187,7 @@ proc connect*(ftp: AsyncFtpClient) {.async.} =
   await ftp.csock.connect(ftp.address, ftp.port)
 
   var reply = await ftp.expectReply()
-  if reply.startsWith("120"):
+  if string(reply).startsWith("120"):
     # 120 Service ready in nnn minutes.
     # We wait until we receive 220.
     reply = await ftp.expectReply()
@@ -221,10 +221,10 @@ proc getLines(ftp: AsyncFtpClient): Future[string] {.async.} =
   assert ftp.dsockConnected
   while ftp.dsockConnected:
     let r = await ftp.dsock.recvLine()
-    if r == "":
+    if r.string == "":
       ftp.dsockConnected = false
     else:
-      result.add(r & "\n")
+      result.add(r.string & "\n")
 
   assertReply(await(ftp.expectReply()), "226")
 
@@ -346,10 +346,10 @@ proc retrFile*(ftp: AsyncFtpClient, file, dest: string,
   await ftp.pasv()
   var reply = await ftp.send("RETR " & file.normalizePathSep)
   assertReply reply, ["125", "150"]
-  if {'(', ')'} notin reply:
+  if {'(', ')'} notin reply.string:
     raise newException(ReplyError, "Reply has no file size.")
   var fileSize: BiggestInt
-  if reply.captureBetween('(', ')').parseBiggestInt(fileSize) == 0:
+  if reply.string.captureBetween('(', ')').parseBiggestInt(fileSize) == 0:
     raise newException(ReplyError, "Reply has no file size.")
 
   await getFile(ftp, destFile, fileSize, onProgressChanged)

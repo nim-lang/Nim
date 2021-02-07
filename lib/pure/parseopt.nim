@@ -228,7 +228,7 @@ when declared(os.paramCount):
     else:
       result.cmds = newSeq[string](os.paramCount())
       for i in countup(1, os.paramCount()):
-        result.cmds[i-1] = os.paramStr(i)
+        result.cmds[i-1] = os.paramStr(i).string
 
     result.kind = cmdEnd
     result.key = ""
@@ -261,11 +261,11 @@ when declared(os.paramCount):
     if cmdline.len != 0:
       result.cmds = newSeq[string](cmdline.len)
       for i in 0..<cmdline.len:
-        result.cmds[i] = cmdline[i]
+        result.cmds[i] = cmdline[i].string
     else:
       result.cmds = newSeq[string](os.paramCount())
       for i in countup(1, os.paramCount()):
-        result.cmds[i-1] = os.paramStr(i)
+        result.cmds[i-1] = os.paramStr(i).string
     result.kind = cmdEnd
     result.key = ""
     result.val = ""
@@ -274,14 +274,14 @@ proc handleShortOption(p: var OptParser; cmd: string) =
   var i = p.pos
   p.kind = cmdShortOption
   if i < cmd.len:
-    add(p.key, cmd[i])
+    add(p.key.string, cmd[i])
     inc(i)
   p.inShortState = true
   while i < cmd.len and cmd[i] in {'\t', ' '}:
     inc(i)
     p.inShortState = false
   if i < cmd.len and (cmd[i] in {':', '='} or
-      card(p.shortNoVal) > 0 and p.key[0] notin p.shortNoVal):
+      card(p.shortNoVal) > 0 and p.key.string[0] notin p.shortNoVal):
     if i < cmd.len and cmd[i] in {':', '='}:
       inc(i)
     p.inShortState = false
@@ -319,8 +319,8 @@ proc next*(p: var OptParser) {.rtl, extern: "npo$1".} =
   var i = p.pos
   while i < p.cmds[p.idx].len and p.cmds[p.idx][i] in {'\t', ' '}: inc(i)
   p.pos = i
-  setLen(p.key, 0)
-  setLen(p.val, 0)
+  setLen(p.key.string, 0)
+  setLen(p.val.string, 0)
   if p.inShortState:
     p.inShortState = false
     if i >= p.cmds[p.idx].len:
@@ -338,7 +338,7 @@ proc next*(p: var OptParser) {.rtl, extern: "npo$1".} =
     if i < p.cmds[p.idx].len and p.cmds[p.idx][i] == '-':
       p.kind = cmdLongOption
       inc(i)
-      i = parseWord(p.cmds[p.idx], i, p.key, {' ', '\t', ':', '='})
+      i = parseWord(p.cmds[p.idx], i, p.key.string, {' ', '\t', ':', '='})
       while i < p.cmds[p.idx].len and p.cmds[p.idx][i] in {'\t', ' '}: inc(i)
       if i < p.cmds[p.idx].len and p.cmds[p.idx][i] in {':', '='}:
         inc(i)
@@ -350,7 +350,7 @@ proc next*(p: var OptParser) {.rtl, extern: "npo$1".} =
           i = 0
         if p.idx < p.cmds.len:
           p.val = p.cmds[p.idx].substr(i)
-      elif len(p.longNoVal) > 0 and p.key notin p.longNoVal and p.idx+1 < p.cmds.len:
+      elif len(p.longNoVal) > 0 and p.key.string notin p.longNoVal and p.idx+1 < p.cmds.len:
         p.val = p.cmds[p.idx+1]
         inc p.idx
       else:
