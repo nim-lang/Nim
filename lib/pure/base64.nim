@@ -74,7 +74,7 @@ let
 
 const
   cb64VM = cbBase('+', '/')
-  cb64safeVM* = cbBase('-', '_')  ## URL-Safe `char` alphabet.
+  cb64safeVM = cbBase('-', '_')
 
 const
   invalidChar = 255
