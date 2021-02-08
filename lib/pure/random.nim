@@ -664,6 +664,8 @@ proc sampleBuffer*[T](r: var Rand, buffer: var openArray[T]; alphabet: set[T]) {
     import std/sugar
     var r = initRand(666)
     doAssert newString(8).dup(sampleBuffer(r, _, {'0'..'9'})).len == 8
+    import base64
+    doAssert newString(8).dup(sampleBuffer(r, _, cb64safeVM)).len == 8
   for c in buffer.mitems: c = sample(r, alphabet)
 
 
