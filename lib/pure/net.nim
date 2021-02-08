@@ -566,7 +566,27 @@ when defineSsl:
     discard newCTX.SSLCTXSetMode(SSL_MODE_AUTO_RETRY)
     newCTX.loadCertificates(certFile, keyFile)
 
-    result = SslContext(context: newCTX, referencedData: initSet[int](),
+    const VerifySuccess = 1 # SSL_CTX_load_verify_locations returns 1 on success.
+
+    when not defined(nimDisableCertificateValidation):
+      if verifyMode != CVerifyNone:
+        # Use the caDir and caFile parameters if set
+        if caDir != "" or caFile != "":
+          if newCTX.SSL_CTX_load_verify_locations(caFile, caDir) != VerifySuccess:
+            raise newException(IOError, "Failed to load SSL/TLS CA certificate(s).")
+
+        else:
+          # Scan for certs in known locations. For CVerifyPeerUseEnvVars also scan
+          # the SSL_CERT_FILE and SSL_CERT_DIR env vars
+          var found = false
+          for fn in scanSSLCertificates():
+            if newCTX.SSL_CTX_load_verify_locations(fn, nil) == VerifySuccess:
+              found = true
+              break
+          if not found:
+            raise newException(IOError, "No SSL/TLS CA certificates found.")
+
+    result = SslContext(context: newCTX, referencedData: initHashSet[int](),
       extraInternal: new(SslContextExtraInternal))
 
   proc getExtraInternal(ctx: SslContext): SslContextExtraInternal =
