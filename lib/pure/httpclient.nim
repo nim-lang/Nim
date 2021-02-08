@@ -286,7 +286,7 @@ proc getDefaultSSL(): SslContext =
   result = defaultSslContext
   when defined(ssl):
     if result == nil:
-      defaultSslContext = newContext(verifyMode = CVerifyPeer)
+      defaultSslContext = newContext(verifyMode = CVerifyNone)
       result = defaultSslContext
       doAssert result != nil, "failure to initialize the SSL context"
 
