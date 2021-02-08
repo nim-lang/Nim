@@ -24,7 +24,7 @@ when defined nimExperimentalTypeInfoCore:
   proc getDynamicTypeInfo*[T](x: T): PNimTypeAlt =
     ## Returns the dynamic type of `x`, which is an implementation defined runtime
     ## representation of the type of `x`. If `T` is `ref|ptr`, x will first be dereferenced
-    ## unless x == nil.
+    ## unless `x == nil`.
     runnableExamples("-d:nimExperimentalTypeInfoCore"):
       type
         Base = ref object of RootObj
