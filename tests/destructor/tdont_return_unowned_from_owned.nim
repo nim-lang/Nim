@@ -10,7 +10,6 @@ proc new[T](a: var ref T; finalizer: proc (x: ref T) {.nimcall.})
 2 other mismatching symbols have been suppressed; compile with --showAllMismatches:on to see them
 
 expression: new(result)
-tdont_return_unowned_from_owned.nim(42, 6) Error: illformed AST:
 tdont_return_unowned_from_owned.nim(50, 13) Error: assignment produces a dangling ref: the unowned ref lives longer than the owned ref
 tdont_return_unowned_from_owned.nim(51, 13) Error: assignment produces a dangling ref: the unowned ref lives longer than the owned ref
 tdont_return_unowned_from_owned.nim(55, 10) Error: cannot return an owned pointer as an unowned pointer; use 'owned(RootRef)' as the return type
@@ -18,6 +17,7 @@ tdont_return_unowned_from_owned.nim(55, 10) Error: cannot return an owned pointe
   errormsg: "cannot return an owned pointer as an unowned pointer; use 'owned(RootRef)' as the return type"
   line: 55
 """
+
 
 
 

@@ -505,7 +505,8 @@ proc semResolvedCall(c: PContext, x: TCandidate,
   assert finalCallee.ast != nil
   if x.hasFauxMatch:
     result = x.call
-    result[0] = newSymNode(finalCallee, getCallLineInfo(result[0]))
+    if result.kind != nkError:
+      result[0] = newSymNode(finalCallee, getCallLineInfo(result[0]))
     if containsGenericType(result.typ) or x.fauxMatch == tyUnknown:
       result.typ = newTypeS(x.fauxMatch, c)
       if result.typ.kind == tyError: incl result.typ.flags, tfCheckedForDestructor
@@ -533,10 +534,12 @@ proc semResolvedCall(c: PContext, x: TCandidate,
           internalAssert c.config, false
 
   result = x.call
-  instGenericConvertersSons(c, result, x)
-  result[0] = newSymNode(finalCallee, getCallLineInfo(result[0]))
+  if result.kind != nkError:
+    instGenericConvertersSons(c, result, x)
+    result[0] = newSymNode(finalCallee, getCallLineInfo(result[0]))
+    updateDefaultParams(result)
+
   result.typ = finalCallee.typ[0]
-  updateDefaultParams(result)
 
 proc canDeref(n: PNode): bool {.inline.} =
   result = n.len >= 2 and (let t = n[1].typ;
