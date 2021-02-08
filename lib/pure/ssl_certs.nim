@@ -112,7 +112,8 @@ iterator scanSSLCertificates*(useEnvVars = false): string =
       # These are the certificates from Firefox. The 'bitsadmin.exe' tool ships with every
       # recent version of Windows (Windows 8, Windows XP, etc.)
       if not fileExists(pem):
-        discard os.execShellCmd("""bitsadmin.exe /rawreturn /transfer "JobName" /priority FOREGROUND https://curl.se/ca/cacert.pem """ & pem)
+        discard os.execShellCmd("""bitsadmin.exe /rawreturn /transfer "JobName" /priority FOREGROUND https://curl.se/ca/cacert.pem """ &
+          quoteShell(pem))
       yield pem
     elif not defined(haiku):
       for p in certificatePaths:
