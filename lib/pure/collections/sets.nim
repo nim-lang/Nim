@@ -355,7 +355,7 @@ proc clear*[A](s: var HashSet[A]) =
   s.counter = 0
   for i in 0 ..< s.data.len:
     s.data[i].hcode = 0
-    s.data[i].key = default(type(s.data[i].key))
+    s.data[i].key = default(typeof(s.data[i].key))
 
 proc len*[A](s: HashSet[A]): int =
   ## Returns the number of elements in `s`.
@@ -812,7 +812,7 @@ proc clear*[A](s: var OrderedSet[A]) =
   for i in 0 ..< s.data.len:
     s.data[i].hcode = 0
     s.data[i].next = 0
-    s.data[i].key = default(type(s.data[i].key))
+    s.data[i].key = default(typeof(s.data[i].key))
 
 proc len*[A](s: OrderedSet[A]): int {.inline.} =
   ## Returns the number of elements in `s`.
