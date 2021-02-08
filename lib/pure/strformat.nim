@@ -379,9 +379,9 @@ proc formatInt(n: SomeNumber; radix: int;
     result = "0"
   else:
     result = ""
-    while v > type(v)(0):
-      let d = v mod type(v)(radix)
-      v = v div type(v)(radix)
+    while v > typeof(v)(0):
+      let d = v mod typeof(v)(radix)
+      v = v div typeof(v)(radix)
       result.add(mkDigit(d.int, spec.typ))
     for idx in 0..<(result.len div 2):
       swap result[idx], result[result.len - idx - 1]

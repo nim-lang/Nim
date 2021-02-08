@@ -586,6 +586,8 @@ proc fstatvfs*(a1: cint, a2: var Statvfs): cint {.
   importc, header: "<sys/statvfs.h>".}
 
 proc chmod*(a1: cstring, a2: Mode): cint {.importc, header: "<sys/stat.h>", sideEffect.}
+when defined(osx) or defined(freebsd):
+  proc lchmod*(a1: cstring, a2: Mode): cint {.importc, header: "<sys/stat.h>", sideEffect.}
 proc fchmod*(a1: cint, a2: Mode): cint {.importc, header: "<sys/stat.h>", sideEffect.}
 proc fstat*(a1: cint, a2: var Stat): cint {.importc, header: "<sys/stat.h>", sideEffect.}
 proc lstat*(a1: cstring, a2: var Stat): cint {.importc, header: "<sys/stat.h>", sideEffect.}

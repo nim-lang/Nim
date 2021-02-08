@@ -104,6 +104,7 @@ with other backends. see #9125. Use `-d:nimLegacyJsRound` for previous behavior.
   `-d:nimLegacyParseQueryStrict`. `cgi.decodeData` which uses the same
   underlying code is also updated the same way.
 
+- Added `sugar.dumpToString` which improves on `sugar.dump`.
 
 
 
@@ -114,6 +115,19 @@ with other backends. see #9125. Use `-d:nimLegacyJsRound` for previous behavior.
 - Add `jsformdata`, `jssets`, `jsxmlhttprequest`, `jsxmlserializer` for JavaScript target.
 
 
+- Added optional `options` argument to `copyFile`, `copyFileToDir`, and
+  `copyFileWithPermissions`. By default, on non-Windows OSes, symlinks are
+  followed (copy files symlinks point to); on Windows, `options` argument is
+  ignored and symlinks are skipped.
+- On non-Windows OSes, `copyDir` and `copyDirWithPermissions` copy symlinks as
+  symlinks (instead of skipping them as it was before); on Windows symlinks are
+  skipped.
+- On non-Windows OSes, `moveFile` and `moveDir` move symlinks as symlinks
+  (instead of skipping them sometimes as it was before).
+- Added optional `followSymlinks` argument to `setFilePermissions`.
+
+- Added `random.initRand()` overload with no argument which uses the current time as a seed.
+
 ## Language changes
 
 - `nimscript` now handles `except Exception as e`.
@@ -121,6 +135,11 @@ with other backends. see #9125. Use `-d:nimLegacyJsRound` for previous behavior.
 - The `cstring` doesn't support `[]=` operator in JS backend.
 
 - nil dereference is not allowed at compile time. `cast[ptr int](nil)[]` is rejected at compile time.
+
+- `typetraits.distinctBase` now is identity instead of error for non distinct types.
+
+- `os.copyFile` is now 2.5x faster on OSX, by using `copyfile` from `copyfile.h`;
+  use `-d:nimLegacyCopyFile` for OSX < 10.5.
 
 
 ## Compiler changes

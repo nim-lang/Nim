@@ -141,13 +141,18 @@ when defined(js):
       res = hiXorLoJs(hiXorLoJs(P0, x xor P1), P58)
     cast[Hash](toNumber(wrapToInt(res, 32)))
 
-  template asBigInt(num: float): JsBigInt =
+  template toBits(num: float): JsBigInt =
     let
       x = newArrayBuffer(8)
       y = newFloat64Array(x)
-      z = newBigUint64Array(x)
-    y[0] = num
-    z[0]
+    if hasBigUint64Array():
+      let z = newBigUint64Array(x)
+      y[0] = num
+      z[0]
+    else:
+      let z = newUint32Array(x)
+      y[0] = num
+      big(z[0]) + big(z[1]) shl big(32)
 
 proc hashWangYi1*(x: int64|uint64|Hash): Hash {.inline.} =
   ## Wang Yi's hash_v1 for 64-bit ints (see https://github.com/rurban/smhasher for
@@ -237,7 +242,7 @@ proc hash*(x: float): Hash {.inline.} =
     when not defined(js):
       result = hashWangYi1(cast[Hash](y))
     else:
-      result = hashWangYiJS(asBigInt(y))
+      result = hashWangYiJS(toBits(y))
 
 # Forward declarations before methods that hash containers. This allows
 # containers to contain other containers

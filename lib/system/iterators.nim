@@ -240,7 +240,7 @@ iterator fields*[T: tuple|object](x: T): RootObj {.
   ## that affects symbol binding in the loop body.
   runnableExamples:
     var t = (1, "foo")
-    for v in fields(t): v = default(type(v))
+    for v in fields(t): v = default(typeof(v))
     doAssert t == (0, "")
 
 iterator fields*[S:tuple|object, T:tuple|object](x: S, y: T): tuple[key: string, val: RootObj] {.
@@ -252,7 +252,7 @@ iterator fields*[S:tuple|object, T:tuple|object](x: S, y: T): tuple[key: string,
   ## in the loop body.
   runnableExamples:
     var t1 = (1, "foo")
-    var t2 = default(type(t1))
+    var t2 = default(typeof(t1))
     for v1, v2 in fields(t1, t2): v2 = v1
     doAssert t1 == t2
 

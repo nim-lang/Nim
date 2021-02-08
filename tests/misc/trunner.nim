@@ -7,7 +7,7 @@ discard """
 ## A few others could be added to here to simplify code.
 ## Note: this test is a bit slow but tests a lot of things; please don't disable.
 
-import std/[strformat,os,osproc,unittest]
+import std/[strformat,os,osproc,unittest,compilesettings]
 from std/sequtils import toSeq,mapIt
 from std/algorithm import sorted
 import stdtest/[specialpaths, unittest_light]
@@ -25,10 +25,7 @@ const
     # useful when you want to turn only some hints on, and some common ones off.
     # pending https://github.com/timotheecour/Nim/issues/453, simplify to: `--hints:off`
   nim = getCurrentCompilerExe()
-  mode =
-    when defined(c): "c"
-    elif defined(cpp): "cpp"
-    else: static: doAssert false
+  mode = querySetting(backend)
   nimcache = buildDir / "nimcacheTrunner"
     # instead of `querySetting(nimcacheDir)`, avoids stomping on other parallel tests
 

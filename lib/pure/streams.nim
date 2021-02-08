@@ -924,7 +924,7 @@ proc readStrPrivate(s: Stream, length: int, str: var string) =
   when defined(js):
     let L = readData(s, addr(str), length)
   else:
-    let L = readData(s, cstring(str.string), length)
+    let L = readData(s, cstring(str), length)
   if L != len(str): setLen(str, L)
 
 proc readStr*(s: Stream, length: int, str: var string) {.since: (1, 3).} =
@@ -950,7 +950,7 @@ proc peekStrPrivate(s: Stream, length: int, str: var string) =
   when defined(js):
     let L = peekData(s, addr(str), length)
   else:
-    let L = peekData(s, cstring(str.string), length)
+    let L = peekData(s, cstring(str), length)
   if L != len(str): setLen(str, L)
 
 proc peekStr*(s: Stream, length: int, str: var string) {.since: (1, 3).} =

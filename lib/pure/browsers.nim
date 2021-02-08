@@ -43,7 +43,7 @@ proc openDefaultBrowserImpl(url: string) =
   else:
     var u = quoteShell(prepare url)
     if execShellCmd(osOpenCmd & " " & u) == 0: return
-    for b in getEnv("BROWSER").string.split(PathSep):
+    for b in getEnv("BROWSER").split(PathSep):
       try:
         # we use ``startProcess`` here because we don't want to block!
         discard startProcess(command = b, args = [url], options = {poUsePath})

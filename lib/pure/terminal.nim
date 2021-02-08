@@ -253,7 +253,7 @@ else:
     discard close(fd)
     if w > 0: return w
     var s = getEnv("COLUMNS") #Try standard env var
-    if len(s) > 0 and parseInt(string(s), w) > 0 and w > 0:
+    if len(s) > 0 and parseInt(s, w) > 0 and w > 0:
       return w
     return 80 #Finally default to venerable value
 
@@ -271,7 +271,7 @@ else:
     discard close(fd)
     if h > 0: return h
     var s = getEnv("LINES") # Try standard env var
-    if len(s) > 0 and parseInt(string(s), h) > 0 and h > 0:
+    if len(s) > 0 and parseInt(s, h) > 0 and h > 0:
       return h
     return 0 # Could not determine height
 
@@ -776,7 +776,7 @@ when defined(windows):
     ## Reads a `password` from stdin without printing it. `password` must not
     ## be ``nil``! Returns ``false`` if the end of the file has been reached,
     ## ``true`` otherwise.
-    password.string.setLen(0)
+    password.setLen(0)
     stdout.write(prompt)
     let hi = createFileA("CONIN$",
       GENERIC_READ or GENERIC_WRITE, 0, nil, OPEN_EXISTING, 0, 0)
@@ -799,7 +799,7 @@ else:
 
   proc readPasswordFromStdin*(prompt: string, password: var string):
                             bool {.tags: [ReadIOEffect, WriteIOEffect].} =
-    password.string.setLen(0)
+    password.setLen(0)
     let fd = stdin.getFileHandle()
     var cur, old: Termios
     discard fd.tcGetAttr(cur.addr)
@@ -882,7 +882,7 @@ proc enableTrueColors*() =
       else:
         term.trueColorIsEnabled = true
   else:
-    term.trueColorIsSupported = string(getEnv("COLORTERM")).toLowerAscii() in [
+    term.trueColorIsSupported = getEnv("COLORTERM").toLowerAscii() in [
         "truecolor", "24bit"]
     term.trueColorIsEnabled = term.trueColorIsSupported
 

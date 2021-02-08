@@ -241,8 +241,11 @@ iterator items*[A](s: HashSet[A]): A =
   ##   assert a.len == 2
   ##   echo b
   ##   # --> {(a: 1, b: 3), (a: 0, b: 4)}
+  let length = s.len
   for h in 0 .. high(s.data):
-    if isFilled(s.data[h].hcode): yield s.data[h].key
+    if isFilled(s.data[h].hcode):
+      yield s.data[h].key
+      assert(len(s) == length, "the length of the HashSet changed while iterating over it")
 
 proc containsOrIncl*[A](s: var HashSet[A], key: A): bool =
   ## Includes `key` in the set `s` and tells if `key` was already in `s`.
@@ -355,7 +358,7 @@ proc clear*[A](s: var HashSet[A]) =
   s.counter = 0
   for i in 0 ..< s.data.len:
     s.data[i].hcode = 0
-    s.data[i].key = default(type(s.data[i].key))
+    s.data[i].key = default(typeof(s.data[i].key))
 
 proc len*[A](s: HashSet[A]): int =
   ## Returns the number of elements in `s`.
@@ -812,7 +815,7 @@ proc clear*[A](s: var OrderedSet[A]) =
   for i in 0 ..< s.data.len:
     s.data[i].hcode = 0
     s.data[i].next = 0
-    s.data[i].key = default(type(s.data[i].key))
+    s.data[i].key = default(typeof(s.data[i].key))
 
 proc len*[A](s: OrderedSet[A]): int {.inline.} =
   ## Returns the number of elements in `s`.
@@ -901,8 +904,10 @@ iterator items*[A](s: OrderedSet[A]): A =
   ##   # --> Got 5
   ##   # --> Got 8
   ##   # --> Got 4
+  let length = s.len
   forAllOrderedPairs:
     yield s.data[h].key
+    assert(len(s) == length, "the length of the OrderedSet changed while iterating over it")
 
 iterator pairs*[A](s: OrderedSet[A]): tuple[a: int, b: A] =
   ## Iterates through (position, value) tuples of OrderedSet `s`.
@@ -913,5 +918,7 @@ iterator pairs*[A](s: OrderedSet[A]): tuple[a: int, b: A] =
       p.add(x)
     assert p == @[(0, 'a'), (1, 'b'), (2, 'r'), (3, 'c'), (4, 'd')]
 
+  let length = s.len
   forAllOrderedPairs:
     yield (idx, s.data[h].key)
+    assert(len(s) == length, "the length of the OrderedSet changed while iterating over it")

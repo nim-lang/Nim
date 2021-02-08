@@ -11,7 +11,7 @@ runnableExamples:
     z1: int8
   let a = (1.5'f32, (b: "b2", a: "a2"), 'x', @[Foo(t: true, z1: -3), nil], [{"name": "John"}.newStringTable])
   let j = a.toJson
-  doAssert j.jsonTo(type(a)).toJson == j
+  doAssert j.jsonTo(typeof(a)).toJson == j
 
 import std/[json,strutils,tables,sets,strtabs,options]
 
@@ -42,7 +42,7 @@ type
 
 proc isNamedTuple(T: typedesc): bool {.magic: "TypeTrait".}
 proc distinctBase(T: typedesc): typedesc {.magic: "TypeTrait".}
-template distinctBase[T](a: T): untyped = distinctBase(type(a))(a)
+template distinctBase[T](a: T): untyped = distinctBase(typeof(a))(a)
 
 macro getDiscriminants(a: typedesc): seq[string] =
   ## return the discriminant keys
