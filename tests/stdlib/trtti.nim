@@ -1,6 +1,5 @@
 discard """
-  matrix: "-d:nimTypeNames; -d:nimTypeNames --gc:arc"
-  # matrix: "-d:nimTypeNames; --gc:arc"
+  matrix: "-d:nimExperimentalTypeInfoCore -d:nimTypeNames; -d:nimExperimentalTypeInfoCore -d:nimTypeNames --gc:arc"
 """
 
 import std/[rtti,unittest,strutils]
