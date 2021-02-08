@@ -124,7 +124,7 @@ with other backends. see #9125. Use `-d:nimLegacyJsRound` for previous behavior.
   (instead of skipping them sometimes as it was before).
 - Added optional `followSymlinks` argument to `setFilePermissions`.
 
-- Add `random.sampleBuffer` to in-place populate a `buffer` with random samples from `alphabet` arguments.
+- Added `random.sampleBuffer` to in-place populate a `buffer` with random samples from `alphabet` arguments.
   Can be used to generate random ASCII URL-Safe strings of specified length and chars.
 
 
