@@ -251,8 +251,23 @@ when defined(nimHasTypeof):
     magic: "TypeOf", noSideEffect, compileTime.} =
     ## Builtin `typeof` operation for accessing the type of an expression.
     ## Since version 0.20.0.
-    discard
+    runnableExamples:
+      proc myFoo(): float = 0.0
+      iterator myFoo(): string = yield "abc"
+      iterator myFoo2(): string = yield "abc"
+      iterator myFoo3(): string {.closure.} = yield "abc"
+      doAssert type(myFoo()) is string
+      doAssert typeof(myFoo()) is string
+      doAssert typeof(myFoo(), typeOfIter) is string
+      doAssert typeof(myFoo3) is "iterator"
 
+      doAssert typeof(myFoo(), typeOfProc) is float
+      doAssert typeof(0.0, typeOfProc) is float
+      doAssert typeof(myFoo3, typeOfProc) is "iterator"
+      doAssert not compiles(typeof(myFoo2(), typeOfProc))
+        # this would give: Error: attempting to call routine: 'myFoo2'
+        # since `typeOfProc` expects a typed expression and `myFoo2()` can
+        # only be used in a `for` context.
 
 const ThisIsSystem = true
 
