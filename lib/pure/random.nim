@@ -661,10 +661,12 @@ proc sampleBuffer*[T](r: var Rand, buffer: var openArray[T]; alphabet: set[T]) {
   ## Can be used to generate random ASCII URL-Safe strings of specified length and chars.
   # Inspired but not copied from Python 3.10 "secrets.token_urlsafe()".
   runnableExamples:
-    import std/sugar
+    import std/[sugar, strutils]  ## sugar.dup, strutils.UrlSafeChars
     var r = initRand(666)
+    var token = "12345678"               ## lenght is 8.
+    sampleBuffer(r, token, UrlSafeChars) ## Use sugar.dup for out-place.
+    doAssert token != "12345678" and token.len == 8  ## Random ASCII URL-Safe string.
     doAssert newString(8).dup(sampleBuffer(r, _, {'0'..'9'})).len == 8
-    import strutils
     doAssert newString(8).dup(sampleBuffer(r, _, UrlSafeChars)).len == 8
   for c in buffer.mitems: c = sample(r, alphabet)
 
