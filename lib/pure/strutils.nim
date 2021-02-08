@@ -120,13 +120,8 @@ const
     ##   doAssert "01234".find(invalid) == -1
     ##   doAssert "01A34".find(invalid) == 2
 
-  UrlSafeChars* = {
-    'A', 'B', 'C', 'D', 'E', 'F', 'G', 'H', 'I', 'J', 'K', 'L', 'M',
-    'N', 'O', 'P', 'Q', 'R', 'S', 'T', 'U', 'V', 'W', 'X', 'Y', 'Z',
-    'a', 'b', 'c', 'd', 'e', 'f', 'g', 'h', 'i', 'j', 'k', 'l', 'm',
-    'n', 'o', 'p', 'q', 'r', 's', 't', 'u', 'v', 'w', 'x', 'y', 'z',
-    '0', '1', '2', '3', '4', '5', '6', '7', '8', '9', '-', '_',
-  }  ## ASCII URL-Safe `char` alphabet representation, compatible with Base64 URL-Safe.
+  UrlSafeChars* = {'A'..'Z', 'a'..'z', '0'..'9', '-', '_'}
+    ## ASCII URL-Safe `char` alphabet representation, compatible with Base64 URL-Safe.
 
 func isAlphaAscii*(c: char): bool {.rtl, extern: "nsuIsAlphaAsciiChar".} =
   ## Checks whether or not character `c` is alphabetical.
