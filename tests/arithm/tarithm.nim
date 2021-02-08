@@ -22,10 +22,10 @@ import typetraits
 
 block tand:
   # bug #5216
-  echo(name type((0x0A'i8 and 0x7F'i32) shl 7'i32))
+  echo(name typeof((0x0A'i8 and 0x7F'i32) shl 7'i32))
 
   let i8 = 0x0A'i8
-  echo(name type((i8 and 0x7F'i32) shl 7'i32))
+  echo(name typeof((i8 and 0x7F'i32) shl 7'i32))
 
   echo((0x0A'i8 and 0x7F'i32) shl 7'i32)
 

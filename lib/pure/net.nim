@@ -446,14 +446,14 @@ proc toSockAddr*(address: IpAddress, port: Port, sa: var Sockaddr_storage,
   of IpAddressFamily.IPv4:
     sl = sizeof(Sockaddr_in).SockLen
     let s = cast[ptr Sockaddr_in](addr sa)
-    s.sin_family = type(s.sin_family)(toInt(AF_INET))
+    s.sin_family = typeof(s.sin_family)(toInt(AF_INET))
     s.sin_port = port
     copyMem(addr s.sin_addr, unsafeAddr address.address_v4[0],
             sizeof(s.sin_addr))
   of IpAddressFamily.IPv6:
     sl = sizeof(Sockaddr_in6).SockLen
     let s = cast[ptr Sockaddr_in6](addr sa)
-    s.sin6_family = type(s.sin6_family)(toInt(AF_INET6))
+    s.sin6_family = typeof(s.sin6_family)(toInt(AF_INET6))
     s.sin6_port = port
     copyMem(addr s.sin6_addr, unsafeAddr address.address_v6[0],
             sizeof(s.sin6_addr))
