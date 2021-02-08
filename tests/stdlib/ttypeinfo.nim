@@ -1,3 +1,7 @@
+discard """
+  matrix: "; --gc:arc"
+"""
+
 import typeinfo
 
 type

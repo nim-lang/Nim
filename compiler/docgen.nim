@@ -497,7 +497,8 @@ proc prepareExample(d: PDoc; n: PNode): tuple[rdoccmd: string, code: string] =
   if n.len == 3:
     let n1 = n[1]
     # xxx this should be evaluated during sempass
-    if n1.kind notin nkStrKinds: globalError(d.conf, n1.info, "string litteral expected")
+    # if n1.kind notin nkStrKinds: globalError(d.conf, n1.info, "string litteral expected")
+    if n1.kind notin nkStrKinds: globalError(d.conf, n1.info, "string litteral expected" & $(n1.kind, n.renderTree))
     rdoccmd = n1.strVal
 
   var docComment = newTree(nkCommentStmt)
