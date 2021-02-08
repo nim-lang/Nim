@@ -405,7 +405,8 @@ proc resolveOverloads(c: PContext, n, orig: PNode,
 
     if overloadsState == csEmpty and result.state == csEmpty:
       if efNoUndeclared notin flags: # for tests/pragmas/tcustom_pragma.nim
-        localError(c.config, n.info, getMsgDiagnostic(c, flags, n, f))
+        result.call = newError(n, getMsgDiagnostic(c, flags, n, f))
+        #localError(c.config, n.info, getMsgDiagnostic(c, flags, n, f))
       return
     elif result.state != csMatch:
       if nfExprCall in n.flags:
@@ -439,8 +440,7 @@ proc instGenericConvertersArg*(c: PContext, a: PNode, x: TCandidate) =
       #a.typ = finalCallee.typ[0]
 
 proc instGenericConvertersSons*(c: PContext, n: PNode, x: TCandidate) =
-  assert n.kind in nkCallKinds
-  if x.genericConverter:
+  if x.genericConverter and n.kind in nkCallKinds:
     for i in 1..<n.len:
       instGenericConvertersArg(c, n[i], x)
 
