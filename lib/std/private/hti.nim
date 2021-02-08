@@ -81,7 +81,7 @@ type
     typ*: ptr TNimType
     name*: cstring
     len*: int
-    sons*: ptr array[0x7fff, ptr TNimNode]
+    sons*: ptr array[0x7fff, ptr TNimNode] # xxx `UncheckedArray`
 
   TNimTypeFlag* = enum
     ntfNoRefs = 0,     # type contains no tyRef, tySequence, tyString
@@ -108,19 +108,10 @@ type
       instances*: int # count the number of instances
       sizes*: int # sizes of all instances in bytes
 
-when defined(gcHooks):
-  type
-    PNimType* = ptr TNimType
-else:
-  type
-    PNimType* = ptr TNimType
+type
+  PNimType* = ptr TNimType
 
 when defined(nimTypeNames):
-  # Declare this variable only once in system.nim
   var nimTypeRoot* {.compilerproc.}: PNimType
-  # when declared(ThisIsSystem):
-  #   var nimTypeRoot* {.compilerproc.}: PNimType
-  # else:
-  #   var nimTypeRoot* {.importc.}: PNimType
 
 # node.len may be the ``first`` element of a set

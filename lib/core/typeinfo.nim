@@ -21,10 +21,7 @@
 ## approach to storing arbitrary types at runtime, consider using generics.
 
 {.push hints: off.}
-
-# include "system/inclrtl.nim"
 import std/private/hti
-
 {.pop.}
 
 type
@@ -94,7 +91,7 @@ else:
 from std/private/strimpl import cmpNimIdentifier
 
 when not defined(js):
-  template rawType*(x: Any): PNimType =
+  template rawType(x: Any): PNimType =
     cast[PNimType](x.rawTypePtr)
 
   template `rawType=`(x: var Any, p: PNimType) =

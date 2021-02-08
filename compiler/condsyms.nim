@@ -125,3 +125,5 @@ proc initDefines*(symbols: StringTableRef) =
   defineSymbol("nimHasDeclaredLocs")
   defineSymbol("nimHasJsBigIntBackend")
   defineSymbol("nimHasHintAsError")
+  # xxx we could auto-generate nimHasX for all magics X
+  defineSymbol("nimHasGetDynamicTypeInfo")
