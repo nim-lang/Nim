@@ -13,7 +13,7 @@
 import
   intsets, ast, astalgo, semdata, types, msgs, renderer, lookups, semtypinst,
   magicsys, idents, lexer, options, parampatterns, strutils, trees,
-  linter, lineinfos, lowerings, modulegraphs
+  linter, lineinfos, lowerings, modulegraphs, errorhandling
 
 type
   MismatchKind* = enum
@@ -2495,8 +2495,11 @@ proc matchesAux(c: PContext, n, nOrig: PNode, m: var TCandidate, marker: var Int
             # a container
             #assert arg.kind == nkHiddenStdConv # for 'nim check'
             # this assertion can be off
-            localError(c.config, n[a].info, "cannot convert $1 to $2" % [
-              typeToString(n[a].typ), typeToString(formal.typ) ])
+            setSon(m.call, formal.position + 1, newError(n[a],
+              "cannot convert $1 to $2" % [
+              typeToString(n[a].typ),
+              typeToString(formal.typ)]))
+
             noMatch()
         checkConstraint(n[a])
 
