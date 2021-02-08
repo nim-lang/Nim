@@ -71,26 +71,24 @@ proc nestedScope(parent: var Scope): Scope =
 proc p(n: PNode; c: var Con; s: var Scope; mode: ProcessMode): PNode
 proc moveOrCopy(dest, ri: PNode; c: var Con; s: var Scope; isDecl = false): PNode
 
-import sets, hashes
-
-type PNodeSet = HashSet[PNode]
+import sets, hashes, intsets, tables
 
 proc hash(n: PNode): Hash = hash(cast[pointer](n))
 
-proc collectLastReads(config: ConfigRef, cfg: ControlFlowGraph; alreadySeen, lastReads, potLastReads: var PNodeSet; pc, until: int): int =
+proc collectLastReads(cfg: ControlFlowGraph; alreadySeen: var HashSet[PNode], lastReads, potLastReads: var IntSet; pc, until: int): int =
   var pc = pc
   while pc < cfg.len and pc < until:
     case cfg[pc].kind
     of def:
-      var newPotLastReads: PNodeSet
+      var newPotLastReads: IntSet
       for r in potLastReads:
-        if cfg[pc].n.aliases(r) == yes:
+        if cfg[pc].n.aliases(cfg[r].n) == yes:
           # the path leads to a redefinition of 's' --> sink 's'.
           lastReads.incl r
-        elif r.aliases(cfg[pc].n) != no:
+        elif cfg[r].n.aliases(cfg[pc].n) != no:
           # only partially writes to 's' --> can't sink 's', so this def reads 's'
           # or maybe writes to 's' --> can't sink 's'
-          r.comment = '\n' & config $ cfg[pc].n.info
+          cfg[r].n.comment = '\n' & $pc
         else:
           newPotLastReads.incl r
       potLastReads = newPotLastReads
@@ -106,14 +104,14 @@ proc collectLastReads(config: ConfigRef, cfg: ControlFlowGraph; alreadySeen, las
 
       inc pc
     of use:
-      var newPotLastReads: PNodeSet
+      var newPotLastReads: IntSet
       for r in potLastReads:
-        if cfg[pc].n.aliases(r) != no or r.aliases(cfg[pc].n) != no:
-          r.comment = '\n' & config $ cfg[pc].n.info
+        if cfg[pc].n.aliases(cfg[r].n) != no or cfg[r].n.aliases(cfg[pc].n) != no:
+          cfg[r].n.comment = '\n' & $pc
         else:
           newPotLastReads.incl r
       potLastReads = newPotLastReads
-      potLastReads.incl cfg[pc].n
+      potLastReads.incl pc
 
       alreadySeen.incl cfg[pc].n
 
@@ -125,25 +123,26 @@ proc collectLastReads(config: ConfigRef, cfg: ControlFlowGraph; alreadySeen, las
       var variantA = pc + 1
       var variantB = pc + cfg[pc].dest
       var potLastReadsA, potLastReadsB = potLastReads
-      var lastReadsA, lastReadsB: PNodeSet
+      var lastReadsA, lastReadsB: IntSet
       var alreadySeenA, alreadySeenB = alreadySeen
       while variantA != variantB and max(variantA, variantB) < cfg.len and min(variantA, variantB) < until:
         if variantA < variantB:
-          variantA = collectLastReads(config, cfg, alreadySeenA, lastReadsA, potLastReadsA, variantA, min(variantB, until))
+          variantA = collectLastReads(cfg, alreadySeenA, lastReadsA, potLastReadsA, variantA, min(variantB, until))
         else:
-          variantB = collectLastReads(config, cfg, alreadySeenB, lastReadsB, potLastReadsB, variantB, min(variantA, until))
+          variantB = collectLastReads(cfg, alreadySeenB, lastReadsB, potLastReadsB, variantB, min(variantA, until))
 
-      alreadySeen.incl alreadySeenA
-      alreadySeen.incl alreadySeenB
+      alreadySeen.incl alreadySeenA + alreadySeenB
 
       lastReads.incl lastReadsA * lastReadsB
-      lastReads.incl lastReadsA - potLastReads
-      lastReads.incl lastReadsB - potLastReads
+      lastReads.incl (lastReadsA + lastReadsB) - potLastReads
 
       let oldPotLastReads = potLastReads
-      potLastReads = initHashSet[PNode]()
-      potLastReads.incl potLastReadsA - oldPotLastReads
-      potLastReads.incl potLastReadsB - oldPotLastReads
+      potLastReads = initIntSet()
+
+      potLastReads.incl lastReadsA + lastReadsB
+
+      potLastReads.incl potLastReadsA * potLastReadsB
+      potLastReads.incl (potLastReadsA + potLastReadsB) - oldPotLastReads
 
       pc = min(variantA, variantB)
 
@@ -211,6 +210,8 @@ template isUnpackedTuple(n: PNode): bool =
   ## hence unpacked tuples themselves don't need to be destroyed
   (n.kind == nkSym and n.sym.kind == skTemp and n.sym.typ.kind == tyTuple)
 
+from strutils import parseInt
+
 proc checkForErrorPragma(c: Con; t: PType; ri: PNode; opname: string) =
   var m = "'" & opname & "' is not available for type <" & typeToString(t) & ">"
   if (opname == "=" or opname == "=copy") and ri != nil:
@@ -219,7 +220,7 @@ proc checkForErrorPragma(c: Con; t: PType; ri: PNode; opname: string) =
     m.add '\''
     if ri.comment.startsWith('\n'):
       m.add "; another read is done here: "
-      m.add ri.comment[1..^1]
+      m.add c.graph.config $ c.g[parseInt(ri.comment[1..^1])].n.info
     elif ri.kind == nkSym and ri.sym.kind == skParam and not isSinkType(ri.sym.typ):
       m.add "; try to make "
       m.add renderTree(ri)
@@ -1075,10 +1076,20 @@ proc injectDestructorCalls*(g: ModuleGraph; idgen: IdGenerator; owner: PSym; n: 
     computeCursors(owner, n, g)
 
   block:
-    var alreadySeen, lastReads, potLastReads: PNodeSet
-    discard collectLastReads(c.graph.config, c.g, alreadySeen, lastReads, potLastReads, 0, c.g.len)
+    var alreadySeen: HashSet[PNode]
+    var lastReads, potLastReads: IntSet
+    discard collectLastReads(c.g, alreadySeen, lastReads, potLastReads, 0, c.g.len)
     lastReads.incl potLastReads
-    for r in lastReads: r.flags.incl nfLastRead
+    var lastReadTable: Table[PNode, seq[int]]
+    for position, node in c.g:
+      if node.kind == use:
+        lastReadTable[node.n] = lastReadTable.getOrDefault(node.n) & position
+    for node, positions in lastReadTable:
+      var allPositionsLastRead = true
+      for p in positions:
+        if p notin lastReads: allPositionsLastRead = false; break
+      if allPositionsLastRead:
+        node.flags.incl nfLastRead
 
   var scope: Scope
   let body = p(n, c, scope, normal)
