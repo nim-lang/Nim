@@ -11,12 +11,6 @@
 ## SSL_CERT_DIR environment variables.
 
 import os, strutils
-from os import existsEnv, getEnv
-import strutils
-
-# SECURITY: this unnecessarily scans through dirs/files regardless of the
-# actual host OS/distribution. Hopefully all the paths are writeble only by
-# root.
 
 # FWIW look for files before scanning entire dirs.
 
@@ -112,7 +106,15 @@ iterator scanSSLCertificates*(useEnvVars = false): string =
       yield fn
 
   else:
-    when not defined(haiku):
+    when defined(windows):
+      let pem = getAppDir() / "cacert.pem"
+      # We download the certificates according to https://curl.se/docs/caextract.html
+      # These are the certificates from Firefox. The 'bitsadmin.exe' tool ships with every
+      # recent version of Windows (Windows 8, Windows XP, etc.)
+      if not fileExists(pem):
+        discard os.execShellCmd("""bitsadmin.exe /rawreturn /transfer "JobName" /priority FOREGROUND https://curl.se/ca/cacert.pem """ & pem)
+      yield pem
+    elif not defined(haiku):
       for p in certificatePaths:
         if p.endsWith(".pem") or p.endsWith(".crt"):
           if fileExists(p):

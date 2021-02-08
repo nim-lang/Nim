@@ -628,7 +628,7 @@ when defineSsl:
 
     const VerifySuccess = 1 # SSL_CTX_load_verify_locations returns 1 on success.
 
-    when not defined(nimDisableCertificateValidation) and not defined(windows):
+    when not defined(nimDisableCertificateValidation):
       if verifyMode != CVerifyNone:
         # Use the caDir and caFile parameters if set
         if caDir != "" or caFile != "":
