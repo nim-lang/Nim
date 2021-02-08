@@ -124,8 +124,8 @@ compiler llvmGcc:
   result.name = "llvm_gcc"
   result.compilerExe = "llvm-gcc"
   result.cppCompiler = "llvm-g++"
-  when defined(macosx):
-    # OS X has no 'llvm-ar' tool:
+  when defined(macosx) or defined(openbsd):
+    # `llvm-ar` not available
     result.buildLib = "ar rcs $libfile $objfiles"
   else:
     result.buildLib = "llvm-ar rcs $libfile $objfiles"
