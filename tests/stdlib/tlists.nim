@@ -2,7 +2,7 @@ discard """
   targets: "c js"
 """
 
-import lists, sequtils, std/enumerate, std/sugar
+import lists, sequtils
 
 const
   data = [1, 2, 3, 4, 5, 6]
@@ -10,7 +10,7 @@ const
 block SinglyLinkedListTest1:
   var L: SinglyLinkedList[int]
   for d in items(data): L.prepend(d)
-  for d in items(data): L.append(d)
+  for d in items(data): L.add(d)
   doAssert($L == "[6, 5, 4, 3, 2, 1, 1, 2, 3, 4, 5, 6]")
 
   doAssert(4 in L)
@@ -26,7 +26,7 @@ block SinglyLinkedListTest2:
 block DoublyLinkedListTest1:
   var L: DoublyLinkedList[int]
   for d in items(data): L.prepend(d)
-  for d in items(data): L.append(d)
+  for d in items(data): L.add(d)
   L.remove(L.find(1))
   doAssert($L == "[6, 5, 4, 3, 2, 1, 2, 3, 4, 5, 6]")
 
@@ -51,8 +51,8 @@ block DoublyLinkedRingTest1:
   doAssert($L == "[4, 4]")
   doAssert(4 in L)
 
-  L.append(3)
-  L.append(5)
+  L.add(3)
+  L.add(5)
   doAssert($L == "[4, 4, 3, 5]")
 
   L.remove(L.find(3))
@@ -65,22 +65,34 @@ block DoublyLinkedRingTest1:
 block tlistsToString:
   block:
     var l = initDoublyLinkedList[int]()
-    l.append(1)
-    l.append(2)
-    l.append(3)
+    l.add(1)
+    l.add(2)
+    l.add(3)
     doAssert $l == "[1, 2, 3]"
   block:
     var l = initDoublyLinkedList[string]()
-    l.append("1")
-    l.append("2")
-    l.append("3")
+    l.add("1")
+    l.add("2")
+    l.add("3")
     doAssert $l == """["1", "2", "3"]"""
   block:
     var l = initDoublyLinkedList[char]()
-    l.append('1')
-    l.append('2')
-    l.append('3')
+    l.add('1')
+    l.add('2')
+    l.add('3')
     doAssert $l == """['1', '2', '3']"""
+
+# Copied here until it is merged into sequtils
+template take(a: untyped, max: int): untyped =
+  type T = typeof(block: (for ai in a: ai))
+  var ret: seq[T]
+  var i = 0
+  if max > 0:
+    for ai in a:
+      ret.add ai
+      i.inc
+      if i >= max: break
+  ret
 
 template testCommon(initList, toList) =
 
@@ -101,7 +113,7 @@ template testCommon(initList, toList) =
     let f1 = Foo(x: 1)
     var a = [f0].toList
     var b = a.copy
-    b.append f1
+    b.add f1
     doAssert a.toSeq == [f0]
     doAssert b.toSeq == [f0, f1]
     f0.x = 42
@@ -140,11 +152,82 @@ template testCommon(initList, toList) =
     block:
       var c = [0, 1].toList
       c.addMoved c
-      let s = collect:
-        for i, ci in enumerate(c):
-          if i == 6: break
-          ci
-      doAssert s == [0, 1, 0, 1, 0, 1]
+      doAssert c.take(6) == [0, 1, 0, 1, 0, 1]
+
+  block: # prepend, prependMoved
+    block:
+      var
+        l0 = initList[int]()
+        l1 = [1].toList
+        l2 = [2, 3].toList
+        l3 = [4, 5, 6].toList
+      l0.prepend l3
+      l1.prepend l3
+      doAssert l3.toSeq == [4, 5, 6]
+      l2.prependMoved l3
+      doAssert l0.toSeq == [4, 5, 6]
+      doAssert l1.toSeq == [4, 5, 6, 1]
+      doAssert l2.toSeq == [4, 5, 6, 2, 3]
+      doAssert l3.toSeq == []
+      l2.prepend l3 # re-prepending l3 that was destroyed is now a no-op
+      doAssert l2.toSeq == [4, 5, 6, 2, 3]
+      doAssert l3.toSeq == []
+    block:
+      var
+        l0 = initList[int]()
+        l1 = [1].toList
+        l2 = [2, 3].toList
+        l3 = [4, 5, 6].toList
+      l3.prependMoved l0
+      l2.prependMoved l1
+      doAssert l3.toSeq == [4, 5, 6]
+      doAssert l2.toSeq == [1, 2, 3]
+      l3.prepend l0
+      doAssert l3.toSeq == [4, 5, 6]
+    block:
+      var c = [0, 1].toList
+      c.prependMoved c
+      doAssert c.take(6) == [0, 1, 0, 1, 0, 1]
+
+  block remove:
+    var l = [0, 1, 2, 3].toList
+    let
+      l0 = l.head
+      l1 = l0.next
+      l2 = l1.next
+      l3 = l2.next
+    l.remove l0
+    doAssert l.toSeq == [1, 2, 3]
+    l.remove l2
+    doAssert l.toSeq == [1, 3]
+    l.remove l2
+    doAssert l.toSeq == [1, 3]
+    l.remove l3
+    doAssert l.toSeq == [1]
+    l.remove l1
+    doAssert l.toSeq == []
+    # Cycle preservation
+    var a = [10, 11, 12].toList
+    a.addMoved a
+    doAssert a.take(6) == @[10, 11, 12, 10, 11, 12]
+    a.remove a.head.next
+    doAssert a.take(6) == @[10, 12, 10, 12, 10, 12]
+    a.remove a.head
+    doAssert a.take(6) == @[12, 12, 12, 12, 12, 12]
 
 testCommon initSinglyLinkedList, toSinglyLinkedList
 testCommon initDoublyLinkedList, toDoublyLinkedList
+
+block remove: # return value check
+  var l = [0, 1, 2, 3].toSinglyLinkedList
+  let n = l.head.next.next
+  doAssert l.remove(n) == true
+  doAssert l.toSeq == [0, 1, 3]
+  doAssert l.remove(n) == false
+  doAssert l.toSeq == [0, 1, 3]
+  doAssert l.remove(l.head) == true
+  doAssert l.toSeq == [1, 3]
+  doAssert l.remove(l.head.next) == true
+  doAssert l.toSeq == [1]
+  doAssert l.remove(l.head) == true
+  doAssert l.toSeq == []
