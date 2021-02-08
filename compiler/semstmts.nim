@@ -134,7 +134,7 @@ proc fixNilType(c: PContext; n: PNode) =
 proc discardCheck(c: PContext, result: PNode, flags: TExprFlags) =
   if c.matchedConcept != nil or efInTypeof in flags: return
 
-  if result.typ != nil and result.typ.kind notin {tyTyped, tyVoid}:
+  if result.kind != nkError and result.typ != nil and result.typ.kind notin {tyTyped, tyVoid}:
     if implicitlyDiscardable(result):
       var n = newNodeI(nkDiscardStmt, result.info, 1)
       n[0] = result
@@ -1504,6 +1504,8 @@ proc semProcAnnotation(c: PContext, prc: PNode;
       # be a .pragma. template instead
       continue
 
+    if r.kind == nkError:
+      return r
     doAssert r[0].kind == nkSym
     let m = r[0].sym
     case m.kind

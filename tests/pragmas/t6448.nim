@@ -1,7 +1,6 @@
 discard """
-  errormsg: '''undeclared identifier: 'foo'
-  '''
-  line: 17
+  errormsg: '''ambiguous call'''
+  line: 10
   disabled: "32bit"
 """
 
