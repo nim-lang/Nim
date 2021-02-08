@@ -663,7 +663,7 @@ proc sampleBuffer*[T](r: var Rand, buffer: var openArray[T]; alphabet: set[T]) {
   runnableExamples:
     import std/[sugar, strutils]  ## sugar.dup, strutils.UrlSafeChars
     var r = initRand(666)
-    var token = "12345678"               ## lenght is 8.
+    var token = "12345678"               ## Length is 8.
     sampleBuffer(r, token, UrlSafeChars) ## Use sugar.dup for out-place.
     doAssert token != "12345678" and token.len == 8  ## Random ASCII URL-Safe string.
     doAssert newString(8).dup(sampleBuffer(r, _, {'0'..'9'})).len == 8
