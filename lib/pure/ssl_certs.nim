@@ -22,6 +22,7 @@ import strutils
 
 when defined(macosx):
   const certificatePaths = [
+    "/etc/ssl/cert.pem",
     "/System/Library/OpenSSL/certs/cert.pem"
   ]
 elif defined(linux):

@@ -640,7 +640,7 @@ when defineSsl:
           # the SSL_CERT_FILE and SSL_CERT_DIR env vars
           var found = false
           for fn in scanSSLCertificates():
-            if newCTX.SSL_CTX_load_verify_locations(fn, "") == VerifySuccess:
+            if newCTX.SSL_CTX_load_verify_locations(fn, nil) == VerifySuccess:
               found = true
               break
           if not found:
