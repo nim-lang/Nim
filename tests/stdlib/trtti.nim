@@ -3,7 +3,7 @@ discard """
   # matrix: "-d:nimTypeNames; --gc:arc"
 """
 
-import std/[typeinfo_core,unittest,strutils]
+import std/[rtti,unittest,strutils]
 
 proc main =
   block: # getDynamicTypeInfo
@@ -17,7 +17,7 @@ proc main =
       let t = a.getDynamicTypeInfo
       check t.size == 88
       when defined(nimV2):
-        # "|compiler.ttypeinfo_core.Sub1:ObjectType|compiler.ttypeinfo_core.Base:ObjectType|RootObj|"
+        # "|compiler.trtti.Sub1:ObjectType|compiler.trtti.Base:ObjectType|RootObj|"
         check "Sub1:ObjectType" in $t.name
       else: check t.name == "Sub1:ObjectType"
       let t2 = a[].getDynamicTypeInfo

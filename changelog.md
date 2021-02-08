@@ -124,7 +124,7 @@ with other backends. see #9125. Use `-d:nimLegacyJsRound` for previous behavior.
   (instead of skipping them sometimes as it was before).
 - Added optional `followSymlinks` argument to `setFilePermissions`.
 
-- Added `typeinfo_core` module, with `getDynamicTypeInfo` API to get the dynamic type of an object instance.
+- Added `rtti` module, with `getDynamicTypeInfo` API to get the dynamic type of an object instance.
 
 ## Language changes
 
