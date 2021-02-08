@@ -68,7 +68,7 @@ pkg "patty"
 # pkg "plotly", "nim c --oldgensym:on examples/all.nim", true
 pkg "pnm"
 pkg "polypbren"
-pkg "protobuf", "nim c -o:protobuff -r src/protobuf.nim", true
+# pkg "protobuf", "nim c -o:protobuff -r src/protobuf.nim", true
 pkg "rbtree"
 pkg "react", "nimble example"
 pkg "regex", "nim c src/regex", true
