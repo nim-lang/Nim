@@ -556,6 +556,18 @@ when notJSnotNims and not defined(nimSeqsV2):
   template space(s: PGenericSeq): int {.dirty.} =
     s.reserved and not (seqShallowFlag or strlitFlag)
 
+const
+  hostOS* {.magic: "HostOS".}: string = ""
+    ## A string that describes the host operating system.
+    ##
+    ## Possible values:
+    ## `"windows"`, `"macosx"`, `"linux"`, `"netbsd"`, `"freebsd"`,
+    ## `"openbsd"`, `"solaris"`, `"aix"`, `"haiku"`, `"standalone"`.
+
+when not defined(js) and hostOS != "standalone":
+  var programResult* {.compilerproc, exportc: "nim_program_result".}: int
+    ## deprecated, prefer `quit` or `exitprocs.getProgramResult`, `exitprocs.setProgramResult`.
+
 when notJSnotNims:
   import std/private/hti
 
@@ -1112,13 +1124,6 @@ const
     ## information for low-level code only. This works thanks to compiler
     ## magic.
 
-  hostOS* {.magic: "HostOS".}: string = ""
-    ## A string that describes the host operating system.
-    ##
-    ## Possible values:
-    ## `"windows"`, `"macosx"`, `"linux"`, `"netbsd"`, `"freebsd"`,
-    ## `"openbsd"`, `"solaris"`, `"aix"`, `"haiku"`, `"standalone"`.
-
   hostCPU* {.magic: "HostCPU".}: string = ""
     ## A string that describes the host CPU.
     ##
@@ -1175,10 +1180,6 @@ const
   QuitFailure* = 1
     ## is the value that should be passed to `quit <#quit,int>`_ to indicate
     ## failure.
-
-when not defined(js) and hostOS != "standalone":
-  var programResult* {.compilerproc, exportc: "nim_program_result".}: int
-    ## deprecated, prefer `quit` or `exitprocs.getProgramResult`, `exitprocs.setProgramResult`.
 
 import std/private/since
 
