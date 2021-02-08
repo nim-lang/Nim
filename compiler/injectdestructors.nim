@@ -1083,7 +1083,7 @@ proc injectDestructorCalls*(g: ModuleGraph; idgen: IdGenerator; owner: PSym; n: 
     var lastReadTable: Table[PNode, seq[int]]
     for position, node in c.g:
       if node.kind == use:
-        lastReadTable[node.n] = lastReadTable.getOrDefault(node.n) & position
+        lastReadTable.mgetOrPut(node.n, @[]).add position
     for node, positions in lastReadTable:
       var allPositionsLastRead = true
       for p in positions:
