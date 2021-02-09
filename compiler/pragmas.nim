@@ -20,7 +20,7 @@ const
 
 const
   declPragmas = {wImportc, wImportObjC, wImportCpp, wImportJs, wExportc, wExportCpp,
-    wExportNims, wExtern, wDeprecated, wNodecl, wError, wUsed, wAlign}
+    wExportNims, wExtern, wDeprecated, wNodecl, wError, wUsed}
     ## common pragmas for declarations, to a good approximation
   procPragmas* = declPragmas + {FirstCallConv..LastCallConv,
     wMagic, wNoSideEffect, wSideEffect, wNoreturn, wNosinks, wDynlib, wHeader,
@@ -54,18 +54,18 @@ const
     wFloatChecks, wInfChecks, wNanChecks, wPragma, wEmit, wUnroll,
     wLinearScanEnd, wPatterns, wTrMacros, wEffects, wNoForward, wReorder, wComputedGoto,
     wInjectStmt, wExperimental, wThis, wUsed, wInvariant, wAssume}
-  lambdaPragmas* = declPragmas + {FirstCallConv..LastCallConv,
+  lambdaPragmas* = {FirstCallConv..LastCallConv,
     wNoSideEffect, wSideEffect, wNoreturn, wNosinks, wDynlib, wHeader,
     wThread, wAsmNoStackFrame,
     wRaises, wLocks, wTags, wRequires, wEnsures,
-    wGcSafe, wCodegenDecl} - {wExportNims, wError, wUsed}  # why exclude these?
+    wGcSafe, wCodegenDecl, wNoInit}
   typePragmas* = declPragmas + {wMagic, wAcyclic,
     wPure, wHeader, wCompilerProc, wCore, wFinal, wSize, wShallow,
     wIncompleteStruct, wByCopy, wByRef,
     wInheritable, wGensym, wInject, wRequiresInit, wUnchecked, wUnion, wPacked,
     wBorrow, wGcSafe, wPartial, wExplain, wPackage}
-  fieldPragmas* = declPragmas + {
-    wGuard, wBitsize, wCursor, wRequiresInit} - {wExportNims, wNodecl} # why exclude these?
+  fieldPragmas* = declPragmas + {wGuard, wBitsize, wCursor,
+    wRequiresInit, wAlign} - {wExportNims, wNodecl} # why exclude these?
   varPragmas* = declPragmas + {wVolatile, wRegister, wThreadVar,
     wMagic, wHeader, wCompilerProc, wCore, wDynlib,
     wNoInit, wCompileTime, wGlobal,
