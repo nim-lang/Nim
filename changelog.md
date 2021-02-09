@@ -124,7 +124,7 @@ with other backends. see #9125. Use `-d:nimLegacyJsRound` for previous behavior.
 
 - Deprecated `any`. See https://github.com/nim-lang/RFCs/issues/281
 
-- Add `jsformdata`, `jssets`, `jsxmlhttprequest`, `jsxmlserializer` for JavaScript target.
+- Added `jsxmlhttprequest` for JavaScript target.
 
 
 - Added optional `options` argument to `copyFile`, `copyFileToDir`, and
