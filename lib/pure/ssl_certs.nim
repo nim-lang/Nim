@@ -107,14 +107,18 @@ iterator scanSSLCertificates*(useEnvVars = false): string =
 
   else:
     when defined(windows):
-      let pem = getAppDir() / "cacert.pem"
-      # We download the certificates according to https://curl.se/docs/caextract.html
-      # These are the certificates from Firefox. The 'bitsadmin.exe' tool ships with every
-      # recent version of Windows (Windows 8, Windows XP, etc.)
-      if not fileExists(pem):
-        discard os.execShellCmd("""bitsadmin.exe /rawreturn /transfer "JobName" /priority FOREGROUND https://curl.se/ca/cacert.pem """ &
-          quoteShell(pem))
-      yield pem
+      const cacert = "cacert.pem"
+      let pem = getAppDir() / cacert
+      if fileExists(pem):
+        yield pem
+      else:
+        let path = getEnv("PATH")
+        for candidate in split(path, PathSep):
+          if candidate.len != 0:
+            let x = (if candidate[0] == '"' and candidate[^1] == '"':
+                      substr(candidate, 1, candidate.len-2) else: candidate) / cacert
+            if fileExists(x):
+              yield x
     elif not defined(haiku):
       for p in certificatePaths:
         if p.endsWith(".pem") or p.endsWith(".crt"):

@@ -22,6 +22,17 @@
 ## In order to use the SSL procedures defined in this module, you will need to
 ## compile your application with the ``-d:ssl`` flag.
 ##
+##
+## SSL on Windows
+## ==============
+##
+## On Windows the SSL library checks for valid certificates.
+## It uses the `cacert.pem` file for this purpose which was extracted
+## from `https://curl.se/ca/cacert.pem`. Besides
+## the OpenSSL DLLs (e.g. libssl-1_1-x64.dll, libcrypto-1_1-x64.dll) you
+## also need to ship `cacert.pem` with your `.exe` file.
+##
+##
 ## Examples
 ## ========
 ##
