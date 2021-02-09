@@ -112,15 +112,15 @@ proc getRst2html(): seq[string] =
   doAssert "doc/manual/var_t_return.rst".unixToNativePath in result # sanity check
 
 const
-  pdf = """
-doc/manual.rst
-doc/lib.rst
-doc/tut1.rst
-doc/tut2.rst
-doc/tut3.rst
-doc/nimc.rst
-doc/niminst.rst
-doc/gc.rst
+  rstList = """
+manual.rst
+lib.rst
+tut1.rst
+tut2.rst
+tut3.rst
+nimc.rst
+niminst.rst
+gc.rst
 """.splitWhitespace()
 
   doc0 = """
@@ -188,7 +188,8 @@ lib/system/widestrs.nim
 """.splitWhitespace()
 
   proc follow(a: PathEntry): bool =
-    result = a.path.lastPathPart notin ["nimcache", "htmldocs", "includes", "deprecated", "genode"] and
+    result = a.path.lastPathPart notin ["nimcache", htmldocsDirname,
+                                        "includes", "deprecated", "genode"] and
       not a.path.isRelativeTo("lib/fusion")
   for entry in walkDirRecFilter("lib", follow = follow):
     let a = entry.path
@@ -282,30 +283,32 @@ proc buildDoc(nimArgs, destPath: string) =
     # to be transient with `--project` (eg all in memory).
 
 proc buildPdfDoc*(nimArgs, destPath: string) =
+  var pdfList: seq[string]
   createDir(destPath)
   if os.execShellCmd("pdflatex -version") != 0:
     echo "pdflatex not found; no PDF documentation generated"
   else:
     const pdflatexcmd = "pdflatex -interaction=nonstopmode "
-    for d in items(pdf):
+    for file in items(rstList):
+      let d = "doc" / file
+      let texFile = "doc" / htmldocsDirname / changeFileExt(file, "tex")
       exec(findNim().quoteShell() & " rst2tex $# $#" % [nimArgs, d])
-      let tex = splitFile(d).name & ".tex"
-      removeFile("doc" / tex)
-      moveFile(tex, "doc" / tex)
       # call LaTeX twice to get cross references right:
-      exec(pdflatexcmd & changeFileExt(d, "tex"))
-      exec(pdflatexcmd & changeFileExt(d, "tex"))
-      # delete all the crappy temporary files:
+      exec(pdflatexcmd & texFile)
+      exec(pdflatexcmd & texFile)
       let pdf = splitFile(d).name & ".pdf"
       let dest = destPath / pdf
       removeFile(dest)
       moveFile(dest=dest, source=pdf)
+      pdfList.add dest
+      # delete all the crappy temporary files:
       removeFile(changeFileExt(pdf, "aux"))
       if fileExists(changeFileExt(pdf, "toc")):
         removeFile(changeFileExt(pdf, "toc"))
       removeFile(changeFileExt(pdf, "log"))
       removeFile(changeFileExt(pdf, "out"))
       removeFile(changeFileExt(d, "tex"))
+  echo "\nOutput PDF files: \n  ", pdfList.join(" ")
 
 proc buildJS(): string =
   let nim = findNim()
