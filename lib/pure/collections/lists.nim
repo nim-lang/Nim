@@ -13,15 +13,11 @@
 ## * `singly linked rings <#SinglyLinkedRing>`_ (circular lists)
 ## * `doubly linked rings <#DoublyLinkedRing>`_ (circular lists)
 ##
-##
-## Basic Usage
-## ===========
-##
+## # Basic Usage
 ## Because it makes no sense to do otherwise, the `next` and `prev` pointers
 ## are not hidden from you and can be manipulated directly for efficiency.
-##
-## Lists
-## -----
+
+## ## Lists
 runnableExamples:
   var
     l = initDoublyLinkedList[int]()
@@ -40,8 +36,7 @@ runnableExamples:
   assert c.prev == nil
   assert b.next == nil
 
-## Rings
-## -----
+## ## Rings
 runnableExamples:
   var
     l = initSinglyLinkedRing[int]()
@@ -59,9 +54,7 @@ runnableExamples:
   assert b.next == c
   assert c.next.next.next == c
 
-## See also
-## ========
-##
+## # See also
 ## * `deques module <deques.html>`_ for double-ended queues
 ## * `sharedlist module <sharedlist.html>`_ for shared singly-linked lists
 
@@ -231,7 +224,7 @@ iterator items*[T](L: SomeLinkedRing[T]): T =
     from std/sugar import collect
     from std/sequtils import toSeq
     let a = collect(initSinglyLinkedRing):
-      for i in 1..3: 10*i
+      for i in 1 .. 3: 10 * i
     doAssert toSeq(items(a)) == toSeq(a)
     doAssert toSeq(a) == @[10, 20, 30]
   itemsRingImpl()
@@ -245,10 +238,10 @@ iterator mitems*[T](L: var SomeLinkedList[T]): var T =
   runnableExamples:
     var a = initSinglyLinkedList[int]()
     for i in 1 .. 5:
-      a.add(10*i)
+      a.add(10 * i)
     assert $a == "[10, 20, 30, 40, 50]"
     for x in mitems(a):
-      x = 5*x - 1
+      x = 5 * x - 1
     assert $a == "[49, 99, 149, 199, 249]"
   itemsListImpl()
 
@@ -261,10 +254,10 @@ iterator mitems*[T](L: var SomeLinkedRing[T]): var T =
   runnableExamples:
     var a = initSinglyLinkedRing[int]()
     for i in 1 .. 5:
-      a.add(10*i)
+      a.add(10 * i)
     assert $a == "[10, 20, 30, 40, 50]"
     for x in mitems(a):
-      x = 5*x - 1
+      x = 5 * x - 1
     assert $a == "[49, 99, 149, 199, 249]"
   itemsRingImpl()
 
@@ -278,13 +271,13 @@ iterator nodes*[T](L: SomeLinkedList[T]): SomeLinkedNode[T] =
   runnableExamples:
     var a = initDoublyLinkedList[int]()
     for i in 1 .. 5:
-      a.add(10*i)
+      a.add(10 * i)
     assert $a == "[10, 20, 30, 40, 50]"
     for x in nodes(a):
       if x.value == 30:
         a.remove(x)
       else:
-        x.value = 5*x.value - 1
+        x.value = 5 * x.value - 1
     assert $a == "[49, 99, 199, 249]"
 
   var it = L.head
@@ -303,13 +296,13 @@ iterator nodes*[T](L: SomeLinkedRing[T]): SomeLinkedNode[T] =
   runnableExamples:
     var a = initDoublyLinkedRing[int]()
     for i in 1 .. 5:
-      a.add(10*i)
+      a.add(10 * i)
     assert $a == "[10, 20, 30, 40, 50]"
     for x in nodes(a):
       if x.value == 30:
         a.remove(x)
       else:
-        x.value = 5*x.value - 1
+        x.value = 5 * x.value - 1
     assert $a == "[49, 99, 199, 249]"
 
   var it = L.head
