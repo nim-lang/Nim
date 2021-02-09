@@ -4,6 +4,13 @@
 
 ## Standard library additions and changes
 
+- On Windows the SSL library now checks for valid certificates.
+  It uses the `cacert.pem` file for this purpose which was extracted
+  from `https://curl.se/ca/cacert.pem`. Besides
+  the OpenSSL DLLs (e.g. libssl-1_1-x64.dll, libcrypto-1_1-x64.dll) you
+  now also need to ship `cacert.pem` with your `.exe` file.
+
+
 - Make `{.requiresInit.}` pragma to work for `distinct` types.
 
 - Added a macros `enumLen` for returning the number of items in an enum to the
@@ -111,6 +118,11 @@ with other backends. see #9125. Use `-d:nimLegacyJsRound` for previous behavior.
 - Added `math.signbit`.
 
 - Removed the optional `longestMatch` parameter of the `critbits._WithPrefix` iterators (it never worked reliably)
+- In `lists`: renamed `append` to `add` and retained `append` as an alias;
+  added `prepend` and `prependMoved` analogously to `add` and `addMoved`;
+  added `remove` for `SinglyLinkedList`s.
+
+- Deprecated `any`. See https://github.com/nim-lang/RFCs/issues/281
 
 - Add `jsformdata`, `jssets`, `jsxmlhttprequest`, `jsxmlserializer` for JavaScript target.
 
@@ -128,6 +140,8 @@ with other backends. see #9125. Use `-d:nimLegacyJsRound` for previous behavior.
 
 - Added `random.initRand()` overload with no argument which uses the current time as a seed.
 
+- Added experimental `linenoise.readLineStatus` to get line and status (e.g. ctrl-D or ctrl-C).
+
 ## Language changes
 
 - `nimscript` now handles `except Exception as e`.
@@ -141,6 +155,8 @@ with other backends. see #9125. Use `-d:nimLegacyJsRound` for previous behavior.
 - `os.copyFile` is now 2.5x faster on OSX, by using `copyfile` from `copyfile.h`;
   use `-d:nimLegacyCopyFile` for OSX < 10.5.
 
+- The required name of case statement macros for the experimental
+  `caseStmtMacros` feature has changed from `match` to `` `case` ``.
 
 ## Compiler changes
 

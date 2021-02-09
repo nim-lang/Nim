@@ -861,10 +861,10 @@ proc handleForLoopMacro(c: PContext; n: PNode; flags: TExprFlags): PNode =
 
 proc handleCaseStmtMacro(c: PContext; n: PNode; flags: TExprFlags): PNode =
   # n[0] has been sem'checked and has a type. We use this to resolve
-  # 'match(n[0])' but then we pass 'n' to the 'match' macro. This seems to
+  # '`case`(n[0])' but then we pass 'n' to the `case` macro. This seems to
   # be the best solution.
   var toResolve = newNodeI(nkCall, n.info)
-  toResolve.add newIdentNode(getIdent(c.cache, "match"), n.info)
+  toResolve.add newIdentNode(getIdent(c.cache, "case"), n.info)
   toResolve.add n[0]
 
   var errors: CandidateErrors
@@ -875,7 +875,7 @@ proc handleCaseStmtMacro(c: PContext; n: PNode; flags: TExprFlags): PNode =
     markUsed(c, n[0].info, match)
     onUse(n[0].info, match)
 
-    # but pass 'n' to the 'match' macro, not 'n[0]':
+    # but pass 'n' to the `case` macro, not 'n[0]':
     r.call[1] = n
     let toExpand = semResolvedCall(c, r, r.call, {})
     case match.kind
