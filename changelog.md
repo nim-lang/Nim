@@ -115,6 +115,8 @@ with other backends. see #9125. Use `-d:nimLegacyJsRound` for previous behavior.
   added `prepend` and `prependMoved` analogously to `add` and `addMoved`;
   added `remove` for `SinglyLinkedList`s.
 
+- Deprecated `any`. See https://github.com/nim-lang/RFCs/issues/281
+
 
 - Added optional `options` argument to `copyFile`, `copyFileToDir`, and
   `copyFileWithPermissions`. By default, on non-Windows OSes, symlinks are
