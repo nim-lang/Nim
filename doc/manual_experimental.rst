@@ -451,7 +451,6 @@ to use this operator.
     let b = 2
     doAssert b(a) == `()`(b, a)
     doAssert a.b == `()`(b, a)
-    doAssert not compiles(a.b)
 
   block:
     let a = 1.0
