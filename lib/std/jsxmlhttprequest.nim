@@ -10,28 +10,28 @@ type XMLHttpRequest* = ref object of JsRoot  ## https://xhr.spec.whatwg.org
   status*, timeout*, readyState*: cint
   responseText*, responseURL*, statusText*: cstring
 
-func newXMLHttpRequest*(): XMLHttpRequest {.importjs: "new XMLHttpRequest()".}
+proc newXMLHttpRequest*(): XMLHttpRequest {.importjs: "new XMLHttpRequest()".}
   ## Constructor for `XMLHttpRequest`.
 
-func open*(this: XMLHttpRequest; metod, url: cstring; async = true; user = cstring.default; password = cstring.default) {.importjs: "#.$1(#, #, #, #, #)".}
+proc open*(this: XMLHttpRequest; metod, url: cstring; async = true; user = cstring.default; password = cstring.default) {.importjs: "#.$1(#, #, #, #, #)".}
   ## https://developer.mozilla.org/en-US/docs/Web/API/XMLHttpRequest/open
 
-func send*(this: XMLHttpRequest; body: cstring | Node = cstring.default) {.importjs: "#.$1(#)".}
+proc send*(this: XMLHttpRequest; body: cstring | Node = cstring.default) {.importjs: "#.$1(#)".}
   ## https://developer.mozilla.org/en-US/docs/Web/API/XMLHttpRequest/send
 
-func abort*(this: XMLHttpRequest) {.importjs: "#.$1()".}
+proc abort*(this: XMLHttpRequest) {.importjs: "#.$1()".}
   ## https://developer.mozilla.org/en-US/docs/Web/API/XMLHttpRequest/abort
 
-func getAllResponseHeaders*(this: XMLHttpRequest): cstring {.importjs: "#.$1()".}
+proc getAllResponseHeaders*(this: XMLHttpRequest): cstring {.importjs: "#.$1()".}
   ## https://developer.mozilla.org/en-US/docs/Web/API/XMLHttpRequest/getAllResponseHeaders
 
-func overrideMimeType*(this: XMLHttpRequest; mimeType: cstring) {.importjs: "#.$1(#)".}
+proc overrideMimeType*(this: XMLHttpRequest; mimeType: cstring) {.importjs: "#.$1(#)".}
   ## https://developer.mozilla.org/en-US/docs/Web/API/XMLHttpRequest/overrideMimeType
 
-func setRequestHeader*(this: XMLHttpRequest; key, value: cstring) {.importjs: "#.$1(#, #)".}
+proc setRequestHeader*(this: XMLHttpRequest; key, value: cstring) {.importjs: "#.$1(#, #)".}
   ## https://developer.mozilla.org/en-US/docs/Web/API/XMLHttpRequest/setRequestHeader
 
-func setRequestHeader*(this: XMLHttpRequest; keyValuePairs: openArray[tuple[key, val: cstring]]) {.importjs:
+proc setRequestHeader*(this: XMLHttpRequest; keyValuePairs: openArray[tuple[key, val: cstring]]) {.importjs:
   "(() => { const rqst = #; #.forEach((item) => rqst.$1(item[0], item[1])) })()".}
   ## Same as `setRequestHeader` but takes `openArray[tuple[key, val: cstring]]`.
 
