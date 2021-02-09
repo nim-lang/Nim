@@ -21,7 +21,7 @@ def main():
     # f.write("%x | " % x)
     if x == 0x2028: # U+2028 = LINE SEPARATOR
       val = ""
-    elif x == 0x2029: # U+2028 = PARAGRAPH SEPARATOR
+    elif x == 0x2029: # U+2029 = PARAGRAPH SEPARATOR
       val = ""
     f.write("%s\n" % val)
 
