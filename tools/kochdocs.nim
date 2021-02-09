@@ -14,7 +14,7 @@ const
   webUploadOutput = "web/upload"
 
 var nimExe*: string
-const allowList = ["jsbigints.nim", "jssets.nim", "jsxmlhttprequest.nim"]
+const allowList = ["jsbigints.nim", "jsxmlhttprequest.nim"]
 
 template isJsOnly(file: string): bool =
   file.isRelativeTo("lib/js") or
