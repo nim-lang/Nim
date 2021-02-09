@@ -408,7 +408,7 @@ The matched dot operators can be symbols of any callable kind (procs,
 templates and macros), depending on the desired effect:
 
 .. code-block:: nim
-  template `.` (js: PJsonNode, field: untyped): JSON = js[astToStr(field)]
+  template `.`(js: PJsonNode, field: untyped): JSON = js[astToStr(field)]
 
   var js = parseJson("{ x: 1, y: 2}")
   echo js.x # outputs 1
@@ -433,6 +433,38 @@ This operator will be matched against assignments to missing fields.
 
 .. code-block:: nim
   a.b = c # becomes `.=`(a, b, c)
+
+Call operator
+-------------
+The call operator, `()`, matches all kinds of unresolved calls and takes
+precedence over dot operators, however it does not match missing overloads
+for existing routines. The experimental `callOperator` switch must be enabled
+to use this operator.
+
+.. code-block:: nim
+  {.experimental: "callOperator".}
+
+  template `()`(a: int, b: float): untyped = $(a, b)
+
+  block:
+    let a = 1.0
+    let b = 2
+    doAssert b(a) == `()`(b, a)
+    doAssert a.b == `()`(b, a)
+
+  block:
+    let a = 1.0
+    proc b(): int = 2
+    doAssert not compiles(b(a))
+    doAssert not compiles(a.b) # `()` not called
+
+  block:
+    let a = 1.0
+    proc b(x: float): int = int(x + 1)
+    let c = 3.0
+
+    doAssert not compiles(a.b(c)) # gives a type mismatch error same as b(a, c)
+    doAssert (a.b)(c) == `()`(a.b, c)
 
 
 Not nil annotation
