@@ -66,7 +66,11 @@ proc semOperand(c: PContext, n: PNode, flags: TExprFlags = {}): PNode =
 proc semExprCheck(c: PContext, n: PNode, flags: TExprFlags): PNode =
   rejectEmptyNode(n)
   result = semExpr(c, n, flags+{efWantValue})
-  if result.kind == nkEmpty:
+
+  let
+    isEmpty = result.kind == nkEmpty
+    isTypeError = result.typ != nil and result.typ.kind == tyError
+  if isEmpty or isTypeError:
     # bug #12741, redundant error messages are the lesser evil here:
     localError(c.config, n.info, errExprXHasNoType %
                 renderTree(result, {renderNoComments}))
@@ -75,8 +79,7 @@ proc semExprCheck(c: PContext, n: PNode, flags: TExprFlags): PNode =
 
 proc semExprWithType(c: PContext, n: PNode, flags: TExprFlags = {}): PNode =
   result = semExprCheck(c, n, flags)
-  if result.typ == nil or result.typ == c.enforceVoidContext or
-    result.typ.kind == tyError:
+  if result.typ == nil or result.typ == c.enforceVoidContext:
     localError(c.config, n.info, errExprXHasNoType %
                 renderTree(result, {renderNoComments}))
     result.typ = errorType(c)

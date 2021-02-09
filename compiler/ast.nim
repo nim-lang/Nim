@@ -1362,7 +1362,7 @@ proc newIntTypeNode*(intVal: BiggestInt, typ: PType): PNode =
   of tyBool, tyEnum:
     # XXX: does this really need to be the kind nkIntLit?
     result = newNode(nkIntLit)
-  of tyStatic, tyProxy: # that's a pre-existing bug, will fix in another PR
+  of tyStatic: # that's a pre-existing bug, will fix in another PR
     result = newNode(nkIntLit)
   else: doAssert false, $kind
   result.intVal = intVal
