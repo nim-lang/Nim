@@ -2265,17 +2265,6 @@ proc selectDir(p: var RstParser, d: string): PRstNode =
   else:
     rstMessage(p, meInvalidDirective, d)
 
-proc parseFootnoteContent(p: var RstParser, father: var PRstNode) =
-  if currentTok(p).kind != tkIndent or indFollows(p):
-    var nextIndent = p.tok[tokenAfterNewline(p)-1].ival
-    if nextIndent <= currInd(p):  # parse only this line
-      nextIndent = currentTok(p).col
-    var n = newRstNode(rnInner)
-    pushInd(p, nextIndent)
-    parseSection(p, n)
-    popInd(p)
-    father.add n
-
 proc prefix(ftnType: FootnoteType): string =
   case ftnType
   of fnManualNumber: result = "footnote-"
@@ -2399,12 +2388,11 @@ proc resolveSubs(p: var RstParser, n: PRstNode): PRstNode =
         result.add(n)  # visible text of reference
         result.add(newRstNode(rnLeaf, s))  # link itself
   of rnFootnote:
-    let (fnType, i) = getFootnoteType(n.sons[0])
+    var (fnType, num) = getFootnoteType(n.sons[0])
     case fnType
     of fnManualNumber, fnCitation:
       discard "no need to alter fixed text"
     of fnAutoNumberLabel, fnAutoNumber:
-      var num: int
       if fnType == fnAutoNumberLabel:
         let labelR = rstnodeToRefname(n.sons[0])
         num = getFootnoteNum(p, labelR)
