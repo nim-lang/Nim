@@ -2029,8 +2029,14 @@ type
     when NimStackTraceMsgs:
       frameMsgLen*: int   ## end position in frameMsgBuf for this frame.
 
-when defined(js):
+when defined(js) or defined(nimdoc):
   proc add*(x: var string, y: cstring) {.asmNoStackFrame.} =
+    ## Appends `y` to `x` in place.
+    runnableExamples:
+      var tmp = ""
+      tmp.add(cstring("ab"))
+      tmp.add(cstring("cd"))
+      doAssert tmp == "abcd"
     asm """
       if (`x` === null) { `x` = []; }
       var off = `x`.length;
@@ -2039,7 +2045,15 @@ when defined(js):
         `x`[off+i] = `y`.charCodeAt(i);
       }
     """
-  proc add*(x: var cstring, y: cstring) {.magic: "AppendStrStr".}
+  proc add*(x: var cstring, y: cstring) {.magic: "AppendStrStr".} =
+    ## Appends `y` to `x` in place.
+    ## Only implemented for JS backend.
+    runnableExamples:
+      when defined(js):
+        var tmp: cstring = ""
+        tmp.add(cstring("ab"))
+        tmp.add(cstring("cd"))
+        doAssert tmp == cstring("abcd")
 
 elif hasAlloc:
   {.push stackTrace: off, profiler: off.}
