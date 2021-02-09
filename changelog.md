@@ -129,6 +129,8 @@ with other backends. see #9125. Use `-d:nimLegacyJsRound` for previous behavior.
 
 - Added `random.initRand()` overload with no argument which uses the current time as a seed.
 
+- Added experimental `linenoise.readLineStatus` to get line and status (e.g. ctrl-D or ctrl-C).
+
 ## Language changes
 
 - `nimscript` now handles `except Exception as e`.

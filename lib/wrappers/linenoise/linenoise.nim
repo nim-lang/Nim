@@ -55,7 +55,9 @@ when defined nimExperimentalLinenoiseExtra:
     status*: Status
 
   proc readLineStatus*(prompt: string, result: var ReadLineResult) =
-    ## line editing API that allows returning the line status
+    ## line editing API that allows returning the line entered and an indicator
+    ## of which control key was entered, allowing user to distinguish between
+    ## for example ctrl-C vs ctrl-D.
     runnableExamples("-d:nimExperimentalLinenoiseExtra"):
       if false:
         var ret: ReadLineResult
