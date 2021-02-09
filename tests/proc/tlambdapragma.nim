@@ -1,5 +1,5 @@
 discard """
-  errmsg: "invalid pragma: exportc"
+  errormsg: "invalid pragma: exportc"
 """
 
 let _ = proc () {.exportc.} =
