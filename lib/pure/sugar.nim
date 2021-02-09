@@ -188,7 +188,7 @@ macro capture*(locals: varargs[typed], body: untyped): untyped {.since: (1, 1).}
   for arg in locals:
     params.add(newIdentDefs(ident(arg.strVal), freshIdentNodes getTypeInst arg))
   result = newNimNode(nnkCall)
-  result.add(newProc(newEmptyNode(), params, body, nnkProcDef))
+  result.add(newProc(newEmptyNode(), params, body, nnkLambda))
   for arg in locals: result.add(arg)
 
 when (NimMajor, NimMinor) >= (1, 1):
