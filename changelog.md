@@ -4,6 +4,18 @@
 
 ## Standard library additions and changes
 
+- On Windows the SSL library now checks for valid certificates.
+  It uses the `cacert.pem` file for this purpose which was extracted
+  from `https://curl.se/ca/cacert.pem`. Besides
+  the OpenSSL DLLs (e.g. libssl-1_1-x64.dll, libcrypto-1_1-x64.dll) you
+  now also need to ship `cacert.pem` with your `.exe` file.
+
+
+- Make `{.requiresInit.}` pragma to work for `distinct` types.
+
+- Added a macros `enumLen` for returning the number of items in an enum to the
+  `typetraits.nim` module.
+
 - `prelude` now works with the JavaScript target.
 
 - Added `ioutils` module containing `duplicate` and `duplicateTo` to duplicate `FileHandle` using C function `dup` and `dup2`.
