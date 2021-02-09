@@ -242,7 +242,7 @@ template addFrameEntry(s: var string, f: StackTraceEntry|PFrame) =
   for k in 1..max(1, 25-(s.len-oldLen)): add(s, ' ')
   add(s, f.procname)
   when NimStackTraceMsgs:
-    when type(f) is StackTraceEntry:
+    when typeof(f) is StackTraceEntry:
       add(s, f.frameMsg)
     else:
       var first = if f.prev == nil: 0 else: f.prev.frameMsgLen

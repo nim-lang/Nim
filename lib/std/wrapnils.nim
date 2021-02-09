@@ -45,9 +45,9 @@ template `.`*(a: Wrapnil, b): untyped =
   ## See top-level example.
   let a1 = a # to avoid double evaluations
   let a2 = a1.valueImpl
-  type T = Wrapnil[type(a2.b)]
+  type T = Wrapnil[typeof(a2.b)]
   if a1.validImpl:
-    when type(a2) is ref|ptr:
+    when typeof(a2) is ref|ptr:
       if a2 == nil:
         default(T)
       else:
@@ -72,13 +72,13 @@ template `[]`*[I](a: Wrapnil, i: I): untyped =
     # correctly will raise IndexDefect if a is valid but wraps an empty container
     wrapnil(a1.valueImpl[i])
   else:
-    default(Wrapnil[type(a1.valueImpl[i])])
+    default(Wrapnil[typeof(a1.valueImpl[i])])
 
 template `[]`*(a: Wrapnil): untyped =
   ## See top-level example.
   let a1 = a # to avoid double evaluations
   let a2 = a1.valueImpl
-  type T = Wrapnil[type(a2[])]
+  type T = Wrapnil[typeof(a2[])]
   if a1.validImpl:
     if a2 == nil:
       default(T)

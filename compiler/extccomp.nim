@@ -124,8 +124,8 @@ compiler llvmGcc:
   result.name = "llvm_gcc"
   result.compilerExe = "llvm-gcc"
   result.cppCompiler = "llvm-g++"
-  when defined(macosx):
-    # OS X has no 'llvm-ar' tool:
+  when defined(macosx) or defined(openbsd):
+    # `llvm-ar` not available
     result.buildLib = "ar rcs $libfile $objfiles"
   else:
     result.buildLib = "llvm-ar rcs $libfile $objfiles"
@@ -662,6 +662,7 @@ proc addExternalFileToCompile*(conf: ConfigRef; filename: AbsoluteFile) =
 proc getLinkCmd(conf: ConfigRef; output: AbsoluteFile,
                 objfiles: string, isDllBuild: bool): string =
   if optGenStaticLib in conf.globalOptions:
+    removeFile output # fixes: bug #16947
     result = CC[conf.cCompiler].buildLib % ["libfile", quoteShell(output),
                                             "objfiles", objfiles]
   else:

@@ -111,6 +111,9 @@ with other backends. see #9125. Use `-d:nimLegacyJsRound` for previous behavior.
 - Added `math.signbit`.
 
 - Removed the optional `longestMatch` parameter of the `critbits._WithPrefix` iterators (it never worked reliably)
+- In `lists`: renamed `append` to `add` and retained `append` as an alias;
+  added `prepend` and `prependMoved` analogously to `add` and `addMoved`;
+  added `remove` for `SinglyLinkedList`s.
 
 
 - Added optional `options` argument to `copyFile`, `copyFileToDir`, and
@@ -123,6 +126,8 @@ with other backends. see #9125. Use `-d:nimLegacyJsRound` for previous behavior.
 - On non-Windows OSes, `moveFile` and `moveDir` move symlinks as symlinks
   (instead of skipping them sometimes as it was before).
 - Added optional `followSymlinks` argument to `setFilePermissions`.
+
+- Added `random.initRand()` overload with no argument which uses the current time as a seed.
 
 ## Language changes
 
@@ -137,6 +142,8 @@ with other backends. see #9125. Use `-d:nimLegacyJsRound` for previous behavior.
 - `os.copyFile` is now 2.5x faster on OSX, by using `copyfile` from `copyfile.h`;
   use `-d:nimLegacyCopyFile` for OSX < 10.5.
 
+- The required name of case statement macros for the experimental
+  `caseStmtMacros` feature has changed from `match` to `` `case` ``.
 
 ## Compiler changes
 

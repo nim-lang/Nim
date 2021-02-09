@@ -903,8 +903,8 @@ proc getHomeDir*(): string {.rtl, extern: "nos$1",
   runnableExamples:
     assert getHomeDir() == expandTilde("~")
 
-  when defined(windows): return string(getEnv("USERPROFILE")) & "\\"
-  else: return string(getEnv("HOME")) & "/"
+  when defined(windows): return getEnv("USERPROFILE") & "\\"
+  else: return getEnv("HOME") & "/"
 
 proc getConfigDir*(): string {.rtl, extern: "nos$1",
   tags: [ReadEnvEffect, ReadIOEffect].} =
@@ -925,9 +925,9 @@ proc getConfigDir*(): string {.rtl, extern: "nos$1",
   ## * `getCurrentDir proc <#getCurrentDir>`_
   ## * `setCurrentDir proc <#setCurrentDir,string>`_
   when defined(windows):
-    result = getEnv("APPDATA").string
+    result = getEnv("APPDATA")
   else:
-    result = getEnv("XDG_CONFIG_HOME", getEnv("HOME").string / ".config").string
+    result = getEnv("XDG_CONFIG_HOME", getEnv("HOME") / ".config")
   result.normalizePathEnd(trailingSep = true)
 
 proc getTempDir*(): string {.rtl, extern: "nos$1",
@@ -951,10 +951,10 @@ proc getTempDir*(): string {.rtl, extern: "nos$1",
   when defined(tempDir):
     const tempDir {.strdefine.}: string = tempDirDefault
     result = tempDir
-  elif defined(windows): result = string(getEnv("TEMP"))
+  elif defined(windows): result = getEnv("TEMP")
   elif defined(android): result = getHomeDir()
   else:
-    if existsEnv("TMPDIR"): result = string(getEnv("TMPDIR"))
+    if existsEnv("TMPDIR"): result = getEnv("TMPDIR")
   normalizePathEnd(result, trailingSep=true)
 
 proc expandTilde*(path: string): string {.
@@ -1186,7 +1186,7 @@ proc findExe*(exe: string, followSymlinks: bool = true;
     if '/' in exe: checkCurrentDir()
   else:
     checkCurrentDir()
-  let path = string(getEnv("PATH"))
+  let path = getEnv("PATH")
   for candidate in split(path, PathSep):
     if candidate.len == 0: continue
     when defined(windows):
@@ -2936,7 +2936,7 @@ when not weirdTarget and defined(openbsd):
 
       # POSIX guaranties that this contains the executable
       # as it has been executed by the calling process
-      let exePath = string(paramStr(0))
+      let exePath = paramStr(0)
 
       if len(exePath) == 0:
         return ""
@@ -2955,7 +2955,7 @@ when not weirdTarget and defined(openbsd):
         return expandFilename(result)
 
       # search in path
-      for p in split(string(getEnv("PATH")), {PathSep}):
+      for p in split(getEnv("PATH"), {PathSep}):
         var x = joinPath(p, exePath)
         if fileExists(x):
           return expandFilename(x)
@@ -2965,12 +2965,12 @@ when not weirdTarget and defined(openbsd):
 when not (defined(windows) or defined(macosx) or weirdTarget):
   proc getApplHeuristic(): string =
     when declared(paramStr):
-      result = string(paramStr(0))
+      result = paramStr(0)
       # POSIX guaranties that this contains the executable
       # as it has been executed by the calling process
       if len(result) > 0 and result[0] != DirSep: # not an absolute path?
         # iterate over any path in the $PATH environment variable
-        for p in split(string(getEnv("PATH")), {PathSep}):
+        for p in split(getEnv("PATH"), {PathSep}):
           var x = joinPath(p, result)
           if fileExists(x): return x
     else:
