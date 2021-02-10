@@ -47,7 +47,7 @@ const
     elif defined(PalmOS) or defined(MorphOS): ':' # platform has ':' but osseps has ';'
     else: ':'
     ## The character conventionally used by the operating system to separate
-    ## search patch components (as in PATH), such as `':'` for POSIX
+    ## search path components (as in PATH), such as `':'` for POSIX
     ## or `';'` for Windows.
 
   FileSystemCaseSensitive* =

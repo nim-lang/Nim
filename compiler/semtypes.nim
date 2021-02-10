@@ -151,7 +151,7 @@ proc semEnum(c: PContext, n: PNode, prev: PType): PType =
       wrongRedefinition(c, e.info, e.name.s, conflict.info)
     inc(counter)
   if isPure and sfExported in result.sym.flags:
-    addPureEnum(c, result.sym)
+    addPureEnum(c, LazySym(sym: result.sym))
   if tfNotNil in e.typ.flags and not hasNull:
     result.flags.incl tfRequiresInit
   setToStringProc(c.graph, result, genEnumToStrProc(result, n.info, c.graph, c.idgen))
@@ -1346,7 +1346,7 @@ proc semProcTypeNode(c: PContext, n, genericParams: PNode,
         r = skipIntLit(r, c.idgen)
         if kind == skIterator:
           # see tchainediterators
-          # in cases like iterator foo(it: iterator): type(it)
+          # in cases like iterator foo(it: iterator): typeof(it)
           # we don't need to change the return type to iter[T]
           result.flags.incl tfIterator
           # XXX Would be nice if we could get rid of this
@@ -1704,7 +1704,7 @@ proc semTypeNode(c: PContext, n: PNode, prev: PType): PType =
   case n.kind
   of nkEmpty: result = n.typ
   of nkTypeOfExpr:
-    # for ``type(countup(1,3))``, see ``tests/ttoseq``.
+    # for ``typeof(countup(1,3))``, see ``tests/ttoseq``.
     checkSonsLen(n, 1, c.config)
     result = semTypeof(c, n[0], prev)
     if result.kind == tyTypeDesc: result.flags.incl tfExplicit

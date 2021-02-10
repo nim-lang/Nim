@@ -10,7 +10,7 @@
 #
 
 const
-  NimbleStableCommit = "8f7af860c5ce9634af880a7081c6435e1f2a5148" # master
+  NimbleStableCommit = "324de9202fb3db82b266e7350731d1ec41013a2b" # master
   FusionStableCommit = "372ee4313827ef9f2ea388840f7d6b46c2b1b014"
 
 when not defined(windows):
@@ -548,7 +548,7 @@ proc runCI(cmd: string) =
     #[
     BUG: with initOptParser, `--batch:'' all` interprets `all` as the argument of --batch
     ]#
-    execFold("Run tester", "nim c -r -d:nimCoroutines testament/testament --pedantic --batch:$1 all -d:nimCoroutines" % ["NIM_TESTAMENT_BATCH".getEnv("_")])
+    execFold("Run tester", "nim c -r -d:nimCoroutines --putenv:NIM_TESTAMENT_REMOTE_NETWORKING:1 testament/testament --batch:$1 all -d:nimCoroutines" % ["NIM_TESTAMENT_BATCH".getEnv("_")])
 
     block CT_FFI:
       when defined(posix): # windows can be handled in future PR's

@@ -30,7 +30,7 @@ deinstall.sh
 
 doc/html/
 doc/*.html
-doc/*.pdf
+doc/pdf
 doc/*.idx
 /web/upload
 /build/*
