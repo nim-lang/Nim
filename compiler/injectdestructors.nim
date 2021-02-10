@@ -71,21 +71,30 @@ proc nestedScope(parent: var Scope): Scope =
 proc p(n: PNode; c: var Con; s: var Scope; mode: ProcessMode): PNode
 proc moveOrCopy(dest, ri: PNode; c: var Con; s: var Scope; isDecl = false): PNode
 
-import sets, hashes, intsets, tables
+import sets, hashes, tables
 
 proc hash(n: PNode): Hash = hash(cast[pointer](n))
 
-proc collectLastReads(cfg: ControlFlowGraph; alreadySeen: var HashSet[PNode], lastReads, potLastReads: var IntSet; pc, until: int): int =
+type AliasCache = Table[(PNode, PNode), AliasKind]
+proc aliasesCached(cache: var AliasCache, obj, field: PNode): AliasKind =
+  let key = (obj, field)
+  if not cache.hasKey(key):
+    cache[key] = aliases(obj, field)
+  cache[key]
+
+proc collectLastReads(cfg: ControlFlowGraph; cache: var AliasCache, alreadySeen: var HashSet[PNode], lastReads, potLastReads: var IntSet; pc, until: int): int =
+  template aliasesCached(obj, field: PNode): untyped =
+    aliasesCached(cache, obj, field)
   var pc = pc
-  while pc < cfg.len and pc < until:
+  while pc < until:
     case cfg[pc].kind
     of def:
       var newPotLastReads: IntSet
       for r in potLastReads:
-        if cfg[pc].n.aliases(cfg[r].n) == yes:
+        if cfg[pc].n.aliasesCached(cfg[r].n) == yes:
           # the path leads to a redefinition of 's' --> sink 's'.
           lastReads.incl r
-        elif cfg[r].n.aliases(cfg[pc].n) != no:
+        elif cfg[r].n.aliasesCached(cfg[pc].n) != no:
           # only partially writes to 's' --> can't sink 's', so this def reads 's'
           # or maybe writes to 's' --> can't sink 's'
           cfg[r].n.comment = '\n' & $pc
@@ -106,7 +115,7 @@ proc collectLastReads(cfg: ControlFlowGraph; alreadySeen: var HashSet[PNode], la
     of use:
       var newPotLastReads: IntSet
       for r in potLastReads:
-        if cfg[pc].n.aliases(cfg[r].n) != no or cfg[r].n.aliases(cfg[pc].n) != no:
+        if cfg[pc].n.aliasesCached(cfg[r].n) != no or cfg[r].n.aliasesCached(cfg[pc].n) != no:
           cfg[r].n.comment = '\n' & $pc
         else:
           newPotLastReads.incl r
@@ -127,22 +136,37 @@ proc collectLastReads(cfg: ControlFlowGraph; alreadySeen: var HashSet[PNode], la
       var alreadySeenA, alreadySeenB = alreadySeen
       while variantA != variantB and max(variantA, variantB) < cfg.len and min(variantA, variantB) < until:
         if variantA < variantB:
-          variantA = collectLastReads(cfg, alreadySeenA, lastReadsA, potLastReadsA, variantA, min(variantB, until))
+          variantA = collectLastReads(cfg, cache, alreadySeenA, lastReadsA, potLastReadsA, variantA, min(variantB, until))
         else:
-          variantB = collectLastReads(cfg, alreadySeenB, lastReadsB, potLastReadsB, variantB, min(variantA, until))
+          variantB = collectLastReads(cfg, cache, alreadySeenB, lastReadsB, potLastReadsB, variantB, min(variantA, until))
 
       alreadySeen.incl alreadySeenA + alreadySeenB
+        # alreadySeen.incl alreadySeenA
+        # alreadySeen.incl alreadySeenB
 
       lastReads.incl lastReadsA * lastReadsB
       lastReads.incl (lastReadsA + lastReadsB) - potLastReads
+        # var newLastReads: IntSet
+        # newLastReads.incl lastReadsA
+        # newLastReads.incl lastReadsB
+        # newLastReads.excl potLastReads
+        # lastReads.incl newLastReads
 
       let oldPotLastReads = potLastReads
       potLastReads = initIntSet()
 
-      potLastReads.incl lastReadsA + lastReadsB
+      potLastReads.incl (lastReadsA + lastReadsB) - lastReads
+        # potLastReads.incl lastReadsA
+        # potLastReads.incl lastReadsB
+        # potLastReads.excl lastReads
 
       potLastReads.incl potLastReadsA * potLastReadsB
       potLastReads.incl (potLastReadsA + potLastReadsB) - oldPotLastReads
+        # var newPotLastReads: IntSet
+        # newPotLastReads.incl potLastReadsA
+        # newPotLastReads.incl potLastReadsB
+        # newPotLastReads.excl oldPotLastReads
+        # potLastReads.incl newPotLastReads
 
       pc = min(variantA, variantB)
 
@@ -1076,9 +1100,10 @@ proc injectDestructorCalls*(g: ModuleGraph; idgen: IdGenerator; owner: PSym; n: 
     computeCursors(owner, n, g)
 
   block:
+    var cache = initTable[(PNode, PNode), AliasKind]()
     var alreadySeen: HashSet[PNode]
     var lastReads, potLastReads: IntSet
-    discard collectLastReads(c.g, alreadySeen, lastReads, potLastReads, 0, c.g.len)
+    discard collectLastReads(c.g, cache, alreadySeen, lastReads, potLastReads, 0, c.g.len)
     lastReads.incl potLastReads
     var lastReadTable: Table[PNode, seq[int]]
     for position, node in c.g:
