@@ -305,7 +305,7 @@ proc buildPdfDoc*(nimArgs, destPath: string) =
       let dst = destPath / src.lastPathPart.changeFileExt("pdf")
       pdfList.add dst
       nim2pdf(src, dst, nimArgs)
-  echo "\nOutput PDF files: \n  ", pdfList.join(" ") # because pdflatex is very verbose
+  echo "\nOutput PDF files: \n  ", pdfList.join(" ") # because `nim2pdf` is a bit verbose
 
 proc buildJS(): string =
   let nim = findNim()
