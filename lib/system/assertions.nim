@@ -1,6 +1,7 @@
 ## This module provides various assertion utilities.
 ##
-## **Note:** This is part of the system module. Do not import it directly.
+## **Note:** This module is reexported by `system` and thus does not need to be
+## imported directly (with `system/assertions`).
 
 when not declared(sysFatal):
   include "system/fatal"
@@ -32,6 +33,8 @@ proc failedAssertImpl*(msg: string) {.raises: [], tags: [].} =
   ## from the effect system. Called when an assertion failed.
   # trick the compiler to not list `AssertionDefect` when called
   # by `assert`.
+  # xxx simplify this pending bootstrap >= 1.4.0, after which cast not needed
+  # anymore since `Defect` can't be raised.
   type Hide = proc (msg: string) {.noinline, raises: [], noSideEffect, tags: [].}
   cast[Hide](raiseAssert)(msg)
 
@@ -52,9 +55,8 @@ template assert*(cond: untyped, msg = "") =
   ## produce `{.raises: [AssertionDefect].}`. This exception is only supposed
   ## to be caught by unit testing frameworks.
   ##
-  ## The compiler will not generate any code at all for `assert` if it is
-  ## advised to do so through the `-d:danger` or `--assertions:off`
-  ## `command line switches <nimc.html#compiler-usage-commandminusline-switches>`_.
+  ## No code will be generated for `assert` when passing `-d:danger` (implied by `--assertions:off`).
+  ## See `command line switches <nimc.html#compiler-usage-commandminusline-switches>`_.
   ##
   ## **Example:**
   ##
