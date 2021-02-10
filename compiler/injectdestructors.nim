@@ -138,32 +138,17 @@ proc collectLastReads(cfg: ControlFlowGraph; cache: var AliasCache, alreadySeen:
           collectLastReads(cfg, cache, alreadySeenB, lastReadsB, potLastReadsB, variantB, min(variantA, until))
 
       alreadySeen.incl alreadySeenA + alreadySeenB
-        # alreadySeen.incl alreadySeenA
-        # alreadySeen.incl alreadySeenB
 
       lastReads.incl lastReadsA * lastReadsB
       lastReads.incl (lastReadsA + lastReadsB) - potLastReads
-        # var newLastReads: IntSet
-        # newLastReads.incl lastReadsA
-        # newLastReads.incl lastReadsB
-        # newLastReads.excl potLastReads
-        # lastReads.incl newLastReads
 
       let oldPotLastReads = potLastReads
       potLastReads = initIntSet()
 
       potLastReads.incl (lastReadsA + lastReadsB) - lastReads
-        # potLastReads.incl lastReadsA
-        # potLastReads.incl lastReadsB
-        # potLastReads.excl lastReads
 
       potLastReads.incl potLastReadsA * potLastReadsB
       potLastReads.incl (potLastReadsA + potLastReadsB) - oldPotLastReads
-        # var newPotLastReads: IntSet
-        # newPotLastReads.incl potLastReadsA
-        # newPotLastReads.incl potLastReadsB
-        # newPotLastReads.excl oldPotLastReads
-        # potLastReads.incl newPotLastReads
 
       pc = min(variantA, variantB)
 
