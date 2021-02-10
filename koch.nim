@@ -11,7 +11,7 @@
 
 const
   NimbleStableCommit = "324de9202fb3db82b266e7350731d1ec41013a2b" # master
-  # examle of possible values: #head, #ea82b54, 1.2.3
+  # examples of possible values: #head, #ea82b54, 1.2.3
   FusionStableCommitHash = "#372ee4313827ef9f2ea388840f7d6b46c2b1b014"
   HeadHash = "#head"
 when not defined(windows):
