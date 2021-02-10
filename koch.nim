@@ -12,7 +12,7 @@
 const
   NimbleStableCommit = "324de9202fb3db82b266e7350731d1ec41013a2b" # master
   # examples of possible values: #head, #ea82b54, 1.2.3
-  FusionStableCommitHash = "#372ee4313827ef9f2ea388840f7d6b46c2b1b014"
+  FusionStableHash = "#372ee4313827ef9f2ea388840f7d6b46c2b1b014"
   HeadHash = "#head"
 when not defined(windows):
   const
@@ -693,7 +693,7 @@ when isMainModule:
       of "c2nim": bundleC2nim(op.cmdLineRest)
       of "drnim": buildDrNim(op.cmdLineRest)
       of "fusion":
-        let suffix = if latest: HeadHash else: FusionStableCommitHash
+        let suffix = if latest: HeadHash else: FusionStableHash
         exec("nimble install -y fusion@$#" % suffix)
       else: showHelp()
       break
