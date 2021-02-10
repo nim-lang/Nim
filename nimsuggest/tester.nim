@@ -24,6 +24,7 @@ proc parseTest(filename: string; epcMode=false): Test =
   const cursorMarker = "#[!]#"
   let nimsug = curDir & addFileExt("nimsuggest", ExeExt)
   const libpath = querySetting(libPath)
+  result.filename = filename
   result.dest = getTempDir() / extractFilename(filename)
   result.cmd = nimsug & " --tester " & result.dest
   result.script = @[]
