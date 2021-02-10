@@ -82,10 +82,9 @@ proc aliasesCached(cache: var AliasCache, obj, field: PNode): AliasKind =
     cache[key] = aliases(obj, field)
   cache[key]
 
-proc collectLastReads(cfg: ControlFlowGraph; cache: var AliasCache, alreadySeen: var HashSet[PNode], lastReads, potLastReads: var IntSet; pc, until: int): int =
+proc collectLastReads(cfg: ControlFlowGraph; cache: var AliasCache, alreadySeen: var HashSet[PNode], lastReads, potLastReads: var IntSet; pc: var int, until: int) =
   template aliasesCached(obj, field: PNode): untyped =
     aliasesCached(cache, obj, field)
-  var pc = pc
   while pc < until:
     case cfg[pc].kind
     of def:
@@ -134,9 +133,9 @@ proc collectLastReads(cfg: ControlFlowGraph; cache: var AliasCache, alreadySeen:
       var alreadySeenA, alreadySeenB = alreadySeen
       while variantA != variantB and max(variantA, variantB) < cfg.len and min(variantA, variantB) < until:
         if variantA < variantB:
-          variantA = collectLastReads(cfg, cache, alreadySeenA, lastReadsA, potLastReadsA, variantA, min(variantB, until))
+          collectLastReads(cfg, cache, alreadySeenA, lastReadsA, potLastReadsA, variantA, min(variantB, until))
         else:
-          variantB = collectLastReads(cfg, cache, alreadySeenB, lastReadsB, potLastReadsB, variantB, min(variantA, until))
+          collectLastReads(cfg, cache, alreadySeenB, lastReadsB, potLastReadsB, variantB, min(variantA, until))
 
       alreadySeen.incl alreadySeenA + alreadySeenB
         # alreadySeen.incl alreadySeenA
@@ -167,8 +166,6 @@ proc collectLastReads(cfg: ControlFlowGraph; cache: var AliasCache, alreadySeen:
         # potLastReads.incl newPotLastReads
 
       pc = min(variantA, variantB)
-
-  return pc
 
 proc isLastRead(n: PNode; c: var Con): bool =
   let m = dfa.skipConvDfa(n)
@@ -1101,7 +1098,8 @@ proc injectDestructorCalls*(g: ModuleGraph; idgen: IdGenerator; owner: PSym; n: 
     var cache = initTable[(PNode, PNode), AliasKind]()
     var alreadySeen: HashSet[PNode]
     var lastReads, potLastReads: IntSet
-    discard collectLastReads(c.g, cache, alreadySeen, lastReads, potLastReads, 0, c.g.len)
+    var pc = 0
+    collectLastReads(c.g, cache, alreadySeen, lastReads, potLastReads, pc, c.g.len)
     lastReads.incl potLastReads
     var lastReadTable: Table[PNode, seq[int]]
     for position, node in c.g:
