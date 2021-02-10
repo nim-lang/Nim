@@ -63,6 +63,17 @@ proc prettyString(a: object): string =
   for k, v in fieldPairs(a):
     result.add k & ": " & $v & "\n"
 
+proc moduleTitle*(conf: ConfigRef, file: AbsoluteFile): string =
+  var ret = getRelativePathFromConfigPath(conf, file, isTitle = true)
+  let dir = getNimbleFile(conf, $file).parentDir.AbsoluteDir
+  if not dir.isEmpty:
+    let result2 = relativeTo(file, dir)
+    if not result2.isEmpty and (ret.isEmpty or result2.string.len < ret.string.len):
+      ret = result2
+  if ret.isEmpty:
+    ret = relativeTo(file, conf.projectPath)
+  result = ret.string.nativeToUnixPath
+
 proc presentationPath*(conf: ConfigRef, file: AbsoluteFile, isTitle = false): RelativeFile =
   ## returns a relative file that will be appended to outDir
   let file2 = $file
@@ -72,7 +83,7 @@ proc presentationPath*(conf: ConfigRef, file: AbsoluteFile, isTitle = false): Re
     getNimbleFile(conf, file2).parentDir.AbsoluteDir
   case conf.docRoot:
   of docRootDefault:
-    result = getRelativePathFromConfigPath(conf, file)
+    result = getRelativePathFromConfigPath(conf, file, isTitle = false)
     let dir = nimbleDir()
     if not dir.isEmpty:
       let result2 = relativeTo(file, dir)
@@ -84,7 +95,7 @@ proc presentationPath*(conf: ConfigRef, file: AbsoluteFile, isTitle = false): Re
     if dir.isEmpty: bail()
     else: result = relativeTo(file, dir)
   of "@path":
-    result = getRelativePathFromConfigPath(conf, file)
+    result = getRelativePathFromConfigPath(conf, file, isTitle = false)
     if result.isEmpty: bail()
   elif conf.docRoot.len > 0:
     # we're (currently) requiring `isAbsolute` to avoid confusion when passing
@@ -371,7 +382,7 @@ proc belongsToPackage(conf: ConfigRef; module: PSym): bool =
   result = module.kind == skModule and module.getnimblePkgId == conf.mainPackageId
 
 proc externalDep(d: PDoc; module: PSym): string =
-  if optWholeProject in d.conf.globalOptions or d.conf.docRoot.len > 0:
+  if optWholeProject in d.conf.globalOptions or (false and d.conf.docRoot.len > 0):
     let full = AbsoluteFile toFullPath(d.conf, FileIndex module.position)
     let tmp = getOutFile2(d.conf, presentationPath(d.conf, full), HtmlExt, sfMainModule notin module.flags)
     result = relativeTo(tmp, d.thisDir, '/').string
@@ -1240,6 +1251,7 @@ proc genOutFile(d: PDoc, groupedToc = false): Rope =
   var
     code, content: Rope
     title = ""
+    titleAlt = ""
   var j = 0
   var tmp = ""
   renderTocEntries(d[], j, 1, tmp)
@@ -1257,10 +1269,12 @@ proc genOutFile(d: PDoc, groupedToc = false): Rope =
     title = d.meta[metaTitle]
     let external = presentationPath(d.conf, AbsoluteFile d.filename).changeFileExt(HtmlExt).string.nativeToUnixPath
     setIndexTerm(d[], external, "", title)
+    titleAlt = title
   else:
     # Modules get an automatic title for the HTML, but no entry in the index.
     # better than `extractFilename(changeFileExt(d.filename, ""))` as it disambiguates dups
     title = $presentationPath(d.conf, AbsoluteFile d.filename, isTitle = true).changeFileExt("")
+    titleAlt = moduleTitle(d.conf, AbsoluteFile d.filename).changeFileExt("")
   var subtitle = "".rope
   if d.meta[metaSubtitle] != "":
     dispA(d.conf, subtitle, "<h2 class=\"subtitle\">$1</h2>",
