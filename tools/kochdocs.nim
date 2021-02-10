@@ -1,6 +1,6 @@
 ## Part of 'koch' responsible for the documentation generation.
 
-import os, strutils, osproc, sets, pathnorm, pegs
+import os, strutils, osproc, sets, pathnorm, pegs, sequtils
 from std/private/globs import nativeToUnixPath, walkDirRecFilter, PathEntry
 import "../compiler/nimpaths"
 
@@ -112,7 +112,7 @@ proc getRst2html(): seq[string] =
   doAssert "doc/manual/var_t_return.rst".unixToNativePath in result # sanity check
 
 const
-  rstList = """
+  rstPdfList = """
 manual.rst
 lib.rst
 tut1.rst
@@ -121,7 +121,7 @@ tut3.rst
 nimc.rst
 niminst.rst
 gc.rst
-""".splitWhitespace()
+""".splitWhitespace().mapIt("doc" / it)
 
   doc0 = """
 lib/system/threads.nim
@@ -282,38 +282,37 @@ proc buildDoc(nimArgs, destPath: string) =
     # locally after calling `./koch docs`. The clean fix would be for `idx` files
     # to be transient with `--project` (eg all in memory).
 
+proc nim2pdf(src: string, dst: string, nimArgs: string) =
+  # xxx expose as a `nim` command or in some other reusable way.
+  let outDir = "build" / "pdflatextmp" # xxx use reusable std/private/paths shared with other modules
+  # note: this will generate temporary files in gitignored `outDir`: aux toc log out tex
+  exec("$# rst2tex $# --outdir:$# $#" % [findNim().quoteShell(), nimArgs, outDir.quoteShell, src.quoteShell])
+  # call LaTeX twice to get cross references right:
+  let texFile = outDir / src.lastPathPart.changeFileExt("tex")
+  for i in 0..<2:
+    # xxx very verbose; consider redirecting output to a log file
+    let pdflatexLog = outDir / "pdflatex.log"
+    # `>` should work on windows, if not, we can use `execCmdEx`
+    let cmd = "pdflatex -interaction=nonstopmode -output-directory=$# $# > $#" % [outDir.quoteShell, texFile.quoteShell, pdflatexLog.quoteShell]
+    exec(cmd) # on error, user can inspect `pdflatexLog`
+  moveFile(texFile.changeFileExt("pdf"), dst)
+
 proc buildPdfDoc*(nimArgs, destPath: string) =
   var pdfList: seq[string]
   createDir(destPath)
   if os.execShellCmd("pdflatex -version") != 0:
-    echo "pdflatex not found; no PDF documentation generated"
+    doAssert false, "pdflatex not found" # or, raise an exception
   else:
-    const pdflatexcmd = "pdflatex -interaction=nonstopmode "
-    for file in items(rstList):
-      let d = "doc" / file
-      let texFile = "doc" / htmldocsDirname / changeFileExt(file, "tex")
-      exec(findNim().quoteShell() & " rst2tex $# $#" % [nimArgs, d])
-      # call LaTeX twice to get cross references right:
-      exec(pdflatexcmd & texFile)
-      exec(pdflatexcmd & texFile)
-      let pdf = splitFile(d).name & ".pdf"
-      let dest = destPath / pdf
-      removeFile(dest)
-      moveFile(dest=dest, source=pdf)
-      pdfList.add dest
-      # delete all the crappy temporary files:
-      removeFile(changeFileExt(pdf, "aux"))
-      if fileExists(changeFileExt(pdf, "toc")):
-        removeFile(changeFileExt(pdf, "toc"))
-      removeFile(changeFileExt(pdf, "log"))
-      removeFile(changeFileExt(pdf, "out"))
-      removeFile(changeFileExt(d, "tex"))
-  echo "\nOutput PDF files: \n  ", pdfList.join(" ")
+    for src in items(rstPdfList):
+      let dst = destPath / src.lastPathPart.changeFileExt("pdf")
+      pdfList.add dst
+      nim2pdf(src, dst, nimArgs)
+  echo "\nOutput PDF files: \n  ", pdfList.join(" ") # because pdflatex is very verbose
 
 proc buildJS(): string =
   let nim = findNim()
-  exec(nim.quoteShell() & " js -d:release --out:$1 tools/nimblepkglist.nim" %
-      [webUploadOutput / "nimblepkglist.js"])
+  exec("$# js -d:release --out:$# tools/nimblepkglist.nim" %
+      [nim.quoteShell(), webUploadOutput / "nimblepkglist.js"])
       # xxx deadcode? and why is it only for webUploadOutput, not for local docs?
   result = getDocHacksJs(nimr = getCurrentDir(), nim)
 
