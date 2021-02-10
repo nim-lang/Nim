@@ -515,7 +515,7 @@ template suite*(name, body) {.dirty.} =
     finally:
       suiteEnded()
 
-proc exceptionTypeName(e: ref Exception): string =
+proc exceptionTypeName(e: ref Exception): string {.inline.} =
   if e == nil: "<foreign exception>"
   else: $e.name
 
