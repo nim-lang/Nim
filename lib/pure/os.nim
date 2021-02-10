@@ -987,10 +987,6 @@ proc getTempDir*(): string {.rtl, extern: "nos$1",
         getTempDirImpl(result)
     if result.len == 0:
       result = tempDirDefault
-  elif defined(windows): result = getEnv("TEMP")
-  elif defined(android): result = getHomeDir()
-  else:
-    if existsEnv("TMPDIR"): result = getEnv("TMPDIR")
   normalizePathEnd(result, trailingSep=true)
 
 proc expandTilde*(path: string): string {.
