@@ -1,24 +1,24 @@
-# test we only get suggestions, not error messages:
+# # test we only get suggestions, not error messages:
 
-import tables, sets, parsecfg
+# import tables, sets, parsecfg
 
-type X = object
+# type X = object
 
-proc main =
-  # bug #52
-  var
-    set0 = initHashSet[int]()
-    set1 = initHashSet[X]()
-    set2 = initHashSet[ref int]()
+# proc main =
+#   # bug #52
+#   var
+#     set0 = initHashSet[int]()
+#     set1 = initHashSet[X]()
+#     set2 = initHashSet[ref int]()
 
-    map0 = initTable[int, int]()
-    map1 = initOrderedTable[string, int]()
-    cfg = loadConfig("file")
-  map0.#[!]#
+#     map0 = initTable[int, int]()
+#     map1 = initOrderedTable[string, int]()
+#     cfg = loadConfig("file")
+#   map0.#[!]#
 
-# the maxresults are limited as it seems there is sort or some other
-# instability that causes the suggestions to slightly differ between 32 bit
-# and 64 bit versions of nimsuggest
+# # the maxresults are limited as it seems there is sort or some other
+# # instability that causes the suggestions to slightly differ between 32 bit
+# # and 64 bit versions of nimsuggest
 
 
 # discard """
@@ -30,10 +30,6 @@ proc main =
 # sug;;skProc;;tables.del;;proc (t: var Table[del.A, del.B], key: A);;*/lib/pure/collections/tables.nim;;*;;5;;"*";;100;;None
 # """
 
-
-discard """
-$nimsuggest --tester $file
-"""
 
 # TODO enable the tests
 # TODO: test/fix suggestion sorting - deprecated suggestions should rank lower
