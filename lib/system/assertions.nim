@@ -57,50 +57,48 @@ template assert*(cond: untyped, msg = "") =
   ##
   ## No code will be generated for `assert` when passing `-d:danger` (implied by `--assertions:off`).
   ## See `command line switches <nimc.html#compiler-usage-commandminusline-switches>`_.
-  ##
-  ## **Example:**
-  ##
-  ## .. code-block:: nim
-  ##   assert 1 == 1, "This assertion generates code when not built with -d:danger or --assertions:off"
+  runnableExamples:
+    assert 1 == 1
+
+  runnableExamples("--assertions:off"):
+    assert 1 == 2 # no code generated
+
   const expr = astToStr(cond)
   assertImpl(cond, msg, expr, compileOption("assertions"))
 
 template doAssert*(cond: untyped, msg = "") =
   ## Similar to `assert <#assert.t,untyped,string>`_ but is always turned on regardless of `--assertions`.
-  ##
-  ## **Example:**
-  ##
-  ## .. code-block:: nim
-  ##   doAssert 1 == 1, "This assertion generates code when built with/without -d:danger or --assertions:off"
+  runnableExamples:
+    doAssert 1 == 1 # generates code even when built with `-d:danger` or `--assertions:off`
+
   const expr = astToStr(cond)
   assertImpl(cond, msg, expr, true)
 
 template onFailedAssert*(msg, code: untyped): untyped {.dirty.} =
   ## Sets an assertion failure handler that will intercept any assert
-  ## statements following `onFailedAssert` in the current module scope.
-  ##
-  ## **Example:**
-  ##
-  ## .. code-block:: nim
-  ##  # module-wide policy to change the failed assert
-  ##  # exception type in order to include a lineinfo
-  ##  onFailedAssert(msg):
-  ##    var e = new(MyError)
-  ##    e.msg = msg
-  ##    e.lineinfo = instantiationInfo(-2)
-  ##    raise e
+  ## statements following `onFailedAssert` in the current scope.
+  runnableExamples:
+    type MyError = object of CatchableError
+      lineinfo: tuple[filename: string, line: int, column: int]
+
+    # module-wide policy to change the failed assert
+    # exception type in order to include a lineinfo
+    onFailedAssert(msg):
+      var e = new(MyError)
+      e.msg = msg
+      e.lineinfo = instantiationInfo(-2)
+      raise e
+
   template failedAssertImpl(msgIMPL: string): untyped {.dirty.} =
     let msg = msgIMPL
     code
 
 template doAssertRaises*(exception: typedesc, code: untyped) =
   ## Raises `AssertionDefect` if specified `code` does not raise `exception`.
-  ##
-  ## **Example:**
-  ##
-  ## .. code-block:: nim
-  ##  doAssertRaises(ValueError):
-  ##    raise newException(ValueError, "Hello World")
+  runnableExamples:
+    doAssertRaises(ValueError):
+      raise newException(ValueError, "Hello World")
+
   var wrong = false
   const begin = "expected raising '" & astToStr(exception) & "', instead"
   const msgEnd = " by: " & astToStr(code)
