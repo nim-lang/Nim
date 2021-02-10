@@ -89,18 +89,17 @@ proc collectLastReads(cfg: ControlFlowGraph; cache: var AliasCache, alreadySeen:
   while pc < until:
     case cfg[pc].kind
     of def:
-      var newPotLastReads: IntSet
-      for r in potLastReads:
+      let potLastReadsCopy = potLastReads
+      for r in potLastReadsCopy:
         if cfg[pc].n.aliasesCached(cfg[r].n) == yes:
           # the path leads to a redefinition of 's' --> sink 's'.
           lastReads.incl r
+          potLastReads.excl r
         elif cfg[r].n.aliasesCached(cfg[pc].n) != no:
           # only partially writes to 's' --> can't sink 's', so this def reads 's'
           # or maybe writes to 's' --> can't sink 's'
           cfg[r].n.comment = '\n' & $pc
-        else:
-          newPotLastReads.incl r
-      potLastReads = newPotLastReads
+          potLastReads.excl r
 
       var alreadySeenThisNode = false
       for s in alreadySeen:
@@ -113,13 +112,12 @@ proc collectLastReads(cfg: ControlFlowGraph; cache: var AliasCache, alreadySeen:
 
       inc pc
     of use:
-      var newPotLastReads: IntSet
-      for r in potLastReads:
+      let potLastReadsCopy = potLastReads
+      for r in potLastReadsCopy:
         if cfg[pc].n.aliasesCached(cfg[r].n) != no or cfg[r].n.aliasesCached(cfg[pc].n) != no:
           cfg[r].n.comment = '\n' & $pc
-        else:
-          newPotLastReads.incl r
-      potLastReads = newPotLastReads
+          potLastReads.excl r
+
       potLastReads.incl pc
 
       alreadySeen.incl cfg[pc].n
