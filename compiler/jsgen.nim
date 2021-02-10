@@ -14,27 +14,28 @@ The JS code generator contains only 2 tricks:
 
 Trick 1
 -------
-Some locations (for example 'var int') require "fat pointers" (``etyBaseIndex``)
+Some locations (for example 'var int') require "fat pointers" (`etyBaseIndex`)
 which are pairs (array, index). The derefence operation is then 'array[index]'.
-Check ``mapType`` for the details.
+Check `mapType` for the details.
 
 Trick 2
 -------
 It is preferable to generate '||' and '&&' if possible since that is more
 idiomatic and hence should be friendlier for the JS JIT implementation. However
-code like ``foo and (let bar = baz())`` cannot be translated this way. Instead
-the expressions need to be transformed into statements. ``isSimpleExpr``
+code like `foo and (let bar = baz())` cannot be translated this way. Instead
+the expressions need to be transformed into statements. `isSimpleExpr`
 implements the required case distinction.
 """
 
 
 import
-  ast, strutils, trees, magicsys, options,
-  nversion, msgs, idents, types, tables,
-  ropes, math, passes, ccgutils, wordrecg, renderer,
-  intsets, cgmeth, lowerings, sighashes, modulegraphs, lineinfos, rodutils,
-  transf, injectdestructors, sourcemap, json, sets
+  ast, trees, magicsys, options,
+  nversion, msgs, idents, types,
+  ropes, passes, ccgutils, wordrecg, renderer,
+  cgmeth, lowerings, sighashes, modulegraphs, lineinfos, rodutils,
+  transf, injectdestructors, sourcemap
 
+import std/[json, sets, math, tables, intsets, strutils]
 
 from modulegraphs import ModuleGraph, PPassContext
 
@@ -1345,7 +1346,15 @@ proc genAddr(p: PProc, n: PNode, r: var TCompRes) =
   of nkStmtListExpr:
     if n.len == 1: gen(p, n[0], r)
     else: internalError(p.config, n[0].info, "genAddr for complex nkStmtListExpr")
-  else: internalError(p.config, n[0].info, "genAddr: " & $n[0].kind)
+  of nkCallKinds:
+    if n[0].typ.kind == tyOpenArray:
+      # 'var openArray' for instance produces an 'addr' but this is harmless:
+      # namely toOpenArray(a, 1, 3)
+      gen(p, n[0], r)
+    else:
+      internalError(p.config, n[0].info, "genAddr: " & $n[0].kind)
+  else:
+    internalError(p.config, n[0].info, "genAddr: " & $n[0].kind)
 
 proc attachProc(p: PProc; content: Rope; s: PSym) =
   p.g.code.add(content)
