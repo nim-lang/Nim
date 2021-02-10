@@ -515,7 +515,10 @@ template suite*(name, body) {.dirty.} =
     finally:
       suiteEnded()
 
-template exceptionTypeName(e: typed): string = $e.name
+# template exceptionTypeName(e: typed): string = $e.name
+proc exceptionTypeName(e: ref Exception): string =
+  if e == nil: "<foreign exception>"
+  else: $e.name
 
 template test*(name, body) {.dirty.} =
   ## Define a single test case identified by `name`.
@@ -552,8 +555,11 @@ template test*(name, body) {.dirty.} =
       let e = getCurrentException()
       let eTypeDesc = "[" & exceptionTypeName(e) & "]"
       checkpoint("Unhandled exception: " & getCurrentExceptionMsg() & " " & eTypeDesc)
-      var stackTrace {.inject.} = e.getStackTrace()
-      fail()
+      if e == nil: # foreign
+        fail()
+      else:
+        var stackTrace {.inject.} = e.getStackTrace()
+        fail()
 
     finally:
       if testStatusIMPL == TestStatus.FAILED:
