@@ -282,4 +282,4 @@ Conventions for multi-line statements and expressions
                  environment, processOptions)
 
 - Use `a..b` instead of `a .. b`, except when `b` contains an operator, for example `a .. -3`.
-  Likewise with `a..<b`.
+  Likewise with `a..<b`, `a..^b` and other operators starting with `..`.
