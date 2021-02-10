@@ -1291,8 +1291,6 @@ template isIndirect(x: PSym): bool =
     v.kind notin {skProc, skFunc, skConverter, skMethod, skIterator,
                   skConst, skTemp, skLet})
 
-import astalgo
-
 proc genAddr(p: PProc, n: PNode, r: var TCompRes) =
   case n[0].kind
   of nkSym:
