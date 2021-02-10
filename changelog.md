@@ -140,6 +140,8 @@ with other backends. see #9125. Use `-d:nimLegacyJsRound` for previous behavior.
 
 - Added experimental `linenoise.readLineStatus` to get line and status (e.g. ctrl-D or ctrl-C).
 
+- Added `compilesettings.SingleValueSetting.libPath`
+
 ## Language changes
 
 - `nimscript` now handles `except Exception as e`.
