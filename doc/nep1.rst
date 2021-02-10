@@ -280,3 +280,6 @@ Conventions for multi-line statements and expressions
   .. code-block:: nim
     startProcess(nimExecutable, currentDirectory, compilerArguments
                  environment, processOptions)
+
+- Use `a..b` instead of `a .. b`, except when `b` contains an operator, e.g `a .. -3`
+  Likewise with `a..<b`.
