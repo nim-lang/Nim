@@ -287,10 +287,8 @@ proc nim2pdf(src: string, dst: string, nimArgs: string) =
   let outDir = "build" / "pdflatextmp" # xxx use reusable std/private/paths shared with other modules
   # note: this will generate temporary files in gitignored `outDir`: aux toc log out tex
   exec("$# rst2tex $# --outdir:$# $#" % [findNim().quoteShell(), nimArgs, outDir.quoteShell, src.quoteShell])
-  # call LaTeX twice to get cross references right:
   let texFile = outDir / src.lastPathPart.changeFileExt("tex")
-  for i in 0..<2:
-    # xxx very verbose; consider redirecting output to a log file
+  for i in 0..<2: # call LaTeX twice to get cross references right:
     let pdflatexLog = outDir / "pdflatex.log"
     # `>` should work on windows, if not, we can use `execCmdEx`
     let cmd = "pdflatex -interaction=nonstopmode -output-directory=$# $# > $#" % [outDir.quoteShell, texFile.quoteShell, pdflatexLog.quoteShell]
