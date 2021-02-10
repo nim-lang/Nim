@@ -2055,23 +2055,23 @@ proc genMagic(p: PProc, n: PNode, r: var TCompRes) =
   of mDestroy: discard "ignore calls to the default destructor"
   of mOrd: genOrd(p, n, r)
   of mLengthStr, mLengthSeq, mLengthOpenArray, mLengthArray:
+    var x: TCompRes
+    gen(p, n[1], x)
     if skipTypes(n[1].typ, abstractInst).kind == tyCString:
-      var x: TCompRes
-      gen(p, n[1], x)
       let (a, tmp) = maybeMakeTemp(p, n[1], x)
       r.res = "(($1) == null ? 0 : ($2).length)" % [a, tmp]
-      r.kind = resExpr
     else:
-      unaryExpr(p, n, r, "", "($1).length")
+      r.res = "($1).length" % [x.rdLoc]
+    r.kind = resExpr
   of mHigh:
+    var x: TCompRes
+    gen(p, n[1], x)
     if skipTypes(n[1].typ, abstractInst).kind == tyCString:
-      var x: TCompRes
-      gen(p, n[1], x)
       let (a, tmp) = maybeMakeTemp(p, n[1], x)
-      r.res = "(($1) == null ? -1 : ($2).length-1)" % [a, tmp]
-      r.kind = resExpr
+      r.res = "(($1) == null ? -1 : ($2).length - 1)" % [a, tmp]
     else:
-      unaryExpr(p, n, r, "", "(($1).length - 1)")
+      r.res = "($1).length - 1" % [x.rdLoc]
+    r.kind = resExpr
   of mInc:
     if n[1].typ.skipTypes(abstractRange).kind in {tyUInt..tyUInt64}:
       binaryUintExpr(p, n, r, "+", true)
