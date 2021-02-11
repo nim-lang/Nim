@@ -1649,8 +1649,8 @@ proc setFilePermissions*(filename: string, permissions: set[FilePermission],
     if res2 == - 1'i32: raiseOSError(osLastError(), $(filename, permissions))
 
 proc isAdmin*: bool {.noWeirdTarget.} =
-  ## Tell whether the caller's process is a member of the Administrators local
-  ## group (on Windows) or a root (on POSIX).
+  ## Returns whether the caller's process is a member of the Administrators local
+  ## group (on Windows) or a root (on POSIX), via `geteuid() == 0`.
   when defined(windows):
     # Rewrite of the example from Microsoft Docs:
     # https://docs.microsoft.com/en-us/windows/win32/api/securitybaseapi/nf-securitybaseapi-checktokenmembership#examples
