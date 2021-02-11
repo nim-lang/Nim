@@ -11,8 +11,9 @@
 
 const
   NimbleStableCommit = "324de9202fb3db82b266e7350731d1ec41013a2b" # master
-  FusionStableCommit = "372ee4313827ef9f2ea388840f7d6b46c2b1b014"
-
+  # examples of possible values: #head, #ea82b54, 1.2.3
+  FusionStableHash = "#372ee4313827ef9f2ea388840f7d6b46c2b1b014"
+  HeadHash = "#head"
 when not defined(windows):
   const
     Z3StableCommit = "65de3f748a6812eecd7db7c478d5fc54424d368b" # the version of Z3 that DrNim uses
@@ -66,7 +67,8 @@ Possible Commands:
                            e.g. nimble)
                            doesn't require network connectivity
   nimble                   builds the Nimble tool
-  fusion                   clone fusion into the working tree
+  fusion                   installs fusion via Nimble
+
 Boot options:
   -d:release               produce a release version of the compiler
   -d:nimUseLinenoise       use the linenoise library for interactive mode
@@ -180,14 +182,7 @@ proc bundleWinTools(args: string) =
     nimCompile(r"tools\downloader.nim",
                options = r"--cc:vcc --app:gui -d:ssl --noNimblePath --path:..\ui " & args)
 
-proc bundleFusion(latest: bool) =
-  let commit = if latest: "HEAD" else: FusionStableCommit
-  cloneDependency(distDir, "https://github.com/nim-lang/fusion.git", commit,
-                  allowBundled = true)
-  copyDir(distDir / "fusion" / "src" / "fusion", "lib" / "fusion")
-
 proc zip(latest: bool; args: string) =
-  bundleFusion(latest)
   bundleNimbleExe(latest, args)
   bundleNimsuggest(args)
   bundleNimpretty(args)
@@ -227,7 +222,6 @@ proc buildTools(args: string = "") =
                  options = "-d:release " & args)
 
 proc nsis(latest: bool; args: string) =
-  bundleFusion(latest)
   bundleNimbleExe(latest, args)
   bundleNimsuggest(args)
   bundleWinTools(args)
@@ -694,12 +688,13 @@ when isMainModule:
       of "tools":
         buildTools(op.cmdLineRest)
         bundleNimbleExe(latest, op.cmdLineRest)
-        bundleFusion(latest)
       of "pushcsource", "pushcsources": pushCsources()
       of "valgrind": valgrind(op.cmdLineRest)
       of "c2nim": bundleC2nim(op.cmdLineRest)
       of "drnim": buildDrNim(op.cmdLineRest)
-      of "fusion": bundleFusion(latest)
+      of "fusion":
+        let suffix = if latest: HeadHash else: FusionStableHash
+        exec("nimble install -y fusion@$#" % suffix)
       else: showHelp()
       break
     of cmdEnd: break
