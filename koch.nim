@@ -284,6 +284,13 @@ proc thVersion(i: int): string =
 template doUseCpp(): bool = getEnv("NIM_COMPILE_TO_CPP", "false") == "true"
 
 proc boot(args: string) =
+  ## bootstrapping is a process that involves 3 steps:
+  ## 1. use csources to produce nim1.exe. This nim1.exe is buggy but
+  ## rock solid for building a Nim compiler. It shouldn't be used for anything else.
+  ## 2. use nim1.exe to produce nim2.exe. nim2.exe is the one you really need.
+  ## 3. We use nim2.exe to build nim3.exe. nim3.exe is equal to nim2.exe except for timestamps.
+  ## This step ensures a minimum amount of quality. We know that nim2.exe can be used
+  ## for Nim compiler development.
   var output = "compiler" / "nim".exe
   var finalDest = "bin" / "nim".exe
   # default to use the 'c' command:
