@@ -269,7 +269,8 @@ proc useVarNoInitCheck(a: PEffects; n: PNode; s: PSym) =
       markSideEffect(a, s)
     else:
       markSideEffect(a, s)
-  if s.owner != a.owner and s.kind in {skVar, skLet, skForVar, skResult, skParam}:
+  if s.owner != a.owner and s.kind in {skVar, skLet, skForVar, skResult, skParam} and
+     {sfGlobal, sfThread} * s.flags == {}:
     a.isInnerProc = true
 
 proc useVar(a: PEffects, n: PNode) =
