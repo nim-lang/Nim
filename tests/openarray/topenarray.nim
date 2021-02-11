@@ -9,9 +9,7 @@ proc fn2[T](a: var openArray[T]): seq[T] =
   for ai in a: result.add ai
 
 proc fn3[T](a: var openArray[T]) =
-  echo a
   for i, ai in mpairs(a): ai = i * 10
-  echo a
 
 proc main =
   var a = [1,2,3,4,5]
