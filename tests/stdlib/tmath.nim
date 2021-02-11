@@ -6,9 +6,7 @@ discard """
 # xxx: there should be a test with `-d:nimTmathCase2 -d:danger --passc:-ffast-math`,
 # but it requires disabling certain lines with `when not defined(nimTmathCase2)`
 
-import std/[math, random, os]
-import std/[unittest]
-import std/[sets, tables]
+import std/[math, random, os, sets, tables]
 
 
 # Function for approximate comparison of floats
@@ -20,24 +18,24 @@ block: # random int
 
     for i in 1..1000:
       incl(set, rand(high(int)))
-    check len(set) == 1000
+    doAssert len(set) == 1000
 
   block: # single number bounds work
     var rand: int
     for i in 1..1000:
       rand = rand(1000)
-      check rand < 1000
-      check rand > -1
+      doAssert rand < 1000
+      doAssert rand > -1
 
   block: # slice bounds work
     var rand: int
     for i in 1..1000:
       rand = rand(100..1000)
       when defined(js): # xxx bug: otherwise fails
-        check rand <= 1000
+        doAssert rand <= 1000
       else:
-        check rand < 1000
-      check rand >= 100
+        doAssert rand < 1000
+      doAssert rand >= 100
 
   block: # again gives new numbers
     var rand1 = rand(1000000)
@@ -45,7 +43,7 @@ block: # random int
       os.sleep(200)
 
     var rand2 = rand(1000000)
-    check rand1 != rand2
+    doAssert rand1 != rand2
 
 
 block: # random float
@@ -54,21 +52,21 @@ block: # random float
 
     for i in 1..100:
       incl(set, rand(1.0))
-    check len(set) == 100
+    doAssert len(set) == 100
 
   block: # single number bounds work
     var rand: float
     for i in 1..1000:
       rand = rand(1000.0)
-      check rand < 1000.0
-      check rand > -1.0
+      doAssert rand < 1000.0
+      doAssert rand > -1.0
 
   block: # slice bounds work
     var rand: float
     for i in 1..1000:
       rand = rand(100.0..1000.0)
-      check rand < 1000.0
-      check rand >= 100.0
+      doAssert rand < 1000.0
+      doAssert rand >= 100.0
 
   block: # again gives new numbers
 
@@ -77,86 +75,96 @@ block: # random float
       os.sleep(200)
 
     var rand2:float = rand(1000000.0)
-    check rand1 != rand2
+    doAssert rand1 != rand2
 
 block: # cumsum
   block: # cumsum int seq return
-    let counts = [ 1, 2, 3, 4 ]
-    check counts.cumsummed == [ 1, 3, 6, 10 ]
+    let counts = [1, 2, 3, 4]
+    doAssert counts.cumsummed == @[1, 3, 6, 10]
+    let empty: seq[int] = @[]
+    doAssert empty.cumsummed == @[]
 
   block: # cumsum float seq return
-    let counts = [ 1.0, 2.0, 3.0, 4.0 ]
-    check counts.cumsummed == [ 1.0, 3.0, 6.0, 10.0 ]
+    let counts = [1.0, 2.0, 3.0, 4.0]
+    doAssert counts.cumsummed == @[1.0, 3.0, 6.0, 10.0]
+    let empty: seq[float] = @[]
+    doAssert empty.cumsummed == @[]
 
   block: # cumsum int in-place
-    var counts = [ 1, 2, 3, 4 ]
+    var counts = [1, 2, 3, 4]
     counts.cumsum
-    check counts == [ 1, 3, 6, 10 ]
+    doAssert counts == [1, 3, 6, 10]
+    var empty: seq[int] = @[]
+    empty.cumsum
+    doAssert empty == @[]
 
   block: # cumsum float in-place
-    var counts = [ 1.0, 2.0, 3.0, 4.0 ]
+    var counts = [1.0, 2.0, 3.0, 4.0]
     counts.cumsum
-    check counts == [ 1.0, 3.0, 6.0, 10.0 ]
+    doAssert counts == [1.0, 3.0, 6.0, 10.0]
+    var empty: seq[float] = @[]
+    empty.cumsum
+    doAssert empty == @[]
 
 block: # random sample
   block: # "non-uniform array sample unnormalized int CDF
-    let values = [ 10, 20, 30, 40, 50 ] # values
-    let counts = [ 4, 3, 2, 1, 0 ]      # weights aka unnormalized probabilities
+    let values = [10, 20, 30, 40, 50] # values
+    let counts = [4, 3, 2, 1, 0]      # weights aka unnormalized probabilities
     var histo = initCountTable[int]()
-    let cdf = counts.cumsummed          # unnormalized CDF
+    let cdf = counts.cumsummed        # unnormalized CDF
     for i in 0 ..< 5000:
       histo.inc(sample(values, cdf))
-    check histo.len == 4                # number of non-zero in `counts`
+    doAssert histo.len == 4              # number of non-zero in `counts`
     # Any one bin is a binomial random var for n samples, each with prob p of
     # adding a count to k; E[k]=p*n, Var k=p*(1-p)*n, approximately Normal for
     # big n.  So, P(abs(k - p*n)/sqrt(p*(1-p)*n))>3.0) =~ 0.0027, while
     # P(wholeTestFails) =~ 1 - P(binPasses)^4 =~ 1 - (1-0.0027)^4 =~ 0.01.
     for i, c in counts:
       if c == 0:
-        check values[i] notin histo
+        doAssert values[i] notin histo
         continue
       let p = float(c) / float(cdf[^1])
       let n = 5000.0
       let expected = p * n
       let stdDev = sqrt(n * p * (1.0 - p))
-      check abs(float(histo[values[i]]) - expected) <= 3.0 * stdDev
+      doAssert abs(float(histo[values[i]]) - expected) <= 3.0 * stdDev
 
   block: # non-uniform array sample normalized float CDF
-    let values = [ 10, 20, 30, 40, 50 ]     # values
-    let counts = [ 0.4, 0.3, 0.2, 0.1, 0 ]  # probabilities
+    let values = [10, 20, 30, 40, 50]     # values
+    let counts = [0.4, 0.3, 0.2, 0.1, 0]  # probabilities
     var histo = initCountTable[int]()
-    let cdf = counts.cumsummed              # normalized CDF
+    let cdf = counts.cumsummed            # normalized CDF
     for i in 0 ..< 5000:
       histo.inc(sample(values, cdf))
-    check histo.len == 4                    # number of non-zero in ``counts``
+    doAssert histo.len == 4                  # number of non-zero in ``counts``
     for i, c in counts:
       if c == 0:
-        check values[i] notin histo
+        doAssert values[i] notin histo
         continue
       let p = float(c) / float(cdf[^1])
       let n = 5000.0
       let expected = p * n
       let stdDev = sqrt(n * p * (1.0 - p))
       # NOTE: like unnormalized int CDF test, P(wholeTestFails) =~ 0.01.
-      check abs(float(histo[values[i]]) - expected) <= 3.0 * stdDev
+      doAssert abs(float(histo[values[i]]) - expected) <= 3.0 * stdDev
 
 block: # ^
   block: # compiles for valid types
-    check: compiles(5 ^ 2)
-    check: compiles(5.5 ^ 2)
-    check: compiles(5.5 ^ 2.int8)
-    check: compiles(5.5 ^ 2.uint)
-    check: compiles(5.5 ^ 2.uint8)
-    check: not compiles(5.5 ^ 2.2)
+    doAssert: compiles(5 ^ 2)
+    doAssert: compiles(5.5 ^ 2)
+    doAssert: compiles(5.5 ^ 2.int8)
+    doAssert: compiles(5.5 ^ 2.uint)
+    doAssert: compiles(5.5 ^ 2.uint8)
+    doAssert: not compiles(5.5 ^ 2.2)
 
 block:
   when not defined(js):
-    # Check for no side effect annotation
+    # doAssert for no side effect annotation
     proc mySqrt(num: float): float {.noSideEffect.} =
       # xxx unused
       return sqrt(num)
 
-    # check gamma function
+    # doAssert gamma function
     doAssert(gamma(5.0) == 24.0) # 4!
     doAssert(lgamma(1.0) == 0.0) # ln(1.0) == 0.0
     doAssert(erf(6.0) > erf(5.0))
@@ -310,6 +318,8 @@ template main =
     doAssert NaN.isNaN
     doAssert not Inf.isNaN
     doAssert isNaN(Inf - Inf)
+    doAssert not isNaN(3.1415926)
+    doAssert not isNaN(0'f32)
 
   block: # signbit
     let x1 = NaN
@@ -324,16 +334,19 @@ template main =
     doAssert signbit(x3)
 
   block: # copySign
+    doAssert copySign(10.0, 1.0) == 10.0
     doAssert copySign(10.0, -1.0) == -10.0
     doAssert copySign(-10.0, -1.0) == -10.0
     doAssert copySign(-10.0, 1.0) == 10.0
     doAssert copySign(float(10), -1.0) == -10.0
 
+    doAssert copySign(10.0'f64, 1.0) == 10.0
     doAssert copySign(10.0'f64, -1.0) == -10.0
     doAssert copySign(-10.0'f64, -1.0) == -10.0
     doAssert copySign(-10.0'f64, 1.0) == 10.0
     doAssert copySign(10'f64, -1.0) == -10.0
 
+    doAssert copySign(10.0'f32, 1.0) == 10.0
     doAssert copySign(10.0'f32, -1.0) == -10.0
     doAssert copySign(-10.0'f32, -1.0) == -10.0
     doAssert copySign(-10.0'f32, 1.0) == 10.0
@@ -363,37 +376,47 @@ template main =
     doAssert copySign(-NaN, 0.0).isNaN
     doAssert copySign(-NaN, -0.0).isNaN
 
-    block: # round() tests
-      block: # Round to 0 decimal places
-        doAssert round(54.652) == 55.0
-        doAssert round(54.352) == 54.0
-        doAssert round(-54.652) == -55.0
-        doAssert round(-54.352) == -54.0
-        doAssert round(0.0) == 0.0
-        doAssert 1 / round(0.0) == Inf
-        doAssert 1 / round(-0.0) == -Inf
-        doAssert round(Inf) == Inf
-        doAssert round(-Inf) == -Inf
-        doAssert round(NaN).isNaN
-        doAssert round(-NaN).isNaN
-        doAssert round(-0.5) == -1.0
-        doAssert round(0.5) == 1.0
-        doAssert round(-1.5) == -2.0
-        doAssert round(1.5) == 2.0
-        doAssert round(-2.5) == -3.0
-        doAssert round(2.5) == 3.0
-        doAssert round(2.5'f32) == 3.0'f32
-        doAssert round(2.5'f64) == 3.0'f64
-      block: # func round*[T: float32|float64](x: T, places: int): T
-        doAssert round(54.345, 0) == 54.0
-        template fn(x) =
-          doAssert round(x, 2).almostEqual 54.35
-          doAssert round(x, 2).almostEqual 54.35
-          doAssert round(x, -1).almostEqual 50.0
-          doAssert round(x, -2).almostEqual 100.0
-          doAssert round(x, -3).almostEqual 0.0
-        fn(54.346)
-        fn(54.346'f32)
+  block: # almostEqual
+    doAssert almostEqual(3.141592653589793, 3.1415926535897936)
+    doAssert almostEqual(1.6777215e7'f32, 1.6777216e7'f32)
+    doAssert almostEqual(Inf, Inf)
+    doAssert almostEqual(-Inf, -Inf)
+    doAssert not almostEqual(Inf, -Inf)
+    doAssert not almostEqual(-Inf, Inf)
+    doAssert not almostEqual(Inf, NaN)
+    doAssert not almostEqual(NaN, NaN)
+
+  block: # round() tests
+    block: # Round to 0 decimal places
+      doAssert round(54.652) == 55.0
+      doAssert round(54.352) == 54.0
+      doAssert round(-54.652) == -55.0
+      doAssert round(-54.352) == -54.0
+      doAssert round(0.0) == 0.0
+      doAssert 1 / round(0.0) == Inf
+      doAssert 1 / round(-0.0) == -Inf
+      doAssert round(Inf) == Inf
+      doAssert round(-Inf) == -Inf
+      doAssert round(NaN).isNaN
+      doAssert round(-NaN).isNaN
+      doAssert round(-0.5) == -1.0
+      doAssert round(0.5) == 1.0
+      doAssert round(-1.5) == -2.0
+      doAssert round(1.5) == 2.0
+      doAssert round(-2.5) == -3.0
+      doAssert round(2.5) == 3.0
+      doAssert round(2.5'f32) == 3.0'f32
+      doAssert round(2.5'f64) == 3.0'f64
+    block: # func round*[T: float32|float64](x: T, places: int): T
+      doAssert round(54.345, 0) == 54.0
+      template fn(x) =
+        doAssert round(x, 2).almostEqual 54.35
+        doAssert round(x, 2).almostEqual 54.35
+        doAssert round(x, -1).almostEqual 50.0
+        doAssert round(x, -2).almostEqual 100.0
+        doAssert round(x, -3).almostEqual 0.0
+      fn(54.346)
+      fn(54.346'f32)
 
     when nimvm:
       discard
@@ -415,6 +438,31 @@ template main =
     doAssert abs(-Inf) == Inf
     doAssert abs(NaN).isNaN
     doAssert abs(-NaN).isNaN
+
+  block: # classify
+    doAssert classify(0.3) == fcNormal
+    doAssert classify(-0.3) == fcNormal
+    doAssert classify(5.0e-324) == fcSubnormal
+    doAssert classify(-5.0e-324) == fcSubnormal
+    doAssert classify(0.0) == fcZero
+    doAssert classify(-0.0) == fcNegZero
+    doAssert classify(NaN) == fcNan
+    doAssert classify(0.3 / 0.0) == fcInf
+    doAssert classify(Inf) == fcInf
+    doAssert classify(-0.3 / 0.0) == fcNegInf
+    doAssert classify(-Inf) == fcNegInf
+
+  block: # sum
+    let empty: seq[int] = @[]
+    doAssert sum(empty) == 0
+    doAssert sum([1, 2, 3, 4]) == 10
+    doAssert sum([-4, 3, 5]) == 4
+
+  block: # prod
+    let empty: seq[int] = @[]
+    doAssert prod(empty) == 1
+    doAssert prod([1, 2, 3, 4]) == 24
+    doAssert prod([-4, 3, 5]) == -60
 
 static: main()
 main()
