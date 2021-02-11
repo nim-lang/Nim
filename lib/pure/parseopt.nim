@@ -192,17 +192,15 @@ proc parseWord(s: string, i: int, w: var string,
       add(w, s[result])
       inc(result)
 
-when declared(os.paramCount):
-  # we cannot provide this for NimRtl creation on Posix, because we can't
-  # access the command line arguments then!
-
+when declared(os.paramCount) or (NimMajor, NimMinor, NimPatch) >= (1, 5, 1):
   proc initOptParser*(cmdline = "", shortNoVal: set[char] = {},
                       longNoVal: seq[string] = @[];
                       allowWhitespaceAfterColon = true): OptParser =
     ## Initializes the command line parser.
     ##
     ## If ``cmdline == ""``, the real command line as provided by the
-    ## ``os`` module is retrieved instead.
+    ## ``os`` module is retrieved instead if it is available. If the
+    ## command line is not available, a `ValueError` will be raised.
     ##
     ## ``shortNoVal`` and ``longNoVal`` are used to specify which options
     ## do not take values. See the `documentation about these
@@ -226,9 +224,15 @@ when declared(os.paramCount):
     if cmdline != "":
       result.cmds = parseCmdLine(cmdline)
     else:
-      result.cmds = newSeq[string](os.paramCount())
-      for i in countup(1, os.paramCount()):
-        result.cmds[i-1] = os.paramStr(i)
+      when declared(paramCount) or (NimMajor, NimMinor, NimPatch) < (1, 5, 1):
+        result.cmds = newSeq[string](paramCount())
+        for i in countup(1, paramCount()):
+          result.cmds[i-1] = paramStr(i)
+      else:
+        # we cannot provide this for NimRtl creation on Posix, because we can't
+        # access the command line arguments then!
+        raise newException(ValueError, "empty command line given but" &
+          " real command line is not accessible")
 
     result.kind = cmdEnd
     result.key = ""
@@ -240,8 +244,10 @@ when declared(os.paramCount):
     ## Initializes the command line parser.
     ##
     ## If ``cmdline.len == 0``, the real command line as provided by the
-    ## ``os`` module is retrieved instead. Behavior of the other parameters
-    ## remains the same as in `initOptParser(string, ...)
+    ## ``os`` module is retrieved instead if it is available. If the
+    ## command line is not available, a `ValueError` will be raised.
+    ## Behavior of the other parameters remains the same as in
+    ## `initOptParser(string, ...)
     ## <#initOptParser,string,set[char],seq[string]>`_.
     ##
     ## See also:
@@ -263,9 +269,15 @@ when declared(os.paramCount):
       for i in 0..<cmdline.len:
         result.cmds[i] = cmdline[i]
     else:
-      result.cmds = newSeq[string](os.paramCount())
-      for i in countup(1, os.paramCount()):
-        result.cmds[i-1] = os.paramStr(i)
+      when declared(paramCount) or (NimMajor, NimMinor, NimPatch) < (1, 5, 1):
+        result.cmds = newSeq[string](paramCount())
+        for i in countup(1, paramCount()):
+          result.cmds[i-1] = paramStr(i)
+      else:
+        # we cannot provide this for NimRtl creation on Posix, because we can't
+        # access the command line arguments then!
+        raise newException(ValueError, "empty command line given but" &
+          " real command line is not accessible")
     result.kind = cmdEnd
     result.key = ""
     result.val = ""
@@ -366,23 +378,24 @@ proc next*(p: var OptParser) {.rtl, extern: "npo$1".} =
     inc p.idx
     p.pos = 0
 
-proc cmdLineRest*(p: OptParser): string {.rtl, extern: "npo$1".} =
-  ## Retrieves the rest of the command line that has not been parsed yet.
-  ##
-  ## See also:
-  ## * `remainingArgs proc<#remainingArgs,OptParser>`_
-  ##
-  ## **Examples:**
-  ##
-  ## .. code-block::
-  ##   var p = initOptParser("--left -r:2 -- foo.txt bar.txt")
-  ##   while true:
-  ##     p.next()
-  ##     if p.kind == cmdLongOption and p.key == "":  # Look for "--"
-  ##       break
-  ##     else: continue
-  ##   doAssert p.cmdLineRest == "foo.txt bar.txt"
-  result = p.cmds[p.idx .. ^1].quoteShellCommand
+when declared(quoteShellCommand) or (NimMajor, NimMinor, NimPatch) < (1, 5, 1):
+  proc cmdLineRest*(p: OptParser): string {.rtl, extern: "npo$1".} =
+    ## Retrieves the rest of the command line that has not been parsed yet.
+    ##
+    ## See also:
+    ## * `remainingArgs proc<#remainingArgs,OptParser>`_
+    ##
+    ## **Examples:**
+    ##
+    ## .. code-block::
+    ##   var p = initOptParser("--left -r:2 -- foo.txt bar.txt")
+    ##   while true:
+    ##     p.next()
+    ##     if p.kind == cmdLongOption and p.key == "":  # Look for "--"
+    ##       break
+    ##     else: continue
+    ##   doAssert p.cmdLineRest == "foo.txt bar.txt"
+    result = p.cmds[p.idx .. ^1].quoteShellCommand
 
 proc remainingArgs*(p: OptParser): seq[string] {.rtl, extern: "npo$1".} =
   ## Retrieves a sequence of the arguments that have not been parsed yet.
@@ -442,10 +455,10 @@ iterator getopt*(p: var OptParser): tuple[kind: CmdLineKind, key,
     if p.kind == cmdEnd: break
     yield (p.kind, p.key, p.val)
 
-when declared(initOptParser):
+when (NimMajor, NimMinor, NimPatch) >= (1, 5, 1) or declared(initOptParser):
   iterator getopt*(cmdline: seq[string] = commandLineParams(),
-                   shortNoVal: set[char] = {}, longNoVal: seq[string] = @[]):
-             tuple[kind: CmdLineKind, key, val: string] =
+                    shortNoVal: set[char] = {}, longNoVal: seq[string] = @[]):
+              tuple[kind: CmdLineKind, key, val: string] =
     ## Convenience iterator for iterating over command line arguments.
     ##
     ## This creates a new `OptParser<#OptParser>`_. If no command line

@@ -144,6 +144,12 @@ with other backends. see #9125. Use `-d:nimLegacyJsRound` for previous behavior.
   issues like https://github.com/nim-lang/Nim/issues/13063 (which affected error messages)
   for modules importing `std/wrapnils`.
 
+- `parseopt.initOptParser` is now available on all backends. Previously it was
+  unavailable if the `os` module did not have `paramCount` or `paramStr`, but
+  the use of these procs in `initOptParser` were conditionally to the runtime
+  arguments passed to it, so `initOptParser` has been changed to raise
+  `ValueError` when the real command line is not available.
+
 ## Language changes
 
 - `nimscript` now handles `except Exception as e`.

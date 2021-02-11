@@ -48,7 +48,7 @@ import std/[
 
   # Parsers:
   htmlparser, json, lexbase, parsecfg, parsecsv, parsesql, parsexml,
-  # fails: parseopt
+  parseopt,
 
   # XML processing:
   xmltree, xmlparser,
@@ -114,3 +114,7 @@ block:  # cpDir, cpFile, dirExists, fileExists, mkDir, mvDir, mvFile, rmDir, rmF
   doAssert dirExists(subDir2)
   mvDir(subDir2, subDir)
   rmDir(dname)
+
+block:
+  # check ValueError is not raised:
+  discard initOptParser()
