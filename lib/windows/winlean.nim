@@ -25,6 +25,7 @@ when useWinUnicode:
 else:
   type WinChar* = char
 
+# See https://docs.microsoft.com/en-us/windows/win32/winprog/windows-data-types
 type
   Handle* = int
   LONG* = int32
@@ -41,7 +42,7 @@ type
   PULONG_PTR* = ptr uint
   HDC* = Handle
   HGLRC* = Handle
-  BYTE* = uint8
+  BYTE* = cuchar
 
   SECURITY_ATTRIBUTES* {.final, pure.} = object
     nLength*: int32

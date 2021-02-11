@@ -1656,11 +1656,11 @@ proc isAdmin*: bool {.noWeirdTarget.} =
     # https://docs.microsoft.com/en-us/windows/win32/api/securitybaseapi/nf-securitybaseapi-checktokenmembership#examples
     var b: WINBOOL
     var ntAuthority = SID_IDENTIFIER_AUTHORITY(value: [
-      0'u8, 0'u8, 0'u8, 0'u8, 0'u8, BYTE(SECURITY_NT_AUTHORITY)
+      BYTE(0), BYTE(0), BYTE(0), BYTE(0), BYTE(0), BYTE(SECURITY_NT_AUTHORITY)
     ])
     var administratorsGroup: PSID
     b = AllocateAndInitializeSid(addr ntAuthority,
-                                 2,
+                                 BYTE(2),
                                  SECURITY_BUILTIN_DOMAIN_RID,
                                  DOMAIN_ALIAS_RID_ADMINS,
                                  0, 0, 0, 0, 0, 0,
