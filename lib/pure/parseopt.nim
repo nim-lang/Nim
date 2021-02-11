@@ -456,7 +456,7 @@ iterator getopt*(p: var OptParser): tuple[kind: CmdLineKind, key,
     yield (p.kind, p.key, p.val)
 
 when (NimMajor, NimMinor, NimPatch) >= (1, 5, 1) or declared(initOptParser):
-  iterator getopt*(cmdline: seq[string] = commandLineParams(),
+  iterator getopt*(cmdline: seq[string] = @[],
                    shortNoVal: set[char] = {}, longNoVal: seq[string] = @[]):
              tuple[kind: CmdLineKind, key, val: string] =
     ## Convenience iterator for iterating over command line arguments.

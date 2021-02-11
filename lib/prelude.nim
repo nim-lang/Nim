@@ -17,7 +17,9 @@
 ##
 ## .. code-block:: nim
 ##   import os, strutils, times, parseutils, hashes, tables, sets, sequtils
-##   when not defined(js): import parseopt
+##   when not defined(js) or (NimMajor, NimMinor, NimPatch) >= (1, 5, 1):
+##     import parseopt
 
 import os, strutils, times, parseutils, hashes, tables, sets, sequtils
-when not defined(js): import parseopt
+when not defined(js) or (NimMajor, NimMinor, NimPatch) >= (1, 5, 1):
+  import parseopt
