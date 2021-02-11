@@ -724,6 +724,7 @@ proc match(p: RstParser, start: int, expr: string): bool =
   # ' '              tkWhite
   # 'a'              tkAdornment
   # 'i'              tkIndent
+  # 'I'              tkIndent or tkEof
   # 'p'              tkPunct
   # 'T'              always true
   # 'E'              whitespace, indent or eof
@@ -738,6 +739,7 @@ proc match(p: RstParser, start: int, expr: string): bool =
     of 'w': result = p.tok[j].kind == tkWord
     of ' ': result = p.tok[j].kind == tkWhite
     of 'i': result = p.tok[j].kind == tkIndent
+    of 'I': result = p.tok[j].kind in {tkIndent, tkEof}
     of 'p': result = p.tok[j].kind == tkPunct
     of 'a': result = p.tok[j].kind == tkAdornment
     of 'o': result = p.tok[j].kind == tkOther
@@ -1266,7 +1268,7 @@ proc whichSection(p: RstParser): RstNodeKind =
      return rnDirective
   case currentTok(p).kind
   of tkAdornment:
-    if match(p, p.idx + 1, "ii") and currentTok(p).symbol.len >= 4:
+    if match(p, p.idx + 1, "iI") and currentTok(p).symbol.len >= 4:
       result = rnTransition
     elif match(p, p.idx, "+a+"):
       result = rnGridTable
@@ -1286,7 +1288,7 @@ proc whichSection(p: RstParser): RstNodeKind =
       result = rnMarkdownTable
     elif currentTok(p).symbol == "|" and isLineBlock(p):
       result = rnLineBlock
-    elif match(p, tokenAfterNewline(p), "ai") and
+    elif match(p, tokenAfterNewline(p), "aI") and
         isAdornmentHeadline(p, tokenAfterNewline(p)):
       result = rnHeadline
     elif predNL(p) and
@@ -1306,7 +1308,7 @@ proc whichSection(p: RstParser): RstNodeKind =
       result = rnParagraph
   of tkWord, tkOther, tkWhite:
     let tokIdx = tokenAfterNewline(p)
-    if match(p, tokIdx, "ai"):
+    if match(p, tokIdx, "aI"):
       if isAdornmentHeadline(p, tokIdx): result = rnHeadline
       else: result = rnParagraph
     elif match(p, p.idx, "e) ") or match(p, p.idx, "e. "): result = rnEnumList
