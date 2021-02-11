@@ -21,7 +21,7 @@ proc main =
 # and 64 bit versions of nimsuggest
 
 discard """
-disabled: true
+disabled:true
 $nimsuggest --tester --maxresults:4 $file
 >sug $1
 sug;;skProc;;tables.hasKey;;proc (t: Table[hasKey.A, hasKey.B], key: A): bool;;*/lib/pure/collections/tables.nim;;374;;5;;"Returns true *";;100;;None
