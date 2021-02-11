@@ -1997,7 +1997,9 @@ proc genMagic(p: PProc, n: PNode, r: var TCompRes) =
     gen(p, n[2], rhs)
 
     if skipTypes(n[1].typ, abstractVarRange).kind == tyCString:
-      r.res = "$1 += $2;" % [lhs.rdLoc, rhs.rdLoc]
+      let (b, tmp) = maybeMakeTemp(p, n[2], rhs)
+      r.res = "if (null != $1) { if (null == $2) $2 = $3; else $2 += $3; }" %
+        [b, lhs.rdLoc, tmp]
     else:
       let (a, tmp) = maybeMakeTemp(p, n[1], lhs)
       r.res = "$1.push.apply($3, $2);" % [a, rhs.rdLoc, tmp]
@@ -2048,9 +2050,23 @@ proc genMagic(p: PProc, n: PNode, r: var TCompRes) =
   of mDestroy: discard "ignore calls to the default destructor"
   of mOrd: genOrd(p, n, r)
   of mLengthStr, mLengthSeq, mLengthOpenArray, mLengthArray:
-    unaryExpr(p, n, r, "", "($1).length")
+    var x: TCompRes
+    gen(p, n[1], x)
+    if skipTypes(n[1].typ, abstractInst).kind == tyCString:
+      let (a, tmp) = maybeMakeTemp(p, n[1], x)
+      r.res = "(($1) == null ? 0 : ($2).length)" % [a, tmp]
+    else:
+      r.res = "($1).length" % [x.rdLoc]
+    r.kind = resExpr
   of mHigh:
-    unaryExpr(p, n, r, "", "(($1).length-1)")
+    var x: TCompRes
+    gen(p, n[1], x)
+    if skipTypes(n[1].typ, abstractInst).kind == tyCString:
+      let (a, tmp) = maybeMakeTemp(p, n[1], x)
+      r.res = "(($1) == null ? -1 : ($2).length - 1)" % [a, tmp]
+    else:
+      r.res = "($1).length - 1" % [x.rdLoc]
+    r.kind = resExpr
   of mInc:
     if n[1].typ.skipTypes(abstractRange).kind in {tyUInt..tyUInt64}:
       binaryUintExpr(p, n, r, "+", true)
