@@ -154,6 +154,8 @@ provided by the operating system.
   arguments passed to it, so `initOptParser` has been changed to raise
   `ValueError` when the real command line is not available. `parseopt` was
   previously excluded from `prelude` for JS, as it could not be imported.
+- Added `os.isAdmin` to tell whether the caller's process is a member of the
+  Administrators local group (on Windows) or a root (on POSIX).
 
 ## Language changes
 

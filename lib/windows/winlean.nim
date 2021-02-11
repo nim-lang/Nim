@@ -33,6 +33,7 @@ type
   WINBOOL* = int32
     ## `WINBOOL` uses opposite convention as posix, !=0 meaning success.
     # xxx this should be distinct int32, distinct would make code less error prone
+  PBOOL* = ptr WINBOOL
   DWORD* = int32
   PDWORD* = ptr DWORD
   LPINT* = ptr int32
@@ -40,6 +41,7 @@ type
   PULONG_PTR* = ptr uint
   HDC* = Handle
   HGLRC* = Handle
+  BYTE* = uint8
 
   SECURITY_ATTRIBUTES* {.final, pure.} = object
     nLength*: int32
@@ -1128,6 +1130,40 @@ type
 proc setFileTime*(hFile: Handle, lpCreationTime: LPFILETIME,
                  lpLastAccessTime: LPFILETIME, lpLastWriteTime: LPFILETIME): WINBOOL
      {.stdcall, dynlib: "kernel32", importc: "SetFileTime".}
+
+type
+  SID_IDENTIFIER_AUTHORITY* = object
+    value*: array[6, BYTE]
+  PSID_IDENTIFIER_AUTHORITY* = ptr SID_IDENTIFIER_AUTHORITY
+  SID* = object
+    revision: BYTE
+    subAuthorityCount: BYTE
+    identifierAuthority: SID_IDENTIFIER_AUTHORITY
+    subAuthority: ptr ptr DWORD
+  PSID* = ptr SID
+
+const
+  # https://docs.microsoft.com/en-us/windows/win32/secauthz/sid-components
+  SECURITY_NT_AUTHORITY* = 5
+  SECURITY_BUILTIN_DOMAIN_RID* = 32
+  DOMAIN_ALIAS_RID_ADMINS* = 544
+
+proc AllocateAndInitializeSid*(pIdentifierAuthority: PSID_IDENTIFIER_AUTHORITY,
+                               nSubAuthorityCount: BYTE,
+                               nSubAuthority0: DWORD,
+                               nSubAuthority1: DWORD,
+                               nSubAuthority2: DWORD,
+                               nSubAuthority3: DWORD,
+                               nSubAuthority4: DWORD,
+                               nSubAuthority5: DWORD,
+                               nSubAuthority6: DWORD,
+                               nSubAuthority7: DWORD,
+                               pSid: ptr PSID): WINBOOL
+     {.stdcall, dynlib: "Advapi32", importc.}
+proc CheckTokenMembership*(tokenHandle: Handle, sidToCheck: PSID,
+                           isMember: PBOOL): WINBOOL
+     {.stdcall, dynlib: "Advapi32", importc.}
+proc FreeSid*(pSid: PSID): PSID {.stdcall, dynlib: "Advapi32", importc.}
 
 when defined(nimHasStyleChecks):
   {.pop.} # {.push styleChecks: off.}

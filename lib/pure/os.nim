@@ -1648,6 +1648,31 @@ proc setFilePermissions*(filename: string, permissions: set[FilePermission],
       var res2 = setFileAttributesA(filename, res)
     if res2 == - 1'i32: raiseOSError(osLastError(), $(filename, permissions))
 
+proc isAdmin*: bool {.noWeirdTarget.} =
+  ## Tell whether the caller's process is a member of the Administrators local
+  ## group (on Windows) or a root (on POSIX).
+  when defined(windows):
+    # Rewrite of the example from Microsoft Docs:
+    # https://docs.microsoft.com/en-us/windows/win32/api/securitybaseapi/nf-securitybaseapi-checktokenmembership#examples
+    var b: WINBOOL
+    var ntAuthority = SID_IDENTIFIER_AUTHORITY(value: [
+      0'u8, 0'u8, 0'u8, 0'u8, 0'u8, BYTE(SECURITY_NT_AUTHORITY)
+    ])
+    var administratorsGroup: PSID
+    b = AllocateAndInitializeSid(addr ntAuthority,
+                                 2,
+                                 SECURITY_BUILTIN_DOMAIN_RID,
+                                 DOMAIN_ALIAS_RID_ADMINS,
+                                 0, 0, 0, 0, 0, 0,
+                                 addr administratorsGroup)
+    if bool(b):
+      if not bool(CheckTokenMembership(0, administratorsGroup, addr b)):
+        b = 0
+      discard FreeSid(administratorsGroup)
+    return bool(b)
+  else:
+    return geteuid() == 0
+
 proc createSymlink*(src, dest: string) {.noWeirdTarget.} =
   ## Create a symbolic link at `dest` which points to the item specified
   ## by `src`. On most operating systems, will fail if a link already exists.

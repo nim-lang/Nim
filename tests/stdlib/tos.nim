@@ -651,3 +651,6 @@ block: # normalizeExe
     doAssert "foo/../bar".dup(normalizeExe) == "foo/../bar"
   when defined(windows):
     doAssert "foo".dup(normalizeExe) == "foo"
+
+block: # isAdmin
+  echo("Running as admin: ", isAdmin())
