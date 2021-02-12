@@ -116,5 +116,5 @@ block:  # cpDir, cpFile, dirExists, fileExists, mkDir, mvDir, mvFile, rmDir, rmF
   rmDir(dname)
 
 block:
-  # check ValueError is not raised:
+  # check parseopt can get command line:
   discard initOptParser()
