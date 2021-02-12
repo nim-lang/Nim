@@ -19,21 +19,18 @@ runnableExamples:
   from std/fenv import epsilon
   from std/random import rand
 
-  proc generateGaussianNoise(mu: float = 0.0, sigma: float = 1.0): (float, float) =
+  proc randGaussian(mu = 0.0, sigma = 1.0): (float, float) =
     # Generates values from a normal distribution.
     # Translated from https://en.wikipedia.org/wiki/Box%E2%80%93Muller_transform#Implementation.
-    var u1: float
-    var u2: float
+    var u1, u2: float
     while true:
       u1 = rand(1.0)
       u2 = rand(1.0)
       if u1 > epsilon(float): break
     let mag = sigma * sqrt(-2 * ln(u1))
-    let z0 = mag * cos(2 * PI * u2) + mu
-    let z1 = mag * sin(2 * PI * u2) + mu
-    (z0, z1)
-
-  echo generateGaussianNoise()
+    result[0] = mag * cos(2 * PI * u2) + mu
+    result[1] = mag * sin(2 * PI * u2) + mu
+  assert randGaussian() != randGaussian()
 
 ## This module is available for the `JavaScript target
 ## <backends.html#backends-the-javascript-target>`_.
