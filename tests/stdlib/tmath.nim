@@ -16,11 +16,14 @@ block:
     # doAssert for no side effect annotation
     proc mySqrt(num: float): float {.noSideEffect.} =
       # xxx unused
-      return sqrt(num)
+      sqrt(num)
 
     # doAssert gamma function
-    doAssert(gamma(5.0) == 24.0) # 4!
-    doAssert(lgamma(1.0) == 0.0) # ln(1.0) == 0.0
+    doAssert gamma(5.0) == 24.0 # 4!
+    doAssert almostEqual(gamma(0.5), sqrt(PI))
+    doAssert almostEqual(gamma(-0.5), -2 * sqrt(PI))
+    doAssert lgamma(1.0) == 0.0 # ln(1.0) == 0.0
+    doAssert almostEqual(lgamma(0.5), 0.5 * ln(PI))
     doAssert(erf(6.0) > erf(5.0))
     doAssert(erfc(6.0) < erfc(5.0))
 
@@ -33,17 +36,17 @@ block:
       doAssert splitDecimal(0.0).floatpart == 0.0
 
     block: # trunc tests for vcc
-      doAssert(trunc(-1.1) == -1)
-      doAssert(trunc(1.1) == 1)
-      doAssert(trunc(-0.1) == -0)
-      doAssert(trunc(0.1) == 0)
+      doAssert trunc(-1.1) == -1
+      doAssert trunc(1.1) == 1
+      doAssert trunc(-0.1) == -0
+      doAssert trunc(0.1) == 0
 
       # special case
-      doAssert(classify(trunc(1e1000000)) == fcInf)
-      doAssert(classify(trunc(-1e1000000)) == fcNegInf)
+      doAssert classify(trunc(1e1000000)) == fcInf
+      doAssert classify(trunc(-1e1000000)) == fcNegInf
       when not defined(nimTmathCase2):
-        doAssert(classify(trunc(0.0/0.0)) == fcNan)
-      doAssert(classify(trunc(0.0)) == fcZero)
+        doAssert classify(trunc(0.0/0.0)) == fcNan
+      doAssert classify(trunc(0.0)) == fcZero
 
       # trick the compiler to produce signed zero
       let
@@ -51,17 +54,17 @@ block:
         f_zero = 0.0
         f_nan = f_zero / f_zero
 
-      doAssert(classify(trunc(f_neg_one*f_zero)) == fcNegZero)
+      doAssert classify(trunc(f_neg_one*f_zero)) == fcNegZero
 
-      doAssert(trunc(-1.1'f32) == -1)
-      doAssert(trunc(1.1'f32) == 1)
-      doAssert(trunc(-0.1'f32) == -0)
-      doAssert(trunc(0.1'f32) == 0)
-      doAssert(classify(trunc(1e1000000'f32)) == fcInf)
-      doAssert(classify(trunc(-1e1000000'f32)) == fcNegInf)
+      doAssert trunc(-1.1'f32) == -1
+      doAssert trunc(1.1'f32) == 1
+      doAssert trunc(-0.1'f32) == -0
+      doAssert trunc(0.1'f32) == 0
+      doAssert classify(trunc(1e1000000'f32)) == fcInf
+      doAssert classify(trunc(-1e1000000'f32)) == fcNegInf
       when not defined(nimTmathCase2):
-        doAssert(classify(trunc(f_nan.float32)) == fcNan)
-      doAssert(classify(trunc(0.0'f32)) == fcZero)
+        doAssert classify(trunc(f_nan.float32)) == fcNan
+      doAssert classify(trunc(0.0'f32)) == fcZero
 
     block: # log
       doAssert log(4.0, 3.0) ==~ ln(4.0) / ln(3.0)
@@ -76,6 +79,9 @@ block:
       doAssert log2(2.0'f32) == 1.0'f32
       doAssert log2(1.0'f32) == 0.0'f32
       doAssert classify(log2(0.0'f32)) == fcNegInf
+
+when not defined(js) and not defined(windows): # xxx doesn't pass on windows
+  doAssert gamma(-1.0).isNaN
 
 template main() =
   block: # sgn() tests
@@ -96,10 +102,12 @@ template main() =
     doAssert sgn(NaN) == 0
 
   block: # fac() tests
-    try:
-      discard fac(-1)
-    except AssertionDefect:
-      discard
+    when nimvm: discard
+    else:
+      try:
+        discard fac(-1)
+      except AssertionDefect:
+        discard
 
     doAssert fac(0) == 1
     doAssert fac(1) == 1

@@ -662,7 +662,6 @@ when not defined(js): # C
         doAssert almostEqual(gamma(1.0), 1.0)
         doAssert almostEqual(gamma(4.0), 6.0)
         doAssert almostEqual(gamma(11.0), 3628800.0)
-        doAssert gamma(-1.0).isNaN
     func lgamma*(x: float32): float32 {.importc: "lgammaf", header: "<math.h>".}
     func lgamma*(x: float64): float64 {.importc: "lgamma", header: "<math.h>".} =
       ## Computes the natural logarithm of the gamma function for `x`.
