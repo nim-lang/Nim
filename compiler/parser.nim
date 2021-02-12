@@ -89,6 +89,10 @@ proc parseExprStmt(p: var Parser): PNode
 proc parseBlock(p: var Parser): PNode
 proc primary(p: var Parser, mode: PrimaryMode): PNode
 proc simpleExprAux(p: var Parser, limit: int, mode: PrimaryMode): PNode
+proc identOrLiteral(p: var Parser, mode: PrimaryMode): PNode
+proc dotExpr(p: var Parser, a: PNode): PNode
+proc parseGStrLit(p: var Parser, a: PNode): PNode
+
 
 # implementation
 
@@ -362,6 +366,10 @@ proc parseSymbol(p: var Parser, mode = smNormal): PNode =
         parMessage(p, errIdentifierExpected, p.tok)
         break
     eat(p, tkAccent)
+  of tkStrNumLit:
+    result = identOrLiteral(p, pmNormal)
+    result = dotExpr(p, result)
+    result = parseGStrLit(p, result)
   else:
     parMessage(p, errIdentifierExpected, p.tok)
     # BUGFIX: We must consume a token here to prevent endless loops!
@@ -635,6 +643,9 @@ proc identOrLiteral(p: var Parser, mode: PrimaryMode): PNode =
   #|                | castExpr
   #| tupleConstr = '(' optInd (exprColonEqExpr comma?)* optPar ')'
   #| arrayConstr = '[' optInd (exprColonEqExpr comma?)* optPar ']'
+  #
+  # when a tkStrNumLit is encountered, the next token is not parsed since
+  # a tkDot is implied.
   case p.tok.tokType
   of tkSymbol, tkBuiltInMagics, tkOut:
     result = newIdentNodeP(p.tok.ident, p)
@@ -701,6 +712,8 @@ proc identOrLiteral(p: var Parser, mode: PrimaryMode): PNode =
   of tkStrLit:
     result = newStrNodeP(nkStrLit, p.tok.literal, p)
     getTok(p)
+  of tkStrNumLit:
+    result = newStrNodeP(nkStrLit, p.tok.literal, p)
   of tkRStrLit:
     result = newStrNodeP(nkRStrLit, p.tok.literal, p)
     getTok(p)
@@ -764,14 +777,17 @@ proc commandExpr(p: var Parser; r: PNode; mode: PrimaryMode): PNode =
   result.add commandParam(p, isFirstParam, mode)
 
 proc primarySuffix(p: var Parser, r: PNode,
-                   baseIndent: int, mode: PrimaryMode): PNode =
+                   baseIndent: int, mode: PrimaryMode, 
+                   baseTokType: TokType): PNode =
   #| primarySuffix = '(' (exprColonEqExpr comma?)* ')'
   #|       | '.' optInd symbol generalizedLit?
   #|       | '[' optInd exprColonEqExprList optPar ']'
   #|       | '{' optInd exprColonEqExprList optPar '}'
   #|       | &( '`'|IDENT|literal|'cast'|'addr'|'type') expr # command syntax
   result = r
-
+  if baseTokType == tkStrNumLit:
+    result = dotExpr(p, result)
+    result = parseGStrLit(p, result)
   # progress guaranteed
   while p.tok.indent < 0 or
        (p.tok.tokType == tkDot and p.tok.indent >= baseIndent):
@@ -1097,8 +1113,8 @@ proc isExprStart(p: Parser): bool =
   case p.tok.tokType
   of tkSymbol, tkAccent, tkOpr, tkNot, tkNil, tkCast, tkIf, tkFor,
      tkProc, tkFunc, tkIterator, tkBind, tkBuiltInMagics,
-     tkParLe, tkBracketLe, tkCurlyLe, tkIntLit..tkCharLit, tkVar, tkRef, tkPtr,
-     tkTuple, tkObject, tkWhen, tkCase, tkOut:
+     tkParLe, tkBracketLe, tkCurlyLe, tkIntLit..tkCharLit, tkStrNumLit, tkVar, 
+     tkRef, tkPtr, tkTuple, tkObject, tkWhen, tkCase, tkOut:
     result = true
   else: result = false
 
@@ -1218,8 +1234,9 @@ proc primary(p: var Parser, mode: PrimaryMode): PNode =
     if isSigil:
       #XXX prefix operators
       let baseInd = p.lex.currLineIndent
+      let baseTokType = p.tok.tokType
       result.add(primary(p, pmSkipSuffix))
-      result = primarySuffix(p, result, baseInd, mode)
+      result = primarySuffix(p, result, baseInd, mode, baseTokType)
     else:
       result.add(primary(p, pmNormal))
     return
@@ -1266,9 +1283,10 @@ proc primary(p: var Parser, mode: PrimaryMode): PNode =
   of tkDistinct: result = parseTypeDescKAux(p, nkDistinctTy, mode)
   else:
     let baseInd = p.lex.currLineIndent
+    let baseTokType = p.tok.tokType
     result = identOrLiteral(p, mode)
     if mode != pmSkipSuffix:
-      result = primarySuffix(p, result, baseInd, mode)
+      result = primarySuffix(p, result, baseInd, mode, baseTokType)
 
 proc binaryNot(p: var Parser; a: PNode): PNode =
   if p.tok.tokType == tkNot:

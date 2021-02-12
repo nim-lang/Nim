@@ -58,7 +58,8 @@ type
     tkFloatLit = "tkFloatLit", tkFloat32Lit = "tkFloat32Lit",
     tkFloat64Lit = "tkFloat64Lit", tkFloat128Lit = "tkFloat128Lit",
     tkStrLit = "tkStrLit", tkRStrLit = "tkRStrLit", tkTripleStrLit = "tkTripleStrLit",
-    tkGStrLit = "tkGStrLit", tkGTripleStrLit = "tkGTripleStrLit", tkCharLit = "tkCharLit", 
+    tkGStrLit = "tkGStrLit", tkGTripleStrLit = "tkGTripleStrLit", tkCharLit = "tkCharLit",
+    tkStrNumLit = "tkStrNumLit",
     
     tkParLe = "(", tkParRi = ")", tkBracketLe = "[",
     tkBracketRi = "]", tkCurlyLe = "{", tkCurlyRi = "}",
@@ -393,6 +394,8 @@ proc getNumber(L: var Lexer, result: var Token) =
   endpos = L.bufpos
 
   # Second stage, find out if there's a datatype suffix and handle it
+  #  Stage 2A: handle the literal versions
+  var internalSuffix = false
   var postPos = endpos
   if L.buf[postPos] in {'\'', 'f', 'F', 'd', 'D', 'i', 'I', 'u', 'U'}:
     if L.buf[postPos] == '\'':
@@ -400,64 +403,86 @@ proc getNumber(L: var Lexer, result: var Token) =
 
     case L.buf[postPos]
     of 'f', 'F':
-      inc(postPos)
-      if (L.buf[postPos] == '3') and (L.buf[postPos + 1] == '2'):
+      if (L.buf[postPos + 1] == '3') and (L.buf[postPos + 2] == '2'):
         result.tokType = tkFloat32Lit
-        inc(postPos, 2)
-      elif (L.buf[postPos] == '6') and (L.buf[postPos + 1] == '4'):
-        result.tokType = tkFloat64Lit
-        inc(postPos, 2)
-      elif (L.buf[postPos] == '1') and
-           (L.buf[postPos + 1] == '2') and
-           (L.buf[postPos + 2] == '8'):
-        result.tokType = tkFloat128Lit
+        internalSuffix = true
         inc(postPos, 3)
-      else:   # "f" alone defaults to float32
+      elif (L.buf[postPos + 1] == '6') and (L.buf[postPos + 2] == '4'):
+        result.tokType = tkFloat64Lit
+        internalSuffix = true
+        inc(postPos, 3)
+      elif (L.buf[postPos + 1] == '1') and
+           (L.buf[postPos + 2] == '2') and
+           (L.buf[postPos + 3] == '8'):
+        result.tokType = tkFloat128Lit
+        internalSuffix = true
+        inc(postPos, 4)
+      elif not (L.buf[postPos + 1] in SymChars):
         result.tokType = tkFloat32Lit
+        internalSuffix = true
+        inc(postPos)
     of 'd', 'D':  # ad hoc convenience shortcut for f64
-      inc(postPos)
-      result.tokType = tkFloat64Lit
+      if not (L.buf[postPos + 1] in SymChars):
+        result.tokType = tkFloat64Lit
+        internalSuffix = true
+        inc(postPos)
     of 'i', 'I':
-      inc(postPos)
-      if (L.buf[postPos] == '6') and (L.buf[postPos + 1] == '4'):
+      if (L.buf[postPos + 1] == '6') and (L.buf[postPos + 2] == '4'):
         result.tokType = tkInt64Lit
-        inc(postPos, 2)
-      elif (L.buf[postPos] == '3') and (L.buf[postPos + 1] == '2'):
+        internalSuffix = true
+        inc(postPos, 3)
+      elif (L.buf[postPos + 1] == '3') and (L.buf[postPos + 2] == '2'):
         result.tokType = tkInt32Lit
-        inc(postPos, 2)
-      elif (L.buf[postPos] == '1') and (L.buf[postPos + 1] == '6'):
+        internalSuffix = true
+        inc(postPos, 3)
+      elif (L.buf[postPos + 1] == '1') and (L.buf[postPos + 2] == '6'):
         result.tokType = tkInt16Lit
-        inc(postPos, 2)
-      elif (L.buf[postPos] == '8'):
+        internalSuffix = true
+        inc(postPos, 3)
+      elif (L.buf[postPos + 1] == '8'):
         result.tokType = tkInt8Lit
-        inc(postPos)
-      else:
-        lexMessageLitNum(L, "invalid number: '$1'", startpos)
+        internalSuffix = true
+        inc(postPos, 2)
     of 'u', 'U':
-      inc(postPos)
-      if (L.buf[postPos] == '6') and (L.buf[postPos + 1] == '4'):
+      if (L.buf[postPos + 1] == '6') and (L.buf[postPos + 2] == '4'):
         result.tokType = tkUInt64Lit
-        inc(postPos, 2)
-      elif (L.buf[postPos] == '3') and (L.buf[postPos + 1] == '2'):
+        internalSuffix = true
+        inc(postPos, 3)
+      elif (L.buf[postPos + 1] == '3') and (L.buf[postPos + 2] == '2'):
         result.tokType = tkUInt32Lit
-        inc(postPos, 2)
-      elif (L.buf[postPos] == '1') and (L.buf[postPos + 1] == '6'):
+        internalSuffix = true
+        inc(postPos, 3)
+      elif (L.buf[postPos + 1] == '1') and (L.buf[postPos + 2] == '6'):
         result.tokType = tkUInt16Lit
-        inc(postPos, 2)
-      elif (L.buf[postPos] == '8'):
+        internalSuffix = true
+        inc(postPos, 3)
+      elif (L.buf[postPos + 1] == '8'):
         result.tokType = tkUInt8Lit
-        inc(postPos)
-      else:
+        internalSuffix = true
+        inc(postPos, 2)
+      elif not (L.buf[postPos + 1] in SymChars):
         result.tokType = tkUIntLit
+        internalSuffix = true
+        inc(postPos)
     else:
       lexMessageLitNum(L, "invalid number: '$1'", startpos)
 
-  # Is there still a literalish char awaiting? Then it's an error!
-  if  L.buf[postPos] in literalishChars or
+  #   Stage 2B: look for user-definited types that are adjacent (no spaces)
+  if not internalSuffix:
+    var identPos = postPos
+    if L.buf[identPos] == '\'':
+      inc(identPos)
+    if  L.buf[identPos] in SymStartChars:
+      result.tokType = tkStrNumLit
+      L.bufpos = postPos
+      return
+
+  #   Stage 2C: Is there still garbage awaiting? Then it's an error!
+  if L.buf[postPos] in literalishChars or
      (L.buf[postPos] == '.' and L.buf[postPos + 1] in {'0'..'9'}):
     lexMessageLitNum(L, "invalid number: '$1'", startpos)
 
-  # Third stage, extract actual number
+  # Third stage, extract actual number as a fitting literal
   L.bufpos = startpos            # restore position
   var pos: int = startpos
   try:
@@ -1275,9 +1300,10 @@ proc rawGetTok*(L: var Lexer, tok: var Token) =
       tok.tokType = tkCharLit
     of '0'..'9':
       getNumber(L, tok)
-      let c = L.buf[L.bufpos]
-      if c in SymChars+{'_'}:
-        lexMessage(L, errGenerated, "invalid token: no whitespace between number and identifier")
+      if tok.tokType != tkStrNumLit:
+        let c = L.buf[L.bufpos]
+        if c in SymChars+{'_'}:
+          lexMessage(L, errGenerated, "invalid token: no whitespace between number and identifier")
     else:
       if c in OpChars:
         getOperator(L, tok)

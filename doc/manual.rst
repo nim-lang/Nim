@@ -490,10 +490,10 @@ type is used for Unicode characters, it can represent any Unicode character.
 ``Rune`` is declared in the `unicode module <unicode.html>`_.
 
 
-Numerical constants
--------------------
+Numeric Literals
+----------------
 
-Numerical constants are of a single type and have the form::
+Numeric literals have the form::
 
   hexdigit = digit | 'A'..'F' | 'a'..'f'
   octdigit = '0'..'7'
@@ -529,7 +529,7 @@ Numerical constants are of a single type and have the form::
               | (FLOAT_LIT | DEC_LIT | OCT_LIT | BIN_LIT) ['\''] FLOAT64_SUFFIX
 
 
-As can be seen in the productions, numerical constants can contain underscores
+As can be seen in the productions, numeric literals can contain underscores
 for readability. Integer and floating-point literals may be given in decimal (no
 prefix), binary (prefix ``0b``), octal (prefix ``0o``), and hexadecimal
 (prefix ``0x``) notation.
@@ -545,7 +545,7 @@ is optional if it is not ambiguous (only hexadecimal floating-point literals
 with a type suffix can be ambiguous).
 
 
-The type suffixes are:
+The pre-defined type suffixes are:
 
 =================    =========================
   Type Suffix        Resulting type of literal
@@ -564,6 +564,11 @@ The type suffixes are:
   ``'f32``           float32
   ``'f64``           float64
 =================    =========================
+
+If the suffix is not predefined, then the suffix is assumed to be a call
+to a proc, template, macro or other callable identifier that is passed the
+string containing the literal. Essentially,  ``1234.56'sample`` is
+the equivalent of ``sample("1234.56")``.
 
 Floating-point literals may also be in binary, octal or hexadecimal
 notation:
