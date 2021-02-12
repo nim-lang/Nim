@@ -27,60 +27,7 @@ block:
     doAssert(erf(6.0) > erf(5.0))
     doAssert(erfc(6.0) < erfc(5.0))
 
-    block: # splitDecimal() tests
-      doAssert splitDecimal(54.674).intpart == 54.0
-      doAssert splitDecimal(54.674).floatpart ==~ 0.674
-      doAssert splitDecimal(-693.4356).intpart == -693.0
-      doAssert splitDecimal(-693.4356).floatpart ==~ -0.4356
-      doAssert splitDecimal(0.0).intpart == 0.0
-      doAssert splitDecimal(0.0).floatpart == 0.0
-
-    block: # trunc tests for vcc
-      doAssert trunc(-1.1) == -1
-      doAssert trunc(1.1) == 1
-      doAssert trunc(-0.1) == -0
-      doAssert trunc(0.1) == 0
-
-      # special case
-      doAssert classify(trunc(1e1000000)) == fcInf
-      doAssert classify(trunc(-1e1000000)) == fcNegInf
-      when not defined(nimTmathCase2):
-        doAssert classify(trunc(0.0/0.0)) == fcNan
-      doAssert classify(trunc(0.0)) == fcZero
-
-      # trick the compiler to produce signed zero
-      let
-        f_neg_one = -1.0
-        f_zero = 0.0
-        f_nan = f_zero / f_zero
-
-      doAssert classify(trunc(f_neg_one*f_zero)) == fcNegZero
-
-      doAssert trunc(-1.1'f32) == -1
-      doAssert trunc(1.1'f32) == 1
-      doAssert trunc(-0.1'f32) == -0
-      doAssert trunc(0.1'f32) == 0
-      doAssert classify(trunc(1e1000000'f32)) == fcInf
-      doAssert classify(trunc(-1e1000000'f32)) == fcNegInf
-      when not defined(nimTmathCase2):
-        doAssert classify(trunc(f_nan.float32)) == fcNan
-      doAssert classify(trunc(0.0'f32)) == fcZero
-
-    block: # log
-      doAssert log(4.0, 3.0) ==~ ln(4.0) / ln(3.0)
-      doAssert log2(8.0'f64) == 3.0'f64
-      doAssert log2(4.0'f64) == 2.0'f64
-      doAssert log2(2.0'f64) == 1.0'f64
-      doAssert log2(1.0'f64) == 0.0'f64
-      doAssert classify(log2(0.0'f64)) == fcNegInf
-
-      doAssert log2(8.0'f32) == 3.0'f32
-      doAssert log2(4.0'f32) == 2.0'f32
-      doAssert log2(2.0'f32) == 1.0'f32
-      doAssert log2(1.0'f32) == 0.0'f32
-      doAssert classify(log2(0.0'f32)) == fcNegInf
-
-when not defined(js) and not defined(windows): # xxx doesn't pass on windows
+when not defined(js) and not defined(windows): # xxx pending bug #17017
   doAssert gamma(-1.0).isNaN
 
 template main() =
@@ -160,6 +107,59 @@ template main() =
     doAssert euclDiv(-9, -3) == 3
     doAssert euclMod(-9, -3) == 0
 
+  block: # splitDecimal() tests
+    doAssert splitDecimal(54.674).intpart == 54.0
+    doAssert splitDecimal(54.674).floatpart ==~ 0.674
+    doAssert splitDecimal(-693.4356).intpart == -693.0
+    doAssert splitDecimal(-693.4356).floatpart ==~ -0.4356
+    doAssert splitDecimal(0.0).intpart == 0.0
+    doAssert splitDecimal(0.0).floatpart == 0.0
+
+  block: # trunc tests for vcc
+    doAssert trunc(-1.1) == -1
+    doAssert trunc(1.1) == 1
+    doAssert trunc(-0.1) == -0
+    doAssert trunc(0.1) == 0
+
+    # special case
+    doAssert classify(trunc(1e1000000)) == fcInf
+    doAssert classify(trunc(-1e1000000)) == fcNegInf
+    when not defined(nimTmathCase2):
+      doAssert classify(trunc(0.0/0.0)) == fcNan
+    doAssert classify(trunc(0.0)) == fcZero
+
+    # trick the compiler to produce signed zero
+    let
+      f_neg_one = -1.0
+      f_zero = 0.0
+      f_nan = f_zero / f_zero
+
+    doAssert classify(trunc(f_neg_one*f_zero)) == fcNegZero
+
+    doAssert trunc(-1.1'f32) == -1
+    doAssert trunc(1.1'f32) == 1
+    doAssert trunc(-0.1'f32) == -0
+    doAssert trunc(0.1'f32) == 0
+    doAssert classify(trunc(1e1000000'f32)) == fcInf
+    doAssert classify(trunc(-1e1000000'f32)) == fcNegInf
+    when not defined(nimTmathCase2):
+      doAssert classify(trunc(f_nan.float32)) == fcNan
+    doAssert classify(trunc(0.0'f32)) == fcZero
+
+  block: # log
+    doAssert log(4.0, 3.0) ==~ ln(4.0) / ln(3.0)
+    doAssert log2(8.0'f64) == 3.0'f64
+    doAssert log2(4.0'f64) == 2.0'f64
+    doAssert log2(2.0'f64) == 1.0'f64
+    doAssert log2(1.0'f64) == 0.0'f64
+    doAssert classify(log2(0.0'f64)) == fcNegInf
+
+    doAssert log2(8.0'f32) == 3.0'f32
+    doAssert log2(4.0'f32) == 2.0'f32
+    doAssert log2(2.0'f32) == 1.0'f32
+    doAssert log2(1.0'f32) == 0.0'f32
+    doAssert classify(log2(0.0'f32)) == fcNegInf
+
   block: # cumsum
     block: # cumsum int seq return
       let counts = [1, 2, 3, 4]
@@ -189,7 +189,7 @@ template main() =
       empty.cumsum
       doAssert empty == @[]
 
-  block: # compiles for valid types
+  block: # ^ compiles for valid types
     doAssert: compiles(5 ^ 2)
     doAssert: compiles(5.5 ^ 2)
     doAssert: compiles(5.5 ^ 2.int8)
