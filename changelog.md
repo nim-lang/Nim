@@ -162,6 +162,8 @@ provided by the operating system.
 - The required name of case statement macros for the experimental
   `caseStmtMacros` feature has changed from `match` to `` `case` ``.
 
+- `typedesc[Foo]` now renders as such instead of `type Foo` in compiler messages.
+
 ## Compiler changes
 
 - Added `--declaredlocs` to show symbol declaration location in messages.
