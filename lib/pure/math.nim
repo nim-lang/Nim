@@ -190,6 +190,8 @@ func copySign*[T: SomeFloat](x, y: T): T {.inline, since: (1, 5, 1).} =
   runnableExamples:
     doAssert copySign(10.0, 1.0) == 10.0
     doAssert copySign(10.0, -1.0) == -10.0
+    doAssert copySign(-Inf, -0.0) == -Inf
+    doAssert copySign(NaN, 1.0).isNaN
 
   # TODO: use signbit for examples
   template impl() =
