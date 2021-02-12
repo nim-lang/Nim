@@ -31,6 +31,7 @@ type
     ccompilerPath     ## the path to the C/C++ compiler
     backend           ## the backend (eg: c|cpp|objc|js); both `nim doc --backend:js`
                       ## and `nim js` would imply backend=js
+    libPath           ## the absolute path to the stdlib library, i.e. nim's `--lib`, since 1.5.1
 
   MultipleValueSetting* {.pure.} = enum ## \
                       ## settings resulting in a seq of string values

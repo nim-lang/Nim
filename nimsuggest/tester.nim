@@ -18,10 +18,12 @@ const
 
 template tpath(): untyped = getAppDir() / "tests"
 
+import std/compilesettings
+
 proc parseTest(filename: string; epcMode=false): Test =
   const cursorMarker = "#[!]#"
   let nimsug = curDir & addFileExt("nimsuggest", ExeExt)
-  let libpath = findExe("nim").splitFile().dir /../ "lib"
+  const libpath = querySetting(libPath)
   result.filename = filename
   result.dest = getTempDir() / extractFilename(filename)
   result.cmd = nimsug & " --tester " & result.dest
@@ -329,7 +331,7 @@ proc main() =
     failures += runTest(xx)
     failures += runEpcTest(xx)
   else:
-    for x in walkFiles(getAppDir() / "tests/t*.nim"):
+    for x in walkFiles(tpath() / "t*.nim"):
       echo "Test ", x
       let xx = expandFilename x
       when not defined(windows):

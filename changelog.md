@@ -142,6 +142,7 @@ provided by the operating system.
 
 - Added experimental `linenoise.readLineStatus` to get line and status (e.g. ctrl-D or ctrl-C).
 
+- Added `compilesettings.SingleValueSetting.libPath`
 - `std/wrapnils` doesn't use `experimental:dotOperators` anymore, avoiding
   issues like https://github.com/nim-lang/Nim/issues/13063 (which affected error messages)
   for modules importing `std/wrapnils`.
