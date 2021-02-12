@@ -175,10 +175,10 @@ proc skipRandomNumbers*(s: var Rand) =
     const spawns = 4
     const numbers = 100000
 
-    proc randomSum(rand: Rand): int =
-      var r = rand
+    proc randomSum(r: Rand): int =
+      var r = r
       for i in 1..numbers:
-        result += rand(0..10)
+        result += r.rand(0..10)
 
     var r = initRand(2019)
     var vals: array[spawns, FlowVar[int]]
