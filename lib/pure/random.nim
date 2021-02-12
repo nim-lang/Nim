@@ -65,11 +65,11 @@ runnableExamples:
 ##
 ## See also
 ## ========
-## * `mersenne module<mersenne.html>`_ for the Mersenne Twister random number
-##   generator
-## * `stats module<stats.html>`_ for statistical analysis
-## * `list of cryptographic and hashing modules
-##   <lib.html#pure-libraries-hashing>`_
+## * `std/sysrand module <sysrand.html>`_ for a cryptographically secure pseudorandom number generator
+## * `mersenne module <mersenne.html>`_ for the Mersenne Twister random number generator
+## * `math module <math.html>`_ for basic math routines
+## * `stats module <stats.html>`_ for statistical analysis
+## * `list of cryptographic and hashing modules <lib.html#pure-libraries-hashing>`_
 ##   in the standard library
 
 import std/[algorithm, math]
