@@ -70,6 +70,7 @@
 ##
 ## See also
 ## ========
+## * `std/sysrand module<sysrand.html>`_ for cryptographically secure pseudorandom number generator
 ## * `math module<math.html>`_ for basic math routines
 ## * `mersenne module<mersenne.html>`_ for the Mersenne Twister random number
 ##   generator
