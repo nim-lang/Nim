@@ -25,28 +25,28 @@ runnableExamples:
   # examples are run.
   randomize()
 
-  # Pick a number between 0 and 100.
+  # Pick a number in 0..100.
   let num = rand(100)
-  echo num
+  doAssert num in 0..100
 
   # Roll a six-sided die.
   let roll = rand(1..6)
-  echo roll
+  doAssert roll in 1..6
 
   # Pick a marble from a bag.
   let marbles = ["red", "blue", "green", "yellow", "purple"]
   let pick = sample(marbles)
-  echo pick
+  doAssert pick in marbles
 
   # Shuffle some cards.
   var cards = ["Ace", "King", "Queen", "Jack", "Ten"]
   shuffle(cards)
-  echo cards
+  doAssert cards.len == 5
 
-## These examples all use the default random number generator. The
-## `Rand type <#Rand>`_ represents the state of a random number generator.
+## These examples all use the default RNG. The
+## `Rand type <#Rand>`_ represents the state of an RNG.
 ## For convenience, this module contains a default Rand state that corresponds
-## to the default random number generator. Most procs in this module which do
+## to the default RNG. Most procs in this module which do
 ## not take in a Rand parameter, including those called in the above examples,
 ## use the default generator. Those procs are **not** thread-safe.
 ##
@@ -93,7 +93,7 @@ type
                  ## Create a new Rand state using the `initRand proc <#initRand,int64>`_.
                  ##
                  ## The module contains a default Rand state for convenience.
-                 ## It corresponds to the default random number generator's state.
+                 ## It corresponds to the default RNG's state.
                  ## The default Rand state always starts with the same values, but the
                  ## `randomize proc <#randomize>`_ can be used to seed the default generator
                  ## with a value based on the current time.
@@ -149,8 +149,8 @@ proc next*(r: var Rand): uint64 =
 proc skipRandomNumbers*(s: var Rand) =
   ## The jump function for the generator.
   ##
-  ## This proc is equivalent to 2^64 calls to `next <#next,Rand>`_, and it can
-  ## be used to generate 2^64 non-overlapping subsequences for parallel
+  ## This proc is equivalent to `2^64` calls to `next <#next,Rand>`_, and it can
+  ## be used to generate `2^64` non-overlapping subsequences for parallel
   ## computations.
   ##
   ## When multiple threads are generating random numbers, each thread must
@@ -165,7 +165,7 @@ proc skipRandomNumbers*(s: var Rand) =
   ## Rand state to a thread, call this proc before passing it to the next one.
   ## By using the Rand state this way, the subsequences of random numbers
   ## generated in each thread will never overlap as long as no thread generates
-  ## more than 2^64 random numbers.
+  ## more than `2^64` random numbers.
   ##
   ## **See also:**
   ## * `next proc<#next,Rand>`_
@@ -178,7 +178,7 @@ proc skipRandomNumbers*(s: var Rand) =
     proc randomSum(rand: Rand): int =
       var r = rand
       for i in 1..numbers:
-        result += rand(1..10)
+        result += rand(0..10)
 
     var r = initRand(2019)
     var vals: array[spawns, FlowVar[int]]
@@ -187,7 +187,7 @@ proc skipRandomNumbers*(s: var Rand) =
       r.skipRandomNumbers()
 
     for val in vals:
-      echo ^val
+      doAssert abs(^val - numbers * 5) / numbers < 0.1
 
   when defined(js):
     const helper = [0xbeac0467u32, 0xd86b048bu32]
@@ -209,8 +209,7 @@ proc rand*(r: var Rand; max: Natural): int {.benign.} =
   ## Returns a random integer in the range `0..max` using the given state.
   ##
   ## **See also:**
-  ## * `rand proc<#rand,int>`_ that returns an integer using the default
-  ##   random number generator
+  ## * `rand proc<#rand,int>`_ that returns an integer using the default RNG
   ## * `rand proc<#rand,Rand,range[]>`_ that returns a float
   ## * `rand proc<#rand,Rand,HSlice[T: Ordinal or float or float32 or float64,T: Ordinal or float or float32 or float64]>`_
   ##   that accepts a slice
@@ -233,8 +232,7 @@ proc rand*(max: int): int {.benign.} =
   ## If `randomize <#randomize>`_ has not been called, the sequence of random
   ## numbers returned from this proc will always be the same.
   ##
-  ## This proc uses the default random number generator. Thus, it is **not**
-  ## thread-safe.
+  ## This proc uses the default RNG. Thus, it is **not** thread-safe.
   ##
   ## **See also:**
   ## * `rand proc<#rand,Rand,Natural>`_ that returns an integer using a
@@ -256,8 +254,7 @@ proc rand*(r: var Rand; max: range[0.0 .. high(float)]): float {.benign.} =
   ## using the given state.
   ##
   ## **See also:**
-  ## * `rand proc<#rand,float>`_ that returns a float using the default
-  ##   random number generator
+  ## * `rand proc<#rand,float>`_ that returns a float using the default RNG
   ## * `rand proc<#rand,Rand,Natural>`_ that returns an integer
   ## * `rand proc<#rand,Rand,HSlice[T: Ordinal or float or float32 or float64,T: Ordinal or float or float32 or float64]>`_
   ##   that accepts a slice
@@ -279,8 +276,7 @@ proc rand*(max: float): float {.benign.} =
   ## If `randomize <#randomize>`_ has not been called, the sequence of random
   ## numbers returned from this proc will always be the same.
   ##
-  ## This proc uses the default random number generator. Thus, it is **not**
-  ## thread-safe.
+  ## This proc uses the default RNG. Thus, it is **not** thread-safe.
   ##
   ## **See also:**
   ## * `rand proc<#rand,Rand,range[]>`_ that returns a float using a
@@ -303,7 +299,7 @@ proc rand*[T: Ordinal or SomeFloat](r: var Rand; x: HSlice[T, T]): T =
   ##
   ## **See also:**
   ## * `rand proc<#rand,HSlice[T: Ordinal or float or float32 or float64,T: Ordinal or float or float32 or float64]>`_
-  ##   that accepts a slice and uses the default random number generator
+  ##   that accepts a slice and uses the default RNG
   ## * `rand proc<#rand,Rand,Natural>`_ that returns an integer
   ## * `rand proc<#rand,Rand,range[]>`_ that returns a float
   ## * `rand proc<#rand,typedesc[T]>`_ that accepts an integer or range type
@@ -327,8 +323,7 @@ proc rand*[T: Ordinal or SomeFloat](x: HSlice[T, T]): T =
   ## If `randomize <#randomize>`_ has not been called, the sequence of random
   ## numbers returned from this proc will always be the same.
   ##
-  ## This proc uses the default random number generator. Thus, it is **not**
-  ## thread-safe.
+  ## This proc uses the default RNG. Thus, it is **not** thread-safe.
   ##
   ## **See also:**
   ## * `rand proc<#rand,Rand,HSlice[T: Ordinal or float or float32 or float64,T: Ordinal or float or float32 or float64]>`_
@@ -350,8 +345,7 @@ proc rand*[T: SomeInteger](t: typedesc[T]): T =
   ## If `randomize <#randomize>`_ has not been called, the sequence of random
   ## numbers returned from this proc will always be the same.
   ##
-  ## This proc uses the default random number generator. Thus, it is **not**
-  ## thread-safe.
+  ## This proc uses the default RNG. Thus, it is **not** thread-safe.
   ##
   ## **See also:**
   ## * `rand proc<#rand,int>`_ that returns an integer
@@ -379,8 +373,7 @@ proc sample*[T](r: var Rand; s: set[T]): T =
   ## Returns a random element from the set `s` using the given state.
   ##
   ## **See also:**
-  ## * `sample proc<#sample,set[T]>`_ that uses the default random number
-  ##   generator
+  ## * `sample proc<#sample,set[T]>`_ that uses the default RNG
   ## * `sample proc<#sample,Rand,openArray[T]>`_ for `openArray`s
   ## * `sample proc<#sample,Rand,openArray[T],openArray[U]>`_ that uses a
   ##   cumulative distribution function
@@ -403,8 +396,7 @@ proc sample*[T](s: set[T]): T =
   ## If `randomize <#randomize>`_ has not been called, the order of outcomes
   ## from this proc will always be the same.
   ##
-  ## This proc uses the default random number generator. Thus, it is **not**
-  ## thread-safe.
+  ## This proc uses the default RNG. Thus, it is **not** thread-safe.
   ##
   ## **See also:**
   ## * `sample proc<#sample,Rand,set[T]>`_ that uses a provided state
@@ -424,8 +416,7 @@ proc sample*[T](r: var Rand; a: openArray[T]): T =
   ## Returns a random element from `a` using the given state.
   ##
   ## **See also:**
-  ## * `sample proc<#sample,openArray[T]>`_ that uses the default
-  ##   random number generator
+  ## * `sample proc<#sample,openArray[T]>`_ that uses the default RNG
   ## * `sample proc<#sample,Rand,openArray[T],openArray[U]>`_ that uses a
   ##   cumulative distribution function
   ## * `sample proc<#sample,Rand,set[T]>`_ for sets
@@ -444,8 +435,7 @@ proc sample*[T](a: openArray[T]): T =
   ## If `randomize <#randomize>`_ has not been called, the order of outcomes
   ## from this proc will always be the same.
   ##
-  ## This proc uses the default random number generator. Thus, it is **not**
-  ## thread-safe.
+  ## This proc uses the default RNG. Thus, it is **not** thread-safe.
   ##
   ## **See also:**
   ## * `sample proc<#sample,Rand,openArray[T]>`_ that uses a provided state
@@ -476,7 +466,7 @@ proc sample*[T, U](r: var Rand; a: openArray[T]; cdf: openArray[U]): T =
   ##
   ## **See also:**
   ## * `sample proc<#sample,openArray[T],openArray[U]>`_ that also utilizes
-  ##   a CDF but uses the default random number generator
+  ##   a CDF but uses the default RNG
   ## * `sample proc<#sample,Rand,openArray[T]>`_ that does not use a CDF
   ## * `sample proc<#sample,Rand,set[T]>`_ for sets
   runnableExamples:
@@ -508,8 +498,7 @@ proc sample*[T, U](a: openArray[T]; cdf: openArray[U]): T =
   ## If `randomize <#randomize>`_ has not been called, the order of outcomes
   ## from this proc will always be the same.
   ##
-  ## This proc uses the default random number generator. Thus, it is **not**
-  ## thread-safe.
+  ## This proc uses the default RNG. Thus, it is **not** thread-safe.
   ##
   ## **See also:**
   ## * `sample proc<#sample,Rand,openArray[T],openArray[U]>`_ that also utilizes
@@ -552,8 +541,7 @@ proc gauss*(mu = 0.0, sigma = 1.0): float {.since: (1, 3).} =
   ## If `randomize <#randomize>`_ has not been called, the order of outcomes
   ## from this proc will always be the same.
   ##
-  ## This proc uses the default random number generator. Thus, it is **not**
-  ## thread-safe.
+  ## This proc uses the default RNG. Thus, it is **not** thread-safe.
   result = gauss(state, mu, sigma)
 
 proc initRand*(seed: int64): Rand =
@@ -562,15 +550,12 @@ proc initRand*(seed: int64): Rand =
   ## `seed` must not be zero. Providing a specific seed will produce
   ## the same results for that seed each time.
   ##
-  ## The resulting state is independent of the default random number
-  ## generator's state.
+  ## The resulting state is independent of the default RNG's state.
   ##
   ## **See also:**
   ## * `initRand proc<#initRand>`_ that uses the current time
-  ## * `randomize proc<#randomize,int64>`_ that accepts a seed for the default
-  ##   random number generator
-  ## * `randomize proc<#randomize>`_ that initializes the default random
-  ##   number generator using the current time
+  ## * `randomize proc<#randomize,int64>`_ that accepts a seed for the default RNG
+  ## * `randomize proc<#randomize>`_ that initializes the default RNG using the current time
   runnableExamples:
     from std/times import getTime, toUnix, nanosecond
 
@@ -610,8 +595,7 @@ proc shuffle*[T](r: var Rand; x: var openArray[T]) =
   ## Shuffles a sequence of elements in-place using the given state.
   ##
   ## **See also:**
-  ## * `shuffle proc<#shuffle,openArray[T]>`_ that uses the default
-  ##   random number generator
+  ## * `shuffle proc<#shuffle,openArray[T]>`_ that uses the default RNG
   runnableExamples:
     var cards = ["Ace", "King", "Queen", "Jack", "Ten"]
     var r = initRand(678)
@@ -628,8 +612,7 @@ proc shuffle*[T](x: var openArray[T]) =
   ## If `randomize <#randomize>`_ has not been called, the order of outcomes
   ## from this proc will always be the same.
   ##
-  ## This proc uses the default random number generator. Thus, it is **not**
-  ## thread-safe.
+  ## This proc uses the default RNG. Thus, it is **not** thread-safe.
   ##
   ## **See also:**
   ## * `shuffle proc<#shuffle,Rand,openArray[T]>`_ that uses a provided state
@@ -647,16 +630,14 @@ when not defined(nimscript) and not defined(standalone):
   proc initRand(): Rand =
     ## Initializes a new Rand state with a seed based on the current time.
     ##
-    ## The resulting state is independent of the default random number generator's state.
+    ## The resulting state is independent of the default RNG's state.
     ##
     ## **Note:** Does not work for NimScript or the compile-time VM.
     ##
     ## See also:
     ## * `initRand proc<#initRand,int64>`_ that accepts a seed for a new Rand state
-    ## * `randomize proc<#randomize>`_ that initializes the default random
-    ##   number generator using the current time
-    ## * `randomize proc<#randomize,int64>`_ that accepts a seed for the default
-    ##   random number generator
+    ## * `randomize proc<#randomize>`_ that initializes the default RNG using the current time
+    ## * `randomize proc<#randomize,int64>`_ that accepts a seed for the default RNG
     when defined(js):
       let time = int64(times.epochTime() * 1000) and 0x7fff_ffff
       result = initRand(time)
@@ -672,8 +653,7 @@ when not defined(nimscript) and not defined(standalone):
     ## the current time.
     ##
     ## This proc only needs to be called once, and it should be called before
-    ## the first usage of procs from this module that use the default random
-    ## number generator.
+    ## the first usage of procs from this module that use the default RNG.
     ##
     ## **Note:** Does not work for NimScript or the compile-time VM.
     ##
