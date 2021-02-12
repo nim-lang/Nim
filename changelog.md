@@ -124,6 +124,8 @@ with other backends. see #9125. Use `-d:nimLegacyJsRound` for previous behavior.
 
 - Deprecated `any`. See https://github.com/nim-lang/RFCs/issues/281
 
+- Added `std/sysrand` module to get random numbers from a secure source 
+provided by the operating system.
 
 - Added optional `options` argument to `copyFile`, `copyFileToDir`, and
   `copyFileWithPermissions`. By default, on non-Windows OSes, symlinks are
@@ -141,6 +143,9 @@ with other backends. see #9125. Use `-d:nimLegacyJsRound` for previous behavior.
 - Added experimental `linenoise.readLineStatus` to get line and status (e.g. ctrl-D or ctrl-C).
 
 - Added `compilesettings.SingleValueSetting.libPath`
+- `std/wrapnils` doesn't use `experimental:dotOperators` anymore, avoiding
+  issues like https://github.com/nim-lang/Nim/issues/13063 (which affected error messages)
+  for modules importing `std/wrapnils`.
 
 ## Language changes
 
@@ -157,6 +162,8 @@ with other backends. see #9125. Use `-d:nimLegacyJsRound` for previous behavior.
 
 - The required name of case statement macros for the experimental
   `caseStmtMacros` feature has changed from `match` to `` `case` ``.
+
+- `typedesc[Foo]` now renders as such instead of `type Foo` in compiler messages.
 
 ## Compiler changes
 
@@ -185,3 +192,6 @@ with other backends. see #9125. Use `-d:nimLegacyJsRound` for previous behavior.
   - cell alignment is not supported, i.e. alignment annotations in a delimiter
     row (`:---`, `:--:`, `---:`) are ignored,
   - every table row must start with `|`, e.g. `| cell 1 | cell 2 |`.
+
+- `fusion` is now un-bundled from nim, `./koch fusion` will
+  install it via nimble at a fixed hash.

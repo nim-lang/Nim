@@ -70,7 +70,7 @@ type
     guards: TModel # nested guards
     locked: seq[PNode] # locked locations
     gcUnsafe, isRecursive, isTopLevel, hasSideEffect, inEnforcedGcSafe: bool
-    hasDangerousAssign: bool
+    hasDangerousAssign, isInnerProc: bool
     inEnforcedNoSideEffects: bool
     maxLockLevel, currLockLevel: TLockLevel
     currOptions: TOptions
@@ -269,6 +269,9 @@ proc useVarNoInitCheck(a: PEffects; n: PNode; s: PSym) =
       markSideEffect(a, s)
     else:
       markSideEffect(a, s)
+  if s.owner != a.owner and s.kind in {skVar, skLet, skForVar, skResult, skParam} and
+     {sfGlobal, sfThread} * s.flags == {}:
+    a.isInnerProc = true
 
 proc useVar(a: PEffects, n: PNode) =
   let s = n.sym
@@ -1252,6 +1255,15 @@ proc hasRealBody(s: PSym): bool =
   ## which is not a real implementation, refs #14314
   result = {sfForward, sfImportc} * s.flags == {}
 
+proc maybeWrappedInClosure(tracked: PEffects; t: PType): bool {.inline.} =
+  ## The spec does say when to produce destructors. However, the spec
+  ## was written in mind with the idea that "lambda lifting" already
+  ## happened. Not true in our implementation, so we need to workaround
+  ## here:
+  result = tracked.isInnerProc and
+    sfSystemModule notin tracked.c.module.flags and
+    tfCheckedForDestructor notin t.flags and containsGarbageCollectedRef(t)
+
 proc trackProc*(c: PContext; s: PSym, body: PNode) =
   let g = c.graph
   var effects = s.typ.n[0]
@@ -1270,7 +1282,8 @@ proc trackProc*(c: PContext; s: PSym, body: PNode) =
       let param = params[i].sym
       let typ = param.typ
       if isSinkTypeForParam(typ) or
-          (t.config.selectedGC in {gcArc, gcOrc} and isClosure(typ.skipTypes(abstractInst))):
+          (t.config.selectedGC in {gcArc, gcOrc} and
+            (isClosure(typ.skipTypes(abstractInst)) or maybeWrappedInClosure(t, typ))):
         createTypeBoundOps(t, typ, param.info)
       when false:
         if typ.kind == tyOut and param.id notin t.init:

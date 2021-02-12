@@ -93,7 +93,6 @@ destroy
 destroy
 destroy
 sink
-sink
 destroy
 copy
 (f: 1)
@@ -687,7 +686,7 @@ caseNotAConstant()
 
 proc potentialSelfAssign(i: var int) =
   var a: array[2, OO]
-  a[i] = OO(f: 1)
+  a[i] = OO(f: 1) # turned into a memcopy
   a[1] = OO(f: 2)
   a[i+1] = a[i] # This must not =sink, but =copy
   inc i
@@ -743,4 +742,31 @@ proc partToWholeUnownedRef =
   t = t.next[] # Copy because t.next is not an owned ref, and thus t.next[] cannot be moved
 
 partToWholeUnownedRef()
+
+
+#--------------------------------------------------------------------
+# test that nodes that get copied during the transformation
+# (like dot exprs) don't loose their firstWrite/lastRead property
+
+type
+  OOO = object
+    initialized: bool
+
+  C = object
+    o: OOO
+
+proc `=destroy`(o: var OOO) =
+  doAssert o.initialized, "OOO was destroyed before initialization!"
+
+proc initO(): OOO =
+  OOO(initialized: true)
+
+proc initC(): C =
+  C(o: initO())
+
+proc pair(): tuple[a: C, b: C] =
+  result.a = initC() # <- when firstWrite tries to find this node to start its analysis it fails, because injectdestructors uses copyTree/shallowCopy
+  result.b = initC()
+
+discard pair()
 

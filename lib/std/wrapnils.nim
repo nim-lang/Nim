@@ -2,8 +2,7 @@
 ## This simplifies code by reducing need for if-else branches around intermediate values
 ## that maybe be nil.
 ##
-## Note: experimental module and relies on {.experimental: "dotOperators".}
-## Unstable API.
+## Note: experimental module, unstable API.
 
 runnableExamples:
   type Foo = ref object
@@ -39,9 +38,7 @@ template unwrap(a: Wrapnil): untyped =
   ## See top-level example.
   a.valueImpl
 
-{.push experimental: "dotOperators".}
-
-template `.`*(a: Wrapnil, b): untyped =
+template fakeDot*(a: Wrapnil, b): untyped =
   ## See top-level example.
   let a1 = a # to avoid double evaluations
   let a2 = a1.valueImpl
@@ -57,8 +54,6 @@ template `.`*(a: Wrapnil, b): untyped =
   else:
     # nil is "sticky"; this is needed, see tests
     default(T)
-
-{.pop.}
 
 proc isValid(a: Wrapnil): bool =
   ## Returns true if `a` didn't contain intermediate `nil` values (note that
@@ -90,16 +85,18 @@ template `[]`*(a: Wrapnil): untyped =
 import std/macros
 
 proc replace(n: NimNode): NimNode =
-  if n.kind == nnkPar:
+  if n.kind == nnkDotExpr:
+    result = newCall(bindSym"fakeDot", replace(n[0]), n[1])
+  elif n.kind == nnkPar:
     doAssert n.len == 1
-    newCall(bindSym"wrapnil", n[0])
+    result = newCall(bindSym"wrapnil", n[0])
   elif n.kind in {nnkCall, nnkObjConstr}:
-    newCall(bindSym"wrapnil", n)
+    result = newCall(bindSym"wrapnil", n)
   elif n.len == 0:
-    newCall(bindSym"wrapnil", n)
+    result = newCall(bindSym"wrapnil", n)
   else:
     n[0] = replace(n[0])
-    n
+    result = n
 
 macro `?.`*(a: untyped): untyped =
   ## Transforms `a` into an expression that can be safely evaluated even in
