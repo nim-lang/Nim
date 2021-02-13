@@ -7,7 +7,7 @@
 #    distribution, for details about the copyright.
 #
 
-# An ``include`` file which contains common code for
+# An `include` file which contains common code for
 # hash sets and tables.
 
 const

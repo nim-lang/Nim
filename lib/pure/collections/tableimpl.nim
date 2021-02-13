@@ -7,7 +7,7 @@
 #    distribution, for details about the copyright.
 #
 
-# An ``include`` file for the different table implementations.
+# An `include` file for the different table implementations.
 
 include hashcommon
 
