@@ -653,5 +653,5 @@ block: # normalizeExe
     doAssert "foo".dup(normalizeExe) == "foo"
 
 block: # isAdmin
-  let isAzure = existsEnv("TF_BUILD") # xxx factor with testament.specs.isAzure
+  let isAzure = defined(windows) and existsEnv("TF_BUILD") # xxx factor with testament.specs.isAzure
   if isAzure: doAssert isAdmin()

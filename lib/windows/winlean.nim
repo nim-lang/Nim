@@ -139,6 +139,7 @@ const
 
   HANDLE_FLAG_INHERIT* = 0x00000001'i32
 
+proc isSuccess*(a: WINBOOL): bool {.inline.} = a != 0
 proc getVersionExW*(lpVersionInfo: ptr OSVERSIONINFO): WINBOOL {.
     stdcall, dynlib: "kernel32", importc: "GetVersionExW", sideEffect.}
 proc getVersionExA*(lpVersionInfo: ptr OSVERSIONINFO): WINBOOL {.
@@ -1133,19 +1134,20 @@ proc setFileTime*(hFile: Handle, lpCreationTime: LPFILETIME,
      {.stdcall, dynlib: "kernel32", importc: "SetFileTime".}
 
 type
-  SID_IDENTIFIER_AUTHORITY* = object
-    value*: array[6, BYTE]
-  PSID_IDENTIFIER_AUTHORITY* = ptr SID_IDENTIFIER_AUTHORITY
-  SID* = object
-    revision: BYTE
-    subAuthorityCount: BYTE
-    identifierAuthority: SID_IDENTIFIER_AUTHORITY
-    subAuthority: ptr ptr DWORD
-  PSID* = ptr SID
+  SID_IDENTIFIER_AUTHORITY* {.importc, header: "windows.h".} = object
+    Value*: array[6, BYTE]
+  PSID_IDENTIFIER_AUTHORITY* {.importc, header: "windows.h".} = ptr SID_IDENTIFIER_AUTHORITY
+  SID* {.importc, header: "windows.h".} = object
+    Revision: BYTE
+    SubAuthorityCount: BYTE
+    IdentifierAuthority: SID_IDENTIFIER_AUTHORITY
+    SubAuthority: ptr ptr DWORD
+  PSID* {.importc, header: "windows.h".} = ptr SID
 
 const
   # https://docs.microsoft.com/en-us/windows/win32/secauthz/sid-components
-  SECURITY_NT_AUTHORITY* = 5
+  # https://github.com/mirror/mingw-w64/blob/84c950bdab7c999ace49fe8383856be77f88c4a8/mingw-w64-headers/include/winnt.h#L2994
+  SECURITY_NT_AUTHORITY* = [BYTE(0), BYTE(0), BYTE(0), BYTE(0), BYTE(0), BYTE(5)]
   SECURITY_BUILTIN_DOMAIN_RID* = 32
   DOMAIN_ALIAS_RID_ADMINS* = 544
 

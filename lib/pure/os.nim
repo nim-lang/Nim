@@ -1654,22 +1654,19 @@ proc isAdmin*: bool {.noWeirdTarget.} =
   when defined(windows):
     # Rewrite of the example from Microsoft Docs:
     # https://docs.microsoft.com/en-us/windows/win32/api/securitybaseapi/nf-securitybaseapi-checktokenmembership#examples
-    var b: WINBOOL
-    var ntAuthority = SID_IDENTIFIER_AUTHORITY(value: [
-      BYTE(0), BYTE(0), BYTE(0), BYTE(0), BYTE(0), BYTE(SECURITY_NT_AUTHORITY)
-    ])
+    var ntAuthority = SID_IDENTIFIER_AUTHORITY(Value: SECURITY_NT_AUTHORITY)
     var administratorsGroup: PSID
-    b = AllocateAndInitializeSid(addr ntAuthority,
-                                 BYTE(2),
-                                 SECURITY_BUILTIN_DOMAIN_RID,
-                                 DOMAIN_ALIAS_RID_ADMINS,
-                                 0, 0, 0, 0, 0, 0,
-                                 addr administratorsGroup)
-    if bool(b):
-      if not bool(CheckTokenMembership(0, administratorsGroup, addr b)):
+    var b: WINBOOL = AllocateAndInitializeSid(addr ntAuthority,
+                                              BYTE(2),
+                                              SECURITY_BUILTIN_DOMAIN_RID,
+                                              DOMAIN_ALIAS_RID_ADMINS,
+                                              0, 0, 0, 0, 0, 0,
+                                              addr administratorsGroup)
+    if isSuccess(b):
+      if not isSuccess(CheckTokenMembership(0, administratorsGroup, addr b)):
         b = 0
       discard FreeSid(administratorsGroup)
-    return bool(b)
+    return isSuccess(b)
   else:
     return geteuid() == 0
 
