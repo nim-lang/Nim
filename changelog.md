@@ -185,6 +185,12 @@ provided by the operating system.
 - TLS: OSX now uses native TLS (`--tlsEmulation:off`), TLS now works with importcpp non-POD types,
   such types must use `.cppNonPod` and `--tlsEmulation:off`should be used.
 
+- TLS: OSX now uses native TLS (`--tlsEmulation:off`), TLS now works with importcpp non-POD types,
+
+- docgen: rst files can now use single backticks instead of double backticks and correctly render
+  in both rst2html (as before) as well as common tools rendering rst directly (e.g. github), by
+  adding: `default-role:: code` directive inside the rst file, which is now handled by rst2html.
+
 ## Tool changes
 
 - The rst parser now supports markdown table syntax.
