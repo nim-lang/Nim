@@ -232,11 +232,11 @@ proc instantiateProcType(c: PContext, pt: TIdTable,
   # time adding the instantiated proc params into the current scope.
   # This is necessary, because the instantiation process may refer to
   # these params in situations like this:
-  # proc foo[Container](a: Container, b: a.type.Item): type(b.x)
+  # proc foo[Container](a: Container, b: a.type.Item): typeof(b.x)
   #
   # Alas, doing this here is probably not enough, because another
   # proc signature could appear in the params:
-  # proc foo[T](a: proc (x: T, b: type(x.y))
+  # proc foo[T](a: proc (x: T, b: typeof(x.y))
   #
   # The solution would be to move this logic into semtypinst, but
   # at this point semtypinst have to become part of sem, because it

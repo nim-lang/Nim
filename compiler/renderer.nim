@@ -296,11 +296,11 @@ proc popAllComs(g: var TSrcGen) =
 const
   Space = " "
 
-proc shouldRenderComment(g: var TSrcGen, n: PNode): bool =
-  result = false
-  if n.comment.len > 0:
-    result = (renderNoComments notin g.flags) or
-        (renderDocComments in g.flags)
+proc shouldRenderComment(g: TSrcGen): bool {.inline.} =
+  (renderNoComments notin g.flags or renderDocComments in g.flags)
+
+proc shouldRenderComment(g: TSrcGen, n: PNode): bool {.inline.} =
+  shouldRenderComment(g) and n.comment.len > 0
 
 proc gcom(g: var TSrcGen, n: PNode) =
   assert(n != nil)
@@ -430,7 +430,7 @@ proc lsons(g: TSrcGen; n: PNode, start: int = 0, theEnd: int = - 1): int =
 proc lsub(g: TSrcGen; n: PNode): int =
   # computes the length of a tree
   if isNil(n): return 0
-  if n.comment.len > 0: return MaxLineLen + 1
+  if shouldRenderComment(g, n): return MaxLineLen + 1
   case n.kind
   of nkEmpty: result = 0
   of nkTripleStrLit:
@@ -598,7 +598,7 @@ proc gcommaAux(g: var TSrcGen, n: PNode, ind: int, start: int = 0,
     if c:
       if g.tokens.len > oldLen:
         putWithSpace(g, separator, $separator)
-      if hasCom(n[i]):
+      if shouldRenderComment(g) and hasCom(n[i]):
         gcoms(g)
         optNL(g, ind)
 
@@ -639,7 +639,7 @@ proc gsection(g: var TSrcGen, n: PNode, c: TContext, kind: TokType,
   dedent(g)
 
 proc longMode(g: TSrcGen; n: PNode, start: int = 0, theEnd: int = - 1): bool =
-  result = n.comment.len > 0
+  result = shouldRenderComment(g, n)
   if not result:
     # check further
     for i in start..n.len + theEnd:
@@ -980,7 +980,7 @@ proc gsub(g: var TSrcGen, n: PNode, c: TContext) =
   if isNil(n): return
   var
     a: TContext
-  if n.comment.len > 0: pushCom(g, n)
+  if shouldRenderComment(g, n): pushCom(g, n)
   case n.kind                 # atoms:
   of nkTripleStrLit: put(g, tkTripleStrLit, atom(g, n))
   of nkEmpty: discard

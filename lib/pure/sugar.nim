@@ -53,8 +53,8 @@ proc createProcType(p, b: NimNode): NimNode {.compileTime.} =
   result.add prag
 
 macro `=>`*(p, b: untyped): untyped =
-  ## Syntax sugar for anonymous procedures.
-  ## It also supports pragmas.
+  ## Syntax sugar for anonymous procedures. It also supports pragmas.
+  # TODO: xxx pending #13491: uncomment in runnableExamples
   runnableExamples:
     proc passTwoAndTwo(f: (int, int) -> int): int = f(2, 2)
 
@@ -62,12 +62,15 @@ macro `=>`*(p, b: untyped): untyped =
 
     type
       Bot = object
-        call: proc (name: string): string {.noSideEffect.}
+        call: (string {.noSideEffect.} -> string)
 
     var myBot = Bot()
 
     myBot.call = (name: string) {.noSideEffect.} => "Hello " & name & ", I'm a bot."
     doAssert myBot.call("John") == "Hello John, I'm a bot."
+
+    # let f = () => (discard) # simplest proc that returns void
+    # f()
 
   var
     params = @[ident"auto"]
@@ -140,14 +143,19 @@ macro `=>`*(p, b: untyped): untyped =
                    procType = kind)
 
 macro `->`*(p, b: untyped): untyped =
-  ## Syntax sugar for procedure types.
+  ## Syntax sugar for procedure types. It also supports pragmas.
   runnableExamples:
     proc passTwoAndTwo(f: (int, int) -> int): int = f(2, 2)
-
     # is the same as:
     # proc passTwoAndTwo(f: proc (x, y: int): int): int = f(2, 2)
 
     doAssert passTwoAndTwo((x, y) => x + y) == 4
+
+    proc passOne(f: (int {.noSideEffect.} -> int)): int = f(1)
+    # is the same as:
+    # proc passOne(f: proc (x: int): int {.noSideEffect.}): int = f(1)
+
+    doAssert passOne(x {.noSideEffect.} => x + 1) == 2
 
   result = createProcType(p, b)
 
@@ -216,7 +224,7 @@ macro capture*(locals: varargs[typed], body: untyped): untyped {.since: (1, 1).}
   ## Useful when creating a closure in a loop to capture some local loop variables
   ## by their current iteration values.
   runnableExamples:
-    import std/[strformat, sequtils]
+    import std/strformat
 
     var myClosure: () -> string
     for i in 5..7:
@@ -226,12 +234,6 @@ macro capture*(locals: varargs[typed], body: untyped): untyped {.since: (1, 1).}
             myClosure = () => fmt"{i} * {j} = 42"
     doAssert myClosure() == "6 * 7 = 42"
 
-    let m = @[(s: string) => "to " & s,
-              (s: string) => "not to " & s]
-    let l = m.mapIt(capture(it, (s: string) => it(s)))
-    let r = l.mapIt(it("be"))
-    doAssert fmt"{r[0]}, or {r[1]}" == "to be, or not to be"
-
   var params = @[newIdentNode("auto")]
   let locals = if locals.len == 1 and locals[0].kind == nnkBracket: locals[0]
                else: locals
@@ -240,7 +242,7 @@ macro capture*(locals: varargs[typed], body: untyped): untyped {.since: (1, 1).}
       error("The variable name cannot be `result`!", arg)
     params.add(newIdentDefs(ident(arg.strVal), freshIdentNodes getTypeInst arg))
   result = newNimNode(nnkCall)
-  result.add(newProc(newEmptyNode(), params, body, nnkProcDef))
+  result.add(newProc(newEmptyNode(), params, body, nnkLambda))
   for arg in locals: result.add(arg)
 
 since (1, 1):

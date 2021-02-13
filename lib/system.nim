@@ -14,7 +14,7 @@
 ##
 ## Each module implicitly imports the System module; it must not be listed
 ## explicitly. Because of this there cannot be a user-defined module named
-## ``system``.
+## `system`.
 ##
 ## System module
 ## =============
@@ -33,7 +33,7 @@ type
   char* {.magic: Char.}         ## Built-in 8 bit character type (unsigned).
   string* {.magic: String.}     ## Built-in string type.
   cstring* {.magic: Cstring.}   ## Built-in cstring (*compatible string*) type.
-  pointer* {.magic: Pointer.}   ## Built-in pointer type, use the ``addr``
+  pointer* {.magic: Pointer.}   ## Built-in pointer type, use the `addr`
                                 ## operator to get a pointer to a variable.
 
   typedesc* {.magic: TypeDesc.} ## Meta type to denote a type description.
@@ -46,7 +46,7 @@ type
 
   void* {.magic: "VoidType".}    ## Meta type to denote the absence of any type.
   auto* {.magic: Expr.}          ## Meta type for automatic type determination.
-  any* = distinct auto           ## Meta type for any supported type.
+  any* {.deprecated: "Deprecated since v1.5; Use auto instead.".} = distinct auto  ## Deprecated; Use `auto` instead. See https://github.com/nim-lang/RFCs/issues/281
   untyped* {.magic: Expr.}       ## Meta type to denote an expression that
                                  ## is not resolved (for templates).
   typed* {.magic: Stmt.}         ## Meta type to denote an expression that
@@ -140,10 +140,10 @@ when defined(nimHasRunnableExamples):
     ## A section you should use to mark `runnable example`:idx: code with.
     ##
     ## - In normal debug and release builds code within
-    ##   a ``runnableExamples`` section is ignored.
+    ##   a `runnableExamples` section is ignored.
     ## - The documentation generator is aware of these examples and considers them
-    ##   part of the ``##`` doc comment. As the last step of documentation
-    ##   generation each runnableExample is put in its own file ``$file_examples$i.nim``,
+    ##   part of the `##` doc comment. As the last step of documentation
+    ##   generation each runnableExample is put in its own file `$file_examples$i.nim`,
     ##   compiled and tested. The collected examples are
     ##   put into their own module to ensure the examples do not refer to
     ##   non-exported symbols.
@@ -211,7 +211,7 @@ proc `addr`*[T](x: var T): ptr T {.magic: "Addr", noSideEffect.} =
 
 proc unsafeAddr*[T](x: T): ptr T {.magic: "Addr", noSideEffect.} =
   ## Builtin `addr` operator for taking the address of a memory
-  ## location. This works even for ``let`` variables or parameters
+  ## location. This works even for `let` variables or parameters
   ## for better interop with C and so it is considered even more
   ## unsafe than the ordinary `addr <#addr,T>`_.
   ##
@@ -227,14 +227,14 @@ when defined(nimNewTypedesc):
     `static`*[T] {.magic: "Static".}
       ## Meta type representing all values that can be evaluated at compile-time.
       ##
-      ## The type coercion ``static(x)`` can be used to force the compile-time
-      ## evaluation of the given expression ``x``.
+      ## The type coercion `static(x)` can be used to force the compile-time
+      ## evaluation of the given expression `x`.
 
     `type`*[T] {.magic: "Type".}
       ## Meta type representing the type of all type values.
       ##
-      ## The coercion ``type(x)`` can be used to obtain the type of the given
-      ## expression ``x``.
+      ## The coercion `type(x)` can be used to obtain the type of the given
+      ## expression `x`.
 else:
   proc `type`*(x: untyped): typedesc {.magic: "TypeOf", noSideEffect, compileTime.} =
     ## Builtin `type` operator for accessing the type of an expression.
@@ -251,8 +251,23 @@ when defined(nimHasTypeof):
     magic: "TypeOf", noSideEffect, compileTime.} =
     ## Builtin `typeof` operation for accessing the type of an expression.
     ## Since version 0.20.0.
-    discard
+    runnableExamples:
+      proc myFoo(): float = 0.0
+      iterator myFoo(): string = yield "abc"
+      iterator myFoo2(): string = yield "abc"
+      iterator myFoo3(): string {.closure.} = yield "abc"
+      doAssert type(myFoo()) is string
+      doAssert typeof(myFoo()) is string
+      doAssert typeof(myFoo(), typeOfIter) is string
+      doAssert typeof(myFoo3) is "iterator"
 
+      doAssert typeof(myFoo(), typeOfProc) is float
+      doAssert typeof(0.0, typeOfProc) is float
+      doAssert typeof(myFoo3, typeOfProc) is "iterator"
+      doAssert not compiles(typeof(myFoo2(), typeOfProc))
+        # this would give: Error: attempting to call routine: 'myFoo2'
+        # since `typeOfProc` expects a typed expression and `myFoo2()` can
+        # only be used in a `for` context.
 
 const ThisIsSystem = true
 
@@ -262,8 +277,8 @@ proc internalNew*[T](a: var ref T) {.magic: "New", noSideEffect.}
 when true:
   proc new*[T](a: var ref T, finalizer: proc (x: ref T) {.nimcall.}) {.
     magic: "NewFinalize", noSideEffect.}
-    ## Creates a new object of type ``T`` and returns a safe (traced)
-    ## reference to it in ``a``.
+    ## Creates a new object of type `T` and returns a safe (traced)
+    ## reference to it in `a`.
     ##
     ## When the garbage collector frees the object, `finalizer` is called.
     ## The `finalizer` may not keep a reference to the
@@ -322,7 +337,7 @@ proc high*[T: Ordinal|enum|range](x: T): T {.magic: "High", noSideEffect,
 proc high*[T: Ordinal|enum|range](x: typedesc[T]): T {.magic: "High", noSideEffect.}
   ## Returns the highest possible value of an ordinal or enum type.
   ##
-  ## ``high(int)`` is Nim's way of writing `INT_MAX`:idx: or `MAX_INT`:idx:.
+  ## `high(int)` is Nim's way of writing `INT_MAX`:idx: or `MAX_INT`:idx:.
   ##
   ## See also:
   ## * `low(typedesc) <#low,typedesc[T]>`_
@@ -394,7 +409,7 @@ proc low*[T: Ordinal|enum|range](x: T): T {.magic: "Low", noSideEffect,
 proc low*[T: Ordinal|enum|range](x: typedesc[T]): T {.magic: "Low", noSideEffect.}
   ## Returns the lowest possible value of an ordinal or enum type.
   ##
-  ## ``low(int)`` is Nim's way of writing `INT_MIN`:idx: or `MIN_INT`:idx:.
+  ## `low(int)` is Nim's way of writing `INT_MIN`:idx: or `MIN_INT`:idx:.
   ##
   ## See also:
   ## * `high(typedesc) <#high,typedesc[T]>`_
@@ -485,10 +500,10 @@ type
   HSlice*[T, U] = object   ## "Heterogeneous" slice type.
     a*: T                  ## The lower bound (inclusive).
     b*: U                  ## The upper bound (inclusive).
-  Slice*[T] = HSlice[T, T] ## An alias for ``HSlice[T, T]``.
+  Slice*[T] = HSlice[T, T] ## An alias for `HSlice[T, T]`.
 
 proc `..`*[T, U](a: sink T, b: sink U): HSlice[T, U] {.noSideEffect, inline, magic: "DotDot".} =
-  ## Binary `slice`:idx: operator that constructs an interval ``[a, b]``, both `a`
+  ## Binary `slice`:idx: operator that constructs an interval `[a, b]`, both `a`
   ## and `b` are inclusive.
   ##
   ## Slices can also be used in the set constructor and in ordinal case
@@ -500,7 +515,7 @@ proc `..`*[T, U](a: sink T, b: sink U): HSlice[T, U] {.noSideEffect, inline, mag
   result = HSlice[T, U](a: a, b: b)
 
 proc `..`*[T](b: sink T): HSlice[int, T] {.noSideEffect, inline, magic: "DotDot".} =
-  ## Unary `slice`:idx: operator that constructs an interval ``[default(int), b]``.
+  ## Unary `slice`:idx: operator that constructs an interval `[default(int), b]`.
   ##
   ## .. code-block:: Nim
   ##   let a = [10, 20, 30, 40, 50]
@@ -560,7 +575,7 @@ when notJSnotNims:
   include "system/hti"
 
 type
-  byte* = uint8 ## This is an alias for ``uint8``, that is an unsigned
+  byte* = uint8 ## This is an alias for `uint8`, that is an unsigned
                 ## integer, 8 bits wide.
 
   Natural* = range[0..high(int)]
@@ -587,10 +602,10 @@ when defined(js) or defined(nimdoc):
       ## Root type of the JavaScript object hierarchy
 
 proc unsafeNew*[T](a: var ref T, size: Natural) {.magic: "New", noSideEffect.}
-  ## Creates a new object of type ``T`` and returns a safe (traced)
-  ## reference to it in ``a``.
+  ## Creates a new object of type `T` and returns a safe (traced)
+  ## reference to it in `a`.
   ##
-  ## This is **unsafe** as it allocates an object of the passed ``size``.
+  ## This is **unsafe** as it allocates an object of the passed `size`.
   ## This should only be used for optimization purposes when you know
   ## what you're doing!
   ##
@@ -598,17 +613,17 @@ proc unsafeNew*[T](a: var ref T, size: Natural) {.magic: "New", noSideEffect.}
   ## * `new <#new,ref.T,proc(ref.T)>`_
 
 proc sizeof*[T](x: T): int {.magic: "SizeOf", noSideEffect.}
-  ## Returns the size of ``x`` in bytes.
+  ## Returns the size of `x` in bytes.
   ##
   ## Since this is a low-level proc,
   ## its usage is discouraged - using `new <#new,ref.T,proc(ref.T)>`_ for
-  ## the most cases suffices that one never needs to know ``x``'s size.
+  ## the most cases suffices that one never needs to know `x`'s size.
   ##
-  ## As a special semantic rule, ``x`` may also be a type identifier
-  ## (``sizeof(int)`` is valid).
+  ## As a special semantic rule, `x` may also be a type identifier
+  ## (`sizeof(int)` is valid).
   ##
   ## Limitations: If used for types that are imported from C or C++,
-  ## sizeof should fallback to the ``sizeof`` in the C compiler. The
+  ## sizeof should fallback to the `sizeof` in the C compiler. The
   ## result isn't available for the Nim compiler and therefore can't
   ## be used inside of macros.
   ##
@@ -636,9 +651,9 @@ when defined(nimtypedescfixed):
 
 
 proc newSeq*[T](s: var seq[T], len: Natural) {.magic: "NewSeq", noSideEffect.}
-  ## Creates a new sequence of type ``seq[T]`` with length ``len``.
+  ## Creates a new sequence of type `seq[T]` with length `len`.
   ##
-  ## This is equivalent to ``s = @[]; setlen(s, len)``, but more
+  ## This is equivalent to `s = @[]; setlen(s, len)`, but more
   ## efficient since no reallocation is needed.
   ##
   ## Note that the sequence will be filled with zeroed entries.
@@ -655,7 +670,7 @@ proc newSeq*[T](s: var seq[T], len: Natural) {.magic: "NewSeq", noSideEffect.}
   ##   #inputStrings[3] = "out of bounds"
 
 proc newSeq*[T](len = 0.Natural): seq[T] =
-  ## Creates a new sequence of type ``seq[T]`` with length ``len``.
+  ## Creates a new sequence of type `seq[T]` with length `len`.
   ##
   ## Note that the sequence will be filled with zeroed entries.
   ## After the creation of the sequence you should assign entries to
@@ -676,8 +691,8 @@ proc newSeq*[T](len = 0.Natural): seq[T] =
 
 proc newSeqOfCap*[T](cap: Natural): seq[T] {.
   magic: "NewSeqOfCap", noSideEffect.} =
-  ## Creates a new sequence of type ``seq[T]`` with length zero and capacity
-  ## ``cap``.
+  ## Creates a new sequence of type `seq[T]` with length zero and capacity
+  ## `cap`.
   ##
   ## .. code-block:: Nim
   ##   var x = newSeqOfCap[int](5)
@@ -688,7 +703,7 @@ proc newSeqOfCap*[T](cap: Natural): seq[T] {.
 
 when not defined(js):
   proc newSeqUninitialized*[T: SomeNumber](len: Natural): seq[T] =
-    ## Creates a new sequence of type ``seq[T]`` with length ``len``.
+    ## Creates a new sequence of type `seq[T]` with length `len`.
     ##
     ## Only available for numbers types. Note that the sequence will be
     ## uninitialized. After the creation of the sequence you should assign
@@ -741,7 +756,7 @@ proc len*(x: cstring): int {.magic: "LengthStr", noSideEffect.} =
 
 proc len*(x: (type array)|array): int {.magic: "LengthArray", noSideEffect.}
   ## Returns the length of an array or an array type.
-  ## This is roughly the same as ``high(T)-low(T)+1``.
+  ## This is roughly the same as `high(T)-low(T)+1`.
   ##
   ## .. code-block:: Nim
   ##   var arr = [1, 1, 1, 1, 1]
@@ -757,7 +772,7 @@ proc len*[T](x: seq[T]): int {.magic: "LengthSeq", noSideEffect.}
 
 
 proc ord*[T: Ordinal|enum](x: T): int {.magic: "Ord", noSideEffect.}
-  ## Returns the internal `int` value of an ordinal value ``x``.
+  ## Returns the internal `int` value of an ordinal value `x`.
   ##
   ## .. code-block:: Nim
   ##   echo ord('A') # => 65
@@ -839,7 +854,7 @@ proc `is`*[T, S](x: T, y: S): bool {.magic: "Is", noSideEffect.}
   ##   assert(test[int](3) == 3)
   ##   assert(test[string]("xyz") == 0)
 template `isnot`*(x, y: untyped): untyped = not (x is y)
-  ## Negated version of `is <#is,T,S>`_. Equivalent to ``not(x is y)``.
+  ## Negated version of `is <#is,T,S>`_. Equivalent to `not(x is y)`.
   ##
   ## .. code-block:: Nim
   ##   assert 42 isnot float
@@ -852,15 +867,15 @@ else:
 
 when defined(nimOwnedEnabled) and not defined(nimscript):
   proc new*[T](a: var owned(ref T)) {.magic: "New", noSideEffect.}
-    ## Creates a new object of type ``T`` and returns a safe (traced)
-    ## reference to it in ``a``.
+    ## Creates a new object of type `T` and returns a safe (traced)
+    ## reference to it in `a`.
 
   proc new*(t: typedesc): auto =
-    ## Creates a new object of type ``T`` and returns a safe (traced)
+    ## Creates a new object of type `T` and returns a safe (traced)
     ## reference to it as result value.
     ##
-    ## When ``T`` is a ref type then the resulting type will be ``T``,
-    ## otherwise it will be ``ref T``.
+    ## When `T` is a ref type then the resulting type will be `T`,
+    ## otherwise it will be `ref T`.
     when (t is ref):
       var r: owned t
     else:
@@ -869,7 +884,7 @@ when defined(nimOwnedEnabled) and not defined(nimscript):
     return r
 
   proc unown*[T](x: T): T {.magic: "Unown", noSideEffect.}
-    ## Use the expression ``x`` ignoring its ownership attribute.
+    ## Use the expression `x` ignoring its ownership attribute.
 
   # This is only required to make 0.20 compile with the 0.19 line.
   template `<//>`*(t: untyped): untyped = owned(t)
@@ -878,15 +893,15 @@ else:
   template unown*(x: typed): untyped = x
 
   proc new*[T](a: var ref T) {.magic: "New", noSideEffect.}
-    ## Creates a new object of type ``T`` and returns a safe (traced)
-    ## reference to it in ``a``.
+    ## Creates a new object of type `T` and returns a safe (traced)
+    ## reference to it in `a`.
 
   proc new*(t: typedesc): auto =
-    ## Creates a new object of type ``T`` and returns a safe (traced)
+    ## Creates a new object of type `T` and returns a safe (traced)
     ## reference to it as result value.
     ##
-    ## When ``T`` is a ref type then the resulting type will be ``T``,
-    ## otherwise it will be ``ref T``.
+    ## When `T` is a ref type then the resulting type will be `T`,
+    ## otherwise it will be `ref T`.
     when (t is ref):
       var r: t
     else:
@@ -904,14 +919,31 @@ template disarm*(x: typed) =
   ## experimental API!
   x = nil
 
-proc `of`*[T, S](x: typedesc[T], y: typedesc[S]): bool {.magic: "Of", noSideEffect.}
-proc `of`*[T, S](x: T, y: typedesc[S]): bool {.magic: "Of", noSideEffect.}
-proc `of`*[T, S](x: T, y: S): bool {.magic: "Of", noSideEffect.}
-  ## Checks if `x` has a type of `y`.
-  ##
-  ## .. code-block:: Nim
-  ##   assert(FloatingPointDefect of Exception)
-  ##   assert(DivByZeroDefect of Exception)
+proc `of`*[T, S](x: T, y: typedesc[S]): bool {.magic: "Of", noSideEffect.} =
+  ## Checks if `x` is an instance of `y`.
+  runnableExamples:
+    type
+      Base = ref object of RootObj
+      Sub1 = ref object of Base
+      Sub2 = ref object of Base
+      Unrelated = ref object
+
+    var base: Base = Sub1() # downcast
+    doAssert base of Base # generates `CondTrue` (statically true)
+    doAssert base of Sub1
+    doAssert base isnot Sub1
+    doAssert not (base of Sub2)
+
+    base = Sub2() # re-assign
+    doAssert base of Sub2
+    doAssert Sub2(base) != nil # upcast
+    doAssertRaises(ObjectConversionDefect): discard Sub1(base)
+
+    var sub1 = Sub1()
+    doAssert sub1 of Base
+    doAssert sub1.Base of Sub1
+
+    doAssert not compiles(base of Unrelated)
 
 proc cmp*[T](x, y: T): int =
   ## Generic compare proc.
@@ -943,8 +975,8 @@ when defined(nimHasDefault):
     ## Turns an array into a sequence.
     ##
     ## This most often useful for constructing
-    ## sequences with the array constructor: ``@[1, 2, 3]`` has the type
-    ## ``seq[int]``, while ``[1, 2, 3]`` has the type ``array[0..2, int]``.
+    ## sequences with the array constructor: `@[1, 2, 3]` has the type
+    ## `seq[int]`, while `[1, 2, 3]` has the type `array[0..2, int]`.
     ##
     ## .. code-block:: Nim
     ##   let
@@ -954,8 +986,23 @@ when defined(nimHasDefault):
     ##   echo @a # => @[1, 3, 5]
     ##   echo @b # => @['f', 'o', 'o']
 
-  proc default*(T: typedesc): T {.magic: "Default", noSideEffect.}
-    ## returns the default value of the type ``T``.
+  proc default*(T: typedesc): T {.magic: "Default", noSideEffect.} =
+    ## returns the default value of the type `T`.
+    runnableExamples:
+      assert (int, float).default == (0, 0.0)
+      # note: `var a = default(T)` is usually the same as `var a: T` and (currently) generates
+      # a value whose binary representation is all 0, regardless of whether this
+      # would violate type constraints such as `range`, `not nil`, etc. This
+      # property is required to implement certain algorithms efficiently which
+      # may require intermediate invalid states.
+      type Foo = object
+        a: range[2..6]
+      var a1: range[2..6] # currently, this compiles
+      # var a2: Foo # currently, this errors: Error: The Foo type doesn't have a default value.
+      # var a3 = Foo() # ditto
+      var a3 = Foo.default # this works, but generates a `UnsafeDefault` warning.
+    # note: the doc comment also explains why `default` can't be implemented
+    # via: `template default*[T](t: typedesc[T]): T = (var v: T; v)`
 
   proc reset*[T](obj: var T) {.noSideEffect.} =
     ## Resets an object `obj` to its default value.
@@ -971,10 +1018,10 @@ else:
 
 proc setLen*[T](s: var seq[T], newlen: Natural) {.
   magic: "SetLengthSeq", noSideEffect.}
-  ## Sets the length of seq `s` to `newlen`. ``T`` may be any sequence type.
+  ## Sets the length of seq `s` to `newlen`. `T` may be any sequence type.
   ##
   ## If the current length is greater than the new length,
-  ## ``s`` will be truncated.
+  ## `s` will be truncated.
   ##
   ## .. code-block:: Nim
   ##   var x = @[10, 20]
@@ -989,7 +1036,7 @@ proc setLen*(s: var string, newlen: Natural) {.
   ## Sets the length of string `s` to `newlen`.
   ##
   ## If the current length is greater than the new length,
-  ## ``s`` will be truncated.
+  ## `s` will be truncated.
   ##
   ## .. code-block:: Nim
   ##  var myS = "Nim is great!!"
@@ -998,19 +1045,19 @@ proc setLen*(s: var string, newlen: Natural) {.
 
 proc newString*(len: Natural): string {.
   magic: "NewString", importc: "mnewString", noSideEffect.}
-  ## Returns a new string of length ``len`` but with uninitialized
+  ## Returns a new string of length `len` but with uninitialized
   ## content. One needs to fill the string character after character
-  ## with the index operator ``s[i]``.
+  ## with the index operator `s[i]`.
   ##
   ## This procedure exists only for optimization purposes;
-  ## the same effect can be achieved with the ``&`` operator or with ``add``.
+  ## the same effect can be achieved with the `&` operator or with `add`.
 
 proc newStringOfCap*(cap: Natural): string {.
   magic: "NewStringOfCap", importc: "rawNewString", noSideEffect.}
-  ## Returns a new string of length ``0`` but with capacity `cap`.
+  ## Returns a new string of length `0` but with capacity `cap`.
   ##
   ## This procedure exists only for optimization purposes; the same effect can
-  ## be achieved with the ``&`` operator or with ``add``.
+  ## be achieved with the `&` operator or with `add`.
 
 proc `&`*(x: string, y: char): string {.
   magic: "ConStrStr", noSideEffect, merge.}
@@ -1069,11 +1116,11 @@ const
 
   CompileDate* {.magic: "CompileDate"}: string = "0000-00-00"
     ## The date (in UTC) of compilation as a string of the form
-    ## ``YYYY-MM-DD``. This works thanks to compiler magic.
+    ## `YYYY-MM-DD`. This works thanks to compiler magic.
 
   CompileTime* {.magic: "CompileTime"}: string = "00:00:00"
     ## The time (in UTC) of compilation as a string of the form
-    ## ``HH:MM:SS``. This works thanks to compiler magic.
+    ## `HH:MM:SS`. This works thanks to compiler magic.
 
   cpuEndian* {.magic: "CpuEndian"}: Endianness = littleEndian
     ## The endianness of the target CPU. This is a valuable piece of
@@ -1107,7 +1154,7 @@ const
 
 when hasThreadSupport and defined(tcc) and not compileOption("tlsEmulation"):
   # tcc doesn't support TLS
-  {.error: "``--tlsEmulation:on`` must be used when using threads with tcc backend".}
+  {.error: "`--tlsEmulation:on` must be used when using threads with tcc backend".}
 
 when defined(boehmgc):
   when defined(windows):
@@ -1163,17 +1210,17 @@ when defined(nimdoc):
     ##
     ## Before stopping the program the "exit procedures" are called in the
     ## opposite order they were added with `addExitProc <exitprocs.html#addExitProc,proc)>`_.
-    ## ``quit`` never returns and ignores any exception that may have been raised
+    ## `quit` never returns and ignores any exception that may have been raised
     ## by the quit procedures.  It does *not* call the garbage collector to free
     ## all the memory, unless a quit procedure calls `GC_fullCollect
     ## <#GC_fullCollect>`_.
     ##
-    ## The proc ``quit(QuitSuccess)`` is called implicitly when your nim
+    ## The proc `quit(QuitSuccess)` is called implicitly when your nim
     ## program finishes without incident for platforms where this is the
     ## expected behavior. A raised unhandled exception is
-    ## equivalent to calling ``quit(QuitFailure)``.
+    ## equivalent to calling `quit(QuitFailure)`.
     ##
-    ## Note that this is a *runtime* call and using ``quit`` inside a macro won't
+    ## Note that this is a *runtime* call and using `quit` inside a macro won't
     ## have any compile time effect. If you need to stop the compiler inside a
     ## macro, use the `error <manual.html#pragmas-error-pragma>`_ or `fatal
     ## <manual.html#pragmas-fatal-pragma>`_ pragmas.
@@ -1279,7 +1326,7 @@ else:
     shallowCopy(a, b)
 
 proc del*[T](x: var seq[T], i: Natural) {.noSideEffect.} =
-  ## Deletes the item at index `i` by putting ``x[high(x)]`` into position `i`.
+  ## Deletes the item at index `i` by putting `x[high(x)]` into position `i`.
   ##
   ## This is an `O(1)` operation.
   ##
@@ -1294,7 +1341,7 @@ proc del*[T](x: var seq[T], i: Natural) {.noSideEffect.} =
   setLen(x, xl)
 
 proc delete*[T](x: var seq[T], i: Natural) {.noSideEffect.} =
-  ## Deletes the item at index `i` by moving all ``x[i+1..]`` items by one position.
+  ## Deletes the item at index `i` by moving all `x[i+1..]` items by one position.
   ##
   ## This is an `O(n)` operation.
   ##
@@ -1364,78 +1411,78 @@ type
 
   BiggestFloat* = float64
     ## is an alias for the biggest floating point type the Nim
-    ## compiler supports. Currently this is ``float64``, but it is
+    ## compiler supports. Currently this is `float64`, but it is
     ## platform-dependent in general.
 
 when defined(js):
   type BiggestUInt* = uint32
     ## is an alias for the biggest unsigned integer type the Nim compiler
-    ## supports. Currently this is ``uint32`` for JS and ``uint64`` for other
+    ## supports. Currently this is `uint32` for JS and `uint64` for other
     ## targets.
 else:
   type BiggestUInt* = uint64
     ## is an alias for the biggest unsigned integer type the Nim compiler
-    ## supports. Currently this is ``uint32`` for JS and ``uint64`` for other
+    ## supports. Currently this is `uint32` for JS and `uint64` for other
     ## targets.
 
 when defined(windows):
   type
     clong* {.importc: "long", nodecl.} = int32
-      ## This is the same as the type ``long`` in *C*.
+      ## This is the same as the type `long` in *C*.
     culong* {.importc: "unsigned long", nodecl.} = uint32
-      ## This is the same as the type ``unsigned long`` in *C*.
+      ## This is the same as the type `unsigned long` in *C*.
 else:
   type
     clong* {.importc: "long", nodecl.} = int
-      ## This is the same as the type ``long`` in *C*.
+      ## This is the same as the type `long` in *C*.
     culong* {.importc: "unsigned long", nodecl.} = uint
-      ## This is the same as the type ``unsigned long`` in *C*.
+      ## This is the same as the type `unsigned long` in *C*.
 
 type # these work for most platforms:
   cchar* {.importc: "char", nodecl.} = char
-    ## This is the same as the type ``char`` in *C*.
+    ## This is the same as the type `char` in *C*.
   cschar* {.importc: "signed char", nodecl.} = int8
-    ## This is the same as the type ``signed char`` in *C*.
+    ## This is the same as the type `signed char` in *C*.
   cshort* {.importc: "short", nodecl.} = int16
-    ## This is the same as the type ``short`` in *C*.
+    ## This is the same as the type `short` in *C*.
   cint* {.importc: "int", nodecl.} = int32
-    ## This is the same as the type ``int`` in *C*.
+    ## This is the same as the type `int` in *C*.
   csize* {.importc: "size_t", nodecl, deprecated: "use `csize_t` instead".} = int
-    ## This isn't the same as ``size_t`` in *C*. Don't use it.
+    ## This isn't the same as `size_t` in *C*. Don't use it.
   csize_t* {.importc: "size_t", nodecl.} = uint
-    ## This is the same as the type ``size_t`` in *C*.
+    ## This is the same as the type `size_t` in *C*.
   clonglong* {.importc: "long long", nodecl.} = int64
-    ## This is the same as the type ``long long`` in *C*.
+    ## This is the same as the type `long long` in *C*.
   cfloat* {.importc: "float", nodecl.} = float32
-    ## This is the same as the type ``float`` in *C*.
+    ## This is the same as the type `float` in *C*.
   cdouble* {.importc: "double", nodecl.} = float64
-    ## This is the same as the type ``double`` in *C*.
+    ## This is the same as the type `double` in *C*.
   clongdouble* {.importc: "long double", nodecl.} = BiggestFloat
-    ## This is the same as the type ``long double`` in *C*.
+    ## This is the same as the type `long double` in *C*.
     ## This C type is not supported by Nim's code generator.
 
   cuchar* {.importc: "unsigned char", nodecl.} = char
-    ## This is the same as the type ``unsigned char`` in *C*.
+    ## This is the same as the type `unsigned char` in *C*.
   cushort* {.importc: "unsigned short", nodecl.} = uint16
-    ## This is the same as the type ``unsigned short`` in *C*.
+    ## This is the same as the type `unsigned short` in *C*.
   cuint* {.importc: "unsigned int", nodecl.} = uint32
-    ## This is the same as the type ``unsigned int`` in *C*.
+    ## This is the same as the type `unsigned int` in *C*.
   culonglong* {.importc: "unsigned long long", nodecl.} = uint64
-    ## This is the same as the type ``unsigned long long`` in *C*.
+    ## This is the same as the type `unsigned long long` in *C*.
 
   cstringArray* {.importc: "char**", nodecl.} = ptr UncheckedArray[cstring]
-    ## This is binary compatible to the type ``char**`` in *C*. The array's
+    ## This is binary compatible to the type `char**` in *C*. The array's
     ## high value is large enough to disable bounds checking in practice.
     ## Use `cstringArrayToSeq proc <#cstringArrayToSeq,cstringArray,Natural>`_
-    ## to convert it into a ``seq[string]``.
+    ## to convert it into a `seq[string]`.
 
-  PFloat32* = ptr float32    ## An alias for ``ptr float32``.
-  PFloat64* = ptr float64    ## An alias for ``ptr float64``.
-  PInt64* = ptr int64        ## An alias for ``ptr int64``.
-  PInt32* = ptr int32        ## An alias for ``ptr int32``.
+  PFloat32* = ptr float32    ## An alias for `ptr float32`.
+  PFloat64* = ptr float64    ## An alias for `ptr float64`.
+  PInt64* = ptr int64        ## An alias for `ptr int64`.
+  PInt32* = ptr int32        ## An alias for `ptr int32`.
 
 proc toFloat*(i: int): float {.noSideEffect, inline.} =
-  ## Converts an integer `i` into a ``float``.
+  ## Converts an integer `i` into a `float`.
   ##
   ## If the conversion fails, `ValueError` is raised.
   ## However, on most platforms the conversion cannot fail.
@@ -1449,11 +1496,11 @@ proc toFloat*(i: int): float {.noSideEffect, inline.} =
   float(i)
 
 proc toBiggestFloat*(i: BiggestInt): BiggestFloat {.noSideEffect, inline.} =
-  ## Same as `toFloat <#toFloat,int>`_ but for ``BiggestInt`` to ``BiggestFloat``.
+  ## Same as `toFloat <#toFloat,int>`_ but for `BiggestInt` to `BiggestFloat`.
   BiggestFloat(i)
 
 proc toInt*(f: float): int {.noSideEffect.} =
-  ## Converts a floating point number `f` into an ``int``.
+  ## Converts a floating point number `f` into an `int`.
   ##
   ## Conversion rounds `f` half away from 0, see
   ## `Round half away from zero
@@ -1469,17 +1516,17 @@ proc toInt*(f: float): int {.noSideEffect.} =
   if f >= 0: int(f+0.5) else: int(f-0.5)
 
 proc toBiggestInt*(f: BiggestFloat): BiggestInt {.noSideEffect.} =
-  ## Same as `toInt <#toInt,float>`_ but for ``BiggestFloat`` to ``BiggestInt``.
+  ## Same as `toInt <#toInt,float>`_ but for `BiggestFloat` to `BiggestInt`.
   if f >= 0: BiggestInt(f+0.5) else: BiggestInt(f-0.5)
 
 proc addQuitProc*(quitProc: proc() {.noconv.}) {.
   importc: "atexit", header: "<stdlib.h>", deprecated: "use exitprocs.addExitProc".}
   ## Adds/registers a quit procedure.
   ##
-  ## Each call to ``addQuitProc`` registers another quit procedure. Up to 30
+  ## Each call to `addQuitProc` registers another quit procedure. Up to 30
   ## procedures can be registered. They are executed on a last-in, first-out
   ## basis (that is, the last function registered is the first to be executed).
-  ## ``addQuitProc`` raises an EOutOfIndex exception if ``quitProc`` cannot be
+  ## `addQuitProc` raises an EOutOfIndex exception if `quitProc` cannot be
   ## registered.
   # Support for addQuitProc() is done by Ansi C's facilities here.
   # In case of an unhandled exception the exit handlers should
@@ -1488,7 +1535,7 @@ proc addQuitProc*(quitProc: proc() {.noconv.}) {.
 proc swap*[T](a, b: var T) {.magic: "Swap", noSideEffect.}
   ## Swaps the values `a` and `b`.
   ##
-  ## This is often more efficient than ``tmp = a; a = b; b = tmp``.
+  ## This is often more efficient than `tmp = a; a = b; b = tmp`.
   ## Particularly useful for sorting algorithms.
   ##
   ## .. code-block:: Nim
@@ -1604,7 +1651,7 @@ proc isNil*(x: pointer): bool {.noSideEffect, magic: "IsNil".}
 proc isNil*(x: cstring): bool {.noSideEffect, magic: "IsNil".}
 proc isNil*[T: proc](x: T): bool {.noSideEffect, magic: "IsNil".}
   ## Fast check whether `x` is nil. This is sometimes more efficient than
-  ## ``== nil``.
+  ## `== nil`.
 
 
 proc `@`*[T](a: openArray[T]): seq[T] =
@@ -1719,7 +1766,7 @@ proc instantiationInfo*(index = -1, fullPaths = false): tuple[
   ## While similar to the `caller info`:idx: of other languages, it is determined
   ## at compile time.
   ##
-  ## This proc is mostly useful for meta programming (eg. ``assert`` template)
+  ## This proc is mostly useful for meta programming (eg. `assert` template)
   ## to retrieve information about the current filename and line number.
   ## Example:
   ##
@@ -1789,7 +1836,7 @@ when notJSnotNims and defined(nimSeqsV2):
 
 when not defined(nimscript):
   proc writeStackTrace*() {.tags: [], gcsafe, raises: [].}
-    ## Writes the current stack trace to ``stderr``. This is only works
+    ## Writes the current stack trace to `stderr`. This is only works
     ## for debug builds. Since it's usually used for debugging, this
     ## is proclaimed to have no IO effect!
 
@@ -1833,7 +1880,7 @@ proc find*[T, S](a: T, item: S): int {.inline.}=
 
 proc contains*[T](a: openArray[T], item: T): bool {.inline.}=
   ## Returns true if `item` is in `a` or false if not found. This is a shortcut
-  ## for ``find(a, item) >= 0``.
+  ## for `find(a, item) >= 0`.
   ##
   ## This allows the `in` operator: `a.contains(item)` is the same as
   ## `item in a`.
@@ -1846,7 +1893,7 @@ proc contains*[T](a: openArray[T], item: T): bool {.inline.}=
   return find(a, item) >= 0
 
 proc pop*[T](s: var seq[T]): T {.inline, noSideEffect.} =
-  ## Returns the last item of `s` and decreases ``s.len`` by one. This treats
+  ## Returns the last item of `s` and decreases `s.len` by one. This treats
   ## `s` as a stack and implements the common *pop* operation.
   runnableExamples:
     var a = @[1, 3, 5, 7]
@@ -1863,14 +1910,14 @@ proc pop*[T](s: var seq[T]): T {.inline, noSideEffect.} =
     setLen(s, L)
 
 proc `==`*[T: tuple|object](x, y: T): bool =
-  ## Generic ``==`` operator for tuples that is lifted from the components.
+  ## Generic `==` operator for tuples that is lifted from the components.
   ## of `x` and `y`.
   for a, b in fields(x, y):
     if a != b: return false
   return true
 
 proc `<=`*[T: tuple](x, y: T): bool =
-  ## Generic lexicographic ``<=`` operator for tuples that is lifted from the
+  ## Generic lexicographic `<=` operator for tuples that is lifted from the
   ## components of `x` and `y`. This implementation uses `cmp`.
   for a, b in fields(x, y):
     var c = cmp(a, b)
@@ -1879,7 +1926,7 @@ proc `<=`*[T: tuple](x, y: T): bool =
   return true
 
 proc `<`*[T: tuple](x, y: T): bool =
-  ## Generic lexicographic ``<`` operator for tuples that is lifted from the
+  ## Generic lexicographic `<` operator for tuples that is lifted from the
   ## components of `x` and `y`. This implementation uses `cmp`.
   for a, b in fields(x, y):
     var c = cmp(a, b)
@@ -1928,7 +1975,7 @@ when notJSnotNims:
       ## **Warning**: Ordinary application code should never set this hook!
       ## You better know what you do when setting this.
       ##
-      ## If ``globalRaiseHook`` returns false, the exception is caught and does
+      ## If `globalRaiseHook` returns false, the exception is caught and does
       ## not propagate further through the call stack.
 
     localRaiseHook* {.threadvar.}: proc (e: ref Exception): bool {.nimcall, benign.}
@@ -1939,7 +1986,7 @@ when notJSnotNims:
       ## **Warning**: Ordinary application code should never set this hook!
       ## You better know what you do when setting this.
       ##
-      ## If ``localRaiseHook`` returns false, the exception
+      ## If `localRaiseHook` returns false, the exception
       ## is caught and does not propagate further through the call stack.
 
     outOfMemHook*: proc () {.nimcall, tags: [], benign, raises: [].}
@@ -1982,8 +2029,14 @@ type
     when NimStackTraceMsgs:
       frameMsgLen*: int   ## end position in frameMsgBuf for this frame.
 
-when defined(js):
+when defined(js) or defined(nimdoc):
   proc add*(x: var string, y: cstring) {.asmNoStackFrame.} =
+    ## Appends `y` to `x` in place.
+    runnableExamples:
+      var tmp = ""
+      tmp.add(cstring("ab"))
+      tmp.add(cstring("cd"))
+      doAssert tmp == "abcd"
     asm """
       if (`x` === null) { `x` = []; }
       var off = `x`.length;
@@ -1992,7 +2045,15 @@ when defined(js):
         `x`[off+i] = `y`.charCodeAt(i);
       }
     """
-  proc add*(x: var cstring, y: cstring) {.magic: "AppendStrStr".}
+  proc add*(x: var cstring, y: cstring) {.magic: "AppendStrStr".} =
+    ## Appends `y` to `x` in place.
+    ## Only implemented for JS backend.
+    runnableExamples:
+      when defined(js):
+        var tmp: cstring = ""
+        tmp.add(cstring("ab"))
+        tmp.add(cstring("cd"))
+        doAssert tmp == cstring("abcd")
 
 elif hasAlloc:
   {.push stackTrace: off, profiler: off.}
@@ -2010,21 +2071,21 @@ when defined(nimvarargstyped):
     ## Writes and flushes the parameters to the standard output.
     ##
     ## Special built-in that takes a variable number of arguments. Each argument
-    ## is converted to a string via ``$``, so it works for user-defined
-    ## types that have an overloaded ``$`` operator.
-    ## It is roughly equivalent to ``writeLine(stdout, x); flushFile(stdout)``, but
+    ## is converted to a string via `$`, so it works for user-defined
+    ## types that have an overloaded `$` operator.
+    ## It is roughly equivalent to `writeLine(stdout, x); flushFile(stdout)`, but
     ## available for the JavaScript target too.
     ##
     ## Unlike other IO operations this is guaranteed to be thread-safe as
-    ## ``echo`` is very often used for debugging convenience. If you want to use
-    ## ``echo`` inside a `proc without side effects
+    ## `echo` is very often used for debugging convenience. If you want to use
+    ## `echo` inside a `proc without side effects
     ## <manual.html#pragmas-nosideeffect-pragma>`_ you can use `debugEcho
     ## <#debugEcho,varargs[typed,]>`_ instead.
 
   proc debugEcho*(x: varargs[typed, `$`]) {.magic: "Echo", noSideEffect,
                                             tags: [], raises: [].}
     ## Same as `echo <#echo,varargs[typed,]>`_, but as a special semantic rule,
-    ## ``debugEcho`` pretends to be free of side effects, so that it can be used
+    ## `debugEcho` pretends to be free of side effects, so that it can be used
     ## for debugging routines marked as `noSideEffect
     ## <manual.html#pragmas-nosideeffect-pragma>`_.
 else:
@@ -2035,7 +2096,7 @@ else:
 
 template newException*(exceptn: typedesc, message: string;
                        parentException: ref Exception = nil): untyped =
-  ## Creates an exception object of type ``exceptn`` and sets its ``msg`` field
+  ## Creates an exception object of type `exceptn` and sets its `msg` field
   ## to `message`. Returns the new exception object.
   (ref exceptn)(msg: message, parent: parentException)
 
@@ -2062,7 +2123,7 @@ func abs*(x: int32): int32 {.magic: "AbsI", inline.} =
 func abs*(x: int64): int64 {.magic: "AbsI", inline.} =
   ## Returns the absolute value of `x`.
   ##
-  ## If `x` is ``low(x)`` (that is -MININT for its type),
+  ## If `x` is `low(x)` (that is -MININT for its type),
   ## an overflow exception is thrown (if overflow checking is turned on).
   result = if x < 0: -x else: x
 {.pop.}
@@ -2222,14 +2283,14 @@ when not defined(js):
 
   when declared(newSeq):
     proc cstringArrayToSeq*(a: cstringArray, len: Natural): seq[string] =
-      ## Converts a ``cstringArray`` to a ``seq[string]``. `a` is supposed to be
-      ## of length ``len``.
+      ## Converts a `cstringArray` to a `seq[string]`. `a` is supposed to be
+      ## of length `len`.
       newSeq(result, len)
       for i in 0..len-1: result[i] = $a[i]
 
     proc cstringArrayToSeq*(a: cstringArray): seq[string] =
-      ## Converts a ``cstringArray`` to a ``seq[string]``. `a` is supposed to be
-      ## terminated by ``nil``.
+      ## Converts a `cstringArray` to a `seq[string]`. `a` is supposed to be
+      ## terminated by `nil`.
       var L = 0
       while a[L] != nil: inc(L)
       result = cstringArrayToSeq(a, L)
@@ -2287,7 +2348,7 @@ when notJSnotNims:
 
     proc getStackTrace*(e: ref Exception): string {.gcsafe.}
       ## Gets the stack trace associated with `e`, which is the stack that
-      ## lead to the ``raise`` statement. This only works for debug builds.
+      ## lead to the `raise` statement. This only works for debug builds.
 
   {.push stackTrace: off, profiler: off.}
   when defined(memtracker):
@@ -2345,7 +2406,7 @@ when notJSnotNims:
     if discr < cast[uint](n.len):
       result = n.sons[discr]
       if result == nil: result = n.sons[n.len]
-      # n.sons[n.len] contains the ``else`` part (but may be nil)
+      # n.sons[n.len] contains the `else` part (but may be nil)
     else:
       result = n.sons[n.len]
 
@@ -2438,7 +2499,7 @@ when defined(js) or defined(nimscript):
     result.add $x
 
 proc quit*(errormsg: string, errorcode = QuitFailure) {.noreturn.} =
-  ## A shorthand for ``echo(errormsg); quit(errorcode)``.
+  ## A shorthand for `echo(errormsg); quit(errorcode)`.
   when defined(nimscript) or defined(js) or (hostOS == "standalone"):
     echo errormsg
   else:
@@ -2464,13 +2525,13 @@ proc `/`*(x, y: int): float {.inline, noSideEffect.} =
   result = toFloat(x) / toFloat(y)
 
 type
-  BackwardsIndex* = distinct int ## Type that is constructed by ``^`` for
+  BackwardsIndex* = distinct int ## Type that is constructed by `^` for
                                  ## reversed array accesses.
                                  ## (See `^ template <#^.t,int>`_)
 
 template `^`*(x: int): BackwardsIndex = BackwardsIndex(x)
   ## Builtin `roof`:idx: operator that can be used for convenient array access.
-  ## ``a[^x]`` is a shortcut for ``a[a.len-x]``.
+  ## `a[^x]` is a shortcut for `a[a.len-x]`.
   ##
   ## .. code-block:: Nim
   ##   let
@@ -2529,7 +2590,7 @@ proc `[]`*[T, U: Ordinal](s: string, x: HSlice[T, U]): string {.inline.} =
 proc `[]=`*[T, U: Ordinal](s: var string, x: HSlice[T, U], b: string) =
   ## Slice assignment for strings.
   ##
-  ## If ``b.len`` is not exactly the number of elements that are referred to
+  ## If `b.len` is not exactly the number of elements that are referred to
   ## by `x`, a `splice`:idx: is performed:
   ##
   runnableExamples:
@@ -2585,7 +2646,7 @@ proc `[]`*[T; U, V: Ordinal](s: openArray[T], x: HSlice[U, V]): seq[T] =
 proc `[]=`*[T; U, V: Ordinal](s: var seq[T], x: HSlice[U, V], b: openArray[T]) =
   ## Slice assignment for sequences.
   ##
-  ## If ``b.len`` is not exactly the number of elements that are referred to
+  ## If `b.len` is not exactly the number of elements that are referred to
   ## by `x`, a `splice`:idx: is performed.
   runnableExamples:
     var s = @"abcdefgh"
@@ -2626,13 +2687,13 @@ proc staticRead*(filename: string): string {.magic: "Slurp".}
   ## Compile-time `readFile <io.html#readFile,string>`_ proc for easy
   ## `resource`:idx: embedding:
   ##
-  ## The maximum file size limit that ``staticRead`` and ``slurp`` can read is
+  ## The maximum file size limit that `staticRead` and `slurp` can read is
   ## near or equal to the *free* memory of the device you are using to compile.
   ##
   ## .. code-block:: Nim
   ##     const myResource = staticRead"mydatafile.bin"
   ##
-  ## `slurp <#slurp,string>`_ is an alias for ``staticRead``.
+  ## `slurp <#slurp,string>`_ is an alias for `staticRead`.
 
 proc gorge*(command: string, input = "", cache = ""): string {.
   magic: "StaticExec".} = discard
@@ -2650,17 +2711,17 @@ proc staticExec*(command: string, input = "", cache = ""): string {.
   ##     const buildInfo = "Revision " & staticExec("git rev-parse HEAD") &
   ##                       "\nCompiled on " & staticExec("uname -v")
   ##
-  ## `gorge <#gorge,string,string,string>`_ is an alias for ``staticExec``.
+  ## `gorge <#gorge,string,string,string>`_ is an alias for `staticExec`.
   ##
   ## Note that you can use this proc inside a pragma like
   ## `passc <manual.html#implementation-specific-pragmas-passc-pragma>`_ or
   ## `passl <manual.html#implementation-specific-pragmas-passl-pragma>`_.
   ##
-  ## If ``cache`` is not empty, the results of ``staticExec`` are cached within
-  ## the ``nimcache`` directory. Use ``--forceBuild`` to get rid of this caching
-  ## behaviour then. ``command & input & cache`` (the concatenated string) is
+  ## If `cache` is not empty, the results of `staticExec` are cached within
+  ## the `nimcache` directory. Use `--forceBuild` to get rid of this caching
+  ## behaviour then. `command & input & cache` (the concatenated string) is
   ## used to determine whether the entry in the cache is still valid. You can
-  ## use versioning information for ``cache``:
+  ## use versioning information for `cache`:
   ##
   ## .. code-block:: Nim
   ##     const stateMachine = staticExec("dfaoptimizer", "input", "0.8.0")
@@ -2705,8 +2766,8 @@ proc `&=`*(x: var string, y: string) {.magic: "AppendStrStr", noSideEffect.}
 template `&=`*(x, y: typed) =
   ## Generic 'sink' operator for Nim.
   ##
-  ## For files an alias for ``write``.
-  ## If not specialized further, an alias for ``add``.
+  ## For files an alias for `write`.
+  ## If not specialized further, an alias for `add`.
   add(x, y)
 when declared(File):
   template `&=`*(f: File, x: typed) = write(f, x)
@@ -2715,13 +2776,13 @@ template currentSourcePath*: string = instantiationInfo(-1, true).filename
   ## Returns the full file-system path of the current source.
   ##
   ## To get the directory containing the current source, use it with
-  ## `os.parentDir() <os.html#parentDir%2Cstring>`_ as ``currentSourcePath.parentDir()``.
+  ## `os.parentDir() <os.html#parentDir%2Cstring>`_ as `currentSourcePath.parentDir()`.
   ##
   ## The path returned by this template is set at compile time.
   ##
   ## See the docstring of `macros.getProjectPath() <macros.html#getProjectPath>`_
-  ## for an example to see the distinction between the ``currentSourcePath``
-  ## and ``getProjectPath``.
+  ## for an example to see the distinction between the `currentSourcePath`
+  ## and `getProjectPath`.
   ##
   ## See also:
   ## * `getCurrentDir proc <os.html#getCurrentDir>`_
@@ -2729,7 +2790,7 @@ template currentSourcePath*: string = instantiationInfo(-1, true).filename
 when compileOption("rangechecks"):
   template rangeCheck*(cond) =
     ## Helper for performing user-defined range checks.
-    ## Such checks will be performed only when the ``rangechecks``
+    ## Such checks will be performed only when the `rangechecks`
     ## compile-time option is enabled.
     if not cond: sysFatal(RangeDefect, "range check failed")
 else:
@@ -2809,19 +2870,19 @@ when declared(initDebugger):
 proc addEscapedChar*(s: var string, c: char) {.noSideEffect, inline.} =
   ## Adds a char to string `s` and applies the following escaping:
   ##
-  ## * replaces any ``\`` by ``\\``
-  ## * replaces any ``'`` by ``\'``
-  ## * replaces any ``"`` by ``\"``
-  ## * replaces any ``\a`` by ``\\a``
-  ## * replaces any ``\b`` by ``\\b``
-  ## * replaces any ``\t`` by ``\\t``
-  ## * replaces any ``\n`` by ``\\n``
-  ## * replaces any ``\v`` by ``\\v``
-  ## * replaces any ``\f`` by ``\\f``
-  ## * replaces any ``\c`` by ``\\c``
-  ## * replaces any ``\e`` by ``\\e``
-  ## * replaces any other character not in the set ``{'\21..'\126'}
-  ##   by ``\xHH`` where ``HH`` is its hexadecimal value.
+  ## * replaces any `\` by `\\`
+  ## * replaces any `'` by `\'`
+  ## * replaces any `"` by `\"`
+  ## * replaces any `\a` by `\\a`
+  ## * replaces any `\b` by `\\b`
+  ## * replaces any `\t` by `\\t`
+  ## * replaces any `\n` by `\\n`
+  ## * replaces any `\v` by `\\v`
+  ## * replaces any `\f` by `\\f`
+  ## * replaces any `\c` by `\\c`
+  ## * replaces any `\e` by `\\e`
+  ## * replaces any other character not in the set `{'\21..'\126'}
+  ##   by `\xHH` where `HH` is its hexadecimal value.
   ##
   ## The procedure has been designed so that its output is usable for many
   ## different common syntaxes.
@@ -2853,9 +2914,9 @@ proc addQuoted*[T](s: var string, x: T) =
   ##
   ## See `addEscapedChar <#addEscapedChar,string,char>`_
   ## for the escaping scheme. When `x` is a string, characters in the
-  ## range ``{\128..\255}`` are never escaped so that multibyte UTF-8
+  ## range `{\128..\255}` are never escaped so that multibyte UTF-8
   ## characters are untouched (note that this behavior is different from
-  ## ``addEscapedChar``).
+  ## `addEscapedChar`).
   ##
   ## The Nim standard library uses this function on the elements of
   ## collections when producing a string representation of a collection.
@@ -2901,7 +2962,7 @@ proc locals*(): RootObj {.magic: "Plugin", noSideEffect.} =
   ##
   ## This is quite fast as it does not rely
   ## on any debug or runtime information. Note that in contrast to what
-  ## the official signature says, the return type is *not* ``RootObj`` but a
+  ## the official signature says, the return type is *not* `RootObj` but a
   ## tuple of a structure that depends on the current scope. Example:
   ##
   ## .. code-block:: Nim
@@ -2927,10 +2988,10 @@ when hasAlloc and notJSnotNims:
     ## Performs a deep copy of `y` and copies it into `x`.
     ##
     ## This is also used by the code generator
-    ## for the implementation of ``spawn``.
+    ## for the implementation of `spawn`.
     ##
-    ## For ``--gc:arc`` or ``--gc:orc`` deepcopy support has to be enabled
-    ## via ``--deepcopy:on``.
+    ## For `--gc:arc` or `--gc:orc` deepcopy support has to be enabled
+    ## via `--deepcopy:on`.
     discard
 
   proc deepCopy*[T](y: T): T =
@@ -2959,13 +3020,13 @@ proc `==`*(x, y: cstring): bool {.magic: "EqCString", noSideEffect,
   else: result = strcmp(x, y) == 0
 
 when not compileOption("nilseqs"):
-  # bug #9149; ensure that 'type(nil)' does not match *too* well by using 'type(nil) | type(nil)',
+  # bug #9149; ensure that 'typeof(nil)' does not match *too* well by using 'typeof(nil) | typeof(nil)',
   # especially for converters, see tests/overload/tconverter_to_string.nim
   # Eventually we will be able to remove this hack completely.
-  proc `==`*(x: string; y: type(nil) | type(nil)): bool {.
+  proc `==`*(x: string; y: typeof(nil) | typeof(nil)): bool {.
       error: "'nil' is now invalid for 'string'; compile with --nilseqs:on for a migration period".} =
     discard
-  proc `==`*(x: type(nil) | type(nil); y: string): bool {.
+  proc `==`*(x: typeof(nil) | typeof(nil); y: string): bool {.
       error: "'nil' is now invalid for 'string'; compile with --nilseqs:on for a migration period".} =
     discard
 
@@ -3019,9 +3080,9 @@ proc substr*(s: string, first, last: int): string =
   ## string.
   ##
   ## The bounds `first` and `last` denote the indices of
-  ## the first and last characters that shall be copied. If ``last``
-  ## is omitted, it is treated as ``high(s)``. If ``last >= s.len``, ``s.len``
-  ## is used instead: This means ``substr`` can also be used to `cut`:idx:
+  ## the first and last characters that shall be copied. If `last`
+  ## is omitted, it is treated as `high(s)`. If `last >= s.len`, `s.len`
+  ## is used instead: This means `substr` can also be used to `cut`:idx:
   ## or `limit`:idx: a string's length.
   runnableExamples:
     let a = "abcdefgh"
@@ -3077,11 +3138,11 @@ when defined(genode):
     ##
     ## This hook is called after all globals are initialized.
     ## When this hook is set the component will not automatically exit,
-    ## call ``quit`` explicitly to do so. This is the only available method
+    ## call `quit` explicitly to do so. This is the only available method
     ## of accessing the initial Genode environment.
 
   proc nim_component_construct(env: GenodeEnv) {.exportc.} =
-    ## Procedure called during ``Component::construct`` by the loader.
+    ## Procedure called during `Component::construct` by the loader.
     if componentConstructHook.isNil:
       env.quit(programResult)
         # No native Genode application initialization,

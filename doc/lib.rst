@@ -264,6 +264,9 @@ Math libraries
 * `random <random.html>`_
   Fast and tiny random number generator.
 
+* `std/sysrand <sysrand.html>`_
+  Cryptographically secure pseudorandom number generator.
+
 * `rationals <rationals.html>`_
   This module implements rational numbers and relevant mathematical operations.
 

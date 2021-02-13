@@ -159,16 +159,29 @@ proc toDll*(filename: string): string =
 
 proc strip(s: string): string =
   var i = 0
-  while s[i] in {' ', '\c', '\L'}: inc i
+  while s[i] in {' ', '\c', '\n'}: inc i
   result = s.substr(i)
+  if result[0] == '"' and result[^1] == '"':
+    result = result[1..^2]
 
 template `--`*(key, val: untyped) =
-  ## A shortcut for ``switch(astToStr(key), astToStr(val))``.
-  switch(astToStr(key), strip astToStr(val))
+  ## A shortcut for `switch <#switch,string,string>`_
+  ## Example:
+  ##
+  ## .. code-block:: nim
+  ##
+  ##   --path:somePath # same as switch("path", "somePath")
+  ##   --path:"someOtherPath" # same as switch("path", "someOtherPath")
+  switch(strip(astToStr(key)), strip(astToStr(val)))
 
 template `--`*(key: untyped) =
-  ## A shortcut for ``switch(astToStr(key)``.
-  switch(astToStr(key), "")
+  ## A shortcut for `switch <#switch,string,string>`_
+  ## Example:
+  ##
+  ## .. code-block:: nim
+  ##
+  ##   --listCmd # same as switch("listCmd")
+  switch(strip(astToStr(key)))
 
 type
   ScriptMode* {.pure.} = enum ## Controls the behaviour of the script.
