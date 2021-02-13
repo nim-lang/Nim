@@ -694,11 +694,7 @@ proc orderFootnotes(p: var RstParser) =
 
   # Report an error if found any mismatch in number of automatic footnotes
   proc listFootnotes(lines: seq[int]): string =
-    result.add $lines.len
-    if lines.len > 0:
-      result.add " (lines " & $lines[0]
-      for line in lines[1..^1]: result.add ", " & $line
-      result.add ")"
+    result.add $lines.len & " (lines " & join(lines, ", ") & ")"
   if p.s.lineFootnoteNum.len != p.s.lineFootnoteNumRef.len:
     rstMessage(p, meFootnoteMismatch,
       "$1 != $2" % [listFootnotes(p.s.lineFootnoteNum),
