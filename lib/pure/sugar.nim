@@ -52,6 +52,15 @@ proc createProcType(p, b: NimNode): NimNode {.compileTime.} =
   result.add formalParams
   result.add prag
 
+template ntimes*(n: int, body: untyped) =
+  ## Sugar for: `for _ in 0..<n: body`
+  runnableExamples:
+    var count = 0
+    ntimes 10:
+      count.inc
+    assert count == 10
+  for _ in 0..<n: body
+
 macro `=>`*(p, b: untyped): untyped =
   ## Syntax sugar for anonymous procedures. It also supports pragmas.
   # TODO: xxx pending #13491: uncomment in runnableExamples

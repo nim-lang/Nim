@@ -155,6 +155,8 @@ provided by the operating system.
   `ValueError` when the real command line is not available. `parseopt` was
   previously excluded from `prelude` for JS, as it could not be imported.
 
+- Added `sugar.ntimes` as sugar for: `for _ in 0..<n: body`
+
 ## Language changes
 
 - `nimscript` now handles `except Exception as e`.
