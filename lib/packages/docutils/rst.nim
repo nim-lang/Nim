@@ -1978,6 +1978,10 @@ proc dirAdmonition(p: var RstParser, d: string): PRstNode =
   result.kind = rnAdmonition
   result.text = d
 
+proc dirDefaultRole(p: var RstParser): PRstNode =
+  result = parseDirective(p, {hasArg}, nil)
+  result.kind = rnDefaultRole
+
 proc dirRawAux(p: var RstParser, result: var PRstNode, kind: RstNodeKind,
                contentParser: SectionParser) =
   var filename = getFieldValue(result, "file")
@@ -2037,6 +2041,7 @@ proc selectDir(p: var RstParser, d: string): PRstNode =
   of "tip": result = dirAdmonition(p, d)
   of "title": result = dirTitle(p)
   of "warning": result = dirAdmonition(p, d)
+  of "default-role": result = dirDefaultRole(p)
   else:
     rstMessage(p, meInvalidDirective, d)
 

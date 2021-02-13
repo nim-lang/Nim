@@ -65,6 +65,7 @@ type
     rnInlineTarget,           # "_`target`"
     rnSubstitutionReferences, # "|"
     rnSmiley,                 # some smiley
+    rnDefaultRole,            # .. default-role:: code
     rnLeaf                    # a leaf; the node's text field contains the
                               # leaf val
 
