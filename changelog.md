@@ -182,10 +182,9 @@ provided by the operating system.
   behavior.
 
 - Added `--hintAsError` with similar semantics as `--warningAsError`.
-- TLS: OSX now uses native TLS (`--tlsEmulation:off`), TLS now works with importcpp non-POD types,
-  such types must use `.cppNonPod` and `--tlsEmulation:off`should be used.
 
 - TLS: OSX now uses native TLS (`--tlsEmulation:off`), TLS now works with importcpp non-POD types,
+  such types must use `.cppNonPod` and `--tlsEmulation:off`should be used.
 
 - docgen: rst files can now use single backticks instead of double backticks and correctly render
   in both rst2html (as before) as well as common tools rendering rst directly (e.g. github), by
