@@ -514,8 +514,8 @@ when not defined(useNimRtl):
     while true:
       # FIXME: converts CR-LF to LF.
       if outp.readLine(line):
-        result.string.add(line.string)
-        result.string.add("\n")
+        result.add(line)
+        result.add("\n")
       elif not running(p): break
     close(p)
 
@@ -932,7 +932,7 @@ elif not defined(useNimRtl):
     result = cast[cstringArray](alloc0((counter + 1) * sizeof(cstring)))
     var i = 0
     for key, val in envPairs():
-      var x = key.string & "=" & val.string
+      var x = key & "=" & val
       result[i] = cast[cstring](alloc(x.len+1))
       copyMem(result[i], addr(x[0]), x.len+1)
       inc(i)
@@ -1623,8 +1623,8 @@ proc execCmdEx*(command: string, options: set[ProcessOption] = {
   var line = newStringOfCap(120)
   while true:
     if outp.readLine(line):
-      result[0].string.add(line.string)
-      result[0].string.add("\n")
+      result[0].add(line)
+      result[0].add("\n")
     else:
       result[1] = peekExitCode(p)
       if result[1] != -1: break

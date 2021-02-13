@@ -861,10 +861,10 @@ proc handleForLoopMacro(c: PContext; n: PNode; flags: TExprFlags): PNode =
 
 proc handleCaseStmtMacro(c: PContext; n: PNode; flags: TExprFlags): PNode =
   # n[0] has been sem'checked and has a type. We use this to resolve
-  # 'match(n[0])' but then we pass 'n' to the 'match' macro. This seems to
+  # '`case`(n[0])' but then we pass 'n' to the `case` macro. This seems to
   # be the best solution.
   var toResolve = newNodeI(nkCall, n.info)
-  toResolve.add newIdentNode(getIdent(c.cache, "match"), n.info)
+  toResolve.add newIdentNode(getIdent(c.cache, "case"), n.info)
   toResolve.add n[0]
 
   var errors: CandidateErrors
@@ -875,7 +875,7 @@ proc handleCaseStmtMacro(c: PContext; n: PNode; flags: TExprFlags): PNode =
     markUsed(c, n[0].info, match)
     onUse(n[0].info, match)
 
-    # but pass 'n' to the 'match' macro, not 'n[0]':
+    # but pass 'n' to the `case` macro, not 'n[0]':
     r.call[1] = n
     let toExpand = semResolvedCall(c, r, r.call, {})
     case match.kind
@@ -1042,7 +1042,7 @@ proc typeSectionTypeName(c: PContext; n: PNode): PNode =
   if result.kind != nkSym: illFormedAst(n, c.config)
 
 proc typeDefLeftSidePass(c: PContext, typeSection: PNode, i: int) =
-  let typeDef= typeSection[i]
+  let typeDef = typeSection[i]
   checkSonsLen(typeDef, 3, c.config)
   var name = typeDef[0]
   var s: PSym
@@ -2123,7 +2123,7 @@ proc semConverterDef(c: PContext, n: PNode): PNode =
   var t = s.typ
   if t[0] == nil: localError(c.config, n.info, errXNeedsReturnType % "converter")
   if t.len != 2: localError(c.config, n.info, "a converter takes exactly one argument")
-  addConverter(c, s)
+  addConverter(c, LazySym(sym: s))
 
 proc semMacroDef(c: PContext, n: PNode): PNode =
   checkSonsLen(n, bodyPos + 1, c.config)

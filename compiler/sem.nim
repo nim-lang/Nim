@@ -147,7 +147,7 @@ proc commonType*(c: PContext; x, y: PType): PType =
     # range[0..4]. But then why is (range[0..4], 6) not range[0..6]?
     # But then why is (2,4) not range[2..4]? But I think this would break
     # too much code. So ... it's the same range or the base type. This means
-    #  type(if b: 0 else 1) == int and not range[0..1]. For now. In the long
+    #  typeof(if b: 0 else 1) == int and not range[0..1]. For now. In the long
     # run people expect ranges to work properly within a tuple.
     if not sameType(a, b):
       result = skipTypes(a, {tyRange}).skipIntLit(c.idgen)
@@ -562,6 +562,7 @@ proc isEmptyTree(n: PNode): bool =
 proc semStmtAndGenerateGenerics(c: PContext, n: PNode): PNode =
   if c.topStmts == 0 and not isImportSystemStmt(c.graph, n):
     if sfSystemModule notin c.module.flags and not isEmptyTree(n):
+      assert c.graph.systemModule != nil
       c.moduleScope.addSym c.graph.systemModule # import the "System" identifier
       importAllSymbols(c, c.graph.systemModule)
       inc c.topStmts

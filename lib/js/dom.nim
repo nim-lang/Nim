@@ -1467,6 +1467,7 @@ else:
   proc insertBefore*(n, newNode, before: Node) {.importcpp.}
   proc getElementById*(d: Document, id: cstring): Element {.importcpp.}
   proc createElement*(d: Document, identifier: cstring): Element {.importcpp.}
+  proc createElementNS*(d: Document, namespaceURI, qualifiedIdentifier: cstring): Element {.importcpp.}
   proc createTextNode*(d: Document, identifier: cstring): Node {.importcpp.}
   proc createComment*(d: Document, data: cstring): Node {.importcpp.}
 

@@ -428,7 +428,8 @@ template newPackageCache*(): untyped =
 proc newProfileData(): ProfileData =
   ProfileData(data: newTable[TLineInfo, ProfileInfo]())
 
-const foreignPackageNotesDefault* = {hintProcessing, warnUnknownMagic, hintQuitCalled, hintExecuting}
+const foreignPackageNotesDefault* = {
+  hintProcessing, warnUnknownMagic, hintQuitCalled, hintExecuting, hintUser, warnUser}
 
 proc newConfigRef*(): ConfigRef =
   result = ConfigRef(

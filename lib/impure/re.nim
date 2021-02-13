@@ -488,7 +488,7 @@ proc transformFile*(infile, outfile: string,
   ## reads in the file ``infile``, performs a parallel replacement (calls
   ## ``parallelReplace``) and writes back to ``outfile``. Raises ``IOError`` if an
   ## error occurs. This is supposed to be used for quick scripting.
-  var x = readFile(infile).string
+  var x = readFile(infile)
   writeFile(outfile, x.multiReplace(subs))
 
 iterator split*(s: string, sep: Regex; maxsplit = -1): string =

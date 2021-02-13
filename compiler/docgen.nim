@@ -474,7 +474,7 @@ proc runAllExamples(d: PDoc) =
     # most useful semantics is that `docCmd` comes after `rdoccmd`, so that we can (temporarily) override
     # via command line
     let cmd = "$nim $backend -r --lib:$libpath --warning:UnusedImport:off --path:$path --nimcache:$nimcache $rdoccmd $docCmd $file" % [
-      "nim", os.getAppFilename(),
+      "nim", quoteShell(os.getAppFilename()),
       "backend", $d.conf.backend,
       "path", quoteShell(d.conf.projectPath),
       "libpath", quoteShell(d.conf.libpath),

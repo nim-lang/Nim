@@ -51,10 +51,12 @@ proc addFileToLink(config: ConfigRef; m: PSym) =
       elif config.backend == backendObjc: ".nim.m"
       else: ".nim.c"
   let cfile = changeFileExt(completeCfilePath(config, withPackageName(config, filename)), ext)
-  var cf = Cfile(nimname: m.name.s, cname: cfile,
-                 obj: completeCfilePath(config, toObjFile(config, cfile)),
-                 flags: {CfileFlag.Cached})
-  addFileToCompile(config, cf)
+  let objFile = completeCfilePath(config, toObjFile(config, cfile))
+  if fileExists(objFile):
+    var cf = Cfile(nimname: m.name.s, cname: cfile,
+                   obj: objFile,
+                   flags: {CfileFlag.Cached})
+    addFileToCompile(config, cf)
 
 proc aliveSymsChanged(config: ConfigRef; position: int; alive: AliveSyms): bool =
   let asymFile = toRodFile(config, AbsoluteFile toFullPath(config, position.FileIndex), ".alivesyms")

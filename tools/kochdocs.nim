@@ -1,6 +1,6 @@
 ## Part of 'koch' responsible for the documentation generation.
 
-import os, strutils, osproc, sets, pathnorm, pegs
+import os, strutils, osproc, sets, pathnorm, pegs, sequtils
 from std/private/globs import nativeToUnixPath, walkDirRecFilter, PathEntry
 import "../compiler/nimpaths"
 
@@ -112,16 +112,16 @@ proc getRst2html(): seq[string] =
   doAssert "doc/manual/var_t_return.rst".unixToNativePath in result # sanity check
 
 const
-  pdf = """
-doc/manual.rst
-doc/lib.rst
-doc/tut1.rst
-doc/tut2.rst
-doc/tut3.rst
-doc/nimc.rst
-doc/niminst.rst
-doc/gc.rst
-""".splitWhitespace()
+  rstPdfList = """
+manual.rst
+lib.rst
+tut1.rst
+tut2.rst
+tut3.rst
+nimc.rst
+niminst.rst
+gc.rst
+""".splitWhitespace().mapIt("doc" / it)
 
   doc0 = """
 lib/system/threads.nim
@@ -188,8 +188,9 @@ lib/system/widestrs.nim
 """.splitWhitespace()
 
   proc follow(a: PathEntry): bool =
-    result = a.path.lastPathPart notin ["nimcache", "htmldocs", "includes", "deprecated", "genode"] and
-      not a.path.isRelativeTo("lib/fusion")
+    result = a.path.lastPathPart notin ["nimcache", htmldocsDirname,
+                                        "includes", "deprecated", "genode"] and
+      not a.path.isRelativeTo("lib/fusion") # fusion was un-bundled but we need to keep this in case user has it installed
   for entry in walkDirRecFilter("lib", follow = follow):
     let a = entry.path
     if entry.kind != pcFile or a.splitFile.ext != ".nim" or
@@ -281,36 +282,35 @@ proc buildDoc(nimArgs, destPath: string) =
     # locally after calling `./koch docs`. The clean fix would be for `idx` files
     # to be transient with `--project` (eg all in memory).
 
+proc nim2pdf(src: string, dst: string, nimArgs: string) =
+  # xxx expose as a `nim` command or in some other reusable way.
+  let outDir = "build" / "pdflatextmp" # xxx use reusable std/private/paths shared with other modules
+  # note: this will generate temporary files in gitignored `outDir`: aux toc log out tex
+  exec("$# rst2tex $# --outdir:$# $#" % [findNim().quoteShell(), nimArgs, outDir.quoteShell, src.quoteShell])
+  let texFile = outDir / src.lastPathPart.changeFileExt("tex")
+  for i in 0..<2: # call LaTeX twice to get cross references right:
+    let pdflatexLog = outDir / "pdflatex.log"
+    # `>` should work on windows, if not, we can use `execCmdEx`
+    let cmd = "pdflatex -interaction=nonstopmode -output-directory=$# $# > $#" % [outDir.quoteShell, texFile.quoteShell, pdflatexLog.quoteShell]
+    exec(cmd) # on error, user can inspect `pdflatexLog`
+  moveFile(texFile.changeFileExt("pdf"), dst)
+
 proc buildPdfDoc*(nimArgs, destPath: string) =
+  var pdfList: seq[string]
   createDir(destPath)
   if os.execShellCmd("pdflatex -version") != 0:
-    echo "pdflatex not found; no PDF documentation generated"
+    doAssert false, "pdflatex not found" # or, raise an exception
   else:
-    const pdflatexcmd = "pdflatex -interaction=nonstopmode "
-    for d in items(pdf):
-      exec(findNim().quoteShell() & " rst2tex $# $#" % [nimArgs, d])
-      let tex = splitFile(d).name & ".tex"
-      removeFile("doc" / tex)
-      moveFile(tex, "doc" / tex)
-      # call LaTeX twice to get cross references right:
-      exec(pdflatexcmd & changeFileExt(d, "tex"))
-      exec(pdflatexcmd & changeFileExt(d, "tex"))
-      # delete all the crappy temporary files:
-      let pdf = splitFile(d).name & ".pdf"
-      let dest = destPath / pdf
-      removeFile(dest)
-      moveFile(dest=dest, source=pdf)
-      removeFile(changeFileExt(pdf, "aux"))
-      if fileExists(changeFileExt(pdf, "toc")):
-        removeFile(changeFileExt(pdf, "toc"))
-      removeFile(changeFileExt(pdf, "log"))
-      removeFile(changeFileExt(pdf, "out"))
-      removeFile(changeFileExt(d, "tex"))
+    for src in items(rstPdfList):
+      let dst = destPath / src.lastPathPart.changeFileExt("pdf")
+      pdfList.add dst
+      nim2pdf(src, dst, nimArgs)
+  echo "\nOutput PDF files: \n  ", pdfList.join(" ") # because `nim2pdf` is a bit verbose
 
 proc buildJS(): string =
   let nim = findNim()
-  exec(nim.quoteShell() & " js -d:release --out:$1 tools/nimblepkglist.nim" %
-      [webUploadOutput / "nimblepkglist.js"])
+  exec("$# js -d:release --out:$# tools/nimblepkglist.nim" %
+      [nim.quoteShell(), webUploadOutput / "nimblepkglist.js"])
       # xxx deadcode? and why is it only for webUploadOutput, not for local docs?
   result = getDocHacksJs(nimr = getCurrentDir(), nim)
 

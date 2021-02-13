@@ -8,10 +8,14 @@
 #
 
 ## This module supports helper routines for working with `cstring`
-## without having to convert `cstring` to `string` in order to
+## without having to convert `cstring` to `string`, in order to
 ## save allocations.
+##
+## See also
+## ========
+## * `strutils module <strutils.html>`_ for working with `string`
 
-include "system/inclrtl"
+include system/inclrtl
 import std/private/strimpl
 
 
@@ -22,12 +26,13 @@ when defined(js):
 
 func startsWith*(s, prefix: cstring): bool {.rtl, extern: "csuStartsWith".} =
   ## Returns true if `s` starts with `prefix`.
-  ## 
-  ## JS backend uses native `String.prototype.startsWith`.
+  ##
+  ## The JS backend uses the native `String.prototype.startsWith` function.
   runnableExamples:
     assert startsWith(cstring"Hello, Nimion", cstring"Hello")
     assert not startsWith(cstring"Hello, Nimion", cstring"Nimion")
     assert startsWith(cstring"Hello", cstring"")
+
   when nimvm:
     startsWithImpl(s, prefix)
   else:
@@ -43,11 +48,12 @@ func startsWith*(s, prefix: cstring): bool {.rtl, extern: "csuStartsWith".} =
 func endsWith*(s, suffix: cstring): bool {.rtl, extern: "csuEndsWith".} =
   ## Returns true if `s` ends with `suffix`.
   ##
-  ## JS backend uses native `String.prototype.endsWith`.
+  ## The JS backend uses the native `String.prototype.endsWith` function.
   runnableExamples:
     assert endsWith(cstring"Hello, Nimion", cstring"Nimion")
     assert not endsWith(cstring"Hello, Nimion", cstring"Hello")
     assert endsWith(cstring"Hello", cstring"")
+
   when nimvm:
     endsWithImpl(s, suffix)
   else:
@@ -57,23 +63,22 @@ func endsWith*(s, suffix: cstring): bool {.rtl, extern: "csuEndsWith".} =
       let slen = s.len
       var i = 0
       var j = slen - len(suffix)
-      while i+j <% slen:
-        if s[i+j] != suffix[i]: return false
+      while i + j <% slen:
+        if s[i + j] != suffix[i]: return false
         inc(i)
       if suffix[i] == '\0': return true
 
 func cmpIgnoreStyle*(a, b: cstring): int {.rtl, extern: "csuCmpIgnoreStyle".} =
   ## Semantically the same as `cmp(normalize($a), normalize($b))`. It
-  ## is just optimized to not allocate temporary strings.  This should
-  ## NOT be used to compare Nim identifier names. use `macros.eqIdent`
+  ## is just optimized to not allocate temporary strings. This should
+  ## NOT be used to compare Nim identifier names, use `macros.eqIdent`
   ## for that. Returns:
-  ##
-  ## .. code-block::
-  ##   0 if a == b
-  ##   < 0 if a < b
-  ##   > 0 if a > b
+  ## * 0 if `a == b`
+  ## * < 0 if `a < b`
+  ## * > 0 if `a > b`
   runnableExamples:
     assert cmpIgnoreStyle(cstring"hello", cstring"H_e_L_Lo") == 0
+
   when nimvm:
     cmpIgnoreStyleImpl(a, b)
   else:
@@ -94,15 +99,14 @@ func cmpIgnoreStyle*(a, b: cstring): int {.rtl, extern: "csuCmpIgnoreStyle".} =
 
 func cmpIgnoreCase*(a, b: cstring): int {.rtl, extern: "csuCmpIgnoreCase".} =
   ## Compares two strings in a case insensitive manner. Returns:
-  ##
-  ## .. code-block::
-  ##   0 if a == b
-  ##   < 0 if a < b
-  ##   > 0 if a > b
+  ## * 0 if `a == b`
+  ## * < 0 if `a < b`
+  ## * > 0 if `a > b`
   runnableExamples:
     assert cmpIgnoreCase(cstring"hello", cstring"HeLLo") == 0
     assert cmpIgnoreCase(cstring"echo", cstring"hello") < 0
     assert cmpIgnoreCase(cstring"yellow", cstring"hello") > 0
+
   when nimvm:
     cmpIgnoreCaseImpl(a, b)
   else:

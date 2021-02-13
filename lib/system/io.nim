@@ -434,19 +434,19 @@ proc readLine*(f: File, line: var string): bool {.tags: [ReadIOEffect],
   var pos = 0
 
   # Use the currently reserved space for a first try
-  var sp = max(line.string.len, 80)
-  line.string.setLen(sp)
+  var sp = max(line.len, 80)
+  line.setLen(sp)
 
   while true:
     # memset to \L so that we can tell how far fgets wrote, even on EOF, where
     # fgets doesn't append an \L
-    for i in 0..<sp: line.string[pos+i] = '\L'
+    for i in 0..<sp: line[pos+i] = '\L'
 
     var fgetsSuccess: bool
     while true:
       # fixes #9634; this pattern may need to be abstracted as a template if reused;
       # likely other io procs need this for correctness.
-      fgetsSuccess = c_fgets(addr line.string[pos], sp.cint, f) != nil
+      fgetsSuccess = c_fgets(addr line[pos], sp.cint, f) != nil
       if fgetsSuccess: break
       when not defined(NimScript):
         if errno == EINTR:
@@ -456,20 +456,20 @@ proc readLine*(f: File, line: var string): bool {.tags: [ReadIOEffect],
       checkErr(f)
       break
 
-    let m = c_memchr(addr line.string[pos], '\L'.ord, cast[csize_t](sp))
+    let m = c_memchr(addr line[pos], '\L'.ord, cast[csize_t](sp))
     if m != nil:
       # \l found: Could be our own or the one by fgets, in any case, we're done
-      var last = cast[ByteAddress](m) - cast[ByteAddress](addr line.string[0])
-      if last > 0 and line.string[last-1] == '\c':
-        line.string.setLen(last-1)
+      var last = cast[ByteAddress](m) - cast[ByteAddress](addr line[0])
+      if last > 0 and line[last-1] == '\c':
+        line.setLen(last-1)
         return last > 1 or fgetsSuccess
         # We have to distinguish between two possible cases:
         # \0\l\0 => line ending in a null character.
         # \0\l\l => last line without newline, null was put there by fgets.
-      elif last > 0 and line.string[last-1] == '\0':
-        if last < pos + sp - 1 and line.string[last+1] != '\0':
+      elif last > 0 and line[last-1] == '\0':
+        if last < pos + sp - 1 and line[last+1] != '\0':
           dec last
-      line.string.setLen(last)
+      line.setLen(last)
       return last > 0 or fgetsSuccess
     else:
       # fgets will have inserted a null byte at the end of the string.
@@ -477,7 +477,7 @@ proc readLine*(f: File, line: var string): bool {.tags: [ReadIOEffect],
     # No \l found: Increase buffer and read more
     inc pos, sp
     sp = 128 # read in 128 bytes at a time
-    line.string.setLen(pos+sp)
+    line.setLen(pos+sp)
 
 proc readLine*(f: File): string  {.tags: [ReadIOEffect], benign.} =
   ## reads a line of text from the file `f`. May throw an IO exception.
