@@ -248,6 +248,8 @@ proc pqsendQueryPrepared*(conn: PPGconn, stmtName: cstring, nParams: int32,
                           paramLengths, paramFormats: ptr int32,
                           resultFormat: int32): int32{.cdecl, dynlib: dllName,
     importc: "PQsendQueryPrepared".}
+proc pqsetsinglerowmode*(conn: PPGconn): int32{.cdecl, dynlib: dllName,
+    importc: "PQsetSingleRowMode".}
 proc pqgetResult*(conn: PPGconn): PPGresult{.cdecl, dynlib: dllName,
     importc: "PQgetResult".}
 proc pqisBusy*(conn: PPGconn): int32{.cdecl, dynlib: dllName,
