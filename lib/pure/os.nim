@@ -1654,6 +1654,8 @@ proc isAdmin*: bool {.noWeirdTarget.} =
   when defined(windows):
     # Rewrite of the example from Microsoft Docs:
     # https://docs.microsoft.com/en-us/windows/win32/api/securitybaseapi/nf-securitybaseapi-checktokenmembership#examples
+    # and corresponding PostgreSQL function:
+    # https://doxygen.postgresql.org/win32security_8c.html#ae6b61e106fa5d6c5d077a9d14ee80569
     var ntAuthority = SID_IDENTIFIER_AUTHORITY(Value: SECURITY_NT_AUTHORITY)
     var administratorsGroup: PSID
     if not isSuccess(AllocateAndInitializeSid(addr ntAuthority,
@@ -1668,7 +1670,8 @@ proc isAdmin*: bool {.noWeirdTarget.} =
     if not isSuccess(CheckTokenMembership(0, administratorsGroup, addr b)):
       raiseOSError(osLastError(), "could not check access token membership")
 
-    discard FreeSid(administratorsGroup)
+    if FreeSid(administratorsGroup) != nil:
+      raiseOSError(osLastError(), "failed to free SID for Administrators group")
 
     return isSuccess(b)
   else:
