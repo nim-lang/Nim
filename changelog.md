@@ -148,6 +148,14 @@ provided by the operating system.
 
 - Added `math.frexp` overload procs. Deprecated `c_frexp`, use `frexp` instead.
 
+- `parseopt.initOptParser` has been made available and `parseopt` has been
+  added back to `prelude` for all backends. Previously `initOptParser` was
+  unavailable if the `os` module did not have `paramCount` or `paramStr`,
+  but the use of these in `initOptParser` were conditionally to the runtime
+  arguments passed to it, so `initOptParser` has been changed to raise
+  `ValueError` when the real command line is not available. `parseopt` was
+  previously excluded from `prelude` for JS, as it could not be imported.
+
 ## Language changes
 
 - `nimscript` now handles `except Exception as e`.
@@ -183,8 +191,13 @@ provided by the operating system.
   behavior.
 
 - Added `--hintAsError` with similar semantics as `--warningAsError`.
+
 - TLS: OSX now uses native TLS (`--tlsEmulation:off`), TLS now works with importcpp non-POD types,
   such types must use `.cppNonPod` and `--tlsEmulation:off`should be used.
+
+- docgen: rst files can now use single backticks instead of double backticks and correctly render
+  in both rst2html (as before) as well as common tools rendering rst directly (e.g. github), by
+  adding: `default-role:: code` directive inside the rst file, which is now handled by rst2html.
 
 ## Tool changes
 

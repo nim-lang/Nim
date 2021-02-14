@@ -1293,6 +1293,7 @@ proc renderRstToOut(d: PDoc, n: PRstNode, result: var string) =
   of rnSmiley: renderSmiley(d, n, result)
   of rnLeaf: result.add(esc(d.target, n.text))
   of rnContents: d.hasToc = true
+  of rnDefaultRole: discard
   of rnTitle:
     d.meta[metaTitle] = ""
     renderRstToOut(d, n.sons[0], d.meta[metaTitle])
