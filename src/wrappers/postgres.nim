@@ -53,7 +53,8 @@ type
   PExecStatusType* = ptr ExecStatusType
   ExecStatusType* = enum
     PGRES_EMPTY_QUERY = 0, PGRES_COMMAND_OK, PGRES_TUPLES_OK, PGRES_COPY_OUT,
-    PGRES_COPY_IN, PGRES_BAD_RESPONSE, PGRES_NONFATAL_ERROR, PGRES_FATAL_ERROR
+    PGRES_COPY_IN, PGRES_BAD_RESPONSE, PGRES_NONFATAL_ERROR, PGRES_FATAL_ERROR,
+    PGRES_COPY_BOTH, PGRES_SINGLE_TUPLE
   PGlobjfuncs*{.pure, final.} = object
     fn_lo_open*: Oid
     fn_lo_close*: Oid
@@ -69,7 +70,8 @@ type
   ConnStatusType* = enum
     CONNECTION_OK, CONNECTION_BAD, CONNECTION_STARTED, CONNECTION_MADE,
     CONNECTION_AWAITING_RESPONSE, CONNECTION_AUTH_OK, CONNECTION_SETENV,
-    CONNECTION_SSL_STARTUP, CONNECTION_NEEDED
+    CONNECTION_SSL_STARTUP, CONNECTION_NEEDED, CONNECTION_CHECK_WRITABLE,
+    CONNECTION_CONSUME, CONNECTION_GSS_STARTUP, CONNECTION_CHECK_TARGET
   PGconn*{.pure, final.} = object
     pghost*: cstring
     pgtty*: cstring
@@ -248,6 +250,8 @@ proc pqsendQueryPrepared*(conn: PPGconn, stmtName: cstring, nParams: int32,
                           paramLengths, paramFormats: ptr int32,
                           resultFormat: int32): int32{.cdecl, dynlib: dllName,
     importc: "PQsendQueryPrepared".}
+proc pqsetsinglerowmode*(conn: PPGconn): int32{.cdecl, dynlib: dllName,
+    importc: "PQsetSingleRowMode".}
 proc pqgetResult*(conn: PPGconn): PPGresult{.cdecl, dynlib: dllName,
     importc: "PQgetResult".}
 proc pqisBusy*(conn: PPGconn): int32{.cdecl, dynlib: dllName,
