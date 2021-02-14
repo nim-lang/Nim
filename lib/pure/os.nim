@@ -1656,16 +1656,20 @@ proc isAdmin*: bool {.noWeirdTarget.} =
     # https://docs.microsoft.com/en-us/windows/win32/api/securitybaseapi/nf-securitybaseapi-checktokenmembership#examples
     var ntAuthority = SID_IDENTIFIER_AUTHORITY(Value: SECURITY_NT_AUTHORITY)
     var administratorsGroup: PSID
-    var b: WINBOOL = AllocateAndInitializeSid(addr ntAuthority,
+    if not isSuccess(AllocateAndInitializeSid(addr ntAuthority,
                                               BYTE(2),
                                               SECURITY_BUILTIN_DOMAIN_RID,
                                               DOMAIN_ALIAS_RID_ADMINS,
                                               0, 0, 0, 0, 0, 0,
-                                              addr administratorsGroup)
-    if isSuccess(b):
-      if not isSuccess(CheckTokenMembership(0, administratorsGroup, addr b)):
-        b = 0
-      discard FreeSid(administratorsGroup)
+                                              addr administratorsGroup)):
+      raiseOSError(osLastError(), "could not get SID for Administrators group")
+
+    var b: WINBOOL
+    if not isSuccess(CheckTokenMembership(0, administratorsGroup, addr b)):
+      raiseOSError(osLastError(), "could not check access token membership")
+
+    discard FreeSid(administratorsGroup)
+
     return isSuccess(b)
   else:
     return geteuid() == 0
