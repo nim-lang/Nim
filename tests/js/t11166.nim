@@ -1,6 +1,7 @@
 discard """
   output: '''
 test1
+test2
 '''
 """
 
@@ -15,5 +16,5 @@ var c: C
 when compiles(c.props):
   echo "test1"
 
-when compiles(d.props):
+when not compiles(d.props):
   echo "test2"
