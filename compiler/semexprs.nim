@@ -70,10 +70,13 @@ proc semExprCheck(c: PContext, n: PNode, flags: TExprFlags): PNode =
   let
     isEmpty = result.kind == nkEmpty
     isTypeError = result.typ != nil and result.typ.kind == tyError
+
   if isEmpty or isTypeError:
     # bug #12741, redundant error messages are the lesser evil here:
     localError(c.config, n.info, errExprXHasNoType %
                 renderTree(result, {renderNoComments}))
+  
+  if isEmpty:
     # do not produce another redundant error message:
     result = errorNode(c, n)
 
