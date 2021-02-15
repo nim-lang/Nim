@@ -1,3 +1,19 @@
+discard """
+  output: '''
+
+[Suite] Matching
+
+[Suite] Gara tests
+
+[Suite] More tests
+
+[Suite] stdlib container matches
+
+[Suite] Article examples
+'''
+"""
+
+
 import std/[strutils, sequtils, strformat, sugar,
             macros, options, tables, json]
 
