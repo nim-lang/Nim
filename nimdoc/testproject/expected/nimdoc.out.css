@@ -497,6 +497,19 @@ hr {
   border: 0;
   border-top: 1px solid #aaa; }
 
+hr.footnote {
+  width: 25%;
+  border-top: 0.15em solid #999;
+  margin-bottom: 0.15em;
+  margin-top: 0.15em;
+}
+div.footnote-group {
+  margin-left: 1em; }
+div.footnote-label {
+  display: inline-block;
+  min-width: 1.7em;
+}
+
 blockquote {
   font-size: 0.9em;
   font-style: italic;
