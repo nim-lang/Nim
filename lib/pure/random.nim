@@ -309,7 +309,7 @@ proc rand*[T: Ordinal or SomeFloat](r: var Rand; x: HSlice[T, T]): T =
     doAssert r.rand(1..6) == 4
     doAssert r.rand(1..6) == 6
     let f = r.rand(-1.0 .. 1.0) # 0.8741183448756229
-
+  assert x.a <= x.b
   when T is SomeFloat:
     result = rand(r, x.b - x.a) + x.a
   else: # Integers and Enum types
