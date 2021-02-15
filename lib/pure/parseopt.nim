@@ -192,96 +192,107 @@ proc parseWord(s: string, i: int, w: var string,
       add(w, s[result])
       inc(result)
 
-when declared(os.paramCount):
-  # we cannot provide this for NimRtl creation on Posix, because we can't
-  # access the command line arguments then!
+proc initOptParser*(cmdline = "", shortNoVal: set[char] = {},
+                    longNoVal: seq[string] = @[];
+                    allowWhitespaceAfterColon = true): OptParser =
+  ## Initializes the command line parser.
+  ##
+  ## If ``cmdline == ""``, the real command line as provided by the
+  ## ``os`` module is retrieved instead if it is available. If the
+  ## command line is not available, a `ValueError` will be raised.
+  ##
+  ## ``shortNoVal`` and ``longNoVal`` are used to specify which options
+  ## do not take values. See the `documentation about these
+  ## parameters<#shortnoval-and-longnoval>`_ for more information on
+  ## how this affects parsing.
+  ##
+  ## See also:
+  ## * `getopt iterator<#getopt.i,OptParser>`_
+  runnableExamples:
+    var p = initOptParser()
+    p = initOptParser("--left --debug:3 -l -r:2")
+    p = initOptParser("--left --debug:3 -l -r:2",
+                      shortNoVal = {'l'}, longNoVal = @["left"])
 
-  proc initOptParser*(cmdline = "", shortNoVal: set[char] = {},
-                      longNoVal: seq[string] = @[];
-                      allowWhitespaceAfterColon = true): OptParser =
-    ## Initializes the command line parser.
-    ##
-    ## If ``cmdline == ""``, the real command line as provided by the
-    ## ``os`` module is retrieved instead.
-    ##
-    ## ``shortNoVal`` and ``longNoVal`` are used to specify which options
-    ## do not take values. See the `documentation about these
-    ## parameters<#shortnoval-and-longnoval>`_ for more information on
-    ## how this affects parsing.
-    ##
-    ## See also:
-    ## * `getopt iterator<#getopt.i,OptParser>`_
-    runnableExamples:
-      var p = initOptParser()
-      p = initOptParser("--left --debug:3 -l -r:2")
-      p = initOptParser("--left --debug:3 -l -r:2",
-                        shortNoVal = {'l'}, longNoVal = @["left"])
-
-    result.pos = 0
-    result.idx = 0
-    result.inShortState = false
-    result.shortNoVal = shortNoVal
-    result.longNoVal = longNoVal
-    result.allowWhitespaceAfterColon = allowWhitespaceAfterColon
-    if cmdline != "":
-      result.cmds = parseCmdLine(cmdline)
+  result.pos = 0
+  result.idx = 0
+  result.inShortState = false
+  result.shortNoVal = shortNoVal
+  result.longNoVal = longNoVal
+  result.allowWhitespaceAfterColon = allowWhitespaceAfterColon
+  if cmdline != "":
+    result.cmds = parseCmdLine(cmdline)
+  else:
+    when declared(paramCount):
+      result.cmds = newSeq[string](paramCount())
+      for i in countup(1, paramCount()):
+        result.cmds[i-1] = paramStr(i)
     else:
-      result.cmds = newSeq[string](os.paramCount())
-      for i in countup(1, os.paramCount()):
-        result.cmds[i-1] = os.paramStr(i).string
+      # we cannot provide this for NimRtl creation on Posix, because we can't
+      # access the command line arguments then!
+      doAssert false, "empty command line given but" &
+        " real command line is not accessible"
 
-    result.kind = cmdEnd
-    result.key = ""
-    result.val = ""
+  result.kind = cmdEnd
+  result.key = ""
+  result.val = ""
 
-  proc initOptParser*(cmdline: seq[string], shortNoVal: set[char] = {},
-                      longNoVal: seq[string] = @[];
-                      allowWhitespaceAfterColon = true): OptParser =
-    ## Initializes the command line parser.
-    ##
-    ## If ``cmdline.len == 0``, the real command line as provided by the
-    ## ``os`` module is retrieved instead. Behavior of the other parameters
-    ## remains the same as in `initOptParser(string, ...)
-    ## <#initOptParser,string,set[char],seq[string]>`_.
-    ##
-    ## See also:
-    ## * `getopt iterator<#getopt.i,seq[string],set[char],seq[string]>`_
-    runnableExamples:
-      var p = initOptParser()
-      p = initOptParser(@["--left", "--debug:3", "-l", "-r:2"])
-      p = initOptParser(@["--left", "--debug:3", "-l", "-r:2"],
-                        shortNoVal = {'l'}, longNoVal = @["left"])
+proc initOptParser*(cmdline: seq[string], shortNoVal: set[char] = {},
+                    longNoVal: seq[string] = @[];
+                    allowWhitespaceAfterColon = true): OptParser =
+  ## Initializes the command line parser.
+  ##
+  ## If ``cmdline.len == 0``, the real command line as provided by the
+  ## ``os`` module is retrieved instead if it is available. If the
+  ## command line is not available, a `ValueError` will be raised.
+  ## Behavior of the other parameters remains the same as in
+  ## `initOptParser(string, ...)
+  ## <#initOptParser,string,set[char],seq[string]>`_.
+  ##
+  ## See also:
+  ## * `getopt iterator<#getopt.i,seq[string],set[char],seq[string]>`_
+  runnableExamples:
+    var p = initOptParser()
+    p = initOptParser(@["--left", "--debug:3", "-l", "-r:2"])
+    p = initOptParser(@["--left", "--debug:3", "-l", "-r:2"],
+                      shortNoVal = {'l'}, longNoVal = @["left"])
 
-    result.pos = 0
-    result.idx = 0
-    result.inShortState = false
-    result.shortNoVal = shortNoVal
-    result.longNoVal = longNoVal
-    result.allowWhitespaceAfterColon = allowWhitespaceAfterColon
-    if cmdline.len != 0:
-      result.cmds = newSeq[string](cmdline.len)
-      for i in 0..<cmdline.len:
-        result.cmds[i] = cmdline[i].string
+  result.pos = 0
+  result.idx = 0
+  result.inShortState = false
+  result.shortNoVal = shortNoVal
+  result.longNoVal = longNoVal
+  result.allowWhitespaceAfterColon = allowWhitespaceAfterColon
+  if cmdline.len != 0:
+    result.cmds = newSeq[string](cmdline.len)
+    for i in 0..<cmdline.len:
+      result.cmds[i] = cmdline[i]
+  else:
+    when declared(paramCount):
+      result.cmds = newSeq[string](paramCount())
+      for i in countup(1, paramCount()):
+        result.cmds[i-1] = paramStr(i)
     else:
-      result.cmds = newSeq[string](os.paramCount())
-      for i in countup(1, os.paramCount()):
-        result.cmds[i-1] = os.paramStr(i).string
-    result.kind = cmdEnd
-    result.key = ""
-    result.val = ""
+      # we cannot provide this for NimRtl creation on Posix, because we can't
+      # access the command line arguments then!
+      doAssert false, "empty command line given but" &
+        " real command line is not accessible"
+  result.kind = cmdEnd
+  result.key = ""
+  result.val = ""
 
 proc handleShortOption(p: var OptParser; cmd: string) =
   var i = p.pos
   p.kind = cmdShortOption
   if i < cmd.len:
-    add(p.key.string, cmd[i])
+    add(p.key, cmd[i])
     inc(i)
   p.inShortState = true
   while i < cmd.len and cmd[i] in {'\t', ' '}:
     inc(i)
     p.inShortState = false
   if i < cmd.len and (cmd[i] in {':', '='} or
-      card(p.shortNoVal) > 0 and p.key.string[0] notin p.shortNoVal):
+      card(p.shortNoVal) > 0 and p.key[0] notin p.shortNoVal):
     if i < cmd.len and cmd[i] in {':', '='}:
       inc(i)
     p.inShortState = false
@@ -319,8 +330,8 @@ proc next*(p: var OptParser) {.rtl, extern: "npo$1".} =
   var i = p.pos
   while i < p.cmds[p.idx].len and p.cmds[p.idx][i] in {'\t', ' '}: inc(i)
   p.pos = i
-  setLen(p.key.string, 0)
-  setLen(p.val.string, 0)
+  setLen(p.key, 0)
+  setLen(p.val, 0)
   if p.inShortState:
     p.inShortState = false
     if i >= p.cmds[p.idx].len:
@@ -338,7 +349,7 @@ proc next*(p: var OptParser) {.rtl, extern: "npo$1".} =
     if i < p.cmds[p.idx].len and p.cmds[p.idx][i] == '-':
       p.kind = cmdLongOption
       inc(i)
-      i = parseWord(p.cmds[p.idx], i, p.key.string, {' ', '\t', ':', '='})
+      i = parseWord(p.cmds[p.idx], i, p.key, {' ', '\t', ':', '='})
       while i < p.cmds[p.idx].len and p.cmds[p.idx][i] in {'\t', ' '}: inc(i)
       if i < p.cmds[p.idx].len and p.cmds[p.idx][i] in {':', '='}:
         inc(i)
@@ -350,7 +361,7 @@ proc next*(p: var OptParser) {.rtl, extern: "npo$1".} =
           i = 0
         if p.idx < p.cmds.len:
           p.val = p.cmds[p.idx].substr(i)
-      elif len(p.longNoVal) > 0 and p.key.string notin p.longNoVal and p.idx+1 < p.cmds.len:
+      elif len(p.longNoVal) > 0 and p.key notin p.longNoVal and p.idx+1 < p.cmds.len:
         p.val = p.cmds[p.idx+1]
         inc p.idx
       else:
@@ -366,23 +377,24 @@ proc next*(p: var OptParser) {.rtl, extern: "npo$1".} =
     inc p.idx
     p.pos = 0
 
-proc cmdLineRest*(p: OptParser): string {.rtl, extern: "npo$1".} =
-  ## Retrieves the rest of the command line that has not been parsed yet.
-  ##
-  ## See also:
-  ## * `remainingArgs proc<#remainingArgs,OptParser>`_
-  ##
-  ## **Examples:**
-  ##
-  ## .. code-block::
-  ##   var p = initOptParser("--left -r:2 -- foo.txt bar.txt")
-  ##   while true:
-  ##     p.next()
-  ##     if p.kind == cmdLongOption and p.key == "":  # Look for "--"
-  ##       break
-  ##     else: continue
-  ##   doAssert p.cmdLineRest == "foo.txt bar.txt"
-  result = p.cmds[p.idx .. ^1].quoteShellCommand
+when declared(quoteShellCommand):
+  proc cmdLineRest*(p: OptParser): string {.rtl, extern: "npo$1".} =
+    ## Retrieves the rest of the command line that has not been parsed yet.
+    ##
+    ## See also:
+    ## * `remainingArgs proc<#remainingArgs,OptParser>`_
+    ##
+    ## **Examples:**
+    ##
+    ## .. code-block::
+    ##   var p = initOptParser("--left -r:2 -- foo.txt bar.txt")
+    ##   while true:
+    ##     p.next()
+    ##     if p.kind == cmdLongOption and p.key == "":  # Look for "--"
+    ##       break
+    ##     else: continue
+    ##   doAssert p.cmdLineRest == "foo.txt bar.txt"
+    result = p.cmds[p.idx .. ^1].quoteShellCommand
 
 proc remainingArgs*(p: OptParser): seq[string] {.rtl, extern: "npo$1".} =
   ## Retrieves a sequence of the arguments that have not been parsed yet.
@@ -442,54 +454,53 @@ iterator getopt*(p: var OptParser): tuple[kind: CmdLineKind, key,
     if p.kind == cmdEnd: break
     yield (p.kind, p.key, p.val)
 
-when declared(initOptParser):
-  iterator getopt*(cmdline: seq[string] = commandLineParams(),
-                   shortNoVal: set[char] = {}, longNoVal: seq[string] = @[]):
-             tuple[kind: CmdLineKind, key, val: string] =
-    ## Convenience iterator for iterating over command line arguments.
-    ##
-    ## This creates a new `OptParser<#OptParser>`_. If no command line
-    ## arguments are provided, the real command line as provided by the
-    ## ``os`` module is retrieved instead.
-    ##
-    ## ``shortNoVal`` and ``longNoVal`` are used to specify which options
-    ## do not take values. See the `documentation about these
-    ## parameters<#shortnoval-and-longnoval>`_ for more information on
-    ## how this affects parsing.
-    ##
-    ## There is no need to check for ``cmdEnd`` while iterating.
-    ##
-    ## See also:
-    ## * `initOptParser proc<#initOptParser,seq[string],set[char],seq[string]>`_
-    ##
-    ## **Examples:**
-    ##
-    ## .. code-block::
-    ##
-    ##   # these are placeholders, of course
-    ##   proc writeHelp() = discard
-    ##   proc writeVersion() = discard
-    ##
-    ##   var filename: string
-    ##   let params = @["--left", "--debug:3", "-l", "-r:2"]
-    ##
-    ##   for kind, key, val in getopt(params):
-    ##     case kind
-    ##     of cmdArgument:
-    ##       filename = key
-    ##     of cmdLongOption, cmdShortOption:
-    ##       case key
-    ##       of "help", "h": writeHelp()
-    ##       of "version", "v": writeVersion()
-    ##     of cmdEnd: assert(false) # cannot happen
-    ##   if filename == "":
-    ##     # no filename has been written, so we show the help
-    ##     writeHelp()
-    var p = initOptParser(cmdline, shortNoVal = shortNoVal,
-        longNoVal = longNoVal)
-    while true:
-      next(p)
-      if p.kind == cmdEnd: break
-      yield (p.kind, p.key, p.val)
+iterator getopt*(cmdline: seq[string] = @[],
+                  shortNoVal: set[char] = {}, longNoVal: seq[string] = @[]):
+            tuple[kind: CmdLineKind, key, val: string] =
+  ## Convenience iterator for iterating over command line arguments.
+  ##
+  ## This creates a new `OptParser<#OptParser>`_. If no command line
+  ## arguments are provided, the real command line as provided by the
+  ## ``os`` module is retrieved instead.
+  ##
+  ## ``shortNoVal`` and ``longNoVal`` are used to specify which options
+  ## do not take values. See the `documentation about these
+  ## parameters<#shortnoval-and-longnoval>`_ for more information on
+  ## how this affects parsing.
+  ##
+  ## There is no need to check for ``cmdEnd`` while iterating.
+  ##
+  ## See also:
+  ## * `initOptParser proc<#initOptParser,seq[string],set[char],seq[string]>`_
+  ##
+  ## **Examples:**
+  ##
+  ## .. code-block::
+  ##
+  ##   # these are placeholders, of course
+  ##   proc writeHelp() = discard
+  ##   proc writeVersion() = discard
+  ##
+  ##   var filename: string
+  ##   let params = @["--left", "--debug:3", "-l", "-r:2"]
+  ##
+  ##   for kind, key, val in getopt(params):
+  ##     case kind
+  ##     of cmdArgument:
+  ##       filename = key
+  ##     of cmdLongOption, cmdShortOption:
+  ##       case key
+  ##       of "help", "h": writeHelp()
+  ##       of "version", "v": writeVersion()
+  ##     of cmdEnd: assert(false) # cannot happen
+  ##   if filename == "":
+  ##     # no filename has been written, so we show the help
+  ##     writeHelp()
+  var p = initOptParser(cmdline, shortNoVal = shortNoVal,
+      longNoVal = longNoVal)
+  while true:
+    next(p)
+    if p.kind == cmdEnd: break
+    yield (p.kind, p.key, p.val)
 
 {.pop.}

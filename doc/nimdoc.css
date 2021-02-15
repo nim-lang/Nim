@@ -567,6 +567,7 @@ table.line-nums-table {
 .line-nums-table td.blob-line-nums pre {
   color: #b0b0b0;
   -webkit-filter: opacity(75%);
+  filter: opacity(75%);
   text-align: right;
   border-color: transparent;
   background-color: transparent;
@@ -906,6 +907,7 @@ dt pre > span.Operator ~ span.Identifier, dt pre > span.Other ~ span.Identifier 
   background-position: 0 0;
   background-size: 51px 14px;
   -webkit-filter: opacity(50%);
+  filter: opacity(50%);
   background-repeat: no-repeat;
   background-image: var(--nim-sprite-base64);
   margin-bottom: 5px; }

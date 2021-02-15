@@ -103,7 +103,7 @@ since (1, 1):
       doAssert 12.MyInt.distinctBase == 12
       doAssert 12.distinctBase == 12
     when T is distinct:
-      distinctBase(type(a))(a)
+      distinctBase(typeof(a))(a)
     else: # avoids hint ConvFromXtoItselfNotNeeded
       a
 
@@ -124,7 +124,7 @@ since (1, 1):
     runnableExamples:
       doAssert tupleLen((1, 2)) == 2
 
-    tupleLen(type(t))
+    tupleLen(typeof(t))
 
   template get*(T: typedesc[tuple], i: static int): untyped =
     ## Returns the `i`-th element of `T`.
@@ -132,7 +132,7 @@ since (1, 1):
     runnableExamples:
       doAssert get((int, int, float, string), 2) is float
 
-    type(default(T)[i])
+    typeof(default(T)[i])
 
   type StaticParam*[value: static type] = object
     ## Used to wrap a static value in `genericParams <#genericParams.t,typedesc>`_.

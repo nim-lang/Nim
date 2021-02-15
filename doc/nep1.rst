@@ -162,10 +162,13 @@ to keep the names short but meaningful.
 -------------------     ------------   --------------------------------------
 English word            To use         Notes
 -------------------     ------------   --------------------------------------
-initialize              initT          ``init`` is used to create a
-                                       value type ``T``
-new                     newP           ``new`` is used to create a
-                                       reference type ``P``
+initialize              initFoo        initializes a value type ``Foo``
+new                     newFoo         initializes a reference type ``Foo``
+                                       via ``new``
+this or self            self           for method like procs, e.g.:
+                                       `proc fun(self: Foo, a: int)`
+                                       rationale: `self` is more unique in english
+                                       than `this`, and `foo` would not be DRY.
 find                    find           should return the position where
                                        something was found; for a bool result
                                        use ``contains``
@@ -277,3 +280,6 @@ Conventions for multi-line statements and expressions
   .. code-block:: nim
     startProcess(nimExecutable, currentDirectory, compilerArguments
                  environment, processOptions)
+
+- Use `a..b` instead of `a .. b`, except when `b` contains an operator, for example `a .. -3`.
+  Likewise with `a..<b`, `a..^b` and other operators starting with `..`.

@@ -151,7 +151,7 @@ type
       region: MemRegion
   PRawChannel = ptr RawChannel
   LoadStoreMode = enum mStore, mLoad
-  Channel* {.gcsafe.}[TMsg] = RawChannel ## a channel for thread communication
+  Channel*[TMsg] {.gcsafe.} = RawChannel ## a channel for thread communication
 
 const ChannelDeadMask = -2
 
@@ -248,7 +248,7 @@ when not usesDestructors:
         dstseq.reserved = seq.len
         for i in 0..seq.len-1:
           storeAux(
-            cast[pointer](dst +% align(GenericSeqSize, mt.base.align) +% i*% mt.base.size),
+            cast[pointer](dst +% align(GenericSeqSize, mt.base.align) +% i *% mt.base.size),
             cast[pointer](cast[ByteAddress](s2) +% align(GenericSeqSize, mt.base.align) +%
                           i *% mt.base.size),
             mt.base, t, mode)
@@ -265,8 +265,8 @@ when not usesDestructors:
       storeAux(dest, src, mt.node, t, mode)
     of tyArray, tyArrayConstr:
       for i in 0..(mt.size div mt.base.size)-1:
-        storeAux(cast[pointer](d +% i*% mt.base.size),
-                cast[pointer](s +% i*% mt.base.size), mt.base, t, mode)
+        storeAux(cast[pointer](d +% i *% mt.base.size),
+                cast[pointer](s +% i *% mt.base.size), mt.base, t, mode)
     of tyRef:
       var s = cast[PPointer](src)[]
       var x = cast[PPointer](dest)

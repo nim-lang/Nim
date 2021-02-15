@@ -586,6 +586,8 @@ proc fstatvfs*(a1: cint, a2: var Statvfs): cint {.
   importc, header: "<sys/statvfs.h>".}
 
 proc chmod*(a1: cstring, a2: Mode): cint {.importc, header: "<sys/stat.h>", sideEffect.}
+when defined(osx) or defined(freebsd):
+  proc lchmod*(a1: cstring, a2: Mode): cint {.importc, header: "<sys/stat.h>", sideEffect.}
 proc fchmod*(a1: cint, a2: Mode): cint {.importc, header: "<sys/stat.h>", sideEffect.}
 proc fstat*(a1: cint, a2: var Stat): cint {.importc, header: "<sys/stat.h>", sideEffect.}
 proc lstat*(a1: cstring, a2: var Stat): cint {.importc, header: "<sys/stat.h>", sideEffect.}
@@ -876,14 +878,18 @@ proc CMSG_NXTHDR*(mhdr: ptr Tmsghdr, cmsg: ptr Tcmsghdr): ptr Tcmsghdr {.
 proc CMSG_FIRSTHDR*(mhdr: ptr Tmsghdr): ptr Tcmsghdr {.
   importc, header: "<sys/socket.h>".}
 
+{.push warning[deprecated]: off.}
 proc CMSG_SPACE*(len: csize): csize {.
   importc, header: "<sys/socket.h>", deprecated: "argument `len` should be of type `csize_t`".}
+{.pop.}
 
 proc CMSG_SPACE*(len: csize_t): csize_t {.
   importc, header: "<sys/socket.h>".}
 
+{.push warning[deprecated]: off.}
 proc CMSG_LEN*(len: csize): csize {.
   importc, header: "<sys/socket.h>", deprecated: "argument `len` should be of type `csize_t`".}
+{.pop.}
 
 proc CMSG_LEN*(len: csize_t): csize_t {.
   importc, header: "<sys/socket.h>".}

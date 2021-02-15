@@ -443,7 +443,7 @@ iterator filter*[T](s: openArray[T], pred: proc(x: T): bool {.closure.}): T =
   ##
   ## **See also:**
   ## * `sugar.collect macro<sugar.html#collect.m%2Cuntyped%2Cuntyped>`_
-  ## * `fliter proc<#filter,openArray[T],proc(T)>`_
+  ## * `filter proc<#filter,openArray[T],proc(T)>`_
   ## * `filterIt template<#filterIt.t,untyped,untyped>`_
   ##
   runnableExamples:
@@ -587,7 +587,7 @@ template filterIt*(s, pred: untyped): untyped =
   ##
   ## **See also:**
   ## * `sugar.collect macro<sugar.html#collect.m%2Cuntyped%2Cuntyped>`_
-  ## * `fliter proc<#filter,openArray[T],proc(T)>`_
+  ## * `filter proc<#filter,openArray[T],proc(T)>`_
   ## * `filter iterator<#filter.i,openArray[T],proc(T)>`_
   ##
   runnableExamples:
