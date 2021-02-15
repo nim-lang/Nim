@@ -44,3 +44,10 @@ else:
 
 
 doAssert frexp(8.0) == (0.5, 4)
+doAssert frexp(-8.0) == (-0.5, 4)
+doAssert frexp(0.0) == (0.0, 0)
+
+block:
+  var x: int
+  doAssert frexp(5.0, x) == 0.625
+  doAssert x == 3
