@@ -963,7 +963,7 @@ proc expandTilde*(path: string): string {.
   ## `~` with `getHomeDir() <#getHomeDir>`_ (otherwise returns `path` unmodified).
   ##
   ## Windows: this is still supported despite Windows platform not having this
-  ## convention; also, both `~/` and `~\` are handled.
+  ## convention; also, both `~/` and ``~\`` are handled.
   ##
   ## See also:
   ## * `getHomeDir proc <#getHomeDir>`_
@@ -2279,10 +2279,10 @@ iterator walkDirRec*(dir: string,
   ## ---------------------   ---------------------------------------------
   ## yieldFilter             meaning
   ## ---------------------   ---------------------------------------------
-  ## `pcFile`              yield real files (default)
-  ## `pcLinkToFile`        yield symbolic links to files
-  ## `pcDir`               yield real directories
-  ## `pcLinkToDir`         yield symbolic links to directories
+  ## ``pcFile``              yield real files (default)
+  ## ``pcLinkToFile``        yield symbolic links to files
+  ## ``pcDir``               yield real directories
+  ## ``pcLinkToDir``         yield symbolic links to directories
   ## ---------------------   ---------------------------------------------
   ##
   ## ---------------------   ---------------------------------------------
