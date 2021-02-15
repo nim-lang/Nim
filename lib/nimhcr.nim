@@ -423,7 +423,7 @@ when defined(createNimHcr):
     if modules.contains(name):
       unloadDll(name)
     else:
-      modules.add(name, newModuleDesc())
+      modules[name] = newModuleDesc()
 
     let copiedName = name & ".copy." & dllExt
     copyFileWithPermissions(name, copiedName)
@@ -601,7 +601,7 @@ when defined(createNimHcr):
 
   proc hcrAddModule*(module: cstring) {.nimhcr.} =
     if not modules.contains($module):
-      modules.add($module, newModuleDesc())
+      modules[$module] = newModuleDesc()
 
   proc hcrGeneration*(): int {.nimhcr.} =
     generation

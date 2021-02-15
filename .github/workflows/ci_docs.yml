@@ -126,10 +126,6 @@ jobs:
         shell: bash
         run: ./koch boot -d:release
 
-      - name: 'Clone fusion'
-        shell: bash
-        run: ./koch fusion
-
       - name: 'Build documentation'
         shell: bash
         run: ./koch doc --git.commit:devel

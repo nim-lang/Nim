@@ -1332,7 +1332,7 @@ when not defined(js):
     ## error occurs. This is supposed to be used for quick scripting.
     ##
     ## **Note**: this proc does not exist while using the JS backend.
-    var x = readFile(infile).string
+    var x = readFile(infile)
     writeFile(outfile, x.parallelReplace(subs))
 
 

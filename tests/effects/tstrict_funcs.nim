@@ -3,18 +3,6 @@ discard """
 """
 
 import tables, streams, parsecsv
-# We import the below modules to check that they compile with `strictFuncs`.
-# They are otherwise unused in this file.
-import
-  complex,
-  critbits,
-  httpcore,
-  math,
-  nre,
-  rationals,
-  sequtils,
-  strutils,
-  uri
 
 type
   Contig2Reads = TableRef[string, seq[string]]

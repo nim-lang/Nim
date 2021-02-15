@@ -271,6 +271,13 @@ Some chapter
     let output5 = rstToHtml(input5, {roSupportMarkdown}, defaultConfig())
     doAssert "&quot;punctuation symbols&quot;" in output5 and "<h1" in output5
 
+    # check that EOF after adornment does not prevent it parsing as heading
+    let input6 = dedent """
+      Some chapter
+      ------------"""
+    let output6 = rstToHtml(input6, {roSupportMarkdown}, defaultConfig())
+    doAssert "<h1 id=\"some-chapter\">Some chapter</h1>" in output6
+
 
   test "RST links":
     let input1 = """

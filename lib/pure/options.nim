@@ -100,7 +100,7 @@ proc some*[T](val: T): Option[T] {.inline.} =
     var
       a = some("abc")
       b = some(42)
-    assert $type(a) == "Option[system.string]"
+    assert $typeof(a) == "Option[system.string]"
     assert b.isSome
     assert a.get == "abc"
     assert $b == "Some(42)"
@@ -122,7 +122,7 @@ proc none*(T: typedesc): Option[T] {.inline.} =
   runnableExamples:
     var a = none(int)
     assert a.isNone
-    assert $type(a) == "Option[system.int]"
+    assert $typeof(a) == "Option[system.int]"
 
   # the default is the none type
   discard

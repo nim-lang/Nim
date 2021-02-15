@@ -12,7 +12,7 @@ import
   ast, astalgo, modules, passes, condsyms,
   options, sem, llstream, lineinfos, vm,
   vmdef, modulegraphs, idents, os, pathutils,
-  passaux, scriptconfig
+  passaux, scriptconfig, std/compilesettings
 
 type
   Interpreter* = ref object ## Use Nim as an interpreter with this object
@@ -92,10 +92,9 @@ proc findNimStdLib*(): string =
     return ""
 
 proc findNimStdLibCompileTime*(): string =
-  ## Same as ``findNimStdLib`` but uses source files used at compile time,
+  ## Same as `findNimStdLib` but uses source files used at compile time,
   ## and asserts on error.
-  const exe = getCurrentCompilerExe()
-  result = exe.splitFile.dir.parentDir / "lib"
+  result = querySetting(libPath)
   doAssert fileExists(result / "system.nim"), "result:" & result
 
 proc createInterpreter*(scriptName: string;

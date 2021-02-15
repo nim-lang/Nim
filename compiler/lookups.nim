@@ -371,16 +371,29 @@ when defined(nimfix):
 else:
   template fixSpelling(n: PNode; ident: PIdent; op: untyped) = discard
 
-proc errorUseQualifier*(c: PContext; info: TLineInfo; s: PSym) =
+proc errorUseQualifier(c: PContext; info: TLineInfo; s: PSym; amb: var bool): PSym =
   var err = "ambiguous identifier: '" & s.name.s & "'"
   var i = 0
+  var ignoredModules = 0
   for candidate in importedItems(c, s.name):
     if i == 0: err.add " -- use one of the following:\n"
     else: err.add "\n"
     err.add "  " & candidate.owner.name.s & "." & candidate.name.s
     err.add ": " & typeToString(candidate.typ)
+    if candidate.kind == skModule:
+      inc ignoredModules
+    else:
+      result = candidate
     inc i
-  localError(c.config, info, errGenerated, err)
+  if ignoredModules != i-1:
+    localError(c.config, info, errGenerated, err)
+    result = nil
+  else:
+    amb = false
+
+proc errorUseQualifier*(c: PContext; info: TLineInfo; s: PSym) =
+  var amb: bool
+  discard errorUseQualifier(c, info, s, amb)
 
 proc errorUseQualifier(c: PContext; info: TLineInfo; candidates: seq[PSym]) =
   var err = "ambiguous identifier: '" & candidates[0].name.s & "'"
@@ -426,7 +439,7 @@ proc lookUp*(c: PContext, n: PNode): PSym =
     return
   if amb:
     #contains(c.ambiguousSymbols, result.id):
-    errorUseQualifier(c, n.info, result)
+    result = errorUseQualifier(c, n.info, result, amb)
   when false:
     if result.kind == skStub: loadStub(result)
 
@@ -462,7 +475,7 @@ proc qualifiedLookUp*(c: PContext, n: PNode, flags: set[TLookupFlag]): PSym =
       errorUndeclaredIdentifier(c, n.info, ident.s)
       result = errorSym(c, n)
     elif checkAmbiguity in flags and result != nil and amb:
-      errorUseQualifier(c, n.info, result)
+      result = errorUseQualifier(c, n.info, result, amb)
     c.isAmbiguous = amb
   of nkSym:
     result = n.sym

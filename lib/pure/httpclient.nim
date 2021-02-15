@@ -321,7 +321,7 @@ proc getDefaultSSL(): SslContext =
   result = defaultSslContext
   when defined(ssl):
     if result == nil:
-      defaultSslContext = newContext(verifyMode = CVerifyNone)
+      defaultSslContext = newContext(verifyMode = CVerifyPeer)
       result = defaultSslContext
       doAssert result != nil, "failure to initialize the SSL context"
 
@@ -415,7 +415,7 @@ proc addFiles*(p: MultipartData, xs: openArray[tuple[name, file: string]],
     let (_, fName, ext) = splitFile(file)
     if ext.len > 0:
       contentType = mimeDb.getMimetype(ext[1..ext.high], "")
-    let content = if useStream: file else: readFile(file).string
+    let content = if useStream: file else: readFile(file)
     p.add(name, content, fName & ext, contentType, useStream = useStream)
   result = p
 
@@ -455,8 +455,8 @@ proc sendFile(socket: Socket | AsyncSocket,
   var buffer: string
   while true:
     buffer =
-      when socket is AsyncSocket: (await read(file, chunkSize)).string
-      else: readStr(file, chunkSize).string
+      when socket is AsyncSocket: (await read(file, chunkSize))
+      else: readStr(file, chunkSize)
     if buffer.len == 0: break
     await socket.send(buffer)
   file.close()
@@ -690,7 +690,7 @@ proc parseChunks(client: HttpClient | AsyncHttpClient): Future[void]
                  {.multisync.} =
   while true:
     var chunkSize = 0
-    var chunkSizeStr = (await client.socket.recvLine()).string
+    var chunkSizeStr = await client.socket.recvLine()
     var i = 0
     if chunkSizeStr == "":
       httpError("Server terminated connection prematurely")
@@ -789,9 +789,9 @@ proc parseResponse(client: HttpClient | AsyncHttpClient,
   while true:
     linei = 0
     when client is HttpClient:
-      line = (await client.socket.recvLine(client.timeout)).string
+      line = await client.socket.recvLine(client.timeout)
     else:
-      line = (await client.socket.recvLine()).string
+      line = await client.socket.recvLine()
     if line == "":
       # We've been disconnected.
       client.close()
