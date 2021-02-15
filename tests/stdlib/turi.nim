@@ -174,6 +174,7 @@ template main() =
   block: # removeDotSegments
     doAssert removeDotSegments("/foo/bar/baz") == "/foo/bar/baz"
     doAssert removeDotSegments("") == "" # empty test
+    doAssert removeDotSegments(".") == "." # trailing period
 
   block: # bug #3207
     doAssert parseUri("http://qq/1").combine(parseUri("https://qqq")).`$` == "https://qqq"
