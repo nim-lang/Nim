@@ -66,10 +66,17 @@ proc semOperand(c: PContext, n: PNode, flags: TExprFlags = {}): PNode =
 proc semExprCheck(c: PContext, n: PNode, flags: TExprFlags): PNode =
   rejectEmptyNode(n)
   result = semExpr(c, n, flags+{efWantValue})
-  if result.kind == nkEmpty:
+
+  let
+    isEmpty = result.kind == nkEmpty
+    isTypeError = result.typ != nil and result.typ.kind == tyError
+
+  if isEmpty or isTypeError:
     # bug #12741, redundant error messages are the lesser evil here:
     localError(c.config, n.info, errExprXHasNoType %
                 renderTree(result, {renderNoComments}))
+  
+  if isEmpty:
     # do not produce another redundant error message:
     result = errorNode(c, n)
 
@@ -78,6 +85,9 @@ proc semExprWithType(c: PContext, n: PNode, flags: TExprFlags = {}): PNode =
   if result.typ == nil or result.typ == c.enforceVoidContext:
     localError(c.config, n.info, errExprXHasNoType %
                 renderTree(result, {renderNoComments}))
+    result.typ = errorType(c)
+  elif result.typ.kind == tyError:
+    # associates the type error to the current owner
     result.typ = errorType(c)
   else:
     if result.typ.kind in {tyVar, tyLent}: result = newDeref(result)
@@ -887,6 +897,9 @@ proc setGenericParams(c: PContext, n: PNode) =
     n[i].typ = semTypeNode(c, n[i], nil)
 
 proc afterCallActions(c: PContext; n, orig: PNode, flags: TExprFlags): PNode =
+  if efNoSemCheck notin flags and n.typ != nil and n.typ.kind == tyError:
+    return errorNode(c, n)
+
   result = n
   let callee = result[0].sym
   case callee.kind
@@ -1368,6 +1381,9 @@ proc builtinFieldAccess(c: PContext, n: PNode, flags: TExprFlags): PNode =
       return tryReadingTypeField(c, n, i, ty.base)
   elif isTypeExpr(n.sons[0]):
     return tryReadingTypeField(c, n, i, ty)
+  elif ty.kind == tyError:
+    # a type error doesn't have any builtin fields
+    return nil
 
   if ty.kind in tyUserTypeClasses and ty.isResolvedUserTypeClass:
     ty = ty.lastSon
