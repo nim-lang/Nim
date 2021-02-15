@@ -86,6 +86,9 @@ proc semExprWithType(c: PContext, n: PNode, flags: TExprFlags = {}): PNode =
     localError(c.config, n.info, errExprXHasNoType %
                 renderTree(result, {renderNoComments}))
     result.typ = errorType(c)
+  elif result.typ.kind == tyError:
+    # associates the type error to the current owner
+    result.typ = errorType(c)
   else:
     if result.typ.kind in {tyVar, tyLent}: result = newDeref(result)
 
@@ -894,6 +897,9 @@ proc setGenericParams(c: PContext, n: PNode) =
     n[i].typ = semTypeNode(c, n[i], nil)
 
 proc afterCallActions(c: PContext; n, orig: PNode, flags: TExprFlags): PNode =
+  if efNoSemCheck notin flags and n.typ != nil and n.typ.kind == tyError:
+    return errorNode(c, n)
+
   result = n
   let callee = result[0].sym
   case callee.kind
@@ -1375,6 +1381,9 @@ proc builtinFieldAccess(c: PContext, n: PNode, flags: TExprFlags): PNode =
       return tryReadingTypeField(c, n, i, ty.base)
   elif isTypeExpr(n.sons[0]):
     return tryReadingTypeField(c, n, i, ty)
+  elif ty.kind == tyError:
+    # a type error doesn't have any builtin fields
+    return nil
 
   if ty.kind in tyUserTypeClasses and ty.isResolvedUserTypeClass:
     ty = ty.lastSon
@@ -1429,10 +1438,7 @@ proc dotTransformation(c: PContext, n: PNode): PNode =
   else:
     var i = considerQuotedIdent(c, n[1], n)
     result = newNodeI(nkDotCall, n.info)
-    # we only want to do the dotField transform once per node, so the new node
-    # should not keep the nfDotField flag, as it's the result of a transform.
-    if nfDotField notin n.flags:
-      result.flags.incl nfDotField
+    result.flags.incl nfDotField
     result.add newIdentNode(i, n[1].info)
     result.add copyTree(n[0])
 
