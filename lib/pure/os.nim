@@ -929,12 +929,13 @@ proc getConfigDir*(): string {.rtl, extern: "nos$1",
     result = getEnv("XDG_CONFIG_HOME", getEnv("HOME") / ".config")
   result.normalizePathEnd(trailingSep = true)
 
-from std/private/winutils import nil
 
 when defined(windows):
+  type DWORD = uint32
+
   proc getTempPath(
-    nBufferLength: winutils.DWORD, lpBuffer: WideCString
-  ): winutils.DWORD {.stdcall, dynlib: "kernel32.dll", importc: "GetTempPathW".} =
+    nBufferLength: DWORD, lpBuffer: WideCString
+  ): DWORD {.stdcall, dynlib: "kernel32.dll", importc: "GetTempPathW".} =
     ## Retrieves the path of the directory designated for temporary files.
 
 template getEnvImpl(result: var string, tempDirList: openArray[string]) =
