@@ -1,6 +1,5 @@
-proc jsTypeOf*[T](x: T): cstring {.importjs: "typeof(#)".}
-  ## Returns the name of the JsObject's JavaScript type as a cstring.
-  # xxx replace jsffi.jsTypeOf with this definition and add tests
+import std/private/jsutils
+
 
 type JsBigIntImpl {.importc: "bigint".} = int
 type JsBigInt = distinct JsBigIntImpl
