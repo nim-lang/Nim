@@ -120,7 +120,7 @@ proc osReleaseFile*(): Config {.since: (1, 5).} =
     import parsecfg
     when defined(linux):
       let data = osReleaseFile()
-      doAssert data.getSectionValue("", "NAME").len > 0 ## the data is up to each distro.
+      echo "OS name: ", data.getSectionValue("", "NAME") ## the data is up to each distro.
 
   # We do not use a {.strdefine.} because Standard says it *must* be that path.
   for osReleaseFile in ["/etc/os-release", "/usr/lib/os-release"]:

@@ -23,8 +23,16 @@ when defined(js):
   func `[]=`*(arr: Float64Array, i: int, v: float) {.importjs: "#[#] = #".}
 
 
+  proc jsTypeOf*[T](x: T): cstring {.importjs: "typeof(#)".}
+  ## Returns the name of the JsObject's JavaScript type as a cstring.
+  # xxx replace jsffi.jsTypeOf with this definition and add tests
+
+  proc jsConstructorName*[T](a: T): cstring =
+    asm """`result` = `a`.constructor.name"""
+
   proc hasJsBigInt*(): bool =
     asm """`result` = typeof BigInt != 'undefined'"""
 
   proc hasBigUint64Array*(): bool =
     asm """`result` = typeof BigUint64Array != 'undefined'"""
+

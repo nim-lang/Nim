@@ -505,7 +505,10 @@ proc genCase(c: PCtx; n: PNode; dest: var TDest) =
       let it = n[i]
       if it.len == 1:
         # else stmt:
-        c.gen(it[0], dest)
+        if it[0].kind != nkNilLit or it[0].typ != nil:
+          # an nkNilLit with nil for typ implies there is no else branch, this
+          # avoids unused related errors as we've already consumed the dest
+          c.gen(it[0], dest)
       else:
         let b = rawGenLiteral(c, it)
         c.gABx(it, opcBranch, tmp, b)
