@@ -584,14 +584,28 @@ template withValue*[A, B](t: var Table[A, B], key: A, value, body: untyped) =
   ## Retrieves the value at `t[key]`.
   ##
   ## `value` can be modified in the scope of the `withValue` call.
-  ##
-  ## .. code-block:: nim
-  ##
-  ##   sharedTable.withValue(key, value) do:
-  ##     # block is executed only if `key` in `t`
-  ##     value.name = "username"
-  ##     value.uid = 1000
-  ##
+  runnableExamples:
+    type
+      User = object
+        name: string
+        uid: int
+
+    var t = initTable[int, User]()
+    let u = User(name: "Hello", uid: 99)
+    t[1] = u
+
+    t.withValue(1, value) do:
+      # block is executed only if `key` in `t`
+      value.name = "Nim"
+      value.uid = 1314
+    
+    t.withValue(2, value) do:
+      value.name = "No"
+      value.uid = 521
+
+    doAssert t[1].name == "Nim"
+    doAssert t[1].uid == 1314
+
   mixin rawGet
   var hc: Hash
   var index = rawGet(t, key, hc)
@@ -605,17 +619,26 @@ template withValue*[A, B](t: var Table[A, B], key: A,
   ## Retrieves the value at `t[key]`.
   ##
   ## `value` can be modified in the scope of the `withValue` call.
-  ##
-  ## .. code-block:: nim
-  ##
-  ##   table.withValue(key, value) do:
-  ##     # block is executed only if `key` in `t`
-  ##     value.name = "username"
-  ##     value.uid = 1000
-  ##   do:
-  ##     # block is executed when `key` not in `t`
-  ##     raise newException(KeyError, "Key not found")
-  ##
+  runnableExamples:
+    type
+      User = object
+        name: string
+        uid: int
+
+    var t = initTable[int, User]()
+    let u = User(name: "Hello", uid: 99)
+    t[1] = u
+
+    t.withValue(1, value) do:
+      # block is executed only if `key` in `t`
+      value.name = "Nim"
+      value.uid = 1314
+    # do:
+    #   # block is executed when `key` not in `t`
+    #   raise newException(KeyError, "Key not found")
+
+    doAssert t[1].name == "Nim"
+    doAssert t[1].uid == 1314
   mixin rawGet
   var hc: Hash
   var index = rawGet(t, key, hc)
