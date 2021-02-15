@@ -77,7 +77,7 @@ proc execProcess*(command: string, workingDir: string = "",
     options: set[ProcessOption] = {poStdErrToStdOut, poUsePath, poEvalCommand}):
   string {.rtl, extern: "nosp$1",
                   tags: [ExecIOEffect, ReadIOEffect, RootEffect].}
-  ## A convenience procedure that executes ``command`` with ``startProcess``
+  ## A convenience procedure that executes `command` with `startProcess`
   ## and returns its output as a string.
   ##
   ## **WARNING:** This function uses `poEvalCommand` by default for backwards
@@ -100,7 +100,7 @@ proc execProcess*(command: string, workingDir: string = "",
 
 proc execCmd*(command: string): int {.rtl, extern: "nosp$1",
     tags: [ExecIOEffect, ReadIOEffect, RootEffect].}
-  ## Executes ``command`` and returns its error code.
+  ## Executes `command` and returns its error code.
   ##
   ## Standard input, output, error streams are inherited from the calling process.
   ## This operation is also often called `system`:idx:.
@@ -123,12 +123,12 @@ proc startProcess*(command: string, workingDir: string = "",
   owned(Process) {.rtl, extern: "nosp$1",
                    tags: [ExecIOEffect, ReadEnvEffect, RootEffect].}
   ## Starts a process. `Command` is the executable file, `workingDir` is the
-  ## process's working directory. If ``workingDir == ""`` the current directory
+  ## process's working directory. If `workingDir == ""` the current directory
   ## is used (default). `args` are the command line arguments that are passed to the
   ## process. On many operating systems, the first command line argument is the
   ## name of the executable. `args` should *not* contain this argument!
   ## `env` is the environment that will be passed to the process.
-  ## If ``env == nil`` (default) the environment is inherited of
+  ## If `env == nil` (default) the environment is inherited of
   ## the parent process. `options` are additional flags that may be passed
   ## to `startProcess`. See the documentation of `ProcessOption<#ProcessOption>`_
   ## for the meaning of these flags.
@@ -136,7 +136,7 @@ proc startProcess*(command: string, workingDir: string = "",
   ## You need to `close <#close,Process>`_ the process when done.
   ##
   ## Note that you can't pass any `args` if you use the option
-  ## ``poEvalCommand``, which invokes the system shell to run the specified
+  ## `poEvalCommand`, which invokes the system shell to run the specified
   ## `command`. In this situation you have to concatenate manually the contents
   ## of `args` to `command` carefully escaping/quoting any special characters,
   ## since it will be passed *as is* to the system shell. Each system/shell may
@@ -144,7 +144,7 @@ proc startProcess*(command: string, workingDir: string = "",
   ## invocation if possible as it leads to non portable software.
   ##
   ## Return value: The newly created process object. Nil is never returned,
-  ## but ``OSError`` is raised in case of an error.
+  ## but `OSError` is raised in case of an error.
   ##
   ## See also:
   ## * `execProcesses proc <#execProcesses,openArray[string],proc(int),proc(int,Process)>`_
@@ -179,8 +179,8 @@ proc resume*(p: Process) {.rtl, extern: "nosp$1", tags: [].}
 proc terminate*(p: Process) {.rtl, extern: "nosp$1", tags: [].}
   ## Stop the process `p`.
   ##
-  ## On Posix OSes the procedure sends ``SIGTERM`` to the process.
-  ## On Windows the Win32 API function ``TerminateProcess()``
+  ## On Posix OSes the procedure sends `SIGTERM` to the process.
+  ## On Windows the Win32 API function `TerminateProcess()`
   ## is called to stop the process.
   ##
   ## See also:
@@ -192,8 +192,8 @@ proc terminate*(p: Process) {.rtl, extern: "nosp$1", tags: [].}
 proc kill*(p: Process) {.rtl, extern: "nosp$1", tags: [].}
   ## Kill the process `p`.
   ##
-  ## On Posix OSes the procedure sends ``SIGKILL`` to the process.
-  ## On Windows ``kill`` is simply an alias for `terminate() <#terminate,Process>`_.
+  ## On Posix OSes the procedure sends `SIGKILL` to the process.
+  ## On Windows `kill` is simply an alias for `terminate() <#terminate,Process>`_.
   ##
   ## See also:
   ## * `suspend proc <#suspend,Process>`_
@@ -228,62 +228,62 @@ proc peekExitCode*(p: Process): int {.rtl, extern: "nosp$1", tags: [].}
   ## number will be returned.
 
 proc inputStream*(p: Process): Stream {.rtl, extern: "nosp$1", tags: [].}
-  ## Returns ``p``'s input stream for writing to.
+  ## Returns `p`'s input stream for writing to.
   ##
   ## **WARNING**: The returned `Stream` should not be closed manually as it
-  ## is closed when closing the Process ``p``.
+  ## is closed when closing the Process `p`.
   ##
   ## See also:
   ## * `outputStream proc <#outputStream,Process>`_
   ## * `errorStream proc <#errorStream,Process>`_
 
 proc outputStream*(p: Process): Stream {.rtl, extern: "nosp$1", tags: [].}
-  ## Returns ``p``'s output stream for reading from.
+  ## Returns `p`'s output stream for reading from.
   ##
   ## You cannot perform peek/write/setOption operations to this stream.
   ## Use `peekableOutputStream proc <#peekableOutputStream,Process>`_
   ## if you need to peek stream.
   ##
   ## **WARNING**: The returned `Stream` should not be closed manually as it
-  ## is closed when closing the Process ``p``.
+  ## is closed when closing the Process `p`.
   ##
   ## See also:
   ## * `inputStream proc <#inputStream,Process>`_
   ## * `errorStream proc <#errorStream,Process>`_
 
 proc errorStream*(p: Process): Stream {.rtl, extern: "nosp$1", tags: [].}
-  ## Returns ``p``'s error stream for reading from.
+  ## Returns `p`'s error stream for reading from.
   ##
   ## You cannot perform peek/write/setOption operations to this stream.
   ## Use `peekableErrorStream proc <#peekableErrorStream,Process>`_
   ## if you need to peek stream.
   ##
   ## **WARNING**: The returned `Stream` should not be closed manually as it
-  ## is closed when closing the Process ``p``.
+  ## is closed when closing the Process `p`.
   ##
   ## See also:
   ## * `inputStream proc <#inputStream,Process>`_
   ## * `outputStream proc <#outputStream,Process>`_
 
 proc peekableOutputStream*(p: Process): Stream {.rtl, extern: "nosp$1", tags: [], since: (1, 3).}
-  ## Returns ``p``'s output stream for reading from.
+  ## Returns `p`'s output stream for reading from.
   ##
   ## You can peek returned stream.
   ##
   ## **WARNING**: The returned `Stream` should not be closed manually as it
-  ## is closed when closing the Process ``p``.
+  ## is closed when closing the Process `p`.
   ##
   ## See also:
   ## * `outputStream proc <#outputStream,Process>`_
   ## * `peekableErrorStream proc <#peekableErrorStream,Process>`_
 
 proc peekableErrorStream*(p: Process): Stream {.rtl, extern: "nosp$1", tags: [], since: (1, 3).}
-  ## Returns ``p``'s error stream for reading from.
+  ## Returns `p`'s error stream for reading from.
   ##
   ## You can run peek operation to returned stream.
   ##
   ## **WARNING**: The returned `Stream` should not be closed manually as it
-  ## is closed when closing the Process ``p``.
+  ## is closed when closing the Process `p`.
   ##
   ## See also:
   ## * `errorStream proc <#errorStream,Process>`_
@@ -291,10 +291,10 @@ proc peekableErrorStream*(p: Process): Stream {.rtl, extern: "nosp$1", tags: [],
 
 proc inputHandle*(p: Process): FileHandle {.rtl, extern: "nosp$1",
   tags: [].} =
-  ## Returns ``p``'s input file handle for writing to.
+  ## Returns `p`'s input file handle for writing to.
   ##
   ## **WARNING**: The returned `FileHandle` should not be closed manually as
-  ## it is closed when closing the Process ``p``.
+  ## it is closed when closing the Process `p`.
   ##
   ## See also:
   ## * `outputHandle proc <#outputHandle,Process>`_
@@ -303,10 +303,10 @@ proc inputHandle*(p: Process): FileHandle {.rtl, extern: "nosp$1",
 
 proc outputHandle*(p: Process): FileHandle {.rtl, extern: "nosp$1",
     tags: [].} =
-  ## Returns ``p``'s output file handle for reading from.
+  ## Returns `p`'s output file handle for reading from.
   ##
   ## **WARNING**: The returned `FileHandle` should not be closed manually as
-  ## it is closed when closing the Process ``p``.
+  ## it is closed when closing the Process `p`.
   ##
   ## See also:
   ## * `inputHandle proc <#inputHandle,Process>`_
@@ -315,10 +315,10 @@ proc outputHandle*(p: Process): FileHandle {.rtl, extern: "nosp$1",
 
 proc errorHandle*(p: Process): FileHandle {.rtl, extern: "nosp$1",
     tags: [].} =
-  ## Returns ``p``'s error file handle for reading from.
+  ## Returns `p`'s error file handle for reading from.
   ##
   ## **WARNING**: The returned `FileHandle` should not be closed manually as
-  ## it is closed when closing the Process ``p``.
+  ## it is closed when closing the Process `p`.
   ##
   ## See also:
   ## * `inputHandle proc <#inputHandle,Process>`_

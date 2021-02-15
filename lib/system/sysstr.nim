@@ -254,7 +254,7 @@ proc setLengthStr(s: NimString, newLen: int): NimString {.compilerRtl.} =
 
 proc incrSeq(seq: PGenericSeq, elemSize, elemAlign: int): PGenericSeq {.compilerproc.} =
   # increments the length by one:
-  # this is needed for supporting ``add``;
+  # this is needed for supporting `add`;
   #
   #  add(seq, x)  generates:
   #  seq = incrSeq(seq, sizeof(x));

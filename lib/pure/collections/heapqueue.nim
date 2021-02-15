@@ -145,7 +145,7 @@ proc pop*[T](heap: var HeapQueue[T]): T =
     result = lastelt
 
 proc find*[T](heap: HeapQueue[T], x: T): int {.since: (1, 3).} =
-  ## Linear scan to find index of item ``x`` or -1 if not found.
+  ## Linear scan to find index of item `x` or -1 if not found.
   runnableExamples:
     var heap = toHeapQueue([9, 5, 8])
     assert heap.find(5) == 0

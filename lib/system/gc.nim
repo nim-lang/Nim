@@ -56,7 +56,7 @@ type
     cycleCollections: int    # number of performed full collections
     maxThreshold: int        # max threshold that has been set
     maxStackSize: int        # max stack size
-    maxStackCells: int       # max stack cells in ``decStack``
+    maxStackCells: int       # max stack cells in `decStack`
     cycleTableSize: int      # max entries in cycle table
     maxPause: int64          # max measured GC pause in nanoseconds
 
@@ -345,7 +345,7 @@ proc forAllChildren(cell: PCell, op: WalkOp) =
 proc addNewObjToZCT(res: PCell, gch: var GcHeap) {.inline.} =
   # we check the last 8 entries (cache line) for a slot that could be reused.
   # In 63% of all cases we succeed here! But we have to optimize the heck
-  # out of this small linear search so that ``newObj`` is not slowed down.
+  # out of this small linear search so that `newObj` is not slowed down.
   #
   # Slots to try          cache hit
   # 1                     32%
@@ -715,7 +715,7 @@ proc collectZCT(gch: var GcHeap): bool =
     if c.refcount <% rcIncrement:
       # It may have a RC > 0, if it is in the hardware stack or
       # it has not been removed yet from the ZCT. This is because
-      # ``incref`` does not bother to remove the cell from the ZCT
+      # `incref` does not bother to remove the cell from the ZCT
       # as this might be too slow.
       # In any case, it should be removed from the ZCT. But not
       # freed. **KEEP THIS IN MIND WHEN MAKING THIS INCREMENTAL!**

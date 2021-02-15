@@ -61,18 +61,18 @@ proc toLower(c: char): char {.inline.} =
 
 proc parseBin*[T: SomeInteger](s: string, number: var T, start = 0,
     maxLen = 0): int {.noSideEffect.} =
-  ## Parses a binary number and stores its value in ``number``.
+  ## Parses a binary number and stores its value in `number`.
   ##
   ## Returns the number of the parsed characters or 0 in case of an error.
-  ## If error, the value of ``number`` is not changed.
+  ## If error, the value of `number` is not changed.
   ##
-  ## If ``maxLen == 0``, the parsing continues until the first non-bin character
-  ## or to the end of the string. Otherwise, no more than ``maxLen`` characters
-  ## are parsed starting from the ``start`` position.
+  ## If `maxLen == 0`, the parsing continues until the first non-bin character
+  ## or to the end of the string. Otherwise, no more than `maxLen` characters
+  ## are parsed starting from the `start` position.
   ##
   ## It does not check for overflow. If the value represented by the string is
-  ## too big to fit into ``number``, only the value of last fitting characters
-  ## will be stored in ``number`` without producing an error.
+  ## too big to fit into `number`, only the value of last fitting characters
+  ## will be stored in `number` without producing an error.
   runnableExamples:
     var num: int
     doAssert parseBin("0100_1110_0110_1001_1110_1101", num) == 29
@@ -108,18 +108,18 @@ proc parseBin*[T: SomeInteger](s: string, number: var T, start = 0,
 
 proc parseOct*[T: SomeInteger](s: string, number: var T, start = 0,
     maxLen = 0): int {.noSideEffect.} =
-  ## Parses an octal number and stores its value in ``number``.
+  ## Parses an octal number and stores its value in `number`.
   ##
   ## Returns the number of the parsed characters or 0 in case of an error.
-  ## If error, the value of ``number`` is not changed.
+  ## If error, the value of `number` is not changed.
   ##
-  ## If ``maxLen == 0``, the parsing continues until the first non-oct character
-  ## or to the end of the string. Otherwise, no more than ``maxLen`` characters
-  ## are parsed starting from the ``start`` position.
+  ## If `maxLen == 0`, the parsing continues until the first non-oct character
+  ## or to the end of the string. Otherwise, no more than `maxLen` characters
+  ## are parsed starting from the `start` position.
   ##
   ## It does not check for overflow. If the value represented by the string is
-  ## too big to fit into ``number``, only the value of last fitting characters
-  ## will be stored in ``number`` without producing an error.
+  ## too big to fit into `number`, only the value of last fitting characters
+  ## will be stored in `number` without producing an error.
   runnableExamples:
     var num: int
     doAssert parseOct("0o23464755", num) == 10
@@ -155,18 +155,18 @@ proc parseOct*[T: SomeInteger](s: string, number: var T, start = 0,
 
 proc parseHex*[T: SomeInteger](s: string, number: var T, start = 0,
     maxLen = 0): int {.noSideEffect.} =
-  ## Parses a hexadecimal number and stores its value in ``number``.
+  ## Parses a hexadecimal number and stores its value in `number`.
   ##
   ## Returns the number of the parsed characters or 0 in case of an error.
-  ## If error, the value of ``number`` is not changed.
+  ## If error, the value of `number` is not changed.
   ##
-  ## If ``maxLen == 0``, the parsing continues until the first non-hex character
-  ## or to the end of the string. Otherwise, no more than ``maxLen`` characters
-  ## are parsed starting from the ``start`` position.
+  ## If `maxLen == 0`, the parsing continues until the first non-hex character
+  ## or to the end of the string. Otherwise, no more than `maxLen` characters
+  ## are parsed starting from the `start` position.
   ##
   ## It does not check for overflow. If the value represented by the string is
-  ## too big to fit into ``number``, only the value of last fitting characters
-  ## will be stored in ``number`` without producing an error.
+  ## too big to fit into `number`, only the value of last fitting characters
+  ## will be stored in `number` without producing an error.
   runnableExamples:
     var num: int
     doAssert parseHex("4E_69_ED", num) == 8
@@ -209,7 +209,7 @@ proc parseHex*[T: SomeInteger](s: string, number: var T, start = 0,
     result = i - start
 
 proc parseIdent*(s: string, ident: var string, start = 0): int =
-  ## Parses an identifier and stores it in ``ident``. Returns
+  ## Parses an identifier and stores it in `ident`. Returns
   ## the number of the parsed characters or 0 in case of an error.
   ## If error, the value of `ident` is not changed.
   runnableExamples:
@@ -257,7 +257,7 @@ proc parseChar*(s: string, c: var char, start = 0): int =
     result = 1
 
 proc skipWhitespace*(s: string, start = 0): int {.inline.} =
-  ## Skips the whitespace starting at ``s[start]``. Returns the number of
+  ## Skips the whitespace starting at `s[start]`. Returns the number of
   ## skipped characters.
   runnableExamples:
     doAssert skipWhitespace("Hello World", 0) == 0
@@ -268,8 +268,8 @@ proc skipWhitespace*(s: string, start = 0): int {.inline.} =
   while start+result < s.len and s[start+result] in Whitespace: inc(result)
 
 proc skip*(s, token: string, start = 0): int {.inline.} =
-  ## Skips the `token` starting at ``s[start]``. Returns the length of `token`
-  ## or 0 if there was no `token` at ``s[start]``.
+  ## Skips the `token` starting at `s[start]`. Returns the length of `token`
+  ## or 0 if there was no `token` at `s[start]`.
   runnableExamples:
     doAssert skip("2019-01-22", "2019", 0) == 4
     doAssert skip("2019-01-22", "19", 0) == 0
@@ -331,7 +331,7 @@ proc fastSubstr(s: string; token: var string; start, length: int) =
 
 proc parseUntil*(s: string, token: var string, until: set[char],
                  start = 0): int {.inline.} =
-  ## Parses a token and stores it in ``token``. Returns
+  ## Parses a token and stores it in `token`. Returns
   ## the number of the parsed characters or 0 in case of an error. A token
   ## consists of the characters notin `until`.
   runnableExamples:
@@ -350,7 +350,7 @@ proc parseUntil*(s: string, token: var string, until: set[char],
 
 proc parseUntil*(s: string, token: var string, until: char,
                  start = 0): int {.inline.} =
-  ## Parses a token and stores it in ``token``. Returns
+  ## Parses a token and stores it in `token`. Returns
   ## the number of the parsed characters or 0 in case of an error. A token
   ## consists of any character that is not the `until` character.
   runnableExamples:
@@ -369,7 +369,7 @@ proc parseUntil*(s: string, token: var string, until: char,
 
 proc parseUntil*(s: string, token: var string, until: string,
                  start = 0): int {.inline.} =
-  ## Parses a token and stores it in ``token``. Returns
+  ## Parses a token and stores it in `token`. Returns
   ## the number of the parsed characters or 0 in case of an error. A token
   ## consists of any character that comes before the `until`  token.
   runnableExamples:
@@ -396,7 +396,7 @@ proc parseUntil*(s: string, token: var string, until: string,
 
 proc parseWhile*(s: string, token: var string, validChars: set[char],
                  start = 0): int {.inline.} =
-  ## Parses a token and stores it in ``token``. Returns
+  ## Parses a token and stores it in `token`. Returns
   ## the number of the parsed characters or 0 in case of an error. A token
   ## consists of the characters in `validChars`.
   runnableExamples:
@@ -412,8 +412,8 @@ proc parseWhile*(s: string, token: var string, validChars: set[char],
   #token = substr(s, start, i-1)
 
 proc captureBetween*(s: string, first: char, second = '\0', start = 0): string =
-  ## Finds the first occurrence of ``first``, then returns everything from there
-  ## up to ``second`` (if ``second`` is '\0', then ``first`` is used).
+  ## Finds the first occurrence of `first`, then returns everything from there
+  ## up to `second` (if `second` is '\0', then `first` is used).
   runnableExamples:
     doAssert captureBetween("Hello World", 'e') == "llo World"
     doAssert captureBetween("Hello World", 'e', 'r') == "llo Wo"
@@ -494,8 +494,8 @@ proc parseInt*(s: string, number: var int, start = 0): int {.
 
 proc parseSaturatedNatural*(s: string, b: var int, start = 0): int {.
     raises: [].} =
-  ## Parses a natural number into ``b``. This cannot raise an overflow
-  ## error. ``high(int)`` is returned for an overflow.
+  ## Parses a natural number into `b`. This cannot raise an overflow
+  ## error. `high(int)` is returned for an overflow.
   ## The number of processed character is returned.
   ## This is usually what you really want to use instead of `parseInt`:idx:.
   runnableExamples:
@@ -601,10 +601,10 @@ type
   InterpolatedKind* = enum ## Describes for `interpolatedFragments`
                            ## which part of the interpolated string is
                            ## yielded; for example in "str$$$var${expr}"
-    ikStr,                 ## ``str`` part of the interpolated string
-    ikDollar,              ## escaped ``$`` part of the interpolated string
-    ikVar,                 ## ``var`` part of the interpolated string
-    ikExpr                 ## ``expr`` part of the interpolated string
+    ikStr,                 ## `str` part of the interpolated string
+    ikDollar,              ## escaped `$` part of the interpolated string
+    ikVar,                 ## `var` part of the interpolated string
+    ikExpr                 ## `expr` part of the interpolated string
 
 iterator interpolatedFragments*(s: string): tuple[kind: InterpolatedKind,
   value: string] =

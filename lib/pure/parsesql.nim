@@ -7,7 +7,7 @@
 #    distribution, for details about the copyright.
 #
 
-## The ``parsesql`` module implements a high performance SQL file
+## The `parsesql` module implements a high performance SQL file
 ## parser. It parses PostgreSQL syntax and the SQL ANSI standard.
 ##
 ## Unstable API.

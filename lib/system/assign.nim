@@ -28,7 +28,7 @@ proc genericAssignAux(dest, src: pointer, n: ptr TNimNode,
     var dd = selectBranch(dest, n)
     var m = selectBranch(src, n)
     # reset if different branches are in use; note different branches also
-    # imply that's not self-assignment (``x = x``)!
+    # imply that's not self-assignment (`x = x`)!
     if m != dd and dd != nil:
       genericResetAux(dest, dd)
     copyMem(cast[pointer](d +% n.offset), cast[pointer](s +% n.offset),
@@ -275,7 +275,7 @@ proc genericReset(dest: pointer, mt: PNimType) =
 
 proc selectBranch(discVal, L: int,
                   a: ptr array[0x7fff, ptr TNimNode]): ptr TNimNode =
-  result = a[L] # a[L] contains the ``else`` part (but may be nil)
+  result = a[L] # a[L] contains the `else` part (but may be nil)
   if discVal <% L:
     let x = a[discVal]
     if x != nil: result = x

@@ -10,13 +10,13 @@
 ## This module implements a series of low level methods for bit manipulation.
 
 ## By default, this module use compiler intrinsics where possible to improve performance
-## on supported compilers: ``GCC``, ``LLVM_GCC``, ``CLANG``, ``VCC``, ``ICC``.
+## on supported compilers: `GCC`, `LLVM_GCC`, `CLANG`, `VCC`, `ICC`.
 ##
 ## The module will fallback to pure nim procs incase the backend is not supported.
 ## You can also use the flag `noIntrinsicsBitOpts` to disable compiler intrinsics.
 ##
-## This module is also compatible with other backends: ``Javascript``, ``Nimscript``
-## as well as the ``compiletime VM``.
+## This module is also compatible with other backends: `Javascript`, `Nimscript`
+## as well as the `compiletime VM`.
 ##
 ## As a result of using optimized function/intrinsics some functions can return
 ## undefined results if the input is invalid. You can use the flag `noUndefinedBitOpts`
@@ -89,10 +89,10 @@ template forwardImpl(impl, arg) {.dirty.} =
 
 when defined(nimHasalignOf):
   type BitsRange*[T] = range[0..sizeof(T)*8-1]
-    ## A range with all bit positions for type ``T``
+    ## A range with all bit positions for type `T`
 
   func bitsliced*[T: SomeInteger](v: T; slice: Slice[int]): T {.inline, since: (1, 3).} =
-    ## Returns an extracted (and shifted) slice of bits from ``v``.
+    ## Returns an extracted (and shifted) slice of bits from `v`.
     runnableExamples:
       doAssert 0b10111.bitsliced(2 .. 4) == 0b101
       doAssert 0b11100.bitsliced(0 .. 2) == 0b100
@@ -104,7 +104,7 @@ when defined(nimHasalignOf):
     (uv shl (upmost - slice.b) shr (upmost - slice.b + slice.a)).T
 
   proc bitslice*[T: SomeInteger](v: var T; slice: Slice[int]) {.inline, since: (1, 3).} =
-    ## Mutates ``v`` into an extracted (and shifted) slice of bits from ``v``.
+    ## Mutates `v` into an extracted (and shifted) slice of bits from `v`.
     runnableExamples:
       var x = 0b101110
       x.bitslice(2 .. 4)
@@ -130,8 +130,8 @@ when defined(nimHasalignOf):
     (bitmask shl (upmost - slice.b + slice.a) shr (upmost - slice.b)).T
 
   proc masked*[T: SomeInteger](v, mask :T): T {.inline, since: (1, 3).} =
-    ## Returns ``v``, with only the ``1`` bits from ``mask`` matching those of
-    ## ``v`` set to 1.
+    ## Returns `v`, with only the `1` bits from `mask` matching those of
+    ## `v` set to 1.
     ##
     ## Effectively maps to a `bitand` operation.
     runnableExamples:
@@ -141,8 +141,8 @@ when defined(nimHasalignOf):
     bitand(v, mask)
 
   func masked*[T: SomeInteger](v: T; slice: Slice[int]): T {.inline, since: (1, 3).} =
-    ## Mutates ``v``, with only the ``1`` bits in the range of ``slice``
-    ## matching those of ``v`` set to 1.
+    ## Mutates `v`, with only the `1` bits in the range of `slice`
+    ## matching those of `v` set to 1.
     ##
     ## Effectively maps to a `bitand` operation.
     runnableExamples:
@@ -152,8 +152,8 @@ when defined(nimHasalignOf):
     bitand(v, toMask[T](slice))
 
   proc mask*[T: SomeInteger](v: var T; mask: T) {.inline, since: (1, 3).} =
-    ## Mutates ``v``, with only the ``1`` bits from ``mask`` matching those of
-    ## ``v`` set to 1.
+    ## Mutates `v`, with only the `1` bits from `mask` matching those of
+    ## `v` set to 1.
     ##
     ## Effectively maps to a `bitand` operation.
     runnableExamples:
@@ -164,8 +164,8 @@ when defined(nimHasalignOf):
     v = bitand(v, mask)
 
   proc mask*[T: SomeInteger](v: var T; slice: Slice[int]) {.inline, since: (1, 3).} =
-    ## Mutates ``v``, with only the ``1`` bits in the range of ``slice``
-    ## matching those of ``v`` set to 1.
+    ## Mutates `v`, with only the `1` bits in the range of `slice`
+    ## matching those of `v` set to 1.
     ##
     ## Effectively maps to a `bitand` operation.
     runnableExamples:
@@ -176,7 +176,7 @@ when defined(nimHasalignOf):
     v = bitand(v, toMask[T](slice))
 
   func setMasked*[T: SomeInteger](v, mask :T): T {.inline, since: (1, 3).} =
-    ## Returns ``v``, with all the ``1`` bits from ``mask`` set to 1.
+    ## Returns `v`, with all the `1` bits from `mask` set to 1.
     ##
     ## Effectively maps to a `bitor` operation.
     runnableExamples:
@@ -186,7 +186,7 @@ when defined(nimHasalignOf):
     bitor(v, mask)
 
   func setMasked*[T: SomeInteger](v: T; slice: Slice[int]): T {.inline, since: (1, 3).} =
-    ## Returns ``v``, with all the ``1`` bits in the range of ``slice`` set to 1.
+    ## Returns `v`, with all the `1` bits in the range of `slice` set to 1.
     ##
     ## Effectively maps to a `bitor` operation.
     runnableExamples:
@@ -196,7 +196,7 @@ when defined(nimHasalignOf):
     bitor(v, toMask[T](slice))
 
   proc setMask*[T: SomeInteger](v: var T; mask: T) {.inline.} =
-    ## Mutates ``v``, with all the ``1`` bits from ``mask`` set to 1.
+    ## Mutates `v`, with all the `1` bits from `mask` set to 1.
     ##
     ## Effectively maps to a `bitor` operation.
     runnableExamples:
@@ -207,7 +207,7 @@ when defined(nimHasalignOf):
     v = bitor(v, mask)
 
   proc setMask*[T: SomeInteger](v: var T; slice: Slice[int]) {.inline, since: (1, 3).} =
-    ## Mutates ``v``, with all the ``1`` bits in the range of ``slice`` set to 1.
+    ## Mutates `v`, with all the `1` bits in the range of `slice` set to 1.
     ##
     ## Effectively maps to a `bitor` operation.
     runnableExamples:
@@ -218,7 +218,7 @@ when defined(nimHasalignOf):
     v = bitor(v, toMask[T](slice))
 
   func clearMasked*[T: SomeInteger](v, mask :T): T {.inline, since: (1, 3).} =
-    ## Returns ``v``, with all the ``1`` bits from ``mask`` set to 0.
+    ## Returns `v`, with all the `1` bits from `mask` set to 0.
     ##
     ## Effectively maps to a `bitand` operation with an *inverted mask.*
     runnableExamples:
@@ -228,7 +228,7 @@ when defined(nimHasalignOf):
     bitand(v, bitnot(mask))
 
   func clearMasked*[T: SomeInteger](v: T; slice: Slice[int]): T {.inline, since: (1, 3).} =
-    ## Returns ``v``, with all the ``1`` bits in the range of ``slice`` set to 0.
+    ## Returns `v`, with all the `1` bits in the range of `slice` set to 0.
     ##
     ## Effectively maps to a `bitand` operation with an *inverted mask.*
     runnableExamples:
@@ -238,7 +238,7 @@ when defined(nimHasalignOf):
     bitand(v, bitnot(toMask[T](slice)))
 
   proc clearMask*[T: SomeInteger](v: var T; mask: T) {.inline.} =
-    ## Mutates ``v``, with all the ``1`` bits from ``mask`` set to 0.
+    ## Mutates `v`, with all the `1` bits from `mask` set to 0.
     ##
     ## Effectively maps to a `bitand` operation with an *inverted mask.*
     runnableExamples:
@@ -249,7 +249,7 @@ when defined(nimHasalignOf):
     v = bitand(v, bitnot(mask))
 
   proc clearMask*[T: SomeInteger](v: var T; slice: Slice[int]) {.inline, since: (1, 3).} =
-    ## Mutates ``v``, with all the ``1`` bits in the range of ``slice`` set to 0.
+    ## Mutates `v`, with all the `1` bits in the range of `slice` set to 0.
     ##
     ## Effectively maps to a `bitand` operation with an *inverted mask.*
     runnableExamples:
@@ -260,7 +260,7 @@ when defined(nimHasalignOf):
     v = bitand(v, bitnot(toMask[T](slice)))
 
   func flipMasked*[T: SomeInteger](v, mask :T): T {.inline, since: (1, 3).} =
-    ## Returns ``v``, with all the ``1`` bits from ``mask`` flipped.
+    ## Returns `v`, with all the `1` bits from `mask` flipped.
     ##
     ## Effectively maps to a `bitxor` operation.
     runnableExamples:
@@ -270,7 +270,7 @@ when defined(nimHasalignOf):
     bitxor(v, mask)
 
   func flipMasked*[T: SomeInteger](v: T; slice: Slice[int]): T {.inline, since: (1, 3).} =
-    ## Returns ``v``, with all the ``1`` bits in the range of ``slice`` flipped.
+    ## Returns `v`, with all the `1` bits in the range of `slice` flipped.
     ##
     ## Effectively maps to a `bitxor` operation.
     runnableExamples:
@@ -280,7 +280,7 @@ when defined(nimHasalignOf):
     bitxor(v, toMask[T](slice))
 
   proc flipMask*[T: SomeInteger](v: var T; mask: T) {.inline.} =
-    ## Mutates ``v``, with all the ``1`` bits from ``mask`` flipped.
+    ## Mutates `v`, with all the `1` bits from `mask` flipped.
     ##
     ## Effectively maps to a `bitxor` operation.
     runnableExamples:
@@ -291,7 +291,7 @@ when defined(nimHasalignOf):
     v = bitxor(v, mask)
 
   proc flipMask*[T: SomeInteger](v: var T; slice: Slice[int]) {.inline, since: (1, 3).} =
-    ## Mutates ``v``, with all the ``1`` bits in the range of ``slice`` flipped.
+    ## Mutates `v`, with all the `1` bits in the range of `slice` flipped.
     ##
     ## Effectively maps to a `bitxor` operation.
     runnableExamples:
@@ -302,7 +302,7 @@ when defined(nimHasalignOf):
     v = bitxor(v, toMask[T](slice))
 
   proc setBit*[T: SomeInteger](v: var T; bit: BitsRange[T]) {.inline.} =
-    ## Mutates ``v``, with the bit at position ``bit`` set to 1
+    ## Mutates `v`, with the bit at position `bit` set to 1
     runnableExamples:
       var v = 0b0000_0011'u8
       v.setBit(5'u8)
@@ -311,7 +311,7 @@ when defined(nimHasalignOf):
     v.setMask(1.T shl bit)
 
   proc clearBit*[T: SomeInteger](v: var T; bit: BitsRange[T]) {.inline.} =
-    ## Mutates ``v``, with the bit at position ``bit`` set to 0
+    ## Mutates `v`, with the bit at position `bit` set to 0
     runnableExamples:
       var v = 0b0000_0011'u8
       v.clearBit(1'u8)
@@ -320,7 +320,7 @@ when defined(nimHasalignOf):
     v.clearMask(1.T shl bit)
 
   proc flipBit*[T: SomeInteger](v: var T; bit: BitsRange[T]) {.inline.} =
-    ## Mutates ``v``, with the bit at position ``bit`` flipped
+    ## Mutates `v`, with the bit at position `bit` flipped
     runnableExamples:
       var v = 0b0000_0011'u8
       v.flipBit(1'u8)
@@ -333,7 +333,7 @@ when defined(nimHasalignOf):
     v.flipMask(1.T shl bit)
 
   macro setBits*(v: typed; bits: varargs[typed]): untyped =
-    ## Mutates ``v``, with the bits at positions ``bits`` set to 1
+    ## Mutates `v`, with the bits at positions `bits` set to 1
     runnableExamples:
       var v = 0b0000_0011'u8
       v.setBits(3, 5, 7)
@@ -345,7 +345,7 @@ when defined(nimHasalignOf):
       result.add newCall("setBit", v, bit)
 
   macro clearBits*(v: typed; bits: varargs[typed]): untyped =
-    ## Mutates ``v``, with the bits at positions ``bits`` set to 0
+    ## Mutates `v`, with the bits at positions `bits` set to 0
     runnableExamples:
       var v = 0b1111_1111'u8
       v.clearBits(1, 3, 5, 7)
@@ -357,7 +357,7 @@ when defined(nimHasalignOf):
       result.add newCall("clearBit", v, bit)
 
   macro flipBits*(v: typed; bits: varargs[typed]): untyped =
-    ## Mutates ``v``, with the bits at positions ``bits`` set to 0
+    ## Mutates `v`, with the bits at positions `bits` set to 0
     runnableExamples:
       var v = 0b0000_1111'u8
       v.flipBits(1, 3, 5, 7)
@@ -370,7 +370,7 @@ when defined(nimHasalignOf):
 
 
   proc testBit*[T: SomeInteger](v: T; bit: BitsRange[T]): bool {.inline.} =
-    ## Returns true if the bit in ``v`` at positions ``bit`` is set to 1
+    ## Returns true if the bit in `v` at positions `bit` is set to 1
     runnableExamples:
       var v = 0b0000_1111'u8
       doAssert v.testBit(0)
@@ -591,7 +591,7 @@ proc parityBits*(x: SomeInteger): int {.inline, noSideEffect.} =
 
 proc firstSetBit*(x: SomeInteger): int {.inline, noSideEffect.} =
   ## Returns the 1-based index of the least significant set bit of x.
-  ## If `x` is zero, when ``noUndefinedBitOpts`` is set, result is 0,
+  ## If `x` is zero, when `noUndefinedBitOpts` is set, result is 0,
   ## otherwise result is undefined.
   runnableExamples:
     doAssert firstSetBit(0b0000_0001'u8) == 1
@@ -635,7 +635,7 @@ proc firstSetBit*(x: SomeInteger): int {.inline, noSideEffect.} =
 
 proc fastLog2*(x: SomeInteger): int {.inline, noSideEffect.} =
   ## Quickly find the log base 2 of an integer.
-  ## If `x` is zero, when ``noUndefinedBitOpts`` is set, result is -1,
+  ## If `x` is zero, when `noUndefinedBitOpts` is set, result is -1,
   ## otherwise result is undefined.
   runnableExamples:
     doAssert fastLog2(0b0000_0001'u8) == 0
@@ -675,7 +675,7 @@ proc fastLog2*(x: SomeInteger): int {.inline, noSideEffect.} =
 
 proc countLeadingZeroBits*(x: SomeInteger): int {.inline, noSideEffect.} =
   ## Returns the number of leading zero bits in integer.
-  ## If `x` is zero, when ``noUndefinedBitOpts`` is set, result is 0,
+  ## If `x` is zero, when `noUndefinedBitOpts` is set, result is 0,
   ## otherwise result is undefined.
   ##
   ## See also:
@@ -704,7 +704,7 @@ proc countLeadingZeroBits*(x: SomeInteger): int {.inline, noSideEffect.} =
 
 proc countTrailingZeroBits*(x: SomeInteger): int {.inline, noSideEffect.} =
   ## Returns the number of trailing zeros in integer.
-  ## If `x` is zero, when ``noUndefinedBitOpts`` is set, result is 0,
+  ## If `x` is zero, when `noUndefinedBitOpts` is set, result is 0,
   ## otherwise result is undefined.
   ##
   ## See also:

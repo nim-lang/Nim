@@ -176,7 +176,7 @@ proc close*(s: Stream) =
   if not isNil(s.closeImpl): s.closeImpl(s)
 
 proc atEnd*(s: Stream): bool =
-  ## Checks if more data can be read from `s`. Returns ``true`` if all data has
+  ## Checks if more data can be read from `s`. Returns `true` if all data has
   ## been read.
   runnableExamples:
     var strm = newStringStream("The first line\nthe second line\nthe third line")
@@ -215,8 +215,8 @@ proc getPosition*(s: Stream): int =
 proc readData*(s: Stream, buffer: pointer, bufLen: int): int =
   ## Low level proc that reads data into an untyped `buffer` of `bufLen` size.
   ##
-  ## **JS note:** `buffer` is treated as a ``ptr string`` and written to between
-  ## ``0..<bufLen``.
+  ## **JS note:** `buffer` is treated as a `ptr string` and written to between
+  ## `0..<bufLen`.
   runnableExamples:
     var strm = newStringStream("abcde")
     var buffer: array[6, char]
@@ -228,7 +228,7 @@ proc readData*(s: Stream, buffer: pointer, bufLen: int): int =
   result = s.readDataImpl(s, buffer, bufLen)
 
 proc readDataStr*(s: Stream, buffer: var string, slice: Slice[int]): int =
-  ## Low level proc that reads data into a string ``buffer`` at ``slice``.
+  ## Low level proc that reads data into a string `buffer` at `slice`.
   runnableExamples:
     var strm = newStringStream("abcde")
     var buffer = "12345"
@@ -292,8 +292,8 @@ proc peekData*(s: Stream, buffer: pointer, bufLen: int): int =
   ## Low level proc that reads data into an untyped `buffer` of `bufLen` size
   ## without moving stream position.
   ##
-  ## **JS note:** `buffer` is treated as a ``ptr string`` and written to between
-  ## ``0..<bufLen``.
+  ## **JS note:** `buffer` is treated as a `ptr string` and written to between
+  ## `0..<bufLen`.
   runnableExamples:
     var strm = newStringStream("abcde")
     var buffer: array[6, char]
@@ -308,8 +308,8 @@ proc writeData*(s: Stream, buffer: pointer, bufLen: int) =
   ## Low level proc that writes an untyped `buffer` of `bufLen` size
   ## to the stream `s`.
   ##
-  ## **JS note:** `buffer` is treated as a ``ptr string`` and read between
-  ## ``0..<bufLen``.
+  ## **JS note:** `buffer` is treated as a `ptr string` and read between
+  ## `0..<bufLen`.
   runnableExamples:
     ## writeData
     var strm = newStringStream("")
@@ -974,12 +974,12 @@ proc peekStr*(s: Stream, length: int): string =
 
 proc readLine*(s: Stream, line: var string): bool =
   ## Reads a line of text from the stream `s` into `line`. `line` must not be
-  ## ``nil``! May throw an IO exception.
+  ## `nil`! May throw an IO exception.
   ##
-  ## A line of text may be delimited by ``LF`` or ``CRLF``.
+  ## A line of text may be delimited by `LF` or `CRLF`.
   ## The newline character(s) are not part of the returned string.
-  ## Returns ``false`` if the end of the file has been reached, ``true``
-  ## otherwise. If ``false`` is returned `line` contains no new data.
+  ## Returns `false` if the end of the file has been reached, `true`
+  ## otherwise. If `false` is returned `line` contains no new data.
   ##
   ## See also:
   ## * `readLine(Stream) proc <#readLine,Stream>`_
@@ -1017,12 +1017,12 @@ proc readLine*(s: Stream, line: var string): bool =
 
 proc peekLine*(s: Stream, line: var string): bool =
   ## Peeks a line of text from the stream `s` into `line`. `line` must not be
-  ## ``nil``! May throw an IO exception.
+  ## `nil`! May throw an IO exception.
   ##
-  ## A line of text may be delimited by ``CR``, ``LF`` or
-  ## ``CRLF``. The newline character(s) are not part of the returned string.
-  ## Returns ``false`` if the end of the file has been reached, ``true``
-  ## otherwise. If ``false`` is returned `line` contains no new data.
+  ## A line of text may be delimited by `CR`, `LF` or
+  ## `CRLF`. The newline character(s) are not part of the returned string.
+  ## Returns `false` if the end of the file has been reached, `true`
+  ## otherwise. If `false` is returned `line` contains no new data.
   ##
   ## See also:
   ## * `readLine(Stream) proc <#readLine,Stream>`_
@@ -1100,7 +1100,7 @@ proc peekLine*(s: Stream): string =
 
 iterator lines*(s: Stream): string =
   ## Iterates over every line in the stream.
-  ## The iteration is based on ``readLine``.
+  ## The iteration is based on `readLine`.
   ##
   ## See also:
   ## * `readLine(Stream) proc <#readLine,Stream>`_

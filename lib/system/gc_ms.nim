@@ -8,7 +8,7 @@
 #
 
 # A simple mark&sweep garbage collector for Nim. Define the
-# symbol ``gcUseBitvectors`` to generate a variant of this GC.
+# symbol `gcUseBitvectors` to generate a variant of this GC.
 
 {.push profiler:off.}
 

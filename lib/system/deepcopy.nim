@@ -74,7 +74,7 @@ proc genericDeepCopyAux(dest, src: pointer, n: ptr TNimNode;
     var dd = selectBranch(dest, n)
     var m = selectBranch(src, n)
     # reset if different branches are in use; note different branches also
-    # imply that's not self-assignment (``x = x``)!
+    # imply that's not self-assignment (`x = x`)!
     if m != dd and dd != nil:
       genericResetAux(dest, dd)
     copyMem(cast[pointer](d +% n.offset), cast[pointer](s +% n.offset),

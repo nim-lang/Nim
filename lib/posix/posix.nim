@@ -27,7 +27,7 @@
 ## the \`identifier\` notation is used.
 ##
 ## This library relies on the header files of your C compiler. The
-## resulting C code will just ``#include <XYZ.h>`` and *not* define the
+## resulting C code will just `#include <XYZ.h>` and *not* define the
 ## symbols declared here.
 
 # Dead code elimination ensures that we don't accidentally generate #includes
@@ -90,8 +90,8 @@ type Sighandler = proc (a: cint) {.noconv.}
 const StatHasNanoseconds* = defined(linux) or defined(freebsd) or
     defined(osx) or defined(openbsd) or defined(dragonfly) or defined(haiku) ## \
   ## Boolean flag that indicates if the system supports nanosecond time
-  ## resolution in the fields of ``Stat``. Note that the nanosecond based fields
-  ## (``Stat.st_atim``, ``Stat.st_mtim`` and ``Stat.st_ctim``) can be accessed
+  ## resolution in the fields of `Stat`. Note that the nanosecond based fields
+  ## (`Stat.st_atim`, `Stat.st_mtim` and `Stat.st_ctim`) can be accessed
   ## without checking this flag, because this module defines fallback procs
   ## when they are not available.
 
@@ -908,7 +908,7 @@ when defined(linux) or defined(bsd):
 
 proc bindSocket*(a1: SocketHandle, a2: ptr SockAddr, a3: SockLen): cint {.
   importc: "bind", header: "<sys/socket.h>".}
-  ## is Posix's ``bind``, because ``bind`` is a reserved word
+  ## is Posix's `bind`, because `bind` is a reserved word
 
 proc connect*(a1: SocketHandle, a2: ptr SockAddr, a3: SockLen): cint {.
   importc, header: "<sys/socket.h>".}
@@ -1083,7 +1083,7 @@ proc handle_signal(sig: cint, handler: proc (a: cint) {.noconv.}) {.importc: "si
 
 template onSignal*(signals: varargs[cint], body: untyped) =
   ## Setup code to be executed when Unix signals are received. The
-  ## currently handled signal is injected as ``sig`` into the calling
+  ## currently handled signal is injected as `sig` into the calling
   ## scope.
   ##
   ## Example:

@@ -11,7 +11,7 @@
 ##
 ## **Note**: This is part of the system module. Do not import it directly.
 ## To activate thread support you need to compile
-## with the ``--threads:on`` command line switch.
+## with the `--threads:on` command line switch.
 ##
 ## Nim's memory model for threads is quite different from other common
 ## programming languages (C, Pascal): Each thread has its own
@@ -77,8 +77,8 @@ when not defined(useNimRtl):
 
 # We jump through some hops here to ensure that Nim thread procs can have
 # the Nim calling convention. This is needed because thread procs are
-# ``stdcall`` on Windows and ``noconv`` on UNIX. Alternative would be to just
-# use ``stdcall`` since it is mapped to ``noconv`` on UNIX anyway.
+# `stdcall` on Windows and `noconv` on UNIX. Alternative would be to just
+# use `stdcall` since it is mapped to `noconv` on UNIX anyway.
 
 type
   Thread*[TArg] = object
@@ -97,7 +97,7 @@ proc onThreadDestruction*(handler: proc () {.closure, gcsafe, raises: [].}) =
   ## Registers a *thread local* handler that is called at the thread's
   ## destruction.
   ##
-  ## A thread is destructed when the ``.thread`` proc returns
+  ## A thread is destructed when the `.thread` proc returns
   ## normally or when it raises an exception. Note that unhandled exceptions
   ## in a thread nevertheless cause the whole process to die.
   threadDestructionHandlers.add handler
@@ -172,8 +172,8 @@ template threadProcWrapperBody(closure: untyped): untyped =
   when declared(globalsSlot): threadVarSetValue(globalsSlot, thrd.core)
   threadProcWrapStackFrame(thrd)
   # Since an unhandled exception terminates the whole process (!), there is
-  # no need for a ``try finally`` here, nor would it be correct: The current
-  # exception is tried to be re-raised by the code-gen after the ``finally``!
+  # no need for a `try finally` here, nor would it be correct: The current
+  # exception is tried to be re-raised by the code-gen after the `finally`!
   # However this is doomed to fail, because we already unmapped every heap
   # page!
 
@@ -261,7 +261,7 @@ when hostOS == "windows":
     ## Creates a new thread `t` and starts its execution.
     ##
     ## Entry point is the proc `tp`.
-    ## `param` is passed to `tp`. `TArg` can be ``void`` if you
+    ## `param` is passed to `tp`. `TArg` can be `void` if you
     ## don't need to pass any data to the thread.
     t.core = cast[PGcThread](allocShared0(sizeof(GcThread)))
 
@@ -310,7 +310,7 @@ else:
     ## Creates a new thread `t` and starts its execution.
     ##
     ## Entry point is the proc `tp`. `param` is passed to `tp`.
-    ## `TArg` can be ``void`` if you
+    ## `TArg` can be `void` if you
     ## don't need to pass any data to the thread.
     t.core = cast[PGcThread](allocShared0(sizeof(GcThread)))
 

@@ -7,7 +7,7 @@
 #    distribution, for details about the copyright.
 #
 
-## **Note:** Import ``nimsuggest/sexp`` to use this module
+## **Note:** Import `nimsuggest/sexp` to use this module
 
 import
   hashes, strutils, lexbase, streams, unicode, macros
@@ -22,10 +22,10 @@ type
     sexpSymbol,          ## a symbol
     sexpInt,             ## an integer literal
     sexpFloat,           ## a float literal
-    sexpNil,             ## the value ``nil``
+    sexpNil,             ## the value `nil`
     sexpDot,             ## the dot to separate car/cdr
-    sexpListStart,       ## start of a list: the ``(`` token
-    sexpListEnd,         ## end of a list: the ``)`` token
+    sexpListStart,       ## start of a list: the `(` token
+    sexpListEnd,         ## end of a list: the `)` token
 
   TTokKind = enum        # must be synchronized with SexpEventKind!
     tkError,
@@ -43,8 +43,8 @@ type
   SexpError* = enum        ## enumeration that lists all errors that can occur
     errNone,               ## no error
     errInvalidToken,       ## invalid token
-    errParensRiExpected,    ## ``)`` expected
-    errQuoteExpected,      ## ``"`` expected
+    errParensRiExpected,    ## `)` expected
+    errQuoteExpected,      ## `"` expected
     errEofExpected,        ## EOF expected
 
   SexpParser* = object of BaseLexer ## the parser object.
@@ -78,18 +78,18 @@ proc close*(my: var SexpParser) {.inline.} =
   lexbase.close(my)
 
 proc str*(my: SexpParser): string {.inline.} =
-  ## returns the character data for the events: ``sexpInt``, ``sexpFloat``,
-  ## ``sexpString``
+  ## returns the character data for the events: `sexpInt`, `sexpFloat`,
+  ## `sexpString`
   assert(my.kind in {sexpInt, sexpFloat, sexpString})
   result = my.a
 
 proc getInt*(my: SexpParser): BiggestInt {.inline.} =
-  ## returns the number for the event: ``sexpInt``
+  ## returns the number for the event: `sexpInt`
   assert(my.kind == sexpInt)
   result = parseBiggestInt(my.a)
 
 proc getFloat*(my: SexpParser): float {.inline.} =
-  ## returns the number for the event: ``sexpFloat``
+  ## returns the number for the event: `sexpFloat`
   assert(my.kind == sexpFloat)
   result = parseFloat(my.a)
 
@@ -106,7 +106,7 @@ proc getLine*(my: SexpParser): int {.inline.} =
   result = my.lineNumber
 
 proc errorMsg*(my: SexpParser): string =
-  ## returns a helpful error message for the event ``sexpError``
+  ## returns a helpful error message for the event `sexpError`
   assert(my.kind == sexpError)
   result = "($1, $2) Error: $3" % [$getLine(my), $getColumn(my), errorMessages[my.err]]
 
@@ -322,35 +322,35 @@ proc newSSymbolMove(s: string): SexpNode =
 proc getStr*(n: SexpNode, default: string = ""): string =
   ## Retrieves the string value of a `SString SexpNode`.
   ##
-  ## Returns ``default`` if ``n`` is not a ``SString``.
+  ## Returns `default` if `n` is not a `SString`.
   if n.kind != SString: return default
   else: return n.str
 
 proc getNum*(n: SexpNode, default: BiggestInt = 0): BiggestInt =
   ## Retrieves the int value of a `SInt SexpNode`.
   ##
-  ## Returns ``default`` if ``n`` is not a ``SInt``.
+  ## Returns `default` if `n` is not a `SInt`.
   if n.kind != SInt: return default
   else: return n.num
 
 proc getFNum*(n: SexpNode, default: float = 0.0): float =
   ## Retrieves the float value of a `SFloat SexpNode`.
   ##
-  ## Returns ``default`` if ``n`` is not a ``SFloat``.
+  ## Returns `default` if `n` is not a `SFloat`.
   if n.kind != SFloat: return default
   else: return n.fnum
 
 proc getSymbol*(n: SexpNode, default: string = ""): string =
   ## Retrieves the int value of a `SList SexpNode`.
   ##
-  ## Returns ``default`` if ``n`` is not a ``SList``.
+  ## Returns `default` if `n` is not a `SList`.
   if n.kind != SSymbol: return default
   else: return n.symbol
 
 proc getElems*(n: SexpNode, default: seq[SexpNode] = @[]): seq[SexpNode] =
   ## Retrieves the int value of a `SList SexpNode`.
   ##
-  ## Returns ``default`` if ``n`` is not a ``SList``.
+  ## Returns `default` if `n` is not a `SList`.
   if n.kind == SNil: return @[]
   elif n.kind != SList: return default
   else: return n.elems
@@ -358,7 +358,7 @@ proc getElems*(n: SexpNode, default: seq[SexpNode] = @[]): seq[SexpNode] =
 proc getCons*(n: SexpNode, defaults: Cons = (newSNil(), newSNil())): Cons =
   ## Retrieves the cons value of a `SList SexpNode`.
   ##
-  ## Returns ``default`` if ``n`` is not a ``SList``.
+  ## Returns `default` if `n` is not a `SList`.
   if n.kind == SCons: return (n.car, n.cdr)
   elif n.kind == SList: return (n.elems[0], n.elems[1])
   else: return defaults

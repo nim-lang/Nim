@@ -41,7 +41,7 @@ proc setCookie*(key, value: string, domain = "", path = "",
                 expires = "", noName = false,
                 secure = false, httpOnly = false): string =
   ## Creates a command in the format of
-  ## ``Set-Cookie: key=value; Domain=...; ...``
+  ## `Set-Cookie: key=value; Domain=...; ...`
   result = ""
   if not noName: result.add("Set-Cookie: ")
   result.add key & "=" & value
@@ -55,7 +55,7 @@ proc setCookie*(key, value: string, expires: DateTime|Time,
                 domain = "", path = "", noName = false,
                 secure = false, httpOnly = false): string =
   ## Creates a command in the format of
-  ## ``Set-Cookie: key=value; Domain=...; ...``
+  ## `Set-Cookie: key=value; Domain=...; ...`
   return setCookie(key, value, domain, path,
                    format(expires.utc, "ddd',' dd MMM yyyy HH:mm:ss 'GMT'"),
                    noname, secure, httpOnly)

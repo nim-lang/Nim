@@ -8,7 +8,7 @@
 #
 
 ##[
-  The ``std/monotimes`` module implements monotonic timestamps. A monotonic
+  The `std/monotimes` module implements monotonic timestamps. A monotonic
   timestamp represents the time that has passed since some system defined
   point in time. The monotonic timestamps are guaranteed to always increase,
   meaning that that the following is guaranteed to work:

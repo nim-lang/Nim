@@ -7,7 +7,7 @@
 #    distribution, for details about the copyright.
 #
 
-# The generic ``repr`` procedure. It is an invaluable debugging tool.
+# The generic `repr` procedure. It is an invaluable debugging tool.
 
 when not defined(useNimRtl):
   proc reprAny(p: pointer, typ: PNimType): string {.compilerRtl, gcsafe.}

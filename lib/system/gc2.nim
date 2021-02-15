@@ -13,9 +13,9 @@
 # and sweep GC to free cycles. It is hard realtime in that if you play
 # according to its rules, no deadline will ever be missed.
 # Since this kind of collector is very bad at recycling dead objects
-# early, Nim's codegen emits ``nimEscape`` calls at strategic
+# early, Nim's codegen emits `nimEscape` calls at strategic
 # places. For this to work even 'unsureAsgnRef' needs to mark things
-# so that only return values need to be considered in ``nimEscape``.
+# so that only return values need to be considered in `nimEscape`.
 
 {.push profiler:off.}
 
@@ -66,7 +66,7 @@ type
     completedCollections: int    # number of performed full collections
     maxThreshold: int        # max threshold that has been set
     maxStackSize: int        # max stack size
-    maxStackCells: int       # max stack cells in ``decStack``
+    maxStackCells: int       # max stack cells in `decStack`
     cycleTableSize: int      # max entries in cycle table
     maxPause: int64          # max measured GC pause in nanoseconds
 

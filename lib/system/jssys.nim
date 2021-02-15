@@ -785,7 +785,7 @@ proc nimParseBiggestFloat(s: string, number: var BiggestFloat, start = 0): int {
 
 
 # Workaround for IE, IE up to version 11 lacks 'Math.trunc'. We produce
-# 'Math.trunc' for Nim's ``div`` and ``mod`` operators:
+# 'Math.trunc' for Nim's `div` and `mod` operators:
 const jsMathTrunc = """
 if (!Math.trunc) {
   Math.trunc = function(v) {

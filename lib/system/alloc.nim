@@ -247,8 +247,8 @@ proc llAlloc(a: var MemRegion, size: int): pointer =
   # *low-level* alloc for the memory managers data structures. Deallocation
   # is done at the end of the allocator's life time.
   if a.llmem == nil or size > a.llmem.size:
-    # the requested size is ``roundup(size+sizeof(LLChunk), PageSize)``, but
-    # since we know ``size`` is a (small) constant, we know the requested size
+    # the requested size is `roundup(size+sizeof(LLChunk), PageSize)`, but
+    # since we know `size` is a (small) constant, we know the requested size
     # is one page:
     sysAssert roundup(size+sizeof(LLChunk), PageSize) == PageSize, "roundup 6"
     var old = a.llmem # can be nil and is correct with nil

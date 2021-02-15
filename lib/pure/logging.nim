@@ -34,7 +34,7 @@
 ##   logger.log(lvlInfo, "a log message")
 ##   # Output: INFO a log message
 ##
-## The ``INFO`` within the output is the result of a format string being
+## The `INFO` within the output is the result of a format string being
 ## prepended to the message, and it will differ depending on the message's
 ## level. Format strings are `explained in more detail
 ## here<#basic-usage-format-strings>`_.
@@ -42,7 +42,7 @@
 ## There are six logging levels: debug, info, notice, warn, error, and fatal.
 ## They are described in more detail within the `Level enum's documentation
 ## <#Level>`_. A message is logged if its level is at or above both the logger's
-## ``levelThreshold`` field and the global log filter. The latter can be changed
+## `levelThreshold` field and the global log filter. The latter can be changed
 ## with the `setLogFilter proc<#setLogFilter,Level>`_.
 ##
 ## **Warning:**
@@ -82,13 +82,13 @@
 ##   info("something normal happened")  # Will not be written to errors.log
 ##
 ## Note that a message's level is still checked against each handler's
-## ``levelThreshold`` and the global log filter.
+## `levelThreshold` and the global log filter.
 ##
 ## Format strings
 ## --------------
 ##
 ## Log messages are prefixed with format strings. These strings contain
-## placeholders for variables, such as ``$time``, that are replaced with their
+## placeholders for variables, such as `$time`, that are replaced with their
 ## corresponding values, such as the current time, before they are prepended to
 ## a log message. Characters that are not part of variables are unaffected.
 ##
@@ -96,7 +96,7 @@
 ## argument when creating the logger or by setting its `fmtStr` field afterward.
 ## If not specified, the `default format string<#defaultFmtStr>`_ is used.
 ##
-## The following variables, which must be prefixed with a dollar sign (``$``),
+## The following variables, which must be prefixed with a dollar sign (`$`),
 ## are available:
 ##
 ## ============  =======================
@@ -106,13 +106,13 @@
 ## $time         Current time
 ## $datetime     $dateT$time
 ## $app          `os.getAppFilename()<os.html#getAppFilename>`_
-## $appname      Base name of ``$app``
-## $appdir       Directory name of ``$app``
+## $appname      Base name of `$app`
+## $appdir       Directory name of `$app`
 ## $levelid      First letter of log level
 ## $levelname    Log level name
 ## ============  =======================
 ##
-## Note that ``$app``, ``$appname``, and ``$appdir`` are not supported when
+## Note that `$app`, `$appname`, and `$appdir` are not supported when
 ## using the JavaScript backend.
 ##
 ## The following example illustrates how to use format strings:
@@ -139,7 +139,7 @@
 ## ========
 ## * `strutils module<strutils.html>`_ for common string functions
 ## * `strformat module<strformat.html>`_ for string interpolation and formatting
-## * `strscans module<strscans.html>`_ for ``scanf`` and ``scanp`` macros, which
+## * `strscans module<strscans.html>`_ for `scanf` and `scanp` macros, which
 ##   offer easier substring extraction than regular expressions
 
 import strutils, times
@@ -151,8 +151,8 @@ type
     ## Enumeration of logging levels.
     ##
     ## Debug messages represent the lowest logging level, and fatal error
-    ## messages represent the highest logging level. ``lvlAll`` can be used
-    ## to enable all messages, while ``lvlNone`` can be used to disable all
+    ## messages represent the highest logging level. `lvlAll` can be used
+    ## to enable all messages, while `lvlNone` can be used to disable all
     ## messages.
     ##
     ## Typical usage for each logging level, from lowest to highest, is
@@ -169,7 +169,7 @@ type
     ##
     ## It is completely up to the application how to utilize each level.
     ##
-    ## Individual loggers have a ``levelThreshold`` field that filters out
+    ## Individual loggers have a `levelThreshold` field that filters out
     ## any messages with a level lower than the threshold. There is also
     ## a global filter that applies to all log messages, and it can be changed
     ## using the `setLogFilter proc<#setLogFilter,Level>`_.
@@ -191,7 +191,7 @@ const
   verboseFmtStr* = "$levelid, [$datetime] -- $appname: " ## \
   ## A more verbose format string.
   ##
-  ## This string can be passed as the ``frmStr`` argument to procs that create
+  ## This string can be passed as the `frmStr` argument to procs that create
   ## new loggers, such as the `newConsoleLogger proc<#newConsoleLogger>`_.
   ##
   ## If a different format string is preferred, refer to the
@@ -218,7 +218,7 @@ type
   ConsoleLogger* = ref object of Logger
     ## A logger that writes log messages to the console.
     ##
-    ## Create a new ``ConsoleLogger`` with the `newConsoleLogger proc
+    ## Create a new `ConsoleLogger` with the `newConsoleLogger proc
     ## <#newConsoleLogger>`_.
     ##
     ## See also:
@@ -231,7 +231,7 @@ when not defined(js):
     FileLogger* = ref object of Logger
       ## A logger that writes log messages to a file.
       ##
-      ## Create a new ``FileLogger`` with the `newFileLogger proc
+      ## Create a new `FileLogger` with the `newFileLogger proc
       ## <#newFileLogger,File>`_.
       ##
       ## **Note:** This logger is not available for the JavaScript backend.
@@ -245,7 +245,7 @@ when not defined(js):
       ## A logger that writes log messages to a file while performing log
       ## rotation.
       ##
-      ## Create a new ``RollingFileLogger`` with the `newRollingFileLogger proc
+      ## Create a new `RollingFileLogger` with the `newRollingFileLogger proc
       ## <#newRollingFileLogger,FileMode,Positive,int>`_.
       ##
       ## **Note:** This logger is not available for the JavaScript backend.
@@ -269,8 +269,8 @@ proc substituteLog*(frmt: string, level: Level,
   ## Formats a log message at the specified level with the given format string.
   ##
   ## The `format variables<#basic-usage-format-strings>`_ present within
-  ## ``frmt`` will be replaced with the corresponding values before being
-  ## prepended to ``args`` and returned.
+  ## `frmt` will be replaced with the corresponding values before being
+  ## prepended to `args` and returned.
   ##
   ## Unless you are implementing a custom logger, there is little need to call
   ## this directly. Use either a logger's log method or one of the logging
@@ -341,7 +341,7 @@ method log*(logger: ConsoleLogger, level: Level, args: varargs[string, `$`]) =
   ## This method ignores the list of registered handlers.
   ##
   ## Whether the message is logged depends on both the ConsoleLogger's
-  ## ``levelThreshold`` field and the global log filter set using the
+  ## `levelThreshold` field and the global log filter set using the
   ## `setLogFilter proc<#setLogFilter,Level>`_.
   ##
   ## **Note:** Only error and fatal messages will cause the output buffer
@@ -385,11 +385,11 @@ proc newConsoleLogger*(levelThreshold = lvlAll, fmtStr = defaultFmtStr,
     useStderr = false): ConsoleLogger =
   ## Creates a new `ConsoleLogger<#ConsoleLogger>`_.
   ##
-  ## By default, log messages are written to ``stdout``. If ``useStderr`` is
-  ## true, they are written to ``stderr`` instead.
+  ## By default, log messages are written to `stdout`. If `useStderr` is
+  ## true, they are written to `stderr` instead.
   ##
   ## For the JavaScript backend, log messages are written to the console,
-  ## and ``useStderr`` is ignored.
+  ## and `useStderr` is ignored.
   ##
   ## See also:
   ## * `newFileLogger proc<#newFileLogger,File>`_ that uses a file handle
@@ -416,7 +416,7 @@ when not defined(js):
     ## This method ignores the list of registered handlers.
     ##
     ## Whether the message is logged depends on both the FileLogger's
-    ## ``levelThreshold`` field and the global log filter set using the
+    ## `levelThreshold` field and the global log filter set using the
     ## `setLogFilter proc<#setLogFilter,Level>`_.
     ##
     ## **Notes:**
@@ -485,11 +485,11 @@ when not defined(js):
     ## Creates a new `FileLogger<#FileLogger>`_ that logs to a file with the
     ## given filename.
     ##
-    ## ``bufSize`` controls the size of the output buffer that is used when
+    ## `bufSize` controls the size of the output buffer that is used when
     ## writing to the log file. The following values can be provided:
-    ## * ``-1`` - use system defaults
-    ## * ``0`` - unbuffered
-    ## * ``> 0`` - fixed buffer size
+    ## * `-1` - use system defaults
+    ## * `0` - unbuffered
+    ## * `> 0` - fixed buffer size
     ##
     ## **Note:** This proc is not available for the JavaScript backend.
     ##
@@ -540,14 +540,14 @@ when not defined(js):
                             bufSize: int = -1): RollingFileLogger =
     ## Creates a new `RollingFileLogger<#RollingFileLogger>`_.
     ##
-    ## Once the current log file being written to contains ``maxLines`` lines,
+    ## Once the current log file being written to contains `maxLines` lines,
     ## a new log file will be created, and the old log file will be renamed.
     ##
-    ## ``bufSize`` controls the size of the output buffer that is used when
+    ## `bufSize` controls the size of the output buffer that is used when
     ## writing to the log file. The following values can be provided:
-    ## * ``-1`` - use system defaults
-    ## * ``0`` - unbuffered
-    ## * ``> 0`` - fixed buffer size
+    ## * `-1` - use system defaults
+    ## * `0` - unbuffered
+    ## * `> 0` - fixed buffer size
     ##
     ## **Note:** This proc is not available in the JavaScript backend.
     ##
@@ -594,7 +594,7 @@ when not defined(js):
     ## This method ignores the list of registered handlers.
     ##
     ## Whether the message is logged depends on both the RollingFileLogger's
-    ## ``levelThreshold`` field and the global log filter set using the
+    ## `levelThreshold` field and the global log filter set using the
     ## `setLogFilter proc<#setLogFilter,Level>`_.
     ##
     ## **Notes:**
@@ -817,7 +817,7 @@ proc setLogFilter*(lvl: Level) =
   ## Sets the global log filter.
   ##
   ## Messages below the provided level will not be logged regardless of an
-  ## individual logger's ``levelThreshold``. By default, all messages are
+  ## individual logger's `levelThreshold`. By default, all messages are
   ## logged.
   ##
   ## **Warning:** The global log filter is a thread-local variable. If logging

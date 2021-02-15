@@ -54,7 +54,7 @@ since (1, 1):
     invalidFilenameChars* = {'/', '\\', ':', '*', '?', '"', '<', '>', '|', '^', '\0'} ## \
     ## Characters that may produce invalid filenames across Linux, Windows, Mac, etc.
     ## You can check if your filename contains these char and strip them for safety.
-    ## Mac bans ``':'``, Linux bans ``'/'``, Windows bans all others.
+    ## Mac bans `':'`, Linux bans `'/'`, Windows bans all others.
     invalidFilenames* = [
       "CON", "PRN", "AUX", "NUL",
       "COM0", "COM1", "COM2", "COM3", "COM4", "COM5", "COM6", "COM7", "COM8", "COM9",
@@ -110,8 +110,8 @@ include "includes/osseps"
 proc absolutePathInternal(path: string): string {.gcsafe.}
 
 proc normalizePathEnd(path: var string, trailingSep = false) =
-  ## Ensures ``path`` has exactly 0 or 1 trailing `DirSep`, depending on
-  ## ``trailingSep``, and taking care of edge cases: it preservers whether
+  ## Ensures `path` has exactly 0 or 1 trailing `DirSep`, depending on
+  ## `trailingSep`, and taking care of edge cases: it preservers whether
   ## a path is absolute or relative, and makes sure trailing sep is `DirSep`,
   ## not `AltSep`. Trailing `/.` are compressed, see examples.
   if path.len == 0: return
@@ -249,7 +249,7 @@ proc `/`*(head, tail: string): string {.noSideEffect.} =
 proc splitPath*(path: string): tuple[head, tail: string] {.
   noSideEffect, rtl, extern: "nos$1".} =
   ## Splits a directory into `(head, tail)` tuple, so that
-  ## ``head / tail == path`` (except for edge cases like "/usr").
+  ## `head / tail == path` (except for edge cases like "/usr").
   ##
   ## See also:
   ## * `joinPath(head, tail) proc <#joinPath,string,string>`_
@@ -487,7 +487,7 @@ proc parentDir*(path: string): string {.
   noSideEffect, rtl, extern: "nos$1".} =
   ## Returns the parent directory of `path`.
   ##
-  ## This is similar to ``splitPath(path).head`` when ``path`` doesn't end
+  ## This is similar to `splitPath(path).head` when `path` doesn't end
   ## in a dir separator, but also takes care of path normalizations.
   ## The remainder can be obtained with `lastPathPart(path) proc
   ## <#lastPathPart,string>`_.
@@ -610,8 +610,8 @@ iterator parentDirs*(path: string, fromRoot=false, inclusive=true): string =
     if inclusive: yield path
 
 proc `/../`*(head, tail: string): string {.noSideEffect.} =
-  ## The same as ``parentDir(head) / tail``, unless there is no parent
-  ## directory. Then ``head / tail`` is performed instead.
+  ## The same as `parentDir(head) / tail`, unless there is no parent
+  ## directory. Then `head / tail` is performed instead.
   ##
   ## See also:
   ## * `/ proc <#/,string,string>`_
@@ -713,7 +713,7 @@ proc extractFilename*(path: string): string {.
   noSideEffect, rtl, extern: "nos$1".} =
   ## Extracts the filename of a given `path`.
   ##
-  ## This is the same as ``name & ext`` from `splitFile(path) proc
+  ## This is the same as `name & ext` from `splitFile(path) proc
   ## <#splitFile,string>`_.
   ##
   ## See also:
@@ -936,9 +936,9 @@ proc getTempDir*(): string {.rtl, extern: "nos$1",
   ## save temporary files in.
   ##
   ## **Please do not use this**: On Android, it currently
-  ## returns ``getHomeDir()``, and on other Unix based systems it can cause
+  ## returns `getHomeDir()`, and on other Unix based systems it can cause
   ## security problems too. That said, you can override this implementation
-  ## by adding ``-d:tempDir=mytempname`` to your compiler invocation.
+  ## by adding `-d:tempDir=mytempname` to your compiler invocation.
   ##
   ## See also:
   ## * `getHomeDir proc <#getHomeDir>`_
@@ -959,11 +959,11 @@ proc getTempDir*(): string {.rtl, extern: "nos$1",
 
 proc expandTilde*(path: string): string {.
   tags: [ReadEnvEffect, ReadIOEffect].} =
-  ## Expands ``~`` or a path starting with ``~/`` to a full path, replacing
-  ## ``~`` with `getHomeDir() <#getHomeDir>`_ (otherwise returns ``path`` unmodified).
+  ## Expands `~` or a path starting with `~/` to a full path, replacing
+  ## `~` with `getHomeDir() <#getHomeDir>`_ (otherwise returns `path` unmodified).
   ##
   ## Windows: this is still supported despite Windows platform not having this
-  ## convention; also, both ``~/`` and ``~\`` are handled.
+  ## convention; also, both `~/` and `~\` are handled.
   ##
   ## See also:
   ## * `getHomeDir proc <#getHomeDir>`_
@@ -1019,7 +1019,7 @@ proc quoteShellWindows*(s: string): string {.noSideEffect, rtl, extern: "nosp$1"
     result.add("\"")
 
 proc quoteShellPosix*(s: string): string {.noSideEffect, rtl, extern: "nosp$1".} =
-  ## Quote ``s``, so it can be safely passed to POSIX shell.
+  ## Quote `s`, so it can be safely passed to POSIX shell.
   ## Based on Python's `pipes.quote`.
   const safeUnixChars = {'%', '+', '-', '.', '/', '_', ':', '=', '@',
                          '0'..'9', 'A'..'Z', 'a'..'z'}
@@ -1035,7 +1035,7 @@ proc quoteShellPosix*(s: string): string {.noSideEffect, rtl, extern: "nosp$1".}
 
 when defined(windows) or defined(posix) or defined(nintendoswitch):
   proc quoteShell*(s: string): string {.noSideEffect, rtl, extern: "nosp$1".} =
-    ## Quote ``s``, so it can be safely passed to shell.
+    ## Quote `s`, so it can be safely passed to shell.
     ##
     ## When on Windows, it calls `quoteShellWindows proc
     ## <#quoteShellWindows,string>`_. Otherwise, calls `quoteShellPosix proc
@@ -1161,14 +1161,14 @@ proc symlinkExists*(link: string): bool {.rtl, extern: "nos$1",
 const
   maxSymlinkLen = 1024
   ExeExts* = ## Platform specific file extension for executables.
-    ## On Windows ``["exe", "cmd", "bat"]``, on Posix ``[""]``.
+    ## On Windows `["exe", "cmd", "bat"]`, on Posix `[""]`.
     when defined(windows): ["exe", "cmd", "bat"] else: [""]
 
 proc findExe*(exe: string, followSymlinks: bool = true;
               extensions: openArray[string]=ExeExts): string {.
   tags: [ReadDirEffect, ReadEnvEffect, ReadIOEffect], noNimJs.} =
   ## Searches for `exe` in the current working directory and then
-  ## in directories listed in the ``PATH`` environment variable.
+  ## in directories listed in the `PATH` environment variable.
   ##
   ## Returns `""` if the `exe` cannot be found. `exe`
   ## is added the `ExeExts <#ExeExts>`_ file extensions if it has none.
@@ -1559,7 +1559,7 @@ proc getFilePermissions*(filename: string): set[FilePermission] {.
   ## Retrieves file permissions for `filename`.
   ##
   ## `OSError` is raised in case of an error.
-  ## On Windows, only the ``readonly`` flag is checked, every other
+  ## On Windows, only the `readonly` flag is checked, every other
   ## permission is available in any case.
   ##
   ## See also:
@@ -1598,15 +1598,15 @@ proc setFilePermissions*(filename: string, permissions: set[FilePermission],
    noWeirdTarget.} =
   ## Sets the file permissions for `filename`.
   ##
-  ## If `followSymlinks` set to true (default) and ``filename`` points to a
+  ## If `followSymlinks` set to true (default) and `filename` points to a
   ## symlink, permissions are set to the file symlink points to.
   ## `followSymlinks` set to false is a noop on Windows and some POSIX
   ## systems (including Linux) on which `lchmod` is either unavailable or always
   ## fails, given that symlinks permissions there are not observed.
   ##
   ## `OSError` is raised in case of an error.
-  ## On Windows, only the ``readonly`` flag is changed, depending on
-  ## ``fpUserWrite`` permission.
+  ## On Windows, only the `readonly` flag is changed, depending on
+  ## `fpUserWrite` permission.
   ##
   ## See also:
   ## * `getFilePermissions <#getFilePermissions,string>`_
@@ -2162,8 +2162,8 @@ iterator walkDir*(dir: string; relative = false, checkDir = false):
   ## Walks over the directory `dir` and yields for each directory or file in
   ## `dir`. The component type and full path for each item are returned.
   ##
-  ## Walking is not recursive. If ``relative`` is true (default: false)
-  ## the resulting path is shortened to be relative to ``dir``.
+  ## Walking is not recursive. If `relative` is true (default: false)
+  ## the resulting path is shortened to be relative to `dir`.
   ## Example: This directory structure::
   ##   dirA / dirB / fileB1.txt
   ##        / dirC
@@ -2267,8 +2267,8 @@ iterator walkDirRec*(dir: string,
   ## Recursively walks over the directory `dir` and yields for each file
   ## or directory in `dir`.
   ##
-  ## If ``relative`` is true (default: false) the resulting path is
-  ## shortened to be relative to ``dir``, otherwise the full path is returned.
+  ## If `relative` is true (default: false) the resulting path is
+  ## shortened to be relative to `dir`, otherwise the full path is returned.
   ##
   ## **Warning**:
   ## Modifying the directory structure while the iterator
@@ -2279,17 +2279,17 @@ iterator walkDirRec*(dir: string,
   ## ---------------------   ---------------------------------------------
   ## yieldFilter             meaning
   ## ---------------------   ---------------------------------------------
-  ## ``pcFile``              yield real files (default)
-  ## ``pcLinkToFile``        yield symbolic links to files
-  ## ``pcDir``               yield real directories
-  ## ``pcLinkToDir``         yield symbolic links to directories
+  ## `pcFile`              yield real files (default)
+  ## `pcLinkToFile`        yield symbolic links to files
+  ## `pcDir`               yield real directories
+  ## `pcLinkToDir`         yield symbolic links to directories
   ## ---------------------   ---------------------------------------------
   ##
   ## ---------------------   ---------------------------------------------
   ## followFilter            meaning
   ## ---------------------   ---------------------------------------------
-  ## ``pcDir``               follow real directories (default)
-  ## ``pcLinkToDir``         follow symbolic links to directories
+  ## `pcDir`               follow real directories (default)
+  ## `pcLinkToDir`         follow symbolic links to directories
   ## ---------------------   ---------------------------------------------
   ##
   ##
@@ -2660,7 +2660,7 @@ proc parseCmdLine*(c: string): seq[string] {.
   ##
   ## On Posix systems, it uses the following parsing rules:
   ## Components are separated by whitespace unless the whitespace
-  ## occurs within ``"`` or ``'`` quotes.
+  ## occurs within `"` or `'` quotes.
   ##
   ## See also:
   ## * `parseopt module <parseopt.html>`_
@@ -2764,7 +2764,7 @@ when defined(nimdoc):
     ## convenience `commandLineParams() <#commandLineParams>`_.
     ##
     ## Similarly to `argv`:idx: in C,
-    ## it is possible to call ``paramStr(0)`` but this will return OS specific
+    ## it is possible to call `paramStr(0)` but this will return OS specific
     ## contents (usually the name of the invoked executable). You should avoid
     ## this and call `getAppFilename() <#getAppFilename>`_ instead.
     ##
@@ -2979,7 +2979,7 @@ when not (defined(windows) or defined(macosx) or weirdTarget):
 when defined(macosx):
   type
     cuint32* {.importc: "unsigned int", nodecl.} = int
-    ## This is the same as the type ``uint32_t`` in *C*.
+    ## This is the same as the type `uint32_t` in *C*.
 
   # a really hacky solution: since we like to include 2 headers we have to
   # define two procs which in reality are the same
@@ -3091,7 +3091,7 @@ proc sleep*(milsecs: int) {.rtl, extern: "nos$1", tags: [TimeEffect], noWeirdTar
 
 proc getFileSize*(file: string): BiggestInt {.rtl, extern: "nos$1",
   tags: [ReadIOEffect], noWeirdTarget.} =
-  ## Returns the file size of `file` (in bytes). ``OSError`` is
+  ## Returns the file size of `file` (in bytes). `OSError` is
   ## raised in case of an error.
   when defined(windows):
     var a: WIN32_FIND_DATA
@@ -3312,13 +3312,13 @@ proc sameFileContent*(path1, path2: string): bool {.rtl, extern: "nos$1",
   close(b)
 
 proc isHidden*(path: string): bool {.noWeirdTarget.} =
-  ## Determines whether ``path`` is hidden or not, using `this
+  ## Determines whether `path` is hidden or not, using `this
   ## reference <https://en.wikipedia.org/wiki/Hidden_file_and_hidden_directory>`_.
   ##
   ## On Windows: returns true if it exists and its "hidden" attribute is set.
   ##
-  ## On posix: returns true if ``lastPathPart(path)`` starts with ``.`` and is
-  ## not ``.`` or ``..``.
+  ## On posix: returns true if `lastPathPart(path)` starts with `.` and is
+  ## not `.` or `..`.
   ##
   ## **Note**: paths are not normalized to determine `isHidden`.
   runnableExamples:
@@ -3371,11 +3371,11 @@ proc setLastModificationTime*(file: string, t: times.Time) {.noWeirdTarget.} =
     if res == 0'i32: raiseOSError(osLastError(), file)
 
 func isValidFilename*(filename: string, maxLen = 259.Positive): bool {.since: (1, 1).} =
-  ## Returns true if ``filename`` is valid for crossplatform use.
+  ## Returns true if `filename` is valid for crossplatform use.
   ##
   ## This is useful if you want to copy or save files across Windows, Linux, Mac, etc.
   ## You can pass full paths as argument too, but func only checks filenames.
-  ## It uses ``invalidFilenameChars``, ``invalidFilenames`` and ``maxLen`` to verify the specified ``filename``.
+  ## It uses `invalidFilenameChars`, `invalidFilenames` and `maxLen` to verify the specified `filename`.
   ##
   ## .. code-block:: nim
   ##   assert not isValidFilename(" foo")    ## Leading white space

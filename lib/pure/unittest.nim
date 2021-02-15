@@ -52,7 +52,7 @@
 ## Selecting tests by pattern
 ## ==========================
 ##
-## A single ``"*"`` can be used for globbing.
+## A single `"*"` can be used for globbing.
 ##
 ## Delimit the end of a suite name with `"::"`.
 ##
@@ -133,7 +133,7 @@ type
   TestResult* = object
     suiteName*: string
       ## Name of the test suite that contains this test case.
-      ## Can be ``nil`` if the test case is not in a suite.
+      ## Can be `nil` if the test case is not in a suite.
     testName*: string
       ## Name of the test case
     status*: TestStatus
@@ -200,8 +200,8 @@ method testStarted*(formatter: OutputFormatter, testName: string) {.base, gcsafe
   discard
 method failureOccurred*(formatter: OutputFormatter, checkpoints: seq[string],
     stackTrace: string) {.base, gcsafe.} =
-  ## ``stackTrace`` is provided only if the failure occurred due to an exception.
-  ## ``checkpoints`` is never ``nil``.
+  ## `stackTrace` is provided only if the failure occurred due to an exception.
+  ## `checkpoints` is never `nil`.
   discard
 method testEnded*(formatter: OutputFormatter, testResult: TestResult) {.base, gcsafe.} =
   discard
@@ -319,7 +319,7 @@ proc xmlEscape(s: string): string =
 proc newJUnitOutputFormatter*(stream: Stream): <//>JUnitOutputFormatter =
   ## Creates a formatter that writes report to the specified stream in
   ## JUnit format.
-  ## The ``stream`` is NOT closed automatically when the test are finished,
+  ## The `stream` is NOT closed automatically when the test are finished,
   ## because the formatter has no way to know when all tests are finished.
   ## You should invoke formatter.close() to finalize the report.
   result = JUnitOutputFormatter(
@@ -346,8 +346,8 @@ method testStarted*(formatter: JUnitOutputFormatter, testName: string) =
 
 method failureOccurred*(formatter: JUnitOutputFormatter,
                         checkpoints: seq[string], stackTrace: string) =
-  ## ``stackTrace`` is provided only if the failure occurred due to an exception.
-  ## ``checkpoints`` is never ``nil``.
+  ## `stackTrace` is provided only if the failure occurred due to an exception.
+  ## `checkpoints` is never `nil`.
   formatter.testErrors.add(checkpoints)
   if stackTrace.len > 0:
     formatter.testStackTrace = stackTrace
@@ -466,11 +466,11 @@ proc testEnded(testResult: TestResult) =
     formatter.testEnded(testResult)
 
 template suite*(name, body) {.dirty.} =
-  ## Declare a test suite identified by `name` with optional ``setup``
-  ## and/or ``teardown`` section.
+  ## Declare a test suite identified by `name` with optional `setup`
+  ## and/or `teardown` section.
   ##
   ## A test suite is a series of one or more related tests sharing a
-  ## common fixture (``setup``, ``teardown``). The fixture is executed
+  ## common fixture (`setup`, `teardown`). The fixture is executed
   ## for EACH test.
   ##
   ## .. code-block:: nim
@@ -586,7 +586,7 @@ proc checkpoint*(msg: string) =
   # TODO: add support for something like SCOPED_TRACE from Google Test
 
 template fail* =
-  ## Print out the checkpoints encountered so far and quit if ``abortOnError``
+  ## Print out the checkpoints encountered so far and quit if `abortOnError`
   ## is true. Otherwise, erase the checkpoints and indicate the test has
   ## failed (change exit code and test status). This template is useful
   ## for debugging, but is otherwise mostly used internally. Example:
@@ -636,7 +636,7 @@ template skip* =
 macro check*(conditions: untyped): untyped =
   ## Verify if a statement or a list of statements is true.
   ## A helpful error message and set checkpoints are printed out on
-  ## failure (if ``outputLevel`` is not ``PRINT_NONE``).
+  ## failure (if `outputLevel` is not `PRINT_NONE`).
   ## Example:
   ##
   ## .. code-block:: nim

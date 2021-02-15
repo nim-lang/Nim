@@ -921,7 +921,7 @@ proc traverseIf(c: DrnimContext; n: PNode) =
     ((not a and b) -> (x'3 == x'2)) and
     ((not a and not b) -> (x'3 == x'0))
 
-  (Where ``->`` is the logical implication.)
+  (Where `->` is the logical implication.)
 
   In addition to the Phi information we also know the 'facts'
   computed by the branches, for example::

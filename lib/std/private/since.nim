@@ -1,5 +1,5 @@
 template since*(version: (int, int), body: untyped) {.dirty.} =
-  ## Evaluates `body` if the ``(NimMajor, NimMinor)`` is greater than
+  ## Evaluates `body` if the `(NimMajor, NimMinor)` is greater than
   ## or equal to `version`. Usage:
   ##
   ## .. code-block:: Nim
@@ -9,7 +9,7 @@ template since*(version: (int, int), body: untyped) {.dirty.} =
     body
 
 template since*(version: (int, int, int), body: untyped) {.dirty.} =
-  ## Evaluates `body` if ``(NimMajor, NimMinor, NimPatch)`` is greater than 
+  ## Evaluates `body` if `(NimMajor, NimMinor, NimPatch)` is greater than 
   ## or equal to `version`. Usage:
   ##
   ## .. code-block:: Nim

@@ -6,7 +6,7 @@
 ## The configuration file used to generate this module: https://ssl-config.mozilla.org/guidelines/5.4.json
 
 const CiphersModern* = "TLS_AES_128_GCM_SHA256:TLS_AES_256_GCM_SHA384:TLS_CHACHA20_POLY1305_SHA256"
-  ## An OpenSSL-compatible list of secure ciphers for ``modern`` compatibility
+  ## An OpenSSL-compatible list of secure ciphers for `modern` compatibility
   ## per Mozilla's recommendations.
   ##
   ## Oldest clients supported by this list:
@@ -20,7 +20,7 @@ const CiphersModern* = "TLS_AES_128_GCM_SHA256:TLS_AES_256_GCM_SHA384:TLS_CHACHA
   ## * Safari 12.1
 
 const CiphersIntermediate* = "TLS_AES_128_GCM_SHA256:TLS_AES_256_GCM_SHA384:TLS_CHACHA20_POLY1305_SHA256:ECDHE-ECDSA-AES128-GCM-SHA256:ECDHE-RSA-AES128-GCM-SHA256:ECDHE-ECDSA-AES256-GCM-SHA384:ECDHE-RSA-AES256-GCM-SHA384:ECDHE-ECDSA-CHACHA20-POLY1305:ECDHE-RSA-CHACHA20-POLY1305:DHE-RSA-AES128-GCM-SHA256:DHE-RSA-AES256-GCM-SHA384"
-  ## An OpenSSL-compatible list of secure ciphers for ``intermediate`` compatibility
+  ## An OpenSSL-compatible list of secure ciphers for `intermediate` compatibility
   ## per Mozilla's recommendations.
   ##
   ## Oldest clients supported by this list:
@@ -35,7 +35,7 @@ const CiphersIntermediate* = "TLS_AES_128_GCM_SHA256:TLS_AES_256_GCM_SHA384:TLS_
   ## * Safari 9
 
 const CiphersOld* = "TLS_AES_128_GCM_SHA256:TLS_AES_256_GCM_SHA384:TLS_CHACHA20_POLY1305_SHA256:ECDHE-ECDSA-AES128-GCM-SHA256:ECDHE-RSA-AES128-GCM-SHA256:ECDHE-ECDSA-AES256-GCM-SHA384:ECDHE-RSA-AES256-GCM-SHA384:ECDHE-ECDSA-CHACHA20-POLY1305:ECDHE-RSA-CHACHA20-POLY1305:DHE-RSA-AES128-GCM-SHA256:DHE-RSA-AES256-GCM-SHA384:DHE-RSA-CHACHA20-POLY1305:ECDHE-ECDSA-AES128-SHA256:ECDHE-RSA-AES128-SHA256:ECDHE-ECDSA-AES128-SHA:ECDHE-RSA-AES128-SHA:ECDHE-ECDSA-AES256-SHA384:ECDHE-RSA-AES256-SHA384:ECDHE-ECDSA-AES256-SHA:ECDHE-RSA-AES256-SHA:DHE-RSA-AES128-SHA256:DHE-RSA-AES256-SHA256:AES128-GCM-SHA256:AES256-GCM-SHA384:AES128-SHA256:AES256-SHA256:AES128-SHA:AES256-SHA:DES-CBC3-SHA"
-  ## An OpenSSL-compatible list of secure ciphers for ``old`` compatibility
+  ## An OpenSSL-compatible list of secure ciphers for `old` compatibility
   ## per Mozilla's recommendations.
   ##
   ## Oldest clients supported by this list:

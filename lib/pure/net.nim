@@ -9,18 +9,18 @@
 
 ## This module implements a high-level cross-platform sockets interface.
 ## The procedures implemented in this module are primarily for blocking sockets.
-## For asynchronous non-blocking sockets use the ``asyncnet`` module together
-## with the ``asyncdispatch`` module.
+## For asynchronous non-blocking sockets use the `asyncnet` module together
+## with the `asyncdispatch` module.
 ##
 ## The first thing you will always need to do in order to start using sockets,
-## is to create a new instance of the ``Socket`` type using the ``newSocket``
+## is to create a new instance of the `Socket` type using the `newSocket`
 ## procedure.
 ##
 ## SSL
 ## ====
 ##
 ## In order to use the SSL procedures defined in this module, you will need to
-## compile your application with the ``-d:ssl`` flag. See the
+## compile your application with the `-d:ssl` flag. See the
 ## `newContext<net.html#newContext%2Cstring%2Cstring%2Cstring%2Cstring>`_
 ## procedure for additional details.
 ##
@@ -41,7 +41,7 @@
 ## Connecting to a server
 ## ----------------------
 ##
-## After you create a socket with the ``newSocket`` procedure, you can easily
+## After you create a socket with the `newSocket` procedure, you can easily
 ## connect it to a server running at a known hostname (or IP address) and port.
 ## To do so over TCP, use the example below.
 ##
@@ -49,7 +49,7 @@
 ##   var socket = newSocket()
 ##   socket.connect("google.com", Port(80))
 ##
-## For SSL, use the following example (and make sure to compile with ``-d:ssl``):
+## For SSL, use the following example (and make sure to compile with `-d:ssl`):
 ##
 ## .. code-block:: Nim
 ##   var socket = newSocket()
@@ -68,15 +68,15 @@
 ## Creating a server
 ## -----------------
 ##
-## After you create a socket with the ``newSocket`` procedure, you can create a
-## TCP server by calling the ``bindAddr`` and ``listen`` procedures.
+## After you create a socket with the `newSocket` procedure, you can create a
+## TCP server by calling the `bindAddr` and `listen` procedures.
 ##
 ## .. code-block:: Nim
 ##   var socket = newSocket()
 ##   socket.bindAddr(Port(1234))
 ##   socket.listen()
 ##
-## You can then begin accepting connections using the ``accept`` procedure.
+## You can then begin accepting connections using the `accept` procedure.
 ##
 ## .. code-block:: Nim
 ##   var client: Socket
@@ -203,8 +203,8 @@ proc socketError*(socket: Socket, err: int = -1, async = false,
 
 proc isDisconnectionError*(flags: set[SocketFlag],
     lastError: OSErrorCode): bool =
-  ## Determines whether ``lastError`` is a disconnection error. Only does this
-  ## if flags contains ``SafeDisconn``.
+  ## Determines whether `lastError` is a disconnection error. Only does this
+  ## if flags contains `SafeDisconn`.
   when useWinVersion:
     SocketFlag.SafeDisconn in flags and
       (lastError.int32 == WSAECONNRESET or
@@ -566,13 +566,13 @@ when defineSsl:
     ## Creates an SSL context.
     ##
     ## Protocol version specifies the protocol to use. SSLv2, SSLv3, TLSv1
-    ## are available with the addition of ``protSSLv23`` which allows for
+    ## are available with the addition of `protSSLv23` which allows for
     ## compatibility with all of them.
     ##
     ## There are three options for verify mode:
-    ## ``CVerifyNone``: certificates are not verified;
-    ## ``CVerifyPeer``: certificates are verified;
-    ## ``CVerifyPeerUseEnvVars``: certificates are verified and the optional
+    ## `CVerifyNone`: certificates are not verified;
+    ## `CVerifyPeer`: certificates are verified;
+    ## `CVerifyPeerUseEnvVars`: certificates are verified and the optional
     ## environment variables SSL_CERT_FILE and SSL_CERT_DIR are also used to
     ## locate certificates
     ##
@@ -582,7 +582,7 @@ when defineSsl:
     ## CA certificates will be loaded, in the following order, from:
     ##
     ##  - caFile, caDir, parameters, if set
-    ##  - if `verifyMode` is set to ``CVerifyPeerUseEnvVars``,
+    ##  - if `verifyMode` is set to `CVerifyPeerUseEnvVars`,
     ##    the SSL_CERT_FILE and SSL_CERT_DIR environment variables are used
     ##  - a set of files and directories from the `ssl_certs <ssl_certs.html>`_ file.
     ##
@@ -590,10 +590,10 @@ when defineSsl:
     ## path, a server socket will most likely not work without these.
     ##
     ## Certificates can be generated using the following command:
-    ## - ``openssl req -x509 -nodes -days 365 -newkey rsa:4096 -keyout mykey.pem -out mycert.pem``
+    ## - `openssl req -x509 -nodes -days 365 -newkey rsa:4096 -keyout mykey.pem -out mycert.pem`
     ## or using ECDSA:
-    ## - ``openssl ecparam -out mykey.pem -name secp256k1 -genkey``
-    ## - ``openssl req -new -key mykey.pem -x509 -nodes -days 365 -out mycert.pem``
+    ## - `openssl ecparam -out mykey.pem -name secp256k1 -genkey`
+    ## - `openssl req -new -key mykey.pem -x509 -nodes -days 365 -out mycert.pem`
     var newCTX: SslCtx
     case protVersion
     of protSSLv23:
@@ -736,7 +736,7 @@ when defineSsl:
 
   proc wrapSocket*(ctx: SslContext, socket: Socket) =
     ## Wraps a socket in an SSL context. This function effectively turns
-    ## ``socket`` into an SSL socket.
+    ## `socket` into an SSL socket.
     ##
     ## This must be called on an unconnected socket; an SSL session will
     ## be started when the socket is connected.
@@ -780,8 +780,8 @@ when defineSsl:
                             handshake: SslHandshakeType,
                             hostname: string = "") =
     ## Wraps a connected socket in an SSL context. This function effectively
-    ## turns ``socket`` into an SSL socket.
-    ## ``hostname`` should be specified so that the client knows which hostname
+    ## turns `socket` into an SSL socket.
+    ## `hostname` should be specified so that the client knows which hostname
     ## the server certificate should be validated against.
     ##
     ## This should be called on a connected socket, and will perform
@@ -810,7 +810,7 @@ when defineSsl:
 
   proc getPeerCertificates*(sslHandle: SslPtr): seq[Certificate] {.since: (1, 1).} =
     ## Returns the certificate chain received by the peer we are connected to
-    ## through the OpenSSL connection represented by ``sslHandle``.
+    ## through the OpenSSL connection represented by `sslHandle`.
     ## The handshake must have been completed and the certificate chain must
     ## have been verified successfully or else an empty sequence is returned.
     ## The chain is ordered from leaf certificate to root certificate.
@@ -855,7 +855,7 @@ when defineSsl:
     SSL_CTX_set_session_id_context(ctx.context, sidCtx, sidCtx.len)
 
 proc getSocketError*(socket: Socket): OSErrorCode =
-  ## Checks ``osLastError`` for a valid error. If it has been reset it uses
+  ## Checks `osLastError` for a valid error. If it has been reset it uses
   ## the last error stored in the socket object.
   result = osLastError()
   if result == 0.OSErrorCode:
@@ -866,15 +866,15 @@ proc getSocketError*(socket: Socket): OSErrorCode =
 proc socketError*(socket: Socket, err: int = -1, async = false,
                   lastError = (-1).OSErrorCode,
                   flags: set[SocketFlag] = {}) =
-  ## Raises an OSError based on the error code returned by ``SSL_get_error``
-  ## (for SSL sockets) and ``osLastError`` otherwise.
+  ## Raises an OSError based on the error code returned by `SSL_get_error`
+  ## (for SSL sockets) and `osLastError` otherwise.
   ##
-  ## If ``async`` is ``true`` no error will be thrown in the case when the
+  ## If `async` is `true` no error will be thrown in the case when the
   ## error was caused by no data being available to be read.
   ##
-  ## If ``err`` is not lower than 0 no exception will be raised.
+  ## If `err` is not lower than 0 no exception will be raised.
   ##
-  ## If ``flags`` contains ``SafeDisconn``, no exception will be raised
+  ## If `flags` contains `SafeDisconn`, no exception will be raised
   ## when the error was caused by a peer disconnection.
   when defineSsl:
     if socket.isSsl:
@@ -929,8 +929,8 @@ proc socketError*(socket: Socket, err: int = -1, async = false,
       else: raiseOSError(lastE)
 
 proc listen*(socket: Socket, backlog = SOMAXCONN) {.tags: [ReadIOEffect].} =
-  ## Marks ``socket`` as accepting connections.
-  ## ``Backlog`` specifies the maximum length of the
+  ## Marks `socket` as accepting connections.
+  ## `Backlog` specifies the maximum length of the
   ## queue of pending connections.
   ##
   ## Raises an OSError error upon failure.
@@ -939,9 +939,9 @@ proc listen*(socket: Socket, backlog = SOMAXCONN) {.tags: [ReadIOEffect].} =
 
 proc bindAddr*(socket: Socket, port = Port(0), address = "") {.
   tags: [ReadIOEffect].} =
-  ## Binds ``address``:``port`` to the socket.
+  ## Binds `address`:`port` to the socket.
   ##
-  ## If ``address`` is "" then ADDR_ANY will be bound.
+  ## If `address` is "" then ADDR_ANY will be bound.
   var realaddr = address
   if realaddr == "":
     case socket.domain
@@ -962,7 +962,7 @@ proc acceptAddr*(server: Socket, client: var owned(Socket), address: var string,
                  inheritable = defined(nimInheritHandles)) {.
                  tags: [ReadIOEffect], gcsafe, locks: 0.} =
   ## Blocks until a connection is being made from a client. When a connection
-  ## is made sets ``client`` to the client socket and ``address`` to the address
+  ## is made sets `client` to the client socket and `address` to the address
   ## of the connecting client.
   ## This function will raise OSError if an error occurs.
   ##
@@ -973,8 +973,8 @@ proc acceptAddr*(server: Socket, client: var owned(Socket), address: var string,
   ## inheritable by child processes by default. This can be changed via
   ## the `inheritable` parameter.
   ##
-  ## The ``accept`` call may result in an error if the connecting socket
-  ## disconnects during the duration of the ``accept``. If the ``SafeDisconn``
+  ## The `accept` call may result in an error if the connecting socket
+  ## disconnects during the duration of the `accept`. If the `SafeDisconn`
   ## flag is specified then this error will not be raised and instead
   ## accept will be called again.
   if client.isNil:
@@ -1010,16 +1010,16 @@ when false: #defineSsl:
     ## This procedure should only be used for non-blocking **SSL** sockets.
     ## It will immediately return with one of the following values:
     ##
-    ## ``AcceptSuccess`` will be returned when a client has been successfully
+    ## `AcceptSuccess` will be returned when a client has been successfully
     ## accepted and the handshake has been successfully performed between
-    ## ``server`` and the newly connected client.
+    ## `server` and the newly connected client.
     ##
-    ## ``AcceptNoHandshake`` will be returned when a client has been accepted
+    ## `AcceptNoHandshake` will be returned when a client has been accepted
     ## but no handshake could be performed. This can happen when the client
     ## connects but does not yet initiate a handshake. In this case
-    ## ``acceptAddrSSL`` should be called again with the same parameters.
+    ## `acceptAddrSSL` should be called again with the same parameters.
     ##
-    ## ``AcceptNoClient`` will be returned when no client is currently attempting
+    ## `AcceptNoClient` will be returned when no client is currently attempting
     ## to connect.
     template doHandshake(): untyped =
       when defineSsl:
@@ -1060,15 +1060,15 @@ proc accept*(server: Socket, client: var owned(Socket),
              flags = {SocketFlag.SafeDisconn},
              inheritable = defined(nimInheritHandles))
             {.tags: [ReadIOEffect].} =
-  ## Equivalent to ``acceptAddr`` but doesn't return the address, only the
+  ## Equivalent to `acceptAddr` but doesn't return the address, only the
   ## socket.
   ##
   ## The SocketHandle associated with the resulting client will not be
   ## inheritable by child processes by default. This can be changed via
   ## the `inheritable` parameter.
   ##
-  ## The ``accept`` call may result in an error if the connecting socket
-  ## disconnects during the duration of the ``accept``. If the ``SafeDisconn``
+  ## The `accept` call may result in an error if the connecting socket
+  ## disconnects during the duration of the `accept`. If the `SafeDisconn`
   ## flag is specified then this error will not be raised and instead
   ## accept will be called again.
   var addrDummy = ""
@@ -1194,7 +1194,7 @@ else:
   from winlean import TCP_NODELAY
 
 proc toCInt*(opt: SOBool): cint =
-  ## Converts a ``SOBool`` into its Socket Option cint representation.
+  ## Converts a `SOBool` into its Socket Option cint representation.
   case opt
   of OptAcceptConn: SO_ACCEPTCONN
   of OptBroadcast: SO_BROADCAST
@@ -1208,7 +1208,7 @@ proc toCInt*(opt: SOBool): cint =
 
 proc getSockOpt*(socket: Socket, opt: SOBool, level = SOL_SOCKET): bool {.
   tags: [ReadIOEffect].} =
-  ## Retrieves option ``opt`` as a boolean value.
+  ## Retrieves option `opt` as a boolean value.
   var res = getSockOptInt(socket.fd, cint(level), toCInt(opt))
   result = res != 0
 
@@ -1226,7 +1226,7 @@ proc getPeerAddr*(socket: Socket): (string, Port) =
 
 proc setSockOpt*(socket: Socket, opt: SOBool, value: bool,
     level = SOL_SOCKET) {.tags: [WriteIOEffect].} =
-  ## Sets option ``opt`` to a boolean value specified by ``value``.
+  ## Sets option `opt` to a boolean value specified by `value`.
   ##
   ## .. code-block:: Nim
   ##   var socket = newSocket()
@@ -1257,10 +1257,10 @@ when defined(posix) or defined(nimdoc):
 
 when defined(ssl):
   proc gotHandshake*(socket: Socket): bool =
-    ## Determines whether a handshake has occurred between a client (``socket``)
-    ## and the server that ``socket`` is connected to.
+    ## Determines whether a handshake has occurred between a client (`socket`)
+    ## and the server that `socket` is connected to.
     ##
-    ## Throws SslError if ``socket`` is not an SSL socket.
+    ## Throws SslError if `socket` is not an SSL socket.
     if socket.isSsl:
       return not socket.sslNoHandshake
     else:
@@ -1328,7 +1328,7 @@ proc recv*(socket: Socket, data: pointer, size: int): int {.tags: [
   ## Receives data from a socket.
   ##
   ## **Note**: This is a low-level function, you may be interested in the higher
-  ## level versions of this function which are also named ``recv``.
+  ## level versions of this function which are also named `recv`.
   if size == 0: return
   if socket.isBuffered:
     if socket.bufLen == 0:
@@ -1371,11 +1371,11 @@ proc recv*(socket: Socket, data: pointer, size: int): int {.tags: [
 proc waitFor(socket: Socket, waited: var Duration, timeout, size: int,
              funcName: string): int {.tags: [TimeEffect].} =
   ## determines the amount of characters that can be read. Result will never
-  ## be larger than ``size``. For unbuffered sockets this will be ``1``.
-  ## For buffered sockets it can be as big as ``BufferSize``.
+  ## be larger than `size`. For unbuffered sockets this will be `1`.
+  ## For buffered sockets it can be as big as `BufferSize`.
   ##
   ## If this function does not determine that there is data on the socket
-  ## within ``timeout`` ms, a TimeoutError error will be raised.
+  ## within `timeout` ms, a TimeoutError error will be raised.
   result = 1
   if size <= 0: assert false
   if timeout == -1: return size
@@ -1405,7 +1405,7 @@ proc waitFor(socket: Socket, waited: var Duration, timeout, size: int,
 
 proc recv*(socket: Socket, data: pointer, size: int, timeout: int): int {.
   tags: [ReadIOEffect, TimeEffect].} =
-  ## overload with a ``timeout`` parameter in milliseconds.
+  ## overload with a `timeout` parameter in milliseconds.
   var waited: Duration # duration already waited
 
   var read = 0
@@ -1423,12 +1423,12 @@ proc recv*(socket: Socket, data: pointer, size: int, timeout: int): int {.
 
 proc recv*(socket: Socket, data: var string, size: int, timeout = -1,
            flags = {SocketFlag.SafeDisconn}): int =
-  ## Higher-level version of ``recv``.
+  ## Higher-level version of `recv`.
   ##
-  ## Reads **up to** ``size`` bytes from ``socket`` into ``buf``.
+  ## Reads **up to** `size` bytes from `socket` into `buf`.
   ##
   ## For buffered sockets this function will attempt to read all the requested
-  ## data. It will read this data in ``BufferSize`` chunks.
+  ## data. It will read this data in `BufferSize` chunks.
   ##
   ## For unbuffered sockets this function makes no effort to read
   ## all the data requested. It will return as much data as the operating system
@@ -1442,9 +1442,9 @@ proc recv*(socket: Socket, data: var string, size: int, timeout = -1,
   ## A timeout may be specified in milliseconds, if enough data is not received
   ## within the time specified a TimeoutError exception will be raised.
   ##
-  ## **Note**: ``data`` must be initialised.
+  ## **Note**: `data` must be initialised.
   ##
-  ## **Warning**: Only the ``SafeDisconn`` flag is currently supported.
+  ## **Warning**: Only the `SafeDisconn` flag is currently supported.
   data.setLen(size)
   result =
     if timeout == -1:
@@ -1460,18 +1460,18 @@ proc recv*(socket: Socket, data: var string, size: int, timeout = -1,
 
 proc recv*(socket: Socket, size: int, timeout = -1,
            flags = {SocketFlag.SafeDisconn}): string {.inline.} =
-  ## Higher-level version of ``recv`` which returns a string.
+  ## Higher-level version of `recv` which returns a string.
   ##
-  ## Reads **up to** ``size`` bytes from ``socket`` into ``buf``.
+  ## Reads **up to** `size` bytes from `socket` into `buf`.
   ##
   ## For buffered sockets this function will attempt to read all the requested
-  ## data. It will read this data in ``BufferSize`` chunks.
+  ## data. It will read this data in `BufferSize` chunks.
   ##
   ## For unbuffered sockets this function makes no effort to read
   ## all the data requested. It will return as much data as the operating system
   ## gives it.
   ##
-  ## When ``""`` is returned the socket's connection has been closed.
+  ## When `""` is returned the socket's connection has been closed.
   ##
   ## This function will throw an OSError exception when an error occurs.
   ##
@@ -1479,7 +1479,7 @@ proc recv*(socket: Socket, size: int, timeout = -1,
   ## within the time specified a TimeoutError exception will be raised.
   ##
   ##
-  ## **Warning**: Only the ``SafeDisconn`` flag is currently supported.
+  ## **Warning**: Only the `SafeDisconn` flag is currently supported.
   result = newString(size)
   discard recv(socket, result, size, timeout, flags)
 
@@ -1506,23 +1506,23 @@ proc peekChar(socket: Socket, c: var char): int {.tags: [ReadIOEffect].} =
 proc readLine*(socket: Socket, line: var string, timeout = -1,
                flags = {SocketFlag.SafeDisconn}, maxLength = MaxLineLength) {.
   tags: [ReadIOEffect, TimeEffect].} =
-  ## Reads a line of data from ``socket``.
+  ## Reads a line of data from `socket`.
   ##
-  ## If a full line is read ``\r\L`` is not
-  ## added to ``line``, however if solely ``\r\L`` is read then ``line``
+  ## If a full line is read `\r\L` is not
+  ## added to `line`, however if solely `\r\L` is read then `line`
   ## will be set to it.
   ##
-  ## If the socket is disconnected, ``line`` will be set to ``""``.
+  ## If the socket is disconnected, `line` will be set to `""`.
   ##
   ## An OSError exception will be raised in the case of a socket error.
   ##
   ## A timeout can be specified in milliseconds, if data is not received within
   ## the specified time a TimeoutError exception will be raised.
   ##
-  ## The ``maxLength`` parameter determines the maximum amount of characters
+  ## The `maxLength` parameter determines the maximum amount of characters
   ## that can be read. The result is truncated after that.
   ##
-  ## **Warning**: Only the ``SafeDisconn`` flag is currently supported.
+  ## **Warning**: Only the `SafeDisconn` flag is currently supported.
 
   template addNLIfEmpty() =
     if line.len == 0:
@@ -1562,38 +1562,38 @@ proc readLine*(socket: Socket, line: var string, timeout = -1,
 proc recvLine*(socket: Socket, timeout = -1,
                flags = {SocketFlag.SafeDisconn},
                maxLength = MaxLineLength): string =
-  ## Reads a line of data from ``socket``.
+  ## Reads a line of data from `socket`.
   ##
-  ## If a full line is read ``\r\L`` is not
-  ## added to the result, however if solely ``\r\L`` is read then the result
+  ## If a full line is read `\r\L` is not
+  ## added to the result, however if solely `\r\L` is read then the result
   ## will be set to it.
   ##
-  ## If the socket is disconnected, the result will be set to ``""``.
+  ## If the socket is disconnected, the result will be set to `""`.
   ##
   ## An OSError exception will be raised in the case of a socket error.
   ##
   ## A timeout can be specified in milliseconds, if data is not received within
   ## the specified time a TimeoutError exception will be raised.
   ##
-  ## The ``maxLength`` parameter determines the maximum amount of characters
+  ## The `maxLength` parameter determines the maximum amount of characters
   ## that can be read. The result is truncated after that.
   ##
-  ## **Warning**: Only the ``SafeDisconn`` flag is currently supported.
+  ## **Warning**: Only the `SafeDisconn` flag is currently supported.
   result = ""
   readLine(socket, result, timeout, flags, maxLength)
 
 proc recvFrom*(socket: Socket, data: var string, length: int,
                address: var string, port: var Port, flags = 0'i32): int {.
                tags: [ReadIOEffect].} =
-  ## Receives data from ``socket``. This function should normally be used with
+  ## Receives data from `socket`. This function should normally be used with
   ## connection-less sockets (UDP sockets).
   ##
   ## If an error occurs an OSError exception will be raised. Otherwise the return
   ## value will be the length of data received.
   ##
   ## **Warning:** This function does not yet have a buffered implementation,
-  ## so when ``socket`` is buffered the non-buffered implementation will be
-  ## used. Therefore if ``socket`` contains something in its buffer this
+  ## so when `socket` is buffered the non-buffered implementation will be
+  ## used. Therefore if `socket` contains something in its buffer this
   ## function will make no effort to return it.
   template adaptRecvFromToDomain(domain: Domain) =
     var addrLen = sizeof(sockAddress).SockLen
@@ -1624,7 +1624,7 @@ proc recvFrom*(socket: Socket, data: var string, length: int,
     raise newException(ValueError, "Unknown socket address family")
 
 proc skip*(socket: Socket, size: int, timeout = -1) =
-  ## Skips ``size`` amount of bytes.
+  ## Skips `size` amount of bytes.
   ##
   ## An optional timeout can be specified in milliseconds, if skipping the
   ## bytes takes longer than specified a TimeoutError exception will be raised.
@@ -1642,7 +1642,7 @@ proc send*(socket: Socket, data: pointer, size: int): int {.
   tags: [WriteIOEffect].} =
   ## Sends data to a socket.
   ##
-  ## **Note**: This is a low-level version of ``send``. You likely should use
+  ## **Note**: This is a low-level version of `send`. You likely should use
   ## the version below.
   assert(not socket.isClosed, "Cannot `send` on a closed socket")
   when defineSsl:
@@ -1673,14 +1673,14 @@ template `&=`*(socket: Socket; data: typed) =
   send(socket, data)
 
 proc trySend*(socket: Socket, data: string): bool {.tags: [WriteIOEffect].} =
-  ## Safe alternative to ``send``. Does not raise an OSError when an error occurs,
-  ## and instead returns ``false`` on failure.
+  ## Safe alternative to `send`. Does not raise an OSError when an error occurs,
+  ## and instead returns `false` on failure.
   result = send(socket, cstring(data), data.len) == data.len
 
 proc sendTo*(socket: Socket, address: string, port: Port, data: pointer,
              size: int, af: Domain = AF_INET, flags = 0'i32) {.
              tags: [WriteIOEffect].} =
-  ## This proc sends ``data`` to the specified ``address``,
+  ## This proc sends `data` to the specified `address`,
   ## which may be an IP address or a hostname, if a hostname is specified
   ## this function will try each IP of that hostname.
   ##
@@ -1713,18 +1713,18 @@ proc sendTo*(socket: Socket, address: string, port: Port, data: pointer,
 
 proc sendTo*(socket: Socket, address: string, port: Port,
              data: string) {.tags: [WriteIOEffect].} =
-  ## This proc sends ``data`` to the specified ``address``,
+  ## This proc sends `data` to the specified `address`,
   ## which may be an IP address or a hostname, if a hostname is specified
   ## this function will try each IP of that hostname.
   ##
   ## If an error occurs an OSError exception will be raised.
   ##
-  ## This is the high-level version of the above ``sendTo`` function.
+  ## This is the high-level version of the above `sendTo` function.
   socket.sendTo(address, port, cstring(data), data.len, socket.domain)
 
 
 proc isSsl*(socket: Socket): bool =
-  ## Determines whether ``socket`` is a SSL socket.
+  ## Determines whether `socket` is a SSL socket.
   when defineSsl:
     result = socket.isSsl
   else:
@@ -1849,9 +1849,9 @@ proc `$`*(address: IpAddress): string =
 proc dial*(address: string, port: Port,
            protocol = IPPROTO_TCP, buffered = true): owned(Socket)
            {.tags: [ReadIOEffect, WriteIOEffect].} =
-  ## Establishes connection to the specified ``address``:``port`` pair via the
+  ## Establishes connection to the specified `address`:`port` pair via the
   ## specified protocol. The procedure iterates through possible
-  ## resolutions of the ``address`` until it succeeds, meaning that it
+  ## resolutions of the `address` until it succeeds, meaning that it
   ## seamlessly works with both IPv4 and IPv6.
   ## Returns Socket ready to send or receive data.
   let sockType = protocol.toSockType()
@@ -1906,12 +1906,12 @@ proc dial*(address: string, port: Port,
 
 proc connect*(socket: Socket, address: string,
     port = Port(0)) {.tags: [ReadIOEffect].} =
-  ## Connects socket to ``address``:``port``. ``Address`` can be an IP address or a
-  ## host name. If ``address`` is a host name, this function will try each IP
-  ## of that host name. ``htons`` is already performed on ``port`` so you must
+  ## Connects socket to `address`:`port`. `Address` can be an IP address or a
+  ## host name. If `address` is a host name, this function will try each IP
+  ## of that host name. `htons` is already performed on `port` so you must
   ## not do it.
   ##
-  ## If ``socket`` is an SSL socket a handshake will be automatically performed.
+  ## If `socket` is an SSL socket a handshake will be automatically performed.
   var aiList = getAddrInfo(address, port, socket.domain)
   # try all possibilities:
   var success = false
@@ -1944,13 +1944,13 @@ proc connect*(socket: Socket, address: string,
 
 proc connectAsync(socket: Socket, name: string, port = Port(0),
                   af: Domain = AF_INET) {.tags: [ReadIOEffect].} =
-  ## A variant of ``connect`` for non-blocking sockets.
+  ## A variant of `connect` for non-blocking sockets.
   ##
   ## This procedure will immediately return, it will not block until a connection
   ## is made. It is up to the caller to make sure the connection has been established
-  ## by checking (using ``select``) whether the socket is writeable.
+  ## by checking (using `select`) whether the socket is writeable.
   ##
-  ## **Note**: For SSL sockets, the ``handshake`` procedure must be called
+  ## **Note**: For SSL sockets, the `handshake` procedure must be called
   ## whenever the socket successfully connects to a server.
   var aiList = getAddrInfo(name, port, af)
   # try all possibilities:
@@ -1981,9 +1981,9 @@ proc connectAsync(socket: Socket, name: string, port = Port(0),
 
 proc connect*(socket: Socket, address: string, port = Port(0),
     timeout: int) {.tags: [ReadIOEffect, WriteIOEffect].} =
-  ## Connects to server as specified by ``address`` on port specified by ``port``.
+  ## Connects to server as specified by `address` on port specified by `port`.
   ##
-  ## The ``timeout`` parameter specifies the time in milliseconds to allow for
+  ## The `timeout` parameter specifies the time in milliseconds to allow for
   ## the connection to the server to be made.
   ##
   ## **Warning:** This procedure appears to be broken for SSL connections as of

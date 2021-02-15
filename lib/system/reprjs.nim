@@ -6,7 +6,7 @@
 #    See the file "copying.txt", included in this
 #    distribution, for details about the copyright.
 #
-# The generic ``repr`` procedure for the javascript backend.
+# The generic `repr` procedure for the javascript backend.
 
 proc reprInt(x: int64): string {.compilerproc.} = $x
 proc reprFloat(x: float): string {.compilerproc.} = $x

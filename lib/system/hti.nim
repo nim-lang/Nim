@@ -20,10 +20,10 @@ type
     tyUntyped,
     tyTyped,
     tyTypeDesc,
-    tyGenericInvocation, # ``T[a, b]`` for types to invoke
-    tyGenericBody,       # ``T[a, b, body]`` last parameter is the body
-    tyGenericInst,       # ``T[a, b, realInstance]`` instantiated generic type
-    tyGenericParam,      # ``a`` in the example
+    tyGenericInvocation, # `T[a, b]` for types to invoke
+    tyGenericBody,       # `T[a, b, body]` last parameter is the body
+    tyGenericInst,       # `T[a, b, realInstance]` instantiated generic type
+    tyGenericParam,      # `a` in the example
     tyDistinct,          # distinct type
     tyEnum,
     tyOrdinal,
@@ -120,4 +120,4 @@ when defined(nimTypeNames):
   else:
     var nimTypeRoot {.importc.}: PNimType
 
-# node.len may be the ``first`` element of a set
+# node.len may be the `first` element of a set

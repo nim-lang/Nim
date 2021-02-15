@@ -10,7 +10,7 @@
 #[
 In this new runtime we simplify the object layouts a bit: The runtime type
 information is only accessed for the objects that have it and it's always
-at offset 0 then. The ``ref`` object header is independent from the
+at offset 0 then. The `ref` object header is independent from the
 runtime type and only contains a reference count.
 
 Object subtyping is checked via the generated 'name'. This should have
@@ -24,13 +24,13 @@ so that a subtype check becomes a substring check. For example::
     ObjectA = object of RootObj
     ObjectB = object of ObjectA
 
-ObjectA's ``name`` is "|ObjectA|RootObj|".
-ObjectB's ``name`` is "|ObjectB|ObjectA|RootObj|".
+ObjectA's `name` is "|ObjectA|RootObj|".
+ObjectB's `name` is "|ObjectB|ObjectA|RootObj|".
 
-Now to check for ``x of ObjectB`` we need to check
-for ``x.typ.name.hasSubstring("|ObjectB|")``. In the actual implementation,
+Now to check for `x of ObjectB` we need to check
+for `x.typ.name.hasSubstring("|ObjectB|")`. In the actual implementation,
 however, we could also use a
-hash of ``package & "." & module & "." & name`` to save space.
+hash of `package & "." & module & "." & name` to save space.
 
 ]#
 
@@ -218,15 +218,15 @@ proc GC_ref*[T](x: ref T) =
 
 when not defined(gcOrc):
   template GC_fullCollect* =
-    ## Forces a full garbage collection pass. With ``--gc:arc`` a nop.
+    ## Forces a full garbage collection pass. With `--gc:arc` a nop.
     discard
 
 template setupForeignThreadGc* =
-  ## With ``--gc:arc`` a nop.
+  ## With `--gc:arc` a nop.
   discard
 
 template tearDownForeignThreadGc* =
-  ## With ``--gc:arc`` a nop.
+  ## With `--gc:arc` a nop.
   discard
 
 proc isObj(obj: PNimTypeV2, subclass: cstring): bool {.compilerRtl, inl.} =
