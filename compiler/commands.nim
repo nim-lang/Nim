@@ -233,6 +233,7 @@ const
   errNoneSpeedOrSizeExpectedButXFound = "'none', 'speed' or 'size' expected, but '$1' found"
   errGuiConsoleOrLibExpectedButXFound = "'gui', 'console' or 'lib' expected, but '$1' found"
   errInvalidExceptionSystem = "'goto', 'setjump', 'cpp' or 'quirky' expected, but '$1' found"
+  errInvalidDebuggerOption = "'on', 'native', 'gdb' or 'off' expected, but '$1' found"
 
 proc testCompileOptionArg*(conf: ConfigRef; switch, arg: string, info: TLineInfo): bool =
   case switch.normalize
@@ -275,6 +276,11 @@ proc testCompileOptionArg*(conf: ConfigRef; switch, arg: string, info: TLineInfo
     of "quirky": result = conf.exc == excQuirky
     of "goto": result = conf.exc == excGoto
     else: localError(conf, info, errInvalidExceptionSystem % arg)
+  of "debugger":
+    case arg.normalize
+    of "on", "native", "gdb": result = contains(conf.globalOptions, optCDebug)
+    of "off": result = not contains(conf.globalOptions, optCDebug)
+    else: localError(conf, info, errInvalidDebuggerOption % arg)
   else: invalidCmdLineOption(conf, passCmd1, switch, info)
 
 proc testCompileOption*(conf: ConfigRef; switch: string, info: TLineInfo): bool =
