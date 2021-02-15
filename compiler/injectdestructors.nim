@@ -26,6 +26,7 @@ type
     owner: PSym
     g: ControlFlowGraph
     graph: ModuleGraph
+    otherRead: PNode
     inLoop, inSpawn, inLoopCond: int
     uninit: IntSet # set of uninit'ed vars
     uninitComputed: bool
@@ -71,56 +72,23 @@ proc nestedScope(parent: var Scope): Scope =
 proc p(n: PNode; c: var Con; s: var Scope; mode: ProcessMode): PNode
 proc moveOrCopy(dest, ri: PNode; c: var Con; s: var Scope; isDecl = false): PNode
 
-import sets, hashes, tables
-
-proc hash(n: PNode): Hash = hash(cast[pointer](n))
-
-type AliasCache = Table[(PNode, PNode), AliasKind]
-proc aliasesCached(cache: var AliasCache, obj, field: PNode): AliasKind =
-  let key = (obj, field)
-  if not cache.hasKey(key):
-    cache[key] = aliases(obj, field)
-  cache[key]
-
-proc collectLastReads(cfg: ControlFlowGraph; cache: var AliasCache, alreadySeen: var HashSet[PNode], lastReads, potLastReads: var IntSet; pc: var int, until: int) =
-  template aliasesCached(obj, field: PNode): untyped =
-    aliasesCached(cache, obj, field)
-  while pc < until:
+proc isLastRead(location: PNode; cfg: ControlFlowGraph; otherRead: var PNode; pc, until: int): int =
+  var pc = pc
+  while pc < cfg.len and pc < until:
     case cfg[pc].kind
     of def:
-      let potLastReadsCopy = potLastReads
-      for r in potLastReadsCopy:
-        if cfg[pc].n.aliasesCached(cfg[r].n) == yes:
-          # the path leads to a redefinition of 's' --> sink 's'.
-          lastReads.incl r
-          potLastReads.excl r
-        elif cfg[r].n.aliasesCached(cfg[pc].n) != no:
-          # only partially writes to 's' --> can't sink 's', so this def reads 's'
-          # or maybe writes to 's' --> can't sink 's'
-          cfg[r].n.comment = '\n' & $pc
-          potLastReads.excl r
-
-      var alreadySeenThisNode = false
-      for s in alreadySeen:
-        if cfg[pc].n.aliases(s) != no or s.aliases(cfg[pc].n) != no:
-          alreadySeenThisNode = true; break
-      if alreadySeenThisNode: cfg[pc].n.flags.excl nfFirstWrite
-      else: cfg[pc].n.flags.incl nfFirstWrite
-
-      alreadySeen.incl cfg[pc].n
-
+      if instrTargets(cfg[pc].n, location) == Full:
+        # the path leads to a redefinition of 's' --> abandon it.
+        return high(int)
+      elif instrTargets(cfg[pc].n, location) == Partial:
+        # only partially writes to 's' --> can't sink 's', so this def reads 's'
+        otherRead = cfg[pc].n
+        return -1
       inc pc
     of use:
-      let potLastReadsCopy = potLastReads
-      for r in potLastReadsCopy:
-        if cfg[pc].n.aliasesCached(cfg[r].n) != no or cfg[r].n.aliasesCached(cfg[pc].n) != no:
-          cfg[r].n.comment = '\n' & $pc
-          potLastReads.excl r
-
-      potLastReads.incl pc
-
-      alreadySeen.incl cfg[pc].n
-
+      if instrTargets(cfg[pc].n, location) != None:
+        otherRead = cfg[pc].n
+        return -1
       inc pc
     of goto:
       pc += cfg[pc].dest
@@ -128,37 +96,99 @@ proc collectLastReads(cfg: ControlFlowGraph; cache: var AliasCache, alreadySeen:
       # every branch must lead to the last read of the location:
       var variantA = pc + 1
       var variantB = pc + cfg[pc].dest
-      var potLastReadsA, potLastReadsB = potLastReads
-      var lastReadsA, lastReadsB: IntSet
-      var alreadySeenA, alreadySeenB = alreadySeen
-      while variantA != variantB and max(variantA, variantB) < cfg.len and min(variantA, variantB) < until:
+      while variantA != variantB:
+        if min(variantA, variantB) < 0: return -1
+        if max(variantA, variantB) >= cfg.len or min(variantA, variantB) >= until:
+          break
         if variantA < variantB:
-          collectLastReads(cfg, cache, alreadySeenA, lastReadsA, potLastReadsA, variantA, min(variantB, until))
+          variantA = isLastRead(location, cfg, otherRead, variantA, min(variantB, until))
         else:
-          collectLastReads(cfg, cache, alreadySeenB, lastReadsB, potLastReadsB, variantB, min(variantA, until))
-
-      alreadySeen.incl alreadySeenA + alreadySeenB
-
-      lastReads.incl lastReadsA * lastReadsB
-      lastReads.incl (lastReadsA + lastReadsB) - potLastReads
-
-      let oldPotLastReads = potLastReads
-      potLastReads = initIntSet()
-
-      potLastReads.incl (lastReadsA + lastReadsB) - lastReads
-
-      potLastReads.incl potLastReadsA * potLastReadsB
-      potLastReads.incl (potLastReadsA + potLastReadsB) - oldPotLastReads
-
+          variantB = isLastRead(location, cfg, otherRead, variantB, min(variantA, until))
       pc = min(variantA, variantB)
+  return pc
+
+proc isCursor(n: PNode; c: Con): bool =
+  case n.kind
+  of nkSym:
+    sfCursor in n.sym.flags
+  of nkDotExpr:
+    isCursor(n[1], c)
+  of nkCheckedFieldExpr:
+    isCursor(n[0], c)
+  else:
+    false
 
 proc isLastRead(n: PNode; c: var Con): bool =
+  # first we need to search for the instruction that belongs to 'n':
+  var instr = -1
   let m = dfa.skipConvDfa(n)
-  (m.kind == nkSym and sfSingleUsedTemp in m.sym.flags) or nfLastRead in m.flags
+  if m.kind == nkSym and sfSingleUsedTemp in m.sym.flags: return true
+
+  for i in 0..<c.g.len:
+    # This comparison is correct and MUST not be ``instrTargets``:
+    if c.g[i].kind == use and c.g[i].n == m:
+      if instr < 0:
+        instr = i
+        break
+
+  dbg: echo "starting point for ", n, " is ", instr, " ", n.kind
+
+  if instr < 0: return false
+  # we go through all paths beginning from 'instr+1' and need to
+  # ensure that we don't find another 'use X' instruction.
+  if instr+1 >= c.g.len: return true
+
+  c.otherRead = nil
+  result = isLastRead(n, c.g, c.otherRead, instr+1, int.high) >= 0
+  dbg: echo "ugh ", c.otherRead.isNil, " ", result
+
+proc isFirstWrite(location: PNode; cfg: ControlFlowGraph; pc, until: int): int =
+  var pc = pc
+  while pc < until:
+    case cfg[pc].kind
+    of def:
+      if instrTargets(cfg[pc].n, location) != None:
+        # a definition of 's' before ours makes ours not the first write
+        return -1
+      inc pc
+    of use:
+      if instrTargets(cfg[pc].n, location) != None:
+        return -1
+      inc pc
+    of goto:
+      pc += cfg[pc].dest
+    of fork:
+      # every branch must not contain a def/use of our location:
+      var variantA = pc + 1
+      var variantB = pc + cfg[pc].dest
+      while variantA != variantB:
+        if min(variantA, variantB) < 0: return -1
+        if max(variantA, variantB) > until:
+          break
+        if variantA < variantB:
+          variantA = isFirstWrite(location, cfg, variantA, min(variantB, until))
+        else:
+          variantB = isFirstWrite(location, cfg, variantB, min(variantA, until))
+      pc = min(variantA, variantB)
+  return pc
 
 proc isFirstWrite(n: PNode; c: var Con): bool =
+  # first we need to search for the instruction that belongs to 'n':
+  var instr = -1
   let m = dfa.skipConvDfa(n)
-  nfFirstWrite in m.flags
+
+  for i in countdown(c.g.len-1, 0): # We search backwards here to treat loops correctly
+    if c.g[i].kind == def and c.g[i].n == m:
+      if instr < 0:
+        instr = i
+        break
+
+  if instr < 0: return false
+  # we go through all paths going to 'instr' and need to
+  # ensure that we don't find another 'def/use X' instruction.
+  if instr == 0: return true
+
+  result = isFirstWrite(n, c.g, 0, instr) >= 0
 
 proc initialized(code: ControlFlowGraph; pc: int,
                  init, uninit: var IntSet; until: int): int =
@@ -198,23 +228,10 @@ proc initialized(code: ControlFlowGraph; pc: int,
       inc pc
   return pc
 
-proc isCursor(n: PNode; c: Con): bool =
-  case n.kind
-  of nkSym:
-    sfCursor in n.sym.flags
-  of nkDotExpr:
-    isCursor(n[1], c)
-  of nkCheckedFieldExpr:
-    isCursor(n[0], c)
-  else:
-    false
-
 template isUnpackedTuple(n: PNode): bool =
   ## we move out all elements of unpacked tuples,
   ## hence unpacked tuples themselves don't need to be destroyed
   (n.kind == nkSym and n.sym.kind == skTemp and n.sym.typ.kind == tyTuple)
-
-from strutils import parseInt
 
 proc checkForErrorPragma(c: Con; t: PType; ri: PNode; opname: string) =
   var m = "'" & opname & "' is not available for type <" & typeToString(t) & ">"
@@ -222,9 +239,9 @@ proc checkForErrorPragma(c: Con; t: PType; ri: PNode; opname: string) =
     m.add "; requires a copy because it's not the last read of '"
     m.add renderTree(ri)
     m.add '\''
-    if ri.comment.startsWith('\n'):
+    if c.otherRead != nil:
       m.add "; another read is done here: "
-      m.add c.graph.config $ c.g[parseInt(ri.comment[1..^1])].n.info
+      m.add c.graph.config $ c.otherRead.info
     elif ri.kind == nkSym and ri.sym.kind == skParam and not isSinkType(ri.sym.typ):
       m.add "; try to make "
       m.add renderTree(ri)
@@ -338,6 +355,7 @@ proc genCopy(c: var Con; dest, ri: PNode): PNode =
   let t = dest.typ
   if tfHasOwned in t.flags and ri.kind != nkNilLit:
     # try to improve the error message here:
+    if c.otherRead == nil: discard isLastRead(ri, c)
     c.checkForErrorPragma(t, ri, "=copy")
   result = c.genCopyNoCheck(dest, ri)
 
@@ -1078,24 +1096,6 @@ proc injectDestructorCalls*(g: ModuleGraph; idgen: IdGenerator; owner: PSym; n: 
 
   if optCursorInference in g.config.options:
     computeCursors(owner, n, g)
-
-  block:
-    var cache = initTable[(PNode, PNode), AliasKind]()
-    var alreadySeen: HashSet[PNode]
-    var lastReads, potLastReads: IntSet
-    var pc = 0
-    collectLastReads(c.g, cache, alreadySeen, lastReads, potLastReads, pc, c.g.len)
-    lastReads.incl potLastReads
-    var lastReadTable: Table[PNode, seq[int]]
-    for position, node in c.g:
-      if node.kind == use:
-        lastReadTable.mgetOrPut(node.n, @[]).add position
-    for node, positions in lastReadTable:
-      var allPositionsLastRead = true
-      for p in positions:
-        if p notin lastReads: allPositionsLastRead = false; break
-      if allPositionsLastRead:
-        node.flags.incl nfLastRead
 
   var scope: Scope
   let body = p(n, c, scope, normal)
