@@ -1134,7 +1134,7 @@ proc getFootnoteType(label: PRstNode): (FootnoteType, int) =
 
 proc validRefnamePunct(x: string): bool =
   ## https://docutils.sourceforge.io/docs/ref/rst/restructuredtext.html#reference-names
-  x in ["-", "_", ".", ":", "+"]
+  x.len == 1 and x[0] in {'-', '_', '.', ':', '+'}
 
 proc parseFootnoteName(p: var RstParser, reference: bool): PRstNode =
   ## parse footnote/citation label. Precondition: start at `[`.
