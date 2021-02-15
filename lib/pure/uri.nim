@@ -284,7 +284,7 @@ proc removeDotSegments(path: string): string =
           discard collection.pop()
           i.inc 3
           continue
-      elif path[i+1] == '/':
+      elif i + 1 < path.len and path[i+1] == '/':
         i.inc 2
         continue
       currentSegment.add path[i]
