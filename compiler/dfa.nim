@@ -632,10 +632,8 @@ proc aliases*(obj, field: PNode): AliasKind =
     case currFieldPath.kind
     of nkSym:
       if currFieldPath.sym != currObjPath.sym: return no
-    of nkDotExpr:
+    of nkDotExpr, nkCheckedFieldExpr:
       if currFieldPath[1].sym != currObjPath[1].sym: return no
-    of nkCheckedFieldExpr:
-      if currFieldPath[0][1].sym != currObjPath[0][1].sym: return no
     of nkBracketExpr:
       if currFieldPath[1].kind in nkLiterals and currObjPath[1].kind in nkLiterals:
         if currFieldPath[1].intVal != currObjPath[1].intVal:
@@ -643,6 +641,19 @@ proc aliases*(obj, field: PNode): AliasKind =
       else:
         result = maybe
     else: assert false # unreachable
+
+type InstrTargetKind* = enum
+  None, Full, Partial
+
+proc instrTargets*(insloc, loc: PNode): InstrTargetKind =
+  case insloc.aliases(loc)
+  of yes:
+    Full    # x -> x; x -> x.f
+  of maybe:
+    Partial # We treat this like a partial write/read
+  elif loc.aliases(insloc) != no:
+    Partial # x.f -> x
+  else: None
 
 proc isAnalysableFieldAccess*(orig: PNode; owner: PSym): bool =
   var n = orig

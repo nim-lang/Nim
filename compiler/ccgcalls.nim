@@ -298,11 +298,11 @@ proc genArgNoParam(p: BProc, n: PNode, needsTmp = false): Rope =
     initLocExprSingleUse(p, n, a)
     result = rdLoc(withTmpIfNeeded(p, a, needsTmp))
 
-from dfa import aliases, AliasKind
+from dfa import instrTargets, InstrTargetKind
 
 proc potentialAlias(n: PNode, potentialWrites: seq[PNode]): bool =
   for p in potentialWrites:
-    if p.aliases(n) != no or n.aliases(p) != no:
+    if instrTargets(p, n) != None:
       return true
 
 proc skipTrivialIndirections(n: PNode): PNode =
