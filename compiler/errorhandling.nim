@@ -32,25 +32,31 @@ proc errorSubNode*(n: PNode): PNode =
       result = errorSubNode(n[i])
       if result != nil: break
 
+proc newErrorOverride*(wrongNode: PNode; k: ErrorKind; args: varargs[PNode]): PNode =
+  result = newNodeIT(nkError, wrongNode.info, newType(tyError, ItemId(module: -1, item: -1), nil))
+  result.add wrongNode
+  result.add newIntNode(nkIntLit, ord(k))
+  for a in args: result.add a
+
 proc newError*(wrongNode: PNode; k: ErrorKind; args: varargs[PNode]): PNode =
   assert wrongNode.kind != nkError
   let innerError = errorSubNode(wrongNode)
   if innerError != nil:
     return innerError
+  result = newErrorOverride(wrongNode, k, args)
+
+proc newErrorOverride*(wrongNode: PNode; msg: string): PNode =
   result = newNodeIT(nkError, wrongNode.info, newType(tyError, ItemId(module: -1, item: -1), nil))
   result.add wrongNode
-  result.add newIntNode(nkIntLit, ord(k))
-  for a in args: result.add a
+  result.add newIntNode(nkIntLit, ord(CustomError))
+  result.add newStrNode(msg, wrongNode.info)
 
 proc newError*(wrongNode: PNode; msg: string): PNode =
   assert wrongNode.kind != nkError
   let innerError = errorSubNode(wrongNode)
   if innerError != nil:
     return innerError
-  result = newNodeIT(nkError, wrongNode.info, newType(tyError, ItemId(module: -1, item: -1), nil))
-  result.add wrongNode
-  result.add newIntNode(nkIntLit, ord(CustomError))
-  result.add newStrNode(msg, wrongNode.info)
+  result = newErrorOverride(wrongNode, msg)
 
 proc errorToString*(config: ConfigRef; n: PNode): string =
   assert n.kind == nkError

@@ -305,7 +305,7 @@ proc bracketNotFoundError(c: PContext; n: PNode): PNode =
   else:
     result = notFoundError(c, n, errors)
 
-proc getMsgDiagnostic(c: PContext, flags: TExprFlags, n, f: PNode): string =
+proc getMsgDiagnostic(c: PContext; n, f: PNode): string =
   if c.compilesContextId > 0:
     # we avoid running more diagnostic when inside a `compiles(expr)`, to
     # errors while running diagnostic (see test D20180828T234921), and
@@ -318,7 +318,7 @@ proc getMsgDiagnostic(c: PContext, flags: TExprFlags, n, f: PNode): string =
       result &= "\n  found $1" % [getSymRepr(c.config, sym)]
       sym = nextOverloadIter(o, c, f)
 
-  let ident = considerQuotedIdent(c, f, n).s
+  let ident = considerQuotedIdent(c, f, n)
   if {nfDotField, nfExplicitCall} * n.flags == {nfDotField}:
     let sym = n[1].typ.sym
     var typeHint = ""
@@ -331,10 +331,10 @@ proc getMsgDiagnostic(c: PContext, flags: TExprFlags, n, f: PNode): string =
       discard
     else:
       typeHint = " for type " & getProcHeader(c.config, sym)
-    result = errUndeclaredField % ident & typeHint & " " & result
+    result = errUndeclaredField % ident.s & typeHint & " " & result
   else:
-    if result.len == 0: result = errUndeclaredRoutine % ident
-    else: result = errBadRoutine % [ident, result]
+    if result.len == 0: result = errUndeclaredRoutine % ident.s
+    else: result = errBadRoutine % [ident.s, result]
 
 proc resolveOverloads(c: PContext, n, orig: PNode,
                       filter: TSymKinds, flags: TExprFlags,
@@ -378,6 +378,8 @@ proc resolveOverloads(c: PContext, n, orig: PNode,
     if nfDotField in n.flags:
       internalAssert c.config, f.kind == nkIdent and n.len >= 2
 
+      let err = newError(n, getMsgDiagnostic(c, n, f))
+
       # leave the op head symbol empty,
       # we are going to try multiple variants
       n.sons[0..1] = [nil, n[1], f]
@@ -388,6 +390,9 @@ proc resolveOverloads(c: PContext, n, orig: PNode,
         n[0] = op
         orig[0] = op
         pickBest(op)
+
+        if result.state == csEmpty:
+          result.call = err
 
       if nfExplicitCall in n.flags:
         tryOp ".()"
@@ -405,8 +410,8 @@ proc resolveOverloads(c: PContext, n, orig: PNode,
 
     if overloadsState == csEmpty and result.state == csEmpty:
       if efNoUndeclared notin flags: # for tests/pragmas/tcustom_pragma.nim
-        result.call = newError(n, getMsgDiagnostic(c, flags, n, f))
-        #localError(c.config, n.info, getMsgDiagnostic(c, flags, n, f))
+        result.call = newError(n, getMsgDiagnostic(c, n, f))
+        #localError(c.config, n.info, getMsgDiagnostic(c, n, f))
       return
     elif result.state != csMatch:
       if nfExprCall in n.flags:
@@ -585,7 +590,9 @@ proc semOverloadedCall(c: PContext, n, nOrig: PNode,
         #if efNoUndeclared notin flags:
         result = notFoundError(c, n, errors)
   else:
-    if efExplain notin flags:
+    if r.call != nil and r.call.kind == nkError:
+      result = r.call
+    elif efExplain notin flags:
       # repeat the overload resolution,
       # this time enabling all the diagnostic output (this should fail again)
       result = semOverloadedCall(c, n, nOrig, filter, flags + {efExplain})

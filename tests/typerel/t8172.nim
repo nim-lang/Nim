@@ -1,5 +1,5 @@
 discard """
-  errormsg: "cannot convert array[0..0, string] to varargs[string]"
+  errormsg: "type mismatch: got <string, array[0..0, string]>"
   line: 11
 """
 
