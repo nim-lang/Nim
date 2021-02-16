@@ -376,9 +376,12 @@ proc nodeToHighlightedHtml(d: PDoc; n: PNode; result: var Rope; renderFlags: TRe
   var tokenPos = 0
   var procTokenPos = 0
   template escLit(): untyped = rope(esc(d.target, literal))
+  var inPragmaWrap = false
   while true:
-    getNextTok(r, kind, literal)
+    var sym: PSym
+    getNextTok(r, kind, literal, sym)
     inc tokenPos
+    dbg tokenPos, kind, literal, sym
     case kind
     of tkEof:
       break
@@ -423,9 +426,34 @@ proc nodeToHighlightedHtml(d: PDoc; n: PNode; result: var Rope; renderFlags: TRe
               "\\spanIdentifier{$1}", [escLit])
     of tkSpaces, tkInvalid:
       result.add(literal)
-    of tkCurlyDotLe:
+    of tkHideableStart:
+      # dispA(d.conf, result, "<span class=\"FloatNumber\">$1</span>", "\\spanFloatNumber{$1}", [escLit])
+      # dispA(d.conf, result, "<span class=\"FloatNumber\">hideable_start</span>", "\\spanFloatNumber{$1}", [escLit])
+
+      # dbg escLit
       template fun(s) = dispA(d.conf, result, s, "\\spanOther{$1}", [escLit])
       if renderRunnableExamples in renderFlags: fun "$1"
+      else: fun: "<span>" & # This span is required for the JS to work properly
+        """<span class="Other"> </span><span class="Other pragmadots">...</span><span class="Other"> </span>
+</span>
+<span class="pragmawrap">
+<span class="Other">$1</span>
+<span class="pragma">""".replace("\n", "")  # Must remove newlines because wrapped in a <pre>
+
+    of tkHideableEnd:
+      # dispA(d.conf, result, "<span class=\"FloatNumber\">hideable_end</span>", "\\spanFloatNumber{$1}", [escLit])
+      template fun(s) = dispA(d.conf, result, s, "\\spanOther{$1}", [escLit])
+      if renderRunnableExamples in renderFlags: fun "$1"
+      else: fun """
+</span>
+<span class="Other">$1</span>
+</span>""".replace("\n", "")
+
+    of tkCurlyDotLe:
+      dbg escLit
+      template fun(s) = dispA(d.conf, result, s, "\\spanOther{$1}", [escLit])
+      if renderRunnableExamples in renderFlags: fun "$1"
+      elif true: fun "$1"
       else: fun: "<span>" & # This span is required for the JS to work properly
         """<span class="Other">{</span><span class="Other pragmadots">...</span><span class="Other">}</span>
 </span>
@@ -435,6 +463,7 @@ proc nodeToHighlightedHtml(d: PDoc; n: PNode; result: var Rope; renderFlags: TRe
     of tkCurlyDotRi:
       template fun(s) = dispA(d.conf, result, s, "\\spanOther{$1}", [escLit])
       if renderRunnableExamples in renderFlags: fun "$1"
+      elif true: fun "$1"
       else: fun """
 </span>
 <span class="Other">$1</span>
@@ -827,7 +856,8 @@ proc genItem(d: PDoc, n, nameNode: PNode, k: TSymKind, docFlags: DocFlags) =
   initTokRender(r, n, {renderNoBody, renderNoComments, renderDocComments,
     renderNoPragmas, renderNoProcDefs})
   while true:
-    getNextTok(r, kind, literal)
+    var sym: PSym
+    getNextTok(r, kind, literal, sym)
     if kind == tkEof:
       break
     plainName.add(literal)
