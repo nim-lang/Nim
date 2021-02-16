@@ -962,7 +962,7 @@ proc getTempDir*(): string {.rtl, extern: "nos$1",
   ## You can override this implementation
   ## by adding `-d:tempDir=mytempname` to your compiler invocation.
   ## 
-  ## **Note:** this procs won't check whether the temporary path returned exists.
+  ## **Note:** This proc does not check whether the returned path exists.
   ##
   ## See also:
   ## * `getHomeDir proc <#getHomeDir>`_
