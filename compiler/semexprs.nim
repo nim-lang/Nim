@@ -707,6 +707,10 @@ proc analyseIfAddressTaken(c: PContext, n: PNode): PNode =
     if skipTypes(n[0].typ, abstractInst-{tyTypeDesc}).kind notin {tyVar, tyLent}:
       if n[0].kind == nkSym: incl(n[0].sym.flags, sfAddrTaken)
       result = newHiddenAddrTaken(c, n)
+  of nkCheckedFieldExpr:
+    checkMinSonsLen(n, 1, c.config)
+    n[0] = analyseIfAddressTaken(c, n[0])
+    result = n
   else:
     result = newHiddenAddrTaken(c, n)
 
