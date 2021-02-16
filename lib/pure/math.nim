@@ -926,16 +926,18 @@ func euclMod*[T: SomeNumber](x, y: T): T {.since: (1, 5, 1).} =
   if result < 0:
     result += abs(y)
 
-func frexp[T: float32|float64](x: T): tuple[frac: T, exp: int] {.inline.} =
-  ## Splits a number into mantissa and exponent.
-  ##
-  ## `frexp` calculates the mantissa `frac` (a float with an absolute value
-  ## greater than or equal to 0.5 and less than 1) and the integer value
-  ## `exp` such that `x` (the original float value) equals `frac * 2 ^ exp`.
+func frexp*[T: float32|float64](x: T): tuple[frac: T, exp: int] {.inline.} =
+  ## Splits `x` into a normalized fraction `frac` and an integral power of 2 `exp`,
+  ## such that `abs(frac) in 0.5..<1` and `x == frac * 2 ^ exp`, except for special
+  ## cases shown below.
   runnableExamples:
     doAssert frexp(8.0) == (0.5, 4)
     doAssert frexp(-8.0) == (-0.5, 4)
     doAssert frexp(0.0) == (0.0, 0)
+    # special cases:
+    doAssert frexp(-0.0) == (-0.0, 0) # signbit preserved for +-0
+    doAssert frexp(Inf).frac == Inf # +- Inf preserved
+    doAssert frexp(NaN).frac.isNaN
   when not defined(js):
     var exp: cint
     result.frac = c_frexp2(x, exp)
@@ -955,9 +957,6 @@ func frexp[T: float32|float64](x: T): tuple[frac: T, exp: int] {.inline.} =
         result.frac = result.frac / 2
       if result.exp == 1024 and result.frac == 0.0:
         result.frac = 0.99999999999999988898
-
-since (1, 5, 1):
-  export frexp
 
 func frexp*[T: float32|float64](x: T, exponent: var int): T {.inline.} =
   ## Overload of `frexp` that calls `(result, exponent) = frexp(x)`.
