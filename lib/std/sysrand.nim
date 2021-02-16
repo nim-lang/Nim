@@ -284,7 +284,7 @@ proc urandomInternalImpl(dest: var openArray[byte]): int {.inline.} =
 
 proc urandom*(dest: var openArray[byte]): bool =
   ## Fills `dest` with random bytes suitable for cryptographic use.
-  ## If successful, returns `true`.
+  ## If the call succeeds, returns `true`.
   ##
   ## If `dest` is empty, `urandom` immediately returns success,
   ## without calling underlying operating system api.
