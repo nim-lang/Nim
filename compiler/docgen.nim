@@ -434,10 +434,9 @@ proc nodeToHighlightedHtml(d: PDoc; n: PNode; result: var Rope; renderFlags: TRe
       template fun(s) = dispA(d.conf, result, s, "\\spanOther{$1}", [escLit])
       if renderRunnableExamples in renderFlags: fun "$1"
       else: fun: "<span>" & # This span is required for the JS to work properly
-        """<span class="Other"> </span><span class="Other pragmadots">...</span><span class="Other"> </span>
+        """<span class="Other pragmadots">...</span></span>
 </span>
 <span class="pragmawrap">
-<span class="Other">$1</span>
 <span class="pragma">""".replace("\n", "")  # Must remove newlines because wrapped in a <pre>
 
     of tkHideableEnd:
@@ -446,7 +445,6 @@ proc nodeToHighlightedHtml(d: PDoc; n: PNode; result: var Rope; renderFlags: TRe
       if renderRunnableExamples in renderFlags: fun "$1"
       else: fun """
 </span>
-<span class="Other">$1</span>
 </span>""".replace("\n", "")
 
     of tkCurlyDotLe:
