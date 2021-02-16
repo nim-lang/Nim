@@ -284,7 +284,7 @@ proc urandomInternalImpl(dest: var openArray[byte]): int {.inline.} =
 
 proc urandom*(dest: var openArray[byte]): bool =
   ## Fills `dest` with random bytes suitable for cryptographic use.
-  ## If succeed, returns `true`.
+  ## If successful, returns `true`.
   ##
   ## If `dest` is empty, `urandom` immediately returns success,
   ## without calling underlying operating system api.
@@ -305,4 +305,4 @@ proc urandom*(size: Natural): seq[byte] {.inline.} =
   when defined(js): discard urandomInternalImpl(result)
   else:
     if not urandom(result):
-      raiseOsError(osLastError())
+      raiseOSError(osLastError())

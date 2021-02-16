@@ -56,3 +56,10 @@ proc getNode*(a: VmArgs; i: Natural): PNode =
   doAssert i < a.rc-1
   doAssert a.slots[i+a.rb+1].kind == rkNode
   result = a.slots[i+a.rb+1].node
+
+proc getNodeAddr*(a: VmArgs; i: Natural): PNode =
+  doAssert i < a.rc-1
+  doAssert a.slots[i+a.rb+1].kind == rkNodeAddr
+  let nodeAddr = a.slots[i+a.rb+1].nodeAddr
+  doAssert nodeAddr != nil
+  result = nodeAddr[]
