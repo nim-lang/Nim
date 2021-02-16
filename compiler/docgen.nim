@@ -376,12 +376,9 @@ proc nodeToHighlightedHtml(d: PDoc; n: PNode; result: var Rope; renderFlags: TRe
   var tokenPos = 0
   var procTokenPos = 0
   template escLit(): untyped = rope(esc(d.target, literal))
-  var inPragmaWrap = false
   while true:
-    var sym: PSym
-    getNextTok(r, kind, literal, sym)
+    getNextTok(r, kind, literal)
     inc tokenPos
-    dbg tokenPos, kind, literal, sym
     case kind
     of tkEof:
       break
@@ -427,45 +424,22 @@ proc nodeToHighlightedHtml(d: PDoc; n: PNode; result: var Rope; renderFlags: TRe
     of tkSpaces, tkInvalid:
       result.add(literal)
     of tkHideableStart:
-      # dispA(d.conf, result, "<span class=\"FloatNumber\">$1</span>", "\\spanFloatNumber{$1}", [escLit])
-      # dispA(d.conf, result, "<span class=\"FloatNumber\">hideable_start</span>", "\\spanFloatNumber{$1}", [escLit])
-
-      # dbg escLit
       template fun(s) = dispA(d.conf, result, s, "\\spanOther{$1}", [escLit])
       if renderRunnableExamples in renderFlags: fun "$1"
       else: fun: "<span>" & # This span is required for the JS to work properly
-        """<span class="Other pragmadots">...</span></span>
+        """
+<span class="Other pragmadots">...</span></span>
 </span>
 <span class="pragmawrap">
 <span class="pragma">""".replace("\n", "")  # Must remove newlines because wrapped in a <pre>
-
     of tkHideableEnd:
-      # dispA(d.conf, result, "<span class=\"FloatNumber\">hideable_end</span>", "\\spanFloatNumber{$1}", [escLit])
       template fun(s) = dispA(d.conf, result, s, "\\spanOther{$1}", [escLit])
       if renderRunnableExamples in renderFlags: fun "$1"
       else: fun """
 </span>
 </span>""".replace("\n", "")
-
-    of tkCurlyDotLe:
-      dbg escLit
-      template fun(s) = dispA(d.conf, result, s, "\\spanOther{$1}", [escLit])
-      if renderRunnableExamples in renderFlags: fun "$1"
-      elif true: fun "$1"
-      else: fun: "<span>" & # This span is required for the JS to work properly
-        """<span class="Other">{</span><span class="Other pragmadots">...</span><span class="Other">}</span>
-</span>
-<span class="pragmawrap">
-<span class="Other">$1</span>
-<span class="pragma">""".replace("\n", "")  # Must remove newlines because wrapped in a <pre>
-    of tkCurlyDotRi:
-      template fun(s) = dispA(d.conf, result, s, "\\spanOther{$1}", [escLit])
-      if renderRunnableExamples in renderFlags: fun "$1"
-      elif true: fun "$1"
-      else: fun """
-</span>
-<span class="Other">$1</span>
-</span>""".replace("\n", "")
+    of tkCurlyDotLe: dispA(d.conf, result, "$1", "\\spanOther{$1}", [escLit])
+    of tkCurlyDotRi: dispA(d.conf, result, "$1", "\\spanOther{$1}", [escLit])
     of tkParLe, tkParRi, tkBracketLe, tkBracketRi, tkCurlyLe, tkCurlyRi,
        tkBracketDotLe, tkBracketDotRi, tkParDotLe,
        tkParDotRi, tkComma, tkSemiColon, tkColon, tkEquals, tkDot, tkDotDot,
@@ -854,8 +828,7 @@ proc genItem(d: PDoc, n, nameNode: PNode, k: TSymKind, docFlags: DocFlags) =
   initTokRender(r, n, {renderNoBody, renderNoComments, renderDocComments,
     renderNoPragmas, renderNoProcDefs})
   while true:
-    var sym: PSym
-    getNextTok(r, kind, literal, sym)
+    getNextTok(r, kind, literal)
     if kind == tkEof:
       break
     plainName.add(literal)

@@ -588,7 +588,8 @@ proc putWithSpace(g: var TSrcGen, kind: TokType, s: string) =
   put(g, tkSpaces, Space)
 
 proc isHideable(config: ConfigRef, n: PNode): bool =
-  # result = n.kind == nkExprColonExpr and n[0].kind == nkIdent and n[0].ident in [getIdent(config.cache, wRaises), getIdent(config.cache, wTags)]
+  # xxx compare `ident` directly with `getIdent(cache, wRaises)`, but
+  # this requires a `cache`.
   case n.kind
   of nkExprColonExpr: result = n[0].kind == nkIdent and n[0].ident.s in ["raises", "tags", "extern"]
   of nkIdent: result = n.ident.s in ["gcsafe"]
@@ -1000,9 +1001,6 @@ proc gsub(g: var TSrcGen, n: PNode, c: TContext) =
   var
     a: TContext
   if n.comment.len > 0: pushCom(g, n)
-  # echo (n.kind, n.renderTree, c.config$n.info)
-  # echo (n.kind, g.config$n.info)
-  echo (n.kind, n.info.line, n.info.col)
   case n.kind                 # atoms:
   of nkTripleStrLit: put(g, tkTripleStrLit, atom(g, n))
   of nkEmpty: discard
@@ -1254,7 +1252,6 @@ proc gsub(g: var TSrcGen, n: PNode, c: TContext) =
       putWithSpace(g, tkEquals, "=")
       gsub(g, lastSon(n), c)
   of nkExprColonExpr:
-    let inPragma = g.inPragma
     gsub(g, n, 0)
     putWithSpace(g, tkColon, ":")
     gsub(g, n, 1)
@@ -1697,17 +1694,15 @@ proc initTokRender*(r: var TSrcGen, n: PNode, renderFlags: TRenderFlags = {}) =
   initSrcGen(r, renderFlags, newPartialConfigRef())
   gsub(r, n)
 
-proc getNextTok*(r: var TSrcGen, kind: var TokType, literal: var string, sym: var PSym) =
+proc getNextTok*(r: var TSrcGen, kind: var TokType, literal: var string) =
   if r.idx < r.tokens.len:
     kind = r.tokens[r.idx].kind
-    sym = r.tokens[r.idx].sym
     let length = r.tokens[r.idx].length.int
     literal = substr(r.buf, r.pos, r.pos + length - 1)
     inc(r.pos, length)
     inc(r.idx)
   else:
     kind = tkEof
-    sym = nil
 
 proc getTokSym*(r: TSrcGen): PSym =
   if r.idx > 0 and r.idx <= r.tokens.len:
