@@ -333,7 +333,7 @@ proc renderRstToJson*(node: PRstNode): string =
 proc renderRstToStr*(node: PRstNode, indent=0): string =
   ## Writes the parsed RST `node` into a compact string
   ## representation in the format (one line per every sub-node):
-  ## `indent - kind - text - level (if non-zero)`
+  ## `indent - kind - text - level - order - anchor (if non-zero)`
   ## (suitable for debugging of RST parsing).
   if node == nil:
     result.add " ".repeat(indent) & "[nil]\n"

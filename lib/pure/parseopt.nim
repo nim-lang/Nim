@@ -76,7 +76,7 @@
 ## convenience, can be used to iterate through all command line options as well.
 ##
 ## `shortNoVal` and `longNoVal`
-## ================================
+## ============================
 ##
 ## The optional `shortNoVal` and `longNoVal` parameters present in
 ## `initOptParser<#initOptParser,string,set[char],seq[string]>`_ are for
