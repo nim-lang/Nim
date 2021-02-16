@@ -2312,17 +2312,17 @@ iterator walkDirRec*(dir: string,
   ## ---------------------   ---------------------------------------------
   ## yieldFilter             meaning
   ## ---------------------   ---------------------------------------------
-  ## ``pcFile``              yield real files (default)
-  ## ``pcLinkToFile``        yield symbolic links to files
-  ## ``pcDir``               yield real directories
-  ## ``pcLinkToDir``         yield symbolic links to directories
+  ## `pcFile`                yield real files (default)
+  ## `pcLinkToFile`          yield symbolic links to files
+  ## `pcDir`                 yield real directories
+  ## `pcLinkToDir`           yield symbolic links to directories
   ## ---------------------   ---------------------------------------------
   ##
   ## ---------------------   ---------------------------------------------
   ## followFilter            meaning
   ## ---------------------   ---------------------------------------------
-  ## `pcDir`               follow real directories (default)
-  ## `pcLinkToDir`         follow symbolic links to directories
+  ## `pcDir`                 follow real directories (default)
+  ## `pcLinkToDir`           follow symbolic links to directories
   ## ---------------------   ---------------------------------------------
   ##
   ##
