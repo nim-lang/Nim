@@ -12,7 +12,7 @@
 ## working with directories, running shell commands, etc.
 ##
 ## .. code-block::
-##   import os
+##   import std/os
 ##
 ##   let myFile = "/path/to/my/file.nim"
 ##
@@ -44,8 +44,7 @@
 include "system/inclrtl"
 import std/private/since
 
-import
-  strutils, pathnorm
+import std/[strutils, pathnorm]
 
 const weirdTarget = defined(nimscript) or defined(js)
 
@@ -66,9 +65,9 @@ since (1, 1):
 when weirdTarget:
   discard
 elif defined(windows):
-  import winlean, times
+  import std/[winlean, times]
 elif defined(posix):
-  import posix, times
+  import std/[posix, times]
 
   proc toTime(ts: Timespec): times.Time {.inline.} =
     result = initTime(ts.tv_sec.int64, ts.tv_nsec.int)
@@ -930,14 +929,37 @@ proc getConfigDir*(): string {.rtl, extern: "nos$1",
     result = getEnv("XDG_CONFIG_HOME", getEnv("HOME") / ".config")
   result.normalizePathEnd(trailingSep = true)
 
+
+when defined(windows):
+  type DWORD = uint32
+
+  proc getTempPath(
+    nBufferLength: DWORD, lpBuffer: WideCString
+  ): DWORD {.stdcall, dynlib: "kernel32.dll", importc: "GetTempPathW".} =
+    ## Retrieves the path of the directory designated for temporary files.
+
+template getEnvImpl(result: var string, tempDirList: openArray[string]) =
+  for dir in tempDirList:
+    if existsEnv(dir):
+      result = getEnv(dir)
+      break
+
+template getTempDirImpl(result: var string) =
+  when defined(windows):
+    getEnvImpl(result, ["TMP", "TEMP", "USERPROFILE"])
+  else:
+    getEnvImpl(result, ["TMPDIR", "TEMP", "TMP", "TEMPDIR"])
+
 proc getTempDir*(): string {.rtl, extern: "nos$1",
   tags: [ReadEnvEffect, ReadIOEffect].} =
   ## Returns the temporary directory of the current user for applications to
   ## save temporary files in.
+  ## 
+  ## On Windows, it calls [GetTempPath](https://docs.microsoft.com/en-us/windows/win32/api/fileapi/nf-fileapi-gettemppathw)
+  ## On Posix based platforms, it will check `TMPDIR`, `TEMP`, `TMP` and `TEMPDIR` environment variables.
+  ## On all platforms, `/tmp` will be returned if the procs fails.
   ##
-  ## **Please do not use this**: On Android, it currently
-  ## returns `getHomeDir()`, and on other Unix based systems it can cause
-  ## security problems too. That said, you can override this implementation
+  ## You can override this implementation
   ## by adding `-d:tempDir=mytempname` to your compiler invocation.
   ##
   ## See also:
@@ -947,14 +969,25 @@ proc getTempDir*(): string {.rtl, extern: "nos$1",
   ## * `getCurrentDir proc <#getCurrentDir>`_
   ## * `setCurrentDir proc <#setCurrentDir,string>`_
   const tempDirDefault = "/tmp"
-  result = tempDirDefault
   when defined(tempDir):
     const tempDir {.strdefine.}: string = tempDirDefault
     result = tempDir
-  elif defined(windows): result = getEnv("TEMP")
-  elif defined(android): result = getHomeDir()
   else:
-    if existsEnv("TMPDIR"): result = getEnv("TMPDIR")
+    when nimvm:
+      getTempDirImpl(result)
+    else:
+      when defined(windows):
+        let size = getTempPath(0, nil)
+        # If the function fails, the return value is zero.
+        if size > 0:
+          let buffer = newWideCString(size.int)
+          if getTempPath(size, buffer) > 0:
+            result = $buffer
+      elif defined(android): result = "/data/local/tmp"
+      else:
+        getTempDirImpl(result)
+    if result.len == 0:
+      result = tempDirDefault
   normalizePathEnd(result, trailingSep=true)
 
 proc expandTilde*(path: string): string {.
@@ -1401,7 +1434,7 @@ proc absolutePathInternal(path: string): string =
 proc normalizeExe*(file: var string) {.since: (1, 3, 5).} =
   ## on posix, prepends `./` if `file` doesn't contain `/` and is not `"", ".", ".."`.
   runnableExamples:
-    import sugar
+    import std/sugar
     when defined(posix):
       doAssert "foo".dup(normalizeExe) == "./foo"
       doAssert "foo/../bar".dup(normalizeExe) == "foo/../bar"
