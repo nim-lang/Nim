@@ -117,8 +117,6 @@ type
   PPGVerbosity* = ptr PGVerbosity
   PGVerbosity* = enum
     PQERRORS_TERSE, PQERRORS_DEFAULT, PQERRORS_VERBOSE, PQERRORS_SQLSTATE
-  PGContextVisibility* = enum
-    PQSHOW_CONTEXT_NEVER, PQSHOW_CONTEXT_ERRORS, PQSHOW_CONTEXT_ALWAYS
   PPGNotify* = ptr pgNotify
   pgNotify*{.pure, final.} = object
     relname*: cstring
