@@ -3,8 +3,12 @@ discard """
 doing shady stuff...
 3
 6
-(@[1], @[2])'''
-  cmd: '''nim c --gc:arc --expandArc:newTarget --expandArc:delete --expandArc:p1 --expandArc:tt --hint:Performance:off $file'''
+(@[1], @[2])
+192.168.0.1
+192.168.0.1
+192.168.0.1
+192.168.0.1'''
+  cmd: '''nim c --gc:arc --expandArc:newTarget --expandArc:delete --expandArc:p1 --expandArc:tt --hint:Performance:off --assertions:off --expandArc:extractConfig $file'''
   nimout: '''--expandArc: newTarget
 
 var
@@ -78,6 +82,33 @@ try:
 finally:
   `=destroy`(:tmpD_2)
   `=destroy_1`(a)
+-- end of expandArc ------------------------
+--expandArc: extractConfig
+
+var lan_ip
+try:
+  lan_ip = ""
+  block :tmp:
+    var line
+    var i = 0
+    let L = len(txt)
+    block :tmp_1:
+      while i < L:
+        var splitted
+        try:
+          line = txt[i]
+          splitted = split(line, " ", -1)
+          if splitted[0] == "opt":
+            `=copy`(lan_ip, splitted[1])
+          echo [lan_ip]
+          echo [splitted[1]]
+          inc(i, 1)
+          const
+            expr`gensym10 = "len(a) == L"
+        finally:
+          `=destroy`(splitted)
+finally:
+  `=destroy_1`(lan_ip)
 -- end of expandArc ------------------------'''
 """
 
@@ -194,3 +225,23 @@ proc plus(input: string) =
   (rvalue, rnext) = rresult
 
 plus("123;")
+
+import strutils
+
+let txt = @["opt 192.168.0.1", "static_lease 192.168.0.1"]
+
+# bug #17033
+
+proc extractConfig() =
+  var lan_ip = ""
+
+  for line in txt:
+    let splitted = line.split(" ")
+    if splitted[0] == "opt":
+      lan_ip = splitted[1] # "borrow" is conditional and inside a loop.
+      # Not good enough...
+      # we need a flag that live-ranges are disjoint
+    echo lan_ip
+    echo splitted[1] # Without this line everything works
+
+extractConfig()
