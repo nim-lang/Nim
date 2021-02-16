@@ -146,7 +146,7 @@ Advanced options:
                             enable experimental language feature
   --legacy:$2
                             enable obsolete/legacy language feature
-  --useVersion:1.0          emulate Nim version X of the Nim compiler
+  --useVersion:1.0|1.2      emulate Nim version X of the Nim compiler, for testing
   --profiler:on|off         enable profiling; requires `import nimprof`, and
                             works better with `--stackTrace:on`
                             see also https://nim-lang.github.io/Nim/estp.html
