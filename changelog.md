@@ -155,6 +155,15 @@ provided by the operating system.
   `ValueError` when the real command line is not available. `parseopt` was
   previously excluded from `prelude` for JS, as it could not be imported.
 
+- There are now backend-specific `JsString` and `CString` aliases for
+  `cstring`. The purpose is to make library definitions clearer, as `cstring`
+  can behave differently across backends.
+  
+  Currently the only way the types are used differently is that `JsString` has
+  an `add(var JsString, JsString)` overload. This overload was originally added
+  in version 0.8.14, but was never documented due to the `when` check
+  defining it not accounting for documentation.
+
 ## Language changes
 
 - `nimscript` now handles `except Exception as e`.

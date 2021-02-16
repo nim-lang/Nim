@@ -2030,6 +2030,10 @@ type
       frameMsgLen*: int   ## end position in frameMsgBuf for this frame.
 
 when defined(js) or defined(nimdoc):
+  type JsString* = cstring
+    ## Alias for `cstring` on JS backend. Corresponds to native JS strings.
+    ## Use if you specifically want to support JS `cstring`s.
+
   proc add*(x: var string, y: cstring) {.asmNoStackFrame.} =
     ## Appends `y` to `x` in place.
     runnableExamples:
@@ -2045,25 +2049,32 @@ when defined(js) or defined(nimdoc):
         `x`[off+i] = `y`.charCodeAt(i);
       }
     """
-  proc add*(x: var cstring, y: cstring) {.magic: "AppendStrStr".} =
+
+  proc add*(x: var JsString, y: JsString) {.magic: "AppendStrStr".} =
     ## Appends `y` to `x` in place.
-    ## Only implemented for JS backend.
+    ## Only implemented for JS `cstring`.
     runnableExamples:
       when defined(js):
-        var tmp: cstring = ""
-        tmp.add(cstring("ab"))
-        tmp.add(cstring("cd"))
-        doAssert tmp == cstring("abcd")
+        var tmp: JsString = ""
+        tmp.add(JsString("ab"))
+        tmp.add(JsString("cd"))
+        doAssert tmp == JsString("abcd")
 
-elif hasAlloc:
-  {.push stackTrace: off, profiler: off.}
-  proc add*(x: var string, y: cstring) =
-    var i = 0
-    if y != nil:
-      while y[i] != '\0':
-        add(x, y[i])
-        inc(i)
-  {.pop.}
+when hasAlloc or defined(nimdoc):
+  type CString* = cstring
+    ## Alias for `cstring` on C-like backends.
+    ## Corresponds to a zero-terminated ``char*``. 
+    ## Use if you specifically want to support `cstring`s for C-like backends.
+
+  when not defined(nimdoc): # duplicate procs
+    {.push stackTrace: off, profiler: off.}
+    proc add*(x: var string, y: cstring) =
+      var i = 0
+      if y != nil:
+        while y[i] != '\0':
+          add(x, y[i])
+          inc(i)
+    {.pop.}
 
 when defined(nimvarargstyped):
   proc echo*(x: varargs[typed, `$`]) {.magic: "Echo", tags: [WriteIOEffect],

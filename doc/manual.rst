@@ -1274,16 +1274,17 @@ cstring type
 ------------
 
 The ``cstring`` type meaning `compatible string` is the native representation
-of a string for the compilation backend. For the C backend the ``cstring`` type
-represents a pointer to a zero-terminated char array
-compatible with the type ``char*`` in Ansi C. Its primary purpose lies in easy
-interfacing with C. The index operation ``s[i]`` means the i-th *char* of
-``s``; however no bounds checking for ``cstring`` is performed making the
-index operation unsafe.
+of a string for the compilation backend. For the C, C++ and Objective-C
+backends the ``cstring`` type represents a pointer to a zero-terminated char
+array compatible with the type ``char*`` in Ansi C. For the JavaScript backend
+the ``cstring`` type represents the native JavaScript primitive string type.
+Its primary purpose lies in easy interfacing with backends. The index operation
+``s[i]`` means the i-th *char* of ``s``; however no bounds checking for
+``cstring`` is performed making the index operation unsafe.
 
-A Nim ``string`` is implicitly convertible
-to ``cstring`` for convenience. If a Nim string is passed to a C-style
-variadic proc, it is implicitly converted to ``cstring`` too:
+A Nim ``string`` is implicitly convertible to ``cstring`` for convenience.
+If a Nim string is passed to a C-style variadic proc, it is implicitly
+converted to ``cstring`` too:
 
 .. code-block:: nim
   proc printf(formatstr: cstring) {.importc: "printf", varargs,
