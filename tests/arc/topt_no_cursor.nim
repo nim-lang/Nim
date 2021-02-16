@@ -104,7 +104,7 @@ try:
           echo [splitted[1]]
           inc(i, 1)
           const
-            expr`gensym10 = "len(a) == L"
+            expr`gensym13 = "len(a) == L"
         finally:
           `=destroy`(splitted)
 finally:
@@ -226,7 +226,40 @@ proc plus(input: string) =
 
 plus("123;")
 
-import strutils
+func substrEq(s: string, pos: int, substr: string): bool =
+  var i = 0
+  var length = substr.len
+  while i < length and pos+i < s.len and s[pos+i] == substr[i]:
+    inc i
+  return i == length
+
+template stringHasSep(s: string, index: int, sep: string): bool =
+  s.substrEq(index, sep)
+
+template splitCommon(s, sep, maxsplit, sepLen) =
+  var last = 0
+  var splits = maxsplit
+
+  while last <= len(s):
+    var first = last
+    while last < len(s) and not stringHasSep(s, last, sep):
+      inc(last)
+    if splits == 0: last = len(s)
+    yield substr(s, first, last-1)
+    if splits == 0: break
+    dec(splits)
+    inc(last, sepLen)
+
+iterator split(s: string, sep: string, maxsplit = -1): string =
+  splitCommon(s, sep, maxsplit, sep.len)
+
+template accResult(iter: untyped) =
+  result = @[]
+  for x in iter: add(result, x)
+
+func split*(s: string, sep: string, maxsplit = -1): seq[string] =
+  accResult(split(s, sep, maxsplit))
+
 
 let txt = @["opt 192.168.0.1", "static_lease 192.168.0.1"]
 
