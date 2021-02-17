@@ -38,16 +38,16 @@ template toSet*(iter: untyped): untyped =
 
 macro enmRange(enm: typed): untyped = result = newNimNode(nnkCurly).add(enm.getType[1][1..^1])
 
-template fullSet*(T: typedesc): untyped =
+proc fullSet*(T: typedesc): auto {.inline.} =
   ## Returns a full set of all valid elements.
   runnableExamples:
     assert {true, false} == fullSet(bool)
-  when T is enum:
-    enmRange(T)
-  else:
+  when T is Ordinal:
     {T.low..T.high}
+  else: # Hole filled enum
+    enmRange(T)
 
-proc `not`*[T](s: set[T]): set[T] = 
+proc `not`*[T](s: set[T]): set[T] =
   ## Returns the complement of the set.
   ## Can also be thought of as inverting the set.
   runnableExamples:
