@@ -68,7 +68,6 @@ type                          # please make sure we have under 32 options
     optThreads,               # support for multi-threading
     optStdout,                # output to stdout
     optThreadAnalysis,        # thread analysis pass
-    optTaintMode,             # taint mode turned on
     optTlsEmulation,          # thread var emulation turned on
     optGenIndex               # generate index file for documentation;
     optEmbedOrigSrc           # embed the original source in the generated code
@@ -124,7 +123,7 @@ type
     cmdTcc # run the project via TCC backend
     cmdCheck # semantic checking for whole project
     cmdParse # parse a single file (for debugging)
-    cmdScan # scan a single file (for debugging)
+    cmdRod # .rod to some text representation (for debugging)
     cmdIdeTools # ide tools (e.g. nimsuggest)
     cmdNimscript # evaluate nimscript
     cmdDoc0
@@ -190,7 +189,7 @@ type
       ## are not anymore.
 
   SymbolFilesOption* = enum
-    disabledSf, writeOnlySf, readOnlySf, v2Sf
+    disabledSf, writeOnlySf, readOnlySf, v2Sf, stressTest
 
   TSystemCC* = enum
     ccNone, ccGcc, ccNintendoSwitch, ccLLVM_Gcc, ccCLang, ccBcc, ccVcc,
@@ -381,11 +380,12 @@ proc hasWarn*(conf: ConfigRef, note: TNoteKind): bool =
 
 proc hcrOn*(conf: ConfigRef): bool = return optHotCodeReloading in conf.globalOptions
 
-template depConfigFields*(fn) {.dirty.} =
-  fn(target)
-  fn(options)
-  fn(globalOptions)
-  fn(selectedGC)
+when false:
+  template depConfigFields*(fn) {.dirty.} = # deadcode
+    fn(target)
+    fn(options)
+    fn(globalOptions)
+    fn(selectedGC)
 
 const oldExperimentalFeatures* = {implicitDeref, dotOperators, callOperator, parallel}
 
@@ -428,7 +428,8 @@ template newPackageCache*(): untyped =
 proc newProfileData(): ProfileData =
   ProfileData(data: newTable[TLineInfo, ProfileInfo]())
 
-const foreignPackageNotesDefault* = {hintProcessing, warnUnknownMagic, hintQuitCalled, hintExecuting}
+const foreignPackageNotesDefault* = {
+  hintProcessing, warnUnknownMagic, hintQuitCalled, hintExecuting, hintUser, warnUser}
 
 proc newConfigRef*(): ConfigRef =
   result = ConfigRef(
@@ -722,9 +723,9 @@ proc completeGeneratedFilePath*(conf: ConfigRef; f: AbsoluteFile,
   result = subdir / RelativeFile f.string.splitPath.tail
   #echo "completeGeneratedFilePath(", f, ") = ", result
 
-proc toRodFile*(conf: ConfigRef; f: AbsoluteFile): AbsoluteFile =
+proc toRodFile*(conf: ConfigRef; f: AbsoluteFile; ext = RodExt): AbsoluteFile =
   result = changeFileExt(completeGeneratedFilePath(conf,
-    withPackageName(conf, f)), RodExt)
+    withPackageName(conf, f)), ext)
 
 proc rawFindFile(conf: ConfigRef; f: RelativeFile; suppressStdlib: bool): AbsoluteFile =
   for it in conf.searchPaths:

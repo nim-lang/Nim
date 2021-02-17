@@ -41,8 +41,8 @@ Advanced options:
   --warning[X]:on|off       turn specific warning X on|off
   --hints:on|off|list       turn all hints on|off or list all available
   --hint[X]:on|off          turn specific hint X on|off
-  --warningAsError[X]:on|off
-                            turn specific warning X into an error on|off
+  --warningAsError[X]:on|off turn specific warning X into an error on|off
+  --hintAsError[X]:on|off    turn specific hint X into an error on|off
   --styleCheck:off|hint|error
                             produce hints or errors for Nim identifiers that
                             do not adhere to Nim's official style guide
@@ -93,7 +93,6 @@ Advanced options:
                             in the generated output
   --threadanalysis:on|off   turn thread analysis on|off
   --tlsEmulation:on|off     turn thread local storage emulation on|off
-  --taintMode:on|off        turn taint mode on|off
   --implicitStatic:on|off   turn implicit compile time evaluation on|off
   --trmacros:on|off         turn term rewriting macros on|off
   --multimethods:on|off     turn multi-methods on|off
@@ -147,7 +146,7 @@ Advanced options:
                             enable experimental language feature
   --legacy:$2
                             enable obsolete/legacy language feature
-  --useVersion:1.0          emulate Nim version X of the Nim compiler
+  --useVersion:1.0|1.2      emulate Nim version X of the Nim compiler, for testing
   --profiler:on|off         enable profiling; requires `import nimprof`, and
                             works better with `--stackTrace:on`
                             see also https://nim-lang.github.io/Nim/estp.html

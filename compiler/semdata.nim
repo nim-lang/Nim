@@ -9,6 +9,8 @@
 
 ## This module contains the data structures for the semantic checking phase.
 
+import std / tables
+
 import
   intsets, options, ast, astalgo, msgs, idents, renderer,
   magicsys, vmdef, modulegraphs, lineinfos, sets, pathutils
@@ -93,6 +95,9 @@ type
     imports*: seq[ImportedModule] # scope for all imported symbols
     topLevelScope*: PScope     # scope for all top-level symbols
     p*: PProcCon               # procedure context
+    intTypeCache*: array[-5..32, PType] # cache some common integer types
+                                        # to avoid type allocations
+    nilTypeCache*: PType
     matchedConcept*: ptr TMatchedConcept # the current concept being matched
     friendModules*: seq[PSym]  # friend modules; may access private data;
                                # this is used so that generic instantiations
@@ -149,16 +154,55 @@ type
     isAmbiguous*: bool # little hack
     features*: set[Feature]
     inTypeContext*: int
-    typesWithOps*: seq[(PType, PType)] #\
-      # We need to instantiate the type bound ops lazily after
-      # the generic type has been constructed completely. See
-      # tests/destructor/topttree.nim for an example that
-      # would otherwise fail.
     unusedImports*: seq[(PSym, TLineInfo)]
     exportIndirections*: HashSet[(int, int)]
     lastTLineInfo*: TLineInfo
 
 template config*(c: PContext): ConfigRef = c.graph.config
+
+proc getIntLitType*(c: PContext; literal: PNode): PType =
+  # we cache some common integer literal types for performance:
+  let value = literal.intVal
+  if value >= low(c.intTypeCache) and value <= high(c.intTypeCache):
+    result = c.intTypeCache[value.int]
+    if result == nil:
+      let ti = getSysType(c.graph, literal.info, tyInt)
+      result = copyType(ti, nextTypeId(c.idgen), ti.owner)
+      result.n = literal
+      c.intTypeCache[value.int] = result
+  else:
+    let ti = getSysType(c.graph, literal.info, tyInt)
+    result = copyType(ti, nextTypeId(c.idgen), ti.owner)
+    result.n = literal
+
+proc setIntLitType*(c: PContext; result: PNode) =
+  let i = result.intVal
+  case c.config.target.intSize
+  of 8: result.typ = getIntLitType(c, result)
+  of 4:
+    if i >= low(int32) and i <= high(int32):
+      result.typ = getIntLitType(c, result)
+    else:
+      result.typ = getSysType(c.graph, result.info, tyInt64)
+  of 2:
+    if i >= low(int16) and i <= high(int16):
+      result.typ = getIntLitType(c, result)
+    elif i >= low(int32) and i <= high(int32):
+      result.typ = getSysType(c.graph, result.info, tyInt32)
+    else:
+      result.typ = getSysType(c.graph, result.info, tyInt64)
+  of 1:
+    # 8 bit CPUs are insane ...
+    if i >= low(int8) and i <= high(int8):
+      result.typ = getIntLitType(c, result)
+    elif i >= low(int16) and i <= high(int16):
+      result.typ = getSysType(c.graph, result.info, tyInt16)
+    elif i >= low(int32) and i <= high(int32):
+      result.typ = getSysType(c.graph, result.info, tyInt32)
+    else:
+      result.typ = getSysType(c.graph, result.info, tyInt64)
+  else:
+    internalError(c.config, result.info, "invalid int size")
 
 proc makeInstPair*(s: PSym, inst: PInstantiation): TInstantiationPair =
   result.genericSym = s
@@ -250,7 +294,6 @@ proc popOptionEntry*(c: PContext) =
 
 proc newContext*(graph: ModuleGraph; module: PSym): PContext =
   new(result)
-  result.enforceVoidContext = PType(kind: tyTyped)
   result.optionStack = @[newOptionEntry(graph.config)]
   result.libs = @[]
   result.module = module
@@ -265,50 +308,63 @@ proc newContext*(graph: ModuleGraph; module: PSym): PContext =
   result.cache = graph.cache
   result.graph = graph
   initStrTable(result.signatures)
-  result.typesWithOps = @[]
   result.features = graph.config.features
   if graph.config.symbolFiles != disabledSf:
-    initEncoder result.encoder, module, graph.config, graph.startupPackedConfig
+    let id = module.position
+    assert graph.packed[id].status in {undefined, outdated}
+    graph.packed[id].status = storing
+    graph.packed[id].module = module
+    initEncoder result.encoder, graph.packed[id].fromDisk, module, graph.config, graph.startupPackedConfig
+
+template packedRepr*(c): untyped = c.graph.packed[c.module.position].fromDisk
 
 proc addIncludeFileDep*(c: PContext; f: FileIndex) =
   if c.config.symbolFiles != disabledSf:
-    addIncludeFileDep(c.encoder, f)
+    addIncludeFileDep(c.encoder, c.packedRepr, f)
 
 proc addImportFileDep*(c: PContext; f: FileIndex) =
   if c.config.symbolFiles != disabledSf:
-    addImportFileDep(c.encoder, f)
+    addImportFileDep(c.encoder, c.packedRepr, f)
 
-proc inclSym(sq: var seq[PSym], s: PSym) =
+proc addPragmaComputation*(c: PContext; n: PNode) =
+  if c.config.symbolFiles != disabledSf:
+    addPragmaComputation(c.encoder, c.packedRepr, n)
+
+proc inclSym(sq: var seq[PSym], s: PSym): bool =
   for i in 0..<sq.len:
-    if sq[i].id == s.id: return
+    if sq[i].id == s.id: return false
   sq.add s
+  result = true
 
-proc addConverter*(c: PContext, conv: PSym) =
-  inclSym(c.converters, conv)
-  inclSym(c.graph.ifaces[c.module.position].converters, conv)
+proc addConverter*(c: PContext, conv: LazySym) =
+  assert conv.sym != nil
+  if inclSym(c.converters, conv.sym):
+    add(c.graph.ifaces[c.module.position].converters, conv)
   if c.config.symbolFiles != disabledSf:
-    addConverter(c.encoder, conv)
+    addConverter(c.encoder, c.packedRepr, conv.sym)
 
-proc addPureEnum*(c: PContext, e: PSym) =
-  inclSym(c.graph.ifaces[c.module.position].pureEnums, e)
+proc addPureEnum*(c: PContext, e: LazySym) =
+  assert e.sym != nil
+  add(c.graph.ifaces[c.module.position].pureEnums, e)
   if c.config.symbolFiles != disabledSf:
-    addPureEnum(c.encoder, e)
+    addPureEnum(c.encoder, c.packedRepr, e.sym)
 
-proc addPattern*(c: PContext, p: PSym) =
-  inclSym(c.patterns, p)
-  inclSym(c.graph.ifaces[c.module.position].patterns, p)
+proc addPattern*(c: PContext, p: LazySym) =
+  assert p.sym != nil
+  if inclSym(c.patterns, p.sym):
+    add(c.graph.ifaces[c.module.position].patterns, p)
   if c.config.symbolFiles != disabledSf:
-    addTrmacro(c.encoder, p)
+    addTrmacro(c.encoder, c.packedRepr, p.sym)
 
 proc exportSym*(c: PContext; s: PSym) =
   strTableAdd(c.module.semtab(c.graph), s)
   if c.config.symbolFiles != disabledSf:
-    addExported(c.encoder, s)
+    addExported(c.encoder, c.packedRepr, s)
 
 proc reexportSym*(c: PContext; s: PSym) =
   strTableAdd(c.module.semtab(c.graph), s)
   if c.config.symbolFiles != disabledSf:
-    addReexport(c.encoder, s)
+    addReexport(c.encoder, c.packedRepr, s)
 
 proc newLib*(kind: TLibKind): PLib =
   new(result)
@@ -369,7 +425,7 @@ proc makeTypeSymNode*(c: PContext, typ: PType, info: TLineInfo): PNode =
   typedesc.addSonSkipIntLit(typ, c.idgen)
   let sym = newSym(skType, c.cache.idAnon, nextSymId(c.idgen), getCurrOwner(c), info,
                    c.config.options).linkTo(typedesc)
-  return newSymNode(sym, info)
+  result = newSymNode(sym, info)
 
 proc makeTypeFromExpr*(c: PContext, n: PNode): PType =
   result = newTypeS(tyFromExpr, c)
@@ -499,8 +555,34 @@ template addExport*(c: PContext; s: PSym) =
 
 proc storeRodNode*(c: PContext, n: PNode) =
   if c.config.symbolFiles != disabledSf:
-    toPackedNodeTopLevel(n, c.encoder)
+    toPackedNodeTopLevel(n, c.encoder, c.packedRepr)
+
+proc addToGenericProcCache*(c: PContext; s: PSym; inst: PInstantiation) =
+  c.graph.procInstCache.mgetOrPut(s.itemId, @[]).add LazyInstantiation(module: c.module.position, inst: inst)
+  if c.config.symbolFiles != disabledSf:
+    storeInstantiation(c.encoder, c.packedRepr, s, inst)
+
+proc addToGenericCache*(c: PContext; s: PSym; inst: PType) =
+  c.graph.typeInstCache.mgetOrPut(s.itemId, @[]).add LazyType(typ: inst)
+  if c.config.symbolFiles != disabledSf:
+    storeTypeInst(c.encoder, c.packedRepr, s, inst)
 
 proc saveRodFile*(c: PContext) =
   if c.config.symbolFiles != disabledSf:
-    saveRodFile(toRodFile(c.config, AbsoluteFile toFullPath(c.config, FileIndex c.module.position)), c.encoder)
+    for (m, n) in PCtx(c.graph.vm).vmstateDiff:
+      if m == c.module:
+        addPragmaComputation(c, n)
+    if sfSystemModule in c.module.flags:
+      c.graph.systemModuleComplete = true
+    c.idgen.sealed = true # no further additions are allowed
+    if c.config.symbolFiles != stressTest:
+      # For stress testing we seek to reload the symbols from memory. This
+      # way much of the logic is tested but the test is reproducible as it does
+      # not depend on the hard disk contents!
+      saveRodFile(toRodFile(c.config, AbsoluteFile toFullPath(c.config, FileIndex c.module.position)),
+                  c.encoder, c.packedRepr)
+    else:
+      # debug code, but maybe a good idea for production? Could reduce the compiler's
+      # memory consumption considerably at the cost of more loads from disk.
+      simulateCachedModule(c.graph, c.module, c.packedRepr)
+      c.graph.packed[c.module.position].status = loaded

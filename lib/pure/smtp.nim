@@ -86,7 +86,7 @@ proc debugSend*(smtp: Smtp | AsyncSmtp, cmd: string) {.multisync.} =
     echo("C:" & cmd)
   await smtp.sock.send(cmd)
 
-proc debugRecv*(smtp: Smtp | AsyncSmtp): Future[TaintedString] {.multisync.} =
+proc debugRecv*(smtp: Smtp | AsyncSmtp): Future[string] {.multisync.} =
   ## Receives a line of data from the socket connected to the
   ## SMTP server.
   ##
@@ -103,7 +103,7 @@ proc debugRecv*(smtp: Smtp | AsyncSmtp): Future[TaintedString] {.multisync.} =
 
   result = await smtp.sock.recvLine()
   if smtp.debug:
-    echo("S:" & result.string)
+    echo("S:" & result)
 
 proc quitExcpt(smtp: Smtp, msg: string) =
   smtp.debugSend("QUIT")

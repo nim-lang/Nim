@@ -14,6 +14,8 @@ import
   idents, lexer, passes, syntaxes, llstream, modulegraphs,
   lineinfos, pathutils, tables
 
+import ic / replayer
+
 proc resetSystemArtifacts*(g: ModuleGraph) =
   magicsys.resetSysTypes(g)
 
@@ -37,30 +39,22 @@ proc getPackage(graph: ModuleGraph; fileIdx: FileIndex): PSym =
     #initStrTable(packSym.tab)
     graph.packageSyms.strTableAdd(result)
   else:
-    # we now produce a fake Nimble package instead
-    # to resolve the conflicts:
-    let pck3 = fakePackageName(graph.config, filename)
-    # this makes the new `packSym`'s owner be the original `packSym`
-    result = newSym(skPackage, getIdent(graph.cache, pck3), packageId(), result, info)
-    #initStrTable(packSym.tab)
-    graph.packageSyms.strTableAdd(result)
-
-    when false:
-      let existing = strTableGet(packSym.tab, name)
-      if existing != nil and existing.info.fileIndex != info.fileIndex:
-        when false:
-          # we used to produce an error:
-          localError(graph.config, info,
-            "module names need to be unique per Nimble package; module clashes with " &
-              toFullPath(graph.config, existing.info.fileIndex))
-        else:
-          # but starting with version 0.20 we now produce a fake Nimble package instead
-          # to resolve the conflicts:
-          let pck3 = fakePackageName(graph.config, filename)
-          # this makes the new `packSym`'s owner be the original `packSym`
-          packSym = newSym(skPackage, getIdent(graph.cache, pck3), packageId(), packSym, info)
-          #initStrTable(packSym.tab)
-          graph.packageSyms.strTableAdd(packSym)
+    let modules = graph.modulesPerPackage.getOrDefault(result.itemId)
+    let existing = if modules.data.len > 0: strTableGet(modules, name) else: nil
+    if existing != nil and existing.info.fileIndex != info.fileIndex:
+      when false:
+        # we used to produce an error:
+        localError(graph.config, info,
+          "module names need to be unique per Nimble package; module clashes with " &
+            toFullPath(graph.config, existing.info.fileIndex))
+      else:
+        # but starting with version 0.20 we now produce a fake Nimble package instead
+        # to resolve the conflicts:
+        let pck3 = fakePackageName(graph.config, filename)
+        # this makes the new `result`'s owner be the original `result`
+        result = newSym(skPackage, getIdent(graph.cache, pck3), packageId(), result, info)
+        #initStrTable(packSym.tab)
+        graph.packageSyms.strTableAdd(result)
 
 proc partialInitModule(result: PSym; graph: ModuleGraph; fileIdx: FileIndex; filename: AbsoluteFile) =
   let packSym = getPackage(graph, fileIdx)
@@ -73,7 +67,10 @@ proc partialInitModule(result: PSym; graph: ModuleGraph; fileIdx: FileIndex; fil
     # This is now implemented via
     #   c.moduleScope.addSym(module) # a module knows itself
     # in sem.nim, around line 527
-  #strTableAdd(packSym.tab, result)
+
+  if graph.modulesPerPackage.getOrDefault(packSym.itemId).data.len == 0:
+    graph.modulesPerPackage[packSym.itemId] = newStrTable()
+  graph.modulesPerPackage[packSym.itemId].strTableAdd(result)
 
 proc newModule(graph: ModuleGraph; fileIdx: FileIndex): PSym =
   let filename = AbsoluteFile toFullPath(graph.config, fileIdx)
@@ -99,7 +96,8 @@ proc compileModule*(graph: ModuleGraph; fileIdx: FileIndex; flags: TSymFlags): P
       elif graph.config.projectIsCmd: s = llStreamOpen(graph.config.cmdInput)
     discard processModule(graph, result, idGeneratorFromModule(result), s)
   if result == nil:
-    result = moduleFromRodFile(graph, fileIdx)
+    var cachedModules: seq[FileIndex]
+    result = moduleFromRodFile(graph, fileIdx, cachedModules)
     let filename = AbsoluteFile toFullPath(graph.config, fileIdx)
     if result == nil:
       result = newModule(graph, fileIdx)
@@ -107,8 +105,12 @@ proc compileModule*(graph: ModuleGraph; fileIdx: FileIndex; flags: TSymFlags): P
       registerModule(graph, result)
       processModuleAux()
     else:
+      if sfSystemModule in flags:
+        graph.systemModule = result
       partialInitModule(result, graph, fileIdx, filename)
-      # XXX replay the pragmas here!
+      for m in cachedModules:
+        replayStateChanges(graph.packed[m.int].module, graph)
+        replayGenericCacheInformation(graph, m.int)
   elif graph.isDirty(result):
     result.flags.excl sfDirty
     # reset module fields:

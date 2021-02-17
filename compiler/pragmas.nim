@@ -22,7 +22,7 @@ const
 
 const
   declPragmas = {wImportc, wImportObjC, wImportCpp, wImportJs, wExportc, wExportCpp,
-    wExportNims, wExtern, wDeprecated, wNodecl, wError, wUsed, wAlign}
+    wExportNims, wExtern, wDeprecated, wNodecl, wError, wUsed}
     ## common pragmas for declarations, to a good approximation
   procPragmas* = declPragmas + {FirstCallConv..LastCallConv,
     wMagic, wNoSideEffect, wSideEffect, wNoreturn, wNosinks, wDynlib, wHeader,
@@ -56,22 +56,23 @@ const
     wFloatChecks, wInfChecks, wNanChecks, wPragma, wEmit, wUnroll,
     wLinearScanEnd, wPatterns, wTrMacros, wEffects, wNoForward, wReorder, wComputedGoto,
     wInjectStmt, wExperimental, wThis, wUsed, wInvariant, wAssume, wAssert}
-  lambdaPragmas* = declPragmas + {FirstCallConv..LastCallConv,
+  lambdaPragmas* = {FirstCallConv..LastCallConv,
     wNoSideEffect, wSideEffect, wNoreturn, wNosinks, wDynlib, wHeader,
     wThread, wAsmNoStackFrame,
     wRaises, wLocks, wTags, wRequires, wEnsures,
-    wGcSafe, wCodegenDecl} - {wExportNims, wError, wUsed}  # why exclude these?
+    wGcSafe, wCodegenDecl, wNoInit}
   typePragmas* = declPragmas + {wMagic, wAcyclic,
     wPure, wHeader, wCompilerProc, wCore, wFinal, wSize, wShallow,
     wIncompleteStruct, wCompleteStruct, wByCopy, wByRef,
     wInheritable, wGensym, wInject, wRequiresInit, wUnchecked, wUnion, wPacked,
-    wBorrow, wGcSafe, wPartial, wExplain, wPackage}
-  fieldPragmas* = declPragmas + {
-    wGuard, wBitsize, wCursor, wRequiresInit, wNoalias} - {wExportNims, wNodecl} # why exclude these?
+    wCppNonPod, wBorrow, wGcSafe, wPartial, wExplain, wPackage}
+  fieldPragmas* = declPragmas + {wGuard, wBitsize, wCursor,
+    wRequiresInit, wNoalias, wAlign} - {wExportNims, wNodecl} # why exclude these?
   varPragmas* = declPragmas + {wVolatile, wRegister, wThreadVar,
     wMagic, wHeader, wCompilerProc, wCore, wDynlib,
     wNoInit, wCompileTime, wGlobal,
-    wGensym, wInject, wCodegenDecl, wGuard, wGoto, wCursor, wNoalias}
+    wGensym, wInject, wCodegenDecl,
+    wGuard, wGoto, wCursor, wNoalias, wAlign}
   constPragmas* = declPragmas + {wHeader, wMagic,
     wGensym, wInject,
     wIntDefine, wStrDefine, wBoolDefine, wCompilerProc, wCore}
@@ -96,10 +97,10 @@ proc pragma*(c: PContext, sym: PSym, n: PNode, validPragmas: TSpecialWords;
             isStatement: bool = false)
 
 proc recordPragma(c: PContext; n: PNode; args: varargs[string]) =
-  var recorded = newNodeI(nkCommentStmt, n.info)
+  var recorded = newNodeI(nkReplayAction, n.info)
   for i in 0..args.high:
     recorded.add newStrNode(args[i], n.info)
-  c.graph.recordStmt(c.graph, c.module, recorded)
+  addPragmaComputation(c, recorded)
 
 const
   errStringLiteralExpected = "string literal expected"
@@ -352,6 +353,7 @@ proc processNote(c: PContext, n: PNode) =
     of wHint: handleNote(hintMin .. hintMax, c.config.notes)
     of wWarning: handleNote(warnMin .. warnMax, c.config.notes)
     of wWarningAsError: handleNote(warnMin .. warnMax, c.config.warningAsErrors)
+    of wHintAsError: handleNote(hintMin .. hintMax, c.config.warningAsErrors)
     else: invalidPragma(c, n)
   else: invalidPragma(c, n)
 
@@ -705,7 +707,7 @@ proc markCompilerProc(c: PContext; s: PSym) =
   incl(s.flags, sfUsed)
   registerCompilerProc(c.graph, s)
   if c.config.symbolFiles != disabledSf:
-    addCompilerProc(c.encoder, s)
+    addCompilerProc(c.encoder, c.packedRepr, s)
 
 proc deprecatedStmt(c: PContext; outerPragma: PNode) =
   let pragma = outerPragma[1]
@@ -842,6 +844,8 @@ proc singlePragma(c: PContext, sym: PSym, n: PNode, i: var int,
         else: invalidPragma(c, it)
       of wImportCpp:
         processImportCpp(c, sym, getOptionalStr(c, it, "$1"), it.info)
+      of wCppNonPod:
+        incl(sym.flags, sfCppNonPod)
       of wImportJs:
         if c.config.backend != backendJs:
           localError(c.config, it.info, "`importjs` pragma requires the JavaScript target")

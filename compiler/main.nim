@@ -21,6 +21,9 @@ import
   modules,
   modulegraphs, tables, lineinfos, pathutils, vmprofiler
 
+import ic / cbackend
+from ic / to_packed_ast import rodViewer
+
 when not defined(leanCompiler):
   import jsgen, docgen, docgen2
 
@@ -71,14 +74,15 @@ proc commandCompileToC(graph: ModuleGraph) =
   setOutFile(conf)
   extccomp.initVars(conf)
   semanticPasses(graph)
-  registerPass(graph, cgenPass)
+  if conf.symbolFiles == disabledSf:
+    registerPass(graph, cgenPass)
 
-  if {optRun, optForceFullMake} * conf.globalOptions == {optRun} or isDefined(conf, "nimBetterRun"):
-    let proj = changeFileExt(conf.projectFull, "")
-    if not changeDetectedViaJsonBuildInstructions(conf, proj):
-      # nothing changed
-      graph.config.notes = graph.config.mainPackageNotes
-      return
+    if {optRun, optForceFullMake} * conf.globalOptions == {optRun} or isDefined(conf, "nimBetterRun"):
+      let proj = changeFileExt(conf.projectFull, "")
+      if not changeDetectedViaJsonBuildInstructions(conf, proj):
+        # nothing changed
+        graph.config.notes = graph.config.mainPackageNotes
+        return
 
   if not extccomp.ccHasSaneOverflow(conf):
     conf.symbols.defineSymbol("nimEmulateOverflowChecks")
@@ -86,8 +90,14 @@ proc commandCompileToC(graph: ModuleGraph) =
   compileProject(graph)
   if graph.config.errorCounter > 0:
     return # issue #9933
-  cgenWriteModules(graph.backend, conf)
-  if conf.cmd != cmdTcc:
+  if conf.symbolFiles == disabledSf:
+    cgenWriteModules(graph.backend, conf)
+  else:
+    generateCode(graph)
+    # graph.backend can be nil under IC when nothing changed at all:
+    if graph.backend != nil:
+      cgenWriteModules(graph.backend, conf)
+  if conf.cmd != cmdTcc and graph.backend != nil:
     extccomp.callCCompiler(conf)
     # for now we do not support writing out a .json file with the build instructions when HCR is on
     if not conf.hcrOn:
@@ -157,6 +167,10 @@ proc commandScan(cache: IdentCache, config: ConfigRef) =
     closeLexer(L)
   else:
     rawMessage(config, errGenerated, "cannot open file: " & f.string)
+
+proc commandView(graph: ModuleGraph) =
+  let f = toAbsolute(mainCommandArg(graph.config), AbsoluteDir getCurrentDir()).addFileExt(RodExt)
+  rodViewer(f, graph.config, graph.cache)
 
 const
   PrintRopeCacheStats = false
@@ -311,10 +325,10 @@ proc mainCommand*(graph: ModuleGraph) =
   of cmdParse:
     wantMainModule(conf)
     discard parseFile(conf.projectMainIdx, cache, conf)
-  of cmdScan:
+  of cmdRod:
     wantMainModule(conf)
-    commandScan(cache, conf)
-    msgWriteln(conf, "Beware: Indentation tokens depend on the parser's state!")
+    commandView(graph)
+    #msgWriteln(conf, "Beware: Indentation tokens depend on the parser's state!")
   of cmdInteractive: commandInteractive(graph)
   of cmdNimscript:
     if conf.projectIsCmd or conf.projectIsStdin: discard

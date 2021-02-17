@@ -9,7 +9,7 @@
 
 import os, tables, strutils, times, heapqueue, options, deques, cstrutils
 
-import "system/stacktraces"
+import system/stacktraces
 
 # TODO: This shouldn't need to be included, but should ideally be exported.
 type

@@ -96,11 +96,43 @@ func reverse*(a: string): string =
 
 
 proc main() =
+  # xxx put all tests here to test in VM and RT
   test_string_slice()
   test_string_cmp()
 
   tester(1)
-  doAssert reverse("hello") == "olleh"
+
+  block: # reverse
+    doAssert reverse("hello") == "olleh"
+
+  block: # len, high
+    var a = "ab\0cd"
+    var b = a.cstring
+    doAssert a.len == 5
+    block: # bug #16405
+      when defined(js):
+        when nimvm: doAssert b.len == 2
+        else: doAssert b.len == 5
+      else: doAssert b.len == 2
+
+    doAssert a.high == a.len - 1
+    doAssert b.high == b.len - 1
+
+    doAssert "".len == 0
+    doAssert "".high == -1
+    doAssert "".cstring.len == 0
+    doAssert "".cstring.high == -1
+
+    var c: cstring = nil
+    template impl() =
+      doAssert c.len == 0
+      doAssert c.high == -1
+    when defined js:
+      when nimvm: impl()
+      else:
+        # xxx pending bug #16674
+        discard
+    else: impl()
 
 static: main()
 main()

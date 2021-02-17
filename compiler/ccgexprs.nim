@@ -997,14 +997,9 @@ proc genSeqElem(p: BProc, n, x, y: PNode, d: var TLoc) =
   if ty.kind in {tyRef, tyPtr}:
     ty = skipTypes(ty.lastSon, abstractVarRange) # emit range check:
   if optBoundsCheck in p.options:
-    if ty.kind == tyString and not defined(nimNoZeroTerminator):
-      linefmt(p, cpsStmts,
-              "if ((NU)($1) > (NU)$2){ #raiseIndexError2($1,$2); $3}$n",
-              [rdLoc(b), lenExpr(p, a), raiseInstr(p)])
-    else:
-      linefmt(p, cpsStmts,
-              "if ((NU)($1) >= (NU)$2){ #raiseIndexError2($1,$2-1); $3}$n",
-              [rdLoc(b), lenExpr(p, a), raiseInstr(p)])
+    linefmt(p, cpsStmts,
+            "if ((NU)($1) >= (NU)$2){ #raiseIndexError2($1,$2-1); $3}$n",
+            [rdLoc(b), lenExpr(p, a), raiseInstr(p)])
   if d.k == locNone: d.storage = OnHeap
   if skipTypes(a.t, abstractVar).kind in {tyRef, tyPtr}:
     a.r = ropecg(p.module, "(*$1)", [a.r])
@@ -1292,16 +1287,17 @@ proc rawGenNew(p: BProc, a: var TLoc, sizeExpr: Rope; needsInit: bool) =
     genAssignment(p, a, b, {})
   else:
     let ti = genTypeInfoV1(p.module, typ, a.lode.info)
-    if bt.destructor != nil and not isTrivialProc(p.module.g.graph, bt.destructor):
+    let op = getAttachedOp(p.module.g.graph, bt, attachedDestructor)
+    if op != nil and not isTrivialProc(p.module.g.graph, op):
       # the prototype of a destructor is ``=destroy(x: var T)`` and that of a
       # finalizer is: ``proc (x: ref T) {.nimcall.}``. We need to check the calling
       # convention at least:
-      if bt.destructor.typ == nil or bt.destructor.typ.callConv != ccNimCall:
+      if op.typ == nil or op.typ.callConv != ccNimCall:
         localError(p.module.config, a.lode.info,
           "the destructor that is turned into a finalizer needs " &
           "to have the 'nimcall' calling convention")
       var f: TLoc
-      initLocExpr(p, newSymNode(bt.destructor), f)
+      initLocExpr(p, newSymNode(op), f)
       p.module.s[cfsTypeInit3].addf("$1->finalizer = (void*)$2;$n", [ti, rdLoc(f)])
 
     if a.storage == OnHeap and usesWriteBarrier(p.config):
@@ -2204,7 +2200,8 @@ proc genDestroy(p: BProc; n: PNode) =
     else: discard "nothing to do"
   else:
     let t = n[1].typ.skipTypes(abstractVar)
-    if t.destructor != nil and getBody(p.module.g.graph, t.destructor).len != 0:
+    let op = getAttachedOp(p.module.g.graph, t, attachedDestructor)
+    if op != nil and getBody(p.module.g.graph, op).len != 0:
       internalError(p.config, n.info, "destructor turned out to be not trivial")
     discard "ignore calls to the default destructor"
 
@@ -2234,16 +2231,9 @@ proc genSlice(p: BProc; e: PNode; d: var TLoc) =
       "'toOpenArray' is only valid within a call expression")
 
 proc genEnumToStr(p: BProc, e: PNode, d: var TLoc) =
-  const ToStringProcSlot = -4
   let t = e[1].typ.skipTypes(abstractInst+{tyRange})
-  var toStrProc: PSym = nil
-  for idx, p in items(t.methods):
-    if idx == ToStringProcSlot:
-      toStrProc = p
-      break
-  if toStrProc == nil:
-    toStrProc = genEnumToStrProc(t, e.info, p.module.g.graph, p.module.idgen)
-    t.methods.add((ToStringProcSlot, toStrProc))
+  let toStrProc = getToStringProc(p.module.g.graph, t)
+  # XXX need to modify this logic for IC.
   var n = copyTree(e)
   n[0] = newSymNode(toStrProc)
   expr(p, n, d)
@@ -2367,6 +2357,7 @@ proc genMagicExpr(p: BProc, e: PNode, d: var TLoc, op: TMagic) =
     #   somehow forward-declared from some other usage, but it is *possible*
     if lfNoDecl notin opr.loc.flags:
       let prc = magicsys.getCompilerProc(p.module.g.graph, $opr.loc.r)
+      assert prc != nil, $opr.loc.r
       # HACK:
       # Explicitly add this proc as declared here so the cgsym call doesn't
       # add a forward declaration - without this we could end up with the same
@@ -2645,6 +2636,57 @@ proc exprComplexConst(p: BProc, n: PNode, d: var TLoc) =
     if t.kind notin {tySequence, tyString}:
       d.storage = OnStatic
 
+proc genConstSetup(p: BProc; sym: PSym): bool =
+  let m = p.module
+  useHeader(m, sym)
+  if sym.loc.k == locNone:
+    fillLoc(sym.loc, locData, sym.ast, mangleName(p.module, sym), OnStatic)
+  if m.hcrOn: incl(sym.loc.flags, lfIndirect)
+  result = lfNoDecl notin sym.loc.flags
+
+proc genConstHeader(m, q: BModule; p: BProc, sym: PSym) =
+  assert(sym.loc.r != nil)
+  if m.hcrOn:
+    m.s[cfsVars].addf("static $1* $2;$n", [getTypeDesc(m, sym.loc.t, skVar), sym.loc.r]);
+    m.initProc.procSec(cpsLocals).addf(
+      "\t$1 = ($2*)hcrGetGlobal($3, \"$1\");$n", [sym.loc.r,
+      getTypeDesc(m, sym.loc.t, skVar), getModuleDllPath(q, sym)])
+  else:
+    let headerDecl = "extern NIM_CONST $1 $2;$n" %
+        [getTypeDesc(m, sym.loc.t, skVar), sym.loc.r]
+    m.s[cfsData].add(headerDecl)
+    if sfExportc in sym.flags and p.module.g.generatedHeader != nil:
+      p.module.g.generatedHeader.s[cfsData].add(headerDecl)
+
+proc genConstDefinition(q: BModule; p: BProc; sym: PSym) =
+  # add a suffix for hcr - will later init the global pointer with this data
+  let actualConstName = if q.hcrOn: sym.loc.r & "_const" else: sym.loc.r
+  q.s[cfsData].addf("N_LIB_PRIVATE NIM_CONST $1 $2 = $3;$n",
+      [getTypeDesc(q, sym.typ), actualConstName,
+      genBracedInit(q.initProc, sym.ast, isConst = true, sym.typ)])
+  if q.hcrOn:
+    # generate the global pointer with the real name
+    q.s[cfsVars].addf("static $1* $2;$n", [getTypeDesc(q, sym.loc.t, skVar), sym.loc.r])
+    # register it (but ignore the boolean result of hcrRegisterGlobal)
+    q.initProc.procSec(cpsLocals).addf(
+      "\thcrRegisterGlobal($1, \"$2\", sizeof($3), NULL, (void**)&$2);$n",
+      [getModuleDllPath(q, sym), sym.loc.r, rdLoc(sym.loc)])
+    # always copy over the contents of the actual constant with the _const
+    # suffix ==> this means that the constant is reloadable & updatable!
+    q.initProc.procSec(cpsLocals).add(ropecg(q,
+      "\t#nimCopyMem((void*)$1, (NIM_CONST void*)&$2, sizeof($3));$n",
+      [sym.loc.r, actualConstName, rdLoc(sym.loc)]))
+
+proc genConstStmt(p: BProc, n: PNode) =
+  # This code is only used in the new DCE implementation.
+  assert useAliveDataFromDce in p.module.flags
+  let m = p.module
+  for it in n:
+    if it[0].kind == nkSym:
+      let sym = it[0].sym
+      if not isSimpleConst(sym.typ) and sym.itemId.item in m.alive and genConstSetup(p, sym):
+        genConstDefinition(m, p, sym)
+
 proc expr(p: BProc, n: PNode, d: var TLoc) =
   when defined(nimCompilerStackraceHints):
     setFrameMsg p.config$n.info & " " & $n.kind
@@ -2655,7 +2697,7 @@ proc expr(p: BProc, n: PNode, d: var TLoc) =
     var sym = n.sym
     case sym.kind
     of skMethod:
-      if {sfDispatcher, sfForward} * sym.flags != {}:
+      if useAliveDataFromDce in p.module.flags or {sfDispatcher, sfForward} * sym.flags != {}:
         # we cannot produce code for the dispatcher yet:
         fillProcLoc(p.module, n)
         genProcPrototype(p.module, sym)
@@ -2668,13 +2710,19 @@ proc expr(p: BProc, n: PNode, d: var TLoc) =
       if sfCompileTime in sym.flags:
         localError(p.config, n.info, "request to generate code for .compileTime proc: " &
            sym.name.s)
-      genProc(p.module, sym)
+      if useAliveDataFromDce in p.module.flags:
+        fillProcLoc(p.module, n)
+        genProcPrototype(p.module, sym)
+      else:
+        genProc(p.module, sym)
       if sym.loc.r == nil or sym.loc.lode == nil:
         internalError(p.config, n.info, "expr: proc not init " & sym.name.s)
       putLocIntoDest(p, d, sym.loc)
     of skConst:
       if isSimpleConst(sym.typ):
         putIntoDest(p, d, n, genLiteral(p, sym.ast, sym.typ), OnStatic)
+      elif useAliveDataFromDce in p.module.flags:
+        genConstHeader(p.module, p.module, p, sym)
       else:
         genComplexConst(p, sym, d)
     of skEnumField:
@@ -2795,7 +2843,10 @@ proc expr(p: BProc, n: PNode, d: var TLoc) =
   of nkEmpty: discard
   of nkWhileStmt: genWhileStmt(p, n)
   of nkVarSection, nkLetSection: genVarStmt(p, n)
-  of nkConstSection: discard  # consts generated lazily on use
+  of nkConstSection:
+    if useAliveDataFromDce in p.module.flags:
+      genConstStmt(p, n)
+    # else: consts generated lazily on use
   of nkForStmt: internalError(p.config, n.info, "for statement not eliminated")
   of nkCaseStmt: genCase(p, n, d)
   of nkReturnStmt: genReturnStmt(p, n)
@@ -2840,13 +2891,16 @@ proc expr(p: BProc, n: PNode, d: var TLoc) =
   of nkProcDef, nkFuncDef, nkMethodDef, nkConverterDef:
     if n[genericParamsPos].kind == nkEmpty:
       var prc = n[namePos].sym
-      # due to a bug/limitation in the lambda lifting, unused inner procs
-      # are not transformed correctly. We work around this issue (#411) here
-      # by ensuring it's no inner proc (owner is a module):
-      if prc.skipGenericOwner.kind == skModule and sfCompileTime notin prc.flags:
+      if useAliveDataFromDce in p.module.flags:
+        if p.module.alive.contains(prc.itemId.item):
+          genProc(p.module, prc)
+      elif prc.skipGenericOwner.kind == skModule and sfCompileTime notin prc.flags:
         if ({sfExportc, sfCompilerProc} * prc.flags == {sfExportc}) or
             (sfExportc in prc.flags and lfExportLib in prc.loc.flags) or
             (prc.kind == skMethod):
+          # due to a bug/limitation in the lambda lifting, unused inner procs
+          # are not transformed correctly. We work around this issue (#411) here
+          # by ensuring it's no inner proc (owner is a module).
           # Generate proc even if empty body, bugfix #11651.
           genProc(p.module, prc)
   of nkParForStmt: genParForStmt(p, n)

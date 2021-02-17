@@ -338,7 +338,7 @@ else:
     {.pop.}
 
     proc load*[T: Trivial](location: var Atomic[T]; order: MemoryOrder = moSequentiallyConsistent): T {.inline.} =
-      cast[T](atomic_load_explicit[nonAtomicType(T), type(location.value)](addr(location.value), order))
+      cast[T](atomic_load_explicit[nonAtomicType(T), typeof(location.value)](addr(location.value), order))
     proc store*[T: Trivial](location: var Atomic[T]; desired: T; order: MemoryOrder = moSequentiallyConsistent) {.inline.} =
       atomic_store_explicit(addr(location.value), cast[nonAtomicType(T)](desired), order)
     proc exchange*[T: Trivial](location: var Atomic[T]; desired: T; order: MemoryOrder = moSequentiallyConsistent): T {.inline.} =

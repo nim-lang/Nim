@@ -386,9 +386,6 @@ proc findAll*(s: string, pattern: Regex, start = 0): seq[string] {.inline.} =
   result = @[]
   for x in findAll(s, pattern, start): result.add x
 
-when not defined(nimhygiene):
-  {.pragma: inject.}
-
 template `=~` *(s: string, pattern: Regex): untyped =
   ## This calls ``match`` with an implicit declared ``matches`` array that
   ## can be used in the scope of the ``=~`` call:
@@ -488,7 +485,7 @@ proc transformFile*(infile, outfile: string,
   ## reads in the file ``infile``, performs a parallel replacement (calls
   ## ``parallelReplace``) and writes back to ``outfile``. Raises ``IOError`` if an
   ## error occurs. This is supposed to be used for quick scripting.
-  var x = readFile(infile).string
+  var x = readFile(infile)
   writeFile(outfile, x.multiReplace(subs))
 
 iterator split*(s: string, sep: Regex; maxsplit = -1): string =

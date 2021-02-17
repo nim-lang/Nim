@@ -134,19 +134,19 @@ type
 
 const multiLineLimit = 10000
 
-proc expectReply(ftp: AsyncFtpClient): Future[TaintedString] {.async.} =
+proc expectReply(ftp: AsyncFtpClient): Future[string] {.async.} =
   var line = await ftp.csock.recvLine()
-  result = TaintedString(line)
+  result = line
   var count = 0
   while line.len > 3 and line[3] == '-':
     ## Multi-line reply.
     line = await ftp.csock.recvLine()
-    string(result).add("\n" & line)
+    result.add("\n" & line)
     count.inc()
     if count >= multiLineLimit:
       raise newException(ReplyError, "Reached maximum multi-line reply count.")
 
-proc send*(ftp: AsyncFtpClient, m: string): Future[TaintedString] {.async.} =
+proc send*(ftp: AsyncFtpClient, m: string): Future[string] {.async.} =
   ## Send a message to the server, and wait for a primary reply.
   ## ``\c\L`` is added for you.
   ##
@@ -158,20 +158,20 @@ proc send*(ftp: AsyncFtpClient, m: string): Future[TaintedString] {.async.} =
   await ftp.csock.send(m & "\c\L")
   return await ftp.expectReply()
 
-proc assertReply(received: TaintedString, expected: varargs[string]) =
+proc assertReply(received: string, expected: varargs[string]) =
   for i in items(expected):
-    if received.string.startsWith(i): return
+    if received.startsWith(i): return
   raise newException(ReplyError,
                      "Expected reply '$1' got: $2" %
-                      [expected.join("' or '"), received.string])
+                      [expected.join("' or '"), received])
 
 proc pasv(ftp: AsyncFtpClient) {.async.} =
   ## Negotiate a data connection.
   ftp.dsock = newAsyncSocket()
 
-  var pasvMsg = (await ftp.send("PASV")).string.strip.TaintedString
+  var pasvMsg = (await ftp.send("PASV")).strip
   assertReply(pasvMsg, "227")
-  var betweenParens = captureBetween(pasvMsg.string, '(', ')')
+  var betweenParens = captureBetween(pasvMsg, '(', ')')
   var nums = betweenParens.split(',')
   var ip = nums[0 .. ^3]
   var port = nums[^2 .. ^1]
@@ -187,7 +187,7 @@ proc connect*(ftp: AsyncFtpClient) {.async.} =
   await ftp.csock.connect(ftp.address, ftp.port)
 
   var reply = await ftp.expectReply()
-  if string(reply).startsWith("120"):
+  if reply.startsWith("120"):
     # 120 Service ready in nnn minutes.
     # We wait until we receive 220.
     reply = await ftp.expectReply()
@@ -201,11 +201,11 @@ proc connect*(ftp: AsyncFtpClient) {.async.} =
   if ftp.pass != "":
     assertReply(await(ftp.send("PASS " & ftp.pass)), "230")
 
-proc pwd*(ftp: AsyncFtpClient): Future[TaintedString] {.async.} =
+proc pwd*(ftp: AsyncFtpClient): Future[string] {.async.} =
   ## Returns the current working directory.
   let wd = await ftp.send("PWD")
   assertReply wd, "257"
-  return wd.string.captureBetween('"').TaintedString # "
+  return wd.captureBetween('"') # "
 
 proc cd*(ftp: AsyncFtpClient, dir: string) {.async.} =
   ## Changes the current directory on the remote FTP server to ``dir``.
@@ -221,10 +221,10 @@ proc getLines(ftp: AsyncFtpClient): Future[string] {.async.} =
   assert ftp.dsockConnected
   while ftp.dsockConnected:
     let r = await ftp.dsock.recvLine()
-    if r.string == "":
+    if r == "":
       ftp.dsockConnected = false
     else:
-      result.add(r.string & "\n")
+      result.add(r & "\n")
 
   assertReply(await(ftp.expectReply()), "226")
 
@@ -253,7 +253,7 @@ proc createDir*(ftp: AsyncFtpClient, dir: string, recursive = false){.async.} =
   if not recursive:
     assertReply(await(ftp.send("MKD " & dir.normalizePathSep)), "257")
   else:
-    var reply = TaintedString""
+    var reply = ""
     var previousDirs = ""
     for p in split(dir, {os.DirSep, os.AltSep}):
       if p != "":
@@ -346,10 +346,10 @@ proc retrFile*(ftp: AsyncFtpClient, file, dest: string,
   await ftp.pasv()
   var reply = await ftp.send("RETR " & file.normalizePathSep)
   assertReply reply, ["125", "150"]
-  if {'(', ')'} notin reply.string:
+  if {'(', ')'} notin reply:
     raise newException(ReplyError, "Reply has no file size.")
   var fileSize: BiggestInt
-  if reply.string.captureBetween('(', ')').parseBiggestInt(fileSize) == 0:
+  if reply.captureBetween('(', ')').parseBiggestInt(fileSize) == 0:
     raise newException(ReplyError, "Reply has no file size.")
 
   await getFile(ftp, destFile, fileSize, onProgressChanged)

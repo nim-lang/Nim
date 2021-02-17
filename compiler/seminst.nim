@@ -95,9 +95,9 @@ proc sameInstantiation(a, b: TInstantiation): bool =
                                    ExactGcSafety}): return
     result = true
 
-proc genericCacheGet(genericSym: PSym, entry: TInstantiation;
+proc genericCacheGet(g: ModuleGraph; genericSym: PSym, entry: TInstantiation;
                      id: CompilesId): PSym =
-  for inst in genericSym.procInstCache:
+  for inst in procInstCacheItems(g, genericSym):
     if (inst.compilesId == 0 or inst.compilesId == id) and sameInstantiation(entry, inst[]):
       return inst.sym
 
@@ -232,11 +232,11 @@ proc instantiateProcType(c: PContext, pt: TIdTable,
   # time adding the instantiated proc params into the current scope.
   # This is necessary, because the instantiation process may refer to
   # these params in situations like this:
-  # proc foo[Container](a: Container, b: a.type.Item): type(b.x)
+  # proc foo[Container](a: Container, b: a.type.Item): typeof(b.x)
   #
   # Alas, doing this here is probably not enough, because another
   # proc signature could appear in the params:
-  # proc foo[T](a: proc (x: T, b: type(x.y))
+  # proc foo[T](a: proc (x: T, b: typeof(x.y))
   #
   # The solution would be to move this logic into semtypinst, but
   # at this point semtypinst have to become part of sem, because it
@@ -369,7 +369,7 @@ proc generateInstance(c: PContext, fn: PSym, pt: TIdTable,
   if tfTriggersCompileTime in result.typ.flags:
     incl(result.flags, sfCompileTime)
   n[genericParamsPos] = c.graph.emptyNode
-  var oldPrc = genericCacheGet(fn, entry[], c.compilesContextId)
+  var oldPrc = genericCacheGet(c.graph, fn, entry[], c.compilesContextId)
   if oldPrc == nil:
     # we MUST not add potentially wrong instantiations to the caching mechanism.
     # This means recursive instantiations behave differently when in
@@ -378,7 +378,7 @@ proc generateInstance(c: PContext, fn: PSym, pt: TIdTable,
     #if c.compilesContextId == 0:
     rawHandleSelf(c, result)
     entry.compilesId = c.compilesContextId
-    fn.procInstCache.add(entry)
+    addToGenericProcCache(c, fn, entry)
     c.generics.add(makeInstPair(fn, entry))
     if n[pragmasPos].kind != nkEmpty:
       pragma(c, result, n[pragmasPos], allRoutinePragmas)

@@ -75,8 +75,8 @@ const
   UNI_REPLACEMENT_CHAR = Utf16Char(0xFFFD'i16)
   UNI_MAX_BMP = 0x0000FFFF
   UNI_MAX_UTF16 = 0x0010FFFF
-  UNI_MAX_UTF32 = 0x7FFFFFFF
-  UNI_MAX_LEGAL_UTF32 = 0x0010FFFF
+  # UNI_MAX_UTF32 = 0x7FFFFFFF
+  # UNI_MAX_LEGAL_UTF32 = 0x0010FFFF
 
   halfShift = 10
   halfBase = 0x0010000
@@ -141,6 +141,9 @@ iterator runes(s: cstring, L: int): int =
   while i < L:
     fastRuneAt(s, i, L, result, true)
     yield result
+
+proc newWideCString*(size: int): WideCStringObj =
+  createWide(result, size * 2 + 2)
 
 proc newWideCString*(source: cstring, L: int): WideCStringObj =
   createWide(result, L * 2 + 2)

@@ -26,13 +26,20 @@ type
     methodsSection
     pureEnumsSection
     macroUsagesSection
+    toReplaySection
     topLevelSection
     bodiesSection
     symsSection
     typesSection
+    typeInstCacheSection
+    procInstCacheSection
+    attachedOpsSection
+    methodsPerTypeSection
+    enumToStringProcsSection
+    aliveSymsSection # beware, this is stored in a `.alivesyms` file.
 
   RodFileError* = enum
-    ok, tooBig, ioFailure, wrongHeader, wrongSection, configMismatch,
+    ok, tooBig, cannotOpen, ioFailure, wrongHeader, wrongSection, configMismatch,
     includeFileChanged
 
   RodFile* = object
@@ -71,6 +78,12 @@ proc storePrim*[T](f: var RodFile; x: T) =
   elif T is tuple:
     for y in fields(x):
       storePrim(f, y)
+  elif T is object:
+    for y in fields(x):
+      when y is seq:
+        storeSeq(f, y)
+      else:
+        storePrim(f, y)
   else:
     {.error: "unsupported type for 'storePrim'".}
 
@@ -105,6 +118,12 @@ proc loadPrim*[T](f: var RodFile; x: var T) =
   elif T is tuple:
     for y in fields(x):
       loadPrim(f, y)
+  elif T is object:
+    for y in fields(x):
+      when y is seq:
+        loadSeq(f, y)
+      else:
+        loadPrim(f, y)
   else:
     {.error: "unsupported type for 'loadPrim'".}
 
@@ -133,7 +152,7 @@ proc loadHeader*(f: var RodFile) =
 
 proc storeSection*(f: var RodFile; s: RodSection) =
   if f.err != ok: return
-  assert f.currentSection == pred s
+  assert f.currentSection < s
   f.currentSection = s
   storePrim(f, s)
 
@@ -146,10 +165,10 @@ proc loadSection*(f: var RodFile; expected: RodSection) =
 
 proc create*(filename: string): RodFile =
   if not open(result.f, filename, fmWrite):
-    setError result, ioFailure
+    setError result, cannotOpen
 
 proc close*(f: var RodFile) = close(f.f)
 
 proc open*(filename: string): RodFile =
   if not open(result.f, filename, fmRead):
-    setError result, ioFailure
+    setError result, cannotOpen

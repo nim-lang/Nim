@@ -14,27 +14,28 @@ The JS code generator contains only 2 tricks:
 
 Trick 1
 -------
-Some locations (for example 'var int') require "fat pointers" (``etyBaseIndex``)
+Some locations (for example 'var int') require "fat pointers" (`etyBaseIndex`)
 which are pairs (array, index). The derefence operation is then 'array[index]'.
-Check ``mapType`` for the details.
+Check `mapType` for the details.
 
 Trick 2
 -------
 It is preferable to generate '||' and '&&' if possible since that is more
 idiomatic and hence should be friendlier for the JS JIT implementation. However
-code like ``foo and (let bar = baz())`` cannot be translated this way. Instead
-the expressions need to be transformed into statements. ``isSimpleExpr``
+code like `foo and (let bar = baz())` cannot be translated this way. Instead
+the expressions need to be transformed into statements. `isSimpleExpr`
 implements the required case distinction.
 """
 
 
 import
-  ast, strutils, trees, magicsys, options,
-  nversion, msgs, idents, types, tables,
-  ropes, math, passes, ccgutils, wordrecg, renderer,
-  intsets, cgmeth, lowerings, sighashes, modulegraphs, lineinfos, rodutils,
-  transf, injectdestructors, sourcemap, json, sets
+  ast, trees, magicsys, options,
+  nversion, msgs, idents, types,
+  ropes, passes, ccgutils, wordrecg, renderer,
+  cgmeth, lowerings, sighashes, modulegraphs, lineinfos, rodutils,
+  transf, injectdestructors, sourcemap
 
+import std/[json, sets, math, tables, intsets, strutils]
 
 from modulegraphs import ModuleGraph, PPassContext
 
@@ -670,7 +671,10 @@ proc arith(p: PProc, n: PNode, r: var TCompRes, op: TMagic) =
   of mAddU: binaryUintExpr(p, n, r, "+")
   of mSubU: binaryUintExpr(p, n, r, "-")
   of mMulU: binaryUintExpr(p, n, r, "*")
-  of mDivU: binaryUintExpr(p, n, r, "/")
+  of mDivU:
+    binaryUintExpr(p, n, r, "/")
+    if n[1].typ.skipTypes(abstractRange).size == 8:
+      r.res = "Math.trunc($1)" % [r.res]
   of mDivI:
     arithAux(p, n, r, op)
   of mModI:
@@ -1077,10 +1081,10 @@ proc genAsgnAux(p: PProc, x, y: PNode, noCopyNeeded: bool) =
       # supports proc getF(): var T
       if x.kind in {nkHiddenDeref, nkDerefExpr} and x[0].kind in nkCallKinds:
           lineF(p, "nimCopy($1, $2, $3);$n",
-                [a.res, b.res, genTypeInfo(p, y.typ)])
+                [a.res, b.res, genTypeInfo(p, x.typ)])
       else:
         lineF(p, "$1 = nimCopy($1, $2, $3);$n",
-              [a.res, b.res, genTypeInfo(p, y.typ)])
+              [a.res, b.res, genTypeInfo(p, x.typ)])
   of etyBaseIndex:
     if a.typ != etyBaseIndex or b.typ != etyBaseIndex:
       if y.kind == nkCall:
@@ -1350,7 +1354,15 @@ proc genAddr(p: PProc, n: PNode, r: var TCompRes) =
   of nkStmtListExpr:
     if n.len == 1: gen(p, n[0], r)
     else: internalError(p.config, n[0].info, "genAddr for complex nkStmtListExpr")
-  else: internalError(p.config, n[0].info, "genAddr: " & $n[0].kind)
+  of nkCallKinds:
+    if n[0].typ.kind == tyOpenArray:
+      # 'var openArray' for instance produces an 'addr' but this is harmless:
+      # namely toOpenArray(a, 1, 3)
+      gen(p, n[0], r)
+    else:
+      internalError(p.config, n[0].info, "genAddr: " & $n[0].kind)
+  else:
+    internalError(p.config, n[0].info, "genAddr: " & $n[0].kind)
 
 proc attachProc(p: PProc; content: Rope; s: PSym) =
   p.g.code.add(content)
@@ -1982,6 +1994,23 @@ proc genMove(p: PProc; n: PNode; r: var TCompRes) =
   genReset(p, n)
   #lineF(p, "$1 = $2;$n", [dest.rdLoc, src.rdLoc])
 
+proc genJSArrayConstr(p: PProc, n: PNode, r: var TCompRes) =
+  var a: TCompRes
+  r.res = rope("[")
+  r.kind = resExpr
+  for i in 0 ..< n.len:
+    if i > 0: r.res.add(", ")
+    gen(p, n[i], a)
+    if a.typ == etyBaseIndex:
+      r.res.addf("[$1, $2]", [a.address, a.res])
+    else:
+      if not needsNoCopy(p, n[i]):
+        let typ = n[i].typ.skipTypes(abstractInst)
+        useMagic(p, "nimCopy")
+        a.res = "nimCopy(null, $1, $2)" % [a.rdLoc, genTypeInfo(p, typ)]
+      r.res.add(a.res)
+  r.res.add("]")
+
 proc genMagic(p: PProc, n: PNode, r: var TCompRes) =
   var
     a: TCompRes
@@ -2002,7 +2031,9 @@ proc genMagic(p: PProc, n: PNode, r: var TCompRes) =
     gen(p, n[2], rhs)
 
     if skipTypes(n[1].typ, abstractVarRange).kind == tyCString:
-      r.res = "$1 += $2;" % [lhs.rdLoc, rhs.rdLoc]
+      let (b, tmp) = maybeMakeTemp(p, n[2], rhs)
+      r.res = "if (null != $1) { if (null == $2) $2 = $3; else $2 += $3; }" %
+        [b, lhs.rdLoc, tmp]
     else:
       let (a, tmp) = maybeMakeTemp(p, n[1], lhs)
       r.res = "$1.push.apply($3, $2);" % [a, rhs.rdLoc, tmp]
@@ -2043,8 +2074,9 @@ proc genMagic(p: PProc, n: PNode, r: var TCompRes) =
   of mNew, mNewFinalize: genNew(p, n)
   of mChr: gen(p, n[1], r)
   of mArrToSeq:
-    if needsNoCopy(p, n[1]):
-      gen(p, n[1], r)
+    # only array literals doesn't need copy
+    if n[1].kind == nkBracket:
+      genJSArrayConstr(p, n[1], r)
     else:
       var x: TCompRes
       gen(p, n[1], x)
@@ -2053,9 +2085,23 @@ proc genMagic(p: PProc, n: PNode, r: var TCompRes) =
   of mDestroy: discard "ignore calls to the default destructor"
   of mOrd: genOrd(p, n, r)
   of mLengthStr, mLengthSeq, mLengthOpenArray, mLengthArray:
-    unaryExpr(p, n, r, "", "($1).length")
+    var x: TCompRes
+    gen(p, n[1], x)
+    if skipTypes(n[1].typ, abstractInst).kind == tyCString:
+      let (a, tmp) = maybeMakeTemp(p, n[1], x)
+      r.res = "(($1) == null ? 0 : ($2).length)" % [a, tmp]
+    else:
+      r.res = "($1).length" % [x.rdLoc]
+    r.kind = resExpr
   of mHigh:
-    unaryExpr(p, n, r, "", "(($1).length-1)")
+    var x: TCompRes
+    gen(p, n[1], x)
+    if skipTypes(n[1].typ, abstractInst).kind == tyCString:
+      let (a, tmp) = maybeMakeTemp(p, n[1], x)
+      r.res = "(($1) == null ? -1 : ($2).length - 1)" % [a, tmp]
+    else:
+      r.res = "($1).length - 1" % [x.rdLoc]
+    r.kind = resExpr
   of mInc:
     if n[1].typ.skipTypes(abstractRange).kind in {tyUInt..tyUInt64}:
       binaryUintExpr(p, n, r, "+", true)
@@ -2147,21 +2193,26 @@ proc genSetConstr(p: PProc, n: PNode, r: var TCompRes) =
     r.res = tmp
 
 proc genArrayConstr(p: PProc, n: PNode, r: var TCompRes) =
-  var a: TCompRes
-  r.res = rope("[")
-  r.kind = resExpr
-  for i in 0..<n.len:
-    if i > 0: r.res.add(", ")
-    gen(p, n[i], a)
-    if a.typ == etyBaseIndex:
-      r.res.addf("[$1, $2]", [a.address, a.res])
-    else:
-      if not needsNoCopy(p, n[i]):
-        let typ = n[i].typ.skipTypes(abstractInst)
-        useMagic(p, "nimCopy")
-        a.res = "nimCopy(null, $1, $2)" % [a.rdLoc, genTypeInfo(p, typ)]
+  ## Constructs array or sequence.
+  ## Nim array of uint8..uint32, int8..int32 maps to JS typed arrays.
+  ## Nim sequence maps to JS array.
+  var t = skipTypes(n.typ, abstractInst)
+  let e = elemType(t)
+  let jsTyp = arrayTypeForElemType(e)
+  if skipTypes(n.typ, abstractVarRange).kind != tySequence and jsTyp.len > 0:
+    # generate typed array
+    # for example Nim generates `new Uint8Array([1, 2, 3])` for `[byte(1), 2, 3]`
+    # TODO use `set` or loop to initialize typed array which improves performances in some situations
+    var a: TCompRes
+    r.res = "new $1([" % [rope(jsTyp)]
+    r.kind = resExpr
+    for i in 0 ..< n.len:
+      if i > 0: r.res.add(", ")
+      gen(p, n[i], a)
       r.res.add(a.res)
-  r.res.add("]")
+    r.res.add("])")
+  else:
+    genJSArrayConstr(p, n, r)
 
 proc genTupleConstr(p: PProc, n: PNode, r: var TCompRes) =
   var a: TCompRes
@@ -2485,7 +2536,10 @@ proc gen(p: PProc, n: PNode, r: var TCompRes) =
     let f = n.floatVal
     case classify(f)
     of fcNan:
-      r.res = rope"NaN"
+      if signbit(f):
+        r.res = rope"-NaN"
+      else:
+        r.res = rope"NaN"
     of fcNegZero:
       r.res = rope"-0.0"
     of fcZero:

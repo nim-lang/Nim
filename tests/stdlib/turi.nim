@@ -174,6 +174,7 @@ template main() =
   block: # removeDotSegments
     doAssert removeDotSegments("/foo/bar/baz") == "/foo/bar/baz"
     doAssert removeDotSegments("") == "" # empty test
+    doAssert removeDotSegments(".") == "." # trailing period
 
   block: # bug #3207
     doAssert parseUri("http://qq/1").combine(parseUri("https://qqq")).`$` == "https://qqq"
@@ -287,8 +288,7 @@ template main() =
 
   block: # decodeQuery
     doAssert toSeq(decodeQuery("a=1&b=0")) == @[("a", "1"), ("b", "0")]
-    doAssertRaises(UriParseError):
-      discard toSeq(decodeQuery("a=1&b=2c=6"))
+    doAssert toSeq(decodeQuery("a=1&b=2c=6")) == @[("a", "1"), ("b", "2c=6")]
 
 static: main()
 main()

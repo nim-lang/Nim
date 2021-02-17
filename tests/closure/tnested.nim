@@ -190,7 +190,7 @@ proc foo() =
   let f = (proc() =
              myDiscard (proc() = echo a)
           )
-  echo name(type(f))
+  echo name(typeof(f))
 
 foo()
 

@@ -7,16 +7,31 @@
 #    distribution, for details about the copyright.
 #
 
-## This module implements a `reStructuredText`:idx: (RST) parser. A large
-## subset is implemented. Some features of the `markdown`:idx: syntax are
-## also supported. Nim can output the result to HTML (command ``rst2html``)
-## or Latex (command ``rst2tex``).
+## ==================================
+## rst: Nim-flavored reStructuredText
+## ==================================
+##
+## This module implements a `reStructuredText`:idx: (RST) parser.
+## A large subset is implemented with some limitations_ and
+## `Nim-specific features`_.
+## A few `extra features`_ of the `Markdown`:idx: syntax are
+## also supported.
+##
+## Nim can output the result to HTML [#html]_ or Latex [#latex]_.
+##
+## .. [#html] commands ``nim doc`` for ``*.nim`` files and
+##    ``nim rst2html`` for ``*.rst`` files
+##
+## .. [#latex] command ``nim rst2tex`` for ``*.rst``.
 ##
 ## If you are new to RST please consider reading the following:
 ##
 ## 1) a short `quick introduction`_
 ## 2) an `RST reference`_: a comprehensive cheatsheet for RST
 ## 3) a more formal 50-page `RST specification`_.
+##
+## Features
+## --------
 ##
 ## Supported standard RST features:
 ##
@@ -27,6 +42,8 @@
 ##   + bullet lists using \+, \*, \-
 ##   + enumerated lists using arabic numerals or alphabet
 ##     characters:  1. ... 2. ... *or* a. ... b. ... *or* A. ... B. ...
+##   + footnotes (including manually numbered, auto-numbered, auto-numbered
+##     with label, and auto-symbol footnotes) and citations
 ##   + definition lists
 ##   + field lists
 ##   + option lists
@@ -43,27 +60,38 @@
 ##   + comments
 ## * inline markup
 ##   + *emphasis*, **strong emphasis**,
-##     ``inline literals``, hyperlink references, substitution references,
-##     standalone hyperlinks
+##     ``inline literals``, hyperlink references (including embedded URI),
+##     substitution references, standalone hyperlinks,
+##     internal links (inline and outline)
 ##   + \`interpreted text\` with roles ``:literal:``, ``:strong:``,
 ##     ``emphasis``, ``:sub:``/``:subscript:``, ``:sup:``/``:supscript:``
 ##     (see `RST roles list`_ for description).
+##   + inline internal targets
 ##
-## Additional features:
+## .. _`Nim-specific features`:
 ##
-## * directives: ``code-block``, ``title``, ``index``
+## Additional Nim-specific features:
+##
+## * directives: ``code-block`` [cmp:Sphinx]_, ``title``,
+##   ``index`` [cmp:Sphinx]_
+##
 ## * ***triple emphasis*** (bold and italic) using \*\*\*
 ## * ``:idx:`` role for \`interpreted text\` to include the link to this
 ##   text into an index (example: `Nim index`_).
+##
+## .. [cmp:Sphinx] similar but different from the directives of
+##    Python `Sphinx directives`_ extensions
+##
+## .. _`extra features`:
 ##
 ## Optional additional features, turned on by ``options: RstParseOption`` in
 ## `rstParse proc <#rstParse,string,string,int,int,bool,RstParseOptions,FindFileHandler,MsgHandler>`_:
 ##
 ## * emoji / smiley symbols
-## * markdown tables
-## * markdown code blocks
-## * markdown links
-## * markdown headlines
+## * Markdown tables
+## * Markdown code blocks
+## * Markdown links
+## * Markdown headlines
 ## * using ``1`` as auto-enumerator in enumerated lists like RST ``#``
 ##   (auto-enumerator ``1`` can not be used with ``#`` in the same list)
 ##
@@ -73,7 +101,8 @@
 ## .. warning:: Using Nim-specific features can cause other RST implementations
 ##   to fail on your document.
 ##
-## Limitations:
+## Limitations
+## -----------
 ##
 ## * no Unicode support in character width calculations
 ## * body elements
@@ -88,11 +117,21 @@
 ##     ``header``, ``footer``, ``meta``, ``class``
 ##     - no ``role`` directives and no custom interpreted text roles
 ##     - some standard roles are not supported (check `RST roles list`_)
-##   - no footnotes & citations support
-##   - no inline internal targets
 ## * inline markup
 ##   - no simple-inline-markup
-##   - no embedded URI and aliases
+##   - no embedded aliases
+##
+## Usage
+## -----
+##
+## See `Nim DocGen Tools Guide <docgen.html>`_ for the details about
+## ``nim doc``, ``nim rst2html`` and ``nim rst2tex`` commands.
+##
+## See `packages/docutils/rstgen module <rstgen.html>`_ to know how to
+## generate HTML or Latex strings to embed them into your documents.
+##
+## .. Tip:: Import ``packages/docutils/rst`` to use this module
+##    programmatically.
 ##
 ## .. _quick introduction: https://docutils.sourceforge.io/docs/user/rst/quickstart.html
 ## .. _RST reference: https://docutils.sourceforge.io/docs/user/rst/quickref.html
@@ -100,16 +139,10 @@
 ## .. _RST directives list: https://docutils.sourceforge.io/docs/ref/rst/directives.html
 ## .. _RST roles list: https://docutils.sourceforge.io/docs/ref/rst/roles.html
 ## .. _Nim index: https://nim-lang.org/docs/theindex.html
-##
-## See `Nim DocGen Tools Guide <docgen.html>`_ for the details about
-## ``nim doc``, ``nim rst2html`` and ``nim rst2tex`` commands.
-##
-## .. note:: Import ``packages/docutils/rst`` to use this module.
-##
-## See also `packages/docutils/rstgen module <rstgen.html>`_.
+## .. _Sphinx directives: https://www.sphinx-doc.org/en/master/usage/restructuredtext/directives.html
 
 import
-  os, strutils, rstast
+  os, strutils, rstast, algorithm, lists, sequtils
 
 type
   RstParseOption* = enum     ## options for the RST parser
@@ -118,7 +151,7 @@ type
     roSupportSmilies,         ## make the RST parser support smilies like ``:)``
     roSupportRawDirective,    ## support the ``raw`` directive (don't support
                               ## it for sandboxing)
-    roSupportMarkdown         ## support additional features of markdown
+    roSupportMarkdown         ## support additional features of Markdown
 
   RstParseOptions* = set[RstParseOption]
 
@@ -131,10 +164,11 @@ type
     meCannotOpenFile = "cannot open '$1'",
     meExpected = "'$1' expected",
     meGridTableNotImplemented = "grid table is not implemented",
-    meMarkdownIllformedTable = "illformed delimiter row of a markdown table",
+    meMarkdownIllformedTable = "illformed delimiter row of a Markdown table",
     meNewSectionExpected = "new section expected",
     meGeneralParseError = "general parse error",
     meInvalidDirective = "invalid directive: '$1'",
+    meFootnoteMismatch = "mismatch in number of footnotes and their refs: $1",
     mwRedefinitionOfLabel = "redefinition of label '$1'",
     mwUnknownSubstitution = "unknown substitution '$1'",
     mwUnsupportedLanguage = "language '$1' not supported",
@@ -379,12 +413,35 @@ type
   Substitution = object
     key*: string
     value*: PRstNode
+  AnchorSubst = tuple
+    mainAnchor: string
+    aliases: seq[string]
+  FootnoteType = enum
+    fnManualNumber,     # manually numbered footnote like [3]
+    fnAutoNumber,       # auto-numbered footnote [#]
+    fnAutoNumberLabel,  # auto-numbered with label [#label]
+    fnAutoSymbol,       # auto-symbol footnote [*]
+    fnCitation          # simple text label like [citation2021]
+  FootnoteSubst = tuple
+    kind: FootnoteType  # discriminator
+    number: int         # valid for fnManualNumber (always) and fnAutoNumber,
+                        # fnAutoNumberLabel after resolveSubs is called
+    autoNumIdx: int     # order of occurence: fnAutoNumber, fnAutoNumberLabel
+    autoSymIdx: int     # order of occurence: fnAutoSymbol
+    label: string       # valid for fnAutoNumberLabel
 
   SharedState = object
     options: RstParseOptions    # parsing options
     uLevel, oLevel: int         # counters for the section levels
     subs: seq[Substitution]     # substitutions
     refs: seq[Substitution]     # references
+    anchors: seq[AnchorSubst]   # internal target substitutions
+    lineFootnoteNum: seq[int]     # footnote line, auto numbers .. [#]
+    lineFootnoteNumRef: seq[int]  # footnote line, their reference [#]_
+    lineFootnoteSym: seq[int]     # footnote line, auto symbols .. [*]
+    lineFootnoteSymRef: seq[int]  # footnote line, their reference [*]_
+    footnotes: seq[FootnoteSubst] # correspondence b/w footnote label,
+                                  # number, order of occurrence
     underlineToLevel: LevelMap  # Saves for each possible title adornment
                                 # character its level in the
                                 # current document.
@@ -405,6 +462,7 @@ type
     filename*: string
     line*, col*: int
     hasToc*: bool
+    curAnchor*: string          # variable to track latest anchor in s.anchors
 
   EParseError* = object of ValueError
 
@@ -442,13 +500,15 @@ proc newSharedState(options: RstParseOptions,
   result.msgHandler = if not isNil(msgHandler): msgHandler else: defaultMsgHandler
   result.findFile = if not isNil(findFile): findFile else: defaultFindFile
 
+proc curLine(p: RstParser): int = p.line + currentTok(p).line
+
 proc findRelativeFile(p: RstParser; filename: string): string =
   result = p.filename.splitFile.dir / filename
   if not fileExists(result):
     result = p.s.findFile(filename)
 
 proc rstMessage(p: RstParser, msgKind: MsgKind, arg: string) =
-  p.s.msgHandler(p.filename, p.line + currentTok(p).line,
+  p.s.msgHandler(p.filename, curLine(p),
                              p.col + currentTok(p).col, msgKind, arg)
 
 proc rstMessage(p: RstParser, msgKind: MsgKind, arg: string, line, col: int) =
@@ -456,7 +516,7 @@ proc rstMessage(p: RstParser, msgKind: MsgKind, arg: string, line, col: int) =
                              p.col + col, msgKind, arg)
 
 proc rstMessage(p: RstParser, msgKind: MsgKind) =
-  p.s.msgHandler(p.filename, p.line + currentTok(p).line,
+  p.s.msgHandler(p.filename, curLine(p),
                              p.col + currentTok(p).col, msgKind,
                              currentTok(p).symbol)
 
@@ -577,6 +637,154 @@ proc findRef(p: var RstParser, key: string): PRstNode =
     if key == p.s.refs[i].key:
       return p.s.refs[i].value
 
+proc addAnchor(p: var RstParser, refn: string, reset: bool) =
+  ## add anchor `refn` to anchor aliases and update last anchor ``curAnchor``
+  if p.curAnchor == "":
+    p.s.anchors.add (refn, @[refn])
+  else:
+    p.s.anchors[^1].mainAnchor = refn
+    p.s.anchors[^1].aliases.add refn
+  if reset:
+    p.curAnchor = ""
+  else:
+    p.curAnchor = refn
+
+proc findMainAnchor(p: RstParser, refn: string): string =
+  for subst in p.s.anchors:
+    if subst.mainAnchor == refn:  # no need to rename
+      result = subst.mainAnchor
+      break
+    var toLeave = false
+    for anchor in subst.aliases:
+      if anchor == refn:  # this anchor will be named as mainAnchor
+        result = subst.mainAnchor
+        toLeave = true
+    if toLeave:
+      break
+
+proc addFootnoteNumManual(p: var RstParser, num: int) =
+  ## add manually-numbered footnote
+  for fnote in p.s.footnotes:
+    if fnote.number == num:
+      rstMessage(p, mwRedefinitionOfLabel, $num)
+      return
+  p.s.footnotes.add((fnManualNumber, num, -1, -1, $num))
+
+proc addFootnoteNumAuto(p: var RstParser, label: string) =
+  ## add auto-numbered footnote.
+  ## Empty label [#] means it'll be resolved by the occurrence.
+  if label == "":  # simple auto-numbered [#]
+    p.s.lineFootnoteNum.add curLine(p)
+    p.s.footnotes.add((fnAutoNumber, -1, p.s.lineFootnoteNum.len, -1, label))
+  else:           # auto-numbered with label [#label]
+    for fnote in p.s.footnotes:
+      if fnote.label == label:
+        rstMessage(p, mwRedefinitionOfLabel, label)
+        return
+    p.s.footnotes.add((fnAutoNumberLabel, -1, -1, -1, label))
+
+proc addFootnoteSymAuto(p: var RstParser) =
+  p.s.lineFootnoteSym.add curLine(p)
+  p.s.footnotes.add((fnAutoSymbol, -1, -1, p.s.lineFootnoteSym.len, ""))
+
+proc orderFootnotes(p: var RstParser) =
+  ## numerate auto-numbered footnotes taking into account that all
+  ## manually numbered ones always have preference.
+  ## Save the result back to p.s.footnotes.
+
+  # Report an error if found any mismatch in number of automatic footnotes
+  proc listFootnotes(lines: seq[int]): string =
+    result.add $lines.len & " (lines " & join(lines, ", ") & ")"
+  if p.s.lineFootnoteNum.len != p.s.lineFootnoteNumRef.len:
+    rstMessage(p, meFootnoteMismatch,
+      "$1 != $2" % [listFootnotes(p.s.lineFootnoteNum),
+                    listFootnotes(p.s.lineFootnoteNumRef)] &
+        " for auto-numbered footnotes")
+  if p.s.lineFootnoteSym.len != p.s.lineFootnoteSymRef.len:
+    rstMessage(p, meFootnoteMismatch,
+      "$1 != $2" % [listFootnotes(p.s.lineFootnoteSym),
+                    listFootnotes(p.s.lineFootnoteSymRef)] &
+        " for auto-symbol footnotes")
+
+  var result: seq[FootnoteSubst]
+  var manuallyN, autoN, autoSymbol: seq[FootnoteSubst]
+  for fs in p.s.footnotes:
+    if fs.kind == fnManualNumber: manuallyN.add fs
+    elif fs.kind in {fnAutoNumber, fnAutoNumberLabel}: autoN.add fs
+    else: autoSymbol.add fs
+
+  if autoN.len == 0:
+    result = manuallyN
+  else:
+    # fill gaps between manually numbered footnotes in ascending order
+    manuallyN.sort()  # sort by number - its first field
+    var lst = initSinglyLinkedList[FootnoteSubst]()
+    for elem in manuallyN: lst.append(elem)
+    var firstAuto = 0
+    if lst.head == nil or lst.head.value.number != 1:
+      # no manual footnote [1], start numeration from 1 for auto-numbered
+      lst.prepend (autoN[0].kind, 1, autoN[0].autoNumIdx, -1, autoN[0].label)
+      firstAuto = 1
+    var curNode = lst.head
+    var nextNode: SinglyLinkedNode[FootnoteSubst]
+    # go simultaneously through `autoN` and `lst` looking for gaps
+    for (kind, x, autoNumIdx, y, label) in autoN[firstAuto .. ^1]:
+      while (nextNode = curNode.next; nextNode != nil):
+        if nextNode.value.number - curNode.value.number > 1:
+          # gap found, insert new node `n` between curNode and nextNode:
+          var n = newSinglyLinkedNode((kind, curNode.value.number + 1,
+                                       autoNumIdx, -1, label))
+          curNode.next = n
+          n.next = nextNode
+          curNode = n
+          break
+        else:
+          curNode = nextNode
+      if nextNode == nil:  # no gap found, just append
+        lst.append (kind, curNode.value.number + 1, autoNumIdx, -1, label)
+        curNode = lst.tail
+    result = lst.toSeq
+
+  # we use ASCII symbols instead of those recommended in RST specification:
+  const footnoteAutoSymbols = ["*", "^", "+", "=", "~", "$", "@", "%", "&"]
+  for fs in autoSymbol:
+    # assignment order: *, **, ***, ^, ^^, ^^^, ... &&&, ****, *****, ...
+    let i = fs.autoSymIdx - 1
+    let symbolNum = (i div 3) mod footnoteAutoSymbols.len
+    let nSymbols = (1 + i mod 3) + 3 * (i div (3 * footnoteAutoSymbols.len))
+    let label = footnoteAutoSymbols[symbolNum].repeat(nSymbols)
+    result.add((fs.kind, -1, -1, fs.autoSymIdx, label))
+
+  p.s.footnotes = result
+
+proc getFootnoteNum(p: var RstParser, label: string): int =
+  ## get number from label. Must be called after `orderFootnotes`.
+  result = -1
+  for fnote in p.s.footnotes:
+    if fnote.label == label:
+      return fnote.number
+
+proc getFootnoteNum(p: var RstParser, order: int): int =
+  ## get number from occurrence. Must be called after `orderFootnotes`.
+  result = -1
+  for fnote in p.s.footnotes:
+    if fnote.autoNumIdx == order:
+      return fnote.number
+
+proc getAutoSymbol(p: var RstParser, order: int): string =
+  ## get symbol from occurrence of auto-symbol footnote.
+  result = "???"
+  for fnote in p.s.footnotes:
+    if fnote.autoSymIdx == order:
+      return fnote.label
+
+proc newRstNodeA(p: var RstParser, kind: RstNodeKind): PRstNode =
+  ## create node and consume the current anchor
+  result = newRstNode(kind)
+  if p.curAnchor != "":
+    result.anchor = p.curAnchor
+    p.curAnchor = ""
+
 proc newLeaf(p: var RstParser): PRstNode =
   result = newRstNode(rnLeaf, currentTok(p).symbol)
 
@@ -629,7 +837,10 @@ proc isInlineMarkupEnd(p: RstParser, markup: string): bool =
 proc isInlineMarkupStart(p: RstParser, markup: string): bool =
   # rst rules: https://docutils.sourceforge.io/docs/ref/rst/restructuredtext.html#inline-markup-recognition-rules
   var d: char
-  result = currentTok(p).symbol == markup
+  if markup != "_`":
+    result = currentTok(p).symbol == markup
+  else:  # _` is a 2 token case
+    result = currentTok(p).symbol == "_" and nextTok(p).symbol == "`"
   if not result: return
   # Rule 6:
   result = p.idx == 0 or prevTok(p).kind in {tkIndent, tkWhite} or
@@ -661,6 +872,7 @@ proc match(p: RstParser, start: int, expr: string): bool =
   # ' '              tkWhite
   # 'a'              tkAdornment
   # 'i'              tkIndent
+  # 'I'              tkIndent or tkEof
   # 'p'              tkPunct
   # 'T'              always true
   # 'E'              whitespace, indent or eof
@@ -675,6 +887,7 @@ proc match(p: RstParser, start: int, expr: string): bool =
     of 'w': result = p.tok[j].kind == tkWord
     of ' ': result = p.tok[j].kind == tkWhite
     of 'i': result = p.tok[j].kind == tkIndent
+    of 'I': result = p.tok[j].kind in {tkIndent, tkEof}
     of 'p': result = p.tok[j].kind == tkPunct
     of 'a': result = p.tok[j].kind == tkAdornment
     of 'o': result = p.tok[j].kind == tkOther
@@ -873,7 +1086,7 @@ proc parseMarkdownCodeblock(p: var RstParser): PRstNode =
       inc p.idx
   var lb = newRstNode(rnLiteralBlock)
   lb.add(n)
-  result = newRstNode(rnCodeBlock)
+  result = newRstNodeA(p, rnCodeBlock)
   result.add(args)
   result.add(PRstNode(nil))
   result.add(lb)
@@ -903,7 +1116,60 @@ proc parseMarkdownLink(p: var RstParser; father: PRstNode): bool =
   p.idx = i
   result = true
 
+proc getFootnoteType(label: PRstNode): (FootnoteType, int) =
+  if label.sons.len >= 1 and label.sons[0].kind == rnLeaf and
+      label.sons[0].text == "#":
+    if label.sons.len == 1:
+      result = (fnAutoNumber, -1)
+    else:
+      result = (fnAutoNumberLabel, -1)
+  elif label.len == 1 and label.sons[0].kind == rnLeaf and
+       label.sons[0].text == "*":
+    result = (fnAutoSymbol, -1)
+  elif label.len == 1 and label.sons[0].kind == rnLeaf:
+    try:
+      result = (fnManualNumber, parseInt(label.sons[0].text))
+    except:
+      result = (fnCitation, -1)
+  else:
+    result = (fnCitation, -1)
+
+proc validRefnamePunct(x: string): bool =
+  ## https://docutils.sourceforge.io/docs/ref/rst/restructuredtext.html#reference-names
+  x.len == 1 and x[0] in {'-', '_', '.', ':', '+'}
+
+proc parseFootnoteName(p: var RstParser, reference: bool): PRstNode =
+  ## parse footnote/citation label. Precondition: start at `[`.
+  ## Label text should be valid ref. name symbol, otherwise nil is returned.
+  var i = p.idx + 1
+  result = newRstNode(rnInner)
+  while true:
+    if p.tok[i].kind in {tkEof, tkIndent, tkWhite}:
+      return nil
+    if p.tok[i].kind == tkPunct:
+      case p.tok[i].symbol:
+      of "]":
+        if i > p.idx + 1 and (not reference or (p.tok[i+1].kind == tkPunct and p.tok[i+1].symbol == "_")):
+          inc i                # skip ]
+          if reference: inc i  # skip _
+          break  # to succeed, it's a footnote/citation indeed
+        else:
+          return nil
+      of "#":
+        if i != p.idx + 1:
+          return nil
+      of "*":
+        if i != p.idx + 1 and p.tok[i].kind != tkPunct and p.tok[i+1].symbol != "]":
+          return nil
+      else:
+        if not validRefnamePunct(p.tok[i].symbol):
+          return nil
+    result.add newRstNode(rnLeaf, p.tok[i].symbol)
+    inc i
+  p.idx = i
+
 proc parseInline(p: var RstParser, father: PRstNode) =
+  var n: PRstNode  # to be used in `if` condition
   case currentTok(p).kind
   of tkPunct:
     if isInlineMarkupStart(p, "***"):
@@ -917,6 +1183,13 @@ proc parseInline(p: var RstParser, father: PRstNode) =
     elif isInlineMarkupStart(p, "*"):
       var n = newRstNode(rnEmphasis)
       parseUntil(p, n, "*", true)
+      father.add(n)
+    elif isInlineMarkupStart(p, "_`"):
+      var n = newRstNode(rnInlineTarget)
+      inc p.idx
+      parseUntil(p, n, "`", false)
+      let refn = rstnodeToRefname(n)
+      p.s.anchors.add (refn, @[refn])
       father.add(n)
     elif roSupportMarkdown in p.s.options and currentTok(p).symbol == "```":
       inc p.idx
@@ -938,6 +1211,20 @@ proc parseInline(p: var RstParser, father: PRstNode) =
         currentTok(p).symbol == "[" and nextTok(p).symbol != "[" and
         parseMarkdownLink(p, father):
       discard "parseMarkdownLink already processed it"
+    elif isInlineMarkupStart(p, "[") and nextTok(p).symbol != "[" and
+         (n = parseFootnoteName(p, reference=true); n != nil):
+      var nn = newRstNode(rnFootnoteRef)
+      nn.add n
+      let (fnType, _) = getFootnoteType(n)
+      case fnType
+      of fnAutoSymbol:
+        p.s.lineFootnoteSymRef.add curLine(p)
+        nn.order = p.s.lineFootnoteSymRef.len
+      of fnAutoNumber:
+        p.s.lineFootnoteNumRef.add curLine(p)
+        nn.order = p.s.lineFootnoteNumRef.len
+      else: discard
+      father.add(nn)
     else:
       if roSupportSmilies in p.s.options:
         let n = parseSmiley(p)
@@ -1049,7 +1336,7 @@ proc parseFields(p: var RstParser): PRstNode =
   if currentTok(p).kind == tkIndent and nextTok(p).symbol == ":" or
       atStart:
     var col = if atStart: currentTok(p).col else: currentTok(p).ival
-    result = newRstNode(rnFieldList)
+    result = newRstNodeA(p, rnFieldList)
     if not atStart: inc p.idx
     while true:
       result.add(parseField(p))
@@ -1090,7 +1377,7 @@ proc getArgument(n: PRstNode): string =
 
 proc parseDotDot(p: var RstParser): PRstNode {.gcsafe.}
 proc parseLiteralBlock(p: var RstParser): PRstNode =
-  result = newRstNode(rnLiteralBlock)
+  result = newRstNodeA(p, rnLiteralBlock)
   var n = newRstNode(rnLeaf, "")
   if currentTok(p).kind == tkIndent:
     var indent = currentTok(p).ival
@@ -1196,7 +1483,7 @@ proc whichSection(p: RstParser): RstNodeKind =
      return rnDirective
   case currentTok(p).kind
   of tkAdornment:
-    if match(p, p.idx + 1, "ii") and currentTok(p).symbol.len >= 4:
+    if match(p, p.idx + 1, "iI") and currentTok(p).symbol.len >= 4:
       result = rnTransition
     elif match(p, p.idx, "+a+"):
       result = rnGridTable
@@ -1216,7 +1503,7 @@ proc whichSection(p: RstParser): RstNodeKind =
       result = rnMarkdownTable
     elif currentTok(p).symbol == "|" and isLineBlock(p):
       result = rnLineBlock
-    elif match(p, tokenAfterNewline(p), "ai") and
+    elif match(p, tokenAfterNewline(p), "aI") and
         isAdornmentHeadline(p, tokenAfterNewline(p)):
       result = rnHeadline
     elif predNL(p) and
@@ -1236,7 +1523,7 @@ proc whichSection(p: RstParser): RstNodeKind =
       result = rnParagraph
   of tkWord, tkOther, tkWhite:
     let tokIdx = tokenAfterNewline(p)
-    if match(p, tokIdx, "ai"):
+    if match(p, tokIdx, "aI"):
       if isAdornmentHeadline(p, tokIdx): result = rnHeadline
       else: result = rnParagraph
     elif match(p, p.idx, "e) ") or match(p, p.idx, "e. "): result = rnEnumList
@@ -1248,7 +1535,7 @@ proc parseLineBlock(p: var RstParser): PRstNode =
   result = nil
   if nextTok(p).kind in {tkWhite, tkIndent}:
     var col = currentTok(p).col
-    result = newRstNode(rnLineBlock)
+    result = newRstNodeA(p, rnLineBlock)
     while true:
       var item = newRstNode(rnLineBlockItem)
       if nextTok(p).kind == tkWhite:
@@ -1314,6 +1601,7 @@ proc parseHeadline(p: var RstParser): PRstNode =
     var c = nextTok(p).symbol[0]
     inc p.idx, 2
     result.level = getLevel(p.s.underlineToLevel, p.s.uLevel, c)
+  addAnchor(p, rstnodeToRefname(result), reset=true)
 
 type
   IntSeq = seq[int]
@@ -1349,7 +1637,7 @@ proc parseSimpleTable(p: var RstParser): PRstNode =
     c: char
     q: RstParser
     a, b: PRstNode
-  result = newRstNode(rnTable)
+  result = newRstNodeA(p, rnTable)
   cols = @[]
   row = @[]
   a = nil
@@ -1428,7 +1716,7 @@ proc parseMarkdownTable(p: var RstParser): PRstNode =
     colNum: int
     a, b: PRstNode
     q: RstParser
-  result = newRstNode(rnMarkdownTable)
+  result = newRstNodeA(p, rnMarkdownTable)
 
   proc parseRow(p: var RstParser, cellKind: RstNodeKind, result: PRstNode) =
     row = readTableRow(p)
@@ -1452,7 +1740,7 @@ proc parseMarkdownTable(p: var RstParser): PRstNode =
     parseRow(p, rnTableDataCell, result)
 
 proc parseTransition(p: var RstParser): PRstNode =
-  result = newRstNode(rnTransition)
+  result = newRstNodeA(p, rnTransition)
   inc p.idx
   if currentTok(p).kind == tkIndent: inc p.idx
   if currentTok(p).kind == tkIndent: inc p.idx
@@ -1475,13 +1763,14 @@ proc parseOverline(p: var RstParser): PRstNode =
   if currentTok(p).kind == tkAdornment:
     inc p.idx                # XXX: check?
     if currentTok(p).kind == tkIndent: inc p.idx
+  addAnchor(p, rstnodeToRefname(result), reset=true)
 
 proc parseBulletList(p: var RstParser): PRstNode =
   result = nil
   if nextTok(p).kind == tkWhite:
     var bullet = currentTok(p).symbol
     var col = currentTok(p).col
-    result = newRstNode(rnBulletList)
+    result = newRstNodeA(p, rnBulletList)
     pushInd(p, p.tok[p.idx + 2].col)
     inc p.idx, 2
     while true:
@@ -1497,7 +1786,7 @@ proc parseBulletList(p: var RstParser): PRstNode =
     popInd(p)
 
 proc parseOptionList(p: var RstParser): PRstNode =
-  result = newRstNode(rnOptionList)
+  result = newRstNodeA(p, rnOptionList)
   while true:
     if isOptionList(p):
       var a = newRstNode(rnOptionGroup)
@@ -1530,7 +1819,7 @@ proc parseDefinitionList(p: var RstParser): PRstNode =
   if j >= 1 and p.tok[j].kind == tkIndent and
       p.tok[j].ival > currInd(p) and p.tok[j - 1].symbol != "::":
     var col = currentTok(p).col
-    result = newRstNode(rnDefList)
+    result = newRstNodeA(p, rnDefList)
     while true:
       j = p.idx
       var a = newRstNode(rnDefName)
@@ -1568,7 +1857,7 @@ proc parseEnumList(p: var RstParser): PRstNode =
     wildToken: array[0..5, int] = [4, 3, 3, 4, 3, 3]  # number of tokens
     wildIndex: array[0..5, int] = [1, 0, 0, 1, 0, 0]
       # position of enumeration sequence (number/letter) in enumerator
-  result = newRstNode(rnEnumList)
+  result = newRstNodeA(p, rnEnumList)
   let col = currentTok(p).col
   var w = 0
   while w < wildcards.len:
@@ -1623,6 +1912,7 @@ proc sonKind(father: PRstNode, i: int): RstNodeKind =
   if i < father.len: result = father.sons[i].kind
 
 proc parseSection(p: var RstParser, result: PRstNode) =
+  ## parse top-level RST elements: sections, transitions and body elements.
   while true:
     var leave = false
     assert(p.idx >= 0)
@@ -1631,7 +1921,7 @@ proc parseSection(p: var RstParser, result: PRstNode) =
         inc p.idx
       elif currentTok(p).ival > currInd(p):
         pushInd(p, currentTok(p).ival)
-        var a = newRstNode(rnBlockQuote)
+        var a = newRstNodeA(p, rnBlockQuote)
         parseSection(p, a)
         result.add(a)
         popInd(p)
@@ -1667,7 +1957,7 @@ proc parseSection(p: var RstParser, result: PRstNode) =
       #InternalError("rst.parseSection()")
       discard
     if a == nil and k != rnDirective:
-      a = newRstNode(rnParagraph)
+      a = newRstNodeA(p, rnParagraph)
       parseParagraph(p, a)
     result.addIfNotNil(a)
   if sonKind(result, 0) == rnParagraph and sonKind(result, 1) != rnParagraph:
@@ -1703,7 +1993,7 @@ proc parseDirective(p: var RstParser, flags: DirFlags): PRstNode =
   ##
   ## Both rnDirArg and rnFieldList children nodes might be nil, so you need to
   ## check them before accessing.
-  result = newRstNode(rnDirective)
+  result = newRstNodeA(p, rnDirective)
   var args: PRstNode = nil
   var options: PRstNode = nil
   if hasArg in flags:
@@ -1734,6 +2024,20 @@ proc parseDirective(p: var RstParser, flags: DirFlags): PRstNode =
 proc indFollows(p: RstParser): bool =
   result = currentTok(p).kind == tkIndent and currentTok(p).ival > currInd(p)
 
+proc parseBlockContent(p: var RstParser, father: var PRstNode,
+                       contentParser: SectionParser): bool =
+  ## parse the final content part of explicit markup blocks (directives,
+  ## footnotes, etc). Returns true if succeeded.
+  if currentTok(p).kind != tkIndent or indFollows(p):
+    var nextIndent = p.tok[tokenAfterNewline(p)-1].ival
+    if nextIndent <= currInd(p):  # parse only this line
+      nextIndent = currentTok(p).col
+    pushInd(p, nextIndent)
+    var content = contentParser(p)
+    popInd(p)
+    father.add content
+    result = true
+
 proc parseDirective(p: var RstParser, flags: DirFlags,
                     contentParser: SectionParser): PRstNode =
   ## A helper proc that does main work for specific directive procs.
@@ -1746,14 +2050,8 @@ proc parseDirective(p: var RstParser, flags: DirFlags,
   ## .. warning:: Any of the 3 children may be nil.
   result = parseDirective(p, flags)
   if not isNil(contentParser) and
-      (currentTok(p).kind != tkIndent or indFollows(p)):
-    var nextIndent = p.tok[tokenAfterNewline(p)-1].ival
-    if nextIndent <= currInd(p):  # parse only this line
-      nextIndent = currentTok(p).col
-    pushInd(p, nextIndent)
-    var content = contentParser(p)
-    popInd(p)
-    result.add(content)
+      parseBlockContent(p, result, contentParser):
+    discard "result is updated by parseBlockContent"
   else:
     result.add(PRstNode(nil))
 
@@ -1797,7 +2095,7 @@ proc dirInclude(p: var RstParser): PRstNode =
       result = newRstNode(rnLiteralBlock)
       result.add(newRstNode(rnLeaf, readFile(path)))
     else:
-      let inputString = readFile(path).string()
+      let inputString = readFile(path)
       let startPosition =
         block:
           let searchFor = n.getFieldValue("start-after").strip()
@@ -1903,6 +2201,10 @@ proc dirAdmonition(p: var RstParser, d: string): PRstNode =
   result.kind = rnAdmonition
   result.text = d
 
+proc dirDefaultRole(p: var RstParser): PRstNode =
+  result = parseDirective(p, {hasArg}, nil)
+  result.kind = rnDefaultRole
+
 proc dirRawAux(p: var RstParser, result: var PRstNode, kind: RstNodeKind,
                contentParser: SectionParser) =
   var filename = getFieldValue(result, "file")
@@ -1962,12 +2264,62 @@ proc selectDir(p: var RstParser, d: string): PRstNode =
   of "tip": result = dirAdmonition(p, d)
   of "title": result = dirTitle(p)
   of "warning": result = dirAdmonition(p, d)
+  of "default-role": result = dirDefaultRole(p)
   else:
     rstMessage(p, meInvalidDirective, d)
+
+proc prefix(ftnType: FootnoteType): string =
+  case ftnType
+  of fnManualNumber: result = "footnote-"
+  of fnAutoNumber: result = "footnoteauto-"
+  of fnAutoNumberLabel: result = "footnote-"
+  of fnAutoSymbol: result = "footnotesym-"
+  of fnCitation: result = "citation-"
+
+proc parseFootnote(p: var RstParser): PRstNode =
+  ## Parses footnotes and citations, always returns 2 sons:
+  ##
+  ## 1) footnote label, always containing rnInner with 1 or more sons
+  ## 2) footnote body, which may be nil
+  inc p.idx
+  let label = parseFootnoteName(p, reference=false)
+  if label == nil:
+    dec p.idx
+    return nil
+  result = newRstNode(rnFootnote)
+  result.add label
+  let (fnType, i) = getFootnoteType(label)
+  var name = ""
+  var anchor = fnType.prefix
+  case fnType
+  of fnManualNumber:
+    addFootnoteNumManual(p, i)
+    anchor.add $i
+  of fnAutoNumber, fnAutoNumberLabel:
+    name = rstnodeToRefname(label)
+    addFootnoteNumAuto(p, name)
+    if fnType == fnAutoNumberLabel:
+      anchor.add name
+    else:  # fnAutoNumber
+      result.order = p.s.lineFootnoteNum.len
+      anchor.add $result.order
+  of fnAutoSymbol:
+    addFootnoteSymAuto(p)
+    result.order = p.s.lineFootnoteSym.len
+    anchor.add $p.s.lineFootnoteSym.len
+  of fnCitation:
+    anchor.add rstnodeToRefname(label)
+  addAnchor(p, anchor, reset=true)
+  result.anchor = anchor
+  if currentTok(p).kind == tkWhite: inc p.idx
+  discard parseBlockContent(p, result, parseSectionWrapper)
+  if result.len < 2:
+    result.add nil
 
 proc parseDotDot(p: var RstParser): PRstNode =
   # parse "explicit markup blocks"
   result = nil
+  var n: PRstNode  # to store result, workaround for bug 16855
   var col = currentTok(p).col
   inc p.idx
   var d = getDirective(p)
@@ -1981,7 +2333,10 @@ proc parseDotDot(p: var RstParser): PRstNode =
     var a = getReferenceName(p, ":")
     if currentTok(p).kind == tkWhite: inc p.idx
     var b = untilEol(p)
-    setRef(p, rstnodeToRefname(a), b)
+    if len(b) == 0 and b.text == "":  # set internal anchor
+      addAnchor(p, rstnodeToRefname(a), reset=false)
+    else:  # external hyperlink
+      setRef(p, rstnodeToRefname(a), b)
   elif match(p, p.idx, " |"):
     # substitution definitions:
     inc p.idx, 2
@@ -1998,17 +2353,16 @@ proc parseDotDot(p: var RstParser): PRstNode =
     else:
       rstMessage(p, meInvalidDirective, currentTok(p).symbol)
     setSub(p, addNodes(a), b)
-  elif match(p, p.idx, " ["):
-    # footnotes, citations
-    inc p.idx, 2
-    var a = getReferenceName(p, "]")
-    if currentTok(p).kind == tkWhite: inc p.idx
-    var b = untilEol(p)
-    setRef(p, rstnodeToRefname(a), b)
+  elif match(p, p.idx, " [") and
+      (n = parseFootnote(p); n != nil):
+    result = n
   else:
     result = parseComment(p)
 
 proc resolveSubs(p: var RstParser, n: PRstNode): PRstNode =
+  ## Resolves substitutions and anchor aliases, groups footnotes.
+  ## Takes input node `n` and returns the same node with recursive
+  ## substitutions to `result`.
   result = n
   if n == nil: return
   case n.kind
@@ -2022,18 +2376,93 @@ proc resolveSubs(p: var RstParser, n: PRstNode): PRstNode =
       if e != "": result = newRstNode(rnLeaf, e)
       else: rstMessage(p, mwUnknownSubstitution, key)
   of rnRef:
-    var y = findRef(p, rstnodeToRefname(n))
+    let refn = rstnodeToRefname(n)
+    var y = findRef(p, refn)
     if y != nil:
       result = newRstNode(rnHyperlink)
       n.kind = rnInner
       result.add(n)
       result.add(y)
+    else:
+      let s = findMainAnchor(p, refn)
+      if s != "":
+        result = newRstNode(rnInternalRef)
+        n.kind = rnInner
+        result.add(n)  # visible text of reference
+        result.add(newRstNode(rnLeaf, s))  # link itself
+  of rnFootnote:
+    var (fnType, num) = getFootnoteType(n.sons[0])
+    case fnType
+    of fnManualNumber, fnCitation:
+      discard "no need to alter fixed text"
+    of fnAutoNumberLabel, fnAutoNumber:
+      if fnType == fnAutoNumberLabel:
+        let labelR = rstnodeToRefname(n.sons[0])
+        num = getFootnoteNum(p, labelR)
+      else:
+        num = getFootnoteNum(p, n.order)
+      var nn = newRstNode(rnInner)
+      nn.add newRstNode(rnLeaf, $num)
+      result.sons[0] = nn
+    of fnAutoSymbol:
+      let sym = getAutoSymbol(p, n.order)
+      n.sons[0].sons[0].text = sym
+    n.sons[1] = resolveSubs(p, n.sons[1])
+  of rnFootnoteRef:
+    var (fnType, num) = getFootnoteType(n.sons[0])
+    template addLabel(number: int | string) =
+      var nn = newRstNode(rnInner)
+      nn.add newRstNode(rnLeaf, $number)
+      result.add(nn)
+    var refn = fnType.prefix
+    # create new rnFootnoteRef, add final label, and finalize target refn:
+    result = newRstNode(rnFootnoteRef)
+    case fnType
+    of fnManualNumber:
+      addLabel num
+      refn.add $num
+    of fnAutoNumber:
+      addLabel getFootnoteNum(p, n.order)
+      refn.add $n.order
+    of fnAutoNumberLabel:
+      addLabel getFootnoteNum(p, rstnodeToRefname(n))
+      refn.add rstnodeToRefname(n)
+    of fnAutoSymbol:
+      addLabel getAutoSymbol(p, n.order)
+      refn.add $n.order
+    of fnCitation:
+      result.add n.sons[0]
+      refn.add rstnodeToRefname(n)
+    let s = findMainAnchor(p, refn)
+    if s != "":
+      result.add(newRstNode(rnLeaf, s))     # add link
+    else:
+      rstMessage(p, mwUnknownSubstitution, refn)
+      result.add(newRstNode(rnLeaf, refn))  # add link
   of rnLeaf:
     discard
   of rnContents:
     p.hasToc = true
   else:
-    for i in 0 ..< n.len: n.sons[i] = resolveSubs(p, n.sons[i])
+    var regroup = false
+    for i in 0 ..< n.len:
+      n.sons[i] = resolveSubs(p, n.sons[i])
+      if n.sons[i] != nil and n.sons[i].kind == rnFootnote:
+        regroup = true
+    if regroup:  # group footnotes together into rnFootnoteGroup
+      var newSons: seq[PRstNode]
+      var i = 0
+      while i < n.len:
+        if n.sons[i] != nil and n.sons[i].kind == rnFootnote:
+          var grp = newRstNode(rnFootnoteGroup)
+          while i < n.len and n.sons[i].kind == rnFootnote:
+            grp.sons.add n.sons[i]
+            inc i
+          newSons.add grp
+        else:
+          newSons.add n.sons[i]
+          inc i
+      result.sons = newSons
 
 proc rstParse*(text, filename: string,
                line, column: int, hasToc: var bool,
@@ -2045,5 +2474,7 @@ proc rstParse*(text, filename: string,
   p.filename = filename
   p.line = line
   p.col = column + getTokens(text, roSkipPounds in options, p.tok)
-  result = resolveSubs(p, parseDoc(p))
+  let unresolved = parseDoc(p)
+  orderFootnotes(p)
+  result = resolveSubs(p, unresolved)
   hasToc = p.hasToc

@@ -12,7 +12,7 @@
 ## sequences and does not depend on any other module, on Windows it uses the
 ## Windows API.
 ## Changing the style is permanent even after program termination! Use the
-## code ``system.addQuitProc(resetAttributes)`` to restore the defaults.
+## code `exitprocs.addExitProc(resetAttributes)` to restore the defaults.
 ## Similarly, if you hide the cursor, make sure to unhide it with
 ## ``showCursor`` before quitting.
 
@@ -253,7 +253,7 @@ else:
     discard close(fd)
     if w > 0: return w
     var s = getEnv("COLUMNS") #Try standard env var
-    if len(s) > 0 and parseInt(string(s), w) > 0 and w > 0:
+    if len(s) > 0 and parseInt(s, w) > 0 and w > 0:
       return w
     return 80 #Finally default to venerable value
 
@@ -271,7 +271,7 @@ else:
     discard close(fd)
     if h > 0: return h
     var s = getEnv("LINES") # Try standard env var
-    if len(s) > 0 and parseInt(string(s), h) > 0 and h > 0:
+    if len(s) > 0 and parseInt(s, h) > 0 and h > 0:
       return h
     return 0 # Could not determine height
 
@@ -771,12 +771,12 @@ proc getch*(): char =
 when defined(windows):
   from unicode import toUTF8, Rune, runeLenAt
 
-  proc readPasswordFromStdin*(prompt: string, password: var TaintedString):
+  proc readPasswordFromStdin*(prompt: string, password: var string):
                               bool {.tags: [ReadIOEffect, WriteIOEffect].} =
     ## Reads a `password` from stdin without printing it. `password` must not
     ## be ``nil``! Returns ``false`` if the end of the file has been reached,
     ## ``true`` otherwise.
-    password.string.setLen(0)
+    password.setLen(0)
     stdout.write(prompt)
     let hi = createFileA("CONIN$",
       GENERIC_READ or GENERIC_WRITE, 0, nil, OPEN_EXISTING, 0, 0)
@@ -797,9 +797,9 @@ when defined(windows):
 else:
   import termios
 
-  proc readPasswordFromStdin*(prompt: string, password: var TaintedString):
+  proc readPasswordFromStdin*(prompt: string, password: var string):
                             bool {.tags: [ReadIOEffect, WriteIOEffect].} =
-    password.string.setLen(0)
+    password.setLen(0)
     let fd = stdin.getFileHandle()
     var cur, old: Termios
     discard fd.tcGetAttr(cur.addr)
@@ -811,9 +811,9 @@ else:
     stdout.write "\n"
     discard fd.tcSetAttr(TCSADRAIN, old.addr)
 
-proc readPasswordFromStdin*(prompt = "password: "): TaintedString =
+proc readPasswordFromStdin*(prompt = "password: "): string =
   ## Reads a password from stdin without printing it.
-  result = TaintedString("")
+  result = ""
   discard readPasswordFromStdin(prompt, result)
 
 
@@ -843,7 +843,7 @@ template setBackgroundColor*(color: Color) =
 proc resetAttributes*() {.noconv.} =
   ## Resets all attributes on stdout.
   ## It is advisable to register this as a quit proc with
-  ## ``system.addQuitProc(resetAttributes)``.
+  ## `exitprocs.addExitProc(resetAttributes)`.
   resetAttributes(stdout)
 
 proc isTrueColorSupported*(): bool =
@@ -882,7 +882,7 @@ proc enableTrueColors*() =
       else:
         term.trueColorIsEnabled = true
   else:
-    term.trueColorIsSupported = string(getEnv("COLORTERM")).toLowerAscii() in [
+    term.trueColorIsSupported = getEnv("COLORTERM").toLowerAscii() in [
         "truecolor", "24bit"]
     term.trueColorIsEnabled = term.trueColorIsSupported
 
@@ -908,7 +908,7 @@ proc newTerminal(): owned(PTerminal) =
 when not defined(testing) and isMainModule:
   assert ansiStyleCode(styleBright) == "\e[1m"
   assert ansiStyleCode(styleStrikethrough) == "\e[9m"
-  #system.addQuitProc(resetAttributes)
+  # exitprocs.addExitProc(resetAttributes)
   write(stdout, "never mind")
   stdout.eraseLine()
   stdout.styledWriteLine({styleBright, styleBlink, styleUnderscore}, "styled text ")

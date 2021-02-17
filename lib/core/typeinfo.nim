@@ -91,7 +91,7 @@ when not defined(gcDestructors):
 else:
   include system/seqs_v2_reimpl
 
-from std/private/strimpl import cmpIgnoreStyleImpl
+from std/private/strimpl import cmpNimIdentifier
 
 when not defined(js):
   template rawType(x: Any): PNimType =
@@ -367,9 +367,6 @@ iterator fields*(x: Any): tuple[name: string, any: Any] =
     fieldsAux(p, t.node, ret)
   for name, any in items(ret):
     yield ($name, any)
-
-proc cmpNimIdentifier(a, b: cstring): int {.noSideEffect.} =
-  cmpIgnoreStyleImpl(a, b, true)
 
 proc getFieldNode(p: pointer, n: ptr TNimNode,
                   name: cstring): ptr TNimNode =

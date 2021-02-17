@@ -12,12 +12,9 @@
 ## use this representation directly in all the transformations,
 ## it is superior.
 
-import std / [hashes, tables, strtabs, md5]
+import std / [hashes, tables, strtabs]
 import bitabs
 import ".." / [ast, options]
-
-const
-  nkModuleRef* = nkNone # pair of (ModuleId, SymId)
 
 type
   SymId* = distinct int32
@@ -29,8 +26,6 @@ type
   PackedItemId* = object
     module*: LitId       # 0 if it's this module
     item*: int32         # same as the in-memory representation
-
-  TypeId* = PackedItemId
 
 const
   nilItemId* = PackedItemId(module: LitId(0), item: -1.int32)
@@ -54,7 +49,7 @@ type
   PackedSym* = object
     kind*: TSymKind
     name*: LitId
-    typ*: TypeId
+    typ*: PackedItemId
     flags*: TSymFlags
     magic*: TMagic
     info*: PackedLineInfo
@@ -67,6 +62,7 @@ type
     position*: int
     offset*: int
     externalName*: LitId # instead of TLoc
+    locFlags*: TLocFlags
     annex*: PackedLib
     when hasFFI:
       cname*: LitId
@@ -77,19 +73,17 @@ type
     callConv*: TCallingConvention
     #nodekind*: TNodeKind
     flags*: TTypeFlags
-    types*: seq[TypeId]
+    types*: seq[PackedItemId]
     n*: NodeId
-    methods*: seq[(int, PackedItemId)]
     #nodeflags*: TNodeFlags
     sym*: PackedItemId
     owner*: PackedItemId
-    attachedOps*: array[TTypeAttachedOp, PackedItemId]
     size*: BiggestInt
     align*: int16
     paddingAtEnd*: int16
     lockLevel*: TLockLevel # lock level as required for deadlock checking
     # not serialized: loc*: TLoc because it is backend-specific
-    typeInst*: TypeId
+    typeInst*: PackedItemId
     nonUniqueId*: int32
 
   PackedNode* = object     # 20 bytes
@@ -99,16 +93,8 @@ type
                      # for kind in {nkStrLit, nkIdent, nkNumberLit}: LitId
                      # for kind in nkInt32Lit: direct value
                      # for non-atom kinds: the number of nodes (for easy skipping)
-    typeId*: TypeId
+    typeId*: PackedItemId
     info*: PackedLineInfo
-
-  ModulePhase* = enum
-    preLookup, lookedUpTopLevelStmts
-
-  GenericKey* = object
-    module*: int32
-    name*: string
-    types*: seq[MD5Digest] # is this a joke?
 
   PackedTree* = object ## usually represents a full Nim module
     nodes*: seq[PackedNode]
@@ -124,18 +110,15 @@ type
     floats*: BiTable[BiggestFloat]
     #config*: ConfigRef
 
-proc hash*(key: GenericKey): Hash =
-  var h: Hash = 0
-  h = h !& hash(key.module)
-  h = h !& hash(key.name)
-  h = h !& hash(key.types)
-  result = !$h
+  PackedInstantiation* = object
+    key*, sym*: PackedItemId
+    concreteTypes*: seq[PackedItemId]
 
 proc `==`*(a, b: SymId): bool {.borrow.}
 proc hash*(a: SymId): Hash {.borrow.}
 
 proc `==`*(a, b: NodePos): bool {.borrow.}
-#proc `==`*(a, b: TypeId): bool {.borrow.}
+#proc `==`*(a, b: PackedItemId): bool {.borrow.}
 proc `==`*(a, b: NodeId): bool {.borrow.}
 
 proc newTreeFrom*(old: PackedTree): PackedTree =
@@ -200,7 +183,7 @@ when false:
     result = PatchPos tree.nodes.len
     tree.nodes.add PackedNode(kind: kind, operand: 0, info: info)
 
-proc prepare*(tree: var PackedTree; kind: TNodeKind; flags: TNodeFlags; typeId: TypeId; info: PackedLineInfo): PatchPos =
+proc prepare*(tree: var PackedTree; kind: TNodeKind; flags: TNodeFlags; typeId: PackedItemId; info: PackedLineInfo): PatchPos =
   result = PatchPos tree.nodes.len
   tree.nodes.add PackedNode(kind: kind, flags: flags, operand: 0, info: info,
                             typeId: typeId)
@@ -310,7 +293,10 @@ template typ*(n: NodePos): PackedItemId =
 template flags*(n: NodePos): TNodeFlags =
   tree.nodes[n.int].flags
 
-proc span(tree: PackedTree; pos: int): int {.inline.} =
+template operand*(n: NodePos): int32 =
+  tree.nodes[n.int].operand
+
+proc span*(tree: PackedTree; pos: int): int {.inline.} =
   if isAtom(tree, pos): 1 else: tree.nodes[pos].operand
 
 proc sons2*(tree: PackedTree; n: NodePos): (NodePos, NodePos) =
@@ -472,67 +458,9 @@ when false:
     copyTree(dest, tree, n)
     patch dest, patchPos
 
-  proc hash*(table: StringTableRef): Hash =
-    ## XXX: really should be introduced into strtabs...
-    var h: Hash = 0
-    for pair in pairs table:
-      h = h !& hash(pair)
-    result = !$h
-
-  proc hash*(config: ConfigRef): Hash =
-    ## XXX: vet and/or extend this
-    var h: Hash = 0
-    h = h !& hash(config.selectedGC)
-    h = h !& hash(config.features)
-    h = h !& hash(config.legacyFeatures)
-    h = h !& hash(config.configVars)
-    h = h !& hash(config.symbols)
-    result = !$h
-
-  # XXX: lazy hashes for now
-  type
-    LazyHashes = PackedSym or PackedType or PackedLib or
-                PackedLineInfo or PackedTree or PackedNode
-
-  proc hash*(sh: Shared): Hash
-  proc hash*(s: LazyHashes): Hash
-  proc hash*(s: seq[LazyHashes]): Hash
-
-  proc hash*(s: LazyHashes): Hash =
-    var h: Hash = 0
-    for k, v in fieldPairs(s):
-      h = h !& hash((k, v))
-    result = !$h
-
-  proc hash*(s: seq[LazyHashes]): Hash =
-    ## critically, we need to hash the indices alongside their values
-    var h: Hash = 0
-    for i, n in pairs s:
-      h = h !& hash((i, n))
-    result = !$h
-
-  proc hash*(sh: Shared): Hash =
-    ## might want to edit this...
-    # XXX: these have too many references
-    when false:
-      var h: Hash = 0
-      h = h !& hash(sh.syms)
-      h = h !& hash(sh.types)
-      h = h !& hash(sh.strings)
-      h = h !& hash(sh.integers)
-      h = h !& hash(sh.floats)
-      h = h !& hash(sh.config)
-      result = !$h
-
-  proc hash*(m: Module): Hash =
-    var h: Hash = 0
-    h = h !& hash(m.name)
-    h = h !& hash(m.ast)
-    result = !$h
-
-  template safeItemId*(x: typed; f: untyped): ItemId =
-    ## yield a valid ItemId value for the field of a nillable type
-    if x.isNil:
-      nilItemId
-    else:
-      x.`f`
+iterator allNodes*(tree: PackedTree): NodePos =
+  var p = 0
+  while p < tree.len:
+    yield NodePos(p)
+    let s = span(tree, p)
+    inc p, s

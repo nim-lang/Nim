@@ -191,7 +191,8 @@ proc processSpecificNote*(arg: string, state: TSpecialWord, pass: TCmdLinePass,
   if i == arg.len: discard
   elif i < arg.len and (arg[i] in {':', '='}): inc(i)
   else: invalidCmdLineOption(conf, pass, orig, info)
-  if state == wHint:
+  # unfortunately, hintUser and warningUser clash
+  if state in {wHint, wHintAsError}:
     let x = findStr(hintMin, hintMax, id, errUnknown)
     if x != errUnknown: n = TNoteKind(x)
     else: localError(conf, info, "unknown hint: " & id)
@@ -209,13 +210,13 @@ proc processSpecificNote*(arg: string, state: TSpecialWord, pass: TCmdLinePass,
     incl(conf.modifiedyNotes, n)
     case val
     of "on":
-      if state == wWarningAsError:
-        incl(conf.warningAsErrors, n)
+      if state in {wWarningAsError, wHintAsError}:
+        incl(conf.warningAsErrors, n) # xxx rename warningAsErrors to noteAsErrors
       else:
         incl(conf.notes, n)
         incl(conf.mainPackageNotes, n)
     of "off":
-      if state == wWarningAsError:
+      if state in {wWarningAsError, wHintAsError}:
         excl(conf.warningAsErrors, n)
       else:
         excl(conf.notes, n)
@@ -312,7 +313,7 @@ proc testCompileOption*(conf: ConfigRef; switch: string, info: TLineInfo): bool 
   of "symbolfiles": result = conf.symbolFiles != disabledSf
   of "genscript": result = contains(conf.globalOptions, optGenScript)
   of "threads": result = contains(conf.globalOptions, optThreads)
-  of "taintmode": result = contains(conf.globalOptions, optTaintMode)
+  of "taintmode": result = false  # pending https://github.com/nim-lang/Nim/issues/16731
   of "tlsemulation": result = contains(conf.globalOptions, optTlsEmulation)
   of "implicitstatic": result = contains(conf.options, optImplicitStatic)
   of "patterns", "trmacros": result = contains(conf.options, optTrMacros)
@@ -418,7 +419,7 @@ proc parseCommand*(command: string): Command =
   of "gendepend": cmdGendepend
   of "dump": cmdDump
   of "parse": cmdParse
-  of "scan": cmdScan
+  of "rod": cmdRod
   of "secret": cmdInteractive
   of "nop", "help": cmdNop
   of "jsonscript": cmdJsonscript
@@ -607,6 +608,7 @@ proc processSwitch*(switch, arg: string, pass: TCmdLinePass, info: TLineInfo;
   of "warning": processSpecificNote(arg, wWarning, pass, info, switch, conf)
   of "hint": processSpecificNote(arg, wHint, pass, info, switch, conf)
   of "warningaserror": processSpecificNote(arg, wWarningAsError, pass, info, switch, conf)
+  of "hintaserror": processSpecificNote(arg, wHintAsError, pass, info, switch, conf)
   of "hints":
     if processOnOffSwitchOrList(conf, {optHints}, arg, pass, info): listHints(conf)
   of "threadanalysis": processOnOffSwitchG(conf, {optThreadAnalysis}, arg, pass, info)
@@ -670,7 +672,7 @@ proc processSwitch*(switch, arg: string, pass: TCmdLinePass, info: TLineInfo;
     processOnOffSwitchG(conf, {optThreads}, arg, pass, info)
     #if optThreads in conf.globalOptions: conf.setNote(warnGcUnsafe)
   of "tlsemulation": processOnOffSwitchG(conf, {optTlsEmulation}, arg, pass, info)
-  of "taintmode": processOnOffSwitchG(conf, {optTaintMode}, arg, pass, info)
+  of "taintmode": discard  # pending https://github.com/nim-lang/Nim/issues/16731
   of "implicitstatic":
     processOnOffSwitch(conf, {optImplicitStatic}, arg, pass, info)
   of "patterns", "trmacros":
@@ -800,8 +802,7 @@ proc processSwitch*(switch, arg: string, pass: TCmdLinePass, info: TLineInfo;
   of "help", "h":
     expectNoArg(conf, switch, arg, pass, info)
     helpOnError(conf, pass)
-  of "symbolfiles": discard "ignore for backwards compat"
-  of "incremental", "ic":
+  of "symbolfiles", "incremental", "ic":
     if pass in {passCmd2, passPP}:
       case arg.normalize
       of "on": conf.symbolFiles = v2Sf
@@ -809,6 +810,7 @@ proc processSwitch*(switch, arg: string, pass: TCmdLinePass, info: TLineInfo;
       of "writeonly": conf.symbolFiles = writeOnlySf
       of "readonly": conf.symbolFiles = readOnlySf
       of "v2": conf.symbolFiles = v2Sf
+      of "stress": conf.symbolFiles = stressTest
       else: localError(conf, info, "invalid option for --incremental: " & arg)
   of "skipcfg":
     processOnOffSwitchG(conf, {optSkipSystemConfigFile}, arg, pass, info)
@@ -938,8 +940,6 @@ proc processSwitch*(switch, arg: string, pass: TCmdLinePass, info: TLineInfo;
     of "1.0":
       defineSymbol(conf.symbols, "NimMajor", "1")
       defineSymbol(conf.symbols, "NimMinor", "0")
-      # always be compatible with 1.0.100:
-      defineSymbol(conf.symbols, "NimPatch", "100")
       # old behaviors go here:
       defineSymbol(conf.symbols, "nimOldRelativePathBehavior")
       undefSymbol(conf.symbols, "nimDoesntTrackDefects")
@@ -948,11 +948,11 @@ proc processSwitch*(switch, arg: string, pass: TCmdLinePass, info: TLineInfo;
     of "1.2":
       defineSymbol(conf.symbols, "NimMajor", "1")
       defineSymbol(conf.symbols, "NimMinor", "2")
-      # always be compatible with 1.2.100:
-      defineSymbol(conf.symbols, "NimPatch", "100")
       conf.globalOptions.incl optNimV12Emulation
     else:
-      localError(conf, info, "unknown Nim version; currently supported values are: {1.0}")
+      localError(conf, info, "unknown Nim version; currently supported values are: `1.0`, `1.2`")
+    # always be compatible with 1.x.100:
+    defineSymbol(conf.symbols, "NimPatch", "100")
   of "benchmarkvm":
     processOnOffSwitchG(conf, {optBenchmarkVM}, arg, pass, info)
   of "profilevm":
