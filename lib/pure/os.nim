@@ -41,7 +41,7 @@
 ## * `dynlib module <dynlib.html>`_
 ## * `streams module <streams.html>`_
 
-include "system/inclrtl"
+include system/inclrtl
 import std/private/since
 
 import std/[strutils, pathnorm]
@@ -1095,14 +1095,16 @@ when defined(windows) or defined(posix) or defined(nintendoswitch):
       result.add quoteShell(args[i])
 
 when not weirdTarget:
-  proc c_rename(oldname, newname: cstring): cint {.
-    importc: "rename", header: "<stdio.h>".}
   proc c_system(cmd: cstring): cint {.
     importc: "system", header: "<stdlib.h>".}
-  proc c_strlen(a: cstring): cint {.
-    importc: "strlen", header: "<string.h>", noSideEffect.}
-  proc c_free(p: pointer) {.
-    importc: "free", header: "<stdlib.h>".}
+
+  when not defined(windows):
+    proc c_rename(oldname, newname: cstring): cint {.
+      importc: "rename", header: "<stdio.h>".}
+    proc c_strlen(a: cstring): cint {.
+      importc: "strlen", header: "<string.h>", noSideEffect.}
+    proc c_free(p: pointer) {.
+      importc: "free", header: "<stdlib.h>".}
 
 
 when defined(windows) and not weirdTarget:
@@ -1193,8 +1195,11 @@ proc symlinkExists*(link: string): bool {.rtl, extern: "nos$1",
     var res: Stat
     return lstat(link, res) >= 0'i32 and S_ISLNK(res.st_mode)
 
+
+when not defined(windows):
+  const maxSymlinkLen = 1024
+
 const
-  maxSymlinkLen = 1024
   ExeExts* = ## Platform specific file extension for executables.
     ## On Windows ``["exe", "cmd", "bat"]``, on Posix ``[""]``.
     when defined(windows): ["exe", "cmd", "bat"] else: [""]
