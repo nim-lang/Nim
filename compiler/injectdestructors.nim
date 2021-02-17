@@ -151,7 +151,7 @@ proc collectLastReads(cfg: ControlFlowGraph; cache: var AliasCache, alreadySeen:
       potLastReads.incl potLastReadsA + potLastReadsB
 
       # Remove potential last reads that were invalidated in a branch,
-      # but don't remove those who were turned into last reads on that branch
+      # but don't remove those which were turned into last reads on that branch
       potLastReads.excl ((oldPotLastReads - potLastReadsA) - lastReadsA)
       potLastReads.excl ((oldPotLastReads - potLastReadsB) - lastReadsB)
 
