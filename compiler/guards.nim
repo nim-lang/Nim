@@ -774,12 +774,7 @@ macro `=~`(x: PNode, pat: untyped): bool =
 
   var conds = newTree(nnkBracket)
   m(x, pat, conds)
-  when compiles(nestList(ident"and", conds)):
-    result = nestList(ident"and", conds)
-  #elif declared(macros.toNimIdent):
-  #  result = nestList(toNimIdent"and", conds)
-  else:
-    result = nestList(!"and", conds)
+  result = nestList(ident"and", conds)
 
 proc isMinusOne(n: PNode): bool =
   n.kind in {nkCharLit..nkUInt64Lit} and n.intVal == -1
