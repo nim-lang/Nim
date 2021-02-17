@@ -697,10 +697,10 @@ when not defined(js):
 
 func len*[TOpenArray: openArray|varargs](x: TOpenArray): int {.magic: "LengthOpenArray".} =
   ## Returns the length of an openArray.
-  ##
-  ## .. code-block:: Nim
-  ##   var s = [1, 1, 1, 1, 1]
-  ##   echo len(s) # => 5
+  runnableExamples:
+    proc bar[T](a: openArray[T]): int = len(a)
+    assert bar([1,2]) == 2
+    assert [1,2].len == 2
 
 func len*(x: string): int {.magic: "LengthStr".} =
   ## Returns the length of a string.
