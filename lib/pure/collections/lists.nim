@@ -60,9 +60,6 @@ runnableExamples:
 
 import std/private/since
 
-when not defined(nimhygiene):
-  {.pragma: dirty.}
-
 when not defined(nimHasCursor):
   {.pragma: cursor.}
 

@@ -51,9 +51,6 @@ import
   hashes, math
 
 {.pragma: myShallow.}
-when not defined(nimhygiene):
-  {.pragma: dirty.}
-
 # For "integer-like A" that are too big for intsets/bit-vectors to be practical,
 # it would be best to shrink hcode to the same size as the integer.  Larger
 # codes should never be needed, and this can pack more entries per cache-line.

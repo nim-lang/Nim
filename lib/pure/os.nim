@@ -74,7 +74,7 @@ elif defined(posix):
 else:
   {.error: "OS module not ported to your operating system!".}
 
-when weirdTarget and defined(nimErrorProcCanHaveBody):
+when weirdTarget:
   {.pragma: noWeirdTarget, error: "this proc is not available on the NimScript/js target".}
 else:
   {.pragma: noWeirdTarget.}
@@ -2262,10 +2262,7 @@ iterator walkDir*(dir: string; relative = false, checkDir = false):
         while true:
           var x = readdir(d)
           if x == nil: break
-          when defined(nimNoArrayToCstringConversion):
-            var y = $cstring(addr x.d_name)
-          else:
-            var y = $x.d_name.cstring
+          var y = $cstring(addr x.d_name)
           if y != "." and y != "..":
             var s: Stat
             let path = dir / y

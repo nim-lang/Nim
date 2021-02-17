@@ -84,10 +84,6 @@ import std/private/since
 
 import macros
 
-when not defined(nimhygiene):
-  {.pragma: dirty.}
-
-
 macro evalOnceAs(expAlias, exp: untyped,
                  letAssigneable: static[bool]): untyped =
   ## Injects `expAlias` in caller scope, to avoid bugs involving multiple
@@ -956,16 +952,10 @@ template mapIt*(s: typed, op: untyped): untyped =
       strings = nums.mapIt($(4 * it))
     assert strings == @["4", "8", "12", "16"]
 
-  when defined(nimHasTypeof):
-    type OutType = typeof((
-      block:
-        var it{.inject.}: typeof(items(s), typeOfIter);
-        op), typeOfProc)
-  else:
-    type OutType = typeof((
-      block:
-        var it{.inject.}: typeof(items(s));
-        op))
+  type OutType = typeof((
+    block:
+      var it{.inject.}: typeof(items(s), typeOfIter);
+      op), typeOfProc)
   when OutType is not (proc):
     # Here, we avoid to create closures in loops.
     # This avoids https://github.com/nim-lang/Nim/issues/12625
@@ -996,11 +986,7 @@ template mapIt*(s: typed, op: untyped): untyped =
     # With this fallback, above code can be simplified to:
     #   [1, 2].mapIt((x: int) => it + x)
     # In this case, `mapIt` is just syntax sugar for `map`.
-
-    when defined(nimHasTypeof):
-      type InType = typeof(items(s), typeOfIter)
-    else:
-      type InType = typeof(items(s))
+    type InType = typeof(items(s), typeOfIter)
     # Use a help proc `f` to create closures for each element in `s`
     let f = proc (x: InType): OutType =
               let it {.inject.} = x
