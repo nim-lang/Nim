@@ -9,24 +9,28 @@
 
 # Unfortunately this cannot be a module yet:
 #import vmdeps, vm
-from math import sqrt, ln, log10, log2, exp, round, arccos, arcsin,
+from std/math import sqrt, ln, log10, log2, exp, round, arccos, arcsin,
   arctan, arctan2, cos, cosh, hypot, sinh, sin, tan, tanh, pow, trunc,
   floor, ceil, `mod`
 
 when declared(math.copySign):
-  from math import copySign
+  from std/math import copySign
 
 when declared(math.signbit):
-  from math import signbit
+  from std/math import signbit
 
-from os import getEnv, existsEnv, dirExists, fileExists, putEnv, walkDir, getAppFilename
-from md5 import getMD5
+from std/os import getEnv, existsEnv, dirExists, fileExists, putEnv, walkDir,
+                   getAppFilename, raiseOSError, osLastError
+
+from std/md5 import getMD5
+from std/times import cpuTime
+from std/hashes import hash
+from std/osproc import nil
+from std/sysrand import urandom
+
 from sighashes import symBodyDigest
-from times import cpuTime
 
-from hashes import hash
-from osproc import nil
-
+# There are some useful procs in vmconv.
 import vmconv
 
 template mathop(op) {.dirty.} =
@@ -304,3 +308,35 @@ proc registerAdditionalOps*(c: PCtx) =
     let fn = getNode(a, 0)
     setResult(a, (fn.typ != nil and tfNoSideEffect in fn.typ.flags) or
                  (fn.kind == nkSym and fn.sym.kind == skFunc))
+
+  if vmopsDanger in c.config.features:
+    proc urandomImpl(a: VmArgs) =
+      doAssert a.numArgs == 1
+      let kind = a.slots[a.rb+1].kind
+      case kind
+      of rkInt:
+        setResult(a, urandom(a.getInt(0)).toLit)
+      of rkNode, rkNodeAddr:
+        let n =
+          if kind == rkNode:
+            a.getNode(0)
+          else:
+            a.getNodeAddr(0)
+
+        let length = n.len
+
+        ## TODO refactor using vmconv.fromLit
+        var res = newSeq[uint8](length)
+        for i in 0 ..< length:
+          res[i] = byte(n[i].intVal)
+
+        let isSuccess = urandom(res)
+
+        for i in 0 ..< length:
+          n[i].intVal = BiggestInt(res[i])
+
+        setResult(a, isSuccess)
+      else:
+        doAssert false, $kind
+
+    registerCallback c, "stdlib.sysrand.urandom", urandomImpl
