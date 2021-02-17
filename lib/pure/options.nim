@@ -158,7 +158,7 @@ proc get*[T](self: Option[T]): lent T {.inline.} =
   ## **See also:**
   ## * `get proc <#get,Option[T],T>`_ with a default return value
   runnableExamples:
-    assert a = some(42).get == 42
+    assert some(42).get == 42
     doAssertRaises(UnpackDefect):
       echo none(string).get
 
