@@ -103,8 +103,6 @@ try:
           echo [lan_ip]
           echo [splitted[1]]
           inc(i, 1)
-          const
-            expr`gensym13 = "len(a) == L"
         finally:
           `=destroy`(splitted)
 finally:
