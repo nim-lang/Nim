@@ -86,13 +86,11 @@ template assert*(cond: untyped, msg = "") =
   ##
   ## No code will be generated for `assert` when passing `-d:danger` (implied by `--assertions:off`).
   ## See `command line switches <nimc.html#compiler-usage-commandminusline-switches>`_.
-  const expr = astToStr(cond)
-  assertImpl(cond, msg, expr, compileOption("assertions"))
+  assertImpl(cond, msg, astToStr(cond), compileOption("assertions"))
 
 template doAssert*(cond: untyped, msg = "") =
   ## Similar to `assert <#assert.t,untyped,string>`_ but is always turned on regardless of `--assertions`.
-  const expr = astToStr(cond)
-  assertImpl(cond, msg, expr, true)
+  assertImpl(cond, msg, astToStr(cond), true)
 
 template onFailedAssert*(msg, code: untyped): untyped {.dirty.} =
   ## Sets an assertion failure handler that will intercept any assert

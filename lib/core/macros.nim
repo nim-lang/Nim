@@ -229,7 +229,17 @@ proc intVal*(n: NimNode): BiggestInt {.magic: "NIntVal", noSideEffect.}
 proc floatVal*(n: NimNode): BiggestFloat {.magic: "NFloatVal", noSideEffect.}
   ## Returns a float from any floating point literal.
 
-{.push warnings: off.}
+
+proc symKind*(symbol: NimNode): NimSymKind {.magic: "NSymKind", noSideEffect.}
+proc getImpl*(symbol: NimNode): NimNode {.magic: "GetImpl", noSideEffect.}
+  ## Returns a copy of the declaration of a symbol or `nil`.
+proc strVal*(n: NimNode): string  {.magic: "NStrVal", noSideEffect.}
+  ## Returns the string value of an identifier, symbol, comment, or string literal.
+  ##
+  ## See also:
+  ## * `strVal= proc<#strVal=,NimNode,string>`_ for setting the string value.
+
+{.push warnings: off.} # silence `deprecated`
 
 proc ident*(n: NimNode): NimIdent {.magic: "NIdent", noSideEffect, deprecated:
   "Deprecated since version 0.18.1; All functionality is defined on 'NimNode'.".}
@@ -239,41 +249,13 @@ proc symbol*(n: NimNode): NimSym {.magic: "NSymbol", noSideEffect, deprecated:
 
 proc getImpl*(s: NimSym): NimNode {.magic: "GetImpl", noSideEffect, deprecated: "use `getImpl: NimNode -> NimNode` instead".}
 
-when defined(nimSymKind):
-  proc symKind*(symbol: NimNode): NimSymKind {.magic: "NSymKind", noSideEffect.}
-  proc getImpl*(symbol: NimNode): NimNode {.magic: "GetImpl", noSideEffect.}
-    ## Returns a copy of the declaration of a symbol or `nil`.
-  proc strVal*(n: NimNode): string  {.magic: "NStrVal", noSideEffect.}
-    ## Returns the string value of an identifier, symbol, comment, or string literal.
-    ##
-    ## See also:
-    ## * `strVal= proc<#strVal=,NimNode,string>`_ for setting the string value.
+proc `$`*(i: NimIdent): string {.magic: "NStrVal", noSideEffect, deprecated:
+  "Deprecated since version 0.18.1; Use 'strVal' instead.".}
+  ## Converts a Nim identifier to a string.
 
-  proc `$`*(i: NimIdent): string {.magic: "NStrVal", noSideEffect, deprecated:
-    "Deprecated since version 0.18.1; Use 'strVal' instead.".}
-    ## Converts a Nim identifier to a string.
-
-  proc `$`*(s: NimSym): string {.magic: "NStrVal", noSideEffect, deprecated:
-    "Deprecated since version 0.18.1; Use 'strVal' instead.".}
-    ## Converts a Nim symbol to a string.
-
-else: # bootstrapping substitute
-  proc getImpl*(symbol: NimNode): NimNode =
-    symbol.symbol.getImpl
-
-  proc strValOld(n: NimNode): string {.magic: "NStrVal", noSideEffect.}
-
-  proc `$`*(s: NimSym): string {.magic: "IdentToStr", noSideEffect.}
-
-  proc `$`*(i: NimIdent): string {.magic: "IdentToStr", noSideEffect.}
-
-  proc strVal*(n: NimNode): string =
-    if n.kind == nnkIdent:
-      $n.ident
-    elif n.kind == nnkSym:
-      $n.symbol
-    else:
-      n.strValOld
+proc `$`*(s: NimSym): string {.magic: "NStrVal", noSideEffect, deprecated:
+  "Deprecated since version 0.18.1; Use 'strVal' instead.".}
+  ## Converts a Nim symbol to a string.
 
 {.pop.}
 
@@ -284,23 +266,21 @@ when (NimMajor, NimMinor, NimPatch) >= (1, 3, 5) or defined(nimSymImplTransform)
     ## note that code transformations are implementation dependent and subject to change.
     ## See an example in `tests/macros/tmacros_various.nim`.
 
-when defined(nimHasSymOwnerInMacro):
-  proc owner*(sym: NimNode): NimNode {.magic: "SymOwner", noSideEffect.}
-    ## Accepts a node of kind `nnkSym` and returns its owner's symbol.
-    ## The meaning of 'owner' depends on `sym`'s `NimSymKind` and declaration
-    ## context. For top level declarations this is an `nskModule` symbol,
-    ## for proc local variables an `nskProc` symbol, for enum/object fields an
-    ## `nskType` symbol, etc. For symbols without an owner, `nil` is returned.
-    ##
-    ## See also:
-    ## * `symKind proc<#symKind,NimNode>`_ to get the kind of a symbol
-    ## * `getImpl proc<#getImpl,NimNode>`_ to get the declaration of a symbol
+proc owner*(sym: NimNode): NimNode {.magic: "SymOwner", noSideEffect.}
+  ## Accepts a node of kind `nnkSym` and returns its owner's symbol.
+  ## The meaning of 'owner' depends on `sym`'s `NimSymKind` and declaration
+  ## context. For top level declarations this is an `nskModule` symbol,
+  ## for proc local variables an `nskProc` symbol, for enum/object fields an
+  ## `nskType` symbol, etc. For symbols without an owner, `nil` is returned.
+  ##
+  ## See also:
+  ## * `symKind proc<#symKind,NimNode>`_ to get the kind of a symbol
+  ## * `getImpl proc<#getImpl,NimNode>`_ to get the declaration of a symbol
 
-when defined(nimHasInstantiationOfInMacro):
-  proc isInstantiationOf*(instanceProcSym, genProcSym: NimNode): bool {.magic: "SymIsInstantiationOf", noSideEffect.}
-    ## Checks if a proc symbol is an instance of the generic proc symbol.
-    ## Useful to check proc symbols against generic symbols
-    ## returned by `bindSym`.
+proc isInstantiationOf*(instanceProcSym, genProcSym: NimNode): bool {.magic: "SymIsInstantiationOf", noSideEffect.}
+  ## Checks if a proc symbol is an instance of the generic proc symbol.
+  ## Useful to check proc symbols against generic symbols
+  ## returned by `bindSym`.
 
 proc getType*(n: NimNode): NimNode {.magic: "NGetType", noSideEffect.}
   ## With 'getType' you can access the node's `type`:idx:. A Nim type is
@@ -362,12 +342,11 @@ object
     doAssert(dumpTypeImpl(b) == t)
     doAssert(dumpTypeImpl(c) == t)
 
-when defined(nimHasSignatureHashInMacro):
-  proc signatureHash*(n: NimNode): string {.magic: "NSigHash", noSideEffect.}
-    ## Returns a stable identifier derived from the signature of a symbol.
-    ## The signature combines many factors such as the type of the symbol,
-    ## the owning module of the symbol and others. The same identifier is
-    ## used in the back-end to produce the mangled symbol name.
+proc signatureHash*(n: NimNode): string {.magic: "NSigHash", noSideEffect.}
+  ## Returns a stable identifier derived from the signature of a symbol.
+  ## The signature combines many factors such as the type of the symbol,
+  ## the owning module of the symbol and others. The same identifier is
+  ## used in the back-end to produce the mangled symbol name.
 
 proc symBodyHash*(s: NimNode): string {.noSideEffect.} =
   ## Returns a stable digest for symbols derived not only from type signature
@@ -1414,45 +1393,26 @@ proc copy*(node: NimNode): NimNode {.compileTime.} =
   ## An alias for `copyNimTree<#copyNimTree,NimNode>`_.
   return node.copyNimTree()
 
-when defined(nimVmEqIdent):
-  proc eqIdent*(a: string; b: string): bool {.magic: "EqIdent", noSideEffect.}
-    ## Style insensitive comparison.
+proc eqIdent*(a: string; b: string): bool {.magic: "EqIdent", noSideEffect.}
+  ## Style insensitive comparison.
 
-  proc eqIdent*(a: NimNode; b: string): bool {.magic: "EqIdent", noSideEffect.}
-    ## Style insensitive comparison.  ``a`` can be an identifier or a
-    ## symbol. ``a`` may be wrapped in an export marker
-    ## (``nnkPostfix``) or quoted with backticks (``nnkAccQuoted``),
-    ## these nodes will be unwrapped.
+proc eqIdent*(a: NimNode; b: string): bool {.magic: "EqIdent", noSideEffect.}
+  ## Style insensitive comparison.  ``a`` can be an identifier or a
+  ## symbol. ``a`` may be wrapped in an export marker
+  ## (``nnkPostfix``) or quoted with backticks (``nnkAccQuoted``),
+  ## these nodes will be unwrapped.
 
-  proc eqIdent*(a: string; b: NimNode): bool {.magic: "EqIdent", noSideEffect.}
-    ## Style insensitive comparison.  ``b`` can be an identifier or a
-    ## symbol. ``b`` may be wrapped in an export marker
-    ## (``nnkPostfix``) or quoted with backticks (``nnkAccQuoted``),
-    ## these nodes will be unwrapped.
+proc eqIdent*(a: string; b: NimNode): bool {.magic: "EqIdent", noSideEffect.}
+  ## Style insensitive comparison.  ``b`` can be an identifier or a
+  ## symbol. ``b`` may be wrapped in an export marker
+  ## (``nnkPostfix``) or quoted with backticks (``nnkAccQuoted``),
+  ## these nodes will be unwrapped.
 
-  proc eqIdent*(a: NimNode; b: NimNode): bool {.magic: "EqIdent", noSideEffect.}
-    ## Style insensitive comparison.  ``a`` and ``b`` can be an
-    ## identifier or a symbol. Both may be wrapped in an export marker
-    ## (``nnkPostfix``) or quoted with backticks (``nnkAccQuoted``),
-    ## these nodes will be unwrapped.
-
-else:
-  from std/private/strimpl import cmpNimIdentifier
-
-  proc eqIdent*(a, b: string): bool = cmpNimIdentifier(a, b) == 0
-    ## Check if two idents are equal.
-
-  proc eqIdent*(node: NimNode; s: string): bool {.compileTime.} =
-    ## Check if node is some identifier node (``nnkIdent``, ``nnkSym``, etc.)
-    ## is the same as ``s``. Note that this is the preferred way to check! Most
-    ## other ways like ``node.ident`` are much more error-prone, unfortunately.
-    case node.kind
-    of nnkSym, nnkIdent:
-      result = eqIdent(node.strVal, s)
-    of nnkOpenSymChoice, nnkClosedSymChoice:
-      result = eqIdent($node[0], s)
-    else:
-      result = false
+proc eqIdent*(a: NimNode; b: NimNode): bool {.magic: "EqIdent", noSideEffect.}
+  ## Style insensitive comparison.  ``a`` and ``b`` can be an
+  ## identifier or a symbol. Both may be wrapped in an export marker
+  ## (``nnkPostfix``) or quoted with backticks (``nnkAccQuoted``),
+  ## these nodes will be unwrapped.
 
 proc expectIdent*(n: NimNode, name: string) {.compileTime, since: (1,1).} =
   ## Check that ``eqIdent(n,name)`` holds true. If this is not the
@@ -1672,22 +1632,21 @@ proc getProjectPath*(): string = discard
   ## See also:
   ## * `getCurrentDir proc <os.html#getCurrentDir>`_
 
-when defined(nimMacrosSizealignof):
-  proc getSize*(arg: NimNode): int {.magic: "NSizeOf", noSideEffect.} =
-    ## Returns the same result as ``system.sizeof`` if the size is
-    ## known by the Nim compiler. Returns a negative value if the Nim
-    ## compiler does not know the size.
-  proc getAlign*(arg: NimNode): int {.magic: "NSizeOf", noSideEffect.} =
-    ## Returns the same result as ``system.alignof`` if the alignment
-    ## is known by the Nim compiler. It works on ``NimNode`` for use
-    ## in macro context. Returns a negative value if the Nim compiler
-    ## does not know the alignment.
-  proc getOffset*(arg: NimNode): int {.magic: "NSizeOf", noSideEffect.} =
-    ## Returns the same result as ``system.offsetof`` if the offset is
-    ## known by the Nim compiler. It expects a resolved symbol node
-    ## from a field of a type. Therefore it only requires one argument
-    ## instead of two. Returns a negative value if the Nim compiler
-    ## does not know the offset.
+proc getSize*(arg: NimNode): int {.magic: "NSizeOf", noSideEffect.} =
+  ## Returns the same result as ``system.sizeof`` if the size is
+  ## known by the Nim compiler. Returns a negative value if the Nim
+  ## compiler does not know the size.
+proc getAlign*(arg: NimNode): int {.magic: "NSizeOf", noSideEffect.} =
+  ## Returns the same result as ``system.alignof`` if the alignment
+  ## is known by the Nim compiler. It works on ``NimNode`` for use
+  ## in macro context. Returns a negative value if the Nim compiler
+  ## does not know the alignment.
+proc getOffset*(arg: NimNode): int {.magic: "NSizeOf", noSideEffect.} =
+  ## Returns the same result as ``system.offsetof`` if the offset is
+  ## known by the Nim compiler. It expects a resolved symbol node
+  ## from a field of a type. Therefore it only requires one argument
+  ## instead of two. Returns a negative value if the Nim compiler
+  ## does not know the offset.
 
 proc isExported*(n: NimNode): bool {.noSideEffect.} =
   ## Returns whether the symbol is exported or not.

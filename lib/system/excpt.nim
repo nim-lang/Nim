@@ -393,15 +393,10 @@ proc reportUnhandledErrorAux(e: ref Exception) {.nodestroy.} =
     add(buf, " [")
     xadd(buf, e.name, e.name.len)
     add(buf, "]\n")
-    when defined(nimNoArrayToCstringConversion):
-      template tbuf(): untyped = addr buf
-    else:
-      template tbuf(): untyped = buf
-
     if onUnhandledException != nil:
-      onUnhandledException($tbuf())
+      onUnhandledException($buf.addr)
     else:
-      showErrorMessage(tbuf(), L)
+      showErrorMessage(buf.addr, L)
 
 proc reportUnhandledError(e: ref Exception) {.nodestroy.} =
   if unhandledExceptionHook != nil:
