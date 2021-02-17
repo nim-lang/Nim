@@ -11,6 +11,8 @@
 ## The involved types should have 'prev' or 'next' fields and the
 ## list header should have 'head' or 'tail' fields.
 
+{.deprecated.}
+
 template prepend*(header, node) =
   when compiles(header.head):
     when compiles(node.prev):
