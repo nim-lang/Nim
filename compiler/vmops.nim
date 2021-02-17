@@ -324,6 +324,8 @@ proc registerAdditionalOps*(c: PCtx) =
             a.getNodeAddr(0)
 
         let length = n.len
+
+        ## TODO refactor using vmconv.toLit
         var res = newSeq[uint8](length)
         for i in 0 ..< length:
           res[i] = byte(n[i].intVal)
