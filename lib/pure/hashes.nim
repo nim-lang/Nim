@@ -67,8 +67,7 @@ runnableExamples:
       x: int
       y: string
 
-  var x = Obj(x: 520, y: "Nim")
-  discard hash(x)
+  doAssert hash(Obj(x: 520, y: "Nim")) != hash(Obj(x: 520, y: "Nim2"))
 
 ## See also
 ## ========
