@@ -1,5 +1,7 @@
 discard """
+  cmd: "nim $target --experimental:vmopsdanger $file"
   targets: "c cpp js"
+  joinable: false
 """
 
 import std/sysrand
