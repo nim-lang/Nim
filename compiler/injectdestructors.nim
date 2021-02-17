@@ -139,16 +139,21 @@ proc collectLastReads(cfg: ControlFlowGraph; cache: var AliasCache, alreadySeen:
 
       alreadySeen.incl alreadySeenA + alreadySeenB
 
+      # Add those last reads that were turned into last reads on both branches
       lastReads.incl lastReadsA * lastReadsB
+      # Add those last reads that were turned into last reads on only one branch,
+      # but where the read operation itself also belongs to only that branch
       lastReads.incl (lastReadsA + lastReadsB) - potLastReads
 
       let oldPotLastReads = potLastReads
       potLastReads = initIntSet()
 
-      potLastReads.incl (lastReadsA + lastReadsB) - lastReads
+      potLastReads.incl potLastReadsA + potLastReadsB
 
-      potLastReads.incl potLastReadsA * potLastReadsB
-      potLastReads.incl (potLastReadsA + potLastReadsB) - oldPotLastReads
+      # Remove potential last reads that were invalidated in a branch,
+      # but don't remove those who were turned into last reads on that branch
+      potLastReads.excl ((oldPotLastReads - potLastReadsA) - lastReadsA)
+      potLastReads.excl ((oldPotLastReads - potLastReadsB) - lastReadsB)
 
       pc = min(variantA, variantB)
 
