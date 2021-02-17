@@ -179,7 +179,7 @@ template main() =
     doAssert removeDotSegments("http://a1/a2") == "http://a1/a2"
     doAssert removeDotSegments("http://www.ai.") == "http://www.ai."
     when false: # xxx these cases are buggy
-      # trailing to should work, refs https://webmasters.stackexchange.com/questions/73934/how-can-urls-have-a-dot-at-the-end-e-g-www-bla-de
+      # this should work, refs https://webmasters.stackexchange.com/questions/73934/how-can-urls-have-a-dot-at-the-end-e-g-www-bla-de
       doAssert removeDotSegments("http://www.ai./") == "http://www.ai./" # fails
       echo removeDotSegments("http://www.ai./")  # http://www.ai/
       echo removeDotSegments("a/b.../c") # b.c
