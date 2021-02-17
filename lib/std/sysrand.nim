@@ -158,7 +158,7 @@ elif defined(windows):
     result = randomBytes(addr dest[0], size)
 
 elif defined(linux):
-  # TODO using let pending bootstrap >= 1.4.0
+  # TODO using let, pending bootstrap >= 1.4.0
   var SYS_getrandom {.importc: "SYS_getrandom", header: "<sys/syscall.h>".}: clong
   const syscallHeader = """#include <unistd.h>
 #include <sys/syscall.h>"""
@@ -210,7 +210,7 @@ elif defined(freebsd):
     # errno is set to indicate the error.
 
   proc getRandomImpl(p: pointer, size: int): int {.inline.} =
-    result = getrandom(p, csize_t(batchSize), 0)
+    result = getrandom(p, csize_t(size), 0)
 
 elif defined(ios):
   {.passL: "-framework Security".}
