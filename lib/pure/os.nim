@@ -41,7 +41,7 @@
 ## * `dynlib module <dynlib.html>`_
 ## * `streams module <streams.html>`_
 
-include "system/inclrtl"
+include system/inclrtl
 import std/private/since
 
 import std/[strutils, pathnorm]
