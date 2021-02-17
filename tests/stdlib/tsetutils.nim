@@ -13,9 +13,9 @@ template main =
     doAssert [A('x')].toSet == {A('x')}
 
   block: # fullSet
-    doAssert {true, false} == fullSet(bool)
-    doAssert {red, green, blue} == fullSet(Colors)
-    doAssert {0.chr..255.chr} == fullSet(char)
+    doAssert fullSet(bool) == {true, false}
+    doAssert fullSet(Colors) == {red, green, blue}
+    doAssert fullSet(char) == {0.chr..255.chr}
 
   block: # not
     doAssert {red, blue}.not == {green}
