@@ -339,9 +339,18 @@ func parseUri*(uri: string): Uri =
   parseUri(uri, result)
 
 func removeDotSegments(path: string): string =
+  ## collapses `..` and `.` in `path` in a similar way as done in `os.normalizedPath`
+  ## Caution: this is buggy.
+  runnableExamples:
+    assert removeDotSegments("a1/a2/../a3/a4/a5/./a6/a7/.//./") == "a1/a3/a4/a5/a6/a7/"
+    assert removeDotSegments("http://www.ai.") == "http://www.ai."
+  # xxx adapt code from `os.normalizedPath` to make this more reliable, but
+  # taking into account url specificities such as not collapsing leading `//` in scheme
+  # `https://`, and using `/` on all OS.
+  # see `turi` for failing tests.
   if path.len == 0: return ""
   var collection: seq[string] = @[]
-  let endsWithSlash = path[path.len-1] == '/'
+  let endsWithSlash = path.endsWith '/'
   var i = 0
   var currentSegment = ""
   while i < path.len:
@@ -547,3 +556,7 @@ proc getDataUri*(data, mime: string, encoding = "utf-8"): string {.since: (1, 3)
   runnableExamples: static: doAssert getDataUri("Nim", "text/plain") == "data:text/plain;charset=utf-8;base64,Tmlt"
   assert encoding.len > 0 and mime.len > 0 # Must *not* be URL-Safe, see RFC-2397
   result = "data:" & mime & ";charset=" & encoding & ";base64," & base64.encode(data)
+
+when defined(testing):
+  # pending https://github.com/nim-lang/Nim/pull/11865
+  export removeDotSegments
