@@ -52,8 +52,7 @@ template assert*(cond: untyped, msg = "") =
   ##
   ## .. code-block:: nim
   ##   static: assert 1 == 9, "This assertion generates code when not built with -d:danger or --assertions:off"
-  const expr = astToStr(cond)
-  assertImpl(cond, msg, expr, compileOption("assertions"))
+  assertImpl(cond, msg, astToStr(cond), compileOption("assertions"))
 
 template doAssert*(cond: untyped, msg = "") =
   ## Similar to ``assert`` but is always turned on regardless of ``--assertions``.
