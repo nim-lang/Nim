@@ -158,7 +158,7 @@ elif defined(windows):
     result = randomBytes(addr dest[0], size)
 
 elif defined(linux):
-  # TODO using let doesn't work when building compiler Error: 'let' symbol requires an initialization
+  # TODO using let pending bootstrap >= 1.4.0
   var SYS_getrandom {.importc: "SYS_getrandom", header: "<sys/syscall.h>".}: clong
   const syscallHeader = """#include <unistd.h>
 #include <sys/syscall.h>"""

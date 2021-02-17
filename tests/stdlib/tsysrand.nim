@@ -7,7 +7,11 @@ import std/sysrand
 
 template main() =
   block:
-    var x = [byte(0), 0, 0, 0, 0]
+    var x = array[5, byte].default
+    doAssert urandom(x)
+
+  block:
+    var x = newSeq[byte](5)
     doAssert urandom(x)
 
   block:

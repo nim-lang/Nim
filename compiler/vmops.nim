@@ -307,35 +307,36 @@ proc registerAdditionalOps*(c: PCtx) =
     setResult(a, (fn.typ != nil and tfNoSideEffect in fn.typ.flags) or
                  (fn.kind == nkSym and fn.sym.kind == skFunc))
 
-  proc urandomImpl(a: VmArgs) =
-    doAssert a.numArgs == 1
-    let kind = a.slots[a.rb+1].kind
-    case kind
-    of rkInt:
-      var res = newNode(nkBracket)
-      for item in urandom(a.getInt(0)):
-        res.add toLit(item)
+  if vmopsDanger in c.config.features:
+    proc urandomImpl(a: VmArgs) =
+      doAssert a.numArgs == 1
+      let kind = a.slots[a.rb+1].kind
+      case kind
+      of rkInt:
+        var res = newNode(nkBracket)
+        for item in urandom(a.getInt(0)):
+          res.add toLit(item)
 
-      setResult(a, res)
-    of rkNode, rkNodeAddr:
-      let n =
-        if kind == rkNode:
-          a.getNode(0)
-        else:
-          a.getNodeAddr(0)
+        setResult(a, res)
+      of rkNode, rkNodeAddr:
+        let n =
+          if kind == rkNode:
+            a.getNode(0)
+          else:
+            a.getNodeAddr(0)
 
-      let length = n.len
-      var res = newSeq[uint8](length)
-      for i in 0 ..< length:
-        res[i] = byte(n[i].intVal)
+        let length = n.len
+        var res = newSeq[uint8](length)
+        for i in 0 ..< length:
+          res[i] = byte(n[i].intVal)
 
-      let isSuccess = urandom(res)
+        let isSuccess = urandom(res)
 
-      for i in 0 ..< length:
-        n[i].intVal = BiggestInt(res[i])
+        for i in 0 ..< length:
+          n[i].intVal = BiggestInt(res[i])
 
-      setResult(a, isSuccess)
-    else:
-      doAssert false, $kind
+        setResult(a, isSuccess)
+      else:
+        doAssert false, $kind
 
-  registerCallback c, "stdlib.sysrand.urandom", urandomImpl
+    registerCallback c, "stdlib.sysrand.urandom", urandomImpl
