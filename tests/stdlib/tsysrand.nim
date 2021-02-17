@@ -1,6 +1,6 @@
 discard """
   targets: "c cpp js"
-  matrix: "--experimental:vmopsdanger"
+  matrix: "--experimental:vmopsDanger"
 """
 
 import std/sysrand
