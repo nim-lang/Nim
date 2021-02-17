@@ -8,6 +8,7 @@
 #
 
 # Unfortunately this cannot be a module yet:
+
 #import vmdeps, vm
 from std/math import sqrt, ln, log10, log2, exp, round, arccos, arcsin,
   arctan, arctan2, cos, cosh, hypot, sinh, sin, tan, tanh, pow, trunc,
@@ -29,6 +30,8 @@ from std/osproc import nil
 from std/sysrand import urandom
 
 from sighashes import symBodyDigest
+
+# There are some useful procs in vmconv.
 import vmconv
 
 template mathop(op) {.dirty.} =

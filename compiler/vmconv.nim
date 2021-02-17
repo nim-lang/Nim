@@ -13,6 +13,13 @@ proc fromLit*(a: PNode, T: typedesc): auto =
     type Ti = elementType(T)
     for ai in a:
       result.incl Ti(ai.intVal)
+  elif T is seq:
+    result = default(T)
+    let length = a.len
+    result.setLen(length)
+    type Ti = elementType(T)
+    for i in 0 ..< length:
+      result[i] = Ti(a[i].intVal)
   else:
     static: doAssert false, "not yet supported: " & $T # add as needed
 
