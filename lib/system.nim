@@ -695,20 +695,19 @@ when not defined(js):
       var s = cast[PGenericSeq](result)
       s.len = len
 
-proc len*[TOpenArray: openArray|varargs](x: TOpenArray): int {.
-  magic: "LengthOpenArray", noSideEffect.}
+func len*[TOpenArray: openArray|varargs](x: TOpenArray): int {.magic: "LengthOpenArray".} =
   ## Returns the length of an openArray.
   ##
   ## .. code-block:: Nim
   ##   var s = [1, 1, 1, 1, 1]
   ##   echo len(s) # => 5
 
-proc len*(x: string): int {.magic: "LengthStr", noSideEffect.}
+func len*(x: string): int {.magic: "LengthStr".} =
   ## Returns the length of a string.
-  ##
-  ## .. code-block:: Nim
-  ##   var str = "Hello world!"
-  ##   echo len(str) # => 12
+  runnableExamples:
+    assert "abc".len == 3
+    assert "".len == 0
+    assert string.default.len == 0
 
 proc len*(x: cstring): int {.magic: "LengthStr", noSideEffect.} =
   ## Returns the length of a compatible string. This is an O(n) operation except
@@ -729,37 +728,47 @@ proc len*(x: cstring): int {.magic: "LengthStr", noSideEffect.} =
       var a2: cstring = "ab\0c"
       doAssert a2.len == 2 # \0 is a null terminator, even in js vm
 
-proc len*(x: (type array)|array): int {.magic: "LengthArray", noSideEffect.}
+func len*(x: (type array)|array): int {.magic: "LengthArray".} =
   ## Returns the length of an array or an array type.
   ## This is roughly the same as `high(T)-low(T)+1`.
-  ##
-  ## .. code-block:: Nim
-  ##   var arr = [1, 1, 1, 1, 1]
-  ##   echo len(arr) # => 5
-  ##   echo len(array[3..8, int]) # => 6
+  runnableExamples:
+    var a = [1, 1, 1]
+    assert a.len == 3
+    assert array[0, float].len == 0
+    static: assert array[-2..2, float].len == 5
 
-proc len*[T](x: seq[T]): int {.magic: "LengthSeq", noSideEffect.}
-  ## Returns the length of a sequence.
-  ##
-  ## .. code-block:: Nim
-  ##   var s = @[1, 1, 1, 1, 1]
-  ##   echo len(s) # => 5
+func len*[T](x: seq[T]): int {.magic: "LengthSeq".} =
+  ## Returns the length of `x`.
+  runnableExamples:
+    assert @[0, 1].len == 2
+    assert seq[int].default.len == 0
+    assert newSeq[int](3).len == 3
+    let s = newSeqOfCap[int](3)
+    assert s.len == 0
+  # xxx this gives cgen error: assert newSeqOfCap[int](3).len == 0
 
+func ord*[T: Ordinal|enum](x: T): int {.magic: "Ord".} =
+  ## Returns the internal `int` value of `x`, including for enum with holes
+  ## and distinct ordinal types.
+  runnableExamples:
+    assert ord('A') == 65
+    type Foo = enum
+      f0 = 0, f1 = 3
+    assert f1.ord == 3
+    type Bar = distinct int
+    assert 3.Bar.ord == 3
 
-proc ord*[T: Ordinal|enum](x: T): int {.magic: "Ord", noSideEffect.}
-  ## Returns the internal `int` value of an ordinal value `x`.
-  ##
-  ## .. code-block:: Nim
-  ##   echo ord('A') # => 65
-  ##   echo ord('a') # => 97
-
-proc chr*(u: range[0..255]): char {.magic: "Chr", noSideEffect.}
-  ## Converts an `int` in the range `0..255` to a character.
-  ##
-  ## .. code-block:: Nim
-  ##   echo chr(65) # => A
-  ##   echo chr(97) # => a
-
+func chr*(u: range[0..255]): char {.magic: "Chr".} =
+  ## Converts `u` to a `char`, same as `char(u)`.
+  runnableExamples:
+    doAssert chr(65) == 'A'
+    doAssert chr(255) == '\255'
+    doAssert chr(255) == char(255)
+    doAssert not compiles chr(256)
+    doAssert not compiles char(256)
+    var x = 256
+    doAssertRaises(RangeDefect): discard chr(x)
+    doAssertRaises(RangeDefect): discard char(x)
 
 # floating point operations:
 proc `+`*(x: float32): float32 {.magic: "UnaryPlusF64", noSideEffect.}
