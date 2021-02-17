@@ -315,11 +315,7 @@ proc registerAdditionalOps*(c: PCtx) =
       let kind = a.slots[a.rb+1].kind
       case kind
       of rkInt:
-        var res = newNode(nkBracket)
-        for item in urandom(a.getInt(0)):
-          res.add toLit(item)
-
-        setResult(a, res)
+        setResult(a, urandom(a.getInt(0)).toLit)
       of rkNode, rkNodeAddr:
         let n =
           if kind == rkNode:
