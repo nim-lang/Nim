@@ -344,9 +344,9 @@ func removeDotSegments(path: string): string =
   runnableExamples:
     assert removeDotSegments("a1/a2/../a3/a4/a5/./a6/a7/.//./") == "a1/a3/a4/a5/a6/a7/"
     assert removeDotSegments("http://www.ai.") == "http://www.ai."
-  # xxx adapt code from `os.normalizedPath` to make this more reliable, but
+  # xxx adapt or reuse ```pathnorm.normalizePath(path, `/`)``` to make this more reliable, but
   # taking into account url specificities such as not collapsing leading `//` in scheme
-  # `https://`, and using `/` on all OS.
+  # `https://`.
   # see `turi` for failing tests.
   if path.len == 0: return ""
   var collection: seq[string] = @[]
