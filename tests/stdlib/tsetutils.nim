@@ -16,7 +16,6 @@ template main =
     doAssert [A('x')].toSet == {A('x')}
 
   block: # fullSet
-    doAssert fullSet(bool) == {true, false}
     doAssert fullSet(Colors) == {red, green, blue}
     doAssert fullSet(char) == {0.chr..255.chr}
     doAssert fullSet(Bar) == {bar0, bar1, bar2}
@@ -27,7 +26,15 @@ template main =
     doAssert {bar0}.not == {bar1, bar2}
     doAssert {range[0..10](0), 1, 2, 3}.not == {range[0..10](4), 5, 6, 7, 8, 9, 10}
     doAssert {'0'..'9'}.not == {0.char..255.char} - {'0'..'9'}
-    doAssert (not {false}) == {true}
+
+  block: # bugs
+    template impl =
+      doAssert (not {false}) == {true}
+      doAssert fullSet(bool) == {true, false}
+    when defined(js):
+      when nimvm: impl()
+      else: discard # pending bug #17076
+    else: impl()
 
 main()
 static: main()
