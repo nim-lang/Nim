@@ -76,11 +76,9 @@ proc option*[T](val: T): Option[T] {.inline.} =
       Foo = ref object
         a: int
         b: string
-    let c = option[Foo](nil)
-    assert c.isNone
 
-    let d = option(42)
-    assert d.isSome
+    assert option[Foo](nil).isNone
+    assert option(42).isSome
 
   result.val = val
   when T isnot SomePointer:
@@ -114,8 +112,7 @@ proc none*(T: typedesc): Option[T] {.inline.} =
   ## * `some proc <#some,T>`_
   ## * `isNone proc <#isNone,Option[T]>`_
   runnableExamples:
-    let a = none(int)
-    assert a.isNone
+    assert none(int).isNone
 
   # the default is the none type
   discard
@@ -131,11 +128,8 @@ proc isSome*[T](self: Option[T]): bool {.inline.} =
   ## * `isNone proc <#isNone,Option[T]>`_
   ## * `some proc <#some,T>`_
   runnableExamples:
-    let
-      a = some(42)
-      b = none(string)
-    assert a.isSome
-    assert not b.isSome
+    assert some(42).isSome
+    assert not none(string).isSome
 
   when T is SomePointer:
     not self.val.isNil
@@ -149,11 +143,8 @@ proc isNone*[T](self: Option[T]): bool {.inline.} =
   ## * `isSome proc <#isSome,Option[T]>`_
   ## * `none proc <#none,typedesc>`_
   runnableExamples:
-    let
-      a = some(42)
-      b = none(string)
-    assert not a.isNone
-    assert b.isNone
+    assert not some(42).isNone
+    assert none(string).isNone
 
   when T is SomePointer:
     self.val.isNil
@@ -167,12 +158,9 @@ proc get*[T](self: Option[T]): lent T {.inline.} =
   ## **See also:**
   ## * `get proc <#get,Option[T],T>`_ with a default return value
   runnableExamples:
-    let
-      a = some(42)
-      b = none(string)
-    assert a.get == 42
+    assert a = some(42).get == 42
     doAssertRaises(UnpackDefect):
-      echo b.get
+      echo none(string).get
 
   if self.isNone:
     raise newException(UnpackDefect, "Can't obtain a value from a `none`")
@@ -182,11 +170,8 @@ proc get*[T](self: Option[T], otherwise: T): T {.inline.} =
   ## Returns the content of the `Option` or `otherwise` if
   ## the `Option` has no value.
   runnableExamples:
-    let
-      a = some(42)
-      b = none(int)
-    assert a.get(9999) == 42
-    assert b.get(9999) == 9999
+    assert some(42).get(9999) == 42
+    assert none(int).get(9999) == 9999
 
   if self.isSome:
     self.val
@@ -220,13 +205,9 @@ proc map*[T](self: Option[T], callback: proc (input: T)) {.inline.} =
     proc saveDouble(x: int) =
       d = 2 * x
 
-    let
-      a = some(42)
-      b = none(int)
-
-    b.map(saveDouble)
+    none(int).map(saveDouble)
     assert d == 0
-    a.map(saveDouble)
+    some(42).map(saveDouble)
     assert d == 84
 
   if self.isSome:
@@ -243,15 +224,11 @@ proc map*[T, R](self: Option[T], callback: proc (input: T): R): Option[R] {.inli
   ## * `flatMap proc <#flatMap,Option[T],proc(T)>`_ for a version with a
   ##   callback that returns an `Option`
   runnableExamples:
-    let
-      a = some(42)
-      b = none(int)
-
     proc isEven(x: int): bool =
       x mod 2 == 0
 
-    assert a.map(isEven) == some(true)
-    assert b.map(isEven) == none(bool)
+    assert some(42).map(isEven) == some(true)
+    assert none(int).map(isEven) == none(bool)
 
   if self.isSome:
     some[R](callback(self.val))
@@ -264,11 +241,8 @@ proc flatten*[T](self: Option[Option[T]]): Option[T] {.inline.} =
   ## **See also:**
   ## * `flatMap proc <#flatMap,Option[T],proc(T)>`_
   runnableExamples:
-    let
-      a = some(some(42))
-      b = none(Option[int])
-    assert flatten(a) == some(42)
-    assert flatten(b) == none(int)
+    assert flatten(some(some(42))) == some(42)
+    assert flatten(none(Option[int])) == none(int)
 
   if self.isSome:
     self.val
@@ -294,13 +268,10 @@ proc flatMap*[T, R](self: Option[T],
         some(2 * x)
       else:
         none(int)
-    let
-      a = some(42)
-      b = none(int)
-      c = some(-11)
-    assert a.flatMap(doublePositives) == some(84)
-    assert b.flatMap(doublePositives) == none(int)
-    assert c.flatMap(doublePositives) == none(int)
+
+    assert some(42).flatMap(doublePositives) == some(84)
+    assert none(int).flatMap(doublePositives) == none(int)
+    assert some(-11).flatMap(doublePositives) == none(int)
 
   map(self, callback).flatten()
 
@@ -315,20 +286,17 @@ proc filter*[T](self: Option[T], callback: proc (input: T): bool): Option[T] {.i
   runnableExamples:
     proc isEven(x: int): bool =
       x mod 2 == 0
-    let
-      a = some(42)
-      b = none(int)
-      c = some(-11)
-    assert a.filter(isEven) == some(42)
-    assert b.filter(isEven) == none(int)
-    assert c.filter(isEven) == none(int)
+
+    assert some(42).filter(isEven) == some(42)
+    assert none(int).filter(isEven) == none(int)
+    assert some(-11).filter(isEven) == none(int)
 
   if self.isSome and not callback(self.val):
     none(T)
   else:
     self
 
-proc `==`*(a, b: Option): bool {.inline.} =
+proc `==`*[T](a, b: Option[T]): bool {.inline.} =
   ## Returns `true` if both `Option`s are `None`,
   ## or if they are both `Some` and have equal values.
   runnableExamples:
@@ -342,7 +310,10 @@ proc `==`*(a, b: Option): bool {.inline.} =
     assert b == d
     assert not (a == b)
 
-  (a.isSome and b.isSome and a.val == b.val) or (a.isNone and b.isNone)
+  when T is SomePointer:
+    a.val == b.val
+  else:
+    (a.isSome and b.isSome and a.val == b.val) or (a.isNone and b.isNone)
 
 proc `$`*[T](self: Option[T]): string =
   ## Get the string representation of the `Option`.
