@@ -3700,7 +3700,7 @@ the routine is in scope (including if the routine is private).
   proc `=destroy`[T](x: var Foo[T]) = witness.inc # type bound routine
 
   # main.nim:
-  import t11861b
+  import foo
   block:
     var a = initFoo(int)
     doAssert witness == 0
@@ -3713,8 +3713,8 @@ the routine is in scope (including if the routine is private).
   # will still be called upon exiting scope
   doAssert witness == 3
 
-Type bound routines allowed names are in `ast.AttachedOpToStr`, currently include:
- "=destroy", "=copy", "=sink", "=trace", "=dispose", "=deepcopy".
+Type bound routines allowed names are in ``ast.AttachedOpToStr``, currently include:
+``=destroy``, ``=copy``, ``=sink``, ``=trace``, ``=dispose``, ``=deepcopy``.
 
 For more details on some of those routines, see
 `lifetimeminustracking-hooks <destructors.html#lifetimeminustracking-hooks>`_.
