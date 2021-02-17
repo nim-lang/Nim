@@ -41,9 +41,9 @@
 ## You can hash an object by all of its fields with the `fields` iterator:
 ## 
 ## .. code-block:: Nim
-##  proc hash(x: MyObject): Hash =
+##  proc hash(x: object): Hash =
 ##    var h: Hash = 0
-##    for val in obj.fields:
+##    for val in x.fields:
 ##      h = h !& hash(val)
 ##    result = !$h
 ##
