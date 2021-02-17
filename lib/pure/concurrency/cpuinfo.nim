@@ -15,7 +15,9 @@ runnableExamples:
 
 include "system/inclrtl"
 
-when defined(linux):
+# when defined(linux) or defined(solaris):
+when defined(posix):
+  # import posix {.used.}
   import posix
 
 when defined(freebsd) or defined(macosx):
