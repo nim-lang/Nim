@@ -67,7 +67,6 @@ At least the following standard library modules are available:
 * `algorithm <algorithm.html>`_
 * `base64 <base64.html>`_
 * `bitops <bitops.html>`_
-* `chains <chains.html>`_
 * `colors <colors.html>`_
 * `complex <complex.html>`_
 * `htmlgen <htmlgen.html>`_

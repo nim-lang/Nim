@@ -147,6 +147,8 @@ provided by the operating system.
   issues like https://github.com/nim-lang/Nim/issues/13063 (which affected error messages)
   for modules importing `std/wrapnils`.
 
+- Deprecated chains module.
+
 - `parseopt.initOptParser` has been made available and `parseopt` has been
   added back to `prelude` for all backends. Previously `initOptParser` was
   unavailable if the `os` module did not have `paramCount` or `paramStr`,
