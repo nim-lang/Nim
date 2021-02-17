@@ -201,6 +201,8 @@ provided by the operating system.
   in both rst2html (as before) as well as common tools rendering rst directly (e.g. github), by
   adding: `default-role:: code` directive inside the rst file, which is now handled by rst2html.
 
+- Added `-d:nimStrictMode` in CI in several places to ensure code doesn't have certain hints/warnings
+
 ## Tool changes
 
 - The rst parser now supports markdown table syntax.

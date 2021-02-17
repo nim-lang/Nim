@@ -88,7 +88,6 @@
 import std/private/since
 
 import nativesockets, os, strutils, times, sets, options, std/monotimes
-from ssl_certs import scanSSLCertificates
 import ssl_config
 export nativesockets.Port, nativesockets.`$`, nativesockets.`==`
 export Domain, SockType, Protocol
@@ -101,6 +100,8 @@ when useWinVersion:
 
 when defineSsl:
   import openssl
+  when not defined(nimDisableCertificateValidation):
+    from ssl_certs import scanSSLCertificates
 
 # Note: The enumerations are mapped to Window's constants.
 
@@ -670,7 +671,7 @@ when defineSsl:
     # That means we can assume that the next internal index is the length of
     # extra data indexes.
     for i in ctx.referencedData:
-      GC_unref(getExtraData(ctx, i).RootRef)
+      GC_unref(getExtraData(ctx, i))
     ctx.context.SSL_CTX_free()
 
   proc `pskIdentityHint=`*(ctx: SslContext, hint: string) =

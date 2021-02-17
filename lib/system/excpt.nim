@@ -378,7 +378,8 @@ proc reportUnhandledErrorAux(e: ref Exception) {.nodestroy.} =
     # ugly, but avoids heap allocations :-)
     template xadd(buf, s, slen) =
       if L + slen < high(buf):
-        copyMem(addr(buf[L]), cstring(s), slen)
+
+        copyMem(addr(buf[L]), (when s is cstring: s else: cstring(s)), slen)
         inc L, slen
     template add(buf, s) =
       xadd(buf, s, s.len)

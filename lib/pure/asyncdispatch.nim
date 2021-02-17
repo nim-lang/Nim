@@ -1279,7 +1279,7 @@ else:
     var newList = newSeqOfCap[Callback](newLength)
 
     var cb = curList[0]
-    if not cb(fd.AsyncFD):
+    if not cb(fd):
       newList.add(cb)
 
     withData(p.selector, fd.int, adata) do:

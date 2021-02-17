@@ -15,7 +15,7 @@ runnableExamples:
 
 include "system/inclrtl"
 
-when not defined(windows):
+when defined(linux):
   import posix
 
 when defined(freebsd) or defined(macosx):
