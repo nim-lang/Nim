@@ -100,7 +100,7 @@ when useWinVersion:
 
 when defineSsl:
   import openssl
-  when not defined(nimDisableCertificateValidation) and not defined(windows):
+  when not defined(nimDisableCertificateValidation):
     from ssl_certs import scanSSLCertificates
 
 # Note: The enumerations are mapped to Window's constants.
