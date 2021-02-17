@@ -57,10 +57,9 @@ runnableExamples:
 ## You can hash an object by all of its fields with the `fields` iterator:
 runnableExamples:
   proc hash(x: object): Hash =
-    var h: Hash = 0
-    for val in x.fields:
-      h = h !& hash(val)
-    result = !$h
+    for f in fields(x):
+      result = result !& hash(f)
+    result = !$result
 
   type
     Obj = object
