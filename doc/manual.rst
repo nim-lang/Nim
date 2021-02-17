@@ -3687,7 +3687,8 @@ Type bound routines
 -------------------
 
 A type bound routine is a routine whose name starts with `=` but isn't an operator
-(i.e. containing only symbols, such as `==`).
+(i.e. containing only symbols, such as `==`). These are unrelated to setters
+(see `properties <manual.html#procedures-properties>`_), which instead end in `=`.
 A type bound routine declared for a type applies to the type regardless of whether
 the routine is in scope (including if the routine is private).
 
