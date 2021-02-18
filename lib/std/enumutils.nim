@@ -9,6 +9,8 @@
 
 import std/macros
 
+# xxx `genEnumCaseStmt` needs tests and runnableExamples
+
 macro genEnumCaseStmt*(typ: typedesc, argSym: typed, default: typed, 
             userMin, userMax: static[int], normalizer: static[proc(s :string): string]): untyped =
   # generates a case stmt, which assigns the correct enum field given
@@ -63,7 +65,8 @@ macro genEnumCaseStmt*(typ: typedesc, argSym: typed, default: typed,
     expectKind(default, nnkSym)
     result.add nnkElse.newTree(default)
 
-macro sparseEnumFullRange(a: typed): untyped = result = newNimNode(nnkCurly).add(a.getType[1][1..^1])
+macro sparseEnumFullRange(a: typed): untyped = 
+  newNimNode(nnkCurly).add(a.getType[1][1..^1])
 
 iterator items*[T: enum and not Ordinal](E: typedesc[T]): T =
   ## iterates over a sparse enum
