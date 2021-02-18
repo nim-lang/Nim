@@ -96,15 +96,14 @@ proc handleCmdLine(cache: IdentCache; conf: ConfigRef) =
       case conf.backend
       of backendC, backendCpp, backendObjc: discard
       of backendJs:
-        cmdPrefix = findNodeJs()
-        cmdPrefix.add " --unhandled-rejections=strict"
-          #[
-          D20210217T215950:here
-          this flag is needed for node < v15.0.0, otherwise `tasyncjs_fail` would fail,
-          refs https://nodejs.org/api/cli.html#cli_unhandled_rejections_mode
-          ]#
+        # D20210217T215950:here this flag is needed for node < v15.0.0, otherwise
+        # tasyncjs_fail` would fail, refs https://nodejs.org/api/cli.html#cli_unhandled_rejections_mode
+        cmdPrefix = findNodeJs() & " --unhandled-rejections=strict "
       else: doAssert false, $conf.backend
-      execExternalProgram(conf, cmdPrefix & ' ' & output.quoteShell & ' ' & conf.arguments)
+      # No space before command otherwise on windows you'd get a cryptic:
+      # `The parameter is incorrect`
+      execExternalProgram(conf, cmdPrefix & output.quoteShell & ' ' & conf.arguments)
+      # execExternalProgram(conf, cmdPrefix & ' ' & output.quoteShell & ' ' & conf.arguments)
     of cmdDocLike, cmdRst2html, cmdRst2tex: # bugfix(cmdRst2tex was missing)
       if conf.arguments.len > 0:
         # reserved for future use
