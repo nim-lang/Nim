@@ -73,7 +73,7 @@ iterator items*[T: enum and not Ordinal](E: typedesc[T]): T =
   runnableExamples:
     type A = enum a0 = 2, a1 = 4, a2
     type B[T] = enum b0 = 2, b1 = 4
-    from sequtils import toSeq
+    from std/sequtils import toSeq
     assert A.toSeq == [a0, a1, a2]
     assert B[float].toSeq == [B[float].b0, B[float].b1]
   for a in sparseEnumFullRange(E): yield a
