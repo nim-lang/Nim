@@ -1,6 +1,9 @@
 discard """
+  exitCode: 1
  outputsub: "Error: unhandled exception: foobar: 13"
 """
+
+# note: this needs `--unhandled-rejections=strict`, see D20210217T215950
 
 import std/asyncjs
 from std/sugar import `=>`
