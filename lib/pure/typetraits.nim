@@ -15,24 +15,24 @@
 import std/private/since
 export system.`$` # for backward compatibility
 
-type SomeHolyEnum* = concept x ## Type class for enum's with holes.
+type SomeSparseEnum* = concept x ## Type class for enum's with holes.
   x is enum and x isnot Ordinal
 
 #[
 xxx `runnableExamples` isn't run if inside:
-type SomeHolyEnum* = concept x
+type Foo* = concept x
   runnableExamples: assert false
-  x is enum and x isnot Ordinal
+  x is int
 ]#
 
 runnableExamples:
   type A = enum a0 = 2, a1 = 4, a2
   type B = enum b0 = 2, b1, b2
-  assert A is SomeHolyEnum
-  assert B isnot SomeHolyEnum
-  assert int isnot SomeHolyEnum
+  assert A is SomeSparseEnum
+  assert B isnot SomeSparseEnum
+  assert int isnot SomeSparseEnum
   type C[T] = enum h0 = 2, h1 = 4
-  assert C[float] is SomeHolyEnum
+  assert C[float] is SomeSparseEnum
 
 proc name*(t: typedesc): string {.magic: "TypeTrait".} =
   ## Returns the name of the given type.
