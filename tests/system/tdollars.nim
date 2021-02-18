@@ -149,5 +149,8 @@ proc main()=
     doAssert $(0) == "0"
 
 
+  doAssert $uint32.high == "4294967295"
+
+
 static: main()
 main()
