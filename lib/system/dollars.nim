@@ -5,7 +5,6 @@ proc `$`*(x: int): string {.magic: "IntToStr", noSideEffect.}
 
 when defined(js):
   import std/private/since
-
   since (1, 3):
     proc `$`*(x: uint): string =
       ## Caveat: currently implemented as $(cast[int](x)), tied to current

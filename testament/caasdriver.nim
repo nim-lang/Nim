@@ -175,7 +175,7 @@ when isMainModule:
     verbose = false
 
   for i in 0..paramCount() - 1:
-    let param = string(paramStr(i + 1))
+    let param = paramStr(i + 1)
     case param
     of "verbose": verbose = true
     else: filter = param

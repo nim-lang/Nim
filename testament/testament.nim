@@ -683,7 +683,7 @@ proc main() =
     case p.key.normalize
     of "print", "verbose": optPrintResults = true
     of "failing": optFailing = true
-    of "pedantic": discard # deadcode
+    of "pedantic": discard # deadcode refs https://github.com/nim-lang/Nim/issues/16731
     of "targets":
       targetsStr = p.val
       gTargets = parseTargets(targetsStr)
@@ -739,7 +739,7 @@ proc main() =
   var r = initResults()
   case action
   of "all":
-    #processCategory(r, Category"megatest", p.cmdLineRest.string, testsDir, runJoinableTests = false)
+    #processCategory(r, Category"megatest", p.cmdLineRest, testsDir, runJoinableTests = false)
 
     var myself = quoteShell(getAppFilename())
     if targetsStr.len > 0:
@@ -798,8 +798,7 @@ proc main() =
     p.next
     processPattern(r, pattern, p.cmdLineRest, simulate)
   of "r", "run":
-    var subPath = p.key
-    let (cat, path) = splitTestFile(subPath)
+    let (cat, path) = splitTestFile(p.key)
     processSingleTest(r, cat.Category, p.cmdLineRest, path, gTargets, targetsSet)
   of "html":
     generateHtml(resultsFile, optFailing)

@@ -69,6 +69,17 @@ when defined(c) or defined(cpp):
 
   proc c_signbit(x: SomeFloat): cint {.importc: "signbit", header: "<math.h>".}
 
+  func c_frexp*(x: cfloat, exponent: var cint): cfloat {.
+      importc: "frexpf", header: "<math.h>", deprecated: "Use `frexp` instead".}
+  func c_frexp*(x: cdouble, exponent: var cint): cdouble {.
+      importc: "frexp", header: "<math.h>", deprecated: "Use `frexp` instead".}
+
+  # don't export `c_frexp` in the future and remove `c_frexp2`.
+  func c_frexp2(x: cfloat, exponent: var cint): cfloat {.
+      importc: "frexpf", header: "<math.h>".}
+  func c_frexp2(x: cdouble, exponent: var cint): cdouble {.
+      importc: "frexp", header: "<math.h>".}
+
 func binom*(n, k: int): int =
   ## Computes the [binomial coefficient](https://en.wikipedia.org/wiki/Binomial_coefficient).
   runnableExamples:
@@ -915,27 +926,49 @@ func euclMod*[T: SomeNumber](x, y: T): T {.since: (1, 5, 1).} =
   if result < 0:
     result += abs(y)
 
+func frexp*[T: float32|float64](x: T): tuple[frac: T, exp: int] {.inline.} =
+  ## Splits `x` into a normalized fraction `frac` and an integral power of 2 `exp`,
+  ## such that `abs(frac) in 0.5..<1` and `x == frac * 2 ^ exp`, except for special
+  ## cases shown below.
+  runnableExamples:
+    doAssert frexp(8.0) == (0.5, 4)
+    doAssert frexp(-8.0) == (-0.5, 4)
+    doAssert frexp(0.0) == (0.0, 0)
+    # special cases:
+    when not defined(windows):
+      doAssert frexp(-0.0) == (-0.0, 0) # signbit preserved for +-0
+      doAssert frexp(Inf).frac == Inf # +- Inf preserved
+      doAssert frexp(NaN).frac.isNaN
+  when not defined(js):
+    var exp: cint
+    result.frac = c_frexp2(x, exp)
+    result.exp = exp
+  else:
+    if x == 0.0:
+      result = (0.0, 0)
+    elif x < 0.0:
+      result = frexp(-x)
+      result.frac = -result.frac
+    else:
+      var ex = trunc(log2(x))
+      result.exp = int(ex)
+      result.frac = x / pow(2.0, ex)
+      if abs(result.frac) >= 1:
+        inc(result.exp)
+        result.frac = result.frac / 2
+      if result.exp == 1024 and result.frac == 0.0:
+        result.frac = 0.99999999999999988898
+
+func frexp*[T: float32|float64](x: T, exponent: var int): T {.inline.} =
+  ## Overload of `frexp` that calls `(result, exponent) = frexp(x)`.
+  runnableExamples:
+    var x: int
+    doAssert frexp(5.0, x) == 0.625
+    doAssert x == 3
+  (result, exponent) = frexp(x)
+
+
 when not defined(js):
-  func c_frexp*(x: float32, exponent: var int32): float32 {.
-      importc: "frexp", header: "<math.h>".}
-  func c_frexp*(x: float64, exponent: var int32): float64 {.
-      importc: "frexp", header: "<math.h>".}
-  func frexp*[T, U](x: T, exponent: var U): T =
-    ## Split a number into mantissa and exponent.
-    ##
-    ## `frexp` calculates the mantissa `m` (a float greater than or equal to 0.5
-    ## and less than 1) and the integer value `n` such that `x` (the original
-    ## float value) equals `m * 2**n`. frexp stores `n` in `exponent` and returns
-    ## `m`.
-    runnableExamples:
-      var x: int
-      doAssert frexp(5.0, x) == 0.625
-      doAssert x == 3
-
-    var exp: int32
-    result = c_frexp(x, exp)
-    exponent = exp
-
   when windowsCC89:
     # taken from Go-lang Math.Log2
     const ln2 = 0.693147180559945309417232121458176568075500134360255254120680009
@@ -966,23 +999,6 @@ when not defined(js):
         doAssert almostEqual(log2(1.0), 0.0)
         doAssert almostEqual(log2(0.0), -Inf)
         doAssert log2(-2.0).isNaN
-
-else:
-  func frexp*[T: float32|float64](x: T, exponent: var int): T =
-    if x == 0.0:
-      exponent = 0
-      result = 0.0
-    elif x < 0.0:
-      result = -frexp(-x, exponent)
-    else:
-      var ex = trunc(log2(x))
-      exponent = int(ex)
-      result = x / pow(2.0, ex)
-      if abs(result) >= 1:
-        inc(exponent)
-        result = result / 2
-      if exponent == 1024 and result == 0.0:
-        result = 0.99999999999999988898
 
 func splitDecimal*[T: float32|float64](x: T): tuple[intpart: T, floatpart: T] =
   ## Breaks `x` into an integer and a fractional part.

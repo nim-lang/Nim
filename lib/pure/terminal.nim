@@ -769,8 +769,6 @@ proc getch*(): char =
     discard fd.tcSetAttr(TCSADRAIN, addr oldMode)
 
 when defined(windows):
-  from unicode import toUTF8, Rune, runeLenAt
-
   proc readPasswordFromStdin*(prompt: string, password: var string):
                               bool {.tags: [ReadIOEffect, WriteIOEffect].} =
     ## Reads a `password` from stdin without printing it. `password` must not

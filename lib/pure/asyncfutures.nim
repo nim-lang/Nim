@@ -364,7 +364,10 @@ proc read*[T](future: Future[T] | FutureVar[T]): T =
   ##
   ## If the result of the future is an error then that error will be raised.
   {.push hint[ConvFromXtoItselfNotNeeded]: off.}
-  let fut = Future[T](future)
+  when future is Future[T]:
+    let fut = future
+  else:
+    let fut = Future[T](future)
   {.pop.}
   if fut.finished:
     if fut.error != nil:

@@ -113,9 +113,8 @@ with other backends. see #9125. Use `-d:nimLegacyJsRound` for previous behavior.
 
 - Added `sugar.dumpToString` which improves on `sugar.dump`.
 
-
-
 - Added `math.signbit`.
+
 
 - Removed the optional `longestMatch` parameter of the `critbits._WithPrefix` iterators (it never worked reliably)
 - In `lists`: renamed `append` to `add` and retained `append` as an alias;
@@ -146,6 +145,8 @@ provided by the operating system.
 - `std/wrapnils` doesn't use `experimental:dotOperators` anymore, avoiding
   issues like https://github.com/nim-lang/Nim/issues/13063 (which affected error messages)
   for modules importing `std/wrapnils`.
+
+- Added `math.frexp` overload procs. Deprecated `c_frexp`, use `frexp` instead.
 
 - `parseopt.initOptParser` has been made available and `parseopt` has been
   added back to `prelude` for all backends. Previously `initOptParser` was
@@ -199,6 +200,8 @@ provided by the operating system.
 - docgen: rst files can now use single backticks instead of double backticks and correctly render
   in both rst2html (as before) as well as common tools rendering rst directly (e.g. github), by
   adding: `default-role:: code` directive inside the rst file, which is now handled by rst2html.
+
+- Added `-d:nimStrictMode` in CI in several places to ensure code doesn't have certain hints/warnings
 
 ## Tool changes
 
