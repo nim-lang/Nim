@@ -2839,7 +2839,7 @@ elif defined(nodejs):
     if i < argv.len and i >= 0:
       result = $argv[i]
     else:
-      raise newException(IndexDefect, formatErrorIndexBound(i, argv.len - 2))
+      raise newException(IndexDefect, formatErrorIndexBound(i - 1, argv.len - 2))
 elif defined(nintendoswitch):
   proc paramStr*(i: int): string {.tags: [ReadIOEffect].} =
     raise newException(OSError, "paramStr is not implemented on Nintendo Switch")
