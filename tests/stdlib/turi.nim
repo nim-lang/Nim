@@ -169,25 +169,6 @@ template main() =
       let test = parseUri("http://example.com/foo/") / "/bar/asd"
       doAssert test.path == "/foo/bar/asd"
 
-  block: # removeDotSegments
-    # `removeDotSegments` is exported for -d:testing only
-    doAssert removeDotSegments("/foo/bar/baz") == "/foo/bar/baz"
-    doAssert removeDotSegments("") == "" # empty test
-    doAssert removeDotSegments(".") == "." # trailing period
-    doAssert removeDotSegments("a1/a2/../a3/a4/a5/./a6/a7/././") == "a1/a3/a4/a5/a6/a7/"
-    doAssert removeDotSegments("https://a1/a2/../a3/a4/a5/./a6/a7/././") == "https://a1/a3/a4/a5/a6/a7/"
-    doAssert removeDotSegments("http://a1/a2") == "http://a1/a2"
-    doAssert removeDotSegments("http://www.ai.") == "http://www.ai."
-    when false: # xxx these cases are buggy
-      # this should work, refs https://webmasters.stackexchange.com/questions/73934/how-can-urls-have-a-dot-at-the-end-e-g-www-bla-de
-      doAssert removeDotSegments("http://www.ai./") == "http://www.ai./" # fails
-      echo removeDotSegments("http://www.ai./")  # http://www.ai/
-      echo removeDotSegments("a/b.../c") # b.c
-      echo removeDotSegments("a/b../c") # bc
-      echo removeDotSegments("a/.../c") # .c
-      echo removeDotSegments("a//../b") # a/b
-      echo removeDotSegments("a/b/c//") # a/b/c//
-
   block: # bug #3207
     doAssert parseUri("http://qq/1").combine(parseUri("https://qqq")).`$` == "https://qqq"
 
