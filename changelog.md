@@ -75,10 +75,10 @@
 - `strscans.scanf` now supports parsing single characters.
 - `strscans.scanTuple` added which uses `strscans.scanf` internally, returning a tuple which can be unpacked for easier usage of `scanf`.
 
-- Added `setutils.toSet` that can take any iterable and convert it to a built-in set,
+- Added `setutils.toSet` that can take any iterable and convert it to a built-in `set`,
   if the iterable yields a built-in settable type.
-- Added `setutils.fullSet` which returns a full built-in set for a valid type.
-- Added `setutils.not` which inverts a built-in set.
+- Added `setutils.fullSet` which returns a full built-in `set` for a valid type.
+- Added `setutils.not` which returns the complement of a built-in `set`.
 
 
 - Added `math.isNaN`.
