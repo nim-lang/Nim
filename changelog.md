@@ -41,11 +41,8 @@
 - Added `randState` template that exposes the default random number generator.
   Useful for library authors.
 
-- Added `std/enumutils` module.
-
-- Added `enumutils.genEnumCaseStmt` macro that generates case statement to parse string to enum.
-
-- Added `enumutils.items` for sparse enums.
+- Added `std/enumutils` module. Added `genEnumCaseStmt` macro that generates case statement to parse string to enum.
+  Added `items` for sparse enums.
 
 - Added `typetraits.SomeSparseEnum` for sparse enums.
 
