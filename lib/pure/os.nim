@@ -2931,12 +2931,8 @@ when declared(paramCount) or defined(nimdoc):
     ##     # Use commandLineParams() here
     ##   else:
     ##     # Do something else!
-    when defined(nodejs):
-      let start = 2
-    else:
-      let start = 1
     result = @[]
-    for i in start..paramCount():
+    for i in 1..paramCount():
       result.add(paramStr(i))
 else:
   proc commandLineParams*(): seq[string] {.error:
