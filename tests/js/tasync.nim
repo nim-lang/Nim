@@ -2,10 +2,15 @@ discard """
   output: '''
 x
 e
+done
 '''
 """
 
-import asyncjs
+#[
+xxx move this to tests/stdlib/tasyncjs.nim
+]#
+
+import std/asyncjs
 
 block:
   # demonstrate forward definition for js
@@ -28,22 +33,45 @@ block:
     else:
       return "x"
 
-
   discard x(2)
 
-import sugar
+import std/sugar
+from std/strutils import contains
 
-block:
-  proc fn(n: int): Future[int] {.async.} =
-    if n > 0:
-      var ret = 1 + await fn(n-1)
-      echo ret
-      return ret
-    else:
-      return 10
-  discard fn(4)
-  var witness: seq[string]
-  discard fn(3)
-    .then((a: int) => (witness.add $a; a.float*2))
-    .then((a: float) => (witness.add $a))
-    .then(()=>(echo witness)).then(()=>1)
+var witness: seq[string]
+
+proc fn(n: int): Future[int] {.async.} =
+  if n >= 7:
+    raise newException(ValueError, "foobar: " & $n)
+  if n > 0:
+    var ret = 1 + await fn(n-1)
+    witness.add $(n, ret)
+    return ret
+  else:
+    return 10
+
+proc main() {.async.} =
+  block: # then
+    let x = await fn(4)
+      .then((a: int) => a.float)
+      .then((a: float) => $a)
+    doAssert x == "14.0"
+    doAssert witness == @["(1, 11)", "(2, 12)", "(3, 13)", "(4, 14)"]
+
+    doAssert (await fn(2)) == 12
+
+    let x2 = await fn(4).then((a: int) => (discard)).then(() => 13)
+    doAssert x2 == 13
+
+  block: # catch
+    var reason: Error
+    await fn(6).then((a: int) => (witness.add $a)).catch((r: Error) => (reason = r))
+    doAssert reason == nil
+
+    await fn(7).then((a: int) => (discard)).catch((r: Error) => (reason = r))
+    doAssert reason != nil
+    doAssert reason.name == "Error"
+    doAssert "foobar: 7" in $reason.message
+  echo "done" # justified here to make sure we're running this, since it's inside `async`
+
+discard main()

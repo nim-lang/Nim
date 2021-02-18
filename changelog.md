@@ -203,6 +203,8 @@ provided by the operating system.
 
 - Added `-d:nimStrictMode` in CI in several places to ensure code doesn't have certain hints/warnings
 
+- Added `then`, `catch` to `asyncjs`.
+
 ## Tool changes
 
 - The rst parser now supports markdown table syntax.
