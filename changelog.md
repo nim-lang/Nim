@@ -41,8 +41,12 @@
 - Added `randState` template that exposes the default random number generator.
   Useful for library authors.
 
-- Added std/enumutils module containing `genEnumCaseStmt` macro that generates
+- Added `std/enumutils` module containing `genEnumCaseStmt` macro that generates
   case statement to parse string to enum.
+
+- Added `enumutils.items` for enums with holes
+
+- Added `typetraits.SomeHolyEnum` for enums with holes
 
 - Removed deprecated `iup` module from stdlib, it has already moved to
   [nimble](https://github.com/nim-lang/iup).
