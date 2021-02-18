@@ -7,7 +7,7 @@
 #    distribution, for details about the copyright.
 #
 
-import macros
+import std/macros
 
 macro genEnumCaseStmt*(typ: typedesc, argSym: typed, default: typed, 
             userMin, userMax: static[int], normalizer: static[proc(s :string): string]): untyped =
@@ -62,3 +62,12 @@ macro genEnumCaseStmt*(typ: typedesc, argSym: typed, default: typed,
   else:
     expectKind(default, nnkSym)
     result.add nnkElse.newTree(default)
+
+macro holyEnumFullRange(a: typed): untyped = result = newNimNode(nnkCurly).add(a.getType[1][1..^1])
+
+iterator items*[T: enum and not Ordinal](E: typedesc[T]): T =
+  runnableExamples:
+    type Hoo = enum h0 = 2, h1 = 4, h2
+    from sequtils import toSeq
+    assert Hoo.toSeq == [h0, h1, h2]
+  for a in holyEnumFullRange(E): yield a
