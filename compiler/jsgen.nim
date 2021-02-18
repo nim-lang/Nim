@@ -2624,12 +2624,9 @@ proc gen(p: PProc, n: PNode, r: var TCompRes) =
   of nkAsmStmt: genAsmOrEmitStmt(p, n)
   of nkTryStmt, nkHiddenTryStmt: genTry(p, n, r)
   of nkRaiseStmt: genRaiseStmt(p, n)
-  of nkTypeSection, nkCommentStmt, nkIncludeStmt,
+  of nkTypeSection, nkCommentStmt, nkIteratorDef, nkIncludeStmt,
      nkImportStmt, nkImportExceptStmt, nkExportStmt, nkExportExceptStmt,
      nkFromStmt, nkTemplateDef, nkMacroDef, nkStaticStmt: discard
-  of nkIteratorDef:
-    if n[0].sym.typ.callConv == TCallingConvention.ccClosure:
-      globalError(p.config, n.info, "Closure iterators are not supported by JS backend!")
   of nkPragma: genPragma(p, n)
   of nkProcDef, nkFuncDef, nkMethodDef, nkConverterDef:
     var s = n[namePos].sym
@@ -2637,7 +2634,7 @@ proc gen(p: PProc, n: PNode, r: var TCompRes) =
       genSym(p, n[namePos], r)
       r.res = nil
   of nkGotoState, nkState:
-    globalError(p.config, n.info, "First class iterators not implemented")
+    internalError(p.config, n.info, "first class iterators not implemented")
   of nkPragmaBlock: gen(p, n.lastSon, r)
   of nkComesFrom:
     discard "XXX to implement for better stack traces"
