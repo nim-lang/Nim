@@ -15,7 +15,7 @@
 import std/private/since
 export system.`$` # for backward compatibility
 
-type SomeSparseEnum* = concept x ## Type class for enum's with holes.
+type SomeSparseEnum* = concept x ## Type class for sparse enum's.
   x is enum and x isnot Ordinal
 
 #[
