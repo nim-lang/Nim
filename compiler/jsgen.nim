@@ -2180,7 +2180,11 @@ proc genSetConstr(p: PProc, n: PNode, r: var TCompRes) =
     if it.kind == nkRange:
       gen(p, it[0], a)
       gen(p, it[1], b)
-      r.res.addf("[$1, $2]", [a.res, b.res])
+
+      if it[0].typ.kind == tyBool:
+        r.res.addf("$1, $2", [a.res, b.res])
+      else:
+        r.res.addf("[$1, $2]", [a.res, b.res])
     else:
       gen(p, it, a)
       r.res.add(a.res)
