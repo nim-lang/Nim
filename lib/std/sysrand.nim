@@ -53,11 +53,11 @@ when not defined(js):
 when defined(posix):
   import std/posix
 
-const batchImplOS = defined(freebsd) or defined(openbsd) or (defined(macosx) and not defined(ios))
+const
+  batchImplOS = defined(freebsd) or defined(openbsd) or (defined(macosx) and not defined(ios))
+  batchSize {.used.} = 256
 
 when batchImplOS:
-  const batchSize = 256
-
   template batchImpl(result: var int, dest: var openArray[byte], getRandomImpl) =
     let size = dest.len
     if size == 0:
@@ -94,8 +94,6 @@ when defined(js):
         dest[i] = src[i]
 
   else:
-    const batchSize = 256
-
     proc getRandomValues(p: Uint8Array) {.importjs: "window.crypto.getRandomValues(#)".}
       # The requested length of `p` must not be more than 65536.
 
