@@ -2796,12 +2796,12 @@ when defined(nimdoc):
     ## Returns the `i`-th `command line argument`:idx: given to the application.
     ##
     ## `i` should be in the range `1..paramCount()`, the `IndexDefect`
-    ## exception will be raised for invalid values.  Instead of iterating over
-    ## `paramCount() <#paramCount>`_ with this proc you can call the
-    ## convenience `commandLineParams() <#commandLineParams>`_.
+    ## exception will be raised for invalid values. Instead of iterating
+    ## over `paramCount() <#paramCount>`_ with this proc you can 
+    ## call the convenience `commandLineParams() <#commandLineParams>`_.
     ##
     ## Similarly to `argv`:idx: in C,
-    ## it is possible to call ``paramStr(0)`` but this will return OS specific
+    ## it is possible to call `paramStr(0)` but this will return OS specific
     ## contents (usually the name of the invoked executable). You should avoid
     ## this and call `getAppFilename() <#getAppFilename>`_ instead.
     ##
@@ -2825,7 +2825,22 @@ when defined(nimdoc):
     ##     # Do something else!
 
 elif defined(nimscript): discard
-elif defined(nintendoswitch) or weirdTarget:
+elif defined(nodejs):
+  type Argv = object of JSRoot
+  let argv {.importjs: "process.argv".} : Argv
+  proc len(argv: Argv): int {.importjs: "#.length".}
+  proc `[]`(argv: Argv, i: int): cstring {.importjs: "#[#]".}
+
+  proc paramCount*(): int {.tags: [ReadDirEffect].} =
+    result = argv.len - 2
+
+  proc paramStr*(i: int): string {.tags: [ReadIOEffect].} =
+    let i = i + 1
+    if i < argv.len and i >= 0:
+      result = $argv[i]
+    else:
+      raise newException(IndexDefect, formatErrorIndexBound(i - 1, argv.len - 2))
+elif defined(nintendoswitch):
   proc paramStr*(i: int): string {.tags: [ReadIOEffect].} =
     raise newException(OSError, "paramStr is not implemented on Nintendo Switch")
 
@@ -2855,8 +2870,10 @@ elif defined(windows):
     if not ownParsedArgv:
       ownArgv = parseCmdLine($getCommandLine())
       ownParsedArgv = true
-    if i < ownArgv.len and i >= 0: return ownArgv[i]
-    raise newException(IndexDefect, formatErrorIndexBound(i, ownArgv.len-1))
+    if i < ownArgv.len and i >= 0:
+      result = ownArgv[i]
+    else:
+      raise newException(IndexDefect, formatErrorIndexBound(i, ownArgv.len-1))
 
 elif defined(genode):
   proc paramStr*(i: int): string =
@@ -2864,7 +2881,12 @@ elif defined(genode):
 
   proc paramCount*(): int =
     raise newException(OSError, "paramCount is not implemented on Genode")
+elif weirdTarget:
+  proc paramStr*(i: int): string {.tags: [ReadIOEffect].} =
+    raise newException(OSError, "paramStr is not implemented on current platform")
 
+  proc paramCount*(): int {.tags: [ReadIOEffect].} =
+    raise newException(OSError, "paramCount is not implemented on current platform")
 elif not defined(createNimRtl) and
   not(defined(posix) and appType == "lib"):
   # On Posix, there is no portable way to get the command line from a DLL.
@@ -2874,8 +2896,10 @@ elif not defined(createNimRtl) and
 
   proc paramStr*(i: int): string {.tags: [ReadIOEffect].} =
     # Docstring in nimdoc block.
-    if i < cmdCount and i >= 0: return $cmdLine[i]
-    raise newException(IndexDefect, formatErrorIndexBound(i, cmdCount-1))
+    if i < cmdCount and i >= 0:
+      result = $cmdLine[i]
+    else:
+      raise newException(IndexDefect, formatErrorIndexBound(i, cmdCount-1))
 
   proc paramCount*(): int {.tags: [ReadIOEffect].} =
     # Docstring in nimdoc block.
