@@ -287,7 +287,7 @@ Miscellaneous
 - Use `a..b` instead of `a .. b`, except when `b` contains an operator, for example `a .. -3`.
   Likewise with `a..<b`, `a..^b` and other operators starting with `..`.
 
-- Prefer triple quote literals to start with a newline; it's semantically identical
+- Prefer multiline triple quote literals to start with a newline; it's semantically identical
   (it's a feature of triple quote literals) but clearer because it aligns with the next line:
 
   use this:
