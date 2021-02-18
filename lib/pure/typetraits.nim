@@ -26,10 +26,13 @@ type SomeHolyEnum* = concept x
 ]#
 
 runnableExamples:
-  type Goo = enum g0 = 2, g1, g2
-  type Hoo = enum h0 = 2, h1 = 4, h2
-  assert Goo isnot SomeHolyEnum
-  assert Hoo is SomeHolyEnum
+  type A = enum a0 = 2, a1 = 4, a2
+  type B = enum b0 = 2, b1, b2
+  assert A is SomeHolyEnum
+  assert B isnot SomeHolyEnum
+  assert int isnot SomeHolyEnum
+  type C[T] = enum h0 = 2, h1 = 4
+  assert C[float] is SomeHolyEnum
 
 proc name*(t: typedesc): string {.magic: "TypeTrait".} =
   ## Returns the name of the given type.

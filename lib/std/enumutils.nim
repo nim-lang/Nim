@@ -67,7 +67,9 @@ macro holyEnumFullRange(a: typed): untyped = result = newNimNode(nnkCurly).add(a
 
 iterator items*[T: enum and not Ordinal](E: typedesc[T]): T =
   runnableExamples:
-    type Hoo = enum h0 = 2, h1 = 4, h2
+    type A = enum a0 = 2, a1 = 4, a2
+    type B[T] = enum b0 = 2, b1 = 4
     from sequtils import toSeq
-    assert Hoo.toSeq == [h0, h1, h2]
+    assert A.toSeq == [a0, a1, a2]
+    assert B[float].toSeq == [B[float].b0, B[float].b1]
   for a in holyEnumFullRange(E): yield a
