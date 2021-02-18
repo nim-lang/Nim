@@ -47,14 +47,14 @@ proc fullSet*(T: typedesc): auto {.inline.} =
   else: # Hole filled enum
     enmRange(T)
 
-proc `not`*[T](s: set[T]): set[T] =
+proc complement*[T](s: set[T]): set[T] =
   ## Returns the complement of the set.
   ## Can also be thought of as inverting the set.
   runnableExamples:
     type Colors = enum
       red, green = 3, blue
-    assert {red, blue}.not == {green}
-    assert (not {red, green, blue}).card == 0
-    assert {range[0..10](0), 1, 2, 3}.not == {range[0..10](4), 5, 6, 7, 8, 9, 10}
-    assert {'0'..'9'}.not == {0.char..255.char} - {'0'..'9'}
+    assert complement({red, blue}) == {green}
+    assert complement({red, green, blue}).card == 0
+    assert complement({range[0..10](0), 1, 2, 3}) == {range[0..10](4), 5, 6, 7, 8, 9, 10}
+    assert complement({'0'..'9'}) == {0.char..255.char} - {'0'..'9'}
   fullSet(T) - s
