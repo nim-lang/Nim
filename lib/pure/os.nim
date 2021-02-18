@@ -2795,13 +2795,14 @@ when defined(nimdoc):
   proc paramStr*(i: int): string {.tags: [ReadIOEffect].} =
     ## Returns the `i`-th `command line argument`:idx: given to the application.
     ##
-    ## `i` should be in the range `1..paramCount()`, the `IndexDefect`
-    ## exception will be raised for invalid values.  Instead of iterating over
-    ## `paramCount() <#paramCount>`_ with this proc you can call the
-    ## convenience `commandLineParams() <#commandLineParams>`_.
+    ## `i` should be in the range `start..paramCount()`, the `IndexDefect`
+    ## exception will be raised for invalid values. start is 1 for c/cpp backend, 
+    ## 2 for nodejs backend. Instead of iterating over `paramCount() <#paramCount>`_
+    ## with this proc you can call the convenience `commandLineParams() <#commandLineParams>`_.
+    ##
     ##
     ## Similarly to `argv`:idx: in C,
-    ## it is possible to call ``paramStr(0)`` but this will return OS specific
+    ## it is possible to call `paramStr(0)` but this will return OS specific
     ## contents (usually the name of the invoked executable). You should avoid
     ## this and call `getAppFilename() <#getAppFilename>`_ instead.
     ##
@@ -2827,18 +2828,18 @@ when defined(nimdoc):
 elif defined(nimscript): discard
 elif defined(nodejs):
   type Argv = object of JSRoot
-  var argv {.importjs: "process.argv".} : Argv
+  let argv {.importjs: "process.argv".} : Argv
   proc len(argv: Argv): int {.importjs: "#.length".}
   proc `[]`(argv: Argv, i: int): cstring {.importjs: "#[#]".}
 
   proc paramCount*(): int {.tags: [ReadDirEffect].} =
-    result = argv.len - 1
+    result = argv.len - 2
 
   proc paramStr*(i: int): string {.tags: [ReadIOEffect].} =
     if i < argv.len and i >= 0:
       result = $argv[i]
     else:
-      raise newException(IndexDefect, formatErrorIndexBound(i, argv.len-1))
+      raise newException(IndexDefect, formatErrorIndexBound(i, argv.len - 2))
 elif defined(nintendoswitch):
   proc paramStr*(i: int): string {.tags: [ReadIOEffect].} =
     raise newException(OSError, "paramStr is not implemented on Nintendo Switch")
@@ -2930,8 +2931,12 @@ when declared(paramCount) or defined(nimdoc):
     ##     # Use commandLineParams() here
     ##   else:
     ##     # Do something else!
+    when defined(nodejs):
+      let start = 2
+    else:
+      let start = 1
     result = @[]
-    for i in 1..paramCount():
+    for i in start..paramCount():
       result.add(paramStr(i))
 else:
   proc commandLineParams*(): seq[string] {.error:
