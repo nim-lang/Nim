@@ -2795,11 +2795,10 @@ when defined(nimdoc):
   proc paramStr*(i: int): string {.tags: [ReadIOEffect].} =
     ## Returns the `i`-th `command line argument`:idx: given to the application.
     ##
-    ## `i` should be in the range `start..paramCount()`, the `IndexDefect`
-    ## exception will be raised for invalid values. start is 1 for c/cpp backend, 
-    ## 2 for nodejs backend. Instead of iterating over `paramCount() <#paramCount>`_
-    ## with this proc you can call the convenience `commandLineParams() <#commandLineParams>`_.
-    ##
+    ## `i` should be in the range `1..paramCount()`, the `IndexDefect`
+    ## exception will be raised for invalid values. Instead of iterating
+    ## over `paramCount() <#paramCount>`_ with this proc you can 
+    ## call the convenience `commandLineParams() <#commandLineParams>`_.
     ##
     ## Similarly to `argv`:idx: in C,
     ## it is possible to call `paramStr(0)` but this will return OS specific
@@ -2836,6 +2835,7 @@ elif defined(nodejs):
     result = argv.len - 2
 
   proc paramStr*(i: int): string {.tags: [ReadIOEffect].} =
+    let i = i + 1
     if i < argv.len and i >= 0:
       result = $argv[i]
     else:
