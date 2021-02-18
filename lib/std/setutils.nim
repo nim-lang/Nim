@@ -47,7 +47,7 @@ proc fullSet*(T: typedesc): auto {.inline.} =
   else: # Hole filled enum
     enmRange(T)
 
-proc complement*[T](s: set[T]): set[T] =
+proc complement*[T](s: set[T]): set[T] {.inline.} =
   ## Returns the complement of the set.
   ## Can also be thought of as inverting the set.
   runnableExamples:
