@@ -8,17 +8,21 @@
 #
 
 ##[
-  The ``std/monotimes`` module implements monotonic timestamps. A monotonic
+  The `std/monotimes` module implements monotonic timestamps. A monotonic
   timestamp represents the time that has passed since some system defined
   point in time. The monotonic timestamps are guaranteed to always increase,
   meaning that that the following is guaranteed to work:
+]##
 
-  .. code-block:: nim
-    let a = getMonoTime()
-    # ... do some work
-    let b = getMonoTime()
-    assert a <= b
+runnableexamples:
+  import std/os
 
+  let a = getMonoTime()
+  sleep(10)
+  let b = getMonoTime()
+  assert a <= b
+
+##[
   This is not guaranteed for the `times.Time` type! This means that the
   `MonoTime` should be used when measuring durations of time with
   high precision.
@@ -35,7 +39,7 @@
   * `times module <times.html>`_
 ]##
 
-import times
+import std/times
 
 type
   MonoTime* = object ## Represents a monotonic timestamp.
@@ -53,18 +57,14 @@ when defined(macosx):
 
 when defined(js):
   proc getJsTicks: float =
-    ## Returns ticks in the unit seconds
-    {.emit: """
-      var isNode = typeof module !== 'undefined' && module.exports
-
-      if (isNode) {
-        var process = require('process');
-        var time = process.hrtime()
-        return time[0] + time[1] / 1000000000;
-      } else {
-        return window.performance.now() / 1000;
-      }
-    """.}
+    ## Returns ticks in the unit seconds.
+    when defined(nodejs):
+      {.emit: """let process = require('process');
+        let time = process.hrtime();
+        `result` = time[0] + time[1] / 1000000000;""".}
+    else:
+      proc jsNow(): float {.importjs: "window.performance.now()".}
+      result = jsNow() / 1000
 
   # Workaround for #6752.
   {.push overflowChecks: off.}
@@ -75,7 +75,7 @@ when defined(js):
   {.pop.}
 
 elif defined(posix) and not defined(osx):
-  import posix
+  import std/posix
 
 elif defined(windows):
   proc QueryPerformanceCounter(res: var uint64) {.
@@ -84,11 +84,11 @@ elif defined(windows):
     importc: "QueryPerformanceFrequency", stdcall, dynlib: "kernel32".}
 
 proc getMonoTime*(): MonoTime {.tags: [TimeEffect].} =
-  ## Get the current `MonoTime` timestamp.
+  ## Gets the current `MonoTime` timestamp.
   ##
   ## When compiled with the JS backend and executed in a browser,
-  ## this proc calls `window.performance.now()`, which is not supported by
-  ## older browsers. See [MDN](https://developer.mozilla.org/en-US/docs/Web/API/Performance/now)
+  ## this proc calls `window.performance.now()`.
+  ## See [MDN](https://developer.mozilla.org/en-US/docs/Web/API/Performance/now)
   ## for more information.
   when defined(js):
     let ticks = getJsTicks()
