@@ -1645,7 +1645,7 @@ proc genInitCode(m: BModule) =
     writeSection(preInitProc, cpsLocals)
     writeSection(preInitProc, cpsInit, m.hcrOn)
     writeSection(preInitProc, cpsStmts)
-    prc.addf("}$N", [])
+    prc.addf("}/* preInitProc end */$N", [])
 
   # add new scope for following code, because old vcc compiler need variable
   # be defined at the top of the block
