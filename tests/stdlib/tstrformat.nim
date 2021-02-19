@@ -6,7 +6,7 @@ output: '''Received (name: "Foo", species: "Bar")'''
 # issue #7632
 
 import genericstrformat
-import strutils, times
+import std/[strutils, times]
 
 
 doAssert works(5) == "formatted  5"
@@ -16,7 +16,7 @@ doAssert fails2[0](8) == "formatted  8"
 
 # other tests
 
-import strformat
+import std/strformat
 
 type Obj = object
 
@@ -306,7 +306,7 @@ block:
   let age = 21
   const hobby = "swim"
   doAssert fmt"{age*9 + 16=}" == "age*9 + 16=205"
-  doAssert &"name: {name    =}\nage: {  age  =: >7}\nhobby: {   hobby=  : 8}" == 
+  doAssert &"name: {name    =}\nage: {  age  =: >7}\nhobby: {   hobby=  : 8}" ==
         "name: name    =hello\nage:   age  =     21\nhobby:    hobby=  swim    "
   doAssert fmt"{age  ==  12}" == "false"
   doAssert fmt"{name.toUpperAscii() = }" == "name.toUpperAscii() = HELLO"
@@ -340,7 +340,7 @@ block:
 
 block:
   let x = "hello"
-  doAssert fmt"{x=}" == "x=hello" 
+  doAssert fmt"{x=}" == "x=hello"
   doAssert fmt"{x =}" == "x =hello"
 
 
@@ -513,3 +513,6 @@ block:
   check &"{low(int64)}", "-9223372036854775808"
 
   doAssert fmt"{'a'} {'b'}" == "a b"
+
+block: # test low(int64)
+  doAssert &"{low(int64):-}" == "-9223372036854775808"
