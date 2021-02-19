@@ -281,5 +281,26 @@ Conventions for multi-line statements and expressions
     startProcess(nimExecutable, currentDirectory, compilerArguments
                  environment, processOptions)
 
+Miscellaneous
+-------------
+
 - Use `a..b` instead of `a .. b`, except when `b` contains an operator, for example `a .. -3`.
   Likewise with `a..<b`, `a..^b` and other operators starting with `..`.
+
+- Prefer multiline triple quote literals to start with a newline; it's semantically identical
+  (it's a feature of triple quote literals) but clearer because it aligns with the next line:
+
+  use this:
+
+  .. code-block:: nim
+    let a = """
+    foo
+    bar
+    """
+
+  instead of:
+
+  .. code-block:: nim
+    let a = """foo
+    bar
+    """

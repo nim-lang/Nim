@@ -55,6 +55,9 @@ Sample test:
 
 .. code-block:: nim
 
+  block: # foo
+    doAssert foo(1) == 10
+
   block: # bug #1234
     static: doAssert 1+1 == 2
 
@@ -236,15 +239,15 @@ See `parentDir <os.html#parentDir,string>`_ example.
 
 The RestructuredText Nim uses has a special syntax for including code snippets
 embedded in documentation; these are not run by `nim doc` and therefore are
-not guaranteed to stay in sync, so `runnableExamples` is usually preferred:
+not guaranteed to stay in sync, so `runnableExamples` is almost always preferred:
 
 .. code-block:: nim
 
-  proc someproc*(): string =
+  proc someProc*(): string =
     ## Returns "something"
     ##
     ## .. code-block::
-    ##  echo someproc() # "something"
+    ##  echo someProc() # "something"
     result = "something" # single-hash comments do not produce documentation
 
 The `.. code-block:: nim` followed by a newline and an indentation instructs the
@@ -331,15 +334,29 @@ rationale: https://forum.nim-lang.org/t/4089
   doAssert() # preferred
 
 .. _tests_use_doAssert:
-Use `doAssert` (or `require`, etc), not `assert` in all tests so they'll
-be enabled even in release mode (except for tests in `runnableExamples` blocks
-which for which `nim doc` ignores `-d:release`).
+Use `doAssert` (or `unittest.check`, `unittest.require`), not `assert` in all
+tests so they'll be enabled even with `--assertions:off`.
 
 .. code-block:: nim
 
-  when isMainModule:
+  block: # foo
     assert foo() # bad
     doAssert foo() # preferred
+
+.. _runnableExamples_use_assert:
+An exception to the above rule is `runnableExamples`, which for brevity use `assert`
+instead of `doAssert`. Note that `nim doc -d:danger main` won't pass `-d:danger` to the
+`runnableExamples`, but `nim doc --doccmd:-d:danger main` would, and so would the
+second example below:
+
+.. code-block:: nim
+
+  runnableExamples:
+    doAssert foo() # bad
+    assert foo() # preferred
+
+  runnableExamples("-d:danger"):
+    doAssert foo() # `assert` would be disabled here, so `doAssert` makes more sense
 
 .. _delegate_printing:
 Delegate printing to caller: return `string` instead of calling `echo`
