@@ -14,7 +14,7 @@
   meaning that that the following is guaranteed to work:
 ]##
 
-runnableexamples:
+runnableExamples:
   import std/os
 
   let a = getMonoTime()
