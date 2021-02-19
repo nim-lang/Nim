@@ -167,7 +167,7 @@ new                     newFoo         initializes a reference type ``Foo``
                                        via ``new``
 this or self            self           for method like procs, e.g.:
                                        `proc fun(self: Foo, a: int)`
-                                       rationale: `self` is more unique in english
+                                       rationale: `self` is more unique in English
                                        than `this`, and `foo` would not be DRY.
 find                    find           should return the position where
                                        something was found; for a bool result
@@ -286,6 +286,9 @@ Miscellaneous
 
 - Use `a..b` instead of `a .. b`, except when `b` contains an operator, for example `a .. -3`.
   Likewise with `a..<b`, `a..^b` and other operators starting with `..`.
+
+- Use `std` prefix for standard library modules, namely use `std/os` for single module and
+  use `std/[os, sysrand, posix]` for multiple modules.
 
 - Prefer multiline triple quote literals to start with a newline; it's semantically identical
   (it's a feature of triple quote literals) but clearer because it aligns with the next line:
