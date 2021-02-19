@@ -7,18 +7,20 @@
 #    distribution, for details about the copyright.
 #
 
-## This is an include file that simply imports common modules for your
-## convenience:
-##
-## .. code-block:: nim
-##   include std/prelude
-##
-## Same as:
-##
-## .. code-block:: nim
-##   import std/[os, strutils, times, parseutils, hashes, tables, sets, sequtils, parseopt]
+from std/compileSettings import nil
 
-# xxx deduplicate with prelude.rst
+when isMainModule and compileSettings.querySetting(compileSettings.SingleValueSetting.projectFull) == currentSourcePath:
+  ## This is an include file that simply imports common modules for your convenience.
+  runnableExamples:
+    include std/prelude
+    # same as:
+    # import std/[os, strutils, times, parseutils, hashes, tables, sets, sequtils, parseopt]
+    when not defined js:
+      let t = now()
+      assert getCurrentDir().len > 0
+      assert now() > t
+    let x = 1
+    assert "foo $# $#" % [$x, "bar"] == "foo 1 bar"
+    assert toSeq(1..3) == @[1, 2, 3]
 
 import std/[os, strutils, times, parseutils, hashes, tables, sets, sequtils, parseopt]
-
