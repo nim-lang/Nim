@@ -522,17 +522,17 @@ proc installDeps(dep: string, commit = "") =
   # xxx: also add linenoise, niminst etc, refs https://github.com/nim-lang/RFCs/issues/206
 
 proc runCI(cmd: string) =
+  echo tryExec("git rev-parse HEAD")
   doAssert cmd.len == 0, cmd # avoid silently ignoring
   echo "runCI: ", cmd
   echo hostInfo()
-  echo tryExec("git rev-parse HEAD")
   # boot without -d:nimHasLibFFI to make sure this still works
   kochExecFold("Boot in release mode", "boot -d:release -d:nimStrictMode")
-  echo tryExec("nim r -b:js tests/stdlib/tsetutils.nim")
-  doAssert false
 
   ## build nimble early on to enable remainder to depend on it if needed
   kochExecFold("Build Nimble", "nimble")
+  echo tryExec("nim r -b:js tests/stdlib/tsetutils.nim")
+  doAssert false
 
   if getEnv("NIM_TEST_PACKAGES", "0") == "1":
     execFold("Test selected Nimble packages (1)", "nim c -r testament/testament cat nimble-packages-1")
