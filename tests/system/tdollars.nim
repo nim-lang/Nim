@@ -127,6 +127,15 @@ block:
   block:
     doAssert $(4294967295'u32) == "4294967295"
 
+
+  block:
+    proc foo1(arg: int): string =
+      let x = uint32(arg)
+      $x
+
+    doAssert $foo1(-1) == "4294967295"
+
+
 proc main()=
   block:
     let a = -0.0
@@ -147,7 +156,6 @@ proc main()=
     let b = 0
     doAssert $b == "0"
     doAssert $(0) == "0"
-
 
   doAssert $uint32.high == "4294967295"
 
