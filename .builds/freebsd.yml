@@ -15,6 +15,12 @@ environment:
 tasks:
 - setup: |
     cd Nim
+    if [[ -v GITHUB_PR_NUMBER ]]; then
+      # this was a PR, so we need to checkout devel and try to merge into it
+      REVISION=$(git rev-parse HEAD)
+      git checkout devel
+      git merge "$REVISION"
+    fi
     git clone --depth 1 -q https://github.com/nim-lang/csources.git
     gmake -C csources -j $(sysctl -n hw.ncpu)
     bin/nim c --skipUserCfg --skipParentCfg koch
