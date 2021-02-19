@@ -15,7 +15,7 @@ environment:
 tasks:
 - setup: |
     cd Nim
-    if [[ -v GITHUB_PR_NUMBER ]]; then
+    if [ "${GITHUB_PR_NUMBER+1}" ]; then
       # this was a PR, so we need to checkout devel and try to merge into it
       REVISION=$(git rev-parse HEAD)
       git checkout devel
