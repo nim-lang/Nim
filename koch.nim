@@ -527,6 +527,9 @@ proc runCI(cmd: string) =
   echo hostInfo()
   # boot without -d:nimHasLibFFI to make sure this still works
   kochExecFold("Boot in release mode", "boot -d:release")
+  echo tryExec("git rev-parse HEAD")
+  echo tryExec("nim r -b:js tests/stdlib/tsetutils.nim")
+  doAssert false
 
   ## build nimble early on to enable remainder to depend on it if needed
   kochExecFold("Build Nimble", "nimble")
