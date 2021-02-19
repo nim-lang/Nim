@@ -526,7 +526,7 @@ proc runCI(cmd: string) =
   echo "runCI: ", cmd
   echo hostInfo()
   # boot without -d:nimHasLibFFI to make sure this still works
-  kochExecFold("Boot in release mode", "boot -d:release")
+  kochExecFold("Boot in release mode", "boot -d:release -d:nimStrictMode")
   echo tryExec("git rev-parse HEAD")
   echo tryExec("nim r -b:js tests/stdlib/tsetutils.nim")
   doAssert false
