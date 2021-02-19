@@ -5884,7 +5884,7 @@ This is best illustrated by an example:
 
 
 Import statement
-~~~~~~~~~~~~~~~~
+----------------
 
 After the ``import`` statement, a list of module names can follow or a single
 module name followed by an ``except`` list to prevent some symbols from being
@@ -5908,7 +5908,8 @@ The ``import`` statement is only allowed at the top level.
 
 
 Include statement
-~~~~~~~~~~~~~~~~~
+-----------------
+
 The ``include`` statement does something fundamentally different than
 importing a module: it merely includes the contents of a file. The ``include``
 statement is useful to split up a large module into several files:
@@ -5931,7 +5932,7 @@ The ``include`` statement can be used outside of the top level, as such:
 
 
 Module names in imports
-~~~~~~~~~~~~~~~~~~~~~~~
+-----------------------
 
 A module alias can be introduced via the ``as`` keyword:
 
@@ -5961,7 +5962,7 @@ Likewise, the following does not make sense as the name is ``strutils`` already:
 
 
 Collective imports from a directory
-~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+-----------------------------------
 
 The syntax ``import dir / [moduleA, moduleB]`` can be used to import multiple modules
 from the same directory.
@@ -5974,7 +5975,7 @@ name is not a valid Nim identifier it needs to be a string literal:
 
 
 Pseudo import/include paths
-~~~~~~~~~~~~~~~~~~~~~~~~~~~
+---------------------------
 
 A directory can also be a so-called "pseudo directory". They can be used to
 avoid ambiguity when there are multiple modules with the same path.
@@ -5991,7 +5992,7 @@ library locations*. In other words, it is the opposite of ``std``.
 
 
 From import statement
-~~~~~~~~~~~~~~~~~~~~~
+---------------------
 
 After the ``from`` statement, a module name follows followed by
 an ``import`` to list the symbols one likes to use without explicit
@@ -6012,7 +6013,7 @@ in ``module``.
 
 
 Export statement
-~~~~~~~~~~~~~~~~
+----------------
 
 An ``export`` statement can be used for symbol forwarding so that client
 modules don't need to import a module's dependencies:
