@@ -54,6 +54,20 @@ runnableExamples:
 ## **Note:** If the type has a `==` operator, the following must hold:
 ## If two values compare equal, their hashes must also be equal.
 ##
+## You can hash an object by all of its fields with the `fields` iterator:
+runnableExamples:
+  proc hash(x: object): Hash =
+    for f in fields(x):
+      result = result !& hash(f)
+    result = !$result
+
+  type
+    Obj = object
+      x: int
+      y: string
+
+  doAssert hash(Obj(x: 520, y: "Nim")) != hash(Obj(x: 520, y: "Nim2"))
+
 ## See also
 ## ========
 ## * `md5 module <md5.html>`_ for the MD5 checksum algorithm
