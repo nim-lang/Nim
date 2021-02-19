@@ -16,8 +16,8 @@
 ## Parameter substitution
 ## ======================
 ##
-## All ``db_*`` modules support the same form of parameter substitution.
-## That is, using the ``?`` (question mark) to signify the place where a
+## All `db_*` modules support the same form of parameter substitution.
+## That is, using the `?` (question mark) to signify the place where a
 ## value should be placed. For example:
 ##
 ## .. code-block:: Nim
@@ -179,7 +179,7 @@ iterator fastRows*(db: DbConn, query: SqlQuery,
   ## if you require **ALL** the rows.
   ##
   ## Breaking the fastRows() iterator during a loop will cause the next
-  ## database query to raise an [EDb] exception ``Commands out of sync``.
+  ## database query to raise an [EDb] exception `Commands out of sync`.
   rawExec(db, query, args)
   var sqlres = mysql.useResult(PMySQL db)
   if sqlres != nil:
