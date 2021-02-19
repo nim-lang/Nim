@@ -169,7 +169,7 @@ when defined(nimExperimentalAsyncjsThen):
     and https://stackoverflow.com/questions/61377358/javascript-wait-for-async-call-to-finish-before-returning-from-function-witho
     ]#
 
-    type Error*  {.importjs: "Error".} = ref object of RootObj
+    type Error*  {.importjs: "Error".} = ref object of JsRoot
       ## https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Error
       message*: cstring
       name*: cstring
