@@ -20,7 +20,7 @@ batchable: false
 # by storing them on the heap. For procs, we produce on the fly simple
 # trampolines that can be dynamically overwritten to jump to a different
 # target. In the host program, all globals and procs are first registered
-# here with ``hcrRegisterGlobal`` and ``hcrRegisterProc`` and then the
+# here with `hcrRegisterGlobal` and `hcrRegisterProc` and then the
 # returned permanent locations are used in every reference to these symbols
 # onwards.
 #
