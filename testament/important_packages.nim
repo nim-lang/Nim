@@ -1,3 +1,5 @@
+# xxx instead of pkg1, pkg2, use the more flexible `NIM_TESTAMENT_BATCH` (see #14823).
+
 template pkg1(name: string; cmd = "nimble test"; url = "", useHead = true): untyped =
   packages1.add((name, cmd, url, useHead))
 
@@ -39,6 +41,7 @@ pkg1 "easygl", "nim c -o:egl -r src/easygl.nim", "https://github.com/jackmott/ea
 pkg1 "elvis"
 # pkg1 "fidget" # pending https://github.com/treeform/fidget/issues/133
 pkg1 "fragments", "nim c -r fragments/dsl.nim"
+pkg1 "fusion"
 pkg1 "gara"
 pkg1 "glob"
 pkg1 "ggplotnim", "nim c -d:noCairo -r tests/tests.nim"
