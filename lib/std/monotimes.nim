@@ -8,10 +8,10 @@
 #
 
 ##[
-  The `std/monotimes` module implements monotonic timestamps. A monotonic
-  timestamp represents the time that has passed since some system defined
-  point in time. The monotonic timestamps are guaranteed to always increase,
-  meaning that that the following is guaranteed to work:
+The `std/monotimes` module implements monotonic timestamps. A monotonic
+timestamp represents the time that has passed since some system defined
+point in time. The monotonic timestamps are guaranteed to always increase,
+meaning that that the following is guaranteed to work:
 ]##
 
 runnableExamples:
@@ -23,20 +23,20 @@ runnableExamples:
   assert a <= b
 
 ##[
-  This is not guaranteed for the `times.Time` type! This means that the
-  `MonoTime` should be used when measuring durations of time with
-  high precision.
+This is not guaranteed for the `times.Time` type! This means that the
+`MonoTime` should be used when measuring durations of time with
+high precision.
 
-  However, since `MonoTime` represents the time that has passed since some
-  unknown time origin, it cannot be converted to a human readable timestamp.
-  If this is required, the `times.Time` type should be used instead.
+However, since `MonoTime` represents the time that has passed since some
+unknown time origin, it cannot be converted to a human readable timestamp.
+If this is required, the `times.Time` type should be used instead.
 
-  The `MonoTime` type stores the timestamp in nanosecond resolution, but note
-  that the actual supported time resolution differs for different systems.
+The `MonoTime` type stores the timestamp in nanosecond resolution, but note
+that the actual supported time resolution differs for different systems.
 
-  See also
-  ========
-  * `times module <times.html>`_
+See also
+========
+* `times module <times.html>`_
 ]##
 
 import std/times
@@ -59,9 +59,11 @@ when defined(js):
   proc getJsTicks: float =
     ## Returns ticks in the unit seconds.
     when defined(nodejs):
-      {.emit: """let process = require('process');
-        let time = process.hrtime();
-        `result` = time[0] + time[1] / 1000000000;""".}
+      {.emit: """
+      let process = require('process');
+      let time = process.hrtime();
+      `result` = time[0] + time[1] / 1000000000;
+      """.}
     else:
       proc jsNow(): float {.importjs: "window.performance.now()".}
       result = jsNow() / 1000
@@ -84,7 +86,7 @@ elif defined(windows):
     importc: "QueryPerformanceFrequency", stdcall, dynlib: "kernel32".}
 
 proc getMonoTime*(): MonoTime {.tags: [TimeEffect].} =
-  ## Gets the current `MonoTime` timestamp.
+  ## Returns the current `MonoTime` timestamp.
   ##
   ## When compiled with the JS backend and executed in a browser,
   ## this proc calls `window.performance.now()`.
