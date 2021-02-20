@@ -64,7 +64,7 @@ supports pattern matching on `Option`s, with the `Some(<pattern>)` and
   of None():
     assert false
 
-  assertMatch(Some(Some(None())), some(some(none(int))))
+  assertMatch(some(some(none(int))), Some(Some(None())))
 ]##
 # xxx pending https://github.com/timotheecour/Nim/issues/376 use `runnableExamples` and `whichModule`
 
