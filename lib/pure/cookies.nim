@@ -66,7 +66,7 @@ proc setCookie*(key, value: string, domain = "", path = "",
 proc setCookie*(key, value: string, expires: DateTime|Time,
                 domain = "", path = "", noName = false,
                 secure = false, httpOnly = false,
-                maxAge = none(int), sameSite = SameSite.Lax): string =
+                maxAge = none(int), sameSite = SameSite.Default): string =
   ## Creates a command in the format of
   ## `Set-Cookie: key=value; Domain=...; ...`
   result = setCookie(key, value, domain, path,
