@@ -154,7 +154,7 @@ proc main() =
     proc print_object(animalAddr: AnimalRef): string =
       fmt"Received {animalAddr[]}"
 
-    assert print_object(AnimalRef(name: "Foo", species: "Bar")) == """Received (name: "Foo", species: "Bar")"""
+    doAssert print_object(AnimalRef(name: "Foo", species: "Bar")) == """Received (name: "Foo", species: "Bar")"""
 
   block: # bug #11723
     let pos: Positive = 64
@@ -188,7 +188,7 @@ proc main() =
     doAssert fmt"{nat=:3X}" == "nat= 40"
 
   block: # bug #12612
-    proc my_proc =
+    proc my_proc() =
       const value = "value"
       const a = &"{value}"
       doAssert a == value
