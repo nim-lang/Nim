@@ -330,8 +330,8 @@ proc parseSpec*(filename: string): TSpec =
           when defined(linux): result.err = reDisabled
         of "bsd":
           when defined(bsd): result.err = reDisabled
-        of "macosx":
-          when defined(macosx): result.err = reDisabled
+        of "osx", "macosx": # xxx remove `macosx` alias?
+          when defined(osx): result.err = reDisabled
         of "unix":
           when defined(unix): result.err = reDisabled
         of "posix":
