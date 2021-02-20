@@ -1,6 +1,4 @@
-discard """
-  targets: "c js"
-"""
+# xxx: test js target
 
 import genericstrformat
 import std/[strformat, strutils, times]
@@ -499,5 +497,5 @@ proc main() =
   block: # test low(int64)
     doAssert &"{low(int64):-}" == "-9223372036854775808"
 
-static: main()
+# xxx static: main()
 main()
