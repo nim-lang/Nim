@@ -95,7 +95,7 @@ when enableRemoteNetworking and (defined(nimTestsEnableFlaky) or not defined(win
 
 
   template evaluate(exception_msg: string, category: Category, desc: string) =
-    # Evaluate test outcome. Testes flagged as _broken are evaluated and skipped
+    # Evaluate test outcome. Tests flagged as `_broken` are evaluated and skipped
     let raised = (exception_msg.len > 0)
     let should_not_raise = category in {good, dubious_broken, bad_broken}
     if should_not_raise xor raised:
@@ -145,7 +145,8 @@ when enableRemoteNetworking and (defined(nimTestsEnableFlaky) or not defined(win
 
 
   type
-    TTOutcome = ref object
+    # TTOutcome = ref object
+    TTOutcome = object
       desc, exception_msg: string
       category: Category
 
