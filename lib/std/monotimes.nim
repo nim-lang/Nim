@@ -15,9 +15,12 @@ meaning that that the following is guaranteed to work:
 ]##
 
 runnableExamples:
+  import std/os
+
   let a = getMonoTime()
+  sleep(10)
   let b = getMonoTime()
-  assert a <= b
+  assert a < b
 
 ##[
 This is not guaranteed for the `times.Time` type! This means that the
