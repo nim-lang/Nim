@@ -56,7 +56,7 @@ proc setCookie*(key, value: string, domain = "", path = "",
   if expires != "": result.add("; Expires=" & expires)
   if secure: result.add("; Secure")
   if httpOnly: result.add("; HttpOnly")
-  if maxAge.isSome: result.add("; Max-Age=" & $maxAge.get)
+  if maxAge.isSome: result.add("; Max-Age=" & $maxAge.unsafeGet)
   if sameSite != SameSite.None: result.add("; SameSite=" & $sameSite)
 
 proc setCookie*(key, value: string, expires: DateTime|Time,
