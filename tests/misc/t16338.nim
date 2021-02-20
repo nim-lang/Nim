@@ -1,19 +1,13 @@
-#
-#
-#            Nim - SSL integration tests
-#        (c) Copyright 2017 Nim contributors
-#
-#    See the file "copying.txt", included in this
-#    distribution, for details about the copyright.
-#
-## Test with:
-## nim r --putenv:NIM_TESTAMENT_REMOTE_NETWORKING:1 -d:ssl -p:. --threads:on tests/untestable/thttpclient_ssl_remotenetwork.nim
-##
-## See https://github.com/FedericoCeratto/ssl-comparison/blob/master/README.md
-## for a comparison with other clients.
+#[
+bug #16338
+reduced from `thttpclient_ssl_remotenetwork`
 
-from stdtest/testutils import enableRemoteNetworking
-when enableRemoteNetworking and (defined(nimTestsEnableFlaky) or not defined(windows) and not defined(openbsd)):
+Test with:
+nim r --putenv:NIM_TESTAMENT_REMOTE_NETWORKING:1 -d:ssl -p:. --threads:on tests/untestable/thttpclient_ssl_remotenetwork.nim
+]#
+
+when defined nimTestsT16338Case1:
+# when enableRemoteNetworking and (defined(nimTestsEnableFlaky) or not defined(windows) and not defined(openbsd) and not defined(i386)):
   # Not supported on Windows due to old openssl version
   import
     httpclient,
@@ -22,12 +16,7 @@ when enableRemoteNetworking and (defined(nimTestsEnableFlaky) or not defined(win
     threadpool,
     unittest
 
-
   type
-    # bad and dubious tests should not pass SSL validation
-    # "_broken" mark the test as skipped. Some tests have different
-    # behavior depending on OS and SSL version!
-    # TODO: chase and fix the broken tests
     Category = enum
       good, bad, dubious, good_broken, bad_broken, dubious_broken
     CertTest = tuple[url:string, category:Category, desc: string]
@@ -93,59 +82,53 @@ when enableRemoteNetworking and (defined(nimTestsEnableFlaky) or not defined(win
     ("https://sha1-2017.badssl.com/", bad, "sha1-2017"),
   ]
 
+  # template evaluate(exception_msg: string, category: Category, desc: string) =
+  #   # Evaluate test outcome. Tests flagged as `_broken` are evaluated and skipped
+  #   let raised = (exception_msg.len > 0)
+  #   let should_not_raise = category in {good, dubious_broken, bad_broken}
+  #   if should_not_raise xor raised:
+  #     # we are seeing a known behavior
+  #     if category in {good_broken, dubious_broken, bad_broken}:
+  #       skip()
+  #     if raised:
+  #       # check exception_msg == "No SSL certificate found." or
+  #       doAssert exception_msg == "No SSL certificate found." or
+  #         exception_msg == "SSL Certificate check failed." or
+  #         exception_msg.contains("certificate verify failed") or
+  #         exception_msg.contains("key too small") or
+  #         exception_msg.contains("alert handshake failure") or
+  #         exception_msg.contains("bad dh p length") or
+  #         # TODO: This one should only triggers for 10000-sans
+  #         exception_msg.contains("excessive message size"), exception_msg
 
-  template evaluate(exception_msg: string, category: Category, desc: string) =
-    # Evaluate test outcome. Tests flagged as `_broken` are evaluated and skipped
-    let raised = (exception_msg.len > 0)
-    let should_not_raise = category in {good, dubious_broken, bad_broken}
-    if should_not_raise xor raised:
-      # we are seeing a known behavior
-      if category in {good_broken, dubious_broken, bad_broken}:
-        skip()
-      if raised:
-        # check exception_msg == "No SSL certificate found." or
-        doAssert exception_msg == "No SSL certificate found." or
-          exception_msg == "SSL Certificate check failed." or
-          exception_msg.contains("certificate verify failed") or
-          exception_msg.contains("key too small") or
-          exception_msg.contains("alert handshake failure") or
-          exception_msg.contains("bad dh p length") or
-          # TODO: This one should only triggers for 10000-sans
-          exception_msg.contains("excessive message size"), exception_msg
-
-    else:
-      # this is unexpected
-      if raised:
-        echo "         $# ($#) raised: $#" % [desc, $category, exception_msg]
-      else:
-        echo "         $# ($#) did not raise" % [desc, $category]
-      if category in {good, dubious, bad}:
-        fail()
-
-
-  suite "SSL certificate check - httpclient":
-
-    for i, ct in certificate_tests:
-
-      test ct.desc:
-        var ctx = newContext(verifyMode=CVerifyPeer)
-        var client = newHttpClient(sslContext=ctx)
-        let exception_msg =
-          try:
-            let a = $client.getContent(ct.url)
-            ""
-          except:
-            getCurrentExceptionMsg()
-
-        evaluate(exception_msg, ct.category, ct.desc)
+  #   else:
+  #     # this is unexpected
+  #     if raised:
+  #       echo "         $# ($#) raised: $#" % [desc, $category, exception_msg]
+  #     else:
+  #       echo "         $# ($#) did not raise" % [desc, $category]
+  #     if category in {good, dubious, bad}:
+  #       fail()
 
 
+  # suite "SSL certificate check - httpclient":
+  #   for i, ct in certificate_tests:
 
-  # threaded tests
+  #     test ct.desc:
+  #       var ctx = newContext(verifyMode=CVerifyPeer)
+  #       var client = newHttpClient(sslContext=ctx)
+  #       let exception_msg =
+  #         try:
+  #           let a = $client.getContent(ct.url)
+  #           ""
+  #         except:
+  #           getCurrentExceptionMsg()
 
+  #       evaluate(exception_msg, ct.category, ct.desc)
 
   type
     TTOutcome = ref object
+    # TTOutcome = object
       desc, exception_msg: string
       category: Category
 
@@ -159,52 +142,28 @@ when enableRemoteNetworking and (defined(nimTestsEnableFlaky) or not defined(win
     except:
       result.exception_msg = getCurrentExceptionMsg()
 
+  proc main =
+    # Spawn threads before the "test" blocks
+    var outcomes = newSeq[FlowVar[TTOutcome]](certificate_tests.len)
+    for i, ct in certificate_tests:
+      let t = spawn run_t_test(ct)
+      outcomes[i] = t
 
-  suite "SSL certificate check - httpclient - threaded":
-    when defined(nimTestsEnableFlaky) or not defined(linux): # xxx pending bug #16338
-      # see also tests/misc/t16338.nim
+    # create "test" blocks and handle thread outputs
+    for t in outcomes:
+      let outcome = ^t  # wait for a thread to terminate
+      # evaluate(outcome.exception_msg, outcome.category, outcome.desc)
 
-      # Spawn threads before the "test" blocks
-      var outcomes = newSeq[FlowVar[TTOutcome]](certificate_tests.len)
-      for i, ct in certificate_tests:
-        let t = spawn run_t_test(ct)
-        outcomes[i] = t
+  for i in 0..<10:
+    echo (i, "D20210219T180743")
+    main()
 
-      # create "test" blocks and handle thread outputs
-      for t in outcomes:
-        let outcome = ^t  # wait for a thread to terminate
-        test outcome.desc:
-          evaluate(outcome.exception_msg, outcome.category, outcome.desc)
-    else:
-      echo "skipped test"
-
-  # net tests
-
-
-  type NetSocketTest = tuple[hostname: string, port: Port, category:Category, desc: string]
-  const net_tests:array[0..3, NetSocketTest] = [
-    ("imap.gmail.com", 993.Port, good, "IMAP"),
-    ("wrong.host.badssl.com", 443.Port, bad, "wrong.host"),
-    ("captive-portal.badssl.com", 443.Port, bad, "captive-portal"),
-    ("expired.badssl.com", 443.Port, bad, "expired"),
-  ]
-  # TODO: ("null.badssl.com", 443.Port, bad_broken, "null"),
-
-
-  suite "SSL certificate check - sockets":
-
-    for ct in net_tests:
-
-      test ct.desc:
-
-        var sock = newSocket()
-        var ctx = newContext()
-        ctx.wrapSocket(sock)
-        let exception_msg =
-          try:
-            sock.connect(ct.hostname, ct.port)
-            ""
-          except:
-            getCurrentExceptionMsg()
-
-        evaluate(exception_msg, ct.category, ct.desc)
+else:
+  import std/[os, strformat]
+  const nim = getCurrentCompilerExe()
+  const file = currentSourcePath
+  # for i in 0..<100:
+  for i in 0..<3:
+    let cmd = fmt"{nim} r -d:nimTestsT16338Case1 --threads -d:ssl {file}"
+    let status = execShellCmd(cmd)
+    echo (i, status == 0, status, "D20210219T180250")
