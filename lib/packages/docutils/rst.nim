@@ -165,14 +165,15 @@ type
     meExpected = "'$1' expected",
     meGridTableNotImplemented = "grid table is not implemented",
     meMarkdownIllformedTable = "illformed delimiter row of a Markdown table",
-    meNewSectionExpected = "new section expected",
+    meNewSectionExpected = "new section expected $1",
     meGeneralParseError = "general parse error",
     meInvalidDirective = "invalid directive: '$1'",
     meFootnoteMismatch = "mismatch in number of footnotes and their refs: $1",
     mwRedefinitionOfLabel = "redefinition of label '$1'",
     mwUnknownSubstitution = "unknown substitution '$1'",
     mwUnsupportedLanguage = "language '$1' not supported",
-    mwUnsupportedField = "field '$1' not supported"
+    mwUnsupportedField = "field '$1' not supported",
+    mwRstStyle = "RST style: $1"
 
   MsgHandler* = proc (filename: string, line, col: int, msgKind: MsgKind,
                        arg: string) {.closure, gcsafe.} ## what to do in case of an error
@@ -1420,16 +1421,42 @@ proc tokenAfterNewline(p: RstParser): int =
     else: inc result
 
 proc isAdornmentHeadline(p: RstParser, adornmentIdx: int): bool =
+  ## check that underline/overline length is enough for the heading.
+  ## No support for Unicode.
+  if p.tok[adornmentIdx].symbol in ["::", "..", "|"]:
+    return false
   var headlineLen = 0
-  if p.idx < adornmentIdx:  # underline
+  var failure = ""
+  if p.idx < adornmentIdx:  # check for underline
+    if p.idx > 0:
+      headlineLen = currentTok(p).col - p.tok[adornmentIdx].col
+    if headlineLen > 0:
+      rstMessage(p, mwRstStyle, "indentation of heading text allowed" &
+          " only for overline titles")
     for i in p.idx ..< adornmentIdx-1:  # adornmentIdx-1 is a linebreak
       headlineLen += p.tok[i].symbol.len
-  else:  # overline
+    result = p.tok[adornmentIdx].symbol.len >= headlineLen and headlineLen != 0
+    if not result:
+      failure = "(underline '" & p.tok[adornmentIdx].symbol & "' is too short)"
+  else:  # p.idx == adornmentIdx, at overline. Check overline and underline
     var i = p.idx + 2
+    headlineLen = p.tok[i].col - p.tok[adornmentIdx].col
     while p.tok[i].kind notin {tkEof, tkIndent}:
       headlineLen += p.tok[i].symbol.len
       inc i
-  return p.tok[adornmentIdx].symbol.len >= headlineLen
+    result = p.tok[adornmentIdx].symbol.len >= headlineLen and
+         headlineLen != 0
+    if result:
+      result = result and p.tok[i].kind == tkIndent and
+         p.tok[i+1].kind == tkAdornment and
+         p.tok[i+1].symbol == p.tok[adornmentIdx].symbol
+      if not result:
+        failure = "(underline '" & p.tok[i+1].symbol & "' does not match " &
+            "overline '" & p.tok[adornmentIdx].symbol & "')"
+    else:
+      failure = "(overline '" & p.tok[adornmentIdx].symbol & "' is too short)"
+  if not result:
+    rstMessage(p, meNewSectionExpected, failure)
 
 proc isLineBlock(p: RstParser): bool =
   var j = tokenAfterNewline(p)
@@ -1941,7 +1968,7 @@ proc parseSection(p: var RstParser, result: PRstNode) =
     of rnLineBlock: a = parseLineBlock(p)
     of rnDirective: a = parseDotDot(p)
     of rnEnumList: a = parseEnumList(p)
-    of rnLeaf: rstMessage(p, meNewSectionExpected)
+    of rnLeaf: rstMessage(p, meNewSectionExpected, "(syntax error)")
     of rnParagraph: discard
     of rnDefList: a = parseDefinitionList(p)
     of rnFieldList:
