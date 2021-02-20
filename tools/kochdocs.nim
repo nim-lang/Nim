@@ -143,7 +143,7 @@ lib/posix/termios.nim
 
   # some of these are include files so shouldn't be docgen'd
   ignoredModules = """
-lib/prelude.nim
+lib/pure/prelude.nim
 lib/pure/future.nim
 lib/pure/collections/hashcommon.nim
 lib/pure/collections/tableimpl.nim
