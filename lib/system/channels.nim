@@ -101,7 +101,7 @@
 ##   Another message
 ##
 ## Passing Channels Safely
-## ----------------------
+## -----------------------
 ## Note that when passing objects to procedures on another thread by pointer
 ## (for example through a thread's argument), objects created using the default
 ## allocator will use thread-local, GC-managed memory. Thus it is generally
