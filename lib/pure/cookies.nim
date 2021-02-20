@@ -14,6 +14,8 @@ import std/[strtabs, times, options]
 
 type
   SameSite* {.pure.} = enum ## The SameSite cookie attribute.
+                            ## `Default` means that `setCookie`
+                            ## proc will not set `SameSite` attribute.
     Default, None, Lax, Strict
 
 proc parseCookies*(s: string): StringTableRef =
