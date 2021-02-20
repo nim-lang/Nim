@@ -527,6 +527,14 @@ proc runCI(cmd: string) =
   echo hostInfo()
   # boot without -d:nimHasLibFFI to make sure this still works
   kochExecFold("Boot in release mode", "boot -d:release -d:nimStrictMode")
+  echo "D20210219T181738"
+  echo tryExec("nim r tests/misc/t16338.nim")
+
+  for i in 0..<20:
+    echo ("D20210219T181729", i)
+    echo tryExec("nim r --putenv:NIM_TESTAMENT_REMOTE_NETWORKING:1 -d:ssl -p:. --threads:on tests/untestable/thttpclient_ssl_remotenetwork.nim")
+
+  doAssert false
 
   ## build nimble early on to enable remainder to depend on it if needed
   kochExecFold("Build Nimble", "nimble")
