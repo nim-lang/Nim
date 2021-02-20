@@ -1,10 +1,8 @@
 discard """
   targets:  "c js"
-  joinable: false # because of `include uri`
 """
 
-# import std/uri # pending https://github.com/nim-lang/Nim/pull/11865
-include uri # because of `removeDotSegments`
+import std/uri
 from std/sequtils import toSeq
 
 template main() =
@@ -170,11 +168,6 @@ template main() =
     block:
       let test = parseUri("http://example.com/foo/") / "/bar/asd"
       doAssert test.path == "/foo/bar/asd"
-
-  block: # removeDotSegments
-    doAssert removeDotSegments("/foo/bar/baz") == "/foo/bar/baz"
-    doAssert removeDotSegments("") == "" # empty test
-    doAssert removeDotSegments(".") == "." # trailing period
 
   block: # bug #3207
     doAssert parseUri("http://qq/1").combine(parseUri("https://qqq")).`$` == "https://qqq"
