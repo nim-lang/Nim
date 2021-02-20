@@ -24,7 +24,7 @@ This has some surprising effects:
 
 runnableExamples:
   let msg = "hello"
-  doAssert fmt"{msg}\n" == "hello\\n"
+  assert fmt"{msg}\n" == "hello\\n"
 
 ##[
 Because the literal is a raw string literal, the `\n` is not interpreted as
@@ -36,11 +36,11 @@ There are multiple ways to get around this, including the use of the `&` operato
 runnableExamples:
   let msg = "hello"
 
-  doAssert &"{msg}\n" == "hello\n"
+  assert &"{msg}\n" == "hello\n"
 
-  doAssert fmt"{msg}{'\n'}" == "hello\n"
-  doAssert fmt("{msg}\n") == "hello\n"
-  doAssert "{msg}\n".fmt == "hello\n"
+  assert fmt"{msg}{'\n'}" == "hello\n"
+  assert fmt("{msg}\n") == "hello\n"
+  assert "{msg}\n".fmt == "hello\n"
 
 ##[
 The choice of style is up to you.
@@ -49,29 +49,29 @@ The choice of style is up to you.
 ]##
 
 runnableExamples:
-  doAssert &"""{"abc":>4}""" == " abc"
-  doAssert &"""{"abc":<4}""" == "abc "
+  assert &"""{"abc":>4}""" == " abc"
+  assert &"""{"abc":<4}""" == "abc "
 
 ##[
 # Formatting floats
 ]##
 
 runnableExamples:
-    doAssert fmt"{-12345:08}" == "-0012345"
-    doAssert fmt"{-1:3}" == " -1"
-    doAssert fmt"{-1:03}" == "-01"
-    doAssert fmt"{16:#X}" == "0x10"
+  assert fmt"{-12345:08}" == "-0012345"
+  assert fmt"{-1:3}" == " -1"
+  assert fmt"{-1:03}" == "-01"
+  assert fmt"{16:#X}" == "0x10"
 
-    doAssert fmt"{123.456}" == "123.456"
-    doAssert fmt"{123.456:>9.3f}" == "  123.456"
-    doAssert fmt"{123.456:9.3f}" == "  123.456"
-    doAssert fmt"{123.456:9.4f}" == " 123.4560"
-    doAssert fmt"{123.456:>9.0f}" == "     123."
-    doAssert fmt"{123.456:<9.4f}" == "123.4560 "
+  assert fmt"{123.456}" == "123.456"
+  assert fmt"{123.456:>9.3f}" == "  123.456"
+  assert fmt"{123.456:9.3f}" == "  123.456"
+  assert fmt"{123.456:9.4f}" == " 123.4560"
+  assert fmt"{123.456:>9.0f}" == "     123."
+  assert fmt"{123.456:<9.4f}" == "123.4560 "
 
-    doAssert fmt"{123.456:e}" == "1.234560e+02"
-    doAssert fmt"{123.456:>13e}" == " 1.234560e+02"
-    doAssert fmt"{123.456:13e}" == " 1.234560e+02"
+  assert fmt"{123.456:e}" == "1.234560e+02"
+  assert fmt"{123.456:>13e}" == " 1.234560e+02"
+  assert fmt"{123.456:13e}" == " 1.234560e+02"
 
 ##[
 # Debugging strings
@@ -81,22 +81,22 @@ an equal sign and the results of evaluated expression.
 ]##
 
 runnableExamples:
-  doAssert fmt"{123.456=}" == "123.456=123.456"
-  doAssert fmt"{123.456=:>9.3f}" == "123.456=  123.456"
+  assert fmt"{123.456=}" == "123.456=123.456"
+  assert fmt"{123.456=:>9.3f}" == "123.456=  123.456"
 
   let x = "hello"
-  doAssert fmt"{x=}" == "x=hello"
-  doAssert fmt"{x =}" == "x =hello"
+  assert fmt"{x=}" == "x=hello"
+  assert fmt"{x =}" == "x =hello"
 
   let y = 3.1415926
-  doAssert fmt"{y=:.2f}" == fmt"y={y:.2f}"
-  doAssert fmt"{y=}" == fmt"y={y}"
-  doAssert fmt"{y = : <8}" == fmt"y = 3.14159 "
+  assert fmt"{y=:.2f}" == fmt"y={y:.2f}"
+  assert fmt"{y=}" == fmt"y={y}"
+  assert fmt"{y = : <8}" == fmt"y = 3.14159 "
 
   proc hello(a: string, b: float): int = 12
-  doAssert fmt"{hello(x, y) = }" == "hello(x, y) = 12"
-  doAssert fmt"{x.hello(y) = }" == "x.hello(y) = 12"
-  doAssert fmt"{hello x, y = }" == "hello x, y = 12"
+  assert fmt"{hello(x, y) = }" == "hello(x, y) = 12"
+  assert fmt"{x.hello(y) = }" == "x.hello(y) = 12"
+  assert fmt"{hello x, y = }" == "hello x, y = 12"
 
 ##[
 Note that it is space sensitive:
@@ -104,15 +104,15 @@ Note that it is space sensitive:
 
 runnableExamples:
   let x = "12"
-  doAssert fmt"{x=}" == "x=12"
-  doAssert fmt"{x =:}" == "x =12"
-  doAssert fmt"{x =}" == "x =12"
-  doAssert fmt"{x= :}" == "x= 12"
-  doAssert fmt"{x= }" == "x= 12"
-  doAssert fmt"{x = :}" == "x = 12"
-  doAssert fmt"{x = }" == "x = 12"
-  doAssert fmt"{x   =  :}" == "x   =  12"
-  doAssert fmt"{x   =  }" == "x   =  12"
+  assert fmt"{x=}" == "x=12"
+  assert fmt"{x =:}" == "x =12"
+  assert fmt"{x =}" == "x =12"
+  assert fmt"{x= :}" == "x= 12"
+  assert fmt"{x= }" == "x= 12"
+  assert fmt"{x = :}" == "x = 12"
+  assert fmt"{x = }" == "x = 12"
+  assert fmt"{x   =  :}" == "x   =  12"
+  assert fmt"{x   =  }" == "x   =  12"
 
 ##[
 # Implementation details
@@ -634,8 +634,8 @@ macro fmt*(pattern: string; openChar, closeChar: char): untyped =
   ## and `closeChar` instead of `'}'`.
   runnableExamples:
     let testInt = 123
-    doAssert "<testInt>".fmt('<', '>') == "123"
-    doAssert """(()"foo" & "bar"())""".fmt(')', '(') == "(foobar)"
-    doAssert """ ""{"123+123"}"" """.fmt('"', '"') == " \"{246}\" "
+    assert "<testInt>".fmt('<', '>') == "123"
+    assert """(()"foo" & "bar"())""".fmt(')', '(') == "(foobar)"
+    assert """ ""{"123+123"}"" """.fmt('"', '"') == " \"{246}\" "
 
   strformatImpl(pattern, openChar.intVal.char, closeChar.intVal.char)
