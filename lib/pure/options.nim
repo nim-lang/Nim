@@ -44,22 +44,24 @@ runnableExamples:
 ## Pattern matching
 ## ================
 ##
+## **Note:** This requires the [fusion](https://github.com/nim-lang/fusion) package.
+##
 ## [fusion/matching](https://nim-lang.github.io/fusion/src/fusion/matching.html)
 ## supports pattern matching on `Option`s, with the `Some(<pattern>)` and
 ## `None()` patterns.
-
-runnableExamples:
-  {.experimental: "caseStmtMacros".}
-
-  import fusion/matching
-
-  case some(42)
-  of Some(@a):
-    assert a == 42
-  of None():
-    assert false
-
-  Some(Some(None())) := some(some(none(int)))
+##
+## .. code-block:: nim
+##   {.experimental: "caseStmtMacros".}
+##
+##   import fusion/matching
+##
+##   case some(42)
+##   of Some(@a):
+##     assert a == 42
+##   of None():
+##     assert false
+##
+##   Some(Some(None())) := some(some(none(int)))
 
 
 import std/typetraits
