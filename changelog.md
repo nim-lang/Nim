@@ -75,8 +75,11 @@
 - `strscans.scanf` now supports parsing single characters.
 - `strscans.scanTuple` added which uses `strscans.scanf` internally, returning a tuple which can be unpacked for easier usage of `scanf`.
 
-- Added `setutils.toSet` that can take any iterable and convert it to a built-in set,
+- Added `setutils.toSet` that can take any iterable and convert it to a built-in `set`,
   if the iterable yields a built-in settable type.
+- Added `setutils.fullSet` which returns a full built-in `set` for a valid type.
+- Added `setutils.complement` which returns the complement of a built-in `set`.
+
 
 - Added `math.isNaN`.
 
@@ -155,6 +158,14 @@ provided by the operating system.
   arguments passed to it, so `initOptParser` has been changed to raise
   `ValueError` when the real command line is not available. `parseopt` was
   previously excluded from `prelude` for JS, as it could not be imported.
+
+- On POSIX systems, the default signal handlers used for Nim programs (it's
+  used for printing the stacktrace on fatal signals) will now re-raise the
+  signal for the OS default handlers to handle.
+
+  This lets the OS perform its default actions, which might include core
+  dumping (on select signals) and notifying the parent process about the cause
+  of termination.
 
 ## Language changes
 

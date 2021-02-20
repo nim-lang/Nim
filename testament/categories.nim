@@ -174,6 +174,7 @@ proc gcTests(r: var TResults, cat: Category, options: string) =
 
   test "stackrefleak"
   test "cyclecollector"
+  test "trace_globals"
 
 proc longGCTests(r: var TResults, cat: Category, options: string) =
   when defined(windows):

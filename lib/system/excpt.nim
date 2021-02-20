@@ -643,7 +643,17 @@ when not defined(noSignalHandler) and not defined(useNimRtl):
       # unless there's a good reason to use cstring in signal handler to avoid
       # using gc?
       showErrorMessage(msg, msg.len)
-    quit(1) # always quit when SIGABRT
+
+    when defined(posix):
+      # reset the signal handler to OS default
+      c_signal(sign, SIG_DFL)
+
+      # re-raise the signal, which will arrive once this handler exit.
+      # this lets the OS perform actions like core dumping and will
+      # also return the correct exit code to the shell.
+      discard c_raise(sign)
+    else:
+      quit(1)
 
   proc registerSignalHandler() =
     c_signal(SIGINT, signalHandler)

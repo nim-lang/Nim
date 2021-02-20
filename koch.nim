@@ -10,7 +10,7 @@
 #
 
 const
-  NimbleStableCommit = "324de9202fb3db82b266e7350731d1ec41013a2b" # master
+  NimbleStableCommit = "d13f3b8ce288b4dc8c34c219a4e050aaeaf43fc9" # master
   # examples of possible values: #head, #ea82b54, 1.2.3
   FusionStableHash = "#372ee4313827ef9f2ea388840f7d6b46c2b1b014"
   HeadHash = "#head"
