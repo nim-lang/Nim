@@ -62,7 +62,7 @@ proc setCookie*(key, value: string, domain = "", path = "",
 
   if sameSite != SameSite.Default:
     if sameSite == SameSite.None:
-      doAssert httpOnly, "Cookies with SameSite=None must must specify the Secure attribute!"
+      doAssert httpOnly, "Cookies with SameSite=None must specify the Secure attribute!"
     result.add("; SameSite=" & $sameSite)
 
 proc setCookie*(key, value: string, expires: DateTime|Time,
