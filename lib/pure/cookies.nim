@@ -14,7 +14,7 @@ import std/[strtabs, times, options]
 
 type
   SameSite* {.pure.} = enum ## The SameSite cookie attribute.
-    None, Lax, Strict
+    Default, None, Lax, Strict
 
 proc parseCookies*(s: string): StringTableRef =
   ## Parses cookies into a string table.
@@ -45,7 +45,7 @@ proc parseCookies*(s: string): StringTableRef =
 proc setCookie*(key, value: string, domain = "", path = "",
                 expires = "", noName = false,
                 secure = false, httpOnly = false, 
-                maxAge = none(int), sameSite = SameSite.Lax): string =
+                maxAge = none(int), sameSite = SameSite.Default): string =
   ## Creates a command in the format of
   ## `Set-Cookie: key=value; Domain=...; ...`
   result = ""
@@ -57,7 +57,11 @@ proc setCookie*(key, value: string, domain = "", path = "",
   if secure: result.add("; Secure")
   if httpOnly: result.add("; HttpOnly")
   if maxAge.isSome: result.add("; Max-Age=" & $maxAge.unsafeGet)
-  if sameSite != SameSite.None: result.add("; SameSite=" & $sameSite)
+
+  if sameSite != SameSite.Default:
+    if sameSite == SameSite.None:
+      doAssert httpOnly, "Cookies with SameSite=None must must specify the Secure attribute!"
+    result.add("; SameSite=" & $sameSite)
 
 proc setCookie*(key, value: string, expires: DateTime|Time,
                 domain = "", path = "", noName = false,
