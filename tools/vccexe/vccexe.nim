@@ -93,7 +93,7 @@ Options:
   --sdktype:<type>    Specify the SDK flavor to use. Defaults to the Desktop SDK.
                       <type>: {empty} | store | uwp | onecore
   --sdkversion:<v>    Use a specific Windows SDK version:
-                      <v> is either the full Windows 10 SDK version number or 
+                      <v> is either the full Windows 10 SDK version number or
                       "8.1" to use the windows 8.1 SDK
   --verbose           Echoes the command line for loading the Developer Command Prompt
                       and the command line passed on to the secondary command.
@@ -104,12 +104,12 @@ Microsoft (R) C/C++ Optimizing Compiler if no secondary
 command was specified
 """
 
-proc parseVccexeCmdLine(argseq: seq[TaintedString],
+proc parseVccexeCmdLine(argseq: seq[string],
     vccversionArg: var seq[string], printPathArg: var bool,
     vcvarsallArg: var string, commandArg: var string, noCommandArg: var bool,
     platformArg: var VccArch, sdkTypeArg: var VccPlatformType,
     sdkVersionArg: var string, verboseArg: var bool,
-    clArgs: var seq[TaintedString]) =
+    clArgs: var seq[string]) =
   ## Cannot use usual command-line argument parser here
   ## Since vccexe command-line arguments are intermingled
   ## with the secondary command-line arguments which have
@@ -160,7 +160,7 @@ when isMainModule:
   var sdkVersionArg: string
   var verboseArg: bool = false
 
-  var clArgs: seq[TaintedString] = @[]
+  var clArgs: seq[string] = @[]
 
   let wrapperArgs = commandLineParams()
   parseVccexeCmdLine(wrapperArgs, vccversionArg, printPathArg, vcvarsallArg,

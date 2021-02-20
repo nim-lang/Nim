@@ -143,6 +143,10 @@ __AVR__
 #  error "Cannot define NIM_THREADVAR"
 #endif
 
+#if defined(__cplusplus)
+  #define NIM_THREAD_LOCAL thread_local
+#endif
+
 /* --------------- how int64 constants should be declared: ----------- */
 #if defined(__GNUC__) || defined(__LCC__) || \
     defined(__POCC__) || defined(__DMC__) || defined(_MSC_VER)

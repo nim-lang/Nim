@@ -1,5 +1,6 @@
 discard """
 output: '''
+
 var data = @[(1, "one"), (2, "two")]
 for (i, d) in pairs(data):
   discard

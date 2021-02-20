@@ -34,6 +34,7 @@ type
     errGeneralParseError,
     errNewSectionExpected,
     errInvalidDirectiveX,
+    errFootnoteMismatch,
     errProveInit, # deadcode
     errGenerated,
     errUser,
@@ -56,7 +57,7 @@ type
     warnLockLevel = "LockLevel", warnResultShadowed = "ResultShadowed",
     warnInconsistentSpacing = "Spacing",  warnCaseTransition = "CaseTransition",
     warnCycleCreated = "CycleCreated", warnObservableStores = "ObservableStores",
-    warnUser = "User",
+    warnUser = "User", warnStrictNotNil = "StrictNotNil",
 
     hintSuccess = "Success", hintSuccessX = "SuccessX", hintCC = "CC",
     hintLineTooLong = "LineTooLong", hintXDeclaredButNotUsed = "XDeclaredButNotUsed",
@@ -84,6 +85,7 @@ const
     errGeneralParseError: "general parse error",
     errNewSectionExpected: "new section expected",
     errInvalidDirectiveX: "invalid directive: '$1'",
+    errFootnoteMismatch: "number of footnotes and their references don't match: $1",
     errProveInit: "Cannot prove that '$1' is initialized.",  # deadcode
     errGenerated: "$1",
     errUser: "$1",
@@ -129,6 +131,7 @@ const
     warnCycleCreated: "$1",
     warnObservableStores: "observable stores to '$1'",
     warnUser: "$1",
+    warnStrictNotNil: "$1",
     hintSuccess: "operation successful: $#",
     # keep in sync with `testament.isSuccess`
     hintSuccessX: "${loc} lines; ${sec}s; $mem; $build build; proj: $project; out: $output",
@@ -278,3 +281,4 @@ proc initMsgConfig*(): MsgConfig =
   result.filenameToIndexTbl = initTable[string, FileIndex]()
   result.fileInfos = @[]
   result.errorOutputs = {eStdOut, eStdErr}
+  result.filenameToIndexTbl["???"] = FileIndex(-1)

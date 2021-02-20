@@ -1,12 +1,12 @@
 import unittest
 include nre
 
-suite "Test NRE initialization":
-  test "correct initialization":
+block: # Test NRE initialization
+  block: # correct initialization
     check(re("[0-9]+") != nil)
     check(re("(?i)[0-9]+") != nil)
 
-  test "options":
+  block: # options
     check(extractOptions("(*NEVER_UTF)") ==
           ("", pcre.NEVER_UTF, true))
     check(extractOptions("(*UTF8)(*ANCHORED)(*UCP)z") ==
@@ -19,14 +19,14 @@ suite "Test NRE initialization":
     check(extractOptions("(*LIMIT_MATCH=6)(*ANCHORED)z") ==
           ("(*LIMIT_MATCH=6)z", pcre.ANCHORED, true))
 
-  test "incorrect options":
+  block: # incorrect options
     for s in ["CR", "(CR", "(*CR", "(*abc)", "(*abc)CR",
               "(?i)",
               "(*LIMIT_MATCH=5", "(*NO_AUTO_POSSESS=5)"]:
       let ss = s & "(*NEVER_UTF)"
       check(extractOptions(ss) == (ss, 0, true))
 
-  test "invalid regex":
+  block: # invalid regex
     expect(SyntaxError): discard re("[0-9")
     try:
       discard re("[0-9")

@@ -39,7 +39,7 @@ proc underscoredCall(n, arg0: NimNode): NimNode =
     result.add arg0
 
 proc underscoredCalls*(result, calls, arg0: NimNode) =
-  expectKind calls, {nnkArgList, nnkStmtList, nnkStmtListExpr}
+  expectKind calls, {nnkArglist, nnkStmtList, nnkStmtListExpr}
 
   for call in calls:
     if call.kind in {nnkStmtList, nnkStmtListExpr}:

@@ -175,7 +175,7 @@ proc `[]`*(n: NimNode, i: BackwardsIndex): NimNode = n[n.len - i.int]
 template `^^`(n: NimNode, i: untyped): untyped =
   (when i is BackwardsIndex: n.len - int(i) else: int(i))
 
-proc `[]`*[T, U](n: NimNode, x: HSlice[T, U]): seq[NimNode] =
+proc `[]`*[T, U: Ordinal](n: NimNode, x: HSlice[T, U]): seq[NimNode] =
   ## Slice operation for NimNode.
   ## Returns a seq of child of `n` who inclusive range [n[x.a], n[x.b]].
   let xa = n ^^ x.a
@@ -229,7 +229,17 @@ proc intVal*(n: NimNode): BiggestInt {.magic: "NIntVal", noSideEffect.}
 proc floatVal*(n: NimNode): BiggestFloat {.magic: "NFloatVal", noSideEffect.}
   ## Returns a float from any floating point literal.
 
-{.push warnings: off.}
+
+proc symKind*(symbol: NimNode): NimSymKind {.magic: "NSymKind", noSideEffect.}
+proc getImpl*(symbol: NimNode): NimNode {.magic: "GetImpl", noSideEffect.}
+  ## Returns a copy of the declaration of a symbol or `nil`.
+proc strVal*(n: NimNode): string  {.magic: "NStrVal", noSideEffect.}
+  ## Returns the string value of an identifier, symbol, comment, or string literal.
+  ##
+  ## See also:
+  ## * `strVal= proc<#strVal=,NimNode,string>`_ for setting the string value.
+
+{.push warnings: off.} # silence `deprecated`
 
 proc ident*(n: NimNode): NimIdent {.magic: "NIdent", noSideEffect, deprecated:
   "Deprecated since version 0.18.1; All functionality is defined on 'NimNode'.".}
@@ -239,41 +249,13 @@ proc symbol*(n: NimNode): NimSym {.magic: "NSymbol", noSideEffect, deprecated:
 
 proc getImpl*(s: NimSym): NimNode {.magic: "GetImpl", noSideEffect, deprecated: "use `getImpl: NimNode -> NimNode` instead".}
 
-when defined(nimSymKind):
-  proc symKind*(symbol: NimNode): NimSymKind {.magic: "NSymKind", noSideEffect.}
-  proc getImpl*(symbol: NimNode): NimNode {.magic: "GetImpl", noSideEffect.}
-    ## Returns a copy of the declaration of a symbol or `nil`.
-  proc strVal*(n: NimNode): string  {.magic: "NStrVal", noSideEffect.}
-    ## Returns the string value of an identifier, symbol, comment, or string literal.
-    ##
-    ## See also:
-    ## * `strVal= proc<#strVal=,NimNode,string>`_ for setting the string value.
+proc `$`*(i: NimIdent): string {.magic: "NStrVal", noSideEffect, deprecated:
+  "Deprecated since version 0.18.1; Use 'strVal' instead.".}
+  ## Converts a Nim identifier to a string.
 
-  proc `$`*(i: NimIdent): string {.magic: "NStrVal", noSideEffect, deprecated:
-    "Deprecated since version 0.18.1; Use 'strVal' instead.".}
-    ## Converts a Nim identifier to a string.
-
-  proc `$`*(s: NimSym): string {.magic: "NStrVal", noSideEffect, deprecated:
-    "Deprecated since version 0.18.1; Use 'strVal' instead.".}
-    ## Converts a Nim symbol to a string.
-
-else: # bootstrapping substitute
-  proc getImpl*(symbol: NimNode): NimNode =
-    symbol.symbol.getImpl
-
-  proc strValOld(n: NimNode): string {.magic: "NStrVal", noSideEffect.}
-
-  proc `$`*(s: NimSym): string {.magic: "IdentToStr", noSideEffect.}
-
-  proc `$`*(i: NimIdent): string {.magic: "IdentToStr", noSideEffect.}
-
-  proc strVal*(n: NimNode): string =
-    if n.kind == nnkIdent:
-      $n.ident
-    elif n.kind == nnkSym:
-      $n.symbol
-    else:
-      n.strValOld
+proc `$`*(s: NimSym): string {.magic: "NStrVal", noSideEffect, deprecated:
+  "Deprecated since version 0.18.1; Use 'strVal' instead.".}
+  ## Converts a Nim symbol to a string.
 
 {.pop.}
 
@@ -284,23 +266,21 @@ when (NimMajor, NimMinor, NimPatch) >= (1, 3, 5) or defined(nimSymImplTransform)
     ## note that code transformations are implementation dependent and subject to change.
     ## See an example in `tests/macros/tmacros_various.nim`.
 
-when defined(nimHasSymOwnerInMacro):
-  proc owner*(sym: NimNode): NimNode {.magic: "SymOwner", noSideEffect.}
-    ## Accepts a node of kind `nnkSym` and returns its owner's symbol.
-    ## The meaning of 'owner' depends on `sym`'s `NimSymKind` and declaration
-    ## context. For top level declarations this is an `nskModule` symbol,
-    ## for proc local variables an `nskProc` symbol, for enum/object fields an
-    ## `nskType` symbol, etc. For symbols without an owner, `nil` is returned.
-    ##
-    ## See also:
-    ## * `symKind proc<#symKind,NimNode>`_ to get the kind of a symbol
-    ## * `getImpl proc<#getImpl,NimNode>`_ to get the declaration of a symbol
+proc owner*(sym: NimNode): NimNode {.magic: "SymOwner", noSideEffect.}
+  ## Accepts a node of kind `nnkSym` and returns its owner's symbol.
+  ## The meaning of 'owner' depends on `sym`'s `NimSymKind` and declaration
+  ## context. For top level declarations this is an `nskModule` symbol,
+  ## for proc local variables an `nskProc` symbol, for enum/object fields an
+  ## `nskType` symbol, etc. For symbols without an owner, `nil` is returned.
+  ##
+  ## See also:
+  ## * `symKind proc<#symKind,NimNode>`_ to get the kind of a symbol
+  ## * `getImpl proc<#getImpl,NimNode>`_ to get the declaration of a symbol
 
-when defined(nimHasInstantiationOfInMacro):
-  proc isInstantiationOf*(instanceProcSym, genProcSym: NimNode): bool {.magic: "SymIsInstantiationOf", noSideEffect.}
-    ## Checks if a proc symbol is an instance of the generic proc symbol.
-    ## Useful to check proc symbols against generic symbols
-    ## returned by `bindSym`.
+proc isInstantiationOf*(instanceProcSym, genProcSym: NimNode): bool {.magic: "SymIsInstantiationOf", noSideEffect.}
+  ## Checks if a proc symbol is an instance of the generic proc symbol.
+  ## Useful to check proc symbols against generic symbols
+  ## returned by `bindSym`.
 
 proc getType*(n: NimNode): NimNode {.magic: "NGetType", noSideEffect.}
   ## With 'getType' you can access the node's `type`:idx:. A Nim type is
@@ -362,12 +342,11 @@ object
     doAssert(dumpTypeImpl(b) == t)
     doAssert(dumpTypeImpl(c) == t)
 
-when defined(nimHasSignatureHashInMacro):
-  proc signatureHash*(n: NimNode): string {.magic: "NSigHash", noSideEffect.}
-    ## Returns a stable identifier derived from the signature of a symbol.
-    ## The signature combines many factors such as the type of the symbol,
-    ## the owning module of the symbol and others. The same identifier is
-    ## used in the back-end to produce the mangled symbol name.
+proc signatureHash*(n: NimNode): string {.magic: "NSigHash", noSideEffect.}
+  ## Returns a stable identifier derived from the signature of a symbol.
+  ## The signature combines many factors such as the type of the symbol,
+  ## the owning module of the symbol and others. The same identifier is
+  ## used in the back-end to produce the mangled symbol name.
 
 proc symBodyHash*(s: NimNode): string {.noSideEffect.} =
   ## Returns a stable digest for symbols derived not only from type signature
@@ -566,34 +545,82 @@ proc getAst*(macroOrTemplate: untyped): NimNode {.magic: "ExpandToAst", noSideEf
   ##   macro FooMacro() =
   ##     var ast = getAst(BarTemplate())
 
-proc quote*(bl: typed, op = "``"): NimNode {.magic: "QuoteAst", noSideEffect.}
+proc quote*(bl: typed, op = "``"): NimNode {.magic: "QuoteAst", noSideEffect.} =
   ## Quasi-quoting operator.
   ## Accepts an expression or a block and returns the AST that represents it.
   ## Within the quoted AST, you are able to interpolate NimNode expressions
   ## from the surrounding scope. If no operator is given, quoting is done using
   ## backticks. Otherwise, the given operator must be used as a prefix operator
-  ## for any interpolated expression.
-  ##
-  ## Example:
-  ##
-  ## .. code-block:: nim
-  ##
-  ##   macro check(ex: untyped) =
-  ##     # this is a simplified version of the check macro from the
-  ##     # unittest module.
-  ##
-  ##     # If there is a failed check, we want to make it easy for
-  ##     # the user to jump to the faulty line in the code, so we
-  ##     # get the line info here:
-  ##     var info = ex.lineinfo
-  ##
-  ##     # We will also display the code string of the failed check:
-  ##     var expString = ex.toStrLit
-  ##
-  ##     # Finally we compose the code to implement the check:
-  ##     result = quote do:
-  ##       if not `ex`:
-  ##         echo `info` & ": Check failed: " & `expString`
+  ## for any interpolated expression. The original meaning of the interpolation
+  ## operator may be obtained by escaping it (by prefixing it with itself) when used
+  ## as a unary operator:
+  ## e.g. `@` is escaped as `@@`, `&%` is escaped as `&%&%` and so on; see examples.
+  runnableExamples:
+    macro check(ex: untyped) =
+      # this is a simplified version of the check macro from the
+      # unittest module.
+
+      # If there is a failed check, we want to make it easy for
+      # the user to jump to the faulty line in the code, so we
+      # get the line info here:
+      var info = ex.lineinfo
+
+      # We will also display the code string of the failed check:
+      var expString = ex.toStrLit
+
+      # Finally we compose the code to implement the check:
+      result = quote do:
+        if not `ex`:
+          echo `info` & ": Check failed: " & `expString`
+    check 1 + 1 == 2
+
+  runnableExamples:
+    # example showing how to define a symbol that requires backtick without
+    # quoting it.
+    var destroyCalled = false
+    macro bar() =
+      let s = newTree(nnkAccQuoted, ident"=destroy")
+      # let s = ident"`=destroy`" # this would not work
+      result = quote do:
+        type Foo = object
+        # proc `=destroy`(a: var Foo) = destroyCalled = true # this would not work
+        proc `s`(a: var Foo) = destroyCalled = true
+        block:
+          let a = Foo()
+    bar()
+    doAssert destroyCalled
+
+  runnableExamples:
+    # custom `op`
+    var destroyCalled = false
+    macro bar() =
+      var x = 1.5
+      result = quote("@") do:
+        type Foo = object
+        proc `=destroy`(a: var Foo) =
+          doAssert @x == 1.5
+          doAssert compiles(@x == 1.5)
+          let b1 = @[1,2]
+          let b2 = @@[1,2]
+          doAssert $b1 == "[1, 2]"
+          doAssert $b2 == "@[1, 2]"
+          destroyCalled = true
+        block:
+          let a = Foo()
+    bar()
+    doAssert destroyCalled
+
+    proc `&%`(x: int): int = 1
+    proc `&%`(x, y: int): int = 2
+
+    macro bar2() =
+      var x = 3
+      result = quote("&%") do:
+        var y = &%x # quoting operator
+        doAssert &%&%y == 1 # unary operator => need to escape
+        doAssert y &% y == 2 # binary operator => no need to escape
+        doAssert y == 3
+    bar2()
 
 proc expectKind*(n: NimNode, k: NimNodeKind) {.compileTime.} =
   ## Checks that `n` is of kind `k`. If this is not the case,
@@ -743,7 +770,7 @@ when declared(float128):
 
 proc newLit*(arg: enum): NimNode {.compileTime.} =
   result = newCall(
-    arg.type.getTypeInst[1],
+    arg.typeof.getTypeInst[1],
     newLit(int(arg))
   )
 
@@ -753,13 +780,13 @@ proc newLit*[T](s: set[T]): NimNode {.compileTime.}
 proc newLit*[T: tuple](arg: T): NimNode {.compileTime.}
 
 proc newLit*(arg: object): NimNode {.compileTime.} =
-  result = nnkObjConstr.newTree(arg.type.getTypeInst[1])
+  result = nnkObjConstr.newTree(arg.typeof.getTypeInst[1])
   for a, b in arg.fieldPairs:
     result.add nnkExprColonExpr.newTree( newIdentNode(a), newLit(b) )
 
 proc newLit*(arg: ref object): NimNode {.compileTime.} =
   ## produces a new ref type literal node.
-  result = nnkObjConstr.newTree(arg.type.getTypeInst[1])
+  result = nnkObjConstr.newTree(arg.typeof.getTypeInst[1])
   for a, b in fieldPairs(arg[]):
     result.add nnkExprColonExpr.newTree(newIdentNode(a), newLit(b))
 
@@ -1366,63 +1393,26 @@ proc copy*(node: NimNode): NimNode {.compileTime.} =
   ## An alias for `copyNimTree<#copyNimTree,NimNode>`_.
   return node.copyNimTree()
 
-when defined(nimVmEqIdent):
-  proc eqIdent*(a: string; b: string): bool {.magic: "EqIdent", noSideEffect.}
-    ## Style insensitive comparison.
+proc eqIdent*(a: string; b: string): bool {.magic: "EqIdent", noSideEffect.}
+  ## Style insensitive comparison.
 
-  proc eqIdent*(a: NimNode; b: string): bool {.magic: "EqIdent", noSideEffect.}
-    ## Style insensitive comparison.  ``a`` can be an identifier or a
-    ## symbol. ``a`` may be wrapped in an export marker
-    ## (``nnkPostfix``) or quoted with backticks (``nnkAccQuoted``),
-    ## these nodes will be unwrapped.
+proc eqIdent*(a: NimNode; b: string): bool {.magic: "EqIdent", noSideEffect.}
+  ## Style insensitive comparison.  ``a`` can be an identifier or a
+  ## symbol. ``a`` may be wrapped in an export marker
+  ## (``nnkPostfix``) or quoted with backticks (``nnkAccQuoted``),
+  ## these nodes will be unwrapped.
 
-  proc eqIdent*(a: string; b: NimNode): bool {.magic: "EqIdent", noSideEffect.}
-    ## Style insensitive comparison.  ``b`` can be an identifier or a
-    ## symbol. ``b`` may be wrapped in an export marker
-    ## (``nnkPostfix``) or quoted with backticks (``nnkAccQuoted``),
-    ## these nodes will be unwrapped.
+proc eqIdent*(a: string; b: NimNode): bool {.magic: "EqIdent", noSideEffect.}
+  ## Style insensitive comparison.  ``b`` can be an identifier or a
+  ## symbol. ``b`` may be wrapped in an export marker
+  ## (``nnkPostfix``) or quoted with backticks (``nnkAccQuoted``),
+  ## these nodes will be unwrapped.
 
-  proc eqIdent*(a: NimNode; b: NimNode): bool {.magic: "EqIdent", noSideEffect.}
-    ## Style insensitive comparison.  ``a`` and ``b`` can be an
-    ## identifier or a symbol. Both may be wrapped in an export marker
-    ## (``nnkPostfix``) or quoted with backticks (``nnkAccQuoted``),
-    ## these nodes will be unwrapped.
-
-else:
-  # this procedure is optimized for native code, it should not be compiled to nimVM bytecode.
-  proc cmpIgnoreStyle(a, b: cstring): int {.noSideEffect.} =
-    proc toLower(c: char): char {.inline.} =
-      if c in {'A'..'Z'}: result = chr(ord(c) + (ord('a') - ord('A')))
-      else: result = c
-    var i = 0
-    var j = 0
-    # first char is case sensitive
-    if a[0] != b[0]: return 1
-    while true:
-      while a[i] == '_': inc(i)
-      while b[j] == '_': inc(j) # BUGFIX: typo
-      var aa = toLower(a[i])
-      var bb = toLower(b[j])
-      result = ord(aa) - ord(bb)
-      if result != 0 or aa == '\0': break
-      inc(i)
-      inc(j)
-
-
-  proc eqIdent*(a, b: string): bool = cmpIgnoreStyle(a, b) == 0
-    ## Check if two idents are equal.
-
-  proc eqIdent*(node: NimNode; s: string): bool {.compileTime.} =
-    ## Check if node is some identifier node (``nnkIdent``, ``nnkSym``, etc.)
-    ## is the same as ``s``. Note that this is the preferred way to check! Most
-    ## other ways like ``node.ident`` are much more error-prone, unfortunately.
-    case node.kind
-    of nnkSym, nnkIdent:
-      result = eqIdent(node.strVal, s)
-    of nnkOpenSymChoice, nnkClosedSymChoice:
-      result = eqIdent($node[0], s)
-    else:
-      result = false
+proc eqIdent*(a: NimNode; b: NimNode): bool {.magic: "EqIdent", noSideEffect.}
+  ## Style insensitive comparison.  ``a`` and ``b`` can be an
+  ## identifier or a symbol. Both may be wrapped in an export marker
+  ## (``nnkPostfix``) or quoted with backticks (``nnkAccQuoted``),
+  ## these nodes will be unwrapped.
 
 proc expectIdent*(n: NimNode, name: string) {.compileTime, since: (1,1).} =
   ## Check that ``eqIdent(n,name)`` holds true. If this is not the
@@ -1434,10 +1424,10 @@ proc expectIdent*(n: NimNode, name: string) {.compileTime, since: (1,1).} =
 proc hasArgOfName*(params: NimNode; name: string): bool {.compileTime.}=
   ## Search ``nnkFormalParams`` for an argument.
   expectKind(params, nnkFormalParams)
-  for i in 1 ..< params.len:
-    template node: untyped = params[i]
-    if name.eqIdent( $ node[0]):
-      return true
+  for i in 1..<params.len:
+    for j in 0..<params[i].len-2:
+      if name.eqIdent($params[i][j]):
+        return true
 
 proc addIdentIfAbsent*(dest: NimNode, ident: string) {.compileTime.} =
   ## Add ``ident`` to ``dest`` if it is not present. This is intended for use
@@ -1642,22 +1632,21 @@ proc getProjectPath*(): string = discard
   ## See also:
   ## * `getCurrentDir proc <os.html#getCurrentDir>`_
 
-when defined(nimMacrosSizealignof):
-  proc getSize*(arg: NimNode): int {.magic: "NSizeOf", noSideEffect.} =
-    ## Returns the same result as ``system.sizeof`` if the size is
-    ## known by the Nim compiler. Returns a negative value if the Nim
-    ## compiler does not know the size.
-  proc getAlign*(arg: NimNode): int {.magic: "NSizeOf", noSideEffect.} =
-    ## Returns the same result as ``system.alignof`` if the alignment
-    ## is known by the Nim compiler. It works on ``NimNode`` for use
-    ## in macro context. Returns a negative value if the Nim compiler
-    ## does not know the alignment.
-  proc getOffset*(arg: NimNode): int {.magic: "NSizeOf", noSideEffect.} =
-    ## Returns the same result as ``system.offsetof`` if the offset is
-    ## known by the Nim compiler. It expects a resolved symbol node
-    ## from a field of a type. Therefore it only requires one argument
-    ## instead of two. Returns a negative value if the Nim compiler
-    ## does not know the offset.
+proc getSize*(arg: NimNode): int {.magic: "NSizeOf", noSideEffect.} =
+  ## Returns the same result as ``system.sizeof`` if the size is
+  ## known by the Nim compiler. Returns a negative value if the Nim
+  ## compiler does not know the size.
+proc getAlign*(arg: NimNode): int {.magic: "NSizeOf", noSideEffect.} =
+  ## Returns the same result as ``system.alignof`` if the alignment
+  ## is known by the Nim compiler. It works on ``NimNode`` for use
+  ## in macro context. Returns a negative value if the Nim compiler
+  ## does not know the alignment.
+proc getOffset*(arg: NimNode): int {.magic: "NSizeOf", noSideEffect.} =
+  ## Returns the same result as ``system.offsetof`` if the offset is
+  ## known by the Nim compiler. It expects a resolved symbol node
+  ## from a field of a type. Therefore it only requires one argument
+  ## instead of two. Returns a negative value if the Nim compiler
+  ## does not know the offset.
 
 proc isExported*(n: NimNode): bool {.noSideEffect.} =
   ## Returns whether the symbol is exported or not.

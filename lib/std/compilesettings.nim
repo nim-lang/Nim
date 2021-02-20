@@ -31,6 +31,7 @@ type
     ccompilerPath     ## the path to the C/C++ compiler
     backend           ## the backend (eg: c|cpp|objc|js); both `nim doc --backend:js`
                       ## and `nim js` would imply backend=js
+    libPath           ## the absolute path to the stdlib library, i.e. nim's `--lib`, since 1.5.1
 
   MultipleValueSetting* {.pure.} = enum ## \
                       ## settings resulting in a seq of string values
@@ -43,14 +44,26 @@ type
 
 proc querySetting*(setting: SingleValueSetting): string {.
   compileTime, noSideEffect.} = discard
-  ## Can be used to get a string compile-time option. Example:
+  ## Can be used to get a string compile-time option.
+  ##
+  ## See also:
+  ## * `compileOption <system.html#compileOption,string>`_ for `on|off` options
+  ## * `compileOption <system.html#compileOption,string,string>`_ for enum options
+  ##
+  ## Example:
   ##
   ## .. code-block:: Nim
   ##   const nimcache = querySetting(SingleValueSetting.nimcacheDir)
 
 proc querySettingSeq*(setting: MultipleValueSetting): seq[string] {.
   compileTime, noSideEffect.} = discard
-  ## Can be used to get a multi-string compile-time option. Example:
+  ## Can be used to get a multi-string compile-time option.
+  ##
+  ## See also:
+  ## * `compileOption <system.html#compileOption,string>`_ for `on|off` options
+  ## * `compileOption <system.html#compileOption,string,string>`_ for enum options
+  ##
+  ## Example:
   ##
   ## .. code-block:: Nim
   ##   const nimblePaths = compileSettingSeq(MultipleValueSetting.nimblePaths)

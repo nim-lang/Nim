@@ -476,7 +476,7 @@ proc inferWithMetatype(c: PContext, formal: PType,
     result.typ = generateTypeInstance(c, m.bindings, arg.info,
                                       formal.skipTypes({tyCompositeTypeClass}))
   else:
-    typeMismatch(c.config, arg.info, formal, arg.typ)
+    typeMismatch(c.config, arg.info, formal, arg.typ, arg)
     # error correction:
     result = copyTree(arg)
     result.typ = formal
@@ -685,9 +685,9 @@ proc searchForBorrowProc(c: PContext, startScope: PScope, fn: PSym): PSym =
     var x: PType
     if param.typ.kind == tyVar:
       x = newTypeS(param.typ.kind, c)
-      x.addSonSkipIntLit(t.baseOfDistinct(c.idgen), c.idgen)
+      x.addSonSkipIntLit(t.baseOfDistinct(c.graph, c.idgen), c.idgen)
     else:
-      x = t.baseOfDistinct(c.idgen)
+      x = t.baseOfDistinct(c.graph, c.idgen)
     call.add(newNodeIT(nkEmpty, fn.info, x))
   if hasDistinct:
     let filter = if fn.kind in {skProc, skFunc}: {skProc, skFunc} else: {fn.kind}

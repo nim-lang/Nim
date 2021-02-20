@@ -7,19 +7,20 @@
 #    distribution, for details about the copyright.
 #
 
-# This is the documentation generator. It is currently pretty simple: No
-# semantic checking is done for the code. Cross-references are generated
+# This is the documentation generator. Cross-references are generated
 # by knowing how the anchors are going to be named.
 
 import
   ast, strutils, strtabs, options, msgs, os, ropes, idents,
   wordrecg, syntaxes, renderer, lexer, packages/docutils/rstast,
   packages/docutils/rst, packages/docutils/rstgen,
-  json, xmltree, cgi, trees, types,
+  json, xmltree, trees, types,
   typesrenderer, astalgo, lineinfos, intsets,
   pathutils, trees, tables, nimpaths, renderverbatim, osproc
 
+from uri import encodeUrl
 from std/private/globs import nativeToUnixPath
+
 
 const
   exportSection = skField
@@ -55,6 +56,11 @@ type
     wroteSupportFiles*: bool
 
   PDoc* = ref TDocumentor ## Alias to type less.
+
+proc prettyString(a: object): string =
+  # xxx pending std/prettyprint refs https://github.com/nim-lang/RFCs/issues/203#issuecomment-602534906
+  for k, v in fieldPairs(a):
+    result.add k & ": " & $v & "\n"
 
 proc presentationPath*(conf: ConfigRef, file: AbsoluteFile, isTitle = false): RelativeFile =
   ## returns a relative file that will be appended to outDir
@@ -131,6 +137,7 @@ template declareClosures =
     of meNewSectionExpected: k = errNewSectionExpected
     of meGeneralParseError: k = errGeneralParseError
     of meInvalidDirective: k = errInvalidDirectiveX
+    of meFootnoteMismatch: k = errFootnoteMismatch
     of mwRedefinitionOfLabel: k = warnRedefinitionOfLabel
     of mwUnknownSubstitution: k = warnUnknownSubstitutionX
     of mwUnsupportedLanguage: k = warnLanguageXNotSupported
@@ -323,8 +330,7 @@ proc genRecCommentAux(d: PDoc, n: PNode): Rope =
         result = genRecCommentAux(d, n[i])
         if result != nil: return
   else:
-    when defined(nimNoNilSeqs): n.comment = ""
-    else: n.comment = nil
+    n.comment = ""
 
 proc genRecComment(d: PDoc, n: PNode): Rope =
   if n == nil: return nil
@@ -468,17 +474,18 @@ proc runAllExamples(d: PDoc) =
     writeFile(outp, group.code)
     # most useful semantics is that `docCmd` comes after `rdoccmd`, so that we can (temporarily) override
     # via command line
-    let cmd = "$nim $backend -r --warning:UnusedImport:off --path:$path --nimcache:$nimcache $rdoccmd $docCmd $file" % [
-      "nim", os.getAppFilename(),
+    let cmd = "$nim $backend -r --lib:$libpath --warning:UnusedImport:off --path:$path --nimcache:$nimcache $rdoccmd $docCmd $file" % [
+      "nim", quoteShell(os.getAppFilename()),
       "backend", $d.conf.backend,
       "path", quoteShell(d.conf.projectPath),
+      "libpath", quoteShell(d.conf.libpath),
       "nimcache", quoteShell(outputDir),
       "file", quoteShell(outp),
       "rdoccmd", group.rdoccmd,
       "docCmd", group.docCmd,
     ]
     if os.execShellCmd(cmd) != 0:
-      quit "[runnableExamples] failed: generated file: '$1' group: '$2' cmd: $3" % [outp.string, $group[], cmd]
+      quit "[runnableExamples] failed: generated file: '$1' group: '$2' cmd: $3" % [outp.string, group[].prettyString, cmd]
     else:
       # keep generated source file `outp` to allow inspection.
       rawMessage(d.conf, hintSuccess, ["runnableExamples: " & outp.string])
@@ -558,7 +565,7 @@ proc getAllRunnableExamplesImpl(d: PDoc; n: PNode, dest: var Rope, state: Runnab
           "\n\\textbf{$1}\n", [msg.rope])
       inc d.listingCounter
       let id = $d.listingCounter
-      dest.add(d.config.getOrDefault"doc.listing_start" % [id, "langNim"])
+      dest.add(d.config.getOrDefault"doc.listing_start" % [id, "langNim", ""])
       var dest2 = ""
       renderNimCode(dest2, code, isLatex = d.conf.cmd == cmdRst2tex)
       dest.add dest2
@@ -718,7 +725,7 @@ proc complexName(k: TSymKind, n: PNode, baseName: string): string =
   of skTemplate: result.add(".t")
   of skConverter: result.add(".c")
   else: discard
-  if n.len > paramsPos and n[paramsPos].kind == nkFormalParams:
+  if n.safeLen > paramsPos and n[paramsPos].kind == nkFormalParams:
     let params = renderParamTypes(n[paramsPos])
     if params.len > 0:
       result.add(defaultParamSeparator)
@@ -968,13 +975,17 @@ proc exportSym(d: PDoc; s: PSym) =
   elif s.kind != skModule and s.owner != nil:
     let module = originatingModule(s)
     if belongsToPackage(d.conf, module):
-      let external = externalDep(d, module)
+      let
+        complexSymbol = complexName(s.kind, s.ast, s.name.s)
+        symbolOrIdRope = rope(d.newUniquePlainSymbol(complexSymbol))
+        external = externalDep(d, module)
       if d.section[k] != nil: d.section[k].add(", ")
       # XXX proper anchor generation here
       dispA(d.conf, d.section[k],
-            "<a href=\"$2#$1\"><span class=\"Identifier\">$1</span></a>",
+            "<a href=\"$2#$3\"><span class=\"Identifier\">$1</span></a>",
             "$1", [rope esc(d.target, s.name.s),
-            rope changeFileExt(external, "html")])
+            rope changeFileExt(external, "html"),
+            symbolOrIdRope])
 
 proc documentNewEffect(cache: IdentCache; n: PNode): PNode =
   let s = n[namePos].sym
@@ -1041,12 +1052,9 @@ proc generateDoc*(d: PDoc, n, orig: PNode, docFlags: DocFlags = kDefault) =
     let pragmaNode = findPragma(n, wDeprecated)
     d.modDeprecationMsg.add(genDeprecationMsg(d, pragmaNode))
   of nkCommentStmt: d.modDesc.add(genComment(d, n))
-  of nkProcDef:
+  of nkProcDef, nkFuncDef:
     when useEffectSystem: documentRaises(d.cache, n)
     genItemAux(skProc)
-  of nkFuncDef:
-    when useEffectSystem: documentRaises(d.cache, n)
-    genItemAux(skFunc)
   of nkMethodDef:
     when useEffectSystem: documentRaises(d.cache, n)
     genItemAux(skMethod)
@@ -1077,7 +1085,7 @@ proc generateDoc*(d: PDoc, n, orig: PNode, docFlags: DocFlags = kDefault) =
       if it.kind == nkSym:
         if d.module != nil and d.module == it.sym.owner:
           generateDoc(d, it.sym.ast, orig, kForceExport)
-        else:
+        elif it.sym.ast != nil:
           exportSym(d, it.sym)
   of nkExportExceptStmt: discard "transformed into nkExportStmt by semExportExcept"
   of nkFromStmt, nkImportExceptStmt: traceDeps(d, n[0])
@@ -1097,12 +1105,9 @@ proc generateJson*(d: PDoc, n: PNode, includeComments: bool = true) =
       d.add %*{"comment": genComment(d, n)}
     else:
       d.modDesc.add(genComment(d, n))
-  of nkProcDef:
+  of nkProcDef, nkFuncDef:
     when useEffectSystem: documentRaises(d.cache, n)
     d.add genJsonItem(d, n, n[namePos], skProc)
-  of nkFuncDef:
-    when useEffectSystem: documentRaises(d.cache, n)
-    d.add genJsonItem(d, n, n[namePos], skFunc)
   of nkMethodDef:
     when useEffectSystem: documentRaises(d.cache, n)
     d.add genJsonItem(d, n, n[namePos], skMethod)

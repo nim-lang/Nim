@@ -16,11 +16,17 @@ import strutils2
 type InstantiationInfo* = typeof(instantiationInfo())
 template instLoc(): InstantiationInfo = instantiationInfo(-2, fullPaths = true)
 
-template flushDot(conf, stdorr) =
+template toStdOrrKind(stdOrr): untyped =
+  if stdOrr == stdout: stdOrrStdout else: stdOrrStderr
+
+proc flushDot*(conf: ConfigRef) =
   ## safe to call multiple times
-  if conf.lastMsgWasDot:
-    conf.lastMsgWasDot = false
-    write(stdorr, "\n")
+  # xxx one edge case not yet handled is when `printf` is called at CT with `compiletimeFFI`.
+  let stdOrr = if optStdout in conf.globalOptions: stdout else: stderr
+  let stdOrrKind = toStdOrrKind(stdOrr)
+  if stdOrrKind in conf.lastMsgWasDot:
+    conf.lastMsgWasDot.excl stdOrrKind
+    write(stdOrr, "\n")
 
 proc toCChar*(c: char; result: var string) =
   case c
@@ -34,13 +40,15 @@ proc toCChar*(c: char; result: var string) =
     result.add c
 
 proc makeCString*(s: string): Rope =
-  const MaxLineLength = 64
   result = nil
   var res = newStringOfCap(int(s.len.toFloat * 1.1) + 1)
   res.add("\"")
   for i in 0..<s.len:
-    if (i + 1) mod MaxLineLength == 0:
-      res.add("\"\L\"")
+    # line wrapping of string litterals in cgen'd code was a bad idea, e.g. causes: bug #16265
+    # It also makes reading c sources or grepping harder, for zero benefit.
+    # const MaxLineLength = 64
+    # if (i + 1) mod MaxLineLength == 0:
+    #   res.add("\"\L\"")
     toCChar(s[i], res)
   res.add('\"')
   result.add(rope(res))
@@ -305,12 +313,12 @@ proc msgWriteln*(conf: ConfigRef; s: string, flags: MsgFlags = {}) =
     conf.writelnHook(s)
   elif optStdout in conf.globalOptions or msgStdout in flags:
     if eStdOut in conf.m.errorOutputs:
-      flushDot(conf, stdout)
+      flushDot(conf)
       writeLine(stdout, s)
       flushFile(stdout)
   else:
     if eStdErr in conf.m.errorOutputs:
-      flushDot(conf, stderr)
+      flushDot(conf)
       writeLine(stderr, s)
       # On Windows stderr is fully-buffered when piped, regardless of C std.
       when defined(windows):
@@ -355,18 +363,18 @@ proc msgWrite(conf: ConfigRef; s: string) =
         stderr
     write(stdOrr, s)
     flushFile(stdOrr)
-    conf.lastMsgWasDot = true # subsequent writes need `flushDot`
+    conf.lastMsgWasDot.incl stdOrr.toStdOrrKind() # subsequent writes need `flushDot`
 
 template styledMsgWriteln*(args: varargs[typed]) =
   if not isNil(conf.writelnHook):
     callIgnoringStyle(callWritelnHook, nil, args)
   elif optStdout in conf.globalOptions:
     if eStdOut in conf.m.errorOutputs:
-      flushDot(conf, stdout)
+      flushDot(conf)
       callIgnoringStyle(writeLine, stdout, args)
       flushFile(stdout)
   elif eStdErr in conf.m.errorOutputs:
-    flushDot(conf, stderr)
+    flushDot(conf)
     if optUseColors in conf.globalOptions:
       callStyledWriteLineStderr(args)
     else:
@@ -405,7 +413,7 @@ proc handleError(conf: ConfigRef; msg: TMsgKind, eh: TErrorHandling, s: string) 
     if conf.cmd == cmdIdeTools: log(s)
     quit(conf, msg)
   if msg >= errMin and msg <= errMax or
-      (msg in warnMin..warnMax and msg in conf.warningAsErrors):
+      (msg in warnMin..hintMax and msg in conf.warningAsErrors):
     inc(conf.errorCounter)
     conf.exitcode = 1'i8
     if conf.errorCounter >= conf.errorMax:
@@ -452,7 +460,7 @@ proc numLines*(conf: ConfigRef, fileIdx: FileIndex): int =
   if result == 0:
     try:
       for line in lines(toFullPathConsiderDirty(conf, fileIdx).string):
-        addSourceLine conf, fileIdx, line.string
+        addSourceLine conf, fileIdx, line
     except IOError:
       discard
     result = conf.m.fileInfos[fileIdx.int32].lines.len
@@ -514,7 +522,11 @@ proc liMessage*(conf: ConfigRef; info: TLineInfo, msg: TMsgKind, arg: string,
   of hintMin..hintMax:
     sev = Severity.Hint
     ignoreMsg = not conf.hasHint(msg)
-    title = HintTitle
+    if msg in conf.warningAsErrors:
+      ignoreMsg = false
+      title = ErrorTitle
+    else:
+      title = HintTitle
     color = HintColor
     inc(conf.hintCounter)
 

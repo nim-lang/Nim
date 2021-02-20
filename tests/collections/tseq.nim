@@ -24,7 +24,7 @@ block tseq2:
     # multiply two int sequences:
     for i in 0..len(a)-1: result[i] = a[i] * b[i]
 
-  assert(@[1, 2, 3] * @[1, 2, 3] == @[1, 4, 9])
+  doAssert(@[1, 2, 3] * @[1, 2, 3] == @[1, 4, 9])
 
 
 
@@ -201,7 +201,7 @@ block ttoseq:
     stdout.write(x)
   for x in items(toSeq(countup(2, 6))):
     stdout.write(x)
-  var y: type("a b c".split)
+  var y: typeof("a b c".split)
   y = "xzy"
   stdout.write("\n")
 

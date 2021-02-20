@@ -42,8 +42,7 @@ template fn() =
 
   block:
     testRoundtrip({"z": "Z", "y": "Y"}.toOrderedTable): """{"z":"Z","y":"Y"}"""
-    when not defined(js): # pending https://github.com/nim-lang/Nim/issues/14574
-      testRoundtrip({"z": (f1: 'f'), }.toTable): """{"z":{"f1":102}}"""
+    testRoundtrip({"z": (f1: 'f'), }.toTable): """{"z":{"f1":102}}"""
 
   block:
     testRoundtrip({"name": "John", "city": "Monaco"}.newStringTable): """{"mode":"modeCaseSensitive","table":{"city":"Monaco","name":"John"}}"""
@@ -117,6 +116,29 @@ template fn() =
     testRoundtrip(Foo[float](t1: true, z1: 5, t2: 3, z4: 12)): """{"t1":true,"z1":5,"t2":3,"z4":12}"""
     testRoundtrip(Foo[int](t1: false, z2: 7)): """{"t1":false,"z2":7}"""
     # pending https://github.com/nim-lang/Nim/issues/14698, test with `type Foo[T] = ref object`
+
+  block: # bug: pass opt params in fromJson
+    type Foo = object
+      a: int
+      b: string
+      c: float
+    type Bar = object
+      foo: Foo
+      boo: string
+    var f: seq[Foo]
+    try:
+      fromJson(f, parseJson """[{"b": "bbb"}]""")
+      doAssert false
+    except ValueError:
+      doAssert true
+    fromJson(f, parseJson """[{"b": "bbb"}]""", Joptions(allowExtraKeys: true, allowMissingKeys: true))
+    doAssert f == @[Foo(a: 0, b: "bbb", c: 0.0)]
+    var b: Bar
+    fromJson(b, parseJson """{"foo": {"b": "bbb"}}""", Joptions(allowExtraKeys: true, allowMissingKeys: true))
+    doAssert b == Bar(foo: Foo(a: 0, b: "bbb", c: 0.0))
+    block: # jsonTo with `opt`
+      let b2 = """{"foo": {"b": "bbb"}}""".parseJson.jsonTo(Bar,  Joptions(allowExtraKeys: true, allowMissingKeys: true))
+      doAssert b2 == Bar(foo: Foo(a: 0, b: "bbb", c: 0.0))
 
   block testHashSet:
     testRoundtrip(HashSet[string]()): "[]"
