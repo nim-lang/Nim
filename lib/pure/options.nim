@@ -44,7 +44,7 @@ runnableExamples:
 ## Pattern matching
 ## ================
 ##
-## **Note:** This requires the [fusion](https://github.com/nim-lang/fusion) package.
+## .. note:: This requires the [fusion](https://github.com/nim-lang/fusion) package.
 ##
 ## [fusion/matching](https://nim-lang.github.io/fusion/src/fusion/matching.html)
 ## supports pattern matching on `Option`s, with the `Some(<pattern>)` and
@@ -61,7 +61,8 @@ runnableExamples:
 ##   of None():
 ##     assert false
 ##
-##   Some(Some(None())) := some(some(none(int)))
+##   assertMatch(Some(Some(None())), some(some(none(int))))
+# xxx pending https://github.com/timotheecour/Nim/issues/376 use `whichModule`
 
 
 import std/typetraits
