@@ -38,18 +38,21 @@ template toSet*(iter: untyped): untyped =
 
 macro enmRange(enm: typed): untyped = result = newNimNode(nnkCurly).add(enm.getType[1][1..^1])
 
-proc fullSet*(T: typedesc): auto {.inline.} =
-  ## Returns a full set of all valid elements.
+# proc fullSet*(T: typedesc): set[T] {.inline.} = # xxx would give: Error: ordinal type expected
+proc fullSet*[T](U: typedesc[T]): set[T] {.inline.} =
+  ## Returns a set containing all elements in `U`.
   runnableExamples:
-    assert {true, false} == fullSet(bool)
+    assert bool.fullSet == {true, false}
+    type A = range[1..3]
+    assert A.fullSet == {1.A, 2, 3}
+    assert int8.fullSet.len == 256
   when T is Ordinal:
     {T.low..T.high}
   else: # Hole filled enum
     enmRange(T)
 
 proc complement*[T](s: set[T]): set[T] {.inline.} =
-  ## Returns the complement of the set.
-  ## Can also be thought of as inverting the set.
+  ## Returns the set complement of `a`.
   runnableExamples:
     type Colors = enum
       red, green = 3, blue
