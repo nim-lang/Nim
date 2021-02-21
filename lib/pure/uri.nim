@@ -339,9 +339,17 @@ func parseUri*(uri: string): Uri =
   parseUri(uri, result)
 
 func removeDotSegments(path: string): string =
+  ## Collapses `..` and `.` in `path` in a similar way as done in `os.normalizedPath`
+  ## Caution: this is buggy.
+  runnableExamples:
+    assert removeDotSegments("a1/a2/../a3/a4/a5/./a6/a7/.//./") == "a1/a3/a4/a5/a6/a7/"
+    assert removeDotSegments("http://www.ai.") == "http://www.ai."
+  # xxx adapt or reuse `pathnorm.normalizePath(path, '/')` to make this more reliable, but
+  # taking into account url specificities such as not collapsing leading `//` in scheme
+  # `https://`. see `turi` for failing tests.
   if path.len == 0: return ""
   var collection: seq[string] = @[]
-  let endsWithSlash = path[path.len-1] == '/'
+  let endsWithSlash = path.endsWith '/'
   var i = 0
   var currentSegment = ""
   while i < path.len:
@@ -547,3 +555,25 @@ proc getDataUri*(data, mime: string, encoding = "utf-8"): string {.since: (1, 3)
   runnableExamples: static: doAssert getDataUri("Nim", "text/plain") == "data:text/plain;charset=utf-8;base64,Tmlt"
   assert encoding.len > 0 and mime.len > 0 # Must *not* be URL-Safe, see RFC-2397
   result = "data:" & mime & ";charset=" & encoding & ";base64," & base64.encode(data)
+
+when isMainModule and defined(testing):
+  # needed (pending https://github.com/nim-lang/Nim/pull/11865) because
+  # `removeDotSegments` is private, the other tests are in `turi`.
+  block: # removeDotSegments
+    # `removeDotSegments` is exported for -d:testing only
+    doAssert removeDotSegments("/foo/bar/baz") == "/foo/bar/baz"
+    doAssert removeDotSegments("") == "" # empty test
+    doAssert removeDotSegments(".") == "." # trailing period
+    doAssert removeDotSegments("a1/a2/../a3/a4/a5/./a6/a7/././") == "a1/a3/a4/a5/a6/a7/"
+    doAssert removeDotSegments("https://a1/a2/../a3/a4/a5/./a6/a7/././") == "https://a1/a3/a4/a5/a6/a7/"
+    doAssert removeDotSegments("http://a1/a2") == "http://a1/a2"
+    doAssert removeDotSegments("http://www.ai.") == "http://www.ai."
+    when false: # xxx these cases are buggy
+      # this should work, refs https://webmasters.stackexchange.com/questions/73934/how-can-urls-have-a-dot-at-the-end-e-g-www-bla-de
+      doAssert removeDotSegments("http://www.ai./") == "http://www.ai./" # fails
+      echo removeDotSegments("http://www.ai./")  # http://www.ai/
+      echo removeDotSegments("a/b.../c") # b.c
+      echo removeDotSegments("a/b../c") # bc
+      echo removeDotSegments("a/.../c") # .c
+      echo removeDotSegments("a//../b") # a/b
+      echo removeDotSegments("a/b/c//") # a/b/c//
