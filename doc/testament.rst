@@ -227,7 +227,7 @@ JavaScript tests:
     targets: "js"
   """
   when defined(js):
-    import jsconsole
+    import std/jsconsole
     console.log("My Frontend Project")
 
 Compile-time tests:
