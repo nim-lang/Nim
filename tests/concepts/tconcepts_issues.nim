@@ -467,3 +467,36 @@ block misc_issues:
   # anyway and will be an error soon.
   var a: Cat = Cat()
   a.sayHello()
+
+
+# bug #16897
+
+type
+  Fp[N: static int, T] = object
+    big: array[N, T]
+
+type
+  QuadraticExt* = concept x
+    ## Quadratic Extension concept (like complex)
+    type BaseField = auto
+    x.c0 is BaseField
+    x.c1 is BaseField
+var address = pointer(nil)
+proc prod(r: var QuadraticExt, b: QuadraticExt) =
+  if address == nil:
+    address = unsafeAddr b
+    prod(r, b)
+  else:
+    assert address == unsafeAddr b
+
+type
+  Fp2[N: static int, T] {.byref.} = object
+    c0, c1: Fp[N, T]
+
+# This should be passed by reference,
+# but concepts do not respect the 24 bytes rule
+# or `byref` pragma.
+var r, b: Fp2[6, uint64]
+
+prod(r, b)
+

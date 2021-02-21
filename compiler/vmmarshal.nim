@@ -220,7 +220,7 @@ proc loadAny(p: var JsonParser, t: PType,
       if pos >= result.len:
         setLen(result.sons, pos + 1)
       let fieldNode = newNode(nkExprColonExpr)
-      fieldNode.add newSymNode(newSym(skField, ident, nextId(idgen), nil, unknownLineInfo))
+      fieldNode.add newSymNode(newSym(skField, ident, nextSymId(idgen), nil, unknownLineInfo))
       fieldNode.add loadAny(p, field.typ, tab, cache, conf, idgen)
       result[pos] = fieldNode
     if p.kind == jsonObjectEnd: next(p)

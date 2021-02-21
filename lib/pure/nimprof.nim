@@ -222,8 +222,9 @@ proc enableProfiling*() =
       system.profilingRequestedHook = requestedHook
 
 when declared(system.StackTrace):
+  import std/exitprocs
   system.profilingRequestedHook = requestedHook
   system.profilerHook = hook
-  addQuitProc(writeProfile)
+  addExitProc(writeProfile)
 
 {.pop.}

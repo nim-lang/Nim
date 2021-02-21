@@ -161,13 +161,13 @@ proc decode*(encoded: string): string {.raises: [PunyError].} =
         break
       w *= Base - t
       k += Base
-    bias = adapt(i - oldi, runelen(result) + 1, oldi == 0)
+    bias = adapt(i - oldi, runeLen(result) + 1, oldi == 0)
 
-    if i div (runelen(result) + 1) > high(int32) - n:
+    if i div (runeLen(result) + 1) > high(int32) - n:
       raise newException(PunyError, "Value too large")
 
-    n += i div (runelen(result) + 1)
-    i = i mod (runelen(result) + 1)
+    n += i div (runeLen(result) + 1)
+    i = i mod (runeLen(result) + 1)
     insert(result, $Rune(n), i)
     inc i
 
@@ -206,9 +206,3 @@ runnableExamples:
       doAssert decode("Mnchen-3ya-") == "Mnchen-3ya"
       doAssert decode("Mnchen-Ost-9db") == "München-Ost"
       doAssert decode("Bahnhof Mnchen-Ost-u6b") == "Bahnhof München-Ost"
-
-
-when isMainModule:
-  assert(decode(encode("", "bücher")) == "bücher")
-  assert(decode(encode("münchen")) == "münchen")
-  assert encode("xn--", "münchen") == "xn--mnchen-3ya"

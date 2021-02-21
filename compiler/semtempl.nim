@@ -176,7 +176,7 @@ proc onlyReplaceParams(c: var TemplCtx, n: PNode): PNode =
       result[i] = onlyReplaceParams(c, n[i])
 
 proc newGenSym(kind: TSymKind, n: PNode, c: var TemplCtx): PSym =
-  result = newSym(kind, considerQuotedIdent(c.c, n), nextId c.c.idgen, c.owner, n.info)
+  result = newSym(kind, considerQuotedIdent(c.c, n), nextSymId c.c.idgen, c.owner, n.info)
   incl(result.flags, sfGenSym)
   incl(result.flags, sfShadowed)
 
@@ -250,7 +250,7 @@ proc semTemplSymbol(c: PContext, n: PNode, s: PSym; isField: bool): PNode =
     else: result = newSymNode(s, n.info)
     # Issue #12832
     when defined(nimsuggest):
-      suggestSym(c.config, n.info, s, c.graph.usageSym, false)
+      suggestSym(c.graph, n.info, s, c.graph.usageSym, false)
     if {optStyleHint, optStyleError} * c.config.globalOptions != {}:
       styleCheckUse(c.config, n.info, s)
 
@@ -555,6 +555,10 @@ proc semTemplBody(c: var TemplCtx, n: PNode): PNode =
       result[1] = semTemplBody(c, n[1])
     else:
       result = semTemplBodySons(c, n)
+  of nkTableConstr:
+    # also transform the keys (bug #12595)
+    for i in 0..<n.len:
+      result[i] = semTemplBodySons(c, n[i])
   else:
     result = semTemplBodySons(c, n)
 

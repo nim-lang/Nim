@@ -496,6 +496,19 @@ proc `[]`*(node: JsonNode, index: int): JsonNode {.inline.} =
   assert(node.kind == JArray)
   return node.elems[index]
 
+proc `[]`*(node: JsonNode, index: BackwardsIndex): JsonNode {.inline, since: (1, 5, 1).} =
+  ## Gets the node at `array.len-i` in an array through the `^` operator.
+  ##
+  ## i.e. `j[^i]` is a shortcut for `j[j.len-i]`.
+  runnableExamples:
+    let
+      j = parseJson("[1,2,3,4,5]")
+
+    doAssert j[^1].getInt == 5
+    doAssert j[^2].getInt == 4
+
+  `[]`(node, node.len - int(index))
+
 proc hasKey*(node: JsonNode, key: string): bool =
   ## Checks if `key` exists in `node`.
   assert(node.kind == JObject)
@@ -1090,7 +1103,7 @@ when defined(nimFixedForwardGeneric):
       jsonPath.add '['
       jsonPath.addInt i
       jsonPath.add ']'
-      initFromJson(dst[i], jsonNode[i], jsonPath)
+      initFromJson(dst[i.S], jsonNode[i], jsonPath) # `.S` for enum indexed arrays
       jsonPath.setLen originalJsonPathLen
 
   proc initFromJson[T](dst: var Table[string,T]; jsonNode: JsonNode; jsonPath: var string) =

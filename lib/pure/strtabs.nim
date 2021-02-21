@@ -304,7 +304,7 @@ proc getValue(t: StringTableRef, flags: set[FormatFlag], key: string): string =
   when defined(js) or defined(nimscript) or defined(Standalone):
     result = ""
   else:
-    if useEnvironment in flags: result = getEnv(key).string
+    if useEnvironment in flags: result = getEnv(key)
     else: result = ""
   if result.len == 0:
     if useKey in flags: result = '$' & key
@@ -420,15 +420,3 @@ proc `%`*(f: string, t: StringTableRef, flags: set[FormatFlag] = {}): string {.
     else:
       add(result, f[i])
       inc(i)
-
-when isMainModule:
-  var x = {"k": "v", "11": "22", "565": "67"}.newStringTable
-  assert x["k"] == "v"
-  assert x["11"] == "22"
-  assert x["565"] == "67"
-  x["11"] = "23"
-  assert x["11"] == "23"
-
-  x.clear(modeCaseInsensitive)
-  x["11"] = "22"
-  assert x["11"] == "22"

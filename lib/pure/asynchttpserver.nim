@@ -13,37 +13,37 @@
 ## for testing applications locally. Because of this, when deploying your
 ## application in production you should use a reverse proxy (for example nginx)
 ## instead of allowing users to connect directly to this server.
-##
-## Example
-## =======
-##
-## This example will create an HTTP server on port 8080. The server will
-## respond to all requests with a ``200 OK`` response code and "Hello World"
-## as the response body.
-##
-## .. code-block:: Nim
-##
-##   import asynchttpserver, asyncdispatch
-##
-##   proc main {.async.} =
-##     var server = newAsyncHttpServer()
-##     proc cb(req: Request) {.async.} =
-##       let headers = {"Date": "Tue, 29 Apr 2014 23:40:08 GMT",
-##           "Content-type": "text/plain; charset=utf-8"}
-##       await req.respond(Http200, "Hello World", headers.newHttpHeaders())
-##
-##     server.listen Port(8080)
-##     while true:
-##       if server.shouldAcceptRequest():
-##         asyncCheck server.acceptRequest(cb)
-##       else:
-##         poll()
-##
-##   asyncCheck main()
-##   runForever()
+
+runnableExamples:
+  # This example will create an HTTP server on port 8080. The server will
+  # respond to all requests with a `200 OK` response code and "Hello World"
+  # as the response body. Run locally with:
+  # `nim doc --doccmd:-d:nimAsyncHttpServerEnableTest --lib:lib lib/pure/asynchttpserver.nim`
+  import asyncdispatch
+  if defined(nimAsyncHttpServerEnableTest):
+    proc main {.async.} =
+      const port = 8080
+      var server = newAsyncHttpServer()
+      proc cb(req: Request) {.async.} =
+        echo (req.reqMethod, req.url, req.headers)
+        let headers = {"Content-type": "text/plain; charset=utf-8"}
+        await req.respond(Http200, "Hello World", headers.newHttpHeaders())
+
+      echo "test this with: curl localhost:" & $port & "/"
+      server.listen(Port(port))
+      while true:
+        if server.shouldAcceptRequest():
+          await server.acceptRequest(cb)
+        else:
+          # too many concurrent connections, `maxFDs` exceeded
+          # wait 500ms for FDs to be closed
+          await sleepAsync(500)
+
+    waitFor main()
 
 import asyncnet, asyncdispatch, parseutils, uri, strutils
 import httpcore
+import std/private/since
 
 export httpcore except parseHeader
 
@@ -71,6 +71,22 @@ type
     reusePort: bool
     maxBody: int ## The maximum content-length that will be read for the body.
     maxFDs: int
+
+func getSocket*(a: AsyncHttpServer): AsyncSocket {.since: (1, 5, 1).} =
+  ## Returns the ``AsyncHttpServer``s internal ``AsyncSocket`` instance.
+  ## 
+  ## Useful for identifying what port the AsyncHttpServer is bound to, if it
+  ## was chosen automatically.
+  runnableExamples:
+    from asyncdispatch import Port
+    from asyncnet import getFd
+    from nativesockets import getLocalAddr, AF_INET
+    let server = newAsyncHttpServer()
+    server.listen(Port(0)) # Socket is not bound until this point
+    let port = getLocalAddr(server.getSocket.getFd, AF_INET)[1]
+    doAssert uint16(port) > 0
+    server.close()
+  a.socket
 
 proc newAsyncHttpServer*(reuseAddr = true, reusePort = false,
                          maxBody = 8388608): AsyncHttpServer =
@@ -142,6 +158,17 @@ proc parseProtocol(protocol: string): tuple[orig: string, major, minor: int] =
 
 proc sendStatus(client: AsyncSocket, status: string): Future[void] =
   client.send("HTTP/1.1 " & status & "\c\L\c\L")
+
+func hasChunkedEncoding(request: Request): bool = 
+  ## Searches for a chunked transfer encoding
+  const transferEncoding = "Transfer-Encoding"
+
+  if request.headers.hasKey(transferEncoding):
+    for encoding in seq[string](request.headers[transferEncoding]):
+      if "chunked" == encoding.strip:
+        # Returns true if it is both an HttpPost and has chunked encoding
+        return request.reqMethod == HttpPost
+  return false
 
 proc processRequest(
   server: AsyncHttpServer,
@@ -262,6 +289,43 @@ proc processRequest(
       if request.body.len != contentLength:
         await request.respond(Http400, "Bad Request. Content-Length does not match actual.")
         return true
+  elif hasChunkedEncoding(request):
+    # https://developer.mozilla.org/en-US/docs/Web/HTTP/Headers/Transfer-Encoding
+    var sizeOrData = 0
+    var bytesToRead = 0
+    request.body = ""
+
+    while true:
+      lineFut.mget.setLen(0)
+      lineFut.clean()
+      
+      # The encoding format alternates between specifying a number of bytes to read
+      # and the data to be read, of the previously specified size
+      if sizeOrData mod 2 == 0:
+        # Expect a number of chars to read
+        await client.recvLineInto(lineFut, maxLength = maxLine)
+        try:
+          bytesToRead = lineFut.mget.parseHexInt
+        except ValueError:
+          # Malformed request
+          await request.respond(Http411, ("Invalid chunked transfer encoding - " &
+                                          "chunk data size must be hex encoded"))
+          return true
+      else:
+        if bytesToRead == 0:
+          # Done reading chunked data
+          break
+
+        # Read bytesToRead and add to body
+        let chunk = await client.recv(bytesToRead)
+        request.body.add(chunk)
+        # Skip \r\n (chunk terminating bytes per spec)
+        let separator = await client.recv(2)
+        if separator != "\r\n":
+          await request.respond(Http400, "Bad Request. Encoding separator must be \\r\\n")
+          return true
+
+      inc sizeOrData
   elif request.reqMethod == HttpPost:
     await request.respond(Http411, "Content-Length required.")
     return true
@@ -368,23 +432,3 @@ proc serve*(server: AsyncHttpServer, port: Port,
 proc close*(server: AsyncHttpServer) =
   ## Terminates the async http server instance.
   server.socket.close()
-
-when not defined(testing) and isMainModule:
-  proc main {.async.} =
-    var server = newAsyncHttpServer()
-    proc cb(req: Request) {.async.} =
-      #echo(req.reqMethod, " ", req.url)
-      #echo(req.headers)
-      let headers = {"Date": "Tue, 29 Apr 2014 23:40:08 GMT",
-          "Content-type": "text/plain; charset=utf-8"}
-      await req.respond(Http200, "Hello World", headers.newHttpHeaders())
-
-    server.listen Port(5555)
-    while true:
-      if server.shouldAcceptRequest():
-        asyncCheck server.acceptRequest(cb)
-      else:
-        poll()
-
-  asyncCheck main()
-  runForever()

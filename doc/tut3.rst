@@ -154,7 +154,7 @@ but does nothing else. Here is an example of such a tree representation:
 
 
 Custom Semantic Checking
------------------------
+------------------------
 
 The first thing that a macro should do with its arguments is to check
 if the argument is in the correct form. Not every type of wrong input

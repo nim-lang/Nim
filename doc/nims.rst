@@ -286,7 +286,7 @@ translations.cfg
 
   [cat]
   ES = gato
-  PT = minino
+  IT = gatto
   RU = kot
   FR = chat
 

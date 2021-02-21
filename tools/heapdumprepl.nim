@@ -1,5 +1,5 @@
 
-include prelude
+include std/prelude
 import intsets
 
 type

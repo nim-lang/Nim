@@ -152,8 +152,11 @@ Example "template" **to edit** and write a Testament unittest:
     # Timeout seconds to run the test. Fractional values are supported.
     timeout: 1.5
 
-    # Targets to run the test into (C, C++, JavaScript, etc).
-    target: "c js"
+    # Targets to run the test into (c, cpp, objc, js).
+    targets: "c js"
+
+    # flags with which to run the test, delimited by `;`
+    matrix: "; -d:release; -d:caseFoo -d:release"
 
     # Conditions that will skip this test. Use of multiple "disabled" clauses
     # is permitted.
@@ -221,7 +224,7 @@ JavaScript tests:
 .. code-block:: nim
 
   discard """
-    target: "js"
+    targets: "js"
   """
   when defined(js):
     import jsconsole

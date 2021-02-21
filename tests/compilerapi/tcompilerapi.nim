@@ -18,7 +18,7 @@ import std / [os]
 
 proc initInterpreter(script: string): Interpreter =
   let std = findNimStdLibCompileTime()
-  result = createInterpreter(script , [std, parentDir(currentSourcePath),
+  result = createInterpreter(script, [std, parentDir(currentSourcePath),
     std / "pure", std / "core"])
 
 proc main() =

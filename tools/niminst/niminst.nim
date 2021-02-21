@@ -477,8 +477,6 @@ proc deduplicateFiles(c: var ConfigData) =
   let build = getOutputDir(c)
   for osA in countup(1, c.oses.len):
     for cpuA in countup(1, c.cpus.len):
-      when not defined(nimNoNilSeqs):
-        if c.cfiles[osA][cpuA].isNil: c.cfiles[osA][cpuA] = @[]
       if c.explicitPlatforms and not c.platforms[osA][cpuA]: continue
       for dup in mitems(c.cfiles[osA][cpuA]):
         let key = $secureHashFile(build / dup)
