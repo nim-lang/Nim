@@ -224,3 +224,5 @@ provided by the operating system.
 
 - `fusion` is now un-bundled from nim, `./koch fusion` will
   install it via nimble at a fixed hash.
+
+- Added `findreplace` tool.
