@@ -952,6 +952,7 @@ proc parsePostfix(p: var RstParser, n: PRstNode): PRstNode =
     else:
       newKind = rnRef
       newSons = @[n]
+    result = newRstNode(newKind, newSons)
   elif match(p, p.idx, ":w:"):
     # a role:
     if nextTok(p).symbol == "idx":
@@ -973,7 +974,9 @@ proc parsePostfix(p: var RstParser, n: PRstNode): PRstNode =
       let newN = newRstNode(rnInner, n.sons)
       newSons = @[newN, newLeaf(nextTok(p).symbol)]
     inc p.idx, 3
-  result = newRstNode(newKind, newSons)
+    result = newRstNode(newKind, newSons)
+  else:  # no change
+    result = n
 
 proc matchVerbatim(p: RstParser, start: int, expr: string): int =
   result = start
@@ -999,7 +1002,7 @@ proc isUrl(p: RstParser, i: int): bool =
     p.tok[i+3].kind == tkWord and
     p.tok[i].symbol in ["http", "https", "ftp", "telnet", "file"]
 
-proc parseUrl(p: var RstParser, father: PRstNode) =
+proc parseWordOrUrl(p: var RstParser, father: PRstNode) =
   #if currentTok(p).symbol[strStart] == '<':
   if isUrl(p, p.idx):
     var n = newRstNode(rnStandaloneHyperlink)
@@ -1241,7 +1244,7 @@ proc parseInline(p: var RstParser, father: PRstNode) =
       if n != nil:
         father.add(n)
         return
-    parseUrl(p, father)
+    parseWordOrUrl(p, father)
   of tkAdornment, tkOther, tkWhite:
     if roSupportMarkdown in p.s.options and currentTok(p).symbol == "```":
       inc p.idx
