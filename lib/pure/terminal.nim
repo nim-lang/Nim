@@ -14,7 +14,7 @@
 ## Changing the style is permanent even after program termination! Use the
 ## code `exitprocs.addExitProc(resetAttributes)` to restore the defaults.
 ## Similarly, if you hide the cursor, make sure to unhide it with
-## ``showCursor`` before quitting.
+## `showCursor` before quitting.
 
 import macros
 import strformat
@@ -543,7 +543,7 @@ type
     fgMagenta,            ## magenta
     fgCyan,               ## cyan
     fgWhite,              ## white
-    fg8Bit,               ## 256-color (not supported, see ``enableTrueColors`` instead.)
+    fg8Bit,               ## 256-color (not supported, see `enableTrueColors` instead.)
     fgDefault             ## default terminal foreground color
 
   BackgroundColor* = enum ## terminal's background colors
@@ -555,7 +555,7 @@ type
     bgMagenta,            ## magenta
     bgCyan,               ## cyan
     bgWhite,              ## white
-    bg8Bit,               ## 256-color (not supported, see ``enableTrueColors`` instead.)
+    bg8Bit,               ## 256-color (not supported, see `enableTrueColors` instead.)
     bgDefault             ## default terminal background color
 
 when defined(windows):
@@ -579,7 +579,7 @@ proc setForegroundColor*(f: File, fg: ForegroundColor, bright = false) =
       (FOREGROUND_RED or FOREGROUND_BLUE),
       (FOREGROUND_BLUE or FOREGROUND_GREEN),
       (FOREGROUND_BLUE or FOREGROUND_GREEN or FOREGROUND_RED),
-      0, # fg8Bit not supported, see ``enableTrueColors`` instead.
+      0, # fg8Bit not supported, see `enableTrueColors` instead.
       0] # unused
     if fg == fgDefault:
       discard setConsoleTextAttribute(h, toU16(old or defaultForegroundColor))
@@ -608,7 +608,7 @@ proc setBackgroundColor*(f: File, bg: BackgroundColor, bright = false) =
       (BACKGROUND_RED or BACKGROUND_BLUE),
       (BACKGROUND_BLUE or BACKGROUND_GREEN),
       (BACKGROUND_BLUE or BACKGROUND_GREEN or BACKGROUND_RED),
-      0, # bg8Bit not supported, see ``enableTrueColors`` instead.
+      0, # bg8Bit not supported, see `enableTrueColors` instead.
       0] # unused
     if bg == bgDefault:
       discard setConsoleTextAttribute(h, toU16(old or defaultBackgroundColor))
@@ -697,10 +697,10 @@ template styledEchoProcessArg(f: File, cmd: TerminalCmd) =
     term.fgSetColor = cmd == fgColor
 
 macro styledWrite*(f: File, m: varargs[typed]): untyped =
-  ## Similar to ``write``, but treating terminal style arguments specially.
-  ## When some argument is ``Style``, ``set[Style]``, ``ForegroundColor``,
-  ## ``BackgroundColor`` or ``TerminalCmd`` then it is not sent directly to
-  ## ``f``, but instead corresponding terminal style proc is called.
+  ## Similar to `write`, but treating terminal style arguments specially.
+  ## When some argument is `Style`, `set[Style]`, `ForegroundColor`,
+  ## `BackgroundColor` or `TerminalCmd` then it is not sent directly to
+  ## `f`, but instead corresponding terminal style proc is called.
   ##
   ## Example:
   ##
@@ -730,7 +730,7 @@ macro styledWrite*(f: File, m: varargs[typed]): untyped =
   if reset: result.add(newCall(bindSym"resetAttributes", f))
 
 template styledWriteLine*(f: File, args: varargs[untyped]) =
-  ## Calls ``styledWrite`` and appends a newline at the end.
+  ## Calls `styledWrite` and appends a newline at the end.
   ##
   ## Example:
   ##
@@ -743,7 +743,7 @@ template styledWriteLine*(f: File, args: varargs[untyped]) =
   write(f, "\n")
 
 template styledEcho*(args: varargs[untyped]) =
-  ## Echoes styles arguments to stdout using ``styledWriteLine``.
+  ## Echoes styles arguments to stdout using `styledWriteLine`.
   stdout.styledWriteLine(args)
 
 proc getch*(): char =
@@ -772,8 +772,8 @@ when defined(windows):
   proc readPasswordFromStdin*(prompt: string, password: var string):
                               bool {.tags: [ReadIOEffect, WriteIOEffect].} =
     ## Reads a `password` from stdin without printing it. `password` must not
-    ## be ``nil``! Returns ``false`` if the end of the file has been reached,
-    ## ``true`` otherwise.
+    ## be `nil`! Returns `false` if the end of the file has been reached,
+    ## `true` otherwise.
     password.setLen(0)
     stdout.write(prompt)
     let hi = createFileA("CONIN$",
