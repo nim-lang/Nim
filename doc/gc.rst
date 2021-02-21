@@ -77,7 +77,7 @@ the garbage collector with ``GC_enableMarkAndSweep`` and ``GC_disableMarkAndSwee
 
 
 Soft real-time support
----------------------
+----------------------
 
 To enable real-time support, the symbol `useRealtimeGC`:idx: needs to be
 defined via ``--define:useRealtimeGC`` (you can put this into your config

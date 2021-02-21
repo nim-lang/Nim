@@ -261,8 +261,8 @@ Wrong chapter
 ------------
 
 """
-    let output4 = rstToHtml(input4, {roSupportMarkdown}, defaultConfig())
-    doAssert "Wrong chapter" in output4 and "<h1" notin output4
+    expect(EParseError):
+      let output4 = rstToHtml(input4, {roSupportMarkdown}, defaultConfig())
 
     let input5 = """
 Check that punctuation after adornment and indent are not detected as adornment.
@@ -281,6 +281,22 @@ Some chapter
     let output6 = rstToHtml(input6, {roSupportMarkdown}, defaultConfig())
     doAssert "<h1 id=\"some-chapter\">Some chapter</h1>" in output6
 
+    # check that overline and underline match
+    let input7 = dedent """
+      ------------
+      Some chapter
+      -----------
+      """
+    expect(EParseError):
+      let output7 = rstToHtml(input7, {roSupportMarkdown}, defaultConfig())
+
+    let input8 = dedent """
+      -----------
+          Overflow
+      -----------
+      """
+    expect(EParseError):
+      let output8 = rstToHtml(input8, {roSupportMarkdown}, defaultConfig())
 
   test "RST links":
     let input1 = """
@@ -308,8 +324,8 @@ This is too short to be a transition:
 
 context2
 """
-    let output2 = rstToHtml(input2, {roSupportMarkdown}, defaultConfig())
-    doAssert "<hr" notin output2
+    expect(EParseError):
+      let output2 = rstToHtml(input2, {roSupportMarkdown}, defaultConfig())
 
   test "RST literal block":
     let input1 = """

@@ -183,7 +183,7 @@ Usually we just track the result of an expression: probably this should apply fo
 Also related to tracking initialization of expressions/fields.
 
 unstructured control flow rules
--------------------------
+-------------------------------
 
 Unstructured control flow keywords as ``return``, ``break``, ``continue``, ``raise`` mean that we jump from a branch out.
 This means that if there is code after the finishing of the branch, it would be ran if one hasn't hit the direct parent branch of those: so it is similar to an ``else``. In those cases we should use the reverse nilabilities for the local to the condition expressions. E.g.

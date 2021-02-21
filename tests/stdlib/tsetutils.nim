@@ -1,13 +1,15 @@
 discard """
   targets: "c js"
-  disabled: "bsd" # pending #17093
 """
+
 import std/setutils
+
 type 
   Colors = enum
     red, green = 5, blue = 10
   Bar = enum
     bar0 = -1, bar1, bar2
+
 template main =
   block: # toSet
     doAssert "abcbb".toSet == {'a', 'b', 'c'}
