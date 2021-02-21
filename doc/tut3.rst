@@ -91,7 +91,7 @@ but in the macro body ``arg`` is just like a normal parameter of type
 
 .. code-block:: nim
 
-  import macros
+  import std/macros
 
   macro myMacro(arg: static[int]): untyped =
     echo arg # just an int (7), not ``NimNode``
@@ -193,7 +193,7 @@ them into the tree.
 .. code-block:: nim
     :test: "nim c $1"
 
-  import macros
+  import std/macros
 
   type
     MyType = object
@@ -232,7 +232,7 @@ correct argument should look like.
 .. code-block:: nim
     :test: "nim c $1"
 
-  import macros
+  import std/macros
 
   macro myAssert(arg: untyped): untyped =
     echo arg.treeRepr
@@ -258,7 +258,7 @@ written.
 .. code-block:: nim
     :test: "nim c $1"
 
-  import macros
+  import std/macros
 
   macro myAssert(arg: untyped): untyped =
     # all node kind identifiers are prefixed with "nnk"

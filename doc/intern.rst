@@ -258,7 +258,7 @@ as a "shallow" tree. Let's assume we compile module ``m`` with the
 following contents:
 
 .. code-block:: nim
-  import strutils
+  import std/strutils
 
   var x*: int = 90
   {.compile: "foo.c".}
@@ -270,7 +270,7 @@ following contents:
 Conceptually this is the AST we store for the module:
 
 .. code-block:: nim
-  import strutils
+  import std/strutils
 
   var x*
   {.compile: "foo.c".}

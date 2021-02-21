@@ -606,7 +606,7 @@ The concept types can be parametric just like the regular generic types:
 .. code-block:: nim
   ### matrixalgo.nim
 
-  import typetraits
+  import std/typetraits
 
   type
     AnyMatrix*[R, C: static int; T] = concept m, var mvar, type M
@@ -743,7 +743,7 @@ type is an instance of it:
 .. code-block:: nim
     :test: "nim c $1"
 
-  import sugar, typetraits
+  import std/[sugar, typetraits]
 
   type
     Functor[A] = concept f
@@ -761,7 +761,7 @@ type is an instance of it:
         # the Functor to a instance of a different type, given
         # a suitable `map` operation for the enclosed values
 
-  import options
+  import std/options
   echo Option[int] is Functor # prints true
 
 
@@ -989,7 +989,7 @@ equality operator for tuples (as provided in ``system.==``):
 
   {.experimental: "caseStmtMacros".}
 
-  import macros
+  import std/macros
 
   macro `case`(n: tuple): untyped =
     result = newTree(nnkIfStmt)
@@ -1259,7 +1259,7 @@ The ``**`` is much like the ``*`` operator, except that it gathers not only
 all the arguments, but also the matched operators in reverse polish notation:
 
 .. code-block:: nim
-  import macros
+  import std/macros
 
   type
     Matrix = object
@@ -1331,7 +1331,7 @@ Example: Hoisting
 The following example shows how some form of hoisting can be implemented:
 
 .. code-block:: nim
-  import pegs
+  import std/pegs
 
   template optPeg{peg(pattern)}(pattern: string{lit}): Peg =
     var gl {.global, gensym.} = peg(pattern)
@@ -1405,7 +1405,7 @@ Spawn statement
 `spawn`:idx: can be used to pass a task to the thread pool:
 
 .. code-block:: nim
-  import threadpool
+  import std/threadpool
 
   proc processLine(line: string) =
     discard "do some heavy lifting here"
@@ -1437,7 +1437,7 @@ with the ``^`` operator is **blocking**. However, one can use ``blockUntilAny`` 
 wait on multiple flow variables at the same time:
 
 .. code-block:: nim
-  import threadpool, ...
+  import std/threadpool, ...
 
   # wait until 2 out of 3 servers received the update:
   proc main =
@@ -1466,7 +1466,7 @@ Example:
     :test: "nim c --threads:on $1"
 
   # Compute PI in an inefficient way
-  import strutils, math, threadpool
+  import std/[strutils, math, threadpool]
   {.experimental: "parallel".}
 
   proc term(k: float): float = 4 * math.pow(-1, k) / (2*k + 1)

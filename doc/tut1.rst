@@ -310,7 +310,7 @@ For integers or other ordinal types value ranges are also possible:
 
 .. code-block:: nim
   # this statement will be explained later:
-  from strutils import parseInt
+  from std/strutils import parseInt
 
   echo "A number please: "
   let n = parseInt(readLine(stdin))
@@ -1607,7 +1607,7 @@ variables! For example:
 .. code-block:: nim
     :test: "nim c $1"
 
-  import os
+  import std/os
 
   let
     path = "usr/local/nimc.html"
