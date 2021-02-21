@@ -114,7 +114,6 @@ proc collectLastReads(cfg: ControlFlowGraph; cache: var AliasCache, lastReads, p
     of goto:
       pc += cfg[pc].dest
     of fork:
-      # every branch must lead to the last read of the location:
       var variantA = pc + 1
       var variantB = pc + cfg[pc].dest
       var potLastReadsA, potLastReadsB = potLastReads
@@ -164,7 +163,6 @@ proc collectFirstWrites(cfg: ControlFlowGraph; alreadySeen: var HashSet[PNode]; 
     of goto:
       pc += cfg[pc].dest
     of fork:
-      # every branch must lead to the last read of the location:
       var variantA = pc + 1
       var variantB = pc + cfg[pc].dest
       var alreadySeenA, alreadySeenB = alreadySeen
