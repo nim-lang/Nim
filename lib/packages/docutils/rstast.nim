@@ -359,8 +359,10 @@ proc renderRstToStr*(node: PRstNode, indent=0): string =
   of rnEnumList:
     result.add "\tlabelFmt=" & node.labelFmt
   of rnLineBlockItem:
-    result.add (if node.lineIndent == "\n": "\t(blank line)"
-                else: "\tlineIndent=" & $node.lineIndent.len)
+    var txt: string
+    if node.lineIndent == "\n": txt = "\t(blank line)"
+    else: txt = "\tlineIndent=" & $node.lineIndent.len
+    result.add txt
   of rnHeadline, rnOverline:
     result.add (if node.level == 0: "" else: "\tlevel=" & $node.level)
   of rnFootnote, rnCitation, rnFootnoteRef:
