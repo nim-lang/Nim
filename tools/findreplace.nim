@@ -10,7 +10,9 @@ separation of concern between file listing and replacement, thanks to unix pipes
 so users can choose whatever program for file listing
 ]##
 
-import std/[nre, strutils, strformat, os, osproc, sequtils]
+
+import std/[re, strutils, strformat, os, osproc, sequtils]
+# xxx pending #17129, use std/nre instead of std/re
 
 type Data = object
   dryrun: bool
