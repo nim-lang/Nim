@@ -93,7 +93,10 @@ file. However, you can also run the code with `nodejs`:idx:
 
   nim js -d:nodejs -r examples/hallo.nim
 
+If you experience errors saying that ``globalThis`` is not defined, be
+sure to run a recent version of Node.js (at least 12.0).
 
+  
 Interfacing
 ===========
 

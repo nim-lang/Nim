@@ -152,9 +152,9 @@ runnableExamples:
   doAssert $(%* Foo()) == """{"a1":0,"a2":0,"a0":0,"a3":0,"a4":0}"""
 
 import
-  hashes, tables, strutils, lexbase, streams, macros, parsejson
+  std/[hashes, tables, strutils, lexbase, streams, macros, parsejson]
 
-import options # xxx remove this dependency using same approach as https://github.com/nim-lang/Nim/pull/14563
+import std/options # xxx remove this dependency using same approach as https://github.com/nim-lang/Nim/pull/14563
 import std/private/since
 
 export
@@ -496,6 +496,19 @@ proc `[]`*(node: JsonNode, index: int): JsonNode {.inline.} =
   assert(node.kind == JArray)
   return node.elems[index]
 
+proc `[]`*(node: JsonNode, index: BackwardsIndex): JsonNode {.inline, since: (1, 5, 1).} =
+  ## Gets the node at `array.len-i` in an array through the `^` operator.
+  ##
+  ## i.e. `j[^i]` is a shortcut for `j[j.len-i]`.
+  runnableExamples:
+    let
+      j = parseJson("[1,2,3,4,5]")
+
+    doAssert j[^1].getInt == 5
+    doAssert j[^2].getInt == 4
+
+  `[]`(node, node.len - int(index))
+
 proc hasKey*(node: JsonNode, key: string): bool =
   ## Checks if `key` exists in `node`.
   assert(node.kind == JObject)
@@ -669,13 +682,10 @@ proc toPretty(result: var string, node: JsonNode, indent = 2, ml = true,
       escapeJson(node.str, result)
   of JInt:
     if lstArr: result.indent(currIndent)
-    when defined(js): result.add($node.num)
-    else: result.addInt(node.num)
+    result.addInt(node.num)
   of JFloat:
     if lstArr: result.indent(currIndent)
-    # Fixme: implement new system.add ops for the JS target
-    when defined(js): result.add($node.fnum)
-    else: result.addFloat(node.fnum)
+    result.addFloat(node.fnum)
   of JBool:
     if lstArr: result.indent(currIndent)
     result.add(if node.bval: "true" else: "false")
@@ -753,11 +763,9 @@ proc toUgly*(result: var string, node: JsonNode) =
     else:
       node.str.escapeJson(result)
   of JInt:
-    when defined(js): result.add($node.num)
-    else: result.addInt(node.num)
+    result.addInt(node.num)
   of JFloat:
-    when defined(js): result.add($node.fnum)
-    else: result.addFloat(node.fnum)
+    result.addFloat(node.fnum)
   of JBool:
     result.add(if node.bval: "true" else: "false")
   of JNull:
@@ -899,7 +907,7 @@ proc parseJson*(s: Stream, filename: string = ""; rawIntegers = false, rawFloats
     p.close()
 
 when defined(js):
-  from math import `mod`
+  from std/math import `mod`
   type
     JSObject = object
 
@@ -1090,7 +1098,7 @@ when defined(nimFixedForwardGeneric):
       jsonPath.add '['
       jsonPath.addInt i
       jsonPath.add ']'
-      initFromJson(dst[i], jsonNode[i], jsonPath)
+      initFromJson(dst[i.S], jsonNode[i], jsonPath) # `.S` for enum indexed arrays
       jsonPath.setLen originalJsonPathLen
 
   proc initFromJson[T](dst: var Table[string,T]; jsonNode: JsonNode; jsonPath: var string) =

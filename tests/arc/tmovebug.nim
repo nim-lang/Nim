@@ -73,6 +73,40 @@ bye
 ()
 ()
 ()
+1
+destroy
+1
+destroy
+1
+destroy
+copy (self-assign)
+1
+destroy
+1
+destroy
+1
+destroy
+destroy
+copy
+@[(f: 2), (f: 2), (f: 3)]
+destroy
+destroy
+destroy
+sink
+destroy
+copy
+(f: 1)
+destroy
+destroy
+part-to-whole assigment:
+sink
+(children: @[])
+destroy
+sink
+(children: @[])
+destroy
+copy
+destroy
 '''
 """
 
@@ -557,3 +591,182 @@ echo $w2[]
 
 let w3 = newWrapper2(-1)
 echo $w3[]
+
+
+#--------------------------------------------------------------------
+#self-assignments
+
+# Self-assignments that are not statically determinable will get
+# turned into `=copy` calls as caseBracketExprCopy demonstrates.
+# (`=copy` handles self-assignments at runtime)
+
+type
+  OO = object
+    f: int
+  W = object
+    o: OO
+
+proc `=destroy`(x: var OO) =
+  if x.f != 0:
+    echo "destroy"
+    x.f = 0
+
+proc `=sink`(x: var OO, y: OO) =
+  `=destroy`(x)
+  echo "sink"
+  x.f = y.f
+
+proc `=copy`(x: var OO, y: OO) =
+  if x.f != y.f:
+    `=destroy`(x)
+    echo "copy"
+    x.f = y.f
+  else:
+    echo "copy (self-assign)"
+
+proc caseSym =
+  var o = OO(f: 1)
+  o = o # NOOP
+  echo o.f # "1"
+  # "destroy"
+
+caseSym()
+
+proc caseDotExpr =
+  var w = W(o: OO(f: 1))
+  w.o = w.o # NOOP
+  echo w.o.f # "1"
+  # "destroy"
+
+caseDotExpr()
+
+proc caseBracketExpr =
+  var w = [0: OO(f: 1)]
+  w[0] = w[0] # NOOP
+  echo w[0].f # "1"
+  # "destroy"
+
+caseBracketExpr()
+
+proc caseBracketExprCopy =
+  var w = [0: OO(f: 1)]
+  let i = 0
+  w[i] = w[0] # "copy (self-assign)"
+  echo w[0].f # "1"
+  # "destroy"
+
+caseBracketExprCopy()
+
+proc caseDotExprAddr =
+  var w = W(o: OO(f: 1))
+  w.o = addr(w.o)[] # NOOP
+  echo w.o.f # "1"
+  # "destroy"
+
+caseDotExprAddr()
+
+proc caseBracketExprAddr =
+  var w = [0: OO(f: 1)]
+  addr(w[0])[] = addr(addr(w[0])[])[] # NOOP
+  echo w[0].f # "1"
+  # "destroy"
+
+caseBracketExprAddr()
+
+proc caseNotAConstant =
+  var i = 0
+  proc rand: int =
+    result = i
+    inc i
+  var s = @[OO(f: 1), OO(f: 2), OO(f: 3)]
+  s[rand()] = s[rand()] # "destroy" "copy"
+  echo s # @[(f: 2), (f: 2), (f: 3)]
+
+caseNotAConstant()
+
+proc potentialSelfAssign(i: var int) =
+  var a: array[2, OO]
+  a[i] = OO(f: 1) # turned into a memcopy
+  a[1] = OO(f: 2)
+  a[i+1] = a[i] # This must not =sink, but =copy
+  inc i
+  echo a[i-1] # (f: 1)
+
+potentialSelfAssign (var xi = 0; xi)
+
+
+#--------------------------------------------------------------------
+echo "part-to-whole assigment:"
+
+type
+  Tree = object
+    children: seq[Tree]
+
+  TreeDefaultHooks = object
+    children: seq[TreeDefaultHooks]
+
+proc `=destroy`(x: var Tree) = echo "destroy"
+proc `=sink`(x: var Tree, y: Tree) = echo "sink"
+proc `=copy`(x: var Tree, y: Tree) = echo "copy"
+
+proc partToWholeSeq =
+  var t = Tree(children: @[Tree()])
+  t = t.children[0] # This should be sunk, but with the special transform (tmp = t.children[0]; wasMoved(0); `=sink`(t, tmp))
+
+  var tc = TreeDefaultHooks(children: @[TreeDefaultHooks()])
+  tc = tc.children[0] # Ditto; if this were sunk with the normal transform (`=sink`(t, t.children[0]); wasMoved(t.children[0]))
+  echo tc             #        then it would crash because t.children[0] does not exist after the call to `=sink`
+
+partToWholeSeq()
+
+proc partToWholeSeqRTIndex =
+  var i = 0
+  var t = Tree(children: @[Tree()])
+  t = t.children[i] # See comment in partToWholeSeq
+
+  var tc = TreeDefaultHooks(children: @[TreeDefaultHooks()])
+  tc = tc.children[i] # See comment in partToWholeSeq
+  echo tc
+
+partToWholeSeqRTIndex()
+
+type List = object
+  next: ref List
+
+proc `=destroy`(x: var List) = echo "destroy"
+proc `=sink`(x: var List, y: List) = echo "sink"
+proc `=copy`(x: var List, y: List) = echo "copy"
+
+proc partToWholeUnownedRef =
+  var t = List(next: new List)
+  t = t.next[] # Copy because t.next is not an owned ref, and thus t.next[] cannot be moved
+
+partToWholeUnownedRef()
+
+
+#--------------------------------------------------------------------
+# test that nodes that get copied during the transformation
+# (like dot exprs) don't loose their firstWrite/lastRead property
+
+type
+  OOO = object
+    initialized: bool
+
+  C = object
+    o: OOO
+
+proc `=destroy`(o: var OOO) =
+  doAssert o.initialized, "OOO was destroyed before initialization!"
+
+proc initO(): OOO =
+  OOO(initialized: true)
+
+proc initC(): C =
+  C(o: initO())
+
+proc pair(): tuple[a: C, b: C] =
+  result.a = initC() # <- when firstWrite tries to find this node to start its analysis it fails, because injectdestructors uses copyTree/shallowCopy
+  result.b = initC()
+
+discard pair()
+

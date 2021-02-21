@@ -4,12 +4,12 @@ Prelude
 This is an include file that simply imports common modules for your convenience:
 
 .. code-block:: nim
-  include prelude
+  include std/prelude
 
 Same as:
 
 .. code-block:: nim
-  import os, strutils, times, parseutils, parseopt, hashes, tables, sets
+  import std/[os, strutils, times, parseutils, hashes, tables, sets, sequtils, parseopt]
 
 
 Examples
@@ -18,7 +18,7 @@ Examples
 Get the basic most common imports ready to start coding using ``prelude``:
 
 .. code-block:: nim
-  include prelude
+  include std/prelude
 
   echo now()
   echo getCurrentDir()

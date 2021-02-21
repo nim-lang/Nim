@@ -195,7 +195,7 @@ proc executeNoHooks(cmd: IdeCmd, file, dirtyfile: AbsoluteFile, line, col: int;
   if conf.ideCmd in {ideUse, ideDus}:
     let u = if conf.suggestVersion != 1: graph.symFromInfo(conf.m.trackPos) else: graph.usageSym
     if u != nil:
-      listUsages(conf, u)
+      listUsages(graph, u)
     else:
       localError(conf, conf.m.trackPos, "found no symbol at this position " & (conf $ conf.m.trackPos))
 
@@ -319,7 +319,7 @@ proc replTcp(x: ThreadParams) {.thread.} =
   else:
     server.bindAddr(x.port, x.address)
     server.listen()
-  var inp = "".TaintedString
+  var inp = ""
   var stdoutSocket: Socket
   while true:
     accept(server, stdoutSocket)
@@ -517,7 +517,7 @@ proc mainCommand(graph: ModuleGraph) =
   clearPasses(graph)
   registerPass graph, verbosePass
   registerPass graph, semPass
-  conf.cmd = cmdIdeTools
+  conf.setCmd cmdIdeTools
   wantMainModule(conf)
 
   if not fileExists(conf.projectFull):
@@ -644,7 +644,7 @@ proc handleCmdLine(cache: IdentCache; conf: ConfigRef) =
   myLog("START " & conf.projectFull.string)
 
   var graph = newModuleGraph(cache, conf)
-  if self.loadConfigsAndRunMainCommand(cache, conf, graph):
+  if self.loadConfigsAndProcessCmdLine(cache, conf, graph):
     mainCommand(graph)
 
 when isMainModule:
@@ -666,7 +666,7 @@ else:
       clearPasses(graph)
       registerPass graph, verbosePass
       registerPass graph, semPass
-      conf.cmd = cmdIdeTools
+      conf.setCmd cmdIdeTools
       wantMainModule(conf)
 
       if not fileExists(conf.projectFull):
@@ -723,7 +723,7 @@ else:
     myLog("START " & conf.projectFull.string)
 
     var graph = newModuleGraph(cache, conf)
-    if self.loadConfigsAndRunMainCommand(cache, conf, graph):
+    if self.loadConfigsAndProcessCmdLine(cache, conf, graph):
       mockCommand(graph)
     if gLogging:
       for it in conf.searchPaths:

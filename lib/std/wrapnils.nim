@@ -2,8 +2,7 @@
 ## This simplifies code by reducing need for if-else branches around intermediate values
 ## that maybe be nil.
 ##
-## Note: experimental module and relies on {.experimental: "dotOperators".}
-## Unstable API.
+## Note: experimental module, unstable API.
 
 runnableExamples:
   type Foo = ref object
@@ -19,8 +18,13 @@ runnableExamples:
   assert ?.f2.x1 == "a" # same as f2.x1 (no nil LHS in this chain)
   assert ?.Foo(x1: "a").x1 == "a" # can use constructor inside
 
-  # when you know a sub-expression is not nil, you can scope it as follows:
-  assert ?.(f2.x2.x2).x3[] == 0 # because `f` is nil
+  # when you know a sub-expression doesn't involve a `nil` (e.g. `f2.x2.x2`),
+  # you can scope it as follows:
+  assert ?.(f2.x2.x2).x3[] == 0
+
+  assert (?.f2.x2.x2).x3 == nil  # this terminates ?. early
+  import segfaults # enable `NilAccessDefect` exceptions
+  doAssertRaises(NilAccessDefect): echo (?.f2.x2.x2).x3[]
 
 type Wrapnil[T] = object
   valueImpl: T
@@ -34,15 +38,13 @@ template unwrap(a: Wrapnil): untyped =
   ## See top-level example.
   a.valueImpl
 
-{.push experimental: "dotOperators".}
-
-template `.`*(a: Wrapnil, b): untyped =
+template fakeDot*(a: Wrapnil, b): untyped =
   ## See top-level example.
   let a1 = a # to avoid double evaluations
   let a2 = a1.valueImpl
-  type T = Wrapnil[type(a2.b)]
+  type T = Wrapnil[typeof(a2.b)]
   if a1.validImpl:
-    when type(a2) is ref|ptr:
+    when typeof(a2) is ref|ptr:
       if a2 == nil:
         default(T)
       else:
@@ -52,8 +54,6 @@ template `.`*(a: Wrapnil, b): untyped =
   else:
     # nil is "sticky"; this is needed, see tests
     default(T)
-
-{.pop.}
 
 proc isValid(a: Wrapnil): bool =
   ## Returns true if `a` didn't contain intermediate `nil` values (note that
@@ -67,13 +67,13 @@ template `[]`*[I](a: Wrapnil, i: I): untyped =
     # correctly will raise IndexDefect if a is valid but wraps an empty container
     wrapnil(a1.valueImpl[i])
   else:
-    default(Wrapnil[type(a1.valueImpl[i])])
+    default(Wrapnil[typeof(a1.valueImpl[i])])
 
 template `[]`*(a: Wrapnil): untyped =
   ## See top-level example.
   let a1 = a # to avoid double evaluations
   let a2 = a1.valueImpl
-  type T = Wrapnil[type(a2[])]
+  type T = Wrapnil[typeof(a2[])]
   if a1.validImpl:
     if a2 == nil:
       default(T)
@@ -85,16 +85,18 @@ template `[]`*(a: Wrapnil): untyped =
 import std/macros
 
 proc replace(n: NimNode): NimNode =
-  if n.kind == nnkPar:
+  if n.kind == nnkDotExpr:
+    result = newCall(bindSym"fakeDot", replace(n[0]), n[1])
+  elif n.kind == nnkPar:
     doAssert n.len == 1
-    newCall(bindSym"wrapnil", n[0])
+    result = newCall(bindSym"wrapnil", n[0])
   elif n.kind in {nnkCall, nnkObjConstr}:
-    newCall(bindSym"wrapnil", n)
+    result = newCall(bindSym"wrapnil", n)
   elif n.len == 0:
-    newCall(bindSym"wrapnil", n)
+    result = newCall(bindSym"wrapnil", n)
   else:
     n[0] = replace(n[0])
-    n
+    result = n
 
 macro `?.`*(a: untyped): untyped =
   ## Transforms `a` into an expression that can be safely evaluated even in

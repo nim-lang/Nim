@@ -146,4 +146,4 @@ block:
   echo "Event parser output"
   echo "-------------------"
   let pLen = parseArithExpr(txt)
-  assert txt.len == pLen
+  doAssert txt.len == pLen

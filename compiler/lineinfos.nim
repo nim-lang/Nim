@@ -34,6 +34,7 @@ type
     errGeneralParseError,
     errNewSectionExpected,
     errInvalidDirectiveX,
+    errFootnoteMismatch,
     errProveInit, # deadcode
     errGenerated,
     errUser,
@@ -43,8 +44,10 @@ type
     warnDeprecated = "Deprecated", warnConfigDeprecated = "ConfigDeprecated",
     warnSmallLshouldNotBeUsed = "SmallLshouldNotBeUsed", warnUnknownMagic = "UnknownMagic",
     warnRedefinitionOfLabel = "RedefinitionOfLabel", warnUnknownSubstitutionX = "UnknownSubstitutionX",
-    warnLanguageXNotSupported = "LanguageXNotSupported", warnFieldXNotSupported = "FieldXNotSupported",
-    warnCommentXIgnored = "CommentXIgnored", warnTypelessParam = "TypelessParam",
+    warnLanguageXNotSupported = "LanguageXNotSupported",
+    warnFieldXNotSupported = "FieldXNotSupported",
+    warnRstStyle = "warnRstStyle", warnCommentXIgnored = "CommentXIgnored",
+    warnTypelessParam = "TypelessParam",
     warnUseBase = "UseBase", warnWriteToForeignHeap = "WriteToForeignHeap",
     warnUnsafeCode = "UnsafeCode", warnUnusedImportX = "UnusedImport",
     warnInheritFromException = "InheritFromException", warnEachIdentIsTuple = "EachIdentIsTuple",
@@ -56,7 +59,7 @@ type
     warnLockLevel = "LockLevel", warnResultShadowed = "ResultShadowed",
     warnInconsistentSpacing = "Spacing",  warnCaseTransition = "CaseTransition",
     warnCycleCreated = "CycleCreated", warnObservableStores = "ObservableStores",
-    warnUser = "User",
+    warnUser = "User", warnStrictNotNil = "StrictNotNil",
 
     hintSuccess = "Success", hintSuccessX = "SuccessX", hintCC = "CC",
     hintLineTooLong = "LineTooLong", hintXDeclaredButNotUsed = "XDeclaredButNotUsed",
@@ -82,8 +85,9 @@ const
     errGridTableNotImplemented: "grid table is not implemented",
     errMarkdownIllformedTable: "illformed delimiter row of a markdown table",
     errGeneralParseError: "general parse error",
-    errNewSectionExpected: "new section expected",
+    errNewSectionExpected: "new section expected $1",
     errInvalidDirectiveX: "invalid directive: '$1'",
+    errFootnoteMismatch: "number of footnotes and their references don't match: $1",
     errProveInit: "Cannot prove that '$1' is initialized.",  # deadcode
     errGenerated: "$1",
     errUser: "$1",
@@ -99,6 +103,7 @@ const
     warnUnknownSubstitutionX: "unknown substitution '$1'",
     warnLanguageXNotSupported: "language '$1' not supported",
     warnFieldXNotSupported: "field '$1' not supported",
+    warnRstStyle: "RST style: $1",
     warnCommentXIgnored: "comment '$1' ignored",
     warnTypelessParam: "'$1' has no type. Typeless parameters are deprecated; only allowed for 'template'",
     warnUseBase: "use {.base.} for base methods; baseless methods are deprecated",
@@ -129,6 +134,7 @@ const
     warnCycleCreated: "$1",
     warnObservableStores: "observable stores to '$1'",
     warnUser: "$1",
+    warnStrictNotNil: "$1",
     hintSuccess: "operation successful: $#",
     # keep in sync with `testament.isSuccess`
     hintSuccessX: "${loc} lines; ${sec}s; $mem; $build build; proj: $project; out: $output",
@@ -278,3 +284,4 @@ proc initMsgConfig*(): MsgConfig =
   result.filenameToIndexTbl = initTable[string, FileIndex]()
   result.fileInfos = @[]
   result.errorOutputs = {eStdOut, eStdErr}
+  result.filenameToIndexTbl["???"] = FileIndex(-1)

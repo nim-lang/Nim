@@ -9,6 +9,9 @@ runnableExamples:
   # bug #11078
   for x in "xx": discard
 
+
+var someVariable*: bool ## This should be visible.
+
 when true:
   ## top2
   runnableExamples:
@@ -372,3 +375,9 @@ when true: # issue #15702
       Circle,     ## A circle
       Triangle,   ## A three-sided shape
       Rectangle   ## A four-sided shape
+
+when true: # issue #15184
+  proc anything* =
+    ##
+    ##  There is no block quote after blank lines at the beginning.
+  discard

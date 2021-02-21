@@ -633,6 +633,18 @@ proc testJson() =
     except KeyError:
       doAssert getCurrentExceptionMsg().contains ".member.list[2].value"
 
+  block:
+    # Enum indexed array test
+    type Test = enum
+      one, two, three, four, five
+    let a = [
+      one: 300,
+      two: 20,
+      three: 10,
+      four: 0,
+      five: -10
+    ]
+    doAssert (%* a).to(a.typeof) == a
 
 
 testJson()

@@ -224,7 +224,7 @@ current matching point is at the end of the subject string, all of them fail,
 since there is no character to match.
 
 For compatibility with Perl, ``\s`` does not match the VT character (code 11).
-This makes it different from the the POSIX "space" class. The ``\s`` characters
+This makes it different from the POSIX "space" class. The ``\s`` characters
 are HT (9), LF (10), FF (12), CR (13), and space (32).
 
 A "word" character is an underscore or any character less than 256 that is

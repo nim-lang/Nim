@@ -177,7 +177,7 @@ proc newStateAssgn(ctx: var Ctx, stateNo: int = -2): PNode =
   ctx.newStateAssgn(newIntTypeNode(stateNo, ctx.g.getSysType(TLineInfo(), tyInt)))
 
 proc newEnvVar(ctx: var Ctx, name: string, typ: PType): PSym =
-  result = newSym(skVar, getIdent(ctx.g.cache, name), nextId(ctx.idgen), ctx.fn, ctx.fn.info)
+  result = newSym(skVar, getIdent(ctx.g.cache, name), nextSymId(ctx.idgen), ctx.fn, ctx.fn.info)
   result.typ = typ
   assert(not typ.isNil)
 
@@ -1118,9 +1118,9 @@ proc skipThroughEmptyStates(ctx: var Ctx, n: PNode): PNode=
       n[i] = ctx.skipThroughEmptyStates(n[i])
 
 proc newArrayType(g: ModuleGraph; n: int, t: PType; idgen: IdGenerator; owner: PSym): PType =
-  result = newType(tyArray, nextId(idgen), owner)
+  result = newType(tyArray, nextTypeId(idgen), owner)
 
-  let rng = newType(tyRange, nextId(idgen), owner)
+  let rng = newType(tyRange, nextTypeId(idgen), owner)
   rng.n = newTree(nkRange, g.newIntLit(owner.info, 0), g.newIntLit(owner.info, n))
   rng.rawAddSon(t)
 
@@ -1314,7 +1314,7 @@ proc freshVars(n: PNode; c: var FreshVarsContext): PNode =
         let idefs = copyNode(it)
         for v in 0..it.len-3:
           if it[v].kind == nkSym:
-            let x = copySym(it[v].sym, nextId(c.idgen))
+            let x = copySym(it[v].sym, nextSymId(c.idgen))
             c.tab[it[v].sym.id] = x
             idefs.add newSymNode(x)
           else:
@@ -1393,9 +1393,9 @@ proc transformClosureIterator*(g: ModuleGraph; idgen: IdGenerator; fn: PSym, n: 
     # Lambda lifting was not done yet. Use temporary :state sym, which will
     # be handled specially by lambda lifting. Local temp vars (if needed)
     # should follow the same logic.
-    ctx.stateVarSym = newSym(skVar, getIdent(ctx.g.cache, ":state"), nextId(idgen), fn, fn.info)
+    ctx.stateVarSym = newSym(skVar, getIdent(ctx.g.cache, ":state"), nextSymId(idgen), fn, fn.info)
     ctx.stateVarSym.typ = g.createClosureIterStateType(fn, idgen)
-  ctx.stateLoopLabel = newSym(skLabel, getIdent(ctx.g.cache, ":stateLoop"), nextId(idgen), fn, fn.info)
+  ctx.stateLoopLabel = newSym(skLabel, getIdent(ctx.g.cache, ":stateLoop"), nextSymId(idgen), fn, fn.info)
   var pc = PreprocessContext(finallys: @[], config: g.config, idgen: idgen)
   var n = preprocess(pc, n.toStmtList)
   #echo "transformed into ", n
