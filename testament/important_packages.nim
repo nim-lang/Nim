@@ -27,7 +27,7 @@ pkg1 "chroma"
 pkg1 "chronicles", "nim c -o:chr -r chronicles.nim"
 # when not defined(osx): # testdatagram.nim(560, 54): Check failed
 #   pkg1 "chronos", "nim c -r -d:release tests/testall"
-  # pending https://github.com/status-im/nim-chronos/issues/159
+  # pending https://github.com/nim-lang/Nim/issues/17130
 pkg1 "cligen", "nim c --path:. -r cligen.nim"
 pkg1 "combparser", "nimble test --gc:orc"
 pkg1 "compactdict"
