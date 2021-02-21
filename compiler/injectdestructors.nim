@@ -82,7 +82,7 @@ proc aliasesCached(cache: var AliasCache, obj, field: PNode): AliasKind =
     cache[key] = aliases(obj, field)
   cache[key]
 
-proc collectLastReads(cfg: ControlFlowGraph; cache: var AliasCache, alreadySeen: var HashSet[PNode], lastReads, potLastReads: var IntSet; pc: var int, until: int) =
+proc collectLastReads(cfg: ControlFlowGraph; cache: var AliasCache, lastReads, potLastReads: var IntSet; pc: var int, until: int) =
   template aliasesCached(obj, field: PNode): untyped =
     aliasesCached(cache, obj, field)
   while pc < until:
@@ -100,15 +100,6 @@ proc collectLastReads(cfg: ControlFlowGraph; cache: var AliasCache, alreadySeen:
           cfg[r].n.comment = '\n' & $pc
           potLastReads.excl r
 
-      var alreadySeenThisNode = false
-      for s in alreadySeen:
-        if cfg[pc].n.aliases(s) != no or s.aliases(cfg[pc].n) != no:
-          alreadySeenThisNode = true; break
-      if alreadySeenThisNode: cfg[pc].n.flags.excl nfFirstWrite
-      else: cfg[pc].n.flags.incl nfFirstWrite
-
-      alreadySeen.incl cfg[pc].n
-
       inc pc
     of use:
       let potLastReadsCopy = potLastReads
@@ -119,25 +110,19 @@ proc collectLastReads(cfg: ControlFlowGraph; cache: var AliasCache, alreadySeen:
 
       potLastReads.incl pc
 
-      alreadySeen.incl cfg[pc].n
-
       inc pc
     of goto:
       pc += cfg[pc].dest
     of fork:
-      # every branch must lead to the last read of the location:
       var variantA = pc + 1
       var variantB = pc + cfg[pc].dest
       var potLastReadsA, potLastReadsB = potLastReads
       var lastReadsA, lastReadsB: IntSet
-      var alreadySeenA, alreadySeenB = alreadySeen
       while variantA != variantB and max(variantA, variantB) < cfg.len and min(variantA, variantB) < until:
         if variantA < variantB:
-          collectLastReads(cfg, cache, alreadySeenA, lastReadsA, potLastReadsA, variantA, min(variantB, until))
+          collectLastReads(cfg, cache, lastReadsA, potLastReadsA, variantA, min(variantB, until))
         else:
-          collectLastReads(cfg, cache, alreadySeenB, lastReadsB, potLastReadsB, variantB, min(variantA, until))
-
-      alreadySeen.incl alreadySeenA + alreadySeenB
+          collectLastReads(cfg, cache, lastReadsB, potLastReadsB, variantB, min(variantA, until))
 
       # Add those last reads that were turned into last reads on both branches
       lastReads.incl lastReadsA * lastReadsB
@@ -154,6 +139,40 @@ proc collectLastReads(cfg: ControlFlowGraph; cache: var AliasCache, alreadySeen:
       # but don't remove those which were turned into last reads on that branch
       potLastReads.excl ((oldPotLastReads - potLastReadsA) - lastReadsA)
       potLastReads.excl ((oldPotLastReads - potLastReadsB) - lastReadsB)
+
+      pc = min(variantA, variantB)
+
+proc collectFirstWrites(cfg: ControlFlowGraph; alreadySeen: var HashSet[PNode]; pc: var int, until: int) =
+  while pc < until:
+    case cfg[pc].kind
+    of def:
+      var alreadySeenThisNode = false
+      for s in alreadySeen:
+        if cfg[pc].n.aliases(s) != no or s.aliases(cfg[pc].n) != no:
+          alreadySeenThisNode = true; break
+      if alreadySeenThisNode: cfg[pc].n.flags.excl nfFirstWrite
+      else: cfg[pc].n.flags.incl nfFirstWrite
+
+      alreadySeen.incl cfg[pc].n
+
+      inc pc
+    of use:
+      alreadySeen.incl cfg[pc].n
+
+      inc pc
+    of goto:
+      pc += cfg[pc].dest
+    of fork:
+      var variantA = pc + 1
+      var variantB = pc + cfg[pc].dest
+      var alreadySeenA, alreadySeenB = alreadySeen
+      while variantA != variantB and max(variantA, variantB) < cfg.len and min(variantA, variantB) < until:
+        if variantA < variantB:
+          collectFirstWrites(cfg, alreadySeenA, variantA, min(variantB, until))
+        else:
+          collectFirstWrites(cfg, alreadySeenB, variantB, min(variantA, until))
+
+      alreadySeen.incl alreadySeenA + alreadySeenB
 
       pc = min(variantA, variantB)
 
@@ -1086,10 +1105,9 @@ proc injectDestructorCalls*(g: ModuleGraph; idgen: IdGenerator; owner: PSym; n: 
 
   block:
     var cache = initTable[(PNode, PNode), AliasKind]()
-    var alreadySeen: HashSet[PNode]
     var lastReads, potLastReads: IntSet
     var pc = 0
-    collectLastReads(c.g, cache, alreadySeen, lastReads, potLastReads, pc, c.g.len)
+    collectLastReads(c.g, cache, lastReads, potLastReads, pc, c.g.len)
     lastReads.incl potLastReads
     var lastReadTable: Table[PNode, seq[int]]
     for position, node in c.g:
@@ -1101,6 +1119,10 @@ proc injectDestructorCalls*(g: ModuleGraph; idgen: IdGenerator; owner: PSym; n: 
         if p notin lastReads: allPositionsLastRead = false; break
       if allPositionsLastRead:
         node.flags.incl nfLastRead
+
+    var alreadySeen: HashSet[PNode]
+    pc = 0
+    collectFirstWrites(c.g, alreadySeen, pc, c.g.len)
 
   var scope: Scope
   let body = p(n, c, scope, normal)
