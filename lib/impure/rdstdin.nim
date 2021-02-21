@@ -9,7 +9,7 @@
 
 ## This module contains code for reading from `stdin`:idx:. On UNIX the
 ## linenoise library is wrapped and set up to provide default key bindings
-## (e.g. you can navigate with the arrow keys). On Windows ``system.readLine``
+## (e.g. you can navigate with the arrow keys). On Windows `system.readLine`
 ## is used. This suffices because Windows' console already provides the
 ## wanted functionality.
 
@@ -33,11 +33,11 @@ when defined(windows):
   proc readLineFromStdin*(prompt: string, line: var string): bool {.
                           tags: [ReadIOEffect, WriteIOEffect].} =
     ## Reads a `line` from stdin. `line` must not be
-    ## ``nil``! May throw an IO exception.
-    ## A line of text may be delimited by ``CR``, ``LF`` or
-    ## ``CRLF``. The newline character(s) are not part of the returned string.
-    ## Returns ``false`` if the end of the file has been reached, ``true``
-    ## otherwise. If ``false`` is returned `line` contains no new data.
+    ## `nil`! May throw an IO exception.
+    ## A line of text may be delimited by `CR`, `LF` or
+    ## `CRLF`. The newline character(s) are not part of the returned string.
+    ## Returns `false` if the end of the file has been reached, `true`
+    ## otherwise. If `false` is returned `line` contains no new data.
     stdout.write(prompt)
     result = readLine(stdin, line)
 

@@ -7,7 +7,7 @@
 #    distribution, for details about the copyright.
 #
 
-## OS-Path normalization. Used by ``os.nim`` but also
+## OS-Path normalization. Used by `os.nim` but also
 ## generally useful for dealing with paths.
 ##
 ## Unstable API.
