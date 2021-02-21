@@ -152,9 +152,9 @@ runnableExamples:
   doAssert $(%* Foo()) == """{"a1":0,"a2":0,"a0":0,"a3":0,"a4":0}"""
 
 import
-  hashes, tables, strutils, lexbase, streams, macros, parsejson
+  std/[hashes, tables, strutils, lexbase, streams, macros, parsejson]
 
-import options # xxx remove this dependency using same approach as https://github.com/nim-lang/Nim/pull/14563
+import std/options # xxx remove this dependency using same approach as https://github.com/nim-lang/Nim/pull/14563
 import std/private/since
 
 export
@@ -682,13 +682,10 @@ proc toPretty(result: var string, node: JsonNode, indent = 2, ml = true,
       escapeJson(node.str, result)
   of JInt:
     if lstArr: result.indent(currIndent)
-    when defined(js): result.add($node.num)
-    else: result.addInt(node.num)
+    result.addInt(node.num)
   of JFloat:
     if lstArr: result.indent(currIndent)
-    # Fixme: implement new system.add ops for the JS target
-    when defined(js): result.add($node.fnum)
-    else: result.addFloat(node.fnum)
+    result.addFloat(node.fnum)
   of JBool:
     if lstArr: result.indent(currIndent)
     result.add(if node.bval: "true" else: "false")
@@ -766,11 +763,9 @@ proc toUgly*(result: var string, node: JsonNode) =
     else:
       node.str.escapeJson(result)
   of JInt:
-    when defined(js): result.add($node.num)
-    else: result.addInt(node.num)
+    result.addInt(node.num)
   of JFloat:
-    when defined(js): result.add($node.fnum)
-    else: result.addFloat(node.fnum)
+    result.addFloat(node.fnum)
   of JBool:
     result.add(if node.bval: "true" else: "false")
   of JNull:
@@ -912,7 +907,7 @@ proc parseJson*(s: Stream, filename: string = ""; rawIntegers = false, rawFloats
     p.close()
 
 when defined(js):
-  from math import `mod`
+  from std/math import `mod`
   type
     JSObject = object
 
