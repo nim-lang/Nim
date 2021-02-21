@@ -28,7 +28,7 @@
 # this copy depends on the involved types.
 
 import
-  strutils, ast, types, msgs, renderer, vmdef,
+  strutils, ast, types, msgs, renderer, vmdef, trees,
   intsets, magicsys, options, lowerings, lineinfos, transf
 
 from modulegraphs import getBody
@@ -466,6 +466,8 @@ proc sameConstant*(a, b: PNode): bool =
     of nkEmpty: result = true
     else:
       if a.len == b.len:
+        if cyclicTree(a):
+          return
         for i in 0..<a.len:
           if not sameConstant(a[i], b[i]): return
         result = true
