@@ -344,7 +344,8 @@ tests so they'll be enabled even with `--assertions:off`.
     doAssert foo() # preferred
 
 .. _runnableExamples_use_assert:
-An exception to the above rule is `runnableExamples`, which for brevity use `assert`
+An exception to the above rule is `runnableExamples` and `code-block` rst blocks
+intended to be used as `runnableExamples`, which for brevity use `assert`
 instead of `doAssert`. Note that `nim doc -d:danger main` won't pass `-d:danger` to the
 `runnableExamples`, but `nim doc --doccmd:-d:danger main` would, and so would the
 second example below:
