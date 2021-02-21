@@ -9,8 +9,8 @@
 
 ## Floating-point environment. Handling of floating-point rounding and
 ## exceptions (overflow, division by zero, etc.).
-
-{.deadCodeElim: on.}  # dce option deprecated
+## The types, vars and procs are bindings for the C standard library
+## [<fenv.h>](https://en.cppreference.com/w/c/numeric/fenv) header.
 
 when defined(Posix) and not defined(genode):
   {.passl: "-lm".}
@@ -37,8 +37,8 @@ var
   FE_UPWARD* {.importc, header: "<fenv.h>".}: cint
     ## round toward +Inf
   FE_DFL_ENV* {.importc, header: "<fenv.h>".}: cint
-    ## macro of type pointer to fenv_t to be used as the argument
-    ## to functions taking an argument of type fenv_t; in this
+    ## macro of type pointer to `fenv_t` to be used as the argument
+    ## to functions taking an argument of type `fenv_t`; in this
     ## case the default environment will be used
 
 type
@@ -103,26 +103,26 @@ proc feupdateenv*(envp: ptr Tfenv): cint {.importc, header: "<fenv.h>".}
   ## according to saved exceptions.
 
 const
-  FLT_RADIX = 2 ## the radix of the exponent representation
+  FLT_RADIX = 2                     ## the radix of the exponent representation
 
-  FLT_MANT_DIG = 24 ## the number of base FLT_RADIX digits in the mantissa part of a float
-  FLT_DIG = 6 ## the number of digits of precision of a float
-  FLT_MIN_EXP = -125 # the minimum value of base FLT_RADIX in the exponent part of a float
-  FLT_MAX_EXP = 128 # the maximum value of base FLT_RADIX in the exponent part of a float
-  FLT_MIN_10_EXP = -37 ## the minimum value in base 10 of the exponent part of a float
-  FLT_MAX_10_EXP = 38 ## the maximum value in base 10 of the exponent part of a float
-  FLT_MIN = 1.17549435e-38'f32  ## the minimum value of a float
-  FLT_MAX = 3.40282347e+38'f32 ## the maximum value of a float
-  FLT_EPSILON = 1.19209290e-07'f32  ## the difference between 1 and the least value greater than 1 of a float
+  FLT_MANT_DIG = 24                ## the number of base FLT_RADIX digits in the mantissa part of a float
+  FLT_DIG = 6                      ## the number of digits of precision of a float
+  FLT_MIN_EXP = -125               ## the minimum value of base FLT_RADIX in the exponent part of a float
+  FLT_MAX_EXP = 128                ## the maximum value of base FLT_RADIX in the exponent part of a float
+  FLT_MIN_10_EXP = -37             ## the minimum value in base 10 of the exponent part of a float
+  FLT_MAX_10_EXP = 38              ## the maximum value in base 10 of the exponent part of a float
+  FLT_MIN = 1.17549435e-38'f32     ## the minimum value of a float
+  FLT_MAX = 3.40282347e+38'f32     ## the maximum value of a float
+  FLT_EPSILON = 1.19209290e-07'f32 ## the difference between 1 and the least value greater than 1 of a float
 
-  DBL_MANT_DIG = 53 ## the number of base FLT_RADIX digits in the mantissa part of a double
-  DBL_DIG = 15 ## the number of digits of precision of a double
-  DBL_MIN_EXP = -1021 ## the minimum value of base FLT_RADIX in the exponent part of a double
-  DBL_MAX_EXP = 1024 ## the maximum value of base FLT_RADIX in the exponent part of a double
-  DBL_MIN_10_EXP = -307 ## the minimum value in base 10 of the exponent part of a double
-  DBL_MAX_10_EXP = 308 ## the maximum value in base 10 of the exponent part of a double
-  DBL_MIN = 2.2250738585072014E-308 ## the minimal value of a double
-  DBL_MAX = 1.7976931348623157E+308 ## the minimal value of a double
+  DBL_MANT_DIG = 53                    ## the number of base FLT_RADIX digits in the mantissa part of a double
+  DBL_DIG = 15                         ## the number of digits of precision of a double
+  DBL_MIN_EXP = -1021                  ## the minimum value of base FLT_RADIX in the exponent part of a double
+  DBL_MAX_EXP = 1024                   ## the maximum value of base FLT_RADIX in the exponent part of a double
+  DBL_MIN_10_EXP = -307                ## the minimum value in base 10 of the exponent part of a double
+  DBL_MAX_10_EXP = 308                 ## the maximum value in base 10 of the exponent part of a double
+  DBL_MIN = 2.2250738585072014E-308    ## the minimal value of a double
+  DBL_MAX = 1.7976931348623157E+308    ## the minimal value of a double
   DBL_EPSILON = 2.2204460492503131E-16 ## the difference between 1 and the least value greater than 1 of a double
 
 template fpRadix*: int = FLT_RADIX
@@ -180,11 +180,3 @@ template maximumPositiveValue*(T: typedesc[float64]): float64 = DBL_MAX
 template epsilon*(T: typedesc[float64]): float64 = DBL_EPSILON
   ## The difference between 1.0 and the smallest number greater than
   ## 1.0 that can be represented in a 64-bit floating-point type.
-
-
-when isMainModule:
-  func is_significant(x: float): bool =
-    if x > minimumPositiveValue(float) and x < maximumPositiveValue(float): true
-    else: false
-
-  doAssert is_significant(10.0)

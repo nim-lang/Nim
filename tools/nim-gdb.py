@@ -30,9 +30,17 @@ def getNimRti(type_name):
   m = type_hash_regex.match(type_name)
   if m:
     try:
-      return gdb.parse_and_eval("NTI_" + m.group(1) + "_")
+      return gdb.parse_and_eval("NTI__" + m.group(1) + "_")
     except:
       return None
+
+def getNameFromNimRti(rti_val):
+  """ Return name (or None) given a Nim RTI ``gdb.Value`` """
+  try:
+    # sometimes there isn't a name field -- example enums
+    return rti['name'].string(encoding="utf-8", errors="ignore")
+  except:
+    return None
 
 class NimTypeRecognizer:
   # this type map maps from types that are generated in the C files to
@@ -42,30 +50,25 @@ class NimTypeRecognizer:
   # ``int``.
 
   type_map_static = {
-    'NI': 'system.int',  'NI8': 'int8', 'NI16': 'int16',  'NI32': 'int32',  'NI64': 'int64',
-    'NU': 'uint', 'NU8': 'uint8','NU16': 'uint16', 'NU32': 'uint32', 'NU64': 'uint64',
+    'NI': 'system.int',  'NI8': 'int8', 'NI16': 'int16',  'NI32': 'int32',
+    'NI64': 'int64',
+    
+    'NU': 'uint', 'NU8': 'uint8','NU16': 'uint16', 'NU32': 'uint32',
+    'NU64': 'uint64',
+    
     'NF': 'float', 'NF32': 'float32', 'NF64': 'float64',
-    'NIM_BOOL': 'bool', 'NIM_CHAR': 'char', 'NCSTRING': 'cstring',
-    'NimStringDesc': 'string'
+    
+    'NIM_BOOL': 'bool',
+
+    'NIM_CHAR': 'char', 'NCSTRING': 'cstring', 'NimStringDesc': 'string'
   }
 
-  # Normally gdb distinguishes between the command `ptype` and
-  # `whatis`.  `ptype` prints a very detailed view of the type, and
-  # `whatis` a very brief representation of the type. I haven't
-  # figured out a way to know from the type printer that is
-  # implemented here how to know if a type printer should print the
-  # short representation or the long representation.  As a hacky
-  # workaround I just say I am not resposible for printing pointer
-  # types (seq and string are exception as they are semantically
-  # values).  this way the default type printer will handle pointer
-  # types and dive into the members of that type.  So I can still
-  # control with `ptype myval` and `ptype *myval` if I want to have
-  # detail or not.  I this this method stinks but I could not figure
-  # out a better solution.
-
-  object_type_pattern = re.compile("^(\w*):ObjectType$")
+  # object_type_pattern = re.compile("^(\w*):ObjectType$")
 
   def recognize(self, type_obj):
+    # skip things we can't handle like functions
+    if type_obj.code in [gdb.TYPE_CODE_FUNC, gdb.TYPE_CODE_VOID]:
+      return None
 
     tname = None
     if type_obj.tag is not None:
@@ -75,44 +78,43 @@ class NimTypeRecognizer:
 
     # handle pointer types
     if not tname:
-      if type_obj.code == gdb.TYPE_CODE_PTR:
+      target_type = type_obj
+      if type_obj.code in [gdb.TYPE_CODE_PTR]:
         target_type = type_obj.target()
-        target_type_name = target_type.name
-        if target_type_name:
-          # visualize 'string' as non pointer type (unpack pointer type).
-          if target_type_name == "NimStringDesc":
-            tname = target_type_name # could also just return 'string'
-          # visualize 'seq[T]' as non pointer type.
-          if target_type_name.find('tySequence_') == 0:
-            tname = target_type_name
 
-    if not tname:
-      # We are not resposible for this type printing.
-      # Basically this means we don't print pointer types.
-      return None
+      if target_type.name:
+        # visualize 'string' as non pointer type (unpack pointer type).
+        if target_type.name == "NimStringDesc":
+          tname = target_type.name # could also just return 'string'
+        else:
+          rti = getNimRti(target_type.name)
+          if rti:
+            return getNameFromNimRti(rti)
 
-    result = self.type_map_static.get(tname, None)
-    if result:
-      return result
+    if tname:
+      result = self.type_map_static.get(tname, None)
+      if result:
+        return result
 
-    rti = getNimRti(tname)
-    if rti:
-      return rti['name'].string("utf-8", "ignore")
-    else:
-      return None
+      rti = getNimRti(tname)
+      if rti:
+        return getNameFromNimRti(rti)
+
+    return None
 
 class NimTypePrinter:
   """Nim type printer. One printer for all Nim types."""
-
 
   # enabling and disabling of type printers can be done with the
   # following gdb commands:
   #
   #   enable  type-printer NimTypePrinter
   #   disable type-printer NimTypePrinter
+  # relevant docs: https://sourceware.org/gdb/onlinedocs/gdb/Type-Printing-API.html
 
   name = "NimTypePrinter"
-  def __init__ (self):
+
+  def __init__(self):
     self.enabled = True
 
   def instantiate(self):
@@ -160,6 +162,35 @@ class DollarPrintFunction (gdb.Function):
     return self.invoke_static(arg)
 
 DollarPrintFunction()
+
+
+################################################################################
+#####  GDB Function, Nim string comparison
+################################################################################
+
+class NimStringEqFunction (gdb.Function):
+  """Compare Nim strings for example in conditionals for breakpoints."""
+
+  def __init__ (self):
+    super (NimStringEqFunction, self).__init__("nimstreq")
+
+  @staticmethod
+  def invoke_static(arg1,arg2):
+    if arg1.type.code == gdb.TYPE_CODE_PTR and arg1.type.target().name == "NimStringDesc":
+      str1 = NimStringPrinter(arg1).to_string()
+    else:
+      str1 = arg1.string()
+    if arg2.type.code == gdb.TYPE_CODE_PTR and arg2.type.target().name == "NimStringDesc":
+      str2 = NimStringPrinter(arg1).to_string()
+    else:
+      str2 = arg2.string()
+
+    return str1 == str2
+
+  def invoke(self, arg1, arg2):
+    return self.invoke_static(arg1, arg2)
+
+NimStringEqFunction()
 
 ################################################################################
 #####  GDB Command, equivalent of Nim's $ operator
@@ -280,12 +311,28 @@ class NimStringPrinter:
   def to_string(self):
     if self.val:
       l = int(self.val['Sup']['len'])
-      return self.val['data'][0].address.string("utf-8", "ignore", l)
+      return self.val['data'].lazy_string(encoding="utf-8", length=l)
     else:
-     return ""
+      return ""
+
+# class NimStringPrinter:
+#   pattern = re.compile(r'^NimStringDesc$')
+
+#   def __init__(self, val):
+#     self.val = val
+  
+#   def display_hint(self):
+#     return 'string'
+  
+#   def to_string(self):
+#     if self.val:
+#       l = int(self.val['Sup']['len'])
+#       return self.val['data'].lazy_string(encoding="utf-8", length=l)
+#     else:
+#       return ""
 
 class NimRopePrinter:
-  pattern = re.compile(r'^tyObject_RopeObj_OFzf0kSiPTcNreUIeJgWVA \*$')
+  pattern = re.compile(r'^tyObject_RopeObj__([A-Za-z0-9]*) \*$')
 
   def __init__(self, val):
     self.val = val
@@ -340,17 +387,18 @@ def reprEnum(e, typ):
   return str(e) + " (invalid data!)"
 
 class NimEnumPrinter:
-  pattern = re.compile(r'^tyEnum_(\w*)_([A-Za-z0-9]*)$')
+  pattern = re.compile(r'^tyEnum_(\w*)__([A-Za-z0-9]*)$')
 
   def __init__(self, val):
-    self.val      = val
-    match = self.pattern.match(self.val.type.name)
+    self.val = val
+    typeName = self.val.type.name
+    match = self.pattern.match(typeName)
     self.typeNimName  = match.group(1)
-    typeInfoName = "NTI_" + match.group(2) + "_"
+    typeInfoName = "NTI__" + match.group(2) + "_"
     self.nti = gdb.lookup_global_symbol(typeInfoName)
 
     if self.nti is None:
-      printErrorOnce(typeInfoName, "NimEnumPrinter: lookup global symbol '" + typeInfoName + " failed for " + self.val.type.name + ".\n")
+      printErrorOnce(typeInfoName, f"NimEnumPrinter: lookup global symbol '{typeInfoName}' failed for {typeName}.\n")
 
   def to_string(self):
     if self.nti:
@@ -373,7 +421,7 @@ class NimSetPrinter:
     match = self.pattern.match(self.val.type.name)
     self.typeNimName  = match.group(1)
 
-    typeInfoName = "NTI_" + match.group(2) + "_"
+    typeInfoName = "NTI__" + match.group(2) + "_"
     self.nti = gdb.lookup_global_symbol(typeInfoName)
 
     if self.nti is None:
@@ -398,7 +446,7 @@ class NimSetPrinter:
 ################################################################################
 
 class NimHashSetPrinter:
-  pattern = re.compile(r'^tyObject_(HashSet)_([A-Za-z0-9]*)$')
+  pattern = re.compile(r'^tyObject_(HashSet)__([A-Za-z0-9]*)$')
 
   def __init__(self, val):
     self.val = val
@@ -447,11 +495,31 @@ class NimSeqPrinter:
 
   def children(self):
     if self.val:
-      length = int(self.val['Sup']['len'])
-      #align = len(str(length - 1))
-      for i in range(length):
-        yield ("data[{0}]".format(i), self.val["data"][i])
+      val = self.val
+      valType = val.type
+      length = int(val['Sup']['len'])
 
+      if length <= 0:
+        return
+
+      dataType = valType['data'].type
+      data = val['data']
+
+      if self.val.type.name is None:
+        dataType = valType['data'].type.target().pointer()
+        data = val['data'].cast(dataType)
+
+      inaccessible = False
+      for i in range(length):
+        if inaccessible:
+          return
+        try:
+          str(data[i])
+          yield "data[{0}]".format(i), data[i]
+        except RuntimeError:
+          inaccessible = True
+          yield "data[{0}]".format(i), "inaccessible"
+      
 ################################################################################
 
 class NimArrayPrinter:
@@ -475,7 +543,7 @@ class NimArrayPrinter:
 ################################################################################
 
 class NimStringTablePrinter:
-  pattern = re.compile(r'^tyObject_(StringTableObj)_([A-Za-z0-9]*)(:? \*)?$')
+  pattern = re.compile(r'^tyObject_(StringTableObj)__([A-Za-z0-9]*)(:? \*)?$')
 
   def __init__(self, val):
     self.val = val
@@ -495,20 +563,19 @@ class NimStringTablePrinter:
 
   def children(self):
     if self.val:
-      data = NimSeqPrinter(self.val['data'])
+      data = NimSeqPrinter(self.val['data'].dereference())
       for idxStr, entry in data.children():
-        if int(entry['Field2']) > 0:
+        if int(entry['Field0']) != 0:
           yield (idxStr + ".Field0", entry['Field0'])
           yield (idxStr + ".Field1", entry['Field1'])
 
 ################################################################
 
 class NimTablePrinter:
-  pattern = re.compile(r'^tyObject_(Table)_([A-Za-z0-9]*)(:? \*)?$')
+  pattern = re.compile(r'^tyObject_(Table)__([A-Za-z0-9]*)(:? \*)?$')
 
   def __init__(self, val):
     self.val = val
-    # match = self.pattern.match(self.val.type.name)
 
   def display_hint(self):
     return 'map'
@@ -527,10 +594,9 @@ class NimTablePrinter:
     if self.val:
       data = NimSeqPrinter(self.val['data'])
       for idxStr, entry in data.children():
-        if int(entry['Field0']) > 0:
+        if int(entry['Field0']) != 0:
           yield (idxStr + '.Field1', entry['Field1'])
           yield (idxStr + '.Field2', entry['Field2'])
-
 
 ################################################################
 
@@ -622,7 +688,7 @@ def register_nim_pretty_printers_for_object(objfile):
   if nimMainSym and nimMainSym.symtab.objfile == objfile:
     print("set Nim pretty printers for ", objfile.filename)
 
-    objfile.type_printers = [NimTypePrinter()]
+    gdb.types.register_type_printer(objfile, NimTypePrinter())
     objfile.pretty_printers = [makematcher(var) for var in list(globals().values()) if hasattr(var, 'pattern')]
 
 # Register pretty printers for all objfiles that are already loaded.

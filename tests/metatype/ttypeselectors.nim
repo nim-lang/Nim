@@ -45,7 +45,7 @@ proc t6*(x: type(t3(0))): type(t1(0)) =
 proc t7*(x: int): type($x) =
   result = "test"
 
-# This is a more compicated example involving a type
+# This is a more complicated example involving a type
 # selection through a macro:
 # https://github.com/nim-lang/Nim/issues/7230
 

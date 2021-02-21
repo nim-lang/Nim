@@ -1,11 +1,12 @@
 discard """
-  output: '''ob @[]
-ob3 @[]
-ob2 @[]
-3
+  output: '''ob2 @[]
 ob @[]
 ob3 @[]
-ob2 @[]'''
+3
+ob2 @[]
+ob @[]
+ob3 @[]
+'''
   cmd: "nim c -r --threads:on $file"
 """
 
@@ -16,9 +17,9 @@ import tables
 type
   Base* = ref object of RootObj
     someSeq: seq[int]
-    baseData: array[400000, byte]
+    baseData: array[40000, byte]
   Derived* = ref object of Base
-    data: array[400000, byte]
+    data: array[40000, byte]
 
 type
   ThreadPool = ref object

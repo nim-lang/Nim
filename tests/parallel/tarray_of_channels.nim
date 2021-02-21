@@ -8,6 +8,7 @@ test
 test
 test
 '''
+disabled: "openbsd"
 """
 
 # bug #2257

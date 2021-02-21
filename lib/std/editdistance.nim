@@ -13,10 +13,11 @@
 import unicode
 
 proc editDistance*(a, b: string): int {.noSideEffect.} =
-  ## Returns the unicode-rune edit distance between ``a`` and ``b``.
+  ## Returns the **unicode-rune** edit distance between ``a`` and ``b``.
   ##
   ## This uses the `Levenshtein`:idx: distance algorithm with only a linear
   ## memory overhead.
+  runnableExamples: static: doAssert editdistance("Kitten", "Bitten") == 1
   if len(a) > len(b):
     # make ``b`` the longer string
     return editDistance(b, a)
@@ -181,6 +182,7 @@ proc editDistanceAscii*(a, b: string): int {.noSideEffect.} =
   ##
   ## This uses the `Levenshtein`:idx: distance algorithm with only a linear
   ## memory overhead.
+  runnableExamples: static: doAssert editDistanceAscii("Kitten", "Bitten") == 1
   var len1 = a.len
   var len2 = b.len
   if len1 > len2:
@@ -210,7 +212,7 @@ proc editDistanceAscii*(a, b: string): int {.noSideEffect.} =
   inc(len1)
   inc(len2)
   var half = len1 shr 1
-  # initalize first row:
+  # initialize first row:
   #var row = cast[ptr array[0..high(int) div 8, int]](alloc(len2*sizeof(int)))
   var row: seq[int]
   newSeq(row, len2)
@@ -262,34 +264,3 @@ proc editDistanceAscii*(a, b: string): int {.noSideEffect.} =
       if x > c3: x = c3
       row[p] = x
   result = row[e]
-
-
-when isMainModule:
-  doAssert editDistance("", "") == 0
-  doAssert editDistance("kitten", "sitting") == 3 # from Wikipedia
-  doAssert editDistance("flaw", "lawn") == 2 # from Wikipedia
-
-  doAssert editDistance("привет", "превет") == 1
-  doAssert editDistance("Åge", "Age") == 1
-  # editDistance, one string is longer in bytes, but shorter in rune length
-  # first string: 4 bytes, second: 6 bytes, but only 3 runes
-  doAssert editDistance("aaaa", "×××") == 4
-
-  block veryLongStringEditDistanceTest:
-    const cap = 256
-    var
-      s1 = newStringOfCap(cap)
-      s2 = newStringOfCap(cap)
-    while len(s1) < cap:
-      s1.add 'a'
-    while len(s2) < cap:
-      s2.add 'b'
-    doAssert editDistance(s1, s2) == cap
-
-  block combiningCodePointsEditDistanceTest:
-    const s = "A\xCC\x8Age"
-    doAssert editDistance(s, "Age") == 1
-
-  doAssert editDistanceAscii("", "") == 0
-  doAssert editDistanceAscii("kitten", "sitting") == 3 # from Wikipedia
-  doAssert editDistanceAscii("flaw", "lawn") == 2 # from Wikipedia

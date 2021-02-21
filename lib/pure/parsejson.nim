@@ -11,25 +11,25 @@
 ## and exported by the ``json`` standard library
 ## module, but can also be used in its own right.
 
-import
-  strutils, lexbase, streams, unicode
+import strutils, lexbase, streams, unicode
+import std/private/decode_helpers
 
 type
-  JsonEventKind* = enum  ## enumeration of all events that may occur when parsing
-    jsonError,           ## an error occurred during parsing
-    jsonEof,             ## end of file reached
-    jsonString,          ## a string literal
-    jsonInt,             ## an integer literal
-    jsonFloat,           ## a float literal
-    jsonTrue,            ## the value ``true``
-    jsonFalse,           ## the value ``false``
-    jsonNull,            ## the value ``null``
-    jsonObjectStart,     ## start of an object: the ``{`` token
-    jsonObjectEnd,       ## end of an object: the ``}`` token
-    jsonArrayStart,      ## start of an array: the ``[`` token
-    jsonArrayEnd         ## start of an array: the ``]`` token
+  JsonEventKind* = enum ## enumeration of all events that may occur when parsing
+    jsonError,          ## an error occurred during parsing
+    jsonEof,            ## end of file reached
+    jsonString,         ## a string literal
+    jsonInt,            ## an integer literal
+    jsonFloat,          ## a float literal
+    jsonTrue,           ## the value ``true``
+    jsonFalse,          ## the value ``false``
+    jsonNull,           ## the value ``null``
+    jsonObjectStart,    ## start of an object: the ``{`` token
+    jsonObjectEnd,      ## end of an object: the ``}`` token
+    jsonArrayStart,     ## start of an array: the ``[`` token
+    jsonArrayEnd        ## end of an array: the ``]`` token
 
-  TokKind* = enum         # must be synchronized with TJsonEventKind!
+  TokKind* = enum # must be synchronized with TJsonEventKind!
     tkError,
     tkEof,
     tkString,
@@ -45,18 +45,18 @@ type
     tkColon,
     tkComma
 
-  JsonError* = enum        ## enumeration that lists all errors that can occur
-    errNone,               ## no error
-    errInvalidToken,       ## invalid token
-    errStringExpected,     ## string expected
-    errColonExpected,      ## ``:`` expected
-    errCommaExpected,      ## ``,`` expected
-    errBracketRiExpected,  ## ``]`` expected
-    errCurlyRiExpected,    ## ``}`` expected
-    errQuoteExpected,      ## ``"`` or ``'`` expected
-    errEOC_Expected,       ## ``*/`` expected
-    errEofExpected,        ## EOF expected
-    errExprExpected        ## expr expected
+  JsonError* = enum       ## enumeration that lists all errors that can occur
+    errNone,              ## no error
+    errInvalidToken,      ## invalid token
+    errStringExpected,    ## string expected
+    errColonExpected,     ## ``:`` expected
+    errCommaExpected,     ## ``,`` expected
+    errBracketRiExpected, ## ``]`` expected
+    errCurlyRiExpected,   ## ``}`` expected
+    errQuoteExpected,     ## ``"`` or ``'`` expected
+    errEOC_Expected,      ## ``*/`` expected
+    errEofExpected,       ## EOF expected
+    errExprExpected       ## expr expected
 
   ParserState = enum
     stateEof, stateStart, stateObject, stateArray, stateExpectArrayComma,
@@ -105,7 +105,7 @@ proc open*(my: var JsonParser, input: Stream, filename: string;
            rawStringLiterals = false) =
   ## initializes the parser with an input stream. `Filename` is only used
   ## for nice error messages. If `rawStringLiterals` is true, string literals
-  ## are kepts with their surrounding quotes and escape sequences in them are
+  ## are kept with their surrounding quotes and escape sequences in them are
   ## left untouched too.
   lexbase.open(my, input)
   my.filename = filename
@@ -162,18 +162,11 @@ proc errorMsgExpected*(my: JsonParser, e: string): string =
   result = "$1($2, $3) Error: $4" % [
     my.filename, $getLine(my), $getColumn(my), e & " expected"]
 
-proc handleHexChar(c: char, x: var int): bool =
-  result = true # Success
-  case c
-  of '0'..'9': x = (x shl 4) or (ord(c) - ord('0'))
-  of 'a'..'f': x = (x shl 4) or (ord(c) - ord('a') + 10)
-  of 'A'..'F': x = (x shl 4) or (ord(c) - ord('A') + 10)
-  else: result = false # error
-
 proc parseEscapedUTF16*(buf: cstring, pos: var int): int =
   result = 0
   #UTF-16 escape is always 4 bytes.
   for _ in 0..3:
+    # if char in '0' .. '9', 'a' .. 'f', 'A' .. 'F'
     if handleHexChar(buf[pos], result):
       inc(pos)
     else:

@@ -26,14 +26,11 @@ template builtin = discard
 # We know the effects better than the compiler:
 {.push hint[XDeclaredButNotUsed]: off.}
 
-proc listDirs*(dir: string): seq[string] =
-  ## Lists all the subdirectories (non-recursively) in the directory `dir`.
-  builtin
-proc listFiles*(dir: string): seq[string] =
-  ## Lists all the files (non-recursively) in the directory `dir`.
-  builtin
-
-proc removeDir(dir: string) {.
+proc listDirsImpl(dir: string): seq[string] {.
+  tags: [ReadIOEffect], raises: [OSError].} = builtin
+proc listFilesImpl(dir: string): seq[string] {.
+  tags: [ReadIOEffect], raises: [OSError].} = builtin
+proc removeDir(dir: string, checkDir = true) {.
   tags: [ReadIOEffect, WriteIOEffect], raises: [OSError].} = builtin
 proc removeFile(dir: string) {.
   tags: [ReadIOEffect, WriteIOEffect], raises: [OSError].} = builtin
@@ -47,6 +44,7 @@ proc copyDir(src, dest: string) {.
   tags: [ReadIOEffect, WriteIOEffect], raises: [OSError].} = builtin
 proc createDir(dir: string) {.tags: [WriteIOEffect], raises: [OSError].} =
   builtin
+
 proc getError: string = builtin
 proc setCurrentDir(dir: string) = builtin
 proc getCurrentDir*(): string =
@@ -138,13 +136,13 @@ proc dirExists*(dir: string): bool {.
   ## Checks if the directory `dir` exists.
   builtin
 
-proc existsFile*(filename: string): bool =
-  ## An alias for ``fileExists``.
-  fileExists(filename)
+template existsFile*(args: varargs[untyped]): untyped {.deprecated: "use fileExists".} =
+  # xxx: warning won't be shown for nimsscript because of current logic handling
+  # `foreignPackageNotes`
+  fileExists(args)
 
-proc existsDir*(dir: string): bool =
-  ## An alias for ``dirExists``.
-  dirExists(dir)
+template existsDir*(args: varargs[untyped]): untyped {.deprecated: "use dirExists".} =
+  dirExists(args)
 
 proc selfExe*(): string =
   ## Returns the currently running nim or nimble executable.
@@ -161,16 +159,29 @@ proc toDll*(filename: string): string =
 
 proc strip(s: string): string =
   var i = 0
-  while s[i] in {' ', '\c', '\L'}: inc i
+  while s[i] in {' ', '\c', '\n'}: inc i
   result = s.substr(i)
+  if result[0] == '"' and result[^1] == '"':
+    result = result[1..^2]
 
 template `--`*(key, val: untyped) =
-  ## A shortcut for ``switch(astToStr(key), astToStr(val))``.
-  switch(astToStr(key), strip astToStr(val))
+  ## A shortcut for `switch <#switch,string,string>`_
+  ## Example:
+  ##
+  ## .. code-block:: nim
+  ##
+  ##   --path:somePath # same as switch("path", "somePath")
+  ##   --path:"someOtherPath" # same as switch("path", "someOtherPath")
+  switch(strip(astToStr(key)), strip(astToStr(val)))
 
 template `--`*(key: untyped) =
-  ## A shortcut for ``switch(astToStr(key)``.
-  switch(astToStr(key), "")
+  ## A shortcut for `switch <#switch,string,string>`_
+  ## Example:
+  ##
+  ## .. code-block:: nim
+  ##
+  ##   --listCmd # same as switch("listCmd")
+  switch(strip(astToStr(key)))
 
 type
   ScriptMode* {.pure.} = enum ## Controls the behaviour of the script.
@@ -193,13 +204,23 @@ template checkOsError =
 template log(msg: string, body: untyped) =
   if mode in {ScriptMode.Verbose, ScriptMode.Whatif}:
     echo "[NimScript] ", msg
-  if mode != ScriptMode.WhatIf:
+  if mode != ScriptMode.Whatif:
     body
 
-proc rmDir*(dir: string) {.raises: [OSError].} =
+proc listDirs*(dir: string): seq[string] =
+  ## Lists all the subdirectories (non-recursively) in the directory `dir`.
+  result = listDirsImpl(dir)
+  checkOsError()
+
+proc listFiles*(dir: string): seq[string] =
+  ## Lists all the files (non-recursively) in the directory `dir`.
+  result = listFilesImpl(dir)
+  checkOsError()
+
+proc rmDir*(dir: string, checkDir = false) {.raises: [OSError].} =
   ## Removes the directory `dir`.
   log "rmDir: " & dir:
-    removeDir dir
+    removeDir(dir, checkDir = checkDir)
     checkOsError()
 
 proc rmFile*(file: string) {.raises: [OSError].} =
@@ -239,8 +260,14 @@ proc cpDir*(`from`, to: string) {.raises: [OSError].} =
     copyDir `from`, to
     checkOsError()
 
-proc exec*(command: string) =
-  ## Executes an external process.
+proc exec*(command: string) {.
+  raises: [OSError], tags: [ExecIOEffect].} =
+  ## Executes an external process. If the external process terminates with
+  ## a non-zero exit code, an OSError exception is raised.
+  ##
+  ## **Note:** If you need a version of ``exec`` that returns the exit code
+  ## and text output of the command, you can use `system.gorgeEx
+  ## <system.html#gorgeEx,string,string,string>`_.
   log "exec: " & command:
     if rawExec(command) != 0:
       raise newException(OSError, "FAILED: " & command)
@@ -248,11 +275,16 @@ proc exec*(command: string) =
 
 proc exec*(command: string, input: string, cache = "") {.
   raises: [OSError], tags: [ExecIOEffect].} =
-  ## Executes an external process.
+  ## Executes an external process. If the external process terminates with
+  ## a non-zero exit code, an OSError exception is raised.
   log "exec: " & command:
-    echo staticExec(command, input, cache)
+    let (output, exitCode) = gorgeEx(command, input, cache)
+    if exitCode != 0:
+      raise newException(OSError, "FAILED: " & command)
+    echo output
 
-proc selfExec*(command: string) =
+proc selfExec*(command: string) {.
+  raises: [OSError], tags: [ExecIOEffect].} =
   ## Executes an external command with the current nim/nimble executable.
   ## ``Command`` must not contain the "nim " part.
   let c = selfExe() & " " & command
@@ -300,9 +332,9 @@ proc cd*(dir: string) {.raises: [OSError].} =
   ## Changes the current directory.
   ##
   ## The change is permanent for the rest of the execution, since this is just
-  ## a shortcut for `os.setCurrentDir()
-  ## <http://nim-lang.org/docs/os.html#setCurrentDir,string>`_ . Use the `withDir()
-  ## <#withDir>`_ template if you want to perform a temporary change only.
+  ## a shortcut for `os.setCurrentDir() <os.html#setCurrentDir,string>`_ . Use
+  ## the `withDir() <#withDir.t,string,untyped>`_ template if you want to
+  ## perform a temporary change only.
   setCurrentDir(dir)
   checkOsError()
 
@@ -315,7 +347,8 @@ proc findExe*(bin: string): string =
 template withDir*(dir: string; body: untyped): untyped =
   ## Changes the current directory temporarily.
   ##
-  ## If you need a permanent change, use the `cd() <#cd>`_ proc. Usage example:
+  ## If you need a permanent change, use the `cd() <#cd,string>`_ proc.
+  ## Usage example:
   ##
   ## .. code-block:: nim
   ##   withDir "foo":
@@ -340,21 +373,21 @@ proc cppDefine*(define: string) =
   ## needs to be mangled.
   builtin
 
-proc stdinReadLine(): TaintedString {.
+proc stdinReadLine(): string {.
   tags: [ReadIOEffect], raises: [IOError].} =
   builtin
 
-proc stdinReadAll(): TaintedString {.
+proc stdinReadAll(): string {.
   tags: [ReadIOEffect], raises: [IOError].} =
   builtin
 
-proc readLineFromStdin*(): TaintedString {.raises: [IOError].} =
+proc readLineFromStdin*(): string {.raises: [IOError].} =
   ## Reads a line of data from stdin - blocks until \n or EOF which happens when stdin is closed
   log "readLineFromStdin":
     result = stdinReadLine()
     checkError(EOFError)
 
-proc readAllFromStdin*(): TaintedString {.raises: [IOError].} =
+proc readAllFromStdin*(): string {.raises: [IOError].} =
   ## Reads all data from stdin - blocks until EOF which happens when stdin is closed
   log "readAllFromStdin":
     result = stdinReadAll()
@@ -364,11 +397,26 @@ when not defined(nimble):
   template `==?`(a, b: string): bool = cmpIgnoreStyle(a, b) == 0
   template task*(name: untyped; description: string; body: untyped): untyped =
     ## Defines a task. Hidden tasks are supported via an empty description.
+    ##
     ## Example:
     ##
     ## .. code-block:: nim
     ##  task build, "default build is via the C backend":
     ##    setCommand "c"
+    ##
+    ## For a task named ``foo``, this template generates a ``proc`` named
+    ## ``fooTask``.  This is useful if you need to call one task in
+    ## another in your Nimscript.
+    ##
+    ## Example:
+    ##
+    ## .. code-block:: nim
+    ##  task foo, "foo":        # > nim foo
+    ##    echo "Running foo"    # Running foo
+    ##
+    ##  task bar, "bar":        # > nim bar
+    ##    echo "Running bar"    # Running bar
+    ##    fooTask()             # Running foo
     proc `name Task`*() =
       setCommand "nop"
       body

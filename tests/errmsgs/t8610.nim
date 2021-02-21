@@ -1,5 +1,5 @@
 discard """
-  errmsg: "'typedesc' metatype is not valid here; typed '=' instead of ':'?"
+  errormsg: "invalid type: 'typedesc[int]' for const"
 """
-## issue #8610
+## bug #8610
 const Foo = int

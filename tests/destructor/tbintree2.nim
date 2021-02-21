@@ -1,10 +1,9 @@
 discard """
-  cmd: '''nim c --newruntime $file'''
+  cmd: '''nim c -d:nimAllocStats --newruntime $file'''
   output: '''0
-3 3  alloc/dealloc pairs: 0'''
+(allocCount: 5, deallocCount: 5)'''
 """
 
-import core / allocators
 import system / ansi_c
 
 import random
@@ -58,7 +57,7 @@ proc `=destroy`(t: var Tree) {.nodestroy.} =
     let x = s.pop
     if x.left != nil: s.add(x.left)
     if x.right != nil: s.add(x.right)
-    dispose(x)
+    `=dispose`(x)
   `=destroy`(s)
 
 proc hasValue(self: var Tree, x: int32): bool =
@@ -97,7 +96,6 @@ proc main() =
       discard
   echo res
 
-main()
+dumpAllocStats:
+  main()
 
-let (a, d) = allocCounters()
-discard cprintf("%ld %ld  alloc/dealloc pairs: %ld\n", a, d, system.allocs)

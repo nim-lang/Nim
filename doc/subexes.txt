@@ -14,7 +14,7 @@ Notation                meaning
 =====================   =====================================================
 ``$#``                  use first or next argument
 ``$name``               use named argument, you can wrap the named argument
-                        in curly braces (eg. ``${name}``) to separate it from
+                        in curly braces (e.g. ``${name}``) to separate it from
                         the next characters.
 ``$$``                  produces a single ``$``
 ``$1``                  use first argument

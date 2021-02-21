@@ -9,6 +9,10 @@
 
 ## This module contains Nim's support for reentrant locks.
 
+
+when not compileOption("threads") and not defined(nimdoc):
+  {.error: "Rlocks requires --threads:on option.".}
+
 const insideRLocksModule = true
 include "system/syslocks"
 
@@ -20,7 +24,7 @@ proc initRLock*(lock: var RLock) {.inline.} =
   when defined(posix):
     var a: SysLockAttr
     initSysLockAttr(a)
-    setSysLockType(a, SysLockType_Reentrant())
+    setSysLockType(a, SysLockType_Reentrant)
     initSysLock(lock, a.addr)
   else:
     initSysLock(lock)

@@ -100,18 +100,30 @@ proc fn4(x: int): int =
 proc fn5(a, b: float): float =
   result = - a * a / (b * b)
 
+proc `{}`(x: seq[float], i: int, j: int): float = 
+  x[i + 0 * j]
+
+proc `{}=`(x: var seq[float], i: int, val: float) = 
+  x[i] = val
+
+proc fn6() =
+  var a = @[1.0, 2.0]
+  let z = a{0, 1} 
+  a{2} = 5.0
+
+
 #------------------------------------
 # bug #10807
 proc fn_unsafeaddr(x: int): int =
   cast[int](unsafeAddr(x))
 
 static:
-  echo fn_unsafeaddr.repr_to_string
   let fn1s = "proc fn1(x, y: int): int =\n  result = 2 * (x + y)\n"
   let fn2s = "proc fn2(x, y: float): float =\n  result = (y + 2 * x) / (x - y)\n"
   let fn3s = "proc fn3(x, y: int): bool =\n  result = ((x and 3) div 4 or x mod (y xor -1)) == 0 or not contains([1, 2], y)\n"
   let fn4s = "proc fn4(x: int): int =\n  if x mod 2 == 0:\n    return x + 2\n  else:\n    return 0\n"
   let fn5s = "proc fn5(a, b: float): float =\n  result = -a * a / (b * b)\n"
+  let fn6s = "proc fn6() =\n  var a = @[1.0, 2.0]\n  let z = a{0, 1}\n  a{2} = 5.0\n"
   let fnAddr = "proc fn_unsafeaddr(x: int): int =\n  result = cast[int](unsafeAddr(x))\n"
 
   doAssert fn1.repr_to_string == fn1s
@@ -119,6 +131,7 @@ static:
   doAssert fn3.repr_to_string == fn3s
   doAssert fn4.repr_to_string == fn4s
   doAssert fn5.repr_to_string == fn5s
+  doAssert fn6.repr_to_string == fn6s
   doAssert fn_unsafeaddr.repr_to_string == fnAddr
 
 #------------------------------------

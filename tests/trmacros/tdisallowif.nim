@@ -1,7 +1,6 @@
 discard """
-  errormsg: "usage of 'disallowIf' is a user-defined error"
+  errormsg: "usage of 'disallowIf' is an {.error.} defined at tdisallowif.nim(10, 1)"
   line: 24
-  disabled: true
 """
 
 template optZero{x+x}(x: int): int = x*3
@@ -11,7 +10,7 @@ template optSubstr1{x = substr(x, 0, b)}(x: string, b: int) = setlen(x, b+1)
 template disallowIf{
   if cond: action
   else: action2
-}(cond: bool, action, action2: stmt) {.error.} = action
+}(cond: bool, action, action2: typed) {.error.} = action
 
 var y = 12
 echo y+y

@@ -44,6 +44,11 @@ for testing things out and playing with it but for an editor communication
 via sockets is more reasonable so that is the default. It listens to port 6000
 by default.
 
+Nimsuggest is basically a frontend for the nim compiler so ``--path`` flags and
+`config files <https://nim-lang.org/docs/nimc.html#compiler-usage-configuration-files>`_
+can be used to specify additional dependencies like 
+``nimsuggest --stdin --debug --path:"dependencies" myproject.nim``. 
+
 
 Specifying the location of the query
 ------------------------------------
@@ -105,9 +110,9 @@ completion symbols at some point in the file.
 
 The typical usage scenario for this option is to call it after the
 user has typed the dot character for `the object oriented call
-syntax <tut2.html#method-call-syntax>`_. Nimsuggest will try to return
-the suggestions sorted first by scope (from innermost to outermost)
-and then by item name.
+syntax <tut2.html#object-oriented-programming-method-call-syntax>`_.
+Nimsuggest will try to return the suggestions sorted first by scope
+(from innermost to outermost) and then by item name.
 
 
 Invocation context

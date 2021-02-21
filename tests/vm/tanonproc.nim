@@ -42,7 +42,7 @@ proc getOrElse[T](o: Option[T], def: T): T =
 proc quoteStr(s: string): Option[string] =
   s.some.notEmpty.map(v => "`" & v & "`")
 
-macro str(s: string): typed =
+macro str(s: string): void =
   let x = s.strVal
   let y = quoteStr(x)
   let sn = newStrLitNode(y.getOrElse("NONE"))

@@ -1,11 +1,8 @@
 discard """
 output: '''
 [4, 5, 6]
-
 [16, 25, 36]
-
 [16, 25, 36]
-
 apple
 banana
 Fruit
@@ -347,11 +344,11 @@ block troofregression:
     if $a != b:
       echo "Failure ", a, " != ", b
 
-  check type(4 ...< 1), "HSlice[system.int, system.int]"
-  check type(4 ...< ^1), "HSlice[system.int, system.BackwardsIndex]"
-  check type(4 ... pred(^1)), "HSlice[system.int, system.BackwardsIndex]"
-  check type(4 ... mypred(8)), "HSlice[system.int, system.int]"
-  check type(4 ... mypred(^1)), "HSlice[system.int, system.BackwardsIndex]"
+  check typeof(4 ...< 1), "HSlice[system.int, system.int]"
+  check typeof(4 ...< ^1), "HSlice[system.int, system.BackwardsIndex]"
+  check typeof(4 ... pred(^1)), "HSlice[system.int, system.BackwardsIndex]"
+  check typeof(4 ... mypred(8)), "HSlice[system.int, system.int]"
+  check typeof(4 ... mypred(^1)), "HSlice[system.int, system.BackwardsIndex]"
 
   var rot = 8
 
@@ -582,3 +579,11 @@ template append2*(args: varargs[string, myAppend]): string =
 
 let foo = append2("1", "2", "3")
 echo foo
+
+block t12466:
+  # https://github.com/nim-lang/Nim/issues/12466
+  var a: array[288, uint16]
+  for i in 0'u16 ..< 144'u16:
+    a[0'u16 + i] = i
+  for i in 0'u16 ..< 8'u16:
+    a[0'u16 + i] = i

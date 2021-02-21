@@ -12,8 +12,7 @@ foo = bar                     # No error if assigned directly
 
 # bug #2250
 
-import
-    math, strutils
+import math
 
 type
     Meters = float
@@ -69,7 +68,7 @@ template odd*(i: int) : untyped =
 
 proc vidx(hg: HexGrid; col, row: int; i: HexVtxIndex) : Index =
     #NOTE: this variation compiles
-    #var offset : type(evenSharingOffsets[i])
+    #var offset : typeof(evenSharingOffsets[i])
     #
     #if odd(col):
     #    offset = oddSharingOffsets[i]

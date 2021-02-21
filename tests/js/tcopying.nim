@@ -6,6 +6,7 @@ discard """
 true false
 100 300 100
 1
+1
 '''
 """
 
@@ -14,7 +15,7 @@ type MyArray = array[1, int]
 proc changeArray(a: var MyArray) =
     a = [123]
 
-var a : MyArray
+var a: MyArray
 changeArray(a)
 echo a[0]
 
@@ -34,7 +35,7 @@ block:
         ary2: array[3, int]
 
     let ary1 = [1, 2, 3]
-    var obj = TestObj(ary2:ary1)
+    var obj = TestObj(ary2: ary1)
 
     obj.ary2[1] = 9
 
@@ -70,3 +71,10 @@ block:
     var nums = [1, 2]
     foo(nums)
     echo nums[0]
+
+proc bug9674 =
+  var b = @[1,2,3]
+  var a = move(b)
+  echo a[0]
+
+bug9674()

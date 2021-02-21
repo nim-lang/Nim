@@ -11,7 +11,7 @@ type PComm = ptr Channel[int]
 
 proc doAction(outC: PComm) {.thread.} =
   for i in 0 ..< 5:
-    sleep(rand(100))
+    sleep(rand(50))
     send(outC[], i)
 
 var

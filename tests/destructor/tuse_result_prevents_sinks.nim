@@ -1,6 +1,6 @@
 discard """
   output: ""
-  target: "C"
+  targets: "c"
 """
 
 # bug #9594
@@ -17,15 +17,20 @@ proc `=sink`(self: var Foo; other: Foo) =
 
 proc `=destroy`(self: var Foo) = discard
 
+template preventCursorInference(x) =
+  let p = unsafeAddr(x)
+
 proc test(): Foo =
   result = Foo()
   let temp = result
+  preventCursorInference temp
   doAssert temp.i > 0
   return result
 
 proc testB(): Foo =
   result = Foo()
   let temp = result
+  preventCursorInference temp
   doAssert temp.i > 0
 
 discard test()

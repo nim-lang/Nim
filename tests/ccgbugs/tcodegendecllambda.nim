@@ -4,7 +4,7 @@ discard """
   action: compile
 """
 
-when defined(JS):
+when defined(js):
   var foo = proc(): void{.codegenDecl: "/*HELLO*/function $2($3)".} =
     echo "baa"
 else:

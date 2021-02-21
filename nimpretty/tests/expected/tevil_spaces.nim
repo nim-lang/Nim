@@ -13,7 +13,7 @@ type
     ccInline,                # proc should be inlined
     ccNoInline,              # proc should not be inlined
                              #
-                             # continueing here
+                             # continuing here
     ccFastCall,              # fastcall (pass parameters in registers)
     ccClosure,               # proc has a closure
     ccNoConvention           # needed for generating proper C procs sometimes

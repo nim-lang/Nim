@@ -100,7 +100,7 @@
 
 - We changed how array accesses "from backwards" like ``a[^1]`` or ``a[0..^1]`` are
   implemented. These are now implemented purely in ``system.nim`` without compiler
-  support. There is a new "heterogenous" slice type ``system.HSlice`` that takes 2
+  support. There is a new "heterogeneous" slice type ``system.HSlice`` that takes 2
   generic parameters which can be ``BackwardsIndex`` indices. ``BackwardsIndex`` is
   produced by ``system.^``.
   This means if you overload ``[]`` or ``[]=`` you need to ensure they also work

@@ -79,10 +79,10 @@ type
 
   PPacket* = ptr TPacket
   TPacket*{.pure, final.} = object
-    referenceCount: csize
+    referenceCount: csize_t
     flags*: cint
     data*: cstring#ptr cuchar
-    dataLength*: csize
+    dataLength*: csize_t
     freeCallback*: TPacketFreeCallback
 
   PAcknowledgement* = ptr TAcknowledgement
@@ -274,7 +274,7 @@ when defined(Linux) or true:
     PEnetBuffer* = ptr object
     TENetBuffer*{.pure, final.} = object
       data*: pointer
-      dataLength*: csize
+      dataLength*: csize_t
     TENetSocketSet* = Tfd_set
   ## see if these are different on win32, if not then get rid of these
   template ENET_HOST_TO_NET_16*(value: untyped): untyped =
@@ -324,7 +324,7 @@ type
     data*: pointer
     state*: TPeerState
     channels*: PChannel
-    channelCount*: csize
+    channelCount*: csize_t
     incomingBandwidth*: cuint
     outgoingBandwidth*: cuint
     incomingBandwidthThrottleEpoch*: cuint
@@ -374,13 +374,13 @@ type
   TCompressor*{.pure, final.} = object
     context*: pointer
     compress*: proc (context: pointer; inBuffers: ptr TEnetBuffer;
-                     inBufferCount: csize; inLimit: csize;
-                     outData: ptr cuchar; outLimit: csize): csize{.cdecl.}
-    decompress*: proc (context: pointer; inData: ptr cuchar; inLimit: csize;
-                       outData: ptr cuchar; outLimit: csize): csize{.cdecl.}
+                     inBufferCount: csize_t; inLimit: csize_t;
+                     outData: ptr cuchar; outLimit: csize_t): csize_t{.cdecl.}
+    decompress*: proc (context: pointer; inData: ptr cuchar; inLimit: csize_t;
+                       outData: ptr cuchar; outLimit: csize_t): csize_t{.cdecl.}
     destroy*: proc (context: pointer){.cdecl.}
 
-  TChecksumCallback* = proc (buffers: ptr TEnetBuffer; bufferCount: csize): cuint{.
+  TChecksumCallback* = proc (buffers: ptr TEnetBuffer; bufferCount: csize_t): cuint{.
       cdecl.}
 
   PHost* = ptr THost
@@ -394,25 +394,25 @@ type
     randomSeed*: cuint
     recalculateBandwidthLimits*: cint
     peers*: ptr TPeer
-    peerCount*: csize
-    channelLimit*: csize
+    peerCount*: csize_t
+    channelLimit*: csize_t
     serviceTime*: cuint
     dispatchQueue*: TEnetList
     continueSending*: cint
-    packetSize*: csize
+    packetSize*: csize_t
     headerFlags*: cushort
     commands*: array[0..ENET_PROTOCOL_MAXIMUM_PACKET_COMMANDS - 1,
                      TEnetProtocol]
-    commandCount*: csize
+    commandCount*: csize_t
     buffers*: array[0..ENET_BUFFER_MAXIMUM - 1, TEnetBuffer]
-    bufferCount*: csize
+    bufferCount*: csize_t
     checksum*: TChecksumCallback
     compressor*: TCompressor
     packetData*: array[0..ENET_PROTOCOL_MAXIMUM_MTU - 1,
                        array[0..2 - 1, cuchar]]
     receivedAddress*: TAddress
     receivedData*: ptr cuchar
-    receivedDataLength*: csize
+    receivedDataLength*: csize_t
     totalSentData*: cuint
     totalSentPackets*: cuint
     totalReceivedData*: cuint
@@ -430,12 +430,12 @@ type
     packet*: ptr TPacket
 
   TENetCallbacks*{.pure, final.} = object
-    malloc*: proc (size: csize): pointer{.cdecl.}
+    malloc*: proc (size: csize_t): pointer{.cdecl.}
     free*: proc (memory: pointer){.cdecl.}
     no_memory*: proc (){.cdecl.}
 
 {.push callConv:cdecl.}
-proc enet_malloc*(a2: csize): pointer{.
+proc enet_malloc*(a2: csize_t): pointer{.
   importc: "enet_malloc", dynlib: Lib.}
 proc enet_free*(a2: pointer){.
   importc: "enet_free", dynlib: Lib.}
@@ -468,15 +468,15 @@ proc connect*(socket: TEnetSocket; address: var TAddress): cint{.
   importc: "enet_socket_connect", dynlib: Lib.}
 proc connect*(socket: TEnetSocket; address: ptr TAddress): cint{.
   importc: "enet_socket_connect", dynlib: Lib.}
-proc send*(socket: TEnetSocket; address: var TAddress; buffer: ptr TEnetBuffer; size: csize): cint{.
+proc send*(socket: TEnetSocket; address: var TAddress; buffer: ptr TEnetBuffer; size: csize_t): cint{.
   importc: "enet_socket_send", dynlib: Lib.}
-proc send*(socket: TEnetSocket; address: ptr TAddress; buffer: ptr TEnetBuffer; size: csize): cint{.
+proc send*(socket: TEnetSocket; address: ptr TAddress; buffer: ptr TEnetBuffer; size: csize_t): cint{.
   importc: "enet_socket_send", dynlib: Lib.}
 proc receive*(socket: TEnetSocket; address: var TAddress;
-               buffer: ptr TEnetBuffer; size: csize): cint{.
+               buffer: ptr TEnetBuffer; size: csize_t): cint{.
   importc: "enet_socket_receive", dynlib: Lib.}
 proc receive*(socket: TEnetSocket; address: ptr TAddress;
-               buffer: ptr TEnetBuffer; size: csize): cint{.
+               buffer: ptr TEnetBuffer; size: csize_t): cint{.
   importc: "enet_socket_receive", dynlib: Lib.}
 proc wait*(socket: TEnetSocket; a3: ptr cuint; a4: cuint): cint{.
   importc: "enet_socket_wait", dynlib: Lib.}
@@ -492,42 +492,42 @@ proc setHost*(address: PAddress; hostName: cstring): cint{.
   importc: "enet_address_set_host", dynlib: Lib.}
 proc setHost*(address: var TAddress; hostName: cstring): cint{.
   importc: "enet_address_set_host", dynlib: Lib.}
-proc getHostIP*(address: var TAddress; hostName: cstring; nameLength: csize): cint{.
+proc getHostIP*(address: var TAddress; hostName: cstring; nameLength: csize_t): cint{.
   importc: "enet_address_get_host_ip", dynlib: Lib.}
-proc getHost*(address: var TAddress; hostName: cstring; nameLength: csize): cint{.
+proc getHost*(address: var TAddress; hostName: cstring; nameLength: csize_t): cint{.
   importc: "enet_address_get_host", dynlib: Lib.}
 
 ## Call the above two funcs but trim the result string
-proc getHostIP*(address: var TAddress; hostName: var string; nameLength: csize): cint{.inline.} =
+proc getHostIP*(address: var TAddress; hostName: var string; nameLength: csize_t): cint{.inline.} =
   hostName.setLen nameLength
   result = getHostIP(address, cstring(hostName), nameLength)
   if result == 0:
     hostName.setLen(len(cstring(hostName)))
-proc getHost*(address: var TAddress; hostName: var string; nameLength: csize): cint{.inline.} =
+proc getHost*(address: var TAddress; hostName: var string; nameLength: csize_t): cint{.inline.} =
   hostName.setLen nameLength
   result = getHost(address, cstring(hostName), nameLength)
   if result == 0:
     hostName.setLen(len(cstring(hostName)))
 
-proc createPacket*(data: pointer; len: csize; flag: TPacketFlag): PPacket{.
+proc createPacket*(data: pointer; len: csize_t; flag: TPacketFlag): PPacket{.
   importc: "enet_packet_create", dynlib: Lib.}
 proc destroy*(packet: PPacket){.
   importc: "enet_packet_destroy", dynlib: Lib.}
-proc resize*(packet: PPacket; dataLength: csize): cint{.
+proc resize*(packet: PPacket; dataLength: csize_t): cint{.
   importc: "enet_packet_resize", dynlib: Lib.}
 
-proc crc32*(buffers: ptr TEnetBuffer; bufferCount: csize): cuint{.
+proc crc32*(buffers: ptr TEnetBuffer; bufferCount: csize_t): cuint{.
   importc: "enet_crc32", dynlib: Lib.}
 
-proc createHost*(address: ptr TAddress; maxConnections, maxChannels: csize; downSpeed, upSpeed: cuint): PHost{.
+proc createHost*(address: ptr TAddress; maxConnections, maxChannels: csize_t; downSpeed, upSpeed: cuint): PHost{.
   importc: "enet_host_create", dynlib: Lib.}
-proc createHost*(address: var TAddress; maxConnections, maxChannels: csize; downSpeed, upSpeed: cuint): PHost{.
+proc createHost*(address: var TAddress; maxConnections, maxChannels: csize_t; downSpeed, upSpeed: cuint): PHost{.
   importc: "enet_host_create", dynlib: Lib.}
 proc destroy*(host: PHost){.
   importc: "enet_host_destroy", dynlib: Lib.}
-proc connect*(host: PHost; address: ptr TAddress; channelCount: csize; data: cuint): PPeer{.
+proc connect*(host: PHost; address: ptr TAddress; channelCount: csize_t; data: cuint): PPeer{.
   importc: "enet_host_connect", dynlib: Lib.}
-proc connect*(host: PHost; address: var TAddress; channelCount: csize; data: cuint): PPeer{.
+proc connect*(host: PHost; address: var TAddress; channelCount: csize_t; data: cuint): PPeer{.
   importc: "enet_host_connect", dynlib: Lib.}
 
 proc checkEvents*(host: PHost; event: var TEvent): cint{.
@@ -546,7 +546,7 @@ proc compress*(host: PHost; compressor: PCompressor){.
   importc: "enet_host_compress", dynlib: Lib.}
 proc compressWithRangeCoder*(host: PHost): cint{.
   importc: "enet_host_compress_with_range_coder", dynlib: Lib.}
-proc channelLimit*(host: PHost; channelLimit: csize){.
+proc channelLimit*(host: PHost; channelLimit: csize_t){.
   importc: "enet_host_channel_limit", dynlib: Lib.}
 proc bandwidthLimit*(host: PHost; incoming, outgoing: cuint){.
   importc: "enet_host_bandwidth_limit", dynlib: Lib.}
@@ -596,12 +596,12 @@ proc createRangeCoder*(): pointer{.
 proc rangeCoderDestroy*(context: pointer){.
   importc: "enet_range_coder_destroy", dynlib: Lib.}
 proc rangeCoderCompress*(context: pointer; inBuffers: PEnetBuffer; inLimit,
-               bufferCount: csize; outData: cstring; outLimit: csize): csize{.
+               bufferCount: csize_t; outData: cstring; outLimit: csize_t): csize_t{.
   importc: "enet_range_coder_compress", dynlib: Lib.}
-proc rangeCoderDecompress*(context: pointer; inData: cstring; inLimit: csize;
-                            outData: cstring; outLimit: csize): csize{.
+proc rangeCoderDecompress*(context: pointer; inData: cstring; inLimit: csize_t;
+                            outData: cstring; outLimit: csize_t): csize_t{.
   importc: "enet_range_coder_decompress", dynlib: Lib.}
-proc protocolCommandSize*(commandNumber: cuchar): csize{.
+proc protocolCommandSize*(commandNumber: cuchar): csize_t{.
   importc: "enet_protocol_command_size", dynlib: Lib.}
 
 {.pop.}
@@ -609,4 +609,3 @@ proc protocolCommandSize*(commandNumber: cuchar): csize{.
 from hashes import `!$`, `!&`, Hash, hash
 proc hash*(x: TAddress): Hash {.nimcall, noSideEffect.} =
   result = !$(hash(x.host.int32) !& hash(x.port.int16))
-

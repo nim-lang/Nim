@@ -2,7 +2,7 @@
 
 import os, json, sets, strformat
 
-const skip = toSet(["reDisabled", "reIgnored", "reSuccess", "reJoined"])
+const skip = toHashSet(["reDisabled", "reIgnored", "reSuccess", "reJoined"])
 
 when isMainModule:
   for fn in walkFiles("testresults/*.json"):

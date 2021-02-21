@@ -1,7 +1,7 @@
 discard """
   output: "3"
 """
-import StrUtils, Math
+import math
 
 proc FibonacciA(n: int): int64 =
   var fn = float64(n)

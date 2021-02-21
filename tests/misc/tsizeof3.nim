@@ -18,26 +18,6 @@ proc toByteArrayBE*[T: SomeInteger](num: T): ByteArrayBE[sizeof(T)]=
 let a = 12345.toByteArrayBE
 echo a[^2 .. ^1] # to make it work on both 32-bit and 64-bit
 
-
-#-----------------------------------------------------------------
-
-# bug #11792
-type
-  m256d {.importc: "__m256d", header: "immintrin.h".} = object
-
-  MyKind = enum
-    k1, k2, k3
-
-  MyTypeObj = object
-    kind: MyKind
-    x: int
-    amount: UncheckedArray[m256d]
-
-
-# The sizeof(MyTypeObj) is not equal to (sizeof(int) + sizeof(MyKind)) due to
-# alignment requirement of m256d, make sure Nim understands that
-doAssert(sizeof(MyTypeObj) > sizeof(int) + sizeof(MyKind))
-
 #---------------------------------------------------------------------
 
 type

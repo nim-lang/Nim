@@ -1,5 +1,5 @@
 discard """
-  output: "111"
+  output: "1.01.01.0"
 """
 # Test overloading of [] with multiple indices
 

@@ -20,7 +20,7 @@ proc `+!!`(p: pointer, size: int): pointer {.inline.} =
 
 const
   PageShift = when defined(cpu16): 8 else: 12 # \
-    # my tests showed no improvments for using larger page sizes.
+    # my tests showed no improvements for using larger page sizes.
   PageSize = 1 shl PageShift
 
 var p = osAllocPages(3 * PageSize)

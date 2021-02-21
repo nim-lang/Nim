@@ -40,7 +40,7 @@
 #         while translating this code. ;)
 #
 #         I want to thanks #fpc channel in freenode irc, for helping me, and to put up with my
-#         wierd questions ;)
+#         weird questions ;)
 #
 #         Thanks for mmc in #xlib on freenode irc And so for the channel itself for the helping me to
 #         understanding some of the problems I had converting this headers and pointing me to resources
@@ -62,7 +62,7 @@
 #        2004/10/03           - Joined xkbstr.pas into xkb.pas because of the circular calls problems.
 #                             - Added the history of xkbstr.pas above this addition.
 #
-#        2004/09/17           - Fixed a wrong convertion number of XkbPerKeyBitArraySize, insted
+#        2004/09/17           - Fixed a wrong convertion number of XkbPerKeyBitArraySize, instead
 #                               of float, it's now converted into integer (as it should have been).
 #
 #        2004/09/15 - 16      - Convertion from the c header of XKB.h.
