@@ -17,9 +17,7 @@ tasks:
     cd Nim
     if [ "${GITHUB_PR_NUMBER+1}" ]; then
       # this was a PR, so we need to checkout devel and try to merge into it
-      REVISION=$(git rev-parse HEAD)
-      git checkout devel
-      git merge "$REVISION"
+      git pull origin devel
     fi
     git clone --depth 1 -q https://github.com/nim-lang/csources.git
     gmake -C csources -j $(sysctl -n hw.ncpu)
