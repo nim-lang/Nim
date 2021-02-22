@@ -49,8 +49,8 @@ else:
   proc c_unsetenv(env: cstring): cint {.
     importc: "unsetenv", header: "<stdlib.h>".}
 
-  # Environment handling cannot be put into RTL, because the ``envPairs``
-  # iterator depends on ``environment``.
+  # Environment handling cannot be put into RTL, because the `envPairs`
+  # iterator depends on `environment`.
 
   var
     envComputed {.threadvar.}: bool

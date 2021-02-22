@@ -1,5 +1,5 @@
 # Include file that implements 'DirSep' and friends. Do not import this when
-# you also import ``os.nim``!
+# you also import `os.nim`!
 
 # Improved based on info in 'compiler/platform.nim'
 
@@ -88,7 +88,7 @@ const
 
   ExtSep* = '.'
     ## The character which separates the base filename from the extension;
-    ## for example, the `'.'` in ``os.nim``.
+    ## for example, the `'.'` in `os.nim`.
 
   #  MacOS paths
   #  ===========
