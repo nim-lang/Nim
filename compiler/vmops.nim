@@ -11,7 +11,8 @@
 #import vmdeps, vm
 from math import sqrt, ln, log10, log2, exp, round, arccos, arcsin,
   arctan, arctan2, cos, cosh, hypot, sinh, sin, tan, tanh, pow, trunc,
-  floor, ceil, `mod`
+  floor, ceil, `mod`, cbrt, arcsinh, arccosh, arctanh, erf, erfc, gamma,
+  lgamma
 
 from os import getEnv, existsEnv, dirExists, fileExists, putEnv, walkDir, getAppFilename
 from md5 import getMD5
@@ -147,6 +148,7 @@ proc registerAdditionalOps*(c: PCtx) =
     setResult a, c.config.projectPath.string
 
   wrap1f_math(sqrt)
+  wrap1f_math(cbrt)
   wrap1f_math(ln)
   wrap1f_math(log10)
   wrap1f_math(log2)
@@ -155,6 +157,9 @@ proc registerAdditionalOps*(c: PCtx) =
   wrap1f_math(arccos)
   wrap1f_math(arcsin)
   wrap1f_math(arctan)
+  wrap1f_math(arcsinh)
+  wrap1f_math(arccosh)
+  wrap1f_math(arctanh)
   wrap2f_math(arctan2)
   wrap1f_math(cos)
   wrap1f_math(cosh)
@@ -167,6 +172,10 @@ proc registerAdditionalOps*(c: PCtx) =
   wrap1f_math(trunc)
   wrap1f_math(floor)
   wrap1f_math(ceil)
+  wrap1f_math(erf)
+  wrap1f_math(erfc)
+  wrap1f_math(gamma)
+  wrap1f_math(lgamma)
 
   wrap1s(getMD5, md5op)
 
