@@ -185,8 +185,6 @@ template main =
         doAssert l3.toSeq == [4, 5, 6]
         doAssert l2.toSeq == [1, 2, 3]
         l3.prepend l0
-        echo l0.toSeq
-        echo l3.toSeq
         when nimvm:
           discard # TODO fixme
         else:
