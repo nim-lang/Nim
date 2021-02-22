@@ -231,7 +231,7 @@ proc secureHashFile*(filename: string): SecureHash =
   var state = newSha1State()
   var buffer = newString(BufferLength)
   while true:
-    let length = readChars(f, buffer, 0, BufferLength)
+    let length = readChars(f, buffer)
     if length == 0:
       break
     buffer.setLen(length)
