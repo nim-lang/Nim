@@ -326,7 +326,6 @@ func distribute*[T](s: seq[T], num: Positive, spread = true): seq[seq[T]] =
   if num < 2:
     result = @[s]
     return
-  let num = int(num) # XXX probably only needed because of .. bug
 
   # Create the result and calculate the stride size and the remainder if any.
   result = newSeq[seq[T]](num)
