@@ -128,7 +128,7 @@ with other backends. see #9125. Use `-d:nimLegacyJsRound` for previous behavior.
 
 - Deprecated `any`. See https://github.com/nim-lang/RFCs/issues/281
 
-- Added `std/sysrand` module to get random numbers from a secure source 
+- Added `std/sysrand` module to get random numbers from a secure source
 provided by the operating system.
 
 - Added optional `options` argument to `copyFile`, `copyFileToDir`, and
@@ -168,6 +168,9 @@ provided by the operating system.
   This lets the OS perform its default actions, which might include core
   dumping (on select signals) and notifying the parent process about the cause
   of termination.
+
+
+- Changed `os.sleep` argument from `int` to `Natural`, because negative values make no sense.
 
 
 ## Language changes

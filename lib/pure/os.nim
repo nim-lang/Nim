@@ -961,7 +961,7 @@ proc getTempDir*(): string {.rtl, extern: "nos$1",
   ##
   ## You can override this implementation
   ## by adding `-d:tempDir=mytempname` to your compiler invocation.
-  ## 
+  ##
   ## **Note:** This proc does not check whether the returned path exists.
   ##
   ## See also:
@@ -1785,7 +1785,7 @@ proc copyFile*(source, dest: string, options = {cfSymlinkFollow}) {.rtl,
   ##
   ## If `dest` already exists, the file attributes
   ## will be preserved and the content overwritten.
-  ## 
+  ##
   ## On OSX, `copyfile` C api will be used (available since OSX 10.5) unless
   ## `-d:nimLegacyCopyFile` is used.
   ##
@@ -2797,7 +2797,7 @@ when defined(nimdoc):
     ##
     ## `i` should be in the range `1..paramCount()`, the `IndexDefect`
     ## exception will be raised for invalid values. Instead of iterating
-    ## over `paramCount() <#paramCount>`_ with this proc you can 
+    ## over `paramCount() <#paramCount>`_ with this proc you can
     ## call the convenience `commandLineParams() <#commandLineParams>`_.
     ##
     ## Similarly to `argv`:idx: in C,
@@ -3140,7 +3140,7 @@ proc getAppDir*(): string {.rtl, extern: "nos$1", tags: [ReadIOEffect], noWeirdT
   ## * `getAppFilename proc <#getAppFilename>`_
   result = splitFile(getAppFilename()).dir
 
-proc sleep*(milsecs: int) {.rtl, extern: "nos$1", tags: [TimeEffect], noWeirdTarget.} =
+proc sleep*(milsecs: Natural) {.rtl, extern: "nos$1", tags: [TimeEffect], noWeirdTarget.} =
   ## Sleeps `milsecs` milliseconds.
   when defined(windows):
     winlean.sleep(int32(milsecs))
