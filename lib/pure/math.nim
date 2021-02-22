@@ -1185,6 +1185,22 @@ when isMainModule:
     doAssert(classify(trunc(f_nan.float32)) == fcNan)
     doAssert(classify(trunc(0.0'f32)) == fcZero)
 
+  block:
+    when not defined(js):
+      # check for no side effect annotation
+      proc mySqrt(num: float): float {.noSideEffect.} =
+        # xxx unused
+        sqrt(num)
+
+      # check gamma function
+      doAssert gamma(5.0) == 24.0 # 4!
+      doAssert lgamma(1.0) == 0.0 # ln(1.0) == 0.0
+      doAssert erf(6.0) > erf(5.0)
+      doAssert erfc(6.0) < erfc(5.0)
+
+  when not defined(js) and not defined(windows): # xxx pending bug #17017
+    doAssert gamma(-1.0).isNaN
+
   block: # sgn() tests
     assert sgn(1'i8) == 1
     assert sgn(1'i16) == 1
