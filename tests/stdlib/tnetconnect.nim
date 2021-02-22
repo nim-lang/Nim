@@ -1,3 +1,8 @@
+discard """
+  cmd: "nim c -d:ssl $file"
+  exitcode: 0
+"""
+
 import std/net
 
 # Issue 15215 - https://github.com/nim-lang/Nim/issues/15215
@@ -9,6 +14,8 @@ proc test() =
   wrapSocket(ctx, socket)
 
   connect(socket, "www.nim-lang.org", Port(443), 5000)
+
+  send(socket, "GET / HTTP/1.0\nHost: www.nim-lang.org\nConnection: close\n\n")
 
   close(socket)
 
