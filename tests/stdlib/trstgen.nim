@@ -298,6 +298,11 @@ Some chapter
     expect(EParseError):
       let output8 = rstToHtml(input8, {roSupportMarkdown}, defaultConfig())
 
+  test "RST inline text":
+    let input1 = "GC_step"
+    let output1 = input1.toHtml
+    doAssert output1 == "GC_step"
+
   test "RST links":
     let input1 = """
 Want to learn about `my favorite programming language`_?
