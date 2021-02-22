@@ -14,7 +14,7 @@
 ## * `std/packedsets <packedsets.html>`_
 ## * `std/sets <sets.html>`_
 
-import std/typetraits
+import std/[typetraits, macros]
 
 #[
   type SetElement* = char|byte|bool|int16|uint16|enum|uint8|int8
@@ -35,3 +35,29 @@ template toSet*(iter: untyped): untyped =
   for x in iter:
     incl(result, x)
   result
+
+macro enmRange(enm: typed): untyped = result = newNimNode(nnkCurly).add(enm.getType[1][1..^1])
+
+# proc fullSet*(T: typedesc): set[T] {.inline.} = # xxx would give: Error: ordinal type expected
+proc fullSet*[T](U: typedesc[T]): set[T] {.inline.} =
+  ## Returns a set containing all elements in `U`.
+  runnableExamples:
+    assert bool.fullSet == {true, false}
+    type A = range[1..3]
+    assert A.fullSet == {1.A, 2, 3}
+    assert int8.fullSet.len == 256
+  when T is Ordinal:
+    {T.low..T.high}
+  else: # Hole filled enum
+    enmRange(T)
+
+proc complement*[T](s: set[T]): set[T] {.inline.} =
+  ## Returns the set complement of `a`.
+  runnableExamples:
+    type Colors = enum
+      red, green = 3, blue
+    assert complement({red, blue}) == {green}
+    assert complement({red, green, blue}).card == 0
+    assert complement({range[0..10](0), 1, 2, 3}) == {range[0..10](4), 5, 6, 7, 8, 9, 10}
+    assert complement({'0'..'9'}) == {0.char..255.char} - {'0'..'9'}
+  fullSet(T) - s

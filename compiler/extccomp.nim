@@ -12,9 +12,9 @@
 # from a lineinfos file, to provide generalized procedures to compile
 # nim files.
 
-import
-  ropes, os, strutils, osproc, platform, condsyms, options, msgs,
-  lineinfos, std / sha1, streams, pathutils, sequtils, times, strtabs
+import ropes, platform, condsyms, options, msgs, lineinfos, pathutils
+
+import std/[os, strutils, osproc, sha1, streams, sequtils, times, strtabs, json]
 
 type
   TInfoCCProp* = enum         # properties of the C compiler:
@@ -124,8 +124,8 @@ compiler llvmGcc:
   result.name = "llvm_gcc"
   result.compilerExe = "llvm-gcc"
   result.cppCompiler = "llvm-g++"
-  when defined(macosx):
-    # OS X has no 'llvm-ar' tool:
+  when defined(macosx) or defined(openbsd):
+    # `llvm-ar` not available
     result.buildLib = "ar rcs $libfile $objfiles"
   else:
     result.buildLib = "llvm-ar rcs $libfile $objfiles"
@@ -571,10 +571,10 @@ proc getCompileCFileCmd*(conf: ConfigRef; cfile: Cfile,
 
   includeCmd.add(join([CC[c].includeCmd, quoteShell(conf.projectPath.string)]))
 
-  var cf = if noAbsolutePaths(conf): AbsoluteFile extractFilename(cfile.cname.string)
+  let cf = if noAbsolutePaths(conf): AbsoluteFile extractFilename(cfile.cname.string)
            else: cfile.cname
 
-  var objfile =
+  let objfile =
     if cfile.obj.isEmpty:
       if CfileFlag.External notin cfile.flags or noAbsolutePaths(conf):
         toObjFile(conf, cf).string
@@ -629,8 +629,8 @@ proc footprint(conf: ConfigRef; cfile: Cfile): SecureHash =
 proc externalFileChanged(conf: ConfigRef; cfile: Cfile): bool =
   if conf.backend == backendJs: return false # pre-existing behavior, but not sure it's good
 
-  var hashFile = toGeneratedFile(conf, conf.withPackageName(cfile.cname), "sha1")
-  var currentHash = footprint(conf, cfile)
+  let hashFile = toGeneratedFile(conf, conf.withPackageName(cfile.cname), "sha1")
+  let currentHash = footprint(conf, cfile)
   var f: File
   if open(f, hashFile.string, fmRead):
     let oldHash = parseSecureHash(f.readLine())
@@ -662,6 +662,7 @@ proc addExternalFileToCompile*(conf: ConfigRef; filename: AbsoluteFile) =
 proc getLinkCmd(conf: ConfigRef; output: AbsoluteFile,
                 objfiles: string, isDllBuild: bool): string =
   if optGenStaticLib in conf.globalOptions:
+    removeFile output # fixes: bug #16947
     result = CC[conf.cCompiler].buildLib % ["libfile", quoteShell(output),
                                             "objfiles", objfiles]
   else:
@@ -902,8 +903,8 @@ proc callCCompiler*(conf: ConfigRef) =
       # only if not cached - copy the resulting main file from the nimcache folder to its originally intended destination
       if CfileFlag.Cached notin conf.toCompile[mainFileIdx].flags:
         let mainObjFile = getObjFilePath(conf, conf.toCompile[mainFileIdx])
-        var src = conf.hcrLinkTargetName(mainObjFile, true)
-        var dst = conf.prepareToWriteOutput
+        let src = conf.hcrLinkTargetName(mainObjFile, true)
+        let dst = conf.prepareToWriteOutput
         copyFileWithPermissions(src.string, dst.string)
     else:
       for x in conf.toCompile:
@@ -932,20 +933,15 @@ proc callCCompiler*(conf: ConfigRef) =
     script.add("\n")
     generateScript(conf, script)
 
-#from json import escapeJson
-import json, std / sha1
 
 template hashNimExe(): string = $secureHashFile(os.getAppFilename())
 
 proc writeJsonBuildInstructions*(conf: ConfigRef) =
-  template lit(x: untyped) = f.write x
-  template str(x: untyped) =
-    when compiles(escapeJson(x, buf)):
-      buf.setLen 0
-      escapeJson(x, buf)
-      f.write buf
-    else:
-      f.write escapeJson(x)
+  template lit(x: string) = f.write x
+  template str(x: string) =
+    buf.setLen 0
+    escapeJson(x, buf)
+    f.write buf
 
   proc cfiles(conf: ConfigRef; f: File; buf: var string; clist: CfileList, isExternal: bool) =
     var comma = false
@@ -981,7 +977,7 @@ proc writeJsonBuildInstructions*(conf: ConfigRef) =
       pastStart = true
     lit "\L"
 
-  proc depfiles(conf: ConfigRef; f: File) =
+  proc depfiles(conf: ConfigRef; f: File; buf: var string) =
     var i = 0
     for it in conf.m.fileInfos:
       let path = it.fullPath.string
@@ -1033,7 +1029,7 @@ proc writeJsonBuildInstructions*(conf: ConfigRef) =
       lit ",\L\"cmdline\": "
       str conf.commandLine
       lit ",\L\"depfiles\":[\L"
-      depfiles(conf, f)
+      depfiles(conf, f, buf)
       lit "],\L\"nimexe\": \L"
       str hashNimExe()
       lit "\L"

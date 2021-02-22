@@ -41,8 +41,10 @@ type
     rnTable, rnGridTable, rnMarkdownTable, rnTableRow, rnTableHeaderCell, rnTableDataCell,
     rnLabel,                  # used for footnotes and other things
     rnFootnote,               # a footnote
-    rnCitation,               # similar to footnote
-    rnStandaloneHyperlink, rnHyperlink, rnRef, rnInternalRef,
+    rnCitation,               # similar to footnote, so use rnFootnote instead
+    rnFootnoteGroup,          # footnote group - exists for a purely stylistic
+                              # reason: to display a few footnotes as 1 block
+    rnStandaloneHyperlink, rnHyperlink, rnRef, rnInternalRef, rnFootnoteRef,
     rnDirective,              # a general directive
     rnDirArg,                 # a directive argument (for some directives).
                               # here are directives that are not rnDirective:
@@ -65,6 +67,7 @@ type
     rnInlineTarget,           # "_`target`"
     rnSubstitutionReferences, # "|"
     rnSmiley,                 # some smiley
+    rnDefaultRole,            # .. default-role:: code
     rnLeaf                    # a leaf; the node's text field contains the
                               # leaf val
 
@@ -77,6 +80,8 @@ type
                               ## the document or the section; and rnEnumList
                               ## and rnAdmonition; and rnLineBlockItem
     level*: int               ## valid for headlines/overlines only
+    order*: int               ## footnote order (for auto-symbol footnotes and
+                              ## auto-numbered ones without a label)
     anchor*: string           ## anchor, internal link target
                               ## (aka HTML id tag, aka Latex label/hypertarget)
     sons*: RstNodeSeq        ## the node's sons
@@ -328,7 +333,7 @@ proc renderRstToJson*(node: PRstNode): string =
 proc renderRstToStr*(node: PRstNode, indent=0): string =
   ## Writes the parsed RST `node` into a compact string
   ## representation in the format (one line per every sub-node):
-  ## ``indent - kind - text - level (if non-zero)``
+  ## ``indent - kind - text - level - order - anchor (if non-zero)``
   ## (suitable for debugging of RST parsing).
   if node == nil:
     result.add " ".repeat(indent) & "[nil]\n"
@@ -336,6 +341,7 @@ proc renderRstToStr*(node: PRstNode, indent=0): string =
   result.add " ".repeat(indent) & $node.kind &
       (if node.text == "":   "" else: "\t'" & node.text & "'") &
       (if node.level == 0:   "" else: "\tlevel=" & $node.level) &
+      (if node.order == 0:   "" else: "\torder=" & $node.order) &
       (if node.anchor == "": "" else: "\tanchor='" & node.anchor & "'") & "\n"
   for son in node.sons:
     result.add renderRstToStr(son, indent=indent+2)

@@ -17,3 +17,9 @@ switch("define", "nimLegacyTypeMismatch")
 
 hint("Processing", off)
   # dots can cause annoyances; instead, a single test can test `hintProcessing`
+
+# uncomment to enable all flaky tests disabled by this flag
+# (works through process calls, e.g. tests that invoke nim).
+# switch("define", "nimTestsEnableFlaky")
+
+# switch("hint", "ConvFromXtoItselfNotNeeded")

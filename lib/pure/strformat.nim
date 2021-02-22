@@ -9,163 +9,148 @@
 
 ##[
 String `interpolation`:idx: / `format`:idx: inspired by
-Python's ``f``-strings.
+Python's f-strings.
 
-``fmt`` vs. ``&``
-=================
+# `fmt` vs. `&`
 
-You can use either ``fmt`` or the unary ``&`` operator for formatting. The
+You can use either `fmt` or the unary `&` operator for formatting. The
 difference between them is subtle but important.
 
-The ``fmt"{expr}"`` syntax is more aesthetically pleasing, but it hides a small
+The `fmt"{expr}"` syntax is more aesthetically pleasing, but it hides a small
 gotcha. The string is a
 `generalized raw string literal <manual.html#lexical-analysis-generalized-raw-string-literals>`_.
 This has some surprising effects:
+]##
 
-.. code-block:: nim
+runnableExamples:
+  let msg = "hello"
+  assert fmt"{msg}\n" == "hello\\n"
 
-    import strformat
-    let msg = "hello"
-    doAssert fmt"{msg}\n" == "hello\\n"
-
-Because the literal is a raw string literal, the ``\n`` is not interpreted as
+##[
+Because the literal is a raw string literal, the `\n` is not interpreted as
 an escape sequence.
 
-There are multiple ways to get around this, including the use of the ``&``
-operator:
+There are multiple ways to get around this, including the use of the `&` operator:
+]##
 
-.. code-block:: nim
+runnableExamples:
+  let msg = "hello"
 
-    import strformat
-    let msg = "hello"
+  assert &"{msg}\n" == "hello\n"
 
-    doAssert &"{msg}\n" == "hello\n"
+  assert fmt"{msg}{'\n'}" == "hello\n"
+  assert fmt("{msg}\n") == "hello\n"
+  assert "{msg}\n".fmt == "hello\n"
 
-    doAssert fmt"{msg}{'\n'}" == "hello\n"
-    doAssert fmt("{msg}\n") == "hello\n"
-    doAssert "{msg}\n".fmt == "hello\n"
-
+##[
 The choice of style is up to you.
 
-Formatting strings
-==================
+# Formatting strings
+]##
 
-.. code-block:: nim
+runnableExamples:
+  assert &"""{"abc":>4}""" == " abc"
+  assert &"""{"abc":<4}""" == "abc "
 
-    import strformat
+##[
+# Formatting floats
+]##
 
-    doAssert &"""{"abc":>4}""" == " abc"
-    doAssert &"""{"abc":<4}""" == "abc "
+runnableExamples:
+  assert fmt"{-12345:08}" == "-0012345"
+  assert fmt"{-1:3}" == " -1"
+  assert fmt"{-1:03}" == "-01"
+  assert fmt"{16:#X}" == "0x10"
 
-Formatting floats
-=================
+  assert fmt"{123.456}" == "123.456"
+  assert fmt"{123.456:>9.3f}" == "  123.456"
+  assert fmt"{123.456:9.3f}" == "  123.456"
+  assert fmt"{123.456:9.4f}" == " 123.4560"
+  assert fmt"{123.456:>9.0f}" == "     123."
+  assert fmt"{123.456:<9.4f}" == "123.4560 "
 
-.. code-block:: nim
+  assert fmt"{123.456:e}" == "1.234560e+02"
+  assert fmt"{123.456:>13e}" == " 1.234560e+02"
+  assert fmt"{123.456:13e}" == " 1.234560e+02"
 
-    import strformat
-    doAssert fmt"{-12345:08}" == "-0012345"
-    doAssert fmt"{-1:3}" == " -1"
-    doAssert fmt"{-1:03}" == "-01"
-    doAssert fmt"{16:#X}" == "0x10"
+##[
+# Debugging strings
 
-    doAssert fmt"{123.456}" == "123.456"
-    doAssert fmt"{123.456:>9.3f}" == "  123.456"
-    doAssert fmt"{123.456:9.3f}" == "  123.456"
-    doAssert fmt"{123.456:9.4f}" == " 123.4560"
-    doAssert fmt"{123.456:>9.0f}" == "     123."
-    doAssert fmt"{123.456:<9.4f}" == "123.4560 "
-
-    doAssert fmt"{123.456:e}" == "1.234560e+02"
-    doAssert fmt"{123.456:>13e}" == " 1.234560e+02"
-    doAssert fmt"{123.456:13e}" == " 1.234560e+02"
-
-
-Debugging strings
-=================
-
-``fmt"{expr=}"`` expands to ``fmt"expr={expr}"`` namely the text of the expression, 
+`fmt"{expr=}"` expands to `fmt"expr={expr}"` namely the text of the expression,
 an equal sign and the results of evaluated expression.
+]##
 
-.. code-block:: nim
+runnableExamples:
+  assert fmt"{123.456=}" == "123.456=123.456"
+  assert fmt"{123.456=:>9.3f}" == "123.456=  123.456"
 
-    import strformat
-    doAssert fmt"{123.456=}" == "123.456=123.456"
-    doAssert fmt"{123.456=:>9.3f}" == "123.456=  123.456"
+  let x = "hello"
+  assert fmt"{x=}" == "x=hello"
+  assert fmt"{x =}" == "x =hello"
 
-    let x = "hello"
-    doAssert fmt"{x=}" == "x=hello" 
-    doAssert fmt"{x =}" == "x =hello"
+  let y = 3.1415926
+  assert fmt"{y=:.2f}" == fmt"y={y:.2f}"
+  assert fmt"{y=}" == fmt"y={y}"
+  assert fmt"{y = : <8}" == fmt"y = 3.14159 "
 
-    let y = 3.1415926
-    doAssert fmt"{y=:.2f}" == fmt"y={y:.2f}"
-    doAssert fmt"{y=}" == fmt"y={y}"
-    doAssert fmt"{y = : <8}" == fmt"y = 3.14159 "
+  proc hello(a: string, b: float): int = 12
+  assert fmt"{hello(x, y) = }" == "hello(x, y) = 12"
+  assert fmt"{x.hello(y) = }" == "x.hello(y) = 12"
+  assert fmt"{hello x, y = }" == "hello x, y = 12"
 
-    proc hello(a: string, b: float): int = 12
-    let a = "hello"
-    let b = 3.1415926
-    doAssert fmt"{hello(x, y) = }" == "hello(x, y) = 12"
-    doAssert fmt"{x.hello(y) = }" == "x.hello(y) = 12"
-    doAssert fmt"{hello x, y = }" == "hello x, y = 12"
-
-
+##[
 Note that it is space sensitive:
+]##
 
-.. code-block:: nim
+runnableExamples:
+  let x = "12"
+  assert fmt"{x=}" == "x=12"
+  assert fmt"{x =:}" == "x =12"
+  assert fmt"{x =}" == "x =12"
+  assert fmt"{x= :}" == "x= 12"
+  assert fmt"{x= }" == "x= 12"
+  assert fmt"{x = :}" == "x = 12"
+  assert fmt"{x = }" == "x = 12"
+  assert fmt"{x   =  :}" == "x   =  12"
+  assert fmt"{x   =  }" == "x   =  12"
 
-    import strformat
-    let x = "12"
-    doAssert fmt"{x=}" == "x=12"
-    doAssert fmt"{x =:}" == "x =12"
-    doAssert fmt"{x =}" == "x =12"
-    doAssert fmt"{x= :}" == "x= 12"
-    doAssert fmt"{x= }" == "x= 12"
-    doAssert fmt"{x = :}" == "x = 12"
-    doAssert fmt"{x = }" == "x = 12"
-    doAssert fmt"{x   =  :}" == "x   =  12"
-    doAssert fmt"{x   =  }" == "x   =  12"
+##[
+# Implementation details
 
-
-Implementation details
-======================
-
-An expression like ``&"{key} is {value:arg} {{z}}"`` is transformed into:
+An expression like `&"{key} is {value:arg} {{z}}"` is transformed into:
 
 .. code-block:: nim
   var temp = newStringOfCap(educatedCapGuess)
-  temp.formatValue key, ""
-  temp.add " is "
-  temp.formatValue value, arg
-  temp.add " {z}"
+  temp.formatValue(key, "")
+  temp.add(" is ")
+  temp.formatValue(value, arg)
+  temp.add(" {z}")
   temp
 
 Parts of the string that are enclosed in the curly braces are interpreted
-as Nim code, to escape an ``{`` or ``}`` double it.
+as Nim code, to escape a `{` or `}`, double it.
 
-``&`` delegates most of the work to an open overloaded set
-of ``formatValue`` procs. The required signature for a type ``T`` that supports
-formatting is usually ``proc formatValue(result: var string; x: T; specifier: string)``.
+`&` delegates most of the work to an open overloaded set
+of `formatValue` procs. The required signature for a type `T` that supports
+formatting is usually `proc formatValue(result: var string; x: T; specifier: string)`.
 
 The subexpression after the colon
-(``arg`` in ``&"{key} is {value:arg} {{z}}"``) is optional. It will be passed as
-the last argument to ``formatValue``. When the colon with the subexpression it is
+(`arg` in `&"{key} is {value:arg} {{z}}"`) is optional. It will be passed as
+the last argument to `formatValue`. When the colon with the subexpression it is
 left out, an empty string will be taken instead.
 
 For strings and numeric types the optional argument is a so-called
 "standard format specifier".
 
-
-Standard format specifier for strings, integers and floats
-==========================================================
-
+# Standard format specifiers for strings, integers and floats
 
 The general form of a standard format specifier is::
 
   [[fill]align][sign][#][0][minimumwidth][.precision][type]
 
-The square brackets ``[]`` indicate an optional element.
+The square brackets `[]` indicate an optional element.
 
-The optional align flag can be one of the following:
+The optional 'align' flag can be one of the following:
 
 '<'
     Forces the field to be left-aligned within the available
@@ -191,17 +176,17 @@ The 'sign' option is only valid for numeric types, and can be one of the followi
 =================        ====================================================
   Sign                   Meaning
 =================        ====================================================
-``+``                    Indicates that a sign should be used for both
+`+`                      Indicates that a sign should be used for both
                          positive as well as negative numbers.
-``-``                    Indicates that a sign should be used only for
+`-`                      Indicates that a sign should be used only for
                          negative numbers (this is the default behavior).
 (space)                  Indicates that a leading space should be used on
                          positive numbers.
 =================        ====================================================
 
 If the '#' character is present, integers use the 'alternate form' for formatting.
-This means that binary, octal, and hexadecimal output will be prefixed
-with '0b', '0o', and '0x', respectively.
+This means that binary, octal and hexadecimal output will be prefixed
+with '0b', '0o' and '0x', respectively.
 
 'width' is a decimal integer defining the minimum field width. If not specified,
 then the field width will be determined by the content.
@@ -218,48 +203,44 @@ Finally, the 'type' determines how the data should be presented.
 
 The available integer presentation types are:
 
-
 =================        ====================================================
   Type                   Result
 =================        ====================================================
-``b``                    Binary. Outputs the number in base 2.
-``d``                    Decimal Integer. Outputs the number in base 10.
-``o``                    Octal format. Outputs the number in base 8.
-``x``                    Hex format. Outputs the number in base 16, using
+`b`                      Binary. Outputs the number in base 2.
+`d`                      Decimal Integer. Outputs the number in base 10.
+`o`                      Octal format. Outputs the number in base 8.
+`x`                      Hex format. Outputs the number in base 16, using
                          lower-case letters for the digits above 9.
-``X``                    Hex format. Outputs the number in base 16, using
+`X`                      Hex format. Outputs the number in base 16, using
                          uppercase letters for the digits above 9.
-(None)                   the same as 'd'
+(None)                   The same as 'd'.
 =================        ====================================================
-
 
 The available floating point presentation types are:
 
 =================        ====================================================
   Type                   Result
 =================        ====================================================
-``e``                    Exponent notation. Prints the number in scientific
+`e`                      Exponent notation. Prints the number in scientific
                          notation using the letter 'e' to indicate the
                          exponent.
-``E``                    Exponent notation. Same as 'e' except it converts
+`E`                      Exponent notation. Same as 'e' except it converts
                          the number to uppercase.
-``f``                    Fixed point. Displays the number as a fixed-point
+`f`                      Fixed point. Displays the number as a fixed-point
                          number.
-``F``                    Fixed point. Same as 'f' except it converts the
+`F`                      Fixed point. Same as 'f' except it converts the
                          number to uppercase.
-``g``                    General format. This prints the number as a
+`g`                      General format. This prints the number as a
                          fixed-point number, unless the number is too
                          large, in which case it switches to 'e'
                          exponent notation.
-``G``                    General format. Same as 'g' except switches to 'E'
+`G`                      General format. Same as 'g' except it switches to 'E'
                          if the number gets to large.
-(None)                   similar to 'g', except that it prints at least one
+(None)                   Similar to 'g', except that it prints at least one
                          digit after the decimal point.
 =================        ====================================================
 
-
-Limitations
-===========
+# Limitations
 
 Because of the well defined order how templates and macros are
 expanded, strformat cannot expand template arguments:
@@ -272,44 +253,40 @@ expanded, strformat cannot expand template arguments:
   let x = "abc"
   myTemplate(x)
 
-First the template ``myTemplate`` is expanded, where every identifier
-``arg`` is substituted with its argument. The ``arg`` inside the
+First the template `myTemplate` is expanded, where every identifier
+`arg` is substituted with its argument. The `arg` inside the
 format string is not seen by this process, because it is part of a
 quoted string literal. It is not an identifier yet. Then the strformat
-macro creates the ``arg`` identifier from the string literal. An
+macro creates the `arg` identifier from the string literal, an
 identifier that cannot be resolved anymore.
 
 The workaround for this is to bind the template argument to a new local variable.
 
 .. code-block:: nim
-
   template myTemplate(arg: untyped): untyped =
     block:
       let arg1 {.inject.} = arg
       echo "arg is: ", arg1
       echo &"--- {arg1} ---"
 
-The use of ``{.inject.}`` here is necessary again because of template
+The use of `{.inject.}` here is necessary again because of template
 expansion order and hygienic templates. But since we generally want to
-keep the hygienicness of ``myTemplate``, and we do not want ``arg1``
-to be injected into the context where ``myTemplate`` is expanded,
-everything is wrapped in a ``block``.
+keep the hygiene of `myTemplate`, and we do not want `arg1`
+to be injected into the context where `myTemplate` is expanded,
+everything is wrapped in a `block`.
 
+# Future directions
 
-Future directions
-=================
-
-A curly expression with commas in it like ``{x, argA, argB}`` could be
-transformed to ``formatValue(result, x, argA, argB)`` in order to support
+A curly expression with commas in it like `{x, argA, argB}` could be
+transformed to `formatValue(result, x, argA, argB)` in order to support
 formatters that do not need to parse a custom language within a custom
-language but instead prefer to use Nim's existing syntax. This also
-helps in readability since there is only so much you can cram into
+language but instead prefer to use Nim's existing syntax. This would also
+help with readability, since there is only so much you can cram into
 single letter DSLs.
-
 ]##
 
-import macros, parseutils, unicode
-import strutils except format
+import std/[macros, parseutils, unicode]
+import std/strutils except format
 
 proc mkDigit(v: int, typ: char): string {.inline.} =
   assert(v < 26)
@@ -318,10 +295,9 @@ proc mkDigit(v: int, typ: char): string {.inline.} =
   else:
     result = $chr(ord(if typ == 'x': 'a' else: 'A') + v - 10)
 
-proc alignString*(s: string, minimumWidth: int; align = '\0';
-    fill = ' '): string =
-  ## Aligns ``s`` using ``fill`` char.
-  ## This is only of interest if you want to write a custom ``format`` proc that
+proc alignString*(s: string, minimumWidth: int; align = '\0'; fill = ' '): string =
+  ## Aligns `s` using the `fill` char.
+  ## This is only of interest if you want to write a custom `format` proc that
   ## should support the standard format specifiers.
   if minimumWidth == 0:
     result = s
@@ -343,28 +319,30 @@ type
     fill*, align*: char            ## Desired fill and alignment.
     sign*: char                    ## Desired sign.
     alternateForm*: bool           ## Whether to prefix binary, octal and hex numbers
-                                   ## with ``0b``, ``0o``, ``0x``.
+                                   ## with `0b`, `0o`, `0x`.
     padWithZero*: bool             ## Whether to pad with zeros rather than spaces.
     minimumWidth*, precision*: int ## Desired minimum width and precision.
     typ*: char                     ## Type like 'f', 'g' or 'd'.
     endPosition*: int              ## End position in the format specifier after
-                                   ## ``parseStandardFormatSpecifier`` returned.
+                                   ## `parseStandardFormatSpecifier` returned.
 
-proc formatInt(n: SomeNumber; radix: int;
-    spec: StandardFormatSpecifier): string =
-  ## Converts ``n`` to string. If ``n`` is `SomeFloat`, it casts to `int64`.
-  ## Conversion is done using ``radix``. If result's length is lesser than
-  ## ``minimumWidth``, it aligns result to the right or left (depending on ``a``)
-  ## with ``fill`` char.
+proc formatInt(n: SomeNumber; radix: int; spec: StandardFormatSpecifier): string =
+  ## Converts `n` to a string. If `n` is `SomeFloat`, it casts to `int64`.
+  ## Conversion is done using `radix`. If result's length is less than
+  ## `minimumWidth`, it aligns result to the right or left (depending on `a`)
+  ## with the `fill` char.
   when n is SomeUnsignedInt:
     var v = n.uint64
     let negative = false
   else:
-    var v = n.int64
-    let negative = v.int64 < 0
-    if negative:
-      # FIXME: overflow error for low(int64)
-      v = v * -1
+    let n = n.int64
+    let negative = n < 0
+    var v =
+      if negative:
+        # `uint64(-n)`, but accounts for `n == low(int64)`
+        uint64(not n) + 1
+      else:
+        uint64(n)
 
   var xx = ""
   if spec.alternateForm:
@@ -379,9 +357,9 @@ proc formatInt(n: SomeNumber; radix: int;
     result = "0"
   else:
     result = ""
-    while v > type(v)(0):
-      let d = v mod type(v)(radix)
-      v = v div type(v)(radix)
+    while v > typeof(v)(0):
+      let d = v mod typeof(v)(radix)
+      v = v div typeof(v)(radix)
       result.add(mkDigit(d.int, spec.typ))
     for idx in 0..<(result.len div 2):
       swap result[idx], result[result.len - idx - 1]
@@ -417,9 +395,9 @@ proc parseStandardFormatSpecifier*(s: string; start = 0;
   ##
   ##   [[fill]align][sign][#][0][minimumwidth][.precision][type]
   ##
-  ## This is only of interest if you want to write a custom ``format`` proc that
-  ## should support the standard format specifiers. If ``ignoreUnknownSuffix`` is true,
-  ## an unknown suffix after the ``type`` field is not an error.
+  ## This is only of interest if you want to write a custom `format` proc that
+  ## should support the standard format specifiers. If `ignoreUnknownSuffix` is true,
+  ## an unknown suffix after the `type` field is not an error.
   const alignChars = {'<', '>', '^'}
   result.fill = ' '
   result.align = '\0'
@@ -441,7 +419,7 @@ proc parseStandardFormatSpecifier*(s: string; start = 0;
     result.alternateForm = true
     inc i
 
-  if i+1 < s.len and s[i] == '0' and s[i+1] in {'0'..'9'}:
+  if i + 1 < s.len and s[i] == '0' and s[i+1] in {'0'..'9'}:
     result.padWithZero = true
     inc i
 
@@ -463,10 +441,10 @@ proc parseStandardFormatSpecifier*(s: string; start = 0;
       "invalid format string, cannot parse: " & s[i..^1])
 
 proc formatValue*[T: SomeInteger](result: var string; value: T;
-    specifier: string) =
-  ## Standard format implementation for ``SomeInteger``. It makes little
+                                  specifier: string) =
+  ## Standard format implementation for `SomeInteger`. It makes little
   ## sense to call this directly, but it is required to exist
-  ## by the ``&`` macro.
+  ## by the `&` macro.
   if specifier.len == 0:
     result.add $value
     return
@@ -484,9 +462,9 @@ proc formatValue*[T: SomeInteger](result: var string; value: T;
   result.add formatInt(value, radix, spec)
 
 proc formatValue*(result: var string; value: SomeFloat; specifier: string) =
-  ## Standard format implementation for ``SomeFloat``. It makes little
+  ## Standard format implementation for `SomeFloat`. It makes little
   ## sense to call this directly, but it is required to exist
-  ## by the ``&`` macro.
+  ## by the `&` macro.
   if specifier.len == 0:
     result.add $value
     return
@@ -541,9 +519,9 @@ proc formatValue*(result: var string; value: SomeFloat; specifier: string) =
     result.add res
 
 proc formatValue*(result: var string; value: string; specifier: string) =
-  ## Standard format implementation for ``string``. It makes little
+  ## Standard format implementation for `string`. It makes little
   ## sense to call this directly, but it is required to exist
-  ## by the ``&`` macro.
+  ## by the `&` macro.
   let spec = parseStandardFormatSpecifier(specifier)
   var value = value
   case spec.typ
@@ -557,8 +535,7 @@ proc formatValue*(result: var string; value: string; specifier: string) =
       setLen(value, runeOffset(value, spec.precision))
   result.add alignString(value, spec.minimumWidth, spec.align, spec.fill)
 
-proc formatValue[T: not SomeInteger](result: var string; value: T;
-    specifier: string) =
+proc formatValue[T: not SomeInteger](result: var string; value: T; specifier: string) =
   mixin `$`
   formatValue(result, $value, specifier)
 
@@ -647,16 +624,18 @@ proc strformatImpl(pattern: NimNode; openChar, closeChar: char): NimNode =
     echo repr result
 
 macro `&`*(pattern: string): untyped = strformatImpl(pattern, '{', '}')
-  ## For a specification of the ``&`` macro, see the module level documentation.
+  ## For a specification of the `&` macro, see the module level documentation.
 
 macro fmt*(pattern: string): untyped = strformatImpl(pattern, '{', '}')
-  ## An alias for ``&``.
+  ## An alias for `& <#&.m,string>`_.
 
 macro fmt*(pattern: string; openChar, closeChar: char): untyped =
-  ## Use ``openChar`` instead of '{' and ``closeChar`` instead of '}'
+  ## The same as `fmt <#fmt.m,string>`_, but uses `openChar` instead of `'{'`
+  ## and `closeChar` instead of `'}'`.
   runnableExamples:
     let testInt = 123
-    doAssert "<testInt>".fmt('<', '>') == "123"
-    doAssert """(()"foo" & "bar"())""".fmt(')', '(') == "(foobar)"
-    doAssert """ ""{"123+123"}"" """.fmt('"', '"') == " \"{246}\" "
+    assert "<testInt>".fmt('<', '>') == "123"
+    assert """(()"foo" & "bar"())""".fmt(')', '(') == "(foobar)"
+    assert """ ""{"123+123"}"" """.fmt('"', '"') == " \"{246}\" "
+
   strformatImpl(pattern, openChar.intVal.char, closeChar.intVal.char)

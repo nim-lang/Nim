@@ -830,7 +830,7 @@ problem!)
 
 .. code-block:: nim
     :test: "nim c $1"
-  import strformat
+  import std/strformat
 
   var fib_n {.compileTime.}: int
   var fib_prev {.compileTime.}: int
@@ -2113,7 +2113,7 @@ modeled as a string. However, using string templates and filling in the
 values is vulnerable to the famous `SQL injection attack`:idx:\:
 
 .. code-block:: nim
-  import strutils
+  import std/strutils
 
   proc query(db: DbHandle, statement: string) = ...
 
@@ -2145,7 +2145,7 @@ subtype relation between the abstract type and its base type. Explicit type
 conversions from ``string`` to ``SQL`` are allowed:
 
 .. code-block:: nim
-  import strutils, sequtils
+  import std/[strutils, sequtils]
 
   proc properQuote(s: string): SQL =
     # quotes a string properly for an SQL statement
@@ -2791,7 +2791,7 @@ Const section
 A const section declares constants whose values are constant expressions:
 
 .. code-block::
-  import strutils
+  import std/[strutils]
   const
     roundPi = 3.1415
     constEval = contains("abc", 'b') # computed at compile time!
@@ -4193,7 +4193,7 @@ parameters of an outer factory proc:
 The call can be made more like an inline iterator with a for loop macro:
 
 .. code-block:: nim
-  import macros
+  import std/macros
   macro toItr(x: ForLoopStmt): untyped =
     let expr = x[0]
     let call = x[1][1] # Get foo out of toItr(foo)
@@ -4327,7 +4327,7 @@ needs to fit the types of ``except`` branches, but the type of the ``finally``
 branch always has to be ``void``:
 
 .. code-block:: nim
-  from strutils import parseInt
+  from std/strutils import parseInt
 
   let x = try: parseInt("133a")
           except: -1
@@ -4803,7 +4803,6 @@ type class           matches
 ``set``              any set type
 ``seq``              any seq type
 ``auto``             any type
-``any``              distinct auto (see below)
 ==================   ===================================================
 
 Furthermore, every generic type automatically creates a type class of the same
@@ -5424,7 +5423,7 @@ Another common example is this:
     :test: "nim c $1"
     :status: 1
 
-  from sequtils import toSeq
+  from std/sequtils import toSeq
 
   iterator something: string =
     yield "Hello"
@@ -5444,7 +5443,7 @@ binds to symbols prohibits this.
     :test: "nim c $1"
     :status: 1
 
-   import sequtils
+   import std/sequtils
 
    var myItems = @[1,3,3,7]
    let N1 = count(myItems, 3) # OK
@@ -5490,7 +5489,7 @@ variable number of arguments:
 
   # to work with Nim syntax trees, we need an API that is defined in the
   # ``macros`` module:
-  import macros
+  import std/macros
 
   macro debug(args: varargs[untyped]): untyped =
     # `args` is a collection of `NimNode` values that each contain the
@@ -5549,7 +5548,7 @@ builtin can be used for that:
 .. code-block:: nim
     :test: "nim c $1"
 
-  import macros
+  import std/macros
 
   macro debug(n: varargs[typed]): untyped =
     result = newNimNode(nnkStmtList, n)
@@ -5597,7 +5596,7 @@ statement. The following example should show how this feature could be
 used for a lexical analyzer.
 
 .. code-block:: nim
-  import macros
+  import std/macros
 
   macro case_token(args: varargs[untyped]): untyped =
     echo args.treeRepr
@@ -5634,7 +5633,7 @@ type ``system.ForLoopStmt`` can rewrite the entirety of a ``for`` loop:
 .. code-block:: nim
     :test: "nim c $1"
 
-  import macros
+  import std/macros
 
   macro enumerate(x: ForLoopStmt): untyped =
     expectKind x, nnkForStmt
@@ -5717,7 +5716,7 @@ One can force an expression to be evaluated at compile time as a constant
 expression by coercing it to a corresponding ``static`` type:
 
 .. code-block:: nim
-  import math
+  import std/math
 
   echo static(fac(5)), " ", static[bool](16.isPowerOfTwo)
 
@@ -5797,7 +5796,7 @@ simply passed as a ``NimNode`` to the macro, like everything else.
 
 .. code-block:: nim
 
-  import macros
+  import std/macros
 
   macro forwardType(arg: typedesc): typedesc =
     # ``arg`` is of type ``NimNode``
@@ -5885,7 +5884,7 @@ This is best illustrated by an example:
 
 
 Import statement
-~~~~~~~~~~~~~~~~
+----------------
 
 After the ``import`` statement, a list of module names can follow or a single
 module name followed by an ``except`` list to prevent some symbols from being
@@ -5909,7 +5908,8 @@ The ``import`` statement is only allowed at the top level.
 
 
 Include statement
-~~~~~~~~~~~~~~~~~
+-----------------
+
 The ``include`` statement does something fundamentally different than
 importing a module: it merely includes the contents of a file. The ``include``
 statement is useful to split up a large module into several files:
@@ -5932,7 +5932,7 @@ The ``include`` statement can be used outside of the top level, as such:
 
 
 Module names in imports
-~~~~~~~~~~~~~~~~~~~~~~~
+-----------------------
 
 A module alias can be introduced via the ``as`` keyword:
 
@@ -5962,7 +5962,7 @@ Likewise, the following does not make sense as the name is ``strutils`` already:
 
 
 Collective imports from a directory
-~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+-----------------------------------
 
 The syntax ``import dir / [moduleA, moduleB]`` can be used to import multiple modules
 from the same directory.
@@ -5975,7 +5975,7 @@ name is not a valid Nim identifier it needs to be a string literal:
 
 
 Pseudo import/include paths
-~~~~~~~~~~~~~~~~~~~~~~~~~~~
+---------------------------
 
 A directory can also be a so-called "pseudo directory". They can be used to
 avoid ambiguity when there are multiple modules with the same path.
@@ -5992,7 +5992,7 @@ library locations*. In other words, it is the opposite of ``std``.
 
 
 From import statement
-~~~~~~~~~~~~~~~~~~~~~
+---------------------
 
 After the ``from`` statement, a module name follows followed by
 an ``import`` to list the symbols one likes to use without explicit
@@ -6013,7 +6013,7 @@ in ``module``.
 
 
 Export statement
-~~~~~~~~~~~~~~~~
+----------------
 
 An ``export`` statement can be used for symbol forwarding so that client
 modules don't need to import a module's dependencies:
@@ -6214,7 +6214,7 @@ but accessed at runtime:
 .. code-block:: nim
     :test: "nim c -r $1"
 
-  import macros
+  import std/macros
 
   var nameToProc {.compileTime.}: seq[(string, proc (): string {.nimcall.})]
 
@@ -6607,7 +6607,7 @@ is uncertain (it may be removed at any time).
 Example:
 
 .. code-block:: nim
-  import threadpool
+  import std/threadpool
   {.experimental: "parallel".}
 
   proc threadedEcho(s: string, i: int) =
@@ -7587,7 +7587,7 @@ The ``dynlib`` pragma supports not only constant strings as an argument but also
 string expressions in general:
 
 .. code-block:: nim
-  import os
+  import std/os
 
   proc getDllName: string =
     result = "mylib.dll"

@@ -190,15 +190,10 @@ proc evalTypeTrait(c: PContext; traitCall: PNode, operand: PType, context: PSym)
     result = newIntNodeT(toInt128(operand.len), traitCall, c.idgen, c.graph)
   of "distinctBase":
     var arg = operand.skipTypes({tyGenericInst})
-    if arg.kind == tyDistinct:
-      while arg.kind == tyDistinct:
-        arg = arg.base
-        arg = arg.skipTypes(skippedTypes + {tyGenericInst})
-      result = getTypeDescNode(c, arg, operand.owner, traitCall.info)
-    else:
-      localError(c.config, traitCall.info,
-        "distinctBase expects a distinct type as argument. The given type was " & typeToString(operand))
-      result = newType(tyError, nextTypeId c.idgen, context).toNode(traitCall.info)
+    while arg.kind == tyDistinct:
+      arg = arg.base
+      arg = arg.skipTypes(skippedTypes + {tyGenericInst})
+    result = getTypeDescNode(c, arg, operand.owner, traitCall.info)
   else:
     localError(c.config, traitCall.info, "unknown trait: " & s)
     result = newNodeI(nkEmpty, traitCall.info)

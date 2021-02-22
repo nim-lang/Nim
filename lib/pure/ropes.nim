@@ -11,7 +11,7 @@
 ## Ropes can represent very long strings efficiently; especially concatenation
 ## is done in O(1) instead of O(n). They are essentially concatenation
 ## trees that are only flattened when converting to a native Nim
-## string. The empty string is represented by ``nil``. Ropes are immutable and
+## string. The empty string is represented by `nil`. Ropes are immutable and
 ## subtrees can be shared without copying.
 ## Leaves can be cached for better memory efficiency at the cost of
 ## runtime efficiency.
@@ -240,7 +240,7 @@ proc add*(a: var Rope, b: string) {.rtl, extern: "nro$1Str".} =
 
 proc `[]`*(r: Rope, i: int): char {.rtl, extern: "nroCharAt".} =
   ## Returns the character at position `i` in the rope `r`. This is quite
-  ## expensive! Worst-case: O(n). If ``i >= r.len``, ``\0`` is returned.
+  ## expensive! Worst-case: O(n). If `i >= r.len`, `\0` is returned.
   runnableExamples:
     let r1 = rope("Hello, Nim!")
 
@@ -309,8 +309,8 @@ proc `$`*(r: Rope): string {.rtl, extern: "nroToString".} =
 
 proc `%`*(frmt: string, args: openArray[Rope]): Rope {.
   rtl, extern: "nroFormat".} =
-  ## `%` substitution operator for ropes. Does not support the ``$identifier``
-  ## nor ``${identifier}`` notations.
+  ## `%` substitution operator for ropes. Does not support the `$identifier`
+  ## nor `${identifier}` notations.
   runnableExamples:
     let r1 = "$1 $2 $3" % [rope("Nim"), rope("is"), rope("a great language")]
     doAssert $r1 == "Nim is a great language"
@@ -359,7 +359,7 @@ proc `%`*(frmt: string, args: openArray[Rope]): Rope {.
 
 proc addf*(c: var Rope, frmt: string, args: openArray[Rope]) {.
   rtl, extern: "nro$1".} =
-  ## Shortcut for ``add(c, frmt % args)``.
+  ## Shortcut for `add(c, frmt % args)`.
   runnableExamples:
     var r = rope("Dash: ")
     r.addf "$1 $2 $3", [rope("Nim"), rope("is"), rope("a great language")]

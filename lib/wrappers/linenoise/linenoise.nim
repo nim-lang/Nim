@@ -9,7 +9,7 @@
 
 type
   Completions* = object
-    len*: csize
+    len*: csize_t
     cvec*: cstringArray
 
   CompletionCallback* = proc (a2: cstring; a3: ptr Completions) {.cdecl.}
@@ -32,3 +32,42 @@ proc printKeyCodes*() {.importc: "linenoisePrintKeyCodes".}
 
 proc free*(s: cstring) {.importc: "free", header: "<stdlib.h>".}
 
+when defined nimExperimentalLinenoiseExtra:
+  # C interface
+  type linenoiseStatus = enum
+    linenoiseStatus_ctrl_unknown
+    linenoiseStatus_ctrl_C
+    linenoiseStatus_ctrl_D
+
+  type linenoiseData* = object
+    status: linenoiseStatus
+
+  proc linenoiseExtra(prompt: cstring, data: ptr linenoiseData): cstring {.importc.}
+
+  # stable nim interface
+  type Status* = enum
+    lnCtrlUnkown
+    lnCtrlC
+    lnCtrlD
+
+  type ReadLineResult* = object
+    line*: string
+    status*: Status
+
+  proc readLineStatus*(prompt: string, result: var ReadLineResult) =
+    ## line editing API that allows returning the line entered and an indicator
+    ## of which control key was entered, allowing user to distinguish between
+    ## for example ctrl-C vs ctrl-D.
+    runnableExamples("-d:nimExperimentalLinenoiseExtra"):
+      if false:
+        var ret: ReadLineResult
+        while true:
+          readLineStatus("name: ", ret) # ctrl-D will exit, ctrl-C will go to next prompt
+          if ret.line.len > 0: echo ret.line
+          if ret.status == lnCtrlD: break
+        echo "exiting"
+    var data: linenoiseData
+    let buf = linenoiseExtra(prompt, data.addr)
+    result.line = $buf
+    free(buf)
+    result.status = data.status.ord.Status

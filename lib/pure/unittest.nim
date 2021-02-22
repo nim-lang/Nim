@@ -515,7 +515,9 @@ template suite*(name, body) {.dirty.} =
     finally:
       suiteEnded()
 
-template exceptionTypeName(e: typed): string = $e.name
+proc exceptionTypeName(e: ref Exception): string {.inline.} =
+  if e == nil: "<foreign exception>"
+  else: $e.name
 
 template test*(name, body) {.dirty.} =
   ## Define a single test case identified by `name`.
@@ -552,8 +554,11 @@ template test*(name, body) {.dirty.} =
       let e = getCurrentException()
       let eTypeDesc = "[" & exceptionTypeName(e) & "]"
       checkpoint("Unhandled exception: " & getCurrentExceptionMsg() & " " & eTypeDesc)
-      var stackTrace {.inject.} = e.getStackTrace()
-      fail()
+      if e == nil: # foreign
+        fail()
+      else:
+        var stackTrace {.inject.} = e.getStackTrace()
+        fail()
 
     finally:
       if testStatusIMPL == TestStatus.FAILED:
@@ -681,7 +686,7 @@ macro check*(conditions: untyped): untyped =
             result.printOuts.add getAst(print(argStr, callVar))
           if exp[i].kind == nnkExprEqExpr:
             # ExprEqExpr
-            #   Ident !"v"
+            #   Ident "v"
             #   IntLit 2
             result.check[i] = exp[i][1]
           if exp[i].typeKind notin {ntyTypeDesc}:

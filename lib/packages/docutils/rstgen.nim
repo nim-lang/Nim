@@ -23,7 +23,23 @@
 ## many options and tweaking, but you are not limited to snippets and can
 ## generate `LaTeX documents <https://en.wikipedia.org/wiki/LaTeX>`_ too.
 ##
-## **Note:** Import ``packages/docutils/rstgen`` to use this module
+## `Docutils configuration files`_ are not supported. Instead HTML generation
+## can be tweaked by editing file ``config/nimdoc.cfg``.
+##
+## .. _Docutils configuration files: https://docutils.sourceforge.io/docs/user/config.htm
+##
+## There are stylistic difference between how this module renders some elements
+## and how original Python Docutils does:
+##
+## * Backreferences to TOC in section headings are not generated.
+##   In HTML each section is also a link that points to the section itself:
+##   this is done for user to be able to copy the link into clipboard.
+##
+## * The same goes for footnotes/citations links: they point to themselves.
+##   No backreferences are generated since finding all references of a footnote
+##   can be done by simply searching for [footnoteName].
+##
+## .. Tip: Import ``packages/docutils/rstgen`` to use this module
 
 import strutils, os, hashes, strtabs, rstast, rst, highlite, tables, sequtils,
   algorithm, parseutils
@@ -1219,10 +1235,24 @@ proc renderRstToOut(d: PDoc, n: PRstNode, result: var string) =
     renderAux(d, n, "<th>$1</th>", "\\textbf{$1}", result)
   of rnLabel:
     doAssert false, "renderRstToOut" # used for footnotes and other
-  of rnFootnote:
-    doAssert false, "renderRstToOut" # a footnote
-  of rnCitation:
-    doAssert false, "renderRstToOut" # similar to footnote
+  of rnFootnoteGroup:
+    renderAux(d, n,
+      "<hr class=\"footnote\">" &
+          "<div class=\"footnote-group\">\n$1</div>\n",
+      "\n\n\\noindent\\rule{0.25\\linewidth}{.4pt}\n" &
+          "\\begin{rstfootnote}\n$1\\end{rstfootnote}\n\n",
+      result)
+  of rnFootnote, rnCitation:
+    var mark = ""
+    renderAux(d, n.sons[0], mark)
+    var body = ""
+    renderRstToOut(d, n.sons[1], body)
+    dispA(d.target, result,
+      "<div$2><div class=\"footnote-label\">" &
+          "<sup><strong><a href=\"#$4\">[$3]</a></strong></sup>" &
+          "</div> &ensp; $1\n</div>\n",
+      "\\item[\\textsuperscript{[$3]}]$2 $1\n",
+      [body, n.anchor.idS, mark, n.anchor])
   of rnRef:
     var tmp = ""
     renderAux(d, n, tmp)
@@ -1239,6 +1269,15 @@ proc renderRstToOut(d: PDoc, n: PRstNode, result: var string) =
     dispA(d.target, result,
       "<a class=\"reference internal\" href=\"#$2\">$1</a>",
       "\\hyperlink{$2}{$1} (p.~\\pageref{$2})", [tmp, n.sons[1].text])
+  of rnFootnoteRef:
+    var tmp = "["
+    renderAux(d, n.sons[0], tmp)
+    tmp.add "]"
+    dispA(d.target, result,
+      "<sup><strong><a class=\"reference internal\" href=\"#$2\">" &
+          "$1</a></strong></sup>",
+      "\\textsuperscript{\\hyperlink{$2}{\\textbf{$1}}}",
+      [tmp, n.sons[1].text])
   of rnHyperlink:
     var tmp0 = ""
     var tmp1 = ""
@@ -1293,6 +1332,7 @@ proc renderRstToOut(d: PDoc, n: PRstNode, result: var string) =
   of rnSmiley: renderSmiley(d, n, result)
   of rnLeaf: result.add(esc(d.target, n.text))
   of rnContents: d.hasToc = true
+  of rnDefaultRole: discard
   of rnTitle:
     d.meta[metaTitle] = ""
     renderRstToOut(d, n.sons[0], d.meta[metaTitle])

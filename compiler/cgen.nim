@@ -1144,7 +1144,9 @@ proc genProcNoForward(m: BModule, prc: PSym) =
       #if prc.loc.k == locNone:
       # mangle the inline proc based on the module where it is defined -
       # not on the first module that uses it
-      fillProcLoc(findPendingModule(m, prc), prc.ast[namePos])
+      let m2 = if m.config.symbolFiles != disabledSf: m
+               else: findPendingModule(m, prc)
+      fillProcLoc(m2, prc.ast[namePos])
       #elif {sfExportc, sfImportc} * prc.flags == {}:
       #  # reset name to restore consistency in case of hashing collisions:
       #  echo "resetting ", prc.id, " by ", m.module.name.s
@@ -1652,7 +1654,7 @@ proc genInitCode(m: BModule) =
     writeSection(preInitProc, cpsLocals)
     writeSection(preInitProc, cpsInit, m.hcrOn)
     writeSection(preInitProc, cpsStmts)
-    prc.addf("}$N", [])
+    prc.addf("}/* preInitProc end */$N", [])
     when false:
       m.initProc.blocks[0].sections[cpsLocals].add m.preInitProc.s(cpsLocals)
       m.initProc.blocks[0].sections[cpsInit].prepend m.preInitProc.s(cpsInit)

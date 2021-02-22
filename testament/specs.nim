@@ -209,9 +209,6 @@ proc extractSpec(filename: string; spec: var TSpec): string =
     #echo "warning: file does not contain spec: " & filename
     result = ""
 
-when not defined(nimhygiene):
-  {.pragma: inject.}
-
 proc parseTargets*(value: string): set[TTarget] =
   for v in value.normalize.splitWhitespace:
     case v

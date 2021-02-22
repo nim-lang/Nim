@@ -997,14 +997,9 @@ proc genSeqElem(p: BProc, n, x, y: PNode, d: var TLoc) =
   if ty.kind in {tyRef, tyPtr}:
     ty = skipTypes(ty.lastSon, abstractVarRange) # emit range check:
   if optBoundsCheck in p.options:
-    if ty.kind == tyString and not defined(nimNoZeroTerminator):
-      linefmt(p, cpsStmts,
-              "if ((NU)($1) > (NU)$2){ #raiseIndexError2($1,$2); $3}$n",
-              [rdLoc(b), lenExpr(p, a), raiseInstr(p)])
-    else:
-      linefmt(p, cpsStmts,
-              "if ((NU)($1) >= (NU)$2){ #raiseIndexError2($1,$2-1); $3}$n",
-              [rdLoc(b), lenExpr(p, a), raiseInstr(p)])
+    linefmt(p, cpsStmts,
+            "if ((NU)($1) >= (NU)$2){ #raiseIndexError2($1,$2-1); $3}$n",
+            [rdLoc(b), lenExpr(p, a), raiseInstr(p)])
   if d.k == locNone: d.storage = OnHeap
   if skipTypes(a.t, abstractVar).kind in {tyRef, tyPtr}:
     a.r = ropecg(p.module, "(*$1)", [a.r])
@@ -2362,6 +2357,7 @@ proc genMagicExpr(p: BProc, e: PNode, d: var TLoc, op: TMagic) =
     #   somehow forward-declared from some other usage, but it is *possible*
     if lfNoDecl notin opr.loc.flags:
       let prc = magicsys.getCompilerProc(p.module.g.graph, $opr.loc.r)
+      assert prc != nil, $opr.loc.r
       # HACK:
       # Explicitly add this proc as declared here so the cgsym call doesn't
       # add a forward declaration - without this we could end up with the same

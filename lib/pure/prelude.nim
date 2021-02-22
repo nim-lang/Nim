@@ -11,13 +11,14 @@
 ## convenience:
 ##
 ## .. code-block:: nim
-##   include prelude
+##   include std/prelude
 ##
 ## Same as:
 ##
 ## .. code-block:: nim
-##   import os, strutils, times, parseutils, hashes, tables, sets, sequtils
-##   when not defined(js): import parseopt
+##   import std/[os, strutils, times, parseutils, hashes, tables, sets, sequtils, parseopt]
 
-import os, strutils, times, parseutils, hashes, tables, sets, sequtils
-when not defined(js): import parseopt
+# xxx deduplicate with prelude.rst
+
+import std/[os, strutils, times, parseutils, hashes, tables, sets, sequtils, parseopt]
+

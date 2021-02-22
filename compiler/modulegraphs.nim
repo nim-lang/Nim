@@ -19,12 +19,16 @@ import ic / [packed_ast, to_packed_ast]
 type
   SigHash* = distinct MD5Digest
 
+  LazySym* = object
+    id*: FullId
+    sym*: PSym
+
   Iface* = object       ## data we don't want to store directly in the
                         ## ast.PSym type for s.kind == skModule
     module*: PSym       ## module this "Iface" belongs to
-    converters*: seq[PSym]
-    patterns*: seq[PSym]
-    pureEnums*: seq[PSym]
+    converters*: seq[LazySym]
+    patterns*: seq[LazySym]
+    pureEnums*: seq[LazySym]
     interf: TStrTable
 
   Operators* = object
@@ -34,10 +38,6 @@ type
   FullId* = object
     module*: int
     packed*: PackedItemId
-
-  LazySym* = object
-    id*: FullId
-    sym*: PSym
 
   LazyType* = object
     id*: FullId
@@ -61,6 +61,7 @@ type
 
     startupPackedConfig*: PackedConfig
     packageSyms*: TStrTable
+    modulesPerPackage*: Table[ItemId, TStrTable]
     deps*: IntSet # the dependency graph or potentially its transitive closure.
     importDeps*: Table[FileIndex, seq[FileIndex]] # explicit import module dependencies
     suggestMode*: bool # whether we are in nimsuggest mode or not.
@@ -82,6 +83,7 @@ type
     systemModule*: PSym
     sysTypes*: array[TTypeKind, PType]
     compilerprocs*: TStrTable
+    lazyCompilerprocs*: Table[string, FullId]
     exposed*: TStrTable
     packageTypes*: TStrTable
     emptyNode*: PNode
@@ -153,7 +155,7 @@ template semtab*(m: PSym; g: ModuleGraph): TStrTable =
   g.ifaces[m.position].interf
 
 proc isCachedModule(g: ModuleGraph; module: int): bool {.inline.} =
-  module < g.packed.len and g.packed[module].status == loaded
+  result = module < g.packed.len and g.packed[module].status == loaded
 
 proc isCachedModule(g: ModuleGraph; m: PSym): bool {.inline.} =
   isCachedModule(g, m.position)
@@ -173,7 +175,7 @@ type
 proc initModuleIter*(mi: var ModuleIter; g: ModuleGraph; m: PSym; name: PIdent): PSym =
   assert m.kind == skModule
   mi.modIndex = m.position
-  mi.fromRod = mi.modIndex < g.packed.len and g.packed[mi.modIndex].status == loaded
+  mi.fromRod = isCachedModule(g, mi.modIndex)
   if mi.fromRod:
     result = initRodIter(mi.rodIt, g.config, g.cache, g.packed, FileIndex mi.modIndex, name)
   else:
@@ -293,6 +295,14 @@ proc copyTypeProps*(g: ModuleGraph; module: int; dest, src: PType) =
     if op != nil:
       setAttachedOp(g, module, dest, k, op)
 
+proc loadCompilerProc*(g: ModuleGraph; name: string): PSym =
+  if g.config.symbolFiles == disabledSf: return nil
+  let t = g.lazyCompilerprocs.getOrDefault(name)
+  if t.module != 0:
+    assert isCachedModule(g, t.module)
+    result = loadSymFromId(g.config, g.cache, g.packed, t.module, t.packed)
+    if result != nil:
+      strTableAdd(g.compilerprocs, result)
 
 proc `$`*(u: SigHash): string =
   toBase64a(cast[cstring](unsafeAddr u), sizeof(u))
@@ -410,7 +420,7 @@ proc resetAllModules*(g: ModuleGraph) =
 
 proc getModule*(g: ModuleGraph; fileIdx: FileIndex): PSym =
   if fileIdx.int32 >= 0:
-    if fileIdx.int32 < g.packed.len and g.packed[fileIdx.int32].status == loaded:
+    if isCachedModule(g, fileIdx.int32):
       result = g.packed[fileIdx.int32].module
     elif fileIdx.int32 < g.ifaces.len:
       result = g.ifaces[fileIdx.int32].module
@@ -474,10 +484,11 @@ proc getBody*(g: ModuleGraph; s: PSym): PNode {.inline.} =
     s.ast[bodyPos] = result
   assert result != nil
 
-proc moduleFromRodFile*(g: ModuleGraph; fileIdx: FileIndex): PSym =
+proc moduleFromRodFile*(g: ModuleGraph; fileIdx: FileIndex;
+                        cachedModules: var seq[FileIndex]): PSym =
   ## Returns 'nil' if the module needs to be recompiled.
   if g.config.symbolFiles in {readOnlySf, v2Sf, stressTest}:
-    result = moduleFromRodFile(g.packed, g.config, g.cache, fileIdx)
+    result = moduleFromRodFile(g.packed, g.config, g.cache, fileIdx, cachedModules)
 
 proc configComplete*(g: ModuleGraph) =
   rememberStartupConfig(g.startupPackedConfig, g.config)
