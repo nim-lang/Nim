@@ -60,7 +60,7 @@ func sumPairwise[T](x: openArray[T], i0, n: int): T =
     result = sumPairwise(x, i0, n2) + sumPairwise(x, i0 + n2, n - n2)
 
 func sumPairs*[T](x: openArray[T]): T =
-  ## Pairwise (cascade) summation of ``x[i0:i0+n-1]``, with O(log n) error growth
+  ## Pairwise (cascade) summation of `x[i0:i0+n-1]`, with O(log n) error growth
   ## (vs O(n) for a simple loop) with negligible performance cost if
   ## the base case is large enough.
   ##
