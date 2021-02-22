@@ -2008,7 +2008,7 @@ proc connect*(socket: Socket, address: string, port = Port(0),
         ErrClearError()
         let ret = SSL_connect(socket.sslHandle)
         socketError(socket, ret)
-        when not defined(nimDisableCertificateValidation) and not defined(windows):
+        when not defined(nimDisableCertificateValidation):
           if not isIpAddress(address):
             socket.checkCertName(address)
   socket.fd.setBlocking(true)
