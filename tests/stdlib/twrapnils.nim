@@ -77,9 +77,9 @@ proc main() =
   doAssert ?.a.x9[].fun[] == ""
 
   block: # `??.`
-    doAssert ??.a3.x2.x2.x3.len.get == 3
-    doAssert ??.a2.x4.isSome
-    doAssert not ??.a.x4.isSome
+    doAssert (??.a3.x2.x2.x3.len).get == 3
+    doAssert (??.a2.x4).isSome
+    doAssert not (??.a.x4).isSome
 
 main()
 static: main()
