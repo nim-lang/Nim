@@ -36,4 +36,4 @@ if paramCount() == 0:
     echo p.waitForExit() == 128 + SIGKILL
 
 else:
-  sleep(5000)  # should get killed before this
+  os.sleep(5000)  # should get killed before this
