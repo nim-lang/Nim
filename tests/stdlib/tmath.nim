@@ -226,16 +226,6 @@ template main() =
     doAssert signbit(x2)
     doAssert signbit(x3)
 
-  block: # almostEqual
-    doAssert almostEqual(3.141592653589793, 3.1415926535897936)
-    doAssert almostEqual(1.6777215e7'f32, 1.6777216e7'f32)
-    doAssert almostEqual(Inf, Inf)
-    doAssert almostEqual(-Inf, -Inf)
-    doAssert not almostEqual(Inf, -Inf)
-    doAssert not almostEqual(-Inf, Inf)
-    doAssert not almostEqual(Inf, NaN)
-    doAssert not almostEqual(NaN, NaN)
-
   block: # copySign
     doAssert copySign(10.0, 1.0) == 10.0
     doAssert copySign(10.0, -1.0) == -10.0
@@ -282,6 +272,16 @@ template main() =
     doAssert copySign(-1.0, NaN) == 1.0
     doAssert copySign(-1.0, -NaN) == -1.0
     doAssert copySign(1.0, copySign(NaN, -1.0)) == -1.0
+
+  block: # almostEqual
+    doAssert almostEqual(3.141592653589793, 3.1415926535897936)
+    doAssert almostEqual(1.6777215e7'f32, 1.6777216e7'f32)
+    doAssert almostEqual(Inf, Inf)
+    doAssert almostEqual(-Inf, -Inf)
+    doAssert not almostEqual(Inf, -Inf)
+    doAssert not almostEqual(-Inf, Inf)
+    doAssert not almostEqual(Inf, NaN)
+    doAssert not almostEqual(NaN, NaN)
 
   block: # round
     block: # Round to 0 decimal places
