@@ -1,5 +1,5 @@
 discard """
-  cmd: "nim c -d:ssl $file"
+  cmd: "nim c -r -d:ssl $file"
   exitcode: 0
 """
 
