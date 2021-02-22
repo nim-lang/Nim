@@ -170,6 +170,9 @@ provided by the operating system.
   of termination.
 
 
+- `std/options` changed `$some(3)` to `"some(3)"` instead of `"Some(3)"`
+  and `$none(int)` to `"none(int)"` instead of `"None[int]"`.
+
 ## Language changes
 
 - `nimscript` now handles `except Exception as e`.
