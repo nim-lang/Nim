@@ -7,7 +7,7 @@
 #    distribution, for details about the copyright.
 #
 
-## This module implements the ``with`` macro for easy
+## This module implements the `with` macro for easy
 ## function chaining. See https://github.com/nim-lang/RFCs/issues/193
 ## and https://github.com/nim-lang/RFCs/issues/192 for details leading to this
 ## particular design.
