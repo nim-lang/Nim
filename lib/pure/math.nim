@@ -175,11 +175,24 @@ when defined(js):
 
   proc toBitsImpl(x: float): array[2, uint32] =
     let buffer = newArrayBuffer(8)
-    let floatBuffer = newFloat64Array(buffer)
-    let uintBuffer = newUint32Array(buffer)
-    floatBuffer[0] = x
-    {.emit: "`result` = `uintBuffer`;".}
-    # result = cast[array[2, uint32]](uintBuffer)
+    let a = newFloat64Array(buffer)
+    let b = newUint32Array(buffer)
+    a[0] = x
+    {.emit: "`result` = `b`;".}
+    # result = cast[array[2, uint32]](b)
+
+  proc jsSetSign(x: float, sgn: bool): float =
+    let buffer = newArrayBuffer(8)
+    let a = newFloat64Array(buffer)
+    let b = newUint32Array(buffer)
+    a[0] = x
+    asm """
+    function updateBit(num, bitPos, bitVal) {
+      return (num & ~(1 << bitPos)) | (bitVal << bitPos);
+    }
+    `b`[1] = updateBit(`b`[1], 31, `sgn`);
+    `result` = `a`[0]
+    """
 
 proc signbit*(x: SomeFloat): bool {.inline, since: (1, 5, 1).} =
   ## Returns true if `x` is negative, false otherwise.
@@ -203,19 +216,21 @@ func copySign*[T: SomeFloat](x, y: T): T {.inline, since: (1, 5, 1).} =
     doAssert copySign(10.0, -1.0) == -10.0
     doAssert copySign(-Inf, -0.0) == -Inf
     doAssert copySign(NaN, 1.0).isNaN
+    doAssert copySign(1.0, copySign(NaN, -1.0)) == -1.0
 
   # TODO: use signbit for examples
-  template impl() =
-    if y > 0.0 or (y == 0.0 and 1.0 / y > 0.0):
-      result = abs(x)
-    elif y <= 0.0:
-      result = -abs(x)
-    else: # must be NaN
-      result = abs(x)
-
-  when defined(js): impl()
+  when defined(js):
+    let uintBuffer = toBitsImpl(y)
+    let sgn = (uintBuffer[1] shr 31) != 0
+    result = jsSetSign(x, sgn)
   else:
-    when nimvm: impl()
+    when nimvm: # not exact but we have a vmops for recent enough nim
+      if y > 0.0 or (y == 0.0 and 1.0 / y > 0.0):
+        result = abs(x)
+      elif y <= 0.0:
+        result = -abs(x)
+      else: # must be NaN
+        result = abs(x)
     else: result = c_copysign(x, y)
 
 func classify*(x: float): FloatClass =
