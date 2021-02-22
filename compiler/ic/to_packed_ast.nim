@@ -875,7 +875,7 @@ proc needsRecompile(g: var PackedModuleGraph; conf: ConfigRef; cache: IdentCache
     let rod = toRodFile(conf, AbsoluteFile fullpath)
     let err = loadRodFile(rod, g[m].fromDisk, conf)
     if err == ok:
-      result = false
+      result = optForceFullMake in conf.globalOptions
       # check its dependencies:
       for dep in g[m].fromDisk.imports:
         let fid = toFileIndex(dep, g[m].fromDisk, conf)
