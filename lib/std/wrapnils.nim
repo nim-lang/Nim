@@ -40,7 +40,7 @@ template get*[T](self: Wrapnil[T]): T =
 
 func isSome*(self: Wrapnil): bool {.inline.} =
   ## Returns true if `self` didn't contain intermediate `nil` values (note that
-  ## `self.get` itself can be nil even in that case)
+  ## `self.get` itself can be nil even in that case).
   self.validImpl
 
 template fakeDot*(a: Wrapnil, b): untyped =
