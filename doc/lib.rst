@@ -85,9 +85,15 @@ Algorithms
 * `algorithm <algorithm.html>`_
   This module implements some common generic algorithms like sort or binary search.
 
+* `std/enumutils <enumutils.html>`_
+  This module adds functionality for the built-in ``enum`` type.
+
 * `sequtils <sequtils.html>`_
   This module implements operations for the built-in ``seq`` type
   which were inspired by functional programming languages.
+
+* `std/setutils <setutils.html>`_
+  This module adds functionality for the built-in ``set`` type.
 
 
 Collections
@@ -119,12 +125,6 @@ Collections
 
 * `sets <sets.html>`_
   Nim hash and bit set support.
-
-* `std/setutils <setutils.html>`_
-  This module adds functionality for the built-in ``set`` type.
-
-* `std/enumutils <enumutils.html>`_
-  This module adds functionality for the built-in ``enum`` type.
 
 * `sharedlist <sharedlist.html>`_
   Nim shared linked list support. Contains a shared singly-linked list.

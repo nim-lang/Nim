@@ -69,7 +69,7 @@ macro sparseEnumFullRange(a: typed): untyped =
   newNimNode(nnkCurly).add(a.getType[1][1..^1])
 
 iterator items*[T: enum and not Ordinal](E: typedesc[T]): T =
-  ## iterates over a sparse enum
+  ## Iterates over a sparse enum.
   runnableExamples:
     type A = enum a0 = 2, a1 = 4, a2
     type B[T] = enum b0 = 2, b1 = 4

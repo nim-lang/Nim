@@ -15,7 +15,7 @@
 import std/private/since
 export system.`$` # for backward compatibility
 
-type SomeSparseEnum* = (not Ordinal) and enum ## sparse enum's, a.k.a enum with holes
+type SomeSparseEnum* = (not Ordinal) and enum ## Sparse enum's, a.k.a enum with holes.
 
 #[
 xxx `runnableExamples` isn't run if inside:
