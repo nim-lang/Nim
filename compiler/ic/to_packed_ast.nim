@@ -888,7 +888,9 @@ proc needsRecompile(g: var PackedModuleGraph; conf: ConfigRef; cache: IdentCache
       if not result:
         setupLookupTables(g, conf, cache, fileIdx, g[m])
         cachedModules.add fileIdx
-      g[m].status = if result: outdated else: loaded
+        g[m].status = loaded
+      else:
+        g[m] = LoadedModule(status: outdated, module: g[m].module)
     else:
       loadError(err, rod)
       g[m].status = outdated
