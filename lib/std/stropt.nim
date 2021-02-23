@@ -38,7 +38,7 @@ func setSlice*(s: var string, slice: Slice[int]) =
   if first > last:
     s.setLen(0)
     return
-  template impl = 
+  template impl =
     for index in first .. last:
       s[index - first] = s[index]
   if first > 0:
