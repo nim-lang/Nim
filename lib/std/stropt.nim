@@ -27,9 +27,23 @@ func stripSlice(s: openArray[char], leading = true, trailing = true, chars: set[
 func setSlice*(s: var string, slice: Slice[int]) =
   ## Inplace version of `substr`.
   runnableExamples:
-    var s = "Hello, Nim!"
-    s.setSlice(7 .. 9)
-    assert s == "Nim"
+    import std/sugar
+
+    var a = "Hello, Nim!"
+    doassert a.dup(setSlice(7 .. 9)) == "Nim"
+    doAssert a.dup(setSlice(0 .. 0)) == "H"
+    doAssert a.dup(setSlice(0 .. 1)) == "He"
+    doAssert a.dup(setSlice(0 .. 10)) == a
+    doAssert a.dup(setSlice(1 .. 0)).len == 0
+    doAssert a.dup(setSlice(20 .. -1)).len == 0
+
+
+    doAssertRaises(AssertionDefect):
+      discard a.dup(setSlice(-1 .. 1))
+
+    doAssertRaises(AssertionDefect):
+      discard a.dup(setSlice(1 .. 11))
+
 
   let first = slice.a
   let last = slice.b
