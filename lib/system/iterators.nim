@@ -82,8 +82,13 @@ iterator mitems*(a: var cstring): var char {.inline.} =
       yield a[i]
       inc(i)
 
-iterator items*[T: enum](E: typedesc[T]): T =
-  ## Iterates over the values of the enum ``E``.
+iterator items*[T: enum and Ordinal](E: typedesc[T]): T =
+  ## Iterates over the values of `E`.
+  ## See also `enumutils.items` for enums with holes.
+  runnableExamples:
+    type Goo = enum g0 = 2, g1, g2
+    from std/sequtils import toSeq
+    assert Goo.toSeq == [g0, g1, g2]
   for v in low(E) .. high(E):
     yield v
 
