@@ -1,21 +1,26 @@
+# xxx this test is bad (echo instead of error, etc)
+
 import zip/zlib
 
 proc compress*(source: string): string =
   var
     sourcelen = source.len
-    destlen = sourcelen + (sourcelen.float * 0.1).int + 16
+    destLen = sourcelen + (sourcelen.float * 0.1).int + 16
   result = ""
   result.setLen destLen
-  var res = zlib.compress(cstring(result), addr destLen, cstring(source), sourceLen)
+  # see http://www.zlib.net/zlib-1.2.11.tar.gz for correct definitions
+  var destLen2 = destLen.Ulongf
+  var res = zlib.compress(cstring(result), addr destLen2, cstring(source), sourceLen.Ulong)
   if res != Z_OK:
     echo "Error occurred: ", res
-  elif destLen < result.len:
-    result.setLen(destLen)
+  elif destLen2.int < result.len:
+    result.setLen(destLen2.int)
 
 proc uncompress*(source: string, destLen: var int): string =
   result = ""
   result.setLen destLen
-  var res = zlib.uncompress(cstring(result), addr destLen, cstring(source), source.len)
+  var destLen2 = destLen.Ulongf
+  var res = zlib.uncompress(cstring(result), addr destLen2, cstring(source), source.len.Ulong)
   if res != Z_OK:
     echo "Error occurred: ", res
 
