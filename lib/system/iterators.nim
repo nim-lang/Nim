@@ -56,31 +56,41 @@ iterator items*[T](a: set[T]): T {.inline.} =
 
 iterator items*(a: cstring): char {.inline.} =
   ## Iterates over each item of `a`.
-  when defined(js):
+  template impl() =
     var i = 0
     var L = len(a)
     while i < L:
       yield a[i]
       inc(i)
+  when defined(js): impl()
   else:
-    var i = 0
-    while a[i] != '\0':
-      yield a[i]
-      inc(i)
+    when nimvm:
+      #[
+      xxx `cstring` should behave like c backend instead.
+      ]#
+      impl()
+    else:
+      var i = 0
+      while a[i] != '\0':
+        yield a[i]
+        inc(i)
 
 iterator mitems*(a: var cstring): var char {.inline.} =
   ## Iterates over each item of `a` so that you can modify the yielded value.
-  when defined(js):
+  template impl() =
     var i = 0
     var L = len(a)
     while i < L:
       yield a[i]
       inc(i)
+  when defined(js): impl()
   else:
-    var i = 0
-    while a[i] != '\0':
-      yield a[i]
-      inc(i)
+    when nimvm: impl()
+    else:
+      var i = 0
+      while a[i] != '\0':
+        yield a[i]
+        inc(i)
 
 iterator items*[T: enum and Ordinal](E: typedesc[T]): T =
   ## Iterates over the values of `E`.
