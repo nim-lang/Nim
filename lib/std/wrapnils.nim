@@ -26,59 +26,44 @@ runnableExamples:
   import segfaults # enable `NilAccessDefect` exceptions
   doAssertRaises(NilAccessDefect): echo (?.f2.x2.x2).x3[]
 
-type Wrapnil[T] = object
-  valueImpl: T
-  validImpl: bool
+from std/options import Option, isSome, some, option, get
+export options.get, options.isSome, options.isNone
 
-template wrapnil[T](a: T): Wrapnil[T] =
-  ## See top-level example.
-  Wrapnil[T](valueImpl: a, validImpl: true)
-
-template get*[T](self: Wrapnil[T]): T =
-  ## Unwraps the value contained in `self`.
-  self.valueImpl
-
-func isSome*(self: Wrapnil): bool {.inline.} =
-  ## Returns true if `self` didn't contain intermediate `nil` values (note that
-  ## `self.get` itself can be nil even in that case).
-  self.validImpl
-
-template fakeDot*(a: Wrapnil, b): untyped =
+template fakeDot*(a: Option, b): untyped =
   ## See top-level example.
   let a1 = a # to avoid double evaluations
-  let a2 = a1.valueImpl
-  type T = Wrapnil[typeof(a2.b)]
-  if a1.validImpl:
+  type T = Option[typeof(a1.get.b)]
+  if isSome(a1):
+    let a2 = a1.get
     when typeof(a2) is ref|ptr:
       if a2 == nil:
         default(T)
       else:
-        wrapnil(a2.b)
+        option(a2.b)
     else:
-      wrapnil(a2.b)
+      option(a2.b)
   else:
     # nil is "sticky"; this is needed, see tests
     default(T)
 
-template `[]`*[I](a: Wrapnil, i: I): untyped =
+template `[]`*[I](a: Option, i: I): untyped =
   ## See top-level example.
   let a1 = a # to avoid double evaluations
-  if a1.validImpl:
+  if isSome(a1):
     # correctly will raise IndexDefect if a is valid but wraps an empty container
-    wrapnil(a1.valueImpl[i])
+    some(a1.get[i])
   else:
-    default(Wrapnil[typeof(a1.valueImpl[i])])
+    default(Option[typeof(a1.get[i])])
 
-template `[]`*(a: Wrapnil): untyped =
+func `[]`*[U](a: Option[U]): auto {.inline.} =
   ## See top-level example.
-  let a1 = a # to avoid double evaluations
-  let a2 = a1.valueImpl
-  type T = Wrapnil[typeof(a2[])]
-  if a1.validImpl:
+  type T = Option[typeof(a.get[])]
+  if isSome(a):
+    let a2 = a.get
     if a2 == nil:
       default(T)
     else:
-      wrapnil(a2[])
+      option(a2[])
   else:
     default(T)
 
@@ -89,14 +74,17 @@ func replace(n: NimNode): NimNode =
     result = newCall(bindSym"fakeDot", replace(n[0]), n[1])
   elif n.kind == nnkPar:
     doAssert n.len == 1
-    result = newCall(bindSym"wrapnil", n[0])
+    result = newCall(bindSym"option", n[0])
   elif n.kind in {nnkCall, nnkObjConstr}:
-    result = newCall(bindSym"wrapnil", n)
+    result = newCall(bindSym"option", n)
   elif n.len == 0:
-    result = newCall(bindSym"wrapnil", n)
+    result = newCall(bindSym"option", n)
   else:
     n[0] = replace(n[0])
     result = n
+
+proc safeGet[T](a: Option[T]): T =
+  get(a, default(T))
 
 macro `?.`*(a: untyped): untyped =
   ## Transforms `a` into an expression that can be safely evaluated even in
@@ -104,11 +92,12 @@ macro `?.`*(a: untyped): untyped =
   ## value is produced.
   #[
   Using a template like this wouldn't work:
-    template `?.`*(a: untyped): untyped = wrapnil(a)[]
+    template `?.`*(a: untyped): untyped = some(a)[]
   ]#
   result = replace(a)
   result = quote do:
-    `result`.valueImpl
+    # `result`.val # TODO import {.all.} ?
+    safeGet(`result`)
 
 macro `??.`*(a: untyped): untyped =
   ## Same as `?.` but returns an option-like object that can be unwrapped with `get`
