@@ -18,11 +18,12 @@
 ## also doing cross-module dependency tracking and DCE that we don't need
 ## anymore. DCE is now done as prepass over the entire packed module graph.
 
-import std / [intsets, algorithm]
-import ".." / [ast, options, lineinfos, modulegraphs, cgendata, cgen,
+import std/[packedsets, algorithm]
+  # std/intsets would give `UnusedImport`, pending https://github.com/nim-lang/Nim/issues/14246
+import ".."/[ast, options, lineinfos, modulegraphs, cgendata, cgen,
   pathutils, extccomp, msgs]
 
-import packed_ast, to_packed_ast, bitabs, dce, rodfiles
+import packed_ast, to_packed_ast, dce, rodfiles
 
 proc unpackTree(g: ModuleGraph; thisModule: int;
                 tree: PackedTree; n: NodePos): PNode =
