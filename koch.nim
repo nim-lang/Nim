@@ -538,6 +538,10 @@ proc runCI(cmd: string) =
   else:
     buildTools()
 
+    for a in "zip opengl sdl1 jester@#head".split:
+      let buildDeps = "build"/"deps" # xxx factor pending https://github.com/timotheecour/Nim/issues/616
+      execFold("", "nimble install -y --nimbleDir:$# $#" % [buildDeps.quoteShell, a])
+
     ## run tests
     execFold("Test nimscript", "nim e tests/test_nimscript.nims")
     when defined(windows):
