@@ -1524,15 +1524,22 @@ proc semProcAnnotation(c: PContext, prc: PNode;
     return
 
 proc setGenericParamsMisc(c: PContext; n: PNode): PNode =
-  let orig = n[genericParamsPos]
-  # we keep the original params around for better error messages, see
-  # issue https://github.com/nim-lang/Nim/issues/1713
-  result = semGenericParamList(c, orig)
-  if n[miscPos].kind == nkEmpty:
-    n[miscPos] = newTree(nkBracket, c.graph.emptyNode, orig)
+  if n[genericParamsPos].kind == nkEmpty:
+    result = newNodeI(nkGenericParams, n.info)
+    result.flags.incl(nfSem)
   else:
-    n[miscPos][1] = orig
-  n[genericParamsPos] = result
+    let orig = n[genericParamsPos]
+    # we keep the original params around for better error messages, see
+    # issue https://github.com/nim-lang/Nim/issues/1713
+    result = semGenericParamList(c, orig)
+    if n[miscPos].kind == nkEmpty:
+      n[miscPos] = newTree(nkBracket, c.graph.emptyNode, orig)
+    else:
+      n[miscPos][1] = orig
+    # XXX: setting the result only in the non-nkEmpty branch is required or it
+    #      breaks the analysis that happens further on in both semLambda and
+    #      semProcAux, that points to a data dependency that should be broken.
+    n[genericParamsPos] = result
 
 proc semLambda(c: PContext, n: PNode, flags: TExprFlags): PNode =
   # XXX semProcAux should be good enough for this now, we will eventually
@@ -1550,11 +1557,7 @@ proc semLambda(c: PContext, n: PNode, flags: TExprFlags): PNode =
     s = n[namePos].sym
   pushOwner(c, s)
   openScope(c)
-  var gp: PNode
-  if n[genericParamsPos].kind != nkEmpty:
-    gp = setGenericParamsMisc(c, n)
-  else:
-    gp = newNodeI(nkGenericParams, n.info)
+  var gp = setGenericParamsMisc(c, n)
 
   if n[paramsPos].kind != nkEmpty:
     semParamList(c, n[paramsPos], gp, s)
@@ -1847,21 +1850,34 @@ proc semProcAux(c: PContext, n: PNode, kind: TSymKind,
   if result != nil: return result
   result = n
   checkMinSonsLen(n, bodyPos + 1, c.config)
-  var s: PSym
-  var typeIsDetermined = false
-  var isAnon = false
-  if n[namePos].kind != nkSym:
-    assert phase == stepRegisterSymbol
 
-    if n[namePos].kind == nkEmpty:
-      s = newSym(kind, c.cache.idAnon, nextSymId c.idgen, getCurrOwner(c), n.info)
-      incl(s.flags, sfUsed)
-      isAnon = true
+  let
+    isAnon = n[namePos].kind == nkEmpty
+    nameIsSymbol = n[namePos].kind == nkSym
+    allowSymbolRegistration = phase == stepRegisterSymbol
+
+  doAssert allowSymbolRegistration or nameIsSymbol
+
+  # get the proc name as a symbol
+  var
+    s: PSym
+    typeIsDetermined = false
+    # XXX: typeIsDetermined's initialization is a smell, this should be a fact
+    #      derived from the node itself
+  case n[namePos].kind:
+    of nkEmpty:
+      s = newSym(kind, c.cache.idAnon, nextSymId c.idgen, getCurrOwner(c),
+                  n.info)
+      s.flags.incl sfUsed
+    of nkSym:
+      s = n[namePos].sym
+      s.owner = getCurrOwner(c)
+      typeIsDetermined = s.typ == nil
     else:
       s = semIdentDef(c, n[0], kind)
+  if not nameIsSymbol:
+    # this means we just created it so ensure proper setup
     n[namePos] = newSymNode(s)
-    s.ast = n
-    #s.scope = c.currentScope
     when false:
       # disable for now
       if sfNoForward in c.module.flags and
@@ -1869,14 +1885,9 @@ proc semProcAux(c: PContext, n: PNode, kind: TSymKind,
         addInterfaceOverloadableSymAt(c, c.currentScope, s)
         s.flags.incl sfForward
         return
-  else:
-    s = n[namePos].sym
-    s.owner = getCurrOwner(c)
-    typeIsDetermined = s.typ == nil
-    s.ast = n
-    #s.scope = c.currentScope
-
+  s.ast = n
   s.options = c.config.options
+  #s.scope = c.currentScope
 
   # before compiling the proc body, set as current the scope
   # where the proc was declared
@@ -1884,12 +1895,12 @@ proc semProcAux(c: PContext, n: PNode, kind: TSymKind,
   #c.currentScope = s.scope
   pushOwner(c, s)
   openScope(c)
-  var gp: PNode
-  if n[genericParamsPos].kind != nkEmpty:
-    gp = setGenericParamsMisc(c, n)
-  else:
-    gp = newNodeI(nkGenericParams, n.info)
+
   # process parameters:
+  # XXX: this is concerning we're doing repetitive analysis, rather than
+  #      clearly breaking it down into phases
+  var gp = setGenericParamsMisc(c, n)
+
   if n[paramsPos].kind != nkEmpty:
     semParamList(c, n[paramsPos], gp, s)
     if gp.len > 0:
