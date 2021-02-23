@@ -7,6 +7,8 @@
 #    distribution, for details about the copyright.
 #
 
+## This module provides some high performance string operations.
+
 const whitespaces = {' ', '\t', '\v', '\r', '\l', '\f'}
 
 func stripSlice(s: openArray[char], leading = true, trailing = true, chars: set[char] = whitespaces): Slice[int] =
@@ -26,7 +28,7 @@ func setSlice*(s: var string, slice: Slice[int]) =
   ## Inplace version of `substr`.
   runnableExamples:
     var s = "Hello, Nim!"
-    s.setSlice(7, 10)
+    s.setSlice(7 .. 9)
     assert s == "Nim"
 
   let first = slice.a
