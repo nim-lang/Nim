@@ -1,6 +1,6 @@
 ## This module allows chains of field-access and indexing where the LHS can be nil.
 ## This simplifies code by reducing need for if-else branches around intermediate values
-## that maybe be nil.
+## that may be nil.
 ##
 ## Note: experimental module, unstable API.
 
@@ -23,10 +23,10 @@ runnableExamples:
   assert ?.(f2.x2.x2).x3[] == 0
 
   assert (?.f2.x2.x2).x3 == nil  # this terminates ?. early
-  import segfaults # enable `NilAccessDefect` exceptions
+  import std/segfaults # enable `NilAccessDefect` exceptions
   doAssertRaises(NilAccessDefect): echo (?.f2.x2.x2).x3[]
 
-from std/options import Option, isSome, some, option, get
+from std/options import Option, isSome, option, get, UnpackDefect
 export options.get, options.isSome, options.isNone
 
 template fakeDot*(a: Option, b): untyped =
@@ -46,14 +46,18 @@ template fakeDot*(a: Option, b): untyped =
     # nil is "sticky"; this is needed, see tests
     default(T)
 
-template `[]`*[I](a: Option, i: I): untyped =
+#[
+xxx this should but doesn't work:
+func `[]`*[T, I](a: Option[T], i: I): Option {.inline.} =
+]#
+
+func `[]`*[T, I](a: Option[T], i: I): auto {.inline.} =
   ## See top-level example.
-  let a1 = a # to avoid double evaluations
-  if isSome(a1):
+  if isSome(a):
     # correctly will raise IndexDefect if a is valid but wraps an empty container
-    some(a1.get[i])
+    option(a.get[i])
   else:
-    default(Option[typeof(a1.get[i])])
+    default(Option[typeof(a.get[i])])
 
 func `[]`*[U](a: Option[U]): auto {.inline.} =
   ## See top-level example.
@@ -83,25 +87,20 @@ func replace(n: NimNode): NimNode =
     n[0] = replace(n[0])
     result = n
 
-proc safeGet[T](a: Option[T]): T =
+proc safeGet[T](a: Option[T]): T {.inline.} =
   get(a, default(T))
 
-macro `?.`*(a: untyped): untyped =
+macro `?.`*(a: untyped): auto =
   ## Transforms `a` into an expression that can be safely evaluated even in
   ## presence of intermediate nil pointers/references, in which case a default
   ## value is produced.
-  #[
-  Using a template like this wouldn't work:
-    template `?.`*(a: untyped): untyped = some(a)[]
-  ]#
   result = replace(a)
   result = quote do:
-    # `result`.val # TODO import {.all.} ?
+    # `result`.val # TODO: expose a way to do this directly in std/options, e.g.: `getAsIs`
     safeGet(`result`)
 
-macro `??.`*(a: untyped): untyped =
-  ## Same as `?.` but returns an option-like object that can be unwrapped with `get`
-  ## or checked for validity with `isSome`.
+macro `??.`*(a: untyped): Option =
+  ## Same as `?.` but returns an `Option`.
   runnableExamples:
     type Foo = ref object
       x1: ref int
@@ -114,6 +113,8 @@ macro `??.`*(a: untyped): untyped =
 
     var f2: Foo
     doAssert not (??.f2.x1[]).isSome # f2 was nil
-    doAssert (??.f2.x1[]).get == 0
+    from std/options import UnpackDefect
+    doAssertRaises(UnpackDefect): discard (??.f2.x1[]).get
+    doAssert ?.f2.x1[] == 0 # in contrast, this returns default(int)
 
   result = replace(a)
