@@ -66,6 +66,8 @@
 - `os.FileInfo` (returned by `getFileInfo`) now contains `blockSize`,
   determining preferred I/O block size for this file object.
 
+- Added a simpler to use `io.readChars` overload.
+
 - `repr` now doesn't insert trailing newline; previous behavior was very inconsistent,
   see #16034. Use `-d:nimLegacyReprWithNewline` for previous behavior.
 
@@ -166,6 +168,7 @@ provided by the operating system.
   This lets the OS perform its default actions, which might include core
   dumping (on select signals) and notifying the parent process about the cause
   of termination.
+
 
 ## Language changes
 

@@ -1986,10 +1986,6 @@ proc connect*(socket: Socket, address: string, port = Port(0),
   ##
   ## The ``timeout`` parameter specifies the time in milliseconds to allow for
   ## the connection to the server to be made.
-  ##
-  ## **Warning:** This procedure appears to be broken for SSL connections as of
-  ## Nim v1.0.2. Consider using the other `connect` procedure. See
-  ## https://github.com/nim-lang/Nim/issues/15215 for more info.
   socket.fd.setBlocking(false)
 
   socket.connectAsync(address, port, socket.domain)
@@ -2003,7 +1999,18 @@ proc connect*(socket: Socket, address: string, port = Port(0),
     when defineSsl and not defined(nimdoc):
       if socket.isSsl:
         socket.fd.setBlocking(true)
-        doAssert socket.gotHandshake()
+        # RFC3546 for SNI specifies that IP addresses are not allowed.
+        if not isIpAddress(address):
+          # Discard result in case OpenSSL version doesn't support SNI, or we're
+          # not using TLSv1+
+          discard SSL_set_tlsext_host_name(socket.sslHandle, address)
+
+        ErrClearError()
+        let ret = SSL_connect(socket.sslHandle)
+        socketError(socket, ret)
+        when not defined(nimDisableCertificateValidation):
+          if not isIpAddress(address):
+            socket.checkCertName(address)
   socket.fd.setBlocking(true)
 
 proc getPrimaryIPAddr*(dest = parseIpAddress("8.8.8.8")): IpAddress =

@@ -103,7 +103,7 @@ type
 
 proc getCmd*(s: TSpec): string =
   if s.cmd.len == 0:
-    result = compilerPrefix & " $target --hints:on -d:testing --nimblePath:tests/deps $options $file"
+    result = compilerPrefix & " $target --hints:on -d:testing --clearNimblePath --nimblePath:build/deps/pkgs $options $file"
   else:
     result = s.cmd
 
@@ -330,8 +330,8 @@ proc parseSpec*(filename: string): TSpec =
           when defined(linux): result.err = reDisabled
         of "bsd":
           when defined(bsd): result.err = reDisabled
-        of "macosx":
-          when defined(macosx): result.err = reDisabled
+        of "osx", "macosx": # xxx remove `macosx` alias?
+          when defined(osx): result.err = reDisabled
         of "unix":
           when defined(unix): result.err = reDisabled
         of "posix":

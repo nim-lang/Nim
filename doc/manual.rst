@@ -3678,6 +3678,48 @@ Is short for:
 
 
 
+Routines
+--------
+
+A routine is a symbol of kind: `proc`, `func`, `method`, `iterator`, `macro`, `template`, `converter`.
+
+Type bound operators
+--------------------
+
+A type bound operator is a `proc` or `func` whose name starts with `=` but isn't an operator
+(i.e. containing only symbols, such as `==`). These are unrelated to setters
+(see `properties <manual.html#procedures-properties>`_), which instead end in `=`.
+A type bound operator declared for a type applies to the type regardless of whether
+the operator is in scope (including if it is private).
+
+.. code-block:: nim
+  # foo.nim:
+  var witness* = 0
+  type Foo[T] = object
+  proc initFoo*(T: typedesc): Foo[T] = discard
+  proc `=destroy`[T](x: var Foo[T]) = witness.inc # type bound operator
+
+  # main.nim:
+  import foo
+  block:
+    var a = initFoo(int)
+    doAssert witness == 0
+  doAssert witness == 1
+  block:
+    var a = initFoo(int)
+    doAssert witness == 1
+    `=destroy`(a) # can be called explicitly, even without being in scope
+    doAssert witness == 2
+  # will still be called upon exiting scope
+  doAssert witness == 3
+
+Type bound operators currently include:
+``=destroy``, ``=copy``, ``=sink``, ``=trace``, ``=dispose``, ``=deepcopy``
+(some of which are still implementation defined and not yet documented).
+
+For more details on some of those procs, see
+`lifetimeminustracking-hooks <destructors.html#lifetimeminustracking-hooks>`_.
+
 Nonoverloadable builtins
 ------------------------
 

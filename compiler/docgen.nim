@@ -677,8 +677,8 @@ proc getRstName(n: PNode): PRstNode =
   case n.kind
   of nkPostfix: result = getRstName(n[1])
   of nkPragmaExpr: result = getRstName(n[0])
-  of nkSym: result = newRstNode(rnLeaf, n.sym.renderDefinitionName)
-  of nkIdent: result = newRstNode(rnLeaf, n.ident.s)
+  of nkSym: result = newRstLeaf(n.sym.renderDefinitionName)
+  of nkIdent: result = newRstLeaf(n.ident.s)
   of nkAccQuoted:
     result = getRstName(n[0])
     for i in 1..<n.len: result.text.add(getRstName(n[i]).text)

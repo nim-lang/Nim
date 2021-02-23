@@ -2364,6 +2364,7 @@ proc semWhen(c: PContext, n: PNode, semCheck = true): PNode =
           discard
         elif e.intVal != 0 and result == nil:
           setResult(it[1])
+          return # we're not in nimvm and we already have a result
     of nkElse, nkElseExpr:
       checkSonsLen(it, 1, c.config)
       if result == nil or whenNimvm:

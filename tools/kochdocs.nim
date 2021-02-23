@@ -71,6 +71,7 @@ template inFold*(desc, body) =
 proc execFold*(desc, cmd: string, errorcode: int = QuitFailure, additionalPath = "") =
   ## Execute shell command. Add log folding for various CI services.
   # https://github.com/travis-ci/travis-ci/issues/2285#issuecomment-42724719
+  let desc = if desc.len == 0: cmd else: desc
   inFold(desc):
     exec(cmd, errorcode, additionalPath)
 
@@ -143,7 +144,6 @@ lib/posix/termios.nim
 
   # some of these are include files so shouldn't be docgen'd
   ignoredModules = """
-lib/pure/prelude.nim
 lib/pure/future.nim
 lib/pure/collections/hashcommon.nim
 lib/pure/collections/tableimpl.nim
@@ -284,7 +284,7 @@ proc buildDoc(nimArgs, destPath: string) =
 
 proc nim2pdf(src: string, dst: string, nimArgs: string) =
   # xxx expose as a `nim` command or in some other reusable way.
-  let outDir = "build" / "pdflatextmp" # xxx use reusable std/private/paths shared with other modules
+  let outDir = "build" / "pdflatextmp" # xxx factor pending https://github.com/timotheecour/Nim/issues/616
   # note: this will generate temporary files in gitignored `outDir`: aux toc log out tex
   exec("$# rst2tex $# --outdir:$# $#" % [findNim().quoteShell(), nimArgs, outDir.quoteShell, src.quoteShell])
   let texFile = outDir / src.lastPathPart.changeFileExt("tex")

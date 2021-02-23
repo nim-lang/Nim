@@ -2205,7 +2205,7 @@ func escape*(s: string, prefix = "\"", suffix = "\""): string {.rtl,
   ##
   ## See also:
   ## * `unescape func<#unescape,string,string,string>`_ for the opposite
-  ## operation
+  ##   operation
   result = newStringOfCap(s.len + s.len shr 2)
   result.add(prefix)
   for c in items(s):

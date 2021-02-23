@@ -11,26 +11,28 @@ import std/math
 # Function for approximate comparison of floats
 proc `==~`(x, y: float): bool = abs(x - y) < 1e-9
 
-block:
-  when not defined(js):
-    # check for no side effect annotation
-    proc mySqrt(num: float): float {.noSideEffect.} =
-      # xxx unused
-      sqrt(num)
-
-    # check gamma function
-    doAssert gamma(5.0) == 24.0 # 4!
-    doAssert almostEqual(gamma(0.5), sqrt(PI))
-    doAssert almostEqual(gamma(-0.5), -2 * sqrt(PI))
-    doAssert lgamma(1.0) == 0.0 # ln(1.0) == 0.0
-    doAssert almostEqual(lgamma(0.5), 0.5 * ln(PI))
-    doAssert erf(6.0) > erf(5.0)
-    doAssert erfc(6.0) < erfc(5.0)
-
-when not defined(js) and not defined(windows): # xxx pending bug #17017
-  doAssert gamma(-1.0).isNaN
 
 template main() =
+  block:
+    when not defined(js):
+      # check for no side effect annotation
+      proc mySqrt(num: float): float {.noSideEffect.} =
+        # xxx unused
+        sqrt(num)
+
+      # check gamma function
+      doAssert gamma(5.0) == 24.0 # 4!
+      doAssert almostEqual(gamma(0.5), sqrt(PI))
+      doAssert almostEqual(gamma(-0.5), -2 * sqrt(PI))
+      doAssert lgamma(1.0) == 0.0 # ln(1.0) == 0.0
+      doAssert almostEqual(lgamma(0.5), 0.5 * ln(PI))
+      doAssert erf(6.0) > erf(5.0)
+      doAssert erfc(6.0) < erfc(5.0)
+
+  when not defined(js) and not defined(windows): # xxx pending bug #17017
+    doAssert gamma(-1.0).isNaN
+
+
   block: # sgn() tests
     doAssert sgn(1'i8) == 1
     doAssert sgn(1'i16) == 1
@@ -197,6 +199,14 @@ template main() =
     doAssert: compiles(5.5 ^ 2.uint8)
     doAssert: not compiles(5.5 ^ 2.2)
 
+  block: # isNaN
+    doAssert NaN.isNaN
+    doAssert not Inf.isNaN
+    doAssert isNaN(Inf - Inf)
+    doAssert not isNaN(0.0)
+    doAssert not isNaN(3.1415926)
+    doAssert not isNaN(0'f32)
+
   block: # signbit
     doAssert not signbit(0.0)
     doAssert signbit(-0.0)
@@ -207,14 +217,6 @@ template main() =
     doAssert signbit(-Inf)
     doAssert not signbit(NaN)
 
-  block: # isNaN
-    doAssert NaN.isNaN
-    doAssert not Inf.isNaN
-    doAssert isNaN(Inf - Inf)
-    doAssert not isNaN(3.1415926)
-    doAssert not isNaN(0'f32)
-
-  block: # signbit
     let x1 = NaN
     let x2 = -NaN
     let x3 = -x1
@@ -269,6 +271,10 @@ template main() =
     doAssert copySign(-NaN, 0.0).isNaN
     doAssert copySign(-NaN, -0.0).isNaN
 
+    doAssert copySign(-1.0, NaN) == 1.0
+    doAssert copySign(-1.0, -NaN) == -1.0
+    doAssert copySign(1.0, copySign(NaN, -1.0)) == -1.0
+
   block: # almostEqual
     doAssert almostEqual(3.141592653589793, 3.1415926535897936)
     doAssert almostEqual(1.6777215e7'f32, 1.6777216e7'f32)
@@ -279,7 +285,7 @@ template main() =
     doAssert not almostEqual(Inf, NaN)
     doAssert not almostEqual(NaN, NaN)
 
-  block: # round() tests
+  block: # round
     block: # Round to 0 decimal places
       doAssert round(54.652) == 55.0
       doAssert round(54.352) == 54.0
@@ -300,6 +306,7 @@ template main() =
       doAssert round(2.5) == 3.0
       doAssert round(2.5'f32) == 3.0'f32
       doAssert round(2.5'f64) == 3.0'f64
+
     block: # func round*[T: float32|float64](x: T, places: int): T
       doAssert round(54.345, 0) == 54.0
       template fn(x) =
@@ -311,15 +318,7 @@ template main() =
       fn(54.346)
       fn(54.346'f32)
 
-    when nimvm:
-      discard
-    else:
-      when not defined(js):
-        doAssert copySign(-1.0, -NaN) == -1.0
-        doAssert copySign(10.0, -NaN) == -10.0
-        doAssert copySign(1.0, copySign(NaN, -1.0)) == -1.0 # fails in VM
-
-  block:
+  block: # abs
     doAssert 1.0 / abs(-0.0) == Inf
     doAssert 1.0 / abs(0.0) == Inf
     doAssert -1.0 / abs(-0.0) == -Inf

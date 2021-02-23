@@ -3,7 +3,8 @@ Represents absolute paths, but using a symbolic variables (eg $nimr) which can b
 resolved at runtime; this avoids hardcoding at compile time absolute paths so
 that the project root can be relocated.
 
-xxx consider some refactoring with $nim/testament/lib/stdtest/specialpaths.nim;
+xxx factor pending https://github.com/timotheecour/Nim/issues/616, see also
+$nim/testament/lib/stdtest/specialpaths.nim
 specialpaths is simpler because it doesn't need variables to be relocatable at
 runtime (eg for use in testament)
 
