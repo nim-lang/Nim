@@ -9,9 +9,10 @@
 
 const whitespaces = {' ', '\t', '\v', '\r', '\l', '\f'}
 
-func stripSlice*(s: openArray[char], leading = true, trailing = true, chars: set[char] = whitespaces): Slice[int] =
+func stripSlice(s: openArray[char], leading = true, trailing = true, chars: set[char] = whitespaces): Slice[int] =
+  ## Returns the slice range of `s` which is stripped `chars`.
   runnableExamples:
-    doAssert stripSlice(" abc  ") == 1 .. 3
+    assert stripSlice(" abc  ") == 1 .. 3
   var
     first = 0
     last = high(s)
@@ -22,7 +23,11 @@ func stripSlice*(s: openArray[char], leading = true, trailing = true, chars: set
   result = first .. last
 
 func setSlice*(s: var string, slice: Slice[int]) =
-  ## Inplace version for `substr`.
+  ## Inplace version of `substr`.
+  runnableExamples:
+    var s = "Hello, Nim!"
+    s.setSlice(7, 10)
+    assert s == "Nim"
   let first = slice.a
   let last = slice.b
   if first > last:
@@ -51,21 +56,21 @@ func strip*(a: var string, leading = true, trailing = true, chars: set[char] = w
   runnableExamples:
     var a = "  vhellov   "
     strip(a)
-    doAssert a == "vhellov"
+    assert a == "vhellov"
 
     a = "  vhellov   "
     a.strip(leading = false)
-    doAssert a == "  vhellov"
+    assert a == "  vhellov"
 
     a = "  vhellov   "
     a.strip(trailing = false)
-    doAssert a == "vhellov   "
+    assert a == "vhellov   "
 
     var c = "blaXbla"
     c.strip(chars = {'b', 'a'})
-    doAssert c == "laXbl"
+    assert c == "laXbl"
     c = "blaXbla"
     c.strip(chars = {'b', 'a', 'l'})
-    doAssert c == "X"
+    assert c == "X"
 
   setSlice(a, stripSlice(a, leading, trailing, chars))
