@@ -213,7 +213,7 @@ when hasAlloc and not defined(js):
     ## to it is undefined behaviour!
     ##
     ## See also:
-    ## `allocShared0 <#allocShared0.t,Natural>`_.
+    ## * `allocShared0 <#allocShared0.t,Natural>`_.
     incStat(allocCount)
     allocSharedImpl(size)
 
