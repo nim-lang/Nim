@@ -78,31 +78,26 @@ proc test_string_cmp() =
 
 
 #--------------------------
-# bug #7816
-import sugar
-import sequtils
+import std/[sugar, sequtils]
 
 proc tester[T](x: T) =
   let test = toSeq(0..4).map(i => newSeq[int]())
   doAssert $test == "@[@[], @[], @[], @[], @[]]"
 
-
-
-# #14497 
 func reverse*(a: string): string =
   result = a
   for i in 0 ..< a.len div 2:
     swap(result[i], result[^(i + 1)])
-
 
 proc main() =
   # xxx put all tests here to test in VM and RT
   test_string_slice()
   test_string_cmp()
 
-  tester(1)
+  block: # bug #7816
+    tester(1)
 
-  block: # reverse
+  block: # bug #14497, reverse
     doAssert reverse("hello") == "olleh"
 
   block: # len, high
