@@ -65,15 +65,15 @@ macro genEnumCaseStmt*(typ: typedesc, argSym: typed, default: typed,
     expectKind(default, nnkSym)
     result.add nnkElse.newTree(default)
 
-macro sparseEnumFullRange(a: typed): untyped = 
+macro enumWithHolesFullRange(a: typed): untyped = 
   newNimNode(nnkCurly).add(a.getType[1][1..^1])
 
 iterator items*[T: enum and not Ordinal](E: typedesc[T]): T =
-  ## Iterates over a sparse enum.
+  ## Iterates over an enum with holes.
   runnableExamples:
     type A = enum a0 = 2, a1 = 4, a2
     type B[T] = enum b0 = 2, b1 = 4
     from std/sequtils import toSeq
     assert A.toSeq == [a0, a1, a2]
     assert B[float].toSeq == [B[float].b0, B[float].b1]
-  for a in sparseEnumFullRange(E): yield a
+  for a in enumWithHolesFullRange(E): yield a

@@ -15,23 +15,16 @@
 import std/private/since
 export system.`$` # for backward compatibility
 
-type SomeSparseEnum* = (not Ordinal) and enum ## Sparse enum's, a.k.a enum with holes.
-
-#[
-xxx `runnableExamples` isn't run if inside:
-type Foo* = concept x
-  runnableExamples: assert false
-  x is int
-]#
+type SomeEnumWithHoles* = (not Ordinal) and enum ## Enum with holes.
 
 runnableExamples:
   type A = enum a0 = 2, a1 = 4, a2
   type B = enum b0 = 2, b1, b2
-  assert A is SomeSparseEnum
-  assert B isnot SomeSparseEnum
-  assert int isnot SomeSparseEnum
+  assert A is SomeEnumWithHoles
+  assert B isnot SomeEnumWithHoles
+  assert int isnot SomeEnumWithHoles
   type C[T] = enum h0 = 2, h1 = 4
-  assert C[float] is SomeSparseEnum
+  assert C[float] is SomeEnumWithHoles
 
 proc name*(t: typedesc): string {.magic: "TypeTrait".} =
   ## Returns the name of the given type.

@@ -84,7 +84,7 @@ iterator mitems*(a: var cstring): var char {.inline.} =
 
 iterator items*[T: enum and Ordinal](E: typedesc[T]): T =
   ## Iterates over the values of `E`.
-  ## See also `enumutils.items` for sparse enums.
+  ## See also `enumutils.items` for enums with holes.
   runnableExamples:
     type Goo = enum g0 = 2, g1, g2
     from std/sequtils import toSeq

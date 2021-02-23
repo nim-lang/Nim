@@ -42,9 +42,9 @@
   Useful for library authors.
 
 - Added `std/enumutils` module. Added `genEnumCaseStmt` macro that generates case statement to parse string to enum.
-  Added `items` for sparse enums.
+  Added `items` for enums with holes.
 
-- Added `typetraits.SomeSparseEnum` for sparse enums.
+- Added `typetraits.SomeEnumWithHoles` for enums with holes.
 
 - Removed deprecated `iup` module from stdlib, it has already moved to
   [nimble](https://github.com/nim-lang/iup).
