@@ -28,8 +28,13 @@ func setSlice*(s: var string, slice: Slice[int]) =
     var s = "Hello, Nim!"
     s.setSlice(7, 10)
     assert s == "Nim"
+
   let first = slice.a
   let last = slice.b
+
+  assert first >= 0
+  assert last <= s.high
+
   if first > last:
     s.setLen(0)
     return
@@ -46,7 +51,7 @@ func setSlice*(s: var string, slice: Slice[int]) =
         moveMem(addr s[0], addr s[first], last - first + 1)
   s.setLen(last - first + 1)
 
-func strip*(a: var string, leading = true, trailing = true, chars: set[char] = whitespaces) =
+func strip*(a: var string, leading = true, trailing = true, chars: set[char] = whitespaces) {.inline.} =
   ## Inplace version of `strip`. Strips leading or 
   ## trailing `chars` (default: whitespace characters).
   ##
