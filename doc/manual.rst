@@ -3681,23 +3681,23 @@ Is short for:
 Routines
 --------
 
-A routine is a symbol of kind: `proc`, `func`, `iterator`, `macro`, `template`, `converter`.
+A routine is a symbol of kind: `proc`, `func`, `method`, `iterator`, `macro`, `template`, `converter`.
 
-Type bound routines
--------------------
+Type bound operators
+--------------------
 
-A type bound routine is a routine whose name starts with `=` but isn't an operator
+A type bound operator is a `proc` or `func` whose name starts with `=` but isn't an operator
 (i.e. containing only symbols, such as `==`). These are unrelated to setters
 (see `properties <manual.html#procedures-properties>`_), which instead end in `=`.
-A type bound routine declared for a type applies to the type regardless of whether
-the routine is in scope (including if the routine is private).
+A type bound operator declared for a type applies to the type regardless of whether
+the operator is in scope (including if it is private).
 
 .. code-block:: nim
   # foo.nim:
   var witness* = 0
   type Foo[T] = object
   proc initFoo*(T: typedesc): Foo[T] = discard
-  proc `=destroy`[T](x: var Foo[T]) = witness.inc # type bound routine
+  proc `=destroy`[T](x: var Foo[T]) = witness.inc # type bound operator
 
   # main.nim:
   import foo
@@ -3713,10 +3713,11 @@ the routine is in scope (including if the routine is private).
   # will still be called upon exiting scope
   doAssert witness == 3
 
-Type bound routines allowed names are in ``ast.AttachedOpToStr``, currently include:
-``=destroy``, ``=copy``, ``=sink``, ``=trace``, ``=dispose``, ``=deepcopy``.
+Type bound operators allowed names are in ``ast.AttachedOpToStr``, currently include:
+``=destroy``, ``=copy``, ``=sink``, ``=trace``, ``=dispose``, ``=deepcopy``
+(some of which are still implementation defined and not yet documented).
 
-For more details on some of those routines, see
+For more details on some of those procs, see
 `lifetimeminustracking-hooks <destructors.html#lifetimeminustracking-hooks>`_.
 
 Nonoverloadable builtins
