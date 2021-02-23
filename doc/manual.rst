@@ -3713,7 +3713,7 @@ the operator is in scope (including if it is private).
   # will still be called upon exiting scope
   doAssert witness == 3
 
-Type bound operators allowed names are in ``ast.AttachedOpToStr``, currently include:
+Type bound operators currently include:
 ``=destroy``, ``=copy``, ``=sink``, ``=trace``, ``=dispose``, ``=deepcopy``
 (some of which are still implementation defined and not yet documented).
 
