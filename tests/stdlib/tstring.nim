@@ -123,16 +123,10 @@ proc main() =
     doAssert "".cstring.len == 0
     doAssert "".cstring.high == -1
 
-    var c: cstring = nil
-    template impl() =
+    block: # bug #16674
+      var c: cstring = nil
       doAssert c.len == 0
       doAssert c.high == -1
-    when defined js:
-      when nimvm: impl()
-      else:
-        # xxx pending bug #16674
-        discard
-    else: impl()
 
 static: main()
 main()
