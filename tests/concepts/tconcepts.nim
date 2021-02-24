@@ -98,7 +98,7 @@ block tconceptinclosure:
 block overload_precedence:
   type ParameterizedType[T] = object
 
-  type CustomTypeClass = concept
+  type CustomTypeClass = concept c
     true
 
   # 3 competing procs
