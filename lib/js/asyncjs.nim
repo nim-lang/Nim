@@ -148,6 +148,7 @@ macro async*(arg: untyped): untyped =
       result.add generateJsasync(oneProc)
   else:
     result = generateJsasync(arg)
+  # echo result.repr # PRTEMP
 
 proc newPromise*[T](handler: proc(resolve: proc(response: T))): Future[T] {.importcpp: "(new Promise(#))".}
   ## A helper for wrapping callback-based functions
@@ -156,6 +157,8 @@ proc newPromise*[T](handler: proc(resolve: proc(response: T))): Future[T] {.impo
 proc newPromise*(handler: proc(resolve: proc())): Future[void] {.importcpp: "(new Promise(#))".}
   ## A helper for wrapping callback-based functions
   ## into promises and async procedures.
+
+# template `===>`(a)
 
 when defined(nimExperimentalAsyncjsThen):
   since (1, 5, 1):
@@ -178,6 +181,10 @@ when defined(nimExperimentalAsyncjsThen):
     type OnReject* = proc(reason: Error)
 
     proc then*[T, T2](future: Future[T], onSuccess: proc(value: T): T2, onReject: OnReject = nil): Future[T2] =
+      ## See https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Promise/then
+      asm "`result` = `future`.then(`onSuccess`, `onReject`)"
+
+    proc then*[T, T2](future: Future[T], onSuccess: proc(value: T): Future[T2], onReject: OnReject = nil): Future[T2] =
       ## See https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Promise/then
       asm "`result` = `future`.then(`onSuccess`, `onReject`)"
 
@@ -217,4 +224,5 @@ when defined(nimExperimentalAsyncjsThen):
           assert  "foobar: 7" in $reason.message
         discard main()
 
+      # xxx add tests and examples for `then` with some `onReject` callback.
       asm "`result` = `future`.catch(`onReject`)"
