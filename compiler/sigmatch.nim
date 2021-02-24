@@ -13,7 +13,7 @@
 import
   intsets, ast, astalgo, semdata, types, msgs, renderer, lookups, semtypinst,
   magicsys, idents, lexer, options, parampatterns, strutils, trees,
-  linter, lineinfos, lowerings, modulegraphs
+  linter, lineinfos, lowerings, modulegraphs, concepts
 
 type
   MismatchKind* = enum
@@ -363,7 +363,7 @@ proc concreteType(c: TCandidate, t: PType; f: PType = nil): PType =
   of tySequence, tySet:
     if t[0].kind == tyEmpty: result = nil
     else: result = t
-  of tyGenericParam, tyAnything:
+  of tyGenericParam, tyAnything, tyConcept:
     result = t
     while true:
       result = PType(idTableGet(c.bindings, t))
@@ -1505,8 +1505,8 @@ proc typeRel(c: var TCandidate, f, aOrig: PType,
 
   of tyGenericInvocation:
     var x = a.skipGenericAlias
-
-    var preventHack = false
+    let concpt = f[0].skipTypes({tyGenericBody})
+    var preventHack = concpt.kind == tyConcept
     if x.kind == tyOwned and f[0].kind != tyOwned:
       preventHack = true
       x = x.lastSon
@@ -1533,6 +1533,9 @@ proc typeRel(c: var TCandidate, f, aOrig: PType,
           # Workaround for regression #4589
           if f[i].kind != tyTypeDesc: return
       result = isGeneric
+    elif x.kind == tyGenericInst and concpt.kind == tyConcept:
+      result = if concepts.conceptMatch(c.c, concpt, x, c.bindings, f): isGeneric
+               else: isNone
     else:
       let genericBody = f[0]
       var askip = skippedNone
@@ -1653,6 +1656,10 @@ proc typeRel(c: var TCandidate, f, aOrig: PType,
           result = isGeneric
         else:
           result = isNone
+
+  of tyConcept:
+    result = if concepts.conceptMatch(c.c, f, a, c.bindings, nil): isGeneric
+             else: isNone
 
   of tyCompositeTypeClass:
     considerPreviousT:
@@ -2500,7 +2507,7 @@ proc matchesAux(c: PContext, n, nOrig: PNode, m: var TCandidate, marker: var Int
             noMatch()
         checkConstraint(n[a])
 
-    if m.state == csMatch and not(m.calleeSym != nil and m.calleeSym.kind in {skTemplate, skMacro}):
+    if m.state == csMatch and not (m.calleeSym != nil and m.calleeSym.kind in {skTemplate, skMacro}):
       c.mergeShadowScope
     else:
       c.closeShadowScope
