@@ -13,8 +13,8 @@
 ##
 ##  To complete the installation, run:
 ##
-##  sudo apt-get libblas-dev
-##  sudo apt-get libvoodoo
+##  sudo apt-get install libblas-dev
+##  sudo apt-get install libvoodoo
 ##
 ## The above output could be the result of a code snippet like:
 ##
@@ -201,7 +201,7 @@ proc detectOsImpl(d: Distribution): bool =
 
 template detectOs*(d: untyped): bool =
   ## Distro/OS detection. For convenience the
-  ## required ``Distribution.`` qualifier is added to the
+  ## required `Distribution.` qualifier is added to the
   ## enum value.
   detectOsImpl(Distribution.d)
 

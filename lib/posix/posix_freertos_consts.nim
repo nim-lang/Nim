@@ -220,11 +220,11 @@ var IPV6_UNICAST_HOPS* {.importc: "IPV6_UNICAST_HOPS", header: "<sys/socket.h>".
 var IPV6_V6ONLY* {.importc: "IPV6_V6ONLY", header: "<sys/socket.h>".}: cint
 
 # <netinet/tcp.h>
-var TCP_NODELAY* {.importc: "TCP_NODELAY", header: "<sys/socket.h>".}: cint
-var TCP_KEEPALIVE* {.importc: "TCP_KEEPALIVE", header: "<sys/socket.h>".}: cint
-var TCP_KEEPIDLE* {.importc: "TCP_KEEPIDLE", header: "<sys/socket.h>".}: cint
-var TCP_KEEPINTVL* {.importc: "TCP_KEEPINTVL", header: "<sys/socket.h>".}: cint
-var TCP_KEEPCNT* {.importc: "TCP_KEEPCNT", header: "<sys/socket.h>".}: cint
+const TCP_NODELAY*    = 0x01    # don't delay send to coalesce packets
+const TCP_KEEPALIVE*  = 0x02    # send KEEPALIVE probes when idle for pcb->keep_idle milliseconds
+const TCP_KEEPIDLE*   = 0x03    # set pcb->keep_idle  - Same as TCP_KEEPALIVE, but use seconds for get/setsockopt
+const TCP_KEEPINTVL*  = 0x04    # set pcb->keep_intvl - Use seconds for get/setsockopt
+const TCP_KEEPCNT*    = 0x05    # set pcb->keep_cnt   - Use number of probes sent for get/setsockopt
 
 # <nl_types.h>
 # var NL_SETD* {.importc: "NL_SETD", header: "<nl_types.h>".}: cint
@@ -367,10 +367,25 @@ var SEM_FAILED* {.importc: "SEM_FAILED", header: "<semaphore.h>".}: pointer
 var FD_SETSIZE* {.importc: "FD_SETSIZE", header: "<sys/select.h>".}: cint
 
 # <sys/socket.h>
-var MSG_CTRUNC* {.importc: "MSG_CTRUNC", header: "<sys/socket.h>".}: cint
-var MSG_DONTROUTE* {.importc: "MSG_DONTROUTE", header: "<sys/socket.h>".}: cint
-var MSG_EOR* {.importc: "MSG_EOR", header: "<sys/socket.h>".}: cint
-var MSG_OOB* {.importc: "MSG_OOB", header: "<sys/socket.h>".}: cint
+# struct msghdr->msg_flags bit field values 
+const MSG_TRUNC*   = 0x04
+const MSG_CTRUNC*  = 0x08
+
+# Flags we can use with send and recv.
+const MSG_PEEK*       = 0x01    # Peeks at an incoming message
+const MSG_WAITALL*    = 0x02    # Unimplemented: Requests that the function block until the full amount of data requested can be returned
+const MSG_OOB*        = 0x04    # Unimplemented: Requests out-of-band data. The significance and semantics of out-of-band data are protocol-specific
+const MSG_DONTWAIT*   = 0x08    # Nonblocking i/o for this operation only
+const MSG_MORE*       = 0x10    # Sender will send more
+# const MSG_NOSIGNAL*   = 0x20    # Uninmplemented: Requests not to send the SIGPIPE signal if an attempt to send is made on a stream-oriented socket that is no longer connected.
+
+# Alternately, they can defined like this, but the above seems better when they're known/stable values:
+# var MSG_TRUNC* {.importc: "MSG_TRUNC", header: "<sys/socket.h>".}: cint
+# var MSG_CTRUNC* {.importc: "MSG_CTRUNC", header: "<sys/socket.h>".}: cint
+# var MSG_DONTROUTE* {.importc: "MSG_DONTROUTE", header: "<sys/socket.h>".}: cint # not defined in lwip
+# var MSG_EOR* {.importc: "MSG_EOR", header: "<sys/socket.h>".}: cint # not defined in lwip
+# var MSG_OOB* {.importc: "MSG_OOB", header: "<sys/socket.h>".}: cint
+
 
 # var SCM_RIGHTS* {.importc: "SCM_RIGHTS", header: "<sys/socket.h>".}: cint
 var SO_ACCEPTCONN* {.importc: "SO_ACCEPTCONN", header: "<sys/socket.h>".}: cint
@@ -401,9 +416,6 @@ var SOL_SOCKET* {.importc: "SOL_SOCKET", header: "<sys/socket.h>".}: cint
 const SocketMaxConnections {.intdefine.}: int = 32
 var SOMAXCONN*: cint = SocketMaxConnections.cint
 
-var MSG_PEEK* {.importc: "MSG_PEEK", header: "<sys/socket.h>".}: cint
-var MSG_TRUNC* {.importc: "MSG_TRUNC", header: "<sys/socket.h>".}: cint
-var MSG_WAITALL* {.importc: "MSG_WAITALL", header: "<sys/socket.h>".}: cint
 var AF_INET* {.importc: "AF_INET", header: "<sys/socket.h>".}: cint
 var AF_INET6* {.importc: "AF_INET6", header: "<sys/socket.h>".}: cint
 # var AF_UNIX* {.importc: "AF_UNIX", header: "<sys/socket.h>".}: cint

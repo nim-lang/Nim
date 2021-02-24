@@ -11,7 +11,7 @@
 # This is needed for proper handling of forward declarations.
 
 import
-  ast, astalgo, msgs, semdata, types, trees, strutils
+  ast, astalgo, msgs, semdata, types, trees, strutils, lookups
 
 proc equalGenericParams(procA, procB: PNode): bool =
   if procA.len != procB.len: return false
@@ -28,7 +28,7 @@ proc equalGenericParams(procA, procB: PNode): bool =
       if not exprStructuralEquivalent(a.ast, b.ast): return
   result = true
 
-proc searchForProc*(c: PContext, scope: PScope, fn: PSym): PSym =
+proc searchForProcAux(c: PContext, scope: PScope, fn: PSym): PSym =
   const flags = {ExactGenericParams, ExactTypeDescValues,
                  ExactConstraints, IgnoreCC}
   var it: TIdentIter
@@ -49,6 +49,14 @@ proc searchForProc*(c: PContext, scope: PScope, fn: PSym): PSym =
       of paramsNotEqual:
         discard
     result = nextIdentIter(it, scope.symbols)
+
+proc searchForProc*(c: PContext, scope: PScope, fn: PSym): tuple[proto: PSym, comesFromShadowScope: bool] =
+  var scope = scope
+  result.proto = searchForProcAux(c, scope, fn)
+  while result.proto == nil and scope.isShadowScope:
+    scope = scope.parent
+    result.proto = searchForProcAux(c, scope, fn)
+    result.comesFromShadowScope = true
 
 when false:
   proc paramsFitBorrow(child, parent: PNode): bool =

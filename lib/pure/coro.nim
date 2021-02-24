@@ -32,10 +32,15 @@ import lists
 include system/timers
 
 const defaultStackSize = 512 * 1024
+const useOrcArc = defined(gcArc) or defined(gcOrc)
+
+when useOrcArc:
+  proc nimGC_setStackBottom*(theStackBottom: pointer) = discard
 
 proc GC_addStack(bottom: pointer) {.cdecl, importc.}
 proc GC_removeStack(bottom: pointer) {.cdecl, importc.}
 proc GC_setActiveStack(bottom: pointer) {.cdecl, importc.}
+proc GC_getActiveStack() : pointer {.cdecl, importc.}
 
 const
   CORO_BACKEND_UCONTEXT = 0
@@ -58,7 +63,7 @@ else:
   const coroBackend = CORO_BACKEND_UCONTEXT
 
 when coroBackend == CORO_BACKEND_FIBERS:
-  import windows.winlean
+  import windows/winlean
   type
     Context = pointer
 
@@ -166,6 +171,7 @@ type
     coroutines: DoublyLinkedList[CoroutinePtr]
     current: DoublyLinkedNode[CoroutinePtr]
     loop: Coroutine
+    ncbottom: pointer # non coroutine stack botttom
 
 var ctx {.threadvar.}: CoroutineLoopContext
 
@@ -183,6 +189,8 @@ proc initialize() =
     ctx.coroutines = initDoublyLinkedList[CoroutinePtr]()
     ctx.loop = Coroutine()
     ctx.loop.state = CORO_EXECUTING
+    when not useOrcArc:
+      ctx.ncbottom = GC_getActiveStack()
     when coroBackend == CORO_BACKEND_FIBERS:
       ctx.loop.execContext = ConvertThreadToFiberEx(nil, FIBER_FLAG_FLOAT_SWITCH)
 
@@ -192,7 +200,9 @@ proc switchTo(current, to: CoroutinePtr) =
   ## Switches execution from `current` into `to` context.
   to.lastRun = getTicks()
   # Update position of current stack so gc invoked from another stack knows how much to scan.
-  GC_setActiveStack(current.stack.bottom)
+  when not useOrcArc:
+    GC_setActiveStack(current.stack.bottom)
+  nimGC_setStackBottom(current.stack.bottom)
   var frame = getFrameState()
   block:
     # Execution will switch to another fiber now. We do not need to update current stack
@@ -214,13 +224,16 @@ proc switchTo(current, to: CoroutinePtr) =
       {.error: "Invalid coroutine backend set.".}
   # Execution was just resumed. Restore frame information and set active stack.
   setFrameState(frame)
-  GC_setActiveStack(current.stack.bottom)
+  when not useOrcArc:
+    GC_setActiveStack(current.stack.bottom)
+  nimGC_setStackBottom(ctx.ncbottom)
 
 proc suspend*(sleepTime: float = 0) =
-  ## Stops coroutine execution and resumes no sooner than after ``sleeptime`` seconds.
+  ## Stops coroutine execution and resumes no sooner than after `sleeptime` seconds.
   ## Until then other coroutines are executed.
   var current = getCurrent()
   current.sleepTime = sleepTime
+  nimGC_setStackBottom(ctx.ncbottom)
   switchTo(current, addr(ctx.loop))
 
 proc runCurrentTask() =
@@ -230,13 +243,15 @@ proc runCurrentTask() =
   block:
     var current = getCurrent()
     current.stack.bottom = sp
+    nimGC_setStackBottom(current.stack.bottom)
     # Execution of new fiber just started. Since it was entered not through `switchTo` we
     # have to set active stack here as well. GC_removeStack() has to be called in main loop
     # because we still need stack available in final suspend(0) call from which we will not
     # return.
-    GC_addStack(sp)
-    # Activate current stack because we are executing in a new coroutine.
-    GC_setActiveStack(sp)
+    when not useOrcArc:
+      GC_addStack(sp)
+      # Activate current stack because we are executing in a new coroutine.
+      GC_setActiveStack(sp)
     current.state = CORO_EXECUTING
     try:
       current.fn() # Start coroutine execution
@@ -244,6 +259,7 @@ proc runCurrentTask() =
       echo "Unhandled exception in coroutine."
       writeStackTrace()
     current.state = CORO_FINISHED
+  nimGC_setStackBottom(ctx.ncbottom)
   suspend(0) # Exit coroutine without returning from coroExecWithStack()
   doAssert false
 
@@ -304,7 +320,8 @@ proc run*() =
         next = ctx.current.next
       current.reference.coro = nil
       ctx.coroutines.remove(ctx.current)
-      GC_removeStack(current.stack.bottom)
+      when not useOrcArc:
+        GC_removeStack(current.stack.bottom)
       when coroBackend == CORO_BACKEND_FIBERS:
         DeleteFiber(current.execContext)
       else:
@@ -318,9 +335,9 @@ proc run*() =
       ctx.current = ctx.current.next
 
 proc alive*(c: CoroutineRef): bool = c.coro != nil and c.coro.state != CORO_FINISHED
-  ## Returns ``true`` if coroutine has not returned, ``false`` otherwise.
+  ## Returns `true` if coroutine has not returned, `false` otherwise.
 
 proc wait*(c: CoroutineRef, interval = 0.01) =
-  ## Returns only after coroutine ``c`` has returned. ``interval`` is time in seconds how often.
+  ## Returns only after coroutine `c` has returned. `interval` is time in seconds how often.
   while alive(c):
     suspend(interval)

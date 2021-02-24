@@ -237,3 +237,36 @@ noop:
   makeVar
 echo tensorY
 
+macro xbenchmark(body: typed): untyped =
+  result = body
+
+xbenchmark:
+  proc fastSHA(inputtest: string) =
+    discard inputtest
+  fastSHA("hey")
+
+
+block: # bug #13511
+  type
+    Builder = ref object
+      components: seq[Component]
+    Component = object
+
+  proc add(builder: var Builder, component: Component) {.compileTime.} =
+    builder.components.add(component)
+
+  macro debugAst(arg: typed): untyped =
+    ## just for debugging purpose.
+    discard arg.treeRepr
+    return arg
+
+  static:
+    var component = Component()
+    var builder = Builder()
+
+    template foo(): untyped =
+      ## WAS: this doc comment causes compilation failure.
+      builder
+
+    debugAst:
+      add(foo(), component)

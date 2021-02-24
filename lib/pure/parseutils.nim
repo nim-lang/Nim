@@ -211,6 +211,7 @@ proc parseHex*[T: SomeInteger](s: string, number: var T, start = 0,
 proc parseIdent*(s: string, ident: var string, start = 0): int =
   ## Parses an identifier and stores it in ``ident``. Returns
   ## the number of the parsed characters or 0 in case of an error.
+  ## If error, the value of `ident` is not changed.
   runnableExamples:
     var res: string
     doAssert parseIdent("Hello World", res, 0) == 5
@@ -240,6 +241,20 @@ proc parseIdent*(s: string, start = 0): string =
     inc(i)
     while i < s.len and s[i] in IdentChars: inc(i)
     result = substr(s, start, i-1)
+
+proc parseChar*(s: string, c: var char, start = 0): int =
+  ## Parses a single character, stores it in `c` and returns 1.
+  ## In case of error (if start >= s.len) it returns 0
+  ## and the value of `c` is unchanged.
+  runnableExamples:
+    var c: char
+    doAssert "nim".parseChar(c, 3) == 0
+    doAssert c == '\0'
+    doAssert "nim".parseChar(c, 0) == 1
+    doAssert c == 'n'
+  if start < s.len:
+    c = s[start]
+    result = 1
 
 proc skipWhitespace*(s: string, start = 0): int {.inline.} =
   ## Skips the whitespace starting at ``s[start]``. Returns the number of
@@ -310,6 +325,10 @@ proc skipWhile*(s: string, toSkip: set[char], start = 0): int {.inline.} =
   result = 0
   while start+result < s.len and s[result+start] in toSkip: inc(result)
 
+proc fastSubstr(s: string; token: var string; start, length: int) =
+  token.setLen length
+  for i in 0 ..< length: token[i] = s[i+start]
+
 proc parseUntil*(s: string, token: var string, until: set[char],
                  start = 0): int {.inline.} =
   ## Parses a token and stores it in ``token``. Returns
@@ -326,7 +345,8 @@ proc parseUntil*(s: string, token: var string, until: set[char],
   var i = start
   while i < s.len and s[i] notin until: inc(i)
   result = i-start
-  token = substr(s, start, i-1)
+  fastSubstr(s, token, start, result)
+  #token = substr(s, start, i-1)
 
 proc parseUntil*(s: string, token: var string, until: char,
                  start = 0): int {.inline.} =
@@ -344,7 +364,8 @@ proc parseUntil*(s: string, token: var string, until: char,
   var i = start
   while i < s.len and s[i] != until: inc(i)
   result = i-start
-  token = substr(s, start, i-1)
+  fastSubstr(s, token, start, result)
+  #token = substr(s, start, i-1)
 
 proc parseUntil*(s: string, token: var string, until: string,
                  start = 0): int {.inline.} =
@@ -370,7 +391,8 @@ proc parseUntil*(s: string, token: var string, until: string,
       if u >= until.len: break
     inc(i)
   result = i-start
-  token = substr(s, start, i-1)
+  fastSubstr(s, token, start, result)
+  #token = substr(s, start, i-1)
 
 proc parseWhile*(s: string, token: var string, validChars: set[char],
                  start = 0): int {.inline.} =
@@ -386,7 +408,8 @@ proc parseWhile*(s: string, token: var string, validChars: set[char],
   var i = start
   while i < s.len and s[i] in validChars: inc(i)
   result = i-start
-  token = substr(s, start, i-1)
+  fastSubstr(s, token, start, result)
+  #token = substr(s, start, i-1)
 
 proc captureBetween*(s: string, first: char, second = '\0', start = 0): string =
   ## Finds the first occurrence of ``first``, then returns everything from there
@@ -642,48 +665,5 @@ iterator interpolatedFragments*(s: string): tuple[kind: InterpolatedKind,
     else:
       break
     i = j
-
-when isMainModule:
-  import sequtils
-  let input = "$test{}  $this is ${an{  example}}  "
-  let expected = @[(ikVar, "test"), (ikStr, "{}  "), (ikVar, "this"),
-                    (ikStr, " is "), (ikExpr, "an{  example}"), (ikStr, "  ")]
-  doAssert toSeq(interpolatedFragments(input)) == expected
-
-  var value = 0
-  discard parseHex("0x38", value)
-  doAssert value == 56
-
-  value = -1
-  doAssert(parseSaturatedNatural("848", value) == 3)
-  doAssert value == 848
-
-  value = -1
-  discard parseSaturatedNatural("84899999999999999999324234243143142342135435342532453", value)
-  doAssert value == high(int)
-
-  value = -1
-  discard parseSaturatedNatural("9223372036854775808", value)
-  doAssert value == high(int)
-
-  value = -1
-  discard parseSaturatedNatural("9223372036854775807", value)
-  doAssert value == high(int)
-
-  value = -1
-  discard parseSaturatedNatural("18446744073709551616", value)
-  doAssert value == high(int)
-
-  value = -1
-  discard parseSaturatedNatural("18446744073709551615", value)
-  doAssert value == high(int)
-
-  value = -1
-  doAssert(parseSaturatedNatural("1_000_000", value) == 9)
-  doAssert value == 1_000_000
-
-  var i64Value: int64
-  discard parseBiggestInt("9223372036854775807", i64Value)
-  doAssert i64Value == 9223372036854775807
 
 {.pop.}

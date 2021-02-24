@@ -195,7 +195,7 @@ proc executeNoHooks(cmd: IdeCmd, file, dirtyfile: AbsoluteFile, line, col: int;
   if conf.ideCmd in {ideUse, ideDus}:
     let u = if conf.suggestVersion != 1: graph.symFromInfo(conf.m.trackPos) else: graph.usageSym
     if u != nil:
-      listUsages(conf, u)
+      listUsages(graph, u)
     else:
       localError(conf, conf.m.trackPos, "found no symbol at this position " & (conf $ conf.m.trackPos))
 
@@ -319,7 +319,7 @@ proc replTcp(x: ThreadParams) {.thread.} =
   else:
     server.bindAddr(x.port, x.address)
     server.listen()
-  var inp = "".TaintedString
+  var inp = ""
   var stdoutSocket: Socket
   while true:
     accept(server, stdoutSocket)
@@ -517,7 +517,7 @@ proc mainCommand(graph: ModuleGraph) =
   clearPasses(graph)
   registerPass graph, verbosePass
   registerPass graph, semPass
-  conf.cmd = cmdIdeTools
+  conf.setCmd cmdIdeTools
   wantMainModule(conf)
 
   if not fileExists(conf.projectFull):
@@ -619,8 +619,7 @@ proc processCmdLine*(pass: TCmdLinePass, cmd: string; conf: ConfigRef) =
 proc handleCmdLine(cache: IdentCache; conf: ConfigRef) =
   let self = NimProg(
     suggestMode: true,
-    processCmdLine: processCmdLine,
-    mainCommand: mainCommand
+    processCmdLine: processCmdLine
   )
   self.initDefinesProg(conf, "nimsuggest")
 
@@ -644,7 +643,9 @@ proc handleCmdLine(cache: IdentCache; conf: ConfigRef) =
   #msgs.writelnHook = proc (line: string) = log(line)
   myLog("START " & conf.projectFull.string)
 
-  discard self.loadConfigsAndRunMainCommand(cache, conf)
+  var graph = newModuleGraph(cache, conf)
+  if self.loadConfigsAndProcessCmdLine(cache, conf, graph):
+    mainCommand(graph)
 
 when isMainModule:
   handleCmdLine(newIdentCache(), newConfigRef())
@@ -665,7 +666,7 @@ else:
       clearPasses(graph)
       registerPass graph, verbosePass
       registerPass graph, semPass
-      conf.cmd = cmdIdeTools
+      conf.setCmd cmdIdeTools
       wantMainModule(conf)
 
       if not fileExists(conf.projectFull):
@@ -698,8 +699,7 @@ else:
       conf = newConfigRef()
       self = NimProg(
         suggestMode: true,
-        processCmdLine: mockCmdLine,
-        mainCommand: mockCommand
+        processCmdLine: mockCmdLine
       )
     self.initDefinesProg(conf, "nimsuggest")
 
@@ -722,7 +722,9 @@ else:
     #msgs.writelnHook = proc (line: string) = log(line)
     myLog("START " & conf.projectFull.string)
 
-    discard self.loadConfigsAndRunMainCommand(cache, conf)
+    var graph = newModuleGraph(cache, conf)
+    if self.loadConfigsAndProcessCmdLine(cache, conf, graph):
+      mockCommand(graph)
     if gLogging:
       for it in conf.searchPaths:
         log(it.string)

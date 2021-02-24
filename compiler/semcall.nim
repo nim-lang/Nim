@@ -208,6 +208,7 @@ proc presentFailedCandidates(c: PContext, n: PNode, errors: CandidateErrors):
             {renderNoBody, renderNoComments, renderNoPragmas}))
     else:
       candidates.add(getProcHeader(c.config, err.sym, prefer))
+    candidates.addDeclaredLocMaybe(c.config, err.sym)
     candidates.add("\n")
     let nArg = if err.firstMismatch.arg < n.len: n[err.firstMismatch.arg] else: nil
     let nameParam = if err.firstMismatch.formal != nil: err.firstMismatch.formal.name.s else: ""
@@ -230,6 +231,7 @@ proc presentFailedCandidates(c: PContext, n: PNode, errors: CandidateErrors):
         doAssert err.firstMismatch.formal != nil
         candidates.add("\n  required type for " & nameParam &  ": ")
         candidates.add typeToString(wanted)
+        candidates.addDeclaredLocMaybe(c.config, wanted)
         candidates.add "\n  but expression '"
         if err.firstMismatch.kind == kVarNeeded:
           candidates.add renderNotLValue(nArg)
@@ -239,6 +241,7 @@ proc presentFailedCandidates(c: PContext, n: PNode, errors: CandidateErrors):
           candidates.add "' is of type: "
           var got = nArg.typ
           candidates.add typeToString(got)
+          candidates.addDeclaredLocMaybe(c.config, got)
           doAssert wanted != nil
           if got != nil: effectProblem(wanted, got, candidates, c)
       of kUnknown: discard "do not break 'nim check'"
@@ -314,7 +317,7 @@ proc getMsgDiagnostic(c: PContext, flags: TExprFlags, n, f: PNode): string =
     var o: TOverloadIter
     var sym = initOverloadIter(o, c, f)
     while sym != nil:
-      result &= "\n  found '$1' of kind '$2'" % [getSymRepr(c.config, sym), sym.kind.toHumanStr]
+      result &= "\n  found $1" % [getSymRepr(c.config, sym)]
       sym = nextOverloadIter(o, c, f)
 
   let ident = considerQuotedIdent(c, f, n).s
@@ -323,7 +326,7 @@ proc getMsgDiagnostic(c: PContext, flags: TExprFlags, n, f: PNode): string =
     var typeHint = ""
     if sym == nil:
       # Perhaps we're in a `compiles(foo.bar)` expression, or
-      # in a concept, eg:
+      # in a concept, e.g.:
       #   ExplainedConcept {.explain.} = concept x
       #     x.foo is int
       # We could use: `(c.config $ n[1].info)` to get more context.
@@ -473,7 +476,7 @@ proc inferWithMetatype(c: PContext, formal: PType,
     result.typ = generateTypeInstance(c, m.bindings, arg.info,
                                       formal.skipTypes({tyCompositeTypeClass}))
   else:
-    typeMismatch(c.config, arg.info, formal, arg.typ)
+    typeMismatch(c.config, arg.info, formal, arg.typ, arg)
     # error correction:
     result = copyTree(arg)
     result.typ = formal
@@ -682,9 +685,9 @@ proc searchForBorrowProc(c: PContext, startScope: PScope, fn: PSym): PSym =
     var x: PType
     if param.typ.kind == tyVar:
       x = newTypeS(param.typ.kind, c)
-      x.addSonSkipIntLit t.baseOfDistinct
+      x.addSonSkipIntLit(t.baseOfDistinct(c.graph, c.idgen), c.idgen)
     else:
-      x = t.baseOfDistinct
+      x = t.baseOfDistinct(c.graph, c.idgen)
     call.add(newNodeIT(nkEmpty, fn.info, x))
   if hasDistinct:
     let filter = if fn.kind in {skProc, skFunc}: {skProc, skFunc} else: {fn.kind}

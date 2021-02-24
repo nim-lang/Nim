@@ -15,16 +15,16 @@ Introduction
 The `Nim Compiler User Guide <nimc.html>`_ documents the typical
 compiler invocation, using the ``compile`` or ``c`` command to transform a
 ``.nim`` file into one or more ``.c`` files which are then compiled with the
-platform's C compiler into a static binary. However there are other commands
-to compile to C++, Objective-C or JavaScript. This document tries to
+platform's C compiler into a static binary. However, there are other commands
+to compile to C++, Objective-C, or JavaScript. This document tries to
 concentrate in a single place all the backend and interfacing options.
 
 The Nim compiler supports mainly two backend families: the C, C++ and
 Objective-C targets and the JavaScript target. `The C like targets
-<#backends-the-c-like-targets>`_ creates source files which can be compiled
+<#backends-the-c-like-targets>`_ creates source files that can be compiled
 into a library or a final executable. `The JavaScript target
 <#backends-the-javascript-target>`_ can generate a ``.js`` file which you
-reference from an HTML file or create a `standalone nodejs program
+reference from an HTML file or create a `standalone Node.js program
 <http://nodejs.org>`_.
 
 On top of generating libraries or standalone applications, Nim offers
@@ -48,7 +48,7 @@ The most significant difference between these commands is that if you look
 into the ``nimcache`` directory you will find ``.c``, ``.cpp`` or ``.m``
 files, other than that all of them will produce a native binary for your
 project.  This allows you to take the generated code and place it directly
-into a project using any of these languages. Here are some typical command
+into a project using any of these languages. Here are some typical command-
 line invocations::
 
     $ nim c hallo.nim
@@ -56,8 +56,8 @@ line invocations::
     $ nim objc hallo.nim
 
 The compiler commands select the target backend, but if needed you can
-`specify additional switches for cross compilation
-<nimc.html#cross-compilation>`_ to select the target CPU, operative system
+`specify additional switches for cross-compilation
+<nimc.html#crossminuscompilation>`_ to select the target CPU, operative system
 or compiler/linker commands.
 
 
@@ -79,7 +79,7 @@ available. This includes:
 * OS-specific operations
 * threading, coroutines
 * some modules of the standard library
-* proper 64 bit integer arithmetic
+* proper 64-bit integer arithmetic
 
 To compensate, the standard library has modules `catered to the JS backend
 <lib.html#pure-libraries-modules-for-js-backend>`_
@@ -93,7 +93,10 @@ file. However, you can also run the code with `nodejs`:idx:
 
   nim js -d:nodejs -r examples/hallo.nim
 
+If you experience errors saying that ``globalThis`` is not defined, be
+sure to run a recent version of Node.js (at least 12.0).
 
+  
 Interfacing
 ===========
 
@@ -119,7 +122,7 @@ pragmas to call methods from classes.
 
 Whenever you use any of these pragmas you need to integrate native code into
 your final binary. In the case of JavaScript this is no problem at all, the
-same html file which hosts the generated JavaScript will likely provide other
+same HTML file which hosts the generated JavaScript will likely provide other
 JavaScript functions which you are importing with ``importc``.
 
 However, for the C like targets you need to link external code either
@@ -167,7 +170,7 @@ With these two files in place, you can run ``nim c -r calculator.nim`` and
 the Nim compiler will compile the ``logic.c`` file in addition to
 ``calculator.nim`` and link both into an executable, which outputs ``10`` when
 run. Another way to link the C file statically and get the same effect would
-be remove the line with the ``compile`` pragma and run the following typical
+be to remove the line with the ``compile`` pragma and run the following typical
 Unix commands::
 
     $ gcc -c logic.c
@@ -211,7 +214,7 @@ calculator.nim`` and open ``host.html`` in a browser. If the browser supports
 javascript, you should see the value ``10`` in the browser's console. Use the
 `dom module <dom.html>`_ for specific DOM querying and modification procs
 or take a look at `karax <https://github.com/pragmagic/karax>`_ for how to
-develop browser based applications.
+develop browser-based applications.
 
 
 Backend code calling Nim
@@ -220,7 +223,7 @@ Backend code calling Nim
 Backend code can interface with Nim code exposed through the `exportc
 pragma <manual.html#foreign-function-interface-exportc-pragma>`_. The
 ``exportc`` pragma is the *generic* way of making Nim symbols available to
-the backends. By default the Nim compiler will mangle all the Nim symbols to
+the backends. By default, the Nim compiler will mangle all the Nim symbols to
 avoid any name collision, so the most significant thing the ``exportc`` pragma
 does is maintain the Nim symbol name, or if specified, use an alternative
 symbol for the backend in case the symbol rules don't match.
@@ -233,7 +236,7 @@ the compiler will assume certain types for the return value and parameters
 which will likely make your program crash at runtime.
 
 The Nim compiler can generate a C interface header through the ``--header``
-command line switch. The generated header will contain all the exported
+command-line switch. The generated header will contain all the exported
 symbols and the ``NimMain`` proc which you need to call before any other
 Nim code.
 
@@ -322,8 +325,8 @@ from the previous section):
 Compile the Nim code to JavaScript with ``nim js -o:fib.js fib.nim`` and
 open ``mhost.html`` in a browser. If the browser supports javascript, you
 should see an alert box displaying the text ``Fib for 9 is 34``. As mentioned
-earlier, JavaScript doesn't require an initialisation call to ``NimMain`` or
-similar function and you can call the exported Nim proc directly.
+earlier, JavaScript doesn't require an initialization call to ``NimMain`` or
+a similar function and you can call the exported Nim proc directly.
 
 
 Nimcache naming logic
@@ -333,15 +336,15 @@ The `nimcache`:idx: directory is generated during compilation and will hold
 either temporary or final files depending on your backend target. The default
 name for the directory depends on the used backend and on your OS but you can
 use the ``--nimcache`` `compiler switch
-<nimc.html#compiler-usage-command-line-switches>`_ to change it.
+<nimc.html#compiler-usage-commandminusline-switches>`_ to change it.
 
 
 Memory management
 =================
 
-In the previous sections the ``NimMain()`` function reared its head. Since
+In the previous sections, the ``NimMain()`` function reared its head. Since
 JavaScript already provides automatic memory management, you can freely pass
-objects between the two language without problems. In C and derivate languages
+objects between the two languages without problems. In C and derivate languages
 you need to be careful about what you do and how you share memory. The
 previous examples only dealt with simple scalar values, but passing a Nim
 string to C, or reading back a C string in Nim already requires you to be
@@ -355,7 +358,7 @@ The manual mentions that `Nim strings are implicitly convertible to
 cstrings <manual.html#types-cstring-type>`_ which makes interaction usually
 painless. Most C functions accepting a Nim string converted to a
 ``cstring`` will likely not need to keep this string around and by the time
-they return the string won't be needed any more. However, for the rare cases
+they return the string won't be needed anymore. However, for the rare cases
 where a Nim string has to be preserved and made available to the C backend
 as a ``cstring``, you will need to manually prevent the string data from being
 freed with `GC_ref <system.html#GC_ref,string>`_ and `GC_unref
@@ -388,7 +391,7 @@ to hand a Nim reference to C code, you will need to use `GC_ref
 <system.html#GC_ref,ref.T>`_ to mark the reference as used, so it does not get
 freed. And for the C backend you will need to expose the `GC_unref
 <system.html#GC_unref,ref.T>`_ proc to clean up this memory when it is not
-required any more.
+required anymore.
 
 Again, if you are wrapping a library which *mallocs* and *frees* data
 structures, you need to expose the appropriate *free* function to Nim so
@@ -424,4 +427,3 @@ leaks by calling
 .. code-block:: nim
 
   system.tearDownForeignThreadGc()
-

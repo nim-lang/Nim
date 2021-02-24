@@ -14,11 +14,11 @@ preserved.
 Basic workflow
 ==============
 
-Currently hot code reloading does not work for the main module itself,
+Currently, hot code reloading does not work for the main module itself,
 so we have to use a helper module where the major logic we want to change
 during development resides.
 
-In this example we use SDL2 to create a window and we reload the logic
+In this example, we use SDL2 to create a window and we reload the logic
 code when ``F9`` is pressed. The important lines are marked with ``#***``.
 To install SDL2 you can use ``nimble install sdl2``.
 
@@ -125,7 +125,7 @@ Then recompile the project, but do not restart or quit the mymain.exe program!
 
   nim c --hotcodereloading:on mymain.nim
 
-Now give the ``mymain`` SDL window the focus, press F9 and watch the
+Now give the ``mymain`` SDL window the focus, press F9, and watch the
 updated version of the program.
 
 

@@ -70,22 +70,24 @@ template color(c): untyped = c.rc and colorMask
 template setColor(c, col) =
   c.rc = c.rc and not colorMask or col
 
-proc nimIncRefCyclic(p: pointer) {.compilerRtl, inl.} =
+proc nimIncRefCyclic(p: pointer; cyclic: bool) {.compilerRtl, inl.} =
   let h = head(p)
   inc h.rc, rcIncrement
+
+proc nimMarkCyclic(p: pointer) {.compilerRtl, inl.} = discard
 
 type
   GcEnv = object
     traceStack: CellSeq
 
-proc trace(p: pointer; desc: PNimType; j: var GcEnv) {.inline.} =
+proc trace(p: pointer; desc: PNimTypeV2; j: var GcEnv) {.inline.} =
   when false:
     cprintf("[Trace] desc: %p %p\n", desc, p)
     cprintf("[Trace] trace: %p\n", desc.traceImpl)
   if desc.traceImpl != nil:
     cast[TraceProc](desc.traceImpl)(p, addr(j))
 
-proc nimTraceRef(q: pointer; desc: PNimType; env: pointer) {.compilerRtl.} =
+proc nimTraceRef(q: pointer; desc: PNimTypeV2; env: pointer) {.compilerRtl.} =
   let p = cast[ptr pointer](q)
   when traceCollector:
     cprintf("[Trace] raw: %p\n", p)
@@ -101,11 +103,11 @@ proc nimTraceRefDyn(q: pointer; env: pointer) {.compilerRtl.} =
     cprintf("[TraceDyn] deref: %p\n", p[])
   if p[] != nil:
     var j = cast[ptr GcEnv](env)
-    j.traceStack.add(p, cast[ptr PNimType](p[])[])
+    j.traceStack.add(p, cast[ptr PNimTypeV2](p[])[])
 
 var markerGeneration: int
 
-proc breakCycles(s: Cell; desc: PNimType) =
+proc breakCycles(s: Cell; desc: PNimTypeV2) =
   let markerColor = if (markerGeneration and 1) == 0: colRed
                     else: colYellow
   atomicInc markerGeneration
@@ -147,7 +149,7 @@ proc thinout*[T](x: ref T) {.inline.} =
   ## and thus would keep the graph from being freed are `nil`'ed.
   ## This is a form of cycle collection that works well with Nim's ARC
   ## and its associated cost model.
-  proc getDynamicTypeInfo[T](x: T): PNimType {.magic: "GetTypeInfo", noSideEffect, locks: 0.}
+  proc getDynamicTypeInfo[T](x: T): PNimTypeV2 {.magic: "GetTypeInfoV2", noSideEffect, locks: 0.}
 
   breakCycles(head(cast[pointer](x)), getDynamicTypeInfo(x[]))
 
@@ -158,7 +160,7 @@ proc thinout*[T: proc](x: T) {.inline.} =
     """.}
 
   let p = rawEnv(x)
-  breakCycles(head(p), cast[ptr PNimType](p)[])
+  breakCycles(head(p), cast[ptr PNimTypeV2](p)[])
 
 proc nimDecRefIsLastCyclicDyn(p: pointer): bool {.compilerRtl, inl.} =
   if p != nil:
@@ -171,7 +173,7 @@ proc nimDecRefIsLastCyclicDyn(p: pointer): bool {.compilerRtl, inl.} =
       # According to Lins it's correct to do nothing else here.
       #cprintf("[DeCREF] %p\n", p)
 
-proc nimDecRefIsLastCyclicStatic(p: pointer; desc: PNimType): bool {.compilerRtl, inl.} =
+proc nimDecRefIsLastCyclicStatic(p: pointer; desc: PNimTypeV2): bool {.compilerRtl, inl.} =
   if p != nil:
     var cell = head(p)
     if (cell.rc and not rcMask) == 0:

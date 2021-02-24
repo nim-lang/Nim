@@ -1,35 +1,37 @@
 discard """
-cmd: "testament/testament --directory:testament --colors:off --backendLogging:off --nim:../compiler/nim category shouldfail"
+cmd: "testament/testament --directory:testament --colors:off --backendLogging:off --nim:$nim category shouldfail"
 action: compile
 nimout: '''
-FAIL: tests/shouldfail/tccodecheck.nim C
+FAIL: tests/shouldfail/tccodecheck.nim c
 Failure: reCodegenFailure
 Expected:
 baz
-FAIL: tests/shouldfail/tcolumn.nim C
+FAIL: tests/shouldfail/tcolumn.nim c
 Failure: reLinesDiffer
-FAIL: tests/shouldfail/terrormsg.nim C
+FAIL: tests/shouldfail/terrormsg.nim c
 Failure: reMsgsDiffer
-FAIL: tests/shouldfail/texitcode1.nim C
+FAIL: tests/shouldfail/texitcode1.nim c
 Failure: reExitcodesDiffer
-FAIL: tests/shouldfail/tfile.nim C
+FAIL: tests/shouldfail/tfile.nim c
 Failure: reFilesDiffer
-FAIL: tests/shouldfail/tline.nim C
+FAIL: tests/shouldfail/tline.nim c
 Failure: reLinesDiffer
-FAIL: tests/shouldfail/tmaxcodesize.nim C
+FAIL: tests/shouldfail/tmaxcodesize.nim c
 Failure: reCodegenFailure
 max allowed size: 1
-FAIL: tests/shouldfail/tnimout.nim C
+FAIL: tests/shouldfail/tnimout.nim c
 Failure: reMsgsDiffer
-FAIL: tests/shouldfail/toutput.nim C
+FAIL: tests/shouldfail/toutput.nim c
 Failure: reOutputsDiffer
-FAIL: tests/shouldfail/toutputsub.nim C
+FAIL: tests/shouldfail/toutputsub.nim c
 Failure: reOutputsDiffer
-FAIL: tests/shouldfail/tsortoutput.nim C
+FAIL: tests/shouldfail/treject.nim c
+Failure: reFilesDiffer
+FAIL: tests/shouldfail/tsortoutput.nim c
 Failure: reOutputsDiffer
-FAIL: tests/shouldfail/ttimeout.nim C
+FAIL: tests/shouldfail/ttimeout.nim c
 Failure: reTimeout
+FAIL: tests/shouldfail/tvalgrind.nim c
+Failure: reExitcodesDiffer
 '''
 """
-
-# xxx `--nim:../compiler/nim`, doesn't seem correct (and should also honor `testament --nim`)

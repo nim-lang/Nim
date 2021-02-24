@@ -32,6 +32,7 @@ type
   TSrcGen* = object
     indent*: int
     lineLen*: int
+    col: int
     pos*: int              # current position for iteration over the buffer
     idx*: int              # current token index for iteration over the buffer
     tokens*: TRenderTokSeq
@@ -119,11 +120,10 @@ proc initSrcGen(g: var TSrcGen, renderFlags: TRenderFlags; config: ConfigRef) =
   g.config = config
 
 proc addTok(g: var TSrcGen, kind: TokType, s: string; sym: PSym = nil) =
-  setLen(g.tokens, g.tokens.len + 1)
-  g.tokens[^1].kind = kind
-  g.tokens[^1].length = int16(s.len)
-  g.tokens[^1].sym = sym
+  g.tokens.add TRenderTok(kind: kind, length: int16(s.len), sym: sym)
   g.buf.add(s)
+  if kind != tkSpaces:
+    inc g.col, s.len
 
 proc addPendingNL(g: var TSrcGen) =
   if g.pendingNL >= 0:
@@ -133,6 +133,7 @@ proc addPendingNL(g: var TSrcGen) =
       const newlines = "\n"
     addTok(g, tkSpaces, newlines & spaces(g.pendingNL))
     g.lineLen = g.pendingNL
+    g.col = g.pendingNL
     g.pendingNL = - 1
     g.pendingWhitespace = -1
   elif g.pendingWhitespace >= 0:
@@ -141,7 +142,10 @@ proc addPendingNL(g: var TSrcGen) =
 
 proc putNL(g: var TSrcGen, indent: int) =
   if g.pendingNL >= 0: addPendingNL(g)
-  else: addTok(g, tkSpaces, "\n")
+  else:
+    addTok(g, tkSpaces, "\n")
+    g.col = 0
+
   g.pendingNL = indent
   g.lineLen = indent
   g.pendingWhitespace = -1
@@ -183,16 +187,17 @@ proc put(g: var TSrcGen, kind: TokType, s: string; sym: PSym = nil) =
     addPendingNL(g)
     if s.len > 0:
       addTok(g, kind, s, sym)
-      inc(g.lineLen, s.len)
   else:
     g.pendingWhitespace = s.len
+    inc g.col, s.len
+  inc(g.lineLen, s.len)
 
 proc putComment(g: var TSrcGen, s: string) =
   if s.len == 0: return
   var i = 0
   let hi = s.len - 1
-  var isCode = (s.len >= 2) and (s[1] != ' ')
-  var ind = g.lineLen
+  let isCode = (s.len >= 2) and (s[1] != ' ')
+  let ind = g.col
   var com = "## "
   while i <= hi:
     case s[i]
@@ -218,7 +223,7 @@ proc putComment(g: var TSrcGen, s: string) =
       # compute length of the following word:
       var j = i
       while j <= hi and s[j] > ' ': inc(j)
-      if not isCode and (g.lineLen + (j - i) > MaxLineLen):
+      if not isCode and (g.col + (j - i) > MaxLineLen):
         put(g, tkComment, com)
         optNL(g, ind)
         com = "## "
@@ -291,24 +296,27 @@ proc popAllComs(g: var TSrcGen) =
 const
   Space = " "
 
-proc shouldRenderComment(g: var TSrcGen, n: PNode): bool =
-  result = false
-  if n.comment.len > 0:
-    result = (renderNoComments notin g.flags) or
-        (renderDocComments in g.flags)
+proc shouldRenderComment(g: TSrcGen): bool {.inline.} =
+  (renderNoComments notin g.flags or renderDocComments in g.flags)
+
+proc shouldRenderComment(g: TSrcGen, n: PNode): bool {.inline.} =
+  shouldRenderComment(g) and n.comment.len > 0
 
 proc gcom(g: var TSrcGen, n: PNode) =
   assert(n != nil)
   if shouldRenderComment(g, n):
+    var oneSpaceAdded = 0
     if (g.pendingNL < 0) and (g.buf.len > 0) and (g.buf[^1] != ' '):
       put(g, tkSpaces, Space)
+      oneSpaceAdded = 1
       # Before long comments we cannot make sure that a newline is generated,
       # because this might be wrong. But it is no problem in practice.
     if (g.pendingNL < 0) and (g.buf.len > 0) and
-        (g.lineLen < LineCommentColumn):
+        (g.col < LineCommentColumn):
       var ml = maxLineLength(n.comment)
       if ml + LineCommentColumn <= MaxLineLen:
-        put(g, tkSpaces, spaces(LineCommentColumn - g.lineLen))
+        put(g, tkSpaces, spaces(LineCommentColumn - g.col))
+        dec g.col, oneSpaceAdded
     putComment(g, n.comment)  #assert(g.comStack[high(g.comStack)] = n);
 
 proc gcoms(g: var TSrcGen) =
@@ -336,7 +344,7 @@ proc litAux(g: TSrcGen; n: PNode, x: BiggestInt, size: int): string =
 
   if nfBase2 in n.flags: result = "0b" & toBin(x, size * 8)
   elif nfBase8 in n.flags:
-    var y = if size < sizeof(BiggestInt): x and ((1 shl (size*8)) - 1)
+    var y = if size < sizeof(BiggestInt): x and ((1.BiggestInt shl (size*8)) - 1)
             else: x
     result = "0o" & toOct(y, size * 3)
   elif nfBase16 in n.flags: result = "0x" & toHex(x, size * 2)
@@ -422,7 +430,7 @@ proc lsons(g: TSrcGen; n: PNode, start: int = 0, theEnd: int = - 1): int =
 proc lsub(g: TSrcGen; n: PNode): int =
   # computes the length of a tree
   if isNil(n): return 0
-  if n.comment.len > 0: return MaxLineLen + 1
+  if shouldRenderComment(g, n): return MaxLineLen + 1
   case n.kind
   of nkEmpty: result = 0
   of nkTripleStrLit:
@@ -589,8 +597,8 @@ proc gcommaAux(g: var TSrcGen, n: PNode, ind: int, start: int = 0,
     gsub(g, n[i])
     if c:
       if g.tokens.len > oldLen:
-        putWithSpace(g, separator, TokTypeToStr[separator])
-      if hasCom(n[i]):
+        putWithSpace(g, separator, $separator)
+      if shouldRenderComment(g) and hasCom(n[i]):
         gcoms(g)
         optNL(g, ind)
 
@@ -631,7 +639,7 @@ proc gsection(g: var TSrcGen, n: PNode, c: TContext, kind: TokType,
   dedent(g)
 
 proc longMode(g: TSrcGen; n: PNode, start: int = 0, theEnd: int = - 1): bool =
-  result = n.comment.len > 0
+  result = shouldRenderComment(g, n)
   if not result:
     # check further
     for i in start..n.len + theEnd:
@@ -812,14 +820,28 @@ proc gTypeClassTy(g: var TSrcGen, n: PNode) =
   dedent(g)
 
 proc gblock(g: var TSrcGen, n: PNode) =
+  # you shouldn't simplify it to `n.len < 2`
+  # because the following codes should be executed
+  # even when block stmt has only one child for getting
+  # better error messages.
+  if n.len == 0:
+    return
+
   var c: TContext
   initContext(c)
+
   if n[0].kind != nkEmpty:
     putWithSpace(g, tkBlock, "block")
     gsub(g, n[0])
   else:
     put(g, tkBlock, "block")
+
+  # block stmt should have two children
+  if n.len == 1:
+    return
+
   putWithSpace(g, tkColon, ":")
+
   if longMode(g, n) or (lsub(g, n[1]) + g.lineLen > MaxLineLen):
     incl(c.flags, rfLongMode)
   gcoms(g)
@@ -958,7 +980,7 @@ proc gsub(g: var TSrcGen, n: PNode, c: TContext) =
   if isNil(n): return
   var
     a: TContext
-  if n.comment.len > 0: pushCom(g, n)
+  if shouldRenderComment(g, n): pushCom(g, n)
   case n.kind                 # atoms:
   of nkTripleStrLit: put(g, tkTripleStrLit, atom(g, n))
   of nkEmpty: discard
@@ -1057,9 +1079,10 @@ proc gsub(g: var TSrcGen, n: PNode, c: TContext) =
       put(g, tkSymbol, "(wrong conv)")
   of nkCast:
     put(g, tkCast, "cast")
-    put(g, tkBracketLe, "[")
-    gsub(g, n, 0)
-    put(g, tkBracketRi, "]")
+    if n.len > 0 and n[0].kind != nkEmpty:
+      put(g, tkBracketLe, "[")
+      gsub(g, n, 0)
+      put(g, tkBracketRi, "]")
     put(g, tkParLe, "(")
     gsub(g, n, 1)
     put(g, tkParRi, ")")
@@ -1217,7 +1240,7 @@ proc gsub(g: var TSrcGen, n: PNode, c: TContext) =
     infixArgument(g, n, 1)
     put(g, tkSpaces, Space)
     gsub(g, n, 0)        # binary operator
-    # eg: `n1 == n2` decompses as following sum:
+    # e.g.: `n1 == n2` decompses as following sum:
     if n.len == 3 and not fits(g, oldLineLen + lsub(g, n[1]) + lsub(g, n[2]) + lsub(g, n[0]) + len("  ")):
       optNL(g, g.indent + longIndentWid)
     else:

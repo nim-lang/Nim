@@ -176,7 +176,7 @@ proc onlyReplaceParams(c: var TemplCtx, n: PNode): PNode =
       result[i] = onlyReplaceParams(c, n[i])
 
 proc newGenSym(kind: TSymKind, n: PNode, c: var TemplCtx): PSym =
-  result = newSym(kind, considerQuotedIdent(c.c, n), c.owner, n.info)
+  result = newSym(kind, considerQuotedIdent(c.c, n), nextSymId c.c.idgen, c.owner, n.info)
   incl(result.flags, sfGenSym)
   incl(result.flags, sfShadowed)
 
@@ -239,18 +239,18 @@ proc semTemplSymbol(c: PContext, n: PNode, s: PSym; isField: bool): PNode =
     result = symChoice(c, n, s, scOpen, isField)
   of skGenericParam:
     if isField and sfGenSym in s.flags: result = n
-    else: result = newSymNodeTypeDesc(s, n.info)
+    else: result = newSymNodeTypeDesc(s, c.idgen, n.info)
   of skParam:
     result = n
   of skType:
     if isField and sfGenSym in s.flags: result = n
-    else: result = newSymNodeTypeDesc(s, n.info)
+    else: result = newSymNodeTypeDesc(s, c.idgen, n.info)
   else:
     if isField and sfGenSym in s.flags: result = n
     else: result = newSymNode(s, n.info)
     # Issue #12832
     when defined(nimsuggest):
-      suggestSym(c.config, n.info, s, c.graph.usageSym, false)
+      suggestSym(c.graph, n.info, s, c.graph.usageSym, false)
     if {optStyleHint, optStyleError} * c.config.globalOptions != {}:
       styleCheckUse(c.config, n.info, s)
 
@@ -555,6 +555,10 @@ proc semTemplBody(c: var TemplCtx, n: PNode): PNode =
       result[1] = semTemplBody(c, n[1])
     else:
       result = semTemplBodySons(c, n)
+  of nkTableConstr:
+    # also transform the keys (bug #12595)
+    for i in 0..<n.len:
+      result[i] = semTemplBodySons(c, n[i])
   else:
     result = semTemplBodySons(c, n)
 
@@ -662,10 +666,10 @@ proc semTemplateDef(c: PContext, n: PNode): PNode =
       localError(c.config, n[bodyPos].info, errImplOfXNotAllowed % s.name.s)
   elif n[bodyPos].kind == nkEmpty:
     localError(c.config, n.info, "implementation of '$1' expected" % s.name.s)
-  var proto = searchForProc(c, c.currentScope, s)
+  var (proto, comesFromShadowscope) = searchForProc(c, c.currentScope, s)
   if proto == nil:
     addInterfaceOverloadableSymAt(c, c.currentScope, s)
-  else:
+  elif not comesFromShadowscope:
     symTabReplace(c.currentScope.symbols, proto, s)
   if n[patternPos].kind != nkEmpty:
     c.patterns.add(s)
@@ -706,11 +710,6 @@ proc semPatternBody(c: var TemplCtx, n: PNode): PNode =
     else:
       localError(c.c.config, n.info, "invalid expression")
       result = n
-
-  proc stupidStmtListExpr(n: PNode): bool =
-    for i in 0..<n.len-1:
-      if n[i].kind notin {nkEmpty, nkCommentStmt}: return false
-    result = true
 
   result = n
   case n.kind

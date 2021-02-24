@@ -13,7 +13,7 @@
 import
   options, ast, llstream, msgs,
   idents,
-  syntaxes, idgen, modulegraphs, reorder, rod,
+  syntaxes, modulegraphs, reorder,
   lineinfos, pathutils
 
 type
@@ -51,31 +51,18 @@ proc registerPass*(g: ModuleGraph; p: TPass) =
   internalAssert g.config, g.passes.len < maxPasses
   g.passes.add(p)
 
-proc carryPass*(g: ModuleGraph; p: TPass, module: PSym;
-                m: TPassData): TPassData =
-  var c = p.open(g, module)
-  result.input = p.process(c, m.input)
-  result.closeOutput = if p.close != nil: p.close(g, c, m.closeOutput)
-                       else: m.closeOutput
-
-proc carryPasses*(g: ModuleGraph; nodes: PNode, module: PSym;
-                  passes: openArray[TPass]) =
-  var passdata: TPassData
-  passdata.input = nodes
-  for pass in passes:
-    passdata = carryPass(g, pass, module, passdata)
-
 proc openPasses(g: ModuleGraph; a: var TPassContextArray;
-                module: PSym) =
+                module: PSym; idgen: IdGenerator) =
   for i in 0..<g.passes.len:
     if not isNil(g.passes[i].open):
-      a[i] = g.passes[i].open(g, module)
+      a[i] = g.passes[i].open(g, module, idgen)
     else: a[i] = nil
 
 proc closePasses(graph: ModuleGraph; a: var TPassContextArray) =
   var m: PNode = nil
   for i in 0..<graph.passes.len:
-    if not isNil(graph.passes[i].close): m = graph.passes[i].close(graph, a[i], m)
+    if not isNil(graph.passes[i].close):
+      m = graph.passes[i].close(graph, a[i], m)
     a[i] = nil                # free the memory here
 
 proc processTopLevelStmt(graph: ModuleGraph, n: PNode, a: var TPassContextArray): bool =
@@ -121,9 +108,17 @@ proc prepareConfigNotes(graph: ModuleGraph; module: PSym) =
     graph.config.notes = graph.config.foreignPackageNotes
 
 proc moduleHasChanged*(graph: ModuleGraph; module: PSym): bool {.inline.} =
-  result = module.id >= 0 or isDefined(graph.config, "nimBackendAssumesChange")
+  result = true
+  #module.id >= 0 or isDefined(graph.config, "nimBackendAssumesChange")
 
-proc processModule*(graph: ModuleGraph; module: PSym, stream: PLLStream): bool {.discardable.} =
+proc partOfStdlib(x: PSym): bool =
+  var it = x.owner
+  while it != nil and it.kind == skPackage and it.owner != nil:
+    it = it.owner
+  result = it != nil and it.name.s == "stdlib"
+
+proc processModule*(graph: ModuleGraph; module: PSym; idgen: IdGenerator;
+                    stream: PLLStream): bool {.discardable.} =
   if graph.stopCompile(): return true
   var
     p: Parser
@@ -131,90 +126,65 @@ proc processModule*(graph: ModuleGraph; module: PSym, stream: PLLStream): bool {
     s: PLLStream
     fileIdx = module.fileIdx
   prepareConfigNotes(graph, module)
-  if module.id < 0:
-    # new module caching mechanism:
-    for i in 0..<graph.passes.len:
-      if not isNil(graph.passes[i].open) and not graph.passes[i].isFrontend:
-        a[i] = graph.passes[i].open(graph, module)
-      else:
-        a[i] = nil
-
-    if not graph.stopCompile():
-      let n = loadNode(graph, module)
-      var m = n
-      for i in 0..<graph.passes.len:
-        if not isNil(graph.passes[i].process) and not graph.passes[i].isFrontend:
-          m = graph.passes[i].process(a[i], m)
-          if isNil(m):
-            break
-
-    var m: PNode = nil
-    for i in 0..<graph.passes.len:
-      if not isNil(graph.passes[i].close) and not graph.passes[i].isFrontend:
-        m = graph.passes[i].close(graph, a[i], m)
-      a[i] = nil
+  openPasses(graph, a, module, idgen)
+  if stream == nil:
+    let filename = toFullPathConsiderDirty(graph.config, fileIdx)
+    s = llStreamOpen(filename, fmRead)
+    if s == nil:
+      rawMessage(graph.config, errCannotOpenFile, filename.string)
+      return false
   else:
-    openPasses(graph, a, module)
-    if stream == nil:
-      let filename = toFullPathConsiderDirty(graph.config, fileIdx)
-      s = llStreamOpen(filename, fmRead)
-      if s == nil:
-        rawMessage(graph.config, errCannotOpenFile, filename.string)
-        return false
-    else:
-      s = stream
+    s = stream
+  while true:
+    openParser(p, fileIdx, s, graph.cache, graph.config)
+
+    if not partOfStdlib(module) or module.name.s == "distros":
+      # XXX what about caching? no processing then? what if I change the
+      # modules to include between compilation runs? we'd need to track that
+      # in ROD files. I think we should enable this feature only
+      # for the interactive mode.
+      if module.name.s != "nimscriptapi":
+        processImplicits graph, graph.config.implicitImports, nkImportStmt, a, module
+        processImplicits graph, graph.config.implicitIncludes, nkIncludeStmt, a, module
+
     while true:
-      openParser(p, fileIdx, s, graph.cache, graph.config)
-
-      if module.owner == nil or module.owner.name.s != "stdlib" or module.name.s == "distros":
-        # XXX what about caching? no processing then? what if I change the
-        # modules to include between compilation runs? we'd need to track that
-        # in ROD files. I think we should enable this feature only
-        # for the interactive mode.
-        if module.name.s != "nimscriptapi":
-          processImplicits graph, graph.config.implicitImports, nkImportStmt, a, module
-          processImplicits graph, graph.config.implicitIncludes, nkIncludeStmt, a, module
-
-      while true:
-        if graph.stopCompile(): break
-        var n = parseTopLevelStmt(p)
-        if n.kind == nkEmpty: break
-        if (sfSystemModule notin module.flags and
-            ({sfNoForward, sfReorder} * module.flags != {} or
-            codeReordering in graph.config.features)):
-          # read everything, no streaming possible
-          var sl = newNodeI(nkStmtList, n.info)
+      if graph.stopCompile(): break
+      var n = parseTopLevelStmt(p)
+      if n.kind == nkEmpty: break
+      if (sfSystemModule notin module.flags and
+          ({sfNoForward, sfReorder} * module.flags != {} or
+          codeReordering in graph.config.features)):
+        # read everything, no streaming possible
+        var sl = newNodeI(nkStmtList, n.info)
+        sl.add n
+        while true:
+          var n = parseTopLevelStmt(p)
+          if n.kind == nkEmpty: break
           sl.add n
-          while true:
-            var n = parseTopLevelStmt(p)
-            if n.kind == nkEmpty: break
-            sl.add n
-          if sfReorder in module.flags or codeReordering in graph.config.features:
-            sl = reorder(graph, sl, module)
-          discard processTopLevelStmt(graph, sl, a)
-          break
-        elif n.kind in imperativeCode:
-          # read everything until the next proc declaration etc.
-          var sl = newNodeI(nkStmtList, n.info)
+        if sfReorder in module.flags or codeReordering in graph.config.features:
+          sl = reorder(graph, sl, module)
+        discard processTopLevelStmt(graph, sl, a)
+        break
+      elif n.kind in imperativeCode:
+        # read everything until the next proc declaration etc.
+        var sl = newNodeI(nkStmtList, n.info)
+        sl.add n
+        var rest: PNode = nil
+        while true:
+          var n = parseTopLevelStmt(p)
+          if n.kind == nkEmpty or n.kind notin imperativeCode:
+            rest = n
+            break
           sl.add n
-          var rest: PNode = nil
-          while true:
-            var n = parseTopLevelStmt(p)
-            if n.kind == nkEmpty or n.kind notin imperativeCode:
-              rest = n
-              break
-            sl.add n
-          #echo "-----\n", sl
-          if not processTopLevelStmt(graph, sl, a): break
-          if rest != nil:
-            #echo "-----\n", rest
-            if not processTopLevelStmt(graph, rest, a): break
-        else:
-          #echo "----- single\n", n
-          if not processTopLevelStmt(graph, n, a): break
-      closeParser(p)
-      if s.kind != llsStdIn: break
-    closePasses(graph, a)
-    # id synchronization point for more consistent code generation:
-    idSynchronizationPoint(1000)
+        #echo "-----\n", sl
+        if not processTopLevelStmt(graph, sl, a): break
+        if rest != nil:
+          #echo "-----\n", rest
+          if not processTopLevelStmt(graph, rest, a): break
+      else:
+        #echo "----- single\n", n
+        if not processTopLevelStmt(graph, n, a): break
+    closeParser(p)
+    if s.kind != llsStdIn: break
+  closePasses(graph, a)
   result = true

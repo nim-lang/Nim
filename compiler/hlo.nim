@@ -86,9 +86,9 @@ proc hlo(c: PContext, n: PNode): PNode =
       else:
         result = fitNode(c, n.typ, result, n.info)
       # optimization has been applied so check again:
-      result = commonOptimizations(c.graph, c.module, result)
+      result = commonOptimizations(c.graph, c.idgen, c.module, result)
       result = hlo(c, result)
-      result = commonOptimizations(c.graph, c.module, result)
+      result = commonOptimizations(c.graph, c.idgen, c.module, result)
 
 proc hloBody(c: PContext, n: PNode): PNode =
   # fast exit:

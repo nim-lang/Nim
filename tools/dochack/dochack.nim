@@ -267,6 +267,17 @@ var
 
 template normalize(x: cstring): cstring = x.toLower.replace("_", "")
 
+proc escapeCString(x: var cstring) =
+  # Original strings are already escaped except HTML tags, so
+  # we only escape `<` and `>`.
+  var s = ""
+  for c in x:
+    case c
+    of '<': s.add("&lt;")
+    of '>': s.add("&gt;")
+    else: s.add(c)
+  x = s.cstring
+
 proc dosearch(value: cstring): Element =
   if db.len == 0:
     var stuff: Element
@@ -305,6 +316,7 @@ proc dosearch(value: cstring): Element =
   matches.sort(proc(a, b: auto): int = b[1] - a[1])
   for i in 0 ..< min(matches.len, 29):
     matches[i][0].innerHTML = matches[i][0].getAttribute("data-doc-search-tag")
+    escapeCString(matches[i][0].innerHTML)
     ul.add(tree("LI", cast[Element](matches[i][0])))
   if ul.len == 0:
     result.add tree("B", text"no search results")

@@ -60,7 +60,4 @@ for t in allFiles:
 testTogether(allFiles)
 removeDir(outputdir)
 
-
-
-
 if failures > 0: quit($failures & " failures occurred.")

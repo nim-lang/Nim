@@ -19,7 +19,7 @@ const
   useEffectSystem* = true
   useWriteTracking* = false
   hasFFI* = defined(nimHasLibFFI)
-  copyrightYear* = "2020"
+  copyrightYear* = "2021"
 
 type                          # please make sure we have under 32 options
                               # (improves code efficiency a lot!)
@@ -41,12 +41,13 @@ type                          # please make sure we have under 32 options
     optMemTracker,
     optNilSeqs,
     optSinkInference          # 'sink T' inference
+    optCursorInference
 
 
   TOptions* = set[TOption]
   TGlobalOption* = enum       # **keep binary compatible**
     gloptNone, optForceFullMake,
-    optWasNimscript,
+    optWasNimscript,          # redundant with `cmdNimscript`, could be removed
     optListCmd, optCompileOnly, optNoLinking,
     optCDebug,                # turn on debugging information
     optGenDynLib,             # generate a dynamic library
@@ -67,7 +68,6 @@ type                          # please make sure we have under 32 options
     optThreads,               # support for multi-threading
     optStdout,                # output to stdout
     optThreadAnalysis,        # thread analysis pass
-    optTaintMode,             # taint mode turned on
     optTlsEmulation,          # thread var emulation turned on
     optGenIndex               # generate index file for documentation;
     optEmbedOrigSrc           # embed the original source in the generated code
@@ -76,10 +76,11 @@ type                          # please make sure we have under 32 options
     optIdeTerse               # idetools: use terse descriptions
     optExcessiveStackTrace    # fully qualified module filenames
     optShowAllMismatches      # show all overloading resolution candidates
-    optWholeProject           # for 'doc2': output any dependency
+    optWholeProject           # for 'doc': output any dependency
     optDocInternal            # generate documentation for non-exported symbols
     optMixedMode              # true if some module triggered C++ codegen
     optListFullPaths          # use full paths in toMsgFilename
+    optDeclaredLocs           # show declaration locations in messages
     optNoNimblePath
     optHotCodeReloading
     optDynlibOverrideAll
@@ -93,8 +94,10 @@ type                          # please make sure we have under 32 options
     optProduceAsm             # produce assembler code
     optPanics                 # turn panics (sysFatal) into a process termination
     optNimV1Emulation         # emulate Nim v1.0
+    optNimV12Emulation        # emulate Nim v1.2
     optSourcemap
     optProfileVM              # enable VM profiler
+    optEnableDeepCopy         # ORC specific: enable 'deepcopy' for all types.
 
   TGlobalOptions* = set[TGlobalOption]
 
@@ -106,39 +109,48 @@ type
   TBackend* = enum
     backendInvalid = "" # for parseEnum
     backendC = "c"
-    backendCpp = "cpp"  # was cmdCompileToCpp
-    backendJs = "js" # was cmdCompileToJS
-    backendObjc = "objc" # was cmdCompileToOC
+    backendCpp = "cpp"
+    backendJs = "js"
+    backendObjc = "objc"
     # backendNimscript = "nimscript" # this could actually work
     # backendLlvm = "llvm" # probably not well supported; was cmdCompileToLLVM
 
+  Command* = enum  ## Nim's commands
+    cmdNone # not yet processed command
+    cmdUnknown # command unmapped
+    cmdCompileToC, cmdCompileToCpp, cmdCompileToOC, cmdCompileToJS
+    cmdCrun # compile and run in nimache
+    cmdTcc # run the project via TCC backend
+    cmdCheck # semantic checking for whole project
+    cmdParse # parse a single file (for debugging)
+    cmdRod # .rod to some text representation (for debugging)
+    cmdIdeTools # ide tools (e.g. nimsuggest)
+    cmdNimscript # evaluate nimscript
+    cmdDoc0
+    cmdDoc2
+    cmdRst2html # convert a reStructuredText file to HTML
+    cmdRst2tex # convert a reStructuredText file to TeX
+    cmdJsondoc0
+    cmdJsondoc
+    cmdCtags
+    cmdBuildindex
+    cmdGendepend
+    cmdDump
+    cmdInteractive # start interactive session
+    cmdNop
+    cmdJsonscript # compile a .json build file
+    cmdNimfix
+    # old unused: cmdInterpret, cmdDef: def feature (find definition for IDEs)
+
+const
+  cmdBackends* = {cmdCompileToC, cmdCompileToCpp, cmdCompileToOC, cmdCompileToJS, cmdCrun}
+  cmdDocLike* = {cmdDoc0, cmdDoc2, cmdJsondoc0, cmdJsondoc, cmdCtags, cmdBuildindex}
+
 type
-  TCommands* = enum           # Nim's commands
-                              # **keep binary compatible**
-    cmdNone,
-    cmdCompileToC,            # deadcode
-    cmdCompileToCpp,          # deadcode
-    cmdCompileToOC,           # deadcode
-    cmdCompileToJS,           # deadcode
-    cmdCompileToLLVM,         # deadcode
-    cmdInterpret, cmdPretty, cmdDoc,
-    cmdGenDepend, cmdDump,
-    cmdCheck,                 # semantic checking for whole project
-    cmdParse,                 # parse a single file (for debugging)
-    cmdScan,                  # scan a single file (for debugging)
-    cmdIdeTools,              # ide tools
-    cmdDef,                   # def feature (find definition for IDEs)
-    cmdRst2html,              # convert a reStructuredText file to HTML
-    cmdRst2tex,               # convert a reStructuredText file to TeX
-    cmdInteractive,           # start interactive session
-    cmdRun,                   # run the project via TCC backend
-    cmdJsonScript             # compile a .json build file
-    cmdCompileToBackend,      # compile to backend in TBackend
   TStringSeq* = seq[string]
   TGCMode* = enum             # the selected GC
-    gcUnselected, gcNone, gcBoehm, gcRegions, gcMarkAndSweep, gcArc, gcOrc,
-    gcHooks,
-    gcRefc, gcV2, gcGo
+    gcUnselected, gcNone, gcBoehm, gcRegions, gcArc, gcOrc,
+    gcMarkAndSweep, gcHooks, gcRefc, gcV2, gcGo
     # gcRefc and the GCs that follow it use a write barrier,
     # as far as usesWriteBarrier() is concerned
 
@@ -163,7 +175,8 @@ type
       ## Note: this feature can't be localized with {.push.}
     vmopsDanger,
     strictFuncs,
-    views
+    views,
+    strictNotNil
 
   LegacyFeature* = enum
     allowSemcheckedAstModification,
@@ -176,7 +189,7 @@ type
       ## are not anymore.
 
   SymbolFilesOption* = enum
-    disabledSf, writeOnlySf, readOnlySf, v2Sf
+    disabledSf, writeOnlySf, readOnlySf, v2Sf, stressTest
 
   TSystemCC* = enum
     ccNone, ccGcc, ccNintendoSwitch, ccLLVM_Gcc, ccCLang, ccBcc, ccVcc,
@@ -197,6 +210,7 @@ type
     nimname*: string
     cname*, obj*: AbsoluteFile
     flags*: set[CfileFlag]
+    customArgs*: string
   CfileList* = seq[Cfile]
 
   Suggest* = ref object
@@ -226,6 +240,10 @@ type
   ProfileData* = ref object
     data*: TableRef[TLineInfo, ProfileInfo]
 
+  StdOrrKind* = enum
+    stdOrrStdout
+    stdOrrStderr
+
   ConfigRef* = ref object ## every global configuration
                           ## fields marked with '*' are subject to
                           ## the incremental compilation mechanisms
@@ -241,12 +259,14 @@ type
     evalTemplateCounter*: int
     evalMacroCounter*: int
     exitcode*: int8
-    cmd*: TCommands  # the command
+    cmd*: Command  # raw command parsed as enum
+    cmdInput*: string  # input command
+    projectIsCmd*: bool # whether we're compiling from a command input
+    implicitCmd*: bool # whether some flag triggered an implicit `command`
     selectedGC*: TGCMode       # the selected GC (+)
     exc*: ExceptionSystem
     verbosity*: int            # how verbose the compiler is
     numberOfProcessors*: int   # number of processors
-    evalExpr*: string          # expression for idetools --eval
     lastCmdTime*: float        # when caas is enabled, we measure each command
     symbolFiles*: SymbolFilesOption
 
@@ -288,7 +308,7 @@ type
     projectPath*: AbsoluteDir # holds a path like /home/alice/projects/nim/compiler/
     projectFull*: AbsoluteFile # projectPath/projectName
     projectIsStdin*: bool # whether we're compiling from stdin
-    lastMsgWasDot*: bool # the last compiler message was a single '.'
+    lastMsgWasDot*: set[StdOrrKind] # the last compiler message was a single '.'
     projectMainIdx*: FileIndex # the canonical path id of the main module
     projectMainIdx2*: FileIndex # consider merging with projectMainIdx
     command*: string # the main command (e.g. cc, check, scan, etc)
@@ -347,8 +367,11 @@ proc setNote*(conf: ConfigRef, note: TNoteKind, enabled = true) =
     if enabled: incl(conf.notes, note) else: excl(conf.notes, note)
 
 proc hasHint*(conf: ConfigRef, note: TNoteKind): bool =
+  # ternary states instead of binary states would simplify logic
   if optHints notin conf.options: false
-  elif note in {hintConf}: # could add here other special notes like hintSource
+  elif note in {hintConf, hintProcessing}:
+    # could add here other special notes like hintSource
+    # these notes apply globally.
     note in conf.mainPackageNotes
   else: note in conf.notes
 
@@ -357,11 +380,12 @@ proc hasWarn*(conf: ConfigRef, note: TNoteKind): bool =
 
 proc hcrOn*(conf: ConfigRef): bool = return optHotCodeReloading in conf.globalOptions
 
-template depConfigFields*(fn) {.dirty.} =
-  fn(target)
-  fn(options)
-  fn(globalOptions)
-  fn(selectedGC)
+when false:
+  template depConfigFields*(fn) {.dirty.} = # deadcode
+    fn(target)
+    fn(options)
+    fn(globalOptions)
+    fn(selectedGC)
 
 const oldExperimentalFeatures* = {implicitDeref, dotOperators, callOperator, parallel}
 
@@ -373,7 +397,7 @@ const
   DefaultOptions* = {optObjCheck, optFieldCheck, optRangeCheck,
     optBoundsCheck, optOverflowCheck, optAssert, optWarns, optRefCheck,
     optHints, optStackTrace, optLineTrace, # consider adding `optStackTraceMsgs`
-    optTrMacros, optStyleCheck}
+    optTrMacros, optStyleCheck, optCursorInference}
   DefaultGlobalOptions* = {optThreadAnalysis,
     optExcessiveStackTrace, optListFullPaths}
 
@@ -404,6 +428,9 @@ template newPackageCache*(): untyped =
 proc newProfileData(): ProfileData =
   ProfileData(data: newTable[TLineInfo, ProfileInfo]())
 
+const foreignPackageNotesDefault* = {
+  hintProcessing, warnUnknownMagic, hintQuitCalled, hintExecuting, hintUser, warnUser}
+
 proc newConfigRef*(): ConfigRef =
   result = ConfigRef(
     selectedGC: gcRefc,
@@ -414,10 +441,8 @@ proc newConfigRef*(): ConfigRef =
     macrosToExpand: newStringTable(modeStyleInsensitive),
     arcToExpand: newStringTable(modeStyleInsensitive),
     m: initMsgConfig(),
-    evalExpr: "",
     cppDefines: initHashSet[string](),
-    headerFile: "", features: {}, legacyFeatures: {}, foreignPackageNotes: {hintProcessing, warnUnknownMagic,
-    hintQuitCalled, hintExecuting},
+    headerFile: "", features: {}, legacyFeatures: {}, foreignPackageNotes: foreignPackageNotesDefault,
     notes: NotesVerbosity[1], mainPackageNotes: NotesVerbosity[1],
     configVars: newStringTable(modeStyleInsensitive),
     symbols: newStringTable(modeStyleInsensitive),
@@ -471,8 +496,7 @@ proc newPartialConfigRef*(): ConfigRef =
     verbosity: 1,
     options: DefaultOptions,
     globalOptions: DefaultGlobalOptions,
-    foreignPackageNotes: {hintProcessing, warnUnknownMagic,
-    hintQuitCalled, hintExecuting},
+    foreignPackageNotes: foreignPackageNotesDefault,
     notes: NotesVerbosity[1], mainPackageNotes: NotesVerbosity[1])
 
 proc cppDefine*(c: ConfigRef; define: string) =
@@ -526,7 +550,7 @@ proc isDefined*(conf: ConfigRef; symbol: string): bool =
                             osDragonfly, osMacosx}
     else: discard
 
-proc importantComments*(conf: ConfigRef): bool {.inline.} = conf.cmd in {cmdDoc, cmdIdeTools}
+proc importantComments*(conf: ConfigRef): bool {.inline.} = conf.cmd in cmdDocLike + {cmdIdeTools}
 proc usesWriteBarrier*(conf: ConfigRef): bool {.inline.} = conf.selectedGC >= gcRefc
 
 template compilationCachePresent*(conf: ConfigRef): untyped =
@@ -628,17 +652,6 @@ proc setDefaultLibpath*(conf: ConfigRef) =
 proc canonicalizePath*(conf: ConfigRef; path: AbsoluteFile): AbsoluteFile =
   result = AbsoluteFile path.string.expandFilename
 
-proc shortenDir*(conf: ConfigRef; dir: string): string {.
-    deprecated: "use 'relativeTo' instead".} =
-  ## returns the interesting part of a dir
-  var prefix = conf.projectPath.string & DirSep
-  if startsWith(dir, prefix):
-    return substr(dir, prefix.len)
-  prefix = getPrefixDir(conf).string & DirSep
-  if startsWith(dir, prefix):
-    return substr(dir, prefix.len)
-  result = dir
-
 proc removeTrailingDirSep*(path: string): string =
   if (path.len > 0) and (path[^1] == DirSep):
     result = substr(path, 0, path.len - 2)
@@ -709,6 +722,10 @@ proc completeGeneratedFilePath*(conf: ConfigRef; f: AbsoluteFile,
       quit(1)
   result = subdir / RelativeFile f.string.splitPath.tail
   #echo "completeGeneratedFilePath(", f, ") = ", result
+
+proc toRodFile*(conf: ConfigRef; f: AbsoluteFile; ext = RodExt): AbsoluteFile =
+  result = changeFileExt(completeGeneratedFilePath(conf,
+    withPackageName(conf, f)), ext)
 
 proc rawFindFile(conf: ConfigRef; f: RelativeFile; suppressStdlib: bool): AbsoluteFile =
   for it in conf.searchPaths:
@@ -893,3 +910,18 @@ proc floatInt64Align*(conf: ConfigRef): int16 =
       # to 4bytes (except with -malign-double)
       return 4
   return 8
+
+proc setOutFile*(conf: ConfigRef) =
+  proc libNameTmpl(conf: ConfigRef): string {.inline.} =
+    result = if conf.target.targetOS == osWindows: "$1.lib" else: "lib$1.a"
+
+  if conf.outFile.isEmpty:
+    let base = conf.projectName
+    let targetName =
+      if optGenDynLib in conf.globalOptions:
+        platform.OS[conf.target.targetOS].dllFrmt % base
+      elif optGenStaticLib in conf.globalOptions:
+        libNameTmpl(conf) % base
+      else:
+        base & platform.OS[conf.target.targetOS].exeExt
+    conf.outFile = RelativeFile targetName

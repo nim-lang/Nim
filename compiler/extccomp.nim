@@ -12,9 +12,9 @@
 # from a lineinfos file, to provide generalized procedures to compile
 # nim files.
 
-import
-  ropes, os, strutils, osproc, platform, condsyms, options, msgs,
-  lineinfos, std / sha1, streams, pathutils, sequtils, times, strtabs
+import ropes, platform, condsyms, options, msgs, lineinfos, pathutils
+
+import std/[os, strutils, osproc, sha1, streams, sequtils, times, strtabs, json]
 
 type
   TInfoCCProp* = enum         # properties of the C compiler:
@@ -124,8 +124,8 @@ compiler llvmGcc:
   result.name = "llvm_gcc"
   result.compilerExe = "llvm-gcc"
   result.cppCompiler = "llvm-g++"
-  when defined(macosx):
-    # OS X has no 'llvm-ar' tool:
+  when defined(macosx) or defined(openbsd):
+    # `llvm-ar` not available
     result.buildLib = "ar rcs $libfile $objfiles"
   else:
     result.buildLib = "llvm-ar rcs $libfile $objfiles"
@@ -554,6 +554,10 @@ proc getCompileCFileCmd*(conf: ConfigRef; cfile: Cfile,
       ospNeedsPIC in platform.OS[conf.target.targetOS].props:
     options.add(' ' & CC[c].pic)
 
+  if cfile.customArgs != "":
+    options.add ' '
+    options.add cfile.customArgs
+
   var compilePattern: string
   # compute include paths:
   var includeCmd = CC[c].includeCmd & quoteShell(conf.libpath)
@@ -567,10 +571,10 @@ proc getCompileCFileCmd*(conf: ConfigRef; cfile: Cfile,
 
   includeCmd.add(join([CC[c].includeCmd, quoteShell(conf.projectPath.string)]))
 
-  var cf = if noAbsolutePaths(conf): AbsoluteFile extractFilename(cfile.cname.string)
+  let cf = if noAbsolutePaths(conf): AbsoluteFile extractFilename(cfile.cname.string)
            else: cfile.cname
 
-  var objfile =
+  let objfile =
     if cfile.obj.isEmpty:
       if CfileFlag.External notin cfile.flags or noAbsolutePaths(conf):
         toObjFile(conf, cf).string
@@ -623,13 +627,10 @@ proc footprint(conf: ConfigRef; cfile: Cfile): SecureHash =
     getCompileCFileCmd(conf, cfile))
 
 proc externalFileChanged(conf: ConfigRef; cfile: Cfile): bool =
-  case conf.backend
-  of backendInvalid: doAssert false
-  of backendJs: return false # pre-existing behavior, but not sure it's good
-  else: discard
+  if conf.backend == backendJs: return false # pre-existing behavior, but not sure it's good
 
-  var hashFile = toGeneratedFile(conf, conf.withPackageName(cfile.cname), "sha1")
-  var currentHash = footprint(conf, cfile)
+  let hashFile = toGeneratedFile(conf, conf.withPackageName(cfile.cname), "sha1")
+  let currentHash = footprint(conf, cfile)
   var f: File
   if open(f, hashFile.string, fmRead):
     let oldHash = parseSecureHash(f.readLine())
@@ -661,6 +662,7 @@ proc addExternalFileToCompile*(conf: ConfigRef; filename: AbsoluteFile) =
 proc getLinkCmd(conf: ConfigRef; output: AbsoluteFile,
                 objfiles: string, isDllBuild: bool): string =
   if optGenStaticLib in conf.globalOptions:
+    removeFile output # fixes: bug #16947
     result = CC[conf.cCompiler].buildLib % ["libfile", quoteShell(output),
                                             "objfiles", objfiles]
   else:
@@ -847,7 +849,10 @@ proc callCCompiler*(conf: ConfigRef) =
   var cmds: TStringSeq
   var prettyCmds: TStringSeq
   let prettyCb = proc (idx: int) =
-    if prettyCmds[idx].len > 0: echo prettyCmds[idx]
+    if prettyCmds[idx].len > 0:
+      flushDot(conf)
+      # xxx should probably use stderr like other compiler messages, not stdout
+      echo prettyCmds[idx]
 
   for idx, it in conf.toCompile:
     # call the C compiler for the .c file:
@@ -898,8 +903,8 @@ proc callCCompiler*(conf: ConfigRef) =
       # only if not cached - copy the resulting main file from the nimcache folder to its originally intended destination
       if CfileFlag.Cached notin conf.toCompile[mainFileIdx].flags:
         let mainObjFile = getObjFilePath(conf, conf.toCompile[mainFileIdx])
-        var src = conf.hcrLinkTargetName(mainObjFile, true)
-        var dst = conf.prepareToWriteOutput
+        let src = conf.hcrLinkTargetName(mainObjFile, true)
+        let dst = conf.prepareToWriteOutput
         copyFileWithPermissions(src.string, dst.string)
     else:
       for x in conf.toCompile:
@@ -928,20 +933,15 @@ proc callCCompiler*(conf: ConfigRef) =
     script.add("\n")
     generateScript(conf, script)
 
-#from json import escapeJson
-import json, std / sha1
 
 template hashNimExe(): string = $secureHashFile(os.getAppFilename())
 
 proc writeJsonBuildInstructions*(conf: ConfigRef) =
-  template lit(x: untyped) = f.write x
-  template str(x: untyped) =
-    when compiles(escapeJson(x, buf)):
-      buf.setLen 0
-      escapeJson(x, buf)
-      f.write buf
-    else:
-      f.write escapeJson(x)
+  template lit(x: string) = f.write x
+  template str(x: string) =
+    buf.setLen 0
+    escapeJson(x, buf)
+    f.write buf
 
   proc cfiles(conf: ConfigRef; f: File; buf: var string; clist: CfileList, isExternal: bool) =
     var comma = false
@@ -977,7 +977,7 @@ proc writeJsonBuildInstructions*(conf: ConfigRef) =
       pastStart = true
     lit "\L"
 
-  proc depfiles(conf: ConfigRef; f: File) =
+  proc depfiles(conf: ConfigRef; f: File; buf: var string) =
     var i = 0
     for it in conf.m.fileInfos:
       let path = it.fullPath.string
@@ -1018,12 +1018,18 @@ proc writeJsonBuildInstructions*(conf: ConfigRef) =
 
     lit ",\L\"stdinInput\": "
     lit $(%* conf.projectIsStdin)
+    lit ",\L\"projectIsCmd\": "
+    lit $(%* conf.projectIsCmd)
+    lit ",\L\"cmdInput\": "
+    lit $(%* conf.cmdInput)
+    lit ",\L\"currentDir\": "
+    lit $(%* getCurrentDir())
 
     if optRun in conf.globalOptions or isDefined(conf, "nimBetterRun"):
       lit ",\L\"cmdline\": "
       str conf.commandLine
       lit ",\L\"depfiles\":[\L"
-      depfiles(conf, f)
+      depfiles(conf, f, buf)
       lit "],\L\"nimexe\": \L"
       str hashNimExe()
       lit "\L"
@@ -1038,19 +1044,35 @@ proc changeDetectedViaJsonBuildInstructions*(conf: ConfigRef; projectfile: Absol
   result = false
   try:
     let data = json.parseFile(jsonFile.string)
-    if not data.hasKey("depfiles") or not data.hasKey("cmdline"):
+    for key in "depfiles cmdline stdinInput currentDir".split:
+      if not data.hasKey(key): return true
+    if getCurrentDir() != data["currentDir"].getStr:
+      # fixes bug #16271
+      # Note that simply comparing `expandFilename(projectFile)` would
+      # not be sufficient in case other flags depend implicitly on `getCurrentDir`,
+      # and would require much more care. Simply re-compiling is safer for now.
+      # A better strategy for future work would be to cache (with an LRU cache)
+      # the N most recent unique build instructions, as done with `rdmd`,
+      # which is both robust and avoids recompilation when switching back and forth
+      # between projects, see https://github.com/timotheecour/Nim/issues/199
       return true
     let oldCmdLine = data["cmdline"].getStr
     if conf.commandLine != oldCmdLine:
       return true
     if hashNimExe() != data["nimexe"].getStr:
       return true
-    if not data.hasKey("stdinInput"): return true
     let stdinInput = data["stdinInput"].getBool
+    let projectIsCmd = data["projectIsCmd"].getBool
     if conf.projectIsStdin or stdinInput:
       # could optimize by returning false if stdin input was the same,
       # but I'm not sure how to get full stding input
       return true
+
+    if conf.projectIsCmd or projectIsCmd:
+      if not (conf.projectIsCmd and projectIsCmd): return true
+      if not data.hasKey("cmdInput"): return true
+      let cmdInput = data["cmdInput"].getStr
+      if cmdInput != conf.cmdInput: return true
 
     let depfilesPairs = data["depfiles"]
     doAssert depfilesPairs.kind == JArray

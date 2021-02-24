@@ -75,12 +75,12 @@ const poDemon* {.deprecated.} = poDaemon ## Nim versions before 0.20
 proc execProcess*(command: string, workingDir: string = "",
     args: openArray[string] = [], env: StringTableRef = nil,
     options: set[ProcessOption] = {poStdErrToStdOut, poUsePath, poEvalCommand}):
-  TaintedString {.rtl, extern: "nosp$1",
+  string {.rtl, extern: "nosp$1",
                   tags: [ExecIOEffect, ReadIOEffect, RootEffect].}
   ## A convenience procedure that executes ``command`` with ``startProcess``
   ## and returns its output as a string.
   ##
-  ## **WARNING:** This function uses `poEvalCommand` by default for backward
+  ## **WARNING:** This function uses `poEvalCommand` by default for backwards
   ## compatibility.
   ## Make sure to pass options explicitly.
   ##
@@ -106,7 +106,7 @@ proc execCmd*(command: string): int {.rtl, extern: "nosp$1",
   ## This operation is also often called `system`:idx:.
   ##
   ## See also:
-  ## * `execCmdEx proc <#execCmdEx,string,set[ProcessOption]>`_
+  ## * `execCmdEx proc <#execCmdEx,string,set[ProcessOption],StringTableRef,string,string>`_
   ## * `startProcess proc
   ##   <#startProcess,string,string,openArray[string],StringTableRef,set[ProcessOption]>`_
   ## * `execProcess proc
@@ -187,6 +187,7 @@ proc terminate*(p: Process) {.rtl, extern: "nosp$1", tags: [].}
   ## * `suspend proc <#suspend,Process>`_
   ## * `resume proc <#resume,Process>`_
   ## * `kill proc <#kill,Process>`_
+  ## * `posix_utils.sendSignal(pid: Pid, signal: int) <posix_utils.html#sendSignal,Pid,int>`_
 
 proc kill*(p: Process) {.rtl, extern: "nosp$1", tags: [].}
   ## Kill the process `p`.
@@ -198,6 +199,7 @@ proc kill*(p: Process) {.rtl, extern: "nosp$1", tags: [].}
   ## * `suspend proc <#suspend,Process>`_
   ## * `resume proc <#resume,Process>`_
   ## * `terminate proc <#terminate,Process>`_
+  ## * `posix_utils.sendSignal(pid: Pid, signal: int) <posix_utils.html#sendSignal,Pid,int>`_
 
 proc running*(p: Process): bool {.rtl, extern: "nosp$1", tags: [].}
   ## Returns true if the process `p` is still running. Returns immediately.
@@ -414,6 +416,8 @@ proc execProcesses*(cmds: openArray[string],
             raiseOSError(err)
 
       if rexit >= 0:
+        when defined(windows):
+          let processHandle = q[rexit].fProcessHandle
         result = max(result, abs(q[rexit].peekExitCode()))
         if afterRunEvent != nil: afterRunEvent(idxs[rexit], q[rexit])
         close(q[rexit])
@@ -428,7 +432,7 @@ proc execProcesses*(cmds: openArray[string],
         else:
           when defined(windows):
             for k in 0..wcount - 1:
-              if w[k] == q[rexit].fProcessHandle:
+              if w[k] == processHandle:
                 w[k] = w[wcount - 1]
                 w[wcount - 1] = 0
                 dec(wcount)
@@ -444,23 +448,74 @@ proc execProcesses*(cmds: openArray[string],
       if afterRunEvent != nil: afterRunEvent(i, p)
       close(p)
 
+iterator lines*(p: Process): string {.since: (1, 3), tags: [ReadIOEffect].} =
+  ## Convenience iterator for working with `startProcess` to read data from a
+  ## background process.
+  ##
+  ## See also:
+  ## * `readLines proc <#readLines,Process>`_
+  ##
+  ## Example:
+  ##
+  ## .. code-block:: Nim
+  ##   const opts = {poUsePath, poDaemon, poStdErrToStdOut}
+  ##   var ps: seq[Process]
+  ##   for prog in ["a", "b"]: # run 2 progs in parallel
+  ##     ps.add startProcess("nim", "", ["r", prog], nil, opts)
+  ##   for p in ps:
+  ##     var i = 0
+  ##     for line in p.lines:
+  ##       echo line
+  ##       i.inc
+  ##       if i > 100: break
+  ##     p.close
+  var outp = p.outputStream
+  var line = newStringOfCap(120)
+  while true:
+    if outp.readLine(line):
+      yield line
+    else:
+      if p.peekExitCode != -1: break
+
+proc readLines*(p: Process): (seq[string], int) {.since: (1, 3).} =
+  ## Convenience function for working with `startProcess` to read data from a
+  ## background process.
+  ##
+  ## See also:
+  ## * `lines iterator <#lines.i,Process>`_
+  ##
+  ## Example:
+  ##
+  ## .. code-block:: Nim
+  ##   const opts = {poUsePath, poDaemon, poStdErrToStdOut}
+  ##   var ps: seq[Process]
+  ##   for prog in ["a", "b"]: # run 2 progs in parallel
+  ##     ps.add startProcess("nim", "", ["r", prog], nil, opts)
+  ##   for p in ps:
+  ##     let (lines, exCode) = p.readLines
+  ##     if exCode != 0:
+  ##       for line in lines: echo line
+  ##     p.close
+  for line in p.lines: result[0].add(line)
+  result[1] = p.peekExitCode
+
 when not defined(useNimRtl):
   proc execProcess(command: string, workingDir: string = "",
       args: openArray[string] = [], env: StringTableRef = nil,
       options: set[ProcessOption] = {poStdErrToStdOut, poUsePath,
           poEvalCommand}):
-    TaintedString =
+    string =
 
     var p = startProcess(command, workingDir = workingDir, args = args,
         env = env, options = options)
     var outp = outputStream(p)
-    result = TaintedString""
-    var line = newStringOfCap(120).TaintedString
+    result = ""
+    var line = newStringOfCap(120)
     while true:
       # FIXME: converts CR-LF to LF.
       if outp.readLine(line):
-        result.string.add(line.string)
-        result.string.add("\n")
+        result.add(line)
+        result.add("\n")
       elif not running(p): break
     close(p)
 
@@ -474,10 +529,17 @@ when defined(Windows) and not defined(useNimRtl):
       handle: Handle
       atTheEnd: bool
 
+  proc closeHandleCheck(handle: Handle) {.inline.} =
+    if handle.closeHandle() == 0:
+      raiseOSError(osLastError())
+
+  proc fileClose[T: Handle | FileHandle](h: var T) {.inline.} =
+    if h > 4:
+      closeHandleCheck(h)
+      h = INVALID_HANDLE_VALUE.T
+
   proc hsClose(s: Stream) =
-    # xxx here + elsewhere: check instead of discard; ignoring errors leads to
-    # hard to track bugs
-    discard FileHandleStream(s).handle.closeHandle
+    FileHandleStream(s).handle.fileClose()
 
   proc hsAtEnd(s: Stream): bool = return FileHandleStream(s).atTheEnd
 
@@ -582,8 +644,8 @@ when defined(Windows) and not defined(useNimRtl):
 
     stdin = myDup(pipeIn, 0)
     stdout = myDup(pipeOut, 0)
-    discard closeHandle(pipeIn)
-    discard closeHandle(pipeOut)
+    closeHandleCheck(pipeIn)
+    closeHandleCheck(pipeOut)
     stderr = stdout
 
   proc createPipeHandles(rdHandle, wrHandle: var Handle) =
@@ -593,9 +655,6 @@ when defined(Windows) and not defined(useNimRtl):
     sa.bInheritHandle = 1
     if createPipe(rdHandle, wrHandle, sa, 0) == 0'i32:
       raiseOSError(osLastError())
-
-  proc fileClose(h: Handle) {.inline.} =
-    if h > 4: discard closeHandle(h)
 
   proc startProcess(command: string, workingDir: string = "",
       args: openArray[string] = [], env: StringTableRef = nil,
@@ -691,13 +750,31 @@ when defined(Windows) and not defined(useNimRtl):
     result.id = procInfo.dwProcessId
     result.exitFlag = false
 
+  proc closeThreadAndProcessHandle(p: Process) =
+    if p.fThreadHandle != 0:
+      closeHandleCheck(p.fThreadHandle)
+      p.fThreadHandle = 0
+
+    if p.fProcessHandle != 0:
+      closeHandleCheck(p.fProcessHandle)
+      p.fProcessHandle = 0
+
   proc close(p: Process) =
     if poParentStreams notin p.options:
-      discard closeHandle(p.inHandle)
-      discard closeHandle(p.outHandle)
-      discard closeHandle(p.errHandle)
-    discard closeHandle(p.fThreadHandle)
-    discard closeHandle(p.fProcessHandle)
+      if p.inStream == nil:
+        p.inHandle.fileClose()
+      else:
+        # p.inHandle can be already closed via inputStream.
+        p.inStream.close
+
+      # You may NOT close outputStream and errorStream.
+      assert p.outStream == nil or FileHandleStream(p.outStream).handle != INVALID_HANDLE_VALUE
+      assert p.errStream == nil or FileHandleStream(p.errStream).handle != INVALID_HANDLE_VALUE
+
+      if p.outHandle != p.errHandle:
+        p.errHandle.fileClose()
+      p.outHandle.fileClose()
+    p.closeThreadAndProcessHandle()
 
   proc suspend(p: Process) =
     discard suspendThread(p.fThreadHandle)
@@ -731,8 +808,7 @@ when defined(Windows) and not defined(useNimRtl):
     if status != STILL_ACTIVE:
       p.exitFlag = true
       p.exitStatus = status
-      discard closeHandle(p.fThreadHandle)
-      discard closeHandle(p.fProcessHandle)
+      p.closeThreadAndProcessHandle()
       result = status
     else:
       result = -1
@@ -748,8 +824,7 @@ when defined(Windows) and not defined(useNimRtl):
       discard getExitCodeProcess(p.fProcessHandle, status)
       p.exitFlag = true
       p.exitStatus = status
-      discard closeHandle(p.fThreadHandle)
-      discard closeHandle(p.fProcessHandle)
+      p.closeThreadAndProcessHandle()
       result = status
 
   proc inputStream(p: Process): Stream =
@@ -857,7 +932,7 @@ elif not defined(useNimRtl):
     result = cast[cstringArray](alloc0((counter + 1) * sizeof(cstring)))
     var i = 0
     for key, val in envPairs():
-      var x = key.string & "=" & val.string
+      var x = key & "=" & val
       result[i] = cast[cstring](alloc(x.len+1))
       copyMem(result[i], addr(x[0]), x.len+1)
       inc(i)
@@ -906,7 +981,7 @@ elif not defined(useNimRtl):
         when not defined(android): "/bin/sh"
         else: "/system/bin/sh"
       data.sysCommand = useShPath
-      sysArgsRaw = @[data.sysCommand, "-c", command]
+      sysArgsRaw = @[useShPath, "-c", command]
       assert args.len == 0, "`args` has to be empty when using poEvalCommand."
     else:
       data.sysCommand = command
@@ -1159,7 +1234,7 @@ elif not defined(useNimRtl):
 
   when defined(macosx) or defined(freebsd) or defined(netbsd) or
        defined(openbsd) or defined(dragonfly):
-    import kqueue, times
+    import kqueue
 
     proc waitForExit(p: Process, timeout: int = -1): int =
       if p.exitFlag:
@@ -1497,7 +1572,7 @@ elif not defined(useNimRtl):
 proc execCmdEx*(command: string, options: set[ProcessOption] = {
                 poStdErrToStdOut, poUsePath}, env: StringTableRef = nil,
                 workingDir = "", input = ""): tuple[
-                output: TaintedString,
+                output: string,
                 exitCode: int] {.tags:
                 [ExecIOEffect, ReadIOEffect, RootEffect], gcsafe.} =
   ## A convenience proc that runs the `command`, and returns its `output` and
@@ -1544,12 +1619,12 @@ proc execCmdEx*(command: string, options: set[ProcessOption] = {
     inputStream(p).write(input)
   close inputStream(p)
 
-  result = (TaintedString"", -1)
-  var line = newStringOfCap(120).TaintedString
+  result = ("", -1)
+  var line = newStringOfCap(120)
   while true:
     if outp.readLine(line):
-      result[0].string.add(line.string)
-      result[0].string.add("\n")
+      result[0].add(line)
+      result[0].add("\n")
     else:
       result[1] = peekExitCode(p)
       if result[1] != -1: break

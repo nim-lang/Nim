@@ -41,6 +41,8 @@
 ##  for i in 0..high(thr):
 ##    createThread(thr[i], threadFunc, (i*10, i*10+5))
 ##  joinThreads(thr)
+## 
+##  deinitLock(L)
 
 when not declared(ThisIsSystem):
   {.error: "You must not import this module explicitly".}
@@ -317,7 +319,10 @@ else:
     when hasSharedHeap: t.core.stackSize = ThreadStackSize
     var a {.noinit.}: Pthread_attr
     doAssert pthread_attr_init(a) == 0
-    doAssert pthread_attr_setstacksize(a, ThreadStackSize) == 0
+    let setstacksizeResult = pthread_attr_setstacksize(a, ThreadStackSize)
+    when not defined(ios):
+      # This fails on iOS
+      doAssert(setstacksizeResult == 0)
     if pthread_create(t.sys, a, threadProcWrapper[TArg], addr(t)) != 0:
       raise newException(ResourceExhaustedError, "cannot create thread")
     doAssert pthread_attr_destroy(a) == 0

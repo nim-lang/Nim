@@ -193,6 +193,7 @@ proc encodeMime*(s: string, lineLen = 75, newLine = "\r\n"): string =
   ## * `decode proc<#decode,string>`_ for decoding a string
   runnableExamples:
     assert encodeMime("Hello World", 4, "\n") == "SGVs\nbG8g\nV29y\nbGQ="
+  result = newStringOfCap(encodeSize(s.len))
   for i, c in encode(s):
     if i != 0 and (i mod lineLen == 0):
       result.add(newLine)
@@ -230,11 +231,11 @@ proc decode*(s: string): string =
 
   template inputChar(x: untyped) =
     let x = int decodeTable[ord(s[inputIndex])]
-    inc inputIndex
     if x == invalidChar:
       raise newException(ValueError,
         "Invalid base64 format character `" & s[inputIndex] &
         "` (ord " & $s[inputIndex].ord & ") at location " & $inputIndex & ".")
+    inc inputIndex
 
   template outputChar(x: untyped) =
     result[outputIndex] = char(x and 255)

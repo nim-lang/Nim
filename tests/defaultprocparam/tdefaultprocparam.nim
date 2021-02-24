@@ -81,3 +81,10 @@ block:
   echo p3(a)
   echo p3(b)
   echo p3(a, 0)
+
+# bug #12252
+proc foo(a = 0, b = a.high, c = high(typeof(a))) = 
+  discard
+
+foo()
+

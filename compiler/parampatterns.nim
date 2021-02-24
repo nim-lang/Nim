@@ -100,7 +100,7 @@ proc compileConstraints(p: PNode, result: var TPatternCode; conf: ConfigRef) =
       # check all symkinds:
       internalAssert conf, int(high(TSymKind)) < 255
       for i in TSymKind:
-        if cmpIgnoreStyle(($i).substr(2), spec) == 0:
+        if cmpIgnoreStyle(i.toHumanStr, spec) == 0:
           result.add(ppSymKind)
           result.add(chr(i.ord))
           return
@@ -222,6 +222,8 @@ proc isAssignable*(owner: PSym, n: PNode; isUnsafeAddr=false): TAssignableResult
     if n.sym.kind == skParam and n.sym.typ.kind in {tyVar, tySink}:
       result = arLValue
     elif isUnsafeAddr and n.sym.kind == skParam:
+      result = arLValue
+    elif isUnsafeAddr and n.sym.kind == skConst and dontInlineConstant(n, n.sym.ast):
       result = arLValue
     elif n.sym.kind in kinds:
       if owner != nil and owner == n.sym.owner and

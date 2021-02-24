@@ -16,11 +16,17 @@ import strutils2
 type InstantiationInfo* = typeof(instantiationInfo())
 template instLoc(): InstantiationInfo = instantiationInfo(-2, fullPaths = true)
 
-template flushDot(conf, stdorr) =
+template toStdOrrKind(stdOrr): untyped =
+  if stdOrr == stdout: stdOrrStdout else: stdOrrStderr
+
+proc flushDot*(conf: ConfigRef) =
   ## safe to call multiple times
-  if conf.lastMsgWasDot:
-    conf.lastMsgWasDot = false
-    write(stdorr, "\n")
+  # xxx one edge case not yet handled is when `printf` is called at CT with `compiletimeFFI`.
+  let stdOrr = if optStdout in conf.globalOptions: stdout else: stderr
+  let stdOrrKind = toStdOrrKind(stdOrr)
+  if stdOrrKind in conf.lastMsgWasDot:
+    conf.lastMsgWasDot.excl stdOrrKind
+    write(stdOrr, "\n")
 
 proc toCChar*(c: char; result: var string) =
   case c
@@ -34,13 +40,15 @@ proc toCChar*(c: char; result: var string) =
     result.add c
 
 proc makeCString*(s: string): Rope =
-  const MaxLineLength = 64
   result = nil
   var res = newStringOfCap(int(s.len.toFloat * 1.1) + 1)
   res.add("\"")
   for i in 0..<s.len:
-    if (i + 1) mod MaxLineLength == 0:
-      res.add("\"\L\"")
+    # line wrapping of string litterals in cgen'd code was a bad idea, e.g. causes: bug #16265
+    # It also makes reading c sources or grepping harder, for zero benefit.
+    # const MaxLineLength = 64
+    # if (i + 1) mod MaxLineLength == 0:
+    #   res.add("\"\L\"")
     toCChar(s[i], res)
   res.add('\"')
   result.add(rope(res))
@@ -233,11 +241,10 @@ template toFullPathConsiderDirty*(conf: ConfigRef; info: TLineInfo): string =
   string toFullPathConsiderDirty(conf, info.fileIndex)
 
 type FilenameOption* = enum
-  foAbs # absolute path, eg: /pathto/bar/foo.nim
-  foRelProject # relative to project path, eg: ../foo.nim
+  foAbs # absolute path, e.g.: /pathto/bar/foo.nim
+  foRelProject # relative to project path, e.g.: ../foo.nim
   foMagicSauce # magic sauce, shortest of (foAbs, foRelProject)
-  foName # lastPathPart, eg: foo.nim
-  foShort # foName without extension, eg: foo
+  foName # lastPathPart, e.g.: foo.nim
   foStacktrace # if optExcessiveStackTrace: foAbs else: foName
 
 proc toFilenameOption*(conf: ConfigRef, fileIdx: FileIndex, opt: FilenameOption): string =
@@ -255,7 +262,6 @@ proc toFilenameOption*(conf: ConfigRef, fileIdx: FileIndex, opt: FilenameOption)
              else:
                relPath
   of foName: result = toProjPath(conf, fileIdx).lastPathPart
-  of foShort: result = toFilename(conf, fileIdx)
   of foStacktrace:
     if optExcessiveStackTrace in conf.globalOptions:
       result = toFilenameOption(conf, fileIdx, foAbs)
@@ -307,12 +313,12 @@ proc msgWriteln*(conf: ConfigRef; s: string, flags: MsgFlags = {}) =
     conf.writelnHook(s)
   elif optStdout in conf.globalOptions or msgStdout in flags:
     if eStdOut in conf.m.errorOutputs:
-      flushDot(conf, stdout)
+      flushDot(conf)
       writeLine(stdout, s)
       flushFile(stdout)
   else:
     if eStdErr in conf.m.errorOutputs:
-      flushDot(conf, stderr)
+      flushDot(conf)
       writeLine(stderr, s)
       # On Windows stderr is fully-buffered when piped, regardless of C std.
       when defined(windows):
@@ -357,18 +363,18 @@ proc msgWrite(conf: ConfigRef; s: string) =
         stderr
     write(stdOrr, s)
     flushFile(stdOrr)
-    conf.lastMsgWasDot = true # subsequent writes need `flushDot`
+    conf.lastMsgWasDot.incl stdOrr.toStdOrrKind() # subsequent writes need `flushDot`
 
 template styledMsgWriteln*(args: varargs[typed]) =
   if not isNil(conf.writelnHook):
     callIgnoringStyle(callWritelnHook, nil, args)
   elif optStdout in conf.globalOptions:
     if eStdOut in conf.m.errorOutputs:
-      flushDot(conf, stdout)
+      flushDot(conf)
       callIgnoringStyle(writeLine, stdout, args)
       flushFile(stdout)
   elif eStdErr in conf.m.errorOutputs:
-    flushDot(conf, stderr)
+    flushDot(conf)
     if optUseColors in conf.globalOptions:
       callStyledWriteLineStderr(args)
     else:
@@ -407,7 +413,7 @@ proc handleError(conf: ConfigRef; msg: TMsgKind, eh: TErrorHandling, s: string) 
     if conf.cmd == cmdIdeTools: log(s)
     quit(conf, msg)
   if msg >= errMin and msg <= errMax or
-      (msg in warnMin..warnMax and msg in conf.warningAsErrors):
+      (msg in warnMin..hintMax and msg in conf.warningAsErrors):
     inc(conf.errorCounter)
     conf.exitcode = 1'i8
     if conf.errorCounter >= conf.errorMax:
@@ -454,7 +460,7 @@ proc numLines*(conf: ConfigRef, fileIdx: FileIndex): int =
   if result == 0:
     try:
       for line in lines(toFullPathConsiderDirty(conf, fileIdx).string):
-        addSourceLine conf, fileIdx, line.string
+        addSourceLine conf, fileIdx, line
     except IOError:
       discard
     result = conf.m.fileInfos[fileIdx.int32].lines.len
@@ -489,7 +495,7 @@ proc liMessage*(conf: ConfigRef; info: TLineInfo, msg: TMsgKind, arg: string,
     color: ForegroundColor
     ignoreMsg = false
     sev: Severity
-  let kind = if msg != hintUserRaw: msg.msgToStr else: "" # xxx not sure why hintUserRaw is special
+  let kind = if msg in warnMin..hintMax and msg != hintUserRaw: $msg else: "" # xxx not sure why hintUserRaw is special
   case msg
   of errMin..errMax:
     sev = Severity.Error
@@ -516,13 +522,18 @@ proc liMessage*(conf: ConfigRef; info: TLineInfo, msg: TMsgKind, arg: string,
   of hintMin..hintMax:
     sev = Severity.Hint
     ignoreMsg = not conf.hasHint(msg)
-    title = HintTitle
+    if msg in conf.warningAsErrors:
+      ignoreMsg = false
+      title = ErrorTitle
+    else:
+      title = HintTitle
     color = HintColor
     inc(conf.hintCounter)
 
   let s = if isRaw: arg else: getMessageStr(msg, arg)
   if not ignoreMsg:
     let loc = if info != unknownLineInfo: conf.toFileLineCol(info) & " " else: ""
+    # we could also show `conf.cmdInput` here for `projectIsCmd`
     var kindmsg = if kind.len > 0: KindFormat % kind else: ""
     if conf.structuredErrorHook != nil:
       conf.structuredErrorHook(conf, info, s & kindmsg, sev)
@@ -536,7 +547,7 @@ proc liMessage*(conf: ConfigRef; info: TLineInfo, msg: TMsgKind, arg: string,
         if hintMsgOrigin in conf.mainPackageNotes:
           styledMsgWriteln(styleBright, toFileLineCol(info2), resetStyle,
             " compiler msg initiated here", KindColor,
-            KindFormat % hintMsgOrigin.msgToStr,
+            KindFormat % $hintMsgOrigin,
             resetStyle)
   handleError(conf, msg, eh, s)
 
@@ -612,7 +623,7 @@ proc quotedFilename*(conf: ConfigRef; i: TLineInfo): Rope =
 
 template listMsg(title, r) =
   msgWriteln(conf, title)
-  for a in r: msgWriteln(conf, "  [$1] $2" % [if a in conf.notes: "x" else: " ", a.msgToStr])
+  for a in r: msgWriteln(conf, "  [$1] $2" % [if a in conf.notes: "x" else: " ", $a])
 
 proc listWarnings*(conf: ConfigRef) = listMsg("Warnings:", warnMin..warnMax)
 proc listHints*(conf: ConfigRef) = listMsg("Hints:", hintMin..hintMax)

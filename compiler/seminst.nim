@@ -64,7 +64,7 @@ iterator instantiateGenericParamList(c: PContext, n: PNode, pt: TIdTable): PSym 
     var q = a.sym
     if q.typ.kind in {tyTypeDesc, tyGenericParam, tyStatic, tyConcept}+tyTypeClasses:
       let symKind = if q.typ.kind == tyStatic: skConst else: skType
-      var s = newSym(symKind, q.name, getCurrOwner(c), q.info)
+      var s = newSym(symKind, q.name, nextSymId(c.idgen), getCurrOwner(c), q.info)
       s.flags.incl {sfUsed, sfFromGeneric}
       var t = PType(idTableGet(pt, q.typ))
       if t == nil:
@@ -94,9 +94,9 @@ proc sameInstantiation(a, b: TInstantiation): bool =
                                    ExactGcSafety}): return
     result = true
 
-proc genericCacheGet(genericSym: PSym, entry: TInstantiation;
+proc genericCacheGet(g: ModuleGraph; genericSym: PSym, entry: TInstantiation;
                      id: CompilesId): PSym =
-  for inst in genericSym.procInstCache:
+  for inst in procInstCacheItems(g, genericSym):
     if (inst.compilesId == 0 or inst.compilesId == id) and sameInstantiation(entry, inst[]):
       return inst.sym
 
@@ -104,7 +104,7 @@ when false:
   proc `$`(x: PSym): string =
     result = x.name.s & " " & " id " & $x.id
 
-proc freshGenSyms(n: PNode, owner, orig: PSym, symMap: var TIdTable) =
+proc freshGenSyms(c: PContext; n: PNode, owner, orig: PSym, symMap: var TIdTable) =
   # we need to create a fresh set of gensym'ed symbols:
   #if n.kind == nkSym and sfGenSym in n.sym.flags:
   #  if n.sym.owner != orig:
@@ -117,12 +117,12 @@ proc freshGenSyms(n: PNode, owner, orig: PSym, symMap: var TIdTable) =
       n.sym = x
     elif s.owner == nil or s.owner.kind == skPackage:
       #echo "copied this ", s.name.s
-      x = copySym(s)
+      x = copySym(s, nextSymId c.idgen)
       x.owner = owner
       idTablePut(symMap, s, x)
       n.sym = x
   else:
-    for i in 0..<n.safeLen: freshGenSyms(n[i], owner, orig, symMap)
+    for i in 0..<n.safeLen: freshGenSyms(c, n[i], owner, orig, symMap)
 
 proc addParamOrResult(c: PContext, param: PSym, kind: TSymKind)
 
@@ -143,7 +143,7 @@ proc instantiateBody(c: PContext, n, params: PNode, result, orig: PSym) =
         let param = params[i].sym
         if sfGenSym in param.flags:
           idTablePut(symMap, params[i].sym, result.typ.n[param.position+1].sym)
-    freshGenSyms(b, result, orig, symMap)
+    freshGenSyms(c, b, result, orig, symMap)
     b = semProcBody(c, b)
     result.ast[bodyPos] = hloBody(c, b)
     trackProc(c, result, result.ast[bodyPos])
@@ -159,7 +159,7 @@ proc fixupInstantiatedSymbols(c: PContext, s: PSym) =
       pushInfoContext(c.config, oldPrc.info)
       openScope(c)
       var n = oldPrc.ast
-      n[bodyPos] = copyTree(s.getBody)
+      n[bodyPos] = copyTree(getBody(c.graph, s))
       instantiateBody(c, n, oldPrc.typ.n, oldPrc, s)
       closeScope(c)
       popInfoContext(c.config)
@@ -199,7 +199,7 @@ proc instGenericContainer(c: PContext, info: TLineInfo, header: PType,
     var param: PSym
 
     template paramSym(kind): untyped =
-      newSym(kind, genParam.sym.name, genericTyp.sym, genParam.sym.info)
+      newSym(kind, genParam.sym.name, nextSymId c.idgen, genericTyp.sym, genParam.sym.info)
 
     if genParam.kind == tyStatic:
       param = paramSym skConst
@@ -231,11 +231,11 @@ proc instantiateProcType(c: PContext, pt: TIdTable,
   # time adding the instantiated proc params into the current scope.
   # This is necessary, because the instantiation process may refer to
   # these params in situations like this:
-  # proc foo[Container](a: Container, b: a.type.Item): type(b.x)
+  # proc foo[Container](a: Container, b: a.type.Item): typeof(b.x)
   #
   # Alas, doing this here is probably not enough, because another
   # proc signature could appear in the params:
-  # proc foo[T](a: proc (x: T, b: type(x.y))
+  # proc foo[T](a: proc (x: T, b: typeof(x.y))
   #
   # The solution would be to move this logic into semtypinst, but
   # at this point semtypinst have to become part of sem, because it
@@ -269,7 +269,7 @@ proc instantiateProcType(c: PContext, pt: TIdTable,
 
     internalAssert c.config, originalParams[i].kind == nkSym
     let oldParam = originalParams[i].sym
-    let param = copySym(oldParam)
+    let param = copySym(oldParam, nextSymId c.idgen)
     param.owner = prc
     param.typ = result[i]
 
@@ -313,7 +313,7 @@ proc instantiateProcType(c: PContext, pt: TIdTable,
     propagateToOwner(result, result[0])
 
   eraseVoidParams(result)
-  skipIntLiteralParams(result)
+  skipIntLiteralParams(result, c.idgen)
 
   prc.typ = result
   popInfoContext(c.config)
@@ -338,7 +338,7 @@ proc generateInstance(c: PContext, fn: PSym, pt: TIdTable,
   c.matchedConcept = nil
   let oldScope = c.currentScope
   while not isTopLevel(c): c.currentScope = c.currentScope.parent
-  result = copySym(fn)
+  result = copySym(fn, nextSymId c.idgen)
   incl(result.flags, sfFromGeneric)
   result.owner = fn
   result.ast = n
@@ -368,7 +368,7 @@ proc generateInstance(c: PContext, fn: PSym, pt: TIdTable,
   if tfTriggersCompileTime in result.typ.flags:
     incl(result.flags, sfCompileTime)
   n[genericParamsPos] = c.graph.emptyNode
-  var oldPrc = genericCacheGet(fn, entry[], c.compilesContextId)
+  var oldPrc = genericCacheGet(c.graph, fn, entry[], c.compilesContextId)
   if oldPrc == nil:
     # we MUST not add potentially wrong instantiations to the caching mechanism.
     # This means recursive instantiations behave differently when in
@@ -377,12 +377,12 @@ proc generateInstance(c: PContext, fn: PSym, pt: TIdTable,
     #if c.compilesContextId == 0:
     rawHandleSelf(c, result)
     entry.compilesId = c.compilesContextId
-    fn.procInstCache.add(entry)
+    addToGenericProcCache(c, fn, entry)
     c.generics.add(makeInstPair(fn, entry))
     if n[pragmasPos].kind != nkEmpty:
       pragma(c, result, n[pragmasPos], allRoutinePragmas)
     if isNil(n[bodyPos]):
-      n[bodyPos] = copyTree(fn.getBody)
+      n[bodyPos] = copyTree(getBody(c.graph, fn))
     if c.inGenericContext == 0:
       instantiateBody(c, n, fn.typ.n, result, fn)
     sideEffectsCheck(c, result)
@@ -400,3 +400,6 @@ proc generateInstance(c: PContext, fn: PSym, pt: TIdTable,
   dec(c.instCounter)
   c.matchedConcept = oldMatchedConcept
   if result.kind == skMethod: finishMethod(c, result)
+
+  # inform IC of the generic
+  #addGeneric(c.ic, result, entry.concreteTypes)

@@ -1,11 +1,3 @@
-discard """
-  output: '''(x: 0, y: 0)
-(x: 5, y: 0)
-@[(x: "2", y: 4), (x: "4", y: 5), (x: "4", y: 5)]
-@[(a: "3", b: 3), (a: "1", b: 1), (a: "2", b: 2)]
-'''
-"""
-
 # bug #4139
 
 type
@@ -17,8 +9,8 @@ proc onLoad() =
   var foo = TestO(x: 0, y: 0)
   test.add(foo)
   foo.x = 5
-  echo(test[0])
-  echo foo
+  doAssert $test[0] == "(x: 0, y: 0)"
+  doAssert $foo == "(x: 5, y: 0)"
 
 onLoad()
 
@@ -34,7 +26,7 @@ proc foo(x: var seq[MyObj]) =
 
 var s = @[MyObj(x: "2", y: 4), MyObj(x: "4", y: 5)]
 foo(s)
-echo s
+doAssert $s == """@[(x: "2", y: 4), (x: "4", y: 5), (x: "4", y: 5)]"""
 
 # bug  #5933
 import sequtils
@@ -48,4 +40,9 @@ var test = @[Test(a: "1", b: 1), Test(a: "2", b: 2)]
 
 test.insert(@[Test(a: "3", b: 3)], 0)
 
-echo test
+doAssert $test == """@[(a: "3", b: 3), (a: "1", b: 1), (a: "2", b: 2)]"""
+
+proc hello(): array[5, int] = discard
+var x = @(hello())
+x.add(2)
+doAssert x == @[0, 0, 0, 0, 0, 2]

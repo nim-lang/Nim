@@ -223,3 +223,24 @@ type MyObj = object
 var a = MyObj(kind: false, x0: 1234)
 a.kind = true
 doAssert(a.x1 == "")
+
+block:
+  # bug #15532
+  type Kind = enum
+    k0, k1
+
+  type Foo = object
+    y: int
+    case kind: Kind
+    of k0: x0: int
+    of k1: x1: int
+
+  const j0 = Foo(y: 1, kind: k0, x0: 2)
+  const j1 = Foo(y: 1, kind: k1, x1: 2)
+
+  doAssert j0.y == 1
+  doAssert j0.kind == k0
+  doAssert j1.kind == k1
+
+  doAssert j1.x1 == 2
+  doAssert j0.x0 == 2

@@ -418,9 +418,9 @@ proc isValid1*[A](s: HashSet[A]): bool {.deprecated:
   result = s.data.len > 0
   # bug #11468
 
-assert $type(a) == "Option[system.int]"
-foo(a, $type(b), c)
-foo(type(b), c) # this is ok
+assert $typeof(a) == "Option[system.int]"
+foo(a, $typeof(b), c)
+foo(typeof(b), c) # this is ok
 
 proc `<`*[A](s, t: A): bool = discard
 proc `==`*[A](s, t: HashSet[A]): bool = discard

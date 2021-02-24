@@ -56,10 +56,12 @@ function main() {
     }
   }
 }
+
+window.addEventListener('DOMContentLoaded', main);
 </script>
 
 </head>
-<body onload="main()">
+<body>
 <div class="document" id="documentId">
   <div class="container">
     <h1 class="title">foo</h1>
@@ -94,8 +96,11 @@ function main() {
 <li>
   <a class="reference reference-toplevel" href="#12" id="62">Procs</a>
   <ul class="simple simple-toc-section">
+      <ul class="simple nested-toc-section">foo
       <li><a class="reference" href="#foo"
-    title="foo()"><wbr />foo<span class="attachedType"></span></a></li>
+    title="foo()">foo()</a></li>
+
+  </ul>
 
   </ul>
 </li>
@@ -103,6 +108,7 @@ function main() {
 </ul>
 
   </div>
+  
   <div class="nine columns" id="content">
   <div id="tocRoot"></div>
   

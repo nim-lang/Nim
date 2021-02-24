@@ -11,13 +11,13 @@ runnableExamples:
     z1: int8
   let a = (1.5'f32, (b: "b2", a: "a2"), 'x', @[Foo(t: true, z1: -3), nil], [{"name": "John"}.newStringTable])
   let j = a.toJson
-  doAssert j.jsonTo(type(a)).toJson == j
+  doAssert j.jsonTo(typeof(a)).toJson == j
 
 import std/[json,strutils,tables,sets,strtabs,options]
 
 #[
 Future directions:
-add a way to customize serialization, for eg:
+add a way to customize serialization, for e.g.:
 * field renaming
 * allow serializing `enum` and `char` as `string` instead of `int`
   (enum is more compact/efficient, and robust to enum renamings, but string
@@ -42,7 +42,7 @@ type
 
 proc isNamedTuple(T: typedesc): bool {.magic: "TypeTrait".}
 proc distinctBase(T: typedesc): typedesc {.magic: "TypeTrait".}
-template distinctBase[T](a: T): untyped = distinctBase(type(a))(a)
+template distinctBase[T](a: T): untyped = distinctBase(typeof(a))(a)
 
 macro getDiscriminants(a: typedesc): seq[string] =
   ## return the discriminant keys
@@ -119,7 +119,7 @@ template fromJsonFields(newObj, oldObj, json, discKeys, opt) =
     when key notin discKeys:
       if json.hasKey key:
         numMatched.inc
-        fromJson(val, json[key])
+        fromJson(val, json[key], opt)
       elif opt.allowMissingKeys:
         # if there are no discriminant keys the `oldObj` must always have the
         # same keys as the new one. Otherwise we must check, because they could
@@ -201,17 +201,17 @@ proc fromJson*[T](a: var T, b: JsonNode, opt = Joptions()) =
     if b.kind == JNull: a = nil
     else:
       a = T()
-      fromJson(a[], b)
+      fromJson(a[], b, opt)
   elif T is array:
     checkJson a.len == b.len, $(a.len, b.len, $T)
     var i = 0
     for ai in mitems(a):
-      fromJson(ai, b[i])
+      fromJson(ai, b[i], opt)
       i.inc
   elif T is seq:
     a.setLen b.len
     for i, val in b.getElems:
-      fromJson(a[i], val)
+      fromJson(a[i], val, opt)
   elif T is object:
     template fun(key, typ): untyped {.used.} =
       if b.hasKey key:
@@ -237,16 +237,16 @@ proc fromJson*[T](a: var T, b: JsonNode, opt = Joptions()) =
       checkJson b.kind == JArray, $(b.kind) # we could customize whether to allow JNull
       var i = 0
       for val in fields(a):
-        fromJson(val, b[i])
+        fromJson(val, b[i], opt)
         i.inc
       checkJson b.len == i, $(b.len, i, $T, b) # could customize
   else:
     # checkJson not appropriate here
     static: doAssert false, "not yet implemented: " & $T
 
-proc jsonTo*(b: JsonNode, T: typedesc): T =
+proc jsonTo*(b: JsonNode, T: typedesc, opt = Joptions()): T =
   ## reverse of `toJson`
-  fromJson(result, b)
+  fromJson(result, b, opt)
 
 proc toJson*[T](a: T): JsonNode =
   ## serializes `a` to json; uses `toJsonHook(a: T)` if it's in scope to
@@ -278,7 +278,7 @@ proc fromJsonHook*[K, V](t: var (Table[K, V] | OrderedTable[K, V]),
   ## Enables `fromJson` for `Table` and `OrderedTable` types.
   ## 
   ## See also:
-  ## * `toJsonHook proc<#toJsonHook,(Table[K,V]|OrderedTable[K,V])>`_
+  ## * `toJsonHook proc<#toJsonHook>`_
   runnableExamples:
     import tables, json
     var foo: tuple[t: Table[string, int], ot: OrderedTable[string, int]]
@@ -298,7 +298,7 @@ proc toJsonHook*[K, V](t: (Table[K, V] | OrderedTable[K, V])): JsonNode =
   ## Enables `toJson` for `Table` and `OrderedTable` types.
   ##
   ## See also:
-  ## * `fromJsonHook proc<#fromJsonHook,(Table[K,V]|OrderedTable[K,V]),JsonNode>`_
+  ## * `fromJsonHook proc<#fromJsonHook,,JsonNode>`_
   runnableExamples:
     import tables, json
     let foo = (
@@ -383,7 +383,7 @@ proc fromJsonHook*(a: var StringTableRef, b: JsonNode) =
   ## Enables `fromJson` for `StringTableRef` type.
   ## 
   ## See also:
-  ## * `toJsonHook` proc<#toJsonHook,StringTableRef>`_
+  ## * `toJsonHook proc<#toJsonHook,StringTableRef>`_
   runnableExamples:
     import strtabs, json
     var t = newStringTable(modeCaseSensitive)
@@ -401,7 +401,7 @@ proc toJsonHook*(a: StringTableRef): JsonNode =
   ## Enables `toJson` for `StringTableRef` type.
   ## 
   ## See also:
-  ## * `fromJsonHook` proc<#fromJsonHook,StringTableRef,JsonNode>`_
+  ## * `fromJsonHook proc<#fromJsonHook,StringTableRef,JsonNode>`_
   runnableExamples:
     import strtabs, json
     let t = newStringTable("name", "John", "surname", "Doe", modeCaseSensitive)

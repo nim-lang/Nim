@@ -16,8 +16,8 @@
 ## Parameter substitution
 ## ======================
 ##
-## All ``db_*`` modules support the same form of parameter substitution.
-## That is, using the ``?`` (question mark) to signify the place where a
+## All `db_*` modules support the same form of parameter substitution.
+## That is, using the `?` (question mark) to signify the place where a
 ## value should be placed. For example:
 ##
 ## .. code-block:: Nim
@@ -130,12 +130,10 @@ proc dbQuote*(s: string): string =
     of '\r': result.add "\\r"
     of '\x1a': result.add "\\Z"
     of '"': result.add "\\\""
-    of '%': result.add "\\%"
     of '\'': result.add "\\'"
     of '\\': result.add "\\\\"
     of '_': result.add "\\_"
-    of Letters+Digits: result.add c
-    else: result.add "\\" & $ord(c)
+    else: result.add c
   add(result, '\'')
 
 proc dbFormat(formatstr: SqlQuery, args: varargs[string]): string =
@@ -181,7 +179,7 @@ iterator fastRows*(db: DbConn, query: SqlQuery,
   ## if you require **ALL** the rows.
   ##
   ## Breaking the fastRows() iterator during a loop will cause the next
-  ## database query to raise an [EDb] exception ``Commands out of sync``.
+  ## database query to raise an [EDb] exception `Commands out of sync`.
   rawExec(db, query, args)
   var sqlres = mysql.useResult(PMySQL db)
   if sqlres != nil:

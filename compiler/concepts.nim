@@ -25,10 +25,10 @@ const
 proc declareSelf(c: PContext; info: TLineInfo) =
   ## adds the magical 'Self' symbols to the current scope.
   let ow = getCurrOwner(c)
-  let s = newSym(skType, getIdent(c.cache, "Self"), ow, info)
-  s.typ = newType(tyTypeDesc, ow)
+  let s = newSym(skType, getIdent(c.cache, "Self"), nextSymId(c.idgen), ow, info)
+  s.typ = newType(tyTypeDesc, nextTypeId(c.idgen), ow)
   s.typ.flags.incl {tfUnresolved, tfPacked}
-  s.typ.add newType(tyEmpty, ow)
+  s.typ.add newType(tyEmpty, nextTypeId(c.idgen), ow)
   addDecl(c, s, info)
 
 proc isSelf*(t: PType): bool {.inline.} =
@@ -41,7 +41,7 @@ proc makeTypeDesc*(c: PContext, typ: PType): PType =
   else:
     result = newTypeS(tyTypeDesc, c)
     incl result.flags, tfCheckedForDestructor
-    result.addSonSkipIntLit(typ)
+    result.addSonSkipIntLit(typ, c.idgen)
 
 proc semConceptDecl(c: PContext; n: PNode): PNode =
   ## Recursive helper for semantic checking for the concept declaration.
@@ -270,16 +270,11 @@ proc matchSym(c: PContext; candidate: PSym, n: PNode; m: var MatchCon): bool =
 proc matchSyms(c: PContext, n: PNode; kinds: set[TSymKind]; m: var MatchCon): bool =
   ## Walk the current scope, extract candidates which the same name as 'n[namePos]',
   ## 'n' is the nkProcDef or similar from the concept that we try to match.
-  let name = n[namePos].sym.name
-  for scope in walkScopes(c.currentScope):
-    var ti: TIdentIter
-    var candidate = initIdentIter(ti, scope.symbols, name)
-    while candidate != nil:
-      if candidate.kind in kinds:
-        #echo "considering ", typeToString(candidate.typ), " ", candidate.magic
-        m.magic = candidate.magic
-        if matchSym(c, candidate, n, m): return true
-      candidate = nextIdentIter(ti, scope.symbols)
+  let candidates = searchInScopesFilterBy(c, n[namePos].sym.name, kinds)
+  for candidate in candidates:
+    #echo "considering ", typeToString(candidate.typ), " ", candidate.magic
+    m.magic = candidate.magic
+    if matchSym(c, candidate, n, m): return true
   result = false
 
 proc conceptMatchNode(c: PContext; n: PNode; m: var MatchCon): bool =

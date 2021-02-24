@@ -142,15 +142,60 @@ proc fixupCall(p: BProc, le, ri: PNode, d: var TLoc,
 proc genBoundsCheck(p: BProc; arr, a, b: TLoc)
 
 proc reifiedOpenArray(n: PNode): bool {.inline.} =
-  let x = trees.getRoot(n)
-  if x != nil and x.kind == skParam:
+  var x = n
+  while x.kind in {nkAddr, nkHiddenAddr, nkHiddenStdConv, nkHiddenDeref}:
+    x = x[0]
+  if x.kind == nkSym and x.sym.kind == skParam:
     result = false
   else:
     result = true
 
-proc openArrayLoc(p: BProc, formalType: PType, n: PNode): Rope =
-  var a: TLoc
+proc genOpenArraySlice(p: BProc; q: PNode; formalType, destType: PType): (Rope, Rope) =
+  var a, b, c: TLoc
+  initLocExpr(p, q[1], a)
+  initLocExpr(p, q[2], b)
+  initLocExpr(p, q[3], c)
+  # but first produce the required index checks:
+  if optBoundsCheck in p.options:
+    genBoundsCheck(p, a, b, c)
+  let ty = skipTypes(a.t, abstractVar+{tyPtr})
+  let dest = getTypeDesc(p.module, destType)
+  let lengthExpr = "($1)-($2)+1" % [rdLoc(c), rdLoc(b)]
+  case ty.kind
+  of tyArray:
+    let first = toInt64(firstOrd(p.config, ty))
+    if first == 0:
+      result = ("($3*)(($1)+($2))" % [rdLoc(a), rdLoc(b), dest],
+                lengthExpr)
+    else:
+      result = ("($4*)($1)+(($2)-($3))" %
+        [rdLoc(a), rdLoc(b), intLiteral(first), dest],
+        lengthExpr)
+  of tyOpenArray, tyVarargs:
+    if reifiedOpenArray(q[1]):
+      result = ("($3*)($1.Field0)+($2)" % [rdLoc(a), rdLoc(b), dest],
+                lengthExpr)
+    else:
+      result = ("($3*)($1)+($2)" % [rdLoc(a), rdLoc(b), dest],
+                lengthExpr)
+  of tyUncheckedArray, tyCString:
+    result = ("($3*)($1)+($2)" % [rdLoc(a), rdLoc(b), dest],
+              lengthExpr)
+  of tyString, tySequence:
+    let atyp = skipTypes(a.t, abstractInst)
+    if formalType.skipTypes(abstractInst).kind in {tyVar} and atyp.kind == tyString and
+        optSeqDestructors in p.config.globalOptions:
+      linefmt(p, cpsStmts, "#nimPrepareStrMutationV2($1);$n", [byRefLoc(p, a)])
+    if atyp.kind in {tyVar} and not compileToCpp(p.module):
+      result = ("($4*)(*$1)$3+($2)" % [rdLoc(a), rdLoc(b), dataField(p), dest],
+                lengthExpr)
+    else:
+      result = ("($4*)$1$3+($2)" % [rdLoc(a), rdLoc(b), dataField(p), dest],
+                lengthExpr)
+  else:
+    internalError(p.config, "openArrayLoc: " & typeToString(a.t))
 
+proc openArrayLoc(p: BProc, formalType: PType, n: PNode): Rope =
   var q = skipConv(n)
   var skipped = false
   while q.kind == nkStmtListExpr and q.len > 0:
@@ -164,47 +209,18 @@ proc openArrayLoc(p: BProc, formalType: PType, n: PNode): Rope =
         for i in 0..<q.len-1:
           genStmts(p, q[i])
         q = q.lastSon
-    var b, c: TLoc
-    initLocExpr(p, q[1], a)
-    initLocExpr(p, q[2], b)
-    initLocExpr(p, q[3], c)
-    # but first produce the required index checks:
-    if optBoundsCheck in p.options:
-      genBoundsCheck(p, a, b, c)
-    let ty = skipTypes(a.t, abstractVar+{tyPtr})
-    let dest = getTypeDesc(p.module, n.typ[0])
-    case ty.kind
-    of tyArray:
-      let first = toInt64(firstOrd(p.config, ty))
-      if first == 0:
-        result = "($4*)(($1)+($2)), ($3)-($2)+1" % [rdLoc(a), rdLoc(b), rdLoc(c), dest]
-      else:
-        result = "($5*)($1)+(($2)-($4)), ($3)-($2)+1" %
-          [rdLoc(a), rdLoc(b), rdLoc(c), intLiteral(first), dest]
-    of tyOpenArray, tyVarargs:
-      if reifiedOpenArray(q[1]):
-        result = "($4*)($1.d)+($2), ($3)-($2)+1" % [rdLoc(a), rdLoc(b), rdLoc(c), dest]
-      else:
-        result = "($4*)($1)+($2), ($3)-($2)+1" % [rdLoc(a), rdLoc(b), rdLoc(c), dest]
-    of tyUncheckedArray, tyCString:
-      result = "($4*)($1)+($2), ($3)-($2)+1" % [rdLoc(a), rdLoc(b), rdLoc(c), dest]
-    of tyString, tySequence:
-      let atyp = skipTypes(a.t, abstractInst)
-      if formalType.skipTypes(abstractInst).kind in {tyVar} and atyp.kind == tyString and
-          optSeqDestructors in p.config.globalOptions:
-        linefmt(p, cpsStmts, "#nimPrepareStrMutationV2($1);$n", [byRefLoc(p, a)])
-      if atyp.kind in {tyVar} and not compileToCpp(p.module):
-        result = "($5*)(*$1)$4+($2), ($3)-($2)+1" % [rdLoc(a), rdLoc(b), rdLoc(c), dataField(p), dest]
-      else:
-        result = "($5*)$1$4+($2), ($3)-($2)+1" % [rdLoc(a), rdLoc(b), rdLoc(c), dataField(p), dest]
-    else:
-      internalError(p.config, "openArrayLoc: " & typeToString(a.t))
+    let (x, y) = genOpenArraySlice(p, q, formalType, n.typ[0])
+    result = x & ", " & y
   else:
+    var a: TLoc
     initLocExpr(p, if n.kind == nkHiddenStdConv: n[1] else: n, a)
     case skipTypes(a.t, abstractVar).kind
     of tyOpenArray, tyVarargs:
       if reifiedOpenArray(n):
-        result = "$1.d, $1.l" % [rdLoc(a)]
+        if a.t.kind in {tyVar, tyLent}:
+          result = "$1->Field0, $1->Field1" % [rdLoc(a)]
+        else:
+          result = "$1.Field0, $1.Field1" % [rdLoc(a)]
       else:
         result = "$1, $1Len_0" % [rdLoc(a)]
     of tyString, tySequence:
@@ -233,13 +249,15 @@ proc openArrayLoc(p: BProc, formalType: PType, n: PNode): Rope =
     else: internalError(p.config, "openArrayLoc: " & typeToString(a.t))
 
 proc withTmpIfNeeded(p: BProc, a: TLoc, needsTmp: bool): TLoc =
-  if needsTmp:
-    var tmp: TLoc
-    getTemp(p, a.lode.typ, tmp, needsInit=false)
-    genAssignment(p, tmp, a, {})
-    tmp
+  # Bug https://github.com/status-im/nimbus-eth2/issues/1549
+  # Aliasing is preferred over stack overflows.
+  # Also don't regress for non ARC-builds, too risky.
+  if needsTmp and a.lode.typ != nil and p.config.selectedGC in {gcArc, gcOrc} and
+      getSize(p.config, a.lode.typ) < 1024:
+    getTemp(p, a.lode.typ, result, needsInit=false)
+    genAssignment(p, result, a, {})
   else:
-    a
+    result = a
 
 proc genArgStringToCString(p: BProc, n: PNode, needsTmp: bool): Rope {.inline.} =
   var a: TLoc
@@ -280,11 +298,11 @@ proc genArgNoParam(p: BProc, n: PNode, needsTmp = false): Rope =
     initLocExprSingleUse(p, n, a)
     result = rdLoc(withTmpIfNeeded(p, a, needsTmp))
 
-from dfa import instrTargets, InstrTargetKind
+from dfa import aliases, AliasKind
 
 proc potentialAlias(n: PNode, potentialWrites: seq[PNode]): bool =
   for p in potentialWrites:
-    if instrTargets(p, n) != None:
+    if p.aliases(n) != no or n.aliases(p) != no:
       return true
 
 proc skipTrivialIndirections(n: PNode): PNode =

@@ -82,12 +82,17 @@ iterator mitems*(a: var cstring): var char {.inline.} =
       yield a[i]
       inc(i)
 
-iterator items*(E: typedesc[enum]): E =
-  ## Iterates over the values of the enum ``E``.
+iterator items*[T: enum and Ordinal](E: typedesc[T]): T =
+  ## Iterates over the values of `E`.
+  ## See also `enumutils.items` for enums with holes.
+  runnableExamples:
+    type Goo = enum g0 = 2, g1, g2
+    from std/sequtils import toSeq
+    assert Goo.toSeq == [g0, g1, g2]
   for v in low(E) .. high(E):
     yield v
 
-iterator items*[T](s: HSlice[T, T]): T =
+iterator items*[T: Ordinal](s: Slice[T]): T =
   ## Iterates over the slice `s`, yielding each value between `s.a` and `s.b`
   ## (inclusively).
   for x in s.a .. s.b:
@@ -240,7 +245,7 @@ iterator fields*[T: tuple|object](x: T): RootObj {.
   ## that affects symbol binding in the loop body.
   runnableExamples:
     var t = (1, "foo")
-    for v in fields(t): v = default(type(v))
+    for v in fields(t): v = default(typeof(v))
     doAssert t == (0, "")
 
 iterator fields*[S:tuple|object, T:tuple|object](x: S, y: T): tuple[key: string, val: RootObj] {.
@@ -252,7 +257,7 @@ iterator fields*[S:tuple|object, T:tuple|object](x: S, y: T): tuple[key: string,
   ## in the loop body.
   runnableExamples:
     var t1 = (1, "foo")
-    var t2 = default(type(t1))
+    var t2 = default(typeof(t1))
     for v1, v2 in fields(t1, t2): v2 = v1
     doAssert t1 == t2
 

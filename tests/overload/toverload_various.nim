@@ -425,6 +425,7 @@ block:
   template t0(x: Bar[int]): int = 1
   template t0(x: Foo[bool or int]): int = 10
   template t0(x: Bar[bool or int]): int = 11
+  #template t0[T:bool or int](x: Bar[T]): int = 11
   template t0[T](x: Foo[T]): int = 20
   template t0[T](x: Bar[T]): int = 21
   proc p0(x: Foo[int]): int = 0
@@ -461,3 +462,47 @@ block:
   doAssert(p0(g) == 20)
   doAssert(p0(h) == 21)
   doAssert(p0(i) == 21)
+
+  #type
+  #  f0 = proc(x:Foo)
+
+
+block:
+  type
+    TilesetCT[n: static[int]] = distinct int
+    TilesetRT = int
+    Tileset = TilesetCT | TilesetRT
+
+  func prepareTileset(tileset: var Tileset) = discard
+
+  func prepareTileset(tileset: Tileset): Tileset =
+    result = tileset
+    result.prepareTileset
+
+  var parsedTileset: TilesetRT
+  prepareTileset(parsedTileset)
+
+
+block:
+  proc p1[T,U: SomeInteger|SomeFloat](x: T, y: U): int|float =
+    when T is SomeInteger and U is SomeInteger:
+      result = int(x) + int(y)
+    else:
+      result = float(x) + float(y)
+  doAssert(p1(1,2) == 3)
+  doAssert(p1(1.0,2) == 3.0)
+  doAssert(p1(1,2.0) == 3.0)
+  doAssert(p1(1.0,2.0) == 3.0)
+
+  type Foo[T,U] = U
+  template F[T,U](t: typedesc[T], x: U): untyped = Foo[T,U](x)
+  proc p2[T; U,V:Foo[T,SomeNumber]](x: U, y: V): T =
+    T(x) + T(y)
+  #proc p2[T; U:Foo[T,SomeNumber], V:Foo[not T,SomeNumber]](x: U, y: V): T =
+  #  T(x) + T(y)
+  doAssert(p2(F(int,1),F(int,2)) == 3)
+  doAssert(p2(F(float,1),F(float,2)) == 3.0)
+  doAssert(p2(F(float,1),F(float,2.0)) == 3.0)
+  doAssert(p2(F(float,1.0),F(float,2)) == 3.0)
+  doAssert(p2(F(float,1.0),F(float,2.0)) == 3.0)
+  #doAssert(p2(F(float,1),F(int,2.0)) == 3.0)

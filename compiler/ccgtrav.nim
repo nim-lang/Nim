@@ -173,7 +173,7 @@ proc genTraverseProc(m: BModule, origTyp: PType; sig: SigHash): Rope =
          [result, markerName, getModuleDllPath(m)])
 
 proc genTraverseProcForGlobal(m: BModule, s: PSym; info: TLineInfo): Rope =
-  discard genTypeInfo(m, s.loc.t, info)
+  discard genTypeInfoV1(m, s.loc.t, info)
 
   var c: TTraversalClosure
   var p = newProc(nil, m)

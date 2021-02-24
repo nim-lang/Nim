@@ -106,10 +106,10 @@ proc semForFields(c: PContext, n: PNode, m: TMagic): PNode =
   # so that 'break' etc. work as expected, we produce
   # a 'while true: stmt; break' loop ...
   result = newNodeI(nkWhileStmt, n.info, 2)
-  var trueSymbol = strTableGet(c.graph.systemModule.tab, getIdent(c.cache, "true"))
+  var trueSymbol = systemModuleSym(c.graph, getIdent(c.cache, "true"))
   if trueSymbol == nil:
     localError(c.config, n.info, "system needs: 'true'")
-    trueSymbol = newSym(skUnknown, getIdent(c.cache, "true"), getCurrOwner(c), n.info)
+    trueSymbol = newSym(skUnknown, getIdent(c.cache, "true"), nextSymId c.idgen, getCurrOwner(c), n.info)
     trueSymbol.typ = getSysType(c.graph, n.info, tyBool)
 
   result[0] = newSymNode(trueSymbol, n.info)
@@ -127,9 +127,10 @@ proc semForFields(c: PContext, n: PNode, m: TMagic): PNode =
     localError(c.config, n.info, errGenerated, "no object or tuple type")
     return result
   for i in 1..<call.len:
-    var tupleTypeB = skipTypes(call[i].typ, skippedTypesForFields)
+    let calli = call[i]
+    var tupleTypeB = skipTypes(calli.typ, skippedTypesForFields)
     if not sameType(tupleTypeA, tupleTypeB):
-      typeMismatch(c.config, call[i].info, tupleTypeA, tupleTypeB)
+      typeMismatch(c.config, calli.info, tupleTypeA, tupleTypeB, calli)
 
   inc(c.p.nestedLoopCounter)
   if tupleTypeA.kind == tyTuple:

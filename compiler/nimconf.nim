@@ -10,7 +10,7 @@
 # This module handles the reading of the config file.
 
 import
-  llstream, commands, os, strutils, msgs, lexer,
+  llstream, commands, os, strutils, msgs, lexer, ast,
   options, idents, wordrecg, strtabs, lineinfos, pathutils, scriptconfig
 
 # ---------------- configuration file parser -----------------------------
@@ -238,7 +238,7 @@ proc getSystemConfigPath*(conf: ConfigRef; filename: RelativeFile): AbsoluteFile
     if not fileExists(result): result = p / RelativeDir"etc/nim" / filename
     if not fileExists(result): result = AbsoluteDir"/etc/nim" / filename
 
-proc loadConfigs*(cfg: RelativeFile; cache: IdentCache; conf: ConfigRef) =
+proc loadConfigs*(cfg: RelativeFile; cache: IdentCache; conf: ConfigRef; idgen: IdGenerator) =
   setDefaultLibpath(conf)
 
   var configFiles = newSeq[AbsoluteFile]()
@@ -248,11 +248,16 @@ proc loadConfigs*(cfg: RelativeFile; cache: IdentCache; conf: ConfigRef) =
     if readConfigFile(configPath, cache, conf):
       configFiles.add(configPath)
 
-  template runNimScriptIfExists(path: AbsoluteFile) =
+  template runNimScriptIfExists(path: AbsoluteFile, isMain = false) =
     let p = path # eval once
-    if fileExists(p):
+    var s: PLLStream
+    if isMain and optWasNimscript in conf.globalOptions:
+      if conf.projectIsStdin: s = stdin.llStreamOpen
+      elif conf.projectIsCmd: s = llStreamOpen(conf.cmdInput)
+    if s == nil and fileExists(p): s = llStreamOpen(p, fmRead)
+    if s != nil:
       configFiles.add(p)
-      runNimScript(cache, p, freshDefines = false, conf)
+      runNimScript(cache, p, idgen, freshDefines = false, conf, s)
 
   if optSkipSystemConfigFile notin conf.globalOptions:
     readConfigFile(getSystemConfigPath(conf, cfg))
@@ -276,6 +281,8 @@ proc loadConfigs*(cfg: RelativeFile; cache: IdentCache; conf: ConfigRef) =
 
   if optSkipProjConfigFile notin conf.globalOptions:
     readConfigFile(pd / cfg)
+    if cfg == DefaultConfig:
+      runNimScriptIfExists(pd / DefaultConfigNims)
 
     if conf.projectName.len != 0:
       # new project wide config file:
@@ -284,20 +291,22 @@ proc loadConfigs*(cfg: RelativeFile; cache: IdentCache; conf: ConfigRef) =
         projectConfig = changeFileExt(conf.projectFull, "nim.cfg")
       readConfigFile(projectConfig)
 
-    if cfg == DefaultConfig:
-      runNimScriptIfExists(pd / DefaultConfigNims)
 
-  for filename in configFiles:
-    # delayed to here so that `hintConf` is honored
-    rawMessage(conf, hintConf, filename.string)
-
-  block:
-    let scriptFile = conf.projectFull.changeFileExt("nims")
-    if conf.command != "nimsuggest":
-      runNimScriptIfExists(scriptFile)
+  let scriptFile = conf.projectFull.changeFileExt("nims")
+  let scriptIsProj = scriptFile == conf.projectFull
+  template showHintConf =
+    for filename in configFiles:
+      # delayed to here so that `hintConf` is honored
+      rawMessage(conf, hintConf, filename.string)
+  if scriptIsProj:
+    showHintConf()
+    configFiles.setLen 0
+  if conf.cmd != cmdIdeTools:
+    runNimScriptIfExists(scriptFile, isMain = true)
+  else:
+    if not scriptIsProj:
+      runNimScriptIfExists(scriptFile, isMain = true)
     else:
-      if scriptFile != conf.projectFull:
-        runNimScriptIfExists(scriptFile)
-      else:
-        # 'nimsuggest foo.nims' means to just auto-complete the NimScript file
-        discard
+      # 'nimsuggest foo.nims' means to just auto-complete the NimScript file
+      discard
+  showHintConf()

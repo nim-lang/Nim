@@ -143,6 +143,10 @@ __AVR__
 #  error "Cannot define NIM_THREADVAR"
 #endif
 
+#if defined(__cplusplus)
+  #define NIM_THREAD_LOCAL thread_local
+#endif
+
 /* --------------- how int64 constants should be declared: ----------- */
 #if defined(__GNUC__) || defined(__LCC__) || \
     defined(__POCC__) || defined(__DMC__) || defined(_MSC_VER)
@@ -587,5 +591,8 @@ NIM_STATIC_ASSERT(sizeof(NI) == sizeof(void*) && NIM_INTBITS == sizeof(NI)*8, ""
     #define nimMulInt(a, b, res) __builtin_smulll_overflow(a, b, (long long int*)res)
   #endif
 #endif
+
+#define NIM_NOALIAS __restrict
+/* __restrict is said to work for all the C(++) compilers out there that we support */
 
 #endif /* NIMBASE_H */

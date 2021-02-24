@@ -10,24 +10,22 @@
 ## exposes the Nim VM to clients.
 import
   ast, astalgo, modules, passes, condsyms,
-  options, sem, semdata, llstream, lineinfos, vm,
+  options, sem, llstream, lineinfos, vm,
   vmdef, modulegraphs, idents, os, pathutils,
-  passaux, scriptconfig
+  passaux, scriptconfig, std/compilesettings
 
 type
   Interpreter* = ref object ## Use Nim as an interpreter with this object
     mainModule: PSym
     graph: ModuleGraph
     scriptName: string
+    idgen: IdGenerator
 
 iterator exportedSymbols*(i: Interpreter): PSym =
   assert i != nil
   assert i.mainModule != nil, "no main module selected"
-  var it: TTabIter
-  var s = initTabIter(it, i.mainModule.tab)
-  while s != nil:
+  for s in modulegraphs.allSyms(i.graph, i.mainModule):
     yield s
-    s = nextIter(it, i.mainModule.tab)
 
 proc selectUniqueSymbol*(i: Interpreter; name: string;
                          symKinds: set[TSymKind] = {skLet, skVar}): PSym =
@@ -36,14 +34,14 @@ proc selectUniqueSymbol*(i: Interpreter; name: string;
   assert i != nil
   assert i.mainModule != nil, "no main module selected"
   let n = getIdent(i.graph.cache, name)
-  var it: TIdentIter
-  var s = initIdentIter(it, i.mainModule.tab, n)
+  var it: ModuleIter
+  var s = initModuleIter(it, i.graph, i.mainModule, n)
   result = nil
   while s != nil:
     if s.kind in symKinds:
       if result == nil: result = s
       else: return nil # ambiguous
-    s = nextIdentIter(it, i.mainModule.tab)
+    s = nextModuleIter(it, i.graph)
 
 proc selectRoutine*(i: Interpreter; name: string): PSym =
   ## Selects a declared routine (proc/func/etc) from the main module.
@@ -69,12 +67,12 @@ proc evalScript*(i: Interpreter; scriptStream: PLLStream = nil) =
   ## This can also be used to *reload* the script.
   assert i != nil
   assert i.mainModule != nil, "no main module selected"
-  initStrTable(i.mainModule.tab)
+  initStrTable(i.mainModule.semtab(i.graph))
   i.mainModule.ast = nil
 
   let s = if scriptStream != nil: scriptStream
           else: llStreamOpen(findFile(i.graph.config, i.scriptName), fmRead)
-  processModule(i.graph, i.mainModule, s)
+  processModule(i.graph, i.mainModule, i.idgen, s)
 
 proc findNimStdLib*(): string =
   ## Tries to find a path to a valid "system.nim" file.
@@ -94,10 +92,9 @@ proc findNimStdLib*(): string =
     return ""
 
 proc findNimStdLibCompileTime*(): string =
-  ## Same as ``findNimStdLib`` but uses source files used at compile time,
+  ## Same as `findNimStdLib` but uses source files used at compile time,
   ## and asserts on error.
-  const exe = getCurrentCompilerExe()
-  result = exe.splitFile.dir.parentDir / "lib"
+  result = querySetting(libPath)
   doAssert fileExists(result / "system.nim"), "result:" & result
 
 proc createInterpreter*(scriptName: string;
@@ -121,14 +118,15 @@ proc createInterpreter*(scriptName: string;
 
   var m = graph.makeModule(scriptName)
   incl(m.flags, sfMainModule)
-  var vm = newCtx(m, cache, graph)
+  var idgen = idGeneratorFromModule(m)
+  var vm = newCtx(m, cache, graph, idgen)
   vm.mode = emRepl
   vm.features = flags
   if registerOps:
     vm.registerAdditionalOps() # Required to register parts of stdlib modules
   graph.vm = vm
   graph.compileSystemModule()
-  result = Interpreter(mainModule: m, graph: graph, scriptName: scriptName)
+  result = Interpreter(mainModule: m, graph: graph, scriptName: scriptName, idgen: idgen)
 
 proc destroyInterpreter*(i: Interpreter) =
   ## destructor.
@@ -151,7 +149,7 @@ proc runRepl*(r: TLLRepl;
     conf.searchPaths.add(AbsoluteDir p)
     if conf.libpath.isEmpty: conf.libpath = AbsoluteDir p
 
-  conf.cmd = cmdInteractive
+  conf.cmd = cmdInteractive # see also `setCmd`
   conf.setErrorMaxHighMaybe
   initDefines(conf.symbols)
   defineSymbol(conf.symbols, "nimscript")
@@ -162,6 +160,8 @@ proc runRepl*(r: TLLRepl;
   registerPass(graph, evalPass)
   var m = graph.makeStdinModule()
   incl(m.flags, sfMainModule)
-  if supportNimscript: graph.vm = setupVM(m, cache, "stdin", graph)
+  var idgen = idGeneratorFromModule(m)
+
+  if supportNimscript: graph.vm = setupVM(m, cache, "stdin", graph, idgen)
   graph.compileSystemModule()
-  processModule(graph, m, llStreamOpenStdIn(r))
+  processModule(graph, m, idgen, llStreamOpenStdIn(r))
