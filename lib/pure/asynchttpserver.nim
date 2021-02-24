@@ -73,7 +73,7 @@ type
     maxFDs: int
 
 func getSocket*(a: AsyncHttpServer): AsyncSocket {.since: (1, 5, 1).} =
-  ## Returns the ``AsyncHttpServer``s internal ``AsyncSocket`` instance.
+  ## Returns the `AsyncHttpServer`s internal `AsyncSocket` instance.
   ## 
   ## Useful for identifying what port the AsyncHttpServer is bound to, if it
   ## was chosen automatically.
@@ -90,7 +90,7 @@ func getSocket*(a: AsyncHttpServer): AsyncSocket {.since: (1, 5, 1).} =
 
 proc newAsyncHttpServer*(reuseAddr = true, reusePort = false,
                          maxBody = 8388608): AsyncHttpServer =
-  ## Creates a new ``AsyncHttpServer`` instance.
+  ## Creates a new `AsyncHttpServer` instance.
   result = AsyncHttpServer(reuseAddr: reuseAddr, reusePort: reusePort, maxBody: maxBody)
 
 proc addHeaders(msg: var string, headers: HttpHeaders) =
@@ -105,7 +105,7 @@ proc sendHeaders*(req: Request, headers: HttpHeaders): Future[void] =
 
 proc respond*(req: Request, code: HttpCode, content: string,
               headers: HttpHeaders = nil): Future[void] =
-  ## Responds to the request with the specified ``HttpCode``, headers and
+  ## Responds to the request with the specified `HttpCode`, headers and
   ## content.
   ##
   ## This procedure will **not** close the client socket.
@@ -138,7 +138,7 @@ proc respond*(req: Request, code: HttpCode, content: string,
   result = req.client.send(msg)
 
 proc respondError(req: Request, code: HttpCode): Future[void] =
-  ## Responds to the request with the specified ``HttpCode``.
+  ## Responds to the request with the specified `HttpCode`.
   let content = $code
   var msg = "HTTP/1.1 " & content & "\c\L"
 
