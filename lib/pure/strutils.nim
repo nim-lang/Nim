@@ -2753,6 +2753,7 @@ func strip*(s: string, leading = true, trailing = true,
   ## If both are false, the string is returned unchanged.
   ##
   ## See also:
+  ## * `strip proc<strbasics.html#strip,string,set[char]>`_ Inplace version.
   ## * `stripLineEnd func<#stripLineEnd,string>`_
   runnableExamples:
     let a = "  vhellov   "
