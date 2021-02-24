@@ -109,10 +109,10 @@ iterator mitems*(a: var cstring): var char {.inline.} =
       # xxx this should give CT error in js RT
       doAssert false, "js cstring cannot be mutated"
     else:
-      var i = 0
-      while a[i] != '\0':
-        yield a[i]
-        inc(i)
+      var i2 = 0
+      while a[i2] != '\0':
+        yield a[i2]
+        inc(i2)
 
 iterator items*[T: enum and Ordinal](E: typedesc[T]): T =
   ## Iterates over the values of `E`.
