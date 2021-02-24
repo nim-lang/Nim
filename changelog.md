@@ -171,6 +171,8 @@ provided by the operating system.
   dumping (on select signals) and notifying the parent process about the cause
   of termination.
 
+- Added `strip` and `setSlice` to `std/strbasics`.
+
 
 ## Language changes
 
