@@ -149,9 +149,11 @@ provided by the operating system.
 - Added experimental `linenoise.readLineStatus` to get line and status (e.g. ctrl-D or ctrl-C).
 
 - Added `compilesettings.SingleValueSetting.libPath`
+
 - `std/wrapnils` doesn't use `experimental:dotOperators` anymore, avoiding
   issues like https://github.com/nim-lang/Nim/issues/13063 (which affected error messages)
   for modules importing `std/wrapnils`.
+  Added `??.` macro which returns an `Option`.
 
 - Added `math.frexp` overload procs. Deprecated `c_frexp`, use `frexp` instead.
 
@@ -173,6 +175,8 @@ provided by the operating system.
 
 - Added `strip` and `setSlice` to `std/strbasics`.
 
+
+- Added to `wrapnils` an option-like API via `??.`, `isSome`, `get`.
 
 ## Language changes
 
