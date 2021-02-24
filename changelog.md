@@ -89,9 +89,6 @@
 
 - Added `math.isNaN`.
 
-- Added `jsfetch` module [Fetch](https://developer.mozilla.org/docs/Web/API/Fetch_API) wrapper for JavaScript target.
-- Added `jsheaders` module [Headers](https://developer.mozilla.org/en-US/docs/Web/API/Headers) wrapper for JavaScript target.
-
 - `echo` and `debugEcho` will now raise `IOError` if writing to stdout fails.  Previous behavior
   silently ignored errors.  See #16366.  Use `-d:nimLegacyEchoNoRaise` for previous behavior.
 
@@ -183,6 +180,9 @@ provided by the operating system.
 
 - `std/options` changed `$some(3)` to `"some(3)"` instead of `"Some(3)"`
   and `$none(int)` to `"none(int)"` instead of `"None[int]"`.
+- Added `jsfetch` module [Fetch](https://developer.mozilla.org/docs/Web/API/Fetch_API) wrapper for JavaScript target.
+- Added `jsheaders` module [Headers](https://developer.mozilla.org/en-US/docs/Web/API/Headers) wrapper for JavaScript target.
+
 
 ## Language changes
 
