@@ -289,6 +289,7 @@ proc genArg(p: BProc, n: PNode, param: PSym; call: PNode, needsTmp = false): Rop
   else:
     initLocExprSingleUse(p, n, a)
     result = rdLoc(withTmpIfNeeded(p, a, needsTmp))
+  #assert result != nil
 
 proc genArgNoParam(p: BProc, n: PNode, needsTmp = false): Rope =
   var a: TLoc
