@@ -106,7 +106,9 @@ iterator mitems*(a: var cstring): var char {.inline.} =
       inc(i)
   else:
     when defined(js):
-      # xxx this should give CT error in js RT
+      # xxx this could give a CT error in js RT, for example
+      # using similar approach as https://github.com/nim-lang/Nim/pull/15877,
+      # but note this isn't perfect as `compiles(block: someCstring[0] = 'x')` is true.
       doAssert false, "js cstring cannot be mutated"
     else:
       var i2 = 0
