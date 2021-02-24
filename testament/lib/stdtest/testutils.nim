@@ -45,8 +45,8 @@ template enableRemoteNetworking*: bool =
 
 template whenRuntimeJs*(bodyIf, bodyElse) =
   ##[
-  pending improvements to `nimvm`, this sugar helps.
-  use as follows:
+  Behaves as `when defined(js) and not nimvm` (which isn't legal yet).
+  pending improvements to `nimvm`, this sugar helps; use as follows:
 
   whenRuntimeJs:
     doAssert defined(js)
@@ -61,7 +61,7 @@ template whenRuntimeJs*(bodyIf, bodyElse) =
     else: bodyElse
 
 template whenVMorJs*(bodyIf, bodyElse) =
-  ## pending improvements to `nimvm`, this sugar helps.
+  ## Behaves as: `when defined(js) or niimvm`
   when nimvm: bodyIf
   else:
     when defined(js): bodyIf

@@ -56,18 +56,26 @@ iterator items*[T](a: set[T]): T {.inline.} =
 
 iterator items*(a: cstring): char {.inline.} =
   ## Iterates over each item of `a`.
+  runnableExamples:
+    from std/sequtils import toSeq
+    assert toSeq("abc\0def".cstring) == @['a', 'b', 'c']
+    assert toSeq("abc".cstring) == @['a', 'b', 'c']
+  #[
+  assert toSeq(nil.cstring) == @[] # xxx fails with SIGSEGV
+  this fails with SIGSEGV; unclear whether we want to instead yield nothing
+  or pay a small price to check for `nil`, a benchmark is needed. Note that
+  other procs support `nil`.
+  ]#
   template impl() =
     var i = 0
-    var L = len(a)
-    while i < L:
+    let n = len(a)
+    while i < n:
       yield a[i]
       inc(i)
   when defined(js): impl()
   else:
     when nimvm:
-      #[
-      xxx `cstring` should behave like c backend instead.
-      ]#
+      # xxx `cstring` should behave like c backend instead.
       impl()
     else:
       var i = 0
@@ -77,10 +85,23 @@ iterator items*(a: cstring): char {.inline.} =
 
 iterator mitems*(a: var cstring): var char {.inline.} =
   ## Iterates over each item of `a` so that you can modify the yielded value.
+  # xxx this should give CT error in js RT.
+  runnableExamples:
+    from std/sugar import collect
+    var a = "abc\0def"
+    var b = a.cstring
+    let s = collect:
+      for bi in mitems(b):
+        if bi == 'b': bi = 'B'
+        bi
+    assert s == @['a', 'B', 'c']
+    assert b == "aBc"
+    assert a == "aBc\0def"
+
   template impl() =
     var i = 0
-    var L = len(a)
-    while i < L:
+    let n = len(a)
+    while i < n:
       yield a[i]
       inc(i)
   when defined(js): impl()
