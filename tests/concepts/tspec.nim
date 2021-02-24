@@ -21,7 +21,7 @@ type
   ToStringable = concept
     proc `$`(a: Self): string
 
-  Hashable = concept
+  Hashable = concept   ## the most basic of identity assumptions
     proc hash(x: Self): int
     proc `==`(x, y: Self): bool
 
