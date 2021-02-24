@@ -61,7 +61,7 @@ template whenRuntimeJs*(bodyIf, bodyElse) =
     else: bodyElse
 
 template whenVMorJs*(bodyIf, bodyElse) =
-  ## Behaves as: `when defined(js) or niimvm`
+  ## Behaves as: `when defined(js) or nimvm`
   when nimvm: bodyIf
   else:
     when defined(js): bodyIf
