@@ -1,6 +1,6 @@
 discard """
   targets: "c js"
-  matrix: "--gc:refc; --gc: arc"
+  matrix: "--gc:refc; --gc:arc"
 """
 
 
