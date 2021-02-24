@@ -23,3 +23,6 @@ hint("Processing", off)
 # switch("define", "nimTestsEnableFlaky")
 
 # switch("hint", "ConvFromXtoItselfNotNeeded")
+
+# experimental API's are enabled in testament, refs https://github.com/timotheecour/Nim/issues/575
+switch("define", "nimExperimentalAsyncjsThen")

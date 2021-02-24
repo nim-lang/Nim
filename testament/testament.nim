@@ -12,7 +12,7 @@
 import
   strutils, pegs, os, osproc, streams, json, std/exitprocs,
   backend, parseopt, specs, htmlgen, browsers, terminal,
-  algorithm, times, md5, sequtils, azure, intsets, macros
+  algorithm, times, md5, azure, intsets, macros
 from std/sugar import dup
 import compiler/nodejs
 import lib/stdtest/testutils
@@ -501,7 +501,8 @@ proc testSpecHelper(r: var TResults, test: var TTest, expected: TSpec,
           var args = test.args
           if isJsTarget:
             exeCmd = nodejs
-            args = concat(@[exeFile], args)
+            # see D20210217T215950
+            args = @["--unhandled-rejections=strict", exeFile] & args
           else:
             exeCmd = exeFile.dup(normalizeExe)
             if expected.useValgrind != disabled:
@@ -510,6 +511,7 @@ proc testSpecHelper(r: var TResults, test: var TTest, expected: TSpec,
                 valgrindOptions.add "--leak-check=yes"
               args = valgrindOptions & exeCmd & args
               exeCmd = "valgrind"
+          # xxx honor `testament --verbose` here
           var (_, buf, exitCode) = execCmdEx2(exeCmd, args, input = expected.input)
           # Treat all failure codes from nodejs as 1. Older versions of nodejs used
           # to return other codes, but for us it is sufficient to know that it's not 0.
