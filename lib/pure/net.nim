@@ -583,7 +583,7 @@ when defineSsl:
     if newCTX.SSL_CTX_set_cipher_list(cipherList) != 1:
       raiseSSLError()
 
-    when defined(nimDisableCertificateValidation) or defined(windows):
+    when defined(nimDisableCertificateValidation):
       newCTX.SSL_CTX_set_verify(SSL_VERIFY_NONE, nil)
     else:
       case verifyMode
