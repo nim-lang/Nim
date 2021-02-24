@@ -971,14 +971,14 @@ iterator split*(s: string, seps: openArray[Rune] = unicodeSpaces,
   ## And the following code:
   ##
   ## .. code-block:: nim
-  ##   for word in split("this:is;an$example", {';', ':', '$'}):
+  ##   for word in split("this:is;an$example", ";:$".toRunes):
   ##     writeLine(stdout, word)
   ##
   ## ...produces the same output as the first example. The code:
   ##
   ## .. code-block:: nim
   ##   let date = "2012-11-20T22:08:08.398990"
-  ##   let separators = {' ', '-', ':', 'T'}
+  ##   let separators = " -:T".toRunes
   ##   for number in split(date, separators):
   ##     writeLine(stdout, number)
   ##
