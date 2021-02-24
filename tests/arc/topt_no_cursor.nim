@@ -3,8 +3,12 @@ discard """
 doing shady stuff...
 3
 6
-(@[1], @[2])'''
-  cmd: '''nim c --gc:arc --expandArc:newTarget --expandArc:delete --expandArc:p1 --expandArc:tt --hint:Performance:off $file'''
+(@[1], @[2])
+192.168.0.1
+192.168.0.1
+192.168.0.1
+192.168.0.1'''
+  cmd: '''nim c --gc:arc --expandArc:newTarget --expandArc:delete --expandArc:p1 --expandArc:tt --hint:Performance:off --assertions:off --expandArc:extractConfig $file'''
   nimout: '''--expandArc: newTarget
 
 var
@@ -52,7 +56,7 @@ _ = (
   blitTmp, ";")
 lvalue = _[0]
 lnext = _[1]
-`=sink`(result.value, move lvalue)
+result.value = move lvalue
 `=destroy`(lnext)
 `=destroy_1`(lvalue)
 -- end of expandArc ------------------------
@@ -78,6 +82,31 @@ try:
 finally:
   `=destroy`(:tmpD_2)
   `=destroy_1`(a)
+-- end of expandArc ------------------------
+--expandArc: extractConfig
+
+var lan_ip
+try:
+  lan_ip = ""
+  block :tmp:
+    var line
+    var i = 0
+    let L = len(txt)
+    block :tmp_1:
+      while i < L:
+        var splitted
+        try:
+          line = txt[i]
+          splitted = split(line, " ", -1)
+          if splitted[0] == "opt":
+            `=copy`(lan_ip, splitted[1])
+          echo [lan_ip]
+          echo [splitted[1]]
+          inc(i, 1)
+        finally:
+          `=destroy`(splitted)
+finally:
+  `=destroy_1`(lan_ip)
 -- end of expandArc ------------------------'''
 """
 
@@ -194,3 +223,56 @@ proc plus(input: string) =
   (rvalue, rnext) = rresult
 
 plus("123;")
+
+func substrEq(s: string, pos: int, substr: string): bool =
+  var i = 0
+  var length = substr.len
+  while i < length and pos+i < s.len and s[pos+i] == substr[i]:
+    inc i
+  return i == length
+
+template stringHasSep(s: string, index: int, sep: string): bool =
+  s.substrEq(index, sep)
+
+template splitCommon(s, sep, maxsplit, sepLen) =
+  var last = 0
+  var splits = maxsplit
+
+  while last <= len(s):
+    var first = last
+    while last < len(s) and not stringHasSep(s, last, sep):
+      inc(last)
+    if splits == 0: last = len(s)
+    yield substr(s, first, last-1)
+    if splits == 0: break
+    dec(splits)
+    inc(last, sepLen)
+
+iterator split(s: string, sep: string, maxsplit = -1): string =
+  splitCommon(s, sep, maxsplit, sep.len)
+
+template accResult(iter: untyped) =
+  result = @[]
+  for x in iter: add(result, x)
+
+func split*(s: string, sep: string, maxsplit = -1): seq[string] =
+  accResult(split(s, sep, maxsplit))
+
+
+let txt = @["opt 192.168.0.1", "static_lease 192.168.0.1"]
+
+# bug #17033
+
+proc extractConfig() =
+  var lan_ip = ""
+
+  for line in txt:
+    let splitted = line.split(" ")
+    if splitted[0] == "opt":
+      lan_ip = splitted[1] # "borrow" is conditional and inside a loop.
+      # Not good enough...
+      # we need a flag that live-ranges are disjoint
+    echo lan_ip
+    echo splitted[1] # Without this line everything works
+
+extractConfig()

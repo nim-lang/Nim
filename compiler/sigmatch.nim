@@ -13,7 +13,7 @@
 import
   intsets, ast, astalgo, semdata, types, msgs, renderer, lookups, semtypinst,
   magicsys, idents, lexer, options, parampatterns, strutils, trees,
-  linter, lineinfos, lowerings, modulegraphs
+  linter, lineinfos, lowerings, modulegraphs, concepts
 
 type
   MismatchKind* = enum
@@ -363,7 +363,7 @@ proc concreteType(c: TCandidate, t: PType; f: PType = nil): PType =
   of tySequence, tySet:
     if t[0].kind == tyEmpty: result = nil
     else: result = t
-  of tyGenericParam, tyAnything:
+  of tyGenericParam, tyAnything, tyConcept:
     result = t
     while true:
       result = PType(idTableGet(c.bindings, t))
@@ -568,7 +568,7 @@ proc inconsistentVarTypes(f, a: PType): bool {.inline.} =
 
 proc procParamTypeRel(c: var TCandidate, f, a: PType): TTypeRelation =
   ## For example we have:
-  ## 
+  ##
   ## .. code-block:: nim
   ##   proc myMap[T,S](sIn: seq[T], f: proc(x: T): S): seq[S] = ...
   ##   proc innerProc[Q,W](q: Q): W = ...
@@ -728,7 +728,7 @@ proc matchUserTypeClass*(m: var TCandidate; ff, a: PType): PType =
       if alreadyBound != nil: typ = alreadyBound
 
       template paramSym(kind): untyped =
-        newSym(kind, typeParamName, nextId(c.idgen), typeClass.sym, typeClass.sym.info, {})
+        newSym(kind, typeParamName, nextSymId(c.idgen), typeClass.sym, typeClass.sym.info, {})
 
       block addTypeParam:
         for prev in typeParams:
@@ -741,7 +741,7 @@ proc matchUserTypeClass*(m: var TCandidate; ff, a: PType): PType =
         of tyStatic:
           param = paramSym skConst
           param.typ = typ.exactReplica
-          #copyType(typ, nextId(c.idgen), typ.owner)
+          #copyType(typ, nextTypeId(c.idgen), typ.owner)
           if typ.n == nil:
             param.typ.flags.incl tfInferrableStatic
           else:
@@ -749,7 +749,7 @@ proc matchUserTypeClass*(m: var TCandidate; ff, a: PType): PType =
         of tyUnknown:
           param = paramSym skVar
           param.typ = typ.exactReplica
-          #copyType(typ, nextId(c.idgen), typ.owner)
+          #copyType(typ, nextTypeId(c.idgen), typ.owner)
         else:
           param = paramSym skType
           param.typ = if typ.isMetaType:
@@ -801,7 +801,7 @@ proc matchUserTypeClass*(m: var TCandidate; ff, a: PType): PType =
     result = generateTypeInstance(c, m.bindings, typeClass.sym.info, ff)
   else:
     result = ff.exactReplica
-    #copyType(ff, nextId(c.idgen), ff.owner)
+    #copyType(ff, nextTypeId(c.idgen), ff.owner)
 
   result.n = checkedBody
 
@@ -1505,8 +1505,8 @@ proc typeRel(c: var TCandidate, f, aOrig: PType,
 
   of tyGenericInvocation:
     var x = a.skipGenericAlias
-
-    var preventHack = false
+    let concpt = f[0].skipTypes({tyGenericBody})
+    var preventHack = concpt.kind == tyConcept
     if x.kind == tyOwned and f[0].kind != tyOwned:
       preventHack = true
       x = x.lastSon
@@ -1533,6 +1533,9 @@ proc typeRel(c: var TCandidate, f, aOrig: PType,
           # Workaround for regression #4589
           if f[i].kind != tyTypeDesc: return
       result = isGeneric
+    elif x.kind == tyGenericInst and concpt.kind == tyConcept:
+      result = if concepts.conceptMatch(c.c, concpt, x, c.bindings, f): isGeneric
+               else: isNone
     else:
       let genericBody = f[0]
       var askip = skippedNone
@@ -1653,6 +1656,10 @@ proc typeRel(c: var TCandidate, f, aOrig: PType,
           result = isGeneric
         else:
           result = isNone
+
+  of tyConcept:
+    result = if concepts.conceptMatch(c.c, f, a, c.bindings, nil): isGeneric
+             else: isNone
 
   of tyCompositeTypeClass:
     considerPreviousT:
@@ -2500,7 +2507,7 @@ proc matchesAux(c: PContext, n, nOrig: PNode, m: var TCandidate, marker: var Int
             noMatch()
         checkConstraint(n[a])
 
-    if m.state == csMatch and not(m.calleeSym != nil and m.calleeSym.kind in {skTemplate, skMacro}):
+    if m.state == csMatch and not (m.calleeSym != nil and m.calleeSym.kind in {skTemplate, skMacro}):
       c.mergeShadowScope
     else:
       c.closeShadowScope

@@ -40,21 +40,22 @@ proc resize(old: int): int {.inline.} =
   else: result = old * 3 div 2 # for large arrays * 3/2 is better
 
 proc prepareAdd(s: var NimStringV2; addlen: int) {.compilerRtl.} =
+  let newLen = s.len + addlen
   if isLiteral(s):
     let oldP = s.p
     # can't mutate a literal, so we need a fresh copy here:
     when compileOption("threads"):
-      s.p = cast[ptr NimStrPayload](allocShared0(contentSize(s.len + addlen)))
+      s.p = cast[ptr NimStrPayload](allocShared0(contentSize(newLen)))
     else:
-      s.p = cast[ptr NimStrPayload](alloc0(contentSize(s.len + addlen)))
-    s.p.cap = s.len + addlen
+      s.p = cast[ptr NimStrPayload](alloc0(contentSize(newLen)))
+    s.p.cap = newLen
     if s.len > 0:
       # we are about to append, so there is no need to copy the \0 terminator:
-      copyMem(unsafeAddr s.p.data[0], unsafeAddr oldP.data[0], s.len)
+      copyMem(unsafeAddr s.p.data[0], unsafeAddr oldP.data[0], min(s.len, newLen))
   else:
     let oldCap = s.p.cap and not strlitFlag
-    if s.len + addlen > oldCap:
-      let newCap = max(s.len + addlen, resize(oldCap))
+    if newLen > oldCap:
+      let newCap = max(newLen, resize(oldCap))
       when compileOption("threads"):
         s.p = cast[ptr NimStrPayload](reallocShared0(s.p, contentSize(oldCap), contentSize(newCap)))
       else:

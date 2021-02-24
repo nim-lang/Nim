@@ -10,7 +10,7 @@
 ## Declaration of the Document Object Model for the `JavaScript backend
 ## <backends.html#backends-the-javascript-target>`_.
 import std/private/since
-when not defined(js) and not defined(Nimdoc):
+when not defined(js):
   {.error: "This module only works on the JavaScript platform".}
 
 const
@@ -37,6 +37,7 @@ type
     onmouseup*: proc (event: Event) {.closure.}
     onreset*: proc (event: Event) {.closure.}
     onselect*: proc (event: Event) {.closure.}
+    onstorage*: proc (event: Event) {.closure.}
     onsubmit*: proc (event: Event) {.closure.}
     onunload*: proc (event: Event) {.closure.}
     onloadstart*: proc (event: Event) {.closure.}
@@ -72,6 +73,7 @@ type
     Resize = "resize",
     Scroll = "scroll",
     Select = "select",
+    Storage = "storage",
     Unload = "unload",
     Wheel = "wheel"
 
@@ -107,7 +109,7 @@ type
     timing*: PerformanceTiming
 
   Range* {.importc.} = ref object
-    ## see `docs{https://developer.mozilla.org/en-US/docs/Web/API/Range}`_
+    ## see `docs<https://developer.mozilla.org/en-US/docs/Web/API/Range>`_
     collapsed*: bool
     commonAncestorContainer*: Node
     endContainer*: Node
@@ -125,7 +127,7 @@ type
     rangeCount*: int
     `type`*: cstring
 
-  LocalStorage* {.importc.} = ref object
+  Storage* {.importc.} = ref object
 
   Window* = ref WindowObj
   WindowObj {.importc.} = object of EventTargetObj
@@ -153,7 +155,8 @@ type
     screen*: Screen
     performance*: Performance
     onpopstate*: proc (event: Event)
-    localStorage*: LocalStorage
+    localStorage*: Storage
+    sessionStorage*: Storage
     parent*: Window
 
   Frame* = ref FrameObj
@@ -1210,6 +1213,13 @@ type
     ## see `docs<https://developer.mozilla.org/en-US/docs/Web/API/ClipboardEvent>`_
     clipboardData*: DataTransfer
 
+  StorageEvent* = ref StorageEventObj ## see `docs<https://developer.mozilla.org/en-US/docs/Web/API/StorageEvent>`_
+  StorageEventObj {.importc.} = object of Event
+    key*: cstring
+    newValue*, oldValue*: cstring
+    storageArea*: Storage
+    url*: cstring
+
   TouchList* {.importc.} = ref object of RootObj
     length*: int
 
@@ -1457,11 +1467,12 @@ else:
   proc insertBefore*(n, newNode, before: Node) {.importcpp.}
   proc getElementById*(d: Document, id: cstring): Element {.importcpp.}
   proc createElement*(d: Document, identifier: cstring): Element {.importcpp.}
+  proc createElementNS*(d: Document, namespaceURI, qualifiedIdentifier: cstring): Element {.importcpp.}
   proc createTextNode*(d: Document, identifier: cstring): Node {.importcpp.}
   proc createComment*(d: Document, data: cstring): Node {.importcpp.}
 
-proc setTimeout*(action: proc(); ms: int): Timeout {.importc, nodecl.}
-proc clearTimeout*(t: Timeout) {.importc, nodecl.}
+proc setTimeout*(action: proc(); ms: int): TimeOut {.importc, nodecl.}
+proc clearTimeout*(t: TimeOut) {.importc, nodecl.}
 
 {.push importcpp.}
 
@@ -1654,12 +1665,12 @@ proc getRangeAt*(s: Selection, index: int): Range
 converter toString*(s: Selection): cstring
 proc `$`*(s: Selection): string = $(s.toString())
 
-# LocalStorage "methods"
-proc getItem*(ls: LocalStorage, key: cstring): cstring
-proc setItem*(ls: LocalStorage, key, value: cstring)
-proc hasItem*(ls: LocalStorage, key: cstring): bool
-proc clear*(ls: LocalStorage)
-proc removeItem*(ls: LocalStorage, key: cstring)
+# Storage "methods"
+proc getItem*(s: Storage, key: cstring): cstring
+proc setItem*(s: Storage, key, value: cstring)
+proc hasItem*(s: Storage, key: cstring): bool
+proc clear*(s: Storage)
+proc removeItem*(s: Storage, key: cstring)
 
 {.pop.}
 
@@ -1719,9 +1730,9 @@ proc offsetTop*(e: Node): int {.importcpp: "#.offsetTop", nodecl.}
 proc offsetLeft*(e: Node): int {.importcpp: "#.offsetLeft", nodecl.}
 
 since (1, 3):
-  func newDomParser*(): DOMParser {.importcpp: "new DOMParser()".}
+  func newDomParser*(): DomParser {.importcpp: "new DOMParser()".}
     ## DOM Parser constructor.
-  func parseFromString*(this: DOMParser; str: cstring; mimeType: cstring): Document {.importcpp.}
+  func parseFromString*(this: DomParser; str: cstring; mimeType: cstring): Document {.importcpp.}
     ## Parse from string to `Document`.
 
   proc newDomException*(): DomException {.importcpp: "new DomException()", constructor.}
@@ -1733,7 +1744,7 @@ since (1, 3):
 
   proc newFileReader*(): FileReader {.importcpp: "new FileReader()", constructor.}
     ## File Reader constructor
-  proc error*(f: FileReader): DOMException {.importcpp: "#.error", nodecl.}
+  proc error*(f: FileReader): DomException {.importcpp: "#.error", nodecl.}
     ## https://developer.mozilla.org/en-US/docs/Web/API/FileReader/error
   proc readyState*(f: FileReader): FileReaderState {.importcpp: "#.readyState", nodecl.}
     ## https://developer.mozilla.org/en-US/docs/Web/API/FileReader/readyState

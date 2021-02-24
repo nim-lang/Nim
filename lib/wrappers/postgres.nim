@@ -53,7 +53,8 @@ type
   PExecStatusType* = ptr ExecStatusType
   ExecStatusType* = enum
     PGRES_EMPTY_QUERY = 0, PGRES_COMMAND_OK, PGRES_TUPLES_OK, PGRES_COPY_OUT,
-    PGRES_COPY_IN, PGRES_BAD_RESPONSE, PGRES_NONFATAL_ERROR, PGRES_FATAL_ERROR
+    PGRES_COPY_IN, PGRES_BAD_RESPONSE, PGRES_NONFATAL_ERROR, PGRES_FATAL_ERROR,
+    PGRES_COPY_BOTH, PGRES_SINGLE_TUPLE
   PGlobjfuncs*{.pure, final.} = object
     fn_lo_open*: Oid
     fn_lo_close*: Oid
@@ -69,7 +70,8 @@ type
   ConnStatusType* = enum
     CONNECTION_OK, CONNECTION_BAD, CONNECTION_STARTED, CONNECTION_MADE,
     CONNECTION_AWAITING_RESPONSE, CONNECTION_AUTH_OK, CONNECTION_SETENV,
-    CONNECTION_SSL_STARTUP, CONNECTION_NEEDED
+    CONNECTION_SSL_STARTUP, CONNECTION_NEEDED, CONNECTION_CHECK_WRITABLE,
+    CONNECTION_CONSUME, CONNECTION_GSS_STARTUP, CONNECTION_CHECK_TARGET
   PGconn*{.pure, final.} = object
     pghost*: cstring
     pgtty*: cstring
@@ -114,7 +116,7 @@ type
     PQTRANS_UNKNOWN
   PPGVerbosity* = ptr PGVerbosity
   PGVerbosity* = enum
-    PQERRORS_TERSE, PQERRORS_DEFAULT, PQERRORS_VERBOSE
+    PQERRORS_TERSE, PQERRORS_DEFAULT, PQERRORS_VERBOSE, PQERRORS_SQLSTATE
   PPGNotify* = ptr pgNotify
   pgNotify*{.pure, final.} = object
     relname*: cstring
@@ -238,6 +240,7 @@ proc pqexecPrepared*(conn: PPGconn, stmtName: cstring, nParams: int32,
     cdecl, dynlib: dllName, importc: "PQexecPrepared".}
 proc pqsendQuery*(conn: PPGconn, query: cstring): int32{.cdecl, dynlib: dllName,
     importc: "PQsendQuery".}
+  ## See also https://www.postgresql.org/docs/current/libpq-async.html
 proc pqsendQueryParams*(conn: PPGconn, command: cstring, nParams: int32,
                         paramTypes: POid, paramValues: cstringArray,
                         paramLengths, paramFormats: ptr int32,
@@ -248,6 +251,9 @@ proc pqsendQueryPrepared*(conn: PPGconn, stmtName: cstring, nParams: int32,
                           paramLengths, paramFormats: ptr int32,
                           resultFormat: int32): int32{.cdecl, dynlib: dllName,
     importc: "PQsendQueryPrepared".}
+proc pqSetSingleRowMode*(conn: PPGconn): int32{.cdecl, dynlib: dllName,
+    importc: "PQsetSingleRowMode".}
+  ## See also https://www.postgresql.org/docs/current/libpq-single-row-mode.html
 proc pqgetResult*(conn: PPGconn): PPGresult{.cdecl, dynlib: dllName,
     importc: "PQgetResult".}
 proc pqisBusy*(conn: PPGconn): int32{.cdecl, dynlib: dllName,

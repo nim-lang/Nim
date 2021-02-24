@@ -1119,7 +1119,7 @@ proc SwitchToFiber*(fiber: pointer): void {.stdcall, discardable, dynlib: "kerne
 proc GetCurrentFiber*(): pointer {.stdcall, importc, header: "windows.h".}
 
 proc toFILETIME*(t: int64): FILETIME =
-  ## Convert the Windows file time timestamp ``t`` to ``FILETIME``.
+  ## Convert the Windows file time timestamp `t` to `FILETIME`.
   result = FILETIME(dwLowDateTime: cast[DWORD](t), dwHighDateTime: DWORD(t shr 32))
 
 type

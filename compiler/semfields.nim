@@ -106,10 +106,10 @@ proc semForFields(c: PContext, n: PNode, m: TMagic): PNode =
   # so that 'break' etc. work as expected, we produce
   # a 'while true: stmt; break' loop ...
   result = newNodeI(nkWhileStmt, n.info, 2)
-  var trueSymbol = strTableGet(c.graph.systemModule.tab, getIdent(c.cache, "true"))
+  var trueSymbol = systemModuleSym(c.graph, getIdent(c.cache, "true"))
   if trueSymbol == nil:
     localError(c.config, n.info, "system needs: 'true'")
-    trueSymbol = newSym(skUnknown, getIdent(c.cache, "true"), nextId c.idgen, getCurrOwner(c), n.info)
+    trueSymbol = newSym(skUnknown, getIdent(c.cache, "true"), nextSymId c.idgen, getCurrOwner(c), n.info)
     trueSymbol.typ = getSysType(c.graph, n.info, tyBool)
 
   result[0] = newSymNode(trueSymbol, n.info)

@@ -31,11 +31,13 @@ import
   strutils, ast, types, msgs, renderer, vmdef,
   intsets, magicsys, options, lowerings, lineinfos, transf
 
+from modulegraphs import getBody
+
 const
   debugEchoCode* = defined(nimVMDebug)
 
 when debugEchoCode:
-  import asciitables
+  import std/private/asciitables
 when hasFFI:
   import evalffi
 
@@ -453,7 +455,12 @@ proc sameConstant*(a, b: PNode): bool =
     of nkSym: result = a.sym == b.sym
     of nkIdent: result = a.ident.id == b.ident.id
     of nkCharLit..nkUInt64Lit: result = a.intVal == b.intVal
-    of nkFloatLit..nkFloat64Lit: result = a.floatVal == b.floatVal
+    of nkFloatLit..nkFloat64Lit:
+      result = cast[uint64](a.floatVal) == cast[uint64](b.floatVal)
+      # refs bug #16469
+      # if we wanted to only distinguish 0.0 vs -0.0:
+      # if a.floatVal == 0.0: result = cast[uint64](a.floatVal) == cast[uint64](b.floatVal)
+      # else: result = a.floatVal == b.floatVal
     of nkStrLit..nkTripleStrLit: result = a.strVal == b.strVal
     of nkType, nkNilLit: result = a.typ == b.typ
     of nkEmpty: result = true
@@ -498,7 +505,10 @@ proc genCase(c: PCtx; n: PNode; dest: var TDest) =
       let it = n[i]
       if it.len == 1:
         # else stmt:
-        c.gen(it[0], dest)
+        if it[0].kind != nkNilLit or it[0].typ != nil:
+          # an nkNilLit with nil for typ implies there is no else branch, this
+          # avoids unused related errors as we've already consumed the dest
+          c.gen(it[0], dest)
       else:
         let b = rawGenLiteral(c, it)
         c.gABx(it, opcBranch, tmp, b)
@@ -1027,7 +1037,10 @@ proc genMagic(c: PCtx; n: PNode; dest: var TDest; m: TMagic) =
   of mLengthOpenArray, mLengthArray, mLengthSeq:
     genUnaryABI(c, n, dest, opcLenSeq)
   of mLengthStr:
-    genUnaryABI(c, n, dest, opcLenStr)
+    case n[1].typ.kind
+    of tyString: genUnaryABI(c, n, dest, opcLenStr)
+    of tyCString: genUnaryABI(c, n, dest, opcLenCstring)
+    else: doAssert false, $n[1].typ.kind
   of mIncl, mExcl:
     unused(c, n, dest)
     var d = c.genx(n[1])
@@ -1171,10 +1184,9 @@ proc genMagic(c: PCtx; n: PNode; dest: var TDest; m: TMagic) =
     if dest < 0: dest = c.getTemp(n.typ)
     let tmp = c.genx(n[1])
     case n[1].typ.skipTypes(abstractVar-{tyTypeDesc}).kind:
-    of tyString, tyCString:
-      c.gABI(n, opcLenStr, dest, tmp, 1)
-    else:
-      c.gABI(n, opcLenSeq, dest, tmp, 1)
+    of tyString: c.gABI(n, opcLenStr, dest, tmp, 1)
+    of tyCString: c.gABI(n, opcLenCstring, dest, tmp, 1)
+    else: c.gABI(n, opcLenSeq, dest, tmp, 1)
     c.freeTemp(tmp)
   of mEcho:
     unused(c, n, dest)
@@ -1565,11 +1577,11 @@ proc genTypeLit(c: PCtx; t: PType; dest: var TDest) =
   n.typ = t
   genLit(c, n, dest)
 
-proc importcCond*(s: PSym): bool {.inline.} =
+proc importcCond*(c: PCtx; s: PSym): bool {.inline.} =
   ## return true to importc `s`, false to execute its body instead (refs #8405)
   if sfImportc in s.flags:
     if s.kind in routineKinds:
-      return s.ast[bodyPos].kind == nkEmpty
+      return getBody(c.graph, s).kind == nkEmpty
 
 proc importcSym(c: PCtx; info: TLineInfo; s: PSym) =
   when hasFFI:
@@ -1610,7 +1622,7 @@ proc genRdVar(c: PCtx; n: PNode; dest: var TDest; flags: TGenFlags) =
     elif s.position == 0:
       cannotEval(c, n)
     if s.position == 0:
-      if importcCond(s) or isImportcVar: c.importcSym(n.info, s)
+      if importcCond(c, s) or isImportcVar: c.importcSym(n.info, s)
       else: genGlobalInit(c, n, s)
     if dest < 0: dest = c.getTemp(n.typ)
     assert s.typ != nil
@@ -1836,7 +1848,7 @@ proc genVarSection(c: PCtx; n: PNode) =
       checkCanEval(c, a[0])
       if s.isGlobal:
         if s.position == 0:
-          if importcCond(s): c.importcSym(a.info, s)
+          if importcCond(c, s): c.importcSym(a.info, s)
           else:
             let sa = getNullValue(s.typ, a.info, c.config)
             #if s.ast.isNil: getNullValue(s.typ, a.info)
@@ -1958,15 +1970,8 @@ proc matches(s: PSym; x: string): bool =
   for i in 1..y.len:
     if s == nil or (y[^i].cmpIgnoreStyle(s.name.s) != 0 and y[^i] != "*"):
       return false
-    s = s.owner
-  result = true
-
-proc matches(s: PSym; y: varargs[string]): bool =
-  var s = s
-  for i in 1..y.len:
-    if s == nil or (y[^i].cmpIgnoreStyle(s.name.s) != 0 and y[^i] != "*"):
-      return false
     s = if sfFromGeneric in s.flags: s.owner.owner else: s.owner
+    while s != nil and s.kind == skPackage and s.owner != nil: s = s.owner
   result = true
 
 proc procIsCallback(c: PCtx; s: PSym): bool =
@@ -1992,7 +1997,7 @@ proc gen(c: PCtx; n: PNode; dest: var TDest; flags: TGenFlags = {}) =
       if s.kind == skIterator and s.typ.callConv == TCallingConvention.ccClosure:
         globalError(c.config, n.info, "Closure iterators are not supported by VM!")
       if procIsCallback(c, s): discard
-      elif importcCond(s): c.importcSym(n.info, s)
+      elif importcCond(c, s): c.importcSym(n.info, s)
       genLit(c, n, dest)
     of skConst:
       let constVal = if s.ast != nil: s.ast else: s.typ.n
@@ -2024,11 +2029,11 @@ proc gen(c: PCtx; n: PNode; dest: var TDest; flags: TGenFlags = {}) =
       elif s.kind == skMethod:
         localError(c.config, n.info, "cannot call method " & s.name.s &
           " at compile time")
-      elif matches(s, "stdlib", "marshal", "to"):
+      elif matches(s, "stdlib.marshal.to"):
         # XXX marshal load&store should not be opcodes, but use the
         # general callback mechanisms.
         genMarshalLoad(c, n, dest)
-      elif matches(s, "stdlib", "marshal", "$$"):
+      elif matches(s, "stdlib.marshal.$$"):
         genMarshalStore(c, n, dest)
       else:
         genCall(c, n, dest)

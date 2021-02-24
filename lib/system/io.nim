@@ -174,14 +174,18 @@ proc readBytes*(f: File, a: var openArray[int8|uint8], start, len: Natural): int
   ## `len` (if not as many bytes are remaining), but not greater.
   result = readBuffer(f, addr(a[start]), len)
 
+proc readChars*(f: File, a: var openArray[char]): int {.tags: [ReadIOEffect], benign.} =
+  ## reads up to `a.len` bytes into the buffer `a`. Returns
+  ## the actual number of bytes that have been read which may be less than
+  ## `a.len` (if not as many bytes are remaining), but not greater.
+  result = readBuffer(f, addr(a[0]), a.len)
+
 proc readChars*(f: File, a: var openArray[char], start, len: Natural): int {.
-  tags: [ReadIOEffect], benign.} =
+  tags: [ReadIOEffect], benign, deprecated:
+    "use other `readChars` overload, possibly via: readChars(toOpenArray(buf, start, len-1))".} =
   ## reads `len` bytes into the buffer `a` starting at ``a[start]``. Returns
   ## the actual number of bytes that have been read which may be less than
   ## `len` (if not as many bytes are remaining), but not greater.
-  ##
-  ## **Warning:** The buffer `a` must be pre-allocated. This can be done
-  ## using, for example, ``newString``.
   if (start + len) > len(a):
     raiseEIO("buffer overflow: (start+len) > length of openarray buffer")
   result = readBuffer(f, addr(a[start]), len)
@@ -223,6 +227,9 @@ when defined(windows):
     # But we cannot call printf directly as the string might contain \0.
     # So we have to loop over all the sections separated by potential \0s.
     var i = c_fprintf(f, "%s", s)
+    if i < 0:
+      if doRaise: raiseEIO("cannot write string to file")
+      return
     while i < s.len:
       if s[i] == '\0':
         let w = c_fputc('\0', f)
@@ -355,7 +362,7 @@ when defined(nimdoc) or (defined(posix) and not defined(nimscript)) or defined(w
       result = setHandleInformation(cast[IoHandle](f), HANDLE_FLAG_INHERIT,
                                     inheritable.WinDWORD) != 0
 
-proc readLine*(f: File, line: var TaintedString): bool {.tags: [ReadIOEffect],
+proc readLine*(f: File, line: var string): bool {.tags: [ReadIOEffect],
               benign.} =
   ## reads a line of text from the file `f` into `line`. May throw an IO
   ## exception.
@@ -417,33 +424,33 @@ proc readLine*(f: File, line: var TaintedString): bool {.tags: [ReadIOEffect],
         if buffer[i].uint16 == 26:  #Ctrl+Z
           close(f)  #has the same effect as setting EOF
           if i == 0:
-            line = TaintedString("")
+            line = ""
             return false
           numberOfCharsRead = i
           break
       buffer[numberOfCharsRead] = 0.Utf16Char
       when defined(nimv2):
-        line = TaintedString($toWideCString(buffer))
+        line = $toWideCString(buffer)
       else:
-        line = TaintedString($buffer)
+        line = $buffer
       return(true)
 
   var pos = 0
 
   # Use the currently reserved space for a first try
-  var sp = max(line.string.len, 80)
-  line.string.setLen(sp)
+  var sp = max(line.len, 80)
+  line.setLen(sp)
 
   while true:
     # memset to \L so that we can tell how far fgets wrote, even on EOF, where
     # fgets doesn't append an \L
-    for i in 0..<sp: line.string[pos+i] = '\L'
+    for i in 0..<sp: line[pos+i] = '\L'
 
     var fgetsSuccess: bool
     while true:
       # fixes #9634; this pattern may need to be abstracted as a template if reused;
       # likely other io procs need this for correctness.
-      fgetsSuccess = c_fgets(addr line.string[pos], sp.cint, f) != nil
+      fgetsSuccess = c_fgets(addr line[pos], sp.cint, f) != nil
       if fgetsSuccess: break
       when not defined(NimScript):
         if errno == EINTR:
@@ -453,20 +460,20 @@ proc readLine*(f: File, line: var TaintedString): bool {.tags: [ReadIOEffect],
       checkErr(f)
       break
 
-    let m = c_memchr(addr line.string[pos], '\L'.ord, cast[csize_t](sp))
+    let m = c_memchr(addr line[pos], '\L'.ord, cast[csize_t](sp))
     if m != nil:
       # \l found: Could be our own or the one by fgets, in any case, we're done
-      var last = cast[ByteAddress](m) - cast[ByteAddress](addr line.string[0])
-      if last > 0 and line.string[last-1] == '\c':
-        line.string.setLen(last-1)
+      var last = cast[ByteAddress](m) - cast[ByteAddress](addr line[0])
+      if last > 0 and line[last-1] == '\c':
+        line.setLen(last-1)
         return last > 1 or fgetsSuccess
         # We have to distinguish between two possible cases:
         # \0\l\0 => line ending in a null character.
         # \0\l\l => last line without newline, null was put there by fgets.
-      elif last > 0 and line.string[last-1] == '\0':
-        if last < pos + sp - 1 and line.string[last+1] != '\0':
+      elif last > 0 and line[last-1] == '\0':
+        if last < pos + sp - 1 and line[last+1] != '\0':
           dec last
-      line.string.setLen(last)
+      line.setLen(last)
       return last > 0 or fgetsSuccess
     else:
       # fgets will have inserted a null byte at the end of the string.
@@ -474,13 +481,13 @@ proc readLine*(f: File, line: var TaintedString): bool {.tags: [ReadIOEffect],
     # No \l found: Increase buffer and read more
     inc pos, sp
     sp = 128 # read in 128 bytes at a time
-    line.string.setLen(pos+sp)
+    line.setLen(pos+sp)
 
-proc readLine*(f: File): TaintedString  {.tags: [ReadIOEffect], benign.} =
+proc readLine*(f: File): string  {.tags: [ReadIOEffect], benign.} =
   ## reads a line of text from the file `f`. May throw an IO exception.
   ## A line of text may be delimited by ``LF`` or ``CRLF``. The newline
   ## character(s) are not part of the returned string.
-  result = TaintedString(newStringOfCap(80))
+  result = newStringOfCap(80)
   if not readLine(f, result): raiseEOF()
 
 proc write*(f: File, i: int) {.tags: [WriteIOEffect], benign.} =
@@ -560,7 +567,7 @@ proc readAllFile(file: File): string =
   var len = rawFileSize(file)
   result = readAllFile(file, len)
 
-proc readAll*(file: File): TaintedString {.tags: [ReadIOEffect], benign.} =
+proc readAll*(file: File): string {.tags: [ReadIOEffect], benign.} =
   ## Reads all data from the stream `file`.
   ##
   ## Raises an IO exception in case of an error. It is an error if the
@@ -573,9 +580,9 @@ proc readAll*(file: File): TaintedString {.tags: [ReadIOEffect], benign.} =
   else:
     let len = rawFileSize(file)
   if len > 0:
-    result = readAllFile(file, len).TaintedString
+    result = readAllFile(file, len)
   else:
-    result = readAllBuffer(file).TaintedString
+    result = readAllBuffer(file)
 
 proc writeLine*[Ty](f: File, x: varargs[Ty, `$`]) {.inline,
                           tags: [WriteIOEffect], benign.} =
@@ -780,6 +787,13 @@ when declared(stdout):
                      not defined(nintendoswitch) and not defined(freertos) and
                      hostOS != "any"
 
+  const echoDoRaise = not defined(nimLegacyEchoNoRaise) and not defined(guiapp) # see PR #16366
+
+  template checkErrMaybe(succeeded: bool): untyped =
+    if not succeeded:
+      when echoDoRaise:
+        checkErr(stdout)
+
   proc echoBinSafe(args: openArray[string]) {.compilerproc.} =
     when defined(androidNDK):
       var s = ""
@@ -792,20 +806,18 @@ when declared(stdout):
         proc flockfile(f: File) {.importc, nodecl.}
         proc funlockfile(f: File) {.importc, nodecl.}
         flockfile(stdout)
+        defer: funlockfile(stdout)
       when defined(windows) and compileOption("threads"):
         acquireSys echoLock
+        defer: releaseSys echoLock
       for s in args:
         when defined(windows):
-          writeWindows(stdout, s)
+          writeWindows(stdout, s, doRaise = echoDoRaise)
         else:
-          discard c_fwrite(s.cstring, cast[csize_t](s.len), 1, stdout)
+          checkErrMaybe(c_fwrite(s.cstring, cast[csize_t](s.len), 1, stdout) == s.len)
       const linefeed = "\n"
-      discard c_fwrite(linefeed.cstring, linefeed.len, 1, stdout)
-      discard c_fflush(stdout)
-      when stdOutLock:
-        funlockfile(stdout)
-      when defined(windows) and compileOption("threads"):
-        releaseSys echoLock
+      checkErrMaybe(c_fwrite(linefeed.cstring, linefeed.len, 1, stdout) == linefeed.len)
+      checkErrMaybe(c_fflush(stdout) == 0)
 
 
 when defined(windows) and not defined(nimscript) and not defined(js):
@@ -833,7 +845,7 @@ when defined(windows) and appType == "console" and
   discard setConsoleOutputCP(Utf8codepage)
   discard setConsoleCP(Utf8codepage)
 
-proc readFile*(filename: string): TaintedString {.tags: [ReadIOEffect], benign.} =
+proc readFile*(filename: string): string {.tags: [ReadIOEffect], benign.} =
   ## Opens a file named `filename` for reading, calls `readAll
   ## <#readAll,File>`_ and closes the file afterwards. Returns the string.
   ## Raises an IO exception in case of an error. If you need to call
@@ -874,7 +886,7 @@ proc writeFile*(filename: string, content: openArray[byte]) {.since: (1, 1).} =
   else:
     raise newException(IOError, "cannot open: " & filename)
 
-proc readLines*(filename: string, n: Natural): seq[TaintedString] =
+proc readLines*(filename: string, n: Natural): seq[string] =
   ## read `n` lines from the file named `filename`. Raises an IO exception
   ## in case of an error. Raises EOF if file does not contain at least `n` lines.
   ## Available at compile time. A line of text may be delimited by ``LF`` or ``CRLF``.
@@ -882,7 +894,7 @@ proc readLines*(filename: string, n: Natural): seq[TaintedString] =
   var f: File = nil
   if open(f, filename):
     try:
-      result = newSeq[TaintedString](n)
+      result = newSeq[string](n)
       for i in 0 .. n - 1:
         if not readLine(f, result[i]):
           raiseEOF()
@@ -891,10 +903,10 @@ proc readLines*(filename: string, n: Natural): seq[TaintedString] =
   else:
     sysFatal(IOError, "cannot open: " & filename)
 
-template readLines*(filename: string): seq[TaintedString] {.deprecated: "use readLines with two arguments".} =
+template readLines*(filename: string): seq[string] {.deprecated: "use readLines with two arguments".} =
   readLines(filename, 1)
 
-iterator lines*(filename: string): TaintedString {.tags: [ReadIOEffect].} =
+iterator lines*(filename: string): string {.tags: [ReadIOEffect].} =
   ## Iterates over any line in the file named `filename`.
   ##
   ## If the file does not exist `IOError` is raised. The trailing newline
@@ -910,12 +922,12 @@ iterator lines*(filename: string): TaintedString {.tags: [ReadIOEffect].} =
   ##     writeFile(filename, buffer)
   var f = open(filename, bufSize=8000)
   try:
-    var res = TaintedString(newStringOfCap(80))
+    var res = newStringOfCap(80)
     while f.readLine(res): yield res
   finally:
     close(f)
 
-iterator lines*(f: File): TaintedString {.tags: [ReadIOEffect].} =
+iterator lines*(f: File): string {.tags: [ReadIOEffect].} =
   ## Iterate over any line in the file `f`.
   ##
   ## The trailing newline character(s) are removed from the iterated lines.
@@ -928,5 +940,5 @@ iterator lines*(f: File): TaintedString {.tags: [ReadIOEffect].} =
   ##         if letter == '0':
   ##           result.zeros += 1
   ##       result.lines += 1
-  var res = TaintedString(newStringOfCap(80))
+  var res = newStringOfCap(80)
   while f.readLine(res): yield res

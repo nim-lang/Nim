@@ -100,6 +100,7 @@ proc logPendingOps() {.noconv.} =
   gLogger(gLog)
   gLog.count = 0
 
-addQuitProc logPendingOps
+import std/exitprocs
+addExitProc logPendingOps
 
 {.pop.}

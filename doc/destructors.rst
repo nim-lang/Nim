@@ -89,8 +89,9 @@ Lifetime-tracking hooks
 
 The memory management for Nim's standard ``string`` and ``seq`` types as
 well as other standard collections is performed via so-called
-"Lifetime-tracking hooks" or "type-bound operators". There are 3 different
-hooks for each (generic or concrete) object type ``T`` (``T`` can also be a
+"Lifetime-tracking hooks", which are particular `type bound operators <manual.html#procedures-type-bound-operators>`_.
+
+There are 3 different hooks for each (generic or concrete) object type ``T`` (``T`` can also be a
 ``distinct`` type) that are called implicitly by the compiler.
 
 (Note: The word "hook" here does not imply any kind of dynamic binding
@@ -376,8 +377,14 @@ it's subtle.
 
 The simple case of ``x = x`` cannot be turned
 into ``=sink(x, x); wasMoved(x)`` because that would lose ``x``'s value.
-The solution is that simple self-assignments are simply transformed into
-an empty statement that does nothing.
+The solution is that simple self-assignments that consist of
+
+- Symbols: ``x = x``
+- Field access: ``x.f = x.f``
+- Array, sequence or string access with indices known at compile-time: ``x[0] = x[0]``
+
+are transformed into an empty statement that does nothing.
+The compiler is free to optimize further cases.
 
 The complex case looks like a variant of ``x = f(x)``, we consider
 ``x = select(rand() < 0.5, x, y)`` here:

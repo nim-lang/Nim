@@ -113,10 +113,7 @@ proc xmlCheckedTag*(argsList: NimNode, tag: string, optAttr = "", reqAttr = "",
     result.add(newStrLitNode("</"))
     result.add(newStrLitNode(tag))
     result.add(newStrLitNode(">"))
-  when compiles(nestList(ident"&", result)):
-    result = nestList(ident"&", result)
-  else:
-    result = nestList(!"&", result)
+  result = nestList(ident"&", result)
 
 macro a*(e: varargs[untyped]): untyped =
   ## Generates the HTML ``a`` element.

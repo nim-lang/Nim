@@ -11,11 +11,11 @@
 ## and libraries, writing async procedures in Nim and converting callback-based code
 ## to promises.
 ##
-## A Nim procedure is asynchronous when it includes the ``{.async.}`` pragma. It
-## should always have a ``Future[T]`` return type or not have a return type at all.
-## A ``Future[void]`` return type is assumed by default.
+## A Nim procedure is asynchronous when it includes the `{.async.}` pragma. It
+## should always have a `Future[T]` return type or not have a return type at all.
+## A `Future[void]` return type is assumed by default.
 ##
-## This is roughly equivalent to the ``async`` keyword in JavaScript code.
+## This is roughly equivalent to the `async` keyword in JavaScript code.
 ##
 ## .. code-block:: nim
 ##  proc loadGame(name: string): Future[Game] {.async.} =
@@ -28,14 +28,14 @@
 ##     // code
 ##   }
 ##
-## A call to an asynchronous procedure usually needs ``await`` to wait for
-## the completion of the ``Future``.
+## A call to an asynchronous procedure usually needs `await` to wait for
+## the completion of the `Future`.
 ##
 ## .. code-block:: nim
 ##   var game = await loadGame(name)
 ##
 ## Often, you might work with callback-based API-s. You can wrap them with
-## asynchronous procedures using promises and ``newPromise``:
+## asynchronous procedures using promises and `newPromise`:
 ##
 ## .. code-block:: nim
 ##   proc loadGame(name: string): Future[Game] =
@@ -44,7 +44,7 @@
 ##         resolve(game)
 ##     return promise
 ##
-## Forward definitions work properly, you just need to always add the ``{.async.}`` pragma:
+## Forward definitions work properly, you just need to always add the `{.async.}` pragma:
 ##
 ## .. code-block:: nim
 ##   proc loadGame(name: string): Future[Game] {.async.}
@@ -57,11 +57,12 @@
 ## If you need to use this module with older versions of JavaScript, you can
 ## use a tool that backports the resulting JavaScript code, as babel.
 
-import jsffi
-import macros
-
-when not defined(js) and not defined(nimdoc) and not defined(nimsuggest):
+when not defined(js) and not defined(nimsuggest):
   {.fatal: "Module asyncjs is designed to be used with the JavaScript backend.".}
+
+import std/jsffi
+import std/macros
+import std/private/since
 
 type
   Future*[T] = ref object
@@ -69,7 +70,7 @@ type
   ## Wraps the return type of an asynchronous procedure.
 
   PromiseJs* {.importcpp: "Promise".} = ref object
-  ## A JavaScript Promise
+  ## A JavaScript Promise.
 
 
 proc replaceReturn(node: var NimNode) =
@@ -139,7 +140,7 @@ proc generateJsasync(arg: NimNode): NimNode =
 
 macro async*(arg: untyped): untyped =
   ## Macro which converts normal procedures into
-  ## javascript-compatible async procedures
+  ## javascript-compatible async procedures.
   if arg.kind == nnkStmtList:
     result = newStmtList()
     for oneProc in arg:
@@ -149,8 +150,70 @@ macro async*(arg: untyped): untyped =
 
 proc newPromise*[T](handler: proc(resolve: proc(response: T))): Future[T] {.importcpp: "(new Promise(#))".}
   ## A helper for wrapping callback-based functions
-  ## into promises and async procedures
+  ## into promises and async procedures.
 
 proc newPromise*(handler: proc(resolve: proc())): Future[void] {.importcpp: "(new Promise(#))".}
   ## A helper for wrapping callback-based functions
-  ## into promises and async procedures
+  ## into promises and async procedures.
+
+when defined(nimExperimentalAsyncjsThen):
+  since (1, 5, 1):
+    #[
+    TODO:
+    * map `Promise.all()`
+    * proc toString*(a: Error): cstring {.importjs: "#.toString()".}
+
+    Note:
+    We probably can't have a `waitFor` in js in browser (single threaded), but maybe it would be possible
+    in in nodejs, see https://nodejs.org/api/child_process.html#child_process_child_process_execsync_command_options
+    and https://stackoverflow.com/questions/61377358/javascript-wait-for-async-call-to-finish-before-returning-from-function-witho
+    ]#
+
+    type Error*  {.importjs: "Error".} = ref object of JsRoot
+      ## https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Error
+      message*: cstring
+      name*: cstring
+
+    type OnReject* = proc(reason: Error)
+
+    proc then*[T, T2](future: Future[T], onSuccess: proc(value: T): T2, onReject: OnReject = nil): Future[T2] =
+      ## See https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Promise/then
+      asm "`result` = `future`.then(`onSuccess`, `onReject`)"
+
+    proc then*[T](future: Future[T], onSuccess: proc(value: T), onReject: OnReject = nil): Future[void] =
+      ## See https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Promise/then
+      asm "`result` = `future`.then(`onSuccess`, `onReject`)"
+
+    proc then*(future: Future[void], onSuccess: proc(), onReject: OnReject = nil): Future[void] =
+      ## See https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Promise/then
+      asm "`result` = `future`.then(`onSuccess`, `onReject`)"
+
+    proc then*[T2](future: Future[void], onSuccess: proc(): T2, onReject: OnReject = nil): Future[T2] =
+      ## See https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Promise/then
+      asm "`result` = `future`.then(`onSuccess`, `onReject`)"
+
+    proc catch*[T](future: Future[T], onReject: OnReject): Future[void] =
+      ## See https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Promise/catch
+      runnableExamples:
+        from std/sugar import `=>`
+        from std/strutils import contains
+        proc fn(n: int): Future[int] {.async.} =
+          if n >= 7: raise newException(ValueError, "foobar: " & $n)
+          else: result = n * 2
+        proc main() {.async.} =
+          let x1 = await fn(3)
+          assert x1 == 3*2
+          let x2 = await fn(4)
+            .then((a: int) => a.float)
+            .then((a: float) => $a)
+          assert x2 == "8.0"
+
+          var reason: Error
+          await fn(6).catch((r: Error) => (reason = r))
+          assert reason == nil
+          await fn(7).catch((r: Error) => (reason = r))
+          assert reason != nil
+          assert  "foobar: 7" in $reason.message
+        discard main()
+
+      asm "`result` = `future`.catch(`onReject`)"

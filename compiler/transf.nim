@@ -87,7 +87,7 @@ proc getCurrOwner(c: PTransf): PSym =
   else: result = c.module
 
 proc newTemp(c: PTransf, typ: PType, info: TLineInfo): PNode =
-  let r = newSym(skTemp, getIdent(c.graph.cache, genPrefix), nextId(c.idgen), getCurrOwner(c), info)
+  let r = newSym(skTemp, getIdent(c.graph.cache, genPrefix), nextSymId(c.idgen), getCurrOwner(c), info)
   r.typ = typ #skipTypes(typ, {tyGenericInst, tyAlias, tySink})
   incl(r.flags, sfFromGeneric)
   let owner = getCurrOwner(c)
@@ -126,7 +126,7 @@ proc transformSymAux(c: PTransf, n: PNode): PNode =
   var tc = c.transCon
   if sfBorrow in s.flags and s.kind in routineKinds:
     # simply exchange the symbol:
-    b = s.getBody
+    b = getBody(c.graph, s)
     if b.kind != nkSym: internalError(c.graph.config, n.info, "wrong AST for borrowed symbol")
     b = newSymNode(b.sym, n.info)
   elif c.inlining > 0:
@@ -163,7 +163,7 @@ proc freshVar(c: PTransf; v: PSym): PNode =
   if owner.isIterator and not c.tooEarly:
     result = freshVarForClosureIter(c.graph, v, c.idgen, owner)
   else:
-    var newVar = copySym(v, nextId(c.idgen))
+    var newVar = copySym(v, nextSymId(c.idgen))
     incl(newVar.flags, sfFromGeneric)
     newVar.owner = owner
     result = newSymNode(newVar)
@@ -233,7 +233,7 @@ proc hasContinue(n: PNode): bool =
       if hasContinue(n[i]): return true
 
 proc newLabel(c: PTransf, n: PNode): PSym =
-  result = newSym(skLabel, nil, nextId(c.idgen), getCurrOwner(c), n.info)
+  result = newSym(skLabel, nil, nextSymId(c.idgen), getCurrOwner(c), n.info)
   result.name = getIdent(c.graph.cache, genPrefix)
 
 proc transformBlock(c: PTransf, n: PNode): PNode =
@@ -496,7 +496,7 @@ proc transformConv(c: PTransf, n: PNode): PNode =
   of tyOpenArray, tyVarargs:
     result = transform(c, n[1])
     #result = transformSons(c, n)
-    result.typ = takeType(n.typ, n[1].typ, c.idgen)
+    result.typ = takeType(n.typ, n[1].typ, c.graph, c.idgen)
     #echo n.info, " came here and produced ", typeToString(result.typ),
     #   " from ", typeToString(n.typ), " and ", typeToString(n[1].typ)
   of tyCString:
@@ -524,6 +524,7 @@ proc transformConv(c: PTransf, n: PNode): PNode =
         result[0] = transform(c, n[1])
       else:
         result = transform(c, n[1])
+        result.typ = n.typ
     else:
       result = transformSons(c, n)
   of tyObject:
@@ -536,6 +537,7 @@ proc transformConv(c: PTransf, n: PNode): PNode =
       result[0] = transform(c, n[1])
     else:
       result = transform(c, n[1])
+      result.typ = n.typ
   of tyGenericParam, tyOrdinal:
     result = transform(c, n[1])
     # happens sometimes for generated assignments, etc.
@@ -594,7 +596,7 @@ proc findWrongOwners(c: PTransf, n: PNode) =
   else:
     for i in 0..<n.safeLen: findWrongOwners(c, n[i])
 
-proc isSimpleIteratorVar(iter: PSym): bool =
+proc isSimpleIteratorVar(c: PTransf; iter: PSym): bool =
   proc rec(n: PNode; owner: PSym; dangerousYields: var int) =
     case n.kind
     of nkEmpty..nkNilLit: discard
@@ -607,8 +609,10 @@ proc isSimpleIteratorVar(iter: PSym): bool =
       for c in n: rec(c, owner, dangerousYields)
 
   var dangerousYields = 0
-  rec(iter.ast[bodyPos], iter, dangerousYields)
+  rec(getBody(c.graph, iter), iter, dangerousYields)
   result = dangerousYields == 0
+
+template destructor(t: PType): PSym = getAttachedOp(c.graph, t, attachedDestructor)
 
 proc transformFor(c: PTransf, n: PNode): PNode =
   # generate access statements for the parameters (unless they are constant)
@@ -650,7 +654,7 @@ proc transformFor(c: PTransf, n: PNode): PNode =
       for j in 0..<n[i].len-1:
         addVar(v, copyTree(n[i][j])) # declare new vars
     else:
-      if n[i].kind == nkSym and isSimpleIteratorVar(iter):
+      if n[i].kind == nkSym and isSimpleIteratorVar(c, iter):
         incl n[i].sym.flags, sfCursor
       addVar(v, copyTree(n[i])) # declare new vars
   stmtList.add(v)
@@ -791,7 +795,7 @@ proc transformCall(c: PTransf, n: PNode): PNode =
         while (j < n.len):
           let b = transform(c, n[j])
           if not isConstExpr(b): break
-          a = evalOp(op.magic, n, a, b, nil, c.graph)
+          a = evalOp(op.magic, n, a, b, nil, c.idgen, c.graph)
           inc(j)
       result.add(a)
     if result.len == 2: result = result[1]
@@ -869,7 +873,7 @@ proc commonOptimizations*(g: ModuleGraph; idgen: IdGenerator; c: PSym, n: PNode)
         while j < args.len:
           let b = args[j]
           if not isConstExpr(b): break
-          a = evalOp(op.magic, result, a, b, nil, g)
+          a = evalOp(op.magic, result, a, b, nil, idgen, g)
           inc(j)
       result.add(a)
     if result.len == 2: result = result[1]
@@ -1087,12 +1091,12 @@ proc transformBody*(g: ModuleGraph; idgen: IdGenerator; prc: PSym; cache: bool):
 
   if prc.transformedBody != nil:
     result = prc.transformedBody
-  elif nfTransf in prc.ast[bodyPos].flags or prc.kind in {skTemplate}:
-    result = prc.ast[bodyPos]
+  elif nfTransf in getBody(g, prc).flags or prc.kind in {skTemplate}:
+    result = getBody(g, prc)
   else:
     prc.transformedBody = newNode(nkEmpty) # protects from recursion
     var c = openTransf(g, prc.getModule, "", idgen)
-    result = liftLambdas(g, prc, prc.ast[bodyPos], c.tooEarly, c.idgen)
+    result = liftLambdas(g, prc, getBody(g, prc), c.tooEarly, c.idgen)
     result = processTransf(c, result, prc)
     liftDefer(c, result)
     result = liftLocalsIfRequested(prc, result, g.cache, g.config, c.idgen)
@@ -1108,6 +1112,7 @@ proc transformBody*(g: ModuleGraph; idgen: IdGenerator; prc: PSym; cache: bool):
       prc.transformedBody = result
     else:
       prc.transformedBody = nil
+    # XXX Rodfile support for transformedBody!
 
   #if prc.name.s == "main":
   #  echo "transformed into ", renderTree(result, {renderIds})

@@ -28,7 +28,7 @@
 ## See https://nim-lang.github.io/Nim/manual_experimental.html#view-types-algorithm
 ## for a high-level description of how borrow checking works.
 
-import ast, types, lineinfos, options, msgs, renderer, typeallowed
+import ast, types, lineinfos, options, msgs, renderer, typeallowed, modulegraphs
 from trees import getMagic, isNoSideEffectPragma, stupidStmtListExpr
 from isolation_check import canAlias
 
@@ -57,6 +57,7 @@ type
     ownsData,
     preventCursor,
     isReassigned,
+    isConditionallyReassigned,
     viewDoesMutate,
     viewBorrowsFromConst
 
@@ -98,8 +99,9 @@ type
     goals: set[Goal]
     unanalysableMutation: bool
     inAsgnSource, inConstructor, inNoSideEffectSection: int
+    inConditional, inLoop: int
     owner: PSym
-    config: ConfigRef
+    g: ModuleGraph
 
 proc mutationAfterConnection(g: MutationInfo): bool {.inline.} =
   #echo g.maxMutation.int, " ", g.minConnection.int, " ", g.param
@@ -509,11 +511,11 @@ proc borrowFrom(c: var Partitions; dest: PSym; src: PNode) =
 
   let s = pathExpr(src, c.owner)
   if s == nil:
-    localError(c.config, src.info, "cannot borrow from " & $src & ", it is not a path expression; " & url)
+    localError(c.g.config, src.info, "cannot borrow from " & $src & ", it is not a path expression; " & url)
   elif s.kind == nkSym:
     if dest.kind == skResult:
       if s.sym.kind != skParam or s.sym.position != 0:
-        localError(c.config, src.info, "'result' must borrow from the first parameter")
+        localError(c.g.config, src.info, "'result' must borrow from the first parameter")
 
     let vid = variableId(c, dest)
     if vid >= 0:
@@ -539,13 +541,13 @@ proc borrowingCall(c: var Partitions; destType: PType; n: PNode; i: int) =
     when false:
       let isView = directViewType(destType) == immutableView
       if n[0].kind == nkSym and n[0].sym.name.s == "[]=":
-        localError(c.config, n[i].info, "attempt to mutate an immutable view")
+        localError(c.g.config, n[i].info, "attempt to mutate an immutable view")
 
     for j in i+1..<n.len:
       if getMagic(n[j]) == mSlice:
         borrowFrom(c, v.sym, n[j])
   else:
-    localError(c.config, n[i].info, "cannot determine the target of the borrow")
+    localError(c.g.config, n[i].info, "cannot determine the target of the borrow")
 
 proc borrowingAsgn(c: var Partitions; dest, src: PNode) =
   proc mutableParameter(n: PNode): bool {.inline.} =
@@ -569,7 +571,7 @@ proc borrowingAsgn(c: var Partitions; dest, src: PNode) =
           mutableParameter(dest[0][0]):
         discard "remains a mutable location anyhow"
       else:
-        localError(c.config, dest.info, "attempt to mutate a borrowed location from an immutable view")
+        localError(c.g.config, dest.info, "attempt to mutate a borrowed location from an immutable view")
     of noView: discard "nothing to do"
 
 proc containsPointer(t: PType): bool =
@@ -594,7 +596,7 @@ proc deps(c: var Partitions; dest, src: PNode) =
       for s in sources:
         connect(c, t, s, dest.info)
 
-  if cursorInference in c.goals and src.kind != nkEmpty:    
+  if cursorInference in c.goals and src.kind != nkEmpty:
     let d = pathExpr(dest, c.owner)
     if d != nil and d.kind == nkSym:
       let vid = variableId(c, d.sym)
@@ -603,7 +605,7 @@ proc deps(c: var Partitions; dest, src: PNode) =
         for s in sources:
           if s == d.sym:
             discard "assignments like: it = it.next are fine"
-          elif {sfGlobal, sfThread} * s.flags != {} or hasDisabledAsgn(s.typ):
+          elif {sfGlobal, sfThread} * s.flags != {} or hasDisabledAsgn(c.g, s.typ):
             # do not borrow from a global variable or from something with a
             # disabled assignment operator.
             c.s[vid].flags.incl preventCursor
@@ -748,6 +750,13 @@ proc traverse(c: var Partitions; n: PNode) =
   else:
     for child in n: traverse(c, child)
 
+proc markAsReassigned(c: var Partitions; vid: int) {.inline.} =
+  c.s[vid].flags.incl isReassigned
+  if c.inConditional > 0 and c.inLoop > 0:
+    # bug #17033: live ranges with loops and conditionals are too
+    # complex for our current analysis, so we prevent the cursorfication.
+    c.s[vid].flags.incl isConditionallyReassigned
+
 proc computeLiveRanges(c: var Partitions; n: PNode) =
   # first pass: Compute live ranges for locals.
   # **Watch out!** We must traverse the tree like 'traverse' does
@@ -777,7 +786,7 @@ proc computeLiveRanges(c: var Partitions; n: PNode) =
         if n[1].kind == nkSym and (c.s[vid].reassignedTo == 0 or c.s[vid].reassignedTo == n[1].sym.id):
           c.s[vid].reassignedTo = n[1].sym.id
         else:
-          c.s[vid].flags.incl isReassigned
+          markAsReassigned(c, vid)
 
   of nkSym:
     dec c.abstractTime
@@ -804,7 +813,7 @@ proc computeLiveRanges(c: var Partitions; n: PNode) =
         if not paramType.isCompileTimeOnly and paramType.kind == tyVar:
           let vid = variableId(c, it.sym)
           if vid >= 0:
-            c.s[vid].flags.incl isReassigned
+            markAsReassigned(c, vid)
 
   of nkAddr, nkHiddenAddr:
     computeLiveRanges(c, n[0])
@@ -822,12 +831,18 @@ proc computeLiveRanges(c: var Partitions; n: PNode) =
     #   while cond:
     #     mutate(graph)
     #     connect(graph, cursorVar)
+    inc c.inLoop
     for child in n: computeLiveRanges(c, child)
+    inc c.inLoop
+  of nkElifBranch, nkElifExpr, nkElse, nkOfBranch:
+    inc c.inConditional
+    for child in n: computeLiveRanges(c, child)
+    dec c.inConditional
   else:
     for child in n: computeLiveRanges(c, child)
 
-proc computeGraphPartitions*(s: PSym; n: PNode; config: ConfigRef; goals: set[Goal]): Partitions =
-  result = Partitions(owner: s, config: config, goals: goals)
+proc computeGraphPartitions*(s: PSym; n: PNode; g: ModuleGraph; goals: set[Goal]): Partitions =
+  result = Partitions(owner: s, g: g, goals: goals)
   if s.kind notin {skModule, skMacro}:
     let params = s.typ.n
     for i in 1..<params.len:
@@ -892,11 +907,12 @@ proc checkBorrowedLocations*(par: var Partitions; body: PNode; config: ConfigRef
       #if par.s[rid].con.kind == isRootOf and dangerousMutation(par.graphs[par.s[rid].con.graphIndex], par.s[i]):
       #  cannotBorrow(config, s, par.graphs[par.s[rid].con.graphIndex])
 
-proc computeCursors*(s: PSym; n: PNode; config: ConfigRef) =
-  var par = computeGraphPartitions(s, n, config, {cursorInference})
+proc computeCursors*(s: PSym; n: PNode; g: ModuleGraph) =
+  var par = computeGraphPartitions(s, n, g, {cursorInference})
   for i in 0 ..< par.s.len:
     let v = addr(par.s[i])
-    if v.flags * {ownsData, preventCursor} == {} and v.sym.kind notin {skParam, skResult} and
+    if v.flags * {ownsData, preventCursor, isConditionallyReassigned} == {} and
+        v.sym.kind notin {skParam, skResult} and
         v.sym.flags * {sfThread, sfGlobal} == {} and hasDestructor(v.sym.typ) and
         v.sym.typ.skipTypes({tyGenericInst, tyAlias}).kind != tyOwned:
       let rid = root(par, i)

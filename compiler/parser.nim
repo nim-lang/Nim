@@ -164,8 +164,6 @@ proc validInd(p: var Parser): bool {.inline.} =
 proc rawSkipComment(p: var Parser, node: PNode) =
   if p.tok.tokType == tkComment:
     if node != nil:
-      when not defined(nimNoNilSeqs):
-        if node.comment == nil: node.comment = ""
       when defined(nimpretty):
         if p.tok.commentOffsetB > p.tok.commentOffsetA:
           node.comment.add fileSection(p.lex.config, p.lex.fileIdx, p.tok.commentOffsetA, p.tok.commentOffsetB)
@@ -1310,6 +1308,7 @@ proc postExprBlocks(p: var Parser, x: PNode): PNode =
   #|                            | IND{=} 'of' exprList ':' stmt
   #|                            | IND{=} 'elif' expr ':' stmt
   #|                            | IND{=} 'except' exprList ':' stmt
+  #|                            | IND{=} 'finally' ':' stmt
   #|                            | IND{=} 'else' ':' stmt )*
   result = x
   if p.tok.indent >= 0: return
@@ -1364,6 +1363,9 @@ proc postExprBlocks(p: var Parser, x: PNode): PNode =
         of tkExcept:
           nextBlock = newNodeP(nkExceptBranch, p)
           exprList(p, tkColon, nextBlock)
+        of tkFinally:
+          nextBlock = newNodeP(nkFinally, p)
+          getTok(p)
         of tkElse:
           nextBlock = newNodeP(nkElse, p)
           getTok(p)
@@ -1374,7 +1376,7 @@ proc postExprBlocks(p: var Parser, x: PNode): PNode =
       nextBlock.flags.incl nfBlockArg
       result.add nextBlock
 
-      if nextBlock.kind == nkElse: break
+      if nextBlock.kind in {nkElse, nkFinally}: break
   else:
     if openingParams.kind != nkEmpty:
       parMessage(p, "expected ':'")
@@ -1998,12 +2000,18 @@ proc parseTypeClass(p: var Parser): PNode =
   #|               &IND{>} stmt
   result = newNodeP(nkTypeClassTy, p)
   getTok(p)
-  var args = newNodeP(nkArgList, p)
-  result.add(args)
-  args.add(p.parseTypeClassParam)
-  while p.tok.tokType == tkComma:
-    getTok(p)
+  if p.tok.tokType == tkComment:
+    skipComment(p, result)
+
+  if p.tok.indent < 0:
+    var args = newNodeP(nkArgList, p)
+    result.add(args)
     args.add(p.parseTypeClassParam)
+    while p.tok.tokType == tkComma:
+      getTok(p)
+      args.add(p.parseTypeClassParam)
+  else:
+    result.add(p.emptyNode) # see ast.isNewStyleConcept
   if p.tok.tokType == tkCurlyDotLe and p.validInd:
     result.add(parsePragma(p))
   else:

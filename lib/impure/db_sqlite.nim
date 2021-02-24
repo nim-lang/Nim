@@ -22,8 +22,8 @@
 ## Parameter substitution
 ## ----------------------
 ##
-## All ``db_*`` modules support the same form of parameter substitution.
-## That is, using the ``?`` (question mark) to signify the place where a
+## All `db_*` modules support the same form of parameter substitution.
+## That is, using the `?` (question mark) to signify the place where a
 ## value should be placed. For example:
 ##
 ## .. code-block:: Nim
@@ -149,7 +149,7 @@
 ## Note
 ## ====
 ## This module does not implement any ORM features such as mapping the types from the schema.
-## Instead, a ``seq[string]`` is returned for each row.
+## Instead, a `seq[string]` is returned for each row.
 ##
 ## The reasoning is as follows:
 ## 1. it's close to what many DBs offer natively (char**)
@@ -221,7 +221,7 @@ proc dbFormat(formatstr: SqlQuery, args: varargs[string]): string =
       add(result, c)
 
 proc prepare*(db: DbConn; q: string): SqlPrepared {.since: (1, 3).} =
-  ## Creates a new ``SqlPrepared`` statement.
+  ## Creates a new `SqlPrepared` statement.
   if prepare_v2(db, q, q.len.cint,result.PStmt, nil) != SQLITE_OK:
     discard finalize(result.PStmt)
     dbError(db)
@@ -310,8 +310,8 @@ iterator fastRows*(db: DbConn, query: SqlQuery,
   ## if you require **ALL** the rows.
   ##
   ## **Note:** Breaking the `fastRows()` iterator during a loop will cause the
-  ## next database query to raise a `DbError` exception ``unable to close due
-  ## to ...``.
+  ## next database query to raise a `DbError` exception `unable to close due
+  ## to ...`.
   ##
   ## **Examples:**
   ##
@@ -674,8 +674,8 @@ proc insertID*(db: DbConn, query: SqlQuery,
   ## generated ID for the row.
   ##
   ## Raises a `DbError` exception when failed to insert row.
-  ## For Postgre this adds ``RETURNING id`` to the query, so it only works
-  ## if your primary key is named ``id``.
+  ## For Postgre this adds `RETURNING id` to the query, so it only works
+  ## if your primary key is named `id`.
   ##
   ## **Examples:**
   ##
@@ -755,7 +755,7 @@ proc open*(connection, user, password, database: string): DbConn {.
   ## Opens a database connection. Raises a `DbError` exception if the connection
   ## could not be established.
   ##
-  ## **Note:** Only the ``connection`` parameter is used for ``sqlite``.
+  ## **Note:** Only the `connection` parameter is used for `sqlite`.
   ##
   ## **Examples:**
   ##

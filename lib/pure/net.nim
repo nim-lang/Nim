@@ -21,8 +21,19 @@
 ##
 ## In order to use the SSL procedures defined in this module, you will need to
 ## compile your application with the ``-d:ssl`` flag. See the
-## `newContext<net.html#newContext%2Cstring%2Cstring%2Cstring%2Cstring%2Cstring>`_
+## `newContext<net.html#newContext%2Cstring%2Cstring%2Cstring%2Cstring>`_
 ## procedure for additional details.
+##
+##
+## SSL on Windows
+## ==============
+##
+## On Windows the SSL library checks for valid certificates.
+## It uses the `cacert.pem` file for this purpose which was extracted
+## from `https://curl.se/ca/cacert.pem`. Besides
+## the OpenSSL DLLs (e.g. libssl-1_1-x64.dll, libcrypto-1_1-x64.dll) you
+## also need to ship `cacert.pem` with your `.exe` file.
+##
 ##
 ## Examples
 ## ========
@@ -77,7 +88,6 @@
 import std/private/since
 
 import nativesockets, os, strutils, times, sets, options, std/monotimes
-from ssl_certs import scanSSLCertificates
 import ssl_config
 export nativesockets.Port, nativesockets.`$`, nativesockets.`==`
 export Domain, SockType, Protocol
@@ -90,6 +100,8 @@ when useWinVersion:
 
 when defineSsl:
   import openssl
+  when not defined(nimDisableCertificateValidation):
+    from ssl_certs import scanSSLCertificates
 
 # Note: The enumerations are mapped to Window's constants.
 
@@ -446,14 +458,14 @@ proc toSockAddr*(address: IpAddress, port: Port, sa: var Sockaddr_storage,
   of IpAddressFamily.IPv4:
     sl = sizeof(Sockaddr_in).SockLen
     let s = cast[ptr Sockaddr_in](addr sa)
-    s.sin_family = type(s.sin_family)(toInt(AF_INET))
+    s.sin_family = typeof(s.sin_family)(toInt(AF_INET))
     s.sin_port = port
     copyMem(addr s.sin_addr, unsafeAddr address.address_v4[0],
             sizeof(s.sin_addr))
   of IpAddressFamily.IPv6:
     sl = sizeof(Sockaddr_in6).SockLen
     let s = cast[ptr Sockaddr_in6](addr sa)
-    s.sin6_family = type(s.sin6_family)(toInt(AF_INET6))
+    s.sin6_family = typeof(s.sin6_family)(toInt(AF_INET6))
     s.sin6_port = port
     copyMem(addr s.sin6_addr, unsafeAddr address.address_v6[0],
             sizeof(s.sin6_addr))
@@ -551,7 +563,7 @@ when defineSsl:
 
   proc newContext*(protVersion = protSSLv23, verifyMode = CVerifyPeer,
                    certFile = "", keyFile = "", cipherList = CiphersIntermediate,
-                   caDir = "", caFile = ""): SSLContext =
+                   caDir = "", caFile = ""): SslContext =
     ## Creates an SSL context.
     ##
     ## Protocol version specifies the protocol to use. SSLv2, SSLv3, TLSv1
@@ -611,7 +623,7 @@ when defineSsl:
     if newCTX.SSL_CTX_set_ecdh_auto(1) != 1:
       raiseSSLError()
 
-    when defined(nimDisableCertificateValidation) or defined(windows):
+    when defined(nimDisableCertificateValidation):
       newCTX.SSL_CTX_set_verify(SSL_VERIFY_NONE, nil)
     else:
       case verifyMode
@@ -626,11 +638,13 @@ when defineSsl:
     discard newCTX.SSLCTXSetMode(SSL_MODE_AUTO_RETRY)
     newCTX.loadCertificates(certFile, keyFile)
 
-    when not defined(nimDisableCertificateValidation) and not defined(windows):
+    const VerifySuccess = 1 # SSL_CTX_load_verify_locations returns 1 on success.
+
+    when not defined(nimDisableCertificateValidation):
       if verifyMode != CVerifyNone:
         # Use the caDir and caFile parameters if set
         if caDir != "" or caFile != "":
-          if newCTX.SSL_CTX_load_verify_locations(caFile, caDir) != 0:
+          if newCTX.SSL_CTX_load_verify_locations(caFile, caDir) != VerifySuccess:
             raise newException(IOError, "Failed to load SSL/TLS CA certificate(s).")
 
         else:
@@ -638,13 +652,13 @@ when defineSsl:
           # the SSL_CERT_FILE and SSL_CERT_DIR env vars
           var found = false
           for fn in scanSSLCertificates():
-            if newCTX.SSL_CTX_load_verify_locations(fn, "") == 0:
+            if newCTX.SSL_CTX_load_verify_locations(fn, nil) == VerifySuccess:
               found = true
               break
           if not found:
             raise newException(IOError, "No SSL/TLS CA certificates found.")
 
-    result = SSLContext(context: newCTX, referencedData: initHashSet[int](),
+    result = SslContext(context: newCTX, referencedData: initHashSet[int](),
       extraInternal: new(SslContextExtraInternal))
 
   proc getExtraInternal(ctx: SslContext): SslContextExtraInternal =
@@ -657,7 +671,7 @@ when defineSsl:
     # That means we can assume that the next internal index is the length of
     # extra data indexes.
     for i in ctx.referencedData:
-      GC_unref(getExtraData(ctx, i).RootRef)
+      GC_unref(getExtraData(ctx, i))
     ctx.context.SSL_CTX_free()
 
   proc `pskIdentityHint=`*(ctx: SslContext, hint: string) =
@@ -750,7 +764,7 @@ when defineSsl:
     ## Wildcards match only in the left-most label.
     ## When name starts with a dot it will be matched by a certificate valid for any subdomain
     when not defined(nimDisableCertificateValidation) and not defined(windows):
-      assert socket.isSSL
+      assert socket.isSsl
       let certificate = socket.sslHandle.SSL_get_peer_certificate()
       if certificate.isNil:
         raiseSSLError("No SSL certificate found.")
@@ -763,7 +777,7 @@ when defineSsl:
       if match != 1:
         raiseSSLError("SSL Certificate check failed.")
 
-  proc wrapConnectedSocket*(ctx: SSLContext, socket: Socket,
+  proc wrapConnectedSocket*(ctx: SslContext, socket: Socket,
                             handshake: SslHandshakeType,
                             hostname: string = "") =
     ## Wraps a connected socket in an SSL context. This function effectively
@@ -840,7 +854,7 @@ when defineSsl:
     if sidCtx.len > 32:
       raiseSSLError("sessionIdContext must be shorter than 32 characters")
     SSL_CTX_set_session_id_context(ctx.context, sidCtx, sidCtx.len)
-  
+
 proc getSocketError*(socket: Socket): OSErrorCode =
   ## Checks ``osLastError`` for a valid error. If it has been reset it uses
   ## the last error stored in the socket object.
@@ -1490,7 +1504,7 @@ proc peekChar(socket: Socket, c: var char): int {.tags: [ReadIOEffect].} =
         return
     result = recv(socket.fd, addr(c), 1, MSG_PEEK)
 
-proc readLine*(socket: Socket, line: var TaintedString, timeout = -1,
+proc readLine*(socket: Socket, line: var string, timeout = -1,
                flags = {SocketFlag.SafeDisconn}, maxLength = MaxLineLength) {.
   tags: [ReadIOEffect, TimeEffect].} =
   ## Reads a line of data from ``socket``.
@@ -1513,23 +1527,23 @@ proc readLine*(socket: Socket, line: var TaintedString, timeout = -1,
 
   template addNLIfEmpty() =
     if line.len == 0:
-      line.string.add("\c\L")
+      line.add("\c\L")
 
   template raiseSockError() {.dirty.} =
     let lastError = getSocketError(socket)
     if flags.isDisconnectionError(lastError):
-      setLen(line.string, 0)
+      setLen(line, 0)
     socket.socketError(n, lastError = lastError, flags = flags)
 
   var waited: Duration
 
-  setLen(line.string, 0)
+  setLen(line, 0)
   while true:
     var c: char
     discard waitFor(socket, waited, timeout, 1, "readLine")
     var n = recv(socket, addr(c), 1)
     if n < 0: raiseSockError()
-    elif n == 0: setLen(line.string, 0); return
+    elif n == 0: setLen(line, 0); return
     if c == '\r':
       discard waitFor(socket, waited, timeout, 1, "readLine")
       n = peekChar(socket, c)
@@ -1541,14 +1555,14 @@ proc readLine*(socket: Socket, line: var TaintedString, timeout = -1,
     elif c == '\L':
       addNLIfEmpty()
       return
-    add(line.string, c)
+    add(line, c)
 
     # Verify that this isn't a DOS attack: #3847.
-    if line.string.len > maxLength: break
+    if line.len > maxLength: break
 
 proc recvLine*(socket: Socket, timeout = -1,
                flags = {SocketFlag.SafeDisconn},
-               maxLength = MaxLineLength): TaintedString =
+               maxLength = MaxLineLength): string =
   ## Reads a line of data from ``socket``.
   ##
   ## If a full line is read ``\r\L`` is not
@@ -1566,7 +1580,7 @@ proc recvLine*(socket: Socket, timeout = -1,
   ## that can be read. The result is truncated after that.
   ##
   ## **Warning**: Only the ``SafeDisconn`` flag is currently supported.
-  result = "".TaintedString
+  result = ""
   readLine(socket, result, timeout, flags, maxLength)
 
 proc recvFrom*(socket: Socket, data: var string, length: int,
@@ -1972,10 +1986,6 @@ proc connect*(socket: Socket, address: string, port = Port(0),
   ##
   ## The ``timeout`` parameter specifies the time in milliseconds to allow for
   ## the connection to the server to be made.
-  ##
-  ## **Warning:** This procedure appears to be broken for SSL connections as of
-  ## Nim v1.0.2. Consider using the other `connect` procedure. See
-  ## https://github.com/nim-lang/Nim/issues/15215 for more info.
   socket.fd.setBlocking(false)
 
   socket.connectAsync(address, port, socket.domain)
@@ -1989,7 +1999,18 @@ proc connect*(socket: Socket, address: string, port = Port(0),
     when defineSsl and not defined(nimdoc):
       if socket.isSsl:
         socket.fd.setBlocking(true)
-        doAssert socket.gotHandshake()
+        # RFC3546 for SNI specifies that IP addresses are not allowed.
+        if not isIpAddress(address):
+          # Discard result in case OpenSSL version doesn't support SNI, or we're
+          # not using TLSv1+
+          discard SSL_set_tlsext_host_name(socket.sslHandle, address)
+
+        ErrClearError()
+        let ret = SSL_connect(socket.sslHandle)
+        socketError(socket, ret)
+        when not defined(nimDisableCertificateValidation):
+          if not isIpAddress(address):
+            socket.checkCertName(address)
   socket.fd.setBlocking(true)
 
 proc getPrimaryIPAddr*(dest = parseIpAddress("8.8.8.8")): IpAddress =

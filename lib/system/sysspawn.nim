@@ -80,22 +80,22 @@ proc signal(cv: var FastCondVar) =
   signal(cv.slow)
 
 type
-  Barrier* {.compilerProc.} = object
+  Barrier* {.compilerproc.} = object
     counter: int
     cv: CondVar
 
-proc barrierEnter*(b: ptr Barrier) {.compilerProc.} =
+proc barrierEnter*(b: ptr Barrier) {.compilerproc.} =
   atomicInc b.counter
 
-proc barrierLeave*(b: ptr Barrier) {.compilerProc.} =
+proc barrierLeave*(b: ptr Barrier) {.compilerproc.} =
   atomicDec b.counter
   if b.counter <= 0: signal(b.cv)
 
-proc openBarrier*(b: ptr Barrier) {.compilerProc.} =
+proc openBarrier*(b: ptr Barrier) {.compilerproc.} =
   b.counter = 0
   b.cv = createCondVar()
 
-proc closeBarrier*(b: ptr Barrier) {.compilerProc.} =
+proc closeBarrier*(b: ptr Barrier) {.compilerproc.} =
   await(b.cv)
   destroyCondVar(b.cv)
 
@@ -113,7 +113,7 @@ type
     data: pointer
     ready: bool # put it here for correct alignment!
 
-proc nimArgsPassingDone(p: pointer) {.compilerProc.} =
+proc nimArgsPassingDone(p: pointer) {.compilerproc.} =
   let w = cast[ptr Worker](p)
   signal(w.taskStarted)
 
@@ -167,7 +167,7 @@ template spawnX*(call: typed) =
   if preferSpawn(): spawn call
   else: call
 
-proc nimSpawn(fn: WorkerProc; data: pointer) {.compilerProc.} =
+proc nimSpawn(fn: WorkerProc; data: pointer) {.compilerproc.} =
   # implementation of 'spawn' that is used by the code generator.
   while true:
     for i in 0.. high(workers):

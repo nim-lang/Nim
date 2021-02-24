@@ -141,7 +141,7 @@ Example "template" **to edit** and write a Testament unittest:
 
     # Command the test should use to run. If left out or an empty string is
     # provided, the command is taken to be:
-    # "nim $target --hints:on -d:testing --nimblePath:tests/deps $options $file"
+    # "nim $target --hints:on -d:testing --nimblePath:build/deps/pkgs $options $file"
     # You can use the $target, $options, and $file placeholders in your own
     # command, too.
     cmd: "nim c -r $file"
@@ -152,8 +152,11 @@ Example "template" **to edit** and write a Testament unittest:
     # Timeout seconds to run the test. Fractional values are supported.
     timeout: 1.5
 
-    # Targets to run the test into (C, C++, JavaScript, etc).
-    target: "c js"
+    # Targets to run the test into (c, cpp, objc, js).
+    targets: "c js"
+
+    # flags with which to run the test, delimited by `;`
+    matrix: "; -d:release; -d:caseFoo -d:release"
 
     # Conditions that will skip this test. Use of multiple "disabled" clauses
     # is permitted.
@@ -221,10 +224,10 @@ JavaScript tests:
 .. code-block:: nim
 
   discard """
-    target: "js"
+    targets: "js"
   """
   when defined(js):
-    import jsconsole
+    import std/jsconsole
     console.log("My Frontend Project")
 
 Compile-time tests:

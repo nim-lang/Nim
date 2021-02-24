@@ -35,6 +35,9 @@ true
 ## same as tjsffi, but this test uses the old names: importc and
 ## importcpp. This test is for backwards compatibility.
 
+# xxx instead of maintaining this near-duplicate test file, just have tests
+# that check that importc, importcpp, importjs work and remove this file.
+
 import jsffi, jsconsole
 
 # Tests for JsObject

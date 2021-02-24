@@ -146,7 +146,7 @@ template await*[T](f: Future[T]): auto {.used.} =
 
 proc asyncSingleProc(prc: NimNode): NimNode {.compileTime.} =
   ## This macro transforms a single procedure into a closure iterator.
-  ## The ``async`` macro supports a stmtList holding multiple async procedures.
+  ## The `async` macro supports a stmtList holding multiple async procedures.
   if prc.kind == nnkProcTy:
     result = prc
     if prc[0][0].kind == nnkEmpty:
@@ -182,7 +182,7 @@ proc asyncSingleProc(prc: NimNode): NimNode {.compileTime.} =
   elif returnType.kind == nnkEmpty:
     baseType = returnType
   else:
-    verifyReturnType(repr(returnType), returntype)
+    verifyReturnType(repr(returnType), returnType)
 
   let subtypeIsVoid = returnType.kind == nnkEmpty or
         (baseType.kind == nnkIdent and returnType[1].eqIdent("void"))
@@ -320,8 +320,8 @@ proc stripReturnType(returnType: NimNode): NimNode =
 proc splitProc(prc: NimNode): (NimNode, NimNode) =
   ## Takes a procedure definition which takes a generic union of arguments,
   ## for example: proc (socket: Socket | AsyncSocket).
-  ## It transforms them so that ``proc (socket: Socket)`` and
-  ## ``proc (socket: AsyncSocket)`` are returned.
+  ## It transforms them so that `proc (socket: Socket)` and
+  ## `proc (socket: AsyncSocket)` are returned.
 
   result[0] = prc.copyNimTree()
   # Retrieve the `T` inside `Future[T]`.
@@ -349,8 +349,8 @@ macro multisync*(prc: untyped): untyped =
   ## Macro which processes async procedures into both asynchronous and
   ## synchronous procedures.
   ##
-  ## The generated async procedures use the ``async`` macro, whereas the
-  ## generated synchronous procedures simply strip off the ``await`` calls.
+  ## The generated async procedures use the `async` macro, whereas the
+  ## generated synchronous procedures simply strip off the `await` calls.
   let (sync, asyncPrc) = splitProc(prc)
   result = newStmtList()
   result.add(asyncSingleProc(asyncPrc))
