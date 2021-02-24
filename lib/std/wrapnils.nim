@@ -26,15 +26,15 @@ runnableExamples:
   import std/segfaults # enable `NilAccessDefect` exceptions
   doAssertRaises(NilAccessDefect): echo (?.f2.x2.x2).x3[]
 
-from std/options import Option, isSome, option, get, UnpackDefect
+from std/options import Option, isSome, get, option, unsafeGet, UnpackDefect
 export options.get, options.isSome, options.isNone
 
 template fakeDot*(a: Option, b): untyped =
   ## See top-level example.
   let a1 = a # to avoid double evaluations
-  type T = Option[typeof(a1.get.b)]
+  type T = Option[typeof(unsafeGet(a1).b)]
   if isSome(a1):
-    let a2 = a1.get
+    let a2 = unsafeGet(a1)
     when typeof(a2) is ref|ptr:
       if a2 == nil:
         default(T)
@@ -46,30 +46,20 @@ template fakeDot*(a: Option, b): untyped =
     # nil is "sticky"; this is needed, see tests
     default(T)
 
-#[
-xxx this should but doesn't work:
-func `[]`*[T, I](a: Option[T], i: I): Option {.inline.} =
-]#
+# xxx this should but doesn't work: func `[]`*[T, I](a: Option[T], i: I): Option {.inline.} =
 
 func `[]`*[T, I](a: Option[T], i: I): auto {.inline.} =
   ## See top-level example.
   if isSome(a):
     # correctly will raise IndexDefect if a is valid but wraps an empty container
-    option(a.get[i])
-  else:
-    default(Option[typeof(a.get[i])])
+    result = option(a.unsafeGet[i])
 
 func `[]`*[U](a: Option[U]): auto {.inline.} =
   ## See top-level example.
-  type T = Option[typeof(a.get[])]
   if isSome(a):
-    let a2 = a.get
-    if a2 == nil:
-      default(T)
-    else:
-      option(a2[])
-  else:
-    default(T)
+    let a2 = a.unsafeGet
+    if a2 != nil:
+      result = option(a2[])
 
 import std/macros
 
