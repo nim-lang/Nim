@@ -646,7 +646,8 @@ macro check*(conditions: untyped): untyped =
     check:
       "AKB48".toLowerAscii() == "akb48"
       'C' notin teams
-  let checked = conditions
+
+  let checked = callsite()[1]
 
   template asgn(a: untyped, value: typed) =
     var a = value # XXX: we need "var: var" here in order to
