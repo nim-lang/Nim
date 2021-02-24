@@ -3,7 +3,7 @@ discard """
 """
 
 proc hello(x: varargs[string]) =
-  var T: seq[string]
-  T.add x
+  var s: seq[string]
+  s.add x
 
 hello("123")
