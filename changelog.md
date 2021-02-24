@@ -76,7 +76,7 @@
 - Added `euclDiv` and `euclMod` to `math`.
 - Added `httpcore.is1xx` and missing HTTP codes.
 
-- Added `strip` and `setSlice` to `std/stropt`.
+- Added `strip` and `setSlice` to `std/strbasics`.
 
 
 ## Language changes
