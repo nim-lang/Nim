@@ -16,10 +16,6 @@ proc add(x: var string; y: cstring)
   first type mismatch at position: 1
   required type for x: var string
   but expression 'k' is of type: Alias
-proc add(x: var string; y: openArray[char])
-  first type mismatch at position: 1
-  required type for x: var string
-  but expression 'k' is of type: Alias
 proc add(x: var string; y: string)
   first type mismatch at position: 1
   required type for x: var string
@@ -47,9 +43,13 @@ expression: test(bar)'''
 
 
 
-## line 50
 
 
+
+
+
+
+## line 60
 type
   Foo[T] = concept k
     add(k, string, T)

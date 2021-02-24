@@ -12,29 +12,16 @@ proc set_all[T](s: var openArray[T]; val: T) =
   for i in 0..<s.len:
     s[i] = val
 
-proc test() =
-  block:
-    var a0 = "hello_world"
-    var a1 = [1,2,3,4,5,6,7,8,9]
-    var a2 = @[1,2,3,4,5,6,7,8,9]
-    a0.set_all('i')
-    a1.set_all(4)
-    a2.set_all(4)
-    doAssert a0 == "iiiiiiiiiii"
-    doAssert a1 == [4,4,4,4,4,4,4,4,4]
-    doAssert a2 == @[4,4,4,4,4,4,4,4,4]
-  block:
-    var a0 = "hi"
-    var b0 = "foobar"
-    when nimvm:
-      discard # otherwise hits: bug #15952
-    else:
-      a0.add b0.toOpenArray(1,3)
-      doAssert a0 == "hioob"
-  proc fn(c: openArray[char]): string =
-    result.add c
-  doAssert fn("def") == "def"
-  doAssert fn(['d','\0', 'f'])[2] == 'f'
+proc main() =
+  var a0 = "hello_world"
+  var a1 = [1,2,3,4,5,6,7,8,9]
+  var a2 = @[1,2,3,4,5,6,7,8,9]
+  a0.set_all('i')
+  a1.set_all(4)
+  a2.set_all(4)
+  doAssert a0 == "iiiiiiiiiii"
+  doAssert a1 == [4,4,4,4,4,4,4,4,4]
+  doAssert a2 == @[4,4,4,4,4,4,4,4,4]
 
 const constval0 = "hello".map(proc(x: char): char = x)
 const constval1 = [1,2,3,4].map(proc(x: int): int = x)
@@ -42,6 +29,5 @@ const constval1 = [1,2,3,4].map(proc(x: int): int = x)
 doAssert("hello".map(proc(x: char): char = x) == constval0)
 doAssert([1,2,3,4].map(proc(x: int): int = x) == constval1)
 
-test()
-static:
-  test()
+static: main()
+main()

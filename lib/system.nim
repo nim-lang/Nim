@@ -1069,27 +1069,16 @@ proc add*(x: var string, y: char) {.magic: "AppendStrCh", noSideEffect.}
   ##   tmp.add('a')
   ##   tmp.add('b')
   ##   assert(tmp == "ab")
-proc add*(x: var string, y: string) {.magic: "AppendStrStr", noSideEffect.}
+
+proc add*(x: var string, y: string) {.magic: "AppendStrStr", noSideEffect.} =
   ## Concatenates `x` and `y` in place.
   ##
-  ## .. code-block:: Nim
-  ##   var tmp = ""
-  ##   tmp.add("ab")
-  ##   tmp.add("cd")
-  ##   assert(tmp == "abcd")
-
-proc add*(x: var string, y: openArray[char]) =
-  ## Concatenates `x` and `y` in place. `y` must not overlap with `x` to
-  ## allow future memcpy optimizations.
-  let n = x.len
-  x.setLen n + y.len
-    # pending https://github.com/nim-lang/Nim/issues/14655#issuecomment-643671397
-    # use x.setLen(n + y.len, isInit = false)
-  var i = 0
-  while i < y.len:
-    x[n + i] = y[i]
-    i.inc
-  # xxx use `nimCopyMem(x[n].addr, y[0].addr, y.len)` after some refactoring
+  ## See also `strbasics.add`.
+  runnableExamples:
+    var tmp = ""
+    tmp.add("ab")
+    tmp.add("cd")
+    assert tmp == "abcd"
 
 type
   Endianness* = enum ## Type describing the endianness of a processor.

@@ -173,8 +173,8 @@ provided by the operating system.
   dumping (on select signals) and notifying the parent process about the cause
   of termination.
 
-- Added `strip` and `setSlice` to `std/strbasics`.
-
+- Added `std/strbasics` for high performance string operations.
+  Added `strip`, `setSlice`, `add(a: var string, b: openArray[char])`.
 
 - Added to `wrapnils` an option-like API via `??.`, `isSome`, `get`.
 
