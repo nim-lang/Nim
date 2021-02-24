@@ -6,8 +6,8 @@ discard """
 import std/[strbasics, sugar]
 
 proc main() =
-  block: # strip
-    when not defined(gcArc): # pending bug #17173
+  when not defined(gcArc): # pending bug #17173
+    block: # strip
       var a = "  vhellov   "
       strip(a)
       doAssert a == "vhellov"
@@ -107,20 +107,20 @@ proc main() =
         doAssert a.dup(strip(chars = {'x', 'i'})) == " "
         doAssert a.dup(strip(chars = {'x', 'i', ' '})).len == 0
 
-      block: # setSlice
-        var a = "Hello, Nim!"
-        doassert a.dup(setSlice(7 .. 9)) == "Nim"
-        doAssert a.dup(setSlice(0 .. 0)) == "H"
-        doAssert a.dup(setSlice(0 .. 1)) == "He"
-        doAssert a.dup(setSlice(0 .. 10)) == a
-        doAssert a.dup(setSlice(1 .. 0)).len == 0
-        doAssert a.dup(setSlice(20 .. -1)).len == 0
+    block: # setSlice
+      var a = "Hello, Nim!"
+      doassert a.dup(setSlice(7 .. 9)) == "Nim"
+      doAssert a.dup(setSlice(0 .. 0)) == "H"
+      doAssert a.dup(setSlice(0 .. 1)) == "He"
+      doAssert a.dup(setSlice(0 .. 10)) == a
+      doAssert a.dup(setSlice(1 .. 0)).len == 0
+      doAssert a.dup(setSlice(20 .. -1)).len == 0
 
-        doAssertRaises(AssertionDefect):
-          discard a.dup(setSlice(-1 .. 1))
+      doAssertRaises(AssertionDefect):
+        discard a.dup(setSlice(-1 .. 1))
 
-        doAssertRaises(AssertionDefect):
-          discard a.dup(setSlice(1 .. 11))
+      doAssertRaises(AssertionDefect):
+        discard a.dup(setSlice(1 .. 11))
 
   block: # add
     var a0 = "hi"
