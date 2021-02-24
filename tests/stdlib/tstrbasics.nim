@@ -2,7 +2,7 @@ discard """
   targets: "c cpp js"
 """
 
-import std/[stropt, sugar]
+import std/[strbasics, sugar]
 
 
 proc teststrip() =
