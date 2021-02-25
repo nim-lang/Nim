@@ -75,12 +75,6 @@ func newfetchOptions*(metod: HttpMethod, body: cstring,
     )
   )
 
-func fetchToCstring*(url: cstring): Future[cstring] {.importjs: "fetch(#).then(response => response.text()).then(text => text)".}
-  ## Convenience func for `fetch()` API that returns a `cstring` directly.
-
-func fetchToCstring*(url: cstring, options: FetchOptions): Future[cstring] {.importjs: "fetch(#, #).then(response => response.text()).then(text => text)".}
-  ## Convenience func for `fetch()` API that returns a `cstring` directly.
-
 func fetch*(url: cstring): Future[Response] {.importjs: "fetch(#)".}
   ## `fetch()` API, simple `GET` only, returns a `Response`.
 
