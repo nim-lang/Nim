@@ -19,7 +19,7 @@
 ## ===========================
 ##
 ## In order to begin any sort of transfer of files you must first
-## connect to an FTP server. You can do so with the ``connect`` procedure.
+## connect to an FTP server. You can do so with the `connect` procedure.
 ##
 ## .. code-block::nim
 ##    import asyncdispatch, asyncftpclient
@@ -29,16 +29,16 @@
 ##      echo("Connected")
 ##    waitFor(main())
 ##
-## A new ``main`` async procedure must be declared to allow the use of the
-## ``await`` keyword. The connection will complete asynchronously and the
-## client will be connected after the ``await ftp.connect()`` call.
+## A new `main` async procedure must be declared to allow the use of the
+## `await` keyword. The connection will complete asynchronously and the
+## client will be connected after the `await ftp.connect()` call.
 ##
 ## Uploading a new file
 ## ====================
 ##
-## After a connection is made you can use the ``store`` procedure to upload
+## After a connection is made you can use the `store` procedure to upload
 ## a new file to the FTP server. Make sure to check you are in the correct
-## working directory before you do so with the ``pwd`` procedure, you can also
+## working directory before you do so with the `pwd` procedure, you can also
 ## instead specify an absolute path.
 ##
 ## .. code-block::nim
@@ -56,11 +56,11 @@
 ## ========================================
 ##
 ## The progress of either a file upload or a file download can be checked
-## by specifying a ``onProgressChanged`` procedure to the ``store`` or
-## ``retrFile`` procedures.
+## by specifying a `onProgressChanged` procedure to the `store` or
+## `retrFile` procedures.
 ##
-## Procs that take an ``onProgressChanged`` callback will call this every
-## ``progressInterval`` milliseconds.
+## Procs that take an `onProgressChanged` callback will call this every
+## `progressInterval` milliseconds.
 ##
 ## .. code-block::nim
 ##    import asyncdispatch, asyncftpclient
@@ -148,10 +148,10 @@ proc expectReply(ftp: AsyncFtpClient): Future[string] {.async.} =
 
 proc send*(ftp: AsyncFtpClient, m: string): Future[string] {.async.} =
   ## Send a message to the server, and wait for a primary reply.
-  ## ``\c\L`` is added for you.
+  ## `\c\L` is added for you.
   ##
-  ## You need to make sure that the message ``m`` doesn't contain any newline
-  ## characters. Failing to do so will raise ``AssertionDefect``.
+  ## You need to make sure that the message `m` doesn't contain any newline
+  ## characters. Failing to do so will raise `AssertionDefect`.
   ##
   ## **Note:** The server may return multiple lines of coded replies.
   doAssert(not m.contains({'\c', '\L'}), "message shouldn't contain any newline characters")
@@ -183,7 +183,7 @@ proc normalizePathSep(path: string): string =
   return replace(path, '\\', '/')
 
 proc connect*(ftp: AsyncFtpClient) {.async.} =
-  ## Connect to the FTP server specified by ``ftp``.
+  ## Connect to the FTP server specified by `ftp`.
   await ftp.csock.connect(ftp.address, ftp.port)
 
   var reply = await ftp.expectReply()
@@ -208,7 +208,7 @@ proc pwd*(ftp: AsyncFtpClient): Future[string] {.async.} =
   return wd.captureBetween('"') # "
 
 proc cd*(ftp: AsyncFtpClient, dir: string) {.async.} =
-  ## Changes the current directory on the remote FTP server to ``dir``.
+  ## Changes the current directory on the remote FTP server to `dir`.
   assertReply(await(ftp.send("CWD " & dir.normalizePathSep)), "250")
 
 proc cdup*(ftp: AsyncFtpClient) {.async.} =
@@ -229,10 +229,10 @@ proc getLines(ftp: AsyncFtpClient): Future[string] {.async.} =
   assertReply(await(ftp.expectReply()), "226")
 
 proc listDirs*(ftp: AsyncFtpClient, dir = ""): Future[seq[string]] {.async.} =
-  ## Returns a list of filenames in the given directory. If ``dir`` is "",
-  ## the current directory is used. If ``async`` is true, this
+  ## Returns a list of filenames in the given directory. If `dir` is "",
+  ## the current directory is used. If `async` is true, this
   ## function will return immediately and it will be your job to
-  ## use asyncdispatch's ``poll`` to progress this operation.
+  ## use asyncdispatch's `poll` to progress this operation.
   await ftp.pasv()
 
   assertReply(await(ftp.send("NLST " & dir.normalizePathSep)), ["125", "150"])
@@ -240,15 +240,15 @@ proc listDirs*(ftp: AsyncFtpClient, dir = ""): Future[seq[string]] {.async.} =
   result = splitLines(await ftp.getLines())
 
 proc fileExists*(ftp: AsyncFtpClient, file: string): Future[bool] {.async.} =
-  ## Determines whether ``file`` exists.
+  ## Determines whether `file` exists.
   var files = await ftp.listDirs()
   for f in items(files):
     if f.normalizePathSep == file.normalizePathSep: return true
 
 proc createDir*(ftp: AsyncFtpClient, dir: string, recursive = false){.async.} =
-  ## Creates a directory ``dir``. If ``recursive`` is true, the topmost
-  ## subdirectory of ``dir`` will be created first, following the secondmost...
-  ## etc. this allows you to give a full path as the ``dir`` without worrying
+  ## Creates a directory `dir`. If `recursive` is true, the topmost
+  ## subdirectory of `dir` will be created first, following the secondmost...
+  ## etc. this allows you to give a full path as the `dir` without worrying
   ## about subdirectories not existing.
   if not recursive:
     assertReply(await(ftp.send("MKD " & dir.normalizePathSep)), "257")
@@ -264,7 +264,7 @@ proc createDir*(ftp: AsyncFtpClient, dir: string, recursive = false){.async.} =
 
 proc chmod*(ftp: AsyncFtpClient, path: string,
             permissions: set[FilePermission]) {.async.} =
-  ## Changes permission of ``path`` to ``permissions``.
+  ## Changes permission of `path` to `permissions`.
   var userOctal = 0
   var groupOctal = 0
   var otherOctal = 0
@@ -285,7 +285,7 @@ proc chmod*(ftp: AsyncFtpClient, path: string,
                     " " & path.normalizePathSep)), "200")
 
 proc list*(ftp: AsyncFtpClient, dir = ""): Future[string] {.async.} =
-  ## Lists all files in ``dir``. If ``dir`` is ``""``, uses the current
+  ## Lists all files in `dir`. If `dir` is `""`, uses the current
   ## working directory.
   await ftp.pasv()
 
@@ -295,7 +295,7 @@ proc list*(ftp: AsyncFtpClient, dir = ""): Future[string] {.async.} =
   result = await ftp.getLines()
 
 proc retrText*(ftp: AsyncFtpClient, file: string): Future[string] {.async.} =
-  ## Retrieves ``file``. File must be ASCII text.
+  ## Retrieves `file`. File must be ASCII text.
   await ftp.pasv()
   let reply = await ftp.send("RETR " & file.normalizePathSep)
   assertReply(reply, ["125", "150"])
@@ -331,17 +331,17 @@ proc getFile(ftp: AsyncFtpClient, file: File, total: BiggestInt,
 
 proc defaultOnProgressChanged*(total, progress: BiggestInt,
     speed: float): Future[void] {.nimcall, gcsafe.} =
-  ## Default FTP ``onProgressChanged`` handler. Does nothing.
+  ## Default FTP `onProgressChanged` handler. Does nothing.
   result = newFuture[void]()
   #echo(total, " ", progress, " ", speed)
   result.complete()
 
 proc retrFile*(ftp: AsyncFtpClient, file, dest: string,
                onProgressChanged: ProgressChangedProc = defaultOnProgressChanged) {.async.} =
-  ## Downloads ``file`` and saves it to ``dest``.
-  ## The ``EvRetr`` event is passed to the specified ``handleEvent`` function
-  ## when the download is finished. The event's ``filename`` field will be equal
-  ## to ``file``.
+  ## Downloads `file` and saves it to `dest`.
+  ## The `EvRetr` event is passed to the specified `handleEvent` function
+  ## when the download is finished. The event's `filename` field will be equal
+  ## to `file`.
   var destFile = open(dest, mode = fmWrite)
   await ftp.pasv()
   var reply = await ftp.send("RETR " & file.normalizePathSep)
@@ -390,12 +390,12 @@ proc doUpload(ftp: AsyncFtpClient, file: File,
 
 proc store*(ftp: AsyncFtpClient, file, dest: string,
             onProgressChanged: ProgressChangedProc = defaultOnProgressChanged) {.async.} =
-  ## Uploads ``file`` to ``dest`` on the remote FTP server. Usage of this
+  ## Uploads `file` to `dest` on the remote FTP server. Usage of this
   ## function asynchronously is recommended to view the progress of
   ## the download.
-  ## The ``EvStore`` event is passed to the specified ``handleEvent`` function
-  ## when the upload is finished, and the ``filename`` field will be
-  ## equal to ``file``.
+  ## The `EvStore` event is passed to the specified `handleEvent` function
+  ## when the upload is finished, and the `filename` field will be
+  ## equal to `file`.
   var destFile = open(file)
   await ftp.pasv()
 
@@ -406,21 +406,21 @@ proc store*(ftp: AsyncFtpClient, file, dest: string,
 
 proc rename*(ftp: AsyncFtpClient, nameFrom: string, nameTo: string) {.async.} =
   ## Rename a file or directory on the remote FTP Server from current name
-  ## ``name_from`` to new name ``name_to``
+  ## `name_from` to new name `name_to`
   assertReply(await ftp.send("RNFR " & nameFrom), "350")
   assertReply(await ftp.send("RNTO " & nameTo), "250")
 
 proc removeFile*(ftp: AsyncFtpClient, filename: string) {.async.} =
-  ## Delete a file ``filename`` on the remote FTP server
+  ## Delete a file `filename` on the remote FTP server
   assertReply(await ftp.send("DELE " & filename), "250")
 
 proc removeDir*(ftp: AsyncFtpClient, dir: string) {.async.} =
-  ## Delete a directory ``dir`` on the remote FTP server
+  ## Delete a directory `dir` on the remote FTP server
   assertReply(await ftp.send("RMD " & dir), "250")
 
 proc newAsyncFtpClient*(address: string, port = Port(21),
     user, pass = "", progressInterval: int = 1000): AsyncFtpClient =
-  ## Creates a new ``AsyncFtpClient`` object.
+  ## Creates a new `AsyncFtpClient` object.
   new result
   result.user = user
   result.pass = pass

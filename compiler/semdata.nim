@@ -153,7 +153,7 @@ type
     suggestionsMade*: bool
     isAmbiguous*: bool # little hack
     features*: set[Feature]
-    inTypeContext*: int
+    inTypeContext*, inConceptDecl*: int
     unusedImports*: seq[(PSym, TLineInfo)]
     exportIndirections*: HashSet[(int, int)]
     lastTLineInfo*: TLineInfo
@@ -409,14 +409,6 @@ proc makeVarType*(owner: PSym, baseType: PType; idgen: IdGenerator; kind = tyVar
   else:
     result = newType(kind, nextTypeId(idgen), owner)
     addSonSkipIntLit(result, baseType, idgen)
-
-proc makeTypeDesc*(c: PContext, typ: PType): PType =
-  if typ.kind == tyTypeDesc:
-    result = typ
-  else:
-    result = newTypeS(tyTypeDesc, c)
-    incl result.flags, tfCheckedForDestructor
-    result.addSonSkipIntLit(typ, c.idgen)
 
 proc makeTypeSymNode*(c: PContext, typ: PType, info: TLineInfo): PNode =
   let typedesc = newTypeS(tyTypeDesc, c)
