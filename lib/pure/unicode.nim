@@ -1001,28 +1001,15 @@ proc splitWhitespace*(s: string): seq[string] {.noSideEffect,
 
 iterator split*(s: string, sep: Rune, maxsplit: int = -1): string =
   ## Splits the unicode string ``s`` into substrings using a single separator.
-  ##
   ## Substrings are separated by the rune ``sep``.
-  ## The code:
-  ##
-  ## .. code-block:: nim
-  ##   for word in split(";;this;is;an;;example;;;", ';'):
-  ##     writeLine(stdout, word)
-  ##
-  ## Results in:
-  ##
-  ## .. code-block::
-  ##   ""
-  ##   ""
-  ##   "this"
-  ##   "is"
-  ##   "an"
-  ##   ""
-  ##   "example"
-  ##   ""
-  ##   ""
-  ##   ""
-  ##
+  runnableExamples:
+    var splitted = newSeq[string]()
+
+    for word in split(";;this;is;an;;example;;;", ";".runeAt(0)):
+      splitted.add(word)
+
+    assert splitted == @["", "", "this", "is", "an", "", "example", "", "", ""]
+
   splitCommon(s, sep, maxsplit)
 
 proc split*(s: string, seps: openArray[Rune] = unicodeSpaces, maxsplit: int = -1):
