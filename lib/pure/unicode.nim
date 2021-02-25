@@ -955,43 +955,34 @@ iterator split*(s: string, seps: openArray[Rune] = unicodeSpaces,
   ## Splits the unicode string ``s`` into substrings using a group of separators.
   ##
   ## Substrings are separated by a substring containing only ``seps``.
-  ##
-  ## .. code-block:: nim
-  ##   for word in split("this\lis an\texample"):
-  ##     writeLine(stdout, word)
-  ##
-  ## ...generates this output:
-  ##
-  ## .. code-block::
-  ##   "this"
-  ##   "is"
-  ##   "an"
-  ##   "example"
-  ##
-  ## And the following code:
-  ##
-  ## .. code-block:: nim
-  ##   for word in split("this:is;an$example", ";:$".toRunes):
-  ##     writeLine(stdout, word)
-  ##
-  ## ...produces the same output as the first example. The code:
-  ##
-  ## .. code-block:: nim
-  ##   let date = "2012-11-20T22:08:08.398990"
-  ##   let separators = " -:T".toRunes
-  ##   for number in split(date, separators):
-  ##     writeLine(stdout, number)
-  ##
-  ## ...results in:
-  ##
-  ## .. code-block::
-  ##   "2012"
-  ##   "11"
-  ##   "20"
-  ##   "22"
-  ##   "08"
-  ##   "08.398990"
-  ##
+  runnableExamples:
+    var splitted = newSeq[string]()
+    for word in split("this\lis an\texample"):
+        splitted.add(word)
+
+    assert splitted == @["this", "is", "an", "example"]
+
+    # And the following code splits the same string using a sequence of Runes.
+    import std/sugar
+
+    var splittedBySequence = newSeq[string]()
+    let separators = collect(for separator in ";:$".runes: separator)
+
+    for word in split("this:is;an$example", separators):
+      splittedBySequence.add(word)
+
+    assert splittedBySequence == @["this", "is", "an", "example"]
+
+    # Another example that splits a string containing a date.
+    var splittedDate = newSeq[string]()
+    let date = "2012-11-20T22:08:08.398990"
+    let separatorsDate = collect(for separator in " -:T".runes: separator)
+
+    for word in split(date, separatorsDate):
+      splittedDate.add(word)
+
+    assert splittedDate == @["2012", "11", "20", "22", "08", "08.398990"]
+
   splitCommon(s, seps, maxsplit)
 
 iterator splitWhitespace*(s: string): string =
