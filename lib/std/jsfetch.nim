@@ -44,12 +44,16 @@ type
     frpOriginWhenCrossOrigin = "origin-when-cross-origin"
     frpUnsafeUrl = "unsafe-url"
 
+  Body* = ref object  ## https://developer.mozilla.org/en-US/docs/Web/API/Body
+    bodyUsed*: bool
+
   Response* = ref object  ## https://developer.mozilla.org/en-US/docs/Web/API/Response
     bodyUsed*, ok*, redirected*: bool
     typ* {.importjs: "type".}: cstring
     url*, statusText*: cstring
     status*: cint
     headers*: Headers
+    body*: Body
 
 
 func newResponse*(body: cstring): Response {.importjs: "(new Response(#))".}
@@ -64,10 +68,16 @@ func error*(self: Response): Response {.importjs: "#.$1()".}
 func redirect*(self: Response; url: cstring; status: 100..599): Response {.importjs: "#.$1(#, #)".}
   ## https://developer.mozilla.org/en-US/docs/Web/API/Response/redirect
 
+proc text*(self: Body): Future[cstring] {.importjs: "#.$1()".}
+  ## https://developer.mozilla.org/en-US/docs/Web/API/Body/text
+
+proc json*(self: Body): Future[JsObject] {.importjs: "#.$1()".}
+  ## https://developer.mozilla.org/en-US/docs/Web/API/Body/json
+
 proc unsafeNewFetchOptions*(metod, body, mode, credentials, cache, referrerPolicy: cstring,
     keepalive: bool, redirect = "follow".cstring, referrer = "client".cstring, integrity = "".cstring): FetchOptions {.importjs:
     "{method: #, body: #, mode: #, credentials: #, cache: #, referrerPolicy: #, keepalive: #, redirect: #, referrer: #, integrity: #}".}
-  ## **Unsafe** `newfetchOptions`. Low-level func for optimization.
+  ## **Unsafe** `newfetchOptions`. Low-level proc for optimization.
 
 func newfetchOptions*(metod: HttpMethod, body: cstring,
     mode: FetchModes, credentials: FetchCredentials, cache: FetchCaches, referrerPolicy: FetchReferrerPolicies,
