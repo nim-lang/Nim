@@ -956,11 +956,10 @@ iterator split*(s: string, seps: openArray[Rune] = unicodeSpaces,
   ##
   ## Substrings are separated by a substring containing only ``seps``.
   runnableExamples:
-    var splitted = newSeq[string]()
-    for word in split("this\lis an\texample"):
-        splitted.add(word)
+    import std/sequtils
 
-    assert splitted == @["this", "is", "an", "example"]
+    assert toSeq("hÃllo\lthis\lis an\texample\l是".split) ==
+      @["hÃllo", "this", "is", "an", "example", "是"]
 
     # And the following code splits the same string using a sequence of Runes.
     import std/sugar
@@ -1003,12 +1002,10 @@ iterator split*(s: string, sep: Rune, maxsplit: int = -1): string =
   ## Splits the unicode string ``s`` into substrings using a single separator.
   ## Substrings are separated by the rune ``sep``.
   runnableExamples:
-    var splitted = newSeq[string]()
+    import std/sequtils
 
-    for word in split(";;this;is;an;;example;;;", ";".runeAt(0)):
-      splitted.add(word)
-
-    assert splitted == @["", "", "this", "is", "an", "", "example", "", "", ""]
+    assert toSeq(split(";;hÃllo;this;is;an;;example;;;是", ";".runeAt(0))) ==
+      @["", "", "hÃllo", "this", "is", "an", "", "example", "", "", "是"]
 
   splitCommon(s, sep, maxsplit)
 
