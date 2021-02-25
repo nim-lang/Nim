@@ -24,8 +24,6 @@ runnableExamples:
 
   assert (?.f2.x2.x2).x3 == nil  # this terminates ?. early
   import std/segfaults # enable `NilAccessDefect` exceptions
-  when not defined(arm64):
-    doAssertRaises(NilAccessDefect): echo (?.f2.x2.x2).x3[]
 
 # xxx pending bug #17178, un-disable `arm64`.
 
