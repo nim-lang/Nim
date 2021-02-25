@@ -48,7 +48,7 @@ func clear*(this: FormData) {.importjs:
 
 
 runnableExamples:
-  if defined(fusionJsFormdataTests):
+  if defined(nimJsFormdataTests):
     let data: FormData = newFormData()
     data["key0"] = "value0".cstring
     data.add("key1".cstring, "value1".cstring)
