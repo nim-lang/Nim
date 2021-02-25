@@ -51,20 +51,25 @@ type
     headers*: Headers
     body*: Body
 
+  Request* = ref object  ## https://developer.mozilla.org/en-US/docs/Web/API/Request
+    bodyUsed*, ok*, redirected*: bool
+    typ* {.importjs: "type".}: cstring
+    url*, statusText*: cstring
+    status*: cint
+    headers*: Headers
+    body*: Body
+
 
 func newResponse*(body: cstring or FormData): Response {.importjs: "(new Response(#))".}
-  ## Explicit constructor for a new `Response`. This does *not* call `fetch()`.
+  ## Constructor for `Response`. This does *not* call `fetch()`. Same as `new Response()`.
 
-func clone*(self: Response): Response {.importjs: "#.$1()".}
+func newRequest*(url: cstring): Request {.importjs: "(new Request(#))".}
+  ## Constructor for `Request`. This does *not* call `fetch()`. Same as `new Request()`.
+
+func clone*(self: Response or Request): Response {.importjs: "#.$1()".}
   ## https://developer.mozilla.org/en-US/docs/Web/API/Response/clone
 
-func error*(self: Response): Response {.importjs: "#.$1()".}
-  ## https://developer.mozilla.org/en-US/docs/Web/API/Response/error
-
-func redirect*(self: Response; url: cstring; status: 100..599): Response {.importjs: "#.$1(#, #)".}
-  ## https://developer.mozilla.org/en-US/docs/Web/API/Response/redirect
-
-proc text*(self: Body): Future[cstring] {.importjs: "#.$1()".}
+proc text*(self: Body or Request): Future[cstring] {.importjs: "#.$1()".}
   ## https://developer.mozilla.org/en-US/docs/Web/API/Body/text
 
 proc json*(self: Body): Future[JsObject] {.importjs: "#.$1()".}
@@ -96,15 +101,15 @@ func newfetchOptions*(metod: HttpMethod, body: cstring,
     )
   )
 
-proc fetch*(url: cstring): Future[Response] {.importjs: "fetch(#)".}
-  ## `fetch()` API, simple `GET` only, returns a `Response`.
+proc fetch*(url: cstring or Request): Future[Response] {.importjs: "$1(#)".}
+  ## `fetch()` API, simple `GET` only, returns a `Future[Response]`.
 
-proc fetch*(url: cstring, options: FetchOptions): Future[Response] {.importjs: "fetch(#, #)".}
-  ## `fetch()` API that takes a `FetchOptions`, returns a `Response`.
+proc fetch*(url: cstring or Request, options: FetchOptions): Future[Response] {.importjs: "$1(#, #)".}
+  ## `fetch()` API that takes a `FetchOptions`, returns a `Future[Response]`.
 
-func toCstring*(self: FetchOptions or Response or Body): cstring {.importjs: "JSON.stringify(#)".}
+func toCstring*(self: Request or Response or Body or FetchOptions): cstring {.importjs: "JSON.stringify(#)".}
 
-func `$`*(self: FetchOptions or Response or Body): string = $toCstring(self)
+func `$`*(self: Request or Response or Body or FetchOptions): string = $toCstring(self)
 
 
 runnableExamples:
@@ -134,6 +139,7 @@ runnableExamples:
       doAssert options0.redirect == "follow".cstring
       doAssert options0.referrer == "client".cstring
       doAssert options0.integrity == "".cstring
+      doAssert options0.toCstring is cstring
 
     block:
       let options1: FetchOptions = newFetchOptions(
@@ -158,12 +164,15 @@ runnableExamples:
       doAssert options1.redirect == $frFollow
       doAssert options1.referrer == "client".cstring
       doAssert options1.integrity == "".cstring
+      doAssert options1.toCstring is cstring
 
     block:
       let response: Response = newResponse(body = "-. .. --".cstring)
-      doAssert response.clone() is Response
-      let redirected: Response = response.redirect("http://nim-lang.org".cstring, 307)
-      doAssert redirected.url == "http://nim-lang.org".cstring
+      doAssert response.clone() is Response ## Cloned.
+      doAssert response.toCstring is cstring
+      let request: Request = newRequest(url = "http://nim-lang.org".cstring)
+      doAssert request.clone() is Request   ## Cloned.
+      doAssert request.toCstring is cstring
 
     if not defined(nodejs):
       proc doFetch(): Future[Response] {.async.} =
@@ -175,6 +184,7 @@ runnableExamples:
         doAssert response.status == 200.cint
         doAssert response.headers is Headers
         doAssert response.body is Body
+        doAssert toCstring(response.body) is cstring
         ## -d:nimExperimentalAsyncjsThen
         when defined(nimExperimentalAsyncjsThen):
           let contents: string = await response.body
