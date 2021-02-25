@@ -176,7 +176,7 @@ runnableExamples:
 
     if not defined(nodejs):
       proc doFetch(): Future[Response] {.async.} =
-        fetch "https://httpbin.org/get"
+        fetch "https://httpbin.org/get".cstring
 
       proc example() {.async.} =
         let response: Response = await doFetch()
