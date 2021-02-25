@@ -965,6 +965,9 @@ iterator split*(s: string, seps: openArray[Rune] = unicodeSpaces,
     assert toSeq(split("añyóng:hÃllo;是$example", ";:$".toRunes)) ==
       @["añyóng", "hÃllo", "是", "example"]
 
+    # example with a `Rune` separator and unused one `;`:
+    assert toSeq(split("ab是de:f:", ";:是".toRunes)) == @["ab", "de", "f", ""]
+
     # Another example that splits a string containing a date.
     let date = "2012-11-20T22:08:08.398990"
 
