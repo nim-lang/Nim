@@ -205,7 +205,6 @@ proc newDocumentor*(filename: AbsoluteFile; cache: IdentCache; conf: ConfigRef, 
   result.onTestSnippet =
     proc (gen: var RstGenerator; filename, cmd: string; status: int; content: string) =
       if conf.docCmd == docCmdSkip: return
-      echo ("D20210224T233153: ", filename, cmd)
       inc(gen.id)
       var d = TDocumentor(gen)
       var outp: AbsoluteFile
@@ -221,7 +220,6 @@ proc newDocumentor*(filename: AbsoluteFile; cache: IdentCache; conf: ConfigRef, 
         let nameOnly = splitFile(d.filename).name
         outp = AbsoluteDir(nameOnly) / RelativeFile(filename)
       # Make sure the destination directory exists
-      echo ("outp.splitFile.dir: ", outp, outp.splitFile.dir, filename)
       createDir(outp.splitFile.dir)
       # Include the current file if we're parsing a nim file
       let importStmt = if d.isPureRst: "" else: "import \"$1\"\n" % [d.filename.replace("\\", "/")]
@@ -232,7 +230,6 @@ proc newDocumentor*(filename: AbsoluteFile; cache: IdentCache; conf: ConfigRef, 
         if cmd.startsWith "nim ": result = "$nim " & cmd[4..^1]
         else: result = cmd
         # factor with D20210224T221756
-        echo (result, outp)
         result = result.replace("$1", "$options") % [
           "nim", os.getAppFilename().quoteShell,
           "libpath", quoteShell(d.conf.libpath),
@@ -241,11 +238,7 @@ proc newDocumentor*(filename: AbsoluteFile; cache: IdentCache; conf: ConfigRef, 
           "options", outp.quoteShell,
             # xxx `quoteShell` seems buggy if user passes options = "-d:foo somefile.nim"
         ]
-        echo result
-      echo "D20210224T230333"
-      echo cmd
       let cmd = cmd.interpSnippetCmd
-      echo cmd
       rawMessage(conf, hintExecuting, cmd)
       let (output, gotten) = execCmdEx(cmd)
       if gotten != status:

@@ -920,9 +920,8 @@ proc parseCodeBlockField(d: PDoc, n: PRstNode, params: var CodeBlockParams) =
   of "test":
     params.testCmd = n.getFieldValue.strip
     if params.testCmd.len == 0:
-      # factor with D20210224T221756, see `interpSnippetCmd`. Note that
-      # `docCmd` should appear before $file but after all other options, but
-      # currently $options merges both options and $file so it's tricky.
+      # factor with D20210224T221756. Note that `$docCmd` should appear before `$file`
+      # but after all other options, but currently `$options` merges both options and `$file` so it's tricky.
       params.testCmd = "$nim r --backend:$backend --lib:$libpath $docCmd $options"
     else:
       # consider whether `$docCmd` should be appended here too
