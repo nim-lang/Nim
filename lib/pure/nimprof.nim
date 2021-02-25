@@ -8,7 +8,7 @@
 #
 
 ## Profiling support for Nim. This is an embedded profiler that requires
-## ``--profiler:on``. You only need to import this module to get a profiling
+## `--profiler:on`. You only need to import this module to get a profiling
 ## report at program exit.
 
 when not defined(profiler) and not defined(memProfiler):
