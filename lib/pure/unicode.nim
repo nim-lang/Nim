@@ -962,18 +962,13 @@ iterator split*(s: string, seps: openArray[Rune] = unicodeSpaces,
       @["hÃllo", "this", "is", "an", "example", "是"]
 
     # And the following code splits the same string using a sequence of Runes.
-    import std/sugar
-
-    let separators = collect(for separator in ";:$".runes: separator)
-
-    assert toSeq(split("añyóng:hÃllo;是$example", separators)) ==
+    assert toSeq(split("añyóng:hÃllo;是$example", ";:$".toRunes)) ==
       @["añyóng", "hÃllo", "是", "example"]
 
     # Another example that splits a string containing a date.
     let date = "2012-11-20T22:08:08.398990"
-    let separatorsDate = collect(for separator in " -:T".runes: separator)
 
-    assert toSeq(split(date, separatorsDate)) ==
+    assert toSeq(split(date,  " -:T".toRunes)) ==
       @["2012", "11", "20", "22", "08", "08.398990"]
 
   splitCommon(s, seps, maxsplit)
