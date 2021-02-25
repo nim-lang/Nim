@@ -52,7 +52,7 @@ type
     headers*: Headers
 
 
-func unsafeNewFetchOptions*(metod, body, mode, credentials, cache, referrerPolicy: cstring,
+proc unsafeNewFetchOptions*(metod, body, mode, credentials, cache, referrerPolicy: cstring,
     keepalive: bool, redirect = "follow".cstring, referrer = "client".cstring, integrity = "".cstring): FetchOptions {.importjs:
     "{method: #, body: #, mode: #, credentials: #, cache: #, referrerPolicy: #, keepalive: #, redirect: #, referrer: #, integrity: #}".}
   ## **Unsafe** `newfetchOptions`. Low-level func for optimization.
@@ -75,10 +75,10 @@ func newfetchOptions*(metod: HttpMethod, body: cstring,
     )
   )
 
-func fetch*(url: cstring): Future[Response] {.importjs: "fetch(#)".}
+proc fetch*(url: cstring): Future[Response] {.importjs: "fetch(#)".}
   ## `fetch()` API, simple `GET` only, returns a `Response`.
 
-func fetch*(url: cstring, options: FetchOptions): Future[Response] {.importjs: "fetch(#, #)".}
+proc fetch*(url: cstring, options: FetchOptions): Future[Response] {.importjs: "fetch(#, #)".}
   ## `fetch()` API that takes a `FetchOptions`, returns a `Response`.
 
 func toCstring*(this: FetchOptions or Response): cstring {.importjs: "JSON.stringify(#)".}
@@ -138,7 +138,8 @@ runnableExamples:
       doAssert options1.referrer == "client".cstring
       doAssert options1.integrity == "".cstring
 
-    when not defined(nodejs):
+    when not defined(nodejs) and defined(nimExperimentalAsyncjsThen):
+
       proc doFetch(): Future[Response] {.async.} =
         fetch "https://httpbin.org/get"
 
