@@ -57,10 +57,7 @@
 ## If you need to use this module with older versions of JavaScript, you can
 ## use a tool that backports the resulting JavaScript code, as babel.
 
-#[
-xxx why does `nim doc -b:js lib/js/asyncjs.nim` generate this warning:
-js/asyncjs.nim(1, 1) Warning: language 'javascript' not supported [LanguageXNotSupported]
-]#
+# xxx code-block:: javascript above gives `LanguageXNotSupported` warning.
 
 when not defined(js) and not defined(nimsuggest):
   {.fatal: "Module asyncjs is designed to be used with the JavaScript backend.".}
@@ -153,7 +150,6 @@ macro async*(arg: untyped): untyped =
       result.add generateJsasync(oneProc)
   else:
     result = generateJsasync(arg)
-  # echo result.repr # PRTEMP
 
 proc newPromise*[T](handler: proc(resolve: proc(response: T))): Future[T] {.importcpp: "(new Promise(#))".}
   ## A helper for wrapping callback-based functions
