@@ -45,12 +45,24 @@ type
     frpUnsafeUrl = "unsafe-url"
 
   Response* = ref object  ## https://developer.mozilla.org/en-US/docs/Web/API/Response
-    myBodyUsed*, ok*, redirected*: bool
+    bodyUsed*, ok*, redirected*: bool
     typ* {.importjs: "type".}: cstring
     url*, statusText*: cstring
     status*: cint
     headers*: Headers
 
+
+func newResponse*(body: cstring): Response {.importjs: "(new Response(#))".}
+  ## Explicit constructor for a new `Response`.
+
+func clone*(self: Response): Response {.importjs: "#.$1()".}
+  ## https://developer.mozilla.org/en-US/docs/Web/API/Response/clone
+
+func error*(self: Response): Response {.importjs: "#.$1()".}
+  ## https://developer.mozilla.org/en-US/docs/Web/API/Response/error
+
+func redirect*(self: Response; url: cstring; status: 100..599): Response {.importjs: "#.$1(#, #)".}
+  ## https://developer.mozilla.org/en-US/docs/Web/API/Response/redirect
 
 proc unsafeNewFetchOptions*(metod, body, mode, credentials, cache, referrerPolicy: cstring,
     keepalive: bool, redirect = "follow".cstring, referrer = "client".cstring, integrity = "".cstring): FetchOptions {.importjs:
@@ -137,6 +149,12 @@ runnableExamples:
       doAssert options1.redirect == $frFollow
       doAssert options1.referrer == "client".cstring
       doAssert options1.integrity == "".cstring
+
+    block:
+      let response: Response = newResponse(body = "-. .. --".cstring)
+      doAssert response.clone() is Response
+      let redirected: Response = response.redirect("http://nim-lang.org".cstring, 307)
+      doAssert redirected.url == "http://nim-lang.org".cstring
 
     when not defined(nodejs) and defined(nimExperimentalAsyncjsThen):
 
