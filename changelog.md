@@ -130,7 +130,7 @@ with other backends. see #9125. Use `-d:nimLegacyJsRound` for previous behavior.
 
 - Deprecated `any`. See https://github.com/nim-lang/RFCs/issues/281
 
-- Added `std/sysrand` module to get random numbers from a secure source 
+- Added `std/sysrand` module to get random numbers from a secure source
 provided by the operating system.
 
 - Added optional `options` argument to `copyFile`, `copyFileToDir`, and
@@ -182,6 +182,7 @@ provided by the operating system.
   and `$none(int)` to `"none(int)"` instead of `"None[int]"`.
 - Added `jsfetch` module [Fetch](https://developer.mozilla.org/docs/Web/API/Fetch_API) wrapper for JavaScript target.
 - Added `jsheaders` module [Headers](https://developer.mozilla.org/en-US/docs/Web/API/Headers) wrapper for JavaScript target.
+- Added `jsformdata` module [FormData](https://developer.mozilla.org/en-US/docs/Web/API/FormData) wrapper for JavaScript target.
 
 
 ## Language changes

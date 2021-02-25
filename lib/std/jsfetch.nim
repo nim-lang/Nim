@@ -1,12 +1,8 @@
 ## - Fetch for the JavaScript target: https://developer.mozilla.org/docs/Web/API/Fetch_API
-##
-## .. Note:: Module jsfetch requires compiling using -d:nimExperimentalAsyncjsThen.
 when not defined(js):
   {.fatal: "Module jsfetch is designed to be used with the JavaScript backend.".}
-when not defined(nimExperimentalAsyncjsThen):
-  {.warning: "Module jsfetch requires compiling using -d:nimExperimentalAsyncjsThen.".}
 
-import std/[asyncjs, jsffi, jsheaders]
+import std/[asyncjs, jsffi, jsheaders, jsformdata]
 from std/httpcore import HttpMethod
 
 type
@@ -56,8 +52,8 @@ type
     body*: Body
 
 
-func newResponse*(body: cstring): Response {.importjs: "(new Response(#))".}
-  ## Explicit constructor for a new `Response`. *This does not call `fetch()`.*
+func newResponse*(body: cstring or FormData): Response {.importjs: "(new Response(#))".}
+  ## Explicit constructor for a new `Response`. This does *not* call `fetch()`.
 
 func clone*(self: Response): Response {.importjs: "#.$1()".}
   ## https://developer.mozilla.org/en-US/docs/Web/API/Response/clone
@@ -73,6 +69,9 @@ proc text*(self: Body): Future[cstring] {.importjs: "#.$1()".}
 
 proc json*(self: Body): Future[JsObject] {.importjs: "#.$1()".}
   ## https://developer.mozilla.org/en-US/docs/Web/API/Body/json
+
+proc formData*(self: Body): Future[FormData] {.importjs: "#.$1()".}
+  ## https://developer.mozilla.org/en-US/docs/Web/API/Body/formData
 
 proc unsafeNewFetchOptions*(metod, body, mode, credentials, cache, referrerPolicy: cstring,
     keepalive: bool, redirect = "follow".cstring, referrer = "client".cstring, integrity = "".cstring): FetchOptions {.importjs:
@@ -109,7 +108,7 @@ func `$`*(self: FetchOptions or Response): string = $toCstring(self)
 
 
 runnableExamples:
-  import std/[httpcore, asyncjs]
+  import std/[httpcore, asyncjs, jsheaders, jsformdata]
   if defined(nimJsFetchTests):
 
     block:
@@ -166,8 +165,7 @@ runnableExamples:
       let redirected: Response = response.redirect("http://nim-lang.org".cstring, 307)
       doAssert redirected.url == "http://nim-lang.org".cstring
 
-    when not defined(nodejs) and defined(nimExperimentalAsyncjsThen):
-
+    if not defined(nodejs):
       proc doFetch(): Future[Response] {.async.} =
         fetch "https://httpbin.org/get"
 
@@ -175,5 +173,11 @@ runnableExamples:
         let response: Response = await doFetch()
         doAssert response.ok
         doAssert response.status == 200.cint
+        doAssert response.headers is Headers
+        doAssert response.body is Body
+        ## -d:nimExperimentalAsyncjsThen
+        when defined(nimExperimentalAsyncjsThen):
+          let contents: string = await response.body
+            .then((data: cstring) => $data)
 
       discard example()
