@@ -25,8 +25,6 @@ runnableExamples:
   assert (?.f2.x2.x2).x3 == nil  # this terminates ?. early
   import std/segfaults # enable `NilAccessDefect` exceptions
 
-# xxx pending bug #17178, un-disable `arm64`.
-
 from std/options import Option, isSome, get, option, unsafeGet, UnpackDefect
 export options.get, options.isSome, options.isNone
 
