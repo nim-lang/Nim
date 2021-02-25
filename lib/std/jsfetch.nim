@@ -1,6 +1,10 @@
 ## - Fetch for the JavaScript target: https://developer.mozilla.org/docs/Web/API/Fetch_API
+##
+## .. Note:: Module jsfetch requires compiling using -d:nimExperimentalAsyncjsThen.
 when not defined(js):
   {.fatal: "Module jsfetch is designed to be used with the JavaScript backend.".}
+when not defined(nimExperimentalAsyncjsThen):
+  {.warning: "Module jsfetch requires compiling using -d:nimExperimentalAsyncjsThen.".}
 
 import asyncjs, jsheaders
 from httpcore import HttpMethod
@@ -77,10 +81,10 @@ func fetchToCstring*(url: cstring): Future[cstring] {.importjs: "fetch(#).then(r
 func fetchToCstring*(url: cstring, options: FetchOptions): Future[cstring] {.importjs: "fetch(#, #).then(response => response.text()).then(text => text)".}
   ## Convenience func for `fetch()` API that returns a `cstring` directly.
 
-func fetch*(url: cstring): Future[Response] {.importjs: "fetch(#).then(response => response)".}
+func fetch*(url: cstring): Future[Response] {.importjs: "fetch(#)".}
   ## `fetch()` API, simple `GET` only, returns a `Response`.
 
-func fetch*(url: cstring, options: FetchOptions): Future[Response] {.importjs: "(await fetch(#, #).then(response => response))".}
+func fetch*(url: cstring, options: FetchOptions): Future[Response] {.importjs: "fetch(#, #)".}
   ## `fetch()` API that takes a `FetchOptions`, returns a `Response`.
 
 func toCstring*(this: FetchOptions or Response): cstring {.importjs: "JSON.stringify(#)".}
