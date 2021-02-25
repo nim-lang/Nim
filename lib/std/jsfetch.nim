@@ -53,7 +53,7 @@ type
 
 
 func newResponse*(body: cstring): Response {.importjs: "(new Response(#))".}
-  ## Explicit constructor for a new `Response`.
+  ## Explicit constructor for a new `Response`. *This does not call `fetch()`.*
 
 func clone*(self: Response): Response {.importjs: "#.$1()".}
   ## https://developer.mozilla.org/en-US/docs/Web/API/Response/clone
