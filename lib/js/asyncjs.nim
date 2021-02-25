@@ -57,6 +57,11 @@
 ## If you need to use this module with older versions of JavaScript, you can
 ## use a tool that backports the resulting JavaScript code, as babel.
 
+#[
+xxx why does `nim doc -b:js lib/js/asyncjs.nim` generate this warning:
+js/asyncjs.nim(1, 1) Warning: language 'javascript' not supported [LanguageXNotSupported]
+]#
+
 when not defined(js) and not defined(nimsuggest):
   {.fatal: "Module asyncjs is designed to be used with the JavaScript backend.".}
 
@@ -158,8 +163,6 @@ proc newPromise*(handler: proc(resolve: proc())): Future[void] {.importcpp: "(ne
   ## A helper for wrapping callback-based functions
   ## into promises and async procedures.
 
-# template `===>`(a)
-
 when defined(nimExperimentalAsyncjsThen):
   since (1, 5, 1):
     #[
@@ -202,15 +205,23 @@ when defined(nimExperimentalAsyncjsThen):
 
     proc catch*[T](future: Future[T], onReject: OnReject): Future[void] =
       ## See https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Promise/catch
-      runnableExamples:
+      runnableExamples("-d:nimExperimentalAsyncjsThen"):
         from std/sugar import `=>`
         from std/strutils import contains
+
         proc fn(n: int): Future[int] {.async.} =
           if n >= 7: raise newException(ValueError, "foobar: " & $n)
           else: result = n * 2
+
+        proc asyncFact(n: int): Future[int] {.async.} =
+          if n > 0: result = n * await asyncFact(n-1)
+          else: result = 1
+
         proc main() {.async.} =
+          assert await asyncFact(3) == 3*2
+          assert await asyncFact(3).then(asyncFact) == 6*5*4*3*2
           let x1 = await fn(3)
-          assert x1 == 3*2
+          assert x1 == 3 * 2
           let x2 = await fn(4)
             .then((a: int) => a.float)
             .then((a: float) => $a)
