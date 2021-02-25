@@ -968,7 +968,7 @@ iterator split*(s: string, seps: openArray[Rune] = unicodeSpaces,
     # Another example that splits a string containing a date.
     let date = "2012-11-20T22:08:08.398990"
 
-    assert toSeq(split(date,  " -:T".toRunes)) ==
+    assert toSeq(split(date, " -:T".toRunes)) ==
       @["2012", "11", "20", "22", "08", "08.398990"]
 
   splitCommon(s, seps, maxsplit)
