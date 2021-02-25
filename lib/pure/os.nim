@@ -225,7 +225,7 @@ proc joinPath*(parts: varargs[string]): string {.noSideEffect,
   for i in 0..high(parts):
     joinPathImpl(result, state, parts[i])
 
-proc `/`*(head, tail: string): string {.noSideEffect.} =
+proc `/`*(head, tail: string): string {.noSideEffect, inline.} =
   ## The same as `joinPath(head, tail) proc <#joinPath,string,string>`_.
   ##
   ## See also:
@@ -243,7 +243,7 @@ proc `/`*(head, tail: string): string {.noSideEffect.} =
       assert "usr/" / "/lib/" == "usr/lib/"
       assert "usr" / "lib" / "../bin" == "usr/bin"
 
-  return joinPath(head, tail)
+  result = joinPath(head, tail)
 
 proc splitPath*(path: string): tuple[head, tail: string] {.
   noSideEffect, rtl, extern: "nos$1".} =
