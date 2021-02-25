@@ -102,9 +102,9 @@ proc fetch*(url: cstring): Future[Response] {.importjs: "fetch(#)".}
 proc fetch*(url: cstring, options: FetchOptions): Future[Response] {.importjs: "fetch(#, #)".}
   ## `fetch()` API that takes a `FetchOptions`, returns a `Response`.
 
-func toCstring*(self: FetchOptions or Response): cstring {.importjs: "JSON.stringify(#)".}
+func toCstring*(self: FetchOptions or Response or Body): cstring {.importjs: "JSON.stringify(#)".}
 
-func `$`*(self: FetchOptions or Response): string = $toCstring(self)
+func `$`*(self: FetchOptions or Response or Body): string = $toCstring(self)
 
 
 runnableExamples:
