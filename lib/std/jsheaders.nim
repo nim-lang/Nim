@@ -47,8 +47,9 @@ func `$`*(this: Headers): string = $toCstring(this)
 
 runnableExamples:
   if defined(nimJsHeadersTests):
+
     block:
-      let header = newHeaders()
+      let header: Headers = newHeaders()
       header.add("key", "value")
       doAssert header.hasKey("key")
       doAssert header.keys() == @["key".cstring]
@@ -62,16 +63,18 @@ runnableExamples:
       doAssert header.entries() == @[("key".cstring, "value".cstring)]
       header.clear()
       doAssert header.entries() == @[]
+
     block:
-      let header = newHeaders()
+      let header: Headers = newHeaders()
       header.add("key", "a")
       header.add("key", "b")  ## Duplicated.
       header.add("key", "c")  ## Duplicated.
       doAssert header["key"] == "a, b, c".cstring
       header["key"] = "value".cstring
       doAssert header["key"] == "value".cstring
+
     block:
-      let header = newHeaders()
+      let header: Headers = newHeaders()
       header["key"] = "a"
       header["key"] = "b"  ## Overwrites.
       doAssert header["key"] == "b".cstring
