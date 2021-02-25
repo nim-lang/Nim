@@ -32,7 +32,7 @@
 ##        var e = next(p)
 ##        case e.kind
 ##        of cfgEof: break
-##        of cfgSectionStart:   ## a ``[section]`` has been parsed
+##        of cfgSectionStart:   ## a `[section]` has been parsed
 ##          echo("new section: " & e.section)
 ##        of cfgKeyValuePair:
 ##          echo("key-value-pair: " & e.key & ": " & e.value)
