@@ -27,7 +27,7 @@ runnableExamples:
   when not defined(arm64):
     doAssertRaises(NilAccessDefect): echo (?.f2.x2.x2).x3[]
 
-# xxx fix `arm64`, it should segfault.
+# xxx pending bug #17178, un-disable `arm64`.
 
 from std/options import Option, isSome, get, option, unsafeGet, UnpackDefect
 export options.get, options.isSome, options.isNone
