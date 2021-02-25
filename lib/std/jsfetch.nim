@@ -6,8 +6,8 @@ when not defined(js):
 when not defined(nimExperimentalAsyncjsThen):
   {.warning: "Module jsfetch requires compiling using -d:nimExperimentalAsyncjsThen.".}
 
-import asyncjs, jsheaders
-from httpcore import HttpMethod
+import std/[asyncjs, jsffi, jsheaders]
+from std/httpcore import HttpMethod
 
 type
   FetchOptions* = ref object  ## Options for Fetch API.
@@ -81,13 +81,13 @@ proc fetch*(url: cstring): Future[Response] {.importjs: "fetch(#)".}
 proc fetch*(url: cstring, options: FetchOptions): Future[Response] {.importjs: "fetch(#, #)".}
   ## `fetch()` API that takes a `FetchOptions`, returns a `Response`.
 
-func toCstring*(this: FetchOptions or Response): cstring {.importjs: "JSON.stringify(#)".}
+func toCstring*(self: FetchOptions or Response): cstring {.importjs: "JSON.stringify(#)".}
 
-func `$`*(this: FetchOptions or Response): string = $toCstring(this)
+func `$`*(self: FetchOptions or Response): string = $toCstring(self)
 
 
 runnableExamples:
-  import httpcore, asyncjs
+  import std/[httpcore, asyncjs]
   if defined(nimJsFetchTests):
 
     block:
