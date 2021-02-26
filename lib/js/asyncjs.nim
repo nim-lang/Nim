@@ -191,22 +191,19 @@ when defined(nimExperimentalAsyncjsThen):
     # proc then*[T: not void, T2x](future: Future[T], onSuccess: T2x, onReject: OnReject = nil): auto = # TODO: document not void?
     proc then*[T, Fun](future: Future[T], onSuccess: Fun, onReject: OnReject = nil): auto =
       ## See https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Promise/then
-      ## Returns a `Future[T2]` or, if T2 is Future, a `T2`.
-      when T is void:
-        when typeOrVoid(onSuccess()) is void:
+      ## Returns a `Future[T2]` or, if T2 is Future, a `T2`. PRTEMP
+      template impl(call): untyped =
+        when typeOrVoid(call) is void:
           var ret: Future[void]
         else:
-          type T2 = typeof(onSuccess())
+          type T2 = typeof(call)
           var ret = default(maybeFuture(T2))
+        typeof(ret)
+      when T is void:
+        type A = impl(onSuccess())
       else:
-        when typeOrVoid(onSuccess(default(T))) is void:
-          var ret: Future[void]
-        else:
-          type T2 = typeof(onSuccess(default(T)))
-          type T3 = maybeFuture(T2)
-          # var ret: maybeFuture(T2)
-          var ret: T3
-
+        type A = impl(onSuccess(default(T)))
+      var ret: A
       asm "`ret` = `future`.then(`onSuccess`, `onReject`)"
       return ret
 
