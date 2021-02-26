@@ -1,9 +1,10 @@
 discard """
+  targets: "c js"
   output:'''@["3", "2", "1"]
 '''
 """
 #12928,10456
-import sequtils, algorithm, json, sugar
+import std/[sequtils, algorithm, json, sugar]
 
 proc test() = 
   try: 
@@ -115,7 +116,7 @@ block:
     doAssert binarySearch(moreData, 4712) == -1
 
 # merge
-block:
+proc main() =
   block:
     var x = @[1, 7, 8, 11, 21, 33, 45, 99]
     var y = @[6, 7, 9, 12, 57, 66]
@@ -262,3 +263,6 @@ block:
   var x: seq[(int, int)]
   x.merge([(1,1)], [(1,2)], (a,b) => a[0] - b[0])
   doAssert x == @[(1, 1), (1, 2)]
+
+static: main()
+main()
