@@ -576,7 +576,7 @@ proc merge*[T](
     let x = @[1, 3, 6]
     let y = @[2, 3, 4]
 
-    var merged: seq[int]
+    var merged = @[7] # just to illustrate that its content will be discarded
     merged.merge(x, y, system.cmp[int])
     assert merged.isSorted
     assert merged == @[1, 2, 3, 3, 4, 6]
@@ -591,7 +591,7 @@ proc merge*[T](
     sizeX = x.len
     sizeY = y.len
 
-  result.setlen(sizeX + sizeY)
+  result.setLen(sizeX + sizeY)
 
   var
     ix = 0
@@ -616,7 +616,7 @@ proc merge*[T](
     let itemX = x[ix]
     let itemY = y[iy]
 
-    if cmp(itemX, itemY) > 0:
+    if cmp(itemX, itemY) > 0: # to have a stable sort
       result[i] = itemY
       inc iy
     else:
@@ -625,7 +625,7 @@ proc merge*[T](
 
     inc i
 
-proc merge*[T](result: var seq[T], x, y: openArray[T]) {.since: (1, 5, 1).} =
+proc merge*[T](result: var seq[T], x, y: openArray[T]) {.inline, since: (1, 5, 1).} =
   ## Shortcut version of `merge` that uses `system.cmp[T]` as the comparison function.
   ##
   ## **See also:**
