@@ -194,11 +194,13 @@ when defined(nimExperimentalAsyncjsThen):
       ## Returns a `Future[T2]` or, if T2 is Future, a `T2`. PRTEMP
       template impl(call): untyped =
         when typeOrVoid(call) is void:
-          var ret: Future[void]
+          # var ret: Future[void]
+          Future[void]
         else:
-          type T2 = typeof(call)
-          var ret = default(maybeFuture(T2))
-        typeof(ret)
+          # type T2 = typeof(call)
+          # var ret = default(maybeFuture(T2))
+          default(maybeFuture(T2))
+        # typeof(ret)
       when T is void:
         type A = impl(onSuccess())
       else:
