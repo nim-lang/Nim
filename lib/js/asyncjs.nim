@@ -229,6 +229,13 @@ when defined(nimExperimentalAsyncjsThen):
           await fn(7).catch((r: Error) => (reason = r))
           assert reason != nil
           assert  "foobar: 7" in $reason.message
+
+          # await fn(7).catch((r: Error) => (reason = r))
+          var witness = 1
+          await fn(7).then((a: int) => witness = 2, (r: Error) => (witness = 3))
+          echo (witness, )
+          # proc then*[T, T2](future: Future[T], onSuccess: proc(value: T): T2, onReject: OnReject = nil): Future[T2] =
+
         discard main()
 
       # xxx add tests and examples for `then` with some `onReject` callback.
