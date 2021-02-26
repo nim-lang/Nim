@@ -188,7 +188,7 @@ when defined(nimExperimentalAsyncjsThen):
 
     type OnReject* = proc(reason: Error)
 
-    proc then*[T; Fun: proc](future: Future[T], onSuccess: Fun, onReject: OnReject = nil): auto =
+    proc then*[T](future: Future[T], onSuccess: proc, onReject: OnReject = nil): auto =
       ## See https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Promise/then
       ## Returns a `Future` from the return type of `onSuccess(T.default)`.
       runnableExamples("-d:nimExperimentalAsyncjsThen"):
