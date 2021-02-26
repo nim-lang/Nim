@@ -158,6 +158,15 @@ proc newPromise*(handler: proc(resolve: proc())): Future[void] {.importcpp: "(ne
   ## A helper for wrapping callback-based functions
   ## into promises and async procedures.
 
+template typeOrVoid[T](a: T): type =
+  # xxx this is useful, make it public in std/typetraits in future work
+  T
+
+template maybeFuture(T): untyped =
+  # avoids `Future[Future[T]]`
+  when T is Future: T
+  else: Future[T]
+
 when defined(nimExperimentalAsyncjsThen):
   import std/private/since
   since (1, 5, 1):
@@ -179,29 +188,27 @@ when defined(nimExperimentalAsyncjsThen):
 
     type OnReject* = proc(reason: Error)
 
-    proc then*[T, T2](future: Future[T], onSuccess: proc(value: T): T2, onReject: OnReject = nil): Future[T2] =
+    # proc then*[T: not void, T2x](future: Future[T], onSuccess: T2x, onReject: OnReject = nil): auto = # TODO: document not void?
+    proc then*[T, Fun](future: Future[T], onSuccess: Fun, onReject: OnReject = nil): auto =
       ## See https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Promise/then
-      asm "`result` = `future`.then(`onSuccess`, `onReject`)"
+      ## Returns a `Future[T2]` or, if T2 is Future, a `T2`.
+      when T is void:
+        when typeOrVoid(onSuccess()) is void:
+          var ret: Future[void]
+        else:
+          type T2 = typeof(onSuccess())
+          var ret = default(maybeFuture(T2))
+      else:
+        when typeOrVoid(onSuccess(default(T))) is void:
+          var ret: Future[void]
+        else:
+          type T2 = typeof(onSuccess(default(T)))
+          type T3 = maybeFuture(T2)
+          # var ret: maybeFuture(T2)
+          var ret: T3
 
-    proc then*[T, T2](future: Future[T], onSuccess: proc(value: T): Future[T2], onReject: OnReject = nil): Future[T2] =
-      ## See https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Promise/then
-      asm "`result` = `future`.then(`onSuccess`, `onReject`)"
-
-    proc then*[T](future: Future[T], onSuccess: proc(value: T), onReject: OnReject = nil): Future[void] =
-      ## See https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Promise/then
-      asm "`result` = `future`.then(`onSuccess`, `onReject`)"
-
-    proc then7*[T](future: Future[T], onSuccess: proc(value: T), onReject: OnReject = nil): Future[void] =
-      ## See https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Promise/then
-      asm "`result` = `future`.then(`onSuccess`, `onReject`)"
-
-    proc then*(future: Future[void], onSuccess: proc(), onReject: OnReject = nil): Future[void] =
-      ## See https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Promise/then
-      asm "`result` = `future`.then(`onSuccess`, `onReject`)"
-
-    proc then*[T2](future: Future[void], onSuccess: proc(): T2, onReject: OnReject = nil): Future[T2] =
-      ## See https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Promise/then
-      asm "`result` = `future`.then(`onSuccess`, `onReject`)"
+      asm "`ret` = `future`.then(`onSuccess`, `onReject`)"
+      return ret
 
     proc catch*[T](future: Future[T], onReject: OnReject): Future[void] =
       ## See https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Promise/catch
