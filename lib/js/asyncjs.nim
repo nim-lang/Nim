@@ -64,7 +64,6 @@ when not defined(js) and not defined(nimsuggest):
 
 import std/jsffi
 import std/macros
-import std/private/since
 
 type
   Future*[T] = ref object
@@ -160,6 +159,7 @@ proc newPromise*(handler: proc(resolve: proc())): Future[void] {.importcpp: "(ne
   ## into promises and async procedures.
 
 when defined(nimExperimentalAsyncjsThen):
+  import std/private/since
   since (1, 5, 1):
     #[
     TODO:
@@ -214,8 +214,8 @@ when defined(nimExperimentalAsyncjsThen):
           else: result = 1
 
         proc main() {.async.} =
-          assert await asyncFact(3) == 3*2
-          assert await asyncFact(3).then(asyncFact) == 6*5*4*3*2
+          assert asyncFact(3).await == 3*2
+          assert asyncFact(3).then(asyncFact).await == 6*5*4*3*2
           let x1 = await fn(3)
           assert x1 == 3 * 2
           let x2 = await fn(4)
