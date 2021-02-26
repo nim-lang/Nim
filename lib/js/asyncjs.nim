@@ -191,6 +191,10 @@ when defined(nimExperimentalAsyncjsThen):
       ## See https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Promise/then
       asm "`result` = `future`.then(`onSuccess`, `onReject`)"
 
+    proc then7*[T](future: Future[T], onSuccess: proc(value: T), onReject: OnReject = nil): Future[void] =
+      ## See https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Promise/then
+      asm "`result` = `future`.then(`onSuccess`, `onReject`)"
+
     proc then*(future: Future[void], onSuccess: proc(), onReject: OnReject = nil): Future[void] =
       ## See https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Promise/then
       asm "`result` = `future`.then(`onSuccess`, `onReject`)"
@@ -214,29 +218,31 @@ when defined(nimExperimentalAsyncjsThen):
           else: result = 1
 
         proc main() {.async.} =
-          assert asyncFact(3).await == 3*2
-          assert asyncFact(3).then(asyncFact).await == 6*5*4*3*2
-          let x1 = await fn(3)
-          assert x1 == 3 * 2
-          let x2 = await fn(4)
-            .then((a: int) => a.float)
-            .then((a: float) => $a)
-          assert x2 == "8.0"
+          block: # then
+            assert asyncFact(3).await == 3*2
+            assert asyncFact(3).then(asyncFact).await == 6*5*4*3*2
+            let x1 = await fn(3)
+            assert x1 == 3 * 2
+            let x2 = await fn(4)
+              .then((a: int) => a.float)
+              .then((a: float) => $a)
+            assert x2 == "8.0"
 
-          var reason: Error
-          await fn(6).catch((r: Error) => (reason = r))
-          assert reason == nil
-          await fn(7).catch((r: Error) => (reason = r))
-          assert reason != nil
-          assert  "foobar: 7" in $reason.message
+          block: # then with `onReject` callback
+            var witness = 1
+            await fn(6).then((a: int) => (witness = 2), (r: Error) => (witness = 3))
+            assert witness == 2
+            await fn(7).then((a: int) => (witness = 2), (r: Error) => (witness = 3))
+            assert witness == 3
 
-          # await fn(7).catch((r: Error) => (reason = r))
-          var witness = 1
-          await fn(7).then((a: int) => witness = 2, (r: Error) => (witness = 3))
-          echo (witness, )
-          # proc then*[T, T2](future: Future[T], onSuccess: proc(value: T): T2, onReject: OnReject = nil): Future[T2] =
+          block: # catch
+            var reason: Error
+            await fn(6).catch((r: Error) => (reason = r)) # note: `()` are needed, `=> reason = r` would not work
+            assert reason == nil
+            await fn(7).catch((r: Error) => (reason = r))
+            assert reason != nil
+            assert  "foobar: 7" in $reason.message
 
         discard main()
 
-      # xxx add tests and examples for `then` with some `onReject` callback.
       asm "`result` = `future`.catch(`onReject`)"
