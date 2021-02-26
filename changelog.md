@@ -173,13 +173,15 @@ provided by the operating system.
   dumping (on select signals) and notifying the parent process about the cause
   of termination.
 
-- Added `strip` and `setSlice` to `std/strbasics`.
+- `hashes.hash` now supports `object`, but can be overloaded.
 
+- Added `strip` and `setSlice` to `std/strbasics`.
 
 - Added to `wrapnils` an option-like API via `??.`, `isSome`, `get`.
 
 - `std/options` changed `$some(3)` to `"some(3)"` instead of `"Some(3)"`
   and `$none(int)` to `"none(int)"` instead of `"None[int]"`.
+
 
 ## Language changes
 
