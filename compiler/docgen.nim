@@ -210,7 +210,8 @@ proc newDocumentor*(filename: AbsoluteFile; cache: IdentCache; conf: ConfigRef, 
       var outp: AbsoluteFile
       if filename.len == 0:
         let nameOnly = splitFile(d.filename).name
-        outp = getNimcacheDir(conf) / RelativeDir(nameOnly) /
+        # "snippets" needed, refs bug #17183
+        outp = getNimcacheDir(conf) / "snippets".RelativeDir / RelativeDir(nameOnly) /
                RelativeFile(nameOnly & "_snippet_" & $d.id & ".nim")
       elif isAbsolute(filename):
         outp = AbsoluteFile(filename)
@@ -228,10 +229,14 @@ proc newDocumentor*(filename: AbsoluteFile; cache: IdentCache; conf: ConfigRef, 
         # backward compatibility hacks; interpolation commands should explicitly use `$`
         if cmd.startsWith "nim ": result = "$nim " & cmd[4..^1]
         else: result = cmd
+        # factor with D20210224T221756
         result = result.replace("$1", "$options") % [
           "nim", os.getAppFilename().quoteShell,
+          "libpath", quoteShell(d.conf.libpath),
+          "docCmd", d.conf.docCmd,
           "backend", $d.conf.backend,
           "options", outp.quoteShell,
+            # xxx `quoteShell` seems buggy if user passes options = "-d:foo somefile.nim"
         ]
       let cmd = cmd.interpSnippetCmd
       rawMessage(conf, hintExecuting, cmd)
@@ -475,6 +480,7 @@ proc runAllExamples(d: PDoc) =
     writeFile(outp, group.code)
     # most useful semantics is that `docCmd` comes after `rdoccmd`, so that we can (temporarily) override
     # via command line
+    # D20210224T221756:here
     let cmd = "$nim $backend -r --lib:$libpath --warning:UnusedImport:off --path:$path --nimcache:$nimcache $rdoccmd $docCmd $file" % [
       "nim", quoteShell(os.getAppFilename()),
       "backend", $d.conf.backend,
