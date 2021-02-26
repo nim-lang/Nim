@@ -11,7 +11,7 @@
 
 import
   intsets, ast, astalgo, trees, msgs, strutils, platform, renderer, options,
-  lineinfos, int128
+  lineinfos, int128, modulegraphs
 
 type
   TPreferedDesc* = enum
@@ -73,7 +73,7 @@ const
                tyInferred, tySink, tyLent, tyOwned}
   # typedescX is used if we're sure tyTypeDesc should be included (or skipped)
   typedescPtrs* = abstractPtrs + {tyTypeDesc}
-  typedescInst* = abstractInst + {tyTypeDesc, tyOwned}
+  typedescInst* = abstractInst + {tyTypeDesc, tyOwned, tyUserTypeClass}
 
 proc invalidGenericInst*(f: PType): bool =
   result = f.kind == tyGenericInst and lastSon(f) == nil
@@ -448,6 +448,7 @@ proc rangeToStr(n: PNode): string =
 const
   typeToStr: array[TTypeKind, string] = ["None", "bool", "char", "empty",
     "Alias", "typeof(nil)", "untyped", "typed", "typeDesc",
+    # xxx typeDesc=>typedesc: typedesc is declared as such, and is 10x more common.
     "GenericInvocation", "GenericBody", "GenericInst", "GenericParam",
     "distinct $1", "enum", "ordinal[$1]", "array[$1, $2]", "object", "tuple",
     "set[$1]", "range[$1]", "ptr ", "ref ", "var ", "seq[$1]", "proc",
@@ -550,7 +551,7 @@ proc typeToString(typ: PType, prefer: TPreferedDesc = preferName): string =
       result.add(']')
     of tyTypeDesc:
       if t[0].kind == tyNone: result = "typedesc"
-      else: result = "type " & typeToString(t[0])
+      else: result = "typedesc[" & typeToString(t[0]) & "]"
     of tyStatic:
       if prefer == preferGenericArg and t.n != nil:
         result = t.n.renderTree
@@ -895,8 +896,6 @@ proc initSameTypeClosure: TSameTypeClosure =
 proc containsOrIncl(c: var TSameTypeClosure, a, b: PType): bool =
   result = c.s.len > 0 and c.s.contains((a.id, b.id))
   if not result:
-    when not defined(nimNoNilSeqs):
-      if isNil(c.s): c.s = @[]
     c.s.add((a.id, b.id))
 
 proc sameTypeAux(x, y: PType, c: var TSameTypeClosure): bool
@@ -1196,7 +1195,8 @@ proc sameTypeAux(x, y: PType, c: var TSameTypeClosure): bool =
     cycleCheck()
     result = sameTypeAux(a.lastSon, b.lastSon, c)
   of tyNone: result = false
-  of tyOptDeprecated: doAssert false
+  of tyConcept:
+    result = exprStructuralEquivalent(a.n, b.n)
 
 proc sameBackendType*(x, y: PType): bool =
   var c = initSameTypeClosure()
@@ -1272,6 +1272,7 @@ proc matchType*(a: PType, pattern: openArray[tuple[k:TTypeKind, i:int]],
     a = a[i]
   result = a.kind == last
 
+
 include sizealignoffsetimpl
 
 proc computeSize*(conf: ConfigRef; typ: PType): BiggestInt =
@@ -1307,11 +1308,12 @@ proc containsGenericTypeIter(t: PType, closure: RootRef): bool =
 proc containsGenericType*(t: PType): bool =
   result = iterOverType(t, containsGenericTypeIter, nil)
 
-proc baseOfDistinct*(t: PType; idgen: IdGenerator): PType =
+proc baseOfDistinct*(t: PType; g: ModuleGraph; idgen: IdGenerator): PType =
   if t.kind == tyDistinct:
     result = t[0]
   else:
     result = copyType(t, nextTypeId idgen, t.owner)
+    copyTypeProps(g, idgen.module, result, t)
     var parent: PType = nil
     var it = result
     while it.kind in {tyPtr, tyRef, tyOwned}:
@@ -1449,7 +1451,7 @@ proc isEmptyContainer*(t: PType): bool =
   of tyGenericInst, tyAlias, tySink: result = isEmptyContainer(t.lastSon)
   else: result = false
 
-proc takeType*(formal, arg: PType; idgen: IdGenerator): PType =
+proc takeType*(formal, arg: PType; g: ModuleGraph; idgen: IdGenerator): PType =
   # param: openArray[string] = []
   # [] is an array constructor of length 0 of type string!
   if arg.kind == tyNil:
@@ -1458,6 +1460,7 @@ proc takeType*(formal, arg: PType; idgen: IdGenerator): PType =
   elif formal.kind in {tyOpenArray, tyVarargs, tySequence} and
       arg.isEmptyContainer:
     let a = copyType(arg.skipTypes({tyGenericInst, tyAlias}), nextTypeId(idgen), arg.owner)
+    copyTypeProps(g, idgen.module, a, arg)
     a[ord(arg.kind == tyArray)] = formal[0]
     result = a
   elif formal.kind in {tyTuple, tySet} and arg.kind == formal.kind:
@@ -1465,14 +1468,14 @@ proc takeType*(formal, arg: PType; idgen: IdGenerator): PType =
   else:
     result = arg
 
-proc skipHiddenSubConv*(n: PNode; idgen: IdGenerator): PNode =
+proc skipHiddenSubConv*(n: PNode; g: ModuleGraph; idgen: IdGenerator): PNode =
   if n.kind == nkHiddenSubConv:
     # param: openArray[string] = []
     # [] is an array constructor of length 0 of type string!
     let formal = n.typ
     result = n[1]
     let arg = result.typ
-    let dest = takeType(formal, arg, idgen)
+    let dest = takeType(formal, arg, g, idgen)
     if dest == arg and formal.kind != tyUntyped:
       #echo n.info, " came here for ", formal.typeToString
       result = n

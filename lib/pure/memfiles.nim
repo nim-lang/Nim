@@ -428,27 +428,27 @@ iterator memSlices*(mfile: MemFile, delim = '\l', eat = '\r'): MemSlice {.inline
     ms.data = cast[pointer](cast[int](ending) +% 1) # skip delim
     remaining = mfile.size - (ms.data -! mfile.mem)
 
-iterator lines*(mfile: MemFile, buf: var TaintedString, delim = '\l',
-    eat = '\r'): TaintedString {.inline.} =
+iterator lines*(mfile: MemFile, buf: var string, delim = '\l',
+    eat = '\r'): string {.inline.} =
   ## Replace contents of passed buffer with each new line, like
-  ## `readLine(File) <io.html#readLine,File,TaintedString>`_.
+  ## `readLine(File) <io.html#readLine,File,string>`_.
   ## `delim`, `eat`, and delimiting logic is exactly as for `memSlices
   ## <#memSlices.i,MemFile,char,char>`_, but Nim strings are returned.
   ##
   ## Example:
   ##
   ## .. code-block:: nim
-  ##   var buffer: TaintedString = ""
+  ##   var buffer: string = ""
   ##   for line in lines(memfiles.open("foo"), buffer):
   ##     echo line
 
   for ms in memSlices(mfile, delim, eat):
-    setLen(buf.string, ms.size)
+    setLen(buf, ms.size)
     if ms.size > 0:
-      copyMem(addr string(buf)[0], ms.data, ms.size)
+      copyMem(addr buf[0], ms.data, ms.size)
     yield buf
 
-iterator lines*(mfile: MemFile, delim = '\l', eat = '\r'): TaintedString {.inline.} =
+iterator lines*(mfile: MemFile, delim = '\l', eat = '\r'): string {.inline.} =
   ## Return each line in a file as a Nim string, like
   ## `lines(File) <io.html#lines.i,File>`_.
   ## `delim`, `eat`, and delimiting logic is exactly as for `memSlices
@@ -460,7 +460,7 @@ iterator lines*(mfile: MemFile, delim = '\l', eat = '\r'): TaintedString {.inlin
   ##   for line in lines(memfiles.open("foo")):
   ##     echo line
 
-  var buf = TaintedString(newStringOfCap(80))
+  var buf = newStringOfCap(80)
   for line in lines(mfile, buf, delim, eat):
     yield buf
 

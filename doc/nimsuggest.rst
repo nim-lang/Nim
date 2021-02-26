@@ -44,6 +44,11 @@ for testing things out and playing with it but for an editor communication
 via sockets is more reasonable so that is the default. It listens to port 6000
 by default.
 
+Nimsuggest is basically a frontend for the nim compiler so ``--path`` flags and
+`config files <https://nim-lang.org/docs/nimc.html#compiler-usage-configuration-files>`_
+can be used to specify additional dependencies like 
+``nimsuggest --stdin --debug --path:"dependencies" myproject.nim``. 
+
 
 Specifying the location of the query
 ------------------------------------

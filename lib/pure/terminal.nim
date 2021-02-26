@@ -12,9 +12,9 @@
 ## sequences and does not depend on any other module, on Windows it uses the
 ## Windows API.
 ## Changing the style is permanent even after program termination! Use the
-## code ``system.addQuitProc(resetAttributes)`` to restore the defaults.
+## code `exitprocs.addExitProc(resetAttributes)` to restore the defaults.
 ## Similarly, if you hide the cursor, make sure to unhide it with
-## ``showCursor`` before quitting.
+## `showCursor` before quitting.
 
 import macros
 import strformat
@@ -253,7 +253,7 @@ else:
     discard close(fd)
     if w > 0: return w
     var s = getEnv("COLUMNS") #Try standard env var
-    if len(s) > 0 and parseInt(string(s), w) > 0 and w > 0:
+    if len(s) > 0 and parseInt(s, w) > 0 and w > 0:
       return w
     return 80 #Finally default to venerable value
 
@@ -271,7 +271,7 @@ else:
     discard close(fd)
     if h > 0: return h
     var s = getEnv("LINES") # Try standard env var
-    if len(s) > 0 and parseInt(string(s), h) > 0 and h > 0:
+    if len(s) > 0 and parseInt(s, h) > 0 and h > 0:
       return h
     return 0 # Could not determine height
 
@@ -543,7 +543,7 @@ type
     fgMagenta,            ## magenta
     fgCyan,               ## cyan
     fgWhite,              ## white
-    fg8Bit,               ## 256-color (not supported, see ``enableTrueColors`` instead.)
+    fg8Bit,               ## 256-color (not supported, see `enableTrueColors` instead.)
     fgDefault             ## default terminal foreground color
 
   BackgroundColor* = enum ## terminal's background colors
@@ -555,7 +555,7 @@ type
     bgMagenta,            ## magenta
     bgCyan,               ## cyan
     bgWhite,              ## white
-    bg8Bit,               ## 256-color (not supported, see ``enableTrueColors`` instead.)
+    bg8Bit,               ## 256-color (not supported, see `enableTrueColors` instead.)
     bgDefault             ## default terminal background color
 
 when defined(windows):
@@ -579,7 +579,7 @@ proc setForegroundColor*(f: File, fg: ForegroundColor, bright = false) =
       (FOREGROUND_RED or FOREGROUND_BLUE),
       (FOREGROUND_BLUE or FOREGROUND_GREEN),
       (FOREGROUND_BLUE or FOREGROUND_GREEN or FOREGROUND_RED),
-      0, # fg8Bit not supported, see ``enableTrueColors`` instead.
+      0, # fg8Bit not supported, see `enableTrueColors` instead.
       0] # unused
     if fg == fgDefault:
       discard setConsoleTextAttribute(h, toU16(old or defaultForegroundColor))
@@ -608,7 +608,7 @@ proc setBackgroundColor*(f: File, bg: BackgroundColor, bright = false) =
       (BACKGROUND_RED or BACKGROUND_BLUE),
       (BACKGROUND_BLUE or BACKGROUND_GREEN),
       (BACKGROUND_BLUE or BACKGROUND_GREEN or BACKGROUND_RED),
-      0, # bg8Bit not supported, see ``enableTrueColors`` instead.
+      0, # bg8Bit not supported, see `enableTrueColors` instead.
       0] # unused
     if bg == bgDefault:
       discard setConsoleTextAttribute(h, toU16(old or defaultBackgroundColor))
@@ -697,10 +697,10 @@ template styledEchoProcessArg(f: File, cmd: TerminalCmd) =
     term.fgSetColor = cmd == fgColor
 
 macro styledWrite*(f: File, m: varargs[typed]): untyped =
-  ## Similar to ``write``, but treating terminal style arguments specially.
-  ## When some argument is ``Style``, ``set[Style]``, ``ForegroundColor``,
-  ## ``BackgroundColor`` or ``TerminalCmd`` then it is not sent directly to
-  ## ``f``, but instead corresponding terminal style proc is called.
+  ## Similar to `write`, but treating terminal style arguments specially.
+  ## When some argument is `Style`, `set[Style]`, `ForegroundColor`,
+  ## `BackgroundColor` or `TerminalCmd` then it is not sent directly to
+  ## `f`, but instead corresponding terminal style proc is called.
   ##
   ## Example:
   ##
@@ -730,7 +730,7 @@ macro styledWrite*(f: File, m: varargs[typed]): untyped =
   if reset: result.add(newCall(bindSym"resetAttributes", f))
 
 template styledWriteLine*(f: File, args: varargs[untyped]) =
-  ## Calls ``styledWrite`` and appends a newline at the end.
+  ## Calls `styledWrite` and appends a newline at the end.
   ##
   ## Example:
   ##
@@ -743,7 +743,7 @@ template styledWriteLine*(f: File, args: varargs[untyped]) =
   write(f, "\n")
 
 template styledEcho*(args: varargs[untyped]) =
-  ## Echoes styles arguments to stdout using ``styledWriteLine``.
+  ## Echoes styles arguments to stdout using `styledWriteLine`.
   stdout.styledWriteLine(args)
 
 proc getch*(): char =
@@ -769,14 +769,12 @@ proc getch*(): char =
     discard fd.tcSetAttr(TCSADRAIN, addr oldMode)
 
 when defined(windows):
-  from unicode import toUTF8, Rune, runeLenAt
-
-  proc readPasswordFromStdin*(prompt: string, password: var TaintedString):
+  proc readPasswordFromStdin*(prompt: string, password: var string):
                               bool {.tags: [ReadIOEffect, WriteIOEffect].} =
     ## Reads a `password` from stdin without printing it. `password` must not
-    ## be ``nil``! Returns ``false`` if the end of the file has been reached,
-    ## ``true`` otherwise.
-    password.string.setLen(0)
+    ## be `nil`! Returns `false` if the end of the file has been reached,
+    ## `true` otherwise.
+    password.setLen(0)
     stdout.write(prompt)
     let hi = createFileA("CONIN$",
       GENERIC_READ or GENERIC_WRITE, 0, nil, OPEN_EXISTING, 0, 0)
@@ -797,9 +795,9 @@ when defined(windows):
 else:
   import termios
 
-  proc readPasswordFromStdin*(prompt: string, password: var TaintedString):
+  proc readPasswordFromStdin*(prompt: string, password: var string):
                             bool {.tags: [ReadIOEffect, WriteIOEffect].} =
-    password.string.setLen(0)
+    password.setLen(0)
     let fd = stdin.getFileHandle()
     var cur, old: Termios
     discard fd.tcGetAttr(cur.addr)
@@ -811,9 +809,9 @@ else:
     stdout.write "\n"
     discard fd.tcSetAttr(TCSADRAIN, old.addr)
 
-proc readPasswordFromStdin*(prompt = "password: "): TaintedString =
+proc readPasswordFromStdin*(prompt = "password: "): string =
   ## Reads a password from stdin without printing it.
-  result = TaintedString("")
+  result = ""
   discard readPasswordFromStdin(prompt, result)
 
 
@@ -843,7 +841,7 @@ template setBackgroundColor*(color: Color) =
 proc resetAttributes*() {.noconv.} =
   ## Resets all attributes on stdout.
   ## It is advisable to register this as a quit proc with
-  ## ``system.addQuitProc(resetAttributes)``.
+  ## `exitprocs.addExitProc(resetAttributes)`.
   resetAttributes(stdout)
 
 proc isTrueColorSupported*(): bool =
@@ -882,7 +880,7 @@ proc enableTrueColors*() =
       else:
         term.trueColorIsEnabled = true
   else:
-    term.trueColorIsSupported = string(getEnv("COLORTERM")).toLowerAscii() in [
+    term.trueColorIsSupported = getEnv("COLORTERM").toLowerAscii() in [
         "truecolor", "24bit"]
     term.trueColorIsEnabled = term.trueColorIsSupported
 
@@ -908,7 +906,7 @@ proc newTerminal(): owned(PTerminal) =
 when not defined(testing) and isMainModule:
   assert ansiStyleCode(styleBright) == "\e[1m"
   assert ansiStyleCode(styleStrikethrough) == "\e[9m"
-  #system.addQuitProc(resetAttributes)
+  # exitprocs.addExitProc(resetAttributes)
   write(stdout, "never mind")
   stdout.eraseLine()
   stdout.styledWriteLine({styleBright, styleBlink, styleUnderscore}, "styled text ")

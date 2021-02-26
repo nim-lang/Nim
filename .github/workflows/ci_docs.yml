@@ -26,7 +26,7 @@ on:
       - 'tools/dochack/dochack.nim'
       - 'tools/kochdocs.nim'
       - '.github/workflows/ci_docs.yml'
-
+      - 'koch.nim'
 
 jobs:
   build:
@@ -125,10 +125,6 @@ jobs:
       - name: 'Build the real compiler'
         shell: bash
         run: ./koch boot -d:release
-
-      - name: 'Clone fusion'
-        shell: bash
-        run: ./koch fusion
 
       - name: 'Build documentation'
         shell: bash

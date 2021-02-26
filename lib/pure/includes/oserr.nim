@@ -20,10 +20,10 @@ proc osErrorMsg*(errorCode: OSErrorCode): string =
   ##
   ## The error code can be retrieved using the `osLastError proc <#osLastError>`_.
   ##
-  ## If conversion fails, or ``errorCode`` is ``0`` then ``""`` will be
+  ## If conversion fails, or `errorCode` is `0` then `""` will be
   ## returned.
   ##
-  ## On Windows, the ``-d:useWinAnsi`` compilation flag can be used to
+  ## On Windows, the `-d:useWinAnsi` compilation flag can be used to
   ## make this procedure use the non-unicode Win API calls to retrieve the
   ## message.
   ##
@@ -62,15 +62,15 @@ proc newOSError*(
 ): owned(ref OSError) {.noinline.} =
   ## Creates a new `OSError exception <system.html#OSError>`_.
   ##
-  ## The ``errorCode`` will determine the
+  ## The `errorCode` will determine the
   ## message, `osErrorMsg proc <#osErrorMsg,OSErrorCode>`_ will be used
   ## to get this message.
   ##
   ## The error code can be retrieved using the `osLastError proc
   ## <#osLastError>`_.
   ##
-  ## If the error code is ``0`` or an error message could not be retrieved,
-  ## the message ``unknown OS error`` will be used.
+  ## If the error code is `0` or an error message could not be retrieved,
+  ## the message `unknown OS error` will be used.
   ##
   ## See also:
   ## * `osErrorMsg proc <#osErrorMsg,OSErrorCode>`_
@@ -99,13 +99,13 @@ proc osLastError*(): OSErrorCode {.sideEffect.} =
   ##
   ## This procedure is useful in the event when an OS call fails. In that case
   ## this procedure will return the error code describing the reason why the
-  ## OS call failed. The ``OSErrorMsg`` procedure can then be used to convert
+  ## OS call failed. The `OSErrorMsg` procedure can then be used to convert
   ## this code into a string.
   ##
   ## **Warning**:
   ## The behaviour of this procedure varies between Windows and POSIX systems.
-  ## On Windows some OS calls can reset the error code to ``0`` causing this
-  ## procedure to return ``0``. It is therefore advised to call this procedure
+  ## On Windows some OS calls can reset the error code to `0` causing this
+  ## procedure to return `0`. It is therefore advised to call this procedure
   ## immediately after an OS call fails. On POSIX systems this is not a problem.
   ##
   ## See also:

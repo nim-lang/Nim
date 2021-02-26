@@ -76,6 +76,24 @@ Note that without the `*` following the name of the type, the documentation for
 this type would not be generated. Documentation will only be generated for
 *exported* types/procedures/etc.
 
+It's recommended to always add exactly **one** space after `##` for readability
+of comments — this extra space will be cropped from the parsed comments and
+won't influence RST formatting.
+
+.. note:: Generally, this baseline indentation level inside a documentation
+   comment may not be 1: it can be any since it is determined by the offset
+   of the first non-whitespace character in the comment.
+   After that indentation **must** be consistent on the following lines of
+   the same comment.
+   If you still need to add an additional indentation at the very beginning
+   (for RST block quote syntax) use backslash \\ before it:
+
+   .. code-block:: nim
+      ## \
+      ##
+      ##    Block quote at the first line.
+      ##
+      ## Paragraph.
 
 Nim file input
 -----------------
@@ -88,7 +106,7 @@ sample.nim:
 .. code-block:: nim
   ## This module is a sample.
 
-  import strutils
+  import std/strutils
 
   proc helloWorld*(times: int) =
     ## Takes an integer and outputs

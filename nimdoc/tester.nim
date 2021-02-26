@@ -1,5 +1,5 @@
 # Small program that runs the test cases for 'nim doc'.
-# To run this, cd to the git repo root, and run "nim c -r nimdoc/tester.nim".
+# To run this, cd to the git repo root, and run "nim r nimdoc/tester.nim".
 # to change expected results (after carefully verifying everything), use -d:fixup
 
 import strutils, os

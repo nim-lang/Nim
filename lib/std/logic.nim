@@ -1,5 +1,5 @@
 ## This module provides further logic operators like 'forall' and 'exists'
-## They are only supported in ``.ensures`` etc pragmas.
+## They are only supported in `.ensures` etc pragmas.
 
 proc `->`*(a, b: bool): bool {.magic: "Implies".}
 proc `<->`*(a, b: bool): bool {.magic: "Iff".}

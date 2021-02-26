@@ -163,7 +163,7 @@ proc nimRawDispose(p: pointer, alignment: int) {.compilerRtl.} =
       let hdrSize = align(sizeof(RefHeader), alignment)
       alignedDealloc(p -! hdrSize, alignment)
 
-template dispose*[T](x: owned(ref T)) = nimRawDispose(cast[pointer](x), T.alignOf)
+template `=dispose`*[T](x: owned(ref T)) = nimRawDispose(cast[pointer](x), T.alignOf)
 #proc dispose*(x: pointer) = nimRawDispose(x)
 
 proc nimDestroyAndDispose(p: pointer) {.compilerRtl, raises: [].} =

@@ -1,10 +1,8 @@
 discard """
   targets:  "c js"
-  joinable: false # because of `include uri`
 """
 
-# import std/uri # pending https://github.com/nim-lang/Nim/pull/11865
-include uri # because of `removeDotSegments`
+import std/uri
 from std/sequtils import toSeq
 
 template main() =
@@ -171,10 +169,6 @@ template main() =
       let test = parseUri("http://example.com/foo/") / "/bar/asd"
       doAssert test.path == "/foo/bar/asd"
 
-  block: # removeDotSegments
-    doAssert removeDotSegments("/foo/bar/baz") == "/foo/bar/baz"
-    doAssert removeDotSegments("") == "" # empty test
-
   block: # bug #3207
     doAssert parseUri("http://qq/1").combine(parseUri("https://qqq")).`$` == "https://qqq"
 
@@ -287,8 +281,7 @@ template main() =
 
   block: # decodeQuery
     doAssert toSeq(decodeQuery("a=1&b=0")) == @[("a", "1"), ("b", "0")]
-    doAssertRaises(UriParseError):
-      discard toSeq(decodeQuery("a=1&b=2c=6"))
+    doAssert toSeq(decodeQuery("a=1&b=2c=6")) == @[("a", "1"), ("b", "2c=6")]
 
 static: main()
 main()

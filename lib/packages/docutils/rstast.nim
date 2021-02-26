@@ -36,13 +36,14 @@ type
     rnOptionArgument, rnDescription, rnLiteralBlock, rnQuotedLiteralBlock,
     rnLineBlock,              # the | thingie
     rnLineBlockItem,          # a son of rnLineBlock - one line inside it.
-                              # When `RstNode` text="\n" the line's empty
+                              # When `RstNode` lineIndent="\n" the line's empty
     rnBlockQuote,             # text just indented
     rnTable, rnGridTable, rnMarkdownTable, rnTableRow, rnTableHeaderCell, rnTableDataCell,
-    rnLabel,                  # used for footnotes and other things
     rnFootnote,               # a footnote
-    rnCitation,               # similar to footnote
-    rnStandaloneHyperlink, rnHyperlink, rnRef,
+    rnCitation,               # similar to footnote, so use rnFootnote instead
+    rnFootnoteGroup,          # footnote group - exists for a purely stylistic
+                              # reason: to display a few footnotes as 1 block
+    rnStandaloneHyperlink, rnHyperlink, rnRef, rnInternalRef, rnFootnoteRef,
     rnDirective,              # a general directive
     rnDirArg,                 # a directive argument (for some directives).
                               # here are directives that are not rnDirective:
@@ -62,32 +63,53 @@ type
     rnTripleEmphasis,         # "***"
     rnInterpretedText,        # "`"
     rnInlineLiteral,          # "``"
+    rnInlineTarget,           # "_`target`"
     rnSubstitutionReferences, # "|"
     rnSmiley,                 # some smiley
+    rnDefaultRole,            # .. default-role:: code
     rnLeaf                    # a leaf; the node's text field contains the
                               # leaf val
 
 
   PRstNode* = ref RstNode    ## an RST node
   RstNodeSeq* = seq[PRstNode]
-  RstNode* {.acyclic, final.} = object ## an RST node's description
-    kind*: RstNodeKind       ## the node's kind
-    text*: string             ## valid for leafs in the AST; and the title of
-                              ## the document or the section; and rnEnumList
-                              ## and rnAdmonition; and rnLineBlockItem
-    level*: int               ## valid for some node kinds
+  RstNode* {.acyclic, final.} = object ## AST node (result of RST parsing)
+    case kind*: RstNodeKind ## the node's kind
+    of rnLeaf, rnSmiley:
+      text*: string           ## string that is expected to be displayed
+    of rnEnumList:
+      labelFmt*: string       ## label format like "(1)"
+    of rnLineBlockItem:
+      lineIndent*: string     ## a few spaces or newline at the line beginning
+    of rnAdmonition:
+      adType*: string         ## admonition type: "note", "caution", etc. This
+                              ## text will set the style and also be displayed
+    of rnOverline, rnHeadline:
+      level*: int             ## level of headings starting from 1 (document
+                              ## title) to larger ones (minor sub-sections)
+    of rnFootnote, rnCitation, rnFootnoteRef:
+      order*: int             ## footnote order (for auto-symbol footnotes and
+                              ## auto-numbered ones without a label)
+    else:
+      discard
+    anchor*: string           ## anchor, internal link target
+                              ## (aka HTML id tag, aka Latex label/hypertarget)
     sons*: RstNodeSeq        ## the node's sons
 
 proc len*(n: PRstNode): int =
   result = len(n.sons)
 
-proc newRstNode*(kind: RstNodeKind): PRstNode =
-  new(result)
-  result.sons = @[]
-  result.kind = kind
+proc newRstNode*(kind: RstNodeKind, sons: seq[PRstNode] = @[],
+                 anchor = ""): PRstNode =
+  result = PRstNode(kind: kind, sons: sons)
 
-proc newRstNode*(kind: RstNodeKind, s: string): PRstNode =
+proc newRstNode*(kind: RstNodeKind, s: string): PRstNode {.deprecated.} =
+  assert kind in {rnLeaf, rnSmiley}
   result = newRstNode(kind)
+  result.text = s
+
+proc newRstLeaf*(s: string): PRstNode =
+  result = newRstNode(rnLeaf)
   result.text = s
 
 proc lastSon*(n: PRstNode): PRstNode =
@@ -97,7 +119,7 @@ proc add*(father, son: PRstNode) =
   add(father.sons, son)
 
 proc add*(father: PRstNode; s: string) =
-  add(father.sons, newRstNode(rnLeaf, s))
+  add(father.sons, newRstLeaf(s))
 
 proc addIfNotNil*(father, son: PRstNode) =
   if son != nil: add(father, son)
@@ -303,7 +325,7 @@ proc renderRstToJsonNode(node: PRstNode): JsonNode =
       (key: "kind", val: %($node.kind)),
       (key: "level", val: %BiggestInt(node.level))
      ]
-  if node.text.len > 0:
+  if node.kind in {rnLeaf, rnSmiley} and node.text.len > 0:
     result.add("text", %node.text)
   if len(node.sons) > 0:
     var accm = newSeq[JsonNode](len(node.sons))
@@ -325,13 +347,29 @@ proc renderRstToJson*(node: PRstNode): string =
 proc renderRstToStr*(node: PRstNode, indent=0): string =
   ## Writes the parsed RST `node` into a compact string
   ## representation in the format (one line per every sub-node):
-  ## ``indent - kind - text - level (if non-zero)``
+  ## ``indent - kind - text - level - order - anchor (if non-zero)``
   ## (suitable for debugging of RST parsing).
   if node == nil:
     result.add " ".repeat(indent) & "[nil]\n"
     return
-  result.add " ".repeat(indent) & $node.kind & "\t" &
-      (if node.text == "": "" else: "'" & node.text & "'") &
-      (if node.level == 0: "" else: "\tlevel=" & $node.level) & "\n"
+  result.add " ".repeat(indent) & $node.kind
+  case node.kind
+  of rnLeaf, rnSmiley:
+    result.add (if node.text == "": "" else: "\t'" & node.text & "'")
+  of rnEnumList:
+    result.add "\tlabelFmt=" & node.labelFmt
+  of rnLineBlockItem:
+    var txt: string
+    if node.lineIndent == "\n": txt = "\t(blank line)"
+    else: txt = "\tlineIndent=" & $node.lineIndent.len
+    result.add txt
+  of rnHeadline, rnOverline:
+    result.add (if node.level == 0: "" else: "\tlevel=" & $node.level)
+  of rnFootnote, rnCitation, rnFootnoteRef:
+    result.add (if node.order == 0:   "" else: "\torder=" & $node.order)
+  else:
+    discard
+  result.add (if node.anchor == "": "" else: "\tanchor='" & node.anchor & "'")
+  result.add "\n"
   for son in node.sons:
     result.add renderRstToStr(son, indent=indent+2)

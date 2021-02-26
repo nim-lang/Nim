@@ -6,41 +6,40 @@
 #    See the file "copying.txt", included in this
 #    distribution, for details about the copyright.
 #
+## **Note:** Import `std/sha1` to use this module.
+##
+## [SHA-1 (Secure Hash Algorithm 1)](https://en.wikipedia.org/wiki/SHA-1)
+## is a cryptographic hash function which takes an input and produces
+## a 160-bit (20-byte) hash value known as a message digest.
+##
+## Basic usage
+## ===========
+##
+runnableExamples:
+  let accessName = secureHash("John Doe")
+  assert $accessName == "AE6E4D1209F17B460503904FAD297B31E9CF6362"
 
-## **Note:** Import ``std/sha1`` to use this module
-##
-## SHA-1 (Secure Hash Algorithm 1) is a cryptographic hash function which
-## takes an input and produces a 160-bit (20-byte) hash value known as a
-## message digest.
-##
 ## .. code-block::
-##    import std/sha1
+##   let
+##     a = secureHashFile("myFile.nim")
+##     b = parseSecureHash("10DFAEBF6BFDBC7939957068E2EFACEC4972933C")
 ##
-##    let accessName = secureHash("John Doe")
-##    assert $accessName == "AE6E4D1209F17B460503904FAD297B31E9CF6362"
+##   if a == b:
+##     echo "Files match"
 ##
-## .. code-block::
-##    import std/sha1
-##
-##    let
-##      a = secureHashFile("myFile.nim")
-##      b = parseSecureHash("10DFAEBF6BFDBC7939957068E2EFACEC4972933C")
-##
-##    if a == b:
-##      echo "Files match"
-##
-## **See also:**
-## * `base64 module<base64.html>`_ implements a base64 encoder and decoder
+## See also
+## ========
+## * `base64 module<base64.html>`_ implements a Base64 encoder and decoder
 ## * `hashes module<hashes.html>`_ for efficient computations of hash values for diverse Nim types
 ## * `md5 module<md5.html>`_ implements the MD5 checksum algorithm
 
-import strutils
-from endians import bigEndian32, bigEndian64
+import std/strutils
+from std/endians import bigEndian32, bigEndian64
 
 const Sha1DigestSize = 20
 
 type
-  Sha1Digest* = array[0 .. Sha1DigestSize-1, uint8]
+  Sha1Digest* = array[0 .. Sha1DigestSize - 1, uint8]
   SecureHash* = distinct Sha1Digest
 
 type
@@ -49,10 +48,14 @@ type
     state: array[5, uint32]
     buf:   array[64, byte]
 
-# This implementation of the SHA1 algorithm was ported from the Chromium OS one
+# This implementation of the SHA-1 algorithm was ported from the Chromium OS one
 # with minor modifications that should not affect its functionality.
 
 proc newSha1State*(): Sha1State =
+  ## Creates a `Sha1State`.
+  ##
+  ## If you use the `secureHash proc <#secureHash,openArray[char]>`_,
+  ## there's no need to call this function explicitly.
   result.count = 0
   result.state[0] = 0x67452301'u32
   result.state[1] = 0xEFCDAB89'u32
@@ -146,6 +149,10 @@ proc transform(ctx: var Sha1State) =
   ctx.state[4] += e
 
 proc update*(ctx: var Sha1State, data: openArray[char]) =
+  ## Updates the `Sha1State` with `data`.
+  ##
+  ## If you use the `secureHash proc <#secureHash,openArray[char]>`_,
+  ## there's no need to call this function explicitly.
   var i = ctx.count mod 64
   var j = 0
   var len = data.len
@@ -177,6 +184,10 @@ proc update*(ctx: var Sha1State, data: openArray[char]) =
   ctx.count += data.len
 
 proc finalize*(ctx: var Sha1State): Sha1Digest =
+  ## Finalizes the `Sha1State` and returns a `Sha1Digest`.
+  ##
+  ## If you use the `secureHash proc <#secureHash,openArray[char]>`_,
+  ## there's no need to call this function explicitly.
   var cnt = uint64(ctx.count * 8)
   # a 1 bit
   update(ctx, "\x80")
@@ -195,31 +206,32 @@ proc finalize*(ctx: var Sha1State): Sha1Digest =
 # Public API
 
 proc secureHash*(str: openArray[char]): SecureHash =
-  ## Generates a ``SecureHash`` from a ``str``.
+  ## Generates a `SecureHash` from `str`.
   ##
   ## **See also:**
-  ## * `secureHashFile proc <#secureHashFile,string>`_ for generating a ``SecureHash`` from a file
-  ## * `parseSecureHash proc <#parseSecureHash,string>`_ for converting a string ``hash`` to ``SecureHash``
+  ## * `secureHashFile proc <#secureHashFile,string>`_ for generating a `SecureHash` from a file
+  ## * `parseSecureHash proc <#parseSecureHash,string>`_ for converting a string `hash` to `SecureHash`
   runnableExamples:
     let hash = secureHash("Hello World")
     assert hash == parseSecureHash("0A4D55A8D778E5022FAB701977C5D840BBC486D0")
+
   var state = newSha1State()
   state.update(str)
   SecureHash(state.finalize())
 
 proc secureHashFile*(filename: string): SecureHash =
-  ## Generates a ``SecureHash`` from a file.
+  ## Generates a `SecureHash` from a file.
   ##
   ## **See also:**
-  ## * `secureHash proc <#secureHash,openArray[char]>`_ for generating a ``SecureHash`` from a string
-  ## * `parseSecureHash proc <#parseSecureHash,string>`_ for converting a string ``hash`` to ``SecureHash``
+  ## * `secureHash proc <#secureHash,openArray[char]>`_ for generating a `SecureHash` from a string
+  ## * `parseSecureHash proc <#parseSecureHash,string>`_ for converting a string `hash` to `SecureHash`
   const BufferLength = 8192
 
   let f = open(filename)
   var state = newSha1State()
   var buffer = newString(BufferLength)
   while true:
-    let length = readChars(f, buffer, 0, BufferLength)
+    let length = readChars(f, buffer)
     if length == 0:
       break
     buffer.setLen(length)
@@ -231,33 +243,35 @@ proc secureHashFile*(filename: string): SecureHash =
   SecureHash(state.finalize())
 
 proc `$`*(self: SecureHash): string =
-  ## Returns the string representation of a ``SecureHash``.
+  ## Returns the string representation of a `SecureHash`.
   ##
   ## **See also:**
-  ## * `secureHash proc <#secureHash,openArray[char]>`_ for generating a ``SecureHash`` from a string
+  ## * `secureHash proc <#secureHash,openArray[char]>`_ for generating a `SecureHash` from a string
   runnableExamples:
     let hash = secureHash("Hello World")
     assert $hash == "0A4D55A8D778E5022FAB701977C5D840BBC486D0"
+
   result = ""
   for v in Sha1Digest(self):
     result.add(toHex(int(v), 2))
 
 proc parseSecureHash*(hash: string): SecureHash =
-  ## Converts a string ``hash`` to ``SecureHash``.
+  ## Converts a string `hash` to a `SecureHash`.
   ##
   ## **See also:**
-  ## * `secureHash proc <#secureHash,openArray[char]>`_ for generating a ``SecureHash`` from a string
-  ## * `secureHashFile proc <#secureHashFile,string>`_ for generating a ``SecureHash`` from a file
+  ## * `secureHash proc <#secureHash,openArray[char]>`_ for generating a `SecureHash` from a string
+  ## * `secureHashFile proc <#secureHashFile,string>`_ for generating a `SecureHash` from a file
   runnableExamples:
     let
       hashStr = "0A4D55A8D778E5022FAB701977C5D840BBC486D0"
       secureHash = secureHash("Hello World")
     assert secureHash == parseSecureHash(hashStr)
+
   for i in 0 ..< Sha1DigestSize:
     Sha1Digest(result)[i] = uint8(parseHexInt(hash[i*2] & hash[i*2 + 1]))
 
 proc `==`*(a, b: SecureHash): bool =
-  ## Checks if two ``SecureHash`` values are identical.
+  ## Checks if two `SecureHash` values are identical.
   runnableExamples:
     let
       a = secureHash("Hello World")
@@ -265,5 +279,6 @@ proc `==`*(a, b: SecureHash): bool =
       c = parseSecureHash("0A4D55A8D778E5022FAB701977C5D840BBC486D0")
     assert a != b
     assert a == c
+
   # Not a constant-time comparison, but that's acceptable in this context
   Sha1Digest(a) == Sha1Digest(b)

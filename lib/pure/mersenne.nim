@@ -7,12 +7,27 @@
 #    distribution, for details about the copyright.
 #
 
+## The [Mersenne Twister](https://en.wikipedia.org/wiki/Mersenne_Twister)
+## random number generator.
+##
+## **Note:** The procs in this module work at compile-time.
+
+runnableExamples:
+  var rand = newMersenneTwister(uint32.high)  ## must be "var"
+  doAssert rand.getNum() != rand.getNum()  ## pseudorandom number
+
+## See also
+## ========
+## * `random module<random.html>`_ for Nim's standard random number generator
+
 type
   MersenneTwister* = object
+    ## The Mersenne Twister.
     mt: array[0..623, uint32]
     index: int
 
 proc newMersenneTwister*(seed: uint32): MersenneTwister =
+  ## Creates a new `MersenneTwister` with seed `seed`.
   result.index = 0
   result.mt[0] = seed
   for i in 1'u32 .. 623'u32:
@@ -28,7 +43,7 @@ proc generateNumbers(m: var MersenneTwister) =
       m.mt[i] = m.mt[i] xor 0x9908b0df'u32
 
 proc getNum*(m: var MersenneTwister): uint32 =
-  ## Returns the next pseudo random number ranging from 0 to high(uint32)
+  ## Returns the next pseudorandom `uint32`.
   if m.index == 0:
     generateNumbers(m)
   result = m.mt[m.index]
@@ -38,18 +53,3 @@ proc getNum*(m: var MersenneTwister): uint32 =
   result = result xor ((result shl 7'u32) and 0x9d2c5680'u32)
   result = result xor ((result shl 15'u32) and 0xefc60000'u32)
   result = result xor (result shr 18'u32)
-
-
-runnableExamples:
-  static:
-    block:
-      var rando: MersenneTwister = newMersenneTwister(uint32.high)  ## Must be "var".
-      doAssert rando.getNum() != rando.getNum()  ## Pseudo random number. Works at compile-time.
-
-
-# Test
-when not defined(testing) and isMainModule:
-  var mt = newMersenneTwister(2525)
-
-  for i in 0..99:
-    echo mt.getNum

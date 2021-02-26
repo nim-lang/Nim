@@ -14,7 +14,7 @@ import
   nversion, nimsets, msgs, bitsets, idents, types,
   ccgutils, os, ropes, math, passes, wordrecg, treetab, cgmeth,
   rodutils, renderer, cgendata, ccgmerge, aliases,
-  lowerings, tables, sets, ndi, lineinfos, pathutils, transf, enumtostr,
+  lowerings, tables, sets, ndi, lineinfos, pathutils, transf,
   injectdestructors
 
 when not defined(leanCompiler):
@@ -1144,7 +1144,9 @@ proc genProcNoForward(m: BModule, prc: PSym) =
       #if prc.loc.k == locNone:
       # mangle the inline proc based on the module where it is defined -
       # not on the first module that uses it
-      fillProcLoc(findPendingModule(m, prc), prc.ast[namePos])
+      let m2 = if m.config.symbolFiles != disabledSf: m
+               else: findPendingModule(m, prc)
+      fillProcLoc(m2, prc.ast[namePos])
       #elif {sfExportc, sfImportc} * prc.flags == {}:
       #  # reset name to restore consistency in case of hashing collisions:
       #  echo "resetting ", prc.id, " by ", m.module.name.s
@@ -1189,48 +1191,16 @@ proc genProcNoForward(m: BModule, prc: PSym) =
     if sfInfixCall notin prc.flags: genProcPrototype(m, prc)
 
 proc requestConstImpl(p: BProc, sym: PSym) =
-  var m = p.module
-  useHeader(m, sym)
-  if sym.loc.k == locNone:
-    fillLoc(sym.loc, locData, sym.ast, mangleName(p.module, sym), OnStatic)
-  if m.hcrOn: incl(sym.loc.flags, lfIndirect)
-
-  if lfNoDecl in sym.loc.flags: return
-  # declare implementation:
-  var q = findPendingModule(m, sym)
-  if q != nil and not containsOrIncl(q.declaredThings, sym.id):
-    assert q.initProc.module == q
-    # add a suffix for hcr - will later init the global pointer with this data
-    let actualConstName = if m.hcrOn: sym.loc.r & "_const" else: sym.loc.r
-    q.s[cfsData].addf("N_LIB_PRIVATE NIM_CONST $1 $2 = $3;$n",
-        [getTypeDesc(q, sym.typ), actualConstName,
-        genBracedInit(q.initProc, sym.ast, isConst = true, sym.typ)])
-    if m.hcrOn:
-      # generate the global pointer with the real name
-      q.s[cfsVars].addf("static $1* $2;$n", [getTypeDesc(m, sym.loc.t, skVar), sym.loc.r])
-      # register it (but ignore the boolean result of hcrRegisterGlobal)
-      q.initProc.procSec(cpsLocals).addf(
-        "\thcrRegisterGlobal($1, \"$2\", sizeof($3), NULL, (void**)&$2);$n",
-        [getModuleDllPath(q, sym), sym.loc.r, rdLoc(sym.loc)])
-      # always copy over the contents of the actual constant with the _const
-      # suffix ==> this means that the constant is reloadable & updatable!
-      q.initProc.procSec(cpsLocals).add(ropecg(q,
-        "\t#nimCopyMem((void*)$1, (NIM_CONST void*)&$2, sizeof($3));$n",
-        [sym.loc.r, actualConstName, rdLoc(sym.loc)]))
-  # declare header:
-  if q != m and not containsOrIncl(m.declaredThings, sym.id):
-    assert(sym.loc.r != nil)
-    if m.hcrOn:
-      m.s[cfsVars].addf("static $1* $2;$n", [getTypeDesc(m, sym.loc.t, skVar), sym.loc.r]);
-      m.initProc.procSec(cpsLocals).addf(
-        "\t$1 = ($2*)hcrGetGlobal($3, \"$1\");$n", [sym.loc.r,
-        getTypeDesc(m, sym.loc.t, skVar), getModuleDllPath(q, sym)])
-    else:
-      let headerDecl = "extern NIM_CONST $1 $2;$n" %
-          [getTypeDesc(m, sym.loc.t, skVar), sym.loc.r]
-      m.s[cfsData].add(headerDecl)
-      if sfExportc in sym.flags and p.module.g.generatedHeader != nil:
-        p.module.g.generatedHeader.s[cfsData].add(headerDecl)
+  if genConstSetup(p, sym):
+    let m = p.module
+    # declare implementation:
+    var q = findPendingModule(m, sym)
+    if q != nil and not containsOrIncl(q.declaredThings, sym.id):
+      assert q.initProc.module == q
+      genConstDefinition(q, p, sym)
+    # declare header:
+    if q != m and not containsOrIncl(m.declaredThings, sym.id):
+      genConstHeader(m, q, p, sym)
 
 proc isActivated(prc: PSym): bool = prc.typ != nil
 
@@ -1684,7 +1654,7 @@ proc genInitCode(m: BModule) =
     writeSection(preInitProc, cpsLocals)
     writeSection(preInitProc, cpsInit, m.hcrOn)
     writeSection(preInitProc, cpsStmts)
-    prc.addf("}$N", [])
+    prc.addf("}/* preInitProc end */$N", [])
     when false:
       m.initProc.blocks[0].sections[cpsLocals].add m.preInitProc.s(cpsLocals)
       m.initProc.blocks[0].sections[cpsInit].prepend m.preInitProc.s(cpsInit)
@@ -1839,7 +1809,7 @@ proc rawNewModule(g: BModuleList; module: PSym, filename: AbsoluteFile): BModule
 proc rawNewModule(g: BModuleList; module: PSym; conf: ConfigRef): BModule =
   result = rawNewModule(g, module, AbsoluteFile toFullPath(conf, module.position.FileIndex))
 
-proc newModule(g: BModuleList; module: PSym; conf: ConfigRef): BModule =
+proc newModule*(g: BModuleList; module: PSym; conf: ConfigRef): BModule =
   # we should create only one cgen module for each module sym
   result = rawNewModule(g, module, conf)
   if module.position >= g.modules.len:
@@ -1922,13 +1892,9 @@ proc addHcrInitGuards(p: BProc, n: PNode, inInitGuard: var bool) =
 
     genStmts(p, n)
 
-proc myProcess(b: PPassContext, n: PNode): PNode =
-  result = n
-  if b == nil: return
-  var m = BModule(b)
-  if passes.skipCodegen(m.config, n) or
-      not moduleHasChanged(m.g.graph, m.module):
-    return
+proc genTopLevelStmt*(m: BModule; n: PNode) =
+  ## Also called from `ic/cbackend.nim`.
+  if passes.skipCodegen(m.config, n): return
   m.initProc.options = initProcOptions(m)
   #softRnl = if optLineDir in m.config.options: noRnl else: rnl
   # XXX replicate this logic!
@@ -1940,6 +1906,12 @@ proc myProcess(b: PPassContext, n: PNode): PNode =
     addHcrInitGuards(m.initProc, transformedN, m.inHcrInitGuard)
   else:
     genProcBody(m.initProc, transformedN)
+
+proc myProcess(b: PPassContext, n: PNode): PNode =
+  result = n
+  if b != nil:
+    var m = BModule(b)
+    genTopLevelStmt(m, n)
 
 proc shouldRecompile(m: BModule; code: Rope, cfile: Cfile): bool =
   if optForceFullMake notin m.config.globalOptions:
@@ -2013,7 +1985,7 @@ proc writeModule(m: BModule, pending: bool) =
     # that ``system.o`` is missing, so we need to call the C compiler for it:
     var cf = Cfile(nimname: m.module.name.s, cname: cfile,
                    obj: completeCfilePath(m.config, toObjFile(m.config, cfile)), flags: {})
-    if not fileExists(cf.obj): cf.flags = {CfileFlag.Cached}
+    if fileExists(cf.obj): cf.flags = {CfileFlag.Cached}
     addFileToCompile(m.config, cf)
   onExit()
 
@@ -2037,10 +2009,8 @@ proc updateCachedModule(m: BModule) =
     cf.flags = {CfileFlag.Cached}
     addFileToCompile(m.config, cf)
 
-proc myClose(graph: ModuleGraph; b: PPassContext, n: PNode): PNode =
-  result = n
-  if b == nil: return
-  var m = BModule(b)
+proc finalCodegenActions*(graph: ModuleGraph; m: BModule; n: PNode) =
+  ## Also called from IC.
   if sfMainModule in m.module.flags:
     # phase ordering problem here: We need to announce this
     # dependency to 'nimTestErrorFlag' before system.c has been written to disk.
@@ -2090,6 +2060,12 @@ proc myClose(graph: ModuleGraph; b: PPassContext, n: PNode): PNode =
 
   let mm = m
   m.g.modulesClosed.add mm
+
+
+proc myClose(graph: ModuleGraph; b: PPassContext, n: PNode): PNode =
+  result = n
+  if b == nil: return
+  finalCodegenActions(graph, BModule(b), n)
 
 proc genForwardedProcs(g: BModuleList) =
   # Forward declared proc:s lack bodies when first encountered, so they're given

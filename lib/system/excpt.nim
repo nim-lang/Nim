@@ -242,7 +242,7 @@ template addFrameEntry(s: var string, f: StackTraceEntry|PFrame) =
   for k in 1..max(1, 25-(s.len-oldLen)): add(s, ' ')
   add(s, f.procname)
   when NimStackTraceMsgs:
-    when type(f) is StackTraceEntry:
+    when typeof(f) is StackTraceEntry:
       add(s, f.frameMsg)
     else:
       var first = if f.prev == nil: 0 else: f.prev.frameMsgLen
@@ -378,7 +378,8 @@ proc reportUnhandledErrorAux(e: ref Exception) {.nodestroy.} =
     # ugly, but avoids heap allocations :-)
     template xadd(buf, s, slen) =
       if L + slen < high(buf):
-        copyMem(addr(buf[L]), cstring(s), slen)
+
+        copyMem(addr(buf[L]), (when s is cstring: s else: cstring(s)), slen)
         inc L, slen
     template add(buf, s) =
       xadd(buf, s, s.len)
@@ -393,15 +394,10 @@ proc reportUnhandledErrorAux(e: ref Exception) {.nodestroy.} =
     add(buf, " [")
     xadd(buf, e.name, e.name.len)
     add(buf, "]\n")
-    when defined(nimNoArrayToCstringConversion):
-      template tbuf(): untyped = addr buf
-    else:
-      template tbuf(): untyped = buf
-
     if onUnhandledException != nil:
-      onUnhandledException($tbuf())
+      onUnhandledException($buf.addr)
     else:
-      showErrorMessage(tbuf(), L)
+      showErrorMessage(buf.addr, L)
 
 proc reportUnhandledError(e: ref Exception) {.nodestroy.} =
   if unhandledExceptionHook != nil:
@@ -647,7 +643,17 @@ when not defined(noSignalHandler) and not defined(useNimRtl):
       # unless there's a good reason to use cstring in signal handler to avoid
       # using gc?
       showErrorMessage(msg, msg.len)
-    quit(1) # always quit when SIGABRT
+
+    when defined(posix):
+      # reset the signal handler to OS default
+      c_signal(sign, SIG_DFL)
+
+      # re-raise the signal, which will arrive once this handler exit.
+      # this lets the OS perform actions like core dumping and will
+      # also return the correct exit code to the shell.
+      discard c_raise(sign)
+    else:
+      quit(1)
 
   proc registerSignalHandler() =
     c_signal(SIGINT, signalHandler)

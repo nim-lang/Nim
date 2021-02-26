@@ -1,3 +1,19 @@
+##[
+## note
+`useHead` should ideally be used as the default but lots of packages (e.g. `chronos`)
+don't have release tags (or have really old ones compared to HEAD), making it
+impossible to test them reliably here.
+
+packages listed here should ideally have regularly updated release tags, so that:
+* we're testing recent versions of the package
+* the version that's tested is stable enough even if HEAD may occasionally break
+]##
+
+
+#[
+xxx instead of pkg1, pkg2, use the more flexible `NIM_TESTAMENT_BATCH` (see #14823).
+]#
+
 template pkg1(name: string; cmd = "nimble test"; url = "", useHead = true): untyped =
   packages1.add((name, cmd, url, useHead))
 
@@ -19,14 +35,15 @@ pkg1 "BipBuffer"
 # pkg1 "blscurve" # pending https://github.com/status-im/nim-blscurve/issues/39
 pkg1 "bncurve"
 pkg1 "brainfuck", "nim c -d:release -r tests/compile.nim"
-pkg1 "bump", "nim c --gc:arc -r tests/tbump.nim", "https://github.com/disruptek/bump"
+pkg1 "bump", "nim c --gc:arc --path:. -r tests/tbump.nim", "https://github.com/disruptek/bump"
 pkg1 "c2nim", "nim c testsuite/tester.nim"
 pkg1 "cascade"
 pkg1 "cello"
 pkg1 "chroma"
 pkg1 "chronicles", "nim c -o:chr -r chronicles.nim"
-when not defined(osx): # testdatagram.nim(560, 54): Check failed
-  pkg1 "chronos", "nim c -r -d:release tests/testall"
+# when not defined(osx): # testdatagram.nim(560, 54): Check failed
+#   pkg1 "chronos", "nim c -r -d:release tests/testall"
+  # pending https://github.com/nim-lang/Nim/issues/17130
 pkg1 "cligen", "nim c --path:. -r cligen.nim"
 pkg1 "combparser", "nimble test --gc:orc"
 pkg1 "compactdict"
@@ -37,8 +54,9 @@ pkg1 "delaunay"
 pkg1 "docopt"
 pkg1 "easygl", "nim c -o:egl -r src/easygl.nim", "https://github.com/jackmott/easygl"
 pkg1 "elvis"
-pkg1 "fidget"
+# pkg1 "fidget" # pending https://github.com/treeform/fidget/issues/133
 pkg1 "fragments", "nim c -r fragments/dsl.nim"
+pkg1 "fusion"
 pkg1 "gara"
 pkg1 "glob"
 pkg1 "ggplotnim", "nim c -d:noCairo -r tests/tests.nim"
@@ -96,7 +114,7 @@ pkg2 "nimwc", "nim c nimwc.nim"
 pkg2 "norm", "nim c -r tests/sqlite/trows.nim"
 pkg2 "npeg", "nimble testarc"
 pkg2 "numericalnim", "nim c -r tests/test_integrate.nim"
-pkg2 "optionsutils"
+# pkg2 "optionsutils" # pending changing test from `Some` to `some` (etc) in tests/test2.nim, refs #17147
 pkg2 "ormin", "nim c -o:orminn ormin.nim"
 pkg2 "parsetoml"
 pkg2 "patty"

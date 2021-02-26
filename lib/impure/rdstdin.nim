@@ -9,66 +9,68 @@
 
 ## This module contains code for reading from `stdin`:idx:. On UNIX the
 ## linenoise library is wrapped and set up to provide default key bindings
-## (e.g. you can navigate with the arrow keys). On Windows ``system.readLine``
+## (e.g. you can navigate with the arrow keys). On Windows `system.readLine`
 ## is used. This suffices because Windows' console already provides the
 ## wanted functionality.
-##
-## **Examples:**
-##
-## .. code-block:: nim
-##   echo readLineFromStdin("Is Nim awesome? (Y/n):")
-##   var userResponse: string
-##   doAssert readLineFromStdin("How are you?:", line = userResponse)
-##   echo userResponse
 
-when defined(Windows):
-  proc readLineFromStdin*(prompt: string): TaintedString {.
+runnableExamples:
+  if false:
+    echo readLineFromStdin("Is Nim awesome? (Y/n): ")
+    var line: string
+    while true:
+      let ok = readLineFromStdin("How are you? ", line)
+      if not ok: break # ctrl-C or ctrl-D will cause a break
+      if line.len > 0: echo line
+    echo "exiting"
+
+when defined(windows):
+  proc readLineFromStdin*(prompt: string): string {.
                           tags: [ReadIOEffect, WriteIOEffect].} =
     ## Reads a line from stdin.
     stdout.write(prompt)
     result = readLine(stdin)
 
-  proc readLineFromStdin*(prompt: string, line: var TaintedString): bool {.
+  proc readLineFromStdin*(prompt: string, line: var string): bool {.
                           tags: [ReadIOEffect, WriteIOEffect].} =
     ## Reads a `line` from stdin. `line` must not be
-    ## ``nil``! May throw an IO exception.
-    ## A line of text may be delimited by ``CR``, ``LF`` or
-    ## ``CRLF``. The newline character(s) are not part of the returned string.
-    ## Returns ``false`` if the end of the file has been reached, ``true``
-    ## otherwise. If ``false`` is returned `line` contains no new data.
+    ## `nil`! May throw an IO exception.
+    ## A line of text may be delimited by `CR`, `LF` or
+    ## `CRLF`. The newline character(s) are not part of the returned string.
+    ## Returns `false` if the end of the file has been reached, `true`
+    ## otherwise. If `false` is returned `line` contains no new data.
     stdout.write(prompt)
     result = readLine(stdin, line)
 
 elif defined(genode):
-  proc readLineFromStdin*(prompt: string): TaintedString {.
+  proc readLineFromStdin*(prompt: string): string {.
                           tags: [ReadIOEffect, WriteIOEffect].} =
     stdin.readLine()
 
-  proc readLineFromStdin*(prompt: string, line: var TaintedString): bool {.
+  proc readLineFromStdin*(prompt: string, line: var string): bool {.
                           tags: [ReadIOEffect, WriteIOEffect].} =
     stdin.readLine(line)
 
 else:
   import linenoise
 
-  proc readLineFromStdin*(prompt: string): TaintedString {.
+  proc readLineFromStdin*(prompt: string): string {.
                           tags: [ReadIOEffect, WriteIOEffect].} =
     var buffer = linenoise.readLine(prompt)
     if isNil(buffer):
       raise newException(IOError, "Linenoise returned nil")
-    result = TaintedString($buffer)
-    if result.string.len > 0:
+    result = $buffer
+    if result.len > 0:
       historyAdd(buffer)
     linenoise.free(buffer)
 
-  proc readLineFromStdin*(prompt: string, line: var TaintedString): bool {.
+  proc readLineFromStdin*(prompt: string, line: var string): bool {.
                           tags: [ReadIOEffect, WriteIOEffect].} =
     var buffer = linenoise.readLine(prompt)
     if isNil(buffer):
-      line.string.setLen(0)
+      line.setLen(0)
       return false
-    line = TaintedString($buffer)
-    if line.string.len > 0:
+    line = $buffer
+    if line.len > 0:
       historyAdd(buffer)
     linenoise.free(buffer)
     result = true

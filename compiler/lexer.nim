@@ -955,8 +955,10 @@ proc skipMultiLineComment(L: var Lexer; tok: var Token; start: int;
   # detect the amount of indentation:
   if isDoc:
     toStrip = getColNumber(L, pos)
-    while L.buf[pos] == ' ': inc pos
-    if L.buf[pos] in {CR, LF}:
+    while L.buf[pos] == ' ':
+      inc pos
+      inc toStrip
+    while L.buf[pos] in {CR, LF}:  # skip blank lines
       pos = handleCRLF(L, pos)
       toStrip = 0
       while L.buf[pos] == ' ':
@@ -1028,11 +1030,17 @@ proc scanComment(L: var Lexer, tok: var Token) =
   inc(pos, 2)
 
   var toStrip = 0
-  while L.buf[pos] == ' ':
-    inc pos
-    inc toStrip
+  var stripInit = false
 
   while true:
+    if not stripInit:  # find baseline indentation inside comment
+      while L.buf[pos] == ' ':
+        inc pos
+        inc toStrip
+      if L.buf[pos] in {CR, LF}:  # don't set toStrip in blank comment lines
+        toStrip = 0
+      else:  # found first non-whitespace character
+        stripInit = true
     var lastBackslash = -1
     while L.buf[pos] notin {CR, LF, nimlexbase.EndOfFile}:
       if L.buf[pos] == '\\': lastBackslash = pos+1
@@ -1048,11 +1056,12 @@ proc scanComment(L: var Lexer, tok: var Token) =
     if L.buf[pos] == '#' and L.buf[pos+1] == '#':
       tok.literal.add "\n"
       inc(pos, 2)
-      var c = toStrip
-      while L.buf[pos] == ' ' and c > 0:
-        inc pos
-        dec c
-      inc tok.iNumber
+      if stripInit:
+        var c = toStrip
+        while L.buf[pos] == ' ' and c > 0:
+          inc pos
+          dec c
+        inc tok.iNumber
     else:
       if L.buf[pos] > ' ':
         L.indentAhead = indent

@@ -13,6 +13,7 @@
 # included from testament.nim
 
 import important_packages
+import std/strformat
 
 const
   specialCategories = [
@@ -33,7 +34,7 @@ const
     "nimble-packages-2",
     "niminaction",
     "threads",
-    "untestable",
+    "untestable", # see trunner_special
     "testdata",
     "nimcache",
     "coroutines",
@@ -46,50 +47,6 @@ const
 proc isTestFile*(file: string): bool =
   let (_, name, ext) = splitFile(file)
   result = ext == ".nim" and name.startsWith("t")
-
-# ---------------- IC tests ---------------------------------------------
-
-# xxx deadcode
-proc icTests(r: var TResults; testsDir: string, cat: Category, options: string) =
-  const
-    tooltests = ["compiler/nim.nim", "tools/nimgrep.nim"]
-    writeOnly = " --incremental:writeonly "
-    readOnly = " --incremental:readonly "
-    incrementalOn = " --incremental:on "
-
-  template test(x: untyped) =
-    testSpecWithNimcache(r, makeRawTest(file, x & options, cat), nimcache)
-
-  template editedTest(x: untyped) =
-    var test = makeTest(file, x & options, cat)
-    test.spec.targets = {getTestSpecTarget()}
-    testSpecWithNimcache(r, test, nimcache)
-
-  const tempExt = "_temp.nim"
-  for it in walkDirRec(testsDir / "ic"):
-    if isTestFile(it) and not it.endsWith(tempExt):
-      let nimcache = nimcacheDir(it, options, getTestSpecTarget())
-      removeDir(nimcache)
-
-      let content = readFile(it)
-      for fragment in content.split("#!EDIT!#"):
-        let file = it.replace(".nim", tempExt)
-        writeFile(file, fragment)
-        let oldPassed = r.passed
-        editedTest incrementalOn
-        if r.passed != oldPassed+1: break
-
-  for file in tooltests:
-    let nimcache = nimcacheDir(file, options, getTestSpecTarget())
-    removeDir(nimcache)
-
-    let oldPassed = r.passed
-    test writeOnly
-
-    if r.passed == oldPassed+1:
-      test readOnly
-      if r.passed == oldPassed+2:
-        test readOnly & "-d:nimBackendAssumesChange "
 
 # --------------------- flags tests -------------------------------------------
 
@@ -137,7 +94,7 @@ proc runBasicDLLTest(c, r: var TResults, cat: Category, options: string) =
     # posix relies on crappy LD_LIBRARY_PATH (ugh!):
     const libpathenv = when defined(haiku): "LIBRARY_PATH"
                        else: "LD_LIBRARY_PATH"
-    var libpath = getEnv(libpathenv).string
+    var libpath = getEnv(libpathenv)
     # Temporarily add the lib directory to LD_LIBRARY_PATH:
     putEnv(libpathenv, "tests/dll" & (if libpath.len > 0: ":" & libpath else: ""))
     defer: putEnv(libpathenv, libpath)
@@ -217,6 +174,7 @@ proc gcTests(r: var TResults, cat: Category, options: string) =
 
   test "stackrefleak"
   test "cyclecollector"
+  test "trace_globals"
 
 proc longGCTests(r: var TResults, cat: Category, options: string) =
   when defined(windows):
@@ -265,7 +223,7 @@ proc debuggerTests(r: var TResults, cat: Category, options: string) =
     t.spec.action = actionCompile
     # force target to C because of MacOS 10.15 SDK headers bug
     # https://github.com/nim-lang/Nim/pull/15612#issuecomment-712471879
-    t.spec.targets = { targetC }
+    t.spec.targets = {targetC}
     testSpec r, t
 
 # ------------------------- JS tests ------------------------------------------
@@ -384,7 +342,7 @@ proc findMainFile(dir: string): string =
   var nimFiles = 0
   for kind, file in os.walkDir(dir):
     if kind == pcFile:
-      if file.endsWith(cfgExt): return file[.. ^(cfgExt.len+1)] & ".nim"
+      if file.endsWith(cfgExt): return file[ .. ^(cfgExt.len+1)] & ".nim"
       elif file.endsWith(".nim"):
         if result.len == 0: result = file
         inc nimFiles
@@ -429,7 +387,7 @@ proc testStdlib(r: var TResults, pattern, options: string, cat: Category) =
 
   files.sort # reproducible order
   for testFile in files:
-    let contents = readFile(testFile).string
+    let contents = readFile(testFile)
     var testObj = makeTest(testFile, options, cat)
     #[
     todo:
@@ -445,7 +403,7 @@ proc testStdlib(r: var TResults, pattern, options: string, cat: Category) =
 
 # ----------------------------- nimble ----------------------------------------
 
-var nimbleDir = getEnv("NIMBLE_DIR").string
+var nimbleDir = getEnv("NIMBLE_DIR")
 if nimbleDir.len == 0: nimbleDir = getHomeDir() / ".nimble"
 let
   nimbleExe = findExe("nimble")
@@ -483,16 +441,7 @@ proc makeSupTest(test, options: string, cat: Category): TTest =
   result.options = options
   result.startTime = epochTime()
 
-const maxRetries = 3
-template retryCommand(call): untyped =
-  var res: typeof(call)
-  var backoff = 1
-  for i in 0..<maxRetries:
-    res = call
-    if res.exitCode == QuitSuccess or i == maxRetries-1: break
-    sleep(backoff * 1000)
-    backoff *= 2
-  res
+import std/private/gitutils
 
 proc testNimblePackages(r: var TResults; cat: Category; packageFilter: string, part: PkgPart) =
   if nimbleExe == "":
@@ -514,41 +463,27 @@ proc testNimblePackages(r: var TResults; cat: Category; packageFilter: string, p
       var test = makeSupTest(name, "", cat)
       let buildPath = packagesDir / name
 
+      template tryCommand(cmd: string, workingDir2 = buildPath, reFailed = reInstallFailed, maxRetries = 1): string =
+        var outp: string
+        let ok = retryCall(maxRetry = maxRetries, backoffDuration = 1.0):
+          var status: int
+          (outp, status) = execCmdEx(cmd, workingDir = workingDir2)
+          status == QuitSuccess
+        if not ok:
+          addResult(r, test, targetC, "", cmd & "\n" & outp, reFailed)
+          continue
+        outp
+
       if not dirExists(buildPath):
-        let (cloneCmd, cloneOutput, cloneStatus) = retryCommand execCmdEx2("git", ["clone", url, buildPath])
-        if cloneStatus != QuitSuccess:
-          r.addResult(test, targetC, "", cloneCmd & "\n" & cloneOutput, reInstallFailed)
-          continue
-
+        discard tryCommand("git clone $# $#" % [url.quoteShell, buildPath.quoteShell], workingDir2 = ".", maxRetries = 3)
         if not useHead:
-          let (fetchCmd, fetchOutput, fetchStatus) = retryCommand execCmdEx2("git", ["fetch", "--tags"], workingDir = buildPath)
-          if fetchStatus != QuitSuccess:
-            r.addResult(test, targetC, "", fetchCmd & "\n" & fetchOutput, reInstallFailed)
-            continue
-
-          let (describeCmd, describeOutput, describeStatus) = retryCommand execCmdEx2("git", ["describe", "--tags", "--abbrev=0"], workingDir = buildPath)
-          if describeStatus != QuitSuccess:
-            r.addResult(test, targetC, "", describeCmd & "\n" & describeOutput, reInstallFailed)
-            continue
-
-          let (checkoutCmd, checkoutOutput, checkoutStatus) = retryCommand execCmdEx2("git", ["checkout", describeOutput.strip], workingDir = buildPath)
-          if checkoutStatus != QuitSuccess:
-            r.addResult(test, targetC, "", checkoutCmd & "\n" & checkoutOutput, reInstallFailed)
-            continue
-
-        let (installDepsCmd, installDepsOutput, installDepsStatus) = retryCommand execCmdEx2("nimble", ["install", "--depsOnly", "-y"], workingDir = buildPath)
-        if installDepsStatus != QuitSuccess:
-          r.addResult(test, targetC, "", "installing dependencies failed:\n$ " & installDepsCmd & "\n" & installDepsOutput, reInstallFailed)
-          continue
-
-      let cmdArgs = parseCmdLine(cmd)
-
-      let (buildCmd, buildOutput, status) = execCmdEx2(cmdArgs[0], cmdArgs[1..^1], workingDir = buildPath)
-      if status != QuitSuccess:
-        r.addResult(test, targetC, "", "package test failed\n$ " & buildCmd & "\n" & buildOutput, reBuildFailed)
-      else:
-        inc r.passed
-        r.addResult(test, targetC, "", "", reSuccess)
+          discard tryCommand("git fetch --tags", maxRetries = 3)
+          let describeOutput = tryCommand("git describe --tags --abbrev=0")
+          discard tryCommand("git checkout $#" % [describeOutput.strip.quoteShell])
+        discard tryCommand("nimble install --depsOnly -y", maxRetries = 3)
+      discard tryCommand(cmd, reFailed = reBuildFailed)
+      inc r.passed
+      r.addResult(test, targetC, "", "", reSuccess)
 
     errors = r.total - r.passed
     if errors == 0:
@@ -565,6 +500,49 @@ proc testNimblePackages(r: var TResults; cat: Category; packageFilter: string, p
   finally:
     if errors == 0: removeDir(packagesDir)
 
+# ---------------- IC tests ---------------------------------------------
+
+proc icTests(r: var TResults; testsDir: string, cat: Category, options: string) =
+  const
+    tooltests = ["compiler/nim.nim", "tools/nimgrep.nim"]
+    writeOnly = " --incremental:writeonly "
+    readOnly = " --incremental:readonly "
+    incrementalOn = " --incremental:on "
+
+  template test(x: untyped) =
+    testSpecWithNimcache(r, makeRawTest(file, x & options, cat), nimcache)
+
+  template editedTest(x: untyped) =
+    var test = makeTest(file, x & options, cat)
+    test.spec.targets = {getTestSpecTarget()}
+    testSpecWithNimcache(r, test, nimcache)
+
+  const tempExt = "_temp.nim"
+  for it in walkDirRec(testsDir / "ic"):
+    if isTestFile(it) and not it.endsWith(tempExt):
+      let nimcache = nimcacheDir(it, options, getTestSpecTarget())
+      removeDir(nimcache)
+
+      let content = readFile(it)
+      for fragment in content.split("#!EDIT!#"):
+        let file = it.replace(".nim", tempExt)
+        writeFile(file, fragment)
+        let oldPassed = r.passed
+        editedTest incrementalOn
+        if r.passed != oldPassed+1: break
+
+  when false:
+    for file in tooltests:
+      let nimcache = nimcacheDir(file, options, getTestSpecTarget())
+      removeDir(nimcache)
+
+      let oldPassed = r.passed
+      test writeOnly
+
+      if r.passed == oldPassed+1:
+        test readOnly
+        if r.passed == oldPassed+2:
+          test readOnly
 
 # ----------------------------------------------------------------------------
 
@@ -606,15 +584,6 @@ proc isJoinableSpec(spec: TSpec): bool =
     if spec.file.readFile.contains "when isMainModule":
       result = false
 
-when false:
-  proc norm(s: var string) =
-    ## strip empty newlines
-    while true:
-      let tmp = s.replace("\n\n", "\n")
-      if tmp == s: break
-      s = tmp
-    s = s.strip
-
 proc quoted(a: string): string =
   # todo: consider moving to system.nim
   result.addQuoted(a)
@@ -632,8 +601,8 @@ proc runJoinedTest(r: var TResults, cat: Category, testsDir: string) =
           if isJoinableSpec(spec):
             specs.add spec
 
-  proc cmp(a: TSpec, b:TSpec): auto = cmp(a.file, b.file)
-  sort(specs, cmp=cmp) # reproducible order
+  proc cmp(a: TSpec, b: TSpec): auto = cmp(a.file, b.file)
+  sort(specs, cmp = cmp) # reproducible order
   echo "joinable specs: ", specs.len
 
   if simulate:
@@ -663,17 +632,17 @@ proc runJoinedTest(r: var TResults, cat: Category, testsDir: string) =
   let args = ["c", "--nimCache:" & outDir, "-d:testing", "-d:nimMegatest", "--listCmd", "--path:" & root, megatestFile]
   var (cmdLine, buf, exitCode) = execCmdEx2(command = compilerPrefix, args = args, input = "")
   if exitCode != 0:
-    echo "$ " & cmdLine & "\n" & buf.string
+    echo "$ " & cmdLine & "\n" & buf
     quit(failString & "megatest compilation failed")
 
   (buf, exitCode) = execCmdEx(megatestFile.changeFileExt(ExeExt).dup normalizeExe)
   if exitCode != 0:
-    echo buf.string
+    echo buf
     quit(failString & "megatest execution failed")
 
   const outputExceptedFile = "outputExpected.txt"
   const outputGottenFile = "outputGotten.txt"
-  writeFile(outputGottenFile, buf.string)
+  writeFile(outputGottenFile, buf)
   var outputExpected = ""
   for i, runSpec in specs:
     outputExpected.add marker & runSpec.file & "\n"
@@ -682,7 +651,7 @@ proc runJoinedTest(r: var TResults, cat: Category, testsDir: string) =
       if not runSpec.output.endsWith "\n":
         outputExpected.add '\n'
 
-  if buf.string != outputExpected:
+  if buf != outputExpected:
     writeFile(outputExceptedFile, outputExpected)
     discard execShellCmd("diff -uNdr $1 $2" % [outputExceptedFile, outputGottenFile])
     echo failString & "megatest output different!"
@@ -690,84 +659,88 @@ proc runJoinedTest(r: var TResults, cat: Category, testsDir: string) =
     quit 1
   else:
     echo "megatest output OK"
-    when false: # no point removing those, always good for debugging
-      removeFile(outputGottenFile)
-      removeFile(megatestFile) # keep it around
-  #testSpec r, makeTest("megatest", options, cat)
+
 
 # ---------------------------------------------------------------------------
 
 proc processCategory(r: var TResults, cat: Category,
                      options, testsDir: string,
                      runJoinableTests: bool) =
-  case cat.string.normalize
-  of "ic":
-    when false:
+  let cat2 = cat.string.normalize
+  var handled = false
+  if isNimRepoTests():
+    handled = true
+    case cat2
+    of "js":
+      # only run the JS tests on Windows or Linux because Travis is bad
+      # and other OSes like Haiku might lack nodejs:
+      if not defined(linux) and isTravis:
+        discard
+      else:
+        jsTests(r, cat, options)
+    of "dll":
+      dllTests(r, cat, options)
+    of "flags":
+      flagTests(r, cat, options)
+    of "gc":
+      gcTests(r, cat, options)
+    of "longgc":
+      longGCTests(r, cat, options)
+    of "debugger":
+      debuggerTests(r, cat, options)
+    of "manyloc":
+      manyLoc r, cat, options
+    of "threads":
+      threadTests r, cat, options & " --threads:on"
+    of "io":
+      ioTests r, cat, options
+    of "async":
+      asyncTests r, cat, options
+    of "lib":
+      testStdlib(r, "lib/pure/", options, cat)
+      testStdlib(r, "lib/packages/docutils/", options, cat)
+    of "examples":
+      compileExample(r, "examples/*.nim", options, cat)
+      compileExample(r, "examples/gtk/*.nim", options, cat)
+      compileExample(r, "examples/talk/*.nim", options, cat)
+    of "nimble-packages-1":
+      testNimblePackages(r, cat, options, ppOne)
+    of "nimble-packages-2":
+      testNimblePackages(r, cat, options, ppTwo)
+    of "niminaction":
+      testNimInAction(r, cat, options)
+    of "ic":
       icTests(r, testsDir, cat, options)
-  of "js":
-    # only run the JS tests on Windows or Linux because Travis is bad
-    # and other OSes like Haiku might lack nodejs:
-    if not defined(linux) and isTravis:
+    of "untestable":
+      # These require special treatment e.g. because they depend on a third party
+      # dependency; see `trunner_special` which runs some of those.
       discard
     else:
-      jsTests(r, cat, options)
-  of "dll":
-    dllTests(r, cat, options)
-  of "flags":
-    flagTests(r, cat, options)
-  of "gc":
-    gcTests(r, cat, options)
-  of "longgc":
-    longGCTests(r, cat, options)
-  of "debugger":
-    debuggerTests(r, cat, options)
-  of "manyloc":
-    manyLoc r, cat, options
-  of "threads":
-    threadTests r, cat, options & " --threads:on"
-  of "io":
-    ioTests r, cat, options
-  of "async":
-    asyncTests r, cat, options
-  of "lib":
-    testStdlib(r, "lib/pure/", options, cat)
-    testStdlib(r, "lib/packages/docutils/", options, cat)
-  of "examples":
-    compileExample(r, "examples/*.nim", options, cat)
-    compileExample(r, "examples/gtk/*.nim", options, cat)
-    compileExample(r, "examples/talk/*.nim", options, cat)
-  of "nimble-packages-1":
-    testNimblePackages(r, cat, options, ppOne)
-  of "nimble-packages-2":
-    testNimblePackages(r, cat, options, ppTwo)
-  of "niminaction":
-    testNimInAction(r, cat, options)
-  of "untestable":
-    # We can't test it because it depends on a third party.
-    discard # TODO: Move untestable tests to someplace else, i.e. nimble repo.
-  of "megatest":
-    runJoinedTest(r, cat, testsDir)
-  else:
-    var testsRun = 0
-    var files: seq[string]
-    for file in walkDirRec(testsDir &.? cat.string):
-      if isTestFile(file): files.add file
-    files.sort # give reproducible order
-
-    for i, name in files:
-      var test = makeTest(name, options, cat)
-      if runJoinableTests or not isJoinableSpec(test.spec) or cat.string in specialCategories:
-        discard "run the test"
-      else:
-        test.spec.err = reJoined
-      testSpec r, test
-      inc testsRun
-    if testsRun == 0:
-      const whiteListedDirs = ["deps", "htmldocs", "pkgs"]
-        # `pkgs` because bug #16556 creates `pkgs` dirs and this can affect some users
-        # that try an old version of choosenim.
-      doAssert cat.string in whiteListedDirs,
-        "Invalid category specified: '$#' not in whilelist: $#" % [cat.string, $whiteListedDirs]
+      handled = false
+  if not handled:
+    case cat2
+    of "megatest":
+      runJoinedTest(r, cat, testsDir)
+    else:
+      var testsRun = 0
+      var files: seq[string]
+      for file in walkDirRec(testsDir &.? cat.string):
+        if isTestFile(file): files.add file
+      files.sort # give reproducible order
+      for i, name in files:
+        var test = makeTest(name, options, cat)
+        if runJoinableTests or not isJoinableSpec(test.spec) or cat.string in specialCategories:
+          discard "run the test"
+        else:
+          test.spec.err = reJoined
+        testSpec r, test
+        inc testsRun
+      if testsRun == 0:
+        const whiteListedDirs = ["deps", "htmldocs", "pkgs"]
+          # `pkgs` because bug #16556 creates `pkgs` dirs and this can affect some users
+          # that try an old version of choosenim.
+        doAssert cat.string in whiteListedDirs,
+          "Invalid category specified: '$#' not in whilelist: $#" % [cat.string, $whiteListedDirs]
 
 proc processPattern(r: var TResults, pattern, options: string; simulate: bool) =
   var testsRun = 0

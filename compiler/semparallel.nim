@@ -81,7 +81,7 @@ proc initAnalysisCtx(g: ModuleGraph): AnalysisCtx =
   result.slices = @[]
   result.args = @[]
   result.guards.s = @[]
-  result.guards.o = initOperators(g)
+  result.guards.g = g
   result.graph = g
 
 proc lookupSlot(c: AnalysisCtx; s: PSym): int =
@@ -138,7 +138,7 @@ proc checkLe(c: AnalysisCtx; a, b: PNode) =
 
 proc checkBounds(c: AnalysisCtx; arr, idx: PNode) =
   checkLe(c, lowBound(c.graph.config, arr), idx)
-  checkLe(c, idx, highBound(c.graph.config, arr, c.guards.o))
+  checkLe(c, idx, highBound(c.graph.config, arr, c.graph.operators))
 
 proc addLowerBoundAsFacts(c: var AnalysisCtx) =
   for v in c.locals:
@@ -147,8 +147,8 @@ proc addLowerBoundAsFacts(c: var AnalysisCtx) =
 
 proc addSlice(c: var AnalysisCtx; n: PNode; x, le, ri: PNode) =
   checkLocal(c, n)
-  let le = le.canon(c.guards.o)
-  let ri = ri.canon(c.guards.o)
+  let le = le.canon(c.graph.operators)
+  let ri = ri.canon(c.graph.operators)
   # perform static bounds checking here; and not later!
   let oldState = c.guards.s.len
   addLowerBoundAsFacts(c)
@@ -192,7 +192,7 @@ proc subStride(c: AnalysisCtx; n: PNode): PNode =
   if isLocal(n):
     let s = c.lookupSlot(n.sym)
     if s >= 0 and c.locals[s].stride != nil:
-      result = buildAdd(n, c.locals[s].stride.intVal, c.guards.o)
+      result = buildAdd(n, c.locals[s].stride.intVal, c.graph.operators)
     else:
       result = n
   elif n.safeLen > 0:
@@ -307,16 +307,16 @@ proc analyseCase(c: var AnalysisCtx; n: PNode) =
 proc analyseIf(c: var AnalysisCtx; n: PNode) =
   analyse(c, n[0][0])
   let oldFacts = c.guards.s.len
-  addFact(c.guards, canon(n[0][0], c.guards.o))
+  addFact(c.guards, canon(n[0][0], c.graph.operators))
 
   analyse(c, n[0][1])
   for i in 1..<n.len:
     let branch = n[i]
     setLen(c.guards.s, oldFacts)
     for j in 0..i-1:
-      addFactNeg(c.guards, canon(n[j][0], c.guards.o))
+      addFactNeg(c.guards, canon(n[j][0], c.graph.operators))
     if branch.len > 1:
-      addFact(c.guards, canon(branch[0], c.guards.o))
+      addFact(c.guards, canon(branch[0], c.graph.operators))
     for i in 0..<branch.len:
       analyse(c, branch[i])
   setLen(c.guards.s, oldFacts)
@@ -382,13 +382,13 @@ proc analyse(c: var AnalysisCtx; n: PNode) =
       # loop may never execute:
       let oldState = c.locals.len
       let oldFacts = c.guards.s.len
-      addFact(c.guards, canon(n[0], c.guards.o))
+      addFact(c.guards, canon(n[0], c.graph.operators))
       analyse(c, n[1])
       setLen(c.locals, oldState)
       setLen(c.guards.s, oldFacts)
       # we know after the loop the negation holds:
       if not hasSubnodeWith(n[1], nkBreakStmt):
-        addFactNeg(c.guards, canon(n[0], c.guards.o))
+        addFactNeg(c.guards, canon(n[0], c.graph.operators))
     dec c.inLoop
   of nkTypeSection, nkProcDef, nkConverterDef, nkMethodDef, nkIteratorDef,
       nkMacroDef, nkTemplateDef, nkConstSection, nkPragma, nkFuncDef:

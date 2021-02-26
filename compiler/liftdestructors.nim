@@ -29,6 +29,10 @@ type
     c: PContext # c can be nil, then we are called from lambdalifting!
     idgen: IdGenerator
 
+template destructor*(t: PType): PSym = getAttachedOp(c.g, t, attachedDestructor)
+template assignment*(t: PType): PSym = getAttachedOp(c.g, t, attachedAsgn)
+template asink*(t: PType): PSym = getAttachedOp(c.g, t, attachedSink)
+
 proc fillBody(c: var TLiftCtx; t: PType; body, x, y: PNode)
 proc produceSym(g: ModuleGraph; c: PContext; typ: PType; kind: TTypeAttachedOp;
               info: TLineInfo; idgen: IdGenerator): PSym
@@ -42,8 +46,9 @@ proc at(a, i: PNode, elemType: PType): PNode =
   result[1] = i
   result.typ = elemType
 
-proc destructorOverriden(t: PType): bool =
-  t.attachedOps[attachedDestructor] != nil and sfOverriden in t.attachedOps[attachedDestructor].flags
+proc destructorOverriden(g: ModuleGraph; t: PType): bool =
+  let op = getAttachedOp(g, t, attachedDestructor)
+  op != nil and sfOverriden in op.flags
 
 proc fillBodyTup(c: var TLiftCtx; t: PType; body, x, y: PNode) =
   for i in 0..<t.len:
@@ -316,7 +321,7 @@ proc considerAsgnOrSink(c: var TLiftCtx; t: PType; body, x, y: PNode;
                         field: var PSym): bool =
   if optSeqDestructors in c.g.config.globalOptions:
     var op = field
-    let destructorOverriden = destructorOverriden(t)
+    let destructorOverriden = destructorOverriden(c.g, t)
     if op != nil and op != c.fn and
         (sfOverriden in op.flags or destructorOverriden):
       if sfError in op.flags:
@@ -361,14 +366,14 @@ proc considerAsgnOrSink(c: var TLiftCtx; t: PType; body, x, y: PNode;
     result = true
 
 proc addDestructorCall(c: var TLiftCtx; orig: PType; body, x: PNode) =
-  let t = orig.skipTypes(abstractInst)
+  let t = orig.skipTypes(abstractInst - {tyDistinct})
   var op = t.destructor
 
   if op != nil and sfOverriden in op.flags:
     if op.ast[genericParamsPos].kind != nkEmpty:
       # patch generic destructor:
       op = instantiateGeneric(c, op, t, t.typeInst)
-      t.attachedOps[attachedDestructor] = op
+      setAttachedOp(c.g, c.idgen.module, t, attachedDestructor, op)
 
   if op == nil and (useNoGc(c, t) or requiresDestructor(c, t)):
     op = produceSym(c.g, c.c, t, attachedDestructor, c.info, c.idgen)
@@ -392,7 +397,7 @@ proc considerUserDefinedOp(c: var TLiftCtx; t: PType; body, x, y: PNode): bool =
       if op.ast[genericParamsPos].kind != nkEmpty:
         # patch generic destructor:
         op = instantiateGeneric(c, op, t, t.typeInst)
-        t.attachedOps[attachedDestructor] = op
+        setAttachedOp(c.g, c.idgen.module, t, attachedDestructor, op)
 
       #markUsed(c.g.config, c.info, op, c.g.usageSym)
       onUse(c.info, op)
@@ -400,11 +405,17 @@ proc considerUserDefinedOp(c: var TLiftCtx; t: PType; body, x, y: PNode): bool =
       result = true
     #result = addDestructorCall(c, t, body, x)
   of attachedAsgn, attachedSink, attachedTrace:
-    result = considerAsgnOrSink(c, t, body, x, y, t.attachedOps[c.kind])
+    var op = getAttachedOp(c.g, t, c.kind)
+    result = considerAsgnOrSink(c, t, body, x, y, op)
+    if op != nil:
+      setAttachedOp(c.g, c.idgen.module, t, c.kind, op)
   of attachedDispose:
-    result = considerAsgnOrSink(c, t, body, x, nil, t.attachedOps[c.kind])
+    var op = getAttachedOp(c.g, t, c.kind)
+    result = considerAsgnOrSink(c, t, body, x, nil, op)
+    if op != nil:
+      setAttachedOp(c.g, c.idgen.module, t, c.kind, op)
   of attachedDeepCopy:
-    let op = t.attachedOps[attachedDeepCopy]
+    let op = getAttachedOp(c.g, t, attachedDeepCopy)
     if op != nil:
       #markUsed(c.g.config, c.info, op, c.g.usageSym)
       onUse(c.info, op)
@@ -523,13 +534,15 @@ proc useSeqOrStrOp(c: var TLiftCtx; t: PType; body, x, y: PNode) =
     doAssert t.destructor != nil
     body.add destructorCall(c, t.destructor, x)
   of attachedTrace:
-    if t.attachedOps[c.kind] == nil:
+    let op = getAttachedOp(c.g, t, c.kind)
+    if op == nil:
       return # protect from recursion
-    body.add newHookCall(c, t.attachedOps[c.kind], x, y)
+    body.add newHookCall(c, op, x, y)
   of attachedDispose:
-    if t.attachedOps[c.kind] == nil:
+    let op = getAttachedOp(c.g, t, c.kind)
+    if op == nil:
       return # protect from recursion
-    body.add newHookCall(c, t.attachedOps[c.kind], x, nil)
+    body.add newHookCall(c, op, x, nil)
 
 proc fillStrOp(c: var TLiftCtx; t: PType; body, x, y: PNode) =
   case c.kind
@@ -883,17 +896,17 @@ proc fillBody(c: var TLiftCtx; t: PType; body, x, y: PNode) =
   of tyOrdinal, tyRange, tyInferred,
      tyGenericInst, tyAlias, tySink:
     fillBody(c, lastSon(t), body, x, y)
-  of tyOptDeprecated: doAssert false
+  of tyConcept: doAssert false
 
 proc produceSymDistinctType(g: ModuleGraph; c: PContext; typ: PType;
                             kind: TTypeAttachedOp; info: TLineInfo;
                             idgen: IdGenerator): PSym =
   assert typ.kind == tyDistinct
   let baseType = typ[0]
-  if baseType.attachedOps[kind] == nil:
+  if getAttachedOp(g, baseType, kind) == nil:
     discard produceSym(g, c, baseType, kind, info, idgen)
-  typ.attachedOps[kind] = baseType.attachedOps[kind]
-  result = typ.attachedOps[kind]
+  result = getAttachedOp(g, baseType, kind)
+  setAttachedOp(g, idgen.module, typ, kind, result)
 
 proc symPrototype(g: ModuleGraph; typ: PType; owner: PSym; kind: TTypeAttachedOp;
               info: TLineInfo; idgen: IdGenerator): PSym =
@@ -936,7 +949,7 @@ proc produceSym(g: ModuleGraph; c: PContext; typ: PType; kind: TTypeAttachedOp;
   if typ.kind == tyDistinct:
     return produceSymDistinctType(g, c, typ, kind, info, idgen)
 
-  result = typ.attachedOps[kind]
+  result = getAttachedOp(g, typ, kind)
   if result == nil:
     result = symPrototype(g, typ, typ.owner, kind, info, idgen)
 
@@ -949,12 +962,12 @@ proc produceSym(g: ModuleGraph; c: PContext; typ: PType; kind: TTypeAttachedOp;
             else: newSymNode(result.typ.n[2].sym)
 
   # register this operation already:
-  typ.attachedOps[kind] = result
+  setAttachedOpPartial(g, idgen.module, typ, kind, result)
 
-  if kind == attachedSink and destructorOverriden(typ):
+  if kind == attachedSink and destructorOverriden(g, typ):
     ## compiler can use a combination of `=destroy` and memCopy for sink op
     dest.flags.incl sfCursor
-    result.ast[bodyPos].add newOpCall(a, typ.attachedOps[attachedDestructor], d[0])
+    result.ast[bodyPos].add newOpCall(a, getAttachedOp(g, typ, attachedDestructor), d[0])
     result.ast[bodyPos].add newAsgnStmt(d, src)
   else:
     var tk: TTypeKind
@@ -970,6 +983,7 @@ proc produceSym(g: ModuleGraph; c: PContext; typ: PType; kind: TTypeAttachedOp;
     else:
       fillBody(a, typ, result.ast[bodyPos], d, src)
   if not a.canRaise: incl result.flags, sfNeverRaises
+  completePartialOp(g, idgen.module, typ, kind, result)
 
 
 proc produceDestructorForDiscriminator*(g: ModuleGraph; typ: PType; field: PSym,
@@ -1002,30 +1016,34 @@ proc patchBody(g: ModuleGraph; c: PContext; n: PNode; info: TLineInfo; idgen: Id
   if n.kind in nkCallKinds:
     if n[0].kind == nkSym and n[0].sym.magic == mDestroy:
       let t = n[1].typ.skipTypes(abstractVar)
-      if t.destructor == nil:
+      if getAttachedOp(g, t, attachedDestructor) == nil:
         discard produceSym(g, c, t, attachedDestructor, info, idgen)
 
-      if t.destructor != nil:
-        if t.destructor.ast[genericParamsPos].kind != nkEmpty:
+      let op = getAttachedOp(g, t, attachedDestructor)
+      if op != nil:
+        if op.ast[genericParamsPos].kind != nkEmpty:
           internalError(g.config, info, "resolved destructor is generic")
-        if t.destructor.magic == mDestroy:
+        if op.magic == mDestroy:
           internalError(g.config, info, "patching mDestroy with mDestroy?")
-        n[0] = newSymNode(t.destructor)
+        n[0] = newSymNode(op)
   for x in n: patchBody(g, c, x, info, idgen)
 
-template inst(field, t, idgen) =
-  if field.ast != nil and field.ast[genericParamsPos].kind != nkEmpty:
+proc inst(g: ModuleGraph; c: PContext; t: PType; kind: TTypeAttachedOp; idgen: IdGenerator;
+          info: TLineInfo) =
+  let op = getAttachedOp(g, t, kind)
+  if op != nil and op.ast != nil and op.ast[genericParamsPos].kind != nkEmpty:
     if t.typeInst != nil:
       var a: TLiftCtx
       a.info = info
       a.g = g
-      a.kind = k
+      a.kind = kind
       a.c = c
       a.idgen = idgen
 
-      field = instantiateGeneric(a, field, t, t.typeInst)
-      if field.ast != nil:
-        patchBody(g, c, field.ast, info, a.idgen)
+      let opInst = instantiateGeneric(a, op, t, t.typeInst)
+      if opInst.ast != nil:
+        patchBody(g, c, opInst.ast, info, a.idgen)
+      setAttachedOp(g, idgen.module, t, kind, opInst)
     else:
       localError(g.config, info, "unresolved generic parameter")
 
@@ -1062,24 +1080,26 @@ proc createTypeBoundOps(g: ModuleGraph; c: PContext; orig: PType; info: TLineInf
                      else: attachedSink
 
   # bug #15122: We need to produce all prototypes before entering the
-  # mind boggling recursion. Hacks like these imply we shoule rewrite
+  # mind boggling recursion. Hacks like these imply we should rewrite
   # this module.
   var generics: array[attachedDestructor..attachedDispose, bool]
   for k in attachedDestructor..lastAttached:
-    generics[k] = canon.attachedOps[k] != nil
+    generics[k] = getAttachedOp(g, canon, k) != nil
     if not generics[k]:
-      canon.attachedOps[k] = symPrototype(g, canon, canon.owner, k, info, idgen)
+      setAttachedOp(g, idgen.module, canon, k,
+          symPrototype(g, canon, canon.owner, k, info, idgen))
 
   # we generate the destructor first so that other operators can depend on it:
   for k in attachedDestructor..lastAttached:
     if not generics[k]:
       discard produceSym(g, c, canon, k, info, idgen)
     else:
-      inst(canon.attachedOps[k], canon, idgen)
+      inst(g, c, canon, k, idgen, info)
     if canon != orig:
-      orig.attachedOps[k] = canon.attachedOps[k]
+      setAttachedOp(g, idgen.module, orig, k, getAttachedOp(g, canon, k))
 
-  if not isTrival(orig.destructor):
+  if not isTrival(getAttachedOp(g, orig, attachedDestructor)):
     #or not isTrival(orig.assignment) or
     # not isTrival(orig.sink):
     orig.flags.incl tfHasAsgn
+    # ^ XXX Breaks IC!

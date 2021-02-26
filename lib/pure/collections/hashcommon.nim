@@ -7,16 +7,11 @@
 #    distribution, for details about the copyright.
 #
 
-# An ``include`` file which contains common code for
+# An `include` file which contains common code for
 # hash sets and tables.
 
 const
   growthFactor = 2
-
-when not defined(nimHasDefault):
-  template default[T](t: typedesc[T]): T =
-    var v: T
-    v
 
 # hcode for real keys cannot be zero.  hcode==0 signifies an empty slot.  These
 # two procs retain clarity of that encoding without the space cost of an enum.

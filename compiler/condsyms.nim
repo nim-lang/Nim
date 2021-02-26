@@ -34,55 +34,58 @@ proc countDefinedSymbols*(symbols: StringTableRef): int =
 proc initDefines*(symbols: StringTableRef) =
   # for bootstrapping purposes and old code:
   template defineSymbol(s) = symbols.defineSymbol(s)
-  defineSymbol("nimhygiene")
-  defineSymbol("niminheritable")
-  defineSymbol("nimmixin")
-  defineSymbol("nimeffects")
-  defineSymbol("nimbabel")
-  defineSymbol("nimcomputedgoto")
-  defineSymbol("nimunion")
-  defineSymbol("nimnewshared")
-  defineSymbol("nimNewTypedesc")
-  defineSymbol("nimrequiresnimframe")
-  defineSymbol("nimparsebiggestfloatmagic")
-  defineSymbol("nimalias")
-  defineSymbol("nimlocks")
-  defineSymbol("nimnode")
-  defineSymbol("nimvarargstyped")
-  defineSymbol("nimtypedescfixed")
-  defineSymbol("nimKnowsNimvm")
-  defineSymbol("nimArrIdx")
-  defineSymbol("nimHasalignOf")
-  defineSymbol("nimDistros")
-  defineSymbol("nimHasCppDefine")
-  defineSymbol("nimGenericInOutFlags")
-  when false: defineSymbol("nimHasOpt")
-  defineSymbol("nimNoArrayToCstringConversion")
-  defineSymbol("nimHasRunnableExamples")
-  defineSymbol("nimNewDot")
-  defineSymbol("nimHasNilChecks")
-  defineSymbol("nimSymKind")
-  defineSymbol("nimVmEqIdent")
-  defineSymbol("nimNoNil")
-  defineSymbol("nimNoZeroTerminator")
-  defineSymbol("nimNotNil")
-  defineSymbol("nimVmExportFixed")
-  defineSymbol("nimHasSymOwnerInMacro")
-  defineSymbol("nimNewRuntime")
-  defineSymbol("nimIncrSeqV3")
-  defineSymbol("nimAshr")
-  defineSymbol("nimNoNilSeqs")
-  defineSymbol("nimNoNilSeqs2")
-  defineSymbol("nimHasUserErrors")
-  defineSymbol("nimUncheckedArrayTyp")
-  defineSymbol("nimHasTypeof")
-  defineSymbol("nimErrorProcCanHaveBody")
-  defineSymbol("nimHasInstantiationOfInMacro")
-  defineSymbol("nimHasHotCodeReloading")
-  defineSymbol("nimHasNilSeqs")
-  defineSymbol("nimHasSignatureHashInMacro")
-  defineSymbol("nimHasDefault")
-  defineSymbol("nimMacrosSizealignof")
+  defineSymbol("nimhygiene") # deadcode
+  defineSymbol("niminheritable") # deadcode
+  defineSymbol("nimmixin") # deadcode
+  defineSymbol("nimeffects") # deadcode
+  defineSymbol("nimbabel") # deadcode
+  defineSymbol("nimcomputedgoto") # deadcode
+  defineSymbol("nimunion") # deadcode
+  defineSymbol("nimnewshared") # deadcode
+  defineSymbol("nimNewTypedesc") # deadcode
+  defineSymbol("nimrequiresnimframe") # deadcode
+  defineSymbol("nimparsebiggestfloatmagic") # deadcode
+  defineSymbol("nimalias") # deadcode
+  defineSymbol("nimlocks") # deadcode
+  defineSymbol("nimnode") # deadcode pending `nimnode` reference in opengl package
+    # refs https://github.com/nim-lang/opengl/pull/79
+  defineSymbol("nimvarargstyped") # deadcode
+  defineSymbol("nimtypedescfixed") # deadcode
+  defineSymbol("nimKnowsNimvm") # deadcode
+  defineSymbol("nimArrIdx") # deadcode
+  defineSymbol("nimHasalignOf") # deadcode
+  defineSymbol("nimDistros") # deadcode
+  defineSymbol("nimHasCppDefine") # deadcode
+  defineSymbol("nimGenericInOutFlags") # deadcode
+  when false: defineSymbol("nimHasOpt") # deadcode
+  defineSymbol("nimNoArrayToCstringConversion") # deadcode
+  defineSymbol("nimHasRunnableExamples") # deadcode
+  defineSymbol("nimNewDot") # deadcode
+  defineSymbol("nimHasNilChecks") # deadcode
+  defineSymbol("nimSymKind") # deadcode
+  defineSymbol("nimVmEqIdent") # deadcode
+  defineSymbol("nimNoNil") # deadcode
+  defineSymbol("nimNoZeroTerminator") # deadcode
+  defineSymbol("nimNotNil") # deadcode
+  defineSymbol("nimVmExportFixed") # deadcode
+  defineSymbol("nimHasSymOwnerInMacro") # deadcode
+  defineSymbol("nimNewRuntime") # deadcode
+  defineSymbol("nimIncrSeqV3") # xxx: turn this into deadcode
+  defineSymbol("nimAshr") # deadcode
+  defineSymbol("nimNoNilSeqs") # deadcode
+  defineSymbol("nimNoNilSeqs2") # deadcode
+  defineSymbol("nimHasUserErrors") # deadcode
+  defineSymbol("nimUncheckedArrayTyp") # deadcode
+  defineSymbol("nimHasTypeof") # deadcode
+  defineSymbol("nimErrorProcCanHaveBody") # deadcode
+  defineSymbol("nimHasInstantiationOfInMacro") # deadcode
+  defineSymbol("nimHasHotCodeReloading") # deadcode
+  defineSymbol("nimHasNilSeqs") # deadcode
+  defineSymbol("nimHasSignatureHashInMacro") # deadcode
+  defineSymbol("nimHasDefault") # deadcode
+  defineSymbol("nimMacrosSizealignof") # deadcode
+
+  # > 0.20.0
   defineSymbol("nimNoZeroExtendMagic")
   defineSymbol("nimMacrosGetNodeId")
   for f in Feature:
@@ -124,3 +127,5 @@ proc initDefines*(symbols: StringTableRef) =
   defineSymbol("nimHasCastPragmaBlocks")
   defineSymbol("nimHasDeclaredLocs")
   defineSymbol("nimHasJsBigIntBackend")
+  defineSymbol("nimHasWarningAsError")
+  defineSymbol("nimHasHintAsError")

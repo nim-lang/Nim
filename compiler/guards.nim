@@ -82,26 +82,6 @@ proc isLetLocation(m: PNode, isApprox: bool): bool =
 
 proc interestingCaseExpr*(m: PNode): bool = isLetLocation(m, true)
 
-type
-  Operators* = object
-    opNot*, opContains*, opLe*, opLt*, opAnd*, opOr*, opIsNil*, opEq*: PSym
-    opAdd*, opSub*, opMul*, opDiv*, opLen*: PSym
-
-proc initOperators*(g: ModuleGraph): Operators =
-  result.opLe = createMagic(g, "<=", mLeI)
-  result.opLt = createMagic(g, "<", mLtI)
-  result.opAnd = createMagic(g, "and", mAnd)
-  result.opOr = createMagic(g, "or", mOr)
-  result.opIsNil = createMagic(g, "isnil", mIsNil)
-  result.opEq = createMagic(g, "==", mEqI)
-  result.opAdd = createMagic(g, "+", mAddI)
-  result.opSub = createMagic(g, "-", mSubI)
-  result.opMul = createMagic(g, "*", mMulI)
-  result.opDiv = createMagic(g, "div", mDivI)
-  result.opLen = createMagic(g, "len", mLengthSeq)
-  result.opNot = createMagic(g, "not", mNot)
-  result.opContains = createMagic(g, "contains", mInSet)
-
 proc swapArgs(fact: PNode, newOp: PSym): PNode =
   result = newNodeI(nkCall, fact.info, 3)
   result[0] = newSymNode(newOp)
@@ -404,16 +384,16 @@ proc usefulFact(n: PNode; o: Operators): PNode =
 type
   TModel* = object
     s*: seq[PNode] # the "knowledge base"
-    o*: Operators
+    g*: ModuleGraph
     beSmart*: bool
 
 proc addFact*(m: var TModel, nn: PNode) =
-  let n = usefulFact(nn, m.o)
+  let n = usefulFact(nn, m.g.operators)
   if n != nil:
     if not m.beSmart:
       m.s.add n
     else:
-      let c = canon(n, m.o)
+      let c = canon(n, m.g.operators)
       if c.getMagic == mAnd:
         addFact(m, c[1])
         addFact(m, c[2])
@@ -421,7 +401,7 @@ proc addFact*(m: var TModel, nn: PNode) =
         m.s.add c
 
 proc addFactNeg*(m: var TModel, n: PNode) =
-  let n = n.neg(m.o)
+  let n = n.neg(m.g.operators)
   if n != nil: addFact(m, n)
 
 proc sameOpr(a, b: PSym): bool =
@@ -740,7 +720,7 @@ proc doesImply*(facts: TModel, prop: PNode): TImplication =
       if result != impUnknown: return
 
 proc impliesNotNil*(m: TModel, arg: PNode): TImplication =
-  result = doesImply(m, m.o.opIsNil.buildCall(arg).neg(m.o))
+  result = doesImply(m, m.g.operators.opIsNil.buildCall(arg).neg(m.g.operators))
 
 proc simpleSlice*(a, b: PNode): BiggestInt =
   # returns 'c' if a..b matches (i+c)..(i+c), -1 otherwise. (i)..(i) is matched
@@ -794,12 +774,7 @@ macro `=~`(x: PNode, pat: untyped): bool =
 
   var conds = newTree(nnkBracket)
   m(x, pat, conds)
-  when compiles(nestList(ident"and", conds)):
-    result = nestList(ident"and", conds)
-  #elif declared(macros.toNimIdent):
-  #  result = nestList(toNimIdent"and", conds)
-  else:
-    result = nestList(!"and", conds)
+  result = nestList(ident"and", conds)
 
 proc isMinusOne(n: PNode): bool =
   n.kind in {nkCharLit..nkUInt64Lit} and n.intVal == -1
@@ -833,7 +808,7 @@ proc ple(m: TModel; a, b: PNode): TImplication =
   if b.getMagic in someAdd:
     if zero() <=? b[2] and a <=? b[1]: return impYes
     # x <= y-c  if x+c <= y
-    if b[2] <=? zero() and (canon(m.o.opSub.buildCall(a, b[2]), m.o) <=? b[1]):
+    if b[2] <=? zero() and (canon(m.g.operators.opSub.buildCall(a, b[2]), m.g.operators) <=? b[1]):
       return impYes
 
   #   x+c <= y  if c <= 0 and x <= y
@@ -847,20 +822,20 @@ proc ple(m: TModel; a, b: PNode): TImplication =
   if a.getMagic in someMul and a[2].isValue and a[1].getMagic in someDiv and
       a[1][2].isValue:
     # simplify   (x div 4) * 2 <= y   to  x div (c div d)  <= y
-    if ple(m, buildCall(m.o.opDiv, a[1][1], `|div|`(a[1][2], a[2])), b) == impYes:
+    if ple(m, buildCall(m.g.operators.opDiv, a[1][1], `|div|`(a[1][2], a[2])), b) == impYes:
       return impYes
 
   # x*3 + x == x*4. It follows that:
   # x*3 + y <= x*4  if  y <= x  and 3 <= 4
   if a =~ x*dc + y and b =~ x2*ec:
     if sameTree(x, x2):
-      let ec1 = m.o.opAdd.buildCall(ec, minusOne())
+      let ec1 = m.g.operators.opAdd.buildCall(ec, minusOne())
       if x >=? 1 and ec >=? 1 and dc >=? 1 and dc <=? ec1 and y <=? x:
         return impYes
   elif a =~ x*dc and b =~ x2*ec + y:
     #echo "BUG cam ehrer e ", a, " <=? ", b
     if sameTree(x, x2):
-      let ec1 = m.o.opAdd.buildCall(ec, minusOne())
+      let ec1 = m.g.operators.opAdd.buildCall(ec, minusOne())
       if x >=? 1 and ec >=? 1 and dc >=? 1 and dc <=? ec1 and y <=? zero():
         return impYes
 
@@ -963,12 +938,12 @@ proc pleViaModel(model: TModel; aa, bb: PNode): TImplication =
   var b = bb
   if replacements.len > 0:
     m.s = @[]
-    m.o = model.o
+    m.g = model.g
     # make the other facts consistent:
     for fact in model.s:
       if fact != nil and fact.getMagic notin someEq:
         # XXX 'canon' should not be necessary here, but it is
-        m.s.add applyReplacements(fact, replacements).canon(m.o)
+        m.s.add applyReplacements(fact, replacements).canon(m.g.operators)
     a = applyReplacements(aa, replacements)
     b = applyReplacements(bb, replacements)
   else:
@@ -977,19 +952,19 @@ proc pleViaModel(model: TModel; aa, bb: PNode): TImplication =
   result = pleViaModelRec(m, a, b)
 
 proc proveLe*(m: TModel; a, b: PNode): TImplication =
-  let x = canon(m.o.opLe.buildCall(a, b), m.o)
+  let x = canon(m.g.operators.opLe.buildCall(a, b), m.g.operators)
   #echo "ROOT ", renderTree(x[1]), " <=? ", renderTree(x[2])
   result = ple(m, x[1], x[2])
   if result == impUnknown:
     # try an alternative:  a <= b  iff  not (b < a)  iff  not (b+1 <= a):
-    let y = canon(m.o.opLe.buildCall(m.o.opAdd.buildCall(b, one()), a), m.o)
+    let y = canon(m.g.operators.opLe.buildCall(m.g.operators.opAdd.buildCall(b, one()), a), m.g.operators)
     result = ~ple(m, y[1], y[2])
 
 proc addFactLe*(m: var TModel; a, b: PNode) =
-  m.s.add canon(m.o.opLe.buildCall(a, b), m.o)
+  m.s.add canon(m.g.operators.opLe.buildCall(a, b), m.g.operators)
 
 proc addFactLt*(m: var TModel; a, b: PNode) =
-  let bb = m.o.opAdd.buildCall(b, minusOne())
+  let bb = m.g.operators.opAdd.buildCall(b, minusOne())
   addFactLe(m, a, bb)
 
 proc settype(n: PNode): PType =
@@ -1021,14 +996,14 @@ proc buildElse(n: PNode; o: Operators): PNode =
 
 proc addDiscriminantFact*(m: var TModel, n: PNode) =
   var fact = newNodeI(nkCall, n.info, 3)
-  fact[0] = newSymNode(m.o.opEq)
+  fact[0] = newSymNode(m.g.operators.opEq)
   fact[1] = n[0]
   fact[2] = n[1]
   m.s.add fact
 
 proc addAsgnFact*(m: var TModel, key, value: PNode) =
   var fact = newNodeI(nkCall, key.info, 3)
-  fact[0] = newSymNode(m.o.opEq)
+  fact[0] = newSymNode(m.g.operators.opEq)
   fact[1] = key
   fact[2] = value
   m.s.add fact
@@ -1044,7 +1019,7 @@ proc sameSubexprs*(m: TModel; a, b: PNode): bool =
   # However, nil checking requires exactly the same mechanism! But for now
   # we simply use sameTree and live with the unsoundness of the analysis.
   var check = newNodeI(nkCall, a.info, 3)
-  check[0] = newSymNode(m.o.opEq)
+  check[0] = newSymNode(m.g.operators.opEq)
   check[1] = a
   check[2] = b
   result = m.doesImply(check) == impYes
@@ -1052,9 +1027,9 @@ proc sameSubexprs*(m: TModel; a, b: PNode): bool =
 proc addCaseBranchFacts*(m: var TModel, n: PNode, i: int) =
   let branch = n[i]
   if branch.kind == nkOfBranch:
-    m.s.add buildOf(branch, n[0], m.o)
+    m.s.add buildOf(branch, n[0], m.g.operators)
   else:
-    m.s.add n.buildElse(m.o).neg(m.o)
+    m.s.add n.buildElse(m.g.operators).neg(m.g.operators)
 
 proc buildProperFieldCheck(access, check: PNode; o: Operators): PNode =
   if check[1].kind == nkCurly:
@@ -1072,6 +1047,6 @@ proc buildProperFieldCheck(access, check: PNode; o: Operators): PNode =
 
 proc checkFieldAccess*(m: TModel, n: PNode; conf: ConfigRef) =
   for i in 1..<n.len:
-    let check = buildProperFieldCheck(n[0], n[i], m.o)
+    let check = buildProperFieldCheck(n[0], n[i], m.g.operators)
     if check != nil and m.doesImply(check) != impYes:
       message(conf, n.info, warnProveField, renderTree(n[0])); break

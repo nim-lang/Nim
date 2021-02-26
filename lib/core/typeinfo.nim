@@ -11,7 +11,7 @@
 ## (`RTTI`:idx:). See the `marshal <marshal.html>`_ module for an example of
 ## what this module allows you to do.
 ##
-## Note that even though ``Any`` and its operations hide the nasty low level
+## Note that even though `Any` and its operations hide the nasty low level
 ## details from its clients, it remains inherently unsafe! Also, Nim's
 ## runtime type information will evolve and may eventually be deprecated.
 ## As an alternative approach to programmatically understanding and
@@ -28,10 +28,10 @@ include "system/hti.nim"
 {.pop.}
 
 type
-  AnyKind* = enum      ## what kind of ``any`` it is
+  AnyKind* = enum      ## what kind of `any` it is
     akNone = 0,         ## invalid any
-    akBool = 1,         ## any represents a ``bool``
-    akChar = 2,         ## any represents a ``char``
+    akBool = 1,         ## any represents a `bool`
+    akChar = 2,         ## any represents a `char`
     akEnum = 14,        ## any represents an enum
     akArray = 16,       ## any represents an array
     akObject = 17,      ## any represents an object
@@ -63,7 +63,7 @@ type
 
   Any* = object          ## can represent any nim value; NOTE: the wrapped
                           ## value can be modified with its wrapper! This means
-                          ## that ``Any`` keeps a non-traced pointer to its
+                          ## that `Any` keeps a non-traced pointer to its
                           ## wrapped value and **must not** live longer than
                           ## its wrapped value.
     value: pointer
@@ -91,7 +91,7 @@ when not defined(gcDestructors):
 else:
   include system/seqs_v2_reimpl
 
-from std/private/strimpl import cmpIgnoreStyleImpl
+from std/private/strimpl import cmpNimIdentifier
 
 when not defined(js):
   template rawType(x: Any): PNimType =
@@ -134,7 +134,7 @@ proc selectBranch(aa: pointer, n: ptr TNimNode): ptr TNimNode =
   if discr <% n.len:
     result = n.sons[discr]
     if result == nil: result = n.sons[n.len]
-    # n.sons[n.len] contains the ``else`` part (but may be nil)
+    # n.sons[n.len] contains the `else` part (but may be nil)
   else:
     result = n.sons[n.len]
 
@@ -144,17 +144,17 @@ proc newAny(value: pointer, rawType: PNimType): Any {.inline.} =
 
 when declared(system.VarSlot):
   proc toAny*(x: VarSlot): Any {.inline.} =
-    ## Constructs a ``Any`` object from a variable slot ``x``.
+    ## Constructs a `Any` object from a variable slot `x`.
     ## This captures `x`'s address, so `x` can be modified with its
-    ## ``Any`` wrapper! The client needs to ensure that the wrapper
+    ## `Any` wrapper! The client needs to ensure that the wrapper
     ## **does not** live longer than `x`!
     ## This is provided for easier reflection capabilities of a debugger.
     result.value = x.address
     result.rawType = x.typ
 
 proc toAny*[T](x: var T): Any {.inline.} =
-  ## Constructs a ``Any`` object from `x`. This captures `x`'s address, so
-  ## `x` can be modified with its ``Any`` wrapper! The client needs to ensure
+  ## Constructs a `Any` object from `x`. This captures `x`'s address, so
+  ## `x` can be modified with its `Any` wrapper! The client needs to ensure
   ## that the wrapper **does not** live longer than `x`!
   newAny(addr(x), cast[PNimType](getTypeInfo(x)))
 
@@ -167,7 +167,7 @@ proc size*(x: Any): int {.inline.} =
   result = x.rawType.size
 
 proc baseTypeKind*(x: Any): AnyKind {.inline.} =
-  ## Gets the base type's kind; ``akNone`` is returned if `x` has no base type.
+  ## Gets the base type's kind; `akNone` is returned if `x` has no base type.
   if x.rawType.base != nil:
     result = AnyKind(ord(x.rawType.base.kind))
 
@@ -177,7 +177,7 @@ proc baseTypeSize*(x: Any): int {.inline.} =
     result = x.rawType.base.size
 
 proc invokeNew*(x: Any) =
-  ## Performs ``new(x)``. `x` needs to represent a ``ref``.
+  ## Performs `new(x)`. `x` needs to represent a `ref`.
   assert x.rawType.kind == tyRef
   when defined(gcDestructors):
     cast[ppointer](x.value)[] = nimNewObj(x.rawType.base.size, x.rawType.base.align)
@@ -186,7 +186,7 @@ proc invokeNew*(x: Any) =
     genericAssign(x.value, addr(z), x.rawType)
 
 proc invokeNewSeq*(x: Any, len: int) =
-  ## Performs ``newSeq(x, len)``. `x` needs to represent a ``seq``.
+  ## Performs `newSeq(x, len)`. `x` needs to represent a `seq`.
   assert x.rawType.kind == tySequence
   when defined(gcDestructors):
     var s = cast[ptr NimSeqV2Reimpl](x.value)
@@ -198,7 +198,7 @@ proc invokeNewSeq*(x: Any, len: int) =
     genericShallowAssign(x.value, addr(z), x.rawType)
 
 proc extendSeq*(x: Any) =
-  ## Performs ``setLen(x, x.len+1)``. `x` needs to represent a ``seq``.
+  ## Performs `setLen(x, x.len+1)`. `x` needs to represent a `seq`.
   assert x.rawType.kind == tySequence
   when defined(gcDestructors):
     var s = cast[ptr NimSeqV2Reimpl](x.value)
@@ -318,16 +318,16 @@ const
                             tySequence, tyProc}
 
 proc getPointer*(x: Any): pointer =
-  ## Retrieves the pointer value out of `x`. ``x`` needs to be of kind
-  ## ``akString``, ``akCString``, ``akProc``, ``akRef``, ``akPtr``,
-  ## ``akPointer``, ``akSequence``.
+  ## Retrieves the pointer value out of `x`. `x` needs to be of kind
+  ## `akString`, `akCString`, `akProc`, `akRef`, `akPtr`,
+  ## `akPointer`, `akSequence`.
   assert x.rawType.kind in pointerLike
   result = cast[ppointer](x.value)[]
 
 proc setPointer*(x: Any, y: pointer) =
-  ## Sets the pointer value of `x`. ``x`` needs to be of kind
-  ## ``akString``, ``akCString``, ``akProc``, ``akRef``, ``akPtr``,
-  ## ``akPointer``, ``akSequence``.
+  ## Sets the pointer value of `x`. `x` needs to be of kind
+  ## `akString`, `akCString`, `akProc`, `akRef`, `akPtr`,
+  ## `akPointer`, `akSequence`.
   assert x.rawType.kind in pointerLike
   if y != nil and x.rawType.kind != tyPointer:
     genericAssign(x.value, y, x.rawType)
@@ -367,9 +367,6 @@ iterator fields*(x: Any): tuple[name: string, any: Any] =
     fieldsAux(p, t.node, ret)
   for name, any in items(ret):
     yield ($name, any)
-
-proc cmpNimIdentifier(a, b: cstring): int {.noSideEffect.} =
-  cmpIgnoreStyleImpl(a, b, true)
 
 proc getFieldNode(p: pointer, n: ptr TNimNode,
                   name: cstring): ptr TNimNode =
@@ -459,7 +456,7 @@ proc getInt64*(x: Any): int64 =
 proc getBiggestInt*(x: Any): BiggestInt =
   ## Retrieves the integer value out of `x`. `x` needs to represent
   ## some integer, a bool, a char, an enum or a small enough bit set.
-  ## The value might be sign-extended to ``BiggestInt``.
+  ## The value might be sign-extended to `BiggestInt`.
   var t = skipRange(x.rawType)
   case t.kind
   of tyInt: result = BiggestInt(cast[ptr int](x.value)[])
@@ -581,7 +578,7 @@ proc skipRange*(x: Any): Any =
 proc getEnumOrdinal*(x: Any, name: string): int =
   ## Gets the enum field ordinal from `name`. `x` needs to represent an enum
   ## but is only used to access the type information. In case of an error
-  ## ``low(int)`` is returned.
+  ## `low(int)` is returned.
   var typ = skipRange(x.rawType)
   assert typ.kind == tyEnum
   var n = typ.node
@@ -633,7 +630,7 @@ proc getFloat64*(x: Any): float64 =
 
 proc getBiggestFloat*(x: Any): BiggestFloat =
   ## Retrieves the float value out of `x`. `x` needs to represent
-  ## some float. The value is extended to ``BiggestFloat``.
+  ## some float. The value is extended to `BiggestFloat`.
   case skipRange(x.rawType).kind
   of tyFloat: result = BiggestFloat(cast[ptr float](x.value)[])
   of tyFloat32: result = BiggestFloat(cast[ptr float32](x.value)[])
@@ -669,7 +666,7 @@ proc getCString*(x: Any): cstring =
   result = cast[ptr cstring](x.value)[]
 
 proc assign*(x, y: Any) =
-  ## Copies the value of `y` to `x`. The assignment operator for ``Any``
+  ## Copies the value of `y` to `x`. The assignment operator for `Any`
   ## does NOT do this; it performs a shallow copy instead!
   assert y.rawType == x.rawType
   genericAssign(x.value, y.value, y.rawType)

@@ -7,22 +7,24 @@
 #    distribution, for details about the copyright.
 #
 
-## This module implements types which encapsulate an optional value.
-##
-## A value of type `Option[T]` either contains a value `x` (represented as
-## `some(x)`) or is empty (`none(T)`).
-##
-## This can be useful when you have a value that can be present or not. The
-## absence of a value is often represented by `nil`, but it is not always
-## available, nor is it always a good solution.
-##
-##
-## Basic usage
-## ===========
-##
-## Let's start with an example: a procedure that finds the index of a character
-## in a string.
-##
+##[
+This module implements types which encapsulate an optional value.
+
+A value of type `Option[T]` either contains a value `x` (represented as
+`some(x)`) or is empty (`none(T)`).
+
+This can be useful when you have a value that can be present or not. The
+absence of a value is often represented by `nil`, but that is not always
+available, nor is it always a good solution.
+
+
+Basic usage
+===========
+
+Let's start with an example: a procedure that finds the index of a character
+in a string.
+]##
+
 runnableExamples:
   proc find(haystack: string, needle: char): Option[int] =
     for i, c in haystack:
@@ -34,20 +36,40 @@ runnableExamples:
   let found = "abc".find('c')
   assert found.isSome and found.get() == 2
 
-## The `get` operation demonstrated above returns the underlying value, or
-## raises `UnpackDefect` if there is no value. Note that `UnpackDefect`
-## inherits from `system.Defect`, and should therefore never be caught.
-## Instead, rely on checking if the option contains a value with
-## `isSome <#isSome,Option[T]>`_ and `isNone <#isNone,Option[T]>`_ procs.
-## 
-## How to deal with an absence of a value:
+##[
+The `get` operation demonstrated above returns the underlying value, or
+raises `UnpackDefect` if there is no value. Note that `UnpackDefect`
+inherits from `system.Defect` and should therefore never be caught.
+Instead, rely on checking if the option contains a value with the
+`isSome <#isSome,Option[T]>`_ and `isNone <#isNone,Option[T]>`_ procs.
 
-runnableExamples:
-  let result = none(int)
-  # It has no value:
-  assert(result.isNone)
 
-import typetraits
+Pattern matching
+================
+
+.. note:: This requires the [fusion](https://github.com/nim-lang/fusion) package.
+
+[fusion/matching](https://nim-lang.github.io/fusion/src/fusion/matching.html)
+supports pattern matching on `Option`s, with the `Some(<pattern>)` and
+`None()` patterns.
+
+.. code-block:: nim
+  {.experimental: "caseStmtMacros".}
+
+  import fusion/matching
+
+  case some(42)
+  of Some(@a):
+    assert a == 42
+  of None():
+    assert false
+
+  assertMatch(some(some(none(int))), Some(Some(None())))
+]##
+# xxx pending https://github.com/timotheecour/Nim/issues/376 use `runnableExamples` and `whichModule`
+
+
+import std/typetraits
 
 when (NimMajor, NimMinor) >= (1, 1):
   type
@@ -58,7 +80,9 @@ else:
 
 type
   Option*[T] = object
-    ## An optional type that stores its value and state separately in a boolean.
+    ## An optional type that may or may not contain a value of type `T`.
+    ## When `T` is a a pointer type (`ptr`, `pointer`, `ref` or `proc`),
+    ## `none(T)` is represented as `nil`.
     when T is SomePointer:
       val: T
     else:
@@ -69,21 +93,20 @@ type
   UnpackError* {.deprecated: "See corresponding Defect".} = UnpackDefect
 
 proc option*[T](val: T): Option[T] {.inline.} =
-  ## Can be used to convert a pointer type (`ptr` or `ref` or `proc`) to an option type.
-  ## It converts `nil` to `None`.
+  ## Can be used to convert a pointer type (`ptr`, `pointer`, `ref` or `proc`) to an option type.
+  ## It converts `nil` to `none(T)`. When `T` is no pointer type, this is equivalent to `some(val)`.
   ##
-  ## See also:
-  ## * `some <#some,T>`_
-  ## * `none <#none,typedesc>`_
+  ## **See also:**
+  ## * `some proc <#some,T>`_
+  ## * `none proc <#none,typedesc>`_
   runnableExamples:
     type
       Foo = ref object
         a: int
         b: string
-    var c: Foo
-    assert c.isNil
-    var d = option(c)
-    assert d.isNone
+
+    assert option[Foo](nil).isNone
+    assert option(42).isSome
 
   result.val = val
   when T isnot SomePointer:
@@ -92,21 +115,18 @@ proc option*[T](val: T): Option[T] {.inline.} =
 proc some*[T](val: T): Option[T] {.inline.} =
   ## Returns an `Option` that has the value `val`.
   ##
-  ## See also:
-  ## * `option <#option,T>`_
-  ## * `none <#none,typedesc>`_
-  ## * `isSome <#isSome,Option[T]>`_
+  ## **See also:**
+  ## * `option proc <#option,T>`_
+  ## * `none proc <#none,typedesc>`_
+  ## * `isSome proc <#isSome,Option[T]>`_
   runnableExamples:
-    var
-      a = some("abc")
-      b = some(42)
-    assert $type(a) == "Option[system.string]"
-    assert b.isSome
+    let a = some("abc")
+
+    assert a.isSome
     assert a.get == "abc"
-    assert $b == "Some(42)"
 
   when T is SomePointer:
-    assert(not val.isNil)
+    assert not val.isNil
     result.val = val
   else:
     result.has = true
@@ -115,30 +135,29 @@ proc some*[T](val: T): Option[T] {.inline.} =
 proc none*(T: typedesc): Option[T] {.inline.} =
   ## Returns an `Option` for this type that has no value.
   ##
-  ## See also:
-  ## * `option <#option,T>`_
-  ## * `some <#some,T>`_
-  ## * `isNone <#isNone,Option[T]>`_
+  ## **See also:**
+  ## * `option proc <#option,T>`_
+  ## * `some proc <#some,T>`_
+  ## * `isNone proc <#isNone,Option[T]>`_
   runnableExamples:
-    var a = none(int)
-    assert a.isNone
-    assert $type(a) == "Option[system.int]"
+    assert none(int).isNone
 
   # the default is the none type
   discard
 
 proc none*[T]: Option[T] {.inline.} =
-  ## Alias for `none(T) proc <#none,typedesc>`_.
+  ## Alias for `none(T) <#none,typedesc>`_.
   none(T)
 
 proc isSome*[T](self: Option[T]): bool {.inline.} =
   ## Checks if an `Option` contains a value.
+  ##
+  ## **See also:**
+  ## * `isNone proc <#isNone,Option[T]>`_
+  ## * `some proc <#some,T>`_
   runnableExamples:
-    var
-      a = some(42)
-      b = none(string)
-    assert a.isSome
-    assert not b.isSome
+    assert some(42).isSome
+    assert not none(string).isSome
 
   when T is SomePointer:
     not self.val.isNil
@@ -147,44 +166,40 @@ proc isSome*[T](self: Option[T]): bool {.inline.} =
 
 proc isNone*[T](self: Option[T]): bool {.inline.} =
   ## Checks if an `Option` is empty.
+  ##
+  ## **See also:**
+  ## * `isSome proc <#isSome,Option[T]>`_
+  ## * `none proc <#none,typedesc>`_
   runnableExamples:
-    var
-      a = some(42)
-      b = none(string)
-    assert not a.isNone
-    assert b.isNone
+    assert not some(42).isNone
+    assert none(string).isNone
+
   when T is SomePointer:
     self.val.isNil
   else:
     not self.has
 
 proc get*[T](self: Option[T]): lent T {.inline.} =
-  ## Returns contents of an `Option`. If it is `None`, then an exception is
-  ## thrown.
+  ## Returns the content of an `Option`. If it has no value,
+  ## an `UnpackDefect` exception is raised.
   ##
-  ## See also:
-  ## * `get proc <#get,Option[T],T>`_ with the default return value
+  ## **See also:**
+  ## * `get proc <#get,Option[T],T>`_ with a default return value
   runnableExamples:
-    let
-      a = some(42)
-      b = none(string)
-    assert a.get == 42
+    assert some(42).get == 42
     doAssertRaises(UnpackDefect):
-      echo b.get
+      echo none(string).get
 
   if self.isNone:
     raise newException(UnpackDefect, "Can't obtain a value from a `none`")
   result = self.val
 
 proc get*[T](self: Option[T], otherwise: T): T {.inline.} =
-  ## Returns the contents of the `Option` or an `otherwise` value if
-  ## the `Option` is `None`.
+  ## Returns the content of the `Option` or `otherwise` if
+  ## the `Option` has no value.
   runnableExamples:
-    var
-      a = some(42)
-      b = none(int)
-    assert a.get(9999) == 42
-    assert b.get(9999) == 9999
+    assert some(42).get(9999) == 42
+    assert none(int).get(9999) == 9999
 
   if self.isSome:
     self.val
@@ -192,13 +207,14 @@ proc get*[T](self: Option[T], otherwise: T): T {.inline.} =
     otherwise
 
 proc get*[T](self: var Option[T]): var T {.inline.} =
-  ## Returns contents of the `var Option`. If it is `None`, then an exception
-  ## is thrown.
+  ## Returns the content of the `var Option` mutably. If it has no value,
+  ## an `UnpackDefect` exception is raised.
   runnableExamples:
-    let
+    var
       a = some(42)
       b = none(string)
-    assert a.get == 42
+    inc(a.get)
+    assert a.get == 43
     doAssertRaises(UnpackDefect):
       echo b.get
 
@@ -209,22 +225,17 @@ proc get*[T](self: var Option[T]): var T {.inline.} =
 proc map*[T](self: Option[T], callback: proc (input: T)) {.inline.} =
   ## Applies a `callback` function to the value of the `Option`, if it has one.
   ##
-  ## See also:
+  ## **See also:**
   ## * `map proc <#map,Option[T],proc(T)_2>`_ for a version with a callback
   ##   which returns a value
-  ## * `filter proc <#filter,Option[T],proc(T)>`_
   runnableExamples:
     var d = 0
     proc saveDouble(x: int) =
-      d = 2*x
+      d = 2 * x
 
-    let
-      a = some(42)
-      b = none(int)
-
-    b.map(saveDouble)
+    none(int).map(saveDouble)
     assert d == 0
-    a.map(saveDouble)
+    some(42).map(saveDouble)
     assert d == 84
 
   if self.isSome:
@@ -234,49 +245,45 @@ proc map*[T, R](self: Option[T], callback: proc (input: T): R): Option[R] {.inli
   ## Applies a `callback` function to the value of the `Option` and returns an
   ## `Option` containing the new value.
   ##
-  ## If the `Option` is `None`, `None` of the return type of the `callback`
-  ## will be returned.
+  ## If the `Option` has no value, `none(R)` will be returned.
   ##
-  ## See also:
-  ## * `flatMap proc <#flatMap,Option[A],proc(A)>`_ for a version with a
-  ##   callback which returns an `Option`
-  ## * `filter proc <#filter,Option[T],proc(T)>`_
+  ## **See also:**
+  ## * `map proc <#map,Option[T],proc(T)>`_
+  ## * `flatMap proc <#flatMap,Option[T],proc(T)>`_ for a version with a
+  ##   callback that returns an `Option`
   runnableExamples:
-    var
-      a = some(42)
-      b = none(int)
-
     proc isEven(x: int): bool =
       x mod 2 == 0
 
-    assert $(a.map(isEven)) == "Some(true)"
-    assert $(b.map(isEven)) == "None[bool]"
+    assert some(42).map(isEven) == some(true)
+    assert none(int).map(isEven) == none(bool)
 
   if self.isSome:
     some[R](callback(self.val))
   else:
     none(R)
 
-proc flatten*[A](self: Option[Option[A]]): Option[A] {.inline.} =
+proc flatten*[T](self: Option[Option[T]]): Option[T] {.inline.} =
   ## Remove one level of structure in a nested `Option`.
+  ##
+  ## **See also:**
+  ## * `flatMap proc <#flatMap,Option[T],proc(T)>`_
   runnableExamples:
-    let a = some(some(42))
-    assert $flatten(a) == "Some(42)"
+    assert flatten(some(some(42))) == some(42)
+    assert flatten(none(Option[int])) == none(int)
 
   if self.isSome:
     self.val
   else:
-    none(A)
+    none(T)
 
-proc flatMap*[A, B](self: Option[A],
-                    callback: proc (input: A): Option[B]): Option[B] {.inline.} =
-  ## Applies a `callback` function to the value of the `Option` and returns an
-  ## `Option` containing the new value.
+proc flatMap*[T, R](self: Option[T],
+                    callback: proc (input: T): Option[R]): Option[R] {.inline.} =
+  ## Applies a `callback` function to the value of the `Option` and returns the new value.
   ##
-  ## If the `Option` is `None`, `None` of the return type of the `callback`
-  ## will be returned.
+  ## If the `Option` has no value, `none(R)` will be returned.
   ##
-  ## Similar to `map`, with the difference that the `callback` returns an
+  ## This is similar to `map`, with the difference that the `callback` returns an
   ## `Option`, not a raw value. This allows multiple procs with a
   ## signature of `A -> Option[B]` to be chained together.
   ##
@@ -286,47 +293,40 @@ proc flatMap*[A, B](self: Option[A],
   runnableExamples:
     proc doublePositives(x: int): Option[int] =
       if x > 0:
-        return some(2*x)
+        some(2 * x)
       else:
-        return none(int)
-    let
-      a = some(42)
-      b = none(int)
-      c = some(-11)
-    assert a.flatMap(doublePositives) == some(84)
-    assert b.flatMap(doublePositives) == none(int)
-    assert c.flatMap(doublePositives) == none(int)
+        none(int)
+
+    assert some(42).flatMap(doublePositives) == some(84)
+    assert none(int).flatMap(doublePositives) == none(int)
+    assert some(-11).flatMap(doublePositives) == none(int)
 
   map(self, callback).flatten()
 
 proc filter*[T](self: Option[T], callback: proc (input: T): bool): Option[T] {.inline.} =
   ## Applies a `callback` to the value of the `Option`.
   ##
-  ## If the `callback` returns `true`, the option is returned as `Some`.
-  ## If it returns `false`, it is returned as `None`.
+  ## If the `callback` returns `true`, the option is returned as `some`.
+  ## If it returns `false`, it is returned as `none`.
   ##
-  ## See also:
-  ## * `map proc <#map,Option[T],proc(T)_2>`_
+  ## **See also:**
   ## * `flatMap proc <#flatMap,Option[A],proc(A)>`_
   runnableExamples:
     proc isEven(x: int): bool =
       x mod 2 == 0
-    let
-      a = some(42)
-      b = none(int)
-      c = some(-11)
-    assert a.filter(isEven) == some(42)
-    assert b.filter(isEven) == none(int)
-    assert c.filter(isEven) == none(int)
+
+    assert some(42).filter(isEven) == some(42)
+    assert none(int).filter(isEven) == none(int)
+    assert some(-11).filter(isEven) == none(int)
 
   if self.isSome and not callback(self.val):
     none(T)
   else:
     self
 
-proc `==`*(a, b: Option): bool {.inline.} =
-  ## Returns `true` if both `Option`s are `None`,
-  ## or if they are both `Some` and have equal values.
+proc `==`*[T](a, b: Option[T]): bool {.inline.} =
+  ## Returns `true` if both `Option`s are `none`,
+  ## or if they are both `some` and have equal values.
   runnableExamples:
     let
       a = some(42)
@@ -338,27 +338,35 @@ proc `==`*(a, b: Option): bool {.inline.} =
     assert b == d
     assert not (a == b)
 
-  (a.isSome and b.isSome and a.val == b.val) or (not a.isSome and not b.isSome)
+  when T is SomePointer:
+    a.val == b.val
+  else:
+    (a.isSome and b.isSome and a.val == b.val) or (a.isNone and b.isNone)
 
 proc `$`*[T](self: Option[T]): string =
   ## Get the string representation of the `Option`.
-  ##
-  ## If the `Option` has a value, the result will be `Some(x)` where `x`
-  ## is the string representation of the contained value.
-  ## If the `Option` does not have a value, the result will be `None[T]`
-  ## where `T` is the name of the type contained in the `Option`.
+  runnableExamples:
+    assert $some(42) == "some(42)"
+    assert $none(int) == "none(int)"
+
   if self.isSome:
-    result = "Some("
+    when defined(nimLagacyOptionsDollar):
+      result = "Some("
+    else:
+      result = "some("
     result.addQuoted self.val
     result.add ")"
   else:
-    result = "None[" & name(T) & "]"
+    when defined(nimLagacyOptionsDollar):
+      result = "None[" & name(T) & "]"
+    else:
+      result = "none(" & name(T) & ")"
 
 proc unsafeGet*[T](self: Option[T]): lent T {.inline.}=
-  ## Returns the value of a `some`. Behavior is undefined for `none`.
+  ## Returns the value of a `some`. The behavior is undefined for `none`.
   ##
-  ## **Note:** Use it only when you are **absolutely sure** the value is present
-  ## (e.g. after checking `isSome <#isSome,Option[T]>`_).
-  ## Generally, using `get proc <#get,Option[T]>`_ is preferred.
+  ## **Note:** Use this only when you are **absolutely sure** the value is present
+  ## (e.g. after checking with `isSome <#isSome,Option[T]>`_).
+  ## Generally, using the `get proc <#get,Option[T]>`_ is preferred.
   assert self.isSome
   result = self.val

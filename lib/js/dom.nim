@@ -37,6 +37,7 @@ type
     onmouseup*: proc (event: Event) {.closure.}
     onreset*: proc (event: Event) {.closure.}
     onselect*: proc (event: Event) {.closure.}
+    onstorage*: proc (event: Event) {.closure.}
     onsubmit*: proc (event: Event) {.closure.}
     onunload*: proc (event: Event) {.closure.}
     onloadstart*: proc (event: Event) {.closure.}
@@ -72,6 +73,7 @@ type
     Resize = "resize",
     Scroll = "scroll",
     Select = "select",
+    Storage = "storage",
     Unload = "unload",
     Wheel = "wheel"
 
@@ -125,7 +127,7 @@ type
     rangeCount*: int
     `type`*: cstring
 
-  LocalStorage* {.importc.} = ref object
+  Storage* {.importc.} = ref object
 
   Window* = ref WindowObj
   WindowObj {.importc.} = object of EventTargetObj
@@ -153,7 +155,8 @@ type
     screen*: Screen
     performance*: Performance
     onpopstate*: proc (event: Event)
-    localStorage*: LocalStorage
+    localStorage*: Storage
+    sessionStorage*: Storage
     parent*: Window
 
   Frame* = ref FrameObj
@@ -1210,6 +1213,13 @@ type
     ## see `docs<https://developer.mozilla.org/en-US/docs/Web/API/ClipboardEvent>`_
     clipboardData*: DataTransfer
 
+  StorageEvent* = ref StorageEventObj ## see `docs<https://developer.mozilla.org/en-US/docs/Web/API/StorageEvent>`_
+  StorageEventObj {.importc.} = object of Event
+    key*: cstring
+    newValue*, oldValue*: cstring
+    storageArea*: Storage
+    url*: cstring
+
   TouchList* {.importc.} = ref object of RootObj
     length*: int
 
@@ -1457,6 +1467,7 @@ else:
   proc insertBefore*(n, newNode, before: Node) {.importcpp.}
   proc getElementById*(d: Document, id: cstring): Element {.importcpp.}
   proc createElement*(d: Document, identifier: cstring): Element {.importcpp.}
+  proc createElementNS*(d: Document, namespaceURI, qualifiedIdentifier: cstring): Element {.importcpp.}
   proc createTextNode*(d: Document, identifier: cstring): Node {.importcpp.}
   proc createComment*(d: Document, data: cstring): Node {.importcpp.}
 
@@ -1654,12 +1665,12 @@ proc getRangeAt*(s: Selection, index: int): Range
 converter toString*(s: Selection): cstring
 proc `$`*(s: Selection): string = $(s.toString())
 
-# LocalStorage "methods"
-proc getItem*(ls: LocalStorage, key: cstring): cstring
-proc setItem*(ls: LocalStorage, key, value: cstring)
-proc hasItem*(ls: LocalStorage, key: cstring): bool
-proc clear*(ls: LocalStorage)
-proc removeItem*(ls: LocalStorage, key: cstring)
+# Storage "methods"
+proc getItem*(s: Storage, key: cstring): cstring
+proc setItem*(s: Storage, key, value: cstring)
+proc hasItem*(s: Storage, key: cstring): bool
+proc clear*(s: Storage)
+proc removeItem*(s: Storage, key: cstring)
 
 {.pop.}
 

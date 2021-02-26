@@ -204,7 +204,7 @@ Automatic dereferencing
 =======================
 
 Automatic dereferencing is performed for the first argument of a routine call.
-This feature has to be only enabled via ``{.experimental: "implicitDeref".}``:
+This feature has to be enabled via ``{.experimental: "implicitDeref".}``:
 
 .. code-block:: nim
   {.experimental: "implicitDeref".}
@@ -408,7 +408,7 @@ The matched dot operators can be symbols of any callable kind (procs,
 templates and macros), depending on the desired effect:
 
 .. code-block:: nim
-  template `.` (js: PJsonNode, field: untyped): JSON = js[astToStr(field)]
+  template `.`(js: PJsonNode, field: untyped): JSON = js[astToStr(field)]
 
   var js = parseJson("{ x: 1, y: 2}")
   echo js.x # outputs 1
@@ -433,6 +433,38 @@ This operator will be matched against assignments to missing fields.
 
 .. code-block:: nim
   a.b = c # becomes `.=`(a, b, c)
+
+Call operator
+-------------
+The call operator, `()`, matches all kinds of unresolved calls and takes
+precedence over dot operators, however it does not match missing overloads
+for existing routines. The experimental `callOperator` switch must be enabled
+to use this operator.
+
+.. code-block:: nim
+  {.experimental: "callOperator".}
+
+  template `()`(a: int, b: float): untyped = $(a, b)
+
+  block:
+    let a = 1.0
+    let b = 2
+    doAssert b(a) == `()`(b, a)
+    doAssert a.b == `()`(b, a)
+
+  block:
+    let a = 1.0
+    proc b(): int = 2
+    doAssert not compiles(b(a))
+    doAssert not compiles(a.b) # `()` not called
+
+  block:
+    let a = 1.0
+    proc b(x: float): int = int(x + 1)
+    let c = 3.0
+
+    doAssert not compiles(a.b(c)) # gives a type mismatch error same as b(a, c)
+    doAssert (a.b)(c) == `()`(a.b, c)
 
 
 Not nil annotation
@@ -574,7 +606,7 @@ The concept types can be parametric just like the regular generic types:
 .. code-block:: nim
   ### matrixalgo.nim
 
-  import typetraits
+  import std/typetraits
 
   type
     AnyMatrix*[R, C: static int; T] = concept m, var mvar, type M
@@ -711,7 +743,7 @@ type is an instance of it:
 .. code-block:: nim
     :test: "nim c $1"
 
-  import sugar, typetraits
+  import std/[sugar, typetraits]
 
   type
     Functor[A] = concept f
@@ -729,7 +761,7 @@ type is an instance of it:
         # the Functor to a instance of a different type, given
         # a suitable `map` operation for the enclosed values
 
-  import options
+  import std/options
   echo Option[int] is Functor # prints true
 
 
@@ -947,20 +979,19 @@ the documentation of `spawn <#parallel-amp-spawn-spawn-statement>`_ for details.
 Case statement macros
 =====================
 
-A macro that needs to be called `match`:idx: can be used to rewrite
-``case`` statements in order to implement `pattern matching`:idx: for
-certain types. The following example implements a simplistic form of
-pattern matching for tuples, leveraging the existing equality operator
-for tuples (as provided in ``system.==``):
+Macros named `case` can rewrite `case` statements for certain types in order to
+implement `pattern matching`:idx:. The following example implements a
+simplistic form of pattern matching for tuples, leveraging the existing
+equality operator for tuples (as provided in ``system.==``):
 
 .. code-block:: nim
     :test: "nim c $1"
 
   {.experimental: "caseStmtMacros".}
 
-  import macros
+  import std/macros
 
-  macro match(n: tuple): untyped =
+  macro `case`(n: tuple): untyped =
     result = newTree(nnkIfStmt)
     let selector = n[0]
     for i in 1 ..< n.len:
@@ -973,8 +1004,7 @@ for tuples (as provided in ``system.==``):
           let cond = newCall("==", selector, it[j])
           result.add newTree(nnkElifBranch, cond, it[^1])
       else:
-        error "'match' cannot handle this node", it
-    echo repr result
+        error "custom 'case' for tuple cannot handle this node", it
 
   case ("foo", 78)
   of ("foo", 78): echo "yes"
@@ -985,12 +1015,12 @@ for tuples (as provided in ``system.==``):
 Currently case statement macros must be enabled explicitly
 via ``{.experimental: "caseStmtMacros".}``.
 
-``match`` macros are subject to overload resolution. First the
-``case``'s selector expression is used to determine which ``match``
-macro to call. To this macro is then passed the complete ``case``
-statement body and the macro is evaluated.
+`case` macros are subject to overload resolution. The type of the
+`case` statement's selector expression is matched against the type
+of the first argument of the `case` macro. Then the complete `case`
+statement is passed in place of the argument and the macro is evaluated.
 
-In other words, the macro needs to transform the full ``case`` statement
+In other words, the macro needs to transform the full `case` statement
 but only the statement's selector expression is used to determine which
 macro to call.
 
@@ -1229,7 +1259,7 @@ The ``**`` is much like the ``*`` operator, except that it gathers not only
 all the arguments, but also the matched operators in reverse polish notation:
 
 .. code-block:: nim
-  import macros
+  import std/macros
 
   type
     Matrix = object
@@ -1301,7 +1331,7 @@ Example: Hoisting
 The following example shows how some form of hoisting can be implemented:
 
 .. code-block:: nim
-  import pegs
+  import std/pegs
 
   template optPeg{peg(pattern)}(pattern: string{lit}): Peg =
     var gl {.global, gensym.} = peg(pattern)
@@ -1375,7 +1405,7 @@ Spawn statement
 `spawn`:idx: can be used to pass a task to the thread pool:
 
 .. code-block:: nim
-  import threadpool
+  import std/threadpool
 
   proc processLine(line: string) =
     discard "do some heavy lifting here"
@@ -1407,7 +1437,7 @@ with the ``^`` operator is **blocking**. However, one can use ``blockUntilAny`` 
 wait on multiple flow variables at the same time:
 
 .. code-block:: nim
-  import threadpool, ...
+  import std/threadpool, ...
 
   # wait until 2 out of 3 servers received the update:
   proc main =
@@ -1436,7 +1466,7 @@ Example:
     :test: "nim c --threads:on $1"
 
   # Compute PI in an inefficient way
-  import strutils, math, threadpool
+  import std/[strutils, math, threadpool]
   {.experimental: "parallel".}
 
   proc term(k: float): float = 4 * math.pow(-1, k) / (2*k + 1)
@@ -1710,34 +1740,12 @@ e.g. when rewriting term to same term plus extra content.
 e.g. with given example ``echo("ab")`` will be rewritten just once:
 
 .. code-block:: nim
-  template pwnEcho{echo(x)}(x: expr) =
+  template pwnEcho{echo(x)}(x: untyped) =
     {.noRewrite.}: echo("pwned!")
 
   echo "ab"
 
 ``noRewrite`` pragma can be useful to control term-rewriting macros recursion.
-
-
-Taint mode
-==========
-
-The Nim compiler and most parts of the standard library support
-a taint mode. Input strings are declared with the `TaintedString`:idx:
-string type declared in the ``system`` module.
-
-If the taint mode is turned on (via the ``--taintMode:on`` command line
-option) it is a distinct string type which helps to detect input
-validation errors:
-
-.. code-block:: nim
-  echo "your name: "
-  var name: TaintedString = stdin.readline
-  # it is safe here to output the name without any input validation, so
-  # we simply convert `name` to string to make the compiler happy:
-  echo "hi, ", name.string
-
-If the taint mode is turned off, ``TaintedString`` is simply an alias for
-``string``.
 
 
 Aliasing restrictions in parameter passing

@@ -36,14 +36,6 @@ proc mangleField(m: BModule; name: PIdent): string =
   if isKeyword(name):
     result.add "_0"
 
-when false:
-  proc hashOwner(s: PSym): SigHash =
-    var m = s
-    while m.kind != skModule: m = m.owner
-    let p = m.owner
-    assert p.kind == skPackage
-    result = gDebugInfo.register(p.name.s, m.name.s)
-
 proc mangleName(m: BModule; s: PSym): Rope =
   result = s.loc.r
   if result == nil:
@@ -1313,11 +1305,11 @@ proc genTypeInfo2Name(m: BModule; t: PType): Rope =
     it = it[0]
   result = makeCString(res)
 
-proc isTrivialProc(s: PSym): bool {.inline.} = s.ast[bodyPos].len == 0
+proc isTrivialProc(g: ModuleGraph; s: PSym): bool {.inline.} = getBody(g, s).len == 0
 
 proc genHook(m: BModule; t: PType; info: TLineInfo; op: TTypeAttachedOp): Rope =
-  let theProc = t.attachedOps[op]
-  if theProc != nil and not isTrivialProc(theProc):
+  let theProc = getAttachedOp(m.g.graph, t, op)
+  if theProc != nil and not isTrivialProc(m.g.graph, theProc):
     # the prototype of a destructor is ``=destroy(x: var T)`` and that of a
     # finalizer is: ``proc (x: ref T) {.nimcall.}``. We need to check the calling
     # convention at least:
@@ -1338,7 +1330,7 @@ proc genHook(m: BModule; t: PType; info: TLineInfo; op: TTypeAttachedOp): Rope =
 
 proc genTypeInfoV2Impl(m: BModule, t, origType: PType, name: Rope; info: TLineInfo) =
   var typeName: Rope
-  if t.kind == tyObject:
+  if t.kind in {tyObject, tyDistinct}:
     if incompleteType(t):
       localError(m.config, info, "request for RTTI generation for incomplete object: " &
                  typeToString(t))
@@ -1361,7 +1353,8 @@ proc genTypeInfoV2Impl(m: BModule, t, origType: PType, name: Rope; info: TLineIn
 
 proc genTypeInfoV2(m: BModule, t: PType; info: TLineInfo): Rope =
   let origType = t
-  var t = skipTypes(origType, irrelevantForBackend + tyUserTypeClasses)
+  # distinct types can have their own destructors
+  var t = skipTypes(origType, irrelevantForBackend + tyUserTypeClasses - {tyDistinct})
 
   let prefixTI = if m.hcrOn: "(" else: "(&"
 
@@ -1483,10 +1476,11 @@ proc genTypeInfoV1(m: BModule, t: PType; info: TLineInfo): Rope =
     genTupleInfo(m, x, origType, result, info)
   else: internalError(m.config, "genTypeInfoV1(" & $t.kind & ')')
 
-  if t.attachedOps[attachedDeepCopy] != nil:
-    genDeepCopyProc(m, t.attachedOps[attachedDeepCopy], result)
-  elif origType.attachedOps[attachedDeepCopy] != nil:
-    genDeepCopyProc(m, origType.attachedOps[attachedDeepCopy], result)
+  var op = getAttachedOp(m.g.graph, t, attachedDeepCopy)
+  if op == nil:
+    op = getAttachedOp(m.g.graph, origType, attachedDeepCopy)
+  if op != nil:
+    genDeepCopyProc(m, op, result)
 
   if optTinyRtti in m.config.globalOptions and t.kind == tyObject and sfImportc notin t.sym.flags:
     let v2info = genTypeInfoV2(m, origType, info)

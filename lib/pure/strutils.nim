@@ -75,9 +75,8 @@ from math import pow, floor, log10
 from algorithm import reverse
 import std/enumutils
 
-when defined(nimVmExportFixed):
-  from unicode import toLower, toUpper
-  export toLower, toUpper
+from unicode import toLower, toUpper
+export toLower, toUpper
 
 include "system/inclrtl"
 import std/private/since
@@ -2206,7 +2205,7 @@ func escape*(s: string, prefix = "\"", suffix = "\""): string {.rtl,
   ##
   ## See also:
   ## * `unescape func<#unescape,string,string,string>`_ for the opposite
-  ## operation
+  ##   operation
   result = newStringOfCap(s.len + s.len shr 2)
   result.add(prefix)
   for c in items(s):
@@ -2341,17 +2340,11 @@ func formatBiggestFloat*(f: BiggestFloat, format: FloatFormatMode = ffDefault,
       frmtstr[3] = '*'
       frmtstr[4] = floatFormatToChar[format]
       frmtstr[5] = '\0'
-      when defined(nimNoArrayToCstringConversion):
-        L = c_sprintf(addr buf, addr frmtstr, precision, f)
-      else:
-        L = c_sprintf(buf, frmtstr, precision, f)
+      L = c_sprintf(addr buf, addr frmtstr, precision, f)
     else:
       frmtstr[1] = floatFormatToChar[format]
       frmtstr[2] = '\0'
-      when defined(nimNoArrayToCstringConversion):
-        L = c_sprintf(addr buf, addr frmtstr, f)
-      else:
-        L = c_sprintf(buf, frmtstr, f)
+      L = c_sprintf(addr buf, addr frmtstr, f)
     result = newString(L)
     for i in 0 ..< L:
       # Depending on the locale either dot or comma is produced,
@@ -2760,6 +2753,7 @@ func strip*(s: string, leading = true, trailing = true,
   ## If both are false, the string is returned unchanged.
   ##
   ## See also:
+  ## * `strip proc<strbasics.html#strip,string,set[char]>`_ Inplace version.
   ## * `stripLineEnd func<#stripLineEnd,string>`_
   runnableExamples:
     let a = "  vhellov   "

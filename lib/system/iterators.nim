@@ -56,38 +56,74 @@ iterator items*[T](a: set[T]): T {.inline.} =
 
 iterator items*(a: cstring): char {.inline.} =
   ## Iterates over each item of `a`.
-  when defined(js):
+  runnableExamples:
+    from std/sequtils import toSeq
+    assert toSeq("abc\0def".cstring) == @['a', 'b', 'c']
+    assert toSeq("abc".cstring) == @['a', 'b', 'c']
+  #[
+  assert toSeq(nil.cstring) == @[] # xxx fails with SIGSEGV
+  this fails with SIGSEGV; unclear whether we want to instead yield nothing
+  or pay a small price to check for `nil`, a benchmark is needed. Note that
+  other procs support `nil`.
+  ]#
+  template impl() =
     var i = 0
-    var L = len(a)
-    while i < L:
+    let n = len(a)
+    while i < n:
       yield a[i]
       inc(i)
+  when defined(js): impl()
   else:
-    var i = 0
-    while a[i] != '\0':
-      yield a[i]
-      inc(i)
+    when nimvm:
+      # xxx `cstring` should behave like c backend instead.
+      impl()
+    else:
+      var i = 0
+      while a[i] != '\0':
+        yield a[i]
+        inc(i)
 
 iterator mitems*(a: var cstring): var char {.inline.} =
   ## Iterates over each item of `a` so that you can modify the yielded value.
-  when defined(js):
-    var i = 0
-    var L = len(a)
-    while i < L:
-      yield a[i]
-      inc(i)
-  else:
-    var i = 0
-    while a[i] != '\0':
-      yield a[i]
-      inc(i)
+  # xxx this should give CT error in js RT.
+  runnableExamples:
+    from std/sugar import collect
+    var a = "abc\0def"
+    var b = a.cstring
+    let s = collect:
+      for bi in mitems(b):
+        if bi == 'b': bi = 'B'
+        bi
+    assert s == @['a', 'B', 'c']
+    assert b == "aBc"
+    assert a == "aBc\0def"
 
-iterator items*[T: enum](E: typedesc[T]): T =
-  ## Iterates over the values of the enum ``E``.
+  template impl() =
+    var i = 0
+    let n = len(a)
+    while i < n:
+      yield a[i]
+      inc(i)
+  when defined(js): impl()
+  else:
+    when nimvm: impl()
+    else:
+      var i = 0
+      while a[i] != '\0':
+        yield a[i]
+        inc(i)
+
+iterator items*[T: enum and Ordinal](E: typedesc[T]): T =
+  ## Iterates over the values of `E`.
+  ## See also `enumutils.items` for enums with holes.
+  runnableExamples:
+    type Goo = enum g0 = 2, g1, g2
+    from std/sequtils import toSeq
+    assert Goo.toSeq == [g0, g1, g2]
   for v in low(E) .. high(E):
     yield v
 
-iterator items*[T](s: HSlice[T, T]): T =
+iterator items*[T: Ordinal](s: Slice[T]): T =
   ## Iterates over the slice `s`, yielding each value between `s.a` and `s.b`
   ## (inclusively).
   for x in s.a .. s.b:
@@ -240,7 +276,7 @@ iterator fields*[T: tuple|object](x: T): RootObj {.
   ## that affects symbol binding in the loop body.
   runnableExamples:
     var t = (1, "foo")
-    for v in fields(t): v = default(type(v))
+    for v in fields(t): v = default(typeof(v))
     doAssert t == (0, "")
 
 iterator fields*[S:tuple|object, T:tuple|object](x: S, y: T): tuple[key: string, val: RootObj] {.
@@ -252,7 +288,7 @@ iterator fields*[S:tuple|object, T:tuple|object](x: S, y: T): tuple[key: string,
   ## in the loop body.
   runnableExamples:
     var t1 = (1, "foo")
-    var t2 = default(type(t1))
+    var t2 = default(typeof(t1))
     for v1, v2 in fields(t1, t2): v2 = v1
     doAssert t1 == t2
 

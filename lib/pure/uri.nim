@@ -14,40 +14,33 @@
 ## as a locator, a name, or both. The term "Uniform Resource Locator"
 ## (URL) refers to the subset of URIs.
 ##
-## Basic usage
-## ===========
-##
-## Combine URIs
-## -------------
-## .. code-block::
-##    import uri
-##    let host = parseUri("https://nim-lang.org")
-##    let blog = "/blog.html"
-##    let bloguri = host / blog
-##    assert $host == "https://nim-lang.org"
-##    assert $bloguri == "https://nim-lang.org/blog.html"
-##
-## Access URI item
-## ---------------
-## .. code-block::
-##    import uri
-##    let res = parseUri("sftp://127.0.0.1:4343")
-##    if isAbsolute(res):
-##      assert res.port == "4343"
-##    else:
-##      echo "Wrong format"
-##
-## Data URI Base64
-## ---------------
-##
-## .. code-block::nim
-##    doAssert getDataUri("Hello World", "text/plain") == "data:text/plain;charset=utf-8;base64,SGVsbG8gV29ybGQ="
-##    doAssert getDataUri("Nim", "text/plain") == "data:text/plain;charset=utf-8;base64,Tmlt"
+## # Basic usage
 
-import std/private/since
 
-import strutils, parseutils, base64
-import std/private/decode_helpers
+## ## Combine URIs
+runnableExamples:
+  let host = parseUri("https://nim-lang.org")
+  let blog = "/blog.html"
+  let bloguri = host / blog
+  assert $host == "https://nim-lang.org"
+  assert $bloguri == "https://nim-lang.org/blog.html"
+
+## ## Access URI item
+runnableExamples:
+  let res = parseUri("sftp://127.0.0.1:4343")
+  if isAbsolute(res):
+    assert res.port == "4343"
+  else:
+    echo "Wrong format"
+
+## ## Data URI Base64
+runnableExamples:
+  doAssert getDataUri("Hello World", "text/plain") == "data:text/plain;charset=utf-8;base64,SGVsbG8gV29ybGQ="
+  doAssert getDataUri("Nim", "text/plain") == "data:text/plain;charset=utf-8;base64,Tmlt"
+
+
+import std/[strutils, parseutils, base64]
+import std/private/[since, decode_helpers]
 
 
 type
@@ -63,20 +56,20 @@ type
 
 
 proc uriParseError*(msg: string) {.noreturn.} =
-  ## Raises a ``UriParseError`` exception with message `msg`.
+  ## Raises a `UriParseError` exception with message `msg`.
   raise newException(UriParseError, msg)
 
 func encodeUrl*(s: string, usePlus = true): string =
   ## Encodes a URL according to RFC3986.
   ##
   ## This means that characters in the set
-  ## ``{'a'..'z', 'A'..'Z', '0'..'9', '-', '.', '_', '~'}`` are
+  ## `{'a'..'z', 'A'..'Z', '0'..'9', '-', '.', '_', '~'}` are
   ## carried over to the result.
-  ## All other characters are encoded as ``%xx`` where ``xx``
+  ## All other characters are encoded as `%xx` where `xx`
   ## denotes its hexadecimal value.
   ##
-  ## As a special rule, when the value of ``usePlus`` is true,
-  ## spaces are encoded as ``+`` instead of ``%20``.
+  ## As a special rule, when the value of `usePlus` is true,
+  ## spaces are encoded as `+` instead of `%20`.
   ##
   ## **See also:**
   ## * `decodeUrl func<#decodeUrl,string>`_
@@ -98,12 +91,12 @@ func encodeUrl*(s: string, usePlus = true): string =
 func decodeUrl*(s: string, decodePlus = true): string =
   ## Decodes a URL according to RFC3986.
   ##
-  ## This means that any ``%xx`` (where ``xx`` denotes a hexadecimal
-  ## value) are converted to the character with ordinal number ``xx``,
+  ## This means that any `%xx` (where `xx` denotes a hexadecimal
+  ## value) are converted to the character with ordinal number `xx`,
   ## and every other character is carried over.
-  ## If ``xx`` is not a valid hexadecimal value, it is left intact.
+  ## If `xx` is not a valid hexadecimal value, it is left intact.
   ##
-  ## As a special rule, when the value of ``decodePlus`` is true, ``+``
+  ## As a special rule, when the value of `decodePlus` is true, `+`
   ## characters are converted to a space.
   ##
   ## **See also:**
@@ -136,12 +129,12 @@ func encodeQuery*(query: openArray[(string, string)], usePlus = true,
     omitEq = true): string =
   ## Encodes a set of (key, value) parameters into a URL query string.
   ##
-  ## Every (key, value) pair is URL-encoded and written as ``key=value``. If the
-  ## value is an empty string then the ``=`` is omitted, unless ``omitEq`` is
+  ## Every (key, value) pair is URL-encoded and written as `key=value`. If the
+  ## value is an empty string then the `=` is omitted, unless `omitEq` is
   ## false.
-  ## The pairs are joined together by a ``&`` character.
+  ## The pairs are joined together by a `&` character.
   ##
-  ## The ``usePlus`` parameter is passed down to the `encodeUrl` function that
+  ## The `usePlus` parameter is passed down to the `encodeUrl` function that
   ## is used for the URL encoding of the string values.
   ##
   ## **See also:**
@@ -160,23 +153,27 @@ func encodeQuery*(query: openArray[(string, string)], usePlus = true,
       result.add('=')
       result.add(encodeUrl(val, usePlus))
 
-iterator decodeQuery*(data: string): tuple[key, value: TaintedString] =
-  ## Reads and decodes query string ``data`` and yields the (key, value) pairs the
-  ## data consists of.
+iterator decodeQuery*(data: string): tuple[key, value: string] =
+  ## Reads and decodes query string `data` and yields the `(key, value)` pairs
+  ## the data consists of. If compiled with `-d:nimLegacyParseQueryStrict`, an
+  ## error is raised when there is an unencoded `=` character in a decoded
+  ## value, which was the behavior in Nim < 1.5.1
   runnableExamples:
-    import std/sugar
-    let s = collect(newSeq):
-      for k, v in decodeQuery("foo=1&bar=2"): (k, v)
-    doAssert s == @[("foo", "1"), ("bar", "2")]
+    import std/sequtils
+    doAssert toSeq(decodeQuery("foo=1&bar=2=3")) == @[("foo", "1"), ("bar", "2=3")]
+    doAssert toSeq(decodeQuery("&a&=b&=&&")) == @[("", ""), ("a", ""), ("", "b"), ("", ""), ("", "")]
 
-  proc parseData(data: string, i: int, field: var string): int =
+  proc parseData(data: string, i: int, field: var string, sep: char): int =
     result = i
     while result < data.len:
-      case data[result]
+      let c = data[result]
+      case c
       of '%': add(field, decodePercent(data, result))
       of '+': add(field, ' ')
-      of '=', '&': break
-      else: add(field, data[result])
+      of '&': break
+      else:
+        if c == sep: break
+        else: add(field, data[result])
       inc(result)
 
   var i = 0
@@ -185,16 +182,20 @@ iterator decodeQuery*(data: string): tuple[key, value: TaintedString] =
   # decode everything in one pass:
   while i < data.len:
     setLen(name, 0) # reuse memory
-    i = parseData(data, i, name)
+    i = parseData(data, i, name, '=')
     setLen(value, 0) # reuse memory
     if i < data.len and data[i] == '=':
       inc(i) # skip '='
-      i = parseData(data, i, value)
-    yield (name.TaintedString, value.TaintedString)
-    if i < data.len:
-      if data[i] == '&': inc(i)
+      when defined(nimLegacyParseQueryStrict):
+        i = parseData(data, i, value, '=')
       else:
-        uriParseError("'&' expected at index '$#' for '$#'" % [$i, data])
+        i = parseData(data, i, value, '&')
+    yield (name, value)
+    if i < data.len:
+      when defined(nimLegacyParseQueryStrict):
+        if data[i] != '&':
+          uriParseError("'&' expected at index '$#' for '$#'" % [$i, data])
+      inc(i)
 
 func parseAuthority(authority: string, result: var Uri) =
   var i = 0
@@ -243,8 +244,8 @@ func parsePath(uri: string, i: var int, result: var Uri) =
     i.inc parseUntil(uri, result.anchor, {}, i)
 
 func initUri*(): Uri =
-  ## Initializes a URI with ``scheme``, ``username``, ``password``,
-  ## ``hostname``, ``port``, ``path``, ``query`` and ``anchor``.
+  ## Initializes a URI with `scheme`, `username`, `password`,
+  ## `hostname`, `port`, `path`, `query` and `anchor`.
   ##
   ## **See also:**
   ## * `Uri type <#Uri>`_ for available fields in the URI type
@@ -255,8 +256,8 @@ func initUri*(): Uri =
                 path: "", query: "", anchor: "")
 
 func initUri*(isIpv6: bool): Uri {.since: (1, 3, 5).} =
-  ## Initializes a URI with ``scheme``, ``username``, ``password``,
-  ## ``hostname``, ``port``, ``path``, ``query``, ``anchor`` and ``isIpv6``.
+  ## Initializes a URI with `scheme`, `username`, `password`,
+  ## `hostname`, `port`, `path`, `query`, `anchor` and `isIpv6`.
   ##
   ## **See also:**
   ## * `Uri type <#Uri>`_ for available fields in the URI type
@@ -295,7 +296,7 @@ func parseUri*(uri: string, result: var Uri) =
   # Check if this is a reference URI (relative URI)
   let doubleSlash = uri.len > 1 and uri[1] == '/'
   if i < uri.len and uri[i] == '/':
-    # Make sure ``uri`` doesn't begin with '//'.
+    # Make sure `uri` doesn't begin with '//'.
     if not doubleSlash:
       parsePath(uri, i, result)
       return
@@ -338,9 +339,17 @@ func parseUri*(uri: string): Uri =
   parseUri(uri, result)
 
 func removeDotSegments(path: string): string =
+  ## Collapses `..` and `.` in `path` in a similar way as done in `os.normalizedPath`
+  ## Caution: this is buggy.
+  runnableExamples:
+    assert removeDotSegments("a1/a2/../a3/a4/a5/./a6/a7/.//./") == "a1/a3/a4/a5/a6/a7/"
+    assert removeDotSegments("http://www.ai.") == "http://www.ai."
+  # xxx adapt or reuse `pathnorm.normalizePath(path, '/')` to make this more reliable, but
+  # taking into account url specificities such as not collapsing leading `//` in scheme
+  # `https://`. see `turi` for failing tests.
   if path.len == 0: return ""
   var collection: seq[string] = @[]
-  let endsWithSlash = path[path.len-1] == '/'
+  let endsWithSlash = path.endsWith '/'
   var i = 0
   var currentSegment = ""
   while i < path.len:
@@ -354,7 +363,7 @@ func removeDotSegments(path: string): string =
           discard collection.pop()
           i.inc 3
           continue
-      elif path[i+1] == '/':
+      elif i + 1 < path.len and path[i+1] == '/':
         i.inc 2
         continue
       currentSegment.add path[i]
@@ -546,3 +555,25 @@ proc getDataUri*(data, mime: string, encoding = "utf-8"): string {.since: (1, 3)
   runnableExamples: static: doAssert getDataUri("Nim", "text/plain") == "data:text/plain;charset=utf-8;base64,Tmlt"
   assert encoding.len > 0 and mime.len > 0 # Must *not* be URL-Safe, see RFC-2397
   result = "data:" & mime & ";charset=" & encoding & ";base64," & base64.encode(data)
+
+when isMainModule and defined(testing):
+  # needed (pending https://github.com/nim-lang/Nim/pull/11865) because
+  # `removeDotSegments` is private, the other tests are in `turi`.
+  block: # removeDotSegments
+    # `removeDotSegments` is exported for -d:testing only
+    doAssert removeDotSegments("/foo/bar/baz") == "/foo/bar/baz"
+    doAssert removeDotSegments("") == "" # empty test
+    doAssert removeDotSegments(".") == "." # trailing period
+    doAssert removeDotSegments("a1/a2/../a3/a4/a5/./a6/a7/././") == "a1/a3/a4/a5/a6/a7/"
+    doAssert removeDotSegments("https://a1/a2/../a3/a4/a5/./a6/a7/././") == "https://a1/a3/a4/a5/a6/a7/"
+    doAssert removeDotSegments("http://a1/a2") == "http://a1/a2"
+    doAssert removeDotSegments("http://www.ai.") == "http://www.ai."
+    when false: # xxx these cases are buggy
+      # this should work, refs https://webmasters.stackexchange.com/questions/73934/how-can-urls-have-a-dot-at-the-end-e-g-www-bla-de
+      doAssert removeDotSegments("http://www.ai./") == "http://www.ai./" # fails
+      echo removeDotSegments("http://www.ai./")  # http://www.ai/
+      echo removeDotSegments("a/b.../c") # b.c
+      echo removeDotSegments("a/b../c") # bc
+      echo removeDotSegments("a/.../c") # .c
+      echo removeDotSegments("a//../b") # a/b
+      echo removeDotSegments("a/b/c//") # a/b/c//

@@ -62,30 +62,29 @@ iterator instantiateGenericParamList(c: PContext, n: PNode, pt: TIdTable): PSym 
   for i, a in n.pairs:
     internalAssert c.config, a.kind == nkSym
     var q = a.sym
-    if q.typ.kind notin {tyTypeDesc, tyGenericParam, tyStatic}+tyTypeClasses:
-      continue
-    let symKind = if q.typ.kind == tyStatic: skConst else: skType
-    var s = newSym(symKind, q.name, nextSymId c.idgen, getCurrOwner(c), q.info)
-    s.flags.incl {sfUsed, sfFromGeneric}
-    var t = PType(idTableGet(pt, q.typ))
-    if t == nil:
-      if tfRetType in q.typ.flags:
-        # keep the generic type and allow the return type to be bound
-        # later by semAsgn in return type inference scenario
-        t = q.typ
-      else:
-        localError(c.config, a.info, errCannotInstantiateX % s.name.s)
+    if q.typ.kind in {tyTypeDesc, tyGenericParam, tyStatic, tyConcept}+tyTypeClasses:
+      let symKind = if q.typ.kind == tyStatic: skConst else: skType
+      var s = newSym(symKind, q.name, nextSymId(c.idgen), getCurrOwner(c), q.info)
+      s.flags.incl {sfUsed, sfFromGeneric}
+      var t = PType(idTableGet(pt, q.typ))
+      if t == nil:
+        if tfRetType in q.typ.flags:
+          # keep the generic type and allow the return type to be bound
+          # later by semAsgn in return type inference scenario
+          t = q.typ
+        else:
+          localError(c.config, a.info, errCannotInstantiateX % s.name.s)
+          t = errorType(c)
+      elif t.kind in {tyGenericParam, tyConcept}:
+        localError(c.config, a.info, errCannotInstantiateX % q.name.s)
         t = errorType(c)
-    elif t.kind == tyGenericParam:
-      localError(c.config, a.info, errCannotInstantiateX % q.name.s)
-      t = errorType(c)
-    elif t.kind == tyGenericInvocation:
-      #t = instGenericContainer(c, a, t)
-      t = generateTypeInstance(c, pt, a, t)
-      #t = ReplaceTypeVarsT(cl, t)
-    s.typ = t
-    if t.kind == tyStatic: s.ast = t.n
-    yield s
+      elif t.kind == tyGenericInvocation:
+        #t = instGenericContainer(c, a, t)
+        t = generateTypeInstance(c, pt, a, t)
+        #t = ReplaceTypeVarsT(cl, t)
+      s.typ = t
+      if t.kind == tyStatic: s.ast = t.n
+      yield s
 
 proc sameInstantiation(a, b: TInstantiation): bool =
   if a.concreteTypes.len == b.concreteTypes.len:
@@ -95,9 +94,9 @@ proc sameInstantiation(a, b: TInstantiation): bool =
                                    ExactGcSafety}): return
     result = true
 
-proc genericCacheGet(genericSym: PSym, entry: TInstantiation;
+proc genericCacheGet(g: ModuleGraph; genericSym: PSym, entry: TInstantiation;
                      id: CompilesId): PSym =
-  for inst in genericSym.procInstCache:
+  for inst in procInstCacheItems(g, genericSym):
     if (inst.compilesId == 0 or inst.compilesId == id) and sameInstantiation(entry, inst[]):
       return inst.sym
 
@@ -160,7 +159,7 @@ proc fixupInstantiatedSymbols(c: PContext, s: PSym) =
       pushInfoContext(c.config, oldPrc.info)
       openScope(c)
       var n = oldPrc.ast
-      n[bodyPos] = copyTree(s.getBody)
+      n[bodyPos] = copyTree(getBody(c.graph, s))
       instantiateBody(c, n, oldPrc.typ.n, oldPrc, s)
       closeScope(c)
       popInfoContext(c.config)
@@ -232,11 +231,11 @@ proc instantiateProcType(c: PContext, pt: TIdTable,
   # time adding the instantiated proc params into the current scope.
   # This is necessary, because the instantiation process may refer to
   # these params in situations like this:
-  # proc foo[Container](a: Container, b: a.type.Item): type(b.x)
+  # proc foo[Container](a: Container, b: a.type.Item): typeof(b.x)
   #
   # Alas, doing this here is probably not enough, because another
   # proc signature could appear in the params:
-  # proc foo[T](a: proc (x: T, b: type(x.y))
+  # proc foo[T](a: proc (x: T, b: typeof(x.y))
   #
   # The solution would be to move this logic into semtypinst, but
   # at this point semtypinst have to become part of sem, because it
@@ -369,7 +368,7 @@ proc generateInstance(c: PContext, fn: PSym, pt: TIdTable,
   if tfTriggersCompileTime in result.typ.flags:
     incl(result.flags, sfCompileTime)
   n[genericParamsPos] = c.graph.emptyNode
-  var oldPrc = genericCacheGet(fn, entry[], c.compilesContextId)
+  var oldPrc = genericCacheGet(c.graph, fn, entry[], c.compilesContextId)
   if oldPrc == nil:
     # we MUST not add potentially wrong instantiations to the caching mechanism.
     # This means recursive instantiations behave differently when in
@@ -378,12 +377,12 @@ proc generateInstance(c: PContext, fn: PSym, pt: TIdTable,
     #if c.compilesContextId == 0:
     rawHandleSelf(c, result)
     entry.compilesId = c.compilesContextId
-    fn.procInstCache.add(entry)
+    addToGenericProcCache(c, fn, entry)
     c.generics.add(makeInstPair(fn, entry))
     if n[pragmasPos].kind != nkEmpty:
       pragma(c, result, n[pragmasPos], allRoutinePragmas)
     if isNil(n[bodyPos]):
-      n[bodyPos] = copyTree(fn.getBody)
+      n[bodyPos] = copyTree(getBody(c.graph, fn))
     if c.inGenericContext == 0:
       instantiateBody(c, n, fn.typ.n, result, fn)
     sideEffectsCheck(c, result)

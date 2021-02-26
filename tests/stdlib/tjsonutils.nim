@@ -42,8 +42,7 @@ template fn() =
 
   block:
     testRoundtrip({"z": "Z", "y": "Y"}.toOrderedTable): """{"z":"Z","y":"Y"}"""
-    when not defined(js): # pending https://github.com/nim-lang/Nim/issues/14574
-      testRoundtrip({"z": (f1: 'f'), }.toTable): """{"z":{"f1":102}}"""
+    testRoundtrip({"z": (f1: 'f'), }.toTable): """{"z":{"f1":102}}"""
 
   block:
     testRoundtrip({"name": "John", "city": "Monaco"}.newStringTable): """{"mode":"modeCaseSensitive","table":{"city":"Monaco","name":"John"}}"""
@@ -137,6 +136,9 @@ template fn() =
     var b: Bar
     fromJson(b, parseJson """{"foo": {"b": "bbb"}}""", Joptions(allowExtraKeys: true, allowMissingKeys: true))
     doAssert b == Bar(foo: Foo(a: 0, b: "bbb", c: 0.0))
+    block: # jsonTo with `opt`
+      let b2 = """{"foo": {"b": "bbb"}}""".parseJson.jsonTo(Bar,  Joptions(allowExtraKeys: true, allowMissingKeys: true))
+      doAssert b2 == Bar(foo: Foo(a: 0, b: "bbb", c: 0.0))
 
   block testHashSet:
     testRoundtrip(HashSet[string]()): "[]"

@@ -25,10 +25,10 @@ proc getTraverseProc(p: BProc, v: PSym): Rope =
 
 proc registerTraverseProc(p: BProc, v: PSym, traverseProc: Rope) =
   if sfThread in v.flags:
-    appcg(p.module, p.module.initProc.procSec(cpsInit),
+    appcg(p.module, p.module.preInitProc.procSec(cpsInit),
       "$n\t#nimRegisterThreadLocalMarker($1);$n$n", [traverseProc])
   else:
-    appcg(p.module, p.module.initProc.procSec(cpsInit),
+    appcg(p.module, p.module.preInitProc.procSec(cpsInit),
       "$n\t#nimRegisterGlobalMarker($1);$n$n", [traverseProc])
 
 proc isAssignedImmediately(conf: ConfigRef; n: PNode): bool {.inline.} =
@@ -1530,20 +1530,21 @@ proc genDiscriminantCheck(p: BProc, a, tmp: TLoc, objtype: PType,
         [rdLoc(a), rdLoc(tmp), discriminatorTableName(p.module, t, field),
          intLiteral(toInt64(lengthOrd(p.config, field.typ))+1)])
 
-proc genCaseObjDiscMapping(p: BProc, e: PNode, t: PType, field: PSym; d: var TLoc) =
-  const ObjDiscMappingProcSlot = -5
-  var theProc: PSym = nil
-  for idx, p in items(t.methods):
-    if idx == ObjDiscMappingProcSlot:
-      theProc = p
-      break
-  if theProc == nil:
-    theProc = genCaseObjDiscMapping(t, field, e.info, p.module.g.graph, p.module.idgen)
-    t.methods.add((ObjDiscMappingProcSlot, theProc))
-  var call = newNodeIT(nkCall, e.info, getSysType(p.module.g.graph, e.info, tyUInt8))
-  call.add newSymNode(theProc)
-  call.add e
-  expr(p, call, d)
+when false:
+  proc genCaseObjDiscMapping(p: BProc, e: PNode, t: PType, field: PSym; d: var TLoc) =
+    const ObjDiscMappingProcSlot = -5
+    var theProc: PSym = nil
+    for idx, p in items(t.methods):
+      if idx == ObjDiscMappingProcSlot:
+        theProc = p
+        break
+    if theProc == nil:
+      theProc = genCaseObjDiscMapping(t, field, e.info, p.module.g.graph, p.module.idgen)
+      t.methods.add((ObjDiscMappingProcSlot, theProc))
+    var call = newNodeIT(nkCall, e.info, getSysType(p.module.g.graph, e.info, tyUInt8))
+    call.add newSymNode(theProc)
+    call.add e
+    expr(p, call, d)
 
 proc asgnFieldDiscriminant(p: BProc, e: PNode) =
   var a, tmp: TLoc

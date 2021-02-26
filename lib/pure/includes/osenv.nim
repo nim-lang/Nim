@@ -4,7 +4,7 @@ when not declared(os) and not declared(ospaths):
   {.error: "This is an include file for os.nim!".}
 
 when defined(nodejs):
-  proc getEnv*(key: string, default = ""): TaintedString {.tags: [ReadEnvEffect].} =
+  proc getEnv*(key: string, default = ""): string {.tags: [ReadEnvEffect].} =
     var ret: cstring
     let key2 = key.cstring
     {.emit: "`ret` = process.env[`key2`];".}
@@ -25,7 +25,7 @@ when defined(nodejs):
     var key2 = key.cstring
     {.emit: "delete process.env[`key2`];".}
 
-  iterator envPairs*(): tuple[key, value: TaintedString] {.tags: [ReadEnvEffect].} =
+  iterator envPairs*(): tuple[key, value: string] {.tags: [ReadEnvEffect].} =
     var num: int
     var keys: RootObj
     {.emit: "`keys` = Object.keys(process.env); `num` = `keys`.length;".}
@@ -49,8 +49,8 @@ else:
   proc c_unsetenv(env: cstring): cint {.
     importc: "unsetenv", header: "<stdlib.h>".}
 
-  # Environment handling cannot be put into RTL, because the ``envPairs``
-  # iterator depends on ``environment``.
+  # Environment handling cannot be put into RTL, because the `envPairs`
+  # iterator depends on `environment`.
 
   var
     envComputed {.threadvar.}: bool
@@ -144,7 +144,7 @@ else:
         if startsWith(environment[i], temp): return i
     return -1
 
-  proc getEnv*(key: string, default = ""): TaintedString {.tags: [ReadEnvEffect].} =
+  proc getEnv*(key: string, default = ""): string {.tags: [ReadEnvEffect].} =
     ## Returns the value of the `environment variable`:idx: named `key`.
     ##
     ## If the variable does not exist, `""` is returned. To distinguish
@@ -165,11 +165,11 @@ else:
     else:
       var i = findEnvVar(key)
       if i >= 0:
-        return TaintedString(substr(environment[i], find(environment[i], '=')+1))
+        return substr(environment[i], find(environment[i], '=')+1)
       else:
         var env = c_getenv(key)
-        if env == nil: return TaintedString(default)
-        result = TaintedString($env)
+        if env == nil: return default
+        result = $env
 
   proc existsEnv*(key: string): bool {.tags: [ReadEnvEffect].} =
     ## Checks whether the environment variable named `key` exists.
@@ -248,7 +248,7 @@ else:
           raiseOSError(osLastError())
       environment.delete(indx)
 
-  iterator envPairs*(): tuple[key, value: TaintedString] {.tags: [ReadEnvEffect].} =
+  iterator envPairs*(): tuple[key, value: string] {.tags: [ReadEnvEffect].} =
     ## Iterate over all `environments variables`:idx:.
     ##
     ## In the first component of the tuple is the name of the current variable stored,
@@ -262,5 +262,5 @@ else:
     getEnvVarsC()
     for i in 0..high(environment):
       var p = find(environment[i], '=')
-      yield (TaintedString(substr(environment[i], 0, p-1)),
-             TaintedString(substr(environment[i], p+1)))
+      yield (substr(environment[i], 0, p-1),
+             substr(environment[i], p+1))

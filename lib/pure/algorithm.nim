@@ -648,18 +648,19 @@ proc product*[T](x: openArray[seq[T]]): seq[seq[T]] =
   runnableExamples:
     assert product(@[@[1], @[2]]) == @[@[1, 2]]
     assert product(@[@["A", "K"], @["Q"]]) == @[@["K", "Q"], @["A", "Q"]]
+  let xLen = x.len
   result = newSeq[seq[T]]()
-  if x.len == 0:
+  if xLen == 0:
     return
-  if x.len == 1:
+  if xLen == 1:
     result = @x
     return
   var
-    indices = newSeq[int](x.len)
-    initial = newSeq[int](x.len)
+    indices = newSeq[int](xLen)
+    initial = newSeq[int](xLen)
     index = 0
-  var next = newSeq[T](x.len)
-  for i in 0..(x.len-1):
+  var next = newSeq[T](xLen)
+  for i in 0 ..< xLen:
     if len(x[i]) == 0: return
     initial[i] = len(x[i]) - 1
   indices = initial
@@ -667,7 +668,7 @@ proc product*[T](x: openArray[seq[T]]): seq[seq[T]] =
     while indices[index] == -1:
       indices[index] = initial[index]
       index += 1
-      if index == x.len: return
+      if index == xLen: return
       indices[index] -= 1
     for ni, i in indices:
       next[ni] = x[ni][i]
@@ -791,7 +792,8 @@ proc rotateInternal[T](arg: var openArray[T]; first, middle, last: int): int =
       next = mMiddle
 
 proc rotatedInternal[T](arg: openArray[T]; first, middle, last: int): seq[T] =
-  result = newSeq[T](arg.len)
+  let argLen = arg.len
+  result = newSeq[T](argLen)
   for i in 0 ..< first:
     result[i] = arg[i]
   let n = last - middle
@@ -800,7 +802,7 @@ proc rotatedInternal[T](arg: openArray[T]; first, middle, last: int): seq[T] =
     result[first+i] = arg[middle+i]
   for i in 0 ..< m:
     result[first+n+i] = arg[first+i]
-  for i in last ..< arg.len:
+  for i in last ..< argLen:
     result[i] = arg[i]
 
 proc rotateLeft*[T](arg: var openArray[T]; slice: HSlice[int, int];
@@ -857,9 +859,9 @@ proc rotateLeft*[T](arg: var openArray[T]; dist: int): int {.discardable.} =
     assert a == [2, 3, 4, 5, 1]
     a.rotateLeft(-6)
     assert a == [1, 2, 3, 4, 5]
-  let arglen = arg.len
-  let distLeft = ((dist mod arglen) + arglen) mod arglen
-  arg.rotateInternal(0, distLeft, arglen)
+  let argLen = arg.len
+  let distLeft = ((dist mod argLen) + argLen) mod argLen
+  arg.rotateInternal(0, distLeft, argLen)
 
 proc rotatedLeft*[T](arg: openArray[T]; slice: HSlice[int, int],
                      dist: int): seq[T] =
@@ -889,7 +891,7 @@ proc rotatedLeft*[T](arg: openArray[T]; slice: HSlice[int, int],
     assert a == @[1, 5, 2, 3, 4]
   let sliceLen = slice.b + 1 - slice.a
   let distLeft = ((dist mod sliceLen) + sliceLen) mod sliceLen
-  arg.rotatedInternal(slice.a, slice.a+distLeft, slice.b+1)
+  arg.rotatedInternal(slice.a, slice.a + distLeft, slice.b + 1)
 
 proc rotatedLeft*[T](arg: openArray[T]; dist: int): seq[T] =
   ## Same as `rotateLeft`, just with the difference that it does
@@ -906,6 +908,6 @@ proc rotatedLeft*[T](arg: openArray[T]; dist: int): seq[T] =
     assert a == @[2, 3, 4, 5, 1]
     a = rotatedLeft(a, -6)
     assert a == @[1, 2, 3, 4, 5]
-  let arglen = arg.len
-  let distLeft = ((dist mod arglen) + arglen) mod arglen
-  arg.rotatedInternal(0, distLeft, arg.len)
+  let argLen = arg.len
+  let distLeft = ((dist mod argLen) + argLen) mod argLen
+  arg.rotatedInternal(0, distLeft, argLen)

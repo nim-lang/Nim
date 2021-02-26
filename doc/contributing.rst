@@ -1,3 +1,5 @@
+.. default-role:: code
+
 ============
 Contributing
 ============
@@ -17,15 +19,15 @@ Writing tests
 
 There are 4 types of tests:
 
-1. ``runnableExamples`` documentation comment tests, ran by ``nim doc mymod.nim``
+1. `runnableExamples` documentation comment tests, ran by `nim doc mymod.nim`
    These end up in documentation and ensure documentation stays in sync with code.
 
-2. separate test files, e.g.: ``tests/stdlib/tos.nim``.
+2. separate test files, e.g.: `tests/stdlib/tos.nim`.
    In nim repo, `testament` (see below) runs all `$nim/tests/*/t*.nim` test files;
    for nimble packages, see https://github.com/nim-lang/nimble#tests.
 
-3. (deprecated) tests in ``when isMainModule:`` block, ran by ``nim r mymod.nim``.
-   ``nimble test`` can run those in nimble packages when specified in a
+3. (deprecated) tests in `when isMainModule:` block, ran by `nim r mymod.nim`.
+   `nimble test` can run those in nimble packages when specified in a
    `task "test"`.
 
 4. (not preferred) `.. code-block:: nim` RST snippets; these should only be used in rst sources,
@@ -39,19 +41,22 @@ that don't. Always leave the code cleaner than you found it.
 Stdlib
 ------
 
-Each stdlib module (anything under ``lib/``, e.g. ``lib/pure/os.nim``) should
+Each stdlib module (anything under `lib/`, e.g. `lib/pure/os.nim`) should
 preferably have a corresponding separate test file, e.g. `tests/stdlib/tos.nim`.
-The old convention was to add a ``when isMainModule:`` block in the source file,
+The old convention was to add a `when isMainModule:` block in the source file,
 which only gets executed when the tester is building the file.
 
-Each test should be in a separate ``block:`` statement, such that
-each has its own scope. Use boolean conditions and ``doAssert`` for the
+Each test should be in a separate `block:` statement, such that
+each has its own scope. Use boolean conditions and `doAssert` for the
 testing by itself, don't rely on echo statements or similar; in particular, avoid
 things like `echo "done"`. Don't use `unittest.suite` and `unittest.test`.
 
 Sample test:
 
 .. code-block:: nim
+
+  block: # foo
+    doAssert foo(1) == 10
 
   block: # bug #1234
     static: doAssert 1+1 == 2
@@ -80,22 +85,22 @@ Rationale for using a separate test file instead of `when isMainModule:` block:
 Compiler
 --------
 
-The tests for the compiler use a testing tool called ``testament``. They are all
-located in ``tests/`` (e.g.: ``tests/destructor/tdestructor3.nim``).
-Each test has its own file. All test files are prefixed with ``t``. If you want
-to create a file for import into another test only, use the prefix ``m``.
+The tests for the compiler use a testing tool called `testament`. They are all
+located in `tests/` (e.g.: `tests/destructor/tdestructor3.nim`).
+Each test has its own file. All test files are prefixed with `t`. If you want
+to create a file for import into another test only, use the prefix `m`.
 
 At the beginning of every test is the expected behavior of the test.
 Possible keys are:
 
-- ``cmd``: A compilation command template e.g. ``nim $target --threads:on $options $file``
-- ``output``: The expected output (stdout + stderr), most likely via ``echo``
-- ``exitcode``: Exit code of the test (via ``exit(number)``)
-- ``errormsg``: The expected compiler error message
-- ``file``: The file the errormsg was produced at
-- ``line``: The line the errormsg was produced at
+- `cmd`: A compilation command template e.g. `nim $target --threads:on $options $file`
+- `output`: The expected output (stdout + stderr), most likely via `echo`
+- `exitcode`: Exit code of the test (via `exit(number)`)
+- `errormsg`: The expected compiler error message
+- `file`: The file the errormsg was produced at
+- `line`: The line the errormsg was produced at
 
-For a full spec, see here: ``testament/specs.nim``
+For a full spec, see here: `testament/specs.nim`
 
 An example of a test:
 
@@ -131,8 +136,8 @@ only want to see the output of failing tests, go for
   ./koch tests --failing all
 
 You can also run only a single category of tests. A category is a subdirectory
-in the ``tests`` directory. There are a couple of special categories; for a
-list of these, see ``testament/categories.nim``, at the bottom.
+in the `tests` directory. There are a couple of special categories; for a
+list of these, see `testament/categories.nim`, at the bottom.
 
 ::
 
@@ -148,16 +153,16 @@ To run a single test:
 
 For reproducible tests (to reproduce an environment more similar to the one
 run by Continuous Integration on travis/appveyor), you may want to disable your
-local configuration (e.g. in ``~/.config/nim/nim.cfg``) which may affect some
+local configuration (e.g. in `~/.config/nim/nim.cfg`) which may affect some
 tests; this can also be achieved by using
-``export XDG_CONFIG_HOME=pathtoAlternateConfig`` before running ``./koch``
+`export XDG_CONFIG_HOME=pathtoAlternateConfig` before running `./koch`
 commands.
 
 
 Comparing tests
 ===============
 
-Test failures can be grepped using ``Failure:``.
+Test failures can be grepped using `Failure:`.
 
 The tester can compare two test runs. First, you need to create a
 reference test. You'll also need to the commit id, because that's what
@@ -176,7 +181,7 @@ Then switch over to your changes and run the tester again.
   git checkout your-changes
   ./koch tests
 
-Then you can ask the tester to create a ``testresults.html`` which will
+Then you can ask the tester to create a `testresults.html` which will
 tell you if any new tests passed/failed.
 
 ::
@@ -214,14 +219,14 @@ Documentation
 
 When contributing new procs, be sure to add documentation, especially if
 the proc is public. Even private procs benefit from documentation and can be
-viewed using ``nim doc --docInternal foo.nim``.
+viewed using `nim doc --docInternal foo.nim`.
 Documentation begins on the line
-following the ``proc`` definition, and is prefixed by ``##`` on each line.
+following the `proc` definition, and is prefixed by `##` on each line.
 
 Runnable code examples are also encouraged, to show typical behavior with a few
-test cases (typically 1 to 3 ``assert`` statements, depending on complexity).
-These ``runnableExamples`` are automatically run by ``nim doc mymodule.nim``
-as well as ``testament`` and guarantee they stay in sync.
+test cases (typically 1 to 3 `assert` statements, depending on complexity).
+These `runnableExamples` are automatically run by `nim doc mymodule.nim`
+as well as `testament` and guarantee they stay in sync.
 
 .. code-block:: nim
   proc addBar*(a: string): string =
@@ -233,21 +238,21 @@ as well as ``testament`` and guarantee they stay in sync.
 See `parentDir <os.html#parentDir,string>`_ example.
 
 The RestructuredText Nim uses has a special syntax for including code snippets
-embedded in documentation; these are not run by ``nim doc`` and therefore are
-not guaranteed to stay in sync, so ``runnableExamples`` is usually preferred:
+embedded in documentation; these are not run by `nim doc` and therefore are
+not guaranteed to stay in sync, so `runnableExamples` is almost always preferred:
 
 .. code-block:: nim
 
-  proc someproc*(): string =
+  proc someProc*(): string =
     ## Returns "something"
     ##
     ## .. code-block::
-    ##  echo someproc() # "something"
+    ##  echo someProc() # "something"
     result = "something" # single-hash comments do not produce documentation
 
-The ``.. code-block:: nim`` followed by a newline and an indentation instructs the
-``nim doc`` command to produce syntax-highlighted example code with the
-documentation (``.. code-block::`` is sufficient from inside a nim module).
+The `.. code-block:: nim` followed by a newline and an indentation instructs the
+`nim doc` command to produce syntax-highlighted example code with the
+documentation (`.. code-block::` is sufficient from inside a nim module).
 
 When forward declaration is used, the documentation should be included with the
 first appearance of the proc.
@@ -320,7 +325,7 @@ Design with method call syntax chaining in mind
   # can be called as: `getLines().foo(false)`
 
 .. _avoid_quit:
-Use exceptions (including assert / doAssert) instead of ``quit``
+Use exceptions (including assert / doAssert) instead of `quit`
 rationale: https://forum.nim-lang.org/t/4089
 
 .. code-block:: nim
@@ -329,18 +334,33 @@ rationale: https://forum.nim-lang.org/t/4089
   doAssert() # preferred
 
 .. _tests_use_doAssert:
-Use ``doAssert`` (or ``require``, etc), not ``assert`` in all tests so they'll
-be enabled even in release mode (except for tests in ``runnableExamples`` blocks
-which for which ``nim doc`` ignores ``-d:release``).
+Use `doAssert` (or `unittest.check`, `unittest.require`), not `assert` in all
+tests so they'll be enabled even with `--assertions:off`.
 
 .. code-block:: nim
 
-  when isMainModule:
+  block: # foo
     assert foo() # bad
     doAssert foo() # preferred
 
+.. _runnableExamples_use_assert:
+An exception to the above rule is `runnableExamples` and `code-block` rst blocks
+intended to be used as `runnableExamples`, which for brevity use `assert`
+instead of `doAssert`. Note that `nim doc -d:danger main` won't pass `-d:danger` to the
+`runnableExamples`, but `nim doc --doccmd:-d:danger main` would, and so would the
+second example below:
+
+.. code-block:: nim
+
+  runnableExamples:
+    doAssert foo() # bad
+    assert foo() # preferred
+
+  runnableExamples("-d:danger"):
+    doAssert foo() # `assert` would be disabled here, so `doAssert` makes more sense
+
 .. _delegate_printing:
-Delegate printing to caller: return ``string`` instead of calling ``echo``
+Delegate printing to caller: return `string` instead of calling `echo`
 rationale: it's more flexible (e.g. allows the caller to call custom printing,
 including prepending location info, writing to log files, etc).
 
@@ -359,7 +379,7 @@ unless stack allocation is needed (e.g. for efficiency).
   proc foo(): Option[Bar]
 
 .. _use_doAssert_not_echo:
-Tests (including in testament) should always prefer assertions over ``echo``,
+Tests (including in testament) should always prefer assertions over `echo`,
 except when that's not possible. It's more precise, easier for readers and
 maintainers to where expected values refer to. See for example
 https://github.com/nim-lang/Nim/pull/9335 and https://forum.nim-lang.org/t/4089
@@ -379,12 +399,12 @@ General commit rules
 1. Important, critical bugfixes that have a tiny chance of breaking
    somebody's code should be backported to the latest stable release
    branch (currently 1.4.x) and maybe also all the way back to the 1.0.x branch.
-   The commit message should contain the tag ``[backport]`` for "backport to all
-   stable releases" and the tag ``[backport:$VERSION]`` for backporting to the
+   The commit message should contain the tag `[backport]` for "backport to all
+   stable releases" and the tag `[backport:$VERSION]` for backporting to the
    given $VERSION.
 
 2. If you introduce changes which affect backward compatibility,
-   make breaking changes, or have PR which is tagged as ``[feature]``,
+   make breaking changes, or have PR which is tagged as `[feature]`,
    the changes should be mentioned in `the changelog
    <https://github.com/nim-lang/Nim/blob/devel/changelog.md>`_.
 
@@ -395,13 +415,13 @@ General commit rules
    your editor reformatted automatically the code or whatever different reason,
    this should be excluded from the commit.
 
-   *Tip:* Never commit everything as is using ``git commit -a``, but review
-   carefully your changes with ``git add -p``.
+   *Tip:* Never commit everything as is using `git commit -a`, but review
+   carefully your changes with `git add -p`.
 
 4. Changes should not introduce any trailing whitespace.
 
-   Always check your changes for whitespace errors using ``git diff --check``
-   or add the following ``pre-commit`` hook:
+   Always check your changes for whitespace errors using `git diff --check`
+   or add the following `pre-commit` hook:
 
    .. code-block:: sh
 
@@ -410,10 +430,10 @@ General commit rules
 5. Describe your commit and use your common sense.
    Example commit message:
 
-   ``Fixes #123; refs #124``
+   `Fixes #123; refs #124`
 
-   indicates that issue ``#123`` is completely fixed (GitHub may automatically
-   close it when the PR is committed), wheres issue ``#124`` is referenced
+   indicates that issue `#123` is completely fixed (GitHub may automatically
+   close it when the PR is committed), wheres issue `#124` is referenced
    (e.g.: partially fixed) and won't close the issue when committed.
 
 6. PR body (not just PR title) should contain references to fixed/referenced github
@@ -425,7 +445,7 @@ General commit rules
 7. Commits should be always be rebased against devel (so a fast forward
    merge can happen)
 
-   e.g.: use ``git pull --rebase origin devel``. This is to avoid messing up
+   e.g.: use `git pull --rebase origin devel`. This is to avoid messing up
    git history.
    Exceptions should be very rare: when rebase gives too many conflicts, simply
    squash all commits using the script shown in
@@ -441,7 +461,7 @@ Continuous Integration (CI)
 
 1. Continuous Integration is by default run on every push in a PR; this clogs
    the CI pipeline and affects other PR's; if you don't need it (e.g. for WIP or
-   documentation only changes), add ``[ci skip]`` to your commit message title.
+   documentation only changes), add `[ci skip]` to your commit message title.
    This convention is supported by `Appveyor
    <https://www.appveyor.com/docs/how-to/filtering-commits/#skip-directive-in-commit-message>`_
    and `Travis <https://docs.travis-ci.com/user/customizing-the-build/#skipping-a-build>`_.
@@ -522,11 +542,11 @@ Vocabulary types must be part of the stdlib
 -------------------------------------------
 
 These are types most packages need to agree on for better interoperability,
-for example ``Option[T]``. This rule also covers the existing collections like
-``Table``, ``CountTable`` etc. "Sorted" containers based on a tree-like data
+for example `Option[T]`. This rule also covers the existing collections like
+`Table`, `CountTable` etc. "Sorted" containers based on a tree-like data
 structure are still missing and should be added.
 
-Time handling, especially the ``Time`` type are also covered by this rule.
+Time handling, especially the `Time` type are also covered by this rule.
 
 
 Existing, battle-tested modules stay
@@ -537,8 +557,8 @@ fashion as in "Nim's core MUST BE SMALL". If you don't like an existing module,
 don't import it. If a compilation target (e.g. JS) cannot support a module,
 document this limitation.
 
-This covers modules like ``os``, ``osproc``, ``strscans``, ``strutils``,
-``strformat``, etc.
+This covers modules like `os`, `osproc`, `strscans`, `strutils`,
+`strformat`, etc.
 
 
 Syntactic helpers can start as experimental stdlib modules
@@ -568,7 +588,7 @@ As long as they are documented and tested well, adding little helpers
 to existing modules is acceptable. For two reasons:
 
 1. It makes Nim easier to learn and use in the long run.
-   ("Why does sequtils lack a ``countIt``?
+   ("Why does sequtils lack a `countIt`?
    Because version 1.0 happens to have lacked it? Silly...")
 2. To encourage contributions. Contributors often start with PRs that
    add simple things and then they stay and also fix bugs. Nim is an
@@ -587,6 +607,6 @@ use `lib/std/collections/foo.nim`, not `lib/pure/collections/foo.nim`.
 
 2. New module names should prefer plural form whenever possible, e.g.:
 `std/sums.nim` instead of `std/sum.nim`. In particular, this reduces chances of conflicts
-between module name and the symbols it defines. Furthermore, is should use `snake_case`
-and not use capital letters, which cause issues when going from an OS without case
-sensitivity to an OS without it.
+between module name and the symbols it defines. Furthermore, module names should
+use `snake_case` and not use capital letters, which cause issues when going
+from an OS without case sensitivity to an OS with it.
