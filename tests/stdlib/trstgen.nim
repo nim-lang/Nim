@@ -298,6 +298,129 @@ Some chapter
     expect(EParseError):
       let output8 = rstToHtml(input8, {roSupportMarkdown}, defaultConfig())
 
+    # check that hierarchy of title styles works
+    let input9good = dedent """
+      Level1
+      ======
+
+      Level2
+      ------
+
+      Level3
+      ~~~~~~
+
+      L1
+      ==
+
+      Another2
+      --------
+
+      More3
+      ~~~~~
+
+      """
+    let output9good = rstToHtml(input9good, {roSupportMarkdown}, defaultConfig())
+    doAssert "<h1 id=\"level1\">Level1</h1>" in output9good
+    doAssert "<h2 id=\"level2\">Level2</h2>" in output9good
+    doAssert "<h3 id=\"level3\">Level3</h3>" in output9good
+    doAssert "<h1 id=\"l1\">L1</h1>" in output9good
+    doAssert "<h2 id=\"another2\">Another2</h2>" in output9good
+    doAssert "<h3 id=\"more3\">More3</h3>" in output9good
+
+    # check that swap causes an exception
+    let input9Bad = dedent """
+      Level1
+      ======
+
+      Level2
+      ------
+      
+      Level3
+      ~~~~~~
+
+      L1
+      ==
+
+      More
+      ~~~~
+      
+      Another
+      -------
+
+      """
+    expect(EParseError):
+      let output9Bad = rstToHtml(input9Bad, {roSupportMarkdown}, defaultConfig())
+
+    # the same as input9good but with overline headings
+    # first overline heading has a special meaning: document title
+    let input10 = dedent """
+      ======
+      Title0
+      ======
+
+      +++++++++
+      SubTitle0
+      +++++++++
+
+      ------
+      Level1
+      ------
+
+      Level2
+      ------
+
+      ~~~~~~
+      Level3
+      ~~~~~~
+
+      --
+      L1
+      --
+
+      Another2
+      --------
+
+      ~~~~~
+      More3
+      ~~~~~
+
+      """
+    var option: bool
+    var rstGenera: RstGenerator
+    var output10: string
+    rstGenera.initRstGenerator(outHtml, defaultConfig(), "input", {})
+    rstGenera.renderRstToOut(rstParse(input10, "", 1, 1, option, {}), output10)
+    doAssert rstGenera.meta[metaTitle] == "Title0"
+    doAssert rstGenera.meta[metaSubTitle] == "SubTitle0"
+    doAssert "<h1 id=\"level1\"><center>Level1</center></h1>" in output10
+    doAssert "<h2 id=\"level2\">Level2</h2>" in output10
+    doAssert "<h3 id=\"level3\"><center>Level3</center></h3>" in output10
+    doAssert "<h1 id=\"l1\"><center>L1</center></h1>" in output10
+    doAssert "<h2 id=\"another2\">Another2</h2>" in output10
+    doAssert "<h3 id=\"more3\"><center>More3</center></h3>" in output10
+
+    # check that a paragraph prevents interpreting overlines as document titles
+    let input11 = dedent """
+      Paragraph
+
+      ======
+      Title0
+      ======
+
+      +++++++++
+      SubTitle0
+      +++++++++
+      """
+    var option11: bool
+    var rstGenera11: RstGenerator
+    var output11: string
+    rstGenera11.initRstGenerator(outHtml, defaultConfig(), "input", {})
+    rstGenera11.renderRstToOut(rstParse(input11, "", 1, 1, option11, {}), output11)
+    doAssert rstGenera11.meta[metaTitle] == ""
+    doAssert rstGenera11.meta[metaSubTitle] == ""
+    doAssert "<h1 id=\"title0\"><center>Title0</center></h1>" in output11
+    doAssert "<h2 id=\"subtitle0\"><center>SubTitle0</center></h2>" in output11
+
   test "RST inline text":
     let input1 = "GC_step"
     let output1 = input1.toHtml
