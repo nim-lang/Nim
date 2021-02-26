@@ -7,8 +7,8 @@
 #    distribution, for details about the copyright.
 #
 
-## .. warning:: This module was added in Nim 1.6. If you are using it for crypto purposes
-##   then keep in mind that so far this has not been audited by any security professionals,
+## .. warning:: This module was added in Nim 1.6. If you are using it for cryptographic purposes,
+##   keep in mind that so far this has not been audited by any security professionals,
 ##   therefore may not be secure.
 ## 
 ## `std/sysrand` generates random numbers from a secure source provided by the operating system.
