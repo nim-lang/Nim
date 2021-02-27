@@ -872,7 +872,7 @@ proc semOverloadedCallAnalyseEffects(c: PContext, n: PNode, nOrig: PNode,
 
     # dbg result.renderTree
 
-  if flags*{efInTypeof, efWantIterator} != {}:
+  if flags*{efInTypeof, efWantIterator, efWantIterable} != {}:
     result = semOverloadedCall(c, n, nOrig,
       {skProc, skFunc, skMethod, skConverter, skMacro, skTemplate, skIterator}, flags)
   else:
@@ -1389,7 +1389,9 @@ proc builtinFieldAccess(c: PContext, n: PNode, flags: TExprFlags): PNode =
     return
 
   # efWantIterator, efWantIterable # PRTEMP
-  n[0] = semExprWithType(c, n[0], flags+{efDetermineType})
+  # n[0] = semExprWithType(c, n[0], flags+{efDetermineType})
+  # n[0] = semExprWithType(c, n[0], flags+{efDetermineType, efWantIterator, efWantIterable})
+  n[0] = semExprWithType(c, n[0], flags+{efDetermineType, efWantIterable})
   #restoreOldStyleType(n[0])
   var i = considerQuotedIdent(c, n[1], n)
   var ty = n[0].typ

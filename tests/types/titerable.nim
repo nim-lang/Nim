@@ -75,8 +75,8 @@ template main() =
   do:
     doAssert toSeq2(iotaClosure(3)) == expected1
 
-  # when true:
-  when false: # PRTEMP
+  when true:
+  # when false: # PRTEMP
     # MCS/UFCS
     doAssert iota(3).toSeq2() == expected1
 
@@ -87,7 +87,8 @@ template main() =
   doAssert toSeq4(iota(3)) == expected1
   doAssert toSeq4(myiter(2)) == expected2
   
-  doAssert toSeq4(0..2) == expected1
+  # doAssert toSeq4(0..2) == expected1 # ambig?
+  doAssert toSeq4(items(0..2)) == expected1 # ambig?
   doAssert toSeq4(items(@[0,1,2])) == expected1
   reject toSeq4(@[0,1,2])
   reject toSeq4(13)
