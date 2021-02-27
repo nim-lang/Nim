@@ -5593,9 +5593,6 @@ is used to invoke templates/macros:
 Another common example is this:
 
 .. code-block:: nim
-    :test: "nim c $1"
-    :status: 1
-
   from std/sequtils import toSeq
 
   iterator something: string =
