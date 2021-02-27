@@ -70,7 +70,7 @@ func newRequest*(url: cstring): Request {.importjs: "(new Request(#))".}
 func clone*(self: Response or Request): Response {.importjs: "#.$1()".}
   ## https://developer.mozilla.org/en-US/docs/Web/API/Response/clone
 
-proc text*(self: Body or Request): Future[cstring] {.importjs: "#.$1()".}
+proc text*(self: Body or Response): Future[cstring] {.importjs: "#.$1()".}
   ## https://developer.mozilla.org/en-US/docs/Web/API/Body/text
 
 proc json*(self: Response): Future[JsObject] {.importjs: "#.$1()".}
