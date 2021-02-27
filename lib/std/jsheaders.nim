@@ -44,6 +44,8 @@ func toCstring*(self: Headers): cstring {.importjs: "JSON.stringify(Array.from(#
 
 func `$`*(self: Headers): string = $toCstring(self)
 
+func len*(self: Headers): int {.importjs: "Array.from(#.entries()).length".}
+
 
 runnableExamples:
   if defined(nimJsHeadersTests):
@@ -63,6 +65,7 @@ runnableExamples:
       doAssert header.entries() == @[("key".cstring, "value".cstring)]
       header.clear()
       doAssert header.entries() == @[]
+      doAssert header.len == 0
 
     block:
       let header: Headers = newHeaders()
