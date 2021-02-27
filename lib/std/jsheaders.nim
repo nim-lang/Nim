@@ -42,7 +42,7 @@ func clear*(self: Headers) {.importjs:
 func toCstring*(self: Headers): cstring {.importjs: "JSON.stringify(Array.from(#.entries()))".}
   ## Returns a `cstring` representation of `Headers`.
 
-func `$`*(self: Headers): string = $toCstring(this)
+func `$`*(self: Headers): string = $toCstring(self)
 
 
 runnableExamples:
