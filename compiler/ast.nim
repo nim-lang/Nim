@@ -356,7 +356,7 @@ type
                      # (apparently something with bootstrapping)
                      # if you need to add a type, they can apparently be reused
     tyNone, tyBool, tyChar,
-    tyEmpty, tyAlias, tyNil, tyUntyped, tyTyped, tyTypeDesc, tyIterable,
+    tyEmpty, tyAlias, tyNil, tyUntyped, tyTyped, tyTypeDesc,
     tyGenericInvocation, # ``T[a, b]`` for types to invoke
     tyGenericBody,       # ``T[a, b, body]`` last parameter is the body
     tyGenericInst,       # ``T[a, b, realInstance]`` instantiated generic type
@@ -440,6 +440,7 @@ type
 
     tyVoid
       # now different from tyEmpty, hurray!
+    tyIterable
 
 static:
   # remind us when TTypeKind stops to fit in a single 64-bit word
