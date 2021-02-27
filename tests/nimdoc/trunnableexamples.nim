@@ -120,3 +120,13 @@ runnableExamples:
 
 # note: there are yet other examples where putting runnableExamples at module
 # scope is needed, for example when using an `include` before an `import`, etc.
+
+##[
+snippet:
+
+.. code-block:: Nim
+    :test:
+
+  doAssert defined(testFooExternal)
+
+]##

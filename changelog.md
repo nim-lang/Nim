@@ -173,8 +173,9 @@ provided by the operating system.
   dumping (on select signals) and notifying the parent process about the cause
   of termination.
 
-- Added `strip` and `setSlice` to `std/strbasics`.
+- `hashes.hash` now supports `object`, but can be overloaded.
 
+- Added `strip` and `setSlice` to `std/strbasics`.
 
 - Added to `wrapnils` an option-like API via `??.`, `isSome`, `get`.
 
@@ -183,6 +184,7 @@ provided by the operating system.
 - Added `jsfetch` module [Fetch](https://developer.mozilla.org/docs/Web/API/Fetch_API) wrapper for JavaScript target.
 - Added `jsheaders` module [Headers](https://developer.mozilla.org/en-US/docs/Web/API/Headers) wrapper for JavaScript target.
 - Added `jsformdata` module [FormData](https://developer.mozilla.org/en-US/docs/Web/API/FormData) wrapper for JavaScript target.
+
 
 
 ## Language changes
