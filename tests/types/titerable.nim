@@ -45,12 +45,6 @@ template fn8a(a: iterable) = discard
 template fn8b[T](a: iterable[T]) = discard
 template fn8c(a: iterable[int]) = discard
 
-# template fn8[T](a: iterable[T]) =
-
-# template fn8a(a: iterable and not typed) = discard
-# template fn8b(a: not typed) = discard
-# template fn8c(a: itera) = discard
-
 template bad1 =
   template fn4(a: int, b: iterable[float, int]) =
     discard
@@ -58,6 +52,10 @@ template bad1 =
 # iterators
 iterator iota(n: int): auto =
   for i in 0..<n: yield i
+
+iterator one(T: typedesc): T =
+  yield default(T)
+
 iterator myiter(n: int): auto =
   for i in 0..<n: yield $(i*2)
 
@@ -76,6 +74,7 @@ template main() =
 
   doAssert toSeq2(myiter(2)) == expected2
   doAssert toSeq2(iota(3)) == expected1
+  doAssert toSeq2(one(float)) == @[0.0]
 
   when nimvm: discard
   else:
