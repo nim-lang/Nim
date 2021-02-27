@@ -853,7 +853,8 @@ proc semStaticExpr(c: PContext, n: PNode): PNode =
 
 proc semOverloadedCallAnalyseEffects(c: PContext, n: PNode, nOrig: PNode,
                                      flags: TExprFlags): PNode =
-  if true:
+  # if true:
+  when false:
     # consider: 'for x in pReturningArray()' --> we don't want the restriction
     # to 'skIterator' anymore; skIterator is preferred in sigmatch already
     # for typeof support.
@@ -1047,6 +1048,7 @@ proc semDirectOp(c: PContext, n: PNode, flags: TExprFlags): PNode =
   # this seems to be a hotspot in the compiler!
   let nOrig = n.copyTree
   #semLazyOpAux(c, n)
+  # dbg flags, nOrig
   result = semOverloadedCallAnalyseEffects(c, n, nOrig, flags)
   if result != nil: result = afterCallActions(c, result, nOrig, flags)
   else: result = errorNode(c, n)
@@ -1500,7 +1502,7 @@ proc semDeref(c: PContext, n: PNode): PNode =
 proc semSubscript(c: PContext, n: PNode, flags: TExprFlags): PNode =
   ## returns nil if not a built-in subscript operator; also called for the
   ## checking of assignments
-  dbg n, flags, n.len
+  # dbg n, flags, n.len
   if n.len == 1:
     let x = semDeref(c, n)
     if x == nil: return nil
@@ -1523,7 +1525,7 @@ proc semSubscript(c: PContext, n: PNode, flags: TExprFlags): PNode =
     else:
       arr = arr.base
 
-  dbg arr.kind
+  # dbg arr.kind
   case arr.kind
   of tyArray, tyOpenArray, tyVarargs, tySequence, tyString, tyCString,
     tyUncheckedArray:
@@ -1532,8 +1534,8 @@ proc semSubscript(c: PContext, n: PNode, flags: TExprFlags): PNode =
     for i in 1..<n.len:
       n[i] = semExprWithType(c, n[i],
                                   flags*{efInTypeof, efDetermineType})
-      dbg n[i]
-    dbg n[1].typ
+      # dbg n[i]
+    # dbg n[1].typ
     # Arrays index type is dictated by the range's type
     if arr.kind == tyArray:
       var indexType = arr[0]
@@ -1547,7 +1549,7 @@ proc semSubscript(c: PContext, n: PNode, flags: TExprFlags): PNode =
         {tyInt..tyInt64, tyUInt..tyUInt64}:
       result = n
       result.typ = elemType(arr)
-      dbg result.typ
+      # dbg result.typ
   of tyTypeDesc:
     # The result so far is a tyTypeDesc bound
     # a tyGenericBody. The line below will substitute

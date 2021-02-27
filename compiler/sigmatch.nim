@@ -2284,6 +2284,7 @@ proc prepareOperand(c: PContext; formal: PType; a: PNode): PNode =
     if formal.kind == tyIterable:
       # let flags = {efDetermineType, efAllowStmt}
       # let flags = {efDetermineType, efAllowStmt, efWantIterator}
+      # dbg formal
       let flags = {efDetermineType, efAllowStmt, efWantIterator, efWantIterable}
       result = c.semOperand(c, a, flags)
     else:

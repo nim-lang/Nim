@@ -80,7 +80,8 @@ template main() =
   else:
     doAssert toSeq2(iotaClosure(3)) == expected1
 
-  when true:
+  # when true:
+  when false: # PRTEMP
     # MCS/UFCS
     doAssert iota(3).toSeq2() == expected1
 
