@@ -3,7 +3,7 @@
 when not defined(js):
   {.fatal: "Module jsfetch is designed to be used with the JavaScript backend.".}
 
-when defined(nimExperimentalJsfetch):
+when defined(nimExperimentalJsfetch) or defined(nimdoc):
   import std/[asyncjs, jsheaders, jsformdata]
   from std/httpcore import HttpMethod
   from std/jsffi import JsObject
