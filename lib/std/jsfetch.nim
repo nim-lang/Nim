@@ -114,7 +114,7 @@ func `$`*(self: Request or Response or Body or FetchOptions): string = $toCstrin
 
 
 runnableExamples:
-  import std/[httpcore, asyncjs, sugar, jsconsole jsheaders, jsformdata]
+  import std/[httpcore, asyncjs, sugar, jsconsole, jsheaders, jsformdata]
 
   if defined(nimJsFetchTests):
     block:
