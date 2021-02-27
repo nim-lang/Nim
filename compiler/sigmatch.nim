@@ -1423,11 +1423,22 @@ proc typeRel(c: var TCandidate, f, aOrig: PType,
 
   of tyIterable:
     # result = typeRel(c, lastSon(f), a, flags)
-    if a.kind == tyIterable:
-      result = isEqual # PRTEMP
+    dbg f, f.len
+    if f.len == 1:
+      result = typeRel(c, lastSon(f), a, flags)
+      # result = isEqual
     else:
-      result = isEqual # PRTEMP
-      # doAssert false
+      # f.len = 3, not sure why
+      result = isGeneric
+
+    # for i in 0..<f.len:
+    #   dbg i, f[i]
+    # dbg a
+    # if a.kind == tyIterable:
+    #   result = isEqual # PRTEMP
+    # else:
+    #   result = isEqual # PRTEMP
+    #   # doAssert false
 
   of tyGenericInst:
     var prev = PType(idTableGet(c.bindings, f))

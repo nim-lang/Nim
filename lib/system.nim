@@ -126,8 +126,7 @@ proc defined*(x: untyped): bool {.magic: "Defined", noSideEffect, compileTime.}
 
 when defined(nimHasIterable):
   type
-    iterable*[T] {.magic: IterableType.}  ## PRTEMP
-    # iterable* {.magic: IterableType.}  ## PRTEMP
+    iterable*[T] {.magic: IterableType.}  ## Represents an expression that yields `T`
 
 when defined(nimHashOrdinalFixed):
   type
