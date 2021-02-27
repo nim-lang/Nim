@@ -26,8 +26,12 @@ template toSeq5[T: SomeInteger](a: iterable[T]): auto =
   for ai in a: ret.add ai
   ret
 
-# template toSeq6(a: iterable[seq]): auto =
 template toSeq6(a: iterable[int | float]): auto =
+  var ret: seq[typeof(a)]
+  for ai in a: ret.add ai
+  ret
+
+template toSeq7(a: iterable[seq]): auto =
   var ret: seq[typeof(a)]
   for ai in a: ret.add ai
   ret
@@ -49,8 +53,9 @@ template bad1 =
 iterator iota(n: int): auto =
   for i in 0..<n: yield i
 
-iterator one(T: typedesc): T =
-  yield default(T)
+iterator repeat[T](a: T, n: int): T =
+  for i in 0..<n:
+    yield a
 
 iterator myiter(n: int): auto =
   for i in 0..<n: yield $(i*2)
@@ -60,23 +65,18 @@ when not defined(js):
     for i in 0..<n: yield i
 
 template main() =
-  #[
-  TODO:
-  2..4
-  ]#
   let expected1 = @[0, 1, 2]
   let expected2 = @["0", "2"]
 
   doAssert toSeq2(myiter(2)) == expected2
   doAssert toSeq2(iota(3)) == expected1
-  doAssert toSeq2(one(float)) == @[0.0]
+  doAssert toSeq2(1.1.repeat(2)) == @[1.1, 1.1]
 
   whenVMorJs: discard
   do:
     doAssert toSeq2(iotaClosure(3)) == expected1
 
   when true:
-  # when false: # PRTEMP
     # MCS/UFCS
     doAssert iota(3).toSeq2() == expected1
 
@@ -87,8 +87,8 @@ template main() =
   doAssert toSeq4(iota(3)) == expected1
   doAssert toSeq4(myiter(2)) == expected2
   
-  # doAssert toSeq4(0..2) == expected1 # ambig?
-  doAssert toSeq4(items(0..2)) == expected1 # ambig?
+  doAssert toSeq4(0..2) == expected1
+  doAssert toSeq4(items(0..2)) == expected1
   doAssert toSeq4(items(@[0,1,2])) == expected1
   reject toSeq4(@[0,1,2])
   reject toSeq4(13)
@@ -108,12 +108,6 @@ template main() =
     accept fn8c(items(@[1,2]))
 
   block:
-    # PRTEMP
-    # TODO: check w items
-    # accept fn7(123)
-    discard
-
-  block:
     # shows that iterable is more restrictive than untyped
     reject fn8a(nonexistant)
     accept fn7b(nonexistant)
@@ -126,6 +120,9 @@ template main() =
 
   doAssert toSeq6(iota(3)) == expected1
   reject toSeq6(myiter(2))
+
+  doAssert toSeq2("abc".repeat(3)) == @["abc", "abc", "abc"]
+  doAssert toSeq2(@['x', 'y'].repeat(2)) == @[@['x', 'y'], @['x', 'y']]
 
   reject bad1
 
