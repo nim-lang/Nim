@@ -7,42 +7,42 @@ type Headers* = ref object of JsRoot ## HTTP Headers for the JavaScript target.
 func newHeaders*(): Headers {.importjs: "new Headers()".}
   ## https://developer.mozilla.org/en-US/docs/Web/API/Headers
 
-func add*(this: Headers; key: cstring; value: cstring) {.importjs: "#.append(#, #)".}
+func add*(self: Headers; key: cstring; value: cstring) {.importjs: "#.append(#, #)".}
   ## Allows duplicated keys.
   ## https://developer.mozilla.org/en-US/docs/Web/API/Headers/append
 
-func delete*(this: Headers; key: cstring) {.importjs: "#.$1(#)".}
+func delete*(self: Headers; key: cstring) {.importjs: "#.$1(#)".}
   ## Delete *all* items with `key` from the headers, including duplicated keys.
   ## https://developer.mozilla.org/en-US/docs/Web/API/Headers/delete
 
-func hasKey*(this: Headers; key: cstring): bool {.importjs: "#.has(#)".}
+func hasKey*(self: Headers; key: cstring): bool {.importjs: "#.has(#)".}
   ## https://developer.mozilla.org/en-US/docs/Web/API/Headers/has
 
-func keys*(this: Headers): seq[cstring] {.importjs: "Array.from(#.$1())".}
+func keys*(self: Headers): seq[cstring] {.importjs: "Array.from(#.$1())".}
   ## https://developer.mozilla.org/en-US/docs/Web/API/Headers/keys
 
-func values*(this: Headers): seq[cstring] {.importjs: "Array.from(#.$1())".}
+func values*(self: Headers): seq[cstring] {.importjs: "Array.from(#.$1())".}
   ## https://developer.mozilla.org/en-US/docs/Web/API/Headers/values
 
-func entries*(this: Headers): seq[tuple[key, value: cstring]] {.importjs: "Array.from(#.$1())".}
+func entries*(self: Headers): seq[tuple[key, value: cstring]] {.importjs: "Array.from(#.$1())".}
   ## https://developer.mozilla.org/en-US/docs/Web/API/Headers/entries
 
-func `[]`*(this: Headers; key: cstring): cstring {.importjs: "#.get(#)".}
+func `[]`*(self: Headers; key: cstring): cstring {.importjs: "#.get(#)".}
   ## Get *all* items with `key` from the headers, including duplicated values.
   ## https://developer.mozilla.org/en-US/docs/Web/API/Headers/get
 
-func `[]=`*(this: Headers; key: cstring; value: cstring) {.importjs: "#.set(#, #)".}
+func `[]=`*(self: Headers; key: cstring; value: cstring) {.importjs: "#.set(#, #)".}
   ## Do *not* allow duplicated keys, overwrites duplicated keys.
   ## https://developer.mozilla.org/en-US/docs/Web/API/Headers/set
 
-func clear*(this: Headers) {.importjs:
+func clear*(self: Headers) {.importjs:
   "(() => { const header = #; Array.from(header.keys()).forEach((key) => header.delete(key)) })()".}
   ## Convenience func to delete all items from `Headers`.
 
-func toCstring*(this: Headers): cstring {.importjs: "JSON.stringify(Array.from(#.entries()))".}
+func toCstring*(self: Headers): cstring {.importjs: "JSON.stringify(Array.from(#.entries()))".}
   ## Returns a `cstring` representation of `Headers`.
 
-func `$`*(this: Headers): string = $toCstring(this)
+func `$`*(self: Headers): string = $toCstring(this)
 
 
 runnableExamples:
