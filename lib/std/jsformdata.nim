@@ -46,6 +46,12 @@ func clear*(self: FormData) {.importjs:
   "(() => { const frmdt = #; Array.from(frmdt.keys()).forEach((key) => frmdt.delete(key)) })()".}
   ## Convenience func to delete all items from `FormData`.
 
+func toCstring*(self: FormData): cstring {.importjs: "JSON.stringify(#)".}
+
+func `$`*(self: FormData): string = $toCstring(self)
+
+func len*(self: FormData): int {.importjs: "Array.from(#.entries()).length".}
+
 
 runnableExamples:
   if defined(nimJsFormdataTests):
@@ -55,4 +61,6 @@ runnableExamples:
     data.delete("key1")
     doAssert data.hasKey("key0")
     doAssert data["key0"] == "value0".cstring
+    doAssert data.toCstring is cstring
     data.clear()
+    doAssert data.len == 0
