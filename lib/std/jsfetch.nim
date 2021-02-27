@@ -72,7 +72,7 @@ func clone*(self: Response or Request): Response {.importjs: "#.$1()".}
 proc text*(self: Body or Request): Future[cstring] {.importjs: "#.$1()".}
   ## https://developer.mozilla.org/en-US/docs/Web/API/Body/text
 
-proc json*(self: Body): Future[JsObject] {.importjs: "#.$1()".}
+proc json*(self: Response): Future[JsObject] {.importjs: "#.$1()".}
   ## https://developer.mozilla.org/en-US/docs/Web/API/Body/json
 
 proc formData*(self: Body): Future[FormData] {.importjs: "#.$1()".}
