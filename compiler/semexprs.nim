@@ -1494,6 +1494,7 @@ proc semDeref(c: PContext, n: PNode): PNode =
 proc semSubscript(c: PContext, n: PNode, flags: TExprFlags): PNode =
   ## returns nil if not a built-in subscript operator; also called for the
   ## checking of assignments
+  dbg n, flags, n.len
   if n.len == 1:
     let x = semDeref(c, n)
     if x == nil: return nil
@@ -1516,6 +1517,7 @@ proc semSubscript(c: PContext, n: PNode, flags: TExprFlags): PNode =
     else:
       arr = arr.base
 
+  dbg arr.kind
   case arr.kind
   of tyArray, tyOpenArray, tyVarargs, tySequence, tyString, tyCString,
     tyUncheckedArray:
@@ -1524,6 +1526,8 @@ proc semSubscript(c: PContext, n: PNode, flags: TExprFlags): PNode =
     for i in 1..<n.len:
       n[i] = semExprWithType(c, n[i],
                                   flags*{efInTypeof, efDetermineType})
+      dbg n[i]
+    dbg n[1].typ
     # Arrays index type is dictated by the range's type
     if arr.kind == tyArray:
       var indexType = arr[0]
@@ -1537,6 +1541,7 @@ proc semSubscript(c: PContext, n: PNode, flags: TExprFlags): PNode =
         {tyInt..tyInt64, tyUInt..tyUInt64}:
       result = n
       result.typ = elemType(arr)
+      dbg result.typ
   of tyTypeDesc:
     # The result so far is a tyTypeDesc bound
     # a tyGenericBody. The line below will substitute
