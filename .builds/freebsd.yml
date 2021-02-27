@@ -17,6 +17,11 @@ tasks:
     cd Nim
     if [ "${GITHUB_PR_NUMBER+1}" ]; then
       # this was a PR, so we need to checkout devel and try to merge into it
+      # see https://man.sr.ht/dispatch.sr.ht/github.md#environment-variables
+      # actual values for a job can be accessed with urls like: https://builds.sr.ht/api/jobs/430827/manifest
+      git remote -v
+      git branch
+
       git pull origin devel
     fi
     git clone --depth 1 -q https://github.com/nim-lang/csources.git
