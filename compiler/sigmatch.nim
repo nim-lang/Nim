@@ -1421,6 +1421,7 @@ proc typeRel(c: var TCandidate, f, aOrig: PType,
   of tyAlias, tySink:
     result = typeRel(c, lastSon(f), a, flags)
   of tyIterable:
+    dbg a, a.kind, f
     if a.kind == tyIterable:
       if f.len == 1:
         result = typeRel(c, lastSon(f), lastSon(a), flags)
@@ -1428,7 +1429,15 @@ proc typeRel(c: var TCandidate, f, aOrig: PType,
         # f.len = 3, not sure why
         result = isGeneric
     else:
-      doAssert false
+      # PRTEMP; + dedup
+      # if f.len == 1:
+      #   result = typeRel(c, lastSon(f), lastSon(a), flags)
+      # else:
+      #   # f.len = 3, not sure why
+      #   result = isGeneric
+      # dbg f, a, a.kind, f.kind
+      # doAssert false
+      result = isNone
   of tyGenericInst:
     var prev = PType(idTableGet(c.bindings, f))
     let origF = f
@@ -2281,11 +2290,14 @@ proc prepareOperand(c: PContext; formal: PType; a: PNode): PNode =
     if formal.kind == tyIterable:
       # PRTEMP
       # let flags = {efDetermineType, efWantIterator}
-      let flags = {efWantIterator}
+      # let flags = {efWantIterator}
+      let flags = {efDetermineType, efAllowStmt}
+      dbg formal, flags
       result = c.semOperand(c, a, flags)
-      let typ = newTypeS(tyIterable, c)
-      rawAddSon(typ, result.typ)
-      result.typ = typ
+      dbg result
+      # let typ = newTypeS(tyIterable, c)
+      # rawAddSon(typ, result.typ)
+      # result.typ = typ
     else:
       # XXX This is unsound! 'formal' can differ from overloaded routine to
       # overloaded routine!

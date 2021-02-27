@@ -853,20 +853,32 @@ proc semStaticExpr(c: PContext, n: PNode): PNode =
 
 proc semOverloadedCallAnalyseEffects(c: PContext, n: PNode, nOrig: PNode,
                                      flags: TExprFlags): PNode =
-  if efWantIteratorOnly in flags:
-    result = semOverloadedCall(c, n, nOrig,
-      {skIterator}, flags) # PRTEMP
-      # {skMacro, skTemplate, skIterator}, flags)
-  elif flags*{efInTypeof, efWantIterator} != {}:
+  # if efWantIteratorOnly in flags:
+  #   result = semOverloadedCall(c, n, nOrig,
+  #     {skIterator}, flags) # PRTEMP
+  #     # {skMacro, skTemplate, skIterator}, flags)
+  # elif flags*{efInTypeof, efWantIterator} != {}:
+  # if flags*{efInTypeof, efWantIterator} != {}:
+  if true:
     # consider: 'for x in pReturningArray()' --> we don't want the restriction
     # to 'skIterator' anymore; skIterator is preferred in sigmatch already
     # for typeof support.
     # for ``typeof(countup(1,3))``, see ``tests/ttoseq``.
     result = semOverloadedCall(c, n, nOrig,
       {skProc, skFunc, skMethod, skConverter, skMacro, skTemplate, skIterator}, flags)
-  else:
-    result = semOverloadedCall(c, n, nOrig,
-      {skProc, skFunc, skMethod, skConverter, skMacro, skTemplate}, flags)
+
+    # dbg result.kind
+    # dbg result[0].kind
+    # if result[0].kind == skSym:
+    #   if result[0].sym.kind == skIterator:
+    #     let typ = newTypeS(tyIterable, c)
+    #     rawAddSon(typ, result.typ)
+    #     result.typ = typ
+
+    # dbg result.renderTree
+  # else:
+  #   result = semOverloadedCall(c, n, nOrig,
+  #     {skProc, skFunc, skMethod, skConverter, skMacro, skTemplate}, flags)
 
   if result != nil:
     if result[0].kind != nkSym:
@@ -881,6 +893,15 @@ proc semOverloadedCallAnalyseEffects(c: PContext, n: PNode, nOrig: PNode,
         # error correction, prevents endless for loop elimination in transf.
         # See bug #2051:
         result[0] = newSymNode(errorSym(c, n))
+      elif callee.kind == skIterator:
+        dbg callee, n, flags
+        if flags*{efInTypeof, efWantIterator} != {}:
+          discard
+        else:
+          let typ = newTypeS(tyIterable, c)
+          rawAddSon(typ, result.typ)
+          result.typ = typ
+          # dbg callee, n, flags
 
 proc semObjConstr(c: PContext, n: PNode, flags: TExprFlags): PNode
 
