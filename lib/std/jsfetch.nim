@@ -114,9 +114,9 @@ func `$`*(self: Request or Response or Body or FetchOptions): string = $toCstrin
 
 
 runnableExamples:
-  import std/[httpcore, asyncjs, jsheaders, jsformdata]
-  if defined(nimJsFetchTests):
+  import std/[httpcore, asyncjs, sugar, jsconsole jsheaders, jsformdata]
 
+  if defined(nimJsFetchTests):
     block:
       let options0: FetchOptions = unsafeNewFetchOptions(
         metod = "POST".cstring,
@@ -176,19 +176,26 @@ runnableExamples:
       doAssert request.toCstring is cstring
 
     if not defined(nodejs):
-      proc doFetch(): Future[Response] {.async.} =
-        fetch "https://httpbin.org/get".cstring
+      block:
+        proc doFetch(): Future[Response] {.async.} =
+          fetch "https://httpbin.org/get".cstring
 
-      proc example() {.async.} =
-        let response: Response = await doFetch()
-        doAssert response.ok
-        doAssert response.status == 200.cint
-        doAssert response.headers is Headers
-        doAssert response.body is Body
-        doAssert toCstring(response.body) is cstring
-        ## -d:nimExperimentalAsyncjsThen
-        when defined(nimExperimentalAsyncjsThen):
-          let contents: string = await response.body
-            .then((data: cstring) => $data)
+        proc example() {.async.} =
+          let response: Response = await doFetch()
+          doAssert response.ok
+          doAssert response.status == 200.cint
+          doAssert response.headers is Headers
+          doAssert response.body is Body
+          doAssert toCstring(response.body) is cstring
 
-      discard example()
+        discard example()
+
+      when defined(nimExperimentalAsyncjsThen):
+        block:
+          proc example2 {.async.} =
+            await fetch("https://api.github.com/users/torvalds".cstring)
+              .then((response: Response) => response.json())
+              .then((json: JsObject) => console.log(json))
+              .catch((err: Error) => console.log("Request Failed", err))
+
+          discard example2()
