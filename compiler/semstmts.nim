@@ -716,9 +716,7 @@ proc symForVar(c: PContext, n: PNode): PSym =
 
 proc semForVars(c: PContext, n: PNode; flags: TExprFlags): PNode =
   result = n
-  # dbg n
   let iterBase = n[^2].typ
-  # dbg iterBase
   var iter = skipTypes(iterBase, {tyGenericInst, tyAlias, tySink, tyOwned})
   var iterAfterVarLent = iter.skipTypes({tyGenericInst, tyAlias, tyLent, tyVar})
   # n.len == 3 means that there is one for loop variable
@@ -900,14 +898,10 @@ proc semFor(c: PContext, n: PNode; flags: TExprFlags): PNode =
   result = n
   n[^2] = semExprNoDeref(c, n[^2], {efWantIterator})
   var call = n[^2]
-  # dbg call, call.kind
   if call.kind == nkStmtListExpr and isTrivalStmtExpr(call):
     call = call.lastSon
     n[^2] = call
-  # dbg call, call.kind
   let isCallExpr = call.kind in nkCallKinds
-  # dbg isCallExpr
-  # dbg call[0].kind
   if isCallExpr and call[0].kind == nkSym and
       call[0].sym.magic in {mFields, mFieldPairs, mOmpParFor}:
     if call[0].sym.magic == mOmpParFor:
@@ -934,8 +928,6 @@ proc semFor(c: PContext, n: PNode; flags: TExprFlags): PNode =
     result.typ = c.enforceVoidContext
   elif efInTypeof in flags:
     result.typ = result.lastSon.typ
-  # dbg result
-  # dbg result.typ
   closeScope(c)
 
 proc semCase(c: PContext, n: PNode; flags: TExprFlags): PNode =

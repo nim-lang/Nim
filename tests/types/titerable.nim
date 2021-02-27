@@ -2,10 +2,6 @@ discard """
   targets: "c js"
 """
 
-#[
-TODO: check UFCS/MCS
-]#
-
 # xxx move those to stdlib/ttestutils
 template reject(a) =
   doAssert not compiles(a)
@@ -25,7 +21,6 @@ template toSeq3(a: iterable[string]): auto =
   ret
 
 template toSeq4[T](a: iterable[T]): auto =
-  static: echo typeof(a)
   var ret: seq[typeof(a)]
   for ai in a: ret.add ai
   ret
@@ -86,9 +81,9 @@ template main() =
   else:
     doAssert toSeq2(iotaClosure(3)) == expected1
 
-  when false:
-    # MCS/UFCS doesn't work yet, but maybe will be easier to handle
-    discard iota(3).toSeq2()
+  when true:
+    # MCS/UFCS
+    doAssert iota(3).toSeq2() == expected1
 
   doAssert toSeq3(myiter(2)) == expected2
   accept toSeq3(myiter(2))
@@ -96,9 +91,11 @@ template main() =
 
   doAssert toSeq4(iota(3)) == expected1
   doAssert toSeq4(myiter(2)) == expected2
-  # echo toSeq4(2..4)
-  # echo toSeq4(13)
-  # echo toSeq4(@[2,3,4])
+  
+  doAssert toSeq4(0..2) == expected1
+  doAssert toSeq4(items(@[0,1,2])) == expected1
+  reject toSeq4(@[0,1,2])
+  reject toSeq4(13)
 
   block:
     accept fn8a(iota(3))
@@ -108,11 +105,7 @@ template main() =
     reject fn7e(iota(3))
 
   block:
-    # PRTEMP
-    # fn8(iota(3))
-    # fn8b(iota(3))
     fn8a(iota(3))
-    # BUG PRTEMP
     reject fn8a(123)
     reject fn8c(123)
     reject fn8c(123.3)
@@ -135,8 +128,6 @@ template main() =
   doAssert toSeq5(iota(3)) == expected1
   reject toSeq5(myiter(2))
 
-  # doAssert toSeq6(@[@[1]]) == @[2, 3, 4]
-  # echo toSeq6(@[@[1]])
   doAssert toSeq6(iota(3)) == expected1
   reject toSeq6(myiter(2))
 

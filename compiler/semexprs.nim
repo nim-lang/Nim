@@ -894,14 +894,12 @@ proc semOverloadedCallAnalyseEffects(c: PContext, n: PNode, nOrig: PNode,
         # See bug #2051:
         result[0] = newSymNode(errorSym(c, n))
       elif callee.kind == skIterator:
-        dbg callee, n, flags
         if flags*{efInTypeof, efWantIterator} != {}:
           discard
         else:
           let typ = newTypeS(tyIterable, c)
           rawAddSon(typ, result.typ)
           result.typ = typ
-          # dbg callee, n, flags
 
 proc semObjConstr(c: PContext, n: PNode, flags: TExprFlags): PNode
 

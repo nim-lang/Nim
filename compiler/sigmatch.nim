@@ -1424,7 +1424,6 @@ proc typeRel(c: var TCandidate, f, aOrig: PType,
   of tyAlias, tySink:
     result = typeRel(c, lastSon(f), a, flags)
   of tyIterable:
-    dbg a, a.kind, f
     if a.kind == tyIterable:
       if f.len == 1:
         result = typeRel(c, lastSon(f), lastSon(a), flags)
@@ -2283,16 +2282,8 @@ proc prepareOperand(c: PContext; formal: PType; a: PNode): PNode =
     result = a
   elif a.typ.isNil:
     if formal.kind == tyIterable:
-      # PRTEMP
-      # let flags = {efDetermineType, efWantIterator}
-      # let flags = {efWantIterator}
       let flags = {efDetermineType, efAllowStmt}
-      dbg formal, flags
       result = c.semOperand(c, a, flags)
-      dbg result
-      # let typ = newTypeS(tyIterable, c)
-      # rawAddSon(typ, result.typ)
-      # result.typ = typ
     else:
       # XXX This is unsound! 'formal' can differ from overloaded routine to
       # overloaded routine!
