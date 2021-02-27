@@ -7,7 +7,7 @@ from std/httpcore import HttpMethod
 from std/jsffi import JsObject
 
 type
-  FetchOptions* = ref object  ## Options for Fetch API.
+  FetchOptions* = ref object of JsRoot  ## Options for Fetch API.
     keepalive*: bool
     metod* {.importjs: "method".}: cstring
     body*, integrity*, referrer*, mode*, credentials*, cache*, redirect*, referrerPolicy*: cstring
@@ -41,10 +41,10 @@ type
     frpOriginWhenCrossOrigin = "origin-when-cross-origin"
     frpUnsafeUrl = "unsafe-url"
 
-  Body* = ref object  ## https://developer.mozilla.org/en-US/docs/Web/API/Body
+  Body* = ref object of JsRoot  ## https://developer.mozilla.org/en-US/docs/Web/API/Body
     bodyUsed*: bool
 
-  Response* = ref object  ## https://developer.mozilla.org/en-US/docs/Web/API/Response
+  Response* = ref object of JsRoot  ## https://developer.mozilla.org/en-US/docs/Web/API/Response
     bodyUsed*, ok*, redirected*: bool
     typ* {.importjs: "type".}: cstring
     url*, statusText*: cstring
@@ -52,7 +52,7 @@ type
     headers*: Headers
     body*: Body
 
-  Request* = ref object  ## https://developer.mozilla.org/en-US/docs/Web/API/Request
+  Request* = ref object of JsRoot  ## https://developer.mozilla.org/en-US/docs/Web/API/Request
     bodyUsed*, ok*, redirected*: bool
     typ* {.importjs: "type".}: cstring
     url*, statusText*: cstring
