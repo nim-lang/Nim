@@ -449,7 +449,6 @@ const
   typeToStr: array[TTypeKind, string] = ["None", "bool", "char", "empty",
     "Alias", "typeof(nil)", "untyped", "typed", "typeDesc",
     # xxx typeDesc=>typedesc: typedesc is declared as such, and is 10x more common.
-    "iterable",
     "GenericInvocation", "GenericBody", "GenericInst", "GenericParam",
     "distinct $1", "enum", "ordinal[$1]", "array[$1, $2]", "object", "tuple",
     "set[$1]", "range[$1]", "ptr ", "ref ", "var ", "seq[$1]", "proc",
@@ -461,8 +460,8 @@ const
     "lent ", "varargs[$1]", "UncheckedArray[$1]", "Error Type",
     "BuiltInTypeClass", "UserTypeClass",
     "UserTypeClassInst", "CompositeTypeClass", "inferred",
-    "and", "or", "not", "any", "static", "TypeFromExpr", "out ",
-    "void"]
+    "and", "or", "not", "any", "static", "TypeFromExpr", "concept", # xxx bugfix
+    "void", "iterable"]
 
 const preferToResolveSymbols = {preferName, preferTypeName, preferModuleInfo,
   preferGenericArg, preferResolved, preferMixed}
