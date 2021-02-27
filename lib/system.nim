@@ -52,6 +52,7 @@ type
   typed* {.magic: Stmt.}         ## Meta type to denote an expression that
                                  ## is resolved (for templates).
 
+
 include "system/basic_types"
 
 
@@ -122,6 +123,11 @@ proc defined*(x: untyped): bool {.magic: "Defined", noSideEffect, compileTime.}
   ##   when not defined(release):
   ##     # Do here programmer friendly expensive sanity checks.
   ##   # Put here the normal code
+
+when defined(nimHasIterable):
+  type
+    iterable*[T] {.magic: IterableType.}  ## PRTEMP
+    # iterable* {.magic: IterableType.}  ## PRTEMP
 
 when defined(nimHashOrdinalFixed):
   type

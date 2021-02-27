@@ -92,6 +92,7 @@ proc pickBestCandidate(c: PContext, headSymbol: PNode,
     determineType(c, sym)
     initCandidate(c, z, sym, initialBinding, scope, diagnosticsFlag)
     if c.currentScope.symbols.counter == counterInitial or syms.len != 0:
+      # dbg n.renderTree
       matches(c, n, orig, z)
       if z.state == csMatch:
         # little hack so that iterators are preferred over everything else:

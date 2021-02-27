@@ -97,6 +97,8 @@ proc typeAllowedAux(marker: var IntSet, typ: PType, kind: TSymKind,
       result = nil
   of tyUntyped, tyTyped:
     if kind notin {skParam, skResult} or taNoUntyped in flags: result = t
+  of tyIterable:
+    if kind notin {skParam}: result = t
   of tyStatic:
     if kind notin {skParam}: result = t
   of tyVoid:
