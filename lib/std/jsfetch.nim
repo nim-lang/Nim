@@ -2,8 +2,9 @@
 when not defined(js):
   {.fatal: "Module jsfetch is designed to be used with the JavaScript backend.".}
 
-import std/[asyncjs, jsffi, jsheaders, jsformdata]
+import std/[asyncjs, jsheaders, jsformdata]
 from std/httpcore import HttpMethod
+from std/jsffi import JsObject
 
 type
   FetchOptions* = ref object  ## Options for Fetch API.
