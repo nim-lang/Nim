@@ -1422,14 +1422,18 @@ proc typeRel(c: var TCandidate, f, aOrig: PType,
     result = typeRel(c, lastSon(f), a, flags)
 
   of tyIterable:
-    # result = typeRel(c, lastSon(f), a, flags)
-    dbg f, f.len
-    if f.len == 1:
-      result = typeRel(c, lastSon(f), a, flags)
-      # result = isEqual
+    if a.kind == tyIterable:
+      # result = typeRel(c, lastSon(f), a, flags)
+      dbg f, f.len
+      if f.len == 1:
+        # result = typeRel(c, lastSon(f), a, flags)
+        result = typeRel(c, lastSon(f), lastSon(a), flags)
+        # result = isEqual
+      else:
+        # f.len = 3, not sure why
+        result = isGeneric
     else:
-      # f.len = 3, not sure why
-      result = isGeneric
+      doAssert false
 
     # for i in 0..<f.len:
     #   dbg i, f[i]
@@ -2293,13 +2297,17 @@ proc prepareOperand(c: PContext; formal: PType; a: PNode): PNode =
       let flags = {efDetermineType, efWantIterator}
       dbg a.renderTree
       result = c.semOperand(c, a, flags)
-      dbg result.renderTree
-      dbg result.typ
+      # dbg result.renderTree
+      # dbg result.typ
+      # result.typ
+      let typ = newTypeS(tyIterable, c)
+      rawAddSon(typ, result.typ)
+      result.typ = typ
     else:
       # XXX This is unsound! 'formal' can differ from overloaded routine to
       # overloaded routine!
       let flags = {efDetermineType, efAllowStmt}
-                  #if formal.kind == tyIter: {efDetermineType, efWantIterator}
+                  #if formal.kind == tyIterable: {efDetermineType, efWantIterator}
                   #else: {efDetermineType, efAllowStmt}
                   #elif formal.kind == tyTyped: {efDetermineType, efWantStmt}
                   #else: {efDetermineType}
