@@ -190,7 +190,7 @@ proc mergeSections(conf: ConfigRef; comps: seq[seq[DepN]], res: PNode) =
         # their original relative order and make sure to re-merge
         # consecutive type and const sections
         var wmsg = "Circular dependency detected. `codeReordering` pragma may not be able to" &
-          " reorder some nodes properely"
+          " reorder some nodes properly"
         when defined(debugReorder):
           wmsg &= ":\n"
           for i in 0..<cs.len-1:
