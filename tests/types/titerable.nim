@@ -2,11 +2,7 @@ discard """
   targets: "c js"
 """
 
-# xxx move those to stdlib/ttestutils
-template reject(a) =
-  doAssert not compiles(a)
-template accept(a) =
-  doAssert compiles(a)
+from stdtest/testutils import accept, reject, whenVMorJs
 
 # toSeq-like templates
 
@@ -59,10 +55,9 @@ iterator one(T: typedesc): T =
 iterator myiter(n: int): auto =
   for i in 0..<n: yield $(i*2)
 
-iterator iotaClosure(n: int): auto {.closure.} =
-  for i in 0..<n: yield i
-
-# template fn(a: int) = discard
+when not defined(js):
+  iterator iotaClosure(n: int): auto {.closure.} =
+    for i in 0..<n: yield i
 
 template main() =
   #[
@@ -76,8 +71,8 @@ template main() =
   doAssert toSeq2(iota(3)) == expected1
   doAssert toSeq2(one(float)) == @[0.0]
 
-  when nimvm: discard
-  else:
+  whenVMorJs: discard
+  do:
     doAssert toSeq2(iotaClosure(3)) == expected1
 
   # when true:

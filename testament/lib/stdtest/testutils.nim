@@ -79,3 +79,9 @@ template whenVMorJs*(bodyIf, bodyElse) =
   else:
     when defined(js): bodyIf
     else: bodyElse
+
+template accept*(a) =
+  doAssert compiles(a)
+
+template reject*(a) =
+  doAssert not compiles(a)
