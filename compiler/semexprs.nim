@@ -870,9 +870,13 @@ proc semOverloadedCallAnalyseEffects(c: PContext, n: PNode, nOrig: PNode,
     #     result.typ = typ
 
     # dbg result.renderTree
-  # else:
-  #   result = semOverloadedCall(c, n, nOrig,
-  #     {skProc, skFunc, skMethod, skConverter, skMacro, skTemplate}, flags)
+
+  if flags*{efInTypeof, efWantIterator} != {}:
+    result = semOverloadedCall(c, n, nOrig,
+      {skProc, skFunc, skMethod, skConverter, skMacro, skTemplate, skIterator}, flags)
+  else:
+    result = semOverloadedCall(c, n, nOrig,
+      {skProc, skFunc, skMethod, skConverter, skMacro, skTemplate}, flags)
 
   if result != nil:
     if result[0].kind != nkSym:
@@ -888,9 +892,10 @@ proc semOverloadedCallAnalyseEffects(c: PContext, n: PNode, nOrig: PNode,
         # See bug #2051:
         result[0] = newSymNode(errorSym(c, n))
       elif callee.kind == skIterator:
-        if flags*{efInTypeof, efWantIterator} != {}:
-          discard
-        else:
+        # if flags*{efInTypeof, efWantIterator} != {}:
+        #   discard
+        # else:
+        if efWantIterable in flags:
           let typ = newTypeS(tyIterable, c)
           rawAddSon(typ, result.typ)
           result.typ = typ
@@ -1381,6 +1386,7 @@ proc builtinFieldAccess(c: PContext, n: PNode, flags: TExprFlags): PNode =
     onUse(n[1].info, s)
     return
 
+  # efWantIterator, efWantIterable # PRTEMP
   n[0] = semExprWithType(c, n[0], flags+{efDetermineType})
   #restoreOldStyleType(n[0])
   var i = considerQuotedIdent(c, n[1], n)

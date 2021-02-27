@@ -2282,7 +2282,9 @@ proc prepareOperand(c: PContext; formal: PType; a: PNode): PNode =
     result = a
   elif a.typ.isNil:
     if formal.kind == tyIterable:
-      let flags = {efDetermineType, efAllowStmt}
+      # let flags = {efDetermineType, efAllowStmt}
+      # let flags = {efDetermineType, efAllowStmt, efWantIterator}
+      let flags = {efDetermineType, efAllowStmt, efWantIterator, efWantIterable}
       result = c.semOperand(c, a, flags)
     else:
       # XXX This is unsound! 'formal' can differ from overloaded routine to
