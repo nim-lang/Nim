@@ -1420,30 +1420,15 @@ proc typeRel(c: var TCandidate, f, aOrig: PType,
 
   of tyAlias, tySink:
     result = typeRel(c, lastSon(f), a, flags)
-
   of tyIterable:
     if a.kind == tyIterable:
-      # result = typeRel(c, lastSon(f), a, flags)
-      dbg f, f.len
       if f.len == 1:
-        # result = typeRel(c, lastSon(f), a, flags)
         result = typeRel(c, lastSon(f), lastSon(a), flags)
-        # result = isEqual
       else:
         # f.len = 3, not sure why
         result = isGeneric
     else:
       doAssert false
-
-    # for i in 0..<f.len:
-    #   dbg i, f[i]
-    # dbg a
-    # if a.kind == tyIterable:
-    #   result = isEqual # PRTEMP
-    # else:
-    #   result = isEqual # PRTEMP
-    #   # doAssert false
-
   of tyGenericInst:
     var prev = PType(idTableGet(c.bindings, f))
     let origF = f
@@ -2294,12 +2279,10 @@ proc prepareOperand(c: PContext; formal: PType; a: PNode): PNode =
     result = a
   elif a.typ.isNil:
     if formal.kind == tyIterable:
-      let flags = {efDetermineType, efWantIterator}
-      dbg a.renderTree
+      # PRTEMP
+      # let flags = {efDetermineType, efWantIterator}
+      let flags = {efWantIterator}
       result = c.semOperand(c, a, flags)
-      # dbg result.renderTree
-      # dbg result.typ
-      # result.typ
       let typ = newTypeS(tyIterable, c)
       rawAddSon(typ, result.typ)
       result.typ = typ

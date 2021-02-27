@@ -853,7 +853,11 @@ proc semStaticExpr(c: PContext, n: PNode): PNode =
 
 proc semOverloadedCallAnalyseEffects(c: PContext, n: PNode, nOrig: PNode,
                                      flags: TExprFlags): PNode =
-  if flags*{efInTypeof, efWantIterator} != {}:
+  if efWantIteratorOnly in flags:
+    result = semOverloadedCall(c, n, nOrig,
+      {skIterator}, flags) # PRTEMP
+      # {skMacro, skTemplate, skIterator}, flags)
+  elif flags*{efInTypeof, efWantIterator} != {}:
     # consider: 'for x in pReturningArray()' --> we don't want the restriction
     # to 'skIterator' anymore; skIterator is preferred in sigmatch already
     # for typeof support.
