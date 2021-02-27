@@ -291,7 +291,6 @@ proc semRange(c: PContext, n: PNode, prev: PType): PType =
     result = newOrPrevType(tyError, prev, c)
 
 proc semArrayIndex(c: PContext, n: PNode): PType =
-  # dbg n, isRange(n)
   if isRange(n):
     result = semRangeAux(c, n, nil)
   else:

@@ -96,17 +96,10 @@ proc pickBestCandidate(c: PContext, headSymbol: PNode,
       if z.state == csMatch:
         # little hack so that iterators are preferred over everything else:
         if sym.kind == skIterator:
-          # if efWantIterator in flags and efWantIterable notin flags:
-          # if efWantIterator notin flags and efWantIterable in flags:
           if not (efWantIterator notin flags and efWantIterable in flags):
-          # if true:
             inc(z.exactMatches, 200)
           else:
             dec(z.exactMatches, 200)
-        # if sym.kind == skIterator:
-        #   dbg sym, headSymbol, n, orig, flags
-          # inc(z.exactMatches, 200)
-        # if sym.kind == skIterator: dec(z.exactMatches, 200)
         case best.state
         of csEmpty, csNoMatch: best = z
         of csMatch:

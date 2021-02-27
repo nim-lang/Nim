@@ -20,11 +20,7 @@ template dollarImpl(x: uint | uint64, result: var string) =
 
     let half = i div 2
     # Reverse
-    for t in 0 .. half-1:
-      swap(
-        result[t],
-        result[i-t-1]
-        )
+    for t in 0 .. half-1: swap(result[t], result[i-t-1])
 
 
 when defined(js):

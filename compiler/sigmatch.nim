@@ -1121,7 +1121,6 @@ proc typeRel(c: var TCandidate, f, aOrig: PType,
 
   of tyIterable:
     if f.kind != tyIterable: return isNone
-
   of tyNot:
     case f.kind
     of tyNot:
@@ -1150,7 +1149,7 @@ proc typeRel(c: var TCandidate, f, aOrig: PType,
       if x >= isGeneric:
         return isGeneric
   else: discard
-  
+
   case f.kind
   of tyEnum:
     if a.kind == f.kind and sameEnumTypes(f, a): result = isEqual
@@ -1423,12 +1422,13 @@ proc typeRel(c: var TCandidate, f, aOrig: PType,
 
   of tyAlias, tySink:
     result = typeRel(c, lastSon(f), a, flags)
+
   of tyIterable:
     if a.kind == tyIterable:
       if f.len == 1:
         result = typeRel(c, lastSon(f), lastSon(a), flags)
       else:
-        # f.len = 3, not sure why
+        # f.len = 3, for some reason
         result = isGeneric
     else:
       result = isNone
@@ -2282,9 +2282,6 @@ proc prepareOperand(c: PContext; formal: PType; a: PNode): PNode =
     result = a
   elif a.typ.isNil:
     if formal.kind == tyIterable:
-      # let flags = {efDetermineType, efAllowStmt}
-      # let flags = {efDetermineType, efAllowStmt, efWantIterator}
-      # dbg formal
       let flags = {efDetermineType, efAllowStmt, efWantIterator, efWantIterable}
       result = c.semOperand(c, a, flags)
     else:

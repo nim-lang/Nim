@@ -853,26 +853,11 @@ proc semStaticExpr(c: PContext, n: PNode): PNode =
 
 proc semOverloadedCallAnalyseEffects(c: PContext, n: PNode, nOrig: PNode,
                                      flags: TExprFlags): PNode =
-  # if true:
-  when false:
+  if flags*{efInTypeof, efWantIterator, efWantIterable} != {}:
     # consider: 'for x in pReturningArray()' --> we don't want the restriction
     # to 'skIterator' anymore; skIterator is preferred in sigmatch already
     # for typeof support.
     # for ``typeof(countup(1,3))``, see ``tests/ttoseq``.
-    result = semOverloadedCall(c, n, nOrig,
-      {skProc, skFunc, skMethod, skConverter, skMacro, skTemplate, skIterator}, flags)
-
-    # dbg result.kind
-    # dbg result[0].kind
-    # if result[0].kind == skSym:
-    #   if result[0].sym.kind == skIterator:
-    #     let typ = newTypeS(tyIterable, c)
-    #     rawAddSon(typ, result.typ)
-    #     result.typ = typ
-
-    # dbg result.renderTree
-
-  if flags*{efInTypeof, efWantIterator, efWantIterable} != {}:
     result = semOverloadedCall(c, n, nOrig,
       {skProc, skFunc, skMethod, skConverter, skMacro, skTemplate, skIterator}, flags)
   else:
@@ -893,9 +878,6 @@ proc semOverloadedCallAnalyseEffects(c: PContext, n: PNode, nOrig: PNode,
         # See bug #2051:
         result[0] = newSymNode(errorSym(c, n))
       elif callee.kind == skIterator:
-        # if flags*{efInTypeof, efWantIterator} != {}:
-        #   discard
-        # else:
         if efWantIterable in flags:
           let typ = newTypeS(tyIterable, c)
           rawAddSon(typ, result.typ)
@@ -1048,7 +1030,6 @@ proc semDirectOp(c: PContext, n: PNode, flags: TExprFlags): PNode =
   # this seems to be a hotspot in the compiler!
   let nOrig = n.copyTree
   #semLazyOpAux(c, n)
-  # dbg flags, nOrig
   result = semOverloadedCallAnalyseEffects(c, n, nOrig, flags)
   if result != nil: result = afterCallActions(c, result, nOrig, flags)
   else: result = errorNode(c, n)
@@ -1388,9 +1369,6 @@ proc builtinFieldAccess(c: PContext, n: PNode, flags: TExprFlags): PNode =
     onUse(n[1].info, s)
     return
 
-  # efWantIterator, efWantIterable # PRTEMP
-  # n[0] = semExprWithType(c, n[0], flags+{efDetermineType})
-  # n[0] = semExprWithType(c, n[0], flags+{efDetermineType, efWantIterator, efWantIterable})
   n[0] = semExprWithType(c, n[0], flags+{efDetermineType, efWantIterable})
   #restoreOldStyleType(n[0])
   var i = considerQuotedIdent(c, n[1], n)
@@ -1504,7 +1482,6 @@ proc semDeref(c: PContext, n: PNode): PNode =
 proc semSubscript(c: PContext, n: PNode, flags: TExprFlags): PNode =
   ## returns nil if not a built-in subscript operator; also called for the
   ## checking of assignments
-  # dbg n, flags, n.len
   if n.len == 1:
     let x = semDeref(c, n)
     if x == nil: return nil
@@ -1527,7 +1504,6 @@ proc semSubscript(c: PContext, n: PNode, flags: TExprFlags): PNode =
     else:
       arr = arr.base
 
-  # dbg arr.kind
   case arr.kind
   of tyArray, tyOpenArray, tyVarargs, tySequence, tyString, tyCString,
     tyUncheckedArray:
@@ -1536,8 +1512,6 @@ proc semSubscript(c: PContext, n: PNode, flags: TExprFlags): PNode =
     for i in 1..<n.len:
       n[i] = semExprWithType(c, n[i],
                                   flags*{efInTypeof, efDetermineType})
-      # dbg n[i]
-    # dbg n[1].typ
     # Arrays index type is dictated by the range's type
     if arr.kind == tyArray:
       var indexType = arr[0]
@@ -1551,7 +1525,6 @@ proc semSubscript(c: PContext, n: PNode, flags: TExprFlags): PNode =
         {tyInt..tyInt64, tyUInt..tyUInt64}:
       result = n
       result.typ = elemType(arr)
-      # dbg result.typ
   of tyTypeDesc:
     # The result so far is a tyTypeDesc bound
     # a tyGenericBody. The line below will substitute
