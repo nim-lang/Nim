@@ -1119,6 +1119,9 @@ proc typeRel(c: var TCandidate, f, aOrig: PType,
         return if x >= isGeneric: isGeneric else: x
     return isNone
 
+  of tyIterable:
+    if f.kind != tyIterable: return isNone
+
   of tyNot:
     case f.kind
     of tyNot:
@@ -1147,7 +1150,7 @@ proc typeRel(c: var TCandidate, f, aOrig: PType,
       if x >= isGeneric:
         return isGeneric
   else: discard
-
+  
   case f.kind
   of tyEnum:
     if a.kind == f.kind and sameEnumTypes(f, a): result = isEqual
@@ -1429,14 +1432,6 @@ proc typeRel(c: var TCandidate, f, aOrig: PType,
         # f.len = 3, not sure why
         result = isGeneric
     else:
-      # PRTEMP; + dedup
-      # if f.len == 1:
-      #   result = typeRel(c, lastSon(f), lastSon(a), flags)
-      # else:
-      #   # f.len = 3, not sure why
-      #   result = isGeneric
-      # dbg f, a, a.kind, f.kind
-      # doAssert false
       result = isNone
   of tyGenericInst:
     var prev = PType(idTableGet(c.bindings, f))
