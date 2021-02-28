@@ -166,7 +166,7 @@ when defined(nimdoc):
     ## this thread will only be initialized once per thread, no matter how often
     ## it is called.
     ##
-    ## This function is available only when `--threads:on` and ``--tlsEmulation:off``
+    ## This function is available only when `--threads:on` and `--tlsEmulation:off`
     ## switches are used
     discard
 
@@ -175,7 +175,7 @@ when defined(nimdoc):
     ## If GC has not been previously initialized, or has already been torn down, the
     ## call does nothing.
     ##
-    ## This function is available only when `--threads:on` and ``--tlsEmulation:off``
+    ## This function is available only when `--threads:on` and `--tlsEmulation:off`
     ## switches are used
     discard
 elif declared(threadType):

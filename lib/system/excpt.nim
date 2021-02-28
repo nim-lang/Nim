@@ -351,7 +351,7 @@ var onUnhandledException*: (proc (errorMsg: string) {.
   nimcall, gcsafe.}) ## Set this error \
   ## handler to override the existing behaviour on an unhandled exception.
   ##
-  ## The default is to write a stacktrace to `stderr` and then call ``quit(1)``.
+  ## The default is to write a stacktrace to `stderr` and then call `quit(1)`.
   ## Unstable API.
 
 proc reportUnhandledErrorAux(e: ref Exception) {.nodestroy.} =

@@ -76,7 +76,7 @@ proc `$`*(x: cstring): string {.magic: "CStrToStr", noSideEffect.}
 proc `$`*(x: string): string {.magic: "StrToStr", noSideEffect.}
   ## The stringify operator for a string argument. Returns `x`
   ## as it is. This operator is useful for generic code, so
-  ## that `$expr` also works if ``expr`` is already a string.
+  ## that `$expr` also works if `expr` is already a string.
 
 proc `$`*[Enum: enum](x: Enum): string {.magic: "EnumToStr", noSideEffect.}
   ## The stringify operator for an enumeration argument. This works for

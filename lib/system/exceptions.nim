@@ -52,7 +52,7 @@ type
   Defect* = object of Exception ## \
     ## Abstract base class for all exceptions that Nim's runtime raises
     ## but that are strictly uncatchable as they can also be mapped to
-    ## a `quit` / ``trap`` / ``exit`` operation.
+    ## a `quit` / `trap` / `exit` operation.
 
   CatchableError* = object of Exception ## \
     ## Abstract class for all exceptions that are catchable.

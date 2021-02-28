@@ -169,7 +169,7 @@ proc readBuffer*(f: File, buffer: pointer, len: Natural): int {.
 
 proc readBytes*(f: File, a: var openArray[int8|uint8], start, len: Natural): int {.
   tags: [ReadIOEffect], benign.} =
-  ## reads `len` bytes into the buffer `a` starting at ``a[start]``. Returns
+  ## reads `len` bytes into the buffer `a` starting at `a[start]`. Returns
   ## the actual number of bytes that have been read which may be less than
   ## `len` (if not as many bytes are remaining), but not greater.
   result = readBuffer(f, addr(a[start]), len)
@@ -183,7 +183,7 @@ proc readChars*(f: File, a: var openArray[char]): int {.tags: [ReadIOEffect], be
 proc readChars*(f: File, a: var openArray[char], start, len: Natural): int {.
   tags: [ReadIOEffect], benign, deprecated:
     "use other `readChars` overload, possibly via: readChars(toOpenArray(buf, start, len-1))".} =
-  ## reads `len` bytes into the buffer `a` starting at ``a[start]``. Returns
+  ## reads `len` bytes into the buffer `a` starting at `a[start]`. Returns
   ## the actual number of bytes that have been read which may be less than
   ## `len` (if not as many bytes are remaining), but not greater.
   if (start + len) > len(a):
@@ -366,7 +366,7 @@ proc readLine*(f: File, line: var string): bool {.tags: [ReadIOEffect],
               benign.} =
   ## reads a line of text from the file `f` into `line`. May throw an IO
   ## exception.
-  ## A line of text may be delimited by `LF` or ``CRLF``. The newline
+  ## A line of text may be delimited by `LF` or `CRLF`. The newline
   ## character(s) are not part of the returned string. Returns `false`
   ## if the end of the file has been reached, `true` otherwise. If
   ## `false` is returned `line` contains no new data.
@@ -485,7 +485,7 @@ proc readLine*(f: File, line: var string): bool {.tags: [ReadIOEffect],
 
 proc readLine*(f: File): string  {.tags: [ReadIOEffect], benign.} =
   ## reads a line of text from the file `f`. May throw an IO exception.
-  ## A line of text may be delimited by `LF` or ``CRLF``. The newline
+  ## A line of text may be delimited by `LF` or `CRLF`. The newline
   ## character(s) are not part of the returned string.
   result = newStringOfCap(80)
   if not readLine(f, result): raiseEOF()
@@ -889,7 +889,7 @@ proc writeFile*(filename: string, content: openArray[byte]) {.since: (1, 1).} =
 proc readLines*(filename: string, n: Natural): seq[string] =
   ## read `n` lines from the file named `filename`. Raises an IO exception
   ## in case of an error. Raises EOF if file does not contain at least `n` lines.
-  ## Available at compile time. A line of text may be delimited by `LF` or ``CRLF``.
+  ## Available at compile time. A line of text may be delimited by `LF` or `CRLF`.
   ## The newline character(s) are not part of the returned strings.
   var f: File = nil
   if open(f, filename):
