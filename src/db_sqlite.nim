@@ -35,7 +35,7 @@
 ##
 ## .. code-block:: Nim
 ##
-##    import db_sqlite
+##    import std/db_sqlite
 ##
 ##    # user, password, database name can be empty.
 ##    # These params are not used on db_sqlite module.
@@ -66,7 +66,7 @@
 ##
 ## .. code-block:: nim
 ##
-##    import db_sqlite, math
+##    import std/[db_sqlite, math]
 ##
 ##    let db = open("mytest.db", "", "", "")
 ##
@@ -99,7 +99,7 @@
 ##
 ## .. code-block:: nim
 ##
-##   import random
+##   import std/random
 ##
 ##   ## Generate random float datas
 ##   var orig = newSeq[float64](150)
