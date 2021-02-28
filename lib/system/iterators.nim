@@ -138,7 +138,7 @@ iterator pairs*[T](a: openArray[T]): tuple[key: int, val: T] {.inline.} =
 
 iterator mpairs*[T](a: var openArray[T]): tuple[key: int, val: var T]{.inline.} =
   ## Iterates over each item of `a`. Yields ``(index, a[index])`` pairs.
-  ## ``a[index]`` can be modified.
+  ## `a[index]` can be modified.
   var i = 0
   while i < len(a):
     yield (i, a[i])
@@ -155,7 +155,7 @@ iterator pairs*[IX, T](a: array[IX, T]): tuple[key: IX, val: T] {.inline.} =
 
 iterator mpairs*[IX, T](a: var array[IX, T]): tuple[key: IX, val: var T] {.inline.} =
   ## Iterates over each item of `a`. Yields ``(index, a[index])`` pairs.
-  ## ``a[index]`` can be modified.
+  ## `a[index]` can be modified.
   var i = low(IX)
   if i <= high(IX):
     while true:
@@ -174,7 +174,7 @@ iterator pairs*[T](a: seq[T]): tuple[key: int, val: T] {.inline.} =
 
 iterator mpairs*[T](a: var seq[T]): tuple[key: int, val: var T] {.inline.} =
   ## Iterates over each item of `a`. Yields ``(index, a[index])`` pairs.
-  ## ``a[index]`` can be modified.
+  ## `a[index]` can be modified.
   var i = 0
   let L = len(a)
   while i < L:
@@ -193,7 +193,7 @@ iterator pairs*(a: string): tuple[key: int, val: char] {.inline.} =
 
 iterator mpairs*(a: var string): tuple[key: int, val: var char] {.inline.} =
   ## Iterates over each item of `a`. Yields ``(index, a[index])`` pairs.
-  ## ``a[index]`` can be modified.
+  ## `a[index]` can be modified.
   var i = 0
   let L = len(a)
   while i < L:
@@ -217,7 +217,7 @@ iterator pairs*(a: cstring): tuple[key: int, val: char] {.inline.} =
 
 iterator mpairs*(a: var cstring): tuple[key: int, val: var char] {.inline.} =
   ## Iterates over each item of `a`. Yields ``(index, a[index])`` pairs.
-  ## ``a[index]`` can be modified.
+  ## `a[index]` can be modified.
   when defined(js):
     var i = 0
     var L = len(a)
@@ -297,10 +297,10 @@ iterator fieldPairs*[T: tuple|object](x: T): tuple[key: string, val: RootObj] {.
   ## Iterates over every field of `x` returning their name and value.
   ##
   ## When you iterate over objects with different field types you have to use
-  ## the compile time ``when`` instead of a runtime ``if`` to select the code
+  ## the compile time `when` instead of a runtime ``if`` to select the code
   ## you want to run for each type. To perform the comparison use the `is
   ## operator <manual.html#generics-is-operator>`_.
-  ## Another way to do the same without ``when`` is to leave the task of
+  ## Another way to do the same without `when` is to leave the task of
   ## picking the appropriate code to a secondary proc which you overload for
   ## each field type and pass the `value` to.
   ##

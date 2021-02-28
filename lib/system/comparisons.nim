@@ -126,15 +126,15 @@ proc `<`*[T](x, y: ptr T): bool {.magic: "LtPtr", noSideEffect.}
 proc `<`*(x, y: pointer): bool {.magic: "LtPtr", noSideEffect.}
 
 template `!=`*(x, y: untyped): untyped =
-  ## Unequals operator. This is a shorthand for ``not (x == y)``.
+  ## Unequals operator. This is a shorthand for `not (x == y)`.
   not (x == y)
 
 template `>=`*(x, y: untyped): untyped =
-  ## "is greater or equals" operator. This is the same as ``y <= x``.
+  ## "is greater or equals" operator. This is the same as `y <= x`.
   y <= x
 
 template `>`*(x, y: untyped): untyped =
-  ## "is greater" operator. This is the same as ``y < x``.
+  ## "is greater" operator. This is the same as `y < x`.
   y < x
 
 
@@ -160,14 +160,14 @@ proc `<`*(x, y: int32): bool {.magic: "LtI", noSideEffect.}
 proc `<`*(x, y: int64): bool {.magic: "LtI", noSideEffect.}
 
 proc `<=`*(x, y: uint): bool {.magic: "LeU", noSideEffect.}
-  ## Returns true if ``x <= y``.
+  ## Returns true if `x <= y`.
 proc `<=`*(x, y: uint8): bool {.magic: "LeU", noSideEffect.}
 proc `<=`*(x, y: uint16): bool {.magic: "LeU", noSideEffect.}
 proc `<=`*(x, y: uint32): bool {.magic: "LeU", noSideEffect.}
 proc `<=`*(x, y: uint64): bool {.magic: "LeU", noSideEffect.}
 
 proc `<`*(x, y: uint): bool {.magic: "LtU", noSideEffect.}
-  ## Returns true if ``x < y``.
+  ## Returns true if `x < y`.
 proc `<`*(x, y: uint8): bool {.magic: "LtU", noSideEffect.}
 proc `<`*(x, y: uint16): bool {.magic: "LtU", noSideEffect.}
 proc `<`*(x, y: uint32): bool {.magic: "LtU", noSideEffect.}
@@ -175,7 +175,7 @@ proc `<`*(x, y: uint64): bool {.magic: "LtU", noSideEffect.}
 
 proc `<=%`*(x, y: int): bool {.inline.} =
   ## Treats `x` and `y` as unsigned and compares them.
-  ## Returns true if ``unsigned(x) <= unsigned(y)``.
+  ## Returns true if `unsigned(x) <= unsigned(y)`.
   cast[uint](x) <= cast[uint](y)
 proc `<=%`*(x, y: int8): bool {.inline.} = cast[uint8](x) <= cast[uint8](y)
 proc `<=%`*(x, y: int16): bool {.inline.} = cast[uint16](x) <= cast[uint16](y)
@@ -184,7 +184,7 @@ proc `<=%`*(x, y: int64): bool {.inline.} = cast[uint64](x) <= cast[uint64](y)
 
 proc `<%`*(x, y: int): bool {.inline.} =
   ## Treats `x` and `y` as unsigned and compares them.
-  ## Returns true if ``unsigned(x) < unsigned(y)``.
+  ## Returns true if `unsigned(x) < unsigned(y)`.
   cast[uint](x) < cast[uint](y)
 proc `<%`*(x, y: int8): bool {.inline.} = cast[uint8](x) < cast[uint8](y)
 proc `<%`*(x, y: int16): bool {.inline.} = cast[uint16](x) < cast[uint16](y)
@@ -193,11 +193,11 @@ proc `<%`*(x, y: int64): bool {.inline.} = cast[uint64](x) < cast[uint64](y)
 
 template `>=%`*(x, y: untyped): untyped = y <=% x
   ## Treats `x` and `y` as unsigned and compares them.
-  ## Returns true if ``unsigned(x) >= unsigned(y)``.
+  ## Returns true if `unsigned(x) >= unsigned(y)`.
 
 template `>%`*(x, y: untyped): untyped = y <% x
   ## Treats `x` and `y` as unsigned and compares them.
-  ## Returns true if ``unsigned(x) > unsigned(y)``.
+  ## Returns true if `unsigned(x) > unsigned(y)`.
 
 proc `==`*(x, y: uint): bool {.magic: "EqI", noSideEffect.}
   ## Compares two unsigned integers for equality.
