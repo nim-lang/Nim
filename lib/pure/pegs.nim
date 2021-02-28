@@ -276,32 +276,32 @@ proc newLine*: Peg {.inline.} =
   result = Peg(kind: pkNewLine)
 
 proc unicodeLetter*: Peg {.inline.} =
-  ## constructs the PEG ``\letter`` which matches any Unicode letter.
+  ## constructs the PEG `\letter` which matches any Unicode letter.
   result = Peg(kind: pkLetter)
 
 proc unicodeLower*: Peg {.inline.} =
-  ## constructs the PEG ``\lower`` which matches any Unicode lowercase letter.
+  ## constructs the PEG `\lower` which matches any Unicode lowercase letter.
   result = Peg(kind: pkLower)
 
 proc unicodeUpper*: Peg {.inline.} =
-  ## constructs the PEG ``\upper`` which matches any Unicode uppercase letter.
+  ## constructs the PEG `\upper` which matches any Unicode uppercase letter.
   result = Peg(kind: pkUpper)
 
 proc unicodeTitle*: Peg {.inline.} =
-  ## constructs the PEG ``\title`` which matches any Unicode title letter.
+  ## constructs the PEG `\title` which matches any Unicode title letter.
   result = Peg(kind: pkTitle)
 
 proc unicodeWhitespace*: Peg {.inline.} =
-  ## constructs the PEG ``\white`` which matches any Unicode
+  ## constructs the PEG `\white` which matches any Unicode
   ## whitespace character.
   result = Peg(kind: pkWhitespace)
 
 proc startAnchor*: Peg {.inline.} =
-  ## constructs the PEG ``^`` which matches the start of the input.
+  ## constructs the PEG `^` which matches the start of the input.
   result = Peg(kind: pkStartAnchor)
 
 proc endAnchor*: Peg {.inline.} =
-  ## constructs the PEG ``$`` which matches the end of the input.
+  ## constructs the PEG `$` which matches the end of the input.
   result = !any()
 
 proc capture*(a: Peg): Peg {.noSideEffect, rtl, extern: "npegsCapture".} =
@@ -357,32 +357,32 @@ proc newNonTerminal*(name: string, line, column: int): NonTerminal {.
   result = NonTerminal(name: name, line: line, col: column)
 
 template letters*: Peg =
-  ## expands to ``charset({'A'..'Z', 'a'..'z'})``
+  ## expands to `charset({'A'..'Z', 'a'..'z'})`
   charSet({'A'..'Z', 'a'..'z'})
 
 template digits*: Peg =
-  ## expands to ``charset({'0'..'9'})``
+  ## expands to `charset({'0'..'9'})`
   charSet({'0'..'9'})
 
 template whitespace*: Peg =
-  ## expands to ``charset({' ', '\9'..'\13'})``
+  ## expands to `charset({' ', '\9'..'\13'})`
   charSet({' ', '\9'..'\13'})
 
 template identChars*: Peg =
-  ## expands to ``charset({'a'..'z', 'A'..'Z', '0'..'9', '_'})``
+  ## expands to `charset({'a'..'z', 'A'..'Z', '0'..'9', '_'})`
   charSet({'a'..'z', 'A'..'Z', '0'..'9', '_'})
 
 template identStartChars*: Peg =
-  ## expands to ``charset({'A'..'Z', 'a'..'z', '_'})``
+  ## expands to `charset({'A'..'Z', 'a'..'z', '_'})`
   charSet({'a'..'z', 'A'..'Z', '_'})
 
 template ident*: Peg =
-  ## same as ``[a-zA-Z_][a-zA-z_0-9]*``; standard identifier
+  ## same as `[a-zA-Z_][a-zA-z_0-9]*`; standard identifier
   sequence(charSet({'a'..'z', 'A'..'Z', '_'}),
            *charSet({'a'..'z', 'A'..'Z', '0'..'9', '_'}))
 
 template natural*: Peg =
-  ## same as ``\d+``
+  ## same as `\d+`
   +digits
 
 # ------------------------- debugging -----------------------------------------
@@ -534,7 +534,7 @@ type
 
 proc bounds*(c: Captures,
              i: range[0..MaxSubpatterns-1]): tuple[first, last: int] =
-  ## returns the bounds ``[first..last]`` of the `i`'th capture.
+  ## returns the bounds `[first..last]` of the `i`'th capture.
   result = c.matches[i]
 
 when not useUnicode:
@@ -1062,7 +1062,7 @@ template fillMatches(s, caps, c) =
 
 proc matchLen*(s: string, pattern: Peg, matches: var openArray[string],
                start = 0): int {.noSideEffect, rtl, extern: "npegs$1Capture".} =
-  ## the same as ``match``, but it returns the length of the match,
+  ## the same as `match`, but it returns the length of the match,
   ## if there is no match, -1 is returned. Note that a match length
   ## of zero can happen. It's possible that a suffix of `s` remains
   ## that does not belong to the match.
@@ -1073,7 +1073,7 @@ proc matchLen*(s: string, pattern: Peg, matches: var openArray[string],
 
 proc matchLen*(s: string, pattern: Peg,
                start = 0): int {.noSideEffect, rtl, extern: "npegs$1".} =
-  ## the same as ``match``, but it returns the length of the match,
+  ## the same as `match`, but it returns the length of the match,
   ## if there is no match, -1 is returned. Note that a match length
   ## of zero can happen. It's possible that a suffix of `s` remains
   ## that does not belong to the match.
@@ -1083,23 +1083,23 @@ proc matchLen*(s: string, pattern: Peg,
 
 proc match*(s: string, pattern: Peg, matches: var openArray[string],
             start = 0): bool {.noSideEffect, rtl, extern: "npegs$1Capture".} =
-  ## returns ``true`` if ``s[start..]`` matches the ``pattern`` and
-  ## the captured substrings in the array ``matches``. If it does not
-  ## match, nothing is written into ``matches`` and ``false`` is
+  ## returns `true` if ``s[start..]`` matches the ``pattern`` and
+  ## the captured substrings in the array `matches`. If it does not
+  ## match, nothing is written into `matches` and ``false`` is
   ## returned.
   result = matchLen(s, pattern, matches, start) != -1
 
 proc match*(s: string, pattern: Peg,
             start = 0): bool {.noSideEffect, rtl, extern: "npegs$1".} =
-  ## returns ``true`` if ``s`` matches the ``pattern`` beginning from ``start``.
+  ## returns `true` if ``s`` matches the ``pattern`` beginning from ``start``.
   result = matchLen(s, pattern, start) != -1
 
 
 proc find*(s: string, pattern: Peg, matches: var openArray[string],
            start = 0): int {.noSideEffect, rtl, extern: "npegs$1Capture".} =
-  ## returns the starting position of ``pattern`` in ``s`` and the captured
-  ## substrings in the array ``matches``. If it does not match, nothing
-  ## is written into ``matches`` and -1 is returned.
+  ## returns the starting position of `pattern` in ``s`` and the captured
+  ## substrings in the array `matches`. If it does not match, nothing
+  ## is written into `matches` and -1 is returned.
   var c: Captures
   c.origStart = start
   for i in start .. s.len-1:
@@ -1113,10 +1113,10 @@ proc find*(s: string, pattern: Peg, matches: var openArray[string],
 proc findBounds*(s: string, pattern: Peg, matches: var openArray[string],
                  start = 0): tuple[first, last: int] {.
                  noSideEffect, rtl, extern: "npegs$1Capture".} =
-  ## returns the starting position and end position of ``pattern`` in ``s``
+  ## returns the starting position and end position of `pattern` in ``s``
   ## and the captured
-  ## substrings in the array ``matches``. If it does not match, nothing
-  ## is written into ``matches`` and (-1,0) is returned.
+  ## substrings in the array `matches`. If it does not match, nothing
+  ## is written into `matches` and (-1,0) is returned.
   var c: Captures
   c.origStart = start
   for i in start .. s.len-1:
@@ -1129,7 +1129,7 @@ proc findBounds*(s: string, pattern: Peg, matches: var openArray[string],
 
 proc find*(s: string, pattern: Peg,
            start = 0): int {.noSideEffect, rtl, extern: "npegs$1".} =
-  ## returns the starting position of ``pattern`` in ``s``. If it does not
+  ## returns the starting position of `pattern` in ``s``. If it does not
   ## match, -1 is returned.
   var c: Captures
   c.origStart = start
@@ -1159,8 +1159,8 @@ proc findAll*(s: string, pattern: Peg, start = 0): seq[string] {.
   for it in findAll(s, pattern, start): result.add it
 
 template `=~`*(s: string, pattern: Peg): bool =
-  ## This calls ``match`` with an implicit declared ``matches`` array that
-  ## can be used in the scope of the ``=~`` call:
+  ## This calls `match` with an implicit declared ``matches`` array that
+  ## can be used in the scope of the `=~` call:
   ##
   ## .. code-block:: nim
   ##
@@ -1170,8 +1170,8 @@ template `=~`*(s: string, pattern: Peg): bool =
   ##     echo("Value: ", matches[1])
   ##   elif line =~ peg"\s*{'#'.*}":
   ##     # matches a comment
-  ##     # note that the implicit ``matches`` array is different from the
-  ##     # ``matches`` array of the first branch
+  ##     # note that the implicit `matches` array is different from the
+  ##     # `matches` array of the first branch
   ##     echo("comment: ", matches[0])
   ##   else:
   ##     echo("syntax error")
@@ -1185,12 +1185,12 @@ template `=~`*(s: string, pattern: Peg): bool =
 
 proc contains*(s: string, pattern: Peg, start = 0): bool {.
   noSideEffect, rtl, extern: "npegs$1".} =
-  ## same as ``find(s, pattern, start) >= 0``
+  ## same as `find(s, pattern, start) >= 0`
   return find(s, pattern, start) >= 0
 
 proc contains*(s: string, pattern: Peg, matches: var openArray[string],
               start = 0): bool {.noSideEffect, rtl, extern: "npegs$1Capture".} =
-  ## same as ``find(s, pattern, matches, start) >= 0``
+  ## same as `find(s, pattern, matches, start) >= 0`
   return find(s, pattern, matches, start) >= 0
 
 proc startsWith*(s: string, prefix: Peg, start = 0): bool {.
@@ -1209,7 +1209,7 @@ proc endsWith*(s: string, suffix: Peg, start = 0): bool {.
 proc replacef*(s: string, sub: Peg, by: string): string {.
   noSideEffect, rtl, extern: "npegs$1".} =
   ## Replaces `sub` in `s` by the string `by`. Captures can be accessed in `by`
-  ## with the notation ``$i`` and ``$#`` (see strutils.`%`). Examples:
+  ## with the notation `$i` and ``$#`` (see strutils.`%`). Examples:
   ##
   ## .. code-block:: nim
   ##   "var1=key; var2=key2".replacef(peg"{\ident}'='{\ident}", "$1<-$2$2")

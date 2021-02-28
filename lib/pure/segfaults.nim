@@ -8,7 +8,7 @@
 #
 
 ## This modules registers a signal handler that turns access violations /
-## segfaults into a ``NilAccessDefect`` exception. To be able to catch
+## segfaults into a `NilAccessDefect` exception. To be able to catch
 ## a NilAccessDefect all you have to do is to import this module.
 ##
 ## Tested on these OSes: Linux, Windows, OSX
