@@ -166,16 +166,16 @@ when defined(nimdoc):
     ## this thread will only be initialized once per thread, no matter how often
     ## it is called.
     ##
-    ## This function is available only when ``--threads:on`` and ``--tlsEmulation:off``
+    ## This function is available only when `--threads:on` and `--tlsEmulation:off`
     ## switches are used
     discard
 
   proc tearDownForeignThreadGc*() {.gcsafe.} =
-    ## Call this to tear down the GC, previously initialized by ``setupForeignThreadGc``.
+    ## Call this to tear down the GC, previously initialized by `setupForeignThreadGc`.
     ## If GC has not been previously initialized, or has already been torn down, the
     ## call does nothing.
     ##
-    ## This function is available only when ``--threads:on`` and ``--tlsEmulation:off``
+    ## This function is available only when `--threads:on` and `--tlsEmulation:off`
     ## switches are used
     discard
 elif declared(threadType):
@@ -432,10 +432,10 @@ proc prepareDealloc(cell: PCell) =
   decTypeSize(cell, t)
 
 proc deallocHeap*(runFinalizers = true; allowGcAfterwards = true) =
-  ## Frees the thread local heap. Runs every finalizer if ``runFinalizers``
-  ## is true. If ``allowGcAfterwards`` is true, a minimal amount of allocation
+  ## Frees the thread local heap. Runs every finalizer if `runFinalizers`
+  ## is true. If `allowGcAfterwards` is true, a minimal amount of allocation
   ## happens to ensure the GC can continue to work after the call
-  ## to ``deallocHeap``.
+  ## to `deallocHeap`.
   template deallocCell(x) =
     if isCell(x):
       # cast to PCell is correct here:
