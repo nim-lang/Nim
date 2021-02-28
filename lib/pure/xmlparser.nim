@@ -100,7 +100,7 @@ proc parse(x: var XmlParser, errors: var seq[string]): XmlNode =
 
 proc parseXml*(s: Stream, filename: string,
                errors: var seq[string], options: set[XmlParseOption] = {reportComments}): XmlNode =
-  ## Parses the XML from stream `s` and returns a ``XmlNode``. Every
+  ## Parses the XML from stream `s` and returns a `XmlNode`. Every
   ## occurred parsing error is added to the `errors` sequence.
   var x: XmlParser
   open(x, s, filename, options)
@@ -119,20 +119,20 @@ proc parseXml*(s: Stream, filename: string,
   close(x)
 
 proc parseXml*(s: Stream, options: set[XmlParseOption] = {reportComments}): XmlNode =
-  ## Parses the XML from stream `s` and returns a ``XmlNode``. All parsing
+  ## Parses the XML from stream `s` and returns a `XmlNode`. All parsing
   ## errors are turned into an `XmlError` exception.
   var errors: seq[string] = @[]
   result = parseXml(s, "unknown_xml_doc", errors, options)
   if errors.len > 0: raiseInvalidXml(errors)
 
 proc parseXml*(str: string, options: set[XmlParseOption] = {reportComments}): XmlNode =
-  ## Parses the XML from string `str` and returns a ``XmlNode``. All parsing
+  ## Parses the XML from string `str` and returns a `XmlNode`. All parsing
   ## errors are turned into an `XmlError` exception.
   parseXml(newStringStream(str), options)
 
 proc loadXml*(path: string, errors: var seq[string], options: set[XmlParseOption] = {reportComments}): XmlNode =
   ## Loads and parses XML from file specified by `path`, and returns
-  ## a `XmlNode`. Every occurred parsing error is added to the ``errors``
+  ## a `XmlNode`. Every occurred parsing error is added to the `errors`
   ## sequence.
   var s = newFileStream(path, fmRead)
   if s == nil: raise newException(IOError, "Unable to read file: " & path)
@@ -140,7 +140,7 @@ proc loadXml*(path: string, errors: var seq[string], options: set[XmlParseOption
 
 proc loadXml*(path: string, options: set[XmlParseOption] = {reportComments}): XmlNode =
   ## Loads and parses XML from file specified by `path`, and returns
-  ## a `XmlNode`. All parsing errors are turned into an ``XmlError``
+  ## a `XmlNode`. All parsing errors are turned into an `XmlError`
   ## exception.
   var errors: seq[string] = @[]
   result = loadXml(path, errors, options)

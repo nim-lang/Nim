@@ -71,7 +71,7 @@ proc newXmlNode(kind: XmlNodeKind): XmlNode =
   result = XmlNode(k: kind)
 
 proc newElement*(tag: string): XmlNode =
-  ## Creates a new `XmlNode` of kind ``xnElement`` with the given `tag`.
+  ## Creates a new `XmlNode` of kind `xnElement` with the given `tag`.
   ##
   ## See also:
   ## * `newXmlTree proc <#newXmlTree,string,openArray[XmlNode],XmlAttributes>`_
@@ -90,7 +90,7 @@ proc newElement*(tag: string): XmlNode =
   # init attributes lazily to save memory
 
 proc newText*(text: string): XmlNode =
-  ## Creates a new `XmlNode` of kind ``xnText`` with the text `text`.
+  ## Creates a new `XmlNode` of kind `xnText` with the text `text`.
   runnableExamples:
     var b = newText("my text")
     assert b.kind == xnText
@@ -100,13 +100,13 @@ proc newText*(text: string): XmlNode =
   result.fText = text
 
 proc newVerbatimText*(text: string): XmlNode {.since: (1, 3).} =
-  ## Creates a new `XmlNode` of kind ``xnVerbatimText`` with the text `text`.
+  ## Creates a new `XmlNode` of kind `xnVerbatimText` with the text `text`.
   ## **Since**: Version 1.3.
   result = newXmlNode(xnVerbatimText)
   result.fText = text
 
 proc newComment*(comment: string): XmlNode =
-  ## Creates a new `XmlNode` of kind ``xnComment`` with the text `comment`.
+  ## Creates a new `XmlNode` of kind `xnComment` with the text `comment`.
   runnableExamples:
     var c = newComment("my comment")
     assert c.kind == xnComment
@@ -116,7 +116,7 @@ proc newComment*(comment: string): XmlNode =
   result.fText = comment
 
 proc newCData*(cdata: string): XmlNode =
-  ## Creates a new `XmlNode` of kind ``xnCData`` with the text `cdata`.
+  ## Creates a new `XmlNode` of kind `xnCData` with the text `cdata`.
   runnableExamples:
     var d = newCData("my cdata")
     assert d.kind == xnCData
@@ -126,7 +126,7 @@ proc newCData*(cdata: string): XmlNode =
   result.fText = cdata
 
 proc newEntity*(entity: string): XmlNode =
-  ## Creates a new `XmlNode` of kind ``xnEntity`` with the text `entity`.
+  ## Creates a new `XmlNode` of kind `xnEntity` with the text `entity`.
   runnableExamples:
     var e = newEntity("my entity")
     assert e.kind == xnEntity
@@ -202,7 +202,7 @@ proc `text=`*(n: XmlNode, text: string){.inline.} =
 proc tag*(n: XmlNode): string {.inline.} =
   ## Gets the tag name of `n`.
   ##
-  ## `n` has to be an ``xnElement`` node.
+  ## `n` has to be an `xnElement` node.
   ##
   ## See also:
   ## * `text proc <#text,XmlNode>`_ for text getter
@@ -223,7 +223,7 @@ proc tag*(n: XmlNode): string {.inline.} =
 proc `tag=`*(n: XmlNode, tag: string) {.inline.} =
   ## Sets the tag name of `n`.
   ##
-  ## `n` has to be an ``xnElement`` node.
+  ## `n` has to be an `xnElement` node.
   ##
   ## See also:
   ## * `text proc <#text,XmlNode>`_ for text getter
@@ -555,11 +555,11 @@ proc escape*(s: string): string =
   ## ------------    -------------------
   ## char            is converted to
   ## ------------    -------------------
-  ##  `<`          ``&lt;``
-  ##  `>`          ``&gt;``
-  ##  `&`          ``&amp;``
-  ##  `"`          ``&quot;``
-  ##  `'`          ``&apos;``
+  ##  `<`          `&lt;`
+  ##  `>`          `&gt;`
+  ##  `&`          `&amp;`
+  ##  `"`          `&quot;`
+  ##  `'`          `&apos;`
   ## ------------    -------------------
   ##
   ## You can also use `addEscaped proc <#addEscaped,string,string>`_.

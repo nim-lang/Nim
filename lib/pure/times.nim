@@ -335,7 +335,7 @@ type
       ## can be either 365 or 366 days long). The non-fixed time units are
       ## years, months, days and week.
       ##
-      ## Note that `TimeInterval`'s returned from the ``times`` module are
+      ## Note that `TimeInterval`'s returned from the `times` module are
       ## never normalized. If you want to normalize a time unit,
       ## `Duration <#Duration>`_ should be used instead.
     nanoseconds*: int    ## The number of nanoseconds
@@ -411,7 +411,7 @@ proc convert*[T: SomeInteger](unitFrom, unitTo: FixedTimeUnit, quantity: T): T
 
 proc normalize[T: Duration|Time](seconds, nanoseconds: int64): T =
   ## Normalize a (seconds, nanoseconds) pair and return it as either
-  ## a `Duration` or ``Time``. A normalized ``Duration|Time`` has a
+  ## a `Duration` or `Time`. A normalized `Duration|Time` has a
   ## positive nanosecond part in the range `NanosecondRange`.
   result.seconds = seconds + convert(Nanoseconds, Seconds, nanoseconds)
   var nanosecond = nanoseconds mod convert(Seconds, Nanoseconds, 1)
@@ -428,7 +428,7 @@ proc isLeapYear*(year: int): bool =
   year mod 4 == 0 and (year mod 100 != 0 or year mod 400 == 0)
 
 proc getDaysInMonth*(month: Month, year: int): int =
-  ## Get the number of days in `month` of ``year``.
+  ## Get the number of days in `month` of `year`.
   # http://www.dispersiondesign.com/articles/time/number_of_days_in_a_month
   runnableExamples:
     doAssert getDaysInMonth(mFeb, 2000) == 29
@@ -749,7 +749,7 @@ proc `-`*(a: Duration): Duration {.operator, extern: "ntReverseDuration".} =
 
 proc `<`*(a, b: Duration): bool {.operator, extern: "ntLtDuration".} =
   ## Note that a duration can be negative,
-  ## so even if `a < b` is true ``a`` might
+  ## so even if `a < b` is true `a` might
   ## represent a larger absolute duration.
   ## Use `abs(a) < abs(b)` to compare the absolute
   ## duration.
@@ -845,7 +845,7 @@ proc fromUnix*(unix: int64): Time
   initTime(unix, 0)
 
 proc toUnix*(t: Time): int64 {.benign, tags: [], raises: [], noSideEffect.} =
-  ## Convert `t` to a unix timestamp (seconds since ``1970-01-01T00:00:00Z``).
+  ## Convert `t` to a unix timestamp (seconds since `1970-01-01T00:00:00Z`).
   ## See also `toUnixFloat` for subsecond resolution.
   runnableExamples:
     doAssert fromUnix(0).toUnix() == 0
@@ -875,7 +875,7 @@ since((1, 1)):
 
 proc fromWinTime*(win: int64): Time =
   ## Convert a Windows file time (100-nanosecond intervals since
-  ## `1601-01-01T00:00:00Z`) to a ``Time``.
+  ## `1601-01-01T00:00:00Z`) to a `Time`.
   const hnsecsPerSec = convert(Seconds, Nanoseconds, 1) div 100
   let nanos = floorMod(win, hnsecsPerSec) * 100
   let seconds = floorDiv(win - epochDiff, hnsecsPerSec)
@@ -928,7 +928,7 @@ proc `-`*(a: Time, b: Duration): Time {.operator, extern: "ntSubTime".} =
   subImpl[Time](a, b)
 
 proc `<`*(a, b: Time): bool {.operator, extern: "ntLtTime".} =
-  ## Returns true if `a < b`, that is if ``a`` happened before ``b``.
+  ## Returns true if `a < b`, that is if `a` happened before `b`.
   runnableExamples:
     doAssert initTime(50, 0) < initTime(99, 0)
   ltImpl(a, b)
@@ -1063,7 +1063,7 @@ proc isLeapDay*(dt: DateTime): bool {.since: (1, 1).} =
   dt.year.isLeapYear and dt.month == mFeb and dt.monthday == 29
 
 proc toTime*(dt: DateTime): Time {.tags: [], raises: [], benign.} =
-  ## Converts a `DateTime` to a ``Time`` representing the same point in time.
+  ## Converts a `DateTime` to a `Time` representing the same point in time.
   assertDateTimeInitialized dt
   let epochDay = toEpochDay(dt.monthday, dt.month, dt.year)
   var seconds = epochDay * secondsInDay
@@ -1074,7 +1074,7 @@ proc toTime*(dt: DateTime): Time {.tags: [], raises: [], benign.} =
   result = initTime(seconds, dt.nanosecond)
 
 proc initDateTime(zt: ZonedTime, zone: Timezone): DateTime =
-  ## Create a new `DateTime` using ``ZonedTime`` in the specified timezone.
+  ## Create a new `DateTime` using `ZonedTime` in the specified timezone.
   let adjTime = zt.time - initDuration(seconds = zt.utcOffset)
   let s = adjTime.seconds
   let epochday = floorDiv(s, secondsInDay)
@@ -1111,7 +1111,7 @@ proc newTimezone*(
     ): owned Timezone =
   ## Create a new `Timezone`.
   ##
-  ## `zonedTimeFromTimeImpl` and ``zonedTimeFromAdjTimeImpl`` is used
+  ## `zonedTimeFromTimeImpl` and `zonedTimeFromAdjTimeImpl` is used
   ## as the underlying implementations for `zonedTimeFromTime` and
   ## `zonedTimeFromAdjTime`.
   ##
@@ -1150,7 +1150,7 @@ proc zonedTimeFromAdjTime*(zone: Timezone, adjTime: Time): ZonedTime =
   ## Returns the `ZonedTime` for some local time.
   ##
   ## Note that the `Time` argument does not represent a point in time, it
-  ## represent a local time! E.g if `adjTime` is ``fromUnix(0)``, it should be
+  ## represent a local time! E.g if `adjTime` is `fromUnix(0)`, it should be
   ## interpreted as 1970-01-01T00:00:00 in the `zone` timezone, not in UTC.
   zone.zonedTimeFromAdjTimeImpl(adjTime)
 
@@ -1171,12 +1171,12 @@ proc `==`*(zone1, zone2: Timezone): bool =
 
 proc inZone*(time: Time, zone: Timezone): DateTime
     {.tags: [], raises: [], benign.} =
-  ## Convert `time` into a ``DateTime`` using ``zone`` as the timezone.
+  ## Convert `time` into a `DateTime` using `zone` as the timezone.
   result = initDateTime(zone.zonedTimeFromTime(time), zone)
 
 proc inZone*(dt: DateTime, zone: Timezone): DateTime
     {.tags: [], raises: [], benign.} =
-  ## Returns a `DateTime` representing the same point in time as ``dt`` but
+  ## Returns a `DateTime` representing the same point in time as `dt` but
   ## using `zone` as the timezone.
   assertDateTimeInitialized dt
   dt.toTime.inZone(zone)
@@ -1370,7 +1370,7 @@ proc `-`*(dt: DateTime, dur: Duration): DateTime =
   (dt.toTime - dur).inZone(dt.timezone)
 
 proc `-`*(dt1, dt2: DateTime): Duration =
-  ## Compute the duration between `dt1` and ``dt2``.
+  ## Compute the duration between `dt1` and `dt2`.
   runnableExamples:
     let dt1 = initDateTime(30, mMar, 2017, 00, 00, 00, utc())
     let dt2 = initDateTime(25, mMar, 2017, 00, 00, 00, utc())
@@ -1380,15 +1380,15 @@ proc `-`*(dt1, dt2: DateTime): Duration =
   dt1.toTime - dt2.toTime
 
 proc `<`*(a, b: DateTime): bool =
-  ## Returns true if `a` happened before ``b``.
+  ## Returns true if `a` happened before `b`.
   return a.toTime < b.toTime
 
 proc `<=`*(a, b: DateTime): bool =
-  ## Returns true if `a` happened before or at the same time as ``b``.
+  ## Returns true if `a` happened before or at the same time as `b`.
   return a.toTime <= b.toTime
 
 proc `==`*(a, b: DateTime): bool =
-  ## Returns true if `a` and ``b`` represent the same point in time.
+  ## Returns true if `a` and `b` represent the same point in time.
   if not a.isInitialized: not b.isInitialized
   elif not b.isInitialized: false
   else: a.toTime == b.toTime
@@ -1981,7 +1981,7 @@ proc toDateTime(p: ParsedTime, zone: Timezone, f: TimeFormat,
 
 proc format*(dt: DateTime, f: TimeFormat,
     loc: DateTimeLocale = DefaultLocale): string {.raises: [].} =
-  ## Format `dt` using the format specified by ``f``.
+  ## Format `dt` using the format specified by `f`.
   runnableExamples:
     let f = initTimeFormat("yyyy-MM-dd")
     let dt = initDateTime(01, mJan, 2000, 00, 00, 00, utc())
@@ -2004,7 +2004,7 @@ proc format*(dt: DateTime, f: TimeFormat,
 
 proc format*(dt: DateTime, f: string, loc: DateTimeLocale = DefaultLocale): string
     {.raises: [TimeFormatParseError].} =
-  ## Shorthand for constructing a `TimeFormat` and using it to format ``dt``.
+  ## Shorthand for constructing a `TimeFormat` and using it to format `dt`.
   ##
   ## See `Parsing and formatting dates`_ for documentation of the
   ## `format` argument.
@@ -2027,7 +2027,7 @@ proc formatValue*(result: var string; value: DateTime, specifier: string) =
 proc format*(time: Time, f: string, zone: Timezone = local()): string
     {.raises: [TimeFormatParseError].} =
   ## Shorthand for constructing a `TimeFormat` and using it to format
-  ## `time`. Will use the timezone specified by ``zone``.
+  ## `time`. Will use the timezone specified by `zone`.
   ##
   ## See `Parsing and formatting dates`_ for documentation of the
   ## `f` argument.
@@ -2050,7 +2050,7 @@ template formatValue*(result: var string; value: Time, specifier: string) =
 proc parse*(input: string, f: TimeFormat, zone: Timezone = local(),
     loc: DateTimeLocale = DefaultLocale): DateTime
     {.raises: [TimeParseError, Defect].} =
-  ## Parses `input` as a ``DateTime`` using the format specified by ``f``.
+  ## Parses `input` as a `DateTime` using the format specified by `f`.
   ## If no UTC offset was parsed, then `input` is assumed to be specified in
   ## the `zone` timezone. If a UTC offset was parsed, the result will be
   ## converted to the `zone` timezone.
@@ -2095,7 +2095,7 @@ proc parse*(input, f: string, tz: Timezone = local(),
     loc: DateTimeLocale = DefaultLocale): DateTime
     {.raises: [TimeParseError, TimeFormatParseError, Defect].} =
   ## Shorthand for constructing a `TimeFormat` and using it to parse
-  ## `input` as a ``DateTime``.
+  ## `input` as a `DateTime`.
   ##
   ## See `Parsing and formatting dates`_ for documentation of the
   ## `f` argument.
@@ -2115,7 +2115,7 @@ proc parse*(input: string, f: static[string], zone: Timezone = local(),
 proc parseTime*(input, f: string, zone: Timezone): Time
     {.raises: [TimeParseError, TimeFormatParseError, Defect].} =
   ## Shorthand for constructing a `TimeFormat` and using it to parse
-  ## `input` as a ``DateTime``, then converting it a ``Time``.
+  ## `input` as a `DateTime`, then converting it a `Time`.
   ##
   ## See `Parsing and formatting dates`_ for documentation of the
   ## `format` argument.
@@ -2161,11 +2161,11 @@ proc initTimeInterval*(nanoseconds, microseconds, milliseconds,
   ## Creates a new `TimeInterval <#TimeInterval>`_.
   ##
   ## This proc doesn't perform any normalization! For example,
-  ## `initTimeInterval(hours = 24)` and ``initTimeInterval(days = 1)`` are
+  ## `initTimeInterval(hours = 24)` and `initTimeInterval(days = 1)` are
   ## not equal.
   ##
   ## You can also use the convenience procedures called `milliseconds`,
-  ## `seconds`, ``minutes``, ``hours``, ``days``, ``months``, and ``years``.
+  ## `seconds`, `minutes`, `hours`, `days`, `months`, and `years`.
   runnableExamples:
     let day = initTimeInterval(hours = 24)
     let dt = initDateTime(01, mJan, 2000, 12, 00, 00, utc())
@@ -2215,7 +2215,7 @@ proc `-`*(ti: TimeInterval): TimeInterval =
   )
 
 proc `-`*(ti1, ti2: TimeInterval): TimeInterval =
-  ## Subtracts TimeInterval `ti1` from ``ti2``.
+  ## Subtracts TimeInterval `ti1` from `ti2`.
   ##
   ## Time components are subtracted one-by-one, see output:
   runnableExamples:
@@ -2245,7 +2245,7 @@ proc evaluateStaticInterval(interval: TimeInterval): Duration =
     hours = interval.hours)
 
 proc between*(startDt, endDt: DateTime): TimeInterval =
-  ## Gives the difference between `startDt` and ``endDt`` as a
+  ## Gives the difference between `startDt` and `endDt` as a
   ## `TimeInterval`. The following guarantees about the result is given:
   ##
   ## - All fields will have the same sign.
@@ -2476,9 +2476,9 @@ proc evaluateInterval(dt: DateTime, interval: TimeInterval):
     hours = interval.hours)
 
 proc `+`*(dt: DateTime, interval: TimeInterval): DateTime =
-  ## Adds `interval` to ``dt``. Components from ``interval`` are added
+  ## Adds `interval` to `dt`. Components from `interval` are added
   ## in the order of their size, i.e. first the `years` component, then the
-  ## `months` component and so on. The returned ``DateTime`` will have the
+  ## `months` component and so on. The returned `DateTime` will have the
   ## same timezone as the input.
   ##
   ## Note that when adding months, monthday overflow is allowed. This means that
@@ -2505,9 +2505,9 @@ proc `+`*(dt: DateTime, interval: TimeInterval): DateTime =
     result = initDateTime(zt, dt.timezone)
 
 proc `-`*(dt: DateTime, interval: TimeInterval): DateTime =
-  ## Subtract `interval` from ``dt``. Components from ``interval`` are
+  ## Subtract `interval` from `dt`. Components from `interval` are
   ## subtracted in the order of their size, i.e. first the `years` component,
-  ## then the `months` component and so on. The returned ``DateTime`` will
+  ## then the `months` component and so on. The returned `DateTime` will
   ## have the same timezone as the input.
   runnableExamples:
     let dt = initDateTime(30, mMar, 2017, 00, 00, 00, utc())

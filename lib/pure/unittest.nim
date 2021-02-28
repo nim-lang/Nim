@@ -200,7 +200,7 @@ method testStarted*(formatter: OutputFormatter, testName: string) {.base, gcsafe
 method failureOccurred*(formatter: OutputFormatter, checkpoints: seq[string],
     stackTrace: string) {.base, gcsafe.} =
   ## `stackTrace` is provided only if the failure occurred due to an exception.
-  ## `checkpoints` is never ``nil``.
+  ## `checkpoints` is never `nil`.
   discard
 method testEnded*(formatter: OutputFormatter, testResult: TestResult) {.base, gcsafe.} =
   discard
@@ -346,7 +346,7 @@ method testStarted*(formatter: JUnitOutputFormatter, testName: string) =
 method failureOccurred*(formatter: JUnitOutputFormatter,
                         checkpoints: seq[string], stackTrace: string) =
   ## `stackTrace` is provided only if the failure occurred due to an exception.
-  ## `checkpoints` is never ``nil``.
+  ## `checkpoints` is never `nil`.
   formatter.testErrors.add(checkpoints)
   if stackTrace.len > 0:
     formatter.testStackTrace = stackTrace
@@ -465,11 +465,11 @@ proc testEnded(testResult: TestResult) =
     formatter.testEnded(testResult)
 
 template suite*(name, body) {.dirty.} =
-  ## Declare a test suite identified by `name` with optional ``setup``
+  ## Declare a test suite identified by `name` with optional `setup`
   ## and/or `teardown` section.
   ##
   ## A test suite is a series of one or more related tests sharing a
-  ## common fixture (`setup`, ``teardown``). The fixture is executed
+  ## common fixture (`setup`, `teardown`). The fixture is executed
   ## for EACH test.
   ##
   ## .. code-block:: nim
@@ -635,7 +635,7 @@ template skip* =
 macro check*(conditions: untyped): untyped =
   ## Verify if a statement or a list of statements is true.
   ## A helpful error message and set checkpoints are printed out on
-  ## failure (if `outputLevel` is not ``PRINT_NONE``).
+  ## failure (if `outputLevel` is not `PRINT_NONE`).
   runnableExamples:
     import std/strutils
 
