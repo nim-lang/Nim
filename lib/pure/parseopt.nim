@@ -18,15 +18,15 @@
 ## `longNoVal` parameters, which are
 ## `described later<#shortnoval-and-longnoval>`_, are not provided:
 ##
-## 1. Short options: `-abcd`, ``-e:5``, ``-e=5``
-## 2. Long options: `--foo:bar`, ``--foo=bar``, ``--foo``
+## 1. Short options: `-abcd`, `-e:5`, `-e=5`
+## 2. Long options: `--foo:bar`, `--foo=bar`, `--foo`
 ## 3. Arguments: everything that does not start with a `-`
 ##
 ## These three kinds of tokens are enumerated in the
 ## `CmdLineKind enum<#CmdLineKind>`_.
 ##
 ## When option values begin with ':' or '=', they need to be doubled up (as in
-## `--delim::`) or alternated (as in ``--delim=:``).
+## `--delim::`) or alternated (as in `--delim=:`).
 ##
 ## The `--` option, commonly used to denote that every token that follows is
 ## an argument, is interpreted as a long option, and its name is the empty
@@ -39,12 +39,12 @@
 ## created with `initOptParser<#initOptParser,string,set[char],seq[string]>`_,
 ## and `next<#next,OptParser>`_ advances the parser by one token.
 ##
-## For each token, the parser's `kind`, ``key``, and ``val`` fields give
+## For each token, the parser's `kind`, `key`, and `val` fields give
 ## information about that token. If the token is a long or short option, `key`
 ## is the option's name, and  `val` is either the option's value, if provided,
 ## or the empty string. For arguments, the `key` field contains the argument
 ## itself, and `val` is unused. To check if the end of the command line has
-## been reached, check if `kind` is equal to ``cmdEnd``.
+## been reached, check if `kind` is equal to `cmdEnd`.
 ##
 ## Here is an example:
 ##
@@ -75,27 +75,27 @@
 ## The `getopt iterator<#getopt.i,OptParser>`_, which is provided for
 ## convenience, can be used to iterate through all command line options as well.
 ##
-## `shortNoVal` and ``longNoVal``
+## `shortNoVal` and `longNoVal`
 ## ================================
 ##
-## The optional `shortNoVal` and ``longNoVal`` parameters present in
+## The optional `shortNoVal` and `longNoVal` parameters present in
 ## `initOptParser<#initOptParser,string,set[char],seq[string]>`_ are for
 ## specifying which short and long options do not accept values.
 ##
 ## When `shortNoVal` is non-empty, users are not required to separate short
 ## options and their values with a ':' or '=' since the parser knows which
 ## options accept values and which ones do not. This behavior also applies for
-## long options if `longNoVal` is non-empty. For short options, ``-j4``
+## long options if `longNoVal` is non-empty. For short options, `-j4`
 ## becomes supported syntax, and for long options, `--foo bar` becomes
 ## supported. This is in addition to the `previously mentioned
 ## syntax<#supported-syntax>`_. Users can still separate options and their
 ## values with ':' or '=', but that becomes optional.
 ##
 ## As more options which do not accept values are added to your program,
-## remember to amend `shortNoVal` and ``longNoVal`` accordingly.
+## remember to amend `shortNoVal` and `longNoVal` accordingly.
 ##
 ## The following example illustrates the difference between having an empty
-## `shortNoVal` and ``longNoVal``, which is the default, and providing
+## `shortNoVal` and `longNoVal`, which is the default, and providing
 ## arguments for those two parameters:
 ##
 ## .. code-block::
@@ -201,7 +201,7 @@ proc initOptParser*(cmdline = "", shortNoVal: set[char] = {},
   ## `os` module is retrieved instead if it is available. If the
   ## command line is not available, a `ValueError` will be raised.
   ##
-  ## `shortNoVal` and ``longNoVal`` are used to specify which options
+  ## `shortNoVal` and `longNoVal` are used to specify which options
   ## do not take values. See the `documentation about these
   ## parameters<#shortnoval-and-longnoval>`_ for more information on
   ## how this affects parsing.
@@ -310,7 +310,7 @@ proc handleShortOption(p: var OptParser; cmd: string) =
 proc next*(p: var OptParser) {.rtl, extern: "npo$1".} =
   ## Parses the next token.
   ##
-  ## `p.kind` describes what kind of token has been parsed. ``p.key`` and
+  ## `p.kind` describes what kind of token has been parsed. `p.key` and
   ## `p.val` are set accordingly.
   runnableExamples:
     var p = initOptParser("--left -r:2 file.txt")
@@ -463,7 +463,7 @@ iterator getopt*(cmdline: seq[string] = @[],
   ## arguments are provided, the real command line as provided by the
   ## `os` module is retrieved instead.
   ##
-  ## `shortNoVal` and ``longNoVal`` are used to specify which options
+  ## `shortNoVal` and `longNoVal` are used to specify which options
   ## do not take values. See the `documentation about these
   ## parameters<#shortnoval-and-longnoval>`_ for more information on
   ## how this affects parsing.

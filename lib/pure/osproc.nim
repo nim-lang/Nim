@@ -77,7 +77,7 @@ proc execProcess*(command: string, workingDir: string = "",
     options: set[ProcessOption] = {poStdErrToStdOut, poUsePath, poEvalCommand}):
   string {.rtl, extern: "nosp$1",
                   tags: [ExecIOEffect, ReadIOEffect, RootEffect].}
-  ## A convenience procedure that executes `command` with ``startProcess``
+  ## A convenience procedure that executes `command` with `startProcess`
   ## and returns its output as a string.
   ##
   ## **WARNING:** This function uses `poEvalCommand` by default for backwards

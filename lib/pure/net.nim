@@ -13,7 +13,7 @@
 ## with the `asyncdispatch` module.
 ##
 ## The first thing you will always need to do in order to start using sockets,
-## is to create a new instance of the `Socket` type using the ``newSocket``
+## is to create a new instance of the `Socket` type using the `newSocket`
 ## procedure.
 ##
 ## SSL
@@ -69,7 +69,7 @@
 ## -----------------
 ##
 ## After you create a socket with the `newSocket` procedure, you can create a
-## TCP server by calling the `bindAddr` and ``listen`` procedures.
+## TCP server by calling the `bindAddr` and `listen` procedures.
 ##
 ## .. code-block:: Nim
 ##   var socket = newSocket()
@@ -583,7 +583,7 @@ when defineSsl:
     ## CA certificates will be loaded, in the following order, from:
     ##
     ##  - caFile, caDir, parameters, if set
-    ##  - if `verifyMode` is set to ``CVerifyPeerUseEnvVars``,
+    ##  - if `verifyMode` is set to `CVerifyPeerUseEnvVars`,
     ##    the SSL_CERT_FILE and SSL_CERT_DIR environment variables are used
     ##  - a set of files and directories from the `ssl_certs <ssl_certs.html>`_ file.
     ##
@@ -870,12 +870,12 @@ proc socketError*(socket: Socket, err: int = -1, async = false,
   ## Raises an OSError based on the error code returned by `SSL_get_error`
   ## (for SSL sockets) and `osLastError` otherwise.
   ##
-  ## If `async` is ``true`` no error will be thrown in the case when the
+  ## If `async` is `true` no error will be thrown in the case when the
   ## error was caused by no data being available to be read.
   ##
   ## If `err` is not lower than 0 no exception will be raised.
   ##
-  ## If `flags` contains ``SafeDisconn``, no exception will be raised
+  ## If `flags` contains `SafeDisconn`, no exception will be raised
   ## when the error was caused by a peer disconnection.
   when defineSsl:
     if socket.isSsl:
@@ -940,7 +940,7 @@ proc listen*(socket: Socket, backlog = SOMAXCONN) {.tags: [ReadIOEffect].} =
 
 proc bindAddr*(socket: Socket, port = Port(0), address = "") {.
   tags: [ReadIOEffect].} =
-  ## Binds `address`:``port`` to the socket.
+  ## Binds `address`:`port` to the socket.
   ##
   ## If `address` is "" then ADDR_ANY will be bound.
   var realaddr = address
@@ -963,7 +963,7 @@ proc acceptAddr*(server: Socket, client: var owned(Socket), address: var string,
                  inheritable = defined(nimInheritHandles)) {.
                  tags: [ReadIOEffect], gcsafe, locks: 0.} =
   ## Blocks until a connection is being made from a client. When a connection
-  ## is made sets `client` to the client socket and ``address`` to the address
+  ## is made sets `client` to the client socket and `address` to the address
   ## of the connecting client.
   ## This function will raise OSError if an error occurs.
   ##
@@ -975,7 +975,7 @@ proc acceptAddr*(server: Socket, client: var owned(Socket), address: var string,
   ## the `inheritable` parameter.
   ##
   ## The `accept` call may result in an error if the connecting socket
-  ## disconnects during the duration of the `accept`. If the ``SafeDisconn``
+  ## disconnects during the duration of the `accept`. If the `SafeDisconn`
   ## flag is specified then this error will not be raised and instead
   ## accept will be called again.
   if client.isNil:
@@ -1069,7 +1069,7 @@ proc accept*(server: Socket, client: var owned(Socket),
   ## the `inheritable` parameter.
   ##
   ## The `accept` call may result in an error if the connecting socket
-  ## disconnects during the duration of the `accept`. If the ``SafeDisconn``
+  ## disconnects during the duration of the `accept`. If the `SafeDisconn`
   ## flag is specified then this error will not be raised and instead
   ## accept will be called again.
   var addrDummy = ""
@@ -1227,7 +1227,7 @@ proc getPeerAddr*(socket: Socket): (string, Port) =
 
 proc setSockOpt*(socket: Socket, opt: SOBool, value: bool,
     level = SOL_SOCKET) {.tags: [WriteIOEffect].} =
-  ## Sets option `opt` to a boolean value specified by ``value``.
+  ## Sets option `opt` to a boolean value specified by `value`.
   ##
   ## .. code-block:: Nim
   ##   var socket = newSocket()
@@ -1372,7 +1372,7 @@ proc recv*(socket: Socket, data: pointer, size: int): int {.tags: [
 proc waitFor(socket: Socket, waited: var Duration, timeout, size: int,
              funcName: string): int {.tags: [TimeEffect].} =
   ## determines the amount of characters that can be read. Result will never
-  ## be larger than `size`. For unbuffered sockets this will be ``1``.
+  ## be larger than `size`. For unbuffered sockets this will be `1`.
   ## For buffered sockets it can be as big as `BufferSize`.
   ##
   ## If this function does not determine that there is data on the socket
@@ -1426,7 +1426,7 @@ proc recv*(socket: Socket, data: var string, size: int, timeout = -1,
            flags = {SocketFlag.SafeDisconn}): int =
   ## Higher-level version of `recv`.
   ##
-  ## Reads **up to** `size` bytes from ``socket`` into ``buf``.
+  ## Reads **up to** `size` bytes from `socket` into `buf`.
   ##
   ## For buffered sockets this function will attempt to read all the requested
   ## data. It will read this data in `BufferSize` chunks.
@@ -1463,7 +1463,7 @@ proc recv*(socket: Socket, size: int, timeout = -1,
            flags = {SocketFlag.SafeDisconn}): string {.inline.} =
   ## Higher-level version of `recv` which returns a string.
   ##
-  ## Reads **up to** `size` bytes from ``socket`` into ``buf``.
+  ## Reads **up to** `size` bytes from `socket` into `buf`.
   ##
   ## For buffered sockets this function will attempt to read all the requested
   ## data. It will read this data in `BufferSize` chunks.
@@ -1510,10 +1510,10 @@ proc readLine*(socket: Socket, line: var string, timeout = -1,
   ## Reads a line of data from `socket`.
   ##
   ## If a full line is read `\r\L` is not
-  ## added to `line`, however if solely ``\r\L`` is read then ``line``
+  ## added to `line`, however if solely `\r\L` is read then `line`
   ## will be set to it.
   ##
-  ## If the socket is disconnected, `line` will be set to ``""``.
+  ## If the socket is disconnected, `line` will be set to `""`.
   ##
   ## An OSError exception will be raised in the case of a socket error.
   ##
@@ -1681,7 +1681,7 @@ proc trySend*(socket: Socket, data: string): bool {.tags: [WriteIOEffect].} =
 proc sendTo*(socket: Socket, address: string, port: Port, data: pointer,
              size: int, af: Domain = AF_INET, flags = 0'i32) {.
              tags: [WriteIOEffect].} =
-  ## This proc sends `data` to the specified ``address``,
+  ## This proc sends `data` to the specified `address`,
   ## which may be an IP address or a hostname, if a hostname is specified
   ## this function will try each IP of that hostname.
   ##
@@ -1714,7 +1714,7 @@ proc sendTo*(socket: Socket, address: string, port: Port, data: pointer,
 
 proc sendTo*(socket: Socket, address: string, port: Port,
              data: string) {.tags: [WriteIOEffect].} =
-  ## This proc sends `data` to the specified ``address``,
+  ## This proc sends `data` to the specified `address`,
   ## which may be an IP address or a hostname, if a hostname is specified
   ## this function will try each IP of that hostname.
   ##
@@ -1850,7 +1850,7 @@ proc `$`*(address: IpAddress): string =
 proc dial*(address: string, port: Port,
            protocol = IPPROTO_TCP, buffered = true): owned(Socket)
            {.tags: [ReadIOEffect, WriteIOEffect].} =
-  ## Establishes connection to the specified `address`:``port`` pair via the
+  ## Establishes connection to the specified `address`:`port` pair via the
   ## specified protocol. The procedure iterates through possible
   ## resolutions of the `address` until it succeeds, meaning that it
   ## seamlessly works with both IPv4 and IPv6.
@@ -1907,9 +1907,9 @@ proc dial*(address: string, port: Port,
 
 proc connect*(socket: Socket, address: string,
     port = Port(0)) {.tags: [ReadIOEffect].} =
-  ## Connects socket to `address`:``port``. ``Address`` can be an IP address or a
+  ## Connects socket to `address`:`port`. `Address` can be an IP address or a
   ## host name. If `address` is a host name, this function will try each IP
-  ## of that host name. `htons` is already performed on ``port`` so you must
+  ## of that host name. `htons` is already performed on `port` so you must
   ## not do it.
   ##
   ## If `socket` is an SSL socket a handshake will be automatically performed.
@@ -1982,7 +1982,7 @@ proc connectAsync(socket: Socket, name: string, port = Port(0),
 
 proc connect*(socket: Socket, address: string, port = Port(0),
     timeout: int) {.tags: [ReadIOEffect, WriteIOEffect].} =
-  ## Connects to server as specified by `address` on port specified by ``port``.
+  ## Connects to server as specified by `address` on port specified by `port`.
   ##
   ## The `timeout` parameter specifies the time in milliseconds to allow for
   ## the connection to the server to be made.

@@ -53,7 +53,7 @@ type
     errCommaExpected,     ## `,` expected
     errBracketRiExpected, ## `]` expected
     errCurlyRiExpected,   ## `}` expected
-    errQuoteExpected,     ## `"` or ``'`` expected
+    errQuoteExpected,     ## `"` or `'` expected
     errEOC_Expected,      ## `*/` expected
     errEofExpected,       ## EOF expected
     errExprExpected       ## expr expected
@@ -119,7 +119,7 @@ proc close*(my: var JsonParser) {.inline.} =
   lexbase.close(my)
 
 proc str*(my: JsonParser): string {.inline.} =
-  ## returns the character data for the events: `jsonInt`, ``jsonFloat``,
+  ## returns the character data for the events: `jsonInt`, `jsonFloat`,
   ## `jsonString`
   assert(my.kind in {jsonInt, jsonFloat, jsonString})
   return my.a

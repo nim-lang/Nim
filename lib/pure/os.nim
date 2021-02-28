@@ -53,7 +53,7 @@ since (1, 1):
     invalidFilenameChars* = {'/', '\\', ':', '*', '?', '"', '<', '>', '|', '^', '\0'} ## \
     ## Characters that may produce invalid filenames across Linux, Windows, Mac, etc.
     ## You can check if your filename contains these char and strip them for safety.
-    ## Mac bans `':'`, Linux bans ``'/'``, Windows bans all others.
+    ## Mac bans `':'`, Linux bans `'/'`, Windows bans all others.
     invalidFilenames* = [
       "CON", "PRN", "AUX", "NUL",
       "COM0", "COM1", "COM2", "COM3", "COM4", "COM5", "COM6", "COM7", "COM8", "COM9",
@@ -486,7 +486,7 @@ proc parentDir*(path: string): string {.
   noSideEffect, rtl, extern: "nos$1".} =
   ## Returns the parent directory of `path`.
   ##
-  ## This is similar to `splitPath(path).head` when ``path`` doesn't end
+  ## This is similar to `splitPath(path).head` when `path` doesn't end
   ## in a dir separator, but also takes care of path normalizations.
   ## The remainder can be obtained with `lastPathPart(path) proc
   ## <#lastPathPart,string>`_.
@@ -994,11 +994,11 @@ proc getTempDir*(): string {.rtl, extern: "nos$1",
 
 proc expandTilde*(path: string): string {.
   tags: [ReadEnvEffect, ReadIOEffect].} =
-  ## Expands `~` or a path starting with ``~/`` to a full path, replacing
-  ## `~` with `getHomeDir() <#getHomeDir>`_ (otherwise returns ``path`` unmodified).
+  ## Expands `~` or a path starting with `~/` to a full path, replacing
+  ## `~` with `getHomeDir() <#getHomeDir>`_ (otherwise returns `path` unmodified).
   ##
   ## Windows: this is still supported despite Windows platform not having this
-  ## convention; also, both `~/` and ``~\`` are handled.
+  ## convention; also, both `~/` and `~\` are handled.
   ##
   ## See also:
   ## * `getHomeDir proc <#getHomeDir>`_
@@ -1201,7 +1201,7 @@ when not defined(windows):
 
 const
   ExeExts* = ## Platform specific file extension for executables.
-    ## On Windows `["exe", "cmd", "bat"]`, on Posix ``[""]``.
+    ## On Windows `["exe", "cmd", "bat"]`, on Posix `[""]`.
     when defined(windows): ["exe", "cmd", "bat"] else: [""]
 
 proc findExe*(exe: string, followSymlinks: bool = true;
@@ -1638,7 +1638,7 @@ proc setFilePermissions*(filename: string, permissions: set[FilePermission],
    noWeirdTarget.} =
   ## Sets the file permissions for `filename`.
   ##
-  ## If `followSymlinks` set to true (default) and ``filename`` points to a
+  ## If `followSymlinks` set to true (default) and `filename` points to a
   ## symlink, permissions are set to the file symlink points to.
   ## `followSymlinks` set to false is a noop on Windows and some POSIX
   ## systems (including Linux) on which `lchmod` is either unavailable or always
@@ -2696,7 +2696,7 @@ proc parseCmdLine*(c: string): seq[string] {.
   ##
   ## On Posix systems, it uses the following parsing rules:
   ## Components are separated by whitespace unless the whitespace
-  ## occurs within `"` or ``'`` quotes.
+  ## occurs within `"` or `'` quotes.
   ##
   ## See also:
   ## * `parseopt module <parseopt.html>`_
@@ -3151,7 +3151,7 @@ proc sleep*(milsecs: int) {.rtl, extern: "nos$1", tags: [TimeEffect], noWeirdTar
 
 proc getFileSize*(file: string): BiggestInt {.rtl, extern: "nos$1",
   tags: [ReadIOEffect], noWeirdTarget.} =
-  ## Returns the file size of `file` (in bytes). ``OSError`` is
+  ## Returns the file size of `file` (in bytes). `OSError` is
   ## raised in case of an error.
   when defined(windows):
     var a: WIN32_FIND_DATA
@@ -3377,8 +3377,8 @@ proc isHidden*(path: string): bool {.noWeirdTarget.} =
   ##
   ## On Windows: returns true if it exists and its "hidden" attribute is set.
   ##
-  ## On posix: returns true if `lastPathPart(path)` starts with ``.`` and is
-  ## not `.` or ``..``.
+  ## On posix: returns true if `lastPathPart(path)` starts with `.` and is
+  ## not `.` or `..`.
   ##
   ## **Note**: paths are not normalized to determine `isHidden`.
   runnableExamples:
@@ -3435,7 +3435,7 @@ func isValidFilename*(filename: string, maxLen = 259.Positive): bool {.since: (1
   ##
   ## This is useful if you want to copy or save files across Windows, Linux, Mac, etc.
   ## You can pass full paths as argument too, but func only checks filenames.
-  ## It uses `invalidFilenameChars`, ``invalidFilenames`` and ``maxLen`` to verify the specified ``filename``.
+  ## It uses `invalidFilenameChars`, `invalidFilenames` and `maxLen` to verify the specified `filename`.
   ##
   ## .. code-block:: nim
   ##   assert not isValidFilename(" foo")    ## Leading white space
