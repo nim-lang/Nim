@@ -152,7 +152,7 @@ proc `[]`*(t: StringTableRef, key: string): var string {.
            rtlFunc, extern: "nstTake".} =
   ## Retrieves the location at `t[key]`.
   ##
-  ## If `key` is not in `t`, the ``KeyError`` exception is raised.
+  ## If `key` is not in `t`, the `KeyError` exception is raised.
   ## One can check with `hasKey proc <#hasKey,StringTableRef,string>`_
   ## whether the key exists.
   ##

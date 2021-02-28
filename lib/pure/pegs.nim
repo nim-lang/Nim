@@ -264,15 +264,15 @@ proc `!`*(a: Peg): Peg {.noSideEffect, rtl, extern: "npegsNotPredicate".} =
   result = Peg(kind: pkNotPredicate, sons: @[a])
 
 proc any*: Peg {.inline.} =
-  ## constructs the PEG `any character`:idx: (``.``)
+  ## constructs the PEG `any character`:idx: (`.`)
   result = Peg(kind: pkAny)
 
 proc anyRune*: Peg {.inline.} =
-  ## constructs the PEG `any rune`:idx: (``_``)
+  ## constructs the PEG `any rune`:idx: (`_`)
   result = Peg(kind: pkAnyRune)
 
 proc newLine*: Peg {.inline.} =
-  ## constructs the PEG `newline`:idx: (``\n``)
+  ## constructs the PEG `newline`:idx: (`\n`)
   result = Peg(kind: pkNewLine)
 
 proc unicodeLetter*: Peg {.inline.} =
@@ -1083,21 +1083,21 @@ proc matchLen*(s: string, pattern: Peg,
 
 proc match*(s: string, pattern: Peg, matches: var openArray[string],
             start = 0): bool {.noSideEffect, rtl, extern: "npegs$1Capture".} =
-  ## returns `true` if ``s[start..]`` matches the ``pattern`` and
+  ## returns `true` if `s[start..]` matches the `pattern` and
   ## the captured substrings in the array `matches`. If it does not
-  ## match, nothing is written into `matches` and ``false`` is
+  ## match, nothing is written into `matches` and `false` is
   ## returned.
   result = matchLen(s, pattern, matches, start) != -1
 
 proc match*(s: string, pattern: Peg,
             start = 0): bool {.noSideEffect, rtl, extern: "npegs$1".} =
-  ## returns `true` if ``s`` matches the ``pattern`` beginning from ``start``.
+  ## returns `true` if `s` matches the `pattern` beginning from `start`.
   result = matchLen(s, pattern, start) != -1
 
 
 proc find*(s: string, pattern: Peg, matches: var openArray[string],
            start = 0): int {.noSideEffect, rtl, extern: "npegs$1Capture".} =
-  ## returns the starting position of `pattern` in ``s`` and the captured
+  ## returns the starting position of `pattern` in `s` and the captured
   ## substrings in the array `matches`. If it does not match, nothing
   ## is written into `matches` and -1 is returned.
   var c: Captures
@@ -1113,7 +1113,7 @@ proc find*(s: string, pattern: Peg, matches: var openArray[string],
 proc findBounds*(s: string, pattern: Peg, matches: var openArray[string],
                  start = 0): tuple[first, last: int] {.
                  noSideEffect, rtl, extern: "npegs$1Capture".} =
-  ## returns the starting position and end position of `pattern` in ``s``
+  ## returns the starting position and end position of `pattern` in `s`
   ## and the captured
   ## substrings in the array `matches`. If it does not match, nothing
   ## is written into `matches` and (-1,0) is returned.
@@ -1129,7 +1129,7 @@ proc findBounds*(s: string, pattern: Peg, matches: var openArray[string],
 
 proc find*(s: string, pattern: Peg,
            start = 0): int {.noSideEffect, rtl, extern: "npegs$1".} =
-  ## returns the starting position of `pattern` in ``s``. If it does not
+  ## returns the starting position of `pattern` in `s`. If it does not
   ## match, -1 is returned.
   var c: Captures
   c.origStart = start
@@ -1159,7 +1159,7 @@ proc findAll*(s: string, pattern: Peg, start = 0): seq[string] {.
   for it in findAll(s, pattern, start): result.add it
 
 template `=~`*(s: string, pattern: Peg): bool =
-  ## This calls `match` with an implicit declared ``matches`` array that
+  ## This calls `match` with an implicit declared `matches` array that
   ## can be used in the scope of the `=~` call:
   ##
   ## .. code-block:: nim
@@ -1209,7 +1209,7 @@ proc endsWith*(s: string, suffix: Peg, start = 0): bool {.
 proc replacef*(s: string, sub: Peg, by: string): string {.
   noSideEffect, rtl, extern: "npegs$1".} =
   ## Replaces `sub` in `s` by the string `by`. Captures can be accessed in `by`
-  ## with the notation `$i` and ``$#`` (see strutils.`%`). Examples:
+  ## with the notation `$i` and `$#` (see strutils.`%`). Examples:
   ##
   ## .. code-block:: nim
   ##   "var1=key; var2=key2".replacef(peg"{\ident}'='{\ident}", "$1<-$2$2")
@@ -1325,7 +1325,7 @@ when not defined(js):
                       subs: varargs[tuple[pattern: Peg, repl: string]]) {.
                       rtl, extern: "npegs$1".} =
     ## reads in the file `infile`, performs a parallel replacement (calls
-    ## `parallelReplace`) and writes back to `outfile`. Raises ``IOError`` if an
+    ## `parallelReplace`) and writes back to `outfile`. Raises `IOError` if an
     ## error occurs. This is supposed to be used for quick scripting.
     ##
     ## **Note**: this proc does not exist while using the JS backend.

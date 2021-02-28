@@ -268,8 +268,8 @@ proc skipWhitespace*(s: string, start = 0): int {.inline.} =
   while start+result < s.len and s[start+result] in Whitespace: inc(result)
 
 proc skip*(s, token: string, start = 0): int {.inline.} =
-  ## Skips the `token` starting at ``s[start]``. Returns the length of `token`
-  ## or 0 if there was no `token` at ``s[start]``.
+  ## Skips the `token` starting at `s[start]`. Returns the length of `token`
+  ## or 0 if there was no `token` at `s[start]`.
   runnableExamples:
     doAssert skip("2019-01-22", "2019", 0) == 4
     doAssert skip("2019-01-22", "19", 0) == 0
@@ -413,7 +413,7 @@ proc parseWhile*(s: string, token: var string, validChars: set[char],
 
 proc captureBetween*(s: string, first: char, second = '\0', start = 0): string =
   ## Finds the first occurrence of `first`, then returns everything from there
-  ## up to `second` (if ``second`` is '\0', then ``first`` is used).
+  ## up to `second` (if `second` is '\0', then `first` is used).
   runnableExamples:
     doAssert captureBetween("Hello World", 'e') == "llo World"
     doAssert captureBetween("Hello World", 'e', 'r') == "llo Wo"

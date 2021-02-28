@@ -12,7 +12,7 @@
 ## The only encoding that is supported is UTF-8. The parser has been designed
 ## to be somewhat error correcting, so that even most "wild HTML" found on the
 ## web can be parsed with it. **Note:** This parser does not check that each
-## `<tag>` has a corresponding ``</tag>``! These checks have do be
+## `<tag>` has a corresponding `</tag>`! These checks have do be
 ## implemented by the client code for various reasons:
 ##
 ## * Old HTML contains tags that have no end tag: `<br>` for example.
@@ -166,7 +166,7 @@ type
     xmlElementOpen,    ## ``<elem
     xmlAttribute,      ## `key = "value"` pair
     xmlElementClose,   ## `>`
-    xmlCData,          ## `<![CDATA[` ... data ... ``]]>``
+    xmlCData,          ## `<![CDATA[` ... data ... `]]>`
     xmlEntity,         ## &entity;
     xmlSpecial         ## `<! ... data ... >`
 
@@ -178,7 +178,7 @@ type
     errQmGtExpected,          ## `?>` expected
     errGtExpected,            ## `>` expected
     errEqExpected,            ## `=` expected
-    errQuoteExpected,         ## `"` or ``'`` expected
+    errQuoteExpected,         ## `"` or `'` expected
     errEndOfCommentExpected   ## `-->` expected
     errAttributeValueExpected ## non-empty attribute value expected
 
@@ -218,9 +218,9 @@ proc open*(my: var XmlParser, input: Stream, filename: string,
            options: set[XmlParseOption] = {}) =
   ## initializes the parser with an input stream. `Filename` is only used
   ## for nice error messages. The parser's behaviour can be controlled by
-  ## the `options` parameter: If `options` contains ``reportWhitespace``
+  ## the `options` parameter: If `options` contains `reportWhitespace`
   ## a whitespace token is reported as an `xmlWhitespace` event.
-  ## If `options` contains ``reportComments`` a comment token is reported as an
+  ## If `options` contains `reportComments` a comment token is reported as an
   ## `xmlComment` event.
   lexbase.open(my, input, 8192, {'\c', '\L', '/'})
   my.filename = filename
@@ -242,7 +242,7 @@ proc kind*(my: XmlParser): XmlEventKind {.inline.} =
 
 template charData*(my: XmlParser): string =
   ## returns the character data for the events: `xmlCharData`,
-  ## `xmlWhitespace`, ``xmlComment``, ``xmlCData``, ``xmlSpecial``
+  ## `xmlWhitespace`, `xmlComment`, `xmlCData`, `xmlSpecial`
   ## Raises an assertion in debug mode if `my.kind` is not one
   ## of those events. In release mode, this will not trigger an error
   ## but the value returned will not be valid.
@@ -252,7 +252,7 @@ template charData*(my: XmlParser): string =
 
 template elementName*(my: XmlParser): string =
   ## returns the element name for the events: `xmlElementStart`,
-  ## `xmlElementEnd`, ``xmlElementOpen``
+  ## `xmlElementEnd`, `xmlElementOpen`
   ## Raises an assertion in debug mode if `my.kind` is not one
   ## of those events. In release mode, this will not trigger an error
   ## but the value returned will not be valid.
