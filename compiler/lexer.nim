@@ -75,11 +75,14 @@ type
 
   TokTypes* = set[TokType]
 
+when defined(nimsuggest):
+  # tokens that should not be considered for previousToken
+  const weakTokens = {tkComma, tkSemiColon, tkColon,
+                      tkParRi, tkParDotRi, tkBracketRi, tkBracketDotRi,
+                      tkCurlyRi}
+
 const
-  weakTokens = {tkComma, tkSemiColon, tkColon,
-                tkParRi, tkParDotRi, tkBracketRi, tkBracketDotRi,
-                tkCurlyRi} # \
-    # tokens that should not be considered for previousToken
+  negationPrefixes = {tkComma, tkColon, tkParLe, tkBracketLe, tkCurlyLe}
   tokKeywordLow* = succ(tkSymbol)
   tokKeywordHigh* = pred(tkIntLit)
 
@@ -120,6 +123,7 @@ type
     cache*: IdentCache
     when defined(nimsuggest):
       previousToken: TLineInfo
+    previousTokType*: TokType
     config*: ConfigRef
 
 proc getLineInfo*(L: Lexer, tok: Token): TLineInfo {.inline.} =
@@ -297,7 +301,7 @@ proc getNumber(L: var Lexer, result: var Token) =
       if L.buf[pos] == '_':
         if L.buf[pos+1] notin chars:
           lexMessage(L, errGenerated,
-            "only single underscores may occur in a token and token may not " &
+            "only single underscores may occur in a number and number may not " &
             "end with an underscore: e.g. '1__1' and '1_' are invalid")
           break
         tok.literal.add('_')
@@ -338,16 +342,24 @@ proc getNumber(L: var Lexer, result: var Token) =
     xi: BiggestInt
     isBase10 = true
     numDigits = 0
+    isNegative = false
   const
     # 'c', 'C' is deprecated
     baseCodeChars = {'X', 'x', 'o', 'b', 'B', 'c', 'C'}
     literalishChars = baseCodeChars + {'A'..'F', 'a'..'f', '0'..'9', '_', '\''}
     floatTypes = {tkFloatLit, tkFloat32Lit, tkFloat64Lit, tkFloat128Lit}
+    signedIntTypes = {tkIntLit, tkInt8Lit, tkInt16Lit, tkInt32Lit, tkInt64Lit}
+
   result.tokType = tkIntLit   # int literal until we know better
   result.literal = ""
   result.base = base10
   startpos = L.bufpos
   tokenBegin(result, startpos)
+
+  # check for leading minus sign
+  if L.buf[L.bufpos] == '-':
+    eatChar(L, result, '-')
+    isNegative = true
 
   # First stage: find out base, make verifications, build token literal string
   # {'c', 'C'} is added for deprecation reasons to provide a clear error message
@@ -378,7 +390,7 @@ proc getNumber(L: var Lexer, result: var Token) =
     else:
       internalError(L.config, getLineInfo(L), "getNumber")
     if numDigits == 0:
-      lexMessageLitNum(L, "invalid number: '$1'", startpos)
+      lexMessageLitNum(L, "invalid number (empty): '$1'", startpos)
   else:
     discard matchUnderscoreChars(L, result, {'0'..'9'})
     if (L.buf[L.bufpos] == '.') and (L.buf[L.bufpos + 1] in {'0'..'9'}):
@@ -394,99 +406,95 @@ proc getNumber(L: var Lexer, result: var Token) =
   endpos = L.bufpos
 
   # Second stage, find out if there's a datatype suffix and handle it
-  #  Stage 2A: handle the literal versions
-  var internalSuffix = false
   var postPos = endpos
-  if L.buf[postPos] in {'\'', 'f', 'F', 'd', 'D', 'i', 'I', 'u', 'U'}:
-    if L.buf[postPos] == '\'':
-      inc(postPos)
-
+  var hasSuffix = false
+  var internalSuffix = false
+  if L.buf[postPos] == '\'':
+    hasSuffix = true
+    inc(postPos)
+  # 2A: handle the internal literal versions
+  if L.buf[postPos] in {'f', 'F', 'd', 'D', 'i', 'I', 'u', 'U'}:
     case L.buf[postPos]
     of 'f', 'F':
       if (L.buf[postPos + 1] == '3') and (L.buf[postPos + 2] == '2'):
         result.tokType = tkFloat32Lit
-        internalSuffix = true
         inc(postPos, 3)
+        internalSuffix = true
       elif (L.buf[postPos + 1] == '6') and (L.buf[postPos + 2] == '4'):
         result.tokType = tkFloat64Lit
-        internalSuffix = true
         inc(postPos, 3)
+        internalSuffix = true
       elif (L.buf[postPos + 1] == '1') and
            (L.buf[postPos + 2] == '2') and
            (L.buf[postPos + 3] == '8'):
         result.tokType = tkFloat128Lit
-        internalSuffix = true
         inc(postPos, 4)
-      elif not (L.buf[postPos + 1] in SymChars):
+        internalSuffix = true
+      elif not (L.buf[postPos + 1] in SymChars): # standalone 'f'
         result.tokType = tkFloat32Lit
-        internalSuffix = true
         inc(postPos)
+        internalSuffix = true
     of 'd', 'D':  # ad hoc convenience shortcut for f64
-      if not (L.buf[postPos + 1] in SymChars):
+      if not (L.buf[postPos + 1] in SymChars):  # standalone 'd'
         result.tokType = tkFloat64Lit
-        internalSuffix = true
         inc(postPos)
+        internalSuffix = true
     of 'i', 'I':
       if (L.buf[postPos + 1] == '6') and (L.buf[postPos + 2] == '4'):
         result.tokType = tkInt64Lit
-        internalSuffix = true
         inc(postPos, 3)
+        internalSuffix = true
       elif (L.buf[postPos + 1] == '3') and (L.buf[postPos + 2] == '2'):
         result.tokType = tkInt32Lit
-        internalSuffix = true
         inc(postPos, 3)
+        internalSuffix = true
       elif (L.buf[postPos + 1] == '1') and (L.buf[postPos + 2] == '6'):
         result.tokType = tkInt16Lit
-        internalSuffix = true
         inc(postPos, 3)
+        internalSuffix = true
       elif (L.buf[postPos + 1] == '8'):
         result.tokType = tkInt8Lit
-        internalSuffix = true
         inc(postPos, 2)
+        internalSuffix = true
     of 'u', 'U':
       if (L.buf[postPos + 1] == '6') and (L.buf[postPos + 2] == '4'):
         result.tokType = tkUInt64Lit
-        internalSuffix = true
         inc(postPos, 3)
+        internalSuffix = true
       elif (L.buf[postPos + 1] == '3') and (L.buf[postPos + 2] == '2'):
         result.tokType = tkUInt32Lit
-        internalSuffix = true
         inc(postPos, 3)
+        internalSuffix = true
       elif (L.buf[postPos + 1] == '1') and (L.buf[postPos + 2] == '6'):
         result.tokType = tkUInt16Lit
-        internalSuffix = true
         inc(postPos, 3)
+        internalSuffix = true
       elif (L.buf[postPos + 1] == '8'):
         result.tokType = tkUInt8Lit
-        internalSuffix = true
         inc(postPos, 2)
-      elif not (L.buf[postPos + 1] in SymChars):
-        result.tokType = tkUIntLit
         internalSuffix = true
+      elif not (L.buf[postPos + 1] in SymChars): # standalone 'u'
+        result.tokType = tkUIntLit
         inc(postPos)
+        internalSuffix = true
     else:
-      lexMessageLitNum(L, "invalid number: '$1'", startpos)
-
-  #   Stage 2B: look for user-definited types that are adjacent (no spaces)
-  if not internalSuffix:
-    var identPos = postPos
-    if L.buf[identPos] == '\'':
-      inc(identPos)
-    if  L.buf[identPos] in SymStartChars:
+      discard
+  # 2B: else look for user-definited types that are adjacent (no spaces)
+  if hasSuffix and not internalSuffix:
+    if L.buf[postPos] in SymStartChars:
       result.tokType = tkStrNumLit
-      L.bufpos = postPos
+      L.bufpos = endpos # do NOT trim off the suffix
       return
-
-  #   Stage 2C: Is there still garbage awaiting? Then it's an error!
-  if L.buf[postPos] in literalishChars or
-     (L.buf[postPos] == '.' and L.buf[postPos + 1] in {'0'..'9'}):
-    lexMessageLitNum(L, "invalid number: '$1'", startpos)
+    lexMessageLitNum(L, "invalid number suffix: '$1'", startpos)
 
   # Third stage, extract actual number as a fitting literal
   L.bufpos = startpos            # restore position
   var pos: int = startpos
+  if L.buf[pos] == '-':
+    inc(pos)
   try:
     if (L.buf[pos] == '0') and (L.buf[pos + 1] in baseCodeChars):
+      # place the non-base10 number into result.iNumber or result.fNumber
       inc(pos, 2)
       xi = 0                  # it is a base prefix
 
@@ -552,12 +560,22 @@ proc getNumber(L: var Lexer, result: var Token) =
         of tkInt16Lit: (xi > BiggestInt(uint16.high))
         of tkInt32Lit: (xi > BiggestInt(uint32.high))
         else: false
-
         if outOfRange:
           #echo "out of range num: ", result.iNumber, " vs ", xi
           lexMessageLitNum(L, "number out of range: '$1'", startpos)
+          # make negative when a sign starts the literal
 
+      if isNegative:
+        case result.tokType:
+        of floatTypes:
+          result.fNumber = -result.fNumber
+        of signedIntTypes: 
+          result.iNumber = -result.iNumber
+        else:
+          lexMessageLitNum(L, "cannot assign a negative value to an unsigned type: '$1'", startpos)
     else:
+      # place the base10 number into result.iNumber or result.fNumber
+      # the parsing routines already handle the isNegative case
       case result.tokType
       of floatTypes:
         result.fNumber = parseFloat(result.literal)
@@ -595,6 +613,7 @@ proc getNumber(L: var Lexer, result: var Token) =
         else: false
 
       if outOfRange: lexMessageLitNum(L, "number out of range: '$1'", startpos)
+
 
     # Promote int literal to int64? Not always necessary, but more consistent
     if result.tokType == tkIntLit:
@@ -758,11 +777,11 @@ proc getEscapedChar(L: var Lexer, tok: var Token) =
 
 proc handleCRLF(L: var Lexer, pos: int): int =
   template registerLine =
-    let col = L.getColNumber(pos)
-
     when not defined(nimpretty):
+      let col = L.getColNumber(pos)
       if col > MaxLineLength:
         lexMessagePos(L, hintLineTooLong, pos)
+    discard
 
   case L.buf[pos]
   of CR:
@@ -884,6 +903,12 @@ proc getSymbol(L: var Lexer, tok: var Token) =
         break
       inc(pos)
       suspicious = true
+    of '\'':
+      if pos==L.bufpos:  # leading single quote only allowed at start
+        h = h !& ord(c)
+        inc(pos)
+      else:
+        break
     else: break
   tokenEnd(tok, pos-1)
   h = !$h
@@ -1097,6 +1122,7 @@ proc scanComment(L: var Lexer, tok: var Token) =
     tok.commentOffsetB = L.offsetBase + pos - 1
 
 proc skip(L: var Lexer, tok: var Token) =
+  # advance the lexer past whitespaces and comments while accounting for indents
   var pos = L.bufpos
   tokenBegin(tok, pos)
   tok.strongSpaceA = 0
@@ -1175,6 +1201,7 @@ proc rawGetTok*(L: var Lexer, tok: var Token) =
       if tok.tokType notin weakTokens:
         L.previousToken.line = tok.line.uint16
         L.previousToken.col = tok.col.int16
+    L.previousTokType = tok.tokType
 
   fillToken(tok)
   if L.indentAhead >= 0:
@@ -1295,15 +1322,26 @@ proc rawGetTok*(L: var Lexer, tok: var Token) =
         # tkTripleStrLit -> tkGTripleStrLit
         inc(tok.tokType, 2)
     of '\'':
-      tok.tokType = tkCharLit
-      getCharacter(L, tok)
-      tok.tokType = tkCharLit
+      if (L.previousTokType == tkStrNumLit) and (tok.strongSpaceA == 0):
+        # if the previous token (with no prior whitespace) is a tkStrNumLit, then this is a numeric suffix
+        getSymbol(L, tok)
+      elif L.previousTokType == tkAccent:
+        getSymbol(L, tok)
+      else:
+        tok.tokType = tkCharLit
+        getCharacter(L, tok)
+        tok.tokType = tkCharLit
     of '0'..'9':
       getNumber(L, tok)
-      if tok.tokType != tkStrNumLit:
-        let c = L.buf[L.bufpos]
-        if c in SymChars+{'_'}:
+      if L.buf[L.bufpos] in SymChars+{'_'}:
+        lexMessage(L, errGenerated, "invalid token: no whitespace between number and identifier")
+    of '-':
+      if ((tok.strongSpaceA > 0) or (L.previousTokType in negationPrefixes)) and (L.buf[L.bufpos + 1] in '0'..'9'):
+        getNumber(L, tok)
+        if L.buf[L.bufpos] in SymChars+{'_'}:
           lexMessage(L, errGenerated, "invalid token: no whitespace between number and identifier")
+      else:
+        getOperator(L, tok)
     else:
       if c in OpChars:
         getOperator(L, tok)
