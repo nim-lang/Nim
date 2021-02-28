@@ -235,13 +235,13 @@ proc max*(x, y: int64): int64 {.magic: "MaxI", noSideEffect.} =
 
 
 proc min*[T](x: openArray[T]): T =
-  ## The minimum value of `x`. ``T`` needs to have a ``<`` operator.
+  ## The minimum value of `x`. `T` needs to have a `<` operator.
   result = x[0]
   for i in 1..high(x):
     if x[i] < result: result = x[i]
 
 proc max*[T](x: openArray[T]): T =
-  ## The maximum value of `x`. ``T`` needs to have a ``<`` operator.
+  ## The maximum value of `x`. `T` needs to have a `<` operator.
   result = x[0]
   for i in 1..high(x):
     if result < x[i]: result = x[i]

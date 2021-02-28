@@ -130,7 +130,7 @@ proc initHashSet*[A](initialSize = defaultInitialSize): HashSet[A] =
 
 proc `[]`*[A](s: var HashSet[A], key: A): var A =
   ## Returns the element that is actually stored in `s` which has the same
-  ## value as `key` or raises the ``KeyError`` exception.
+  ## value as `key` or raises the `KeyError` exception.
   ##
   ## This is useful when one overloaded `hash` and `==` but still needs
   ## reference semantics for sharing.
