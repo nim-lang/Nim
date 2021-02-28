@@ -26,11 +26,11 @@
 ##
 ## The `parseJson` procedure takes a string containing JSON and returns a
 ## `JsonNode` object. This is an object variant and it is either a
-## `JObject`, ``JArray``, ``JString``, ``JInt``, ``JFloat``, ``JBool`` or
-## `JNull`. You check the kind of this object variant by using the ``kind``
+## `JObject`, `JArray`, `JString`, `JInt`, `JFloat`, `JBool` or
+## `JNull`. You check the kind of this object variant by using the `kind`
 ## accessor.
 ##
-## For a `JsonNode` who's kind is ``JObject``, you can access its fields using
+## For a `JsonNode` who's kind is `JObject`, you can access its fields using
 ## the `[]` operator. The following example shows how to do this:
 ##
 ## .. code-block:: Nim
@@ -67,7 +67,7 @@
 ## Handling optional keys
 ## ----------------------
 ##
-## By using the `{}` operator instead of ``[]``, it will return ``nil``
+## By using the `{}` operator instead of `[]`, it will return `nil`
 ## when the field is not found. The `get`-family of procedures will return a
 ## type's default value when called on `nil`.
 ##
@@ -237,28 +237,28 @@ proc newJArray*(): JsonNode =
 proc getStr*(n: JsonNode, default: string = ""): string =
   ## Retrieves the string value of a `JString JsonNode`.
   ##
-  ## Returns `default` if ``n`` is not a ``JString``, or if ``n`` is nil.
+  ## Returns `default` if `n` is not a `JString`, or if `n` is nil.
   if n.isNil or n.kind != JString: return default
   else: return n.str
 
 proc getInt*(n: JsonNode, default: int = 0): int =
   ## Retrieves the int value of a `JInt JsonNode`.
   ##
-  ## Returns `default` if ``n`` is not a ``JInt``, or if ``n`` is nil.
+  ## Returns `default` if `n` is not a `JInt`, or if `n` is nil.
   if n.isNil or n.kind != JInt: return default
   else: return int(n.num)
 
 proc getBiggestInt*(n: JsonNode, default: BiggestInt = 0): BiggestInt =
   ## Retrieves the BiggestInt value of a `JInt JsonNode`.
   ##
-  ## Returns `default` if ``n`` is not a ``JInt``, or if ``n`` is nil.
+  ## Returns `default` if `n` is not a `JInt`, or if `n` is nil.
   if n.isNil or n.kind != JInt: return default
   else: return n.num
 
 proc getFloat*(n: JsonNode, default: float = 0.0): float =
   ## Retrieves the float value of a `JFloat JsonNode`.
   ##
-  ## Returns `default` if ``n`` is not a ``JFloat`` or ``JInt``, or if ``n`` is nil.
+  ## Returns `default` if `n` is not a `JFloat` or `JInt`, or if `n` is nil.
   if n.isNil: return default
   case n.kind
   of JFloat: return n.fnum
@@ -268,7 +268,7 @@ proc getFloat*(n: JsonNode, default: float = 0.0): float =
 proc getBool*(n: JsonNode, default: bool = false): bool =
   ## Retrieves the bool value of a `JBool JsonNode`.
   ##
-  ## Returns `default` if ``n`` is not a ``JBool``, or if ``n`` is nil.
+  ## Returns `default` if `n` is not a `JBool`, or if `n` is nil.
   if n.isNil or n.kind != JBool: return default
   else: return n.bval
 
@@ -277,14 +277,14 @@ proc getFields*(n: JsonNode,
         OrderedTable[string, JsonNode] =
   ## Retrieves the key, value pairs of a `JObject JsonNode`.
   ##
-  ## Returns `default` if ``n`` is not a ``JObject``, or if ``n`` is nil.
+  ## Returns `default` if `n` is not a `JObject`, or if `n` is nil.
   if n.isNil or n.kind != JObject: return default
   else: return n.fields
 
 proc getElems*(n: JsonNode, default: seq[JsonNode] = @[]): seq[JsonNode] =
   ## Retrieves the array of a `JArray JsonNode`.
   ##
-  ## Returns `default` if ``n`` is not a ``JArray``, or if ``n`` is nil.
+  ## Returns `default` if `n` is not a `JArray`, or if `n` is nil.
   if n.isNil or n.kind != JArray: return default
   else: return n.elems
 
@@ -526,7 +526,7 @@ proc contains*(node: JsonNode, val: JsonNode): bool =
 
 proc `{}`*(node: JsonNode, keys: varargs[string]): JsonNode =
   ## Traverses the node and gets the given value. If any of the
-  ## keys do not exist, returns `nil`. Also returns ``nil`` if one of the
+  ## keys do not exist, returns `nil`. Also returns `nil` if one of the
   ## intermediate data structures is not an object.
   ##
   ## This proc can be used to create tree structures on the
@@ -544,7 +544,7 @@ proc `{}`*(node: JsonNode, keys: varargs[string]): JsonNode =
 
 proc `{}`*(node: JsonNode, index: varargs[int]): JsonNode =
   ## Traverses the node and gets the given value. If any of the
-  ## indexes do not exist, returns `nil`. Also returns ``nil`` if one of the
+  ## indexes do not exist, returns `nil`. Also returns `nil` if one of the
   ## intermediate data structures is not an array.
   result = node
   for i in index:

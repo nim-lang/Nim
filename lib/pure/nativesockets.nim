@@ -280,7 +280,7 @@ proc getAddrInfo*(address: string, port: Port, domain: Domain = AF_INET,
                   protocol: Protocol = IPPROTO_TCP): ptr AddrInfo =
   ##
   ##
-  ## **Warning**: The resulting `ptr AddrInfo` must be freed using ``freeAddrInfo``!
+  ## **Warning**: The resulting `ptr AddrInfo` must be freed using `freeAddrInfo`!
   var hints: AddrInfo
   result = nil
   hints.ai_family = toInt(domain)
@@ -687,7 +687,7 @@ proc selectRead*(readfds: var seq[SocketHandle], timeout = 500): int =
   ## read from. The sockets which cannot be read from will also be removed
   ## from `readfds`.
   ##
-  ## `timeout` is specified in milliseconds and ``-1`` can be specified for
+  ## `timeout` is specified in milliseconds and `-1` can be specified for
   ## an unlimited time.
   var tv {.noinit.}: Timeval = timeValFromMilliseconds(timeout)
 
@@ -709,7 +709,7 @@ proc selectWrite*(writefds: var seq[SocketHandle],
   ## written to. The sockets which cannot be written to will also be removed
   ## from `writefds`.
   ##
-  ## `timeout` is specified in milliseconds and ``-1`` can be specified for
+  ## `timeout` is specified in milliseconds and `-1` can be specified for
   ## an unlimited time.
   var tv {.noinit.}: Timeval = timeValFromMilliseconds(timeout)
 

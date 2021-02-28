@@ -48,7 +48,7 @@ proc mapMem*(m: var MemFile, mode: FileMode = fmRead,
              mappedSize = -1, offset = 0, mapFlags = cint(-1)): pointer =
   ## returns a pointer to a mapped portion of MemFile `m`
   ##
-  ## `mappedSize` of ``-1`` maps to the whole file, and
+  ## `mappedSize` of `-1` maps to the whole file, and
   ## `offset` must be multiples of the PAGE SIZE of your OS
   if mode == fmAppend:
     raise newEIO("The append mode is not supported.")
@@ -103,13 +103,13 @@ proc open*(filename: string, mode: FileMode = fmRead,
   ## `newFileSize` can only be set if the file does not exist and is opened
   ## with write access (e.g., with fmReadWrite).
   ##
-  ##`mappedSize` and ``offset``
+  ##`mappedSize` and `offset`
   ## can be used to map only a slice of the file.
   ##
   ## `offset` must be multiples of the PAGE SIZE of your OS
   ## (usually 4K or 8K but is unique to your OS)
   ##
-  ## `allowRemap` only needs to be true if you want to call ``mapMem`` on
+  ## `allowRemap` only needs to be true if you want to call `mapMem` on
   ## the resulting MemFile; else file handles are not kept open.
   ##
   ## `mapFlags` allows callers to override default choices for memory mapping

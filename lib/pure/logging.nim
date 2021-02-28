@@ -112,7 +112,7 @@
 ## $levelname    Log level name
 ## ============  =======================
 ##
-## Note that `$app`, ``$appname``, and ``$appdir`` are not supported when
+## Note that `$app`, `$appname`, and `$appdir` are not supported when
 ## using the JavaScript backend.
 ##
 ## The following example illustrates how to use format strings:
@@ -139,7 +139,7 @@
 ## ========
 ## * `strutils module<strutils.html>`_ for common string functions
 ## * `strformat module<strformat.html>`_ for string interpolation and formatting
-## * `strscans module<strscans.html>`_ for ``scanf`` and ``scanp`` macros, which
+## * `strscans module<strscans.html>`_ for `scanf` and `scanp` macros, which
 ##   offer easier substring extraction than regular expressions
 
 import strutils, times
@@ -385,7 +385,7 @@ proc newConsoleLogger*(levelThreshold = lvlAll, fmtStr = defaultFmtStr,
     useStderr = false): ConsoleLogger =
   ## Creates a new `ConsoleLogger<#ConsoleLogger>`_.
   ##
-  ## By default, log messages are written to `stdout`. If ``useStderr`` is
+  ## By default, log messages are written to `stdout`. If `useStderr` is
   ## true, they are written to `stderr` instead.
   ##
   ## For the JavaScript backend, log messages are written to the console,

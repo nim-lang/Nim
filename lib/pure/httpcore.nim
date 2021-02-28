@@ -130,7 +130,7 @@ func toCaseInsensitive(headers: HttpHeaders, s: string): string {.inline.} =
   return if headers.isTitleCase: toTitleCase(s) else: toLowerAscii(s)
 
 func newHttpHeaders*(titleCase=false): HttpHeaders =
-  ## Returns a new `HttpHeaders` object. if ``titleCase`` is set to true,
+  ## Returns a new `HttpHeaders` object. if `titleCase` is set to true,
   ## headers are passed to the server in title case (e.g. "Content-Length")
   new result
   result.table = newTable[string, seq[string]]()
@@ -138,7 +138,7 @@ func newHttpHeaders*(titleCase=false): HttpHeaders =
 
 func newHttpHeaders*(keyValuePairs:
     openArray[tuple[key: string, val: string]], titleCase=false): HttpHeaders =
-  ## Returns a new `HttpHeaders` object from an array. if ``titleCase`` is set to true,
+  ## Returns a new `HttpHeaders` object from an array. if `titleCase` is set to true,
   ## headers are passed to the server in title case (e.g. "Content-Length")
   new result
   result.table = newTable[string, seq[string]]()
@@ -212,7 +212,7 @@ iterator pairs*(headers: HttpHeaders): tuple[key, value: string] =
       yield (k, value)
 
 func contains*(values: HttpHeaderValues, value: string): bool =
-  ## Determines if `value` is one of the values inside ``values``. Comparison
+  ## Determines if `value` is one of the values inside `values`. Comparison
   ## is performed without case sensitivity.
   for val in seq[string](values):
     if val.toLowerAscii == value.toLowerAscii: return true
@@ -245,7 +245,7 @@ func parseList(line: string, list: var seq[string], start: int): int =
 func parseHeader*(line: string): tuple[key: string, value: seq[string]] =
   ## Parses a single raw header HTTP line into key value pairs.
   ##
-  ## Used by `asynchttpserver` and ``httpclient`` internally and should not
+  ## Used by `asynchttpserver` and `httpclient` internally and should not
   ## be used by you.
   result.value = @[]
   var i = 0
