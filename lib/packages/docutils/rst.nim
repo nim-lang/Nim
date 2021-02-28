@@ -19,10 +19,10 @@
 ##
 ## Nim can output the result to HTML [#html]_ or Latex [#latex]_.
 ##
-## .. [#html] commands ``nim doc`` for ``*.nim`` files and
-##    ``nim rst2html`` for ``*.rst`` files
+## .. [#html] commands `nim doc` for ``*.nim`` files and
+##    `nim rst2html` for ``*.rst`` files
 ##
-## .. [#latex] command ``nim rst2tex`` for ``*.rst``.
+## .. [#latex] command `nim rst2tex` for ``*.rst``.
 ##
 ## If you are new to RST please consider reading the following:
 ##
@@ -50,21 +50,21 @@
 ##   + indented literal blocks
 ##   + simple tables
 ##   + directives (see official documentation in `RST directives list`_):
-##     - ``image``, ``figure`` for including images and videos
-##     - ``code``
-##     - ``contents`` (table of contents), ``container``, ``raw``
-##     - ``include``
+##     - `image`, ``figure`` for including images and videos
+##     - `code`
+##     - `contents` (table of contents), ``container``, ``raw``
+##     - `include`
 ##     - admonitions: "attention", "caution", "danger", "error", "hint",
 ##       "important", "note", "tip", "warning", "admonition"
 ##     - substitution definitions: `replace` and `image`
 ##   + comments
 ## * inline markup
 ##   + *emphasis*, **strong emphasis**,
-##     ``inline literals``, hyperlink references (including embedded URI),
+##     `inline literals`, hyperlink references (including embedded URI),
 ##     substitution references, standalone hyperlinks,
 ##     internal links (inline and outline)
 ##   + \`interpreted text\` with roles ``:literal:``, ``:strong:``,
-##     ``emphasis``, ``:sub:``/``:subscript:``, ``:sup:``/``:supscript:``
+##     `emphasis`, ``:sub:``/``:subscript:``, ``:sup:``/``:supscript:``
 ##     (see `RST roles list`_ for description).
 ##   + inline internal targets
 ##
@@ -72,11 +72,11 @@
 ##
 ## Additional Nim-specific features:
 ##
-## * directives: ``code-block`` [cmp:Sphinx]_, ``title``,
-##   ``index`` [cmp:Sphinx]_
+## * directives: `code-block` [cmp:Sphinx]_, ``title``,
+##   `index` [cmp:Sphinx]_
 ##
 ## * ***triple emphasis*** (bold and italic) using \*\*\*
-## * ``:idx:`` role for \`interpreted text\` to include the link to this
+## * `:idx:` role for \`interpreted text\` to include the link to this
 ##   text into an index (example: `Nim index`_).
 ##
 ## .. [cmp:Sphinx] similar but different from the directives of
@@ -84,7 +84,7 @@
 ##
 ## .. _`extra features`:
 ##
-## Optional additional features, turned on by ``options: RstParseOption`` in
+## Optional additional features, turned on by `options: RstParseOption` in
 ## `rstParse proc <#rstParse,string,string,int,int,bool,RstParseOptions,FindFileHandler,MsgHandler>`_:
 ##
 ## * emoji / smiley symbols
@@ -92,11 +92,11 @@
 ## * Markdown code blocks
 ## * Markdown links
 ## * Markdown headlines
-## * using ``1`` as auto-enumerator in enumerated lists like RST ``#``
-##   (auto-enumerator ``1`` can not be used with ``#`` in the same list)
+## * using `1` as auto-enumerator in enumerated lists like RST ``#``
+##   (auto-enumerator `1` can not be used with ``#`` in the same list)
 ##
-## .. Note:: By default Nim has ``roSupportMarkdown`` and
-##    ``roSupportRawDirective`` turned **on**.
+## .. Note:: By default Nim has `roSupportMarkdown` and
+##    `roSupportRawDirective` turned **on**.
 ##
 ## .. warning:: Using Nim-specific features can cause other RST implementations
 ##   to fail on your document.
@@ -111,11 +111,11 @@
 ##   - no doctest blocks
 ##   - no grid tables
 ##   - some directives are missing (check official `RST directives list`_):
-##     ``parsed-literal``, ``sidebar``, ``topic``, ``math``, ``rubric``,
-##     ``epigraph``, ``highlights``, ``pull-quote``, ``compound``,
-##     ``table``, ``csv-table``, ``list-table``, ``section-numbering``,
-##     ``header``, ``footer``, ``meta``, ``class``
-##     - no ``role`` directives and no custom interpreted text roles
+##     `parsed-literal`, ``sidebar``, ``topic``, ``math``, ``rubric``,
+##     `epigraph`, ``highlights``, ``pull-quote``, ``compound``,
+##     `table`, ``csv-table``, ``list-table``, ``section-numbering``,
+##     `header`, ``footer``, ``meta``, ``class``
+##     - no `role` directives and no custom interpreted text roles
 ##     - some standard roles are not supported (check `RST roles list`_)
 ## * inline markup
 ##   - no simple-inline-markup
@@ -125,12 +125,12 @@
 ## -----
 ##
 ## See `Nim DocGen Tools Guide <docgen.html>`_ for the details about
-## ``nim doc``, ``nim rst2html`` and ``nim rst2tex`` commands.
+## `nim doc`, ``nim rst2html`` and ``nim rst2tex`` commands.
 ##
 ## See `packages/docutils/rstgen module <rstgen.html>`_ to know how to
 ## generate HTML or Latex strings to embed them into your documents.
 ##
-## .. Tip:: Import ``packages/docutils/rst`` to use this module
+## .. Tip:: Import `packages/docutils/rst` to use this module
 ##    programmatically.
 ##
 ## .. _quick introduction: https://docutils.sourceforge.io/docs/user/rst/quickstart.html
@@ -146,10 +146,10 @@ import
 
 type
   RstParseOption* = enum     ## options for the RST parser
-    roSkipPounds,             ## skip ``#`` at line beginning (documentation
+    roSkipPounds,             ## skip `#` at line beginning (documentation
                               ## embedded in Nim comments)
-    roSupportSmilies,         ## make the RST parser support smilies like ``:)``
-    roSupportRawDirective,    ## support the ``raw`` directive (don't support
+    roSupportSmilies,         ## make the RST parser support smilies like `:)`
+    roSupportRawDirective,    ## support the `raw` directive (don't support
                               ## it for sandboxing)
     roSupportMarkdown         ## support additional features of Markdown
 
@@ -1353,7 +1353,7 @@ proc parseFields(p: var RstParser): PRstNode =
         break
 
 proc getFieldValue*(n: PRstNode): string =
-  ## Returns the value of a specific ``rnField`` node.
+  ## Returns the value of a specific `rnField` node.
   ##
   ## This proc will assert if the node is not of the expected type. The empty
   ## string will be returned as a minimum. Any value in the rst will be
@@ -2167,17 +2167,17 @@ proc dirCodeBlock(p: var RstParser, nimExtension = false): PRstNode =
   ## Parses a code block.
   ##
   ## Code blocks are rnDirective trees with a `kind` of rnCodeBlock. See the
-  ## description of ``parseDirective`` for further structure information.
+  ## description of `parseDirective` for further structure information.
   ##
   ## Code blocks can come in two forms, the standard `code directive
   ## <http://docutils.sourceforge.net/docs/ref/rst/directives.html#code>`_ and
-  ## the nim extension ``.. code-block::``. If the block is an extension, we
+  ## the nim extension `.. code-block::`. If the block is an extension, we
   ## want the default language syntax highlighting to be Nim, so we create a
   ## fake internal field to communicate with the generator. The field is named
-  ## ``default-language``, which is unlikely to collide with a field specified
+  ## `default-language`, which is unlikely to collide with a field specified
   ## by any random rst input file.
   ##
-  ## As an extension this proc will process the ``file`` extension field and if
+  ## As an extension this proc will process the `file` extension field and if
   ## present will replace the code block with the contents of the referenced
   ## file.
   result = parseDirective(p, rnCodeBlock, {hasArg, hasOptions}, parseLiteralBlock)

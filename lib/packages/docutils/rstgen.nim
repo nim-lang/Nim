@@ -12,19 +12,19 @@
 ## information on this markup syntax) and is used by the compiler's `docgen
 ## tools <docgen.html>`_.
 ##
-## You can generate HTML output through the convenience proc ``rstToHtml``,
+## You can generate HTML output through the convenience proc `rstToHtml`,
 ## which provided an input string with rst markup returns a string with the
 ## generated HTML. The final output is meant to be embedded inside a full
-## document you provide yourself, so it won't contain the usual ``<header>`` or
-## ``<body>`` parts.
+## document you provide yourself, so it won't contain the usual `<header>` or
+## `<body>` parts.
 ##
-## You can also create a ``RstGenerator`` structure and populate it with the
+## You can also create a `RstGenerator` structure and populate it with the
 ## other lower level methods to finally build complete documents. This requires
 ## many options and tweaking, but you are not limited to snippets and can
 ## generate `LaTeX documents <https://en.wikipedia.org/wiki/LaTeX>`_ too.
 ##
 ## `Docutils configuration files`_ are not supported. Instead HTML generation
-## can be tweaked by editing file ``config/nimdoc.cfg``.
+## can be tweaked by editing file `config/nimdoc.cfg`.
 ##
 ## .. _Docutils configuration files: https://docutils.sourceforge.io/docs/user/config.htm
 ##
@@ -39,7 +39,7 @@
 ##   No backreferences are generated since finding all references of a footnote
 ##   can be done by simply searching for [footnoteName].
 ##
-## .. Tip: Import ``packages/docutils/rstgen`` to use this module
+## .. Tip: Import `packages/docutils/rstgen` to use this module
 
 import strutils, os, hashes, strtabs, rstast, rst, highlite, tables, sequtils,
   algorithm, parseutils
@@ -112,10 +112,10 @@ proc initRstGenerator*(g: var RstGenerator, target: OutputTarget,
                        options: RstParseOptions,
                        findFile: FindFileHandler = nil,
                        msgHandler: MsgHandler = nil) =
-  ## Initializes a ``RstGenerator``.
+  ## Initializes a `RstGenerator`.
   ##
-  ## You need to call this before using a ``RstGenerator`` with any other
-  ## procs in this module. Pass a non ``nil`` ``StringTableRef`` value as
+  ## You need to call this before using a `RstGenerator` with any other
+  ## procs in this module. Pass a non `nil` ``StringTableRef`` value as
   ## `config` with parameters used by the HTML output generator.  If you don't
   ## know what to use, pass the results of the `defaultConfig()
   ## <#defaultConfig>_` proc.
@@ -127,22 +127,22 @@ proc initRstGenerator*(g: var RstGenerator, target: OutputTarget,
   ## filename``.  This default title can be overridden by the embedded rst, but
   ## it helps to prettify the generated index if no title is found.
   ##
-  ## The ``RstParseOptions``, ``FindFileHandler`` and ``MsgHandler`` types
+  ## The `RstParseOptions`, ``FindFileHandler`` and ``MsgHandler`` types
   ## are defined in the `packages/docutils/rst module <rst.html>`_.
-  ## ``options`` selects the behaviour of the rst parser.
+  ## `options` selects the behaviour of the rst parser.
   ##
-  ## ``findFile`` is a proc used by the rst ``include`` directive among others.
+  ## `findFile` is a proc used by the rst ``include`` directive among others.
   ## The purpose of this proc is to mangle or filter paths. It receives paths
   ## specified in the rst document and has to return a valid path to existing
-  ## files or the empty string otherwise.  If you pass ``nil``, a default proc
+  ## files or the empty string otherwise.  If you pass `nil`, a default proc
   ## will be used which given a path returns the input path only if the file
   ## exists. One use for this proc is to transform relative paths found in the
   ## document to absolute path, useful if the rst file and the resources it
   ## references are not in the same directory as the current working directory.
   ##
-  ## The ``msgHandler`` is a proc used for user error reporting. It will be
+  ## The `msgHandler` is a proc used for user error reporting. It will be
   ## called with the filename, line, col, and type of any error found during
-  ## parsing. If you pass ``nil``, a default message handler will be used which
+  ## parsing. If you pass `nil`, a default message handler will be used which
   ## writes the messages to the standard output.
   ##
   ## Example:
@@ -272,10 +272,10 @@ proc `or`(x, y: string): string {.inline.} =
   result = if x.len == 0: y else: x
 
 proc renderRstToOut*(d: var RstGenerator, n: PRstNode, result: var string)
-  ## Writes into ``result`` the rst ast ``n`` using the ``d`` configuration.
+  ## Writes into `result` the rst ast ``n`` using the ``d`` configuration.
   ##
-  ## Before using this proc you need to initialise a ``RstGenerator`` with
-  ## ``initRstGenerator`` and parse a rst file with ``rstParse`` from the
+  ## Before using this proc you need to initialise a `RstGenerator` with
+  ## `initRstGenerator` and parse a rst file with ``rstParse`` from the
   ## `packages/docutils/rst module <rst.html>`_. Example:
   ##
   ## .. code-block:: nim
@@ -317,9 +317,9 @@ proc quoteIndexColumn(text: string): string =
   ## separated column text file. The following character sequence replacements
   ## will be performed for that goal:
   ##
-  ## * ``"\\"`` => ``"\\\\"``
-  ## * ``"\n"`` => ``"\\n"``
-  ## * ``"\t"`` => ``"\\t"``
+  ## * `"\\"` => ``"\\\\"``
+  ## * `"\n"` => ``"\\n"``
+  ## * `"\t"` => ``"\\t"``
   result = newStringOfCap(text.len + 3)
   for c in text:
     case c
@@ -330,7 +330,7 @@ proc quoteIndexColumn(text: string): string =
     else: result.add c
 
 proc unquoteIndexColumn(text: string): string =
-  ## Returns the unquoted version generated by ``quoteIndexColumn``.
+  ## Returns the unquoted version generated by `quoteIndexColumn`.
   result = text.multiReplace(("\\t", "\t"), ("\\n", "\n"), ("\\\\", "\\"))
 
 proc setIndexTerm*(d: var RstGenerator, htmlFile, id, term: string,
@@ -338,7 +338,7 @@ proc setIndexTerm*(d: var RstGenerator, htmlFile, id, term: string,
   ## Adds a `term` to the index using the specified hyperlink identifier.
   ##
   ## A new entry will be added to the index using the format
-  ## ``term<tab>file#id``. The file part will come from the `htmlFile`
+  ## `term<tab>file#id`. The file part will come from the `htmlFile`
   ## parameter.
   ##
   ## The `id` will be appended with a hash character only if its length is not
@@ -419,10 +419,10 @@ type
     ## filename for the document. `linkTitle` and `linkDesc` will be empty.
     ##
     ## The value indexed by this IndexEntry is a sequence with the real index
-    ## entries found in the ``.idx`` file.
+    ## entries found in the `.idx` file.
 
 proc cmp(a, b: IndexEntry): int =
-  ## Sorts two ``IndexEntry`` first by `keyword` field, then by `link`.
+  ## Sorts two `IndexEntry` first by `keyword` field, then by `link`.
   result = cmpIgnoreStyle(a.keyword, b.keyword)
   if result == 0:
     result = cmpIgnoreStyle(a.link, b.link)
@@ -619,7 +619,7 @@ proc readIndexDir(dir: string):
   ##
   ## Returns the list of found module names, the list of free symbol entries
   ## and the different documentation indexes. The list of modules is sorted.
-  ## See the documentation of ``mergeIndexes`` for details.
+  ## See the documentation of `mergeIndexes` for details.
   result.modules = @[]
   result.docs = initTable[IndexEntry, seq[IndexEntry]](32)
   newSeq(result.symbols, 15_000)
@@ -685,8 +685,8 @@ proc mergeIndexes*(dir: string): string =
   ## Merges all index files in `dir` and returns the generated index as HTML.
   ##
   ## This proc will first scan `dir` for index files with the ``.idx``
-  ## extension previously created by commands like ``nim doc|rst2html``
-  ## which use the ``--index:on`` switch. These index files are the result of
+  ## extension previously created by commands like `nim doc|rst2html`
+  ## which use the `--index:on` switch. These index files are the result of
   ## calls to `setIndexTerm()
   ## <#setIndexTerm,RstGenerator,string,string,string,string,string>`_
   ## and `writeIndexFile() <#writeIndexFile,RstGenerator,string>`_, so they are
@@ -901,8 +901,8 @@ proc renderSmiley(d: PDoc, n: PRstNode, result: var string) =
 proc parseCodeBlockField(d: PDoc, n: PRstNode, params: var CodeBlockParams) =
   ## Parses useful fields which can appear before a code block.
   ##
-  ## This supports the special ``default-language`` internal string generated
-  ## by the ``rst`` module to communicate a specific default language.
+  ## This supports the special `default-language` internal string generated
+  ## by the `rst` module to communicate a specific default language.
   case n.getArgument.toLowerAscii
   of "number-lines":
     params.numberLines = true
@@ -992,11 +992,11 @@ proc buildLinesHtmlTable(d: PDoc; params: CodeBlockParams, code: string,
 proc renderCodeBlock(d: PDoc, n: PRstNode, result: var string) =
   ## Renders a code block, appending it to `result`.
   ##
-  ## If the code block uses the ``number-lines`` option, a table will be
+  ## If the code block uses the `number-lines` option, a table will be
   ## generated with two columns, the first being a list of numbers and the
   ## second the code block itself. The code block can use syntax highlighting,
   ## which depends on the directive argument specified by the rst input, and
-  ## may also come from the parser through the internal ``default-language``
+  ## may also come from the parser through the internal `default-language`
   ## option to differentiate between a plain code block and Nim's code block
   ## extension.
   assert n.kind == rnCodeBlock
@@ -1410,16 +1410,16 @@ proc formatNamedVars*(frmt: string, varnames: openArray[string],
 proc defaultConfig*(): StringTableRef =
   ## Returns a default configuration for embedded HTML generation.
   ##
-  ## The returned ``StringTableRef`` contains the parameters used by the HTML
+  ## The returned `StringTableRef` contains the parameters used by the HTML
   ## engine to build the final output. For information on what these parameters
-  ## are and their purpose, please look up the file ``config/nimdoc.cfg``
+  ## are and their purpose, please look up the file `config/nimdoc.cfg`
   ## bundled with the compiler.
   ##
   ## The only difference between the contents of that file and the values
-  ## provided by this proc is the ``doc.file`` variable. The ``doc.file``
+  ## provided by this proc is the `doc.file` variable. The ``doc.file``
   ## variable of the configuration file contains HTML to build standalone
   ## pages, while this proc returns just the content for procs like
-  ## ``rstToHtml`` to generate the bare minimum HTML.
+  ## `rstToHtml` to generate the bare minimum HTML.
   result = newStringTable(modeStyleInsensitive)
 
   template setConfigVar(key, val) =
@@ -1482,9 +1482,9 @@ proc rstToHtml*(s: string, options: RstParseOptions,
   ## This convenience proc parses any input string using rst markup (it doesn't
   ## have to be a full document!) and returns an embeddable piece of HTML. The
   ## proc is meant to be used in *online* environments without access to a
-  ## meaningful filesystem, and therefore rst ``include`` like directives won't
-  ## work. For an explanation of the ``config`` parameter see the
-  ## ``initRstGenerator`` proc. Example:
+  ## meaningful filesystem, and therefore rst `include` like directives won't
+  ## work. For an explanation of the `config` parameter see the
+  ## `initRstGenerator` proc. Example:
   ##
   ## .. code-block:: nim
   ##   import packages/docutils/rstgen, strtabs
@@ -1493,9 +1493,9 @@ proc rstToHtml*(s: string, options: RstParseOptions,
   ##     newStringTable(modeStyleInsensitive))
   ##   # --> <em>Hello</em> <strong>world</strong>!
   ##
-  ## If you need to allow the rst ``include`` directive or tweak the generated
-  ## output you have to create your own ``RstGenerator`` with
-  ## ``initRstGenerator`` and related procs.
+  ## If you need to allow the rst `include` directive or tweak the generated
+  ## output you have to create your own `RstGenerator` with
+  ## `initRstGenerator` and related procs.
 
   proc myFindFile(filename: string): string =
     # we don't find any files in online mode:
