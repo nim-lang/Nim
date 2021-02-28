@@ -12,10 +12,10 @@
 ## The only encoding that is supported is UTF-8. The parser has been designed
 ## to be somewhat error correcting, so that even most "wild HTML" found on the
 ## web can be parsed with it. **Note:** This parser does not check that each
-## ``<tag>`` has a corresponding ``</tag>``! These checks have do be
+## `<tag>` has a corresponding ``</tag>``! These checks have do be
 ## implemented by the client code for various reasons:
 ##
-## * Old HTML contains tags that have no end tag: ``<br>`` for example.
+## * Old HTML contains tags that have no end tag: `<br>` for example.
 ## * HTML tags are case insensitive, XML tags are case sensitive. Since this
 ##   library can parse both, only the client knows which comparison is to be
 ##   used.
@@ -151,7 +151,7 @@ import
 
 # the parser treats ``<br />`` as ``<br></br>``
 
-#  xmlElementCloseEnd, ## ``/>``
+#  xmlElementCloseEnd, ## `/>`
 
 type
   XmlEventKind* = enum ## enumeration of all events that may occur when parsing
@@ -160,26 +160,26 @@ type
     xmlCharData,       ## character data
     xmlWhitespace,     ## whitespace has been parsed
     xmlComment,        ## a comment has been parsed
-    xmlPI,             ## processing instruction (``<?name something ?>``)
-    xmlElementStart,   ## ``<elem>``
-    xmlElementEnd,     ## ``</elem>``
+    xmlPI,             ## processing instruction (`<?name something ?>`)
+    xmlElementStart,   ## `<elem>`
+    xmlElementEnd,     ## `</elem>`
     xmlElementOpen,    ## ``<elem
-    xmlAttribute,      ## ``key = "value"`` pair
-    xmlElementClose,   ## ``>``
-    xmlCData,          ## ``<![CDATA[`` ... data ... ``]]>``
+    xmlAttribute,      ## `key = "value"` pair
+    xmlElementClose,   ## `>`
+    xmlCData,          ## `<![CDATA[` ... data ... ``]]>``
     xmlEntity,         ## &entity;
-    xmlSpecial         ## ``<! ... data ... >``
+    xmlSpecial         ## `<! ... data ... >`
 
   XmlErrorKind* = enum        ## enumeration that lists all errors that can occur
     errNone,                  ## no error
-    errEndOfCDataExpected,    ## ``]]>`` expected
+    errEndOfCDataExpected,    ## `]]>` expected
     errNameExpected,          ## name expected
-    errSemicolonExpected,     ## ``;`` expected
-    errQmGtExpected,          ## ``?>`` expected
-    errGtExpected,            ## ``>`` expected
-    errEqExpected,            ## ``=`` expected
-    errQuoteExpected,         ## ``"`` or ``'`` expected
-    errEndOfCommentExpected   ## ``-->`` expected
+    errSemicolonExpected,     ## `;` expected
+    errQmGtExpected,          ## `?>` expected
+    errGtExpected,            ## `>` expected
+    errEqExpected,            ## `=` expected
+    errQuoteExpected,         ## `"` or ``'`` expected
+    errEndOfCommentExpected   ## `-->` expected
     errAttributeValueExpected ## non-empty attribute value expected
 
   ParserState = enum
@@ -219,9 +219,9 @@ proc open*(my: var XmlParser, input: Stream, filename: string,
   ## initializes the parser with an input stream. `Filename` is only used
   ## for nice error messages. The parser's behaviour can be controlled by
   ## the `options` parameter: If `options` contains ``reportWhitespace``
-  ## a whitespace token is reported as an ``xmlWhitespace`` event.
+  ## a whitespace token is reported as an `xmlWhitespace` event.
   ## If `options` contains ``reportComments`` a comment token is reported as an
-  ## ``xmlComment`` event.
+  ## `xmlComment` event.
   lexbase.open(my, input, 8192, {'\c', '\L', '/'})
   my.filename = filename
   my.state = stateStart
@@ -241,9 +241,9 @@ proc kind*(my: XmlParser): XmlEventKind {.inline.} =
   return my.kind
 
 template charData*(my: XmlParser): string =
-  ## returns the character data for the events: ``xmlCharData``,
-  ## ``xmlWhitespace``, ``xmlComment``, ``xmlCData``, ``xmlSpecial``
-  ## Raises an assertion in debug mode if ``my.kind`` is not one
+  ## returns the character data for the events: `xmlCharData`,
+  ## `xmlWhitespace`, ``xmlComment``, ``xmlCData``, ``xmlSpecial``
+  ## Raises an assertion in debug mode if `my.kind` is not one
   ## of those events. In release mode, this will not trigger an error
   ## but the value returned will not be valid.
   assert(my.kind in {xmlCharData, xmlWhitespace, xmlComment, xmlCData,
@@ -251,50 +251,50 @@ template charData*(my: XmlParser): string =
   my.a
 
 template elementName*(my: XmlParser): string =
-  ## returns the element name for the events: ``xmlElementStart``,
-  ## ``xmlElementEnd``, ``xmlElementOpen``
-  ## Raises an assertion in debug mode if ``my.kind`` is not one
+  ## returns the element name for the events: `xmlElementStart`,
+  ## `xmlElementEnd`, ``xmlElementOpen``
+  ## Raises an assertion in debug mode if `my.kind` is not one
   ## of those events. In release mode, this will not trigger an error
   ## but the value returned will not be valid.
   assert(my.kind in {xmlElementStart, xmlElementEnd, xmlElementOpen})
   my.a
 
 template entityName*(my: XmlParser): string =
-  ## returns the entity name for the event: ``xmlEntity``
-  ## Raises an assertion in debug mode if ``my.kind`` is not
-  ## ``xmlEntity``. In release mode, this will not trigger an error
+  ## returns the entity name for the event: `xmlEntity`
+  ## Raises an assertion in debug mode if `my.kind` is not
+  ## `xmlEntity`. In release mode, this will not trigger an error
   ## but the value returned will not be valid.
   assert(my.kind == xmlEntity)
   my.a
 
 template attrKey*(my: XmlParser): string =
-  ## returns the attribute key for the event ``xmlAttribute``
-  ## Raises an assertion in debug mode if ``my.kind`` is not
-  ## ``xmlAttribute``. In release mode, this will not trigger an error
+  ## returns the attribute key for the event `xmlAttribute`
+  ## Raises an assertion in debug mode if `my.kind` is not
+  ## `xmlAttribute`. In release mode, this will not trigger an error
   ## but the value returned will not be valid.
   assert(my.kind == xmlAttribute)
   my.a
 
 template attrValue*(my: XmlParser): string =
-  ## returns the attribute value for the event ``xmlAttribute``
-  ## Raises an assertion in debug mode if ``my.kind`` is not
-  ## ``xmlAttribute``. In release mode, this will not trigger an error
+  ## returns the attribute value for the event `xmlAttribute`
+  ## Raises an assertion in debug mode if `my.kind` is not
+  ## `xmlAttribute`. In release mode, this will not trigger an error
   ## but the value returned will not be valid.
   assert(my.kind == xmlAttribute)
   my.b
 
 template piName*(my: XmlParser): string =
-  ## returns the processing instruction name for the event ``xmlPI``
-  ## Raises an assertion in debug mode if ``my.kind`` is not
-  ## ``xmlPI``. In release mode, this will not trigger an error
+  ## returns the processing instruction name for the event `xmlPI`
+  ## Raises an assertion in debug mode if `my.kind` is not
+  ## `xmlPI`. In release mode, this will not trigger an error
   ## but the value returned will not be valid.
   assert(my.kind == xmlPI)
   my.a
 
 template piRest*(my: XmlParser): string =
-  ## returns the rest of the processing instruction for the event ``xmlPI``
-  ## Raises an assertion in debug mode if ``my.kind`` is not
-  ## ``xmlPI``. In release mode, this will not trigger an error
+  ## returns the rest of the processing instruction for the event `xmlPI`
+  ## Raises an assertion in debug mode if `my.kind` is not
+  ## `xmlPI`. In release mode, this will not trigger an error
   ## but the value returned will not be valid.
   assert(my.kind == xmlPI)
   my.b
@@ -322,7 +322,7 @@ proc getFilename*(my: XmlParser): string {.inline.} =
   result = my.filename
 
 proc errorMsg*(my: XmlParser): string =
-  ## returns a helpful error message for the event ``xmlError``
+  ## returns a helpful error message for the event `xmlError`
   assert(my.kind == xmlError)
   result = "$1($2, $3) Error: $4" % [
     my.filename, $getLine(my), $getColumn(my), errorMessages[my.err]]
