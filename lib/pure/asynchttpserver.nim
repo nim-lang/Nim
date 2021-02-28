@@ -19,7 +19,7 @@ runnableExamples:
   # respond to all requests with a `200 OK` response code and "Hello World"
   # as the response body. Run locally with:
   # `nim doc --doccmd:-d:nimAsyncHttpServerEnableTest --lib:lib lib/pure/asynchttpserver.nim`
-  import asyncdispatch
+  import std/asyncdispatch
   if defined(nimAsyncHttpServerEnableTest):
     proc main {.async.} =
       const port = 8080
