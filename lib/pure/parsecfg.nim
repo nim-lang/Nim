@@ -115,7 +115,7 @@
 
 # taken from https://docs.python.org/3/library/configparser.html#supported-ini-file-structure
 runnableExamples:
-  import streams
+  import std/streams
 
   var dict = loadConfig(newStringStream("""[Simple Values]
     key=value

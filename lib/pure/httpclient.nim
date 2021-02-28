@@ -573,7 +573,7 @@ proc newHttpClient*(userAgent = defUserAgent, maxRedirects = 5,
   ##
   ## `headers` specifies the HTTP Headers.
   runnableExamples:
-    import asyncdispatch, httpclient, strutils
+    import std/[asyncdispatch, httpclient, strutils]
 
     proc asyncProc(): Future[string] {.async.} =
       var client = newAsyncHttpClient()

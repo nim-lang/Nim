@@ -38,7 +38,7 @@ runnableExamples:
 ## `method call syntax<manual.html#procedures-method-call-syntax>`_:
 
 runnableExamples:
-  from sequtils import map
+  from std/sequtils import map
 
   let jenny = "867-5309"
   assert jenny.split('-').map(parseInt) == @[867, 5309]
