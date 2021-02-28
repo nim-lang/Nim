@@ -115,23 +115,23 @@ proc initRstGenerator*(g: var RstGenerator, target: OutputTarget,
   ## Initializes a `RstGenerator`.
   ##
   ## You need to call this before using a `RstGenerator` with any other
-  ## procs in this module. Pass a non `nil` ``StringTableRef`` value as
+  ## procs in this module. Pass a non `nil` `StringTableRef` value as
   ## `config` with parameters used by the HTML output generator.  If you don't
   ## know what to use, pass the results of the `defaultConfig()
   ## <#defaultConfig>_` proc.
   ##
   ## The `filename` parameter will be used for error reporting and creating
   ## index hyperlinks to the file, but you can pass an empty string here if you
-  ## are parsing a stream in memory. If `filename` ends with the ``.nim``
+  ## are parsing a stream in memory. If `filename` ends with the `.nim`
   ## extension, the title for the document will be set by default to ``Module
   ## filename``.  This default title can be overridden by the embedded rst, but
   ## it helps to prettify the generated index if no title is found.
   ##
-  ## The `RstParseOptions`, ``FindFileHandler`` and ``MsgHandler`` types
+  ## The `RstParseOptions`, `FindFileHandler` and `MsgHandler` types
   ## are defined in the `packages/docutils/rst module <rst.html>`_.
   ## `options` selects the behaviour of the rst parser.
   ##
-  ## `findFile` is a proc used by the rst ``include`` directive among others.
+  ## `findFile` is a proc used by the rst `include` directive among others.
   ## The purpose of this proc is to mangle or filter paths. It receives paths
   ## specified in the rst document and has to return a valid path to existing
   ## files or the empty string otherwise.  If you pass `nil`, a default proc
@@ -272,10 +272,10 @@ proc `or`(x, y: string): string {.inline.} =
   result = if x.len == 0: y else: x
 
 proc renderRstToOut*(d: var RstGenerator, n: PRstNode, result: var string)
-  ## Writes into `result` the rst ast ``n`` using the ``d`` configuration.
+  ## Writes into `result` the rst ast `n` using the `d` configuration.
   ##
   ## Before using this proc you need to initialise a `RstGenerator` with
-  ## `initRstGenerator` and parse a rst file with ``rstParse`` from the
+  ## `initRstGenerator` and parse a rst file with `rstParse` from the
   ## `packages/docutils/rst module <rst.html>`_. Example:
   ##
   ## .. code-block:: nim
@@ -311,15 +311,15 @@ proc renderAux(d: PDoc, n: PRstNode, html, tex: string, result: var string) =
 # ---------------- index handling --------------------------------------------
 
 proc quoteIndexColumn(text: string): string =
-  ## Returns a safe version of `text` for serialization to the ``.idx`` file.
+  ## Returns a safe version of `text` for serialization to the `.idx` file.
   ##
   ## The returned version can be put without worries in a line based tab
   ## separated column text file. The following character sequence replacements
   ## will be performed for that goal:
   ##
-  ## * `"\\"` => ``"\\\\"``
-  ## * `"\n"` => ``"\\n"``
-  ## * `"\t"` => ``"\\t"``
+  ## * `"\\"` => `"\\\\"`
+  ## * `"\n"` => `"\\n"`
+  ## * `"\t"` => `"\\t"`
   result = newStringOfCap(text.len + 3)
   for c in text:
     case c
@@ -615,7 +615,7 @@ proc generateModuleJumps(modules: seq[string]): string =
 
 proc readIndexDir(dir: string):
     tuple[modules: seq[string], symbols: seq[IndexEntry], docs: IndexedDocs] =
-  ## Walks `dir` reading ``.idx`` files converting them in IndexEntry items.
+  ## Walks `dir` reading `.idx` files converting them in IndexEntry items.
   ##
   ## Returns the list of found module names, the list of free symbol entries
   ## and the different documentation indexes. The list of modules is sorted.
@@ -684,7 +684,7 @@ proc readIndexDir(dir: string):
 proc mergeIndexes*(dir: string): string =
   ## Merges all index files in `dir` and returns the generated index as HTML.
   ##
-  ## This proc will first scan `dir` for index files with the ``.idx``
+  ## This proc will first scan `dir` for index files with the `.idx`
   ## extension previously created by commands like `nim doc|rst2html`
   ## which use the `--index:on` switch. These index files are the result of
   ## calls to `setIndexTerm()
@@ -705,7 +705,7 @@ proc mergeIndexes*(dir: string): string =
   ## used: indices which contain one entry without the HTML hash character (#)
   ## will be considered `documentation`, since this hash-less entry is the
   ## explicit title of the document.  Indices without this explicit entry will
-  ## be considered `generated API` extracted out of a source ``.nim`` file.
+  ## be considered `generated API` extracted out of a source `.nim` file.
   ##
   ## Returns the merged and sorted indices into a single HTML block which can
   ## be further embedded into nimdoc templates.
@@ -1416,7 +1416,7 @@ proc defaultConfig*(): StringTableRef =
   ## bundled with the compiler.
   ##
   ## The only difference between the contents of that file and the values
-  ## provided by this proc is the `doc.file` variable. The ``doc.file``
+  ## provided by this proc is the `doc.file` variable. The `doc.file`
   ## variable of the configuration file contains HTML to build standalone
   ## pages, while this proc returns just the content for procs like
   ## `rstToHtml` to generate the bare minimum HTML.

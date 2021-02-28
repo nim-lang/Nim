@@ -14,7 +14,7 @@
 ## Supported syntax:
 ##
 ## 1. short options - `-abcd`, where a, b, c, d are names
-## 2. long option - `--foo:bar`, ``--foo=bar`` or ``--foo``
+## 2. long option - `--foo:bar`, `--foo=bar` or `--foo`
 ## 3. argument - everything else
 
 {.deprecated: "Use the 'parseopt' module instead".}

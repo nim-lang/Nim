@@ -291,7 +291,7 @@ proc getType*(n: NimNode): NimNode {.magic: "NGetType", noSideEffect.}
   ## kind of type it is, call `typeKind` on getType's result.
 
 proc getType*(n: typedesc): NimNode {.magic: "NGetType", noSideEffect.}
-  ## Version of `getType` which takes a ``typedesc``.
+  ## Version of `getType` which takes a `typedesc`.
 
 proc typeKind*(n: NimNode): NimTypeKind {.magic: "NGetType", noSideEffect.}
   ## Returns the type kind of the node 'n' that should represent a type, that
@@ -316,7 +316,7 @@ proc getTypeInst*(n: NimNode): NimNode {.magic: "NGetType", noSideEffect.} =
     doAssert(dumpTypeInst(c) == "Vec[4, float32]")
 
 proc getTypeInst*(n: typedesc): NimNode {.magic: "NGetType", noSideEffect.}
-  ## Version of `getTypeInst` which takes a ``typedesc``.
+  ## Version of `getTypeInst` which takes a `typedesc`.
 
 proc getTypeImpl*(n: NimNode): NimNode {.magic: "NGetType", noSideEffect.} =
   ## Returns the `type`:idx: of a node in a form matching the implementation
@@ -356,7 +356,7 @@ proc symBodyHash*(s: NimNode): string {.noSideEffect.} =
   discard
 
 proc getTypeImpl*(n: typedesc): NimNode {.magic: "NGetType", noSideEffect.}
-  ## Version of `getTypeImpl` which takes a ``typedesc``.
+  ## Version of `getTypeImpl` which takes a `typedesc`.
 
 proc `intVal=`*(n: NimNode, val: BiggestInt) {.magic: "NSetIntVal", noSideEffect.}
 proc `floatVal=`*(n: NimNode, val: BiggestFloat) {.magic: "NSetFloatVal", noSideEffect.}
@@ -454,12 +454,12 @@ proc bindSym*(ident: string | NimNode, rule: BindSymRule = brClosed): NimNode {.
               magic: "NBindSym", noSideEffect.}
   ## Creates a node that binds `ident` to a symbol node. The bound symbol
   ## may be an overloaded symbol.
-  ## if `ident` is a NimNode, it must have ``nnkIdent`` kind.
-  ## If `rule == brClosed` either an ``nnkClosedSymChoice`` tree is
+  ## if `ident` is a NimNode, it must have `nnkIdent` kind.
+  ## If `rule == brClosed` either an `nnkClosedSymChoice` tree is
   ## returned or `nnkSym` if the symbol is not ambiguous.
-  ## If `rule == brOpen` either an ``nnkOpenSymChoice`` tree is
+  ## If `rule == brOpen` either an `nnkOpenSymChoice` tree is
   ## returned or `nnkSym` if the symbol is not ambiguous.
-  ## If `rule == brForceOpen` always an ``nnkOpenSymChoice`` tree is
+  ## If `rule == brForceOpen` always an `nnkOpenSymChoice` tree is
   ## returned even if the symbol is not ambiguous.
   ##
   ## Experimental feature:
@@ -505,7 +505,7 @@ proc copyLineInfo*(arg: NimNode, info: NimNode) {.magic: "NLineInfo", noSideEffe
   ## Copy lineinfo from `info`.
 
 proc lineInfoObj*(n: NimNode): LineInfo {.compileTime.} =
-  ## Returns `LineInfo` of ``n``, using absolute path for ``filename``.
+  ## Returns `LineInfo` of `n`, using absolute path for `filename`.
   result = LineInfo(filename: n.getFile, line: n.getLine, column: n.getColumn)
 
 proc lineInfo*(arg: NimNode): string {.compileTime.} =
@@ -641,7 +641,7 @@ proc expectLen*(n: NimNode, len: int) {.compileTime.} =
   if n.len != len: error("Expected a node with " & $len & " children, got " & $n.len, n)
 
 proc expectLen*(n: NimNode, min, max: int) {.compileTime.} =
-  ## Checks that `n` has a number of children in the range ``min..max``.
+  ## Checks that `n` has a number of children in the range `min..max`.
   ## If this is not the case, compilation aborts with an error message.
   ## This is useful for writing macros that check its number of arguments.
   if n.len < min or n.len > max:
@@ -833,7 +833,7 @@ proc newLit*[T: tuple](arg: T): NimNode {.compileTime.} =
 
 proc nestList*(op: NimNode; pack: NimNode): NimNode {.compileTime.} =
   ## Nests the list `pack` into a tree of call expressions:
-  ## `[a, b, c]` is transformed into ``op(a, op(c, d))``.
+  ## `[a, b, c]` is transformed into `op(a, op(c, d))`.
   ## This is also known as fold expression.
   if pack.len < 1:
     error("`nestList` expects a node with at least 1 child")
@@ -843,7 +843,7 @@ proc nestList*(op: NimNode; pack: NimNode): NimNode {.compileTime.} =
 
 proc nestList*(op: NimNode; pack: NimNode; init: NimNode): NimNode {.compileTime.} =
   ## Nests the list `pack` into a tree of call expressions:
-  ## `[a, b, c]` is transformed into ``op(a, op(c, d))``.
+  ## `[a, b, c]` is transformed into `op(a, op(c, d))`.
   ## This is also known as fold expression.
   result = init
   for i in countdown(pack.len - 1, 0):
@@ -893,14 +893,14 @@ proc treeRepr*(n: NimNode): string {.compileTime, benign.} =
 proc lispRepr*(n: NimNode; indented = false): string {.compileTime, benign.} =
   ## Convert the AST `n` to a human-readable lisp-like string.
   ##
-  ## See also `repr`, ``treeRepr``, and ``astGenRepr``.
+  ## See also `repr`, `treeRepr`, and `astGenRepr`.
   result = ""
   n.treeTraverse(result, isLisp = true, indented = indented)
 
 proc astGenRepr*(n: NimNode): string {.compileTime, benign.} =
   ## Convert the AST `n` to the code required to generate that AST.
   ##
-  ## See also `repr`, ``treeRepr``, and ``lispRepr``.
+  ## See also `repr`, `treeRepr`, and `lispRepr`.
 
   const
     NodeKinds = {nnkEmpty, nnkIdent, nnkSym, nnkNone, nnkCommentStmt}
@@ -965,7 +965,7 @@ macro dumpTree*(s: untyped): untyped = echo s.treeRepr
   ##        Ident "echo"
   ##        StrLit "Hello, World!"
   ##
-  ## Also see `dumpAstGen` and ``dumpLisp``.
+  ## Also see `dumpAstGen` and `dumpLisp`.
 
 macro dumpLisp*(s: untyped): untyped = echo s.lispRepr(indented = true)
   ## Accepts a block of nim code and prints the parsed abstract syntax
@@ -989,7 +989,7 @@ macro dumpLisp*(s: untyped): untyped = echo s.lispRepr(indented = true)
   ##      (Ident "echo")
   ##      (StrLit "Hello, World!")))
   ##
-  ## Also see `dumpAstGen` and ``dumpTree``.
+  ## Also see `dumpAstGen` and `dumpTree`.
 
 macro dumpAstGen*(s: untyped): untyped = echo s.astGenRepr
   ## Accepts a block of nim code and prints the parsed abstract syntax
@@ -1014,7 +1014,7 @@ macro dumpAstGen*(s: untyped): untyped = echo s.astGenRepr
   ##      )
   ##    )
   ##
-  ## Also see `dumpTree` and ``dumpLisp``.
+  ## Also see `dumpTree` and `dumpLisp`.
 
 proc newEmptyNode*(): NimNode {.compileTime, noSideEffect.} =
   ## Create a new empty node.
@@ -1071,10 +1071,10 @@ proc newIdentDefs*(name, kind: NimNode;
   ## `nnkIdentDefs` need to have at least three children, but they can have
   ## more: first comes a list of identifiers followed by a type and value
   ## nodes. This helper proc creates a three node subtree, the first subnode
-  ## being a single identifier name. Both the `kind` node and ``default``
+  ## being a single identifier name. Both the `kind` node and `default`
   ## (value) nodes may be empty depending on where the `nnkIdentDefs`
   ## appears: tuple or object definitions will have an empty `default` node,
-  ## `let` or ``var`` blocks may have an empty ``kind`` node if the
+  ## `let` or `var` blocks may have an empty `kind` node if the
   ## identifier is being assigned a value. Example:
   ##
   ## .. code-block:: nim
@@ -1329,7 +1329,7 @@ template findChild*(n: NimNode; cond: untyped): NimNode {.dirty.} =
     res
 
 proc insert*(a: NimNode; pos: int; b: NimNode) {.compileTime.} =
-  ## Insert node `b` into node ``a`` at ``pos``.
+  ## Insert node `b` into node `a` at `pos`.
   if len(a)-1 < pos:
     # add some empty nodes first
     for i in len(a)-1..pos-2:
@@ -1399,19 +1399,19 @@ proc eqIdent*(a: string; b: string): bool {.magic: "EqIdent", noSideEffect.}
 proc eqIdent*(a: NimNode; b: string): bool {.magic: "EqIdent", noSideEffect.}
   ## Style insensitive comparison.  `a` can be an identifier or a
   ## symbol. `a` may be wrapped in an export marker
-  ## (`nnkPostfix`) or quoted with backticks (``nnkAccQuoted``),
+  ## (`nnkPostfix`) or quoted with backticks (`nnkAccQuoted`),
   ## these nodes will be unwrapped.
 
 proc eqIdent*(a: string; b: NimNode): bool {.magic: "EqIdent", noSideEffect.}
   ## Style insensitive comparison.  `b` can be an identifier or a
   ## symbol. `b` may be wrapped in an export marker
-  ## (`nnkPostfix`) or quoted with backticks (``nnkAccQuoted``),
+  ## (`nnkPostfix`) or quoted with backticks (`nnkAccQuoted`),
   ## these nodes will be unwrapped.
 
 proc eqIdent*(a: NimNode; b: NimNode): bool {.magic: "EqIdent", noSideEffect.}
-  ## Style insensitive comparison.  `a` and ``b`` can be an
+  ## Style insensitive comparison.  `a` and `b` can be an
   ## identifier or a symbol. Both may be wrapped in an export marker
-  ## (`nnkPostfix`) or quoted with backticks (``nnkAccQuoted``),
+  ## (`nnkPostfix`) or quoted with backticks (`nnkAccQuoted`),
   ## these nodes will be unwrapped.
 
 proc expectIdent*(n: NimNode, name: string) {.compileTime, since: (1,1).} =
@@ -1430,7 +1430,7 @@ proc hasArgOfName*(params: NimNode; name: string): bool {.compileTime.}=
         return true
 
 proc addIdentIfAbsent*(dest: NimNode, ident: string) {.compileTime.} =
-  ## Add `ident` to ``dest`` if it is not present. This is intended for use
+  ## Add `ident` to `dest` if it is not present. This is intended for use
   ## with pragmas.
   for node in dest.children:
     case node.kind
@@ -1448,7 +1448,7 @@ proc boolVal*(n: NimNode): bool {.compileTime, noSideEffect.} =
 when defined(nimMacrosGetNodeId):
   proc nodeID*(n: NimNode): int {.magic: "NodeId".}
     ## Returns the id of `n`, when the compiler has been compiled
-    ## with the flag `-d:useNodeids`, otherwise returns ``-1``. This
+    ## with the flag `-d:useNodeids`, otherwise returns `-1`. This
     ## proc is for the purpose to debug the compiler only.
 
 macro expandMacros*(body: typed): untyped =
@@ -1614,16 +1614,16 @@ proc getProjectPath*(): string = discard
   ## which returns the path of the source file containing that template
   ## call.
   ##
-  ## For example, assume a `dir1/foo.nim` that imports a ``dir2/bar.nim``,
-  ## have the `bar.nim` print out both ``getProjectPath`` and
+  ## For example, assume a `dir1/foo.nim` that imports a `dir2/bar.nim`,
+  ## have the `bar.nim` print out both `getProjectPath` and
   ## `currentSourcePath` outputs.
   ##
-  ## Now when `foo.nim` is compiled, the ``getProjectPath`` from
-  ## `bar.nim` will return the ``dir1/`` path, while the ``currentSourcePath``
+  ## Now when `foo.nim` is compiled, the `getProjectPath` from
+  ## `bar.nim` will return the `dir1/` path, while the `currentSourcePath`
   ## will return the path to the `bar.nim` source file.
   ##
-  ## Now when `bar.nim` is compiled directly, the ``getProjectPath``
-  ## will now return the `dir2/` path, and the ``currentSourcePath``
+  ## Now when `bar.nim` is compiled directly, the `getProjectPath`
+  ## will now return the `dir2/` path, and the `currentSourcePath`
   ## will still return the same path, the path to the `bar.nim` source
   ## file.
   ##

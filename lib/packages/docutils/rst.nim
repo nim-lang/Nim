@@ -19,10 +19,10 @@
 ##
 ## Nim can output the result to HTML [#html]_ or Latex [#latex]_.
 ##
-## .. [#html] commands `nim doc` for ``*.nim`` files and
-##    `nim rst2html` for ``*.rst`` files
+## .. [#html] commands `nim doc` for `*.nim` files and
+##    `nim rst2html` for `*.rst` files
 ##
-## .. [#latex] command `nim rst2tex` for ``*.rst``.
+## .. [#latex] command `nim rst2tex` for `*.rst`.
 ##
 ## If you are new to RST please consider reading the following:
 ##
@@ -50,9 +50,9 @@
 ##   + indented literal blocks
 ##   + simple tables
 ##   + directives (see official documentation in `RST directives list`_):
-##     - `image`, ``figure`` for including images and videos
+##     - `image`, `figure` for including images and videos
 ##     - `code`
-##     - `contents` (table of contents), ``container``, ``raw``
+##     - `contents` (table of contents), `container`, `raw`
 ##     - `include`
 ##     - admonitions: "attention", "caution", "danger", "error", "hint",
 ##       "important", "note", "tip", "warning", "admonition"
@@ -63,8 +63,8 @@
 ##     `inline literals`, hyperlink references (including embedded URI),
 ##     substitution references, standalone hyperlinks,
 ##     internal links (inline and outline)
-##   + \`interpreted text\` with roles ``:literal:``, ``:strong:``,
-##     `emphasis`, ``:sub:``/``:subscript:``, ``:sup:``/``:supscript:``
+##   + \`interpreted text\` with roles `:literal:`, `:strong:`,
+##     `emphasis`, `:sub:`/`:subscript:`, `:sup:`/`:supscript:`
 ##     (see `RST roles list`_ for description).
 ##   + inline internal targets
 ##
@@ -72,7 +72,7 @@
 ##
 ## Additional Nim-specific features:
 ##
-## * directives: `code-block` [cmp:Sphinx]_, ``title``,
+## * directives: `code-block` [cmp:Sphinx]_, `title`,
 ##   `index` [cmp:Sphinx]_
 ##
 ## * ***triple emphasis*** (bold and italic) using \*\*\*
@@ -92,8 +92,8 @@
 ## * Markdown code blocks
 ## * Markdown links
 ## * Markdown headlines
-## * using `1` as auto-enumerator in enumerated lists like RST ``#``
-##   (auto-enumerator `1` can not be used with ``#`` in the same list)
+## * using `1` as auto-enumerator in enumerated lists like RST `#`
+##   (auto-enumerator `1` can not be used with `#` in the same list)
 ##
 ## .. Note:: By default Nim has `roSupportMarkdown` and
 ##    `roSupportRawDirective` turned **on**.
@@ -111,10 +111,10 @@
 ##   - no doctest blocks
 ##   - no grid tables
 ##   - some directives are missing (check official `RST directives list`_):
-##     `parsed-literal`, ``sidebar``, ``topic``, ``math``, ``rubric``,
-##     `epigraph`, ``highlights``, ``pull-quote``, ``compound``,
-##     `table`, ``csv-table``, ``list-table``, ``section-numbering``,
-##     `header`, ``footer``, ``meta``, ``class``
+##     `parsed-literal`, `sidebar`, `topic`, `math`, `rubric`,
+##     `epigraph`, `highlights`, `pull-quote`, `compound`,
+##     `table`, `csv-table`, `list-table`, `section-numbering`,
+##     `header`, `footer`, `meta`, `class`
 ##     - no `role` directives and no custom interpreted text roles
 ##     - some standard roles are not supported (check `RST roles list`_)
 ## * inline markup
@@ -125,7 +125,7 @@
 ## -----
 ##
 ## See `Nim DocGen Tools Guide <docgen.html>`_ for the details about
-## `nim doc`, ``nim rst2html`` and ``nim rst2tex`` commands.
+## `nim doc`, `nim rst2html` and `nim rst2tex` commands.
 ##
 ## See `packages/docutils/rstgen module <rstgen.html>`_ to know how to
 ## generate HTML or Latex strings to embed them into your documents.
@@ -639,7 +639,7 @@ proc findRef(p: var RstParser, key: string): PRstNode =
       return p.s.refs[i].value
 
 proc addAnchor(p: var RstParser, refn: string, reset: bool) =
-  ## add anchor `refn` to anchor aliases and update last anchor ``curAnchor``
+  ## add anchor `refn` to anchor aliases and update last anchor `curAnchor`
   if p.curAnchor == "":
     p.s.anchors.add (refn, @[refn])
   else:
