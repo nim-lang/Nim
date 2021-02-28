@@ -7,7 +7,7 @@
 #    distribution, for details about the copyright.
 #
 
-## The ``strtabs`` module implements an efficient hash table that is a mapping
+## The `strtabs` module implements an efficient hash table that is a mapping
 ## from strings to strings. Supports a case-sensitive, case-insensitive and
 ## style-insensitive mode.
 
@@ -23,7 +23,7 @@ runnableExamples:
 runnableExamples:
   var t = {"name": "John", "city": "Monaco"}.newStringTable
 
-## When using the style insensitive mode (``modeStyleInsensitive``),
+## When using the style insensitive mode (`modeStyleInsensitive`),
 ## all letters are compared case insensitively within the ASCII range
 ## and underscores are ignored.
 runnableExamples:
@@ -76,13 +76,13 @@ type
   StringTableRef* = ref StringTableObj
 
   FormatFlag* = enum ## Flags for the `%` operator.
-    useEnvironment,  ## Use environment variable if the ``$key``
+    useEnvironment,  ## Use environment variable if the `$key`
                      ## is not found in the table.
                      ## Does nothing when using `js` target.
     useEmpty,        ## Use the empty string as a default, thus it
-                     ## won't throw an exception if ``$key`` is not
+                     ## won't throw an exception if `$key` is not
                      ## in the table.
-    useKey           ## Do not replace ``$key`` if it is not found
+    useKey           ## Do not replace `$key` if it is not found
                      ## in the table (or in the environment).
 
 const
@@ -150,7 +150,7 @@ proc len*(t: StringTableRef): int {.rtlFunc, extern: "nst$1".} =
 
 proc `[]`*(t: StringTableRef, key: string): var string {.
            rtlFunc, extern: "nstTake".} =
-  ## Retrieves the location at ``t[key]``.
+  ## Retrieves the location at `t[key]`.
   ##
   ## If `key` is not in `t`, the ``KeyError`` exception is raised.
   ## One can check with `hasKey proc <#hasKey,StringTableRef,string>`_
@@ -171,7 +171,7 @@ proc `[]`*(t: StringTableRef, key: string): var string {.
 
 proc getOrDefault*(t: StringTableRef; key: string,
     default: string = ""): string =
-  ## Retrieves the location at ``t[key]``.
+  ## Retrieves the location at `t[key]`.
   ##
   ## If `key` is not in `t`, the default value is returned (if not specified,
   ## it is an empty string (`""`)).

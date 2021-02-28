@@ -310,7 +310,7 @@ proc buildUserCall(x: string; args: varargs[NimNode]): NimNode =
     for i in 1..<y.len: result.add y[i]
 
 macro scanf*(input: string; pattern: static[string]; results: varargs[typed]): bool =
-  ## See top level documentation of this module about how ``scanf`` works.
+  ## See top level documentation of this module about how `scanf` works.
   template matchBind(parser) {.dirty.} =
     var resLen = genSym(nskLet, "resLen")
     conds.add newLetStmt(resLen, newCall(bindSym(parser), inp, results[i], idx))
@@ -516,7 +516,7 @@ macro scanTuple*(input: untyped; pattern: static[string]; matcherTypes: varargs[
 
 template atom*(input: string; idx: int; c: char): bool =
   ## Used in scanp for the matching of atoms (usually chars).
-  ## EOF is matched as ``'\0'``.
+  ## EOF is matched as `'\0'`.
   (idx < input.len and input[idx] == c) or (idx == input.len and c == '\0')
 
 template atom*(input: string; idx: int; s: set[char]): bool =
@@ -530,7 +530,7 @@ template success*(x: int): bool = x != 0
 template nxt*(input: string; idx, step: int = 1) = inc(idx, step)
 
 macro scanp*(input, idx: typed; pattern: varargs[untyped]): bool =
-  ## See top level documentation of this module about how ``scanp`` works.
+  ## See top level documentation of this module about how `scanp` works.
   type StmtTriple = tuple[init, cond, action: NimNode]
 
   template interf(x): untyped = bindSym(x, brForceOpen)
