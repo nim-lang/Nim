@@ -20,6 +20,8 @@ const
   useWriteTracking* = false
   hasFFI* = defined(nimHasLibFFI)
   copyrightYear* = "2021"
+  livereloadPortOff* = -1
+    # 0 could have a meaning of "pick any available port"
 
 type                          # please make sure we have under 32 options
                               # (improves code efficiency a lot!)
@@ -369,6 +371,14 @@ type
     cppCustomNamespace*: string
     vmProfileData*: ProfileData
 
+    # js options
+    useJshtml*: bool
+    jshtml*: string
+    livereloadPort*: int
+    useBrowser*: bool
+    browser*: string
+    # xxx reorder fields in categories
+
 proc assignIfDefault*[T](result: var T, val: T, def = default(T)) =
   ## if `result` was already assigned to a value (that wasn't `def`), this is a noop.
   if result == def: result = val
@@ -512,6 +522,7 @@ proc newConfigRef*(): ConfigRef =
     maxLoopIterationsVM: 10_000_000,
     vmProfileData: newProfileData(),
     spellSuggestMax: spellSuggestSecretSauce,
+    livereloadPort: livereloadPortOff,
   )
   setTargetFromSystem(result.target)
   # enable colors by default on terminals

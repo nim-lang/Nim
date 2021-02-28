@@ -546,6 +546,27 @@ proc processSwitch*(switch, arg: string, pass: TCmdLinePass, info: TLineInfo;
     if backend == TBackend.default: localError(conf, info, "invalid backend: '$1'" % arg)
     conf.backend = backend
   of "doccmd": conf.docCmd = arg
+  of "jshtml":
+    case arg.normalize
+    of "","on": conf.useJshtml = true
+    of "off": conf.useJshtml = false
+    else:
+      conf.useJshtml = true
+      conf.jshtml = arg
+      conf.useBrowser = true
+  of "browser":
+    case arg.normalize
+    of "","on": conf.useBrowser = true
+    of "off": conf.useBrowser = false
+    else:
+      conf.useBrowser = true
+      conf.browser = arg
+  of "livereload":
+    case arg.normalize
+    of "","on": conf.livereloadPort = 35729 # see https://www.npmjs.com/package/livereload
+    of "off": conf.livereloadPort = livereloadPortOff
+    elif parseInt(arg, conf.livereloadPort) != arg.len:
+      localError(conf, info, "'on', 'off', or 'Natural' expected, but '$1' found" % arg)
   of "define", "d":
     expectArg(conf, switch, arg, pass, info)
     if {':', '='} in arg:

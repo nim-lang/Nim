@@ -81,22 +81,8 @@ Advanced options:
   --clibdir:DIR             modify the linker library search path
   --clib:LIBNAME            link an additional C library
                             (you should omit platform-specific extensions)
-  --project                 document the whole project (doc)
-  --docRoot:path            `nim doc --docRoot:/foo --project --outdir:docs /foo/sub/main.nim`
-                            generates: docs/sub/main.html
-                            if path == @pkg, will use nimble file enclosing dir
-                            if path == @path, will use first matching dir in `--path`
-                            if path == @default (the default and most useful), will use
-                            best match among @pkg,@path.
-                            if these are nonexistent, will use project path
   -b, --backend:c|cpp|js|objc
                             sets backend to use with commands like `nim doc` or `nim r`
-  --docCmd:cmd              if `cmd == skip`, skips runnableExamples
-                            else, runs runnableExamples with given options, e.g.:
-                            `--docCmd:"-d:foo --threads:on"`
-  --docSeeSrcUrl:url        activate 'see source' for doc command
-                            (see doc.item.seesrc in config/nimdoc.cfg)
-  --docInternal             also generate documentation for non-exported symbols
   --lineDir:on|off          generation of #line directive on|off
   --embedsrc:on|off         embeds the original source code as comments
                             in the generated output
@@ -117,7 +103,6 @@ Advanced options:
                             select the GC to use; default is 'refc'
   --exceptions:setjmp|cpp|goto|quirky
                             select the exception handling implementation
-  --index:on|off            turn index file generation on|off
   --putenv:key=value        set an environment variable
   --NimblePath:PATH         add a path for Nimble support
   --noNimblePath            deactivate the Nimble path
@@ -155,3 +140,28 @@ Advanced options:
   --sinkInference:on|off    turn sink parameter inference on|off (default: on)
   --panics:on|off           turn panics into process terminations (default: off)
   --deepcopy:on|off         enable 'system.deepCopy' for ``--gc:arc|orc``
+
+doc specific options:
+  --docCmd:cmd              if `cmd == skip`, skips runnableExamples
+                            else, runs runnableExamples with given options, e.g.:
+                            `--docCmd:"-d:foo --threads:on"`
+  --docSeeSrcUrl:url        activate 'see source' for doc command
+                            (see doc.item.seesrc in config/nimdoc.cfg)
+  --docInternal             also generate documentation for non-exported symbols
+  --project                 document the whole project (doc)
+  --index:on|off            turn index file generation on|off
+  --docRoot:path            `nim doc --docRoot:/foo --project --outdir:docs /foo/sub/main.nim`
+                            generates: docs/sub/main.html
+                            if path == @pkg, will use nimble file enclosing dir
+                            if path == @path, will use first matching dir in `--path`
+                            if path == @default (the default and most useful), will use
+                            best match among @pkg,@path.
+                            if these are nonexistent, will use project path
+  --livereload:on:|off|port insert livereload code for commands that generate html
+                            if port is unspecified, uses `35729`. Install livereload with:
+                            `npm install -g livereload`
+
+js backend specific options:
+  --browser:on:|off|options assume js code will run in browser
+  --jshtml:on:|off|file     generate an html template that embeds the generated js file
+  --livereload:on:|off|port same as above

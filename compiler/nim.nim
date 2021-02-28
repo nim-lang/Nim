@@ -26,6 +26,7 @@ import
 
 from browsers import openDefaultBrowser
 from nodejs import findNodeJs
+from std/private/browserutils import getHtmlFile, serveJsBrowserLivereload
 
 when hasTinyCBackend:
   import tccgen
@@ -90,20 +91,27 @@ proc handleCmdLine(cache: IdentCache; conf: ConfigRef) =
       tccgen.run(conf, conf.arguments)
   if optRun in conf.globalOptions:
     let output = conf.absOutFile
-    case conf.cmd
-    of cmdBackends, cmdTcc:
-      var cmdPrefix = ""
-      case conf.backend
-      of backendC, backendCpp, backendObjc: discard
-      of backendJs:
-        # D20210217T215950:here this flag is needed for node < v15.0.0, otherwise
-        # tasyncjs_fail` would fail, refs https://nodejs.org/api/cli.html#cli_unhandled_rejections_mode
-        cmdPrefix = findNodeJs() & " --unhandled-rejections=strict "
-      else: doAssert false, $conf.backend
+
+    proc execProg(cmdPrefix = "") =
       # No space before command otherwise on windows you'd get a cryptic:
       # `The parameter is incorrect`
       execExternalProgram(conf, cmdPrefix & output.quoteShell & ' ' & conf.arguments)
-      # execExternalProgram(conf, cmdPrefix & ' ' & output.quoteShell & ' ' & conf.arguments)
+
+    case conf.cmd
+    of cmdBackends, cmdTcc:
+      case conf.backend
+      of backendC, backendCpp, backendObjc: execProg()
+      of backendJs:
+        if conf.useBrowser:
+          let fileJs = $output
+          let fileHtml = getHtmlFile($conf.nimcacheDir, fileJs)
+          serveJsBrowserLivereload(fileJs, fileHtml, port = conf.livereloadPort)
+          openDefaultBrowser(fileHtml)
+        else:
+          # D20210217T215950:here this flag is needed for node < v15.0.0, otherwise
+          # tasyncjs_fail` would fail, refs https://nodejs.org/api/cli.html#cli_unhandled_rejections_mode
+          execProg(findNodeJs() & " --unhandled-rejections=strict ")
+      else: doAssert false, $conf.backend
     of cmdDocLike, cmdRst2html, cmdRst2tex: # bugfix(cmdRst2tex was missing)
       if conf.arguments.len > 0:
         # reserved for future use

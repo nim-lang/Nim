@@ -20,7 +20,7 @@ import
 
 from uri import encodeUrl
 from std/private/globs import nativeToUnixPath
-
+from std/private/browserutils import livereloadString
 
 const
   exportSection = skField
@@ -1285,14 +1285,15 @@ proc genOutFile(d: PDoc, groupedToc = false): Rope =
       [title.rope, subtitle, toc, d.modDesc, rope(getDateStr()),
       rope(getClockStr()), code, d.modDeprecationMsg, relLink(d.conf.outDir, d.destFile.AbsoluteFile, theindexFname.RelativeFile), groupsection.rope, seeSrcRope])
   if optCompileOnly notin d.conf.globalOptions:
+    let livereloadstring2 = livereloadString(d.conf.livereloadPort)
     # XXX what is this hack doing here? 'optCompileOnly' means raw output!?
     code = ropeFormatNamedVars(d.conf, getConfigVar(d.conf, "doc.file"), [
         "nimdoccss", "dochackjs",  "title", "subtitle", "tableofcontents", "moduledesc", "date", "time",
-        "content", "author", "version", "analytics", "deprecationMsg"],
+        "content", "author", "version", "analytics", "deprecationMsg", "livereloadstring"],
         [relLink(d.conf.outDir, d.destFile.AbsoluteFile, nimdocOutCss.RelativeFile),
         relLink(d.conf.outDir, d.destFile.AbsoluteFile, docHackJsFname.RelativeFile),
         title.rope, subtitle, toc, d.modDesc, rope(getDateStr()), rope(getClockStr()),
-        content, d.meta[metaAuthor].rope, d.meta[metaVersion].rope, d.analytics.rope, d.modDeprecationMsg])
+        content, d.meta[metaAuthor].rope, d.meta[metaVersion].rope, d.analytics.rope, d.modDeprecationMsg, livereloadstring2.rope])
   else:
     code = content
   result = code

@@ -112,7 +112,7 @@ const
 proc defaultOptions*(a: TTarget): string =
   case a
   of targetJS: "-d:nodejs"
-    # once we start testing for `nim js -d:nimbrowser` (eg selenium or similar),
+    # once we start testing for `nim js --browser` (eg selenium or similar),
     # we can adapt this logic; or a given js test can override with `-u:nodejs`.
   else: ""
 
