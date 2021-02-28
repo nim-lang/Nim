@@ -31,7 +31,7 @@
 ## ----------------------------------
 ##
 ## .. code-block:: Nim
-##     import db_mysql
+##     import std/db_mysql
 ##     let db = open("localhost", "user", "password", "dbname")
 ##     db.close()
 ##
@@ -56,7 +56,7 @@
 ##
 ## .. code-block:: Nim
 ##
-##  import db_mysql, math
+##  import std/[db_mysql, math]
 ##
 ##  let theDb = open("localhost", "nim", "nim", "test")
 ##
