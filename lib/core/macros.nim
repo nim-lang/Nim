@@ -1459,7 +1459,7 @@ macro expandMacros*(body: typed): untyped =
   ## For instance,
   ##
   ## .. code-block:: nim
-  ##   import sugar, macros
+  ##   import std/[sugar, macros]
   ##
   ##   let
   ##     x = 10
@@ -1657,7 +1657,7 @@ proc extractDocCommentsAndRunnables*(n: NimNode): NimNode =
   ## Example:
   ##
   ## .. code-block:: nim
-  ##  import macros
+  ##  import std/macros
   ##  macro transf(a): untyped =
   ##    result = quote do:
   ##      proc fun2*() = discard

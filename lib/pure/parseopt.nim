@@ -49,7 +49,7 @@
 ## Here is an example:
 ##
 ## .. code-block::
-##   import parseopt
+##   import std/parseopt
 ##
 ##   var p = initOptParser("-ab -e:5 --foo --bar=20 file.txt")
 ##   while true:
@@ -99,7 +99,7 @@
 ## arguments for those two parameters:
 ##
 ## .. code-block::
-##   import parseopt
+##   import std/parseopt
 ##
 ##   proc printToken(kind: CmdLineKind, key: string, val: string) =
 ##     case kind

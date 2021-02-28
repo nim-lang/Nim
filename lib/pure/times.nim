@@ -21,7 +21,7 @@
   ========
 
   .. code-block:: nim
-    import times, os
+    import std/[times, os]
     # Simple benchmarking
     let time = cpuTime()
     sleep(100) # Replace this with something to be timed

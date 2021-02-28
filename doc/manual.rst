@@ -5941,7 +5941,7 @@ imported:
     :test: "nim c $1"
     :status: 1
 
-  import strutils except `%`, toUpperAscii
+  import std/strutils except `%`, toUpperAscii
 
   # doesn't work then:
   echo "$1" % "abc".toUpperAscii
@@ -5984,7 +5984,7 @@ Module names in imports
 A module alias can be introduced via the ``as`` keyword:
 
 .. code-block:: nim
-  import strutils as su, sequtils as qu
+  import std/strutils as su, std/sequtils as qu
 
   echo su.format("$1", "lalelu")
 
@@ -6048,7 +6048,7 @@ full qualification:
 .. code-block:: nim
     :test: "nim c $1"
 
-  from strutils import `%`
+  from std/strutils import `%`
 
   echo "$1" % "abc"
   # always possible: full qualification:

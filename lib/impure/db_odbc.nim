@@ -37,7 +37,7 @@
 ## ----------------------------------
 ##
 ## .. code-block:: Nim
-##     import db_odbc
+##     import std/db_odbc
 ##     var db = open("localhost", "user", "password", "dbname")
 ##     db.close()
 ##
@@ -62,7 +62,7 @@
 ##
 ## .. code-block:: Nim
 ##
-##  import db_odbc, math
+##  import std/[db_odbc, math]
 ##
 ##  var theDb = open("localhost", "nim", "nim", "test")
 ##

@@ -39,7 +39,7 @@
 ## `method call syntax<manual.html#procedures-method-call-syntax>`_.
 
 runnableExamples:
-  import sugar
+  import std/sugar
 
   # Creating a sequence from 1 to 10, multiplying each member by 2,
   # keeping only the members which are not divisible by 6.
@@ -62,7 +62,7 @@ runnableExamples:
 
 
 runnableExamples:
-  from strutils import join
+  from std/strutils import join
 
   let
     vowels = @"aeiou"

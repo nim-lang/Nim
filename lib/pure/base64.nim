@@ -24,14 +24,14 @@
 ## -------------
 ##
 ## .. code-block::nim
-##    import base64
+##    import std/base64
 ##    let encoded = encode("Hello World")
 ##    assert encoded == "SGVsbG8gV29ybGQ="
 ##
 ## Apart from strings you can also encode lists of integers or characters:
 ##
 ## .. code-block::nim
-##    import base64
+##    import std/base64
 ##    let encodedInts = encode([1,2,3])
 ##    assert encodedInts == "AQID"
 ##    let encodedChars = encode(['h','e','y'])
@@ -42,7 +42,7 @@
 ## -------------
 ##
 ## .. code-block::nim
-##    import base64
+##    import std/base64
 ##    let decoded = decode("SGVsbG8gV29ybGQ=")
 ##    assert decoded == "Hello World"
 ##
@@ -50,7 +50,7 @@
 ## ---------------
 ##
 ## .. code-block::nim
-##    import base64
+##    import std/base64
 ##    doAssert encode("c\xf7>", safe = true) == "Y_c-"
 ##    doAssert encode("c\xf7>", safe = false) == "Y/c+"
 ##

@@ -941,7 +941,7 @@ template eventParser*(pegAst, handlers: untyped): (proc(s: string): int) =
   ## evaluates an arithmetic expression defined by a simple PEG:
   ##
   ## .. code-block:: nim
-  ##  import strutils, pegs
+  ##  import std/[strutils, pegs]
   ##
   ##  let
   ##    pegAst = """
