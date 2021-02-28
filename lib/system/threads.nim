@@ -261,7 +261,7 @@ when hostOS == "windows":
     ## Creates a new thread `t` and starts its execution.
     ##
     ## Entry point is the proc `tp`.
-    ## `param` is passed to `tp`. `TArg` can be ``void`` if you
+    ## `param` is passed to `tp`. `TArg` can be `void` if you
     ## don't need to pass any data to the thread.
     t.core = cast[PGcThread](allocShared0(sizeof(GcThread)))
 
@@ -310,7 +310,7 @@ else:
     ## Creates a new thread `t` and starts its execution.
     ##
     ## Entry point is the proc `tp`. `param` is passed to `tp`.
-    ## `TArg` can be ``void`` if you
+    ## `TArg` can be `void` if you
     ## don't need to pass any data to the thread.
     t.core = cast[PGcThread](allocShared0(sizeof(GcThread)))
 

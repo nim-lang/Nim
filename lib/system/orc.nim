@@ -407,13 +407,13 @@ proc GC_runOrc* =
   collectCycles()
 
 proc GC_enableOrc*() =
-  ## Enables the cycle collector subsystem of `--gc:orc`. This is a ``--gc:orc``
+  ## Enables the cycle collector subsystem of `--gc:orc`. This is a `--gc:orc`
   ## specific API. Check with `when defined(gcOrc)` for its existence.
   when not defined(nimStressOrc):
     rootsThreshold = defaultThreshold
 
 proc GC_disableOrc*() =
-  ## Disables the cycle collector subsystem of `--gc:orc`. This is a ``--gc:orc``
+  ## Disables the cycle collector subsystem of `--gc:orc`. This is a `--gc:orc`
   ## specific API. Check with `when defined(gcOrc)` for its existence.
   when not defined(nimStressOrc):
     rootsThreshold = high(int)
@@ -429,11 +429,11 @@ proc GC_fullCollect* =
   collectCycles()
 
 proc GC_enableMarkAndSweep*() =
-  ## For `--gc:orc` an alias for ``GC_enableOrc``.
+  ## For `--gc:orc` an alias for `GC_enableOrc`.
   GC_enableOrc()
 
 proc GC_disableMarkAndSweep*() =
-  ## For `--gc:orc` an alias for ``GC_disableOrc``.
+  ## For `--gc:orc` an alias for `GC_disableOrc`.
   GC_disableOrc()
 
 when optimizedOrc:

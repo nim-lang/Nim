@@ -84,7 +84,7 @@ proc patchFile*(package, filename, replacement: string) =
   ## passed package.
   ## If the `replacement` is not an absolute path, the path
   ## is interpreted to be local to the Nimscript file that contains
-  ## the call to `patchFile`, Nim's ``--path`` is not used at all
+  ## the call to `patchFile`, Nim's `--path` is not used at all
   ## to resolve the filename!
   ##
   ## Example:
@@ -120,7 +120,7 @@ proc existsEnv*(key: string): bool {.tags: [ReadIOEffect].} =
   builtin
 
 proc putEnv*(key, val: string) {.tags: [WriteIOEffect].} =
-  ## Sets the value of the environment variable named `key` to ``val``.
+  ## Sets the value of the environment variable named `key` to `val`.
   builtin
 
 proc delEnv*(key: string) {.tags: [WriteIOEffect].} =
@@ -325,7 +325,7 @@ proc projectPath*(): string =
 proc thisDir*(): string =
   ## Retrieves the directory of the current `nims` script file. Its path is
   ## obtained via `currentSourcePath` (although, currently,
-  ## `currentSourcePath` resolves symlinks, unlike ``thisDir``).
+  ## `currentSourcePath` resolves symlinks, unlike `thisDir`).
   builtin
 
 proc cd*(dir: string) {.raises: [OSError].} =
@@ -369,7 +369,7 @@ proc writeTask(name, desc: string) =
     echo name, spaces, desc
 
 proc cppDefine*(define: string) =
-  ## tell Nim that `define` is a C preprocessor ``#define`` and so always
+  ## tell Nim that `define` is a C preprocessor `#define` and so always
   ## needs to be mangled.
   builtin
 
@@ -404,7 +404,7 @@ when not defined(nimble):
     ##  task build, "default build is via the C backend":
     ##    setCommand "c"
     ##
-    ## For a task named `foo`, this template generates a ``proc`` named
+    ## For a task named `foo`, this template generates a `proc` named
     ## `fooTask`.  This is useful if you need to call one task in
     ## another in your Nimscript.
     ##
