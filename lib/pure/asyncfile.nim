@@ -10,7 +10,7 @@
 ## This module implements asynchronous file reading and writing.
 ##
 ## .. code-block:: Nim
-##    import asyncfile, asyncdispatch, os
+##    import std/[asyncfile, asyncdispatch, os]
 ##
 ##    proc main() {.async.} =
 ##      var file = openAsync(getTempDir() / "foobar.txt", fmReadWrite)

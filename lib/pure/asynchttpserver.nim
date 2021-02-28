@@ -19,7 +19,7 @@ runnableExamples:
   # respond to all requests with a `200 OK` response code and "Hello World"
   # as the response body. Run locally with:
   # `nim doc --doccmd:-d:nimAsyncHttpServerEnableTest --lib:lib lib/pure/asynchttpserver.nim`
-  import asyncdispatch
+  import std/asyncdispatch
   if defined(nimAsyncHttpServerEnableTest):
     proc main {.async.} =
       const port = 8080
@@ -78,9 +78,9 @@ func getSocket*(a: AsyncHttpServer): AsyncSocket {.since: (1, 5, 1).} =
   ## Useful for identifying what port the AsyncHttpServer is bound to, if it
   ## was chosen automatically.
   runnableExamples:
-    from asyncdispatch import Port
-    from asyncnet import getFd
-    from nativesockets import getLocalAddr, AF_INET
+    from std/asyncdispatch import Port
+    from std/asyncnet import getFd
+    from std/nativesockets import getLocalAddr, AF_INET
     let server = newAsyncHttpServer()
     server.listen(Port(0)) # Socket is not bound until this point
     let port = getLocalAddr(server.getSocket.getFd, AF_INET)[1]
@@ -113,7 +113,7 @@ proc respond*(req: Request, code: HttpCode, content: string,
   ## Example:
   ##
   ## .. code-block::nim
-  ##    import json
+  ##    import std/json
   ##    proc handler(req: Request) {.async.} =
   ##      if req.url.path == "/hello-world":
   ##        let msg = %* {"message": "Hello World"}

@@ -24,7 +24,7 @@
 ##
 ## .. code-block:: Nim
 ##
-##  import locks
+##  import std/locks
 ##
 ##  var
 ##    thr: array[0..4, Thread[tuple[a,b: int]]]

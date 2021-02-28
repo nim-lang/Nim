@@ -30,7 +30,7 @@
 ##   # Be sure to compile with --threads:on.
 ##   # The channels and threads modules are part of system and should not be
 ##   # imported.
-##   import os
+##   import std/os
 ##
 ##   # Channels can either be:
 ##   #  - declared at the module level, or

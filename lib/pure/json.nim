@@ -34,7 +34,7 @@
 ## the ``[]`` operator. The following example shows how to do this:
 ##
 ## .. code-block:: Nim
-##   import json
+##   import std/json
 ##
 ##   let jsonNode = parseJson("""{"key": 3.14}""")
 ##
@@ -55,7 +55,7 @@
 ## To retrieve the value of ``"key"`` you can do the following:
 ##
 ## .. code-block:: Nim
-##   import json
+##   import std/json
 ##
 ##   let jsonNode = parseJson("""{"key": 3.14}""")
 ##
@@ -72,7 +72,7 @@
 ## type's default value when called on ``nil``.
 ##
 ## .. code-block:: Nim
-##   import json
+##   import std/json
 ##
 ##   let jsonNode = parseJson("{}")
 ##
@@ -88,7 +88,7 @@
 ## you to fallback to a default value should the key's values be ``null``:
 ##
 ## .. code-block:: Nim
-##   import json
+##   import std/json
 ##
 ##   let jsonNode = parseJson("""{"key": 3.14, "key2": null}""")
 ##
@@ -106,8 +106,8 @@
 ## responses, and backticks around keys with a reserved keyword as name.
 ##
 ## .. code-block:: Nim
-##   import json
-##   import options
+##   import std/json
+##   import std/options
 ##
 ##   type
 ##     User = object
@@ -127,7 +127,7 @@
 ## operator:
 ##
 ## .. code-block:: nim
-##   import json
+##   import std/json
 ##
 ##   var hisName = "John"
 ##   let herAge = 31

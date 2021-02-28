@@ -67,7 +67,7 @@
 ##
 ## .. code-block::nim
 ##
-##   import asyncnet, asyncdispatch
+##   import std/[asyncnet, asyncdispatch]
 ##
 ##   var clients {.threadvar.}: seq[AsyncSocket]
 ##

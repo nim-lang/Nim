@@ -32,11 +32,11 @@
 ## .. code-block:: Nim
 ##     :test:
 ##
-##   import htmlparser
-##   import xmltree  # To use '$' for XmlNode
-##   import strtabs  # To access XmlAttributes
-##   import os       # To use splitFile
-##   import strutils # To use cmpIgnoreCase
+##   import std/htmlparser
+##   import std/xmltree  # To use '$' for XmlNode
+##   import std/strtabs  # To access XmlAttributes
+##   import std/os       # To use splitFile
+##   import std/strutils # To use cmpIgnoreCase
 ##
 ##   proc transformHyperlinks() =
 ##     let html = loadHtml("input.html")
@@ -365,7 +365,7 @@ proc htmlTag*(s: string): HtmlTag =
 proc runeToEntity*(rune: Rune): string =
   ## converts a Rune to its numeric HTML entity equivalent.
   runnableExamples:
-    import unicode
+    import std/unicode
     doAssert runeToEntity(Rune(0)) == ""
     doAssert runeToEntity(Rune(-1)) == ""
     doAssert runeToEntity("Ü".runeAt(0)) == "#220"
@@ -378,7 +378,7 @@ proc entityToRune*(entity: string): Rune =
   ## or `&#x000DC;` to its UTF-8 equivalent.
   ## Rune(0) is returned if the entity name is unknown.
   runnableExamples:
-    import unicode
+    import std/unicode
     doAssert entityToRune("") == Rune(0)
     doAssert entityToRune("a") == Rune(0)
     doAssert entityToRune("gt") == ">".runeAt(0)

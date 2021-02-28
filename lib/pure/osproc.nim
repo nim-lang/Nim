@@ -1593,7 +1593,7 @@ proc execCmdEx*(command: string, options: set[ProcessOption] = {
   ##
   ## .. code-block:: Nim
   ##   var result = execCmdEx("nim r --hints:off -", options = {}, input = "echo 3*4")
-  ##   import strutils, strtabs
+  ##   import std/[strutils, strtabs]
   ##   stripLineEnd(result[0]) ## portable way to remove trailing newline, if any
   ##   doAssert result == ("12", 0)
   ##   doAssert execCmdEx("ls --nonexistant").exitCode != 0
