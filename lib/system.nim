@@ -941,7 +941,7 @@ proc cmp*[T](x, y: T): int =
   ## This generic implementation uses the `==` and `<` operators.
   ##
   ## .. code-block:: Nim
-  ##  import algorithm
+  ##  import std/algorithm
   ##  echo sorted(@[4, 2, 6, 5, 8, 7], cmp[int])
   if x == y: return 0
   if x < y: return -1
@@ -1745,7 +1745,7 @@ proc instantiationInfo*(index = -1, fullPaths = false): tuple[
   ## Example:
   ##
   ## .. code-block:: nim
-  ##   import strutils
+  ##   import std/strutils
   ##
   ##   template testException(exception, code: untyped): typed =
   ##     try:

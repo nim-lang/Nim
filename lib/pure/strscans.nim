@@ -175,7 +175,7 @@ overloaded to handle both single characters and sets of character.
 
 .. code-block:: nim
 
-  import streams
+  import std/streams
 
   template atom(input: Stream; idx: int; c: char): bool =
     ## Used in scanp for the matching of atoms (usually chars).

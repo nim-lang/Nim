@@ -14,9 +14,9 @@
 ## ===========
 ##
 ## .. code-block:: nim
-##   import parsecsv
-##   from os import paramStr
-##   from streams import newFileStream
+##   import std/parsecsv
+##   from std/os import paramStr
+##   from std/streams import newFileStream
 ##
 ##   var s = newFileStream(paramStr(1), fmRead)
 ##   if s == nil:
@@ -34,7 +34,7 @@
 ## reference for item access with `rowEntry <#rowEntry,CsvParser,string>`_:
 ##
 ## .. code-block:: nim
-##   import parsecsv
+##   import std/parsecsv
 ##
 ##   # Prepare a file
 ##   let content = """One,Two,Three,Four

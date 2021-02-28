@@ -913,7 +913,7 @@ iterator lines*(filename: string): string {.tags: [ReadIOEffect].} =
   ## character(s) are removed from the iterated lines. Example:
   ##
   ## .. code-block:: nim
-  ##   import strutils
+  ##   import std/strutils
   ##
   ##   proc transformLetters(filename: string) =
   ##     var buffer = ""

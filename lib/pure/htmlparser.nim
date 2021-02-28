@@ -32,11 +32,11 @@
 ## .. code-block:: Nim
 ##     :test:
 ##
-##   import htmlparser
-##   import xmltree  # To use '$' for XmlNode
-##   import strtabs  # To access XmlAttributes
-##   import os       # To use splitFile
-##   import strutils # To use cmpIgnoreCase
+##   import std/htmlparser
+##   import std/xmltree  # To use '$' for XmlNode
+##   import std/strtabs  # To access XmlAttributes
+##   import std/os       # To use splitFile
+##   import std/strutils # To use cmpIgnoreCase
 ##
 ##   proc transformHyperlinks() =
 ##     let html = loadHtml("input.html")

@@ -24,7 +24,7 @@
 ##
 ## .. code-block::nim
 ##
-##   import dynlib
+##   import std/dynlib
 ##
 ##   type
 ##     greetFunction = proc(): cstring {.gcsafe, stdcall.}

@@ -89,7 +89,7 @@ proc newPipeOutStream*[T](s: sink (ref T)): owned PipeOutStream[T] =
   ## Example:
   ##
   ## .. code-block:: Nim
-  ##   import osproc, streamwrapper
+  ##   import std/[osproc, streamwrapper]
   ##   var
   ##     p = startProcess(exePath)
   ##     outStream = p.outputStream().newPipeOutStream()

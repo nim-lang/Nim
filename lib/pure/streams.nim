@@ -29,7 +29,7 @@
 ##
 ## .. code-block:: Nim
 ##
-##  import streams
+##  import std/streams
 ##
 ##  var strm = newStringStream("""The first line
 ##  the second line
@@ -54,7 +54,7 @@
 ##
 ## .. code-block:: Nim
 ##
-##  import streams
+##  import std/streams
 ##
 ##  var strm = newFileStream("somefile.txt", fmWrite)
 ##  var line = ""
@@ -74,7 +74,7 @@
 ##
 ## .. code-block:: Nim
 ##
-##  import streams
+##  import std/streams
 ##
 ##  var strm = newFileStream("somefile.txt", fmRead)
 ##  var line = ""
