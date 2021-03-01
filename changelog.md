@@ -173,7 +173,6 @@ provided by the operating system.
   dumping (on select signals) and notifying the parent process about the cause
   of termination.
 
-- Added `strip` and `setSlice` to `std/strbasics`.
 - Added `system.prepareStrMutation` for better support of low
   level `moveMem`, `copyMem` operations for Orc's copy-on-write string
   implementation.

@@ -3127,5 +3127,8 @@ export io
 when not defined(createNimHcr) and not defined(nimscript):
   include nimhcr
 
-when not defined(gcDestructors):
-  proc prepareStrMutation*(s: var string) {.inline.} = discard
+when notJSnotNims and defined(nimSeqsV2):
+  proc prepareStrMutation*(s: var string) {.inline.} =
+    ## String literals(i.e. "abc", etc) in ARC/ORC mode are "copy on write",
+    ## therefore you should call `prepareStrMutation` before modifying the strings.
+    discard
