@@ -8,8 +8,24 @@
 #
 
 ## This module provides some high performance string operations.
+##
+## Experimental API, subject to change.
 
 const whitespaces = {' ', '\t', '\v', '\r', '\l', '\f'}
+
+proc add*(x: var string, y: openArray[char]) =
+  ## Concatenates `x` and `y` in place. `y` must not overlap with `x` to
+  ## allow future `memcpy` optimizations.
+  # Use `{.noalias.}` ?
+  let n = x.len
+  x.setLen n + y.len
+    # pending https://github.com/nim-lang/Nim/issues/14655#issuecomment-643671397
+    # use x.setLen(n + y.len, isInit = false)
+  var i = 0
+  while i < y.len:
+    x[n + i] = y[i]
+    i.inc
+  # xxx use `nimCopyMem(x[n].addr, y[0].addr, y.len)` after some refactoring
 
 func stripSlice(s: openArray[char], leading = true, trailing = true, chars: set[char] = whitespaces): Slice[int] =
   ## Returns the slice range of `s` which is stripped `chars`.

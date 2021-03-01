@@ -179,7 +179,10 @@ provided by the operating system.
 
 - `hashes.hash` now supports `object`, but can be overloaded.
 
-- Added `strip` and `setSlice` to `std/strbasics`.
+- Added `std/strbasics` for high performance string operations.
+  Added `strip`, `setSlice`, `add(a: var string, b: openArray[char])`.
+
+- `hashes.hash` now supports `object`, but can be overloaded.
 
 - Added to `wrapnils` an option-like API via `??.`, `isSome`, `get`.
 
