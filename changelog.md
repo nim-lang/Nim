@@ -176,6 +176,8 @@ provided by the operating system.
 - Added `std/strbasics` for high performance string operations.
   Added `strip`, `setSlice`, `add(a: var string, b: openArray[char])`.
 
+- `hashes.hash` now supports `object`, but can be overloaded.
+
 - Added to `wrapnils` an option-like API via `??.`, `isSome`, `get`.
 
 - `std/options` changed `$some(3)` to `"some(3)"` instead of `"Some(3)"`

@@ -47,7 +47,7 @@
 ## To use Unix sockets with `db_postgres`, change the server address to the socket file path:
 ##
 ## .. code-block:: Nim
-##   import db_postgres ## Change "localhost" or "127.0.0.1" to the socket file path
+##   import std/db_postgres ## Change "localhost" or "127.0.0.1" to the socket file path
 ##   let db = db_postgres.open("/run/postgresql", "user", "password", "database")
 ##   echo db.getAllRows(sql"SELECT version();")
 ##   db.close()
@@ -64,7 +64,7 @@
 ## ----------------------------------
 ##
 ## .. code-block:: Nim
-##     import db_postgres
+##     import std/db_postgres
 ##     let db = open("localhost", "user", "password", "dbname")
 ##     db.close()
 ##

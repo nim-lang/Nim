@@ -274,7 +274,7 @@ proc match*(s: string, pattern: Regex, matches: var openArray[string],
   ## returned.
   ##
   runnableExamples:
-    import sequtils
+    import std/sequtils
     var matches: array[2, string]
     if match("abcdefg", re"c(d)ef(g)", matches, 2):
       doAssert toSeq(matches) == @["d", "g"]
@@ -494,7 +494,7 @@ iterator split*(s: string, sep: Regex; maxsplit = -1): string =
   ## Substrings are separated by the regular expression `sep`
   ## (and the portion matched by `sep` is not returned).
   runnableExamples:
-    import sequtils
+    import std/sequtils
     doAssert toSeq(split("00232this02939is39an22example111", re"\d+")) ==
       @["", "this", "is", "an", "example", ""]
   var last = 0

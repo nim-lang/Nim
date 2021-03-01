@@ -130,5 +130,51 @@ proc main() =
       # run at CT, expecting c semantics.
       discard
 
+  block: # hash(object)
+    type
+      Obj = object
+        x: int
+        y: string
+      Obj2[T] = object
+        x: int
+        y: string
+      Obj3 = object
+        x: int
+        y: string
+      Obj4 = object
+        case t: bool
+        of false:
+          x: int
+        of true:
+          y: int
+        z: int
+      Obj5 = object
+        case t: bool
+        of false:
+          x: int
+        of true:
+          y: int
+        z: int
+
+    proc hash(a: Obj2): Hash = hash(a.x)
+    proc hash(a: Obj3): Hash = hash((a.x,))
+    proc hash(a: Obj5): Hash =
+      case a.t
+      of false: hash(a.x)
+      of true: hash(a.y)
+
+    doAssert hash(Obj(x: 520, y: "Nim")) != hash(Obj(x: 520, y: "Nim2"))
+    doAssert hash(Obj2[float](x: 520, y: "Nim")) == hash(Obj2[float](x: 520, y: "Nim2"))
+    doAssert hash(Obj2[float](x: 520, y: "Nim")) != hash(Obj2[float](x: 521, y: "Nim2"))
+    doAssert hash(Obj3(x: 520, y: "Nim")) == hash(Obj3(x: 520, y: "Nim2"))
+
+    doAssert hash(Obj4(t: false, x: 1)) == hash(Obj4(t: false, x: 1))
+    doAssert hash(Obj4(t: false, x: 1)) != hash(Obj4(t: false, x: 2))
+    doAssert hash(Obj4(t: false, x: 1)) != hash(Obj4(t: true, y: 1))
+
+    doAssert hash(Obj5(t: false, x: 1)) != hash(Obj5(t: false, x: 2))
+    doAssert hash(Obj5(t: false, x: 1)) == hash(Obj5(t: true, y: 1))
+    doAssert hash(Obj5(t: false, x: 1)) != hash(Obj5(t: true, y: 2))
+
 static: main()
 main()

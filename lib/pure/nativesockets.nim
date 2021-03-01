@@ -8,7 +8,7 @@
 #
 
 ## This module implements a low-level cross-platform sockets interface. Look
-## at the ``net`` module for the higher-level version.
+## at the `net` module for the higher-level version.
 
 # TODO: Clean up the exports a bit and everything else in general.
 
@@ -112,19 +112,19 @@ else:
     nativeAfUnix = posix.AF_UNIX
 
 proc `==`*(a, b: Port): bool {.borrow.}
-  ## ``==`` for ports.
+  ## `==` for ports.
 
 proc `$`*(p: Port): string {.borrow.}
   ## Returns the port number as a string
 
 proc toInt*(domain: Domain): cint
-  ## Converts the Domain enum to a platform-dependent ``cint``.
+  ## Converts the Domain enum to a platform-dependent `cint`.
 
 proc toInt*(typ: SockType): cint
-  ## Converts the SockType enum to a platform-dependent ``cint``.
+  ## Converts the SockType enum to a platform-dependent `cint`.
 
 proc toInt*(p: Protocol): cint
-  ## Converts the Protocol enum to a platform-dependent ``cint``.
+  ## Converts the Protocol enum to a platform-dependent `cint`.
 
 when not useWinVersion:
   proc toInt(domain: Domain): cint =
@@ -135,8 +135,8 @@ when not useWinVersion:
     of AF_INET6: result = posix.AF_INET6.cint
 
   proc toKnownDomain*(family: cint): Option[Domain] =
-    ## Converts the platform-dependent ``cint`` to the Domain or none(),
-    ## if the ``cint`` is not known.
+    ## Converts the platform-dependent `cint` to the Domain or none(),
+    ## if the `cint` is not known.
     result = if family == posix.AF_UNSPEC: some(Domain.AF_UNSPEC)
              elif family == posix.AF_UNIX: some(Domain.AF_UNIX)
              elif family == posix.AF_INET: some(Domain.AF_INET)
@@ -165,8 +165,8 @@ else:
     result = toU32(ord(domain)).cint
 
   proc toKnownDomain*(family: cint): Option[Domain] =
-    ## Converts the platform-dependent ``cint`` to the Domain or none(),
-    ## if the ``cint`` is not known.
+    ## Converts the platform-dependent `cint` to the Domain or none(),
+    ## if the `cint` is not known.
     result = if family == winlean.AF_UNSPEC: some(Domain.AF_UNSPEC)
              elif family == winlean.AF_INET: some(Domain.AF_INET)
              elif family == winlean.AF_INET6: some(Domain.AF_INET6)
@@ -202,7 +202,7 @@ proc toSockType*(protocol: Protocol): SockType =
     SOCK_RAW
 
 proc getProtoByName*(name: string): int {.since: (1, 3, 5).} =
-  ## Returns a protocol code from the database that matches the protocol ``name``.
+  ## Returns a protocol code from the database that matches the protocol `name`.
   when useWinVersion:
     let protoent = winlean.getprotobyname(name.cstring)
   else:
@@ -267,8 +267,8 @@ proc bindAddr*(socket: SocketHandle, name: ptr SockAddr,
 
 proc listen*(socket: SocketHandle, backlog = SOMAXCONN): cint {.tags: [
     ReadIOEffect].} =
-  ## Marks ``socket`` as accepting connections.
-  ## ``Backlog`` specifies the maximum length of the
+  ## Marks `socket` as accepting connections.
+  ## `Backlog` specifies the maximum length of the
   ## queue of pending connections.
   when useWinVersion:
     result = winlean.listen(socket, cint(backlog))
@@ -280,7 +280,7 @@ proc getAddrInfo*(address: string, port: Port, domain: Domain = AF_INET,
                   protocol: Protocol = IPPROTO_TCP): ptr AddrInfo =
   ##
   ##
-  ## **Warning**: The resulting ``ptr AddrInfo`` must be freed using ``freeAddrInfo``!
+  ## **Warning**: The resulting `ptr AddrInfo` must be freed using `freeAddrInfo`!
   var hints: AddrInfo
   result = nil
   hints.ai_family = toInt(domain)
@@ -333,10 +333,10 @@ template htons*(x: uint16): untyped =
 
 proc getServByName*(name, proto: string): Servent {.tags: [ReadIOEffect].} =
   ## Searches the database from the beginning and finds the first entry for
-  ## which the service name specified by ``name`` matches the s_name member
-  ## and the protocol name specified by ``proto`` matches the s_proto member.
+  ## which the service name specified by `name` matches the s_name member
+  ## and the protocol name specified by `proto` matches the s_proto member.
   ##
-  ## On posix this will search through the ``/etc/services`` file.
+  ## On posix this will search through the `/etc/services` file.
   when useWinVersion:
     var s = winlean.getservbyname(name, proto)
   else:
@@ -349,10 +349,10 @@ proc getServByName*(name, proto: string): Servent {.tags: [ReadIOEffect].} =
 
 proc getServByPort*(port: Port, proto: string): Servent {.tags: [ReadIOEffect].} =
   ## Searches the database from the beginning and finds the first entry for
-  ## which the port specified by ``port`` matches the s_port member and the
-  ## protocol name specified by ``proto`` matches the s_proto member.
+  ## which the port specified by `port` matches the s_port member and the
+  ## protocol name specified by `proto` matches the s_proto member.
   ##
-  ## On posix this will search through the ``/etc/services`` file.
+  ## On posix this will search through the `/etc/services` file.
   when useWinVersion:
     var s = winlean.getservbyport(ze(int16(port)).cint, proto)
   else:
@@ -490,11 +490,11 @@ proc getAddrString*(sockAddr: ptr SockAddr): string =
     raise newException(IOError, "Unknown socket family in getAddrString")
 
 proc getAddrString*(sockAddr: ptr SockAddr, strAddress: var string) =
-  ## Stores in ``strAddress`` the string representation of the address inside
-  ## ``sockAddr``
+  ## Stores in `strAddress` the string representation of the address inside
+  ## `sockAddr`
   ## 
   ## **Note**
-  ## * ``strAddress`` must be initialized to 46 in length.
+  ## * `strAddress` must be initialized to 46 in length.
   assert(46 == len(strAddress),
          "`strAddress` was not initialized correctly. 46 != `len(strAddress)`")
   if sockAddr.sa_family.cint == nativeAfInet:
@@ -682,12 +682,12 @@ proc pruneSocketSet(s: var seq[SocketHandle], fd: var TFdSet) =
   setLen(s, L)
 
 proc selectRead*(readfds: var seq[SocketHandle], timeout = 500): int =
-  ## When a socket in ``readfds`` is ready to be read from then a non-zero
+  ## When a socket in `readfds` is ready to be read from then a non-zero
   ## value will be returned specifying the count of the sockets which can be
   ## read from. The sockets which cannot be read from will also be removed
-  ## from ``readfds``.
+  ## from `readfds`.
   ##
-  ## ``timeout`` is specified in milliseconds and ``-1`` can be specified for
+  ## `timeout` is specified in milliseconds and `-1` can be specified for
   ## an unlimited time.
   var tv {.noinit.}: Timeval = timeValFromMilliseconds(timeout)
 
@@ -704,12 +704,12 @@ proc selectRead*(readfds: var seq[SocketHandle], timeout = 500): int =
 
 proc selectWrite*(writefds: var seq[SocketHandle],
                   timeout = 500): int {.tags: [ReadIOEffect].} =
-  ## When a socket in ``writefds`` is ready to be written to then a non-zero
+  ## When a socket in `writefds` is ready to be written to then a non-zero
   ## value will be returned specifying the count of the sockets which can be
   ## written to. The sockets which cannot be written to will also be removed
-  ## from ``writefds``.
+  ## from `writefds`.
   ##
-  ## ``timeout`` is specified in milliseconds and ``-1`` can be specified for
+  ## `timeout` is specified in milliseconds and `-1` can be specified for
   ## an unlimited time.
   var tv {.noinit.}: Timeval = timeValFromMilliseconds(timeout)
 

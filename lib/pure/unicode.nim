@@ -955,43 +955,25 @@ iterator split*(s: string, seps: openArray[Rune] = unicodeSpaces,
   ## Splits the unicode string ``s`` into substrings using a group of separators.
   ##
   ## Substrings are separated by a substring containing only ``seps``.
-  ##
-  ## .. code-block:: nim
-  ##   for word in split("this\lis an\texample"):
-  ##     writeLine(stdout, word)
-  ##
-  ## ...generates this output:
-  ##
-  ## .. code-block::
-  ##   "this"
-  ##   "is"
-  ##   "an"
-  ##   "example"
-  ##
-  ## And the following code:
-  ##
-  ## .. code-block:: nim
-  ##   for word in split("this:is;an$example", {';', ':', '$'}):
-  ##     writeLine(stdout, word)
-  ##
-  ## ...produces the same output as the first example. The code:
-  ##
-  ## .. code-block:: nim
-  ##   let date = "2012-11-20T22:08:08.398990"
-  ##   let separators = {' ', '-', ':', 'T'}
-  ##   for number in split(date, separators):
-  ##     writeLine(stdout, number)
-  ##
-  ## ...results in:
-  ##
-  ## .. code-block::
-  ##   "2012"
-  ##   "11"
-  ##   "20"
-  ##   "22"
-  ##   "08"
-  ##   "08.398990"
-  ##
+  runnableExamples:
+    import std/sequtils
+
+    assert toSeq("hÃllo\lthis\lis an\texample\l是".split) ==
+      @["hÃllo", "this", "is", "an", "example", "是"]
+
+    # And the following code splits the same string using a sequence of Runes.
+    assert toSeq(split("añyóng:hÃllo;是$example", ";:$".toRunes)) ==
+      @["añyóng", "hÃllo", "是", "example"]
+
+    # example with a `Rune` separator and unused one `;`:
+    assert toSeq(split("ab是de:f:", ";:是".toRunes)) == @["ab", "de", "f", ""]
+
+    # Another example that splits a string containing a date.
+    let date = "2012-11-20T22:08:08.398990"
+
+    assert toSeq(split(date, " -:T".toRunes)) ==
+      @["2012", "11", "20", "22", "08", "08.398990"]
+
   splitCommon(s, seps, maxsplit)
 
 iterator splitWhitespace*(s: string): string =
@@ -1010,28 +992,13 @@ proc splitWhitespace*(s: string): seq[string] {.noSideEffect,
 
 iterator split*(s: string, sep: Rune, maxsplit: int = -1): string =
   ## Splits the unicode string ``s`` into substrings using a single separator.
-  ##
   ## Substrings are separated by the rune ``sep``.
-  ## The code:
-  ##
-  ## .. code-block:: nim
-  ##   for word in split(";;this;is;an;;example;;;", ';'):
-  ##     writeLine(stdout, word)
-  ##
-  ## Results in:
-  ##
-  ## .. code-block::
-  ##   ""
-  ##   ""
-  ##   "this"
-  ##   "is"
-  ##   "an"
-  ##   ""
-  ##   "example"
-  ##   ""
-  ##   ""
-  ##   ""
-  ##
+  runnableExamples:
+    import std/sequtils
+
+    assert toSeq(split(";;hÃllo;this;is;an;;example;;;是", ";".runeAt(0))) ==
+      @["", "", "hÃllo", "this", "is", "an", "", "example", "", "", "是"]
+
   splitCommon(s, sep, maxsplit)
 
 proc split*(s: string, seps: openArray[Rune] = unicodeSpaces, maxsplit: int = -1):

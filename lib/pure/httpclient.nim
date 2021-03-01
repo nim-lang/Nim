@@ -17,7 +17,7 @@
 ## `http://google.com`:
 ##
 ## .. code-block:: Nim
-##   import httpclient
+##   import std/httpclient
 ##   var client = newHttpClient()
 ##   echo client.getContent("http://google.com")
 ##
@@ -25,7 +25,7 @@
 ## `AsyncHttpClient`:
 ##
 ## .. code-block:: Nim
-##   import asyncdispatch, httpclient
+##   import std/[asyncdispatch, httpclient]
 ##
 ##   proc asyncProc(): Future[string] {.async.} =
 ##     var client = newAsyncHttpClient()
@@ -74,7 +74,7 @@
 ## and uses a json object for the body
 ##
 ## .. code-block:: Nim
-##   import httpclient, json
+##   import std/[httpclient, json]
 ##
 ##   let client = newHttpClient()
 ##   client.headers = newHttpHeaders({ "Content-Type": "application/json" })
@@ -92,7 +92,7 @@
 ## progress of the HTTP request.
 ##
 ## .. code-block:: Nim
-##    import asyncdispatch, httpclient
+##    import std/[asyncdispatch, httpclient]
 ##
 ##    proc onProgressChanged(total, progress, speed: BiggestInt) {.async.} =
 ##      echo("Downloaded ", progress, " of ", total)
@@ -149,7 +149,7 @@
 ## Here is how to set a timeout when creating an `HttpClient` instance:
 ##
 ## .. code-block:: Nim
-##    import httpclient
+##    import std/httpclient
 ##
 ##    let client = newHttpClient(timeout = 42)
 ##
@@ -163,7 +163,7 @@
 ## Some examples on how to configure a Proxy for `HttpClient`:
 ##
 ## .. code-block:: Nim
-##    import httpclient
+##    import std/httpclient
 ##
 ##    let myProxy = newProxy("http://myproxy.network")
 ##    let client = newHttpClient(proxy = myProxy)
@@ -171,7 +171,7 @@
 ## Get Proxy URL from environment variables:
 ##
 ## .. code-block:: Nim
-##    import httpclient
+##    import std/httpclient
 ##
 ##    var url = ""
 ##    try:
@@ -195,7 +195,7 @@
 ## Here you can see an example about how to set the `maxRedirects` of `HttpClient`:
 ##
 ## .. code-block:: Nim
-##    import httpclient
+##    import std/httpclient
 ##
 ##    let client = newHttpClient(maxRedirects = 0)
 ##
@@ -573,7 +573,7 @@ proc newHttpClient*(userAgent = defUserAgent, maxRedirects = 5,
   ##
   ## `headers` specifies the HTTP Headers.
   runnableExamples:
-    import asyncdispatch, httpclient, strutils
+    import std/[asyncdispatch, httpclient, strutils]
 
     proc asyncProc(): Future[string] {.async.} =
       var client = newAsyncHttpClient()
