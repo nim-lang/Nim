@@ -26,7 +26,7 @@ when defined(js):
 ##
 ## .. code-block:: nim
 ##
-##    import nre except toSeq
+##    import std/nre except toSeq
 ##
 ##
 ## Licencing

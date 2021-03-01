@@ -42,3 +42,27 @@ template enableRemoteNetworking*: bool =
   ## process calls, e.g. `testament all` calls itself, which in turns invokes
   ## a `nim` invocation (possibly via additional intermediate processes).
   getEnv("NIM_TESTAMENT_REMOTE_NETWORKING") == "1"
+
+template whenRuntimeJs*(bodyIf, bodyElse) =
+  ##[
+  Behaves as `when defined(js) and not nimvm` (which isn't legal yet).
+  pending improvements to `nimvm`, this sugar helps; use as follows:
+
+  whenRuntimeJs:
+    doAssert defined(js)
+    when nimvm: doAssert false
+    else: discard
+  do:
+    discard
+  ]##
+  when nimvm: bodyElse
+  else:
+    when defined(js): bodyIf
+    else: bodyElse
+
+template whenVMorJs*(bodyIf, bodyElse) =
+  ## Behaves as: `when defined(js) or nimvm`
+  when nimvm: bodyIf
+  else:
+    when defined(js): bodyIf
+    else: bodyElse

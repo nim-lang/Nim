@@ -16,8 +16,8 @@ type # we need to start a new type section here, so that ``0`` can have a type
     false = 0, true = 1
 
 const
-  on* = true    ## Alias for ``true``.
-  off* = false  ## Alias for ``false``.
+  on* = true    ## Alias for `true`.
+  off* = false  ## Alias for `false`.
 
 type
   SomeSignedInt* = int|int8|int16|int32|int64
@@ -35,7 +35,7 @@ type
 
   BiggestInt* = int64
     ## is an alias for the biggest signed integer type the Nim compiler
-    ## supports. Currently this is ``int64``, but it is platform-dependent
+    ## supports. Currently this is `int64`, but it is platform-dependent
     ## in general.
 
 
@@ -43,20 +43,20 @@ type
 {.push hints: off.}
 
 proc `not`*(x: bool): bool {.magic: "Not", noSideEffect.}
-  ## Boolean not; returns true if ``x == false``.
+  ## Boolean not; returns true if `x == false`.
 
 proc `and`*(x, y: bool): bool {.magic: "And", noSideEffect.}
-  ## Boolean ``and``; returns true if ``x == y == true`` (if both arguments
+  ## Boolean `and`; returns true if `x == y == true` (if both arguments
   ## are true).
   ##
-  ## Evaluation is lazy: if ``x`` is false, ``y`` will not even be evaluated.
+  ## Evaluation is lazy: if `x` is false, `y` will not even be evaluated.
 proc `or`*(x, y: bool): bool {.magic: "Or", noSideEffect.}
-  ## Boolean ``or``; returns true if ``not (not x and not y)`` (if any of
+  ## Boolean `or`; returns true if `not (not x and not y)` (if any of
   ## the arguments is true).
   ##
-  ## Evaluation is lazy: if ``x`` is true, ``y`` will not even be evaluated.
+  ## Evaluation is lazy: if `x` is true, `y` will not even be evaluated.
 proc `xor`*(x, y: bool): bool {.magic: "Xor", noSideEffect.}
-  ## Boolean `exclusive or`; returns true if ``x != y`` (if either argument
+  ## Boolean `exclusive or`; returns true if `x != y` (if either argument
   ## is true while the other is false).
 
 {.pop.}

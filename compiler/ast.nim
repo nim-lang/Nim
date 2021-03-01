@@ -434,9 +434,8 @@ type
       # instantiation and prior to this it has the potential to
       # be any type.
 
-    tyOptDeprecated
-      # 'out' parameter. Comparable to a 'var' parameter but every
-      # path must assign a value to it before it can be read from.
+    tyConcept
+      # new style concept.
 
     tyVoid
       # now different from tyEmpty, hurray!
@@ -1975,3 +1974,7 @@ proc toHumanStr*(kind: TTypeKind): string =
 
 proc skipAddr*(n: PNode): PNode {.inline.} =
   (if n.kind == nkHiddenAddr: n[0] else: n)
+
+proc isNewStyleConcept*(n: PNode): bool {.inline.} =
+  assert n.kind == nkTypeClassTy
+  result = n[0].kind == nkEmpty

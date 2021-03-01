@@ -130,7 +130,7 @@ template fpRadix*: int = FLT_RADIX
   ## point type on the architecture used to build the program.
 
 template mantissaDigits*(T: typedesc[float32]): int = FLT_MANT_DIG
-  ## Number of digits (in base ``floatingPointRadix``) in the mantissa
+  ## Number of digits (in base `floatingPointRadix`) in the mantissa
   ## of 32-bit floating-point numbers.
 template digits*(T: typedesc[float32]): int = FLT_DIG
   ## Number of decimal digits that can be represented in a
@@ -156,7 +156,7 @@ template epsilon*(T: typedesc[float32]): float32 = FLT_EPSILON
   ## 1.0 that can be represented in a 32-bit floating-point type.
 
 template mantissaDigits*(T: typedesc[float64]): int = DBL_MANT_DIG
-  ## Number of digits (in base ``floatingPointRadix``) in the mantissa
+  ## Number of digits (in base `floatingPointRadix`) in the mantissa
   ## of 64-bit floating-point numbers.
 template digits*(T: typedesc[float64]): int = DBL_DIG
   ## Number of decimal digits that can be represented in a

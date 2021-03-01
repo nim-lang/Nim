@@ -200,7 +200,9 @@ proc semVarargs(c: PContext, n: PNode, prev: PType): PType =
 proc semVarOutType(c: PContext, n: PNode, prev: PType; kind: TTypeKind): PType =
   if n.len == 1:
     result = newOrPrevType(kind, prev, c)
-    var base = semTypeNode(c, n[0], nil).skipTypes({tyTypeDesc})
+    var base = semTypeNode(c, n[0], nil)
+    if base.kind == tyTypeDesc and not isSelf(base):
+      base = base[0]
     if base.kind == tyVar:
       localError(c.config, n.info, "type 'var var' is not allowed")
       base = base[0]
@@ -1025,7 +1027,7 @@ proc liftParamType(c: PContext, procKind: TSymKind, genericParams: PNode,
   var paramTypId = if not anon and paramType.sym != nil: paramType.sym.name
                    else: nil
 
-  case paramType.kind:
+  case paramType.kind
   of tyAnything:
     result = addImplicitGeneric(c, newTypeS(tyGenericParam, c), nil, info, genericParams, paramName)
 
@@ -1154,7 +1156,7 @@ proc liftParamType(c: PContext, procKind: TSymKind, genericParams: PNode,
       result = recurse(expanded, true)
 
   of tyUserTypeClasses, tyBuiltInTypeClass, tyCompositeTypeClass,
-     tyAnd, tyOr, tyNot:
+     tyAnd, tyOr, tyNot, tyConcept:
     result = addImplicitGeneric(c,
         copyType(paramType, nextTypeId c.idgen, getCurrOwner(c)), paramTypId,
         info, genericParams, paramName)
@@ -1548,6 +1550,12 @@ template modifierTypeKindOfNode(n: PNode): TTypeKind =
 
 proc semTypeClass(c: PContext, n: PNode, prev: PType): PType =
   # if n.len == 0: return newConstraint(c, tyTypeClass)
+  if isNewStyleConcept(n):
+    result = newOrPrevType(tyConcept, prev, c)
+    result.flags.incl tfCheckedForDestructor
+    result.n = semConceptDeclaration(c, n)
+    return result
+
   let
     pragmas = n[1]
     inherited = n[2]

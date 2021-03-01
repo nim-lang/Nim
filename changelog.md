@@ -41,8 +41,10 @@
 - Added `randState` template that exposes the default random number generator.
   Useful for library authors.
 
-- Added std/enumutils module containing `genEnumCaseStmt` macro that generates
-  case statement to parse string to enum.
+- Added `std/enumutils` module. Added `genEnumCaseStmt` macro that generates case statement to parse string to enum.
+  Added `items` for enums with holes.
+
+- Added `typetraits.SomeEnumWithHoles` for enums with holes.
 
 - Removed deprecated `iup` module from stdlib, it has already moved to
   [nimble](https://github.com/nim-lang/iup).
@@ -147,9 +149,11 @@ provided by the operating system.
 - Added experimental `linenoise.readLineStatus` to get line and status (e.g. ctrl-D or ctrl-C).
 
 - Added `compilesettings.SingleValueSetting.libPath`
+
 - `std/wrapnils` doesn't use `experimental:dotOperators` anymore, avoiding
   issues like https://github.com/nim-lang/Nim/issues/13063 (which affected error messages)
   for modules importing `std/wrapnils`.
+  Added `??.` macro which returns an `Option`.
 
 - Added `math.frexp` overload procs. Deprecated `c_frexp`, use `frexp` instead.
 
@@ -168,6 +172,15 @@ provided by the operating system.
   This lets the OS perform its default actions, which might include core
   dumping (on select signals) and notifying the parent process about the cause
   of termination.
+
+- `hashes.hash` now supports `object`, but can be overloaded.
+
+- Added `strip` and `setSlice` to `std/strbasics`.
+
+- Added to `wrapnils` an option-like API via `??.`, `isSome`, `get`.
+
+- `std/options` changed `$some(3)` to `"some(3)"` instead of `"Some(3)"`
+  and `$none(int)` to `"none(int)"` instead of `"None[int]"`.
 
 
 ## Language changes
@@ -216,6 +229,8 @@ provided by the operating system.
   adding: `default-role:: code` directive inside the rst file, which is now handled by rst2html.
 
 - Added `-d:nimStrictMode` in CI in several places to ensure code doesn't have certain hints/warnings
+
+- Added `then`, `catch` to `asyncjs`, for now hidden behind `-d:nimExperimentalAsyncjsThen`.
 
 ## Tool changes
 

@@ -11,7 +11,7 @@
 ##
 ## **Note**: This is part of the system module. Do not import it directly.
 ## To activate thread support you need to compile
-## with the ``--threads:on`` command line switch.
+## with the `--threads:on` command line switch.
 ##
 ## Nim's memory model for threads is quite different from other common
 ## programming languages (C, Pascal): Each thread has its own
@@ -24,7 +24,7 @@
 ##
 ## .. code-block:: Nim
 ##
-##  import locks
+##  import std/locks
 ##
 ##  var
 ##    thr: array[0..4, Thread[tuple[a,b: int]]]
@@ -97,7 +97,7 @@ proc onThreadDestruction*(handler: proc () {.closure, gcsafe, raises: [].}) =
   ## Registers a *thread local* handler that is called at the thread's
   ## destruction.
   ##
-  ## A thread is destructed when the ``.thread`` proc returns
+  ## A thread is destructed when the `.thread` proc returns
   ## normally or when it raises an exception. Note that unhandled exceptions
   ## in a thread nevertheless cause the whole process to die.
   threadDestructionHandlers.add handler
@@ -261,7 +261,7 @@ when hostOS == "windows":
     ## Creates a new thread `t` and starts its execution.
     ##
     ## Entry point is the proc `tp`.
-    ## `param` is passed to `tp`. `TArg` can be ``void`` if you
+    ## `param` is passed to `tp`. `TArg` can be `void` if you
     ## don't need to pass any data to the thread.
     t.core = cast[PGcThread](allocShared0(sizeof(GcThread)))
 
@@ -310,7 +310,7 @@ else:
     ## Creates a new thread `t` and starts its execution.
     ##
     ## Entry point is the proc `tp`. `param` is passed to `tp`.
-    ## `TArg` can be ``void`` if you
+    ## `TArg` can be `void` if you
     ## don't need to pass any data to the thread.
     t.core = cast[PGcThread](allocShared0(sizeof(GcThread)))
 

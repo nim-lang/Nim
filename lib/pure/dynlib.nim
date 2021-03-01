@@ -8,8 +8,8 @@
 #
 
 ## This module implements the ability to access symbols from shared
-## libraries. On POSIX this uses the ``dlsym`` mechanism, on
-## Windows ``LoadLibrary``.
+## libraries. On POSIX this uses the `dlsym` mechanism, on
+## Windows `LoadLibrary`.
 ##
 ## Examples
 ## ========
@@ -24,7 +24,7 @@
 ##
 ## .. code-block::nim
 ##
-##   import dynlib
+##   import std/dynlib
 ##
 ##   type
 ##     greetFunction = proc(): cstring {.gcsafe, stdcall.}

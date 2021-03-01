@@ -2000,12 +2000,18 @@ proc parseTypeClass(p: var Parser): PNode =
   #|               &IND{>} stmt
   result = newNodeP(nkTypeClassTy, p)
   getTok(p)
-  var args = newNodeP(nkArgList, p)
-  result.add(args)
-  args.add(p.parseTypeClassParam)
-  while p.tok.tokType == tkComma:
-    getTok(p)
+  if p.tok.tokType == tkComment:
+    skipComment(p, result)
+
+  if p.tok.indent < 0:
+    var args = newNodeP(nkArgList, p)
+    result.add(args)
     args.add(p.parseTypeClassParam)
+    while p.tok.tokType == tkComma:
+      getTok(p)
+      args.add(p.parseTypeClassParam)
+  else:
+    result.add(p.emptyNode) # see ast.isNewStyleConcept
   if p.tok.tokType == tkCurlyDotLe and p.validInd:
     result.add(parsePragma(p))
   else:

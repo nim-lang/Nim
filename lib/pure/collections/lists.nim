@@ -165,7 +165,7 @@ proc newSinglyLinkedNode*[T](value: T): <//>(SinglyLinkedNode[T]) =
 func toSinglyLinkedList*[T](elems: openArray[T]): SinglyLinkedList[T] {.since: (1, 5, 1).} =
   ## Creates a new `SinglyLinkedList` from members of `elems`.
   runnableExamples:
-    import sequtils
+    import std/sequtils
     let a = [1, 2, 3, 4, 5].toSinglyLinkedList
     assert a.toSeq == [1, 2, 3, 4, 5]
   result = initSinglyLinkedList[T]()
@@ -175,7 +175,7 @@ func toSinglyLinkedList*[T](elems: openArray[T]): SinglyLinkedList[T] {.since: (
 func toDoublyLinkedList*[T](elems: openArray[T]): DoublyLinkedList[T] {.since: (1, 5, 1).} =
   ## Creates a new `DoublyLinkedList` from members of `elems`.
   runnableExamples:
-    import sequtils
+    import std/sequtils
     let a = [1, 2, 3, 4, 5].toDoublyLinkedList
     assert a.toSeq == [1, 2, 3, 4, 5]
   result = initDoublyLinkedList[T]()
@@ -359,7 +359,7 @@ proc prepend*[T: SomeLinkedList](a: var T, b: T) {.since: (1, 5, 1).} =
   ## * `prependMoved proc <#prependMoved,DoublyLinkedList[T],DoublyLinkedList[T]>`_
   ##   for moving the second list instead of copying
   runnableExamples:
-    import sequtils
+    import std/sequtils
     var a = [4, 5].toSinglyLinkedList
     let b = [1, 2, 3].toSinglyLinkedList
     a.prepend b
@@ -476,7 +476,7 @@ proc prepend*[T](L: var SinglyLinkedList[T], value: T) {.inline.} =
 func copy*[T](a: SinglyLinkedList[T]): SinglyLinkedList[T] {.since: (1, 5, 1).} =
   ## Creates a shallow copy of `a`.
   runnableExamples:
-    import sequtils
+    import std/sequtils
     type Foo = ref object
       x: int
     var
@@ -675,7 +675,7 @@ proc add*[T: SomeLinkedList](a: var T, b: T) {.since: (1, 5, 1).} =
   ## * `addMoved proc <#addMoved,DoublyLinkedList[T],DoublyLinkedList[T]>`_
   ##   for moving the second list instead of copying
   runnableExamples:
-    import sequtils
+    import std/sequtils
     var a = [1, 2, 3].toSinglyLinkedList
     let b = [4, 5].toSinglyLinkedList
     a.add b

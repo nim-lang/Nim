@@ -1,6 +1,6 @@
 proc `$`*(x: int): string {.magic: "IntToStr", noSideEffect.}
   ## The stringify operator for an integer argument. Returns `x`
-  ## converted to a decimal string. ``$`` is Nim's general way of
+  ## converted to a decimal string. `$` is Nim's general way of
   ## spelling `toString`:idx:.
 
 template dollarImpl(x: uint | uint64, result: var string) =
@@ -76,19 +76,19 @@ proc `$`*(x: cstring): string {.magic: "CStrToStr", noSideEffect.}
 proc `$`*(x: string): string {.magic: "StrToStr", noSideEffect.}
   ## The stringify operator for a string argument. Returns `x`
   ## as it is. This operator is useful for generic code, so
-  ## that ``$expr`` also works if ``expr`` is already a string.
+  ## that `$expr` also works if `expr` is already a string.
 
 proc `$`*[Enum: enum](x: Enum): string {.magic: "EnumToStr", noSideEffect.}
   ## The stringify operator for an enumeration argument. This works for
   ## any enumeration type thanks to compiler magic.
   ##
-  ## If a ``$`` operator for a concrete enumeration is provided, this is
+  ## If a `$` operator for a concrete enumeration is provided, this is
   ## used instead. (In other words: *Overwriting* is possible.)
 
 proc `$`*(t: typedesc): string {.magic: "TypeTrait".}
   ## Returns the name of the given type.
   ##
-  ## For more procedures dealing with ``typedesc``, see
+  ## For more procedures dealing with `typedesc`, see
   ## `typetraits module <typetraits.html>`_.
   ##
   ## .. code-block:: Nim
@@ -114,7 +114,7 @@ else:
 
 
 proc `$`*[T: tuple|object](x: T): string =
-  ## Generic ``$`` operator for tuples that is lifted from the components
+  ## Generic `$` operator for tuples that is lifted from the components
   ## of `x`. Example:
   ##
   ## .. code-block:: Nim
@@ -164,7 +164,7 @@ proc collectionToString[T](x: T, prefix, separator, suffix: string): string =
   result.add(suffix)
 
 proc `$`*[T](x: set[T]): string =
-  ## Generic ``$`` operator for sets that is lifted from the components
+  ## Generic `$` operator for sets that is lifted from the components
   ## of `x`. Example:
   ##
   ## .. code-block:: Nim
@@ -172,7 +172,7 @@ proc `$`*[T](x: set[T]): string =
   collectionToString(x, "{", ", ", "}")
 
 proc `$`*[T](x: seq[T]): string =
-  ## Generic ``$`` operator for seqs that is lifted from the components
+  ## Generic `$` operator for seqs that is lifted from the components
   ## of `x`. Example:
   ##
   ## .. code-block:: Nim
@@ -180,7 +180,7 @@ proc `$`*[T](x: seq[T]): string =
   collectionToString(x, "@[", ", ", "]")
 
 proc `$`*[T, U](x: HSlice[T, U]): string =
-  ## Generic ``$`` operator for slices that is lifted from the components
+  ## Generic `$` operator for slices that is lifted from the components
   ## of `x`. Example:
   ##
   ## .. code-block:: Nim
@@ -192,11 +192,11 @@ proc `$`*[T, U](x: HSlice[T, U]): string =
 
 when not defined(nimNoArrayToString):
   proc `$`*[T, IDX](x: array[IDX, T]): string =
-    ## Generic ``$`` operator for arrays that is lifted from the components.
+    ## Generic `$` operator for arrays that is lifted from the components.
     collectionToString(x, "[", ", ", "]")
 
 proc `$`*[T](x: openArray[T]): string =
-  ## Generic ``$`` operator for openarrays that is lifted from the components
+  ## Generic `$` operator for openarrays that is lifted from the components
   ## of `x`. Example:
   ##
   ## .. code-block:: Nim
