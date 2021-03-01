@@ -53,3 +53,11 @@ nnkInfix.newTree(
 
   block: # static params
     doAssert test6.asMacro("a" & "b", static(32)) == ("\"a\" & \"b\"", 32)
+
+  block:
+    doAssert lispRepr.asMacro(1+2) == """(Infix (Ident "+") (IntLit 1) (IntLit 2))"""
+    doAssert lispRepr.asMacro(1+2, static(true)) == """
+(Infix
+ (Ident "+")
+ (IntLit 1)
+ (IntLit 2))"""
