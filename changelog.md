@@ -214,6 +214,8 @@ provided by the operating system.
 
 - Deprecated `TaintedString` and `--taintmode`.
 
+- Deprecated `--nilseqs` which is now a noop.
+
 - Source+Edit links now appear on top of every docgen'd page when
   `nim doc --git.url:url ...` is given.
 
