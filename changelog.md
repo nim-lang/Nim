@@ -244,6 +244,8 @@
 
 - Added dollar `$` and `len` for `jsre.RegExp`.
 
+- Added `macros.asMacro` to call proc with `NimNode` params as a macro.
+
 
 ## Language changes
 
