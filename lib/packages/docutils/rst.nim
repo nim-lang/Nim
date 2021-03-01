@@ -414,7 +414,7 @@ proc getTokens(buffer: string, skipPounds: bool, tokens: var TokenSeq): int =
     tokens[0].kind = tkIndent
 
 type
-  LevelInfo = tuple
+  LevelInfo = object
     symbol: char         # adornment character
     hasOverline: bool    # has also overline (besides underline)?
     line: int            # the last line of this style occurrence
@@ -1422,8 +1422,8 @@ proc getLevel(p: var RstParser, c: char, hasOverline: bool): int =
       p.s.hLevels[i].line = curLine(p)
       p.s.hLevels[i].hasPeers = true
       return i
-  p.s.hLevels.add (symbol: c, hasOverline: hasOverline,
-                   line: curLine(p), hasPeers: false)
+  p.s.hLevels.add LevelInfo(symbol: c, hasOverline: hasOverline,
+                            line: curLine(p), hasPeers: false)
   result = p.s.hLevels.len - 1
 
 proc countTitles(p: var RstParser, n: PRstNode) =
@@ -1663,6 +1663,7 @@ proc checkHeadingHierarchy(p: RstParser, lvl: int) =
 proc parseHeadline(p: var RstParser): PRstNode =
   if isMarkdownHeadline(p):
     result = newRstNode(rnMarkdownHeadline)
+    # Note that level hierarchy is not checked for markdown headings
     result.level = currentTok(p).symbol.len
     assert(nextTok(p).kind == tkWhite)
     inc p.idx, 2

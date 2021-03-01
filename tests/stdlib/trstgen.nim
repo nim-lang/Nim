@@ -421,6 +421,39 @@ Some chapter
     doAssert "<h1 id=\"title0\"><center>Title0</center></h1>" in output11
     doAssert "<h2 id=\"subtitle0\"><center>SubTitle0</center></h2>" in output11
 
+    # check that RST and Markdown headings don't interfere
+    let input12 = dedent """
+      ======
+      Title0
+      ======
+
+      MySection1a
+      +++++++++++
+
+      # MySection1b
+
+      MySection1c
+      +++++++++++
+
+      ##### MySection5a
+
+      MySection2a
+      -----------
+      """
+    var option12: bool
+    var rstGenera12: RstGenerator
+    var output12: string
+    rstGenera12.initRstGenerator(outHtml, defaultConfig(), "input", {})
+    rstGenera12.renderRstToOut(rstParse(input12, "", 1, 1, option12, {roSupportMarkdown}), output12)
+    doAssert rstGenera12.meta[metaTitle] == "Title0"
+    doAssert rstGenera12.meta[metaSubTitle] == ""
+    doAssert output12 ==
+             "\n<h1 id=\"mysection1a\">MySection1a</h1>" & # RST
+             "\n<h1 id=\"mysection1b\">MySection1b</h1>" & # Markdown
+             "\n<h1 id=\"mysection1c\">MySection1c</h1>" & # RST
+             "\n<h5 id=\"mysection5a\">MySection5a</h5>" & # Markdown
+             "\n<h2 id=\"mysection2a\">MySection2a</h2>"   # RST
+
   test "RST inline text":
     let input1 = "GC_step"
     let output1 = input1.toHtml
