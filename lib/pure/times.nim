@@ -52,7 +52,7 @@
   The different format patterns that are supported are documented below.
 
   ===========  =================================================================================  ==============================================
-  Pattern       Description                                                                        Example
+  Pattern      Description                                                                        Example
   ===========  =================================================================================  ==============================================
   `d`          Numeric value representing the day of the month,                                   | `1/04/2012 -> 1`
                it will be either one or two digits long.                                          | `21/04/2012 -> 21`
