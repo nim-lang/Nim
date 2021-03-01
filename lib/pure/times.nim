@@ -286,6 +286,7 @@ type
     ## Includes the value 60 to allow for a leap second. Note however
     ## that the `second` of a `DateTime` will never be a leap second.
   YeardayRange* = range[0..365]
+  YearweekRange* = range[1 .. 53]
   NanosecondRange* = range[0..999_999_999]
 
   Time* = object ## Represents a point in time.
@@ -528,6 +529,35 @@ proc getDaysInYear*(year: int): int =
     doAssert getDaysInYear(2000) == 366
     doAssert getDaysInYear(2001) == 365
   result = 365 + (if isLeapYear(year): 1 else: 0)
+
+proc getWeeksInYear*(y: int): YearweekRange =
+  ## Returns the number of weeks in a year, which can be
+  ## either 53 or 52
+  runnableExamples:
+    doAssert getWeekInYear(2000) == 52
+    doAssert getWeeksInYear(2001) == 53
+
+  # source: https://webspace.science.uu.nl/~gent0113/calendar/isocalendar.htm
+  let p = (y + (y div 4) - (y div 100) + (y div 400)) mod 7
+  let y1 = y - 1
+  let p1 = (y1 + (y1 div 4) - (y1 div 100) + (y1 div 400)) mod 7
+  if p == 4 or p1 == 3: 53 else: 52
+
+proc getWeekOfYear*(dt: DateTime): YearweekRange =
+  ## Returns the ISO 8601 calendar week number a datetime is part of
+  runnableExamples:
+    doAssert getWeekOfYear(initDateTime(2018, mApr, 21, 00, 00, 00)) == 16
+    doAssert getWeekOfYear(initDateTime(2019, mJul, 8, 00, 00, 00)) == 28
+    doAssert getWeekOfYear(initDateTime(2020, mSept, 13, 00, 00, 00)) == 37
+
+  # source: https://webspace.science.uu.nl/~gent0113/calendar/isocalendar.htm
+  let w = (dt.yearday.int - dt.weekday.int + 10) div 7
+  if w < 1:
+    getWeeksInYear(dt.year - 1)
+  elif (w > getWeeksInYear(dt.year)):
+    1
+  else:
+    w
 
 proc stringifyUnit(value: int | int64, unit: TimeUnit): string =
   ## Stringify time unit with it's name, lowercased
@@ -2577,6 +2607,28 @@ proc `+=`*(t: var Time, b: TimeInterval) =
 
 proc `-=`*(t: var Time, b: TimeInterval) =
   t = t - b
+
+#
+# Day of year
+#
+
+proc initDateTime*(weekday: WeekDay, yearweek: YearweekRange, year: int,
+                   hour: HourRange, minute: MinuteRange, second: SecondRange,
+                   nanosecond: NanosecondRange,
+                   zone: Timezone = local()): DateTime =
+  ## Create a new `DateTime <#DateTime>`_ from a year, week number, and weekday
+  ## in the specified timezone.
+
+  # source https://webspace.science.uu.nl/~gent0113/calendar/isocalendar.htm
+  let d = yearweek * 7 + weekday.int - initDateTime(4, mJan, year, 00, 00, 00).weekday.int - 4
+  initDateTime(1, mJan, year, hour, minute, second, nanosecond, zone) + initTimeInterval(days=d)
+
+template initDateTime*(weekday: WeekDay, yearweek: YearweekRange, year: int,
+                   hour: HourRange, minute: MinuteRange, second: SecondRange,
+                   zone: Timezone = local()): DateTime =
+  ## Create a new `DateTime <#DateTime>`_ from a year, week number, and weekday
+  ## in the specified timezone.
+  initDateTime(weekday, yearweek, year, hour, minute, second, 0, zone)
 
 #
 # Other

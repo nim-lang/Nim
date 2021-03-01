@@ -646,3 +646,45 @@ block: # ttimes
     doAssert initDuration(milliseconds = 500).inMilliseconds == 500
     doAssert initDuration(milliseconds = -500).inMilliseconds == -500
     doAssert initDuration(nanoseconds = -999999999).inMilliseconds == -999
+
+  block: # week in year
+    doAssert getWeekOfYear(initDateTime(04, mNov, 2019, 00, 00, 00)) == 45
+    doAssert initDateTime(dMon, 45, 2019, 00, 00, 00) == initDateTime(04, mNov, 2019, 00, 00, 00)
+    doAssert getWeekOfYear(initDateTime(31, mDec, 2019, 00, 00, 00)) == 01
+    doAssert initDateTime(dTue, 01, 2020, 00, 00, 00) == initDateTime(31, mDec, 2019, 00, 00, 00)
+    doAssert getWeekOfYear(initDateTime(01, mJan, 2020, 00, 00, 00)) == 01
+    doAssert initDateTime(dWed, 01, 2020, 00, 00, 00) == initDateTime(1, mJan, 2020, 00, 00, 00)
+    doAssert getWeekOfYear(initDateTime(05, mApr, 2020, 00, 00, 00)) == 14
+    doAssert initDateTime(dSun, 14, 2020, 00, 00, 00) == initDateTime(05, mApr, 2020, 00, 00, 00)
+    doAssert getWeekOfYear(initDateTime(06, mApr, 2020, 00, 00, 00)) == 15
+    doAssert initDateTime(dMon, 15, 2020, 00, 00, 00) == initDateTime(06, mApr, 2020, 00, 00, 00)
+    doAssert getWeekOfYear(initDateTime(10, mApr, 2020, 00, 00, 00)) == 15
+    doAssert initDateTime(dFri, 15, 2020, 00, 00, 00) == initDateTime(10, mApr, 2020, 00, 00, 00)
+    doAssert getWeekOfYear(initDateTime(12, mApr, 2020, 00, 00, 00)) == 15
+    doAssert initDateTime(dSun, 15, 2020, 00, 00, 00) == initDateTime(12, mApr, 2020, 00, 00, 00)
+    doAssert getWeekOfYear(initDateTime(13, mApr, 2020, 00, 00, 00)) == 16
+    doAssert initDateTime(dMon, 16, 2020, 00, 00, 00) == initDateTime(13, mApr, 2020, 00, 00, 00)
+    doAssert getWeekOfYear(initDateTime(15, mApr, 2020, 00, 00, 00)) == 16
+    doAssert initDateTime(dThu, 16, 2020, 00, 00, 00) == initDateTime(16, mApr, 2020, 00, 00, 00)
+    doAssert getWeekOfYear(initDateTime(17, mJul, 2020, 00, 00, 00)) == 29
+    doAssert initDateTime(dFri, 29, 2020, 00, 00, 00) == initDateTime(17, mJul, 2020, 00, 00, 00)
+    doAssert getWeekOfYear(initDateTime(19, mJul, 2020, 00, 00, 00)) == 29
+    doAssert initDateTime(dSun, 29, 2020, 00, 00, 00) == initDateTime(19, mJul, 2020, 00, 00, 00)
+    doAssert getWeekOfYear(initDateTime(20, mJul, 2020, 00, 00, 00)) == 30
+    doAssert initDateTime(dMon, 30, 2020, 00, 00, 00) == initDateTime(20, mJul, 2020, 00, 00, 00)
+    doAssert getWeekOfYear(initDateTime(23, mJul, 2020, 00, 00, 00)) == 30
+    doAssert initDateTime(dThu, 30, 2020, 00, 00, 00) == initDateTime(23, mJul, 2020, 00, 00, 00)
+    doAssert getWeekOfYear(initDateTime(31, mDec, 2020, 00, 00, 00)) == 53
+    doAssert initDateTime(dThu, 53, 2020, 00, 00, 00) == initDateTime(31, mDec, 2020, 00, 00, 00)
+    doAssert getWeekOfYear(initDateTime(01, mJan, 2021, 00, 00, 00)) == 53
+    doAssert initDateTime(dFri, 53, 2020, 00, 00, 00) == initDateTime(01, mJan, 2021, 00, 00, 00)
+    doAssert getWeekOfYear(initDateTime(02, mJan, 2021, 00, 00, 00)) == 53
+    doAssert initDateTime(dSat, 53, 2020, 00, 00, 00) == initDateTime(02, mJan, 2021, 00, 00, 00)
+    doAssert getWeekOfYear(initDateTime(03, mJan, 2021, 00, 00, 00)) == 53
+    doAssert initDateTime(dSun, 53, 2020, 00, 00, 00) == initDateTime(03, mJan, 2021, 00, 00, 00)
+    doAssert getWeekOfYear(initDateTime(04, mJan, 2021, 00, 00, 00)) == 01
+    doAssert initDateTime(dMon, 01, 2021, 00, 00, 00) == initDateTime(04, mJan, 2021, 00, 00, 00)
+    doAssert getWeekOfYear(initDateTime(01, mFeb, 2021, 00, 00, 00)) == 05
+    doAssert initDateTime(dMon, 05, 2021, 00, 00, 00) == initDateTime(01, mFeb, 2021, 00, 00, 00)
+
+
