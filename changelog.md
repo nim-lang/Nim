@@ -130,7 +130,7 @@ with other backends. see #9125. Use `-d:nimLegacyJsRound` for previous behavior.
 
 - Deprecated `any`. See https://github.com/nim-lang/RFCs/issues/281
 
-- Added `std/sysrand` module to get random numbers from a secure source 
+- Added `std/sysrand` module to get random numbers from a secure source
 provided by the operating system.
 
 - Added optional `options` argument to `copyFile`, `copyFileToDir`, and
@@ -174,6 +174,9 @@ provided by the operating system.
   of termination.
 
 - Added `strip` and `setSlice` to `std/strbasics`.
+- Added `system.prepareStrMutation` for better support of low
+  level `moveMem`, `copyMem` operations for Orc's copy-on-write string
+  implementation.
 
 
 - Added to `wrapnils` an option-like API via `??.`, `isSome`, `get`.

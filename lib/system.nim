@@ -3126,3 +3126,6 @@ export io
 
 when not defined(createNimHcr) and not defined(nimscript):
   include nimhcr
+
+when not defined(gcDestructors):
+  proc prepareStrMutation*(s: var string) {.inline.} = discard
