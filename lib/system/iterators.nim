@@ -130,22 +130,22 @@ iterator items*[T: Ordinal](s: Slice[T]): T =
     yield x
 
 iterator pairs*[T](a: openArray[T]): tuple[key: int, val: T] {.inline.} =
-  ## Iterates over each item of `a`. Yields ``(index, a[index])`` pairs.
+  ## Iterates over each item of `a`. Yields `(index, a[index])` pairs.
   var i = 0
   while i < len(a):
     yield (i, a[i])
     inc(i)
 
 iterator mpairs*[T](a: var openArray[T]): tuple[key: int, val: var T]{.inline.} =
-  ## Iterates over each item of `a`. Yields ``(index, a[index])`` pairs.
-  ## ``a[index]`` can be modified.
+  ## Iterates over each item of `a`. Yields `(index, a[index])` pairs.
+  ## `a[index]` can be modified.
   var i = 0
   while i < len(a):
     yield (i, a[i])
     inc(i)
 
 iterator pairs*[IX, T](a: array[IX, T]): tuple[key: IX, val: T] {.inline.} =
-  ## Iterates over each item of `a`. Yields ``(index, a[index])`` pairs.
+  ## Iterates over each item of `a`. Yields `(index, a[index])` pairs.
   var i = low(IX)
   if i <= high(IX):
     while true:
@@ -154,8 +154,8 @@ iterator pairs*[IX, T](a: array[IX, T]): tuple[key: IX, val: T] {.inline.} =
       inc(i)
 
 iterator mpairs*[IX, T](a: var array[IX, T]): tuple[key: IX, val: var T] {.inline.} =
-  ## Iterates over each item of `a`. Yields ``(index, a[index])`` pairs.
-  ## ``a[index]`` can be modified.
+  ## Iterates over each item of `a`. Yields `(index, a[index])` pairs.
+  ## `a[index]` can be modified.
   var i = low(IX)
   if i <= high(IX):
     while true:
@@ -164,7 +164,7 @@ iterator mpairs*[IX, T](a: var array[IX, T]): tuple[key: IX, val: var T] {.inlin
       inc(i)
 
 iterator pairs*[T](a: seq[T]): tuple[key: int, val: T] {.inline.} =
-  ## Iterates over each item of `a`. Yields ``(index, a[index])`` pairs.
+  ## Iterates over each item of `a`. Yields `(index, a[index])` pairs.
   var i = 0
   let L = len(a)
   while i < L:
@@ -173,8 +173,8 @@ iterator pairs*[T](a: seq[T]): tuple[key: int, val: T] {.inline.} =
     assert(len(a) == L, "the length of the seq changed while iterating over it")
 
 iterator mpairs*[T](a: var seq[T]): tuple[key: int, val: var T] {.inline.} =
-  ## Iterates over each item of `a`. Yields ``(index, a[index])`` pairs.
-  ## ``a[index]`` can be modified.
+  ## Iterates over each item of `a`. Yields `(index, a[index])` pairs.
+  ## `a[index]` can be modified.
   var i = 0
   let L = len(a)
   while i < L:
@@ -183,7 +183,7 @@ iterator mpairs*[T](a: var seq[T]): tuple[key: int, val: var T] {.inline.} =
     assert(len(a) == L, "the length of the seq changed while iterating over it")
 
 iterator pairs*(a: string): tuple[key: int, val: char] {.inline.} =
-  ## Iterates over each item of `a`. Yields ``(index, a[index])`` pairs.
+  ## Iterates over each item of `a`. Yields `(index, a[index])` pairs.
   var i = 0
   let L = len(a)
   while i < L:
@@ -192,8 +192,8 @@ iterator pairs*(a: string): tuple[key: int, val: char] {.inline.} =
     assert(len(a) == L, "the length of the string changed while iterating over it")
 
 iterator mpairs*(a: var string): tuple[key: int, val: var char] {.inline.} =
-  ## Iterates over each item of `a`. Yields ``(index, a[index])`` pairs.
-  ## ``a[index]`` can be modified.
+  ## Iterates over each item of `a`. Yields `(index, a[index])` pairs.
+  ## `a[index]` can be modified.
   var i = 0
   let L = len(a)
   while i < L:
@@ -202,7 +202,7 @@ iterator mpairs*(a: var string): tuple[key: int, val: var char] {.inline.} =
     assert(len(a) == L, "the length of the string changed while iterating over it")
 
 iterator pairs*(a: cstring): tuple[key: int, val: char] {.inline.} =
-  ## Iterates over each item of `a`. Yields ``(index, a[index])`` pairs.
+  ## Iterates over each item of `a`. Yields `(index, a[index])` pairs.
   when defined(js):
     var i = 0
     var L = len(a)
@@ -216,8 +216,8 @@ iterator pairs*(a: cstring): tuple[key: int, val: char] {.inline.} =
       inc(i)
 
 iterator mpairs*(a: var cstring): tuple[key: int, val: var char] {.inline.} =
-  ## Iterates over each item of `a`. Yields ``(index, a[index])`` pairs.
-  ## ``a[index]`` can be modified.
+  ## Iterates over each item of `a`. Yields `(index, a[index])` pairs.
+  ## `a[index]` can be modified.
   when defined(js):
     var i = 0
     var L = len(a)
@@ -297,10 +297,10 @@ iterator fieldPairs*[T: tuple|object](x: T): tuple[key: string, val: RootObj] {.
   ## Iterates over every field of `x` returning their name and value.
   ##
   ## When you iterate over objects with different field types you have to use
-  ## the compile time ``when`` instead of a runtime ``if`` to select the code
+  ## the compile time `when` instead of a runtime `if` to select the code
   ## you want to run for each type. To perform the comparison use the `is
   ## operator <manual.html#generics-is-operator>`_.
-  ## Another way to do the same without ``when`` is to leave the task of
+  ## Another way to do the same without `when` is to leave the task of
   ## picking the appropriate code to a secondary proc which you overload for
   ## each field type and pass the `value` to.
   ##
