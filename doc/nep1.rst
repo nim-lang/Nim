@@ -239,7 +239,7 @@ Coding Conventions
     proc repeat(text: string, x: int): string =
       result = ""
 
-      for i in 0 .. x:
+      for i in 0..x:
         result.add($i)
 
 - Use a proc when possible, only using the more powerful facilities of macros,
