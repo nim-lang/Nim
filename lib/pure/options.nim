@@ -306,8 +306,8 @@ proc flatMap*[T, R](self: Option[T],
 proc filter*[T](self: Option[T], callback: proc (input: T): bool): Option[T] {.inline.} =
   ## Applies a `callback` to the value of the `Option`.
   ##
-  ## If the `callback` returns `true`, the option is returned as `Some`.
-  ## If it returns `false`, it is returned as `None`.
+  ## If the `callback` returns `true`, the option is returned as `some`.
+  ## If it returns `false`, it is returned as `none`.
   ##
   ## **See also:**
   ## * `flatMap proc <#flatMap,Option[A],proc(A)>`_
@@ -325,8 +325,8 @@ proc filter*[T](self: Option[T], callback: proc (input: T): bool): Option[T] {.i
     self
 
 proc `==`*[T](a, b: Option[T]): bool {.inline.} =
-  ## Returns `true` if both `Option`s are `None`,
-  ## or if they are both `Some` and have equal values.
+  ## Returns `true` if both `Option`s are `none`,
+  ## or if they are both `some` and have equal values.
   runnableExamples:
     let
       a = some(42)
@@ -346,18 +346,24 @@ proc `==`*[T](a, b: Option[T]): bool {.inline.} =
 proc `$`*[T](self: Option[T]): string =
   ## Get the string representation of the `Option`.
   runnableExamples:
-    assert $some(42) == "Some(42)"
-    assert $none(int) == "None[int]"
+    assert $some(42) == "some(42)"
+    assert $none(int) == "none(int)"
 
   if self.isSome:
-    result = "Some("
+    when defined(nimLagacyOptionsDollar):
+      result = "Some("
+    else:
+      result = "some("
     result.addQuoted self.val
     result.add ")"
   else:
-    result = "None[" & name(T) & "]"
+    when defined(nimLagacyOptionsDollar):
+      result = "None[" & name(T) & "]"
+    else:
+      result = "none(" & name(T) & ")"
 
 proc unsafeGet*[T](self: Option[T]): lent T {.inline.}=
-  ## Returns the value of a `Some`. The behavior is undefined for `None`.
+  ## Returns the value of a `some`. The behavior is undefined for `none`.
   ##
   ## **Note:** Use this only when you are **absolutely sure** the value is present
   ## (e.g. after checking with `isSome <#isSome,Option[T]>`_).

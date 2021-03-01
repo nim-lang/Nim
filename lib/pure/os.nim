@@ -225,7 +225,7 @@ proc joinPath*(parts: varargs[string]): string {.noSideEffect,
   for i in 0..high(parts):
     joinPathImpl(result, state, parts[i])
 
-proc `/`*(head, tail: string): string {.noSideEffect.} =
+proc `/`*(head, tail: string): string {.noSideEffect, inline.} =
   ## The same as `joinPath(head, tail) proc <#joinPath,string,string>`_.
   ##
   ## See also:
@@ -243,7 +243,7 @@ proc `/`*(head, tail: string): string {.noSideEffect.} =
       assert "usr/" / "/lib/" == "usr/lib/"
       assert "usr" / "lib" / "../bin" == "usr/bin"
 
-  return joinPath(head, tail)
+  result = joinPath(head, tail)
 
 proc splitPath*(path: string): tuple[head, tail: string] {.
   noSideEffect, rtl, extern: "nos$1".} =
@@ -2436,11 +2436,10 @@ proc rawCreateDir(dir: string): bool {.noWeirdTarget.} =
 
 proc existsOrCreateDir*(dir: string): bool {.rtl, extern: "nos$1",
   tags: [WriteDirEffect, ReadDirEffect], noWeirdTarget.} =
-  ## Check if a `directory`:idx: `dir` exists, and create it otherwise.
+  ## Checks if a `directory`:idx: `dir` exists, and creates it otherwise.
   ##
-  ## Does not create parent directories (fails if parent does not exist).
-  ## Returns `true` if the directory already exists, and `false`
-  ## otherwise.
+  ## Does not create parent directories (raises `OSError` if parent directories do not exist).
+  ## Returns `true` if the directory already exists, and `false` otherwise.
   ##
   ## See also:
   ## * `removeDir proc <#removeDir,string>`_

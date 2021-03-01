@@ -178,8 +178,15 @@ provided by the operating system.
   level `moveMem`, `copyMem` operations for Orc's copy-on-write string
   implementation.
 
+- `hashes.hash` now supports `object`, but can be overloaded.
+
+- Added `strip` and `setSlice` to `std/strbasics`.
 
 - Added to `wrapnils` an option-like API via `??.`, `isSome`, `get`.
+
+- `std/options` changed `$some(3)` to `"some(3)"` instead of `"Some(3)"`
+  and `$none(int)` to `"none(int)"` instead of `"None[int]"`.
+
 
 ## Language changes
 
@@ -227,6 +234,8 @@ provided by the operating system.
   adding: `default-role:: code` directive inside the rst file, which is now handled by rst2html.
 
 - Added `-d:nimStrictMode` in CI in several places to ensure code doesn't have certain hints/warnings
+
+- Added `then`, `catch` to `asyncjs`, for now hidden behind `-d:nimExperimentalAsyncjsThen`.
 
 ## Tool changes
 

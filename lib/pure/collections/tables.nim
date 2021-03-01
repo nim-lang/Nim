@@ -774,7 +774,7 @@ iterator allValues*[A, B](t: Table[A, B]; key: A): B {.deprecated:
   ## `add proc<#add,Table[A,B],A,sinkB>`_).
   ##
   runnableExamples:
-    import sequtils, algorithm
+    import std/[sequtils, algorithm]
 
     var a = {'a': 3, 'b': 5}.toTable
     for i in 1..3: a.add('z', 10*i)

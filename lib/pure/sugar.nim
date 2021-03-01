@@ -58,7 +58,7 @@ macro `=>`*(p, b: untyped): untyped =
   runnableExamples:
     proc passTwoAndTwo(f: (int, int) -> int): int = f(2, 2)
 
-    doAssert passTwoAndTwo((x, y) => x + y) == 4
+    assert passTwoAndTwo((x, y) => x + y) == 4
 
     type
       Bot = object
@@ -67,7 +67,7 @@ macro `=>`*(p, b: untyped): untyped =
     var myBot = Bot()
 
     myBot.call = (name: string) {.noSideEffect.} => "Hello " & name & ", I'm a bot."
-    doAssert myBot.call("John") == "Hello John, I'm a bot."
+    assert myBot.call("John") == "Hello John, I'm a bot."
 
     # let f = () => (discard) # simplest proc that returns void
     # f()
@@ -149,13 +149,13 @@ macro `->`*(p, b: untyped): untyped =
     # is the same as:
     # proc passTwoAndTwo(f: proc (x, y: int): int): int = f(2, 2)
 
-    doAssert passTwoAndTwo((x, y) => x + y) == 4
+    assert passTwoAndTwo((x, y) => x + y) == 4
 
     proc passOne(f: (int {.noSideEffect.} -> int)): int = f(1)
     # is the same as:
     # proc passOne(f: proc (x: int): int {.noSideEffect.}): int = f(1)
 
-    doAssert passOne(x {.noSideEffect.} => x + 1) == 2
+    assert passOne(x {.noSideEffect.} => x + 1) == 2
 
   result = createProcType(p, b)
 
@@ -193,13 +193,13 @@ macro dumpToString*(x: untyped): string =
   runnableExamples:
     const a = 1
     let x = 10
-    doAssert dumpToString(a + 2) == "a + 2: 3 = 3"
-    doAssert dumpToString(a + x) == "a + x: 1 + x = 11"
+    assert dumpToString(a + 2) == "a + 2: 3 = 3"
+    assert dumpToString(a + x) == "a + x: 1 + x = 11"
     template square(x): untyped = x * x
-    doAssert dumpToString(square(x)) == "square(x): x * x = 100"
-    doAssert not compiles dumpToString(1 + nonexistant)
+    assert dumpToString(square(x)) == "square(x): x * x = 100"
+    assert not compiles dumpToString(1 + nonexistant)
     import std/strutils
-    doAssert "failedAssertImpl" in dumpToString(doAssert true) # example with a statement
+    assert "failedAssertImpl" in dumpToString(assert true) # example with a statement
   result = newCall(bindSym"dumpToStringImpl")
   result.add newLit repr(x)
   result.add x
@@ -232,7 +232,7 @@ macro capture*(locals: varargs[typed], body: untyped): untyped {.since: (1, 1).}
         if i * j == 42:
           capture i, j:
             myClosure = () => fmt"{i} * {j} = 42"
-    doAssert myClosure() == "6 * 7 = 42"
+    assert myClosure() == "6 * 7 = 42"
 
   var params = @[newIdentNode("auto")]
   let locals = if locals.len == 1 and locals[0].kind == nnkBracket: locals[0]
@@ -259,21 +259,21 @@ since (1, 1):
       import std/algorithm
 
       let a = @[1, 2, 3, 4, 5, 6, 7, 8, 9]
-      doAssert a.dup(sort) == sorted(a)
+      assert a.dup(sort) == sorted(a)
 
       # Chaining:
       var aCopy = a
       aCopy.insert(10)
-      doAssert a.dup(insert(10), sort) == sorted(aCopy)
+      assert a.dup(insert(10), sort) == sorted(aCopy)
 
       let s1 = "abc"
       let s2 = "xyz"
-      doAssert s1 & s2 == s1.dup(&= s2)
+      assert s1 & s2 == s1.dup(&= s2)
 
       # An underscore (_) can be used to denote the place of the argument you're passing:
-      doAssert "".dup(addQuoted(_, "foo")) == "\"foo\""
+      assert "".dup(addQuoted(_, "foo")) == "\"foo\""
       # but `_` is optional here since the substitution is in 1st position:
-      doAssert "".dup(addQuoted("foo")) == "\"foo\""
+      assert "".dup(addQuoted("foo")) == "\"foo\""
 
       proc makePalindrome(s: var string) =
         for i in countdown(s.len-2, 0):
@@ -286,7 +286,7 @@ since (1, 1):
         makePalindrome # xyzyx
         sort(_, SortOrder.Descending) # zyyxx
         makePalindrome # zyyxxxyyz
-      doAssert d == "zyyxxxyyz"
+      assert d == "zyyxxxyyz"
 
     result = newNimNode(nnkStmtListExpr, arg)
     let tmp = genSym(nskVar, "dupResult")
@@ -376,23 +376,23 @@ macro collect*(init, body: untyped): untyped {.since: (1, 1).} =
     let k = collect(newSeq):
       for i, d in data.pairs:
         if i mod 2 == 0: d
-    doAssert k == @["bird"]
+    assert k == @["bird"]
 
     ## seq with initialSize:
     let x = collect(newSeqOfCap(4)):
       for i, d in data.pairs:
         if i mod 2 == 0: d
-    doAssert x == @["bird"]
+    assert x == @["bird"]
 
     ## HashSet:
     let y = collect(initHashSet()):
       for d in data.items: {d}
-    doAssert y == data.toHashSet
+    assert y == data.toHashSet
 
     ## Table:
     let z = collect(initTable(2)):
       for i, d in data.pairs: {i: d}
-    doAssert z == {0: "bird", 1: "word"}.toTable
+    assert z == {0: "bird", 1: "word"}.toTable
 
   result = collectImpl(init, body)
 
@@ -400,23 +400,28 @@ macro collect*(body: untyped): untyped {.since: (1, 5).} =
   ## Same as `collect` but without an `init` parameter.
   runnableExamples:
     import std/[sets, tables]
-
     let data = @["bird", "word"]
 
     # seq:
     let k = collect:
       for i, d in data.pairs:
         if i mod 2 == 0: d
-    doAssert k == @["bird"]
+    assert k == @["bird"]
 
     ## HashSet:
     let n = collect:
       for d in data.items: {d}
-    doAssert n == data.toHashSet
+    assert n == data.toHashSet
 
     ## Table:
     let m = collect:
       for i, d in data.pairs: {i: d}
-    doAssert m == {0: "bird", 1: "word"}.toTable
+    assert m == {0: "bird", 1: "word"}.toTable
+
+    # avoid `collect` when `sequtils.toSeq` suffices:
+    assert collect(for i in 1..3: i*i) == @[1, 4, 9] # ok in this case
+    assert collect(for i in 1..3: i) == @[1, 2, 3] # overkill in this case
+    from std/sequtils import toSeq
+    assert toSeq(1..3) == @[1, 2, 3] # simpler
 
   result = collectImpl(nil, body)
