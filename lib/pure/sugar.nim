@@ -168,11 +168,11 @@ macro dump*(x: untyped): untyped =
   ## See also: `dumpToString` which is more convenient and useful since
   ## it expands intermediate templates/macros, returns a string instead of
   ## calling `echo`, and works with statements and expressions.
-  runnableExamples:
+  runnableExamples("-r:off"):
     let
       x = 10
       y = 20
-    if false: dump(x + y) # if true would print `x + y = 30`
+    dump(x + y) # prints: `x + y = 30`
 
   let s = x.toStrLit
   result = quote do:
