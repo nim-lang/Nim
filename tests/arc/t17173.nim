@@ -1,5 +1,5 @@
 discard """
-  cmd: "nim c -r --gc:arc $file"
+  matrix: "--gc:refc; --gc:arc; --newruntime"
 """
 
 import std/strbasics
