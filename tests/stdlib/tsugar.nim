@@ -47,6 +47,36 @@ template main() =
       proc call5(f: (int {.noSideEffect.} -> int)): int = f(42)
       doAssert call5(x {.noSideEffect.} => x + 1) == 43
 
+    block: # named procs
+      f1() => 42
+      doAssert f1() == 42
+
+      f2(x: int) => x + 1
+      doAssert f2(42) == 43
+
+      f3(x, y: int) => x + y
+      doAssert f3(1, 2) == 3
+
+      var x = 0
+      f4() => (x = 12)
+      f4()
+      doAssert x == 12
+
+      f5() => (discard) # simplest proc that returns void
+      f5()
+
+    block: # named procs overloading
+      doAssert not compiles(block:
+        g(a: int) => a * 2
+        g(a: int) => a * 2) # would cause redefinition error
+
+      f(a: int) => a * 2
+      f(a, b: int) => a * 2 # ok: overload
+      f(a) => a * 2 # ok: overload with generic parameter
+      doAssert f(2) == 4
+      doAssert f(2, 3) == 4
+      doAssert f(2.0) == 4.0
+
   block: # `->`
     doAssert $(() -> int) == "proc (): int{.closure.}"
     doAssert $(float -> int) == "proc (i0: float): int{.closure.}"

@@ -54,6 +54,8 @@ proc createProcType(p, b: NimNode): NimNode {.compileTime.} =
 
 macro `=>`*(p, b: untyped): untyped =
   ## Syntax sugar for anonymous procedures. It also supports pragmas.
+  ##
+  ## In addition, this can be used to define named procs.
   # TODO: xxx pending #13491: uncomment in runnableExamples
   runnableExamples:
     proc passTwoAndTwo(f: (int, int) -> int): int = f(2, 2)
@@ -71,6 +73,9 @@ macro `=>`*(p, b: untyped): untyped =
 
     # let f = () => (discard) # simplest proc that returns void
     # f()
+
+    multiply(a, b: int) => a * b
+    assert multiply(2, 3) == 6
 
   var
     params = @[ident"auto"]
