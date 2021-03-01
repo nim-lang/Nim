@@ -64,7 +64,7 @@ func setSlice*(s: var string, slice: Slice[int]) =
       when not declared(moveMem):
         impl()
       else:
-        when defined(gcDestructors):
+        when defined(nimSeqsV2):
           prepareStrMutation(s)
         moveMem(addr s[0], addr s[first], last - first + 1)
   s.setLen(last - first + 1)
