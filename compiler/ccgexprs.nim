@@ -85,10 +85,9 @@ proc genLiteral(p: BProc, n: PNode, ty: PType): Rope =
     of tyNil:
       result = genNilStringLiteral(p.module, n.info)
     of tyString:
-      # with the new semantics for 'nil' strings, we can map "" to nil and
+      # with the new semantics for not 'nil' strings, we can map "" to nil and
       # save tons of allocations:
-      if n.strVal.len == 0 and optNilSeqs notin p.options and
-          optSeqDestructors notin p.config.globalOptions:
+      if n.strVal.len == 0 and optSeqDestructors notin p.config.globalOptions:
         result = genNilStringLiteral(p.module, n.info)
       else:
         result = genStringLiteral(p.module, n)
@@ -176,8 +175,7 @@ proc canMove(p: BProc, n: PNode; dest: TLoc): bool =
     if not isDeepConstExpr(n) or n.len == 0:
       if skipTypes(n.typ, abstractVarRange).kind == tySequence:
         return true
-  elif optNilSeqs notin p.options and
-    n.kind in nkStrKinds and n.strVal.len == 0:
+  elif n.kind in nkStrKinds and n.strVal.len == 0:
     # Empty strings are codegen'd as NIM_NIL so it's just a pointer copy
     return true
   result = n.kind in nkCallKinds
@@ -1371,8 +1369,7 @@ proc genNewSeq(p: BProc, e: PNode) =
        getTypeDesc(p.module, seqtype.lastSon),
        getSeqPayloadType(p.module, seqtype)])
   else:
-    let lenIsZero = optNilSeqs notin p.options and
-      e[2].kind == nkIntLit and e[2].intVal == 0
+    let lenIsZero = e[2].kind == nkIntLit and e[2].intVal == 0
     genNewSeqAux(p, a, b.rdLoc, lenIsZero)
     gcUsage(p.config, e)
 
@@ -1497,8 +1494,7 @@ proc genSeqConstr(p: BProc, n: PNode, d: var TLoc) =
       getSeqPayloadType(p.module, seqtype)])
   else:
     # generate call to newSeq before adding the elements per hand:
-    genNewSeqAux(p, dest[], l,
-      optNilSeqs notin p.options and n.len == 0)
+    genNewSeqAux(p, dest[], l, n.len == 0)
   for i in 0..<n.len:
     initLoc(arr, locExpr, n[i], OnHeap)
     arr.r = ropecg(p.module, "$1$3[$2]", [rdLoc(dest[]), intLiteral(i), dataField(p)])
@@ -1527,7 +1523,7 @@ proc genArrToSeq(p: BProc, n: PNode, d: var TLoc) =
       [rdLoc d, L, getTypeDesc(p.module, seqtype.lastSon),
       getSeqPayloadType(p.module, seqtype)])
   else:
-    genNewSeqAux(p, d, intLiteral(L), optNilSeqs notin p.options and L == 0)
+    genNewSeqAux(p, d, intLiteral(L), L == 0)
   initLocExpr(p, n[1], a)
   # bug #5007; do not produce excessive C source code:
   if L < 10:
