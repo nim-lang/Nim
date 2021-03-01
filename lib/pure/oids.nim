@@ -100,8 +100,8 @@ proc genOid*(): Oid =
   ## Generates a new OID.
   runnableExamples:
     doAssert ($genOid()).len == 24
-    if false: doAssert $genOid() == "5fc7f546ddbbc84800006aaf"
-
+  runnableExamples("-r:off"):
+    echo $genOid() # for example, "5fc7f546ddbbc84800006aaf"
   genOid(result, incr, fuzz)
 
 proc generatedTime*(oid: Oid): Time =
