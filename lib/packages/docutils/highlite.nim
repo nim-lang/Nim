@@ -11,7 +11,7 @@
 ## Currently only few languages are supported, other languages may be added.
 ## The interface supports one language nested in another.
 ##
-## **Note:** Import ``packages/docutils/highlite`` to use this module
+## **Note:** Import `packages/docutils/highlite` to use this module
 ##
 ## You can use this to build your own syntax highlighting, check this example:
 ##
@@ -34,7 +34,7 @@
 ##       echo toknizr.kind # All the kinds of tokens can be processed here.
 ##       echo substr(code, toknizr.start, toknizr.length + toknizr.start - 1)
 ##
-## The proc ``getSourceLanguage`` can get the language ``enum`` from a string:
+## The proc `getSourceLanguage` can get the language `enum` from a string:
 ##
 ## .. code::nim
 ##   for l in ["C", "c++", "jAvA", "Nim", "c#"]: echo getSourceLanguage(l)
