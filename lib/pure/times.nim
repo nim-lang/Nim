@@ -2616,7 +2616,7 @@ proc initDateTime*(weekday: WeekDay, yearweek: YearweekRange, year: int,
                    hour: HourRange, minute: MinuteRange, second: SecondRange,
                    nanosecond: NanosecondRange,
                    zone: Timezone = local()): DateTime =
-  ## Create a new `DateTime <#DateTime>`_ from a year, week number, and weekday
+  ## Create a new `DateTime <#DateTime>`_ from a weekday, week number, and year
   ## in the specified timezone.
 
   # source https://webspace.science.uu.nl/~gent0113/calendar/isocalendar.htm
