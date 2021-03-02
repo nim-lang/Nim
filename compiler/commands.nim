@@ -241,7 +241,6 @@ template deprecatedAlias(oldName, newName: string) =
   warningDeprecated(conf, info, "'$#' is a deprecated alias for " % [oldName, newName])
 
 proc testCompileOptionArg*(conf: ConfigRef; switch, arg: string, info: TLineInfo): bool =
-  warningDeprecated(conf, info, "nilseqs is a deprecated noop")
   case switch.normalize
   of "gc":
     case arg.normalize
