@@ -68,6 +68,11 @@
 - `os.FileInfo` (returned by `getFileInfo`) now contains `blockSize`,
   determining preferred I/O block size for this file object.
 
+- `os.copyFile` is now 2.5x faster on OSX, by using `copyfile` from `copyfile.h`;
+  use `-d:nimLegacyCopyFile` for OSX < 10.5.
+
+- Added `os.hardLinkCount`.
+
 - Added a simpler to use `io.readChars` overload.
 
 - `repr` now doesn't insert trailing newline; previous behavior was very inconsistent,
@@ -199,9 +204,6 @@ provided by the operating system.
 - nil dereference is not allowed at compile time. `cast[ptr int](nil)[]` is rejected at compile time.
 
 - `typetraits.distinctBase` now is identity instead of error for non distinct types.
-
-- `os.copyFile` is now 2.5x faster on OSX, by using `copyfile` from `copyfile.h`;
-  use `-d:nimLegacyCopyFile` for OSX < 10.5.
 
 - The required name of case statement macros for the experimental
   `caseStmtMacros` feature has changed from `match` to `` `case` ``.

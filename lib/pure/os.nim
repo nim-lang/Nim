@@ -1182,6 +1182,7 @@ proc symlinkExists*(link: string): bool {.rtl, extern: "nos$1",
   ## See also:
   ## * `fileExists proc <#fileExists,string>`_
   ## * `dirExists proc <#dirExists,string>`_
+  ## * `hardlinkCount proc <#hardlinkCount,string>`_
   when defined(windows):
     when useWinUnicode:
       wrapUnary(a, getFileAttributesW, link)
@@ -1194,7 +1195,6 @@ proc symlinkExists*(link: string): bool {.rtl, extern: "nos$1",
   else:
     var res: Stat
     return lstat(link, res) >= 0'i32 and S_ISLNK(res.st_mode)
-
 
 when not defined(windows):
   const maxSymlinkLen = 1024
@@ -3337,6 +3337,33 @@ proc getFileInfo*(path: string, followSymlink = true): FileInfo {.noWeirdTarget.
       if lstat(path, rawInfo) < 0'i32:
         raiseOSError(osLastError(), path)
     rawToFormalFileInfo(rawInfo, path, result)
+
+proc hardlinkCount*(path: string, followSymlink = true): int {.noWeirdTarget, since: (1, 5, 1).} =
+  ## Returns the number of hard links for `path`.
+  ## This can raise `OSError` if `getFileInfo` fails, for example if `file` doesn't exist.
+  runnableExamples:
+    doAssertRaises(OSError): discard hardLinkCount("nonexistant")
+    block:
+      let dir = getTempDir() / "D20210302T122219"
+      assert not existsOrCreateDir(dir)
+      defer: removeDir(dir)
+      assert hardLinkCount(dir) == 2 # `.`, `..`
+      let file = dir / "hardLinkCount_test"
+      let file2 = dir / "hardLinkCount_test2"
+      writeFile(file, "foo")
+      assert hardLinkCount(file) == 1
+      assert hardLinkCount(dir) == 3 # `.`, `..`, `file`
+      createHardlink(file, file2)
+      assert hardLinkCount(file) == 2
+      assert hardLinkCount(file2) == 2
+      assert hardLinkCount(dir) == 4 # `.`, `..`, `file`, `file2`
+      writeFile(file2, "bar")
+      assert file.readFile == "bar"
+      removeFile(file2)
+      assert fileExists(file)
+      assert not fileExists(file2)
+      assert hardLinkCount(dir) == 3 # `.`, `..`, `file`
+  result = getFileInfo(path, followSymlink).linkCount.int
 
 proc sameFileContent*(path1, path2: string): bool {.rtl, extern: "nos$1",
   tags: [ReadIOEffect], noWeirdTarget.} =
