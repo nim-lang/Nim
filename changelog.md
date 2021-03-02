@@ -25,6 +25,10 @@
 
 - Sends `ehlo` first. If the mail server does not understand, it sends `helo` as a fallback.
 
+- Added `initDateTime` in `times` to create a datetime from weekday, ISO 8601 week number and year.
+- Added `getWeekInYear` in `times` to get ISO 8601 week number from datetime.
+- Added `getWeeksInYear` in `times` to number of ISO 8601 weeks in a year
+
 ## Language changes
 
 - Pragma macros on type definitions can now return `nnkTypeSection` nodes as well as `nnkTypeDef`,
