@@ -406,7 +406,12 @@ proc resetLoc(p: BProc, loc: var TLoc) =
   if isImportedCppType(typ): return
   if optSeqDestructors in p.config.globalOptions and typ.kind in {tyString, tySequence}:
     assert rdLoc(loc) != nil
-    linefmt(p, cpsStmts, "$1.len = 0; $1.p = NIM_NIL;$n", [rdLoc(loc)])
+
+    let atyp = skipTypes(loc.t, abstractInst)
+    if atyp.kind in {tyVar, tyLent}:
+      linefmt(p, cpsStmts, "$1->len = 0; $1->p = NIM_NIL;$n", [rdLoc(loc)])
+    else:
+      linefmt(p, cpsStmts, "$1.len = 0; $1.p = NIM_NIL;$n", [rdLoc(loc)])
   elif not isComplexValueType(typ):
     if containsGcRef:
       var nilLoc: TLoc
