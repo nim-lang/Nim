@@ -61,8 +61,8 @@ Advanced options:
   --noMain:on|off           do not generate a main procedure
   --genScript:on|off        generate a compile script (in the 'nimcache'
                             subdirectory named 'compile_$$project$$scriptext'),
+                            and a '.deps' file containing the dependencies;
                             implies --compileOnly
-  --genDeps:on|off          generate a '.deps' file containing the dependencies
   --os:SYMBOL               set the target operating system (cross-compilation)
   --cpu:SYMBOL              set the target processor (cross-compilation)
   --debuginfo:on|off        enables debug information
