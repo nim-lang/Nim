@@ -62,15 +62,6 @@ Spacing and Whitespace Conventions
 Naming Conventions
 ------------------
 
-Note: While the rules outlined below are the *current* naming conventions,
-these conventions have not always been in place. Previously, the naming
-conventions for identifiers followed the Pascal tradition of prefixes which
-indicated the base type of the identifier - PFoo for pointer and reference
-types, TFoo for value types, EFoo for exceptions, etc. Though this has since
-changed, there are many places in the standard library which still use this
-convention. Such style remains in place purely for legacy reasons, and will be
-changed in the future.
-
 - Type identifiers should be in PascalCase. All other identifiers should be in
   camelCase with the exception of constants which **may** use PascalCase but
   are not required to.

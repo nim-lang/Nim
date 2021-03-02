@@ -16,7 +16,7 @@ type
 
 {.compile: "linenoise.c".}
 
-proc setCompletionCallback*(a2: ptr CompletionCallback) {.
+proc setCompletionCallback*(a2: CompletionCallback) {.
     importc: "linenoiseSetCompletionCallback".}
 proc addCompletion*(a2: ptr Completions; a3: cstring) {.
     importc: "linenoiseAddCompletion".}
