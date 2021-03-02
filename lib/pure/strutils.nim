@@ -1148,6 +1148,12 @@ func parseHexInt*(s: string): int {.rtl, extern: "nsuParseHexInt".} =
   ## If `s` is not a valid hex integer, `ValueError` is raised. `s` can have one
   ## of the following optional prefixes: `0x`, `0X`, `#`.  Underscores
   ## within `s` are ignored.
+  ## 
+  ## .. warning:: It does not check for overflow.
+  ##
+  ## If the value represented by the string is too big to fit into `int`,
+  ## only the value of last fitting characters
+  ## will be returned without producing an error.
   result = 0
   let L = parseutils.parseHex(s, result, 0)
   if L != s.len or L == 0:

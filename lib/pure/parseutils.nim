@@ -164,8 +164,10 @@ proc parseHex*[T: SomeInteger](s: string, number: var T, start = 0,
   ## or to the end of the string. Otherwise, no more than ``maxLen`` characters
   ## are parsed starting from the ``start`` position.
   ##
-  ## It does not check for overflow. If the value represented by the string is
-  ## too big to fit into ``number``, only the value of last fitting characters
+  ## .. warning:: It does not check for overflow.
+  ## 
+  ## If the value represented by the string is too big to fit into ``number``, 
+  ## only the value of last fitting characters
   ## will be stored in ``number`` without producing an error.
   runnableExamples:
     var num: int
