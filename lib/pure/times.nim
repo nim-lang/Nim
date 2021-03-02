@@ -546,9 +546,9 @@ proc getWeeksInYear*(y: int): YearweekRange {.since: (1, 5).} =
 proc getWeekOfYear*(dt: DateTime): YearweekRange {.since: (1, 5).} =
   ## Returns the ISO 8601 calendar week number a datetime is part of
   runnableExamples:
-    doAssert getWeekOfYear(initDateTime(2018, mApr, 21, 00, 00, 00)) == 16
-    doAssert getWeekOfYear(initDateTime(2019, mJul, 8, 00, 00, 00)) == 28
-    doAssert getWeekOfYear(initDateTime(2020, mSept, 13, 00, 00, 00)) == 37
+    assert getWeekOfYear(initDateTime(2018, mApr, 21, 00, 00, 00)) == 16
+    assert getWeekOfYear(initDateTime(2019, mJul, 8, 00, 00, 00)) == 28
+    assert getWeekOfYear(initDateTime(2020, mSept, 13, 00, 00, 00)) == 37
 
   # source: https://webspace.science.uu.nl/~gent0113/calendar/isocalendar.htm
   let w = (dt.yearday.int - dt.weekday.int + 10) div 7
