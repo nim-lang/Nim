@@ -1154,6 +1154,10 @@ func parseHexInt*(s: string): int {.rtl, extern: "nsuParseHexInt".} =
   ## If the value represented by the string is too big to fit into `int`,
   ## only the value of last fitting characters
   ## will be returned without producing an error.
+  runnableExamples:
+    assert parseHexInt("ff") == 0xff
+    assert parseHexInt("0xFFFFFFFFFFFFFFFF") == -1
+    assert parseHexInt("0xFF00FFFFFFFFFFFFFFFFFF") == -1
   result = 0
   let L = parseutils.parseHex(s, result, 0)
   if L != s.len or L == 0:
