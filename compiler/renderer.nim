@@ -203,18 +203,18 @@ proc putComment(g: var TSrcGen, s: string) =
     case s[i]
     of '\0':
       break
-    of '\x0D':
+    of '\r':
       put(g, tkComment, com)
       com = "## "
       inc(i)
-      if i <= hi and s[i] == '\x0A': inc(i)
+      if i <= hi and s[i] == '\n': inc(i)
       optNL(g, ind)
-    of '\x0A':
+    of '\n':
       put(g, tkComment, com)
       com = "## "
       inc(i)
       optNL(g, ind)
-    of ' ', '\x09':
+    of ' ', '\t':
       com.add(s[i])
       inc(i)
     else:
@@ -242,12 +242,12 @@ proc maxLineLength(s: string): int =
     case s[i]
     of '\0':
       break
-    of '\x0D':
+    of '\r':
       inc(i)
-      if i <= hi and s[i] == '\x0A': inc(i)
+      if i <= hi and s[i] == '\n': inc(i)
       result = max(result, lineLen)
       lineLen = 0
-    of '\x0A':
+    of '\n':
       inc(i)
       result = max(result, lineLen)
       lineLen = 0
@@ -261,13 +261,13 @@ proc putRawStr(g: var TSrcGen, kind: TokType, s: string) =
   var str = ""
   while i <= hi:
     case s[i]
-    of '\x0D':
+    of '\r':
       put(g, kind, str)
       str = ""
       inc(i)
-      if i <= hi and s[i] == '\x0A': inc(i)
+      if i <= hi and s[i] == '\n': inc(i)
       optNL(g, 0)
-    of '\x0A':
+    of '\n':
       put(g, kind, str)
       str = ""
       inc(i)
@@ -280,7 +280,7 @@ proc putRawStr(g: var TSrcGen, kind: TokType, s: string) =
 proc containsNL(s: string): bool =
   for i in 0..<s.len:
     case s[i]
-    of '\x0D', '\x0A':
+    of '\r', '\n':
       return true
     else:
       discard
