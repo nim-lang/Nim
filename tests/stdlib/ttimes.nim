@@ -697,3 +697,14 @@ block: # ttimes
 
     doAssert getWeekOfYear(initDateTime(01, mFeb, 2021, 01, 02, 03, 400_000_000, staticTz(hours=1))) == 05
     doAssert initDateTime(dMon, 05, 2021, 01, 02, 03, 400_000_000, staticTz(hours=1)) == initDateTime(01, mFeb, 2021, 01, 02, 03, 400_000_000, staticTz(hours=1))
+
+    doAssert getWeekOfYear(initDateTime(01, mApr, +0001, 00, 00, 00)) == 13
+    doAssert initDateTime(dSun, 13, +0001, 00, 00, 00) == initDateTime(01, mApr, +0001, 00, 00, 00)
+    doAssert getWeekOfYear(initDateTime(01, mApr, +0000, 00, 00, 00)) == 13
+    doAssert initDateTime(dSat, 13, +0000, 00, 00, 00) == initDateTime(01, mApr, +0000, 00, 00, 00)
+    doAssert getWeekOfYear(initDateTime(01, mApr, -0001, 00, 00, 00)) == 13
+    doAssert initDateTime(dThu, 13, -0001, 00, 00, 00) == initDateTime(01, mApr, -0001, 00, 00, 00)
+    doAssert getWeekOfYear(initDateTime(01, mApr, -0002, 00, 00, 00)) == 14
+    doAssert initDateTime(dWed, 14, -0002, 00, 00, 00) == initDateTime(01, mApr, -0002, 00, 00, 00)
+    doAssert getWeekOfYear(initDateTime(01, mApr, -0753, 00, 00, 00)) == 14
+    doAssert initDateTime(dMon, 14, -0753, 00, 00, 00) == initDateTime(01, mApr, -0753, 00, 00, 00)
