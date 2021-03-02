@@ -1069,15 +1069,16 @@ proc add*(x: var string, y: char) {.magic: "AppendStrCh", noSideEffect.}
   ##   tmp.add('a')
   ##   tmp.add('b')
   ##   assert(tmp == "ab")
-proc add*(x: var string, y: string) {.magic: "AppendStrStr", noSideEffect.}
+
+proc add*(x: var string, y: string) {.magic: "AppendStrStr", noSideEffect.} =
   ## Concatenates `x` and `y` in place.
   ##
-  ## .. code-block:: Nim
-  ##   var tmp = ""
-  ##   tmp.add("ab")
-  ##   tmp.add("cd")
-  ##   assert(tmp == "abcd")
-
+  ## See also `strbasics.add`.
+  runnableExamples:
+    var tmp = ""
+    tmp.add("ab")
+    tmp.add("cd")
+    assert tmp == "abcd"
 
 type
   Endianness* = enum ## Type describing the endianness of a processor.
@@ -1599,26 +1600,19 @@ proc len*[U: Ordinal; V: Ordinal](x: HSlice[U, V]): int {.noSideEffect, inline.}
   ##   assert((5..2).len == 0)
   result = max(0, ord(x.b) - ord(x.a) + 1)
 
-when not compileOption("nilseqs"):
-  {.pragma: nilError, error.}
-else:
-  {.pragma: nilError.}
+when true: # PRTEMP: remove?
+  proc isNil*[T](x: seq[T]): bool {.noSideEffect, magic: "IsNil", error.}
+    ## Seqs are no longer nil by default, but set and empty.
+    ## Check for zero length instead.
+    ##
+    ## See also:
+    ## * `isNil(string) <#isNil,string>`_
 
-proc isNil*[T](x: seq[T]): bool {.noSideEffect, magic: "IsNil", nilError.}
-  ## Requires `--nilseqs:on` since 0.19.
-  ##
-  ## Seqs are no longer nil by default, but set and empty.
-  ## Check for zero length instead.
-  ##
-  ## See also:
-  ## * `isNil(string) <#isNil,string>`_
+  proc isNil*(x: string): bool {.noSideEffect, magic: "IsNil", error.}
+    ## See also:
+    ## * `isNil(seq[T]) <#isNil,seq[T]>`_
 
 proc isNil*[T](x: ref T): bool {.noSideEffect, magic: "IsNil".}
-proc isNil*(x: string): bool {.noSideEffect, magic: "IsNil", nilError.}
-  ## Requires `--nilseqs:on`.
-  ##
-  ## See also:
-  ## * `isNil(seq[T]) <#isNil,seq[T]>`_
 
 proc isNil*[T](x: ptr T): bool {.noSideEffect, magic: "IsNil".}
 proc isNil*(x: pointer): bool {.noSideEffect, magic: "IsNil".}
@@ -2984,15 +2978,15 @@ proc `==`*(x, y: cstring): bool {.magic: "EqCString", noSideEffect,
   elif x.isNil or y.isNil: result = false
   else: result = strcmp(x, y) == 0
 
-when not compileOption("nilseqs"):
+when true: # xxx PRTEMP remove
   # bug #9149; ensure that 'typeof(nil)' does not match *too* well by using 'typeof(nil) | typeof(nil)',
   # especially for converters, see tests/overload/tconverter_to_string.nim
   # Eventually we will be able to remove this hack completely.
   proc `==`*(x: string; y: typeof(nil) | typeof(nil)): bool {.
-      error: "'nil' is now invalid for 'string'; compile with --nilseqs:on for a migration period".} =
+      error: "'nil' is now invalid for 'string'".} =
     discard
   proc `==`*(x: typeof(nil) | typeof(nil); y: string): bool {.
-      error: "'nil' is now invalid for 'string'; compile with --nilseqs:on for a migration period".} =
+      error: "'nil' is now invalid for 'string'".} =
     discard
 
 template closureScope*(body: untyped): untyped =
@@ -3126,3 +3120,9 @@ export io
 
 when not defined(createNimHcr) and not defined(nimscript):
   include nimhcr
+
+when notJSnotNims and not defined(nimSeqsV2):
+  proc prepareStrMutation*(s: var string) {.inline.} =
+    ## String literals (e.g. "abc", etc) in the ARC/ORC mode are "copy on write",
+    ## therefore you should call `prepareStrMutation` before modifying the strings.
+    discard

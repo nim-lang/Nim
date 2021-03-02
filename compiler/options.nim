@@ -39,7 +39,6 @@ type                          # please make sure we have under 32 options
                               # evaluation
     optTrMacros,              # en/disable pattern matching
     optMemTracker,
-    optNilSeqs,
     optSinkInference          # 'sink T' inference
     optCursorInference
 

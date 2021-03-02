@@ -130,7 +130,7 @@ with other backends. see #9125. Use `-d:nimLegacyJsRound` for previous behavior.
 
 - Deprecated `any`. See https://github.com/nim-lang/RFCs/issues/281
 
-- Added `std/sysrand` module to get random numbers from a secure source 
+- Added `std/sysrand` module to get random numbers from a secure source
 provided by the operating system.
 
 - Added optional `options` argument to `copyFile`, `copyFileToDir`, and
@@ -173,9 +173,16 @@ provided by the operating system.
   dumping (on select signals) and notifying the parent process about the cause
   of termination.
 
+- Added `system.prepareStrMutation` for better support of low
+  level `moveMem`, `copyMem` operations for Orc's copy-on-write string
+  implementation.
+
 - `hashes.hash` now supports `object`, but can be overloaded.
 
-- Added `strip` and `setSlice` to `std/strbasics`.
+- Added `std/strbasics` for high performance string operations.
+  Added `strip`, `setSlice`, `add(a: var string, b: openArray[char])`.
+
+- `hashes.hash` now supports `object`, but can be overloaded.
 
 - Added to `wrapnils` an option-like API via `??.`, `isSome`, `get`.
 
@@ -206,6 +213,8 @@ provided by the operating system.
 - Added `--declaredlocs` to show symbol declaration location in messages.
 
 - Deprecated `TaintedString` and `--taintmode`.
+
+- Deprecated `--nilseqs` which is now a noop.
 
 - Source+Edit links now appear on top of every docgen'd page when
   `nim doc --git.url:url ...` is given.

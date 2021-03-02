@@ -102,8 +102,6 @@ Advanced options:
   --excessiveStackTrace:on|off
                             stack traces use full file paths
   --stackTraceMsgs:on|off   enable user defined stack frame msgs via `setFrameMsg`
-  --nilseqs:on|off          allow 'nil' for strings/seqs for
-                            backwards compatibility
   --seqsv2:on|off           use the new string/seq implementation based on
                             destructors
   --skipCfg:on|off          do not read the nim installation's configuration file
