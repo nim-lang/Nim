@@ -1688,7 +1688,7 @@ template typeOrVoid[T](a: T): type =
   ## Workaround for the fact that `typeof(procReturningVoid())` doesn't work (yet).
   T
 
-macro asMacro*(fn: untyped, args: varargs[untyped]): untyped =
+macro asMacro*(fn: untyped, args: varargs[untyped]): untyped {.since: (1,5,1).} =
   ## Calls a proc `fn` with `NimNode` params as a macro. This avoids having to
   ## define a corresponding macro manually.
   runnableExamples:
