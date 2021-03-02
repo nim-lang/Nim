@@ -408,7 +408,7 @@ proc resetLoc(p: BProc, loc: var TLoc) =
     assert rdLoc(loc) != nil
 
     let atyp = skipTypes(loc.t, abstractInst)
-    if atyp.kind in {tyVar}:
+    if atyp.kind in {tyVar, tyLent}:
       linefmt(p, cpsStmts, "$1->len = 0; $1->p = NIM_NIL;$n", [rdLoc(loc)])
     else:
       linefmt(p, cpsStmts, "$1.len = 0; $1.p = NIM_NIL;$n", [rdLoc(loc)])
