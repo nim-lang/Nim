@@ -530,7 +530,7 @@ proc getDaysInYear*(year: int): int =
     doAssert getDaysInYear(2001) == 365
   result = 365 + (if isLeapYear(year): 1 else: 0)
 
-proc getWeeksInYear*(y: int): YearweekRange =
+proc getWeeksInYear*(y: int): YearweekRange {.since: (1, 5).} =
   ## Returns the number of weeks in a year, which can be
   ## either 53 or 52
   runnableExamples:
@@ -543,7 +543,7 @@ proc getWeeksInYear*(y: int): YearweekRange =
   let p1 = (y1 + (y1 div 4) - (y1 div 100) + (y1 div 400)) mod 7
   if p == 4 or p1 == 3: 53 else: 52
 
-proc getWeekOfYear*(dt: DateTime): YearweekRange =
+proc getWeekOfYear*(dt: DateTime): YearweekRange {.since: (1, 5).} =
   ## Returns the ISO 8601 calendar week number a datetime is part of
   runnableExamples:
     doAssert getWeekOfYear(initDateTime(2018, mApr, 21, 00, 00, 00)) == 16
@@ -2615,7 +2615,7 @@ proc `-=`*(t: var Time, b: TimeInterval) =
 proc initDateTime*(weekday: WeekDay, yearweek: YearweekRange, year: int,
                    hour: HourRange, minute: MinuteRange, second: SecondRange,
                    nanosecond: NanosecondRange,
-                   zone: Timezone = local()): DateTime =
+                   zone: Timezone = local()): DateTime {.since: (1, 5).} =
   ## Create a new `DateTime <#DateTime>`_ from a weekday, week number, and year
   ## in the specified timezone.
 
@@ -2623,9 +2623,9 @@ proc initDateTime*(weekday: WeekDay, yearweek: YearweekRange, year: int,
   let d = yearweek * 7 + weekday.int - initDateTime(4, mJan, year, 00, 00, 00).weekday.int - 4
   initDateTime(1, mJan, year, hour, minute, second, nanosecond, zone) + initTimeInterval(days=d)
 
-template initDateTime*(weekday: WeekDay, yearweek: YearweekRange, year: int,
+proc initDateTime*(weekday: WeekDay, yearweek: YearweekRange, year: int,
                    hour: HourRange, minute: MinuteRange, second: SecondRange,
-                   zone: Timezone = local()): DateTime =
+                   zone: Timezone = local()): DateTime {.since: (1, 5).} =
   ## Create a new `DateTime <#DateTime>`_ from a year, week number, and weekday
   ## in the specified timezone.
   runnableExamples:
