@@ -650,10 +650,18 @@ block: # ttimes
   block: # week in year
     doAssert getWeekOfYear(initDateTime(04, mNov, 2019, 00, 00, 00)) == 45
     doAssert initDateTime(dMon, 45, 2019, 00, 00, 00) == initDateTime(04, mNov, 2019, 00, 00, 00)
+    doAssert getWeekOfYear(initDateTime(28, mDec, 2019, 00, 00, 00)) == 52
+    doAssert initDateTime(dSat, 52, 2019, 00, 00, 00) == initDateTime(28, mDec, 2019, 00, 00, 00)
+    doAssert getWeekOfYear(initDateTime(29, mDec, 2019, 00, 00, 00)) == 52
+    doAssert initDateTime(dSun, 52, 2019, 00, 00, 00) == initDateTime(29, mDec, 2019, 00, 00, 00)
+    doAssert getWeekOfYear(initDateTime(30, mDec, 2019, 00, 00, 00)) == 01
+    doAssert initDateTime(dMon, 01, 2020, 00, 00, 00) == initDateTime(30, mDec, 2019, 00, 00, 00)
     doAssert getWeekOfYear(initDateTime(31, mDec, 2019, 00, 00, 00)) == 01
     doAssert initDateTime(dTue, 01, 2020, 00, 00, 00) == initDateTime(31, mDec, 2019, 00, 00, 00)
     doAssert getWeekOfYear(initDateTime(01, mJan, 2020, 00, 00, 00)) == 01
-    doAssert initDateTime(dWed, 01, 2020, 00, 00, 00) == initDateTime(1, mJan, 2020, 00, 00, 00)
+    doAssert initDateTime(dWed, 01, 2020, 00, 00, 00) == initDateTime(01, mJan, 2020, 00, 00, 00)
+    doAssert getWeekOfYear(initDateTime(02, mJan, 2020, 00, 00, 00)) == 01
+    doAssert initDateTime(dThu, 01, 2020, 00, 00, 00) == initDateTime(02, mJan, 2020, 00, 00, 00)
     doAssert getWeekOfYear(initDateTime(05, mApr, 2020, 00, 00, 00)) == 14
     doAssert initDateTime(dSun, 14, 2020, 00, 00, 00) == initDateTime(05, mApr, 2020, 00, 00, 00)
     doAssert getWeekOfYear(initDateTime(06, mApr, 2020, 00, 00, 00)) == 15
@@ -687,4 +695,6 @@ block: # ttimes
     doAssert getWeekOfYear(initDateTime(01, mFeb, 2021, 00, 00, 00)) == 05
     doAssert initDateTime(dMon, 05, 2021, 00, 00, 00) == initDateTime(01, mFeb, 2021, 00, 00, 00)
 
+    doAssert getWeekOfYear(initDateTime(01, mFeb, 2021, 01, 02, 03, 400_000_000, staticTz(hours=1))) == 05
+    doAssert initDateTime(dMon, 05, 2021, 01, 02, 03, 400_000_000, staticTz(hours=1)) == initDateTime(01, mFeb, 2021, 01, 02, 03, 400_000_000, staticTz(hours=1))
 
