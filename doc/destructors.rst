@@ -648,7 +648,7 @@ var x = "abc"  # no copy
 var y = x      # no copy
 ```
 
-First the Nim compiler allocates memory for the string literal "abc".
+The string literal "abc" is stored in static memory and not allocated on the heap.
 Then the variable `x` points to the literal. Finally the variable `y` points to the literal too.
 There is no copy during assigning operations.
 
