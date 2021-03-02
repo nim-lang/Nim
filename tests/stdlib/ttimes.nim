@@ -647,7 +647,7 @@ block: # ttimes
     doAssert initDuration(milliseconds = -500).inMilliseconds == -500
     doAssert initDuration(nanoseconds = -999999999).inMilliseconds == -999
 
-  block: # week in year
+  block: # getWeekOfYear
     doAssert getWeekOfYear(initDateTime(04, mNov, 2019, 00, 00, 00)) == 45
     doAssert initDateTime(dMon, 45, 2019, 00, 00, 00) == initDateTime(04, mNov, 2019, 00, 00, 00)
     doAssert getWeekOfYear(initDateTime(28, mDec, 2019, 00, 00, 00)) == 52
@@ -697,4 +697,3 @@ block: # ttimes
 
     doAssert getWeekOfYear(initDateTime(01, mFeb, 2021, 01, 02, 03, 400_000_000, staticTz(hours=1))) == 05
     doAssert initDateTime(dMon, 05, 2021, 01, 02, 03, 400_000_000, staticTz(hours=1)) == initDateTime(01, mFeb, 2021, 01, 02, 03, 400_000_000, staticTz(hours=1))
-
