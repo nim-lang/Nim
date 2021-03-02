@@ -3347,22 +3347,30 @@ proc hardlinkCount*(path: string, followSymlink = true): int {.noWeirdTarget, si
       let dir = getTempDir() / "D20210302T122219"
       assert not existsOrCreateDir(dir)
       defer: removeDir(dir)
-      assert hardLinkCount(dir) == 2 # `.`, `..`
+      when defined(osx) or defined(linux):
+        assert hardLinkCount(dir) == 2 # `.`, `..`
+      elif defined(windows):
+        assert hardLinkCount(dir) == 1
       let file = dir / "hardLinkCount_test"
       let file2 = dir / "hardLinkCount_test2"
       writeFile(file, "foo")
       assert hardLinkCount(file) == 1
-      assert hardLinkCount(dir) == 3 # `.`, `..`, `file`
+      when defined(osx):
+        assert hardLinkCount(dir) == 3 # `.`, `..`, `file`
+      elif defined(linux):
+        assert hardLinkCount(dir) == 2
       createHardlink(file, file2)
       assert hardLinkCount(file) == 2
       assert hardLinkCount(file2) == 2
-      assert hardLinkCount(dir) == 4 # `.`, `..`, `file`, `file2`
+      when defined(osx):
+        assert hardLinkCount(dir) == 4 # `.`, `..`, `file`, `file2`
       writeFile(file2, "bar")
       assert file.readFile == "bar"
       removeFile(file2)
       assert fileExists(file)
       assert not fileExists(file2)
-      assert hardLinkCount(dir) == 3 # `.`, `..`, `file`
+      when defined(osx):
+        assert hardLinkCount(dir) == 3 # `.`, `..`, `file`
   result = getFileInfo(path, followSymlink).linkCount.int
 
 proc sameFileContent*(path1, path2: string): bool {.rtl, extern: "nos$1",
