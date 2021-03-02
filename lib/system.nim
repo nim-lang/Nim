@@ -3128,8 +3128,8 @@ when notJSnotNims and not defined(nimSeqsV2):
     ## via `addr`.
     runnableExamples("--gc:arc"):
       var x = "abc"
-      var y = x
-      prepareStrMutation(y)
-      moveMem(addr y[0], addr x[0], 3)
-      assert y == "abc"
+      var y = "defgh"
+      prepareStrMutation(y) # without this, you may get a `SIGBUS`
+      moveMem(addr y[0], addr x[0], x.len)
+      assert y == "abcgh"
     discard
