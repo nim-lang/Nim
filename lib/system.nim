@@ -3125,4 +3125,10 @@ when notJSnotNims and not defined(nimSeqsV2):
   proc prepareStrMutation*(s: var string) {.inline.} =
     ## String literals (e.g. "abc", etc) in the ARC/ORC mode are "copy on write",
     ## therefore you should call `prepareStrMutation` before modifying the strings.
+    runnableExamples("--gc:arc"):
+      var x = "abc"
+      var y = x
+      prepareStrMutation(y)
+      moveMem(addr y[0], addr x[0], 3)
+      assert y == "abc"
     discard
