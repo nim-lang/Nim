@@ -534,7 +534,7 @@ proc getWeeksInYear*(y: int): YearweekRange =
   ## Returns the number of weeks in a year, which can be
   ## either 53 or 52
   runnableExamples:
-    assert getWeekInYear(2000) == 52
+    assert getWeeksInYear(2000) == 52
     assert getWeeksInYear(2001) == 53
 
   # source: https://webspace.science.uu.nl/~gent0113/calendar/isocalendar.htm
