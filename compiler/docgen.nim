@@ -1237,6 +1237,10 @@ proc genOutFile(d: PDoc, groupedToc = false): Rope =
     # Modules get an automatic title for the HTML, but no entry in the index.
     # better than `extractFilename(changeFileExt(d.filename, ""))` as it disambiguates dups
     title = $presentationPath(d.conf, AbsoluteFile d.filename, isTitle = true).changeFileExt("")
+  var subtitle = "".rope
+  if d.meta[metaSubtitle] != "":
+    dispA(d.conf, subtitle, "<h2 class=\"subtitle\">$1</h2>",
+        "\\\\\\vspace{0.5em}\\large $1", [d.meta[metaSubtitle].rope])
 
   var groupsection = getConfigVar(d.conf, "doc.body_toc_groupsection")
   let bodyname = if d.hasToc and not d.isPureRst:
@@ -1245,18 +1249,18 @@ proc genOutFile(d: PDoc, groupedToc = false): Rope =
                  elif d.hasToc: "doc.body_toc"
                  else: "doc.body_no_toc"
   let seeSrcRope = genSeeSrcRope(d, d.filename, 1)
-  content = ropeFormatNamedVars(d.conf, getConfigVar(d.conf, bodyname), ["title",
+  content = ropeFormatNamedVars(d.conf, getConfigVar(d.conf, bodyname), ["title", "subtitle",
       "tableofcontents", "moduledesc", "date", "time", "content", "deprecationMsg", "theindexhref", "body_toc_groupsection", "seeSrc"],
-      [title.rope, toc, d.modDesc, rope(getDateStr()),
+      [title.rope, subtitle, toc, d.modDesc, rope(getDateStr()),
       rope(getClockStr()), code, d.modDeprecationMsg, relLink(d.conf.outDir, d.destFile.AbsoluteFile, theindexFname.RelativeFile), groupsection.rope, seeSrcRope])
   if optCompileOnly notin d.conf.globalOptions:
     # XXX what is this hack doing here? 'optCompileOnly' means raw output!?
     code = ropeFormatNamedVars(d.conf, getConfigVar(d.conf, "doc.file"), [
-        "nimdoccss", "dochackjs",  "title", "tableofcontents", "moduledesc", "date", "time",
+        "nimdoccss", "dochackjs",  "title", "subtitle", "tableofcontents", "moduledesc", "date", "time",
         "content", "author", "version", "analytics", "deprecationMsg"],
         [relLink(d.conf.outDir, d.destFile.AbsoluteFile, nimdocOutCss.RelativeFile),
         relLink(d.conf.outDir, d.destFile.AbsoluteFile, docHackJsFname.RelativeFile),
-        title.rope, toc, d.modDesc, rope(getDateStr()), rope(getClockStr()),
+        title.rope, subtitle, toc, d.modDesc, rope(getDateStr()), rope(getClockStr()),
         content, d.meta[metaAuthor].rope, d.meta[metaVersion].rope, d.analytics.rope, d.modDeprecationMsg])
   else:
     code = content
@@ -1408,11 +1412,11 @@ proc commandBuildIndex*(conf: ConfigRef, dir: string, outFile = RelativeFile"") 
 
   let code = ropeFormatNamedVars(conf, getConfigVar(conf, "doc.file"), [
       "nimdoccss", "dochackjs",
-      "title", "tableofcontents", "moduledesc", "date", "time",
+      "title", "subtitle", "tableofcontents", "moduledesc", "date", "time",
       "content", "author", "version", "analytics"],
       [relLink(conf.outDir, filename, nimdocOutCss.RelativeFile),
       relLink(conf.outDir, filename, docHackJsFname.RelativeFile),
-      rope"Index", nil, nil, rope(getDateStr()),
+      rope"Index", rope"", nil, nil, rope(getDateStr()),
       rope(getClockStr()), content, nil, nil, nil])
   # no analytics because context is not available
 
