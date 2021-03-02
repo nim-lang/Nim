@@ -171,7 +171,7 @@ proc nimPrepareStrMutationV2(s: var NimStringV2) {.compilerRtl, inline.} =
 
 proc prepareStrMutation*(s: var string) {.inline.} =
   # string literals are "copy on write", so you need to call
-  # `prepareStrMutation` before modifying the strings.
+  # `prepareStrMutation` before modifying the strings via `addr`.
   {.cast(noSideEffect).}:
     let s = unsafeAddr s
     nimPrepareStrMutationV2(cast[ptr NimStringV2](s)[])
