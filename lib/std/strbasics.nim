@@ -81,7 +81,7 @@ func setSlice*(s: var string, slice: Slice[int]) =
         impl()
       else:
         when defined(nimSeqsV2):
-          prepareMutation(s)
+          prepareStrMutation(s)
         moveMem(addr s[0], addr s[first], last - first + 1)
   s.setLen(last - first + 1)
 
