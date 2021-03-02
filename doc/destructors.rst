@@ -634,7 +634,7 @@ As can be seen from the example, this solution is hardly sufficient and
 should eventually be replaced by a better solution.
 
 
-copy on write
+Copy on write
 =============
 
 String literals are implemented as [copy-on-write](https://en.wikipedia.org/wiki/Copy-on-write).
@@ -675,7 +675,7 @@ var y = x
 moveMem(addr y[0], addr x[0], 3)
 ```
 
-The program fails because we need to prepare a fresh copy for the variable`y`.
+The program fails because we need to prepare a fresh copy for the variable `y`.
 `prepareStrMutation` should be called before the address operation.
 
 ```nim
