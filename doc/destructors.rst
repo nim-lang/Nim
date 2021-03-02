@@ -649,7 +649,7 @@ var y = x      # no copy
 ```
 
 The string literal "abc" is stored in static memory and not allocated on the heap.
-Then the variable `x` points to the literal. Finally the variable `y` points to the literal too.
+The variable `x` points to the literal and the variable `y` points to the literal too.
 There is no copy during assigning operations.
 
 ```nim
