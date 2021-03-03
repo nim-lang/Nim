@@ -189,6 +189,8 @@ provided by the operating system.
 - `std/options` changed `$some(3)` to `"some(3)"` instead of `"Some(3)"`
   and `$none(int)` to `"none(int)"` instead of `"None[int]"`.
 
+- `system.addEscapedChar` now renders `\r` as `\r` instead of `\c`, to be compatible
+  with most other languages.
 
 ## Language changes
 
