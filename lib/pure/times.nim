@@ -537,6 +537,9 @@ proc getWeeksInYear*(y: int): YearweekRange {.since: (1, 5).} =
     assert getWeeksInYear(2000) == 52
     assert getWeeksInYear(2001) == 53
 
+  # support negative years
+  let y = if y < 0: 400 + y mod 400 else: y
+
   # source: https://webspace.science.uu.nl/~gent0113/calendar/isocalendar.htm
   let p = (y + (y div 4) - (y div 100) + (y div 400)) mod 7
   let y1 = y - 1
