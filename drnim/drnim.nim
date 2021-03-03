@@ -1271,7 +1271,7 @@ proc handleCmdLine(cache: IdentCache; conf: ConfigRef) =
   mainCommand(graph)
   if conf.hasHint(hintGCStats): echo(GC_getStatistics())
 
-when compileOption("gc", "v2") or compileOption("gc", "refc"):
+when compileOption("gc", "refc"):
   # the new correct mark&sweep collector is too slow :-/
   GC_disableMarkAndSweep()
 
