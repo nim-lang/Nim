@@ -1666,12 +1666,13 @@ proc isAdmin*: bool {.noWeirdTarget.} =
                                               addr administratorsGroup)):
       raiseOSError(osLastError(), "could not get SID for Administrators group")
 
+    defer:
+      if freeSid(administratorsGroup) != nil:
+        raiseOSError(osLastError(), "failed to free SID for Administrators group")
+
     var b: WINBOOL
     if not isSuccess(checkTokenMembership(0, administratorsGroup, addr b)):
       raiseOSError(osLastError(), "could not check access token membership")
-
-    if freeSid(administratorsGroup) != nil:
-      raiseOSError(osLastError(), "failed to free SID for Administrators group")
 
     return isSuccess(b)
   else:
