@@ -185,10 +185,7 @@ template main =
         doAssert l3.toSeq == [4, 5, 6]
         doAssert l2.toSeq == [1, 2, 3]
         l3.prepend l0
-        when nimvm:
-          discard # TODO fixme
-        else:
-          doAssert l3.toSeq == [4, 5, 6]
+        doAssert l3.toSeq == [4, 5, 6]
       block:
         var c = [0, 1].toList
         c.prependMoved c
