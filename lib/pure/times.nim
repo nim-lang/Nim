@@ -2629,10 +2629,10 @@ proc initDateTime*(weekday: WeekDay, yearweek: YearweekRange, year: int,
   ## Create a new `DateTime <#DateTime>`_ from a year, week number, and weekday
   ## in the specified timezone.
   runnableExamples:
-    initDateTime(dSun, 29, 2020, 00, 00, 00) == initDateTime(19, mJul, 2020, 00, 00, 00)
-    initDateTime(dMon, 30, 2020, 00, 00, 00) == initDateTime(20, mJul, 2020, 00, 00, 00)
-    initDateTime(dSun, 53, 2020, 00, 00, 00) == initDateTime(03, mJan, 2021, 00, 00, 00)
-    initDateTime(dMon, 01, 2021, 00, 00, 00) == initDateTime(04, mJan, 2021, 00, 00, 00)
+    assert initDateTime(dSun, 29, 2020, 00, 00, 00) == initDateTime(19, mJul, 2020, 00, 00, 00)
+    assert initDateTime(dMon, 30, 2020, 00, 00, 00) == initDateTime(20, mJul, 2020, 00, 00, 00)
+    assert initDateTime(dSun, 53, 2020, 00, 00, 00) == initDateTime(03, mJan, 2021, 00, 00, 00)
+    assert initDateTime(dMon, 01, 2021, 00, 00, 00) == initDateTime(04, mJan, 2021, 00, 00, 00)
   initDateTime(weekday, yearweek, year, hour, minute, second, 0, zone)
 
 #
