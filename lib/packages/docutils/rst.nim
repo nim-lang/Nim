@@ -311,27 +311,27 @@ proc getBracket(L: var Lexer, tok: var Token) =
 proc getIndentAux(L: var Lexer, start: int): int =
   var pos = start
   # skip the newline (but include it in the token!)
-  if L.buf[pos] == '\x0D':
-    if L.buf[pos + 1] == '\x0A': inc pos, 2
+  if L.buf[pos] == '\r':
+    if L.buf[pos + 1] == '\n': inc pos, 2
     else: inc pos
-  elif L.buf[pos] == '\x0A':
+  elif L.buf[pos] == '\n':
     inc pos
   if L.skipPounds:
     if L.buf[pos] == '#': inc pos
     if L.buf[pos] == '#': inc pos
   while true:
     case L.buf[pos]
-    of ' ', '\x0B', '\x0C':
+    of ' ', '\v', '\f':
       inc pos
       inc result
-    of '\x09':
+    of '\t':
       inc pos
       result = result - (result mod 8) + 8
     else:
       break                   # EndOfFile also leaves the loop
   if L.buf[pos] == '\0':
     result = 0
-  elif L.buf[pos] == '\x0A' or L.buf[pos] == '\x0D':
+  elif L.buf[pos] == '\n' or L.buf[pos] == '\r':
     # look at the next line for proper indentation:
     result = getIndentAux(L, pos)
   L.bufpos = pos              # no need to set back buf
@@ -355,12 +355,12 @@ proc rawGetTok(L: var Lexer, tok: var Token) =
   case c
   of 'a'..'z', 'A'..'Z', '\x80'..'\xFF', '0'..'9':
     getThing(L, tok, SymChars)
-  of ' ', '\x09', '\x0B', '\x0C':
-    getThing(L, tok, {' ', '\x09'})
+  of ' ', '\t', '\v', '\f':
+    getThing(L, tok, {' ', '\t'})
     tok.kind = tkWhite
-    if L.buf[L.bufpos] in {'\x0D', '\x0A'}:
+    if L.buf[L.bufpos] in {'\r', '\n'}:
       rawGetTok(L, tok)       # ignore spaces before \n
-  of '\x0D', '\x0A':
+  of '\r', '\n':
     getIndent(L, tok)
     L.adornmentLine = false
   of '!', '\"', '#', '$', '%', '&', '\'',  '*', '+', ',', '-', '.',
@@ -1769,7 +1769,7 @@ proc parseSimpleTable(p: var RstParser): PRstNode =
       if currentTok(p).kind == tkIndent: inc p.idx
       if tokEnd(p) <= cols[0]: break
       if currentTok(p).kind in {tkEof, tkAdornment}: break
-      for j in countup(1, high(row)): row[j].add('\x0A')
+      for j in countup(1, high(row)): row[j].add('\n')
     a = newRstNode(rnTableRow)
     for j in countup(0, high(row)):
       initParser(q, p.s)
