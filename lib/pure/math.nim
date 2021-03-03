@@ -1182,6 +1182,14 @@ func lcm*[T](x, y: T): T =
 
   x div gcd(x, y) * y
 
+func clamp*[T](val: T, rng: Slice[T]): T {.since: (1, 5).}=
+  ## Like `system.clamp` but takes a slice so you can easily clamp within a range.
+  runnableExamples:
+    doAssert clamp(10, 1 .. 5) == 5
+    doAssert clamp(1, 1 .. 3) == 1
+    doAssert clamp(42.0, 1.0 .. 3.1415926535) == 3.1415926535
+  clamp(val, rng.a, rng.b)
+
 func lcm*[T](x: openArray[T]): T {.since: (1, 1).} =
   ## Computes the least common multiple of the elements of `x`.
   ##
