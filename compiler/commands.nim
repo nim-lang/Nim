@@ -11,7 +11,7 @@
 
 
 # We do this here before the 'import' statement so 'defined' does not get
-# confused with 'TGCMode.gcGenerational' etc.
+# confused with 'TGCMode.gcMarkAndSweep' etc.
 template bootSwitch(name, expr, userString) =
   # Helper to build boot constants, for debugging you can 'echo' the else part.
   const name = if expr: " " & userString else: ""
@@ -22,7 +22,6 @@ bootSwitch(usedDanger, defined(danger), "-d:danger")
 bootSwitch(useLinenoise, defined(nimUseLinenoise) or defined(useLinenoise), "-d:nimUseLinenoise")
 bootSwitch(usedBoehm, defined(boehmgc), "--gc:boehm")
 bootSwitch(usedMarkAndSweep, defined(gcmarkandsweep), "--gc:markAndSweep")
-bootSwitch(usedGenerational, defined(gcgenerational), "--gc:generational")
 bootSwitch(usedGoGC, defined(gogc), "--gc:go")
 bootSwitch(usedNoGC, defined(nogc), "--gc:none")
 
@@ -97,12 +96,13 @@ proc writeVersionInfo(conf: ConfigRef; pass: TCmdLinePass) =
                {msgStdout})
 
     const gitHash {.strdefine.} = gorge("git log -n 1 --format=%H").strip
+      # xxx move this logic to std/private/gitutils
     when gitHash.len == 40:
       msgWriteln(conf, "git hash: " & gitHash, {msgStdout})
 
     msgWriteln(conf, "active boot switches:" & usedRelease & usedDanger &
       usedTinyC & useLinenoise & usedNativeStacktrace &
-      usedFFI & usedBoehm & usedMarkAndSweep & usedGenerational & usedGoGC & usedNoGC,
+      usedFFI & usedBoehm & usedMarkAndSweep & usedGoGC & usedNoGC,
                {msgStdout})
     msgQuit(0)
 
@@ -247,13 +247,13 @@ proc testCompileOptionArg*(conf: ConfigRef; switch, arg: string, info: TLineInfo
     of "boehm": result = conf.selectedGC == gcBoehm
     of "refc": result = conf.selectedGC == gcRefc
     of "markandsweep": result = conf.selectedGC == gcMarkAndSweep
-    of "v2", "generational": warningOptionNoop(arg)
     of "destructors", "arc": result = conf.selectedGC == gcArc
     of "orc": result = conf.selectedGC == gcOrc
     of "hooks": result = conf.selectedGC == gcHooks
     of "go": result = conf.selectedGC == gcGo
     of "none": result = conf.selectedGC == gcNone
     of "stack", "regions": result = conf.selectedGC == gcRegions
+    of "v2", "generational": warningOptionNoop(arg)
     else: localError(conf, info, errNoneBoehmRefcExpectedButXFound % arg)
   of "opt":
     case arg.normalize
@@ -560,8 +560,6 @@ proc processSwitch*(switch, arg: string, pass: TCmdLinePass, info: TLineInfo;
         incl conf.globalOptions, optTlsEmulation # Boehm GC doesn't scan the real TLS
       of "refc":
         conf.selectedGC = gcRefc
-      of "v2":
-        message(conf, info, warnDeprecated, "--gc:v2 is deprecated; using default gc")
       of "markandsweep":
         conf.selectedGC = gcMarkAndSweep
         defineSymbol(conf.symbols, "gcmarkandsweep")
@@ -603,6 +601,7 @@ proc processSwitch*(switch, arg: string, pass: TCmdLinePass, info: TLineInfo;
       of "stack", "regions":
         conf.selectedGC = gcRegions
         defineSymbol(conf.symbols, "gcregions")
+      of "v2": warningOptionNoop(arg)
       else: localError(conf, info, errNoneBoehmRefcExpectedButXFound % arg)
   of "warnings", "w":
     if processOnOffSwitchOrList(conf, {optWarns}, arg, pass, info): listWarnings(conf)
