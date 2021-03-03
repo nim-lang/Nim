@@ -892,7 +892,7 @@ proc processSwitch*(switch, arg: string, pass: TCmdLinePass, info: TLineInfo;
     if conf != nil:
       conf.cppDefine(arg)
   of "newruntime":
-    warningOptionNoop("newruntime")
+    warningOptionNoop("newruntime") # ref #17245
   of "seqsv2":
     processOnOffSwitchG(conf, {optSeqDestructors}, arg, pass, info)
     if pass in {passCmd2, passPP}:
