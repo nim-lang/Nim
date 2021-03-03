@@ -51,6 +51,11 @@ const
   IndexExt* = ".idx"
 
 type
+  AnchorContext = object
+    anchor: string # TODO: cstring
+    depth: int
+    index: int
+
   OutputTarget* = enum ## which document type to generate
     outHtml,            # output is HTML
     outLatex            # output is Latex
@@ -97,6 +102,26 @@ type
     filename: string
     testCmd: string
     status: int
+
+proc toAnchor(a: AnchorContext): string =
+  if a.depth == 0:
+    a.anchor
+  else:
+    "unstable-" & a.anchor & "-" & $a.depth & "-" & $a.index
+
+proc toContext(a: AnchorContext, index: int): AnchorContext =
+  # "untsablelink_" 
+  # "lnk-" & a.parent & "-" & $a.index
+  AnchorContext(anchor: a.anchor, depth: a.depth + 1, index: index)
+
+proc toContext(a: AnchorContext, anchor: string): AnchorContext =
+  if anchor.len > 0:
+    AnchorContext(anchor: anchor, depth: 0, index: 0)
+  else:
+    AnchorContext(anchor: anchor, depth: a.depth + 1, index: 0)
+
+proc initContext*(): AnchorContext =
+  AnchorContext(anchor: "", depth: 0, index: 0)
 
 proc prettyLink*(file: string): string =
   changeFileExt(file, "").replace("_._", "..")
@@ -271,7 +296,7 @@ proc dispA(target: OutputTarget, dest: var string,
 proc `or`(x, y: string): string {.inline.} =
   result = if x.len == 0: y else: x
 
-proc renderRstToOut*(d: var RstGenerator, n: PRstNode, result: var string, indexInParent = -1)
+proc renderRstToOut*(d: var RstGenerator, n: PRstNode, result: var string, context: AnchorContext)
   ## Writes into ``result`` the rst ast ``n`` using the ``d`` configuration.
   ##
   ## Before using this proc you need to initialise a ``RstGenerator`` with
@@ -285,8 +310,8 @@ proc renderRstToOut*(d: var RstGenerator, n: PRstNode, result: var string, index
   ##   renderRstToOut(gen, rst, generatedHtml)
   ##   echo generatedHtml
 
-proc renderAux(d: PDoc, n: PRstNode, result: var string) =
-  for i in countup(0, len(n)-1): renderRstToOut(d, n.sons[i], result, i)
+proc renderAux(d: PDoc, n: PRstNode, result: var string, context: AnchorContext) =
+  for i in countup(0, len(n)-1): renderRstToOut(d, n.sons[i], result, context.toContext(i))
 
 template idS(txt: string): string =
   if txt == "": ""
@@ -300,26 +325,25 @@ template idS(txt: string): string =
         # we add \label for page number references via \pageref, while
         # \hypertarget is for clickable links via \hyperlink.
 
-proc renderAuxAnchor(d: PDoc, n: PRstNode, html, tex: string, result: var string, anchor: string = "") =
+proc renderAuxAnchor(d: PDoc, n: PRstNode, html, tex: string, result: var string, context: AnchorContext) =
   # formats sons of `n` as substitution variable $1 inside strings `html` and
   # `tex`, internal target (anchor) is provided as substitute $2.
   # PRTEMP :factor
-  var anchor = anchor
-  if n.anchor.len > 0: n.anchor = n.anchor
+  let anchor = context.toAnchor
   var tmp = ""
-  for i in countup(0, len(n)-1): renderRstToOut(d, n.sons[i], tmp, i)
+  for i in countup(0, len(n)-1): renderRstToOut(d, n.sons[i], tmp, context.toContext(i))
   dbg tmp, html, n.anchor, n.anchor.idS
   case d.target
   of outHtml:  result.addf(html, [tmp, anchor])
   of outLatex: result.addf(tex,  [tmp, n.anchor.idS]) # PRTEMP
   result.add "\n"
 
-proc renderAux(d: PDoc, n: PRstNode, html, tex: string, result: var string) =
+proc renderAux(d: PDoc, n: PRstNode, html, tex: string, result: var string, context: AnchorContext) =
   # formats sons of `n` as substitution variable $1 inside strings `html` and
   # `tex`, internal target (anchor) is provided as substitute $2.
   var tmp = ""
   for i in countup(0, len(n)-1):
-    renderRstToOut(d, n.sons[i], tmp, i)
+    renderRstToOut(d, n.sons[i], tmp, context.toContext(i))
   dbg tmp, html, n.anchor, n.anchor.idS
   case d.target
   of outHtml:  result.addf(html, [tmp, n.anchor.idS])
@@ -401,7 +425,7 @@ proc hash(n: PRstNode): int =
       result = result !& hash(n.sons[i])
     result = !$result
 
-proc renderIndexTerm*(d: PDoc, n: PRstNode, result: var string) =
+proc renderIndexTerm*(d: PDoc, n: PRstNode, result: var string, context: AnchorContext) =
   ## Renders the string decorated within \`foobar\`\:idx\: markers.
   ##
   ## Additionally adds the enclosed text to the index as a term. Since we are
@@ -416,7 +440,7 @@ proc renderIndexTerm*(d: PDoc, n: PRstNode, result: var string) =
   let id = refname & '_' & $d.seenIndexTerms.getOrDefault(refname)
 
   var term = ""
-  renderAux(d, n, term)
+  renderAux(d, n, term, context)
   setIndexTerm(d, changeFileExt(extractFilename(d.filename), HtmlExt), id, term, d.currentSection)
   dispA(d.target, result, "<span id=\"$1\">$2</span>", "$2\\label{$1}",
         [id, term])
@@ -772,9 +796,9 @@ proc stripTocHtml(s: string): string =
     result.delete(first, last)
     first = result.find('<', first)
 
-proc renderHeadline(d: PDoc, n: PRstNode, result: var string) =
+proc renderHeadline(d: PDoc, n: PRstNode, result: var string, context: AnchorContext) =
   var tmp = ""
-  for i in countup(0, len(n) - 1): renderRstToOut(d, n.sons[i], tmp, i)
+  for i in countup(0, len(n) - 1): renderRstToOut(d, n.sons[i], tmp, context.toContext(i))
   d.currentSection = tmp
   # Find the last higher level section for unique reference name
   var sectionPrefix = ""
@@ -813,18 +837,18 @@ proc renderHeadline(d: PDoc, n: PRstNode, result: var string) =
   setIndexTerm(d, htmlFileRelPath, refname, tmp.stripTocHtml,
     spaces(max(0, n.level)) & tmp)
 
-proc renderOverline(d: PDoc, n: PRstNode, result: var string) =
+proc renderOverline(d: PDoc, n: PRstNode, result: var string, context: AnchorContext) =
   if n.level == 0 and d.meta[metaTitle].len == 0:
     for i in countup(0, len(n)-1):
-      renderRstToOut(d, n.sons[i], d.meta[metaTitle], i)
+      renderRstToOut(d, n.sons[i], d.meta[metaTitle], context.toContext(i))
     d.currentSection = d.meta[metaTitle]
   elif n.level == 0 and d.meta[metaSubtitle].len == 0:
     for i in countup(0, len(n)-1):
-      renderRstToOut(d, n.sons[i], d.meta[metaSubtitle], i)
+      renderRstToOut(d, n.sons[i], d.meta[metaSubtitle], context.toContext(i))
     d.currentSection = d.meta[metaSubtitle]
   else:
     var tmp = ""
-    for i in countup(0, len(n) - 1): renderRstToOut(d, n.sons[i], tmp, i)
+    for i in countup(0, len(n) - 1): renderRstToOut(d, n.sons[i], tmp, context.toContext(i))
     d.currentSection = tmp
     dispA(d.target, result, "<h$1$2><center>$3</center></h$1>",
                    "\\rstov$4{$3}$2\n", [$n.level,
@@ -854,7 +878,7 @@ proc renderTocEntries*(d: var RstGenerator, j: var int, lvl: int,
   else:
     result.add(tmp)
 
-proc renderImage(d: PDoc, n: PRstNode, result: var string) =
+proc renderImage(d: PDoc, n: PRstNode, result: var string, context: AnchorContext) =
   let
     arg = getArgument(n)
   var
@@ -906,7 +930,7 @@ proc renderImage(d: PDoc, n: PRstNode, result: var string) =
 
   dispA(d.target, result, htmlOut, "$3\\includegraphics$2{$1}",
         [esc(d.target, arg), options, n.anchor.idS])
-  if len(n) >= 3: renderRstToOut(d, n.sons[2], result)
+  if len(n) >= 3: renderRstToOut(d, n.sons[2], result, context)
 
 proc renderSmiley(d: PDoc, n: PRstNode, result: var string) =
   dispA(d.target, result,
@@ -1049,9 +1073,9 @@ proc renderCodeBlock(d: PDoc, n: PRstNode, result: var string) =
     deinitGeneralTokenizer(g)
   dispA(d.target, result, blockEnd, "\n\\end{rstpre}\n")
 
-proc renderContainer(d: PDoc, n: PRstNode, result: var string) =
+proc renderContainer(d: PDoc, n: PRstNode, result: var string, context: AnchorContext) =
   var tmp = ""
-  renderRstToOut(d, n.sons[2], tmp)
+  renderRstToOut(d, n.sons[2], tmp, context)
   var arg = esc(d.target, strip(getArgument(n)))
   if arg == "":
     dispA(d.target, result, "<div>$1</div>", "$1", [tmp])
@@ -1063,7 +1087,7 @@ proc texColumns(n: PRstNode): string =
   let nColumns = if n.sons.len > 0: len(n.sons[0]) else: 1
   for i in countup(1, nColumns): add(result, "|X")
 
-proc renderField(d: PDoc, n: PRstNode, result: var string) =
+proc renderField(d: PDoc, n: PRstNode, result: var string, context: AnchorContext) =
   var b = false
   if d.target == outLatex:
     var fieldname = addNodes(n.sons[0])
@@ -1078,9 +1102,9 @@ proc renderField(d: PDoc, n: PRstNode, result: var string) =
         d.meta[metaVersion] = fieldval
         b = true
   if not b:
-    renderAux(d, n, "<tr>$1</tr>\n", "$1", result)
+    renderAux(d, n, "<tr>$1</tr>\n", "$1", result, context)
 
-proc renderEnumList(d: PDoc, n: PRstNode, result: var string) =
+proc renderEnumList(d: PDoc, n: PRstNode, result: var string, context: AnchorContext) =
   var
     specifier = ""
     specStart = ""
@@ -1128,9 +1152,9 @@ proc renderEnumList(d: PDoc, n: PRstNode, result: var string) =
       specifier = labelDef & specStart
   renderAux(d, n, "<ol$2 " & specifier & ">$1</ol>\n",
             "\\begin{enumerate}" & specifier & "$2$1\\end{enumerate}\n",
-            result)
+            result, context)
 
-proc renderAdmonition(d: PDoc, n: PRstNode, result: var string) =
+proc renderAdmonition(d: PDoc, n: PRstNode, result: var string, context: AnchorContext) =
   var
     htmlCls = "admonition_warning"
     texSz = "\\large"
@@ -1151,26 +1175,33 @@ proc renderAdmonition(d: PDoc, n: PRstNode, result: var string) =
       "\n\n\\begin{mdframed}[linecolor=" & texColor & "]$2\n" &
         "{" & texSz & "\\color{" & texColor & "}{\\textbf{" & txt & ":}}} " &
         "$1\n\\end{mdframed}\n",
-      result)
+      result, context)
 
-proc renderRstToOut(d: PDoc, n: PRstNode, result: var string, indexInParent = -1) =
+proc renderRstToOut(d: PDoc, n: PRstNode, result: var string, context: AnchorContext) =
+  template renderAux(d: PDoc, n: PRstNode, result: var string) =
+    renderAux(d, n, result, context)
+  template renderAux(d: PDoc, n: PRstNode, html, tex: string, result: var string) =
+    renderAux(d, n, html, tex, result, context)
+  template renderRstToOut(d: PDoc, n: PRstNode, result: var string) =
+    renderRstToOut(d, n, result, context)
+
   if n == nil: return
   case n.kind
-  of rnInner: renderAux(d, n, result)
-  of rnHeadline, rnMarkdownHeadline: renderHeadline(d, n, result)
-  of rnOverline: renderOverline(d, n, result)
+  of rnInner: renderAux(d, n, result, context)
+  of rnHeadline, rnMarkdownHeadline: renderHeadline(d, n, result, context)
+  of rnOverline: renderOverline(d, n, result, context)
   of rnTransition: renderAux(d, n, "<hr$2 />\n", "\\hrule$2\n", result)
   of rnParagraph:
-    if n.anchor.len == 0:
+    if n.anchor.len == 0: # PRTEMP
       renderAux(d, n, "<p$2>$1</p>\n", "$2\n$1\n\n", result)
     else:
-      renderAuxAnchor(d, n, """<p>  <a class="nimanchor" id="$2" href="#$2">🔗</a>  $1</p>""", "$2\n$1\n\n", result)
+      renderAuxAnchor(d, n, """<p>  <a class="nimanchor" id="$2" href="#$2">🔗</a>  $1</p>""", "$2\n$1\n\n", result, context.toContext(n.anchor))
   of rnBulletList:
     renderAux(d, n, "<ul$2 class=\"simple\">$1</ul>\n",
                     "\\begin{itemize}\n$2\n$1\\end{itemize}\n", result)
   of rnBulletItem, rnEnumItem:
-    renderAuxAnchor(d, n, """<li>  <a class="nimanchor" id="$2" href="#$2">🔗</a> $1</li>""", "\\item $2$1\n", result, "untsablelink_" & $indexInParent)
-  of rnEnumList: renderEnumList(d, n, result)
+    renderAuxAnchor(d, n, """<li>  <a class="nimanchor" id="$2" href="#$2">🔗</a> $1</li>""", "\\item $2$1\n", result, context)
+  of rnEnumList: renderEnumList(d, n, result, context)
   of rnDefList:
     renderAux(d, n, "<dl$2 class=\"docutils\">$1</dl>\n",
                     "\\begin{description}\n$2\n$1\\end{description}\n", result)
@@ -1180,8 +1211,7 @@ proc renderRstToOut(d: PDoc, n: PRstNode, result: var string, indexInParent = -1
   of rnFieldList:
     var tmp = ""
     for i in countup(0, len(n) - 1):
-      dbg i, n.len
-      renderRstToOut(d, n.sons[i], tmp, i)
+      renderRstToOut(d, n.sons[i], tmp, context.toContext(i))
     if tmp.len != 0:
       dispA(d.target, result,
           "<table$2 class=\"docinfo\" frame=\"void\" rules=\"none\">" &
@@ -1191,7 +1221,7 @@ proc renderRstToOut(d: PDoc, n: PRstNode, result: var string, indexInParent = -1
           "</tbody></table>",
           "\\begin{description}\n$2\n$1\\end{description}\n",
           [tmp, n.anchor.idS])
-  of rnField: renderField(d, n, result)
+  of rnField: renderField(d, n, result, context)
   of rnFieldName:
     renderAux(d, n, "<th class=\"docinfo-name\">$1:</th>",
                     "\\item[$1:]", result)
@@ -1235,7 +1265,7 @@ proc renderRstToOut(d: PDoc, n: PRstNode, result: var string, indexInParent = -1
   of rnBlockQuote:
     renderAux(d, n, "<blockquote$2><p>$1</p></blockquote>\n",
                     "\\begin{quote}\n$2\n$1\\end{quote}\n", result)
-  of rnAdmonition: renderAdmonition(d, n, result)
+  of rnAdmonition: renderAdmonition(d, n, result, context)
   of rnTable, rnGridTable, rnMarkdownTable:
     renderAux(d, n,
       "<table$2 border=\"1\" class=\"docutils\">$1</table>",
@@ -1248,7 +1278,7 @@ proc renderRstToOut(d: PDoc, n: PRstNode, result: var string, indexInParent = -1
         renderRstToOut(d, n.sons[0], result)
         for i in countup(1, len(n) - 1):
           result.add(" & ")
-          renderRstToOut(d, n.sons[i], result, i)
+          renderRstToOut(d, n.sons[i], result, context.toContext(i))
         result.add("\\\\\n\\hline\n")
       else:
         result.add("<tr>")
@@ -1317,9 +1347,9 @@ proc renderRstToOut(d: PDoc, n: PRstNode, result: var string, indexInParent = -1
     if d.target == outLatex and not lastSon(n).isNil:
       result.add addNodes(lastSon(n))
 
-  of rnImage, rnFigure: renderImage(d, n, result)
+  of rnImage, rnFigure: renderImage(d, n, result, context)
   of rnCodeBlock: renderCodeBlock(d, n, result)
-  of rnContainer: renderContainer(d, n, result)
+  of rnContainer: renderContainer(d, n, result, context)
   of rnSubstitutionReferences, rnSubstitutionDef:
     renderAux(d, n, "|$1|", "|$1|", result)
   of rnDirective:
@@ -1340,7 +1370,7 @@ proc renderRstToOut(d: PDoc, n: PRstNode, result: var string, indexInParent = -1
     renderAux(d, n, "<strong><em>$1</em></strong>",
                     "\\textbf{emph{$1}}", result)
   of rnIdx:
-    renderIndexTerm(d, n, result)
+    renderIndexTerm(d, n, result, context)
   of rnInlineLiteral, rnInterpretedText:
     renderAux(d, n,
       "<tt class=\"docutils literal\"><span class=\"pre\">$1</span></tt>",
@@ -1531,7 +1561,7 @@ proc rstToHtml*(s: string, options: RstParseOptions,
   var rst = rstParse(s, filen, line=LineRstInit, column=ColRstInit,
                      dummyHasToc, options, myFindFile, msgHandler)
   result = ""
-  renderRstToOut(d, rst, result)
+  renderRstToOut(d, rst, result, initContext())
 
 
 proc rstToLatex*(rstSource: string; options: RstParseOptions): string {.inline, since: (1, 3).} =
@@ -1544,4 +1574,4 @@ proc rstToLatex*(rstSource: string; options: RstParseOptions): string {.inline, 
   rstGenera.renderRstToOut(
       rstParse(rstSource, "", line=LineRstInit, column=ColRstInit,
                option, options),
-      result)
+      result, initContext())

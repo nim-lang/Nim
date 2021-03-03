@@ -328,7 +328,7 @@ proc genComment(d: PDoc, n: PNode): string =
                             toLinenumber(n.info),
                             toColumn(n.info) + DocColOffset,
                             (var dummy: bool; dummy), d.options, d.conf),
-                   result)
+                   result, initContext())
 
 proc genRecCommentAux(d: PDoc, n: PNode): Rope =
   if n == nil: return nil
@@ -1375,7 +1375,7 @@ proc commandRstAux(cache: IdentCache, conf: ConfigRef;
                      line=LineRstInit, column=ColRstInit,
                      d.hasToc, {roSupportRawDirective, roSupportMarkdown}, conf)
   var modDesc = newStringOfCap(30_000)
-  renderRstToOut(d[], rst, modDesc)
+  renderRstToOut(d[], rst, modDesc, initContext())
   d.modDesc = rope(modDesc)
   writeOutput(d)
   generateIndex(d)
