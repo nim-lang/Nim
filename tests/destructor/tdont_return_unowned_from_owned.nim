@@ -1,5 +1,6 @@
 discard """
   cmd: "nim check --newruntime --hints:off $file"
+  disabled: "true"
   nimout: '''tdont_return_unowned_from_owned.nim(36, 10) Error: cannot return an owned pointer as an unowned pointer; use 'owned(Obj)' as the return type
 tdont_return_unowned_from_owned.nim(39, 10) Error: cannot return an owned pointer as an unowned pointer; use 'owned(Obj)' as the return type
 tdont_return_unowned_from_owned.nim(42, 6) Error: type mismatch: got <Obj>
