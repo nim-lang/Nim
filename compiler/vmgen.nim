@@ -28,7 +28,7 @@
 # this copy depends on the involved types.
 
 import
-  strutils, ast, types, msgs, renderer, vmdef, trees,
+  strutils, ast, types, msgs, renderer, vmdef,
   intsets, magicsys, options, lowerings, lineinfos, transf
 
 from modulegraphs import getBody
@@ -446,7 +446,7 @@ proc rawGenLiteral(c: PCtx; n: PNode): int =
   c.constants.add n.canonValue
   internalAssert c.config, result < regBxMax
 
-proc sameConstant*(a, b: PNode; first = true): bool =
+proc sameConstant*(a, b: PNode): bool =
   result = false
   if a == b:
     result = true
@@ -466,12 +466,9 @@ proc sameConstant*(a, b: PNode; first = true): bool =
     of nkEmpty: result = true
     else:
       if a.len == b.len:
-        if first and cyclicTree(a):
-          result = false
-        else:
-          for i in 0..<a.len:
-            if not sameConstant(a[i], b[i], false): return
-          result = true
+        for i in 0..<a.len:
+          if not sameConstant(a[i], b[i]): return
+        result = true
 
 proc genLiteral(c: PCtx; n: PNode): int =
   # types do not matter here:
