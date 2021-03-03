@@ -1182,7 +1182,7 @@ func lcm*[T](x, y: T): T =
 
   x div gcd(x, y) * y
 
-func clamp*[T](val: T, rng: Slice[T]): T {.since: (1, 5).}=
+func clamp*[T](val: T, rng: Slice[T]): T {.since: (1, 5), inline.}=
   ## Like `system.clamp` but takes a slice so you can easily clamp within a range.
   runnableExamples:
     doAssert clamp(10, 1 .. 5) == 5
