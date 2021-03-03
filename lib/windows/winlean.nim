@@ -1151,7 +1151,7 @@ const
   SECURITY_BUILTIN_DOMAIN_RID* = 32
   DOMAIN_ALIAS_RID_ADMINS* = 544
 
-proc AllocateAndInitializeSid*(pIdentifierAuthority: PSID_IDENTIFIER_AUTHORITY,
+proc allocateAndInitializeSid*(pIdentifierAuthority: PSID_IDENTIFIER_AUTHORITY,
                                nSubAuthorityCount: BYTE,
                                nSubAuthority0: DWORD,
                                nSubAuthority1: DWORD,
@@ -1162,11 +1162,12 @@ proc AllocateAndInitializeSid*(pIdentifierAuthority: PSID_IDENTIFIER_AUTHORITY,
                                nSubAuthority6: DWORD,
                                nSubAuthority7: DWORD,
                                pSid: ptr PSID): WINBOOL
-     {.stdcall, dynlib: "Advapi32", importc.}
-proc CheckTokenMembership*(tokenHandle: Handle, sidToCheck: PSID,
+     {.stdcall, dynlib: "Advapi32", importc: "AllocateAndInitializeSid".}
+proc checkTokenMembership*(tokenHandle: Handle, sidToCheck: PSID,
                            isMember: PBOOL): WINBOOL
-     {.stdcall, dynlib: "Advapi32", importc.}
-proc FreeSid*(pSid: PSID): PSID {.stdcall, dynlib: "Advapi32", importc.}
+     {.stdcall, dynlib: "Advapi32", importc: "CheckTokenMembership".}
+proc freeSid*(pSid: PSID): PSID
+     {.stdcall, dynlib: "Advapi32", importc: "FreeSid".}
 
 when defined(nimHasStyleChecks):
   {.pop.} # {.push styleChecks: off.}

@@ -1658,7 +1658,7 @@ proc isAdmin*: bool {.noWeirdTarget.} =
     # https://doxygen.postgresql.org/win32security_8c.html#ae6b61e106fa5d6c5d077a9d14ee80569
     var ntAuthority = SID_IDENTIFIER_AUTHORITY(Value: SECURITY_NT_AUTHORITY)
     var administratorsGroup: PSID
-    if not isSuccess(AllocateAndInitializeSid(addr ntAuthority,
+    if not isSuccess(allocateAndInitializeSid(addr ntAuthority,
                                               BYTE(2),
                                               SECURITY_BUILTIN_DOMAIN_RID,
                                               DOMAIN_ALIAS_RID_ADMINS,
@@ -1667,10 +1667,10 @@ proc isAdmin*: bool {.noWeirdTarget.} =
       raiseOSError(osLastError(), "could not get SID for Administrators group")
 
     var b: WINBOOL
-    if not isSuccess(CheckTokenMembership(0, administratorsGroup, addr b)):
+    if not isSuccess(checkTokenMembership(0, administratorsGroup, addr b)):
       raiseOSError(osLastError(), "could not check access token membership")
 
-    if FreeSid(administratorsGroup) != nil:
+    if freeSid(administratorsGroup) != nil:
       raiseOSError(osLastError(), "failed to free SID for Administrators group")
 
     return isSuccess(b)
