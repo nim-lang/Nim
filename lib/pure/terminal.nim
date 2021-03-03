@@ -48,8 +48,8 @@ proc getTerminal(): PTerminal {.inline.} =
   result = gTerm
 
 const
-  fgPrefix = "\x1b[38;2;"
-  bgPrefix = "\x1b[48;2;"
+  fgPrefix = "\e[38;2;"
+  bgPrefix = "\e[48;2;"
   ansiResetCode* = "\e[0m"
   stylePrefix = "\e["
 
