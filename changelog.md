@@ -22,6 +22,8 @@
 
 - Added `almostEqual` in `math` for comparing two float values using a machine epsilon.
 
+- Added `clamp` in `math` which allows using a `Slice` to clamp to a value.
+
 - The JSON module can now handle integer literals and floating point literals of
   arbitrary length and precision.
   Numbers that do not fit the underlying `BiggestInt` or `BiggestFloat` fields are
