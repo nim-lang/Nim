@@ -118,10 +118,11 @@ proc generateJsasync(arg: NimNode): NimNode =
     var resolve: NimNode
     if isVoid:
       resolve = quote:
-        var `jsResolve` {.importcpp: "undefined".}: Future[void]
+        var `jsResolve` {.importjs: "undefined".}: Future[void]
     else:
       resolve = quote:
-        proc jsResolve[T](a: T): Future[T] {.importcpp: "#", used.}
+        proc jsResolve[T](a: T): Future[T] {.importjs: "#", used.}
+        proc jsResolve[T](a: Future[T]): Future[T] {.importjs: "#", used.}
     result.body.add(resolve)
   else:
     result.body = newEmptyNode()
