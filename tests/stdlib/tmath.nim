@@ -358,6 +358,17 @@ template main() =
     doAssert almostEqual(prod([1.5, 3.4]), 5.1)
     let x: seq[float] = @[]
     doAssert prod(x) == 1.0
+  
+  block: # clamp range
+    doAssert clamp(10, 1..5) == 5
+    doAssert clamp(3, 1..5) == 3
+    doAssert clamp(5, 1..5) == 5
+    doAssert clamp(42.0, 1.0 .. 3.1415926535) == 3.1415926535
+    doAssert clamp(NaN, 1.0 .. 2.0).isNaN
+    doAssert clamp(-Inf, -Inf .. -1.0) == -Inf
+    type A = enum a0, a1, a2, a3, a4, a5
+    doAssert a1.clamp(a2..a4) == a2
+    doAssert clamp((3, 0), (1, 0) .. (2, 9)) == (2, 9)
 
   when not defined(windows): # xxx pending bug #17017
     doAssert sqrt(-1.0).isNaN
