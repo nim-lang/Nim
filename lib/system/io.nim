@@ -918,7 +918,7 @@ iterator lines*(filename: string): string {.tags: [ReadIOEffect].} =
   ##   proc transformLetters(filename: string) =
   ##     var buffer = ""
   ##     for line in filename.lines:
-  ##       buffer.add(line.replace("a", "0") & '\x0A')
+  ##       buffer.add(line.replace("a", "0") & '\n')
   ##     writeFile(filename, buffer)
   var f = open(filename, bufSize=8000)
   try:

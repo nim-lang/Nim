@@ -3122,7 +3122,14 @@ when not defined(createNimHcr) and not defined(nimscript):
   include nimhcr
 
 when notJSnotNims and not defined(nimSeqsV2):
-  proc prepareStrMutation*(s: var string) {.inline.} =
+  proc prepareMutation*(s: var string) {.inline.} =
     ## String literals (e.g. "abc", etc) in the ARC/ORC mode are "copy on write",
-    ## therefore you should call `prepareStrMutation` before modifying the strings.
+    ## therefore you should call `prepareMutation` before modifying the strings
+    ## via `addr`.
+    runnableExamples("--gc:arc"):
+      var x = "abc"
+      var y = "defgh"
+      prepareMutation(y) # without this, you may get a `SIGBUS` or `SIGSEGV`
+      moveMem(addr y[0], addr x[0], x.len)
+      assert y == "abcgh"
     discard

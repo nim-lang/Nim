@@ -455,6 +455,10 @@ proc genCase(c: var Con; n: PNode) =
   let isExhaustive = skipTypes(n[0].typ,
     abstractVarRange-{tyTypeDesc}).kind notin {tyFloat..tyFloat128, tyString}
 
+  # we generate endings as a set of chained gotos, this is a bit awkward but it
+  # ensures when recursively traversing the CFG for various analysis, we don't
+  # artificially extended the life of each branch (for the purposes of DFA)
+  # beyond the minimum amount.
   var endings: seq[TPosition] = @[]
   c.gen(n[0])
   for i in 1..<n.len:
@@ -462,13 +466,14 @@ proc genCase(c: var Con; n: PNode) =
     if it.len == 1 or (i == n.len-1 and isExhaustive):
       # treat the last branch as 'else' if this is an exhaustive case statement.
       c.gen(it.lastSon)
+      if endings.len != 0:
+          c.patch(endings[^1])
     else:
       forkT(it.lastSon):
         c.gen(it.lastSon)
+        if endings.len != 0:
+          c.patch(endings[^1])
         endings.add c.gotoI(it.lastSon)
-  for i in countdown(endings.high, 0):
-    let endPos = endings[i]
-    c.patch(endPos)
 
 proc genBlock(c: var Con; n: PNode) =
   withBlock(n[0].sym):

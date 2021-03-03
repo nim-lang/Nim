@@ -18,6 +18,7 @@ type
     rnInner,                  # an inner node or a root
     rnHeadline,               # a headline
     rnOverline,               # an over- and underlined headline
+    rnMarkdownHeadline,       # a Markdown headline
     rnTransition,             # a transition (the ------------- <hr> thingie)
     rnParagraph,              # a paragraph
     rnBulletList,             # a bullet list
@@ -84,9 +85,10 @@ type
     of rnAdmonition:
       adType*: string         ## admonition type: "note", "caution", etc. This
                               ## text will set the style and also be displayed
-    of rnOverline, rnHeadline:
-      level*: int             ## level of headings starting from 1 (document
-                              ## title) to larger ones (minor sub-sections)
+    of rnOverline, rnHeadline, rnMarkdownHeadline:
+      level*: int             ## level of headings starting from 1 (main
+                              ## chapter) to larger ones (minor sub-sections)
+                              ## level=0 means it's document title or subtitle
     of rnFootnote, rnCitation, rnFootnoteRef:
       order*: int             ## footnote order (for auto-symbol footnotes and
                               ## auto-numbered ones without a label)
@@ -363,8 +365,8 @@ proc renderRstToStr*(node: PRstNode, indent=0): string =
     if node.lineIndent == "\n": txt = "\t(blank line)"
     else: txt = "\tlineIndent=" & $node.lineIndent.len
     result.add txt
-  of rnHeadline, rnOverline:
-    result.add (if node.level == 0: "" else: "\tlevel=" & $node.level)
+  of rnHeadline, rnOverline, rnMarkdownHeadline:
+    result.add "\tlevel=" & $node.level
   of rnFootnote, rnCitation, rnFootnoteRef:
     result.add (if node.order == 0:   "" else: "\torder=" & $node.order)
   else:
