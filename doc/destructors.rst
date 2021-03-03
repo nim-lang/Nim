@@ -676,25 +676,25 @@ moveMem(addr y[0], addr x[0], 3)
 ```
 
 The program fails because we need to prepare a fresh copy for the variable `y`.
-`prepareStrMutation` should be called before the address operation.
+`prepareMutation` should be called before the address operation.
 
 ```nim
 var x = "abc"
 var y = x
 
-prepareStrMutation(y)
+prepareMutation(y)
 moveMem(addr y[0], addr x[0], 3)
 assert y == "abc"
 ```
 
-Now `prepareStrMutation` solves the problem.
+Now `prepareMutation` solves the problem.
 It manually creates a fresh copy and makes the variable `y` mutable.
 
 ```nim
 var x = "abc"
 var y = x
 
-prepareStrMutation(y)
+prepareMutation(y)
 moveMem(addr y[0], addr x[0], 3)
 moveMem(addr y[0], addr x[0], 3)
 moveMem(addr y[0], addr x[0], 3)
