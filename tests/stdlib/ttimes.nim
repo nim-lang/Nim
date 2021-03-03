@@ -708,3 +708,36 @@ block: # ttimes
     doAssert initDateTime(dWed, 14, -0002, 00, 00, 00) == initDateTime(01, mApr, -0002, 00, 00, 00)
     doAssert getWeekOfYear(initDateTime(01, mApr, -0753, 00, 00, 00)) == 14
     doAssert initDateTime(dMon, 14, -0753, 00, 00, 00) == initDateTime(01, mApr, -0753, 00, 00, 00)
+
+  block: # getWeeksInYear
+    doAssert getWeeksInYear(-0014) == 52
+    doAssert getWeeksInYear(-0013) == 53
+    doAssert getWeeksInYear(-0012) == 52
+
+    doAssert getWeeksInYear(-0009) == 52
+    doAssert getWeeksInYear(-0008) == 53
+    doAssert getWeeksInYear(-0007) == 52
+
+    doAssert getWeeksInYear(-0003) == 52
+    doAssert getWeeksInYear(-0002) == 53
+    doAssert getWeeksInYear(-0001) == 52
+
+    doAssert getWeeksInYear(0003) == 52
+    doAssert getWeeksInYear(0004) == 53
+    doAssert getWeeksInYear(0005) == 52
+
+    doAssert getWeeksInYear(1653) == 52
+    doAssert getWeeksInYear(1654) == 53
+    doAssert getWeeksInYear(1655) == 52
+
+    doAssert getWeeksInYear(1997) == 52
+    doAssert getWeeksInYear(1998) == 53
+    doAssert getWeeksInYear(1999) == 52
+
+    doAssert getWeeksInYear(2008) == 52
+    doAssert getWeeksInYear(2009) == 53
+    doAssert getWeeksInYear(2010) == 52
+
+    doAssert getWeeksInYear(2014) == 52
+    doAssert getWeeksInYear(2015) == 53
+    doAssert getWeeksInYear(2016) == 52
