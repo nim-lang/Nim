@@ -130,12 +130,18 @@ html {
   -webkit-text-size-adjust: 100%;
   -ms-text-size-adjust: 100%; }
 
+/*so that anchors are highlighted when selected*/
+:target {
+   background-color: #99ff66;
+}
+
 body {
   font-family: "Lato", "Helvetica Neue", "HelveticaNeue", Helvetica, Arial, sans-serif;
   font-weight: 400;
   font-size: 1.125em;
   line-height: 1.5;
   color: var(--text);
+  /*padding-bottom: 1000px;*/
   background-color: var(--primary-background); }
 
 /* Skeleton grid */

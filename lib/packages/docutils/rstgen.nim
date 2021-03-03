@@ -271,7 +271,7 @@ proc dispA(target: OutputTarget, dest: var string,
 proc `or`(x, y: string): string {.inline.} =
   result = if x.len == 0: y else: x
 
-proc renderRstToOut*(d: var RstGenerator, n: PRstNode, result: var string)
+proc renderRstToOut*(d: var RstGenerator, n: PRstNode, result: var string, indexInParent = -1)
   ## Writes into ``result`` the rst ast ``n`` using the ``d`` configuration.
   ##
   ## Before using this proc you need to initialise a ``RstGenerator`` with
@@ -286,24 +286,41 @@ proc renderRstToOut*(d: var RstGenerator, n: PRstNode, result: var string)
   ##   echo generatedHtml
 
 proc renderAux(d: PDoc, n: PRstNode, result: var string) =
-  for i in countup(0, len(n)-1): renderRstToOut(d, n.sons[i], result)
+  for i in countup(0, len(n)-1): renderRstToOut(d, n.sons[i], result, i)
 
 template idS(txt: string): string =
   if txt == "": ""
   else:
     case d.target
     of outHtml:
-      " id=\"" & txt & "\""
+      dbg txt
+      """ id="$#"""" % txt
     of outLatex:
       "\\label{" & txt & "}\\hypertarget{" & txt & "}{}"
         # we add \label for page number references via \pageref, while
         # \hypertarget is for clickable links via \hyperlink.
 
+proc renderAuxAnchor(d: PDoc, n: PRstNode, html, tex: string, result: var string, anchor: string = "") =
+  # formats sons of `n` as substitution variable $1 inside strings `html` and
+  # `tex`, internal target (anchor) is provided as substitute $2.
+  # PRTEMP :factor
+  var anchor = anchor
+  if n.anchor.len > 0: n.anchor = n.anchor
+  var tmp = ""
+  for i in countup(0, len(n)-1): renderRstToOut(d, n.sons[i], tmp, i)
+  dbg tmp, html, n.anchor, n.anchor.idS
+  case d.target
+  of outHtml:  result.addf(html, [tmp, anchor])
+  of outLatex: result.addf(tex,  [tmp, n.anchor.idS]) # PRTEMP
+  result.add "\n"
+
 proc renderAux(d: PDoc, n: PRstNode, html, tex: string, result: var string) =
   # formats sons of `n` as substitution variable $1 inside strings `html` and
   # `tex`, internal target (anchor) is provided as substitute $2.
   var tmp = ""
-  for i in countup(0, len(n)-1): renderRstToOut(d, n.sons[i], tmp)
+  for i in countup(0, len(n)-1):
+    renderRstToOut(d, n.sons[i], tmp, i)
+  dbg tmp, html, n.anchor, n.anchor.idS
   case d.target
   of outHtml:  result.addf(html, [tmp, n.anchor.idS])
   of outLatex: result.addf(tex,  [tmp, n.anchor.idS])
@@ -757,7 +774,7 @@ proc stripTocHtml(s: string): string =
 
 proc renderHeadline(d: PDoc, n: PRstNode, result: var string) =
   var tmp = ""
-  for i in countup(0, len(n) - 1): renderRstToOut(d, n.sons[i], tmp)
+  for i in countup(0, len(n) - 1): renderRstToOut(d, n.sons[i], tmp, i)
   d.currentSection = tmp
   # Find the last higher level section for unique reference name
   var sectionPrefix = ""
@@ -799,15 +816,15 @@ proc renderHeadline(d: PDoc, n: PRstNode, result: var string) =
 proc renderOverline(d: PDoc, n: PRstNode, result: var string) =
   if n.level == 0 and d.meta[metaTitle].len == 0:
     for i in countup(0, len(n)-1):
-      renderRstToOut(d, n.sons[i], d.meta[metaTitle])
+      renderRstToOut(d, n.sons[i], d.meta[metaTitle], i)
     d.currentSection = d.meta[metaTitle]
   elif n.level == 0 and d.meta[metaSubtitle].len == 0:
     for i in countup(0, len(n)-1):
-      renderRstToOut(d, n.sons[i], d.meta[metaSubtitle])
+      renderRstToOut(d, n.sons[i], d.meta[metaSubtitle], i)
     d.currentSection = d.meta[metaSubtitle]
   else:
     var tmp = ""
-    for i in countup(0, len(n) - 1): renderRstToOut(d, n.sons[i], tmp)
+    for i in countup(0, len(n) - 1): renderRstToOut(d, n.sons[i], tmp, i)
     d.currentSection = tmp
     dispA(d.target, result, "<h$1$2><center>$3</center></h$1>",
                    "\\rstov$4{$3}$2\n", [$n.level,
@@ -1136,19 +1153,23 @@ proc renderAdmonition(d: PDoc, n: PRstNode, result: var string) =
         "$1\n\\end{mdframed}\n",
       result)
 
-proc renderRstToOut(d: PDoc, n: PRstNode, result: var string) =
+proc renderRstToOut(d: PDoc, n: PRstNode, result: var string, indexInParent = -1) =
   if n == nil: return
   case n.kind
   of rnInner: renderAux(d, n, result)
   of rnHeadline, rnMarkdownHeadline: renderHeadline(d, n, result)
   of rnOverline: renderOverline(d, n, result)
   of rnTransition: renderAux(d, n, "<hr$2 />\n", "\\hrule$2\n", result)
-  of rnParagraph: renderAux(d, n, "<p$2>$1</p>\n", "$2\n$1\n\n", result)
+  of rnParagraph:
+    if n.anchor.len == 0:
+      renderAux(d, n, "<p$2>$1</p>\n", "$2\n$1\n\n", result)
+    else:
+      renderAuxAnchor(d, n, """<p>  <a class="nimanchor" id="$2" href="#$2">🔗</a>  $1</p>""", "$2\n$1\n\n", result)
   of rnBulletList:
     renderAux(d, n, "<ul$2 class=\"simple\">$1</ul>\n",
                     "\\begin{itemize}\n$2\n$1\\end{itemize}\n", result)
   of rnBulletItem, rnEnumItem:
-    renderAux(d, n, "<li$2>$1</li>\n", "\\item $2$1\n", result)
+    renderAuxAnchor(d, n, """<li>  <a class="nimanchor" id="$2" href="#$2">🔗</a> $1</li>""", "\\item $2$1\n", result, "untsablelink_" & $indexInParent)
   of rnEnumList: renderEnumList(d, n, result)
   of rnDefList:
     renderAux(d, n, "<dl$2 class=\"docutils\">$1</dl>\n",
@@ -1159,7 +1180,8 @@ proc renderRstToOut(d: PDoc, n: PRstNode, result: var string) =
   of rnFieldList:
     var tmp = ""
     for i in countup(0, len(n) - 1):
-      renderRstToOut(d, n.sons[i], tmp)
+      dbg i, n.len
+      renderRstToOut(d, n.sons[i], tmp, i)
     if tmp.len != 0:
       dispA(d.target, result,
           "<table$2 class=\"docinfo\" frame=\"void\" rules=\"none\">" &
@@ -1226,7 +1248,7 @@ proc renderRstToOut(d: PDoc, n: PRstNode, result: var string) =
         renderRstToOut(d, n.sons[0], result)
         for i in countup(1, len(n) - 1):
           result.add(" & ")
-          renderRstToOut(d, n.sons[i], result)
+          renderRstToOut(d, n.sons[i], result, i)
         result.add("\\\\\n\\hline\n")
       else:
         result.add("<tr>")
