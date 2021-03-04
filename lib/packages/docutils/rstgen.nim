@@ -86,8 +86,6 @@ type
     id*: int               ## A counter useful for generating IDs.
     onTestSnippet*: proc (d: var RstGenerator; filename, cmd: string; status: int;
                           content: string)
-    lastId*: int
-    lastAnchor*: string
 
   PDoc = var RstGenerator ## Alias to type less.
 
@@ -305,8 +303,7 @@ proc renderAux(d: PDoc, n: PRstNode, html, tex: string, result: var string, useA
   # formats sons of `n` as substitution variable $1 inside strings `html` and
   # `tex`, internal target (anchor) is provided as substitute $2.
   var tmp = ""
-  for i in countup(0, len(n)-1):
-    renderRstToOut(d, n.sons[i], tmp)
+  for i in countup(0, len(n)-1): renderRstToOut(d, n.sons[i], tmp)
   case d.target
   of outHtml:
     let anchor = if useAnchor: n.anchor2 else: n.anchor.idS
@@ -1167,7 +1164,6 @@ proc computeAnchor2(n: PRstNode) =
       if n.kind in {rnParagraph, rnBulletItem, rnEnumItem}:
         idLast.inc
         n.anchor2 = "-" & anchorLast & "-" & $idLast
-        dbg n.anchor2
     for ai in n.sons:
       impl(ai, anchor, id)
   impl(n, anchorLast, 0)
