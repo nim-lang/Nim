@@ -74,11 +74,12 @@ proc main() {.async.} =
     let x4 = await asyncFact(3).then(asyncIdentity).then(asyncIdentity).then((a:int) => a * 7).then(asyncIdentity)
     doAssert x4 == 3 * 2 * 7
 
-    when false:
-      # pending bug #17177
+    block: # bug #17177
       proc asyncIdentityNested(n: int): Future[int] {.async.} = return n
       let x5 = await asyncFact(3).then(asyncIdentityNested)
       doAssert x5 == 3 * 2
+
+    when false: # xxx pending bug #17254
       let x6 = await asyncFact(3).then((a:int) {.async.} => a * 11)
       doAssert x6 == 3 * 2 * 11
 
