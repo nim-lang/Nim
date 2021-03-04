@@ -130,15 +130,12 @@ html {
   -webkit-text-size-adjust: 100%;
   -ms-text-size-adjust: 100%;
   /*jumping to top is confusing, doesn't show context upwards*/
-  scroll-padding-top: 50%;
+  /*scroll-padding-top: 50%;*/
 }
 
-:target {
-  background-color: #99ff66;
-}
-
-/*so that anchors are highlighted when selected*/
+*//*so that anchors are highlighted when selected*/
 .nimanchor:target {
+  background-color: #99ff66;
   opacity:1
 }
 

@@ -128,7 +128,20 @@ input:checked + .slider:before {
 html {
   font-size: 100%;
   -webkit-text-size-adjust: 100%;
-  -ms-text-size-adjust: 100%; }
+  -ms-text-size-adjust: 100%;
+  /*jumping to top is confusing, doesn't show context upwards*/
+  /*scroll-padding-top: 50%;*/
+}
+
+*//*so that anchors are highlighted when selected*/
+.nimanchor:target {
+  background-color: #99ff66;
+  opacity:1
+}
+
+.nimanchor {
+  opacity:0.1
+}
 
 body {
   font-family: "Lato", "Helvetica Neue", "HelveticaNeue", Helvetica, Arial, sans-serif;
