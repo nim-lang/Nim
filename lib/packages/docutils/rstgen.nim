@@ -327,27 +327,16 @@ template idS(txt: string): string =
         # we add \label for page number references via \pageref, while
         # \hypertarget is for clickable links via \hyperlink.
 
-proc renderAuxAnchor(d: PDoc, n: PRstNode, html, tex: string, result: var string, context: AnchorContext) =
-  # formats sons of `n` as substitution variable $1 inside strings `html` and
-  # `tex`, internal target (anchor) is provided as substitute $2.
-  # PRTEMP :factor
-  let anchor = context.toAnchor
-  var tmp = ""
-  for i in countup(0, len(n)-1):
-    renderRstToOut(d, n.sons[i], tmp, context.toContext(i))
-  case d.target
-  of outHtml:  result.addf(html, [tmp, anchor])
-  of outLatex: result.addf(tex,  [tmp, n.anchor.idS]) # PRTEMP
-  result.add "\n"
-
-proc renderAux(d: PDoc, n: PRstNode, html, tex: string, result: var string, context: AnchorContext) =
+proc renderAux(d: PDoc, n: PRstNode, html, tex: string, result: var string, context: AnchorContext, useAnchor = false) =
   # formats sons of `n` as substitution variable $1 inside strings `html` and
   # `tex`, internal target (anchor) is provided as substitute $2.
   var tmp = ""
   for i in countup(0, len(n)-1):
     renderRstToOut(d, n.sons[i], tmp, context.toContext(i))
   case d.target
-  of outHtml:  result.addf(html, [tmp, n.anchor.idS])
+  of outHtml:
+    let anchor = if useAnchor: context.toAnchor else: n.anchor.idS
+    result.addf(html, [tmp, anchor])
   of outLatex: result.addf(tex,  [tmp, n.anchor.idS])
 
 # ---------------- index handling --------------------------------------------
@@ -1209,16 +1198,16 @@ proc renderRstToOut(d: PDoc, n: PRstNode, result: var string, context: AnchorCon
     context = context.toContext3(d)
     if first:
       # pending https://github.com/nim-lang/Nim/issues/17249
-      renderAuxAnchor(d, n, "$1", "$2\n$1\n\n", result, context)
+      renderAux(d, n, "$1", "$2\n$1\n\n", result, context, useAnchor = true)
     else:
-      renderAuxAnchor(d, n, """<p>$1 $$1</p>""" % anchorLink, "$2\n$1\n\n", result, context)
+      renderAux(d, n, """<p>$1 $$1</p>""" % anchorLink, "$2\n$1\n\n", result, context, useAnchor = true)
   of rnBulletList:
     context = context.toContext3(d)
     renderAux(d, n, "<ul$2 class=\"simple\">$1</ul>\n",
                     "\\begin{itemize}\n$2\n$1\\end{itemize}\n", result)
   of rnBulletItem, rnEnumItem:
     context = context.toContext3(d)
-    renderAuxAnchor(d, n, """<li>$1 $$1</li>""" % anchorLink , "\\item $2$1\n", result, context)
+    renderAux(d, n, """<li>$1 $$1</li>""" % anchorLink , "\\item $2$1\n", result, context, useAnchor = true)
   of rnEnumList: renderEnumList(d, n, result, context)
   of rnDefList:
     renderAux(d, n, "<dl$2 class=\"docutils\">$1</dl>\n",
