@@ -1143,14 +1143,11 @@ const anchorLink = """<a class="nimanchor" id="$2" href="#$2">🔗</a>"""
 proc computeAnchorGen(n: PRstNode) =
   var anchorLast = "ROOT"
   var idLast = 0
-  proc impl(n: PRstNode, anchor: string, id: int) =
+  proc impl(n: PRstNode) =
     if n == nil: return
     n.anchorGen = "\0" # special char to indicate we've visited this node.
-    var anchor = anchor
-    var id = id
     template update(anchorNew) =
-      id = 0
-      anchor = anchorNew
+      let anchor = anchorNew
       n.anchorGen = anchor
       anchorLast = anchor
       idLast = 0
@@ -1158,15 +1155,11 @@ proc computeAnchorGen(n: PRstNode) =
       update(n.anchor)
     elif n.kind in {rnHeadline}:
       update(n.rstnodeToRefname)
-    else:
-      id.inc
-      # TODO: rnBulletList
-      if n.kind in {rnParagraph, rnBulletItem, rnEnumItem}:
-        idLast.inc
-        n.anchorGen = "-" & anchorLast & "-" & $idLast
-    for ai in n.sons:
-      impl(ai, anchor, id)
-  impl(n, anchorLast, 0)
+    elif n.kind in {rnParagraph, rnBulletItem, rnEnumItem}:
+      idLast.inc
+      n.anchorGen = "-" & anchorLast & "-" & $idLast
+    for ai in n.sons: impl(ai)
+  impl(n)
 
 proc renderRstToOut(d: PDoc, n: PRstNode, result: var string) =
   if n == nil: return
