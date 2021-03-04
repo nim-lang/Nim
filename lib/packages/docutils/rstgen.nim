@@ -1171,10 +1171,6 @@ proc renderAdmonition(d: PDoc, n: PRstNode, result: var string, context: AnchorC
         "$1\n\\end{mdframed}\n",
       result, context)
 
-#[
-https://jrgraphix.net/r/Unicode/25A0-25FF
-⚓ 🔗 ⛫ ▢ ▯
-]#
 const anchorLink = """<a class="nimanchor" id="$2" href="#$2">🔗</a>"""
 
 proc renderRstToOut(d: PDoc, n: PRstNode, result: var string, context: AnchorContext) =
