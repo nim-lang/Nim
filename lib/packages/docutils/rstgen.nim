@@ -55,6 +55,7 @@ type
     anchor: string # TODO: cstring
     depth: int
     index: int
+    id: int
 
   OutputTarget* = enum ## which document type to generate
     outHtml,            # output is HTML
@@ -91,6 +92,8 @@ type
     id*: int               ## A counter useful for generating IDs.
     onTestSnippet*: proc (d: var RstGenerator; filename, cmd: string; status: int;
                           content: string)
+    lastId*: int
+    lastAnchor*: string
 
   PDoc = var RstGenerator ## Alias to type less.
 
@@ -104,21 +107,26 @@ type
     status: int
 
 proc toAnchor(a: AnchorContext): string =
-  if a.depth == 0:
-    a.anchor
-  else:
-    "unstable-" & a.anchor & "-" & $a.depth & "-" & $a.index
+  # if a.depth == 0:
+  #   a.anchor
+  # else:
+  #   "unstable-" & a.anchor & "-" & $a.depth & "-" & $a.index & "-" & $a.id
+  # "unstable-" & a.anchor & "-" & $a.depth & "-" & $a.index & "-" & $a.id
+  "unstable-" & a.anchor & "-" & $a.id
 
 proc toContext(a: AnchorContext, index: int): AnchorContext =
   # "untsablelink_" 
   # "lnk-" & a.parent & "-" & $a.index
-  AnchorContext(anchor: a.anchor, depth: a.depth + 1, index: index)
+  AnchorContext(anchor: a.anchor, depth: a.depth + 1, index: index, id: a.id)
 
 proc toContext(a: AnchorContext, anchor: string): AnchorContext =
   if anchor.len > 0:
-    AnchorContext(anchor: anchor, depth: 0, index: 0)
+    AnchorContext(anchor: anchor, depth: 0, index: 0, id: a.id)
   else:
-    AnchorContext(anchor: a.anchor, depth: a.depth + 1, index: a.index)
+    AnchorContext(anchor: a.anchor, depth: a.depth + 1, index: a.index, id: a.id)
+
+proc toContext2(a: AnchorContext, lastAnchor: string, lastId: int): AnchorContext =
+  AnchorContext(anchor: lastAnchor, id: lastId)
 
 proc initContext*(): AnchorContext =
   AnchorContext(anchor: "", depth: 0, index: 0)
@@ -319,6 +327,8 @@ template idS(txt: string): string =
     case d.target
     of outHtml:
       dbg txt
+      # if txt == "evolving-the-stdlib-conventions":
+        # doAssert false
       """ id="$#"""" % txt
     of outLatex:
       "\\label{" & txt & "}\\hypertarget{" & txt & "}{}"
@@ -796,7 +806,7 @@ proc stripTocHtml(s: string): string =
     result.delete(first, last)
     first = result.find('<', first)
 
-proc renderHeadline(d: PDoc, n: PRstNode, result: var string, context: AnchorContext) =
+proc renderHeadline(d: PDoc, n: PRstNode, result: var string, context: AnchorContext, refname: var string) =
   var tmp = ""
   for i in countup(0, len(n) - 1): renderRstToOut(d, n.sons[i], tmp, context.toContext(i))
   d.currentSection = tmp
@@ -807,7 +817,7 @@ proc renderHeadline(d: PDoc, n: PRstNode, result: var string, context: AnchorCon
     if n2.level < n.level:
       sectionPrefix = rstnodeToRefname(n2) & "-"
       break
-  var refname = sectionPrefix & rstnodeToRefname(n)
+  refname = sectionPrefix & rstnodeToRefname(n)
   if d.hasToc:
     var length = len(d.tocPart)
     setLen(d.tocPart, length + 1)
@@ -1178,7 +1188,13 @@ proc renderAdmonition(d: PDoc, n: PRstNode, result: var string, context: AnchorC
       result, context)
 
 proc renderRstToOut(d: PDoc, n: PRstNode, result: var string, context: AnchorContext) =
-  let context = context.toContext(n.anchor)
+  # if n.anchor.len > 0:
+    # context.anchor
+  # var context = context.toContext(n.anchor)
+  # var context = 
+  # d.lastId.inc
+  # var context = context.toContext(n.anchor, d.lastAnchor, d.lastId)
+  var context = context.toContext2(d.lastAnchor, d.lastId)
   template renderAux(d: PDoc, n: PRstNode, result: var string) =
     renderAux(d, n, result, context)
   template renderAux(d: PDoc, n: PRstNode, html, tex: string, result: var string) =
@@ -1186,10 +1202,19 @@ proc renderRstToOut(d: PDoc, n: PRstNode, result: var string, context: AnchorCon
   template renderRstToOut(d: PDoc, n: PRstNode, result: var string) =
     renderRstToOut(d, n, result, context)
 
+  dbg n.kind, n.anchor, context.toAnchor
   if n == nil: return
   case n.kind
   of rnInner: renderAux(d, n, result, context)
-  of rnHeadline, rnMarkdownHeadline: renderHeadline(d, n, result, context)
+  of rnHeadline, rnMarkdownHeadline:
+    var anchorname = ""
+    renderHeadline(d, n, result, context, anchorname)
+    dbg anchorname
+    context = context.toContext(anchorname)
+    d.lastAnchor = context.anchor
+    d.lastId = 0
+    # dbg context.anchor
+    # doAssert context.anchor.len == 0
   of rnOverline: renderOverline(d, n, result, context)
   of rnTransition: renderAux(d, n, "<hr$2 />\n", "\\hrule$2\n", result)
   of rnParagraph:
@@ -1197,11 +1222,18 @@ proc renderRstToOut(d: PDoc, n: PRstNode, result: var string, context: AnchorCon
       # renderAux(d, n, "<p$2>$1</p>\n", "$2\n$1\n\n", result)
     # else:
     # renderAuxAnchor(d, n, """<p>  <a class="nimanchor" id="$2" href="#$2">🔗</a>  $1</p>""", "$2\n$1\n\n", result, context.toContext(n.anchor))
+
+    d.lastId.inc
+    context = context.toContext2(d.lastAnchor, d.lastId)
     renderAuxAnchor(d, n, """<p>  <a class="nimanchor" id="$2" href="#$2">🔗</a>  $1</p>""", "$2\n$1\n\n", result, context)
   of rnBulletList:
+    d.lastId.inc
+    context = context.toContext2(d.lastAnchor, d.lastId)
     renderAux(d, n, "<ul$2 class=\"simple\">$1</ul>\n",
                     "\\begin{itemize}\n$2\n$1\\end{itemize}\n", result)
   of rnBulletItem, rnEnumItem:
+    d.lastId.inc
+    context = context.toContext2(d.lastAnchor, d.lastId)
     renderAuxAnchor(d, n, """<li>  <a class="nimanchor" id="$2" href="#$2">🔗</a> $1</li>""", "\\item $2$1\n", result, context)
   of rnEnumList: renderEnumList(d, n, result, context)
   of rnDefList:
