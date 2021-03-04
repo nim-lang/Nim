@@ -2456,7 +2456,7 @@ proc parseFootnote(p: var RstParser): PRstNode =
 proc parseDotDot(p: var RstParser): PRstNode =
   # parse "explicit markup blocks"
   result = nil
-  var n: PRstNode  # to store result, workaround for bug #16855
+  var n: PRstNode  # to store result, workaround for bug 16855
   var col = currentTok(p).col
   inc p.idx
   var d = getDirective(p)
