@@ -193,6 +193,8 @@ provided by the operating system.
 
 - `system.addEscapedChar` now renders `\r` as `\r` instead of `\c`, to be compatible
   with most other languages.
+- Removed support for named procs in `sugar.=>`
+
 
 ## Language changes
 
