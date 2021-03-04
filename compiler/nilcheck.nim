@@ -1260,7 +1260,7 @@ proc check(n: PNode, ctx: NilCheckerContext, map: NilMap): Check =
   of nkNone..pred(nkSym), succ(nkSym)..nkNilLit, nkTypeSection, nkProcDef, nkConverterDef,
       nkMethodDef, nkIteratorDef, nkMacroDef, nkTemplateDef, nkLambda, nkDo,
       nkFuncDef, nkConstSection, nkConstDef, nkIncludeStmt, nkImportStmt,
-      nkExportStmt, nkPragma, nkCommentStmt, nkBreakState, nkTypeOfExpr:
+      nkExportStmt, nkPragma, nkCommentStmt, nkBreakState, nkTypeOfExpr, nkMixinStmt:
 
     discard "don't follow this : same as varpartitions"
     result = Check(nilability: Nil, map: map)

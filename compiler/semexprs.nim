@@ -75,7 +75,7 @@ proc semExprCheck(c: PContext, n: PNode, flags: TExprFlags): PNode =
     # bug #12741, redundant error messages are the lesser evil here:
     localError(c.config, n.info, errExprXHasNoType %
                 renderTree(result, {renderNoComments}))
-  
+
   if isEmpty:
     # do not produce another redundant error message:
     result = errorNode(c, n)
@@ -2944,6 +2944,12 @@ proc semExpr(c: PContext, n: PNode, flags: TExprFlags = {}): PNode =
     for i in 0..<n.len:
       n[i] = semExpr(c, n[i])
   of nkComesFrom: discard "ignore the comes from information for now"
+  of nkMixinStmt:
+    if c.p != nil:
+      c.p.localMixinStmts.add n
+    else:
+      localError(c.config, n.info, "invalid context for 'mixin' statement: " &
+                renderTree(n, {renderNoComments}))
   else:
     localError(c.config, n.info, "invalid expression: " &
                renderTree(n, {renderNoComments}))

@@ -2626,7 +2626,7 @@ proc gen(p: PProc, n: PNode, r: var TCompRes) =
   of nkRaiseStmt: genRaiseStmt(p, n)
   of nkTypeSection, nkCommentStmt, nkIncludeStmt,
      nkImportStmt, nkImportExceptStmt, nkExportStmt, nkExportExceptStmt,
-     nkFromStmt, nkTemplateDef, nkMacroDef, nkStaticStmt: discard
+     nkFromStmt, nkTemplateDef, nkMacroDef, nkStaticStmt, nkMixinStmt: discard
   of nkIteratorDef:
     if n[0].sym.typ.callConv == TCallingConvention.ccClosure:
       globalError(p.config, n.info, "Closure iterators are not supported by JS backend!")

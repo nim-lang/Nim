@@ -150,7 +150,7 @@ proc analyse(c: var Con; b: var BasicBlock; n: PNode) =
   of nkNone..pred(nkSym), succ(nkSym)..nkNilLit, nkTypeSection, nkProcDef, nkConverterDef,
       nkMethodDef, nkIteratorDef, nkMacroDef, nkTemplateDef, nkLambda, nkDo,
       nkFuncDef, nkConstSection, nkConstDef, nkIncludeStmt, nkImportStmt,
-      nkExportStmt, nkPragma, nkCommentStmt, nkBreakState, nkTypeOfExpr:
+      nkExportStmt, nkPragma, nkCommentStmt, nkBreakState, nkTypeOfExpr, nkMixinStmt:
     discard "do not follow the construct"
 
   of nkAsgn, nkFastAsgn:

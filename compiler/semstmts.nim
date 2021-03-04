@@ -1823,8 +1823,8 @@ proc semMethodPrototype(c: PContext; s: PSym; n: PNode) =
       let t = tt[col]
       if t != nil and t.kind == tyGenericInvocation:
         var x = skipTypes(t[0], {tyVar, tyLent, tyPtr, tyRef, tyGenericInst,
-                                      tyGenericInvocation, tyGenericBody,
-                                      tyAlias, tySink, tyOwned})
+                                 tyGenericInvocation, tyGenericBody,
+                                 tyAlias, tySink, tyOwned})
         if x.kind == tyObject and t.len-1 == n[genericParamsPos].len:
           foundObj = true
           addMethodToGeneric(c.graph, c.module.position, x, col, s)

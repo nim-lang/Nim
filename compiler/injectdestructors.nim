@@ -890,7 +890,7 @@ proc p(n: PNode; c: var Con; s: var Scope; mode: ProcessMode): PNode =
     of nkNone..nkNilLit, nkTypeSection, nkProcDef, nkConverterDef,
        nkMethodDef, nkIteratorDef, nkMacroDef, nkTemplateDef, nkLambda, nkDo,
        nkFuncDef, nkConstSection, nkConstDef, nkIncludeStmt, nkImportStmt,
-       nkExportStmt, nkPragma, nkCommentStmt, nkBreakState, nkTypeOfExpr:
+       nkExportStmt, nkPragma, nkCommentStmt, nkBreakState, nkTypeOfExpr, nkMixinStmt:
       result = n
 
     of nkStringToCString, nkCStringToString, nkChckRangeF, nkChckRange64, nkChckRange, nkPragmaBlock:
