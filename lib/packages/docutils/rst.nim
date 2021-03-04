@@ -1439,8 +1439,11 @@ proc countTitles(p: var RstParser, n: PRstNode) =
         if p.s.hTitleCnt >= 2:
           break
 
-proc tokenAfterNewline(p: RstParser, start=p.idx): int =
-  result = start
+proc tokenAfterNewline(p: RstParser, start = -1): int =
+  if start == -1:
+    result = p.idx
+  else:
+    result = start
   while true:
     case p.tok[result].kind
     of tkEof:
