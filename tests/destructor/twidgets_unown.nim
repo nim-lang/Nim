@@ -1,6 +1,5 @@
 discard """
   cmd: '''nim c -d:nimAllocStats --newruntime $file'''
-  disabled: "true"
   output: '''button
 clicked!
 (allocCount: 6, deallocCount: 6)'''

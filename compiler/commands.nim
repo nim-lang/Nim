@@ -892,7 +892,19 @@ proc processSwitch*(switch, arg: string, pass: TCmdLinePass, info: TLineInfo;
     if conf != nil:
       conf.cppDefine(arg)
   of "newruntime":
-    warningOptionNoop("newruntime") # ref #17245
+    warningDeprecated(conf, info, "newruntime is deprecated, use arc/orc instead!")
+    expectNoArg(conf, switch, arg, pass, info)
+    if pass in {passCmd2, passPP}:
+      doAssert(conf != nil)
+      incl(conf.features, destructor)
+      incl(conf.globalOptions, optTinyRtti)
+      incl(conf.globalOptions, optOwnedRefs)
+      incl(conf.globalOptions, optSeqDestructors)
+      defineSymbol(conf.symbols, "nimV2")
+      conf.selectedGC = gcHooks
+      defineSymbol(conf.symbols, "gchooks")
+      defineSymbol(conf.symbols, "nimSeqsV2")
+      defineSymbol(conf.symbols, "nimOwnedEnabled")
   of "seqsv2":
     processOnOffSwitchG(conf, {optSeqDestructors}, arg, pass, info)
     if pass in {passCmd2, passPP}:

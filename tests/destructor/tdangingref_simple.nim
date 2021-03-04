@@ -3,7 +3,6 @@ discard """
 [FATAL] dangling references exist
 '''
   exitCode: 1
-  disabled: "true"
   cmd: "nim c --newruntime $file"
 """
 

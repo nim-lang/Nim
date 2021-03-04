@@ -1,6 +1,5 @@
 discard """
   cmd: '''nim cpp -d:nimAllocStats --newruntime --threads:on $file'''
-  disabled: "true"
   output: '''(field: "value")
 Indeed
 axc
