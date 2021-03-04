@@ -338,7 +338,8 @@ proc renderAux(d: PDoc, n: PRstNode, html, tex: string, result: var string, cont
     renderRstToOut(d, n.sons[i], tmp, context.toContext(i))
   case d.target
   of outHtml:
-    let anchor = if useAnchor: context.toAnchor else: n.anchor.idS
+    # let anchor = if useAnchor: context.toAnchor else: n.anchor.idS
+    let anchor = if useAnchor: n.anchor2 else: n.anchor.idS
     result.addf(html, [tmp, anchor])
   of outLatex: result.addf(tex,  [tmp, n.anchor.idS])
 
@@ -1173,7 +1174,42 @@ proc renderAdmonition(d: PDoc, n: PRstNode, result: var string, context: AnchorC
 
 const anchorLink = """<a class="nimanchor" id="$2" href="#$2">🔗</a>"""
 
+proc computeAnchor2(n: PRstNode) =
+  var anchorLast = "ROOT"
+  var idLast = 0
+  proc impl(n: PRstNode, anchor: string, id: int) =
+    if n == nil: return
+    var anchor = anchor
+    var id = id
+    if n.anchor.len > 0:
+      anchor = n.anchor
+      id = 0
+      n.anchor2 = anchor
+      anchorLast = anchor
+      idLast = 0
+    elif n.kind in {rnHeadline}:
+      anchor = n.rstnodeToRefname
+      id = 0
+      n.anchor2 = anchor
+      anchorLast = anchor
+      idLast = 0
+    else:
+      id.inc
+      idLast.inc
+      # n.anchor2 = anchor & "-" & $id
+      # n.anchor2 = anchorLast & "-" & $id
+      n.anchor2 = anchorLast & "-" & $idLast
+    doAssert n.anchor2.len > 0, $(n.anchor2, anchor, id)
+    # if n.kind in {rnHeadline}:
+    #   dbg n.kind, anchorLast, id, n.anchor2, n.anchor, anchor, n.rstnodeToRefname
+    for ai in n.sons:
+      impl(ai, anchor, id)
+  impl(n, "", 0)
+
 proc renderRstToOut(d: PDoc, n: PRstNode, result: var string, context: AnchorContext) =
+  if n == nil: return
+  if n.anchor2.len == 0: # PRTEMP
+    computeAnchor2(n)
   updateAnchorState(d, n.anchor)
   var context = context
   context = context.toContext2(d.lastAnchor, d.lastId)
@@ -1184,7 +1220,6 @@ proc renderRstToOut(d: PDoc, n: PRstNode, result: var string, context: AnchorCon
   template renderRstToOut(d: PDoc, n: PRstNode, result: var string) =
     renderRstToOut(d, n, result, context)
 
-  if n == nil: return
   case n.kind
   of rnInner: renderAux(d, n, result, context)
   of rnHeadline, rnMarkdownHeadline:
