@@ -96,8 +96,9 @@ type
       discard
     anchor*: string           ## anchor, internal link target
                               ## (aka HTML id tag, aka Latex label/hypertarget)
-    anchor2*: string
     sons*: RstNodeSeq        ## the node's sons
+    processed*: bool
+    anchor2*: string
 
 proc len*(n: PRstNode): int =
   result = len(n.sons)

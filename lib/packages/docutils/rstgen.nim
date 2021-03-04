@@ -1177,38 +1177,41 @@ const anchorLink = """<a class="nimanchor" id="$2" href="#$2">🔗</a>"""
 proc computeAnchor2(n: PRstNode) =
   var anchorLast = "ROOT"
   var idLast = 0
+  dbg "-----------"
   proc impl(n: PRstNode, anchor: string, id: int) =
     if n == nil: return
+    n.processed = true
     var anchor = anchor
     var id = id
+    template update(anchorNew) =
+      id = 0
+      anchor = anchorNew
+      dbg anchorNew
+      n.anchor2 = anchor
+      anchorLast = anchor
+      idLast = 0
     if n.anchor.len > 0:
-      anchor = n.anchor
-      id = 0
-      n.anchor2 = anchor
-      anchorLast = anchor
-      idLast = 0
+      update(n.anchor)
     elif n.kind in {rnHeadline}:
-      anchor = n.rstnodeToRefname
-      id = 0
-      n.anchor2 = anchor
-      anchorLast = anchor
-      idLast = 0
+      update(n.rstnodeToRefname)
     else:
       id.inc
-      idLast.inc
-      # n.anchor2 = anchor & "-" & $id
-      # n.anchor2 = anchorLast & "-" & $id
-      n.anchor2 = anchorLast & "-" & $idLast
-    doAssert n.anchor2.len > 0, $(n.anchor2, anchor, id)
+      # TODO: rnBulletList
+      if n.kind in {rnParagraph, rnBulletItem, rnEnumItem}:
+        idLast.inc
+        n.anchor2 = "-" & anchorLast & "-" & $idLast
+        dbg n.anchor2
+      # n.anchor2 = "-" & anchorLast & "-" & $id
+    # doAssert n.anchor2.len > 0, $(n.anchor2, anchor, id)
     # if n.kind in {rnHeadline}:
     #   dbg n.kind, anchorLast, id, n.anchor2, n.anchor, anchor, n.rstnodeToRefname
     for ai in n.sons:
       impl(ai, anchor, id)
-  impl(n, "", 0)
+  impl(n, anchorLast, 0)
 
 proc renderRstToOut(d: PDoc, n: PRstNode, result: var string, context: AnchorContext) =
   if n == nil: return
-  if n.anchor2.len == 0: # PRTEMP
+  if not n.processed: # PRTEMP
     computeAnchor2(n)
   updateAnchorState(d, n.anchor)
   var context = context
