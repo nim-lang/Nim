@@ -708,6 +708,15 @@ Test1
     doAssert count(output7, "<li>") == 3
     doAssert "start=\"3\"" in output7 and "class=\"upperalpha simple\"" in output7
 
+    # check that it's not recognized as enum.list without indentation on 2nd line
+    let input8 = dedent """
+      A. string1
+      string2
+      """
+    # TODO: find out hot to catch warning here instead of throwing a defect
+    expect(AssertionDefect):
+      let output8 = input8.toHtml
+
   test "Markdown enumerated lists":
     let input1 = dedent """
       Below are 2 enumerated lists: Markdown-style (5 items) and RST (1 item)

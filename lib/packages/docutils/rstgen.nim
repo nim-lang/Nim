@@ -1506,7 +1506,7 @@ proc rstToHtml*(s: string, options: RstParseOptions,
   initRstGenerator(d, outHtml, config, filen, options, myFindFile,
                    rst.defaultMsgHandler)
   var dummyHasToc = false
-  var rst = rstParse(s, filen, 0, 1, dummyHasToc, options)
+  var rst = rstParse(s, filen, 1, 1, dummyHasToc, options)
   result = ""
   renderRstToOut(d, rst, result)
 

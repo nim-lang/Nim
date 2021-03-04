@@ -1439,8 +1439,8 @@ proc countTitles(p: var RstParser, n: PRstNode) =
         if p.s.hTitleCnt >= 2:
           break
 
-proc tokenAfterNewline(p: RstParser): int =
-  result = p.idx
+proc tokenAfterNewline(p: RstParser, start=p.idx): int =
+  result = start
   while true:
     case p.tok[result].kind
     of tkEof:
@@ -1937,13 +1937,32 @@ proc parseEnumList(p: var RstParser): PRstNode =
     wildToken: array[0..5, int] = [4, 3, 3, 4, 3, 3]  # number of tokens
     wildIndex: array[0..5, int] = [1, 0, 0, 1, 0, 0]
       # position of enumeration sequence (number/letter) in enumerator
-  result = newRstNodeA(p, rnEnumList)
   let col = currentTok(p).col
   var w = 0
   while w < wildcards.len:
     if match(p, p.idx, wildcards[w]): break
     inc w
   assert w < wildcards.len
+  template checkAfterNewline =
+    let j = tokenAfterNewline(p, start=p.idx+1)
+    if p.tok[j].kind notin {tkIndent, tkEof} and
+        p.tok[j].col < p.tok[p.idx+wildToken[w]].col and
+        (p.tok[j].col > col or
+          (p.tok[j].col == col and not match(p, j, wildcards[w]))):
+      # check `result == nil` to avoid duplication of warning since for
+      # subsequent enum.items parseEnumList will be called second time
+      if result == nil:
+        let n = p.line + p.tok[j].line
+        rstMessage(p, mwRstStyle, ("\n  not enough indentation on line $2" &
+          " (if it's continuation of enumeration list) or " &
+          "\n  no blank line after line $1" &
+          " (if it should be the next paragraph) or" &
+          "\n  no escaping \\ at the beginning of line $1" &
+          "\n    (if lines $1..$2 are a normal paragraph, not enum. list)") %
+          [$(n-1), $n])
+      return
+  checkAfterNewline
+  result = newRstNodeA(p, rnEnumList)
   let autoEnums = if roSupportMarkdown in p.s.options: @["#", "1"] else: @["#"]
   var prevAE = ""  # so as not allow mixing auto-enumerators `1` and `#`
   var curEnum = 1
@@ -1963,6 +1982,7 @@ proc parseEnumList(p: var RstParser): PRstNode =
     result.add(item)
     if currentTok(p).kind == tkIndent and currentTok(p).ival == col and
         match(p, p.idx+1, wildcards[w]):
+      checkAfterNewline
       let enumerator = p.tok[p.idx + 1 + wildIndex[w]].symbol
       # check that it's in sequence: enumerator == next(prevEnum)
       if "n" in wildcards[w]:  # arabic numeral
