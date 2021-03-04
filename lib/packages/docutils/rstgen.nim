@@ -1200,7 +1200,7 @@ proc renderRstToOut(d: PDoc, n: PRstNode, result: var string) =
   of rnFieldList:
     var tmp = ""
     for i in countup(0, len(n) - 1):
-      renderRstToOut(d, n.sons[i], result)
+      renderRstToOut(d, n.sons[i], tmp)
     if tmp.len != 0:
       dispA(d.target, result,
           "<table$2 class=\"docinfo\" frame=\"void\" rules=\"none\">" &
