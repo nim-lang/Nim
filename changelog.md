@@ -245,6 +245,8 @@ provided by the operating system.
 
 - Added `then`, `catch` to `asyncjs`, for now hidden behind `-d:nimExperimentalAsyncjsThen`.
 
+- `--newruntime` is deprecated.
+
 ## Tool changes
 
 - The rst parser now supports markdown table syntax.
