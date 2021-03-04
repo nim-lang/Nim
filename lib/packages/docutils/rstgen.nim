@@ -52,7 +52,7 @@ const
 
 type
   AnchorContext = object
-    anchor: string # TODO: cstring
+    anchor: string
     index: int
     id: int
 
@@ -105,23 +105,17 @@ type
     testCmd: string
     status: int
 
+proc initContext*(): AnchorContext =
+  AnchorContext()
+
 proc toAnchor(a: AnchorContext): string =
-  "unstable-" & a.anchor & "-" & $a.index & "-" & $a.id
+  "tmp-" & a.anchor & "-" & $a.id
 
 proc toContext(a: AnchorContext, index: int): AnchorContext =
   AnchorContext(anchor: a.anchor, index: index, id: a.id)
 
-proc toContext(a: AnchorContext, anchor: string): AnchorContext =
-  if anchor.len > 0:
-    AnchorContext(anchor: anchor, index: a.index, id: a.id)
-  else:
-    AnchorContext(anchor: a.anchor, index: a.index, id: a.id)
-
 proc toContext2(a: AnchorContext, lastAnchor: string, lastId: int): AnchorContext =
   AnchorContext(anchor: lastAnchor, index: a.index, id: lastId)
-
-proc initContext*(): AnchorContext =
-  AnchorContext(anchor: "", index: 0)
 
 proc toContext3(a: AnchorContext, d: PDoc): AnchorContext =
   d.lastId.inc
@@ -327,7 +321,7 @@ template idS(txt: string): string =
   else:
     case d.target
     of outHtml:
-      """ id="$#"""" % txt
+      " id=\"" & txt & "\""
     of outLatex:
       "\\label{" & txt & "}\\hypertarget{" & txt & "}{}"
         # we add \label for page number references via \pageref, while

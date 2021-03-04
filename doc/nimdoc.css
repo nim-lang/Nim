@@ -129,30 +129,21 @@ html {
   font-size: 100%;
   -webkit-text-size-adjust: 100%;
   -ms-text-size-adjust: 100%;
-  /*scroll-padding-top: 70px;*/
+  /*jumping to top is confusing, doesn't show context upwards*/
   scroll-padding-top: 50%;
 }
 
-/*so that anchors are highlighted when selected*/
 :target {
   background-color: #99ff66;
-  visibility: visible;
-  opacity:1
 }
 
+/*so that anchors are highlighted when selected*/
 .nimanchor:target {
   opacity:1
 }
 
 .nimanchor {
   opacity:0.1
-  /*font-size: 50%;*/
-  /*small*/
-  /*display: block;*/
-  /*text-decoration: none;*/
-  /*visibility: hidden;*/
-  /*visibility: collapse;*/
-  /*color: red;*/
 }
 
 body {
@@ -161,7 +152,6 @@ body {
   font-size: 1.125em;
   line-height: 1.5;
   color: var(--text);
-  /*padding-bottom: 1000px;*/
   background-color: var(--primary-background); }
 
 /* Skeleton grid */
