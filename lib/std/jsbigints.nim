@@ -15,7 +15,7 @@ func big*(integer: SomeInteger): JsBigInt {.importjs: "BigInt(#)".} =
 
 func big*(integer: cstring): JsBigInt {.importjs: "BigInt(#)".} =
   ## Constructor for `JsBigInt`.
-  when nimvm: doAssert off, "JsBigInt can not be used at compile-time nor static context" else: discard
+  when nimvm: doAssert false, "JsBigInt can not be used at compile-time nor static context" else: discard
   runnableExamples:
     doAssert big"-1" == big"1" - big"2"
     # supports decimal, binary, octal, hex:
