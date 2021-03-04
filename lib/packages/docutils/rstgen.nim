@@ -797,7 +797,7 @@ proc stripTocHtml(s: string): string =
     result.delete(first, last)
     first = result.find('<', first)
 
-proc renderHeadline(d: PDoc, n: PRstNode, result: var string, context: AnchorContext, refname: var string) =
+proc renderHeadline(d: PDoc, n: PRstNode, result: var string, context: AnchorContext) =
   var tmp = ""
   for i in countup(0, len(n) - 1): renderRstToOut(d, n.sons[i], tmp, context.toContext(i))
   d.currentSection = tmp
@@ -808,7 +808,8 @@ proc renderHeadline(d: PDoc, n: PRstNode, result: var string, context: AnchorCon
     if n2.level < n.level:
       sectionPrefix = rstnodeToRefname(n2) & "-"
       break
-  refname = sectionPrefix & rstnodeToRefname(n)
+  let refname = sectionPrefix & rstnodeToRefname(n)
+  updateAnchorState(d, refname)
   if d.hasToc:
     var length = len(d.tocPart)
     setLen(d.tocPart, length + 1)
@@ -1200,9 +1201,7 @@ proc renderRstToOut(d: PDoc, n: PRstNode, result: var string, context: AnchorCon
   case n.kind
   of rnInner: renderAux(d, n, result, context)
   of rnHeadline, rnMarkdownHeadline:
-    var anchorname = ""
-    renderHeadline(d, n, result, context, anchorname)
-    updateAnchorState(d, anchorname)
+    renderHeadline(d, n, result, context)
   of rnOverline: renderOverline(d, n, result, context)
   of rnTransition: renderAux(d, n, "<hr$2 />\n", "\\hrule$2\n", result)
   of rnParagraph:
