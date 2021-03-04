@@ -1173,8 +1173,7 @@ proc renderRstToOut(d: PDoc, n: PRstNode, result: var string) =
   if not n.processed: computeAnchor2(n)
   case n.kind
   of rnInner: renderAux(d, n, result)
-  of rnHeadline, rnMarkdownHeadline:
-    renderHeadline(d, n, result)
+  of rnHeadline, rnMarkdownHeadline: renderHeadline(d, n, result)
   of rnOverline: renderOverline(d, n, result)
   of rnTransition: renderAux(d, n, "<hr$2 />\n", "\\hrule$2\n", result)
   of rnParagraph:
