@@ -5,6 +5,8 @@ t
 '''
 """
 
+# xxx merge into tasyncjs.nim
+
 import asyncjs, macros
 
 macro f*(a: untyped): untyped =
