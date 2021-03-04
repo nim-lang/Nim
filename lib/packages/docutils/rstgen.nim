@@ -116,13 +116,10 @@ proc toAnchor(a: AnchorContext): string =
   "unstable-" & a.anchor & "-" & $a.index & "-" & $a.id
 
 proc toContext(a: AnchorContext, index: int): AnchorContext =
-  # "untsablelink_" 
-  # "lnk-" & a.parent & "-" & $a.index
   AnchorContext(anchor: a.anchor, depth: a.depth + 1, index: index, id: a.id)
 
 proc toContext(a: AnchorContext, anchor: string): AnchorContext =
   if anchor.len > 0:
-    # AnchorContext(anchor: anchor, depth: 0, index: 0, id: a.id)
     AnchorContext(anchor: anchor, depth: 0, index: a.index, id: a.id)
   else:
     AnchorContext(anchor: a.anchor, depth: a.depth + 1, index: a.index, id: a.id)
@@ -133,9 +130,9 @@ proc toContext2(a: AnchorContext, lastAnchor: string, lastId: int): AnchorContex
 proc initContext*(): AnchorContext =
   AnchorContext(anchor: "", depth: 0, index: 0)
 
-proc toContext3(d: PDoc): AnchorContext =
-    d.lastId.inc
-    result = AnchorContext(anchor: d.lastAnchor, id: d.lastId)
+proc toContext3(a: AnchorContext, d: PDoc): AnchorContext =
+  d.lastId.inc
+  result = AnchorContext(anchor: d.lastAnchor, index: a.index, id: d.lastId)
 
 proc updateAnchorState(d: PDoc, anchor: string) =
   if anchor.len > 0:
@@ -337,9 +334,6 @@ template idS(txt: string): string =
   else:
     case d.target
     of outHtml:
-      dbg txt
-      # if txt == "evolving-the-stdlib-conventions":
-        # doAssert false
       """ id="$#"""" % txt
     of outLatex:
       "\\label{" & txt & "}\\hypertarget{" & txt & "}{}"
@@ -353,7 +347,6 @@ proc renderAuxAnchor(d: PDoc, n: PRstNode, html, tex: string, result: var string
   let anchor = context.toAnchor
   var tmp = ""
   for i in countup(0, len(n)-1): renderRstToOut(d, n.sons[i], tmp, context.toContext(i))
-  dbg tmp, html, n.anchor, n.anchor.idS
   case d.target
   of outHtml:  result.addf(html, [tmp, anchor])
   of outLatex: result.addf(tex,  [tmp, n.anchor.idS]) # PRTEMP
@@ -365,7 +358,6 @@ proc renderAux(d: PDoc, n: PRstNode, html, tex: string, result: var string, cont
   var tmp = ""
   for i in countup(0, len(n)-1):
     renderRstToOut(d, n.sons[i], tmp, context.toContext(i))
-  dbg tmp, html, n.anchor, n.anchor.idS
   case d.target
   of outHtml:  result.addf(html, [tmp, n.anchor.idS])
   of outLatex: result.addf(tex,  [tmp, n.anchor.idS])
@@ -1201,10 +1193,12 @@ proc renderAdmonition(d: PDoc, n: PRstNode, result: var string, context: AnchorC
 const anchorLink = """<a class="nimanchor" id="$2" href="#$2">🔗</a>"""
 
 proc renderRstToOut(d: PDoc, n: PRstNode, result: var string, context: AnchorContext) =
+  dbg context.index
   updateAnchorState(d, n.anchor)
   var context = context
   if n.anchor.len == 0:
     context = context.toContext2(d.lastAnchor, d.lastId)
+  dbg context.index, "D20210303T193146"
   template renderAux(d: PDoc, n: PRstNode, result: var string) =
     renderAux(d, n, result, context)
   template renderAux(d: PDoc, n: PRstNode, html, tex: string, result: var string) =
@@ -1212,7 +1206,6 @@ proc renderRstToOut(d: PDoc, n: PRstNode, result: var string, context: AnchorCon
   template renderRstToOut(d: PDoc, n: PRstNode, result: var string) =
     renderRstToOut(d, n, result, context)
 
-  # dbg n.kind, n.anchor, context.toAnchor
   if n == nil: return
   case n.kind
   of rnInner: renderAux(d, n, result, context)
@@ -1224,38 +1217,19 @@ proc renderRstToOut(d: PDoc, n: PRstNode, result: var string, context: AnchorCon
   of rnTransition: renderAux(d, n, "<hr$2 />\n", "\\hrule$2\n", result)
   of rnParagraph:
     let first = context.index == 0
-    # if n.anchor.len == 0: # PRTEMP
-    if false:
-      if first:
-        renderAux(d, n, "<p$2>$1</p>\n", "$2\n$1\n\n", result)
-      else:
-        renderAux(d, n, "<p$2>$1</p>\n", "$2\n$1\n\n", result)
-      # renderAux(d, n, "$1\n", "$2\n$1\n\n", result)
+    context = context.toContext3(d)
+    dbg context.index
+    if first:
+      renderAuxAnchor(d, n, "$1", "$2\n$1\n\n", result, context)
     else:
-      context = toContext3(d)
-      # renderAuxAnchor(d, n, """<p>  <a class="nimanchor" id="$2" href="#$2">🔗</a>  $1</p>""", "$2\n$1\n\n", result, context)
-      if first:
-        renderAuxAnchor(d, n, "$1", "$2\n$1\n\n", result, context)
-      else:
-        renderAuxAnchor(d, n, """<p>$1 $$1</p>""" % anchorLink, "$2\n$1\n\n", result, context)
-
-    # if n.anchor.len == 0: # PRTEMP
-      # renderAux(d, n, "<p$2>$1</p>\n", "$2\n$1\n\n", result)
-    # else:
-    # renderAuxAnchor(d, n, """<p>  <a class="nimanchor" id="$2" href="#$2">🔗</a>  $1</p>""", "$2\n$1\n\n", result, context.toContext(n.anchor))
-
-    # context = toContext3(d)
-    # renderAuxAnchor(d, n, """<p>  <a class="nimanchor" id="$2" href="#$2">🔗</a>  $1</p>""", "$2\n$1\n\n", result, context)
+      renderAuxAnchor(d, n, """<p>$1 $$1</p>""" % anchorLink, "$2\n$1\n\n", result, context)
   of rnBulletList:
-    context = toContext3(d)
+    context = context.toContext3(d)
     renderAux(d, n, "<ul$2 class=\"simple\">$1</ul>\n",
                     "\\begin{itemize}\n$2\n$1\\end{itemize}\n", result)
   of rnBulletItem, rnEnumItem:
-    context = toContext3(d)
-    # renderAuxAnchor(d, n, """<li> <a class="nimanchor" id="$2" href="#$2">🔗</a> $1</li>""", "\\item $2$1\n", result, context)
-    # renderAuxAnchor(d, n, """<li> <a class="nimanchor" id="$2" href="#$2">🔗</a> $1</li>""", "\\item $2$1\n", result, context)
+    context = context.toContext3(d)
     renderAuxAnchor(d, n, """<li>$1 $$1</li>""" % anchorLink , "\\item $2$1\n", result, context)
-    # renderAuxAnchor(d, n, """<li>$1</li>""", "\\item $2$1\n", result, context)
   of rnEnumList: renderEnumList(d, n, result, context)
   of rnDefList:
     renderAux(d, n, "<dl$2 class=\"docutils\">$1</dl>\n",
