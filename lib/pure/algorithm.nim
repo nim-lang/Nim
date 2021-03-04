@@ -563,7 +563,8 @@ proc product*[T](x: openArray[seq[T]]): seq[seq[T]] =
   ## Produces the Cartesian product of the array.
   ## Every element of the result is a combination of one element from each seq in `x`,
   ## with the ith element coming from `x[i]`.
-  ## Warning: complexity may explode.
+  ## 
+  ## .. warning:: complexity may explode.
   runnableExamples:
     assert product(@[@[1], @[2]]) == @[@[1, 2]]
     assert product(@[@["A", "K"], @["Q"]]) == @[@["K", "Q"], @["A", "Q"]]
