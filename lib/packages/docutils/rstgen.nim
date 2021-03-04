@@ -109,7 +109,10 @@ proc initContext*(): AnchorContext =
   AnchorContext()
 
 proc toAnchor(a: AnchorContext): string =
-  "tmp-" & a.anchor & "-" & $a.id
+  if a.id == 0: # stable anchor
+    a.anchor
+  else: # unstable anchor
+    "tmp-" & a.anchor & "-" & $a.id
 
 proc toContext(a: AnchorContext, index: int): AnchorContext =
   AnchorContext(anchor: a.anchor, index: index, id: a.id)
@@ -1177,8 +1180,7 @@ const anchorLink = """<a class="nimanchor" id="$2" href="#$2">🔗</a>"""
 proc renderRstToOut(d: PDoc, n: PRstNode, result: var string, context: AnchorContext) =
   updateAnchorState(d, n.anchor)
   var context = context
-  if n.anchor.len == 0:
-    context = context.toContext2(d.lastAnchor, d.lastId)
+  context = context.toContext2(d.lastAnchor, d.lastId)
   template renderAux(d: PDoc, n: PRstNode, result: var string) =
     renderAux(d, n, result, context)
   template renderAux(d: PDoc, n: PRstNode, html, tex: string, result: var string) =
@@ -1195,7 +1197,8 @@ proc renderRstToOut(d: PDoc, n: PRstNode, result: var string, context: AnchorCon
   of rnTransition: renderAux(d, n, "<hr$2 />\n", "\\hrule$2\n", result)
   of rnParagraph:
     let first = context.index == 0
-    context = context.toContext3(d)
+    if n.anchor.len == 0:
+      context = context.toContext3(d)
     if first:
       # pending https://github.com/nim-lang/Nim/issues/17249
       renderAux(d, n, "$1", "$2\n$1\n\n", result, context, useAnchor = true)
