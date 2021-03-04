@@ -112,7 +112,8 @@ proc toAnchor(a: AnchorContext): string =
   # else:
   #   "unstable-" & a.anchor & "-" & $a.depth & "-" & $a.index & "-" & $a.id
   # "unstable-" & a.anchor & "-" & $a.depth & "-" & $a.index & "-" & $a.id
-  "unstable-" & a.anchor & "-" & $a.id
+  # "unstable-" & a.anchor & "-" & $a.id
+  "unstable-" & a.anchor & "-" & $a.index & "-" & $a.id
 
 proc toContext(a: AnchorContext, index: int): AnchorContext =
   # "untsablelink_" 
@@ -121,15 +122,25 @@ proc toContext(a: AnchorContext, index: int): AnchorContext =
 
 proc toContext(a: AnchorContext, anchor: string): AnchorContext =
   if anchor.len > 0:
-    AnchorContext(anchor: anchor, depth: 0, index: 0, id: a.id)
+    # AnchorContext(anchor: anchor, depth: 0, index: 0, id: a.id)
+    AnchorContext(anchor: anchor, depth: 0, index: a.index, id: a.id)
   else:
     AnchorContext(anchor: a.anchor, depth: a.depth + 1, index: a.index, id: a.id)
 
 proc toContext2(a: AnchorContext, lastAnchor: string, lastId: int): AnchorContext =
-  AnchorContext(anchor: lastAnchor, id: lastId)
+  AnchorContext(anchor: lastAnchor, index: a.index, id: lastId)
 
 proc initContext*(): AnchorContext =
   AnchorContext(anchor: "", depth: 0, index: 0)
+
+proc toContext3(d: PDoc): AnchorContext =
+    d.lastId.inc
+    result = AnchorContext(anchor: d.lastAnchor, id: d.lastId)
+
+proc updateAnchorState(d: PDoc, anchor: string) =
+  if anchor.len > 0:
+    d.lastAnchor = anchor
+    d.lastId = 0
 
 proc prettyLink*(file: string): string =
   changeFileExt(file, "").replace("_._", "..")
@@ -1187,14 +1198,13 @@ proc renderAdmonition(d: PDoc, n: PRstNode, result: var string, context: AnchorC
         "$1\n\\end{mdframed}\n",
       result, context)
 
+const anchorLink = """<a class="nimanchor" id="$2" href="#$2">🔗</a>"""
+
 proc renderRstToOut(d: PDoc, n: PRstNode, result: var string, context: AnchorContext) =
-  # if n.anchor.len > 0:
-    # context.anchor
-  # var context = context.toContext(n.anchor)
-  # var context = 
-  # d.lastId.inc
-  # var context = context.toContext(n.anchor, d.lastAnchor, d.lastId)
-  var context = context.toContext2(d.lastAnchor, d.lastId)
+  updateAnchorState(d, n.anchor)
+  var context = context
+  if n.anchor.len == 0:
+    context = context.toContext2(d.lastAnchor, d.lastId)
   template renderAux(d: PDoc, n: PRstNode, result: var string) =
     renderAux(d, n, result, context)
   template renderAux(d: PDoc, n: PRstNode, html, tex: string, result: var string) =
@@ -1202,39 +1212,50 @@ proc renderRstToOut(d: PDoc, n: PRstNode, result: var string, context: AnchorCon
   template renderRstToOut(d: PDoc, n: PRstNode, result: var string) =
     renderRstToOut(d, n, result, context)
 
-  dbg n.kind, n.anchor, context.toAnchor
+  # dbg n.kind, n.anchor, context.toAnchor
   if n == nil: return
   case n.kind
   of rnInner: renderAux(d, n, result, context)
   of rnHeadline, rnMarkdownHeadline:
     var anchorname = ""
     renderHeadline(d, n, result, context, anchorname)
-    dbg anchorname
-    context = context.toContext(anchorname)
-    d.lastAnchor = context.anchor
-    d.lastId = 0
-    # dbg context.anchor
-    # doAssert context.anchor.len == 0
+    updateAnchorState(d, anchorname)
   of rnOverline: renderOverline(d, n, result, context)
   of rnTransition: renderAux(d, n, "<hr$2 />\n", "\\hrule$2\n", result)
   of rnParagraph:
+    let first = context.index == 0
+    # if n.anchor.len == 0: # PRTEMP
+    if false:
+      if first:
+        renderAux(d, n, "<p$2>$1</p>\n", "$2\n$1\n\n", result)
+      else:
+        renderAux(d, n, "<p$2>$1</p>\n", "$2\n$1\n\n", result)
+      # renderAux(d, n, "$1\n", "$2\n$1\n\n", result)
+    else:
+      context = toContext3(d)
+      # renderAuxAnchor(d, n, """<p>  <a class="nimanchor" id="$2" href="#$2">🔗</a>  $1</p>""", "$2\n$1\n\n", result, context)
+      if first:
+        renderAuxAnchor(d, n, "$1", "$2\n$1\n\n", result, context)
+      else:
+        renderAuxAnchor(d, n, """<p>$1 $$1</p>""" % anchorLink, "$2\n$1\n\n", result, context)
+
     # if n.anchor.len == 0: # PRTEMP
       # renderAux(d, n, "<p$2>$1</p>\n", "$2\n$1\n\n", result)
     # else:
     # renderAuxAnchor(d, n, """<p>  <a class="nimanchor" id="$2" href="#$2">🔗</a>  $1</p>""", "$2\n$1\n\n", result, context.toContext(n.anchor))
 
-    d.lastId.inc
-    context = context.toContext2(d.lastAnchor, d.lastId)
-    renderAuxAnchor(d, n, """<p>  <a class="nimanchor" id="$2" href="#$2">🔗</a>  $1</p>""", "$2\n$1\n\n", result, context)
+    # context = toContext3(d)
+    # renderAuxAnchor(d, n, """<p>  <a class="nimanchor" id="$2" href="#$2">🔗</a>  $1</p>""", "$2\n$1\n\n", result, context)
   of rnBulletList:
-    d.lastId.inc
-    context = context.toContext2(d.lastAnchor, d.lastId)
+    context = toContext3(d)
     renderAux(d, n, "<ul$2 class=\"simple\">$1</ul>\n",
                     "\\begin{itemize}\n$2\n$1\\end{itemize}\n", result)
   of rnBulletItem, rnEnumItem:
-    d.lastId.inc
-    context = context.toContext2(d.lastAnchor, d.lastId)
-    renderAuxAnchor(d, n, """<li>  <a class="nimanchor" id="$2" href="#$2">🔗</a> $1</li>""", "\\item $2$1\n", result, context)
+    context = toContext3(d)
+    # renderAuxAnchor(d, n, """<li> <a class="nimanchor" id="$2" href="#$2">🔗</a> $1</li>""", "\\item $2$1\n", result, context)
+    # renderAuxAnchor(d, n, """<li> <a class="nimanchor" id="$2" href="#$2">🔗</a> $1</li>""", "\\item $2$1\n", result, context)
+    renderAuxAnchor(d, n, """<li>$1 $$1</li>""" % anchorLink , "\\item $2$1\n", result, context)
+    # renderAuxAnchor(d, n, """<li>$1</li>""", "\\item $2$1\n", result, context)
   of rnEnumList: renderEnumList(d, n, result, context)
   of rnDefList:
     renderAux(d, n, "<dl$2 class=\"docutils\">$1</dl>\n",

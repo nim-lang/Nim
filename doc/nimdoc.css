@@ -136,6 +136,15 @@ html {
 /*so that anchors are highlighted when selected*/
 :target {
   background-color: #99ff66;
+  visibility: visible;
+}
+
+.nimanchor {
+  /*display: block;*/
+  /*text-decoration: none;*/
+  /*visibility: hidden;*/
+  /*visibility: collapse;*/
+  /*color: red;*/
 }
 
 body {
