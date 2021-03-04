@@ -128,11 +128,14 @@ input:checked + .slider:before {
 html {
   font-size: 100%;
   -webkit-text-size-adjust: 100%;
-  -ms-text-size-adjust: 100%; }
+  -ms-text-size-adjust: 100%;
+  /*scroll-padding-top: 70px;*/
+  scroll-padding-top: 50%;
+}
 
 /*so that anchors are highlighted when selected*/
 :target {
-   background-color: #99ff66;
+  background-color: #99ff66;
 }
 
 body {

@@ -118,7 +118,7 @@ proc toContext(a: AnchorContext, anchor: string): AnchorContext =
   if anchor.len > 0:
     AnchorContext(anchor: anchor, depth: 0, index: 0)
   else:
-    AnchorContext(anchor: anchor, depth: a.depth + 1, index: 0)
+    AnchorContext(anchor: a.anchor, depth: a.depth + 1, index: a.index)
 
 proc initContext*(): AnchorContext =
   AnchorContext(anchor: "", depth: 0, index: 0)
@@ -1178,6 +1178,7 @@ proc renderAdmonition(d: PDoc, n: PRstNode, result: var string, context: AnchorC
       result, context)
 
 proc renderRstToOut(d: PDoc, n: PRstNode, result: var string, context: AnchorContext) =
+  let context = context.toContext(n.anchor)
   template renderAux(d: PDoc, n: PRstNode, result: var string) =
     renderAux(d, n, result, context)
   template renderAux(d: PDoc, n: PRstNode, html, tex: string, result: var string) =
@@ -1192,10 +1193,11 @@ proc renderRstToOut(d: PDoc, n: PRstNode, result: var string, context: AnchorCon
   of rnOverline: renderOverline(d, n, result, context)
   of rnTransition: renderAux(d, n, "<hr$2 />\n", "\\hrule$2\n", result)
   of rnParagraph:
-    if n.anchor.len == 0: # PRTEMP
-      renderAux(d, n, "<p$2>$1</p>\n", "$2\n$1\n\n", result)
-    else:
-      renderAuxAnchor(d, n, """<p>  <a class="nimanchor" id="$2" href="#$2">🔗</a>  $1</p>""", "$2\n$1\n\n", result, context.toContext(n.anchor))
+    # if n.anchor.len == 0: # PRTEMP
+      # renderAux(d, n, "<p$2>$1</p>\n", "$2\n$1\n\n", result)
+    # else:
+    # renderAuxAnchor(d, n, """<p>  <a class="nimanchor" id="$2" href="#$2">🔗</a>  $1</p>""", "$2\n$1\n\n", result, context.toContext(n.anchor))
+    renderAuxAnchor(d, n, """<p>  <a class="nimanchor" id="$2" href="#$2">🔗</a>  $1</p>""", "$2\n$1\n\n", result, context)
   of rnBulletList:
     renderAux(d, n, "<ul$2 class=\"simple\">$1</ul>\n",
                     "\\begin{itemize}\n$2\n$1\\end{itemize}\n", result)
