@@ -1177,13 +1177,8 @@ proc renderRstToOut(d: PDoc, n: PRstNode, result: var string) =
   of rnOverline: renderOverline(d, n, result)
   of rnTransition: renderAux(d, n, "<hr$2 />\n", "\\hrule$2\n", result)
   of rnParagraph:
-    # let first = context.index == 0
-    let first = false # PRTEMP
-    if first:
-      # pending https://github.com/nim-lang/Nim/issues/17249
-      renderAux(d, n, "$1", "$2\n$1\n\n", result, useAnchor = true)
-    else:
-      renderAux(d, n, """<p>$1 $$1</p>""" % anchorLink, "$2\n$1\n\n", result, useAnchor = true)
+    # xxx see https://github.com/nim-lang/Nim/issues/17249, spurious <p>
+    renderAux(d, n, """<p>$1 $$1</p>""" % anchorLink, "$2\n$1\n\n", result, useAnchor = true)
   of rnBulletList:
     renderAux(d, n, "<ul$2 class=\"simple\">$1</ul>\n",
                     "\\begin{itemize}\n$2\n$1\\end{itemize}\n", result)
