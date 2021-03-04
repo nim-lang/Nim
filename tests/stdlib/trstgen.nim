@@ -201,8 +201,8 @@ not in table"""
 <tr><td>D1 <tt class="docutils literal"><span class="pre">code |</span></tt></td><td>D2</td></tr>
 <tr><td>E1 | text</td><td></td></tr>
 <tr><td></td><td>F2 without pipe</td></tr>
-</table><p>not in table</p>
-"""
+</table><p><a class="nimanchor" id="-ROOT-1" href="#-ROOT-1">🔗</a> not in table</p>
+""", output1
     let input2 = """
 | A1 header | A2 |
 | --- | --- |"""
