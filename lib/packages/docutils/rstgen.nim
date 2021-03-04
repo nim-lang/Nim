@@ -306,7 +306,7 @@ proc renderAux(d: PDoc, n: PRstNode, html, tex: string, result: var string, useA
   for i in countup(0, len(n)-1): renderRstToOut(d, n.sons[i], tmp)
   case d.target
   of outHtml:
-    let anchor = if useAnchor: n.anchor2 else: n.anchor.idS
+    let anchor = if useAnchor: n.anchorGen else: n.anchor.idS
     result.addf(html, [tmp, anchor])
   of outLatex: result.addf(tex,  [tmp, n.anchor.idS])
 
@@ -1140,18 +1140,18 @@ proc renderAdmonition(d: PDoc, n: PRstNode, result: var string) =
 
 const anchorLink = """<a class="nimanchor" id="$2" href="#$2">🔗</a>"""
 
-proc computeAnchor2(n: PRstNode) =
+proc computeAnchorGen(n: PRstNode) =
   var anchorLast = "ROOT"
   var idLast = 0
   proc impl(n: PRstNode, anchor: string, id: int) =
     if n == nil: return
-    n.processed = true
+    n.anchorGen = "\0" # special char to indicate we've visited this node.
     var anchor = anchor
     var id = id
     template update(anchorNew) =
       id = 0
       anchor = anchorNew
-      n.anchor2 = anchor
+      n.anchorGen = anchor
       anchorLast = anchor
       idLast = 0
     if n.anchor.len > 0:
@@ -1163,14 +1163,14 @@ proc computeAnchor2(n: PRstNode) =
       # TODO: rnBulletList
       if n.kind in {rnParagraph, rnBulletItem, rnEnumItem}:
         idLast.inc
-        n.anchor2 = "-" & anchorLast & "-" & $idLast
+        n.anchorGen = "-" & anchorLast & "-" & $idLast
     for ai in n.sons:
       impl(ai, anchor, id)
   impl(n, anchorLast, 0)
 
 proc renderRstToOut(d: PDoc, n: PRstNode, result: var string) =
   if n == nil: return
-  if not n.processed: computeAnchor2(n)
+  if n.anchorGen.len == 0: computeAnchorGen(n)
   case n.kind
   of rnInner: renderAux(d, n, result)
   of rnHeadline, rnMarkdownHeadline: renderHeadline(d, n, result)

@@ -97,8 +97,7 @@ type
     anchor*: string           ## anchor, internal link target
                               ## (aka HTML id tag, aka Latex label/hypertarget)
     sons*: RstNodeSeq        ## the node's sons
-    processed*: bool
-    anchor2*: string
+    anchorGen*: string        ## generated anchors from context
 
 proc len*(n: PRstNode): int =
   result = len(n.sons)
