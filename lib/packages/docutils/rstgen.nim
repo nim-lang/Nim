@@ -53,7 +53,6 @@ const
 type
   AnchorContext = object
     anchor: string # TODO: cstring
-    depth: int
     index: int
     id: int
 
@@ -107,28 +106,22 @@ type
     status: int
 
 proc toAnchor(a: AnchorContext): string =
-  # if a.depth == 0:
-  #   a.anchor
-  # else:
-  #   "unstable-" & a.anchor & "-" & $a.depth & "-" & $a.index & "-" & $a.id
-  # "unstable-" & a.anchor & "-" & $a.depth & "-" & $a.index & "-" & $a.id
-  # "unstable-" & a.anchor & "-" & $a.id
   "unstable-" & a.anchor & "-" & $a.index & "-" & $a.id
 
 proc toContext(a: AnchorContext, index: int): AnchorContext =
-  AnchorContext(anchor: a.anchor, depth: a.depth + 1, index: index, id: a.id)
+  AnchorContext(anchor: a.anchor, index: index, id: a.id)
 
 proc toContext(a: AnchorContext, anchor: string): AnchorContext =
   if anchor.len > 0:
-    AnchorContext(anchor: anchor, depth: 0, index: a.index, id: a.id)
+    AnchorContext(anchor: anchor, index: a.index, id: a.id)
   else:
-    AnchorContext(anchor: a.anchor, depth: a.depth + 1, index: a.index, id: a.id)
+    AnchorContext(anchor: a.anchor, index: a.index, id: a.id)
 
 proc toContext2(a: AnchorContext, lastAnchor: string, lastId: int): AnchorContext =
   AnchorContext(anchor: lastAnchor, index: a.index, id: lastId)
 
 proc initContext*(): AnchorContext =
-  AnchorContext(anchor: "", depth: 0, index: 0)
+  AnchorContext(anchor: "", index: 0)
 
 proc toContext3(a: AnchorContext, d: PDoc): AnchorContext =
   d.lastId.inc
@@ -346,7 +339,8 @@ proc renderAuxAnchor(d: PDoc, n: PRstNode, html, tex: string, result: var string
   # PRTEMP :factor
   let anchor = context.toAnchor
   var tmp = ""
-  for i in countup(0, len(n)-1): renderRstToOut(d, n.sons[i], tmp, context.toContext(i))
+  for i in countup(0, len(n)-1):
+    renderRstToOut(d, n.sons[i], tmp, context.toContext(i))
   case d.target
   of outHtml:  result.addf(html, [tmp, anchor])
   of outLatex: result.addf(tex,  [tmp, n.anchor.idS]) # PRTEMP
@@ -1190,15 +1184,17 @@ proc renderAdmonition(d: PDoc, n: PRstNode, result: var string, context: AnchorC
         "$1\n\\end{mdframed}\n",
       result, context)
 
+#[
+https://jrgraphix.net/r/Unicode/25A0-25FF
+⚓ 🔗 ⛫ ▢ ▯
+]#
 const anchorLink = """<a class="nimanchor" id="$2" href="#$2">🔗</a>"""
 
 proc renderRstToOut(d: PDoc, n: PRstNode, result: var string, context: AnchorContext) =
-  dbg context.index
   updateAnchorState(d, n.anchor)
   var context = context
   if n.anchor.len == 0:
     context = context.toContext2(d.lastAnchor, d.lastId)
-  dbg context.index, "D20210303T193146"
   template renderAux(d: PDoc, n: PRstNode, result: var string) =
     renderAux(d, n, result, context)
   template renderAux(d: PDoc, n: PRstNode, html, tex: string, result: var string) =
@@ -1218,8 +1214,8 @@ proc renderRstToOut(d: PDoc, n: PRstNode, result: var string, context: AnchorCon
   of rnParagraph:
     let first = context.index == 0
     context = context.toContext3(d)
-    dbg context.index
     if first:
+      # pending https://github.com/nim-lang/Nim/issues/17249
       renderAuxAnchor(d, n, "$1", "$2\n$1\n\n", result, context)
     else:
       renderAuxAnchor(d, n, """<p>$1 $$1</p>""" % anchorLink, "$2\n$1\n\n", result, context)
