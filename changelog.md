@@ -194,6 +194,10 @@ provided by the operating system.
 - `system.addEscapedChar` now renders `\r` as `\r` instead of `\c`, to be compatible
   with most other languages.
 
+- `asyncdispatch.sleepAsync` do not take `float` anymore, to be consistent with `withTimeout`,
+  also avoids Bugs like `sleepAsync(NaN)`, `sleepAsync(Inf)`, etc.
+
+
 ## Language changes
 
 - `nimscript` now handles `except Exception as e`.

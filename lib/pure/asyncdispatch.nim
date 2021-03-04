@@ -1830,17 +1830,13 @@ proc connect*(socket: AsyncFD, address: string, port: Port,
     socket.SocketHandle.bindToDomain(domain)
   asyncAddrInfoLoop(aiList, socket)
 
-proc sleepAsync*(ms: int | float): owned(Future[void]) =
+proc sleepAsync*(ms: int): owned(Future[void]) =
   ## Suspends the execution of the current async procedure for the next
   ## `ms` milliseconds.
   var retFuture = newFuture[void]("sleepAsync")
   let p = getGlobalDispatcher()
-  when ms is int:
-    p.timers.push((getMonoTime() + initDuration(milliseconds = ms), retFuture))
-  elif ms is float:
-    let ns = (ms * 1_000_000).int64
-    p.timers.push((getMonoTime() + initDuration(nanoseconds = ns), retFuture))
-  return retFuture
+  p.timers.push((getMonoTime() + initDuration(milliseconds = ms), retFuture))
+  result = retFuture
 
 proc withTimeout*[T](fut: Future[T], timeout: int): owned(Future[bool]) =
   ## Returns a future which will complete once `fut` completes or after
