@@ -87,16 +87,6 @@ macro `=>`*(p, b: untyped): untyped =
 
   checkPragma(p, pragma) # check again after -> transform
 
-  since (1, 3):
-    if p.kind in {nnkCall, nnkObjConstr}:
-      # foo(x, y) => x + y
-      kind = nnkProcDef
-      name = p[0]
-      let newP = newNimNode(nnkPar)
-      for i in 1..<p.len:
-        newP.add(p[i])
-      p = newP
-
   case p.kind
   of nnkPar, nnkTupleConstr:
     var untypedBeforeColon = 0
