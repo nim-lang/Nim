@@ -351,7 +351,7 @@ var onUnhandledException*: (proc (errorMsg: string) {.
   nimcall, gcsafe.}) ## Set this error \
   ## handler to override the existing behaviour on an unhandled exception.
   ##
-  ## The default is to write a stacktrace to ``stderr`` and then call ``quit(1)``.
+  ## The default is to write a stacktrace to `stderr` and then call `quit(1)`.
   ## Unstable API.
 
 proc reportUnhandledErrorAux(e: ref Exception) {.nodestroy.} =
@@ -424,7 +424,7 @@ when gotoBasedExceptions:
     result = addr(nimInErrorMode)
 
   proc nimTestErrorFlag() {.compilerRtl.} =
-    ## This proc must be called before ``currException`` is destroyed.
+    ## This proc must be called before `currException` is destroyed.
     ## It also must be called at the end of every thread to ensure no
     ## error is swallowed.
     if nimInErrorMode and currException != nil:
@@ -527,8 +527,8 @@ proc getStackTrace(e: ref Exception): string =
     result = ""
 
 proc getStackTraceEntries*(e: ref Exception): seq[StackTraceEntry] =
-  ## Returns the attached stack trace to the exception ``e`` as
-  ## a ``seq``. This is not yet available for the JS backend.
+  ## Returns the attached stack trace to the exception `e` as
+  ## a `seq`. This is not yet available for the JS backend.
   when not defined(nimSeqsV2):
     shallowCopy(result, e.trace)
   else:

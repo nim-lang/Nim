@@ -147,11 +147,11 @@ proc llStreamReadLine*(s: PLLStream, line: var string): bool =
   of llsString:
     while s.rd < s.s.len:
       case s.s[s.rd]
-      of '\x0D':
+      of '\r':
         inc(s.rd)
-        if s.s[s.rd] == '\x0A': inc(s.rd)
+        if s.s[s.rd] == '\n': inc(s.rd)
         break
-      of '\x0A':
+      of '\n':
         inc(s.rd)
         break
       else:

@@ -1195,7 +1195,8 @@ proc sameTypeAux(x, y: PType, c: var TSameTypeClosure): bool =
     cycleCheck()
     result = sameTypeAux(a.lastSon, b.lastSon, c)
   of tyNone: result = false
-  of tyOptDeprecated: doAssert false
+  of tyConcept:
+    result = exprStructuralEquivalent(a.n, b.n)
 
 proc sameBackendType*(x, y: PType): bool =
   var c = initSameTypeClosure()
@@ -1270,6 +1271,7 @@ proc matchType*(a: PType, pattern: openArray[tuple[k:TTypeKind, i:int]],
     if i >= a.len or a[i] == nil: return false
     a = a[i]
   result = a.kind == last
+
 
 include sizealignoffsetimpl
 

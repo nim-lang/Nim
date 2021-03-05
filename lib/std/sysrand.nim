@@ -7,6 +7,10 @@
 #    distribution, for details about the copyright.
 #
 
+## .. warning:: This module was added in Nim 1.6. If you are using it for cryptographic purposes,
+##   keep in mind that so far this has not been audited by any security professionals,
+##   therefore may not be secure.
+## 
 ## `std/sysrand` generates random numbers from a secure source provided by the operating system.
 ## It is also called Cryptographically secure pseudorandom number generator.
 ## It should be unpredictable enough for cryptographic applications,

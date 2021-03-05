@@ -75,7 +75,7 @@ since (1, 5):
   func getMsg(info: InstantiationInfo; msg: string): string =
     var temp = ""
     temp.toLocation(info.filename, info.line, info.column + 1)
-    result.addQuoted(temp)
+    result.addQuoted("[jsAssert] " & temp)
     result.add ','
     result.addQuoted(msg)
 

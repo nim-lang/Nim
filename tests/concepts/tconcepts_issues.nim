@@ -397,7 +397,7 @@ block misc_issues:
   echo p2.x is float and p2.y is float # true
 
   # https://github.com/nim-lang/Nim/issues/2018
-  type ProtocolFollower = concept
+  type ProtocolFollower = concept c
     true # not a particularly involved protocol
 
   type ImplementorA = object

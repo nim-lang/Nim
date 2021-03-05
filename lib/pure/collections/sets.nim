@@ -7,7 +7,7 @@
 #    distribution, for details about the copyright.
 #
 
-## The ``sets`` module implements an efficient `hash set`:idx: and
+## The `sets` module implements an efficient `hash set`:idx: and
 ## ordered hash set.
 ##
 ## Hash sets are different from the `built in set type
@@ -40,7 +40,7 @@
 ##
 ##
 ## Note: The data types declared here have *value semantics*: This means
-## that ``=`` performs a copy of the set.
+## that `=` performs a copy of the set.
 ##
 ## **See also:**
 ## * `intsets module <intsets.html>`_ for efficient int sets
@@ -113,7 +113,7 @@ proc initHashSet*[A](initialSize = defaultInitialSize): HashSet[A] =
   ## Wrapper around `init proc <#init,HashSet[A]>`_ for initialization of
   ## hash sets.
   ##
-  ## Returns an empty hash set you can assign directly in ``var`` blocks in a
+  ## Returns an empty hash set you can assign directly in `var` blocks in a
   ## single line.
   ##
   ## Starting from Nim v0.20, sets are initialized by default and it is
@@ -130,7 +130,7 @@ proc initHashSet*[A](initialSize = defaultInitialSize): HashSet[A] =
 
 proc `[]`*[A](s: var HashSet[A], key: A): var A =
   ## Returns the element that is actually stored in `s` which has the same
-  ## value as `key` or raises the ``KeyError`` exception.
+  ## value as `key` or raises the `KeyError` exception.
   ##
   ## This is useful when one overloaded `hash` and `==` but still needs
   ## reference semantics for sharing.
@@ -652,7 +652,7 @@ proc initOrderedSet*[A](initialSize = defaultInitialSize): OrderedSet[A] =
   ## Wrapper around `init proc <#init,OrderedSet[A]>`_ for initialization of
   ## ordered hash sets.
   ##
-  ## Returns an empty ordered hash set you can assign directly in ``var`` blocks
+  ## Returns an empty ordered hash set you can assign directly in `var` blocks
   ## in a single line.
   ##
   ## Starting from Nim v0.20, sets are initialized by default and it is
