@@ -25,7 +25,12 @@ when hostOS == "standalone":
     panic(arg)
 
 elif (defined(nimQuirky) or defined(nimPanics)) and not defined(nimscript):
-  import ansi_c
+  when defined(genode):
+    proc writeToStdErr(msg: cstring) =
+      {.emit: "Genode::error(Genode::Cstring(`msg`));".}
+  else:
+    import ansi_c
+    proc writeToStdErr(msg: cstring) = rawWrite(cstderr, msg)
 
   proc name(t: typedesc): string {.magic: "TypeTrait".}
 
@@ -42,7 +47,7 @@ elif (defined(nimQuirky) or defined(nimPanics)) and not defined(nimscript):
       add(buf, " [")
       add(buf, name exceptn)
       add(buf, "]\n")
-      cstderr.rawWrite buf
+      writeToStdErr buf
       quit 1
 
   proc sysFatal(exceptn: typedesc, message: string) {.inline, noreturn.} =

@@ -96,16 +96,16 @@ proc free(s: Cell; desc: PNimTypeV2) {.inline.} =
     cast[DisposeProc](desc.disposeImpl)(p)
 
   when false:
-    cstderr.rawWrite desc.name
-    cstderr.rawWrite " "
+    writeToStdErr desc.name
+    writeToStdErr " "
     if desc.disposeImpl == nil:
-      cstderr.rawWrite "lacks dispose"
+      writeToStdErr "lacks dispose"
       if desc.traceImpl != nil:
-        cstderr.rawWrite ", but has trace\n"
+        writeToStdErr ", but has trace\n"
       else:
-        cstderr.rawWrite ", and lacks trace\n"
+        writeToStdErr ", and lacks trace\n"
     else:
-      cstderr.rawWrite "has dispose!\n"
+      writeToStdErr "has dispose!\n"
 
   nimRawDispose(p, desc.align)
 
