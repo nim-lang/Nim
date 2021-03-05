@@ -467,7 +467,12 @@ type
     s*: PSharedState
     indentStack*: seq[int]
     filename*: string
-    line*, col*: int
+    line*, col*: int            ## initial line/column of whole text or
+                                ## documenation fragment that will be added
+                                ## in case of error/warning reporting to
+                                ## (relative) line/column of the token.
+                                ## For standalone text should be line=1 and
+                                ## col=0 (Nim global reporting adds ColOffset=1)
     hasToc*: bool
     curAnchor*: string          # variable to track latest anchor in s.anchors
 
@@ -2359,7 +2364,8 @@ proc selectDir(p: var RstParser, d: string): PRstNode =
   of "warning": result = dirAdmonition(p, d)
   of "default-role": result = dirDefaultRole(p)
   else:
-    rstMessage(p, meInvalidDirective, d)
+    let tok = p.tok[p.idx-2]  # report on directive in ".. directive::"
+    rstMessage(p, meInvalidDirective, d, tok.line, tok.col)
 
 proc prefix(ftnType: FootnoteType): string =
   case ftnType

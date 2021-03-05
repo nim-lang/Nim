@@ -1366,8 +1366,8 @@ proc commandRstAux(cache: IdentCache, conf: ConfigRef;
   var d = newDocumentor(filen, cache, conf, outExt)
 
   d.isPureRst = true
-  var rst = parseRst(readFile(filen.string), filen.string, 1, 1, d.hasToc,
-                     {roSupportRawDirective, roSupportMarkdown}, conf)
+  var rst = parseRst(readFile(filen.string), filen.string, line=1, column=0,
+                     d.hasToc, {roSupportRawDirective, roSupportMarkdown}, conf)
   var modDesc = newStringOfCap(30_000)
   renderRstToOut(d[], rst, modDesc)
   d.modDesc = rope(modDesc)
