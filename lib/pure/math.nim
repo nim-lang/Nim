@@ -1190,6 +1190,8 @@ func clamp*[T](val: T, bounds: Slice[T]): T {.since: (1, 5), inline.} =
     type A = enum a0, a1, a2, a3, a4, a5
     assert a1.clamp(a2..a4) == a2
     assert clamp((3, 0), (1, 0) .. (2, 9)) == (2, 9)
+    doAssertRaises(AssertionDefect): discard clamp(1, 3..2) # invalid bounds
+  assert bounds.a <= bounds.b, $(bounds.a, bounds.b)
   clamp(val, bounds.a, bounds.b)
 
 func lcm*[T](x: openArray[T]): T {.since: (1, 1).} =
