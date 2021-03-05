@@ -10,6 +10,9 @@
 ## This module implements the `Isolated[T]` type for
 ## safe construction of isolated subgraphs that can be
 ## passed efficiently to different channels and threads.
+##
+## .. warning:: This module is experimental and its interface may change.
+##
 
 type
   Isolated*[T] = object ## Isolated data can only be moved, not copied.
