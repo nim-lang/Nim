@@ -1,10 +1,56 @@
 # Test tkStrNumLit
 
+import std/macros
+import strutils
+
+macro assertAST(expected: string, struct: untyped): untyped =
+  var ast = newLit(struct.treeRepr)
+  result = quote do:
+    if `ast` != `expected`:
+      echo "Got:"
+      echo `ast`.indent(2)
+      echo "Expected:"
+      echo `expected`.indent(2)
+      raise newException(ValueError, "Failed to lex properly")
+
+
 type
   S = distinct string
 
 proc `'wrap`(number: string): S =
   result = ("[[" & number & "]]").S
+
+assertAST dedent """
+  StmtList
+    ProcDef
+      AccQuoted
+        Ident "\'wrap"
+      Empty
+      Empty
+      FormalParams
+        Ident "S"
+        IdentDefs
+          Ident "number"
+          Ident "string"
+          Empty
+      Empty
+      Empty
+      StmtList
+        Asgn
+          Ident "result"
+          DotExpr
+            Par
+              Infix
+                Ident "&"
+                Infix
+                  Ident "&"
+                  StrLit "[["
+                  Ident "number"
+                StrLit "]]"
+            Ident "S"""":
+  proc `'wrap`(number: string): S =
+    result = ("[[" & number & "]]").S
+
 
 template `'twrap`(number: string): untyped =
   number.`'wrap`
@@ -28,6 +74,13 @@ doAssert string(1'wrap) == "[[1]]":
 
 doAssert string(-1'wrap) == "[[-1]]":
   "unable to resolve a negative integer-suffix pattern"
+
+assertAST dedent """
+  StmtList
+    DotExpr
+      StrLit "-1"
+      Ident "\'wrap"""":
+  -1'wrap
 
 doAssert string(12345.67890'wrap) == "[[12345.67890]]":
   "unable to resolve a float-suffix pattern"
@@ -55,6 +108,13 @@ doAssert string(0b0101111010101'wrap) == "[[0b0101111010101]]":
 
 doAssert string(-38383839292839283928392839283928392839283.928493849385935898243e-50000'wrap) == "[[-38383839292839283928392839283928392839283.928493849385935898243e-50000]]":
   "unable to handle a very long numeric literal with a user-supplied suffix"
+
+assertAST dedent """
+  StmtList
+    DotExpr
+      StrLit "-38383839292839283928392839283928392839283.928493849385935898243e-50000"
+      Ident "\'wrap"""":
+  -38383839292839283928392839283928392839283.928493849385935898243e-50000'wrap
 
 doAssert $1234.56'wrap == "[[1234.56]]":
   "unable to properly account for context with suffixed numeric literals"
@@ -88,3 +148,10 @@ doAssert $1234.56'wrap == $1234.56'f9
 doAssert $1234.56'wrap == $1234.56'd9
 doAssert $1234.56'wrap == $1234.56'i9
 doAssert $1234.56'wrap == $1234.56'u9
+
+assertAST dedent """
+  StmtList
+    DotExpr
+      StrLit "1234.56"
+      Ident "\'u9"""":
+  1234.56'u9

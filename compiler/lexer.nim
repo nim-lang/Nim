@@ -82,7 +82,8 @@ when defined(nimsuggest):
                       tkCurlyRi}
 
 const
-  negationPrefixes = {tkComma, tkColon, tkParLe, tkBracketLe, tkCurlyLe}
+  negationPrefixes = {tkComma, tkColon, tkParLe, tkBracketLe, tkSemiColon,
+                      tkBracketDotLe, tkCurlyDotLe, tkParDotLe}
   tokKeywordLow* = succ(tkSymbol)
   tokKeywordHigh* = pred(tkIntLit)
 
@@ -301,8 +302,8 @@ proc getNumber(L: var Lexer, result: var Token) =
       if L.buf[pos] == '_':
         if L.buf[pos+1] notin chars:
           lexMessage(L, errGenerated,
-            "only single underscores may occur in a number and number may not " &
-            "end with an underscore: e.g. '1__1' and '1_' are invalid")
+            "only single underscores may occur in a number and a number may " &
+            "not end with an underscore: e.g. '1__1' and '1_' are invalid")
           break
         tok.literal.add('_')
         inc(pos)
