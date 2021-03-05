@@ -895,6 +895,7 @@ proc needsRecompile(g: var PackedModuleGraph; conf: ConfigRef; cache: IdentCache
       loadError(err, rod)
       g[m].status = outdated
       result = true
+    when false: loadError(err, rod)
   of loading, loaded:
     # For loading: Assume no recompile is required.
     result = false
@@ -1088,6 +1089,11 @@ proc rodViewer*(rodfile: AbsoluteFile; config: ConfigRef, cache: IdentCache) =
     for ex in m.reexports:
       echo "  ", m.sh.strings[ex[0]]
     #  reexports*: seq[(LitId, PackedItemId)]
+
+  echo "all symbols"
+  for i in 0..high(m.sh.syms):
+    echo "  ", m.sh.strings[m.sh.syms[i].name], " local ID: ", i
+
   echo "symbols: ", m.sh.syms.len, " types: ", m.sh.types.len,
     " top level nodes: ", m.topLevel.nodes.len, " other nodes: ", m.bodies.nodes.len,
     " strings: ", m.sh.strings.len, " integers: ", m.sh.integers.len,

@@ -88,7 +88,8 @@ proc rangeCheckAnalysis(c: var AliveContext; g: PackedModuleGraph; tree: PackedT
         else: "raiseRangeErrorI"
       c.requestCompilerProc(g, raiser)
 
-proc aliveCode(c: var AliveContext; g: PackedModuleGraph; tree: PackedTree; n: NodePos) =
+proc aliveCode(c: var AliveContext; g: PackedModuleGraph; tree: PackedTree; n: NodePos;
+               override: bool) =
   ## Marks the symbols we encounter when we traverse the AST at `tree[n]` as alive, unless
   ## it is purely in a declarative context (type section etc.).
   case n.kind
@@ -113,18 +114,18 @@ proc aliveCode(c: var AliveContext; g: PackedModuleGraph; tree: PackedTree; n: N
   of nkVarSection, nkLetSection, nkConstSection:
     # XXX ignore the defining local variable name?
     for son in sonsReadonly(tree, n):
-      aliveCode(c, g, tree, son)
+      aliveCode(c, g, tree, son, override)
   of nkChckRangeF, nkChckRange64, nkChckRange:
     rangeCheckAnalysis(c, g, tree, n)
   of nkProcDef, nkConverterDef, nkMethodDef, nkLambda, nkDo, nkFuncDef:
     if n.firstSon.kind == nkSym and isNotGeneric(n):
-      if isExportedToC(c, g, n.firstSon.operand):
-        let item = n.operand
+      let item = n.firstSon.operand
+      if override or isExportedToC(c, g, item):
         # This symbol is alive and everything its body references.
         followLater(c, g, c.thisModule, item)
   else:
     for son in sonsReadonly(tree, n):
-      aliveCode(c, g, tree, son)
+      aliveCode(c, g, tree, son, override)
 
 proc followNow(c: var AliveContext; g: PackedModuleGraph) =
   ## Mark all entries in the stack. Marking can add more entries
@@ -133,7 +134,7 @@ proc followNow(c: var AliveContext; g: PackedModuleGraph) =
     let (modId, opt, ast) = c.stack.pop()
     c.thisModule = modId
     c.options = opt
-    aliveCode(c, g, g[modId].fromDisk.bodies, ast)
+    aliveCode(c, g, g[modId].fromDisk.bodies, ast, override=true)
 
 proc computeAliveSyms*(g: PackedModuleGraph; conf: ConfigRef): AliveSyms =
   ## Entry point for our DCE algorithm.
@@ -144,7 +145,12 @@ proc computeAliveSyms*(g: PackedModuleGraph; conf: ConfigRef): AliveSyms =
     if g[i].status != undefined:
       c.thisModule = i
       for p in allNodes(g[i].fromDisk.topLevel):
-        aliveCode(c, g, g[i].fromDisk.topLevel, p)
+        aliveCode(c, g, g[i].fromDisk.topLevel, p, override=false)
+
+      for cp in items(g[i].fromDisk.compilerProcs):
+        #echo "compilerproc: ", cp[1], " ", g[i].fromDisk.sh.strings[cp[0]]
+        followLater(c, g, c.thisModule, cp[1])
+
   followNow(c, g)
   result = move(c.alive)
 
