@@ -245,22 +245,22 @@ when defined(js): # xxx fixme
 else:
   doAssert x.kind == JString
 
-
-type
-  Foo = object
-    ii*: int
-    data*: JsonNode
-
 block: # bug #15835
-  const jt = """{"ii": 123, "data": ["some", "data"]}"""
-  let js = parseJson(jt)
-  discard js.to(Foo)
+  type
+    Foo = object
+      ii*: int
+      data*: JsonNode
 
-block:
-  const jt = """{"ii": 123}"""
-  let js = parseJson(jt)
-  doAssertRaises(KeyError):
-    echo js.to(Foo)
+  block:
+    const jt = """{"ii": 123, "data": ["some", "data"]}"""
+    let js = parseJson(jt)
+    discard js.to(Foo)
+
+  block:
+    const jt = """{"ii": 123}"""
+    let js = parseJson(jt)
+    doAssertRaises(KeyError):
+      echo js.to(Foo)
 
 type
   ContentNodeKind* = enum
