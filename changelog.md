@@ -245,7 +245,7 @@ provided by the operating system.
 
 - Added `then`, `catch` to `asyncjs`, for now hidden behind `-d:nimExperimentalAsyncjsThen`.
 
-- `--newruntime` and `refchecks` are deprecated.
+- `--newruntime` and `--refchecks` are deprecated.
 
 ## Tool changes
 
