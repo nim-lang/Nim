@@ -26,6 +26,14 @@ proc `=destroy`*[T](dest: var Isolated[T]) {.inline.} =
   `=destroy`(dest.value)
 
 func isolate*[T](value: sink T): Isolated[T] {.magic: "Isolate".}
-  ## Create an isolated subgraph from the expression `value`.
+  ## Creates an isolated subgraph from the expression `value`.
   ## Please read https://github.com/nim-lang/RFCs/issues/244
   ## for more details.
+
+func unsafeIsolate*[T](value: sink T): Isolated[T] =
+  ## Creates an isolated subgraph from the expression `value`.
+  Isolated(value: value)
+
+func extract*[T](src: var Isolated[T]): T =
+  ## Returns the internal value of `src`.
+  result = move(src.value)

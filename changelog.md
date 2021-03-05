@@ -247,6 +247,8 @@ provided by the operating system.
 
 - `--newruntime` is deprecated.
 
+- Added `unsafeIsolate` and `extract` to `std/isolation`.
+
 ## Tool changes
 
 - The rst parser now supports markdown table syntax.
