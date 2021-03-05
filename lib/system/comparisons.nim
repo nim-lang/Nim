@@ -251,7 +251,7 @@ proc max*[T](x: openArray[T]): T =
 
 proc clamp*[T](x, a, b: T): T =
   ## Limits the value `x` within the interval [a, b].
-  ## This proc is equivalent to but fatser than `max(a, min(b, x))`.
+  ## This proc is equivalent to but faster than `max(a, min(b, x))`.
   ## 
   ## ..warning:: `a <= b` is assumed and will not be checked (currently).
   ## **See also:**
