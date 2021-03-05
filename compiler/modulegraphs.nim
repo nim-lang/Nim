@@ -83,7 +83,6 @@ type
     systemModule*: PSym
     sysTypes*: array[TTypeKind, PType]
     compilerprocs*: TStrTable
-    lazyCompilerprocs*: Table[string, FullId]
     exposed*: TStrTable
     packageTypes*: TStrTable
     emptyNode*: PNode
@@ -297,12 +296,16 @@ proc copyTypeProps*(g: ModuleGraph; module: int; dest, src: PType) =
 
 proc loadCompilerProc*(g: ModuleGraph; name: string): PSym =
   if g.config.symbolFiles == disabledSf: return nil
-  let t = g.lazyCompilerprocs.getOrDefault(name)
-  if t.module != 0:
-    assert isCachedModule(g, t.module)
-    result = loadSymFromId(g.config, g.cache, g.packed, t.module, t.packed)
-    if result != nil:
-      strTableAdd(g.compilerprocs, result)
+
+  # slow, linear search, but the results are cached:
+  for module in 0..high(g.packed):
+    #if isCachedModule(g, module):
+    let x = searchForCompilerproc(g.packed[module], name)
+    if x >= 0:
+      result = loadSymFromId(g.config, g.cache, g.packed, module, toPackedItemId(x))
+      if result != nil:
+        strTableAdd(g.compilerprocs, result)
+      return result
 
 proc `$`*(u: SigHash): string =
   toBase64a(cast[cstring](unsafeAddr u), sizeof(u))

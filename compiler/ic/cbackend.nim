@@ -83,6 +83,7 @@ proc aliveSymsChanged(config: ConfigRef; position: int; alive: AliveSyms): bool 
 proc generateCode*(g: ModuleGraph) =
   ## The single entry point, generate C(++) code for the entire
   ## Nim program aka `ModuleGraph`.
+  initStrTable(g.compilerprocs)
   var alive = computeAliveSyms(g.packed, g.config)
 
   for i in 0..high(g.packed):

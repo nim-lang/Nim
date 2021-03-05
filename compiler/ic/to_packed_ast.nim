@@ -1061,6 +1061,13 @@ proc idgenFromLoadedModule*(m: LoadedModule): IdGenerator =
   IdGenerator(module: m.module.itemId.module, symId: int32 m.fromDisk.sh.syms.len,
               typeId: int32 m.fromDisk.sh.types.len)
 
+proc searchForCompilerproc*(m: LoadedModule; name: string): int32 =
+  # slow, linear search, but the results are cached:
+  for it in items(m.fromDisk.compilerProcs):
+    if m.fromDisk.sh.strings[it[0]] == name:
+      return it[1]
+  return -1
+
 # ------------------------- .rod file viewer ---------------------------------
 
 proc rodViewer*(rodfile: AbsoluteFile; config: ConfigRef, cache: IdentCache) =
