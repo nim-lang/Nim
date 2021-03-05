@@ -20,15 +20,15 @@ a Nim syntax tree into a different tree.
 Examples of things that can be implemented in macros:
 
 * An assert macro that prints both sides of a comparison operator, if
-  the assertion fails. ``myAssert(a == b)`` is converted to
-  ``if a != b: quit($a " != " $b)``
+  the assertion fails. `myAssert(a == b)` is converted to
+  `if a != b: quit($a " != " $b)`
 
 * A debug macro that prints the value and the name of the symbol.
-  ``myDebugEcho(a)`` is converted to ``echo "a: ", a``
+  `myDebugEcho(a)` is converted to `echo "a: ", a`
 
 * Symbolic differentiation of an expression.
-  ``diff(a*pow(x,3) + b*pow(x,2) + c*x + d, x)`` is converted to
-  ``3*a*pow(x,2) + 2*b*x + c``
+  `diff(a*pow(x,3) + b*pow(x,2) + c*x + d, x)` is converted to
+  `3*a*pow(x,2) + 2*b*x + c`
 
 
 Macro Arguments
@@ -36,14 +36,14 @@ Macro Arguments
 
 The types of macro arguments have two faces. One face is used for
 the overload resolution and the other face is used within the macro
-body. For example, if ``macro foo(arg: int)`` is called in an
-expression ``foo(x)``, ``x`` has to be of a type compatible to int, but
-*within* the macro's body ``arg`` has the type ``NimNode``, not ``int``!
+body. For example, if `macro foo(arg: int)` is called in an
+expression `foo(x)`, `x` has to be of a type compatible to int, but
+*within* the macro's body `arg` has the type `NimNode`, not `int`!
 Why it is done this way will become obvious later, when we have seen
 concrete examples.
 
 There are two ways to pass arguments to a macro, an argument can be
-either ``typed`` or ``untyped``.
+either `typed` or `untyped`.
 
 
 Untyped Arguments
@@ -58,11 +58,11 @@ result somehow. The result of a macro expansion is always checked
 by the compiler, so apart from weird error messages, nothing bad
 can happen.
 
-The downside for an ``untyped`` argument is that these do not play
+The downside for an `untyped` argument is that these do not play
 well with Nim's overloading resolution.
 
 The upside for untyped arguments is that the syntax tree is
-quite predictable and less complex compared to its ``typed``
+quite predictable and less complex compared to its `typed`
 counterpart.
 
 
@@ -74,8 +74,8 @@ does transformations on it, before it is passed to the macro. Here
 identifier nodes are resolved as symbols, implicit type
 conversions are visible in the tree as calls, templates are
 expanded, and probably most importantly, nodes have type information.
-Typed arguments can have the type ``typed`` in the arguments list.
-But all other types, such as ``int``, ``float`` or ``MyObjectType``
+Typed arguments can have the type `typed` in the arguments list.
+But all other types, such as `int`, `float` or `MyObjectType`
 are typed arguments as well, and they are passed to the macro as a
 syntax tree.
 
@@ -84,17 +84,17 @@ Static Arguments
 ----------------
 
 Static arguments are a way to pass values as values and not as syntax
-tree nodes to a macro. For example for ``macro foo(arg: static[int])``
-in the expression ``foo(x)``, ``x`` needs to be an integer constant,
-but in the macro body ``arg`` is just like a normal parameter of type
-``int``.
+tree nodes to a macro. For example for `macro foo(arg: static[int])`
+in the expression `foo(x)`, `x` needs to be an integer constant,
+but in the macro body `arg` is just like a normal parameter of type
+`int`.
 
 .. code-block:: nim
 
   import std/macros
 
   macro myMacro(arg: static[int]): untyped =
-    echo arg # just an int (7), not ``NimNode``
+    echo arg # just an int (7), not `NimNode`
 
   myMacro(1 + 2 * 3)
 
@@ -104,7 +104,7 @@ Code Blocks as Arguments
 
 It is possible to pass the last argument of a call expression in a
 separate code block with indentation. For example, the following code
-example is a valid (but not a recommended) way to call ``echo``:
+example is a valid (but not a recommended) way to call `echo`:
 
 .. code-block:: nim
 
@@ -125,10 +125,10 @@ code is represented as a syntax tree, and how such a tree needs to
 look like so that the Nim compiler will understand it. The nodes of the
 Nim syntax tree are documented in the `macros <macros.html>`_ module.
 But a more interactive way to explore the Nim
-syntax tree is with ``macros.treeRepr``, it converts a syntax tree
+syntax tree is with `macros.treeRepr`, it converts a syntax tree
 into a multi-line string for printing on the console. It can be used
 to explore how the argument expressions are represented in tree form
-and for debug printing of generated syntax tree. ``dumpTree`` is a
+and for debug printing of generated syntax tree. `dumpTree` is a
 predefined macro that just prints its argument in a tree representation,
 but does nothing else. Here is an example of such a tree representation:
 
@@ -160,9 +160,9 @@ The first thing that a macro should do with its arguments is to check
 if the argument is in the correct form. Not every type of wrong input
 needs to be caught here, but anything that could cause a crash during
 macro evaluation should be caught and create a nice error message.
-``macros.expectKind`` and ``macros.expectLen`` are a good start. If
+`macros.expectKind` and `macros.expectLen` are a good start. If
 the checks need to be more complex, arbitrary error messages can
-be created with the ``macros.error`` proc.
+be created with the `macros.error` proc.
 
 .. code-block:: nim
 
@@ -174,19 +174,37 @@ Generating Code
 ---------------
 
 There are two ways to generate the code. Either by creating the syntax
-tree with expressions that contain a lot of calls to ``newTree`` and
-``newLit``, or with ``quote do:`` expressions. The first option offers
+tree with expressions that contain a lot of calls to `newTree` and
+`newLit`, or with `quote do:` expressions. The first option offers
 the best low-level control for the syntax tree generation, but the
 second option is much less verbose. If you choose to create the syntax
-tree with calls to ``newTree`` and ``newLit`` the macro
-``macros.dumpAstGen`` can help you with the verbosity. ``quote do:``
-allows you to write the code that you want to generate literally,
-backticks are used to insert code from ``NimNode`` symbols into the
-generated expression. This means that you can't use backticks within
-``quote do:`` for anything else than injecting symbols.  Make sure to
-inject only symbols of type ``NimNode`` into the generated syntax
-tree. You can use ``newLit`` to convert arbitrary values into
-expressions trees of type ``NimNode`` so that it is safe to inject
+tree with calls to `newTree` and `newLit` the macro
+`macros.dumpAstGen` can help you with the verbosity.
+
+`quote do:` allows you to write the code that you want to generate literally.
+Backticks are used to insert code from `NimNode` symbols into the
+generated expression.
+
+.. code-block:: nim
+    macro a(i) = quote do: let `i` = 0
+    a b
+
+A custom prefix operator can be defined whenever backticks are needed.
+
+.. code-block:: nim
+    macro a(i) = quote("@") do: assert @i == 0
+    let b = 0
+    a b
+
+The injected symbol needs accent quoted when it resolves to a symbol.
+
+.. code-block:: nim
+    macro a(i) = quote("@") do: let `@i` == 0
+    a b
+
+Make sure to inject only symbols of type `NimNode` into the generated syntax
+tree. You can use `newLit` to convert arbitrary values into
+expressions trees of type `NimNode` so that it is safe to inject
 them into the tree.
 
 
@@ -213,7 +231,7 @@ them into the tree.
 
   myMacro("Hallo")
 
-The call to ``myMacro`` will generate the following code:
+The call to `myMacro` will generate the following code:
 
 .. code-block:: nim
   echo "Hallo"
@@ -224,7 +242,7 @@ Building Your First Macro
 -------------------------
 
 To give a starting point to writing macros we will show now how to
-implement the ``myDebug`` macro mentioned earlier. The first thing to
+implement the `myDebug` macro mentioned earlier. The first thing to
 do is to build a simple example of the macro usage, and then just
 print the argument. This way it is possible to get an idea of what a
 correct argument should look like.
@@ -281,7 +299,7 @@ written.
 
 
 This is the code that will be generated. To debug what the macro
-actually generated, the statement ``echo result.repr`` can be used, in
+actually generated, the statement `echo result.repr` can be used, in
 the last line of the macro. It is also the statement that has been
 used to get this output.
 
@@ -324,14 +342,14 @@ possible with it.
 Strformat
 ---------
 
-In the Nim standard library, the ``strformat`` library provides a
+In the Nim standard library, the `strformat` library provides a
 macro that parses a string literal at compile time. Parsing a string
 in a macro like here is generally not recommended. The parsed AST
 cannot have type information, and parsing implemented on the VM is
 generally not very fast. Working on AST nodes is almost always the
-recommended way. But still ``strformat`` is a good example for a
+recommended way. But still `strformat` is a good example for a
 practical use case for a macro that is slightly more complex than the
-``assert`` macro.
+`assert` macro.
 
 `Strformat <https://github.com/nim-lang/Nim/blob/5845716df8c96157a047c2bd6bcdd795a7a2b9b1/lib/pure/strformat.nim#L280>`_
 

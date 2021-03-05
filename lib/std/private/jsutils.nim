@@ -36,3 +36,4 @@ when defined(js):
   proc hasBigUint64Array*(): bool =
     asm """`result` = typeof BigUint64Array != 'undefined'"""
 
+  proc getProtoName*[T](a: T): cstring {.importjs: "Object.prototype.toString.call(#)".}

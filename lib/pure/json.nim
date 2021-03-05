@@ -908,14 +908,13 @@ proc parseJson*(s: Stream, filename: string = ""; rawIntegers = false, rawFloats
 
 when defined(js):
   from std/math import `mod`
-  import std/jsffi
+  from std/jsffi import JSObject, `[]`, to
+  from std/private/jsutils import getProtoName
 
   proc parseNativeJson(x: cstring): JSObject {.importjs: "JSON.parse(#)".}
 
   proc getVarType(x: JSObject): JsonNodeKind =
     result = JNull
-    proc getProtoName(y: JSObject): cstring
-      {.importjs: "Object.prototype.toString.call(#)".}
     case $getProtoName(x) # TODO: Implicit returns fail here.
     of "[object Array]": return JArray
     of "[object Object]": return JObject
