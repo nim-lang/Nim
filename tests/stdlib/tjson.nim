@@ -251,7 +251,7 @@ type
     ii*: int
     data*: JsonNode
 
-block:
+block: # bug #15835
   const jt = """{"ii": 123, "data": ["some", "data"]}"""
   let js = parseJson(jt)
   discard js.to(Foo)
