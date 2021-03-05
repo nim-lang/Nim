@@ -32,7 +32,7 @@ func isolate*[T](value: sink T): Isolated[T] {.magic: "Isolate".}
 
 func unsafeIsolate*[T](value: sink T): Isolated[T] =
   ## Creates an isolated subgraph from the expression `value`.
-  Isolated(value: value)
+  Isolated[T](value: value)
 
 func extract*[T](src: var Isolated[T]): T =
   ## Returns the internal value of `src`.
