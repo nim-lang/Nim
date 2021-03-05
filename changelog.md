@@ -44,5 +44,7 @@
 
 
 
+- Added `unsafeIsolate` and `extract` to `std/isolation`.
+
 ## Tool changes
 
