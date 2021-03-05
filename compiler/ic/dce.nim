@@ -33,7 +33,7 @@ proc isExportedToC(c: var AliveContext; g: PackedModuleGraph; symId: int32): boo
   # are not transformed correctly; issue (#411). However, the whole purpose here
   # is to eliminate unused procs. So there is no special logic required for this case.
   if sfCompileTime notin flags:
-    if ({sfExportc, sfCompilerProc} * flags == {sfExportc}) or
+    if ({sfExportc, sfCompilerProc} * flags != {}) or
         (symPtr.kind == skMethod):
       result = true
       # XXX: This used to be a condition to:
@@ -51,6 +51,10 @@ proc followLater(c: var AliveContext; g: PackedModuleGraph; module: int; item: i
     if body != emptyNodeId:
       let opt = g[module].fromDisk.sh.syms[item].options
       c.stack.add((module, opt, NodePos(body)))
+
+    when false:
+      let name = g[module].fromDisk.sh.strings[g[module].fromDisk.sh.syms[item].name]
+      echo "I was called! ", name, " body exists: ", body != emptyNodeId
 
 proc requestCompilerProc(c: var AliveContext; g: PackedModuleGraph; name: string) =
   let (module, item) = c.compilerProcs[name]
@@ -107,7 +111,9 @@ proc aliveCode(c: var AliveContext; g: PackedModuleGraph; tree: PackedTree; n: N
      nkFromStmt, nkStaticStmt:
     discard
   of nkVarSection, nkLetSection, nkConstSection:
-    discard
+    # XXX ignore the defining local variable name?
+    for son in sonsReadonly(tree, n):
+      aliveCode(c, g, tree, son)
   of nkChckRangeF, nkChckRange64, nkChckRange:
     rangeCheckAnalysis(c, g, tree, n)
   of nkProcDef, nkConverterDef, nkMethodDef, nkLambda, nkDo, nkFuncDef:

@@ -4,6 +4,8 @@
 
 ## Standard library additions and changes
 
+- Make custom op in macros.quote work for all statements.
+
 - On Windows the SSL library now checks for valid certificates.
   It uses the `cacert.pem` file for this purpose which was extracted
   from `https://curl.se/ca/cacert.pem`. Besides
@@ -194,6 +196,9 @@ provided by the operating system.
 - `system.addEscapedChar` now renders `\r` as `\r` instead of `\c`, to be compatible
   with most other languages.
 
+- Removed support for named procs in `sugar.=>`
+
+
 ## Language changes
 
 - `nimscript` now handles `except Exception as e`.
@@ -245,7 +250,7 @@ provided by the operating system.
 
 - Added `then`, `catch` to `asyncjs`, for now hidden behind `-d:nimExperimentalAsyncjsThen`.
 
-- `--newruntime` is deprecated.
+- `--newruntime` and `--refchecks` are deprecated.
 
 ## Tool changes
 
