@@ -4,6 +4,8 @@
 
 ## Standard library additions and changes
 
+- Make custom op in macros.quote work for all statements.
+
 - On Windows the SSL library now checks for valid certificates.
   It uses the `cacert.pem` file for this purpose which was extracted
   from `https://curl.se/ca/cacert.pem`. Besides
