@@ -1,4 +1,9 @@
-import json
+discard """
+  targets: "c js"
+"""
+
+
+import std/json
 
 type
   Foo = object

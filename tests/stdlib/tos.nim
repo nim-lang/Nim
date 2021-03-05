@@ -520,7 +520,7 @@ block ospaths:
   # but not `./foo/bar` and `foo/bar`
   doAssert joinPath(".", "/lib") == unixToNativePath"./lib"
   doAssert joinPath(".","abc") == unixToNativePath"./abc"
-  
+
   # cases related to issue #13455
   doAssert joinPath("foo", "", "") == "foo"
   doAssert joinPath("foo", "") == "foo"
@@ -566,6 +566,10 @@ block osenv:
     doAssert existsEnv(dummyEnvVar) == false
     delEnv(dummyEnvVar)         # deleting an already deleted env var
     doAssert existsEnv(dummyEnvVar) == false
+  block:
+    doAssert getEnv("DUMMY_ENV_VAR_NONEXISTENT", "") == ""
+    doAssert getEnv("DUMMY_ENV_VAR_NONEXISTENT", " ") == " "
+    doAssert getEnv("DUMMY_ENV_VAR_NONEXISTENT", "Arrakis") == "Arrakis"
 
 block isRelativeTo:
   doAssert isRelativeTo("/foo", "/")

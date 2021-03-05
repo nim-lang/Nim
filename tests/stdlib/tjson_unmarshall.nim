@@ -1,4 +1,5 @@
 discard """
+  targets: "c js"
   output: '''
 Original: (kind: P, pChildren: @[(kind: Text, textStr: "mychild"), (kind: Br)])
 jsonNode: {"kind":"P","pChildren":[{"kind":"Text","textStr":"mychild"},{"kind":"Br"}]}
@@ -6,7 +7,7 @@ Reversed: (kind: P, pChildren: @[(kind: Text, textStr: "mychild"), (kind: Br)])
 '''
 """
 
-import json
+import std/json
 
 type
   ContentNodeKind* = enum
