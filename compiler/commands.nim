@@ -307,7 +307,9 @@ proc testCompileOption*(conf: ConfigRef; switch: string, info: TLineInfo): bool 
   of "fieldchecks": result = contains(conf.options, optFieldCheck)
   of "rangechecks": result = contains(conf.options, optRangeCheck)
   of "boundchecks": result = contains(conf.options, optBoundsCheck)
-  of "refchecks": result = contains(conf.options, optRefCheck)
+  of "refchecks":
+    warningDeprecated(conf, info, "refchecks is deprecated!")
+    result = contains(conf.options, optRefCheck)
   of "overflowchecks": result = contains(conf.options, optOverflowCheck)
   of "staticboundchecks": result = contains(conf.options, optStaticBoundsCheck)
   of "stylechecks": result = contains(conf.options, optStyleCheck)
@@ -659,7 +661,9 @@ proc processSwitch*(switch, arg: string, pass: TCmdLinePass, info: TLineInfo;
   of "fieldchecks": processOnOffSwitch(conf, {optFieldCheck}, arg, pass, info)
   of "rangechecks": processOnOffSwitch(conf, {optRangeCheck}, arg, pass, info)
   of "boundchecks": processOnOffSwitch(conf, {optBoundsCheck}, arg, pass, info)
-  of "refchecks": processOnOffSwitch(conf, {optRefCheck}, arg, pass, info)
+  of "refchecks":
+    warningDeprecated(conf, info, "refchecks is deprecated!")
+    processOnOffSwitch(conf, {optRefCheck}, arg, pass, info)
   of "overflowchecks": processOnOffSwitch(conf, {optOverflowCheck}, arg, pass, info)
   of "staticboundchecks": processOnOffSwitch(conf, {optStaticBoundsCheck}, arg, pass, info)
   of "stylechecks": processOnOffSwitch(conf, {optStyleCheck}, arg, pass, info)
