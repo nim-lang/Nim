@@ -1,5 +1,5 @@
 discard """
-  cmd: '''nim c -d:nimAllocStats --newruntime $file'''
+  cmd: '''nim c -d:nimAllocStats --gc:arc $file'''
   output: '''hi
 ho
 ha

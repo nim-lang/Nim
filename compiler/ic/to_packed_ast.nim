@@ -453,7 +453,8 @@ proc toPackedNodeTopLevel*(n: PNode, encoder: var PackedEncoder; m: var PackedMo
 proc loadError(err: RodFileError; filename: AbsoluteFile) =
   echo "Error: ", $err, " loading file: ", filename.string
 
-proc loadRodFile*(filename: AbsoluteFile; m: var PackedModule; config: ConfigRef): RodFileError =
+proc loadRodFile*(filename: AbsoluteFile; m: var PackedModule; config: ConfigRef;
+                  ignoreConfig = false): RodFileError =
   m.sh = Shared()
   var f = rodfiles.open(filename.string)
   f.loadHeader()
@@ -462,7 +463,7 @@ proc loadRodFile*(filename: AbsoluteFile; m: var PackedModule; config: ConfigRef
   f.loadPrim m.definedSymbols
   f.loadPrim m.cfg
 
-  if f.err == ok and not configIdentical(m, config):
+  if f.err == ok and not configIdentical(m, config) and not ignoreConfig:
     f.err = configMismatch
 
   template loadSeqSection(section, data) {.dirty.} =
@@ -875,7 +876,7 @@ proc needsRecompile(g: var PackedModuleGraph; conf: ConfigRef; cache: IdentCache
     let rod = toRodFile(conf, AbsoluteFile fullpath)
     let err = loadRodFile(rod, g[m].fromDisk, conf)
     if err == ok:
-      result = false
+      result = optForceFullMake in conf.globalOptions
       # check its dependencies:
       for dep in g[m].fromDisk.imports:
         let fid = toFileIndex(dep, g[m].fromDisk, conf)
@@ -887,7 +888,9 @@ proc needsRecompile(g: var PackedModuleGraph; conf: ConfigRef; cache: IdentCache
       if not result:
         setupLookupTables(g, conf, cache, fileIdx, g[m])
         cachedModules.add fileIdx
-      g[m].status = if result: outdated else: loaded
+        g[m].status = loaded
+      else:
+        g[m] = LoadedModule(status: outdated, module: g[m].module)
     else:
       loadError(err, rod)
       g[m].status = outdated
@@ -1062,14 +1065,15 @@ proc idgenFromLoadedModule*(m: LoadedModule): IdGenerator =
 
 proc rodViewer*(rodfile: AbsoluteFile; config: ConfigRef, cache: IdentCache) =
   var m: PackedModule
-  if loadRodFile(rodfile, m, config) != ok:
-    echo "Error: could not load: ", rodfile.string
+  let err = loadRodFile(rodfile, m, config, ignoreConfig=true)
+  if err != ok:
+    echo "Error: could not load: ", rodfile.string, " reason: ", err
     quit 1
 
   when true:
     echo "exports:"
     for ex in m.exports:
-      echo "  ", m.sh.strings[ex[0]]
+      echo "  ", m.sh.strings[ex[0]], " local ID: ", ex[1]
       assert ex[0] == m.sh.syms[ex[1]].name
       # ex[1] int32
 

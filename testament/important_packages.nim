@@ -114,10 +114,11 @@ pkg2 "nimwc", "nim c nimwc.nim"
 pkg2 "norm", "nim c -r tests/sqlite/trows.nim"
 pkg2 "npeg", "nimble testarc"
 pkg2 "numericalnim", "nim c -r tests/test_integrate.nim"
-# pkg2 "optionsutils" # pending changing test from `Some` to `some` (etc) in tests/test2.nim, refs #17147
+pkg2 "optionsutils"
 pkg2 "ormin", "nim c -o:orminn ormin.nim"
 pkg2 "parsetoml"
 pkg2 "patty"
+pkg2 "pixie", useHead = false
 pkg2 "plotly", "nim c examples/all.nim"
 pkg2 "pnm"
 pkg2 "polypbren"

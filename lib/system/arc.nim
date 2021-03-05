@@ -218,15 +218,15 @@ proc GC_ref*[T](x: ref T) =
 
 when not defined(gcOrc):
   template GC_fullCollect* =
-    ## Forces a full garbage collection pass. With ``--gc:arc`` a nop.
+    ## Forces a full garbage collection pass. With `--gc:arc` a nop.
     discard
 
 template setupForeignThreadGc* =
-  ## With ``--gc:arc`` a nop.
+  ## With `--gc:arc` a nop.
   discard
 
 template tearDownForeignThreadGc* =
-  ## With ``--gc:arc`` a nop.
+  ## With `--gc:arc` a nop.
   discard
 
 proc isObj(obj: PNimTypeV2, subclass: cstring): bool {.compilerRtl, inl.} =

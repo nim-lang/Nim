@@ -22,6 +22,8 @@
 
 - Added `almostEqual` in `math` for comparing two float values using a machine epsilon.
 
+- Added `clamp` in `math` which allows using a `Slice` to clamp to a value.
+
 - The JSON module can now handle integer literals and floating point literals of
   arbitrary length and precision.
   Numbers that do not fit the underlying `BiggestInt` or `BiggestFloat` fields are
@@ -173,9 +175,16 @@ provided by the operating system.
   dumping (on select signals) and notifying the parent process about the cause
   of termination.
 
+- Added `system.prepareStrMutation` for better support of low
+  level `moveMem`, `copyMem` operations for Orc's copy-on-write string
+  implementation.
+
 - `hashes.hash` now supports `object`, but can be overloaded.
 
-- Added `strip` and `setSlice` to `std/strbasics`.
+- Added `std/strbasics` for high performance string operations.
+  Added `strip`, `setSlice`, `add(a: var string, b: openArray[char])`.
+
+- `hashes.hash` now supports `object`, but can be overloaded.
 
 - Added to `wrapnils` an option-like API via `??.`, `isSome`, `get`.
 
@@ -185,6 +194,11 @@ provided by the operating system.
 - Added `jsheaders` module [Headers](https://developer.mozilla.org/en-US/docs/Web/API/Headers) wrapper for JavaScript target.
 - Added `jsformdata` module [FormData](https://developer.mozilla.org/en-US/docs/Web/API/FormData) wrapper for JavaScript target.
 
+
+- `system.addEscapedChar` now renders `\r` as `\r` instead of `\c`, to be compatible
+  with most other languages.
+
+- Removed support for named procs in `sugar.=>`
 
 
 ## Language changes
@@ -211,6 +225,8 @@ provided by the operating system.
 
 - Deprecated `TaintedString` and `--taintmode`.
 
+- Deprecated `--nilseqs` which is now a noop.
+
 - Source+Edit links now appear on top of every docgen'd page when
   `nim doc --git.url:url ...` is given.
 
@@ -235,6 +251,8 @@ provided by the operating system.
 - Added `-d:nimStrictMode` in CI in several places to ensure code doesn't have certain hints/warnings
 
 - Added `then`, `catch` to `asyncjs`, for now hidden behind `-d:nimExperimentalAsyncjsThen`.
+
+- `--newruntime` and `--refchecks` are deprecated.
 
 ## Tool changes
 

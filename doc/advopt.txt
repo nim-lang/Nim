@@ -25,7 +25,6 @@ Runtime checks (see -x):
   --floatChecks:on|off      turn all floating point (NaN/Inf) checks on|off
   --nanChecks:on|off        turn NaN checks on|off
   --infChecks:on|off        turn Inf checks on|off
-  --refChecks:on|off        turn ref checks on|off (only for --newruntime)
 
 Advanced options:
   -o:FILE, --out:FILE       set the output filename
@@ -61,8 +60,8 @@ Advanced options:
   --noMain:on|off           do not generate a main procedure
   --genScript:on|off        generate a compile script (in the 'nimcache'
                             subdirectory named 'compile_$$project$$scriptext'),
+                            and a '.deps' file containing the dependencies;
                             implies --compileOnly
-  --genDeps:on|off          generate a '.deps' file containing the dependencies
   --os:SYMBOL               set the target operating system (cross-compilation)
   --cpu:SYMBOL              set the target processor (cross-compilation)
   --debuginfo:on|off        enables debug information
@@ -102,8 +101,6 @@ Advanced options:
   --excessiveStackTrace:on|off
                             stack traces use full file paths
   --stackTraceMsgs:on|off   enable user defined stack frame msgs via `setFrameMsg`
-  --nilseqs:on|off          allow 'nil' for strings/seqs for
-                            backwards compatibility
   --seqsv2:on|off           use the new string/seq implementation based on
                             destructors
   --skipCfg:on|off          do not read the nim installation's configuration file

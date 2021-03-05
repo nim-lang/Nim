@@ -37,7 +37,7 @@ proc rightSize*(count: Natural): int {.inline, deprecated: "Deprecated since 1.4
   ## **Deprecated since Nim v1.4.0**, it is not needed anymore
   ## because picking the correct size is done internally.
   ##
-  ## Return the value of ``initialSize`` to support ``count`` items.
+  ## Return the value of `initialSize` to support `count` items.
   ##
   ## If more items are expected to be added, simply add that
   ## expected extra amount to the parameter before calling this.

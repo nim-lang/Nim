@@ -10,10 +10,10 @@
 ## Channel support for threads.
 ##
 ## **Note**: This is part of the system module. Do not import it directly.
-## To activate thread support compile with the ``--threads:on`` command line switch.
+## To activate thread support compile with the `--threads:on` command line switch.
 ##
-## **Note:** Channels are designed for the ``Thread`` type. They are unstable when
-## used with ``spawn``
+## **Note:** Channels are designed for the `Thread` type. They are unstable when
+## used with `spawn`
 ##
 ## **Note:** The current implementation of message passing does
 ## not work with cyclic data structures.
@@ -30,7 +30,7 @@
 ##   # Be sure to compile with --threads:on.
 ##   # The channels and threads modules are part of system and should not be
 ##   # imported.
-##   import os
+##   import std/os
 ##
 ##   # Channels can either be:
 ##   #  - declared at the module level, or
@@ -109,7 +109,7 @@
 ## in which case they will use a process-wide (thread-safe) shared heap.
 ##
 ## However, it is possible to manually allocate shared memory for channels
-## using e.g. ``system.allocShared0`` and pass these pointers through thread
+## using e.g. `system.allocShared0` and pass these pointers through thread
 ## arguments:
 ##
 ## .. code-block :: Nim
@@ -410,8 +410,8 @@ proc tryRecv*[TMsg](c: var Channel[TMsg]): tuple[dataAvailable: bool,
   ## Tries to receive a message from the channel `c`, but this can fail
   ## for all sort of reasons, including contention.
   ##
-  ## If it fails, it returns ``(false, default(msg))`` otherwise it
-  ## returns ``(true, msg)``.
+  ## If it fails, it returns `(false, default(msg))` otherwise it
+  ## returns `(true, msg)`.
   var q = cast[PRawChannel](addr(c))
   if q.mask != ChannelDeadMask:
     if tryAcquireSys(q.lock):

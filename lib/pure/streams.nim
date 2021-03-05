@@ -29,7 +29,7 @@
 ##
 ## .. code-block:: Nim
 ##
-##  import streams
+##  import std/streams
 ##
 ##  var strm = newStringStream("""The first line
 ##  the second line
@@ -54,7 +54,7 @@
 ##
 ## .. code-block:: Nim
 ##
-##  import streams
+##  import std/streams
 ##
 ##  var strm = newFileStream("somefile.txt", fmWrite)
 ##  var line = ""
@@ -74,7 +74,7 @@
 ##
 ## .. code-block:: Nim
 ##
-##  import streams
+##  import std/streams
 ##
 ##  var strm = newFileStream("somefile.txt", fmRead)
 ##  var line = ""
@@ -144,7 +144,7 @@ proc flush*(s: Stream) =
   ## See also:
   ## * `close proc <#close,Stream>`_
   runnableExamples:
-    from os import removeFile
+    from std/os import removeFile
 
     var strm = newFileStream("somefile.txt", fmWrite)
 
@@ -1387,7 +1387,7 @@ proc newFileStream*(filename: string, mode: FileMode = fmRead,
   ## * `openFileStream proc <#openFileStream,string,FileMode,int>`_ creates a
   ##   file stream from the file name and the mode.
   runnableExamples:
-    from os import removeFile
+    from std/os import removeFile
     var strm = newFileStream("somefile.txt", fmWrite)
     if not isNil(strm):
       strm.writeLine("The first line")

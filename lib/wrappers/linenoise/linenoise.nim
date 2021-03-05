@@ -16,7 +16,7 @@ type
 
 {.compile: "linenoise.c".}
 
-proc setCompletionCallback*(a2: ptr CompletionCallback) {.
+proc setCompletionCallback*(a2: CompletionCallback) {.
     importc: "linenoiseSetCompletionCallback".}
 proc addCompletion*(a2: ptr Completions; a3: cstring) {.
     importc: "linenoiseAddCompletion".}
@@ -58,14 +58,13 @@ when defined nimExperimentalLinenoiseExtra:
     ## line editing API that allows returning the line entered and an indicator
     ## of which control key was entered, allowing user to distinguish between
     ## for example ctrl-C vs ctrl-D.
-    runnableExamples("-d:nimExperimentalLinenoiseExtra"):
-      if false:
-        var ret: ReadLineResult
-        while true:
-          readLineStatus("name: ", ret) # ctrl-D will exit, ctrl-C will go to next prompt
-          if ret.line.len > 0: echo ret.line
-          if ret.status == lnCtrlD: break
-        echo "exiting"
+    runnableExamples("-d:nimExperimentalLinenoiseExtra -r:off"):
+      var ret: ReadLineResult
+      while true:
+        readLineStatus("name: ", ret) # ctrl-D will exit, ctrl-C will go to next prompt
+        if ret.line.len > 0: echo ret.line
+        if ret.status == lnCtrlD: break
+      echo "exiting"
     var data: linenoiseData
     let buf = linenoiseExtra(prompt, data.addr)
     result.line = $buf

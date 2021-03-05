@@ -11,7 +11,7 @@
 ##
 ## .. code-block:: Nim
 ##
-##    import strtabs, cgi
+##    import std/[strtabs, cgi]
 ##
 ##    # Fill the values when debugging:
 ##    when debug:

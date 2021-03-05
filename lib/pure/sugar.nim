@@ -87,16 +87,6 @@ macro `=>`*(p, b: untyped): untyped =
 
   checkPragma(p, pragma) # check again after -> transform
 
-  since (1, 3):
-    if p.kind in {nnkCall, nnkObjConstr}:
-      # foo(x, y) => x + y
-      kind = nnkProcDef
-      name = p[0]
-      let newP = newNimNode(nnkPar)
-      for i in 1..<p.len:
-        newP.add(p[i])
-      p = newP
-
   case p.kind
   of nnkPar, nnkTupleConstr:
     var untypedBeforeColon = 0
@@ -168,11 +158,11 @@ macro dump*(x: untyped): untyped =
   ## See also: `dumpToString` which is more convenient and useful since
   ## it expands intermediate templates/macros, returns a string instead of
   ## calling `echo`, and works with statements and expressions.
-  runnableExamples:
+  runnableExamples("-r:off"):
     let
       x = 10
       y = 20
-    if false: dump(x + y) # if true would print `x + y = 30`
+    dump(x + y) # prints: `x + y = 30`
 
   let s = x.toStrLit
   result = quote do:

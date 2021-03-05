@@ -116,7 +116,7 @@ proc handleCmdLine(cache: IdentCache; conf: ConfigRef) =
 when declared(GC_setMaxPause):
   GC_setMaxPause 2_000
 
-when compileOption("gc", "v2") or compileOption("gc", "refc"):
+when compileOption("gc", "refc"):
   # the new correct mark&sweet collector is too slow :-/
   GC_disableMarkAndSweep()
 

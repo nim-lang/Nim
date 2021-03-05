@@ -1,7 +1,7 @@
 discard """
   output: '''allocating 1048576 65536
 filling page from 1048576 len 65536'''
-  cmd: '''nim c --newruntime $file'''
+  cmd: '''nim c --gc:arc $file'''
 """
 
 # bug #12669

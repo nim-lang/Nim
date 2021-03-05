@@ -18,7 +18,7 @@
 ## To get started, first create a logger:
 ##
 ## .. code-block::
-##   import logging
+##   import std/logging
 ##
 ##   var logger = newConsoleLogger()
 ##
@@ -60,7 +60,7 @@
 ## in the following example:
 ##
 ## .. code-block::
-##   import logging
+##   import std/logging
 ##
 ##   var consoleLog = newConsoleLogger()
 ##   var fileLog = newFileLogger("errors.log", levelThreshold=lvlError)
@@ -118,7 +118,7 @@
 ## The following example illustrates how to use format strings:
 ##
 ## .. code-block::
-##   import logging
+##   import std/logging
 ##
 ##   var logger = newConsoleLogger(fmtStr="[$time] - $levelname: ")
 ##   logger.log(lvlInfo, "this is a message")

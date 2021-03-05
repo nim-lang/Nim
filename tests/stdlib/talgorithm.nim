@@ -1,9 +1,10 @@
 discard """
+  targets: "c js"
   output:'''@["3", "2", "1"]
 '''
 """
 #12928,10456
-import sequtils, algorithm, json
+import std/[sequtils, algorithm, json]
 
 proc test() = 
   try: 

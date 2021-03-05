@@ -57,12 +57,13 @@
 ## If you need to use this module with older versions of JavaScript, you can
 ## use a tool that backports the resulting JavaScript code, as babel.
 
+# xxx code-block:: javascript above gives `LanguageXNotSupported` warning.
+
 when not defined(js) and not defined(nimsuggest):
   {.fatal: "Module asyncjs is designed to be used with the JavaScript backend.".}
 
 import std/jsffi
 import std/macros
-import std/private/since
 
 type
   Future*[T] = ref object
@@ -118,10 +119,11 @@ proc generateJsasync(arg: NimNode): NimNode =
     var resolve: NimNode
     if isVoid:
       resolve = quote:
-        var `jsResolve` {.importcpp: "undefined".}: Future[void]
+        var `jsResolve` {.importjs: "undefined".}: Future[void]
     else:
       resolve = quote:
-        proc jsResolve[T](a: T): Future[T] {.importcpp: "#", used.}
+        proc jsResolve[T](a: T): Future[T] {.importjs: "#", used.}
+        proc jsResolve[T](a: Future[T]): Future[T] {.importjs: "#", used.}
     result.body.add(resolve)
   else:
     result.body = newEmptyNode()
@@ -156,7 +158,17 @@ proc newPromise*(handler: proc(resolve: proc())): Future[void] {.importcpp: "(ne
   ## A helper for wrapping callback-based functions
   ## into promises and async procedures.
 
+template typeOrVoid[T](a: T): type =
+  # xxx this is useful, make it public in std/typetraits in future work
+  T
+
+template maybeFuture(T): untyped =
+  # avoids `Future[Future[T]]`
+  when T is Future: T
+  else: Future[T]
+
 when defined(nimExperimentalAsyncjsThen):
+  import std/private/since
   since (1, 5, 1):
     #[
     TODO:
@@ -176,44 +188,70 @@ when defined(nimExperimentalAsyncjsThen):
 
     type OnReject* = proc(reason: Error)
 
-    proc then*[T, T2](future: Future[T], onSuccess: proc(value: T): T2, onReject: OnReject = nil): Future[T2] =
+    proc then*[T](future: Future[T], onSuccess: proc, onReject: OnReject = nil): auto =
       ## See https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Promise/then
-      asm "`result` = `future`.then(`onSuccess`, `onReject`)"
-
-    proc then*[T](future: Future[T], onSuccess: proc(value: T), onReject: OnReject = nil): Future[void] =
-      ## See https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Promise/then
-      asm "`result` = `future`.then(`onSuccess`, `onReject`)"
-
-    proc then*(future: Future[void], onSuccess: proc(), onReject: OnReject = nil): Future[void] =
-      ## See https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Promise/then
-      asm "`result` = `future`.then(`onSuccess`, `onReject`)"
-
-    proc then*[T2](future: Future[void], onSuccess: proc(): T2, onReject: OnReject = nil): Future[T2] =
-      ## See https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Promise/then
-      asm "`result` = `future`.then(`onSuccess`, `onReject`)"
-
-    proc catch*[T](future: Future[T], onReject: OnReject): Future[void] =
-      ## See https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Promise/catch
-      runnableExamples:
+      ## Returns a `Future` from the return type of `onSuccess(T.default)`.
+      runnableExamples("-d:nimExperimentalAsyncjsThen"):
         from std/sugar import `=>`
-        from std/strutils import contains
+
         proc fn(n: int): Future[int] {.async.} =
           if n >= 7: raise newException(ValueError, "foobar: " & $n)
           else: result = n * 2
-        proc main() {.async.} =
-          let x1 = await fn(3)
-          assert x1 == 3*2
-          let x2 = await fn(4)
-            .then((a: int) => a.float)
-            .then((a: float) => $a)
-          assert x2 == "8.0"
 
+        proc asyncFact(n: int): Future[int] {.async.} =
+          if n > 0: result = n * await asyncFact(n-1)
+          else: result = 1
+
+        proc main() {.async.} =
+          block: # then
+            assert asyncFact(3).await == 3*2
+            assert asyncFact(3).then(asyncFact).await == 6*5*4*3*2
+            let x1 = await fn(3)
+            assert x1 == 3 * 2
+            let x2 = await fn(4)
+              .then((a: int) => a.float)
+              .then((a: float) => $a)
+            assert x2 == "8.0"
+
+          block: # then with `onReject` callback
+            var witness = 1
+            await fn(6).then((a: int) => (witness = 2), (r: Error) => (witness = 3))
+            assert witness == 2
+            await fn(7).then((a: int) => (witness = 2), (r: Error) => (witness = 3))
+            assert witness == 3
+
+      template impl(call): untyped =
+        when typeOrVoid(call) is void:
+          var ret: Future[void]
+        else:
+          var ret = default(maybeFuture(typeof(call)))
+        typeof(ret)
+      when T is void:
+        type A = impl(onSuccess())
+      else:
+        type A = impl(onSuccess(default(T)))
+      var ret: A
+      asm "`ret` = `future`.then(`onSuccess`, `onReject`)"
+      return ret
+
+    proc catch*[T](future: Future[T], onReject: OnReject): Future[void] =
+      ## See https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Promise/catch
+      runnableExamples("-d:nimExperimentalAsyncjsThen"):
+        from std/sugar import `=>`
+        from std/strutils import contains
+
+        proc fn(n: int): Future[int] {.async.} =
+          if n >= 7: raise newException(ValueError, "foobar: " & $n)
+          else: result = n * 2
+
+        proc main() {.async.} =
           var reason: Error
-          await fn(6).catch((r: Error) => (reason = r))
+          await fn(6).catch((r: Error) => (reason = r)) # note: `()` are needed, `=> reason = r` would not work
           assert reason == nil
           await fn(7).catch((r: Error) => (reason = r))
           assert reason != nil
           assert  "foobar: 7" in $reason.message
+
         discard main()
 
       asm "`result` = `future`.catch(`onReject`)"
