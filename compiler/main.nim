@@ -119,10 +119,6 @@ proc commandCompileToJS(graph: ModuleGraph) =
     if conf.outFile.isEmpty:
       conf.outFile = RelativeFile(conf.projectName & ".js")
 
-    # js backend will ignore threads options
-    excl(conf.globalOptions, optThreads)
-    excl(conf.globalOptions, optThreadAnalysis)
-
     #incl(gGlobalOptions, optSafeCode)
     setTarget(graph.config.target, osJS, cpuJS)
     #initDefines()
