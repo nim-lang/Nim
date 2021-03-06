@@ -7014,14 +7014,16 @@ language for maximum flexibility:
 - A dot following the hash ``#.`` indicates that the call should use C++'s dot
   or arrow notation.
 - An at symbol ``@`` is replaced by the remaining arguments, separated by commas.
-- An exclamation symbol ``!`` indicates a free function.
+- An exclamation symbol ``!`` indicates a free (non-member) function.
 
 For example:
 
 .. code-block:: nim
+  // member function
   proc cppMethod(this: CppObj, a, b, c: cint) {.importcpp: "#.CppMethod(@)".}
   var x: ptr CppObj
   cppMethod(x[], 1, 2, 3)
+  // free function
   proc freeFn(a: cint) {.importcpp: "!$1".} # or importcpp: "!freeFn"
   freeFn(4)
 
