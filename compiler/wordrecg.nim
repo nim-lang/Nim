@@ -74,8 +74,8 @@ type
     wAssume = "assume", wAssert = "assert",
     wDeadCodeElimUnused = "deadCodeElim",  # deprecated, dead code elim always happens
     wSafecode = "safecode", wPackage = "package",
-    wNoForward = "noforward", # deprecated
-    wReorder = "reorder", # deadcode within nim repo
+    wNoForward = "noforward", # deprecated? used in 2 different contexts: types (typeCompleted) and experimental:reordering
+    wReorder = "reorder", # deadcode within nim replaced by experimental:reordering
     wNoRewrite = "norewrite", wNoDestroy = "nodestroy", wPragma = "pragma",
     wCompileTime = "compileTime", wNoInit = "noinit", wPassc = "passc", wPassl = "passl",
     wLocalPassc = "localPassC", wBorrow = "borrow", wDiscardable = "discardable",

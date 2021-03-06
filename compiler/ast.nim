@@ -299,8 +299,13 @@ type
     sfUsedInFinallyOrExcept  # symbol is used inside an 'except' or 'finally'
     sfSingleUsedTemp  # For temporaries that we know will only be used once
     sfNoalias         # 'noalias' annotation, means C's 'restrict'
+    sfNoForwardModule # experimental incomplete attempt for lazy symbol table processing, which
+                      # isn't quite the same as experimental:reordering
 
   TSymFlags* = set[TSymFlag]
+
+# xxx avoid conflating flags like this which is error prone, unless we can prove that
+# increasing number of flags actually increases compile times, which IIRC isn't the case.
 
 const
   sfNoInit* = sfMainModule       # don't generate code to init the variable
@@ -319,8 +324,6 @@ const
 
   sfNoForward* = sfRegister
     # forward declarations are not required (per module)
-  sfReorder* = sfForward
-    # reordering pass is enabled
 
   sfCompileToCpp* = sfInfixCall       # compile the module as C++ code
   sfCompileToObjc* = sfNamedParamCall # compile the module as Objective-C code

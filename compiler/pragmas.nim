@@ -263,15 +263,15 @@ proc onOff(c: PContext, n: PNode, op: TOptions, resOptions: var TOptions) =
   if isTurnedOn(c, n): resOptions.incl op
   else: resOptions.excl op
 
-proc pragmaNoForward(c: PContext, n: PNode; word: TSpecialWord, flag: TSymFlag) =
+proc pragmaNoForward(c: PContext, n: PNode; word: TSpecialWord, isNoForward: bool) =
   if isTurnedOn(c, n):
-    incl(c.module.flags, flag)
+    if isNoForward: incl(c.module.flags, sfNoForwardModule)
     c.features.incl codeReordering
   else:
-    excl(c.module.flags, flag)
+    if isNoForward: excl(c.module.flags, sfNoForwardModule)
     # c.features.excl codeReordering
   # deprecated as of 0.18.1
-  warningDeprecated(c.config, n.info, "'$#' is a deprecated alias for '$#'" % [word, ".experimental:codeReordering"]) # FACTOR
+  warningDeprecated(c.config, n.info, "'$#' is a deprecated alias for '$#'" % [$word, ".experimental:codeReordering"])
 
 proc processCallConv(c: PContext, n: PNode) =
   if n.kind in nkPragmaCallKinds and n.len == 2 and n[1].kind == nkIdent:
@@ -396,7 +396,6 @@ proc processExperimental(c: PContext; n: PNode) =
           if not isTopLevel(c):
               localError(c.config, n.info,
                          "Code reordering experimental pragma only valid at toplevel")
-          c.module.flags.incl sfReorder
       except ValueError:
         localError(c.config, n[1].info, "unknown experimental feature")
     else:
@@ -780,8 +779,6 @@ proc singlePragma(c: PContext, sym: PSym, n: PNode, i: var int,
                   validPragmas: TSpecialWords,
                   comesFromPush, isStatement: bool): bool =
   var it = n[i]
-  template warningOptionNoop(switch: string) =
-    warningDeprecated(c.config, it.info, "'$#' is deprecated, now a noop" % switch)
   var key = if it.kind in nkPragmaCallKinds and it.len > 1: it[0] else: it
   if key.kind == nkBracketExpr:
     processNote(c, it)
@@ -897,9 +894,10 @@ proc singlePragma(c: PContext, sym: PSym, n: PNode, i: var int,
       of wThreadVar:
         noVal(c, it)
         incl(sym.flags, {sfThread, sfGlobal})
-      of wDeadCodeElimUnused: warningOptionNoop($wDeadCodeElimUnused)
-      of wNoForward: pragmaNoForward(c, it, k, sfNoForward)
-      of wReorder: pragmaNoForward(c, it, k, sfReorder)
+      of wDeadCodeElimUnused:
+        warningDeprecated(c.config, it.info, "'$#' is deprecated, now a noop" % $wDeadCodeElimUnused)
+      of wNoForward: pragmaNoForward(c, it, k, true)
+      of wReorder: pragmaNoForward(c, it, k, false)
       of wMagic: processMagic(c, it, sym)
       of wCompileTime:
         noVal(c, it)
@@ -1191,12 +1189,11 @@ proc singlePragma(c: PContext, sym: PSym, n: PNode, i: var int,
           localError(c.config, n.info, "'experimental' pragma only valid as toplevel statement or in a 'push' environment")
         processExperimental(c, it)
       of wThis:
+        warningDeprecated(c.config, n.info, "the '.this' pragma is deprecated")
         if it.kind in nkPragmaCallKinds and it.len == 2:
           c.selfName = considerQuotedIdent(c, it[1])
-          message(c.config, n.info, warnDeprecated, "the '.this' pragma is deprecated")
         elif it.kind == nkIdent or it.len == 1:
           c.selfName = getIdent(c.cache, "self")
-          message(c.config, n.info, warnDeprecated, "the '.this' pragma is deprecated")
         else:
           localError(c.config, it.info, "'this' pragma is allowed to have zero or one arguments")
       of wNoRewrite:

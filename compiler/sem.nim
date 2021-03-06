@@ -597,7 +597,7 @@ proc semStmtAndGenerateGenerics(c: PContext, n: PNode): PNode =
       inc c.topStmts
   else:
     inc c.topStmts
-  if sfNoForward in c.module.flags:
+  if sfNoForwardModule in c.module.flags:
     result = semAllTypeSections(c, n)
   else:
     result = n

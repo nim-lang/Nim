@@ -1429,7 +1429,7 @@ proc semTypeSection(c: PContext, n: PNode): PNode =
   ## Processes a type section. This must be done in separate passes, in order
   ## to allow the type definitions in the section to reference each other
   ## without regard for the order of their definitions.
-  if sfNoForward notin c.module.flags or nfSem notin n.flags:
+  if sfNoForwardModule notin c.module.flags or nfSem notin n.flags:
     inc c.inTypeContext
     typeSectionLeftSidePass(c, n)
     typeSectionRightSidePass(c, n)
@@ -1830,8 +1830,7 @@ proc semProcAux(c: PContext, n: PNode, kind: TSymKind,
     n[namePos] = newSymNode(s)
     when false:
       # disable for now
-      if sfNoForward in c.module.flags and
-         sfSystemModule notin c.module.flags:
+      if sfNoForwardModule in c.module.flags and sfSystemModule notin c.module.flags:
         addInterfaceOverloadableSymAt(c, c.currentScope, s)
         s.flags.incl sfForward
         return
