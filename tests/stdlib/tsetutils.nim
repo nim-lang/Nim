@@ -32,5 +32,15 @@ template main =
     doAssert {range[0..10](0), 1, 2, 3}.complement == {range[0..10](4), 5, 6, 7, 8, 9, 10}
     doAssert {'0'..'9'}.complement == {0.char..255.char} - {'0'..'9'}
 
+  block: # `[]=`
+    type A = enum
+      a0, a1, a2, a3
+    var s = {a0, a3}
+    s[a0] = false
+    s[a1] = false
+    assert s == {a3}
+    s[a2] = true
+    s[a3] = true
+
 main()
 static: main()
