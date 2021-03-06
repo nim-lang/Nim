@@ -1,5 +1,5 @@
 discard """
-  cmd: "nim $target --threads:on --gc:arc $options $file"
+  cmd: "nim $target --threads:on --gc:orc $options $file"
   output: "42"
 """
 
