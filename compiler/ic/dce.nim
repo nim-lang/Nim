@@ -47,14 +47,19 @@ proc followLater(c: var AliveContext; g: PackedModuleGraph; module: int; item: i
   ## Marks a symbol 'item' as used and later in 'followNow' the symbol's body will
   ## be analysed.
   if not c.alive[module].containsOrIncl(item):
-    let body = g[module].fromDisk.sh.syms[item].ast
+    var body = g[module].fromDisk.sh.syms[item].ast
     if body != emptyNodeId:
       let opt = g[module].fromDisk.sh.syms[item].options
+      if g[module].fromDisk.sh.syms[item].kind in routineKinds:
+        body = NodeId ithSon(g[module].fromDisk.bodies, NodePos body, bodyPos)
       c.stack.add((module, opt, NodePos(body)))
 
     when false:
-      let name = g[module].fromDisk.sh.strings[g[module].fromDisk.sh.syms[item].name]
-      echo "I was called! ", name, " body exists: ", body != emptyNodeId
+      let nid = g[module].fromDisk.sh.syms[item].name
+      if nid != LitId(0):
+        let name = g[module].fromDisk.sh.strings[nid]
+        if name in ["nimFrame", "callDepthLimitReached"]:
+          echo "I was called! ", name, " body exists: ", body != emptyNodeId, " ", module, " ", item
 
 proc requestCompilerProc(c: var AliveContext; g: PackedModuleGraph; name: string) =
   let (module, item) = c.compilerProcs[name]
@@ -88,8 +93,7 @@ proc rangeCheckAnalysis(c: var AliveContext; g: PackedModuleGraph; tree: PackedT
         else: "raiseRangeErrorI"
       c.requestCompilerProc(g, raiser)
 
-proc aliveCode(c: var AliveContext; g: PackedModuleGraph; tree: PackedTree; n: NodePos;
-               override: bool) =
+proc aliveCode(c: var AliveContext; g: PackedModuleGraph; tree: PackedTree; n: NodePos) =
   ## Marks the symbols we encounter when we traverse the AST at `tree[n]` as alive, unless
   ## it is purely in a declarative context (type section etc.).
   case n.kind
@@ -114,18 +118,18 @@ proc aliveCode(c: var AliveContext; g: PackedModuleGraph; tree: PackedTree; n: N
   of nkVarSection, nkLetSection, nkConstSection:
     # XXX ignore the defining local variable name?
     for son in sonsReadonly(tree, n):
-      aliveCode(c, g, tree, son, override)
+      aliveCode(c, g, tree, son)
   of nkChckRangeF, nkChckRange64, nkChckRange:
     rangeCheckAnalysis(c, g, tree, n)
   of nkProcDef, nkConverterDef, nkMethodDef, nkLambda, nkDo, nkFuncDef:
     if n.firstSon.kind == nkSym and isNotGeneric(n):
       let item = n.firstSon.operand
-      if override or isExportedToC(c, g, item):
+      if isExportedToC(c, g, item):
         # This symbol is alive and everything its body references.
         followLater(c, g, c.thisModule, item)
   else:
     for son in sonsReadonly(tree, n):
-      aliveCode(c, g, tree, son, override)
+      aliveCode(c, g, tree, son)
 
 proc followNow(c: var AliveContext; g: PackedModuleGraph) =
   ## Mark all entries in the stack. Marking can add more entries
@@ -134,7 +138,7 @@ proc followNow(c: var AliveContext; g: PackedModuleGraph) =
     let (modId, opt, ast) = c.stack.pop()
     c.thisModule = modId
     c.options = opt
-    aliveCode(c, g, g[modId].fromDisk.bodies, ast, override=true)
+    aliveCode(c, g, g[modId].fromDisk.bodies, ast)
 
 proc computeAliveSyms*(g: PackedModuleGraph; conf: ConfigRef): AliveSyms =
   ## Entry point for our DCE algorithm.
@@ -145,7 +149,7 @@ proc computeAliveSyms*(g: PackedModuleGraph; conf: ConfigRef): AliveSyms =
     if g[i].status != undefined:
       c.thisModule = i
       for p in allNodes(g[i].fromDisk.topLevel):
-        aliveCode(c, g, g[i].fromDisk.topLevel, p, override=false)
+        aliveCode(c, g, g[i].fromDisk.topLevel, p)
 
       for cp in items(g[i].fromDisk.compilerProcs):
         #echo "compilerproc: ", cp[1], " ", g[i].fromDisk.sh.strings[cp[0]]
