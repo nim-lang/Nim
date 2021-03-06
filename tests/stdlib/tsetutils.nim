@@ -38,7 +38,7 @@ template main =
     var s = {a0, a3}
     s[a0] = false
     s[a1] = false
-    assert s == {a3}
+    doAssert s == {a3}
     s[a2] = true
     s[a3] = true
 
