@@ -75,7 +75,7 @@ type
     wDeadCodeElimUnused = "deadCodeElim",  # deprecated, dead code elim always happens
     wSafecode = "safecode", wPackage = "package",
     wNoForward = "noforward", # deprecated
-    wReorder = "reorder", # deprecated
+    wReorder = "reorder", # deadcode within nim repo
     wNoRewrite = "norewrite", wNoDestroy = "nodestroy", wPragma = "pragma",
     wCompileTime = "compileTime", wNoInit = "noinit", wPassc = "passc", wPassl = "passl",
     wLocalPassc = "localPassC", wBorrow = "borrow", wDiscardable = "discardable",

@@ -6,7 +6,6 @@ output:'''0
 """
 
 import macros
-# {.reorder: on .}
 {.experimental: "codeReordering".}
 
 echo foo(-1)
