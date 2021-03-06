@@ -1233,7 +1233,8 @@ proc semProcTypeNode(c: PContext, n, genericParams: PNode,
     if hasDefault:
       def = a[^1]
       block determineType:
-        if genericParams != nil and genericParams.len > 0:
+        if genericParams != nil and genericParams.kind != nkEmpty:
+          doAssert genericParams.kind == nkGenericParams, "what the heck " & $n
           def = semGenericStmt(c, def)
           if hasUnresolvedArgs(c, def):
             def.typ = makeTypeFromExpr(c, def.copyTree)
@@ -1361,7 +1362,7 @@ proc semProcTypeNode(c: PContext, n, genericParams: PNode,
           result.flags.excl tfHasMeta
       result.n.typ = r
 
-  if genericParams != nil and genericParams.len > 0:
+  if genericParams != nil and genericParams.kind != nkEmpty and genericParams.len > 0:
     for n in genericParams:
       if {sfUsed, sfAnon} * n.sym.flags == {}:
         result.flags.incl tfUnresolved

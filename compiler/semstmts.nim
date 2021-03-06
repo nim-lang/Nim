@@ -1526,7 +1526,7 @@ proc semProcAnnotation(c: PContext, prc: PNode;
 proc setGenericParamsMisc(c: PContext; n: PNode): PNode =
   if n[genericParamsPos].kind == nkEmpty:
     result = newNodeI(nkGenericParams, n.info)
-    result.flags.incl(nfSem)
+    # result.flags.incl(nfSem)
   else:
     let orig = n[genericParamsPos]
     # we keep the original params around for better error messages, see
@@ -1536,9 +1536,9 @@ proc setGenericParamsMisc(c: PContext; n: PNode): PNode =
       n[miscPos] = newTree(nkBracket, c.graph.emptyNode, orig)
     else:
       n[miscPos][1] = orig
-    # XXX: setting the result only in the non-nkEmpty branch is required or it
-    #      breaks the analysis that happens further on in both semLambda and
-    #      semProcAux, that points to a data dependency that should be broken.
+    # XXX: Setting the result only for the non-nkEmpty branch is required
+    #      otherwise consequent analysis is broken as this fn is called from
+    #      various call sites.
     n[genericParamsPos] = result
 
 proc semLambda(c: PContext, n: PNode, flags: TExprFlags): PNode =
@@ -1559,6 +1559,7 @@ proc semLambda(c: PContext, n: PNode, flags: TExprFlags): PNode =
   openScope(c)
   var gp = setGenericParamsMisc(c, n)
 
+  # process parameters:
   if n[paramsPos].kind != nkEmpty:
     semParamList(c, n[paramsPos], gp, s)
     # paramsTypeCheck(c, s.typ)
@@ -1567,6 +1568,8 @@ proc semLambda(c: PContext, n: PNode, flags: TExprFlags): PNode =
       n[genericParamsPos] = gp
   else:
     s.typ = newProcType(c, n.info)
+
+  if tfTriggersCompileTime in s.typ.flags: incl(s.flags, sfCompileTime)
   if n[pragmasPos].kind != nkEmpty:
     pragma(c, s, n[pragmasPos], lambdaPragmas)
   s.options = c.config.options
@@ -1850,7 +1853,7 @@ proc semProcAux(c: PContext, n: PNode, kind: TSymKind,
   if result != nil: return result
   result = n
   checkMinSonsLen(n, bodyPos + 1, c.config)
-
+  # same as semLambda
   let
     isAnon = n[namePos].kind == nkEmpty
     nameIsSymbol = n[namePos].kind == nkSym
@@ -1858,59 +1861,81 @@ proc semProcAux(c: PContext, n: PNode, kind: TSymKind,
 
   doAssert allowSymbolRegistration or nameIsSymbol
 
-  # get the proc name as a symbol
-  var
-    s: PSym
-    typeIsDetermined = false
-    # XXX: typeIsDetermined's initialization is a smell, this should be a fact
-    #      derived from the node itself
-  case n[namePos].kind:
-    of nkEmpty:
-      s = newSym(kind, c.cache.idAnon, nextSymId c.idgen, getCurrOwner(c),
-                  n.info)
-      s.flags.incl sfUsed
-    of nkSym:
-      s = n[namePos].sym
-      s.owner = getCurrOwner(c)
-      typeIsDetermined = s.typ == nil
-    else:
-      s = semIdentDef(c, n[0], kind)
+  var s: PSym
+  var typeIsDetermined = false
+
+  case n[namePos].kind
+  of nkEmpty:
+    s = newSym(kind, c.cache.idAnon, nextSymId c.idgen, c.getCurrOwner, n.info)
+    s.flags.incl sfUsed
+  of nkSym:
+    s = n[namePos].sym
+    s.owner = c.getCurrOwner
+    typeIsDetermined = s.typ == nil
+  else:
+    s = semIdentDef(c, n[namePos], kind)
+  
   if not nameIsSymbol:
-    # this means we just created it so ensure proper setup
+    # we must have just made the symbol, so assign it
     n[namePos] = newSymNode(s)
+
     when false:
       # disable for now
       if sfNoForward in c.module.flags and
-         sfSystemModule notin c.module.flags:
+          sfSystemModule notin c.module.flags:
         addInterfaceOverloadableSymAt(c, c.currentScope, s)
         s.flags.incl sfForward
         return
+  
   s.ast = n
   s.options = c.config.options
   #s.scope = c.currentScope
 
   # before compiling the proc body, set as current the scope
   # where the proc was declared
-  let oldScope = c.currentScope
-  #c.currentScope = s.scope
+  let delcarationScope = c.currentScope
   pushOwner(c, s)
   openScope(c)
+  var gp: PNode
+
+  if n[genericParamsPos].kind == nkEmpty:
+    gp = newNodeI(nkGenericParams, n.info)
+    gp.flags.incl(nfSem)
+    gp.flags.incl(nfSem)
+  else:
+    let orig = n[genericParamsPos]
+    # we keep the original params around for better error messages, see
+    # issue https://github.com/nim-lang/Nim/issues/1713
+    gp = semGenericParamList(c, orig)
+    if n[miscPos].kind == nkEmpty:
+      n[miscPos] = newTree(nkBracket, c.graph.emptyNode, orig)
+    else:
+      n[miscPos][1] = orig
+  # XXX: Setting the gp only for the non-nkEmpty branch is required
+  #      otherwise consequent analysis is broken as this fn is called from
+  #      various call sites.
+  n[genericParamsPos] = gp
 
   # process parameters:
   # XXX: this is concerning we're doing repetitive analysis, rather than
   #      clearly breaking it down into phases
-  var gp = setGenericParamsMisc(c, n)
+  # var gp = setGenericParamsMisc(c, n)
 
   if n[paramsPos].kind != nkEmpty:
     semParamList(c, n[paramsPos], gp, s)
-    if gp.len > 0:
-      if n[genericParamsPos].kind == nkEmpty:
+    # cases:
+      # none in either
+      # only implicit <-- handles this
+      # only explicit
+      # mixed implicit and explicit
+    if gp.len > 0 and n[genericParamsPos].kind == nkEmpty:
         # we have a list of implicit type parameters:
         n[genericParamsPos] = gp
         # check for semantics again:
         # semParamList(c, n[ParamsPos], nil, s)
   else:
     s.typ = newProcType(c, n.info)
+
   if tfTriggersCompileTime in s.typ.flags: incl(s.flags, sfCompileTime)
   if n[patternPos].kind != nkEmpty:
     n[patternPos] = semPattern(c, n[patternPos])
@@ -1920,7 +1945,7 @@ proc semProcAux(c: PContext, n: PNode, kind: TSymKind,
     incl(s.flags, sfNoSideEffect)
     incl(s.typ.flags, tfNoSideEffect)
   var (proto, comesFromShadowScope) = if isAnon: (nil, false)
-                                      else: searchForProc(c, oldScope, s)
+                                      else: searchForProc(c, delcarationScope, s)
   if proto == nil and sfForward in s.flags:
     #This is a definition that shares its sym with its forward declaration (generated by a macro),
     #if the symbol is also gensymmed we won't find it with searchForProc, so we check here
@@ -1936,10 +1961,10 @@ proc semProcAux(c: PContext, n: PNode, kind: TSymKind,
       if s.owner == nil: s.owner = getCurrOwner(c)
     elif kind in OverloadableSyms:
       if not typeIsDetermined:
-        addInterfaceOverloadableSymAt(c, oldScope, s)
+        addInterfaceOverloadableSymAt(c, delcarationScope, s)
     else:
       if not typeIsDetermined:
-        addInterfaceDeclAt(c, oldScope, s)
+        addInterfaceDeclAt(c, delcarationScope, s)
     if n[pragmasPos].kind != nkEmpty:
       pragma(c, s, n[pragmasPos], validPragmas)
     else:
@@ -2050,6 +2075,8 @@ proc semProcAux(c: PContext, n: PNode, kind: TSymKind,
   popOwner(c)
   if n[patternPos].kind != nkEmpty:
     c.patterns.add(s)
+  if n[genericParamsPos].kind == nkGenericParams and n[genericParamsPos].len == 0:
+    n[genericParamsPos] = newNodeI(nkEmpty, n[genericParamsPos].info)
   if isAnon:
     n.transitionSonsKind(nkLambda)
     result.typ = s.typ
