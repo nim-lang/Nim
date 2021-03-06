@@ -180,6 +180,10 @@ proc processImportCompilerProc(c: PContext; s: PSym, extname: string, info: TLin
 proc processImportCpp(c: PContext; s: PSym, extname: string, info: TLineInfo) =
   var extname = extname
   let isFreeFunction = extname.startsWith "!"
+  #[
+  example: `proc fun2(a: cstring): cint {.importcpp:"!fun2".}`
+  see more tests in tests/cpp/t12150.nim
+  ]#
   if isFreeFunction:
     extname = extname[1..^1]
   else:
