@@ -528,7 +528,7 @@ proc cycleCheck(n: PNode; c: var Con) =
       message(c.graph.config, n.info, warnCycleCreated, msg)
       break
 
-proc pVarTopLevel(v: PNode; c: var Con; s: var Scope; ri, res: PNode) =
+proc pVarTopLevel(v: PNode; c: var Con; s: var Scope; res: PNode) =
   # move the variable declaration to the top of the frame:
   s.vars.add v.sym
   if isUnpackedTuple(v):
@@ -541,10 +541,6 @@ proc pVarTopLevel(v: PNode; c: var Con; s: var Scope; ri, res: PNode) =
       c.graph.globalDestructors.add c.genDestroy(v)
     else:
       s.final.add c.genDestroy(v)
-  if ri.kind == nkEmpty and c.inLoop > 0:
-    res.add moveOrCopy(v, genDefaultCall(v.typ, c, v.info), c, s, isDecl = true)
-  elif ri.kind != nkEmpty:
-    res.add moveOrCopy(v, ri, c, s, isDecl = true)
 
 proc processScope(c: var Con; s: var Scope; ret: PNode): PNode =
   result = newNodeI(nkStmtList, ret.info)
@@ -854,12 +850,12 @@ proc p(n: PNode; c: var Con; s: var Scope; mode: ProcessMode): PNode =
           for j in 0..<it.len-2:
             let v = it[j]
             if v.kind == nkSym:
-              if sfCompileTime notin v.sym.flags:
-                pVarTopLevel(v, c, s, ri, result)
-            elif ri.kind != nkEmpty:
-              result.add moveOrCopy(v, ri, c, s, isDecl = false)
+              if sfCompileTime in v.sym.flags: continue
+              pVarTopLevel(v, c, s, result)
+            if ri.kind != nkEmpty:
+              result.add moveOrCopy(v, ri, c, s, isDecl = v.kind == nkSym)
             elif ri.kind == nkEmpty and c.inLoop > 0:
-              ri = genDefaultCall(v.typ, c, v.info)
+              result.add moveOrCopy(v, genDefaultCall(v.typ, c, v.info), c, s, isDecl = v.kind == nkSym)
         else: # keep the var but transform 'ri':
           var v = copyNode(n)
           var itCopy = copyNode(it)
