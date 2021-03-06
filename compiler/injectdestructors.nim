@@ -853,8 +853,9 @@ proc p(n: PNode; c: var Con; s: var Scope; mode: ProcessMode): PNode =
         elif it.kind == nkIdentDefs and hasDestructor(c, it[0].typ):
           for j in 0..<it.len-2:
             let v = it[j]
-            if v.kind == nkSym and sfCompileTime notin v.sym.flags:
-              pVarTopLevel(v, c, s, ri, result)
+            if v.kind == nkSym:
+              if sfCompileTime notin v.sym.flags:
+                pVarTopLevel(v, c, s, ri, result)
             elif ri.kind != nkEmpty:
               result.add moveOrCopy(v, ri, c, s, isDecl = false)
             elif ri.kind == nkEmpty and c.inLoop > 0:
