@@ -2122,7 +2122,7 @@ iterator walkDirs*(pattern: string): string {.tags: [ReadDirEffect], noWeirdTarg
   ## * `walkDirRec iterator <#walkDirRec.i,string>`_
   runnableExamples:
     import std/sequtils
-    let paths = toSeq(walkPattern("lib/pure/*")) # works on windows too
+    let paths = toSeq(walkDirs("lib/pure/*")) # works on windows too
     assert "lib/pure/concurrency".unixToNativePath in paths
   walkCommon(pattern, isDir)
 
