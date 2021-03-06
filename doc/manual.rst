@@ -6670,8 +6670,6 @@ boundChecks      on|off           Turns the code generation for array bound
                                   checks on or off.
 overflowChecks   on|off           Turns the code generation for over- or
                                   underflow checks on or off.
-nilChecks        on|off           Turns the code generation for nil pointer
-                                  checks on or off.
 assertions       on|off           Turns the code generation for assertions
                                   on or off.
 warnings         on|off           Turns the warning messages of the compiler

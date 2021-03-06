@@ -73,7 +73,9 @@ type
     wRequires = "requires", wEnsures = "ensures", wInvariant = "invariant",
     wAssume = "assume", wAssert = "assert",
     wDeadCodeElimUnused = "deadCodeElim",  # deprecated, dead code elim always happens
-    wSafecode = "safecode", wPackage = "package", wNoForward = "noforward", wReorder = "reorder",
+    wSafecode = "safecode", wPackage = "package",
+    wNoForward = "noforward", # deprecated
+    wReorder = "reorder", # deprecated
     wNoRewrite = "norewrite", wNoDestroy = "nodestroy", wPragma = "pragma",
     wCompileTime = "compileTime", wNoInit = "noinit", wPassc = "passc", wPassl = "passl",
     wLocalPassc = "localPassC", wBorrow = "borrow", wDiscardable = "discardable",
