@@ -913,14 +913,20 @@ when defined(js):
 
   proc parseNativeJson(x: cstring): JSObject {.importjs: "JSON.parse(#)".}
 
+  proc isInteger[T](x: T): bool {.importjs: "Number.isInteger(#)".}
+  proc isSafeInteger[T](x: T): bool {.importjs: "Number.isSafeInteger(#)".}
+
   proc getVarType(x: JSObject): JsonNodeKind =
     result = JNull
     case $getProtoName(x) # TODO: Implicit returns fail here.
     of "[object Array]": return JArray
     of "[object Object]": return JObject
     of "[object Number]":
-      if cast[float](x) mod 1.0 == 0:
-        return JInt
+      if isInteger(x):
+        if isSafeInteger(x):
+          return JInt
+        else:
+          return JString
       else:
         return JFloat
     of "[object Boolean]": return JBool
