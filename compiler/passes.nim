@@ -152,7 +152,9 @@ proc processModule*(graph: ModuleGraph; module: PSym; idgen: IdGenerator;
       var n = parseTopLevelStmt(p)
       if n.kind == nkEmpty: break
       if (sfSystemModule notin module.flags and
-          (sfNoForwardModule in module.flags or codeReordering in graph.config.features)):
+          ({sfNoForward, sfReorder} * module.flags != {} or
+          codeReordering in graph.config.features)):
+          # `sfReorder` is still needed, e.g. for lib/impure/db_sqlite.nim
         # read everything, no streaming possible
         var sl = newNodeI(nkStmtList, n.info)
         sl.add n
@@ -160,7 +162,8 @@ proc processModule*(graph: ModuleGraph; module: PSym; idgen: IdGenerator;
           var n = parseTopLevelStmt(p)
           if n.kind == nkEmpty: break
           sl.add n
-        if codeReordering in graph.config.features:
+        if sfReorder in module.flags or codeReordering in graph.config.features:
+          # `sfReorder` is still needed, e.g. for lib/impure/db_sqlite.nim
           sl = reorder(graph, sl, module)
         discard processTopLevelStmt(graph, sl, a)
         break

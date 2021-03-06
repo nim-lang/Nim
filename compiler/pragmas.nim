@@ -263,15 +263,16 @@ proc onOff(c: PContext, n: PNode, op: TOptions, resOptions: var TOptions) =
   if isTurnedOn(c, n): resOptions.incl op
   else: resOptions.excl op
 
-proc pragmaNoForward(c: PContext, n: PNode; word: TSpecialWord, isNoForward: bool) =
+proc pragmaNoForward(c: PContext, n: PNode; word: TSpecialWord, flag: TSymFlag) =
   if isTurnedOn(c, n):
-    if isNoForward: incl(c.module.flags, sfNoForwardModule)
+    incl(c.module.flags, flag)
     c.features.incl codeReordering
   else:
-    if isNoForward: excl(c.module.flags, sfNoForwardModule)
+    excl(c.module.flags, flag)
     # c.features.excl codeReordering
   # deprecated as of 0.18.1
-  warningDeprecated(c.config, n.info, "'$#' is a deprecated alias for '$#'" % [$word, ".experimental:codeReordering"])
+  warningDeprecated(c.config, n.info, "use {.experimental: \"codeReordering\".} instead; $# is deprecated" % $word)
+    # xxx but it's not quite the same; `sfNoForward`, `sfReorder` and `codeReordering` all differ subtely.
 
 proc processCallConv(c: PContext, n: PNode) =
   if n.kind in nkPragmaCallKinds and n.len == 2 and n[1].kind == nkIdent:
@@ -396,6 +397,7 @@ proc processExperimental(c: PContext; n: PNode) =
           if not isTopLevel(c):
               localError(c.config, n.info,
                          "Code reordering experimental pragma only valid at toplevel")
+          c.module.flags.incl sfReorder
       except ValueError:
         localError(c.config, n[1].info, "unknown experimental feature")
     else:
@@ -896,8 +898,8 @@ proc singlePragma(c: PContext, sym: PSym, n: PNode, i: var int,
         incl(sym.flags, {sfThread, sfGlobal})
       of wDeadCodeElimUnused:
         warningDeprecated(c.config, it.info, "'$#' is deprecated, now a noop" % $wDeadCodeElimUnused)
-      of wNoForward: pragmaNoForward(c, it, k, true)
-      of wReorder: pragmaNoForward(c, it, k, false)
+      of wNoForward: pragmaNoForward(c, it, k, sfNoForward)
+      of wReorder: pragmaNoForward(c, it, k, sfReorder)
       of wMagic: processMagic(c, it, sym)
       of wCompileTime:
         noVal(c, it)
