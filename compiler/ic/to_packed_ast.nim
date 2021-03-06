@@ -33,6 +33,7 @@ type
     exports*: seq[(LitId, int32)]
     reexports*: seq[(LitId, PackedItemId)]
     compilerProcs*: seq[(LitId, int32)]
+    exportCProcs*: seq[int32] # for DCE we need to know `exportC` procs as entry points.
     converters*, methods*, trmacros*, pureEnums*: seq[int32]
     macroUsages*: seq[(PackedItemId, PackedLineInfo)]
 
@@ -437,7 +438,10 @@ proc toPackedNodeIgnoreProcDefs(n: PNode, encoder: var PackedEncoder; m: var Pac
   of routineDefs:
     # we serialize n[namePos].sym instead
     if n[namePos].kind == nkSym:
-      discard storeSym(n[namePos].sym, encoder, m)
+      let s = n[namePos].sym
+      discard storeSym(s, encoder, m)
+      if s.flags * {sfExportc, sfCompilerProc, sfCompileTime} == {sfExportc}:
+        m.exportCProcs.add(s.itemId.item)
     else:
       toPackedNode(n, m.topLevel, encoder, m)
   of nkStmtList, nkStmtListExpr:
@@ -490,6 +494,7 @@ proc loadRodFile*(filename: AbsoluteFile; m: var PackedModule; config: ConfigRef
   loadSeqSection reexportsSection, m.reexports
 
   loadSeqSection compilerProcsSection, m.compilerProcs
+  loadSeqSection exportCProcsSection, m.exportCProcs
 
   loadSeqSection trmacrosSection, m.trmacros
 
@@ -550,6 +555,7 @@ proc saveRodFile*(filename: AbsoluteFile; encoder: var PackedEncoder; m: var Pac
   storeSeqSection reexportsSection, m.reexports
 
   storeSeqSection compilerProcsSection, m.compilerProcs
+  storeSeqSection exportCProcsSection, m.exportCProcs
 
   storeSeqSection trmacrosSection, m.trmacros
   storeSeqSection convertersSection, m.converters

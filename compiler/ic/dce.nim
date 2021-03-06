@@ -151,6 +151,9 @@ proc computeAliveSyms*(g: PackedModuleGraph; conf: ConfigRef): AliveSyms =
         #echo "compilerproc: ", cp[1], " ", g[i].fromDisk.sh.strings[cp[0]]
         followLater(c, g, c.thisModule, cp[1])
 
+      for cp in items(g[i].fromDisk.exportCProcs):
+        followLater(c, g, c.thisModule, cp)
+
   followNow(c, g)
   result = move(c.alive)
 
