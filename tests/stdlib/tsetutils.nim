@@ -41,6 +41,7 @@ template main =
     doAssert s == {a3}
     s[a2] = true
     s[a3] = true
+    doAssert s == {a2, a3}
 
 main()
 static: main()
