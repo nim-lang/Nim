@@ -2888,7 +2888,7 @@ proc expr(p: BProc, n: PNode, d: var TLoc) =
     if n[genericParamsPos].kind == nkEmpty:
       var prc = n[namePos].sym
       if useAliveDataFromDce in p.module.flags:
-        if p.module.alive.contains(prc.itemId.item):
+        if p.module.alive.contains(prc.itemId.item) and prc.magic in {mNone, mIsolate}:
           genProc(p.module, prc)
       elif prc.skipGenericOwner.kind == skModule and sfCompileTime notin prc.flags:
         if ({sfExportc, sfCompilerProc} * prc.flags == {sfExportc}) or

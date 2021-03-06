@@ -433,17 +433,34 @@ proc storeTypeInst*(c: var PackedEncoder; m: var PackedModule; s: PSym; inst: PT
 proc addPragmaComputation*(c: var PackedEncoder; m: var PackedModule; n: PNode) =
   toPackedNode(n, m.toReplay, c, m)
 
+proc toPackedProcDef*(n: PNode; ir: var PackedTree; c: var PackedEncoder; m: var PackedModule) =
+  let info = toPackedInfo(n.info, c, m)
+  let patchPos = ir.prepare(n.kind, n.flags,
+                            storeTypeLater(n.typ, c, m), info)
+  for i in 0..<n.len:
+    if i != bodyPos:
+      toPackedNode(n[i], ir, c, m)
+    else:
+      # do not serialize the body of the proc, it's unnecessary since
+      # n[0].sym.ast has the sem'checked variant of it which is what
+      # everybody should use instead.
+      ir.nodes.add PackedNode(kind: nkEmpty, flags: {}, operand: 0,
+                              typeId: nilItemId, info: info)
+  ir.patch patchPos
+
 proc toPackedNodeIgnoreProcDefs(n: PNode, encoder: var PackedEncoder; m: var PackedModule) =
   case n.kind
   of routineDefs:
-    # we serialize n[namePos].sym instead
-    if n[namePos].kind == nkSym:
-      let s = n[namePos].sym
-      discard storeSym(s, encoder, m)
-      if s.flags * {sfExportc, sfCompilerProc, sfCompileTime} == {sfExportc}:
-        m.exportCProcs.add(s.itemId.item)
-    else:
-      toPackedNode(n, m.topLevel, encoder, m)
+    toPackedProcDef(n, m.topLevel, encoder, m)
+    when false:
+      # we serialize n[namePos].sym instead
+      if n[namePos].kind == nkSym:
+        let s = n[namePos].sym
+        discard storeSym(s, encoder, m)
+        if s.flags * {sfExportc, sfCompilerProc, sfCompileTime} == {sfExportc}:
+          m.exportCProcs.add(s.itemId.item)
+      else:
+        toPackedNode(n, m.topLevel, encoder, m)
   of nkStmtList, nkStmtListExpr:
     for it in n:
       toPackedNodeIgnoreProcDefs(it, encoder, m)
