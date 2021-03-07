@@ -1736,6 +1736,8 @@ proc expandSymlink*(symlinkPath: string): string {.noWeirdTarget.} =
   ## * `symlinkExists proc <#symlinkExists,string>`_
   when defined(windows):
     const bufsize = 32
+    const VOLUME_NAME_DOS = 0
+
     var handle = openHandle(symlinkPath, false)
     defer: discard closeHandle(handle)
 
@@ -1744,10 +1746,10 @@ proc expandSymlink*(symlinkPath: string): string {.noWeirdTarget.} =
 
     var
       buffer = newWideCString("", bufsize)
-      length = getFinalPathNameByHandleW(handle, buffer, bufsize, 0)
+      length = getFinalPathNameByHandleW(handle, buffer, bufsize, VOLUME_NAME_DOS)
 
     buffer = newWideCString(length.int)
-    length = getFinalPathNameByHandleW(handle, buffer, length.DWORD, 0)
+    length = getFinalPathNameByHandleW(handle, buffer, length.DWORD, VOLUME_NAME_DOS)
 
     if length == 0:
       raiseOSError(osLastError())
