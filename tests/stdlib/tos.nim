@@ -353,7 +353,7 @@ block absolutePath:
   doAssertRaises(ValueError): discard absolutePath("a", "b")
   doAssert absolutePath("a") == getCurrentDir() / "a"
   doAssert absolutePath("a", "/b") == "/b" / "a"
-  when defined(Posix):
+  when defined(posix):
     doAssert absolutePath("a", "/b/") == "/b" / "a"
     doAssert absolutePath("a", "/b/c") == "/b/c" / "a"
     doAssert absolutePath("/a", "b/") == "/a"
