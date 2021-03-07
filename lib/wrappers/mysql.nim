@@ -11,7 +11,7 @@
 when defined(nimHasStyleChecks):
   {.push styleChecks: off.}
 
-when defined(Unix):
+when defined(unix):
   when defined(macosx):
     const
       lib = "(libmysqlclient|libmariadbclient)(|.20|.19|.18|.17|.16|.15).dylib"
