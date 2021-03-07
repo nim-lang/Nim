@@ -92,7 +92,7 @@ import ssl_config
 export nativesockets.Port, nativesockets.`$`, nativesockets.`==`
 export Domain, SockType, Protocol
 
-const useWinVersion = defined(Windows) or defined(nimdoc)
+const useWinVersion = defined(windows) or defined(nimdoc)
 const defineSsl = defined(ssl) or defined(nimdoc)
 
 when useWinVersion:

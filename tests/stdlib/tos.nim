@@ -353,7 +353,7 @@ block absolutePath:
   doAssertRaises(ValueError): discard absolutePath("a", "b")
   doAssert absolutePath("a") == getCurrentDir() / "a"
   doAssert absolutePath("a", "/b") == "/b" / "a"
-  when defined(Posix):
+  when defined(posix):
     doAssert absolutePath("a", "/b/") == "/b" / "a"
     doAssert absolutePath("a", "/b/c") == "/b/c" / "a"
     doAssert absolutePath("/a", "b/") == "/a"
@@ -610,7 +610,7 @@ block: # normalizePathEnd
     doAssert "//".normalizePathEnd(false) == "/"
     doAssert "foo.bar//".normalizePathEnd == "foo.bar"
     doAssert "bar//".normalizePathEnd(trailingSep = true) == "bar/"
-  when defined(Windows):
+  when defined(windows):
     doAssert r"C:\foo\\".normalizePathEnd == r"C:\foo"
     doAssert r"C:\foo".normalizePathEnd(trailingSep = true) == r"C:\foo\"
     # this one is controversial: we could argue for returning `D:\` instead,
