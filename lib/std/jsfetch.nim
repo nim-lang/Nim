@@ -115,7 +115,7 @@ when defined(nimExperimentalJsfetch) or defined(nimdoc):
   func `$`*(self: Request or Response or Body or FetchOptions): string = $toCstring(self)
 
 
-runnableExamples("-d:nimExperimentalJsfetch"):
+runnableExamples("-d:nimExperimentalJsfetch -r:off"):
   import std/[httpcore, asyncjs, sugar, jsconsole, jsheaders, jsformdata]
 
   if defined(nimJsFetchTests):
