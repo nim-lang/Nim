@@ -117,6 +117,7 @@ when defined(nimExperimentalJsfetch) or defined(nimdoc):
 
 runnableExamples("-d:nimExperimentalJsfetch -r:off"):
   import std/[httpcore, asyncjs, sugar, jsconsole, jsheaders, jsformdata]
+  from std/jsffi import JsObject
 
   if defined(nimJsFetchTests):
     block:
