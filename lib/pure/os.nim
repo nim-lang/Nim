@@ -44,7 +44,7 @@
 include system/inclrtl
 import std/private/since
 
-import std/[strutils, pathnorm]
+import std/[strutils, pathnorm, strbasics]
 
 const weirdTarget = defined(nimscript) or defined(js)
 
@@ -1716,15 +1716,52 @@ proc createSymlink*(src, dest: string) {.noWeirdTarget.} =
     if symlink(src, dest) != 0:
       raiseOSError(osLastError(), $(src, dest))
 
+when defined(windows):
+  proc getFinalPathNameByHandleW(
+    hFile: Handle,
+    lpszFilePath: WideCStringObj,
+    cchFilePath: DWORD,
+    dwFlags: DWORD
+  ): DWORD {.importc: "GetFinalPathNameByHandleW",
+    stdcall, dynlib: "Kernel32.dll".}
+
 proc expandSymlink*(symlinkPath: string): string {.noWeirdTarget.} =
   ## Returns a string representing the path to which the symbolic link points.
-  ##
-  ## On Windows this is a noop, `symlinkPath` is simply returned.
+  ## 
+  ## .. Note:: The function fails if `symlinkPath` is not a symlink, except on Windows, 
+  ##    where the full path will be returned.
   ##
   ## See also:
   ## * `createSymlink proc <#createSymlink,string,string>`_
+  ## * `symlinkExists proc <#symlinkExists,string>`_
   when defined(windows):
-    result = symlinkPath
+    const bufsize = 32
+    var handle = openHandle(symlinkPath, false)
+    defer: discard closeHandle(handle)
+
+    if handle == INVALID_HANDLE_VALUE:
+      raiseOSError(osLastError(), symlinkPath)
+
+    var
+      buffer = newWideCString("", bufsize)
+      length = getFinalPathNameByHandleW(handle, buffer, bufsize, 0)
+
+    buffer = newWideCString(length.int)
+    length = getFinalPathNameByHandleW(handle, buffer, length.DWORD, 0)
+
+    if length == 0:
+      raiseOSError(osLastError())
+
+    result = $buffer
+
+    if length > 4:
+      if result.startsWith(r"\\?\"):
+        # In case of a local path, remove the prefix `\\?\`
+        result.setSlice(4 .. result.high)
+      elif result.startsWith(r"\\?\UNC\"):
+        # In case of a network path, replace `\\?\UNC\` with `\\`
+        result[6] = '\\'
+        result.setSlice(6 .. result.high)
   else:
     result = newString(maxSymlinkLen)
     var len = readlink(symlinkPath, result, maxSymlinkLen)
