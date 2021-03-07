@@ -21,8 +21,11 @@ type OrdinalEnum* = Ordinal and enum ## Enum without holes.
 runnableExamples:
   type A = enum a0 = 2, a1 = 4, a2
   type B = enum b0 = 2, b1, b2
+  assert A is enum
   assert A is SomeEnumWithHoles
+  assert A isnot OrdinalEnum
   assert B isnot SomeEnumWithHoles
+  assert B is OrdinalEnum
   assert int isnot SomeEnumWithHoles
   type C[T] = enum h0 = 2, h1 = 4
   assert C[float] is SomeEnumWithHoles
