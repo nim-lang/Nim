@@ -2084,6 +2084,11 @@ iterator walkPattern*(pattern: string): string {.tags: [ReadDirEffect], noWeirdT
   ## * `walkDirs iterator <#walkDirs.i,string>`_
   ## * `walkDir iterator <#walkDir.i,string>`_
   ## * `walkDirRec iterator <#walkDirRec.i,string>`_
+  runnableExamples:
+    import std/sequtils
+    let paths = toSeq(walkPattern("lib/pure/*")) # works on windows too
+    assert "lib/pure/concurrency".unixToNativePath in paths
+    assert "lib/pure/os.nim".unixToNativePath in paths
   walkCommon(pattern, defaultWalkFilter)
 
 iterator walkFiles*(pattern: string): string {.tags: [ReadDirEffect], noWeirdTarget.} =
@@ -2098,6 +2103,9 @@ iterator walkFiles*(pattern: string): string {.tags: [ReadDirEffect], noWeirdTar
   ## * `walkDirs iterator <#walkDirs.i,string>`_
   ## * `walkDir iterator <#walkDir.i,string>`_
   ## * `walkDirRec iterator <#walkDirRec.i,string>`_
+  runnableExamples:
+    import std/sequtils
+    assert "lib/pure/os.nim".unixToNativePath in toSeq(walkFiles("lib/pure/*.nim")) # works on windows too
   walkCommon(pattern, isFile)
 
 iterator walkDirs*(pattern: string): string {.tags: [ReadDirEffect], noWeirdTarget.} =
@@ -2112,6 +2120,10 @@ iterator walkDirs*(pattern: string): string {.tags: [ReadDirEffect], noWeirdTarg
   ## * `walkFiles iterator <#walkFiles.i,string>`_
   ## * `walkDir iterator <#walkDir.i,string>`_
   ## * `walkDirRec iterator <#walkDirRec.i,string>`_
+  runnableExamples:
+    import std/sequtils
+    let paths = toSeq(walkDirs("lib/pure/*")) # works on windows too
+    assert "lib/pure/concurrency".unixToNativePath in paths
   walkCommon(pattern, isDir)
 
 proc expandFilename*(filename: string): string {.rtl, extern: "nos$1",

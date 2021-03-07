@@ -555,6 +555,9 @@ proc quote*(bl: typed, op = "``"): NimNode {.magic: "QuoteAst", noSideEffect.} =
   ## operator may be obtained by escaping it (by prefixing it with itself) when used
   ## as a unary operator:
   ## e.g. `@` is escaped as `@@`, `&%` is escaped as `&%&%` and so on; see examples.
+  ##
+  ## A custom operator interpolation needs accent quoted (``) whenever it resolves
+  ## to a symbol.
   runnableExamples:
     macro check(ex: untyped) =
       # this is a simplified version of the check macro from the
@@ -593,10 +596,11 @@ proc quote*(bl: typed, op = "``"): NimNode {.magic: "QuoteAst", noSideEffect.} =
   runnableExamples:
     # custom `op`
     var destroyCalled = false
-    macro bar() =
+    macro bar(ident) =
       var x = 1.5
       result = quote("@") do:
         type Foo = object
+        let `@ident` = 0 # custom op interpolated symbols need quoted (``)
         proc `=destroy`(a: var Foo) =
           doAssert @x == 1.5
           doAssert compiles(@x == 1.5)
@@ -607,7 +611,7 @@ proc quote*(bl: typed, op = "``"): NimNode {.magic: "QuoteAst", noSideEffect.} =
           destroyCalled = true
         block:
           let a = Foo()
-    bar()
+    bar(someident)
     doAssert destroyCalled
 
     proc `&%`(x: int): int = 1
