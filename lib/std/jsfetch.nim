@@ -63,13 +63,13 @@ when defined(nimExperimentalJsfetch) or defined(nimdoc):
       body*: Body
 
 
-  func newResponse*(body: cstring or FormData): Response {.importjs: "(new Response(#))".}
+  func newResponse*(body: cstring | FormData): Response {.importjs: "(new Response(#))".}
     ## Constructor for `Response`. This does *not* call `fetch()`. Same as `new Response()`.
 
   func newRequest*(url: cstring): Request {.importjs: "(new Request(#))".}
     ## Constructor for `Request`. This does *not* call `fetch()`. Same as `new Request()`.
 
-  func clone*(self: Response or Request): Response {.importjs: "#.$1()".}
+  func clone*(self: Response | Request): Response {.importjs: "#.$1()".}
     ## https://developer.mozilla.org/en-US/docs/Web/API/Response/clone
 
   proc text*(self: Response): Future[cstring] {.importjs: "#.$1()".}
@@ -104,15 +104,15 @@ when defined(nimExperimentalJsfetch) or defined(nimdoc):
       )
     )
 
-  proc fetch*(url: cstring or Request): Future[Response] {.importjs: "$1(#)".}
+  proc fetch*(url: cstring | Request): Future[Response] {.importjs: "$1(#)".}
     ## `fetch()` API, simple `GET` only, returns a `Future[Response]`.
 
-  proc fetch*(url: cstring or Request, options: FetchOptions): Future[Response] {.importjs: "$1(#, #)".}
+  proc fetch*(url: cstring | Request; options: FetchOptions): Future[Response] {.importjs: "$1(#, #)".}
     ## `fetch()` API that takes a `FetchOptions`, returns a `Future[Response]`.
 
-  func toCstring*(self: Request or Response or Body or FetchOptions): cstring {.importjs: "JSON.stringify(#)".}
+  func toCstring*(self: Request | Response | Body | FetchOptions): cstring {.importjs: "JSON.stringify(#)".}
 
-  func `$`*(self: Request or Response or Body or FetchOptions): string = $toCstring(self)
+  func `$`*(self: Request | Response | Body | FetchOptions): string = $toCstring(self)
 
 
 runnableExamples("-d:nimExperimentalJsfetch -r:off"):
@@ -133,17 +133,17 @@ runnableExamples("-d:nimExperimentalJsfetch -r:off"):
         referrer = "client".cstring,
         integrity = "".cstring
       )
-      doAssert options0.keepalive == false
-      doAssert options0.metod == "POST".cstring
-      doAssert options0.body == """{"key": "value"}""".cstring
-      doAssert options0.mode == "no-cors".cstring
-      doAssert options0.credentials == "omit".cstring
-      doAssert options0.cache == "no-cache".cstring
-      doAssert options0.referrerPolicy == "no-referrer".cstring
-      doAssert options0.redirect == "follow".cstring
-      doAssert options0.referrer == "client".cstring
-      doAssert options0.integrity == "".cstring
-      doAssert options0.toCstring is cstring
+      assert options0.keepalive == false
+      assert options0.metod == "POST".cstring
+      assert options0.body == """{"key": "value"}""".cstring
+      assert options0.mode == "no-cors".cstring
+      assert options0.credentials == "omit".cstring
+      assert options0.cache == "no-cache".cstring
+      assert options0.referrerPolicy == "no-referrer".cstring
+      assert options0.redirect == "follow".cstring
+      assert options0.referrer == "client".cstring
+      assert options0.integrity == "".cstring
+      assert options0.toCstring is cstring
 
     block:
       let options1: FetchOptions = newFetchOptions(
@@ -158,25 +158,25 @@ runnableExamples("-d:nimExperimentalJsfetch -r:off"):
         referrer = "client".cstring,
         integrity = "".cstring
       )
-      doAssert options1.keepalive == false
-      doAssert options1.metod == $HttpPost
-      doAssert options1.body == """{"key": "value"}""".cstring
-      doAssert options1.mode == $fmNoCors
-      doAssert options1.credentials == $fcOmit
-      doAssert options1.cache == $fchNoCache
-      doAssert options1.referrerPolicy == $frpNoReferrer
-      doAssert options1.redirect == $frFollow
-      doAssert options1.referrer == "client".cstring
-      doAssert options1.integrity == "".cstring
-      doAssert options1.toCstring is cstring
+      assert options1.keepalive == false
+      assert options1.metod == $HttpPost
+      assert options1.body == """{"key": "value"}""".cstring
+      assert options1.mode == $fmNoCors
+      assert options1.credentials == $fcOmit
+      assert options1.cache == $fchNoCache
+      assert options1.referrerPolicy == $frpNoReferrer
+      assert options1.redirect == $frFollow
+      assert options1.referrer == "client".cstring
+      assert options1.integrity == "".cstring
+      assert options1.toCstring is cstring
 
     block:
       let response: Response = newResponse(body = "-. .. --".cstring)
-      doAssert response.clone() is Response ## Cloned.
-      doAssert response.toCstring is cstring
+      assert response.clone() is Response ## Cloned.
+      assert response.toCstring is cstring
       let request: Request = newRequest(url = "http://nim-lang.org".cstring)
-      doAssert request.clone() is Request   ## Cloned.
-      doAssert request.toCstring is cstring
+      assert request.clone() is Request   ## Cloned.
+      assert request.toCstring is cstring
 
     if not defined(nodejs):
       block:
@@ -185,11 +185,11 @@ runnableExamples("-d:nimExperimentalJsfetch -r:off"):
 
         proc example() {.async.} =
           let response: Response = await doFetch()
-          doAssert response.ok
-          doAssert response.status == 200.cint
-          doAssert response.headers is Headers
-          doAssert response.body is Body
-          doAssert toCstring(response.body) is cstring
+          assert response.ok
+          assert response.status == 200.cint
+          assert response.headers is Headers
+          assert response.body is Body
+          assert toCstring(response.body) is cstring
 
         discard example()
 
