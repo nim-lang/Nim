@@ -1961,13 +1961,13 @@ proc parseEnumList(p: var RstParser): PRstNode =
       # subsequent enum.items parseEnumList will be called second time
       if result == nil:
         let n = p.line + p.tok[j].line
-        let msg = "\n" & """
+        let msg = "\n" & dedent """
           not enough indentation on line $2
               (if it's continuation of enumeration list),
           or no blank line after line $1 (if it should be the next paragraph),
           or no escaping \ at the beginning of line $1
               (if lines $1..$2 are a normal paragraph, not enum. list)"""
-        rstMessage(p, mwRstStyle, msg % [$(n-1), $n])
+        rstMessage(p, mwRstStyle, indent(msg, 2) % [$(n-1), $n])
       return
   checkAfterNewline
   result = newRstNodeA(p, rnEnumList)
