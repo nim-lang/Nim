@@ -16,7 +16,8 @@ func add*(self: FormData; name: cstring; value: SomeNumber | bool | cstring, fil
 
 func delete*(self: FormData; name: cstring) {.importjs: "#.$1(#)".}
   ## https://developer.mozilla.org/en-US/docs/Web/API/FormData/delete
-  ## Deletes *all items* with the same key name.
+  ##
+  ## .. Warning:: Deletes *all items* with the same key name.
 
 func getAll*(self: FormData; name: cstring): seq[cstring] {.importjs: "#.$1(#)".}
   ## https://developer.mozilla.org/en-US/docs/Web/API/FormData/getAll
@@ -60,6 +61,5 @@ runnableExamples("-r:off"):
   data.delete("key1")
   assert data.hasKey("key0")
   assert data["key0"] == "value0".cstring
-  assert data.toCstring is cstring
   data.clear()
   assert data.len == 0
