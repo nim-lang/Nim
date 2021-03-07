@@ -39,7 +39,7 @@ proc osErrorMsg*(errorCode: OSErrorCode): string =
   result = ""
   when defined(nimscript):
     discard
-  elif defined(Windows):
+  elif defined(windows):
     if errorCode != OSErrorCode(0'i32):
       when useWinUnicode:
         var msgbuf: WideCString

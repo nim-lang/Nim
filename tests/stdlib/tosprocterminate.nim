@@ -6,7 +6,7 @@ discard """
 
 import os, osproc, times, std / monotimes
 
-when defined(Windows):
+when defined(windows):
   const ProgramWhichDoesNotEnd = "notepad"
 elif defined(openbsd):
   const ProgramWhichDoesNotEnd = "/bin/cat"
