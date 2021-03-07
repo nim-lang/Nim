@@ -18,7 +18,7 @@ when defined(Unix):
   else:
     const
       lib = "(libmysqlclient|libmariadbclient).so(|.20|.19|.18|.17|.16|.15)"
-when defined(Windows):
+when defined(windows):
   const
     lib = "(libmysql.dll|libmariadb.dll)"
 type

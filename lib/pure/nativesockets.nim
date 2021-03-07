@@ -19,7 +19,7 @@ import std/private/since
 when hostOS == "solaris":
   {.passl: "-lsocket -lnsl".}
 
-const useWinVersion = defined(Windows) or defined(nimdoc)
+const useWinVersion = defined(windows) or defined(nimdoc)
 
 when useWinVersion:
   import winlean
@@ -748,6 +748,6 @@ proc accept*(fd: SocketHandle, inheritable = defined(nimInheritHandles)): (Socke
   else:
     return (sock, $inet_ntoa(sockAddress.sin_addr))
 
-when defined(Windows):
+when defined(windows):
   var wsa: WSAData
   if wsaStartup(0x0101'i16, addr wsa) != 0: raiseOSError(osLastError())
