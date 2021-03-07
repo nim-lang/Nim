@@ -139,7 +139,10 @@ const
 
   HANDLE_FLAG_INHERIT* = 0x00000001'i32
 
-proc isSuccess*(a: WINBOOL): bool {.inline.} = a != 0
+proc isSuccess*(a: WINBOOL): bool {.inline.} =
+  ## Returns true if `a != 0`. Windows uses a different convention than POSIX,
+  ## where `a == 0` is commonly used on success.
+  a != 0
 proc getVersionExW*(lpVersionInfo: ptr OSVERSIONINFO): WINBOOL {.
     stdcall, dynlib: "kernel32", importc: "GetVersionExW", sideEffect.}
 proc getVersionExA*(lpVersionInfo: ptr OSVERSIONINFO): WINBOOL {.
@@ -1134,15 +1137,16 @@ proc setFileTime*(hFile: Handle, lpCreationTime: LPFILETIME,
      {.stdcall, dynlib: "kernel32", importc: "SetFileTime".}
 
 type
-  SID_IDENTIFIER_AUTHORITY* {.importc, header: "windows.h".} = object
-    Value*: array[6, BYTE]
-  PSID_IDENTIFIER_AUTHORITY* {.importc, header: "windows.h".} = ptr SID_IDENTIFIER_AUTHORITY
-  SID* {.importc, header: "windows.h".} = object
+  # https://docs.microsoft.com/en-us/windows/win32/api/winnt/ns-winnt-sid_identifier_authority
+  SID_IDENTIFIER_AUTHORITY* {.importc, header: "<windows.h>".} = object
+    value* {.importc: "Value"}: array[6, BYTE]
+  # https://docs.microsoft.com/en-us/windows/win32/api/winnt/ns-winnt-sid
+  SID* {.importc, header: "<windows.h>".} = object
     Revision: BYTE
     SubAuthorityCount: BYTE
     IdentifierAuthority: SID_IDENTIFIER_AUTHORITY
     SubAuthority: ptr ptr DWORD
-  PSID* {.importc, header: "windows.h".} = ptr SID
+  PSID* = ptr SID
 
 const
   # https://docs.microsoft.com/en-us/windows/win32/secauthz/sid-components
@@ -1151,7 +1155,7 @@ const
   SECURITY_BUILTIN_DOMAIN_RID* = 32
   DOMAIN_ALIAS_RID_ADMINS* = 544
 
-proc allocateAndInitializeSid*(pIdentifierAuthority: PSID_IDENTIFIER_AUTHORITY,
+proc allocateAndInitializeSid*(pIdentifierAuthority: ptr SID_IDENTIFIER_AUTHORITY,
                                nSubAuthorityCount: BYTE,
                                nSubAuthority0: DWORD,
                                nSubAuthority1: DWORD,

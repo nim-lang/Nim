@@ -138,6 +138,9 @@ provided by the operating system.
   (instead of skipping them sometimes as it was before).
 - Added optional `followSymlinks` argument to `setFilePermissions`.
 
+- Added `os.isAdmin` to tell whether the caller's process is a member of the
+  Administrators local group (on Windows) or a root (on POSIX).
+
 - Added `random.initRand()` overload with no argument which uses the current time as a seed.
 
 - Added experimental `linenoise.readLineStatus` to get line and status (e.g. ctrl-D or ctrl-C).
@@ -154,8 +157,6 @@ provided by the operating system.
   arguments passed to it, so `initOptParser` has been changed to raise
   `ValueError` when the real command line is not available. `parseopt` was
   previously excluded from `prelude` for JS, as it could not be imported.
-- Added `os.isAdmin` to tell whether the caller's process is a member of the
-  Administrators local group (on Windows) or a root (on POSIX).
 
 ## Language changes
 

@@ -1656,7 +1656,7 @@ proc isAdmin*: bool {.noWeirdTarget.} =
     # https://docs.microsoft.com/en-us/windows/win32/api/securitybaseapi/nf-securitybaseapi-checktokenmembership#examples
     # and corresponding PostgreSQL function:
     # https://doxygen.postgresql.org/win32security_8c.html#ae6b61e106fa5d6c5d077a9d14ee80569
-    var ntAuthority = SID_IDENTIFIER_AUTHORITY(Value: SECURITY_NT_AUTHORITY)
+    var ntAuthority = SID_IDENTIFIER_AUTHORITY(value: SECURITY_NT_AUTHORITY)
     var administratorsGroup: PSID
     if not isSuccess(allocateAndInitializeSid(addr ntAuthority,
                                               BYTE(2),
