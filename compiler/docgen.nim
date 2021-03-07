@@ -500,7 +500,7 @@ proc prepareExample(d: PDoc; n: PNode): tuple[rdoccmd: string, code: string] =
 
   let useRenderModule = false
   let loc = d.conf.toFileLineCol(n.info)
-  var code = extractRunnableExamplesSource(d.conf, n)
+  let code = extractRunnableExamplesSource(d.conf, n)
 
   if d.conf.errorCounter > 0:
     return (rdoccmd, code)
@@ -526,14 +526,14 @@ proc prepareExample(d: PDoc; n: PNode): tuple[rdoccmd: string, code: string] =
     renderModule(runnableExamples, outp.string, conf = d.conf)
 
   else:
-    code = """
+    let code2 = """
 #[
 $1
 ]#
 import $2
 $3
 """ % [comment, d.filename.quoted, code]
-    writeFile(outp.string, code)
+    writeFile(outp.string, code2)
 
   if rdoccmd notin d.exampleGroups:
     d.exampleGroups[rdoccmd] = ExampleGroup(rdoccmd: rdoccmd, docCmd: d.conf.docCmd, index: d.exampleGroups.len)
