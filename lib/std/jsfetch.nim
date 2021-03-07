@@ -81,14 +81,14 @@ when defined(nimExperimentalJsfetch) or defined(nimdoc):
   proc formData*(self: Body): Future[FormData] {.importjs: "#.$1()".}
     ## https://developer.mozilla.org/en-US/docs/Web/API/Body/formData
 
-  proc unsafeNewFetchOptions*(metod, body, mode, credentials, cache, referrerPolicy: cstring,
-      keepalive: bool, redirect = "follow".cstring, referrer = "client".cstring, integrity = "".cstring): FetchOptions {.importjs:
+  proc unsafeNewFetchOptions*(metod, body, mode, credentials, cache, referrerPolicy: cstring;
+      keepalive: bool; redirect = "follow".cstring; referrer = "client".cstring; integrity = "".cstring): FetchOptions {.importjs:
       "{method: #, body: #, mode: #, credentials: #, cache: #, referrerPolicy: #, keepalive: #, redirect: #, referrer: #, integrity: #}".}
     ## **Unsafe** `newfetchOptions`. Low-level proc for optimization.
 
-  func newfetchOptions*(metod: HttpMethod, body: cstring,
-      mode: FetchModes, credentials: FetchCredentials, cache: FetchCaches, referrerPolicy: FetchReferrerPolicies,
-      keepalive: bool, redirect = frFollow, referrer = "client".cstring, integrity = "".cstring): FetchOptions =
+  func newfetchOptions*(metod: HttpMethod; body: cstring;
+      mode: FetchModes; credentials: FetchCredentials; cache: FetchCaches; referrerPolicy: FetchReferrerPolicies;
+      keepalive: bool; redirect = frFollow; referrer = "client".cstring; integrity = "".cstring): FetchOptions =
     ## Constructor for `FetchOptions`.
     result = FetchOptions(
       body: body, mode: $mode, credentials: $credentials, cache: $cache, referrerPolicy: $referrerPolicy,
@@ -172,11 +172,7 @@ runnableExamples("-d:nimExperimentalJsfetch -r:off"):
 
     block:
       let response: Response = newResponse(body = "-. .. --".cstring)
-      assert response.clone() is Response ## Cloned.
-      assert response.toCstring is cstring
       let request: Request = newRequest(url = "http://nim-lang.org".cstring)
-      assert request.clone() is Request   ## Cloned.
-      assert request.toCstring is cstring
 
     if not defined(nodejs):
       block:
