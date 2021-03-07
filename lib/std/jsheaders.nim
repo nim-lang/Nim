@@ -2,7 +2,7 @@
 when not defined(js):
   {.fatal: "Module jsheaders is designed to be used with the JavaScript backend.".}
 
-type Headers* = ref object of JsRoot ## HTTP Headers for the JavaScript target.
+type Headers* = ref object of JsRoot ## HTTP Headers API.
 
 func newHeaders*(): Headers {.importjs: "new Headers()".}
   ## https://developer.mozilla.org/en-US/docs/Web/API/Headers
