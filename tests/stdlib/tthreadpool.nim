@@ -1,5 +1,6 @@
 discard """
-  cmd: "nim $target --threads:on --gc:orc $options $file"
+  matrix: "--threads:on --gc:arc"
+  disabled: "freebsd"
   output: "42"
 """
 
