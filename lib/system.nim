@@ -551,6 +551,10 @@ when notJSnotNims and not defined(nimSeqsV2):
 when notJSnotNims:
   include "system/hti"
 
+  proc writeToStdErr(msg: cstring, length: int)
+  proc writeToStdErr(msg: cstring)
+  proc writeToStdErr(msg: string)
+
 type
   byte* = uint8 ## This is an alias for `uint8`, that is an unsigned
                 ## integer, 8 bits wide.
@@ -1226,9 +1230,9 @@ else:
 template sysAssert(cond: bool, msg: string) =
   when defined(useSysAssert):
     if not cond:
-      cstderr.rawWrite "[SYSASSERT] "
-      cstderr.rawWrite msg
-      cstderr.rawWrite "\n"
+      writeToStdErr "[SYSASSERT] "
+      writeToStdErr msg
+      writeToStdErr "\n"
       quit 1
 
 const hasAlloc = (hostOS != "standalone" or not defined(nogc)) and not defined(nimscript)
@@ -1775,6 +1779,28 @@ when notJSnotNims:
   import system/ansi_c
   import system/memory
 
+  when defined(genode):
+    proc writeToStdErr(msg: cstring) =
+      {.emit: "Genode::error(Genode::Cstring(`msg`));".}
+    proc writeToStdErr(msg: cstring, length: int) =
+      {.emit: "Genode::error(Genode::Cstring(`msg`, `length`));".}
+
+  elif defined(windows) and defined(guiapp):
+    proc MessageBoxA(hWnd: pointer, lpText, lpCaption: cstring, uType: int): int32 {.
+      header: "<windows.h>", nodecl.}
+    proc writeToStdErr(msg: cstring) =
+      discard MessageBoxA(nil, msg, nil, 0)
+    proc writeToStdErr(msg: cstring, length: int) =
+      discard MessageBoxA(nil, msg, nil, 0)
+
+  else:
+    proc writeToStdErr(msg: cstring) = rawWrite(cstderr, msg)
+    proc writeToStdErr(msg: cstring, length: int) =
+      rawWriteString(cstderr, msg, length)
+
+  proc writeToStdErr(msg: string) =
+    # fix bug #13115: handles correctly '\0' unlike default implicit conversion to cstring
+    writeToStdErr(msg.cstring, msg.len)
 
 {.push stackTrace: off.}
 
@@ -2465,8 +2491,8 @@ proc quit*(errormsg: string, errorcode = QuitFailure) {.noreturn.} =
     when nimvm:
       echo errormsg
     else:
-      cstderr.rawWrite(errormsg)
-      cstderr.rawWrite("\n")
+      writeToStdErr(errormsg)
+      writeToStdErr("\n")
   quit(errorcode)
 
 {.pop.} # checks: off

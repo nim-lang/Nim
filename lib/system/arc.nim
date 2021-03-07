@@ -153,7 +153,7 @@ proc nimRawDispose(p: pointer, alignment: int) {.compilerRtl.} =
       cprintf("[Freed] %p\n", p -! sizeof(RefHeader))
     when defined(nimOwnedEnabled):
       if head(p).rc >= rcIncrement:
-        cstderr.rawWrite "[FATAL] dangling references exist\n"
+        writeToStdErr "[FATAL] dangling references exist\n"
         quit 1
     when defined(nimArcDebug):
       # we do NOT really free the memory here in order to reliably detect use-after-frees
@@ -171,12 +171,12 @@ proc nimDestroyAndDispose(p: pointer) {.compilerRtl, raises: [].} =
   if rti.destructor != nil:
     cast[DestructorProc](rti.destructor)(p)
   when false:
-    cstderr.rawWrite cast[ptr PNimTypeV2](p)[].name
-    cstderr.rawWrite "\n"
+    writeToStdErr cast[ptr PNimTypeV2](p)[].name
+    writeToStdErr "\n"
     if d == nil:
-      cstderr.rawWrite "bah, nil\n"
+      writeToStdErr "bah, nil\n"
     else:
-      cstderr.rawWrite "has destructor!\n"
+      writeToStdErr "has destructor!\n"
   nimRawDispose(p, rti.align)
 
 when defined(gcOrc):

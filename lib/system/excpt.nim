@@ -26,22 +26,6 @@ when defined(windows):
   proc GetLastError(): int32 {.header: "<windows.h>", nodecl.}
   const ERROR_BAD_EXE_FORMAT = 193
 
-when not defined(windows) or not defined(guiapp):
-  proc writeToStdErr(msg: cstring) = rawWrite(cstderr, msg)
-  proc writeToStdErr(msg: cstring, length: int) =
-    rawWriteString(cstderr, msg, length)
-else:
-  proc MessageBoxA(hWnd: pointer, lpText, lpCaption: cstring, uType: int): int32 {.
-    header: "<windows.h>", nodecl.}
-  proc writeToStdErr(msg: cstring) =
-    discard MessageBoxA(nil, msg, nil, 0)
-  proc writeToStdErr(msg: cstring, length: int) =
-    discard MessageBoxA(nil, msg, nil, 0)
-
-proc writeToStdErr(msg: string) {.inline.} =
-  # fix bug #13115: handles correctly '\0' unlike default implicit conversion to cstring
-  writeToStdErr(msg.cstring, msg.len)
-
 proc showErrorMessage(data: cstring, length: int) {.gcsafe, raises: [].} =
   var toWrite = true
   if errorMessageWriter != nil:
