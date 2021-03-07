@@ -8,11 +8,11 @@
 #
 
 ## Do yourself a favor and import the module
-## as `from htmlgen import nil` and then fully qualify the macros.
+## as `from std/htmlgen import nil` and then fully qualify the macros.
 ##
-## *Note*: The Karax project (`nimble install karax`) has a better
-## way to achieve the same, see https://github.com/pragmagic/karax/blob/master/tests/nativehtmlgen.nim
-## for an example.
+## .. Note:: The Karax project (`nimble install karax`) has a better
+##   way to achieve the same, see https://github.com/pragmagic/karax/blob/master/tests/nativehtmlgen.nim
+##   for an example.
 ##
 ##
 ## This module implements a simple `XML`:idx: and `HTML`:idx: code
@@ -26,6 +26,21 @@
 ## `MathML <https://wikipedia.org/wiki/MathML>`_ is an Standard ISO/IEC 40314 from year 2015.
 ## MathML allows you to `draw advanced math on the web <https://developer.mozilla.org/en-US/docs/Web/MathML/Element/math#Examples>`_,
 ## `visually similar to Latex math. <https://developer.mozilla.org/en-US/docs/Web/MathML/Element/semantics#Example>`_
+##
+## Embedding PDF
+## =============
+##
+## PDF can be embedded into HTML pages without using JavaScript.
+## Below are examples of the most common techniques.
+##
+## .. code-block:: Nim
+##   from std/htmlgen import nil
+##   var s = ""
+##   s.add htmlgen.embed(src="http://example.com/file.pdf", width="99%", height="256")
+##   s.add htmlgen.iframe(src="http://example.com/file.pdf", width="99%", height="256")
+##   writeFile("example.html", s)
+##
+## .. Note:: `Examples work in all desktop browsers <https://caniuse.com/pdf-viewer>`_, but results may vary in mobile browsers.
 ##
 ## Examples
 ## ========
