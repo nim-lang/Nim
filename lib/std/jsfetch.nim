@@ -19,7 +19,7 @@ when defined(nimExperimentalJsfetch) or defined(nimdoc):
       fmNoCors = "no-cors"
       fmSameOrigin = "same-origin"
 
-    FetchCredentials* = enum  ## Credential options.
+    FetchCredentials* = enum  ## Credential options. See https://developer.mozilla.org/en-US/docs/Web/API/Request/credentials
       fcInclude = "include"
       fcSameOrigin = "same-origin"
       fcOmit = "omit"
