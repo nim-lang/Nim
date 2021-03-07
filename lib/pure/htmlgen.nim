@@ -10,7 +10,7 @@
 ## Do yourself a favor and import the module
 ## as `from std/htmlgen import nil` and then fully qualify the macros.
 ##
-## .. Note:: The Karax project (`nimble install karax`) has a better
+## .. tip:: The Karax project (`nimble install karax`) has a better
 ##   way to achieve the same, see https://github.com/pragmagic/karax/blob/master/tests/nativehtmlgen.nim
 ##   for an example.
 ##
