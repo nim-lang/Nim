@@ -240,10 +240,7 @@ doAssert isRefSkipDistinct(MyOtherDistinct)
 
 let x = parseJson("9999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999")
 
-when defined(js): # xxx fixme
-  doAssert x.kind == JInt
-else:
-  doAssert x.kind == JString
+doAssert x.kind == JString
 
 block: # bug #15835
   type
