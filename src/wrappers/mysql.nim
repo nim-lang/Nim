@@ -11,14 +11,14 @@
 when defined(nimHasStyleChecks):
   {.push styleChecks: off.}
 
-when defined(Unix):
+when defined(unix):
   when defined(macosx):
     const
       lib = "(libmysqlclient|libmariadbclient)(|.20|.19|.18|.17|.16|.15).dylib"
   else:
     const
       lib = "(libmysqlclient|libmariadbclient).so(|.20|.19|.18|.17|.16|.15)"
-when defined(Windows):
+when defined(windows):
   const
     lib = "(libmysql.dll|libmariadb.dll)"
 type
