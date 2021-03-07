@@ -86,7 +86,7 @@ iterator items*[T: SomeEnumWithHoles](E: typedesc[T]): T =
     assert B[float].toSeq == [B[float].b0, B[float].b1]
   for a in enumFullRange(E): yield a
 
-proc symbolName*[T: OrdinalEnum](a: T): string =
+func symbolName*[T: OrdinalEnum](a: T): string =
   ## Returns the symbol name of an enum.
   runnableExamples:
     type B = enum
