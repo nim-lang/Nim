@@ -84,7 +84,7 @@ when defined(nimExperimentalJsfetch) or defined(nimdoc):
   proc unsafeNewFetchOptions*(metod, body, mode, credentials, cache, referrerPolicy: cstring;
       keepalive: bool; redirect = "follow".cstring; referrer = "client".cstring; integrity = "".cstring): FetchOptions {.importjs:
       "{method: #, body: #, mode: #, credentials: #, cache: #, referrerPolicy: #, keepalive: #, redirect: #, referrer: #, integrity: #}".}
-    ## **Unsafe** `newfetchOptions`. Low-level proc for optimization.
+    ## .. Warning:: Unsafe `newfetchOptions`.
 
   func newfetchOptions*(metod: HttpMethod; body: cstring;
       mode: FetchModes; credentials: FetchCredentials; cache: FetchCaches; referrerPolicy: FetchReferrerPolicies;
@@ -116,8 +116,10 @@ when defined(nimExperimentalJsfetch) or defined(nimdoc):
 
 
 runnableExamples("-d:nimExperimentalJsfetch -r:off"):
-  import std/[httpcore, asyncjs, sugar, jsconsole, jsheaders, jsformdata]
+  import std/[asyncjs, jsconsole, jsheaders, jsformdata]
+  from std/httpcore import HttpMethod
   from std/jsffi import JsObject
+  from std/sugar import `=>`
 
   block:
     let options0: FetchOptions = unsafeNewFetchOptions(
