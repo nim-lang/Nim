@@ -8,7 +8,7 @@
 #
 
 import std/macros
-from std/typetraits import OrdinalEnum, SomeEnumWithHoles
+from std/typetraits import OrdinalEnum, HoleyEnum
 
 # xxx `genEnumCaseStmt` needs tests and runnableExamples
 
@@ -76,7 +76,7 @@ macro enumNames(a: typed): untyped =
     assert ai.kind == nnkSym
     result.add newLit ai.strVal
 
-iterator items*[T: SomeEnumWithHoles](E: typedesc[T]): T =
+iterator items*[T: HoleyEnum](E: typedesc[T]): T =
   ## Iterates over an enum with holes.
   runnableExamples:
     type A = enum a0 = 2, a1 = 4, a2

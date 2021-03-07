@@ -49,7 +49,7 @@
   Added `items` for enums with holes.
   Added `symbolName` to return the enum symbol name ignoring the human readable name.
 
-- Added `typetraits.SomeEnumWithHoles` for enums with holes, `OrdinalEnum` for enums without holes.
+- Added `typetraits.HoleyEnum` for enums with holes, `OrdinalEnum` for enums without holes.
 
 - Removed deprecated `iup` module from stdlib, it has already moved to
   [nimble](https://github.com/nim-lang/iup).
