@@ -144,7 +144,6 @@ runnableExamples("-d:nimExperimentalJsfetch -r:off"):
     assert options0.redirect == "follow".cstring
     assert options0.referrer == "client".cstring
     assert options0.integrity == "".cstring
-    assert options0.toCstring is cstring
 
   block:
     let options1: FetchOptions = newFetchOptions(
@@ -169,7 +168,6 @@ runnableExamples("-d:nimExperimentalJsfetch -r:off"):
     assert options1.redirect == $frFollow
     assert options1.referrer == "client".cstring
     assert options1.integrity == "".cstring
-    assert options1.toCstring is cstring
 
   block:
     let response: Response = newResponse(body = "-. .. --".cstring)
@@ -186,7 +184,6 @@ runnableExamples("-d:nimExperimentalJsfetch -r:off"):
         assert response.status == 200.cint
         assert response.headers is Headers
         assert response.body is Body
-        assert toCstring(response.body) is cstring
 
       discard example()
 
