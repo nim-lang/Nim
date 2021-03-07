@@ -14,12 +14,12 @@ when defined(nimExperimentalJsfetch) or defined(nimdoc):
       metod* {.importjs: "method".}: cstring
       body*, integrity*, referrer*, mode*, credentials*, cache*, redirect*, referrerPolicy*: cstring
 
-    FetchModes* = enum  ## JavaScript Fetch API mode options.
+    FetchModes* = enum  ## Mode options.
       fmCors = "cors"
       fmNoCors = "no-cors"
       fmSameOrigin = "same-origin"
 
-    FetchCredentials* = enum  ## JavaScript Fetch API Credential options.
+    FetchCredentials* = enum  ## Credential options.
       fcInclude = "include"
       fcSameOrigin = "same-origin"
       fcOmit = "omit"
@@ -31,12 +31,12 @@ when defined(nimExperimentalJsfetch) or defined(nimdoc):
       fchNoCache = "no-cache"
       fchForceCache = "force-cache"
 
-    FetchRedirects* = enum  ## JavaScript Fetch API Redirects options.
+    FetchRedirects* = enum  ## Redirects options.
       frFollow = "follow"
       frError = "error"
       frManual = "manual"
 
-    FetchReferrerPolicies* = enum  ## JavaScript Fetch API Referrer Policy options.
+    FetchReferrerPolicies* = enum  ## Referrer Policy options.
       frpNoReferrer = "no-referrer"
       frpNoReferrerWhenDowngrade = "no-referrer-when-downgrade"
       frpOrigin = "origin"
