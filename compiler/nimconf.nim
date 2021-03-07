@@ -248,11 +248,16 @@ proc loadConfigs*(cfg: RelativeFile; cache: IdentCache; conf: ConfigRef; idgen: 
     if readConfigFile(configPath, cache, conf):
       configFiles.add(configPath)
 
-  template runNimScriptIfExists(path: AbsoluteFile) =
+  template runNimScriptIfExists(path: AbsoluteFile, isMain = false) =
     let p = path # eval once
-    if fileExists(p):
+    var s: PLLStream
+    if isMain and optWasNimscript in conf.globalOptions:
+      if conf.projectIsStdin: s = stdin.llStreamOpen
+      elif conf.projectIsCmd: s = llStreamOpen(conf.cmdInput)
+    if s == nil and fileExists(p): s = llStreamOpen(p, fmRead)
+    if s != nil:
       configFiles.add(p)
-      runNimScript(cache, p, idgen, freshDefines = false, conf)
+      runNimScript(cache, p, idgen, freshDefines = false, conf, s)
 
   if optSkipSystemConfigFile notin conf.globalOptions:
     readConfigFile(getSystemConfigPath(conf, cfg))
@@ -276,6 +281,8 @@ proc loadConfigs*(cfg: RelativeFile; cache: IdentCache; conf: ConfigRef; idgen: 
 
   if optSkipProjConfigFile notin conf.globalOptions:
     readConfigFile(pd / cfg)
+    if cfg == DefaultConfig:
+      runNimScriptIfExists(pd / DefaultConfigNims)
 
     if conf.projectName.len != 0:
       # new project wide config file:
@@ -284,23 +291,21 @@ proc loadConfigs*(cfg: RelativeFile; cache: IdentCache; conf: ConfigRef; idgen: 
         projectConfig = changeFileExt(conf.projectFull, "nim.cfg")
       readConfigFile(projectConfig)
 
-    if cfg == DefaultConfig:
-      runNimScriptIfExists(pd / DefaultConfigNims)
 
   let scriptFile = conf.projectFull.changeFileExt("nims")
-  let isMain = scriptFile == conf.projectFull
+  let scriptIsProj = scriptFile == conf.projectFull
   template showHintConf =
     for filename in configFiles:
       # delayed to here so that `hintConf` is honored
       rawMessage(conf, hintConf, filename.string)
-  if isMain:
+  if scriptIsProj:
     showHintConf()
     configFiles.setLen 0
-  if conf.command != "nimsuggest":
-    runNimScriptIfExists(scriptFile)
+  if conf.cmd != cmdIdeTools:
+    runNimScriptIfExists(scriptFile, isMain = true)
   else:
-    if not isMain:
-      runNimScriptIfExists(scriptFile)
+    if not scriptIsProj:
+      runNimScriptIfExists(scriptFile, isMain = true)
     else:
       # 'nimsuggest foo.nims' means to just auto-complete the NimScript file
       discard

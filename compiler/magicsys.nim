@@ -17,36 +17,30 @@ export createMagic
 
 proc nilOrSysInt*(g: ModuleGraph): PType = g.sysTypes[tyInt]
 
-proc registerSysType*(g: ModuleGraph; t: PType) =
-  if g.sysTypes[t.kind] == nil: g.sysTypes[t.kind] = t
-
 proc newSysType(g: ModuleGraph; kind: TTypeKind, size: int): PType =
-  result = newType(kind, nextId(g.idgen), g.systemModule)
+  result = newType(kind, nextTypeId(g.idgen), g.systemModule)
   result.size = size
   result.align = size.int16
 
 proc getSysSym*(g: ModuleGraph; info: TLineInfo; name: string): PSym =
-  result = strTableGet(g.systemModule.tab, getIdent(g.cache, name))
+  result = systemModuleSym(g, getIdent(g.cache, name))
   if result == nil:
     localError(g.config, info, "system module needs: " & name)
-    result = newSym(skError, getIdent(g.cache, name), nextId(g.idgen), g.systemModule, g.systemModule.info, {})
-    result.typ = newType(tyError, nextId(g.idgen), g.systemModule)
+    result = newSym(skError, getIdent(g.cache, name), nextSymId(g.idgen), g.systemModule, g.systemModule.info, {})
+    result.typ = newType(tyError, nextTypeId(g.idgen), g.systemModule)
   if result.kind == skAlias: result = result.owner
 
 proc getSysMagic*(g: ModuleGraph; info: TLineInfo; name: string, m: TMagic): PSym =
-  var ti: TIdentIter
   let id = getIdent(g.cache, name)
-  var r = initIdentIter(ti, g.systemModule.tab, id)
-  while r != nil:
+  for r in systemModuleSyms(g, id):
     if r.magic == m:
       # prefer the tyInt variant:
       if r.typ[0] != nil and r.typ[0].kind == tyInt: return r
       result = r
-    r = nextIdentIter(ti, g.systemModule.tab)
   if result != nil: return result
   localError(g.config, info, "system module needs: " & name)
-  result = newSym(skError, id, nextId(g.idgen), g.systemModule, g.systemModule.info, {})
-  result.typ = newType(tyError, nextId(g.idgen), g.systemModule)
+  result = newSym(skError, id, nextSymId(g.idgen), g.systemModule, g.systemModule.info, {})
+  result.typ = newType(tyError, nextTypeId(g.idgen), g.systemModule)
 
 proc sysTypeFromName*(g: ModuleGraph; info: TLineInfo; name: string): PType =
   result = getSysSym(g, info, name).typ
@@ -91,24 +85,6 @@ proc resetSysTypes*(g: ModuleGraph) =
   for i in low(g.sysTypes)..high(g.sysTypes):
     g.sysTypes[i] = nil
 
-  for i in low(g.intTypeCache)..high(g.intTypeCache):
-    g.intTypeCache[i] = nil
-
-proc getIntLitType*(g: ModuleGraph; literal: PNode): PType =
-  # we cache some common integer literal types for performance:
-  let value = literal.intVal
-  if value >= low(g.intTypeCache) and value <= high(g.intTypeCache):
-    result = g.intTypeCache[value.int]
-    if result == nil:
-      let ti = getSysType(g, literal.info, tyInt)
-      result = copyType(ti, nextId(g.idgen), ti.owner)
-      result.n = literal
-      g.intTypeCache[value.int] = result
-  else:
-    let ti = getSysType(g, literal.info, tyInt)
-    result = copyType(ti, nextId(g.idgen), ti.owner)
-    result.n = literal
-
 proc getFloatLitType*(g: ModuleGraph; literal: PNode): PType =
   # for now we do not cache these:
   result = newSysType(g, tyFloat, size=8)
@@ -116,50 +92,21 @@ proc getFloatLitType*(g: ModuleGraph; literal: PNode): PType =
 
 proc skipIntLit*(t: PType; id: IdGenerator): PType {.inline.} =
   if t.n != nil and t.kind in {tyInt, tyFloat}:
-    result = copyType(t, nextId(id), t.owner)
+    result = copyType(t, nextTypeId(id), t.owner)
     result.n = nil
   else:
     result = t
 
 proc addSonSkipIntLit*(father, son: PType; id: IdGenerator) =
-  when not defined(nimNoNilSeqs):
-    if isNil(father.sons): father.sons = @[]
   let s = son.skipIntLit(id)
   father.sons.add(s)
   propagateToOwner(father, s)
 
-proc setIntLitType*(g: ModuleGraph; result: PNode) =
-  let i = result.intVal
-  case g.config.target.intSize
-  of 8: result.typ = getIntLitType(g, result)
-  of 4:
-    if i >= low(int32) and i <= high(int32):
-      result.typ = getIntLitType(g, result)
-    else:
-      result.typ = getSysType(g, result.info, tyInt64)
-  of 2:
-    if i >= low(int16) and i <= high(int16):
-      result.typ = getIntLitType(g, result)
-    elif i >= low(int32) and i <= high(int32):
-      result.typ = getSysType(g, result.info, tyInt32)
-    else:
-      result.typ = getSysType(g, result.info, tyInt64)
-  of 1:
-    # 8 bit CPUs are insane ...
-    if i >= low(int8) and i <= high(int8):
-      result.typ = getIntLitType(g, result)
-    elif i >= low(int16) and i <= high(int16):
-      result.typ = getSysType(g, result.info, tyInt16)
-    elif i >= low(int32) and i <= high(int32):
-      result.typ = getSysType(g, result.info, tyInt32)
-    else:
-      result.typ = getSysType(g, result.info, tyInt64)
-  else:
-    internalError(g.config, result.info, "invalid int size")
-
 proc getCompilerProc*(g: ModuleGraph; name: string): PSym =
   let ident = getIdent(g.cache, name)
   result = strTableGet(g.compilerprocs, ident)
+  if result == nil:
+    result = loadCompilerProc(g, name)
 
 proc registerCompilerProc*(g: ModuleGraph; s: PSym) =
   strTableAdd(g.compilerprocs, s)

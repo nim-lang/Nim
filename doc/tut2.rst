@@ -182,7 +182,7 @@ for any type:
 
 .. code-block:: nim
     :test: "nim c $1"
-  import strutils
+  import std/strutils
 
   echo "abc".len # is the same as echo len("abc")
   echo "abc".toUpperAscii()
@@ -196,7 +196,7 @@ So "pure object oriented" code is easy to write:
 
 .. code-block:: nim
     :test: "nim c $1"
-  import strutils, sequtils
+  import std/[strutils, sequtils]
 
   stdout.writeLine("Give a list of numbers (separated by spaces): ")
   stdout.write(stdin.readLine.splitWhitespace.map(parseInt).max.`$`)
@@ -375,7 +375,7 @@ The ``try`` statement handles exceptions:
 
 .. code-block:: nim
     :test: "nim c $1"
-  from strutils import parseInt
+  from std/strutils import parseInt
 
   # read the first two lines of a text file that should contain numbers
   # and tries to add them
@@ -457,7 +457,7 @@ If you want to add the ``{.raises.}`` pragma to existing code, the compiler can
 also help you. You can add the ``{.effects.}`` pragma statement to your proc and
 the compiler will output all inferred effects up to that point (exception
 tracking is part of Nim's effect system). Another more roundabout way to
-find out the list of exceptions raised by a proc is to use the Nim ``doc2``
+find out the list of exceptions raised by a proc is to use the Nim ``doc``
 command which generates documentation for a whole module and decorates all
 procs with the list of raised exceptions. You can read more about Nim's
 `effect system and related pragmas in the manual <manual.html#effect-system>`_.
@@ -511,8 +511,8 @@ containers:
 
   iterator preorder*[T](root: BinaryTree[T]): T =
     # Preorder traversal of a binary tree.
-    # Since recursive iterators are not yet implemented,
-    # this uses an explicit stack (which is more efficient anyway):
+    # This uses an explicit stack (which is more efficient than
+    # a recursive iterator factory).
     var stack: seq[BinaryTree[T]] = @[root]
     while stack.len > 0:
       var n = stack.pop()
@@ -533,6 +533,19 @@ used either to introduce type parameters or to instantiate a generic proc,
 iterator or type. As the example shows, generics work with overloading: the
 best match of ``add`` is used. The built-in ``add`` procedure for sequences
 is not hidden and is used in the ``preorder`` iterator.
+
+There is a special ``[:T]`` syntax when using generics with the method call syntax:
+
+.. code-block:: nim
+    :test: "nim c $1"
+  proc foo[T](i: T) =
+    discard
+
+  var i: int
+
+  # i.foo[int]() # Error: expression 'foo(i)' has no type (or is ambiguous)
+
+  i.foo[:int]() # Success
 
 
 Templates
@@ -636,7 +649,7 @@ Example: Lifting Procs
 
 .. code-block:: nim
     :test: "nim c $1"
-  import math
+  import std/math
 
   template liftScalarProc(fname) =
     ## Lift a proc taking one scalar parameter and returning a

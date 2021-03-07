@@ -30,7 +30,7 @@ when defined(macosx) or defined(freebsd) or defined(dragonfly):
   proc sysctl(name: ptr cint, namelen: cuint, oldp: pointer, oldplen: ptr csize_t,
               newp: pointer, newplen: csize_t): cint
        {.importc: "sysctl",header: """#include <sys/types.h>
-                                      #include <sys/sysctl.h>"""}
+                                      #include <sys/sysctl.h>""".}
 elif defined(netbsd) or defined(openbsd):
   # OpenBSD and NetBSD don't have KERN_MAXFILESPERPROC, so we are using
   # KERN_MAXFILES, because KERN_MAXFILES is always bigger,
@@ -39,7 +39,7 @@ elif defined(netbsd) or defined(openbsd):
   proc sysctl(name: ptr cint, namelen: cuint, oldp: pointer, oldplen: ptr csize_t,
               newp: pointer, newplen: csize_t): cint
        {.importc: "sysctl",header: """#include <sys/param.h>
-                                      #include <sys/sysctl.h>"""}
+                                      #include <sys/sysctl.h>""".}
 
 when hasThreadSupport:
   type
@@ -48,7 +48,7 @@ when hasThreadSupport:
       maxFD: int
       changes: ptr SharedArray[KEvent]
       fds: ptr SharedArray[SelectorKey[T]]
-      count: int
+      count*: int
       changesLock: Lock
       changesSize: int
       changesLength: int
@@ -61,7 +61,7 @@ else:
       maxFD: int
       changes: seq[KEvent]
       fds: seq[SelectorKey[T]]
-      count: int
+      count*: int
       sock: cint
     Selector*[T] = ref SelectorImpl[T]
 

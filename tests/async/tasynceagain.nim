@@ -21,12 +21,12 @@ proc runServer() {.async.} =
   var lastN = 0
   while true:
     let frame = await client.recv(FrameSize)
-    assert frame.len == FrameSize
+    doAssert frame.len == FrameSize
     let n = frame[0..<6].parseInt()
     echo "RCVD #", n, ":  ", frame[0..80], "..."
     if n != lastN + 1:
       echo &"******** ERROR: Server received #{n}, but last was #{lastN}!"
-    assert n == lastN + 1
+    doAssert n == lastN + 1
     lastN = n
     await sleepAsync 100
 

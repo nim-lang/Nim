@@ -13,8 +13,8 @@ Introduction
 
 This document describes the usage of the *DrNim* tool. DrNim combines
 the Nim frontend with the `Z3 <https://github.com/Z3Prover/z3>`_ proof
-engine in order to allow verify / validate software written in Nim.
-DrNim's command line options are the same as the Nim compiler's.
+engine, in order to allow verify/validate software written in Nim.
+DrNim's command-line options are the same as the Nim compiler's.
 
 
 DrNim currently only checks the sections of your code that are marked
@@ -140,8 +140,8 @@ Example: insertionSort
         swap a[t], a[t-1]
         dec t
 
-Unfortunately the invariants required to prove this code correct take more
-code than the imperative instructions. However this effort can be compensated
+Unfortunately, the invariants required to prove that this code is correct take more
+code than the imperative instructions. However, this effort can be compensated
 by the fact that the result needs very little testing. Be aware though that
 DrNim only proves that after ``insertionSort`` this condition holds::
 

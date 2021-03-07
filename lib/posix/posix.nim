@@ -27,7 +27,7 @@
 ## the \`identifier\` notation is used.
 ##
 ## This library relies on the header files of your C compiler. The
-## resulting C code will just ``#include <XYZ.h>`` and *not* define the
+## resulting C code will just `#include <XYZ.h>` and *not* define the
 ## symbols declared here.
 
 # Dead code elimination ensures that we don't accidentally generate #includes
@@ -90,8 +90,8 @@ type Sighandler = proc (a: cint) {.noconv.}
 const StatHasNanoseconds* = defined(linux) or defined(freebsd) or
     defined(osx) or defined(openbsd) or defined(dragonfly) or defined(haiku) ## \
   ## Boolean flag that indicates if the system supports nanosecond time
-  ## resolution in the fields of ``Stat``. Note that the nanosecond based fields
-  ## (``Stat.st_atim``, ``Stat.st_mtim`` and ``Stat.st_ctim``) can be accessed
+  ## resolution in the fields of `Stat`. Note that the nanosecond based fields
+  ## (`Stat.st_atim`, `Stat.st_mtim` and `Stat.st_ctim`) can be accessed
   ## without checking this flag, because this module defines fallback procs
   ## when they are not available.
 
@@ -586,6 +586,8 @@ proc fstatvfs*(a1: cint, a2: var Statvfs): cint {.
   importc, header: "<sys/statvfs.h>".}
 
 proc chmod*(a1: cstring, a2: Mode): cint {.importc, header: "<sys/stat.h>", sideEffect.}
+when defined(osx) or defined(freebsd):
+  proc lchmod*(a1: cstring, a2: Mode): cint {.importc, header: "<sys/stat.h>", sideEffect.}
 proc fchmod*(a1: cint, a2: Mode): cint {.importc, header: "<sys/stat.h>", sideEffect.}
 proc fstat*(a1: cint, a2: var Stat): cint {.importc, header: "<sys/stat.h>", sideEffect.}
 proc lstat*(a1: cstring, a2: var Stat): cint {.importc, header: "<sys/stat.h>", sideEffect.}
@@ -876,14 +878,18 @@ proc CMSG_NXTHDR*(mhdr: ptr Tmsghdr, cmsg: ptr Tcmsghdr): ptr Tcmsghdr {.
 proc CMSG_FIRSTHDR*(mhdr: ptr Tmsghdr): ptr Tcmsghdr {.
   importc, header: "<sys/socket.h>".}
 
+{.push warning[deprecated]: off.}
 proc CMSG_SPACE*(len: csize): csize {.
   importc, header: "<sys/socket.h>", deprecated: "argument `len` should be of type `csize_t`".}
+{.pop.}
 
 proc CMSG_SPACE*(len: csize_t): csize_t {.
   importc, header: "<sys/socket.h>".}
 
+{.push warning[deprecated]: off.}
 proc CMSG_LEN*(len: csize): csize {.
   importc, header: "<sys/socket.h>", deprecated: "argument `len` should be of type `csize_t`".}
+{.pop.}
 
 proc CMSG_LEN*(len: csize_t): csize_t {.
   importc, header: "<sys/socket.h>".}
@@ -902,7 +908,7 @@ when defined(linux) or defined(bsd):
 
 proc bindSocket*(a1: SocketHandle, a2: ptr SockAddr, a3: SockLen): cint {.
   importc: "bind", header: "<sys/socket.h>".}
-  ## is Posix's ``bind``, because ``bind`` is a reserved word
+  ## is Posix's `bind`, because `bind` is a reserved word
 
 proc connect*(a1: SocketHandle, a2: ptr SockAddr, a3: SockLen): cint {.
   importc, header: "<sys/socket.h>".}
@@ -1077,13 +1083,13 @@ proc handle_signal(sig: cint, handler: proc (a: cint) {.noconv.}) {.importc: "si
 
 template onSignal*(signals: varargs[cint], body: untyped) =
   ## Setup code to be executed when Unix signals are received. The
-  ## currently handled signal is injected as ``sig`` into the calling
+  ## currently handled signal is injected as `sig` into the calling
   ## scope.
   ##
   ## Example:
   ##
   ## .. code-block::
-  ##   from posix import SIGINT, SIGTERM, onSignal
+  ##   from std/posix import SIGINT, SIGTERM, onSignal
   ##   onSignal(SIGINT, SIGTERM):
   ##     echo "bye from signal ", sig
 

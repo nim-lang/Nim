@@ -201,7 +201,7 @@ proc detectOsImpl(d: Distribution): bool =
 
 template detectOs*(d: untyped): bool =
   ## Distro/OS detection. For convenience the
-  ## required ``Distribution.`` qualifier is added to the
+  ## required `Distribution.` qualifier is added to the
   ## enum value.
   detectOsImpl(Distribution.d)
 

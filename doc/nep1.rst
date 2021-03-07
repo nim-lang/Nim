@@ -1,6 +1,6 @@
-==============================================
+==========================================================
 Nim Enhancement Proposal #1 - Standard Library Style Guide
-==============================================
+==========================================================
 :Author: Clay Sweetser, Dominik Picheta
 :Version: |nimversion|
 
@@ -61,15 +61,6 @@ Spacing and Whitespace Conventions
 
 Naming Conventions
 ------------------
-
-Note: While the rules outlined below are the *current* naming conventions,
-these conventions have not always been in place. Previously, the naming
-conventions for identifiers followed the Pascal tradition of prefixes which
-indicated the base type of the identifier - PFoo for pointer and reference
-types, TFoo for value types, EFoo for exceptions, etc. Though this has since
-changed, there are many places in the standard library which still use this
-convention. Such style remains in place purely for legacy reasons, and will be
-changed in the future.
 
 - Type identifiers should be in PascalCase. All other identifiers should be in
   camelCase with the exception of constants which **may** use PascalCase but
@@ -162,10 +153,13 @@ to keep the names short but meaningful.
 -------------------     ------------   --------------------------------------
 English word            To use         Notes
 -------------------     ------------   --------------------------------------
-initialize              initT          ``init`` is used to create a
-                                       value type ``T``
-new                     newP           ``new`` is used to create a
-                                       reference type ``P``
+initialize              initFoo        initializes a value type ``Foo``
+new                     newFoo         initializes a reference type ``Foo``
+                                       via ``new``
+this or self            self           for method like procs, e.g.:
+                                       `proc fun(self: Foo, a: int)`
+                                       rationale: `self` is more unique in English
+                                       than `this`, and `foo` would not be DRY.
 find                    find           should return the position where
                                        something was found; for a bool result
                                        use ``contains``
@@ -236,7 +230,7 @@ Coding Conventions
     proc repeat(text: string, x: int): string =
       result = ""
 
-      for i in 0 .. x:
+      for i in 0..x:
         result.add($i)
 
 - Use a proc when possible, only using the more powerful facilities of macros,
@@ -277,3 +271,30 @@ Conventions for multi-line statements and expressions
   .. code-block:: nim
     startProcess(nimExecutable, currentDirectory, compilerArguments
                  environment, processOptions)
+
+Miscellaneous
+-------------
+
+- Use `a..b` instead of `a .. b`, except when `b` contains an operator, for example `a .. -3`.
+  Likewise with `a..<b`, `a..^b` and other operators starting with `..`.
+
+- Use `std` prefix for standard library modules, namely use `std/os` for single module and
+  use `std/[os, sysrand, posix]` for multiple modules.
+
+- Prefer multiline triple quote literals to start with a newline; it's semantically identical
+  (it's a feature of triple quote literals) but clearer because it aligns with the next line:
+
+  use this:
+
+  .. code-block:: nim
+    let a = """
+    foo
+    bar
+    """
+
+  instead of:
+
+  .. code-block:: nim
+    let a = """foo
+    bar
+    """

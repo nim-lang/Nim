@@ -99,11 +99,11 @@ proc parse(x: var XmlParser, errors: var seq[string]): XmlNode =
   of xmlEof: discard
 
 proc parseXml*(s: Stream, filename: string,
-               errors: var seq[string]): XmlNode =
+               errors: var seq[string], options: set[XmlParseOption] = {reportComments}): XmlNode =
   ## Parses the XML from stream ``s`` and returns a ``XmlNode``. Every
   ## occurred parsing error is added to the ``errors`` sequence.
   var x: XmlParser
-  open(x, s, filename, {reportComments})
+  open(x, s, filename, options)
   while true:
     x.next()
     case x.kind
@@ -118,32 +118,32 @@ proc parseXml*(s: Stream, filename: string,
       break
   close(x)
 
-proc parseXml*(s: Stream): XmlNode =
+proc parseXml*(s: Stream, options: set[XmlParseOption] = {reportComments}): XmlNode =
   ## Parses the XML from stream ``s`` and returns a ``XmlNode``. All parsing
   ## errors are turned into an ``XmlError`` exception.
   var errors: seq[string] = @[]
-  result = parseXml(s, "unknown_xml_doc", errors)
+  result = parseXml(s, "unknown_xml_doc", errors, options)
   if errors.len > 0: raiseInvalidXml(errors)
 
-proc parseXml*(str: string): XmlNode =
+proc parseXml*(str: string, options: set[XmlParseOption] = {reportComments}): XmlNode =
   ## Parses the XML from string ``str`` and returns a ``XmlNode``. All parsing
   ## errors are turned into an ``XmlError`` exception.
-  parseXml(newStringStream(str))
+  parseXml(newStringStream(str), options)
 
-proc loadXml*(path: string, errors: var seq[string]): XmlNode =
+proc loadXml*(path: string, errors: var seq[string], options: set[XmlParseOption] = {reportComments}): XmlNode =
   ## Loads and parses XML from file specified by ``path``, and returns
   ## a ``XmlNode``. Every occurred parsing error is added to the ``errors``
   ## sequence.
   var s = newFileStream(path, fmRead)
   if s == nil: raise newException(IOError, "Unable to read file: " & path)
-  result = parseXml(s, path, errors)
+  result = parseXml(s, path, errors, options)
 
-proc loadXml*(path: string): XmlNode =
+proc loadXml*(path: string, options: set[XmlParseOption] = {reportComments}): XmlNode =
   ## Loads and parses XML from file specified by ``path``, and returns
   ## a ``XmlNode``. All parsing errors are turned into an ``XmlError``
   ## exception.
   var errors: seq[string] = @[]
-  result = loadXml(path, errors)
+  result = loadXml(path, errors, options)
   if errors.len > 0: raiseInvalidXml(errors)
 
 when isMainModule:

@@ -101,7 +101,7 @@ when not defined(windows):
       let t = spawn runServer(port)
       sleep(100)
 
-      var client = newHttpClient()
+      var client = newHttpClient(sslContext=newContext(verifyMode=CVerifyNone))
       try:
         log "client: connect"
         discard client.getContent("https://127.0.0.1:12345")

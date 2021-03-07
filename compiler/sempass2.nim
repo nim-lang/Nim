@@ -10,7 +10,7 @@
 import
   intsets, ast, astalgo, msgs, renderer, magicsys, types, idents, trees,
   wordrecg, strutils, options, guards, lineinfos, semfold, semdata,
-  modulegraphs, varpartitions, typeallowed
+  modulegraphs, varpartitions, typeallowed, nilcheck
 
 when defined(useDfa):
   import dfa
@@ -70,7 +70,7 @@ type
     guards: TModel # nested guards
     locked: seq[PNode] # locked locations
     gcUnsafe, isRecursive, isTopLevel, hasSideEffect, inEnforcedGcSafe: bool
-    hasDangerousAssign: bool
+    hasDangerousAssign, isInnerProc: bool
     inEnforcedNoSideEffects: bool
     maxLockLevel, currLockLevel: TLockLevel
     currOptions: TOptions
@@ -219,7 +219,7 @@ proc markGcUnsafe(a: PEffects; reason: PNode) =
       if reason.kind == nkSym:
         a.owner.gcUnsafetyReason = reason.sym
       else:
-        a.owner.gcUnsafetyReason = newSym(skUnknown, a.owner.name, nextId a.c.idgen,
+        a.owner.gcUnsafetyReason = newSym(skUnknown, a.owner.name, nextSymId a.c.idgen,
                                           a.owner, reason.info, {})
 
 when true:
@@ -269,6 +269,9 @@ proc useVarNoInitCheck(a: PEffects; n: PNode; s: PSym) =
       markSideEffect(a, s)
     else:
       markSideEffect(a, s)
+  if s.owner != a.owner and s.kind in {skVar, skLet, skForVar, skResult, skParam} and
+     {sfGlobal, sfThread} * s.flags == {}:
+    a.isInnerProc = true
 
 proc useVar(a: PEffects, n: PNode) =
   let s = n.sym
@@ -510,7 +513,7 @@ proc procVarCheck(n: PNode; conf: ConfigRef) =
 proc notNilCheck(tracked: PEffects, n: PNode, paramType: PType) =
   let n = n.skipConv
   if paramType.isNil or paramType.kind != tyTypeDesc:
-    procVarCheck skipConvAndClosure(n), tracked.config
+    procVarCheck skipConvCastAndClosure(n), tracked.config
   #elif n.kind in nkSymChoices:
   #  echo "came here"
   let paramType = paramType.skipTypesOrNil(abstractInst)
@@ -556,7 +559,7 @@ proc isTrival(caller: PNode): bool {.inline.} =
   result = caller.kind == nkSym and caller.sym.magic in {mEqProc, mIsNil, mMove, mWasMoved, mSwap}
 
 proc trackOperandForIndirectCall(tracked: PEffects, n: PNode, paramType: PType; caller: PNode) =
-  let a = skipConvAndClosure(n)
+  let a = skipConvCastAndClosure(n)
   let op = a.typ
   # assume indirect calls are taken here:
   if op != nil and op.kind == tyProc and n.skipConv.kind != nkNilLit and not isTrival(caller):
@@ -723,7 +726,7 @@ proc checkLe(c: PEffects; a, b: PNode) =
 
 proc checkBounds(c: PEffects; arr, idx: PNode) =
   checkLe(c, lowBound(c.config, arr), idx)
-  checkLe(c, idx, highBound(c.config, arr, c.guards.o))
+  checkLe(c, idx, highBound(c.config, arr, c.guards.g.operators))
 
 proc checkRange(c: PEffects; value: PNode; typ: PType) =
   let t = typ.skipTypes(abstractInst - {tyRange})
@@ -755,75 +758,75 @@ proc trackCall(tracked: PEffects; n: PNode) =
   if n.typ != nil:
     if tracked.owner.kind != skMacro and n.typ.skipTypes(abstractVar).kind != tyOpenArray:
       createTypeBoundOps(tracked, n.typ, n.info)
-  if getConstExpr(tracked.ownerModule, n, tracked.c.idgen, tracked.graph) != nil:
-    return
-  if a.kind == nkCast and a[1].typ.kind == tyProc:
-    a = a[1]
-  # XXX: in rare situations, templates and macros will reach here after
-  # calling getAst(templateOrMacro()). Currently, templates and macros
-  # are indistinguishable from normal procs (both have tyProc type) and
-  # we can detect them only by checking for attached nkEffectList.
-  if op != nil and op.kind == tyProc and op.n[0].kind == nkEffectList:
-    if a.kind == nkSym:
-      if a.sym == tracked.owner: tracked.isRecursive = true
-      # even for recursive calls we need to check the lock levels (!):
-      mergeLockLevels(tracked, n, a.sym.getLockLevel)
-      if sfSideEffect in a.sym.flags: markSideEffect(tracked, a)
-    else:
-      mergeLockLevels(tracked, n, op.lockLevel)
-    var effectList = op.n[0]
-    if a.kind == nkSym and a.sym.kind == skMethod:
-      propagateEffects(tracked, n, a.sym)
-    elif isNoEffectList(effectList):
-      if isForwardedProc(a):
-        propagateEffects(tracked, n, a.sym)
-      elif isIndirectCall(a, tracked.owner):
-        assumeTheWorst(tracked, n, op)
-        gcsafeAndSideeffectCheck()
-    else:
-      mergeRaises(tracked, effectList[exceptionEffects], n)
-      mergeTags(tracked, effectList[tagEffects], n)
-      gcsafeAndSideeffectCheck()
-  if a.kind != nkSym or a.sym.magic != mNBindSym:
-    for i in 1..<n.len: trackOperandForIndirectCall(tracked, n[i], paramType(op, i), a)
-  if a.kind == nkSym and a.sym.magic in {mNew, mNewFinalize, mNewSeq}:
-    # may not look like an assignment, but it is:
-    let arg = n[1]
-    initVarViaNew(tracked, arg)
-    if arg.typ.len != 0 and {tfRequiresInit} * arg.typ.lastSon.flags != {}:
-      if a.sym.magic == mNewSeq and n[2].kind in {nkCharLit..nkUInt64Lit} and
-          n[2].intVal == 0:
-        # var s: seq[notnil];  newSeq(s, 0)  is a special case!
-        discard
+  if getConstExpr(tracked.ownerModule, n, tracked.c.idgen, tracked.graph) == nil:
+    if a.kind == nkCast and a[1].typ.kind == tyProc:
+      a = a[1]
+    # XXX: in rare situations, templates and macros will reach here after
+    # calling getAst(templateOrMacro()). Currently, templates and macros
+    # are indistinguishable from normal procs (both have tyProc type) and
+    # we can detect them only by checking for attached nkEffectList.
+    if op != nil and op.kind == tyProc and op.n[0].kind == nkEffectList:
+      if a.kind == nkSym:
+        if a.sym == tracked.owner: tracked.isRecursive = true
+        # even for recursive calls we need to check the lock levels (!):
+        mergeLockLevels(tracked, n, a.sym.getLockLevel)
+        if sfSideEffect in a.sym.flags: markSideEffect(tracked, a)
       else:
-        message(tracked.config, arg.info, warnProveInit, $arg)
+        mergeLockLevels(tracked, n, op.lockLevel)
+      var effectList = op.n[0]
+      if a.kind == nkSym and a.sym.kind == skMethod:
+        propagateEffects(tracked, n, a.sym)
+      elif isNoEffectList(effectList):
+        if isForwardedProc(a):
+          propagateEffects(tracked, n, a.sym)
+        elif isIndirectCall(a, tracked.owner):
+          assumeTheWorst(tracked, n, op)
+          gcsafeAndSideeffectCheck()
+      else:
+        mergeRaises(tracked, effectList[exceptionEffects], n)
+        mergeTags(tracked, effectList[tagEffects], n)
+        gcsafeAndSideeffectCheck()
+    if a.kind != nkSym or a.sym.magic != mNBindSym:
+      for i in 1..<n.len: trackOperandForIndirectCall(tracked, n[i], paramType(op, i), a)
+    if a.kind == nkSym and a.sym.magic in {mNew, mNewFinalize, mNewSeq}:
+      # may not look like an assignment, but it is:
+      let arg = n[1]
+      initVarViaNew(tracked, arg)
+      if arg.typ.len != 0 and {tfRequiresInit} * arg.typ.lastSon.flags != {}:
+        if a.sym.magic == mNewSeq and n[2].kind in {nkCharLit..nkUInt64Lit} and
+            n[2].intVal == 0:
+          # var s: seq[notnil];  newSeq(s, 0)  is a special case!
+          discard
+        else:
+          message(tracked.config, arg.info, warnProveInit, $arg)
 
-    # check required for 'nim check':
-    if n[1].typ.len > 0:
-      createTypeBoundOps(tracked, n[1].typ.lastSon, n.info)
-      createTypeBoundOps(tracked, n[1].typ, n.info)
-      # new(x, finalizer): Problem: how to move finalizer into 'createTypeBoundOps'?
+      # check required for 'nim check':
+      if n[1].typ.len > 0:
+        createTypeBoundOps(tracked, n[1].typ.lastSon, n.info)
+        createTypeBoundOps(tracked, n[1].typ, n.info)
+        # new(x, finalizer): Problem: how to move finalizer into 'createTypeBoundOps'?
 
-  elif a.kind == nkSym and a.sym.magic in {mArrGet, mArrPut} and
-      optStaticBoundsCheck in tracked.currOptions:
-    checkBounds(tracked, n[1], n[2])
+    elif a.kind == nkSym and a.sym.magic in {mArrGet, mArrPut} and
+        optStaticBoundsCheck in tracked.currOptions:
+      checkBounds(tracked, n[1], n[2])
+
+    if a.kind != nkSym or a.sym.magic != mRunnableExamples:
+      for i in 0..<n.safeLen:
+        track(tracked, n[i])
 
   if a.kind == nkSym and a.sym.name.s.len > 0 and a.sym.name.s[0] == '=' and
         tracked.owner.kind != skMacro:
     var opKind = find(AttachedOpToStr, a.sym.name.s.normalize)
-    if a.sym.name.s.normalize == "=": opKind = attachedAsgn.int
+    if a.sym.name.s == "=": opKind = attachedAsgn.int
     if opKind != -1:
       # rebind type bounds operations after createTypeBoundOps call
       let t = n[1].typ.skipTypes({tyAlias, tyVar})
-      if a.sym != t.attachedOps[TTypeAttachedOp(opKind)]:
+      if a.sym != getAttachedOp(tracked.graph, t, TTypeAttachedOp(opKind)):
         createTypeBoundOps(tracked, t, n.info)
-        let op = t.attachedOps[TTypeAttachedOp(opKind)]
+        let op = getAttachedOp(tracked.graph, t, TTypeAttachedOp(opKind))
         if op != nil:
           n[0].sym = op
 
-  if a.kind != nkSym or a.sym.magic != mRunnableExamples:
-    for i in 0..<n.safeLen:
-      track(tracked, n[i])
   if op != nil and op.kind == tyProc:
     for i in 1..<min(n.safeLen, op.len):
       case op[i].kind
@@ -1236,7 +1239,7 @@ proc initEffects(g: ModuleGraph; effects: PNode; s: PSym; t: var TEffects; c: PC
   t.ownerModule = s.getModule
   t.init = @[]
   t.guards.s = @[]
-  t.guards.o = initOperators(g)
+  t.guards.g = g
   when defined(drnim):
     t.currOptions = g.config.options + s.options - {optStaticBoundsCheck}
   else:
@@ -1251,6 +1254,15 @@ proc hasRealBody(s: PSym): bool =
   ## also handles importc procs with runnableExamples, which requires `=`,
   ## which is not a real implementation, refs #14314
   result = {sfForward, sfImportc} * s.flags == {}
+
+proc maybeWrappedInClosure(tracked: PEffects; t: PType): bool {.inline.} =
+  ## The spec does say when to produce destructors. However, the spec
+  ## was written in mind with the idea that "lambda lifting" already
+  ## happened. Not true in our implementation, so we need to workaround
+  ## here:
+  result = tracked.isInnerProc and
+    sfSystemModule notin tracked.c.module.flags and
+    tfCheckedForDestructor notin t.flags and containsGarbageCollectedRef(t)
 
 proc trackProc*(c: PContext; s: PSym, body: PNode) =
   let g = c.graph
@@ -1270,7 +1282,8 @@ proc trackProc*(c: PContext; s: PSym, body: PNode) =
       let param = params[i].sym
       let typ = param.typ
       if isSinkTypeForParam(typ) or
-          (t.config.selectedGC in {gcArc, gcOrc} and isClosure(typ.skipTypes(abstractInst))):
+          (t.config.selectedGC in {gcArc, gcOrc} and
+            (isClosure(typ.skipTypes(abstractInst)) or maybeWrappedInClosure(t, typ))):
         createTypeBoundOps(t, typ, param.info)
       when false:
         if typ.kind == tyOut and param.id notin t.init:
@@ -1310,7 +1323,7 @@ proc trackProc*(c: PContext; s: PSym, body: PNode) =
     var goals: set[Goal] = {}
     if strictFuncs in c.features: goals.incl constParameters
     if views in c.features: goals.incl borrowChecking
-    var partitions = computeGraphPartitions(s, body, g.config, goals)
+    var partitions = computeGraphPartitions(s, body, g, goals)
     if not t.hasSideEffect and t.hasDangerousAssign:
       t.hasSideEffect = varpartitions.hasSideEffect(partitions, mutationInfo)
     if views in c.features:
@@ -1344,7 +1357,10 @@ proc trackProc*(c: PContext; s: PSym, body: PNode) =
   when defined(useDfa):
     if s.name.s == "testp":
       dataflowAnalysis(s, body)
+
       when false: trackWrites(s, body)
+  if strictNotNil in c.features and s.kind == skProc:
+    checkNil(s, body, g.config, c.idgen)
 
 proc trackStmt*(c: PContext; module: PSym; n: PNode, isTopLevel: bool) =
   if n.kind in {nkPragma, nkMacroDef, nkTemplateDef, nkProcDef, nkFuncDef,

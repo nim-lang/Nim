@@ -13,6 +13,8 @@
 import std/private/miscdollars
 import stacktraces
 
+const noStacktraceAvailable = "No stack traceback available\n"
+
 var
   errorMessageWriter*: (proc(msg: string) {.tags: [WriteIOEffect], benign,
                                             nimcall.})
@@ -26,13 +28,21 @@ when defined(windows):
 
 when not defined(windows) or not defined(guiapp):
   proc writeToStdErr(msg: cstring) = rawWrite(cstderr, msg)
+  proc writeToStdErr(msg: cstring, length: int) =
+    rawWriteString(cstderr, msg, length)
 else:
   proc MessageBoxA(hWnd: pointer, lpText, lpCaption: cstring, uType: int): int32 {.
     header: "<windows.h>", nodecl.}
   proc writeToStdErr(msg: cstring) =
     discard MessageBoxA(nil, msg, nil, 0)
+  proc writeToStdErr(msg: cstring, length: int) =
+    discard MessageBoxA(nil, msg, nil, 0)
 
-proc showErrorMessage(data: cstring) {.gcsafe, raises: [].} =
+proc writeToStdErr(msg: string) {.inline.} =
+  # fix bug #13115: handles correctly '\0' unlike default implicit conversion to cstring
+  writeToStdErr(msg.cstring, msg.len)
+
+proc showErrorMessage(data: cstring, length: int) {.gcsafe, raises: [].} =
   var toWrite = true
   if errorMessageWriter != nil:
     try:
@@ -45,7 +55,10 @@ proc showErrorMessage(data: cstring) {.gcsafe, raises: [].} =
       # stderr not available by default, use the LOG session
       echo data
     else:
-      writeToStdErr(data)
+      writeToStdErr(data, length)
+
+proc showErrorMessage2(data: string) {.inline.} =
+  showErrorMessage(data.cstring, data.len)
 
 proc chckIndx(i, a, b: int): int {.inline, compilerproc, benign.}
 proc chckRange(i, a, b: int): int {.inline, compilerproc, benign.}
@@ -119,11 +132,11 @@ proc popSafePoint {.compilerRtl, inl.} =
 proc pushCurrentException(e: sink(ref Exception)) {.compilerRtl, inl.} =
   e.up = currException
   currException = e
-  #showErrorMessage "A"
+  #showErrorMessage2 "A"
 
 proc popCurrentException {.compilerRtl, inl.} =
   currException = currException.up
-  #showErrorMessage "B"
+  #showErrorMessage2 "B"
 
 proc popCurrentExceptionEx(id: uint) {.compilerRtl.} =
   discard "only for bootstrapping compatbility"
@@ -229,7 +242,7 @@ template addFrameEntry(s: var string, f: StackTraceEntry|PFrame) =
   for k in 1..max(1, 25-(s.len-oldLen)): add(s, ' ')
   add(s, f.procname)
   when NimStackTraceMsgs:
-    when type(f) is StackTraceEntry:
+    when typeof(f) is StackTraceEntry:
       add(s, f.frameMsg)
     else:
       var first = if f.prev == nil: 0 else: f.prev.frameMsgLen
@@ -301,7 +314,7 @@ when hasSomeStackTrace:
       auxWriteStackTraceWithOverride(s)
     elif NimStackTrace:
       if framePtr == nil:
-        add(s, "No stack traceback available\n")
+        add(s, noStacktraceAvailable)
       else:
         add(s, "Traceback (most recent call last)\n")
         auxWriteStackTrace(framePtr, s)
@@ -309,7 +322,7 @@ when hasSomeStackTrace:
       add(s, "Traceback from system (most recent call last)\n")
       auxWriteStackTraceWithBacktrace(s)
     else:
-      add(s, "No stack traceback available\n")
+      add(s, noStacktraceAvailable)
 
   proc rawWriteStackTrace(s: var seq[StackTraceEntry]) =
     when defined(nimStackTraceOverride):
@@ -338,7 +351,7 @@ var onUnhandledException*: (proc (errorMsg: string) {.
   nimcall, gcsafe.}) ## Set this error \
   ## handler to override the existing behaviour on an unhandled exception.
   ##
-  ## The default is to write a stacktrace to ``stderr`` and then call ``quit(1)``.
+  ## The default is to write a stacktrace to `stderr` and then call `quit(1)`.
   ## Unstable API.
 
 proc reportUnhandledErrorAux(e: ref Exception) {.nodestroy.} =
@@ -359,13 +372,13 @@ proc reportUnhandledErrorAux(e: ref Exception) {.nodestroy.} =
     if onUnhandledException != nil:
       onUnhandledException(buf)
     else:
-      showErrorMessage(buf)
+      showErrorMessage2(buf)
     `=destroy`(buf)
   else:
     # ugly, but avoids heap allocations :-)
     template xadd(buf, s, slen) =
       if L + slen < high(buf):
-        copyMem(addr(buf[L]), cstring(s), slen)
+        copyMem(addr(buf[L]), (when s is cstring: s else: cstring(s)), slen)
         inc L, slen
     template add(buf, s) =
       xadd(buf, s, s.len)
@@ -380,23 +393,16 @@ proc reportUnhandledErrorAux(e: ref Exception) {.nodestroy.} =
     add(buf, " [")
     xadd(buf, e.name, e.name.len)
     add(buf, "]\n")
-    when defined(nimNoArrayToCstringConversion):
-      template tbuf(): untyped = addr buf
-    else:
-      template tbuf(): untyped = buf
-
     if onUnhandledException != nil:
-      onUnhandledException($tbuf())
+      onUnhandledException($buf.addr)
     else:
-      showErrorMessage(tbuf())
+      showErrorMessage(buf.addr, L)
 
 proc reportUnhandledError(e: ref Exception) {.nodestroy.} =
   if unhandledExceptionHook != nil:
     unhandledExceptionHook(e)
   when hostOS != "any":
     reportUnhandledErrorAux(e)
-  else:
-    discard ()
 
 proc nimLeaveFinally() {.compilerRtl.} =
   when defined(cpp) and not defined(noCppExceptions) and not gotoBasedExceptions:
@@ -415,7 +421,7 @@ when gotoBasedExceptions:
     result = addr(nimInErrorMode)
 
   proc nimTestErrorFlag() {.compilerRtl.} =
-    ## This proc must be called before ``currException`` is destroyed.
+    ## This proc must be called before `currException` is destroyed.
     ## It also must be called at the end of every thread to ensure no
     ## error is swallowed.
     if nimInErrorMode and currException != nil:
@@ -500,16 +506,16 @@ proc writeStackTrace() =
   when hasSomeStackTrace:
     var s = ""
     rawWriteStackTrace(s)
-    cast[proc (s: cstring) {.noSideEffect, tags: [], nimcall, raises: [].}](showErrorMessage)(s)
   else:
-    cast[proc (s: cstring) {.noSideEffect, tags: [], nimcall, raises: [].}](showErrorMessage)("No stack traceback available\n")
+    let s = noStacktraceAvailable
+  cast[proc (s: string) {.noSideEffect, tags: [], nimcall, raises: [].}](showErrorMessage2)(s)
 
 proc getStackTrace(): string =
   when hasSomeStackTrace:
     result = ""
     rawWriteStackTrace(result)
   else:
-    result = "No stack traceback available\n"
+    result = noStacktraceAvailable
 
 proc getStackTrace(e: ref Exception): string =
   if not isNil(e):
@@ -518,8 +524,8 @@ proc getStackTrace(e: ref Exception): string =
     result = ""
 
 proc getStackTraceEntries*(e: ref Exception): seq[StackTraceEntry] =
-  ## Returns the attached stack trace to the exception ``e`` as
-  ## a ``seq``. This is not yet available for the JS backend.
+  ## Returns the attached stack trace to the exception `e` as
+  ## a `seq`. This is not yet available for the JS backend.
   when not defined(nimSeqsV2):
     shallowCopy(result, e.trace)
   else:
@@ -535,10 +541,11 @@ const nimCallDepthLimit {.intdefine.} = 2000
 
 proc callDepthLimitReached() {.noinline.} =
   writeStackTrace()
-  showErrorMessage("Error: call depth limit reached in a debug build (" &
+  let msg = "Error: call depth limit reached in a debug build (" &
       $nimCallDepthLimit & " function calls). You can change it with " &
       "-d:nimCallDepthLimit=<int> but really try to avoid deep " &
-      "recursions instead.\n")
+      "recursions instead.\n"
+  showErrorMessage2(msg)
   quit(1)
 
 proc nimFrame(s: PFrame) {.compilerRtl, inl, raises: [].} =
@@ -554,7 +561,8 @@ proc nimFrame(s: PFrame) {.compilerRtl, inl, raises: [].} =
 
 when defined(cpp) and appType != "lib" and not gotoBasedExceptions and
     not defined(js) and not defined(nimscript) and
-    hostOS != "standalone" and hostOS != "any" and not defined(noCppExceptions):
+    hostOS != "standalone" and hostOS != "any" and not defined(noCppExceptions) and
+    not defined(nimQuirky):
 
   type
     StdException {.importcpp: "std::exception", header: "<exception>".} = object
@@ -621,15 +629,28 @@ when not defined(noSignalHandler) and not defined(useNimRtl):
       var buf = newStringOfCap(2000)
       rawWriteStackTrace(buf)
       processSignal(sign, buf.add) # nice hu? currying a la Nim :-)
-      showErrorMessage(buf)
+      showErrorMessage2(buf)
       when not usesDestructors: GC_enable()
     else:
       var msg: cstring
       template asgn(y) =
         msg = y
       processSignal(sign, asgn)
-      showErrorMessage(msg)
-    quit(1) # always quit when SIGABRT
+      # xxx use string for msg instead of cstring, and here use showErrorMessage2(msg)
+      # unless there's a good reason to use cstring in signal handler to avoid
+      # using gc?
+      showErrorMessage(msg, msg.len)
+
+    when defined(posix):
+      # reset the signal handler to OS default
+      c_signal(sign, SIG_DFL)
+
+      # re-raise the signal, which will arrive once this handler exit.
+      # this lets the OS perform actions like core dumping and will
+      # also return the correct exit code to the shell.
+      discard c_raise(sign)
+    else:
+      quit(1)
 
   proc registerSignalHandler() =
     c_signal(SIGINT, signalHandler)

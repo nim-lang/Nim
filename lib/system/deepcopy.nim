@@ -163,7 +163,7 @@ proc genericDeepCopyAux(dest, src: pointer, mt: PNimType; tab: var PtrTable) =
           when defined(nimSeqsV2):
             let typ = if mt.base.kind == tyObject: cast[PNimType](cast[ptr PNimTypeV2](s2)[].typeInfoV1)
                       else: mt.base
-            let z = nimNewObj(typ.size)
+            let z = nimNewObj(typ.size, typ.align)
             cast[PPointer](dest)[] = z
           else:
             # this version should work for any other GC:

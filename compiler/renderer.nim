@@ -203,18 +203,18 @@ proc putComment(g: var TSrcGen, s: string) =
     case s[i]
     of '\0':
       break
-    of '\x0D':
+    of '\r':
       put(g, tkComment, com)
       com = "## "
       inc(i)
-      if i <= hi and s[i] == '\x0A': inc(i)
+      if i <= hi and s[i] == '\n': inc(i)
       optNL(g, ind)
-    of '\x0A':
+    of '\n':
       put(g, tkComment, com)
       com = "## "
       inc(i)
       optNL(g, ind)
-    of ' ', '\x09':
+    of ' ', '\t':
       com.add(s[i])
       inc(i)
     else:
@@ -242,12 +242,12 @@ proc maxLineLength(s: string): int =
     case s[i]
     of '\0':
       break
-    of '\x0D':
+    of '\r':
       inc(i)
-      if i <= hi and s[i] == '\x0A': inc(i)
+      if i <= hi and s[i] == '\n': inc(i)
       result = max(result, lineLen)
       lineLen = 0
-    of '\x0A':
+    of '\n':
       inc(i)
       result = max(result, lineLen)
       lineLen = 0
@@ -261,13 +261,13 @@ proc putRawStr(g: var TSrcGen, kind: TokType, s: string) =
   var str = ""
   while i <= hi:
     case s[i]
-    of '\x0D':
+    of '\r':
       put(g, kind, str)
       str = ""
       inc(i)
-      if i <= hi and s[i] == '\x0A': inc(i)
+      if i <= hi and s[i] == '\n': inc(i)
       optNL(g, 0)
-    of '\x0A':
+    of '\n':
       put(g, kind, str)
       str = ""
       inc(i)
@@ -280,7 +280,7 @@ proc putRawStr(g: var TSrcGen, kind: TokType, s: string) =
 proc containsNL(s: string): bool =
   for i in 0..<s.len:
     case s[i]
-    of '\x0D', '\x0A':
+    of '\r', '\n':
       return true
     else:
       discard
@@ -296,11 +296,11 @@ proc popAllComs(g: var TSrcGen) =
 const
   Space = " "
 
-proc shouldRenderComment(g: var TSrcGen, n: PNode): bool =
-  result = false
-  if n.comment.len > 0:
-    result = (renderNoComments notin g.flags) or
-        (renderDocComments in g.flags)
+proc shouldRenderComment(g: TSrcGen): bool {.inline.} =
+  (renderNoComments notin g.flags or renderDocComments in g.flags)
+
+proc shouldRenderComment(g: TSrcGen, n: PNode): bool {.inline.} =
+  shouldRenderComment(g) and n.comment.len > 0
 
 proc gcom(g: var TSrcGen, n: PNode) =
   assert(n != nil)
@@ -430,7 +430,7 @@ proc lsons(g: TSrcGen; n: PNode, start: int = 0, theEnd: int = - 1): int =
 proc lsub(g: TSrcGen; n: PNode): int =
   # computes the length of a tree
   if isNil(n): return 0
-  if n.comment.len > 0: return MaxLineLen + 1
+  if shouldRenderComment(g, n): return MaxLineLen + 1
   case n.kind
   of nkEmpty: result = 0
   of nkTripleStrLit:
@@ -597,8 +597,8 @@ proc gcommaAux(g: var TSrcGen, n: PNode, ind: int, start: int = 0,
     gsub(g, n[i])
     if c:
       if g.tokens.len > oldLen:
-        putWithSpace(g, separator, TokTypeToStr[separator])
-      if hasCom(n[i]):
+        putWithSpace(g, separator, $separator)
+      if shouldRenderComment(g) and hasCom(n[i]):
         gcoms(g)
         optNL(g, ind)
 
@@ -639,7 +639,7 @@ proc gsection(g: var TSrcGen, n: PNode, c: TContext, kind: TokType,
   dedent(g)
 
 proc longMode(g: TSrcGen; n: PNode, start: int = 0, theEnd: int = - 1): bool =
-  result = n.comment.len > 0
+  result = shouldRenderComment(g, n)
   if not result:
     # check further
     for i in start..n.len + theEnd:
@@ -820,14 +820,28 @@ proc gTypeClassTy(g: var TSrcGen, n: PNode) =
   dedent(g)
 
 proc gblock(g: var TSrcGen, n: PNode) =
+  # you shouldn't simplify it to `n.len < 2`
+  # because the following codes should be executed
+  # even when block stmt has only one child for getting
+  # better error messages.
+  if n.len == 0:
+    return
+
   var c: TContext
   initContext(c)
+
   if n[0].kind != nkEmpty:
     putWithSpace(g, tkBlock, "block")
     gsub(g, n[0])
   else:
     put(g, tkBlock, "block")
+
+  # block stmt should have two children
+  if n.len == 1:
+    return
+
   putWithSpace(g, tkColon, ":")
+
   if longMode(g, n) or (lsub(g, n[1]) + g.lineLen > MaxLineLen):
     incl(c.flags, rfLongMode)
   gcoms(g)
@@ -966,7 +980,7 @@ proc gsub(g: var TSrcGen, n: PNode, c: TContext) =
   if isNil(n): return
   var
     a: TContext
-  if n.comment.len > 0: pushCom(g, n)
+  if shouldRenderComment(g, n): pushCom(g, n)
   case n.kind                 # atoms:
   of nkTripleStrLit: put(g, tkTripleStrLit, atom(g, n))
   of nkEmpty: discard
@@ -1226,7 +1240,7 @@ proc gsub(g: var TSrcGen, n: PNode, c: TContext) =
     infixArgument(g, n, 1)
     put(g, tkSpaces, Space)
     gsub(g, n, 0)        # binary operator
-    # eg: `n1 == n2` decompses as following sum:
+    # e.g.: `n1 == n2` decompses as following sum:
     if n.len == 3 and not fits(g, oldLineLen + lsub(g, n[1]) + lsub(g, n[2]) + lsub(g, n[0]) + len("  ")):
       optNL(g, g.indent + longIndentWid)
     else:

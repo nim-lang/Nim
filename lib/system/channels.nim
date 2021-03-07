@@ -10,10 +10,10 @@
 ## Channel support for threads.
 ##
 ## **Note**: This is part of the system module. Do not import it directly.
-## To activate thread support compile with the ``--threads:on`` command line switch.
+## To activate thread support compile with the `--threads:on` command line switch.
 ##
-## **Note:** Channels are designed for the ``Thread`` type. They are unstable when
-## used with ``spawn``
+## **Note:** Channels are designed for the `Thread` type. They are unstable when
+## used with `spawn`
 ##
 ## **Note:** The current implementation of message passing does
 ## not work with cyclic data structures.
@@ -30,7 +30,7 @@
 ##   # Be sure to compile with --threads:on.
 ##   # The channels and threads modules are part of system and should not be
 ##   # imported.
-##   import os
+##   import std/os
 ##
 ##   # Channels can either be:
 ##   #  - declared at the module level, or
@@ -101,7 +101,7 @@
 ##   Another message
 ##
 ## Passing Channels Safely
-## ----------------------
+## -----------------------
 ## Note that when passing objects to procedures on another thread by pointer
 ## (for example through a thread's argument), objects created using the default
 ## allocator will use thread-local, GC-managed memory. Thus it is generally
@@ -109,7 +109,7 @@
 ## in which case they will use a process-wide (thread-safe) shared heap.
 ##
 ## However, it is possible to manually allocate shared memory for channels
-## using e.g. ``system.allocShared0`` and pass these pointers through thread
+## using e.g. `system.allocShared0` and pass these pointers through thread
 ## arguments:
 ##
 ## .. code-block :: Nim
@@ -151,7 +151,7 @@ type
       region: MemRegion
   PRawChannel = ptr RawChannel
   LoadStoreMode = enum mStore, mLoad
-  Channel* {.gcsafe.}[TMsg] = RawChannel ## a channel for thread communication
+  Channel*[TMsg] {.gcsafe.} = RawChannel ## a channel for thread communication
 
 const ChannelDeadMask = -2
 
@@ -248,7 +248,7 @@ when not usesDestructors:
         dstseq.reserved = seq.len
         for i in 0..seq.len-1:
           storeAux(
-            cast[pointer](dst +% align(GenericSeqSize, mt.base.align) +% i*% mt.base.size),
+            cast[pointer](dst +% align(GenericSeqSize, mt.base.align) +% i *% mt.base.size),
             cast[pointer](cast[ByteAddress](s2) +% align(GenericSeqSize, mt.base.align) +%
                           i *% mt.base.size),
             mt.base, t, mode)
@@ -265,8 +265,8 @@ when not usesDestructors:
       storeAux(dest, src, mt.node, t, mode)
     of tyArray, tyArrayConstr:
       for i in 0..(mt.size div mt.base.size)-1:
-        storeAux(cast[pointer](d +% i*% mt.base.size),
-                cast[pointer](s +% i*% mt.base.size), mt.base, t, mode)
+        storeAux(cast[pointer](d +% i *% mt.base.size),
+                cast[pointer](s +% i *% mt.base.size), mt.base, t, mode)
     of tyRef:
       var s = cast[PPointer](src)[]
       var x = cast[PPointer](dest)
@@ -410,8 +410,8 @@ proc tryRecv*[TMsg](c: var Channel[TMsg]): tuple[dataAvailable: bool,
   ## Tries to receive a message from the channel `c`, but this can fail
   ## for all sort of reasons, including contention.
   ##
-  ## If it fails, it returns ``(false, default(msg))`` otherwise it
-  ## returns ``(true, msg)``.
+  ## If it fails, it returns `(false, default(msg))` otherwise it
+  ## returns `(true, msg)`.
   var q = cast[PRawChannel](addr(c))
   if q.mask != ChannelDeadMask:
     if tryAcquireSys(q.lock):

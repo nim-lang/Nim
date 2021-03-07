@@ -228,7 +228,7 @@ See the following (incomplete) example:
 
 .. code-block:: nim
 
-  import distros
+  import std/distros
 
   # Architectures.
   if defined(amd64):
@@ -286,7 +286,7 @@ translations.cfg
 
   [cat]
   ES = gato
-  PT = minino
+  IT = gatto
   RU = kot
   FR = chat
 

@@ -10,9 +10,10 @@
 #
 
 const
-  NimbleStableCommit = "8f7af860c5ce9634af880a7081c6435e1f2a5148" # master
-  FusionStableCommit = "319aac4d43b04113831b529f8003e82f4af6a4a5"
-
+  NimbleStableCommit = "d13f3b8ce288b4dc8c34c219a4e050aaeaf43fc9" # master
+  # examples of possible values: #head, #ea82b54, 1.2.3
+  FusionStableHash = "#372ee4313827ef9f2ea388840f7d6b46c2b1b014"
+  HeadHash = "#head"
 when not defined(windows):
   const
     Z3StableCommit = "65de3f748a6812eecd7db7c478d5fc54424d368b" # the version of Z3 that DrNim uses
@@ -63,10 +64,11 @@ Possible Commands:
   distrohelper [bindir]    helper for distro packagers
   tools                    builds Nim related tools
   toolsNoExternal          builds Nim related tools (except external tools,
-                           ie. nimble)
+                           e.g. nimble)
                            doesn't require network connectivity
   nimble                   builds the Nimble tool
-  fusion                   clone fusion into the working tree
+  fusion                   installs fusion via Nimble
+
 Boot options:
   -d:release               produce a release version of the compiler
   -d:nimUseLinenoise       use the linenoise library for interactive mode
@@ -76,14 +78,14 @@ Boot options:
                            for bootstrapping
 
 Commands for core developers:
-  runCI                    runs continuous integration (CI), eg from travis
+  runCI                    runs continuous integration (CI), e.g. from travis
   docs [options]           generates the full documentation
   csource -d:danger        builds the C sources for installation
   pdf                      builds the PDF documentation
   zip                      builds the installation zip package
   xz                       builds the installation tar.xz package
   testinstall              test tar.xz package; Unix only!
-  installdeps [options]    installs external dependency (eg tinyc) to dist/
+  installdeps [options]    installs external dependency (e.g. tinyc) to dist/
   tests [options]          run the testsuite (run a subset of tests by
                            specifying a category, e.g. `tests cat async`)
   temp options             creates a temporary compiler for testing
@@ -93,7 +95,7 @@ Web options:
                            build the official docs, use UA-48159761-1
 """
 
-let kochExe* = when isMainModule: os.getAppFilename() # always correct when koch is main program, even if `koch` exe renamed eg: `nim c -o:koch_debug koch.nim`
+let kochExe* = when isMainModule: os.getAppFilename() # always correct when koch is main program, even if `koch` exe renamed e.g.: `nim c -o:koch_debug koch.nim`
                else: getAppDir() / "koch".exe # works for winrelease
 
 proc kochExec*(cmd: string) =
@@ -156,7 +158,13 @@ proc bundleNimsuggest(args: string) =
                  options = "-d:release -d:danger " & args)
 
 proc buildVccTool(args: string) =
-  nimCompileFold("Compile Vcc", "tools/vccexe/vccexe.nim ", options = args)
+  let input = "tools/vccexe/vccexe.nim"
+  if contains(args, "--cc:vcc"):
+    nimCompileFold("Compile Vcc", input, "build", options = args)
+    let fileName = input.splitFile.name
+    moveFile(exe("build" / fileName), exe("bin" / fileName))
+  else:
+    nimCompileFold("Compile Vcc", input, options = args)
 
 proc bundleNimpretty(args: string) =
   nimCompileFold("Compile nimpretty", "nimpretty/nimpretty.nim",
@@ -174,14 +182,7 @@ proc bundleWinTools(args: string) =
     nimCompile(r"tools\downloader.nim",
                options = r"--cc:vcc --app:gui -d:ssl --noNimblePath --path:..\ui " & args)
 
-proc bundleFusion(latest: bool) =
-  let commit = if latest: "HEAD" else: FusionStableCommit
-  cloneDependency(distDir, "https://github.com/nim-lang/fusion.git", commit,
-                  allowBundled = true)
-  copyDir(distDir / "fusion" / "src" / "fusion", "lib" / "fusion")
-
 proc zip(latest: bool; args: string) =
-  bundleFusion(latest)
   bundleNimbleExe(latest, args)
   bundleNimsuggest(args)
   bundleNimpretty(args)
@@ -221,7 +222,6 @@ proc buildTools(args: string = "") =
                  options = "-d:release " & args)
 
 proc nsis(latest: bool; args: string) =
-  bundleFusion(latest)
   bundleNimbleExe(latest, args)
   bundleNimsuggest(args)
   bundleWinTools(args)
@@ -284,6 +284,13 @@ proc thVersion(i: int): string =
 template doUseCpp(): bool = getEnv("NIM_COMPILE_TO_CPP", "false") == "true"
 
 proc boot(args: string) =
+  ## bootstrapping is a process that involves 3 steps:
+  ## 1. use csources to produce nim1.exe. This nim1.exe is buggy but
+  ## rock solid for building a Nim compiler. It shouldn't be used for anything else.
+  ## 2. use nim1.exe to produce nim2.exe. nim2.exe is the one you really need.
+  ## 3. We use nim2.exe to build nim3.exe. nim3.exe is equal to nim2.exe except for timestamps.
+  ## This step ensures a minimum amount of quality. We know that nim2.exe can be used
+  ## for Nim compiler development.
   var output = "compiler" / "nim".exe
   var finalDest = "bin" / "nim".exe
   # default to use the 'c' command:
@@ -519,7 +526,7 @@ proc runCI(cmd: string) =
   echo "runCI: ", cmd
   echo hostInfo()
   # boot without -d:nimHasLibFFI to make sure this still works
-  kochExecFold("Boot in release mode", "boot -d:release")
+  kochExecFold("Boot in release mode", "boot -d:release -d:nimStrictMode")
 
   ## build nimble early on to enable remainder to depend on it if needed
   kochExecFold("Build Nimble", "nimble")
@@ -530,6 +537,12 @@ proc runCI(cmd: string) =
     execFold("Test selected Nimble packages (2)", "nim c -r testament/testament cat nimble-packages-2")
   else:
     buildTools()
+
+    for a in "zip opengl sdl1 jester@#head".split:
+      let buildDeps = "build"/"deps" # xxx factor pending https://github.com/timotheecour/Nim/issues/616
+      # if this gives `Additional info: "build/deps" [OSError]`, make sure nimble is >= v0.12.0,
+      # otherwise `absolutePath` is needed, refs https://github.com/nim-lang/nimble/issues/901
+      execFold("", "nimble install -y --nimbleDir:$# $#" % [buildDeps.quoteShell, a])
 
     ## run tests
     execFold("Test nimscript", "nim e tests/test_nimscript.nims")
@@ -542,7 +555,7 @@ proc runCI(cmd: string) =
     #[
     BUG: with initOptParser, `--batch:'' all` interprets `all` as the argument of --batch
     ]#
-    execFold("Run tester", "nim c -r -d:nimCoroutines testament/testament --pedantic --batch:$1 all -d:nimCoroutines" % ["NIM_TESTAMENT_BATCH".getEnv("_")])
+    execFold("Run tester", "nim c -r -d:nimCoroutines --putenv:NIM_TESTAMENT_REMOTE_NETWORKING:1 -d:nimStrictMode testament/testament --batch:$1 all -d:nimCoroutines" % ["NIM_TESTAMENT_BATCH".getEnv("_")])
 
     block CT_FFI:
       when defined(posix): # windows can be handled in future PR's
@@ -554,6 +567,7 @@ proc runCI(cmd: string) =
         execFold("test with -d:nimHasLibFFI", "$1 $2 -r testament/testament --nim:$1 r tests/misc/trunner.nim -d:nimTrunnerFfi" % [nimFFI, backend])
 
     execFold("Run nimdoc tests", "nim c -r nimdoc/tester")
+    execFold("Run rst2html tests", "nim c -r nimdoc/rsttester")
     execFold("Run nimpretty tests", "nim c -r nimpretty/tester.nim")
     when defined(posix):
       execFold("Run nimsuggest tests", "nim c -r nimsuggest/tester")
@@ -687,12 +701,13 @@ when isMainModule:
       of "tools":
         buildTools(op.cmdLineRest)
         bundleNimbleExe(latest, op.cmdLineRest)
-        bundleFusion(latest)
       of "pushcsource", "pushcsources": pushCsources()
       of "valgrind": valgrind(op.cmdLineRest)
       of "c2nim": bundleC2nim(op.cmdLineRest)
       of "drnim": buildDrNim(op.cmdLineRest)
-      of "fusion": bundleFusion(latest)
+      of "fusion":
+        let suffix = if latest: HeadHash else: FusionStableHash
+        exec("nimble install -y fusion@$#" % suffix)
       else: showHelp()
       break
     of cmdEnd: break

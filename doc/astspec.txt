@@ -414,7 +414,7 @@ AST:
 Example code:
 
 .. code-block:: nim
-  macro genRepeatEcho(): stmt =
+  macro genRepeatEcho() =
     result = newNimNode(nnkStmtList)
 
     var forStmt = newNimNode(nnkForStmt) # generate a for statement
@@ -1033,7 +1033,7 @@ AST:
       nnkEmpty(), # no pragmas here
       nnkOfInherit(
         nnkIdent("RootObj") # inherits from RootObj
-      )
+      ),
       nnkEmpty()
     )
   )
@@ -1392,6 +1392,17 @@ Macro declaration
 Macros behave like templates, but ``nnkTemplateDef`` is replaced with
 ``nnkMacroDef``.
 
+Hidden Standard Conversion
+--------------------------
+
+.. code-block:: nim
+  var f: float = 1
+
+The type of "f" is ``float`` but the type of "1" is actually ``int``. Inserting 
+``int`` into a ``float`` is a type error. Nim inserts the ``nnkHiddenStdConv``  
+node around the ``nnkIntLit`` node so that the new node has the correct type of 
+``float``. This works for any auto converted nodes and makes the conversion 
+explicit.
 
 Special node kinds
 ==================

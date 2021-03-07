@@ -14,10 +14,15 @@ Nim's Memory Management
 Introduction
 ============
 
-This document describes how the multi-paradigm memory management strategies work.
-How to tune the garbage collectors for your needs, like (soft) `realtime systems`:idx:,
-and how the memory management strategies that are not garbage collectors work.
+A memory-management algorithm optimal for every use-case cannot exist.
+Nim provides multiple paradigms for needs ranging from large multi-threaded
+applications, to games, hard-realtime systems and small microcontrollers.
 
+This document describes how the management strategies work;
+How to tune the garbage collectors for your needs, like (soft) `realtime systems`:idx:,
+and how the memory management strategies other than garbage collectors work.
+
+.. note:: the default GC is incremental, thread-local and not "stop-the-world"
 
 Multi-paradigm Memory Management Strategies
 ===========================================
@@ -72,7 +77,7 @@ the garbage collector with ``GC_enableMarkAndSweep`` and ``GC_disableMarkAndSwee
 
 
 Soft real-time support
----------------------
+----------------------
 
 To enable real-time support, the symbol `useRealtimeGC`:idx: needs to be
 defined via ``--define:useRealtimeGC`` (you can put this into your config
@@ -102,10 +107,14 @@ These two procs are the two modus operandi of the real-time garbage collector:
     To bind all garbage collector activity to a ``GC_step`` call,
     deactivate the garbage collector with ``GC_disable`` at program startup.
     If ``strongAdvice`` is set to ``true``,
-    then the garbage collector will be forced to perform collection cycle.
+    then the garbage collector will be forced to perform the collection cycle.
     Otherwise, the garbage collector may decide not to do anything,
     if there is not much garbage to collect.
     You may also specify the current stack size via ``stackSize`` parameter.
+    It can improve performance when you know that there are no unique Nim references
+    below a certain point on the stack. Make sure the size you specify is greater
+    than the potential worst-case size.
+
     It can improve performance when you know that there are no unique Nim
     references below a certain point on the stack. Make sure the size you specify
     is greater than the potential worst-case size.
@@ -174,7 +183,7 @@ Heap dump
 The heap dump feature is still in its infancy, but it already proved
 useful for us, so it might be useful for you. To get a heap dump, compile
 with ``-d:nimTypeNames`` and call ``dumpNumberOfInstances`` at a strategic place in your program.
-This produces a list of used types in your program and for every type
+This produces a list of the used types in your program and for every type
 the total amount of object instances for this type as well as the total
 amount of bytes these instances take up.
 

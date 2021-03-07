@@ -1,7 +1,8 @@
 discard """
   output: '''string 1
 string 2
-string 3'''
+string 3
+'''
 """
 # bug #5532
 import os, asyncfile, asyncdispatch

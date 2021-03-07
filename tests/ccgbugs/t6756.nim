@@ -10,7 +10,7 @@ type
     v: T
 
 template templ(o: A, op: untyped): untyped =
-  type T = type(o.v)
+  type T = typeof(o.v)
 
   var res: A[T]
 

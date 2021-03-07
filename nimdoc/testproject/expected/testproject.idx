@@ -1,3 +1,4 @@
+someVariable	testproject.html#someVariable	testproject: someVariable	
 C_A	testproject.html#C_A	testproject: C_A	
 C_B	testproject.html#C_B	testproject: C_B	
 C_C	testproject.html#C_C	testproject: C_C	
@@ -54,3 +55,8 @@ asyncFun1	testproject.html#asyncFun1	testproject: asyncFun1(): Future[int]
 asyncFun2	testproject.html#asyncFun2	testproject: asyncFun2(): owned(Future[void])	
 asyncFun3	testproject.html#asyncFun3	testproject: asyncFun3(): owned(Future[void])	
 testNimDocTrailingExample	testproject.html#testNimDocTrailingExample.t	testproject: testNimDocTrailingExample()	
+Circle	testproject.html#Circle	Shapes.Circle	
+Triangle	testproject.html#Triangle	Shapes.Triangle	
+Rectangle	testproject.html#Rectangle	Shapes.Rectangle	
+Shapes	testproject.html#Shapes	testproject: Shapes	
+anything	testproject.html#anything	testproject: anything()	

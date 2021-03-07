@@ -494,7 +494,7 @@ proc emitTok*(em: var Emitter; L: Lexer; tok: Token) =
       wrSpace em
 
     if not em.inquote:
-      wr(em, TokTypeToStr[tok.tokType], ltKeyword)
+      wr(em, $tok.tokType, ltKeyword)
       if tok.tokType in {tkAnd, tkOr, tkIn, tkNotin}:
         rememberSplit(splitIn)
         wrSpace em
@@ -503,28 +503,28 @@ proc emitTok*(em: var Emitter; L: Lexer; tok: Token) =
       wr(em, tok.ident.s, ltIdent)
 
   of tkColon:
-    wr(em, TokTypeToStr[tok.tokType], ltOther)
+    wr(em, $tok.tokType, ltOther)
     wrSpace em
   of tkSemiColon, tkComma:
-    wr(em, TokTypeToStr[tok.tokType], ltOther)
+    wr(em, $tok.tokType, ltOther)
     rememberSplit(splitComma)
     wrSpace em
   of openPars:
     if tok.strongSpaceA > 0 and not em.endsInWhite and
         (not em.wasExportMarker or tok.tokType == tkCurlyDotLe):
       wrSpace em
-    wr(em, TokTypeToStr[tok.tokType], ltSomeParLe)
+    wr(em, $tok.tokType, ltSomeParLe)
     rememberSplit(splitParLe)
   of closedPars:
-    wr(em, TokTypeToStr[tok.tokType], ltSomeParRi)
+    wr(em, $tok.tokType, ltSomeParRi)
   of tkColonColon:
-    wr(em, TokTypeToStr[tok.tokType], ltOther)
+    wr(em, $tok.tokType, ltOther)
   of tkDot:
     lastTokWasTerse = true
-    wr(em, TokTypeToStr[tok.tokType], ltOther)
+    wr(em, $tok.tokType, ltOther)
   of tkEquals:
     if not em.inquote and not em.endsInWhite: wrSpace(em)
-    wr(em, TokTypeToStr[tok.tokType], ltOther)
+    wr(em, $tok.tokType, ltOther)
     if not em.inquote: wrSpace(em)
   of tkOpr, tkDotDot:
     if em.inquote or ((tok.strongSpaceA == 0 and tok.strongSpaceB == 0) and
@@ -544,7 +544,7 @@ proc emitTok*(em: var Emitter; L: Lexer; tok: Token) =
         wrSpace(em)
   of tkAccent:
     if not em.inquote and endsInAlpha(em): wrSpace(em)
-    wr(em, TokTypeToStr[tok.tokType], ltOther)
+    wr(em, $tok.tokType, ltOther)
     em.inquote = not em.inquote
   of tkComment:
     if not preventComment:

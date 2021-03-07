@@ -18,7 +18,7 @@
 ## To get started, first create a logger:
 ##
 ## .. code-block::
-##   import logging
+##   import std/logging
 ##
 ##   var logger = newConsoleLogger()
 ##
@@ -60,7 +60,7 @@
 ## in the following example:
 ##
 ## .. code-block::
-##   import logging
+##   import std/logging
 ##
 ##   var consoleLog = newConsoleLogger()
 ##   var fileLog = newFileLogger("errors.log", levelThreshold=lvlError)
@@ -118,7 +118,7 @@
 ## The following example illustrates how to use format strings:
 ##
 ## .. code-block::
-##   import logging
+##   import std/logging
 ##
 ##   var logger = newConsoleLogger(fmtStr="[$time] - $levelname: ")
 ##   logger.log(lvlInfo, "this is a message")
@@ -246,7 +246,7 @@ when not defined(js):
       ## rotation.
       ##
       ## Create a new ``RollingFileLogger`` with the `newRollingFileLogger proc
-      ## <#newRollingFileLogger,FileMode,int,int>`_.
+      ## <#newRollingFileLogger,FileMode,Positive,int>`_.
       ##
       ## **Note:** This logger is not available for the JavaScript backend.
       ##
@@ -395,7 +395,7 @@ proc newConsoleLogger*(levelThreshold = lvlAll, fmtStr = defaultFmtStr,
   ## * `newFileLogger proc<#newFileLogger,File>`_ that uses a file handle
   ## * `newFileLogger proc<#newFileLogger,FileMode,int>`_
   ##   that accepts a filename
-  ## * `newRollingFileLogger proc<#newRollingFileLogger,FileMode,int,int>`_
+  ## * `newRollingFileLogger proc<#newRollingFileLogger,FileMode,Positive,int>`_
   ##
   ## **Examples:**
   ##
@@ -460,7 +460,7 @@ when not defined(js):
     ## * `newConsoleLogger proc<#newConsoleLogger>`_
     ## * `newFileLogger proc<#newFileLogger,FileMode,int>`_
     ##   that accepts a filename
-    ## * `newRollingFileLogger proc<#newRollingFileLogger,FileMode,int,int>`_
+    ## * `newRollingFileLogger proc<#newRollingFileLogger,FileMode,Positive,int>`_
     ##
     ## **Examples:**
     ##
@@ -496,7 +496,7 @@ when not defined(js):
     ## See also:
     ## * `newConsoleLogger proc<#newConsoleLogger>`_
     ## * `newFileLogger proc<#newFileLogger,File>`_ that uses a file handle
-    ## * `newRollingFileLogger proc<#newRollingFileLogger,FileMode,int,int>`_
+    ## * `newRollingFileLogger proc<#newRollingFileLogger,FileMode,Positive,int>`_
     ##
     ## **Examples:**
     ##

@@ -25,7 +25,7 @@ move semantics and destructors work in Nim.
 Motivating example
 ==================
 
-With the language mechanisms described here a custom seq could be
+With the language mechanisms described here, a custom seq could be
 written as:
 
 .. code-block:: nim
@@ -88,9 +88,10 @@ Lifetime-tracking hooks
 =======================
 
 The memory management for Nim's standard ``string`` and ``seq`` types as
-well as other standard collections is performed via so called
-"Lifetime-tracking hooks" or "type-bound operators". There are 3 different
-hooks for each (generic or concrete) object type ``T`` (``T`` can also be a
+well as other standard collections is performed via so-called
+"Lifetime-tracking hooks", which are particular `type bound operators <manual.html#procedures-type-bound-operators>`_.
+
+There are 3 different hooks for each (generic or concrete) object type ``T`` (``T`` can also be a
 ``distinct`` type) that are called implicitly by the compiler.
 
 (Note: The word "hook" here does not imply any kind of dynamic binding
@@ -128,13 +129,13 @@ The general pattern in ``=destroy`` looks like:
 ------------
 
 A `=sink` hook moves an object around, the resources are stolen from the source
-and passed to the destination. It is ensured that source's destructor does
-not free the resources afterwards by setting the object to its default value
+and passed to the destination. It is ensured that the source's destructor does
+not free the resources afterward by setting the object to its default value
 (the value the object's state started in). Setting an object ``x`` back to its
 default value is written as ``wasMoved(x)``. When not provided the compiler
 is using a combination of `=destroy` and `copyMem` instead. This is efficient
 hence users rarely need to implement their own `=sink` operator, it is enough to
-provide `=destroy` and `=copy`, compiler will take care about the rest.
+provide `=destroy` and `=copy`, compiler will take care of the rest.
 
 The prototype of this hook for a type ``T`` needs to be:
 
@@ -184,14 +185,20 @@ The general pattern in ``=copy`` looks like:
 
 
 The ``=copy`` proc can be marked with the ``{.error.}`` pragma. Then any assignment
-that otherwise would lead to a copy is prevented at compile-time.
+that otherwise would lead to a copy is prevented at compile-time. This looks like:
 
+.. code-block:: nim
+
+  proc `=copy`(dest: var T; source: T) {.error.}
+
+but a custom error message (e.g., ``{.error: "custom error".}``) will not be emitted
+by the compiler. Notice that there is no ``=`` before the ``{.error.}`` pragma.
 
 Move semantics
 ==============
 
 A "move" can be regarded as an optimized copy operation. If the source of the
-copy operation is not used afterwards, the copy can be replaced by a move. This
+copy operation is not used afterward, the copy can be replaced by a move. This
 document uses the notation ``lastReadOf(x)`` to describe that ``x`` is not
 used afterwards. This property is computed by a static control flow analysis
 but can also be enforced by using ``system.move`` explicitly.
@@ -218,7 +225,7 @@ Sink parameters
 ===============
 
 To move a variable into a collection usually ``sink`` parameters are involved.
-A location that is passed to a ``sink`` parameter should not be used afterwards.
+A location that is passed to a ``sink`` parameter should not be used afterward.
 This is ensured by a static analysis over a control flow graph. If it cannot be
 proven to be the last usage of the location, a copy is done instead and this
 copy is then passed to the sink parameter.
@@ -232,7 +239,7 @@ without any further overloads and ``put`` might not take ownership of ``k`` if
 not a linear type system.
 
 The employed static analysis is limited and only concerned with local variables;
-however object and tuple fields are treated as separate entities:
+however, object and tuple fields are treated as separate entities:
 
 .. code-block:: nim
 
@@ -370,8 +377,14 @@ it's subtle.
 
 The simple case of ``x = x`` cannot be turned
 into ``=sink(x, x); wasMoved(x)`` because that would lose ``x``'s value.
-The solution is that simple self-assignments are simply transformed into
-an empty statement that does nothing.
+The solution is that simple self-assignments that consist of
+
+- Symbols: ``x = x``
+- Field access: ``x.f = x.f``
+- Array, sequence or string access with indices known at compile-time: ``x[0] = x[0]``
+
+are transformed into an empty statement that does nothing.
+The compiler is free to optimize further cases.
 
 The complex case looks like a variant of ``x = f(x)``, we consider
 ``x = select(rand() < 0.5, x, y)`` here:
@@ -509,7 +522,7 @@ to avoid this overhead:
 In fact, ``.cursor`` more generally prevents object construction/destruction pairs
 and so can also be useful in other contexts. The alternative solution would be to
 use raw pointers (``ptr``) instead which is more cumbersome and also more dangerous
-for Nim's evolution: Later on the compiler can try to prove ``.cursor`` annotations
+for Nim's evolution: Later on, the compiler can try to prove ``.cursor`` annotations
 to be safe, but for ``ptr`` the compiler has to remain silent about possible
 problems.
 
@@ -522,7 +535,7 @@ a form of copy elision.
 
 To see how and when we can do that, think about this question: In `dest = src` when
 do we really have to *materialize* the full copy? - Only if `dest` or `src` are mutated
-afterwards. If `dest` is a local variable that is simple to analyse. And if `src` is a
+afterwards. If `dest` is a local variable that is simple to analyze. And if `src` is a
 location derived from a formal parameter, we also know it is not mutated! In other
 words, we do a compile-time copy-on-write analysis.
 
@@ -547,9 +560,9 @@ other words, a copy ``x = y`` is implemented
 as ``x[0] = y[0]; x[1] = y[1]; ...``, likewise for ``=sink`` and ``=destroy``.
 
 Other value-based compound types like ``object`` and ``array`` are handled
-correspondingly. For ``object`` however, the compiler generated hooks
+correspondingly. For ``object`` however, the compiler-generated hooks
 can be overridden. This can also be important to use an alternative traversal
-of the involved datastructure that is more efficient or in order to avoid
+of the involved data structure that is more efficient or in order to avoid
 deep recursions.
 
 
@@ -619,3 +632,73 @@ used to specialize the object traversal in order to avoid deep recursions:
 
 As can be seen from the example, this solution is hardly sufficient and
 should eventually be replaced by a better solution.
+
+
+Copy on write
+=============
+
+String literals are implemented as [copy-on-write](https://en.wikipedia.org/wiki/Copy-on-write).
+When assigning a string literal to a variable, a copy of the literal won't be created.
+Instead the variable simply points to the literal.
+The literal is shared between different variables which are pointing to it.
+The copy operation is deferred until the first write.
+
+```nim
+var x = "abc"  # no copy
+var y = x      # no copy
+```
+
+The string literal "abc" is stored in static memory and not allocated on the heap.
+The variable `x` points to the literal and the variable `y` points to the literal too.
+There is no copy during assigning operations.
+
+```nim
+var x = "abc"  # no copy
+var y = x      # no copy
+y[0] = 'h'     # copy
+```
+
+The program above shows when the copy operations happen.
+When mutating the variable `y`, the Nim compiler creates a fresh copy of `x`, 
+the variable `y` won't point to the string literal anymore. 
+Instead it points to the copy of `x` of which the memory can be mutated 
+and the variable `y` becomes a mutable string.
+
+.. Note:: The abstraction fails for `addr x` because whether the address is going to be used for mutations is unknown. 
+
+Let's look at a silly example demonstrating this behaviour:
+
+```nim
+var x = "abc"
+var y = x
+
+moveMem(addr y[0], addr x[0], 3)
+```
+
+The program fails because we need to prepare a fresh copy for the variable `y`.
+`prepareMutation` should be called before the address operation.
+
+```nim
+var x = "abc"
+var y = x
+
+prepareMutation(y)
+moveMem(addr y[0], addr x[0], 3)
+assert y == "abc"
+```
+
+Now `prepareMutation` solves the problem.
+It manually creates a fresh copy and makes the variable `y` mutable.
+
+```nim
+var x = "abc"
+var y = x
+
+prepareMutation(y)
+moveMem(addr y[0], addr x[0], 3)
+moveMem(addr y[0], addr x[0], 3)
+moveMem(addr y[0], addr x[0], 3)
+assert y == "abc"
+```
+
+No matter how many times `moveMem` is called, the program compiles and runs.

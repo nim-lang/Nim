@@ -218,9 +218,6 @@ proc processMergeInfo(L: var TBaseLexer, m: BModule) =
       m.flags = cast[set[CodegenFlag]](decodeVInt(L.buf, L.bufpos) != 0)
     else: doAssert(false, "ccgmerge: unknown key: " & k)
 
-when not defined(nimhygiene):
-  {.pragma: inject.}
-
 template withCFile(cfilename: AbsoluteFile, body: untyped) =
   var s = llStreamOpen(cfilename, fmRead)
   if s == nil: return
