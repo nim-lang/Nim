@@ -1688,6 +1688,36 @@ proc setFilePermissions*(filename: string, permissions: set[FilePermission],
       var res2 = setFileAttributesA(filename, res)
     if res2 == - 1'i32: raiseOSError(osLastError(), $(filename, permissions))
 
+proc isAdmin*: bool {.noWeirdTarget.} =
+  ## Returns whether the caller's process is a member of the Administrators local
+  ## group (on Windows) or a root (on POSIX), via `geteuid() == 0`.
+  when defined(windows):
+    # Rewrite of the example from Microsoft Docs:
+    # https://docs.microsoft.com/en-us/windows/win32/api/securitybaseapi/nf-securitybaseapi-checktokenmembership#examples
+    # and corresponding PostgreSQL function:
+    # https://doxygen.postgresql.org/win32security_8c.html#ae6b61e106fa5d6c5d077a9d14ee80569
+    var ntAuthority = SID_IDENTIFIER_AUTHORITY(value: SECURITY_NT_AUTHORITY)
+    var administratorsGroup: PSID
+    if not isSuccess(allocateAndInitializeSid(addr ntAuthority,
+                                              BYTE(2),
+                                              SECURITY_BUILTIN_DOMAIN_RID,
+                                              DOMAIN_ALIAS_RID_ADMINS,
+                                              0, 0, 0, 0, 0, 0,
+                                              addr administratorsGroup)):
+      raiseOSError(osLastError(), "could not get SID for Administrators group")
+
+    defer:
+      if freeSid(administratorsGroup) != nil:
+        raiseOSError(osLastError(), "failed to free SID for Administrators group")
+
+    var b: WINBOOL
+    if not isSuccess(checkTokenMembership(0, administratorsGroup, addr b)):
+      raiseOSError(osLastError(), "could not check access token membership")
+
+    return isSuccess(b)
+  else:
+    return geteuid() == 0
+
 proc createSymlink*(src, dest: string) {.noWeirdTarget.} =
   ## Create a symbolic link at `dest` which points to the item specified
   ## by `src`. On most operating systems, will fail if a link already exists.
