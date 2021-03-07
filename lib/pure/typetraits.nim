@@ -16,6 +16,7 @@ import std/private/since
 export system.`$` # for backward compatibility
 
 type SomeEnumWithHoles* = (not Ordinal) and enum ## Enum with holes.
+type OrdinalEnum* = Ordinal and enum ## Enum without holes.
 
 runnableExamples:
   type A = enum a0 = 2, a1 = 4, a2
