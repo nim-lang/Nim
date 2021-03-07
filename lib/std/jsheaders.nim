@@ -12,8 +12,9 @@ func add*(self: Headers; key: cstring; value: cstring) {.importjs: "#.append(#, 
   ## https://developer.mozilla.org/en-US/docs/Web/API/Headers/append
 
 func delete*(self: Headers; key: cstring) {.importjs: "#.$1(#)".}
-  ## Delete *all* items with `key` from the headers, including duplicated keys.
   ## https://developer.mozilla.org/en-US/docs/Web/API/Headers/delete
+  ##
+  ## .. Warning:: Delete *all* items with `key` from the headers, including duplicated keys.
 
 func hasKey*(self: Headers; key: cstring): bool {.importjs: "#.has(#)".}
   ## https://developer.mozilla.org/en-US/docs/Web/API/Headers/has
