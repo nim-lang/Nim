@@ -520,9 +520,10 @@ proc prepareExample(d: PDoc; n: PNode): tuple[rdoccmd: string, code: string] =
     runnableExamples.info = n.info
     for a in n.lastSon: runnableExamples.add a
 
-    # buggy, refs bug #13491
+    # buggy, refs bug #17292
     # still worth fixing as it can affect other code relying on `renderModule`,
-    # so we keep this code path here for now.
+    # so we keep this code path here for now, which could still be useful in some
+    # other situations.
     renderModule(runnableExamples, outp.string, conf = d.conf)
 
   else:
