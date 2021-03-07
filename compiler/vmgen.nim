@@ -2142,7 +2142,6 @@ proc gen(c: PCtx; n: PNode; dest: var TDest; flags: TGenFlags = {}) =
     if n.typ != nil and n.typ.isCompileTimeOnly:
       genTypeLit(c, n.typ, dest)
     else:
-      debug(n)
       globalError(c.config, n.info, "cannot generate VM code for " & $n)
 
 proc removeLastEof(c: PCtx) =
@@ -2268,7 +2267,7 @@ proc genProc(c: PCtx; s: PSym): int =
     genParams(c, s.typ.n)
 
     # allocate additional space for any generically bound parameters
-    if s.kind == skMacro and (s.ast[genericParamsPos].kind != nkEmpty and s.ast[genericParamsPos].len > 0):
+    if s.kind == skMacro and s.ast[genericParamsPos].kind != nkEmpty:
       genGenericParams(c, s.ast[genericParamsPos])
 
     if tfCapturesEnv in s.typ.flags:

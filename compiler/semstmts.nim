@@ -1441,6 +1441,8 @@ proc addResult(c: PContext, n: PNode, t: PType, owner: TSymKind) =
   if owner == skMacro or t != nil:
     if n.len > resultPos and n[resultPos] != nil:
       if n[resultPos].sym.kind != skResult or n[resultPos].sym.owner != getCurrOwner(c):
+        # debug(n[resultPos].sym.owner)
+        # debug(getCurrOwner(c))
         localError(c.config, n.info, "incorrect result proc symbol")
       c.p.resultSym = n[resultPos].sym
     else:
@@ -1539,7 +1541,7 @@ proc setGenericParamsMisc(c: PContext; n: PNode): PNode =
     # XXX: Setting the result only for the non-nkEmpty branch is required
     #      otherwise consequent analysis is broken as this fn is called from
     #      various call sites.
-    n[genericParamsPos] = result
+  n[genericParamsPos] = result
 
 proc semLambda(c: PContext, n: PNode, flags: TExprFlags): PNode =
   # XXX semProcAux should be good enough for this now, we will eventually
@@ -1563,7 +1565,7 @@ proc semLambda(c: PContext, n: PNode, flags: TExprFlags): PNode =
   if n[paramsPos].kind != nkEmpty:
     semParamList(c, n[paramsPos], gp, s)
     # paramsTypeCheck(c, s.typ)
-    if gp.len > 0 and n[genericParamsPos].kind == nkEmpty:
+    if gp.len > 0 and (n[genericParamsPos].kind == nkEmpty or n[genericParamsPos].kind == nkGenericParams and n[genericParamsPos].len == 0):
       # we have a list of implicit type parameters:
       n[genericParamsPos] = gp
   else:
@@ -1594,6 +1596,8 @@ proc semLambda(c: PContext, n: PNode, flags: TExprFlags): PNode =
   result.typ = s.typ
   if optOwnedRefs in c.config.globalOptions:
     result.typ = makeVarType(c, result.typ, tyOwned)
+  if n[genericParamsPos].len == 0:
+    n[genericParamsPos] = newNodeI(nkEmpty, n[genericParamsPos].info)
 
 proc semInferredLambda(c: PContext, pt: TIdTable, n: PNode): PNode {.nosinks.} =
   var n = n
@@ -1896,30 +1900,11 @@ proc semProcAux(c: PContext, n: PNode, kind: TSymKind,
   let delcarationScope = c.currentScope
   pushOwner(c, s)
   openScope(c)
-  var gp: PNode
-
-  if n[genericParamsPos].kind == nkEmpty:
-    gp = newNodeI(nkGenericParams, n.info)
-    gp.flags.incl(nfSem)
-    gp.flags.incl(nfSem)
-  else:
-    let orig = n[genericParamsPos]
-    # we keep the original params around for better error messages, see
-    # issue https://github.com/nim-lang/Nim/issues/1713
-    gp = semGenericParamList(c, orig)
-    if n[miscPos].kind == nkEmpty:
-      n[miscPos] = newTree(nkBracket, c.graph.emptyNode, orig)
-    else:
-      n[miscPos][1] = orig
-  # XXX: Setting the gp only for the non-nkEmpty branch is required
-  #      otherwise consequent analysis is broken as this fn is called from
-  #      various call sites.
-  n[genericParamsPos] = gp
 
   # process parameters:
   # XXX: this is concerning we're doing repetitive analysis, rather than
   #      clearly breaking it down into phases
-  # var gp = setGenericParamsMisc(c, n)
+  var gp = setGenericParamsMisc(c, n)
 
   if n[paramsPos].kind != nkEmpty:
     semParamList(c, n[paramsPos], gp, s)
@@ -1928,7 +1913,7 @@ proc semProcAux(c: PContext, n: PNode, kind: TSymKind,
       # only implicit <-- handles this
       # only explicit
       # mixed implicit and explicit
-    if gp.len > 0 and n[genericParamsPos].kind == nkEmpty:
+    if gp.len > 0 and (n[genericParamsPos].kind == nkEmpty or n[genericParamsPos].kind == nkGenericParams and n[genericParamsPos].len == 0):
         # we have a list of implicit type parameters:
         n[genericParamsPos] = gp
         # check for semantics again:
@@ -2033,7 +2018,7 @@ proc semProcAux(c: PContext, n: PNode, kind: TSymKind,
       if s.kind == skMethod: semMethodPrototype(c, s, n)
     else:
       pushProcCon(c, s)
-      if n[genericParamsPos].kind == nkEmpty or usePseudoGenerics:
+      if n[genericParamsPos].kind == nkEmpty or n[genericParamsPos].len == 0 or usePseudoGenerics:
         if not usePseudoGenerics and s.magic == mNone: paramsTypeCheck(c, s.typ)
 
         maybeAddResult(c, s, n)

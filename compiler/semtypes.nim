@@ -1362,7 +1362,7 @@ proc semProcTypeNode(c: PContext, n, genericParams: PNode,
           result.flags.excl tfHasMeta
       result.n.typ = r
 
-  if genericParams != nil and genericParams.kind != nkEmpty and genericParams.len > 0:
+  if genericParams != nil and genericParams.kind != nkEmpty:
     for n in genericParams:
       if {sfUsed, sfAnon} * n.sym.flags == {}:
         result.flags.incl tfUnresolved
