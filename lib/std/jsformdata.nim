@@ -53,14 +53,13 @@ func `$`*(self: FormData): string = $toCstring(self)
 func len*(self: FormData): int {.importjs: "Array.from(#.entries()).length".}
 
 
-runnableExamples:
-  if defined(nimJsFormdataTests):
-    let data: FormData = newFormData()
-    data["key0"] = "value0".cstring
-    data.add("key1".cstring, "value1".cstring)
-    data.delete("key1")
-    doAssert data.hasKey("key0")
-    doAssert data["key0"] == "value0".cstring
-    doAssert data.toCstring is cstring
-    data.clear()
-    doAssert data.len == 0
+runnableExamples("-r:off"):
+  let data: FormData = newFormData()
+  data["key0"] = "value0".cstring
+  data.add("key1".cstring, "value1".cstring)
+  data.delete("key1")
+  doAssert data.hasKey("key0")
+  doAssert data["key0"] == "value0".cstring
+  doAssert data.toCstring is cstring
+  data.clear()
+  doAssert data.len == 0
