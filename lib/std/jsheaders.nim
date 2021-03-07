@@ -47,37 +47,36 @@ func `$`*(self: Headers): string = $toCstring(self)
 func len*(self: Headers): int {.importjs: "Array.from(#.entries()).length".}
 
 
-runnableExamples:
-  if defined(nimJsHeadersTests):
+runnableExamples("-r:off"):
 
-    block:
-      let header: Headers = newHeaders()
-      header.add("key", "value")
-      doAssert header.hasKey("key")
-      doAssert header.keys() == @["key".cstring]
-      doAssert header.values() == @["value".cstring]
-      doAssert header["key"] == "value".cstring
-      header["other"] = "another".cstring
-      doAssert header["other"] == "another".cstring
-      doAssert header.entries() == @[("key".cstring, "value".cstring), ("other".cstring, "another".cstring)]
-      doAssert header.toCstring() == """[["key","value"],["other","another"]]""".cstring
-      header.delete("other")
-      doAssert header.entries() == @[("key".cstring, "value".cstring)]
-      header.clear()
-      doAssert header.entries() == @[]
-      doAssert header.len == 0
+  block:
+    let header: Headers = newHeaders()
+    header.add("key", "value")
+    assert header.hasKey("key")
+    assert header.keys() == @["key".cstring]
+    assert header.values() == @["value".cstring]
+    assert header["key"] == "value".cstring
+    header["other"] = "another".cstring
+    assert header["other"] == "another".cstring
+    assert header.entries() == @[("key".cstring, "value".cstring), ("other".cstring, "another".cstring)]
+    assert header.toCstring() == """[["key","value"],["other","another"]]""".cstring
+    header.delete("other")
+    assert header.entries() == @[("key".cstring, "value".cstring)]
+    header.clear()
+    assert header.entries() == @[]
+    assert header.len == 0
 
-    block:
-      let header: Headers = newHeaders()
-      header.add("key", "a")
-      header.add("key", "b")  ## Duplicated.
-      header.add("key", "c")  ## Duplicated.
-      doAssert header["key"] == "a, b, c".cstring
-      header["key"] = "value".cstring
-      doAssert header["key"] == "value".cstring
+  block:
+    let header: Headers = newHeaders()
+    header.add("key", "a")
+    header.add("key", "b")  ## Duplicated.
+    header.add("key", "c")  ## Duplicated.
+    assert header["key"] == "a, b, c".cstring
+    header["key"] = "value".cstring
+    assert header["key"] == "value".cstring
 
-    block:
-      let header: Headers = newHeaders()
-      header["key"] = "a"
-      header["key"] = "b"  ## Overwrites.
-      doAssert header["key"] == "b".cstring
+  block:
+    let header: Headers = newHeaders()
+    header["key"] = "a"
+    header["key"] = "b"  ## Overwrites.
+    assert header["key"] == "b".cstring
