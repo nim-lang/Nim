@@ -38,8 +38,8 @@ template toSet*(iter: untyped): untyped =
 
 macro enmRange(enm: typed): untyped = result = newNimNode(nnkCurly).add(enm.getType[1][1..^1])
 
-# proc fullSet*(T: typedesc): set[T] {.inline.} = # xxx would give: Error: ordinal type expected
-proc fullSet*[T](U: typedesc[T]): set[T] {.inline.} =
+# func fullSet*(T: typedesc): set[T] {.inline.} = # xxx would give: Error: ordinal type expected
+func fullSet*[T](U: typedesc[T]): set[T] {.inline.} =
   ## Returns a set containing all elements in `U`.
   runnableExamples:
     assert bool.fullSet == {true, false}
@@ -51,7 +51,7 @@ proc fullSet*[T](U: typedesc[T]): set[T] {.inline.} =
   else: # Hole filled enum
     enmRange(T)
 
-proc complement*[T](s: set[T]): set[T] {.inline.} =
+func complement*[T](s: set[T]): set[T] {.inline.} =
   ## Returns the set complement of `a`.
   runnableExamples:
     type Colors = enum
@@ -62,7 +62,7 @@ proc complement*[T](s: set[T]): set[T] {.inline.} =
     assert complement({'0'..'9'}) == {0.char..255.char} - {'0'..'9'}
   fullSet(T) - s
 
-proc `[]=`*[T](t: var set[T], key: T, val: bool) {.inline.} =
+func `[]=`*[T](t: var set[T], key: T, val: bool) {.inline.} =
   ## Syntax sugar for `if val: t.incl key else: t.excl key`
   runnableExamples:
     type A = enum
