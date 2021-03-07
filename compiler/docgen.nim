@@ -456,23 +456,6 @@ proc nodeToHighlightedHtml(d: PDoc; n: PNode; result: var Rope; renderFlags: TRe
 
 proc exampleOutputDir(d: PDoc): AbsoluteDir = d.conf.getNimcacheDir / RelativeDir"runnableExamples"
 
-# proc writeExample(d: PDoc; ex: PNode, rdoccmd: string, code: string, useRenderModule: bool) =
-proc writeExample(d: PDoc; ex: PNode, rdoccmd: string, code: string, useRenderModule: bool) =
-  if d.conf.errorCounter > 0: return
-  let outputDir = d.exampleOutputDir
-  createDir(outputDir)
-  inc d.exampleCounter
-  let outp = outputDir / RelativeFile(extractFilename(d.filename.changeFileExt"" & ("_examples$1.nim" % $d.exampleCounter)))
-  if useRenderModule:
-    # buggy, refs bug #13491
-    # still worth fixing as it can affect other code relying on `renderModule`.
-    renderModule(ex, outp.string, conf = d.conf)
-  else:
-    writeFile(outp.string, code)
-  if rdoccmd notin d.exampleGroups: d.exampleGroups[rdoccmd] = ExampleGroup(rdoccmd: rdoccmd, docCmd: d.conf.docCmd, index: d.exampleGroups.len)
-  proc quoted(a: string): string = result.addQuoted(a)
-  d.exampleGroups[rdoccmd].code.add "import $1\n" % outp.string.quoted
-
 proc runAllExamples(d: PDoc) =
   # This used to be: `let backend = if isDefined(d.conf, "js"): "js"` (etc), however
   # using `-d:js` (etc) cannot work properly, e.g. would fail with `importjs`
