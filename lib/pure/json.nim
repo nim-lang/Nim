@@ -909,12 +909,9 @@ proc parseJson*(s: Stream, filename: string = ""; rawIntegers = false, rawFloats
 when defined(js):
   from std/math import `mod`
   from std/jsffi import JSObject, `[]`, to
-  from std/private/jsutils import getProtoName
+  from std/private/jsutils import getProtoName, isInteger, isSafeInteger
 
   proc parseNativeJson(x: cstring): JSObject {.importjs: "JSON.parse(#)".}
-
-  proc isInteger[T](x: T): bool {.importjs: "Number.isInteger(#)".}
-  proc isSafeInteger[T](x: T): bool {.importjs: "Number.isSafeInteger(#)".}
 
   proc getVarType(x: JSObject): JsonNodeKind =
     result = JNull
