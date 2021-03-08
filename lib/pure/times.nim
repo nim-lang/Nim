@@ -556,7 +556,8 @@ proc getWeeksInIsoYear*(y: IsoYear): IsoWeekRange {.since: (1, 5).} =
 proc getIsoWeekAndYear*(dt: DateTime):
   tuple[isoweek: IsoWeekRange, isoyear: IsoYear] {.since: (1, 5).} =
   ## Returns the ISO 8601 week and year.
-  ## **Warning** The ISO week-based year can correspond to the following or previous year from 29 December to January 3.
+  ##
+  ## .. warning:: The ISO week-based year can correspond to the following or previous year from 29 December to January 3.
   runnableExamples:
     assert getIsoWeekAndYear(initDateTime(21, mApr, 2018, 00, 00, 00)) == (isoweek: 16.IsoWeekRange, isoyear: 2018.IsoYear)
     block:
@@ -2638,7 +2639,8 @@ proc initDateTime*(weekday: WeekDay, isoweek: IsoWeekRange, isoyear: IsoYear,
                    zone: Timezone = local()): DateTime {.since: (1, 5).} =
   ## Create a new `DateTime <#DateTime>`_ from a weekday and an ISO 8601 week number and year
   ## in the specified timezone.
-  ## **Warning** The ISO week-based year can correspond to the following or previous year from 29 December to January 3.
+  ##
+  ## .. warning:: The ISO week-based year can correspond to the following or previous year from 29 December to January 3.
   runnableExamples:
     assert initDateTime(21, mApr, 2018, 00, 00, 00) == initDateTime(dSat, 16, 2018.IsoYear, 00, 00, 00)
     assert initDateTime(30, mDec, 2019, 00, 00, 00) == initDateTime(dMon, 01, 2020.IsoYear, 00, 00, 00)
@@ -2652,9 +2654,6 @@ proc initDateTime*(weekday: WeekDay, isoweek: IsoWeekRange, isoyear: IsoYear,
 proc initDateTime*(weekday: WeekDay, isoweek: IsoWeekRange, isoyear: IsoYear,
                    hour: HourRange, minute: MinuteRange, second: SecondRange,
                    zone: Timezone = local()): DateTime {.since: (1, 5).} =
-  ## Create a new `DateTime <#DateTime>`_ from a weekday and an ISO 8601 week number and year
-  ## in the specified timezone.
-  ## **Warning** The ISO week-based year can correspond to the following or previous year from 29 December to January 3.
   initDateTime(weekday, isoweek, isoyear, hour, minute, second, 0, zone)
 
 #
