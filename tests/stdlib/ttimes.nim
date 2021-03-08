@@ -647,97 +647,97 @@ block: # ttimes
     doAssert initDuration(milliseconds = -500).inMilliseconds == -500
     doAssert initDuration(nanoseconds = -999999999).inMilliseconds == -999
 
-  block: # getWeekOfYear
-    doAssert getWeekOfYear(initDateTime(04, mNov, 2019, 00, 00, 00)) == 45
-    doAssert initDateTime(dMon, 45, 2019, 00, 00, 00) == initDateTime(04, mNov, 2019, 00, 00, 00)
-    doAssert getWeekOfYear(initDateTime(28, mDec, 2019, 00, 00, 00)) == 52
-    doAssert initDateTime(dSat, 52, 2019, 00, 00, 00) == initDateTime(28, mDec, 2019, 00, 00, 00)
-    doAssert getWeekOfYear(initDateTime(29, mDec, 2019, 00, 00, 00)) == 52
-    doAssert initDateTime(dSun, 52, 2019, 00, 00, 00) == initDateTime(29, mDec, 2019, 00, 00, 00)
-    doAssert getWeekOfYear(initDateTime(30, mDec, 2019, 00, 00, 00)) == 01
-    doAssert initDateTime(dMon, 01, 2020, 00, 00, 00) == initDateTime(30, mDec, 2019, 00, 00, 00)
-    doAssert getWeekOfYear(initDateTime(31, mDec, 2019, 00, 00, 00)) == 01
-    doAssert initDateTime(dTue, 01, 2020, 00, 00, 00) == initDateTime(31, mDec, 2019, 00, 00, 00)
-    doAssert getWeekOfYear(initDateTime(01, mJan, 2020, 00, 00, 00)) == 01
-    doAssert initDateTime(dWed, 01, 2020, 00, 00, 00) == initDateTime(01, mJan, 2020, 00, 00, 00)
-    doAssert getWeekOfYear(initDateTime(02, mJan, 2020, 00, 00, 00)) == 01
-    doAssert initDateTime(dThu, 01, 2020, 00, 00, 00) == initDateTime(02, mJan, 2020, 00, 00, 00)
-    doAssert getWeekOfYear(initDateTime(05, mApr, 2020, 00, 00, 00)) == 14
-    doAssert initDateTime(dSun, 14, 2020, 00, 00, 00) == initDateTime(05, mApr, 2020, 00, 00, 00)
-    doAssert getWeekOfYear(initDateTime(06, mApr, 2020, 00, 00, 00)) == 15
-    doAssert initDateTime(dMon, 15, 2020, 00, 00, 00) == initDateTime(06, mApr, 2020, 00, 00, 00)
-    doAssert getWeekOfYear(initDateTime(10, mApr, 2020, 00, 00, 00)) == 15
-    doAssert initDateTime(dFri, 15, 2020, 00, 00, 00) == initDateTime(10, mApr, 2020, 00, 00, 00)
-    doAssert getWeekOfYear(initDateTime(12, mApr, 2020, 00, 00, 00)) == 15
-    doAssert initDateTime(dSun, 15, 2020, 00, 00, 00) == initDateTime(12, mApr, 2020, 00, 00, 00)
-    doAssert getWeekOfYear(initDateTime(13, mApr, 2020, 00, 00, 00)) == 16
-    doAssert initDateTime(dMon, 16, 2020, 00, 00, 00) == initDateTime(13, mApr, 2020, 00, 00, 00)
-    doAssert getWeekOfYear(initDateTime(15, mApr, 2020, 00, 00, 00)) == 16
-    doAssert initDateTime(dThu, 16, 2020, 00, 00, 00) == initDateTime(16, mApr, 2020, 00, 00, 00)
-    doAssert getWeekOfYear(initDateTime(17, mJul, 2020, 00, 00, 00)) == 29
-    doAssert initDateTime(dFri, 29, 2020, 00, 00, 00) == initDateTime(17, mJul, 2020, 00, 00, 00)
-    doAssert getWeekOfYear(initDateTime(19, mJul, 2020, 00, 00, 00)) == 29
-    doAssert initDateTime(dSun, 29, 2020, 00, 00, 00) == initDateTime(19, mJul, 2020, 00, 00, 00)
-    doAssert getWeekOfYear(initDateTime(20, mJul, 2020, 00, 00, 00)) == 30
-    doAssert initDateTime(dMon, 30, 2020, 00, 00, 00) == initDateTime(20, mJul, 2020, 00, 00, 00)
-    doAssert getWeekOfYear(initDateTime(23, mJul, 2020, 00, 00, 00)) == 30
-    doAssert initDateTime(dThu, 30, 2020, 00, 00, 00) == initDateTime(23, mJul, 2020, 00, 00, 00)
-    doAssert getWeekOfYear(initDateTime(31, mDec, 2020, 00, 00, 00)) == 53
-    doAssert initDateTime(dThu, 53, 2020, 00, 00, 00) == initDateTime(31, mDec, 2020, 00, 00, 00)
-    doAssert getWeekOfYear(initDateTime(01, mJan, 2021, 00, 00, 00)) == 53
-    doAssert initDateTime(dFri, 53, 2020, 00, 00, 00) == initDateTime(01, mJan, 2021, 00, 00, 00)
-    doAssert getWeekOfYear(initDateTime(02, mJan, 2021, 00, 00, 00)) == 53
-    doAssert initDateTime(dSat, 53, 2020, 00, 00, 00) == initDateTime(02, mJan, 2021, 00, 00, 00)
-    doAssert getWeekOfYear(initDateTime(03, mJan, 2021, 00, 00, 00)) == 53
-    doAssert initDateTime(dSun, 53, 2020, 00, 00, 00) == initDateTime(03, mJan, 2021, 00, 00, 00)
-    doAssert getWeekOfYear(initDateTime(04, mJan, 2021, 00, 00, 00)) == 01
-    doAssert initDateTime(dMon, 01, 2021, 00, 00, 00) == initDateTime(04, mJan, 2021, 00, 00, 00)
-    doAssert getWeekOfYear(initDateTime(01, mFeb, 2021, 00, 00, 00)) == 05
-    doAssert initDateTime(dMon, 05, 2021, 00, 00, 00) == initDateTime(01, mFeb, 2021, 00, 00, 00)
+  block: # getIsoWeekAndYear
+    doAssert getIsoWeekAndYear(initDateTime(04, mNov, 2019, 00, 00, 00)) == (isoweek: 45.IsoWeekRange, isoyear: 2019.IsoYear)
+    doAssert initDateTime(dMon, 45, 2019.IsoYear, 00, 00, 00) == initDateTime(04, mNov, 2019, 00, 00, 00)
+    doAssert getIsoWeekAndYear(initDateTime(28, mDec, 2019, 00, 00, 00)) == (isoweek: 52.IsoWeekRange, isoyear: 2019.IsoYear)
+    doAssert initDateTime(dSat, 52, 2019.IsoYear, 00, 00, 00) == initDateTime(28, mDec, 2019, 00, 00, 00)
+    doAssert getIsoWeekAndYear(initDateTime(29, mDec, 2019, 00, 00, 00)) == (isoweek: 52.IsoWeekRange, isoyear: 2019.IsoYear)
+    doAssert initDateTime(dSun, 52, 2019.IsoYear, 00, 00, 00) == initDateTime(29, mDec, 2019, 00, 00, 00)
+    doAssert getIsoWeekAndYear(initDateTime(30, mDec, 2019, 00, 00, 00)) == (isoweek: 01.IsoWeekRange, isoyear: 2020.IsoYear)
+    doAssert initDateTime(dMon, 01, 2020.IsoYear, 00, 00, 00) == initDateTime(30, mDec, 2019, 00, 00, 00)
+    doAssert getIsoWeekAndYear(initDateTime(31, mDec, 2019, 00, 00, 00)) == (isoweek: 01.IsoWeekRange, isoyear: 2020.IsoYear)
+    doAssert initDateTime(dTue, 01, 2020.IsoYear, 00, 00, 00) == initDateTime(31, mDec, 2019, 00, 00, 00)
+    doAssert getIsoWeekAndYear(initDateTime(01, mJan, 2020, 00, 00, 00)) == (isoweek: 01.IsoWeekRange, isoyear: 2020.IsoYear)
+    doAssert initDateTime(dWed, 01, 2020.IsoYear, 00, 00, 00) == initDateTime(01, mJan, 2020, 00, 00, 00)
+    doAssert getIsoWeekAndYear(initDateTime(02, mJan, 2020, 00, 00, 00)) == (isoweek: 01.IsoWeekRange, isoyear: 2020.IsoYear)
+    doAssert initDateTime(dThu, 01, 2020.IsoYear, 00, 00, 00) == initDateTime(02, mJan, 2020, 00, 00, 00)
+    doAssert getIsoWeekAndYear(initDateTime(05, mApr, 2020, 00, 00, 00)) == (isoweek: 14.IsoWeekRange, isoyear: 2020.IsoYear)
+    doAssert initDateTime(dSun, 14, 2020.IsoYear, 00, 00, 00) == initDateTime(05, mApr, 2020, 00, 00, 00)
+    doAssert getIsoWeekAndYear(initDateTime(06, mApr, 2020, 00, 00, 00)) == (isoweek: 15.IsoWeekRange, isoyear: 2020.IsoYear)
+    doAssert initDateTime(dMon, 15, 2020.IsoYear, 00, 00, 00) == initDateTime(06, mApr, 2020, 00, 00, 00)
+    doAssert getIsoWeekAndYear(initDateTime(10, mApr, 2020, 00, 00, 00)) == (isoweek: 15.IsoWeekRange, isoyear: 2020.IsoYear)
+    doAssert initDateTime(dFri, 15, 2020.IsoYear, 00, 00, 00) == initDateTime(10, mApr, 2020, 00, 00, 00)
+    doAssert getIsoWeekAndYear(initDateTime(12, mApr, 2020, 00, 00, 00)) == (isoweek: 15.IsoWeekRange, isoyear: 2020.IsoYear)
+    doAssert initDateTime(dSun, 15, 2020.IsoYear, 00, 00, 00) == initDateTime(12, mApr, 2020, 00, 00, 00)
+    doAssert getIsoWeekAndYear(initDateTime(13, mApr, 2020, 00, 00, 00)) == (isoweek: 16.IsoWeekRange, isoyear: 2020.IsoYear)
+    doAssert initDateTime(dMon, 16, 2020.IsoYear, 00, 00, 00) == initDateTime(13, mApr, 2020, 00, 00, 00)
+    doAssert getIsoWeekAndYear(initDateTime(15, mApr, 2020, 00, 00, 00)) == (isoweek: 16.IsoWeekRange, isoyear: 2020.IsoYear)
+    doAssert initDateTime(dThu, 16, 2020.IsoYear, 00, 00, 00) == initDateTime(16, mApr, 2020, 00, 00, 00)
+    doAssert getIsoWeekAndYear(initDateTime(17, mJul, 2020, 00, 00, 00)) == (isoweek: 29.IsoWeekRange, isoyear: 2020.IsoYear)
+    doAssert initDateTime(dFri, 29, 2020.IsoYear, 00, 00, 00) == initDateTime(17, mJul, 2020, 00, 00, 00)
+    doAssert getIsoWeekAndYear(initDateTime(19, mJul, 2020, 00, 00, 00)) == (isoweek: 29.IsoWeekRange, isoyear: 2020.IsoYear)
+    doAssert initDateTime(dSun, 29, 2020.IsoYear, 00, 00, 00) == initDateTime(19, mJul, 2020, 00, 00, 00)
+    doAssert getIsoWeekAndYear(initDateTime(20, mJul, 2020, 00, 00, 00)) == (isoweek: 30.IsoWeekRange, isoyear: 2020.IsoYear)
+    doAssert initDateTime(dMon, 30, 2020.IsoYear, 00, 00, 00) == initDateTime(20, mJul, 2020, 00, 00, 00)
+    doAssert getIsoWeekAndYear(initDateTime(23, mJul, 2020, 00, 00, 00)) == (isoweek: 30.IsoWeekRange, isoyear: 2020.IsoYear)
+    doAssert initDateTime(dThu, 30, 2020.IsoYear, 00, 00, 00) == initDateTime(23, mJul, 2020, 00, 00, 00)
+    doAssert getIsoWeekAndYear(initDateTime(31, mDec, 2020, 00, 00, 00)) == (isoweek: 53.IsoWeekRange, isoyear: 2020.IsoYear)
+    doAssert initDateTime(dThu, 53, 2020.IsoYear, 00, 00, 00) == initDateTime(31, mDec, 2020, 00, 00, 00)
+    doAssert getIsoWeekAndYear(initDateTime(01, mJan, 2021, 00, 00, 00)) == (isoweek: 53.IsoWeekRange, isoyear: 2020.IsoYear)
+    doAssert initDateTime(dFri, 53, 2020.IsoYear, 00, 00, 00) == initDateTime(01, mJan, 2021, 00, 00, 00)
+    doAssert getIsoWeekAndYear(initDateTime(02, mJan, 2021, 00, 00, 00)) == (isoweek: 53.IsoWeekRange, isoyear: 2020.IsoYear)
+    doAssert initDateTime(dSat, 53, 2020.IsoYear, 00, 00, 00) == initDateTime(02, mJan, 2021, 00, 00, 00)
+    doAssert getIsoWeekAndYear(initDateTime(03, mJan, 2021, 00, 00, 00)) == (isoweek: 53.IsoWeekRange, isoyear: 2020.IsoYear)
+    doAssert initDateTime(dSun, 53, 2020.IsoYear, 00, 00, 00) == initDateTime(03, mJan, 2021, 00, 00, 00)
+    doAssert getIsoWeekAndYear(initDateTime(04, mJan, 2021, 00, 00, 00)) == (isoweek: 01.IsoWeekRange, isoyear: 2021.IsoYear)
+    doAssert initDateTime(dMon, 01, 2021.IsoYear, 00, 00, 00) == initDateTime(04, mJan, 2021, 00, 00, 00)
+    doAssert getIsoWeekAndYear(initDateTime(01, mFeb, 2021, 00, 00, 00)) == (isoweek: 05.IsoWeekRange, isoyear: 2021.IsoYear)
+    doAssert initDateTime(dMon, 05, 2021.IsoYear, 00, 00, 00) == initDateTime(01, mFeb, 2021, 00, 00, 00)
 
-    doAssert getWeekOfYear(initDateTime(01, mFeb, 2021, 01, 02, 03, 400_000_000, staticTz(hours=1))) == 05
-    doAssert initDateTime(dMon, 05, 2021, 01, 02, 03, 400_000_000, staticTz(hours=1)) == initDateTime(01, mFeb, 2021, 01, 02, 03, 400_000_000, staticTz(hours=1))
+    doAssert getIsoWeekAndYear(initDateTime(01, mFeb, 2021, 01, 02, 03, 400_000_000, staticTz(hours=1))) == (isoweek: 05.IsoWeekRange, isoyear: 2021.IsoYear)
+    doAssert initDateTime(dMon, 05, 2021.IsoYear, 01, 02, 03, 400_000_000, staticTz(hours=1)) == initDateTime(01, mFeb, 2021, 01, 02, 03, 400_000_000, staticTz(hours=1))
 
-    doAssert getWeekOfYear(initDateTime(01, mApr, +0001, 00, 00, 00)) == 13
-    doAssert initDateTime(dSun, 13, +0001, 00, 00, 00) == initDateTime(01, mApr, +0001, 00, 00, 00)
-    doAssert getWeekOfYear(initDateTime(01, mApr, +0000, 00, 00, 00)) == 13
-    doAssert initDateTime(dSat, 13, +0000, 00, 00, 00) == initDateTime(01, mApr, +0000, 00, 00, 00)
-    doAssert getWeekOfYear(initDateTime(01, mApr, -0001, 00, 00, 00)) == 13
-    doAssert initDateTime(dThu, 13, -0001, 00, 00, 00) == initDateTime(01, mApr, -0001, 00, 00, 00)
-    doAssert getWeekOfYear(initDateTime(01, mApr, -0002, 00, 00, 00)) == 14
-    doAssert initDateTime(dWed, 14, -0002, 00, 00, 00) == initDateTime(01, mApr, -0002, 00, 00, 00)
-    doAssert getWeekOfYear(initDateTime(01, mApr, -0753, 00, 00, 00)) == 14
-    doAssert initDateTime(dMon, 14, -0753, 00, 00, 00) == initDateTime(01, mApr, -0753, 00, 00, 00)
+    doAssert getIsoWeekAndYear(initDateTime(01, mApr, +0001, 00, 00, 00)) == (isoweek: 13.IsoWeekRange, isoyear: 0001.IsoYear)
+    doAssert initDateTime(dSun, 13, 0001.IsoYear, 00, 00, 00) == initDateTime(01, mApr, 0001, 00, 00, 00)
+    doAssert getIsoWeekAndYear(initDateTime(01, mApr, +0000, 00, 00, 00)) == (isoweek: 13.IsoWeekRange, isoyear: 0000.IsoYear)
+    doAssert initDateTime(dSat, 13, 0000.IsoYear, 00, 00, 00) == initDateTime(01, mApr, 0000, 00, 00, 00)
+    doAssert getIsoWeekAndYear(initDateTime(01, mApr, -0001, 00, 00, 00)) == (isoweek: 13.IsoWeekRange, isoyear: (-0001).IsoYear)
+    doAssert initDateTime(dThu, 13, (-0001).IsoYear, 00, 00, 00) == initDateTime(01, mApr, -0001, 00, 00, 00)
+    doAssert getIsoWeekAndYear(initDateTime(01, mApr, -0002, 00, 00, 00)) == (isoweek: 14.IsoWeekRange, isoyear: (-0002).IsoYear)
+    doAssert initDateTime(dWed, 14, (-0002).IsoYear, 00, 00, 00) == initDateTime(01, mApr, -0002, 00, 00, 00)
+    doAssert getIsoWeekAndYear(initDateTime(01, mApr, -0753, 00, 00, 00)) == (isoweek: 14.IsoWeekRange, isoyear: (-0753).IsoYear)
+    doAssert initDateTime(dMon, 14, (-0753).IsoYear, 00, 00, 00) == initDateTime(01, mApr, -0753, 00, 00, 00)
 
-  block: # getWeeksInYear
-    doAssert getWeeksInYear(-0014) == 52
-    doAssert getWeeksInYear(-0013) == 53
-    doAssert getWeeksInYear(-0012) == 52
+  block: # getWeeksInIsoYear
+    doAssert getWeeksInIsoYear((-0014).IsoYear) == 52
+    doAssert getWeeksInIsoYear((-0013).IsoYear) == 53
+    doAssert getWeeksInIsoYear((-0012).IsoYear) == 52
 
-    doAssert getWeeksInYear(-0009) == 52
-    doAssert getWeeksInYear(-0008) == 53
-    doAssert getWeeksInYear(-0007) == 52
+    doAssert getWeeksInIsoYear((-0009).IsoYear) == 52
+    doAssert getWeeksInIsoYear((-0008).IsoYear) == 53
+    doAssert getWeeksInIsoYear((-0007).IsoYear) == 52
 
-    doAssert getWeeksInYear(-0003) == 52
-    doAssert getWeeksInYear(-0002) == 53
-    doAssert getWeeksInYear(-0001) == 52
+    doAssert getWeeksInIsoYear((-0003).IsoYear) == 52
+    doAssert getWeeksInIsoYear((-0002).IsoYear) == 53
+    doAssert getWeeksInIsoYear((-0001).IsoYear) == 52
 
-    doAssert getWeeksInYear(0003) == 52
-    doAssert getWeeksInYear(0004) == 53
-    doAssert getWeeksInYear(0005) == 52
+    doAssert getWeeksInIsoYear(0003.IsoYear) == 52
+    doAssert getWeeksInIsoYear(0004.IsoYear) == 53
+    doAssert getWeeksInIsoYear(0005.IsoYear) == 52
 
-    doAssert getWeeksInYear(1653) == 52
-    doAssert getWeeksInYear(1654) == 53
-    doAssert getWeeksInYear(1655) == 52
+    doAssert getWeeksInIsoYear(1653.IsoYear) == 52
+    doAssert getWeeksInIsoYear(1654.IsoYear) == 53
+    doAssert getWeeksInIsoYear(1655.IsoYear) == 52
 
-    doAssert getWeeksInYear(1997) == 52
-    doAssert getWeeksInYear(1998) == 53
-    doAssert getWeeksInYear(1999) == 52
+    doAssert getWeeksInIsoYear(1997.IsoYear) == 52
+    doAssert getWeeksInIsoYear(1998.IsoYear) == 53
+    doAssert getWeeksInIsoYear(1999.IsoYear) == 52
 
-    doAssert getWeeksInYear(2008) == 52
-    doAssert getWeeksInYear(2009) == 53
-    doAssert getWeeksInYear(2010) == 52
+    doAssert getWeeksInIsoYear(2008.IsoYear) == 52
+    doAssert getWeeksInIsoYear(2009.IsoYear) == 53
+    doAssert getWeeksInIsoYear(2010.IsoYear) == 52
 
-    doAssert getWeeksInYear(2014) == 52
-    doAssert getWeeksInYear(2015) == 53
-    doAssert getWeeksInYear(2016) == 52
+    doAssert getWeeksInIsoYear(2014.IsoYear) == 52
+    doAssert getWeeksInIsoYear(2015.IsoYear) == 53
+    doAssert getWeeksInIsoYear(2016.IsoYear) == 52
