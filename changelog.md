@@ -207,6 +207,8 @@ provided by the operating system.
 
 - Added `jscore.debugger` to [call any available debugging functionality, such as breakpoints.](https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Statements/debugger)
 
+- Added `jscore.jsexport` to [generate JavaScript `export` statements, including aliased exports and default export.](https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Statements/export)
+
 
 ## Language changes
 
