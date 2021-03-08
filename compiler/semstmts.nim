@@ -1553,29 +1553,30 @@ proc semLambda(c: PContext, n: PNode, flags: TExprFlags): PNode =
   var s: PSym
   if n[namePos].kind != nkSym:
     s = newSym(skProc, c.cache.idAnon, nextSymId c.idgen, getCurrOwner(c), n.info)
-    s.ast = n
     n[namePos] = newSymNode(s)
   else:
     s = n[namePos].sym
+  
+  s.ast = n
+  s.options = c.config.options
+
   pushOwner(c, s)
   openScope(c)
+  
   let origGp = n[genericParamsPos]
   var gp = setGenericParamsMisc(c, n)
 
   # process parameters:
   if n[paramsPos].kind != nkEmpty:
     semParamList(c, n[paramsPos], gp, s)
-    # paramsTypeCheck(c, s.typ)
-    if gp.len > 0 and n[genericParamsPos].safeLen == 0:
-      # we have a list of implicit type parameters:
-      n[genericParamsPos] = gp
+    # we maybe have implicit type parameters:
+    n[genericParamsPos] = gp
   else:
     s.typ = newProcType(c, n.info)
 
   if tfTriggersCompileTime in s.typ.flags: incl(s.flags, sfCompileTime)
   if n[pragmasPos].kind != nkEmpty:
     pragma(c, s, n[pragmasPos], lambdaPragmas)
-  s.options = c.config.options
   if n[bodyPos].kind != nkEmpty:
     if sfImportc in s.flags:
       localError(c.config, n[bodyPos].info, errImplOfXNotAllowed % s.name.s)
@@ -1859,7 +1860,7 @@ proc semProcAux(c: PContext, n: PNode, kind: TSymKind,
   if result != nil: return result
   result = n
   checkMinSonsLen(n, bodyPos + 1, c.config)
-  # same as semLambda
+  
   let
     isAnon = n[namePos].kind == nkEmpty
     nameIsSymbol = n[namePos].kind == nkSym
@@ -1911,11 +1912,8 @@ proc semProcAux(c: PContext, n: PNode, kind: TSymKind,
 
   if n[paramsPos].kind != nkEmpty:
     semParamList(c, n[paramsPos], gp, s)
-    if gp.len > 0 and n[genericParamsPos].safeLen == 0:
-        # we have a list of implicit type parameters:
-        n[genericParamsPos] = gp
-        # check for semantics again:
-        # semParamList(c, n[ParamsPos], nil, s)
+    # we maybe have implicit type parameters:
+    n[genericParamsPos] = gp
   else:
     s.typ = newProcType(c, n.info)
 
