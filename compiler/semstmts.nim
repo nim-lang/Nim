@@ -1878,6 +1878,7 @@ proc semProcAux(c: PContext, n: PNode, kind: TSymKind,
     typeIsDetermined = s.typ == nil
   else:
     s = semIdentDef(c, n[namePos], kind)
+    if s.owner == nil: s.owner = c.getCurrOwner
 
   if not nameIsSymbol:
     # we must have just made the symbol, so assign it
@@ -1935,7 +1936,9 @@ proc semProcAux(c: PContext, n: PNode, kind: TSymKind,
       s.typ.callConv = lastOptionEntry(c).defaultCC
     # add it here, so that recursive procs are possible:
     if sfGenSym in s.flags:
-      if s.owner == nil: s.owner = getCurrOwner(c)
+      # XXX: unclear why the owner needs to be set now, just moved it earlier
+      #      nothing seems to have broken.
+      discard # if s.owner == nil: s.owner = getCurrOwner(c)
     elif kind in OverloadableSyms:
       if not typeIsDetermined:
         addInterfaceOverloadableSymAt(c, delcarationScope, s)
