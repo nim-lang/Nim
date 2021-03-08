@@ -110,3 +110,15 @@ proc parse*(l: JsonLib, s: cstring): JsRoot {.importcpp.}
 since (1, 5):
   func debugger*() {.importjs: "debugger@".}
     ## https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Statements/debugger
+
+  template jsexport*(symbol: auto; alias = "") =
+    ## https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Statements/export
+    runnableExamples("-b:js -r:off"):
+      proc example = echo "This is exported as 'default' in JavaScript"
+      let example2 = "This is exported as 'another' in JavaScript"
+      const example3 = "This is exported as 'example3' in JavaScript"
+      jsexport(example, alias = "default")  ## Alias for `export { symbol as default };`
+      jsexport(example2, alias = "another") ## Alias for `export { symbol as another };`
+      jsexport(example3)                    ## Alias for `export { symbol };`
+    var _ {.codegenDecl: "const $2", exportc: astToStr(symbol).} = symbol
+    {.emit: "export { " & astToStr(symbol) & (if alias.len > 0: " as " & alias else: "") & " };" .}
