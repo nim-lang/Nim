@@ -886,6 +886,8 @@ proc setupLookupTables(g: var PackedModuleGraph; conf: ConfigRef; cache: IdentCa
                   info: newLineInfo(fileIdx, 1, 1),
                   position: int(fileIdx))
   m.module.owner = newPackage(conf, cache, fileIdx)
+  if fileIdx == conf.projectMainIdx2:
+    m.module.flags.incl sfMainModule
 
 proc loadToReplayNodes(g: var PackedModuleGraph; conf: ConfigRef; cache: IdentCache;
                        fileIdx: FileIndex; m: var LoadedModule) =

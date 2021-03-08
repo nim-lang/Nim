@@ -561,9 +561,10 @@ proc addToGenericCache*(c: PContext; s: PSym; inst: PType) =
 
 proc saveRodFile*(c: PContext) =
   if c.config.symbolFiles != disabledSf:
-    for (m, n) in PCtx(c.graph.vm).vmstateDiff:
-      if m == c.module:
-        addPragmaComputation(c, n)
+    if c.graph.vm != nil:
+      for (m, n) in PCtx(c.graph.vm).vmstateDiff:
+        if m == c.module:
+          addPragmaComputation(c, n)
     if sfSystemModule in c.module.flags:
       c.graph.systemModuleComplete = true
     c.idgen.sealed = true # no further additions are allowed
