@@ -1455,7 +1455,7 @@ since (1, 3):
   func dedent*(s: string, count: Natural): string {.rtl, extern: "nsuDedent".} =
     unindent(s, count, " ")
 
-  proc dedent*(a: string): string =
+  proc dedent*(a: string): string {.inline.} =
     ## Unindents each line in `s` by `count` amount of `padding`.
     ## The only difference between this and the
     ## `unindent func<#unindent,string,Natural,string>`_ is that this by default
@@ -1478,9 +1478,7 @@ since (1, 3):
       """.dedent()
 
       doAssert x == "Hello\n  There\n"
-    let b = a
-    let i = indentation(b)
-    dedent(a, i)
+    dedent(a, indentation(a))
 
 func delete*(s: var string, first, last: int) {.rtl, extern: "nsuDelete".} =
   ## Deletes in `s` (must be declared as `var`) the characters at positions

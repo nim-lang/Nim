@@ -1444,11 +1444,8 @@ proc countTitles(p: var RstParser, n: PRstNode) =
         if p.s.hTitleCnt >= 2:
           break
 
-proc tokenAfterNewline(p: RstParser, start = -1): int =
-  if start == -1:
-    result = p.idx
-  else:
-    result = start
+proc tokenAfterNewline(p: RstParser, start: int): int =
+  result = start
   while true:
     case p.tok[result].kind
     of tkEof:
@@ -1457,6 +1454,9 @@ proc tokenAfterNewline(p: RstParser, start = -1): int =
       inc result
       break
     else: inc result
+
+proc tokenAfterNewline(p: RstParser): int {.inline.} =
+  result = tokenAfterNewline(p, p.idx)
 
 proc isAdornmentHeadline(p: RstParser, adornmentIdx: int): bool =
   ## check that underline/overline length is enough for the heading.
