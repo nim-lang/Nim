@@ -267,10 +267,6 @@ proc getAttachedOp*(g: ModuleGraph; t: PType; op: TTypeAttachedOp): PSym =
 proc setAttachedOp*(g: ModuleGraph; module: int; t: PType; op: TTypeAttachedOp; value: PSym) =
   ## we also need to record this to the packed module.
   g.attachedOps[op][t.itemId] = value
-  if g.config.symbolFiles != disabledSf:
-    assert module < g.encoders.len
-    assert isActive(g.encoders[module])
-    toPackedGeneratedProcDef(value, g.encoders[module], g.packed[module].fromDisk)
 
 proc setAttachedOpPartial*(g: ModuleGraph; module: int; t: PType; op: TTypeAttachedOp; value: PSym) =
   ## we also need to record this to the packed module.
@@ -278,7 +274,10 @@ proc setAttachedOpPartial*(g: ModuleGraph; module: int; t: PType; op: TTypeAttac
   # XXX Also add to the packed module!
 
 proc completePartialOp*(g: ModuleGraph; module: int; t: PType; op: TTypeAttachedOp; value: PSym) =
-  discard "To implement"
+  if g.config.symbolFiles != disabledSf:
+    assert module < g.encoders.len
+    assert isActive(g.encoders[module])
+    toPackedGeneratedProcDef(value, g.encoders[module], g.packed[module].fromDisk)
 
 proc getToStringProc*(g: ModuleGraph; t: PType): PSym =
   result = resolveSym(g, g.enumToStringProcs[t.itemId])

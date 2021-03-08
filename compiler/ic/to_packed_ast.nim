@@ -11,7 +11,7 @@ import std / [hashes, tables, intsets, sha1]
 import packed_ast, bitabs, rodfiles
 import ".." / [ast, idents, lineinfos, msgs, ropes, options,
   pathutils, condsyms]
-
+#import ".." / [renderer, astalgo]
 from std / os import removeFile, isAbsolute
 
 type
@@ -219,7 +219,8 @@ proc addMissing(c: var PackedEncoder; p: PSym) =
   ## consider queuing a symbol for later addition to the packed tree
   if p != nil and p.itemId.module == c.thisModule:
     if p.itemId.item notin c.symMarker:
-      c.pendingSyms.add p
+      if not (sfForward in p.flags and p.kind in routineKinds):
+        c.pendingSyms.add p
 
 proc addMissing(c: var PackedEncoder; p: PType) =
   ## consider queuing a type for later addition to the packed tree
@@ -334,6 +335,8 @@ proc storeSym*(s: PSym; c: var PackedEncoder; m: var PackedModule): PackedItemId
   if not c.symMarker.containsOrIncl(s.itemId.item):
     if s.itemId.item >= m.sh.syms.len:
       setLen m.sh.syms, s.itemId.item+1
+
+    assert sfForward notin s.flags
 
     var p = PackedSym(kind: s.kind, flags: s.flags, info: s.info.toPackedInfo(c, m), magic: s.magic,
       position: s.position, offset: s.offset, options: s.options,
@@ -480,7 +483,7 @@ proc toPackedGeneratedProcDef*(s: PSym, encoder: var PackedEncoder; m: var Packe
   ## I can come up with.
   assert s.kind in routineKinds
   toPackedProcDef(s.ast, m.topLevel, encoder, m)
-  flush encoder, m
+  #flush encoder, m
 
 proc loadError(err: RodFileError; filename: AbsoluteFile) =
   echo "Error: ", $err, " loading file: ", filename.string
@@ -552,6 +555,7 @@ proc storeError(err: RodFileError; filename: AbsoluteFile) =
   removeFile(filename.string)
 
 proc saveRodFile*(filename: AbsoluteFile; encoder: var PackedEncoder; m: var PackedModule) =
+  flush encoder, m
   #rememberConfig(encoder, encoder.config)
 
   var f = rodfiles.create(filename.string)
