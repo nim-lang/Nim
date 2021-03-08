@@ -113,12 +113,14 @@ since (1, 5):
 
   template jsExport*(symbol: untyped; name = "") =
     ## https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Statements/export
-    runnableExamples("-r:off"):
-      proc example = echo "This is exported as 'default' in JavaScript"
-      let example2 = "This is exported as 'another' in JavaScript"
-      const example3 = "This is exported as 'example3' in JavaScript"
-      jsExport(example, name = "default")  ## Alias for `export { symbol as default };`
-      jsExport(example2, name = "another") ## Alias for `export { symbol as another };`
-      jsExport(example3)                   ## Alias for `export { symbol };`
     var _ {.codegenDecl: "const $2", exportc: astToStr(symbol).} = symbol
     {.emit: "export { " & astToStr(symbol) & (if name.len > 0: " as " & name else: "") & " };" .}
+
+  # TODO: https://github.com/nim-lang/Nim/issues/16993
+  runnableExamples("-r:off"):
+    proc example = echo "This is exported as 'default' in JavaScript"
+    let example2 = "This is exported as 'another' in JavaScript"
+    const example3 = "This is exported as 'example3' in JavaScript"
+    jsExport(example, name = "default")  ## Alias for `export { symbol as default };`
+    jsExport(example2, name = "another") ## Alias for `export { symbol as another };`
+    jsExport(example3)                   ## Alias for `export { symbol };`
