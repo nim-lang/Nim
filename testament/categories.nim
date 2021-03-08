@@ -411,7 +411,6 @@ proc listPackages(packageFilter: string): seq[NimblePackage] =
   for pkg in important_packages.packages.items:
     if isCurrentBatch(testamentData0, pkg.name) and packageFilter in pkg.name:
       var pkg = pkg
-      echo pkg
       if pkg.url.len == 0:
         let pkg2 = findPackage(pkg.name)
         if pkg2 == nil:
