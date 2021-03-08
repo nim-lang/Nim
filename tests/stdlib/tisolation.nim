@@ -6,10 +6,16 @@ discard """
 import std/[isolation, json]
 
 
+
 proc main() =
   block: # string literals
     var data = isolate("string")
     doAssert data.extract == "string"
+    doAssert data.extract == ""
+
+  block: # string literals
+    var data = isolate("")
+    doAssert data.extract == ""
     doAssert data.extract == ""
 
   block:
@@ -31,6 +37,16 @@ proc main() =
   block:
     var data = isolate(@["1", "2"])
     doAssert data.extract == @["1", "2"]
+    doAssert data.extract == @[]
+
+  block:
+    var data = isolate(@["1", "2", "3", "4", "5"])
+    doAssert data.extract == @["1", "2", "3", "4", "5"]
+    doAssert data.extract == @[]
+
+  block:
+    var data = isolate(@["", ""])
+    doAssert data.extract == @["", ""]
     doAssert data.extract == @[]
 
   block:
