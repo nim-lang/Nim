@@ -2706,7 +2706,7 @@ proc expr(p: BProc, n: PNode, d: var TLoc) =
       if sfCompileTime in sym.flags:
         localError(p.config, n.info, "request to generate code for .compileTime proc: " &
            sym.name.s)
-      if useAliveDataFromDce in p.module.flags:
+      if useAliveDataFromDce in p.module.flags and sym.typ.callConv != ccInline:
         fillProcLoc(p.module, n)
         genProcPrototype(p.module, sym)
       else:
