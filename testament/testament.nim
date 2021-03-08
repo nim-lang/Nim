@@ -76,6 +76,7 @@ type
     args: seq[string]
     spec: TSpec
     startTime: float
+    debugInfo: string
 
 # ----------------------------------------------------------------------------
 
@@ -285,7 +286,7 @@ proc addResult(r: var TResults, test: TTest, target: TTarget,
   template disp(msg) =
     maybeStyledEcho styleDim, fgYellow, msg & ' ', styleBright, fgCyan, name
   if success == reSuccess:
-    maybeStyledEcho fgGreen, "PASS: ", fgCyan, alignLeft(name, 60), fgBlue, " (", durationStr, " sec)"
+    maybeStyledEcho fgGreen, "PASS: ", fgCyan, test.debugInfo, alignLeft(name, 60), fgBlue, " (", durationStr, " sec)"
   elif success == reDisabled:
     if test.spec.inCurrentBatch: disp("SKIP:")
     else: disp("NOTINBATCH:")

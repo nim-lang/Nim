@@ -532,9 +532,7 @@ proc runCI(cmd: string) =
   kochExecFold("Build Nimble", "nimble")
 
   if getEnv("NIM_TEST_PACKAGES", "0") == "1":
-    execFold("Test selected Nimble packages (1)", "nim c -r testament/testament cat nimble-packages-1")
-  elif getEnv("NIM_TEST_PACKAGES", "0") == "2":
-    execFold("Test selected Nimble packages (2)", "nim c -r testament/testament cat nimble-packages-2")
+    execFold("Test selected Nimble packages", "nim r testament/testament --batch:$1 pcat nimble-packages" % ["NIM_TESTAMENT_BATCH".getEnv("_")])
   else:
     buildTools()
 
