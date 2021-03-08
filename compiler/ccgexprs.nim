@@ -2719,6 +2719,8 @@ proc expr(p: BProc, n: PNode, d: var TLoc) =
         putIntoDest(p, d, n, genLiteral(p, sym.ast, sym.typ), OnStatic)
       elif useAliveDataFromDce in p.module.flags:
         genConstHeader(p.module, p.module, p, sym)
+        assert((sym.loc.r != nil) and (sym.loc.t != nil))
+        putLocIntoDest(p, d, sym.loc)
       else:
         genComplexConst(p, sym, d)
     of skEnumField:
