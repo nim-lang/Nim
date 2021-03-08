@@ -1233,7 +1233,7 @@ proc semProcTypeNode(c: PContext, n, genericParams: PNode,
     if hasDefault:
       def = a[^1]
       block determineType:
-        if genericParams != nil and genericParams.kind != nkEmpty:
+        if genericParams != nil and genericParams.safeLen > 0:
           doAssert genericParams.kind == nkGenericParams, "what the heck " & $n
           def = semGenericStmt(c, def)
           if hasUnresolvedArgs(c, def):
@@ -1362,7 +1362,7 @@ proc semProcTypeNode(c: PContext, n, genericParams: PNode,
           result.flags.excl tfHasMeta
       result.n.typ = r
 
-  if genericParams != nil and genericParams.kind != nkEmpty:
+  if genericParams != nil and genericParams.safeLen > 0:
     for n in genericParams:
       if {sfUsed, sfAnon} * n.sym.flags == {}:
         result.flags.incl tfUnresolved

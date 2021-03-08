@@ -1559,13 +1559,14 @@ proc semLambda(c: PContext, n: PNode, flags: TExprFlags): PNode =
     s = n[namePos].sym
   pushOwner(c, s)
   openScope(c)
+  let origGp = n[genericParamsPos]
   var gp = setGenericParamsMisc(c, n)
 
   # process parameters:
   if n[paramsPos].kind != nkEmpty:
     semParamList(c, n[paramsPos], gp, s)
     # paramsTypeCheck(c, s.typ)
-    if gp.len > 0 and (n[genericParamsPos].kind == nkEmpty or n[genericParamsPos].kind == nkGenericParams and n[genericParamsPos].len == 0):
+    if gp.len > 0 and n[genericParamsPos].safeLen == 0:
       # we have a list of implicit type parameters:
       n[genericParamsPos] = gp
   else:
@@ -1597,7 +1598,8 @@ proc semLambda(c: PContext, n: PNode, flags: TExprFlags): PNode =
   if optOwnedRefs in c.config.globalOptions:
     result.typ = makeVarType(c, result.typ, tyOwned)
   if n[genericParamsPos].len == 0:
-    n[genericParamsPos] = newNodeI(nkEmpty, n[genericParamsPos].info)
+    # then they were always empty and reuse the original empty node
+    n[genericParamsPos] = origGp
 
 proc semInferredLambda(c: PContext, pt: TIdTable, n: PNode): PNode {.nosinks.} =
   var n = n
@@ -1824,7 +1826,7 @@ proc finishMethod(c: PContext, s: PSym) =
     methodDef(c.graph, c.idgen, s)
 
 proc semMethodPrototype(c: PContext; s: PSym; n: PNode) =
-  if isGenericRoutine(s):
+  if s.isGenericRoutine:
     let tt = s.typ
     var foundObj = false
     # we start at 1 for now so that tparsecombnum continues to compile.
@@ -1861,6 +1863,7 @@ proc semProcAux(c: PContext, n: PNode, kind: TSymKind,
   let
     isAnon = n[namePos].kind == nkEmpty
     nameIsSymbol = n[namePos].kind == nkSym
+    origGp = n[genericParamsPos]
     allowSymbolRegistration = phase == stepRegisterSymbol
 
   doAssert allowSymbolRegistration or nameIsSymbol
@@ -1878,7 +1881,7 @@ proc semProcAux(c: PContext, n: PNode, kind: TSymKind,
     typeIsDetermined = s.typ == nil
   else:
     s = semIdentDef(c, n[namePos], kind)
-  
+
   if not nameIsSymbol:
     # we must have just made the symbol, so assign it
     n[namePos] = newSymNode(s)
@@ -1908,12 +1911,7 @@ proc semProcAux(c: PContext, n: PNode, kind: TSymKind,
 
   if n[paramsPos].kind != nkEmpty:
     semParamList(c, n[paramsPos], gp, s)
-    # cases:
-      # none in either
-      # only implicit <-- handles this
-      # only explicit
-      # mixed implicit and explicit
-    if gp.len > 0 and (n[genericParamsPos].kind == nkEmpty or n[genericParamsPos].kind == nkGenericParams and n[genericParamsPos].len == 0):
+    if gp.len > 0 and n[genericParamsPos].safeLen == 0:
         # we have a list of implicit type parameters:
         n[genericParamsPos] = gp
         # check for semantics again:
@@ -1978,7 +1976,7 @@ proc semProcAux(c: PContext, n: PNode, kind: TSymKind,
     suggestSym(c.graph, s.info, proto, c.graph.usageSym)
     closeScope(c)         # close scope with wrong parameter symbols
     openScope(c)          # open scope for old (correct) parameter symbols
-    if proto.ast[genericParamsPos].kind != nkEmpty:
+    if proto.ast[genericParamsPos].safeLen > 0:
       addGenericParamListToScope(c, proto.ast[genericParamsPos])
     addParams(c, proto.typ.n, proto.kind)
     proto.info = s.info       # more accurate line information
@@ -2018,7 +2016,7 @@ proc semProcAux(c: PContext, n: PNode, kind: TSymKind,
       if s.kind == skMethod: semMethodPrototype(c, s, n)
     else:
       pushProcCon(c, s)
-      if n[genericParamsPos].kind == nkEmpty or n[genericParamsPos].len == 0 or usePseudoGenerics:
+      if n[genericParamsPos].safeLen == 0 or usePseudoGenerics:
         if not usePseudoGenerics and s.magic == mNone: paramsTypeCheck(c, s.typ)
 
         maybeAddResult(c, s, n)
@@ -2060,8 +2058,9 @@ proc semProcAux(c: PContext, n: PNode, kind: TSymKind,
   popOwner(c)
   if n[patternPos].kind != nkEmpty:
     c.patterns.add(s)
-  if n[genericParamsPos].kind == nkGenericParams and n[genericParamsPos].len == 0:
-    n[genericParamsPos] = newNodeI(nkEmpty, n[genericParamsPos].info)
+  if n[genericParamsPos].safeLen == 0:
+    # then it was always empty, so use the original node
+    n[genericParamsPos] = origGp
   if isAnon:
     n.transitionSonsKind(nkLambda)
     result.typ = s.typ

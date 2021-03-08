@@ -1040,6 +1040,7 @@ const
   declarativeDefs* = {nkProcDef, nkFuncDef, nkMethodDef, nkIteratorDef, nkConverterDef}
   routineDefs* = declarativeDefs + {nkMacroDef, nkTemplateDef}
   procDefs* = nkLambdaKinds + declarativeDefs
+  callableDefs* = nkLambdaKinds + routineDefs
 
   nkSymChoices* = {nkClosedSymChoice, nkOpenSymChoice}
   nkStrKinds* = {nkStrLit..nkTripleStrLit}
@@ -1760,11 +1761,25 @@ proc getStrOrChar*(a: PNode): string =
     #internalError(a.info, "getStrOrChar")
     #result = ""
 
+proc isGenericRoutine*(n: PNode): bool =
+  case n.kind
+  of callableDefs:
+    result = n[genericParamsPos].safeLen > 0
+  else: discard
+
 proc isGenericRoutine*(s: PSym): bool =
+  ## determines if this symbol represents a generic routine
+  ##
+  ## Warning/XXX: Unfortunately, it considers a proc kind symbol flagged with
+  ## sfFromGeneric as a generic routine. Instead this should likely not be the
+  ## case and the concepts should be teased apart:
+  ## - generic definition
+  ## - generic instance
+  ## - either generic definition or instance
   case s.kind
   of skProcKinds:
     result = sfFromGeneric in s.flags or
-             (s.ast != nil and s.ast[genericParamsPos].kind != nkEmpty)
+             (s.ast != nil and s.ast.isGenericRoutine)
   else: discard
 
 proc skipGenericOwner*(s: PSym): PSym =
