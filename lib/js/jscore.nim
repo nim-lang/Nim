@@ -117,8 +117,8 @@ since (1, 5):
       proc example = echo "This is exported as 'default' in JavaScript"
       let example2 = "This is exported as 'another' in JavaScript"
       const example3 = "This is exported as 'example3' in JavaScript"
-      jsexport(example, name = "default")  ## Alias for `export { symbol as default };`
-      jsexport(example2, name = "another") ## Alias for `export { symbol as another };`
-      jsexport(example3)                   ## Alias for `export { symbol };`
+      jsExport(example, name = "default")  ## Alias for `export { symbol as default };`
+      jsExport(example2, name = "another") ## Alias for `export { symbol as another };`
+      jsExport(example3)                   ## Alias for `export { symbol };`
     var _ {.codegenDecl: "const $2", exportc: astToStr(symbol).} = symbol
     {.emit: "export { " & astToStr(symbol) & (if name.len > 0: " as " & name else: "") & " };" .}
