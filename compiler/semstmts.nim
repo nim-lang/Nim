@@ -1528,7 +1528,6 @@ proc semProcAnnotation(c: PContext, prc: PNode;
 proc setGenericParamsMisc(c: PContext; n: PNode): PNode =
   if n[genericParamsPos].kind == nkEmpty:
     result = newNodeI(nkGenericParams, n.info)
-    # result.flags.incl(nfSem)
   else:
     let orig = n[genericParamsPos]
     # we keep the original params around for better error messages, see
@@ -1538,9 +1537,6 @@ proc setGenericParamsMisc(c: PContext; n: PNode): PNode =
       n[miscPos] = newTree(nkBracket, c.graph.emptyNode, orig)
     else:
       n[miscPos][1] = orig
-    # XXX: Setting the result only for the non-nkEmpty branch is required
-    #      otherwise consequent analysis is broken as this fn is called from
-    #      various call sites.
   n[genericParamsPos] = result
 
 proc semLambda(c: PContext, n: PNode, flags: TExprFlags): PNode =
@@ -1961,9 +1957,10 @@ proc semProcAux(c: PContext, n: PNode, kind: TSymKind,
       # list.
       # XXX This needs more checks eventually, for example that external
       # linking names do agree:
-      if proto.typ.callConv != s.typ.callConv or proto.typ.flags < s.typ.flags:
-        localError(c.config, n[pragmasPos].info, errPragmaOnlyInHeaderOfProcX %
-          ("'" & proto.name.s & "' from " & c.config$proto.info))
+      if proto.typ.callConv != s.typ.callConv or
+         proto.typ.flags != proto.typ.flags + s.typ.flags:
+           localError(c.config, n[pragmasPos].info, errPragmaOnlyInHeaderOfProcX %
+            ("'" & proto.name.s & "' from " & c.config$proto.info))
     styleCheckDef(c.config, s)
     onDefResolveForward(n[namePos].info, proto)
     if sfForward notin proto.flags and proto.magic == mNone:
