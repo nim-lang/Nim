@@ -64,6 +64,7 @@ pkg1 "ggplotnim", "nim c -d:noCairo -r tests/tests.nim"
 pkg1 "gnuplot", "nim c gnuplot.nim"
 # pkg1 "gram", "nim c -r --gc:arc --define:danger tests/test.nim", "https://github.com/disruptek/gram"
   # pending https://github.com/nim-lang/Nim/issues/16509
+pkg1 "gtk2"
 pkg1 "hts", "nim c -o:htss src/hts.nim"
 # pkg1 "httpauth"
 pkg1 "illwill", "nimble examples"
