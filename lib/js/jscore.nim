@@ -111,7 +111,7 @@ since (1, 5):
   func debugger*() {.importjs: "debugger@".}
     ## https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Statements/debugger
 
-  template jsexport*(symbol: untyped; alias = "") =
+  template jsExport*(symbol: untyped; alias = "") =
     ## https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Statements/export
     runnableExamples("-b:js -r:off"):
       proc example = echo "This is exported as 'default' in JavaScript"
