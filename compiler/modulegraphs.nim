@@ -52,6 +52,7 @@ type
   ModuleGraph* = ref object
     ifaces*: seq[Iface]  ## indexed by int32 fileIdx
     packed*: PackedModuleGraph
+    encoders*: seq[PackedEncoder]
 
     typeInstCache*: Table[ItemId, seq[LazyType]] # A symbol's ItemId.
     procInstCache*: Table[ItemId, seq[LazyInstantiation]] # A symbol's ItemId.
@@ -164,6 +165,13 @@ proc simulateCachedModule*(g: ModuleGraph; moduleSym: PSym; m: PackedModule) =
     echo "simulating ", moduleSym.name.s, " ", moduleSym.position
   simulateLoadedModule(g.packed, g.config, g.cache, moduleSym, m)
 
+proc initEncoder*(g: ModuleGraph; module: PSym) =
+  let id = module.position
+  if id >= g.encoders.len:
+    setLen g.encoders, id+1
+  to_packed_ast.initEncoder(g.encoders[id],
+    g.packed[id].fromDisk, module, g.config, g.startupPackedConfig)
+
 type
   ModuleIter* = object
     fromRod: bool
@@ -259,7 +267,10 @@ proc getAttachedOp*(g: ModuleGraph; t: PType; op: TTypeAttachedOp): PSym =
 proc setAttachedOp*(g: ModuleGraph; module: int; t: PType; op: TTypeAttachedOp; value: PSym) =
   ## we also need to record this to the packed module.
   g.attachedOps[op][t.itemId] = value
-  # XXX Also add to the packed module!
+  if g.config.symbolFiles != disabledSf:
+    assert module < g.encoders.len
+    assert isActive(g.encoders[module])
+    toPackedGeneratedProcDef(value, g.encoders[module], g.packed[module].fromDisk)
 
 proc setAttachedOpPartial*(g: ModuleGraph; module: int; t: PType; op: TTypeAttachedOp; value: PSym) =
   ## we also need to record this to the packed module.

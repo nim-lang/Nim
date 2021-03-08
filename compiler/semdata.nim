@@ -147,7 +147,6 @@ type
     selfName*: PIdent
     cache*: IdentCache
     graph*: ModuleGraph
-    encoder*: PackedEncoder
     signatures*: TStrTable
     recursiveDep*: string
     suggestionsMade*: bool
@@ -314,9 +313,10 @@ proc newContext*(graph: ModuleGraph; module: PSym): PContext =
     assert graph.packed[id].status in {undefined, outdated}
     graph.packed[id].status = storing
     graph.packed[id].module = module
-    initEncoder result.encoder, graph.packed[id].fromDisk, module, graph.config, graph.startupPackedConfig
+    initEncoder graph, module
 
 template packedRepr*(c): untyped = c.graph.packed[c.module.position].fromDisk
+template encoder*(c): untyped = c.graph.encoders[c.module.position]
 
 proc addIncludeFileDep*(c: PContext; f: FileIndex) =
   if c.config.symbolFiles != disabledSf:

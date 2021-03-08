@@ -33,7 +33,6 @@ type
     exports*: seq[(LitId, int32)]
     reexports*: seq[(LitId, PackedItemId)]
     compilerProcs*: seq[(LitId, int32)]
-    exportCProcs*: seq[int32] # for DCE we need to know `exportC` procs as entry points.
     converters*, methods*, trmacros*, pureEnums*: seq[int32]
     macroUsages*: seq[(PackedItemId, PackedLineInfo)]
 
@@ -57,6 +56,9 @@ type
     typeMarker*: IntSet #Table[ItemId, TypeId]  # ItemId.item -> TypeId
     symMarker*: IntSet #Table[ItemId, SymId]    # ItemId.item -> SymId
     config*: ConfigRef
+
+proc isActive*(e: PackedEncoder): bool = e.config != nil
+proc disable*(e: var PackedEncoder) = e.config = nil
 
 template primConfigFields(fn: untyped) {.dirty.} =
   fn backend
@@ -433,7 +435,7 @@ proc storeTypeInst*(c: var PackedEncoder; m: var PackedModule; s: PSym; inst: PT
 proc addPragmaComputation*(c: var PackedEncoder; m: var PackedModule; n: PNode) =
   toPackedNode(n, m.toReplay, c, m)
 
-proc toPackedProcDef*(n: PNode; ir: var PackedTree; c: var PackedEncoder; m: var PackedModule) =
+proc toPackedProcDef(n: PNode; ir: var PackedTree; c: var PackedEncoder; m: var PackedModule) =
   let info = toPackedInfo(n.info, c, m)
   let patchPos = ir.prepare(n.kind, n.flags,
                             storeTypeLater(n.typ, c, m), info)
@@ -469,6 +471,15 @@ proc toPackedNodeIgnoreProcDefs(n: PNode, encoder: var PackedEncoder; m: var Pac
 
 proc toPackedNodeTopLevel*(n: PNode, encoder: var PackedEncoder; m: var PackedModule) =
   toPackedNodeIgnoreProcDefs(n, encoder, m)
+  flush encoder, m
+
+proc toPackedGeneratedProcDef*(s: PSym, encoder: var PackedEncoder; m: var PackedModule) =
+  ## Generic procs and generated `=hook`'s need explicit top-level entries so
+  ## that the code generator can work without having to special case these. These
+  ## entries will also be useful for other tools and are the cleanest design
+  ## I can come up with.
+  assert s.kind in routineKinds
+  toPackedProcDef(s.ast, m.topLevel, encoder, m)
   flush encoder, m
 
 proc loadError(err: RodFileError; filename: AbsoluteFile) =
@@ -511,7 +522,6 @@ proc loadRodFile*(filename: AbsoluteFile; m: var PackedModule; config: ConfigRef
   loadSeqSection reexportsSection, m.reexports
 
   loadSeqSection compilerProcsSection, m.compilerProcs
-  loadSeqSection exportCProcsSection, m.exportCProcs
 
   loadSeqSection trmacrosSection, m.trmacros
 
@@ -572,7 +582,6 @@ proc saveRodFile*(filename: AbsoluteFile; encoder: var PackedEncoder; m: var Pac
   storeSeqSection reexportsSection, m.reexports
 
   storeSeqSection compilerProcsSection, m.compilerProcs
-  storeSeqSection exportCProcsSection, m.exportCProcs
 
   storeSeqSection trmacrosSection, m.trmacros
   storeSeqSection convertersSection, m.converters
@@ -595,6 +604,7 @@ proc saveRodFile*(filename: AbsoluteFile; encoder: var PackedEncoder; m: var Pac
   storeSeqSection enumToStringProcsSection, m.enumToStringProcs
 
   close(f)
+  encoder.disable()
   if f.err != ok:
     storeError(f.err, filename)
 

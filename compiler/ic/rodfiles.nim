@@ -21,7 +21,6 @@ type
     exportsSection
     reexportsSection
     compilerProcsSection
-    exportCProcsSection
     trmacrosSection
     convertersSection
     methodsSection
