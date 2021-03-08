@@ -89,7 +89,7 @@
   if the iterable yields a built-in settable type.
 - Added `setutils.fullSet` which returns a full built-in `set` for a valid type.
 - Added `setutils.complement` which returns the complement of a built-in `set`.
-
+- Added `setutils.[]=`.
 
 - Added `math.isNaN`.
 
