@@ -209,6 +209,8 @@ provided by the operating system.
 
 - Added `jscore.jsExport` to [generate JavaScript `export` statements, including aliased exports and default export](https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Statements/export).
 
+- Added `htmlgen.portal` for [making "SPA style" pages using HTML only.](https://web.dev/hands-on-portals)
+
 
 ## Language changes
 
