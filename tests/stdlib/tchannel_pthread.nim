@@ -3,6 +3,7 @@ discard """
   matrix: "--gc:orc --threads:on; --gc:orc --threads:on -d:blockingTest"
   disabled: "windows"
   disabled: "bsd"
+  disabled: "osx"
 """
 
 include std/channels
