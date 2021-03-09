@@ -2,6 +2,7 @@ discard """
   targets: "c cpp"
   matrix: "--gc:refc --threads:on; --gc:orc --threads:on"
   disabled: "windows"
+  disabled: "bsd"
 """
 
 include std/channel

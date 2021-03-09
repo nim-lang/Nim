@@ -11,6 +11,81 @@
 # Based on https://github.com/mratsim/weave/blob/5696d94e6358711e840f8c0b7c684fcc5cbd4472/unused/channels/channels_legacy.nim
 
 
+##
+## .. warning:: This module is experimental and its interface may change.
+##
+## The following is a simple example of two different ways to use channels:
+## blocking and non-blocking.
+## 
+
+runnableExamples("-r:off --threads:on"):
+  # Be sure to compile with --threads:on.
+  import std/os
+
+  # In this example a channel is declared at module scope.
+  # Channels are generic, and they include support for passing objects between
+  # threads.
+  # Note that objects passed through channels will be deeply copied.
+  var chan = initChan[string]()
+
+  # This proc will be run in another thread using the threads module.
+  proc firstWorker() =
+    chan.send("Hello World!")
+
+  # This is another proc to run in a background thread. This proc takes a while
+  # to send the message since it sleeps for 2 seconds (or 2000 milliseconds).
+  proc secondWorker() =
+    sleep(2000)
+    chan.send("Another message")
+
+  # Launch the worker.
+  var worker1: Thread[void]
+  createThread(worker1, firstWorker)
+
+  # Block until the message arrives, then print it out.
+  var dest = ""
+  chan.recv(dest) # "Hello World!"
+  echo dest
+
+  # Wait for the thread to exit before moving on to the next example.
+  worker1.joinThread()
+
+  # Launch the other worker.
+  var worker2: Thread[void]
+  createThread(worker2, secondWorker)
+  # This time, use a non-blocking approach with tryRecv.
+  # Since the main thread is not blocked, it could be used to perform other
+  # useful work while it waits for data to arrive on the channel.
+  while true:
+    var msg = ""
+    let tried = chan.tryRecv(msg)
+    if tried:
+      echo msg # "Another message"
+      break
+    
+    echo "Pretend I'm doing useful work..."
+    # For this example, sleep in order not to flood stdout with the above
+    # message.
+    sleep(400)
+
+  # Wait for the second thread to exit before cleaning up the channel.
+  worker2.joinThread()
+
+  # Clean up the channel.
+  doAssert chan.close()
+
+
+  # The program should output something similar to this, but keep in mind that
+  # exact results may vary in the real world::
+  #   Hello World!
+  #   Pretend I'm doing useful work...
+  #   Pretend I'm doing useful work...
+  #   Pretend I'm doing useful work...
+  #   Pretend I'm doing useful work...
+  #   Pretend I'm doing useful work...
+  #   Another message
+
+
 import std/[locks, atomics, isolation]
 import system/ansi_c
 

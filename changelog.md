@@ -207,6 +207,7 @@ provided by the operating system.
 
 - Added `jscore.debugger` to [call any available debugging functionality, such as breakpoints.](https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Statements/debugger)
 
+- Added `std/channel`.
 
 ## Language changes
 
