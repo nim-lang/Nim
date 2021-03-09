@@ -109,6 +109,31 @@ when true: # runnableExamples with rdoccmd
     # passing seq (to run with multiple compilation options)
     runnableExamples(@["-b:cpp", "-b:js"]): discard
 
+runnableExamples:
+  block: # bug #17279
+    when int.sizeof == 8:
+      let x = 0xffffffffffffffff
+      doAssert x == -1
+
+  # bug #13491
+  block:
+    proc fun(): int = doAssert false
+    doAssertRaises(AssertionError, (discard fun()))
+
+  block:
+    template foo(body) = discard
+    foo (discard)
+
+  block:
+    template fn(body: untyped): untyped = true
+    doAssert(fn do: nonexistant)
+  import std/macros
+  macro foo*(x, y) =
+    result = newLetStmt(x[0][0], x[0][1])
+  foo:
+    a = 1
+  do: discard
+
 # also check for runnableExamples at module scope
 runnableExamples:
   block:
