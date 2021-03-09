@@ -18,7 +18,7 @@
 ## blocking and non-blocking.
 ## 
 
-runnableExamples("-r:off --threads:on --gc:orc"):
+runnableExamples("--threads:on --gc:orc"):
   # Be sure to compile with `--threads:on --gc:orc`.
   import std/os
 
@@ -55,14 +55,15 @@ runnableExamples("-r:off --threads:on --gc:orc"):
   # This time, use a non-blocking approach with tryRecv.
   # Since the main thread is not blocked, it could be used to perform other
   # useful work while it waits for data to arrive on the channel.
+  var messages: seq[string]
   while true:
     var msg = ""
     let tried = chan.tryRecv(msg)
     if tried:
-      echo msg # "Another message"
+      messages.add msg # "Another message"
       break
 
-    echo "Pretend I'm doing useful work..."
+    messages.add "Pretend I'm doing useful work..."
     # For this example, sleep in order not to flood stdout with the above
     # message.
     sleep(400)
@@ -71,17 +72,10 @@ runnableExamples("-r:off --threads:on --gc:orc"):
   worker2.joinThread()
 
   # Clean up the channel.
-  doAssert chan.close()
+  assert chan.close()
 
-
-  # The program should output something similar to this, but keep in mind that
-  # exact results may vary in the real world::
-  #   Pretend I'm doing useful work...
-  #   Pretend I'm doing useful work...
-  #   Pretend I'm doing useful work...
-  #   Pretend I'm doing useful work...
-  #   Pretend I'm doing useful work...
-  #   Another message
+  assert messages[^1] == "Another message"
+  assert messages.len >= 2
 
 
 when not defined(gcArc) and not defined(gcOrc) and not defined(nimdoc):
