@@ -86,7 +86,7 @@ runnableExamples("-r:off --threads:on --gc:orc"):
   #   Another message
 
 
-when not defined(gcArc) and not defined(gcOrc):
+when not defined(gcArc) and not defined(gcOrc) and not defined(nimdoc):
   {.error: "This channel implementation requires --gc:arc or --gc:orc".}
 
 import std/[locks, atomics, isolation]
