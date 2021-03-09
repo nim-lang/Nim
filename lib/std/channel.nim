@@ -25,7 +25,7 @@ runnableExamples("-r:off --threads:on --gc:orc"):
   # In this example a channel is declared at module scope.
   # Channels are generic, and they include support for passing objects between
   # threads.
-  # Note that objects passed through channels will be deeply copied.
+  # Note that objects passed through channels will be moved.
   var chan = initChan[string]()
 
   # This proc will be run in another thread using the threads module.
