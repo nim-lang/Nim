@@ -122,7 +122,7 @@ since (1, 5):
 
   # pending bug #16993, move inside template
   # pending https://github.com/timotheecour/Nim/issues/645, use simpler @ syntax
-  runnableExamples(r"-o:\$nimcache/\$projectname.mjs"): # needs mjs extension for `export`
+  runnableExamples(r"-r:off"): # needs mjs extension for `export`
     proc example = echo "This is exported as 'default' in JavaScript"
     let example2 = "This is exported as 'another' in JavaScript"
     const example3 = "This is exported as 'example3' in JavaScript"
