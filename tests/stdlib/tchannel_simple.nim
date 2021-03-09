@@ -1,14 +1,5 @@
 discard """
   matrix: "--threads:on --gc:orc; --threads:on --gc:arc"
-  output: '''
-Hello World!
-Pretend I'm doing useful work...
-Pretend I'm doing useful work...
-Pretend I'm doing useful work...
-Pretend I'm doing useful work...
-Pretend I'm doing useful work...
-Another message
-'''
 """
 
 import std/channels
@@ -33,8 +24,8 @@ createThread(worker1, firstWorker)
 
 # Block until the message arrives, then print it out.
 var dest = ""
-chan.recv(dest) # "Hello World!"
-echo dest
+chan.recv(dest)
+doAssert dest == "Hello World!"
 
 # Wait for the thread to exit before moving on to the next example.
 worker1.joinThread()
@@ -45,14 +36,16 @@ createThread(worker2, secondWorker)
 # This time, use a non-blocking approach with tryRecv.
 # Since the main thread is not blocked, it could be used to perform other
 # useful work while it waits for data to arrive on the channel.
+
+var messages: seq[string]
 while true:
   var msg = ""
   let tried = chan.tryRecv(msg)
   if tried:
-    echo msg # "Another message"
+    messages.add msg
     break
   
-  echo "Pretend I'm doing useful work..."
+  messages.add "Pretend I'm doing useful work..."
   # For this example, sleep in order not to flood stdout with the above
   # message.
   sleep(400)
@@ -62,3 +55,5 @@ worker2.joinThread()
 
 # Clean up the channel.
 doAssert chan.close()
+doAssert messages[^1] == "Another message"
+doAssert messages.len >= 2
