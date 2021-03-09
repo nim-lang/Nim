@@ -95,6 +95,7 @@ proc rememberStartupConfig*(dest: var PackedConfig, config: ConfigRef) =
   template rem(x) =
     dest.x = config.x
   primConfigFields rem
+  dest.globalOptions.excl optForceFullMake
 
 proc hashFileCached(conf: ConfigRef; fileIdx: FileIndex): string =
   result = msgs.getHash(conf, fileIdx)
