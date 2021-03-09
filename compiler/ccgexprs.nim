@@ -2567,6 +2567,7 @@ proc upConv(p: BProc, n: PNode, d: var TLoc) =
               [r, checkFor, raiseInstr(p)])
   if n[0].typ.kind != tyObject:
     if n.isLValue:
+      # preserve lvalueness
       putIntoDest(p, d, n,
                 "(*(($1*) (&($2))))" % [getTypeDesc(p.module, n.typ), rdLoc(a)], a.storage)
     else:
@@ -2604,8 +2605,13 @@ proc downConv(p: BProc, n: PNode, d: var TLoc) =
       # init(TFigure(my)) # where it is passed to a 'var TFigure'. We test
       # this by ensuring the destination is also a pointer:
       if d.k == locNone and skipTypes(n.typ, abstractInstOwned).kind in {tyRef, tyPtr, tyVar, tyLent}:
-        getTemp(p, n.typ, d)
-        linefmt(p, cpsStmts, "$1 = &$2;$n", [rdLoc(d), r])
+        if n.isLValue:
+          # preserve lvalueness
+          putIntoDest(p, d, n,
+                    "(*(($1*) (&($2))))" % [getTypeDesc(p.module, n.typ), rdLoc(a)], a.storage)
+        else:
+          getTemp(p, n.typ, d)
+          linefmt(p, cpsStmts, "$1 = &$2;$n", [rdLoc(d), r])
       else:
         r = "&" & r
         putIntoDest(p, d, n, r, a.storage)
