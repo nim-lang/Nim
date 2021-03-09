@@ -17,6 +17,7 @@ type
 proc main() =
   var g = ModuleGraph(vm: new(Pctx))
   PCtx(g.vm) = nil #This generates invalid C code
+  doAssert g.vm == nil
 
 main()
 
