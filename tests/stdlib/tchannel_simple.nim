@@ -11,7 +11,7 @@ Another message
 '''
 """
 
-import std/channel
+import std/channels
 import std/os
 
 var chan = initChan[string]()

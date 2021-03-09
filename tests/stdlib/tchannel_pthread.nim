@@ -5,7 +5,7 @@ discard """
   disabled: "bsd"
 """
 
-include std/channel
+include std/channels
 
 import std/unittest
 
