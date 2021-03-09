@@ -650,7 +650,7 @@ proc channelReceive[T](chan: Chan[T], data: ptr T, size: int32, nonBlocking: boo
   ## (Remove the first item)
   recv_fn[chan.d.impl](chan.d, data, size, nonBlocking)
 
-func trySend*[T](c: Chan[T], src: sink Isolated[T]): bool {.inline.} =
+func trySend*[T](c: Chan[T], src: var Isolated[T]): bool {.inline.} =
   ## Sends item to the channel(non blocking).
   var data = src.extract
   result = channelSend(c, data, int32 sizeof(data), true)
