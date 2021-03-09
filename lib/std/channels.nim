@@ -11,7 +11,7 @@
 # Based on https://github.com/mratsim/weave/blob/5696d94e6358711e840f8c0b7c684fcc5cbd4472/unused/channels/channels_legacy.nim
 
 
-## This module only works with `arc/orc`.
+## This module only works with `--gc:arc` or `--gc:orc`.
 ##
 ## .. warning:: This module is experimental and its interface may change.
 ##
