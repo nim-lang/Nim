@@ -656,6 +656,7 @@ proc channel_receive[T](chan: Chan[T], data: ptr T, size: int32, nonBlocking: bo
   recv_fn[chan.d.impl](chan.d, data, size, nonBlocking)
 
 func trySend*[T](c: Chan[T], src: sink Isolated[T]): bool {.inline.} =
+  ## Sends item to the channel(non blocking).
   var data = src.extract
   result = channel_send(c, data, int32 sizeof(data), true)
   when defined(gcDestructors):
@@ -663,9 +664,11 @@ func trySend*[T](c: Chan[T], src: sink Isolated[T]): bool {.inline.} =
       wasMoved(data)
 
 func tryRecv*[T](c: Chan[T], dst: var T): bool {.inline.} =
+  ## Receives item from the channel(non blocking).
   channel_receive(c, dst.addr, int32 sizeof(dst), true)
 
 func send*[T](c: Chan[T], src: sink Isolated[T]) {.inline.} =
+  ## Sends item to the channel(blocking).
   var data = src.extract
   discard channel_send(c, data, int32 sizeof(data), false)
   when defined(gcDestructors):
@@ -675,6 +678,7 @@ template send*[T](c: var Chan[T]; src: T) =
    send(c, isolate(src))
 
 func recv*[T](c: Chan[T], dst: var T) {.inline.} =
+  ## Receives item from the channel(blocking).
   discard channel_receive(c, dst.addr, int32 sizeof(dst), false)
 
 func recvIso*[T](c: Chan[T]): Isolated[T] {.inline.} =
