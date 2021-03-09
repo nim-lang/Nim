@@ -2833,6 +2833,13 @@ proc semExpr(c: PContext, n: PNode, flags: TExprFlags = {}): PNode =
     for i in 0..<n.len:
       n[i] = semExpr(c, n[i])
   of nkComesFrom: discard "ignore the comes from information for now"
+  of nkMixinStmt: discard
+  of nkBindStmt:
+    if c.p != nil:
+      c.p.localBindStmts.add n
+    else:
+      localError(c.config, n.info, "invalid context for 'bind' statement: " &
+                renderTree(n, {renderNoComments}))
   else:
     localError(c.config, n.info, "invalid expression: " &
                renderTree(n, {renderNoComments}))
