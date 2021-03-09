@@ -212,7 +212,7 @@ proc allocChannelCache(size, n: int32, impl: ChannelKind): bool =
   p.next = channelCache
   channelCache = p
   inc channelCacheLen
-  return true
+  result = true
 
 proc freeChannelCache*() =
   ## Frees the entire channel cache, including all channels
@@ -338,7 +338,7 @@ proc sendUnbufferedMpmc(chan: ChannelRaw, data: sink pointer, size: int32, nonBl
 
   release(chan.headLock)
   signal(chan.notEmptyCond)
-  return true
+  result = true
 
 proc sendMpmc(chan: ChannelRaw, data: sink pointer, size: int32, nonBlocking: bool): bool =
   assert not chan.isNil # TODO not nil compiler constraint
@@ -370,7 +370,7 @@ proc sendMpmc(chan: ChannelRaw, data: sink pointer, size: int32, nonBlocking: bo
 
   release(chan.tailLock)
   signal(chan.notEmptyCond)
-  return true
+  result = true
 
 proc recvUnbufferedMpmc(chan: ChannelRaw, data: pointer, size: int32, nonBlocking: bool): bool =
   if nonBlocking and chan.isEmptyUnbuf():
@@ -395,7 +395,7 @@ proc recvUnbufferedMpmc(chan: ChannelRaw, data: pointer, size: int32, nonBlockin
 
   release(chan.headLock)
   signal(chan.notFullCond)
-  return true
+  result = true
 
 proc recvMpmc(chan: ChannelRaw, data: pointer, size: int32, nonBlocking: bool): bool =
   assert not chan.isNil # TODO not nil compiler constraint
@@ -424,7 +424,7 @@ proc recvMpmc(chan: ChannelRaw, data: pointer, size: int32, nonBlocking: bool): 
   chan.head = chan.head.incmod(chan.size)
   release(chan.headLock)
   signal(chan.notFullCond)
-  return true
+  result = true
 
 proc channel_close_mpmc(chan: ChannelRaw): bool =
   # Unsynchronized
@@ -434,7 +434,7 @@ proc channel_close_mpmc(chan: ChannelRaw): bool =
     return false
 
   store(chan.closed, true, moRelaxed)
-  return true
+  result = true
 
 proc channel_open_mpmc(chan: ChannelRaw): bool =
   # Unsynchronized
@@ -444,7 +444,7 @@ proc channel_open_mpmc(chan: ChannelRaw): bool =
     return false
 
   store(chan.closed, false, moRelaxed)
-  return true
+  result = true
 
 # MPSC Channels (Multi-Producer Single-Consumer)
 # ----------------------------------------------------------------------------------
@@ -469,7 +469,7 @@ proc channel_recv_unbuffered_mpsc(chan: ChannelRaw, data: pointer, size: int32, 
 
   chan.head = 0
   signal(chan.notFullCond)
-  return true
+  result = true
 
 proc channel_recv_mpsc(chan: ChannelRaw, data: pointer, size: int32, nonBlocking: bool): bool =
   # Single consumer, no lock needed on reception
@@ -495,7 +495,7 @@ proc channel_recv_mpsc(chan: ChannelRaw, data: pointer, size: int32, nonBlocking
 
   chan.head = newHead
   signal(chan.notFullCond)
-  return true
+  result = true
 
 proc channel_close_mpsc(chan: ChannelRaw): bool =
   # Unsynchronized
@@ -537,7 +537,7 @@ proc channel_send_unbuffered_spsc(chan: ChannelRaw, data: sink pointer, size: in
 
   chan.head = 1
   signal(chan.notEmptyCond)
-  return true
+  result = true
 
 proc channel_send_spsc(chan: ChannelRaw, data: sink pointer, size: int32, nonBlocking: bool): bool =
   assert not chan.isNil
@@ -562,7 +562,7 @@ proc channel_send_spsc(chan: ChannelRaw, data: sink pointer, size: int32, nonBlo
 
   chan.tail = newTail
   signal(chan.notEmptyCond)
-  return true
+  result = true
 
 proc channel_recv_spsc(chan: ChannelRaw, data: pointer, size: int32, nonBlocking: bool): bool =
   # Cannot be inline due to function table
