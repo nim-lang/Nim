@@ -1,7 +1,7 @@
 #
 #
 #           The Nim Compiler
-#        (c) Copyright 2021 Mratsim & Nim Contributors
+#        (c) Copyright 2021 Andreas Prell, Mamy André-Ratsimbazafy & Nim Contributors
 #
 #    See the file "copying.txt", included in this
 #    distribution, for details about the copyright.
