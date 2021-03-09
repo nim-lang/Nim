@@ -162,8 +162,6 @@ when enableRemoteNetworking and (defined(nimTestsEnableFlaky) or not defined(win
 
   suite "SSL certificate check - httpclient - threaded":
     when defined(nimTestsEnableFlaky) or not defined(linux): # xxx pending bug #16338
-      # see also tests/misc/t16338.nim
-
       # Spawn threads before the "test" blocks
       var outcomes = newSeq[FlowVar[TTOutcome]](certificate_tests.len)
       for i, ct in certificate_tests:
