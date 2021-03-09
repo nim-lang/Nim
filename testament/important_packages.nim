@@ -1,5 +1,5 @@
 ##[
-## note
+## note 1
 `useHead` should ideally be used as the default but lots of packages (e.g. `chronos`)
 don't have release tags (or have really old ones compared to HEAD), making it
 impossible to test them reliably here.
@@ -7,8 +7,17 @@ impossible to test them reliably here.
 packages listed here should ideally have regularly updated release tags, so that:
 * we're testing recent versions of the package
 * the version that's tested is stable enough even if HEAD may occasionally break
-]##
 
+## note 2: D20210308T165435:here
+nimble packages should be testable as follows:
+git clone $url $dir && cd $dir
+NIMBLE_DIR=$TMP_NIMBLE_DIR XDG_CONFIG_HOME= nimble install --depsOnly -y
+NIMBLE_DIR=$TMP_NIMBLE_DIR XDG_CONFIG_HOME= nimble test
+
+if this fails (e.g. nimcrypto), it could be because a package lacks a `tests/nim.cfg` with `--path:..`,
+so the above commands would've worked by accident with `nimble install` but not with `nimble install --depsOnly`.
+When this is the case, a workaround is to test this package here by adding `--path:$srcDir` on the test `cmd`.
+]##
 
 type NimblePackage* = object
   name*, cmd*, url*: string
@@ -18,7 +27,6 @@ var packages*: seq[NimblePackage]
 
 proc pkg(name: string; cmd = "nimble test"; url = "", useHead = true) =
   packages.add NimblePackage(name: name, cmd: cmd, url: url, useHead: useHead)
-
 
 # pkg "alea"
 pkg "argparse"
@@ -81,13 +89,11 @@ pkg "neo", "nim c -d:blas=openblas tests/all.nim"
 # pkg "nico"
 pkg "nicy", "nim c -r src/nicy.nim"
 pkg "nigui", "nim c -o:niguii -r src/nigui.nim"
-pkg "nimcrypto", "nim r --path:. tests/testall.nim" # `--path:.` workaround because this lacks a nim.cfg
+pkg "nimcrypto", "nim r --path:. tests/testall.nim" # `--path:.` workaround needed, see D20210308T165435
 pkg "NimData", "nim c -o:nimdataa src/nimdata.nim"
 pkg "nimes", "nim c src/nimes.nim"
 pkg "nimfp", "nim c -o:nfp -r src/fp.nim"
-when false:
-  pkg "nimgame2", "nim c nimgame2/nimgame.nim"
-  # XXX Doesn't work with deprecated 'randomize', will create a PR.
+# pkg "nimgame2", "nim c nimgame2/nimgame.nim" # XXX Doesn't work with deprecated 'randomize', will create a PR.
 pkg "nimgen", "nim c -o:nimgenn -r src/nimgen/runcfg.nim"
 pkg "nimlsp"
 pkg "nimly", "nim c -r tests/test_readme_example.nim"
