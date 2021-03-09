@@ -321,10 +321,9 @@ proc instantiateProcType(c: PContext, pt: TIdTable,
 proc fillMixinScope(c: PContext) =
   var p = c.p
   while p != nil:
-    for mix in p.localMixinStmts:
-      for choice in mix:
-        for n in choice:
-          addSym(c.currentScope, n.sym)
+    for bnd in p.localBindStmts:
+      for n in bnd:
+        addSym(c.currentScope, n.sym)
     p = p.next
 
 proc generateInstance(c: PContext, fn: PSym, pt: TIdTable,

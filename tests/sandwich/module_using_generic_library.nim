@@ -5,7 +5,7 @@ import
 proc mixedIn: int = 100
 
 proc makeUseOfLibrary*[T](x: T) =
-  mixin mixedIn, indirectlyMixedIn
+  bind mixedIn, indirectlyMixedIn
   libraryFunc(x)
 
 when isMainModule:

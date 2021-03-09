@@ -5118,8 +5118,8 @@ scope is the default.
 ``bind`` statements only make sense in templates and generics.
 
 
-Delegating mixin statements
----------------------------
+Delegating bind statements
+--------------------------
 
 The following example outlines a problem that can arise when generic
 instantiations cross multiple different modules:
@@ -5127,7 +5127,7 @@ instantiations cross multiple different modules:
 .. code-block:: nim
 
   # module A
-  proc genericA[T](x: T) =
+  proc genericA*[T](x: T) =
     mixin init
     init(x)
 
@@ -5137,17 +5137,17 @@ instantiations cross multiple different modules:
   import C
 
   # module B
-  proc genericB[T](x: T) =
-    # Without the `mixin init` statement C's init proc is
+  proc genericB*[T](x: T) =
+    # Without the `bind init` statement C's init proc is
     # not available when `genericB` is instantiated:
-    mixin init
+    bind init
     genericA(x)
 
 .. code-block:: nim
 
   # module C
   type O = object
-  proc init(x: var O) = discard
+  proc init*(x: var O) = discard
 
 .. code-block:: nim
 
@@ -5159,7 +5159,7 @@ instantiations cross multiple different modules:
 In module B has an `init` proc from module C in its scope that is not
 taken into account when `genericB` is instantiated which leads to the
 instantiation of `genericA`. The solution is to `forward`:idx these
-symbols by a `mixin` statement inside `genericB`.
+symbols by a `bind` statement inside `genericB`.
 
 
 Templates
