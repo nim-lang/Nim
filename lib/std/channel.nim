@@ -663,6 +663,9 @@ func trySend*[T](c: Chan[T], src: sink Isolated[T]): bool {.inline.} =
   if result:
     wasMoved(data)
 
+template trySend*[T](c: Chan[T], src: T): bool =
+  trySend(c, isolate(src))
+
 func tryRecv*[T](c: Chan[T], dst: var T): bool {.inline.} =
   ## Receives item from the channel(non blocking).
   channel_receive(c, dst.addr, int32 sizeof(dst), true)
@@ -674,7 +677,7 @@ func send*[T](c: Chan[T], src: sink Isolated[T]) {.inline.} =
   wasMoved(data)
 
 template send*[T](c: var Chan[T]; src: T) =
-   send(c, isolate(src))
+  send(c, isolate(src))
 
 func recv*[T](c: Chan[T], dst: var T) {.inline.} =
   ## Receives item from the channel(blocking).
