@@ -11,6 +11,7 @@
 # Based on https://github.com/mratsim/weave/blob/5696d94e6358711e840f8c0b7c684fcc5cbd4472/unused/channels/channels_legacy.nim
 
 
+## This module only works with `arc/orc`.
 ##
 ## .. warning:: This module is experimental and its interface may change.
 ##
@@ -24,6 +25,7 @@ runnableExamples("--threads:on --gc:orc"):
   # In this example a channel is declared at module scope.
   # Channels are generic, and they include support for passing objects between
   # threads.
+  # Note that isolated data passed through channels is moved around.
   var chan = initChan[string]()
 
   # This proc will be run in another thread using the threads module.
