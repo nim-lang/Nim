@@ -1,6 +1,6 @@
 discard """
   targets: "c cpp"
-  matrix: "--gc:refc --threads:on; --gc:orc --threads:on"
+  matrix: "--gc:orc --threads:on; --gc:orc --threads:on -d:blockingTest"
   disabled: "windows"
   disabled: "bsd"
 """

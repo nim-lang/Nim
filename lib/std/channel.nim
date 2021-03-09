@@ -86,6 +86,9 @@ runnableExamples("-r:off --threads:on"):
   #   Another message
 
 
+when not defined(gcArc) and not defined(gcOrc):
+  {.error: "This channel implementation requires --gc:arc or --gc:orc".}
+
 import std/[locks, atomics, isolation]
 import system/ansi_c
 
@@ -659,9 +662,8 @@ func trySend*[T](c: Chan[T], src: sink Isolated[T]): bool {.inline.} =
   ## Sends item to the channel(non blocking).
   var data = src.extract
   result = channel_send(c, data, int32 sizeof(data), true)
-  when defined(gcDestructors):
-    if result:
-      wasMoved(data)
+  if result:
+    wasMoved(data)
 
 func tryRecv*[T](c: Chan[T], dst: var T): bool {.inline.} =
   ## Receives item from the channel(non blocking).
@@ -671,8 +673,7 @@ func send*[T](c: Chan[T], src: sink Isolated[T]) {.inline.} =
   ## Sends item to the channel(blocking).
   var data = src.extract
   discard channel_send(c, data, int32 sizeof(data), false)
-  when defined(gcDestructors):
-    wasMoved(data)
+  wasMoved(data)
 
 template send*[T](c: var Chan[T]; src: T) =
    send(c, isolate(src))
