@@ -118,8 +118,9 @@ since (1, 5):
     var _ {.codegenDecl: "const $2", exportc: astToStr(symbol).} = symbol
     {.emit: ["export { ", astToStr(symbol), (if name.len > 0: " as " & name else: ""), " };"] .}
 
-  # TODO: https://github.com/nim-lang/Nim/issues/16993
-  runnableExamples("-r:off"):
+  # pending bug #16993, move inside template
+  # pending https://github.com/timotheecour/Nim/issues/645, use simpler @ syntax
+  runnableExamples(r"-o:\$nimcache/\$projectname.mjs"): # needs mjs extension for `export`
     proc example = echo "This is exported as 'default' in JavaScript"
     let example2 = "This is exported as 'another' in JavaScript"
     const example3 = "This is exported as 'example3' in JavaScript"
