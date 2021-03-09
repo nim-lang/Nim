@@ -111,7 +111,7 @@ since (1, 5):
   func debugger*() {.importjs: "debugger@".}
     ## https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Statements/debugger
 
-  template jsExport*(symbol: untyped; name = "") =
+  template jsExport*(symbol: typed{sym}; name = "") =
     ## https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Statements/export
     ##
     ## .. Note:: Using `name = "default"` `is special in JavaScript <https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Statements/export#using_the_default_export>`_
