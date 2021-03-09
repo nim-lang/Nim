@@ -852,7 +852,8 @@ proc isInlineMarkupEnd(p: RstParser, markup: string): bool =
   if not result: return
   # Rule 4:
   if p.idx > 0:
-    if markup != "``" and prevTok(p).symbol == "\\":
+    # refs bug #17260
+    if markup notin ["``", "`"] and prevTok(p).symbol == "\\":
       result = false
 
 proc isInlineMarkupStart(p: RstParser, markup: string): bool =
@@ -1243,7 +1244,7 @@ proc parseInline(p: var RstParser, father: PRstNode) =
       father.add(n)
     elif isInlineMarkupStart(p, "`"):
       var n = newRstNode(rnInterpretedText)
-      parseUntil(p, n, "`", true)
+      parseUntil(p, n, "`", false) # bug #17260
       n = parsePostfix(p, n)
       father.add(n)
     elif isInlineMarkupStart(p, "|"):
