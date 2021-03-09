@@ -75,17 +75,13 @@ pkg "manu"
 pkg "markdown"
 pkg "memo"
 pkg "msgpack4nim", "nim c -r tests/test_spec.nim"
-
-# these two are special snowflakes
-pkg "nimcrypto", "nim c -r tests/testall.nim"
-pkg "stint", "nim c -o:stintt -r stint.nim"
-
 pkg "nake", "nim c nakefile.nim"
 pkg "neo", "nim c -d:blas=openblas tests/all.nim"
 # pkg "nesm", "nimble tests" # notice plural 'tests'
 # pkg "nico"
 pkg "nicy", "nim c -r src/nicy.nim"
 pkg "nigui", "nim c -o:niguii -r src/nigui.nim"
+pkg "nimcrypto", "nim r --path:. tests/testall.nim" # `--path:.` workaround because this lacks a nim.cfg
 pkg "NimData", "nim c -o:nimdataa src/nimdata.nim"
 pkg "nimes", "nim c src/nimes.nim"
 pkg "nimfp", "nim c -o:nfp -r src/fp.nim"
@@ -129,6 +125,7 @@ pkg "sdl1", "nim c -r src/sdl.nim"
 pkg "sdl2_nim", "nim c -r sdl2/sdl.nim"
 pkg "sigv4", "nim c --gc:arc -r sigv4.nim", "https://github.com/disruptek/sigv4"
 pkg "snip", "nimble test", "https://github.com/genotrance/snip"
+pkg "stint", "nim r stint.nim"
 pkg "strslice"
 pkg "strunicode", "nim c -r src/strunicode.nim"
 pkg "synthesis"
