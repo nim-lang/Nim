@@ -105,6 +105,7 @@ proc computeDeps(cache: IdentCache; n: PNode, declares, uses: var IntSet; topLev
       decl(a[1])
     else:
       for i in 0..<n.safeLen: deps(n[i])
+  of nkMixinStmt, nkBindStmt: discard
   else:
     for i in 0..<n.safeLen: deps(n[i])
 
