@@ -4,6 +4,8 @@
 
 ## Standard library additions and changes
 
+- Make custom op in macros.quote work for all statements.
+
 - On Windows the SSL library now checks for valid certificates.
   It uses the `cacert.pem` file for this purpose which was extracted
   from `https://curl.se/ca/cacert.pem`. Besides
@@ -21,6 +23,8 @@
   `prelude` can now be used via `include std/prelude`, but `include prelude` still works.
 
 - Added `almostEqual` in `math` for comparing two float values using a machine epsilon.
+
+- Added `clamp` in `math` which allows using a `Slice` to clamp to a value.
 
 - The JSON module can now handle integer literals and floating point literals of
   arbitrary length and precision.
@@ -85,7 +89,7 @@
   if the iterable yields a built-in settable type.
 - Added `setutils.fullSet` which returns a full built-in `set` for a valid type.
 - Added `setutils.complement` which returns the complement of a built-in `set`.
-
+- Added `setutils.[]=`.
 
 - Added `math.isNaN`.
 
@@ -144,6 +148,9 @@ provided by the operating system.
   (instead of skipping them sometimes as it was before).
 - Added optional `followSymlinks` argument to `setFilePermissions`.
 
+- Added `os.isAdmin` to tell whether the caller's process is a member of the
+  Administrators local group (on Windows) or a root (on POSIX).
+
 - Added `random.initRand()` overload with no argument which uses the current time as a seed.
 
 - Added experimental `linenoise.readLineStatus` to get line and status (e.g. ctrl-D or ctrl-C).
@@ -188,6 +195,17 @@ provided by the operating system.
 
 - `std/options` changed `$some(3)` to `"some(3)"` instead of `"Some(3)"`
   and `$none(int)` to `"none(int)"` instead of `"None[int]"`.
+- Added `std/jsfetch` module [Fetch](https://developer.mozilla.org/docs/Web/API/Fetch_API) wrapper for JavaScript target.
+- Added `std/jsheaders` module [Headers](https://developer.mozilla.org/en-US/docs/Web/API/Headers) wrapper for JavaScript target.
+- Added `std/jsformdata` module [FormData](https://developer.mozilla.org/en-US/docs/Web/API/FormData) wrapper for JavaScript target.
+
+
+- `system.addEscapedChar` now renders `\r` as `\r` instead of `\c`, to be compatible
+  with most other languages.
+
+- Removed support for named procs in `sugar.=>`
+
+- Added `jscore.debugger` to [call any available debugging functionality, such as breakpoints.](https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Statements/debugger)
 
 
 ## Language changes
@@ -240,6 +258,10 @@ provided by the operating system.
 - Added `-d:nimStrictMode` in CI in several places to ensure code doesn't have certain hints/warnings
 
 - Added `then`, `catch` to `asyncjs`, for now hidden behind `-d:nimExperimentalAsyncjsThen`.
+
+- `--newruntime` and `--refchecks` are deprecated.
+
+- Added `unsafeIsolate` and `extract` to `std/isolation`.
 
 ## Tool changes
 

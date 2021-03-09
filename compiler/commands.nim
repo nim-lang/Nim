@@ -11,7 +11,7 @@
 
 
 # We do this here before the 'import' statement so 'defined' does not get
-# confused with 'TGCMode.gcGenerational' etc.
+# confused with 'TGCMode.gcMarkAndSweep' etc.
 template bootSwitch(name, expr, userString) =
   # Helper to build boot constants, for debugging you can 'echo' the else part.
   const name = if expr: " " & userString else: ""
@@ -22,7 +22,6 @@ bootSwitch(usedDanger, defined(danger), "-d:danger")
 bootSwitch(useLinenoise, defined(nimUseLinenoise) or defined(useLinenoise), "-d:nimUseLinenoise")
 bootSwitch(usedBoehm, defined(boehmgc), "--gc:boehm")
 bootSwitch(usedMarkAndSweep, defined(gcmarkandsweep), "--gc:markAndSweep")
-bootSwitch(usedGenerational, defined(gcgenerational), "--gc:generational")
 bootSwitch(usedGoGC, defined(gogc), "--gc:go")
 bootSwitch(usedNoGC, defined(nogc), "--gc:none")
 
@@ -97,12 +96,13 @@ proc writeVersionInfo(conf: ConfigRef; pass: TCmdLinePass) =
                {msgStdout})
 
     const gitHash {.strdefine.} = gorge("git log -n 1 --format=%H").strip
+      # xxx move this logic to std/private/gitutils
     when gitHash.len == 40:
       msgWriteln(conf, "git hash: " & gitHash, {msgStdout})
 
     msgWriteln(conf, "active boot switches:" & usedRelease & usedDanger &
       usedTinyC & useLinenoise & usedNativeStacktrace &
-      usedFFI & usedBoehm & usedMarkAndSweep & usedGenerational & usedGoGC & usedNoGC,
+      usedFFI & usedBoehm & usedMarkAndSweep & usedGoGC & usedNoGC,
                {msgStdout})
     msgQuit(0)
 
@@ -247,13 +247,13 @@ proc testCompileOptionArg*(conf: ConfigRef; switch, arg: string, info: TLineInfo
     of "boehm": result = conf.selectedGC == gcBoehm
     of "refc": result = conf.selectedGC == gcRefc
     of "markandsweep": result = conf.selectedGC == gcMarkAndSweep
-    of "v2", "generational": warningOptionNoop(arg)
     of "destructors", "arc": result = conf.selectedGC == gcArc
     of "orc": result = conf.selectedGC == gcOrc
     of "hooks": result = conf.selectedGC == gcHooks
     of "go": result = conf.selectedGC == gcGo
     of "none": result = conf.selectedGC == gcNone
     of "stack", "regions": result = conf.selectedGC == gcRegions
+    of "v2", "generational": warningOptionNoop(arg)
     else: localError(conf, info, errNoneBoehmRefcExpectedButXFound % arg)
   of "opt":
     case arg.normalize
@@ -307,7 +307,9 @@ proc testCompileOption*(conf: ConfigRef; switch: string, info: TLineInfo): bool 
   of "fieldchecks": result = contains(conf.options, optFieldCheck)
   of "rangechecks": result = contains(conf.options, optRangeCheck)
   of "boundchecks": result = contains(conf.options, optBoundsCheck)
-  of "refchecks": result = contains(conf.options, optRefCheck)
+  of "refchecks":
+    warningDeprecated(conf, info, "refchecks is deprecated!")
+    result = contains(conf.options, optRefCheck)
   of "overflowchecks": result = contains(conf.options, optOverflowCheck)
   of "staticboundchecks": result = contains(conf.options, optStaticBoundsCheck)
   of "stylechecks": result = contains(conf.options, optStyleCheck)
@@ -560,8 +562,6 @@ proc processSwitch*(switch, arg: string, pass: TCmdLinePass, info: TLineInfo;
         incl conf.globalOptions, optTlsEmulation # Boehm GC doesn't scan the real TLS
       of "refc":
         conf.selectedGC = gcRefc
-      of "v2":
-        message(conf, info, warnDeprecated, "--gc:v2 is deprecated; using default gc")
       of "markandsweep":
         conf.selectedGC = gcMarkAndSweep
         defineSymbol(conf.symbols, "gcmarkandsweep")
@@ -603,6 +603,7 @@ proc processSwitch*(switch, arg: string, pass: TCmdLinePass, info: TLineInfo;
       of "stack", "regions":
         conf.selectedGC = gcRegions
         defineSymbol(conf.symbols, "gcregions")
+      of "v2": warningOptionNoop(arg)
       else: localError(conf, info, errNoneBoehmRefcExpectedButXFound % arg)
   of "warnings", "w":
     if processOnOffSwitchOrList(conf, {optWarns}, arg, pass, info): listWarnings(conf)
@@ -612,7 +613,9 @@ proc processSwitch*(switch, arg: string, pass: TCmdLinePass, info: TLineInfo;
   of "hintaserror": processSpecificNote(arg, wHintAsError, pass, info, switch, conf)
   of "hints":
     if processOnOffSwitchOrList(conf, {optHints}, arg, pass, info): listHints(conf)
-  of "threadanalysis": processOnOffSwitchG(conf, {optThreadAnalysis}, arg, pass, info)
+  of "threadanalysis":
+    if conf.backend == backendJs: discard
+    else: processOnOffSwitchG(conf, {optThreadAnalysis}, arg, pass, info)
   of "stacktrace": processOnOffSwitch(conf, {optStackTrace}, arg, pass, info)
   of "stacktracemsgs": processOnOffSwitch(conf, {optStackTraceMsgs}, arg, pass, info)
   of "excessivestacktrace": processOnOffSwitchG(conf, {optExcessiveStackTrace}, arg, pass, info)
@@ -660,14 +663,17 @@ proc processSwitch*(switch, arg: string, pass: TCmdLinePass, info: TLineInfo;
   of "fieldchecks": processOnOffSwitch(conf, {optFieldCheck}, arg, pass, info)
   of "rangechecks": processOnOffSwitch(conf, {optRangeCheck}, arg, pass, info)
   of "boundchecks": processOnOffSwitch(conf, {optBoundsCheck}, arg, pass, info)
-  of "refchecks": processOnOffSwitch(conf, {optRefCheck}, arg, pass, info)
+  of "refchecks":
+    warningDeprecated(conf, info, "refchecks is deprecated!")
+    processOnOffSwitch(conf, {optRefCheck}, arg, pass, info)
   of "overflowchecks": processOnOffSwitch(conf, {optOverflowCheck}, arg, pass, info)
   of "staticboundchecks": processOnOffSwitch(conf, {optStaticBoundsCheck}, arg, pass, info)
   of "stylechecks": processOnOffSwitch(conf, {optStyleCheck}, arg, pass, info)
   of "linedir": processOnOffSwitch(conf, {optLineDir}, arg, pass, info)
   of "assertions", "a": processOnOffSwitch(conf, {optAssert}, arg, pass, info)
   of "threads":
-    processOnOffSwitchG(conf, {optThreads}, arg, pass, info)
+    if conf.backend == backendJs: discard
+    else: processOnOffSwitchG(conf, {optThreads}, arg, pass, info)
     #if optThreads in conf.globalOptions: conf.setNote(warnGcUnsafe)
   of "tlsemulation": processOnOffSwitchG(conf, {optTlsEmulation}, arg, pass, info)
   of "implicitstatic":
@@ -892,6 +898,7 @@ proc processSwitch*(switch, arg: string, pass: TCmdLinePass, info: TLineInfo;
     if conf != nil:
       conf.cppDefine(arg)
   of "newruntime":
+    warningDeprecated(conf, info, "newruntime is deprecated, use arc/orc instead!")
     expectNoArg(conf, switch, arg, pass, info)
     if pass in {passCmd2, passPP}:
       doAssert(conf != nil)

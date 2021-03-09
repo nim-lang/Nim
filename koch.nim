@@ -266,7 +266,7 @@ proc findStartNim: string =
   # If these fail, we try to build nim with the "build.(sh|bat)" script.
   let (nim, ok) = findNimImpl()
   if ok: return nim
-  when defined(Posix):
+  when defined(posix):
     const buildScript = "build.sh"
     if fileExists(buildScript):
       if tryExec("./" & buildScript): return "bin" / nim

@@ -63,12 +63,13 @@ result.value = move lvalue
 --expandArc: tt
 
 var
+  it_cursor
   a
   :tmpD
   :tmpD_1
   :tmpD_2
 try:
-  var it_cursor = x
+  it_cursor = x
   a = (
     wasMoved(:tmpD)
     `=copy`(:tmpD, it_cursor.key)

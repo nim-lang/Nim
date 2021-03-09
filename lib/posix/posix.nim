@@ -189,7 +189,7 @@ proc posix_fadvise*(a1: cint, a2, a3: Off, a4: cint): cint {.
 proc posix_fallocate*(a1: cint, a2, a3: Off): cint {.
   importc, header: "<fcntl.h>".}
 
-when not defined(haiku) and not defined(OpenBSD):
+when not defined(haiku) and not defined(openbsd):
   proc fmtmsg*(a1: int, a2: cstring, a3: cint,
               a4, a5, a6: cstring): cint {.importc, header: "<fmtmsg.h>".}
 

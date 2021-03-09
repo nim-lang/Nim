@@ -11,7 +11,7 @@ import std / [hashes, tables, intsets, sha1]
 import packed_ast, bitabs, rodfiles
 import ".." / [ast, idents, lineinfos, msgs, ropes, options,
   pathutils, condsyms]
-
+#import ".." / [renderer, astalgo]
 from std / os import removeFile, isAbsolute
 
 type
@@ -56,6 +56,9 @@ type
     typeMarker*: IntSet #Table[ItemId, TypeId]  # ItemId.item -> TypeId
     symMarker*: IntSet #Table[ItemId, SymId]    # ItemId.item -> SymId
     config*: ConfigRef
+
+proc isActive*(e: PackedEncoder): bool = e.config != nil
+proc disable*(e: var PackedEncoder) = e.config = nil
 
 template primConfigFields(fn: untyped) {.dirty.} =
   fn backend
@@ -216,7 +219,8 @@ proc addMissing(c: var PackedEncoder; p: PSym) =
   ## consider queuing a symbol for later addition to the packed tree
   if p != nil and p.itemId.module == c.thisModule:
     if p.itemId.item notin c.symMarker:
-      c.pendingSyms.add p
+      if not (sfForward in p.flags and p.kind in routineKinds):
+        c.pendingSyms.add p
 
 proc addMissing(c: var PackedEncoder; p: PType) =
   ## consider queuing a type for later addition to the packed tree
@@ -332,6 +336,8 @@ proc storeSym*(s: PSym; c: var PackedEncoder; m: var PackedModule): PackedItemId
     if s.itemId.item >= m.sh.syms.len:
       setLen m.sh.syms, s.itemId.item+1
 
+    assert sfForward notin s.flags
+
     var p = PackedSym(kind: s.kind, flags: s.flags, info: s.info.toPackedInfo(c, m), magic: s.magic,
       position: s.position, offset: s.offset, options: s.options,
       name: s.name.s.toLitId(m))
@@ -418,28 +424,40 @@ proc toPackedNode*(n: PNode; ir: var PackedTree; c: var PackedEncoder; m: var Pa
       toPackedNode(n[i], ir, c, m)
     ir.patch patchPos
 
-proc storeInstantiation*(c: var PackedEncoder; m: var PackedModule; s: PSym; i: PInstantiation) =
-  var t = newSeq[PackedItemId](i.concreteTypes.len)
-  for j in 0..high(i.concreteTypes):
-    t[j] = storeTypeLater(i.concreteTypes[j], c, m)
-  m.procInstCache.add PackedInstantiation(key: storeSymLater(s, c, m),
-                                          sym: storeSymLater(i.sym, c, m),
-                                          concreteTypes: t)
-
 proc storeTypeInst*(c: var PackedEncoder; m: var PackedModule; s: PSym; inst: PType) =
   m.typeInstCache.add (storeSymLater(s, c, m), storeTypeLater(inst, c, m))
 
 proc addPragmaComputation*(c: var PackedEncoder; m: var PackedModule; n: PNode) =
   toPackedNode(n, m.toReplay, c, m)
 
+proc toPackedProcDef(n: PNode; ir: var PackedTree; c: var PackedEncoder; m: var PackedModule) =
+  let info = toPackedInfo(n.info, c, m)
+  let patchPos = ir.prepare(n.kind, n.flags,
+                            storeTypeLater(n.typ, c, m), info)
+  for i in 0..<n.len:
+    if i != bodyPos:
+      toPackedNode(n[i], ir, c, m)
+    else:
+      # do not serialize the body of the proc, it's unnecessary since
+      # n[0].sym.ast has the sem'checked variant of it which is what
+      # everybody should use instead.
+      ir.nodes.add PackedNode(kind: nkEmpty, flags: {}, operand: 0,
+                              typeId: nilItemId, info: info)
+  ir.patch patchPos
+
 proc toPackedNodeIgnoreProcDefs(n: PNode, encoder: var PackedEncoder; m: var PackedModule) =
   case n.kind
   of routineDefs:
-    # we serialize n[namePos].sym instead
-    if n[namePos].kind == nkSym:
-      discard storeSym(n[namePos].sym, encoder, m)
-    else:
-      toPackedNode(n, m.topLevel, encoder, m)
+    toPackedProcDef(n, m.topLevel, encoder, m)
+    when false:
+      # we serialize n[namePos].sym instead
+      if n[namePos].kind == nkSym:
+        let s = n[namePos].sym
+        discard storeSym(s, encoder, m)
+        if s.flags * {sfExportc, sfCompilerProc, sfCompileTime} == {sfExportc}:
+          m.exportCProcs.add(s.itemId.item)
+      else:
+        toPackedNode(n, m.topLevel, encoder, m)
   of nkStmtList, nkStmtListExpr:
     for it in n:
       toPackedNodeIgnoreProcDefs(it, encoder, m)
@@ -450,10 +468,29 @@ proc toPackedNodeTopLevel*(n: PNode, encoder: var PackedEncoder; m: var PackedMo
   toPackedNodeIgnoreProcDefs(n, encoder, m)
   flush encoder, m
 
+proc toPackedGeneratedProcDef*(s: PSym, encoder: var PackedEncoder; m: var PackedModule) =
+  ## Generic procs and generated `=hook`'s need explicit top-level entries so
+  ## that the code generator can work without having to special case these. These
+  ## entries will also be useful for other tools and are the cleanest design
+  ## I can come up with.
+  assert s.kind in routineKinds
+  toPackedProcDef(s.ast, m.topLevel, encoder, m)
+  #flush encoder, m
+
+proc storeInstantiation*(c: var PackedEncoder; m: var PackedModule; s: PSym; i: PInstantiation) =
+  var t = newSeq[PackedItemId](i.concreteTypes.len)
+  for j in 0..high(i.concreteTypes):
+    t[j] = storeTypeLater(i.concreteTypes[j], c, m)
+  m.procInstCache.add PackedInstantiation(key: storeSymLater(s, c, m),
+                                          sym: storeSymLater(i.sym, c, m),
+                                          concreteTypes: t)
+  toPackedGeneratedProcDef(i.sym, c, m)
+
 proc loadError(err: RodFileError; filename: AbsoluteFile) =
   echo "Error: ", $err, " loading file: ", filename.string
 
-proc loadRodFile*(filename: AbsoluteFile; m: var PackedModule; config: ConfigRef): RodFileError =
+proc loadRodFile*(filename: AbsoluteFile; m: var PackedModule; config: ConfigRef;
+                  ignoreConfig = false): RodFileError =
   m.sh = Shared()
   var f = rodfiles.open(filename.string)
   f.loadHeader()
@@ -462,7 +499,7 @@ proc loadRodFile*(filename: AbsoluteFile; m: var PackedModule; config: ConfigRef
   f.loadPrim m.definedSymbols
   f.loadPrim m.cfg
 
-  if f.err == ok and not configIdentical(m, config):
+  if f.err == ok and not configIdentical(m, config) and not ignoreConfig:
     f.err = configMismatch
 
   template loadSeqSection(section, data) {.dirty.} =
@@ -519,6 +556,7 @@ proc storeError(err: RodFileError; filename: AbsoluteFile) =
   removeFile(filename.string)
 
 proc saveRodFile*(filename: AbsoluteFile; encoder: var PackedEncoder; m: var PackedModule) =
+  flush encoder, m
   #rememberConfig(encoder, encoder.config)
 
   var f = rodfiles.create(filename.string)
@@ -571,6 +609,7 @@ proc saveRodFile*(filename: AbsoluteFile; encoder: var PackedEncoder; m: var Pac
   storeSeqSection enumToStringProcsSection, m.enumToStringProcs
 
   close(f)
+  encoder.disable()
   if f.err != ok:
     storeError(f.err, filename)
 
@@ -847,6 +886,8 @@ proc setupLookupTables(g: var PackedModuleGraph; conf: ConfigRef; cache: IdentCa
                   info: newLineInfo(fileIdx, 1, 1),
                   position: int(fileIdx))
   m.module.owner = newPackage(conf, cache, fileIdx)
+  if fileIdx == conf.projectMainIdx2:
+    m.module.flags.incl sfMainModule
 
 proc loadToReplayNodes(g: var PackedModuleGraph; conf: ConfigRef; cache: IdentCache;
                        fileIdx: FileIndex; m: var LoadedModule) =
@@ -875,7 +916,7 @@ proc needsRecompile(g: var PackedModuleGraph; conf: ConfigRef; cache: IdentCache
     let rod = toRodFile(conf, AbsoluteFile fullpath)
     let err = loadRodFile(rod, g[m].fromDisk, conf)
     if err == ok:
-      result = false
+      result = optForceFullMake in conf.globalOptions
       # check its dependencies:
       for dep in g[m].fromDisk.imports:
         let fid = toFileIndex(dep, g[m].fromDisk, conf)
@@ -887,11 +928,14 @@ proc needsRecompile(g: var PackedModuleGraph; conf: ConfigRef; cache: IdentCache
       if not result:
         setupLookupTables(g, conf, cache, fileIdx, g[m])
         cachedModules.add fileIdx
-      g[m].status = if result: outdated else: loaded
+        g[m].status = loaded
+      else:
+        g[m] = LoadedModule(status: outdated, module: g[m].module)
     else:
       loadError(err, rod)
       g[m].status = outdated
       result = true
+    when false: loadError(err, rod)
   of loading, loaded:
     # For loading: Assume no recompile is required.
     result = false
@@ -1058,18 +1102,26 @@ proc idgenFromLoadedModule*(m: LoadedModule): IdGenerator =
   IdGenerator(module: m.module.itemId.module, symId: int32 m.fromDisk.sh.syms.len,
               typeId: int32 m.fromDisk.sh.types.len)
 
+proc searchForCompilerproc*(m: LoadedModule; name: string): int32 =
+  # slow, linear search, but the results are cached:
+  for it in items(m.fromDisk.compilerProcs):
+    if m.fromDisk.sh.strings[it[0]] == name:
+      return it[1]
+  return -1
+
 # ------------------------- .rod file viewer ---------------------------------
 
 proc rodViewer*(rodfile: AbsoluteFile; config: ConfigRef, cache: IdentCache) =
   var m: PackedModule
-  if loadRodFile(rodfile, m, config) != ok:
-    echo "Error: could not load: ", rodfile.string
+  let err = loadRodFile(rodfile, m, config, ignoreConfig=true)
+  if err != ok:
+    echo "Error: could not load: ", rodfile.string, " reason: ", err
     quit 1
 
   when true:
     echo "exports:"
     for ex in m.exports:
-      echo "  ", m.sh.strings[ex[0]]
+      echo "  ", m.sh.strings[ex[0]], " local ID: ", ex[1]
       assert ex[0] == m.sh.syms[ex[1]].name
       # ex[1] int32
 
@@ -1077,6 +1129,11 @@ proc rodViewer*(rodfile: AbsoluteFile; config: ConfigRef, cache: IdentCache) =
     for ex in m.reexports:
       echo "  ", m.sh.strings[ex[0]]
     #  reexports*: seq[(LitId, PackedItemId)]
+
+  echo "all symbols"
+  for i in 0..high(m.sh.syms):
+    echo "  ", m.sh.strings[m.sh.syms[i].name], " local ID: ", i
+
   echo "symbols: ", m.sh.syms.len, " types: ", m.sh.types.len,
     " top level nodes: ", m.topLevel.nodes.len, " other nodes: ", m.bodies.nodes.len,
     " strings: ", m.sh.strings.len, " integers: ", m.sh.integers.len,

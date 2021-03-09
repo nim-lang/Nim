@@ -908,15 +908,13 @@ proc parseJson*(s: Stream, filename: string = ""; rawIntegers = false, rawFloats
 
 when defined(js):
   from std/math import `mod`
-  type
-    JSObject = object
+  from std/jsffi import JSObject, `[]`, to
+  from std/private/jsutils import getProtoName
 
-  proc parseNativeJson(x: cstring): JSObject {.importc: "JSON.parse".}
+  proc parseNativeJson(x: cstring): JSObject {.importjs: "JSON.parse(#)".}
 
   proc getVarType(x: JSObject): JsonNodeKind =
     result = JNull
-    proc getProtoName(y: JSObject): cstring
-      {.importc: "Object.prototype.toString.call".}
     case $getProtoName(x) # TODO: Implicit returns fail here.
     of "[object Array]": return JArray
     of "[object Object]": return JObject
@@ -936,18 +934,6 @@ when defined(js):
       `result` = `x`.length;
     """
 
-  proc `[]`(x: JSObject, y: string): JSObject =
-    assert x.getVarType == JObject
-    asm """
-      `result` = `x`[`y`];
-    """
-
-  proc `[]`(x: JSObject, y: int): JSObject =
-    assert x.getVarType == JArray
-    asm """
-      `result` = `x`[`y`];
-    """
-
   proc convertObject(x: JSObject): JsonNode =
     case getVarType(x)
     of JArray:
@@ -965,14 +951,14 @@ when defined(js):
       result[$nimProperty] = nimValue.convertObject()
       asm "}}"
     of JInt:
-      result = newJInt(cast[int](x))
+      result = newJInt(x.to(int))
     of JFloat:
-      result = newJFloat(cast[float](x))
+      result = newJFloat(x.to(float))
     of JString:
       # Dunno what to do with isUnquoted here
-      result = newJString($cast[cstring](x))
+      result = newJString($x.to(cstring))
     of JBool:
-      result = newJBool(cast[bool](x))
+      result = newJBool(x.to(bool))
     of JNull:
       result = newJNull()
 

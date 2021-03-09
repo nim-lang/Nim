@@ -517,10 +517,9 @@ proc recvLineInto*(socket: AsyncSocket, resString: FutureVar[string],
   ## The `maxLength` parameter determines the maximum amount of characters
   ## that can be read. `resString` will be truncated after that.
   ##
-  ## **Warning**: The `Peek` flag is not yet implemented.
+  ## .. warning:: The `Peek` flag is not yet implemented.
   ##
-  ## **Warning**: `recvLineInto` on unbuffered sockets assumes that the
-  ## protocol uses `\r\L` to delimit a new line.
+  ## .. warning:: `recvLineInto` on unbuffered sockets assumes that the protocol uses `\r\L` to delimit a new line.
   assert SocketFlag.Peek notin flags ## TODO:
   result = newFuture[void]("asyncnet.recvLineInto")
 
@@ -611,10 +610,9 @@ proc recvLine*(socket: AsyncSocket,
   ## The `maxLength` parameter determines the maximum amount of characters
   ## that can be read. The result is truncated after that.
   ##
-  ## **Warning**: The `Peek` flag is not yet implemented.
+  ## .. warning:: The `Peek` flag is not yet implemented.
   ##
-  ## **Warning**: `recvLine` on unbuffered sockets assumes that the protocol
-  ## uses `\r\L` to delimit a new line.
+  ## .. warning:: `recvLine` on unbuffered sockets assumes that the protocol uses `\r\L` to delimit a new line.
   assert SocketFlag.Peek notin flags ## TODO:
 
   # TODO: Optimise this

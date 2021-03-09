@@ -90,7 +90,7 @@ proc runBasicDLLTest(c, r: var TResults, cat: Category, options: string) =
   testSpec c, test4
 
   # windows looks in the dir of the exe (yay!):
-  when not defined(Windows):
+  when not defined(windows):
     # posix relies on crappy LD_LIBRARY_PATH (ugh!):
     const libpathenv = when defined(haiku): "LIBRARY_PATH"
                        else: "LD_LIBRARY_PATH"
