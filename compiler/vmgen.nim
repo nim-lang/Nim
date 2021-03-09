@@ -2119,7 +2119,7 @@ proc gen(c: PCtx; n: PNode; dest: var TDest; flags: TGenFlags = {}) =
       dest = tmp0
   of nkEmpty, nkCommentStmt, nkTypeSection, nkConstSection, nkPragma,
      nkTemplateDef, nkIncludeStmt, nkImportStmt, nkFromStmt, nkExportStmt,
-     nkMixinStmt:
+     nkMixinStmt, nkBindStmt:
     unused(c, n, dest)
   of nkStringToCString, nkCStringToString:
     gen(c, n[0], dest)

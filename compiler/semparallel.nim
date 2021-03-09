@@ -392,7 +392,7 @@ proc analyse(c: var AnalysisCtx; n: PNode) =
     dec c.inLoop
   of nkTypeSection, nkProcDef, nkConverterDef, nkMethodDef, nkIteratorDef,
       nkMacroDef, nkTemplateDef, nkConstSection, nkPragma, nkFuncDef,
-      nkMixinStmt, nkExportStmt:
+      nkMixinStmt, nkBindStmt, nkExportStmt:
     discard
   else:
     analyseSons(c, n)

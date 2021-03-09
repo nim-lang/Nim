@@ -2021,7 +2021,7 @@ proc processQuotations(c: PContext; n: var PNode, op: string,
     n = newIdentNode(getIdent(c.cache, $quotes.len), n.info)
     ids.add n
     return
-  
+
   template handlePrefixOp(prefixed) =
     if prefixed[0].kind == nkIdent:
       let examinedOp = prefixed[0].ident.s
@@ -2954,7 +2954,7 @@ proc semExpr(c: PContext, n: PNode, flags: TExprFlags = {}): PNode =
     for i in 0..<n.len:
       n[i] = semExpr(c, n[i])
   of nkComesFrom: discard "ignore the comes from information for now"
-  of nkMixinStmt:
+  of nkMixinStmt, nkBindStmt:
     if c.p != nil:
       c.p.localMixinStmts.add n
     else:
