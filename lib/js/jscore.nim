@@ -115,6 +115,8 @@ since (1, 5):
     ## https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Statements/export
     ##
     ## .. Note:: Using `name = "default"` `is special in JavaScript <https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Statements/export#using_the_default_export>`_
+    ##
+    ## .. Warning:: jsExport must be called at top level only. jsExport can not be called from a template.
     var _ {.codegenDecl: "const $2", exportc: astToStr(symbol).} = symbol
     {.emit: ["export { ", astToStr(symbol), (if name.len > 0: " as " & name else: ""), " };"] .}
 
