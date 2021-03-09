@@ -94,14 +94,10 @@ import system/ansi_c
 # ----------------------------------------------------------------------------------
 
 const
-  CacheLineSize {.intdefine.} = 64 # TODO: some Samsung phone have 128 cache-line
-  ChannelCacheSize* {.intdefine.} = 100
+  cacheLineSize {.intdefine.} = 64 # TODO: some Samsung phone have 128 cache-line
+  nimChannelCacheSize* {.intdefine.} = 100
 
 type
-  # ChannelBufKind = enum
-  #   Unbuffered # Unbuffered (blocking) channel
-  #   Buffered   # Buffered (non-blocking channel)
-
   ChannelKind = enum
     Mpmc # Multiple producer, multiple consumer
     Mpsc # Multiple producer, single consumer
@@ -116,7 +112,7 @@ type
     closed: Atomic[bool]
     size: int
     itemsize: int # up to itemsize bytes can be exchanged over this channel
-    head {.align: CacheLineSize.} : int     # Items are taken from head and new items are inserted at tail
+    head {.align: cacheLineSize.} : int     # Items are taken from head and new items are inserted at tail
     tail: int
     buffer: ptr UncheckedArray[byte]
 
@@ -127,7 +123,7 @@ type
     chanN: int
     chanKind: ChannelKind
     numCached: int
-    cache: array[ChannelCacheSize, ChannelRaw]
+    cache: array[nimChannelCacheSize, ChannelRaw]
 
 # ----------------------------------------------------------------------------------
 
@@ -234,7 +230,7 @@ proc freeChannelCache*() =
 # ----------------------------------------------------------------------------------
 
 proc allocChannel(size, n: int, impl: ChannelKind): ChannelRaw =
-  when ChannelCacheSize > 0:
+  when nimChannelCacheSize > 0:
     var p = channelCache
 
     while not p.isNil:
@@ -271,7 +267,7 @@ proc allocChannel(size, n: int, impl: ChannelKind): ChannelRaw =
   result.head = 0
   result.tail = 0
 
-  when ChannelCacheSize > 0:
+  when nimChannelCacheSize > 0:
     # Allocate a cache as well if one of the proper size doesn't exist
     discard allocChannelCache(size, n, impl)
 
@@ -279,13 +275,13 @@ proc freeChannel(chan: ChannelRaw) =
   if chan.isNil:
     return
 
-  when ChannelCacheSize > 0:
+  when nimChannelCacheSize > 0:
     var p = channelCache
     while not p.isNil:
       if chan.itemsize == p.chanSize and
          chan.size-1 == p.chanN and
          chan.impl == p.chanKind:
-        if p.numCached < ChannelCacheSize:
+        if p.numCached < nimChannelCacheSize:
           # If space left in cache, cache it
           p.cache[p.numCached] = chan
           inc p.numCached
