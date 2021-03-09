@@ -687,7 +687,7 @@ func close*[T](c: Chan[T]): bool {.inline.} =
 func peek*[T](c: Chan[T]): int {.inline.} = peek(c.d)
 
 proc initChan*[T](elements = 30): Chan[T] =
-  result = Chan[T](d: allocChannel(sizeof(T), elements))
+  result = Chan[T](d: allocChannel(sizeof(T), elements, Mpmc))
 
 proc delete*[T](c: var Chan[T]) {.inline.} =
   freeChannel(c.d)
