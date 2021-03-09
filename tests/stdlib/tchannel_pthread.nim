@@ -246,13 +246,13 @@ block: # [ChannelRaw] ChannelRaw caching implementation
 
   block: # Implicit caches allocation
 
-    chan[0] = allocChannel(int sizeof(char), 4, Mpmc)
-    chan[1] = allocChannel(int sizeof(int), 8, Mpsc)
-    chan[2] = allocChannel(int sizeof(ptr float64), 16, Spsc)
+    chan[0] = allocChannel(sizeof(char), 4, Mpmc)
+    chan[1] = allocChannel(sizeof(int32), 8, Mpsc)
+    chan[2] = allocChannel(sizeof(ptr float64), 16, Spsc)
 
-    chan[3] = allocChannel(int sizeof(char), 5, Mpmc)
-    chan[4] = allocChannel(int sizeof(int64), 8, Mpsc)
-    chan[5] = allocChannel(int sizeof(ptr float64), 16, Mpsc)
+    chan[3] = allocChannel(sizeof(char), 5, Mpmc)
+    chan[4] = allocChannel(sizeof(int64), 8, Mpsc)
+    chan[5] = allocChannel(sizeof(ptr float64), 16, Mpsc)
 
     # We have caches ready to store specific channel kinds
     check: channelCacheLen == 6 # Cumulated with previous test
@@ -281,10 +281,10 @@ block: # [ChannelRaw] ChannelRaw caching implementation
 
   block: # Cached channels are being reused
 
-    chan[6] = allocChannel(int sizeof(char), 4, Mpmc)
-    chan[7] = allocChannel(int sizeof(int), 8, Mpsc)
-    chan[8] = allocChannel(int sizeof(ptr float32), 16, Spsc)
-    chan[9] = allocChannel(int sizeof(ptr float64), 16, Spsc)
+    chan[6] = allocChannel(sizeof(char), 4, Mpmc)
+    chan[7] = allocChannel(sizeof(int32), 8, Mpsc)
+    chan[8] = allocChannel(sizeof(ptr float32), 16, Spsc)
+    chan[9] = allocChannel(sizeof(ptr float64), 16, Spsc)
 
     # All (itemsize, queue size, implementation) were already allocated
     check: channelCacheLen == 6
@@ -318,9 +318,9 @@ block: # [ChannelRaw] ChannelRaw caching implementation
     check: channelCacheLen == 0
 
     # Cache can grow again
-    chan[0] = allocChannel(int sizeof((int, float, int, uint)), 1, Spsc)
-    chan[1] = allocChannel(int sizeof(int), 0, Spsc)
-    chan[2] = allocChannel(int sizeof(int), 0, Spsc)
+    chan[0] = allocChannel(sizeof((int, float, int32, uint)), 1, Spsc)
+    chan[1] = allocChannel(sizeof(int32), 0, Spsc)
+    chan[2] = allocChannel(sizeof(int32), 0, Spsc)
 
     check: channelCacheLen == 2
 
