@@ -43,8 +43,8 @@ runnableExamples("-r:off --threads:on --gc:orc"):
 
   # Block until the message arrives, then print it out.
   var dest = ""
-  chan.recv(dest) # "Hello World!"
-  echo dest
+  chan.recv(dest)
+  assert dest == "Hello World!"
 
   # Wait for the thread to exit before moving on to the next example.
   worker1.joinThread()
@@ -61,7 +61,7 @@ runnableExamples("-r:off --threads:on --gc:orc"):
     if tried:
       echo msg # "Another message"
       break
-    
+
     echo "Pretend I'm doing useful work..."
     # For this example, sleep in order not to flood stdout with the above
     # message.
@@ -76,7 +76,6 @@ runnableExamples("-r:off --threads:on --gc:orc"):
 
   # The program should output something similar to this, but keep in mind that
   # exact results may vary in the real world::
-  #   Hello World!
   #   Pretend I'm doing useful work...
   #   Pretend I'm doing useful work...
   #   Pretend I'm doing useful work...
