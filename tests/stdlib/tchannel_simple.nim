@@ -1,5 +1,5 @@
 discard """
-  matrix: "--threads:on --gc:orc"
+  matrix: "--threads:on --gc:orc; --threads:on --gc:arc"
   output: '''
 Hello World!
 Pretend I'm doing useful work...
