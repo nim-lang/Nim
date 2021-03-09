@@ -2605,7 +2605,7 @@ proc downConv(p: BProc, n: PNode, d: var TLoc) =
       # init(TFigure(my)) # where it is passed to a 'var TFigure'. We test
       # this by ensuring the destination is also a pointer:
       if d.k == locNone and skipTypes(n.typ, abstractInstOwned).kind in {tyRef, tyPtr, tyVar, tyLent}:
-        if n.isLValue:
+        if arg.typ.skipTypes(abstractInstOwned).kind in {tyRef, tyPtr} and n.isLValue:
           # preserve lvalueness
           putIntoDest(p, d, n,
                     "(*(($1*) (&($2))))" % [getTypeDesc(p.module, n.typ), rdLoc(a)], a.storage)
