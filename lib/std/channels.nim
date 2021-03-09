@@ -106,7 +106,6 @@ type
     headLock, tailLock: Lock
     notFullCond: Cond
     notEmptyCond: Cond
-    owner: int32
     impl: ChannelKind
     closed: Atomic[bool]
     size: int32
@@ -116,9 +115,6 @@ type
     tail: int32
     buffer: ptr UncheckedArray[byte]
 
-  # TODO: Replace this cache by generic ObjectPools
-  #       We can use HList or a Table or thread-local globals
-  #       to keep the list of object pools
   ChannelCache = ptr ChannelCacheObj
   ChannelCacheObj = object
     next: ChannelCache
@@ -263,7 +259,6 @@ proc allocChannel*(size, n: int32, impl: ChannelKind): ChannelRaw =
   initCond(result.notFullCond)
   initCond(result.notEmptyCond)
 
-  result.owner = -1 # TODO
   result.impl = impl
   result.closed.store(false, moRelaxed) # We don't need atomic here, how to?
   result.size = n+1

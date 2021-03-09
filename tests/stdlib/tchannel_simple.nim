@@ -1,5 +1,6 @@
 discard """
   matrix: "--threads:on --gc:orc; --threads:on --gc:arc"
+  disabled: "freebsd"
 """
 
 import std/channels
