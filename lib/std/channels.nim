@@ -19,7 +19,6 @@
 ## 
 
 runnableExamples("--threads:on --gc:orc"):
-  # Be sure to compile with `--threads:on --gc:orc`.
   import std/os
 
   # In this example a channel is declared at module scope.
@@ -58,8 +57,7 @@ runnableExamples("--threads:on --gc:orc"):
   var messages: seq[string]
   while true:
     var msg = ""
-    let tried = chan.tryRecv(msg)
-    if tried:
+    if chan.tryRecv(msg):
       messages.add msg # "Another message"
       break
 
