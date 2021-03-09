@@ -51,8 +51,6 @@ runnableExamples:
   assert not flag.testAndSet
 
 
-import macros
-
 when defined(cpp) or defined(nimdoc):
   # For the C++ backend, types and operations map directly to C++11 atomics.
 
