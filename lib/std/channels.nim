@@ -418,7 +418,7 @@ proc recvMpmc(chan: ChannelRaw, data: pointer, size: int32, nonBlocking: bool): 
   signal(chan.notFullCond)
   result = true
 
-proc channel_close_mpmc(chan: ChannelRaw): bool =
+proc channelCloseMpmc(chan: ChannelRaw): bool =
   # Unsynchronized
 
   if chan.isClosed():
@@ -428,7 +428,7 @@ proc channel_close_mpmc(chan: ChannelRaw): bool =
   store(chan.closed, true, moRelaxed)
   result = true
 
-proc channel_open_mpmc(chan: ChannelRaw): bool =
+proc channelOpenMpmc(chan: ChannelRaw): bool =
   # Unsynchronized
 
   if not chan.isClosed:
@@ -441,7 +441,7 @@ proc channel_open_mpmc(chan: ChannelRaw): bool =
 # MPSC Channels (Multi-Producer Single-Consumer)
 # ----------------------------------------------------------------------------------
 
-proc channel_send_mpsc(chan: ChannelRaw, data: sink pointer, size: int32, nonBlocking: bool): bool =
+proc channelSendMpsc(chan: ChannelRaw, data: sink pointer, size: int32, nonBlocking: bool): bool =
   # Cannot be inline due to function table
   sendMpmc(chan, data, size, nonBlocking)
 
@@ -463,7 +463,7 @@ proc channel_recv_unbuffered_mpsc(chan: ChannelRaw, data: pointer, size: int32, 
   signal(chan.notFullCond)
   result = true
 
-proc channel_recv_mpsc(chan: ChannelRaw, data: pointer, size: int32, nonBlocking: bool): bool =
+proc channelRecvMpsc(chan: ChannelRaw, data: pointer, size: int32, nonBlocking: bool): bool =
   # Single consumer, no lock needed on reception
   assert not chan.isNil # TODO not nil compiler constraint
   assert not data.isNil
@@ -489,7 +489,7 @@ proc channel_recv_mpsc(chan: ChannelRaw, data: pointer, size: int32, nonBlocking
   signal(chan.notFullCond)
   result = true
 
-proc channel_close_mpsc(chan: ChannelRaw): bool =
+proc channelCloseMpsc(chan: ChannelRaw): bool =
   # Unsynchronized
   assert not chan.isNil
 
@@ -500,7 +500,7 @@ proc channel_close_mpsc(chan: ChannelRaw): bool =
     chan.closed.store(true, moRelaxed)
     result = true
 
-proc channel_open_mpsc(chan: ChannelRaw): bool =
+proc channelOpenMpsc(chan: ChannelRaw): bool =
   # Unsynchronized
   assert not chan.isNil
 
@@ -531,7 +531,7 @@ proc channel_send_unbuffered_spsc(chan: ChannelRaw, data: sink pointer, size: in
   signal(chan.notEmptyCond)
   result = true
 
-proc channel_send_spsc(chan: ChannelRaw, data: sink pointer, size: int32, nonBlocking: bool): bool =
+proc channelSendSpsc(chan: ChannelRaw, data: sink pointer, size: int32, nonBlocking: bool): bool =
   assert not chan.isNil
   assert not data.isNil
 
@@ -556,11 +556,11 @@ proc channel_send_spsc(chan: ChannelRaw, data: sink pointer, size: int32, nonBlo
   signal(chan.notEmptyCond)
   result = true
 
-proc channel_recv_spsc(chan: ChannelRaw, data: pointer, size: int32, nonBlocking: bool): bool =
+proc channelRecvSpsc(chan: ChannelRaw, data: pointer, size: int32, nonBlocking: bool): bool =
   # Cannot be inline due to function table
-  channel_recv_mpsc(chan, data, size, nonBlocking)
+  channelRecvMpsc(chan, data, size, nonBlocking)
 
-proc channel_close_spsc(chan: ChannelRaw): bool =
+proc channelCloseSpsc(chan: ChannelRaw): bool =
   # Unsynchronized
   assert not chan.isNil
 
@@ -571,7 +571,7 @@ proc channel_close_spsc(chan: ChannelRaw): bool =
     chan.closed.store(true, moRelaxed)
     result = true
 
-proc channel_open_spsc(chan: ChannelRaw): bool =
+proc channelOpenSpsc(chan: ChannelRaw): bool =
   # Unsynchronized
   assert not chan.isNil
 
@@ -588,34 +588,34 @@ proc channel_open_spsc(chan: ChannelRaw): bool =
 const
   send_fn = [
     Mpmc: sendMpmc,
-    Mpsc: channel_send_mpsc,
-    Spsc: channel_send_spsc
+    Mpsc: channelSendMpsc,
+    Spsc: channelSendSpsc
   ]
 
   recv_fn = [
     Mpmc: recvMpmc,
-    Mpsc: channel_recv_mpsc,
-    Spsc: channel_recv_spsc
+    Mpsc: channelRecvMpsc,
+    Spsc: channelRecvSpsc
   ]
 
   close_fn = [
-    Mpmc: channel_close_mpmc,
-    Mpsc: channel_close_mpsc,
-    Spsc: channel_close_spsc
+    Mpmc: channelCloseMpmc,
+    Mpsc: channelCloseMpsc,
+    Spsc: channelCloseSpsc
   ]
 
   open_fn = [
-    Mpmc: channel_open_mpmc,
-    Mpsc: channel_open_mpsc,
-    Spsc: channel_open_spsc
+    Mpmc: channelOpenMpmc,
+    Mpsc: channelOpenMpsc,
+    Spsc: channelOpenSpsc
   ]
 
-proc channel_send(chan: ChannelRaw, data: sink pointer, size: int32, nonBlocking: bool): bool {.inline.} =
+proc channelSend(chan: ChannelRaw, data: sink pointer, size: int32, nonBlocking: bool): bool {.inline.} =
   ## Send item to the channel (FIFO queue)
   ## (Insert at last)
   send_fn[chan.impl](chan, data, size, nonBlocking)
 
-proc channel_receive(chan: ChannelRaw, data: pointer, size: int32, nonBlocking: bool): bool {.inline.} =
+proc channelReceive(chan: ChannelRaw, data: pointer, size: int32, nonBlocking: bool): bool {.inline.} =
   ## Receive an item from the channel
   ## (Remove the first item)
   recv_fn[chan.impl](chan, data, size, nonBlocking)
@@ -640,12 +640,12 @@ proc `=`[T](dest: var Chan[T]; src: Chan[T]) {.error.}
 proc `=destroy`[T](c: var Chan[T]) =
   if c.d.buffer != nil: freeChannel(c.d)
 
-proc channel_send[T](chan: Chan[T], data: T, size: int32, nonBlocking: bool): bool {.inline.} =
+proc channelSend[T](chan: Chan[T], data: T, size: int32, nonBlocking: bool): bool {.inline.} =
   ## Send item to the channel (FIFO queue)
   ## (Insert at last)
   send_fn[chan.d.impl](chan.d, data.unsafeAddr, size, nonBlocking)
 
-proc channel_receive[T](chan: Chan[T], data: ptr T, size: int32, nonBlocking: bool): bool {.inline.} =
+proc channelReceive[T](chan: Chan[T], data: ptr T, size: int32, nonBlocking: bool): bool {.inline.} =
   ## Receive an item from the channel
   ## (Remove the first item)
   recv_fn[chan.d.impl](chan.d, data, size, nonBlocking)
@@ -653,7 +653,7 @@ proc channel_receive[T](chan: Chan[T], data: ptr T, size: int32, nonBlocking: bo
 func trySend*[T](c: Chan[T], src: sink Isolated[T]): bool {.inline.} =
   ## Sends item to the channel(non blocking).
   var data = src.extract
-  result = channel_send(c, data, int32 sizeof(data), true)
+  result = channelSend(c, data, int32 sizeof(data), true)
   if result:
     wasMoved(data)
 
@@ -662,12 +662,12 @@ template trySend*[T](c: Chan[T], src: T): bool =
 
 func tryRecv*[T](c: Chan[T], dst: var T): bool {.inline.} =
   ## Receives item from the channel(non blocking).
-  channel_receive(c, dst.addr, int32 sizeof(dst), true)
+  channelReceive(c, dst.addr, int32 sizeof(dst), true)
 
 func send*[T](c: Chan[T], src: sink Isolated[T]) {.inline.} =
   ## Sends item to the channel(blocking).
   var data = src.extract
-  discard channel_send(c, data, int32 sizeof(data), false)
+  discard channelSend(c, data, int32 sizeof(data), false)
   wasMoved(data)
 
 template send*[T](c: var Chan[T]; src: T) =
@@ -675,11 +675,11 @@ template send*[T](c: var Chan[T]; src: T) =
 
 func recv*[T](c: Chan[T], dst: var T) {.inline.} =
   ## Receives item from the channel(blocking).
-  discard channel_receive(c, dst.addr, int32 sizeof(dst), false)
+  discard channelReceive(c, dst.addr, int32 sizeof(dst), false)
 
 func recvIso*[T](c: Chan[T]): Isolated[T] {.inline.} =
   var dst: T
-  discard channel_receive(c, dst.addr, int32 sizeof(dst), false)
+  discard channelReceive(c, dst.addr, int32 sizeof(dst), false)
   result = isolate(dst)
 
 func open*[T](c: Chan[T]): bool {.inline.} =
