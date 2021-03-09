@@ -12,7 +12,7 @@
 import std / [intsets, tables]
 import ".." / [ast, options, lineinfos, types]
 
-import packed_ast, to_packed_ast, bitabs
+import packed_ast, ic, bitabs
 
 type
   AliveSyms* = seq[IntSet]

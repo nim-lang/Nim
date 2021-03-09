@@ -14,7 +14,7 @@
 import ast, astalgo, intsets, tables, options, lineinfos, hashes, idents,
   btrees, md5
 
-import ic / [packed_ast, to_packed_ast]
+import ic / [packed_ast, ic]
 
 type
   SigHash* = distinct MD5Digest
@@ -169,7 +169,7 @@ proc initEncoder*(g: ModuleGraph; module: PSym) =
   let id = module.position
   if id >= g.encoders.len:
     setLen g.encoders, id+1
-  to_packed_ast.initEncoder(g.encoders[id],
+  ic.initEncoder(g.encoders[id],
     g.packed[id].fromDisk, module, g.config, g.startupPackedConfig)
 
 type

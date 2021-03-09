@@ -23,7 +23,7 @@ import std/[packedsets, algorithm]
 import ".."/[ast, options, lineinfos, modulegraphs, cgendata, cgen,
   pathutils, extccomp, msgs]
 
-import packed_ast, to_packed_ast, dce, rodfiles
+import packed_ast, ic, dce, rodfiles
 
 proc unpackTree(g: ModuleGraph; thisModule: int;
                 tree: PackedTree; n: NodePos): PNode =
