@@ -114,7 +114,8 @@ since (1, 5):
   template jsExport*(symbol: typed{sym}; name = "") =
     ## https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Statements/export
     ##
-    ## .. Note:: Using `name = "default"` `is special in JavaScript <https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Statements/export#using_the_default_export>`_
+    ## .. Note:: Using `name = "default"` is `special in JavaScript <https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Statements/export#using_the_default_export>`_.
+    ##           jsExport `can be used in browsers <https://caniuse.com/mdn-javascript_statements_export>`_
     ##
     ## .. Warning:: jsExport must be called at top level only. jsExport can not be called from a template.
     var _ {.codegenDecl: "const $2", exportc: astToStr(symbol).} = symbol
