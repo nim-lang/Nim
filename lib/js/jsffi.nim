@@ -523,11 +523,11 @@ macro bindMethod*(procedure: typed): auto =
 
 
 since (1, 5):
-  proc `&&=`*(x, y: JsObject): JsObject {.importcpp: "(# &&= #)", discardable.}
+  func `&&=`*(lhs, rhs: JsObject): JsObject {.importjs: "(# &&= #)", discardable.}
     ## https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Operators/Logical_AND_assignment
 
-  proc `||=`*(x, y: JsObject): JsObject {.importcpp: "(# ||= #)", discardable.}
+  func `||=`*(lhs, rhs: JsObject): JsObject {.importjs: "(# ||= #)", discardable.}
     ## https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Operators/Logical_OR_assignment
 
-  proc `??=`*(x, y: JsObject): JsObject {.importcpp: "(# ??= #)", discardable.}
+  func `??=`*(lhs, rhs: JsObject): JsObject {.importjs: "(# ??= #)", discardable.}
     ## https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Operators/Logical_nullish_assignment
