@@ -15,7 +15,8 @@ end
 '''
 
 """
-# bug 9440
+
+# bug #9440
 block:
   type
     X = object
