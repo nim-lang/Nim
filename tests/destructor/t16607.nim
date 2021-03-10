@@ -2,6 +2,8 @@ discard """
   matrix: "--gc:refc; --gc:arc"
 """
 
+# bug #16607
+
 type
   O {.requiresInit.} = object
     initialized: bool
