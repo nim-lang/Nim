@@ -36,6 +36,7 @@ when not defined(js) and not defined(nimsuggest):
   {.fatal: "Module jsFFI is designed to be used with the JavaScript backend.".}
 
 import std/[macros, tables]
+import std/private/since
 
 const
   setImpl = "#[#] = #"
@@ -519,3 +520,14 @@ macro bindMethod*(procedure: typed): auto =
       newTree(nnkStmtList, thisQuote, call)
   )
   result = body
+
+
+since (1, 5):
+  proc `&&=`*(x, y: JsObject): JsObject {.importcpp: "(# &&= #)", discardable.}
+    ## https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Operators/Logical_AND_assignment
+
+  proc `||=`*(x, y: JsObject): JsObject {.importcpp: "(# ||= #)", discardable.}
+    ## https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Operators/Logical_OR_assignment
+
+  proc `??=`*(x, y: JsObject): JsObject {.importcpp: "(# ??= #)", discardable.}
+    ## https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Operators/Logical_nullish_assignment
