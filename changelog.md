@@ -210,6 +210,12 @@ provided by the operating system.
 
 - Added `htmlgen.portal` for [making "SPA style" pages using HTML only.](https://web.dev/hands-on-portals)
 
+- Added logical assignment operators
+  [&&=](https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Operators/Logical_AND_assignment),
+  [||=](https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Operators/Logical_OR_assignment), and
+  [??=](https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Operators/Logical_nullish_assignment)
+  in the `jsffi` module.
+
 
 ## Language changes
 
