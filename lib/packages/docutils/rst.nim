@@ -471,12 +471,15 @@ type
                                 ## documenation fragment that will be added
                                 ## in case of error/warning reporting to
                                 ## (relative) line/column of the token.
-                                ## For standalone text should be line=1 and
-                                ## col=0 (Nim global reporting adds ColOffset=1)
     hasToc*: bool
     curAnchor*: string          # variable to track latest anchor in s.anchors
 
   EParseError* = object of ValueError
+
+const
+  LineRstInit* = 1 ## Initial line number for standalone RST text
+  ColRstInit* = 0 ## Initial column number for standalone RST text
+                  ## (Nim global reporting adds ColOffset=1)
 
 template currentTok(p: RstParser): Token = p.tok[p.idx]
 template prevTok(p: RstParser): Token = p.tok[p.idx - 1]
@@ -547,8 +550,8 @@ proc initParser(p: var RstParser, sharedState: PSharedState) =
   p.idx = 0
   p.filename = ""
   p.hasToc = false
-  p.col = 0
-  p.line = 1
+  p.col = ColRstInit
+  p.line = LineRstInit
   p.s = sharedState
 
 proc addNodesAux(n: PRstNode, result: var string) =
@@ -1951,25 +1954,26 @@ proc parseEnumList(p: var RstParser): PRstNode =
     if match(p, p.idx, wildcards[w]): break
     inc w
   assert w < wildcards.len
-  template checkAfterNewline =
+  proc checkAfterNewline(p: RstParser, report: bool): bool =
     let j = tokenAfterNewline(p, start=p.idx+1)
     if p.tok[j].kind notin {tkIndent, tkEof} and
         p.tok[j].col < p.tok[p.idx+wildToken[w]].col and
         (p.tok[j].col > col or
           (p.tok[j].col == col and not match(p, j, wildcards[w]))):
-      # check `result == nil` to avoid duplication of warning since for
-      # subsequent enum.items parseEnumList will be called second time
-      if result == nil:
+      if report:
         let n = p.line + p.tok[j].line
-        let msg = "\n" & dedent """
+        let msg = "\n" & """
           not enough indentation on line $2
               (if it's continuation of enumeration list),
           or no blank line after line $1 (if it should be the next paragraph),
           or no escaping \ at the beginning of line $1
-              (if lines $1..$2 are a normal paragraph, not enum. list)"""
-        rstMessage(p, mwRstStyle, indent(msg, 2) % [$(n-1), $n])
-      return
-  checkAfterNewline
+              (if lines $1..$2 are a normal paragraph, not enum. list)""".
+          unindent(8)
+        rstMessage(p, mwRstStyle, msg % [$(n-1), $n])
+      result = false
+    else:
+      result = true
+  if not checkAfterNewline(p, report = true): return nil
   result = newRstNodeA(p, rnEnumList)
   let autoEnums = if roSupportMarkdown in p.s.options: @["#", "1"] else: @["#"]
   var prevAE = ""  # so as not allow mixing auto-enumerators `1` and `#`
@@ -1990,7 +1994,9 @@ proc parseEnumList(p: var RstParser): PRstNode =
     result.add(item)
     if currentTok(p).kind == tkIndent and currentTok(p).ival == col and
         match(p, p.idx+1, wildcards[w]):
-      checkAfterNewline
+      # don't report to avoid duplication of warning since for
+      # subsequent enum. items parseEnumList will be called second time:
+      if not checkAfterNewline(p, report = false): return nil
       let enumerator = p.tok[p.idx + 1 + wildIndex[w]].symbol
       # check that it's in sequence: enumerator == next(prevEnum)
       if "n" in wildcards[w]:  # arabic numeral

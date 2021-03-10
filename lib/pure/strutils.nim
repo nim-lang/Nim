@@ -1438,47 +1438,43 @@ func unindent*(s: string, count: Natural = int.high,
     result.add(line[indentCount*padding.len .. ^1])
     i.inc
 
-since (1, 3):
-  func indentation*(s: string): Natural =
-    ## Returns the amount of indentation all lines of `s` have in common,
-    ## ignoring lines that consist only of whitespace.
-    result = int.high
-    for line in s.splitLines:
-      for i, c in line:
-        if i >= result: break
-        elif c != ' ':
-          result = i
-          break
-    if result == int.high:
-      result = 0
+func indentation*(s: string): Natural {.since: (1, 3).} =
+  ## Returns the amount of indentation all lines of `s` have in common,
+  ## ignoring lines that consist only of whitespace.
+  result = int.high
+  for line in s.splitLines:
+    for i, c in line:
+      if i >= result: break
+      elif c != ' ':
+        result = i
+        break
+  if result == int.high:
+    result = 0
 
-  func dedent*(s: string, count: Natural): string {.rtl, extern: "nsuDedent".} =
-    unindent(s, count, " ")
+func dedent*(s: string, count: Natural = indentation(s)): string {.rtl,
+    extern: "nsuDedent", since: (1, 3).} =
+  ## Unindents each line in `s` by `count` amount of `padding`.
+  ## The only difference between this and the
+  ## `unindent func<#unindent,string,Natural,string>`_ is that this by default
+  ## only cuts off the amount of indentation that all lines of `s` share as
+  ## opposed to all indentation. It only supports spaces as padding.
+  ##
+  ## **Note:** This does not preserve the new line characters used in `s`.
+  ##
+  ## See also:
+  ## * `unindent func<#unindent,string,Natural,string>`_
+  ## * `align func<#align,string,Natural,char>`_
+  ## * `alignLeft func<#alignLeft,string,Natural,char>`_
+  ## * `spaces func<#spaces,Natural>`_
+  ## * `indent func<#indent,string,Natural,string>`_
+  runnableExamples:
+    let x = """
+      Hello
+        There
+    """.dedent()
 
-  proc dedent*(a: string): string {.inline.} =
-    ## Unindents each line in `s` by `count` amount of `padding`.
-    ## The only difference between this and the
-    ## `unindent func<#unindent,string,Natural,string>`_ is that this by default
-    ## only cuts off the amount of indentation that all lines of `s` share as
-    ## opposed to all indentation. It only supports spaces as padding.
-    ##
-    ## **Note:** This does not preserve the new line characters used in `s`.
-    ##
-    ## See also:
-    ## * `unindent func<#unindent,string,Natural,string>`_
-    ## * `align func<#align,string,Natural,char>`_
-    ## * `alignLeft func<#alignLeft,string,Natural,char>`_
-    ## * `spaces func<#spaces,Natural>`_
-    ## * `indent func<#indent,string,Natural,string>`_
-    # workaround, see https://github.com/timotheecour/Nim/issues/521
-    runnableExamples:
-      let x = """
-        Hello
-          There
-      """.dedent()
-
-      doAssert x == "Hello\n  There\n"
-    dedent(a, indentation(a))
+    doAssert x == "Hello\n  There\n"
+  unindent(s, count, " ")
 
 func delete*(s: var string, first, last: int) {.rtl, extern: "nsuDelete".} =
   ## Deletes in `s` (must be declared as `var`) the characters at positions
