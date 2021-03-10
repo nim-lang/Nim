@@ -1647,7 +1647,7 @@ proc renderTree*(n: PNode, renderFlags: TRenderFlags = {}): string =
 
 proc `$`*(n: PNode): string = n.renderTree
 
-proc renderModule*(n: PNode, infile, outfile: string,
+proc renderModule*(n: PNode, outfile: string,
                    renderFlags: TRenderFlags = {};
                    fid = FileIndex(-1);
                    conf: ConfigRef = nil) =

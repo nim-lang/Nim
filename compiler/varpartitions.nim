@@ -631,7 +631,8 @@ const
     nkTypeSection, nkProcDef, nkConverterDef,
     nkMethodDef, nkIteratorDef, nkMacroDef, nkTemplateDef, nkLambda, nkDo,
     nkFuncDef, nkConstSection, nkConstDef, nkIncludeStmt, nkImportStmt,
-    nkExportStmt, nkPragma, nkCommentStmt, nkBreakState, nkTypeOfExpr}
+    nkExportStmt, nkPragma, nkCommentStmt, nkBreakState,
+    nkTypeOfExpr, nkMixinStmt, nkBindStmt}
 
 proc potentialMutationViaArg(c: var Partitions; n: PNode; callee: PType) =
   if constParameters in c.goals and tfNoSideEffect in callee.flags:

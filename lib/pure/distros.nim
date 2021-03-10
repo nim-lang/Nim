@@ -9,12 +9,12 @@
 
 ## This module implements the basics for Linux distribution ("distro")
 ## detection and the OS's native package manager. Its primary purpose is to
-## produce output for Nimble packages like::
+## produce output for Nimble packages, like::
 ##
-##  To complete the installation, run:
+##   To complete the installation, run:
 ##
-##  sudo apt-get install libblas-dev
-##  sudo apt-get install libvoodoo
+##   sudo apt-get install libblas-dev
+##   sudo apt-get install libvoodoo
 ##
 ## The above output could be the result of a code snippet like:
 ##
@@ -27,16 +27,16 @@
 ##
 ## See `packaging <packaging.html>`_ for hints on distributing Nim using OS packages.
 
-from strutils import contains, toLowerAscii
+from std/strutils import contains, toLowerAscii
 
 when not defined(nimscript):
-  from osproc import execProcess
-  from os import existsEnv
+  from std/osproc import execProcess
+  from std/os import existsEnv
 
 type
   Distribution* {.pure.} = enum ## the list of known distributions
     Windows                     ## some version of Windows
-    Posix                       ## some Posix system
+    Posix                       ## some POSIX system
     MacOSX                      ## some version of OSX
     Linux                       ## some version of Linux
     Ubuntu
@@ -133,8 +133,7 @@ type
 
 
 const
-  LacksDevPackages* = {Distribution.Gentoo, Distribution.Slackware,
-    Distribution.ArchLinux}
+  LacksDevPackages* = {Distribution.Gentoo, Distribution.Slackware, Distribution.ArchLinux}
 
 # we cache the result of the 'cmdRelease'
 # execution for faster platform detections.
@@ -157,8 +156,7 @@ proc detectOsWithAllCmd(d: Distribution): bool =
 
 proc detectOsImpl(d: Distribution): bool =
   case d
-  of Distribution.Windows: ## some version of Windows
-    result = defined(windows)
+  of Distribution.Windows: result = defined(windows)
   of Distribution.Posix: result = defined(posix)
   of Distribution.MacOSX: result = defined(macosx)
   of Distribution.Linux: result = defined(linux)
@@ -183,8 +181,8 @@ proc detectOsImpl(d: Distribution): bool =
       of Distribution.ArchLinux:
         result = "arch" in osReleaseID()
       of Distribution.NixOS:
-        result = existsEnv("NIX_BUILD_TOP") or existsEnv("__NIXOS_SET_ENVIRONMENT_DONE")
         # Check if this is a Nix build or NixOS environment
+        result = existsEnv("NIX_BUILD_TOP") or existsEnv("__NIXOS_SET_ENVIRONMENT_DONE")
       of Distribution.OpenSUSE:
         result = "suse" in toLowerAscii(uname()) or "suse" in toLowerAscii(release())
       of Distribution.GoboLinux:
@@ -200,7 +198,7 @@ proc detectOsImpl(d: Distribution): bool =
       result = false
 
 template detectOs*(d: untyped): bool =
-  ## Distro/OS detection. For convenience the
+  ## Distro/OS detection. For convenience, the
   ## required `Distribution.` qualifier is added to the
   ## enum value.
   detectOsImpl(Distribution.d)
@@ -209,7 +207,7 @@ when not defined(nimble):
   var foreignDeps: seq[string] = @[]
 
 proc foreignCmd*(cmd: string; requiresSudo = false) =
-  ## Registers a foreign command to the intern list of commands
+  ## Registers a foreign command to the internal list of commands
   ## that can be queried later.
   let c = (if requiresSudo: "sudo " else: "") & cmd
   when defined(nimble):
@@ -218,11 +216,11 @@ proc foreignCmd*(cmd: string; requiresSudo = false) =
     foreignDeps.add(c)
 
 proc foreignDepInstallCmd*(foreignPackageName: string): (string, bool) =
-  ## Returns the distro's native command line to install 'foreignPackageName'
+  ## Returns the distro's native command to install `foreignPackageName`
   ## and whether it requires root/admin rights.
   let p = foreignPackageName
   when defined(windows):
-    result = ("Chocolatey install " & p, false)
+    result = ("choco install " & p, false)
   elif defined(bsd):
     result = ("ports install " & p, true)
   elif defined(linux):
@@ -261,17 +259,12 @@ proc foreignDepInstallCmd*(foreignPackageName: string): (string, bool) =
     result = ("brew install " & p, false)
 
 proc foreignDep*(foreignPackageName: string) =
-  ## Registers 'foreignPackageName' to the internal list of foreign deps.
-  ## It is your job to ensure the package name
+  ## Registers `foreignPackageName` to the internal list of foreign deps.
+  ## It is your job to ensure that the package name is correct.
   let (installCmd, sudo) = foreignDepInstallCmd(foreignPackageName)
-  foreignCmd installCmd, sudo
+  foreignCmd(installCmd, sudo)
 
 proc echoForeignDeps*() =
   ## Writes the list of registered foreign deps to stdout.
   for d in foreignDeps:
     echo d
-
-when false:
-  foreignDep("libblas-dev")
-  foreignDep "libfoo"
-  echoForeignDeps()
