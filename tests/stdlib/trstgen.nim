@@ -197,7 +197,7 @@ suite "RST/Markdown general":
 not in table"""
     let output1 = input1.toHtml
     #[
-    xxx `\|` inside a table cell should render as `|`
+    TODO: `\|` inside a table cell should render as `|`
         `|` outside a table cell should render as `\|`
     consistently with markdown, see https://stackoverflow.com/a/66557930/1426932
     ]#
