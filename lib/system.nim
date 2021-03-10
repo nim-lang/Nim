@@ -2837,7 +2837,7 @@ proc addEscapedChar*(s: var string, c: char) {.noSideEffect, inline.} =
   ## * replaces any `\f` by `\\f`
   ## * replaces any `\r` by `\\r`
   ## * replaces any `\e` by `\\e`
-  ## * replaces any other character not in the set `{'\21..'\126'}
+  ## * replaces any other character not in the set `{\21..\126}`
   ##   by `\xHH` where `HH` is its hexadecimal value.
   ##
   ## The procedure has been designed so that its output is usable for many
