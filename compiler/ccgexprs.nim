@@ -2578,45 +2578,31 @@ proc upConv(p: BProc, n: PNode, d: var TLoc) =
                         [getTypeDesc(p.module, dest), addrLoc(p.config, a)], a.storage)
 
 proc downConv(p: BProc, n: PNode, d: var TLoc) =
-  if p.module.compileToCpp:
-    discard getTypeDesc(p.module, skipTypes(n[0].typ, abstractPtrs))
-    expr(p, n[0], d)     # downcast does C++ for us
+  var arg = n[0]
+  while arg.kind == nkObjDownConv: arg = arg[0]
+
+  let dest = skipTypes(n.typ, abstractPtrs)
+  let src = skipTypes(arg.typ, abstractPtrs)
+  discard getTypeDesc(p.module, src)
+  var a: TLoc
+  initLocExpr(p, arg, a)
+  let isRef = skipTypes(arg.typ, abstractInstOwned).kind in {tyRef, tyPtr, tyVar, tyLent}
+  if isRef and d.k == locNone and n.typ.skipTypes(abstractInstOwned).kind in {tyRef, tyPtr} and n.isLValue:
+    # it can happen that we end up generating '&&x->Sup' here, so we pack
+    # the '&x->Sup' into a temporary and then those address is taken
+    # (see bug #837). However sometimes using a temporary is not correct:
+    # init(TFigure(my)) # where it is passed to a 'var TFigure'. We test
+    # this by ensuring the destination is also a pointer:
+    # preserve lvalueness
+    putIntoDest(p, d, n,
+              "(*(($1*) (&($2))))" % [getTypeDesc(p.module, n.typ), rdLoc(a)], a.storage)
+  elif p.module.compileToCpp:
+    # C++ implicitly downcasts for us
+    expr(p, arg, d)
   else:
-    var dest = skipTypes(n.typ, abstractPtrs)
-
-    var arg = n[0]
-    while arg.kind == nkObjDownConv: arg = arg[0]
-
-    var src = skipTypes(arg.typ, abstractPtrs)
-    discard getTypeDesc(p.module, src)
-    var a: TLoc
-    initLocExpr(p, arg, a)
-    var r = rdLoc(a)
-    let isRef = skipTypes(arg.typ, abstractInstOwned).kind in {tyRef, tyPtr, tyVar, tyLent}
-    if isRef:
-      r.add("->Sup")
-    else:
-      r.add(".Sup")
+    var r = rdLoc(a) & (if isRef: "->Sup" else: ".Sup")
     for i in 2..abs(inheritanceDiff(dest, src)): r.add(".Sup")
-    if isRef:
-      # it can happen that we end up generating '&&x->Sup' here, so we pack
-      # the '&x->Sup' into a temporary and then those address is taken
-      # (see bug #837). However sometimes using a temporary is not correct:
-      # init(TFigure(my)) # where it is passed to a 'var TFigure'. We test
-      # this by ensuring the destination is also a pointer:
-      if d.k == locNone and skipTypes(n.typ, abstractInstOwned).kind in {tyRef, tyPtr, tyVar, tyLent}:
-        if arg.typ.skipTypes(abstractInstOwned).kind in {tyRef, tyPtr} and n.isLValue:
-          # preserve lvalueness
-          putIntoDest(p, d, n,
-                    "(*(($1*) (&($2))))" % [getTypeDesc(p.module, n.typ), rdLoc(a)], a.storage)
-        else:
-          getTemp(p, n.typ, d)
-          linefmt(p, cpsStmts, "$1 = &$2;$n", [rdLoc(d), r])
-      else:
-        r = "&" & r
-        putIntoDest(p, d, n, r, a.storage)
-    else:
-      putIntoDest(p, d, n, r, a.storage)
+    putIntoDest(p, d, n, if isRef: "&" & r else: r, a.storage)
 
 proc exprComplexConst(p: BProc, n: PNode, d: var TLoc) =
   let t = n.typ
