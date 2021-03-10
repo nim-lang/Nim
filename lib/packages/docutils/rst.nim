@@ -1973,7 +1973,8 @@ proc parseEnumList(p: var RstParser): PRstNode =
       result = false
     else:
       result = true
-  if not checkAfterNewline(p, report = true): return nil
+  if not checkAfterNewline(p, report = true):
+    return nil
   result = newRstNodeA(p, rnEnumList)
   let autoEnums = if roSupportMarkdown in p.s.options: @["#", "1"] else: @["#"]
   var prevAE = ""  # so as not allow mixing auto-enumerators `1` and `#`
@@ -1996,7 +1997,8 @@ proc parseEnumList(p: var RstParser): PRstNode =
         match(p, p.idx+1, wildcards[w]):
       # don't report to avoid duplication of warning since for
       # subsequent enum. items parseEnumList will be called second time:
-      if not checkAfterNewline(p, report = false): return nil
+      if not checkAfterNewline(p, report = false):
+        break
       let enumerator = p.tok[p.idx + 1 + wildIndex[w]].symbol
       # check that it's in sequence: enumerator == next(prevEnum)
       if "n" in wildcards[w]:  # arabic numeral
