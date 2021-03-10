@@ -196,7 +196,11 @@ suite "RST/Markdown general":
 |              | F2 without pipe
 not in table"""
     let output1 = input1.toHtml
-    # xxx we should support: `code \|`:litteral so that we can escape `|` inside a table.
+    #[
+    xxx `\|` inside a table cell should render as `|`
+        `|` outside a table cell should render as `\|`
+    consistently with markdown, see https://stackoverflow.com/a/66557930/1426932
+    ]#
     doAssert output1 == """
 <table border="1" class="docutils"><tr><th>A1 header</th><th>A2 | not fooled</th></tr>
 <tr><td>C1</td><td>C2 <strong>bold</strong></td></tr>
