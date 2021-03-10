@@ -84,6 +84,10 @@ template runTimezoneTests() =
       "2001-01-12T08:04:05Z", 11)
   parseTest("2001-01-12T15:04:05 +07:30:59", "yyyy-MM-dd'T'HH:mm:ss zzzz",
       "2001-01-12T07:33:06Z", 11)
+  parseTest("2001-01-12T15:04:05 +0700", "yyyy-MM-dd'T'HH:mm:ss ZZZ",
+      "2001-01-12T08:04:05Z", 11)
+  parseTest("2001-01-12T15:04:05 +073059", "yyyy-MM-dd'T'HH:mm:ss ZZZZ",
+      "2001-01-12T07:33:06Z", 11)
   # Kitchen     = "3:04PM"
   parseTestTimeOnly("3:04PM", "h:mmtt", "15:04:00")
 
