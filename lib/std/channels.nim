@@ -636,7 +636,7 @@ proc `=`[T](dest: var Chan[T]; src: Chan[T]) {.error.}
 proc `=destroy`[T](c: var Chan[T]) =
   if c.d.buffer != nil: freeChannel(c.d)
 
-proc channelSend[T](chan: Chan[T], data: T, size: int, nonBlocking: bool): bool {.inline.} =
+proc channelSend[T](chan: Chan[T], data: sink T, size: int, nonBlocking: bool): bool {.inline.} =
   ## Send item to the channel (FIFO queue)
   ## (Insert at last)
   send_fn[chan.d.impl](chan.d, data.unsafeAddr, size, nonBlocking)
