@@ -99,7 +99,7 @@ proc libCandidates*(s: string, dest: var seq[string]) =
 proc loadLibPattern*(pattern: string, globalSymbols = false): LibHandle =
   ## loads a library with name matching `pattern`, similar to what `dynlib`
   ## pragma does. Returns nil if the library could not be loaded.
-  ## Warning: this proc uses the GC and so cannot be used to load the GC.
+  ## .. warning:: this proc uses the GC and so cannot be used to load the GC.
   var candidates = newSeq[string]()
   libCandidates(pattern, candidates)
   for c in candidates:
