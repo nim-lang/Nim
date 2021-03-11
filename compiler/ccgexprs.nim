@@ -2567,7 +2567,6 @@ proc upConv(p: BProc, n: PNode, d: var TLoc) =
               [r, checkFor, raiseInstr(p)])
   if n[0].typ.kind != tyObject:
     if n.isLValue:
-      # preserve lvalueness
       putIntoDest(p, d, n,
                 "(*(($1*) (&($2))))" % [getTypeDesc(p.module, n.typ), rdLoc(a)], a.storage)
     else:
@@ -2584,8 +2583,6 @@ proc downConv(p: BProc, n: PNode, d: var TLoc) =
   let dest = skipTypes(n.typ, abstractPtrs)
   let src = skipTypes(arg.typ, abstractPtrs)
   discard getTypeDesc(p.module, src)
-  var a: TLoc
-  initLocExpr(p, arg, a)
   let isRef = skipTypes(arg.typ, abstractInstOwned).kind in {tyRef, tyPtr, tyVar, tyLent}
   if isRef and d.k == locNone and n.typ.skipTypes(abstractInstOwned).kind in {tyRef, tyPtr} and n.isLValue:
     # it can happen that we end up generating '&&x->Sup' here, so we pack
@@ -2593,13 +2590,16 @@ proc downConv(p: BProc, n: PNode, d: var TLoc) =
     # (see bug #837). However sometimes using a temporary is not correct:
     # init(TFigure(my)) # where it is passed to a 'var TFigure'. We test
     # this by ensuring the destination is also a pointer:
-    # preserve lvalueness
+    var a: TLoc
+    initLocExpr(p, arg, a)
     putIntoDest(p, d, n,
               "(*(($1*) (&($2))))" % [getTypeDesc(p.module, n.typ), rdLoc(a)], a.storage)
   elif p.module.compileToCpp:
     # C++ implicitly downcasts for us
     expr(p, arg, d)
   else:
+    var a: TLoc
+    initLocExpr(p, arg, a)
     var r = rdLoc(a) & (if isRef: "->Sup" else: ".Sup")
     for i in 2..abs(inheritanceDiff(dest, src)): r.add(".Sup")
     putIntoDest(p, d, n, if isRef: "&" & r else: r, a.storage)
