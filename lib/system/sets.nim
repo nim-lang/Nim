@@ -21,7 +21,6 @@ const useVCC_builtins = defined(vcc) and useBuiltins
 type
   NimSet = array[0..4*2048-1, uint8]
 
-# bitops can't be imported here, therefore the code duplication.
 
 template countBitsImpl(n: uint32): int =
   # generic formula is from: https://graphics.stanford.edu/~seander/bithacks.html#CountBitsSetParallel
