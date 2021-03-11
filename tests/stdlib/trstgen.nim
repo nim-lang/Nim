@@ -749,17 +749,21 @@ Test1
     let input8 = dedent """
       Paragraph.
 
-      A. string1
+      A. stringA
+      B. stringB
+      C. string1
       string2
       """
     let output8 = input8.toHtml(
-        expectWarnings = @["input(3, 0) Warning: RST style: \n" &
+        expectWarnings = @["input(6, 0) Warning: RST style: \n" &
             """
-            not enough indentation on line 4
+            not enough indentation on line 6
                 (if it's continuation of enumeration list),
-            or no blank line after line 3 (if it should be the next paragraph),
-            or no escaping \ at the beginning of line 3
-                (if lines 3..4 are a normal paragraph, not enum. list)""".unindent(10)])
+            or no blank line after line 5 (if it should be the next paragraph),
+            or no escaping \ at the beginning of line 5
+                (if lines 5..6 are a normal paragraph, not enum. list)""".unindent(10)])
+    doAssert output8 == "Paragraph.<ol class=\"upperalpha simple\">" &
+        "<li>stringA</li>\n<li>stringB</li>\n</ol>\n<p>C. string1 string2 </p>\n"
 
   test "Markdown enumerated lists":
     let input1 = dedent """

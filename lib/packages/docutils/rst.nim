@@ -1969,7 +1969,7 @@ proc parseEnumList(p: var RstParser): PRstNode =
           or no escaping \ at the beginning of line $1
               (if lines $1..$2 are a normal paragraph, not enum. list)""".
           unindent(8)
-        rstMessage(p, mwRstStyle, msg % [$(n-1), $n])
+        rstMessage(p, mwRstStyle, msg % [$(n-1), $n], p.tok[j].line, col)
       result = false
     else:
       result = true
