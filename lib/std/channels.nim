@@ -109,7 +109,7 @@ type
     head {.align: cacheLineSize.} : int     # Items are taken from head and new items are inserted at tail
     tail: int
     buffer: ptr UncheckedArray[byte]
-    atomicCounter: int
+    atomicCounter: Atomic[int]
 
   ChannelCache = ptr ChannelCacheObj
   ChannelCacheObj = object
@@ -252,7 +252,7 @@ proc allocChannel(size, n: int): ChannelRaw =
   result.itemsize = size
   result.head = 0
   result.tail = 0
-  result.atomicCounter = 0
+  result.atomicCounter.store(0, moRelaxed)
 
   when nimChannelCacheSize > 0:
     # Allocate a cache as well if one of the proper size doesn't exist
@@ -325,7 +325,6 @@ proc sendMpmc(chan: ChannelRaw, data: sink pointer, size: int, nonBlocking: bool
     return false
 
   acquire(chan.tailLock)
-
 
   if nonBlocking and chan.isFull():
     # Another thread was faster
@@ -427,26 +426,20 @@ type
   Channel*[T] = object ## Typed channels
     d: ChannelRaw
 
+
 proc `=destroy`*[T](c: var Channel[T]) =
   if c.d != nil:
-    if (when compileOption("threads"):
-          atomicLoadN(addr c.d[].atomicCounter, ATOMIC_CONSUME) == 0 else:
-          c.d[].atomicCounter == 0):
+    if load(c.d[].atomicCounter, moAcquire) == 0:
       if c.d.buffer != nil:
         freeChannel(c.d)
     else:
-      when compileOption("threads"):
-        discard atomicDec(c.d[].atomicCounter)
-      else:
-        dec(c.d[].atomicCounter)
+      atomicDec(c.d[].atomicCounter)
 
 proc `=`*[T](dest: var Channel[T], src: Channel[T]) =
-  # Shares `Channel` by reference counting.
+  ## Shares `Channel` by reference counting.
   if src.d != nil:
-    when compileOption("threads"):
-      discard atomicInc(src.d[].atomicCounter)
-    else:
-      inc(src.d[].atomicCounter)
+    atomicInc(src.d[].atomicCounter)
+
   if dest.d != nil:
     `=destroy`(dest)
   dest.d = src.d
