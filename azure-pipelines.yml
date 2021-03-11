@@ -25,6 +25,9 @@ jobs:
     clean: all
 
   steps:
+    - checkout: self
+      fetchDepth: 1
+
     - bash: |
         set -e
         echo "ok1"
@@ -43,6 +46,18 @@ jobs:
         # sudo apt-fast update -qq
         # sudo apt-fast update
         sudo apt-get update
+
+        echo "ok8"
+        DEBIAN_FRONTEND='noninteractive' \
+          sudo apt-get install --no-install-recommends --allow-downgrades -y \
+            g++-multilib
+
+        echo "ok9"
+
+        DEBIAN_FRONTEND='noninteractive' \
+          sudo apt-get install --no-install-recommends --allow-downgrades -y \
+            g++-multilib gcc-multilib
+
         echo "ok4"
         # `:i386` (e.g. in `libffi-dev:i386`) is needed otherwise you may get:
         # `could not load: libffi.so` during dynamic loading.
