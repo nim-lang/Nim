@@ -6,7 +6,7 @@ discard """
   disabled: "osx"
 """
 
-include channel
+include std/channels
 
 import std/unittest
 
