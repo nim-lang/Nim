@@ -240,7 +240,7 @@ block: # [ChannelRaw] ChannelRaw caching implementation
 
     chan[3] = allocChannel(sizeof(char), 5)
     chan[4] = allocChannel(sizeof(int64), 8)
-    chan[5] = allocChannel(sizeof(ptr float64), 16)
+    chan[5] = allocChannel(sizeof(ptr float32), 24)
 
     # We have caches ready to store specific channel kinds
     check: channelCacheLen == 6 # Cumulated with previous test

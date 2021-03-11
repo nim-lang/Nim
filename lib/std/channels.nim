@@ -121,11 +121,10 @@ type
 
 # ----------------------------------------------------------------------------------
 
-template incmod(idx, size: int): int =
-  (idx + 1) mod size
-
-template numItems(chan: ChannelRaw): int =
-  (chan.size + chan.tail - chan.head) mod chan.size
+proc numItems(chan: ChannelRaw): int {.inline.} =
+  result = chan.tail - chan.head
+  if result < 0:
+    result += 2 * chan.size
 
 template isFull(chan: ChannelRaw): bool =
   chan.numItems() == chan.size - 1
@@ -315,7 +314,7 @@ proc sendUnbufferedMpmc(chan: ChannelRaw, data: sink pointer, size: int, nonBloc
   result = true
 
 proc sendMpmc(chan: ChannelRaw, data: sink pointer, size: int, nonBlocking: bool): bool =
-  assert not chan.isNil # TODO not nil compiler constraint
+  assert not chan.isNil
   assert not data.isNil
 
   if isUnbuffered(chan):
@@ -337,9 +336,15 @@ proc sendMpmc(chan: ChannelRaw, data: sink pointer, size: int, nonBlocking: bool
   assert not chan.isFull
   assert size <= chan.itemsize
 
-  copyMem(chan.buffer[chan.tail * chan.itemsize].addr, data, size)
 
-  chan.tail = chan.tail.incmod(chan.size)
+  let writeIdx = if chan.tail < chan.size: chan.tail
+                 else: chan.tail - chan.size
+
+  copyMem(chan.buffer[writeIdx * chan.itemsize].addr, data, size)
+
+  chan.tail += 1
+  if chan.tail == 2 * chan.size:
+    chan.tail = 0
 
   release(chan.tailLock)
   signal(chan.notEmptyCond)
@@ -361,6 +366,7 @@ proc recvUnbufferedMpmc(chan: ChannelRaw, data: pointer, size: int, nonBlocking:
 
   assert chan.isFullUnbuf()
   assert size <= chan.itemsize
+
   copyMem(data, chan.buffer, size)
 
   chan.head = 0
@@ -371,7 +377,7 @@ proc recvUnbufferedMpmc(chan: ChannelRaw, data: pointer, size: int, nonBlocking:
   result = true
 
 proc recvMpmc(chan: ChannelRaw, data: pointer, size: int, nonBlocking: bool): bool =
-  assert not chan.isNil # TODO not nil compiler constraint
+  assert not chan.isNil
   assert not data.isNil
 
   if isUnbuffered(chan):
@@ -392,9 +398,16 @@ proc recvMpmc(chan: ChannelRaw, data: pointer, size: int, nonBlocking: bool): bo
 
   assert not chan.isEmpty()
   assert size <= chan.itemsize
-  copyMem(data, chan.buffer[chan.head * chan.itemsize].addr, size)
 
-  chan.head = chan.head.incmod(chan.size)
+  let readIdx = if chan.head < chan.size: chan.head
+                else: chan.head - chan.size
+
+  copyMem(data, chan.buffer[readIdx * chan.itemsize].addr, size)
+
+  chan.head += 1
+  if chan.head == 2 * chan.size:
+    chan.head = 0
+
   release(chan.headLock)
   signal(chan.notFullCond)
   result = true
