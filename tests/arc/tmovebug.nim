@@ -1,6 +1,7 @@
 discard """
-  cmd: "nim c --gc:arc $file"
-  output: '''5
+  matrix: "--gc:arc; --gc:refc"
+  output: '''
+5
 (w: 5)
 (w: -5)
 c.text = hello
@@ -468,7 +469,8 @@ proc leak =
   var c = 0
   for (a, b) in zip(x):
     let newMem = getOccupiedMem()
-    assert newMem <= lastMem
+    when defined(gcArc) or defined(gcOrc):
+      assert newMem <= lastMem
     lastMem = newMem
     c += a.len
   echo c
@@ -744,29 +746,48 @@ proc partToWholeUnownedRef =
 partToWholeUnownedRef()
 
 
-#--------------------------------------------------------------------
-# test that nodes that get copied during the transformation
-# (like dot exprs) don't loose their firstWrite/lastRead property
+block: # bug #16607
+  # test that nodes that get copied during the transformation
+  # (like dot exprs) don't loose their firstWrite/lastRead property
+  block:
+    type
+      OOO = object
+        initialized: bool
 
-type
-  OOO = object
-    initialized: bool
+      C = object
+        o: OOO
 
-  C = object
-    o: OOO
+    proc `=destroy`(o: var OOO) =
+      doAssert o.initialized, "OOO was destroyed before initialization!"
 
-proc `=destroy`(o: var OOO) =
-  doAssert o.initialized, "OOO was destroyed before initialization!"
+    proc initO(): OOO =
+      OOO(initialized: true)
 
-proc initO(): OOO =
-  OOO(initialized: true)
+    proc initC(): C =
+      C(o: initO())
 
-proc initC(): C =
-  C(o: initO())
+    proc pair(): tuple[a: C, b: C] =
+      result.a = initC() # <- when firstWrite tries to find this node to start its analysis it fails, because injectdestructors uses copyTree/shallowCopy
+      result.b = initC()
 
-proc pair(): tuple[a: C, b: C] =
-  result.a = initC() # <- when firstWrite tries to find this node to start its analysis it fails, because injectdestructors uses copyTree/shallowCopy
-  result.b = initC()
+    discard pair()
 
-discard pair()
+  block: # snippet from #16607, with {.requiresInit.}, and without the `initC` indirection
+    type
+      O {.requiresInit.} = object
+        initialized: bool
 
+    proc `=destroy`(o: var O) =
+      doAssert o.initialized, "O was destroyed before initialization!"
+
+    proc initO(): O =
+      O(initialized: true)
+
+    proc pair(): tuple[a, b: O] =
+      result.a = initO()
+      result.b = initO()
+
+    proc main() =
+      discard pair()
+
+    main()
