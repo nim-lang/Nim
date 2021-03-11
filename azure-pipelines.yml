@@ -79,11 +79,6 @@ jobs:
         set -e
         . ci/funs.sh
         echo_run sudo dpkg --add-architecture i386
-        echo_run echo ok1
-        echo_run echo ok2b
-        echo_run nonexistand_asdf
-        echo_run echo ok3
-
         # Downgrade llvm:
         # - llvm has to be downgraded to have 32bit version installed for sfml.
 
