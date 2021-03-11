@@ -56,7 +56,12 @@ jobs:
         # DEBIAN_FRONTEND='noninteractive' echo_run sudo apt-get upgrade -y
 
         DEBIAN_FRONTEND='noninteractive' \
-          echo_run sudo apt show gcc-5-multilib
+          echo_run sudo apt-get install --no-install-recommends --allow-downgrades -y \
+            gcc-5-multilib
+
+        DEBIAN_FRONTEND='noninteractive' \
+          echo_run sudo apt-get install --no-install-recommends --allow-downgrades -y \
+            g++-5-multilib
 
         DEBIAN_FRONTEND='noninteractive' \
           echo_run sudo apt show g++-5-multilib
