@@ -148,7 +148,6 @@ template isEmptyUnbuf(chan: ChannelRaw): bool =
 # ----------------------------------------------------------------------------------
 
 func isUnbuffered(chan: ChannelRaw): bool =
-  assert chan.size >= 0
   chan.size - 1 == 0
 
 # ChannelRaw status and properties
@@ -509,4 +508,5 @@ func close*[T](c: Channel[T]): bool {.inline.} =
 func peek*[T](c: Channel[T]): int {.inline.} = peek(c.d)
 
 proc newChannel*[T](elements = 30): Channel[T] =
+  assert elements >= 1, "Elements must be positive!"
   result = Channel[T](d: allocChannel(sizeof(T), elements))
