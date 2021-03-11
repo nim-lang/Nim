@@ -75,7 +75,7 @@ proc semExprCheck(c: PContext, n: PNode, flags: TExprFlags): PNode =
     # bug #12741, redundant error messages are the lesser evil here:
     localError(c.config, n.info, errExprXHasNoType %
                 renderTree(result, {renderNoComments}))
-  
+
   if isEmpty:
     # do not produce another redundant error message:
     result = errorNode(c, n)
@@ -2021,7 +2021,7 @@ proc processQuotations(c: PContext; n: var PNode, op: string,
     n = newIdentNode(getIdent(c.cache, $quotes.len), n.info)
     ids.add n
     return
-  
+
   template handlePrefixOp(prefixed) =
     if prefixed[0].kind == nkIdent:
       let examinedOp = prefixed[0].ident.s
@@ -2954,6 +2954,13 @@ proc semExpr(c: PContext, n: PNode, flags: TExprFlags = {}): PNode =
     for i in 0..<n.len:
       n[i] = semExpr(c, n[i])
   of nkComesFrom: discard "ignore the comes from information for now"
+  of nkMixinStmt: discard
+  of nkBindStmt:
+    if c.p != nil:
+      c.p.localBindStmts.add n
+    else:
+      localError(c.config, n.info, "invalid context for 'bind' statement: " &
+                renderTree(n, {renderNoComments}))
   else:
     localError(c.config, n.info, "invalid expression: " &
                renderTree(n, {renderNoComments}))
