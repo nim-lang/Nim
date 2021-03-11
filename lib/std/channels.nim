@@ -32,7 +32,7 @@ runnableExamples("--threads:on --gc:orc"):
   # Channels are generic, and they include support for passing objects between
   # threads.
   # Note that isolated data passed through channels is moved around.
-  var chan = initChan[string]()
+  var chan = newChannel[string]()
 
   # This proc will be run in another thread using the threads module.
   proc firstWorker() =
@@ -84,8 +84,8 @@ runnableExamples("--threads:on --gc:orc"):
   assert messages.len >= 2
 
 
-# when not defined(gcArc) and not defined(gcOrc) and not defined(nimdoc):
-#   {.error: "This channel implementation requires --gc:arc or --gc:orc".}
+when not defined(gcArc) and not defined(gcOrc) and not defined(nimdoc):
+  {.error: "This channel implementation requires --gc:arc or --gc:orc".}
 
 import std/[locks, atomics, isolation]
 import system/ansi_c
@@ -98,7 +98,7 @@ const
   nimChannelCacheSize* {.intdefine.} = 100
 
 type
-  ChannelRaw* = ptr ChannelObj
+  ChannelRaw = ptr ChannelObj
   ChannelObj = object
     headLock, tailLock: Lock
     notFullCond: Cond
@@ -123,9 +123,6 @@ type
 template incmod(idx, size: int): int =
   (idx + 1) mod size
 
-# template decmod(idx, size: int): int =
-#   (idx - 1) mod size
-
 template numItems(chan: ChannelRaw): int =
   (chan.size + chan.tail - chan.head) mod chan.size
 
@@ -149,9 +146,6 @@ template isEmptyUnbuf(chan: ChannelRaw): bool =
 
 # ChannelRaw kinds
 # ----------------------------------------------------------------------------------
-
-# func isBuffered(chan: ChannelRaw): bool =
-#   chan.size - 1 > 0
 
 func isUnbuffered(chan: ChannelRaw): bool =
   assert chan.size >= 0
@@ -428,66 +422,66 @@ proc channelOpenMpmc(chan: ChannelRaw): bool =
 # ----------------------------------------------------------------------------------
 
 type
-  Chan*[T] = object ## Typed channels
+  Channel*[T] = object ## Typed channels
     d: ChannelRaw
 
-proc `=`[T](dest: var Chan[T]; src: Chan[T]) {.error.}
+proc `=`[T](dest: var Channel[T]; src: Channel[T]) {.error.}
 
-proc `=destroy`[T](c: var Chan[T]) =
+proc `=destroy`[T](c: var Channel[T]) =
   if c.d.buffer != nil: freeChannel(c.d)
 
-proc channelSend[T](chan: Chan[T], data: sink T, size: int, nonBlocking: bool): bool {.inline.} =
+proc channelSend[T](chan: Channel[T], data: sink T, size: int, nonBlocking: bool): bool {.inline.} =
   ## Send item to the channel (FIFO queue)
   ## (Insert at last)
   sendMpmc(chan.d, data.unsafeAddr, size, nonBlocking)
 
-proc channelReceive[T](chan: Chan[T], data: ptr T, size: int, nonBlocking: bool): bool {.inline.} =
+proc channelReceive[T](chan: Channel[T], data: ptr T, size: int, nonBlocking: bool): bool {.inline.} =
   ## Receive an item from the channel
   ## (Remove the first item)
   recvMpmc(chan.d, data, size, nonBlocking)
 
-func trySend*[T](c: Chan[T], src: var Isolated[T]): bool {.inline.} =
+func trySend*[T](c: Channel[T], src: var Isolated[T]): bool {.inline.} =
   ## Sends item to the channel(non blocking).
   var data = src.extract
   result = channelSend(c, data, sizeof(data), true)
   if result:
     wasMoved(data)
 
-template trySend*[T](c: Chan[T], src: T): bool =
+template trySend*[T](c: Channel[T], src: T): bool =
   trySend(c, isolate(src))
 
-func tryRecv*[T](c: Chan[T], dst: var T): bool {.inline.} =
+func tryRecv*[T](c: Channel[T], dst: var T): bool {.inline.} =
   ## Receives item from the channel(non blocking).
   channelReceive(c, dst.addr, sizeof(dst), true)
 
-func send*[T](c: Chan[T], src: sink Isolated[T]) {.inline.} =
+func send*[T](c: Channel[T], src: sink Isolated[T]) {.inline.} =
   ## Sends item to the channel(blocking).
   var data = src.extract
   discard channelSend(c, data, sizeof(data), false)
   wasMoved(data)
 
-template send*[T](c: var Chan[T]; src: T) =
+template send*[T](c: var Channel[T]; src: T) =
   send(c, isolate(src))
 
-func recv*[T](c: Chan[T], dst: var T) {.inline.} =
+func recv*[T](c: Channel[T], dst: var T) {.inline.} =
   ## Receives item from the channel(blocking).
   discard channelReceive(c, dst.addr, sizeof(dst), false)
 
-func recvIso*[T](c: Chan[T]): Isolated[T] {.inline.} =
+func recvIso*[T](c: Channel[T]): Isolated[T] {.inline.} =
   var dst: T
   discard channelReceive(c, dst.addr, sizeof(dst), false)
   result = isolate(dst)
 
-func open*[T](c: Chan[T]): bool {.inline.} =
+func open*[T](c: Channel[T]): bool {.inline.} =
   result = c.d.channelOpenMpmc()
 
-func close*[T](c: Chan[T]): bool {.inline.} =
+func close*[T](c: Channel[T]): bool {.inline.} =
   result = c.d.channelCloseMpmc()
 
-func peek*[T](c: Chan[T]): int {.inline.} = peek(c.d)
+func peek*[T](c: Channel[T]): int {.inline.} = peek(c.d)
 
-proc initChan*[T](elements = 30): Chan[T] =
-  result = Chan[T](d: allocChannel(sizeof(T), elements))
+proc newChannel*[T](elements = 30): Channel[T] =
+  result = Channel[T](d: allocChannel(sizeof(T), elements))
 
-proc delete*[T](c: var Chan[T]) {.inline.} =
+proc delete*[T](c: var Channel[T]) {.inline.} =
   freeChannel(c.d)

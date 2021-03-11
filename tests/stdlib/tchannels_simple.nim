@@ -6,7 +6,7 @@ discard """
 import std/channels
 import std/os
 
-var chan = initChan[string]()
+var chan = newChannel[string]()
 
 # This proc will be run in another thread using the threads module.
 proc firstWorker() =
@@ -39,11 +39,11 @@ createThread(worker2, secondWorker)
 # useful work while it waits for data to arrive on the channel.
 
 var messages: seq[string]
+var msg = ""
 while true:
-  var msg = ""
   let tried = chan.tryRecv(msg)
   if tried:
-    messages.add msg
+    messages.add move(msg)
     break
   
   messages.add "Pretend I'm doing useful work..."
