@@ -1716,7 +1716,7 @@ proc createSymlink*(src, dest: string) {.noWeirdTarget.} =
     if symlink(src, dest) != 0:
       raiseOSError(osLastError(), $(src, dest))
 
-when defined(windows):
+when defined(windows) and not weirdTarget:
   proc getFinalPathNameByHandleW(
     hFile: Handle,
     lpszFilePath: WideCStringObj,
@@ -1727,7 +1727,7 @@ when defined(windows):
 
 proc expandSymlink*(symlinkPath: string): string {.noWeirdTarget.} =
   ## Returns a string representing the path to which the symbolic link points.
-  ## 
+  ##
   ## .. Note:: The function fails if `symlinkPath` is not a symlink, except on Windows, 
   ##    where the full path will be returned.
   ##
@@ -1735,6 +1735,8 @@ proc expandSymlink*(symlinkPath: string): string {.noWeirdTarget.} =
   ## * `createSymlink proc <#createSymlink,string,string>`_
   ## * `symlinkExists proc <#symlinkExists,string>`_
   when defined(windows):
+    if not symlinkExists(symlinkPath):
+      raise newException(OsError, symlinkPath & " is not symlink or doesn't exist!")
     const bufsize = 32
     const VOLUME_NAME_DOS = 0
 
@@ -1752,7 +1754,7 @@ proc expandSymlink*(symlinkPath: string): string {.noWeirdTarget.} =
     length = getFinalPathNameByHandleW(handle, buffer, length.DWORD, VOLUME_NAME_DOS)
 
     if length == 0:
-      raiseOSError(osLastError())
+      raiseOSError(osLastError(), symlinkPath)
 
     result = $buffer
 
