@@ -146,7 +146,7 @@
 ## .. _Sphinx directives: https://www.sphinx-doc.org/en/master/usage/restructuredtext/directives.html
 
 import
-  os, strutils, rstast, algorithm, lists, sequtils
+  os, strutils, rstast, std/enumutils, algorithm, lists, sequtils
 
 type
   RstParseOption* = enum     ## options for the RST parser
@@ -487,7 +487,7 @@ template nextTok(p: RstParser): Token = p.tok[p.idx + 1]
 
 proc whichMsgClass*(k: MsgKind): MsgClass =
   ## returns which message class `k` belongs to.
-  case ($k)[1]
+  case k.symbolName[1]
   of 'e', 'E': result = mcError
   of 'w', 'W': result = mcWarning
   of 'h', 'H': result = mcHint
