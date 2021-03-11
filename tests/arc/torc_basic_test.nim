@@ -1,5 +1,8 @@
 discard """
-  output: "MEM 0"
+  output: '''
+MEM 0
+true
+'''
   cmd: "nim c --gc:orc $file"
 """
 
@@ -136,3 +139,5 @@ main()
 main2()
 GC_fullCollect()
 echo "MEM ", getOccupiedMem()
+
+echo defined(gcArc)
