@@ -1736,7 +1736,7 @@ proc expandSymlink*(symlinkPath: string): string {.noWeirdTarget.} =
   ## * `symlinkExists proc <#symlinkExists,string>`_
   when defined(windows):
     if not symlinkExists(symlinkPath):
-      raise newException(OsError, symlinkPath & " is not symlink or doesn't exist!")
+      raise newException(OSError, symlinkPath & " is not symlink or doesn't exist!")
     const bufsize = 32
     const VOLUME_NAME_DOS = 0
 
