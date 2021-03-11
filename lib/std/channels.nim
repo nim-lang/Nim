@@ -84,8 +84,8 @@ runnableExamples("--threads:on --gc:orc"):
   assert messages.len >= 2
 
 
-when not defined(gcArc) and not defined(gcOrc) and not defined(nimdoc):
-  {.error: "This channel implementation requires --gc:arc or --gc:orc".}
+# when not defined(gcArc) and not defined(gcOrc) and not defined(nimdoc):
+#   {.error: "This channel implementation requires --gc:arc or --gc:orc".}
 
 import std/[locks, atomics, isolation]
 import system/ansi_c

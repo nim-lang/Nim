@@ -47,23 +47,21 @@ template channel_send_loop(chan: ChannelRaw,
                       data: sink pointer,
                       size: int,
                       body: untyped): untyped =
-  while not channel_send(chan, data, size, nonBlocking):
+  while not sendMpmc(chan, data, size, nonBlocking):
     body
 
 template channel_receive_loop(chan: ChannelRaw,
                         data: pointer,
                         size: int,
                         body: untyped): untyped =
-  while not channel_receive(chan, data, size, nonBlocking):
+  while not recvMpmc(chan, data, size, nonBlocking):
     body
 
-when not compileOption("threads"):
-  {.error: "This requires --threads:on compilation flag".}
 
 # Without threads:on or release,
 # worker threads will crash on popFrame
 
-import unittest, strformat
+import std/unittest
 
 type ThreadArgs = object
   ID: int
@@ -73,8 +71,6 @@ template Worker(id: int, body: untyped): untyped {.dirty.} =
   if args.ID == id:
     body
 
-template Master(body: untyped): untyped =
-  Worker(0, body)
 
 const Sender = 1
 const Receiver = 0
@@ -85,39 +81,35 @@ proc runSuite(
           ) =
   var chan: ChannelRaw
 
-  for impl in Mpmc .. Spsc:
-    for i in Unbuffered .. Buffered:
-      test &"{i:10} {impl} channels":
-        if i == Unbuffered:
-          chan = allocChannel(size = 32, n = 0, impl)
-          check:
-            peek(chan) == 0
-            capacity(chan) == 0
-            isBuffered(chan) == false
-            isUnbuffered(chan) == true
-            chan.impl == impl
-        else:
-          chan = allocChannel(size = int.sizeof.int, n = 7, impl)
-          check:
-            peek(chan) == 0
-            capacity(chan) == 7
-            isBuffered(chan) == true
-            isUnbuffered(chan) == false
-            chan.impl == impl
+  for i in Unbuffered .. Buffered:
+    if i == Unbuffered:
+      chan = allocChannel(size = 32, n = 0)
+      check:
+        peek(chan) == 0
+        capacity(chan) == 0
+        isBuffered(chan) == false
+        isUnbuffered(chan) == true
+    else:
+      chan = allocChannel(size = int.sizeof.int, n = 7)
+      check:
+        peek(chan) == 0
+        capacity(chan) == 7
+        isBuffered(chan) == true
+        isUnbuffered(chan) == false
 
-        var threads: array[2, Pthread]
-        var args = [
-          ThreadArgs(ID: 0, chan: chan),
-          ThreadArgs(ID: 1, chan: chan)
-        ]
+      var threads: array[2, Pthread]
+      var args = [
+        ThreadArgs(ID: 0, chan: chan),
+        ThreadArgs(ID: 1, chan: chan)
+      ]
 
-        discard pthread_create(threads[0], nil, fn, args[0].addr)
-        discard pthread_create(threads[1], nil, fn, args[1].addr)
+      discard pthread_create(threads[0], nil, fn, args[0].addr)
+      discard pthread_create(threads[1], nil, fn, args[1].addr)
 
-        discard pthread_join(threads[0], nil)
-        discard pthread_join(threads[1], nil)
+      discard pthread_join(threads[0], nil)
+      discard pthread_join(threads[1], nil)
 
-        freeChannel(chan)
+      freeChannel(chan)
 
 # ----------------------------------------------------------------------------------
 
@@ -163,7 +155,7 @@ iterator pairs(chan: ChannelRaw, T: typedesc): (int, T) =
   var i = 0
   var x: T
   while not isClosed(chan) or peek(chan) > 0:
-    let r = channel_receive(chan, x.addr, x.sizeof.int, true)
+    let r = recvMpmc(chan, x.addr, x.sizeof.int, true)
     # printf("x: %d, r: %d\n", x, r)
     if r:
       yield (i, x)
@@ -195,7 +187,7 @@ proc thread_func_2(args: ptr ThreadArgs): pointer {.noconv.} =
       val = 42 + j*11
       channel_send_loop(args.chan, val.addr, int.sizeof.int):
         discard
-    discard channel_close(args.chan)
+    discard channelCloseMpmc(args.chan)
 
   return nil
 
@@ -209,8 +201,7 @@ proc isCached(chan: ChannelRaw): bool =
   var p = channelCache
   while not p.isNil:
     if chan.itemsize == p.chanSize and
-        chan.size-1 == p.chanN and
-        chan.impl == p.chanKind:
+        chan.size-1 == p.chanN:
       for i in 0 ..< p.numCached:
         if chan == p.cache[i]:
           return true
@@ -226,20 +217,16 @@ block: # [ChannelRaw] ChannelRaw caching implementation
 
   block: # Explicit caches allocation
     check:
-      allocChannelCache(int sizeof(char), 4, Mpmc)
-      allocChannelCache(int sizeof(int), 8, Mpsc)
-      allocChannelCache(int sizeof(ptr float64), 16, Spsc)
+      allocChannelCache(int sizeof(char), 4)
+      allocChannelCache(int sizeof(int), 8)
+      allocChannelCache(int sizeof(ptr float64), 16)
 
       # Don't create existing channel cache
-      not allocChannelCache(int sizeof(char), 4, Mpmc)
-      not allocChannelCache(int sizeof(int), 8, Mpsc)
-      not allocChannelCache(int sizeof(ptr float64), 16, Spsc)
+      not allocChannelCache(int sizeof(char), 4)
+      not allocChannelCache(int sizeof(int), 8)
+      not allocChannelCache(int sizeof(ptr float64), 16)
 
     check:
-      channelCache.chanKind == Spsc
-      channelCache.next.chanKind == Mpsc
-      channelCache.next.next.chanKind == Mpmc
-
       channelCacheLen == 3
 
   # ---------------------------------
@@ -247,13 +234,13 @@ block: # [ChannelRaw] ChannelRaw caching implementation
 
   block: # Implicit caches allocation
 
-    chan[0] = allocChannel(sizeof(char), 4, Mpmc)
-    chan[1] = allocChannel(sizeof(int32), 8, Mpsc)
-    chan[2] = allocChannel(sizeof(ptr float64), 16, Spsc)
+    chan[0] = allocChannel(sizeof(char), 4)
+    chan[1] = allocChannel(sizeof(int32), 8)
+    chan[2] = allocChannel(sizeof(ptr float64), 16)
 
-    chan[3] = allocChannel(sizeof(char), 5, Mpmc)
-    chan[4] = allocChannel(sizeof(int64), 8, Mpsc)
-    chan[5] = allocChannel(sizeof(ptr float64), 16, Mpsc)
+    chan[3] = allocChannel(sizeof(char), 5)
+    chan[4] = allocChannel(sizeof(int64), 8)
+    chan[5] = allocChannel(sizeof(ptr float64), 16)
 
     # We have caches ready to store specific channel kinds
     check: channelCacheLen == 6 # Cumulated with previous test
@@ -282,10 +269,10 @@ block: # [ChannelRaw] ChannelRaw caching implementation
 
   block: # Cached channels are being reused
 
-    chan[6] = allocChannel(sizeof(char), 4, Mpmc)
-    chan[7] = allocChannel(sizeof(int32), 8, Mpsc)
-    chan[8] = allocChannel(sizeof(ptr float32), 16, Spsc)
-    chan[9] = allocChannel(sizeof(ptr float64), 16, Spsc)
+    chan[6] = allocChannel(sizeof(char), 4)
+    chan[7] = allocChannel(sizeof(int32), 8)
+    chan[8] = allocChannel(sizeof(ptr float32), 16)
+    chan[9] = allocChannel(sizeof(ptr float64), 16)
 
     # All (itemsize, queue size, implementation) were already allocated
     check: channelCacheLen == 6
@@ -319,9 +306,9 @@ block: # [ChannelRaw] ChannelRaw caching implementation
     check: channelCacheLen == 0
 
     # Cache can grow again
-    chan[0] = allocChannel(sizeof((int, float, int32, uint)), 1, Spsc)
-    chan[1] = allocChannel(sizeof(int32), 0, Spsc)
-    chan[2] = allocChannel(sizeof(int32), 0, Spsc)
+    chan[0] = allocChannel(sizeof((int, float, int32, uint)), 1)
+    chan[1] = allocChannel(sizeof(int32), 0)
+    chan[2] = allocChannel(sizeof(int32), 0)
 
     check: channelCacheLen == 2
 
