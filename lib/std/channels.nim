@@ -426,7 +426,6 @@ type
   Channel*[T] = object ## Typed channels
     d: ChannelRaw
 
-
 proc `=destroy`*[T](c: var Channel[T]) =
   if c.d != nil:
     if load(c.d[].atomicCounter, moAcquire) == 0:

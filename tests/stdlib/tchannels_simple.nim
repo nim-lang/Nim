@@ -58,3 +58,11 @@ worker2.joinThread()
 doAssert chan.close()
 doAssert messages[^1] == "Another message"
 doAssert messages.len >= 2
+
+
+block:
+  let chan0 = newChannel[int]()
+  let chan1 = chan0
+  block:
+    let chan3 = chan0
+    let chan4 = chan0
