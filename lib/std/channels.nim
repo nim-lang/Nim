@@ -101,8 +101,7 @@ type
   ChannelRaw = ptr ChannelObj
   ChannelObj = object
     headLock, tailLock: Lock
-    notFullCond: Cond
-    notEmptyCond: Cond
+    notFullCond, notEmptyCond: Cond
     closed: Atomic[bool]
     size: int
     itemsize: int # up to itemsize bytes can be exchanged over this channel
@@ -127,7 +126,7 @@ proc numItems(chan: ChannelRaw): int {.inline.} =
     result += 2 * chan.size
 
 template isFull(chan: ChannelRaw): bool =
-  chan.numItems == chan.size - 1
+  chan.numItems == chan.size
 
 template isEmpty(chan: ChannelRaw): bool =
   chan.head == chan.tail
@@ -339,7 +338,7 @@ proc sendMpmc(chan: ChannelRaw, data: sink pointer, size: int, nonBlocking: bool
 
   copyMem(chan.buffer[writeIdx * chan.itemsize].addr, data, size)
 
-  chan.tail += 1
+  inc chan.tail
   if chan.tail == 2 * chan.size:
     chan.tail = 0
 
@@ -379,7 +378,7 @@ proc recvMpmc(chan: ChannelRaw, data: pointer, size: int, nonBlocking: bool): bo
   if isUnbuffered(chan):
     return recvUnbufferedMpmc(chan, data, size, nonBlocking)
 
-  if nonBlocking and chan.isEmpty():
+  if nonBlocking and chan.isEmpty:
     return false
 
   acquire(chan.headLock)
@@ -400,7 +399,7 @@ proc recvMpmc(chan: ChannelRaw, data: pointer, size: int, nonBlocking: bool): bo
 
   copyMem(data, chan.buffer[readIdx * chan.itemsize].addr, size)
 
-  chan.head += 1
+  inc chan.head
   if chan.head == 2 * chan.size:
     chan.head = 0
 
