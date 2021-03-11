@@ -123,10 +123,10 @@ type
 proc numItems(chan: ChannelRaw): int {.inline.} =
   result = chan.tail - chan.head
   if result < 0:
-    result += 2 * chan.size
+    inc(result, 2 * chan.size)
 
 template isFull(chan: ChannelRaw): bool =
-  chan.numItems == chan.size
+  abs(chan.tail - chan.head) == chan.size
 
 template isEmpty(chan: ChannelRaw): bool =
   chan.head == chan.tail
