@@ -8,6 +8,55 @@
 
 ## C++11 like Smart pointers. It always uses the shared allocator.
 
+runnableExamples:
+  block:
+    var a1: UniquePtr[float]
+    var a2 = newUniquePtr(isolate(0))
+
+    assert $a1 == "UniquePtr[float](nil)"
+    assert a1.isNil == true
+    assert $a2 == "UniquePtr[int](0)"
+    assert a2.isNil == false
+    assert a2[] == 0
+
+    # UniquePtr can't be copied but can be moved
+    let a3 = move a2 # a2 will be destroyed
+
+    assert $a2 == "UniquePtr[int](nil)"
+    assert a2.isNil == true
+
+    assert $a3 == "UniquePtr[int](0)"
+    assert a3.isNil == false
+    assert a3[] == 0
+
+  block: # SharedPtr[T] test
+    var a1: SharedPtr[float]
+    let a2 = newSharedPtr(isolate(0))
+    let a3 = a2
+
+    assert $a1 == "SharedPtr[float](nil)"
+    assert a1.isNil == true
+    assert $a2 == "SharedPtr[int](0)"
+    assert a2.isNil == false
+    assert a2[] == 0
+    assert $a3 == "SharedPtr[int](0)"
+    assert a3.isNil == false
+    assert a3[] == 0
+
+  block: # ConstPtr[T] test
+    var a1: ConstPtr[float]
+    let a2 = newConstPtr(isolate(0))
+    let a3 = a2
+
+    assert $a1 == "ConstPtr[float](nil)"
+    assert a1.isNil == true
+    assert $a2 == "ConstPtr[int](0)"
+    assert a2.isNil == false
+    assert a2[] == 0
+    assert $a3 == "ConstPtr[int](0)"
+    assert a3.isNil == false
+    assert a3[] == 0
+
 
 import std/isolation
 
@@ -28,6 +77,7 @@ proc `=destroy`*[T](p: var UniquePtr[T]) =
 proc `=`*[T](dest: var UniquePtr[T], src: UniquePtr[T]) {.error.}
 
 proc newUniquePtr*[T](val: sink Isolated[T]): UniquePtr[T] {.nodestroy.} =
+  ## Returns a unique pointer which has exclusive ownership of the object.
   when compileOption("threads"):
     result.val = cast[ptr T](allocShared(sizeof(T)))
   else:
@@ -89,6 +139,8 @@ proc `=`*[T](dest: var SharedPtr[T], src: SharedPtr[T]) =
   dest.val = src.val
 
 proc newSharedPtr*[T](val: sink Isolated[T]): SharedPtr[T] {.nodestroy.} =
+  ## Returns a shared pointer which shares 
+  ## ownership of the object by reference counting.
   when compileOption("threads"):
     result.val = cast[typeof(result.val)](allocShared(sizeof(result.val[])))
   else:
@@ -121,6 +173,7 @@ type
     ## which doesn't allow mutating underlying object.
 
 proc newConstPtr*[T](val: sink Isolated[T]): ConstPtr[T] =
+  ## Similar like `SharedPtr`, but underlying object can't be mutated.
   ConstPtr[T](newSharedPtr(val))
 
 converter convertConstPtrToObj*[T](p: ConstPtr[T]): lent T {.inline.} =
