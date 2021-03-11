@@ -77,6 +77,8 @@ proc `=destroy`*[T](p: var UniquePtr[T]) =
       dealloc(p.val)
 
 proc `=`*[T](dest: var UniquePtr[T], src: UniquePtr[T]) {.error.}
+  ## The copy operation is disallowed for `UniquePtr`, `UniquePtr`
+  ## can only be moved.
 
 proc newUniquePtr*[T](val: sink Isolated[T]): UniquePtr[T] {.nodestroy.} =
   ## Returns a unique pointer which has exclusive ownership of the object.
