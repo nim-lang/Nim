@@ -9,6 +9,8 @@
 ## C++11 like Smart pointers. It always uses the shared allocator.
 
 runnableExamples:
+  import std/isolation
+
   block:
     var a1: UniquePtr[float]
     var a2 = newUniquePtr(isolate(0))
@@ -29,7 +31,7 @@ runnableExamples:
     assert a3.isNil == false
     assert a3[] == 0
 
-  block: # SharedPtr[T] test
+  block:
     var a1: SharedPtr[float]
     let a2 = newSharedPtr(isolate(0))
     let a3 = a2
@@ -43,7 +45,7 @@ runnableExamples:
     assert a3.isNil == false
     assert a3[] == 0
 
-  block: # ConstPtr[T] test
+  block:
     var a1: ConstPtr[float]
     let a2 = newConstPtr(isolate(0))
     let a3 = a2

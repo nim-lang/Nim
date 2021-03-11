@@ -1,3 +1,9 @@
+discard """
+  targets: "c"
+  matrix: "--gc:refc; --gc:orc; --gc:orc --threads:on"
+"""
+
+
 import std/[unittest, smartptrs, isolation]
 
 block: # UniquePtr[T] test
