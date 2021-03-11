@@ -427,7 +427,6 @@ type
   Channel*[T] = object ## Typed channels
     d: ChannelRaw
 
-
 proc `=destroy`*[T](c: var Channel[T]) =
   if c.d != nil:
     if (when compileOption("threads"):
@@ -442,6 +441,7 @@ proc `=destroy`*[T](c: var Channel[T]) =
         dec(c.d[].atomicCounter)
 
 proc `=`*[T](dest: var Channel[T], src: Channel[T]) =
+  # Shares `Channel` by reference counting.
   if src.d != nil:
     when compileOption("threads"):
       discard atomicInc(src.d[].atomicCounter)
@@ -469,6 +469,7 @@ func trySend*[T](c: Channel[T], src: var Isolated[T]): bool {.inline.} =
     wasMoved(data)
 
 template trySend*[T](c: Channel[T], src: T): bool =
+  ## Helper templates for `trySend`.
   trySend(c, isolate(src))
 
 func tryRecv*[T](c: Channel[T], dst: var T): bool {.inline.} =
@@ -482,6 +483,7 @@ func send*[T](c: Channel[T], src: sink Isolated[T]) {.inline.} =
   wasMoved(data)
 
 template send*[T](c: var Channel[T]; src: T) =
+  ## Helper templates for `send`.
   send(c, isolate(src))
 
 func recv*[T](c: Channel[T], dst: var T) {.inline.} =
