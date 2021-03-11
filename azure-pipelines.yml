@@ -15,8 +15,8 @@ jobs:
   strategy:
     matrix:
       Linux_i386:
-        # vmImage: 'ubuntu-16.04'
-        vmImage: 'ubuntu-18.04'
+        vmImage: 'ubuntu-16.04'
+        # vmImage: 'ubuntu-18.04'
         CPU: i386
 
   pool:
@@ -51,7 +51,7 @@ jobs:
         # sudo apt-fast update -qq
         # sudo apt-fast update
         echo_run sudo apt-get update
-
+        echo_run sudo apt-get upgrade
         echo_run echo "ok8a"
         DEBIAN_FRONTEND='noninteractive' \
           echo_run sudo apt show gcc-multilib
