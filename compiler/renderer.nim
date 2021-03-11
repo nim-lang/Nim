@@ -1143,9 +1143,9 @@ proc gsub(g: var TSrcGen, n: PNode, c: TContext) =
     gcomma(g, n)
     put(g, tkParRi, ")")
   of nkObjDownConv, nkObjUpConv:
+    let typ = if (n.typ != nil) and (n.typ.sym != nil): n.typ.sym.name.s else: ""
+    put(g, tkParLe, typ & "(")
     if n.len >= 1: gsub(g, n[0])
-    put(g, tkParLe, "(")
-    gcomma(g, n, 1)
     put(g, tkParRi, ")")
   of nkClosedSymChoice, nkOpenSymChoice:
     if renderIds in g.flags:
