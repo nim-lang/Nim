@@ -50,8 +50,8 @@ proc addForwardedProc(m: BModule, prc: PSym) =
   m.g.forwardedProcs.add(prc)
 
 proc findPendingModule(m: BModule, s: PSym): BModule =
-  var ms = getModule(s)
-  result = m.g.modules[ms.position]
+  let ms = s.itemId.module  #getModule(s)
+  result = m.g.modules[ms]
 
 proc initLoc(result: var TLoc, k: TLocKind, lode: PNode, s: TStorageLoc) =
   result.k = k
@@ -97,10 +97,13 @@ proc getCFile(m: BModule): AbsoluteFile
 proc getModuleDllPath(m: BModule): Rope =
   let (dir, name, ext) = splitFile(getCFile(m))
   let filename = strutils.`%`(platform.OS[m.g.config.target.targetOS].dllFrmt, [name & ext])
-  return makeCString(dir.string & "/" & filename)
+  result = makeCString(dir.string & "/" & filename)
+
+proc getModuleDllPath(m: BModule, module: int): Rope =
+  result = getModuleDllPath(m.g.modules[module])
 
 proc getModuleDllPath(m: BModule, s: PSym): Rope =
-  return getModuleDllPath(findPendingModule(m, s))
+  result = getModuleDllPath(m.g.modules[s.itemId.module])
 
 import macros
 
@@ -1109,7 +1112,7 @@ proc genProcPrototype(m: BModule, sym: PSym) =
   useHeader(m, sym)
   if lfNoDecl in sym.loc.flags: return
   if lfDynamicLib in sym.loc.flags:
-    if getModule(sym).id != m.module.id and
+    if sym.itemId.module != m.module.position and
         not containsOrIncl(m.declaredThings, sym.id):
       m.s[cfsVars].add(ropecg(m, "$1 $2 $3;$n",
                         [(if isReloadable(m, sym): "static" else: "extern"),
@@ -2080,8 +2083,7 @@ proc genForwardedProcs(g: BModuleList) =
   while g.forwardedProcs.len > 0:
     let
       prc = g.forwardedProcs.pop()
-      ms = getModule(prc)
-      m = g.modules[ms.position]
+      m = g.modules[prc.itemId.module]
     if sfForward in prc.flags:
       internalError(m.config, prc.info, "still forwarded: " & prc.name.s)
 

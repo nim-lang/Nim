@@ -40,7 +40,11 @@ proc mangleName(m: BModule; s: PSym): Rope =
   result = s.loc.r
   if result == nil:
     result = s.name.s.mangle.rope
-    result.add(idOrSig(s, m.module.name.s.mangle, m.sigConflicts))
+    result.add "__"
+    result.add rope s.itemId.module
+    result.add "_"
+    result.add rope s.itemId.item
+    #result.add(idOrSig(s, m.module.name.s.mangle, m.sigConflicts))
     s.loc.r = result
     writeMangledName(m.ndi, s, m.config)
 
@@ -1273,12 +1277,12 @@ proc genDeepCopyProc(m: BModule; s: PSym; result: Rope) =
   m.s[cfsTypeInit3].addf("$1.deepcopy =(void* (N_RAW_NIMCALL*)(void*))$2;$n",
      [result, s.loc.r])
 
-proc declareNimType(m: BModule, name: string; str: Rope, ownerModule: PSym) =
+proc declareNimType(m: BModule, name: string; str: Rope, module: int) =
   let nr = rope(name)
   if m.hcrOn:
     m.s[cfsData].addf("static $2* $1;$n", [str, nr])
     m.s[cfsTypeInit1].addf("\t$1 = ($3*)hcrGetGlobal($2, \"$1\");$n",
-          [str, getModuleDllPath(m, ownerModule), nr])
+          [str, getModuleDllPath(m, module), nr])
   else:
     m.s[cfsData].addf("extern $2 $1;$n", [str, nr])
 
@@ -1374,11 +1378,11 @@ proc genTypeInfoV2(m: BModule, t: PType; info: TLineInfo): Rope =
   result = "NTIv2$1_" % [rope($sig)]
   m.typeInfoMarkerV2[sig] = result
 
-  let owner = t.skipTypes(typedescPtrs).owner.getModule
-  if owner != m.module:
+  let owner = t.skipTypes(typedescPtrs).owner.itemId.module
+  if owner != m.module.position:
     # make sure the type info is created in the owner module
-    assert m.g.modules[owner.position] != nil
-    discard genTypeInfoV2(m.g.modules[owner.position], origType, info)
+    assert m.g.modules[owner] != nil
+    discard genTypeInfoV2(m.g.modules[owner], origType, info)
     # reference the type info as extern here
     discard cgsym(m, "TNimTypeV2")
     declareNimType(m, "TNimTypeV2", result, owner)
@@ -1420,11 +1424,11 @@ proc genTypeInfoV1(m: BModule, t: PType; info: TLineInfo): Rope =
   result = "NTI$1_" % [rope($sig)]
   m.typeInfoMarker[sig] = result
 
-  let owner = t.skipTypes(typedescPtrs).owner.getModule
-  if owner != m.module:
+  let owner = t.skipTypes(typedescPtrs).owner.itemId.module
+  if owner != m.module.position:
     # make sure the type info is created in the owner module
-    assert m.g.modules[owner.position] != nil
-    discard genTypeInfoV1(m.g.modules[owner.position], origType, info)
+    assert m.g.modules[owner] != nil
+    discard genTypeInfoV1(m.g.modules[owner], origType, info)
     # reference the type info as extern here
     discard cgsym(m, "TNimType")
     discard cgsym(m, "TNimNode")

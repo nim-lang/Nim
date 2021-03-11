@@ -115,6 +115,7 @@ proc fileInfoIdx*(conf: ConfigRef; filename: AbsoluteFile; isKnownFile: var bool
   else:
     isKnownFile = false
     result = conf.m.fileInfos.len.FileIndex
+    #echo "ID ", result.int, " ", canon2
     conf.m.fileInfos.add(newFileInfo(canon, if pseudoPath: RelativeFile filename
                                             else: relativeTo(canon, conf.projectPath)))
     conf.m.filenameToIndexTbl[canon2] = result
