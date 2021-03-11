@@ -369,7 +369,6 @@ proc recvUnbufferedMpmc(chan: ChannelRaw, data: pointer, size: int, nonBlocking:
   copyMem(data, chan.buffer, size)
 
   chan.head = 0
-  assert chan.isEmptyUnbuf
 
   release(chan.headLock)
   signal(chan.notFullCond)
