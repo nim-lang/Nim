@@ -2339,7 +2339,7 @@ when notJSnotNims:
   when hostOS != "standalone" and hostOS != "any":
     include "system/dyncalls"
 
-  include "system/sets"
+  from system/sets import cardSet
 
   when defined(gogc):
     const GenericSeqSize = (3 * sizeof(int))
