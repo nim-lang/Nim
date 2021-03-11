@@ -98,17 +98,11 @@ const
   nimChannelCacheSize* {.intdefine.} = 100
 
 type
-  ChannelKind = enum
-    Mpmc # Multiple producer, multiple consumer
-    Mpsc # Multiple producer, single consumer
-    Spsc # Single producer, single consumer
-
   ChannelRaw* = ptr ChannelObj
   ChannelObj = object
     headLock, tailLock: Lock
     notFullCond: Cond
     notEmptyCond: Cond
-    impl: ChannelKind
     closed: Atomic[bool]
     size: int
     itemsize: int # up to itemsize bytes can be exchanged over this channel
@@ -121,7 +115,6 @@ type
     next: ChannelCache
     chanSize: int
     chanN: int
-    chanKind: ChannelKind
     numCached: int
     cache: array[nimChannelCacheSize, ChannelRaw]
 
@@ -179,13 +172,13 @@ proc peek(chan: ChannelRaw): int =
 var channelCache {.threadvar.}: ChannelCache
 var channelCacheLen {.threadvar.}: int
 
-proc allocChannelCache(size, n: int, impl: ChannelKind): bool =
+proc allocChannelCache(size, n: int): bool =
   ## Allocate a free list for storing channels of a given type
   var p = channelCache
 
   # Avoid multiple free lists for the exact same type of channel
   while not p.isNil:
-    if size == p.chanSize and n == p.chanN and impl == p.chanKind:
+    if size == p.chanSize and n == p.chanN:
       return false
     p = p.next
 
@@ -195,7 +188,6 @@ proc allocChannelCache(size, n: int, impl: ChannelKind): bool =
 
   p.chanSize = size
   p.chanN = n
-  p.chanKind = impl
   p.numCached = 0
 
   p.next = channelCache
@@ -229,12 +221,12 @@ proc freeChannelCache*() =
 # Channels memory ops
 # ----------------------------------------------------------------------------------
 
-proc allocChannel(size, n: int, impl: ChannelKind): ChannelRaw =
+proc allocChannel(size, n: int): ChannelRaw =
   when nimChannelCacheSize > 0:
     var p = channelCache
 
     while not p.isNil:
-      if size == p.chanSize and n == p.chanN and impl == p.chanKind:
+      if size == p.chanSize and n == p.chanN:
         # Check if free list contains channel
         if p.numCached > 0:
           dec p.numCached
@@ -260,7 +252,6 @@ proc allocChannel(size, n: int, impl: ChannelKind): ChannelRaw =
   initCond(result.notFullCond)
   initCond(result.notEmptyCond)
 
-  result.impl = impl
   result.closed.store(false, moRelaxed) # We don't need atomic here, how to?
   result.size = n+1
   result.itemsize = size
@@ -269,7 +260,7 @@ proc allocChannel(size, n: int, impl: ChannelKind): ChannelRaw =
 
   when nimChannelCacheSize > 0:
     # Allocate a cache as well if one of the proper size doesn't exist
-    discard allocChannelCache(size, n, impl)
+    discard allocChannelCache(size, n)
 
 proc freeChannel(chan: ChannelRaw) =
   if chan.isNil:
@@ -279,8 +270,7 @@ proc freeChannel(chan: ChannelRaw) =
     var p = channelCache
     while not p.isNil:
       if chan.itemsize == p.chanSize and
-         chan.size-1 == p.chanN and
-         chan.impl == p.chanKind:
+         chan.size-1 == p.chanN:
         if p.numCached < nimChannelCacheSize:
           # If space left in cache, cache it
           p.cache[p.numCached] = chan
@@ -434,196 +424,6 @@ proc channelOpenMpmc(chan: ChannelRaw): bool =
   store(chan.closed, false, moRelaxed)
   result = true
 
-# MPSC Channels (Multi-Producer Single-Consumer)
-# ----------------------------------------------------------------------------------
-
-proc channelSendMpsc(chan: ChannelRaw, data: sink pointer, size: int, nonBlocking: bool): bool =
-  # Cannot be inline due to function table
-  sendMpmc(chan, data, size, nonBlocking)
-
-proc channel_recv_unbuffered_mpsc(chan: ChannelRaw, data: pointer, size: int, nonBlocking: bool): bool =
-  # Single consumer, no lock needed on reception
-  if nonBlocking and chan.isEmptyUnbuf():
-    return false
-
-  while chan.isEmptyUnbuf():
-    cpuRelax()
-
-  assert chan.isFullUnbuf
-  assert size <= chan.itemsize
-
-  copyMem(data, chan.buffer, size)
-  fence(moSequentiallyConsistent)
-
-  chan.head = 0
-  signal(chan.notFullCond)
-  result = true
-
-proc channelRecvMpsc(chan: ChannelRaw, data: pointer, size: int, nonBlocking: bool): bool =
-  # Single consumer, no lock needed on reception
-  assert not chan.isNil # TODO not nil compiler constraint
-  assert not data.isNil
-
-  if isUnbuffered(chan):
-    return channel_recv_unbuffered_mpsc(chan, data, size, nonBlocking)
-
-  if nonBlocking and chan.isEmpty():
-    return false
-
-  while chan.isEmpty():
-    cpuRelax()
-
-  assert not chan.isEmpty()
-  assert size <= chan.itemsize
-
-  copyMem(data, chan.buffer[chan.head * chan.itemsize].addr, size)
-
-  let newHead = chan.head.incmod(chan.size)
-  fence(moSequentiallyConsistent)
-
-  chan.head = newHead
-  signal(chan.notFullCond)
-  result = true
-
-proc channelCloseMpsc(chan: ChannelRaw): bool =
-  # Unsynchronized
-  assert not chan.isNil
-
-  if chan.isClosed():
-    # Already closed
-    result = false
-  else:
-    chan.closed.store(true, moRelaxed)
-    result = true
-
-proc channelOpenMpsc(chan: ChannelRaw): bool =
-  # Unsynchronized
-  assert not chan.isNil
-
-  if not chan.isClosed():
-    # Already open
-    result = false
-  else:
-    chan.closed.store(false, moRelaxed)
-    result = true
-
-# SPSC Channels (Single-Producer Single-Consumer)
-# ----------------------------------------------------------------------------------
-
-proc channel_send_unbuffered_spsc(chan: ChannelRaw, data: sink pointer, size: int, nonBlocking: bool): bool =
-  if nonBlocking and chan.isFullUnbuf:
-    return false
-
-  while chan.isFullUnbuf:
-    cpuRelax()
-
-  assert chan.isEmptyUnbuf
-  assert size <= chan.itemsize
-  copyMem(chan.buffer, data, size)
-
-  fence(moSequentiallyConsistent)
-
-  chan.head = 1
-  signal(chan.notEmptyCond)
-  result = true
-
-proc channelSendSpsc(chan: ChannelRaw, data: sink pointer, size: int, nonBlocking: bool): bool =
-  assert not chan.isNil
-  assert not data.isNil
-
-  if chan.isUnbuffered():
-    return channel_send_unbuffered_spsc(chan, data, size, nonBlocking)
-
-  if nonBlocking and chan.isFull():
-    return false
-
-  while chan.isFull():
-    cpuRelax()
-
-  assert not chan.isFull()
-  assert size <= chan.itemsize
-  copyMem(chan.buffer[chan.tail * chan.itemsize].addr, data, size)
-
-  let newTail = chan.tail.incmod(chan.size)
-
-  fence(moSequentiallyConsistent)
-
-  chan.tail = newTail
-  signal(chan.notEmptyCond)
-  result = true
-
-proc channelRecvSpsc(chan: ChannelRaw, data: pointer, size: int, nonBlocking: bool): bool =
-  # Cannot be inline due to function table
-  channelRecvMpsc(chan, data, size, nonBlocking)
-
-proc channelCloseSpsc(chan: ChannelRaw): bool =
-  # Unsynchronized
-  assert not chan.isNil
-
-  if chan.isClosed():
-    # Already closed
-    result = false
-  else:
-    chan.closed.store(true, moRelaxed)
-    result = true
-
-proc channelOpenSpsc(chan: ChannelRaw): bool =
-  # Unsynchronized
-  assert not chan.isNil
-
-  if not chan.isClosed():
-    # Already open
-    result = false
-  else:
-    chan.closed.store(false, moRelaxed)
-    result = true
-
-# "Generic" dispatch
-# ----------------------------------------------------------------------------------
-
-const
-  send_fn = [
-    Mpmc: sendMpmc,
-    Mpsc: channelSendMpsc,
-    Spsc: channelSendSpsc
-  ]
-
-  recv_fn = [
-    Mpmc: recvMpmc,
-    Mpsc: channelRecvMpsc,
-    Spsc: channelRecvSpsc
-  ]
-
-  close_fn = [
-    Mpmc: channelCloseMpmc,
-    Mpsc: channelCloseMpsc,
-    Spsc: channelCloseSpsc
-  ]
-
-  open_fn = [
-    Mpmc: channelOpenMpmc,
-    Mpsc: channelOpenMpsc,
-    Spsc: channelOpenSpsc
-  ]
-
-proc channelSend(chan: ChannelRaw, data: sink pointer, size: int, nonBlocking: bool): bool {.inline.} =
-  ## Send item to the channel (FIFO queue)
-  ## (Insert at last)
-  send_fn[chan.impl](chan, data, size, nonBlocking)
-
-proc channelReceive(chan: ChannelRaw, data: pointer, size: int, nonBlocking: bool): bool {.inline.} =
-  ## Receive an item from the channel
-  ## (Remove the first item)
-  recv_fn[chan.impl](chan, data, size, nonBlocking)
-
-proc channel_close(chan: ChannelRaw): bool {.inline.} =
-  ## Close a channel
-  close_fn[chan.impl](chan)
-
-proc channel_open(chan: ChannelRaw): bool {.inline.} =
-  ## (Re)open a channel
-  open_fn[chan.impl](chan)
-
 # Public API
 # ----------------------------------------------------------------------------------
 
@@ -639,12 +439,12 @@ proc `=destroy`[T](c: var Chan[T]) =
 proc channelSend[T](chan: Chan[T], data: sink T, size: int, nonBlocking: bool): bool {.inline.} =
   ## Send item to the channel (FIFO queue)
   ## (Insert at last)
-  send_fn[chan.d.impl](chan.d, data.unsafeAddr, size, nonBlocking)
+  sendMpmc(chan.d, data.unsafeAddr, size, nonBlocking)
 
 proc channelReceive[T](chan: Chan[T], data: ptr T, size: int, nonBlocking: bool): bool {.inline.} =
   ## Receive an item from the channel
   ## (Remove the first item)
-  recv_fn[chan.d.impl](chan.d, data, size, nonBlocking)
+  recvMpmc(chan.d, data, size, nonBlocking)
 
 func trySend*[T](c: Chan[T], src: var Isolated[T]): bool {.inline.} =
   ## Sends item to the channel(non blocking).
@@ -679,15 +479,15 @@ func recvIso*[T](c: Chan[T]): Isolated[T] {.inline.} =
   result = isolate(dst)
 
 func open*[T](c: Chan[T]): bool {.inline.} =
-  result = c.d.channel_open()
+  result = c.d.channelOpenMpmc()
 
 func close*[T](c: Chan[T]): bool {.inline.} =
-  result = c.d.channel_close()
+  result = c.d.channelCloseMpmc()
 
 func peek*[T](c: Chan[T]): int {.inline.} = peek(c.d)
 
 proc initChan*[T](elements = 30): Chan[T] =
-  result = Chan[T](d: allocChannel(sizeof(T), elements, Mpmc))
+  result = Chan[T](d: allocChannel(sizeof(T), elements))
 
 proc delete*[T](c: var Chan[T]) {.inline.} =
   freeChannel(c.d)
