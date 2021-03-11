@@ -47,6 +47,11 @@ jobs:
         # sudo apt-fast update
         sudo apt-get update
 
+        echo "ok8a"
+        DEBIAN_FRONTEND='noninteractive' \
+          sudo apt-get install --no-install-recommends --allow-downgrades -y \
+            gcc-multilib
+
         echo "ok8"
         DEBIAN_FRONTEND='noninteractive' \
           sudo apt-get install --no-install-recommends --allow-downgrades -y \
