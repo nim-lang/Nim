@@ -428,7 +428,7 @@ type
     d: ChannelRaw
 
 
-proc `=destroy`[T](c: var Channel[T]) =
+proc `=destroy`*[T](c: var Channel[T]) =
   if c.d != nil:
     if (when compileOption("threads"):
           atomicLoadN(addr c.d[].atomicCounter, ATOMIC_CONSUME) == 0 else:
@@ -503,6 +503,3 @@ func peek*[T](c: Channel[T]): int {.inline.} = peek(c.d)
 
 proc newChannel*[T](elements = 30): Channel[T] =
   result = Channel[T](d: allocChannel(sizeof(T), elements))
-
-proc delete*[T](c: var Channel[T]) {.inline.} =
-  freeChannel(c.d)
