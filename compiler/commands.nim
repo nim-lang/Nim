@@ -579,6 +579,7 @@ proc processSwitch*(switch, arg: string, pass: TCmdLinePass, info: TLineInfo;
       of "orc":
         conf.selectedGC = gcOrc
         defineSymbol(conf.symbols, "gcdestructors")
+        defineSymbol(conf.symbols, "gcarc")
         defineSymbol(conf.symbols, "gcorc")
         incl conf.globalOptions, optSeqDestructors
         incl conf.globalOptions, optTinyRtti
