@@ -127,7 +127,7 @@ proc numItems(chan: ChannelRaw): int {.inline.} =
     result += 2 * chan.size
 
 template isFull(chan: ChannelRaw): bool =
-  chan.numItems() == chan.size - 1
+  chan.numItems == chan.size - 1
 
 template isEmpty(chan: ChannelRaw): bool =
   chan.head == chan.tail
@@ -154,10 +154,9 @@ func isUnbuffered(chan: ChannelRaw): bool =
 # ----------------------------------------------------------------------------------
 
 proc isClosed(chan: ChannelRaw): bool {.inline.} = load(chan.closed, moRelaxed)
-# proc capacity(chan: ChannelRaw): int {.inline.} = chan.size - 1
 
-proc peek(chan: ChannelRaw): int =
-  (if chan.isUnbuffered(): numItemsUnbuf(chan) else: numItems(chan))
+proc peek(chan: ChannelRaw): int {.inline.} =
+  (if chan.isUnbuffered: numItemsUnbuf(chan) else: numItems(chan))
 
 # Per-thread channel cache
 # ----------------------------------------------------------------------------------
@@ -224,7 +223,7 @@ proc allocChannel(size, n: int): ChannelRaw =
         if p.numCached > 0:
           dec p.numCached
           result = p.cache[p.numCached]
-          assert(result.isEmpty())
+          assert(result.isEmpty)
           return
         else:
           # All the other lists in cache won't match
@@ -289,20 +288,20 @@ proc freeChannel(chan: ChannelRaw) =
 # ----------------------------------------------------------------------------------
 
 proc sendUnbufferedMpmc(chan: ChannelRaw, data: sink pointer, size: int, nonBlocking: bool): bool =
-  if nonBlocking and chan.isFullUnbuf():
+  if nonBlocking and chan.isFullUnbuf:
     return false
 
   acquire(chan.headLock)
 
-  if nonBlocking and chan.isFullUnbuf():
+  if nonBlocking and chan.isFullUnbuf:
     # Another thread was faster
     release(chan.headLock)
     return false
 
-  while chan.isFullUnbuf():
+  while chan.isFullUnbuf:
     wait(chan.notFullcond, chan.headLock)
 
-  assert chan.isEmptyUnbuf()
+  assert chan.isEmptyUnbuf
   assert size <= chan.itemsize
   copyMem(chan.buffer, data, size)
 
@@ -319,22 +318,21 @@ proc sendMpmc(chan: ChannelRaw, data: sink pointer, size: int, nonBlocking: bool
   if isUnbuffered(chan):
     return sendUnbufferedMpmc(chan, data, size, nonBlocking)
 
-  if nonBlocking and chan.isFull():
+  if nonBlocking and chan.isFull:
     return false
 
   acquire(chan.tailLock)
 
-  if nonBlocking and chan.isFull():
+  if nonBlocking and chan.isFull:
     # Another thread was faster
     release(chan.tailLock)
     return false
 
-  while chan.isFull():
+  while chan.isFull:
     wait(chan.notFullcond, chan.tailLock)
 
   assert not chan.isFull
   assert size <= chan.itemsize
-
 
   let writeIdx = if chan.tail < chan.size: chan.tail
                  else: chan.tail - chan.size
@@ -350,12 +348,12 @@ proc sendMpmc(chan: ChannelRaw, data: sink pointer, size: int, nonBlocking: bool
   result = true
 
 proc recvUnbufferedMpmc(chan: ChannelRaw, data: pointer, size: int, nonBlocking: bool): bool =
-  if nonBlocking and chan.isEmptyUnbuf():
+  if nonBlocking and chan.isEmptyUnbuf:
     return false
 
   acquire(chan.headLock)
 
-  if nonBlocking and chan.isEmptyUnbuf():
+  if nonBlocking and chan.isEmptyUnbuf:
     # Another thread was faster
     release(chan.headLock)
     return false
@@ -363,7 +361,7 @@ proc recvUnbufferedMpmc(chan: ChannelRaw, data: pointer, size: int, nonBlocking:
   while chan.isEmptyUnbuf:
     wait(chan.notEmptyCond, chan.headLock)
 
-  assert chan.isFullUnbuf()
+  assert chan.isFullUnbuf
   assert size <= chan.itemsize
 
   copyMem(data, chan.buffer, size)
@@ -386,15 +384,15 @@ proc recvMpmc(chan: ChannelRaw, data: pointer, size: int, nonBlocking: bool): bo
 
   acquire(chan.headLock)
 
-  if nonBlocking and chan.isEmpty():
+  if nonBlocking and chan.isEmpty:
     # Another thread took the last data
     release(chan.headLock)
     return false
 
-  while chan.isEmpty():
+  while chan.isEmpty:
     wait(chan.notEmptyCond, chan.headLock)
 
-  assert not chan.isEmpty()
+  assert not chan.isEmpty
   assert size <= chan.itemsize
 
   let readIdx = if chan.head < chan.size: chan.head
@@ -413,7 +411,7 @@ proc recvMpmc(chan: ChannelRaw, data: pointer, size: int, nonBlocking: bool): bo
 proc channelCloseMpmc(chan: ChannelRaw): bool =
   # Unsynchronized
 
-  if chan.isClosed():
+  if chan.isClosed:
     # ChannelRaw already closed
     return false
 
@@ -439,16 +437,16 @@ type
 
 proc `=destroy`*[T](c: var Channel[T]) =
   if c.d != nil:
-    if load(c.d[].atomicCounter, moAcquire) == 0:
+    if load(c.d.atomicCounter, moAcquire) == 0:
       if c.d.buffer != nil:
         freeChannel(c.d)
     else:
-      atomicDec(c.d[].atomicCounter)
+      atomicDec(c.d.atomicCounter)
 
 proc `=`*[T](dest: var Channel[T], src: Channel[T]) =
   ## Shares `Channel` by reference counting.
   if src.d != nil:
-    atomicInc(src.d[].atomicCounter)
+    atomicInc(src.d.atomicCounter)
 
   if dest.d != nil:
     `=destroy`(dest)
