@@ -26,8 +26,9 @@ jobs:
     clean: all
 
   steps:
-    - checkout: self
-      fetchDepth: 1
+    # - checkout: self
+    #   fetchDepth: 1
+    - checkout: none
 
     - bash: |
         set -e
