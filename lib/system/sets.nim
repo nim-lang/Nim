@@ -44,22 +44,6 @@ when useGCC_builtins:
   proc builtin_popcountll(x: culonglong): cint {.
       importc: "__builtin_popcountll", cdecl.}
 
-  # Returns the bit parity in value
-  proc builtin_parity(x: cuint): cint {.importc: "__builtin_parity", cdecl.}
-  proc builtin_parityll(x: culonglong): cint {.importc: "__builtin_parityll", cdecl.}
-
-  # Returns one plus the index of the least significant 1-bit of x, or if x is zero, returns zero.
-  proc builtin_ffs(x: cint): cint {.importc: "__builtin_ffs", cdecl.}
-  proc builtin_ffsll(x: clonglong): cint {.importc: "__builtin_ffsll", cdecl.}
-
-  # Returns the number of leading 0-bits in x, starting at the most significant bit position. If x is 0, the result is undefined.
-  proc builtin_clz(x: cuint): cint {.importc: "__builtin_clz", cdecl.}
-  proc builtin_clzll(x: culonglong): cint {.importc: "__builtin_clzll", cdecl.}
-
-  # Returns the number of trailing 0-bits in x, starting at the least significant bit position. If x is 0, the result is undefined.
-  proc builtin_ctz(x: cuint): cint {.importc: "__builtin_ctz", cdecl.}
-  proc builtin_ctzll(x: culonglong): cint {.importc: "__builtin_ctzll", cdecl.}
-
 elif useVCC_builtins:
   # Counts the number of one bits (population count) in a 16-, 32-, or 64-byte unsigned integer.
   func builtin_popcnt16(a2: uint16): uint16 {.
@@ -68,23 +52,6 @@ elif useVCC_builtins:
       importc: "__popcnt", header: "<intrin.h>".}
   func builtin_popcnt64(a2: uint64): uint64 {.
       importc: "__popcnt64", header: "<intrin.h>".}
-
-  # Search the mask data from most significant bit (MSB) to least significant bit (LSB) for a set bit (1).
-  func bitScanReverse(index: ptr culong, mask: culong): cuchar {.
-      importc: "_BitScanReverse", header: "<intrin.h>".}
-  func bitScanReverse64(index: ptr culong, mask: uint64): cuchar {.
-      importc: "_BitScanReverse64", header: "<intrin.h>".}
-
-  # Search the mask data from least significant bit (LSB) to the most significant bit (MSB) for a set bit (1).
-  func bitScanForward(index: ptr culong, mask: culong): cuchar {.
-      importc: "_BitScanForward", header: "<intrin.h>".}
-  func bitScanForward64(index: ptr culong, mask: uint64): cuchar {.
-      importc: "_BitScanForward64", header: "<intrin.h>".}
-
-  template vcc_scan_impl(fnc: untyped; v: untyped): int =
-    var index: culong
-    discard fnc(index.addr, v)
-    index.int
 
 elif useICC_builtins:
 
@@ -96,22 +63,6 @@ elif useICC_builtins:
   func builtin_popcnt64(a: uint64): cint {.
       importc: "_popcnt64", header: "<immintrin.h>".}
 
-  # Returns the number of trailing 0-bits in x, starting at the least significant bit position. If x is 0, the result is undefined.
-  func bitScanForward(p: ptr uint32, b: uint32): cuchar {.
-      importc: "_BitScanForward", header: "<immintrin.h>".}
-  func bitScanForward64(p: ptr uint32, b: uint64): cuchar {.
-      importc: "_BitScanForward64", header: "<immintrin.h>".}
-
-  # Returns the number of leading 0-bits in x, starting at the most significant bit position. If x is 0, the result is undefined.
-  func bitScanReverse(p: ptr uint32, b: uint32): cuchar {.
-      importc: "_BitScanReverse", header: "<immintrin.h>".}
-  func bitScanReverse64(p: ptr uint32, b: uint64): cuchar {.
-      importc: "_BitScanReverse64", header: "<immintrin.h>".}
-
-  template icc_scan_impl(fnc: untyped; v: untyped): int =
-    var index: uint32
-    discard fnc(index.addr, v)
-    index.int
 
 func countSetBitsImpl(x: SomeInteger): int {.inline.} =
   ## Counts the set bits in an integer (also called `Hamming weight`:idx:).
@@ -166,13 +117,3 @@ proc cardSet*(s: NimSet, len: int): int {.compilerproc, inline.} =
 when not declared(ThisIsSystem):
   export useBuiltins, noUndefined, useGCC_builtins, useICC_builtins, useVCC_builtins
   export countSetBitsImpl
-
-  when useGCC_builtins:
-    export builtin_clz, builtin_clzll, builtin_parity, builtin_parityll, builtin_ffs, builtin_ffsll,
-            builtin_ctz, builtin_ctzll
-
-  elif useVCC_builtins:
-    export bitScanReverse, bitScanReverse64, bitScanForward, bitScanForward64, vcc_scan_impl
-
-  elif useICC_builtins:
-    export bitScanForward, bitScanForward64, bitScanReverse, bitScanReverse64, icc_scan_impl
