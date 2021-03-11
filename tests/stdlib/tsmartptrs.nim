@@ -1,4 +1,4 @@
-import std/[unittest, smartptrs]
+import std/[unittest, smartptrs, isolation]
 
 block: # UniquePtr[T] test
   var a1: UniquePtr[float]
