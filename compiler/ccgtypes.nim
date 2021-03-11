@@ -40,11 +40,13 @@ proc mangleName(m: BModule; s: PSym): Rope =
   result = s.loc.r
   if result == nil:
     result = s.name.s.mangle.rope
-    result.add "__"
+    result.add "_"
     result.add rope s.itemId.module
     result.add "_"
     result.add rope s.itemId.item
-    #result.add(idOrSig(s, m.module.name.s.mangle, m.sigConflicts))
+    if m.hcrOn:
+      result.add "_"
+      result.add(idOrSig(s, m.module.name.s.mangle, m.sigConflicts))
     s.loc.r = result
     writeMangledName(m.ndi, s, m.config)
 
