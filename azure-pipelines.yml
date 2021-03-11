@@ -31,13 +31,11 @@ jobs:
     - bash: |
         set -e
         echo_run () {
-          echo "$@"
+          echo "\n$@"
           "$@"
         }
 
-        echo_run echo "ok1"
         echo_run sudo dpkg --add-architecture i386
-        echo_run echo "ok2"
 
         # Downgrade llvm:
         # - llvm has to be downgraded to have 32bit version installed for sfml.
@@ -46,7 +44,6 @@ jobs:
         Pin: origin "azure.archive.ubuntu.com"
         Pin-Priority: 1001
         EOF
-        echo "ok3"
 
         # sudo apt-fast update -qq
         # sudo apt-fast update
@@ -54,7 +51,7 @@ jobs:
 
         echo_run echo "ok8a"
         DEBIAN_FRONTEND='noninteractive' \
-          echo_run sudo apt-get apt show gcc-multilib
+          echo_run sudo apt show gcc-multilib
 
         echo_run echo "ok8b"
 
