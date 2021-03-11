@@ -1380,7 +1380,7 @@ proc genTypeInfoV2(m: BModule, t: PType; info: TLineInfo): Rope =
   result = "NTIv2$1_" % [rope($sig)]
   m.typeInfoMarkerV2[sig] = result
 
-  let owner = t.skipTypes(typedescPtrs).owner.itemId.module
+  let owner = t.skipTypes(typedescPtrs).itemId.module
   if owner != m.module.position:
     # make sure the type info is created in the owner module
     assert m.g.modules[owner] != nil
@@ -1426,7 +1426,7 @@ proc genTypeInfoV1(m: BModule, t: PType; info: TLineInfo): Rope =
   result = "NTI$1_" % [rope($sig)]
   m.typeInfoMarker[sig] = result
 
-  let owner = t.skipTypes(typedescPtrs).owner.itemId.module
+  let owner = t.skipTypes(typedescPtrs).itemId.module
   if owner != m.module.position:
     # make sure the type info is created in the owner module
     assert m.g.modules[owner] != nil

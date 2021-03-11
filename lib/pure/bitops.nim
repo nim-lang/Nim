@@ -439,7 +439,7 @@ func fastlog2Nim(x: uint64): int {.inline.} =
 # sets.nim cannot import bitops, but bitops can use include
 # system/sets to eliminate code duplication. sets.nim defines
 # countBits32 and countBits64.
-include system/sets
+import system/countbits_impl
 
 template countSetBitsNim(n: uint32): int = countBits32(n)
 template countSetBitsNim(n: uint64): int = countBits64(n)
