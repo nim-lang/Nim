@@ -1,3 +1,14 @@
+#
+#
+#            Nim's Runtime Library
+#        (c) Copyright 2020 Nim contributors
+#
+#    See the file "copying.txt", included in this
+#    distribution, for details about the copyright.
+
+## C++11 like Smart pointers. It always uses the shared allocator.
+
+
 import std/isolation
 
 
