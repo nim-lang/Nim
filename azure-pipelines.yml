@@ -15,7 +15,8 @@ jobs:
   strategy:
     matrix:
       Linux_i386:
-        vmImage: 'ubuntu-16.04'
+        # vmImage: 'ubuntu-16.04'
+        vmImage: 'ubuntu-18.04'
         CPU: i386
 
   pool:
@@ -31,7 +32,8 @@ jobs:
     - bash: |
         set -e
         echo_run () {
-          echo "\n$@"
+          echo ""
+          echo "$@"
           "$@"
         }
 
