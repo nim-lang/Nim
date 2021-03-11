@@ -12,7 +12,7 @@ from std/private/vmutils import forwardImpl, toUnsigned
 
 
 const useBuiltins = not defined(noIntrinsicsBitOpts)
-const noUndefined {.used.} = defined(noUndefinedBitOpts)
+const noUndefined = defined(noUndefinedBitOpts)
 const useGCC_builtins = (defined(gcc) or defined(llvm_gcc) or
                          defined(clang)) and useBuiltins
 const useICC_builtins = defined(icc) and useBuiltins
@@ -38,18 +38,6 @@ template countBitsImpl(n: uint64): int =
   v = (v + (v shr 4'u64) and 0x0F0F0F0F0F0F0F0F'u64)
   ((v * 0x0101010101010101'u64) shr 56'u64).int
 
-template parityImpl[T](value: T): int =
-  # formula id from: https://graphics.stanford.edu/%7Eseander/bithacks.html#ParityParallel
-  var v = value
-  when sizeof(T) == 8:
-    v = v xor (v shr 32)
-  when sizeof(T) >= 4:
-    v = v xor (v shr 16)
-  when sizeof(T) >= 2:
-    v = v xor (v shr 8)
-  v = v xor (v shr 4)
-  v = v and 0xf
-  ((0x6996'u shr v) and 1).int
 
 when useGCC_builtins:
   # Returns the number of set 1-bits in value.
@@ -174,3 +162,18 @@ proc cardSet(s: NimSet, len: int): int {.compilerproc, inline.} =
   while i < len:
     inc(result, countBits32(uint32(s[i])))
     inc(i, 1)
+
+
+when not declared(ThisIsSystem):
+  export useBuiltins, noUndefined, useGCC_builtins, useICC_builtins, useVCC_builtins
+  export countSetBitsImpl
+
+  when useGCC_builtins:
+    export builtin_clz, builtin_clzll, builtin_parity, builtin_parityll, builtin_ffs, builtin_ffsll,
+            builtin_ctz, builtin_ctzll
+
+  elif useVCC_builtins:
+    export bitScanReverse, bitScanReverse64, bitScanForward, bitScanForward64, vcc_scan_impl
+
+  elif useICC_builtins:
+    export bitScanForward, bitScanForward64, bitScanReverse, bitScanReverse64, icc_scan_impl
