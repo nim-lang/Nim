@@ -151,7 +151,7 @@ proc countBits32(n: uint32): int {.compilerproc, inline.} =
 proc countBits64(n: uint64): int {.compilerproc, inline.} =
   result = countSetBitsImpl(n)
 
-proc cardSet(s: NimSet, len: int): int {.compilerproc, inline.} =
+proc cardSet*(s: NimSet, len: int): int {.compilerproc, inline.} =
   var i = 0
   result = 0
   when defined(x86) or defined(amd64):
