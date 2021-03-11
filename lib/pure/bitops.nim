@@ -33,7 +33,7 @@ from std/private/vmutils import forwardImpl, toUnsigned
 # sets.nim cannot import bitops, but bitops can use include
 # system/sets to eliminate code duplication. sets.nim defines
 # countBits32 and countBits64.
-include system/sets
+import system/sets
 
 func bitnot*[T: SomeInteger](x: T): T {.magic: "BitnotI".}
   ## Computes the `bitwise complement` of the integer `x`.
@@ -421,6 +421,18 @@ func fastlog2Nim(x: uint64): int {.inline.} =
   v = v or v shr 32
   result = lookup[(v * 0x03F6EAF2CD271461'u64) shr 58].int
 
+template parityImpl[T](value: T): int =
+  # formula id from: https://graphics.stanford.edu/%7Eseander/bithacks.html#ParityParallel
+  var v = value
+  when sizeof(T) == 8:
+    v = v xor (v shr 32)
+  when sizeof(T) >= 4:
+    v = v xor (v shr 16)
+  when sizeof(T) >= 2:
+    v = v xor (v shr 8)
+  v = v xor (v shr 4)
+  v = v and 0xf
+  ((0x6996'u shr v) and 1).int
 
 func countSetBits*(x: SomeInteger): int {.inline.} =
   ## Counts the set bits in an integer (also called `Hamming weight`:idx:).
