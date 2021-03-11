@@ -6,7 +6,7 @@ discard """
   disabled: "osx"
 """
 
-include std/channels
+include channel
 
 import std/unittest
 
@@ -17,7 +17,7 @@ type
     Buffered   # Buffered (non-blocking channel)
 
 
-proc capacity(chan: ChannelRaw): int {.inline.} = chan.size - 1
+proc capacity(chan: ChannelRaw): int {.inline.} = chan.size
 func isBuffered(chan: ChannelRaw): bool =
   chan.size - 1 > 0
 
@@ -83,10 +83,10 @@ proc runSuite(
 
   for i in Unbuffered .. Buffered:
     if i == Unbuffered:
-      chan = allocChannel(size = 32, n = 0)
+      chan = allocChannel(size = 32, n = 1)
       check:
         peek(chan) == 0
-        capacity(chan) == 0
+        capacity(chan) == 1
         isBuffered(chan) == false
         isUnbuffered(chan) == true
     else:
@@ -201,7 +201,7 @@ proc isCached(chan: ChannelRaw): bool =
   var p = channelCache
   while not p.isNil:
     if chan.itemsize == p.chanSize and
-        chan.size-1 == p.chanN:
+        chan.size == p.chanN:
       for i in 0 ..< p.numCached:
         if chan == p.cache[i]:
           return true

@@ -233,8 +233,8 @@ proc allocChannel(size, n: int): ChannelRaw =
   if result.isNil:
     raise newException(OutOfMemDefect, "Could not allocate memory")
 
-  # To buffer n items, we allocate for n+1
-  result.buffer = cast[ptr UncheckedArray[byte]](c_malloc(csize_t (n+1)*size))
+  # To buffer n items, we allocate for n
+  result.buffer = cast[ptr UncheckedArray[byte]](c_malloc(csize_t n*size))
   if result.buffer.isNil:
     raise newException(OutOfMemDefect, "Could not allocate memory")
 
@@ -244,7 +244,7 @@ proc allocChannel(size, n: int): ChannelRaw =
   initCond(result.notEmptyCond)
 
   result.closed.store(false, moRelaxed) # We don't need atomic here, how to?
-  result.size = n+1
+  result.size = n
   result.itemsize = size
   result.head = 0
   result.tail = 0
@@ -262,7 +262,7 @@ proc freeChannel(chan: ChannelRaw) =
     var p = channelCache
     while not p.isNil:
       if chan.itemsize == p.chanSize and
-         chan.size-1 == p.chanN:
+         chan.size == p.chanN:
         if p.numCached < nimChannelCacheSize:
           # If space left in cache, cache it
           p.cache[p.numCached] = chan
