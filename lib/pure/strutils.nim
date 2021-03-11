@@ -2037,7 +2037,7 @@ func contains*(s: string, chars: set[char]): bool =
 
 func replace*(s, sub: string, by = ""): string {.rtl,
     extern: "nsuReplaceStr".} =
-  ## Replaces `sub` in `s` by the string `by`.
+  ## Replaces every occurence of `sub` in `s` by the string `by`.
   ##
   ## See also:
   ## * `find func<#find,string,string,Natural,int>`_
