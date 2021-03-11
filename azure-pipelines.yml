@@ -67,9 +67,10 @@ jobs:
 
     - bash: |
         set -e
-        sudo apt-fast update -qq
+        . ci/funs.sh
+        echo_run sudo apt-fast update -qq
         DEBIAN_FRONTEND='noninteractive' \
-          sudo apt-fast install --no-install-recommends -yq \
+          echo_run sudo apt-fast install --no-install-recommends -yq \
             libcurl4-openssl-dev libgc-dev libsdl1.2-dev libsfml-dev valgrind libc6-dbg
       displayName: 'Install dependencies (amd64 Linux)'
       condition: and(eq(variables['Agent.OS'], 'Linux'), eq(variables['CPU'], 'amd64'))
@@ -79,8 +80,8 @@ jobs:
         . ci/funs.sh
         echo_run sudo dpkg --add-architecture i386
         echo_run echo ok1
-        echo_run echo ok2
-        echo_run echo nonexistand_asdf
+        echo_run echo ok2b
+        echo_run nonexistand_asdf
         echo_run echo ok3
 
         # Downgrade llvm:
@@ -95,8 +96,8 @@ jobs:
         echo_run sudo apt-fast update -qq
         # `:i386` (e.g. in `libffi-dev:i386`) is needed otherwise you may get:
         # `could not load: libffi.so` during dynamic loading.
-        DEBIAN_FRONTEND='noninteractive' \
-          echo_run sudo apt-fast install --no-install-recommends --allow-downgrades -yq \
+        echo_run DEBIAN_FRONTEND='noninteractive' \
+          sudo apt-fast install --no-install-recommends --allow-downgrades -yq \
             g++-multilib gcc-multilib libcurl4-openssl-dev:i386 libgc-dev:i386 \
             libsdl1.2-dev:i386 libsfml-dev:i386 libglib2.0-dev:i386 libffi-dev:i386
 
@@ -124,12 +125,13 @@ jobs:
 
     - bash: |
         set -e
-        mkdir dist
-        curl -L https://nim-lang.org/download/mingw64.7z -o dist/mingw64.7z
-        curl -L https://nim-lang.org/download/dlls.zip -o dist/dlls.zip
-        7z x dist/mingw64.7z -odist
-        7z x dist/dlls.zip -obin
-        echo '##vso[task.prependpath]$(System.DefaultWorkingDirectory)/dist/mingw64/bin'
+        . ci/funs.sh
+        echo_run mkdir dist
+        echo_run curl -L https://nim-lang.org/download/mingw64.7z -o dist/mingw64.7z
+        echo_run curl -L https://nim-lang.org/download/dlls.zip -o dist/dlls.zip
+        echo_run 7z x dist/mingw64.7z -odist
+        echo_run 7z x dist/dlls.zip -obin
+        echo_run echo '##vso[task.prependpath]$(System.DefaultWorkingDirectory)/dist/mingw64/bin'
 
       displayName: 'Install dependencies (Windows)'
       condition: eq(variables['Agent.OS'], 'Windows_NT')
@@ -139,13 +141,14 @@ jobs:
 
     - bash: |
         set -e
-        echo 'PATH:' "$PATH"
-        echo '##[section]gcc version'
-        gcc -v
-        echo '##[section]nodejs version'
-        node -v
-        echo '##[section]make version'
-        make -v
+        . ci/funs.sh
+        echo_run echo 'PATH:' "$PATH"
+        echo_run echo '##[section]gcc version'
+        echo_run gcc -v
+        echo_run echo '##[section]nodejs version'
+        echo_run node -v
+        echo_run echo '##[section]make version'
+        echo_run make -v
       displayName: 'System information'
 
     - bash: echo '##vso[task.setvariable variable=csources_version]'"$(git -C csources rev-parse HEAD)"
@@ -159,6 +162,7 @@ jobs:
 
     - bash: |
         set -e
+        . ci/funs.sh
         ncpu=
         ext=
         case '$(Agent.OS)' in
@@ -176,12 +180,12 @@ jobs:
         [[ -z "$ncpu" || $ncpu -le 0 ]] && ncpu=1
 
         if [[ -x csources/bin/nim$ext ]]; then
-          echo "Found cached compiler, skipping build"
+          echo_run echo "Found cached compiler, skipping build"
         else
-          make -C csources -j $ncpu CC=gcc ucpu=$(CPU) koch=no
+          echo_run make -C csources -j $ncpu CC=gcc ucpu=$(CPU) koch=no
         fi
 
-        cp csources/bin/nim$ext bin
+        echo_run cp csources/bin/nim$ext bin
       displayName: 'Build 1-stage compiler from csources'
 
     - bash: nim c koch
