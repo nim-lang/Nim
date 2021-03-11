@@ -1154,15 +1154,15 @@ proc downloadFile*(client: HttpClient, url: string, filename: string) =
   defer:
     client.getBody = true
   let resp = client.get(url)
+  
+  if resp.code.is4xx or resp.code.is5xx:
+  raise newException(HttpRequestError, resp.status)
 
   client.bodyStream = newFileStream(filename, fmWrite)
   if client.bodyStream.isNil:
     fileError("Unable to open file")
   parseBody(client, resp.headers, resp.version)
   client.bodyStream.close()
-
-  if resp.code.is4xx or resp.code.is5xx:
-    raise newException(HttpRequestError, resp.status)
 
 proc downloadFile*(client: AsyncHttpClient, url: string,
                    filename: string): Future[void] =
@@ -1171,6 +1171,9 @@ proc downloadFile*(client: AsyncHttpClient, url: string,
     ## Downloads ``url`` and saves it to ``filename``.
     client.getBody = false
     let resp = await client.get(url)
+    
+    if resp.code.is4xx or resp.code.is5xx:
+      raise newException(HttpRequestError, resp.status)
 
     client.bodyStream = newFutureStream[string]("downloadFile")
     var file = openAsync(filename, fmWrite)
@@ -1181,9 +1184,6 @@ proc downloadFile*(client: AsyncHttpClient, url: string,
     # `bodyStream` has been written to the file.
     await file.writeFromStream(client.bodyStream)
     file.close()
-
-    if resp.code.is4xx or resp.code.is5xx:
-      raise newException(HttpRequestError, resp.status)
 
   result = newFuture[void]("downloadFile")
   try:
