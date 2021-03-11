@@ -88,7 +88,8 @@ jobs:
         Pin-Priority: 1001
         EOF
 
-        echo_run sudo apt-fast update -qq
+        # echo_run sudo apt-fast update -qq
+        echo_run sudo apt-fast update -qq || echo "failed, see bug #17343"
         # `:i386` (e.g. in `libffi-dev:i386`) is needed otherwise you may get:
         # `could not load: libffi.so` during dynamic loading.
         DEBIAN_FRONTEND='noninteractive' \
