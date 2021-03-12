@@ -2,17 +2,7 @@
 
 import std/macros
 import strutils
-
-macro assertAST(expected: string, struct: untyped): untyped =
-  var ast = newLit(struct.treeRepr)
-  result = quote do:
-    if `ast` != `expected`:
-      echo "Got:"
-      echo `ast`.indent(2)
-      echo "Expected:"
-      echo `expected`.indent(2)
-      raise newException(ValueError, "Failed to lex properly")
-
+import mlexerutils
 
 type
   S = distinct string
@@ -75,12 +65,8 @@ doAssert string(1'wrap) == "[[1]]":
 doAssert string(-1'wrap) == "[[-1]]":
   "unable to resolve a negative integer-suffix pattern"
 
-assertAST dedent """
-  StmtList
-    DotExpr
-      StrLit "-1"
-      Ident "\'wrap"""":
-  -1'wrap
+doAssert lispReprStr(-1'wrap) == """(DotExpr (StrLit "-1") (Ident "\'wrap"))""":
+  "failing to build correct AST on `-1'wrap`."
 
 doAssert string(12345.67890'wrap) == "[[12345.67890]]":
   "unable to resolve a float-suffix pattern"
@@ -119,12 +105,12 @@ assertAST dedent """
 doAssert $1234.56'wrap == "[[1234.56]]":
   "unable to properly account for context with suffixed numeric literals"
 
-# verify that the i64, f32, etc in-built suffixes still parse correctly
+# verify that the i64, f32, etc builtin suffixes still parse correctly
 
 const expectedF32: float32 = 123.125
 
 doAssert 123.125f32 == expectedF32:
-  "Failing to support non-quoted legacy f32 floating point suffix"
+  "failing to support non-quoted legacy f32 floating point suffix"
 
 doAssert 123.125'f32 == expectedF32
 
@@ -149,9 +135,5 @@ doAssert $1234.56'wrap == $1234.56'd9
 doAssert $1234.56'wrap == $1234.56'i9
 doAssert $1234.56'wrap == $1234.56'u9
 
-assertAST dedent """
-  StmtList
-    DotExpr
-      StrLit "1234.56"
-      Ident "\'u9"""":
-  1234.56'u9
+doAssert lispReprStr(1234.56'u9) == """(DotExpr (StrLit "1234.56") (Ident "\'u9"))""":
+  "failed to properly build AST for suffix that starts with u"

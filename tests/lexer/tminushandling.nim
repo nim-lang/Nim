@@ -1,17 +1,8 @@
-# Test tkStrNumLit
+# Test numeric literals and handling of minus symbol
 
 import std/macros
 import strutils
-
-macro assertAST(expected: string, struct: untyped): untyped =
-  var ast = newLit(struct.treeRepr)
-  result = quote do:
-    if `ast` != `expected`:
-      echo "Got:"
-      echo `ast`.indent(2)
-      echo "Expected:"
-      echo `expected`.indent(2)
-      raise newException(ValueError, "Failed to lex properly")
+import mlexerutils
 
 const one = 1
 const minusOne = `-`(one)
@@ -21,37 +12,29 @@ const minusOne = `-`(one)
 doAssert -1 == minusOne:
   "unable to parse a spaced-prefixed negative int"
 
-assertAST dedent """
-  StmtList
-    IntLit -1""":
-  -1
+doAssert lispReprStr(-1) == """(IntLit -1)""":
+  "failed to include minus sign when lexing integer literal"
 
 doAssert -1.0'f64 == minusOne.float64:
   "unable to parse a spaced-prefixed negative float"
 
-assertAST dedent """
-  StmtList
-    Float64Lit -1.0""":
-  -1.0'f64
+doAssert lispReprStr(-1.000'f64) == """(Float64Lit -1.0)""":
+  "failed to include minus sign lexing float literal preceded by left paren"
+
+doAssert lispReprStr( -1.000'f64) == """(Float64Lit -1.0)""":
+  "failed to include minus sign lexing float literal preceded by a space"
 
 doAssert [-1].contains(minusOne):
   "unable to handle negatives after square bracket"
 
-assertAST dedent """
-  StmtList
-    Bracket
-      IntLit -1""":
-  [-1]
+doAssert lispReprStr([-1]) == """(Bracket (IntLit -1))""":
+  "failed to include minus sign lexing int literal preceded by left bracket"
 
 doAssert (-1, 2)[0] == minusOne:
   "unable to handle negatives after parenthesis"
 
-assertAST dedent """
-  StmtList
-    Par
-      IntLit -1
-      IntLit 2""":
-  (-1, 2)
+doAssert lispReprStr((-1, 2)) == """(Par (IntLit -1) (IntLit 2))""":
+  "failed to include minus sign lexing int literal after parenthesis"
 
 proc x(): int =
   var a = 1;-1  # the -1 should act as the return value
@@ -78,7 +61,7 @@ doAssert 4 - 1 == 3:
 doAssert 4 - one == 3:
   "unable to handle subtraction with surrounding spaces with an identifier"
 
-# border cases that *should* generate a compiler errors
+# border cases that *should* generate compiler errors
 
 assertAST dedent """
   StmtList
@@ -88,3 +71,12 @@ assertAST dedent """
         IntLit 4
         IntLit -1""":
   x = 4 -1
+
+assertAST dedent """
+  StmtList
+    VarSection
+      IdentDefs
+        Ident "x"
+        Ident "uint"
+        IntLit -1""":
+  var x: uint = -1

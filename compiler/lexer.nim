@@ -82,6 +82,8 @@ when defined(nimsuggest):
                       tkCurlyRi}
 
 const
+  # when a minus (-) is found in front of a numeric literal, if the previous
+  # token is one of these then it is a negative numeric literal
   negationPrefixes = {tkComma, tkColon, tkParLe, tkBracketLe, tkSemiColon,
                       tkBracketDotLe, tkCurlyDotLe, tkParDotLe}
   tokKeywordLow* = succ(tkSymbol)
@@ -413,7 +415,7 @@ proc getNumber(L: var Lexer, result: var Token) =
   if L.buf[postPos] == '\'':
     hasSuffix = true
     inc(postPos)
-  # 2A: handle the internal literal versions
+  # 2A: handle the builtin literal versions
   if L.buf[postPos] in {'f', 'F', 'd', 'D', 'i', 'I', 'u', 'U'}:
     case L.buf[postPos]
     of 'f', 'F':

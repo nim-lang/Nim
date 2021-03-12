@@ -567,8 +567,16 @@ The pre-defined type suffixes are:
 
 If the suffix is not predefined, then the suffix is assumed to be a call
 to a proc, template, macro or other callable identifier that is passed the
-string containing the literal. Essentially,  ``1234.56'sample`` is
-the equivalent of ``sample("1234.56")``.
+string containing the literal. The identifier needs to contain the apostrophe
+and so will need to be escaped with backticks.
+
+.. code-block:: nim
+  import strutils
+  type nibble = distinct uint8
+  proc `'nibble`(n: string): uint8 =
+    result = (parseInt(n) and 0x0F).uint8
+  
+  var x = 5'nibble
 
 Floating-point literals may also be in binary, octal or hexadecimal
 notation:
