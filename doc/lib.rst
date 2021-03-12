@@ -39,7 +39,7 @@ Automatic imports
   Basic Nim thread support. **Note:** This is part of the system module. Do not
   import it explicitly. Enabled with ``--threads:on``.
 
-* `channels <channels.html>`_
+* `channels <channels_builtin.html>`_
   Nim message passing support for threads. **Note:** This is part of the
   system module. Do not import it explicitly. Enabled with ``--threads:on``.
 
