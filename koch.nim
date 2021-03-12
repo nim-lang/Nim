@@ -531,10 +531,9 @@ proc runCI(cmd: string) =
   ## build nimble early on to enable remainder to depend on it if needed
   kochExecFold("Build Nimble", "nimble")
 
+  let batchParam = "--batch:$1" % "NIM_TESTAMENT_BATCH".getEnv("_")
   if getEnv("NIM_TEST_PACKAGES", "0") == "1":
-    execFold("Test selected Nimble packages (1)", "nim c -r testament/testament cat nimble-packages-1")
-  elif getEnv("NIM_TEST_PACKAGES", "0") == "2":
-    execFold("Test selected Nimble packages (2)", "nim c -r testament/testament cat nimble-packages-2")
+    execFold("Test selected Nimble packages", "nim r testament/testament $# pcat nimble-packages" % batchParam)
   else:
     buildTools()
 
@@ -551,11 +550,9 @@ proc runCI(cmd: string) =
       execFold("Compile tester", "nim c -d:nimCoroutines --os:genode -d:posix --compileOnly testament/testament")
 
     # main bottleneck here
-    # xxx: even though this is the main bottlneck, we could use same code to batch the other tests
-    #[
-    BUG: with initOptParser, `--batch:'' all` interprets `all` as the argument of --batch
-    ]#
-    execFold("Run tester", "nim c -r -d:nimCoroutines --putenv:NIM_TESTAMENT_REMOTE_NETWORKING:1 -d:nimStrictMode testament/testament --batch:$1 all -d:nimCoroutines" % ["NIM_TESTAMENT_BATCH".getEnv("_")])
+    # xxx: even though this is the main bottleneck, we could speedup the rest via batching with `--batch`.
+    # BUG: with initOptParser, `--batch:'' all` interprets `all` as the argument of --batch, pending bug #14343
+    execFold("Run tester", "nim c -r -d:nimCoroutines --putenv:NIM_TESTAMENT_REMOTE_NETWORKING:1 -d:nimStrictMode testament/testament $# all -d:nimCoroutines" % batchParam)
 
     block CT_FFI:
       when defined(posix): # windows can be handled in future PR's
