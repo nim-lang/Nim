@@ -37,7 +37,7 @@ written as:
 
   proc `=destroy`*[T](x: var myseq[T]) =
     if x.data != nil:
-      for i in 0..<x.len: `=destroy`(x[i])
+      for i in 0..<x.len: `=destroy`(x.data[i])
       dealloc(x.data)
 
   proc `=copy`*[T](a: var myseq[T]; b: myseq[T]) =
