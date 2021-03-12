@@ -169,7 +169,7 @@
 
 - Added experimental `linenoise.readLineStatus` to get line and status (e.g. ctrl-D or ctrl-C).
 
-- Added `compilesettings.SingleValueSetting.libPath`
+- Added `compilesettings.SingleValueSetting.libPath`.
 
 - `std/wrapnils` doesn't use `experimental:dotOperators` anymore, avoiding
   issues like https://github.com/nim-lang/Nim/issues/13063 (which affected error messages)
@@ -219,9 +219,9 @@
 - `system.addEscapedChar` now renders `\r` as `\r` instead of `\c`, to be compatible
   with most other languages.
 
-- Removed support for named procs in `sugar.=>`
+- Removed support for named procs in `sugar.=>`.
 
-- Added `jscore.debugger` to [call any available debugging functionality, such as breakpoints.](https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Statements/debugger)
+- Added `jscore.debugger` to [call any available debugging functionality, such as breakpoints.](https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Statements/debugger).
 
 - Added `htmlgen.portal` for [making "SPA style" pages using HTML only](https://web.dev/hands-on-portals).
 
