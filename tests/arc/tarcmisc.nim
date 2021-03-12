@@ -390,3 +390,19 @@ proc newPixelBuffer(): PixelBuffer =
 
 discard newPixelBuffer()
 
+
+# bug #17199
+
+proc passSeq(data: seq[string]) =
+  # used the system.& proc initially
+  let wat = data & "hello"
+
+proc test =
+  let name = @["hello", "world"]
+  passSeq(name)
+  doAssert name == @["hello", "world"]
+
+# works at runtime but not compile-time
+static:
+  test()
+
