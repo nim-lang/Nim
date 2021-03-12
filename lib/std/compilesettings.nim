@@ -63,4 +63,3 @@ proc querySettingSeq*(setting: MultipleValueSetting): seq[string] {.
   ## * `compileOption <system.html#compileOption,string,string>`_ for enum options
   runnableExamples:
     const nimblePaths = querySettingSeq(MultipleValueSetting.nimblePaths)
-  discard
