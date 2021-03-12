@@ -52,7 +52,6 @@ proc querySetting*(setting: SingleValueSetting): string {.
   ##
   runnableExamples:
     const nimcache = querySetting(SingleValueSetting.nimcacheDir)
-  discard
 
 proc querySettingSeq*(setting: MultipleValueSetting): seq[string] {.
   compileTime, noSideEffect.} =
