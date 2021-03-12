@@ -467,11 +467,19 @@ type
     s*: PSharedState
     indentStack*: seq[int]
     filename*: string
-    line*, col*: int
+    line*, col*: int            ## initial line/column of whole text or
+                                ## documenation fragment that will be added
+                                ## in case of error/warning reporting to
+                                ## (relative) line/column of the token.
     hasToc*: bool
     curAnchor*: string          # variable to track latest anchor in s.anchors
 
   EParseError* = object of ValueError
+
+const
+  LineRstInit* = 1 ## Initial line number for standalone RST text
+  ColRstInit* = 0 ## Initial column number for standalone RST text
+                  ## (Nim global reporting adds ColOffset=1)
 
 template currentTok(p: RstParser): Token = p.tok[p.idx]
 template prevTok(p: RstParser): Token = p.tok[p.idx - 1]
@@ -542,8 +550,8 @@ proc initParser(p: var RstParser, sharedState: PSharedState) =
   p.idx = 0
   p.filename = ""
   p.hasToc = false
-  p.col = 0
-  p.line = 1
+  p.col = ColRstInit
+  p.line = LineRstInit
   p.s = sharedState
 
 proc addNodesAux(n: PRstNode, result: var string) =
@@ -1439,8 +1447,8 @@ proc countTitles(p: var RstParser, n: PRstNode) =
         if p.s.hTitleCnt >= 2:
           break
 
-proc tokenAfterNewline(p: RstParser): int =
-  result = p.idx
+proc tokenAfterNewline(p: RstParser, start: int): int =
+  result = start
   while true:
     case p.tok[result].kind
     of tkEof:
@@ -1449,6 +1457,9 @@ proc tokenAfterNewline(p: RstParser): int =
       inc result
       break
     else: inc result
+
+proc tokenAfterNewline(p: RstParser): int {.inline.} =
+  result = tokenAfterNewline(p, p.idx)
 
 proc isAdornmentHeadline(p: RstParser, adornmentIdx: int): bool =
   ## check that underline/overline length is enough for the heading.
@@ -1937,13 +1948,34 @@ proc parseEnumList(p: var RstParser): PRstNode =
     wildToken: array[0..5, int] = [4, 3, 3, 4, 3, 3]  # number of tokens
     wildIndex: array[0..5, int] = [1, 0, 0, 1, 0, 0]
       # position of enumeration sequence (number/letter) in enumerator
-  result = newRstNodeA(p, rnEnumList)
   let col = currentTok(p).col
   var w = 0
   while w < wildcards.len:
     if match(p, p.idx, wildcards[w]): break
     inc w
   assert w < wildcards.len
+  proc checkAfterNewline(p: RstParser, report: bool): bool =
+    let j = tokenAfterNewline(p, start=p.idx+1)
+    if p.tok[j].kind notin {tkIndent, tkEof} and
+        p.tok[j].col < p.tok[p.idx+wildToken[w]].col and
+        (p.tok[j].col > col or
+          (p.tok[j].col == col and not match(p, j, wildcards[w]))):
+      if report:
+        let n = p.line + p.tok[j].line
+        let msg = "\n" & """
+          not enough indentation on line $2
+              (if it's continuation of enumeration list),
+          or no blank line after line $1 (if it should be the next paragraph),
+          or no escaping \ at the beginning of line $1
+              (if lines $1..$2 are a normal paragraph, not enum. list)""".
+          unindent(8)
+        rstMessage(p, mwRstStyle, msg % [$(n-1), $n])
+      result = false
+    else:
+      result = true
+  if not checkAfterNewline(p, report = true):
+    return nil
+  result = newRstNodeA(p, rnEnumList)
   let autoEnums = if roSupportMarkdown in p.s.options: @["#", "1"] else: @["#"]
   var prevAE = ""  # so as not allow mixing auto-enumerators `1` and `#`
   var curEnum = 1
@@ -1963,6 +1995,10 @@ proc parseEnumList(p: var RstParser): PRstNode =
     result.add(item)
     if currentTok(p).kind == tkIndent and currentTok(p).ival == col and
         match(p, p.idx+1, wildcards[w]):
+      # don't report to avoid duplication of warning since for
+      # subsequent enum. items parseEnumList will be called second time:
+      if not checkAfterNewline(p, report = false):
+        break
       let enumerator = p.tok[p.idx + 1 + wildIndex[w]].symbol
       # check that it's in sequence: enumerator == next(prevEnum)
       if "n" in wildcards[w]:  # arabic numeral
@@ -2336,7 +2372,8 @@ proc selectDir(p: var RstParser, d: string): PRstNode =
   of "warning": result = dirAdmonition(p, d)
   of "default-role": result = dirDefaultRole(p)
   else:
-    rstMessage(p, meInvalidDirective, d)
+    let tok = p.tok[p.idx-2]  # report on directive in ".. directive::"
+    rstMessage(p, meInvalidDirective, d, tok.line, tok.col)
 
 proc prefix(ftnType: FootnoteType): string =
   case ftnType

@@ -6073,13 +6073,14 @@ avoid ambiguity when there are multiple modules with the same path.
 
 There are two pseudo directories:
 
-1. ``std``: The ``std`` pseudo directory is the abstract location of Nim's standard
-library. For example, the syntax ``import std / strutils`` is used to unambiguously
-refer to the standard library's ``strutils`` module.
-2. ``pkg``: The ``pkg`` pseudo directory is used to unambiguously refer to a Nimble
-package. However, for technical details that lie outside the scope of this document,
-its semantics are: *Use the search path to look for module name but ignore the standard
-library locations*. In other words, it is the opposite of ``std``.
+1. ``std``: The ``std`` pseudo directory is the abstract location of
+   Nim's standard library. For example, the syntax ``import std / strutils``
+   is used to unambiguously refer to the standard library's ``strutils`` module.
+2. ``pkg``: The ``pkg`` pseudo directory is used to unambiguously refer to
+   a Nimble package. However, for technical details that lie outside the
+   scope of this document, its semantics are: *Use the search path to look for
+   module name but ignore the standard library locations*.
+   In other words, it is the opposite of ``std``.
 
 
 From import statement

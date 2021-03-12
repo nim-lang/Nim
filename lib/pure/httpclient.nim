@@ -1219,6 +1219,9 @@ proc downloadFile*(client: HttpClient, url: Uri | string, filename: string) =
   defer:
     client.getBody = true
   let resp = client.get(url)
+  
+  if resp.code.is4xx or resp.code.is5xx:
+    raise newException(HttpRequestError, resp.status)
 
   client.bodyStream = newFileStream(filename, fmWrite)
   if client.bodyStream.isNil:
@@ -1226,14 +1229,14 @@ proc downloadFile*(client: HttpClient, url: Uri | string, filename: string) =
   parseBody(client, resp.headers, resp.version)
   client.bodyStream.close()
 
-  if resp.code.is4xx or resp.code.is5xx:
-    raise newException(HttpRequestError, resp.status)
-
 proc downloadFileEx(client: AsyncHttpClient,
                     url: Uri | string, filename: string): Future[void] {.async.} =
   ## Downloads `url` and saves it to `filename`.
   client.getBody = false
   let resp = await client.get(url)
+  
+  if resp.code.is4xx or resp.code.is5xx:
+    raise newException(HttpRequestError, resp.status)
 
   client.bodyStream = newFutureStream[string]("downloadFile")
   var file = openAsync(filename, fmWrite)
@@ -1247,9 +1250,6 @@ proc downloadFileEx(client: AsyncHttpClient,
   # The `writeFromStream` proc will complete once all the data in the
   # `bodyStream` has been written to the file.
   await file.writeFromStream(client.bodyStream)
-
-  if resp.code.is4xx or resp.code.is5xx:
-    raise newException(HttpRequestError, resp.status)
 
 proc downloadFile*(client: AsyncHttpClient, url: Uri | string,
                    filename: string): Future[void] =
