@@ -570,33 +570,46 @@ proc merge*[T](
   ## you may use `system.cmp` or instead call the overloaded
   ## version of `merge`, which uses `system.cmp`.
   ##
+  ## .. note:: The original data of `result` is not cleared,
+  ##    new data is appended to `result`.
+  ##
   ## **See also:**
   ## * `merge proc<#merge,seq[T],openArray[T],openArray[T]>`_
   runnableExamples:
     let x = @[1, 3, 6]
     let y = @[2, 3, 4]
 
-    var merged = @[7] # just to illustrate that its content will be discarded
-    merged.merge(x, y, system.cmp[int])
-    assert merged.isSorted
-    assert merged == @[1, 2, 3, 3, 4, 6]
+    block:
+      var merged = @[7] # new data is appended to merged sequence
+      merged.merge(x, y, system.cmp[int])
+      assert merged == @[7, 1, 2, 3, 3, 4, 6]
 
-    import sugar
+    block:
+      var merged = @[7] # if you only want new data, clear merged sequence first
+      merged.setLen(0)
+      merged.merge(x, y, system.cmp[int])
+      assert merged.isSorted
+      assert merged == @[1, 2, 3, 3, 4, 6]
+
+    import std/sugar
 
     var res: seq[(int, int)]
-    res.merge([(1,1)], [(1,2)], (a,b) => a[0] - b[0])
+    res.merge([(1, 1)], [(1, 2)], (a, b) => a[0] - b[0])
     assert res == @[(1, 1), (1, 2)]
+
+    assert seq[int].default.dup(merge([1, 3], [2, 4])) == @[1, 2, 3, 4]
 
   let
     sizeX = x.len
     sizeY = y.len
+    oldLen = result.len
 
-  result.setLen(sizeX + sizeY)
+  result.setLen(oldLen + sizeX + sizeY)
 
   var
     ix = 0
     iy = 0
-    i = 0
+    i = oldLen
 
   while true:
     if ix == sizeX:
@@ -631,8 +644,8 @@ proc merge*[T](result: var seq[T], x, y: openArray[T]) {.inline, since: (1, 5, 1
   ## **See also:**
   ## * `merge proc<#merge,seq[T],openArray[T],openArray[T],proc(T,T)>`_
   runnableExamples:
-    let x = [5,10,15,20,25]
-    let y = [50,40,30,20,10].sorted
+    let x = [5, 10, 15, 20, 25]
+    let y = [50, 40, 30, 20, 10].sorted
 
     var merged: seq[int]
     merged.merge(x, y)

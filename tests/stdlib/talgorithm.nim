@@ -160,8 +160,7 @@ proc main() =
 
     var merged: seq[int] = @[1, 2, 3, 5, 6, 56, 99, 2, 34]
     merged.merge(x, y)
-    doAssert merged.isSorted
-    doAssert merged == @x
+    doAssert merged == @[1, 2, 3, 5, 6, 56, 99, 2, 34, 1, 3, 5, 5, 7]
 
 
   block:
@@ -187,6 +186,7 @@ proc main() =
     var y: array[0, int]
 
     var merged: seq[int] = @[99, 99, 99]
+    merged.setLen(0)
     merged.merge(x, y)
     doAssert merged.isSorted
     doAssert merged.len == 0
@@ -243,18 +243,22 @@ proc main() =
     var y = @[r(4), r(7), r(12), r(13), r(77), r(99)]
 
     var merged: seq[Record]
+    merged.setLen(0)
     merged.merge(x, y, ascendingCmp)
     doAssert merged.isSorted(ascendingCmp)
     doAssert merged == sorted(x & y, ascendingCmp)
 
     reverse(x)
     reverse(y)
+
+    merged.setLen(0)
     merged.merge(x, y, descendingCmp)
     doAssert merged.isSorted(descendingCmp)
     doAssert merged == sorted(x & y, ascendingCmp, SortOrder.Descending)
 
     reverse(x)
     reverse(y)
+    merged.setLen(0)
     merged.merge(x, y, proc (x, y: Record): int = -descendingCmp(x, y))
     doAssert merged.isSorted(proc (x, y: Record): int = -descendingCmp(x, y))
     doAssert merged == sorted(x & y, ascendingCmp)
