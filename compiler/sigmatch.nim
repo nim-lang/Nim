@@ -556,12 +556,6 @@ proc recordRel(c: var TCandidate, f, a: PType): TTypeRelation =
 proc allowsNil(f: PType): TTypeRelation {.inline.} =
   result = if tfNotNil notin f.flags: isSubtype else: isNone
 
-proc allowsNilDeprecated(c: TCandidate, f: PType): TTypeRelation =
-  if optNilSeqs in c.c.config.options:
-    result = allowsNil(f)
-  else:
-    result = isNone
-
 proc inconsistentVarTypes(f, a: PType): bool {.inline.} =
   result = f.kind != a.kind and
     (f.kind in {tyVar, tyLent, tySink} or a.kind in {tyVar, tyLent, tySink})
@@ -1300,7 +1294,7 @@ proc typeRel(c: var TCandidate, f, aOrig: PType,
             result = isNone
         elif tfNotNil in f.flags and tfNotNil notin a.flags:
           result = isNilConversion
-    of tyNil: result = allowsNilDeprecated(c, f)
+    of tyNil: result = isNone
     else: discard
   of tyOrdinal:
     if isOrdinalType(a, allowEnumWithHoles = optNimV1Emulation in c.c.config.globalOptions):
@@ -1396,7 +1390,7 @@ proc typeRel(c: var TCandidate, f, aOrig: PType,
         result = isNilConversion
       else:
         result = isEqual
-    of tyNil: result = allowsNilDeprecated(c, f)
+    of tyNil: result = isNone
     else: discard
   of tyCString:
     # conversion from string to cstring is automatic:

@@ -431,8 +431,8 @@ Define                   Effect
 ``useMalloc``            Makes Nim use C's `malloc`:idx: instead of Nim's
                          own memory manager, albeit prefixing each allocation with
                          its size to support clearing memory on reallocation.
-                         This only works with ``gc:none`` and
-                         with ``--newruntime``.
+                         This only works with ``gc:none``, ``gc:arc`` and
+                         ``--gc:orc``.
 ``useRealtimeGC``        Enables support of Nim's GC for *soft* realtime
                          systems. See the documentation of the `gc <gc.html>`_
                          for further information.

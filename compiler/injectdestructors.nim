@@ -222,14 +222,14 @@ proc initialized(code: ControlFlowGraph; pc: int,
       inc pc
   return pc
 
-proc isCursor(n: PNode; c: Con): bool =
+proc isCursor(n: PNode): bool =
   case n.kind
   of nkSym:
     sfCursor in n.sym.flags
   of nkDotExpr:
-    isCursor(n[1], c)
+    isCursor(n[1])
   of nkCheckedFieldExpr:
-    isCursor(n[0], c)
+    isCursor(n[0])
   else:
     false
 
@@ -528,23 +528,19 @@ proc cycleCheck(n: PNode; c: var Con) =
       message(c.graph.config, n.info, warnCycleCreated, msg)
       break
 
-proc pVarTopLevel(v: PNode; c: var Con; s: var Scope; ri, res: PNode) =
+proc pVarTopLevel(v: PNode; c: var Con; s: var Scope; res: PNode) =
   # move the variable declaration to the top of the frame:
   s.vars.add v.sym
   if isUnpackedTuple(v):
     if c.inLoop > 0:
       # unpacked tuple needs reset at every loop iteration
       res.add newTree(nkFastAsgn, v, genDefaultCall(v.typ, c, v.info))
-  elif sfThread notin v.sym.flags:
+  elif sfThread notin v.sym.flags and sfCursor notin v.sym.flags:
     # do not destroy thread vars for now at all for consistency.
     if sfGlobal in v.sym.flags and s.parent == nil: #XXX: Rethink this logic (see tarcmisc.test2)
       c.graph.globalDestructors.add c.genDestroy(v)
     else:
       s.final.add c.genDestroy(v)
-  if ri.kind == nkEmpty and c.inLoop > 0:
-    res.add moveOrCopy(v, genDefaultCall(v.typ, c, v.info), c, s, isDecl = true)
-  elif ri.kind != nkEmpty:
-    res.add moveOrCopy(v, ri, c, s, isDecl = true)
 
 proc processScope(c: var Con; s: var Scope; ret: PNode): PNode =
   result = newNodeI(nkStmtList, ret.info)
@@ -744,7 +740,7 @@ proc p(n: PNode; c: var Con; s: var Scope; mode: ProcessMode): PNode =
          nkCallKinds + nkLiterals:
       result = p(n, c, s, consumed)
     elif ((n.kind == nkSym and isSinkParam(n.sym)) or isAnalysableFieldAccess(n, c.owner)) and
-        isLastRead(n, c) and not (n.kind == nkSym and isCursor(n, c)):
+        isLastRead(n, c) and not (n.kind == nkSym and isCursor(n)):
       # Sinked params can be consumed only once. We need to reset the memory
       # to disable the destructor which we have not elided
       result = destructiveMoveVar(n, c, s)
@@ -850,17 +846,16 @@ proc p(n: PNode; c: var Con; s: var Scope; mode: ProcessMode): PNode =
         if it.kind == nkVarTuple and hasDestructor(c, ri.typ):
           let x = lowerTupleUnpacking(c.graph, it, c.idgen, c.owner)
           result.add p(x, c, s, consumed)
-        elif it.kind == nkIdentDefs and hasDestructor(c, it[0].typ) and not isCursor(it[0], c):
+        elif it.kind == nkIdentDefs and hasDestructor(c, it[0].typ):
           for j in 0..<it.len-2:
             let v = it[j]
             if v.kind == nkSym:
               if sfCompileTime in v.sym.flags: continue
-              pVarTopLevel(v, c, s, ri, result)
-            else:
-              if ri.kind == nkEmpty and c.inLoop > 0:
-                ri = genDefaultCall(v.typ, c, v.info)
-              if ri.kind != nkEmpty:
-                result.add moveOrCopy(v, ri, c, s, isDecl = false)
+              pVarTopLevel(v, c, s, result)
+            if ri.kind != nkEmpty:
+              result.add moveOrCopy(v, ri, c, s, isDecl = v.kind == nkSym)
+            elif ri.kind == nkEmpty and c.inLoop > 0:
+              result.add moveOrCopy(v, genDefaultCall(v.typ, c, v.info), c, s, isDecl = v.kind == nkSym)
         else: # keep the var but transform 'ri':
           var v = copyNode(n)
           var itCopy = copyNode(it)
@@ -870,8 +865,7 @@ proc p(n: PNode; c: var Con; s: var Scope; mode: ProcessMode): PNode =
           v.add itCopy
           result.add v
     of nkAsgn, nkFastAsgn:
-      if hasDestructor(c, n[0].typ) and n[1].kind notin {nkProcDef, nkDo, nkLambda} and
-          not isCursor(n[0], c):
+      if hasDestructor(c, n[0].typ) and n[1].kind notin {nkProcDef, nkDo, nkLambda}:
         if n[0].kind in {nkDotExpr, nkCheckedFieldExpr}:
           cycleCheck(n, c)
         assert n[1].kind notin {nkAsgn, nkFastAsgn}
@@ -890,7 +884,8 @@ proc p(n: PNode; c: var Con; s: var Scope; mode: ProcessMode): PNode =
     of nkNone..nkNilLit, nkTypeSection, nkProcDef, nkConverterDef,
        nkMethodDef, nkIteratorDef, nkMacroDef, nkTemplateDef, nkLambda, nkDo,
        nkFuncDef, nkConstSection, nkConstDef, nkIncludeStmt, nkImportStmt,
-       nkExportStmt, nkPragma, nkCommentStmt, nkBreakState, nkTypeOfExpr:
+       nkExportStmt, nkPragma, nkCommentStmt, nkBreakState,
+       nkTypeOfExpr, nkMixinStmt, nkBindStmt:
       result = n
 
     of nkStringToCString, nkCStringToString, nkChckRangeF, nkChckRange64, nkChckRange, nkPragmaBlock:
@@ -1003,6 +998,14 @@ proc moveOrCopy(dest, ri: PNode; c: var Con; s: var Scope, isDecl = false): PNod
   if sameLocation(dest, ri):
     # rule (self-assignment-removal):
     result = newNodeI(nkEmpty, dest.info)
+  elif isCursor(dest):
+    case ri.kind:
+    of nkStmtListExpr, nkBlockExpr, nkIfExpr, nkCaseStmt, nkTryStmt:
+      template process(child, s): untyped = moveOrCopy(dest, child, c, s, isDecl)
+      # We know the result will be a stmt so we use that fact to optimize
+      handleNestedTempl(ri, process, willProduceStmt = true)
+    else:
+      result = newTree(nkFastAsgn, dest, p(ri, c, s, normal))
   else:
     case ri.kind
     of nkCallKinds:
@@ -1038,7 +1041,7 @@ proc moveOrCopy(dest, ri: PNode; c: var Con; s: var Scope, isDecl = false): PNod
         let snk = c.genSink(dest, ri, isDecl)
         result = newTree(nkStmtList, snk, c.genWasMoved(ri))
       elif ri.sym.kind != skParam and ri.sym.owner == c.owner and
-          isLastRead(ri, c) and canBeMoved(c, dest.typ) and not isCursor(ri, c):
+          isLastRead(ri, c) and canBeMoved(c, dest.typ) and not isCursor(ri):
         # Rule 3: `=sink`(x, z); wasMoved(z)
         let snk = c.genSink(dest, ri, isDecl)
         result = newTree(nkStmtList, snk, c.genWasMoved(ri))

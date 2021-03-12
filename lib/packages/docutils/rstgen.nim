@@ -797,11 +797,11 @@ proc renderHeadline(d: PDoc, n: PRstNode, result: var string) =
     spaces(max(0, n.level)) & tmp)
 
 proc renderOverline(d: PDoc, n: PRstNode, result: var string) =
-  if d.meta[metaTitle].len == 0:
+  if n.level == 0 and d.meta[metaTitle].len == 0:
     for i in countup(0, len(n)-1):
       renderRstToOut(d, n.sons[i], d.meta[metaTitle])
     d.currentSection = d.meta[metaTitle]
-  elif d.meta[metaSubtitle].len == 0:
+  elif n.level == 0 and d.meta[metaSubtitle].len == 0:
     for i in countup(0, len(n)-1):
       renderRstToOut(d, n.sons[i], d.meta[metaSubtitle])
     d.currentSection = d.meta[metaSubtitle]
@@ -920,8 +920,11 @@ proc parseCodeBlockField(d: PDoc, n: PRstNode, params: var CodeBlockParams) =
   of "test":
     params.testCmd = n.getFieldValue.strip
     if params.testCmd.len == 0:
-      params.testCmd = "$nim r --backend:$backend $options" # see `interpSnippetCmd`
+      # factor with D20210224T221756. Note that `$docCmd` should appear before `$file`
+      # but after all other options, but currently `$options` merges both options and `$file` so it's tricky.
+      params.testCmd = "$nim r --backend:$backend --lib:$libpath $docCmd $options"
     else:
+      # consider whether `$docCmd` should be appended here too
       params.testCmd = unescape(params.testCmd)
   of "status", "exitcode":
     var status: int
@@ -1137,7 +1140,7 @@ proc renderRstToOut(d: PDoc, n: PRstNode, result: var string) =
   if n == nil: return
   case n.kind
   of rnInner: renderAux(d, n, result)
-  of rnHeadline: renderHeadline(d, n, result)
+  of rnHeadline, rnMarkdownHeadline: renderHeadline(d, n, result)
   of rnOverline: renderOverline(d, n, result)
   of rnTransition: renderAux(d, n, "<hr$2 />\n", "\\hrule$2\n", result)
   of rnParagraph: renderAux(d, n, "<p$2>$1</p>\n", "$2\n$1\n\n", result)

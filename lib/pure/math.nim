@@ -122,7 +122,7 @@ func fac*(n: int): int =
 
 {.push checks: off, line_dir: off, stack_trace: off.}
 
-when defined(Posix) and not defined(genode):
+when defined(posix) and not defined(genode):
   {.passl: "-lm".}
 
 const
@@ -1181,6 +1181,18 @@ func lcm*[T](x, y: T): T =
     doAssert lcm(13, 39) == 39
 
   x div gcd(x, y) * y
+
+func clamp*[T](val: T, bounds: Slice[T]): T {.since: (1, 5), inline.} =
+  ## Like `system.clamp`, but takes a slice, so you can easily clamp within a range.
+  runnableExamples:
+    assert clamp(10, 1 .. 5) == 5
+    assert clamp(1, 1 .. 3) == 1
+    type A = enum a0, a1, a2, a3, a4, a5
+    assert a1.clamp(a2..a4) == a2
+    assert clamp((3, 0), (1, 0) .. (2, 9)) == (2, 9)
+    doAssertRaises(AssertionDefect): discard clamp(1, 3..2) # invalid bounds
+  assert bounds.a <= bounds.b, $(bounds.a, bounds.b)
+  clamp(val, bounds.a, bounds.b)
 
 func lcm*[T](x: openArray[T]): T {.since: (1, 1).} =
   ## Computes the least common multiple of the elements of `x`.

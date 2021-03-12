@@ -632,3 +632,73 @@ used to specialize the object traversal in order to avoid deep recursions:
 
 As can be seen from the example, this solution is hardly sufficient and
 should eventually be replaced by a better solution.
+
+
+Copy on write
+=============
+
+String literals are implemented as [copy-on-write](https://en.wikipedia.org/wiki/Copy-on-write).
+When assigning a string literal to a variable, a copy of the literal won't be created.
+Instead the variable simply points to the literal.
+The literal is shared between different variables which are pointing to it.
+The copy operation is deferred until the first write.
+
+```nim
+var x = "abc"  # no copy
+var y = x      # no copy
+```
+
+The string literal "abc" is stored in static memory and not allocated on the heap.
+The variable `x` points to the literal and the variable `y` points to the literal too.
+There is no copy during assigning operations.
+
+```nim
+var x = "abc"  # no copy
+var y = x      # no copy
+y[0] = 'h'     # copy
+```
+
+The program above shows when the copy operations happen.
+When mutating the variable `y`, the Nim compiler creates a fresh copy of `x`, 
+the variable `y` won't point to the string literal anymore. 
+Instead it points to the copy of `x` of which the memory can be mutated 
+and the variable `y` becomes a mutable string.
+
+.. Note:: The abstraction fails for `addr x` because whether the address is going to be used for mutations is unknown. 
+
+Let's look at a silly example demonstrating this behaviour:
+
+```nim
+var x = "abc"
+var y = x
+
+moveMem(addr y[0], addr x[0], 3)
+```
+
+The program fails because we need to prepare a fresh copy for the variable `y`.
+`prepareMutation` should be called before the address operation.
+
+```nim
+var x = "abc"
+var y = x
+
+prepareMutation(y)
+moveMem(addr y[0], addr x[0], 3)
+assert y == "abc"
+```
+
+Now `prepareMutation` solves the problem.
+It manually creates a fresh copy and makes the variable `y` mutable.
+
+```nim
+var x = "abc"
+var y = x
+
+prepareMutation(y)
+moveMem(addr y[0], addr x[0], 3)
+moveMem(addr y[0], addr x[0], 3)
+moveMem(addr y[0], addr x[0], 3)
+assert y == "abc"
+```
+
+No matter how many times `moveMem` is called, the program compiles and runs.

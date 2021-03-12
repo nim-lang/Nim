@@ -203,18 +203,18 @@ proc putComment(g: var TSrcGen, s: string) =
     case s[i]
     of '\0':
       break
-    of '\x0D':
+    of '\r':
       put(g, tkComment, com)
       com = "## "
       inc(i)
-      if i <= hi and s[i] == '\x0A': inc(i)
+      if i <= hi and s[i] == '\n': inc(i)
       optNL(g, ind)
-    of '\x0A':
+    of '\n':
       put(g, tkComment, com)
       com = "## "
       inc(i)
       optNL(g, ind)
-    of ' ', '\x09':
+    of ' ', '\t':
       com.add(s[i])
       inc(i)
     else:
@@ -242,12 +242,12 @@ proc maxLineLength(s: string): int =
     case s[i]
     of '\0':
       break
-    of '\x0D':
+    of '\r':
       inc(i)
-      if i <= hi and s[i] == '\x0A': inc(i)
+      if i <= hi and s[i] == '\n': inc(i)
       result = max(result, lineLen)
       lineLen = 0
-    of '\x0A':
+    of '\n':
       inc(i)
       result = max(result, lineLen)
       lineLen = 0
@@ -261,13 +261,13 @@ proc putRawStr(g: var TSrcGen, kind: TokType, s: string) =
   var str = ""
   while i <= hi:
     case s[i]
-    of '\x0D':
+    of '\r':
       put(g, kind, str)
       str = ""
       inc(i)
-      if i <= hi and s[i] == '\x0A': inc(i)
+      if i <= hi and s[i] == '\n': inc(i)
       optNL(g, 0)
-    of '\x0A':
+    of '\n':
       put(g, kind, str)
       str = ""
       inc(i)
@@ -280,7 +280,7 @@ proc putRawStr(g: var TSrcGen, kind: TokType, s: string) =
 proc containsNL(s: string): bool =
   for i in 0..<s.len:
     case s[i]
-    of '\x0D', '\x0A':
+    of '\r', '\n':
       return true
     else:
       discard
@@ -1143,9 +1143,9 @@ proc gsub(g: var TSrcGen, n: PNode, c: TContext) =
     gcomma(g, n)
     put(g, tkParRi, ")")
   of nkObjDownConv, nkObjUpConv:
+    let typ = if (n.typ != nil) and (n.typ.sym != nil): n.typ.sym.name.s else: ""
+    put(g, tkParLe, typ & "(")
     if n.len >= 1: gsub(g, n[0])
-    put(g, tkParLe, "(")
-    gcomma(g, n, 1)
     put(g, tkParRi, ")")
   of nkClosedSymChoice, nkOpenSymChoice:
     if renderIds in g.flags:
@@ -1647,7 +1647,7 @@ proc renderTree*(n: PNode, renderFlags: TRenderFlags = {}): string =
 
 proc `$`*(n: PNode): string = n.renderTree
 
-proc renderModule*(n: PNode, infile, outfile: string,
+proc renderModule*(n: PNode, outfile: string,
                    renderFlags: TRenderFlags = {};
                    fid = FileIndex(-1);
                    conf: ConfigRef = nil) =

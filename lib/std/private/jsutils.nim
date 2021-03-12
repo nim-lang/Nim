@@ -36,3 +36,8 @@ when defined(js):
   proc hasBigUint64Array*(): bool =
     asm """`result` = typeof BigUint64Array != 'undefined'"""
 
+  proc getProtoName*[T](a: T): cstring {.importjs: "Object.prototype.toString.call(#)".}
+
+  proc isInteger*[T](x: T): bool {.importjs: "Number.isInteger(#)".}
+
+  proc isSafeInteger*[T](x: T): bool {.importjs: "Number.isSafeInteger(#)".}

@@ -961,7 +961,7 @@ proc getTempDir*(): string {.rtl, extern: "nos$1",
   ##
   ## You can override this implementation
   ## by adding `-d:tempDir=mytempname` to your compiler invocation.
-  ## 
+  ##
   ## **Note:** This proc does not check whether the returned path exists.
   ##
   ## See also:
@@ -1408,7 +1408,7 @@ proc setCurrentDir*(newDir: string) {.inline, tags: [], noWeirdTarget.} =
   ## * `getConfigDir proc <#getConfigDir>`_
   ## * `getTempDir proc <#getTempDir>`_
   ## * `getCurrentDir proc <#getCurrentDir>`_
-  when defined(Windows):
+  when defined(windows):
     when useWinUnicode:
       if setCurrentDirectoryW(newWideCString(newDir)) == 0'i32:
         raiseOSError(osLastError(), newDir)
@@ -1458,8 +1458,8 @@ proc normalizePath*(path: var string) {.rtl, extern: "nos$1", tags: [].} =
   ## On relative paths, double dot (`..`) sequences are collapsed if possible.
   ## On absolute paths they are always collapsed.
   ##
-  ## Warning: URL-encoded and Unicode attempts at directory traversal are not detected.
-  ## Triple dot is not handled.
+  ## .. warning:: URL-encoded and Unicode attempts at directory traversal are not detected.
+  ##   Triple dot is not handled.
   ##
   ## See also:
   ## * `absolutePath proc <#absolutePath,string>`_
@@ -1512,7 +1512,7 @@ proc normalizedPath*(path: string): string {.rtl, extern: "nos$1", tags: [].} =
       assert normalizedPath("a///b//..//c///d") == "a/c/d"
   result = pathnorm.normalizePath(path)
 
-when defined(Windows) and not weirdTarget:
+when defined(windows) and not weirdTarget:
   proc openHandle(path: string, followSymlink=true, writeAccess=false): Handle =
     var flags = FILE_FLAG_BACKUP_SEMANTICS or FILE_ATTRIBUTE_NORMAL
     if not followSymlink:
@@ -1545,7 +1545,7 @@ proc sameFile*(path1, path2: string): bool {.rtl, extern: "nos$1",
   ##
   ## See also:
   ## * `sameFileContent proc <#sameFileContent,string,string>`_
-  when defined(Windows):
+  when defined(windows):
     var success = true
     var f1 = openHandle(path1)
     var f2 = openHandle(path2)
@@ -1688,19 +1688,48 @@ proc setFilePermissions*(filename: string, permissions: set[FilePermission],
       var res2 = setFileAttributesA(filename, res)
     if res2 == - 1'i32: raiseOSError(osLastError(), $(filename, permissions))
 
+proc isAdmin*: bool {.noWeirdTarget.} =
+  ## Returns whether the caller's process is a member of the Administrators local
+  ## group (on Windows) or a root (on POSIX), via `geteuid() == 0`.
+  when defined(windows):
+    # Rewrite of the example from Microsoft Docs:
+    # https://docs.microsoft.com/en-us/windows/win32/api/securitybaseapi/nf-securitybaseapi-checktokenmembership#examples
+    # and corresponding PostgreSQL function:
+    # https://doxygen.postgresql.org/win32security_8c.html#ae6b61e106fa5d6c5d077a9d14ee80569
+    var ntAuthority = SID_IDENTIFIER_AUTHORITY(value: SECURITY_NT_AUTHORITY)
+    var administratorsGroup: PSID
+    if not isSuccess(allocateAndInitializeSid(addr ntAuthority,
+                                              BYTE(2),
+                                              SECURITY_BUILTIN_DOMAIN_RID,
+                                              DOMAIN_ALIAS_RID_ADMINS,
+                                              0, 0, 0, 0, 0, 0,
+                                              addr administratorsGroup)):
+      raiseOSError(osLastError(), "could not get SID for Administrators group")
+
+    defer:
+      if freeSid(administratorsGroup) != nil:
+        raiseOSError(osLastError(), "failed to free SID for Administrators group")
+
+    var b: WINBOOL
+    if not isSuccess(checkTokenMembership(0, administratorsGroup, addr b)):
+      raiseOSError(osLastError(), "could not check access token membership")
+
+    return isSuccess(b)
+  else:
+    return geteuid() == 0
+
 proc createSymlink*(src, dest: string) {.noWeirdTarget.} =
   ## Create a symbolic link at `dest` which points to the item specified
   ## by `src`. On most operating systems, will fail if a link already exists.
   ##
-  ## **Warning**:
-  ## Some OS's (such as Microsoft Windows) restrict the creation
-  ## of symlinks to root users (administrators) or users with developper mode enabled.
+  ## .. warning:: Some OS's (such as Microsoft Windows) restrict the creation
+  ##   of symlinks to root users (administrators) or users with developper mode enabled.
   ##
   ## See also:
   ## * `createHardlink proc <#createHardlink,string,string>`_
   ## * `expandSymlink proc <#expandSymlink,string>`_
 
-  when defined(Windows):
+  when defined(windows):
     const SYMBOLIC_LINK_FLAG_ALLOW_UNPRIVILEGED_CREATE = 2
     # allows anyone with developer mode on to create a link
     let flag = dirExists(src).int32 or SYMBOLIC_LINK_FLAG_ALLOW_UNPRIVILEGED_CREATE
@@ -1785,7 +1814,7 @@ proc copyFile*(source, dest: string, options = {cfSymlinkFollow}) {.rtl,
   ##
   ## If `dest` already exists, the file attributes
   ## will be preserved and the content overwritten.
-  ## 
+  ##
   ## On OSX, `copyfile` C api will be used (available since OSX 10.5) unless
   ## `-d:nimLegacyCopyFile` is used.
   ##
@@ -1802,7 +1831,7 @@ proc copyFile*(source, dest: string, options = {cfSymlinkFollow}) {.rtl,
   let isSymlink = source.symlinkExists
   if isSymlink and (cfSymlinkIgnore in options or defined(windows)):
     return
-  when defined(Windows):
+  when defined(windows):
     when useWinUnicode:
       let s = newWideCString(source)
       let d = newWideCString(dest)
@@ -1866,7 +1895,7 @@ proc copyFileToDir*(source, dir: string, options = {cfSymlinkFollow})
     raise newException(ValueError, "dest is empty")
   copyFile(source, dir / source.lastPathPart, options)
 
-when not declared(ENOENT) and not defined(Windows):
+when not declared(ENOENT) and not defined(windows):
   when NoFakeVars:
     when not defined(haiku):
       const ENOENT = cint(2) # 2 on most systems including Solaris
@@ -1875,7 +1904,7 @@ when not declared(ENOENT) and not defined(Windows):
   else:
     var ENOENT {.importc, header: "<errno.h>".}: cint
 
-when defined(Windows) and not weirdTarget:
+when defined(windows) and not weirdTarget:
   when useWinUnicode:
     template deleteFile(file: untyped): untyped  = deleteFileW(file)
     template setFileAttributes(file, attrs: untyped): untyped =
@@ -1899,7 +1928,7 @@ proc tryRemoveFile*(file: string): bool {.rtl, extern: "nos$1", tags: [WriteDirE
   ## * `removeFile proc <#removeFile,string>`_
   ## * `moveFile proc <#moveFile,string,string>`_
   result = true
-  when defined(Windows):
+  when defined(windows):
     when useWinUnicode:
       let f = newWideCString(file)
     else:
@@ -1940,7 +1969,7 @@ proc tryMoveFSObject(source, dest: string): bool {.noWeirdTarget.} =
   ## Returns false in case of `EXDEV` error.
   ## In case of other errors `OSError` is raised.
   ## Returns true in case of success.
-  when defined(Windows):
+  when defined(windows):
     when useWinUnicode:
       let s = newWideCString(source)
       let d = newWideCString(dest)
@@ -2084,6 +2113,11 @@ iterator walkPattern*(pattern: string): string {.tags: [ReadDirEffect], noWeirdT
   ## * `walkDirs iterator <#walkDirs.i,string>`_
   ## * `walkDir iterator <#walkDir.i,string>`_
   ## * `walkDirRec iterator <#walkDirRec.i,string>`_
+  runnableExamples:
+    import std/sequtils
+    let paths = toSeq(walkPattern("lib/pure/*")) # works on windows too
+    assert "lib/pure/concurrency".unixToNativePath in paths
+    assert "lib/pure/os.nim".unixToNativePath in paths
   walkCommon(pattern, defaultWalkFilter)
 
 iterator walkFiles*(pattern: string): string {.tags: [ReadDirEffect], noWeirdTarget.} =
@@ -2098,6 +2132,9 @@ iterator walkFiles*(pattern: string): string {.tags: [ReadDirEffect], noWeirdTar
   ## * `walkDirs iterator <#walkDirs.i,string>`_
   ## * `walkDir iterator <#walkDir.i,string>`_
   ## * `walkDirRec iterator <#walkDirRec.i,string>`_
+  runnableExamples:
+    import std/sequtils
+    assert "lib/pure/os.nim".unixToNativePath in toSeq(walkFiles("lib/pure/*.nim")) # works on windows too
   walkCommon(pattern, isFile)
 
 iterator walkDirs*(pattern: string): string {.tags: [ReadDirEffect], noWeirdTarget.} =
@@ -2112,6 +2149,10 @@ iterator walkDirs*(pattern: string): string {.tags: [ReadDirEffect], noWeirdTarg
   ## * `walkFiles iterator <#walkFiles.i,string>`_
   ## * `walkDir iterator <#walkDir.i,string>`_
   ## * `walkDirRec iterator <#walkDirRec.i,string>`_
+  runnableExamples:
+    import std/sequtils
+    let paths = toSeq(walkDirs("lib/pure/*")) # works on windows too
+    assert "lib/pure/concurrency".unixToNativePath in paths
   walkCommon(pattern, isDir)
 
 proc expandFilename*(filename: string): string {.rtl, extern: "nos$1",
@@ -2307,9 +2348,8 @@ iterator walkDirRec*(dir: string,
   ## If ``relative`` is true (default: false) the resulting path is
   ## shortened to be relative to ``dir``, otherwise the full path is returned.
   ##
-  ## **Warning**:
-  ## Modifying the directory structure while the iterator
-  ## is traversing may result in undefined behavior!
+  ## .. warning:: Modifying the directory structure while the iterator
+  ##   is traversing may result in undefined behavior!
   ##
   ## Walking is recursive. `followFilter` controls the behaviour of the iterator:
   ##
@@ -2542,12 +2582,12 @@ proc createHardlink*(src, dest: string) {.noWeirdTarget.} =
   ## Create a hard link at `dest` which points to the item specified
   ## by `src`.
   ##
-  ## **Warning**: Some OS's restrict the creation of hard links to
-  ## root users (administrators).
+  ## .. warning:: Some OS's restrict the creation of hard links to
+  ##   root users (administrators).
   ##
   ## See also:
   ## * `createSymlink proc <#createSymlink,string,string>`_
-  when defined(Windows):
+  when defined(windows):
     when useWinUnicode:
       var wSrc = newWideCString(src)
       var wDst = newWideCString(dest)
@@ -2592,7 +2632,7 @@ proc copyFileWithPermissions*(source, dest: string,
   ## * `moveFile proc <#moveFile,string,string>`_
   ## * `copyDirWithPermissions proc <#copyDirWithPermissions,string,string>`_
   copyFile(source, dest, options)
-  when not defined(Windows):
+  when not defined(windows):
     try:
       setFilePermissions(dest, getFilePermissions(source), followSymlinks =
                          (cfSymlinkFollow in options))
@@ -2632,7 +2672,7 @@ proc copyDirWithPermissions*(source, dest: string,
   ## * `existsOrCreateDir proc <#existsOrCreateDir,string>`_
   ## * `createDir proc <#createDir,string>`_
   createDir(dest)
-  when not defined(Windows):
+  when not defined(windows):
     try:
       setFilePermissions(dest, getFilePermissions(source), followSymlinks =
                          false)
@@ -2796,7 +2836,7 @@ when defined(nimdoc):
     ##
     ## `i` should be in the range `1..paramCount()`, the `IndexDefect`
     ## exception will be raised for invalid values. Instead of iterating
-    ## over `paramCount() <#paramCount>`_ with this proc you can 
+    ## over `paramCount() <#paramCount>`_ with this proc you can
     ## call the convenience `commandLineParams() <#commandLineParams>`_.
     ##
     ## Similarly to `argv`:idx: in C,
@@ -3166,7 +3206,7 @@ proc getFileSize*(file: string): BiggestInt {.rtl, extern: "nos$1",
       close(f)
     else: raiseOSError(osLastError(), file)
 
-when defined(Windows) or weirdTarget:
+when defined(windows) or weirdTarget:
   type
     DeviceId* = int32
     FileId* = int64
@@ -3198,7 +3238,7 @@ template rawToFormalFileInfo(rawInfo, path, formalInfo): untyped =
   ## Transforms the native file info structure into the one nim uses.
   ## 'rawInfo' is either a 'BY_HANDLE_FILE_INFORMATION' structure on Windows,
   ## or a 'Stat' structure on posix
-  when defined(Windows):
+  when defined(windows):
     template merge(a, b): untyped = a or (b shl 32)
     formalInfo.id.device = rawInfo.dwVolumeSerialNumber
     formalInfo.id.file = merge(rawInfo.nFileIndexLow, rawInfo.nFileIndexHigh)
@@ -3276,7 +3316,7 @@ proc getFileInfo*(handle: FileHandle): FileInfo {.noWeirdTarget.} =
   ## * `getFileInfo(path) proc <#getFileInfo,string>`_
 
   # Done: ID, Kind, Size, Permissions, Link Count
-  when defined(Windows):
+  when defined(windows):
     var rawInfo: BY_HANDLE_FILE_INFORMATION
     # We have to use the super special '_get_osfhandle' call (wrapped above)
     # To transform the C file descriptor to a native file handle.
@@ -3318,7 +3358,7 @@ proc getFileInfo*(path: string, followSymlink = true): FileInfo {.noWeirdTarget.
   ## See also:
   ## * `getFileInfo(handle) proc <#getFileInfo,FileHandle>`_
   ## * `getFileInfo(file) proc <#getFileInfo,File>`_
-  when defined(Windows):
+  when defined(windows):
     var
       handle = openHandle(path, followSymlink)
       rawInfo: BY_HANDLE_FILE_INFORMATION
@@ -3390,7 +3430,7 @@ proc isHidden*(path: string): bool {.noWeirdTarget.} =
       assert not "".isHidden
       assert ".foo/".isHidden
 
-  when defined(Windows):
+  when defined(windows):
     when useWinUnicode:
       wrapUnary(attributes, getFileAttributesW, path)
     else:

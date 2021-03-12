@@ -941,7 +941,7 @@ proc cmp*[T](x, y: T): int =
   ## This generic implementation uses the `==` and `<` operators.
   ##
   ## .. code-block:: Nim
-  ##  import algorithm
+  ##  import std/algorithm
   ##  echo sorted(@[4, 2, 6, 5, 8, 7], cmp[int])
   if x == y: return 0
   if x < y: return -1
@@ -1069,15 +1069,16 @@ proc add*(x: var string, y: char) {.magic: "AppendStrCh", noSideEffect.}
   ##   tmp.add('a')
   ##   tmp.add('b')
   ##   assert(tmp == "ab")
-proc add*(x: var string, y: string) {.magic: "AppendStrStr", noSideEffect.}
+
+proc add*(x: var string, y: string) {.magic: "AppendStrStr", noSideEffect.} =
   ## Concatenates `x` and `y` in place.
   ##
-  ## .. code-block:: Nim
-  ##   var tmp = ""
-  ##   tmp.add("ab")
-  ##   tmp.add("cd")
-  ##   assert(tmp == "abcd")
-
+  ## See also `strbasics.add`.
+  runnableExamples:
+    var tmp = ""
+    tmp.add("ab")
+    tmp.add("cd")
+    assert tmp == "abcd"
 
 type
   Endianness* = enum ## Type describing the endianness of a processor.
@@ -1599,26 +1600,19 @@ proc len*[U: Ordinal; V: Ordinal](x: HSlice[U, V]): int {.noSideEffect, inline.}
   ##   assert((5..2).len == 0)
   result = max(0, ord(x.b) - ord(x.a) + 1)
 
-when not compileOption("nilseqs"):
-  {.pragma: nilError, error.}
-else:
-  {.pragma: nilError.}
+when true: # PRTEMP: remove?
+  proc isNil*[T](x: seq[T]): bool {.noSideEffect, magic: "IsNil", error.}
+    ## Seqs are no longer nil by default, but set and empty.
+    ## Check for zero length instead.
+    ##
+    ## See also:
+    ## * `isNil(string) <#isNil,string>`_
 
-proc isNil*[T](x: seq[T]): bool {.noSideEffect, magic: "IsNil", nilError.}
-  ## Requires `--nilseqs:on` since 0.19.
-  ##
-  ## Seqs are no longer nil by default, but set and empty.
-  ## Check for zero length instead.
-  ##
-  ## See also:
-  ## * `isNil(string) <#isNil,string>`_
+  proc isNil*(x: string): bool {.noSideEffect, magic: "IsNil", error.}
+    ## See also:
+    ## * `isNil(seq[T]) <#isNil,seq[T]>`_
 
 proc isNil*[T](x: ref T): bool {.noSideEffect, magic: "IsNil".}
-proc isNil*(x: string): bool {.noSideEffect, magic: "IsNil", nilError.}
-  ## Requires `--nilseqs:on`.
-  ##
-  ## See also:
-  ## * `isNil(seq[T]) <#isNil,seq[T]>`_
 
 proc isNil*[T](x: ptr T): bool {.noSideEffect, magic: "IsNil".}
 proc isNil*(x: pointer): bool {.noSideEffect, magic: "IsNil".}
@@ -1745,7 +1739,7 @@ proc instantiationInfo*(index = -1, fullPaths = false): tuple[
   ## Example:
   ##
   ## .. code-block:: nim
-  ##   import strutils
+  ##   import std/strutils
   ##
   ##   template testException(exception, code: untyped): typed =
   ##     try:
@@ -1915,9 +1909,8 @@ include "system/gc_interface"
 const NimStackTrace = compileOption("stacktrace")
 
 template coroutinesSupportedPlatform(): bool =
-  when defined(sparc) or defined(ELATE) or compileOption("gc", "v2") or
-    defined(boehmgc) or defined(gogc) or defined(nogc) or defined(gcRegions) or
-    defined(gcMarkAndSweep):
+  when defined(sparc) or defined(ELATE) or defined(boehmgc) or defined(gogc) or
+    defined(nogc) or defined(gcRegions) or defined(gcMarkAndSweep):
     false
   else:
     true
@@ -1946,8 +1939,7 @@ when notJSnotNims:
       ## With this hook you can influence exception handling on a global level.
       ## If not nil, every 'raise' statement ends up calling this hook.
       ##
-      ## **Warning**: Ordinary application code should never set this hook!
-      ## You better know what you do when setting this.
+      ## .. warning:: Ordinary application code should never set this hook! You better know what you do when setting this.
       ##
       ## If `globalRaiseHook` returns false, the exception is caught and does
       ## not propagate further through the call stack.
@@ -1957,8 +1949,7 @@ when notJSnotNims:
       ## thread local level.
       ## If not nil, every 'raise' statement ends up calling this hook.
       ##
-      ## **Warning**: Ordinary application code should never set this hook!
-      ## You better know what you do when setting this.
+      ## .. warning:: Ordinary application code should never set this hook! You better know what you do when setting this.
       ##
       ## If `localRaiseHook` returns false, the exception
       ## is caught and does not propagate further through the call stack.
@@ -2415,7 +2406,7 @@ when notJSnotNims and hostOS != "standalone":
   proc setCurrentException*(exc: ref Exception) {.inline, benign.} =
     ## Sets the current exception.
     ##
-    ## **Warning**: Only use this if you know what you are doing.
+    ## .. warning:: Only use this if you know what you are doing.
     currException = exc
 elif defined(nimscript):
   proc getCurrentException*(): ref Exception {.compilerRtl.} = discard
@@ -2844,7 +2835,7 @@ proc addEscapedChar*(s: var string, c: char) {.noSideEffect, inline.} =
   ## * replaces any `\n` by `\\n`
   ## * replaces any `\v` by `\\v`
   ## * replaces any `\f` by `\\f`
-  ## * replaces any `\c` by `\\c`
+  ## * replaces any `\r` by `\\r`
   ## * replaces any `\e` by `\\e`
   ## * replaces any other character not in the set `{'\21..'\126'}
   ##   by `\xHH` where `HH` is its hexadecimal value.
@@ -2857,10 +2848,10 @@ proc addEscapedChar*(s: var string, c: char) {.noSideEffect, inline.} =
   of '\a': s.add "\\a" # \x07
   of '\b': s.add "\\b" # \x08
   of '\t': s.add "\\t" # \x09
-  of '\L': s.add "\\n" # \x0A
+  of '\n': s.add "\\n" # \x0A
   of '\v': s.add "\\v" # \x0B
   of '\f': s.add "\\f" # \x0C
-  of '\c': s.add "\\c" # \x0D
+  of '\r': (when defined(nimLegacyAddEscapedCharx0D): s.add "\\c" else: s.add "\\r") # \x0D
   of '\e': s.add "\\e" # \x1B
   of '\\': s.add("\\\\")
   of '\'': s.add("\\'")
@@ -2984,15 +2975,15 @@ proc `==`*(x, y: cstring): bool {.magic: "EqCString", noSideEffect,
   elif x.isNil or y.isNil: result = false
   else: result = strcmp(x, y) == 0
 
-when not compileOption("nilseqs"):
+when true: # xxx PRTEMP remove
   # bug #9149; ensure that 'typeof(nil)' does not match *too* well by using 'typeof(nil) | typeof(nil)',
   # especially for converters, see tests/overload/tconverter_to_string.nim
   # Eventually we will be able to remove this hack completely.
   proc `==`*(x: string; y: typeof(nil) | typeof(nil)): bool {.
-      error: "'nil' is now invalid for 'string'; compile with --nilseqs:on for a migration period".} =
+      error: "'nil' is now invalid for 'string'".} =
     discard
   proc `==`*(x: typeof(nil) | typeof(nil); y: string): bool {.
-      error: "'nil' is now invalid for 'string'; compile with --nilseqs:on for a migration period".} =
+      error: "'nil' is now invalid for 'string'".} =
     discard
 
 template closureScope*(body: untyped): untyped =
@@ -3126,3 +3117,16 @@ export io
 
 when not defined(createNimHcr) and not defined(nimscript):
   include nimhcr
+
+when notJSnotNims and not defined(nimSeqsV2):
+  proc prepareMutation*(s: var string) {.inline.} =
+    ## String literals (e.g. "abc", etc) in the ARC/ORC mode are "copy on write",
+    ## therefore you should call `prepareMutation` before modifying the strings
+    ## via `addr`.
+    runnableExamples("--gc:arc"):
+      var x = "abc"
+      var y = "defgh"
+      prepareMutation(y) # without this, you may get a `SIGBUS` or `SIGSEGV`
+      moveMem(addr y[0], addr x[0], x.len)
+      assert y == "abcgh"
+    discard

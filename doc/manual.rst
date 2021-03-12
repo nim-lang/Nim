@@ -4805,7 +4805,6 @@ The following example shows how a generic binary tree can be modeled:
 The ``T`` is called a `generic type parameter`:idx: or
 a `type variable`:idx:.
 
-
 Is operator
 -----------
 
@@ -4861,6 +4860,12 @@ more complex type classes:
     for key, value in fieldPairs(rec):
       echo key, " = ", value
 
+Type constraints on generic parameters can be grouped with `,` and propagation
+stops with `;`, similarly to parameters for macros and templates:
+
+.. code-block:: nim
+  proc fn1[T; U, V: SomeFloat]() = discard # T is unconstrained
+  template fn2(t; u, v: SomeFloat) = discard # t is unconstrained
 
 Whilst the syntax of type classes appears to resemble that of ADTs/algebraic data
 types in ML-like languages, it should be understood that type classes are static
@@ -5111,6 +5116,50 @@ But a ``bind`` is rarely useful because symbol binding from the definition
 scope is the default.
 
 ``bind`` statements only make sense in templates and generics.
+
+
+Delegating bind statements
+--------------------------
+
+The following example outlines a problem that can arise when generic
+instantiations cross multiple different modules:
+
+.. code-block:: nim
+
+  # module A
+  proc genericA*[T](x: T) =
+    mixin init
+    init(x)
+
+
+.. code-block:: nim
+
+  import C
+
+  # module B
+  proc genericB*[T](x: T) =
+    # Without the `bind init` statement C's init proc is
+    # not available when `genericB` is instantiated:
+    bind init
+    genericA(x)
+
+.. code-block:: nim
+
+  # module C
+  type O = object
+  proc init*(x: var O) = discard
+
+.. code-block:: nim
+
+  # module main
+  import B, C
+
+  genericB O()
+
+In module B has an `init` proc from module C in its scope that is not
+taken into account when `genericB` is instantiated which leads to the
+instantiation of `genericA`. The solution is to `forward`:idx these
+symbols by a `bind` statement inside `genericB`.
 
 
 Templates
@@ -5936,7 +5985,7 @@ imported:
     :test: "nim c $1"
     :status: 1
 
-  import strutils except `%`, toUpperAscii
+  import std/strutils except `%`, toUpperAscii
 
   # doesn't work then:
   echo "$1" % "abc".toUpperAscii
@@ -5979,7 +6028,7 @@ Module names in imports
 A module alias can be introduced via the ``as`` keyword:
 
 .. code-block:: nim
-  import strutils as su, sequtils as qu
+  import std/strutils as su, std/sequtils as qu
 
   echo su.format("$1", "lalelu")
 
@@ -6043,7 +6092,7 @@ full qualification:
 .. code-block:: nim
     :test: "nim c $1"
 
-  from strutils import `%`
+  from std/strutils import `%`
 
   echo "$1" % "abc"
   # always possible: full qualification:

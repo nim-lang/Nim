@@ -464,3 +464,6 @@ iterator allNodes*(tree: PackedTree): NodePos =
     yield NodePos(p)
     let s = span(tree, p)
     inc p, s
+
+proc toPackedItemId*(item: int32): PackedItemId {.inline.} =
+  PackedItemId(module: LitId(0), item: item)

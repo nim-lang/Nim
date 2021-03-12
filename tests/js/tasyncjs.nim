@@ -50,6 +50,14 @@ proc fn(n: int): Future[int] {.async.} =
   else:
     return 10
 
+proc asyncFact(n: int): Future[int] {.async.} =
+  if n > 0: result = n * await asyncFact(n-1)
+  else: result = 1
+
+proc asyncIdentity(n: int): Future[int] {.async.} =
+  if n > 0: result = 1 + await asyncIdentity(n-1)
+  else: result = 0
+
 proc main() {.async.} =
   block: # then
     let x = await fn(4)
@@ -62,6 +70,18 @@ proc main() {.async.} =
 
     let x2 = await fn(4).then((a: int) => (discard)).then(() => 13)
     doAssert x2 == 13
+
+    let x4 = await asyncFact(3).then(asyncIdentity).then(asyncIdentity).then((a:int) => a * 7).then(asyncIdentity)
+    doAssert x4 == 3 * 2 * 7
+
+    block: # bug #17177
+      proc asyncIdentityNested(n: int): Future[int] {.async.} = return n
+      let x5 = await asyncFact(3).then(asyncIdentityNested)
+      doAssert x5 == 3 * 2
+
+    when false: # xxx pending bug #17254
+      let x6 = await asyncFact(3).then((a:int) {.async.} => a * 11)
+      doAssert x6 == 3 * 2 * 11
 
   block: # catch
     var reason: Error

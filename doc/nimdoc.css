@@ -384,6 +384,7 @@ h2 {
   margin-top: 2em; }
 
 h2.subtitle {
+  margin-top: 0em;
   text-align: center; }
 
 h3 {

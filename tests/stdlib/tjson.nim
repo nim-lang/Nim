@@ -240,7 +240,44 @@ doAssert isRefSkipDistinct(MyOtherDistinct)
 
 let x = parseJson("9999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999")
 
-when defined(js): # xxx fixme
-  doAssert x.kind == JInt
-else:
-  doAssert x.kind == JString
+doAssert x.kind == JString
+
+block: # bug #15835
+  type
+    Foo = object
+      ii*: int
+      data*: JsonNode
+
+  block:
+    const jt = """{"ii": 123, "data": ["some", "data"]}"""
+    let js = parseJson(jt)
+    discard js.to(Foo)
+
+  block:
+    const jt = """{"ii": 123}"""
+    let js = parseJson(jt)
+    doAssertRaises(KeyError):
+      echo js.to(Foo)
+
+type
+  ContentNodeKind* = enum
+    P,
+    Br,
+    Text,
+  ContentNode* = object
+    case kind*: ContentNodeKind
+    of P: pChildren*: seq[ContentNode]
+    of Br: nil
+    of Text: textStr*: string
+
+let mynode = ContentNode(kind: P, pChildren: @[
+  ContentNode(kind: Text, textStr: "mychild"),
+  ContentNode(kind: Br)
+])
+
+doAssert $mynode == """(kind: P, pChildren: @[(kind: Text, textStr: "mychild"), (kind: Br)])"""
+
+let jsonNode = %*mynode
+doAssert $jsonNode == """{"kind":"P","pChildren":[{"kind":"Text","textStr":"mychild"},{"kind":"Br"}]}"""
+doAssert $jsonNode.to(ContentNode) == """(kind: P, pChildren: @[(kind: Text, textStr: "mychild"), (kind: Br)])"""
+

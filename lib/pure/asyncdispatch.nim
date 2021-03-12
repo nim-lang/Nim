@@ -435,7 +435,7 @@ when defined(windows) or defined(nimdoc):
     ## read, or the socket has disconnected in which case the future will
     ## complete with a value of `""`.
     ##
-    ## **Warning**: The `Peek` socket flag is not supported on Windows.
+    ## .. warning:: The `Peek` socket flag is not supported on Windows.
 
 
     # Things to note:
@@ -509,7 +509,7 @@ when defined(windows) or defined(nimdoc):
     ## has disconnected in which case the future will complete with a value of
     ## `0`.
     ##
-    ## **Warning**: The `Peek` socket flag is not supported on Windows.
+    ## .. warning:: The `Peek` socket flag is not supported on Windows.
 
 
     # Things to note:
@@ -572,8 +572,8 @@ when defined(windows) or defined(nimdoc):
     ## Sends `size` bytes from `buf` to `socket`. The returned future
     ## will complete once all data has been sent.
     ##
-    ## **WARNING**: Use it with caution. If `buf` refers to GC'ed object,
-    ## you must use GC_ref/GC_unref calls to avoid early freeing of the buffer.
+    ## .. warning:: Use it with caution. If `buf` refers to GC'ed object,
+    ##   you must use GC_ref/GC_unref calls to avoid early freeing of the buffer.
     verifyPresence(socket)
     var retFuture = newFuture[void]("send")
 

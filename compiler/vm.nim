@@ -1019,7 +1019,8 @@ proc rawExecute(c: PCtx, start: int, tos: PStackFrame): TFullReg =
         let nc = regs[rc].node
         if nb.kind != nc.kind: discard
         elif (nb == nc) or (nb.kind == nkNilLit): ret = true # intentional
-        elif sameConstant(nb, nc): ret = true
+        elif (nb.kind in {nkSym, nkTupleConstr, nkClosure} and nb.typ.kind == tyProc) and sameConstant(nb, nc):
+          ret = true
           # this also takes care of procvar's, represented as nkTupleConstr, e.g. (nil, nil)
         elif nb.kind == nkIntLit and nc.kind == nkIntLit and nb.intVal == nc.intVal: # TODO: nkPtrLit
           let tb = nb.getTyp

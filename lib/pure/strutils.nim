@@ -38,7 +38,7 @@ runnableExamples:
 ## `method call syntax<manual.html#procedures-method-call-syntax>`_:
 
 runnableExamples:
-  from sequtils import map
+  from std/sequtils import map
 
   let jenny = "867-5309"
   assert jenny.split('-').map(parseInt) == @[867, 5309]
@@ -2037,7 +2037,7 @@ func contains*(s: string, chars: set[char]): bool =
 
 func replace*(s, sub: string, by = ""): string {.rtl,
     extern: "nsuReplaceStr".} =
-  ## Replaces `sub` in `s` by the string `by`.
+  ## Replaces every occurence of `sub` in `s` by the string `by`.
   ##
   ## See also:
   ## * `find func<#find,string,string,Natural,int>`_

@@ -4,6 +4,8 @@
 
 ## Standard library additions and changes
 
+- Make custom op in macros.quote work for all statements.
+
 - On Windows the SSL library now checks for valid certificates.
   It uses the `cacert.pem` file for this purpose which was extracted
   from `https://curl.se/ca/cacert.pem`. Besides
@@ -21,6 +23,8 @@
   `prelude` can now be used via `include std/prelude`, but `include prelude` still works.
 
 - Added `almostEqual` in `math` for comparing two float values using a machine epsilon.
+
+- Added `clamp` in `math` which allows using a `Slice` to clamp to a value.
 
 - The JSON module can now handle integer literals and floating point literals of
   arbitrary length and precision.
@@ -43,8 +47,9 @@
 
 - Added `std/enumutils` module. Added `genEnumCaseStmt` macro that generates case statement to parse string to enum.
   Added `items` for enums with holes.
+  Added `symbolName` to return the enum symbol name ignoring the human readable name.
 
-- Added `typetraits.SomeEnumWithHoles` for enums with holes.
+- Added `typetraits.HoleyEnum` for enums with holes, `OrdinalEnum` for enums without holes.
 
 - Removed deprecated `iup` module from stdlib, it has already moved to
   [nimble](https://github.com/nim-lang/iup).
@@ -80,14 +85,20 @@
 
 
 - Added `decodeQuery` to `std/uri`.
+
 - `strscans.scanf` now supports parsing single characters.
-- `strscans.scanTuple` added which uses `strscans.scanf` internally, returning a tuple which can be unpacked for easier usage of `scanf`.
+
+- `strscans.scanTuple` added which uses `strscans.scanf` internally,
+  returning a tuple which can be unpacked for easier usage of `scanf`.
 
 - Added `setutils.toSet` that can take any iterable and convert it to a built-in `set`,
   if the iterable yields a built-in settable type.
+
 - Added `setutils.fullSet` which returns a full built-in `set` for a valid type.
+
 - Added `setutils.complement` which returns the complement of a built-in `set`.
 
+- Added `setutils.[]=`.
 
 - Added `math.isNaN`.
 
@@ -97,20 +108,24 @@
 - Added `jsbigints` module, arbitrary precision integers for JavaScript target.
 
 - Added `math.copySign`.
+
 - Added new operations for singly- and doubly linked lists: `lists.toSinglyLinkedList`
   and `lists.toDoublyLinkedList` convert from `openArray`s; `lists.copy` implements
   shallow copying; `lists.add` concatenates two lists - an O(1) variation that consumes
   its argument, `addMoved`, is also supplied.
 
 - Added `euclDiv` and `euclMod` to `math`.
+
 - Added `httpcore.is1xx` and missing HTTP codes.
+
 - Added `jsconsole.jsAssert` for JavaScript target.
 
 - Added `posix_utils.osReleaseFile` to get system identification from `os-release` file on Linux and the BSDs.
   https://www.freedesktop.org/software/systemd/man/os-release.html
 
 - `math.round` now is rounded "away from zero" in JS backend which is consistent
-with other backends. see #9125. Use `-d:nimLegacyJsRound` for previous behavior.
+  with other backends. See #9125. Use `-d:nimLegacyJsRound` for previous behavior.
+
 - Added `socketstream` module that wraps sockets in the stream interface
 
 - Changed the behavior of `uri.decodeQuery` when there are unencoded `=`
@@ -125,31 +140,38 @@ with other backends. see #9125. Use `-d:nimLegacyJsRound` for previous behavior.
 - Added `math.signbit`.
 
 - Removed the optional `longestMatch` parameter of the `critbits._WithPrefix` iterators (it never worked reliably)
+
 - In `lists`: renamed `append` to `add` and retained `append` as an alias;
   added `prepend` and `prependMoved` analogously to `add` and `addMoved`;
   added `remove` for `SinglyLinkedList`s.
 
 - Deprecated `any`. See https://github.com/nim-lang/RFCs/issues/281
 
-- Added `std/sysrand` module to get random numbers from a secure source 
-provided by the operating system.
+- Added `std/sysrand` module to get random numbers from a secure source
+  provided by the operating system.
 
 - Added optional `options` argument to `copyFile`, `copyFileToDir`, and
   `copyFileWithPermissions`. By default, on non-Windows OSes, symlinks are
   followed (copy files symlinks point to); on Windows, `options` argument is
   ignored and symlinks are skipped.
+
 - On non-Windows OSes, `copyDir` and `copyDirWithPermissions` copy symlinks as
   symlinks (instead of skipping them as it was before); on Windows symlinks are
   skipped.
+
 - On non-Windows OSes, `moveFile` and `moveDir` move symlinks as symlinks
   (instead of skipping them sometimes as it was before).
+
 - Added optional `followSymlinks` argument to `setFilePermissions`.
+
+- Added `os.isAdmin` to tell whether the caller's process is a member of the
+  Administrators local group (on Windows) or a root (on POSIX).
 
 - Added `random.initRand()` overload with no argument which uses the current time as a seed.
 
 - Added experimental `linenoise.readLineStatus` to get line and status (e.g. ctrl-D or ctrl-C).
 
-- Added `compilesettings.SingleValueSetting.libPath`
+- Added `compilesettings.SingleValueSetting.libPath`.
 
 - `std/wrapnils` doesn't use `experimental:dotOperators` anymore, avoiding
   issues like https://github.com/nim-lang/Nim/issues/13063 (which affected error messages)
@@ -174,8 +196,16 @@ provided by the operating system.
   dumping (on select signals) and notifying the parent process about the cause
   of termination.
 
-- Added `strip` and `setSlice` to `std/strbasics`.
+- Added `system.prepareStrMutation` for better support of low
+  level `moveMem`, `copyMem` operations for Orc's copy-on-write string
+  implementation.
 
+- `hashes.hash` now supports `object`, but can be overloaded.
+
+- Added `std/strbasics` for high performance string operations.
+  Added `strip`, `setSlice`, `add(a: var string, b: openArray[char])`.
+
+- `hashes.hash` now supports `object`, but can be overloaded.
 
 - Added to `wrapnils` an option-like API via `??.`, `isSome`, `get`.
 
@@ -183,6 +213,27 @@ provided by the operating system.
   and `$none(int)` to `"none(int)"` instead of `"None[int]"`.
   
 - Added `algorithm.merge`.
+
+
+- Added `std/jsfetch` module [Fetch](https://developer.mozilla.org/docs/Web/API/Fetch_API) wrapper for JavaScript target.
+
+- Added `std/jsheaders` module [Headers](https://developer.mozilla.org/en-US/docs/Web/API/Headers) wrapper for JavaScript target.
+
+- Added `std/jsformdata` module [FormData](https://developer.mozilla.org/en-US/docs/Web/API/FormData) wrapper for JavaScript target.
+
+- `system.addEscapedChar` now renders `\r` as `\r` instead of `\c`, to be compatible
+  with most other languages.
+
+- Removed support for named procs in `sugar.=>`.
+
+- Added `jscore.debugger` to [call any available debugging functionality, such as breakpoints.](https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Statements/debugger).
+
+- Added `htmlgen.portal` for [making "SPA style" pages using HTML only](https://web.dev/hands-on-portals).
+
+- Added `ZZZ` and `ZZZZ` patterns to `times.nim` `DateTime` parsing, to match time
+  zone offsets without colons, e.g. `UTC+7 -> +0700`.
+
+
 
 
 ## Language changes
@@ -203,11 +254,15 @@ provided by the operating system.
 
 - `typedesc[Foo]` now renders as such instead of `type Foo` in compiler messages.
 
+
+
 ## Compiler changes
 
 - Added `--declaredlocs` to show symbol declaration location in messages.
 
 - Deprecated `TaintedString` and `--taintmode`.
+
+- Deprecated `--nilseqs` which is now a noop.
 
 - Source+Edit links now appear on top of every docgen'd page when
   `nim doc --git.url:url ...` is given.
@@ -233,6 +288,12 @@ provided by the operating system.
 - Added `-d:nimStrictMode` in CI in several places to ensure code doesn't have certain hints/warnings
 
 - Added `then`, `catch` to `asyncjs`, for now hidden behind `-d:nimExperimentalAsyncjsThen`.
+
+- `--newruntime` and `--refchecks` are deprecated.
+
+- Added `unsafeIsolate` and `extract` to `std/isolation`.
+
+
 
 ## Tool changes
 

@@ -68,9 +68,7 @@ else:
       include "system/cellsets"
     when not leakDetector and not useCellIds and not defined(nimV2):
       sysAssert(sizeof(Cell) == sizeof(FreeCell), "sizeof FreeCell")
-  when compileOption("gc", "v2"):
-    include "system/gc2"
-  elif defined(gcRegions):
+  when defined(gcRegions):
     # XXX due to bootstrapping reasons, we cannot use  compileOption("gc", "stack") here
     include "system/gc_regions"
   elif defined(nimV2) or usesDestructors:
