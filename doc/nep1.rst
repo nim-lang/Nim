@@ -272,11 +272,12 @@ Conventions for multi-line statements and expressions
     startProcess(nimExecutable, currentDirectory, compilerArguments
                  environment, processOptions)
 
-- Type, var sections, and imports with a single element should use a single line:
+- Type/var/import sections with a single element should use a single line:
 
   .. code-block:: nim
     # good:
     import std/[strutils, sugar]
+
     type A = object
       x: int
     const a = 1 # ditto with `let`, `var`
@@ -284,11 +285,15 @@ Conventions for multi-line statements and expressions
     # bad:
     import
       std/[strutils, sugar]
+
     type
       A = object
         x: int
     const
       a = 1
+
+  Rationale: less vertical space, consistency with routine declarations,
+  and makes it easier to grep.
 
 Miscellaneous
 -------------
