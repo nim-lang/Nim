@@ -1759,7 +1759,7 @@ proc expandSymlink*(symlinkPath: string): string {.noWeirdTarget.} =
     if length > 4:
       if result.startsWith(r"\\?\"):
         # In case of a local path, remove the prefix `\\?\`
-        result.setSlice(4 .. result.high)
+        result.setSlice(4 .. result.high) # https://nim-lang.github.io/Nim/strbasics.html
       elif result.startsWith(r"\\?\UNC\"):
         # In case of a network path, replace `\\?\UNC\` with `\\`
         result[6] = '\\'
