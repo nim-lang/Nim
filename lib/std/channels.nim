@@ -125,6 +125,9 @@ proc numItems(chan: ChannelRaw): int {.inline.} =
   if result < 0:
     inc(result, 2 * chan.size)
 
+  if result > chan.size:
+    dec(result, chan.size)
+
 template isFull(chan: ChannelRaw): bool =
   abs(chan.tail - chan.head) == chan.size
 
