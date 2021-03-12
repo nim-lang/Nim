@@ -755,7 +755,6 @@ Test1
       string2
       """
     var warnings8 = new seq[string]
-    #check("hi" == warnings8[0])
     let output8 = input8.toHtml(warnings = warnings8)
     check(warnings8[].len == 1)
     check("input(6, 1) Warning: RST style: \n" &
