@@ -18,7 +18,9 @@ jobs:
         vmImage: 'ubuntu-16.04'
         CPU: amd64
       Linux_i386:
-        vmImage: 'ubuntu-16.04'
+        # bug #17325: fails on 'ubuntu-16.04' because it now errors with:
+        # g++-multilib : Depends: gcc-multilib (>= 4:5.3.1-1ubuntu1) but it is not going to be installed
+        vmImage: 'ubuntu-18.04'
         CPU: i386
       OSX_amd64:
         vmImage: 'macOS-10.15'
@@ -64,29 +66,33 @@ jobs:
       displayName: 'Install node.js 12.x'
 
     - bash: |
-        sudo apt-fast update -qq
+        set -e
+        . ci/funs.sh
+        echo_run sudo apt-fast update -qq
         DEBIAN_FRONTEND='noninteractive' \
-          sudo apt-fast install --no-install-recommends -yq \
+          echo_run sudo apt-fast install --no-install-recommends -yq \
             libcurl4-openssl-dev libgc-dev libsdl1.2-dev libsfml-dev valgrind libc6-dbg
       displayName: 'Install dependencies (amd64 Linux)'
       condition: and(eq(variables['Agent.OS'], 'Linux'), eq(variables['CPU'], 'amd64'))
 
     - bash: |
-        sudo dpkg --add-architecture i386
-
+        set -e
+        . ci/funs.sh
+        echo_run sudo dpkg --add-architecture i386
         # Downgrade llvm:
         # - llvm has to be downgraded to have 32bit version installed for sfml.
+
         cat << EOF | sudo tee /etc/apt/preferences.d/pin-to-rel
         Package: libllvm6.0
         Pin: origin "azure.archive.ubuntu.com"
         Pin-Priority: 1001
         EOF
 
-        sudo apt-fast update -qq
+        echo_run sudo apt-fast update -qq
         # `:i386` (e.g. in `libffi-dev:i386`) is needed otherwise you may get:
         # `could not load: libffi.so` during dynamic loading.
         DEBIAN_FRONTEND='noninteractive' \
-          sudo apt-fast install --no-install-recommends --allow-downgrades -yq \
+          echo_run sudo apt-fast install --no-install-recommends --allow-downgrades -yq \
             g++-multilib gcc-multilib libcurl4-openssl-dev:i386 libgc-dev:i386 \
             libsdl1.2-dev:i386 libsfml-dev:i386 libglib2.0-dev:i386 libffi-dev:i386
 
@@ -95,14 +101,15 @@ jobs:
 
         exec $(which gcc) -m32 "\$@"
         EOF
+
         cat << EOF > bin/g++
         #!/bin/bash
 
         exec $(which g++) -m32 "\$@"
         EOF
 
-        chmod 755 bin/gcc
-        chmod 755 bin/g++
+        echo_run chmod 755 bin/gcc
+        echo_run chmod 755 bin/g++
 
       displayName: 'Install dependencies (i386 Linux)'
       condition: and(eq(variables['Agent.OS'], 'Linux'), eq(variables['CPU'], 'i386'))
@@ -112,12 +119,14 @@ jobs:
       condition: eq(variables['Agent.OS'], 'Darwin')
 
     - bash: |
-        mkdir dist
-        curl -L https://nim-lang.org/download/mingw64.7z -o dist/mingw64.7z
-        curl -L https://nim-lang.org/download/dlls.zip -o dist/dlls.zip
-        7z x dist/mingw64.7z -odist
-        7z x dist/dlls.zip -obin
-        echo '##vso[task.prependpath]$(System.DefaultWorkingDirectory)/dist/mingw64/bin'
+        set -e
+        . ci/funs.sh
+        echo_run mkdir dist
+        echo_run curl -L https://nim-lang.org/download/mingw64.7z -o dist/mingw64.7z
+        echo_run curl -L https://nim-lang.org/download/dlls.zip -o dist/dlls.zip
+        echo_run 7z x dist/mingw64.7z -odist
+        echo_run 7z x dist/dlls.zip -obin
+        echo_run echo '##vso[task.prependpath]$(System.DefaultWorkingDirectory)/dist/mingw64/bin'
 
       displayName: 'Install dependencies (Windows)'
       condition: eq(variables['Agent.OS'], 'Windows_NT')
@@ -126,13 +135,15 @@ jobs:
       displayName: 'Add build binaries to PATH'
 
     - bash: |
-        echo 'PATH:' "$PATH"
-        echo '##[section]gcc version'
-        gcc -v
-        echo '##[section]nodejs version'
-        node -v
-        echo '##[section]make version'
-        make -v
+        set -e
+        . ci/funs.sh
+        echo_run echo 'PATH:' "$PATH"
+        echo_run echo '##[section]gcc version'
+        echo_run gcc -v
+        echo_run echo '##[section]nodejs version'
+        echo_run node -v
+        echo_run echo '##[section]make version'
+        echo_run make -v
       displayName: 'System information'
 
     - bash: echo '##vso[task.setvariable variable=csources_version]'"$(git -C csources rev-parse HEAD)"
@@ -145,6 +156,8 @@ jobs:
       displayName: 'Restore built csources'
 
     - bash: |
+        set -e
+        . ci/funs.sh
         ncpu=
         ext=
         case '$(Agent.OS)' in
@@ -162,12 +175,12 @@ jobs:
         [[ -z "$ncpu" || $ncpu -le 0 ]] && ncpu=1
 
         if [[ -x csources/bin/nim$ext ]]; then
-          echo "Found cached compiler, skipping build"
+          echo_run echo "Found cached compiler, skipping build"
         else
-          make -C csources -j $ncpu CC=gcc ucpu=$(CPU) koch=no
+          echo_run make -C csources -j $ncpu CC=gcc ucpu=$(CPU) koch=no
         fi
 
-        cp csources/bin/nim$ext bin
+        echo_run cp csources/bin/nim$ext bin
       displayName: 'Build 1-stage compiler from csources'
 
     - bash: nim c koch

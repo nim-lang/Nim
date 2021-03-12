@@ -13,7 +13,7 @@
 ## for a comparison with other clients.
 
 from stdtest/testutils import enableRemoteNetworking
-when enableRemoteNetworking and (defined(nimTestsEnableFlaky) or not defined(windows) and not defined(openbsd) and not defined(i386)):
+when enableRemoteNetworking and (defined(nimTestsEnableFlaky) or not defined(windows) and not defined(openbsd)):
   # Not supported on Windows due to old openssl version
   import
     httpclient,
@@ -95,7 +95,7 @@ when enableRemoteNetworking and (defined(nimTestsEnableFlaky) or not defined(win
 
 
   template evaluate(exception_msg: string, category: Category, desc: string) =
-    # Evaluate test outcome. Testes flagged as _broken are evaluated and skipped
+    # Evaluate test outcome. Tests flagged as `_broken` are evaluated and skipped
     let raised = (exception_msg.len > 0)
     let should_not_raise = category in {good, dubious_broken, bad_broken}
     if should_not_raise xor raised:
@@ -161,21 +161,20 @@ when enableRemoteNetworking and (defined(nimTestsEnableFlaky) or not defined(win
 
 
   suite "SSL certificate check - httpclient - threaded":
+    when defined(nimTestsEnableFlaky) or not defined(linux): # xxx pending bug #16338
+      # Spawn threads before the "test" blocks
+      var outcomes = newSeq[FlowVar[TTOutcome]](certificate_tests.len)
+      for i, ct in certificate_tests:
+        let t = spawn run_t_test(ct)
+        outcomes[i] = t
 
-    # Spawn threads before the "test" blocks
-    var outcomes = newSeq[FlowVar[TTOutcome]](certificate_tests.len)
-    for i, ct in certificate_tests:
-      let t = spawn run_t_test(ct)
-      outcomes[i] = t
-
-    # create "test" blocks and handle thread outputs
-    for t in outcomes:
-      let outcome = ^t  # wait for a thread to terminate
-
-      test outcome.desc:
-
-        evaluate(outcome.exception_msg, outcome.category, outcome.desc)
-
+      # create "test" blocks and handle thread outputs
+      for t in outcomes:
+        let outcome = ^t  # wait for a thread to terminate
+        test outcome.desc:
+          evaluate(outcome.exception_msg, outcome.category, outcome.desc)
+    else:
+      echo "skipped test"
 
   # net tests
 

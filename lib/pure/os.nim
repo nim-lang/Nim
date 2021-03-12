@@ -961,7 +961,7 @@ proc getTempDir*(): string {.rtl, extern: "nos$1",
   ##
   ## You can override this implementation
   ## by adding `-d:tempDir=mytempname` to your compiler invocation.
-  ## 
+  ##
   ## **Note:** This proc does not check whether the returned path exists.
   ##
   ## See also:
@@ -1458,8 +1458,8 @@ proc normalizePath*(path: var string) {.rtl, extern: "nos$1", tags: [].} =
   ## On relative paths, double dot (`..`) sequences are collapsed if possible.
   ## On absolute paths they are always collapsed.
   ##
-  ## Warning: URL-encoded and Unicode attempts at directory traversal are not detected.
-  ## Triple dot is not handled.
+  ## .. warning:: URL-encoded and Unicode attempts at directory traversal are not detected.
+  ##   Triple dot is not handled.
   ##
   ## See also:
   ## * `absolutePath proc <#absolutePath,string>`_
@@ -1722,9 +1722,8 @@ proc createSymlink*(src, dest: string) {.noWeirdTarget.} =
   ## Create a symbolic link at `dest` which points to the item specified
   ## by `src`. On most operating systems, will fail if a link already exists.
   ##
-  ## **Warning**:
-  ## Some OS's (such as Microsoft Windows) restrict the creation
-  ## of symlinks to root users (administrators) or users with developper mode enabled.
+  ## .. warning:: Some OS's (such as Microsoft Windows) restrict the creation
+  ##   of symlinks to root users (administrators) or users with developper mode enabled.
   ##
   ## See also:
   ## * `createHardlink proc <#createHardlink,string,string>`_
@@ -1815,7 +1814,7 @@ proc copyFile*(source, dest: string, options = {cfSymlinkFollow}) {.rtl,
   ##
   ## If `dest` already exists, the file attributes
   ## will be preserved and the content overwritten.
-  ## 
+  ##
   ## On OSX, `copyfile` C api will be used (available since OSX 10.5) unless
   ## `-d:nimLegacyCopyFile` is used.
   ##
@@ -2349,9 +2348,8 @@ iterator walkDirRec*(dir: string,
   ## If ``relative`` is true (default: false) the resulting path is
   ## shortened to be relative to ``dir``, otherwise the full path is returned.
   ##
-  ## **Warning**:
-  ## Modifying the directory structure while the iterator
-  ## is traversing may result in undefined behavior!
+  ## .. warning:: Modifying the directory structure while the iterator
+  ##   is traversing may result in undefined behavior!
   ##
   ## Walking is recursive. `followFilter` controls the behaviour of the iterator:
   ##
@@ -2584,8 +2582,8 @@ proc createHardlink*(src, dest: string) {.noWeirdTarget.} =
   ## Create a hard link at `dest` which points to the item specified
   ## by `src`.
   ##
-  ## **Warning**: Some OS's restrict the creation of hard links to
-  ## root users (administrators).
+  ## .. warning:: Some OS's restrict the creation of hard links to
+  ##   root users (administrators).
   ##
   ## See also:
   ## * `createSymlink proc <#createSymlink,string,string>`_
@@ -2838,7 +2836,7 @@ when defined(nimdoc):
     ##
     ## `i` should be in the range `1..paramCount()`, the `IndexDefect`
     ## exception will be raised for invalid values. Instead of iterating
-    ## over `paramCount() <#paramCount>`_ with this proc you can 
+    ## over `paramCount() <#paramCount>`_ with this proc you can
     ## call the convenience `commandLineParams() <#commandLineParams>`_.
     ##
     ## Similarly to `argv`:idx: in C,

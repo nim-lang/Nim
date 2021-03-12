@@ -102,11 +102,10 @@ proc osLastError*(): OSErrorCode {.sideEffect.} =
   ## OS call failed. The `OSErrorMsg` procedure can then be used to convert
   ## this code into a string.
   ##
-  ## **Warning**:
-  ## The behaviour of this procedure varies between Windows and POSIX systems.
-  ## On Windows some OS calls can reset the error code to `0` causing this
-  ## procedure to return `0`. It is therefore advised to call this procedure
-  ## immediately after an OS call fails. On POSIX systems this is not a problem.
+  ## .. warning:: The behaviour of this procedure varies between Windows and POSIX systems.
+  ##   On Windows some OS calls can reset the error code to `0` causing this
+  ##   procedure to return `0`. It is therefore advised to call this procedure
+  ##   immediately after an OS call fails. On POSIX systems this is not a problem.
   ##
   ## See also:
   ## * `osErrorMsg proc <#osErrorMsg,OSErrorCode>`_
