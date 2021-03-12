@@ -13,7 +13,7 @@ import
   ast, astalgo, hashes, trees, platform, magicsys, extccomp, options, intsets,
   nversion, nimsets, msgs, bitsets, idents, types,
   ccgutils, os, ropes, math, passes, wordrecg, treetab, cgmeth,
-  rodutils, renderer, cgendata, ccgmerge, aliases,
+  rodutils, renderer, cgendata, aliases,
   lowerings, tables, sets, ndi, lineinfos, pathutils, transf,
   injectdestructors
 
@@ -1589,9 +1589,7 @@ proc genDatInitCode(m: BModule) =
   for i in cfsTypeInit1..cfsDynLibInit:
     if m.s[i].len != 0:
       moduleDatInitRequired = true
-      prc.add(genSectionStart(i, m.config))
       prc.add(m.s[i])
-      prc.add(genSectionEnd(i, m.config))
 
   prc.addf("}$N$N", [])
 
@@ -1649,9 +1647,7 @@ proc genInitCode(m: BModule) =
     if m.thing.s(section).len > 0:
       moduleInitRequired = true
       if addHcrGuards: prc.add("\tif (nim_hcr_do_init_) {\n\n")
-      prc.add(genSectionStart(section, m.config))
       prc.add(m.thing.s(section))
-      prc.add(genSectionEnd(section, m.config))
       if addHcrGuards: prc.add("\n\t} // nim_hcr_do_init_\n")
 
   if m.preInitProc.s(cpsInit).len > 0 or m.preInitProc.s(cpsStmts).len > 0:
@@ -1743,28 +1739,21 @@ proc genModule(m: BModule, cfile: Cfile): Rope =
   var moduleIsEmpty = true
 
   result = getFileHeader(m.config, cfile)
-  result.add(genMergeInfo(m))
 
   generateThreadLocalStorage(m)
   generateHeaders(m)
-  result.add(genSectionStart(cfsHeaders, m.config))
   result.add(m.s[cfsHeaders])
   if m.config.cppCustomNamespace.len > 0:
     result.add openNamespaceNim(m.config.cppCustomNamespace)
-  result.add(genSectionEnd(cfsHeaders, m.config))
-  result.add(genSectionStart(cfsFrameDefines, m.config))
   if m.s[cfsFrameDefines].len > 0:
     result.add(m.s[cfsFrameDefines])
   else:
     result.add("#define nimfr_(x, y)\n#define nimln_(x, y)\n")
-  result.add(genSectionEnd(cfsFrameDefines, m.config))
 
   for i in cfsForwardTypes..cfsProcs:
     if m.s[i].len > 0:
       moduleIsEmpty = false
-      result.add(genSectionStart(i, m.config))
       result.add(m.s[i])
-      result.add(genSectionEnd(i, m.config))
 
   if m.s[cfsInitProc].len > 0:
     moduleIsEmpty = false
@@ -1854,9 +1843,7 @@ proc writeHeader(m: BModule) =
 
   generateThreadLocalStorage(m)
   for i in cfsHeaders..cfsProcs:
-    result.add(genSectionStart(i, m.config))
     result.add(m.s[i])
-    result.add(genSectionEnd(i, m.config))
     if m.config.cppCustomNamespace.len > 0 and i == cfsHeaders: result.add openNamespaceNim(m.config.cppCustomNamespace)
   result.add(m.s[cfsInitProc])
 
@@ -1955,46 +1942,26 @@ proc shouldRecompile(m: BModule; code: Rope, cfile: Cfile): bool =
 proc writeModule(m: BModule, pending: bool) =
   template onExit() = close(m.ndi, m.config)
   let cfile = getCFile(m)
-  if true or optForceFullMake in m.config.globalOptions:
-    if moduleHasChanged(m.g.graph, m.module):
-      genInitCode(m)
-      finishTypeDescriptions(m)
-      if sfMainModule in m.module.flags:
-        # generate main file:
-        genMainProc(m)
-        m.s[cfsProcHeaders].add(m.g.mainModProcs)
-        generateThreadVarsSize(m)
-
-    var cf = Cfile(nimname: m.module.name.s, cname: cfile,
-                   obj: completeCfilePath(m.config, toObjFile(m.config, cfile)), flags: {})
-    var code = genModule(m, cf)
-    if code != nil or m.config.symbolFiles != disabledSf:
-      when hasTinyCBackend:
-        if m.config.cmd == cmdTcc:
-          tccgen.compileCCode($code, m.config)
-          onExit()
-          return
-
-      if not shouldRecompile(m, code, cf): cf.flags = {CfileFlag.Cached}
-      addFileToCompile(m.config, cf)
-  elif pending and mergeRequired(m) and sfMainModule notin m.module.flags:
-    let cf = Cfile(nimname: m.module.name.s, cname: cfile,
-                   obj: completeCfilePath(m.config, toObjFile(m.config, cfile)), flags: {})
-    mergeFiles(cfile, m)
+  if moduleHasChanged(m.g.graph, m.module):
     genInitCode(m)
     finishTypeDescriptions(m)
-    var code = genModule(m, cf)
-    if code != nil:
-      if not writeRope(code, cfile):
-        rawMessage(m.config, errCannotOpenFile, cfile.string)
-      addFileToCompile(m.config, cf)
-  else:
-    # Consider: first compilation compiles ``system.nim`` and produces
-    # ``system.c`` but then compilation fails due to an error. This means
-    # that ``system.o`` is missing, so we need to call the C compiler for it:
-    var cf = Cfile(nimname: m.module.name.s, cname: cfile,
-                   obj: completeCfilePath(m.config, toObjFile(m.config, cfile)), flags: {})
-    if fileExists(cf.obj): cf.flags = {CfileFlag.Cached}
+    if sfMainModule in m.module.flags:
+      # generate main file:
+      genMainProc(m)
+      m.s[cfsProcHeaders].add(m.g.mainModProcs)
+      generateThreadVarsSize(m)
+
+  var cf = Cfile(nimname: m.module.name.s, cname: cfile,
+                  obj: completeCfilePath(m.config, toObjFile(m.config, cfile)), flags: {})
+  var code = genModule(m, cf)
+  if code != nil or m.config.symbolFiles != disabledSf:
+    when hasTinyCBackend:
+      if m.config.cmd == cmdTcc:
+        tccgen.compileCCode($code, m.config)
+        onExit()
+        return
+
+    if not shouldRecompile(m, code, cf): cf.flags = {CfileFlag.Cached}
     addFileToCompile(m.config, cf)
   onExit()
 
@@ -2002,21 +1969,10 @@ proc updateCachedModule(m: BModule) =
   let cfile = getCFile(m)
   var cf = Cfile(nimname: m.module.name.s, cname: cfile,
                  obj: completeCfilePath(m.config, toObjFile(m.config, cfile)), flags: {})
-
-  if mergeRequired(m) and sfMainModule notin m.module.flags:
-    mergeFiles(cfile, m)
-    genInitCode(m)
-    finishTypeDescriptions(m)
-    var code = genModule(m, cf)
-    if code != nil:
-      if not writeRope(code, cfile):
-        rawMessage(m.config, errCannotOpenFile, cfile.string)
-      addFileToCompile(m.config, cf)
-  else:
-    if sfMainModule notin m.module.flags:
-      genMainProc(m)
-    cf.flags = {CfileFlag.Cached}
-    addFileToCompile(m.config, cf)
+  if sfMainModule notin m.module.flags:
+    genMainProc(m)
+  cf.flags = {CfileFlag.Cached}
+  addFileToCompile(m.config, cf)
 
 proc finalCodegenActions*(graph: ModuleGraph; m: BModule; n: PNode) =
   ## Also called from IC.
