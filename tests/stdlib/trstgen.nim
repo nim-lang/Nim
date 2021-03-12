@@ -7,38 +7,34 @@ outputsub: ""
 import ../../lib/packages/docutils/rstgen
 import ../../lib/packages/docutils/rst
 import unittest, strutils, strtabs
+import std/private/miscdollars
 
 proc toHtml(input: string,
             rstOptions: RstParseOptions = {roSupportMarkdown},
-            expectError: string = "",
-            expectWarnings: seq[string] = @[]): string =
-  var warnings: seq[string]
-  var error: string
+            error: ref string = nil,
+            warnings: ref seq[string] = nil): string =
+  ## If `error` is nil then no errors should be generated.
+  ## The same goes for `warning`.
   proc testMsgHandler(filename: string, line, col: int, msgkind: MsgKind,
                       arg: string) =
     let mc = msgkind.whichMsgClass
     let a = $msgkind % arg
-    let message = "$1($2, $3) $4: $5" % [$filename, $line, $col, $mc, a]
+    var message: string
+    toLocation(message, filename, line, col)
+    message.add " $1: $2" % [$mc, a]
     if mc == mcError:
-      error = message
+      doAssert error != nil, "unexpected RST error '" & message & "'"
+      error[] = message
       # we check only first error because subsequent ones may be meaningless
       raise newException(EParseError, message)
     else:
-      warnings.add message
+      doAssert warnings != nil, "unexpected RST warning '" & message & "'"
+      warnings[].add message
   try:
-    result = rstToHtml(input, rstOptions, defaultConfig(), testMsgHandler)
+    result = rstToHtml(input, rstOptions, defaultConfig(), line=1,
+                       column=1, msgHandler=testMsgHandler)
   except EParseError:
     discard
-  template assertEqual(s1, s2: untyped) =
-    let result = s1 == s2
-    if not result:
-      echo "assert failed, Expected:"
-      echo s1
-      echo "got:"
-      echo s2
-    doAssert result
-  assertEqual(expectError, error)
-  assertEqual(expectWarnings, warnings)
 
 suite "YAML syntax highlighting":
   test "Basics":
@@ -290,8 +286,9 @@ Wrong chapter
 ------------
 
 """
-    let output4 = input4.toHtml(
-        expectError = "input(3, 0) Error: new section expected (underline " &
+    var error4 = new string
+    let output4 = input4.toHtml(error = error4)
+    check(error4[] == "input(3, 1) Error: new section expected (underline " &
             "\'------------\' is too short)")
 
     let input5 = """
@@ -317,8 +314,9 @@ Some chapter
       Some chapter
       -----------
       """
-    let output7 = input7.toHtml(
-        expectError = "input(1, 0) Error: new section expected (underline " &
+    var error7 = new string
+    let output7 = input7.toHtml(error=error7)
+    check(error7[] == "input(1, 1) Error: new section expected (underline " &
             "\'-----------\' does not match overline \'------------\')")
 
     let input8 = dedent """
@@ -326,9 +324,9 @@ Some chapter
           Overflow
       -----------
       """
-    # TODO: too many errors
-    let output8 = input8.toHtml(
-        expectError = "input(1, 0) Error: new section expected (overline " &
+    var error8 = new string
+    let output8 = input8.toHtml(error=error8)
+    check(error8[] == "input(1, 1) Error: new section expected (overline " &
             "\'-----------\' is too short)")
 
     # check that hierarchy of title styles works
@@ -381,8 +379,9 @@ Some chapter
       -------
 
       """
-    let output9Bad = input9bad.toHtml(
-        expectError = "input(15, 0) Error: new section expected (section " &
+    var error9Bad = new string
+    let output9Bad = input9bad.toHtml(error=error9Bad)
+    check(error9Bad[] == "input(15, 1) Error: new section expected (section " &
             "level inconsistent: underline ~~~~~ unexpectedly found, while " &
             "the following intermediate section level(s) are missing on " &
             "lines 12..15: underline -----)")
@@ -521,8 +520,9 @@ This is too short to be a transition:
 
 context2
 """
-    let output2 = input2.toHtml(
-        expectError = "input(3, 0) Error: new section expected (overline " &
+    var error2 = new string
+    let output2 = input2.toHtml(error=error2)
+    check(error2[] == "input(3, 1) Error: new section expected (overline " &
             "\'---\' is too short)")
 
   test "RST literal block":
@@ -754,14 +754,12 @@ Test1
       C. string1
       string2
       """
-    let output8 = input8.toHtml(
-        expectWarnings = @["input(6, 0) Warning: RST style: \n" &
-            """
-            not enough indentation on line 6
-                (if it's continuation of enumeration list),
-            or no blank line after line 5 (if it should be the next paragraph),
-            or no escaping \ at the beginning of line 5
-                (if lines 5..6 are a normal paragraph, not enum. list)""".unindent(10)])
+    var warnings8 = new seq[string]
+    #check("hi" == warnings8[0])
+    let output8 = input8.toHtml(warnings = warnings8)
+    check(warnings8[].len == 1)
+    check("input(6, 1) Warning: RST style: \n" &
+          "  not enough indentation on line 6" in warnings8[0])
     doAssert output8 == "Paragraph.<ol class=\"upperalpha simple\">" &
         "<li>stringA</li>\n<li>stringB</li>\n</ol>\n<p>C. string1 string2 </p>\n"
 
@@ -905,8 +903,9 @@ Test1
 
       Ref. [#note]_
       """
-    let output5 = input5.toHtml(
-        expectError = "input(6, 0) Error: mismatch in number of footnotes " &
+    var error5 = new string
+    let output5 = input5.toHtml(error=error5)
+    check(error5[] == "input(6, 1) Error: mismatch in number of footnotes " &
             "and their refs: 1 (lines 2) != 0 (lines ) for auto-numbered " &
             "footnotes")
 
@@ -918,8 +917,9 @@ Test1
 
       Ref. [*]_
       """
-    let output6 = input6.toHtml(
-        expectError = "input(6, 0) Error: mismatch in number of footnotes " &
+    var error6 = new string
+    let output6 = input6.toHtml(error=error6)
+    check(error6[] == "input(6, 1) Error: mismatch in number of footnotes " &
             "and their refs: 1 (lines 3) != 2 (lines 2, 6) for auto-symbol " &
             "footnotes")
 
@@ -940,8 +940,9 @@ Test1
 
       Ref. [som]_.
       """
-    let output8 = input8.toHtml(
-        expectWarnings = @["input(4, 0) Warning: unknown substitution " &
+    var warnings8 = new seq[string]
+    let output8 = input8.toHtml(warnings=warnings8)
+    check(warnings8[] == @["input(4, 1) Warning: unknown substitution " &
             "\'citation-som\'"])
 
     # check that footnote group does not break parsing of other directives:

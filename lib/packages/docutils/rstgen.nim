@@ -1476,7 +1476,7 @@ $content
 # ---------- forum ---------------------------------------------------------
 
 proc rstToHtml*(s: string, options: RstParseOptions,
-                config: StringTableRef,
+                config: StringTableRef, line=1, column=1,
                 msgHandler: MsgHandler = rst.defaultMsgHandler): string =
   ## Converts an input rst string into embeddable HTML.
   ##
@@ -1506,7 +1506,7 @@ proc rstToHtml*(s: string, options: RstParseOptions,
   var d: RstGenerator
   initRstGenerator(d, outHtml, config, filen, options, myFindFile, msgHandler)
   var dummyHasToc = false
-  var rst = rstParse(s, filen, line=LineRstInit, column=ColRstInit,
+  var rst = rstParse(s, filen, line=line, column=column,
                      dummyHasToc, options, myFindFile, msgHandler)
   result = ""
   renderRstToOut(d, rst, result)

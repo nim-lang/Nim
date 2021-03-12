@@ -1954,25 +1954,31 @@ proc parseEnumList(p: var RstParser): PRstNode =
     if match(p, p.idx, wildcards[w]): break
     inc w
   assert w < wildcards.len
+
   proc checkAfterNewline(p: RstParser, report: bool): bool =
+    ## If no indentation on the next line then parse as a normal paragraph
+    ## according to the RST spec. And report a warning with suggestions
     let j = tokenAfterNewline(p, start=p.idx+1)
+    let requiredIndent = p.tok[p.idx+wildToken[w]].col
     if p.tok[j].kind notin {tkIndent, tkEof} and
-        p.tok[j].col < p.tok[p.idx+wildToken[w]].col and
+        p.tok[j].col < requiredIndent and
         (p.tok[j].col > col or
           (p.tok[j].col == col and not match(p, j, wildcards[w]))):
       if report:
         let n = p.line + p.tok[j].line
         let msg = "\n" & """
           not enough indentation on line $2
-              (if it's continuation of enumeration list),
+              (should be at column $3 if it's a continuation of enum. list),
           or no blank line after line $1 (if it should be the next paragraph),
           or no escaping \ at the beginning of line $1
               (if lines $1..$2 are a normal paragraph, not enum. list)""".
           unindent(8)
-        rstMessage(p, mwRstStyle, msg % [$(n-1), $n], p.tok[j].line, col)
+        rstMessage(p, mwRstStyle, msg % [$(n-1), $n, $(p.col+requiredIndent+1)],
+                   p.tok[j].line, p.tok[j].col)
       result = false
     else:
       result = true
+
   if not checkAfterNewline(p, report = true):
     return nil
   result = newRstNodeA(p, rnEnumList)
