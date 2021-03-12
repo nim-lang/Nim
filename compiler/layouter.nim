@@ -514,7 +514,8 @@ proc emitTok*(em: var Emitter; L: Lexer; tok: Token) =
         (not em.wasExportMarker or tok.tokType == tkCurlyDotLe):
       wrSpace em
     wr(em, $tok.tokType, ltSomeParLe)
-    rememberSplit(splitParLe)
+    if tok.tokType != tkCurlyDotLe:
+      rememberSplit(splitParLe)
   of closedPars:
     wr(em, $tok.tokType, ltSomeParRi)
   of tkColonColon:
