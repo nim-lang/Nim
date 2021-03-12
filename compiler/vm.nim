@@ -523,8 +523,14 @@ proc rawExecute(c: PCtx, start: int, tos: PStackFrame): TFullReg =
   # Used to keep track of where the execution is resumed.
   var savedPC = -1
   var savedFrame: PStackFrame
-  var regs: seq[TFullReg] # alias to tos.slots for performance
-  move(regs, tos.slots)
+  when defined(gcArc):
+    template updateRegsAlias = discard
+    template regs: untyped = tos.slots
+  else:
+    template updateRegsAlias =
+      move(regs, tos.slots)
+    var regs: seq[TFullReg] # alias to tos.slots for performance
+    updateRegsAlias
   #echo "NEW RUN ------------------------"
   while true:
     #{.computedGoto.}
@@ -550,12 +556,12 @@ proc rawExecute(c: PCtx, start: int, tos: PStackFrame): TFullReg =
       # Perform any cleanup action before returning
       if newPc < 0:
         pc = tos.comesFrom
-        tos = tos.next
         let retVal = regs[0]
+        tos = tos.next
         if tos.isNil:
           return retVal
 
-        move(regs, tos.slots)
+        updateRegsAlias
         assert c.code[pc].opcode in {opcIndCall, opcIndCallAsgn}
         if c.code[pc].opcode == opcIndCallAsgn:
           regs[c.code[pc].regA] = retVal
@@ -1245,7 +1251,7 @@ proc rawExecute(c: PCtx, start: int, tos: PStackFrame): TFullReg =
         if isClosure:
           newFrame.slots[rc] = TFullReg(kind: rkNode, node: regs[rb].node[1])
         tos = newFrame
-        move(regs, newFrame.slots)
+        updateRegsAlias
         # -1 for the following 'inc pc'
         pc = newPc-1
       else:
@@ -1321,7 +1327,7 @@ proc rawExecute(c: PCtx, start: int, tos: PStackFrame): TFullReg =
         savedPC = -1
         if tos != savedFrame:
           tos = savedFrame
-          move(regs, tos.slots)
+          updateRegsAlias
     of opcRaise:
       let raised =
         # Empty `raise` statement - reraise current exception
@@ -1347,7 +1353,7 @@ proc rawExecute(c: PCtx, start: int, tos: PStackFrame): TFullReg =
         pc = jumpTo.where - 1
         if tos != frame:
           tos = frame
-          move(regs, tos.slots)
+          updateRegsAlias
       of ExceptionGotoFinally:
         # Jump to the `finally` block first then re-jump here to continue the
         # traversal of the exception chain
@@ -1356,7 +1362,7 @@ proc rawExecute(c: PCtx, start: int, tos: PStackFrame): TFullReg =
         pc = jumpTo.where - 1
         if tos != frame:
           tos = frame
-          move(regs, tos.slots)
+          updateRegsAlias
       of ExceptionGotoUnhandled:
         # Nobody handled this exception, error out.
         bailOut(c, tos)
