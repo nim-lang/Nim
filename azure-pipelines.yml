@@ -17,8 +17,7 @@ jobs:
       Linux_i386:
         # bug #17325: fails on 'ubuntu-16.04' because it now errors with:
         # g++-multilib : Depends: gcc-multilib (>= 4:5.3.1-1ubuntu1) but it is not going to be installed
-        # vmImage: 'ubuntu-18.04'
-        vmImage: 'ubuntu-16.04'
+        vmImage: 'ubuntu-18.04'
         CPU: i386
 
   pool:
@@ -91,12 +90,13 @@ jobs:
           libsdl1.2-dev:i386 libsfml-dev:i386 libglib2.0-dev:i386 libffi-dev:i386
 
         # echo_run apt-get install -y --allow-downgrades libssl1.0.0/trusty libssl-dev/trusty openssl/trusty
-        echo_run sudo apt-get install -y --allow-downgrades libssl/xenial libssl-dev/xenial openssl/xenial 
+        # echo_run sudo apt-get install -y --allow-downgrades libssl/xenial libssl-dev/xenial openssl/xenial 
 
-        echo_run sudo apt-get install -yq \
-          libssl-dev:i386
+        echo_run sudo apt-get install -y --allow-downgrades libssl libssl-dev openssl
 
-        # libcurl4-openssl-dev:i386 
+        echo_run sudo apt-get install -yq --allow-downgrades libssl-dev:i386
+
+        # libcurl4-openssl-dev:i386
 
         cat << EOF > bin/gcc
         #!/bin/bash
