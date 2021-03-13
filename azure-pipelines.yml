@@ -63,7 +63,7 @@ jobs:
           "$@"
         }
 
-        echo_run echo "v1"
+        echo_run echo "v2"
         echo_run sudo dpkg --add-architecture i386
         # Downgrade llvm:
         # - llvm has to be downgraded to have 32bit version installed for sfml.
@@ -81,10 +81,13 @@ jobs:
         DEBIAN_FRONTEND='noninteractive' \
           echo_run sudo apt-get install -y gcc-multilib
 
+        # echo_run sudo apt-get install --no-install-recommends --allow-downgrades -yq
+
         DEBIAN_FRONTEND='noninteractive' \
-          echo_run sudo apt-get install --no-install-recommends --allow-downgrades -yq \
-            g++-multilib gcc-multilib libcurl4-openssl-dev:i386 libgc-dev:i386 \
+          echo_run sudo apt-get install -yq \
+            g++-multilib gcc-multilib libgc-dev:i386 \
             libsdl1.2-dev:i386 libsfml-dev:i386 libglib2.0-dev:i386 libffi-dev:i386
+        # libcurl4-openssl-dev:i386 
 
         cat << EOF > bin/gcc
         #!/bin/bash
