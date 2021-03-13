@@ -96,8 +96,13 @@ jobs:
 
         # echo_run sudo apt-get install -y --allow-downgrades libssl libssl-dev openssl
         # echo_run sudo apt-get install -y --allow-downgrades libssl-dev
-
         echo_run sudo apt-get install -y --allow-downgrades libssl-dev:i386
+
+        echo_run sudo apt-get install -y --allow-downgrades libssl-dev
+        echo_run sudo apt-get install -y --allow-downgrades libssl-dev:i386
+
+        echo_run sudo apt-get install -y --allow-downgrades libcurl4-openssl-dev
+        echo_run sudo apt-get install -y --allow-downgrades libcurl4-openssl-dev:i386
 
         # libcurl4-openssl-dev:i386
 
