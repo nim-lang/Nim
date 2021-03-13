@@ -24,14 +24,15 @@
 ##
 runnableExamples:
   type
-    GreetFunction = proc(): cstring {.gcsafe, stdcall.}
+    GreetFunction = proc (): cstring {.gcsafe, stdcall.}
 
   proc loadGreet(lang: string) =
-    let lib = case lang
-    of "french":
-      loadLib("french.dll")
-    else:
-      loadLib("english.dll")
+    let lib =
+      case lang
+      of "french":
+        loadLib("french.dll")
+      else:
+        loadLib("english.dll")
 
     if lib == nil:
       echo "Error loading library"
