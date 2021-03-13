@@ -90,6 +90,7 @@ jobs:
         # libcurl4-openssl-dev:i386 
 
         echo_run which gcc
+        echo_run which -a gcc
 
         cat << EOF > bin/gcc
         #!/bin/bash
