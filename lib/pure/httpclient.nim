@@ -202,7 +202,7 @@
 
 import std/private/since
 
-import net, strutils, uri, parseutils, base64, os, mimetypes, streams,
+import net, strutils, uri, parseutils, base64, os, mimetypes,
   math, random, httpcore, times, tables, streams, std/monotimes
 import asyncnet, asyncdispatch, asyncfile
 import nativesockets
