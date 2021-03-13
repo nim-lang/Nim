@@ -146,7 +146,8 @@
 ## .. _Sphinx directives: https://www.sphinx-doc.org/en/master/usage/restructuredtext/directives.html
 
 import
-  os, strutils, rstast, std/enumutils, algorithm, lists, sequtils
+  os, strutils, rstast, std/enumutils, algorithm, lists, sequtils,
+  std/private/miscdollars
 
 type
   RstParseOption* = enum     ## options for the RST parser
@@ -477,9 +478,10 @@ type
   EParseError* = object of ValueError
 
 const
-  LineRstInit* = 1 ## Initial line number for standalone RST text
-  ColRstInit* = 0 ## Initial column number for standalone RST text
-                  ## (Nim global reporting adds ColOffset=1)
+  LineRstInit* = 1  ## Initial line number for standalone RST text
+  ColRstInit* = 0   ## Initial column number for standalone RST text
+                    ## (Nim global reporting adds ColOffset=1)
+  ColRstOffset* = 1 ## 1: a replica of ColOffset for internal use
 
 template currentTok(p: RstParser): Token = p.tok[p.idx]
 template prevTok(p: RstParser): Token = p.tok[p.idx - 1]
@@ -497,7 +499,9 @@ proc defaultMsgHandler*(filename: string, line, col: int, msgkind: MsgKind,
                         arg: string) =
   let mc = msgkind.whichMsgClass
   let a = $msgkind % arg
-  let message = "$1($2, $3) $4: $5" % [filename, $line, $col, $mc, a]
+  var message: string
+  toLocation(message, filename, line, col + ColRstOffset)
+  message.add " $1: $2" % [$mc, a]
   if mc == mcError: raise newException(EParseError, message)
   else: writeLine(stdout, message)
 
@@ -1973,7 +1977,8 @@ proc parseEnumList(p: var RstParser): PRstNode =
           or no escaping \ at the beginning of line $1
               (if lines $1..$2 are a normal paragraph, not enum. list)""".
           unindent(8)
-        rstMessage(p, mwRstStyle, msg % [$(n-1), $n, $(p.col+requiredIndent+1)],
+        let c = p.col + requiredIndent + ColRstOffset
+        rstMessage(p, mwRstStyle, msg % [$(n-1), $n, $c],
                    p.tok[j].line, p.tok[j].col)
       result = false
     else:
