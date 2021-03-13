@@ -4,12 +4,13 @@
 runnableExamples:
   let jsregex: RegExp = newRegExp(r"\s+", r"i")
   jsregex.compile(r"\w+", r"i")
-  doAssert jsregex.test(r"nim javascript")
-  doAssert jsregex.exec(r"nim javascript") == @["nim".cstring]
-  doAssert jsregex.toString() == r"/\w+/i"
+  assert jsregex.test(r"nim javascript")
+  assert jsregex.exec(r"nim javascript") == @["nim".cstring]
+  assert jsregex.toString() == r"/\w+/i"
   jsregex.compile(r"[0-9]", r"i")
-  doAssert jsregex.test(r"0123456789abcd")
-
+  assert jsregex.test(r"0123456789abcd")
+  assert $jsregex == "/[0-9]/i"
+  assert jsregex.len == 5
 
 when not defined(js):
   {.error: "This module only works on the JavaScript platform".}
@@ -44,3 +45,7 @@ func test*(self: RegExp; pattern: cstring): bool {.importjs: "#.test(#)".}
 
 func toString*(self: RegExp): cstring {.importjs: "#.toString()".}
   ## Returns a string representing the RegExp object.
+
+func `$`*(self: RegExp): string = $toString(self)
+
+func len*(self: RegExp): int = self.source.len
