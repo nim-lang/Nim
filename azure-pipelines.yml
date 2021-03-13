@@ -92,7 +92,8 @@ jobs:
         # echo_run apt-get install -y --allow-downgrades libssl1.0.0/trusty libssl-dev/trusty openssl/trusty
         # echo_run sudo apt-get install -y --allow-downgrades libssl/xenial libssl-dev/xenial openssl/xenial 
 
-        echo_run sudo apt-get install -y --allow-downgrades libssl libssl-dev openssl
+        # echo_run sudo apt-get install -y --allow-downgrades libssl libssl-dev openssl
+        echo_run sudo apt-get install -y --allow-downgrades libssl-dev
 
         echo_run sudo apt-get install -y --allow-downgrades libssl-dev:i386
 
