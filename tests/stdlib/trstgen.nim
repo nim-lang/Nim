@@ -14,13 +14,13 @@ proc toHtml(input: string,
             error: ref string = nil,
             warnings: ref seq[string] = nil): string =
   ## If `error` is nil then no errors should be generated.
-  ## The same goes for `warning`.
+  ## The same goes for `warnings`.
   proc testMsgHandler(filename: string, line, col: int, msgkind: MsgKind,
                       arg: string) =
     let mc = msgkind.whichMsgClass
     let a = $msgkind % arg
     var message: string
-    toLocation(message, filename, line, col)
+    toLocation(message, filename, line, col + ColRstOffset)
     message.add " $1: $2" % [$mc, a]
     if mc == mcError:
       doAssert error != nil, "unexpected RST error '" & message & "'"
@@ -31,8 +31,8 @@ proc toHtml(input: string,
       doAssert warnings != nil, "unexpected RST warning '" & message & "'"
       warnings[].add message
   try:
-    result = rstToHtml(input, rstOptions, defaultConfig(), line=1,
-                       column=1, msgHandler=testMsgHandler)
+    result = rstToHtml(input, rstOptions, defaultConfig(),
+                       msgHandler=testMsgHandler)
   except EParseError:
     discard
 
@@ -179,14 +179,12 @@ suite "RST/Markdown general":
       "<em>Hello</em> <strong>world</strong>!"
 
   test "Markdown links":
-    let
-      a = "(( [Nim](https://nim-lang.org/) ))".toHtml
-      b = "(([Nim](https://nim-lang.org/)))".toHtml
-      c = "[[Nim](https://nim-lang.org/)]".toHtml
-
-    doAssert a == """(( <a class="reference external" href="https://nim-lang.org/">Nim</a> ))"""
-    doAssert b == """((<a class="reference external" href="https://nim-lang.org/">Nim</a>))"""
-    doAssert c == """[<a class="reference external" href="https://nim-lang.org/">Nim</a>]"""
+    check("(( [Nim](https://nim-lang.org/) ))".toHtml ==
+        """(( <a class="reference external" href="https://nim-lang.org/">Nim</a> ))""")
+    check("(([Nim](https://nim-lang.org/)))".toHtml ==
+        """((<a class="reference external" href="https://nim-lang.org/">Nim</a>))""")
+    check("[[Nim](https://nim-lang.org/)]".toHtml ==
+        """[<a class="reference external" href="https://nim-lang.org/">Nim</a>]""")
 
   test "Markdown tables":
     let input1 = """
