@@ -232,6 +232,8 @@
   zone offsets without colons, e.g. `UTC+7 -> +0700`.
 
 
+- Added dollar `$` and `len` for `jsre.RegExp`.
+
 
 ## Language changes
 
