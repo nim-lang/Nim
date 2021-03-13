@@ -31,9 +31,9 @@ jobs:
       displayName: 'Disable auto conversion to CRLF by git (Windows-only)'
       condition: eq(variables['Agent.OS'], 'Windows_NT')
 
-    # - checkout: self
-    #   fetchDepth: 1
-    - checkout: none
+    - checkout: self
+      fetchDepth: 1
+    # - checkout: none
 
     - bash: git clone --depth 1 https://github.com/nim-lang/csources
       displayName: 'Checkout Nim csources'
@@ -91,7 +91,6 @@ jobs:
 
         echo_run which gcc
         echo_run which -a gcc
-        echo_run mkdir -b bin # only bc ...
 
         cat << EOF > bin/gcc
         #!/bin/bash
@@ -107,7 +106,6 @@ jobs:
         exec $(which g++) -m32 "\$@"
         EOF
 
-        echo_run ls bin
         echo_run chmod 755 bin/gcc
         echo_run chmod 755 bin/g++
 
