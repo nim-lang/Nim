@@ -14,6 +14,8 @@ import
   renderer, nimfix/prettybase, lineinfos, strutils,
   modulegraphs
 
+import std/wrapnils
+
 proc ensureNoMissingOrUnusedSymbols(c: PContext; scope: PScope)
 
 proc noidentError(conf: ConfigRef; n, origin: PNode) =
@@ -193,14 +195,17 @@ proc searchInScopes*(c: PContext, s: PIdent; ambiguous: var bool): PSym =
     if result != nil: return result
   result = someSymFromImportTable(c, s, ambiguous)
 
-proc debugScopes*(c: PContext; limit=0) {.deprecated.} =
+proc debugScopes*(c: PContext; limit=0, max = int.high) {.deprecated.} =
   var i = 0
+  var count = 0
   for scope in allScopes(c.currentScope):
     echo "scope ", i
     for h in 0..high(scope.symbols.data):
       if scope.symbols.data[h] != nil:
-        echo scope.symbols.data[h].name.s
-    if i == limit: break
+        if count >= max: return
+        echo count, ": ", scope.symbols.data[h].name.s
+        count.inc
+    if i == limit: return
     inc i
 
 proc searchInScopesFilterBy*(c: PContext, s: PIdent, filter: TSymKinds): seq[PSym] =
@@ -374,16 +379,11 @@ proc fixSpelling(c: PContext, n: PNode, ident: PIdent, result: var string) =
     a.dist < b.dist or a.dist == b.dist and a.depth < b.depth
   var list = initHeapQueue[E]()
   let name0 = ident.s.nimIdentNormalize
-  var depth = 0
-  for scope in allScopes(c.currentScope):
-    for h in 0..high(scope.symbols.data):
-      if scope.symbols.data[h] != nil:
-        let identi = scope.symbols.data[h]
-        let dist = editDistance(name0, identi.name.s.nimIdentNormalize)
-        list.push (dist, depth, identi)
-    depth.inc
-  if list.len == 0: return
 
+  for (identi, depth, isLocal) in allSyms(c):
+    let dist = editDistance(name0, identi.name.s.nimIdentNormalize)
+    list.push (dist, -depth - 1, identi)
+  if list.len == 0: return
   let e0 = list[0]
   var count = 0
   while true:
@@ -391,8 +391,9 @@ proc fixSpelling(c: PContext, n: PNode, ident: PIdent, result: var string) =
     if count >= c.config.spellSuggestMax or list.len == 0: break
     let e = list.pop()
     let (dist, depth, sym) = e
-    # result.add "\n  candidate misspelling (dist: $1): '$2'" % [$dist, sym.name.s]
-    result.add "\n  candidate misspelling (dist: $1, depth: $2): '$3'" % [$dist, $depth, sym.name.s]
+    if count == 0:
+      result.add "\ncandidate misspellings (edit distance, lexical scope distance): "
+    result.add "\n ($1, $2): '$3'" % [$dist, $depth, sym.name.s]
     addDeclaredLocMaybe(result, c.config, sym) # skipAlias not needed
     count.inc
 
