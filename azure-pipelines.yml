@@ -91,6 +91,7 @@ jobs:
 
         echo_run which gcc
         echo_run which -a gcc
+        echo_run mkdir -b bin # only bc ...
 
         cat << EOF > bin/gcc
         #!/bin/bash
