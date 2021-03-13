@@ -35,7 +35,6 @@ Command:
   c|cat|category <category>   run all the tests of a certain category
   r|run <test>                run single test file
   html                        generate $1 from the database
-  stats                       generate statistics about test cases
 Arguments:
   arguments are passed to the compiler
 Options:
