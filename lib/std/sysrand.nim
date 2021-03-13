@@ -258,26 +258,28 @@ else:
 
     # see: https://www.2uo.de/myths-about-urandom/ which justifies using urandom instead of random
     let fd = posix.open("/dev/urandom", O_RDONLY)
-    defer: discard posix.close(fd)
 
-    if fd > 0:
-      var stat: Stat
-      if fstat(fd, stat) != -1 and S_ISCHR(stat.st_mode):
-        let
-          chunks = (size - 1) div batchSize
-          left = size - chunks * batchSize
-
-        for i in 0 ..< chunks:
-          let readBytes = posix.read(fd, addr dest[result], batchSize)
-          if readBytes < 0:
-            return readBytes
-          inc(result, batchSize)
-
-        result = posix.read(fd, addr dest[result], left)
-      else:
-        result = -1
-    else:
+    if fd < 0:
       result = -1
+    else:
+      try:
+        var stat: Stat
+        if fstat(fd, stat) != -1 and S_ISCHR(stat.st_mode):
+          let
+            chunks = (size - 1) div batchSize
+            left = size - chunks * batchSize
+
+          for i in 0 ..< chunks:
+            let readBytes = posix.read(fd, addr dest[result], batchSize)
+            if readBytes < 0:
+              return readBytes
+            inc(result, batchSize)
+
+          result = posix.read(fd, addr dest[result], left)
+        else:
+          result = -1
+      finally:
+        discard posix.close(fd)
 
 proc urandomInternalImpl(dest: var openArray[byte]): int {.inline.} =
   when batchImplOS:
