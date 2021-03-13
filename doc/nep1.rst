@@ -272,7 +272,7 @@ Conventions for multi-line statements and expressions
     startProcess(nimExecutable, currentDirectory, compilerArguments
                  environment, processOptions)
 
-- Type/var/import sections with a single element should use a single line:
+- Type/var/import sections that have a single element should use a single line:
 
   .. code-block:: nim
     # good:
@@ -294,6 +294,18 @@ Conventions for multi-line statements and expressions
 
   Rationale: less vertical space, consistency with routine declarations,
   and makes it easier to grep.
+  This doesn't concern type/var/import sections that contain more than 1 element:
+
+  .. code-block:: nim
+    # this is fine:
+    import
+      std/[strutils, sugar]
+      fusion/[pools, ioutils]
+      pkg/regex
+
+    type
+      A = seq[int]
+      B = ptr A
 
 Miscellaneous
 -------------
