@@ -55,7 +55,14 @@ jobs:
 
     - bash: |
         set -e
-        . ci/funs.sh
+        # . ci/funs.sh
+
+        echo_run () {
+          echo ""
+          echo "$@"
+          "$@"
+        }
+
         echo_run echo "v1"
         echo_run sudo dpkg --add-architecture i386
         # Downgrade llvm:
