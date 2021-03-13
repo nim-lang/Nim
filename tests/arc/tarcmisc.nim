@@ -402,7 +402,5 @@ proc test =
   passSeq(name)
   doAssert name == @["hello", "world"]
 
-# works at runtime but not compile-time
-static:
-  test()
-
+static: test() # was buggy
+test()
