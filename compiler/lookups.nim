@@ -14,8 +14,6 @@ import
   renderer, nimfix/prettybase, lineinfos, strutils,
   modulegraphs
 
-import std/wrapnils
-
 proc ensureNoMissingOrUnusedSymbols(c: PContext; scope: PScope)
 
 proc noidentError(conf: ConfigRef; n, origin: PNode) =
