@@ -161,13 +161,13 @@ elif defined(windows) or defined(dos):
     FARPROC {.importc: "FARPROC".} = pointer
 
   proc FreeLibrary(lib: HMODULE) {.importc, header: "<windows.h>", stdcall.}
-  proc winLoadLibrary(path: WideCstring): HMODULE {.
+  proc winLoadLibrary(path: WideCString): HMODULE {.
       importc: "LoadLibraryW", header: "<windows.h>", stdcall.}
   proc getProcAddress(lib: HMODULE, name: cstring): FARPROC {.
       importc: "GetProcAddress", header: "<windows.h>", stdcall.}
 
   proc loadLib(path: string, globalSymbols = false): LibHandle =
-    result = cast[LibHandle](winLoadLibrary(newWideCstring(path)))
+    result = cast[LibHandle](winLoadLibrary(newWideCString(path)))
   proc loadLib(): LibHandle =
     result = cast[LibHandle](winLoadLibrary(nil))
   proc unloadLib(lib: LibHandle) = FreeLibrary(cast[HMODULE](lib))
