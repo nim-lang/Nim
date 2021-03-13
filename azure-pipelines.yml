@@ -88,7 +88,8 @@ jobs:
 
         echo_run sudo apt-get install -yq \
           g++-multilib gcc-multilib libgc-dev:i386 \
-          libsdl1.2-dev:i386 libsfml-dev:i386 libglib2.0-dev:i386 libffi-dev:i386
+          libsdl1.2-dev:i386 libglib2.0-dev:i386 libffi-dev:i386
+        # libsfml-dev:i386 
 
         # echo_run apt-get install -y --allow-downgrades libssl1.0.0/trusty libssl-dev/trusty openssl/trusty
         # echo_run sudo apt-get install -y --allow-downgrades libssl/xenial libssl-dev/xenial openssl/xenial 
