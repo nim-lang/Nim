@@ -1,4 +1,4 @@
-## Syncronous `HttpClient <httpclient.html>`_ for JavaScript implemented as sugar on top of `jsxmlhttprequest <jsxmlhttprequest.html>`_
+## Syncronous `HttpClient <httpclient.html>`_ for JavaScript implemented on top of `jsxmlhttprequest <jsxmlhttprequest.html>`_
 when not defined(js):
   {.fatal: "Module jshttpclient is designed to be used with the JavaScript backend.".}
 
