@@ -164,13 +164,15 @@ block fileOperations:
     const subDir2 = dname/"sub2"
     const brokenSymlinkName = "D20210101T191320_BROKEN_SYMLINK"
     const brokenSymlink = dname/brokenSymlinkName
-    const brokenSymlinkSrc = "D20210101T191320_nonexistant"
+    const brokenSymlinkSrc = buildDir.parentDir/"D20210101T191320_nonexistant"
     const brokenSymlinkCopy = brokenSymlink & "_COPY"
     const brokenSymlinkInSubDir = subDir/brokenSymlinkName
     const brokenSymlinkInSubDir2 = subDir2/brokenSymlinkName
 
     createDir(subDir)
     createSymlink(brokenSymlinkSrc, brokenSymlink)
+
+    doAssert expandSymlink(brokenSymlink).extractFilename == brokenSymlinkSrc.extractFilename
 
     # Test copyFile
     when symlinksAreHandled:

@@ -1717,11 +1717,8 @@ proc createSymlink*(src, dest: string) {.noWeirdTarget.} =
       raiseOSError(osLastError(), $(src, dest))
 
 when defined(windows) and not weirdTarget:
-  proc getFinalPathNameByHandleW(
-    hFile: Handle,
-    lpszFilePath: WideCStringObj,
-    cchFilePath: DWORD,
-    dwFlags: DWORD
+  proc getFinalPathNameByHandleW(hFile: Handle, lpszFilePath: WideCStringObj,
+    cchFilePath: DWORD, dwFlags: DWORD
   ): DWORD {.importc: "GetFinalPathNameByHandleW",
     stdcall, dynlib: "Kernel32.dll".}
 
@@ -1734,15 +1731,16 @@ proc expandSymlink*(symlinkPath: string): string {.noWeirdTarget.} =
   ## * `symlinkExists proc <#symlinkExists,string>`_
   when defined(windows):
     if not symlinkExists(symlinkPath):
-      raise newException(OSError, symlinkPath & " is not symlink or doesn't exist!")
+      raise newException(OSError, symlinkPath & " is not symlink or does not exist")
     const bufsize = 32
     const VOLUME_NAME_DOS = 0
 
-    var handle = openHandle(symlinkPath, false)
-    defer: discard closeHandle(handle)
+    let handle = openHandle(symlinkPath)
 
     if handle == INVALID_HANDLE_VALUE:
       raiseOSError(osLastError(), symlinkPath)
+
+    defer: discard closeHandle(handle)
 
     var
       buffer = newWideCString("", bufsize)
