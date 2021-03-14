@@ -29,7 +29,7 @@ func exec*(self: RegExp; pattern: cstring): seq[cstring] {.importjs: "#.exec(#)"
   ## Executes a search for a match in its string parameter.
 
 func match*(self: RegExp; pattern: cstring): bool {.importjs: "#.test(#)".}
-  ## Tests for a match in its string parameter.
+  ## Tests for a substring match in its string parameter.
 
 func toCstring*(self: RegExp): cstring {.importjs: "#.toString()".}
   ## Returns a string representing the RegExp object.
