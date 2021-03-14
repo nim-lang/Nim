@@ -172,8 +172,6 @@ block fileOperations:
     createDir(subDir)
     createSymlink(brokenSymlinkSrc, brokenSymlink)
 
-    doAssert expandSymlink(brokenSymlink).extractFilename == brokenSymlinkSrc.extractFilename, $expandSymlink(brokenSymlink)
-
     # Test copyFile
     when symlinksAreHandled:
       doAssertRaises(OSError):
@@ -262,6 +260,21 @@ block fileOperations:
       doAssert symlinkExists(brokenSymlinkInSubDir2)
 
     removeDir(dname)
+
+
+    block:
+      const dname = buildDir/"D20210116T1406234"
+      const symlinkName = dname/"D20210101T191320_BROKEN_SYMLINK"
+      const symlinkSrc = buildDir.parentDir/"D20210101T1920_nonexistant"
+
+      createDir(dname)
+
+      let f = open(symlinkSrc, fmWrite)
+      f.close()
+
+      createSymlink(symlinkSrc, symlinkName)
+
+      doAssert expandSymlink(symlinkName).extractFilename == symlinkSrc.extractFilename, $expandSymlink(symlinkName)
 
 import times
 block modificationTime:
