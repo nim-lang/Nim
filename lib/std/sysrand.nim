@@ -293,6 +293,10 @@ proc urandom*(dest: var openArray[byte]): bool =
   ##
   ## If `dest` is empty, `urandom` immediately returns success,
   ## without calling underlying operating system api.
+  ##
+  ## .. warning:: The code hasn't been audited by cryptography experts and
+  ##   is provided as-is without guarantees. Use at your own risks. For production
+  ##   systems we advise you to request an external audit.
   result = true
   when defined(js): discard urandomInternalImpl(dest)
   else:
@@ -306,6 +310,10 @@ proc urandom*(dest: var openArray[byte]): bool =
 
 proc urandom*(size: Natural): seq[byte] {.inline.} =
   ## Returns random bytes suitable for cryptographic use.
+  ## 
+  ## .. warning:: The code hasn't been audited by cryptography experts and
+  ##   is provided as-is without guarantees. Use at your own risks. For production
+  ##   systems we advise you to request an external audit.
   result = newSeq[byte](size)
   when defined(js): discard urandomInternalImpl(result)
   else:
