@@ -1011,14 +1011,21 @@ proc parseSmiley(p: var RstParser): PRstNode =
       result.text = val
       return
 
+proc validRefnamePunct(x: string): bool =
+  ## https://docutils.sourceforge.io/docs/ref/rst/restructuredtext.html#reference-names
+  x.len == 1 and x[0] in {'-', '_', '.', ':', '+'}
+
 proc isUrl(p: RstParser, i: int): bool =
   result = p.tok[i+1].symbol == ":" and p.tok[i+2].symbol == "//" and
     p.tok[i+3].kind == tkWord and
     p.tok[i].symbol in ["http", "https", "ftp", "telnet", "file"]
 
-proc parseWordOrUrl(p: var RstParser, father: PRstNode) =
-  #if currentTok(p).symbol[strStart] == '<':
-  if isUrl(p, p.idx):
+proc parseWordOrRef(p: var RstParser, father: PRstNode) =
+  ## Parses a normal word or may be a reference or URL.
+  if nextTok(p).kind != tkPunct:  # <- main path, a normal word
+    father.add newLeaf(p)
+    inc p.idx
+  elif isUrl(p, p.idx):           # URL http://something
     var n = newRstNode(rnStandaloneHyperlink)
     while true:
       case currentTok(p).kind
@@ -1031,10 +1038,26 @@ proc parseWordOrUrl(p: var RstParser, father: PRstNode) =
       inc p.idx
     father.add(n)
   else:
-    var n = newLeaf(p)
+    # check for reference (probably, long one like some.ref.with.dots_ )
+    var saveIdx = p.idx
+    var isRef = false
     inc p.idx
-    if currentTok(p).symbol == "_": n = parsePostfix(p, n)
-    father.add(n)
+    while currentTok(p).kind in {tkWord, tkPunct}:
+      if currentTok(p).kind == tkPunct:
+        if isInlineMarkupEnd(p, "_"):
+          isRef = true
+          break
+        if not validRefnamePunct(currentTok(p).symbol):
+          break
+      inc p.idx
+    if isRef:
+      let r = newRstNode(rnRef)
+      for i in saveIdx..p.idx-1: r.add newLeaf(p.tok[i].symbol)
+      father.add r
+      inc p.idx  # skip final _
+    else:  # 1 normal word
+      father.add newLeaf(p.tok[saveIdx].symbol)
+      p.idx = saveIdx + 1
 
 proc parseBackslash(p: var RstParser, father: PRstNode) =
   assert(currentTok(p).kind == tkPunct)
@@ -1154,10 +1177,6 @@ proc getFootnoteType(label: PRstNode): (FootnoteType, int) =
   else:
     result = (fnCitation, -1)
 
-proc validRefnamePunct(x: string): bool =
-  ## https://docutils.sourceforge.io/docs/ref/rst/restructuredtext.html#reference-names
-  x.len == 1 and x[0] in {'-', '_', '.', ':', '+'}
-
 proc parseFootnoteName(p: var RstParser, reference: bool): PRstNode =
   ## parse footnote/citation label. Precondition: start at `[`.
   ## Label text should be valid ref. name symbol, otherwise nil is returned.
@@ -1258,7 +1277,7 @@ proc parseInline(p: var RstParser, father: PRstNode) =
       if n != nil:
         father.add(n)
         return
-    parseWordOrUrl(p, father)
+    parseWordOrRef(p, father)
   of tkAdornment, tkOther, tkWhite:
     if roSupportMarkdown in p.s.options and currentTok(p).symbol == "```":
       inc p.idx

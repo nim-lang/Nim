@@ -1184,6 +1184,31 @@ Test1
     doAssert "Ref. <a class=\"reference internal\" " &
         "href=\"#some-definition\">some definition</a>" in output1
 
+  test "RST references (additional symbols)":
+    # check that ., _, -, +, : are allowed symbols in references without ` `
+    let input1 = dedent """
+      sec.1
+      -----
+
+      2-other:sec+c_2
+      ^^^^^^^^^^^^^^^
+
+      .. _link.1_2021:
+
+      Paragraph
+
+      Ref. sec.1_! and 2-other:sec+c_2_;and link.1_2021_.
+    """
+    let output1 = input1.toHtml
+    doAssert "id=\"secdot1\"" in output1
+    doAssert "id=\"Z2minusothercolonsecplusc-2\"" in output1
+    doAssert "id=\"linkdot1-2021\"" in output1
+    let ref1 = "<a class=\"reference internal\" href=\"#secdot1\">sec.1</a>"
+    let ref2 = "<a class=\"reference internal\" href=\"#Z2minusothercolonsecplusc-2\">2-other:sec+c_2</a>"
+    let ref3 = "<a class=\"reference internal\" href=\"#linkdot1-2021\">link.1_2021</a>"
+    let refline = "Ref. " & ref1 & "! and " & ref2 & ";and " & ref3 & "."
+    doAssert refline in output1
+
 suite "RST/Code highlight":
   test "Basic Python code highlight":
     let pythonCode = """
