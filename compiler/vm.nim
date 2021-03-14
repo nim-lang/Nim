@@ -2229,7 +2229,8 @@ proc prepareVMValue(g: ModuleGraph, arg: PNode): PNode =
     return arg
 
   if arg.kind == nkExprColonExpr and arg[0].typ != nil and
-     arg[0].typ.sym != nil and arg[0].sym.magic == mPNimrodNode:
+     arg[0].typ.sym != nil and $arg[0].typ == "NimNode" and
+     arg[0].typ.owner == g.systemModule:
     # Poor mans way of protecting static NimNodes
     # XXX: Maybe we need a nkNimNode?
     return arg
