@@ -20,7 +20,7 @@
 ## | :---         | ----:       |
 ## | Windows | `BCryptGenRandom`_ |
 ## | Linux | `getrandom`_ |
-## | MacOSX | `SecRandomCopyBytes`_ |
+## | MacOSX | `getentropy`_ |
 ## | IOS | `SecRandomCopyBytes`_ |
 ## | OpenBSD | `getentropy openbsd`_ |
 ## | FreeBSD | `getrandom freebsd`_ |
@@ -58,7 +58,7 @@ when defined(posix):
   import std/posix
 
 const
-  batchImplOS = defined(freebsd) or defined(openbsd)
+  batchImplOS = defined(freebsd) or defined(openbsd) or (defined(macosx) and not defined(ios))
   batchSize {.used.} = 256
 
 when batchImplOS:
@@ -214,7 +214,7 @@ elif defined(freebsd):
   proc getRandomImpl(p: pointer, size: int): int {.inline.} =
     result = getrandom(p, csize_t(size), 0)
 
-elif defined(macosx):
+elif defined(ios):
   {.passL: "-framework Security".}
 
   const errSecSuccess = 0 ## No error.
@@ -237,20 +237,21 @@ elif defined(macosx):
 
     result = secRandomCopyBytes(nil, csize_t(size), addr dest[0])
 
-  # when macosx version which is more than 10.12 become common, use the implementation below
-  # and don't forget to define (defined(macosx) and not defined(osx))
+elif defined(macosx):
+  const sysrandomHeader = """#if defined(HAVE_GETENTROPY)
+#include <Availability.h>
+#include <sys/random.h>
+#endif
+"""
 
-  #   const sysrandomHeader = """#include <Availability.h>
-  # #include <sys/random.h>
-  # """
 
-  #   proc getentropy(p: pointer, size: csize_t): cint {.importc: "getentropy", header: sysrandomHeader.}
-  #     # getentropy() fills a buffer with random data, which can be used as input 
-  #     # for process-context pseudorandom generators like arc4random(3).
-  #     # The maximum buffer size permitted is 256 bytes.
+  proc getentropy(p: pointer, size: csize_t): cint {.importc: "getentropy", header: sysrandomHeader.}
+    # getentropy() fills a buffer with random data, which can be used as input 
+    # for process-context pseudorandom generators like arc4random(3).
+    # The maximum buffer size permitted is 256 bytes.
 
-  #   proc getRandomImpl(p: pointer, size: int): int {.inline.} =
-  #     result = getentropy(p, csize_t(size)).int
+  proc getRandomImpl(p: pointer, size: int): int {.inline.} =
+    result = getentropy(p, csize_t(size)).int
 
 else:
   template urandomImpl(result: var int, dest: var openArray[byte]) =
