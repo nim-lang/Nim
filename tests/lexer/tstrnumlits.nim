@@ -137,3 +137,15 @@ doAssert $1234.56'wrap == $1234.56'u9
 
 doAssert lispReprStr(1234.56'u9) == """(DotExpr (StrLit "1234.56") (Ident "\'u9"))""":
   "failed to properly build AST for suffix that starts with u"
+
+doAssert 1E2 == 100:
+  "lexer not handling upper-case exponent"
+
+doAssert 1.0E2 == 100.0:
+  "lexer not handling upper-case exponent with float"
+
+doAssert 1e2 == 100:
+  "lexer not handling lower-case exponent"
+
+doAssert $1E2'wrap == "[[1E2]]":
+  "lexer not passing exponent (e) marker with original case"
