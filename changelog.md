@@ -232,6 +232,10 @@
   zone offsets without colons, e.g. `UTC+7 -> +0700`.
 
 
+- Added `jshttpclient` module for JavaScript that provides
+  asyncronous `HttpClient` implemented on top of `jsfetch` and
+  syncronous `HttpClient` implemented on top of `jsxmlhttprequest`.
+
 
 ## Language changes
 
