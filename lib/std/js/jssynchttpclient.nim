@@ -2,7 +2,7 @@
 when not defined(js):
   {.fatal: "Module jssynchttpclient is designed to be used with the JavaScript backend.".}
 
-import std/[uri, jsxmlhttprequest]
+import std/uri, std/js/jsxmlhttprequest
 from std/uri import Uri
 
 type JsHttpClient* = ref object of XMLHttpRequest
