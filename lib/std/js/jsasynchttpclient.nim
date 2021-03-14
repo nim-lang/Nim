@@ -3,8 +3,6 @@
 ## .. Note:: jsasynchttpclient module requires `-d:nimExperimentalJsfetch`
 when not defined(js):
   {.fatal: "Module jsasynchttpclient is designed to be used with the JavaScript backend.".}
-when not defined(nimExperimentalJsfetch):
-  {.fatal: "Module jsasynchttpclient requires -d:nimExperimentalJsfetch".}
 
 import std/[jsfetch, asyncjs]
 from std/uri import Uri
