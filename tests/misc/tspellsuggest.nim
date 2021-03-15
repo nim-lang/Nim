@@ -23,7 +23,7 @@ candidate misspellings (edit distance, lexical scope distance):
 '''
 """
 
-# tests `--spellsuggest`
+# tests `--spellsuggest:num`
 
 
 

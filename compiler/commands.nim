@@ -864,8 +864,9 @@ proc processSwitch*(switch, arg: string, pass: TCmdLinePass, info: TLineInfo;
   of "listfullpaths":
     processOnOffSwitchG(conf, {optListFullPaths}, arg, pass, info)
   of "spellsuggest":
-    expectArg(conf, switch, arg, pass, info)
-    conf.spellSuggestMax = parseInt(arg)
+    if arg.len == 0: conf.spellSuggestMax = spellSuggestSecretSauce
+    elif arg == "auto": conf.spellSuggestMax = spellSuggestSecretSauce
+    else: conf.spellSuggestMax = parseInt(arg)
   of "declaredlocs":
     processOnOffSwitchG(conf, {optDeclaredLocs}, arg, pass, info)
   of "dynliboverride":

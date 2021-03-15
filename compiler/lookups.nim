@@ -403,8 +403,11 @@ proc fixSpelling(c: PContext, n: PNode, ident: PIdent, result: var string) =
   var count = 0
   while true:
     # pending https://github.com/timotheecour/Nim/issues/373 use more efficient `itemsSorted`.
-    if count >= c.config.spellSuggestMax or list.len == 0: break
+    if list.len == 0: break
     let e = list.pop()
+    if c.config.spellSuggestMax == spellSuggestSecretSauce:
+      if e.dist > e0.dist: break
+    elif count >= c.config.spellSuggestMax: break
     if count == 0:
       result.add "\ncandidate misspellings (edit distance, lexical scope distance): "
     result.add "\n ($1, $2): '$3'" % [$e.dist, $e.depth, e.sym.name.s]

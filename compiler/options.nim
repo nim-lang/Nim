@@ -576,6 +576,7 @@ const
   htmldocsDir* = htmldocsDirname.RelativeDir
   docRootDefault* = "@default" # using `@` instead of `$` to avoid shell quoting complications
   oKeepVariableNames* = true
+  spellSuggestSecretSauce* = -1
 
 proc mainCommandArg*(conf: ConfigRef): string =
   ## This is intended for commands like check or parse
