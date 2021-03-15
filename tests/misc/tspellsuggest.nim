@@ -1,6 +1,6 @@
 discard """
   # pending bug #16521 (bug 12) use `matrix`
-  cmd: "nim c --spellsuggest:15 --declaredlocs --hints:off $file"
+  cmd: "nim c --spellsuggest:15 --hints:off $file"
   action: "reject"
   nimout: '''
 tspellsuggest.nim(45, 13) Error: undeclared identifier: 'fooBar'
@@ -23,7 +23,7 @@ candidate misspellings (edit distance, lexical scope distance):
 '''
 """
 
-
+# tests `--spellsuggest`
 
 
 
