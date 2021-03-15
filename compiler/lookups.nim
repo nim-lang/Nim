@@ -358,6 +358,7 @@ proc mergeShadowScope*(c: PContext) =
       c.addInterfaceDecl(sym)
 
 when false:
+  # `nimfix` used to call `altSpelling` and prettybase.replaceDeprecated(n.info, ident, alt)
   proc altSpelling(c: PContext, x: PIdent): PIdent =
     case x.s[0]
     of 'A'..'Z': result = getIdent(c.cache, toLowerAscii(x.s[0]) & x.s.substr(1))
@@ -366,28 +367,26 @@ when false:
 
 import std/[editdistance, heapqueue]
 
-type E = object
+type SpellCandidate = object
   dist: int
   depth: int
   msg: string
   sym: PSym
 
-template toOrderTup(a: E): auto =
+template toOrderTup(a: SpellCandidate): auto =
   # `dist` is first, to favor nearby matches
   # `depth` is next, to favor nearby enclosing scopes among ties
   # `sym.name.s` is last, to make the list ordered and deterministic among ties
   (a.dist, a.depth, a.msg)
 
-proc `<`(a, b: E): bool =
+proc `<`(a, b: SpellCandidate): bool =
   a.toOrderTup < b.toOrderTup
 
 proc fixSpelling(c: PContext, n: PNode, ident: PIdent, result: var string) =
   ## when we cannot find the identifier, suggest nearby spellings
-  # note: defined(nimfix) used to try `altSpelling` and
-  # prettybase.replaceDeprecated(n.info, ident, alt)
   if c.config.spellSuggestMax == 0: return
   if c.compilesContextId > 0: return # don't slowdown inside compiles()
-  var list = initHeapQueue[E]()
+  var list = initHeapQueue[SpellCandidate]()
   let name0 = ident.s.nimIdentNormalize
 
   for (sym, depth, isLocal) in allSyms(c):
@@ -396,7 +395,7 @@ proc fixSpelling(c: PContext, n: PNode, ident: PIdent, result: var string) =
     var msg: string
     msg.add "\n ($1, $2): '$3'" % [$dist, $depth, sym.name.s]
     addDeclaredLoc(msg, c.config, sym) # `msg` needed for deterministic ordering.
-    list.push E(dist: dist, depth: depth, msg: msg, sym: sym)
+    list.push SpellCandidate(dist: dist, depth: depth, msg: msg, sym: sym)
 
   if list.len == 0: return
   let e0 = list[0]
