@@ -7,18 +7,18 @@ tspellsuggest.nim(45, 13) Error: undeclared identifier: 'fooBar'
 candidate misspellings (edit distance, lexical scope distance):
  (1, 0): 'fooBar8' [var declared in tspellsuggest.nim(43, 9)]
  (1, 1): 'fooBar7' [var declared in tspellsuggest.nim(41, 7)]
+ (1, 3): 'fooBar1' [var declared in tspellsuggest.nim(33, 5)]
  (1, 3): 'fooBar2' [let declared in tspellsuggest.nim(34, 5)]
  (1, 3): 'fooBar3' [const declared in tspellsuggest.nim(35, 7)]
  (1, 3): 'fooBar4' [proc declared in tspellsuggest.nim(36, 6)]
  (1, 3): 'fooBar5' [template declared in tspellsuggest.nim(37, 10)]
  (1, 3): 'fooBar6' [macro declared in tspellsuggest.nim(38, 7)]
- (1, 3): 'fooBar1' [var declared in tspellsuggest.nim(33, 5)]
  (1, 5): 'FooBar' [type declared in mspellsuggest.nim(5, 6)]
+ (1, 5): 'fooBar4' [proc declared in mspellsuggest.nim(1, 6)]
  (1, 5): 'fooBar9' [var declared in mspellsuggest.nim(2, 5)]
  (1, 5): 'fooCar' [var declared in mspellsuggest.nim(4, 5)]
- (1, 5): 'fooBar4' [proc declared in mspellsuggest.nim(1, 6)]
- (2, 5): 'GooBa' [type declared in mspellsuggest.nim(7, 6)]
  (2, 5): 'FooCar' [type declared in mspellsuggest.nim(6, 6)]
+ (2, 5): 'GooBa' [type declared in mspellsuggest.nim(7, 6)]
  (3, 0): 'fooBarBaz' [const declared in tspellsuggest.nim(44, 11)]
 '''
 """
