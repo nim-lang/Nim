@@ -304,7 +304,7 @@ proc `%`*(s: string): JsonNode =
 
 proc `%`*(n: uint): JsonNode =
   ## Generic constructor for JSON data. Creates a new `JInt JsonNode`.
-  if n > static(BiggestUInt(BiggestInt.high)):
+  if n > cast[uint](int.high):
     result = newJRawNumber($n)
   else:
     result = JsonNode(kind: JInt, num: BiggestInt(n))
@@ -315,7 +315,7 @@ proc `%`*(n: int): JsonNode =
 
 proc `%`*(n: BiggestUInt): JsonNode =
   ## Generic constructor for JSON data. Creates a new `JInt JsonNode`.
-  if n > static(BiggestUInt(BiggestInt.high)):
+  if n > cast[BiggestUInt](BiggestInt.high):
     result = newJRawNumber($n)
   else:
     result = JsonNode(kind: JInt, num: BiggestInt(n))
