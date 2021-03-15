@@ -83,7 +83,9 @@ jobs:
 
         # libcurl4:i386 : Depends: libssl1.1:i386 (>= 1.1.1) but it is not going to be installed
 
-        echo_run sudo apt-get install --no-install-recommends --allow-downgrades -y libssl1.1 libssl1.1:i386
+        # echo_run sudo apt-get install --no-install-recommends --allow-downgrades -y libssl1.1 libssl1.1:i386
+        echo_run sudo apt-get install --no-install-recommends --allow-downgrades -y libssl1.1
+        echo_run sudo apt-get install --no-install-recommends --allow-downgrades -y libssl1.1:i386
 
         echo_run sudo apt-get install --no-install-recommends --allow-downgrades -y libcurl4 libcurl4:i386
         echo_run sudo apt-get install --no-install-recommends --allow-downgrades -y libcurl4-openssl-dev libcurl4-openssl-dev:i386
