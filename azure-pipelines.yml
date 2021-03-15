@@ -56,6 +56,8 @@ jobs:
         set -e
         . ci/funs.sh
         echo_run sudo dpkg --add-architecture i386
+        export DEBIAN_FRONTEND='noninteractive'
+
         # Downgrade llvm:
         # - llvm has to be downgraded to have 32bit version installed for sfml.
 
@@ -66,12 +68,14 @@ jobs:
         EOF
 
         # echo_run sudo apt-fast update -qq
-        echo_run sudo apt-fast update -qq || echo "failed, see bug #17343"
+        echo_run sudo apt-fast update || echo "failed, see bug #17343"
+        # echo_run sudo apt-fast update -qq || echo "failed, see bug #17343"
         # `:i386` (e.g. in `libffi-dev:i386`) is needed otherwise you may get:
         # `could not load: libffi.so` during dynamic loading.
 
-        DEBIAN_FRONTEND='noninteractive' \
-          echo_run sudo apt-fast install --no-install-recommends --allow-downgrades -yq \
+        echo_run sudo apt-fast install --no-install-recommends --allow-downgrades -y gcc-multilib
+
+        echo_run sudo apt-fast install --no-install-recommends --allow-downgrades -y \
             g++-multilib gcc-multilib libcurl4-openssl-dev libcurl4-openssl-dev:i386 libgc-dev libgc-dev:i386 \
             libsdl1.2-dev libsdl1.2-dev:i386 libsfml-dev libsfml-dev:i386 libglib2.0-dev libglib2.0-dev:i386 libffi-dev libffi-dev:i386
 
