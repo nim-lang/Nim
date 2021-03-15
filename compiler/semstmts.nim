@@ -1441,8 +1441,6 @@ proc addResult(c: PContext, n: PNode, t: PType, owner: TSymKind) =
   if owner == skMacro or t != nil:
     if n.len > resultPos and n[resultPos] != nil:
       if n[resultPos].sym.kind != skResult or n[resultPos].sym.owner != getCurrOwner(c):
-        # debug(n[resultPos].sym.owner)
-        # debug(getCurrOwner(c))
         localError(c.config, n.info, "incorrect result proc symbol")
       c.p.resultSym = n[resultPos].sym
     else:
@@ -1828,7 +1826,7 @@ proc semProcAux(c: PContext, n: PNode, kind: TSymKind,
     when false:
       # disable for now
       if sfNoForward in c.module.flags and
-          sfSystemModule notin c.module.flags:
+         sfSystemModule notin c.module.flags:
         addInterfaceOverloadableSymAt(c, c.currentScope, s)
         s.flags.incl sfForward
         return
@@ -1894,12 +1892,13 @@ proc semProcAux(c: PContext, n: PNode, kind: TSymKind,
     nIsPossibleFwdDecl = n[bodyPos].kind == nkEmpty
     hasExplicitPragmas = n[pragmasPos].kind != nkEmpty
   
-  # set the default calling conventions, not for procs with forward declarations
+  # set the default calling conventions
   case s.kind
   of skIterator:
     if s.typ.callConv != ccClosure:
       s.typ.callConv = if isAnon: ccClosure else: ccInline
   of skProcKinds - {skMacro, skTemplate, skIterator}:
+    # NB: procs with a forward decl have theirs determined by the forward decl
     if proto == nil:
       # in this case we're either a forward declaration or we're an impl without
       # a forward decl. We set the calling convention or will be set during

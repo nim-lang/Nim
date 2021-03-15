@@ -1234,7 +1234,6 @@ proc semProcTypeNode(c: PContext, n, genericParams: PNode,
       def = a[^1]
       block determineType:
         if genericParams != nil and genericParams.safeLen > 0:
-          doAssert genericParams.kind == nkGenericParams, "what the heck " & $n
           def = semGenericStmt(c, def)
           if hasUnresolvedArgs(c, def):
             def.typ = makeTypeFromExpr(c, def.copyTree)
