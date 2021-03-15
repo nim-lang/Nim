@@ -365,22 +365,42 @@ when false:
     else: result = x
 
 import std/[editdistance, heapqueue]
+
+type E = object
+  dist: int
+  depth: int
+  msg: string
+  sym: PSym
+
+template toOrderTup(a: E): auto =
+  # `dist` is first, to favor nearby matches
+  # `depth` is next, to favor nearby enclosing scopes amongst ties
+  # `sym.name.s` is last, to make the list ordered and more deterministic
+  # to make it more deterministic, we'd need to also take into account
+  # `addDeclaredLoc` among ties, e.g. a symbol `foo` in 2 files f1.nim, f2.nim.
+  # (a.dist, a.depth, a.sym.name.s)
+  (a.dist, a.depth, a.msg)
+
+proc `<`(a, b: E): bool =
+  a.toOrderTup < b.toOrderTup
+
 proc fixSpelling(c: PContext, n: PNode, ident: PIdent, result: var string) =
   ## when we cannot find the identifier, suggest nearby spellings
   # note: defined(nimfix) used to try `altSpelling` and
   # prettybase.replaceDeprecated(n.info, ident, alt)
   if c.config.spellSuggestMax == 0: return
   if c.compilesContextId > 0: return # don't slowdown inside compiles()
-  type E = tuple[dist: int, depth: int, sym: PSym]
-  proc `<`(a, b: E): bool =
-    # favors nearby scopes
-    a.dist < b.dist or a.dist == b.dist and a.depth < b.depth
   var list = initHeapQueue[E]()
   let name0 = ident.s.nimIdentNormalize
 
-  for (identi, depth, isLocal) in allSyms(c):
-    let dist = editDistance(name0, identi.name.s.nimIdentNormalize)
-    list.push (dist, -depth - 1, identi)
+  for (sym, depth, isLocal) in allSyms(c):
+    let depth = -depth - 1
+    let dist = editDistance(name0, sym.name.s.nimIdentNormalize)
+    var msg: string
+    msg.add "\n ($1, $2): '$3'" % [$dist, $depth, sym.name.s]
+    addDeclaredLoc(msg, c.config, sym) # `msg` needed for deterministic ordering.
+    list.push E(dist: dist, depth: depth, msg: msg, sym: sym)
+
   if list.len == 0: return
   let e0 = list[0]
   var count = 0
@@ -388,12 +408,10 @@ proc fixSpelling(c: PContext, n: PNode, ident: PIdent, result: var string) =
     # pending https://github.com/timotheecour/Nim/issues/373 use more efficient `itemsSorted`.
     if count >= c.config.spellSuggestMax or list.len == 0: break
     let e = list.pop()
-    let (dist, depth, sym) = e
     if count == 0:
       result.add "\ncandidate misspellings (edit distance, lexical scope distance): "
-    result.add "\n ($1, $2): '$3'" % [$dist, $depth, sym.name.s]
-    # addDeclaredLocMaybe(result, c.config, sym) # skipAlias not needed
-    addDeclaredLoc(result, c.config, sym) # skipAlias not needed
+    result.add "\n ($1, $2): '$3'" % [$e.dist, $e.depth, e.sym.name.s]
+    addDeclaredLoc(result, c.config, e.sym) # skipAlias not needed
     count.inc
 
 proc errorUseQualifier(c: PContext; info: TLineInfo; s: PSym; amb: var bool): PSym =
