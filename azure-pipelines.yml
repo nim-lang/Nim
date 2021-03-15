@@ -76,9 +76,16 @@ jobs:
         echo_run sudo apt-get install --no-install-recommends --allow-downgrades -y gcc-multilib
         echo_run sudo apt-get install --no-install-recommends --allow-downgrades -y g++-multilib
 
-        echo_run sudo apt-fast install --no-install-recommends --allow-downgrades -y \
-            libcurl4-openssl-dev libcurl4-openssl-dev:i386 libgc-dev libgc-dev:i386 \
-            libsdl1.2-dev libsdl1.2-dev:i386 libsfml-dev libsfml-dev:i386 libglib2.0-dev libglib2.0-dev:i386 libffi-dev libffi-dev:i386
+        echo_run sudo apt-get install --no-install-recommends --allow-downgrades -y libcurl4-openssl-dev libcurl4-openssl-dev:i386
+        echo_run sudo apt-get install --no-install-recommends --allow-downgrades -y libgc-dev libgc-dev:i386
+        echo_run sudo apt-get install --no-install-recommends --allow-downgrades -y libsdl1.2-dev libsdl1.2-dev:i386
+        echo_run sudo apt-get install --no-install-recommends --allow-downgrades -y libsfml-dev libsfml-dev:i386
+        echo_run sudo apt-get install --no-install-recommends --allow-downgrades -y libglib2.0-dev libglib2.0-dev:i386
+        echo_run sudo apt-get install --no-install-recommends --allow-downgrades -y libffi-dev libffi-dev:i386
+
+        # echo_run sudo apt-get install --no-install-recommends --allow-downgrades -y \
+        #     libcurl4-openssl-dev libcurl4-openssl-dev:i386 libgc-dev libgc-dev:i386 \
+        #     libsdl1.2-dev libsdl1.2-dev:i386 libsfml-dev libsfml-dev:i386 libglib2.0-dev libglib2.0-dev:i386 libffi-dev libffi-dev:i386
 
         #DEBIAN_FRONTEND='noninteractive' \
         #  echo_run sudo apt-fast install --no-install-recommends --allow-downgrades -yq \
