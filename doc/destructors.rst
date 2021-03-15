@@ -62,7 +62,9 @@ written as:
     a.data = b.data
 
   proc add*[T](x: var myseq[T]; y: sink T) =
-    if x.len >= x.cap: resize(x)
+    if x.len >= x.cap:
+      x.cap = max(x.len + 1, x.cap * 2)
+      x.data = cast[typeof(x.data)](realloc(x.data, x.cap * sizeof(T)))
     x.data[x.len] = y
     inc x.len
 
