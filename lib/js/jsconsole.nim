@@ -9,6 +9,16 @@
 
 ## Wrapper for the `console` object for the `JavaScript backend
 ## <backends.html#backends-the-javascript-target>`_.
+##
+## Styled Messages
+## ===============
+##
+## CSS styled messages for debugging purposes are supported in the browser:
+##
+## .. code-block:: nim
+##   import std/jsconsole
+##   console.log "%c My Debug Message", "color: red" ## Notice the "%c"
+##   console.log "%c My Debug %c Message", "color: red", "font-size: 2em"
 
 import std/private/since, std/private/miscdollars  # toLocation
 
