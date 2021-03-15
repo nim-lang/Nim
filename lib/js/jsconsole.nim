@@ -13,7 +13,7 @@
 ## Styled Messages
 ## ===============
 ##
-## CSS styled messages for debugging purposes are supported in the browser,
+## CSS styled messages in the browser are useful for debugging purposes,
 ## prefix the string message with one or more `%c`,
 ## and provide a CSS style inside another string as the last argument,
 ## the amount of `%c` must match the amount of CSS style strings.
