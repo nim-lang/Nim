@@ -1762,13 +1762,18 @@ proc getStrOrChar*(a: PNode): string =
     #result = ""
 
 proc isGenericRoutine*(n: PNode): bool =
-  case n.kind
-  of callableDefs:
-    result = n[genericParamsPos].safeLen > 0
-  else: discard
+  n.kind in callableDefs and n[genericParamsPos].kind == nkGenericParams
+
+proc isGenericRoutineStrict*(s: PSym): bool =
+  ## determines if this symbol represents a generic routine
+  ## the unusual name is so it doesn't collide and eventually replaces
+  ## `isGenericRoutine`
+  s.kind in skProcKinds and s.ast != nil and s.ast.isGenericRoutine
 
 proc isGenericRoutine*(s: PSym): bool =
-  ## determines if this symbol represents a generic routine
+  ## determines if this symbol represents a generic routine or an instance of
+  ## one. This should be renamed accordingly and `isGenericRoutineStrict`
+  ## should take this name instead.
   ##
   ## Warning/XXX: Unfortunately, it considers a proc kind symbol flagged with
   ## sfFromGeneric as a generic routine. Instead this should likely not be the
@@ -1776,11 +1781,8 @@ proc isGenericRoutine*(s: PSym): bool =
   ## - generic definition
   ## - generic instance
   ## - either generic definition or instance
-  case s.kind
-  of skProcKinds:
-    result = sfFromGeneric in s.flags or
-             (s.ast != nil and s.ast.isGenericRoutine)
-  else: discard
+  s.kind in skProcKinds and (sfFromGeneric in s.flags or
+             (s.ast != nil and s.ast.isGenericRoutine))
 
 proc skipGenericOwner*(s: PSym): PSym =
   ## Generic instantiations are owned by their originating generic

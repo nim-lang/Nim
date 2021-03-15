@@ -444,7 +444,7 @@ proc instGenericConvertersArg*(c: PContext, a: PNode, x: TCandidate) =
   let a = if a.kind == nkHiddenDeref: a[0] else: a
   if a.kind == nkHiddenCallConv and a[0].kind == nkSym:
     let s = a[0].sym
-    if s.isGenericRoutine:
+    if s.isGenericRoutineStrict:
       let finalCallee = generateInstance(c, s, x.bindings, a.info)
       a[0].sym = finalCallee
       a[0].typ = finalCallee.typ

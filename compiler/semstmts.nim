@@ -1776,24 +1776,24 @@ proc semMethodPrototype(c: PContext; s: PSym; n: PNode) =
     else:
       localError(c.config, n.info, "'method' needs a parameter that has an object type")
 
-proc setGenericParamsMisc(c: PContext; n: PNode): PNode =
+proc setGenericParamsMisc(c: PContext; n: PNode) =
+  let orig = n[genericParamsPos]
+  
   if n[genericParamsPos].kind == nkEmpty:
-    result = newNodeI(nkGenericParams, n.info)
+    n[genericParamsPos] = newNodeI(nkGenericParams, n.info)
   else:
-    let orig = n[genericParamsPos]
     # we keep the original params around for better error messages, see
     # issue https://github.com/nim-lang/Nim/issues/1713
-    result = semGenericParamList(c, orig)
-    if n[miscPos].kind == nkEmpty:
-      n[miscPos] = newTree(nkBracket, c.graph.emptyNode, orig)
-    else:
-      n[miscPos][1] = orig
-  n[genericParamsPos] = result
+    n[genericParamsPos] = semGenericParamList(c, orig)
+
+  if n[miscPos].kind == nkEmpty:
+    n[miscPos] = newTree(nkBracket, c.graph.emptyNode, orig)
+  else:
+    n[miscPos][1] = orig
 
 proc semProcAux(c: PContext, n: PNode, kind: TSymKind,
                 validPragmas: TSpecialWords,
                 phase = stepRegisterSymbol, flags: TExprFlags = {}): PNode =
-  # XXX: reduce usage of `kind` parameter to only once
   result = semProcAnnotation(c, n, validPragmas)
   if result != nil: return result
   result = n
@@ -1802,7 +1802,6 @@ proc semProcAux(c: PContext, n: PNode, kind: TSymKind,
   let
     isAnon = n[namePos].kind == nkEmpty
     nameIsSymbol = n[namePos].kind == nkSym
-    origGp = n[genericParamsPos]
     allowSymbolRegistration = phase == stepRegisterSymbol
     isLambda = n.kind in nkLambdaKinds
 
@@ -1856,14 +1855,20 @@ proc semProcAux(c: PContext, n: PNode, kind: TSymKind,
   #
   # XXX: this is concerning we're doing repetitive analysis, rather than
   #      clearly breaking it down into phases
-  var gp = setGenericParamsMisc(c, n)
+  setGenericParamsMisc(c, n)
 
   if n[paramsPos].kind != nkEmpty:
-    semParamList(c, n[paramsPos], gp, s)
+    semParamList(c, n[paramsPos], n[genericParamsPos], s)
     # we maybe have implicit type parameters:
-    n[genericParamsPos] = gp
   else:
     s.typ = newProcType(c, n.info)
+
+  if n[genericParamsPos].safeLen == 0:
+    # if there exist no explicit or implicit generic parameters, the rest of
+    # compiler expects that we substitute it with an nkEmpty, miscPos was used
+    # to capture the original, so we restore from there and clear it. 
+    n[genericParamsPos] = n[miscPos][1]
+    n[miscPos] = c.graph.emptyNode
 
   if tfTriggersCompileTime in s.typ.flags: incl(s.flags, sfCompileTime)
   if n[patternPos].kind != nkEmpty:
@@ -1916,16 +1921,12 @@ proc semProcAux(c: PContext, n: PNode, kind: TSymKind,
     # we don't bother setting calling conventions for macros and templates
     discard
 
-  if proto == nil:
+  if proto == nil and sfGenSym notin s.flags and tryAddToScope:
     # add it here, so that recursive procs are possible:
-    if sfGenSym in s.flags:
-      discard
-    elif s.kind in OverloadableSyms:
-      if tryAddToScope:
-        addInterfaceOverloadableSymAt(c, delcarationScope, s)
+    if s.kind in OverloadableSyms:
+      addInterfaceOverloadableSymAt(c, delcarationScope, s)
     else:
-      if tryAddToScope:
-        addInterfaceDeclAt(c, delcarationScope, s)
+      addInterfaceDeclAt(c, delcarationScope, s)
 
   pragmaCallable(c, s, n, validPragmas)
   if proto == nil:
@@ -1961,7 +1962,7 @@ proc semProcAux(c: PContext, n: PNode, kind: TSymKind,
     suggestSym(c.graph, s.info, proto, c.graph.usageSym)
     closeScope(c)         # close scope with wrong parameter symbols
     openScope(c)          # open scope for old (correct) parameter symbols
-    if proto.ast[genericParamsPos].safeLen > 0:
+    if proto.ast[genericParamsPos].kind != nkEmpty:
       addGenericParamListToScope(c, proto.ast[genericParamsPos])
     addParams(c, proto.typ.n, proto.kind)
     proto.info = s.info       # more accurate line information
@@ -2001,7 +2002,10 @@ proc semProcAux(c: PContext, n: PNode, kind: TSymKind,
       if s.kind == skMethod: semMethodPrototype(c, s, n)
     else:
       if isLambda:
-        if gp.len == 0 or (gp.len == 1 and tfRetType in gp[0].typ.flags):
+        let gp = n[genericParamsPos]
+        if gp.kind == nkEmpty or (gp.len == 1 and tfRetType in gp[0].typ.flags):
+          # absolutely no generics (empty) or a single generic return type are
+          # allowed, everything else, including a nullary generic is an error.
           pushProcCon(c, s)
           addResult(c, n, s.typ[0], skProc)
           s.ast[bodyPos] = hloBody(c, semProcBody(c, n[bodyPos]))
@@ -2011,7 +2015,7 @@ proc semProcAux(c: PContext, n: PNode, kind: TSymKind,
           localError(c.config, n.info, errGenericLambdaNotAllowed)
       else:
         pushProcCon(c, s)
-        if n[genericParamsPos].safeLen == 0 or metaprogCalls:
+        if n[genericParamsPos].kind == nkEmpty or metaprogCalls:
           if not metaprogCalls and s.magic == mNone: paramsTypeCheck(c, s.typ)
 
           maybeAddResult(c, s, n)
@@ -2050,15 +2054,12 @@ proc semProcAux(c: PContext, n: PNode, kind: TSymKind,
   popOwner(c)
   if n[patternPos].kind != nkEmpty:
     c.patterns.add(s)
-  # if n[genericParamsPos].safeLen == 0:
-  #   # then it was always empty, so use the original node
-  #   n[genericParamsPos] = origGp
   if isAnon:
     n.transitionSonsKind(nkLambda)
     result.typ = s.typ
     if optOwnedRefs in c.config.globalOptions:
       result.typ = makeVarType(c, result.typ, tyOwned)
-  if isTopLevel(c) and s.kind != skIterator and
+  if not isLambda and isTopLevel(c) and s.kind != skIterator and
       s.typ.callConv == ccClosure:
     localError(c.config, s.info, "'.closure' calling convention for top level routines is invalid")
 
