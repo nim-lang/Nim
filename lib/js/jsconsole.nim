@@ -13,14 +13,14 @@
 ## Styled Messages
 ## ===============
 ##
-## CSS styled messages in the browser are useful for debugging purposes,
-## prefix the string message with one or more `%c`,
-## and provide a CSS style inside another string as the last argument,
-## the amount of `%c` must match the amount of CSS style strings.
+## CSS-styled messages in the browser are useful for debugging purposes.
+## To use them, prefix the message with one or more `%c`,
+## and provide the CSS style as the last argument.
+## The amount of `%c`'s must match the amount of CSS-styled strings.
 ##
 ## .. code-block:: nim
 ##   import std/jsconsole
-##   console.log "%c My Debug Message", "color: red" ## Notice the "%c"
+##   console.log "%c My Debug Message", "color: red" # Notice the "%c"
 ##   console.log "%c My Debug %c Message", "color: red", "font-size: 2em"
 
 import std/private/since, std/private/miscdollars  # toLocation
