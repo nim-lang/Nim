@@ -78,10 +78,15 @@ jobs:
 
         # libcurl4-openssl-dev:i386 : Depends: libcurl4:i386 (= 7.58.0-2ubuntu3.12) but it is not going to be installed
         # libcurl4:i386 : Depends: libssl1.1:i386 (>= 1.1.1) but it is not going to be installed
-        echo_run sudo apt-get install --allow-downgrades -y libcurl4 libcurl4:i386
-        echo_run sudo apt-get install --allow-downgrades -y libcurl4-openssl-dev libcurl4-openssl-dev:i386
-        # echo_run sudo apt-get install --no-install-recommends --allow-downgrades -y libcurl4 libcurl4:i386
-        # echo_run sudo apt-get install --no-install-recommends --allow-downgrades -y libcurl4-openssl-dev libcurl4-openssl-dev:i386
+        #echo_run sudo apt-get install --allow-downgrades -y libcurl4 libcurl4:i386
+        #echo_run sudo apt-get install --allow-downgrades -y libcurl4-openssl-dev libcurl4-openssl-dev:i386
+
+        # libcurl4:i386 : Depends: libssl1.1:i386 (>= 1.1.1) but it is not going to be installed
+
+        echo_run sudo apt-get install --no-install-recommends --allow-downgrades -y libssl1.1 libssl1.1:i386
+
+        echo_run sudo apt-get install --no-install-recommends --allow-downgrades -y libcurl4 libcurl4:i386
+        echo_run sudo apt-get install --no-install-recommends --allow-downgrades -y libcurl4-openssl-dev libcurl4-openssl-dev:i386
 
         echo_run sudo apt-get install --no-install-recommends --allow-downgrades -y libgc-dev libgc-dev:i386
         echo_run sudo apt-get install --no-install-recommends --allow-downgrades -y libsdl1.2-dev libsdl1.2-dev:i386
