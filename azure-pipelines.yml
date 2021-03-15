@@ -17,8 +17,7 @@ jobs:
       Linux_i386:
         # bug #17325: fails on 'ubuntu-16.04' because it now errors with:
         # g++-multilib : Depends: gcc-multilib (>= 4:5.3.1-1ubuntu1) but it is not going to be installed
-        # vmImage: 'ubuntu-18.04'
-        vmImage: 'ubuntu-20.04'
+        vmImage: 'ubuntu-18.04'
         CPU: i386
 
   pool:
@@ -34,7 +33,6 @@ jobs:
 
     - checkout: self
       fetchDepth: 1
-    # - checkout: none
 
     - bash: git clone --depth 1 https://github.com/nim-lang/csources
       displayName: 'Checkout Nim csources'
@@ -56,16 +54,7 @@ jobs:
 
     - bash: |
         set -e
-        # . ci/funs.sh
-
-        echo_run () {
-          echo ""
-          echo "$@"
-          "$@"
-        }
-
-        export DEBIAN_FRONTEND='noninteractive'
-
+        . ci/funs.sh
         echo_run sudo dpkg --add-architecture i386
         # Downgrade llvm:
         # - llvm has to be downgraded to have 32bit version installed for sfml.
@@ -77,43 +66,29 @@ jobs:
         EOF
 
         # echo_run sudo apt-fast update -qq
-        echo_run sudo apt-get update
+        echo_run sudo apt-fast update -qq || echo "failed, see bug #17343"
         # `:i386` (e.g. in `libffi-dev:i386`) is needed otherwise you may get:
         # `could not load: libffi.so` during dynamic loading.
 
-        echo_run sudo apt-get install -y gcc-multilib
+        DEBIAN_FRONTEND='noninteractive' \
+          echo_run sudo apt-fast install --no-install-recommends --allow-downgrades -yq \
+            g++-multilib gcc-multilib libcurl4-openssl-dev libcurl4-openssl-dev:i386 libgc-dev libgc-dev:i386 \
+            libsdl1.2-dev libsdl1.2-dev:i386 libsfml-dev libsfml-dev:i386 libglib2.0-dev libglib2.0-dev:i386 libffi-dev libffi-dev:i386
 
-        # echo_run sudo apt-get install --no-install-recommends --allow-downgrades -yq
-
-        echo_run sudo apt-get install -yq \
-          g++-multilib gcc-multilib libgc-dev:i386 \
-          libsdl1.2-dev:i386 libglib2.0-dev:i386 libffi-dev:i386
-        # libsfml-dev:i386 
-
-        # echo_run apt-get install -y --allow-downgrades libssl1.0.0/trusty libssl-dev/trusty openssl/trusty
-        # echo_run sudo apt-get install -y --allow-downgrades libssl/xenial libssl-dev/xenial openssl/xenial 
-
-        # echo_run sudo apt-get install -y --allow-downgrades libssl libssl-dev openssl
-        # echo_run sudo apt-get install -y --allow-downgrades libssl-dev
-
-        #PRTEMP
-        echo_run sudo apt-get install -y --allow-downgrades libssl-dev:i386
-
-        echo_run sudo apt-get install -y --allow-downgrades libssl-dev
-        echo_run sudo apt-get install -y --allow-downgrades libssl-dev:i386
-
-        echo_run sudo apt-get install -y --allow-downgrades libcurl4-openssl-dev
-        echo_run sudo apt-get install -y --allow-downgrades libcurl4-openssl-dev:i386
-
-        # libcurl4-openssl-dev:i386
+        #DEBIAN_FRONTEND='noninteractive' \
+        #  echo_run sudo apt-fast install --no-install-recommends --allow-downgrades -yq \
+        #    g++-multilib gcc-multilib libcurl4-openssl-dev:i386 libgc-dev:i386 \
+        #    libsdl1.2-dev:i386 libsfml-dev:i386 libglib2.0-dev:i386 libffi-dev:i386
 
         cat << EOF > bin/gcc
         #!/bin/bash
+
         exec $(which gcc) -m32 "\$@"
         EOF
 
         cat << EOF > bin/g++
         #!/bin/bash
+
         exec $(which g++) -m32 "\$@"
         EOF
 
