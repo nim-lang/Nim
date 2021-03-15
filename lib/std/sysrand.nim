@@ -160,8 +160,7 @@ elif defined(windows):
     result = randomBytes(addr dest[0], size)
 
 elif defined(linux):
-  # TODO using let, pending bootstrap >= 1.4.0
-  var SYS_getrandom {.importc: "SYS_getrandom", header: "<sys/syscall.h>".}: clong
+  let SYS_getrandom {.importc: "SYS_getrandom", header: "<sys/syscall.h>".}: clong
   const syscallHeader = """#include <unistd.h>
 #include <sys/syscall.h>"""
 
@@ -212,7 +211,7 @@ elif defined(freebsd):
     # errno is set to indicate the error.
 
   proc getRandomImpl(p: pointer, size: int): int {.inline.} =
-    result = getrandom(p, csize_t(size), 0)
+    result = getrandom(p, csize_t(batchSize), 0)
 
 elif defined(ios):
   {.passL: "-framework Security".}
@@ -287,7 +286,7 @@ proc urandomInternalImpl(dest: var openArray[byte]): int {.inline.} =
 
 proc urandom*(dest: var openArray[byte]): bool =
   ## Fills `dest` with random bytes suitable for cryptographic use.
-  ## If the call succeeds, returns `true`.
+  ## If succeed, returns `true`.
   ##
   ## If `dest` is empty, `urandom` immediately returns success,
   ## without calling underlying operating system api.
@@ -308,4 +307,4 @@ proc urandom*(size: Natural): seq[byte] {.inline.} =
   when defined(js): discard urandomInternalImpl(result)
   else:
     if not urandom(result):
-      raiseOSError(osLastError())
+      raiseOsError(osLastError())
