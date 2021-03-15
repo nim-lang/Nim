@@ -1879,13 +1879,6 @@ proc semProcAux(c: PContext, n: PNode, kind: TSymKind,
     incl(s.flags, sfNoSideEffect)
     incl(s.typ.flags, tfNoSideEffect)
 
-  # XXX: searchForProc is broken, or rather becomes broken, as one can have a
-  #      forward declaration with default values for parameters that are not
-  #      the same as the the implementation.
-  #
-  #      C++ approaches this by only allowing default parameters in either the
-  #      implementation or prototype, but not both. A better approach could be
-  #      only in the forward declaration and have markers in the implementation
   let
     (foundProto, comesFromShadowScope) =
       if isAnon: (nil, false)
@@ -1895,18 +1888,13 @@ proc semProcAux(c: PContext, n: PNode, kind: TSymKind,
       ## know `searchForProc` will not find it and sfForward will be set. In
       ## such scenarios the sym is shared between forward declaration and we
       ## can treat the `s` as the proto.
-      ##
-      ## XXX: this is weird, shouldn't we be able to check sfForward _much_
-      ##      earlier in this proc and then confirm analysis rather than
-      ##      analyse and then unwind if it's incorrect?
     proto = if protoSharesSymWithDecl: s else: foundProto
       ## see `protoSharesSymWithDecl` for an explanation
     hasProto = proto != nil
     nIsPossibleFwdDecl = n[bodyPos].kind == nkEmpty
     hasExplicitPragmas = n[pragmasPos].kind != nkEmpty
   
-  # set the default calling conventions, note for procs with forward declarations
-  # or by way of pragmas this can change.
+  # set the default calling conventions, not for procs with forward declarations
   case s.kind
   of skIterator:
     if s.typ.callConv != ccClosure:
@@ -1922,7 +1910,6 @@ proc semProcAux(c: PContext, n: PNode, kind: TSymKind,
     discard
 
   if proto == nil and sfGenSym notin s.flags and tryAddToScope:
-    # add it here, so that recursive procs are possible:
     if s.kind in OverloadableSyms:
       addInterfaceOverloadableSymAt(c, delcarationScope, s)
     else:
