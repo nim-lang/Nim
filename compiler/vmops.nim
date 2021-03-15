@@ -27,7 +27,6 @@ from std/md5 import getMD5
 from std/times import cpuTime
 from std/hashes import hash
 from std/osproc import nil
-from std/sysrand import urandom
 
 from sighashes import symBodyDigest
 
@@ -317,35 +316,3 @@ proc registerAdditionalOps*(c: PCtx) =
     let fn = getNode(a, 0)
     setResult(a, (fn.typ != nil and tfNoSideEffect in fn.typ.flags) or
                  (fn.kind == nkSym and fn.sym.kind == skFunc))
-
-  if vmopsDanger in c.config.features:
-    proc urandomImpl(a: VmArgs) =
-      doAssert a.numArgs == 1
-      let kind = a.slots[a.rb+1].kind
-      case kind
-      of rkInt:
-        setResult(a, urandom(a.getInt(0)).toLit)
-      of rkNode, rkNodeAddr:
-        let n =
-          if kind == rkNode:
-            a.getNode(0)
-          else:
-            a.getNodeAddr(0)
-
-        let length = n.len
-
-        ## TODO refactor using vmconv.fromLit
-        var res = newSeq[uint8](length)
-        for i in 0 ..< length:
-          res[i] = byte(n[i].intVal)
-
-        let isSuccess = urandom(res)
-
-        for i in 0 ..< length:
-          n[i].intVal = BiggestInt(res[i])
-
-        setResult(a, isSuccess)
-      else:
-        doAssert false, $kind
-
-    registerCallback c, "stdlib.sysrand.urandom", urandomImpl
