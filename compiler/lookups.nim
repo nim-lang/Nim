@@ -374,11 +374,8 @@ type E = object
 
 template toOrderTup(a: E): auto =
   # `dist` is first, to favor nearby matches
-  # `depth` is next, to favor nearby enclosing scopes amongst ties
-  # `sym.name.s` is last, to make the list ordered and more deterministic
-  # to make it more deterministic, we'd need to also take into account
-  # `addDeclaredLoc` among ties, e.g. a symbol `foo` in 2 files f1.nim, f2.nim.
-  # (a.dist, a.depth, a.sym.name.s)
+  # `depth` is next, to favor nearby enclosing scopes among ties
+  # `sym.name.s` is last, to make the list ordered and deterministic among ties
   (a.dist, a.depth, a.msg)
 
 proc `<`(a, b: E): bool =
