@@ -410,8 +410,7 @@ proc fixSpelling(c: PContext, n: PNode, ident: PIdent, result: var string) =
     elif count >= c.config.spellSuggestMax: break
     if count == 0:
       result.add "\ncandidate misspellings (edit distance, lexical scope distance): "
-    result.add "\n ($1, $2): '$3'" % [$e.dist, $e.depth, e.sym.name.s]
-    addDeclaredLoc(result, c.config, e.sym) # skipAlias not needed
+    result.add e.msg
     count.inc
 
 proc errorUseQualifier(c: PContext; info: TLineInfo; s: PSym; amb: var bool): PSym =
