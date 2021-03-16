@@ -261,6 +261,8 @@
 
 - Deprecated `--nilseqs` which is now a noop.
 
+- Added `--spellSuggest` to show spelling suggestions on typos.
+
 - Source+Edit links now appear on top of every docgen'd page when
   `nim doc --git.url:url ...` is given.
 
