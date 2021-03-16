@@ -25,6 +25,7 @@ when useWinUnicode:
 else:
   type WinChar* = char
 
+# See https://docs.microsoft.com/en-us/windows/win32/winprog/windows-data-types
 type
   Handle* = int
   LONG* = int32
@@ -33,6 +34,7 @@ type
   WINBOOL* = int32
     ## `WINBOOL` uses opposite convention as posix, !=0 meaning success.
     # xxx this should be distinct int32, distinct would make code less error prone
+  PBOOL* = ptr WINBOOL
   DWORD* = int32
   PDWORD* = ptr DWORD
   LPINT* = ptr int32
@@ -40,6 +42,7 @@ type
   PULONG_PTR* = ptr uint
   HDC* = Handle
   HGLRC* = Handle
+  BYTE* = cuchar
 
   SECURITY_ATTRIBUTES* {.final, pure.} = object
     nLength*: int32
@@ -136,6 +139,10 @@ const
 
   HANDLE_FLAG_INHERIT* = 0x00000001'i32
 
+proc isSuccess*(a: WINBOOL): bool {.inline.} =
+  ## Returns true if `a != 0`. Windows uses a different convention than POSIX,
+  ## where `a == 0` is commonly used on success.
+  a != 0
 proc getVersionExW*(lpVersionInfo: ptr OSVERSIONINFO): WINBOOL {.
     stdcall, dynlib: "kernel32", importc: "GetVersionExW", sideEffect.}
 proc getVersionExA*(lpVersionInfo: ptr OSVERSIONINFO): WINBOOL {.
@@ -1128,6 +1135,43 @@ type
 proc setFileTime*(hFile: Handle, lpCreationTime: LPFILETIME,
                  lpLastAccessTime: LPFILETIME, lpLastWriteTime: LPFILETIME): WINBOOL
      {.stdcall, dynlib: "kernel32", importc: "SetFileTime".}
+
+type
+  # https://docs.microsoft.com/en-us/windows/win32/api/winnt/ns-winnt-sid_identifier_authority
+  SID_IDENTIFIER_AUTHORITY* {.importc, header: "<windows.h>".} = object
+    value* {.importc: "Value"}: array[6, BYTE]
+  # https://docs.microsoft.com/en-us/windows/win32/api/winnt/ns-winnt-sid
+  SID* {.importc, header: "<windows.h>".} = object
+    Revision: BYTE
+    SubAuthorityCount: BYTE
+    IdentifierAuthority: SID_IDENTIFIER_AUTHORITY
+    SubAuthority: ptr ptr DWORD
+  PSID* = ptr SID
+
+const
+  # https://docs.microsoft.com/en-us/windows/win32/secauthz/sid-components
+  # https://github.com/mirror/mingw-w64/blob/84c950bdab7c999ace49fe8383856be77f88c4a8/mingw-w64-headers/include/winnt.h#L2994
+  SECURITY_NT_AUTHORITY* = [BYTE(0), BYTE(0), BYTE(0), BYTE(0), BYTE(0), BYTE(5)]
+  SECURITY_BUILTIN_DOMAIN_RID* = 32
+  DOMAIN_ALIAS_RID_ADMINS* = 544
+
+proc allocateAndInitializeSid*(pIdentifierAuthority: ptr SID_IDENTIFIER_AUTHORITY,
+                               nSubAuthorityCount: BYTE,
+                               nSubAuthority0: DWORD,
+                               nSubAuthority1: DWORD,
+                               nSubAuthority2: DWORD,
+                               nSubAuthority3: DWORD,
+                               nSubAuthority4: DWORD,
+                               nSubAuthority5: DWORD,
+                               nSubAuthority6: DWORD,
+                               nSubAuthority7: DWORD,
+                               pSid: ptr PSID): WINBOOL
+     {.stdcall, dynlib: "Advapi32", importc: "AllocateAndInitializeSid".}
+proc checkTokenMembership*(tokenHandle: Handle, sidToCheck: PSID,
+                           isMember: PBOOL): WINBOOL
+     {.stdcall, dynlib: "Advapi32", importc: "CheckTokenMembership".}
+proc freeSid*(pSid: PSID): PSID
+     {.stdcall, dynlib: "Advapi32", importc: "FreeSid".}
 
 when defined(nimHasStyleChecks):
   {.pop.} # {.push styleChecks: off.}

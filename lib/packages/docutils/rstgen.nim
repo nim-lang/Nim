@@ -1506,7 +1506,8 @@ proc rstToHtml*(s: string, options: RstParseOptions,
   initRstGenerator(d, outHtml, config, filen, options, myFindFile,
                    rst.defaultMsgHandler)
   var dummyHasToc = false
-  var rst = rstParse(s, filen, 0, 1, dummyHasToc, options)
+  var rst = rstParse(s, filen, line=LineRstInit, column=ColRstInit,
+                     dummyHasToc, options)
   result = ""
   renderRstToOut(d, rst, result)
 
@@ -1518,4 +1519,7 @@ proc rstToLatex*(rstSource: string; options: RstParseOptions): string {.inline, 
   var option: bool
   var rstGenera: RstGenerator
   rstGenera.initRstGenerator(outLatex, defaultConfig(), "input", options)
-  rstGenera.renderRstToOut(rstParse(rstSource, "", 1, 1, option, options), result)
+  rstGenera.renderRstToOut(
+      rstParse(rstSource, "", line=LineRstInit, column=ColRstInit,
+               option, options),
+      result)

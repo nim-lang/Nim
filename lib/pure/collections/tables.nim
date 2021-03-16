@@ -598,7 +598,7 @@ template withValue*[A, B](t: var Table[A, B], key: A, value, body: untyped) =
       # block is executed only if `key` in `t`
       value.name = "Nim"
       value.uid = 1314
-    
+
     t.withValue(2, value) do:
       value.name = "No"
       value.uid = 521
@@ -2437,7 +2437,7 @@ proc sort*[A](t: var CountTable[A], order = SortOrder.Descending) =
   ## Sorts the count table so that, by default, the entry with the
   ## highest counter comes first.
   ##
-  ## **WARNING:** This is destructive! Once sorted, you must not modify `t` afterwards!
+  ## .. warning:: This is destructive! Once sorted, you must not modify `t` afterwards!
   ##
   ## You can use the iterators `pairs<#pairs.i,CountTable[A]>`_,
   ## `keys<#keys.i,CountTable[A]>`_, and `values<#values.i,CountTable[A]>`_

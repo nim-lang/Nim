@@ -909,7 +909,7 @@ proc parseJson*(s: Stream, filename: string = ""; rawIntegers = false, rawFloats
 when defined(js):
   from std/math import `mod`
   from std/jsffi import JSObject, `[]`, to
-  from std/private/jsutils import getProtoName
+  from std/private/jsutils import getProtoName, isInteger, isSafeInteger
 
   proc parseNativeJson(x: cstring): JSObject {.importjs: "JSON.parse(#)".}
 
@@ -919,8 +919,11 @@ when defined(js):
     of "[object Array]": return JArray
     of "[object Object]": return JObject
     of "[object Number]":
-      if cast[float](x) mod 1.0 == 0:
-        return JInt
+      if isInteger(x):
+        if isSafeInteger(x):
+          return JInt
+        else:
+          return JString
       else:
         return JFloat
     of "[object Boolean]": return JBool

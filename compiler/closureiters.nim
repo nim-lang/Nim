@@ -157,7 +157,7 @@ type
 
 const
   nkSkip = {nkEmpty..nkNilLit, nkTemplateDef, nkTypeSection, nkStaticStmt,
-            nkCommentStmt} + procDefs
+            nkCommentStmt, nkMixinStmt, nkBindStmt} + procDefs
 
 proc newStateAccess(ctx: var Ctx): PNode =
   if ctx.stateVarSym.isNil:

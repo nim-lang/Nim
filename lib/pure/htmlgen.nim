@@ -613,6 +613,10 @@ macro wbr*(e: varargs[untyped]): untyped =
   ## Generates the HTML `wbr` element.
   result = xmlCheckedTag(e, "wbr", commonAttr, "", true)
 
+macro portal*(e: varargs[untyped]): untyped =
+  ## Generates the HTML `portal` element.
+  result = xmlCheckedTag(e, "portal", "width height type src disabled" & commonAttr, "", false)
+
 
 macro math*(e: varargs[untyped]): untyped =
   ## Generates the HTML `math` element. MathML https://wikipedia.org/wiki/MathML

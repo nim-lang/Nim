@@ -1143,9 +1143,9 @@ proc gsub(g: var TSrcGen, n: PNode, c: TContext) =
     gcomma(g, n)
     put(g, tkParRi, ")")
   of nkObjDownConv, nkObjUpConv:
+    let typ = if (n.typ != nil) and (n.typ.sym != nil): n.typ.sym.name.s else: ""
+    put(g, tkParLe, typ & "(")
     if n.len >= 1: gsub(g, n[0])
-    put(g, tkParLe, "(")
-    gcomma(g, n, 1)
     put(g, tkParRi, ")")
   of nkClosedSymChoice, nkOpenSymChoice:
     if renderIds in g.flags:
@@ -1647,7 +1647,7 @@ proc renderTree*(n: PNode, renderFlags: TRenderFlags = {}): string =
 
 proc `$`*(n: PNode): string = n.renderTree
 
-proc renderModule*(n: PNode, infile, outfile: string,
+proc renderModule*(n: PNode, outfile: string,
                    renderFlags: TRenderFlags = {};
                    fid = FileIndex(-1);
                    conf: ConfigRef = nil) =

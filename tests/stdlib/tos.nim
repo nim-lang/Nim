@@ -655,3 +655,10 @@ block: # normalizeExe
     doAssert "foo/../bar".dup(normalizeExe) == "foo/../bar"
   when defined(windows):
     doAssert "foo".dup(normalizeExe) == "foo"
+
+block: # isAdmin
+  let isAzure = existsEnv("TF_BUILD") # xxx factor with testament.specs.isAzure
+  # In Azure on Windows tests run as an admin user
+  if isAzure and defined(windows): doAssert isAdmin()
+  # In Azure on POSIX tests run as a normal user
+  if isAzure and defined(posix): doAssert not isAdmin()

@@ -271,9 +271,9 @@ iterator fields*[T: tuple|object](x: T): RootObj {.
   magic: "Fields", noSideEffect.} =
   ## Iterates over every field of `x`.
   ##
-  ## **Warning**: This really transforms the 'for' and unrolls the loop.
-  ## The current implementation also has a bug
-  ## that affects symbol binding in the loop body.
+  ## .. warning:: This really transforms the 'for' and unrolls the loop.
+  ##   The current implementation also has a bug
+  ##   that affects symbol binding in the loop body.
   runnableExamples:
     var t = (1, "foo")
     for v in fields(t): v = default(typeof(v))
@@ -283,9 +283,9 @@ iterator fields*[S:tuple|object, T:tuple|object](x: S, y: T): tuple[key: string,
   magic: "Fields", noSideEffect.} =
   ## Iterates over every field of `x` and `y`.
   ##
-  ## **Warning**: This really transforms the 'for' and unrolls the loop.
-  ## The current implementation also has a bug that affects symbol binding
-  ## in the loop body.
+  ## .. warning:: This really transforms the 'for' and unrolls the loop.
+  ##   The current implementation also has a bug that affects symbol binding
+  ##   in the loop body.
   runnableExamples:
     var t1 = (1, "foo")
     var t2 = default(typeof(t1))
@@ -304,9 +304,9 @@ iterator fieldPairs*[T: tuple|object](x: T): tuple[key: string, val: RootObj] {.
   ## picking the appropriate code to a secondary proc which you overload for
   ## each field type and pass the `value` to.
   ##
-  ## **Warning**: This really transforms the 'for' and unrolls the loop. The
-  ## current implementation also has a bug that affects symbol binding in the
-  ## loop body.
+  ## .. warning::: This really transforms the 'for' and unrolls the loop. The
+  ##   current implementation also has a bug that affects symbol binding in the
+  ##   loop body.
   runnableExamples:
     type
       Custom = object
@@ -325,9 +325,9 @@ iterator fieldPairs*[S: tuple|object, T: tuple|object](x: S, y: T): tuple[
   magic: "FieldPairs", noSideEffect.} =
   ## Iterates over every field of `x` and `y`.
   ##
-  ## **Warning**: This really transforms the 'for' and unrolls the loop.
-  ## The current implementation also has a bug that affects symbol binding
-  ## in the loop body.
+  ## .. warning:: This really transforms the 'for' and unrolls the loop.
+  ##   The current implementation also has a bug that affects symbol binding
+  ##   in the loop body.
   runnableExamples:
     type Foo = object
       x1: int
