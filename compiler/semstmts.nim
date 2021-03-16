@@ -1732,11 +1732,6 @@ proc cursorInProc(conf: ConfigRef; n: PNode): bool =
   if n.info.fileIndex == conf.m.trackPos.fileIndex:
     result = cursorInProcAux(conf, n)
 
-type
-  TProcCompilationSteps = enum
-    stepRegisterSymbol,
-    stepDetermineType,
-
 proc hasObjParam(s: PSym): bool =
   var t = s.typ
   for col in 1..<t.len:
@@ -1776,7 +1771,7 @@ proc semMethodPrototype(c: PContext; s: PSym; n: PNode) =
 
 proc setGenericParamsMisc(c: PContext; n: PNode) =
   let orig = n[genericParamsPos]
-  
+
   doAssert orig.kind in {nkEmpty, nkGenericParams}
 
   if n[genericParamsPos].kind == nkEmpty:
@@ -1792,38 +1787,27 @@ proc setGenericParamsMisc(c: PContext; n: PNode) =
     n[miscPos][1] = orig
 
 proc semProcAux(c: PContext, n: PNode, kind: TSymKind,
-                validPragmas: TSpecialWords,
-                phase = stepRegisterSymbol, flags: TExprFlags = {}): PNode =
+                validPragmas: TSpecialWords, flags: TExprFlags = {}): PNode =
   result = semProcAnnotation(c, n, validPragmas)
   if result != nil: return result
   result = n
   checkMinSonsLen(n, bodyPos + 1, c.config)
 
-  let
-    isAnon = n[namePos].kind == nkEmpty
-    nameIsSymbol = n[namePos].kind == nkSym
-    allowSymbolRegistration = phase == stepRegisterSymbol
-
-  doAssert allowSymbolRegistration or nameIsSymbol
+  let isAnon = n[namePos].kind == nkEmpty
 
   var s: PSym
-  var tryAddToScope = true
 
   case n[namePos].kind
   of nkEmpty:
     s = newSym(kind, c.cache.idAnon, nextSymId c.idgen, c.getCurrOwner, n.info)
     s.flags.incl sfUsed
+    n[namePos] = newSymNode(s)
   of nkSym:
     s = n[namePos].sym
     s.owner = c.getCurrOwner
-    tryAddToScope = s.typ != nil
   else:
     s = semIdentDef(c, n[namePos], kind)
-
-  if not nameIsSymbol:
-    # we must have just made the symbol, so assign it
     n[namePos] = newSymNode(s)
-
     when false:
       # disable for now
       if sfNoForward in c.module.flags and
@@ -1831,7 +1815,7 @@ proc semProcAux(c: PContext, n: PNode, kind: TSymKind,
         addInterfaceOverloadableSymAt(c, c.currentScope, s)
         s.flags.incl sfForward
         return
-  
+
   assert s.kind in skProcKinds
 
   s.ast = n
@@ -1900,25 +1884,25 @@ proc semProcAux(c: PContext, n: PNode, kind: TSymKind,
   of skIterator:
     if s.typ.callConv != ccClosure:
       s.typ.callConv = if isAnon: ccClosure else: ccInline
-  of skProcKinds - {skMacro, skTemplate, skIterator}:
+  of skMacro, skTemplate:
+    # we don't bother setting calling conventions for macros and templates
+    discard
+  else:
     # NB: procs with a forward decl have theirs determined by the forward decl
-    if proto == nil:
+    if not hasProto:
       # in this case we're either a forward declaration or we're an impl without
       # a forward decl. We set the calling convention or will be set during
       # pragma analysis further down.
       s.typ.callConv = lastOptionEntry(c).defaultCC
-  else:
-    # we don't bother setting calling conventions for macros and templates
-    discard
 
-  if proto == nil and sfGenSym notin s.flags and tryAddToScope:
+  if not hasProto and sfGenSym notin s.flags: #and not isAnon:
     if s.kind in OverloadableSyms:
       addInterfaceOverloadableSymAt(c, delcarationScope, s)
     else:
       addInterfaceDeclAt(c, delcarationScope, s)
 
   pragmaCallable(c, s, n, validPragmas)
-  if proto == nil:
+  if not hasProto:
     implicitPragmas(c, s, n.info, validPragmas)
 
   # To ease macro generation that produce forwarded .async procs we now
@@ -1982,13 +1966,9 @@ proc semProcAux(c: PContext, n: PNode, kind: TSymKind,
     # for DLL generation we allow sfImportc to have a body, for use in VM
     if sfBorrow in s.flags:
       localError(c.config, n[bodyPos].info, errImplOfXNotAllowed % s.name.s)
-    let metaprogCalls = s.kind in {skMacro, skTemplate}
-    # Macros and Templates can have generic parameters, but they are
-    # only used for overload resolution (there is no instantiation of
-    # the symbol, so we must process the body now)
-    if not metaprogCalls and c.config.ideCmd in {ideSug, ideCon} and not
+    if c.config.ideCmd in {ideSug, ideCon} and s.kind notin {skMacro, skTemplate} and not
         cursorInProc(c.config, n[bodyPos]):
-      discard "speed up nimsuggest"
+      # speed up nimsuggest
       if s.kind == skMethod: semMethodPrototype(c, s, n)
     elif isAnon:
       let gp = n[genericParamsPos]
@@ -2004,8 +1984,10 @@ proc semProcAux(c: PContext, n: PNode, kind: TSymKind,
         localError(c.config, n.info, errGenericLambdaNotAllowed)
     else:
       pushProcCon(c, s)
-      if n[genericParamsPos].kind == nkEmpty or metaprogCalls:
-        if not metaprogCalls and s.magic == mNone: paramsTypeCheck(c, s.typ)
+      if n[genericParamsPos].kind == nkEmpty or s.kind in {skMacro, skTemplate}:
+        # Macros and Templates can have generic parameters, but they are only
+        # used for overload resolution (there is no instantiation of the symbol)
+        if s.kind notin {skMacro, skTemplate} and s.magic == mNone: paramsTypeCheck(c, s.typ)
 
         maybeAddResult(c, s, n)
         # semantic checking also needed with importc in case used in VM
@@ -2025,15 +2007,14 @@ proc semProcAux(c: PContext, n: PNode, kind: TSymKind,
       if s.kind == skMethod: semMethodPrototype(c, s, n)
       popProcCon(c)
   else:
-    # this is if it's a forward declaration and we're building the prototype
-
-    if s.kind in {skProc, skFunc} and s.typ[0] != nil and s.typ[0].kind == tyUntyped:
-      # `auto` is represented as `tyUntyped` at this point in compilation.
-      localError(c.config, n[paramsPos][0].info, "return type 'auto' cannot be used in forward declarations")
-
     if s.kind == skMethod: semMethodPrototype(c, s, n)
-    if proto != nil: localError(c.config, n.info, errImplOfXexpected % proto.name.s)
+    if hasProto: localError(c.config, n.info, errImplOfXexpected % proto.name.s)
     if {sfImportc, sfBorrow, sfError} * s.flags == {} and s.magic == mNone:
+      # this is a forward declaration and we're building the prototype
+      if s.kind in {skProc, skFunc} and s.typ[0] != nil and s.typ[0].kind == tyUntyped:
+        # `auto` is represented as `tyUntyped` at this point in compilation.
+        localError(c.config, n[paramsPos][0].info, "return type 'auto' cannot be used in forward declarations")
+
       incl(s.flags, sfForward)
       incl(s.flags, sfWasForwarded)
     elif sfBorrow in s.flags: semBorrow(c, n, s)
@@ -2055,7 +2036,7 @@ proc determineType(c: PContext, s: PSym) =
   if s.typ != nil: return
   #if s.magic != mNone: return
   #if s.ast.isNil: return
-  discard semProcAux(c, s.ast, s.kind, {}, stepDetermineType)
+  discard semProcAux(c, s.ast, s.kind, {})
 
 proc semIterator(c: PContext, n: PNode): PNode =
   # gensym'ed iterator?
