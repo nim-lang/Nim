@@ -377,6 +377,9 @@ proc registerModule*(g: ModuleGraph; m: PSym) =
   g.ifaces[m.position] = Iface(module: m, converters: @[], patterns: @[])
   initStrTable(g.ifaces[m.position].interf)
 
+proc registerModuleById*(g: ModuleGraph; m: FileIndex) =
+  registerModule(g, g.packed[int m].module)
+
 proc initOperators(g: ModuleGraph): Operators =
   # These are safe for IC.
   result.opLe = createMagic(g, "<=", mLeI)

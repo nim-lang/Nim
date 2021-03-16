@@ -958,8 +958,8 @@ proc moduleFromRodFile*(g: var PackedModuleGraph; conf: ConfigRef; cache: IdentC
     result = g[int fileIdx].module
     assert result != nil
     assert result.position == int(fileIdx)
-    for m in cachedModules:
-      loadToReplayNodes(g, conf, cache, m, g[int m])
+  for m in cachedModules:
+    loadToReplayNodes(g, conf, cache, m, g[int m])
 
 template setupDecoder() {.dirty.} =
   var decoder = PackedDecoder(
