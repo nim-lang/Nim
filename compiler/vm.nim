@@ -2220,7 +2220,7 @@ proc evalStaticStmt*(module: PSym; idgen: IdGenerator; g: ModuleGraph; e: PNode,
 proc setupCompileTimeVar*(module: PSym; idgen: IdGenerator; g: ModuleGraph; n: PNode) =
   discard evalConstExprAux(module, idgen, g, nil, n, emStaticStmt)
 
-proc prepareVMValue(g: ModuleGraph, arg: PNode): PNode =
+proc prepareVMValue(arg: PNode): PNode =
   ## strip nkExprColonExpr from tuple values recurively. That is how
   ## they are expected to be stored in the VM.
 
@@ -2238,17 +2238,17 @@ proc prepareVMValue(g: ModuleGraph, arg: PNode): PNode =
   if arg.kind == nkTupleConstr:
     for child in arg:
       if child.kind == nkExprColonExpr:
-        result.add prepareVMValue(g, child[1])
+        result.add prepareVMValue(child[1])
       else:
-        result.add prepareVMValue(g, child)
+        result.add prepareVMValue(child)
   else:
     for child in arg:
-      result.add prepareVMValue(g, child)
+      result.add prepareVMValue(child)
 
-proc setupMacroParam(g: ModuleGraph, x: PNode, typ: PType): TFullReg =
+proc setupMacroParam(x: PNode, typ: PType): TFullReg =
   case typ.kind
   of tyStatic:
-    putIntoReg(result, prepareVMValue(g, x))
+    putIntoReg(result, prepareVMValue(x))
   else:
     var n = x
     if n.kind in {nkHiddenSubConv, nkHiddenStdConv}: n = n[1]
@@ -2312,13 +2312,13 @@ proc evalMacroCall*(module: PSym; idgen: IdGenerator; g: ModuleGraph; templInstC
 
   # setup parameters:
   for i in 1..<sym.typ.len:
-    tos.slots[i] = setupMacroParam(g, n[i], sym.typ[i])
+    tos.slots[i] = setupMacroParam(n[i], sym.typ[i])
 
   let gp = sym.ast[genericParamsPos]
   for i in 0..<gp.len:
     let idx = sym.typ.len + i
     if idx < n.len:
-      tos.slots[idx] = setupMacroParam(g, n[idx], gp[i].sym.typ)
+      tos.slots[idx] = setupMacroParam(n[idx], gp[i].sym.typ)
     else:
       dec(g.config.evalMacroCounter)
       c.callsite = nil
