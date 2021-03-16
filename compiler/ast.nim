@@ -1761,16 +1761,20 @@ proc getStrOrChar*(a: PNode): string =
     #internalError(a.info, "getStrOrChar")
     #result = ""
 
-proc isGenericRoutine*(n: PNode): bool =
-  n.kind in callableDefs and n[genericParamsPos].kind == nkGenericParams
+proc isGenericParams*(n: PNode): bool {.inline.} =
+  ## used to judge whether a node is generic params.
+  n != nil and n.kind == nkGenericParams
 
-proc isGenericRoutineStrict*(s: PSym): bool =
+proc isGenericRoutine*(n: PNode): bool  {.inline.} =
+  n != nil and n.kind in callableDefs and n[genericParamsPos].isGenericRoutine
+
+proc isGenericRoutineStrict*(s: PSym): bool {.inline.} =
   ## determines if this symbol represents a generic routine
   ## the unusual name is so it doesn't collide and eventually replaces
   ## `isGenericRoutine`
-  s.kind in skProcKinds and s.ast != nil and s.ast.isGenericRoutine
+  s.kind in skProcKinds and s.ast.isGenericRoutine
 
-proc isGenericRoutine*(s: PSym): bool =
+proc isGenericRoutine*(s: PSym): bool {.inline.} =
   ## determines if this symbol represents a generic routine or an instance of
   ## one. This should be renamed accordingly and `isGenericRoutineStrict`
   ## should take this name instead.
@@ -1782,7 +1786,7 @@ proc isGenericRoutine*(s: PSym): bool =
   ## - generic instance
   ## - either generic definition or instance
   s.kind in skProcKinds and (sfFromGeneric in s.flags or
-             (s.ast != nil and s.ast.isGenericRoutine))
+                             s.ast.isGenericRoutine)
 
 proc skipGenericOwner*(s: PSym): PSym =
   ## Generic instantiations are owned by their originating generic

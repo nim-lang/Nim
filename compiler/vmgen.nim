@@ -33,8 +33,6 @@ import
 
 from modulegraphs import getBody
 
-from astalgo import debug
-
 const
   debugEchoCode* = defined(nimVMDebug)
 
@@ -2267,7 +2265,7 @@ proc genProc(c: PCtx; s: PSym): int =
     genParams(c, s.typ.n)
 
     # allocate additional space for any generically bound parameters
-    if s.kind == skMacro and s.ast[genericParamsPos].kind == nkGenericParams:
+    if s.kind == skMacro and s.isGenericRoutineStrict:
       genGenericParams(c, s.ast[genericParamsPos])
 
     if tfCapturesEnv in s.typ.flags:

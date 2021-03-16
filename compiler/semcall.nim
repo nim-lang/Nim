@@ -523,7 +523,7 @@ proc semResolvedCall(c: PContext, x: TCandidate,
       if result.typ.kind == tyError: incl result.typ.flags, tfCheckedForDestructor
     return
   let gp = finalCallee.ast[genericParamsPos]
-  if gp.kind == nkGenericParams:
+  if gp.isGenericParams:
     if x.calleeSym.kind notin {skMacro, skTemplate}:
       if x.calleeSym.magic in {mArrGet, mArrPut}:
         finalCallee = x.calleeSym
