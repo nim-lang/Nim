@@ -1777,6 +1777,8 @@ proc semMethodPrototype(c: PContext; s: PSym; n: PNode) =
 proc setGenericParamsMisc(c: PContext; n: PNode) =
   let orig = n[genericParamsPos]
   
+  doAssert orig.kind in {nkEmpty, nkGenericParams}
+
   if n[genericParamsPos].kind == nkEmpty:
     n[genericParamsPos] = newNodeI(nkGenericParams, n.info)
   else:
@@ -1850,9 +1852,6 @@ proc semProcAux(c: PContext, n: PNode, kind: TSymKind,
   # way of pragmas, default params, and so on invalidate this parsing.
   # Nonetheless, we need to carry out this analysis to perform the search for a
   # potential forward declaration.
-  #
-  # XXX: this is concerning we're doing repetitive analysis, rather than
-  #      clearly breaking it down into phases
   setGenericParamsMisc(c, n)
 
   if n[paramsPos].kind != nkEmpty:
@@ -1862,9 +1861,18 @@ proc semProcAux(c: PContext, n: PNode, kind: TSymKind,
     s.typ = newProcType(c, n.info)
 
   if n[genericParamsPos].safeLen == 0:
-    # if there exist no explicit or implicit generic parameters, the rest of
-    # compiler expects that we substitute it with an nkEmpty, miscPos was used
-    # to capture the original, so we restore from there and clear it. 
+    # if there exist no explicit or implicit generic parameters, then this is
+    # at most a nullary generic (generic with no type params). Regardless of
+    # whether it's a nullary generic or non-generic, we restore the original.
+    # In the case of `nkEmpty` it's non-generic and an empty `nkGeneircParams`
+    # is a nullary generic.
+    #
+    # Remarks about nullary generics vs non-generics:
+    # The difference between a non-generic and nullary generic is minor in
+    # most cases but there are subtle and significant differences as well.
+    # Due to instantiation that generic procs go through, a static echo in the
+    # body of a nullary  generic will not be executed immediately, as it's
+    # instantiated and not immediately evaluated.
     n[genericParamsPos] = n[miscPos][1]
     n[miscPos] = c.graph.emptyNode
 
@@ -1948,7 +1956,7 @@ proc semProcAux(c: PContext, n: PNode, kind: TSymKind,
     suggestSym(c.graph, s.info, proto, c.graph.usageSym)
     closeScope(c)         # close scope with wrong parameter symbols
     openScope(c)          # open scope for old (correct) parameter symbols
-    if proto.ast[genericParamsPos].kind != nkEmpty:
+    if proto.ast[genericParamsPos].isGenericParams:
       addGenericParamListToScope(c, proto.ast[genericParamsPos])
     addParams(c, proto.typ.n, proto.kind)
     proto.info = s.info       # more accurate line information
