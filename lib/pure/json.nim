@@ -1070,7 +1070,7 @@ when defined(nimFixedForwardGeneric):
         dst = T(jsonNode.num)
     else:
       verifyJsonKind(jsonNode, {JInt}, jsonPath)
-      dst = T(jsonNode.num)
+      dst = cast[T](jsonNode.num)
 
   proc initFromJson[T: SomeFloat](dst: var T; jsonNode: JsonNode; jsonPath: var string) =
     verifyJsonKind(jsonNode, {JInt, JFloat}, jsonPath)

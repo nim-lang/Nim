@@ -7,7 +7,9 @@ discard """
 Note: Macro tests are in tests/stdlib/tjsonmacro.nim
 ]#
 
-import std/[json,parsejson,strutils,streams]
+import std/[json,parsejson,strutils]
+when not defined(js):
+  import std/streams
 
 proc testRoundtrip[T](t: T, expected: string) =
   let j = %t
@@ -295,5 +297,6 @@ block: # bug #17383
   else:
     testRoundtrip(int.high): "9223372036854775807"
     testRoundtrip(uint.high): "18446744073709551615"
-  testRoundtrip(int64.high): "9223372036854775807"
-  testRoundtrip(uint64.high): "18446744073709551615"
+  when not defined(js):
+    testRoundtrip(int64.high): "9223372036854775807"
+    testRoundtrip(uint64.high): "18446744073709551615"
