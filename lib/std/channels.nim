@@ -476,7 +476,7 @@ proc send*[T](c: Channel[T], src: sink Isolated[T]) {.inline.} =
 
 template send*[T](c: var Channel[T]; src: T) =
   ## Helper templates for `send`.
-  send(c.isolate(src))
+  send(c, isolate(src))
 
 func recv*[T](c: Channel[T], dst: var T) {.inline.} =
   ## Receives item from the channel(blocking).
