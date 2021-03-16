@@ -468,7 +468,7 @@ func tryRecv*[T](c: Channel[T], dst: var T): bool {.inline.} =
   ## Receives item from the channel(non blocking).
   recvMpmc(c.d, dst.addr, sizeof(dst), true)
 
-proc send*[T](c: Channel[T], src: sink Isolated[T]) {.inline.} =
+func send*[T](c: Channel[T], src: sink Isolated[T]) {.inline.} =
   ## Sends item to the channel(blocking).
   var data = src.extract
   discard sendMpmc(c.d, data.unsafeAddr, sizeof(data), false)
@@ -478,9 +478,9 @@ template send*[T](c: var Channel[T]; src: T) =
   ## Helper templates for `send`.
   send(c, isolate(src))
 
-func recv*[T](c: Channel[T], dst: var T) {.inline.} =
+func recv*[T](c: Channel[T]): T {.inline.} =
   ## Receives item from the channel(blocking).
-  discard recvMpmc(c.d, dst.addr, sizeof(dst), false)
+  discard recvMpmc(c.d, result.addr, sizeof(result), false)
 
 func recvIso*[T](c: Channel[T]): Isolated[T] {.inline.} =
   var dst: T
