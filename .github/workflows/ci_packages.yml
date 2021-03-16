@@ -32,9 +32,11 @@ jobs:
       - name: 'Install dependencies (Linux amd64)'
         if: runner.os == 'Linux' && matrix.cpu == 'amd64'
         run: |
-          sudo apt-fast update -qq
+          set -e
+          . ci/funs.sh
+          echo_run sudo apt-fast update -qq
           DEBIAN_FRONTEND='noninteractive' \
-            sudo apt-fast install --no-install-recommends -yq \
+            echo_run sudo apt-fast install --no-install-recommends -yq \
               libcurl4-openssl-dev libgc-dev libsdl1.2-dev libsfml-dev \
               valgrind libc6-dbg libblas-dev xorg-dev
       - name: 'Install dependencies (macOS)'
