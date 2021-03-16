@@ -456,7 +456,8 @@ proc `=`*[T](dest: var Channel[T], src: Channel[T]) =
 proc channelSend[T](chan: Channel[T], data: sink T, size: int, nonBlocking: bool): bool {.inline.} =
   ## Send item to the channel (FIFO queue)
   ## (Insert at last)
-  sendMpmc(chan.d, data.unsafeAddr, size, nonBlocking)
+  result = sendMpmc(chan.d, data.unsafeAddr, size, nonBlocking)
+  wasMoved(data)
 
 proc channelReceive[T](chan: Channel[T], data: ptr T, size: int, nonBlocking: bool): bool {.inline.} =
   ## Receive an item from the channel
