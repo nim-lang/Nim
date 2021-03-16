@@ -49,8 +49,7 @@ runnableExamples("--threads:on --gc:orc"):
   createThread(worker1, firstWorker)
 
   # Block until the message arrives, then print it out.
-  var dest = ""
-  chan.recv(dest)
+  var dest = chan.recv()
   assert dest == "Hello World!"
 
   # Wait for the thread to exit before moving on to the next example.
