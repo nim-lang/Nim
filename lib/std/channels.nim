@@ -483,7 +483,9 @@ func recv*[T](c: Channel[T]): T {.inline.} =
   discard recvMpmc(c.d, result.addr, sizeof(result), false)
 
 func recvIso*[T](c: Channel[T]): Isolated[T] {.inline.} =
-  result = isolate(recv(c))
+  var dst: T
+  discard recvMpmc(c.d, dst.addr, sizeof(dst), false)
+  result = isolate(dst)
 
 func open*[T](c: Channel[T]): bool {.inline.} =
   result = c.d.channelOpenMpmc()
