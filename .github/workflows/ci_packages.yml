@@ -43,6 +43,7 @@ jobs:
         if: runner.os == 'macOS'
         run: |
           # set -e
+          set +e
           . ci/funs.sh
           echo_run brew doctor
           echo_run brew status
