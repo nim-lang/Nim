@@ -41,16 +41,25 @@ jobs:
               valgrind libc6-dbg libblas-dev xorg-dev
       - name: 'Install dependencies (macOS)'
         if: runner.os == 'macOS'
-        run: brew install boehmgc make sfml gtk+3
+        run: |
+          set -e
+          . ci/funs.sh
+          echo_run brew doctor
+          echo_run brew status
+          echo_run brew install boehmgc make sfml gtk+3 || echo "D20210315T204733"
+          export HOMEBREW_FORCE_BREWED_CURL=1
+          echo_run brew install boehmgc make sfml gtk+3
       - name: 'Install dependencies (Windows)'
         if: runner.os == 'Windows'
         shell: bash
         run: |
-          mkdir dist
-          curl -L https://nim-lang.org/download/mingw64.7z -o dist/mingw64.7z
-          curl -L https://nim-lang.org/download/dlls.zip -o dist/dlls.zip
-          7z x dist/mingw64.7z -odist
-          7z x dist/dlls.zip -obin
+          set -e
+          . ci/funs.sh
+          echo_run mkdir dist
+          echo_run curl -L https://nim-lang.org/download/mingw64.7z -o dist/mingw64.7z
+          echo_run curl -L https://nim-lang.org/download/dlls.zip -o dist/dlls.zip
+          echo_run 7z x dist/mingw64.7z -odist
+          echo_run 7z x dist/dlls.zip -obin
           echo "${{ github.workspace }}/dist/mingw64/bin" >> "${GITHUB_PATH}"
 
       - name: 'Add build binaries to PATH'
