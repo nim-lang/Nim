@@ -399,7 +399,7 @@ proc recvMpmc(chan: ChannelRaw, data: pointer, size: int, nonBlocking: bool): bo
   let readIdx = if chan.head < chan.size: chan.head
                 else: chan.head - chan.size
 
-  copyMem(data, chan.buffer[readIdx * chan.itemsize].unsafeAddr, size)
+  copyMem(data, chan.buffer[readIdx * chan.itemsize].addr, size)
 
   inc chan.head
   if chan.head == 2 * chan.size:
@@ -483,9 +483,7 @@ func recv*[T](c: Channel[T]): T {.inline.} =
   discard recvMpmc(c.d, result.addr, sizeof(result), false)
 
 func recvIso*[T](c: Channel[T]): Isolated[T] {.inline.} =
-  var dst: T
-  discard recvMpmc(c.d, dst.addr, sizeof(dst), false)
-  result = isolate(dst)
+  result = isolate(recv(c))
 
 func open*[T](c: Channel[T]): bool {.inline.} =
   result = c.d.channelOpenMpmc()
