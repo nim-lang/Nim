@@ -42,13 +42,10 @@ jobs:
       - name: 'Install dependencies (macOS)'
         if: runner.os == 'macOS'
         run: |
-          # set -e
-          set +e
+          set -e
           . ci/funs.sh
           echo_run brew doctor
           echo_run brew status
-          echo_run brew install boehmgc make sfml gtk+3 || echo "D20210315T204733"
-          export HOMEBREW_FORCE_BREWED_CURL=1
           echo_run brew install boehmgc make sfml gtk+3
       - name: 'Install dependencies (Windows)'
         if: runner.os == 'Windows'
