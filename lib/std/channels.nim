@@ -312,7 +312,7 @@ proc sendUnbufferedMpmc(chan: ChannelRaw, data: sink pointer, size: int, nonBloc
   signal(chan.notEmptyCond)
   result = true
 
-proc sendMpmc(chan: ChannelRaw, data: sink pointer, size: int, nonBlocking: bool): bool =
+proc sendMpmc(chan: ChannelRaw, data: pointer, size: int, nonBlocking: bool): bool =
   assert not chan.isNil
   assert not data.isNil
 
@@ -399,7 +399,7 @@ proc recvMpmc(chan: ChannelRaw, data: pointer, size: int, nonBlocking: bool): bo
   let readIdx = if chan.head < chan.size: chan.head
                 else: chan.head - chan.size
 
-  copyMem(data, chan.buffer[readIdx * chan.itemsize].addr, size)
+  copyMem(data, chan.buffer[readIdx * chan.itemsize].unsafeAddr, size)
 
   inc chan.head
   if chan.head == 2 * chan.size:
@@ -453,21 +453,10 @@ proc `=`*[T](dest: var Channel[T], src: Channel[T]) =
     `=destroy`(dest)
   dest.d = src.d
 
-proc channelSend[T](chan: Channel[T], data: sink T, size: int, nonBlocking: bool): bool {.inline.} =
-  ## Send item to the channel (FIFO queue)
-  ## (Insert at last)
-  result = sendMpmc(chan.d, data.unsafeAddr, size, nonBlocking)
-  wasMoved(data)
-
-proc channelReceive[T](chan: Channel[T], data: ptr T, size: int, nonBlocking: bool): bool {.inline.} =
-  ## Receive an item from the channel
-  ## (Remove the first item)
-  recvMpmc(chan.d, data, size, nonBlocking)
-
 func trySend*[T](c: Channel[T], src: var Isolated[T]): bool {.inline.} =
   ## Sends item to the channel(non blocking).
   var data = src.extract
-  result = channelSend(c, data, sizeof(data), true)
+  result = sendMpmc(c.d, data.unsafeAddr, sizeof(data), true)
   if result:
     wasMoved(data)
 
@@ -477,25 +466,25 @@ template trySend*[T](c: Channel[T], src: T): bool =
 
 func tryRecv*[T](c: Channel[T], dst: var T): bool {.inline.} =
   ## Receives item from the channel(non blocking).
-  channelReceive(c, dst.addr, sizeof(dst), true)
+  recvMpmc(c.d, dst.addr, sizeof(dst), true)
 
-func send*[T](c: Channel[T], src: sink Isolated[T]) {.inline.} =
+proc send*[T](c: Channel[T], src: sink Isolated[T]) {.inline.} =
   ## Sends item to the channel(blocking).
   var data = src.extract
-  discard channelSend(c, data, sizeof(data), false)
+  discard sendMpmc(c.d, data.unsafeAddr, sizeof(data), false)
   wasMoved(data)
 
 template send*[T](c: var Channel[T]; src: T) =
   ## Helper templates for `send`.
-  send(c, isolate(src))
+  send(isolate(src))
 
 func recv*[T](c: Channel[T], dst: var T) {.inline.} =
   ## Receives item from the channel(blocking).
-  discard channelReceive(c, dst.addr, sizeof(dst), false)
+  discard recvMpmc(c.d, dst.addr, sizeof(dst), false)
 
 func recvIso*[T](c: Channel[T]): Isolated[T] {.inline.} =
   var dst: T
-  discard channelReceive(c, dst.addr, sizeof(dst), false)
+  discard recvMpmc(c.d, dst.addr, sizeof(dst), false)
   result = isolate(dst)
 
 func open*[T](c: Channel[T]): bool {.inline.} =
