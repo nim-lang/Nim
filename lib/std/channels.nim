@@ -312,7 +312,7 @@ proc sendUnbufferedMpmc(chan: ChannelRaw, data: sink pointer, size: int, nonBloc
   signal(chan.notEmptyCond)
   result = true
 
-proc sendMpmc(chan: ChannelRaw, data: pointer, size: int, nonBlocking: bool): bool =
+proc sendMpmc(chan: ChannelRaw, data: sink pointer, size: int, nonBlocking: bool): bool =
   assert not chan.isNil
   assert not data.isNil
 
