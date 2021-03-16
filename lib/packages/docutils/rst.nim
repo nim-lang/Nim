@@ -852,8 +852,10 @@ proc isInlineMarkupEnd(p: RstParser, markup: string): bool =
   if not result: return
   # Rule 4:
   if p.idx > 0:
-    # refs bug #17260
-    if markup notin ["``", "`"] and prevTok(p).symbol == "\\":
+    # see bug #17260; for now `\` must be written ``\``, likewise with sequences
+    # ending in an un-escaped `\`; `\\` is legal but not `\\\` for example;
+    # for this reason we can't use `["``", "`"]` here.
+    if markup != "``" and prevTok(p).symbol == "\\":
       result = false
 
 proc isInlineMarkupStart(p: RstParser, markup: string): bool =
