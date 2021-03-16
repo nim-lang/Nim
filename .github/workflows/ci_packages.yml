@@ -44,8 +44,6 @@ jobs:
         run: |
           set -e
           . ci/funs.sh
-          echo_run brew doctor
-          echo_run brew status
           echo_run brew install boehmgc make sfml gtk+3
       - name: 'Install dependencies (Windows)'
         if: runner.os == 'Windows'
