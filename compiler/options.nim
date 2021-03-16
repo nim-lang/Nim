@@ -268,6 +268,7 @@ type
     numberOfProcessors*: int   # number of processors
     lastCmdTime*: float        # when caas is enabled, we measure each command
     symbolFiles*: SymbolFilesOption
+    spellSuggestMax*: int # max number of spelling suggestions for typos
 
     cppDefines*: HashSet[string] # (*)
     headerFile*: string
@@ -575,6 +576,7 @@ const
   htmldocsDir* = htmldocsDirname.RelativeDir
   docRootDefault* = "@default" # using `@` instead of `$` to avoid shell quoting complications
   oKeepVariableNames* = true
+  spellSuggestSecretSauce* = -1
 
 proc mainCommandArg*(conf: ConfigRef): string =
   ## This is intended for commands like check or parse
