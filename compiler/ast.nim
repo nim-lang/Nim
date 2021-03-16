@@ -1766,7 +1766,7 @@ proc isGenericParams*(n: PNode): bool {.inline.} =
   n != nil and n.kind == nkGenericParams
 
 proc isGenericRoutine*(n: PNode): bool  {.inline.} =
-  n != nil and n.kind in callableDefs and n[genericParamsPos].isGenericRoutine
+  n != nil and n.kind in callableDefs and n[genericParamsPos].isGenericParams
 
 proc isGenericRoutineStrict*(s: PSym): bool {.inline.} =
   ## determines if this symbol represents a generic routine
