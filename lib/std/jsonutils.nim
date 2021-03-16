@@ -187,7 +187,8 @@ proc fromJson*[T](a: var T, b: JsonNode, opt = Joptions()) =
     of JInt: a = T(b.getBiggestInt())
     of JString: a = parseEnum[T](b.getStr())
     else: checkJson false, $($T, " ", b)
-  elif T is Ordinal: a = T(to(b, int))
+  elif T is uint|uint64: a = T(to(b, uint64))
+  elif T is Ordinal: a = cast[T](to(b, int))
   elif T is pointer: a = cast[pointer](to(b, int))
   elif T is distinct:
     when nimvm:
@@ -270,6 +271,7 @@ proc toJson*[T](a: T): JsonNode =
     # in simpler code for `toJson` and `fromJson`.
   elif T is distinct: result = toJson(a.distinctBase)
   elif T is bool: result = %(a)
+  elif T is SomeInteger: result = %a
   elif T is Ordinal: result = %(a.ord)
   else: result = %a
 
