@@ -20,6 +20,20 @@
 - Type mismatch errors now show more context, use `-d:nimLegacyTypeMismatch` for previous
   behavior.
 
+- `echo` and `debugEcho` will now raise `IOError` if writing to stdout fails.  Previous behavior
+  silently ignored errors.  See #16366.  Use `-d:nimLegacyEchoNoRaise` for previous behavior.
+
+- `math.round` now is rounded "away from zero" in JS backend which is consistent
+  with other backends. See #9125. Use `-d:nimLegacyJsRound` for previous behavior.
+
+- Changed the behavior of `uri.decodeQuery` when there are unencoded `=`
+  characters in the decoded values. Prior versions would raise an error. This is
+  no longer the case to comply with the HTML spec and other languages
+  implementations. Old behavior can be obtained with
+  `-d:nimLegacyParseQueryStrict`. `cgi.decodeData` which uses the same
+  underlying code is also updated the same way.
+
+
 ## Standard library additions and changes
 
 - Added `sections` iterator in `parsecfg`.
@@ -102,9 +116,6 @@
 
 - Added a simpler to use `io.readChars` overload.
 
-- `repr` now doesn't insert trailing newline; previous behavior was very inconsistent,
-  see #16034. Use `-d:nimLegacyReprWithNewline` for previous behavior.
-
 - Added `**` to jsffi.
 
 - `writeStackTrace` is available in JS backend now.
@@ -127,9 +138,6 @@
 
 - Added `math.isNaN`.
 
-- `echo` and `debugEcho` will now raise `IOError` if writing to stdout fails.  Previous behavior
-  silently ignored errors.  See #16366.  Use `-d:nimLegacyEchoNoRaise` for previous behavior.
-
 - Added `jsbigints` module, arbitrary precision integers for JavaScript target.
 
 - Added `math.copySign`.
@@ -148,17 +156,7 @@
 - Added `posix_utils.osReleaseFile` to get system identification from `os-release` file on Linux and the BSDs.
   https://www.freedesktop.org/software/systemd/man/os-release.html
 
-- `math.round` now is rounded "away from zero" in JS backend which is consistent
-  with other backends. See #9125. Use `-d:nimLegacyJsRound` for previous behavior.
-
 - Added `socketstream` module that wraps sockets in the stream interface
-
-- Changed the behavior of `uri.decodeQuery` when there are unencoded `=`
-  characters in the decoded values. Prior versions would raise an error. This is
-  no longer the case to comply with the HTML spec and other languages
-  implementations. Old behavior can be obtained with
-  `-d:nimLegacyParseQueryStrict`. `cgi.decodeData` which uses the same
-  underlying code is also updated the same way.
 
 - Added `sugar.dumpToString` which improves on `sugar.dump`.
 
@@ -331,9 +329,6 @@
 - Added `nim --eval:cmd` to evaluate a command directly, see `nim --help`.
 
 - VM now supports `addr(mystring[ind])` (index + index assignment)
-
-- Type mismatch errors now show more context, use `-d:nimLegacyTypeMismatch` for previous
-  behavior.
 
 - Added `--hintAsError` with similar semantics as `--warningAsError`.
 
