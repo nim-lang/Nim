@@ -41,7 +41,7 @@ proc mangleName(m: BModule; s: PSym): Rope =
   if result == nil:
     result = s.name.s.mangle.rope
     result.add "_"
-    result.add rope s.itemId.module
+    result.add m.g.graph.ifaces[s.itemId.module].uniqueName
     result.add "_"
     result.add rope s.itemId.item
     if m.hcrOn:

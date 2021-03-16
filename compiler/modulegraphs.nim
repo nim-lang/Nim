@@ -12,7 +12,7 @@
 ## or stored in a rod-file.
 
 import ast, astalgo, intsets, tables, options, lineinfos, hashes, idents,
-  btrees, md5
+  btrees, md5, ropes, msgs
 
 import ic / [packed_ast, ic]
 
@@ -30,6 +30,7 @@ type
     patterns*: seq[LazySym]
     pureEnums*: seq[LazySym]
     interf: TStrTable
+    uniqueName*: Rope
 
   Operators* = object
     opNot*, opContains*, opLe*, opLt*, opAnd*, opOr*, opIsNil*, opEq*: PSym
@@ -374,7 +375,8 @@ proc registerModule*(g: ModuleGraph; m: PSym) =
   if m.position >= g.packed.len:
     setLen(g.packed, m.position + 1)
 
-  g.ifaces[m.position] = Iface(module: m, converters: @[], patterns: @[])
+  g.ifaces[m.position] = Iface(module: m, converters: @[], patterns: @[],
+                               uniqueName: rope(uniqueModuleName(g.config, FileIndex(m.position))))
   initStrTable(g.ifaces[m.position].interf)
 
 proc registerModuleById*(g: ModuleGraph; m: FileIndex) =
