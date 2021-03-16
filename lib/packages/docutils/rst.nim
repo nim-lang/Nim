@@ -1087,16 +1087,29 @@ proc parseUntil(p: var RstParser, father: PRstNode, postfix: string,
     col = currentTok(p).col
   inc p.idx
   while true:
+    dbg currentTok(p).kind, currentTok(p).symbol
     case currentTok(p).kind
     of tkPunct:
       if isInlineMarkupEnd(p, postfix):
+        dbg "end..."
         inc p.idx
         break
-      elif interpretBackslash:
-        parseBackslash(p, father)
       else:
-        father.add(newLeaf(p))
-        inc p.idx
+        dbg postfix, interpretBackslash, prevTok(p).symbol, currentTok(p).symbol
+        if postfix == "`" and currentTok(p).symbol == "\\":
+          inc p.idx
+        elif postfix == "`" and prevTok(p).symbol == "\\" and currentTok(p).symbol == "`":
+          dbg "gook1"
+          # parseBackslash(p, father)
+          father.add(newLeaf(p))
+          inc p.idx
+        else:
+          # dbg p
+          if interpretBackslash:
+            parseBackslash(p, father)
+          else:
+            father.add(newLeaf(p))
+            inc p.idx
     of tkAdornment, tkWord, tkOther:
       father.add(newLeaf(p))
       inc p.idx
