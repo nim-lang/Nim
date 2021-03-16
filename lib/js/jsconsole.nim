@@ -18,10 +18,9 @@
 ## and provide the CSS style as the last argument.
 ## The amount of `%c`'s must match the amount of CSS-styled strings.
 ##
-## .. code-block:: nim
-##   import std/jsconsole
-##   console.log "%c My Debug Message", "color: red" # Notice the "%c"
-##   console.log "%c My Debug %c Message", "color: red", "font-size: 2em"
+runnableExamples("-r:off"):
+  console.log "%c My Debug Message", "color: red" # Notice the "%c"
+  console.log "%c My Debug %c Message", "color: red", "font-size: 2em"
 
 import std/private/since, std/private/miscdollars  # toLocation
 
