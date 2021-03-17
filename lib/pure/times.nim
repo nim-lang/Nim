@@ -2579,7 +2579,7 @@ proc epochTime*(): float {.tags: [TimeEffect].} =
   ## `getTime` should generally be preferred over this proc.
   ##
   ## .. warning:: Unsuitable for benchmarking (but still better than `now`),
-  ##    use `monotimes.getMonoTime` instead or `cpuTime`, depending on use cases.
+  ##    use `monotimes.getMonoTime` or `cpuTime` instead, depending on the use case.
   when defined(macosx):
     var a {.noinit.}: Timeval
     gettimeofday(a)
