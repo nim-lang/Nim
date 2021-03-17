@@ -901,9 +901,14 @@ proc getHomeDir*(): string {.rtl, extern: "nos$1",
   ## * `setCurrentDir proc <#setCurrentDir,string>`_
   runnableExamples:
     assert getHomeDir() == expandTilde("~")
+    # `getHomeDir()` doesn't end in `DirSep` even if `$HOME` (on posix) or
+    # `$USERPROFILE` (on windows) does, unless `-d:nimLegacyHomeDir` is specified.
+    from std/strutils import endsWith
+    assert not getHomeDir().endsWith DirSep
 
-  when defined(windows): return getEnv("USERPROFILE") & "\\"
-  else: return getEnv("HOME") & "/"
+  when defined(windows): result = getEnv("USERPROFILE")
+  else: result = getEnv("HOME")
+  result.normalizePathEnd(trailingSep = defined(nimLegacyHomeDir))
 
 proc getConfigDir*(): string {.rtl, extern: "nos$1",
   tags: [ReadEnvEffect, ReadIOEffect].} =
@@ -999,6 +1004,8 @@ proc expandTilde*(path: string): string {.
   ##
   ## Windows: this is still supported despite Windows platform not having this
   ## convention; also, both ``~/`` and ``~\`` are handled.
+  ## 
+  ## .. warning:: `~bob` and `~bob/` are not yet handled correctly.
   ##
   ## See also:
   ## * `getHomeDir proc <#getHomeDir>`_
@@ -1010,6 +1017,9 @@ proc expandTilde*(path: string): string {.
     assert expandTilde("~" / "appname.cfg") == getHomeDir() / "appname.cfg"
     assert expandTilde("~/foo/bar") == getHomeDir() / "foo/bar"
     assert expandTilde("/foo/bar") == "/foo/bar"
+    assert expandTilde("~") == getHomeDir()
+    from std/strutils import endsWith
+    assert not expandTilde("~").endsWith(DirSep)
 
   if len(path) == 0 or path[0] != '~':
     result = path
