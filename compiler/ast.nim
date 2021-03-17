@@ -1040,6 +1040,7 @@ const
   declarativeDefs* = {nkProcDef, nkFuncDef, nkMethodDef, nkIteratorDef, nkConverterDef}
   routineDefs* = declarativeDefs + {nkMacroDef, nkTemplateDef}
   procDefs* = nkLambdaKinds + declarativeDefs
+  callableDefs* = nkLambdaKinds + routineDefs
 
   nkSymChoices* = {nkClosedSymChoice, nkOpenSymChoice}
   nkStrKinds* = {nkStrLit..nkTripleStrLit}
@@ -1760,12 +1761,32 @@ proc getStrOrChar*(a: PNode): string =
     #internalError(a.info, "getStrOrChar")
     #result = ""
 
-proc isGenericRoutine*(s: PSym): bool =
-  case s.kind
-  of skProcKinds:
-    result = sfFromGeneric in s.flags or
-             (s.ast != nil and s.ast[genericParamsPos].kind != nkEmpty)
-  else: discard
+proc isGenericParams*(n: PNode): bool {.inline.} =
+  ## used to judge whether a node is generic params.
+  n != nil and n.kind == nkGenericParams
+
+proc isGenericRoutine*(n: PNode): bool  {.inline.} =
+  n != nil and n.kind in callableDefs and n[genericParamsPos].isGenericParams
+
+proc isGenericRoutineStrict*(s: PSym): bool {.inline.} =
+  ## determines if this symbol represents a generic routine
+  ## the unusual name is so it doesn't collide and eventually replaces
+  ## `isGenericRoutine`
+  s.kind in skProcKinds and s.ast.isGenericRoutine
+
+proc isGenericRoutine*(s: PSym): bool {.inline.} =
+  ## determines if this symbol represents a generic routine or an instance of
+  ## one. This should be renamed accordingly and `isGenericRoutineStrict`
+  ## should take this name instead.
+  ##
+  ## Warning/XXX: Unfortunately, it considers a proc kind symbol flagged with
+  ## sfFromGeneric as a generic routine. Instead this should likely not be the
+  ## case and the concepts should be teased apart:
+  ## - generic definition
+  ## - generic instance
+  ## - either generic definition or instance
+  s.kind in skProcKinds and (sfFromGeneric in s.flags or
+                             s.ast.isGenericRoutine)
 
 proc skipGenericOwner*(s: PSym): PSym =
   ## Generic instantiations are owned by their originating generic

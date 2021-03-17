@@ -445,7 +445,7 @@ proc instGenericConvertersArg*(c: PContext, a: PNode, x: TCandidate) =
   let a = if a.kind == nkHiddenDeref: a[0] else: a
   if a.kind == nkHiddenCallConv and a[0].kind == nkSym:
     let s = a[0].sym
-    if s.ast != nil and s.ast[genericParamsPos].kind != nkEmpty:
+    if s.isGenericRoutineStrict:
       let finalCallee = generateInstance(c, s, x.bindings, a.info)
       a[0].sym = finalCallee
       a[0].typ = finalCallee.typ
@@ -524,7 +524,7 @@ proc semResolvedCall(c: PContext, x: TCandidate,
       if result.typ.kind == tyError: incl result.typ.flags, tfCheckedForDestructor
     return
   let gp = finalCallee.ast[genericParamsPos]
-  if gp.kind != nkEmpty:
+  if gp.isGenericParams:
     if x.calleeSym.kind notin {skMacro, skTemplate}:
       if x.calleeSym.magic in {mArrGet, mArrPut}:
         finalCallee = x.calleeSym

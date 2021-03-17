@@ -287,6 +287,7 @@ proc ensureNoMissingOrUnusedSymbols(c: PContext; scope: PScope) =
 
 proc wrongRedefinition*(c: PContext; info: TLineInfo, s: string;
                         conflictsWith: TLineInfo) =
+  ## Emit a redefinition error if in non-interactive mode
   if c.config.cmd != cmdInteractive:
     localError(c.config, info,
       "redefinition of '$1'; previous declaration here: $2" %
