@@ -30,8 +30,7 @@ proc pkg(name: string; cmd = "nimble test"; url = "", useHead = true) =
 
 # pkg "alea"
 pkg "argparse"
-when not defined(windows):
-  # now seems to need a different MingW version...
+when false:
   pkg "arraymancer", "nim c tests/tests_cpu.nim"
 # pkg "ast_pattern_matching", "nim c -r --oldgensym:on tests/test1.nim"
 pkg "awk"
