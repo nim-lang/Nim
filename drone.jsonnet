@@ -12,16 +12,13 @@ local Pipeline(arch) = {
     depth: 1
   },
 
-  local valgrind = if arch == "arm64" then " valgrind libc6-dbg" else "",
   local cpu = if arch == "arm" then " ucpu=arm" else "",
-  local dockercpu = if arch == "arm" then "arm32v7/" else "",
+  local image = if arch == "arm" then "ghcr.io/alaviss/nim-ci:sha-cbaa8fd@sha256:8d99e0d3cf03e61200cd08a63ed13b4cfb8d342b95fdb49ec99c3be71faa180f" else "ghcr.io/alaviss/nim-ci:sha-cbaa8fd@sha256:5416ad30a5d65ac19fa4cc2684e6f62fd7222d092f841548b9df297bc7c0cac8",
   steps: [
     {
       name: "runci",
-      image: dockercpu + "gcc:10.2",
+      image: image,
       commands: [
-        "curl -sL https://deb.nodesource.com/setup_lts.x | bash -",
-        "apt-get install --no-install-recommends -yq" + valgrind + " nodejs libgc-dev libsdl1.2-dev libsfml-dev",
         "git clone --depth 1 https://github.com/nim-lang/csources.git",
         "export PATH=$PWD/bin:$PATH",
         "make -C csources -j$(nproc)" + cpu,
