@@ -84,7 +84,7 @@ when defined(nimExperimentalJsfetch) or defined(nimdoc):
   proc unsafeNewFetchOptions*(metod, body, mode, credentials, cache, referrerPolicy: cstring;
       keepalive: bool; redirect = "follow".cstring; referrer = "client".cstring; integrity = "".cstring): FetchOptions {.importjs:
       "{method: #, body: #, mode: #, credentials: #, cache: #, referrerPolicy: #, keepalive: #, redirect: #, referrer: #, integrity: #}".}
-    ## .. Warning:: Unsafe `newfetchOptions`.
+    ## .. warning:: Unsafe `newfetchOptions`.
 
   func newfetchOptions*(metod: HttpMethod; body: cstring;
       mode: FetchModes; credentials: FetchCredentials; cache: FetchCaches; referrerPolicy: FetchReferrerPolicies;

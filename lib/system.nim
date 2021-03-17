@@ -2386,7 +2386,7 @@ when notJSnotNims and hasAlloc:
     include "system/repr"
 
 when notJSnotNims and hasThreadSupport and hostOS != "standalone":
-  include "system/channels"
+  include "system/channels_builtin"
 
 
 when notJSnotNims and hostOS != "standalone":

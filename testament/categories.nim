@@ -30,8 +30,7 @@ const
     "lib",
     "longgc",
     "manyloc",
-    "nimble-packages-1",
-    "nimble-packages-2",
+    "nimble-packages",
     "niminaction",
     "threads",
     "untestable", # see trunner_special
@@ -400,67 +399,48 @@ proc testStdlib(r: var TResults, pattern, options: string, cat: Category) =
     testSpec r, testObj
 
 # ----------------------------- nimble ----------------------------------------
-
-var nimbleDir = getEnv("NIMBLE_DIR")
-if nimbleDir.len == 0: nimbleDir = getHomeDir() / ".nimble"
-let
-  nimbleExe = findExe("nimble")
-  packageIndex = nimbleDir / "packages_official.json"
-
-type
-  PkgPart = enum
-    ppOne
-    ppTwo
-
-iterator listPackages(part: PkgPart): tuple[name, cmd, url: string, useHead: bool] =
+proc listPackages(packageFilter: string): seq[NimblePackage] =
+  # xxx document `packageFilter`, seems like a bad API (at least should be a regex; a substring match makes no sense)
+  var nimbleDir = getEnv("NIMBLE_DIR")
+  if nimbleDir.len == 0: nimbleDir = getHomeDir() / ".nimble"
+  let packageIndex = nimbleDir / "packages_official.json"
   let packageList = parseFile(packageIndex)
-  let importantList =
-    case part
-    of ppOne: important_packages.packages1
-    of ppTwo: important_packages.packages2
-  for n, cmd, url, useHead in importantList.items:
-    if url.len != 0:
-      yield (n, cmd, url, useHead)
-    else:
-      var found = false
-      for package in packageList.items:
-        let name = package["name"].str
-        if name == n:
-          found = true
-          let pUrl = package["url"].str
-          yield (name, cmd, pUrl, useHead)
-          break
-      if not found:
-        raise newException(ValueError, "Cannot find package '$#'." % n)
+  proc findPackage(name: string): JsonNode =
+    for a in packageList:
+      if a["name"].str == name: return a
+  for pkg in important_packages.packages.items:
+    if isCurrentBatch(testamentData0, pkg.name) and packageFilter in pkg.name:
+      var pkg = pkg
+      if pkg.url.len == 0:
+        let pkg2 = findPackage(pkg.name)
+        if pkg2 == nil:
+          raise newException(ValueError, "Cannot find package '$#'." % pkg.name)
+        pkg.url = pkg2["url"].str
+      result.add pkg
 
-proc makeSupTest(test, options: string, cat: Category): TTest =
+proc makeSupTest(test, options: string, cat: Category, debugInfo = ""): TTest =
   result.cat = cat
   result.name = test
   result.options = options
+  result.debugInfo = debugInfo
   result.startTime = epochTime()
 
 import std/private/gitutils
 
-proc testNimblePackages(r: var TResults; cat: Category; packageFilter: string, part: PkgPart) =
-  if nimbleExe == "":
-    echo "[Warning] - Cannot run nimble tests: Nimble binary not found."
-    return
-  if execCmd("$# update" % nimbleExe) == QuitFailure:
-    echo "[Warning] - Cannot run nimble tests: Nimble update failed."
-    return
-
+proc testNimblePackages(r: var TResults; cat: Category; packageFilter: string) =
+  let nimbleExe = findExe("nimble")
+  doAssert nimbleExe != "", "Cannot run nimble tests: Nimble binary not found."
+  doAssert execCmd("$# update" % nimbleExe) == 0, "Cannot run nimble tests: Nimble update failed."
   let packageFileTest = makeSupTest("PackageFileParsed", "", cat)
   let packagesDir = "pkgstemp"
   createDir(packagesDir)
   var errors = 0
   try:
-    for name, cmd, url, useHead in listPackages(part):
-      if packageFilter notin name:
-        continue
+    let pkgs = listPackages(packageFilter)
+    for i, pkg in pkgs:
       inc r.total
-      var test = makeSupTest(name, "", cat)
-      let buildPath = packagesDir / name
-
+      var test = makeSupTest(pkg.name, "", cat, "[$#/$#] " % [$i, $pkgs.len])
+      let buildPath = packagesDir / pkg.name
       template tryCommand(cmd: string, workingDir2 = buildPath, reFailed = reInstallFailed, maxRetries = 1): string =
         var outp: string
         let ok = retryCall(maxRetry = maxRetries, backoffDuration = 1.0):
@@ -473,13 +453,13 @@ proc testNimblePackages(r: var TResults; cat: Category; packageFilter: string, p
         outp
 
       if not dirExists(buildPath):
-        discard tryCommand("git clone $# $#" % [url.quoteShell, buildPath.quoteShell], workingDir2 = ".", maxRetries = 3)
-        if not useHead:
+        discard tryCommand("git clone $# $#" % [pkg.url.quoteShell, buildPath.quoteShell], workingDir2 = ".", maxRetries = 3)
+        if not pkg.useHead:
           discard tryCommand("git fetch --tags", maxRetries = 3)
           let describeOutput = tryCommand("git describe --tags --abbrev=0")
           discard tryCommand("git checkout $#" % [describeOutput.strip.quoteShell])
         discard tryCommand("nimble install --depsOnly -y", maxRetries = 3)
-      discard tryCommand(cmd, reFailed = reBuildFailed)
+      discard tryCommand(pkg.cmd, reFailed = reBuildFailed)
       inc r.passed
       r.addResult(test, targetC, "", "", reSuccess)
 
@@ -701,10 +681,8 @@ proc processCategory(r: var TResults, cat: Category,
       compileExample(r, "examples/*.nim", options, cat)
       compileExample(r, "examples/gtk/*.nim", options, cat)
       compileExample(r, "examples/talk/*.nim", options, cat)
-    of "nimble-packages-1":
-      testNimblePackages(r, cat, options, ppOne)
-    of "nimble-packages-2":
-      testNimblePackages(r, cat, options, ppTwo)
+    of "nimble-packages":
+      testNimblePackages(r, cat, options)
     of "niminaction":
       testNimInAction(r, cat, options)
     of "ic":

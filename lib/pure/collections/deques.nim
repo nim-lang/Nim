@@ -46,7 +46,7 @@ runnableExamples:
 ## See also
 ## ========
 ## * `lists module <lists.html>`_ for singly and doubly linked lists and rings
-## * `channels module <channels.html>`_ for inter-thread communication
+## * `channels module <channels_builtin.html>`_ for inter-thread communication
 
 import std/private/since
 

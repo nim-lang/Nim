@@ -10,11 +10,12 @@ jobs:
       matrix:
         os: [ubuntu-18.04, macos-10.15]
         cpu: [amd64]
-        pkg: [1, 2]
-    name: '${{ matrix.os }} (pkg: ${{ matrix.pkg }})'
+        batch: ["0_3", "1_3", "2_3"] # list of `index_num`
+    name: '${{ matrix.os }} (batch: ${{ matrix.batch }})'
     runs-on: ${{ matrix.os }}
     env:
-      NIM_TEST_PACKAGES: ${{ matrix.pkg }}
+      NIM_TEST_PACKAGES: "1"
+      NIM_TESTAMENT_BATCH: ${{ matrix.batch }}
     steps:
       - name: 'Checkout'
         uses: actions/checkout@v2

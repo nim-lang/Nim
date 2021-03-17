@@ -164,6 +164,27 @@ proc contains*[A](s: HashSet[A], key: A): bool =
   var index = rawGet(s, key, hc)
   result = index >= 0
 
+proc len*[A](s: HashSet[A]): int =
+  ## Returns the number of elements in `s`.
+  ##
+  ## Due to an implementation detail you can call this proc on variables which
+  ## have not been initialized yet. The proc will return zero as the length
+  ## then.
+  runnableExamples:
+    var a: HashSet[string]
+    assert len(a) == 0
+    let s = toHashSet([3, 5, 7])
+    assert len(s) == 3
+
+  result = s.counter
+
+proc card*[A](s: HashSet[A]): int =
+  ## Alias for `len() <#len,HashSet[A]>`_.
+  ##
+  ## Card stands for the `cardinality
+  ## <http://en.wikipedia.org/wiki/Cardinality>`_ of a set.
+  result = s.counter
+
 proc incl*[A](s: var HashSet[A], key: A) =
   ## Includes an element `key` in `s`.
   ##
@@ -356,27 +377,6 @@ proc clear*[A](s: var HashSet[A]) =
   for i in 0 ..< s.data.len:
     s.data[i].hcode = 0
     s.data[i].key = default(typeof(s.data[i].key))
-
-proc len*[A](s: HashSet[A]): int =
-  ## Returns the number of elements in `s`.
-  ##
-  ## Due to an implementation detail you can call this proc on variables which
-  ## have not been initialized yet. The proc will return zero as the length
-  ## then.
-  runnableExamples:
-    var a: HashSet[string]
-    assert len(a) == 0
-    let s = toHashSet([3, 5, 7])
-    assert len(s) == 3
-
-  result = s.counter
-
-proc card*[A](s: HashSet[A]): int =
-  ## Alias for `len() <#len,HashSet[A]>`_.
-  ##
-  ## Card stands for the `cardinality
-  ## <http://en.wikipedia.org/wiki/Cardinality>`_ of a set.
-  result = s.counter
 
 
 proc union*[A](s1, s2: HashSet[A]): HashSet[A] =

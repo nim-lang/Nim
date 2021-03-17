@@ -193,14 +193,17 @@ proc searchInScopes*(c: PContext, s: PIdent; ambiguous: var bool): PSym =
     if result != nil: return result
   result = someSymFromImportTable(c, s, ambiguous)
 
-proc debugScopes*(c: PContext; limit=0) {.deprecated.} =
+proc debugScopes*(c: PContext; limit=0, max = int.high) {.deprecated.} =
   var i = 0
+  var count = 0
   for scope in allScopes(c.currentScope):
     echo "scope ", i
     for h in 0..high(scope.symbols.data):
       if scope.symbols.data[h] != nil:
-        echo scope.symbols.data[h].name.s
-    if i == limit: break
+        if count >= max: return
+        echo count, ": ", scope.symbols.data[h].name.s
+        count.inc
+    if i == limit: return
     inc i
 
 proc searchInScopesFilterBy*(c: PContext, s: PIdent, filter: TSymKinds): seq[PSym] =
@@ -354,22 +357,62 @@ proc mergeShadowScope*(c: PContext) =
     else:
       c.addInterfaceDecl(sym)
 
-when defined(nimfix):
-  # when we cannot find the identifier, retry with a changed identifier:
-  proc altSpelling(x: PIdent): PIdent =
+when false:
+  # `nimfix` used to call `altSpelling` and prettybase.replaceDeprecated(n.info, ident, alt)
+  proc altSpelling(c: PContext, x: PIdent): PIdent =
     case x.s[0]
-    of 'A'..'Z': result = getIdent(toLowerAscii(x.s[0]) & x.s.substr(1))
-    of 'a'..'z': result = getIdent(toLowerAscii(x.s[0]) & x.s.substr(1))
+    of 'A'..'Z': result = getIdent(c.cache, toLowerAscii(x.s[0]) & x.s.substr(1))
+    of 'a'..'z': result = getIdent(c.cache, toLowerAscii(x.s[0]) & x.s.substr(1))
     else: result = x
 
-  template fixSpelling(n: PNode; ident: PIdent; op: untyped) =
-    let alt = ident.altSpelling
-    result = op(c, alt).skipAlias(n)
-    if result != nil:
-      prettybase.replaceDeprecated(n.info, ident, alt)
-      return result
-else:
-  template fixSpelling(n: PNode; ident: PIdent; op: untyped) = discard
+import std/[editdistance, heapqueue]
+
+type SpellCandidate = object
+  dist: int
+  depth: int
+  msg: string
+  sym: PSym
+
+template toOrderTup(a: SpellCandidate): auto =
+  # `dist` is first, to favor nearby matches
+  # `depth` is next, to favor nearby enclosing scopes among ties
+  # `sym.name.s` is last, to make the list ordered and deterministic among ties
+  (a.dist, a.depth, a.msg)
+
+proc `<`(a, b: SpellCandidate): bool =
+  a.toOrderTup < b.toOrderTup
+
+proc mustFixSpelling(c: PContext): bool {.inline.} =
+  result = c.config.spellSuggestMax != 0 and c.compilesContextId == 0
+    # don't slowdown inside compiles()
+
+proc fixSpelling(c: PContext, n: PNode, ident: PIdent, result: var string) =
+  ## when we cannot find the identifier, suggest nearby spellings
+  var list = initHeapQueue[SpellCandidate]()
+  let name0 = ident.s.nimIdentNormalize
+
+  for (sym, depth, isLocal) in allSyms(c):
+    let depth = -depth - 1
+    let dist = editDistance(name0, sym.name.s.nimIdentNormalize)
+    var msg: string
+    msg.add "\n ($1, $2): '$3'" % [$dist, $depth, sym.name.s]
+    addDeclaredLoc(msg, c.config, sym) # `msg` needed for deterministic ordering.
+    list.push SpellCandidate(dist: dist, depth: depth, msg: msg, sym: sym)
+
+  if list.len == 0: return
+  let e0 = list[0]
+  var count = 0
+  while true:
+    # pending https://github.com/timotheecour/Nim/issues/373 use more efficient `itemsSorted`.
+    if list.len == 0: break
+    let e = list.pop()
+    if c.config.spellSuggestMax == spellSuggestSecretSauce:
+      if e.dist > e0.dist: break
+    elif count >= c.config.spellSuggestMax: break
+    if count == 0:
+      result.add "\ncandidate misspellings (edit distance, lexical scope distance): "
+    result.add e.msg
+    count.inc
 
 proc errorUseQualifier(c: PContext; info: TLineInfo; s: PSym; amb: var bool): PSym =
   var err = "ambiguous identifier: '" & s.name.s & "'"
@@ -406,8 +449,8 @@ proc errorUseQualifier(c: PContext; info: TLineInfo; candidates: seq[PSym]) =
     inc i
   localError(c.config, info, errGenerated, err)
 
-proc errorUndeclaredIdentifier*(c: PContext; info: TLineInfo; name: string) =
-  var err = "undeclared identifier: '" & name & "'"
+proc errorUndeclaredIdentifier*(c: PContext; info: TLineInfo; name: string, extra = "") =
+  var err = "undeclared identifier: '" & name & "'" & extra
   if c.recursiveDep.len > 0:
     err.add "\nThis might be caused by a recursive module dependency:\n"
     err.add c.recursiveDep
@@ -415,25 +458,25 @@ proc errorUndeclaredIdentifier*(c: PContext; info: TLineInfo; name: string) =
     c.recursiveDep = ""
   localError(c.config, info, errGenerated, err)
 
+proc errorUndeclaredIdentifierHint*(c: PContext; n: PNode, ident: PIdent): PSym =
+  var extra = ""
+  if c.mustFixSpelling: fixSpelling(c, n, ident, extra)
+  errorUndeclaredIdentifier(c, n.info, ident.s, extra)
+  result = errorSym(c, n)
+
 proc lookUp*(c: PContext, n: PNode): PSym =
   # Looks up a symbol. Generates an error in case of nil.
   var amb = false
   case n.kind
   of nkIdent:
     result = searchInScopes(c, n.ident, amb).skipAlias(n, c.config)
-    if result == nil:
-      fixSpelling(n, n.ident, searchInScopes)
-      errorUndeclaredIdentifier(c, n.info, n.ident.s)
-      result = errorSym(c, n)
+    if result == nil: result = errorUndeclaredIdentifierHint(c, n, n.ident)
   of nkSym:
     result = n.sym
   of nkAccQuoted:
     var ident = considerQuotedIdent(c, n)
     result = searchInScopes(c, ident, amb).skipAlias(n, c.config)
-    if result == nil:
-      fixSpelling(n, ident, searchInScopes)
-      errorUndeclaredIdentifier(c, n.info, ident.s)
-      result = errorSym(c, n)
+    if result == nil: result = errorUndeclaredIdentifierHint(c, n, ident)
   else:
     internalError(c.config, n.info, "lookUp")
     return
@@ -471,9 +514,7 @@ proc qualifiedLookUp*(c: PContext, n: PNode, flags: set[TLookupFlag]): PSym =
           errorUseQualifier(c, n.info, candidates)
 
     if result == nil and checkUndeclared in flags:
-      fixSpelling(n, ident, searchInScopes)
-      errorUndeclaredIdentifier(c, n.info, ident.s)
-      result = errorSym(c, n)
+      result = errorUndeclaredIdentifierHint(c, n, ident)
     elif checkAmbiguity in flags and result != nil and amb:
       result = errorUseQualifier(c, n.info, result, amb)
     c.isAmbiguous = amb
@@ -494,9 +535,7 @@ proc qualifiedLookUp*(c: PContext, n: PNode, flags: set[TLookupFlag]): PSym =
         else:
           result = someSym(c.graph, m, ident).skipAlias(n, c.config)
         if result == nil and checkUndeclared in flags:
-          fixSpelling(n[1], ident, searchInScopes)
-          errorUndeclaredIdentifier(c, n[1].info, ident.s)
-          result = errorSym(c, n[1])
+          result = errorUndeclaredIdentifierHint(c, n[1], ident)
       elif n[1].kind == nkSym:
         result = n[1].sym
       elif checkUndeclared in flags and
