@@ -49,7 +49,7 @@ runnableExamples("--threads:on --gc:orc"):
   createThread(worker1, firstWorker)
 
   # Block until the message arrives, then print it out.
-  var dest = chan.recv()
+  let dest = chan.recv()
   assert dest == "Hello World!"
 
   # Wait for the thread to exit before moving on to the next example.
@@ -455,7 +455,7 @@ proc `=`*[T](dest: var Channel[T], src: Channel[T]) =
 func trySend*[T](c: Channel[T], src: var Isolated[T]): bool {.inline.} =
   ## Sends item to the channel(non blocking).
   var data = src.extract
-  result = sendMpmc(c.d, data.unsafeAddr, sizeof(data), true)
+  result = sendMpmc(c.d, data.addr, sizeof(T), true)
   if result:
     wasMoved(data)
 
@@ -465,12 +465,12 @@ template trySend*[T](c: Channel[T], src: T): bool =
 
 func tryRecv*[T](c: Channel[T], dst: var T): bool {.inline.} =
   ## Receives item from the channel(non blocking).
-  recvMpmc(c.d, dst.addr, sizeof(dst), true)
+  recvMpmc(c.d, dst.addr, sizeof(T), true)
 
 func send*[T](c: Channel[T], src: sink Isolated[T]) {.inline.} =
   ## Sends item to the channel(blocking).
   var data = src.extract
-  discard sendMpmc(c.d, data.unsafeAddr, sizeof(data), false)
+  discard sendMpmc(c.d, data.addr, sizeof(T), false)
   wasMoved(data)
 
 template send*[T](c: var Channel[T]; src: T) =
@@ -480,11 +480,6 @@ template send*[T](c: var Channel[T]; src: T) =
 func recv*[T](c: Channel[T]): T {.inline.} =
   ## Receives item from the channel(blocking).
   discard recvMpmc(c.d, result.addr, sizeof(result), false)
-
-func recvIso*[T](c: Channel[T]): Isolated[T] {.inline.} =
-  var dst: T
-  discard recvMpmc(c.d, dst.addr, sizeof(dst), false)
-  result = isolate(dst)
 
 func open*[T](c: Channel[T]): bool {.inline.} =
   result = c.d.channelOpenMpmc()
