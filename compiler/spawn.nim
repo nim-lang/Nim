@@ -245,7 +245,7 @@ proc setupArgsForParallelism(g: ModuleGraph; n: PNode; objType: PType;
       # important special case: we always create a zero-copy slice:
       let slice = newNodeI(nkCall, n.info, 4)
       slice.typ = n.typ
-      slice[0] = newSymNode(createMagic(g, "slice", mSlice))
+      slice[0] = newSymNode(createMagic(g, idgen, "slice", mSlice))
       slice[0].typ = getSysType(g, n.info, tyInt) # fake type
       var fieldB = newSym(skField, tmpName, nextSymId idgen, objType.owner, n.info, g.config.options)
       fieldB.typ = getSysType(g, n.info, tyInt)

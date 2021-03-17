@@ -360,10 +360,13 @@ else:
 proc stopCompile*(g: ModuleGraph): bool {.inline.} =
   result = g.doStopCompile != nil and g.doStopCompile()
 
-proc createMagic*(g: ModuleGraph; name: string, m: TMagic): PSym =
-  result = newSym(skProc, getIdent(g.cache, name), nextSymId(g.idgen), nil, unknownLineInfo, {})
+proc createMagic*(g: ModuleGraph; idgen: IdGenerator; name: string, m: TMagic): PSym =
+  result = newSym(skProc, getIdent(g.cache, name), nextSymId(idgen), nil, unknownLineInfo, {})
   result.magic = m
   result.flags = {sfNeverRaises}
+
+proc createMagic(g: ModuleGraph; name: string, m: TMagic): PSym =
+  result = createMagic(g, g.idgen, name, m)
 
 proc registerModule*(g: ModuleGraph; m: PSym) =
   assert m != nil
