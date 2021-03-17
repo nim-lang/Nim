@@ -82,8 +82,6 @@
 
 - `writeStackTrace` is available in JS backend now.
 
-
-
 - Added `decodeQuery` to `std/uri`.
 
 - `strscans.scanf` now supports parsing single characters.
