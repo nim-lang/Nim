@@ -12,7 +12,7 @@ clone:
 
 steps:
 - name: runci
-  image: ghcr.io/alaviss/nim-ci:sha-cbaa8fd@sha256:5416ad30a5d65ac19fa4cc2684e6f62fd7222d092f841548b9df297bc7c0cac8
+  image: ghcr.io/alaviss/nim-ci:sha-8eb1e7b@sha256:aad1d7b6c95cde34b2a90efe7f8f2a271513ed788ed2d4256cb60906e1ac54f0
   commands:
   - git clone --depth 1 https://github.com/nim-lang/csources.git
   - export PATH=$PWD/bin:$PATH
@@ -34,7 +34,7 @@ clone:
 
 steps:
 - name: runci
-  image: ghcr.io/alaviss/nim-ci:sha-cbaa8fd@sha256:8d99e0d3cf03e61200cd08a63ed13b4cfb8d342b95fdb49ec99c3be71faa180f
+  image: ghcr.io/alaviss/nim-ci:sha-8eb1e7b@sha256:1da6b7101fcbae025c09cc1fb51f84a3737d18ed4dc67c0d58ea0bb17e89d280
   commands:
   - git clone --depth 1 https://github.com/nim-lang/csources.git
   - export PATH=$PWD/bin:$PATH
