@@ -25,6 +25,7 @@ from std/private/globs import nativeToUnixPath
 const
   exportSection = skField
   docCmdSkip = "skip"
+  DocColOffset = "## ".len  # assuming that a space was added after ##
 
 type
   TSections = array[TSymKind, Rope]
@@ -322,8 +323,12 @@ proc genComment(d: PDoc, n: PNode): string =
     when false:
       # RFC: to preseve newlines in comments, this would work:
       comment = comment.replace("\n", "\n\n")
-    renderRstToOut(d[], parseRst(comment, toFullPath(d.conf, n.info), toLinenumber(n.info),
-                   toColumn(n.info), (var dummy: bool; dummy), d.options, d.conf), result)
+    renderRstToOut(d[],
+                   parseRst(comment, toFullPath(d.conf, n.info),
+                            toLinenumber(n.info),
+                            toColumn(n.info) + DocColOffset,
+                            (var dummy: bool; dummy), d.options, d.conf),
+                   result)
 
 proc genRecCommentAux(d: PDoc, n: PNode): Rope =
   if n == nil: return nil
