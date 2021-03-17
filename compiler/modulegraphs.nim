@@ -118,6 +118,15 @@ type
                  close: TPassClose,
                  isFrontend: bool]
 
+proc resetForBackend*(g: ModuleGraph) =
+  initStrTable(g.compilerprocs)
+  g.typeInstCache.clear()
+  g.procInstCache.clear()
+  for a in mitems(g.attachedOps):
+    a.clear()
+  g.methodsPerType.clear()
+  g.enumToStringProcs.clear()
+
 const
   cb64 = [
     "A", "B", "C", "D", "E", "F", "G", "H", "I", "J", "K", "L", "M", "N",
