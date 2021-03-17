@@ -1,5 +1,5 @@
 discard """
-  targets: "--gc:orc --threads:on -d:danger"
+  matrix: "--gc:orc --threads:on -d:danger"
 """
 
 import std/[channels, isolation]
