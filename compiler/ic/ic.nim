@@ -725,7 +725,7 @@ proc loadProcHeader(c: var PackedDecoder; g: var PackedModuleGraph; thisModule: 
   result = newNodeIT(k, translateLineInfo(c, g, thisModule, n.info),
     loadType(c, g, thisModule, n.typ))
   result.flags = n.flags
-  assert k in {nkProcDef, nkMethodDef, nkIteratorDef, nkFuncDef, nkConverterDef}
+  assert k in {nkProcDef, nkMethodDef, nkIteratorDef, nkFuncDef, nkConverterDef, nkLambda}
   var i = 0
   for n0 in sonsReadonly(tree, n):
     if i != bodyPos:
