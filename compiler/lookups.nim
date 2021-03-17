@@ -382,10 +382,12 @@ template toOrderTup(a: SpellCandidate): auto =
 proc `<`(a, b: SpellCandidate): bool =
   a.toOrderTup < b.toOrderTup
 
+proc mustFixSpelling(c: PContext): bool {.inline.} =
+  result = c.config.spellSuggestMax != 0 and c.compilesContextId == 0
+    # don't slowdown inside compiles()
+
 proc fixSpelling(c: PContext, n: PNode, ident: PIdent, result: var string) =
   ## when we cannot find the identifier, suggest nearby spellings
-  if c.config.spellSuggestMax == 0: return
-  if c.compilesContextId > 0: return # don't slowdown inside compiles()
   var list = initHeapQueue[SpellCandidate]()
   let name0 = ident.s.nimIdentNormalize
 
@@ -458,7 +460,7 @@ proc errorUndeclaredIdentifier*(c: PContext; info: TLineInfo; name: string, extr
 
 proc errorUndeclaredIdentifierHint*(c: PContext; n: PNode, ident: PIdent): PSym =
   var extra = ""
-  fixSpelling(c, n, ident, extra)
+  if c.mustFixSpelling: fixSpelling(c, n, ident, extra)
   errorUndeclaredIdentifier(c, n.info, ident.s, extra)
   result = errorSym(c, n)
 
