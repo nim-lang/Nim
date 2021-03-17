@@ -1325,8 +1325,8 @@ proc now*(): DateTime {.tags: [TimeEffect], benign.} =
   ## Get the current time as a  `DateTime` in the local timezone.
   ## Shorthand for `getTime().local`.
   ##
-  ## .. warning:: Unsuitable for benchmarking, use `monotimes.getMonoTime` instead
-  ##    or `cpuTime`, depending on use cases.
+  ## .. warning:: Unsuitable for benchmarking, use `monotimes.getMonoTime` or
+  ##    `cpuTime` instead, depending on the use case.
   getTime().local
 
 proc initDateTime*(monthday: MonthdayRange, month: Month, year: int,
