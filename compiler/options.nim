@@ -101,8 +101,23 @@ type                          # please make sure we have under 32 options
   TGlobalOptions* = set[TGlobalOption]
 
 const
-  harmlessOptions* = {optForceFullMake, optNoLinking, optRun,
-                      optUseColors, optStdout}
+  harmlessOptions* = {optForceFullMake, optNoLinking, optRun, optUseColors, optStdout}
+  genSubDir* = RelativeDir"nimcache"
+  NimExt* = "nim"
+  RodExt* = "rod"
+  HtmlExt* = "html"
+  JsonExt* = "json"
+  TagsExt* = "tags"
+  TexExt* = "tex"
+  IniExt* = "ini"
+  DefaultConfig* = RelativeFile"nim.cfg"
+  DefaultConfigNims* = RelativeFile"config.nims"
+  DocConfig* = RelativeFile"nimdoc.cfg"
+  DocTexConfig* = RelativeFile"nimdoc.tex.cfg"
+  htmldocsDir* = htmldocsDirname.RelativeDir
+  docRootDefault* = "@default" # using `@` instead of `$` to avoid shell quoting complications
+  oKeepVariableNames* = true
+  spellSuggestSecretSauce* = -1
 
 type
   TBackend* = enum
@@ -483,6 +498,7 @@ proc newConfigRef*(): ConfigRef =
     suggestMaxResults: 10_000,
     maxLoopIterationsVM: 10_000_000,
     vmProfileData: newProfileData(),
+    spellSuggestMax: spellSuggestSecretSauce,
   )
   setTargetFromSystem(result.target)
   # enable colors by default on terminals
@@ -559,24 +575,6 @@ template compilationCachePresent*(conf: ConfigRef): untyped =
 
 template optPreserveOrigSource*(conf: ConfigRef): untyped =
   optEmbedOrigSrc in conf.globalOptions
-
-const
-  genSubDir* = RelativeDir"nimcache"
-  NimExt* = "nim"
-  RodExt* = "rod"
-  HtmlExt* = "html"
-  JsonExt* = "json"
-  TagsExt* = "tags"
-  TexExt* = "tex"
-  IniExt* = "ini"
-  DefaultConfig* = RelativeFile"nim.cfg"
-  DefaultConfigNims* = RelativeFile"config.nims"
-  DocConfig* = RelativeFile"nimdoc.cfg"
-  DocTexConfig* = RelativeFile"nimdoc.tex.cfg"
-  htmldocsDir* = htmldocsDirname.RelativeDir
-  docRootDefault* = "@default" # using `@` instead of `$` to avoid shell quoting complications
-  oKeepVariableNames* = true
-  spellSuggestSecretSauce* = -1
 
 proc mainCommandArg*(conf: ConfigRef): string =
   ## This is intended for commands like check or parse

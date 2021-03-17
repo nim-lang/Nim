@@ -129,3 +129,4 @@ proc initDefines*(symbols: StringTableRef) =
   defineSymbol("nimHasJsBigIntBackend")
   defineSymbol("nimHasWarningAsError")
   defineSymbol("nimHasHintAsError")
+  defineSymbol("nimHasSpellSuggest")
