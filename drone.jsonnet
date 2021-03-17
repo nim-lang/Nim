@@ -13,7 +13,7 @@ local Pipeline(arch) = {
   },
 
   local cpu = if arch == "arm" then " ucpu=arm" else "",
-  local image = if arch == "arm" then "ghcr.io/alaviss/nim-ci:sha-f673d96@sha256:b6c99973ca31d35f95508193d49306c5fa933e3f6090b8ffb56fee16b32705fc" else "ghcr.io/alaviss/nim-ci:sha-f673d96@sha256:a9c72fa9a13dc5d2b2db7080632792f5c04cd0e0b19c1d995356e634449777ea",
+  local image = if arch == "arm" then "ghcr.io/alaviss/nim-ci:sha-1d368dc@sha256:a4aeeca1daeb33b56aed80c1a6745f7e65192716f175c0122fbe88e64caf76c6" else "ghcr.io/alaviss/nim-ci:sha-1d368dc@sha256:b03ad81192e7e14dec4471b63a3d98c78ceada2e675d9075151193d972814b26",
   steps: [
     {
       name: "runci",
