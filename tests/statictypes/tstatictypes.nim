@@ -296,8 +296,6 @@ macro barParam(x: static Table[int, string]): untyped =
   for i, val in x:
     discard barParamInsides(i, val)
 
-# TODO: try and call a compiletime lambda from runtime 
-
 fooM()
 barM()
 fooParam(foo)
