@@ -7,7 +7,14 @@ discard """
 Note: Macro tests are in tests/stdlib/tjsonmacro.nim
 ]#
 
-import std/[json,parsejson,strutils,streams]
+import std/[json,parsejson,strutils]
+when not defined(js):
+  import std/streams
+
+proc testRoundtrip[T](t: T, expected: string) =
+  let j = %t
+  doAssert $j == expected, $j
+  doAssert %(j.to(T)) == j
 
 let testJson = parseJson"""{ "a": [1, 2, 3, 4], "b": "asd", "c": "\ud83c\udf83", "d": "\u00E6"}"""
 # nil passthrough
@@ -281,3 +288,15 @@ let jsonNode = %*mynode
 doAssert $jsonNode == """{"kind":"P","pChildren":[{"kind":"Text","textStr":"mychild"},{"kind":"Br"}]}"""
 doAssert $jsonNode.to(ContentNode) == """(kind: P, pChildren: @[(kind: Text, textStr: "mychild"), (kind: Br)])"""
 
+block: # bug #17383
+  testRoundtrip(int32.high): "2147483647"
+  testRoundtrip(uint32.high): "4294967295"
+  when int.sizeof == 4:
+    testRoundtrip(int.high): "2147483647"
+    testRoundtrip(uint.high): "4294967295"
+  else:
+    testRoundtrip(int.high): "9223372036854775807"
+    testRoundtrip(uint.high): "18446744073709551615"
+  when not defined(js):
+    testRoundtrip(int64.high): "9223372036854775807"
+    testRoundtrip(uint64.high): "18446744073709551615"
