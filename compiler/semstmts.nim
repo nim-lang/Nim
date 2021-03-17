@@ -2070,7 +2070,9 @@ proc semProc(c: PContext, n: PNode): PNode =
   result = semProcAux(c, n, skProc, procPragmas)
 
 proc semFunc(c: PContext, n: PNode): PNode =
-  result = semProcAux(c, n, skFunc, procPragmas)
+  let validPragmas = if n[namePos].kind != nkEmpty: procPragmas
+                     else: lambdaPragmas
+  result = semProcAux(c, n, skFunc, validPragmas)
 
 proc semMethod(c: PContext, n: PNode): PNode =
   if not isTopLevel(c): localError(c.config, n.info, errXOnlyAtModuleScope % "method")
