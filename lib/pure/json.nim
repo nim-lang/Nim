@@ -14,6 +14,14 @@
 ## JSON is based on a subset of the JavaScript Programming Language,
 ## Standard ECMA-262 3rd Edition - December 1999.
 ##
+## See also
+## ========
+## * `std/parsejson <parsejson.html>`_
+## * `std/jsonutils <jsonutils.html>`_
+## * `std/marshal <marshal.html>`_
+## * `std/jscore <jscore.html>`_
+##
+##
 ## Overview
 ## ========
 ##
