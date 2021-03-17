@@ -8,7 +8,7 @@ switch("path", "$lib/../testament/lib")
 switch("colors", "off")
 switch("listFullPaths", "off")
 switch("excessiveStackTrace", "off")
-switch("spellSuggestMax", 0)
+switch("spellSuggest", "0")
 
 # for std/unittest
 switch("define", "nimUnittestOutputLevel:PRINT_FAILURES")
