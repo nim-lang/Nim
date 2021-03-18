@@ -4,7 +4,7 @@ discard """
   action: "reject"
   nimout: '''
 tspellsuggest2.nim(45, 13) Error: undeclared identifier: 'fooBar'
-candidate misspellings (edit distance, lexical scope distance):
+candidates (edit distance, scope distance); see '--spellSuggest':
  (1, 0): 'fooBar8' [var declared in tspellsuggest2.nim(43, 9)]
  (1, 1): 'fooBar7' [var declared in tspellsuggest2.nim(41, 7)]
  (1, 3): 'fooBar1' [var declared in tspellsuggest2.nim(33, 5)]
