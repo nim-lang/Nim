@@ -1543,7 +1543,9 @@ proc scrollIntoView*(n: Node)
 proc setAttribute*(n: Node, name, value: cstring)
 proc setAttributeNode*(n: Node, attr: Node)
 proc querySelector*(n: Node, selectors: cstring): Element
+proc querySelector*(n: Node, selectors: seq[cstring]): Element
 proc querySelectorAll*(n: Node, selectors: cstring): seq[Element]
+proc querySelectorAll*(n: Node, selectors: seq[cstring]): seq[Element]
 proc compareDocumentPosition*(n: Node, otherNode:Node): int
 proc lookupPrefix*(n: Node): cstring
 proc lookupNamespaceURI*(n: Node): cstring
@@ -1577,7 +1579,9 @@ proc routeEvent*(d: Document, event: Event)
 proc write*(d: Document, text: cstring)
 proc writeln*(d: Document, text: cstring)
 proc querySelector*(d: Document, selectors: cstring): Element
+proc querySelector*(d: Document, selectors: seq[cstring]): Element
 proc querySelectorAll*(d: Document, selectors: cstring): seq[Element]
+proc querySelectorAll*(d: Document, selectors: seq[cstring]): seq[Element]
 
 # Element "methods"
 proc blur*(e: Element)
