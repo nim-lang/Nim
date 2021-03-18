@@ -488,7 +488,9 @@ Debugging CI failures, flaky tests, etc
     If either on you own fork or in Nim repo, it's possible from inside GitHub UI
     under checks tab, see https://github.com/timotheecour/Nim/issues/211#issuecomment-629751569
   * GitHub actions: under "Checks" tab, click "Re-run jobs" in the right.
-  * builds.sr.ht: create a sourcehut account so you can restart a PR job as illustrated
+  * builds.sr.ht: create a sourcehut account so you can restart a PR job as illustrated.
+    builds.sr.ht also allows you to ssh to a CI machine which can help a lot for debugging
+    issues, see docs in https://man.sr.ht/builds.sr.ht/build-ssh.md.
 
 
 Code reviews
