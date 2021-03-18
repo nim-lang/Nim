@@ -1,5 +1,6 @@
 discard """
   timeout:  5.0 # but typically < 1s
+  disabled: "freebsd"
   matrix: "--gc:arc --threads:on; --gc:arc --threads:on -d:danger"
 """
 
