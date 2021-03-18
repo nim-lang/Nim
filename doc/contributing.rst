@@ -490,7 +490,8 @@ Debugging CI failures, flaky tests, etc
   * GitHub actions: under "Checks" tab, click "Re-run jobs" in the right.
   * builds.sr.ht: create a sourcehut account so you can restart a PR job as illustrated.
     builds.sr.ht also allows you to ssh to a CI machine which can help a lot for debugging
-    issues, see docs in https://man.sr.ht/builds.sr.ht/build-ssh.md.
+    issues, see docs in https://man.sr.ht/builds.sr.ht/build-ssh.md and
+    https://drewdevault.com/2019/08/19/Introducing-shell-access-for-builds.html.
 
 
 Code reviews
