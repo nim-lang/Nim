@@ -408,10 +408,16 @@ proc fixSpelling(c: PContext, n: PNode, ident: PIdent, result: var string) =
     if list.len == 0: break
     let e = list.pop()
     if c.config.spellSuggestMax == spellSuggestSecretSauce:
-      if e.dist > e0.dist: break
+      const
+        smallThres = 2
+        maxCountForSmall = 4
+        # avoids ton of operator matches when mis-matching short symbols such as `i`
+        # other heuristics could be devised, such as only suggesting operators if `name0`
+        # is an operator (likewise with non-operators).
+      if e.dist > e0.dist or (name0.len <= smallThres and count >= maxCountForSmall): break
     elif count >= c.config.spellSuggestMax: break
     if count == 0:
-      result.add "\ncandidate misspellings (edit distance, lexical scope distance): "
+      result.add "\ncandidates (edit distance, scope distance); see '--spellSuggest': "
     result.add e.msg
     count.inc
 
