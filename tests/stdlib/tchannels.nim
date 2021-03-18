@@ -19,10 +19,7 @@ when true:
   proc recvHandler() =
     template fn =
       let x = chan.recv()
-    when compiles(fn()): fn() # so that we can reproduce the bug on older nim
-    else:
-      var x: seq[string]
-      chan.recv(x)
+    fn()
 
   template benchmark() =
     for t in mitems(sender):
