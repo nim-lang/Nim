@@ -1086,6 +1086,8 @@ proc parseUntil(p: var RstParser, father: PRstNode, postfix: string,
     line = currentTok(p).line
     col = currentTok(p).col
   inc p.idx
+
+  var pTmp: PRstNode
   while true:
     dbg currentTok(p).kind, currentTok(p).symbol
     case currentTok(p).kind
@@ -1096,13 +1098,21 @@ proc parseUntil(p: var RstParser, father: PRstNode, postfix: string,
         break
       else:
         dbg postfix, interpretBackslash, prevTok(p).symbol, currentTok(p).symbol
-        if postfix == "`" and currentTok(p).symbol == "\\":
+        if postfix == "`":
+          if prevTok(p).symbol == "\\" and currentTok(p).symbol == "`":
+            # father[^1] = newLeaf(p)
+            father.sons[^1] = newLeaf(p)
+          else:
+            father.add(newLeaf(p))
           inc p.idx
-        elif postfix == "`" and prevTok(p).symbol == "\\" and currentTok(p).symbol == "`":
-          dbg "gook1"
-          # parseBackslash(p, father)
-          father.add(newLeaf(p))
-          inc p.idx
+          # if currentTok(p).symbol == "\\":
+          #   pTmp = newLeaf(p)
+          # elif prevTok(p).symbol == "\\" and currentTok(p).symbol == "`":
+          #   father.add(newLeaf(p))
+          # else:
+          #   father.add(pTmp)
+          #   father.add(newLeaf(p))
+          # inc p.idx
         else:
           # dbg p
           if interpretBackslash:
