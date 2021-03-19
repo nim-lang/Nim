@@ -3,7 +3,9 @@
 when not defined(js):
   {.error: "This module only works on the JavaScript platform".}
 
-type RegExp* {.importjs.} = ref object of JsRoot ## Regular Expressions for JavaScript target.
+type RegExp* {.importjs.} = ref object of JsRoot
+  ## Regular Expressions for JavaScript target.
+  ## See https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/RegExp
   flags* {.importjs.}: cstring        ## cstring that contains the flags of the RegExp object.
   dotAll* {.importjs.}: bool          ## Whether `.` matches newlines or not.
   global* {.importjs.}: bool          ## Whether to test against all possible matches in a string, or only against the first.
