@@ -110,8 +110,12 @@
                                                                                                   | `UTC-5 -> -05`
   `zzz`        Same as above but with `:mm` where *mm* represents minutes.                        | `UTC+7 -> +07:00`
                                                                                                   | `UTC-5 -> -05:00`
+  `ZZZ`        Same as above but with `mm` where *mm* represents minutes.                         | `UTC+7 -> +0700`
+                                                                                                  | `UTC-5 -> -0500`
   `zzzz`       Same as above but with `:ss` where *ss* represents seconds.                        | `UTC+7 -> +07:00:00`
                                                                                                   | `UTC-5 -> -05:00:00`
+  `ZZZZ`       Same as above but with `ss` where *ss* represents seconds.                         | `UTC+7 -> +070000`
+                                                                                                  | `UTC-5 -> -050000`
   `g`          Era: AD or BC                                                                      | `300 AD -> AD`
                                                                                                   | `300 BC -> BC`
   `fff`        Milliseconds display                                                               | `1000000 nanoseconds -> 1`
@@ -1319,8 +1323,10 @@ proc local*(t: Time): DateTime =
 
 proc now*(): DateTime {.tags: [TimeEffect], benign.} =
   ## Get the current time as a  `DateTime` in the local timezone.
-  ##
   ## Shorthand for `getTime().local`.
+  ##
+  ## .. warning:: Unsuitable for benchmarking, use `monotimes.getMonoTime` or
+  ##    `cpuTime` instead, depending on the use case.
   getTime().local
 
 proc initDateTime*(monthday: MonthdayRange, month: Month, year: int,
@@ -1469,6 +1475,7 @@ type
     uuuu
     UUUU
     z, zz, zzz, zzzz
+    ZZZ, ZZZZ
     g
 
     # This is a special value used to mark literal format values.
@@ -1621,6 +1628,8 @@ proc stringToPattern(str: string): FormatPattern =
   of "zz": result = zz
   of "zzz": result = zzz
   of "zzzz": result = zzzz
+  of "ZZZ": result = ZZZ
+  of "ZZZZ": result = ZZZZ
   of "g": result = g
   else: raise newException(TimeFormatParseError,
                            "'" & str & "' is not a valid pattern")
@@ -1727,7 +1736,7 @@ proc formatPattern(dt: DateTime, pattern: FormatPattern, result: var string,
       result.add '+' & $year
   of UUUU:
     result.add $dt.year
-  of z, zz, zzz, zzzz:
+  of z, zz, zzz, zzzz, ZZZ, ZZZZ:
     if dt.timezone != nil and dt.timezone.name == "Etc/UTC":
       result.add 'Z'
     else:
@@ -1738,16 +1747,18 @@ proc formatPattern(dt: DateTime, pattern: FormatPattern, result: var string,
         result.add $(absOffset div 3600)
       of zz:
         result.add (absOffset div 3600).intToStr(2)
-      of zzz:
+      of zzz, ZZZ:
         let h = (absOffset div 3600).intToStr(2)
         let m = ((absOffset div 60) mod 60).intToStr(2)
-        result.add h & ":" & m
-      of zzzz:
+        let sep = if pattern == zzz: ":" else: ""
+        result.add h & sep & m
+      of zzzz, ZZZZ:
         let absOffset = abs(dt.utcOffset)
         let h = (absOffset div 3600).intToStr(2)
         let m = ((absOffset div 60) mod 60).intToStr(2)
         let s = (absOffset mod 60).intToStr(2)
-        result.add h & ":" & m & ":" & s
+        let sep = if pattern == zzzz: ":" else: ""
+        result.add h & sep & m & sep & s
       else: assert false
   of g:
     result.add if dt.year < 1: "BC" else: "AD"
@@ -1881,7 +1892,7 @@ proc parsePattern(input: string, pattern: FormatPattern, i: var int,
     parsed.year = some(year)
   of UUUU:
     parsed.year = some(takeInt(1..high(int), allowSign = true))
-  of z, zz, zzz, zzzz:
+  of z, zz, zzz, zzzz, ZZZ, ZZZZ:
     case input[i]
     of '+', '-':
       let sign = if input[i] == '-': 1 else: -1
@@ -1892,21 +1903,24 @@ proc parsePattern(input: string, pattern: FormatPattern, i: var int,
         offset = takeInt(1..2) * 3600
       of zz:
         offset = takeInt(2..2) * 3600
-      of zzz:
+      of zzz, ZZZ:
         offset.inc takeInt(2..2) * 3600
-        if input[i] != ':':
-          return false
-        i.inc
+        if pattern == zzz:
+          if input[i] != ':':
+            return false
+          i.inc
         offset.inc takeInt(2..2) * 60
-      of zzzz:
+      of zzzz, ZZZZ:
         offset.inc takeInt(2..2) * 3600
-        if input[i] != ':':
-          return false
-        i.inc
+        if pattern == zzzz:
+          if input[i] != ':':
+            return false
+          i.inc
         offset.inc takeInt(2..2) * 60
-        if input[i] != ':':
-          return false
-        i.inc
+        if pattern == zzzz:
+          if input[i] != ':':
+            return false
+          i.inc
         offset.inc takeInt(2..2)
       else: assert false
       parsed.utcOffset = some(offset * sign)
@@ -2563,6 +2577,9 @@ proc epochTime*(): float {.tags: [TimeEffect].} =
   ## on the hardware/OS).
   ##
   ## `getTime` should generally be preferred over this proc.
+  ##
+  ## .. warning:: Unsuitable for benchmarking (but still better than `now`),
+  ##    use `monotimes.getMonoTime` or `cpuTime` instead, depending on the use case.
   when defined(macosx):
     var a {.noinit.}: Timeval
     gettimeofday(a)

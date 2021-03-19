@@ -1048,16 +1048,16 @@ proc realpath*(name, resolved: cstring): cstring {.
 proc mkstemp*(tmpl: cstring): cint {.importc, header: "<stdlib.h>", sideEffect.}
   ## Creates a unique temporary file.
   ##
-  ## **Warning**: The `tmpl` argument is written to by `mkstemp` and thus
-  ## can't be a string literal. If in doubt make a copy of the cstring before
-  ## passing it in.
+  ## .. warning:: The `tmpl` argument is written to by `mkstemp` and thus
+  ##   can't be a string literal. If in doubt make a copy of the cstring before
+  ##   passing it in.
 
 proc mkstemps*(tmpl: cstring, suffixlen: int): cint {.importc, header: "<stdlib.h>", sideEffect.}
   ## Creates a unique temporary file.
   ##
-  ## **Warning**: The `tmpl` argument is written to by `mkstemps` and thus
-  ## can't be a string literal. If in doubt make a copy of the cstring before
-  ## passing it in.
+  ## .. warning:: The `tmpl` argument is written to by `mkstemps` and thus
+  ##   can't be a string literal. If in doubt make a copy of the cstring before
+  ##   passing it in.
 
 proc mkdtemp*(tmpl: cstring): pointer {.importc, header: "<stdlib.h>", sideEffect.}
 

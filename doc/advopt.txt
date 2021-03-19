@@ -35,6 +35,9 @@ Advanced options:
   --colors:on|off           turn compiler messages coloring on|off
   --listFullPaths:on|off    list full paths in messages
   --declaredLocs:on|off     show declaration locations in messages
+  --spellSuggest|:num       show at most `num >= 0` spelling suggestions on typos.
+                            if `num` is not specified (or `auto`), return
+                            an implementation defined set of suggestions.
   -w:on|off|list, --warnings:on|off|list
                             turn all warnings on|off or list all available
   --warning[X]:on|off       turn specific warning X on|off

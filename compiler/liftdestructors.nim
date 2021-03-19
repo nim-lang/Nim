@@ -354,7 +354,7 @@ proc considerAsgnOrSink(c: var TLiftCtx; t: PType; body, x, y: PNode;
     #  markUsed(c.g.config, c.info, op, c.g.usageSym)
     onUse(c.info, op)
     # We also now do generic instantiations in the destructor lifting pass:
-    if op.ast[genericParamsPos].kind != nkEmpty:
+    if op.ast.isGenericRoutine:
       op = instantiateGeneric(c, op, t, t.typeInst)
       field = op
       #echo "trying to use ", op.ast
@@ -370,7 +370,7 @@ proc addDestructorCall(c: var TLiftCtx; orig: PType; body, x: PNode) =
   var op = t.destructor
 
   if op != nil and sfOverriden in op.flags:
-    if op.ast[genericParamsPos].kind != nkEmpty:
+    if op.ast.isGenericRoutine:
       # patch generic destructor:
       op = instantiateGeneric(c, op, t, t.typeInst)
       setAttachedOp(c.g, c.idgen.module, t, attachedDestructor, op)
@@ -394,7 +394,7 @@ proc considerUserDefinedOp(c: var TLiftCtx; t: PType; body, x, y: PNode): bool =
     var op = t.destructor
     if op != nil and sfOverriden in op.flags:
 
-      if op.ast[genericParamsPos].kind != nkEmpty:
+      if op.ast.isGenericRoutine:
         # patch generic destructor:
         op = instantiateGeneric(c, op, t, t.typeInst)
         setAttachedOp(c.g, c.idgen.module, t, attachedDestructor, op)
@@ -1021,7 +1021,7 @@ proc patchBody(g: ModuleGraph; c: PContext; n: PNode; info: TLineInfo; idgen: Id
 
       let op = getAttachedOp(g, t, attachedDestructor)
       if op != nil:
-        if op.ast[genericParamsPos].kind != nkEmpty:
+        if op.ast.isGenericRoutine:
           internalError(g.config, info, "resolved destructor is generic")
         if op.magic == mDestroy:
           internalError(g.config, info, "patching mDestroy with mDestroy?")
@@ -1031,7 +1031,7 @@ proc patchBody(g: ModuleGraph; c: PContext; n: PNode; info: TLineInfo; idgen: Id
 proc inst(g: ModuleGraph; c: PContext; t: PType; kind: TTypeAttachedOp; idgen: IdGenerator;
           info: TLineInfo) =
   let op = getAttachedOp(g, t, kind)
-  if op != nil and op.ast != nil and op.ast[genericParamsPos].kind != nkEmpty:
+  if op != nil and op.ast != nil and op.ast.isGenericRoutine:
     if t.typeInst != nil:
       var a: TLiftCtx
       a.info = info
