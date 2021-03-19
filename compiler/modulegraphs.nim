@@ -12,9 +12,9 @@
 ## or stored in a rod-file.
 
 import ast, astalgo, intsets, tables, options, lineinfos, hashes, idents,
-  btrees, md5
+  btrees, md5, ropes, msgs
 
-import ic / [packed_ast, to_packed_ast]
+import ic / [packed_ast, ic]
 
 type
   SigHash* = distinct MD5Digest
@@ -30,6 +30,7 @@ type
     patterns*: seq[LazySym]
     pureEnums*: seq[LazySym]
     interf: TStrTable
+    uniqueName*: Rope
 
   Operators* = object
     opNot*, opContains*, opLe*, opLt*, opAnd*, opOr*, opIsNil*, opEq*: PSym
@@ -117,6 +118,15 @@ type
                  close: TPassClose,
                  isFrontend: bool]
 
+proc resetForBackend*(g: ModuleGraph) =
+  initStrTable(g.compilerprocs)
+  g.typeInstCache.clear()
+  g.procInstCache.clear()
+  for a in mitems(g.attachedOps):
+    a.clear()
+  g.methodsPerType.clear()
+  g.enumToStringProcs.clear()
+
 const
   cb64 = [
     "A", "B", "C", "D", "E", "F", "G", "H", "I", "J", "K", "L", "M", "N",
@@ -169,7 +179,7 @@ proc initEncoder*(g: ModuleGraph; module: PSym) =
   let id = module.position
   if id >= g.encoders.len:
     setLen g.encoders, id+1
-  to_packed_ast.initEncoder(g.encoders[id],
+  ic.initEncoder(g.encoders[id],
     g.packed[id].fromDisk, module, g.config, g.startupPackedConfig)
 
 type
@@ -359,10 +369,13 @@ else:
 proc stopCompile*(g: ModuleGraph): bool {.inline.} =
   result = g.doStopCompile != nil and g.doStopCompile()
 
-proc createMagic*(g: ModuleGraph; name: string, m: TMagic): PSym =
-  result = newSym(skProc, getIdent(g.cache, name), nextSymId(g.idgen), nil, unknownLineInfo, {})
+proc createMagic*(g: ModuleGraph; idgen: IdGenerator; name: string, m: TMagic): PSym =
+  result = newSym(skProc, getIdent(g.cache, name), nextSymId(idgen), nil, unknownLineInfo, {})
   result.magic = m
   result.flags = {sfNeverRaises}
+
+proc createMagic(g: ModuleGraph; name: string, m: TMagic): PSym =
+  result = createMagic(g, g.idgen, name, m)
 
 proc registerModule*(g: ModuleGraph; m: PSym) =
   assert m != nil
@@ -374,8 +387,12 @@ proc registerModule*(g: ModuleGraph; m: PSym) =
   if m.position >= g.packed.len:
     setLen(g.packed, m.position + 1)
 
-  g.ifaces[m.position] = Iface(module: m, converters: @[], patterns: @[])
+  g.ifaces[m.position] = Iface(module: m, converters: @[], patterns: @[],
+                               uniqueName: rope(uniqueModuleName(g.config, FileIndex(m.position))))
   initStrTable(g.ifaces[m.position].interf)
+
+proc registerModuleById*(g: ModuleGraph; m: FileIndex) =
+  registerModule(g, g.packed[int m].module)
 
 proc initOperators(g: ModuleGraph): Operators =
   # These are safe for IC.

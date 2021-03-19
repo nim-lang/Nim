@@ -14,6 +14,14 @@
 ## JSON is based on a subset of the JavaScript Programming Language,
 ## Standard ECMA-262 3rd Edition - December 1999.
 ##
+## See also
+## ========
+## * `std/parsejson <parsejson.html>`_
+## * `std/jsonutils <jsonutils.html>`_
+## * `std/marshal <marshal.html>`_
+## * `std/jscore <jscore.html>`_
+##
+##
 ## Overview
 ## ========
 ##
@@ -304,7 +312,10 @@ proc `%`*(s: string): JsonNode =
 
 proc `%`*(n: uint): JsonNode =
   ## Generic constructor for JSON data. Creates a new `JInt JsonNode`.
-  result = JsonNode(kind: JInt, num: BiggestInt(n))
+  if n > cast[uint](int.high):
+    result = newJRawNumber($n)
+  else:
+    result = JsonNode(kind: JInt, num: BiggestInt(n))
 
 proc `%`*(n: int): JsonNode =
   ## Generic constructor for JSON data. Creates a new `JInt JsonNode`.
@@ -312,7 +323,10 @@ proc `%`*(n: int): JsonNode =
 
 proc `%`*(n: BiggestUInt): JsonNode =
   ## Generic constructor for JSON data. Creates a new `JInt JsonNode`.
-  result = JsonNode(kind: JInt, num: BiggestInt(n))
+  if n > cast[BiggestUInt](BiggestInt.high):
+    result = newJRawNumber($n)
+  else:
+    result = JsonNode(kind: JInt, num: BiggestInt(n))
 
 proc `%`*(n: BiggestInt): JsonNode =
   ## Generic constructor for JSON data. Creates a new `JInt JsonNode`.
@@ -1055,8 +1069,16 @@ when defined(nimFixedForwardGeneric):
     dst = jsonNode.copy
 
   proc initFromJson[T: SomeInteger](dst: var T; jsonNode: JsonNode, jsonPath: var string) =
-    verifyJsonKind(jsonNode, {JInt}, jsonPath)
-    dst = T(jsonNode.num)
+    when T is uint|uint64:
+      case jsonNode.kind
+      of JString:
+        dst = T(parseBiggestUInt(jsonNode.str))
+      else:
+        verifyJsonKind(jsonNode, {JInt}, jsonPath)
+        dst = T(jsonNode.num)
+    else:
+      verifyJsonKind(jsonNode, {JInt}, jsonPath)
+      dst = cast[T](jsonNode.num)
 
   proc initFromJson[T: SomeFloat](dst: var T; jsonNode: JsonNode; jsonPath: var string) =
     verifyJsonKind(jsonNode, {JInt, JFloat}, jsonPath)

@@ -636,10 +636,9 @@ proc semTemplateDef(c: PContext, n: PNode): PNode =
       param.flags.incl sfTemplateParam
       param.flags.excl sfGenSym
       if param.typ.kind != tyUntyped: allUntyped = false
-    if gp.len > 0:
-      if n[genericParamsPos].kind == nkEmpty:
-        # we have a list of implicit type parameters:
-        n[genericParamsPos] = gp
+    if gp.len > 0 and n[genericParamsPos].kind == nkEmpty:
+      # we have a list of implicit type parameters:
+      n[genericParamsPos] = gp
   else:
     s.typ = newTypeS(tyProc, c)
     # XXX why do we need tyTyped as a return type again?

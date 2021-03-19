@@ -16,7 +16,7 @@ const
 var nimExe*: string
 const allowList = [
   "jsbigints.nim", "jsheaders.nim", "jsformdata.nim", "jsfetch.nim", "jshttpclient.nim",
-  "jssynchttpclient.nim", "jsasynchttpclient.nim", "jsxmlhttprequest.nim",
+  "jssynchttpclient.nim", "jsasynchttpclient.nim", "jsxmlhttprequest.nim", "jsutils.nim",
 ]
 
 template isJsOnly(file: string): bool =

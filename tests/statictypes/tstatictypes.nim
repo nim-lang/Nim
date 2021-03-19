@@ -2,6 +2,8 @@ discard """
 nimout: '''
 staticAlialProc instantiated with 358
 staticAlialProc instantiated with 368
+0: Foo
+1: Bar
 '''
 output: '''
 16
@@ -289,8 +291,10 @@ macro fooParam(x: static array[2, string]): untyped =
     echo i, ": ", val
 
 macro barParam(x: static Table[int, string]): untyped =
-  for i, val in x:
+  let barParamInsides = proc(i: int, val: string): NimNode =
     echo i, ": ", val
+  for i, val in x:
+    discard barParamInsides(i, val)
 
 fooM()
 barM()

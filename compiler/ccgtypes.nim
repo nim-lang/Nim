@@ -40,7 +40,13 @@ proc mangleName(m: BModule; s: PSym): Rope =
   result = s.loc.r
   if result == nil:
     result = s.name.s.mangle.rope
-    result.add(idOrSig(s, m.module.name.s.mangle, m.sigConflicts))
+    result.add "_"
+    result.add m.g.graph.ifaces[s.itemId.module].uniqueName
+    result.add "_"
+    result.add rope s.itemId.item
+    if m.hcrOn:
+      result.add "_"
+      result.add(idOrSig(s, m.module.name.s.mangle, m.sigConflicts))
     s.loc.r = result
     writeMangledName(m.ndi, s, m.config)
 
@@ -1273,12 +1279,12 @@ proc genDeepCopyProc(m: BModule; s: PSym; result: Rope) =
   m.s[cfsTypeInit3].addf("$1.deepcopy =(void* (N_RAW_NIMCALL*)(void*))$2;$n",
      [result, s.loc.r])
 
-proc declareNimType(m: BModule, name: string; str: Rope, ownerModule: PSym) =
+proc declareNimType(m: BModule, name: string; str: Rope, module: int) =
   let nr = rope(name)
   if m.hcrOn:
     m.s[cfsData].addf("static $2* $1;$n", [str, nr])
     m.s[cfsTypeInit1].addf("\t$1 = ($3*)hcrGetGlobal($2, \"$1\");$n",
-          [str, getModuleDllPath(m, ownerModule), nr])
+          [str, getModuleDllPath(m, module), nr])
   else:
     m.s[cfsData].addf("extern $2 $1;$n", [str, nr])
 
@@ -1351,6 +1357,9 @@ proc genTypeInfoV2Impl(m: BModule, t, origType: PType, name: Rope; info: TLineIn
   if t.kind == tyObject and t.len > 0 and t[0] != nil and optEnableDeepCopy in m.config.globalOptions:
     discard genTypeInfoV1(m, t, info)
 
+proc moduleOpenForCodegen(m: BModule; module: int32): bool {.inline.} =
+  result = module < m.g.modules.len and m.g.modules[module] != nil
+
 proc genTypeInfoV2(m: BModule, t: PType; info: TLineInfo): Rope =
   let origType = t
   # distinct types can have their own destructors
@@ -1374,11 +1383,11 @@ proc genTypeInfoV2(m: BModule, t: PType; info: TLineInfo): Rope =
   result = "NTIv2$1_" % [rope($sig)]
   m.typeInfoMarkerV2[sig] = result
 
-  let owner = t.skipTypes(typedescPtrs).owner.getModule
-  if owner != m.module:
+  let owner = t.skipTypes(typedescPtrs).itemId.module
+  if owner != m.module.position and moduleOpenForCodegen(m, owner):
     # make sure the type info is created in the owner module
-    assert m.g.modules[owner.position] != nil
-    discard genTypeInfoV2(m.g.modules[owner.position], origType, info)
+    assert m.g.modules[owner] != nil
+    discard genTypeInfoV2(m.g.modules[owner], origType, info)
     # reference the type info as extern here
     discard cgsym(m, "TNimTypeV2")
     declareNimType(m, "TNimTypeV2", result, owner)
@@ -1396,6 +1405,33 @@ proc openArrayToTuple(m: BModule; t: PType): PType =
   p.add a
   result.add p
   result.add getSysType(m.g.graph, t.owner.info, tyInt)
+
+proc typeToC(t: PType): string =
+  ## Just for more readable names, the result doesn't have
+  ## to be unique.
+  let s = typeToString(t)
+  result = newStringOfCap(s.len)
+  for i in 0..<s.len:
+    let c = s[i]
+    case c
+    of 'a'..'z':
+      result.add c
+    of 'A'..'Z':
+      result.add toLowerAscii(c)
+    of ' ':
+      discard
+    of ',':
+      result.add '_'
+    of '.':
+      result.add 'O'
+    of '[', '(', '{':
+      result.add 'L'
+    of ']', ')', '}':
+      result.add 'T'
+    else:
+      # We mangle upper letters and digits too so that there cannot
+      # be clashes with our special meanings
+      result.addInt ord(c)
 
 proc genTypeInfoV1(m: BModule, t: PType; info: TLineInfo): Rope =
   let origType = t
@@ -1417,14 +1453,14 @@ proc genTypeInfoV1(m: BModule, t: PType; info: TLineInfo): Rope =
     m.typeInfoMarker[sig] = marker.str
     return prefixTI.rope & marker.str & ")".rope
 
-  result = "NTI$1_" % [rope($sig)]
+  result = "NTI$1$2_" % [rope(typeToC(t)), rope($sig)]
   m.typeInfoMarker[sig] = result
 
-  let owner = t.skipTypes(typedescPtrs).owner.getModule
-  if owner != m.module:
+  let owner = t.skipTypes(typedescPtrs).itemId.module
+  if owner != m.module.position and moduleOpenForCodegen(m, owner):
     # make sure the type info is created in the owner module
-    assert m.g.modules[owner.position] != nil
-    discard genTypeInfoV1(m.g.modules[owner.position], origType, info)
+    assert m.g.modules[owner] != nil
+    discard genTypeInfoV1(m.g.modules[owner], origType, info)
     # reference the type info as extern here
     discard cgsym(m, "TNimType")
     discard cgsym(m, "TNimNode")
