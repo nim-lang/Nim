@@ -11,7 +11,7 @@ runnableExamples:
     z1: int8
   let a = (1.5'f32, (b: "b2", a: "a2"), 'x', @[Foo(t: true, z1: -3), nil], [{"name": "John"}.newStringTable])
   let j = a.toJson
-  doAssert j.jsonTo(typeof(a)).toJson == j
+  assert j.jsonTo(typeof(a)).toJson == j
 
 import std/[json,strutils,tables,sets,strtabs,options]
 
@@ -316,8 +316,8 @@ proc toJsonHook*[K: string|cstring, V](t: (Table[K, V] | OrderedTable[K, V])): J
     assert $toJson(foo) == """{"t":{"two":2},"ot":{"one":1,"three":3}}"""
     # if keys are not string|cstring, you can use this:
     let a = {10: "foo", 11: "bar"}.newOrderedTable
-    let a2 = collect(newSeq): (for k,v in a: (k,v))
-    doAssert $toJson(a2) == """[[10,"foo"],[11,"bar"]]"""
+    let a2 = collect: (for k,v in a: (k,v))
+    assert $toJson(a2) == """[[10,"foo"],[11,"bar"]]"""
 
   result = newJObject()
   for k, v in pairs(t):
