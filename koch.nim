@@ -552,7 +552,13 @@ proc runCI(cmd: string) =
     # main bottleneck here
     # xxx: even though this is the main bottleneck, we could speedup the rest via batching with `--batch`.
     # BUG: with initOptParser, `--batch:'' all` interprets `all` as the argument of --batch, pending bug #14343
-    execFold("Run tester", "nim c -r -d:nimCoroutines --putenv:NIM_TESTAMENT_REMOTE_NETWORKING:1 -d:nimStrictMode testament/testament $# all -d:nimCoroutines" % batchParam)
+    const Targets =
+      # Disable JS tests on i?86 systems since node.js has been deprecated there.
+      when defined(i386) and defined(linux):
+        "--targets:\"c cpp\""
+      else:
+        "--targets:\"c cpp js\""
+    execFold("Run tester", "nim c -r -d:nimCoroutines --putenv:NIM_TESTAMENT_REMOTE_NETWORKING:1 -d:nimStrictMode testament/testament $1 $2 all -d:nimCoroutines" % [batchParam, Targets])
 
     block CT_FFI:
       when defined(posix): # windows can be handled in future PR's
