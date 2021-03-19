@@ -57,7 +57,9 @@ jobs:
   pool:
     vmImage: ubuntu-latest
 
-  container: ghcr.io/alaviss/nim-ci:sha-1d368dc@sha256:d3f556a523a5220bc0a5b197f52c1761dd3756132a1afaa3ce062a8e2c464079
+  container:
+    image: ghcr.io/alaviss/nim-ci:sha-1d368dc@sha256:d3f556a523a5220bc0a5b197f52c1761dd3756132a1afaa3ce062a8e2c464079
+    options: --init
 
   steps:
     - template: ci/azure/ci-steps.yml
