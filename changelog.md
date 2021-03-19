@@ -239,6 +239,8 @@
 
 - Added `jsconsole.dir`, `jsconsole.dirxml`, `jsconsole.timeStamp`.
 
+- Added `std/smartptrs`.
+
 
 ## Language changes
 
