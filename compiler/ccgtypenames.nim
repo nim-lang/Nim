@@ -104,9 +104,9 @@ proc uniqueCTypeName(c: var string; t: PType; g: ModuleGraph) =
     else:
       c.uniqueCTypeName s.name.s
       c &= '_'
-      c &= $g.ifaces[s.itemId.module].uniqueName
+      c &= $g.ifaces[t.itemId.module].uniqueName
       c &= '_'
-      c.addInt s.itemId.item
+      c.addInt t.itemId.item
   of tyArray:
     c &= "NA"
     c.addInt toInt64Checked(lengthOrd(g.config, t[0]), 0)
