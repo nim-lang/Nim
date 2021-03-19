@@ -134,10 +134,10 @@ proc genTraverseProcSeq(c: TTraversalClosure, accessor: Rope, typ: PType) =
   else:
     lineF(p, cpsStmts, "}$n", [])
 
-proc genTraverseProc(m: BModule, origTyp: PType; sig: SigHash): Rope =
+proc genTraverseProc(m: BModule, origTyp: PType; sig: string): Rope =
   var c: TTraversalClosure
   var p = newProc(nil, m)
-  result = "Marker_" & getTypeName(m, origTyp, sig)
+  result = "Marker_" & sig.rope
   let
     hcrOn = m.hcrOn
     typ = origTyp.skipTypes(abstractInstOwned)

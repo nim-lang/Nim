@@ -280,54 +280,53 @@ proc fillResult(conf: ConfigRef; param: PNode) =
     incl(param.sym.loc.flags, lfIndirect)
     param.sym.loc.storage = OnUnknown
 
-when false:
-  proc typeNameOrLiteral(m: BModule; t: PType, literal: string): string =
-    if t.sym != nil and sfImportc in t.sym.flags and t.sym.magic == mNone:
-      useHeader(m, t.sym)
-      result = $t.sym.loc.r
+proc typeNameOrLiteral(m: BModule; t: PType, literal: string): Rope =
+  if t.sym != nil and sfImportc in t.sym.flags and t.sym.magic == mNone:
+    useHeader(m, t.sym)
+    result = t.sym.loc.r
+  else:
+    result = literal.rope
+
+proc getSimpleTypeDesc(m: BModule, typ: PType): Rope =
+  if typ == nil: return rope"void"
+  const
+    NumericalTypeToStr: array[tyInt..tyUInt64, string] = [
+      "NI", "NI8", "NI16", "NI32", "NI64",
+      "NF", "NF32", "NF64", "NF128",
+      "NU", "NU8", "NU16", "NU32", "NU64"]
+  case typ.kind
+  of tyPointer:
+    result = typeNameOrLiteral(m, typ, "void*")
+  of tyString:
+    case detectStrVersion(m)
+    of 2:
+      discard cgsym(m, "NimStrPayload")
+      discard cgsym(m, "NimStringV2")
+      result = typeNameOrLiteral(m, typ, "NimStringV2")
     else:
-      result = literal
+      discard cgsym(m, "NimStringDesc")
+      result = typeNameOrLiteral(m, typ, "NimStringDesc*")
+  of tyCString: result = typeNameOrLiteral(m, typ, "NCSTRING")
+  of tyBool: result = typeNameOrLiteral(m, typ, "NIM_BOOL")
+  of tyChar: result = typeNameOrLiteral(m, typ, "NIM_CHAR")
+  of tyNil: result = typeNameOrLiteral(m, typ, "void*")
+  of tyInt..tyUInt64:
+    result = typeNameOrLiteral(m, typ, NumericalTypeToStr[typ.kind])
+  of tyDistinct, tyRange, tyOrdinal: result = getSimpleTypeDesc(m, typ[0])
+  of tyStatic:
+    if typ.n != nil: result = getSimpleTypeDesc(m, lastSon typ)
+    else: internalError(m.config, "tyStatic for getSimpleTypeDesc")
+  of tyGenericInst, tyAlias, tySink, tyOwned:
+    result = getSimpleTypeDesc(m, lastSon typ)
+  else: result = nil
 
-  proc getSimpleTypeDesc(m: BModule, typ: PType): string =
-    if typ == nil: return "void"
-    const
-      NumericalTypeToStr: array[tyInt..tyUInt64, string] = [
-        "NI", "NI8", "NI16", "NI32", "NI64",
-        "NF", "NF32", "NF64", "NF128",
-        "NU", "NU8", "NU16", "NU32", "NU64"]
-    case typ.kind
-    of tyPointer:
-      result = typeNameOrLiteral(m, typ, "void*")
-    of tyString:
-      case detectStrVersion(m)
-      of 2:
-        discard cgsym(m, "NimStrPayload")
-        discard cgsym(m, "NimStringV2")
-        result = typeNameOrLiteral(m, typ, "NimStringV2")
-      else:
-        discard cgsym(m, "NimStringDesc")
-        result = typeNameOrLiteral(m, typ, "NimStringDesc*")
-    of tyCString: result = typeNameOrLiteral(m, typ, "NCSTRING")
-    of tyBool: result = typeNameOrLiteral(m, typ, "NIM_BOOL")
-    of tyChar: result = typeNameOrLiteral(m, typ, "NIM_CHAR")
-    of tyNil: result = typeNameOrLiteral(m, typ, "void*")
-    of tyInt..tyUInt64:
-      result = typeNameOrLiteral(m, typ, NumericalTypeToStr[typ.kind])
-    of tyDistinct, tyRange, tyOrdinal: result = getSimpleTypeDesc(m, typ[0])
-    of tyStatic:
-      if typ.n != nil: result = getSimpleTypeDesc(m, lastSon typ)
-      else: internalError(m.config, "tyStatic for getSimpleTypeDesc")
-    of tyGenericInst, tyAlias, tySink, tyOwned:
-      result = getSimpleTypeDesc(m, lastSon typ)
-    else: result = ""
-
-    when false:
-      # Why would we ever need this? It's an imported type,
-      # no need to keep track of it.
-      if result != nil and typ.isImportedType():
-        let sig = hashType typ
-        if cacheHasType(m.typeCache, sig) == nil:
-          m.typeCache[sig] = result
+  when false:
+    # Why would we ever need this? It's an imported type,
+    # no need to keep track of it.
+    if result != nil and typ.isImportedType():
+      let sig = hashType typ
+      if cacheHasType(m.typeCache, sig) == nil:
+        m.typeCache[sig] = result
 
 proc pushType(m: BModule, typ: PType) =
   for i in 0..high(m.typeStack):
@@ -879,7 +878,7 @@ proc getTypeDesc(m: BModule, typ: PType; kind = skParam): Rope =
   var check = initIntSet()
   let sig = uniqueCTypeName(typ, m.g.graph)
   getTypeDescAux(m, typ, check, kind, sig)
-  result = sig.rope
+  result = useType(m, typ, sig)
 
 type
   TClosureTypeKind = enum ## In C closures are mapped to 3 different things.
@@ -1228,8 +1227,8 @@ proc genDeepCopyProc(m: BModule; s: PSym; result: Rope) =
   m.s[cfsTypeInit3].addf("$1.deepcopy =(void* (N_RAW_NIMCALL*)(void*))$2;$n",
      [result, s.loc.r])
 
-proc declareNimType(m: BModule, name: string; str: Rope, module: int) =
-  let nr = rope(name)
+proc declareNimType(m: BModule, name: string; str: Rope; module: FileIndex) =
+  let nr = name.rope
   if m.hcrOn:
     m.s[cfsData].addf("static $2* $1;$n", [str, nr])
     m.s[cfsTypeInit1].addf("\t$1 = ($3*)hcrGetGlobal($2, \"$1\");$n",
@@ -1317,19 +1316,19 @@ proc genTypeInfoV2(m: BModule, t: PType; info: TLineInfo): Rope =
   let prefixTI = if m.hcrOn: "(" else: "(&"
 
   let sig = uniqueCTypeName(origType, m.g.graph)
+  result = "NTIv2$1_" % [rope($sig)]
 
   if m.typeInfoMarkerV2.contains(sig):
-    return prefixTI.rope & sig.rope & ")".rope
+    return prefixTI.rope & result & ")".rope
 
   let marker = m.g.typeInfoMarkerV2.getOrDefault(sig)
-  if marker.str != nil:
+  if marker != FileIndex(0):
     discard cgsym(m, "TNimTypeV2")
-    declareNimType(m, "TNimTypeV2", marker.str, marker.owner)
+    declareNimType(m, "TNimTypeV2", result, marker)
     # also store in local type section:
-    m.typeInfoMarkerV2[sig] = marker.str
-    return prefixTI.rope & marker.str & ")".rope
+    m.typeInfoMarkerV2.incl sig
+    return prefixTI.rope & result & ")".rope
 
-  result = "NTIv2$1_" % [rope($sig)]
   m.typeInfoMarkerV2.incl sig
 
   let owner = t.skipTypes(typedescPtrs).itemId.module
@@ -1339,10 +1338,10 @@ proc genTypeInfoV2(m: BModule, t: PType; info: TLineInfo): Rope =
     discard genTypeInfoV2(m.g.modules[owner], origType, info)
     # reference the type info as extern here
     discard cgsym(m, "TNimTypeV2")
-    declareNimType(m, "TNimTypeV2", result, owner)
+    declareNimType(m, "TNimTypeV2", result, FileIndex(owner))
     return prefixTI.rope & result & ")".rope
 
-  m.g.typeInfoMarkerV2[sig] = (str: result, owner: owner)
+  m.g.typeInfoMarkerV2[sig] = FileIndex(owner)
   genTypeInfoV2Impl(m, t, origType, result, info)
   result = prefixTI.rope & result & ")".rope
 
@@ -1355,55 +1354,27 @@ proc openArrayToTuple(m: BModule; t: PType): PType =
   result.add p
   result.add getSysType(m.g.graph, t.owner.info, tyInt)
 
-proc typeToC(t: PType): string =
-  ## Just for more readable names, the result doesn't have
-  ## to be unique.
-  let s = typeToString(t)
-  result = newStringOfCap(s.len)
-  for i in 0..<s.len:
-    let c = s[i]
-    case c
-    of 'a'..'z':
-      result.add c
-    of 'A'..'Z':
-      result.add toLowerAscii(c)
-    of ' ':
-      discard
-    of ',':
-      result.add '_'
-    of '.':
-      result.add 'O'
-    of '[', '(', '{':
-      result.add 'L'
-    of ']', ')', '}':
-      result.add 'T'
-    else:
-      # We mangle upper letters and digits too so that there cannot
-      # be clashes with our special meanings
-      result.addInt ord(c)
-
 proc genTypeInfoV1(m: BModule, t: PType; info: TLineInfo): Rope =
   let origType = t
   var t = skipTypes(origType, irrelevantForBackend + tyUserTypeClasses)
 
   let prefixTI = if m.hcrOn: "(" else: "(&"
 
-  let sig = hashType(origType)
-  result = m.typeInfoMarker.getOrDefault(sig)
-  if result != nil:
+  let sig = uniqueCTypeName(origType, m.g.graph)
+  result = "NTI$1_" % [rope(sig)]
+  if m.typeInfoMarker.cacheHasType(sig):
     return prefixTI.rope & result & ")".rope
 
   let marker = m.g.typeInfoMarker.getOrDefault(sig)
-  if marker.str != nil:
+  if marker != FileIndex(0):
     discard cgsym(m, "TNimType")
     discard cgsym(m, "TNimNode")
-    declareNimType(m, "TNimType", marker.str, marker.owner)
+    declareNimType(m, "TNimType", result, marker)
     # also store in local type section:
-    m.typeInfoMarker[sig] = marker.str
-    return prefixTI.rope & marker.str & ")".rope
+    m.typeInfoMarker.incl sig
+    return prefixTI.rope & result & ")".rope
 
-  result = "NTI$1$2_" % [rope(typeToC(t)), rope($sig)]
-  m.typeInfoMarker[sig] = result
+  m.typeInfoMarker.incl sig
 
   let owner = t.skipTypes(typedescPtrs).itemId.module
   if owner != m.module.position and moduleOpenForCodegen(m, owner):
@@ -1413,10 +1384,10 @@ proc genTypeInfoV1(m: BModule, t: PType; info: TLineInfo): Rope =
     # reference the type info as extern here
     discard cgsym(m, "TNimType")
     discard cgsym(m, "TNimNode")
-    declareNimType(m, "TNimType", result, owner)
+    declareNimType(m, "TNimType", result, FileIndex owner)
     return prefixTI.rope & result & ")".rope
 
-  m.g.typeInfoMarker[sig] = (str: result, owner: owner)
+  m.g.typeInfoMarker[sig] = FileIndex owner
 
   case t.kind
   of tyEmpty, tyVoid: result = rope"0"

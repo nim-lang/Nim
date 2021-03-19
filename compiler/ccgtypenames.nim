@@ -99,11 +99,14 @@ proc uniqueCTypeName(c: var string; t: PType; g: ModuleGraph) =
 
   of tyObject, tyEnum:
     let s = t.sym
-    c.uniqueCTypeName s.name.s
-    c &= '_'
-    c &= $g.ifaces[s.itemId.module].uniqueName
-    c &= '_'
-    c.addInt s.itemId.item
+    if {sfImportc, sfExportc} * s.flags != {}:
+      c &= $t.sym.loc.r
+    else:
+      c.uniqueCTypeName s.name.s
+      c &= '_'
+      c &= $g.ifaces[s.itemId.module].uniqueName
+      c &= '_'
+      c.addInt s.itemId.item
   of tyArray:
     c &= "NA"
     c.addInt toInt64Checked(lengthOrd(g.config, t[0]), 0)

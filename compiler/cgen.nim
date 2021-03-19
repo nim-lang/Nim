@@ -99,8 +99,8 @@ proc getModuleDllPath(m: BModule): Rope =
   let filename = strutils.`%`(platform.OS[m.g.config.target.targetOS].dllFrmt, [name & ext])
   result = makeCString(dir.string & "/" & filename)
 
-proc getModuleDllPath(m: BModule, module: int): Rope =
-  result = getModuleDllPath(m.g.modules[module])
+proc getModuleDllPath(m: BModule, module: FileIndex): Rope =
+  result = getModuleDllPath(m.g.modules[module.int])
 
 proc getModuleDllPath(m: BModule, s: PSym): Rope =
   result = getModuleDllPath(m.g.modules[s.itemId.module])
@@ -1781,10 +1781,10 @@ proc rawNewModule(g: BModuleList; module: PSym, filename: AbsoluteFile): BModule
   result.declaredProtos = initIntSet()
   result.cfilename = filename
   result.filename = filename
-  result.typeCache = initTable[SigHash, Rope]()
-  result.forwTypeCache = initTable[SigHash, Rope]()
+  result.typeCache = initHashSet[string]()
+  result.forwTypeCache = initHashSet[string]()
   result.module = module
-  result.typeInfoMarker = initTable[SigHash, Rope]()
+  result.typeInfoMarker = initHashSet[string]()
   result.sigConflicts = initCountTable[SigHash]()
   result.initProc = newProc(nil, result)
   result.initProc.options = initProcOptions(result)
