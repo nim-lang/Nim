@@ -473,7 +473,7 @@ func send*[T](c: Channel[T], src: sink Isolated[T]) {.inline.} =
   discard sendMpmc(c.d, data.addr, sizeof(T), false)
   wasMoved(data)
 
-template send*[T](c: var Channel[T]; src: T) =
+template send*[T](c: Channel[T]; src: T) =
   ## Helper templates for `send`.
   send(c, isolate(src))
 
