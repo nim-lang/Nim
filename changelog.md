@@ -237,6 +237,8 @@
 - In `std/os`, `getHomeDir`, `expandTilde`, `getTempDir`, `getConfigDir` now do not include trailing `DirSep`,
   unless `-d:nimLegacyHomeDir` is specified (for a transition period).
 
+- Added `jsconsole.dir`, `jsconsole.dirxml`, `jsconsole.timeStamp`.
+
 
 ## Language changes
 
