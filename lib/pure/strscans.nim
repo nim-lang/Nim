@@ -577,6 +577,7 @@ macro scanp*(input, idx: typed; pattern: varargs[untyped]): bool =
     of nnkCallKinds:
       # *{'A'..'Z'} !! s.add(!_)
       template buildWhile(input, idx, init, cond, action): untyped =
+        mixin hasNxt
         while hasNxt(input, idx):
           init
           if not cond: break
