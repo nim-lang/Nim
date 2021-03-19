@@ -12,7 +12,7 @@
 import std / [intsets, tables]
 import ".." / [ast, options, lineinfos, types]
 
-import packed_ast, to_packed_ast, bitabs
+import packed_ast, ic, bitabs
 
 type
   AliveSyms* = seq[IntSet]
@@ -111,7 +111,7 @@ proc aliveCode(c: var AliveContext; g: PackedModuleGraph; tree: PackedTree; n: N
     let otherModule = toFileIndexCached(c.decoder, g, c.thisModule, m).int
     followLater(c, g, otherModule, item)
   of nkMacroDef, nkTemplateDef, nkTypeSection, nkTypeOfExpr,
-     nkCommentStmt, nkIteratorDef, nkIncludeStmt,
+     nkCommentStmt, nkIncludeStmt,
      nkImportStmt, nkImportExceptStmt, nkExportStmt, nkExportExceptStmt,
      nkFromStmt, nkStaticStmt:
     discard
@@ -121,7 +121,7 @@ proc aliveCode(c: var AliveContext; g: PackedModuleGraph; tree: PackedTree; n: N
       aliveCode(c, g, tree, son)
   of nkChckRangeF, nkChckRange64, nkChckRange:
     rangeCheckAnalysis(c, g, tree, n)
-  of nkProcDef, nkConverterDef, nkMethodDef, nkLambda, nkDo, nkFuncDef:
+  of nkProcDef, nkConverterDef, nkMethodDef, nkFuncDef, nkIteratorDef:
     if n.firstSon.kind == nkSym and isNotGeneric(n):
       let item = n.firstSon.operand
       if isExportedToC(c, g, item):

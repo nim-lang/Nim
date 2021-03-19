@@ -1416,7 +1416,7 @@ proc newType*(kind: TTypeKind, id: ItemId; owner: PSym): PType =
                  lockLevel: UnspecifiedLockLevel,
                  uniqueId: id)
   when false:
-    if result.id == 76426:
+    if result.itemId.module == 55 and result.itemId.item == 2:
       echo "KNID ", kind
       writeStackTrace()
 
