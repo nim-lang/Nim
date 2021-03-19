@@ -1245,7 +1245,7 @@ proc genOutFile(d: PDoc, groupedToc = false): Rope =
   renderTocEntries(d[], j, 1, tmp)
   var toc = tmp.rope
   for i in TSymKind:
-    var shouldSort = i in {skProc, skFunc} and groupedToc
+    var shouldSort = i in routineKinds and groupedToc
     genSection(d, i, shouldSort)
     toc.add(d.toc[i])
   if toc != nil:
