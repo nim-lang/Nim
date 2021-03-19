@@ -46,3 +46,20 @@ jobs:
 
   steps:
     - template: ci/azure/ci-steps.yml
+
+- job: Linux_i386
+
+  timeoutInMinutes: 90 # default `60` led to lots of cancelled jobs; use 0 for unlimited (may be undesirable)
+
+  variables:
+    CPU: i386
+
+  pool:
+    vmImage: ubuntu-latest
+
+  container: ghcr.io/alaviss/nim-ci:sha-1d368dc@sha256:d3f556a523a5220bc0a5b197f52c1761dd3756132a1afaa3ce062a8e2c464079
+
+  steps:
+    - template: ci/azure/ci-steps.yml
+      parameters:
+        installNode: false

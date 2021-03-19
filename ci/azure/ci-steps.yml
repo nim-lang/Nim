@@ -1,3 +1,8 @@
+parameters:
+  - name: installNode
+    type: boolean
+    default: true
+
 steps:
   - bash: git config --global core.autocrlf false
     displayName: 'Disable auto conversion to CRLF by git (Windows-only)'
@@ -9,10 +14,11 @@ steps:
   - bash: git clone --depth 1 https://github.com/nim-lang/csources
     displayName: 'Checkout Nim csources'
 
-  - task: NodeTool@0
-    inputs:
-      versionSpec: '12.x'
-    displayName: 'Install node.js 12.x'
+  - ${{ if eq(parameters.installNode, true) }}:
+    - task: NodeTool@0
+      inputs:
+        versionSpec: '12.x'
+      displayName: 'Install node.js 12.x'
 
   - bash: |
       set -e
