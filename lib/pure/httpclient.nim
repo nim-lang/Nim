@@ -202,10 +202,11 @@
 
 import std/private/since
 
-import net, strutils, uri, parseutils, base64, os, mimetypes, streams,
-  math, random, httpcore, times, tables, streams, std/monotimes
-import asyncnet, asyncdispatch, asyncfile
-import nativesockets
+import std/[
+  net, strutils, uri, parseutils, base64, os, mimetypes,
+  math, random, httpcore, times, tables, streams, monotimes,
+  asyncnet, asyncdispatch, asyncfile, nativesockets,
+]
 
 export httpcore except parseHeader # TODO: The `except` doesn't work
 

@@ -15,7 +15,7 @@ import
   intsets, options, ast, astalgo, msgs, idents, renderer,
   magicsys, vmdef, modulegraphs, lineinfos, sets, pathutils
 
-import ic / to_packed_ast
+import ic / ic
 
 type
   TOptionEntry* = object      # entries to put on a stack for pragma parsing

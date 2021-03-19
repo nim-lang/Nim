@@ -2079,7 +2079,7 @@ func replace*(s, sub: string, by = ""): string {.rtl,
 
 func replace*(s: string, sub, by: char): string {.rtl,
     extern: "nsuReplaceChar".} =
-  ## Replaces `sub` in `s` by the character `by`.
+  ## Replaces every occurence of character `sub` in `s` by the character `by`.
   ##
   ## Optimized version of `replace <#replace,string,string,string>`_ for
   ## characters.

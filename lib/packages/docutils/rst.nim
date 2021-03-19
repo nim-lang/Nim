@@ -146,7 +146,8 @@
 ## .. _Sphinx directives: https://www.sphinx-doc.org/en/master/usage/restructuredtext/directives.html
 
 import
-  os, strutils, rstast, algorithm, lists, sequtils
+  os, strutils, rstast, std/enumutils, algorithm, lists, sequtils,
+  std/private/miscdollars
 
 type
   RstParseOption* = enum     ## options for the RST parser
@@ -477,9 +478,10 @@ type
   EParseError* = object of ValueError
 
 const
-  LineRstInit* = 1 ## Initial line number for standalone RST text
-  ColRstInit* = 0 ## Initial column number for standalone RST text
-                  ## (Nim global reporting adds ColOffset=1)
+  LineRstInit* = 1  ## Initial line number for standalone RST text
+  ColRstInit* = 0   ## Initial column number for standalone RST text
+                    ## (Nim global reporting adds ColOffset=1)
+  ColRstOffset* = 1 ## 1: a replica of ColOffset for internal use
 
 template currentTok(p: RstParser): Token = p.tok[p.idx]
 template prevTok(p: RstParser): Token = p.tok[p.idx - 1]
@@ -487,7 +489,7 @@ template nextTok(p: RstParser): Token = p.tok[p.idx + 1]
 
 proc whichMsgClass*(k: MsgKind): MsgClass =
   ## returns which message class `k` belongs to.
-  case ($k)[1]
+  case k.symbolName[1]
   of 'e', 'E': result = mcError
   of 'w', 'W': result = mcWarning
   of 'h', 'H': result = mcHint
@@ -497,7 +499,9 @@ proc defaultMsgHandler*(filename: string, line, col: int, msgkind: MsgKind,
                         arg: string) =
   let mc = msgkind.whichMsgClass
   let a = $msgkind % arg
-  let message = "$1($2, $3) $4: $5" % [filename, $line, $col, $mc, a]
+  var message: string
+  toLocation(message, filename, line, col + ColRstOffset)
+  message.add " $1: $2" % [$mc, a]
   if mc == mcError: raise newException(EParseError, message)
   else: writeLine(stdout, message)
 
@@ -1011,14 +1015,21 @@ proc parseSmiley(p: var RstParser): PRstNode =
       result.text = val
       return
 
+proc validRefnamePunct(x: string): bool =
+  ## https://docutils.sourceforge.io/docs/ref/rst/restructuredtext.html#reference-names
+  x.len == 1 and x[0] in {'-', '_', '.', ':', '+'}
+
 proc isUrl(p: RstParser, i: int): bool =
   result = p.tok[i+1].symbol == ":" and p.tok[i+2].symbol == "//" and
     p.tok[i+3].kind == tkWord and
     p.tok[i].symbol in ["http", "https", "ftp", "telnet", "file"]
 
-proc parseWordOrUrl(p: var RstParser, father: PRstNode) =
-  #if currentTok(p).symbol[strStart] == '<':
-  if isUrl(p, p.idx):
+proc parseWordOrRef(p: var RstParser, father: PRstNode) =
+  ## Parses a normal word or may be a reference or URL.
+  if nextTok(p).kind != tkPunct:  # <- main path, a normal word
+    father.add newLeaf(p)
+    inc p.idx
+  elif isUrl(p, p.idx):           # URL http://something
     var n = newRstNode(rnStandaloneHyperlink)
     while true:
       case currentTok(p).kind
@@ -1031,10 +1042,26 @@ proc parseWordOrUrl(p: var RstParser, father: PRstNode) =
       inc p.idx
     father.add(n)
   else:
-    var n = newLeaf(p)
+    # check for reference (probably, long one like some.ref.with.dots_ )
+    var saveIdx = p.idx
+    var isRef = false
     inc p.idx
-    if currentTok(p).symbol == "_": n = parsePostfix(p, n)
-    father.add(n)
+    while currentTok(p).kind in {tkWord, tkPunct}:
+      if currentTok(p).kind == tkPunct:
+        if isInlineMarkupEnd(p, "_"):
+          isRef = true
+          break
+        if not validRefnamePunct(currentTok(p).symbol):
+          break
+      inc p.idx
+    if isRef:
+      let r = newRstNode(rnRef)
+      for i in saveIdx..p.idx-1: r.add newLeaf(p.tok[i].symbol)
+      father.add r
+      inc p.idx  # skip final _
+    else:  # 1 normal word
+      father.add newLeaf(p.tok[saveIdx].symbol)
+      p.idx = saveIdx + 1
 
 proc parseBackslash(p: var RstParser, father: PRstNode) =
   assert(currentTok(p).kind == tkPunct)
@@ -1154,10 +1181,6 @@ proc getFootnoteType(label: PRstNode): (FootnoteType, int) =
   else:
     result = (fnCitation, -1)
 
-proc validRefnamePunct(x: string): bool =
-  ## https://docutils.sourceforge.io/docs/ref/rst/restructuredtext.html#reference-names
-  x.len == 1 and x[0] in {'-', '_', '.', ':', '+'}
-
 proc parseFootnoteName(p: var RstParser, reference: bool): PRstNode =
   ## parse footnote/citation label. Precondition: start at `[`.
   ## Label text should be valid ref. name symbol, otherwise nil is returned.
@@ -1258,7 +1281,7 @@ proc parseInline(p: var RstParser, father: PRstNode) =
       if n != nil:
         father.add(n)
         return
-    parseWordOrUrl(p, father)
+    parseWordOrRef(p, father)
   of tkAdornment, tkOther, tkWhite:
     if roSupportMarkdown in p.s.options and currentTok(p).symbol == "```":
       inc p.idx
@@ -1954,25 +1977,32 @@ proc parseEnumList(p: var RstParser): PRstNode =
     if match(p, p.idx, wildcards[w]): break
     inc w
   assert w < wildcards.len
+
   proc checkAfterNewline(p: RstParser, report: bool): bool =
+    ## If no indentation on the next line then parse as a normal paragraph
+    ## according to the RST spec. And report a warning with suggestions
     let j = tokenAfterNewline(p, start=p.idx+1)
+    let requiredIndent = p.tok[p.idx+wildToken[w]].col
     if p.tok[j].kind notin {tkIndent, tkEof} and
-        p.tok[j].col < p.tok[p.idx+wildToken[w]].col and
+        p.tok[j].col < requiredIndent and
         (p.tok[j].col > col or
           (p.tok[j].col == col and not match(p, j, wildcards[w]))):
       if report:
         let n = p.line + p.tok[j].line
         let msg = "\n" & """
           not enough indentation on line $2
-              (if it's continuation of enumeration list),
+              (should be at column $3 if it's a continuation of enum. list),
           or no blank line after line $1 (if it should be the next paragraph),
           or no escaping \ at the beginning of line $1
               (if lines $1..$2 are a normal paragraph, not enum. list)""".
           unindent(8)
-        rstMessage(p, mwRstStyle, msg % [$(n-1), $n])
+        let c = p.col + requiredIndent + ColRstOffset
+        rstMessage(p, mwRstStyle, msg % [$(n-1), $n, $c],
+                   p.tok[j].line, p.tok[j].col)
       result = false
     else:
       result = true
+
   if not checkAfterNewline(p, report = true):
     return nil
   result = newRstNodeA(p, rnEnumList)

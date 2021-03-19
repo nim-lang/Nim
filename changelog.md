@@ -39,6 +39,9 @@
 
 - added `jsonutils.jsonTo` overload with `opt = Joptions()` param.
 
+- `json.%`,`json.to`, `jsonutils.formJson`,`jsonutils.toJson` now work with `uint|uint64`
+  instead of raising (as in 1.4) or giving wrong results (as in 1.2).
+
 - Added an overload for the `collect` macro that inferes the container type based
   on the syntax of the last expression. Works with std seqs, tables and sets.
 
@@ -231,6 +234,10 @@
 - Added `ZZZ` and `ZZZZ` patterns to `times.nim` `DateTime` parsing, to match time
   zone offsets without colons, e.g. `UTC+7 -> +0700`.
 
+- In `std/os`, `getHomeDir`, `expandTilde`, `getTempDir`, `getConfigDir` now do not include trailing `DirSep`,
+  unless `-d:nimLegacyHomeDir` is specified (for a transition period).
+
+- Added `jsconsole.dir`, `jsconsole.dirxml`, `jsconsole.timeStamp`.
 
 - Added dollar `$` and `len` for `jsre.RegExp`.
 
@@ -262,6 +269,8 @@
 - Deprecated `TaintedString` and `--taintmode`.
 
 - Deprecated `--nilseqs` which is now a noop.
+
+- Added `--spellSuggest` to show spelling suggestions on typos.
 
 - Source+Edit links now appear on top of every docgen'd page when
   `nim doc --git.url:url ...` is given.
