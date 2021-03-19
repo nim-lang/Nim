@@ -1,8 +1,4 @@
 when defined(js):
-  runnableExamples:
-    let a {.importjs: "Number.MAX_SAFE_INTEGER".}: int64
-    assert a == maxSafeInteger
-
   import std/jsbigints
 
   type
@@ -63,8 +59,11 @@ when defined(js):
       assert @[1].toJs.getProtoName == "[object Array]" # ditto
 
   const maxSafeInteger* = 9007199254740991
-    ## same as `Number.MAX_SAFE_INTEGER` or `2^53 - 1`.
+    ## The same as `Number.MAX_SAFE_INTEGER` or `2^53 - 1`.
     ## See https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Number/MAX_SAFE_INTEGER
+  runnableExamples:
+    let a {.importjs: "Number.MAX_SAFE_INTEGER".}: int64
+    assert a == maxSafeInteger
 
   proc isInteger*[T](x: T): bool {.importjs: "Number.isInteger(#)".} =
     runnableExamples:
