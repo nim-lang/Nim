@@ -55,3 +55,31 @@ block: # ConstPtr[T] test
     $a3 == "(0)"
     not a3.isNil
     a3[] == 0
+
+block: # UniquePtr[T] test
+  var a1 = newUniquePtr(isolate("1234"))
+
+  proc hello(x: string) =
+    doAssert x == "1234"
+
+  hello(a1)
+
+block: # SharedPtr[T] test
+  let x = 5.0
+  let a1 = newSharedPtr(isolate(x))
+  let a2 = a1
+
+  proc hello(x: float) =
+    doAssert x == 5.0
+
+  hello(a2)
+
+block: # SharedPtr[T] test
+  let x = 5.0
+  let a1 = newConstPtr(isolate(x))
+  let a2 = a1
+
+  proc hello(x: float) =
+    doAssert x == 5.0
+
+  hello(a2)
