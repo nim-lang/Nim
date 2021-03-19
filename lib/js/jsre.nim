@@ -37,7 +37,6 @@ func toCstring*(self: RegExp): cstring {.importjs: "#.toString()".}
 func `$`*(self: RegExp): string = $toCstring(self)
 
 func test*(self: RegExp; pattern: cstring): bool {.importjs: "#.test(#)", deprecated: "Use match instead".}
-  ## .. warning:: Deprecated, do not use.
 
 func toString*(self: RegExp): cstring {.importjs: "#.toString()", deprecated: "Use toCstring instead".}
   ## .. warning:: Deprecated, do not use.
