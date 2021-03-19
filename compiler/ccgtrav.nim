@@ -52,9 +52,7 @@ proc genTraverseProc(c: TTraversalClosure, accessor: Rope, n: PNode;
     let field = n.sym
     if field.typ.kind == tyVoid: return
     if field.loc.r == nil: fillObjectFields(c.p.module, typ)
-    if field.loc.t == nil:
-      internalError(c.p.config, n.info, "genTraverseProc()")
-    genTraverseProc(c, "$1.$2" % [accessor, field.loc.r], field.loc.t)
+    genTraverseProc(c, "$1.$2" % [accessor, field.loc.r], field.typ)
   else: internalError(c.p.config, n.info, "genTraverseProc()")
 
 proc parentObj(accessor: Rope; m: BModule): Rope {.inline.} =

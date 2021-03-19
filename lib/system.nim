@@ -538,7 +538,7 @@ when not defined(js) and not defined(nimSeqsV2):
       when defined(gogc):
         elemSize: int
         elemAlign: int
-    PGenericSeq {.exportc.} = ptr TGenericSeq
+    PGenericSeq = ptr TGenericSeq
     # len and space without counting the terminating zero:
     NimStringDesc {.compilerproc, final.} = object of TGenericSeq
       data: UncheckedArray[char]

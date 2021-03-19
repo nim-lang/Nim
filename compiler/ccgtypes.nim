@@ -731,10 +731,8 @@ proc getTypeDescAux(m: BModule, origTyp: PType, check: var IntSet; kind: TSymKin
 
   if t != origTyp:
     if origTyp.sym != nil: useHeader(m, origTyp.sym)
-    if isImportedType(origTyp): return
   else:
     if t.sym != nil: useHeader(m, t.sym)
-  if isImportedType(t): return
 
   case t.kind
   of tyPointer, tyCString, tyBool, tyChar, tyNil, tyInt..tyUInt64:
@@ -770,8 +768,14 @@ proc getTypeDescAux(m: BModule, origTyp: PType, check: var IntSet; kind: TSymKin
       getTypeDescWeak(m, et, check, kind, elemTypeName)
     else:
       getTypeDescAux(m, et, check, kind, elemTypeName)
-    m.s[cfsTypes].addf("typedef $1* $2;$n",
-          [useType(m, et, elemTypeName), rope(sig)])
+
+    if t.sym != nil and {sfImportc, sfCompilerProc} * t.sym.flags == {sfImportc}:
+      m.s[cfsForwardTypes].addf("typedef $1 $2;$n",
+            [t.sym.loc.r, rope(sig)])
+
+    else:
+      m.s[cfsTypes].addf("typedef $1$2 $3;$n",
+            [useType(m, et, elemTypeName), rope(star), rope(sig)])
 
   of tyOpenArray, tyVarargs:
     m.typeCache.incl sig
@@ -835,7 +839,7 @@ proc getTypeDescAux(m: BModule, origTyp: PType, check: var IntSet; kind: TSymKin
               "};$n", [getTypeDescRec(m, t[0], check, kind, strongDep), rope sig])
       else:
         appcg(m, m.s[cfsSeqTypes],
-            "typedef TGenericSeq $1;$n", [rope sig])
+            "typedef #TGenericSeq $1;$n", [rope sig])
 
   of tyUncheckedArray:
     m.typeCache.incl sig
@@ -849,16 +853,21 @@ proc getTypeDescAux(m: BModule, origTyp: PType, check: var IntSet; kind: TSymKin
     m.s[cfsTypes].addf("typedef $1 $2[$3];$n",
          [elemTypeName, rope(sig), rope(n)])
   of tyObject, tyTuple:
-    if not cacheHasType(m.forwTypeCache, sig):
-      m.forwTypeCache.incl sig
-      addForwardStructFormat(m, structOrUnion(t), sig)
+    if t.sym != nil and {sfImportc, sfCompilerProc} * t.sym.flags == {sfImportc}:
+      m.s[cfsForwardTypes].addf("typedef $1 $2;$n",
+            [t.sym.loc.r, rope(sig)])
+      m.typeCache.incl sig
+    else:
+      if not cacheHasType(m.forwTypeCache, sig):
+        m.forwTypeCache.incl sig
+        addForwardStructFormat(m, structOrUnion(t), sig)
 
-    m.typeCache.incl sig
-    # always call for sideeffects:
-    if not incompleteType(t):
-      let recdesc = if t.kind != tyTuple: getRecordDesc(m, t, sig.rope, check)
-                    else: getTupleDesc(m, t, sig, check)
-      m.s[cfsTypes].add(recdesc)
+      m.typeCache.incl sig
+      # always call for sideeffects:
+      if not incompleteType(t):
+        let recdesc = if t.kind != tyTuple: getRecordDesc(m, t, sig.rope, check)
+                      else: getTupleDesc(m, t, sig, check)
+        m.s[cfsTypes].add(recdesc)
 
   of tySet:
     m.typeCache.incl sig
@@ -1112,8 +1121,6 @@ proc genObjectFields(m: BModule, typ, origType: PType, n: PNode, expr: Rope;
     if isEmptyType(field.typ): return
     if field.bitsize == 0:
       if field.loc.r == nil: fillObjectFields(m, typ)
-      if field.loc.t == nil:
-        internalError(m.config, n.info, "genObjectFields")
       m.s[cfsTypeInit3].addf("$1.kind = 1;$n" &
           "$1.offset = offsetof($2, $3);$n" & "$1.typ = $4;$n" &
           "$1.name = $5;$n", [expr, getTypeDesc(m, origType, skVar),
