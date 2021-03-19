@@ -58,7 +58,7 @@ jobs:
     vmImage: ubuntu-latest
 
   container:
-    image: ghcr.io/alaviss/nim-ci:sha-b3de271@sha256:adb55c3d5a4ea92da849564508f3a6533af7b85caa8571a120fcb3c8a68c4951
+    image: ghcr.io/alaviss/nim-ci:sha-1ee4e5b@sha256:3ac97be9c41be285d3632dacff995e56f216b03f8aa0d2bd32e907efda16bf49
     options: --init
 
   steps:
