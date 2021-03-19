@@ -33,9 +33,6 @@ func compile*(self: RegExp; pattern: cstring; flags: cstring) {.importjs: "#.com
 func exec*(self: RegExp; pattern: cstring): seq[cstring] {.importjs: "#.exec(#)".}
   ## Executes a search for a match in its string parameter.
 
-func match*(self: RegExp; pattern: cstring): bool {.importjs: "#.test(#)".}
-  ## Tests for a substring match in its string parameter.
-
 func toCstring*(self: RegExp): cstring {.importjs: "#.toString()".}
   ## Returns a string representing the RegExp object.
 
@@ -45,13 +42,22 @@ func test*(self: RegExp; pattern: cstring): bool {.importjs: "#.test(#)", deprec
 
 func toString*(self: RegExp): cstring {.importjs: "#.toString()", deprecated: "Use toCstring instead".}
 
+func contains*(pattern: cstring; self: RegExp): bool =
+  ## Tests for a substring match in its string parameter.
+  runnableExamples:
+    let jsregex: RegExp = newRegExp(r"bc$", r"i")
+    assert jsregex in r"abc"
+    assert jsregex notin r"abcd"
+    assert "xabc".contains jsregex
+  asm "`result` = `self`.test(`pattern`);"
+
 
 runnableExamples:
   let jsregex: RegExp = newRegExp(r"\s+", r"i")
   jsregex.compile(r"\w+", r"i")
-  assert jsregex.match(r"nim javascript")
+  assert "nim javascript".contains jsregex
   assert jsregex.exec(r"nim javascript") == @["nim".cstring]
   assert jsregex.toCstring() == r"/\w+/i"
   jsregex.compile(r"[0-9]", r"i")
-  assert jsregex.match(r"0123456789abcd")
+  assert "0123456789abcd".contains jsregex
   assert $jsregex == "/[0-9]/i"
