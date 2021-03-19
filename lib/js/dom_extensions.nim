@@ -1,5 +1,5 @@
 import std/dom
 
-{.push importcpp.}
+{.push importjs.}
 proc elementsFromPoint*(n: DocumentOrShadowRoot; x, y: float): seq[Element]
 {.pop.}
