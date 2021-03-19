@@ -48,4 +48,4 @@ when defined(js) or defined(nimdoc):
       assert 9007199254740991.toJs.isSafeInteger
       assert not 9007199254740992.toJs.isSafeInteger
 
-  let maxSafeInteger* {.importc: "Number.MAX_SAFE_INTEGER".} : int64
+  let maxSafeInteger* {.importjs: "Number.MAX_SAFE_INTEGER".} : int64
