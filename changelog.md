@@ -241,7 +241,7 @@
 
 - Added `jshttpclient` module for JavaScript that provides
   asyncronous `HttpClient` implemented on top of `jsfetch` and
-  syncronous `HttpClient` implemented on top of `jsxmlhttprequest`.
+  synchronous `HttpClient` implemented on top of `jsxmlhttprequest`.
 
 
 ## Language changes
