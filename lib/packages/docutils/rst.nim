@@ -1086,8 +1086,6 @@ proc parseUntil(p: var RstParser, father: PRstNode, postfix: string,
     line = currentTok(p).line
     col = currentTok(p).col
   inc p.idx
-
-  var pTmp: PRstNode
   while true:
     case currentTok(p).kind
     of tkPunct:
