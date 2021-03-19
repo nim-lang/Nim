@@ -10,7 +10,7 @@
 include system/indexerrors
 import std/private/miscdollars
 
-proc log*(s: cstring) {.importjs: "console.log", varargs, nodecl.}
+proc log*(s: cstring) {.importc: "console.log", varargs, nodecl.}
 
 type
   PSafePoint = ptr SafePoint
@@ -19,25 +19,25 @@ type
     exc: ref Exception
 
   PCallFrame = ptr CallFrame
-  CallFrame {.importjs, nodecl, final.} = object
+  CallFrame {.importc, nodecl, final.} = object
     prev: PCallFrame
     procname: cstring
     line: int # current line number
     filename: cstring
 
   PJSError = ref object
-    columnNumber {.importjs.}: int
-    fileName {.importjs.}: cstring
-    lineNumber {.importjs.}: int
-    message {.importjs.}: cstring
-    stack {.importjs.}: cstring
+    columnNumber {.importc.}: int
+    fileName {.importc.}: cstring
+    lineNumber {.importc.}: int
+    message {.importc.}: cstring
+    stack {.importc.}: cstring
 
   JSRef = ref RootObj # Fake type.
 
 var
-  framePtr {.importjs, nodecl, volatile.}: PCallFrame
-  excHandler {.importjs, nodecl, volatile.}: int = 0
-  lastJSError {.importjs, nodecl, volatile.}: PJSError = nil
+  framePtr {.importc, nodecl, volatile.}: PCallFrame
+  excHandler {.importc, nodecl, volatile.}: int = 0
+  lastJSError {.importc, nodecl, volatile.}: PJSError = nil
 
 {.push stacktrace: off, profiler:off.}
 proc nimBoolToStr(x: bool): string {.compilerproc.} =
@@ -234,15 +234,15 @@ proc cstrToNimstr(c: cstring): string {.asmNoStackFrame, compilerproc.} =
   """.}
 
 proc toJSStr(s: string): cstring {.compilerproc.} =
-  proc fromCharCode(c: char): cstring {.importjs: "String.fromCharCode".}
+  proc fromCharCode(c: char): cstring {.importc: "String.fromCharCode".}
   proc join(x: openArray[cstring]; d = cstring""): cstring {.
-    importjs: "#.join(@)".}
+    importcpp: "#.join(@)".}
   proc decodeURIComponent(x: cstring): cstring {.
-    importjs: "decodeURIComponent".}
+    importc: "decodeURIComponent".}
 
-  proc toHexString(c: char; d = 16): cstring {.importjs: "#.toString(@)".}
+  proc toHexString(c: char; d = 16): cstring {.importcpp: "#.toString(@)".}
 
-  proc log(x: cstring) {.importjs: "console.log".}
+  proc log(x: cstring) {.importc: "console.log".}
 
   var res = newSeq[cstring](s.len)
   var i = 0

@@ -25,86 +25,86 @@ type
   DateTime* = ref object
 
 var
-  Math* {.importjs, nodecl.}: MathLib
-  Date* {.importjs, nodecl.}: DateLib
-  JSON* {.importjs, nodecl.}: JsonLib
+  Math* {.importc, nodecl.}: MathLib
+  Date* {.importc, nodecl.}: DateLib
+  JSON* {.importc, nodecl.}: JsonLib
 
 # Math library
-proc abs*(m: MathLib, a: SomeNumber): SomeNumber {.importjs.}
-proc acos*(m: MathLib, a: SomeNumber): float {.importjs.}
-proc acosh*(m: MathLib, a: SomeNumber): float {.importjs.}
-proc asin*(m: MathLib, a: SomeNumber): float {.importjs.}
-proc asinh*(m: MathLib, a: SomeNumber): float {.importjs.}
-proc atan*(m: MathLib, a: SomeNumber): float {.importjs.}
-proc atan2*(m: MathLib, a: SomeNumber): float {.importjs.}
-proc atanh*(m: MathLib, a: SomeNumber): float {.importjs.}
-proc cbrt*(m: MathLib, f: SomeFloat): SomeFloat {.importjs.}
-proc ceil*(m: MathLib, f: SomeFloat): SomeFloat {.importjs.}
-proc clz32*(m: MathLib, f: SomeInteger): int {.importjs.}
-proc cos*(m: MathLib, a: SomeNumber): float {.importjs.}
-proc cosh*(m: MathLib, a: SomeNumber): float {.importjs.}
-proc exp*(m: MathLib, a: SomeNumber): float {.importjs.}
-proc expm1*(m: MathLib, a: SomeNumber): float {.importjs.}
-proc floor*(m: MathLib, f: SomeFloat): int {.importjs.}
-proc fround*(m: MathLib, f: SomeFloat): float32 {.importjs.}
-proc hypot*(m: MathLib, args: varargs[distinct SomeNumber]): float {.importjs.}
-proc imul*(m: MathLib, a, b: int32): int32 {.importjs.}
-proc log*(m: MathLib, a: SomeNumber): float {.importjs.}
-proc log10*(m: MathLib, a: SomeNumber): float {.importjs.}
-proc log1p*(m: MathLib, a: SomeNumber): float {.importjs.}
-proc log2*(m: MathLib, a: SomeNumber): float {.importjs.}
-proc max*(m: MathLib, a, b: SomeNumber): SomeNumber {.importjs.}
-proc min*[T: SomeNumber | JsRoot](m: MathLib, a, b: T): T {.importjs.}
-proc pow*(m: MathLib, a, b: distinct SomeNumber): float {.importjs.}
-proc random*(m: MathLib): float {.importjs.}
-proc round*(m: MathLib, f: SomeFloat): int {.importjs.}
-proc sign*(m: MathLib, f: SomeNumber): int {.importjs.}
-proc sin*(m: MathLib, a: SomeNumber): float {.importjs.}
-proc sinh*(m: MathLib, a: SomeNumber): float {.importjs.}
-proc sqrt*(m: MathLib, f: SomeFloat): SomeFloat {.importjs.}
-proc tan*(m: MathLib, a: SomeNumber): float {.importjs.}
-proc tanh*(m: MathLib, a: SomeNumber): float {.importjs.}
-proc trunc*(m: MathLib, f: SomeFloat): int {.importjs.}
+proc abs*(m: MathLib, a: SomeNumber): SomeNumber {.importcpp.}
+proc acos*(m: MathLib, a: SomeNumber): float {.importcpp.}
+proc acosh*(m: MathLib, a: SomeNumber): float {.importcpp.}
+proc asin*(m: MathLib, a: SomeNumber): float {.importcpp.}
+proc asinh*(m: MathLib, a: SomeNumber): float {.importcpp.}
+proc atan*(m: MathLib, a: SomeNumber): float {.importcpp.}
+proc atan2*(m: MathLib, a: SomeNumber): float {.importcpp.}
+proc atanh*(m: MathLib, a: SomeNumber): float {.importcpp.}
+proc cbrt*(m: MathLib, f: SomeFloat): SomeFloat {.importcpp.}
+proc ceil*(m: MathLib, f: SomeFloat): SomeFloat {.importcpp.}
+proc clz32*(m: MathLib, f: SomeInteger): int {.importcpp.}
+proc cos*(m: MathLib, a: SomeNumber): float {.importcpp.}
+proc cosh*(m: MathLib, a: SomeNumber): float {.importcpp.}
+proc exp*(m: MathLib, a: SomeNumber): float {.importcpp.}
+proc expm1*(m: MathLib, a: SomeNumber): float {.importcpp.}
+proc floor*(m: MathLib, f: SomeFloat): int {.importcpp.}
+proc fround*(m: MathLib, f: SomeFloat): float32 {.importcpp.}
+proc hypot*(m: MathLib, args: varargs[distinct SomeNumber]): float {.importcpp.}
+proc imul*(m: MathLib, a, b: int32): int32 {.importcpp.}
+proc log*(m: MathLib, a: SomeNumber): float {.importcpp.}
+proc log10*(m: MathLib, a: SomeNumber): float {.importcpp.}
+proc log1p*(m: MathLib, a: SomeNumber): float {.importcpp.}
+proc log2*(m: MathLib, a: SomeNumber): float {.importcpp.}
+proc max*(m: MathLib, a, b: SomeNumber): SomeNumber {.importcpp.}
+proc min*[T: SomeNumber | JsRoot](m: MathLib, a, b: T): T {.importcpp.}
+proc pow*(m: MathLib, a, b: distinct SomeNumber): float {.importcpp.}
+proc random*(m: MathLib): float {.importcpp.}
+proc round*(m: MathLib, f: SomeFloat): int {.importcpp.}
+proc sign*(m: MathLib, f: SomeNumber): int {.importcpp.}
+proc sin*(m: MathLib, a: SomeNumber): float {.importcpp.}
+proc sinh*(m: MathLib, a: SomeNumber): float {.importcpp.}
+proc sqrt*(m: MathLib, f: SomeFloat): SomeFloat {.importcpp.}
+proc tan*(m: MathLib, a: SomeNumber): float {.importcpp.}
+proc tanh*(m: MathLib, a: SomeNumber): float {.importcpp.}
+proc trunc*(m: MathLib, f: SomeFloat): int {.importcpp.}
 
 # Date library
-proc now*(d: DateLib): int {.importjs.}
-proc UTC*(d: DateLib): int {.importjs.}
-proc parse*(d: DateLib, s: cstring): int {.importjs.}
+proc now*(d: DateLib): int {.importcpp.}
+proc UTC*(d: DateLib): int {.importcpp.}
+proc parse*(d: DateLib, s: cstring): int {.importcpp.}
 
 proc newDate*(): DateTime {.
-  importjs: "new Date()".}
+  importcpp: "new Date()".}
 
 proc newDate*(date: int|int64|string): DateTime {.
-  importjs: "new Date(#)".}
+  importcpp: "new Date(#)".}
 
 proc newDate*(year, month, day, hours, minutes,
              seconds, milliseconds: int): DateTime {.
-  importjs: "new Date(#,#,#,#,#,#,#)".}
+  importcpp: "new Date(#,#,#,#,#,#,#)".}
 
-proc getDay*(d: DateTime): int {.importjs.}
-proc getFullYear*(d: DateTime): int {.importjs.}
-proc getHours*(d: DateTime): int {.importjs.}
-proc getMilliseconds*(d: DateTime): int {.importjs.}
-proc getMinutes*(d: DateTime): int {.importjs.}
-proc getMonth*(d: DateTime): int {.importjs.}
-proc getSeconds*(d: DateTime): int {.importjs.}
-proc getYear*(d: DateTime): int {.importjs.}
-proc getTime*(d: DateTime): int {.importjs.}
-proc toString*(d: DateTime): cstring {.importjs.}
-proc getUTCDate*(d: DateTime): int {.importjs.}
-proc getUTCFullYear*(d: DateTime): int {.importjs.}
-proc getUTCHours*(d: DateTime): int {.importjs.}
-proc getUTCMilliseconds*(d: DateTime): int {.importjs.}
-proc getUTCMinutes*(d: DateTime): int {.importjs.}
-proc getUTCMonth*(d: DateTime): int {.importjs.}
-proc getUTCSeconds*(d: DateTime): int {.importjs.}
-proc getUTCDay*(d: DateTime): int {.importjs.}
-proc getTimezoneOffset*(d: DateTime): int {.importjs.}
-proc setFullYear*(d: DateTime, year: int) {.importjs.}
+proc getDay*(d: DateTime): int {.importcpp.}
+proc getFullYear*(d: DateTime): int {.importcpp.}
+proc getHours*(d: DateTime): int {.importcpp.}
+proc getMilliseconds*(d: DateTime): int {.importcpp.}
+proc getMinutes*(d: DateTime): int {.importcpp.}
+proc getMonth*(d: DateTime): int {.importcpp.}
+proc getSeconds*(d: DateTime): int {.importcpp.}
+proc getYear*(d: DateTime): int {.importcpp.}
+proc getTime*(d: DateTime): int {.importcpp.}
+proc toString*(d: DateTime): cstring {.importcpp.}
+proc getUTCDate*(d: DateTime): int {.importcpp.}
+proc getUTCFullYear*(d: DateTime): int {.importcpp.}
+proc getUTCHours*(d: DateTime): int {.importcpp.}
+proc getUTCMilliseconds*(d: DateTime): int {.importcpp.}
+proc getUTCMinutes*(d: DateTime): int {.importcpp.}
+proc getUTCMonth*(d: DateTime): int {.importcpp.}
+proc getUTCSeconds*(d: DateTime): int {.importcpp.}
+proc getUTCDay*(d: DateTime): int {.importcpp.}
+proc getTimezoneOffset*(d: DateTime): int {.importcpp.}
+proc setFullYear*(d: DateTime, year: int) {.importcpp.}
 
 #JSON library
-proc stringify*(l: JsonLib, s: JsRoot): cstring {.importjs.}
-proc parse*(l: JsonLib, s: cstring): JsRoot {.importjs.}
+proc stringify*(l: JsonLib, s: JsRoot): cstring {.importcpp.}
+proc parse*(l: JsonLib, s: cstring): JsRoot {.importcpp.}
 
 
 since (1, 5):
