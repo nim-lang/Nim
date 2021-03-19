@@ -23,7 +23,7 @@ import std/[packedsets, algorithm]
 import ".."/[ast, options, lineinfos, modulegraphs, cgendata, cgen,
   pathutils, extccomp, msgs]
 
-import packed_ast, to_packed_ast, dce, rodfiles
+import packed_ast, ic, dce, rodfiles
 
 proc unpackTree(g: ModuleGraph; thisModule: int;
                 tree: PackedTree; n: NodePos): PNode =
@@ -83,7 +83,7 @@ proc aliveSymsChanged(config: ConfigRef; position: int; alive: AliveSyms): bool 
 proc generateCode*(g: ModuleGraph) =
   ## The single entry point, generate C(++) code for the entire
   ## Nim program aka `ModuleGraph`.
-  initStrTable(g.compilerprocs)
+  resetForBackend(g)
   var alive = computeAliveSyms(g.packed, g.config)
 
   for i in 0..high(g.packed):

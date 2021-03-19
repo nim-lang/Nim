@@ -14,7 +14,7 @@ import
   wordrecg, ropes, options, strutils, extccomp, math, magicsys, trees,
   types, lookups, lineinfos, pathutils, linter
 
-from ic / to_packed_ast import addCompilerProc
+from ic / ic import addCompilerProc
 
 const
   FirstCallConv* = wNimcall
