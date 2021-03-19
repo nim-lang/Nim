@@ -138,9 +138,12 @@ proc uniqueCTypeName(c: var string; t: PType; g: ModuleGraph) =
     c.uniqueCTypeName t.lastSon, g
     c &= 'T'
   of tyPtr:
-    c &= "PL"
-    c.uniqueCTypeName t.lastSon, g
-    c &= 'T'
+    if t.sym != nil and {sfImportc, sfExportc} * t.sym.flags != {}:
+      c &= $t.sym.loc.r
+    else:
+      c &= "PL"
+      c.uniqueCTypeName t.lastSon, g
+      c &= 'T'
   of tyVar:
     c &= "VL"
     c.uniqueCTypeName t.lastSon, g
