@@ -6,7 +6,7 @@
 #    See the file "copying.txt", included in this
 #    distribution, for details about the copyright.
 
-## C++11 like Smart pointers. It always uses the shared allocator.
+## C++11 like smart pointers. They always use the shared allocator.
 
 runnableExamples:
   import std/isolation
@@ -16,9 +16,9 @@ runnableExamples:
     var a2 = newUniquePtr(isolate(0))
 
     assert $a1 == "UniquePtr[float](nil)"
-    assert a1.isNil == true
+    assert a1.isNil
     assert $a2 == "UniquePtr[int](0)"
-    assert a2.isNil == false
+    assert not a2.isNil
     assert a2[] == 0
 
     # UniquePtr can't be copied but can be moved
@@ -65,7 +65,7 @@ import std/isolation
 
 type
   UniquePtr*[T] = object
-    ## Non copyable pointer to object T, exclusive ownership of the object.
+    ## Non copyable pointer to a value of type `T` with exclusive ownership.
     val: ptr T
 
 proc `=destroy`*[T](p: var UniquePtr[T]) =
@@ -77,11 +77,11 @@ proc `=destroy`*[T](p: var UniquePtr[T]) =
       dealloc(p.val)
 
 proc `=`*[T](dest: var UniquePtr[T], src: UniquePtr[T]) {.error.}
-  ## The copy operation is disallowed for `UniquePtr`, `UniquePtr`
+  ## The copy operation is disallowed for `UniquePtr`, it
   ## can only be moved.
 
 proc newUniquePtr*[T](val: sink Isolated[T]): UniquePtr[T] {.nodestroy.} =
-  ## Returns a unique pointer which has exclusive ownership of the object.
+  ## Returns a unique pointer which has exclusive ownership of the value.
   when compileOption("threads"):
     result.val = cast[ptr T](allocShared(sizeof(T)))
   else:
@@ -173,11 +173,10 @@ proc `$`*[T](p: SharedPtr[T]): string {.inline.} =
 
 type
   ConstPtr*[T] = distinct SharedPtr[T]
-    ## Distinct version of referencing counting smart pointer SharedPtr[T],
-    ## which doesn't allow mutating underlying object.
+    ## Distinct version of `SharedPtr[T]`, which doesn't allow mutating the underlying value.
 
 proc newConstPtr*[T](val: sink Isolated[T]): ConstPtr[T] =
-  ## Similar like `SharedPtr`, but underlying object can't be mutated.
+  ## Similar to `newSharedPtr <#newSharedPtr,sinkT>`, but the underlying value can't be mutated.
   ConstPtr[T](newSharedPtr(val))
 
 converter convertConstPtrToObj*[T](p: ConstPtr[T]): lent T {.inline.} =

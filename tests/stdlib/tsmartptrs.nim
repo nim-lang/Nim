@@ -1,5 +1,5 @@
 discard """
-  targets: "c"
+  targets: "c cpp"
   matrix: "--gc:refc; --gc:orc; --gc:orc --threads:on"
 """
 
