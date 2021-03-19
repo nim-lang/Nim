@@ -242,6 +242,7 @@
 - Added `jshttpclient` module for JavaScript that provides
   asyncronous `HttpClient` implemented on top of `jsfetch` and
   synchronous `HttpClient` implemented on top of `jsxmlhttprequest`.
+  Migrated [`jsxmlhttprequest`](https://github.com/nim-lang/fusion/blob/master/src/fusion/js/jsxmlhttprequest.nim) to stdlib.
 
 
 ## Language changes
