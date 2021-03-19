@@ -1,3 +1,5 @@
+.. default-role:: code
+
 ==========================================================
 Nim Enhancement Proposal #1 - Standard Library Style Guide
 ==========================================================
@@ -124,11 +126,11 @@ Naming Conventions
 
 - In the age of HTTP, HTML, FTP, TCP, IP, UTF, WWW it is foolish to pretend
   these are somewhat special words requiring all uppercase. Instead treat them
-  as what they are: Real words. So it's ``parseUrl`` rather than
-  ``parseURL``, ``checkHttpHeader`` instead of ``checkHTTPHeader`` etc.
+  as what they are: Real words. So it's `parseUrl` rather than
+  `parseURL`, `checkHttpHeader` instead of `checkHTTPHeader` etc.
 
-- Operations like ``mitems`` or ``mpairs`` (or the now deprecated ``mget``)
-  that allow a *mutating view* into some data structure should start with an ``m``.
+- Operations like `mitems` or `mpairs` (or the now deprecated `mget`)
+  that allow a *mutating view* into some data structure should start with an `m`.
 - When both in-place mutation and 'returns transformed copy' are available the latter
   is a past participle of the former:
 
@@ -136,8 +138,8 @@ Naming Conventions
   - sort and sorted
   - rotate and rotated
 
-- When the 'returns transformed copy' version already exists like ``strutils.replace``
-  an in-place version should get an ``-In`` suffix (``replaceIn`` for this example).
+- When the 'returns transformed copy' version already exists like `strutils.replace`
+  an in-place version should get an `-In` suffix (`replaceIn` for this example).
 
 
 - Use `subjectVerb`, not `verbSubject`, e.g.: `fileExists`, not `existsFile`.
@@ -153,25 +155,25 @@ to keep the names short but meaningful.
 -------------------     ------------   --------------------------------------
 English word            To use         Notes
 -------------------     ------------   --------------------------------------
-initialize              initFoo        initializes a value type ``Foo``
-new                     newFoo         initializes a reference type ``Foo``
-                                       via ``new``
+initialize              initFoo        initializes a value type `Foo`
+new                     newFoo         initializes a reference type `Foo`
+                                       via `new`
 this or self            self           for method like procs, e.g.:
                                        `proc fun(self: Foo, a: int)`
                                        rationale: `self` is more unique in English
                                        than `this`, and `foo` would not be DRY.
 find                    find           should return the position where
                                        something was found; for a bool result
-                                       use ``contains``
-contains                contains       often short for ``find() >= 0``
-append                  add            use ``add`` instead of ``append``
+                                       use `contains`
+contains                contains       often short for `find() >= 0`
+append                  add            use `add` instead of `append`
 compare                 cmp            should return an int with the
-                                       ``< 0`` ``== 0`` or ``> 0`` semantics;
-                                       for a bool result use ``sameXYZ``
-put                     put, ``[]=``   consider overloading ``[]=`` for put
-get                     get, ``[]``    consider overloading ``[]`` for get;
-                                       consider to not use ``get`` as a
-                                       prefix: ``len`` instead of ``getLen``
+                                       `< 0` `== 0` or `> 0` semantics;
+                                       for a bool result use `sameXYZ`
+put                     put, `[]=`     consider overloading `[]=` for put
+get                     get, `[]`      consider overloading `[]` for get;
+                                       consider to not use `get` as a
+                                       prefix: `len` instead of `getLen`
 length                  len            also used for *number of elements*
 size                    size, len      size should refer to a byte size
 capacity                cap
@@ -236,8 +238,8 @@ Coding Conventions
 - Use a proc when possible, only using the more powerful facilities of macros,
   templates, iterators, and converters when necessary.
 
-- Use the ``let`` statement (not the ``var`` statement) when declaring variables that
-  do not change within their scope. Using the ``let`` statement ensures that
+- Use the `let` statement (not the `var` statement) when declaring variables that
+  do not change within their scope. Using the `let` statement ensures that
   variables remain immutable, and gives those who read the code a better idea
   of the code's purpose.
 

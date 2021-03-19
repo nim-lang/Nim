@@ -1,30 +1,32 @@
+.. default-role:: code
+
 ================================
           NimScript
 ================================
 
-Strictly speaking, ``NimScript`` is the subset of Nim that can be evaluated
+Strictly speaking, `NimScript` is the subset of Nim that can be evaluated
 by Nim's builtin virtual machine (VM). This VM is used for Nim's compiletime
 function evaluation features.
 
-The ``nim`` executable processes the ``.nims`` configuration files in
+The `nim` executable processes the `.nims` configuration files in
 the following directories (in this order; later files overwrite
 previous settings):
 
-1) If environment variable ``XDG_CONFIG_HOME`` is defined,
-   ``$XDG_CONFIG_HOME/nim/config.nims`` or
-   ``~/.config/nim/config.nims`` (POSIX) or
-   ``%APPDATA%/nim/config.nims`` (Windows). This file can be skipped
-   with the ``--skipUserCfg`` command line option.
-2) ``$parentDir/config.nims`` where ``$parentDir`` stands for any
+1) If environment variable `XDG_CONFIG_HOME` is defined,
+   `$XDG_CONFIG_HOME/nim/config.nims` or
+   `~/.config/nim/config.nims` (POSIX) or
+   `%APPDATA%/nim/config.nims` (Windows). This file can be skipped
+   with the `--skipUserCfg` command line option.
+2) `$parentDir/config.nims` where `$parentDir` stands for any
    parent directory of the project file's path. These files can be
-   skipped with the ``--skipParentCfg`` command line option.
-3) ``$projectDir/config.nims`` where ``$projectDir`` stands for the
-   project's path. This file can be skipped with the ``--skipProjCfg``
+   skipped with the `--skipParentCfg` command line option.
+3) `$projectDir/config.nims` where `$projectDir` stands for the
+   project's path. This file can be skipped with the `--skipProjCfg`
    command line option.
 4) A project can also have a project specific configuration file named
-   ``$project.nims`` that resides in the same directory as
-   ``$project.nim``. This file can be skipped with the same
-   ``--skipProjCfg`` command line option.
+   `$project.nims` that resides in the same directory as
+   `$project.nim`. This file can be skipped with the same
+   `--skipProjCfg` command line option.
 
 For available procs and implementation details see `nimscript <nimscript.html>`_.
 
@@ -36,13 +38,13 @@ NimScript is subject to some limitations caused by the implementation of the VM
 (virtual machine):
 
 * Nim's FFI (foreign function interface) is not available in NimScript. This
-  means that any stdlib module which relies on ``importc`` can not be used in
+  means that any stdlib module which relies on `importc` can not be used in
   the VM.
 
-* ``ptr`` operations are are hard to emulate with the symbolic representation
+* `ptr` operations are are hard to emulate with the symbolic representation
   the VM uses. They are available and tested extensively but there are bugs left.
 
-* ``var T`` function arguments rely on ``ptr`` operations internally and might
+* `var T` function arguments rely on `ptr` operations internally and might
   also be problematic in some cases.
 
 * More than one level of `ref` is generally not supported (for example, the type
@@ -50,7 +52,7 @@ NimScript is subject to some limitations caused by the implementation of the VM
 
 * Multimethods are not available.
 
-* ``random.randomize()`` requires an ``int64`` explicitly passed as argument, you *must* pass a Seed integer.
+* `random.randomize()` requires an `int64` explicitly passed as argument, you *must* pass a Seed integer.
 
 
 Standard library modules
@@ -109,11 +111,11 @@ See also:
 NimScript as a configuration file
 =================================
 
-A command-line switch ``--FOO`` is written as ``switch("FOO")`` in
-NimScript. Similarly, command-line ``--FOO:VAL`` translates to
-``switch("FOO", "VAL")``.
+A command-line switch `--FOO` is written as `switch("FOO")` in
+NimScript. Similarly, command-line `--FOO:VAL` translates to
+`switch("FOO", "VAL")`.
 
-Here are few examples of using the ``switch`` proc:
+Here are few examples of using the `switch` proc:
 
 .. code-block:: nim
   # command-line: --opt:size
@@ -123,7 +125,7 @@ Here are few examples of using the ``switch`` proc:
   # command-line: --forceBuild
   switch("forceBuild")
 
-NimScripts also support ``--`` templates for convenience, which look
+NimScripts also support `--` templates for convenience, which look
 like command-line switches written as-is in the NimScript file. So the
 above example can be rewritten as:
 
@@ -133,17 +135,17 @@ above example can be rewritten as:
   --forceBuild
 
 **Note**: In general, the *define* switches can also be set in
-NimScripts using ``switch`` or ``--``, as shown in above
-examples. Only the ``release`` define (``-d:release``) cannot be set
+NimScripts using `switch` or `--`, as shown in above
+examples. Only the `release` define (`-d:release`) cannot be set
 in NimScripts.
 
 
 NimScript as a build tool
 =========================
 
-The ``task`` template that the ``system`` module defines allows a NimScript
+The `task` template that the `system` module defines allows a NimScript
 file to be used as a build tool. The following example defines a
-task ``build`` that is an alias for the ``c`` command:
+task `build` that is an alias for the `c` command:
 
 .. code-block:: nim
   task build, "builds an example":
@@ -155,11 +157,11 @@ In fact, as a convention the following tasks should be available:
 =========     ===================================================
 Task          Description
 =========     ===================================================
-``help``      List all the available NimScript tasks along with their docstrings.
-``build``     Build the project with the required
-              backend (``c``, ``cpp`` or ``js``).
-``tests``     Runs the tests belonging to the project.
-``bench``     Runs benchmarks belonging to the project.
+`help`        List all the available NimScript tasks along with their docstrings.
+`build`       Build the project with the required
+              backend (`c`, `cpp` or `js`).
+`tests`       Runs the tests belonging to the project.
+`bench`       Runs benchmarks belonging to the project.
 =========     ===================================================
 
 
@@ -178,7 +180,7 @@ Standalone NimScript
 ====================
 
 NimScript can also be used directly as a portable replacement for Bash and
-Batch files. Use ``nim myscript.nims`` to run ``myscript.nims``. For example,
+Batch files. Use `nim myscript.nims` to run `myscript.nims`. For example,
 installation of Nimble could be accomplished with this simple script:
 
 .. code-block:: nim
@@ -196,8 +198,8 @@ installation of Nimble could be accomplished with this simple script:
 
   mvFile "nimble" & $id & "/src/nimble".toExe, "bin/nimble".toExe
 
-On Unix, you can also use the shebang ``#!/usr/bin/env nim``, as long as your filename
-ends with ``.nims``:
+On Unix, you can also use the shebang `#!/usr/bin/env nim`, as long as your filename
+ends with `.nims`:
 
 .. code-block:: nim
 
@@ -206,7 +208,7 @@ ends with ``.nims``:
 
   echo "hello world"
 
-Use ``#!/usr/bin/env -S nim --hints:off`` to disable hints.
+Use `#!/usr/bin/env -S nim --hints:off` to disable hints.
 
 
 Benefits
@@ -268,7 +270,7 @@ Powerful Metaprogramming
 NimScript can use Nim's templates, macros, types, concepts, effect tracking system, and more,
 you can create modules that work on compiled Nim and also on interpreted NimScript.
 
-``func`` will still check for side effects, ``debugEcho`` also works as expected,
+`func` will still check for side effects, `debugEcho` also works as expected,
 making it ideal for functional scripting metaprogramming.
 
 This is an example of a third party module that uses macros and templates to
@@ -315,7 +317,7 @@ See the following NimScript:
     echo CompileDate
 
 
-``likely()``, ``unlikely()``, ``static:`` and ``{.compiletime.}``
+`likely()`, `unlikely()`, `static:` and `{.compiletime.}`
 will produce no code at all when run on NimScript,
 but still no error nor warning is produced and the code just works.
 
