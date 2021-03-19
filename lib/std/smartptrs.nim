@@ -15,20 +15,20 @@ runnableExamples:
     var a1: UniquePtr[float]
     var a2 = newUniquePtr(isolate(0))
 
-    assert $a1 == "UniquePtr[float](nil)"
+    assert $a1 == "(nil)"
     assert a1.isNil
-    assert $a2 == "UniquePtr[int](0)"
+    assert $a2 == "(0)"
     assert not a2.isNil
     assert a2[] == 0
 
     # UniquePtr can't be copied but can be moved
     let a3 = move a2 # a2 will be destroyed
 
-    assert $a2 == "UniquePtr[int](nil)"
-    assert a2.isNil == true
+    assert $a2 == "(nil)"
+    assert a2.isNil
 
-    assert $a3 == "UniquePtr[int](0)"
-    assert a3.isNil == false
+    assert $a3 == "(0)"
+    assert not a3.isNil
     assert a3[] == 0
 
   block:
@@ -36,13 +36,13 @@ runnableExamples:
     let a2 = newSharedPtr(isolate(0))
     let a3 = a2
 
-    assert $a1 == "SharedPtr[float](nil)"
-    assert a1.isNil == true
-    assert $a2 == "SharedPtr[int](0)"
-    assert a2.isNil == false
+    assert $a1 == "(nil)"
+    assert a1.isNil
+    assert $a2 == "(0)"
+    assert not a2.isNil
     assert a2[] == 0
-    assert $a3 == "SharedPtr[int](0)"
-    assert a3.isNil == false
+    assert $a3 == "(0)"
+    assert not a3.isNil
     assert a3[] == 0
 
   block:
@@ -50,13 +50,13 @@ runnableExamples:
     let a2 = newConstPtr(isolate(0))
     let a3 = a2
 
-    assert $a1 == "ConstPtr[float](nil)"
-    assert a1.isNil == true
-    assert $a2 == "ConstPtr[int](0)"
-    assert a2.isNil == false
+    assert $a1 == "(nil)"
+    assert a1.isNil
+    assert $a2 == "(0)"
+    assert not a2.isNil
     assert a2[] == 0
-    assert $a3 == "ConstPtr[int](0)"
-    assert a3.isNil == false
+    assert $a3 == "(0)"
+    assert not a3.isNil
     assert a3[] == 0
 
 
@@ -106,8 +106,8 @@ proc `[]`*[T](p: UniquePtr[T]): var T {.inline.} =
   p.val[]
 
 proc `$`*[T](p: UniquePtr[T]): string {.inline.} =
-  if p.val == nil: "UniquePtr[" & $T & "](nil)"
-  else: "UniquePtr[" & $T & "](" & $p.val[] & ")"
+  if p.val == nil: "(nil)"
+  else: "(" & $p.val[] & ")"
 
 #------------------------------------------------------------------------------
 
@@ -166,8 +166,8 @@ proc `[]`*[T](p: SharedPtr[T]): var T {.inline.} =
   p.val.value
 
 proc `$`*[T](p: SharedPtr[T]): string {.inline.} =
-  if p.val == nil: "SharedPtr[" & $T & "](nil)"
-  else: "SharedPtr[" & $T & "](" & $p.val.value & ")"
+  if p.val == nil: "(nil)"
+  else: "(" & $p.val.value & ")"
 
 #------------------------------------------------------------------------------
 
@@ -176,7 +176,7 @@ type
     ## Distinct version of `SharedPtr[T]`, which doesn't allow mutating the underlying value.
 
 proc newConstPtr*[T](val: sink Isolated[T]): ConstPtr[T] =
-  ## Similar to `newSharedPtr <#newSharedPtr,sinkT>`, but the underlying value can't be mutated.
+  ## Similar to `newSharedPtr<#newSharedPtr,sinkIsolated[T]>`_, but the underlying value can't be mutated.
   ConstPtr[T](newSharedPtr(val))
 
 converter convertConstPtrToObj*[T](p: ConstPtr[T]): lent T {.inline.} =
@@ -191,5 +191,5 @@ proc `[]`*[T](p: ConstPtr[T]): lent T {.inline.} =
   SharedPtr[T](p).val.value
 
 proc `$`*[T](p: ConstPtr[T]): string {.inline.} =
-  if SharedPtr[T](p).val == nil: "ConstPtr[" & $T & "](nil)"
-  else: "ConstPtr[" & $T & "](" & $SharedPtr[T](p).val.value & ")"
+  if SharedPtr[T](p).val == nil: "(nil)"
+  else: "(" & $SharedPtr[T](p).val.value & ")"
