@@ -12,7 +12,7 @@
 import
   strutils, pegs, os, osproc, streams, json, std/exitprocs,
   backend, parseopt, specs, htmlgen, browsers, terminal,
-  algorithm, times, md5, sequtils, azure, intsets, macros
+  algorithm, times, md5, azure, intsets, macros
 from std/sugar import dup
 import compiler/nodejs
 import lib/stdtest/testutils
@@ -35,7 +35,6 @@ Command:
   c|cat|category <category>   run all the tests of a certain category
   r|run <test>                run single test file
   html                        generate $1 from the database
-  stats                       generate statistics about test cases
 Arguments:
   arguments are passed to the compiler
 Options:
@@ -76,6 +75,7 @@ type
     args: seq[string]
     spec: TSpec
     startTime: float
+    debugInfo: string
 
 # ----------------------------------------------------------------------------
 
@@ -285,7 +285,7 @@ proc addResult(r: var TResults, test: TTest, target: TTarget,
   template disp(msg) =
     maybeStyledEcho styleDim, fgYellow, msg & ' ', styleBright, fgCyan, name
   if success == reSuccess:
-    maybeStyledEcho fgGreen, "PASS: ", fgCyan, alignLeft(name, 60), fgBlue, " (", durationStr, " sec)"
+    maybeStyledEcho fgGreen, "PASS: ", fgCyan, test.debugInfo, alignLeft(name, 60), fgBlue, " (", durationStr, " sec)"
   elif success == reDisabled:
     if test.spec.inCurrentBatch: disp("SKIP:")
     else: disp("NOTINBATCH:")
@@ -501,7 +501,8 @@ proc testSpecHelper(r: var TResults, test: var TTest, expected: TSpec,
           var args = test.args
           if isJsTarget:
             exeCmd = nodejs
-            args = concat(@[exeFile], args)
+            # see D20210217T215950
+            args = @["--unhandled-rejections=strict", exeFile] & args
           else:
             exeCmd = exeFile.dup(normalizeExe)
             if expected.useValgrind != disabled:
@@ -510,6 +511,7 @@ proc testSpecHelper(r: var TResults, test: var TTest, expected: TSpec,
                 valgrindOptions.add "--leak-check=yes"
               args = valgrindOptions & exeCmd & args
               exeCmd = "valgrind"
+          # xxx honor `testament --verbose` here
           var (_, buf, exitCode) = execCmdEx2(exeCmd, args, input = expected.input)
           # Treat all failure codes from nodejs as 1. Older versions of nodejs used
           # to return other codes, but for us it is sufficient to know that it's not 0.
@@ -683,7 +685,7 @@ proc main() =
     case p.key.normalize
     of "print", "verbose": optPrintResults = true
     of "failing": optFailing = true
-    of "pedantic": discard # deadcode
+    of "pedantic": discard # deadcode refs https://github.com/nim-lang/Nim/issues/16731
     of "targets":
       targetsStr = p.val
       gTargets = parseTargets(targetsStr)
@@ -739,7 +741,7 @@ proc main() =
   var r = initResults()
   case action
   of "all":
-    #processCategory(r, Category"megatest", p.cmdLineRest.string, testsDir, runJoinableTests = false)
+    #processCategory(r, Category"megatest", p.cmdLineRest, testsDir, runJoinableTests = false)
 
     var myself = quoteShell(getAppFilename())
     if targetsStr.len > 0:
@@ -798,8 +800,7 @@ proc main() =
     p.next
     processPattern(r, pattern, p.cmdLineRest, simulate)
   of "r", "run":
-    var subPath = p.key
-    let (cat, path) = splitTestFile(subPath)
+    let (cat, path) = splitTestFile(p.key)
     processSingleTest(r, cat.Category, p.cmdLineRest, path, gTargets, targetsSet)
   of "html":
     generateHtml(resultsFile, optFailing)

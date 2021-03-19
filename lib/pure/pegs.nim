@@ -941,7 +941,7 @@ template eventParser*(pegAst, handlers: untyped): (proc(s: string): int) =
   ## evaluates an arithmetic expression defined by a simple PEG:
   ##
   ## .. code-block:: nim
-  ##  import strutils, pegs
+  ##  import std/[strutils, pegs]
   ##
   ##  let
   ##    pegAst = """
@@ -1157,9 +1157,6 @@ proc findAll*(s: string, pattern: Peg, start = 0): seq[string] {.
   ## If it does not match, @[] is returned.
   result = @[]
   for it in findAll(s, pattern, start): result.add it
-
-when not defined(nimhygiene):
-  {.pragma: inject.}
 
 template `=~`*(s: string, pattern: Peg): bool =
   ## This calls ``match`` with an implicit declared ``matches`` array that

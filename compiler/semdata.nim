@@ -15,7 +15,7 @@ import
   intsets, options, ast, astalgo, msgs, idents, renderer,
   magicsys, vmdef, modulegraphs, lineinfos, sets, pathutils
 
-import ic / to_packed_ast
+import ic / ic
 
 type
   TOptionEntry* = object      # entries to put on a stack for pragma parsing
@@ -42,6 +42,7 @@ type
     mappingExists*: bool
     mapping*: TIdTable
     caseContext*: seq[tuple[n: PNode, idx: int]]
+    localBindStmts*: seq[PNode]
 
   TMatchedConcept* = object
     candidateType*: PType
@@ -147,13 +148,12 @@ type
     selfName*: PIdent
     cache*: IdentCache
     graph*: ModuleGraph
-    encoder*: PackedEncoder
     signatures*: TStrTable
     recursiveDep*: string
     suggestionsMade*: bool
     isAmbiguous*: bool # little hack
     features*: set[Feature]
-    inTypeContext*: int
+    inTypeContext*, inConceptDecl*: int
     unusedImports*: seq[(PSym, TLineInfo)]
     exportIndirections*: HashSet[(int, int)]
     lastTLineInfo*: TLineInfo
@@ -314,9 +314,10 @@ proc newContext*(graph: ModuleGraph; module: PSym): PContext =
     assert graph.packed[id].status in {undefined, outdated}
     graph.packed[id].status = storing
     graph.packed[id].module = module
-    initEncoder result.encoder, graph.packed[id].fromDisk, module, graph.config, graph.startupPackedConfig
+    initEncoder graph, module
 
 template packedRepr*(c): untyped = c.graph.packed[c.module.position].fromDisk
+template encoder*(c): untyped = c.graph.encoders[c.module.position]
 
 proc addIncludeFileDep*(c: PContext; f: FileIndex) =
   if c.config.symbolFiles != disabledSf:
@@ -409,14 +410,6 @@ proc makeVarType*(owner: PSym, baseType: PType; idgen: IdGenerator; kind = tyVar
   else:
     result = newType(kind, nextTypeId(idgen), owner)
     addSonSkipIntLit(result, baseType, idgen)
-
-proc makeTypeDesc*(c: PContext, typ: PType): PType =
-  if typ.kind == tyTypeDesc:
-    result = typ
-  else:
-    result = newTypeS(tyTypeDesc, c)
-    incl result.flags, tfCheckedForDestructor
-    result.addSonSkipIntLit(typ, c.idgen)
 
 proc makeTypeSymNode*(c: PContext, typ: PType, info: TLineInfo): PNode =
   let typedesc = newTypeS(tyTypeDesc, c)
@@ -569,9 +562,10 @@ proc addToGenericCache*(c: PContext; s: PSym; inst: PType) =
 
 proc saveRodFile*(c: PContext) =
   if c.config.symbolFiles != disabledSf:
-    for (m, n) in PCtx(c.graph.vm).vmstateDiff:
-      if m == c.module:
-        addPragmaComputation(c, n)
+    if c.graph.vm != nil:
+      for (m, n) in PCtx(c.graph.vm).vmstateDiff:
+        if m == c.module:
+          addPragmaComputation(c, n)
     if sfSystemModule in c.module.flags:
       c.graph.systemModuleComplete = true
     c.idgen.sealed = true # no further additions are allowed

@@ -67,6 +67,21 @@ template fn() =
     doAssert b2.ord == 1 # explains the `1`
     testRoundtrip(a): """[1,2,3]"""
 
+  block: # bug #17383
+    block:
+      let a = (int32.high, uint32.high)
+      testRoundtrip(a): "[2147483647,4294967295]"
+    when not defined(js):
+      block:
+        let a = (int64.high, uint64.high)
+        testRoundtrip(a): "[9223372036854775807,18446744073709551615]"
+    block:
+      let a = (int.high, uint.high)
+      when int.sizeof == 4:
+        testRoundtrip(a): "[2147483647,4294967295]"
+      else:
+        testRoundtrip(a): "[9223372036854775807,18446744073709551615]"
+
   block: # case object
     type Foo = object
       x0: float

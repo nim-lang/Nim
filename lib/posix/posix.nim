@@ -27,7 +27,7 @@
 ## the \`identifier\` notation is used.
 ##
 ## This library relies on the header files of your C compiler. The
-## resulting C code will just ``#include <XYZ.h>`` and *not* define the
+## resulting C code will just `#include <XYZ.h>` and *not* define the
 ## symbols declared here.
 
 # Dead code elimination ensures that we don't accidentally generate #includes
@@ -90,8 +90,8 @@ type Sighandler = proc (a: cint) {.noconv.}
 const StatHasNanoseconds* = defined(linux) or defined(freebsd) or
     defined(osx) or defined(openbsd) or defined(dragonfly) or defined(haiku) ## \
   ## Boolean flag that indicates if the system supports nanosecond time
-  ## resolution in the fields of ``Stat``. Note that the nanosecond based fields
-  ## (``Stat.st_atim``, ``Stat.st_mtim`` and ``Stat.st_ctim``) can be accessed
+  ## resolution in the fields of `Stat`. Note that the nanosecond based fields
+  ## (`Stat.st_atim`, `Stat.st_mtim` and `Stat.st_ctim`) can be accessed
   ## without checking this flag, because this module defines fallback procs
   ## when they are not available.
 
@@ -189,7 +189,7 @@ proc posix_fadvise*(a1: cint, a2, a3: Off, a4: cint): cint {.
 proc posix_fallocate*(a1: cint, a2, a3: Off): cint {.
   importc, header: "<fcntl.h>".}
 
-when not defined(haiku) and not defined(OpenBSD):
+when not defined(haiku) and not defined(openbsd):
   proc fmtmsg*(a1: int, a2: cstring, a3: cint,
               a4, a5, a6: cstring): cint {.importc, header: "<fmtmsg.h>".}
 
@@ -908,7 +908,7 @@ when defined(linux) or defined(bsd):
 
 proc bindSocket*(a1: SocketHandle, a2: ptr SockAddr, a3: SockLen): cint {.
   importc: "bind", header: "<sys/socket.h>".}
-  ## is Posix's ``bind``, because ``bind`` is a reserved word
+  ## is Posix's `bind`, because `bind` is a reserved word
 
 proc connect*(a1: SocketHandle, a2: ptr SockAddr, a3: SockLen): cint {.
   importc, header: "<sys/socket.h>".}
@@ -1048,16 +1048,16 @@ proc realpath*(name, resolved: cstring): cstring {.
 proc mkstemp*(tmpl: cstring): cint {.importc, header: "<stdlib.h>", sideEffect.}
   ## Creates a unique temporary file.
   ##
-  ## **Warning**: The `tmpl` argument is written to by `mkstemp` and thus
-  ## can't be a string literal. If in doubt make a copy of the cstring before
-  ## passing it in.
+  ## .. warning:: The `tmpl` argument is written to by `mkstemp` and thus
+  ##   can't be a string literal. If in doubt make a copy of the cstring before
+  ##   passing it in.
 
 proc mkstemps*(tmpl: cstring, suffixlen: int): cint {.importc, header: "<stdlib.h>", sideEffect.}
   ## Creates a unique temporary file.
   ##
-  ## **Warning**: The `tmpl` argument is written to by `mkstemps` and thus
-  ## can't be a string literal. If in doubt make a copy of the cstring before
-  ## passing it in.
+  ## .. warning:: The `tmpl` argument is written to by `mkstemps` and thus
+  ##   can't be a string literal. If in doubt make a copy of the cstring before
+  ##   passing it in.
 
 proc mkdtemp*(tmpl: cstring): pointer {.importc, header: "<stdlib.h>", sideEffect.}
 
@@ -1083,13 +1083,13 @@ proc handle_signal(sig: cint, handler: proc (a: cint) {.noconv.}) {.importc: "si
 
 template onSignal*(signals: varargs[cint], body: untyped) =
   ## Setup code to be executed when Unix signals are received. The
-  ## currently handled signal is injected as ``sig`` into the calling
+  ## currently handled signal is injected as `sig` into the calling
   ## scope.
   ##
   ## Example:
   ##
   ## .. code-block::
-  ##   from posix import SIGINT, SIGTERM, onSignal
+  ##   from std/posix import SIGINT, SIGTERM, onSignal
   ##   onSignal(SIGINT, SIGTERM):
   ##     echo "bye from signal ", sig
 

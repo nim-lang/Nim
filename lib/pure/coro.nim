@@ -229,7 +229,7 @@ proc switchTo(current, to: CoroutinePtr) =
   nimGC_setStackBottom(ctx.ncbottom)
 
 proc suspend*(sleepTime: float = 0) =
-  ## Stops coroutine execution and resumes no sooner than after ``sleeptime`` seconds.
+  ## Stops coroutine execution and resumes no sooner than after `sleeptime` seconds.
   ## Until then other coroutines are executed.
   var current = getCurrent()
   current.sleepTime = sleepTime
@@ -335,9 +335,9 @@ proc run*() =
       ctx.current = ctx.current.next
 
 proc alive*(c: CoroutineRef): bool = c.coro != nil and c.coro.state != CORO_FINISHED
-  ## Returns ``true`` if coroutine has not returned, ``false`` otherwise.
+  ## Returns `true` if coroutine has not returned, `false` otherwise.
 
 proc wait*(c: CoroutineRef, interval = 0.01) =
-  ## Returns only after coroutine ``c`` has returned. ``interval`` is time in seconds how often.
+  ## Returns only after coroutine `c` has returned. `interval` is time in seconds how often.
   while alive(c):
     suspend(interval)

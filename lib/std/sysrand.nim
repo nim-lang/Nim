@@ -7,6 +7,10 @@
 #    distribution, for details about the copyright.
 #
 
+## .. warning:: This module was added in Nim 1.6. If you are using it for cryptographic purposes,
+##   keep in mind that so far this has not been audited by any security professionals,
+##   therefore may not be secure.
+## 
 ## `std/sysrand` generates random numbers from a secure source provided by the operating system.
 ## It is also called Cryptographically secure pseudorandom number generator.
 ## It should be unpredictable enough for cryptographic applications,
@@ -53,11 +57,11 @@ when not defined(js):
 when defined(posix):
   import std/posix
 
-const batchImplOS = defined(freebsd) or defined(openbsd) or (defined(macosx) and not defined(ios))
+const
+  batchImplOS = defined(freebsd) or defined(openbsd) or (defined(macosx) and not defined(ios))
+  batchSize {.used.} = 256
 
 when batchImplOS:
-  const batchSize = 256
-
   template batchImpl(result: var int, dest: var openArray[byte], getRandomImpl) =
     let size = dest.len
     if size == 0:
@@ -94,8 +98,6 @@ when defined(js):
         dest[i] = src[i]
 
   else:
-    const batchSize = 256
-
     proc getRandomValues(p: Uint8Array) {.importjs: "window.crypto.getRandomValues(#)".}
       # The requested length of `p` must not be more than 65536.
 
@@ -158,7 +160,8 @@ elif defined(windows):
     result = randomBytes(addr dest[0], size)
 
 elif defined(linux):
-  let SYS_getrandom {.importc: "SYS_getrandom", header: "<sys/syscall.h>".}: clong
+  # TODO using let, pending bootstrap >= 1.4.0
+  var SYS_getrandom {.importc: "SYS_getrandom", header: "<sys/syscall.h>".}: clong
   const syscallHeader = """#include <unistd.h>
 #include <sys/syscall.h>"""
 
@@ -209,7 +212,7 @@ elif defined(freebsd):
     # errno is set to indicate the error.
 
   proc getRandomImpl(p: pointer, size: int): int {.inline.} =
-    result = getrandom(p, csize_t(batchSize), 0)
+    result = getrandom(p, csize_t(size), 0)
 
 elif defined(ios):
   {.passL: "-framework Security".}
@@ -255,26 +258,28 @@ else:
 
     # see: https://www.2uo.de/myths-about-urandom/ which justifies using urandom instead of random
     let fd = posix.open("/dev/urandom", O_RDONLY)
-    defer: discard posix.close(fd)
 
-    if fd > 0:
-      var stat: Stat
-      if fstat(fd, stat) != -1 and S_ISCHR(stat.st_mode):
-        let
-          chunks = (size - 1) div batchSize
-          left = size - chunks * batchSize
-
-        for i in 0 ..< chunks:
-          let readBytes = posix.read(fd, addr dest[result], batchSize)
-          if readBytes < 0:
-            return readBytes
-          inc(result, batchSize)
-
-        result = posix.read(fd, addr dest[result], left)
-      else:
-        result = -1
-    else:
+    if fd < 0:
       result = -1
+    else:
+      try:
+        var stat: Stat
+        if fstat(fd, stat) != -1 and S_ISCHR(stat.st_mode):
+          let
+            chunks = (size - 1) div batchSize
+            left = size - chunks * batchSize
+
+          for i in 0 ..< chunks:
+            let readBytes = posix.read(fd, addr dest[result], batchSize)
+            if readBytes < 0:
+              return readBytes
+            inc(result, batchSize)
+
+          result = posix.read(fd, addr dest[result], left)
+        else:
+          result = -1
+      finally:
+        discard posix.close(fd)
 
 proc urandomInternalImpl(dest: var openArray[byte]): int {.inline.} =
   when batchImplOS:
@@ -284,10 +289,14 @@ proc urandomInternalImpl(dest: var openArray[byte]): int {.inline.} =
 
 proc urandom*(dest: var openArray[byte]): bool =
   ## Fills `dest` with random bytes suitable for cryptographic use.
-  ## If succeed, returns `true`.
+  ## If the call succeeds, returns `true`.
   ##
   ## If `dest` is empty, `urandom` immediately returns success,
   ## without calling underlying operating system api.
+  ##
+  ## .. warning:: The code hasn't been audited by cryptography experts and
+  ##   is provided as-is without guarantees. Use at your own risks. For production
+  ##   systems we advise you to request an external audit.
   result = true
   when defined(js): discard urandomInternalImpl(dest)
   else:
@@ -301,8 +310,12 @@ proc urandom*(dest: var openArray[byte]): bool =
 
 proc urandom*(size: Natural): seq[byte] {.inline.} =
   ## Returns random bytes suitable for cryptographic use.
+  ## 
+  ## .. warning:: The code hasn't been audited by cryptography experts and
+  ##   is provided as-is without guarantees. Use at your own risks. For production
+  ##   systems we advise you to request an external audit.
   result = newSeq[byte](size)
   when defined(js): discard urandomInternalImpl(result)
   else:
     if not urandom(result):
-      raiseOsError(osLastError())
+      raiseOSError(osLastError())

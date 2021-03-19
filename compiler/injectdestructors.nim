@@ -82,7 +82,7 @@ proc aliasesCached(cache: var AliasCache, obj, field: PNode): AliasKind =
     cache[key] = aliases(obj, field)
   cache[key]
 
-proc collectLastReads(cfg: ControlFlowGraph; cache: var AliasCache, alreadySeen: var HashSet[PNode], lastReads, potLastReads: var IntSet; pc: var int, until: int) =
+proc collectLastReads(cfg: ControlFlowGraph; cache: var AliasCache, lastReads, potLastReads: var IntSet; pc: var int, until: int) =
   template aliasesCached(obj, field: PNode): untyped =
     aliasesCached(cache, obj, field)
   while pc < until:
@@ -100,6 +100,52 @@ proc collectLastReads(cfg: ControlFlowGraph; cache: var AliasCache, alreadySeen:
           cfg[r].n.comment = '\n' & $pc
           potLastReads.excl r
 
+      inc pc
+    of use:
+      let potLastReadsCopy = potLastReads
+      for r in potLastReadsCopy:
+        if cfg[pc].n.aliasesCached(cfg[r].n) != no or cfg[r].n.aliasesCached(cfg[pc].n) != no:
+          cfg[r].n.comment = '\n' & $pc
+          potLastReads.excl r
+
+      potLastReads.incl pc
+
+      inc pc
+    of goto:
+      pc += cfg[pc].dest
+    of fork:
+      var variantA = pc + 1
+      var variantB = pc + cfg[pc].dest
+      var potLastReadsA, potLastReadsB = potLastReads
+      var lastReadsA, lastReadsB: IntSet
+      while variantA != variantB and max(variantA, variantB) < cfg.len and min(variantA, variantB) < until:
+        if variantA < variantB:
+          collectLastReads(cfg, cache, lastReadsA, potLastReadsA, variantA, min(variantB, until))
+        else:
+          collectLastReads(cfg, cache, lastReadsB, potLastReadsB, variantB, min(variantA, until))
+
+      # Add those last reads that were turned into last reads on both branches
+      lastReads.incl lastReadsA * lastReadsB
+      # Add those last reads that were turned into last reads on only one branch,
+      # but where the read operation itself also belongs to only that branch
+      lastReads.incl (lastReadsA + lastReadsB) - potLastReads
+
+      let oldPotLastReads = potLastReads
+      potLastReads = initIntSet()
+
+      potLastReads.incl potLastReadsA + potLastReadsB
+
+      # Remove potential last reads that were invalidated in a branch,
+      # but don't remove those which were turned into last reads on that branch
+      potLastReads.excl ((oldPotLastReads - potLastReadsA) - lastReadsA)
+      potLastReads.excl ((oldPotLastReads - potLastReadsB) - lastReadsB)
+
+      pc = min(variantA, variantB)
+
+proc collectFirstWrites(cfg: ControlFlowGraph; alreadySeen: var HashSet[PNode]; pc: var int, until: int) =
+  while pc < until:
+    case cfg[pc].kind
+    of def:
       var alreadySeenThisNode = false
       for s in alreadySeen:
         if cfg[pc].n.aliases(s) != no or s.aliases(cfg[pc].n) != no:
@@ -111,44 +157,22 @@ proc collectLastReads(cfg: ControlFlowGraph; cache: var AliasCache, alreadySeen:
 
       inc pc
     of use:
-      let potLastReadsCopy = potLastReads
-      for r in potLastReadsCopy:
-        if cfg[pc].n.aliasesCached(cfg[r].n) != no or cfg[r].n.aliasesCached(cfg[pc].n) != no:
-          cfg[r].n.comment = '\n' & $pc
-          potLastReads.excl r
-
-      potLastReads.incl pc
-
       alreadySeen.incl cfg[pc].n
 
       inc pc
     of goto:
       pc += cfg[pc].dest
     of fork:
-      # every branch must lead to the last read of the location:
       var variantA = pc + 1
       var variantB = pc + cfg[pc].dest
-      var potLastReadsA, potLastReadsB = potLastReads
-      var lastReadsA, lastReadsB: IntSet
       var alreadySeenA, alreadySeenB = alreadySeen
       while variantA != variantB and max(variantA, variantB) < cfg.len and min(variantA, variantB) < until:
         if variantA < variantB:
-          collectLastReads(cfg, cache, alreadySeenA, lastReadsA, potLastReadsA, variantA, min(variantB, until))
+          collectFirstWrites(cfg, alreadySeenA, variantA, min(variantB, until))
         else:
-          collectLastReads(cfg, cache, alreadySeenB, lastReadsB, potLastReadsB, variantB, min(variantA, until))
+          collectFirstWrites(cfg, alreadySeenB, variantB, min(variantA, until))
 
       alreadySeen.incl alreadySeenA + alreadySeenB
-
-      lastReads.incl lastReadsA * lastReadsB
-      lastReads.incl (lastReadsA + lastReadsB) - potLastReads
-
-      let oldPotLastReads = potLastReads
-      potLastReads = initIntSet()
-
-      potLastReads.incl (lastReadsA + lastReadsB) - lastReads
-
-      potLastReads.incl potLastReadsA * potLastReadsB
-      potLastReads.incl (potLastReadsA + potLastReadsB) - oldPotLastReads
 
       pc = min(variantA, variantB)
 
@@ -198,14 +222,14 @@ proc initialized(code: ControlFlowGraph; pc: int,
       inc pc
   return pc
 
-proc isCursor(n: PNode; c: Con): bool =
+proc isCursor(n: PNode): bool =
   case n.kind
   of nkSym:
     sfCursor in n.sym.flags
   of nkDotExpr:
-    isCursor(n[1], c)
+    isCursor(n[1])
   of nkCheckedFieldExpr:
-    isCursor(n[0], c)
+    isCursor(n[0])
   else:
     false
 
@@ -244,7 +268,7 @@ proc genOp(c: var Con; op: PSym; dest: PNode): PNode =
 
 proc genOp(c: var Con; t: PType; kind: TTypeAttachedOp; dest, ri: PNode): PNode =
   var op = getAttachedOp(c.graph, t, kind)
-  if op == nil or op.ast[genericParamsPos].kind != nkEmpty:
+  if op == nil or op.ast.isGenericRoutine:
     # give up and find the canonical type instead:
     let h = sighashes.hashType(t, {CoType, CoConsiderOwned, CoDistinct})
     let canon = c.graph.canonTypes.getOrDefault(h)
@@ -254,7 +278,7 @@ proc genOp(c: var Con; t: PType; kind: TTypeAttachedOp; dest, ri: PNode): PNode 
     #echo dest.typ.id
     globalError(c.graph.config, dest.info, "internal error: '" & AttachedOpToStr[kind] &
       "' operator not found for type " & typeToString(t))
-  elif op.ast[genericParamsPos].kind != nkEmpty:
+  elif op.ast.isGenericRoutine:
     globalError(c.graph.config, dest.info, "internal error: '" & AttachedOpToStr[kind] &
       "' operator is generic")
   dbg:
@@ -326,7 +350,7 @@ proc genMarkCyclic(c: var Con; result, dest: PNode) =
       if t.kind == tyRef:
         result.add callCodegenProc(c.graph, "nimMarkCyclic", dest.info, dest)
       else:
-        let xenv = genBuiltin(c.graph, mAccessEnv, "accessEnv", dest)
+        let xenv = genBuiltin(c.graph, c.idgen, mAccessEnv, "accessEnv", dest)
         xenv.typ = getSysType(c.graph, dest.info, tyPointer)
         result.add callCodegenProc(c.graph, "nimMarkCyclic", dest.info, xenv)
 
@@ -371,21 +395,21 @@ It is best to factor out piece of object that needs custom destructor into separ
     cond.add le
     cond.add tmp
     let notExpr = newNodeIT(nkPrefix, n.info, getSysType(c.graph, unknownLineInfo, tyBool))
-    notExpr.add newSymNode(createMagic(c.graph, "not", mNot))
+    notExpr.add newSymNode(createMagic(c.graph, c.idgen, "not", mNot))
     notExpr.add cond
     result.add newTree(nkIfStmt, newTree(nkElifBranch, notExpr, c.genOp(branchDestructor, le)))
   result.add newTree(nkFastAsgn, le, tmp)
 
 proc genWasMoved(c: var Con, n: PNode): PNode =
   result = newNodeI(nkCall, n.info)
-  result.add(newSymNode(createMagic(c.graph, "wasMoved", mWasMoved)))
+  result.add(newSymNode(createMagic(c.graph, c.idgen, "wasMoved", mWasMoved)))
   result.add copyTree(n) #mWasMoved does not take the address
   #if n.kind != nkSym:
   #  message(c.graph.config, n.info, warnUser, "wasMoved(" & $n & ")")
 
 proc genDefaultCall(t: PType; c: Con; info: TLineInfo): PNode =
   result = newNodeI(nkCall, info)
-  result.add(newSymNode(createMagic(c.graph, "default", mDefault)))
+  result.add(newSymNode(createMagic(c.graph, c.idgen, "default", mDefault)))
   result.typ = t
 
 proc destructiveMoveVar(n: PNode; c: var Con; s: var Scope): PNode =
@@ -504,23 +528,19 @@ proc cycleCheck(n: PNode; c: var Con) =
       message(c.graph.config, n.info, warnCycleCreated, msg)
       break
 
-proc pVarTopLevel(v: PNode; c: var Con; s: var Scope; ri, res: PNode) =
+proc pVarTopLevel(v: PNode; c: var Con; s: var Scope; res: PNode) =
   # move the variable declaration to the top of the frame:
   s.vars.add v.sym
   if isUnpackedTuple(v):
     if c.inLoop > 0:
       # unpacked tuple needs reset at every loop iteration
       res.add newTree(nkFastAsgn, v, genDefaultCall(v.typ, c, v.info))
-  elif sfThread notin v.sym.flags:
+  elif sfThread notin v.sym.flags and sfCursor notin v.sym.flags:
     # do not destroy thread vars for now at all for consistency.
     if sfGlobal in v.sym.flags and s.parent == nil: #XXX: Rethink this logic (see tarcmisc.test2)
       c.graph.globalDestructors.add c.genDestroy(v)
     else:
       s.final.add c.genDestroy(v)
-  if ri.kind == nkEmpty and c.inLoop > 0:
-    res.add moveOrCopy(v, genDefaultCall(v.typ, c, v.info), c, s, isDecl = true)
-  elif ri.kind != nkEmpty:
-    res.add moveOrCopy(v, ri, c, s, isDecl = true)
 
 proc processScope(c: var Con; s: var Scope; ret: PNode): PNode =
   result = newNodeI(nkStmtList, ret.info)
@@ -720,7 +740,7 @@ proc p(n: PNode; c: var Con; s: var Scope; mode: ProcessMode): PNode =
          nkCallKinds + nkLiterals:
       result = p(n, c, s, consumed)
     elif ((n.kind == nkSym and isSinkParam(n.sym)) or isAnalysableFieldAccess(n, c.owner)) and
-        isLastRead(n, c) and not (n.kind == nkSym and isCursor(n, c)):
+        isLastRead(n, c) and not (n.kind == nkSym and isCursor(n)):
       # Sinked params can be consumed only once. We need to reset the memory
       # to disable the destructor which we have not elided
       result = destructiveMoveVar(n, c, s)
@@ -826,17 +846,16 @@ proc p(n: PNode; c: var Con; s: var Scope; mode: ProcessMode): PNode =
         if it.kind == nkVarTuple and hasDestructor(c, ri.typ):
           let x = lowerTupleUnpacking(c.graph, it, c.idgen, c.owner)
           result.add p(x, c, s, consumed)
-        elif it.kind == nkIdentDefs and hasDestructor(c, it[0].typ) and not isCursor(it[0], c):
+        elif it.kind == nkIdentDefs and hasDestructor(c, it[0].typ):
           for j in 0..<it.len-2:
             let v = it[j]
             if v.kind == nkSym:
               if sfCompileTime in v.sym.flags: continue
-              pVarTopLevel(v, c, s, ri, result)
-            else:
-              if ri.kind == nkEmpty and c.inLoop > 0:
-                ri = genDefaultCall(v.typ, c, v.info)
-              if ri.kind != nkEmpty:
-                result.add moveOrCopy(v, ri, c, s, isDecl = false)
+              pVarTopLevel(v, c, s, result)
+            if ri.kind != nkEmpty:
+              result.add moveOrCopy(v, ri, c, s, isDecl = v.kind == nkSym)
+            elif ri.kind == nkEmpty and c.inLoop > 0:
+              result.add moveOrCopy(v, genDefaultCall(v.typ, c, v.info), c, s, isDecl = v.kind == nkSym)
         else: # keep the var but transform 'ri':
           var v = copyNode(n)
           var itCopy = copyNode(it)
@@ -846,8 +865,7 @@ proc p(n: PNode; c: var Con; s: var Scope; mode: ProcessMode): PNode =
           v.add itCopy
           result.add v
     of nkAsgn, nkFastAsgn:
-      if hasDestructor(c, n[0].typ) and n[1].kind notin {nkProcDef, nkDo, nkLambda} and
-          not isCursor(n[0], c):
+      if hasDestructor(c, n[0].typ) and n[1].kind notin {nkProcDef, nkDo, nkLambda}:
         if n[0].kind in {nkDotExpr, nkCheckedFieldExpr}:
           cycleCheck(n, c)
         assert n[1].kind notin {nkAsgn, nkFastAsgn}
@@ -866,7 +884,8 @@ proc p(n: PNode; c: var Con; s: var Scope; mode: ProcessMode): PNode =
     of nkNone..nkNilLit, nkTypeSection, nkProcDef, nkConverterDef,
        nkMethodDef, nkIteratorDef, nkMacroDef, nkTemplateDef, nkLambda, nkDo,
        nkFuncDef, nkConstSection, nkConstDef, nkIncludeStmt, nkImportStmt,
-       nkExportStmt, nkPragma, nkCommentStmt, nkBreakState, nkTypeOfExpr:
+       nkExportStmt, nkPragma, nkCommentStmt, nkBreakState,
+       nkTypeOfExpr, nkMixinStmt, nkBindStmt:
       result = n
 
     of nkStringToCString, nkCStringToString, nkChckRangeF, nkChckRange64, nkChckRange, nkPragmaBlock:
@@ -979,6 +998,14 @@ proc moveOrCopy(dest, ri: PNode; c: var Con; s: var Scope, isDecl = false): PNod
   if sameLocation(dest, ri):
     # rule (self-assignment-removal):
     result = newNodeI(nkEmpty, dest.info)
+  elif isCursor(dest):
+    case ri.kind:
+    of nkStmtListExpr, nkBlockExpr, nkIfExpr, nkCaseStmt, nkTryStmt:
+      template process(child, s): untyped = moveOrCopy(dest, child, c, s, isDecl)
+      # We know the result will be a stmt so we use that fact to optimize
+      handleNestedTempl(ri, process, willProduceStmt = true)
+    else:
+      result = newTree(nkFastAsgn, dest, p(ri, c, s, normal))
   else:
     case ri.kind
     of nkCallKinds:
@@ -1014,7 +1041,7 @@ proc moveOrCopy(dest, ri: PNode; c: var Con; s: var Scope, isDecl = false): PNod
         let snk = c.genSink(dest, ri, isDecl)
         result = newTree(nkStmtList, snk, c.genWasMoved(ri))
       elif ri.sym.kind != skParam and ri.sym.owner == c.owner and
-          isLastRead(ri, c) and canBeMoved(c, dest.typ) and not isCursor(ri, c):
+          isLastRead(ri, c) and canBeMoved(c, dest.typ) and not isCursor(ri):
         # Rule 3: `=sink`(x, z); wasMoved(z)
         let snk = c.genSink(dest, ri, isDecl)
         result = newTree(nkStmtList, snk, c.genWasMoved(ri))
@@ -1081,10 +1108,9 @@ proc injectDestructorCalls*(g: ModuleGraph; idgen: IdGenerator; owner: PSym; n: 
 
   block:
     var cache = initTable[(PNode, PNode), AliasKind]()
-    var alreadySeen: HashSet[PNode]
     var lastReads, potLastReads: IntSet
     var pc = 0
-    collectLastReads(c.g, cache, alreadySeen, lastReads, potLastReads, pc, c.g.len)
+    collectLastReads(c.g, cache, lastReads, potLastReads, pc, c.g.len)
     lastReads.incl potLastReads
     var lastReadTable: Table[PNode, seq[int]]
     for position, node in c.g:
@@ -1096,6 +1122,10 @@ proc injectDestructorCalls*(g: ModuleGraph; idgen: IdGenerator; owner: PSym; n: 
         if p notin lastReads: allPositionsLastRead = false; break
       if allPositionsLastRead:
         node.flags.incl nfLastRead
+
+    var alreadySeen: HashSet[PNode]
+    pc = 0
+    collectFirstWrites(c.g, alreadySeen, pc, c.g.len)
 
   var scope: Scope
   let body = p(n, c, scope, normal)

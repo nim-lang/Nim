@@ -10,7 +10,7 @@
 #
 
 const
-  NimbleStableCommit = "324de9202fb3db82b266e7350731d1ec41013a2b" # master
+  NimbleStableCommit = "d13f3b8ce288b4dc8c34c219a4e050aaeaf43fc9" # master
   # examples of possible values: #head, #ea82b54, 1.2.3
   FusionStableHash = "#372ee4313827ef9f2ea388840f7d6b46c2b1b014"
   HeadHash = "#head"
@@ -266,7 +266,7 @@ proc findStartNim: string =
   # If these fail, we try to build nim with the "build.(sh|bat)" script.
   let (nim, ok) = findNimImpl()
   if ok: return nim
-  when defined(Posix):
+  when defined(posix):
     const buildScript = "build.sh"
     if fileExists(buildScript):
       if tryExec("./" & buildScript): return "bin" / nim
@@ -465,7 +465,7 @@ proc temp(args: string) =
   if "doc" notin programArgs and
       "threads" notin programArgs and
       "js" notin programArgs and "rst2html" notin programArgs:
-    bootArgs.add " -d:leanCompiler"
+    bootArgs = " -d:leanCompiler" & bootArgs
   let nimexec = findNim().quoteShell()
   exec(nimexec & " c -d:debug --debugger:native -d:nimBetterRun " & bootArgs & " " & (d / "compiler" / "nim"), 125)
   copyExe(output, finalDest)
@@ -526,17 +526,22 @@ proc runCI(cmd: string) =
   echo "runCI: ", cmd
   echo hostInfo()
   # boot without -d:nimHasLibFFI to make sure this still works
-  kochExecFold("Boot in release mode", "boot -d:release")
+  kochExecFold("Boot in release mode", "boot -d:release -d:nimStrictMode")
 
   ## build nimble early on to enable remainder to depend on it if needed
   kochExecFold("Build Nimble", "nimble")
 
+  let batchParam = "--batch:$1" % "NIM_TESTAMENT_BATCH".getEnv("_")
   if getEnv("NIM_TEST_PACKAGES", "0") == "1":
-    execFold("Test selected Nimble packages (1)", "nim c -r testament/testament cat nimble-packages-1")
-  elif getEnv("NIM_TEST_PACKAGES", "0") == "2":
-    execFold("Test selected Nimble packages (2)", "nim c -r testament/testament cat nimble-packages-2")
+    execFold("Test selected Nimble packages", "nim r testament/testament $# pcat nimble-packages" % batchParam)
   else:
     buildTools()
+
+    for a in "zip opengl sdl1 jester@#head".split:
+      let buildDeps = "build"/"deps" # xxx factor pending https://github.com/timotheecour/Nim/issues/616
+      # if this gives `Additional info: "build/deps" [OSError]`, make sure nimble is >= v0.12.0,
+      # otherwise `absolutePath` is needed, refs https://github.com/nim-lang/nimble/issues/901
+      execFold("", "nimble install -y --nimbleDir:$# $#" % [buildDeps.quoteShell, a])
 
     ## run tests
     execFold("Test nimscript", "nim e tests/test_nimscript.nims")
@@ -545,11 +550,9 @@ proc runCI(cmd: string) =
       execFold("Compile tester", "nim c -d:nimCoroutines --os:genode -d:posix --compileOnly testament/testament")
 
     # main bottleneck here
-    # xxx: even though this is the main bottlneck, we could use same code to batch the other tests
-    #[
-    BUG: with initOptParser, `--batch:'' all` interprets `all` as the argument of --batch
-    ]#
-    execFold("Run tester", "nim c -r -d:nimCoroutines --putenv:NIM_TESTAMENT_REMOTE_NETWORKING:1 testament/testament --batch:$1 all -d:nimCoroutines" % ["NIM_TESTAMENT_BATCH".getEnv("_")])
+    # xxx: even though this is the main bottleneck, we could speedup the rest via batching with `--batch`.
+    # BUG: with initOptParser, `--batch:'' all` interprets `all` as the argument of --batch, pending bug #14343
+    execFold("Run tester", "nim c -r -d:nimCoroutines --putenv:NIM_TESTAMENT_REMOTE_NETWORKING:1 -d:nimStrictMode testament/testament $# all -d:nimCoroutines" % batchParam)
 
     block CT_FFI:
       when defined(posix): # windows can be handled in future PR's

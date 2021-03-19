@@ -101,6 +101,40 @@ block: # #14350, #16674, #16686 for JS
     doAssert nil1 == cstring("")
     doAssert nil2 == cstring("")
 
+block:
+  block:
+    let x = -1'i8
+    let y = uint32(x)
+
+    doAssert $y == "4294967295"
+
+  block:
+    let x = -1'i16
+    let y = uint32(x)
+
+    doAssert $y == "4294967295"
+
+  block:
+    let x = -1'i32
+    let y = uint32(x)
+
+    doAssert $y == "4294967295"
+
+  block:
+    let x = 4294967295'u32
+    doAssert $x == "4294967295"
+
+  block:
+    doAssert $(4294967295'u32) == "4294967295"
+
+
+  block:
+    proc foo1(arg: int): string =
+      let x = uint32(arg)
+      $x
+
+    doAssert $foo1(-1) == "4294967295"
+
 
 proc main()=
   block:
@@ -122,6 +156,8 @@ proc main()=
     let b = 0
     doAssert $b == "0"
     doAssert $(0) == "0"
+
+  doAssert $uint32.high == "4294967295"
 
 
 static: main()

@@ -14,32 +14,30 @@
 ## application in production you should use a reverse proxy (for example nginx)
 ## instead of allowing users to connect directly to this server.
 
-runnableExamples:
+runnableExamples("-r:off"):
   # This example will create an HTTP server on port 8080. The server will
   # respond to all requests with a `200 OK` response code and "Hello World"
-  # as the response body. Run locally with:
-  # `nim doc --doccmd:-d:nimAsyncHttpServerEnableTest --lib:lib lib/pure/asynchttpserver.nim`
-  import asyncdispatch
-  if defined(nimAsyncHttpServerEnableTest):
-    proc main {.async.} =
-      const port = 8080
-      var server = newAsyncHttpServer()
-      proc cb(req: Request) {.async.} =
-        echo (req.reqMethod, req.url, req.headers)
-        let headers = {"Content-type": "text/plain; charset=utf-8"}
-        await req.respond(Http200, "Hello World", headers.newHttpHeaders())
+  # as the response body.
+  import std/asyncdispatch
+  proc main {.async.} =
+    const port = 8080
+    var server = newAsyncHttpServer()
+    proc cb(req: Request) {.async.} =
+      echo (req.reqMethod, req.url, req.headers)
+      let headers = {"Content-type": "text/plain; charset=utf-8"}
+      await req.respond(Http200, "Hello World", headers.newHttpHeaders())
 
-      echo "test this with: curl localhost:" & $port & "/"
-      server.listen(Port(port))
-      while true:
-        if server.shouldAcceptRequest():
-          await server.acceptRequest(cb)
-        else:
-          # too many concurrent connections, `maxFDs` exceeded
-          # wait 500ms for FDs to be closed
-          await sleepAsync(500)
+    echo "test this with: curl localhost:" & $port & "/"
+    server.listen(Port(port))
+    while true:
+      if server.shouldAcceptRequest():
+        await server.acceptRequest(cb)
+      else:
+        # too many concurrent connections, `maxFDs` exceeded
+        # wait 500ms for FDs to be closed
+        await sleepAsync(500)
 
-    waitFor main()
+  waitFor main()
 
 import asyncnet, asyncdispatch, parseutils, uri, strutils
 import httpcore
@@ -73,14 +71,14 @@ type
     maxFDs: int
 
 func getSocket*(a: AsyncHttpServer): AsyncSocket {.since: (1, 5, 1).} =
-  ## Returns the ``AsyncHttpServer``s internal ``AsyncSocket`` instance.
+  ## Returns the `AsyncHttpServer`s internal `AsyncSocket` instance.
   ## 
   ## Useful for identifying what port the AsyncHttpServer is bound to, if it
   ## was chosen automatically.
   runnableExamples:
-    from asyncdispatch import Port
-    from asyncnet import getFd
-    from nativesockets import getLocalAddr, AF_INET
+    from std/asyncdispatch import Port
+    from std/asyncnet import getFd
+    from std/nativesockets import getLocalAddr, AF_INET
     let server = newAsyncHttpServer()
     server.listen(Port(0)) # Socket is not bound until this point
     let port = getLocalAddr(server.getSocket.getFd, AF_INET)[1]
@@ -90,7 +88,7 @@ func getSocket*(a: AsyncHttpServer): AsyncSocket {.since: (1, 5, 1).} =
 
 proc newAsyncHttpServer*(reuseAddr = true, reusePort = false,
                          maxBody = 8388608): AsyncHttpServer =
-  ## Creates a new ``AsyncHttpServer`` instance.
+  ## Creates a new `AsyncHttpServer` instance.
   result = AsyncHttpServer(reuseAddr: reuseAddr, reusePort: reusePort, maxBody: maxBody)
 
 proc addHeaders(msg: var string, headers: HttpHeaders) =
@@ -105,7 +103,7 @@ proc sendHeaders*(req: Request, headers: HttpHeaders): Future[void] =
 
 proc respond*(req: Request, code: HttpCode, content: string,
               headers: HttpHeaders = nil): Future[void] =
-  ## Responds to the request with the specified ``HttpCode``, headers and
+  ## Responds to the request with the specified `HttpCode`, headers and
   ## content.
   ##
   ## This procedure will **not** close the client socket.
@@ -113,7 +111,7 @@ proc respond*(req: Request, code: HttpCode, content: string,
   ## Example:
   ##
   ## .. code-block::nim
-  ##    import json
+  ##    import std/json
   ##    proc handler(req: Request) {.async.} =
   ##      if req.url.path == "/hello-world":
   ##        let msg = %* {"message": "Hello World"}
@@ -138,7 +136,7 @@ proc respond*(req: Request, code: HttpCode, content: string,
   result = req.client.send(msg)
 
 proc respondError(req: Request, code: HttpCode): Future[void] =
-  ## Responds to the request with the specified ``HttpCode``.
+  ## Responds to the request with the specified `HttpCode`.
   let content = $code
   var msg = "HTTP/1.1 " & content & "\c\L"
 

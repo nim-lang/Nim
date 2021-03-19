@@ -1,4 +1,4 @@
-when defined(js):
+when defined(js) or defined(nimdoc):
   import std/jsbigints
 
   type
@@ -23,8 +23,29 @@ when defined(js):
   func `[]=`*(arr: Float64Array, i: int, v: float) {.importjs: "#[#] = #".}
 
 
+  proc jsTypeOf*[T](x: T): cstring {.importjs: "typeof(#)".}
+  ## Returns the name of the JsObject's JavaScript type as a cstring.
+  # xxx replace jsffi.jsTypeOf with this definition and add tests
+
+  proc jsConstructorName*[T](a: T): cstring =
+    asm """`result` = `a`.constructor.name"""
+
   proc hasJsBigInt*(): bool =
     asm """`result` = typeof BigInt != 'undefined'"""
 
   proc hasBigUint64Array*(): bool =
     asm """`result` = typeof BigUint64Array != 'undefined'"""
+
+  proc getProtoName*[T](a: T): cstring {.importjs: "Object.prototype.toString.call(#)".}
+
+  proc isInteger*[T](x: T): bool {.importjs: "Number.isInteger(#)".}
+
+  proc isSafeInteger*[T](x: T): bool {.importjs: "Number.isSafeInteger(#)".} =
+    runnableExamples:
+      import std/jsffi
+      assert not "123".toJs.isSafeInteger
+      assert 123.toJs.isSafeInteger
+      assert 9007199254740991.toJs.isSafeInteger
+      assert not 9007199254740992.toJs.isSafeInteger
+
+  let maxSafeInteger* {.importjs: "Number.MAX_SAFE_INTEGER".} : int64

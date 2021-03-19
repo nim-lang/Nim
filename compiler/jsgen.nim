@@ -211,7 +211,7 @@ proc mapType(typ: PType): TJSTypeKind =
     else: result = etyNone
   of tyProc: result = etyProc
   of tyCString: result = etyString
-  of tyOptDeprecated: doAssert false
+  of tyConcept: doAssert false
 
 proc mapType(p: PProc; typ: PType): TJSTypeKind =
   result = mapType(typ)
@@ -671,7 +671,10 @@ proc arith(p: PProc, n: PNode, r: var TCompRes, op: TMagic) =
   of mAddU: binaryUintExpr(p, n, r, "+")
   of mSubU: binaryUintExpr(p, n, r, "-")
   of mMulU: binaryUintExpr(p, n, r, "*")
-  of mDivU: binaryUintExpr(p, n, r, "/")
+  of mDivU:
+    binaryUintExpr(p, n, r, "/")
+    if n[1].typ.skipTypes(abstractRange).size == 8:
+      r.res = "Math.trunc($1)" % [r.res]
   of mDivI:
     arithAux(p, n, r, op)
   of mModI:
@@ -1432,7 +1435,7 @@ proc genSym(p: PProc, n: PNode, r: var TCompRes) =
           s.name.s)
     discard mangleName(p.module, s)
     r.res = s.loc.r
-    if lfNoDecl in s.loc.flags or s.magic != mNone or
+    if lfNoDecl in s.loc.flags or s.magic notin {mNone, mIsolate} or
        {sfImportc, sfInfixCall} * s.flags != {}:
       discard
     elif s.kind == skMethod and getBody(p.module.graph, s).kind == nkEmpty:
@@ -1991,6 +1994,23 @@ proc genMove(p: PProc; n: PNode; r: var TCompRes) =
   genReset(p, n)
   #lineF(p, "$1 = $2;$n", [dest.rdLoc, src.rdLoc])
 
+proc genJSArrayConstr(p: PProc, n: PNode, r: var TCompRes) =
+  var a: TCompRes
+  r.res = rope("[")
+  r.kind = resExpr
+  for i in 0 ..< n.len:
+    if i > 0: r.res.add(", ")
+    gen(p, n[i], a)
+    if a.typ == etyBaseIndex:
+      r.res.addf("[$1, $2]", [a.address, a.res])
+    else:
+      if not needsNoCopy(p, n[i]):
+        let typ = n[i].typ.skipTypes(abstractInst)
+        useMagic(p, "nimCopy")
+        a.res = "nimCopy(null, $1, $2)" % [a.rdLoc, genTypeInfo(p, typ)]
+      r.res.add(a.res)
+  r.res.add("]")
+
 proc genMagic(p: PProc, n: PNode, r: var TCompRes) =
   var
     a: TCompRes
@@ -2054,8 +2074,9 @@ proc genMagic(p: PProc, n: PNode, r: var TCompRes) =
   of mNew, mNewFinalize: genNew(p, n)
   of mChr: gen(p, n[1], r)
   of mArrToSeq:
-    if needsNoCopy(p, n[1]):
-      gen(p, n[1], r)
+    # only array literals doesn't need copy
+    if n[1].kind == nkBracket:
+      genJSArrayConstr(p, n[1], r)
     else:
       var x: TCompRes
       gen(p, n[1], x)
@@ -2159,7 +2180,11 @@ proc genSetConstr(p: PProc, n: PNode, r: var TCompRes) =
     if it.kind == nkRange:
       gen(p, it[0], a)
       gen(p, it[1], b)
-      r.res.addf("[$1, $2]", [a.res, b.res])
+
+      if it[0].typ.kind == tyBool:
+        r.res.addf("$1, $2", [a.res, b.res])
+      else:
+        r.res.addf("[$1, $2]", [a.res, b.res])
     else:
       gen(p, it, a)
       r.res.add(a.res)
@@ -2172,21 +2197,26 @@ proc genSetConstr(p: PProc, n: PNode, r: var TCompRes) =
     r.res = tmp
 
 proc genArrayConstr(p: PProc, n: PNode, r: var TCompRes) =
-  var a: TCompRes
-  r.res = rope("[")
-  r.kind = resExpr
-  for i in 0..<n.len:
-    if i > 0: r.res.add(", ")
-    gen(p, n[i], a)
-    if a.typ == etyBaseIndex:
-      r.res.addf("[$1, $2]", [a.address, a.res])
-    else:
-      if not needsNoCopy(p, n[i]):
-        let typ = n[i].typ.skipTypes(abstractInst)
-        useMagic(p, "nimCopy")
-        a.res = "nimCopy(null, $1, $2)" % [a.rdLoc, genTypeInfo(p, typ)]
+  ## Constructs array or sequence.
+  ## Nim array of uint8..uint32, int8..int32 maps to JS typed arrays.
+  ## Nim sequence maps to JS array.
+  var t = skipTypes(n.typ, abstractInst)
+  let e = elemType(t)
+  let jsTyp = arrayTypeForElemType(e)
+  if skipTypes(n.typ, abstractVarRange).kind != tySequence and jsTyp.len > 0:
+    # generate typed array
+    # for example Nim generates `new Uint8Array([1, 2, 3])` for `[byte(1), 2, 3]`
+    # TODO use `set` or loop to initialize typed array which improves performances in some situations
+    var a: TCompRes
+    r.res = "new $1([" % [rope(jsTyp)]
+    r.kind = resExpr
+    for i in 0 ..< n.len:
+      if i > 0: r.res.add(", ")
+      gen(p, n[i], a)
       r.res.add(a.res)
-  r.res.add("]")
+    r.res.add("])")
+  else:
+    genJSArrayConstr(p, n, r)
 
 proc genTupleConstr(p: PProc, n: PNode, r: var TCompRes) =
   var a: TCompRes
@@ -2559,7 +2589,7 @@ proc gen(p: PProc, n: PNode, r: var TCompRes) =
     let s = n[namePos].sym
     discard mangleName(p.module, s)
     r.res = s.loc.r
-    if lfNoDecl in s.loc.flags or s.magic != mNone: discard
+    if lfNoDecl in s.loc.flags or s.magic notin {mNone, mIsolate}: discard
     elif not p.g.generatedSyms.containsOrIncl(s.id):
       p.locals.add(genProc(p, s))
   of nkType: r.res = genTypeInfo(p, n.typ)
@@ -2596,7 +2626,8 @@ proc gen(p: PProc, n: PNode, r: var TCompRes) =
   of nkRaiseStmt: genRaiseStmt(p, n)
   of nkTypeSection, nkCommentStmt, nkIncludeStmt,
      nkImportStmt, nkImportExceptStmt, nkExportStmt, nkExportExceptStmt,
-     nkFromStmt, nkTemplateDef, nkMacroDef, nkStaticStmt: discard
+     nkFromStmt, nkTemplateDef, nkMacroDef, nkStaticStmt,
+     nkMixinStmt, nkBindStmt: discard
   of nkIteratorDef:
     if n[0].sym.typ.callConv == TCallingConvention.ccClosure:
       globalError(p.config, n.info, "Closure iterators are not supported by JS backend!")

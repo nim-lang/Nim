@@ -485,13 +485,23 @@ proc hashIgnoreCase*(sBuf: string, sPos, ePos: int): Hash =
   result = !$h
 
 
-proc hash*[T: tuple](x: T): Hash =
-  ## Efficient hashing of tuples.
+proc hash*[T: tuple | object](x: T): Hash =
+  ## Efficient hashing of tuples and objects.
   ## There must be a `hash` proc defined for each of the field types.
+  runnableExamples:
+    type Obj = object
+      x: int
+      y: string
+    type Obj2[T] = object
+      x: int
+      y: string
+    assert hash(Obj(x: 520, y: "Nim")) != hash(Obj(x: 520, y: "Nim2"))
+    # you can define custom hashes for objects (even if they're generic):
+    proc hash(a: Obj2): Hash = hash((a.x))
+    assert hash(Obj2[float](x: 520, y: "Nim")) == hash(Obj2[float](x: 520, y: "Nim2"))
   for f in fields(x):
     result = result !& hash(f)
   result = !$result
-
 
 proc hash*[A](x: openArray[A]): Hash =
   ## Efficient hashing of arrays and sequences.

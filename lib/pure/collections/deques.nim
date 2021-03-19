@@ -46,7 +46,7 @@ runnableExamples:
 ## See also
 ## ========
 ## * `lists module <lists.html>`_ for singly and doubly linked lists and rings
-## * `channels module <channels.html>`_ for inter-thread communication
+## * `channels module <channels_builtin.html>`_ for inter-thread communication
 
 import std/private/since
 
@@ -200,7 +200,7 @@ iterator items*[T](deq: Deque[T]): T =
   ## **See also:**
   ## * `mitems iterator <#mitems,Deque[T]>`_
   runnableExamples:
-    from sequtils import toSeq
+    from std/sequtils import toSeq
 
     let a = [10, 20, 30, 40, 50].toDeque
     assert toSeq(a.items) == @[10, 20, 30, 40, 50]
@@ -230,7 +230,7 @@ iterator mitems*[T](deq: var Deque[T]): var T =
 iterator pairs*[T](deq: Deque[T]): tuple[key: int, val: T] =
   ## Yields every `(position, value)`-pair of `deq`.
   runnableExamples:
-    from sequtils import toSeq
+    from std/sequtils import toSeq
 
     let a = [10, 20, 30].toDeque
     assert toSeq(a.pairs) == @[(0, 10), (1, 20), (2, 30)]

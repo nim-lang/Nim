@@ -299,7 +299,9 @@ proc mapTypeToAstX(cache: IdentCache; t: PType; info: TLineInfo;
       if t.n != nil:
         result.add t.n.copyTree
   of tyOwned: result = mapTypeToBracket("owned", mBuiltinType, t, info)
-  of tyOptDeprecated: doAssert false
+  of tyConcept:
+    result = mapTypeToBracket("concept", mNone, t, info)
+    result.add t.n.copyTree
 
 proc opMapTypeToAst*(cache: IdentCache; t: PType; info: TLineInfo; idgen: IdGenerator): PNode =
   result = mapTypeToAstX(cache, t, info, idgen, inst=false, allowRecursionX=true)

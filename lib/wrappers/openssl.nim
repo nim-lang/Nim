@@ -12,9 +12,9 @@
 ## When OpenSSL is dynamically linked, the wrapper provides partial forward and backward
 ## compatibility for OpenSSL versions above and below 1.1.0
 ##
-## OpenSSL can also be statically linked using ``--dynlibOverride:ssl`` for OpenSSL >= 1.1.0.
+## OpenSSL can also be statically linked using `--dynlibOverride:ssl` for OpenSSL >= 1.1.0.
 ## If you want to statically link against OpenSSL 1.0.x, you now have to
-## define the ``openssl10`` symbol via ``-d:openssl10``.
+## define the `openssl10` symbol via `-d:openssl10`.
 ##
 ## Build and test examples:
 ##
@@ -25,7 +25,7 @@
 when defined(nimHasStyleChecks):
   {.push styleChecks: off.}
 
-const useWinVersion = defined(Windows) or defined(nimdoc)
+const useWinVersion = defined(windows) or defined(nimdoc)
 
 # To force openSSL version use -d:sslVersion=1.0.0
 # See: #10281, #10230
@@ -586,7 +586,7 @@ proc SSL_CTX_set_tlsext_servername_callback*(ctx: SslCtx, cb: proc(ssl: SslPtr, 
   result = SSL_CTX_callback_ctrl(ctx, SSL_CTRL_SET_TLSEXT_SERVERNAME_CB, cast[PFunction](cb))
 
 proc SSL_CTX_set_tlsext_servername_arg*(ctx: SslCtx, arg: pointer): int =
-  ## Set the pointer to be used in the callback registered to ``SSL_CTX_set_tlsext_servername_callback``.
+  ## Set the pointer to be used in the callback registered to `SSL_CTX_set_tlsext_servername_callback`.
   result = SSL_CTX_ctrl(ctx, SSL_CTRL_SET_TLSEXT_SERVERNAME_ARG, 0, arg)
 
 type
@@ -760,7 +760,7 @@ proc md5_File*(file: string): string {.raises: [IOError,Exception].} =
     ctx: MD5_CTX
 
   discard md5_Init(ctx)
-  while(let bytes = f.readChars(buf, 0, sz); bytes > 0):
+  while (let bytes = f.readChars(buf); bytes > 0):
     discard md5_Update(ctx, buf[0].addr, cast[csize_t](bytes))
 
   discard md5_Final(buf[0].addr, ctx)

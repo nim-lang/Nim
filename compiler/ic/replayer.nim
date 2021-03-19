@@ -16,7 +16,7 @@ import ".." / [ast, modulegraphs, trees, extccomp, btrees,
 
 import tables
 
-import packed_ast, to_packed_ast, bitabs
+import packed_ast, ic, bitabs
 
 proc replayStateChanges*(module: PSym; g: ModuleGraph) =
   let list = module.ast
@@ -128,9 +128,11 @@ proc replayGenericCacheInformation*(g: ModuleGraph; module: int) =
                             PackedItemId(module: LitId(0), item: it))
     methodDef(g, g.idgen, sym)
 
-  for it in mitems(g.packed[module].fromDisk.compilerProcs):
-    let symId = FullId(module: module, packed: PackedItemId(module: LitId(0), item: it[1]))
-    g.lazyCompilerprocs[g.packed[module].fromDisk.sh.strings[it[0]]] = symId
+  when false:
+    # not used anymore:
+    for it in mitems(g.packed[module].fromDisk.compilerProcs):
+      let symId = FullId(module: module, packed: PackedItemId(module: LitId(0), item: it[1]))
+      g.lazyCompilerprocs[g.packed[module].fromDisk.sh.strings[it[0]]] = symId
 
   for it in mitems(g.packed[module].fromDisk.converters):
     let symId = FullId(module: module, packed: PackedItemId(module: LitId(0), item: it))

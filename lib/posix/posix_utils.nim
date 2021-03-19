@@ -117,10 +117,10 @@ proc osReleaseFile*(): Config {.since: (1, 5).} =
   ## `os-release` file is not available on Windows and OS X by design.
   ## * https://www.freedesktop.org/software/systemd/man/os-release.html
   runnableExamples:
-    import parsecfg
+    import std/parsecfg
     when defined(linux):
       let data = osReleaseFile()
-      doAssert data.getSectionValue("", "NAME").len > 0 ## the data is up to each distro.
+      echo "OS name: ", data.getSectionValue("", "NAME") ## the data is up to each distro.
 
   # We do not use a {.strdefine.} because Standard says it *must* be that path.
   for osReleaseFile in ["/etc/os-release", "/usr/lib/os-release"]:

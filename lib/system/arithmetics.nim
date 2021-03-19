@@ -227,7 +227,7 @@ proc `mod`*(x, y: int16): int16 {.magic: "ModI", noSideEffect.}
 proc `mod`*(x, y: int32): int32 {.magic: "ModI", noSideEffect.}
 proc `mod`*(x, y: int64): int64 {.magic: "ModI", noSideEffect.}
 
-when defined(nimOldShiftRight) or not defined(nimAshr):
+when defined(nimOldShiftRight):
   const shrDepMessage = "`shr` will become sign preserving."
   proc `shr`*(x: int, y: SomeInteger): int {.magic: "ShrI", noSideEffect, deprecated: shrDepMessage.}
   proc `shr`*(x: int8, y: SomeInteger): int8 {.magic: "ShrI", noSideEffect, deprecated: shrDepMessage.}
@@ -271,27 +271,23 @@ proc `shl`*(x: int16, y: SomeInteger): int16 {.magic: "ShlI", noSideEffect.}
 proc `shl`*(x: int32, y: SomeInteger): int32 {.magic: "ShlI", noSideEffect.}
 proc `shl`*(x: int64, y: SomeInteger): int64 {.magic: "ShlI", noSideEffect.}
 
-when defined(nimAshr):
-  proc ashr*(x: int, y: SomeInteger): int {.magic: "AshrI", noSideEffect.} =
-    ## Shifts right by pushing copies of the leftmost bit in from the left,
-    ## and let the rightmost bits fall off.
-    ##
-    ## Note that `ashr` is not an operator so use the normal function
-    ## call syntax for it.
-    ##
-    ## See also:
-    ## * `shr func<#shr,int,SomeInteger>`_
-    runnableExamples:
-      assert ashr(0b0001_0000'i8, 2) == 0b0000_0100'i8
-      assert ashr(0b1000_0000'i8, 8) == 0b1111_1111'i8
-      assert ashr(0b1000_0000'i8, 1) == 0b1100_0000'i8
-  proc ashr*(x: int8, y: SomeInteger): int8 {.magic: "AshrI", noSideEffect.}
-  proc ashr*(x: int16, y: SomeInteger): int16 {.magic: "AshrI", noSideEffect.}
-  proc ashr*(x: int32, y: SomeInteger): int32 {.magic: "AshrI", noSideEffect.}
-  proc ashr*(x: int64, y: SomeInteger): int64 {.magic: "AshrI", noSideEffect.}
-else:
-  # used for bootstrapping the compiler
-  proc ashr*[T](x: T, y: SomeInteger): T = discard
+proc ashr*(x: int, y: SomeInteger): int {.magic: "AshrI", noSideEffect.} =
+  ## Shifts right by pushing copies of the leftmost bit in from the left,
+  ## and let the rightmost bits fall off.
+  ##
+  ## Note that `ashr` is not an operator so use the normal function
+  ## call syntax for it.
+  ##
+  ## See also:
+  ## * `shr func<#shr,int,SomeInteger>`_
+  runnableExamples:
+    assert ashr(0b0001_0000'i8, 2) == 0b0000_0100'i8
+    assert ashr(0b1000_0000'i8, 8) == 0b1111_1111'i8
+    assert ashr(0b1000_0000'i8, 1) == 0b1100_0000'i8
+proc ashr*(x: int8, y: SomeInteger): int8 {.magic: "AshrI", noSideEffect.}
+proc ashr*(x: int16, y: SomeInteger): int16 {.magic: "AshrI", noSideEffect.}
+proc ashr*(x: int32, y: SomeInteger): int32 {.magic: "AshrI", noSideEffect.}
+proc ashr*(x: int64, y: SomeInteger): int64 {.magic: "AshrI", noSideEffect.}
 
 proc `and`*(x, y: int): int {.magic: "BitandI", noSideEffect.} =
   ## Computes the `bitwise and` of numbers `x` and `y`.
@@ -389,7 +385,7 @@ proc `*`*(x, y: uint64): uint64 {.magic: "MulU", noSideEffect.}
 
 proc `div`*(x, y: uint): uint {.magic: "DivU", noSideEffect.}
   ## Computes the integer division for unsigned integers.
-  ## This is roughly the same as ``trunc(x/y)``.
+  ## This is roughly the same as `trunc(x/y)`.
 proc `div`*(x, y: uint8): uint8 {.magic: "DivU", noSideEffect.}
 proc `div`*(x, y: uint16): uint16 {.magic: "DivU", noSideEffect.}
 proc `div`*(x, y: uint32): uint32 {.magic: "DivU", noSideEffect.}
@@ -397,7 +393,7 @@ proc `div`*(x, y: uint64): uint64 {.magic: "DivU", noSideEffect.}
 
 proc `mod`*(x, y: uint): uint {.magic: "ModU", noSideEffect.}
   ## Computes the integer modulo operation (remainder) for unsigned integers.
-  ## This is the same as ``x - (x div y) * y``.
+  ## This is the same as `x - (x div y) * y`.
 proc `mod`*(x, y: uint8): uint8 {.magic: "ModU", noSideEffect.}
 proc `mod`*(x, y: uint16): uint16 {.magic: "ModU", noSideEffect.}
 proc `mod`*(x, y: uint32): uint32 {.magic: "ModU", noSideEffect.}

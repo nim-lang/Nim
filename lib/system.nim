@@ -135,39 +135,35 @@ else:
     OrdinalImpl[T] {.magic: Ordinal.}
     Ordinal* = OrdinalImpl | uint | uint64
 
-when defined(nimHasRunnableExamples):
-  proc runnableExamples*(rdoccmd = "", body: untyped) {.magic: "RunnableExamples".}
-    ## A section you should use to mark `runnable example`:idx: code with.
-    ##
-    ## - In normal debug and release builds code within
-    ##   a `runnableExamples` section is ignored.
-    ## - The documentation generator is aware of these examples and considers them
-    ##   part of the `##` doc comment. As the last step of documentation
-    ##   generation each runnableExample is put in its own file `$file_examples$i.nim`,
-    ##   compiled and tested. The collected examples are
-    ##   put into their own module to ensure the examples do not refer to
-    ##   non-exported symbols.
-    ##
-    ## Usage:
-    ##
-    ## .. code-block:: Nim
-    ##   proc double*(x: int): int =
-    ##     ## This proc doubles a number.
-    ##     runnableExamples:
-    ##       ## at module scope
-    ##       assert double(5) == 10
-    ##       block: ## at block scope
-    ##         defer: echo "done"
-    ##     result = 2 * x
-    ##     runnableExamples "-d:foo -b:cpp":
-    ##       import std/compilesettings
-    ##       doAssert querySetting(backend) == "cpp"
-    ##     runnableExamples "-r:off": ## this one is only compiled
-    ##        import std/browsers
-    ##        openDefaultBrowser "https://forum.nim-lang.org/"
-else:
-  template runnableExamples*(doccmd = "", body: untyped) =
-    discard
+proc runnableExamples*(rdoccmd = "", body: untyped) {.magic: "RunnableExamples".}
+  ## A section you should use to mark `runnable example`:idx: code with.
+  ##
+  ## - In normal debug and release builds code within
+  ##   a `runnableExamples` section is ignored.
+  ## - The documentation generator is aware of these examples and considers them
+  ##   part of the `##` doc comment. As the last step of documentation
+  ##   generation each runnableExample is put in its own file `$file_examples$i.nim`,
+  ##   compiled and tested. The collected examples are
+  ##   put into their own module to ensure the examples do not refer to
+  ##   non-exported symbols.
+  ##
+  ## Usage:
+  ##
+  ## .. code-block:: Nim
+  ##   proc double*(x: int): int =
+  ##     ## This proc doubles a number.
+  ##     runnableExamples:
+  ##       ## at module scope
+  ##       assert double(5) == 10
+  ##       block: ## at block scope
+  ##         defer: echo "done"
+  ##     result = 2 * x
+  ##     runnableExamples "-d:foo -b:cpp":
+  ##       import std/compilesettings
+  ##       doAssert querySetting(backend) == "cpp"
+  ##     runnableExamples "-r:off": ## this one is only compiled
+  ##        import std/browsers
+  ##        openDefaultBrowser "https://forum.nim-lang.org/"
 
 when defined(nimHasDeclaredMagic):
   proc declared*(x: untyped): bool {.magic: "Declared", noSideEffect, compileTime.}
@@ -222,52 +218,45 @@ proc unsafeAddr*[T](x: T): ptr T {.magic: "Addr", noSideEffect.} =
   ## Cannot be overloaded.
   discard
 
-when defined(nimNewTypedesc):
-  type
-    `static`*[T] {.magic: "Static".}
-      ## Meta type representing all values that can be evaluated at compile-time.
-      ##
-      ## The type coercion `static(x)` can be used to force the compile-time
-      ## evaluation of the given expression `x`.
+type
+  `static`*[T] {.magic: "Static".}
+    ## Meta type representing all values that can be evaluated at compile-time.
+    ##
+    ## The type coercion `static(x)` can be used to force the compile-time
+    ## evaluation of the given expression `x`.
 
-    `type`*[T] {.magic: "Type".}
-      ## Meta type representing the type of all type values.
-      ##
-      ## The coercion `type(x)` can be used to obtain the type of the given
-      ## expression `x`.
-else:
-  proc `type`*(x: untyped): typedesc {.magic: "TypeOf", noSideEffect, compileTime.} =
-    ## Builtin `type` operator for accessing the type of an expression.
-    ## Cannot be overloaded.
-    discard
+  `type`*[T] {.magic: "Type".}
+    ## Meta type representing the type of all type values.
+    ##
+    ## The coercion `type(x)` can be used to obtain the type of the given
+    ## expression `x`.
 
-when defined(nimHasTypeof):
-  type
-    TypeOfMode* = enum ## Possible modes of `typeof`.
-      typeOfProc,      ## Prefer the interpretation that means `x` is a proc call.
-      typeOfIter       ## Prefer the interpretation that means `x` is an iterator call.
+type
+  TypeOfMode* = enum ## Possible modes of `typeof`.
+    typeOfProc,      ## Prefer the interpretation that means `x` is a proc call.
+    typeOfIter       ## Prefer the interpretation that means `x` is an iterator call.
 
-  proc typeof*(x: untyped; mode = typeOfIter): typedesc {.
-    magic: "TypeOf", noSideEffect, compileTime.} =
-    ## Builtin `typeof` operation for accessing the type of an expression.
-    ## Since version 0.20.0.
-    runnableExamples:
-      proc myFoo(): float = 0.0
-      iterator myFoo(): string = yield "abc"
-      iterator myFoo2(): string = yield "abc"
-      iterator myFoo3(): string {.closure.} = yield "abc"
-      doAssert type(myFoo()) is string
-      doAssert typeof(myFoo()) is string
-      doAssert typeof(myFoo(), typeOfIter) is string
-      doAssert typeof(myFoo3) is "iterator"
+proc typeof*(x: untyped; mode = typeOfIter): typedesc {.
+  magic: "TypeOf", noSideEffect, compileTime.} =
+  ## Builtin `typeof` operation for accessing the type of an expression.
+  ## Since version 0.20.0.
+  runnableExamples:
+    proc myFoo(): float = 0.0
+    iterator myFoo(): string = yield "abc"
+    iterator myFoo2(): string = yield "abc"
+    iterator myFoo3(): string {.closure.} = yield "abc"
+    doAssert type(myFoo()) is string
+    doAssert typeof(myFoo()) is string
+    doAssert typeof(myFoo(), typeOfIter) is string
+    doAssert typeof(myFoo3) is "iterator"
 
-      doAssert typeof(myFoo(), typeOfProc) is float
-      doAssert typeof(0.0, typeOfProc) is float
-      doAssert typeof(myFoo3, typeOfProc) is "iterator"
-      doAssert not compiles(typeof(myFoo2(), typeOfProc))
-        # this would give: Error: attempting to call routine: 'myFoo2'
-        # since `typeOfProc` expects a typed expression and `myFoo2()` can
-        # only be used in a `for` context.
+    doAssert typeof(myFoo(), typeOfProc) is float
+    doAssert typeof(0.0, typeOfProc) is float
+    doAssert typeof(myFoo3, typeOfProc) is "iterator"
+    doAssert not compiles(typeof(myFoo2(), typeOfProc))
+      # this would give: Error: attempting to call routine: 'myFoo2'
+      # since `typeOfProc` expects a typed expression and `myFoo2()` can
+      # only be used in a `for` context.
 
 const ThisIsSystem = true
 
@@ -310,14 +299,9 @@ type
   seq*[T]{.magic: "Seq".}             ## Generic type to construct sequences.
   set*[T]{.magic: "Set".}             ## Generic type to construct bit sets.
 
-when defined(nimUncheckedArrayTyp):
-  type
-    UncheckedArray*[T]{.magic: "UncheckedArray".}
-    ## Array with no bounds checking.
-else:
-  type
-    UncheckedArray*[T]{.unchecked.} = array[0,T]
-    ## Array with no bounds checking.
+type
+  UncheckedArray*[T]{.magic: "UncheckedArray".}
+  ## Array with no bounds checking.
 
 type sink*[T]{.magic: "BuiltinType".}
 type lent*[T]{.magic: "BuiltinType".}
@@ -476,25 +460,24 @@ proc shallowCopy*[T](x: var T, y: T) {.noSideEffect, magic: "ShallowCopy".}
   ## There is a reason why the default assignment does a deep copy of sequences
   ## and strings.
 
-when defined(nimArrIdx):
-  # :array|openArray|string|seq|cstring|tuple
-  proc `[]`*[I: Ordinal;T](a: T; i: I): T {.
-    noSideEffect, magic: "ArrGet".}
-  proc `[]=`*[I: Ordinal;T,S](a: T; i: I;
-    x: sink S) {.noSideEffect, magic: "ArrPut".}
-  proc `=`*[T](dest: var T; src: T) {.noSideEffect, magic: "Asgn".}
+# :array|openArray|string|seq|cstring|tuple
+proc `[]`*[I: Ordinal;T](a: T; i: I): T {.
+  noSideEffect, magic: "ArrGet".}
+proc `[]=`*[I: Ordinal;T,S](a: T; i: I;
+  x: sink S) {.noSideEffect, magic: "ArrPut".}
+proc `=`*[T](dest: var T; src: T) {.noSideEffect, magic: "Asgn".}
 
-  proc arrGet[I: Ordinal;T](a: T; i: I): T {.
-    noSideEffect, magic: "ArrGet".}
-  proc arrPut[I: Ordinal;T,S](a: T; i: I;
-    x: S) {.noSideEffect, magic: "ArrPut".}
+proc arrGet[I: Ordinal;T](a: T; i: I): T {.
+  noSideEffect, magic: "ArrGet".}
+proc arrPut[I: Ordinal;T,S](a: T; i: I;
+  x: S) {.noSideEffect, magic: "ArrPut".}
 
-  proc `=destroy`*[T](x: var T) {.inline, magic: "Destroy".} =
-    ## Generic `destructor`:idx: implementation that can be overridden.
-    discard
-  proc `=sink`*[T](x: var T; y: T) {.inline, magic: "Asgn".} =
-    ## Generic `sink`:idx: implementation that can be overridden.
-    shallowCopy(x, y)
+proc `=destroy`*[T](x: var T) {.inline, magic: "Destroy".} =
+  ## Generic `destructor`:idx: implementation that can be overridden.
+  discard
+proc `=sink`*[T](x: var T; y: T) {.inline, magic: "Asgn".} =
+  ## Generic `sink`:idx: implementation that can be overridden.
+  shallowCopy(x, y)
 
 type
   HSlice*[T, U] = object   ## "Heterogeneous" slice type.
@@ -522,12 +505,6 @@ proc `..`*[T](b: sink T): HSlice[int, T] {.noSideEffect, inline, magic: "DotDot"
   ##   echo a[.. 2] # @[10, 20, 30]
   result = HSlice[int, T](a: 0, b: b)
 
-when not defined(niminheritable):
-  {.pragma: inheritable.}
-when not defined(nimunion):
-  {.pragma: unchecked.}
-when not defined(nimHasHotCodeReloading):
-  {.pragma: nonReloadable.}
 when defined(hotCodeReloading):
   {.pragma: hcrInline, inline.}
 else:
@@ -631,23 +608,21 @@ proc sizeof*[T](x: T): int {.magic: "SizeOf", noSideEffect.}
   ##  sizeof('A') # => 1
   ##  sizeof(2) # => 8
 
-when defined(nimHasalignOf):
-  proc alignof*[T](x: T): int {.magic: "AlignOf", noSideEffect.}
-  proc alignof*(x: typedesc): int {.magic: "AlignOf", noSideEffect.}
+proc alignof*[T](x: T): int {.magic: "AlignOf", noSideEffect.}
+proc alignof*(x: typedesc): int {.magic: "AlignOf", noSideEffect.}
 
-  proc offsetOfDotExpr(typeAccess: typed): int {.magic: "OffsetOf", noSideEffect, compileTime.}
+proc offsetOfDotExpr(typeAccess: typed): int {.magic: "OffsetOf", noSideEffect, compileTime.}
 
-  template offsetOf*[T](t: typedesc[T]; member: untyped): int =
-    var tmp {.noinit.}: ptr T
-    offsetOfDotExpr(tmp[].member)
+template offsetOf*[T](t: typedesc[T]; member: untyped): int =
+  var tmp {.noinit.}: ptr T
+  offsetOfDotExpr(tmp[].member)
 
-  template offsetOf*[T](value: T; member: untyped): int =
-    offsetOfDotExpr(value.member)
+template offsetOf*[T](value: T; member: untyped): int =
+  offsetOfDotExpr(value.member)
 
-  #proc offsetOf*(memberaccess: typed): int {.magic: "OffsetOf", noSideEffect.}
+#proc offsetOf*(memberaccess: typed): int {.magic: "OffsetOf", noSideEffect.}
 
-when defined(nimtypedescfixed):
-  proc sizeof*(x: typedesc): int {.magic: "SizeOf", noSideEffect.}
+proc sizeof*(x: typedesc): int {.magic: "SizeOf", noSideEffect.}
 
 
 proc newSeq*[T](s: var seq[T], len: Natural) {.magic: "NewSeq", noSideEffect.}
@@ -720,20 +695,19 @@ when not defined(js):
       var s = cast[PGenericSeq](result)
       s.len = len
 
-proc len*[TOpenArray: openArray|varargs](x: TOpenArray): int {.
-  magic: "LengthOpenArray", noSideEffect.}
+func len*[TOpenArray: openArray|varargs](x: TOpenArray): int {.magic: "LengthOpenArray".} =
   ## Returns the length of an openArray.
-  ##
-  ## .. code-block:: Nim
-  ##   var s = [1, 1, 1, 1, 1]
-  ##   echo len(s) # => 5
+  runnableExamples:
+    proc bar[T](a: openArray[T]): int = len(a)
+    assert bar([1,2]) == 2
+    assert [1,2].len == 2
 
-proc len*(x: string): int {.magic: "LengthStr", noSideEffect.}
+func len*(x: string): int {.magic: "LengthStr".} =
   ## Returns the length of a string.
-  ##
-  ## .. code-block:: Nim
-  ##   var str = "Hello world!"
-  ##   echo len(str) # => 12
+  runnableExamples:
+    assert "abc".len == 3
+    assert "".len == 0
+    assert string.default.len == 0
 
 proc len*(x: cstring): int {.magic: "LengthStr", noSideEffect.} =
   ## Returns the length of a compatible string. This is an O(n) operation except
@@ -754,37 +728,47 @@ proc len*(x: cstring): int {.magic: "LengthStr", noSideEffect.} =
       var a2: cstring = "ab\0c"
       doAssert a2.len == 2 # \0 is a null terminator, even in js vm
 
-proc len*(x: (type array)|array): int {.magic: "LengthArray", noSideEffect.}
+func len*(x: (type array)|array): int {.magic: "LengthArray".} =
   ## Returns the length of an array or an array type.
   ## This is roughly the same as `high(T)-low(T)+1`.
-  ##
-  ## .. code-block:: Nim
-  ##   var arr = [1, 1, 1, 1, 1]
-  ##   echo len(arr) # => 5
-  ##   echo len(array[3..8, int]) # => 6
+  runnableExamples:
+    var a = [1, 1, 1]
+    assert a.len == 3
+    assert array[0, float].len == 0
+    static: assert array[-2..2, float].len == 5
 
-proc len*[T](x: seq[T]): int {.magic: "LengthSeq", noSideEffect.}
-  ## Returns the length of a sequence.
-  ##
-  ## .. code-block:: Nim
-  ##   var s = @[1, 1, 1, 1, 1]
-  ##   echo len(s) # => 5
+func len*[T](x: seq[T]): int {.magic: "LengthSeq".} =
+  ## Returns the length of `x`.
+  runnableExamples:
+    assert @[0, 1].len == 2
+    assert seq[int].default.len == 0
+    assert newSeq[int](3).len == 3
+    let s = newSeqOfCap[int](3)
+    assert s.len == 0
+  # xxx this gives cgen error: assert newSeqOfCap[int](3).len == 0
 
+func ord*[T: Ordinal|enum](x: T): int {.magic: "Ord".} =
+  ## Returns the internal `int` value of `x`, including for enum with holes
+  ## and distinct ordinal types.
+  runnableExamples:
+    assert ord('A') == 65
+    type Foo = enum
+      f0 = 0, f1 = 3
+    assert f1.ord == 3
+    type Bar = distinct int
+    assert 3.Bar.ord == 3
 
-proc ord*[T: Ordinal|enum](x: T): int {.magic: "Ord", noSideEffect.}
-  ## Returns the internal `int` value of an ordinal value `x`.
-  ##
-  ## .. code-block:: Nim
-  ##   echo ord('A') # => 65
-  ##   echo ord('a') # => 97
-
-proc chr*(u: range[0..255]): char {.magic: "Chr", noSideEffect.}
-  ## Converts an `int` in the range `0..255` to a character.
-  ##
-  ## .. code-block:: Nim
-  ##   echo chr(65) # => A
-  ##   echo chr(97) # => a
-
+func chr*(u: range[0..255]): char {.magic: "Chr".} =
+  ## Converts `u` to a `char`, same as `char(u)`.
+  runnableExamples:
+    doAssert chr(65) == 'A'
+    doAssert chr(255) == '\255'
+    doAssert chr(255) == char(255)
+    doAssert not compiles chr(256)
+    doAssert not compiles char(256)
+    var x = 256
+    doAssertRaises(RangeDefect): discard chr(x)
+    doAssertRaises(RangeDefect): discard char(x)
 
 # floating point operations:
 proc `+`*(x: float32): float32 {.magic: "UnaryPlusF64", noSideEffect.}
@@ -957,7 +941,7 @@ proc cmp*[T](x, y: T): int =
   ## This generic implementation uses the `==` and `<` operators.
   ##
   ## .. code-block:: Nim
-  ##  import algorithm
+  ##  import std/algorithm
   ##  echo sorted(@[4, 2, 6, 5, 8, 7], cmp[int])
   if x == y: return 0
   if x < y: return -1
@@ -969,52 +953,42 @@ proc cmp*(x, y: string): int {.noSideEffect.}
   ## **Note**: The precise result values depend on the used C runtime library and
   ## can differ between operating systems!
 
-when defined(nimHasDefault):
-  proc `@`* [IDX, T](a: sink array[IDX, T]): seq[T] {.
-    magic: "ArrToSeq", noSideEffect.}
-    ## Turns an array into a sequence.
-    ##
-    ## This most often useful for constructing
-    ## sequences with the array constructor: `@[1, 2, 3]` has the type
-    ## `seq[int]`, while `[1, 2, 3]` has the type `array[0..2, int]`.
-    ##
-    ## .. code-block:: Nim
-    ##   let
-    ##     a = [1, 3, 5]
-    ##     b = "foo"
-    ##
-    ##   echo @a # => @[1, 3, 5]
-    ##   echo @b # => @['f', 'o', 'o']
+proc `@`* [IDX, T](a: sink array[IDX, T]): seq[T] {.magic: "ArrToSeq", noSideEffect.}
+  ## Turns an array into a sequence.
+  ##
+  ## This most often useful for constructing
+  ## sequences with the array constructor: `@[1, 2, 3]` has the type
+  ## `seq[int]`, while `[1, 2, 3]` has the type `array[0..2, int]`.
+  ##
+  ## .. code-block:: Nim
+  ##   let
+  ##     a = [1, 3, 5]
+  ##     b = "foo"
+  ##
+  ##   echo @a # => @[1, 3, 5]
+  ##   echo @b # => @['f', 'o', 'o']
 
-  proc default*(T: typedesc): T {.magic: "Default", noSideEffect.} =
-    ## returns the default value of the type `T`.
-    runnableExamples:
-      assert (int, float).default == (0, 0.0)
-      # note: `var a = default(T)` is usually the same as `var a: T` and (currently) generates
-      # a value whose binary representation is all 0, regardless of whether this
-      # would violate type constraints such as `range`, `not nil`, etc. This
-      # property is required to implement certain algorithms efficiently which
-      # may require intermediate invalid states.
-      type Foo = object
-        a: range[2..6]
-      var a1: range[2..6] # currently, this compiles
-      # var a2: Foo # currently, this errors: Error: The Foo type doesn't have a default value.
-      # var a3 = Foo() # ditto
-      var a3 = Foo.default # this works, but generates a `UnsafeDefault` warning.
-    # note: the doc comment also explains why `default` can't be implemented
-    # via: `template default*[T](t: typedesc[T]): T = (var v: T; v)`
+proc default*(T: typedesc): T {.magic: "Default", noSideEffect.} =
+  ## returns the default value of the type `T`.
+  runnableExamples:
+    assert (int, float).default == (0, 0.0)
+    # note: `var a = default(T)` is usually the same as `var a: T` and (currently) generates
+    # a value whose binary representation is all 0, regardless of whether this
+    # would violate type constraints such as `range`, `not nil`, etc. This
+    # property is required to implement certain algorithms efficiently which
+    # may require intermediate invalid states.
+    type Foo = object
+      a: range[2..6]
+    var a1: range[2..6] # currently, this compiles
+    # var a2: Foo # currently, this errors: Error: The Foo type doesn't have a default value.
+    # var a3 = Foo() # ditto
+    var a3 = Foo.default # this works, but generates a `UnsafeDefault` warning.
+  # note: the doc comment also explains why `default` can't be implemented
+  # via: `template default*[T](t: typedesc[T]): T = (var v: T; v)`
 
-  proc reset*[T](obj: var T) {.noSideEffect.} =
-    ## Resets an object `obj` to its default value.
-    obj = default(typeof(obj))
-
-else:
-  proc `@`* [IDX, T](a: array[IDX, T]): seq[T] {.
-    magic: "ArrToSeq", noSideEffect.}
-  when defined(nimV2):
-    proc reset*[T](obj: var T) {.magic: "Destroy", noSideEffect.}
-  else:
-    proc reset*[T](obj: var T) {.magic: "Reset", noSideEffect.}
+proc reset*[T](obj: var T) {.noSideEffect.} =
+  ## Resets an object `obj` to its default value.
+  obj = default(typeof(obj))
 
 proc setLen*[T](s: var seq[T], newlen: Natural) {.
   magic: "SetLengthSeq", noSideEffect.}
@@ -1095,15 +1069,16 @@ proc add*(x: var string, y: char) {.magic: "AppendStrCh", noSideEffect.}
   ##   tmp.add('a')
   ##   tmp.add('b')
   ##   assert(tmp == "ab")
-proc add*(x: var string, y: string) {.magic: "AppendStrStr", noSideEffect.}
+
+proc add*(x: var string, y: string) {.magic: "AppendStrStr", noSideEffect.} =
   ## Concatenates `x` and `y` in place.
   ##
-  ## .. code-block:: Nim
-  ##   var tmp = ""
-  ##   tmp.add("ab")
-  ##   tmp.add("cd")
-  ##   assert(tmp == "abcd")
-
+  ## See also `strbasics.add`.
+  runnableExamples:
+    var tmp = ""
+    tmp.add("ab")
+    tmp.add("cd")
+    assert tmp == "abcd"
 
 type
   Endianness* = enum ## Type describing the endianness of a processor.
@@ -1625,26 +1600,19 @@ proc len*[U: Ordinal; V: Ordinal](x: HSlice[U, V]): int {.noSideEffect, inline.}
   ##   assert((5..2).len == 0)
   result = max(0, ord(x.b) - ord(x.a) + 1)
 
-when not compileOption("nilseqs"):
-  {.pragma: nilError, error.}
-else:
-  {.pragma: nilError.}
+when true: # PRTEMP: remove?
+  proc isNil*[T](x: seq[T]): bool {.noSideEffect, magic: "IsNil", error.}
+    ## Seqs are no longer nil by default, but set and empty.
+    ## Check for zero length instead.
+    ##
+    ## See also:
+    ## * `isNil(string) <#isNil,string>`_
 
-proc isNil*[T](x: seq[T]): bool {.noSideEffect, magic: "IsNil", nilError.}
-  ## Requires `--nilseqs:on` since 0.19.
-  ##
-  ## Seqs are no longer nil by default, but set and empty.
-  ## Check for zero length instead.
-  ##
-  ## See also:
-  ## * `isNil(string) <#isNil,string>`_
+  proc isNil*(x: string): bool {.noSideEffect, magic: "IsNil", error.}
+    ## See also:
+    ## * `isNil(seq[T]) <#isNil,seq[T]>`_
 
 proc isNil*[T](x: ref T): bool {.noSideEffect, magic: "IsNil".}
-proc isNil*(x: string): bool {.noSideEffect, magic: "IsNil", nilError.}
-  ## Requires `--nilseqs:on`.
-  ##
-  ## See also:
-  ## * `isNil(seq[T]) <#isNil,seq[T]>`_
 
 proc isNil*[T](x: ptr T): bool {.noSideEffect, magic: "IsNil".}
 proc isNil*(x: pointer): bool {.noSideEffect, magic: "IsNil".}
@@ -1771,7 +1739,7 @@ proc instantiationInfo*(index = -1, fullPaths = false): tuple[
   ## Example:
   ##
   ## .. code-block:: nim
-  ##   import strutils
+  ##   import std/strutils
   ##
   ##   template testException(exception, code: untyped): typed =
   ##     try:
@@ -1941,9 +1909,8 @@ include "system/gc_interface"
 const NimStackTrace = compileOption("stacktrace")
 
 template coroutinesSupportedPlatform(): bool =
-  when defined(sparc) or defined(ELATE) or compileOption("gc", "v2") or
-    defined(boehmgc) or defined(gogc) or defined(nogc) or defined(gcRegions) or
-    defined(gcMarkAndSweep):
+  when defined(sparc) or defined(ELATE) or defined(boehmgc) or defined(gogc) or
+    defined(nogc) or defined(gcRegions) or defined(gcMarkAndSweep):
     false
   else:
     true
@@ -1972,8 +1939,7 @@ when notJSnotNims:
       ## With this hook you can influence exception handling on a global level.
       ## If not nil, every 'raise' statement ends up calling this hook.
       ##
-      ## **Warning**: Ordinary application code should never set this hook!
-      ## You better know what you do when setting this.
+      ## .. warning:: Ordinary application code should never set this hook! You better know what you do when setting this.
       ##
       ## If `globalRaiseHook` returns false, the exception is caught and does
       ## not propagate further through the call stack.
@@ -1983,8 +1949,7 @@ when notJSnotNims:
       ## thread local level.
       ## If not nil, every 'raise' statement ends up calling this hook.
       ##
-      ## **Warning**: Ordinary application code should never set this hook!
-      ## You better know what you do when setting this.
+      ## .. warning:: Ordinary application code should never set this hook! You better know what you do when setting this.
       ##
       ## If `localRaiseHook` returns false, the exception
       ## is caught and does not propagate further through the call stack.
@@ -2065,34 +2030,28 @@ elif hasAlloc:
         inc(i)
   {.pop.}
 
-when defined(nimvarargstyped):
-  proc echo*(x: varargs[typed, `$`]) {.magic: "Echo", tags: [WriteIOEffect],
-    benign, sideEffect.}
-    ## Writes and flushes the parameters to the standard output.
-    ##
-    ## Special built-in that takes a variable number of arguments. Each argument
-    ## is converted to a string via `$`, so it works for user-defined
-    ## types that have an overloaded `$` operator.
-    ## It is roughly equivalent to `writeLine(stdout, x); flushFile(stdout)`, but
-    ## available for the JavaScript target too.
-    ##
-    ## Unlike other IO operations this is guaranteed to be thread-safe as
-    ## `echo` is very often used for debugging convenience. If you want to use
-    ## `echo` inside a `proc without side effects
-    ## <manual.html#pragmas-nosideeffect-pragma>`_ you can use `debugEcho
-    ## <#debugEcho,varargs[typed,]>`_ instead.
+proc echo*(x: varargs[typed, `$`]) {.magic: "Echo", tags: [WriteIOEffect],
+  benign, sideEffect.}
+  ## Writes and flushes the parameters to the standard output.
+  ##
+  ## Special built-in that takes a variable number of arguments. Each argument
+  ## is converted to a string via `$`, so it works for user-defined
+  ## types that have an overloaded `$` operator.
+  ## It is roughly equivalent to `writeLine(stdout, x); flushFile(stdout)`, but
+  ## available for the JavaScript target too.
+  ##
+  ## Unlike other IO operations this is guaranteed to be thread-safe as
+  ## `echo` is very often used for debugging convenience. If you want to use
+  ## `echo` inside a `proc without side effects
+  ## <manual.html#pragmas-nosideeffect-pragma>`_ you can use `debugEcho
+  ## <#debugEcho,varargs[typed,]>`_ instead.
 
-  proc debugEcho*(x: varargs[typed, `$`]) {.magic: "Echo", noSideEffect,
-                                            tags: [], raises: [].}
-    ## Same as `echo <#echo,varargs[typed,]>`_, but as a special semantic rule,
-    ## `debugEcho` pretends to be free of side effects, so that it can be used
-    ## for debugging routines marked as `noSideEffect
-    ## <manual.html#pragmas-nosideeffect-pragma>`_.
-else:
-  proc echo*(x: varargs[untyped, `$`]) {.magic: "Echo", tags: [WriteIOEffect],
-    benign, sideEffect.}
-  proc debugEcho*(x: varargs[untyped, `$`]) {.magic: "Echo", noSideEffect,
-                                             tags: [], raises: [].}
+proc debugEcho*(x: varargs[typed, `$`]) {.magic: "Echo", noSideEffect,
+                                          tags: [], raises: [].}
+  ## Same as `echo <#echo,varargs[typed,]>`_, but as a special semantic rule,
+  ## `debugEcho` pretends to be free of side effects, so that it can be used
+  ## for debugging routines marked as `noSideEffect
+  ## <manual.html#pragmas-nosideeffect-pragma>`_.
 
 template newException*(exceptn: typedesc, message: string;
                        parentException: ref Exception = nil): untyped =
@@ -2380,6 +2339,7 @@ when notJSnotNims:
   when hostOS != "standalone" and hostOS != "any":
     include "system/dyncalls"
 
+  import system/countbits_impl
   include "system/sets"
 
   when defined(gogc):
@@ -2426,7 +2386,7 @@ when notJSnotNims and hasAlloc:
     include "system/repr"
 
 when notJSnotNims and hasThreadSupport and hostOS != "standalone":
-  include "system/channels"
+  include "system/channels_builtin"
 
 
 when notJSnotNims and hostOS != "standalone":
@@ -2447,7 +2407,7 @@ when notJSnotNims and hostOS != "standalone":
   proc setCurrentException*(exc: ref Exception) {.inline, benign.} =
     ## Sets the current exception.
     ##
-    ## **Warning**: Only use this if you know what you are doing.
+    ## .. warning:: Only use this if you know what you are doing.
     currException = exc
 elif defined(nimscript):
   proc getCurrentException*(): ref Exception {.compilerRtl.} = discard
@@ -2796,9 +2756,6 @@ when compileOption("rangechecks"):
 else:
   template rangeCheck*(cond) = discard
 
-when not defined(nimhygiene):
-  {.pragma: inject.}
-
 proc shallow*[T](s: var seq[T]) {.noSideEffect, inline.} =
   ## Marks a sequence `s` as `shallow`:idx:. Subsequent assignments will not
   ## perform deep copies of `s`.
@@ -2879,7 +2836,7 @@ proc addEscapedChar*(s: var string, c: char) {.noSideEffect, inline.} =
   ## * replaces any `\n` by `\\n`
   ## * replaces any `\v` by `\\v`
   ## * replaces any `\f` by `\\f`
-  ## * replaces any `\c` by `\\c`
+  ## * replaces any `\r` by `\\r`
   ## * replaces any `\e` by `\\e`
   ## * replaces any other character not in the set `{'\21..'\126'}
   ##   by `\xHH` where `HH` is its hexadecimal value.
@@ -2892,10 +2849,10 @@ proc addEscapedChar*(s: var string, c: char) {.noSideEffect, inline.} =
   of '\a': s.add "\\a" # \x07
   of '\b': s.add "\\b" # \x08
   of '\t': s.add "\\t" # \x09
-  of '\L': s.add "\\n" # \x0A
+  of '\n': s.add "\\n" # \x0A
   of '\v': s.add "\\v" # \x0B
   of '\f': s.add "\\f" # \x0C
-  of '\c': s.add "\\c" # \x0D
+  of '\r': (when defined(nimLegacyAddEscapedCharx0D): s.add "\\c" else: s.add "\\r") # \x0D
   of '\e': s.add "\\e" # \x1B
   of '\\': s.add("\\\\")
   of '\'': s.add("\\'")
@@ -3019,15 +2976,15 @@ proc `==`*(x, y: cstring): bool {.magic: "EqCString", noSideEffect,
   elif x.isNil or y.isNil: result = false
   else: result = strcmp(x, y) == 0
 
-when not compileOption("nilseqs"):
+when true: # xxx PRTEMP remove
   # bug #9149; ensure that 'typeof(nil)' does not match *too* well by using 'typeof(nil) | typeof(nil)',
   # especially for converters, see tests/overload/tconverter_to_string.nim
   # Eventually we will be able to remove this hack completely.
   proc `==`*(x: string; y: typeof(nil) | typeof(nil)): bool {.
-      error: "'nil' is now invalid for 'string'; compile with --nilseqs:on for a migration period".} =
+      error: "'nil' is now invalid for 'string'".} =
     discard
   proc `==`*(x: typeof(nil) | typeof(nil); y: string): bool {.
-      error: "'nil' is now invalid for 'string'; compile with --nilseqs:on for a migration period".} =
+      error: "'nil' is now invalid for 'string'".} =
     discard
 
 template closureScope*(body: untyped): untyped =
@@ -3161,3 +3118,16 @@ export io
 
 when not defined(createNimHcr) and not defined(nimscript):
   include nimhcr
+
+when notJSnotNims and not defined(nimSeqsV2):
+  proc prepareMutation*(s: var string) {.inline.} =
+    ## String literals (e.g. "abc", etc) in the ARC/ORC mode are "copy on write",
+    ## therefore you should call `prepareMutation` before modifying the strings
+    ## via `addr`.
+    runnableExamples("--gc:arc"):
+      var x = "abc"
+      var y = "defgh"
+      prepareMutation(y) # without this, you may get a `SIGBUS` or `SIGSEGV`
+      moveMem(addr y[0], addr x[0], x.len)
+      assert y == "abcgh"
+    discard

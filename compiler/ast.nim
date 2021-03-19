@@ -434,9 +434,8 @@ type
       # instantiation and prior to this it has the potential to
       # be any type.
 
-    tyOptDeprecated
-      # 'out' parameter. Comparable to a 'var' parameter but every
-      # path must assign a value to it before it can be read from.
+    tyConcept
+      # new style concept.
 
     tyVoid
       # now different from tyEmpty, hurray!
@@ -1041,6 +1040,7 @@ const
   declarativeDefs* = {nkProcDef, nkFuncDef, nkMethodDef, nkIteratorDef, nkConverterDef}
   routineDefs* = declarativeDefs + {nkMacroDef, nkTemplateDef}
   procDefs* = nkLambdaKinds + declarativeDefs
+  callableDefs* = nkLambdaKinds + routineDefs
 
   nkSymChoices* = {nkClosedSymChoice, nkOpenSymChoice}
   nkStrKinds* = {nkStrLit..nkTripleStrLit}
@@ -1416,7 +1416,7 @@ proc newType*(kind: TTypeKind, id: ItemId; owner: PSym): PType =
                  lockLevel: UnspecifiedLockLevel,
                  uniqueId: id)
   when false:
-    if result.id == 76426:
+    if result.itemId.module == 55 and result.itemId.item == 2:
       echo "KNID ", kind
       writeStackTrace()
 
@@ -1761,12 +1761,32 @@ proc getStrOrChar*(a: PNode): string =
     #internalError(a.info, "getStrOrChar")
     #result = ""
 
-proc isGenericRoutine*(s: PSym): bool =
-  case s.kind
-  of skProcKinds:
-    result = sfFromGeneric in s.flags or
-             (s.ast != nil and s.ast[genericParamsPos].kind != nkEmpty)
-  else: discard
+proc isGenericParams*(n: PNode): bool {.inline.} =
+  ## used to judge whether a node is generic params.
+  n != nil and n.kind == nkGenericParams
+
+proc isGenericRoutine*(n: PNode): bool  {.inline.} =
+  n != nil and n.kind in callableDefs and n[genericParamsPos].isGenericParams
+
+proc isGenericRoutineStrict*(s: PSym): bool {.inline.} =
+  ## determines if this symbol represents a generic routine
+  ## the unusual name is so it doesn't collide and eventually replaces
+  ## `isGenericRoutine`
+  s.kind in skProcKinds and s.ast.isGenericRoutine
+
+proc isGenericRoutine*(s: PSym): bool {.inline.} =
+  ## determines if this symbol represents a generic routine or an instance of
+  ## one. This should be renamed accordingly and `isGenericRoutineStrict`
+  ## should take this name instead.
+  ##
+  ## Warning/XXX: Unfortunately, it considers a proc kind symbol flagged with
+  ## sfFromGeneric as a generic routine. Instead this should likely not be the
+  ## case and the concepts should be teased apart:
+  ## - generic definition
+  ## - generic instance
+  ## - either generic definition or instance
+  s.kind in skProcKinds and (sfFromGeneric in s.flags or
+                             s.ast.isGenericRoutine)
 
 proc skipGenericOwner*(s: PSym): PSym =
   ## Generic instantiations are owned by their originating generic
@@ -1975,3 +1995,7 @@ proc toHumanStr*(kind: TTypeKind): string =
 
 proc skipAddr*(n: PNode): PNode {.inline.} =
   (if n.kind == nkHiddenAddr: n[0] else: n)
+
+proc isNewStyleConcept*(n: PNode): bool {.inline.} =
+  assert n.kind == nkTypeClassTy
+  result = n[0].kind == nkEmpty

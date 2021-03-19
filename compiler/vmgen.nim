@@ -505,7 +505,10 @@ proc genCase(c: PCtx; n: PNode; dest: var TDest) =
       let it = n[i]
       if it.len == 1:
         # else stmt:
-        c.gen(it[0], dest)
+        if it[0].kind != nkNilLit or it[0].typ != nil:
+          # an nkNilLit with nil for typ implies there is no else branch, this
+          # avoids unused related errors as we've already consumed the dest
+          c.gen(it[0], dest)
       else:
         let b = rawGenLiteral(c, it)
         c.gABx(it, opcBranch, tmp, b)
@@ -1010,7 +1013,9 @@ proc genMagic(c: PCtx; n: PNode; dest: var TDest; m: TMagic) =
     c.genNarrow(n[1], d)
     c.genAsgnPatch(n[1], d)
     c.freeTemp(d)
-  of mOrd, mChr, mArrToSeq, mUnown, mIsolate: c.gen(n[1], dest)
+  of mOrd, mChr, mArrToSeq, mUnown: c.gen(n[1], dest)
+  of mIsolate:
+    genCall(c, n, dest)
   of mNew, mNewFinalize:
     unused(c, n, dest)
     c.genNew(n)
@@ -2113,7 +2118,8 @@ proc gen(c: PCtx; n: PNode; dest: var TDest; flags: TGenFlags = {}) =
     else:
       dest = tmp0
   of nkEmpty, nkCommentStmt, nkTypeSection, nkConstSection, nkPragma,
-     nkTemplateDef, nkIncludeStmt, nkImportStmt, nkFromStmt, nkExportStmt:
+     nkTemplateDef, nkIncludeStmt, nkImportStmt, nkFromStmt, nkExportStmt,
+     nkMixinStmt, nkBindStmt:
     unused(c, n, dest)
   of nkStringToCString, nkCStringToString:
     gen(c, n[0], dest)
@@ -2259,7 +2265,7 @@ proc genProc(c: PCtx; s: PSym): int =
     genParams(c, s.typ.n)
 
     # allocate additional space for any generically bound parameters
-    if s.kind == skMacro and s.ast[genericParamsPos].kind != nkEmpty:
+    if s.kind == skMacro and s.isGenericRoutineStrict:
       genGenericParams(c, s.ast[genericParamsPos])
 
     if tfCapturesEnv in s.typ.flags:

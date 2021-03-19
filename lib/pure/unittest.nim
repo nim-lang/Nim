@@ -108,16 +108,15 @@
 import std/private/since
 import std/exitprocs
 
-import
-  macros, strutils, streams, times, sets, sequtils
+import std/[macros, strutils, streams, times, sets, sequtils]
 
 when declared(stdout):
-  import os
+  import std/os
 
 const useTerminal = not defined(js)
 
 when useTerminal:
-  import terminal
+  import std/terminal
 
 type
   TestStatus* = enum ## The status of a test when it is done.
@@ -515,7 +514,9 @@ template suite*(name, body) {.dirty.} =
     finally:
       suiteEnded()
 
-template exceptionTypeName(e: typed): string = $e.name
+proc exceptionTypeName(e: ref Exception): string {.inline.} =
+  if e == nil: "<foreign exception>"
+  else: $e.name
 
 template test*(name, body) {.dirty.} =
   ## Define a single test case identified by `name`.
@@ -552,8 +553,11 @@ template test*(name, body) {.dirty.} =
       let e = getCurrentException()
       let eTypeDesc = "[" & exceptionTypeName(e) & "]"
       checkpoint("Unhandled exception: " & getCurrentExceptionMsg() & " " & eTypeDesc)
-      var stackTrace {.inject.} = e.getStackTrace()
-      fail()
+      if e == nil: # foreign
+        fail()
+      else:
+        var stackTrace {.inject.} = e.getStackTrace()
+        fail()
 
     finally:
       if testStatusIMPL == TestStatus.FAILED:
@@ -632,19 +636,17 @@ macro check*(conditions: untyped): untyped =
   ## Verify if a statement or a list of statements is true.
   ## A helpful error message and set checkpoints are printed out on
   ## failure (if ``outputLevel`` is not ``PRINT_NONE``).
-  ## Example:
-  ##
-  ## .. code-block:: nim
-  ##
-  ##  import strutils
-  ##
-  ##  check("AKB48".toLowerAscii() == "akb48")
-  ##
-  ##  let teams = {'A', 'K', 'B', '4', '8'}
-  ##
-  ##  check:
-  ##    "AKB48".toLowerAscii() == "akb48"
-  ##    'C' in teams
+  runnableExamples:
+    import std/strutils
+
+    check("AKB48".toLowerAscii() == "akb48")
+
+    let teams = {'A', 'K', 'B', '4', '8'}
+
+    check:
+      "AKB48".toLowerAscii() == "akb48"
+      'C' notin teams
+
   let checked = callsite()[1]
 
   template asgn(a: untyped, value: typed) =
@@ -681,7 +683,7 @@ macro check*(conditions: untyped): untyped =
             result.printOuts.add getAst(print(argStr, callVar))
           if exp[i].kind == nnkExprEqExpr:
             # ExprEqExpr
-            #   Ident !"v"
+            #   Ident "v"
             #   IntLit 2
             result.check[i] = exp[i][1]
           if exp[i].typeKind notin {ntyTypeDesc}:
@@ -736,22 +738,19 @@ macro expect*(exceptions: varargs[typed], body: untyped): untyped =
   ## Test if `body` raises an exception found in the passed `exceptions`.
   ## The test passes if the raised exception is part of the acceptable
   ## exceptions. Otherwise, it fails.
-  ## Example:
-  ##
-  ## .. code-block:: nim
-  ##
-  ##  import math, random
-  ##  proc defectiveRobot() =
-  ##    randomize()
-  ##    case rand(1..4)
-  ##    of 1: raise newException(OSError, "CANNOT COMPUTE!")
-  ##    of 2: discard parseInt("Hello World!")
-  ##    of 3: raise newException(IOError, "I can't do that Dave.")
-  ##    else: assert 2 + 2 == 5
-  ##
-  ##  expect IOError, OSError, ValueError, AssertionDefect:
-  ##    defectiveRobot()
-  let exp = callsite()
+  runnableExamples:
+    import std/[math, random, strutils]
+    proc defectiveRobot() =
+      randomize()
+      case rand(1..4)
+      of 1: raise newException(OSError, "CANNOT COMPUTE!")
+      of 2: discard parseInt("Hello World!")
+      of 3: raise newException(IOError, "I can't do that Dave.")
+      else: assert 2 + 2 == 5
+    
+    expect IOError, OSError, ValueError, AssertionDefect:
+      defectiveRobot()
+
   template expectBody(errorTypes, lineInfoLit, body): NimNode {.dirty.} =
     try:
       body
@@ -763,13 +762,11 @@ macro expect*(exceptions: varargs[typed], body: untyped): untyped =
       checkpoint(lineInfoLit & ": Expect Failed, unexpected exception was thrown.")
       fail()
 
-  var body = exp[exp.len - 1]
-
   var errorTypes = newNimNode(nnkBracket)
-  for i in countup(1, exp.len - 2):
-    errorTypes.add(exp[i])
+  for exp in exceptions:
+    errorTypes.add(exp)
 
-  result = getAst(expectBody(errorTypes, exp.lineInfo, body))
+  result = getAst(expectBody(errorTypes, errorTypes.lineInfo, body))
 
 proc disableParamFiltering* =
   ## disables filtering tests with the command line params
