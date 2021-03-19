@@ -2826,7 +2826,7 @@ when declared(initDebugger):
 proc addEscapedChar*(s: var string, c: char) {.noSideEffect, inline.} =
   ## Adds a char to string `s` and applies the following escaping:
   ##
-  ## * replaces any `\` by `\\`
+  ## * replaces any ``\`` by `\\`
   ## * replaces any `'` by `\'`
   ## * replaces any `"` by `\"`
   ## * replaces any `\a` by `\\a`
