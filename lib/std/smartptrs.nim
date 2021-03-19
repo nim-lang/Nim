@@ -94,7 +94,7 @@ proc newUniquePtr*[T](val: sink Isolated[T]): UniquePtr[T] {.nodestroy.} =
 
 converter convertUniquePtrToObj*[T](p: UniquePtr[T]): var T {.inline.} =
   when compileOption("boundChecks"):
-    assert(p.val != nil, "deferencing nil unique pointer")
+    doAssert(p.val != nil, "deferencing nil unique pointer")
   p.val[]
 
 proc isNil*[T](p: UniquePtr[T]): bool {.inline.} =
@@ -102,7 +102,7 @@ proc isNil*[T](p: UniquePtr[T]): bool {.inline.} =
 
 proc `[]`*[T](p: UniquePtr[T]): var T {.inline.} =
   when compileOption("boundChecks"):
-    assert(p.val != nil, "deferencing nil unique pointer")
+    doAssert(p.val != nil, "deferencing nil unique pointer")
   p.val[]
 
 proc `$`*[T](p: UniquePtr[T]): string {.inline.} =
