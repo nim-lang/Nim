@@ -420,7 +420,7 @@ proc getSeqPayloadType(m: BModule; t: PType): Rope =
   result = rope(uniqueCTypeName(t, m.g.graph) & "_Content")
 
 proc useType(m: BModule; t: PType; name: string): Rope =
-  if t.skipTypes(abstractInst).kind in {tyString, tySequence} and
+  if t.skipTypes(abstractInst).kind == tySequence and
       optSeqDestructors notin m.config.globalOptions:
     result = rope(name) & "*"
   else:
@@ -743,6 +743,8 @@ proc getTypeDescAux(m: BModule, origTyp: PType, check: var IntSet; kind: TSymKin
       discard cgsym(m, "NimStringV2")
     else:
       discard cgsym(m, "NimStringDesc")
+      m.s[cfsForwardTypes].addf("typedef NimStringDesc* NimStringV1;$n", [])
+
   of tyDistinct, tyRange, tyOrdinal, tyStatic, tyGenericInst, tyAlias, tySink,
       tyOwned, tyTypeDesc, tyUserTypeClass, tyUserTypeClassInst, tyInferred:
     getTypeDescAux(m, lastSon t, check, kind, sig)

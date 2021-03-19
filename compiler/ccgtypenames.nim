@@ -173,7 +173,7 @@ proc uniqueCTypeName(c: var string; t: PType; g: ModuleGraph) =
     if optSeqDestructors in g.config.globalOptions:
       c &= "NimStringV2"
     else:
-      c &= "NimStringDesc"
+      c &= "NimStringV1"
   of tyCString: c &= "NCSTRING"
   of tyForward: c &= "NFRWD"
   of tyProxy: c &= "NERR"
