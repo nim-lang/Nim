@@ -268,7 +268,7 @@ proc genOp(c: var Con; op: PSym; dest: PNode): PNode =
 
 proc genOp(c: var Con; t: PType; kind: TTypeAttachedOp; dest, ri: PNode): PNode =
   var op = getAttachedOp(c.graph, t, kind)
-  if op == nil or op.ast[genericParamsPos].kind != nkEmpty:
+  if op == nil or op.ast.isGenericRoutine:
     # give up and find the canonical type instead:
     let h = sighashes.hashType(t, {CoType, CoConsiderOwned, CoDistinct})
     let canon = c.graph.canonTypes.getOrDefault(h)
@@ -278,7 +278,7 @@ proc genOp(c: var Con; t: PType; kind: TTypeAttachedOp; dest, ri: PNode): PNode 
     #echo dest.typ.id
     globalError(c.graph.config, dest.info, "internal error: '" & AttachedOpToStr[kind] &
       "' operator not found for type " & typeToString(t))
-  elif op.ast[genericParamsPos].kind != nkEmpty:
+  elif op.ast.isGenericRoutine:
     globalError(c.graph.config, dest.info, "internal error: '" & AttachedOpToStr[kind] &
       "' operator is generic")
   dbg:

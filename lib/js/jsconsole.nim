@@ -110,5 +110,15 @@ since (1, 5):
     {.line: loc.}:
       {.emit: ["console.assert(", assertion, ", ", msg, ");"].}
 
+  func dir*(console: Console; obj: auto) {.importcpp.}
+    ## https://developer.mozilla.org/en-US/docs/Web/API/Console/dir
+
+  func dirxml*(console: Console; obj: auto) {.importcpp.}
+    ## https://developer.mozilla.org/en-US/docs/Web/API/Console/dirxml
+
+  func timeStamp*(console: Console; label: cstring) {.importcpp.}
+    ## https://developer.mozilla.org/en-US/docs/Web/API/Console/timeStamp
+    ## ..warning:: non-standard
+
 
 var console* {.importc, nodecl.}: Console

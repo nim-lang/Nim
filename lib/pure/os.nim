@@ -917,10 +917,7 @@ proc getConfigDir*(): string {.rtl, extern: "nos$1",
   ## On non-Windows OSs, this proc conforms to the XDG Base Directory
   ## spec. Thus, this proc returns the value of the `XDG_CONFIG_HOME` environment
   ## variable if it is set, otherwise it returns the default configuration
-  ## directory ("~/.config/").
-  ##
-  ## An OS-dependent trailing slash is always present at the end of the
-  ## returned string: `\\` on Windows and `/` on all other OSs.
+  ## directory ("~/.config").
   ##
   ## See also:
   ## * `getHomeDir proc <#getHomeDir>`_
@@ -928,12 +925,15 @@ proc getConfigDir*(): string {.rtl, extern: "nos$1",
   ## * `expandTilde proc <#expandTilde,string>`_
   ## * `getCurrentDir proc <#getCurrentDir>`_
   ## * `setCurrentDir proc <#setCurrentDir,string>`_
+  runnableExamples:
+    from std/strutils import endsWith
+    # See `getHomeDir` for behavior regarding trailing DirSep.
+    assert not getConfigDir().endsWith DirSep
   when defined(windows):
     result = getEnv("APPDATA")
   else:
     result = getEnv("XDG_CONFIG_HOME", getEnv("HOME") / ".config")
-  result.normalizePathEnd(trailingSep = true)
-
+  result.normalizePathEnd(trailingSep = defined(nimLegacyHomeDir))
 
 when defined(windows):
   type DWORD = uint32
@@ -975,6 +975,10 @@ proc getTempDir*(): string {.rtl, extern: "nos$1",
   ## * `expandTilde proc <#expandTilde,string>`_
   ## * `getCurrentDir proc <#getCurrentDir>`_
   ## * `setCurrentDir proc <#setCurrentDir,string>`_
+  runnableExamples:
+    from std/strutils import endsWith
+    # See `getHomeDir` for behavior regarding trailing DirSep.
+    assert not getTempDir().endsWith(DirSep)
   const tempDirDefault = "/tmp"
   when defined(tempDir):
     const tempDir {.strdefine.}: string = tempDirDefault
@@ -995,7 +999,7 @@ proc getTempDir*(): string {.rtl, extern: "nos$1",
         getTempDirImpl(result)
     if result.len == 0:
       result = tempDirDefault
-  normalizePathEnd(result, trailingSep=true)
+  result.normalizePathEnd(trailingSep = defined(nimLegacyHomeDir))
 
 proc expandTilde*(path: string): string {.
   tags: [ReadEnvEffect, ReadIOEffect].} =

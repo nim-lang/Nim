@@ -1,3 +1,5 @@
+.. default-role:: code
+
 ==================================
 Nim Destructors and Move Semantics
 ==================================
@@ -16,7 +18,7 @@ not use classical GC algorithms anymore but is based on destructors and
 move semantics. The new runtime's advantages are that Nim programs become
 oblivious to the involved heap sizes and programs are easier to write to make
 effective use of multi-core machines. As a nice bonus, files and sockets and
-the like will not require manual ``close`` calls anymore.
+the like will not require manual `close` calls anymore.
 
 This document aims to be a precise specification about how
 move semantics and destructors work in Nim.
@@ -89,12 +91,12 @@ written as:
 Lifetime-tracking hooks
 =======================
 
-The memory management for Nim's standard ``string`` and ``seq`` types as
+The memory management for Nim's standard `string` and `seq` types as
 well as other standard collections is performed via so-called
 "Lifetime-tracking hooks", which are particular `type bound operators <manual.html#procedures-type-bound-operators>`_.
 
-There are 3 different hooks for each (generic or concrete) object type ``T`` (``T`` can also be a
-``distinct`` type) that are called implicitly by the compiler.
+There are 3 different hooks for each (generic or concrete) object type `T` (`T` can also be a
+`distinct` type) that are called implicitly by the compiler.
 
 (Note: The word "hook" here does not imply any kind of dynamic binding
 or runtime indirections, the implicit calls are statically bound and
@@ -109,14 +111,14 @@ other associated resources. Variables are destroyed via this hook when
 they go out of scope or when the routine they were declared in is about
 to return.
 
-The prototype of this hook for a type ``T`` needs to be:
+The prototype of this hook for a type `T` needs to be:
 
 .. code-block:: nim
 
   proc `=destroy`(x: var T)
 
 
-The general pattern in ``=destroy`` looks like:
+The general pattern in `=destroy` looks like:
 
 .. code-block:: nim
 
@@ -133,20 +135,20 @@ The general pattern in ``=destroy`` looks like:
 A `=sink` hook moves an object around, the resources are stolen from the source
 and passed to the destination. It is ensured that the source's destructor does
 not free the resources afterward by setting the object to its default value
-(the value the object's state started in). Setting an object ``x`` back to its
-default value is written as ``wasMoved(x)``. When not provided the compiler
+(the value the object's state started in). Setting an object `x` back to its
+default value is written as `wasMoved(x)`. When not provided the compiler
 is using a combination of `=destroy` and `copyMem` instead. This is efficient
 hence users rarely need to implement their own `=sink` operator, it is enough to
 provide `=destroy` and `=copy`, compiler will take care of the rest.
 
-The prototype of this hook for a type ``T`` needs to be:
+The prototype of this hook for a type `T` needs to be:
 
 .. code-block:: nim
 
   proc `=sink`(dest: var T; source: T)
 
 
-The general pattern in ``=sink`` looks like:
+The general pattern in `=sink` looks like:
 
 .. code-block:: nim
 
@@ -156,25 +158,25 @@ The general pattern in ``=sink`` looks like:
     dest.field = source.field
 
 
-**Note**: ``=sink`` does not need to check for self-assignments.
+**Note**: `=sink` does not need to check for self-assignments.
 How self-assignments are handled is explained later in this document.
 
 
 `=copy` hook
 ---------------
 
-The ordinary assignment in Nim conceptually copies the values. The ``=copy`` hook
-is called for assignments that couldn't be transformed into ``=sink``
+The ordinary assignment in Nim conceptually copies the values. The `=copy` hook
+is called for assignments that couldn't be transformed into `=sink`
 operations.
 
-The prototype of this hook for a type ``T`` needs to be:
+The prototype of this hook for a type `T` needs to be:
 
 .. code-block:: nim
 
   proc `=copy`(dest: var T; source: T)
 
 
-The general pattern in ``=copy`` looks like:
+The general pattern in `=copy` looks like:
 
 .. code-block:: nim
 
@@ -186,48 +188,48 @@ The general pattern in ``=copy`` looks like:
       dest.field = duplicateResource(source.field)
 
 
-The ``=copy`` proc can be marked with the ``{.error.}`` pragma. Then any assignment
+The `=copy` proc can be marked with the `{.error.}` pragma. Then any assignment
 that otherwise would lead to a copy is prevented at compile-time. This looks like:
 
 .. code-block:: nim
 
   proc `=copy`(dest: var T; source: T) {.error.}
 
-but a custom error message (e.g., ``{.error: "custom error".}``) will not be emitted
-by the compiler. Notice that there is no ``=`` before the ``{.error.}`` pragma.
+but a custom error message (e.g., `{.error: "custom error".}`) will not be emitted
+by the compiler. Notice that there is no `=` before the `{.error.}` pragma.
 
 Move semantics
 ==============
 
 A "move" can be regarded as an optimized copy operation. If the source of the
 copy operation is not used afterward, the copy can be replaced by a move. This
-document uses the notation ``lastReadOf(x)`` to describe that ``x`` is not
+document uses the notation `lastReadOf(x)` to describe that `x` is not
 used afterwards. This property is computed by a static control flow analysis
-but can also be enforced by using ``system.move`` explicitly.
+but can also be enforced by using `system.move` explicitly.
 
 
 Swap
 ====
 
 The need to check for self-assignments and also the need to destroy previous
-objects inside ``=copy`` and ``=sink`` is a strong indicator to treat
-``system.swap`` as a builtin primitive of its own that simply swaps every
-field in the involved objects via ``copyMem`` or a comparable mechanism.
-In other words, ``swap(a, b)`` is **not** implemented
-as ``let tmp = move(b); b = move(a); a = move(tmp)``.
+objects inside `=copy` and `=sink` is a strong indicator to treat
+`system.swap` as a builtin primitive of its own that simply swaps every
+field in the involved objects via `copyMem` or a comparable mechanism.
+In other words, `swap(a, b)` is **not** implemented
+as `let tmp = move(b); b = move(a); a = move(tmp)`.
 
 This has further consequences:
 
 * Objects that contain pointers that point to the same object are not supported
   by Nim's model. Otherwise swapped objects would end up in an inconsistent state.
-* Seqs can use ``realloc`` in the implementation.
+* Seqs can use `realloc` in the implementation.
 
 
 Sink parameters
 ===============
 
-To move a variable into a collection usually ``sink`` parameters are involved.
-A location that is passed to a ``sink`` parameter should not be used afterward.
+To move a variable into a collection usually `sink` parameters are involved.
+A location that is passed to a `sink` parameter should not be used afterward.
 This is ensured by a static analysis over a control flow graph. If it cannot be
 proven to be the last usage of the location, a copy is done instead and this
 copy is then passed to the sink parameter.
@@ -235,9 +237,9 @@ copy is then passed to the sink parameter.
 A sink parameter
 *may* be consumed once in the proc's body but doesn't have to be consumed at all.
 The reason for this is that signatures
-like ``proc put(t: var Table; k: sink Key, v: sink Value)`` should be possible
-without any further overloads and ``put`` might not take ownership of ``k`` if
-``k`` already exists in the table. Sink parameters enable an affine type system,
+like `proc put(t: var Table; k: sink Key, v: sink Value)` should be possible
+without any further overloads and `put` might not take ownership of `k` if
+`k` already exists in the table. Sink parameters enable an affine type system,
 not a linear type system.
 
 The employed static analysis is limited and only concerned with local variables;
@@ -254,7 +256,7 @@ however, object and tuple fields are treated as separate entities:
     echo tup[1]
 
 
-Sometimes it is required to explicitly ``move`` a value into its final position:
+Sometimes it is required to explicitly `move` a value into its final position:
 
 .. code-block:: nim
 
@@ -294,9 +296,9 @@ Rewrite rules
 
 **Note**: There are two different allowed implementation strategies:
 
-1. The produced ``finally`` section can be a single section that is wrapped
+1. The produced `finally` section can be a single section that is wrapped
    around the complete routine body.
-2. The produced ``finally`` section is wrapped around the enclosing scope.
+2. The produced `finally` section is wrapped around the enclosing scope.
 
 The current implementation follows strategy (2). This means that resources are
 destroyed at the scope exit.
@@ -359,13 +361,13 @@ Object and array construction
 =============================
 
 Object and array construction is treated as a function call where the
-function has ``sink`` parameters.
+function has `sink` parameters.
 
 
 Destructor removal
 ==================
 
-``wasMoved(x);`` followed by a `=destroy(x)` operation cancel each other
+`wasMoved(x);` followed by a `=destroy(x)` operation cancel each other
 out. An implementation is encouraged to exploit this in order to improve
 efficiency and code sizes. The current implementation does perform this
 optimization.
@@ -374,22 +376,22 @@ optimization.
 Self assignments
 ================
 
-``=sink`` in combination with ``wasMoved`` can handle self-assignments but
+`=sink` in combination with `wasMoved` can handle self-assignments but
 it's subtle.
 
-The simple case of ``x = x`` cannot be turned
-into ``=sink(x, x); wasMoved(x)`` because that would lose ``x``'s value.
+The simple case of `x = x` cannot be turned
+into `=sink(x, x); wasMoved(x)` because that would lose `x`'s value.
 The solution is that simple self-assignments that consist of
 
-- Symbols: ``x = x``
-- Field access: ``x.f = x.f``
-- Array, sequence or string access with indices known at compile-time: ``x[0] = x[0]``
+- Symbols: `x = x`
+- Field access: `x.f = x.f`
+- Array, sequence or string access with indices known at compile-time: `x[0] = x[0]`
 
 are transformed into an empty statement that does nothing.
 The compiler is free to optimize further cases.
 
-The complex case looks like a variant of ``x = f(x)``, we consider
-``x = select(rand() < 0.5, x, y)`` here:
+The complex case looks like a variant of `x = f(x)`, we consider
+`x = select(rand() < 0.5, x, y)` here:
 
 
 .. code-block:: nim
@@ -450,17 +452,17 @@ self-assignments.
 Lent type
 =========
 
-``proc p(x: sink T)`` means that the proc ``p`` takes ownership of ``x``.
+`proc p(x: sink T)` means that the proc `p` takes ownership of `x`.
 To eliminate even more creation/copy <-> destruction pairs, a proc's return
-type can be annotated as ``lent T``. This is useful for "getter" accessors
+type can be annotated as `lent T`. This is useful for "getter" accessors
 that seek to allow an immutable view into a container.
 
-The ``sink`` and ``lent`` annotations allow us to remove most (if not all)
+The `sink` and `lent` annotations allow us to remove most (if not all)
 superfluous copies and destructions.
 
-``lent T`` is like ``var T`` a hidden pointer. It is proven by the compiler
+`lent T` is like `var T` a hidden pointer. It is proven by the compiler
 that the pointer does not outlive its origin. No destructor call is injected
-for expressions of type ``lent T`` or of type ``var T``.
+for expressions of type `lent T` or of type `var T`.
 
 
 .. code-block:: nim
@@ -494,9 +496,9 @@ for expressions of type ``lent T`` or of type ``var T``.
 The .cursor annotation
 ======================
 
-Under the ``--gc:arc|orc`` modes Nim's `ref` type is implemented via the same runtime
+Under the `--gc:arc|orc` modes Nim's `ref` type is implemented via the same runtime
 "hooks" and thus via reference counting. This means that cyclic structures cannot be freed
-immediately (``--gc:orc`` ships with a cycle collector). With the ``.cursor`` annotation
+immediately (`--gc:orc` ships with a cycle collector). With the `.cursor` annotation
 one can break up cycles declaratively:
 
 .. code-block:: nim
@@ -510,7 +512,7 @@ But please notice that this is not C++'s weak_ptr, it means the right field is n
 involved in the reference counting, it is a raw pointer without runtime checks.
 
 Automatic reference counting also has the disadvantage that it introduces overhead
-when iterating over linked structures. The ``.cursor`` annotation can also be used
+when iterating over linked structures. The `.cursor` annotation can also be used
 to avoid this overhead:
 
 .. code-block:: nim
@@ -521,11 +523,11 @@ to avoid this overhead:
     it = it.next
 
 
-In fact, ``.cursor`` more generally prevents object construction/destruction pairs
+In fact, `.cursor` more generally prevents object construction/destruction pairs
 and so can also be useful in other contexts. The alternative solution would be to
-use raw pointers (``ptr``) instead which is more cumbersome and also more dangerous
-for Nim's evolution: Later on, the compiler can try to prove ``.cursor`` annotations
-to be safe, but for ``ptr`` the compiler has to remain silent about possible
+use raw pointers (`ptr`) instead which is more cumbersome and also more dangerous
+for Nim's evolution: Later on, the compiler can try to prove `.cursor` annotations
+to be safe, but for `ptr` the compiler has to remain silent about possible
 problems.
 
 
@@ -556,13 +558,13 @@ indirections:
 Hook lifting
 ============
 
-The hooks of a tuple type ``(A, B, ...)`` are generated by lifting the
-hooks of the involved types ``A``, ``B``, ... to the tuple type. In
-other words, a copy ``x = y`` is implemented
-as ``x[0] = y[0]; x[1] = y[1]; ...``, likewise for ``=sink`` and ``=destroy``.
+The hooks of a tuple type `(A, B, ...)` are generated by lifting the
+hooks of the involved types `A`, `B`, ... to the tuple type. In
+other words, a copy `x = y` is implemented
+as `x[0] = y[0]; x[1] = y[1]; ...`, likewise for `=sink` and `=destroy`.
 
-Other value-based compound types like ``object`` and ``array`` are handled
-correspondingly. For ``object`` however, the compiler-generated hooks
+Other value-based compound types like `object` and `array` are handled
+correspondingly. For `object` however, the compiler-generated hooks
 can be overridden. This can also be important to use an alternative traversal
 of the involved data structure that is more efficient or in order to avoid
 deep recursions.
@@ -588,18 +590,18 @@ The ability to override a hook leads to a phase ordering problem:
     discard
 
 
-The solution is to define ``proc `=destroy`[T](f: var Foo[T])`` before
+The solution is to define `proc `=destroy`[T](f: var Foo[T])` before
 it is used. The compiler generates implicit
 hooks for all types in *strategic places* so that an explicitly provided
 hook that comes too "late" can be detected reliably. These *strategic places*
 have been derived from the rewrite rules and are as follows:
 
-- In the construct ``let/var x = ...`` (var/let binding)
-  hooks are generated for ``typeof(x)``.
-- In ``x = ...`` (assignment) hooks are generated for ``typeof(x)``.
-- In ``f(...)`` (function call) hooks are generated for ``typeof(f(...))``.
-- For every sink parameter ``x: sink T`` the hooks are generated
-  for ``typeof(x)``.
+- In the construct `let/var x = ...` (var/let binding)
+  hooks are generated for `typeof(x)`.
+- In `x = ...` (assignment) hooks are generated for `typeof(x)`.
+- In `f(...)` (function call) hooks are generated for `typeof(f(...))`.
+- For every sink parameter `x: sink T` the hooks are generated
+  for `typeof(x)`.
 
 
 nodestroy pragma
@@ -645,20 +647,18 @@ Instead the variable simply points to the literal.
 The literal is shared between different variables which are pointing to it.
 The copy operation is deferred until the first write.
 
-```nim
-var x = "abc"  # no copy
-var y = x      # no copy
-```
+.. code-block:: nim
+  var x = "abc"  # no copy
+  var y = x      # no copy
 
 The string literal "abc" is stored in static memory and not allocated on the heap.
 The variable `x` points to the literal and the variable `y` points to the literal too.
 There is no copy during assigning operations.
 
-```nim
-var x = "abc"  # no copy
-var y = x      # no copy
-y[0] = 'h'     # copy
-```
+.. code-block:: nim
+  var x = "abc"  # no copy
+  var y = x      # no copy
+  y[0] = 'h'     # copy
 
 The program above shows when the copy operations happen.
 When mutating the variable `y`, the Nim compiler creates a fresh copy of `x`, 
@@ -670,37 +670,34 @@ and the variable `y` becomes a mutable string.
 
 Let's look at a silly example demonstrating this behaviour:
 
-```nim
-var x = "abc"
-var y = x
+.. code-block:: nim
+  var x = "abc"
+  var y = x
 
-moveMem(addr y[0], addr x[0], 3)
-```
+  moveMem(addr y[0], addr x[0], 3)
 
 The program fails because we need to prepare a fresh copy for the variable `y`.
 `prepareMutation` should be called before the address operation.
 
-```nim
-var x = "abc"
-var y = x
+.. code-block:: nim
+  var x = "abc"
+  var y = x
 
-prepareMutation(y)
-moveMem(addr y[0], addr x[0], 3)
-assert y == "abc"
-```
+  prepareMutation(y)
+  moveMem(addr y[0], addr x[0], 3)
+  assert y == "abc"
 
 Now `prepareMutation` solves the problem.
 It manually creates a fresh copy and makes the variable `y` mutable.
 
-```nim
-var x = "abc"
-var y = x
+.. code-block:: nim
+  var x = "abc"
+  var y = x
 
-prepareMutation(y)
-moveMem(addr y[0], addr x[0], 3)
-moveMem(addr y[0], addr x[0], 3)
-moveMem(addr y[0], addr x[0], 3)
-assert y == "abc"
-```
+  prepareMutation(y)
+  moveMem(addr y[0], addr x[0], 3)
+  moveMem(addr y[0], addr x[0], 3)
+  moveMem(addr y[0], addr x[0], 3)
+  assert y == "abc"
 
 No matter how many times `moveMem` is called, the program compiles and runs.

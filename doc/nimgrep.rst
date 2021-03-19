@@ -1,3 +1,5 @@
+.. default-role:: code
+
 =========================
   nimgrep User's manual
 =========================
@@ -22,7 +24,7 @@ Compile nimgrep with the command::
 
   nim c -d:release tools/nimgrep.nim
 
-And copy the executable somewhere in your ``$PATH``.
+And copy the executable somewhere in your `$PATH`.
 
 
 Command line switches
