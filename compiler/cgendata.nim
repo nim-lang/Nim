@@ -101,8 +101,8 @@ type
     sigConflicts*: CountTable[string]
 
   TTypeSeq* = seq[PType]
-  TypeCache* = Table[SigHash, Rope]
-  TypeCacheWithOwner* = Table[SigHash, tuple[str: Rope, owner: int32]]
+  TypeCache* = HashSet[string]
+  TypeCacheWithOwner* = Table[string, FileIndex]
 
   CodegenFlag* = enum
     preventStackTrace,  # true if stack traces need to be prevented
@@ -148,10 +148,6 @@ type
                               # without extension)
     tmpBase*: Rope            # base for temp identifier generation
     typeCache*: TypeCache     # cache the generated types
-    typeABICache*: HashSet[SigHash] # cache for ABI checks; reusing typeCache
-                              # would be ideal but for some reason enums
-                              # don't seem to get cached so it'd generate
-                              # 1 ABI check per occurence in code
     forwTypeCache*: TypeCache # cache for forward declarations of types
     declaredThings*: IntSet   # things we have declared in this .c file
     declaredProtos*: IntSet   # prototypes we have declared in this .c file
@@ -202,7 +198,7 @@ proc newProc*(prc: PSym, module: BModule): BProc =
   result.sigConflicts = initCountTable[string]()
 
 proc newModuleList*(g: ModuleGraph): BModuleList =
-  BModuleList(typeInfoMarker: initTable[SigHash, tuple[str: Rope, owner: int32]](),
+  BModuleList(typeInfoMarker: initTable[string, FileIndex](),
     config: g.config, graph: g, nimtvDeclared: initIntSet())
 
 iterator cgenModules*(g: BModuleList): BModule =

@@ -455,6 +455,10 @@ proc getModule*(g: ModuleGraph; fileIdx: FileIndex): PSym =
     elif fileIdx.int32 < g.ifaces.len:
       result = g.ifaces[fileIdx.int32].module
 
+proc rememberEmittedTypeInfo*(g: ModuleGraph; m: FileIndex; ti: string) =
+  assert(not isCachedModule(g, m.int32))
+  g.packed[m.int32].fromDisk.emittedTypeInfo.add ti
+
 proc dependsOn(a, b: int): int {.inline.} = (a shl 15) + b
 
 proc addDep*(g: ModuleGraph; m: PSym, dep: FileIndex) =
