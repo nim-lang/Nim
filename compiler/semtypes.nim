@@ -1233,7 +1233,7 @@ proc semProcTypeNode(c: PContext, n, genericParams: PNode,
     if hasDefault:
       def = a[^1]
       block determineType:
-        if genericParams != nil and genericParams.len > 0:
+        if genericParams.isGenericParams:
           def = semGenericStmt(c, def)
           if hasUnresolvedArgs(c, def):
             def.typ = makeTypeFromExpr(c, def.copyTree)
@@ -1361,7 +1361,7 @@ proc semProcTypeNode(c: PContext, n, genericParams: PNode,
           result.flags.excl tfHasMeta
       result.n.typ = r
 
-  if genericParams != nil and genericParams.len > 0:
+  if genericParams.isGenericParams:
     for n in genericParams:
       if {sfUsed, sfAnon} * n.sym.flags == {}:
         result.flags.incl tfUnresolved
@@ -1666,7 +1666,7 @@ proc semProcTypeWithScope(c: PContext, n: PNode,
     # we construct a fake 'nkProcDef' for the 'mergePragmas' inside 'implicitPragmas'...
     s.ast = newTree(nkProcDef, newNodeI(nkEmpty, n.info), newNodeI(nkEmpty, n.info),
         newNodeI(nkEmpty, n.info), newNodeI(nkEmpty, n.info), newNodeI(nkEmpty, n.info))
-    implicitPragmas(c, s, n, {wTags, wRaises})
+    implicitPragmas(c, s, n.info, {wTags, wRaises})
     when useEffectSystem: setEffectsForProcType(c.graph, result, s.ast[pragmasPos])
   closeScope(c)
 

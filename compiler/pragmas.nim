@@ -60,7 +60,7 @@ const
     wNoSideEffect, wSideEffect, wNoreturn, wNosinks, wDynlib, wHeader,
     wThread, wAsmNoStackFrame,
     wRaises, wLocks, wTags, wRequires, wEnsures,
-    wGcSafe, wCodegenDecl, wNoInit}
+    wGcSafe, wCodegenDecl, wNoInit, wCompileTime}
   typePragmas* = declPragmas + {wMagic, wAcyclic,
     wPure, wHeader, wCompilerProc, wCore, wFinal, wSize, wShallow,
     wIncompleteStruct, wCompleteStruct, wByCopy, wByRef,
@@ -1245,23 +1245,23 @@ proc mergePragmas(n, pragmas: PNode) =
   else:
     for p in pragmas: n[pragmasPos].add p
 
-proc implicitPragmas*(c: PContext, sym: PSym, n: PNode,
+proc implicitPragmas*(c: PContext, sym: PSym, info: TLineInfo,
                       validPragmas: TSpecialWords) =
   if sym != nil and sym.kind != skModule:
     for it in c.optionStack:
       let o = it.otherPragmas
       if not o.isNil and sfFromGeneric notin sym.flags: # see issue #12985
-        pushInfoContext(c.config, n.info)
+        pushInfoContext(c.config, info)
         var i = 0
         while i < o.len:
           if singlePragma(c, sym, o, i, validPragmas, true, false):
-            internalError(c.config, n.info, "implicitPragmas")
+            internalError(c.config, info, "implicitPragmas")
           inc i
         popInfoContext(c.config)
         if sym.kind in routineKinds and sym.ast != nil: mergePragmas(sym.ast, o)
 
     if lfExportLib in sym.loc.flags and sfExportc notin sym.flags:
-      localError(c.config, n.info, ".dynlib requires .exportc")
+      localError(c.config, info, ".dynlib requires .exportc")
     var lib = c.optionStack[^1].dynlib
     if {lfDynamicLib, lfHeader} * sym.loc.flags == {} and
         sfImportc in sym.flags and lib != nil:
@@ -1291,4 +1291,11 @@ proc pragma(c: PContext, sym: PSym, n: PNode, validPragmas: TSpecialWords;
             isStatement: bool) =
   if n == nil: return
   pragmaRec(c, sym, n, validPragmas, isStatement)
-  implicitPragmas(c, sym, n, validPragmas)
+  # XXX: in the case of a callable def, this should use its info
+  implicitPragmas(c, sym, n.info, validPragmas)
+
+proc pragmaCallable*(c: PContext, sym: PSym, n: PNode, validPragmas: TSpecialWords,
+                    isStatement: bool = false) =
+  if n == nil: return
+  if n[pragmasPos].kind != nkEmpty:
+    pragmaRec(c, sym, n[pragmasPos], validPragmas, isStatement)

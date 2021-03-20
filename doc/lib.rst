@@ -1,3 +1,5 @@
+.. default-role:: code
+
 ====================
 Nim Standard Library
 ====================
@@ -9,7 +11,7 @@ Nim Standard Library
 
 Nim's library is divided into *pure libraries*, *impure libraries*, and *wrappers*.
 
-Pure libraries do not depend on any external ``*.dll`` or ``lib*.so`` binary
+Pure libraries do not depend on any external `*.dll` or `lib*.so` binary
 while impure libraries do. A wrapper is an impure library that is a very
 low-level interface to a C library.
 
@@ -37,11 +39,11 @@ Automatic imports
 
 * `threads <threads.html>`_
   Basic Nim thread support. **Note:** This is part of the system module. Do not
-  import it explicitly. Enabled with ``--threads:on``.
+  import it explicitly. Enabled with `--threads:on`.
 
 * `channels <channels_builtin.html>`_
   Nim message passing support for threads. **Note:** This is part of the
-  system module. Do not import it explicitly. Enabled with ``--threads:on``.
+  system module. Do not import it explicitly. Enabled with `--threads:on`.
 
 
 Core
@@ -86,14 +88,14 @@ Algorithms
   This module implements some common generic algorithms like sort or binary search.
 
 * `std/enumutils <enumutils.html>`_
-  This module adds functionality for the built-in ``enum`` type.
+  This module adds functionality for the built-in `enum` type.
 
 * `sequtils <sequtils.html>`_
-  This module implements operations for the built-in ``seq`` type
+  This module implements operations for the built-in `seq` type
   which were inspired by functional programming languages.
 
 * `std/setutils <setutils.html>`_
-  This module adds functionality for the built-in ``set`` type.
+  This module adds functionality for the built-in `set` type.
 
 
 Collections
@@ -105,7 +107,7 @@ Collections
 
 * `deques <deques.html>`_
   Implementation of a double-ended queue.
-  The underlying implementation uses a ``seq``.
+  The underlying implementation uses a `seq`.
 
 * `heapqueue <heapqueue.html>`_
   Implementation of a heap data structure that can be used as a priority queue.
@@ -140,7 +142,7 @@ String handling
 ---------------
 
 * `cstrutils <cstrutils.html>`_
-  Utilities for ``cstring`` handling.
+  Utilities for `cstring` handling.
 
 * `std/editdistance <editdistance.html>`_
   This module contains an algorithm to compute the edit distance between two
@@ -148,7 +150,7 @@ String handling
 
 * `encodings <encodings.html>`_
   Converts between different character encodings. On UNIX, this uses
-  the ``iconv`` library, on Windows the Windows API.
+  the `iconv` library, on Windows the Windows API.
 
 * `parseutils <parseutils.html>`_
   This module contains helpers for parsing tokens, numbers, identifiers, etc.
@@ -166,17 +168,17 @@ String handling
 
 * `strformat <strformat.html>`_
   Macro based standard string interpolation/formatting. Inspired by
-  Python's ``f``-strings.
+  Python's `f`-strings.
 
 * `strmisc <strmisc.html>`_
   This module contains uncommon string handling operations that do not
   fit with the commonly used operations in strutils.
 
 * `strscans <strscans.html>`_
-  This module contains a ``scanf`` macro for convenient parsing of mini languages.
+  This module contains a `scanf` macro for convenient parsing of mini languages.
 
 * `strtabs <strtabs.html>`_
-  The ``strtabs`` module implements an efficient hash table that is a mapping
+  The `strtabs` module implements an efficient hash table that is a mapping
   from strings to strings. Supports a case-sensitive, case-insensitive and
   style-insensitive modes.
 
@@ -200,10 +202,10 @@ Time handling
 -------------
 
 * `std/monotimes <monotimes.html>`_
-  The ``monotimes`` module implements monotonic timestamps.
+  The `monotimes` module implements monotonic timestamps.
 
 * `times <times.html>`_
-  The ``times`` module contains support for working with time.
+  The `times` module contains support for working with time.
 
 
 Generic Operating System Services
@@ -225,7 +227,7 @@ Generic Operating System Services
   data structures.
 
 * `memfiles <memfiles.html>`_
-  This module provides support for memory-mapped files (Posix's ``mmap``)
+  This module provides support for memory-mapped files (Posix's `mmap`)
   on the different operating systems.
 
 * `os <os.html>`_
@@ -234,12 +236,12 @@ Generic Operating System Services
   commands, etc.
 
 * `osproc <osproc.html>`_
-  Module for process communication beyond ``os.execShellCmd``.
+  Module for process communication beyond `os.execShellCmd`.
 
 * `streams <streams.html>`_
   This module provides a stream interface and two implementations thereof:
-  the ``FileStream`` and the ``StringStream`` which implement the stream
-  interface for Nim file objects (``File``) and strings. Other modules
+  the `FileStream` and the `StringStream` which implement the stream
+  interface for Nim file objects (`File`) and strings. Other modules
   may provide other implementations for this standard stream interface.
 
 * `terminal <terminal.html>`_
@@ -288,22 +290,22 @@ Internet Protocols and Support
 
 * `asyncfile <asyncfile.html>`_
   This module implements asynchronous file reading and writing using
-  ``asyncdispatch``.
+  `asyncdispatch`.
 
 * `asyncftpclient <asyncftpclient.html>`_
-  This module implements an asynchronous FTP client using the ``asyncnet``
+  This module implements an asynchronous FTP client using the `asyncnet`
   module.
 
 * `asynchttpserver <asynchttpserver.html>`_
-  This module implements an asynchronous HTTP server using the ``asyncnet``
+  This module implements an asynchronous HTTP server using the `asyncnet`
   module.
 
 * `asyncnet <asyncnet.html>`_
-  This module implements asynchronous sockets based on the ``asyncdispatch``
+  This module implements asynchronous sockets based on the `asyncdispatch`
   module.
 
 * `asyncstreams <asyncstreams.html>`_
-  This module provides ``FutureStream`` - a future that acts as a queue.
+  This module provides `FutureStream` - a future that acts as a queue.
 
 * `cgi <cgi.html>`_
   This module implements helpers for CGI applications.
@@ -323,7 +325,7 @@ Internet Protocols and Support
 
 * `net <net.html>`_
   This module implements a high-level sockets API. It replaces the
-  ``sockets`` module.
+  `sockets` module.
 
 * `selectors <selectors.html>`_
   This module implements a selector API with backends specific to each OS.
@@ -357,23 +359,23 @@ Parsers
   scheme for lexers and parsers. This is used by the diverse parsing modules.
 
 * `parsecfg <parsecfg.html>`_
-  The ``parsecfg`` module implements a high-performance configuration file
-  parser. The configuration file's syntax is similar to the Windows ``.ini``
+  The `parsecfg` module implements a high-performance configuration file
+  parser. The configuration file's syntax is similar to the Windows `.ini`
   format, but much more powerful, as it is not a line based parser. String
   literals, raw string literals, and triple quote string literals are supported
   as in the Nim programming language.
 
 * `parsecsv <parsecsv.html>`_
-  The ``parsecsv`` module implements a simple high-performance CSV parser.
+  The `parsecsv` module implements a simple high-performance CSV parser.
 
 * `parseopt <parseopt.html>`_
-  The ``parseopt`` module implements a command line option parser.
+  The `parseopt` module implements a command line option parser.
 
 * `parsesql <parsesql.html>`_
-  The ``parsesql`` module implements a simple high-performance SQL parser.
+  The `parsesql` module implements a simple high-performance SQL parser.
 
 * `parsexml <parsexml.html>`_
-  The ``parsexml`` module implements a simple high performance XML/HTML parser.
+  The `parsexml` module implements a simple high performance XML/HTML parser.
   The only encoding that is supported is UTF-8. The parser has been designed
   to be somewhat error-correcting, so that even some "wild HTML" found on the
   web can be parsed with it.
@@ -458,7 +460,7 @@ Miscellaneous
   This module implements a simple logger.
 
 * `segfaults <segfaults.html>`_
-  Turns access violations or segfaults into a ``NilAccessDefect`` exception.
+  Turns access violations or segfaults into a `NilAccessDefect` exception.
 
 * `sugar <sugar.html>`_
   This module implements nice syntactic sugar based on Nim's macro system.
@@ -480,11 +482,11 @@ Modules for JS backend
   Declaration of the Document Object Model for the JS backend.
 
 * `jsconsole <jsconsole.html>`_
-  Wrapper for the ``console`` object.
+  Wrapper for the `console` object.
 
 * `jscore <jscore.html>`_
   The wrapper of core JavaScript functions. For most purposes, you should be using
-  the ``math``, ``json``, and ``times`` stdlib modules instead of this module.
+  the `math`, `json`, and `times` stdlib modules instead of this module.
 
 * `jsffi <jsffi.html>`_
   Types and macros for easier interaction with JavaScript.

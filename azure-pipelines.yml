@@ -17,11 +17,11 @@ jobs:
       Linux_amd64:
         vmImage: 'ubuntu-16.04'
         CPU: amd64
-      Linux_i386:
-        # bug #17325: fails on 'ubuntu-16.04' because it now errors with:
-        # g++-multilib : Depends: gcc-multilib (>= 4:5.3.1-1ubuntu1) but it is not going to be installed
-        vmImage: 'ubuntu-18.04'
-        CPU: i386
+      # Linux_i386:
+      #   # bug #17325: fails on 'ubuntu-16.04' because it now errors with:
+      #   # g++-multilib : Depends: gcc-multilib (>= 4:5.3.1-1ubuntu1) but it is not going to be installed
+      #   vmImage: 'ubuntu-18.04'
+      #   CPU: i386
       OSX_amd64:
         vmImage: 'macOS-10.15'
         CPU: amd64

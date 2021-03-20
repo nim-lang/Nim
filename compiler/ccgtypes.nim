@@ -1363,6 +1363,33 @@ proc openArrayToTuple(m: BModule; t: PType): PType =
   result.add p
   result.add getSysType(m.g.graph, t.owner.info, tyInt)
 
+proc typeToC(t: PType): string =
+  ## Just for more readable names, the result doesn't have
+  ## to be unique.
+  let s = typeToString(t)
+  result = newStringOfCap(s.len)
+  for i in 0..<s.len:
+    let c = s[i]
+    case c
+    of 'a'..'z':
+      result.add c
+    of 'A'..'Z':
+      result.add toLowerAscii(c)
+    of ' ':
+      discard
+    of ',':
+      result.add '_'
+    of '.':
+      result.add 'O'
+    of '[', '(', '{':
+      result.add 'L'
+    of ']', ')', '}':
+      result.add 'T'
+    else:
+      # We mangle upper letters and digits too so that there cannot
+      # be clashes with our special meanings
+      result.addInt ord(c)
+
 proc genTypeInfoV1(m: BModule, t: PType; info: TLineInfo): Rope =
   let origType = t
   var t = skipTypes(origType, irrelevantForBackend + tyUserTypeClasses)

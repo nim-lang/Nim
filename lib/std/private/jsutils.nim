@@ -1,4 +1,4 @@
-when defined(js):
+when defined(js) or defined(nimdoc):
   import std/jsbigints
 
   type
@@ -40,4 +40,12 @@ when defined(js):
 
   proc isInteger*[T](x: T): bool {.importjs: "Number.isInteger(#)".}
 
-  proc isSafeInteger*[T](x: T): bool {.importjs: "Number.isSafeInteger(#)".}
+  proc isSafeInteger*[T](x: T): bool {.importjs: "Number.isSafeInteger(#)".} =
+    runnableExamples:
+      import std/jsffi
+      assert not "123".toJs.isSafeInteger
+      assert 123.toJs.isSafeInteger
+      assert 9007199254740991.toJs.isSafeInteger
+      assert not 9007199254740992.toJs.isSafeInteger
+
+  let maxSafeInteger* {.importjs: "Number.MAX_SAFE_INTEGER".} : int64
