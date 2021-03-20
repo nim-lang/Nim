@@ -14,9 +14,6 @@ jobs:
 
   strategy:
     matrix:
-      Linux_amd64:
-        vmImage: 'ubuntu-16.04'
-        CPU: amd64
       OSX_amd64:
         vmImage: 'macOS-10.15'
         CPU: amd64
@@ -47,18 +44,24 @@ jobs:
   steps:
     - template: ci/azure/ci-steps.yml
 
-- job: Linux_i386
+- job: linux
 
   timeoutInMinutes: 90 # default `60` led to lots of cancelled jobs; use 0 for unlimited (may be undesirable)
 
-  variables:
-    CPU: i386
+  strategy:
+    matrix:
+      amd64:
+        containerImage: ghcr.io/alaviss/nim-ci:sha-aa56233@sha256:43dbe085d041c95b5d39bcbc5e0c4e05d922d407ac8a8938d33064402a5a5f22
+        CPU: amd64
+      i386:
+        containerImage: ghcr.io/alaviss/nim-ci:sha-aa56233@sha256:7f6d204d43e213ff8621e9f0c9f2b788858b9f3788fed95ac62e1c821baa4476
+        CPU: i386
 
   pool:
     vmImage: ubuntu-latest
 
   container:
-    image: ghcr.io/alaviss/nim-ci:sha-aa56233@sha256:7f6d204d43e213ff8621e9f0c9f2b788858b9f3788fed95ac62e1c821baa4476
+    image: $(containerImage)
     options: --init --sysctl net.ipv6.conf.all.disable_ipv6=0
 
   steps:
