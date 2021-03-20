@@ -1,3 +1,4 @@
+import std/genasts
 import std/macros
 from std/strformat import `&`
 import ./mgenast

@@ -1,3 +1,4 @@
+import std/genasts
 import std/macros
 
 ## Using a enum instead of, say, int, to make apparent potential bugs related to

@@ -40,7 +40,6 @@
 - Added `BackwardsIndex` overload for `JsonNode`.
 
 - added `jsonutils.jsonTo` overload with `opt = Joptions()` param.
-- Added `macros.genAst` that fixes all issues with `quote do` (#11722)
 
 ## Library changes
 
@@ -62,7 +61,7 @@
 - `httpclient.maxredirects` changed from `int` to `Natural`, because negative values serve no purpose whatsoever.
 - `httpclient.newHttpClient` and `httpclient.newAsyncHttpClient` added `headers` argument to set initial HTTP Headers,
   instead of a hardcoded empty `newHttpHeader()`.
-- Added `macros.genAst` that avoids the problems inherent with `quote do` and can
+- Added `genasts.genAst` that avoids the problems inherent with `quote do` and can
   be used as a replacement (#11722)
 
 - Added an overload for the `collect` macro that inferes the container type based
