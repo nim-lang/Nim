@@ -80,7 +80,7 @@ proc uniqueCTypeName(c: var string; t: PType; g: ModuleGraph) =
   of tyBool, tyChar, tyInt..tyUInt64:
     # no canonicalization for integral types, so that e.g. ``pid_t`` is
     # produced instead of ``NI``:
-    if t.sym != nil and {sfImportc, sfExportc} * t.sym.flags != {}:
+    if t.sym != nil and {sfCompilerProc, sfExportc} * t.sym.flags != {}:
       c &= $t.sym.loc.r
     else:
       case t.kind
