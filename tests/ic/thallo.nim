@@ -1,6 +1,5 @@
 discard """
   output: "Hello World"
-  disabled: "true"
 """
 
 const str = "Hello World"

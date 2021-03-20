@@ -154,7 +154,7 @@
 ## The reasoning is as follows:
 ## 1. it's close to what many DBs offer natively (char**)
 ## 2. it hides the number of types that the DB supports
-## (int? int64? decimal up to 10 places? geo coords?)
+##    (int? int64? decimal up to 10 places? geo coords?)
 ## 3. it's convenient when all you do is to forward the data to somewhere else (echo, log, put the data into a new query)
 ##
 ## See also

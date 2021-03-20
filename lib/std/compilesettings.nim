@@ -43,27 +43,22 @@ type
     clibs             ## libraries passed to the C/C++ compiler
 
 proc querySetting*(setting: SingleValueSetting): string {.
-  compileTime, noSideEffect.} = discard
+  compileTime, noSideEffect.} =
   ## Can be used to get a string compile-time option.
   ##
   ## See also:
   ## * `compileOption <system.html#compileOption,string>`_ for `on|off` options
   ## * `compileOption <system.html#compileOption,string,string>`_ for enum options
   ##
-  ## Example:
-  ##
-  ## .. code-block:: Nim
-  ##   const nimcache = querySetting(SingleValueSetting.nimcacheDir)
+  runnableExamples:
+    const nimcache = querySetting(SingleValueSetting.nimcacheDir)
 
 proc querySettingSeq*(setting: MultipleValueSetting): seq[string] {.
-  compileTime, noSideEffect.} = discard
+  compileTime, noSideEffect.} =
   ## Can be used to get a multi-string compile-time option.
   ##
   ## See also:
   ## * `compileOption <system.html#compileOption,string>`_ for `on|off` options
   ## * `compileOption <system.html#compileOption,string,string>`_ for enum options
-  ##
-  ## Example:
-  ##
-  ## .. code-block:: Nim
-  ##   const nimblePaths = compileSettingSeq(MultipleValueSetting.nimblePaths)
+  runnableExamples:
+    const nimblePaths = querySettingSeq(MultipleValueSetting.nimblePaths)

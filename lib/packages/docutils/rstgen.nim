@@ -1476,7 +1476,8 @@ $content
 # ---------- forum ---------------------------------------------------------
 
 proc rstToHtml*(s: string, options: RstParseOptions,
-                config: StringTableRef): string =
+                config: StringTableRef,
+                msgHandler: MsgHandler = rst.defaultMsgHandler): string =
   ## Converts an input rst string into embeddable HTML.
   ##
   ## This convenience proc parses any input string using rst markup (it doesn't
@@ -1503,10 +1504,10 @@ proc rstToHtml*(s: string, options: RstParseOptions,
 
   const filen = "input"
   var d: RstGenerator
-  initRstGenerator(d, outHtml, config, filen, options, myFindFile,
-                   rst.defaultMsgHandler)
+  initRstGenerator(d, outHtml, config, filen, options, myFindFile, msgHandler)
   var dummyHasToc = false
-  var rst = rstParse(s, filen, 0, 1, dummyHasToc, options)
+  var rst = rstParse(s, filen, line=LineRstInit, column=ColRstInit,
+                     dummyHasToc, options, myFindFile, msgHandler)
   result = ""
   renderRstToOut(d, rst, result)
 
@@ -1518,4 +1519,7 @@ proc rstToLatex*(rstSource: string; options: RstParseOptions): string {.inline, 
   var option: bool
   var rstGenera: RstGenerator
   rstGenera.initRstGenerator(outLatex, defaultConfig(), "input", options)
-  rstGenera.renderRstToOut(rstParse(rstSource, "", 1, 1, option, options), result)
+  rstGenera.renderRstToOut(
+      rstParse(rstSource, "", line=LineRstInit, column=ColRstInit,
+               option, options),
+      result)

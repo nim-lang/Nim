@@ -25,6 +25,7 @@ from std/private/globs import nativeToUnixPath
 const
   exportSection = skField
   docCmdSkip = "skip"
+  DocColOffset = "## ".len  # assuming that a space was added after ##
 
 type
   TSections = array[TSymKind, Rope]
@@ -322,8 +323,12 @@ proc genComment(d: PDoc, n: PNode): string =
     when false:
       # RFC: to preseve newlines in comments, this would work:
       comment = comment.replace("\n", "\n\n")
-    renderRstToOut(d[], parseRst(comment, toFullPath(d.conf, n.info), toLinenumber(n.info),
-                   toColumn(n.info), (var dummy: bool; dummy), d.options, d.conf), result)
+    renderRstToOut(d[],
+                   parseRst(comment, toFullPath(d.conf, n.info),
+                            toLinenumber(n.info),
+                            toColumn(n.info) + DocColOffset,
+                            (var dummy: bool; dummy), d.options, d.conf),
+                   result)
 
 proc genRecCommentAux(d: PDoc, n: PNode): Rope =
   if n == nil: return nil
@@ -1240,7 +1245,7 @@ proc genOutFile(d: PDoc, groupedToc = false): Rope =
   renderTocEntries(d[], j, 1, tmp)
   var toc = tmp.rope
   for i in TSymKind:
-    var shouldSort = i in {skProc, skFunc} and groupedToc
+    var shouldSort = i in routineKinds and groupedToc
     genSection(d, i, shouldSort)
     toc.add(d.toc[i])
   if toc != nil:
@@ -1366,8 +1371,9 @@ proc commandRstAux(cache: IdentCache, conf: ConfigRef;
   var d = newDocumentor(filen, cache, conf, outExt)
 
   d.isPureRst = true
-  var rst = parseRst(readFile(filen.string), filen.string, 0, 1, d.hasToc,
-                     {roSupportRawDirective, roSupportMarkdown}, conf)
+  var rst = parseRst(readFile(filen.string), filen.string,
+                     line=LineRstInit, column=ColRstInit,
+                     d.hasToc, {roSupportRawDirective, roSupportMarkdown}, conf)
   var modDesc = newStringOfCap(30_000)
   renderRstToOut(d[], rst, modDesc)
   d.modDesc = rope(modDesc)

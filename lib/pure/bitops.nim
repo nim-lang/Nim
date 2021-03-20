@@ -421,6 +421,9 @@ func fastlog2Nim(x: uint64): int {.inline.} =
   v = v or v shr 32
   result = lookup[(v * 0x03F6EAF2CD271461'u64) shr 58].int
 
+import system/countbits_impl
+
+
 template parityImpl[T](value: T): int =
   # formula id from: https://graphics.stanford.edu/%7Eseander/bithacks.html#ParityParallel
   var v = value
