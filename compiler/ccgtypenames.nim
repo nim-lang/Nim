@@ -165,7 +165,6 @@ proc uniqueCTypeName(c: var string; t: PType; g: ModuleGraph) =
   of tyNil: c &= "NIM_POINTER"
   of tyUntyped: c &= "NUT"
   of tyTyped: c &= "NYT"
-  of tyTypeDesc: c &= "NYD"
   of tyGenericParam: c &= "NGP"
   of tyOrdinal: c &= "NORD"
   of tyPointer: c &= "NIM_POINTER"
@@ -185,7 +184,7 @@ proc uniqueCTypeName(c: var string; t: PType; g: ModuleGraph) =
     c.uniqueCTypeName t[0], g
     c &= 'T'
   of tyBuiltInTypeClass, tyCompositeTypeClass, tyAnd, tyOr, tyNot,
-      tyAnything, tyConcept, tyVoid:
+      tyAnything, tyConcept, tyVoid, tyTypeDesc:
     c &= 'N'
     c.addInt ord(t.kind)
     c &= 'L'
