@@ -539,7 +539,7 @@ proc parseStmt*(s: string): NimNode {.noSideEffect.} =
 
 proc getAst*(macroOrTemplate: untyped): NimNode {.magic: "ExpandToAst", noSideEffect.}
   ## Obtains the AST nodes returned from a macro or template invocation.
-  ## See also `genAst`.
+  ## See also `genasts.genAst`.
   ## Example:
   ##
   ## .. code-block:: nim
