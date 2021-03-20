@@ -548,8 +548,8 @@ proc getAst*(macroOrTemplate: untyped): NimNode {.magic: "ExpandToAst", noSideEf
   ##     var ast = getAst(BarTemplate())
 
 proc quote*(bl: typed, op = "``"): NimNode {.magic: "QuoteAst", noSideEffect.} =
-  ## .. warning:: `quote` has many caveats, see https://github.com/nim-lang/RFCs/issues/122
-  ##   Consider using the new `genAst` instead, which avoids those issues.
+  ## .. warning:: `quote` comes with many caveats, consider using the new
+  ##   `genasts.genAst` instead.
   ##
   ## Quasi-quoting operator.
   ## Accepts an expression or a block and returns the AST that represents it.
