@@ -51,7 +51,7 @@ block:
   doAssert x0 == Foo(a: 10)
 
 block:
-  # avoids https://github.com/nim-lang/Nim/issues/7375
+  # avoids bug #7375
   macro fun(b: static[bool], b2: bool): untyped =
     result = newStmtList()
   macro foo(c: bool): untyped =
@@ -62,7 +62,7 @@ block:
   foo(true)
 
 block:
-  # avoids https://github.com/nim-lang/Nim/issues/7589
+  # avoids bug #7589
   # since `==` works with genAst, the problem goes away
   macro foo2(): untyped =
     # result = quote do: # Error: '==' cannot be passed to a procvar
@@ -71,7 +71,7 @@ block:
   doAssert not foo2()
 
 block:
-  # avoids https://github.com/nim-lang/Nim/issues/7726
+  # avoids bug #7726
   # expressions such as `a.len` are just passed as arguments to `genAst`, and
   # caller scope is not polluted with definitions such as `let b = newLit a.len`
   macro foo(): untyped =
@@ -81,7 +81,7 @@ block:
   doAssert foo() == (5, 5)
 
 block:
-  # avoids https://github.com/nim-lang/Nim/issues/9607
+  # avoids bug #9607
   proc fun1(info:LineInfo): string = "bar1"
   proc fun2(info:int): string = "bar2"
 
@@ -108,9 +108,9 @@ block:
   doAssert bar() == ("bar1", "bar2")
 
 block:
-  # example from https://github.com/nim-lang/Nim/issues/7889 works
+  # example from bug #7889 works
   # after changing method call syntax to regular call syntax; this is a
-  # limitation described in https://github.com/nim-lang/Nim/issues/7085
+  # limitation described in bug #7085
   # note that `quote do` would also work after that change in this example.
   doAssert bindme2() == kfoo1
   doAssert bindme3() == kfoo1
@@ -218,7 +218,7 @@ block: # test passing function and type symbols
   type Z1 = type('c')
   doAssert bar(Z1) == (41, 42, 43, 44, "char", "bool", "uint8", "int8")
 
-block: # fix https://github.com/nim-lang/Nim/issues/11986
+block: # fix bug #11986
   proc foo(): auto =
     var s = { 'a', 'b' }
     # var n = quote do: `s` # would print {97, 98}

@@ -1,8 +1,8 @@
 import std/genasts
 import std/macros
 
-## Using a enum instead of, say, int, to make apparent potential bugs related to
-## forgetting converting to NimNode via newLit, see https://github.com/nim-lang/Nim/issues/9607
+# Using a enum instead of, say, int, to make apparent potential bugs related to
+# forgetting converting to NimNode via newLit, see bug #9607
 
 type Foo* = enum kfoo0, kfoo1, kfoo2, kfoo3, kfoo4
 
@@ -24,7 +24,7 @@ macro bindme5UseExpose*(): untyped =
 macro bindme5UseExposeFalse*(): untyped =
   genAstOpt({kDirtyTemplate}): myLocalPriv2()
 
-## example from https://github.com/nim-lang/Nim/issues/7889
+# example from bug #7889
 from std/streams import newStringStream, readData, writeData
 
 macro bindme6UseExpose*(): untyped =
