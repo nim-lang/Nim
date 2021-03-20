@@ -67,6 +67,9 @@ Core
 * `macros <macros.html>`_
   Contains the AST API and documentation of Nim for writing macros.
 
+* `macrocache <macrocache.html>`_
+  Provides an API for macros to collect compile-time information across modules.
+
 * `rlocks <rlocks.html>`_
   Reentrant locks for Nim.
 
