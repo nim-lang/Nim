@@ -107,7 +107,7 @@ proc len*(s: CacheSeq): int {.magic: "NcsLen".} =
     const mySeq = CacheSeq"lenTest"
     static:
       let val = newLit("helper")
-      mySeq.add(newLit("helper"))
+      mySeq.add(val)
       assert mySeq.len == 1
       for _ in 0..<5:
         mySeq.add(val)
