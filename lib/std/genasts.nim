@@ -1,4 +1,5 @@
 import std/macros
+
 type GenAstOpt* = enum
   kDirtyTemplate,
     # When set, uses a dirty template in implementation of `genAst`. This
@@ -21,7 +22,7 @@ macro genAstOpt*(options: static set[GenAstOpt], args: varargs[untyped]): untype
       genAst(a, b, c = true):
         # echo d # not captured => gives `var not init`
         (a, b, c, localFun())
-    doAssert fun(true, false) == (true, false, true, 12)
+    assert fun(true, false) == (true, false, true, 12)
 
   let params = newTree(nnkFormalParams, newEmptyNode())
   let pragmas =
