@@ -87,7 +87,7 @@ proc add*(s: CacheSeq; value: NimNode) {.magic: "NcsAdd".} =
 proc incl*(s: CacheSeq; value: NimNode) {.magic: "NcsIncl".} = 
   ## Adds `value` to `s`.
   ## 
-  ## This doesn't do anything if `value` is already in `s`.
+  ## .. hint:: This doesn't do anything if `value` is already in `s`.
   runnableExamples:
     import std/macros
     const mySeq = CacheSeq"inclTest"
