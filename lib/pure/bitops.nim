@@ -66,12 +66,6 @@ macro bitxor*[T: SomeInteger](x, y: T; z: varargs[T]): T =
     result = newCall(fn, result, extra)
 
 
-const arch64 = sizeof(int) == 8
-const useBuiltinsRotate = (defined(amd64) or defined(i386)) and
-                          (defined(gcc) or defined(clang) or defined(vcc) or
-                           (defined(icl) and not defined(cpp))) and useBuiltins
-
-
 type BitsRange*[T] = range[0..sizeof(T)*8-1]
   ## A range with all bit positions for type `T`.
 
@@ -420,6 +414,13 @@ func fastlog2Nim(x: uint64): int {.inline.} =
   v = v or v shr 16
   v = v or v shr 32
   result = lookup[(v * 0x03F6EAF2CD271461'u64) shr 58].int
+
+import system/countbits_impl
+
+const arch64 = sizeof(int) == 8
+const useBuiltinsRotate = (defined(amd64) or defined(i386)) and
+                          (defined(gcc) or defined(clang) or defined(vcc) or
+                           (defined(icl) and not defined(cpp))) and useBuiltins
 
 template parityImpl[T](value: T): int =
   # formula id from: https://graphics.stanford.edu/%7Eseander/bithacks.html#ParityParallel
