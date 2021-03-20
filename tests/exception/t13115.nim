@@ -13,10 +13,10 @@ else:
     const nim = getCurrentCompilerExe()
     const file = currentSourcePath
     for b in "c js cpp".split:
-      when defined(openbsd):
+      when defined(openbsd) or (defined(linux) and defined(i386)):
         if b == "js":
           # xxx bug: pending #13115
-          # remove special case once nodejs updated >= 12.16.2
+          # remove special case for openbsd once nodejs updated >= 12.16.2
           # refs https://github.com/nim-lang/Nim/pull/16167#issuecomment-738270751
           continue
 
