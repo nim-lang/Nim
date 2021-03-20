@@ -59,7 +59,7 @@ jobs:
 
   container:
     image: ghcr.io/alaviss/nim-ci:sha-aa56233@sha256:7f6d204d43e213ff8621e9f0c9f2b788858b9f3788fed95ac62e1c821baa4476
-    options: --init
+    options: --init --sysctl net.ipv6.conf.all.disable_ipv6=0
 
   steps:
     - template: ci/azure/ci-steps.yml
