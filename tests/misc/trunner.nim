@@ -28,6 +28,8 @@ const
   mode = querySetting(backend)
   nimcache = buildDir / "nimcacheTrunner"
     # instead of `querySetting(nimcacheDir)`, avoids stomping on other parallel tests
+  noJs = defined(linux) and defined(i386)
+    # configurations where JS tests can't run
 
 proc runCmd(file, options = ""): auto =
   let fileabs = testsDir / file.unixToNativePath
@@ -194,7 +196,12 @@ sub/mmain.idx""", context
     # test for https://github.com/nim-lang/Nim/issues/13129
     # test for https://github.com/nim-lang/Nim/issues/13891
     let file = testsDir / "nimdoc/m13129.nim"
-    for backend in fmt"{mode} js".split:
+    const backends =
+      when not noJs:
+        fmt"{mode} js"
+      else:
+        mode
+    for backend in backends.split:
       # pending #14343 this fails on windows: --doccmd:"-d:m13129Foo2 --hints:off"
       let cmd = fmt"""{nim} doc -b:{backend} --nimcache:{nimcache} -d:m13129Foo1 "--doccmd:-d:m13129Foo2 --hints:off" --usenimcache --hints:off {file}"""
       check execCmdEx(cmd) == (&"ok1:{backend}\nok2: backend: {backend}\n", 0)
@@ -212,8 +219,9 @@ sub/mmain.idx""", context
     cmd = fmt"{nim} check -b:c -b:cpp --hints:off --nimcache:{nimcache} {file}"
     check execCmdEx(cmd) == ("", 0)
     # issue https://github.com/timotheecour/Nim/issues/175
-    cmd = fmt"{nim} c -b:js -b:cpp --hints:off --nimcache:{nimcache} {file}"
-    check execCmdEx(cmd) == ("", 0)
+    when not noJs:
+      cmd = fmt"{nim} c -b:js -b:cpp --hints:off --nimcache:{nimcache} {file}"
+      check execCmdEx(cmd) == ("", 0)
 
   block: # some importc tests
     # issue #14314
@@ -242,7 +250,8 @@ tests/newconfig/bar/mfoo.nims""".splitLines
     let opt = "--hints:off"
     check fmt"""{nim} {opt} --eval:"echo defined(nimscript)"""".execCmdEx == ("true\n", 0)
     check fmt"""{nim} r {opt} --eval:"echo defined(c)"""".execCmdEx == ("true\n", 0)
-    check fmt"""{nim} r -b:js {opt} --eval:"echo defined(js)"""".execCmdEx == ("true\n", 0)
+    when not noJs:
+      check fmt"""{nim} r -b:js {opt} --eval:"echo defined(js)"""".execCmdEx == ("true\n", 0)
 
   block: # `hintProcessing` dots should not interfere with `static: echo` + friends
     let cmd = fmt"""{nim} r {defaultHintsOff} --hint:processing -f --eval:"static: echo 1+1""""
