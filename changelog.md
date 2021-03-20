@@ -41,28 +41,8 @@
 
 - added `jsonutils.jsonTo` overload with `opt = Joptions()` param.
 
-## Library changes
-
 - `json.%`,`json.to`, `jsonutils.formJson`,`jsonutils.toJson` now work with `uint|uint64`
   instead of raising (as in 1.4) or giving wrong results (as in 1.2).
-- `asyncdispatch.drain` now properly takes into account `selector.hasPendingOperations`
-  and only returns once all pending async operations are guaranteed to have completed.
-- `asyncdispatch.drain` now consistently uses the passed timeout value for all
-  iterations of the event loop, and not just the first iteration.
-  This is more consistent with the other asyncdispatch apis, and allows
-  `asyncdispatch.drain` to be more efficient.
-- `base64.encode` and `base64.decode` was made faster by about 50%.
-- `htmlgen` adds [MathML](https://wikipedia.org/wiki/MathML) support
-  (ISO 40314).
-- `macros.eqIdent` is now invariant to export markers and backtick quotes.
-- `htmlgen.html` allows `lang` on the `<html>` tag and common valid attributes.
-- `macros.basename` and `basename=` got support for `PragmaExpr`,
-  so that an expression like `MyEnum {.pure.}` is handled correctly.
-- `httpclient.maxredirects` changed from `int` to `Natural`, because negative values serve no purpose whatsoever.
-- `httpclient.newHttpClient` and `httpclient.newAsyncHttpClient` added `headers` argument to set initial HTTP Headers,
-  instead of a hardcoded empty `newHttpHeader()`.
-- Added `genasts.genAst` that avoids the problems inherent with `quote do` and can
-  be used as a replacement (#11722)
 
 - Added an overload for the `collect` macro that inferes the container type based
   on the syntax of the last expression. Works with std seqs, tables and sets.
@@ -71,7 +51,6 @@
 
 - Added `randState` template that exposes the default random number generator.
   Useful for library authors.
-## Language additions
 
 - Added `std/enumutils` module. Added `genEnumCaseStmt` macro that generates case statement to parse string to enum.
   Added `items` for enums with holes.
@@ -276,6 +255,7 @@
 - Added `hasClosure` to `std/typetraits`.
 
 
+
 ## Language changes
 
 - `nimscript` now handles `except Exception as e`.
@@ -348,11 +328,6 @@
 
 
 ## Tool changes
-- VM FFI now works with {.importc, dynlib.}, when using -d:nimHasLibFFI (#11635)
-
-- importc procs with a body are now executed in the VM as if importc wasn't specified,
-  this allows using {.rtl.} procs at CT, making -d:useNimRtl work in more cases,
-  e.g. compiling nim itself (#11635)
 
 - The rst parser now supports markdown table syntax.
   Known limitations:
