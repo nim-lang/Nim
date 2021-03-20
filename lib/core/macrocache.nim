@@ -93,7 +93,7 @@ proc incl*(s: CacheSeq; value: NimNode) {.magic: "NcsIncl".} =
     const mySeq = CacheSeq"inclTest"
     
     static:
-      mySeq.add(newLit(5))
+      mySeq.incl(newLit(5))
       mySeq.incl(newLit(5))
 
       # still one element
