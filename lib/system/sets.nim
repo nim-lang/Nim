@@ -14,7 +14,7 @@ type
   NimSet = array[0..4*2048-1, uint8]
 
 
-proc cardSet(s: NimSet, len: int): int {.compilerproc, inline.} =
+proc cardSet*(s: NimSet, len: int): int {.compilerproc, inline.} =
   var i = 0
   result = 0
   when defined(x86) or defined(amd64):
