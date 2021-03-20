@@ -249,6 +249,9 @@ Generic Operating System Services
   (also called *console*). The implementation simply uses ANSI escape
   sequences and does not depend on any other module.
 
+* `rdstdin <rdstdin.html>`_
+  This module contains code for reading from stdin. On UNIX the linenoise library is wrapped and set up to provide default key bindings (e.g. you can navigate with the arrow keys). On Windows system.readLine is used. This suffices because Windows' console already provides the wanted functionality.
+
 
 Math libraries
 --------------
@@ -353,6 +356,12 @@ Parsers
 
 * `json <json.html>`_
   High-performance JSON parser.
+
+* `jsonutils <jsonutils.html>`_
+  This module implements a hookable (de)serialization for arbitrary types. Design goal: avoid importing modules where a custom serialization is needed; see strtabs.fromJsonHook,toJsonHook for an example.
+
+* `parsejson <parsejson.html>`_
+  This module implements a json parser. It is used and exported by the json standard library module, but can also be used in its own right.
 
 * `lexbase <lexbase.html>`_
   This is a low-level module that implements an extremely efficient buffering
@@ -471,6 +480,13 @@ Miscellaneous
 * `std/varints <varints.html>`_
   Decode variable-length integers that are compatible with SQLite.
 
+* `enumerate <enumerate.html>`_
+  This module implements enumerate syntactic sugar based on Nim's macro system.
+
+* `with <with.html>`_
+  This module implements the with macro for easy function chaining. See `<https://github.com/nim-lang/RFCs/issues/193>`_ and `<https://github.com/nim-lang/RFCs/issues/192>`_ for details leading to this particular design.
+
+
 
 Modules for JS backend
 ----------------------
@@ -569,3 +585,12 @@ Network Programming and Internet Protocols
 
 * `openssl <openssl.html>`_
   Wrapper for OpenSSL.
+
+
+
+Unstable
+========
+
+* `atomics <atomics.html>`_
+  Types and operations for atomic operations and lockless algorithms.
+
