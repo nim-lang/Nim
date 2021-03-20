@@ -26,16 +26,6 @@ steps:
         versionSpec: '12.x'
       displayName: 'Install node.js 12.x'
 
-  - bash: |
-      set -e
-      . ci/funs.sh
-      echo_run sudo apt-fast update -qq
-      DEBIAN_FRONTEND='noninteractive' \
-        echo_run sudo apt-fast install --no-install-recommends -yq \
-          libcurl4-openssl-dev libgc-dev libsdl1.2-dev libsfml-dev valgrind libc6-dbg
-    displayName: 'Install dependencies (amd64 Linux)'
-    condition: and(eq(variables['Agent.OS'], 'Linux'), eq(variables['CPU'], 'amd64'))
-
   - bash: brew install boehmgc make sfml
     displayName: 'Install dependencies (OSX)'
     condition: eq(variables['Agent.OS'], 'Darwin')
