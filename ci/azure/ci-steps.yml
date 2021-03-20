@@ -4,6 +4,12 @@ parameters:
     default: true
 
 steps:
+  - bash: |
+      sysctl net.ipv6.conf.all.disable_ipv6
+      sysctl net.ipv6.conf.lo.disable_ipv6
+    displayName: Inspect container environment
+    condition: eq(variables['Agent.OS'], 'Linux')
+
   - bash: git config --global core.autocrlf false
     displayName: 'Disable auto conversion to CRLF by git (Windows-only)'
     condition: eq(variables['Agent.OS'], 'Windows_NT')

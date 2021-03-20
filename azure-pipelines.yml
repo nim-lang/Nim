@@ -62,10 +62,6 @@ jobs:
     options: --init
 
   steps:
-    - displayName: Inspect container environment
-      bash: |
-        sysctl net.ipv6.conf.all.disable_ipv6
-        sysctl net.ipv6.conf.lo.disable_ipv6
     - template: ci/azure/ci-steps.yml
       parameters:
         installNode: false
