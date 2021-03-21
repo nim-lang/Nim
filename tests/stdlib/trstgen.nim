@@ -1259,6 +1259,40 @@ Test1
     let refline = "Ref. " & ref1 & "! and " & ref2 & ";and " & ref3 & "."
     doAssert refline in output1
 
+  test "Option lists 1":
+    # check that "* b" is not consumed by previous bullet item because of
+    # incorrect indentation handling in option lists
+    let input = dedent """
+      * a
+        -m   desc
+        -n   very long
+             desc
+      * b"""
+    let output = input.toHtml
+    check(output.count("<ul") == 1)
+    check(output.count("<li>") == 2)
+    check(output.count("<table") == 1)
+    check("""<th align="left">-m</th><td align="left">desc</td>""" in output)
+    check("""<th align="left">-n</th><td align="left">very long desc</td>""" in
+          output)
+
+  test "Option lists 2":
+    # check that 2nd option list is not united with the 1st
+    let input = dedent """
+      * a
+        -m   desc
+        -n   very long
+             desc
+      -d  option"""
+    let output = input.toHtml
+    check(output.count("<ul") == 1)
+    check(output.count("<table") == 2)
+    check("""<th align="left">-m</th><td align="left">desc</td>""" in output)
+    check("""<th align="left">-n</th><td align="left">very long desc</td>""" in
+          output)
+    check("""<th align="left">-d</th><td align="left">option</td>""" in
+          output)
+
 suite "RST/Code highlight":
   test "Basic Python code highlight":
     let pythonCode = """
