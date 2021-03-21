@@ -573,11 +573,11 @@ and so will need to be escaped with backticks.
 
 .. code-block:: nim
   import strutils
-  type nibble = distinct uint8
-  proc `'nibble`(n: string): uint8 =
-    result = (parseInt(n) and 0x0F).uint8
+  type u4 = distinct uint8 # a 4-bit unsigned integer aka "nibble"
+  proc `'u4`(n: string): u4 =
+    result = (parseInt(n) and 0x0F).u4
   
-  var x = 5'nibble
+  var x = 5'u4
 
 Floating-point literals may also be in binary, octal or hexadecimal
 notation:

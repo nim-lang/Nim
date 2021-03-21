@@ -428,7 +428,7 @@ proc getNumber(L: var Lexer, result: var Token) =
   let suffixMarker = (L.buf[postPos] == '\'')
   if suffixMarker:
     inc(postPos)
-    if not (L.buf[postPos] in SymStartChars):
+    if (L.buf[postPos] notin SymStartChars):
       lexMessageLitNum(L, "invalid number suffix: '$1'", startpos)
 
   # 2A: handle the builtin literal versions
@@ -451,7 +451,7 @@ proc getNumber(L: var Lexer, result: var Token) =
       result.tokType = tkFloat128Lit
       inc(postPos, 4)
     else:
-      internalSuffix = false  # not found
+      internalSuffix = false  # not found after all
   elif L.buf[postPos] in {'d', 'D'}:
     if postPos == endOfSuffix - 1:  # stand-alone 'd'
       result.tokType = tkFloat64Lit
@@ -472,7 +472,7 @@ proc getNumber(L: var Lexer, result: var Token) =
       result.tokType = tkInt64Lit
       inc(postPos, 3)
     else:
-      internalSuffix = false # not found
+      internalSuffix = false # not found after all
   elif L.buf[postPos] in {'u', 'U'}:
     internalSuffix = true  # tentatively found
     if postPos == endOfSuffix - 1:  # stand-alone 'u'
@@ -491,9 +491,9 @@ proc getNumber(L: var Lexer, result: var Token) =
       result.tokType = tkUInt64Lit
       inc(postPos, 3)
     else:
-      internalSuffix = false  # not found
+      internalSuffix = false  # not found after all
 
-  # 2B: else look for user-definited types that are adjacent (no spaces)
+  # 2B: else look for user-defined types that are adjacent (no spaces)
   if suffixMarker and not internalSuffix:
     result.tokType = tkStrNumLit
     L.bufpos = endpos # do NOT trim off the suffix
@@ -793,7 +793,6 @@ proc handleCRLF(L: var Lexer, pos: int): int =
       let col = L.getColNumber(pos)
       if col > MaxLineLength:
         lexMessagePos(L, hintLineTooLong, pos)
-    discard
 
   case L.buf[pos]
   of CR:
@@ -1336,9 +1335,9 @@ proc rawGetTok*(L: var Lexer, tok: var Token) =
     of '\'':
       if (L.previousTokType == tkStrNumLit) and (tok.strongSpaceA == 0):
         # if the previous token (with no prior whitespace) is a tkStrNumLit, then this is a numeric suffix
-        getSymbol(L, tok)
+        getSymbol(L, tok) # example: -12'big
       elif L.previousTokType == tkAccent:
-        getSymbol(L, tok)
+        getSymbol(L, tok) # example: `'big`
       else:
         tok.tokType = tkCharLit
         getCharacter(L, tok)
