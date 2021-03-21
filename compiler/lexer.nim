@@ -340,20 +340,12 @@ proc getNumber(L: var Lexer, result: var Token) =
     L.bufpos = msgPos
     lexMessage(L, msgKind, msg % t.literal)
 
-  proc cmpSuffix(L: Lexer, prev: int, endOfSuffix: int, chs: array[1, char]): bool =
-    if (endOfSuffix - prev) != 2:
+  proc cmpSuffix(L: Lexer, prev: int, endOfSuffix: int, chs: openArray[char]): bool {.inline.} =
+    if (endOfSuffix - prev - 1) != chs.len:
       return false
-    return L.buf[prev + 1] == chs[0]
-
-  proc cmpSuffix(L: Lexer, prev: int, endOfSuffix: int, chs: array[2, char]): bool =
-    if (endOfSuffix - prev) != 3:
-      return false
-    return L.buf[prev + 1] == chs[0] and L.buf[prev + 2] == chs[1]
-
-  proc cmpSuffix(L: Lexer, prev: int, endOfSuffix: int, chs: array[3, char]): bool =
-    if (endOfSuffix - prev) != 4:
-      return false
-    return L.buf[prev + 1] == chs[0] and L.buf[prev + 2] == chs[1] and L.buf[prev + 3] == chs[2]
+    for i in 0..<chs.len:
+      if L.buf[prev + 1 + i] != chs[i]: return false
+    return true    
 
   var
     startpos, endpos: int
@@ -425,16 +417,16 @@ proc getNumber(L: var Lexer, result: var Token) =
 
   # Second stage, find out if there's a datatype suffix and handle it
   var postPos = endpos
-  let suffixMarker = (L.buf[postPos] == '\'')
+  let suffixMarker = L.buf[postPos] == '\''
   if suffixMarker:
     inc(postPos)
-    if (L.buf[postPos] notin SymStartChars):
+    if L.buf[postPos] notin SymStartChars:
       lexMessageLitNum(L, "invalid number suffix: '$1'", startpos)
 
   # 2A: handle the builtin literal versions
   var internalSuffix = false
   var endOfSuffix = postPos
-  while L.buf[endOfSuffix] in SymStartChars + {'0'..'9'}:
+  while L.buf[endOfSuffix] in SymChars:
     inc(endOfSuffix)
   if L.buf[postPos] in {'f', 'F'}:
     internalSuffix = true  # tentatively found

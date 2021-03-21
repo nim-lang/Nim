@@ -27,6 +27,9 @@ assertAST dedent """
         Ident "uint"
         IntLit -1""":
   var x: uint = -1
+template bad() =
+  x = 4 -1
+doAssert not compiles(bad())
 
 template main =
   block: # check when a minus (-) is a negative sign for a literal

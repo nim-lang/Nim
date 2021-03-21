@@ -1188,9 +1188,14 @@ proc gsub(g: var TSrcGen, n: PNode, c: TContext) =
     gcomma(g, n, c)
     put(g, tkBracketRi, "]")
   of nkDotExpr:
-    gsub(g, n, 0)
-    put(g, tkDot, ".")
-    gsub(g, n, 1)
+    if n[1].kind == nkIdent and n[1].ident.s[0] == '\'': # TODO: add a re-usable helper function isUserLitteral
+      assert n[0].kind == nkStrLit
+      put(g, tkStrNumLit, n[0].strVal)
+      gsub(g, n, 1)
+    else:
+      gsub(g, n, 0)
+      put(g, tkDot, ".")
+      gsub(g, n, 1)
   of nkBind:
     putWithSpace(g, tkBind, "bind")
     gsub(g, n, 0)
