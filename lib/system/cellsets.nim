@@ -13,7 +13,8 @@ when defined(gcOrc) or defined(gcArc):
   type
     PCell = Cell
 
-  include bitmasks
+  when not declaredInScope(PageShift):
+    include bitmasks
 
 else:
   type
