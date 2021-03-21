@@ -18,7 +18,7 @@
 ## also doing cross-module dependency tracking and DCE that we don't need
 ## anymore. DCE is now done as prepass over the entire packed module graph.
 
-import std/[packedsets, algorithm]
+import std/[packedsets, algorithm, tables]
   # std/intsets would give `UnusedImport`, pending https://github.com/nim-lang/Nim/issues/14246
 import ".."/[ast, options, lineinfos, modulegraphs, cgendata, cgen,
   pathutils, extccomp, msgs]
@@ -44,6 +44,10 @@ proc generateCodeForModule(g: ModuleGraph; m: var LoadedModule; alive: var Alive
     cgen.genTopLevelStmt(bmod, n)
 
   finalCodegenActions(g, bmod, newNodeI(nkStmtList, m.module.info))
+
+proc replayTypeInfo(g: ModuleGraph; m: var LoadedModule; origin: FileIndex) =
+  for x in mitems(m.fromDisk.emittedTypeInfo):
+    g.emittedTypeInfo[x] = origin
 
 proc addFileToLink(config: ConfigRef; m: PSym) =
   let filename = AbsoluteFile toFullPath(config, m.position.FileIndex)
@@ -104,3 +108,4 @@ proc generateCode*(g: ModuleGraph) =
         generateCodeForModule(g, g.packed[i], alive)
       else:
         addFileToLink(g.config, g.packed[i].module)
+        replayTypeInfo(g, g.packed[i], FileIndex(i))

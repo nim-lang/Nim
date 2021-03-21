@@ -11,9 +11,8 @@
 ## represents a complete Nim project. Single modules can either be kept in RAM
 ## or stored in a rod-file.
 
-import ast, astalgo, intsets, tables, options, lineinfos, hashes, idents,
-  btrees, md5, ropes, msgs
-
+import std / [intsets, tables, hashes, md5]
+import ast, astalgo, options, lineinfos,idents, btrees, ropes, msgs
 import ic / [packed_ast, ic]
 
 type
@@ -60,6 +59,7 @@ type
     attachedOps*: array[TTypeAttachedOp, Table[ItemId, PSym]] # Type ID, destructors, etc.
     methodsPerType*: Table[ItemId, seq[(int, LazySym)]] # Type ID, attached methods
     enumToStringProcs*: Table[ItemId, LazySym]
+    emittedTypeInfo*: Table[string, FileIndex]
 
     startupPackedConfig*: PackedConfig
     packageSyms*: TStrTable
@@ -435,6 +435,7 @@ proc newModuleGraph*(cache: IdentCache; config: ConfigRef): ModuleGraph =
   result.canonTypes = initTable[SigHash, PType]()
   result.symBodyHashes = initTable[int, SigHash]()
   result.operators = initOperators(result)
+  result.emittedTypeInfo = initTable[string, FileIndex]()
 
 proc resetAllModules*(g: ModuleGraph) =
   initStrTable(g.packageSyms)
@@ -454,6 +455,10 @@ proc getModule*(g: ModuleGraph; fileIdx: FileIndex): PSym =
       result = g.packed[fileIdx.int32].module
     elif fileIdx.int32 < g.ifaces.len:
       result = g.ifaces[fileIdx.int32].module
+
+proc rememberEmittedTypeInfo*(g: ModuleGraph; m: FileIndex; ti: string) =
+  #assert(not isCachedModule(g, m.int32))
+  g.packed[m.int32].fromDisk.emittedTypeInfo.add ti
 
 proc dependsOn(a, b: int): int {.inline.} = (a shl 15) + b
 

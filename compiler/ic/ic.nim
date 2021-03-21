@@ -42,6 +42,8 @@ type
     methodsPerType*: seq[(PackedItemId, int, PackedItemId)]
     enumToStringProcs*: seq[(PackedItemId, PackedItemId)]
 
+    emittedTypeInfo*: seq[string]
+
     sh*: Shared
     cfg: PackedConfig
 
@@ -552,6 +554,7 @@ proc loadRodFile*(filename: AbsoluteFile; m: var PackedModule; config: ConfigRef
   loadSeqSection attachedOpsSection, m.attachedOps
   loadSeqSection methodsPerTypeSection, m.methodsPerType
   loadSeqSection enumToStringProcsSection, m.enumToStringProcs
+  loadSeqSection typeInfoSection, m.emittedTypeInfo
 
   close(f)
   result = f.err
@@ -614,6 +617,7 @@ proc saveRodFile*(filename: AbsoluteFile; encoder: var PackedEncoder; m: var Pac
   storeSeqSection attachedOpsSection, m.attachedOps
   storeSeqSection methodsPerTypeSection, m.methodsPerType
   storeSeqSection enumToStringProcsSection, m.enumToStringProcs
+  storeSeqSection typeInfoSection, m.emittedTypeInfo
 
   close(f)
   encoder.disable()
