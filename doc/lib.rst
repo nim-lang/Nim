@@ -64,11 +64,11 @@ Core
 * `locks <locks.html>`_
   Locks and condition variables for Nim.
 
-* `macros <macros.html>`_
-  Contains the AST API and documentation of Nim for writing macros.
-
 * `macrocache <macrocache.html>`_
   Provides an API for macros to collect compile-time information across modules.
+  
+* `macros <macros.html>`_
+  Contains the AST API and documentation of Nim for writing macros.
 
 * `rlocks <rlocks.html>`_
   Reentrant locks for Nim.
