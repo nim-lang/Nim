@@ -24,15 +24,20 @@ runnableExamples:
   const mcCounter = CacheCounter"myCounter"
   
   static:
-    # add new key "val" with the value `val`
-    let val = newLit("hello ic")
-    mcTable["val"] = val
+    # add new key "val" with the value `myval`
+    let myval = newLit("hello ic")
+    mcTable["val"] = myval
     assert mcTable["val"].kind == nnkStrLit
-    
-    # add `val` to `mcSeq`
-    mcSeq.add(val)
+  
+  # Can access the same cache from different static contexts
+  # All the information is retained
+  static:
+    # get value from `mcTable` and add it to `mcSeq`
+    mcSeq.add(mcTable["val"])
     assert mcSeq.len == 1
-    assert mcSeq[0] == val
+  
+  static:
+    assert mcSeq[0].strVal == "hello ic"
 
     # increase `mcCounter` by 3
     mcCounter.inc(3)
@@ -66,9 +71,8 @@ proc inc*(c: CacheCounter; by = 1) {.magic: "NccInc".} =
     static:
       let counter = CacheCounter"incTest"
       inc counter
-      assert counter.value == 1
-
       inc counter, 5
+
       assert counter.value == 6
 
 proc add*(s: CacheSeq; value: NimNode) {.magic: "NcsAdd".} =
@@ -109,10 +113,9 @@ proc len*(s: CacheSeq): int {.magic: "NcsLen".} =
       let val = newLit("helper")
       mySeq.add(val)
       assert mySeq.len == 1
-      for _ in 0..<5:
-        mySeq.add(val)
       
-      assert mySeq.len == 6
+      mySeq.add(val)
+      assert mySeq.len == 2
 
 proc `[]`*(s: CacheSeq; i: int): NimNode {.magic: "NcsAt".} =
   ## Returns the `i`th value from `s`.
@@ -121,11 +124,8 @@ proc `[]`*(s: CacheSeq; i: int): NimNode {.magic: "NcsAt".} =
 
     const mySeq = CacheSeq"subTest"
     static:
-      # add 42 values
-      for i in 0..41:
-        mySeq.add(newLit(i + 1))
-      
-      assert mySeq[41].intVal == 42
+      mySeq.add(newLit(42))
+      assert mySeq[0].intVal == 42
 
 iterator items*(s: CacheSeq): NimNode =
   ## Iterates over each item in `s`.
@@ -166,8 +166,7 @@ proc len*(t: CacheTable): int {.magic: "NctLen".} =
     const dataTable = CacheTable"lenTest"
     static:
       dataTable["key"] = newLit(5)
-      dataTable["key2"] = newLit(false)
-      assert dataTable.len == 2
+      assert dataTable.len == 1
 
 proc `[]`*(t: CacheTable; key: string): NimNode {.magic: "NctGet".} =
   ## Retrieves the `NimNode` value at `t[key]`.
