@@ -241,6 +241,8 @@
 
 - Added `std/smartptrs`.
 
+- Added dollar `$` and `len` for `jsre.RegExp`.
+
 
 ## Language changes
 

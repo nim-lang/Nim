@@ -22,7 +22,7 @@ import
   modulegraphs, tables, lineinfos, pathutils, vmprofiler
 
 import ic / cbackend
-from ic / to_packed_ast import rodViewer
+from ic / ic import rodViewer
 
 when not defined(leanCompiler):
   import jsgen, docgen, docgen2

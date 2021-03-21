@@ -16,7 +16,7 @@ import ".." / [ast, modulegraphs, trees, extccomp, btrees,
 
 import tables
 
-import packed_ast, to_packed_ast, bitabs
+import packed_ast, ic, bitabs
 
 proc replayStateChanges*(module: PSym; g: ModuleGraph) =
   let list = module.ast

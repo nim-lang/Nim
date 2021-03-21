@@ -2099,7 +2099,7 @@ proc semQuoteAst(c: PContext, n: PNode): PNode =
                     identNodeSym.newSymNode
   quotes[1] = newTreeI(nkCall, n.info, identNode, newStrNode(nkStrLit, "result"))
   result = newTreeI(nkCall, n.info,
-     createMagic(c.graph, "getAst", mExpandToAst).newSymNode,
+     createMagic(c.graph, c.idgen, "getAst", mExpandToAst).newSymNode,
      newTreeI(nkCall, n.info, quotes))
   result = semExpandToAst(c, result)
 
