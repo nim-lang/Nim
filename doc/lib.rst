@@ -361,7 +361,7 @@ Parsers
   This module implements a hookable (de)serialization for arbitrary types.
 
 * `parsejson <parsejson.html>`_
-  This module implements a json parser. It is used and exported by the json standard library module, but can also be used in its own right.
+  This module implements a JSON parser. It is used and exported by the `json` standard library module, but can also be used in its own right.
 
 * `lexbase <lexbase.html>`_
   This is a low-level module that implements an extremely efficient buffering
