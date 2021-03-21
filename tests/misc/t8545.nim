@@ -2,7 +2,7 @@ discard """
   targets: "c cpp js"
 """
 
-# https://github.com/nim-lang/Nim/issues/8545
+# bug #8545
 
 template bar(a: static[bool]): untyped = int
 
