@@ -481,7 +481,7 @@ Miscellaneous
   Decode variable-length integers that are compatible with SQLite.
 
 * `enumerate <enumerate.html>`_
-  This module implements enumerate syntactic sugar based on Nim's macro system.
+  This module implements `enumerate` syntactic sugar based on Nim's macro system.
 
 * `with <with.html>`_
   This module implements the with macro for easy function chaining. See `<https://github.com/nim-lang/RFCs/issues/193>`_ and `<https://github.com/nim-lang/RFCs/issues/192>`_ for details leading to this particular design.
