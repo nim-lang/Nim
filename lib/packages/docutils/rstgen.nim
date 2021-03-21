@@ -1138,7 +1138,9 @@ proc renderAdmonition(d: PDoc, n: PRstNode, result: var string) =
         "$1\n\\end{mdframed}\n",
       result)
 
-const anchorLink = """<a class="nimanchor" id="$2" href="#$2">🔗</a>"""
+# const anchorLink = """"""
+# const anchorLink = """id="$2" href="#$2">🔗</a> """
+const anchorLink = """id="$2""""
 
 proc computeAnchorGen(n: PRstNode) =
   var anchorLast = "ROOT"
@@ -1163,20 +1165,21 @@ proc computeAnchorGen(n: PRstNode) =
 
 proc renderRstToOut(d: PDoc, n: PRstNode, result: var string) =
   if n == nil: return
-  if n.anchorGen.len == 0: computeAnchorGen(n)
+  # if n.anchorGen.len == 0: computeAnchorGen(n)
   case n.kind
   of rnInner: renderAux(d, n, result)
   of rnHeadline, rnMarkdownHeadline: renderHeadline(d, n, result)
   of rnOverline: renderOverline(d, n, result)
   of rnTransition: renderAux(d, n, "<hr$2 />\n", "\\hrule$2\n", result)
   of rnParagraph:
-    # xxx see https://github.com/nim-lang/Nim/issues/17249, spurious <p>
-    renderAux(d, n, "<p>$1 $$1</p>\n" % anchorLink, "$2\n$1\n\n", result, useAnchor = true)
+    # renderAux(d, n, "<p>$1$$1</p>\n" % anchorLink, "$2\n$1\n\n", result, useAnchor = true)
+    renderAux(d, n, "<p$2>$1</p>\n", "$2\n$1\n\n", result)
   of rnBulletList:
     renderAux(d, n, "<ul$2 class=\"simple\">$1</ul>\n",
                     "\\begin{itemize}\n$2\n$1\\end{itemize}\n", result)
   of rnBulletItem, rnEnumItem:
-    renderAux(d, n, "<li>$1 $$1</li>\n" % anchorLink , "\\item $2$1\n", result, useAnchor = true)
+    # renderAux(d, n, "<li>$1$$1</li>\n" % anchorLink , "\\item $2$1\n", result, useAnchor = true)
+    renderAux(d, n, "<li$2>$1</li>\n", "\\item $2$1\n", result)
   of rnEnumList: renderEnumList(d, n, result)
   of rnDefList:
     renderAux(d, n, "<dl$2 class=\"docutils\">$1</dl>\n",
