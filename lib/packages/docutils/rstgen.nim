@@ -1161,7 +1161,7 @@ proc computeAnchorGen(n: PRstNode) =
 
 proc renderRstToOut(d: PDoc, n: PRstNode, result: var string) =
   if n == nil: return
-  let generateAnchors = true
+  let generateAnchors = roNoGenerateAnchors notin d.options
   var anchorLink = ""
   if generateAnchors:
     anchorLink = """<a class="nimanchor" id="$2" href="#$2">🔗</a> """
