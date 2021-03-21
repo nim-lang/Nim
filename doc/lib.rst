@@ -358,7 +358,7 @@ Parsers
   High-performance JSON parser.
 
 * `jsonutils <jsonutils.html>`_
-  This module implements a hookable (de)serialization for arbitrary types. Design goal: avoid importing modules where a custom serialization is needed; see strtabs.fromJsonHook,toJsonHook for an example.
+  This module implements a hookable (de)serialization for arbitrary types.
 
 * `parsejson <parsejson.html>`_
   This module implements a json parser. It is used and exported by the json standard library module, but can also be used in its own right.
