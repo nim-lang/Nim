@@ -62,7 +62,7 @@ block: # UniquePtr[T] test
   proc hello(x: string) =
     doAssert x == "1234"
 
-  hello(a1)
+  hello(a1.get)
 
 block: # SharedPtr[T] test
   let x = 5.0
@@ -72,7 +72,7 @@ block: # SharedPtr[T] test
   proc hello(x: float) =
     doAssert x == 5.0
 
-  hello(a2)
+  hello(a2.get)
 
 block: # SharedPtr[T] test
   let x = 5.0
@@ -82,4 +82,4 @@ block: # SharedPtr[T] test
   proc hello(x: float) =
     doAssert x == 5.0
 
-  hello(a2)
+  hello(a2.get)

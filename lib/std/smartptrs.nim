@@ -8,58 +8,6 @@
 
 ## C++11 like smart pointers. They always use the shared allocator.
 
-runnableExamples:
-  import std/isolation
-
-  block:
-    var a1: UniquePtr[float]
-    var a2 = newUniquePtr(isolate(0))
-
-    assert $a1 == "(nil)"
-    assert a1.isNil
-    assert $a2 == "(0)"
-    assert not a2.isNil
-    assert a2[] == 0
-
-    # UniquePtr can't be copied but can be moved
-    let a3 = move a2 # a2 will be destroyed
-
-    assert $a2 == "(nil)"
-    assert a2.isNil
-
-    assert $a3 == "(0)"
-    assert not a3.isNil
-    assert a3[] == 0
-
-  block:
-    var a1: SharedPtr[float]
-    let a2 = newSharedPtr(isolate(0))
-    let a3 = a2
-
-    assert $a1 == "(nil)"
-    assert a1.isNil
-    assert $a2 == "(0)"
-    assert not a2.isNil
-    assert a2[] == 0
-    assert $a3 == "(0)"
-    assert not a3.isNil
-    assert a3[] == 0
-
-  block:
-    var a1: ConstPtr[float]
-    let a2 = newConstPtr(isolate(0))
-    let a3 = a2
-
-    assert $a1 == "(nil)"
-    assert a1.isNil
-    assert $a2 == "(0)"
-    assert not a2.isNil
-    assert a2[] == 0
-    assert $a3 == "(0)"
-    assert not a3.isNil
-    assert a3[] == 0
-
-
 import std/isolation
 
 
@@ -92,7 +40,12 @@ proc newUniquePtr*[T](val: sink Isolated[T]): UniquePtr[T] {.nodestroy.} =
   result.val[] = val.extract
   # no destructor call for 'val: sink T' here either.
 
-converter convertUniquePtrToObj*[T](p: UniquePtr[T]): var T {.inline.} =
+template newUniquePtr*[T](val: T): UniquePtr[T] =
+  ## Overload of `newUniquePtr<#newUniquePtr,sinkIsolated[T]>`_.
+  newUniquePtr(isolate(val))
+
+proc get*[T](p: UniquePtr[T]): var T {.inline.} =
+  ## Returns a mutable view of the internal value of `p`.
   when compileOption("boundChecks"):
     doAssert(p.val != nil, "deferencing nil unique pointer")
   p.val[]
@@ -101,9 +54,7 @@ proc isNil*[T](p: UniquePtr[T]): bool {.inline.} =
   p.val == nil
 
 proc `[]`*[T](p: UniquePtr[T]): var T {.inline.} =
-  when compileOption("boundChecks"):
-    doAssert(p.val != nil, "deferencing nil unique pointer")
-  p.val[]
+  p.get
 
 proc `$`*[T](p: UniquePtr[T]): string {.inline.} =
   if p.val == nil: "(nil)"
@@ -152,7 +103,12 @@ proc newSharedPtr*[T](val: sink Isolated[T]): SharedPtr[T] {.nodestroy.} =
   result.val.atomicCounter = 0
   result.val.value = val.extract
 
-converter convertSharedPtrToObj*[T](p: SharedPtr[T]): var T {.inline.} =
+template newSharedPtr*[T](val: T): SharedPtr[T] =
+  ## Overload of `newSharedPtr<#newSharedPtr,sinkIsolated[T]>`_.
+  newSharedPtr(isolate(val))
+
+proc get*[T](p: SharedPtr[T]): var T {.inline.} =
+  ## Returns a mutable view of the internal value of `p`.
   when compileOption("boundChecks"):
     doAssert(p.val != nil, "deferencing nil shared pointer")
   p.val.value
@@ -161,9 +117,7 @@ proc isNil*[T](p: SharedPtr[T]): bool {.inline.} =
   p.val == nil
 
 proc `[]`*[T](p: SharedPtr[T]): var T {.inline.} =
-  when compileOption("boundChecks"):
-    doAssert(p.val != nil, "deferencing nil shared pointer")
-  p.val.value
+  p.get
 
 proc `$`*[T](p: SharedPtr[T]): string {.inline.} =
   if p.val == nil: "(nil)"
@@ -179,17 +133,80 @@ proc newConstPtr*[T](val: sink Isolated[T]): ConstPtr[T] =
   ## Similar to `newSharedPtr<#newSharedPtr,sinkIsolated[T]>`_, but the underlying value can't be mutated.
   ConstPtr[T](newSharedPtr(val))
 
-converter convertConstPtrToObj*[T](p: ConstPtr[T]): lent T {.inline.} =
+template newConstPtr*[T](val: T): ConstPtr[T] =
+  ## Overload of `newConstPtr<#newConstPtr,sinkIsolated[T]>`_.
+  newConstPtr(isolate(val))
+
+proc get*[T](p: ConstPtr[T]): lent T {.inline.} =
+  ## Returns a immutable view of the internal value of `p`.
+  when compileOption("boundChecks"):
+    doAssert(SharedPtr[T](p).val != nil, "deferencing nil const pointer")
   SharedPtr[T](p).val.value
 
 proc isNil*[T](p: ConstPtr[T]): bool {.inline.} =
   SharedPtr[T](p).val == nil
 
 proc `[]`*[T](p: ConstPtr[T]): lent T {.inline.} =
-  when compileOption("boundChecks"):
-    doAssert(SharedPtr[T](p).val != nil, "deferencing nil const pointer")
-  SharedPtr[T](p).val.value
+  p.get
 
 proc `$`*[T](p: ConstPtr[T]): string {.inline.} =
   if SharedPtr[T](p).val == nil: "(nil)"
   else: "(" & $SharedPtr[T](p).val.value & ")"
+
+
+runnableExamples:
+  import std/isolation
+
+  block:
+    var a1: UniquePtr[float]
+    var a2 = newUniquePtr(0)
+
+    assert $a1 == "(nil)"
+    assert a1.isNil
+    assert $a2 == "(0)"
+    assert not a2.isNil
+    assert a2[] == 0
+    assert a2.get == 0
+
+    # UniquePtr can't be copied but can be moved
+    let a3 = move a2 # a2 will be destroyed
+
+    assert $a2 == "(nil)"
+    assert a2.isNil
+
+    assert $a3 == "(0)"
+    assert not a3.isNil
+    assert a3[] == 0
+    assert a3.get == 0
+
+  block:
+    var a1: SharedPtr[float]
+    let a2 = newSharedPtr(0)
+    let a3 = a2
+
+    assert $a1 == "(nil)"
+    assert a1.isNil
+    assert $a2 == "(0)"
+    assert not a2.isNil
+    assert a2[] == 0
+    assert a2.get == 0
+    assert $a3 == "(0)"
+    assert not a3.isNil
+    assert a3[] == 0
+    assert a3.get == 0
+
+  block:
+    var a1: ConstPtr[float]
+    let a2 = newConstPtr(0)
+    let a3 = a2
+
+    assert $a1 == "(nil)"
+    assert a1.isNil
+    assert $a2 == "(0)"
+    assert not a2.isNil
+    assert a2[] == 0
+    assert a2.get == 0
+    assert $a3 == "(0)"
+    assert not a3.isNil
+    assert a3[] == 0
+    assert a3.get == 0
