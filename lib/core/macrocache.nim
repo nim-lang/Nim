@@ -146,7 +146,8 @@ iterator items*(s: CacheSeq): NimNode =
 proc `[]=`*(t: CacheTable; key: string, value: NimNode) {.magic: "NctPut".} =
   ## Inserts a `(key, value)` pair into `t`. 
   ## 
-  ## .. warning:: `key` has to be unique!
+  ## .. warning:: `key` has to be unique! Assigning `value` to a `key` that is already
+  ##   in the table will result in a compiler error.
   runnableExamples:
     import std/macros
 
