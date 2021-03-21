@@ -60,7 +60,7 @@ type
     config*: ConfigRef
 
 proc isActive*(e: PackedEncoder): bool = e.config != nil
-proc disable*(e: var PackedEncoder) = e.config = nil
+proc disable(e: var PackedEncoder) = e.config = nil
 
 template primConfigFields(fn: untyped) {.dirty.} =
   fn backend

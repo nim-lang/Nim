@@ -1357,9 +1357,6 @@ proc genTypeInfoV2Impl(m: BModule, t, origType: PType, name: Rope; info: TLineIn
   if t.kind == tyObject and t.len > 0 and t[0] != nil and optEnableDeepCopy in m.config.globalOptions:
     discard genTypeInfoV1(m, t, info)
 
-proc moduleOpenForCodegen(m: BModule; module: int32): bool {.inline.} =
-  result = module < m.g.modules.len and m.g.modules[module] != nil
-
 proc genTypeInfoV2(m: BModule, t: PType; info: TLineInfo): Rope =
   let origType = t
   # distinct types can have their own destructors
@@ -1384,9 +1381,8 @@ proc genTypeInfoV2(m: BModule, t: PType; info: TLineInfo): Rope =
   m.typeInfoMarkerV2[sig] = result
 
   let owner = t.skipTypes(typedescPtrs).itemId.module
-  if owner != m.module.position and moduleOpenForCodegen(m, owner):
+  if owner != m.module.position and moduleOpenForCodegen(m.g.graph, owner):
     # make sure the type info is created in the owner module
-    assert m.g.modules[owner] != nil
     discard genTypeInfoV2(m.g.modules[owner], origType, info)
     # reference the type info as extern here
     discard cgsym(m, "TNimTypeV2")
@@ -1463,16 +1459,17 @@ proc genTypeInfoV1(m: BModule, t: PType; info: TLineInfo): Rope =
     declareNimType(m, "TNimType", result, old.int)
     return prefixTI.rope & result & ")".rope
 
-  let owner = t.skipTypes(typedescPtrs).itemId.module
-  if owner != m.module.position and moduleOpenForCodegen(m, owner):
+  var owner = t.skipTypes(typedescPtrs).itemId.module
+  if owner != m.module.position and moduleOpenForCodegen(m.g.graph, owner):
     # make sure the type info is created in the owner module
-    assert m.g.modules[owner] != nil
     discard genTypeInfoV1(m.g.modules[owner], origType, info)
     # reference the type info as extern here
     discard cgsym(m, "TNimType")
     discard cgsym(m, "TNimNode")
     declareNimType(m, "TNimType", result, owner)
     return prefixTI.rope & result & ")".rope
+  else:
+    owner = m.module.position.int32
 
   m.g.typeInfoMarker[sig] = (str: result, owner: owner)
   rememberEmittedTypeInfo(m.g.graph, FileIndex(owner), $result)

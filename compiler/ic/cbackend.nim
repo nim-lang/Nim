@@ -99,6 +99,7 @@ proc generateCode*(g: ModuleGraph) =
       assert false
     of storing, outdated:
       generateCodeForModule(g, g.packed[i], alive)
+      closeRodFile(g, g.packed[i].module)
     of loaded:
       # Even though this module didn't change, DCE might trigger a change.
       # Consider this case: Module A uses symbol S from B and B does not use
