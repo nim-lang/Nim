@@ -8,7 +8,6 @@
 #
 
 # set handling
-import system/countbits_impl
 
 type
   NimSet = array[0..4*2048-1, uint8]
