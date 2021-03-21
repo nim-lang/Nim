@@ -1523,75 +1523,9 @@ proc semProcAnnotation(c: PContext, prc: PNode;
 
     return
 
-proc setGenericParamsMisc(c: PContext; n: PNode): PNode =
-  let orig = n[genericParamsPos]
-  # we keep the original params around for better error messages, see
-  # issue https://github.com/nim-lang/Nim/issues/1713
-  result = semGenericParamList(c, orig)
-  if n[miscPos].kind == nkEmpty:
-    n[miscPos] = newTree(nkBracket, c.graph.emptyNode, orig)
-  else:
-    n[miscPos][1] = orig
-  n[genericParamsPos] = result
-
-proc semLambda(c: PContext, n: PNode, flags: TExprFlags): PNode =
-  # XXX semProcAux should be good enough for this now, we will eventually
-  # remove semLambda
-  result = semProcAnnotation(c, n, lambdaPragmas)
-  if result != nil: return result
-  result = n
-  checkSonsLen(n, bodyPos + 1, c.config)
-  var s: PSym
-  if n[namePos].kind != nkSym:
-    s = newSym(skProc, c.cache.idAnon, nextSymId c.idgen, getCurrOwner(c), n.info)
-    s.ast = n
-    n[namePos] = newSymNode(s)
-  else:
-    s = n[namePos].sym
-  pushOwner(c, s)
-  openScope(c)
-  var gp: PNode
-  if n[genericParamsPos].kind != nkEmpty:
-    gp = setGenericParamsMisc(c, n)
-  else:
-    gp = newNodeI(nkGenericParams, n.info)
-
-  if n[paramsPos].kind != nkEmpty:
-    semParamList(c, n[paramsPos], gp, s)
-    # paramsTypeCheck(c, s.typ)
-    if gp.len > 0 and n[genericParamsPos].kind == nkEmpty:
-      # we have a list of implicit type parameters:
-      n[genericParamsPos] = gp
-  else:
-    s.typ = newProcType(c, n.info)
-  if n[pragmasPos].kind != nkEmpty:
-    pragma(c, s, n[pragmasPos], lambdaPragmas)
-  s.options = c.config.options
-  if n[bodyPos].kind != nkEmpty:
-    if sfImportc in s.flags:
-      localError(c.config, n[bodyPos].info, errImplOfXNotAllowed % s.name.s)
-    #if efDetermineType notin flags:
-    # XXX not good enough; see tnamedparamanonproc.nim
-    if gp.len == 0 or (gp.len == 1 and tfRetType in gp[0].typ.flags):
-      pushProcCon(c, s)
-      addResult(c, n, s.typ[0], skProc)
-      s.ast[bodyPos] = hloBody(c, semProcBody(c, n[bodyPos]))
-      trackProc(c, s, s.ast[bodyPos])
-      popProcCon(c)
-    elif efOperand notin flags:
-      localError(c.config, n.info, errGenericLambdaNotAllowed)
-    sideEffectsCheck(c, s)
-  else:
-    localError(c.config, n.info, errImplOfXexpected % s.name.s)
-  closeScope(c)           # close scope for parameters
-  popOwner(c)
-  result.typ = s.typ
-  if optOwnedRefs in c.config.globalOptions:
-    result.typ = makeVarType(c, result.typ, tyOwned)
-
 proc semInferredLambda(c: PContext, pt: TIdTable, n: PNode): PNode {.nosinks.} =
+  ## used for resolving 'auto' in lambdas based on their callsite 
   var n = n
-
   let original = n[namePos].sym
   let s = original #copySym(original, false)
   #incl(s.flags, sfFromGeneric)
@@ -1798,11 +1732,6 @@ proc cursorInProc(conf: ConfigRef; n: PNode): bool =
   if n.info.fileIndex == conf.m.trackPos.fileIndex:
     result = cursorInProcAux(conf, n)
 
-type
-  TProcCompilationSteps = enum
-    stepRegisterSymbol,
-    stepDetermineType,
-
 proc hasObjParam(s: PSym): bool =
   var t = s.typ
   for col in 1..<t.len:
@@ -1814,7 +1743,7 @@ proc finishMethod(c: PContext, s: PSym) =
     methodDef(c.graph, c.idgen, s)
 
 proc semMethodPrototype(c: PContext; s: PSym; n: PNode) =
-  if isGenericRoutine(s):
+  if s.isGenericRoutine:
     let tt = s.typ
     var foundObj = false
     # we start at 1 for now so that tparsecombnum continues to compile.
@@ -1840,28 +1769,45 @@ proc semMethodPrototype(c: PContext; s: PSym; n: PNode) =
     else:
       localError(c.config, n.info, "'method' needs a parameter that has an object type")
 
+proc setGenericParamsMisc(c: PContext; n: PNode) =
+  let orig = n[genericParamsPos]
+
+  doAssert orig.kind in {nkEmpty, nkGenericParams}
+
+  if n[genericParamsPos].kind == nkEmpty:
+    n[genericParamsPos] = newNodeI(nkGenericParams, n.info)
+  else:
+    # we keep the original params around for better error messages, see
+    # issue https://github.com/nim-lang/Nim/issues/1713
+    n[genericParamsPos] = semGenericParamList(c, orig)
+
+  if n[miscPos].kind == nkEmpty:
+    n[miscPos] = newTree(nkBracket, c.graph.emptyNode, orig)
+  else:
+    n[miscPos][1] = orig
+
 proc semProcAux(c: PContext, n: PNode, kind: TSymKind,
-                validPragmas: TSpecialWords,
-                phase = stepRegisterSymbol): PNode =
+                validPragmas: TSpecialWords, flags: TExprFlags = {}): PNode =
   result = semProcAnnotation(c, n, validPragmas)
   if result != nil: return result
   result = n
   checkMinSonsLen(n, bodyPos + 1, c.config)
-  var s: PSym
-  var typeIsDetermined = false
-  var isAnon = false
-  if n[namePos].kind != nkSym:
-    assert phase == stepRegisterSymbol
 
-    if n[namePos].kind == nkEmpty:
-      s = newSym(kind, c.cache.idAnon, nextSymId c.idgen, getCurrOwner(c), n.info)
-      incl(s.flags, sfUsed)
-      isAnon = true
-    else:
-      s = semIdentDef(c, n[0], kind)
+  let isAnon = n[namePos].kind == nkEmpty
+
+  var s: PSym
+
+  case n[namePos].kind
+  of nkEmpty:
+    s = newSym(kind, c.cache.idAnon, nextSymId c.idgen, c.getCurrOwner, n.info)
+    s.flags.incl sfUsed
     n[namePos] = newSymNode(s)
-    s.ast = n
-    #s.scope = c.currentScope
+  of nkSym:
+    s = n[namePos].sym
+    s.owner = c.getCurrOwner
+  else:
+    s = semIdentDef(c, n[namePos], kind)
+    n[namePos] = newSymNode(s)
     when false:
       # disable for now
       if sfNoForward in c.module.flags and
@@ -1869,37 +1815,50 @@ proc semProcAux(c: PContext, n: PNode, kind: TSymKind,
         addInterfaceOverloadableSymAt(c, c.currentScope, s)
         s.flags.incl sfForward
         return
-  else:
-    s = n[namePos].sym
-    s.owner = getCurrOwner(c)
-    typeIsDetermined = s.typ == nil
-    s.ast = n
-    #s.scope = c.currentScope
 
+  assert s.kind in skProcKinds
+
+  s.ast = n
   s.options = c.config.options
+  #s.scope = c.currentScope
 
-  # before compiling the proc body, set as current the scope
+  # before compiling the proc params & body, set as current the scope
   # where the proc was declared
-  let oldScope = c.currentScope
-  #c.currentScope = s.scope
+  let delcarationScope = c.currentScope
   pushOwner(c, s)
   openScope(c)
-  var gp: PNode
-  if n[genericParamsPos].kind != nkEmpty:
-    gp = setGenericParamsMisc(c, n)
-  else:
-    gp = newNodeI(nkGenericParams, n.info)
+
   # process parameters:
+  # generic parameters, parameters, and also the implicit generic parameters
+  # within are analysed. This is often the entirety of their semantic analysis
+  # but later we will have to do a check for forward declarations, which can by
+  # way of pragmas, default params, and so on invalidate this parsing.
+  # Nonetheless, we need to carry out this analysis to perform the search for a
+  # potential forward declaration.
+  setGenericParamsMisc(c, n)
+
   if n[paramsPos].kind != nkEmpty:
-    semParamList(c, n[paramsPos], gp, s)
-    if gp.len > 0:
-      if n[genericParamsPos].kind == nkEmpty:
-        # we have a list of implicit type parameters:
-        n[genericParamsPos] = gp
-        # check for semantics again:
-        # semParamList(c, n[ParamsPos], nil, s)
+    semParamList(c, n[paramsPos], n[genericParamsPos], s)
+    # we maybe have implicit type parameters:
   else:
     s.typ = newProcType(c, n.info)
+
+  if n[genericParamsPos].safeLen == 0:
+    # if there exist no explicit or implicit generic parameters, then this is
+    # at most a nullary generic (generic with no type params). Regardless of
+    # whether it's a nullary generic or non-generic, we restore the original.
+    # In the case of `nkEmpty` it's non-generic and an empty `nkGeneircParams`
+    # is a nullary generic.
+    #
+    # Remarks about nullary generics vs non-generics:
+    # The difference between a non-generic and nullary generic is minor in
+    # most cases but there are subtle and significant differences as well.
+    # Due to instantiation that generic procs go through, a static echo in the
+    # body of a nullary  generic will not be executed immediately, as it's
+    # instantiated and not immediately evaluated.
+    n[genericParamsPos] = n[miscPos][1]
+    n[miscPos] = c.graph.emptyNode
+
   if tfTriggersCompileTime in s.typ.flags: incl(s.flags, sfCompileTime)
   if n[patternPos].kind != nkEmpty:
     n[patternPos] = semPattern(c, n[patternPos])
@@ -1908,47 +1867,66 @@ proc semProcAux(c: PContext, n: PNode, kind: TSymKind,
   elif s.kind == skFunc:
     incl(s.flags, sfNoSideEffect)
     incl(s.typ.flags, tfNoSideEffect)
-  var (proto, comesFromShadowScope) = if isAnon: (nil, false)
-                                      else: searchForProc(c, oldScope, s)
+
+  var (proto, comesFromShadowScope) =
+      if isAnon: (nil, false)
+      else: searchForProc(c, delcarationScope, s)
   if proto == nil and sfForward in s.flags:
-    #This is a definition that shares its sym with its forward declaration (generated by a macro),
-    #if the symbol is also gensymmed we won't find it with searchForProc, so we check here
+    ## In cases such as a macro generating a proc with a gensymmed name we
+    ## know `searchForProc` will not find it and sfForward will be set. In
+    ## such scenarios the sym is shared between forward declaration and we
+    ## can treat the `s` as the proto.
     proto = s
-  if proto == nil:
-    if s.kind == skIterator:
-      if s.typ.callConv != ccClosure:
-        s.typ.callConv = if isAnon: ccClosure else: ccInline
-    else:
-      s.typ.callConv = lastOptionEntry(c).defaultCC
-    # add it here, so that recursive procs are possible:
-    if sfGenSym in s.flags:
-      if s.owner == nil: s.owner = getCurrOwner(c)
-    elif kind in OverloadableSyms:
-      if not typeIsDetermined:
-        addInterfaceOverloadableSymAt(c, oldScope, s)
-    else:
-      if not typeIsDetermined:
-        addInterfaceDeclAt(c, oldScope, s)
-    if n[pragmasPos].kind != nkEmpty:
-      pragma(c, s, n[pragmasPos], validPragmas)
-    else:
-      implicitPragmas(c, s, n, validPragmas)
-    styleCheckDef(c.config, s)
-    onDef(n[namePos].info, s)
+  let hasProto = proto != nil
+
+  # set the default calling conventions
+  case s.kind
+  of skIterator:
+    if s.typ.callConv != ccClosure:
+      s.typ.callConv = if isAnon: ccClosure else: ccInline
+  of skMacro, skTemplate:
+    # we don't bother setting calling conventions for macros and templates
+    discard
   else:
-    if n[pragmasPos].kind != nkEmpty:
-      pragma(c, s, n[pragmasPos], validPragmas)
-      # To ease macro generation that produce forwarded .async procs we now
-      # allow a bit redundancy in the pragma declarations. The rule is
-      # a prototype's pragma list must be a superset of the current pragma
-      # list.
-      # XXX This needs more checks eventually, for example that external
-      # linking names do agree:
-      if proto.typ.callConv != s.typ.callConv or proto.typ.flags < s.typ.flags:
-        localError(c.config, n[pragmasPos].info, errPragmaOnlyInHeaderOfProcX %
-          ("'" & proto.name.s & "' from " & c.config$proto.info))
-    styleCheckDef(c.config, s)
+    # NB: procs with a forward decl have theirs determined by the forward decl
+    if not hasProto:
+      # in this case we're either a forward declaration or we're an impl without
+      # a forward decl. We set the calling convention or will be set during
+      # pragma analysis further down.
+      s.typ.callConv = lastOptionEntry(c).defaultCC
+
+  if not hasProto and sfGenSym notin s.flags: #and not isAnon:
+    if s.kind in OverloadableSyms:
+      addInterfaceOverloadableSymAt(c, delcarationScope, s)
+    else:
+      addInterfaceDeclAt(c, delcarationScope, s)
+
+  pragmaCallable(c, s, n, validPragmas)
+  if not hasProto:
+    implicitPragmas(c, s, n.info, validPragmas)
+
+  # To ease macro generation that produce forwarded .async procs we now
+  # allow a bit redundancy in the pragma declarations. The rule is
+  # a prototype's pragma list must be a superset of the current pragma
+  # list.
+  # XXX This needs more checks eventually, for example that external
+  # linking names do agree:
+  if hasProto and (
+      # calling convention mismatch
+      tfExplicitCallConv in s.typ.flags and proto.typ.callConv != s.typ.callConv or
+      # implementation has additional pragmas
+      proto.typ.flags < s.typ.flags):
+    localError(c.config, n[pragmasPos].info, errPragmaOnlyInHeaderOfProcX %
+      ("'" & proto.name.s & "' from " & c.config$proto.info &
+        " '" & s.name.s & "' from " & c.config$s.info))
+
+  styleCheckDef(c.config, s)
+  if hasProto:
     onDefResolveForward(n[namePos].info, proto)
+  else:
+    onDef(n[namePos].info, s)
+
+  if hasProto:
     if sfForward notin proto.flags and proto.magic == mNone:
       wrongRedefinition(c, n.info, proto.name.s, proto.info)
     if not comesFromShadowScope:
@@ -1957,7 +1935,7 @@ proc semProcAux(c: PContext, n: PNode, kind: TSymKind,
     suggestSym(c.graph, s.info, proto, c.graph.usageSym)
     closeScope(c)         # close scope with wrong parameter symbols
     openScope(c)          # open scope for old (correct) parameter symbols
-    if proto.ast[genericParamsPos].kind != nkEmpty:
+    if proto.ast[genericParamsPos].isGenericParams:
       addGenericParamListToScope(c, proto.ast[genericParamsPos])
     addParams(c, proto.typ.n, proto.kind)
     proto.info = s.info       # more accurate line information
@@ -1974,31 +1952,42 @@ proc semProcAux(c: PContext, n: PNode, kind: TSymKind,
     popOwner(c)
     pushOwner(c, s)
 
-  if sfOverriden in s.flags or s.name.s[0] == '=': semOverride(c, s, n)
-  if s.name.s[0] in {'.', '('}:
-    if s.name.s in [".", ".()", ".="] and {Feature.destructor, dotOperators} * c.features == {}:
-      localError(c.config, n.info, "the overloaded " & s.name.s &
-        " operator has to be enabled with {.experimental: \"dotOperators\".}")
-    elif s.name.s == "()" and callOperator notin c.features:
-      localError(c.config, n.info, "the overloaded " & s.name.s &
-        " operator has to be enabled with {.experimental: \"callOperator\".}")
+  if not isAnon:
+    if sfOverriden in s.flags or s.name.s[0] == '=': semOverride(c, s, n)
+    elif s.name.s[0] in {'.', '('}:
+      if s.name.s in [".", ".()", ".="] and {Feature.destructor, dotOperators} * c.features == {}:
+        localError(c.config, n.info, "the overloaded " & s.name.s &
+          " operator has to be enabled with {.experimental: \"dotOperators\".}")
+      elif s.name.s == "()" and callOperator notin c.features:
+        localError(c.config, n.info, "the overloaded " & s.name.s &
+          " operator has to be enabled with {.experimental: \"callOperator\".}")
 
   if n[bodyPos].kind != nkEmpty and sfError notin s.flags:
     # for DLL generation we allow sfImportc to have a body, for use in VM
     if sfBorrow in s.flags:
       localError(c.config, n[bodyPos].info, errImplOfXNotAllowed % s.name.s)
-    let usePseudoGenerics = kind in {skMacro, skTemplate}
-    # Macros and Templates can have generic parameters, but they are
-    # only used for overload resolution (there is no instantiation of
-    # the symbol, so we must process the body now)
-    if not usePseudoGenerics and c.config.ideCmd in {ideSug, ideCon} and not
+    if c.config.ideCmd in {ideSug, ideCon} and s.kind notin {skMacro, skTemplate} and not
         cursorInProc(c.config, n[bodyPos]):
-      discard "speed up nimsuggest"
+      # speed up nimsuggest
       if s.kind == skMethod: semMethodPrototype(c, s, n)
+    elif isAnon:
+      let gp = n[genericParamsPos]
+      if gp.kind == nkEmpty or (gp.len == 1 and tfRetType in gp[0].typ.flags):
+        # absolutely no generics (empty) or a single generic return type are
+        # allowed, everything else, including a nullary generic is an error.
+        pushProcCon(c, s)
+        addResult(c, n, s.typ[0], skProc)
+        s.ast[bodyPos] = hloBody(c, semProcBody(c, n[bodyPos]))
+        trackProc(c, s, s.ast[bodyPos])
+        popProcCon(c)
+      elif efOperand notin flags:
+        localError(c.config, n.info, errGenericLambdaNotAllowed)
     else:
       pushProcCon(c, s)
-      if n[genericParamsPos].kind == nkEmpty or usePseudoGenerics:
-        if not usePseudoGenerics and s.magic == mNone: paramsTypeCheck(c, s.typ)
+      if n[genericParamsPos].kind == nkEmpty or s.kind in {skMacro, skTemplate}:
+        # Macros and Templates can have generic parameters, but they are only
+        # used for overload resolution (there is no instantiation of the symbol)
+        if s.kind notin {skMacro, skTemplate} and s.magic == mNone: paramsTypeCheck(c, s.typ)
 
         maybeAddResult(c, s, n)
         # semantic checking also needed with importc in case used in VM
@@ -2006,9 +1995,8 @@ proc semProcAux(c: PContext, n: PNode, kind: TSymKind,
         # unfortunately we cannot skip this step when in 'system.compiles'
         # context as it may even be evaluated in 'system.compiles':
         trackProc(c, s, s.ast[bodyPos])
-        if s.kind == skMethod: semMethodPrototype(c, s, n)
       else:
-        if (s.typ[0] != nil and kind != skIterator) or kind == skMacro:
+        if (s.typ[0] != nil and s.kind != skIterator):
           addDecl(c, newSym(skUnknown, getIdent(c.cache, "result"), nextSymId c.idgen, nil, n.info))
 
         openScope(c)
@@ -2016,20 +2004,17 @@ proc semProcAux(c: PContext, n: PNode, kind: TSymKind,
         closeScope(c)
         if s.magic == mNone:
           fixupInstantiatedSymbols(c, s)
-        if s.kind == skMethod: semMethodPrototype(c, s, n)
-      if sfImportc in s.flags:
-        # don't ignore the body in case used in VM
-        # n[bodyPos] = c.graph.emptyNode
-        discard
+      if s.kind == skMethod: semMethodPrototype(c, s, n)
       popProcCon(c)
   else:
-    if s.kind in {skProc, skFunc} and s.typ[0] != nil and s.typ[0].kind == tyUntyped:
-      # `auto` is represented as `tyUntyped` at this point in compilation.
-      localError(c.config, n[paramsPos][0].info, "return type 'auto' cannot be used in forward declarations")
-
     if s.kind == skMethod: semMethodPrototype(c, s, n)
-    if proto != nil: localError(c.config, n.info, errImplOfXexpected % proto.name.s)
+    if hasProto: localError(c.config, n.info, errImplOfXexpected % proto.name.s)
     if {sfImportc, sfBorrow, sfError} * s.flags == {} and s.magic == mNone:
+      # this is a forward declaration and we're building the prototype
+      if s.kind in {skProc, skFunc} and s.typ[0] != nil and s.typ[0].kind == tyUntyped:
+        # `auto` is represented as `tyUntyped` at this point in compilation.
+        localError(c.config, n[paramsPos][0].info, "return type 'auto' cannot be used in forward declarations")
+
       incl(s.flags, sfForward)
       incl(s.flags, sfWasForwarded)
     elif sfBorrow in s.flags: semBorrow(c, n, s)
@@ -2044,15 +2029,14 @@ proc semProcAux(c: PContext, n: PNode, kind: TSymKind,
     result.typ = s.typ
     if optOwnedRefs in c.config.globalOptions:
       result.typ = makeVarType(c, result.typ, tyOwned)
-  if isTopLevel(c) and s.kind != skIterator and
-      s.typ.callConv == ccClosure:
+  elif isTopLevel(c) and s.kind != skIterator and s.typ.callConv == ccClosure:
     localError(c.config, s.info, "'.closure' calling convention for top level routines is invalid")
 
 proc determineType(c: PContext, s: PSym) =
   if s.typ != nil: return
   #if s.magic != mNone: return
   #if s.ast.isNil: return
-  discard semProcAux(c, s.ast, s.kind, {}, stepDetermineType)
+  discard semProcAux(c, s.ast, s.kind, {})
 
 proc semIterator(c: PContext, n: PNode): PNode =
   # gensym'ed iterator?
@@ -2086,7 +2070,9 @@ proc semProc(c: PContext, n: PNode): PNode =
   result = semProcAux(c, n, skProc, procPragmas)
 
 proc semFunc(c: PContext, n: PNode): PNode =
-  result = semProcAux(c, n, skFunc, procPragmas)
+  let validPragmas = if n[namePos].kind != nkEmpty: procPragmas
+                     else: lambdaPragmas
+  result = semProcAux(c, n, skFunc, validPragmas)
 
 proc semMethod(c: PContext, n: PNode): PNode =
   if not isTopLevel(c): localError(c.config, n.info, errXOnlyAtModuleScope % "method")

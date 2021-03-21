@@ -95,6 +95,7 @@ proc rememberStartupConfig*(dest: var PackedConfig, config: ConfigRef) =
   template rem(x) =
     dest.x = config.x
   primConfigFields rem
+  dest.globalOptions.excl optForceFullMake
 
 proc hashFileCached(conf: ConfigRef; fileIdx: FileIndex): string =
   result = msgs.getHash(conf, fileIdx)
@@ -486,8 +487,14 @@ proc storeInstantiation*(c: var PackedEncoder; m: var PackedModule; s: PSym; i: 
                                           concreteTypes: t)
   toPackedGeneratedProcDef(i.sym, c, m)
 
-proc loadError(err: RodFileError; filename: AbsoluteFile) =
-  echo "Error: ", $err, " loading file: ", filename.string
+proc loadError(err: RodFileError; filename: AbsoluteFile; config: ConfigRef;) =
+  case err
+  of cannotOpen:
+    rawMessage(config, warnCannotOpenFile, filename.string)
+  of includeFileChanged:
+    rawMessage(config, warnFileChanged, filename.string)
+  else:
+    echo "Error: ", $err, " loading file: ", filename.string
 
 proc loadRodFile*(filename: AbsoluteFile; m: var PackedModule; config: ConfigRef;
                   ignoreConfig = false): RodFileError =
@@ -718,7 +725,7 @@ proc loadProcHeader(c: var PackedDecoder; g: var PackedModuleGraph; thisModule: 
   result = newNodeIT(k, translateLineInfo(c, g, thisModule, n.info),
     loadType(c, g, thisModule, n.typ))
   result.flags = n.flags
-  assert k in {nkProcDef, nkMethodDef, nkIteratorDef, nkFuncDef, nkConverterDef}
+  assert k in {nkProcDef, nkMethodDef, nkIteratorDef, nkFuncDef, nkConverterDef, nkLambda}
   var i = 0
   for n0 in sonsReadonly(tree, n):
     if i != bodyPos:
@@ -932,10 +939,10 @@ proc needsRecompile(g: var PackedModuleGraph; conf: ConfigRef; cache: IdentCache
       else:
         g[m] = LoadedModule(status: outdated, module: g[m].module)
     else:
-      loadError(err, rod)
+      loadError(err, rod, conf)
       g[m].status = outdated
       result = true
-    when false: loadError(err, rod)
+    when false: loadError(err, rod, conf)
   of loading, loaded:
     # For loading: Assume no recompile is required.
     result = false
@@ -951,8 +958,8 @@ proc moduleFromRodFile*(g: var PackedModuleGraph; conf: ConfigRef; cache: IdentC
     result = g[int fileIdx].module
     assert result != nil
     assert result.position == int(fileIdx)
-    for m in cachedModules:
-      loadToReplayNodes(g, conf, cache, m, g[int m])
+  for m in cachedModules:
+    loadToReplayNodes(g, conf, cache, m, g[int m])
 
 template setupDecoder() {.dirty.} =
   var decoder = PackedDecoder(

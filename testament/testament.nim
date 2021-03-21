@@ -35,7 +35,6 @@ Command:
   c|cat|category <category>   run all the tests of a certain category
   r|run <test>                run single test file
   html                        generate $1 from the database
-  stats                       generate statistics about test cases
 Arguments:
   arguments are passed to the compiler
 Options:
@@ -76,6 +75,7 @@ type
     args: seq[string]
     spec: TSpec
     startTime: float
+    debugInfo: string
 
 # ----------------------------------------------------------------------------
 
@@ -285,7 +285,7 @@ proc addResult(r: var TResults, test: TTest, target: TTarget,
   template disp(msg) =
     maybeStyledEcho styleDim, fgYellow, msg & ' ', styleBright, fgCyan, name
   if success == reSuccess:
-    maybeStyledEcho fgGreen, "PASS: ", fgCyan, alignLeft(name, 60), fgBlue, " (", durationStr, " sec)"
+    maybeStyledEcho fgGreen, "PASS: ", fgCyan, test.debugInfo, alignLeft(name, 60), fgBlue, " (", durationStr, " sec)"
   elif success == reDisabled:
     if test.spec.inCurrentBatch: disp("SKIP:")
     else: disp("NOTINBATCH:")

@@ -1,3 +1,5 @@
+.. default-role:: code
+
 =========================
 Nim Experimental Features
 =========================
@@ -12,8 +14,8 @@ About this document
 ===================
 
 This document describes features of Nim that are to be considered experimental.
-Some of these are not covered by the ``.experimental`` pragma or
-``--experimental`` switch because they are already behind a special syntax and
+Some of these are not covered by the `.experimental` pragma or
+`--experimental` switch because they are already behind a special syntax and
 one may want to use Nim libraries using these features without using them
 oneself.
 
@@ -28,13 +30,13 @@ Every Nim module resides in a (nimble) package. An object type can be attached
 to the package it resides in. If that is done, the type can be referenced from
 other modules as an `incomplete`:idx: object type. This feature allows to
 break up recursive type dependencies across module boundaries. Incomplete
-object types are always passed ``byref`` and can only be used in pointer like
-contexts (``var/ref/ptr IncompleteObject``) in general since the compiler does
+object types are always passed `byref` and can only be used in pointer like
+contexts (`var/ref/ptr IncompleteObject`) in general since the compiler does
 not yet know the size of the object. To complete an incomplete object
-the ``package`` pragma has to be used. ``package`` implies ``byref``.
+the `package` pragma has to be used. `package` implies `byref`.
 
-As long as a type ``T`` is incomplete, neither ``sizeof(T)`` nor runtime
-type information for ``T`` is available.
+As long as a type `T` is incomplete, neither `sizeof(T)` nor runtime
+type information for `T` is available.
 
 
 Example:
@@ -63,8 +65,8 @@ Example:
 Void type
 =========
 
-The ``void`` type denotes the absence of any type. Parameters of
-type ``void`` are treated as non-existent, ``void`` as a return type means that
+The `void` type denotes the absence of any type. Parameters of
+type `void` are treated as non-existent, `void` as a return type means that
 the procedure does not return a value:
 
 .. code-block:: nim
@@ -73,7 +75,7 @@ the procedure does not return a value:
 
   nothing() # writes "ha" to stdout
 
-The ``void`` type is particularly useful for generic code:
+The `void` type is particularly useful for generic code:
 
 .. code-block:: nim
   proc callProc[T](p: proc (x: T), x: T) =
@@ -88,7 +90,7 @@ The ``void`` type is particularly useful for generic code:
   callProc[int](intProc, 12)
   callProc[void](emptyProc)
 
-However, a ``void`` type cannot be inferred in generic code:
+However, a `void` type cannot be inferred in generic code:
 
 .. code-block:: nim
   callProc(emptyProc)
@@ -96,8 +98,8 @@ However, a ``void`` type cannot be inferred in generic code:
   # but expected one of:
   # callProc(p: proc (T), x: T)
 
-The ``void`` type is only valid for parameters and return types; other symbols
-cannot have the type ``void``.
+The `void` type is only valid for parameters and return types; other symbols
+cannot have the type `void`.
 
 
 
@@ -105,19 +107,19 @@ Covariance
 ==========
 
 Covariance in Nim can be introduced only through pointer-like types such
-as ``ptr`` and ``ref``. Sequence, Array and OpenArray types, instantiated
+as `ptr` and `ref`. Sequence, Array and OpenArray types, instantiated
 with pointer-like types will be considered covariant if and only if they
-are also immutable. The introduction of a ``var`` modifier or additional
-``ptr`` or ``ref`` indirections would result in invariant treatment of
+are also immutable. The introduction of a `var` modifier or additional
+`ptr` or `ref` indirections would result in invariant treatment of
 these types.
 
-``proc`` types are currently always invariant, but future versions of Nim
+`proc` types are currently always invariant, but future versions of Nim
 may relax this rule.
 
 User-defined generic types may also be covariant with respect to some of
 their parameters. By default, all generic params are considered invariant,
-but you may choose the apply the prefix modifier ``in`` to a parameter to
-make it contravariant or ``out`` to make it covariant:
+but you may choose the apply the prefix modifier `in` to a parameter to
+make it contravariant or `out` to make it covariant:
 
 .. code-block:: nim
   type
@@ -166,10 +168,10 @@ values:
                           # to point to a ComboBox
 
 On the other hand, in the `RingBuffer` example above, the designated generic
-param is used to instantiate the non-pointer ``seq`` type, which means that
+param is used to instantiate the non-pointer `seq` type, which means that
 the resulting generic type will have covariance that mimics an array or
-sequence (i.e. it will be covariant only when instantiated with ``ptr`` and
-``ref`` types):
+sequence (i.e. it will be covariant only when instantiated with `ptr` and
+`ref` types):
 
 .. code-block:: nim
 
@@ -196,7 +198,7 @@ as `seq[AnnotatedPtr[T]]` or `RingBuffer[AnnotatedPtr[T]]` will also be
 considered covariant and you can create new pointer-like types by instantiating
 other user-defined pointer-like types.
 
-The contravariant parameters introduced with the ``in`` modifier are currently
+The contravariant parameters introduced with the `in` modifier are currently
 useful only when interfacing with imported types having such semantics.
 
 
@@ -204,7 +206,7 @@ Automatic dereferencing
 =======================
 
 Automatic dereferencing is performed for the first argument of a routine call.
-This feature has to be enabled via ``{.experimental: "implicitDeref".}``:
+This feature has to be enabled via `{.experimental: "implicitDeref".}`:
 
 .. code-block:: nim
   {.experimental: "implicitDeref".}
@@ -257,7 +259,7 @@ preface definitions inside a module.
    Please note that if a callable symbol is never used in this scenario, its
    body will never be compiled. This is the default behavior leading to best
    compilation times, but if exhaustive compilation of all definitions is
-   required, using ``nim check`` provides this option as well.
+   required, using `nim check` provides this option as well.
 
 Example:
 
@@ -290,10 +292,10 @@ what code is executed at the top level:
 
 ..
    TODO: Let's table this for now. This is an *experimental feature* and so the
-   specific manner in which ``declared`` operates with it can be decided in
+   specific manner in which `declared` operates with it can be decided in
    eventuality, because right now it works a bit weirdly.
 
-   The values of expressions involving ``declared`` are decided *before* the
+   The values of expressions involving `declared` are decided *before* the
    code reordering process, and not after. As an example, the output of this
    code is the same as it would be with code reordering disabled.
 
@@ -325,7 +327,7 @@ Named argument overloading
 ==========================
 
 Routines with the same type signature can be called differently if a parameter
-has different names. This does not need an ``experimental`` switch, but is an
+has different names. This does not need an `experimental` switch, but is an
 unstable feature.
 
 .. code-block::nim
@@ -344,7 +346,7 @@ Do notation
 ===========
 
 As a special more convenient notation, proc expressions involved in procedure
-calls can use the ``do`` keyword:
+calls can use the `do` keyword:
 
 .. code-block:: nim
   sort(cities) do (x,y: string) -> int:
@@ -359,13 +361,13 @@ calls can use the ``do`` keyword:
     if not `ex`:
       echo `info`, ": Check failed: ", `expString`
 
-``do`` is written after the parentheses enclosing the regular proc params.
+`do` is written after the parentheses enclosing the regular proc params.
 The proc expression represented by the do block is appended to them.
 In calls using the command syntax, the do block will bind to the immediately
 preceding expression, transforming it in a call.
 
-``do`` with parentheses is an anonymous ``proc``; however a ``do`` without
-parentheses is just a block of code. The ``do`` notation can be used to
+`do` with parentheses is an anonymous `proc`; however a `do` without
+parentheses is just a block of code. The `do` notation can be used to
 pass multiple blocks to a macro:
 
 .. code-block:: nim
@@ -385,7 +387,7 @@ dot operators
 -------------
 
 **Note**: Dot operators are still experimental and so need to be enabled
-via ``{.experimental: "dotOperators".}``.
+via `{.experimental: "dotOperators".}`.
 
 Nim offers a special family of dot operators that can be used to
 intercept and rewrite proc call and field access attempts, referring
@@ -398,7 +400,7 @@ When Nim encounters an expression that cannot be resolved by the
 standard overload resolution rules, the current scope will be searched
 for a dot operator that can be matched against a re-written form of
 the expression, where the unknown field or proc name is passed to
-an ``untyped`` parameter:
+an `untyped` parameter:
 
 .. code-block:: nim
   a.b # becomes `.`(a, b)
@@ -471,10 +473,10 @@ Not nil annotation
 ==================
 
 **Note:** This is an experimental feature. It can be enabled with
-``{.experimental: "notnil"}``.
+`{.experimental: "notnil"}`.
 
-All types for which ``nil`` is a valid value can be annotated with the ``not
-nil`` annotation to exclude ``nil`` as a valid value:
+All types for which `nil` is a valid value can be annotated with the `not
+nil` annotation to exclude `nil` as a valid value:
 
 .. code-block:: nim
   {.experimental: "notnil"}
@@ -526,9 +528,9 @@ The concept is a match if:
 a) all of the expressions within the body can be compiled for the tested type
 b) all statically evaluable boolean expressions in the body must be true
 
-The identifiers following the ``concept`` keyword represent instances of the
+The identifiers following the `concept` keyword represent instances of the
 currently matched type. You can apply any of the standard type modifiers such
-as ``var``, ``ref``, ``ptr`` and ``static`` to denote a more specific type of
+as `var`, `ref`, `ptr` and `static` to denote a more specific type of
 instance. You can also apply the `type` modifier to create a named instance of
 the type itself:
 
@@ -546,9 +548,9 @@ the presence of callable symbols with specific signatures:
     OutputStream = concept var s
       s.write(string)
 
-In order to check for symbols accepting ``type`` params, you must prefix
-the type with the explicit ``type`` modifier. The named instance of the
-type, following the ``concept`` keyword is also considered to have the
+In order to check for symbols accepting `type` params, you must prefix
+the type with the explicit `type` modifier. The named instance of the
+type, following the `concept` keyword is also considered to have the
 explicit modifier and will be matched only as a type.
 
 .. code-block:: nim
@@ -570,7 +572,7 @@ explicit modifier and will be matched only as a type.
       -x is T
       x - y is T
 
-Please note that the ``is`` operator allows one to easily verify the precise
+Please note that the `is` operator allows one to easily verify the precise
 type signatures of the required operations, but since type inference and
 default parameters are still applied in the concept body, it's also possible
 to describe usage protocols that do not reveal implementation details.
@@ -586,7 +588,7 @@ By default, the compiler will report the matching errors in concepts only when
 no other overload can be selected and a normal compilation error is produced.
 When you need to understand why the compiler is not matching a particular
 concept and, as a result, a wrong overload is selected, you can apply the
-``explain`` pragma to either the concept body or a particular call-site.
+`explain` pragma to either the concept body or a particular call-site.
 
 .. code-block:: nim
   type
@@ -670,7 +672,7 @@ resembles the way generic parameters of callable symbols are inferred on
 call sites.
 
 Unbound types can appear both as params to calls such as `s.push(T)` and
-on the right-hand side of the ``is`` operator in cases such as `x.pop is T`
+on the right-hand side of the `is` operator in cases such as `x.pop is T`
 and `x.data is seq[T]`.
 
 Unbound static params will be inferred from expressions involving the `==`
@@ -684,8 +686,8 @@ operator and also when types dependent on them are being matched:
 The Nim compiler includes a simple linear equation solver, allowing it to
 infer static params in some situations where integer arithmetic is involved.
 
-Just like in regular type classes, Nim discriminates between ``bind once``
-and ``bind many`` types when matching the concept. You can add the ``distinct``
+Just like in regular type classes, Nim discriminates between `bind once`
+and `bind many` types when matching the concept. You can add the `distinct`
 modifier to any of the otherwise inferable types to get a type that will be
 matched without permanently inferring it. This may be useful when you need
 to match several procs accepting the same wide class of types:
@@ -708,7 +710,7 @@ to match several procs accepting the same wide class of types:
       type Enum = distinct Enumerable
       o.baz is Enum
 
-On the other hand, using ``bind once`` types allows you to test for equivalent
+On the other hand, using `bind once` types allows you to test for equivalent
 types used in multiple signatures, without actually requiring any concrete
 types, thus allowing you to encode implementation-defined types:
 
@@ -804,7 +806,7 @@ concept, we say that the outer concept is a refinement of the inner concept and
 thus it is more-specific. When both concepts are matched in a call during
 overload resolution, Nim will assign a higher precedence to the most specific
 one. As an alternative way of defining concept refinements, you can use the
-object inheritance syntax involving the ``of`` keyword:
+object inheritance syntax involving the `of` keyword:
 
 .. code-block:: nim
   type
@@ -895,8 +897,8 @@ object inheritance syntax involving the ``of`` keyword:
   any type can implement an unlimited number of protocols or interfaces not
   originally envisioned by the type's author.
 
-  Any concept type can be turned into a VTable type by using the ``vtref``
-  or the ``vtptr`` compiler magics. Under the hood, these magics generate
+  Any concept type can be turned into a VTable type by using the `vtref`
+  or the `vtptr` compiler magics. Under the hood, these magics generate
   a converter type class, which converts the regular instances of the matching
   types to the corresponding VTable type.
 
@@ -928,8 +930,8 @@ object inheritance syntax involving the ``of`` keyword:
   but it will include a smaller number of captured procs. A completely empty
   vtable will be reported as an error.
 
-  The ``vtref`` magic produces types which can be bound to ``ref`` types and
-  the ``vtptr`` magic produced types bound to ``ptr`` types.
+  The `vtref` magic produces types which can be bound to `ref` types and
+  the `vtptr` magic produced types bound to `ptr` types.
 
 
 Type bound operations
@@ -944,12 +946,12 @@ There are 4 operations that are bound to a type:
 
 These operations can be *overridden* instead of *overloaded*. This means the
 implementation is automatically lifted to structured types. For instance if type
-``T`` has an overridden assignment operator ``=`` this operator is also used
-for assignments of the type ``seq[T]``. Since these operations are bound to a
+`T` has an overridden assignment operator `=` this operator is also used
+for assignments of the type `seq[T]`. Since these operations are bound to a
 type they have to be bound to a nominal type for reasons of simplicity of
-implementation: This means an overridden ``deepCopy`` for ``ref T`` is really
-bound to ``T`` and not to ``ref T``. This also means that one cannot override
-``deepCopy`` for both ``ptr T`` and ``ref T`` at the same time; instead a
+implementation: This means an overridden `deepCopy` for `ref T` is really
+bound to `T` and not to `ref T`. This also means that one cannot override
+`deepCopy` for both `ptr T` and `ref T` at the same time; instead a
 helper distinct or object type has to be used for one pointer type.
 
 Assignments, moves and destruction are specified in
@@ -959,9 +961,9 @@ the `destructors <destructors.html>`_ document.
 deepCopy
 --------
 
-``=deepCopy`` is a builtin that is invoked whenever data is passed to
-a ``spawn``'ed proc to ensure memory safety. The programmer can override its
-behaviour for a specific ``ref`` or ``ptr`` type ``T``. (Later versions of the
+`=deepCopy` is a builtin that is invoked whenever data is passed to
+a `spawn`'ed proc to ensure memory safety. The programmer can override its
+behaviour for a specific `ref` or `ptr` type `T`. (Later versions of the
 language may weaken this restriction.)
 
 The signature has to be:
@@ -972,7 +974,7 @@ The signature has to be:
 This mechanism will be used by most data structures that support shared memory
 like channels to implement thread safe automatic memory management.
 
-The builtin ``deepCopy`` can even clone closures and their environments. See
+The builtin `deepCopy` can even clone closures and their environments. See
 the documentation of `spawn <#parallel-amp-spawn-spawn-statement>`_ for details.
 
 
@@ -982,7 +984,7 @@ Case statement macros
 Macros named `case` can rewrite `case` statements for certain types in order to
 implement `pattern matching`:idx:. The following example implements a
 simplistic form of pattern matching for tuples, leveraging the existing
-equality operator for tuples (as provided in ``system.==``):
+equality operator for tuples (as provided in `system.==`):
 
 .. code-block:: nim
     :test: "nim c $1"
@@ -1013,7 +1015,7 @@ equality operator for tuples (as provided in ``system.==``):
 
 
 Currently case statement macros must be enabled explicitly
-via ``{.experimental: "caseStmtMacros".}``.
+via `{.experimental: "caseStmtMacros".}`.
 
 `case` macros are subject to overload resolution. The type of the
 `case` statement's selector expression is matched against the type
@@ -1039,10 +1041,10 @@ compilation pipeline with user defined optimizations:
   let x = 3
   echo x * 2
 
-The compiler now rewrites ``x * 2`` as ``x + x``. The code inside the
-curlies is the pattern to match against. The operators ``*``,  ``**``,
-``|``, ``~`` have a special meaning in patterns if they are written in infix
-notation, so to match verbatim against ``*`` the ordinary function call syntax
+The compiler now rewrites `x * 2` as `x + x`. The code inside the
+curlies is the pattern to match against. The operators `*`,  `**`,
+`|`, `~` have a special meaning in patterns if they are written in infix
+notation, so to match verbatim against `*` the ordinary function call syntax
 needs to be used.
 
 Term rewriting macro are applied recursively, up to a limit. This means that
@@ -1080,7 +1082,7 @@ You can make one overload matching with a constraint and one without, and the
 one with a constraint will have precedence, and so you can handle both cases
 differently.
 
-So what about ``2 * a``? We should tell the compiler ``*`` is commutative. We
+So what about `2 * a`? We should tell the compiler `*` is commutative. We
 cannot really do that however as the following code only swaps arguments
 blindly:
 
@@ -1092,59 +1094,59 @@ What optimizers really need to do is a *canonicalization*:
 .. code-block:: nim
   template canonMul{`*`(a, b)}(a: int{lit}, b: int): int = b*a
 
-The ``int{lit}`` parameter pattern matches against an expression of
-type ``int``, but only if it's a literal.
+The `int{lit}` parameter pattern matches against an expression of
+type `int`, but only if it's a literal.
 
 
 
 Parameter constraints
 ---------------------
 
-The `parameter constraint`:idx: expression can use the operators ``|`` (or),
-``&`` (and) and ``~`` (not) and the following predicates:
+The `parameter constraint`:idx: expression can use the operators `|` (or),
+`&` (and) and `~` (not) and the following predicates:
 
 ===================      =====================================================
 Predicate                Meaning
 ===================      =====================================================
-``atom``                 The matching node has no children.
-``lit``                  The matching node is a literal like "abc", 12.
-``sym``                  The matching node must be a symbol (a bound
+`atom`                   The matching node has no children.
+`lit`                    The matching node is a literal like "abc", 12.
+`sym`                    The matching node must be a symbol (a bound
                          identifier).
-``ident``                The matching node must be an identifier (an unbound
+`ident`                  The matching node must be an identifier (an unbound
                          identifier).
-``call``                 The matching AST must be a call/apply expression.
-``lvalue``               The matching AST must be an lvalue.
-``sideeffect``           The matching AST must have a side effect.
-``nosideeffect``         The matching AST must have no side effect.
-``param``                A symbol which is a parameter.
-``genericparam``         A symbol which is a generic parameter.
-``module``               A symbol which is a module.
-``type``                 A symbol which is a type.
-``var``                  A symbol which is a variable.
-``let``                  A symbol which is a ``let`` variable.
-``const``                A symbol which is a constant.
-``result``               The special ``result`` variable.
-``proc``                 A symbol which is a proc.
-``method``               A symbol which is a method.
-``iterator``             A symbol which is an iterator.
-``converter``            A symbol which is a converter.
-``macro``                A symbol which is a macro.
-``template``             A symbol which is a template.
-``field``                A symbol which is a field in a tuple or an object.
-``enumfield``            A symbol which is a field in an enumeration.
-``forvar``               A for loop variable.
-``label``                A label (used in ``block`` statements).
-``nk*``                  The matching AST must have the specified kind.
-                         (Example: ``nkIfStmt`` denotes an ``if`` statement.)
-``alias``                States that the marked parameter needs to alias
+`call`                   The matching AST must be a call/apply expression.
+`lvalue`                 The matching AST must be an lvalue.
+`sideeffect`             The matching AST must have a side effect.
+`nosideeffect`           The matching AST must have no side effect.
+`param`                  A symbol which is a parameter.
+`genericparam`           A symbol which is a generic parameter.
+`module`                 A symbol which is a module.
+`type`                   A symbol which is a type.
+`var`                    A symbol which is a variable.
+`let`                    A symbol which is a `let` variable.
+`const`                  A symbol which is a constant.
+`result`                 The special `result` variable.
+`proc`                   A symbol which is a proc.
+`method`                 A symbol which is a method.
+`iterator`               A symbol which is an iterator.
+`converter`              A symbol which is a converter.
+`macro`                  A symbol which is a macro.
+`template`               A symbol which is a template.
+`field`                  A symbol which is a field in a tuple or an object.
+`enumfield`              A symbol which is a field in an enumeration.
+`forvar`                 A for loop variable.
+`label`                  A label (used in `block` statements).
+`nk*`                    The matching AST must have the specified kind.
+                         (Example: `nkIfStmt` denotes an `if` statement.)
+`alias`                  States that the marked parameter needs to alias
                          with *some* other parameter.
-``noalias``              States that *every* other parameter must not alias
+`noalias`                States that *every* other parameter must not alias
                          with the marked parameter.
 ===================      =====================================================
 
 Predicates that share their name with a keyword have to be escaped with
 backticks.
-The ``alias`` and ``noalias`` predicates refer not only to the matching AST,
+The `alias` and `noalias` predicates refer not only to the matching AST,
 but also to every other bound parameter; syntactically they need to occur after
 the ordinary AST predicates:
 
@@ -1158,14 +1160,14 @@ the ordinary AST predicates:
 Pattern operators
 -----------------
 
-The operators ``*``,  ``**``, ``|``, ``~`` have a special meaning in patterns
+The operators `*`,  `**`, `|`, `~` have a special meaning in patterns
 if they are written in infix notation.
 
 
-The ``|`` operator
+The `|` operator
 ~~~~~~~~~~~~~~~~~~
 
-The ``|`` operator if used as infix operator creates an ordered choice:
+The `|` operator if used as infix operator creates an ordered choice:
 
 .. code-block:: nim
   template t{0|1}(): untyped = 3
@@ -1182,15 +1184,15 @@ constant folding, so the following does not work:
   echo 1
 
 The reason is that the compiler already transformed the 1 into "1" for
-the ``echo`` statement. However, a term rewriting macro should not change the
-semantics anyway. In fact they can be deactivated with the ``--patterns:off``
-command line option or temporarily with the ``patterns`` pragma.
+the `echo` statement. However, a term rewriting macro should not change the
+semantics anyway. In fact they can be deactivated with the `--patterns:off`
+command line option or temporarily with the `patterns` pragma.
 
 
-The ``{}`` operator
+The `{}` operator
 ~~~~~~~~~~~~~~~~~~~
 
-A pattern expression can be bound to a pattern parameter via the ``expr{param}``
+A pattern expression can be bound to a pattern parameter via the `expr{param}`
 notation:
 
 .. code-block:: nim
@@ -1200,10 +1202,10 @@ notation:
   echo a
 
 
-The ``~`` operator
+The `~` operator
 ~~~~~~~~~~~~~~~~~~
 
-The ``~`` operator is the **not** operator in patterns:
+The `~` operator is the **not** operator in patterns:
 
 .. code-block:: nim
   template t{x = (~x){y} and (~x){z}}(x, y, z: bool) =
@@ -1218,11 +1220,11 @@ The ``~`` operator is the **not** operator in patterns:
   echo a
 
 
-The ``*`` operator
+The `*` operator
 ~~~~~~~~~~~~~~~~~~
 
-The ``*`` operator can *flatten* a nested binary expression like ``a & b & c``
-to ``&(a, b, c)``:
+The `*` operator can *flatten* a nested binary expression like `a & b & c`
+to `&(a, b, c)`:
 
 .. code-block:: nim
   var
@@ -1243,19 +1245,19 @@ to ``&(a, b, c)``:
 
 
 The second operator of `*` must be a parameter; it is used to gather all the
-arguments. The expression ``"my" && (space & "awe" && "some " ) && "concat"``
-is passed to ``optConc`` in ``a`` as a special list (of kind ``nkArgList``)
-which is flattened into a call expression; thus the invocation of ``optConc``
+arguments. The expression `"my" && (space & "awe" && "some " ) && "concat"`
+is passed to `optConc` in `a` as a special list (of kind `nkArgList`)
+which is flattened into a call expression; thus the invocation of `optConc`
 produces:
 
 .. code-block:: nim
    `&&`("my", space & "awe", "some ", "concat")
 
 
-The ``**`` operator
+The `**` operator
 ~~~~~~~~~~~~~~~~~~~
 
-The ``**`` is much like the ``*`` operator, except that it gathers not only
+The `**` is much like the `*` operator, except that it gathers not only
 all the arguments, but also the matched operators in reverse polish notation:
 
 .. code-block:: nim
@@ -1280,8 +1282,8 @@ all the arguments, but also the matched operators in reverse polish notation:
 
   echo x + y * z - x
 
-This passes the expression ``x + y * z - x`` to the ``optM`` macro as
-an ``nnkArglist`` node containing::
+This passes the expression `x + y * z - x` to the `optM` macro as
+an `nnkArglist` node containing::
 
   Arglist
     Sym "x"
@@ -1292,14 +1294,14 @@ an ``nnkArglist`` node containing::
     Sym "x"
     Sym "-"
 
-(Which is the reverse polish notation of ``x + y * z - x``.)
+(Which is the reverse polish notation of `x + y * z - x`.)
 
 
 Parameters
 ----------
 
 Parameters in a pattern are type checked in the matching process. If a
-parameter is of the type ``varargs`` it is treated specially and it can match
+parameter is of the type `varargs` it is treated specially and it can match
 0 or more arguments in the AST to be matched against:
 
 .. code-block:: nim
@@ -1341,9 +1343,9 @@ The following example shows how some form of hoisting can be implemented:
     echo match("(a b c)", peg"'(' @ ')'")
     echo match("W_HI_Le", peg"\y 'while'")
 
-The ``optPeg`` template optimizes the case of a peg constructor with a string
+The `optPeg` template optimizes the case of a peg constructor with a string
 literal, so that the pattern will only be parsed once at program startup and
-stored in a global ``gl`` which is then re-used. This optimization is called
+stored in a global `gl` which is then re-used. This optimization is called
 hoisting because it is comparable to classical loop hoisting.
 
 
@@ -1369,7 +1371,7 @@ constraints affect ordinary overloading resolution then:
   optLit(constant)
   optLit(variable)
 
-However, the constraints ``alias`` and ``noalias`` are not available in
+However, the constraints `alias` and `noalias` are not available in
 ordinary routines.
 
 
@@ -1377,26 +1379,26 @@ Parallel & Spawn
 ================
 
 Nim has two flavors of parallelism:
-1) `Structured`:idx: parallelism via the ``parallel`` statement.
-2) `Unstructured`:idx: parallelism via the standalone ``spawn`` statement.
+1) `Structured`:idx: parallelism via the `parallel` statement.
+2) `Unstructured`:idx: parallelism via the standalone `spawn` statement.
 
 Nim has a builtin thread pool that can be used for CPU intensive tasks. For
-IO intensive tasks the ``async`` and ``await`` features should be
+IO intensive tasks the `async` and `await` features should be
 used instead. Both parallel and spawn need the `threadpool <threadpool.html>`_
 module to work.
 
-Somewhat confusingly, ``spawn`` is also used in the ``parallel`` statement
-with slightly different semantics. ``spawn`` always takes a call expression of
-the form ``f(a, ...)``. Let ``T`` be ``f``'s return type. If ``T`` is ``void``
-then ``spawn``'s return type is also ``void`` otherwise it is ``FlowVar[T]``.
+Somewhat confusingly, `spawn` is also used in the `parallel` statement
+with slightly different semantics. `spawn` always takes a call expression of
+the form `f(a, ...)`. Let `T` be `f`'s return type. If `T` is `void`
+then `spawn`'s return type is also `void` otherwise it is `FlowVar[T]`.
 
-Within a ``parallel`` section sometimes the ``FlowVar[T]`` is eliminated
-to ``T``. This happens when ``T`` does not contain any GC'ed memory.
-The compiler can ensure the location in ``location = spawn f(...)`` is not
-read prematurely within a ``parallel`` section and so there is no need for
-the overhead of an indirection via ``FlowVar[T]`` to ensure correctness.
+Within a `parallel` section sometimes the `FlowVar[T]` is eliminated
+to `T`. This happens when `T` does not contain any GC'ed memory.
+The compiler can ensure the location in `location = spawn f(...)` is not
+read prematurely within a `parallel` section and so there is no need for
+the overhead of an indirection via `FlowVar[T]` to ensure correctness.
 
-**Note**: Currently exceptions are not propagated between ``spawn``'ed tasks!
+**Note**: Currently exceptions are not propagated between `spawn`'ed tasks!
 
 
 Spawn statement
@@ -1415,25 +1417,25 @@ Spawn statement
   sync()
 
 For reasons of type safety and implementation simplicity the expression
-that ``spawn`` takes is restricted:
+that `spawn` takes is restricted:
 
-* It must be a call expression ``f(a, ...)``.
-* ``f`` must be ``gcsafe``.
-* ``f`` must not have the calling convention ``closure``.
-* ``f``'s parameters may not be of type ``var``.
-  This means one has to use raw ``ptr``'s for data passing reminding the
+* It must be a call expression `f(a, ...)`.
+* `f` must be `gcsafe`.
+* `f` must not have the calling convention `closure`.
+* `f`'s parameters may not be of type `var`.
+  This means one has to use raw `ptr`'s for data passing reminding the
   programmer to be careful.
-* ``ref`` parameters are deeply copied which is a subtle semantic change and
+* `ref` parameters are deeply copied which is a subtle semantic change and
   can cause performance problems but ensures memory safety. This deep copy
-  is performed via ``system.deepCopy`` and so can be overridden.
-* For *safe* data exchange between ``f`` and the caller a global ``TChannel``
+  is performed via `system.deepCopy` and so can be overridden.
+* For *safe* data exchange between `f` and the caller a global `TChannel`
   needs to be used. However, since spawn can return a result, often no further
   communication is required.
 
 
-``spawn`` executes the passed expression on the thread pool and returns
-a `data flow variable`:idx: ``FlowVar[T]`` that can be read from. The reading
-with the ``^`` operator is **blocking**. However, one can use ``blockUntilAny`` to
+`spawn` executes the passed expression on the thread pool and returns
+a `data flow variable`:idx: `FlowVar[T]` that can be read from. The reading
+with the `^` operator is **blocking**. However, one can use `blockUntilAny` to
 wait on multiple flow variables at the same time:
 
 .. code-block:: nim
@@ -1450,8 +1452,8 @@ wait on multiple flow variables at the same time:
     discard blockUntilAny(responses)
 
 Data flow variables ensure that no data races
-are possible. Due to technical limitations not every type ``T`` is possible in
-a data flow variable: ``T`` has to be of the type ``ref``, ``string``, ``seq``
+are possible. Due to technical limitations not every type `T` is possible in
+a data flow variable: `T` has to be of the type `ref`, `string`, `seq`
 or of a type that doesn't contain a type that is garbage collected. This
 restriction is not hard to work-around in practice.
 
@@ -1483,7 +1485,7 @@ Example:
 
 
 The parallel statement is the preferred mechanism to introduce parallelism in a
-Nim program. A subset of the Nim language is valid within a ``parallel``
+Nim program. A subset of the Nim language is valid within a `parallel`
 section. This subset is checked during semantic analysis to be free of data
 races. A sophisticated `disjoint checker`:idx: ensures that no data races are
 possible even though shared memory is extensively supported!
@@ -1491,25 +1493,25 @@ possible even though shared memory is extensively supported!
 The subset is in fact the full language with the following
 restrictions / changes:
 
-* ``spawn`` within a ``parallel`` section has special semantics.
-* Every location of the form ``a[i]`` and ``a[i..j]`` and ``dest`` where
-  ``dest`` is part of the pattern ``dest = spawn f(...)`` has to be
+* `spawn` within a `parallel` section has special semantics.
+* Every location of the form `a[i]` and `a[i..j]` and `dest` where
+  `dest` is part of the pattern `dest = spawn f(...)` has to be
   provably disjoint. This is called the *disjoint check*.
-* Every other complex location ``loc`` that is used in a spawned
-  proc (``spawn f(loc)``) has to be immutable for the duration of
-  the ``parallel`` section. This is called the *immutability check*. Currently
+* Every other complex location `loc` that is used in a spawned
+  proc (`spawn f(loc)`) has to be immutable for the duration of
+  the `parallel` section. This is called the *immutability check*. Currently
   it is not specified what exactly "complex location" means. We need to make
   this an optimization!
 * Every array access has to be provably within bounds. This is called
   the *bounds check*.
 * Slices are optimized so that no copy is performed. This optimization is not
-  yet performed for ordinary slices outside of a ``parallel`` section.
+  yet performed for ordinary slices outside of a `parallel` section.
 
 
 Guards and locks
 ================
 
-Apart from ``spawn`` and ``parallel`` Nim also provides all the common low level
+Apart from `spawn` and `parallel` Nim also provides all the common low level
 concurrency mechanisms like locks, atomic intrinsics or condition variables.
 
 Nim significantly improves on the safety of these features via additional
@@ -1528,13 +1530,13 @@ Guards and the locks section
 Protecting global variables
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
-Object fields and global variables can be annotated via a ``guard`` pragma:
+Object fields and global variables can be annotated via a `guard` pragma:
 
 .. code-block:: nim
   var glock: TLock
   var gdata {.guard: glock.}: int
 
-The compiler then ensures that every access of ``gdata`` is within a ``locks``
+The compiler then ensures that every access of `gdata` is within a `locks`
 section:
 
 .. code-block:: nim
@@ -1547,11 +1549,11 @@ section:
     {.locks: [glock].}:
       echo gdata
 
-Top level accesses to ``gdata`` are always allowed so that it can be initialized
+Top level accesses to `gdata` are always allowed so that it can be initialized
 conveniently. It is *assumed* (but not enforced) that every top level statement
 is executed before any concurrent action happens.
 
-The ``locks`` section deliberately looks ugly because it has no runtime
+The `locks` section deliberately looks ugly because it has no runtime
 semantics and should not be used directly! It should only be used in templates
 that also implement some form of locking at runtime:
 
@@ -1580,7 +1582,7 @@ model low level lockfree mechanisms:
   echo atomicRead(atomicCounter)
 
 
-The ``locks`` pragma takes a list of lock expressions ``locks: [a, b, ...]``
+The `locks` pragma takes a list of lock expressions `locks: [a, b, ...]`
 in order to support *multi lock* statements. Why these are essential is
 explained in the `lock levels <#guards-and-locks-lock-levels>`_ section.
 
@@ -1588,7 +1590,7 @@ explained in the `lock levels <#guards-and-locks-lock-levels>`_ section.
 Protecting general locations
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
-The ``guard`` annotation can also be used to protect fields within an object.
+The `guard` annotation can also be used to protect fields within an object.
 The guard then needs to be another field within the same object or a
 global variable.
 
@@ -1606,7 +1608,7 @@ expressivity of the language:
       lock counters[i].L:
         inc counters[i].v
 
-The access to field ``x.v`` is allowed since its guard ``x.L``  is active.
+The access to field `x.v` is allowed since its guard `x.L`  is active.
 After template expansion, this amounts to:
 
 .. code-block:: nim
@@ -1619,10 +1621,10 @@ After template expansion, this amounts to:
         finally:
           pthread_mutex_unlock(counters[i].L)
 
-There is an analysis that checks that ``counters[i].L`` is the lock that
-corresponds to the protected location ``counters[i].v``. This analysis is called
+There is an analysis that checks that `counters[i].L` is the lock that
+corresponds to the protected location `counters[i].v`. This analysis is called
 `path analysis`:idx: because it deals with paths to locations
-like ``obj.field[i].fieldB[j]``.
+like `obj.field[i].fieldB[j]`.
 
 The path analysis is **currently unsound**, but that doesn't make it useless.
 Two paths are considered equivalent if they are syntactically the same.
@@ -1644,10 +1646,10 @@ potential deadlocks during semantic analysis. A lock level is an constant
 integer in the range 0..1_000. Lock level 0 means that no lock is acquired at
 all.
 
-If a section of code holds a lock of level ``M`` than it can also acquire any
-lock of level ``N < M``. Another lock of level ``M`` cannot be acquired. Locks
+If a section of code holds a lock of level `M` than it can also acquire any
+lock of level `N < M`. Another lock of level `M` cannot be acquired. Locks
 of the same level can only be acquired *at the same time* within a
-single ``locks`` section:
+single `locks` section:
 
 .. code-block:: nim
   var a, b: TLock[2]
@@ -1672,8 +1674,8 @@ single ``locks`` section:
 
 
 Here is how a typical multilock statement can be implemented in Nim. Note how
-the runtime check is required to ensure a global ordering for two locks ``a``
-and ``b`` of the same lock level:
+the runtime check is required to ensure a global ordering for two locks `a`
+and `b` of the same lock level:
 
 .. code-block:: nim
   template multilock(a, b: ptr TLock; body: untyped) =
@@ -1691,9 +1693,9 @@ and ``b`` of the same lock level:
         pthread_mutex_unlock(b)
 
 
-Whole routines can also be annotated with a ``locks`` pragma that takes a lock
+Whole routines can also be annotated with a `locks` pragma that takes a lock
 level. This then means that the routine may acquire locks of up to this level.
-This is essential so that procs can be called within a ``locks`` section:
+This is essential so that procs can be called within a `locks` section:
 
 .. code-block:: nim
   proc p() {.locks: 3.} = discard
@@ -1704,17 +1706,17 @@ This is essential so that procs can be called within a ``locks`` section:
     p()
 
 
-As usual ``locks`` is an inferred effect and there is a subtype
-relation: ``proc () {.locks: N.}`` is a subtype of ``proc () {.locks: M.}``
+As usual `locks` is an inferred effect and there is a subtype
+relation: `proc () {.locks: N.}` is a subtype of `proc () {.locks: M.}`
 iff (M <= N).
 
-The ``locks`` pragma can also take the special value ``"unknown"``. This
+The `locks` pragma can also take the special value `"unknown"`. This
 is useful in the context of dynamic method dispatching. In the following
-example, the compiler can infer a lock level of 0 for the ``base`` case.
+example, the compiler can infer a lock level of 0 for the `base` case.
 However, one of the overloaded methods calls a procvar which is
-potentially locking. Thus, the lock level of calling ``g.testMethod``
+potentially locking. Thus, the lock level of calling `g.testMethod`
 cannot be inferred statically, leading to compiler warnings. By using
-``{.locks: "unknown".}``, the base method can be marked explicitly as
+`{.locks: "unknown".}`, the base method can be marked explicitly as
 having unknown lock level as well:
 
 .. code-block:: nim
@@ -1736,8 +1738,8 @@ they will rewrite as long as there is a match.
 There was no way to ensure some rewrite happens only once,
 e.g. when rewriting term to same term plus extra content.
 
-``noRewrite`` pragma can actually prevent further rewriting on marked code,
-e.g. with given example ``echo("ab")`` will be rewritten just once:
+`noRewrite` pragma can actually prevent further rewriting on marked code,
+e.g. with given example `echo("ab")` will be rewritten just once:
 
 .. code-block:: nim
   template pwnEcho{echo(x)}(x: untyped) =
@@ -1745,7 +1747,7 @@ e.g. with given example ``echo("ab")`` will be rewritten just once:
 
   echo "ab"
 
-``noRewrite`` pragma can be useful to control term-rewriting macros recursion.
+`noRewrite` pragma can be useful to control term-rewriting macros recursion.
 
 
 Aliasing restrictions in parameter passing
@@ -1755,8 +1757,8 @@ Aliasing restrictions in parameter passing
 implementation and need to be fleshed out further.
 
 "Aliasing" here means that the underlying storage locations overlap in memory
-at runtime. An "output parameter" is a parameter of type ``var T``,
-an input parameter is any parameter that is not of type ``var``.
+at runtime. An "output parameter" is a parameter of type `var T`,
+an input parameter is any parameter that is not of type `var`.
 
 1. Two output parameters should never be aliased.
 2. An input and an output parameter should not be aliased.
@@ -1767,25 +1769,25 @@ an input parameter is any parameter that is not of type ``var``.
 
 One problem with rules 3 and 4 is that they affect specific global or thread
 local variables, but Nim's effect tracking only tracks "uses no global variable"
-via ``.noSideEffect``. The rules 3 and 4 can also be approximated by a different rule:
+via `.noSideEffect`. The rules 3 and 4 can also be approximated by a different rule:
 
 5. A global or thread local variable (or a location derived from such a location)
-   can only passed to a parameter of a ``.noSideEffect`` proc.
+   can only passed to a parameter of a `.noSideEffect` proc.
 
 
 Noalias annotation
 ==================
 
-Since version 1.4 of the Nim compiler, there is a ``.noalias`` annotation for variables
-and parameters. It is mapped directly to C/C++'s ``restrict`` keyword and means that
+Since version 1.4 of the Nim compiler, there is a `.noalias` annotation for variables
+and parameters. It is mapped directly to C/C++'s `restrict` keyword and means that
 the underlying pointer is pointing to a unique location in memory, no other aliases to
 this location exist. It is *unchecked* that this alias restriction is followed, if the
 restriction is violated, the backend optimizer is free to miscompile the code.
 This is an **unsafe** language feature.
 
 Ideally in later versions of the language, the restriction will be enforced at
-compile time. (Which is also why the name ``noalias`` was choosen instead of a more
-verbose name like ``unsafeAssumeNoAlias``.)
+compile time. (Which is also why the name `noalias` was choosen instead of a more
+verbose name like `unsafeAssumeNoAlias`.)
 
 
 Strict funcs
@@ -1796,7 +1798,7 @@ to the existing rule that a side effect is calling a function with side effects
 the following rule is also enforced:
 
 Any mutation to an object does count as a side effect if that object is reachable
-via a parameter that is not declared as a ``var`` parameter.
+via a parameter that is not declared as a `var` parameter.
 
 For example:
 
@@ -1830,14 +1832,14 @@ the `view types section <#view-types-algorithm>`_.
 View types
 ==========
 
-**Note**:  ``--experimental:views`` is more effective
-with ``--experimental:strictFuncs``.
+**Note**:  `--experimental:views` is more effective
+with `--experimental:strictFuncs`.
 
 A view type is a type that is or contains one of the following types:
 
-- ``var T`` (mutable view into ``T``)
-- ``lent T`` (immutable view into ``T``)
-- ``openArray[T]`` (pair of (pointer to array of ``T``, size))
+- `var T` (mutable view into `T`)
+- `lent T` (immutable view into `T`)
+- `openArray[T]` (pair of (pointer to array of `T`, size))
 
 For example:
 
@@ -1850,7 +1852,7 @@ For example:
     View4 = Table[openArray[char], int]
 
 
-Exceptions to this rule are types constructed via ``ptr`` or ``proc``.
+Exceptions to this rule are types constructed via `ptr` or `proc`.
 For example, the following types are **not** view types:
 
 .. code-block:: nim
@@ -1861,13 +1863,13 @@ For example, the following types are **not** view types:
     NotView3 = ptr array[4, var int]
 
 
-A *mutable* view type is a type that is or contains a ``var T`` type.
+A *mutable* view type is a type that is or contains a `var T` type.
 An *immutable* view type is a view type that is not a mutable view type.
 
 A *view* is a symbol (a let, var, const, etc.) that has a view type.
 
 Since version 1.4 Nim allows view types to be used as local variables.
-This feature needs to be enabled via ``{.experimental: "views".}``.
+This feature needs to be enabled via `{.experimental: "views".}`.
 
 A local variable of a view type *borrows* from the locations and
 it is statically enforced that the view does not outlive the location
@@ -1901,47 +1903,47 @@ For example:
 
 
 A local variable of a view type can borrow from a location
-derived from a parameter, another local variable, a global ``const`` or ``let``
-symbol or a thread-local ``var`` or ``let``.
+derived from a parameter, another local variable, a global `const` or `let`
+symbol or a thread-local `var` or `let`.
 
-Let ``p`` the proc that is analysed for the correctness of the borrow operation.
+Let `p` the proc that is analysed for the correctness of the borrow operation.
 
-Let ``source`` be one of:
+Let `source` be one of:
 
-- A formal parameter of ``p``. Note that this does not cover parameters of
+- A formal parameter of `p`. Note that this does not cover parameters of
   inner procs.
-- The ``result`` symbol of ``p``.
-- A local ``var`` or ``let`` or ``const`` of ``p``. Note that this does
+- The `result` symbol of `p`.
+- A local `var` or `let` or `const` of `p`. Note that this does
   not cover locals of inner procs.
-- A thread-local ``var`` or ``let``.
-- A global ``let`` or ``const``.
+- A thread-local `var` or `let`.
+- A global `let` or `const`.
 - A constant array/seq/object/tuple constructor.
 
 
 Path expressions
 ----------------
 
-A location derived from ``source`` is then defined as a path expression that
-has ``source`` as the owner. A path expression ``e`` is defined recursively:
+A location derived from `source` is then defined as a path expression that
+has `source` as the owner. A path expression `e` is defined recursively:
 
-- ``source`` itself is a path expression.
-- Container access like ``e[i]`` is a path expression.
-- Tuple access ``e[0]`` is a path expression.
-- Object field access ``e.field`` is a path expression.
-- ``system.toOpenArray(e, ...)`` is a path expression.
-- Pointer dereference ``e[]`` is a path expression.
-- An address ``addr e``, ``unsafeAddr e`` is a path expression.
-- A type conversion ``T(e)`` is a path expression.
-- A cast expression ``cast[T](e)`` is a path expression.
-- ``f(e, ...)`` is a path expression if ``f``'s return type is a view type.
-  Because the view can only have been borrowed from ``e``, we then know
-  that owner of ``f(e, ...)`` is ``e``.
+- `source` itself is a path expression.
+- Container access like `e[i]` is a path expression.
+- Tuple access `e[0]` is a path expression.
+- Object field access `e.field` is a path expression.
+- `system.toOpenArray(e, ...)` is a path expression.
+- Pointer dereference `e[]` is a path expression.
+- An address `addr e`, `unsafeAddr e` is a path expression.
+- A type conversion `T(e)` is a path expression.
+- A cast expression `cast[T](e)` is a path expression.
+- `f(e, ...)` is a path expression if `f`'s return type is a view type.
+  Because the view can only have been borrowed from `e`, we then know
+  that owner of `f(e, ...)` is `e`.
 
 
 If a view type is used as a return type, the location must borrow from a location
 that is derived from the first parameter that is passed to the proc.
 See https://nim-lang.org/docs/manual.html#procedures-var-return-type for
-details about how this is done for ``var T``.
+details about how this is done for `var T`.
 
 A mutable view can borrow from a mutable location, an immutable view can borrow
 from both a mutable or an immutable location.
@@ -1979,8 +1981,8 @@ The scope of the view does not matter:
 
 The analysis requires as much precision about mutations as is reasonably obtainable,
 so it is more effective with the experimental `strict funcs <#strict-funcs>`_
-feature. In other words ``--experimental:views`` works better
-with ``--experimental:strictFuncs``.
+feature. In other words `--experimental:views` works better
+with `--experimental:strictFuncs`.
 
 The analysis is currently control flow insensitive:
 
@@ -1992,8 +1994,8 @@ The analysis is currently control flow insensitive:
       s.setLen 0
     echo v.field
 
-In this example, the compiler assumes that ``s.setLen 0`` invalidates the
-borrow operation of ``v`` even though a human being can easily see that it
+In this example, the compiler assumes that `s.setLen 0` invalidates the
+borrow operation of `v` even though a human being can easily see that it
 will never do that at runtime.
 
 
@@ -2016,9 +2018,9 @@ A borrow operation ends with the last usage of the view variable.
 Reborrows
 ---------
 
-A view ``v`` can borrow from multiple different locations. However, the borrow
-is always the full span of ``v``'s lifetime and every location that is borrowed
-from is sealed during ``v``'s lifetime.
+A view `v` can borrow from multiple different locations. However, the borrow
+is always the full span of `v`'s lifetime and every location that is borrowed
+from is sealed during `v`'s lifetime.
 
 
 Algorithm
@@ -2034,41 +2036,41 @@ a notion of an "abstract time", in the implementation it's a simple integer that
 incremented for every visited node.
 
 In the second pass information about the underlying object "graphs" is computed.
-Let ``v`` be a parameter or a local variable. Let ``G(v)`` be the graph
-that ``v`` belongs to. A graph is defined by the set of variables that belong
-to the graph. Initially for all ``v``: ``G(v) = {v}``. Every variable can only
+Let `v` be a parameter or a local variable. Let `G(v)` be the graph
+that `v` belongs to. A graph is defined by the set of variables that belong
+to the graph. Initially for all `v`: `G(v) = {v}`. Every variable can only
 be part of a single graph.
 
-Assignments like ``a = b`` "connect" two variables, both variables end up in the
-same graph ``{a, b} = G(a) = G(b)``. Unfortunately, the pattern to look for is
+Assignments like `a = b` "connect" two variables, both variables end up in the
+same graph `{a, b} = G(a) = G(b)`. Unfortunately, the pattern to look for is
 much more complex than that and can involve multiple assignment targets
 and sources::
 
   f(x, y) = g(a, b)
 
-connects ``x`` and ``y`` to ``a`` and ``b``: ``G(x) = G(y) = G(a) = G(b) = {x, y, a, b}``.
+connects `x` and `y` to `a` and `b`: `G(x) = G(y) = G(a) = G(b) = {x, y, a, b}`.
 A type based alias analysis rules out some of these combinations, for example
-a ``string`` value cannot possibly be connected to a ``seq[int]``.
+a `string` value cannot possibly be connected to a `seq[int]`.
 
-A pattern like ``v[] = value`` or ``v.field = value`` marks ``G(v)`` as mutated.
+A pattern like `v[] = value` or `v.field = value` marks `G(v)` as mutated.
 After the second pass a set of disjoint graphs was computed.
 
 For strict functions it is then enforced that there is no graph that is both mutated
 and has an element that is an immutable parameter (that is a parameter that is not
-of type ``var T``).
+of type `var T`).
 
-For borrow checking a different set of checks is performed. Let ``v`` be the view
-and ``b`` the location that is borrowed from.
+For borrow checking a different set of checks is performed. Let `v` be the view
+and `b` the location that is borrowed from.
 
-- The lifetime of ``v`` must not exceed ``b``'s lifetime. Note: The lifetime of
+- The lifetime of `v` must not exceed `b`'s lifetime. Note: The lifetime of
   a parameter is the complete proc body.
-- If ``v`` is a mutable view and ``v`` is used to actually mutate the
-  borrowed location, then ``b`` has to be a mutable location.
+- If `v` is a mutable view and `v` is used to actually mutate the
+  borrowed location, then `b` has to be a mutable location.
   Note: If it is not actually used for mutation, borrowing a mutable view from an
   immutable location is allowed! This allows for many important idioms and will be
   justified in an upcoming RFC.
-- During ``v``'s lifetime, ``G(b)`` can only be modified by ``v`` (and only if
-  ``v`` is a mutable view).
-- If ``v`` is ``result`` then ``b`` has to be a location derived from the first
+- During `v`'s lifetime, `G(b)` can only be modified by `v` (and only if
+  `v` is a mutable view).
+- If `v` is `result` then `b` has to be a location derived from the first
   formal parameter or from a constant location.
 - A view cannot be used for a read or a write access before it was assigned to.

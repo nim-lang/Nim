@@ -102,7 +102,7 @@ type
 
   TTypeSeq* = seq[PType]
   TypeCache* = Table[SigHash, Rope]
-  TypeCacheWithOwner* = Table[SigHash, tuple[str: Rope, owner: PSym]]
+  TypeCacheWithOwner* = Table[SigHash, tuple[str: Rope, owner: int32]]
 
   CodegenFlag* = enum
     preventStackTrace,  # true if stack traces need to be prevented
@@ -202,7 +202,7 @@ proc newProc*(prc: PSym, module: BModule): BProc =
   result.sigConflicts = initCountTable[string]()
 
 proc newModuleList*(g: ModuleGraph): BModuleList =
-  BModuleList(typeInfoMarker: initTable[SigHash, tuple[str: Rope, owner: PSym]](),
+  BModuleList(typeInfoMarker: initTable[SigHash, tuple[str: Rope, owner: int32]](),
     config: g.config, graph: g, nimtvDeclared: initIntSet())
 
 iterator cgenModules*(g: BModuleList): BModule =
