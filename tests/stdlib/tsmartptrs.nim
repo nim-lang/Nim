@@ -1,5 +1,6 @@
 discard """
   targets: "c cpp"
+  disabled: "freebsd"
   matrix: "--gc:refc; --gc:orc; --gc:orc --threads:on"
 """
 
