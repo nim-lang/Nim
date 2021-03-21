@@ -636,7 +636,7 @@ Test1
     let output1 = input1.toHtml
     for i in 1..5:
       doAssert ($i & ". line" & $i) notin output1
-      doAssert ("<li>line" & $i & " " & $i & "</li>") in output1
+      check ("<li>line" & $i & " " & $i & "</li>") in output1
 
     let input2 = dedent """
       3. line3
