@@ -249,9 +249,6 @@ Generic Operating System Services
   (also called *console*). The implementation simply uses ANSI escape
   sequences and does not depend on any other module.
 
-* `rdstdin <rdstdin.html>`_
-  This module contains code for reading from stdin.
-
 
 Math libraries
 --------------
@@ -519,6 +516,7 @@ Regular expressions
   expressions. The current implementation uses PCRE.
 
 
+
 Database support
 ----------------
 
@@ -533,6 +531,13 @@ Database support
 * `db_sqlite <db_sqlite.html>`_
   A higher level SQLite database wrapper. The same interface is implemented
   for other databases too.
+
+
+Generic Operating System Services
+---------------------------------
+
+* `rdstdin <rdstdin.html>`_
+  This module contains code for reading from stdin.
 
 
 Wrappers
