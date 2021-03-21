@@ -348,7 +348,8 @@ proc handleGenericInvocation(cl: var TReplTypeVars, t: PType): PType =
         header[i] = x
         propagateToOwner(header, x)
     else:
-      hasTypeDescParam = true
+      if x.kind == tyTypeDesc:
+        hasTypeDescParam = true
       propagateToOwner(header, x)
 
   if header != t:
