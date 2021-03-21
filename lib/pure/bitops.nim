@@ -30,7 +30,7 @@ import std/private/since
 from std/private/vmutils import forwardImpl, toUnsigned
 
 
-# sets.nim cannot import bitops, but bitops can use include
+# sets.nim cannot import bitops, but bitops can use import
 # system/sets to eliminate code duplication. sets.nim defines
 # countBits32 and countBits64.
 import system/sets
@@ -491,6 +491,10 @@ elif useICC_builtins:
 
 func countSetBits*(x: SomeInteger): int {.inline.} =
   ## Counts the set bits in an integer (also called `Hamming weight`:idx:).
+  runnableExamples:
+    doAssert countSetBits(0b0000_0011'u8) == 2
+    doAssert countSetBits(0b1010_1010'u8) == 4
+
   result = countSetBitsImpl(x)
 
 func popcount*(x: SomeInteger): int {.inline.} =

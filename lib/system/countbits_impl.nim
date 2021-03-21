@@ -51,7 +51,6 @@ elif useVCC_builtins:
       importc: "__popcnt64", header: "<intrin.h>".}
 
 elif useICC_builtins:
-
   # Intel compiler intrinsics: http://fulla.fnal.gov/intel/compiler_c/main_cls/intref_cls/common/intref_allia_misc.htm
   # see also: https://software.intel.com/en-us/node/523362
   # Count the number of bits set to 1 in an integer a, and return that count in dst.
@@ -63,10 +62,6 @@ elif useICC_builtins:
 
 func countSetBitsImpl*(x: SomeInteger): int {.inline.} =
   ## Counts the set bits in an integer (also called `Hamming weight`:idx:).
-  runnableExamples:
-    doAssert countSetBits(0b0000_0011'u8) == 2
-    doAssert countSetBits(0b1010_1010'u8) == 4
-
   # TODO: figure out if ICC support _popcnt32/_popcnt64 on platform without POPCNT.
   # like GCC and MSVC
   when x is SomeSignedInt:
