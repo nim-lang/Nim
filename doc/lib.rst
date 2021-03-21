@@ -250,7 +250,7 @@ Generic Operating System Services
   sequences and does not depend on any other module.
 
 * `rdstdin <rdstdin.html>`_
-  This module contains code for reading from stdin. On UNIX the linenoise library is wrapped and set up to provide default key bindings (e.g. you can navigate with the arrow keys). On Windows system.readLine is used. This suffices because Windows' console already provides the wanted functionality.
+  This module contains code for reading from stdin.
 
 
 Math libraries
@@ -593,4 +593,3 @@ Unstable
 
 * `atomics <atomics.html>`_
   Types and operations for atomic operations and lockless algorithms.
-
