@@ -187,4 +187,5 @@ proc processModule*(graph: ModuleGraph; module: PSym; idgen: IdGenerator;
     closeParser(p)
     if s.kind != llsStdIn: break
   closePasses(graph, a)
+  closeRodFile(graph, module)
   result = true
