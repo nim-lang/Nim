@@ -357,11 +357,8 @@ Parsers
 * `json <json.html>`_
   High-performance JSON parser.
 
-* `jsonutils <jsonutils.html>`_
+* `std/jsonutils <jsonutils.html>`_
   This module implements a hookable (de)serialization for arbitrary types.
-
-* `parsejson <parsejson.html>`_
-  This module implements a JSON parser. It is used and exported by the `json` standard library module, but can also be used in its own right.
 
 * `lexbase <lexbase.html>`_
   This is a low-level module that implements an extremely efficient buffering
@@ -376,6 +373,9 @@ Parsers
 
 * `parsecsv <parsecsv.html>`_
   The `parsecsv` module implements a simple high-performance CSV parser.
+
+* `parsejson <parsejson.html>`_
+  This module implements a JSON parser. It is used and exported by the `json <json.html>`_ module, but can also be used in its own right.
 
 * `parseopt <parseopt.html>`_
   The `parseopt` module implements a command line option parser.
@@ -465,6 +465,9 @@ Miscellaneous
 * `coro <coro.html>`_
   This module implements experimental coroutines in Nim.
 
+* `std/enumerate <enumerate.html>`_
+  This module implements `enumerate` syntactic sugar based on Nim's macro system.
+
 * `logging <logging.html>`_
   This module implements a simple logger.
 
@@ -480,10 +483,7 @@ Miscellaneous
 * `std/varints <varints.html>`_
   Decode variable-length integers that are compatible with SQLite.
 
-* `enumerate <enumerate.html>`_
-  This module implements `enumerate` syntactic sugar based on Nim's macro system.
-
-* `with <with.html>`_
+* `std/with <with.html>`_
   This module implements the `with` macro for easy function chaining.
 
 
