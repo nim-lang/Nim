@@ -239,6 +239,8 @@
 
 - Added `jsconsole.dir`, `jsconsole.dirxml`, `jsconsole.timeStamp`.
 
+- Added dollar `$` and `len` for `jsre.RegExp`.
+
 
 ## Language changes
 
