@@ -30,10 +30,6 @@ import std/private/since
 from std/private/vmutils import forwardImpl, toUnsigned
 
 
-# sets.nim cannot import bitops, but bitops can use import
-# system/sets to eliminate code duplication. sets.nim defines
-# countBits32 and countBits64.
-import system/sets
 
 func bitnot*[T: SomeInteger](x: T): T {.magic: "BitnotI".}
   ## Computes the `bitwise complement` of the integer `x`.
