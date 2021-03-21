@@ -74,6 +74,7 @@ type
 
   PRstNode* = ref RstNode    ## an RST node
   RstNodeSeq* = seq[PRstNode]
+  RstAnchorKind* = enum raDefault, raVisited, raExplicit, raFromTitle, raInterpolated
   RstNode* {.acyclic, final.} = object ## AST node (result of RST parsing)
     case kind*: RstNodeKind ## the node's kind
     of rnLeaf, rnSmiley:
@@ -96,8 +97,8 @@ type
       discard
     anchor*: string           ## anchor, internal link target
                               ## (aka HTML id tag, aka Latex label/hypertarget)
+    anchorKind*: RstAnchorKind ## kind of `anchor`
     sons*: RstNodeSeq        ## the node's sons
-    anchorGen*: string        ## generated anchors from context
 
 proc len*(n: PRstNode): int =
   result = len(n.sons)

@@ -306,7 +306,7 @@ proc renderAux(d: PDoc, n: PRstNode, html, tex: string, result: var string, useA
   for i in countup(0, len(n)-1): renderRstToOut(d, n.sons[i], tmp)
   case d.target
   of outHtml:
-    let anchor = if useAnchor: n.anchorGen else: n.anchor.idS
+    let anchor = if useAnchor: n.anchor else: n.anchor.idS
     result.addf(html, [tmp, anchor])
   of outLatex: result.addf(tex,  [tmp, n.anchor.idS])
 
@@ -1143,19 +1143,22 @@ proc computeAnchorGen(n: PRstNode) =
   var idLast = 0
   proc impl(n: PRstNode) =
     if n == nil: return
-    n.anchorGen = "\0" # special char to indicate we've visited this node.
+    n.anchorKind = raVisited # can be over-written below
     template update(anchorNew) =
       let anchor = anchorNew
-      n.anchorGen = anchor
+      n.anchor = anchor
       anchorLast = anchor
       idLast = 0
     if n.anchor.len > 0:
+      n.anchorKind = raExplicit
       update(n.anchor)
     elif n.kind in {rnHeadline}:
+      n.anchorKind = raFromTitle
       update(n.rstnodeToRefname)
     elif n.kind in {rnParagraph, rnBulletItem, rnEnumItem}:
+      n.anchorKind = raInterpolated
       idLast.inc
-      n.anchorGen = "-" & anchorLast & "-" & $idLast
+      n.anchor = "-" & anchorLast & "-" & $idLast
     for ai in n.sons: impl(ai)
   impl(n)
 
@@ -1165,7 +1168,7 @@ proc renderRstToOut(d: PDoc, n: PRstNode, result: var string) =
   var anchorLink = ""
   if generateAnchors:
     anchorLink = """<a class="nimanchor" id="$2" href="#$2">🔗</a> """
-    if n.anchorGen.len == 0: computeAnchorGen(n)
+    if n.anchorKind == raDefault: computeAnchorGen(n)
 
   case n.kind
   of rnInner: renderAux(d, n, result)
