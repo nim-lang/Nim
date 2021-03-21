@@ -435,8 +435,8 @@ proc semTemplBody(c: var TemplCtx, n: PNode): PNode =
   of nkLetSection: semTemplSomeDecl(c, n, skLet)
   of nkFormalParams:
     checkMinSonsLen(n, 1, c.c.config)
-    n[0] = semTemplBody(c, n[0])
     semTemplSomeDecl(c, n, skParam, 1)
+    n[0] = semTemplBody(c, n[0])
   of nkConstSection:
     for i in 0..<n.len:
       var a = n[i]
