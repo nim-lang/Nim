@@ -340,6 +340,21 @@ proc getNumber(L: var Lexer, result: var Token) =
     L.bufpos = msgPos
     lexMessage(L, msgKind, msg % t.literal)
 
+  proc cmpSuffix(L: Lexer, prev: int, endOfSuffix: int, chs: array[1, char]): bool =
+    if (endOfSuffix - prev) != 2:
+      return false
+    return L.buf[prev + 1] == chs[0]
+
+  proc cmpSuffix(L: Lexer, prev: int, endOfSuffix: int, chs: array[2, char]): bool =
+    if (endOfSuffix - prev) != 3:
+      return false
+    return L.buf[prev + 1] == chs[0] and L.buf[prev + 2] == chs[1]
+
+  proc cmpSuffix(L: Lexer, prev: int, endOfSuffix: int, chs: array[3, char]): bool =
+    if (endOfSuffix - prev) != 4:
+      return false
+    return L.buf[prev + 1] == chs[0] and L.buf[prev + 2] == chs[1] and L.buf[prev + 3] == chs[2]
+
   var
     startpos, endpos: int
     xi: BiggestInt
@@ -410,85 +425,79 @@ proc getNumber(L: var Lexer, result: var Token) =
 
   # Second stage, find out if there's a datatype suffix and handle it
   var postPos = endpos
-  var hasSuffix = false
-  var internalSuffix = false
-  if L.buf[postPos] == '\'':
-    hasSuffix = true
+  let suffixMarker = (L.buf[postPos] == '\'')
+  if suffixMarker:
     inc(postPos)
+    if not (L.buf[postPos] in SymStartChars):
+      lexMessageLitNum(L, "invalid number suffix: '$1'", startpos)
+
   # 2A: handle the builtin literal versions
-  if L.buf[postPos] in {'f', 'F', 'd', 'D', 'i', 'I', 'u', 'U'}:
-    case L.buf[postPos]
-    of 'f', 'F':
-      if (L.buf[postPos + 1] == '3') and (L.buf[postPos + 2] == '2'):
-        result.tokType = tkFloat32Lit
-        inc(postPos, 3)
-        internalSuffix = true
-      elif (L.buf[postPos + 1] == '6') and (L.buf[postPos + 2] == '4'):
-        result.tokType = tkFloat64Lit
-        inc(postPos, 3)
-        internalSuffix = true
-      elif (L.buf[postPos + 1] == '1') and
-           (L.buf[postPos + 2] == '2') and
-           (L.buf[postPos + 3] == '8'):
-        result.tokType = tkFloat128Lit
-        inc(postPos, 4)
-        internalSuffix = true
-      elif not (L.buf[postPos + 1] in SymChars): # standalone 'f'
-        result.tokType = tkFloat32Lit
-        inc(postPos)
-        internalSuffix = true
-    of 'd', 'D':  # ad hoc convenience shortcut for f64
-      if not (L.buf[postPos + 1] in SymChars):  # standalone 'd'
-        result.tokType = tkFloat64Lit
-        inc(postPos)
-        internalSuffix = true
-    of 'i', 'I':
-      if (L.buf[postPos + 1] == '6') and (L.buf[postPos + 2] == '4'):
-        result.tokType = tkInt64Lit
-        inc(postPos, 3)
-        internalSuffix = true
-      elif (L.buf[postPos + 1] == '3') and (L.buf[postPos + 2] == '2'):
-        result.tokType = tkInt32Lit
-        inc(postPos, 3)
-        internalSuffix = true
-      elif (L.buf[postPos + 1] == '1') and (L.buf[postPos + 2] == '6'):
-        result.tokType = tkInt16Lit
-        inc(postPos, 3)
-        internalSuffix = true
-      elif (L.buf[postPos + 1] == '8'):
-        result.tokType = tkInt8Lit
-        inc(postPos, 2)
-        internalSuffix = true
-    of 'u', 'U':
-      if (L.buf[postPos + 1] == '6') and (L.buf[postPos + 2] == '4'):
-        result.tokType = tkUInt64Lit
-        inc(postPos, 3)
-        internalSuffix = true
-      elif (L.buf[postPos + 1] == '3') and (L.buf[postPos + 2] == '2'):
-        result.tokType = tkUInt32Lit
-        inc(postPos, 3)
-        internalSuffix = true
-      elif (L.buf[postPos + 1] == '1') and (L.buf[postPos + 2] == '6'):
-        result.tokType = tkUInt16Lit
-        inc(postPos, 3)
-        internalSuffix = true
-      elif (L.buf[postPos + 1] == '8'):
-        result.tokType = tkUInt8Lit
-        inc(postPos, 2)
-        internalSuffix = true
-      elif not (L.buf[postPos + 1] in SymChars): # standalone 'u'
-        result.tokType = tkUIntLit
-        inc(postPos)
-        internalSuffix = true
+  var internalSuffix = false
+  var endOfSuffix = postPos
+  while L.buf[endOfSuffix] in SymStartChars + {'0'..'9'}:
+    inc(endOfSuffix)
+  if L.buf[postPos] in {'f', 'F'}:
+    internalSuffix = true  # tentatively found
+    if postPos == endOfSuffix - 1:  # stand-alone 'f'
+      result.tokType = tkFloat32Lit
+      inc(postPos)
+    elif cmpSuffix(L, postPos, endOfSuffix, ['3', '2']):
+      result.tokType = tkFloat32Lit
+      inc(postPos, 3)
+    elif cmpSuffix(L, postPos, endOfSuffix, ['6', '4']):
+      result.tokType = tkFloat64Lit
+      inc(postPos, 3)
+    elif cmpSuffix(L, postPos, endOfSuffix, ['1', '2', '8']):
+      result.tokType = tkFloat128Lit
+      inc(postPos, 4)
     else:
-      discard
+      internalSuffix = false  # not found
+  elif L.buf[postPos] in {'d', 'D'}:
+    if postPos == endOfSuffix - 1:  # stand-alone 'd'
+      result.tokType = tkFloat64Lit
+      inc(postPos)
+      internalSuffix = true
+  elif L.buf[postPos] in {'i', 'I'}:
+    internalSuffix = true  # tentatively found
+    if cmpSuffix(L, postPos, endOfSuffix, ['8']):
+      result.tokType = tkInt8Lit
+      inc(postPos, 2)
+    elif cmpSuffix(L, postPos, endOfSuffix, ['1', '6']):
+      result.tokType = tkInt16Lit
+      inc(postPos, 3)
+    elif cmpSuffix(L, postPos, endOfSuffix, ['3', '2']):
+      result.tokType = tkInt32Lit
+      inc(postPos, 3)
+    elif cmpSuffix(L, postPos, endOfSuffix, ['6', '4']):
+      result.tokType = tkInt64Lit
+      inc(postPos, 3)
+    else:
+      internalSuffix = false # not found
+  elif L.buf[postPos] in {'u', 'U'}:
+    internalSuffix = true  # tentatively found
+    if postPos == endOfSuffix - 1:  # stand-alone 'u'
+      result.tokType = tkUIntLit
+      inc(postPos)
+    elif cmpSuffix(L, postPos, endOfSuffix, ['8']):
+      result.tokType = tkUInt8Lit
+      inc(postPos, 2)
+    elif cmpSuffix(L, postPos, endOfSuffix, ['1', '6']):
+      result.tokType = tkUInt16Lit
+      inc(postPos, 3)
+    elif cmpSuffix(L, postPos, endOfSuffix, ['3', '2']):
+      result.tokType = tkUInt32Lit
+      inc(postPos, 3)
+    elif cmpSuffix(L, postPos, endOfSuffix, ['6', '4']):
+      result.tokType = tkUInt64Lit
+      inc(postPos, 3)
+    else:
+      internalSuffix = false  # not found
+
   # 2B: else look for user-definited types that are adjacent (no spaces)
-  if hasSuffix and not internalSuffix:
-    if L.buf[postPos] in SymStartChars:
-      result.tokType = tkStrNumLit
-      L.bufpos = endpos # do NOT trim off the suffix
-      return
-    lexMessageLitNum(L, "invalid number suffix: '$1'", startpos)
+  if suffixMarker and not internalSuffix:
+    result.tokType = tkStrNumLit
+    L.bufpos = endpos # do NOT trim off the suffix
+    return
 
   # Third stage, extract actual number as a fitting literal
   L.bufpos = startpos            # restore position
