@@ -15,6 +15,27 @@
 ## It also provides some fast iterators over lines in text files (or
 ## other "line-like", variable length, delimited records).
 
+runnableExamples("-r:off"):
+  # Example of how to create a memfile and
+  # write data to it and read it again. 
+  import memfiles, os
+
+  let fn = "/tmp/test.mmap"
+
+  if fileExists(fn): removeFile(fn)
+
+  var mm = open(fn, mode = fmWrite, newFileSize = 20)
+
+  let data = "Hello".cstring
+  copyMem(mm.mem, cast[pointer](data), data.len+1)
+  mm.close()
+
+  var mm_full = memfiles.open(fn, mode = fmRead)
+  echo "size:", mm_full.size
+  echo cast[cstring](mm_full.mem)
+  mm_full.close()
+
+
 when defined(windows):
   import winlean
 elif defined(posix):
