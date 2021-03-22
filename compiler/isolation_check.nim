@@ -85,6 +85,9 @@ proc checkIsolate*(n: PNode): bool =
     of nkCharLit..nkNilLit:
       result = true
     of nkCallKinds:
+      # XXX: as long as we don't update the analysis while examining arguments
+      #      we can do an early check of the return type, otherwise this is a
+      #      bug and needs to be moved below
       if n[0].typ.flags * {tfGcSafe, tfNoSideEffect} == {}:
         return false
       for i in 1..<n.len:
