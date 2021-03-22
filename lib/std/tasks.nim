@@ -4,7 +4,7 @@ template transfer[T: not ref](x: T): T =
   move(x)
 
 type
-  Task = object
+  Task* = object
     callback: proc (args: pointer) {.nimcall.}
     args: pointer
 
@@ -143,9 +143,6 @@ macro toTask*(e: typed{nkCall | nkCommand}): Task =
   echo result.repr
 
 when isMainModule:
-  import std/threadpool
-
-
   block:
     proc hello(a: int, c: openArray[seq[int]]) =
       echo a
