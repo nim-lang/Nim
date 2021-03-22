@@ -1004,7 +1004,6 @@ proc isCustomLit(n: PNode): bool =
     (n[1].kind == nkSym and n[1].sym.name.s.startsWith('\''))
 
 proc gsub(g: var TSrcGen, n: PNode, c: TContext) =
-  dbg n.kind, n
   if isNil(n): return
   var
     a: TContext
@@ -1199,7 +1198,6 @@ proc gsub(g: var TSrcGen, n: PNode, c: TContext) =
     else:
       gsub(g, n, 0)
   of nkPar, nkClosure:
-    dbg "D20210322T025150"
     put(g, tkParLe, "(")
     gcomma(g, n, c)
     put(g, tkParRi, ")")
@@ -1457,14 +1455,10 @@ proc gsub(g: var TSrcGen, n: PNode, c: TContext) =
     putWithSpace(g, tkEquals, "=")
     gsub(g, n, 1)
   of nkStmtList, nkStmtListExpr, nkStmtListType:
-    dbg n.kind, n.len
-    for i in 0..<n.len:
-      dbg n[i].kind
     if n.len == 1 and n[0].kind == nkDiscardStmt:
       put(g, tkParLe, "(")
       gsub(g, n[0])
       put(g, tkParRi, ")")
-      # gstmts(g, n, emptyContext)
     else:
       gstmts(g, n, emptyContext)
   of nkIfStmt:
