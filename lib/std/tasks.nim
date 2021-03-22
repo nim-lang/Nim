@@ -1,19 +1,25 @@
 import std/[macros]
 
-template transfer[T: not ref](x: T): T =
-  move(x)
 
 type
-  Task* = object
+  Task* = object ## `Task` contains the callback and its arguments.
     callback: proc (args: pointer) {.nimcall.}
     args: pointer
 
-proc invoke*(task: Task) =
-  ## Tasks can only be used once.
+proc invoke*(task: Task) {.inline.} =
+  ## Invokes the `task`.
+  ##
+  ## .. warning:: `task` can only be used once.
   task.callback(task.args)
 
-
 macro toTask*(e: typed{nkCall | nkCommand}): Task =
+  ## Converts the call and its arguments to `Task`.
+  runnableExamples:
+    proc hello(a: int) = echo a
+
+    let b = toTask hello(13)
+    assert b is Task
+
   template addAllNode =
     let scratchDotExpr = newDotExpr(scratchIdent, formalParams[i][0])
     case e[i].kind
@@ -36,14 +42,15 @@ macro toTask*(e: typed{nkCall | nkCommand}): Task =
     echo e.treeRepr
     let formalParams = impl[0]
 
-    var scratchRecList = newNimNode(nnkRecList)
-    var scratchAssignList: seq[NimNode]
-    var tempAssignList: seq[NimNode]
-    var callNode: seq[NimNode]
+    var
+      scratchRecList = newNimNode(nnkRecList)
+      scratchAssignList: seq[NimNode]
+      tempAssignList: seq[NimNode]
+      callNode: seq[NimNode]
 
-    let objTemp = genSym(ident = "obj")
-    let transferProc = newIdentNode("transfer")
-
+    let
+      objTemp = genSym(ident = "obj")
+      transferProc = newIdentNode("move") # template transfer[T: not ref](x: T): T = move(x)
 
     for i in 1 ..< formalParams.len:
       let param = formalParams[i][1]
@@ -56,19 +63,21 @@ macro toTask*(e: typed{nkCall | nkCommand}): Task =
           scratchRecList.add newIdentDefs(newIdentNode(formalParams[i][0].strVal), param[1])
           addAllNode()
         elif param[0].eqIdent("varargs") or param[0].eqIdent("openArray"):
-          let seqType = nnkBracketExpr.newTree(newIdentNode("seq"), param[1])
-          scratchRecList.add newIdentDefs(newIdentNode(formalParams[i][0].strVal), seqType)
-          let scratchDotExpr = newDotExpr(scratchIdent, formalParams[i][0])
-          let seqCallNode = newcall("@", e[i])
+          let
+            seqType = nnkBracketExpr.newTree(newIdentNode("seq"), param[1])
+            scratchDotExpr = newDotExpr(scratchIdent, formalParams[i][0])
+            seqCallNode = newcall("@", e[i])
+
           case e[i].kind
           of nnkSym:
             scratchAssignList.add newCall(newIdentNode("=sink"), scratchDotExpr, seqCallNode)
           else:
             scratchAssignList.add newAssignment(scratchDotExpr, seqCallNode)
 
-          let tempNode = genSym(kind = nskTemp, ident = "")
+          let tempNode = genSym(kind = nskTemp)
           callNode.add nnkExprEqExpr.newTree(formalParams[i][0], tempNode)
           tempAssignList.add newLetStmt(tempNode, newCall(transferProc, newDotExpr(objTemp, formalParams[i][0])))
+          scratchRecList.add newIdentDefs(newIdentNode(formalParams[i][0].strVal), seqType)
         else:
           scratchRecList.add newIdentDefs(newIdentNode(formalParams[i][0].strVal), param)
           addAllNode()
@@ -77,13 +86,11 @@ macro toTask*(e: typed{nkCall | nkCommand}): Task =
       of nnkSym, nnkPtrTy:
         scratchRecList.add newIdentDefs(newIdentNode(formalParams[i][0].strVal), param)
         addAllNode()
-      of nnkCharLit .. nnkNilLit:
+      of nnkCharLit..nnkNilLit:
         # TODO params doesn't work for static string
         callNode.add nnkExprEqExpr.newTree(formalParams[i][0], e[i])
       else:
         error("not supported type kinds")
-        # scratchRecList.add newIdentDefs(newIdentNode(formalParams[i][0].strVal), getType(param))
-
 
     let stmtList = newStmtList()
     let scratchObjType = genSym(kind = nskType, ident = "ScratchObj")
@@ -140,44 +147,55 @@ macro toTask*(e: typed{nkCall | nkCommand}): Task =
   echo "-------------------------------------------------------------"
   echo result.repr
 
+
+runnableExamples:
+  var num = 0
+  proc hello(a: int) = inc num, a
+
+  let b = toTask hello(13)
+  b.invoke()
+
+  assert num == 13
+
 when isMainModule:
-  block:
-    proc hello(c: seq[int], a: int) =
-      echo a
-      echo c
-
-    let x = 12
-    var y = @[1, 3, 1, 4, 5, x, 1]
-    let b = toTask hello(y, 12)
-    b.invoke()
-
-  block:
-    proc hello(c: seq[int], a: int) =
-      echo a
-      echo c
-
-    var x = 2
-    let b = toTask hello(@[1, 3, 1, 4, 5, x, 1], 12)
-    b.invoke()
-
-  block:
-    proc hello(c: array[7, int], a: int) =
-      echo a
-      echo c
-
-    let b = toTask hello([1, 3, 1, 4, 5, 2, 1], 12)
-    b.invoke()
-
-  block:
-    proc hello(c: seq[int], a: int) =
-      echo a
-      echo c
-
-    let b = toTask hello(@[1, 3, 1, 4, 5, 2, 1], 12)
-    b.invoke()
-
   when defined(testing):
     import std/strformat
+
+
+    block:
+      proc hello(c: seq[int], a: int) =
+        echo a
+        echo c
+
+      let x = 12
+      var y = @[1, 3, 1, 4, 5, x, 1]
+      let b = toTask hello(y, 12)
+      b.invoke()
+
+    block:
+      proc hello(c: seq[int], a: int) =
+        echo a
+        echo c
+
+      var x = 2
+      let b = toTask hello(@[1, 3, 1, 4, 5, x, 1], 12)
+      b.invoke()
+
+    block:
+      proc hello(c: array[7, int], a: int) =
+        echo a
+        echo c
+
+      let b = toTask hello([1, 3, 1, 4, 5, 2, 1], 12)
+      b.invoke()
+
+    block:
+      proc hello(c: seq[int], a: int) =
+        echo a
+        echo c
+
+      let b = toTask hello(@[1, 3, 1, 4, 5, 2, 1], 12)
+      b.invoke()
 
     block:
       proc hello(a: int, c: seq[int]) =
@@ -186,6 +204,9 @@ when isMainModule:
 
       let b = toTask hello(8, @[1, 3, 1, 4, 5, 2, 1])
       b.invoke()
+
+      let c = toTask 8.hello(@[1, 3, 1, 4, 5, 2, 1])
+      c.invoke()
 
 
     block:
@@ -237,6 +258,9 @@ when isMainModule:
 
       let b = toTask hello(addr x)
       b.invoke()
+
+      let c = toTask x.addr.hello
+      invoke(c)
     block:
       type
         Test = ref object
