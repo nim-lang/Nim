@@ -82,6 +82,8 @@ macro toTask*(e: typed{nkCall | nkCommand}): Task =
           scratchRecList.add newIdentDefs(newIdentNode(formalParams[i][0].strVal), param)
           addAllNode()
       of nnkBracket, nnkObjConstr:
+        # passing by static parameters
+        # so we pass them directly instead of passing by scratchObj
         callNode.add nnkExprEqExpr.newTree(formalParams[i][0], e[i])
       of nnkSym, nnkPtrTy:
         scratchRecList.add newIdentDefs(newIdentNode(formalParams[i][0].strVal), param)
@@ -145,7 +147,7 @@ macro toTask*(e: typed{nkCall | nkCommand}): Task =
       Task(callback: `funcName`, args: nil)
 
   echo "-------------------------------------------------------------"
-  echo result.repr
+  # echo result.repr
 
 
 runnableExamples:
