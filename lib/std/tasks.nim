@@ -62,6 +62,8 @@ macro toTask*(e: typed{nkCall | nkCommand}): Task =
         if param[0].eqIdent("sink"):
           scratchRecList.add newIdentDefs(newIdentNode(formalParams[i][0].strVal), param[1])
           addAllNode()
+        elif param[0].eqIdent("typeDesc"):
+          callNode.add nnkExprEqExpr.newTree(formalParams[i][0], e[i])
         elif param[0].eqIdent("varargs") or param[0].eqIdent("openArray"):
           let
             seqType = nnkBracketExpr.newTree(newIdentNode("seq"), param[1])
@@ -160,6 +162,38 @@ runnableExamples:
   assert num == 13
 
 when isMainModule:
+
+  block:
+    proc hello(typ: typedesc) =
+      echo typ(12)
+
+    let b = toTask hello(int)
+    b.invoke()
+
+  block:
+    proc hello(a: int or seq[string]) =
+      echo a
+
+    let x = @["1", "2", "3", "4"]
+    let b = toTask hello(x)
+    b.invoke()
+
+  block:
+    proc hello(a: int or string) =
+      echo a
+
+    let x = "!2"
+    let b = toTask hello(x)
+    b.invoke()
+
+
+  block:
+    proc hello(a: int or string) =
+      echo a
+
+    let b = toTask hello(12)
+    b.invoke()
+
   when defined(testing):
     import std/strformat
 
