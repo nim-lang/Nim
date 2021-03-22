@@ -1,22 +1,30 @@
 discard """
-  cmd: "nim c -r -d:ssl $file"
-  exitcode: 0
+  matrix: "-d:ssl"
 """
 
 import std/net
+from std/strutils import `%`
 
-# Issue 15215 - https://github.com/nim-lang/Nim/issues/15215
+# bug #15215
 proc test() =
-  var
-    ctx = newContext()
-    socket = newSocket()
+  let ctx = newContext()
 
-  wrapSocket(ctx, socket)
+  proc fn(url: string) =
+    echo (url,)
+    let socket = newSocket()
+    defer: close(socket)
+    if url == "www.nim-lang.org":
+      connect(socket, url, Port(443), 4) # typically 20 could be enough
+    else:
+      connect(socket, url, Port(443), 5000) # typically 20 could be enough
+    send(socket, "GET / HTTP/1.0\nHost: $#\nConnection: close\n\n" % [url])
+    wrapSocket(ctx, socket)
 
-  connect(socket, "www.nim-lang.org", Port(443), 5000)
-
-  send(socket, "GET / HTTP/1.0\nHost: www.nim-lang.org\nConnection: close\n\n")
-
-  close(socket)
+  try:
+    fn("www.nim-lang.org")
+  except TimeoutError:
+    # refs #17458 this can give:
+    # Error: unhandled exception: Call to 'connect' timed out. [TimeoutError]
+    fn("www.google.com")
 
 test()
