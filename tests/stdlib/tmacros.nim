@@ -61,3 +61,9 @@ nnkInfix.newTree(
  (Ident "+")
  (IntLit 1)
  (IntLit 2))"""
+
+  block:
+    parseStmt.asMacro(static("proc fn(): int = 3*5"))
+    parseStmt.asMacro(static("proc fn2(): int = 3*5")) # no redefinition error, thanks to `genSym(nskMacro, "impl")`
+    assert fn() == 3*5
+    assert fn2() == 3*5

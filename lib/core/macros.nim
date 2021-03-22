@@ -1692,6 +1692,7 @@ macro asMacro*(fn: untyped, args: varargs[untyped]): untyped {.since: (1,5,1).} 
   ## Calls a proc `fn` with `NimNode` params as a macro. This avoids having to
   ## define a corresponding macro manually.
   runnableExamples:
+    assert lispRepr.asMacro(1 + 2) == """(Infix (Ident "+") (IntLit 1) (IntLit 2))"""
     assert treeRepr.asMacro(1 + 2) == """
 Infix
   Ident "+"
@@ -1700,6 +1701,10 @@ Infix
     # non-NimNode arguments can be passed via an explicit `static`:
     proc foo(a: NimNode, b: int): auto = (a.repr, b * 10)
     assert foo.asMacro("a" & nonexistant, static(3)) == ("\"a\" & nonexistant", 3 * 10)
+
+    assert parseExpr.asMacro(static("3*4")) == 3*4
+    parseStmt.asMacro(static("proc fn(): int = 3*5"))
+    assert fn() == 3*5
 
     # `foo.asMacro` generates a proc like this, and avoids having to define it manually:
     macro foo2(a: untyped, b: static int): untyped = newLit foo(a, b)
@@ -1713,15 +1718,15 @@ Infix
       body.add ai
     else:
       body.add newTree(nnkBracketExpr, [args2, newLit i])
+  let impl = genSym(nskMacro, "impl")
   result = quote do:
-    block:
-      macro impl(`args2`: varargs[untyped]): untyped =
-        when typeOrVoid(`body`) is void:
-          `body`
+    macro `impl`(`args2`: varargs[untyped]): untyped =
+      when typeOrVoid(`body`) is void:
+        `body`
+      else:
+        type T = typeof(`body`)
+        when T is NimNode: # or we could add a `newLit(a: NimNode)` overload
+          result = `body`
         else:
-          type T = typeof(`body`)
-          when T is NimNode: # or we could add a `newLit(a: NimNode)` overload
-            result = `body`
-          else:
-            result = newLit(`body`)
-      impl(`args`)
+          result = newLit(`body`)
+    `impl`(`args`)
