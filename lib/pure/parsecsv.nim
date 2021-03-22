@@ -14,9 +14,9 @@
 ## ===========
 ##
 ## .. code-block:: nim
-##   import parsecsv
-##   from os import paramStr
-##   from streams import newFileStream
+##   import std/parsecsv
+##   from std/os import paramStr
+##   from std/streams import newFileStream
 ##
 ##   var s = newFileStream(paramStr(1), fmRead)
 ##   if s == nil:
@@ -34,7 +34,7 @@
 ## reference for item access with `rowEntry <#rowEntry,CsvParser,string>`_:
 ##
 ## .. code-block:: nim
-##   import parsecsv
+##   import std/parsecsv
 ##
 ##   # Prepare a file
 ##   let content = """One,Two,Three,Four
@@ -120,7 +120,7 @@ proc open*(my: var CsvParser, input: Stream, filename: string,
   ## * `open proc <#open,CsvParser,string,char,char,char>`_ which creates the
   ##   file stream for you
   runnableExamples:
-    import streams
+    import std/streams
     var strm = newStringStream("One,Two,Three\n1,2,3\n10,20,30")
     var parser: CsvParser
     parser.open(strm, "tmp.csv")
@@ -142,7 +142,7 @@ proc open*(my: var CsvParser, filename: string,
   ## Similar to the `other open proc<#open,CsvParser,Stream,string,char,char,char>`_,
   ## but creates the file stream for you.
   runnableExamples:
-    from os import removeFile
+    from std/os import removeFile
     writeFile("tmp.csv", "One,Two,Three\n1,2,3\n10,20,300")
     var parser: CsvParser
     parser.open("tmp.csv")
@@ -203,7 +203,7 @@ proc processedRows*(my: var CsvParser): int =
   ## But even if `readRow <#readRow,CsvParser,int>`_ arrived at EOF then
   ## processed rows counter is incremented.
   runnableExamples:
-    import streams
+    import std/streams
 
     var strm = newStringStream("One,Two,Three\n1,2,3")
     var parser: CsvParser
@@ -229,7 +229,7 @@ proc readRow*(my: var CsvParser, columns = 0): bool =
   ##
   ## Blank lines are skipped.
   runnableExamples:
-    import streams
+    import std/streams
     var strm = newStringStream("One,Two,Three\n1,2,3\n\n10,20,30")
     var parser: CsvParser
     parser.open(strm, "tmp.csv")
@@ -296,7 +296,7 @@ proc readHeaderRow*(my: var CsvParser) =
   ## See also:
   ## * `rowEntry proc <#rowEntry,CsvParser,string>`_
   runnableExamples:
-    import streams
+    import std/streams
 
     var strm = newStringStream("One,Two,Three\n1,2,3")
     var parser: CsvParser
@@ -325,7 +325,7 @@ proc rowEntry*(my: var CsvParser, entry: string): var string =
   ## 
   ## If specified `entry` does not exist, raises KeyError.
   runnableExamples:
-    import streams
+    import std/streams
     var strm = newStringStream("One,Two,Three\n1,2,3\n\n10,20,30")
     var parser: CsvParser
     parser.open(strm, "tmp.csv")

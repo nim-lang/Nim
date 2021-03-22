@@ -75,14 +75,13 @@ const poDemon* {.deprecated.} = poDaemon ## Nim versions before 0.20
 proc execProcess*(command: string, workingDir: string = "",
     args: openArray[string] = [], env: StringTableRef = nil,
     options: set[ProcessOption] = {poStdErrToStdOut, poUsePath, poEvalCommand}):
-  TaintedString {.rtl, extern: "nosp$1",
+  string {.rtl, extern: "nosp$1",
                   tags: [ExecIOEffect, ReadIOEffect, RootEffect].}
   ## A convenience procedure that executes ``command`` with ``startProcess``
   ## and returns its output as a string.
   ##
-  ## **WARNING:** This function uses `poEvalCommand` by default for backwards
-  ## compatibility.
-  ## Make sure to pass options explicitly.
+  ## .. warning:: This function uses `poEvalCommand` by default for backwards
+  ##   compatibility. Make sure to pass options explicitly.
   ##
   ## See also:
   ## * `startProcess proc
@@ -155,9 +154,9 @@ proc startProcess*(command: string, workingDir: string = "",
 proc close*(p: Process) {.rtl, extern: "nosp$1", tags: [WriteIOEffect].}
   ## When the process has finished executing, cleanup related handles.
   ##
-  ## **WARNING:** If the process has not finished executing, this will forcibly
-  ## terminate the process. Doing so may result in zombie processes and
-  ## `pty leaks <http://stackoverflow.com/questions/27021641/how-to-fix-request-failed-on-channel-0>`_.
+  ## .. warning:: If the process has not finished executing, this will forcibly
+  ##   terminate the process. Doing so may result in zombie processes and
+  ##   `pty leaks <http://stackoverflow.com/questions/27021641/how-to-fix-request-failed-on-channel-0>`_.
 
 proc suspend*(p: Process) {.rtl, extern: "nosp$1", tags: [].}
   ## Suspends the process `p`.
@@ -187,6 +186,7 @@ proc terminate*(p: Process) {.rtl, extern: "nosp$1", tags: [].}
   ## * `suspend proc <#suspend,Process>`_
   ## * `resume proc <#resume,Process>`_
   ## * `kill proc <#kill,Process>`_
+  ## * `posix_utils.sendSignal(pid: Pid, signal: int) <posix_utils.html#sendSignal,Pid,int>`_
 
 proc kill*(p: Process) {.rtl, extern: "nosp$1", tags: [].}
   ## Kill the process `p`.
@@ -198,6 +198,7 @@ proc kill*(p: Process) {.rtl, extern: "nosp$1", tags: [].}
   ## * `suspend proc <#suspend,Process>`_
   ## * `resume proc <#resume,Process>`_
   ## * `terminate proc <#terminate,Process>`_
+  ## * `posix_utils.sendSignal(pid: Pid, signal: int) <posix_utils.html#sendSignal,Pid,int>`_
 
 proc running*(p: Process): bool {.rtl, extern: "nosp$1", tags: [].}
   ## Returns true if the process `p` is still running. Returns immediately.
@@ -213,8 +214,8 @@ proc waitForExit*(p: Process, timeout: int = -1): int {.rtl,
     extern: "nosp$1", tags: [].}
   ## Waits for the process to finish and returns `p`'s error code.
   ##
-  ## **WARNING**: Be careful when using `waitForExit` for processes created without
-  ## `poParentStreams` because they may fill output buffers, causing deadlock.
+  ## .. warning:: Be careful when using `waitForExit` for processes created without
+  ##   `poParentStreams` because they may fill output buffers, causing deadlock.
   ##
   ## On posix, if the process has exited because of a signal, 128 + signal
   ## number will be returned.
@@ -228,8 +229,8 @@ proc peekExitCode*(p: Process): int {.rtl, extern: "nosp$1", tags: [].}
 proc inputStream*(p: Process): Stream {.rtl, extern: "nosp$1", tags: [].}
   ## Returns ``p``'s input stream for writing to.
   ##
-  ## **WARNING**: The returned `Stream` should not be closed manually as it
-  ## is closed when closing the Process ``p``.
+  ## .. warning:: The returned `Stream` should not be closed manually as it
+  ##   is closed when closing the Process ``p``.
   ##
   ## See also:
   ## * `outputStream proc <#outputStream,Process>`_
@@ -242,8 +243,8 @@ proc outputStream*(p: Process): Stream {.rtl, extern: "nosp$1", tags: [].}
   ## Use `peekableOutputStream proc <#peekableOutputStream,Process>`_
   ## if you need to peek stream.
   ##
-  ## **WARNING**: The returned `Stream` should not be closed manually as it
-  ## is closed when closing the Process ``p``.
+  ## .. warning:: The returned `Stream` should not be closed manually as it
+  ##   is closed when closing the Process ``p``.
   ##
   ## See also:
   ## * `inputStream proc <#inputStream,Process>`_
@@ -256,8 +257,8 @@ proc errorStream*(p: Process): Stream {.rtl, extern: "nosp$1", tags: [].}
   ## Use `peekableErrorStream proc <#peekableErrorStream,Process>`_
   ## if you need to peek stream.
   ##
-  ## **WARNING**: The returned `Stream` should not be closed manually as it
-  ## is closed when closing the Process ``p``.
+  ## .. warning:: The returned `Stream` should not be closed manually as it
+  ##   is closed when closing the Process ``p``.
   ##
   ## See also:
   ## * `inputStream proc <#inputStream,Process>`_
@@ -268,8 +269,8 @@ proc peekableOutputStream*(p: Process): Stream {.rtl, extern: "nosp$1", tags: []
   ##
   ## You can peek returned stream.
   ##
-  ## **WARNING**: The returned `Stream` should not be closed manually as it
-  ## is closed when closing the Process ``p``.
+  ## .. warning:: The returned `Stream` should not be closed manually as it
+  ##   is closed when closing the Process ``p``.
   ##
   ## See also:
   ## * `outputStream proc <#outputStream,Process>`_
@@ -280,8 +281,8 @@ proc peekableErrorStream*(p: Process): Stream {.rtl, extern: "nosp$1", tags: [],
   ##
   ## You can run peek operation to returned stream.
   ##
-  ## **WARNING**: The returned `Stream` should not be closed manually as it
-  ## is closed when closing the Process ``p``.
+  ## .. warning:: The returned `Stream` should not be closed manually as it
+  ##   is closed when closing the Process ``p``.
   ##
   ## See also:
   ## * `errorStream proc <#errorStream,Process>`_
@@ -291,8 +292,8 @@ proc inputHandle*(p: Process): FileHandle {.rtl, extern: "nosp$1",
   tags: [].} =
   ## Returns ``p``'s input file handle for writing to.
   ##
-  ## **WARNING**: The returned `FileHandle` should not be closed manually as
-  ## it is closed when closing the Process ``p``.
+  ## .. warning:: The returned `FileHandle` should not be closed manually as
+  ##   it is closed when closing the Process ``p``.
   ##
   ## See also:
   ## * `outputHandle proc <#outputHandle,Process>`_
@@ -303,8 +304,8 @@ proc outputHandle*(p: Process): FileHandle {.rtl, extern: "nosp$1",
     tags: [].} =
   ## Returns ``p``'s output file handle for reading from.
   ##
-  ## **WARNING**: The returned `FileHandle` should not be closed manually as
-  ## it is closed when closing the Process ``p``.
+  ## .. warning:: The returned `FileHandle` should not be closed manually as
+  ##   it is closed when closing the Process ``p``.
   ##
   ## See also:
   ## * `inputHandle proc <#inputHandle,Process>`_
@@ -315,8 +316,8 @@ proc errorHandle*(p: Process): FileHandle {.rtl, extern: "nosp$1",
     tags: [].} =
   ## Returns ``p``'s error file handle for reading from.
   ##
-  ## **WARNING**: The returned `FileHandle` should not be closed manually as
-  ## it is closed when closing the Process ``p``.
+  ## .. warning:: The returned `FileHandle` should not be closed manually as
+  ##   it is closed when closing the Process ``p``.
   ##
   ## See also:
   ## * `inputHandle proc <#inputHandle,Process>`_
@@ -502,25 +503,25 @@ when not defined(useNimRtl):
       args: openArray[string] = [], env: StringTableRef = nil,
       options: set[ProcessOption] = {poStdErrToStdOut, poUsePath,
           poEvalCommand}):
-    TaintedString =
+    string =
 
     var p = startProcess(command, workingDir = workingDir, args = args,
         env = env, options = options)
     var outp = outputStream(p)
-    result = TaintedString""
-    var line = newStringOfCap(120).TaintedString
+    result = ""
+    var line = newStringOfCap(120)
     while true:
       # FIXME: converts CR-LF to LF.
       if outp.readLine(line):
-        result.string.add(line.string)
-        result.string.add("\n")
+        result.add(line)
+        result.add("\n")
       elif not running(p): break
     close(p)
 
 template streamAccess(p) =
   assert poParentStreams notin p.options, "API usage error: stream access not allowed when you use poParentStreams"
 
-when defined(Windows) and not defined(useNimRtl):
+when defined(windows) and not defined(useNimRtl):
   # We need to implement a handle stream for Windows:
   type
     FileHandleStream = ref object of StreamObj
@@ -930,7 +931,7 @@ elif not defined(useNimRtl):
     result = cast[cstringArray](alloc0((counter + 1) * sizeof(cstring)))
     var i = 0
     for key, val in envPairs():
-      var x = key.string & "=" & val.string
+      var x = key & "=" & val
       result[i] = cast[cstring](alloc(x.len+1))
       copyMem(result[i], addr(x[0]), x.len+1)
       inc(i)
@@ -979,7 +980,7 @@ elif not defined(useNimRtl):
         when not defined(android): "/bin/sh"
         else: "/system/bin/sh"
       data.sysCommand = useShPath
-      sysArgsRaw = @[data.sysCommand, "-c", command]
+      sysArgsRaw = @[useShPath, "-c", command]
       assert args.len == 0, "`args` has to be empty when using poEvalCommand."
     else:
       data.sysCommand = command
@@ -1232,7 +1233,7 @@ elif not defined(useNimRtl):
 
   when defined(macosx) or defined(freebsd) or defined(netbsd) or
        defined(openbsd) or defined(dragonfly):
-    import kqueue, times
+    import kqueue
 
     proc waitForExit(p: Process, timeout: int = -1): int =
       if p.exitFlag:
@@ -1570,7 +1571,7 @@ elif not defined(useNimRtl):
 proc execCmdEx*(command: string, options: set[ProcessOption] = {
                 poStdErrToStdOut, poUsePath}, env: StringTableRef = nil,
                 workingDir = "", input = ""): tuple[
-                output: TaintedString,
+                output: string,
                 exitCode: int] {.tags:
                 [ExecIOEffect, ReadIOEffect, RootEffect], gcsafe.} =
   ## A convenience proc that runs the `command`, and returns its `output` and
@@ -1591,7 +1592,7 @@ proc execCmdEx*(command: string, options: set[ProcessOption] = {
   ##
   ## .. code-block:: Nim
   ##   var result = execCmdEx("nim r --hints:off -", options = {}, input = "echo 3*4")
-  ##   import strutils, strtabs
+  ##   import std/[strutils, strtabs]
   ##   stripLineEnd(result[0]) ## portable way to remove trailing newline, if any
   ##   doAssert result == ("12", 0)
   ##   doAssert execCmdEx("ls --nonexistant").exitCode != 0
@@ -1617,12 +1618,12 @@ proc execCmdEx*(command: string, options: set[ProcessOption] = {
     inputStream(p).write(input)
   close inputStream(p)
 
-  result = (TaintedString"", -1)
-  var line = newStringOfCap(120).TaintedString
+  result = ("", -1)
+  var line = newStringOfCap(120)
   while true:
     if outp.readLine(line):
-      result[0].string.add(line.string)
-      result[0].string.add("\n")
+      result[0].add(line)
+      result[0].add("\n")
     else:
       result[1] = peekExitCode(p)
       if result[1] != -1: break

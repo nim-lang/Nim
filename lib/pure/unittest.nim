@@ -9,11 +9,6 @@
 
 ## :Author: Zahary Karadjov
 ##
-## **Note**: Instead of ``unittest.nim``, please consider to use
-## the ``testament`` tool which offers process isolation for your tests.
-## Also ``when isMainModule: doAssert conditionHere`` is usually a
-## much simpler solution for testing purposes.
-##
 ## This module implements boilerplate to make unit testing easy.
 ##
 ## The test status and name is printed after any output or traceback.
@@ -22,8 +17,17 @@
 ## parent test as failed. Setup and teardown are inherited. Setup can be
 ## overridden locally.
 ##
-## Compiled test files as well as ``nim c -r <testfile.nim>``
+## Compiled test files as well as `nim c -r <testfile.nim>`
 ## exit with 0 for success (no failed tests) or 1 for failure.
+##
+## Testament
+## =========
+##
+## Instead of `unittest`, please consider using
+## `the Testament tool <testament.html>`_ which offers process isolation for your tests.
+##
+## Alternatively using `when isMainModule: doAssert conditionHere` is usually a
+## much simpler solution for testing purposes.
 ##
 ## Running a single test
 ## =====================
@@ -39,7 +43,7 @@
 ## Running a single test suite
 ## ===========================
 ##
-## Specify the suite name delimited by ``"::"``.
+## Specify the suite name delimited by `"::"`.
 ##
 ## .. code::
 ##
@@ -50,7 +54,7 @@
 ##
 ## A single ``"*"`` can be used for globbing.
 ##
-## Delimit the end of a suite name with ``"::"``.
+## Delimit the end of a suite name with `"::"`.
 ##
 ## Tests matching **any** of the arguments are executed.
 ##
@@ -92,7 +96,7 @@
 ##         discard v[4]
 ##
 ##     echo "suite teardown: run once after the tests"
-## 
+##
 ## Limitations/Bugs
 ## ================
 ## Since `check` will rewrite some expressions for supporting checkpoints
@@ -104,16 +108,15 @@
 import std/private/since
 import std/exitprocs
 
-import
-  macros, strutils, streams, times, sets, sequtils
+import std/[macros, strutils, streams, times, sets, sequtils]
 
 when declared(stdout):
-  import os
+  import std/os
 
 const useTerminal = not defined(js)
 
 when useTerminal:
-  import terminal
+  import std/terminal
 
 type
   TestStatus* = enum ## The status of a test when it is done.
@@ -511,7 +514,9 @@ template suite*(name, body) {.dirty.} =
     finally:
       suiteEnded()
 
-template exceptionTypeName(e: typed): string = $e.name
+proc exceptionTypeName(e: ref Exception): string {.inline.} =
+  if e == nil: "<foreign exception>"
+  else: $e.name
 
 template test*(name, body) {.dirty.} =
   ## Define a single test case identified by `name`.
@@ -548,8 +553,11 @@ template test*(name, body) {.dirty.} =
       let e = getCurrentException()
       let eTypeDesc = "[" & exceptionTypeName(e) & "]"
       checkpoint("Unhandled exception: " & getCurrentExceptionMsg() & " " & eTypeDesc)
-      var stackTrace {.inject.} = e.getStackTrace()
-      fail()
+      if e == nil: # foreign
+        fail()
+      else:
+        var stackTrace {.inject.} = e.getStackTrace()
+        fail()
 
     finally:
       if testStatusIMPL == TestStatus.FAILED:
@@ -628,19 +636,17 @@ macro check*(conditions: untyped): untyped =
   ## Verify if a statement or a list of statements is true.
   ## A helpful error message and set checkpoints are printed out on
   ## failure (if ``outputLevel`` is not ``PRINT_NONE``).
-  ## Example:
-  ##
-  ## .. code-block:: nim
-  ##
-  ##  import strutils
-  ##
-  ##  check("AKB48".toLowerAscii() == "akb48")
-  ##
-  ##  let teams = {'A', 'K', 'B', '4', '8'}
-  ##
-  ##  check:
-  ##    "AKB48".toLowerAscii() == "akb48"
-  ##    'C' in teams
+  runnableExamples:
+    import std/strutils
+
+    check("AKB48".toLowerAscii() == "akb48")
+
+    let teams = {'A', 'K', 'B', '4', '8'}
+
+    check:
+      "AKB48".toLowerAscii() == "akb48"
+      'C' notin teams
+
   let checked = callsite()[1]
 
   template asgn(a: untyped, value: typed) =
@@ -669,14 +675,15 @@ macro check*(conditions: untyped): untyped =
           let paramAst = exp[i]
           if exp[i].kind == nnkIdent:
             result.printOuts.add getAst(print(argStr, paramAst))
-          if exp[i].kind in nnkCallKinds + {nnkDotExpr, nnkBracketExpr, nnkPar}:
+          if exp[i].kind in nnkCallKinds + {nnkDotExpr, nnkBracketExpr, nnkPar} and
+                  (exp[i].typeKind notin {ntyTypeDesc} or $exp[0] notin ["is", "isnot"]):
             let callVar = newIdentNode(":c" & $counter)
             result.assigns.add getAst(asgn(callVar, paramAst))
             result.check[i] = callVar
             result.printOuts.add getAst(print(argStr, callVar))
           if exp[i].kind == nnkExprEqExpr:
             # ExprEqExpr
-            #   Ident !"v"
+            #   Ident "v"
             #   IntLit 2
             result.check[i] = exp[i][1]
           if exp[i].typeKind notin {ntyTypeDesc}:
@@ -731,22 +738,19 @@ macro expect*(exceptions: varargs[typed], body: untyped): untyped =
   ## Test if `body` raises an exception found in the passed `exceptions`.
   ## The test passes if the raised exception is part of the acceptable
   ## exceptions. Otherwise, it fails.
-  ## Example:
-  ##
-  ## .. code-block:: nim
-  ##
-  ##  import math, random
-  ##  proc defectiveRobot() =
-  ##    randomize()
-  ##    case rand(1..4)
-  ##    of 1: raise newException(OSError, "CANNOT COMPUTE!")
-  ##    of 2: discard parseInt("Hello World!")
-  ##    of 3: raise newException(IOError, "I can't do that Dave.")
-  ##    else: assert 2 + 2 == 5
-  ##
-  ##  expect IOError, OSError, ValueError, AssertionDefect:
-  ##    defectiveRobot()
-  let exp = callsite()
+  runnableExamples:
+    import std/[math, random, strutils]
+    proc defectiveRobot() =
+      randomize()
+      case rand(1..4)
+      of 1: raise newException(OSError, "CANNOT COMPUTE!")
+      of 2: discard parseInt("Hello World!")
+      of 3: raise newException(IOError, "I can't do that Dave.")
+      else: assert 2 + 2 == 5
+    
+    expect IOError, OSError, ValueError, AssertionDefect:
+      defectiveRobot()
+
   template expectBody(errorTypes, lineInfoLit, body): NimNode {.dirty.} =
     try:
       body
@@ -758,13 +762,11 @@ macro expect*(exceptions: varargs[typed], body: untyped): untyped =
       checkpoint(lineInfoLit & ": Expect Failed, unexpected exception was thrown.")
       fail()
 
-  var body = exp[exp.len - 1]
-
   var errorTypes = newNimNode(nnkBracket)
-  for i in countup(1, exp.len - 2):
-    errorTypes.add(exp[i])
+  for exp in exceptions:
+    errorTypes.add(exp)
 
-  result = getAst(expectBody(errorTypes, exp.lineInfo, body))
+  result = getAst(expectBody(errorTypes, errorTypes.lineInfo, body))
 
 proc disableParamFiltering* =
   ## disables filtering tests with the command line params

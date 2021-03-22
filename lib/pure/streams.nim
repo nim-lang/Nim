@@ -29,7 +29,7 @@
 ##
 ## .. code-block:: Nim
 ##
-##  import streams
+##  import std/streams
 ##
 ##  var strm = newStringStream("""The first line
 ##  the second line
@@ -54,7 +54,7 @@
 ##
 ## .. code-block:: Nim
 ##
-##  import streams
+##  import std/streams
 ##
 ##  var strm = newFileStream("somefile.txt", fmWrite)
 ##  var line = ""
@@ -74,7 +74,7 @@
 ##
 ## .. code-block:: Nim
 ##
-##  import streams
+##  import std/streams
 ##
 ##  var strm = newFileStream("somefile.txt", fmRead)
 ##  var line = ""
@@ -95,8 +95,6 @@
 ## * `io module <io.html>`_ for `FileMode enum <io.html#FileMode>`_
 
 import std/private/since
-
-const taintMode = compileOption("taintmode")
 
 proc newEIO(msg: string): owned(ref IOError) =
   new(result)
@@ -124,7 +122,7 @@ type
     readDataStrImpl*: proc (s: Stream, buffer: var string, slice: Slice[int]): int
       {.nimcall, raises: [Defect, IOError, OSError], tags: [ReadIOEffect], gcsafe.}
 
-    readLineImpl*: proc(s: Stream, line: var TaintedString): bool
+    readLineImpl*: proc(s: Stream, line: var string): bool
       {.nimcall, raises: [Defect, IOError, OSError], tags: [ReadIOEffect], gcsafe.}
 
     readDataImpl*: proc (s: Stream, buffer: pointer, bufLen: int): int
@@ -146,7 +144,7 @@ proc flush*(s: Stream) =
   ## See also:
   ## * `close proc <#close,Stream>`_
   runnableExamples:
-    from os import removeFile
+    from std/os import removeFile
 
     var strm = newFileStream("somefile.txt", fmWrite)
 
@@ -216,7 +214,7 @@ proc getPosition*(s: Stream): int =
 
 proc readData*(s: Stream, buffer: pointer, bufLen: int): int =
   ## Low level proc that reads data into an untyped `buffer` of `bufLen` size.
-  ## 
+  ##
   ## **JS note:** `buffer` is treated as a ``ptr string`` and written to between
   ## ``0..<bufLen``.
   runnableExamples:
@@ -293,7 +291,7 @@ when (NimMajor, NimMinor) >= (1, 3) or not defined(js):
 proc peekData*(s: Stream, buffer: pointer, bufLen: int): int =
   ## Low level proc that reads data into an untyped `buffer` of `bufLen` size
   ## without moving stream position.
-  ## 
+  ##
   ## **JS note:** `buffer` is treated as a ``ptr string`` and written to between
   ## ``0..<bufLen``.
   runnableExamples:
@@ -309,7 +307,7 @@ proc peekData*(s: Stream, buffer: pointer, bufLen: int): int =
 proc writeData*(s: Stream, buffer: pointer, bufLen: int) =
   ## Low level proc that writes an untyped `buffer` of `bufLen` size
   ## to the stream `s`.
-  ## 
+  ##
   ## **JS note:** `buffer` is treated as a ``ptr string`` and read between
   ## ``0..<bufLen``.
   runnableExamples:
@@ -921,26 +919,20 @@ proc peekFloat64*(s: Stream): float64 =
 
   peek(s, result)
 
-template untaint(s: var TaintedString): var string =
-  when taintMode: # for VM, bug #12282
-    s.string
-  else:
-    s
-
-proc readStrPrivate(s: Stream, length: int, str: var TaintedString) =
-  if length > len(str): setLen(str.untaint, length)
+proc readStrPrivate(s: Stream, length: int, str: var string) =
+  if length > len(str): setLen(str, length)
   when defined(js):
     let L = readData(s, addr(str), length)
   else:
-    let L = readData(s, cstring(str.string), length)
-  if L != len(str): setLen(str.untaint, L)
+    let L = readData(s, cstring(str), length)
+  if L != len(str): setLen(str, L)
 
-proc readStr*(s: Stream, length: int, str: var TaintedString) {.since: (1, 3).} =
+proc readStr*(s: Stream, length: int, str: var string) {.since: (1, 3).} =
   ## Reads a string of length `length` from the stream `s`. Raises `IOError` if
   ## an error occurred.
   readStrPrivate(s, length, str)
 
-proc readStr*(s: Stream, length: int): TaintedString =
+proc readStr*(s: Stream, length: int): string =
   ## Reads a string of length `length` from the stream `s`. Raises `IOError` if
   ## an error occurred.
   runnableExamples:
@@ -950,23 +942,23 @@ proc readStr*(s: Stream, length: int): TaintedString =
     doAssert strm.readStr(2) == "e"
     doAssert strm.readStr(2) == ""
     strm.close()
-  result = newString(length).TaintedString
+  result = newString(length)
   readStrPrivate(s, length, result)
 
-proc peekStrPrivate(s: Stream, length: int, str: var TaintedString) =
-  if length > len(str): setLen(str.untaint, length)
+proc peekStrPrivate(s: Stream, length: int, str: var string) =
+  if length > len(str): setLen(str, length)
   when defined(js):
     let L = peekData(s, addr(str), length)
   else:
-    let L = peekData(s, cstring(str.string), length)
-  if L != len(str): setLen(str.untaint, L)
+    let L = peekData(s, cstring(str), length)
+  if L != len(str): setLen(str, L)
 
-proc peekStr*(s: Stream, length: int, str: var TaintedString) {.since: (1, 3).} =
+proc peekStr*(s: Stream, length: int, str: var string) {.since: (1, 3).} =
   ## Peeks a string of length `length` from the stream `s`. Raises `IOError` if
   ## an error occurred.
   peekStrPrivate(s, length, str)
 
-proc peekStr*(s: Stream, length: int): TaintedString =
+proc peekStr*(s: Stream, length: int): string =
   ## Peeks a string of length `length` from the stream `s`. Raises `IOError` if
   ## an error occurred.
   runnableExamples:
@@ -977,10 +969,10 @@ proc peekStr*(s: Stream, length: int): TaintedString =
     doAssert strm.readStr(2) == "ab"
     doAssert strm.peekStr(2) == "cd"
     strm.close()
-  result = newString(length).TaintedString
+  result = newString(length)
   peekStrPrivate(s, length, result)
 
-proc readLine*(s: Stream, line: var TaintedString): bool =
+proc readLine*(s: Stream, line: var string): bool =
   ## Reads a line of text from the stream `s` into `line`. `line` must not be
   ## ``nil``! May throw an IO exception.
   ##
@@ -992,7 +984,7 @@ proc readLine*(s: Stream, line: var TaintedString): bool =
   ## See also:
   ## * `readLine(Stream) proc <#readLine,Stream>`_
   ## * `peekLine(Stream) proc <#peekLine,Stream>`_
-  ## * `peekLine(Stream, TaintedString) proc <#peekLine,Stream,TaintedString>`_
+  ## * `peekLine(Stream, string) proc <#peekLine,Stream,string>`_
   runnableExamples:
     var strm = newStringStream("The first line\nthe second line\nthe third line")
     var line = ""
@@ -1010,7 +1002,7 @@ proc readLine*(s: Stream, line: var TaintedString): bool =
     result = s.readLineImpl(s, line)
   else:
     # fallback
-    line.untaint.setLen(0)
+    line.setLen(0)
     while true:
       var c = readChar(s)
       if c == '\c':
@@ -1020,10 +1012,10 @@ proc readLine*(s: Stream, line: var TaintedString): bool =
       elif c == '\0':
         if line.len > 0: break
         else: return false
-      line.untaint.add(c)
+      line.add(c)
     result = true
 
-proc peekLine*(s: Stream, line: var TaintedString): bool =
+proc peekLine*(s: Stream, line: var string): bool =
   ## Peeks a line of text from the stream `s` into `line`. `line` must not be
   ## ``nil``! May throw an IO exception.
   ##
@@ -1034,7 +1026,7 @@ proc peekLine*(s: Stream, line: var TaintedString): bool =
   ##
   ## See also:
   ## * `readLine(Stream) proc <#readLine,Stream>`_
-  ## * `readLine(Stream, TaintedString) proc <#readLine,Stream,TaintedString>`_
+  ## * `readLine(Stream, string) proc <#readLine,Stream,string>`_
   ## * `peekLine(Stream) proc <#peekLine,Stream>`_
   runnableExamples:
     var strm = newStringStream("The first line\nthe second line\nthe third line")
@@ -1054,15 +1046,15 @@ proc peekLine*(s: Stream, line: var TaintedString): bool =
   defer: setPosition(s, pos)
   result = readLine(s, line)
 
-proc readLine*(s: Stream): TaintedString =
+proc readLine*(s: Stream): string =
   ## Reads a line from a stream `s`. Raises `IOError` if an error occurred.
   ##
   ## **Note:** This is not very efficient.
   ##
   ## See also:
-  ## * `readLine(Stream, TaintedString) proc <#readLine,Stream,TaintedString>`_
+  ## * `readLine(Stream, string) proc <#readLine,Stream,string>`_
   ## * `peekLine(Stream) proc <#peekLine,Stream>`_
-  ## * `peekLine(Stream, TaintedString) proc <#peekLine,Stream,TaintedString>`_
+  ## * `peekLine(Stream, string) proc <#peekLine,Stream,string>`_
   runnableExamples:
     var strm = newStringStream("The first line\nthe second line\nthe third line")
     doAssert strm.readLine() == "The first line"
@@ -1071,7 +1063,7 @@ proc readLine*(s: Stream): TaintedString =
     doAssertRaises(IOError): discard strm.readLine()
     strm.close()
 
-  result = TaintedString""
+  result = ""
   if s.atEnd:
     raise newEIO("cannot read from stream")
   while true:
@@ -1082,17 +1074,17 @@ proc readLine*(s: Stream): TaintedString =
     if c == '\L' or c == '\0':
       break
     else:
-      result.untaint.add(c)
+      result.add(c)
 
-proc peekLine*(s: Stream): TaintedString =
+proc peekLine*(s: Stream): string =
   ## Peeks a line from a stream `s`. Raises `IOError` if an error occurred.
   ##
   ## **Note:** This is not very efficient.
   ##
   ## See also:
   ## * `readLine(Stream) proc <#readLine,Stream>`_
-  ## * `readLine(Stream, TaintedString) proc <#readLine,Stream,TaintedString>`_
-  ## * `peekLine(Stream, TaintedString) proc <#peekLine,Stream,TaintedString>`_
+  ## * `readLine(Stream, string) proc <#readLine,Stream,string>`_
+  ## * `peekLine(Stream, string) proc <#peekLine,Stream,string>`_
   runnableExamples:
     var strm = newStringStream("The first line\nthe second line\nthe third line")
     doAssert strm.peekLine() == "The first line"
@@ -1106,13 +1098,13 @@ proc peekLine*(s: Stream): TaintedString =
   defer: setPosition(s, pos)
   result = readLine(s)
 
-iterator lines*(s: Stream): TaintedString =
+iterator lines*(s: Stream): string =
   ## Iterates over every line in the stream.
   ## The iteration is based on ``readLine``.
   ##
   ## See also:
   ## * `readLine(Stream) proc <#readLine,Stream>`_
-  ## * `readLine(Stream, TaintedString) proc <#readLine,Stream,TaintedString>`_
+  ## * `readLine(Stream, string) proc <#readLine,Stream,string>`_
   runnableExamples:
     var strm = newStringStream("The first line\nthe second line\nthe third line")
     var lines: seq[string]
@@ -1121,7 +1113,7 @@ iterator lines*(s: Stream): TaintedString =
     doAssert lines == @["The first line", "the second line", "the third line"]
     strm.close()
 
-  var line: TaintedString
+  var line: string
   while s.readLine(line):
     yield line
 
@@ -1158,10 +1150,7 @@ when (NimMajor, NimMinor) < (1, 3) and defined(js):
 
   proc ssClose(s: Stream) {.compileTime.} =
     var s = StringStream(s)
-    when defined(nimNoNilSeqs):
-      s.data = ""
-    else:
-      s.data = nil
+    s.data = ""
 
   proc newStringStream*(s: string = ""): owned StringStream {.compileTime.} =
     new(result)
@@ -1187,7 +1176,7 @@ when (NimMajor, NimMinor) < (1, 3) and defined(js):
       if readBytes < bufferSize:
         break
 
-else: # after 1.3 or JS not defined  
+else: # after 1.3 or JS not defined
   proc ssAtEnd(s: Stream): bool =
     var s = StringStream(s)
     return s.pos >= s.data.len
@@ -1261,10 +1250,7 @@ else: # after 1.3 or JS not defined
 
   proc ssClose(s: Stream) =
     var s = StringStream(s)
-    when defined(nimNoNilSeqs):
-      s.data = ""
-    else:
-      s.data = nil
+    s.data = ""
 
   proc newStringStream*(s: string = ""): owned StringStream =
     ## Creates a new stream from the string `s`.
@@ -1333,7 +1319,7 @@ proc fsWriteData(s: Stream, buffer: pointer, bufLen: int) =
   if writeBuffer(FileStream(s).f, buffer, bufLen) != bufLen:
     raise newEIO("cannot write to stream")
 
-proc fsReadLine(s: Stream, line: var TaintedString): bool =
+proc fsReadLine(s: Stream, line: var string): bool =
   result = readLine(FileStream(s).f, line)
 
 proc newFileStream*(f: File): owned FileStream =
@@ -1401,7 +1387,7 @@ proc newFileStream*(filename: string, mode: FileMode = fmRead,
   ## * `openFileStream proc <#openFileStream,string,FileMode,int>`_ creates a
   ##   file stream from the file name and the mode.
   runnableExamples:
-    from os import removeFile
+    from std/os import removeFile
     var strm = newFileStream("somefile.txt", fmWrite)
     if not isNil(strm):
       strm.writeLine("The first line")

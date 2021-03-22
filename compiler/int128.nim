@@ -1,13 +1,13 @@
 ## This module is for compiler internal use only. For reliable error
 ## messages and range checks, the compiler needs a data type that can
-## hold all from ``low(BiggestInt)`` to ``high(BiggestUInt)``, This
+## hold all from `low(BiggestInt)` to `high(BiggestUInt)`, This
 ## type is for that purpose.
 
-from math import trunc
+from std/math import trunc
 
 type
   Int128* = object
-    udata: array[4,uint32]
+    udata: array[4, uint32]
 
 template sdata(arg: Int128, idx: int): int32 =
   # udata and sdata was supposed to be in a union, but unions are
@@ -17,12 +17,12 @@ template sdata(arg: Int128, idx: int): int32 =
 # encoding least significant int first (like LittleEndian)
 
 const
-  Zero* = Int128(udata: [0'u32,0,0,0])
-  One* = Int128(udata: [1'u32,0,0,0])
-  Ten* = Int128(udata: [10'u32,0,0,0])
-  Min = Int128(udata: [0'u32,0,0,0x80000000'u32])
-  Max = Int128(udata: [high(uint32),high(uint32),high(uint32),uint32(high(int32))])
-  NegOne* = Int128(udata: [0xffffffff'u32,0xffffffff'u32,0xffffffff'u32,0xffffffff'u32])
+  Zero* = Int128(udata: [0'u32, 0, 0, 0])
+  One* = Int128(udata: [1'u32, 0, 0, 0])
+  Ten* = Int128(udata: [10'u32, 0, 0, 0])
+  Min = Int128(udata: [0'u32, 0, 0, 0x80000000'u32])
+  Max = Int128(udata: [high(uint32), high(uint32), high(uint32), uint32(high(int32))])
+  NegOne* = Int128(udata: [0xffffffff'u32, 0xffffffff'u32, 0xffffffff'u32, 0xffffffff'u32])
 
 template low*(t: typedesc[Int128]): Int128 = Min
 template high*(t: typedesc[Int128]): Int128 = Max
@@ -57,10 +57,10 @@ template isNegative(arg: Int128): bool =
 template isNegative(arg: int32): bool =
   arg < 0
 
-proc bitconcat(a,b: uint32): uint64 =
+proc bitconcat(a, b: uint32): uint64 =
   (uint64(a) shl 32) or uint64(b)
 
-proc bitsplit(a: uint64): (uint32,uint32) =
+proc bitsplit(a: uint64): (uint32, uint32) =
   (cast[uint32](a shr 32), cast[uint32](a))
 
 proc toInt64*(arg: Int128): int64 =
@@ -176,7 +176,6 @@ proc toHex*(arg: Int128): string =
   result.addToHex(arg)
 
 proc inc*(a: var Int128, y: uint32 = 1) =
-  let input = a
   a.udata[0] += y
   if unlikely(a.udata[0] < y):
     a.udata[1].inc
@@ -186,7 +185,7 @@ proc inc*(a: var Int128, y: uint32 = 1) =
         a.udata[3].inc
         doAssert(a.sdata(3) != low(int32), "overflow")
 
-proc cmp*(a,b: Int128): int =
+proc cmp*(a, b: Int128): int =
   let tmp1 = cmp(a.sdata(3), b.sdata(3))
   if tmp1 != 0: return tmp1
   let tmp2 = cmp(a.udata[2], b.udata[2])
@@ -196,13 +195,13 @@ proc cmp*(a,b: Int128): int =
   let tmp4 = cmp(a.udata[0], b.udata[0])
   return tmp4
 
-proc `<`*(a,b: Int128): bool =
-  cmp(a,b) < 0
+proc `<`*(a, b: Int128): bool =
+  cmp(a, b) < 0
 
-proc `<=`*(a,b: Int128): bool =
-  cmp(a,b) <= 0
+proc `<=`*(a, b: Int128): bool =
+  cmp(a, b) <= 0
 
-proc `==`*(a,b: Int128): bool =
+proc `==`*(a, b: Int128): bool =
   if a.udata[0] != b.udata[0]: return false
   if a.udata[1] != b.udata[1]: return false
   if a.udata[2] != b.udata[2]: return false
@@ -221,19 +220,19 @@ proc bitnot*(a: Int128): Int128 =
   result.udata[2] = not a.udata[2]
   result.udata[3] = not a.udata[3]
 
-proc bitand*(a,b: Int128): Int128 =
+proc bitand*(a, b: Int128): Int128 =
   result.udata[0] = a.udata[0] and b.udata[0]
   result.udata[1] = a.udata[1] and b.udata[1]
   result.udata[2] = a.udata[2] and b.udata[2]
   result.udata[3] = a.udata[3] and b.udata[3]
 
-proc bitor*(a,b: Int128): Int128 =
+proc bitor*(a, b: Int128): Int128 =
   result.udata[0] = a.udata[0] or b.udata[0]
   result.udata[1] = a.udata[1] or b.udata[1]
   result.udata[2] = a.udata[2] or b.udata[2]
   result.udata[3] = a.udata[3] or b.udata[3]
 
-proc bitxor*(a,b: Int128): Int128 =
+proc bitxor*(a, b: Int128): Int128 =
   result.udata[0] = a.udata[0] xor b.udata[0]
   result.udata[1] = a.udata[1] xor b.udata[1]
   result.udata[2] = a.udata[2] xor b.udata[2]
@@ -288,7 +287,7 @@ proc `shl`*(a: Int128, b: int): Int128 =
     result.udata[2] = 0
     result.udata[3] = a.udata[0] shl (b and 31)
 
-proc `+`*(a,b: Int128): Int128 =
+proc `+`*(a, b: Int128): Int128 =
   let tmp0 = uint64(a.udata[0]) + uint64(b.udata[0])
   result.udata[0] = cast[uint32](tmp0)
   let tmp1 = uint64(a.udata[1]) + uint64(b.udata[1]) + (tmp0 shr 32)
@@ -305,7 +304,7 @@ proc `-`*(a: Int128): Int128 =
   result = bitnot(a)
   result.inc
 
-proc `-`*(a,b: Int128): Int128 =
+proc `-`*(a, b: Int128): Int128 =
   a + (-b)
 
 proc `-=`*(a: var Int128, b: Int128) =
@@ -342,7 +341,7 @@ proc `*`*(a: Int128, b: int32): Int128 =
 proc `*=`*(a: var Int128, b: int32): Int128 =
   result = result * b
 
-proc makeInt128(high,low: uint64): Int128 =
+proc makeInt128(high, low: uint64): Int128 =
   result.udata[0] = cast[uint32](low)
   result.udata[1] = cast[uint32](low shr 32)
   result.udata[2] = cast[uint32](high)
@@ -354,7 +353,7 @@ proc high64(a: Int128): uint64 =
 proc low64(a: Int128): uint64 =
   bitconcat(a.udata[1], a.udata[0])
 
-proc `*`*(lhs,rhs: Int128): Int128 =
+proc `*`*(lhs, rhs: Int128): Int128 =
   let
     a = cast[uint64](lhs.udata[0])
     b = cast[uint64](lhs.udata[1])
@@ -379,7 +378,7 @@ proc `*`*(lhs,rhs: Int128): Int128 =
 proc `*=`*(a: var Int128, b: Int128) =
   a = a * b
 
-import bitops
+import std/bitops
 
 proc fastLog2*(a: Int128): int =
   if a.udata[3] != 0:
@@ -389,7 +388,7 @@ proc fastLog2*(a: Int128): int =
   if a.udata[1] != 0:
     return 32 + fastLog2(a.udata[1])
   if a.udata[0] != 0:
-    return      fastLog2(a.udata[0])
+    return fastLog2(a.udata[0])
 
 proc divMod*(dividend, divisor: Int128): tuple[quotient, remainder: Int128] =
   assert(divisor != Zero)
@@ -441,12 +440,12 @@ proc divMod*(dividend, divisor: Int128): tuple[quotient, remainder: Int128] =
   else:
     result.remainder = dividend
 
-proc `div`*(a,b: Int128): Int128 =
-  let (a,b) = divMod(a,b)
+proc `div`*(a, b: Int128): Int128 =
+  let (a, b) = divMod(a, b)
   return a
 
-proc `mod`*(a,b: Int128): Int128 =
-  let (a,b) = divMod(a,b)
+proc `mod`*(a, b: Int128): Int128 =
+  let (a, b) = divMod(a, b)
   return b
 
 proc addInt128*(result: var string; value: Int128) =
@@ -477,7 +476,7 @@ proc `$`*(a: Int128): string =
 
 proc parseDecimalInt128*(arg: string, pos: int = 0): Int128 =
   assert(pos < arg.len)
-  assert(arg[pos] in {'-','0'..'9'})
+  assert(arg[pos] in {'-', '0'..'9'})
 
   var isNegative = false
   var pos = pos
@@ -497,13 +496,13 @@ proc parseDecimalInt128*(arg: string, pos: int = 0): Int128 =
 # fluff
 
 proc `<`*(a: Int128, b: BiggestInt): bool =
-  cmp(a,toInt128(b)) < 0
+  cmp(a, toInt128(b)) < 0
 
 proc `<`*(a: BiggestInt, b: Int128): bool =
   cmp(toInt128(a), b) < 0
 
 proc `<=`*(a: Int128, b: BiggestInt): bool =
-  cmp(a,toInt128(b)) <= 0
+  cmp(a, toInt128(b)) <= 0
 
 proc `<=`*(a: BiggestInt, b: Int128): bool =
   cmp(toInt128(a), b) <= 0
@@ -539,7 +538,7 @@ proc toFloat64*(arg: Int128): float64 =
 
 proc ldexp(x: float64, exp: cint): float64 {.importc: "ldexp", header: "<math.h>".}
 
-template bitor(a,b,c: Int128): Int128 = bitor(bitor(a,b), c)
+template bitor(a, b, c: Int128): Int128 = bitor(bitor(a, b), c)
 
 proc toInt128*(arg: float64): Int128 =
   let isNegative = arg < 0

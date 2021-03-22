@@ -941,7 +941,7 @@ template eventParser*(pegAst, handlers: untyped): (proc(s: string): int) =
   ## evaluates an arithmetic expression defined by a simple PEG:
   ##
   ## .. code-block:: nim
-  ##  import strutils, pegs
+  ##  import std/[strutils, pegs]
   ##
   ##  let
   ##    pegAst = """
@@ -1158,9 +1158,6 @@ proc findAll*(s: string, pattern: Peg, start = 0): seq[string] {.
   result = @[]
   for it in findAll(s, pattern, start): result.add it
 
-when not defined(nimhygiene):
-  {.pragma: inject.}
-
 template `=~`*(s: string, pattern: Peg): bool =
   ## This calls ``match`` with an implicit declared ``matches`` array that
   ## can be used in the scope of the ``=~`` call:
@@ -1332,7 +1329,7 @@ when not defined(js):
     ## error occurs. This is supposed to be used for quick scripting.
     ##
     ## **Note**: this proc does not exist while using the JS backend.
-    var x = readFile(infile).string
+    var x = readFile(infile)
     writeFile(outfile, x.parallelReplace(subs))
 
 

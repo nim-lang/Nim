@@ -57,10 +57,10 @@ proc epoll_create1*(flags: cint): cint {.importc: "epoll_create1",
 
 proc epoll_ctl*(epfd: cint; op: cint; fd: cint | SocketHandle; event: ptr EpollEvent): cint {.
     importc: "epoll_ctl", header: "<sys/epoll.h>".}
-  ## Manipulate an epoll instance "epfd". Returns ``0`` in case of success,
-  ## ``-1`` in case of error (the "errno" variable will contain the specific error code).
+  ## Manipulate an epoll instance "epfd". Returns `0` in case of success,
+  ## `-1` in case of error (the "errno" variable will contain the specific error code).
   ## 
-  ## The "op" parameter is one of the ``EPOLL_CTL_*``
+  ## The "op" parameter is one of the `EPOLL_CTL_*`
   ## constants defined above. The "fd" parameter is the target of the
   ## operation. The "event" parameter describes which events the caller
   ## is interested in and any associated user data.

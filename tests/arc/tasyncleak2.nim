@@ -57,7 +57,7 @@ proc main(): Future[void] =
   template await[T](f_gensym12: Future[T]): auto {.used.} =
     var internalTmpFuture_gensym12: FutureBase = f_gensym12
     yield internalTmpFuture_gensym12
-    (cast[type(f_gensym12)](internalTmpFuture_gensym12)).read()
+    (cast[typeof(f_gensym12)](internalTmpFuture_gensym12)).read()
 
   var retFuture = newFuture[void]("main")
   iterator mainIter(): FutureBase {.closure.} =
@@ -84,5 +84,5 @@ proc main(): Future[void] =
 for i in 0..9:
   waitFor main()
   GC_fullCollect()
-  assert getOccupiedMem() < 1024
+  doAssert getOccupiedMem() < 1024
 echo "success"

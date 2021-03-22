@@ -7,20 +7,25 @@ discard """
 ## A few others could be added to here to simplify code.
 ## Note: this test is a bit slow but tests a lot of things; please don't disable.
 
-import std/[strformat,os,osproc,unittest]
+import std/[strformat,os,osproc,unittest,compilesettings]
 from std/sequtils import toSeq,mapIt
 from std/algorithm import sorted
 import stdtest/[specialpaths, unittest_light]
 from std/private/globs import nativeToUnixPath
-
+from strutils import startsWith, strip, removePrefix
+from std/sugar import dup
 import "$lib/../compiler/nimpaths"
 
+proc isDots(a: string): bool =
+  ## test for `hintProcessing` dots
+  a.startsWith(".") and a.strip(chars = {'.'}) == ""
+
 const
+  defaultHintsOff = "--hint:successx:off --hint:exec:off --hint:link:off --hint:cc:off --hint:conf:off --hint:processing:off --hint:QuitCalled:off"
+    # useful when you want to turn only some hints on, and some common ones off.
+    # pending https://github.com/timotheecour/Nim/issues/453, simplify to: `--hints:off`
   nim = getCurrentCompilerExe()
-  mode =
-    when defined(c): "c"
-    elif defined(cpp): "cpp"
-    else: static: doAssert false
+  mode = querySetting(backend)
   nimcache = buildDir / "nimcacheTrunner"
     # instead of `querySetting(nimcacheDir)`, avoids stomping on other parallel tests
 
@@ -93,10 +98,9 @@ else: # don't run twice the same test
       check exitCode == 0
       let ret = toSeq(walkDirRec(htmldocsDir, relative=true)).mapIt(it.nativeToUnixPath).sorted.join("\n")
       let context = $(i, ret, cmd)
-      var expected = ""
       case i
       of 0,5:
-        let htmlFile = htmldocsDir/"mmain.html"
+        let htmlFile = htmldocsDir/mainFname
         check htmlFile in outp # sanity check for `hintSuccessX`
         assertEquals ret, fmt"""
 {dotdotMangle}/imp.html
@@ -106,7 +110,7 @@ imp.html
 imp.idx
 imp2.html
 imp2.idx
-mmain.html
+{mainFname}
 mmain.idx
 {nimdocOutCss}
 {theindexFname}""", context
@@ -119,21 +123,21 @@ tests/nimdoc/sub/imp.html
 tests/nimdoc/sub/imp.idx
 tests/nimdoc/sub/imp2.html
 tests/nimdoc/sub/imp2.idx
-tests/nimdoc/sub/mmain.html
+tests/nimdoc/sub/{mainFname}
 tests/nimdoc/sub/mmain.idx
 {theindexFname}"""
       of 2, 3: assertEquals ret, fmt"""
 {docHackJsFname}
-mmain.html
+{mainFname}
 mmain.idx
 {nimdocOutCss}""", context
       of 4: assertEquals ret, fmt"""
 {docHackJsFname}
 {nimdocOutCss}
-sub/mmain.html
+sub/{mainFname}
 sub/mmain.idx""", context
       of 6: assertEquals ret, fmt"""
-mmain.html
+{mainFname}
 {nimdocOutCss}""", context
       else: doAssert false
 
@@ -217,8 +221,66 @@ mmain.html
     let cmd = fmt"{nim} r -b:cpp --hints:off --nimcache:{nimcache} --warningAsError:ProveInit {file}"
     check execCmdEx(cmd) == ("witness\n", 0)
 
+  block: # config.nims, nim.cfg, hintConf, bug #16557
+    let cmd = fmt"{nim} r {defaultHintsOff} --hint:conf tests/newconfig/bar/mfoo.nim"
+    let (outp, exitCode) = execCmdEx(cmd, options = {poStdErrToStdOut})
+    doAssert exitCode == 0
+    let dir = getCurrentDir()
+    let files = """
+tests/config.nims
+tests/newconfig/bar/nim.cfg
+tests/newconfig/bar/config.nims
+tests/newconfig/bar/mfoo.nim.cfg
+tests/newconfig/bar/mfoo.nims""".splitLines
+    var expected = ""
+    for a in files:
+      let b = dir / a
+      expected.add &"Hint: used config file '{b}' [Conf]\n"
+    doAssert outp.endsWith expected, outp & "\n" & expected
+
   block: # nim --eval
     let opt = "--hints:off"
     check fmt"""{nim} {opt} --eval:"echo defined(nimscript)"""".execCmdEx == ("true\n", 0)
     check fmt"""{nim} r {opt} --eval:"echo defined(c)"""".execCmdEx == ("true\n", 0)
     check fmt"""{nim} r -b:js {opt} --eval:"echo defined(js)"""".execCmdEx == ("true\n", 0)
+
+  block: # `hintProcessing` dots should not interfere with `static: echo` + friends
+    let cmd = fmt"""{nim} r {defaultHintsOff} --hint:processing -f --eval:"static: echo 1+1""""
+    let (outp, exitCode) = execCmdEx(cmd, options = {poStdErrToStdOut})
+    template check3(cond) = doAssert cond, $(outp,)
+    doAssert exitCode == 0
+    let lines = outp.splitLines
+    check3 lines.len == 3
+    when not defined(windows): # xxx: on windows, dots not properly handled, gives: `....2\n\n`
+      check3 lines[0].isDots
+      check3 lines[1] == "2"
+      check3 lines[2] == ""
+    else:
+      check3 "2" in outp
+
+  block: # nim secret
+    let opt = fmt"{defaultHintsOff} --hint:processing"
+    template check3(cond) = doAssert cond, $(outp,)
+    for extra in ["", "--stdout"]:
+      let cmd = fmt"""{nim} secret {opt} {extra}"""
+      # xxx minor bug: `nim --hint:QuitCalled:off secret` ignores the hint cmdline flag
+      template run(input2): untyped =
+        execCmdEx(cmd, options = {poStdErrToStdOut}, input = input2)
+      block:
+        let (outp, exitCode) = run """echo 1+2; import strutils; echo strip(" ab "); quit()"""
+        let lines = outp.splitLines
+        when not defined(windows):
+          check3 lines.len == 5
+          check3 lines[0].isDots
+          check3 lines[1].dup(removePrefix(">>> ")) == "3" # prompt depends on `nimUseLinenoise`
+          check3 lines[2].isDots
+          check3 lines[3] == "ab"
+          check3 lines[4] == ""
+        else:
+          check3 "3" in outp
+          check3 "ab" in outp
+        doAssert exitCode == 0
+      block:
+        let (outp, exitCode) = run "echo 1+2; quit(2)"
+        check3 "3" in outp
+        doAssert exitCode == 2

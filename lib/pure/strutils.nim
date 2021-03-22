@@ -38,7 +38,7 @@ runnableExamples:
 ## `method call syntax<manual.html#procedures-method-call-syntax>`_:
 
 runnableExamples:
-  from sequtils import map
+  from std/sequtils import map
 
   let jenny = "867-5309"
   assert jenny.split('-').map(parseInt) == @[867, 5309]
@@ -75,12 +75,13 @@ from math import pow, floor, log10
 from algorithm import reverse
 import std/enumutils
 
-when defined(nimVmExportFixed):
-  from unicode import toLower, toUpper
-  export toLower, toUpper
+from unicode import toLower, toUpper
+export toLower, toUpper
 
 include "system/inclrtl"
 import std/private/since
+from std/private/strimpl import cmpIgnoreStyleImpl, cmpIgnoreCaseImpl, startsWithImpl, endsWithImpl
+
 
 const
   Whitespace* = {' ', '\t', '\v', '\r', '\l', '\f'}
@@ -319,13 +320,7 @@ func cmpIgnoreCase*(a, b: string): int {.rtl, extern: "nsuCmpIgnoreCase".} =
     doAssert cmpIgnoreCase("FooBar", "foobar") == 0
     doAssert cmpIgnoreCase("bar", "Foo") < 0
     doAssert cmpIgnoreCase("Foo5", "foo4") > 0
-  var i = 0
-  var m = min(a.len, b.len)
-  while i < m:
-    result = ord(toLowerAscii(a[i])) - ord(toLowerAscii(b[i]))
-    if result != 0: return
-    inc(i)
-  result = a.len - b.len
+  cmpIgnoreCaseImpl(a, b)
 
 {.push checks: off, line_trace: off.} # this is a hot-spot in the compiler!
                                       # thus we compile without checks here
@@ -344,25 +339,7 @@ func cmpIgnoreStyle*(a, b: string): int {.rtl, extern: "nsuCmpIgnoreStyle".} =
   runnableExamples:
     doAssert cmpIgnoreStyle("foo_bar", "FooBar") == 0
     doAssert cmpIgnoreStyle("foo_bar_5", "FooBar4") > 0
-  var i = 0
-  var j = 0
-  while true:
-    while i < a.len and a[i] == '_': inc i
-    while j < b.len and b[j] == '_': inc j
-    var aa = if i < a.len: toLowerAscii(a[i]) else: '\0'
-    var bb = if j < b.len: toLowerAscii(b[j]) else: '\0'
-    result = ord(aa) - ord(bb)
-    if result != 0: return result
-    # the characters are identical:
-    if i >= a.len:
-      # both cursors at the end:
-      if j >= b.len: return 0
-      # not yet at the end of 'b':
-      return -1
-    elif j >= b.len:
-      return 1
-    inc i
-    inc j
+  cmpIgnoreStyleImpl(a, b)
 {.pop.}
 
 # --------- Private templates for different split separators -----------
@@ -1552,11 +1529,7 @@ func startsWith*(s, prefix: string): bool {.rtl, extern: "nsuStartsWith".} =
     let a = "abracadabra"
     doAssert a.startsWith("abra") == true
     doAssert a.startsWith("bra") == false
-  var i = 0
-  while true:
-    if i >= prefix.len: return true
-    if i >= s.len or s[i] != prefix[i]: return false
-    inc(i)
+  startsWithImpl(s, prefix)
 
 func endsWith*(s: string, suffix: char): bool {.inline.} =
   ## Returns true if `s` ends with `suffix`.
@@ -1584,12 +1557,7 @@ func endsWith*(s, suffix: string): bool {.rtl, extern: "nsuEndsWith".} =
     let a = "abracadabra"
     doAssert a.endsWith("abra") == true
     doAssert a.endsWith("dab") == false
-  var i = 0
-  var j = len(s) - len(suffix)
-  while i+j >= 0 and i+j < s.len:
-    if s[i+j] != suffix[i]: return false
-    inc(i)
-  if i >= suffix.len: return true
+  endsWithImpl(s, suffix)
 
 func continuesWith*(s, substr: string, start: Natural): bool {.rtl,
     extern: "nsuContinuesWith".} =
@@ -2069,7 +2037,7 @@ func contains*(s: string, chars: set[char]): bool =
 
 func replace*(s, sub: string, by = ""): string {.rtl,
     extern: "nsuReplaceStr".} =
-  ## Replaces `sub` in `s` by the string `by`.
+  ## Replaces every occurrence of the string `sub` in `s` with the string `by`.
   ##
   ## See also:
   ## * `find func<#find,string,string,Natural,int>`_
@@ -2111,7 +2079,8 @@ func replace*(s, sub: string, by = ""): string {.rtl,
 
 func replace*(s: string, sub, by: char): string {.rtl,
     extern: "nsuReplaceChar".} =
-  ## Replaces `sub` in `s` by the character `by`.
+  ## Replaces every occurrence of the character `sub` in `s` with the character
+  ## `by`.
   ##
   ## Optimized version of `replace <#replace,string,string,string>`_ for
   ## characters.
@@ -2129,7 +2098,7 @@ func replace*(s: string, sub, by: char): string {.rtl,
 
 func replaceWord*(s, sub: string, by = ""): string {.rtl,
     extern: "nsuReplaceWord".} =
-  ## Replaces `sub` in `s` by the string `by`.
+  ## Replaces every occurrence of the string `sub` in `s` with the string `by`.
   ##
   ## Each occurrence of `sub` has to be surrounded by word boundaries
   ## (comparable to `\b` in regular expressions), otherwise it is not
@@ -2237,7 +2206,7 @@ func escape*(s: string, prefix = "\"", suffix = "\""): string {.rtl,
   ##
   ## See also:
   ## * `unescape func<#unescape,string,string,string>`_ for the opposite
-  ## operation
+  ##   operation
   result = newStringOfCap(s.len + s.len shr 2)
   result.add(prefix)
   for c in items(s):
@@ -2372,17 +2341,11 @@ func formatBiggestFloat*(f: BiggestFloat, format: FloatFormatMode = ffDefault,
       frmtstr[3] = '*'
       frmtstr[4] = floatFormatToChar[format]
       frmtstr[5] = '\0'
-      when defined(nimNoArrayToCstringConversion):
-        L = c_sprintf(addr buf, addr frmtstr, precision, f)
-      else:
-        L = c_sprintf(buf, frmtstr, precision, f)
+      L = c_sprintf(addr buf, addr frmtstr, precision, f)
     else:
       frmtstr[1] = floatFormatToChar[format]
       frmtstr[2] = '\0'
-      when defined(nimNoArrayToCstringConversion):
-        L = c_sprintf(addr buf, addr frmtstr, f)
-      else:
-        L = c_sprintf(buf, frmtstr, f)
+      L = c_sprintf(addr buf, addr frmtstr, f)
     result = newString(L)
     for i in 0 ..< L:
       # Depending on the locale either dot or comma is produced,
@@ -2791,6 +2754,7 @@ func strip*(s: string, leading = true, trailing = true,
   ## If both are false, the string is returned unchanged.
   ##
   ## See also:
+  ## * `strip proc<strbasics.html#strip,string,set[char]>`_ Inplace version.
   ## * `stripLineEnd func<#stripLineEnd,string>`_
   runnableExamples:
     let a = "  vhellov   "

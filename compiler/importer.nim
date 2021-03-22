@@ -11,7 +11,8 @@
 
 import
   intsets, ast, astalgo, msgs, options, idents, lookups,
-  semdata, modulepaths, sigmatch, lineinfos, sets
+  semdata, modulepaths, sigmatch, lineinfos, sets,
+  modulegraphs
 
 proc readExceptSet*(c: PContext, n: PNode): IntSet =
   assert n.kind in {nkImportExceptStmt, nkExportExceptStmt}
@@ -101,14 +102,14 @@ proc rawImportSymbol(c: PContext, s, origin: PSym; importSet: var IntSet) =
           else:
             importPureEnumField(c, e)
   else:
-    if s.kind == skConverter: addConverter(c, s)
-    if hasPattern(s): addPattern(c, s)
+    if s.kind == skConverter: addConverter(c, LazySym(sym: s))
+    if hasPattern(s): addPattern(c, LazySym(sym: s))
   if s.owner != origin:
     c.exportIndirections.incl((origin.id, s.id))
 
 proc importSymbol(c: PContext, n: PNode, fromMod: PSym; importSet: var IntSet) =
   let ident = lookups.considerQuotedIdent(c, n)
-  let s = strTableGet(fromMod.tab, ident)
+  let s = someSym(c.graph, fromMod, ident)
   if s == nil:
     errorUndeclaredIdentifier(c, n.info, ident.s)
   else:
@@ -118,16 +119,16 @@ proc importSymbol(c: PContext, n: PNode, fromMod: PSym; importSet: var IntSet) =
     # for an enumeration we have to add all identifiers
     if multiImport:
       # for a overloadable syms add all overloaded routines
-      var it: TIdentIter
-      var e = initIdentIter(it, fromMod.tab, s.name)
+      var it: ModuleIter
+      var e = initModuleIter(it, c.graph, fromMod, s.name)
       while e != nil:
         if e.name.id != s.name.id: internalError(c.config, n.info, "importSymbol: 3")
         if s.kind in ExportableSymKinds:
           rawImportSymbol(c, e, fromMod, importSet)
-        e = nextIdentIter(it, fromMod.tab)
+        e = nextModuleIter(it, c.graph)
     else:
       rawImportSymbol(c, s, fromMod, importSet)
-    suggestSym(c.config, n.info, s, c.graph.usageSym, false)
+    suggestSym(c.graph, n.info, s, c.graph.usageSym, false)
 
 proc addImport(c: PContext; im: sink ImportedModule) =
   for i in 0..high(c.imports):
@@ -170,23 +171,11 @@ template addUnnamedIt(c: PContext, fromMod: PSym; filter: untyped) {.dirty.} =
       addPattern(c, it)
   for it in c.graph.ifaces[fromMod.position].pureEnums:
     if filter:
-      importPureEnumFields(c, it, it.typ)
+      importPureEnumFields(c, it.sym, it.sym.typ)
 
 proc importAllSymbolsExcept(c: PContext, fromMod: PSym, exceptSet: IntSet) =
   c.addImport ImportedModule(m: fromMod, mode: importExcept, exceptSet: exceptSet)
-  addUnnamedIt(c, fromMod, it.id notin exceptSet)
-
-  when false:
-    var i: TTabIter
-    var s = initTabIter(i, fromMod.tab)
-    while s != nil:
-      if s.kind != skModule:
-        if s.kind != skEnumField:
-          if s.kind notin ExportableSymKinds:
-            internalError(c.config, s.info, "importAllSymbols: " & $s.kind & " " & s.name.s)
-          if exceptSet.isNil or s.name.id notin exceptSet:
-            rawImportSymbol(c, s, fromMod)
-      s = nextIter(i, fromMod.tab)
+  addUnnamedIt(c, fromMod, it.sym.id notin exceptSet)
 
 proc importAllSymbols*(c: PContext, fromMod: PSym) =
   c.addImport ImportedModule(m: fromMod, mode: importAll)
@@ -220,12 +209,13 @@ proc importModuleAs(c: PContext; n: PNode, realModule: PSym): PSym =
     localError(c.config, n.info, "module alias must be an identifier")
   elif n[1].ident.id != realModule.name.id:
     # some misguided guy will write 'import abc.foo as foo' ...
-    result = createModuleAlias(realModule, nextId c.idgen, n[1].ident, realModule.info,
+    result = createModuleAlias(realModule, nextSymId c.idgen, n[1].ident, realModule.info,
                                c.config.options)
 
 proc myImportModule(c: PContext, n: PNode; importStmtResult: PNode): PSym =
   let f = checkModuleName(c.config, n)
   if f != InvalidFileIdx:
+    addImportFileDep(c, f)
     let L = c.graph.importStack.len
     let recursion = c.graph.importStack.find(f)
     c.graph.importStack.add f
@@ -255,7 +245,7 @@ proc myImportModule(c: PContext, n: PNode; importStmtResult: PNode): PSym =
         message(c.config, n.info, warnDeprecated, result.constraint.strVal & "; " & result.name.s & " is deprecated")
       else:
         message(c.config, n.info, warnDeprecated, result.name.s & " is deprecated")
-    suggestSym(c.config, n.info, result, c.graph.usageSym, false)
+    suggestSym(c.graph, n.info, result, c.graph.usageSym, false)
     importStmtResult.add newSymNode(result, n.info)
     #newStrNode(toFullPath(c.config, f), n.info)
 

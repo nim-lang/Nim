@@ -22,7 +22,7 @@
 ##
 ## .. code-block:: nim
 ##
-##    import os, parsecfg, strutils, streams
+##    import std/[os, parsecfg, strutils, streams]
 ##
 ##    var f = newFileStream(paramStr(1), fmRead)
 ##    if f != nil:
@@ -32,7 +32,7 @@
 ##        var e = next(p)
 ##        case e.kind
 ##        of cfgEof: break
-##        of cfgSectionStart:   ## a ``[section]`` has been parsed
+##        of cfgSectionStart:   ## a `[section]` has been parsed
 ##          echo("new section: " & e.section)
 ##        of cfgKeyValuePair:
 ##          echo("key-value-pair: " & e.key & ": " & e.value)
@@ -66,7 +66,7 @@
 ## -----------------------------
 ## .. code-block:: nim
 ##
-##     import parsecfg
+##     import std/parsecfg
 ##     var dict=newConfig()
 ##     dict.setSectionKey("","charset","utf-8")
 ##     dict.setSectionKey("Package","name","hello")
@@ -80,7 +80,7 @@
 ## ----------------------------
 ## .. code-block:: nim
 ##
-##     import parsecfg
+##     import std/parsecfg
 ##     var dict = loadConfig("config.ini")
 ##     var charset = dict.getSectionValue("","charset")
 ##     var threads = dict.getSectionValue("Package","--threads")
@@ -94,7 +94,7 @@
 ## ------------------------------
 ## .. code-block:: nim
 ##
-##     import parsecfg
+##     import std/parsecfg
 ##     var dict = loadConfig("config.ini")
 ##     dict.setSectionKey("Author","name","lhf")
 ##     dict.writeConfig("config.ini")
@@ -103,7 +103,7 @@
 ## ----------------------------------------------
 ## .. code-block:: nim
 ##
-##     import parsecfg
+##     import std/parsecfg
 ##     var dict = loadConfig("config.ini")
 ##     dict.delSectionKey("Author","email")
 ##     dict.writeConfig("config.ini")
@@ -115,7 +115,7 @@
 
 # taken from https://docs.python.org/3/library/configparser.html#supported-ini-file-structure
 runnableExamples:
-  import streams
+  import std/streams
 
   var dict = loadConfig(newStringStream("""[Simple Values]
     key=value

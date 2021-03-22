@@ -25,6 +25,7 @@ from std/private/globs import nativeToUnixPath
 const
   exportSection = skField
   docCmdSkip = "skip"
+  DocColOffset = "## ".len  # assuming that a space was added after ##
 
 type
   TSections = array[TSymKind, Rope]
@@ -56,6 +57,11 @@ type
     wroteSupportFiles*: bool
 
   PDoc* = ref TDocumentor ## Alias to type less.
+
+proc prettyString(a: object): string =
+  # xxx pending std/prettyprint refs https://github.com/nim-lang/RFCs/issues/203#issuecomment-602534906
+  for k, v in fieldPairs(a):
+    result.add k & ": " & $v & "\n"
 
 proc presentationPath*(conf: ConfigRef, file: AbsoluteFile, isTitle = false): RelativeFile =
   ## returns a relative file that will be appended to outDir
@@ -132,10 +138,12 @@ template declareClosures =
     of meNewSectionExpected: k = errNewSectionExpected
     of meGeneralParseError: k = errGeneralParseError
     of meInvalidDirective: k = errInvalidDirectiveX
+    of meFootnoteMismatch: k = errFootnoteMismatch
     of mwRedefinitionOfLabel: k = warnRedefinitionOfLabel
     of mwUnknownSubstitution: k = warnUnknownSubstitutionX
     of mwUnsupportedLanguage: k = warnLanguageXNotSupported
     of mwUnsupportedField: k = warnFieldXNotSupported
+    of mwRstStyle: k = warnRstStyle
     {.gcsafe.}:
       globalError(conf, newLineInfo(conf, AbsoluteFile filename, line, col), k, arg)
 
@@ -203,7 +211,8 @@ proc newDocumentor*(filename: AbsoluteFile; cache: IdentCache; conf: ConfigRef, 
       var outp: AbsoluteFile
       if filename.len == 0:
         let nameOnly = splitFile(d.filename).name
-        outp = getNimcacheDir(conf) / RelativeDir(nameOnly) /
+        # "snippets" needed, refs bug #17183
+        outp = getNimcacheDir(conf) / "snippets".RelativeDir / RelativeDir(nameOnly) /
                RelativeFile(nameOnly & "_snippet_" & $d.id & ".nim")
       elif isAbsolute(filename):
         outp = AbsoluteFile(filename)
@@ -221,10 +230,14 @@ proc newDocumentor*(filename: AbsoluteFile; cache: IdentCache; conf: ConfigRef, 
         # backward compatibility hacks; interpolation commands should explicitly use `$`
         if cmd.startsWith "nim ": result = "$nim " & cmd[4..^1]
         else: result = cmd
+        # factor with D20210224T221756
         result = result.replace("$1", "$options") % [
           "nim", os.getAppFilename().quoteShell,
+          "libpath", quoteShell(d.conf.libpath),
+          "docCmd", d.conf.docCmd,
           "backend", $d.conf.backend,
           "options", outp.quoteShell,
+            # xxx `quoteShell` seems buggy if user passes options = "-d:foo somefile.nim"
         ]
       let cmd = cmd.interpSnippetCmd
       rawMessage(conf, hintExecuting, cmd)
@@ -310,8 +323,12 @@ proc genComment(d: PDoc, n: PNode): string =
     when false:
       # RFC: to preseve newlines in comments, this would work:
       comment = comment.replace("\n", "\n\n")
-    renderRstToOut(d[], parseRst(comment, toFullPath(d.conf, n.info), toLinenumber(n.info),
-                   toColumn(n.info), (var dummy: bool; dummy), d.options, d.conf), result)
+    renderRstToOut(d[],
+                   parseRst(comment, toFullPath(d.conf, n.info),
+                            toLinenumber(n.info),
+                            toColumn(n.info) + DocColOffset,
+                            (var dummy: bool; dummy), d.options, d.conf),
+                   result)
 
 proc genRecCommentAux(d: PDoc, n: PNode): Rope =
   if n == nil: return nil
@@ -324,8 +341,7 @@ proc genRecCommentAux(d: PDoc, n: PNode): Rope =
         result = genRecCommentAux(d, n[i])
         if result != nil: return
   else:
-    when defined(nimNoNilSeqs): n.comment = ""
-    else: n.comment = nil
+    n.comment = ""
 
 proc genRecComment(d: PDoc, n: PNode): Rope =
   if n == nil: return nil
@@ -445,18 +461,6 @@ proc nodeToHighlightedHtml(d: PDoc; n: PNode; result: var Rope; renderFlags: TRe
 
 proc exampleOutputDir(d: PDoc): AbsoluteDir = d.conf.getNimcacheDir / RelativeDir"runnableExamples"
 
-proc writeExample(d: PDoc; ex: PNode, rdoccmd: string) =
-  if d.conf.errorCounter > 0: return
-  let outputDir = d.exampleOutputDir
-  createDir(outputDir)
-  inc d.exampleCounter
-  let outp = outputDir / RelativeFile(extractFilename(d.filename.changeFileExt"" &
-      "_examples" & $d.exampleCounter & ".nim"))
-  #let nimcache = outp.changeFileExt"" & "_nimcache"
-  renderModule(ex, d.filename, outp.string, conf = d.conf)
-  if rdoccmd notin d.exampleGroups: d.exampleGroups[rdoccmd] = ExampleGroup(rdoccmd: rdoccmd, docCmd: d.conf.docCmd, index: d.exampleGroups.len)
-  d.exampleGroups[rdoccmd].code.add "import r\"$1\"\n" % outp.string
-
 proc runAllExamples(d: PDoc) =
   # This used to be: `let backend = if isDefined(d.conf, "js"): "js"` (etc), however
   # using `-d:js` (etc) cannot work properly, e.g. would fail with `importjs`
@@ -469,8 +473,9 @@ proc runAllExamples(d: PDoc) =
     writeFile(outp, group.code)
     # most useful semantics is that `docCmd` comes after `rdoccmd`, so that we can (temporarily) override
     # via command line
+    # D20210224T221756:here
     let cmd = "$nim $backend -r --lib:$libpath --warning:UnusedImport:off --path:$path --nimcache:$nimcache $rdoccmd $docCmd $file" % [
-      "nim", os.getAppFilename(),
+      "nim", quoteShell(os.getAppFilename()),
       "backend", $d.conf.backend,
       "path", quoteShell(d.conf.projectPath),
       "libpath", quoteShell(d.conf.libpath),
@@ -480,11 +485,13 @@ proc runAllExamples(d: PDoc) =
       "docCmd", group.docCmd,
     ]
     if os.execShellCmd(cmd) != 0:
-      quit "[runnableExamples] failed: generated file: '$1' group: '$2' cmd: $3" % [outp.string, $group[], cmd]
+      quit "[runnableExamples] failed: generated file: '$1' group: '$2' cmd: $3" % [outp.string, group[].prettyString, cmd]
     else:
       # keep generated source file `outp` to allow inspection.
       rawMessage(d.conf, hintSuccess, ["runnableExamples: " & outp.string])
       # removeFile(outp.changeFileExt(ExeExt)) # it's in nimcache, no need to remove
+
+proc quoted(a: string): string = result.addQuoted(a)
 
 proc prepareExample(d: PDoc; n: PNode): tuple[rdoccmd: string, code: string] =
   ## returns `rdoccmd` and source code for this runnableExamples
@@ -496,19 +503,48 @@ proc prepareExample(d: PDoc; n: PNode): tuple[rdoccmd: string, code: string] =
     if n1.kind notin nkStrKinds: globalError(d.conf, n1.info, "string litteral expected")
     rdoccmd = n1.strVal
 
-  var docComment = newTree(nkCommentStmt)
+  let useRenderModule = false
   let loc = d.conf.toFileLineCol(n.info)
+  let code = extractRunnableExamplesSource(d.conf, n)
 
-  docComment.comment = "autogenerated by docgen\nloc: $1\nrdoccmd: $2" % [loc, rdoccmd]
-  var runnableExamples = newTree(nkStmtList,
-      docComment,
-      newTree(nkImportStmt, newStrNode(nkStrLit, d.filename)))
-  runnableExamples.info = n.info
-  let ret = extractRunnableExamplesSource(d.conf, n)
-  for a in n.lastSon: runnableExamples.add a
-  # we could also use `ret` instead here, to keep sources verbatim
-  writeExample(d, runnableExamples, rdoccmd)
-  result = (rdoccmd, ret)
+  if d.conf.errorCounter > 0:
+    return (rdoccmd, code)
+
+  let comment = "autogenerated by docgen\nloc: $1\nrdoccmd: $2" % [loc, rdoccmd]
+  let outputDir = d.exampleOutputDir
+  createDir(outputDir)
+  inc d.exampleCounter
+  let outp = outputDir / RelativeFile(extractFilename(d.filename.changeFileExt"" & ("_examples$1.nim" % $d.exampleCounter)))
+
+  if useRenderModule:
+    var docComment = newTree(nkCommentStmt)
+    docComment.comment = comment
+    var runnableExamples = newTree(nkStmtList,
+        docComment,
+        newTree(nkImportStmt, newStrNode(nkStrLit, d.filename)))
+    runnableExamples.info = n.info
+    for a in n.lastSon: runnableExamples.add a
+
+    # buggy, refs bug #17292
+    # still worth fixing as it can affect other code relying on `renderModule`,
+    # so we keep this code path here for now, which could still be useful in some
+    # other situations.
+    renderModule(runnableExamples, outp.string, conf = d.conf)
+
+  else:
+    let code2 = """
+#[
+$1
+]#
+import $2
+$3
+""" % [comment, d.filename.quoted, code]
+    writeFile(outp.string, code2)
+
+  if rdoccmd notin d.exampleGroups:
+    d.exampleGroups[rdoccmd] = ExampleGroup(rdoccmd: rdoccmd, docCmd: d.conf.docCmd, index: d.exampleGroups.len)
+  d.exampleGroups[rdoccmd].code.add "import $1\n" % outp.string.quoted
+  result = (rdoccmd, code)
   when false:
     proc extractImports(n: PNode; result: PNode) =
       if n.kind in {nkImportStmt, nkImportExceptStmt, nkFromStmt}:
@@ -560,7 +596,7 @@ proc getAllRunnableExamplesImpl(d: PDoc; n: PNode, dest: var Rope, state: Runnab
           "\n\\textbf{$1}\n", [msg.rope])
       inc d.listingCounter
       let id = $d.listingCounter
-      dest.add(d.config.getOrDefault"doc.listing_start" % [id, "langNim"])
+      dest.add(d.config.getOrDefault"doc.listing_start" % [id, "langNim", ""])
       var dest2 = ""
       renderNimCode(dest2, code, isLatex = d.conf.cmd == cmdRst2tex)
       dest.add dest2
@@ -671,8 +707,8 @@ proc getRstName(n: PNode): PRstNode =
   case n.kind
   of nkPostfix: result = getRstName(n[1])
   of nkPragmaExpr: result = getRstName(n[0])
-  of nkSym: result = newRstNode(rnLeaf, n.sym.renderDefinitionName)
-  of nkIdent: result = newRstNode(rnLeaf, n.ident.s)
+  of nkSym: result = newRstLeaf(n.sym.renderDefinitionName)
+  of nkIdent: result = newRstLeaf(n.ident.s)
   of nkAccQuoted:
     result = getRstName(n[0])
     for i in 1..<n.len: result.text.add(getRstName(n[i]).text)
@@ -1209,7 +1245,7 @@ proc genOutFile(d: PDoc, groupedToc = false): Rope =
   renderTocEntries(d[], j, 1, tmp)
   var toc = tmp.rope
   for i in TSymKind:
-    var shouldSort = i in {skProc, skFunc} and groupedToc
+    var shouldSort = i in routineKinds and groupedToc
     genSection(d, i, shouldSort)
     toc.add(d.toc[i])
   if toc != nil:
@@ -1225,6 +1261,10 @@ proc genOutFile(d: PDoc, groupedToc = false): Rope =
     # Modules get an automatic title for the HTML, but no entry in the index.
     # better than `extractFilename(changeFileExt(d.filename, ""))` as it disambiguates dups
     title = $presentationPath(d.conf, AbsoluteFile d.filename, isTitle = true).changeFileExt("")
+  var subtitle = "".rope
+  if d.meta[metaSubtitle] != "":
+    dispA(d.conf, subtitle, "<h2 class=\"subtitle\">$1</h2>",
+        "\\\\\\vspace{0.5em}\\large $1", [d.meta[metaSubtitle].rope])
 
   var groupsection = getConfigVar(d.conf, "doc.body_toc_groupsection")
   let bodyname = if d.hasToc and not d.isPureRst:
@@ -1233,18 +1273,18 @@ proc genOutFile(d: PDoc, groupedToc = false): Rope =
                  elif d.hasToc: "doc.body_toc"
                  else: "doc.body_no_toc"
   let seeSrcRope = genSeeSrcRope(d, d.filename, 1)
-  content = ropeFormatNamedVars(d.conf, getConfigVar(d.conf, bodyname), ["title",
+  content = ropeFormatNamedVars(d.conf, getConfigVar(d.conf, bodyname), ["title", "subtitle",
       "tableofcontents", "moduledesc", "date", "time", "content", "deprecationMsg", "theindexhref", "body_toc_groupsection", "seeSrc"],
-      [title.rope, toc, d.modDesc, rope(getDateStr()),
+      [title.rope, subtitle, toc, d.modDesc, rope(getDateStr()),
       rope(getClockStr()), code, d.modDeprecationMsg, relLink(d.conf.outDir, d.destFile.AbsoluteFile, theindexFname.RelativeFile), groupsection.rope, seeSrcRope])
   if optCompileOnly notin d.conf.globalOptions:
     # XXX what is this hack doing here? 'optCompileOnly' means raw output!?
     code = ropeFormatNamedVars(d.conf, getConfigVar(d.conf, "doc.file"), [
-        "nimdoccss", "dochackjs",  "title", "tableofcontents", "moduledesc", "date", "time",
+        "nimdoccss", "dochackjs",  "title", "subtitle", "tableofcontents", "moduledesc", "date", "time",
         "content", "author", "version", "analytics", "deprecationMsg"],
         [relLink(d.conf.outDir, d.destFile.AbsoluteFile, nimdocOutCss.RelativeFile),
         relLink(d.conf.outDir, d.destFile.AbsoluteFile, docHackJsFname.RelativeFile),
-        title.rope, toc, d.modDesc, rope(getDateStr()), rope(getClockStr()),
+        title.rope, subtitle, toc, d.modDesc, rope(getDateStr()), rope(getClockStr()),
         content, d.meta[metaAuthor].rope, d.meta[metaVersion].rope, d.analytics.rope, d.modDeprecationMsg])
   else:
     code = content
@@ -1331,8 +1371,9 @@ proc commandRstAux(cache: IdentCache, conf: ConfigRef;
   var d = newDocumentor(filen, cache, conf, outExt)
 
   d.isPureRst = true
-  var rst = parseRst(readFile(filen.string), filen.string, 0, 1, d.hasToc,
-                     {roSupportRawDirective, roSupportMarkdown}, conf)
+  var rst = parseRst(readFile(filen.string), filen.string,
+                     line=LineRstInit, column=ColRstInit,
+                     d.hasToc, {roSupportRawDirective, roSupportMarkdown}, conf)
   var modDesc = newStringOfCap(30_000)
   renderRstToOut(d[], rst, modDesc)
   d.modDesc = rope(modDesc)
@@ -1396,11 +1437,11 @@ proc commandBuildIndex*(conf: ConfigRef, dir: string, outFile = RelativeFile"") 
 
   let code = ropeFormatNamedVars(conf, getConfigVar(conf, "doc.file"), [
       "nimdoccss", "dochackjs",
-      "title", "tableofcontents", "moduledesc", "date", "time",
+      "title", "subtitle", "tableofcontents", "moduledesc", "date", "time",
       "content", "author", "version", "analytics"],
       [relLink(conf.outDir, filename, nimdocOutCss.RelativeFile),
       relLink(conf.outDir, filename, docHackJsFname.RelativeFile),
-      rope"Index", nil, nil, rope(getDateStr()),
+      rope"Index", rope"", nil, nil, rope(getDateStr()),
       rope(getClockStr()), content, nil, nil, nil])
   # no analytics because context is not available
 
