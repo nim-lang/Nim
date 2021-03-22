@@ -1143,7 +1143,10 @@ proc rodViewer*(rodfile: AbsoluteFile; config: ConfigRef, cache: IdentCache) =
 
   echo "all symbols"
   for i in 0..high(m.sh.syms):
-    echo "  ", m.sh.strings[m.sh.syms[i].name], " local ID: ", i
+    if m.sh.syms[i].name != LitId(0):
+      echo "  ", m.sh.strings[m.sh.syms[i].name], " local ID: ", i, " kind ", m.sh.syms[i].kind
+    else:
+      echo "  <anon symbol?> local ID: ", i, " kind ", m.sh.syms[i].kind
 
   echo "symbols: ", m.sh.syms.len, " types: ", m.sh.types.len,
     " top level nodes: ", m.topLevel.nodes.len, " other nodes: ", m.bodies.nodes.len,

@@ -63,6 +63,9 @@ proc addFileToLink(config: ConfigRef; m: PSym) =
                    flags: {CfileFlag.Cached})
     addFileToCompile(config, cf)
 
+when defined(debugDce):
+  import std / [os, packedsets]
+
 proc aliveSymsChanged(config: ConfigRef; position: int; alive: AliveSyms): bool =
   let asymFile = toRodFile(config, AbsoluteFile toFullPath(config, position.FileIndex), ".alivesyms")
   var s = newSeqOfCap[int32](alive[position].len)
@@ -77,6 +80,15 @@ proc aliveSymsChanged(config: ConfigRef; position: int; alive: AliveSyms): bool 
   if f2.err == ok and oldData == s:
     result = false
   else:
+    when defined(debugDce):
+      let oldAsSet = toPackedSet[int32](oldData)
+      let newAsSet = toPackedSet[int32](s)
+      echo "set of live symbols changed ", asymFile.changeFileExt("rod"), " ", position, " ", f2.err
+      echo "in old but not in new ", oldAsSet.difference(newAsSet)
+      echo "in new but not in old ", newAsSet.difference(oldAsSet)
+
+      if execShellCmd(getAppFilename() & " rod " & quoteShell(asymFile.changeFileExt("rod"))) != 0:
+        echo "command failed"
     result = true
     var f = rodfiles.create(asymFile.string)
     f.storeHeader()
