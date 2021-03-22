@@ -200,7 +200,7 @@ when defined(nimHasStyleChecks):
 
 proc socketError*(socket: Socket, err: int = -1, async = false,
                   lastError = (-1).OSErrorCode,
-                  flags: set[SocketFlag] = {}): void {.gcsafe.}
+                  flags: set[SocketFlag] = {}) {.gcsafe.}
 
 proc isDisconnectionError*(flags: set[SocketFlag],
     lastError: OSErrorCode): bool =

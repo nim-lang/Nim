@@ -451,14 +451,14 @@ proc preferSpawn*(): bool =
   ## <#spawnX.t>`_ instead.
   result = gSomeReady.counter > 0
 
-proc spawn*(call: sink typed): void {.magic: "Spawn".}
+proc spawn*(call: sink typed) {.magic: "Spawn".}
   ## Always spawns a new task, so that the `call` is never executed on
   ## the calling thread.
   ##
   ## `call` has to be a proc call `p(...)` where `p` is gcsafe and has a
   ## return type that is either `void` or compatible with `FlowVar[T]`.
 
-proc pinnedSpawn*(id: ThreadId; call: sink typed): void {.magic: "Spawn".}
+proc pinnedSpawn*(id: ThreadId; call: sink typed) {.magic: "Spawn".}
   ## Always spawns a new task on the worker thread with `id`, so that
   ## the `call` is **always** executed on the thread.
   ##
