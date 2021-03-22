@@ -1769,23 +1769,6 @@ proc semMethodPrototype(c: PContext; s: PSym; n: PNode) =
     else:
       localError(c.config, n.info, "'method' needs a parameter that has an object type")
 
-proc setGenericParamsMisc(c: PContext; n: PNode) =
-  let orig = n[genericParamsPos]
-
-  doAssert orig.kind in {nkEmpty, nkGenericParams}
-
-  if n[genericParamsPos].kind == nkEmpty:
-    n[genericParamsPos] = newNodeI(nkGenericParams, n.info)
-  else:
-    # we keep the original params around for better error messages, see
-    # issue https://github.com/nim-lang/Nim/issues/1713
-    n[genericParamsPos] = semGenericParamList(c, orig)
-
-  if n[miscPos].kind == nkEmpty:
-    n[miscPos] = newTree(nkBracket, c.graph.emptyNode, orig)
-  else:
-    n[miscPos][1] = orig
-
 proc semProcAux(c: PContext, n: PNode, kind: TSymKind,
                 validPragmas: TSpecialWords, flags: TExprFlags = {}): PNode =
   result = semProcAnnotation(c, n, validPragmas)
@@ -1839,7 +1822,6 @@ proc semProcAux(c: PContext, n: PNode, kind: TSymKind,
 
   if n[paramsPos].kind != nkEmpty:
     semParamList(c, n[paramsPos], n[genericParamsPos], s)
-    # we maybe have implicit type parameters:
   else:
     s.typ = newProcType(c, n.info)
 

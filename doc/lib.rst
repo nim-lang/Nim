@@ -64,6 +64,9 @@ Core
 * `locks <locks.html>`_
   Locks and condition variables for Nim.
 
+* `macrocache <macrocache.html>`_
+  Provides an API for macros to collect compile-time information across modules.
+  
 * `macros <macros.html>`_
   Contains the AST API and documentation of Nim for writing macros.
 
@@ -354,6 +357,9 @@ Parsers
 * `json <json.html>`_
   High-performance JSON parser.
 
+* `std/jsonutils <jsonutils.html>`_
+  This module implements a hookable (de)serialization for arbitrary types.
+
 * `lexbase <lexbase.html>`_
   This is a low-level module that implements an extremely efficient buffering
   scheme for lexers and parsers. This is used by the diverse parsing modules.
@@ -367,6 +373,9 @@ Parsers
 
 * `parsecsv <parsecsv.html>`_
   The `parsecsv` module implements a simple high-performance CSV parser.
+
+* `parsejson <parsejson.html>`_
+  This module implements a JSON parser. It is used and exported by the `json <json.html>`_ module, but can also be used in its own right.
 
 * `parseopt <parseopt.html>`_
   The `parseopt` module implements a command line option parser.
@@ -456,6 +465,9 @@ Miscellaneous
 * `coro <coro.html>`_
   This module implements experimental coroutines in Nim.
 
+* `std/enumerate <enumerate.html>`_
+  This module implements `enumerate` syntactic sugar based on Nim's macro system.
+
 * `logging <logging.html>`_
   This module implements a simple logger.
 
@@ -470,6 +482,10 @@ Miscellaneous
 
 * `std/varints <varints.html>`_
   Decode variable-length integers that are compatible with SQLite.
+
+* `std/with <with.html>`_
+  This module implements the `with` macro for easy function chaining.
+
 
 
 Modules for JS backend
@@ -503,6 +519,7 @@ Regular expressions
   expressions. The current implementation uses PCRE.
 
 
+
 Database support
 ----------------
 
@@ -517,6 +534,13 @@ Database support
 * `db_sqlite <db_sqlite.html>`_
   A higher level SQLite database wrapper. The same interface is implemented
   for other databases too.
+
+
+Generic Operating System Services
+---------------------------------
+
+* `rdstdin <rdstdin.html>`_
+  This module contains code for reading from stdin.
 
 
 Wrappers
@@ -569,3 +593,11 @@ Network Programming and Internet Protocols
 
 * `openssl <openssl.html>`_
   Wrapper for OpenSSL.
+
+
+
+Unstable
+========
+
+* `atomics <atomics.html>`_
+  Types and operations for atomic operations and lockless algorithms.

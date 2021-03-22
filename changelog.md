@@ -243,6 +243,7 @@
   asyncronous `HttpClient` implemented on top of `jsfetch` and
   synchronous `HttpClient` implemented on top of `jsxmlhttprequest`.
   Migrated `jsxmlhttprequest` to stdlib.
+- Added dollar `$` and `len` for `jsre.RegExp`.
 
 
 ## Language changes
