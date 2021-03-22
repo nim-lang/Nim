@@ -9,7 +9,7 @@ pkg "argparse"
 pkg "arraymancer", true, "nim c tests/tests_cpu.nim"
 pkg "ast_pattern_matching", false, "nim c -r --oldgensym:on tests/test1.nim"
 pkg "asyncmysql", true
-pkg "bigints", url = "https://github.com/Araq/nim-bigints"
+pkg "bigints"
 pkg "binaryheap", false, "nim c -r binaryheap.nim"
 # pkg "blscurve", true # pending https://github.com/status-im/nim-blscurve/issues/39
 pkg "bncurve", true
