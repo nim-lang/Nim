@@ -1,4 +1,4 @@
-import std/macros
+import macros
 
 type GenAstOpt* = enum
   kDirtyTemplate,
