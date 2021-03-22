@@ -301,6 +301,7 @@
 
 - Added `unsafeIsolate` and `extract` to `std/isolation`.
 
+- `--hint:CC` now goes to stderr instead of stdout like all other hints.
 
 
 ## Tool changes
