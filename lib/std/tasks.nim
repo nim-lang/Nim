@@ -149,7 +149,7 @@ macro toTask*(e: typed{nkCall | nkCommand}): Task =
       Task(callback: `funcName`, args: nil)
 
   echo "-------------------------------------------------------------"
-  # echo result.repr
+  echo result.repr
 
 
 runnableExamples:
@@ -164,21 +164,6 @@ runnableExamples:
 when isMainModule:
 
   block:
-    proc hello(typ: typedesc) =
-      echo typ(12)
-
-    let b = toTask hello(int)
-    b.invoke()
-
-  block:
-    proc hello(a: int or seq[string]) =
-      echo a
-
-    let x = @["1", "2", "3", "4"]
-    let b = toTask hello(x)
-    b.invoke()
-
-  block:
     proc hello(a: int or string) =
       echo a
 
@@ -186,17 +171,47 @@ when isMainModule:
     let b = toTask hello(x)
     b.invoke()
 
-
-  block:
-    proc hello(a: int or string) =
-      echo a
-
-    let b = toTask hello(12)
-    b.invoke()
-
   when defined(testing):
     import std/strformat
 
+
+    block:
+      proc hello(typ: typedesc) =
+        echo typ(12)
+
+      let b = toTask hello(int)
+      b.invoke()
+
+    block:
+      proc hello(typ: typedesc) =
+        echo typ(12)
+
+      let b = toTask hello(int)
+      b.invoke()
+
+    block:
+      proc hello(a: int or seq[string]) =
+        echo a
+
+      let x = @["1", "2", "3", "4"]
+      let b = toTask hello(x)
+      b.invoke()
+
+    block:
+      proc hello(a: int or string) =
+        echo a
+
+      let x = "!2"
+      let b = toTask hello(x)
+      b.invoke()
+
+
+    block:
+      proc hello(a: int or string) =
+        echo a
+
+      let b = toTask hello(12)
+      b.invoke()
 
     block:
       proc hello(c: seq[int], a: int) =
