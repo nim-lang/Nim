@@ -1008,10 +1008,7 @@ proc gsub(g: var TSrcGen, n: PNode, c: TContext) =
     if n.len > 1 and n.lastSon.kind in {nkStmtList, nkStmtListExpr}:
       accentedName(g, n[0])
       var i = 1
-      while i < n.len:
-        if n[i].kind in {nkStmtList, nkStmtListExpr}:
-          break
-        i.inc
+      while i < n.len and n[i].kind notin {nkStmtList, nkStmtListExpr}: i.inc
       if i > 1:
         put(g, tkParLe, "(")
         gcomma(g, n, 1, i - 1 - n.len)
