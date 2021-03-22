@@ -45,8 +45,6 @@ macro toTask*(e: typed{nkCall | nkCommand}): Task =
     let transferProc = newIdentNode("transfer")
 
 
-    # echo formalParams.treeRepr
-
     for i in 1 ..< formalParams.len:
       let param = formalParams[i][1]
 
@@ -144,14 +142,60 @@ macro toTask*(e: typed{nkCall | nkCommand}): Task =
 
 when isMainModule:
   block:
-    proc hello(a: int, c: openArray[seq[int]]) =
+    proc hello(c: seq[int], a: int) =
       echo a
       echo c
 
-    let b = toTask hello(8, @[@[3], @[4], @[5], @[6], @[12], @[7]])
+    let x = 12
+    var y = @[1, 3, 1, 4, 5, x, 1]
+    let b = toTask hello(y, 12)
+    b.invoke()
+
+  block:
+    proc hello(c: seq[int], a: int) =
+      echo a
+      echo c
+
+    var x = 2
+    let b = toTask hello(@[1, 3, 1, 4, 5, x, 1], 12)
+    b.invoke()
+
+  block:
+    proc hello(c: array[7, int], a: int) =
+      echo a
+      echo c
+
+    let b = toTask hello([1, 3, 1, 4, 5, 2, 1], 12)
+    b.invoke()
+
+  block:
+    proc hello(c: seq[int], a: int) =
+      echo a
+      echo c
+
+    let b = toTask hello(@[1, 3, 1, 4, 5, 2, 1], 12)
     b.invoke()
 
   when defined(testing):
+    import std/strformat
+
+    block:
+      proc hello(a: int, c: seq[int]) =
+        echo a
+        echo c
+
+      let b = toTask hello(8, @[1, 3, 1, 4, 5, 2, 1])
+      b.invoke()
+
+
+    block:
+      proc hello(a: int, c: openArray[seq[int]]) =
+        echo a
+        echo c
+
+      let b = toTask hello(8, @[@[3], @[4], @[5], @[6], @[12], @[7]])
+      b.invoke()
+
     block:
       proc hello(a: int, c: openArray[int]) =
         echo a
