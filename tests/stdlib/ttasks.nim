@@ -1,236 +1,330 @@
+discard """
+  matrix: "--gc:orc"
+"""
+
 import std/[tasks, strformat]
 
 block:
   block:
+    var called = 0
     proc hello(x: static range[1 .. 5]) =
-      echo x
+      called += x
 
     let b = toTask hello(3)
     b.invoke()
+    doAssert called == 3
     b.invoke()
+    doAssert called == 6
 
   block:
+    var called = 0
     proc hello(x: range[1 .. 5]) =
-      echo x
+      called += x
 
     let b = toTask hello(3)
     b.invoke()
+    doAssert called == 3
     b.invoke()
+    doAssert called == 6
 
   block:
+    var called = 0
     proc hello(x: 1 .. 5) =
-      echo x
+      called += x
 
     let b = toTask hello(3)
     b.invoke()
+    doAssert called == 3
     b.invoke()
+    doAssert called == 6
 
   block:
+    var temp = ""
     proc hello(a: int or seq[string]) =
-      echo a
+      when a is seq[string]:
+        for s in a:
+          temp.add s
+      else:
+        temp.addInt a
 
     let x = @["1", "2", "3", "4"]
     let b = toTask hello(x)
     b.invoke()
+    doAssert temp == "1234"
     b.invoke()
+    doAssert temp == "12341234"
 
 
   block:
+    var temp = ""
+
     proc hello(a: int or string) =
-      echo a
+      when a is string:
+        temp.add a
 
     let x = "!2"
 
     let b = toTask hello(x)
     b.invoke()
+    doAssert temp == x
 
   block:
+    var temp = ""
     proc hello(a: int or string) =
-      echo a
+      when a is string:
+        temp.add a
 
     let x = "!2"
     let b = toTask hello(x)
     b.invoke()
-
-
-  block:
-    proc hello(a: int or string) =
-      echo a
-
-    let x = "!2"
-    let b = toTask hello(x)
-    b.invoke()
+    doAssert temp == x
 
   block:
+    var x = 0
     proc hello(typ: typedesc) =
-      echo typ(12)
+      x += typ(12)
 
     let b = toTask hello(int)
     b.invoke()
+    doAssert x == 12
 
   block:
-    proc hello(typ: typedesc) =
-      echo typ(12)
-
-    let b = toTask hello(int)
-    b.invoke()
-
-  block:
+    var temp = ""
     proc hello(a: int or seq[string]) =
-      echo a
+      when a is seq[string]:
+        for s in a:
+          temp.add s
 
     let x = @["1", "2", "3", "4"]
     let b = toTask hello(x)
     b.invoke()
+    doAssert temp == "1234"
 
   block:
-    proc hello(a: int or string) =
-      echo a
+    var temp = ""
+    proc hello(a: int | string) =
+      when a is string:
+        temp.add a
 
     let x = "!2"
     let b = toTask hello(x)
     b.invoke()
-
+    doAssert temp == x
 
   block:
-    proc hello(a: int or string) =
-      echo a
+    var x = 0
+    proc hello(a: int | string) =
+      when a is int:
+        x = a
 
     let b = toTask hello(12)
     b.invoke()
+    doAssert x == 12
 
   block:
+    var a1: seq[int]
+    var a2 = 0
     proc hello(c: seq[int], a: int) =
-      echo a
-      echo c
+      a1 = c
+      a2 = a
 
     let x = 12
     var y = @[1, 3, 1, 4, 5, x, 1]
     let b = toTask hello(y, 12)
     b.invoke()
 
-  block:
-    proc hello(c: seq[int], a: int) =
-      echo a
-      echo c
+    doAssert a1 == y
+    doAssert a2 == x
 
+  block:
+    var a1: seq[int]
+    var a2 = 0
+    proc hello(c: seq[int], a: int) =
+      a1 = c
+      a2 = a
     var x = 2
     let b = toTask hello(@[1, 3, 1, 4, 5, x, 1], 12)
     b.invoke()
 
+    doAssert a1 == @[1, 3, 1, 4, 5, x, 1]
+    doAssert a2 == 12
+
   block:
+    var a1: array[7, int]
+    var a2 = 0
     proc hello(c: array[7, int], a: int) =
-      echo a
-      echo c
+      a1 = c
+      a2 = a
 
     let b = toTask hello([1, 3, 1, 4, 5, 2, 1], 12)
     b.invoke()
 
+    doAssert a1 == [1, 3, 1, 4, 5, 2, 1]
+    doAssert a2 == 12
+
   block:
+    var a1: seq[int]
+    var a2 = 0
     proc hello(c: seq[int], a: int) =
-      echo a
-      echo c
+      a1 = c
+      a2 = a
 
     let b = toTask hello(@[1, 3, 1, 4, 5, 2, 1], 12)
     b.invoke()
 
+    doAssert a1 == @[1, 3, 1, 4, 5, 2, 1]
+    doAssert a2 == 12
+
   block:
+    var a1: seq[int]
+    var a2 = 0
     proc hello(a: int, c: seq[int]) =
-      echo a
-      echo c
+      a1 = c
+      a2 = a
 
     let b = toTask hello(8, @[1, 3, 1, 4, 5, 2, 1])
     b.invoke()
 
+    doAssert a1 == @[1, 3, 1, 4, 5, 2, 1]
+    doAssert a2 == 8
+
     let c = toTask 8.hello(@[1, 3, 1, 4, 5, 2, 1])
     c.invoke()
 
+    doAssert a1 == @[1, 3, 1, 4, 5, 2, 1]
+    doAssert a2 == 8
 
   block:
+    var a1: seq[seq[int]]
+    var a2: int
     proc hello(a: int, c: openArray[seq[int]]) =
-      echo a
-      echo c
+      a1 = @c
+      a2 = a
 
     let b = toTask hello(8, @[@[3], @[4], @[5], @[6], @[12], @[7]])
     b.invoke()
 
+    doAssert a1 ==  @[@[3], @[4], @[5], @[6], @[12], @[7]]
+    doAssert a2 == 8
+
   block:
+    var a1: seq[int]
+    var a2: int
     proc hello(a: int, c: openArray[int]) =
-      echo a
-      echo c
+      a1 = @c
+      a2 = a
 
     let b = toTask hello(8, @[3, 4, 5, 6, 12, 7])
     b.invoke()
 
+    doAssert a1 == @[3, 4, 5, 6, 12, 7]
+    doAssert a2 == 8
+
   block:
+    var a1: seq[int]
+    var a2: int
     proc hello(a: int, c: static varargs[int]) =
-      echo a
-      echo c
+      a1 = @c
+      a2 = a
 
     let b = toTask hello(8, @[3, 4, 5, 6, 12, 7])
     b.invoke()
 
+    doAssert a1 == @[3, 4, 5, 6, 12, 7]
+    doAssert a2 == 8
+
   block:
+    var a1: seq[int]
+    var a2: int
     proc hello(a: int, c: static varargs[int]) =
-      echo a
-      echo c
+      a1 = @c
+      a2 = a
 
     let b = toTask hello(8, [3, 4, 5, 6, 12, 7])
     b.invoke()
 
+    doAssert a1 == @[3, 4, 5, 6, 12, 7]
+    doAssert a2 == 8
+
   block:
+    var a1: seq[int]
+    var a2: int
     proc hello(a: int, c: varargs[int]) =
-      echo a
-      echo c
+      a1 = @c
+      a2 = a
 
     let x = 12
     let b = toTask hello(8, 3, 4, 5, 6, x, 7)
     b.invoke()
 
+    doAssert a1 == @[3, 4, 5, 6, 12, 7]
+    doAssert a2 == 8
+
   block:
     var x = 12
 
     proc hello(x: ptr int) =
-      echo x[]
+      x[] += 12
 
     let b = toTask hello(addr x)
     b.invoke()
 
+    doAssert x == 24
+
     let c = toTask x.addr.hello
     invoke(c)
+
+    doAssert x == 36
   block:
     type
       Test = ref object
         id: int
+
+    var x = 0
     proc hello(a: int, c: static Test) =
-      echo a
+      x += a
+      x += c.id
 
     let b = toTask hello(8, Test(id: 12))
     b.invoke()
+
+    doAssert x == 20
 
   block:
     type
       Test = object
         id: int
+
+    var x = 0
     proc hello(a: int, c: static Test) =
-      echo a
+      x += a
+      x += c.id
 
     let b = toTask hello(8, Test(id: 12))
     b.invoke()
+    doAssert x == 20
 
   block:
+    var x = 0
     proc hello(a: int, c: static seq[int]) =
-      echo a
+      x += a
+      for i in c:
+        x += i
 
     let b = toTask hello(8, @[3, 4, 5, 6, 12, 7])
     b.invoke()
+    doAssert x == 45
 
   block:
+    var x = 0
     proc hello(a: int, c: static array[5, int]) =
-      echo a
+      x += a
+      for i in c:
+        x += i
 
     let b = toTask hello(8, [3, 4, 5, 6, 12])
     b.invoke()
+    doAssert x == 38
 
   block:
     var aVal = 0
@@ -313,26 +407,28 @@ block:
     doAssert cVal == 8
 
   block:
+    var temp = ""
     proc hello(x: int, y: seq[string], d = 134) =
-      echo fmt"{x=} {y=} {d=}"
+      temp = fmt"{x=} {y=} {d=}"
 
-    proc ok() =
-      echo "ok"
 
     proc main() =
       var x = @["23456"]
       let t = toTask hello(2233, x)
       t.invoke()
+
+      doAssert temp == """x=2233 y=@["23456"] d=134"""
 
     main()
 
 
   block:
+    var temp = ""
     proc hello(x: int, y: seq[string], d = 134) =
-      echo fmt"{x=} {y=} {d=}"
+      temp.add fmt"{x=} {y=} {d=}"
 
     proc ok() =
-      echo "ok"
+      temp = "ok"
 
     proc main() =
       var x = @["23456"]
@@ -340,14 +436,20 @@ block:
       t.invoke()
       t.invoke()
 
+      doAssert temp == """x=2233 y=@["23456"] d=134x=2233 y=@["23456"] d=134"""
+
     main()
 
     var x = @["4"]
-    let m = toTask hello(2233, x)
+    let m = toTask hello(2233, x, 7)
     m.invoke()
+
+    doAssert temp == """x=2233 y=@["23456"] d=134x=2233 y=@["23456"] d=134x=2233 y=@["4"] d=7"""
 
     let n = toTask ok()
     n.invoke()
+
+    doAssert temp == "ok"
 
   block:
     var called = 0
