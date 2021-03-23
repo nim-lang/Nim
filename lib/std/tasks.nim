@@ -59,7 +59,7 @@ macro toTask*(e: typed{nkCall | nkCommand}): Task =
     proc hello(a: int) = echo a
 
     let b = toTask hello(13)
-    doassert b is Task
+    assert b is Task
 
   template addAllNode =
     let scratchDotExpr = newDotExpr(scratchIdent, formalParams[i][0])
