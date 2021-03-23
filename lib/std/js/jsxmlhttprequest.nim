@@ -38,7 +38,7 @@ func setRequestHeader*(this: XMLHttpRequest; keyValuePairs: openArray[tuple[key,
 
 runnableExamples("-r:off"):
   from std/dom import Node
-  let request: XMLHttpRequest = newXMLHttpRequest()
+  let request = newXMLHttpRequest()
   request.open("GET".cstring, "http://localhost:8000/".cstring, false)
   request.setRequestHeader("mode".cstring, "no-cors".cstring)
   request.setRequestHeader([(key: "mode".cstring, val: "no-cors".cstring)])
