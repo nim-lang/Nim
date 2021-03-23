@@ -1,6 +1,7 @@
-import std/macros
+import std/[macros, isolation]
 import system/ansi_c
 
+export isolation
 
 #
 # proc hello(a: int, b: string) =
@@ -63,7 +64,10 @@ macro toTask*(e: typed{nkCall | nkCommand}): Task =
   template addAllNode =
     let scratchDotExpr = newDotExpr(scratchIdent, formalParams[i][0])
 
-    scratchAssignList.add newAssignment(scratchDotExpr, e[i])
+    let isolatedTemp = genSym(nskTemp, "isolate")
+    scratchAssignList.add newVarStmt(isolatedTemp, newCall(newidentNode("isolate"), e[i]))
+    scratchAssignList.add newAssignment(scratchDotExpr,
+        newcall(newIdentNode("extract"), isolatedTemp))
 
     let tempNode = genSym(kind = nskTemp, ident = "")
     callNode.add nnkExprEqExpr.newTree(formalParams[i][0], tempNode)
