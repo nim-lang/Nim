@@ -55,32 +55,32 @@ runnableExamples("-d:nimExperimentalJsfetch -r:off"):
   from std/uri import parseUri, Uri
 
   proc example() {.async.} =
-    let client: JsAsyncHttpClient = newJsAsyncHttpClient()
-    const data: string = """{"key": "value"}"""
+    let client = newJsAsyncHttpClient()
+    const data = """{"key": "value"}"""
 
     block:
-        let url: Uri = parseUri("http://nim-lang.org")
-        let content: cstring = await client.getContent(url)
-        let response: Response = await client.get(url)
+      let url = parseUri("http://nim-lang.org")
+      let content = await client.getContent(url)
+      let response = await client.get(url)
 
     block:
-      let url: Uri = parseUri("http://httpbin.org/delete")
-      let content: cstring = await client.deleteContent(url)
-      let response: Response = await client.delete(url)
+      let url = parseUri("http://httpbin.org/delete")
+      let content = await client.deleteContent(url)
+      let response = await client.delete(url)
 
     block:
-      let url: Uri = parseUri("http://httpbin.org/post")
-      let content: cstring = await client.postContent(url, data)
-      let response: Response = await client.post(url, data)
+      let url = parseUri("http://httpbin.org/post")
+      let content = await client.postContent(url, data)
+      let response = await client.post(url, data)
 
     block:
-      let url: Uri = parseUri("http://httpbin.org/put")
-      let content: cstring = await client.putContent(url, data)
-      let response: Response = await client.put(url, data)
+      let url = parseUri("http://httpbin.org/put")
+      let content = await client.putContent(url, data)
+      let response = await client.put(url, data)
 
     block:
-      let url: Uri = parseUri("http://httpbin.org/patch")
-      let content: cstring = await client.patchContent(url, data)
-      let response: Response = await client.patch(url, data)
+      let url = parseUri("http://httpbin.org/patch")
+      let content = await client.patchContent(url, data)
+      let response = await client.patch(url, data)
 
   discard example()
