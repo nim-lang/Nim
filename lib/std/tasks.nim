@@ -55,15 +55,16 @@ proc invoke*(task: Task) {.inline.} =
 
 macro toTask*(e: typed{nkCall | nkCommand}): Task =
   ## Converts the call and its arguments to `Task`.
-  runnableExamples:
+  runnableExamples("--gc:orc"):
     proc hello(a: int) = echo a
 
     let b = toTask hello(13)
-    assert b is Task
+    doassert b is Task
 
   template addAllNode =
     let scratchDotExpr = newDotExpr(scratchIdent, formalParams[i][0])
 
+    
     let isolatedTemp = genSym(nskTemp, "isolate")
     scratchAssignList.add newVarStmt(isolatedTemp, newCall(newidentNode("isolate"), e[i]))
     scratchAssignList.add newAssignment(scratchDotExpr,
@@ -111,7 +112,12 @@ macro toTask*(e: typed{nkCall | nkCommand}): Task =
             scratchDotExpr = newDotExpr(scratchIdent, formalParams[i][0])
             seqCallNode = newcall("@", e[i])
 
-          scratchAssignList.add newAssignment(scratchDotExpr, seqCallNode)
+          # scratchAssignList.add newAssignment(scratchDotExpr, seqCallNode)
+
+          let isolatedTemp = genSym(nskTemp, "isolate")
+          scratchAssignList.add newVarStmt(isolatedTemp, newCall(newidentNode("isolate"), seqCallNode))
+          scratchAssignList.add newAssignment(scratchDotExpr,
+              newcall(newIdentNode("extract"), isolatedTemp))
 
           let tempNode = genSym(kind = nskTemp)
           callNode.add nnkExprEqExpr.newTree(formalParams[i][0], tempNode)
@@ -162,7 +168,7 @@ macro toTask*(e: typed{nkCall | nkCommand}): Task =
     stmtList.add(scratchObj)
     stmtList.add(scratchLetSection)
     stmtList.add(scratchCheck)
-    stmtList.add(scratchAssignList)
+    stmtList.add(nnkBlockStmt.newTree(newEmptyNode(), newStmtList(scratchAssignList)))
 
     var functionStmtList = newStmtList()
     let funcCall = newCall(e[0], callNode)
@@ -202,7 +208,7 @@ macro toTask*(e: typed{nkCall | nkCommand}): Task =
   when defined(nimTasksDebug):
     echo result.repr
 
-runnableExamples:
+runnableExamples("--gc:orc"):
   var num = 0
   proc hello(a: int) = inc num, a
 
