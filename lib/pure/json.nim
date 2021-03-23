@@ -1165,7 +1165,7 @@ when defined(nimFixedForwardGeneric):
   proc initFromJson[T: distinct](dst: var T; jsonNode: JsonNode; jsonPath: var string) =
     assignDistinctImpl(dst, jsonNode, jsonPath)
 
-  proc detectIncompatibleType(typeExpr, lineinfoNode: NimNode): void =
+  proc detectIncompatibleType(typeExpr, lineinfoNode: NimNode) =
     if typeExpr.kind == nnkTupleConstr:
       error("Use a named tuple instead of: " & typeExpr.repr, lineinfoNode)
 
