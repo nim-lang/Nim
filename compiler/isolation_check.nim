@@ -105,13 +105,10 @@ proc checkIsolate*(n: PNode): bool =
         result = checkIsolate(n[i].lastSon)
         if not result: break
     of nkObjConstr:
-      assert n.len >= 1
-      if n.len == 1:
-        result = true # `ref object literals` which has no attribute.
-      else:
-        for i in 1..<n.len:
-          result = checkIsolate(n[i].lastSon)
-          if not result: break
+      result = true
+      for i in 1..<n.len:
+        result = checkIsolate(n[i].lastSon)
+        if not result: break
     of nkBracket, nkTupleConstr, nkPar:
       for it in n:
         result = checkIsolate(it)
