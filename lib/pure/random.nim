@@ -547,8 +547,7 @@ proc gauss*(mu = 0.0, sigma = 1.0): float {.since: (1, 3).} =
 proc initRand*(seed: int64): Rand =
   ## Initializes a new `Rand <#Rand>`_ state using the given seed.
   ##
-  ## `seed` must not be zero. Providing a specific seed will produce
-  ## the same results for that seed each time.
+  ## Providing a specific seed will produce the same results for that seed each time.
   ##
   ## The resulting state is independent of the default RNG's state.
   ##
@@ -563,17 +562,16 @@ proc initRand*(seed: int64): Rand =
 
     let now = getTime()
     var r2 = initRand(now.toUnix * 1_000_000_000 + now.nanosecond)
-
-  doAssert seed != 0 # 0 causes `rand(int)` to always return 0 for example.
+  let seed = if seed != 0: seed else: 1 # because 0 is a fixed point
   result.a0 = Ui(seed shr 16)
   result.a1 = Ui(seed and 0xffff)
+  skipRandomNumbers(result)
   discard next(result)
 
 proc randomize*(seed: int64) {.benign.} =
   ## Initializes the default random number generator with the given seed.
   ##
-  ## `seed` must not be zero. Providing a specific seed will produce
-  ## the same results for that seed each time.
+  ## Providing a specific seed will produce the same results for that seed each time.
   ##
   ## **See also:**
   ## * `initRand proc<#initRand,int64>`_ that initializes a Rand state
