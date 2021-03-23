@@ -44,13 +44,6 @@ runnableExamples("-r:off"):
   request.setRequestHeader([(key: "mode".cstring, val: "no-cors".cstring)])
   request.overrideMimeType("text/plain".cstring)
   request.send()
-  echo request.getAllResponseHeaders()
-  echo "responseText\t", request.responseText
-  echo "responseURL\t", request.responseURL
-  echo "statusText\t", request.statusText
-  echo "responseXML\t", request.responseXML is Node
-  echo "status\t", request.status
-  echo "timeout\t", request.timeout
-  echo "withCredentials\t", request.withCredentials
-  echo "readyState\t", request.readyState
+  for k, v in fieldPairs(request):
+    echo k, ": ", $v
   request.abort()
