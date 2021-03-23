@@ -5,7 +5,8 @@ discard """
 @[(input: @["KXSC", "BGMC"]), (input: @["PXFX"]), (input: @["WXRQ", "ZSCZD"])]
 14
 First tasks completed.
-Second tasks completed.'''
+Second tasks completed.
+test1'''
 """
 
 import strutils, os, std / wordwrap
