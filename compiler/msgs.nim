@@ -9,7 +9,8 @@
 
 import options, ropes, lineinfos, pathutils
 import std/private/miscdollars
-import std/[os, tables, strutils, terminal, macros, strbasics]
+import strutils except toLowerAscii
+import std/[os, tables, terminal, macros, strbasics]
 
 type InstantiationInfo* = typeof(instantiationInfo())
 template instLoc(): InstantiationInfo = instantiationInfo(-2, fullPaths = true)
