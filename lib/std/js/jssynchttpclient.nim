@@ -36,25 +36,25 @@ proc head*(self: JsHttpClient; url: Uri | string): cstring =
 runnableExamples("-r:off"):
   from std/uri import parseUri, Uri
 
-  let client: JsHttpClient = newJsHttpClient()
-  const data: string = """{"key": "value"}"""
+  let client = newJsHttpClient()
+  const data = """{"key": "value"}"""
 
   block:
-    let url: Uri = parseUri("http://nim-lang.org")
-    let content: cstring = client.getContent(url)
+    let url = parseUri("http://nim-lang.org")
+    let content = client.getContent(url)
 
   block:
-    let url: Uri = parseUri("http://httpbin.org/delete")
-    let content: cstring = client.deleteContent(url)
+    let url = parseUri("http://httpbin.org/delete")
+    let content = client.deleteContent(url)
 
   block:
-    let url: Uri = parseUri("http://httpbin.org/post")
-    let content: cstring = client.postContent(url, data)
+    let url = parseUri("http://httpbin.org/post")
+    let content = client.postContent(url, data)
 
   block:
-    let url: Uri = parseUri("http://httpbin.org/put")
-    let content: cstring = client.putContent(url, data)
+    let url = parseUri("http://httpbin.org/put")
+    let content = client.putContent(url, data)
 
   block:
-    let url: Uri = parseUri("http://httpbin.org/patch")
-    let content: cstring = client.patchContent(url, data)
+    let url = parseUri("http://httpbin.org/patch")
+    let content = client.patchContent(url, data)
