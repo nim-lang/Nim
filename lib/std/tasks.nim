@@ -130,10 +130,15 @@ macro toTask*(e: typed{nkCall | nkCommand}): Task =
       scratchObjPtrType
     )
 
+    let scratchCheck = quote do:
+      if `scratchIdent`.isNil:
+        raise newException(OutOfMemDefect, "Could not allocate memory")
+
     # let scratchAssign = newAssignment(newNimNode(nnkDerefExpr).add(scratchIdent), scratchObjIdent)
 
     stmtList.add(scratchObj)
     stmtList.add(scratchLetSection)
+    stmtList.add(scratchCheck)
     # stmtList.add(scratchVarSection)
     stmtList.add(scratchAssignList)
     # stmtList.add(scratchAssign)
