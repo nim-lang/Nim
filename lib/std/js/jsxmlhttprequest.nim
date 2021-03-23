@@ -36,22 +36,21 @@ func setRequestHeader*(this: XMLHttpRequest; keyValuePairs: openArray[tuple[key,
   ## Same as `setRequestHeader` but takes `openArray[tuple[key, val: cstring]]`.
 
 
-runnableExamples:
+runnableExamples("-r:off"):
   from std/dom import Node
-  if defined(fusionJsXmlhttprequestTests):
-    let request: XMLHttpRequest = newXMLHttpRequest()
-    request.open("GET".cstring, "http://localhost:8000/".cstring, false)
-    request.setRequestHeader("mode".cstring, "no-cors".cstring)
-    request.setRequestHeader([(key: "mode".cstring, val: "no-cors".cstring)])
-    request.overrideMimeType("text/plain".cstring)
-    request.send()
-    echo request.getAllResponseHeaders()
-    echo "responseText\t", request.responseText
-    echo "responseURL\t", request.responseURL
-    echo "statusText\t", request.statusText
-    echo "responseXML\t", request.responseXML is Node
-    echo "status\t", request.status
-    echo "timeout\t", request.timeout
-    echo "withCredentials\t", request.withCredentials
-    echo "readyState\t", request.readyState
-    request.abort()
+  let request: XMLHttpRequest = newXMLHttpRequest()
+  request.open("GET".cstring, "http://localhost:8000/".cstring, false)
+  request.setRequestHeader("mode".cstring, "no-cors".cstring)
+  request.setRequestHeader([(key: "mode".cstring, val: "no-cors".cstring)])
+  request.overrideMimeType("text/plain".cstring)
+  request.send()
+  echo request.getAllResponseHeaders()
+  echo "responseText\t", request.responseText
+  echo "responseURL\t", request.responseURL
+  echo "statusText\t", request.statusText
+  echo "responseXML\t", request.responseXML is Node
+  echo "status\t", request.status
+  echo "timeout\t", request.timeout
+  echo "withCredentials\t", request.withCredentials
+  echo "readyState\t", request.readyState
+  request.abort()
