@@ -63,7 +63,22 @@ proc prettyString(a: object): string =
   for k, v in fieldPairs(a):
     result.add k & ": " & $v & "\n"
 
-proc presentationPath*(conf: ConfigRef, file: AbsoluteFile, isTitle = false): RelativeFile =
+proc canonicalImport*(conf: ConfigRef, file: AbsoluteFile): string =
+  ##[
+  Shows the canonical module import, e.g.:
+  system, std/tables, fusion/pointers, system/assertions, std/private/asciitables
+  ]##
+  var ret = getRelativePathFromConfigPath(conf, file, isTitle = true)
+  let dir = getNimbleFile(conf, $file).parentDir.AbsoluteDir
+  if not dir.isEmpty:
+    let relPath = relativeTo(file, dir)
+    if not relPath.isEmpty and (ret.isEmpty or relPath.string.len < ret.string.len):
+      ret = relPath
+  if ret.isEmpty:
+    ret = relativeTo(file, conf.projectPath)
+  result = ret.string.nativeToUnixPath.changeFileExt("")
+
+proc presentationPath*(conf: ConfigRef, file: AbsoluteFile): RelativeFile =
   ## returns a relative file that will be appended to outDir
   let file2 = $file
   template bail() =
@@ -97,10 +112,7 @@ proc presentationPath*(conf: ConfigRef, file: AbsoluteFile, isTitle = false): Re
     bail()
   if isAbsolute(result.string):
     result = file.string.splitPath()[1].RelativeFile
-  if isTitle:
-    result = result.string.nativeToUnixPath.RelativeFile
-  else:
-    result = result.string.replace("..", dotdotMangle).RelativeFile
+  result = result.string.replace("..", dotdotMangle).RelativeFile
   doAssert not result.isEmpty
   doAssert not isAbsolute(result.string)
 
@@ -1259,8 +1271,7 @@ proc genOutFile(d: PDoc, groupedToc = false): Rope =
     setIndexTerm(d[], external, "", title)
   else:
     # Modules get an automatic title for the HTML, but no entry in the index.
-    # better than `extractFilename(changeFileExt(d.filename, ""))` as it disambiguates dups
-    title = $presentationPath(d.conf, AbsoluteFile d.filename, isTitle = true).changeFileExt("")
+    title = canonicalImport(d.conf, AbsoluteFile d.filename)
   var subtitle = "".rope
   if d.meta[metaSubtitle] != "":
     dispA(d.conf, subtitle, "<h2 class=\"subtitle\">$1</h2>",
