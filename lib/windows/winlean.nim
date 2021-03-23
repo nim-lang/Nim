@@ -1030,7 +1030,7 @@ const
   PROCESS_QUERY_LIMITED_INFORMATION* = 0x00001000'i32
   PROCESS_SET_LIMITED_INFORMATION* = 0x00002000'i32
 type
-  WAITORTIMERCALLBACK* = proc(para1: pointer, para2: int32): void {.stdcall.}
+  WAITORTIMERCALLBACK* = proc(para1: pointer, para2: int32) {.stdcall.}
 
 proc postQueuedCompletionStatus*(CompletionPort: Handle,
                                 dwNumberOfBytesTransferred: DWORD,
@@ -1112,7 +1112,7 @@ else:
        {.stdcall, dynlib: "kernel32", importc: "ReadConsoleInputW".}
 
 type
-  LPFIBER_START_ROUTINE* = proc (param: pointer): void {.stdcall.}
+  LPFIBER_START_ROUTINE* = proc (param: pointer) {.stdcall.}
 
 const
   FIBER_FLAG_FLOAT_SWITCH* = 0x01
@@ -1121,8 +1121,8 @@ proc CreateFiber*(stackSize: int, fn: LPFIBER_START_ROUTINE, param: pointer): po
 proc CreateFiberEx*(stkCommit: int, stkReserve: int, flags: int32, fn: LPFIBER_START_ROUTINE, param: pointer): pointer {.stdcall, discardable, dynlib: "kernel32", importc.}
 proc ConvertThreadToFiber*(param: pointer): pointer {.stdcall, discardable, dynlib: "kernel32", importc.}
 proc ConvertThreadToFiberEx*(param: pointer, flags: int32): pointer {.stdcall, discardable, dynlib: "kernel32", importc.}
-proc DeleteFiber*(fiber: pointer): void {.stdcall, discardable, dynlib: "kernel32", importc.}
-proc SwitchToFiber*(fiber: pointer): void {.stdcall, discardable, dynlib: "kernel32", importc.}
+proc DeleteFiber*(fiber: pointer) {.stdcall, discardable, dynlib: "kernel32", importc.}
+proc SwitchToFiber*(fiber: pointer) {.stdcall, discardable, dynlib: "kernel32", importc.}
 proc GetCurrentFiber*(): pointer {.stdcall, importc, header: "windows.h".}
 
 proc toFILETIME*(t: int64): FILETIME =

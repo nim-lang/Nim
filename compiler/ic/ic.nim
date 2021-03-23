@@ -42,6 +42,8 @@ type
     methodsPerType*: seq[(PackedItemId, int, PackedItemId)]
     enumToStringProcs*: seq[(PackedItemId, PackedItemId)]
 
+    emittedTypeInfo*: seq[string]
+
     sh*: Shared
     cfg: PackedConfig
 
@@ -58,7 +60,7 @@ type
     config*: ConfigRef
 
 proc isActive*(e: PackedEncoder): bool = e.config != nil
-proc disable*(e: var PackedEncoder) = e.config = nil
+proc disable(e: var PackedEncoder) = e.config = nil
 
 template primConfigFields(fn: untyped) {.dirty.} =
   fn backend
@@ -552,6 +554,7 @@ proc loadRodFile*(filename: AbsoluteFile; m: var PackedModule; config: ConfigRef
   loadSeqSection attachedOpsSection, m.attachedOps
   loadSeqSection methodsPerTypeSection, m.methodsPerType
   loadSeqSection enumToStringProcsSection, m.enumToStringProcs
+  loadSeqSection typeInfoSection, m.emittedTypeInfo
 
   close(f)
   result = f.err
@@ -614,6 +617,7 @@ proc saveRodFile*(filename: AbsoluteFile; encoder: var PackedEncoder; m: var Pac
   storeSeqSection attachedOpsSection, m.attachedOps
   storeSeqSection methodsPerTypeSection, m.methodsPerType
   storeSeqSection enumToStringProcsSection, m.enumToStringProcs
+  storeSeqSection typeInfoSection, m.emittedTypeInfo
 
   close(f)
   encoder.disable()
@@ -1139,7 +1143,10 @@ proc rodViewer*(rodfile: AbsoluteFile; config: ConfigRef, cache: IdentCache) =
 
   echo "all symbols"
   for i in 0..high(m.sh.syms):
-    echo "  ", m.sh.strings[m.sh.syms[i].name], " local ID: ", i
+    if m.sh.syms[i].name != LitId(0):
+      echo "  ", m.sh.strings[m.sh.syms[i].name], " local ID: ", i, " kind ", m.sh.syms[i].kind
+    else:
+      echo "  <anon symbol?> local ID: ", i, " kind ", m.sh.syms[i].kind
 
   echo "symbols: ", m.sh.syms.len, " types: ", m.sh.types.len,
     " top level nodes: ", m.topLevel.nodes.len, " other nodes: ", m.bodies.nodes.len,
