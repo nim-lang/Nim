@@ -26,6 +26,7 @@ const
   SymStartChars*: set[char] = {'a'..'z', 'A'..'Z', '\x80'..'\xFF'}
   OpChars*: set[char] = {'+', '-', '*', '/', '\\', '<', '>', '!', '?', '^', '.',
     '|', '=', '%', '&', '$', '@', '~', ':'}
+  UnaryMinusWhitelist = {' ', '\t', '\n', '\r', ',', ';', '(', '[', '{'}
 
 # don't forget to update the 'highlite' module if these charsets should change
 
@@ -51,22 +52,22 @@ type
     tkVar = "var", tkWhen = "when", tkWhile = "while", tkXor = "xor",
     tkYield = "yield", # end of keywords
 
-    tkIntLit = "tkIntLit", tkInt8Lit = "tkInt8Lit", tkInt16Lit = "tkInt16Lit", 
+    tkIntLit = "tkIntLit", tkInt8Lit = "tkInt8Lit", tkInt16Lit = "tkInt16Lit",
     tkInt32Lit = "tkInt32Lit", tkInt64Lit = "tkInt64Lit",
-    tkUIntLit = "tkUIntLit", tkUInt8Lit = "tkUInt8Lit", tkUInt16Lit = "tkUInt16Lit", 
+    tkUIntLit = "tkUIntLit", tkUInt8Lit = "tkUInt8Lit", tkUInt16Lit = "tkUInt16Lit",
     tkUInt32Lit = "tkUInt32Lit", tkUInt64Lit = "tkUInt64Lit",
     tkFloatLit = "tkFloatLit", tkFloat32Lit = "tkFloat32Lit",
     tkFloat64Lit = "tkFloat64Lit", tkFloat128Lit = "tkFloat128Lit",
     tkStrLit = "tkStrLit", tkRStrLit = "tkRStrLit", tkTripleStrLit = "tkTripleStrLit",
-    tkGStrLit = "tkGStrLit", tkGTripleStrLit = "tkGTripleStrLit", tkCharLit = "tkCharLit", 
-    
+    tkGStrLit = "tkGStrLit", tkGTripleStrLit = "tkGTripleStrLit", tkCharLit = "tkCharLit",
+
     tkParLe = "(", tkParRi = ")", tkBracketLe = "[",
     tkBracketRi = "]", tkCurlyLe = "{", tkCurlyRi = "}",
     tkBracketDotLe = "[.", tkBracketDotRi = ".]",
     tkCurlyDotLe = "{.", tkCurlyDotRi = ".}",
     tkParDotLe = "(.", tkParDotRi = ".)",
     tkComma = ",", tkSemiColon = ";",
-    tkColon = ":", tkColonColon = "::", tkEquals = "=", 
+    tkColon = ":", tkColonColon = "::", tkEquals = "=",
     tkDot = ".", tkDotDot = "..", tkBracketLeColon = "[:",
     tkOpr, tkComment, tkAccent = "`",
     # these are fake tokens used by renderer.nim
@@ -348,6 +349,14 @@ proc getNumber(L: var Lexer, result: var Token) =
   startpos = L.bufpos
   tokenBegin(result, startpos)
 
+  var isPositive = true
+  if L.buf[L.bufpos] == '-':
+    eatChar(L, result)
+    isPositive = true
+
+  template setNumber(field, value) =
+    field = (if isPositive: value else: -value)
+
   # First stage: find out base, make verifications, build token literal string
   # {'c', 'C'} is added for deprecation reasons to provide a clear error message
   if L.buf[L.bufpos] == '0' and L.buf[L.bufpos + 1] in baseCodeChars + {'c', 'C', 'O'}:
@@ -459,7 +468,7 @@ proc getNumber(L: var Lexer, result: var Token) =
 
   # Third stage, extract actual number
   L.bufpos = startpos            # restore position
-  var pos: int = startpos
+  var pos = startpos
   try:
     if (L.buf[pos] == '0') and (L.buf[pos + 1] in baseCodeChars):
       inc(pos, 2)
@@ -500,20 +509,20 @@ proc getNumber(L: var Lexer, result: var Token) =
         internalError(L.config, getLineInfo(L), "getNumber")
 
       case result.tokType
-      of tkIntLit, tkInt64Lit: result.iNumber = xi
-      of tkInt8Lit: result.iNumber = ashr(xi shl 56, 56)
-      of tkInt16Lit: result.iNumber = ashr(xi shl 48, 48)
-      of tkInt32Lit: result.iNumber = ashr(xi shl 32, 32)
-      of tkUIntLit, tkUInt64Lit: result.iNumber = xi
-      of tkUInt8Lit: result.iNumber = xi and 0xff
-      of tkUInt16Lit: result.iNumber = xi and 0xffff
-      of tkUInt32Lit: result.iNumber = xi and 0xffffffff
+      of tkIntLit, tkInt64Lit: setNumber result.iNumber, xi
+      of tkInt8Lit: setNumber result.iNumber, ashr(xi shl 56, 56)
+      of tkInt16Lit: setNumber result.iNumber, ashr(xi shl 48, 48)
+      of tkInt32Lit: setNumber result.iNumber, ashr(xi shl 32, 32)
+      of tkUIntLit, tkUInt64Lit: setNumber result.iNumber, xi
+      of tkUInt8Lit: setNumber result.iNumber, xi and 0xff
+      of tkUInt16Lit: setNumber result.iNumber, xi and 0xffff
+      of tkUInt32Lit: setNumber result.iNumber, xi and 0xffffffff
       of tkFloat32Lit:
-        result.fNumber = (cast[PFloat32](addr(xi)))[]
+        setNumber result.fNumber, (cast[PFloat32](addr(xi)))[]
         # note: this code is endian neutral!
         # XXX: Test this on big endian machine!
       of tkFloat64Lit, tkFloatLit:
-        result.fNumber = (cast[PFloat64](addr(xi)))[]
+        setNumber result.fNumber, (cast[PFloat64](addr(xi)))[]
       else: internalError(L.config, getLineInfo(L), "getNumber")
 
       # Bounds checks. Non decimal literals are allowed to overflow the range of
@@ -521,12 +530,13 @@ proc getNumber(L: var Lexer, result: var Token) =
       # below checks of signed sizes against uint*.high is deliberate:
       # (0x80'u8 = 128, 0x80'i8 = -128, etc == OK)
       if result.tokType notin floatTypes:
-        let outOfRange = case result.tokType:
-        of tkUInt8Lit, tkUInt16Lit, tkUInt32Lit: result.iNumber != xi
-        of tkInt8Lit: (xi > BiggestInt(uint8.high))
-        of tkInt16Lit: (xi > BiggestInt(uint16.high))
-        of tkInt32Lit: (xi > BiggestInt(uint32.high))
-        else: false
+        let outOfRange =
+          case result.tokType
+          of tkUInt8Lit, tkUInt16Lit, tkUInt32Lit: result.iNumber != xi
+          of tkInt8Lit:  (xi > BiggestInt(uint8.high))
+          of tkInt16Lit: (xi > BiggestInt(uint16.high))
+          of tkInt32Lit: (xi > BiggestInt(uint32.high))
+          else: false
 
         if outOfRange:
           #echo "out of range num: ", result.iNumber, " vs ", xi
@@ -557,23 +567,23 @@ proc getNumber(L: var Lexer, result: var Token) =
           raise newException(ValueError, "invalid integer: " & $result.literal)
         result.iNumber = iNumber
 
-      # Explicit bounds checks. Only T.high needs to be considered
-      # since result.iNumber can't be negative.
+      # Explicit bounds checks.
       let outOfRange =
         case result.tokType
-        of tkInt8Lit: result.iNumber > int8.high
-        of tkUInt8Lit: result.iNumber > BiggestInt(uint8.high)
-        of tkInt16Lit: result.iNumber > int16.high
-        of tkUInt16Lit: result.iNumber > BiggestInt(uint16.high)
-        of tkInt32Lit: result.iNumber > int32.high
-        of tkUInt32Lit: result.iNumber > BiggestInt(uint32.high)
+        of tkInt8Lit: result.iNumber > int8.high or result.iNumber < int8.low
+        of tkUInt8Lit: result.iNumber > BiggestInt(uint8.high) or result.iNumber < 0
+        of tkInt16Lit: result.iNumber > int16.high or result.iNumber < int16.low
+        of tkUInt16Lit: result.iNumber > BiggestInt(uint16.high) or result.iNumber < 0
+        of tkInt32Lit: result.iNumber > int32.high or result.iNumber < int32.low
+        of tkUInt32Lit: result.iNumber > BiggestInt(uint32.high) or result.iNumber < 0
         else: false
 
-      if outOfRange: lexMessageLitNum(L, "number out of range: '$1'", startpos)
+      if outOfRange:
+        lexMessageLitNum(L, "number out of range: '$1'", startpos)
 
     # Promote int literal to int64? Not always necessary, but more consistent
     if result.tokType == tkIntLit:
-      if result.iNumber > high(int32):
+      if result.iNumber > high(int32) or result.iNumber < low(int32):
         result.tokType = tkInt64Lit
 
   except ValueError:
@@ -1278,6 +1288,19 @@ proc rawGetTok*(L: var Lexer, tok: var Token) =
       let c = L.buf[L.bufpos]
       if c in SymChars+{'_'}:
         lexMessage(L, errGenerated, "invalid token: no whitespace between number and identifier")
+    of '-':
+      if L.buf[L.bufpos+1] in {'0'..'9'} and
+          (L.bufpos-1 == 0 or L.buf[L.bufpos-1] in UnaryMinusWhitelist):
+        # x)-23 # binary minus
+        # ,-23  # unary minus
+        # \n-78 # unary minus? Yes.
+        # =-3   # parsed as `=-` anyway
+        getNumber(L, tok)
+        let c = L.buf[L.bufpos]
+        if c in SymChars+{'_'}:
+          lexMessage(L, errGenerated, "invalid token: no whitespace between number and identifier")
+      else:
+        getOperator(L, tok)
     else:
       if c in OpChars:
         getOperator(L, tok)

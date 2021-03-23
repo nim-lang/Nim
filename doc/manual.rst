@@ -499,10 +499,11 @@ Numerical constants are of a single type and have the form::
   hexdigit = digit | 'A'..'F' | 'a'..'f'
   octdigit = '0'..'7'
   bindigit = '0'..'1'
-  HEX_LIT = '0' ('x' | 'X' ) hexdigit ( ['_'] hexdigit )*
-  DEC_LIT = digit ( ['_'] digit )*
-  OCT_LIT = '0' 'o' octdigit ( ['_'] octdigit )*
-  BIN_LIT = '0' ('b' | 'B' ) bindigit ( ['_'] bindigit )*
+  unary_minus = '-' # See the section about unary minus
+  HEX_LIT = unary_minus? '0' ('x' | 'X' ) hexdigit ( ['_'] hexdigit )*
+  DEC_LIT = unary_minus? digit ( ['_'] digit )*
+  OCT_LIT = unary_minus? '0' 'o' octdigit ( ['_'] octdigit )*
+  BIN_LIT = unary_minus? '0' ('b' | 'B' ) bindigit ( ['_'] bindigit )*
 
   INT_LIT = HEX_LIT
           | DEC_LIT
@@ -521,7 +522,7 @@ Numerical constants are of a single type and have the form::
   UINT64_LIT = INT_LIT ['\''] ('u' | 'U') '64'
 
   exponent = ('e' | 'E' ) ['+' | '-'] digit ( ['_'] digit )*
-  FLOAT_LIT = digit (['_'] digit)* (('.' digit (['_'] digit)* [exponent]) |exponent)
+  FLOAT_LIT = unary_minus? digit (['_'] digit)* (('.' digit (['_'] digit)* [exponent]) |exponent)
   FLOAT32_SUFFIX = ('f' | 'F') ['32']
   FLOAT32_LIT = HEX_LIT '\'' FLOAT32_SUFFIX
               | (FLOAT_LIT | DEC_LIT | OCT_LIT | BIN_LIT) ['\''] FLOAT32_SUFFIX
@@ -534,6 +535,38 @@ As can be seen in the productions, numerical constants can contain underscores
 for readability. Integer and floating-point literals may be given in decimal (no
 prefix), binary (prefix `0b`), octal (prefix `0o`), and hexadecimal
 (prefix `0x`) notation.
+
+The fact that the unary minus `-` in a number literal like `-1` is considered
+to be part of the literal is a late addition to the language. The rationale is that
+an expression `-128'i8` should be valid and without this special case, this would
+be impossible -- `128` is not a valid `int8` value, only `-128` is.
+
+For the `unary_minus` rule there are further restrictions that are not covered
+in the formal grammar. For `-` to be part of the number literal its immediately
+preceeding character has to be in the
+set `{' ', '\t', '\n', '\r', ',', ';', '(', '[', '{'}`. This set was designed to
+cover most cases in a natural manner.
+
+In the following examples, `-1` is a single token:
+
+.. code-block:: nim
+
+  echo -1
+  echo(-1)
+  echo [-1]
+  echo 3,-1
+
+  "abc";-1
+
+In the following examples, `-1` is parsed as two separate tokens (as `- 1`):
+
+.. code-block:: nim
+
+  echo x-1
+  echo (int)-1
+  echo [a]-1
+  "abc"-1
+
 
 There exists a literal for each numerical type that is
 defined. The suffix starting with an apostrophe ('\'') is called a
