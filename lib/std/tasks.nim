@@ -1,5 +1,6 @@
-import std/[macros]
+import std/macros
 import system/ansi_c
+
 
 type
   Task* = object ## `Task` contains the callback and its arguments.
@@ -17,18 +18,6 @@ proc invoke*(task: Task) {.inline.} =
   ## Invokes the `task`.
   task.callback(task.args)
 
-
-# proc toTaskNode(scratchObjType: NimNode): NimNode =
-#   result = quote("@") do:
-#     proc `=destroy`(t: var Task) =
-#       type typ = @scratchObjType
-#       if t.args != nil:
-#         `=destroy`(cast[ptr typ](t.args)[])
-#         when compileOption("threads"):
-#           deallocShared(t.args)
-#         else:
-#           dealloc(t.args)
-
 macro toTask*(e: typed{nkCall | nkCommand}): Task =
   ## Converts the call and its arguments to `Task`.
   runnableExamples:
@@ -38,8 +27,9 @@ macro toTask*(e: typed{nkCall | nkCommand}): Task =
     assert b is Task
 
   template addAllNode =
-    # let scratchDotExpr = newDotExpr(newNimNode(nnkDerefExpr).add scratchIdent, formalParams[i][0])
-    let scratchDotExpr = newDotExpr(scratchObjIdent, formalParams[i][0])
+    # let scratchDotExpr = newDotExpr(scratchObjIdent, formalParams[i][0])
+    let scratchDotExpr = newDotExpr(scratchIdent, formalParams[i][0])
+
     scratchAssignList.add newAssignment(scratchDotExpr, e[i])
 
     let tempNode = genSym(kind = nskTemp, ident = "")
@@ -51,7 +41,7 @@ macro toTask*(e: typed{nkCall | nkCommand}): Task =
 
   if e.len > 1:
     let scratchIdent = genSym(kind = nskTemp, ident = "scratch")
-    let scratchObjIdent = genSym(kind = nskTemp, ident = "scratchObj")
+    # let scratchObjIdent = genSym(kind = nskTemp, ident = "scratchObj")
     let impl = e[0].getTypeInst
 
     echo impl.treeRepr
@@ -83,7 +73,8 @@ macro toTask*(e: typed{nkCall | nkCommand}): Task =
         elif param[0].eqIdent("varargs") or param[0].eqIdent("openArray"):
           let
             seqType = nnkBracketExpr.newTree(newIdentNode("seq"), param[1])
-            scratchDotExpr = newDotExpr(scratchObjIdent, formalParams[i][0])
+            # scratchDotExpr = newDotExpr(scratchObjIdent, formalParams[i][0])
+            scratchDotExpr = newDotExpr(scratchIdent, formalParams[i][0])
             seqCallNode = newcall("@", e[i])
 
           scratchAssignList.add newAssignment(scratchDotExpr, seqCallNode)
@@ -124,32 +115,28 @@ macro toTask*(e: typed{nkCall | nkCommand}): Task =
                     )
 
 
-    # when compileOption("threads"):
     let scratchObjPtrType = quote do:
-    #     cast[ptr `scratchObjType`](allocShared(sizeof(`scratchObjType`)))
-    # else:
-    #   let scratchObjPtrType = quote do:
       cast[ptr `scratchObjType`](c_calloc(csize_t 1, csize_t sizeof(`scratchObjType`)))
 
-    let scratchVarSection = nnkVarSection.newTree(
-      nnkIdentDefs.newTree(
-        scratchObjIdent,
-        scratchObjType,
-        newEmptyNode()
-      )
-    )
+    # let scratchVarSection = nnkVarSection.newTree(
+    #   nnkIdentDefs.newTree(
+    #     scratchObjIdent,
+    #     scratchObjType,
+    #     newEmptyNode()
+    #   )
+    # )
     let scratchLetSection = newLetStmt(
       scratchIdent,
       scratchObjPtrType
     )
 
-    let scratchAssign = newAssignment(newNimNode(nnkDerefExpr).add(scratchIdent), scratchObjIdent)
+    # let scratchAssign = newAssignment(newNimNode(nnkDerefExpr).add(scratchIdent), scratchObjIdent)
 
     stmtList.add(scratchObj)
     stmtList.add(scratchLetSection)
-    stmtList.add(scratchVarSection)
+    # stmtList.add(scratchVarSection)
     stmtList.add(scratchAssignList)
-    stmtList.add(scratchAssign)
+    # stmtList.add(scratchAssign)
 
     var functionStmtList = newStmtList()
     let funcCall = newCall(e[0], callNode)
