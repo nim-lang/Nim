@@ -91,20 +91,6 @@ proc initDeque*[T](initialCapacity: int = nimDequeDefaultInitialCapacity): Deque
   ## * `toDeque proc <#toDeque,openArray[T]>`_
   result.initImpl(initialCapacity)
 
-proc toDeque*[T](x: openArray[T]): Deque[T] {.since: (1, 3).} =
-  ## Creates a new deque that contains the elements of `x` (in the same order).
-  ##
-  ## **See also:**
-  ## * `initDeque proc <#initDeque,int>`_
-  runnableExamples:
-    let a = toDeque([7, 8, 9])
-    assert len(a) == 3
-    assert $a == "[7, 8, 9]"
-
-  result.initImpl(x.len)
-  for item in items(x):
-    result.addLast(item)
-
 proc len*[T](deq: Deque[T]): int {.inline.} =
   ## Return the number of elements in the `deq`.
   result = deq.count
@@ -112,8 +98,11 @@ proc len*[T](deq: Deque[T]): int {.inline.} =
 template high*[T](deq: Deque[T]): int =
   deq.len - 1
 
-proc toDeque*[T](x: openArray[T]): Deque[T] =
-  ## Converts a sequence into a Deque
+proc toDeque*[T](x: openArray[T]): Deque[T] {.since: (1, 3).} =
+  ## Creates a new deque that contains the elements of `x` (in the same order).
+  ##
+  ## **See also:**
+  ## * `initDeque proc <#initDeque,int>`_
   runnableExamples:
     var x = @[10, 20, 30].toDeque
     assert x.len == 3
