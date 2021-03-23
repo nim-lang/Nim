@@ -241,6 +241,8 @@
 
 - Added dollar `$` and `len` for `jsre.RegExp`.
 
+- Added `std/tasks`.
+
 
 ## Language changes
 
