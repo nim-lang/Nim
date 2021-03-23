@@ -1262,7 +1262,15 @@ proc `body=`*(someProc: NimNode, val: NimNode) {.compileTime.} =
   else:
     badNodeKind someProc, "body="
 
-proc basename*(a: NimNode): NimNode {.compileTime, benign.}
+proc basename*(a: NimNode): NimNode {.raises: [].} =
+  ## Pull an identifier from prefix/postfix expressions.
+  case a.kind
+  of nnkIdent: result = a
+  of nnkPostfix, nnkPrefix: result = a[1]
+  of nnkPragmaExpr: result = basename(a[0])
+  else:
+    error("Do not know how to get basename of (" & treeRepr(a) & ")\n" &
+      repr(a), a)
 
 proc `$`*(node: NimNode): string {.compileTime.} =
   ## Get the string of an identifier node.
@@ -1324,16 +1332,6 @@ proc insert*(a: NimNode; pos: int; b: NimNode) {.compileTime.} =
     for i in countdown(len(a) - 3, pos):
       a[i + 1] = a[i]
     a[pos] = b
-
-proc basename*(a: NimNode): NimNode =
-  ## Pull an identifier from prefix/postfix expressions.
-  case a.kind
-  of nnkIdent: result = a
-  of nnkPostfix, nnkPrefix: result = a[1]
-  of nnkPragmaExpr: result = basename(a[0])
-  else:
-    error("Do not know how to get basename of (" & treeRepr(a) & ")\n" &
-      repr(a), a)
 
 proc `basename=`*(a: NimNode; val: string) {.compileTime.}=
   case a.kind
