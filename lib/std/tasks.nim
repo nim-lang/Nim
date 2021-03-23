@@ -15,8 +15,6 @@ proc `=destroy`*(t: var Task) =
 
 proc invoke*(task: Task) {.inline.} =
   ## Invokes the `task`.
-  ##
-  ## .. warning:: `task` can only be used once.
   task.callback(task.args)
 
 
@@ -209,42 +207,37 @@ when isMainModule:
     let x = @["1", "2", "3", "4"]
     let b = toTask hello(x)
     b.invoke()
-
-    echo "1"
-
-  block:
-    proc hello(a: int or string) =
-      echo a
-
-    echo 2
-
-    let x = "!2"
-
-    echo 3
-    let b = toTask hello(x)
-    echo 4
     b.invoke()
 
-  block:
-    proc hello(a: int or string) =
-      echo a
-
-    let x = "!2"
-    let b = toTask hello(x)
-    b.invoke()
-
-
-  block:
-    proc hello(a: int or string) =
-      echo a
-
-    let x = "!2"
-    let b = toTask hello(x)
-    b.invoke()
 
   when defined(testing):
     import std/strformat
 
+    block:
+      proc hello(a: int or string) =
+        echo a
+
+      let x = "!2"
+
+      let b = toTask hello(x)
+      b.invoke()
+
+    block:
+      proc hello(a: int or string) =
+        echo a
+
+      let x = "!2"
+      let b = toTask hello(x)
+      b.invoke()
+
+
+    block:
+      proc hello(a: int or string) =
+        echo a
+
+      let x = "!2"
+      let b = toTask hello(x)
+      b.invoke()
 
     block:
       proc hello(typ: typedesc) =
