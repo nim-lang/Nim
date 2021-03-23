@@ -2,6 +2,40 @@ import std/macros
 import system/ansi_c
 
 
+#
+# proc hello(a: int, b: string) =
+#   echo $a & b
+#
+# let literal = "Nim"
+# let t = toTask(hello(521, literal))
+#
+#
+# is roughly converted to
+#
+# type
+#   ScratchObj_369098949 = object
+#     a: int
+#     b: string
+#
+# let scratch_369098933 = cast[ptr ScratchObj_369098949](c_calloc(csize_t 1,
+#     csize_t sizeof(ScratchObj_369098949)))
+# if scratch_369098933.isNil:
+#   raise newException(OutOfMemDefect, "Could not allocate memory")
+# scratch_369098933.a = 521
+# scratch_369098933.b = literal
+# proc hello_369098950(args`gensym11: pointer) {.nimcall.} =
+#   let obj_369098946 = cast[ptr ScratchObj_369098949](args`gensym11)
+#   let :tmp_369098947 = obj_369098946.a
+#   let :tmp_369098948 = obj_369098946.b
+#   hello(a = :tmp_369098947, b = :tmp_369098948)
+#
+# proc destroyScratch_369098951(args`gensym11: pointer) {.nimcall.} =
+#   let obj_369098952 = cast[ptr ScratchObj_369098949](args`gensym11)
+#   =destroy(obj_369098952[])
+#
+# let t = Task(callback: hello_369098950, args: scratch_369098933, destroy: destroyScratch_369098951)
+#
+
 type
   Task* = object ## `Task` contains the callback and its arguments.
     callback: proc (args: pointer) {.nimcall.}
@@ -27,21 +61,18 @@ macro toTask*(e: typed{nkCall | nkCommand}): Task =
     assert b is Task
 
   template addAllNode =
-    # let scratchDotExpr = newDotExpr(scratchObjIdent, formalParams[i][0])
     let scratchDotExpr = newDotExpr(scratchIdent, formalParams[i][0])
 
     scratchAssignList.add newAssignment(scratchDotExpr, e[i])
 
     let tempNode = genSym(kind = nskTemp, ident = "")
     callNode.add nnkExprEqExpr.newTree(formalParams[i][0], tempNode)
-    # tempAssignList.add newLetStmt(tempNode, newCall(transferProc, newDotExpr(objTemp, formalParams[i][0])))
     tempAssignList.add newLetStmt(tempNode, newDotExpr(objTemp, formalParams[i][0]))
 
   doAssert getTypeInst(e).typeKind == ntyVoid
 
   if e.len > 1:
     let scratchIdent = genSym(kind = nskTemp, ident = "scratch")
-    # let scratchObjIdent = genSym(kind = nskTemp, ident = "scratchObj")
     let impl = e[0].getTypeInst
 
     echo impl.treeRepr
@@ -56,7 +87,6 @@ macro toTask*(e: typed{nkCall | nkCommand}): Task =
 
     let
       objTemp = genSym(ident = "obj")
-      # transferProc = newIdentNode("move") # template transfer[T: not ref](x: T): T = move(x)
 
     for i in 1 ..< formalParams.len:
       let param = formalParams[i][1]
@@ -73,7 +103,6 @@ macro toTask*(e: typed{nkCall | nkCommand}): Task =
         elif param[0].eqIdent("varargs") or param[0].eqIdent("openArray"):
           let
             seqType = nnkBracketExpr.newTree(newIdentNode("seq"), param[1])
-            # scratchDotExpr = newDotExpr(scratchObjIdent, formalParams[i][0])
             scratchDotExpr = newDotExpr(scratchIdent, formalParams[i][0])
             seqCallNode = newcall("@", e[i])
 
@@ -81,7 +110,6 @@ macro toTask*(e: typed{nkCall | nkCommand}): Task =
 
           let tempNode = genSym(kind = nskTemp)
           callNode.add nnkExprEqExpr.newTree(formalParams[i][0], tempNode)
-          # tempAssignList.add newLetStmt(tempNode, newCall(transferProc, newDotExpr(objTemp, formalParams[i][0])))
           tempAssignList.add newLetStmt(tempNode, newDotExpr(objTemp, formalParams[i][0]))
           scratchRecList.add newIdentDefs(newIdentNode(formalParams[i][0].strVal), seqType)
         else:
@@ -118,13 +146,6 @@ macro toTask*(e: typed{nkCall | nkCommand}): Task =
     let scratchObjPtrType = quote do:
       cast[ptr `scratchObjType`](c_calloc(csize_t 1, csize_t sizeof(`scratchObjType`)))
 
-    # let scratchVarSection = nnkVarSection.newTree(
-    #   nnkIdentDefs.newTree(
-    #     scratchObjIdent,
-    #     scratchObjType,
-    #     newEmptyNode()
-    #   )
-    # )
     let scratchLetSection = newLetStmt(
       scratchIdent,
       scratchObjPtrType
@@ -134,14 +155,10 @@ macro toTask*(e: typed{nkCall | nkCommand}): Task =
       if `scratchIdent`.isNil:
         raise newException(OutOfMemDefect, "Could not allocate memory")
 
-    # let scratchAssign = newAssignment(newNimNode(nnkDerefExpr).add(scratchIdent), scratchObjIdent)
-
     stmtList.add(scratchObj)
     stmtList.add(scratchLetSection)
     stmtList.add(scratchCheck)
-    # stmtList.add(scratchVarSection)
     stmtList.add(scratchAssignList)
-    # stmtList.add(scratchAssign)
 
     var functionStmtList = newStmtList()
     let funcCall = newCall(e[0], callNode)
@@ -190,7 +207,8 @@ runnableExamples:
 
   assert num == 13
 
-when isMainModule:
+
+when isMainModule and false:
   block:
     proc hello(x: static range[1 .. 5]) =
       echo x
