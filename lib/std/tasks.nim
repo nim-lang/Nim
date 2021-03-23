@@ -192,6 +192,14 @@ runnableExamples:
 
 when isMainModule:
   block:
+    proc hello(x: static range[1 .. 5]) =
+      echo x
+
+    let b = toTask hello(3)
+    b.invoke()
+    b.invoke()
+
+  block:
     proc hello(x: range[1 .. 5]) =
       echo x
 
@@ -215,7 +223,6 @@ when isMainModule:
     let b = toTask hello(x)
     b.invoke()
     b.invoke()
-
 
   when defined(testing):
     import std/strformat
