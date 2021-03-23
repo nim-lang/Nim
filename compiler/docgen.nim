@@ -1251,7 +1251,6 @@ proc genOutFile(d: PDoc, groupedToc = false): Rope =
   var
     code, content: Rope
     title = ""
-    titleAlt = ""
   var j = 0
   var tmp = ""
   renderTocEntries(d[], j, 1, tmp)
@@ -1269,12 +1268,11 @@ proc genOutFile(d: PDoc, groupedToc = false): Rope =
     title = d.meta[metaTitle]
     let external = presentationPath(d.conf, AbsoluteFile d.filename).changeFileExt(HtmlExt).string.nativeToUnixPath
     setIndexTerm(d[], external, "", title)
-    titleAlt = title
   else:
     # Modules get an automatic title for the HTML, but no entry in the index.
     # better than `extractFilename(changeFileExt(d.filename, ""))` as it disambiguates dups
-    title = $presentationPath(d.conf, AbsoluteFile d.filename, isTitle = true).changeFileExt("")
-    titleAlt = moduleTitle(d.conf, AbsoluteFile d.filename).changeFileExt("")
+    # title = $presentationPath(d.conf, AbsoluteFile d.filename, isTitle = true).changeFileExt("")
+    title = moduleTitle(d.conf, AbsoluteFile d.filename).changeFileExt("")
   var subtitle = "".rope
   if d.meta[metaSubtitle] != "":
     dispA(d.conf, subtitle, "<h2 class=\"subtitle\">$1</h2>",
