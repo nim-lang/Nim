@@ -77,6 +77,7 @@ jobs:
 
     - bash: |
         # set -e # PRTEMP
+        set -e # PRTEMP
         . ci/funs.sh
         echo_run sudo dpkg --add-architecture i386
         # Downgrade llvm:
