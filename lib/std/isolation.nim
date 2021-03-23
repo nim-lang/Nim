@@ -28,6 +28,9 @@ proc `=destroy`*[T](dest: var Isolated[T]) {.inline.} =
   # delegate to value's destroy operation
   `=destroy`(dest.value)
 
+func checkIsolate*[T](value: sink T) {.magic: "Isolate".} =
+  ## Checks whether the expression `value` can be isolated.
+
 func isolate*[T](value: sink T): Isolated[T] {.magic: "Isolate".} =
   ## Creates an isolated subgraph from the expression `value`.
   ## Isolation is checked at compile time.
