@@ -549,7 +549,8 @@ proc initRand*(seed: int64): Rand =
   ##
   ## Providing a specific seed will produce the same results for that seed each time.
   ##
-  ## The resulting state is independent of the default RNG's state.
+  ## The resulting state is independent of the default RNG's state. When `seed == 0`,
+  ## we internally set the seed to an implementation defined non-zero value.
   ##
   ## **See also:**
   ## * `initRand proc<#initRand>`_ that uses the current time
@@ -559,10 +560,10 @@ proc initRand*(seed: int64): Rand =
     from std/times import getTime, toUnix, nanosecond
 
     var r1 = initRand(123)
-
     let now = getTime()
     var r2 = initRand(now.toUnix * 1_000_000_000 + now.nanosecond)
-  let seed = if seed != 0: seed else: 1 # because 0 is a fixed point
+  const seedFallback0 = int32.high # arbitrary
+  let seed = if seed != 0: seed else: seedFallback0 # because 0 is a fixed point
   result.a0 = Ui(seed shr 16)
   result.a1 = Ui(seed and 0xffff)
   when not defined(nimLegacyRandomInitRand):
