@@ -1,16 +1,35 @@
 import std/[macros]
-
+import system/ansi_c
 
 type
   Task* = object ## `Task` contains the callback and its arguments.
     callback: proc (args: pointer) {.nimcall.}
     args: pointer
+    destroy: proc (args: pointer) {.nimcall.}
+
+proc `=destroy`*(t: var Task) =
+  if t.args != nil:
+    if t.destroy != nil:
+      t.destroy(t.args)
+    c_free(t.args)
 
 proc invoke*(task: Task) {.inline.} =
   ## Invokes the `task`.
   ##
   ## .. warning:: `task` can only be used once.
   task.callback(task.args)
+
+
+# proc toTaskNode(scratchObjType: NimNode): NimNode =
+#   result = quote("@") do:
+#     proc `=destroy`(t: var Task) =
+#       type typ = @scratchObjType
+#       if t.args != nil:
+#         `=destroy`(cast[ptr typ](t.args)[])
+#         when compileOption("threads"):
+#           deallocShared(t.args)
+#         else:
+#           dealloc(t.args)
 
 macro toTask*(e: typed{nkCall | nkCommand}): Task =
   ## Converts the call and its arguments to `Task`.
@@ -21,21 +40,20 @@ macro toTask*(e: typed{nkCall | nkCommand}): Task =
     assert b is Task
 
   template addAllNode =
-    let scratchDotExpr = newDotExpr(scratchIdent, formalParams[i][0])
-    case e[i].kind
-    of nnkSym:
-      scratchAssignList.add newCall(newIdentNode("=sink"), scratchDotExpr, e[i])
-    else:
-      scratchAssignList.add newAssignment(scratchDotExpr, e[i])
+    # let scratchDotExpr = newDotExpr(newNimNode(nnkDerefExpr).add scratchIdent, formalParams[i][0])
+    let scratchDotExpr = newDotExpr(scratchObjIdent, formalParams[i][0])
+    scratchAssignList.add newAssignment(scratchDotExpr, e[i])
 
     let tempNode = genSym(kind = nskTemp, ident = "")
     callNode.add nnkExprEqExpr.newTree(formalParams[i][0], tempNode)
-    tempAssignList.add newLetStmt(tempNode, newCall(transferProc, newDotExpr(objTemp, formalParams[i][0])))
+    # tempAssignList.add newLetStmt(tempNode, newCall(transferProc, newDotExpr(objTemp, formalParams[i][0])))
+    tempAssignList.add newLetStmt(tempNode, newDotExpr(objTemp, formalParams[i][0]))
 
   doAssert getTypeInst(e).typeKind == ntyVoid
 
   if e.len > 1:
     let scratchIdent = genSym(kind = nskTemp, ident = "scratch")
+    let scratchObjIdent = genSym(kind = nskTemp, ident = "scratchObj")
     let impl = e[0].getTypeInst
 
     echo impl.treeRepr
@@ -50,7 +68,7 @@ macro toTask*(e: typed{nkCall | nkCommand}): Task =
 
     let
       objTemp = genSym(ident = "obj")
-      transferProc = newIdentNode("move") # template transfer[T: not ref](x: T): T = move(x)
+      # transferProc = newIdentNode("move") # template transfer[T: not ref](x: T): T = move(x)
 
     for i in 1 ..< formalParams.len:
       let param = formalParams[i][1]
@@ -67,18 +85,15 @@ macro toTask*(e: typed{nkCall | nkCommand}): Task =
         elif param[0].eqIdent("varargs") or param[0].eqIdent("openArray"):
           let
             seqType = nnkBracketExpr.newTree(newIdentNode("seq"), param[1])
-            scratchDotExpr = newDotExpr(scratchIdent, formalParams[i][0])
+            scratchDotExpr = newDotExpr(scratchObjIdent, formalParams[i][0])
             seqCallNode = newcall("@", e[i])
 
-          case e[i].kind
-          of nnkSym:
-            scratchAssignList.add newCall(newIdentNode("=sink"), scratchDotExpr, seqCallNode)
-          else:
-            scratchAssignList.add newAssignment(scratchDotExpr, seqCallNode)
+          scratchAssignList.add newAssignment(scratchDotExpr, seqCallNode)
 
           let tempNode = genSym(kind = nskTemp)
           callNode.add nnkExprEqExpr.newTree(formalParams[i][0], tempNode)
-          tempAssignList.add newLetStmt(tempNode, newCall(transferProc, newDotExpr(objTemp, formalParams[i][0])))
+          # tempAssignList.add newLetStmt(tempNode, newCall(transferProc, newDotExpr(objTemp, formalParams[i][0])))
+          tempAssignList.add newLetStmt(tempNode, newDotExpr(objTemp, formalParams[i][0]))
           scratchRecList.add newIdentDefs(newIdentNode(formalParams[i][0].strVal), seqType)
         else:
           scratchRecList.add newIdentDefs(newIdentNode(formalParams[i][0].strVal), param)
@@ -111,17 +126,32 @@ macro toTask*(e: typed{nkCall | nkCommand}): Task =
                     )
 
 
+    # when compileOption("threads"):
+    let scratchObjPtrType = quote do:
+    #     cast[ptr `scratchObjType`](allocShared(sizeof(`scratchObjType`)))
+    # else:
+    #   let scratchObjPtrType = quote do:
+      cast[ptr `scratchObjType`](c_calloc(csize_t 1, csize_t sizeof(`scratchObjType`)))
+
     let scratchVarSection = nnkVarSection.newTree(
       nnkIdentDefs.newTree(
-        scratchIdent,
+        scratchObjIdent,
         scratchObjType,
         newEmptyNode()
       )
     )
+    let scratchLetSection = newLetStmt(
+      scratchIdent,
+      scratchObjPtrType
+    )
+
+    let scratchAssign = newAssignment(newNimNode(nnkDerefExpr).add(scratchIdent), scratchObjIdent)
 
     stmtList.add(scratchObj)
+    stmtList.add(scratchLetSection)
     stmtList.add(scratchVarSection)
     stmtList.add(scratchAssignList)
+    stmtList.add(scratchAssign)
 
     var functionStmtList = newStmtList()
     let funcCall = newCall(e[0], callNode)
@@ -130,6 +160,12 @@ macro toTask*(e: typed{nkCall | nkCommand}): Task =
 
     let funcName = genSym(nskProc, e[0].strVal)
 
+    let destroyName = genSym(nskProc, "destroyScratch")
+
+    let objTemp2 = genSym(ident = "obj")
+    let tempNode = quote("@") do:
+        `=destroy`(@objTemp2[])
+
     result = quote do:
       `stmtList`
 
@@ -137,7 +173,11 @@ macro toTask*(e: typed{nkCall | nkCommand}): Task =
         let `objTemp` = cast[ptr `scratchObjType`](args)
         `functionStmtList`
 
-      Task(callback: `funcName`, args: addr(`scratchIdent`))
+      proc `destroyName`(args: pointer) {.nimcall.} =
+        let `objTemp2` = cast[ptr `scratchObjType`](args)
+        `tempNode`
+
+      Task(callback: `funcName`, args: `scratchIdent`, destroy: `destroyName`)
   else:
     let funcCall = newCall(e[0])
     let funcName = genSym(nskProc, e[0].strVal)
@@ -151,7 +191,6 @@ macro toTask*(e: typed{nkCall | nkCommand}): Task =
   echo "-------------------------------------------------------------"
   echo result.repr
 
-
 runnableExamples:
   var num = 0
   proc hello(a: int) = inc num, a
@@ -162,6 +201,38 @@ runnableExamples:
   assert num == 13
 
 when isMainModule:
+
+  block:
+    proc hello(a: int or seq[string]) =
+      echo a
+
+    let x = @["1", "2", "3", "4"]
+    let b = toTask hello(x)
+    b.invoke()
+
+    echo "1"
+
+  block:
+    proc hello(a: int or string) =
+      echo a
+
+    echo 2
+
+    let x = "!2"
+
+    echo 3
+    let b = toTask hello(x)
+    echo 4
+    b.invoke()
+
+  block:
+    proc hello(a: int or string) =
+      echo a
+
+    let x = "!2"
+    let b = toTask hello(x)
+    b.invoke()
+
 
   block:
     proc hello(a: int or string) =
