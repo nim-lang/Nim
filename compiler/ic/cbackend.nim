@@ -66,11 +66,25 @@ proc addFileToLink(config: ConfigRef; m: PSym) =
 when defined(debugDce):
   import std / [os, packedsets]
 
-proc aliveSymsChanged(config: ConfigRef; position: int; alive: AliveSyms): bool =
+proc storeAliveSymsImpl(asymFile: AbsoluteFile; s: seq[int32]) =
+  var f = rodfiles.create(asymFile.string)
+  f.storeHeader()
+  f.storeSection aliveSymsSection
+  f.storeSeq(s)
+  close f
+
+template prepare {.dirty.} =
   let asymFile = toRodFile(config, AbsoluteFile toFullPath(config, position.FileIndex), ".alivesyms")
   var s = newSeqOfCap[int32](alive[position].len)
   for a in items(alive[position]): s.add int32(a)
   sort(s)
+
+proc storeAliveSyms(config: ConfigRef; position: int; alive: AliveSyms) =
+  prepare()
+  storeAliveSymsImpl(asymFile, s)
+
+proc aliveSymsChanged(config: ConfigRef; position: int; alive: AliveSyms): bool =
+  prepare()
   var f2 = rodfiles.open(asymFile.string)
   f2.loadHeader()
   f2.loadSection aliveSymsSection
@@ -90,11 +104,7 @@ proc aliveSymsChanged(config: ConfigRef; position: int; alive: AliveSyms): bool 
       if execShellCmd(getAppFilename() & " rod " & quoteShell(asymFile.changeFileExt("rod"))) != 0:
         echo "command failed"
     result = true
-    var f = rodfiles.create(asymFile.string)
-    f.storeHeader()
-    f.storeSection aliveSymsSection
-    f.storeSeq(s)
-    close f
+    storeAliveSymsImpl(asymFile, s)
 
 proc generateCode*(g: ModuleGraph) =
   ## The single entry point, generate C(++) code for the entire
@@ -112,6 +122,7 @@ proc generateCode*(g: ModuleGraph) =
     of storing, outdated:
       generateCodeForModule(g, g.packed[i], alive)
       closeRodFile(g, g.packed[i].module)
+      storeAliveSyms(g.config, g.packed[i].module.position, alive)
     of loaded:
       # Even though this module didn't change, DCE might trigger a change.
       # Consider this case: Module A uses symbol S from B and B does not use

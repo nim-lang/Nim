@@ -458,14 +458,8 @@ proc getModule*(g: ModuleGraph; fileIdx: FileIndex): PSym =
 proc rememberEmittedTypeInfo*(g: ModuleGraph; m: FileIndex; ti: string) =
   #assert(not isCachedModule(g, m.int32))
   if g.config.symbolFiles != disabledSf:
-    assert g.encoders[m.int32].isActive
+    #assert g.encoders[m.int32].isActive
     g.packed[m.int32].fromDisk.emittedTypeInfo.add ti
-
-proc moduleOpenForCodegen*(g: ModuleGraph; module: int32): bool {.inline.} =
-  if g.config.symbolFiles == disabledSf:
-    result = true
-  else:
-    result = module < g.encoders.len and g.encoders[module].isActive
 
 proc closeRodFile*(g: ModuleGraph; m: PSym) =
   if g.config.symbolFiles in {readOnlySf, v2Sf}:
