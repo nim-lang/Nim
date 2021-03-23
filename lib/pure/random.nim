@@ -565,7 +565,10 @@ proc initRand*(seed: int64): Rand =
   let seed = if seed != 0: seed else: 1 # because 0 is a fixed point
   result.a0 = Ui(seed shr 16)
   result.a1 = Ui(seed and 0xffff)
-  skipRandomNumbers(result)
+  when not defined(nimLegacyRandomInitRand):
+    # calling `discard next(result)` (even a few times) would still produce
+    # skewed numbers for the 1st call to `rand()`.
+    skipRandomNumbers(result)
   discard next(result)
 
 proc randomize*(seed: int64) {.benign.} =

@@ -179,7 +179,7 @@ block:
   var r2 = initRand(124)
   doAssert r1.rand(1.0) != r2.rand(1.0)
 
-block: # bug https://github.com/timotheecour/Nim/issues/435
+block: # bug #17467
   let n = 1000
   for i in -n .. n:
     var r = initRand(i)

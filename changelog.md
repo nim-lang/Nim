@@ -117,6 +117,17 @@
 - Added `randState` template that exposes the default random number generator.
   Useful for library authors.
 
+- Added `random.initRand()` overload with no argument which uses the current time as a seed.
+
+- `random.initRand(seed)` now allows `seed == 0`
+
+- `random.initRand(seed)` now produces non-skewed values for the 1st call to rand() after
+  initialization with a small (< 30000) seed. Use `-d:nimLegacyRandomInitRand` to restore
+  previous behavior for a transition time, see PR #17467.
+
+- Added `std/sysrand` module to get random numbers from a secure source
+  provided by the operating system.
+
 - Added `std/enumutils` module. Added `genEnumCaseStmt` macro that generates case statement to parse string to enum.
   Added `items` for enums with holes.
   Added `symbolName` to return the enum symbol name ignoring the human readable name.
@@ -203,9 +214,6 @@
 
 - Deprecated `any`. See https://github.com/nim-lang/RFCs/issues/281
 
-- Added `std/sysrand` module to get random numbers from a secure source
-  provided by the operating system.
-
 - Added optional `options` argument to `copyFile`, `copyFileToDir`, and
   `copyFileWithPermissions`. By default, on non-Windows OSes, symlinks are
   followed (copy files symlinks point to); on Windows, `options` argument is
@@ -222,8 +230,6 @@
 
 - Added `os.isAdmin` to tell whether the caller's process is a member of the
   Administrators local group (on Windows) or a root (on POSIX).
-
-- Added `random.initRand()` overload with no argument which uses the current time as a seed.
 
 - Added experimental `linenoise.readLineStatus` to get line and status (e.g. ctrl-D or ctrl-C).
 
