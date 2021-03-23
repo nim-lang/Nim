@@ -7,11 +7,9 @@
 #    distribution, for details about the copyright.
 #
 
-import
-  options, strutils, os, tables, ropes, terminal, macros,
-  lineinfos, pathutils
+import options, ropes, lineinfos, pathutils
 import std/private/miscdollars
-import strutils2
+import std/[os, tables, strutils, terminal, macros, strbasics]
 
 type InstantiationInfo* = typeof(instantiationInfo())
 template instLoc(): InstantiationInfo = instantiationInfo(-2, fullPaths = true)

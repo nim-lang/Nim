@@ -47,11 +47,11 @@ func setSlice*(s: var string, slice: Slice[int]) =
 
     var a = "Hello, Nim!"
     doassert a.dup(setSlice(7 .. 9)) == "Nim"
-    doAssert a.dup(setSlice(0 .. 0)) == "H"
-    doAssert a.dup(setSlice(0 .. 1)) == "He"
-    doAssert a.dup(setSlice(0 .. 10)) == a
-    doAssert a.dup(setSlice(1 .. 0)).len == 0
-    doAssert a.dup(setSlice(20 .. -1)).len == 0
+    assert a.dup(setSlice(0 .. 0)) == "H"
+    assert a.dup(setSlice(0 .. 1)) == "He"
+    assert a.dup(setSlice(0 .. 10)) == a
+    assert a.dup(setSlice(1 .. 0)).len == 0
+    assert a.dup(setSlice(20 .. -1)).len == 0
 
 
     doAssertRaises(AssertionDefect):
@@ -113,3 +113,94 @@ func strip*(a: var string, leading = true, trailing = true, chars: set[char] = w
     assert c == "X"
 
   setSlice(a, stripSlice(a, leading, trailing, chars))
+
+proc isLowerAscii*(c: char): bool {.inline.} =
+  ## Checks whether or not `c` is a lower case character.
+  runnableExamples:
+    assert isLowerAscii('e') == true
+    assert isLowerAscii('E') == false
+    assert isLowerAscii('7') == false
+  c in {'a'..'z'}
+
+proc isUpperAscii*(c: char): bool {.inline.} =
+  ## Checks whether or not `c` is an upper case character.
+  runnableExamples:
+    assert isUpperAscii('e') == false
+    assert isUpperAscii('E') == true
+    assert isUpperAscii('7') == false
+  c in {'A'..'Z'}
+
+proc toLowerAscii*(a: var string) {.inline.} =
+  ## Optimized and inplace overload of `strutils.toLowerAscii`.
+  runnableExamples:
+    import std/sugar
+
+    var x = "FooBar!"
+    assert x.dup(toLowerAscii) == "foobar!"
+  # refs https://github.com/timotheecour/Nim/pull/54
+  # this is 10X faster than a naive implementation using a an optimization trick
+  # that can be adapted in similar contexts. Predictable writes avoid write
+  # hazards and lead to better machine code, compared to random writes arising
+  # from: `if c.isUpperAscii: c = ...`
+  for c in mitems(a):
+    c = chr(c.ord + (if c.isUpperAscii: (ord('a') - ord('A')) else: 0))
+
+proc toUpperAscii*(a: var string) {.inline.} =
+  ## Optimized and inplace overload of `strutils.toLowerAscii`.
+  # from: `if c.isUpperAscii: c = ...`
+  runnableExamples:
+    import std/sugar
+
+    var x = "FooBar!"
+    assert x.dup(toUpperAscii) == "FOOBAR!"
+  for c in mitems(a):
+    c = chr(c.ord - (if c.isLowerAscii: (ord('a') - ord('A')) else: 0))
+
+when not defined(js):
+  proc dataPointer[T](a: T): pointer =
+    ## The Same as C++ `data` that works with std::string, std::vector etc.
+    ## 
+    ## .. note:: It is safe to use when a.len == 0 but whether the result is nil or not
+    ##   is implementation defined for performance reasons.
+    ## 
+    # this could be improved with ocmpiler support to avoid the `if`, e.g. in C++
+    # `&a[0]` is well defined even if a.size() == 0
+    when T is string | seq:
+      if a.len == 0: nil else: cast[pointer](a[0].unsafeAddr)
+    elif T is array:
+      when a.len > 0: a.unsafeAddr
+      else: nil
+    elif T is cstring:
+      cast[pointer](a)
+    else: static: assert false, $T
+
+  proc setLen(result: var string, n: int, isInit: bool) =
+    ## When isInit = false, elements are left uninitialized, analog to `{.noinit.}`
+    ## else, there are 0-initialized.
+    # xxx placeholder until system.setLen supports this
+    # to distinguish between algorithms that need 0-initialization vs not; note
+    # that `setLen` for string is inconsistent with `setLen` for seq.
+    # likwise with `newString` vs `newSeq`. This should be fixed in `system`.
+    let n0 = result.len
+    result.setLen(n)
+    if isInit and n > n0:
+      zeroMem(result[n0].addr, n - n0)
+
+proc forceCopy*(result: var string, a: string) =
+  ## Always forces a copy no matter whether `a` is shallow.
+  # the naitve `result = a` would not work if `a` is shallow
+  template impl =
+    let n = a.len
+    result.setLen n
+    for i in 0..<n:
+      result[i] = a[i]
+
+  when nimvm:
+    impl
+  else:
+    when defined(js):
+      impl
+    else:
+      let n = a.len
+      result.setLen n, isInit = false
+      copyMem(result.dataPointer, a.dataPointer, n)
