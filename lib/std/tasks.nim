@@ -191,6 +191,21 @@ runnableExamples:
   assert num == 13
 
 when isMainModule:
+  block:
+    proc hello(x: range[1 .. 5]) =
+      echo x
+
+    let b = toTask hello(3)
+    b.invoke()
+    b.invoke()
+
+  block:
+    proc hello(x: 1 .. 5) =
+      echo x
+
+    let b = toTask hello(3)
+    b.invoke()
+    b.invoke()
 
   block:
     proc hello(a: int or seq[string]) =
