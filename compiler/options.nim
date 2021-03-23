@@ -773,7 +773,7 @@ const
   pkgPrefix = "pkg/"
   stdPrefix = "std/"
 
-proc getRelativePathFromConfigPath*(conf: ConfigRef; f: AbsoluteFile, isTitle: bool): RelativeFile =
+proc getRelativePathFromConfigPath*(conf: ConfigRef; f: AbsoluteFile, isTitle = false): RelativeFile =
   let f = $f
   if isTitle:
     for dir in stdlibDirs:

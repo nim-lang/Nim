@@ -63,16 +63,20 @@ proc prettyString(a: object): string =
   for k, v in fieldPairs(a):
     result.add k & ": " & $v & "\n"
 
-proc moduleTitle*(conf: ConfigRef, file: AbsoluteFile): string =
+proc canonicalImport*(conf: ConfigRef, file: AbsoluteFile): string =
+  ##[
+  Shows the canonical module import, e.g.:
+  std/tables, fusion/pointers, system/assertions, std/private/asciitables
+  ]##
   var ret = getRelativePathFromConfigPath(conf, file, isTitle = true)
   let dir = getNimbleFile(conf, $file).parentDir.AbsoluteDir
   if not dir.isEmpty:
-    let result2 = relativeTo(file, dir)
-    if not result2.isEmpty and (ret.isEmpty or result2.string.len < ret.string.len):
-      ret = result2
+    let relPath = relativeTo(file, dir)
+    if not relPath.isEmpty and (ret.isEmpty or relPath.string.len < ret.string.len):
+      ret = relPath
   if ret.isEmpty:
     ret = relativeTo(file, conf.projectPath)
-  result = ret.string.nativeToUnixPath
+  result = ret.string.nativeToUnixPath.changeFileExt("")
 
 proc presentationPath*(conf: ConfigRef, file: AbsoluteFile): RelativeFile =
   ## returns a relative file that will be appended to outDir
@@ -83,7 +87,7 @@ proc presentationPath*(conf: ConfigRef, file: AbsoluteFile): RelativeFile =
     getNimbleFile(conf, file2).parentDir.AbsoluteDir
   case conf.docRoot:
   of docRootDefault:
-    result = getRelativePathFromConfigPath(conf, file, isTitle = false)
+    result = getRelativePathFromConfigPath(conf, file)
     let dir = nimbleDir()
     if not dir.isEmpty:
       let result2 = relativeTo(file, dir)
@@ -95,7 +99,7 @@ proc presentationPath*(conf: ConfigRef, file: AbsoluteFile): RelativeFile =
     if dir.isEmpty: bail()
     else: result = relativeTo(file, dir)
   of "@path":
-    result = getRelativePathFromConfigPath(conf, file, isTitle = false)
+    result = getRelativePathFromConfigPath(conf, file)
     if result.isEmpty: bail()
   elif conf.docRoot.len > 0:
     # we're (currently) requiring `isAbsolute` to avoid confusion when passing
@@ -379,7 +383,7 @@ proc belongsToPackage(conf: ConfigRef; module: PSym): bool =
   result = module.kind == skModule and module.getnimblePkgId == conf.mainPackageId
 
 proc externalDep(d: PDoc; module: PSym): string =
-  if optWholeProject in d.conf.globalOptions or (false and d.conf.docRoot.len > 0):
+  if optWholeProject in d.conf.globalOptions or d.conf.docRoot.len > 0:
     let full = AbsoluteFile toFullPath(d.conf, FileIndex module.position)
     let tmp = getOutFile2(d.conf, presentationPath(d.conf, full), HtmlExt, sfMainModule notin module.flags)
     result = relativeTo(tmp, d.thisDir, '/').string
@@ -1267,7 +1271,7 @@ proc genOutFile(d: PDoc, groupedToc = false): Rope =
     setIndexTerm(d[], external, "", title)
   else:
     # Modules get an automatic title for the HTML, but no entry in the index.
-    title = moduleTitle(d.conf, AbsoluteFile d.filename).changeFileExt("")
+    title = canonicalImport(d.conf, AbsoluteFile d.filename)
   var subtitle = "".rope
   if d.meta[metaSubtitle] != "":
     dispA(d.conf, subtitle, "<h2 class=\"subtitle\">$1</h2>",
