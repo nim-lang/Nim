@@ -54,40 +54,33 @@ runnableExamples("-d:nimExperimentalJsfetch -r:off"):
   from std/jsfetch import Response
   from std/uri import parseUri, Uri
 
-  let client: JsAsyncHttpClient = newJsAsyncHttpClient()
-  const data: string = """{"key": "value"}"""
+  proc example() {.async.} =
+    let client: JsAsyncHttpClient = newJsAsyncHttpClient()
+    const data: string = """{"key": "value"}"""
 
-  block:
-    proc example() {.async.} =
-      let url: Uri = parseUri("http://nim-lang.org")
-      let content: cstring = await client.getContent(url)
-      let response: Response = await client.get(url)
-    discard example()
+    block:
+        let url: Uri = parseUri("http://nim-lang.org")
+        let content: cstring = await client.getContent(url)
+        let response: Response = await client.get(url)
 
-  block:
-    proc example() {.async.} =
+    block:
       let url: Uri = parseUri("http://httpbin.org/delete")
       let content: cstring = await client.deleteContent(url)
       let response: Response = await client.delete(url)
-    discard example()
 
-  block:
-    proc example() {.async.} =
+    block:
       let url: Uri = parseUri("http://httpbin.org/post")
       let content: cstring = await client.postContent(url, data)
       let response: Response = await client.post(url, data)
-    discard example()
 
-  block:
-    proc example() {.async.} =
+    block:
       let url: Uri = parseUri("http://httpbin.org/put")
       let content: cstring = await client.putContent(url, data)
       let response: Response = await client.put(url, data)
-    discard example()
 
-  block:
-    proc example() {.async.} =
+    block:
       let url: Uri = parseUri("http://httpbin.org/patch")
       let content: cstring = await client.patchContent(url, data)
       let response: Response = await client.patch(url, data)
-    discard example()
+
+  discard example()
