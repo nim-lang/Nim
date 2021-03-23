@@ -1007,12 +1007,19 @@ proc gsub(g: var TSrcGen, n: PNode, c: TContext) =
   of nkCall, nkConv, nkDotCall, nkPattern, nkObjConstr:
     if n.len > 1 and n.lastSon.kind in {nkStmtList, nkStmtListExpr}:
       accentedName(g, n[0])
-      if n.len > 2:
+      var i = 1
+      while i < n.len and n[i].kind notin {nkStmtList, nkStmtListExpr}: i.inc
+      if i > 1:
         put(g, tkParLe, "(")
-        gcomma(g, n, 1, -2)
+        gcomma(g, n, 1, i - 1 - n.len)
         put(g, tkParRi, ")")
       put(g, tkColon, ":")
-      gsub(g, n, n.len-1)
+      gsub(g, n, i)
+      for j in i+1 ..< n.len:
+        optNL(g)
+        put(g, tkDo, "do")
+        put(g, tkColon, ":")
+        gsub(g, n, j)
     elif n.len >= 1:
       case bracketKind(g, n[0])
       of bkBracket:
