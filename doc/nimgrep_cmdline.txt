@@ -9,7 +9,7 @@ Usage:
     nimgrep [options] --filenames [PATTERN] [(FILE/DIRECTORY)*]
 
 Positional arguments, from left to right:
-1) PATERN is either Regex (default) or Peg if `--peg` is specified.
+1) PATTERN is either Regex (default) or Peg if `--peg` is specified.
    PATTERN and REPLACEMENT should be skipped when `--stdin` is specified.
 2) REPLACEMENT supports `$1`, `$#` notations for captured groups in PATTERN.
 
