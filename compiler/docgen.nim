@@ -74,7 +74,7 @@ proc moduleTitle*(conf: ConfigRef, file: AbsoluteFile): string =
     ret = relativeTo(file, conf.projectPath)
   result = ret.string.nativeToUnixPath
 
-proc presentationPath*(conf: ConfigRef, file: AbsoluteFile, isTitle = false): RelativeFile =
+proc presentationPath*(conf: ConfigRef, file: AbsoluteFile): RelativeFile =
   ## returns a relative file that will be appended to outDir
   let file2 = $file
   template bail() =
@@ -108,10 +108,7 @@ proc presentationPath*(conf: ConfigRef, file: AbsoluteFile, isTitle = false): Re
     bail()
   if isAbsolute(result.string):
     result = file.string.splitPath()[1].RelativeFile
-  if isTitle:
-    result = result.string.nativeToUnixPath.RelativeFile
-  else:
-    result = result.string.replace("..", dotdotMangle).RelativeFile
+  result = result.string.replace("..", dotdotMangle).RelativeFile
   doAssert not result.isEmpty
   doAssert not isAbsolute(result.string)
 
@@ -1270,8 +1267,6 @@ proc genOutFile(d: PDoc, groupedToc = false): Rope =
     setIndexTerm(d[], external, "", title)
   else:
     # Modules get an automatic title for the HTML, but no entry in the index.
-    # better than `extractFilename(changeFileExt(d.filename, ""))` as it disambiguates dups
-    # title = $presentationPath(d.conf, AbsoluteFile d.filename, isTitle = true).changeFileExt("")
     title = moduleTitle(d.conf, AbsoluteFile d.filename).changeFileExt("")
   var subtitle = "".rope
   if d.meta[metaSubtitle] != "":
