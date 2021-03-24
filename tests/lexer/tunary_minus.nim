@@ -51,6 +51,9 @@ template main =
     doAssert x() == minusOne:
       "unable to handle negatives after semi-colon"
 
+    doAssert -0b111 == -7
+    doAssert -0xff == -255
+
   block: # check when a minus (-) is an unary op
     doAssert -one == minusOne:
       "unable to a negative prior to identifier"

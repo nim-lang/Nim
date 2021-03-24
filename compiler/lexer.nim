@@ -345,13 +345,14 @@ proc getNumber(L: var Lexer, result: var Token) =
   result.tokType = tkIntLit   # int literal until we know better
   result.literal = ""
   result.base = base10
-  let startpos = L.bufpos
   tokenBegin(result, startpos)
 
   var isPositive = true
   if L.buf[L.bufpos] == '-':
     eatChar(L, result)
-    isPositive = true
+    isPositive = false
+
+  let startpos = L.bufpos
 
   template setNumber(field, value) =
     field = (if isPositive: value else: -value)
@@ -419,7 +420,7 @@ proc getNumber(L: var Lexer, result: var Token) =
         suffixAsLower.add toLowerAscii(c)
         inc postPos
         if L.buf[postPos] notin SymChars+{'_'}: break
-      case suffix
+      case suffixAsLower
       of "f", "f32": result.tokType = tkFloat32Lit
       of "d", "f64": result.tokType = tkFloat64Lit
       of "f128": result.tokType = tkFloat128Lit

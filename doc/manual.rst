@@ -490,7 +490,7 @@ this. Another reason is that Nim can thus support `array[char, int]` or
 type is used for Unicode characters, it can represent any Unicode character.
 `Rune` is declared in the `unicode module <unicode.html>`_.
 
-A character literal that  does not end in ``'`` interpreted as ``'`` if there
+A character literal that does not end in ``'`` is interpreted as ``'`` if there
 is a preceeding backtick token. There must be no whitespace between the preceeding
 backtick token and the character literal. This special rule ensures that a declaration
 like ``proc `'customLiteral`(s: string)`` is valid. See also
@@ -537,6 +537,9 @@ Numeric literals have the form::
               | (FLOAT_LIT | DEC_LIT | OCT_LIT | BIN_LIT) ['\''] FLOAT64_SUFFIX
 
   CUSTOM_NUMERIC_LIT = (FLOAT_LIT | DEC_LIT | OCT_LIT | BIN_LIT) '\'' CUSTOM_NUMERIC_SUFFIX
+
+  # CUSTOM_NUMERIC_SUFFIX is any Nim identifier that is not
+  # a pre-defined type suffix.
 
 
 As can be seen in the productions, numeric literals can contain underscores
@@ -653,6 +656,7 @@ the case that additional parameters are passed to the callee:
   var x = 5'u4(123)
 
 Custom numeric literals are covered by the grammar rule named `CUSTOM_NUMERIC_LIT`.
+A custom numeric literal is a single token.
 
 
 Operators
