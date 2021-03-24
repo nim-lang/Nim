@@ -60,7 +60,7 @@ pkg "delaunay"
 pkg "docopt"
 pkg "easygl", "nim c -o:egl -r src/easygl.nim", "https://github.com/jackmott/easygl"
 pkg "elvis"
-pkg "fidget" # pending https://github.com/treeform/fidget/issues/133
+pkg "fidget"
 pkg "fragments", "nim c -r fragments/dsl.nim"
 pkg "fusion"
 pkg "gara"
