@@ -1229,17 +1229,10 @@ proc newSym*(symKind: TSymKind, name: PIdent, id: ItemId, owner: PSym,
   result = PSym(name: name, kind: symKind, flags: {}, info: info, itemId: id,
                 options: options, owner: owner, offset: defaultOffset)
   when false:
-    if id.item > 2141:
-      let s = getStackTrace()
-      const words = ["createTypeBoundOps",
-        "initOperators",
-        "generateInstance",
-        "semIdentDef", "addLocalDecl"]
-      for w in words:
-        if w in s:
-          x.inc w
-          return
-      x.inc "<no category>"
+    if id.module == 48 and id.item == 39:
+      writeStackTrace()
+      echo "kind ", symKind, " ", name.s
+      if owner != nil: echo owner.name.s
 
 proc astdef*(s: PSym): PNode =
   # get only the definition (initializer) portion of the ast

@@ -36,6 +36,7 @@ type
     attachedOpsSection
     methodsPerTypeSection
     enumToStringProcsSection
+    typeInfoSection  # required by the backend
     aliveSymsSection # beware, this is stored in a `.alivesyms` file.
 
   RodFileError* = enum

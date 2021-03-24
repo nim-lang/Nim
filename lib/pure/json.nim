@@ -398,7 +398,7 @@ proc `%`*(o: enum): JsonNode =
   ## string. Creates a new `JString JsonNode`.
   result = %($o)
 
-proc toJsonImpl(x: NimNode): NimNode {.compileTime.} =
+proc toJsonImpl(x: NimNode): NimNode =
   case x.kind
   of nnkBracket: # array
     if x.len == 0: return newCall(bindSym"newJArray")
@@ -1165,11 +1165,11 @@ when defined(nimFixedForwardGeneric):
   proc initFromJson[T: distinct](dst: var T; jsonNode: JsonNode; jsonPath: var string) =
     assignDistinctImpl(dst, jsonNode, jsonPath)
 
-  proc detectIncompatibleType(typeExpr, lineinfoNode: NimNode): void =
+  proc detectIncompatibleType(typeExpr, lineinfoNode: NimNode) =
     if typeExpr.kind == nnkTupleConstr:
       error("Use a named tuple instead of: " & typeExpr.repr, lineinfoNode)
 
-  proc foldObjectBody(dst, typeNode, tmpSym, jsonNode, jsonPath, originalJsonPathLen: NimNode): void {.compileTime.} =
+  proc foldObjectBody(dst, typeNode, tmpSym, jsonNode, jsonPath, originalJsonPathLen: NimNode) =
     case typeNode.kind
     of nnkEmpty:
       discard
