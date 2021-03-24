@@ -713,7 +713,7 @@ proc identOrLiteral(p: var Parser, mode: PrimaryMode): PNode =
   of tkCustomLit:
     let splitPos = p.tok.iNumber.int
     let str = newStrNodeP(nkRStrLit, p.tok.literal.substr(0, splitPos-1), p)
-    let callee = newIdentNodeP(getIdent(p.lex.cache, "^" & p.tok.literal.substr(splitPos+1)), p)
+    let callee = newIdentNodeP(getIdent(p.lex.cache, p.tok.literal.substr(splitPos)), p)
     result = newNodeP(nkDotExpr, p)
     result.add str
     result.add callee

@@ -815,8 +815,9 @@ proc getString(L: var Lexer, tok: var Token, mode: StringMode) =
         inc(pos)
     L.bufpos = pos
 
-proc getCharacter(L: var Lexer, tok: var Token) =
+proc getCharacter(L: var Lexer; tok: var Token) =
   tokenBegin(tok, L.bufpos)
+  let startPos = L.bufpos
   inc(L.bufpos)               # skip '
   var c = L.buf[L.bufpos]
   case c
@@ -827,10 +828,16 @@ proc getCharacter(L: var Lexer, tok: var Token) =
   else:
     tok.literal = $c
     inc(L.bufpos)
-  if L.buf[L.bufpos] != '\'':
-    lexMessage(L, errGenerated, "missing closing ' for character literal")
-  tokenEndIgnore(tok, L.bufpos)
-  inc(L.bufpos)               # skip '
+  if L.buf[L.bufpos] == '\'':
+    tokenEndIgnore(tok, L.bufpos)
+    inc(L.bufpos)               # skip '
+  else:
+    if startPos > 0 and L.buf[startPos-1] == '`':
+      tok.literal = "'"
+      L.bufpos = startPos+1
+    else:
+      lexMessage(L, errGenerated, "missing closing ' for character literal")
+    tokenEndIgnore(tok, L.bufpos)
 
 proc getSymbol(L: var Lexer, tok: var Token) =
   var h: Hash = 0

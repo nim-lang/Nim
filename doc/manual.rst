@@ -490,6 +490,12 @@ this. Another reason is that Nim can thus support `array[char, int]` or
 type is used for Unicode characters, it can represent any Unicode character.
 `Rune` is declared in the `unicode module <unicode.html>`_.
 
+A character literal that  does not end in ``'`` interpreted as ``'`` if there
+is a preceeding backtick token. There must be no whitespace between the preceeding
+backtick token and the character literal. This special rule ensures that a declaration
+like ``proc `'customLiteral`(s: string)`` is valid. See also
+`Custom Numeric Literals <#custom-numeric-literals>`_.
+
 
 Numeric Literals
 ----------------
@@ -618,20 +624,20 @@ Custom Numeric Literals
 If the suffix is not predefined, then the suffix is assumed to be a call
 to a proc, template, macro or other callable identifier that is passed the
 string containing the literal. The callable identifier needs to be declared
-with a special ``^`` prefix:
+with a special ``'`` prefix:
 
 .. code-block:: nim
 
   import strutils
   type u4 = distinct uint8 # a 4-bit unsigned integer aka "nibble"
-  proc `^u4`(n: string): u4 =
-    # The leading ^ is required.
+  proc `'u4`(n: string): u4 =
+    # The leading ' is required.
     result = (parseInt(n) and 0x0F).u4
 
   var x = 5'u4
 
 More formally, a custom numeric literal `123'custom` is transformed
-to r"123".`^custom` in the parsing step. There is no AST node kind that
+to r"123".`'custom` in the parsing step. There is no AST node kind that
 corresponds to this transformation. The transformation naturally handles
 the case that additional parameters are passed to the callee:
 
@@ -639,8 +645,7 @@ the case that additional parameters are passed to the callee:
 
   import strutils
   type u4 = distinct uint8 # a 4-bit unsigned integer aka "nibble"
-  proc `^u4`(n: string; moreData: int): u4 =
-    # The leading ^ is required.
+  proc `'u4`(n: string; moreData: int): u4 =
     result = (parseInt(n) and 0x0F).u4
 
   var x = 5'u4(123)
