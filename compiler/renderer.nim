@@ -1195,9 +1195,13 @@ proc gsub(g: var TSrcGen, n: PNode, c: TContext) =
     gcomma(g, n, c)
     put(g, tkBracketRi, "]")
   of nkDotExpr:
-    gsub(g, n, 0)
-    put(g, tkDot, ".")
-    gsub(g, n, 1)
+    if n.len == 2 and n[0].kind == nkRStrLit and n[1].kind == nkIdent and n[1].ident.s.startsWith('\''):
+      put(g, tkCustomLit, n[0].strVal)
+      gsub(g, n, 1)
+    else:
+      gsub(g, n, 0)
+      put(g, tkDot, ".")
+      gsub(g, n, 1)
   of nkBind:
     putWithSpace(g, tkBind, "bind")
     gsub(g, n, 0)
