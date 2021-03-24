@@ -617,22 +617,34 @@ Custom Numeric Literals
 
 If the suffix is not predefined, then the suffix is assumed to be a call
 to a proc, template, macro or other callable identifier that is passed the
-string containing the literal. The identifier needs to contain the apostrophe
-and so will need to be escaped with backticks.
+string containing the literal. The callable identifier needs to be declared
+with a special ``^`` prefix:
 
 .. code-block:: nim
 
   import strutils
   type u4 = distinct uint8 # a 4-bit unsigned integer aka "nibble"
-  proc `'u4`(n: string): u4 =
-    # The leading ' is required.
+  proc `^u4`(n: string): u4 =
+    # The leading ^ is required.
     result = (parseInt(n) and 0x0F).u4
 
   var x = 5'u4
 
 More formally, a custom numeric literal `123'custom` is transformed
-to r"123".`'custom` in the parsing step. There is no AST node kind that
-corresponds to this transformation.
+to r"123".`^custom` in the parsing step. There is no AST node kind that
+corresponds to this transformation. The transformation naturally handles
+the case that additional parameters are passed to the callee:
+
+.. code-block:: nim
+
+  import strutils
+  type u4 = distinct uint8 # a 4-bit unsigned integer aka "nibble"
+  proc `^u4`(n: string; moreData: int): u4 =
+    # The leading ^ is required.
+    result = (parseInt(n) and 0x0F).u4
+
+  var x = 5'u4(123)
+
 
 
 Operators
