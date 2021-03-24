@@ -1064,12 +1064,13 @@ when defined(nimFixedForwardGeneric):
     dst = jsonNode.copy
 
   proc initFromJson[T: SomeInteger](dst: var T; jsonNode: JsonNode, jsonPath: var string) =
-    when T is uint|uint64:
+    when T is uint|uint64 or (not defined(js) and int.sizeof == 4):
+      verifyJsonKind(jsonNode, {JInt, JString}, jsonPath)
       case jsonNode.kind
       of JString:
-        dst = T(parseBiggestUInt(jsonNode.str))
+        let x = parseBiggestUInt(jsonNode.str)
+        dst = cast[T](x)
       else:
-        verifyJsonKind(jsonNode, {JInt}, jsonPath)
         dst = T(jsonNode.num)
     else:
       verifyJsonKind(jsonNode, {JInt}, jsonPath)
