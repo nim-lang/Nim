@@ -1,3 +1,13 @@
+#
+#
+#            Nim's Runtime Library
+#        (c) Copyright 2021 Nim contributors
+#
+#    See the file "copying.txt", included in this
+#    distribution, for details about the copyright.
+#
+
+
 import std/[macros, isolation]
 import system/ansi_c
 
@@ -56,6 +66,18 @@ proc invoke*(task: Task) {.inline.} =
   ## Invokes the `task`.
   task.callback(task.args)
 
+
+template checkIsolate(scratchAssignList: seq[NimNode], params, scratchDotExpr: NimNode) =
+  # block:
+  #   var isoTempA = isolate(521)
+  #   scratch.a = extract(isolateA)
+  #   var isoTempB = isolate(literal)
+  #   scratch.b = extract(isolateB)
+  let isolatedTemp = genSym(nskTemp, "isoTemp")
+  scratchAssignList.add newVarStmt(isolatedTemp, newCall(newidentNode("isolate"), params))
+  scratchAssignList.add newAssignment(scratchDotExpr,
+      newcall(newIdentNode("extract"), isolatedTemp))
+
 macro toTask*(e: typed{nkCall | nkCommand}): Task =
   ## Converts the call and its arguments to `Task`.
   runnableExamples("--gc:orc"):
@@ -67,11 +89,7 @@ macro toTask*(e: typed{nkCall | nkCommand}): Task =
   template addAllNode =
     let scratchDotExpr = newDotExpr(scratchIdent, formalParams[i][0])
 
-    
-    let isolatedTemp = genSym(nskTemp, "isolate")
-    scratchAssignList.add newVarStmt(isolatedTemp, newCall(newidentNode("isolate"), e[i]))
-    scratchAssignList.add newAssignment(scratchDotExpr,
-        newcall(newIdentNode("extract"), isolatedTemp))
+    checkIsolate(scratchAssignList, e[i], scratchDotExpr)
 
     let tempNode = genSym(kind = nskTemp, ident = "")
     callNode.add nnkExprEqExpr.newTree(formalParams[i][0], tempNode)
@@ -115,12 +133,7 @@ macro toTask*(e: typed{nkCall | nkCommand}): Task =
             scratchDotExpr = newDotExpr(scratchIdent, formalParams[i][0])
             seqCallNode = newcall("@", e[i])
 
-          # scratchAssignList.add newAssignment(scratchDotExpr, seqCallNode)
-
-          let isolatedTemp = genSym(nskTemp, "isolate")
-          scratchAssignList.add newVarStmt(isolatedTemp, newCall(newidentNode("isolate"), seqCallNode))
-          scratchAssignList.add newAssignment(scratchDotExpr,
-              newcall(newIdentNode("extract"), isolatedTemp))
+          checkIsolate(scratchAssignList, seqCallNode, scratchDotExpr)
 
           let tempNode = genSym(kind = nskTemp)
           callNode.add nnkExprEqExpr.newTree(formalParams[i][0], tempNode)
