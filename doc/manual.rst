@@ -491,10 +491,10 @@ type is used for Unicode characters, it can represent any Unicode character.
 `Rune` is declared in the `unicode module <unicode.html>`_.
 
 
-Numerical constants
--------------------
+Numeric Literals
+----------------
 
-Numerical constants are of a single type and have the form::
+Numeric literals have the form::
 
   hexdigit = digit | 'A'..'F' | 'a'..'f'
   octdigit = '0'..'7'
@@ -531,7 +531,7 @@ Numerical constants are of a single type and have the form::
               | (FLOAT_LIT | DEC_LIT | OCT_LIT | BIN_LIT) ['\''] FLOAT64_SUFFIX
 
 
-As can be seen in the productions, numerical constants can contain underscores
+As can be seen in the productions, numeric literals can contain underscores
 for readability. Integer and floating-point literals may be given in decimal (no
 prefix), binary (prefix `0b`), octal (prefix `0o`), and hexadecimal
 (prefix `0x`) notation.
@@ -579,7 +579,7 @@ is optional if it is not ambiguous (only hexadecimal floating-point literals
 with a type suffix can be ambiguous).
 
 
-The type suffixes are:
+The pre-defined type suffixes are:
 
 =================    =========================
   Type Suffix        Resulting type of literal
@@ -610,6 +610,30 @@ bounds checking is done on bit width, not value range. If the literal fits in
 the bit width of the datatype, it is accepted.
 Hence: 0b10000000'u8 == 0x80'u8 == 128, but, 0b10000000'i8 == 0x80'i8 == -1
 instead of causing an overflow error.
+
+
+Custom Numeric Literals
+~~~~~~~~~~~~~~~~~~~~~~~
+
+If the suffix is not predefined, then the suffix is assumed to be a call
+to a proc, template, macro or other callable identifier that is passed the
+string containing the literal. The identifier needs to contain the apostrophe
+and so will need to be escaped with backticks.
+
+.. code-block:: nim
+
+  import strutils
+  type u4 = distinct uint8 # a 4-bit unsigned integer aka "nibble"
+  proc `'u4`(n: string): u4 =
+    # The leading ' is required.
+    result = (parseInt(n) and 0x0F).u4
+
+  var x = 5'u4
+
+More formally, a custom numeric literal `123'custom` is transformed
+to r"123".`'custom` in the parsing step. There is no AST node kind that
+corresponds to this transformation.
+
 
 Operators
 ---------

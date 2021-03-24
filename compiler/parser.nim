@@ -355,7 +355,7 @@ proc parseSymbol(p: var Parser, mode = smNormal): PNode =
         let node = newNodeI(nkIdent, lineinfo)
         node.ident = p.lex.cache.getIdent(accm)
         result.add(node)
-      of tokKeywordLow..tokKeywordHigh, tkSymbol, tkIntLit..tkCharLit:
+      of tokKeywordLow..tokKeywordHigh, tkSymbol, tkIntLit..tkCustomLit:
         result.add(newIdentNodeP(p.lex.cache.getIdent($p.tok), p))
         getTok(p)
       else:
@@ -710,6 +710,14 @@ proc identOrLiteral(p: var Parser, mode: PrimaryMode): PNode =
   of tkCharLit:
     result = newIntNodeP(nkCharLit, ord(p.tok.literal[0]), p)
     getTok(p)
+  of tkCustomLit:
+    let splitPos = p.tok.iNumber.int
+    let str = newStrNodeP(nkRStrLit, p.tok.literal.substr(0, splitPos-1), p)
+    let callee = newIdentNodeP(getIdent(p.lex.cache, "^" & p.tok.literal.substr(splitPos+1)), p)
+    result = newNodeP(nkDotExpr, p)
+    result.add str
+    result.add callee
+    getTok(p)
   of tkNil:
     result = newNodeP(nkNilLit, p)
     getTok(p)
@@ -807,7 +815,7 @@ proc primarySuffix(p: var Parser, r: PNode,
         result = commandExpr(p, result, mode)
         break
       result = namedParams(p, result, nkCurlyExpr, tkCurlyRi)
-    of tkSymbol, tkAccent, tkIntLit..tkCharLit, tkNil, tkCast,
+    of tkSymbol, tkAccent, tkIntLit..tkCustomLit, tkNil, tkCast,
        tkOpr, tkDotDot, tkVar, tkOut, tkStatic, tkType, tkEnum, tkTuple,
        tkObject, tkProc:
       # XXX: In type sections we allow the free application of the
@@ -1097,7 +1105,7 @@ proc isExprStart(p: Parser): bool =
   case p.tok.tokType
   of tkSymbol, tkAccent, tkOpr, tkNot, tkNil, tkCast, tkIf, tkFor,
      tkProc, tkFunc, tkIterator, tkBind, tkBuiltInMagics,
-     tkParLe, tkBracketLe, tkCurlyLe, tkIntLit..tkCharLit, tkVar, tkRef, tkPtr,
+     tkParLe, tkBracketLe, tkCurlyLe, tkIntLit..tkCustomLit, tkVar, tkRef, tkPtr,
      tkTuple, tkObject, tkWhen, tkCase, tkOut:
     result = true
   else: result = false
