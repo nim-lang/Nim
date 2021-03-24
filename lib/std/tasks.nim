@@ -14,28 +14,31 @@ export isolation
 # is roughly converted to
 #
 # type
-#   ScratchObj_369098949 = object
+#   ScratchObj_369098780 = object
 #     a: int
 #     b: string
 #
-# let scratch_369098933 = cast[ptr ScratchObj_369098949](c_calloc(csize_t 1,
-#     csize_t sizeof(ScratchObj_369098949)))
-# if scratch_369098933.isNil:
+# let scratch_369098762 = cast[ptr ScratchObj_369098780](c_calloc(csize_t 1,
+#     csize_t sizeof(ScratchObj_369098780)))
+# if scratch_369098762.isNil:
 #   raise newException(OutOfMemDefect, "Could not allocate memory")
-# scratch_369098933.a = 521
-# scratch_369098933.b = literal
-# proc hello_369098950(args`gensym11: pointer) {.nimcall.} =
-#   let obj_369098946 = cast[ptr ScratchObj_369098949](args`gensym11)
-#   let :tmp_369098947 = obj_369098946.a
-#   let :tmp_369098948 = obj_369098946.b
-#   hello(a = :tmp_369098947, b = :tmp_369098948)
+# block:
+#   var isolate_369098776 = isolate(521)
+#   scratch_369098762.a = extract(isolate_369098776)
+#   var isolate_369098778 = isolate(literal)
+#   scratch_369098762.b = extract(isolate_369098778)
+# proc hello_369098781(args`gensym3: pointer) {.nimcall.} =
+#   let obj_369098775 = cast[ptr ScratchObj_369098780](args`gensym3)
+#   let :tmp_369098777 = obj_369098775.a
+#   let :tmp_369098779 = obj_369098775.b
+#   hello(a = :tmp_369098777, b = :tmp_369098779)
 #
-# proc destroyScratch_369098951(args`gensym11: pointer) {.nimcall.} =
-#   let obj_369098952 = cast[ptr ScratchObj_369098949](args`gensym11)
-#   =destroy(obj_369098952[])
+# proc destroyScratch_369098782(args`gensym3: pointer) {.nimcall.} =
+#   let obj_369098783 = cast[ptr ScratchObj_369098780](args`gensym3)
+#   =destroy(obj_369098783[])
+# let t = Task(callback: hello_369098781, args: scratch_369098762, destroy: destroyScratch_369098782)
 #
-# let t = Task(callback: hello_369098950, args: scratch_369098933, destroy: destroyScratch_369098951)
-#
+
 
 type
   Task* = object ## `Task` contains the callback and its arguments.
