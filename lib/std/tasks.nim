@@ -13,6 +13,11 @@ import system/ansi_c
 
 export isolation
 
+
+when compileOption("threads"):
+  from std/effecttraits import isGcSafe
+
+
 #
 # proc hello(a: int, b: string) =
 #   echo $a & b
@@ -97,6 +102,10 @@ macro toTask*(e: typed{nkCall | nkInfix | nkPrefix | nkPostfix | nkCommand | nkC
     assert b is Task
 
   doAssert getTypeInst(e).typeKind == ntyVoid
+
+  when compileOption("threads"):
+    if not isGcSafe(e[0]):
+      error("'toTask' takes a GC safe call expression")
 
   if e.len > 1:
     let scratchIdent = genSym(kind = nskTemp, ident = "scratch")
