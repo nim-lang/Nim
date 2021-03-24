@@ -100,7 +100,12 @@ proc checkIsolate*(n: PNode): bool =
       for it in n:
         result = checkIsolate(it.lastSon)
         if not result: break
-    of nkCaseStmt, nkObjConstr:
+    of nkCaseStmt:
+      for i in 1..<n.len:
+        result = checkIsolate(n[i].lastSon)
+        if not result: break
+    of nkObjConstr:
+      result = true
       for i in 1..<n.len:
         result = checkIsolate(n[i].lastSon)
         if not result: break
@@ -123,4 +128,3 @@ proc checkIsolate*(n: PNode): bool =
   else:
     # no ref, no cry:
     result = true
-
