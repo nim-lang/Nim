@@ -1,13 +1,5 @@
 discard """
   targets: "c js"
-  nimout: '''
-0
-10
-'''
-  output: '''
-0
-10
-'''
 """
 
 proc main() =
@@ -22,8 +14,11 @@ proc main() =
       yield 0
 
     proc m =
+      var data = ""
       for i in t(nil):
-        echo i
+        data.addInt i
+
+      doAssert data == "0"
 
     m()
 
@@ -33,6 +28,8 @@ proc main() =
       R = ref object
         z: int
 
+    var data = ""
+
     iterator foo(x: int; y: R = nil): int {.inline.} =
       if y == nil:
         yield x
@@ -40,7 +37,9 @@ proc main() =
         yield y.z
 
     for b in foo(10):
-      echo b
+      data.addInt b
+
+    doAssert data == "10"
 
 static: main()
 main()
