@@ -1725,7 +1725,6 @@ when defined(windows) and not weirdTarget:
 proc expandSymlink*(symlinkPath: string): string {.noWeirdTarget.} =
   ## Returns a string representing the path to which the symbolic link points.
   ##
-  ##
   ## See also:
   ## * `createSymlink proc <#createSymlink,string,string>`_
   ## * `symlinkExists proc <#symlinkExists,string>`_
