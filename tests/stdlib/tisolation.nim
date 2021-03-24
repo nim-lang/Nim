@@ -8,6 +8,14 @@ import std/[isolation, json]
 
 
 proc main() =
+  block:
+    type
+      Empty = ref object
+
+
+    var x = isolate(Empty())
+    discard extract(x)
+
   block: # string literals
     var data = isolate("string")
     doAssert data.extract == "string"
