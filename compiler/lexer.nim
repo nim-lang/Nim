@@ -345,7 +345,7 @@ proc getNumber(L: var Lexer, result: var Token) =
   result.tokType = tkIntLit   # int literal until we know better
   result.literal = ""
   result.base = base10
-  tokenBegin(result, startpos)
+  tokenBegin(result, L.bufpos)
 
   var isPositive = true
   if L.buf[L.bufpos] == '-':
