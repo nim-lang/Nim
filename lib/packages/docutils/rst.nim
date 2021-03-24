@@ -852,6 +852,9 @@ proc isInlineMarkupEnd(p: RstParser, markup: string): bool =
   if not result: return
   # Rule 4:
   if p.idx > 0:
+    # see bug #17260; for now `\` must be written ``\``, likewise with sequences
+    # ending in an un-escaped `\`; `\\` is legal but not `\\\` for example;
+    # for this reason we can't use `["``", "`"]` here.
     if markup != "``" and prevTok(p).symbol == "\\":
       result = false
 
@@ -1089,11 +1092,19 @@ proc parseUntil(p: var RstParser, father: PRstNode, postfix: string,
       if isInlineMarkupEnd(p, postfix):
         inc p.idx
         break
-      elif interpretBackslash:
-        parseBackslash(p, father)
       else:
-        father.add(newLeaf(p))
-        inc p.idx
+        if postfix == "`":
+          if prevTok(p).symbol == "\\" and currentTok(p).symbol == "`":
+            father.sons[^1] = newLeaf(p) # instead, we should use lookahead
+          else:
+            father.add(newLeaf(p))
+          inc p.idx
+        else:
+          if interpretBackslash:
+            parseBackslash(p, father)
+          else:
+            father.add(newLeaf(p))
+            inc p.idx
     of tkAdornment, tkWord, tkOther:
       father.add(newLeaf(p))
       inc p.idx
@@ -1243,7 +1254,7 @@ proc parseInline(p: var RstParser, father: PRstNode) =
       father.add(n)
     elif isInlineMarkupStart(p, "`"):
       var n = newRstNode(rnInterpretedText)
-      parseUntil(p, n, "`", true)
+      parseUntil(p, n, "`", false) # bug #17260
       n = parsePostfix(p, n)
       father.add(n)
     elif isInlineMarkupStart(p, "|"):

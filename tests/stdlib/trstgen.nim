@@ -196,9 +196,15 @@ suite "RST/Markdown general":
 |              | F2 without pipe
 not in table"""
     let output1 = input1.toHtml
-    doAssert output1 == """<table border="1" class="docutils"><tr><th>A1 header</th><th>A2 | not fooled</th></tr>
+    #[
+    TODO: `\|` inside a table cell should render as `|`
+        `|` outside a table cell should render as `\|`
+    consistently with markdown, see https://stackoverflow.com/a/66557930/1426932
+    ]#
+    doAssert output1 == """
+<table border="1" class="docutils"><tr><th>A1 header</th><th>A2 | not fooled</th></tr>
 <tr><td>C1</td><td>C2 <strong>bold</strong></td></tr>
-<tr><td>D1 <tt class="docutils literal"><span class="pre">code |</span></tt></td><td>D2</td></tr>
+<tr><td>D1 <tt class="docutils literal"><span class="pre">code \|</span></tt></td><td>D2</td></tr>
 <tr><td>E1 | text</td><td></td></tr>
 <tr><td></td><td>F2 without pipe</td></tr>
 </table><p>not in table</p>
@@ -548,6 +554,18 @@ let x = 1
 ``` """
     let output2 = input2.toHtml
     doAssert "<pre" in output2 and "class=\"Keyword\"" in output2
+
+  test "interpreted text":
+    check """`foo.bar`""".toHtml == """<tt class="docutils literal"><span class="pre">foo.bar</span></tt>"""
+    check """`foo\`\`bar`""".toHtml == """<tt class="docutils literal"><span class="pre">foo``bar</span></tt>"""
+    check """`foo\`bar`""".toHtml == """<tt class="docutils literal"><span class="pre">foo`bar</span></tt>"""
+    check """`\`bar`""".toHtml == """<tt class="docutils literal"><span class="pre">`bar</span></tt>"""
+    check """`a\b\x\\ar`""".toHtml == """<tt class="docutils literal"><span class="pre">a\b\x\\ar</span></tt>"""
+
+  test "inline literal":
+    check """``foo.bar``""".toHtml == """<tt class="docutils literal"><span class="pre">foo.bar</span></tt>"""
+    check """``foo\bar``""".toHtml == """<tt class="docutils literal"><span class="pre">foo\bar</span></tt>"""
+    check """``f\`o\\o\b`ar``""".toHtml == """<tt class="docutils literal"><span class="pre">f\`o\\o\b`ar</span></tt>"""
 
   test "RST comments":
     let input1 = """
