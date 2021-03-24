@@ -573,6 +573,7 @@ template processScopeExpr(c: var Con; s: var Scope; ret: PNode, processCall: unt
   let tmp = c.getTemp(s.parent[], ret.typ, ret.info)
   tmp.sym.flags.incl sfSingleUsedTemp
   let cpy = if hasDestructor(c, ret.typ):
+              s.parent[].final.add c.genDestroy(tmp)
               moveOrCopy(tmp, ret, c, s, isDecl = true)
             else:
               newTree(nkFastAsgn, tmp, p(ret, c, s, normal))

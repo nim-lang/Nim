@@ -761,8 +761,25 @@ when (NimMajor, NimMinor) < (1, 1) or not declared(isRelativeTo):
     let ret = relativePath(path, base)
     result = path.len > 0 and not ret.startsWith ".."
 
-proc getRelativePathFromConfigPath*(conf: ConfigRef; f: AbsoluteFile): RelativeFile =
+const stdlibDirs = [
+  "pure", "core", "arch",
+  "pure/collections",
+  "pure/concurrency",
+  "pure/unidecode", "impure",
+  "wrappers", "wrappers/linenoise",
+  "windows", "posix", "js"]
+
+const
+  pkgPrefix = "pkg/"
+  stdPrefix = "std/"
+
+proc getRelativePathFromConfigPath*(conf: ConfigRef; f: AbsoluteFile, isTitle = false): RelativeFile =
   let f = $f
+  if isTitle:
+    for dir in stdlibDirs:
+      let path = conf.libpath.string / dir / f.lastPathPart
+      if path.cmpPaths(f) == 0:
+        return RelativeFile(stdPrefix & f.splitFile.name)
   template search(paths) =
     for it in paths:
       let it = $it
@@ -784,18 +801,8 @@ proc findFile*(conf: ConfigRef; f: string; suppressStdlib = false): AbsoluteFile
           result = rawFindFile2(conf, RelativeFile f.toLowerAscii)
   patchModule(conf)
 
-const stdlibDirs = [
-  "pure", "core", "arch",
-  "pure/collections",
-  "pure/concurrency",
-  "pure/unidecode", "impure",
-  "wrappers", "wrappers/linenoise",
-  "windows", "posix", "js"]
-
 proc findModule*(conf: ConfigRef; modulename, currentModule: string): AbsoluteFile =
   # returns path to module
-  const pkgPrefix = "pkg/"
-  const stdPrefix = "std/"
   var m = addFileExt(modulename, NimExt)
   if m.startsWith(pkgPrefix):
     result = findFile(conf, m.substr(pkgPrefix.len), suppressStdlib = true)

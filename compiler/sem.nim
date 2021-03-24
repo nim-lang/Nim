@@ -485,11 +485,31 @@ proc semConstBoolExpr(c: PContext, n: PNode): PNode =
   if result.kind != nkIntLit:
     localError(c.config, n.info, errConstExprExpected)
 
-
 proc semGenericStmt(c: PContext, n: PNode): PNode
 proc semConceptBody(c: PContext, n: PNode): PNode
 
-include semtypes, semtempl, semgnrc, semstmts, semexprs
+include semtypes
+
+proc setGenericParamsMisc(c: PContext; n: PNode) =
+  ## used by call defs (procs, templates, macros, ...) to analyse their generic
+  ## params, and store the originals in miscPos for better error reporting.
+  let orig = n[genericParamsPos]
+
+  doAssert orig.kind in {nkEmpty, nkGenericParams}
+
+  if n[genericParamsPos].kind == nkEmpty:
+    n[genericParamsPos] = newNodeI(nkGenericParams, n.info)
+  else:
+    # we keep the original params around for better error messages, see
+    # issue https://github.com/nim-lang/Nim/issues/1713
+    n[genericParamsPos] = semGenericParamList(c, orig)
+
+  if n[miscPos].kind == nkEmpty:
+    n[miscPos] = newTree(nkBracket, c.graph.emptyNode, orig)
+  else:
+    n[miscPos][1] = orig
+
+include semtempl, semgnrc, semstmts, semexprs
 
 proc addCodeForGenerics(c: PContext, n: PNode) =
   for i in c.lastGenericIdx..<c.generics.len:
@@ -641,7 +661,7 @@ proc myClose(graph: ModuleGraph; context: PPassContext, n: PNode): PNode =
     result.add(c.module.ast)
   popOwner(c)
   popProcCon(c)
-  saveRodFile(c)
+  sealRodFile(c)
 
 const semPass* = makePass(myOpen, myProcess, myClose,
                           isFrontend = true)

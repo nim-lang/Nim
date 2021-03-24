@@ -1386,7 +1386,6 @@ proc genTypeInfoV2(m: BModule, t: PType; info: TLineInfo): Rope =
   let owner = t.skipTypes(typedescPtrs).itemId.module
   if owner != m.module.position and moduleOpenForCodegen(m, owner):
     # make sure the type info is created in the owner module
-    assert m.g.modules[owner] != nil
     discard genTypeInfoV2(m.g.modules[owner], origType, info)
     # reference the type info as extern here
     discard cgsym(m, "TNimTypeV2")
@@ -1456,18 +1455,27 @@ proc genTypeInfoV1(m: BModule, t: PType; info: TLineInfo): Rope =
   result = "NTI$1$2_" % [rope(typeToC(t)), rope($sig)]
   m.typeInfoMarker[sig] = result
 
-  let owner = t.skipTypes(typedescPtrs).itemId.module
+  let old = m.g.graph.emittedTypeInfo.getOrDefault($result)
+  if old != FileIndex(0):
+    discard cgsym(m, "TNimType")
+    discard cgsym(m, "TNimNode")
+    declareNimType(m, "TNimType", result, old.int)
+    return prefixTI.rope & result & ")".rope
+
+  var owner = t.skipTypes(typedescPtrs).itemId.module
   if owner != m.module.position and moduleOpenForCodegen(m, owner):
     # make sure the type info is created in the owner module
-    assert m.g.modules[owner] != nil
     discard genTypeInfoV1(m.g.modules[owner], origType, info)
     # reference the type info as extern here
     discard cgsym(m, "TNimType")
     discard cgsym(m, "TNimNode")
     declareNimType(m, "TNimType", result, owner)
     return prefixTI.rope & result & ")".rope
+  else:
+    owner = m.module.position.int32
 
   m.g.typeInfoMarker[sig] = (str: result, owner: owner)
+  rememberEmittedTypeInfo(m.g.graph, FileIndex(owner), $result)
 
   case t.kind
   of tyEmpty, tyVoid: result = rope"0"

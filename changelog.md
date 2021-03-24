@@ -212,6 +212,9 @@
 
 - `std/options` changed `$some(3)` to `"some(3)"` instead of `"Some(3)"`
   and `$none(int)` to `"none(int)"` instead of `"None[int]"`.
+  
+- Added `algorithm.merge`.
+
 
 - Added `std/jsfetch` module [Fetch](https://developer.mozilla.org/docs/Web/API/Fetch_API) wrapper for JavaScript target.
 
@@ -238,6 +241,8 @@
   unless `-d:nimLegacyHomeDir` is specified (for a transition period).
 
 - Added `jsconsole.dir`, `jsconsole.dirxml`, `jsconsole.timeStamp`.
+
+- Added dollar `$` and `len` for `jsre.RegExp`.
 
 
 ## Language changes
@@ -299,6 +304,7 @@
 
 - Added `unsafeIsolate` and `extract` to `std/isolation`.
 
+- `--hint:CC` now goes to stderr (like all other hints) instead of stdout.
 
 
 ## Tool changes
