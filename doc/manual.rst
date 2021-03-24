@@ -490,11 +490,17 @@ this. Another reason is that Nim can thus support `array[char, int]` or
 type is used for Unicode characters, it can represent any Unicode character.
 `Rune` is declared in the `unicode module <unicode.html>`_.
 
+A character literal that  does not end in ``'`` interpreted as ``'`` if there
+is a preceeding backtick token. There must be no whitespace between the preceeding
+backtick token and the character literal. This special rule ensures that a declaration
+like ``proc `'customLiteral`(s: string)`` is valid. See also
+`Custom Numeric Literals <#custom-numeric-literals>`_.
 
-Numerical constants
--------------------
 
-Numerical constants are of a single type and have the form::
+Numeric Literals
+----------------
+
+Numeric literals have the form::
 
   hexdigit = digit | 'A'..'F' | 'a'..'f'
   octdigit = '0'..'7'
@@ -530,8 +536,10 @@ Numerical constants are of a single type and have the form::
   FLOAT64_LIT = HEX_LIT '\'' FLOAT64_SUFFIX
               | (FLOAT_LIT | DEC_LIT | OCT_LIT | BIN_LIT) ['\''] FLOAT64_SUFFIX
 
+  CUSTOM_NUMERIC_LIT = (FLOAT_LIT | DEC_LIT | OCT_LIT | BIN_LIT) '\'' CUSTOM_NUMERIC_SUFFIX
 
-As can be seen in the productions, numerical constants can contain underscores
+
+As can be seen in the productions, numeric literals can contain underscores
 for readability. Integer and floating-point literals may be given in decimal (no
 prefix), binary (prefix `0b`), octal (prefix `0o`), and hexadecimal
 (prefix `0x`) notation.
@@ -579,7 +587,7 @@ is optional if it is not ambiguous (only hexadecimal floating-point literals
 with a type suffix can be ambiguous).
 
 
-The type suffixes are:
+The pre-defined type suffixes are:
 
 =================    =========================
   Type Suffix        Resulting type of literal
@@ -610,6 +618,42 @@ bounds checking is done on bit width, not value range. If the literal fits in
 the bit width of the datatype, it is accepted.
 Hence: 0b10000000'u8 == 0x80'u8 == 128, but, 0b10000000'i8 == 0x80'i8 == -1
 instead of causing an overflow error.
+
+
+Custom Numeric Literals
+~~~~~~~~~~~~~~~~~~~~~~~
+
+If the suffix is not predefined, then the suffix is assumed to be a call
+to a proc, template, macro or other callable identifier that is passed the
+string containing the literal. The callable identifier needs to be declared
+with a special ``'`` prefix:
+
+.. code-block:: nim
+
+  import strutils
+  type u4 = distinct uint8 # a 4-bit unsigned integer aka "nibble"
+  proc `'u4`(n: string): u4 =
+    # The leading ' is required.
+    result = (parseInt(n) and 0x0F).u4
+
+  var x = 5'u4
+
+More formally, a custom numeric literal `123'custom` is transformed
+to r"123".`'custom` in the parsing step. There is no AST node kind that
+corresponds to this transformation. The transformation naturally handles
+the case that additional parameters are passed to the callee:
+
+.. code-block:: nim
+
+  import strutils
+  type u4 = distinct uint8 # a 4-bit unsigned integer aka "nibble"
+  proc `'u4`(n: string; moreData: int): u4 =
+    result = (parseInt(n) and 0x0F).u4
+
+  var x = 5'u4(123)
+
+Custom numeric literals are covered by the grammar rule named `CUSTOM_NUMERIC_LIT`.
+
 
 Operators
 ---------

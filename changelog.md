@@ -266,6 +266,8 @@
 - The unary minus in `-1` is now part of the integer literal, it is now parsed as a single token.
   This implies that edge cases like `-128'i8` finally work correctly.
 
+- Custom numeric literals are now supported.
+
 
 ## Compiler changes
 
