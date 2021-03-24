@@ -536,6 +536,8 @@ Numeric literals have the form::
   FLOAT64_LIT = HEX_LIT '\'' FLOAT64_SUFFIX
               | (FLOAT_LIT | DEC_LIT | OCT_LIT | BIN_LIT) ['\''] FLOAT64_SUFFIX
 
+  CUSTOM_NUMERIC_LIT = (FLOAT_LIT | DEC_LIT | OCT_LIT | BIN_LIT) '\'' CUSTOM_NUMERIC_SUFFIX
+
 
 As can be seen in the productions, numeric literals can contain underscores
 for readability. Integer and floating-point literals may be given in decimal (no
@@ -650,6 +652,7 @@ the case that additional parameters are passed to the callee:
 
   var x = 5'u4(123)
 
+Custom numeric literals are covered by the grammar rule named `CUSTOM_NUMERIC_LIT`.
 
 
 Operators

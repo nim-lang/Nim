@@ -627,7 +627,7 @@ proc identOrLiteral(p: var Parser, mode: PrimaryMode): PNode =
   #|           | UINT_LIT | UINT8_LIT | UINT16_LIT | UINT32_LIT | UINT64_LIT
   #|           | FLOAT_LIT | FLOAT32_LIT | FLOAT64_LIT
   #|           | STR_LIT | RSTR_LIT | TRIPLESTR_LIT
-  #|           | CHAR_LIT
+  #|           | CHAR_LIT | CUSTOM_NUMERIC_LIT
   #|           | NIL
   #| generalizedLit = GENERALIZED_STR_LIT | GENERALIZED_TRIPLESTR_LIT
   #| identOrLiteral = generalizedLit | symbol | literal
@@ -1506,7 +1506,7 @@ proc parseReturnOrRaise(p: var Parser, kind: TNodeKind): PNode =
   #| yieldStmt = 'yield' optInd expr?
   #| discardStmt = 'discard' optInd expr?
   #| breakStmt = 'break' optInd expr?
-  #| continueStmt = 'break' optInd expr?
+  #| continueStmt = 'continue' optInd expr?
   result = newNodeP(kind, p)
   getTok(p)
   if p.tok.tokType == tkComment:
