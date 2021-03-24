@@ -416,7 +416,7 @@ proc nodeToHighlightedHtml(d: PDoc; n: PNode; result: var Rope; renderFlags: TRe
     of tkOpr:
       dispA(d.conf, result, "<span class=\"Operator\">$1</span>", "\\spanOperator{$1}",
             [escLit])
-    of tkStrLit..tkTripleStrLit:
+    of tkStrLit..tkTripleStrLit, tkCustomLit:
       dispA(d.conf, result, "<span class=\"StringLit\">$1</span>",
             "\\spanStringLit{$1}", [escLit])
     of tkCharLit:
