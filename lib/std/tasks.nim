@@ -38,9 +38,9 @@ export isolation
 #   var isolate_369098778 = isolate(literal)
 #   scratch_369098762.b = extract(isolate_369098778)
 # proc hello_369098781(args`gensym3: pointer) {.nimcall.} =
-#   let obj_369098775 = cast[ptr ScratchObj_369098780](args`gensym3)
-#   let :tmp_369098777 = obj_369098775.a
-#   let :tmp_369098779 = obj_369098775.b
+#   let objTemp_369098775 = cast[ptr ScratchObj_369098780](args`gensym3)
+#   let :tmp_369098777 = objTemp_369098775.a
+#   let :tmp_369098779 = objTemp_369098775.b
 #   hello(a = :tmp_369098777, b = :tmp_369098779)
 #
 # proc destroyScratch_369098782(args`gensym3: pointer) {.nimcall.} =
@@ -67,16 +67,26 @@ proc invoke*(task: Task) {.inline.} =
   task.callback(task.args)
 
 
-template checkIsolate(scratchAssignList: seq[NimNode], params, scratchDotExpr: NimNode) =
+template checkIsolate(scratchAssignList: seq[NimNode], procParam, scratchDotExpr: NimNode) =
   # block:
   #   var isoTempA = isolate(521)
   #   scratch.a = extract(isolateA)
   #   var isoTempB = isolate(literal)
   #   scratch.b = extract(isolateB)
   let isolatedTemp = genSym(nskTemp, "isoTemp")
-  scratchAssignList.add newVarStmt(isolatedTemp, newCall(newidentNode("isolate"), params))
+  scratchAssignList.add newVarStmt(isolatedTemp, newCall(newidentNode("isolate"), procParam))
   scratchAssignList.add newAssignment(scratchDotExpr,
       newcall(newIdentNode("extract"), isolatedTemp))
+
+template addAllNode(assignParam: NimNode, procParam: NimNode) =
+  let scratchDotExpr = newDotExpr(scratchIdent, formalParams[i][0])
+
+  checkIsolate(scratchAssignList, procParam, scratchDotExpr)
+
+  let tempNode = genSym(kind = nskTemp, ident = formalParams[i][0].strVal)
+  callNode.add nnkExprEqExpr.newTree(formalParams[i][0], tempNode)
+  tempAssignList.add newLetStmt(tempNode, newDotExpr(objTemp, formalParams[i][0]))
+  scratchRecList.add newIdentDefs(newIdentNode(formalParams[i][0].strVal), assignParam)
 
 macro toTask*(e: typed{nkCall | nkCommand}): Task =
   ## Converts the call and its arguments to `Task`.
@@ -85,15 +95,6 @@ macro toTask*(e: typed{nkCall | nkCommand}): Task =
 
     let b = toTask hello(13)
     assert b is Task
-
-  template addAllNode =
-    let scratchDotExpr = newDotExpr(scratchIdent, formalParams[i][0])
-
-    checkIsolate(scratchAssignList, e[i], scratchDotExpr)
-
-    let tempNode = genSym(kind = nskTemp, ident = "")
-    callNode.add nnkExprEqExpr.newTree(formalParams[i][0], tempNode)
-    tempAssignList.add newLetStmt(tempNode, newDotExpr(objTemp, formalParams[i][0]))
 
   doAssert getTypeInst(e).typeKind == ntyVoid
 
@@ -113,7 +114,7 @@ macro toTask*(e: typed{nkCall | nkCommand}): Task =
       callNode: seq[NimNode]
 
     let
-      objTemp = genSym(ident = "obj")
+      objTemp = genSym(nskTemp, ident = "objTemp")
 
     for i in 1 ..< formalParams.len:
       let param = formalParams[i][1]
@@ -123,32 +124,22 @@ macro toTask*(e: typed{nkCall | nkCommand}): Task =
         error("'toTask'ed function cannot have a 'var' parameter")
       of nnkBracketExpr:
         if param[0].eqIdent("sink"):
-          scratchRecList.add newIdentDefs(newIdentNode(formalParams[i][0].strVal), param[1])
-          addAllNode()
+          addAllNode(param[1], e[i])
         elif param[0].eqIdent("typeDesc"):
           callNode.add nnkExprEqExpr.newTree(formalParams[i][0], e[i])
         elif param[0].eqIdent("varargs") or param[0].eqIdent("openArray"):
           let
             seqType = nnkBracketExpr.newTree(newIdentNode("seq"), param[1])
-            scratchDotExpr = newDotExpr(scratchIdent, formalParams[i][0])
             seqCallNode = newcall("@", e[i])
-
-          checkIsolate(scratchAssignList, seqCallNode, scratchDotExpr)
-
-          let tempNode = genSym(kind = nskTemp)
-          callNode.add nnkExprEqExpr.newTree(formalParams[i][0], tempNode)
-          tempAssignList.add newLetStmt(tempNode, newDotExpr(objTemp, formalParams[i][0]))
-          scratchRecList.add newIdentDefs(newIdentNode(formalParams[i][0].strVal), seqType)
+          addAllNode(seqType, seqCallNode)
         else:
-          scratchRecList.add newIdentDefs(newIdentNode(formalParams[i][0].strVal), param)
-          addAllNode()
+          addAllNode(param, e[i])
       of nnkBracket, nnkObjConstr:
         # passing by static parameters
         # so we pass them directly instead of passing by scratchObj
         callNode.add nnkExprEqExpr.newTree(formalParams[i][0], e[i])
       of nnkSym, nnkPtrTy:
-        scratchRecList.add newIdentDefs(newIdentNode(formalParams[i][0].strVal), param)
-        addAllNode()
+        addAllNode(param, e[i])
       of nnkCharLit..nnkNilLit:
         callNode.add nnkExprEqExpr.newTree(formalParams[i][0], e[i])
       else:
