@@ -394,7 +394,7 @@ proc getNumber(L: var Lexer, result: var Token) =
       discard matchUnderscoreChars(L, result, {'0'..'9'})
     if L.buf[L.bufpos] in {'e', 'E'}:
       result.tokType = tkFloatLit
-      eatChar(L, result, 'e')
+      eatChar(L, result)
       if L.buf[L.bufpos] in {'+', '-'}:
         eatChar(L, result)
       discard matchUnderscoreChars(L, result, {'0'..'9'})
