@@ -88,7 +88,7 @@ template addAllNode(assignParam: NimNode, procParam: NimNode) =
   tempAssignList.add newLetStmt(tempNode, newDotExpr(objTemp, formalParams[i][0]))
   scratchRecList.add newIdentDefs(newIdentNode(formalParams[i][0].strVal), assignParam)
 
-macro toTask*(e: typed{nkCall | nkCommand}): Task =
+macro toTask*(e: typed{nkCall | nkInfix | nkPrefix | nkPostfix | nkCommand | nkCallStrLit}): Task =
   ## Converts the call and its arguments to `Task`.
   runnableExamples("--gc:orc"):
     proc hello(a: int) = echo a
@@ -183,9 +183,7 @@ macro toTask*(e: typed{nkCall | nkCommand}): Task =
     functionStmtList.add funcCall
 
     let funcName = genSym(nskProc, e[0].strVal)
-
     let destroyName = genSym(nskProc, "destroyScratch")
-
     let objTemp2 = genSym(ident = "obj")
     let tempNode = quote("@") do:
         `=destroy`(@objTemp2[])
