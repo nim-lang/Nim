@@ -6,6 +6,28 @@ discard """
 import std/[tasks, strformat]
 
 block:
+  var s = ""
+  proc `+`(x: int, y: string) =
+    s.add $x & y
+
+  let literal = "Nim"
+  let t = toTask(521 + literal)
+  t.invoke()
+
+  doAssert s == "521Nim"
+
+block:
+  var s = ""
+  proc `!`(x: int) =
+    s.add $x
+
+  let t = toTask !12
+  t.invoke()
+
+  doAssert s == "12"
+
+
+block:
   block:
     var called = 0
     proc hello(x: static range[1 .. 5]) =
