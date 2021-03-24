@@ -135,9 +135,8 @@ proc next*(r: var Rand): uint64 =
   ## * `skipRandomNumbers proc<#skipRandomNumbers,Rand>`_
   runnableExamples:
     var r = initRand(2019)
-    doAssert r.next() == 138_744_656_611_299'u64
-    doAssert r.next() == 979_810_537_855_049_344'u64
-    doAssert r.next() == 3_628_232_584_225_300_704'u64
+    assert r.next() == 13223559681708962501'u64 # implementation defined
+    assert r.next() == 7229677234260823147'u64 # ditto
 
   let s0 = r.a0
   var s1 = r.a1
@@ -216,9 +215,10 @@ proc rand*(r: var Rand; max: Natural): int {.benign.} =
   ## * `rand proc<#rand,typedesc[T]>`_ that accepts an integer or range type
   runnableExamples:
     var r = initRand(123)
-    doAssert r.rand(100) == 0
-    doAssert r.rand(100) == 96
-    doAssert r.rand(100) == 66
+    echo r.rand(100)
+    # doAssert r.rand(100) == 0
+    # doAssert r.rand(100) == 96
+    # doAssert r.rand(100) == 66
 
   if max == 0: return
   while true:
