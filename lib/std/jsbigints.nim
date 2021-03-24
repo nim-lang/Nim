@@ -3,17 +3,19 @@
 when not defined(js):
   {.fatal: "Module jsbigints is designed to be used with the JavaScript backend.".}
 
-type JsBigIntImpl {.importc: "bigint".} = int # https://github.com/nim-lang/Nim/pull/16606
-type JsBigInt* = distinct JsBigIntImpl        ## Arbitrary precision integer for JavaScript target.
+type JsBigIntImpl {.importjs: "bigint".} = int # https://github.com/nim-lang/Nim/pull/16606
+type JsBigInt* = distinct JsBigIntImpl         ## Arbitrary precision integer for JavaScript target.
 
 func big*(integer: SomeInteger): JsBigInt {.importjs: "BigInt(#)".} =
   ## Constructor for `JsBigInt`.
+  when nimvm: doAssert false, "JsBigInt can not be used at compile-time nor static context" else: discard
   runnableExamples:
     doAssert big(1234567890) == big"1234567890"
     doAssert 0b1111100111.big == 0o1747.big and 0o1747.big == 999.big
 
 func big*(integer: cstring): JsBigInt {.importjs: "BigInt(#)".} =
   ## Constructor for `JsBigInt`.
+  when nimvm: doAssert false, "JsBigInt can not be used at compile-time nor static context" else: discard
   runnableExamples:
     doAssert big"-1" == big"1" - big"2"
     # supports decimal, binary, octal, hex:

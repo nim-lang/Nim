@@ -2296,7 +2296,8 @@ proc genMagicExpr(p: BProc, e: PNode, d: var TLoc, op: TMagic) =
   of mCharToStr: genDollar(p, e, d, "#nimCharToStr($1)")
   of mFloatToStr: genDollar(p, e, d, "#nimFloatToStr($1)")
   of mCStrToStr: genDollar(p, e, d, "#cstrToNimstr($1)")
-  of mStrToStr, mUnown, mIsolate: expr(p, e[1], d)
+  of mStrToStr, mUnown: expr(p, e[1], d)
+  of mIsolate: genCall(p, e, d)
   of mEnumToStr:
     if optTinyRtti in p.config.globalOptions:
       genEnumToStr(p, e, d)
@@ -2576,40 +2577,32 @@ proc upConv(p: BProc, n: PNode, d: var TLoc) =
                         [getTypeDesc(p.module, dest), addrLoc(p.config, a)], a.storage)
 
 proc downConv(p: BProc, n: PNode, d: var TLoc) =
-  if p.module.compileToCpp:
-    discard getTypeDesc(p.module, skipTypes(n[0].typ, abstractPtrs))
-    expr(p, n[0], d)     # downcast does C++ for us
-  else:
-    var dest = skipTypes(n.typ, abstractPtrs)
+  var arg = n[0]
+  while arg.kind == nkObjDownConv: arg = arg[0]
 
-    var arg = n[0]
-    while arg.kind == nkObjDownConv: arg = arg[0]
-
-    var src = skipTypes(arg.typ, abstractPtrs)
-    discard getTypeDesc(p.module, src)
+  let dest = skipTypes(n.typ, abstractPtrs)
+  let src = skipTypes(arg.typ, abstractPtrs)
+  discard getTypeDesc(p.module, src)
+  let isRef = skipTypes(arg.typ, abstractInstOwned).kind in {tyRef, tyPtr, tyVar, tyLent}
+  if isRef and d.k == locNone and n.typ.skipTypes(abstractInstOwned).kind in {tyRef, tyPtr} and n.isLValue:
+    # it can happen that we end up generating '&&x->Sup' here, so we pack
+    # the '&x->Sup' into a temporary and then those address is taken
+    # (see bug #837). However sometimes using a temporary is not correct:
+    # init(TFigure(my)) # where it is passed to a 'var TFigure'. We test
+    # this by ensuring the destination is also a pointer:
     var a: TLoc
     initLocExpr(p, arg, a)
-    var r = rdLoc(a)
-    let isRef = skipTypes(arg.typ, abstractInstOwned).kind in {tyRef, tyPtr, tyVar, tyLent}
-    if isRef:
-      r.add("->Sup")
-    else:
-      r.add(".Sup")
+    putIntoDest(p, d, n,
+              "(*(($1*) (&($2))))" % [getTypeDesc(p.module, n.typ), rdLoc(a)], a.storage)
+  elif p.module.compileToCpp:
+    # C++ implicitly downcasts for us
+    expr(p, arg, d)
+  else:
+    var a: TLoc
+    initLocExpr(p, arg, a)
+    var r = rdLoc(a) & (if isRef: "->Sup" else: ".Sup")
     for i in 2..abs(inheritanceDiff(dest, src)): r.add(".Sup")
-    if isRef:
-      # it can happen that we end up generating '&&x->Sup' here, so we pack
-      # the '&x->Sup' into a temporary and then those address is taken
-      # (see bug #837). However sometimes using a temporary is not correct:
-      # init(TFigure(my)) # where it is passed to a 'var TFigure'. We test
-      # this by ensuring the destination is also a pointer:
-      if d.k == locNone and skipTypes(n.typ, abstractInstOwned).kind in {tyRef, tyPtr, tyVar, tyLent}:
-        getTemp(p, n.typ, d)
-        linefmt(p, cpsStmts, "$1 = &$2;$n", [rdLoc(d), r])
-      else:
-        r = "&" & r
-        putIntoDest(p, d, n, r, a.storage)
-    else:
-      putIntoDest(p, d, n, r, a.storage)
+    putIntoDest(p, d, n, if isRef: "&" & r else: r, a.storage)
 
 proc exprComplexConst(p: BProc, n: PNode, d: var TLoc) =
   let t = n.typ
@@ -2706,7 +2699,7 @@ proc expr(p: BProc, n: PNode, d: var TLoc) =
       if sfCompileTime in sym.flags:
         localError(p.config, n.info, "request to generate code for .compileTime proc: " &
            sym.name.s)
-      if useAliveDataFromDce in p.module.flags:
+      if useAliveDataFromDce in p.module.flags and sym.typ.callConv != ccInline:
         fillProcLoc(p.module, n)
         genProcPrototype(p.module, sym)
       else:
@@ -2719,6 +2712,8 @@ proc expr(p: BProc, n: PNode, d: var TLoc) =
         putIntoDest(p, d, n, genLiteral(p, sym.ast, sym.typ), OnStatic)
       elif useAliveDataFromDce in p.module.flags:
         genConstHeader(p.module, p.module, p, sym)
+        assert((sym.loc.r != nil) and (sym.loc.t != nil))
+        putLocIntoDest(p, d, sym.loc)
       else:
         genComplexConst(p, sym, d)
     of skEnumField:
@@ -2888,7 +2883,7 @@ proc expr(p: BProc, n: PNode, d: var TLoc) =
     if n[genericParamsPos].kind == nkEmpty:
       var prc = n[namePos].sym
       if useAliveDataFromDce in p.module.flags:
-        if p.module.alive.contains(prc.itemId.item):
+        if p.module.alive.contains(prc.itemId.item) and prc.magic in {mNone, mIsolate}:
           genProc(p.module, prc)
       elif prc.skipGenericOwner.kind == skModule and sfCompileTime notin prc.flags:
         if ({sfExportc, sfCompilerProc} * prc.flags == {sfExportc}) or
@@ -2906,6 +2901,7 @@ proc expr(p: BProc, n: PNode, d: var TLoc) =
     inc p.splitDecls
     genGotoState(p, n)
   of nkBreakState: genBreakState(p, n, d)
+  of nkMixinStmt, nkBindStmt: discard
   else: internalError(p.config, n.info, "expr(" & $n.kind & "); unknown node kind")
 
 proc genNamedConstExpr(p: BProc, n: PNode; isConst: bool): Rope =

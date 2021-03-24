@@ -8,6 +8,7 @@
 #
 
 import std/macros
+from std/typetraits import OrdinalEnum, HoleyEnum
 
 # xxx `genEnumCaseStmt` needs tests and runnableExamples
 
@@ -65,10 +66,17 @@ macro genEnumCaseStmt*(typ: typedesc, argSym: typed, default: typed,
     expectKind(default, nnkSym)
     result.add nnkElse.newTree(default)
 
-macro enumWithHolesFullRange(a: typed): untyped = 
+macro enumFullRange(a: typed): untyped =
   newNimNode(nnkCurly).add(a.getType[1][1..^1])
 
-iterator items*[T: enum and not Ordinal](E: typedesc[T]): T =
+macro enumNames(a: typed): untyped =
+  # this could be exported too; in particular this could be useful for enum with holes.
+  result = newNimNode(nnkBracket)
+  for ai in a.getType[1][1..^1]:
+    assert ai.kind == nnkSym
+    result.add newLit ai.strVal
+
+iterator items*[T: HoleyEnum](E: typedesc[T]): T =
   ## Iterates over an enum with holes.
   runnableExamples:
     type A = enum a0 = 2, a1 = 4, a2
@@ -76,4 +84,18 @@ iterator items*[T: enum and not Ordinal](E: typedesc[T]): T =
     from std/sequtils import toSeq
     assert A.toSeq == [a0, a1, a2]
     assert B[float].toSeq == [B[float].b0, B[float].b1]
-  for a in enumWithHolesFullRange(E): yield a
+  for a in enumFullRange(E): yield a
+
+func symbolName*[T: OrdinalEnum](a: T): string =
+  ## Returns the symbol name of an enum.
+  runnableExamples:
+    type B = enum
+      b0 = (10, "kb0")
+      b1 = "kb1"
+      b2
+    let b = B.low
+    assert b.symbolName == "b0"
+    assert $b == "kb0"
+    static: assert B.high.symbolName == "b2"
+  const names = enumNames(T)
+  names[a.ord - T.low.ord]

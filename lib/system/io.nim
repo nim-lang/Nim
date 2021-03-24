@@ -143,13 +143,13 @@ proc raiseEOF() {.noinline, noreturn.} =
 
 proc strerror(errnum: cint): cstring {.importc, header: "<string.h>".}
 
-when not defined(NimScript):
+when not defined(nimscript):
   var
     errno {.importc, header: "<errno.h>".}: cint ## error variable
     EINTR {.importc: "EINTR", header: "<errno.h>".}: cint
 
 proc checkErr(f: File) =
-  when not defined(NimScript):
+  when not defined(nimscript):
     if c_ferror(f) != 0:
       let msg = "errno: " & $errno & " `" & $strerror(errno) & "`"
       c_clearerr(f)
@@ -452,7 +452,7 @@ proc readLine*(f: File, line: var string): bool {.tags: [ReadIOEffect],
       # likely other io procs need this for correctness.
       fgetsSuccess = c_fgets(addr line[pos], sp.cint, f) != nil
       if fgetsSuccess: break
-      when not defined(NimScript):
+      when not defined(nimscript):
         if errno == EINTR:
           errno = 0
           c_clearerr(f)
@@ -918,7 +918,7 @@ iterator lines*(filename: string): string {.tags: [ReadIOEffect].} =
   ##   proc transformLetters(filename: string) =
   ##     var buffer = ""
   ##     for line in filename.lines:
-  ##       buffer.add(line.replace("a", "0") & '\x0A')
+  ##       buffer.add(line.replace("a", "0") & '\n')
   ##     writeFile(filename, buffer)
   var f = open(filename, bufSize=8000)
   try:

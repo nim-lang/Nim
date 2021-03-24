@@ -1,3 +1,5 @@
+.. default-role:: code
+
 ===================================
       Hot code reloading
 ===================================
@@ -19,8 +21,8 @@ so we have to use a helper module where the major logic we want to change
 during development resides.
 
 In this example, we use SDL2 to create a window and we reload the logic
-code when ``F9`` is pressed. The important lines are marked with ``#***``.
-To install SDL2 you can use ``nimble install sdl2``.
+code when `F9` is pressed. The important lines are marked with `#***`.
+To install SDL2 you can use `nimble install sdl2`.
 
 
 .. code-block:: nim
@@ -125,7 +127,7 @@ Then recompile the project, but do not restart or quit the mymain.exe program!
 
   nim c --hotcodereloading:on mymain.nim
 
-Now give the ``mymain`` SDL window the focus, press F9, and watch the
+Now give the `mymain` SDL window the focus, press F9, and watch the
 updated version of the program.
 
 
@@ -133,8 +135,8 @@ updated version of the program.
 Reloading API
 =============
 
-One can use the special event handlers ``beforeCodeReload`` and
-``afterCodeReload`` to reset the state of a particular variable or to force
+One can use the special event handlers `beforeCodeReload` and
+`afterCodeReload` to reset the state of a particular variable or to force
 the execution of certain statements:
 
 .. code-block:: Nim
@@ -178,8 +180,8 @@ It's expected that most projects will implement the reloading with a suitable
 build-system triggered IPC notification mechanism, but a polling solution is
 also possible through the provided `hasAnyModuleChanged()`:idx: API.
 
-In order to access ``beforeCodeReload``, ``afterCodeReload``, ``hasModuleChanged``
-or ``hasAnyModuleChanged`` one must import the `hotcodereloading`:idx: module.
+In order to access `beforeCodeReload`, `afterCodeReload`, `hasModuleChanged`
+or `hasAnyModuleChanged` one must import the `hotcodereloading`:idx: module.
 
 
 Native code targets
@@ -187,11 +189,11 @@ Native code targets
 
 Native projects using the hot code reloading option will be implicitly
 compiled with the `-d:useNimRtl` option and they will depend on both
-the ``nimrtl`` library and the ``nimhcr`` library which implements the
-hot code reloading run-time. Both libraries can be found in the ``lib``
+the `nimrtl` library and the `nimhcr` library which implements the
+hot code reloading run-time. Both libraries can be found in the `lib`
 folder of Nim and can be compiled into dynamic libraries to satisfy
 runtime demands of the example code above. An example of compiling 
-``nimhcr.nim`` and ``nimrtl.nim`` when the source dir of Nim is installed
+`nimhcr.nim` and `nimrtl.nim` when the source dir of Nim is installed
 with choosenim follows.
 
 ::
@@ -208,16 +210,16 @@ with choosenim follows.
   # source directory (.dll for Windows, .so for Unix, .dylib for MacOS)
 
 All modules of the project will be compiled to separate dynamic link
-libraries placed in the ``nimcache`` directory. Please note that during
+libraries placed in the `nimcache` directory. Please note that during
 the execution of the program, the hot code reloading run-time will load
 only copies of these libraries in order to not interfere with any newly
 issued build commands.
 
 The main module of the program is considered non-reloadable. Please note
 that procs from reloadable modules should not appear in the call stack of
-program while ``performCodeReload`` is being called. Thus, the main module
+program while `performCodeReload` is being called. Thus, the main module
 is a suitable place for implementing a program loop capable of calling
-``performCodeReload``.
+`performCodeReload`.
 
 Please note that reloading won't be possible when any of the type definitions
 in the program has been changed. When closure iterators are used (directly or

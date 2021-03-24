@@ -265,7 +265,7 @@ const
   ENET_PEER_RELIABLE_WINDOW_SIZE         = 0x1000
   ENET_PEER_FREE_RELIABLE_WINDOWS        = 8
 
-when defined(Linux) or true:
+when defined(linux) or true:
   import posix
   const
     ENET_SOCKET_NULL*: cint = -1
@@ -295,7 +295,7 @@ when defined(Linux) or true:
   template ENET_SOCKETSET_CHECK*(sockset, socket: untyped): untyped =
     FD_ISSET(socket, addr((sockset)))
 
-when defined(Windows):
+when defined(windows):
   ## put the content of win32.h in here
 
 

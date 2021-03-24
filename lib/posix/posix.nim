@@ -189,7 +189,7 @@ proc posix_fadvise*(a1: cint, a2, a3: Off, a4: cint): cint {.
 proc posix_fallocate*(a1: cint, a2, a3: Off): cint {.
   importc, header: "<fcntl.h>".}
 
-when not defined(haiku) and not defined(OpenBSD):
+when not defined(haiku) and not defined(openbsd):
   proc fmtmsg*(a1: int, a2: cstring, a3: cint,
               a4, a5, a6: cstring): cint {.importc, header: "<fmtmsg.h>".}
 
@@ -447,7 +447,7 @@ proc pthread_spin_unlock*(a1: ptr Pthread_spinlock): cint {.
 proc pthread_testcancel*() {.importc, header: "<pthread.h>".}
 
 
-proc exitnow*(code: int): void {.importc: "_exit", header: "<unistd.h>".}
+proc exitnow*(code: int) {.importc: "_exit", header: "<unistd.h>".}
 proc access*(a1: cstring, a2: cint): cint {.importc, header: "<unistd.h>".}
 proc alarm*(a1: cint): cint {.importc, header: "<unistd.h>".}
 proc chdir*(a1: cstring): cint {.importc, header: "<unistd.h>".}
@@ -1048,16 +1048,16 @@ proc realpath*(name, resolved: cstring): cstring {.
 proc mkstemp*(tmpl: cstring): cint {.importc, header: "<stdlib.h>", sideEffect.}
   ## Creates a unique temporary file.
   ##
-  ## **Warning**: The `tmpl` argument is written to by `mkstemp` and thus
-  ## can't be a string literal. If in doubt make a copy of the cstring before
-  ## passing it in.
+  ## .. warning:: The `tmpl` argument is written to by `mkstemp` and thus
+  ##   can't be a string literal. If in doubt make a copy of the cstring before
+  ##   passing it in.
 
 proc mkstemps*(tmpl: cstring, suffixlen: int): cint {.importc, header: "<stdlib.h>", sideEffect.}
   ## Creates a unique temporary file.
   ##
-  ## **Warning**: The `tmpl` argument is written to by `mkstemps` and thus
-  ## can't be a string literal. If in doubt make a copy of the cstring before
-  ## passing it in.
+  ## .. warning:: The `tmpl` argument is written to by `mkstemps` and thus
+  ##   can't be a string literal. If in doubt make a copy of the cstring before
+  ##   passing it in.
 
 proc mkdtemp*(tmpl: cstring): pointer {.importc, header: "<stdlib.h>", sideEffect.}
 

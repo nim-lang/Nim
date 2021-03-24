@@ -15,7 +15,7 @@ import
   intsets, options, ast, astalgo, msgs, idents, renderer,
   magicsys, vmdef, modulegraphs, lineinfos, sets, pathutils
 
-import ic / to_packed_ast
+import ic / ic
 
 type
   TOptionEntry* = object      # entries to put on a stack for pragma parsing
@@ -42,6 +42,7 @@ type
     mappingExists*: bool
     mapping*: TIdTable
     caseContext*: seq[tuple[n: PNode, idx: int]]
+    localBindStmts*: seq[PNode]
 
   TMatchedConcept* = object
     candidateType*: PType
@@ -147,7 +148,6 @@ type
     selfName*: PIdent
     cache*: IdentCache
     graph*: ModuleGraph
-    encoder*: PackedEncoder
     signatures*: TStrTable
     recursiveDep*: string
     suggestionsMade*: bool
@@ -314,9 +314,10 @@ proc newContext*(graph: ModuleGraph; module: PSym): PContext =
     assert graph.packed[id].status in {undefined, outdated}
     graph.packed[id].status = storing
     graph.packed[id].module = module
-    initEncoder result.encoder, graph.packed[id].fromDisk, module, graph.config, graph.startupPackedConfig
+    initEncoder graph, module
 
 template packedRepr*(c): untyped = c.graph.packed[c.module.position].fromDisk
+template encoder*(c): untyped = c.graph.encoders[c.module.position]
 
 proc addIncludeFileDep*(c: PContext; f: FileIndex) =
   if c.config.symbolFiles != disabledSf:
@@ -559,22 +560,10 @@ proc addToGenericCache*(c: PContext; s: PSym; inst: PType) =
   if c.config.symbolFiles != disabledSf:
     storeTypeInst(c.encoder, c.packedRepr, s, inst)
 
-proc saveRodFile*(c: PContext) =
+proc sealRodFile*(c: PContext) =
   if c.config.symbolFiles != disabledSf:
-    for (m, n) in PCtx(c.graph.vm).vmstateDiff:
-      if m == c.module:
-        addPragmaComputation(c, n)
-    if sfSystemModule in c.module.flags:
-      c.graph.systemModuleComplete = true
+    if c.graph.vm != nil:
+      for (m, n) in PCtx(c.graph.vm).vmstateDiff:
+        if m == c.module:
+          addPragmaComputation(c, n)
     c.idgen.sealed = true # no further additions are allowed
-    if c.config.symbolFiles != stressTest:
-      # For stress testing we seek to reload the symbols from memory. This
-      # way much of the logic is tested but the test is reproducible as it does
-      # not depend on the hard disk contents!
-      saveRodFile(toRodFile(c.config, AbsoluteFile toFullPath(c.config, FileIndex c.module.position)),
-                  c.encoder, c.packedRepr)
-    else:
-      # debug code, but maybe a good idea for production? Could reduce the compiler's
-      # memory consumption considerably at the cost of more loads from disk.
-      simulateCachedModule(c.graph, c.module, c.packedRepr)
-      c.graph.packed[c.module.position].status = loaded

@@ -230,7 +230,7 @@ proc addLine*(self: var string; a, b: string) =
 proc initSpec*(filename: string): TSpec =
   result.file = filename
 
-proc isCurrentBatch(testamentData: TestamentData; filename: string): bool =
+proc isCurrentBatch*(testamentData: TestamentData; filename: string): bool =
   if testamentData.testamentNumBatch != 0:
     hash(filename) mod testamentData.testamentNumBatch == testamentData.testamentBatch
   else:

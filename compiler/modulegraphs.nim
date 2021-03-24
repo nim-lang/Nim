@@ -11,10 +11,9 @@
 ## represents a complete Nim project. Single modules can either be kept in RAM
 ## or stored in a rod-file.
 
-import ast, astalgo, intsets, tables, options, lineinfos, hashes, idents,
-  btrees, md5
-
-import ic / [packed_ast, to_packed_ast]
+import std / [intsets, tables, hashes, md5]
+import ast, astalgo, options, lineinfos,idents, btrees, ropes, msgs, pathutils
+import ic / [packed_ast, ic]
 
 type
   SigHash* = distinct MD5Digest
@@ -30,6 +29,7 @@ type
     patterns*: seq[LazySym]
     pureEnums*: seq[LazySym]
     interf: TStrTable
+    uniqueName*: Rope
 
   Operators* = object
     opNot*, opContains*, opLe*, opLt*, opAnd*, opOr*, opIsNil*, opEq*: PSym
@@ -52,12 +52,14 @@ type
   ModuleGraph* = ref object
     ifaces*: seq[Iface]  ## indexed by int32 fileIdx
     packed*: PackedModuleGraph
+    encoders*: seq[PackedEncoder]
 
     typeInstCache*: Table[ItemId, seq[LazyType]] # A symbol's ItemId.
     procInstCache*: Table[ItemId, seq[LazyInstantiation]] # A symbol's ItemId.
     attachedOps*: array[TTypeAttachedOp, Table[ItemId, PSym]] # Type ID, destructors, etc.
     methodsPerType*: Table[ItemId, seq[(int, LazySym)]] # Type ID, attached methods
     enumToStringProcs*: Table[ItemId, LazySym]
+    emittedTypeInfo*: Table[string, FileIndex]
 
     startupPackedConfig*: PackedConfig
     packageSyms*: TStrTable
@@ -66,7 +68,6 @@ type
     importDeps*: Table[FileIndex, seq[FileIndex]] # explicit import module dependencies
     suggestMode*: bool # whether we are in nimsuggest mode or not.
     invalidTransitiveClosure: bool
-    systemModuleComplete*: bool
     inclToMod*: Table[FileIndex, FileIndex] # mapping of include file to the
                                             # first module that included it
     importStack*: seq[FileIndex]  # The current import stack. Used for detecting recursive
@@ -83,7 +84,6 @@ type
     systemModule*: PSym
     sysTypes*: array[TTypeKind, PType]
     compilerprocs*: TStrTable
-    lazyCompilerprocs*: Table[string, FullId]
     exposed*: TStrTable
     packageTypes*: TStrTable
     emptyNode*: PNode
@@ -116,6 +116,15 @@ type
                  process: TPassProcess,
                  close: TPassClose,
                  isFrontend: bool]
+
+proc resetForBackend*(g: ModuleGraph) =
+  initStrTable(g.compilerprocs)
+  g.typeInstCache.clear()
+  g.procInstCache.clear()
+  for a in mitems(g.attachedOps):
+    a.clear()
+  g.methodsPerType.clear()
+  g.enumToStringProcs.clear()
 
 const
   cb64 = [
@@ -164,6 +173,13 @@ proc simulateCachedModule*(g: ModuleGraph; moduleSym: PSym; m: PackedModule) =
   when false:
     echo "simulating ", moduleSym.name.s, " ", moduleSym.position
   simulateLoadedModule(g.packed, g.config, g.cache, moduleSym, m)
+
+proc initEncoder*(g: ModuleGraph; module: PSym) =
+  let id = module.position
+  if id >= g.encoders.len:
+    setLen g.encoders, id+1
+  ic.initEncoder(g.encoders[id],
+    g.packed[id].fromDisk, module, g.config, g.startupPackedConfig)
 
 type
   ModuleIter* = object
@@ -260,7 +276,6 @@ proc getAttachedOp*(g: ModuleGraph; t: PType; op: TTypeAttachedOp): PSym =
 proc setAttachedOp*(g: ModuleGraph; module: int; t: PType; op: TTypeAttachedOp; value: PSym) =
   ## we also need to record this to the packed module.
   g.attachedOps[op][t.itemId] = value
-  # XXX Also add to the packed module!
 
 proc setAttachedOpPartial*(g: ModuleGraph; module: int; t: PType; op: TTypeAttachedOp; value: PSym) =
   ## we also need to record this to the packed module.
@@ -268,7 +283,10 @@ proc setAttachedOpPartial*(g: ModuleGraph; module: int; t: PType; op: TTypeAttac
   # XXX Also add to the packed module!
 
 proc completePartialOp*(g: ModuleGraph; module: int; t: PType; op: TTypeAttachedOp; value: PSym) =
-  discard "To implement"
+  if g.config.symbolFiles != disabledSf:
+    assert module < g.encoders.len
+    assert isActive(g.encoders[module])
+    toPackedGeneratedProcDef(value, g.encoders[module], g.packed[module].fromDisk)
 
 proc getToStringProc*(g: ModuleGraph; t: PType): PSym =
   result = resolveSym(g, g.enumToStringProcs[t.itemId])
@@ -297,12 +315,16 @@ proc copyTypeProps*(g: ModuleGraph; module: int; dest, src: PType) =
 
 proc loadCompilerProc*(g: ModuleGraph; name: string): PSym =
   if g.config.symbolFiles == disabledSf: return nil
-  let t = g.lazyCompilerprocs.getOrDefault(name)
-  if t.module != 0:
-    assert isCachedModule(g, t.module)
-    result = loadSymFromId(g.config, g.cache, g.packed, t.module, t.packed)
-    if result != nil:
-      strTableAdd(g.compilerprocs, result)
+
+  # slow, linear search, but the results are cached:
+  for module in 0..high(g.packed):
+    #if isCachedModule(g, module):
+    let x = searchForCompilerproc(g.packed[module], name)
+    if x >= 0:
+      result = loadSymFromId(g.config, g.cache, g.packed, module, toPackedItemId(x))
+      if result != nil:
+        strTableAdd(g.compilerprocs, result)
+      return result
 
 proc `$`*(u: SigHash): string =
   toBase64a(cast[cstring](unsafeAddr u), sizeof(u))
@@ -346,10 +368,13 @@ else:
 proc stopCompile*(g: ModuleGraph): bool {.inline.} =
   result = g.doStopCompile != nil and g.doStopCompile()
 
-proc createMagic*(g: ModuleGraph; name: string, m: TMagic): PSym =
-  result = newSym(skProc, getIdent(g.cache, name), nextSymId(g.idgen), nil, unknownLineInfo, {})
+proc createMagic*(g: ModuleGraph; idgen: IdGenerator; name: string, m: TMagic): PSym =
+  result = newSym(skProc, getIdent(g.cache, name), nextSymId(idgen), nil, unknownLineInfo, {})
   result.magic = m
   result.flags = {sfNeverRaises}
+
+proc createMagic(g: ModuleGraph; name: string, m: TMagic): PSym =
+  result = createMagic(g, g.idgen, name, m)
 
 proc registerModule*(g: ModuleGraph; m: PSym) =
   assert m != nil
@@ -361,8 +386,12 @@ proc registerModule*(g: ModuleGraph; m: PSym) =
   if m.position >= g.packed.len:
     setLen(g.packed, m.position + 1)
 
-  g.ifaces[m.position] = Iface(module: m, converters: @[], patterns: @[])
+  g.ifaces[m.position] = Iface(module: m, converters: @[], patterns: @[],
+                               uniqueName: rope(uniqueModuleName(g.config, FileIndex(m.position))))
   initStrTable(g.ifaces[m.position].interf)
+
+proc registerModuleById*(g: ModuleGraph; m: FileIndex) =
+  registerModule(g, g.packed[int m].module)
 
 proc initOperators(g: ModuleGraph): Operators =
   # These are safe for IC.
@@ -405,6 +434,7 @@ proc newModuleGraph*(cache: IdentCache; config: ConfigRef): ModuleGraph =
   result.canonTypes = initTable[SigHash, PType]()
   result.symBodyHashes = initTable[int, SigHash]()
   result.operators = initOperators(result)
+  result.emittedTypeInfo = initTable[string, FileIndex]()
 
 proc resetAllModules*(g: ModuleGraph) =
   initStrTable(g.packageSyms)
@@ -424,6 +454,27 @@ proc getModule*(g: ModuleGraph; fileIdx: FileIndex): PSym =
       result = g.packed[fileIdx.int32].module
     elif fileIdx.int32 < g.ifaces.len:
       result = g.ifaces[fileIdx.int32].module
+
+proc rememberEmittedTypeInfo*(g: ModuleGraph; m: FileIndex; ti: string) =
+  #assert(not isCachedModule(g, m.int32))
+  if g.config.symbolFiles != disabledSf:
+    #assert g.encoders[m.int32].isActive
+    g.packed[m.int32].fromDisk.emittedTypeInfo.add ti
+
+proc closeRodFile*(g: ModuleGraph; m: PSym) =
+  if g.config.symbolFiles in {readOnlySf, v2Sf}:
+    # For stress testing we seek to reload the symbols from memory. This
+    # way much of the logic is tested but the test is reproducible as it does
+    # not depend on the hard disk contents!
+    let mint = m.position
+    saveRodFile(toRodFile(g.config, AbsoluteFile toFullPath(g.config, FileIndex(mint))),
+                g.encoders[mint], g.packed[mint].fromDisk)
+  elif g.config.symbolFiles == stressTest:
+    # debug code, but maybe a good idea for production? Could reduce the compiler's
+    # memory consumption considerably at the cost of more loads from disk.
+    let mint = m.position
+    simulateCachedModule(g, m, g.packed[mint].fromDisk)
+    g.packed[mint].status = loaded
 
 proc dependsOn(a, b: int): int {.inline.} = (a shl 15) + b
 

@@ -488,7 +488,11 @@ Debugging CI failures, flaky tests, etc
     If either on you own fork or in Nim repo, it's possible from inside GitHub UI
     under checks tab, see https://github.com/timotheecour/Nim/issues/211#issuecomment-629751569
   * GitHub actions: under "Checks" tab, click "Re-run jobs" in the right.
-  * builds.sr.ht: create a sourcehut account so you can restart a PR job as illustrated
+  * builds.sr.ht: create a sourcehut account so you can restart a PR job as illustrated.
+    builds.sr.ht also allows you to ssh to a CI machine which can help a lot for debugging
+    issues, see docs in https://man.sr.ht/builds.sr.ht/build-ssh.md and
+    https://drewdevault.com/2019/08/19/Introducing-shell-access-for-builds.html; see
+    https://man.sr.ht/tutorials/set-up-account-and-git.md to generate and upload ssh keys.
 
 
 Code reviews
@@ -599,14 +603,16 @@ to existing modules is acceptable. For two reasons:
 
 Conventions
 -----------
-1. New stdlib modules should go under `Nim/lib/std/`. The rationale is to require
-users to import via `import std/foo` instead of `import foo`, which would cause
-potential conflicts with nimble packages. Note that this still applies for new modules
-in existing logical directories, e.g.:
-use `lib/std/collections/foo.nim`, not `lib/pure/collections/foo.nim`.
+1. New stdlib modules should go under `Nim/lib/std/`. The rationale is to
+   require users to import via `import std/foo` instead of `import foo`,
+   which would cause potential conflicts with nimble packages.
+   Note that this still applies for new modules in existing logical
+   directories, e.g.: use `lib/std/collections/foo.nim`,
+   not `lib/pure/collections/foo.nim`.
 
 2. New module names should prefer plural form whenever possible, e.g.:
-`std/sums.nim` instead of `std/sum.nim`. In particular, this reduces chances of conflicts
-between module name and the symbols it defines. Furthermore, module names should
-use `snake_case` and not use capital letters, which cause issues when going
-from an OS without case sensitivity to an OS with it.
+   `std/sums.nim` instead of `std/sum.nim`. In particular, this reduces
+   chances of conflicts between module name and the symbols it defines.
+   Furthermore, module names should use `snake_case` and not use capital
+   letters, which cause issues when going from an OS without case
+   sensitivity to an OS with it.

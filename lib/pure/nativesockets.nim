@@ -19,7 +19,7 @@ import std/private/since
 when hostOS == "solaris":
   {.passl: "-lsocket -lnsl".}
 
-const useWinVersion = defined(Windows) or defined(nimdoc)
+const useWinVersion = defined(windows) or defined(nimdoc)
 
 when useWinVersion:
   import winlean
@@ -207,7 +207,7 @@ proc getProtoByName*(name: string): int {.since: (1, 3, 5).} =
     let protoent = winlean.getprotobyname(name.cstring)
   else:
     let protoent = posix.getprotobyname(name.cstring)
-  
+
   if protoent == nil:
     raise newException(OSError, "protocol not found")
 
@@ -280,7 +280,7 @@ proc getAddrInfo*(address: string, port: Port, domain: Domain = AF_INET,
                   protocol: Protocol = IPPROTO_TCP): ptr AddrInfo =
   ##
   ##
-  ## **Warning**: The resulting `ptr AddrInfo` must be freed using `freeAddrInfo`!
+  ## .. warning:: The resulting `ptr AddrInfo` must be freed using `freeAddrInfo`!
   var hints: AddrInfo
   result = nil
   hints.ai_family = toInt(domain)
@@ -492,7 +492,7 @@ proc getAddrString*(sockAddr: ptr SockAddr): string =
 proc getAddrString*(sockAddr: ptr SockAddr, strAddress: var string) =
   ## Stores in `strAddress` the string representation of the address inside
   ## `sockAddr`
-  ## 
+  ##
   ## **Note**
   ## * `strAddress` must be initialized to 46 in length.
   assert(46 == len(strAddress),
@@ -748,6 +748,6 @@ proc accept*(fd: SocketHandle, inheritable = defined(nimInheritHandles)): (Socke
   else:
     return (sock, $inet_ntoa(sockAddress.sin_addr))
 
-when defined(Windows):
+when defined(windows):
   var wsa: WSAData
   if wsaStartup(0x0101'i16, addr wsa) != 0: raiseOSError(osLastError())

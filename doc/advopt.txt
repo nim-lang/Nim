@@ -25,7 +25,6 @@ Runtime checks (see -x):
   --floatChecks:on|off      turn all floating point (NaN/Inf) checks on|off
   --nanChecks:on|off        turn NaN checks on|off
   --infChecks:on|off        turn Inf checks on|off
-  --refChecks:on|off        turn ref checks on|off (only for --newruntime)
 
 Advanced options:
   -o:FILE, --out:FILE       set the output filename
@@ -36,6 +35,9 @@ Advanced options:
   --colors:on|off           turn compiler messages coloring on|off
   --listFullPaths:on|off    list full paths in messages
   --declaredLocs:on|off     show declaration locations in messages
+  --spellSuggest|:num       show at most `num >= 0` spelling suggestions on typos.
+                            if `num` is not specified (or `auto`), return
+                            an implementation defined set of suggestions.
   -w:on|off|list, --warnings:on|off|list
                             turn all warnings on|off or list all available
   --warning[X]:on|off       turn specific warning X on|off
@@ -61,8 +63,8 @@ Advanced options:
   --noMain:on|off           do not generate a main procedure
   --genScript:on|off        generate a compile script (in the 'nimcache'
                             subdirectory named 'compile_$$project$$scriptext'),
+                            and a '.deps' file containing the dependencies;
                             implies --compileOnly
-  --genDeps:on|off          generate a '.deps' file containing the dependencies
   --os:SYMBOL               set the target operating system (cross-compilation)
   --cpu:SYMBOL              set the target processor (cross-compilation)
   --debuginfo:on|off        enables debug information

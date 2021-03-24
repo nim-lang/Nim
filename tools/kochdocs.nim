@@ -14,7 +14,7 @@ const
   webUploadOutput = "web/upload"
 
 var nimExe*: string
-const allowList = ["jsbigints.nim"]
+const allowList = ["jsbigints.nim", "jsheaders.nim", "jsformdata.nim", "jsfetch.nim", "jsutils.nim"]
 
 template isJsOnly(file: string): bool =
   file.isRelativeTo("lib/js") or
@@ -126,7 +126,7 @@ gc.rst
 
   doc0 = """
 lib/system/threads.nim
-lib/system/channels.nim
+lib/system/channels_builtin.nim
 """.splitWhitespace() # ran by `nim doc0` instead of `nim doc`
 
   withoutIndex = """

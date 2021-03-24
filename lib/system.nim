@@ -1909,9 +1909,8 @@ include "system/gc_interface"
 const NimStackTrace = compileOption("stacktrace")
 
 template coroutinesSupportedPlatform(): bool =
-  when defined(sparc) or defined(ELATE) or compileOption("gc", "v2") or
-    defined(boehmgc) or defined(gogc) or defined(nogc) or defined(gcRegions) or
-    defined(gcMarkAndSweep):
+  when defined(sparc) or defined(ELATE) or defined(boehmgc) or defined(gogc) or
+    defined(nogc) or defined(gcRegions) or defined(gcMarkAndSweep):
     false
   else:
     true
@@ -1940,8 +1939,7 @@ when notJSnotNims:
       ## With this hook you can influence exception handling on a global level.
       ## If not nil, every 'raise' statement ends up calling this hook.
       ##
-      ## **Warning**: Ordinary application code should never set this hook!
-      ## You better know what you do when setting this.
+      ## .. warning:: Ordinary application code should never set this hook! You better know what you do when setting this.
       ##
       ## If `globalRaiseHook` returns false, the exception is caught and does
       ## not propagate further through the call stack.
@@ -1951,8 +1949,7 @@ when notJSnotNims:
       ## thread local level.
       ## If not nil, every 'raise' statement ends up calling this hook.
       ##
-      ## **Warning**: Ordinary application code should never set this hook!
-      ## You better know what you do when setting this.
+      ## .. warning:: Ordinary application code should never set this hook! You better know what you do when setting this.
       ##
       ## If `localRaiseHook` returns false, the exception
       ## is caught and does not propagate further through the call stack.
@@ -2342,6 +2339,7 @@ when notJSnotNims:
   when hostOS != "standalone" and hostOS != "any":
     include "system/dyncalls"
 
+  import system/countbits_impl
   include "system/sets"
 
   when defined(gogc):
@@ -2388,7 +2386,7 @@ when notJSnotNims and hasAlloc:
     include "system/repr"
 
 when notJSnotNims and hasThreadSupport and hostOS != "standalone":
-  include "system/channels"
+  include "system/channels_builtin"
 
 
 when notJSnotNims and hostOS != "standalone":
@@ -2409,7 +2407,7 @@ when notJSnotNims and hostOS != "standalone":
   proc setCurrentException*(exc: ref Exception) {.inline, benign.} =
     ## Sets the current exception.
     ##
-    ## **Warning**: Only use this if you know what you are doing.
+    ## .. warning:: Only use this if you know what you are doing.
     currException = exc
 elif defined(nimscript):
   proc getCurrentException*(): ref Exception {.compilerRtl.} = discard
@@ -2838,7 +2836,7 @@ proc addEscapedChar*(s: var string, c: char) {.noSideEffect, inline.} =
   ## * replaces any `\n` by `\\n`
   ## * replaces any `\v` by `\\v`
   ## * replaces any `\f` by `\\f`
-  ## * replaces any `\c` by `\\c`
+  ## * replaces any `\r` by `\\r`
   ## * replaces any `\e` by `\\e`
   ## * replaces any other character not in the set `{'\21..'\126'}
   ##   by `\xHH` where `HH` is its hexadecimal value.
@@ -2851,10 +2849,10 @@ proc addEscapedChar*(s: var string, c: char) {.noSideEffect, inline.} =
   of '\a': s.add "\\a" # \x07
   of '\b': s.add "\\b" # \x08
   of '\t': s.add "\\t" # \x09
-  of '\L': s.add "\\n" # \x0A
+  of '\n': s.add "\\n" # \x0A
   of '\v': s.add "\\v" # \x0B
   of '\f': s.add "\\f" # \x0C
-  of '\c': s.add "\\c" # \x0D
+  of '\r': (when defined(nimLegacyAddEscapedCharx0D): s.add "\\c" else: s.add "\\r") # \x0D
   of '\e': s.add "\\e" # \x1B
   of '\\': s.add("\\\\")
   of '\'': s.add("\\'")
@@ -3122,7 +3120,14 @@ when not defined(createNimHcr) and not defined(nimscript):
   include nimhcr
 
 when notJSnotNims and not defined(nimSeqsV2):
-  proc prepareStrMutation*(s: var string) {.inline.} =
+  proc prepareMutation*(s: var string) {.inline.} =
     ## String literals (e.g. "abc", etc) in the ARC/ORC mode are "copy on write",
-    ## therefore you should call `prepareStrMutation` before modifying the strings.
+    ## therefore you should call `prepareMutation` before modifying the strings
+    ## via `addr`.
+    runnableExamples("--gc:arc"):
+      var x = "abc"
+      var y = "defgh"
+      prepareMutation(y) # without this, you may get a `SIGBUS` or `SIGSEGV`
+      moveMem(addr y[0], addr x[0], x.len)
+      assert y == "abcgh"
     discard

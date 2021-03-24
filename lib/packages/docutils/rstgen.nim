@@ -797,11 +797,11 @@ proc renderHeadline(d: PDoc, n: PRstNode, result: var string) =
     spaces(max(0, n.level)) & tmp)
 
 proc renderOverline(d: PDoc, n: PRstNode, result: var string) =
-  if d.meta[metaTitle].len == 0:
+  if n.level == 0 and d.meta[metaTitle].len == 0:
     for i in countup(0, len(n)-1):
       renderRstToOut(d, n.sons[i], d.meta[metaTitle])
     d.currentSection = d.meta[metaTitle]
-  elif d.meta[metaSubtitle].len == 0:
+  elif n.level == 0 and d.meta[metaSubtitle].len == 0:
     for i in countup(0, len(n)-1):
       renderRstToOut(d, n.sons[i], d.meta[metaSubtitle])
     d.currentSection = d.meta[metaSubtitle]
@@ -1140,7 +1140,7 @@ proc renderRstToOut(d: PDoc, n: PRstNode, result: var string) =
   if n == nil: return
   case n.kind
   of rnInner: renderAux(d, n, result)
-  of rnHeadline: renderHeadline(d, n, result)
+  of rnHeadline, rnMarkdownHeadline: renderHeadline(d, n, result)
   of rnOverline: renderOverline(d, n, result)
   of rnTransition: renderAux(d, n, "<hr$2 />\n", "\\hrule$2\n", result)
   of rnParagraph: renderAux(d, n, "<p$2>$1</p>\n", "$2\n$1\n\n", result)
@@ -1476,7 +1476,8 @@ $content
 # ---------- forum ---------------------------------------------------------
 
 proc rstToHtml*(s: string, options: RstParseOptions,
-                config: StringTableRef): string =
+                config: StringTableRef,
+                msgHandler: MsgHandler = rst.defaultMsgHandler): string =
   ## Converts an input rst string into embeddable HTML.
   ##
   ## This convenience proc parses any input string using rst markup (it doesn't
@@ -1503,10 +1504,10 @@ proc rstToHtml*(s: string, options: RstParseOptions,
 
   const filen = "input"
   var d: RstGenerator
-  initRstGenerator(d, outHtml, config, filen, options, myFindFile,
-                   rst.defaultMsgHandler)
+  initRstGenerator(d, outHtml, config, filen, options, myFindFile, msgHandler)
   var dummyHasToc = false
-  var rst = rstParse(s, filen, 0, 1, dummyHasToc, options)
+  var rst = rstParse(s, filen, line=LineRstInit, column=ColRstInit,
+                     dummyHasToc, options, myFindFile, msgHandler)
   result = ""
   renderRstToOut(d, rst, result)
 
@@ -1518,4 +1519,7 @@ proc rstToLatex*(rstSource: string; options: RstParseOptions): string {.inline, 
   var option: bool
   var rstGenera: RstGenerator
   rstGenera.initRstGenerator(outLatex, defaultConfig(), "input", options)
-  rstGenera.renderRstToOut(rstParse(rstSource, "", 1, 1, option, options), result)
+  rstGenera.renderRstToOut(
+      rstParse(rstSource, "", line=LineRstInit, column=ColRstInit,
+               option, options),
+      result)
