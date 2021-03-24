@@ -1293,6 +1293,21 @@ Test1
     check("""<th align="left">-d</th><td align="left">option</td>""" in
           output)
 
+  test "Option list 3 (double /)":
+    let input = dedent """
+      * a
+        //compile  compile1
+        //doc      doc1
+                   cont
+      -d  option"""
+    let output = input.toHtml
+    check(output.count("<ul") == 1)
+    check(output.count("<table") == 2)
+    check("""<th align="left">compile</th><td align="left">compile1</td>""" in output)
+    check("""<th align="left">doc</th><td align="left">doc1 cont</td>""" in
+          output)
+    check("""<th align="left">-d</th><td align="left">option</td>""" in
+          output)
 suite "RST/Code highlight":
   test "Basic Python code highlight":
     let pythonCode = """
