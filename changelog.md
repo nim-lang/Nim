@@ -119,7 +119,7 @@
 
 - Added `random.initRand()` overload with no argument which uses the current time as a seed.
 
-- `random.initRand(seed)` now allows `seed == 0`
+- `random.initRand(seed)` now allows `seed == 0`.
 
 - `random.initRand(seed)` now produces non-skewed values for the 1st call to rand() after
   initialization with a small (< 30000) seed. Use `-d:nimLegacyRandomInitRand` to restore
