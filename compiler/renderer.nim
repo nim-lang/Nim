@@ -1201,7 +1201,7 @@ proc gsub(g: var TSrcGen, n: PNode, c: TContext) =
     else:
       gsub(g, n, 0)
       put(g, tkDot, ".")
-      doAssert n.len == 2, $n.len
+      assert n.len == 2, $n.len
       accentedName(g, n[1])
   of nkBind:
     putWithSpace(g, tkBind, "bind")

@@ -132,13 +132,7 @@ template main =
     macro deb(a): untyped = newLit(a.repr)
     doAssert deb(-12'bar) == "-12'bar"
 
-  block:
-    template toSuf(`'suf`): untyped =
-      let x = -12'suf
-      x
-    doAssert toSuf(`'wrap`) == "[[-12]]"
-
-  block: # bug 2 from https://github.com/nim-lang/Nim/pull/17020#issuecomment-803193947
+  block: # bug 1 from https://github.com/nim-lang/Nim/pull/17020#issuecomment-803193947
     macro deb1(a): untyped = newLit a.repr
     macro deb2(a): untyped = newLit a.lispRepr
     doAssert deb1(-12'wrap) == "-12'wrap"
@@ -151,6 +145,12 @@ template main =
       # but instead this should hold:
       doAssert deb2(-12.wrap2) == """(DotExpr (IntLit -12) (Ident "wrap2"))"""
       doAssert deb2(-12'wrap) == """(DotExpr (RStrLit "-12") (Ident "\'wrap"))"""
+
+  block: # bug 2 from https://github.com/nim-lang/Nim/pull/17020#issuecomment-803193947
+    template toSuf(`'suf`): untyped =
+      let x = -12'suf
+      x
+    doAssert toSuf(`'wrap`) == "[[-12]]"
 
   block: # bug 10 from https://github.com/nim-lang/Nim/pull/17020#issuecomment-803193947
     proc `myecho`(a: auto): auto = a
