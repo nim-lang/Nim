@@ -650,7 +650,7 @@ template withValue*[A, B](t: var Table[A, B], key: A,
     body2
 
 
-iterator pairs*[A, B](t: Table[A, B]): (A, B) =
+iterator pairs*[A, B](t: Table[A, B]): lent (A, B) =
   ## Iterates over any `(key, value)` pair in the table `t`.
   ##
   ## See also:
@@ -702,7 +702,7 @@ iterator mpairs*[A, B](t: var Table[A, B]): (A, var B) =
       yield (t.data[h].key, t.data[h].val)
       assert(len(t) == L, "the length of the table changed while iterating over it")
 
-iterator keys*[A, B](t: Table[A, B]): A =
+iterator keys*[A, B](t: Table[A, B]): lent A =
   ## Iterates over any key in the table `t`.
   ##
   ## See also:
@@ -723,7 +723,7 @@ iterator keys*[A, B](t: Table[A, B]): A =
       yield t.data[h].key
       assert(len(t) == L, "the length of the table changed while iterating over it")
 
-iterator values*[A, B](t: Table[A, B]): B =
+iterator values*[A, B](t: Table[A, B]): lent B =
   ## Iterates over any value in the table `t`.
   ##
   ## See also:
@@ -1094,7 +1094,7 @@ proc `==`*[A, B](s, t: TableRef[A, B]): bool =
 
 
 
-iterator pairs*[A, B](t: TableRef[A, B]): (A, B) =
+iterator pairs*[A, B](t: TableRef[A, B]): lent (A, B) =
   ## Iterates over any `(key, value)` pair in the table `t`.
   ##
   ## See also:
@@ -1146,7 +1146,7 @@ iterator mpairs*[A, B](t: TableRef[A, B]): (A, var B) =
       yield (t.data[h].key, t.data[h].val)
       assert(len(t) == L, "the length of the table changed while iterating over it")
 
-iterator keys*[A, B](t: TableRef[A, B]): A =
+iterator keys*[A, B](t: TableRef[A, B]): lent A =
   ## Iterates over any key in the table `t`.
   ##
   ## See also:
@@ -1167,7 +1167,7 @@ iterator keys*[A, B](t: TableRef[A, B]): A =
       yield t.data[h].key
       assert(len(t) == L, "the length of the table changed while iterating over it")
 
-iterator values*[A, B](t: TableRef[A, B]): B =
+iterator values*[A, B](t: TableRef[A, B]): lent B =
   ## Iterates over any value in the table `t`.
   ##
   ## See also:
@@ -1669,7 +1669,7 @@ proc `==`*[A, B](s, t: OrderedTable[A, B]): bool =
 
 
 
-iterator pairs*[A, B](t: OrderedTable[A, B]): (A, B) =
+iterator pairs*[A, B](t: OrderedTable[A, B]): lent (A, B) =
   ## Iterates over any `(key, value)` pair in the table `t` in insertion
   ## order.
   ##
@@ -1722,7 +1722,7 @@ iterator mpairs*[A, B](t: var OrderedTable[A, B]): (A, var B) =
     yield (t.data[h].key, t.data[h].val)
     assert(len(t) == L, "the length of the table changed while iterating over it")
 
-iterator keys*[A, B](t: OrderedTable[A, B]): A =
+iterator keys*[A, B](t: OrderedTable[A, B]): lent A =
   ## Iterates over any key in the table `t` in insertion order.
   ##
   ## See also:
@@ -1743,7 +1743,7 @@ iterator keys*[A, B](t: OrderedTable[A, B]): A =
     yield t.data[h].key
     assert(len(t) == L, "the length of the table changed while iterating over it")
 
-iterator values*[A, B](t: OrderedTable[A, B]): B =
+iterator values*[A, B](t: OrderedTable[A, B]): lent B =
   ## Iterates over any value in the table `t` in insertion order.
   ##
   ## See also:
@@ -2077,7 +2077,7 @@ proc `==`*[A, B](s, t: OrderedTableRef[A, B]): bool =
 
 
 
-iterator pairs*[A, B](t: OrderedTableRef[A, B]): (A, B) =
+iterator pairs*[A, B](t: OrderedTableRef[A, B]): lent (A, B) =
   ## Iterates over any `(key, value)` pair in the table `t` in insertion
   ## order.
   ##
@@ -2130,7 +2130,7 @@ iterator mpairs*[A, B](t: OrderedTableRef[A, B]): (A, var B) =
     yield (t.data[h].key, t.data[h].val)
     assert(len(t) == L, "the length of the table changed while iterating over it")
 
-iterator keys*[A, B](t: OrderedTableRef[A, B]): A =
+iterator keys*[A, B](t: OrderedTableRef[A, B]): lent A =
   ## Iterates over any key in the table `t` in insertion order.
   ##
   ## See also:
@@ -2151,7 +2151,7 @@ iterator keys*[A, B](t: OrderedTableRef[A, B]): A =
     yield t.data[h].key
     assert(len(t) == L, "the length of the table changed while iterating over it")
 
-iterator values*[A, B](t: OrderedTableRef[A, B]): B =
+iterator values*[A, B](t: OrderedTableRef[A, B]): lent B =
   ## Iterates over any value in the table `t` in insertion order.
   ##
   ## See also:
@@ -2491,7 +2491,7 @@ proc `==`*[A](s, t: CountTable[A]): bool =
   equalsImpl(s, t)
 
 
-iterator pairs*[A](t: CountTable[A]): (A, int) =
+iterator pairs*[A](t: CountTable[A]): lent (A, int) =
   ## Iterates over any `(key, value)` pair in the table `t`.
   ##
   ## See also:
@@ -2543,7 +2543,7 @@ iterator mpairs*[A](t: var CountTable[A]): (A, var int) =
       yield (t.data[h].key, t.data[h].val)
       assert(len(t) == L, "the length of the table changed while iterating over it")
 
-iterator keys*[A](t: CountTable[A]): A =
+iterator keys*[A](t: CountTable[A]): lent A =
   ## Iterates over any key in the table `t`.
   ##
   ## See also:
@@ -2767,7 +2767,7 @@ proc `==`*[A](s, t: CountTableRef[A]): bool =
   else: result = s[] == t[]
 
 
-iterator pairs*[A](t: CountTableRef[A]): (A, int) =
+iterator pairs*[A](t: CountTableRef[A]): lent (A, int) =
   ## Iterates over any `(key, value)` pair in the table `t`.
   ##
   ## See also:
