@@ -412,14 +412,12 @@ proc getNumber(L: var Lexer, result: var Token) =
       customLitPossible = true
 
     if L.buf[postPos] in SymChars:
-      var suffixAsLower = newStringOfCap(10)
       var suffix = newStringOfCap(10)
       while true:
-        let c = L.buf[postPos]
-        suffix.add c
-        suffixAsLower.add toLowerAscii(c)
+        suffix.add L.buf[postPos]
         inc postPos
         if L.buf[postPos] notin SymChars+{'_'}: break
+      let suffixAsLower = suffix.toLowerAscii
       case suffixAsLower
       of "f", "f32": result.tokType = tkFloat32Lit
       of "d", "f64": result.tokType = tkFloat64Lit
@@ -433,16 +431,15 @@ proc getNumber(L: var Lexer, result: var Token) =
       of "u16": result.tokType = tkUInt16Lit
       of "u32": result.tokType = tkUInt32Lit
       of "u64": result.tokType = tkUInt64Lit
+      elif customLitPossible:
+        # remember the position of the `'` so that the parser doesn't
+        # have to reparse the custom literal:
+        result.iNumber = len(result.literal)
+        result.literal.add '\''
+        result.literal.add suffix
+        result.tokType = tkCustomLit
       else:
-        if customLitPossible:
-          # remember the position of the ``'`` so that the parser doesn't
-          # have to reparse the custom literal:
-          result.iNumber = len(result.literal)
-          result.literal.add '\''
-          result.literal.add suffix
-          result.tokType = tkCustomLit
-        else:
-          lexMessageLitNum(L, "invalid number suffix: '$1'", errPos)
+        lexMessageLitNum(L, "invalid number suffix: '$1'", errPos)
     else:
       lexMessageLitNum(L, "invalid number suffix: '$1'", errPos)
 
@@ -467,7 +464,7 @@ proc getNumber(L: var Lexer, result: var Token) =
             if L.buf[pos] != '_':
               xi = `shl`(xi, 1) or (ord(L.buf[pos]) - ord('0'))
             inc(pos)
-        # 'c', 'C' is deprecated
+        # 'c', 'C' is deprecated (a warning is issued elsewhere)
         of 'o', 'c', 'C':
           result.base = base8
           while pos < endpos:

@@ -51,8 +51,13 @@ template main =
     doAssert x() == minusOne:
       "unable to handle negatives after semi-colon"
 
+  block:
     doAssert -0b111 == -7
     doAssert -0xff == -255
+    doAssert -128'i8 == -128
+    doAssert $(-128'i8) == "-128"
+    when int.sizeof > 4:
+      doAssert -9223372036854775808 == int.low
 
   block: # check when a minus (-) is an unary op
     doAssert -one == minusOne:

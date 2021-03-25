@@ -126,25 +126,27 @@ template main =
     doAssert -12'fooplusopt(2) == ("-12", 2)
     doAssert -12'fooplusopt() == ("-12", 99)
     doAssert -12'fooplusopt == ("-12", 99)
-    macro `'bar`(a: static string): untyped =
-      var infix = newNimNode(nnkInfix)
-      infix.add newIdentNode("&")
-      infix.add newLit("got ")
-      infix.add newLit(a.repr)
-      result = newNimNode(nnkStmtList)
-      result.add infix
-    doAssert -12'bar == "got \"-12\""
+    macro `'bar`(a: static string): untyped = newLit(a.repr)
+    doAssert -12'bar == "\"-12\""
     macro deb(a): untyped = newLit(a.repr)
     doAssert deb(-12'bar) == "-12'bar"
-    # macro metawrap(): untyped =
-    #   func wrap1(a: string): string = "{" & a & "}"
-    #   func `'wrap2`(a: string): string = "{" & a & "}"
-    #   result = quote do:
-    #     let a1 = wrap1"-128"
-    #     let a2 = -128'wrap2
-    # metawrap()
-    # doAssert a1 == "{-128}"
-    # doAssert a2 == "{-128}"
+
+  block:
+    template toSuf(`'suf`): untyped =
+      let x = -12'suf
+      x
+    doAssert toSuf(`'wrap`) == "[[-12]]"
+
+    when false: # xxx this fails
+      macro metawrap(): untyped =
+        func wrap1(a: string): string = "{" & a & "}"
+        func `'wrap2`(a: string): string = "{" & a & "}"
+        result = quote do:
+          let a1 = wrap1"-128"
+          let a2 = -128'wrap2
+      metawrap()
+      doAssert a1 == "{-128}"
+      doAssert a2 == "{-128}"
 
 static: main()
 main()

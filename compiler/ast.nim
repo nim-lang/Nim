@@ -1053,6 +1053,14 @@ const
   defaultAlignment = -1
   defaultOffset = -1
 
+template getStrVal*(a: PNode): string =
+  ## Returns underlying string for `{nkStrLit..nkTripleStrLit,nkSym,nkIdent}`.
+  let a2 = a
+  case a2.kind
+  of nkStrLit..nkTripleStrLit: a2.strVal
+  of nkSym: a2.sym.name.s
+  of nkIdent: a2.ident.s
+  else: ""
 
 proc getnimblePkg*(a: PSym): PSym =
   result = a

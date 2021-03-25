@@ -536,7 +536,7 @@ Numeric literals have the form::
   FLOAT64_LIT = HEX_LIT '\'' FLOAT64_SUFFIX
               | (FLOAT_LIT | DEC_LIT | OCT_LIT | BIN_LIT) ['\''] FLOAT64_SUFFIX
 
-  CUSTOM_NUMERIC_LIT = (FLOAT_LIT | DEC_LIT | OCT_LIT | BIN_LIT) '\'' CUSTOM_NUMERIC_SUFFIX
+  CUSTOM_NUMERIC_LIT = (FLOAT_LIT | INT_LIT) '\'' CUSTOM_NUMERIC_SUFFIX
 
   # CUSTOM_NUMERIC_SUFFIX is any Nim identifier that is not
   # a pre-defined type suffix.

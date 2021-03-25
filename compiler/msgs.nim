@@ -200,13 +200,20 @@ template toFilename*(conf: ConfigRef; fileIdx: FileIndex): string =
 proc toProjPath*(conf: ConfigRef; fileIdx: FileIndex): string =
   if fileIdx.int32 < 0 or conf == nil:
     (if fileIdx == commandLineIdx: commandLineDesc else: "???")
-  else: conf.m.fileInfos[fileIdx.int32].projPath.string
+  else:
+    if conf.m.fileInfos.len == 0:
+      "D20210324T165027.2:" & $fileIdx.int32
+    else:
+      conf.m.fileInfos[fileIdx.int32].projPath.string
 
 proc toFullPath*(conf: ConfigRef; fileIdx: FileIndex): string =
   if fileIdx.int32 < 0 or conf == nil:
     result = (if fileIdx == commandLineIdx: commandLineDesc else: "???")
   else:
-    result = conf.m.fileInfos[fileIdx.int32].fullPath.string
+    if conf.m.fileInfos.len == 0:
+      result = "D20210324T165027:" & $fileIdx.int32
+    else:
+      result = conf.m.fileInfos[fileIdx.int32].fullPath.string
 
 proc setDirtyFile*(conf: ConfigRef; fileIdx: FileIndex; filename: AbsoluteFile) =
   assert fileIdx.int32 >= 0
