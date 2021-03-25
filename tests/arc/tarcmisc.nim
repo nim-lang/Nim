@@ -397,10 +397,10 @@ proc passSeq(data: seq[string]) =
   # used the system.& proc initially
   let wat = data & "hello"
 
-proc test =
+proc test2 =
   let name = @["hello", "world"]
   passSeq(name)
   doAssert name == @["hello", "world"]
 
-static: test() # was buggy
-test()
+static: test2() # was buggy
+test2()
