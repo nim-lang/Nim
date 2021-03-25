@@ -22,6 +22,10 @@ type
     options: TOptions
     globalOptions: TGlobalOptions
 
+  ModuleBackendFlag* = enum
+    HasDatInitProc
+    HasModuleInitProc
+
   PackedModule* = object ## the parts of a PackedEncoder that are part of the .rod file
     definedSymbols: string
     includes: seq[(LitId, string)] # first entry is the module filename itself
@@ -43,6 +47,7 @@ type
     enumToStringProcs*: seq[(PackedItemId, PackedItemId)]
 
     emittedTypeInfo*: seq[string]
+    backendFlags*: set[ModuleBackendFlag]
 
     sh*: Shared
     cfg: PackedConfig
@@ -556,6 +561,9 @@ proc loadRodFile*(filename: AbsoluteFile; m: var PackedModule; config: ConfigRef
   loadSeqSection enumToStringProcsSection, m.enumToStringProcs
   loadSeqSection typeInfoSection, m.emittedTypeInfo
 
+  f.loadSection backendFlagsSection
+  f.loadPrim m.backendFlags
+
   close(f)
   result = f.err
 
@@ -618,6 +626,9 @@ proc saveRodFile*(filename: AbsoluteFile; encoder: var PackedEncoder; m: var Pac
   storeSeqSection methodsPerTypeSection, m.methodsPerType
   storeSeqSection enumToStringProcsSection, m.enumToStringProcs
   storeSeqSection typeInfoSection, m.emittedTypeInfo
+
+  f.storeSection backendFlagsSection
+  f.storePrim m.backendFlags
 
   close(f)
   encoder.disable()

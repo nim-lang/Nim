@@ -44,6 +44,7 @@ proc generateCodeForModule(g: ModuleGraph; m: var LoadedModule; alive: var Alive
     cgen.genTopLevelStmt(bmod, n)
 
   finalCodegenActions(g, bmod, newNodeI(nkStmtList, m.module.info))
+  m.fromDisk.backendFlags = cgen.whichInitProcs(bmod)
 
 proc replayTypeInfo(g: ModuleGraph; m: var LoadedModule; origin: FileIndex) =
   for x in mitems(m.fromDisk.emittedTypeInfo):
@@ -138,3 +139,7 @@ proc generateCode*(g: ModuleGraph) =
       else:
         addFileToLink(g.config, g.packed[i].module)
         replayTypeInfo(g, g.packed[i], FileIndex(i))
+
+        if g.backend == nil:
+          g.backend = cgendata.newModuleList(g)
+        registerInitProcs(BModuleList(g.backend), g.packed[i].module, g.packed[i].fromDisk.backendFlags)

@@ -467,7 +467,13 @@ proc rememberEmittedTypeInfo*(g: ModuleGraph; m: FileIndex; ti: string) =
     #assert g.encoders[m.int32].isActive
     assert g.packed[m.int32].status != stored
     g.packed[m.int32].fromDisk.emittedTypeInfo.add ti
-    echo "added typeinfo ", m.int32, " ", ti, " suspicious ", not g.encoders[m.int32].isActive
+    #echo "added typeinfo ", m.int32, " ", ti, " suspicious ", not g.encoders[m.int32].isActive
+
+proc rememberFlag*(g: ModuleGraph; m: PSym; flag: ModuleBackendFlag) =
+  if g.config.symbolFiles != disabledSf:
+    #assert g.encoders[m.int32].isActive
+    assert g.packed[m.position].status != stored
+    g.packed[m.position].fromDisk.backendFlags.incl flag
 
 proc closeRodFile*(g: ModuleGraph; m: PSym) =
   if g.config.symbolFiles in {readOnlySf, v2Sf}:
