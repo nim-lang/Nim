@@ -47,6 +47,7 @@ proc generateCodeForModule(g: ModuleGraph; m: var LoadedModule; alive: var Alive
 
 proc replayTypeInfo(g: ModuleGraph; m: var LoadedModule; origin: FileIndex) =
   for x in mitems(m.fromDisk.emittedTypeInfo):
+    #echo "found type ", x, " for file ", int(origin)
     g.emittedTypeInfo[x] = origin
 
 proc addFileToLink(config: ConfigRef; m: PSym) =
@@ -112,12 +113,16 @@ proc generateCode*(g: ModuleGraph) =
   resetForBackend(g)
   var alive = computeAliveSyms(g.packed, g.config)
 
+  when false:
+    for i in 0..high(g.packed):
+      echo i, " is of status ", g.packed[i].status, " ", toFullPath(g.config, FileIndex(i))
+
   for i in 0..high(g.packed):
     # case statement here to enforce exhaustive checks.
     case g.packed[i].status
     of undefined:
       discard "nothing to do"
-    of loading:
+    of loading, stored:
       assert false
     of storing, outdated:
       generateCodeForModule(g, g.packed[i], alive)
