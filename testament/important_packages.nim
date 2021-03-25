@@ -22,22 +22,26 @@ When this is the case, a workaround is to test this package here by adding `--pa
 type NimblePackage* = object
   name*, cmd*, url*: string
   useHead*: bool
+  allowFailure*: bool
+    ## When true, we still run the test but the test is allowed to fail.
+    ## This is useful for packages that currently fail but that we still want to
+    ## run in CI, e.g. so that we can monitor when they start working again and
+    ## are reminded about those failures without making CI fail for unrelated PRs.
 
 var packages*: seq[NimblePackage]
 
-proc pkg(name: string; cmd = "nimble test"; url = "", useHead = true) =
-  packages.add NimblePackage(name: name, cmd: cmd, url: url, useHead: useHead)
+proc pkg(name: string; cmd = "nimble test"; url = "", useHead = true, allowFailure = false) =
+  packages.add NimblePackage(name: name, cmd: cmd, url: url, useHead: useHead, allowFailure: allowFailure)
 
-# pkg "alea"
+pkg "alea", allowFailure = true
 pkg "argparse"
-when false:
-  pkg "arraymancer", "nim c tests/tests_cpu.nim"
-# pkg "ast_pattern_matching", "nim c -r --oldgensym:on tests/test1.nim"
+pkg "arraymancer", "nim c tests/tests_cpu.nim", allowFailure = true
+pkg "ast_pattern_matching", "nim c -r --oldgensym:on tests/test1.nim", allowFailure = true
 pkg "awk"
 pkg "bigints", url = "https://github.com/Araq/nim-bigints"
 pkg "binaryheap", "nim c -r binaryheap.nim"
 pkg "BipBuffer"
-# pkg "blscurve" # pending https://github.com/status-im/nim-blscurve/issues/39
+pkg "blscurve", allowFailure = true # pending https://github.com/status-im/nim-blscurve/issues/39
 pkg "bncurve"
 pkg "brainfuck", "nim c -d:release -r tests/compile.nim"
 pkg "bump", "nim c --gc:arc --path:. -r tests/tbump.nim", "https://github.com/disruptek/bump"
@@ -45,16 +49,13 @@ pkg "c2nim", "nim c testsuite/tester.nim"
 pkg "cascade"
 pkg "cello"
 pkg "chroma"
-# pkg "chronicles", "nim c -o:chr -r chronicles.nim"
-# when not defined(osx): # testdatagram.nim(560, 54): Check failed
-#   pkg "chronos", "nim c -r -d:release tests/testall"
-  # pending https://github.com/nim-lang/Nim/issues/17130
-
+pkg "chronicles", "nim c -o:chr -r chronicles.nim", allowFailure = true # pending https://github.com/status-im/nim-chronos/issues/169
+pkg "chronos", "nim c -r -d:release tests/testall", allowFailure = true # pending https://github.com/nim-lang/Nim/issues/17130
 pkg "cligen", "nim c --path:. -r cligen.nim"
 pkg "combparser", "nimble test --gc:orc"
 pkg "compactdict"
 pkg "comprehension", "nimble test", "https://github.com/alehander42/comprehension"
-# pkg "criterion" # pending https://github.com/disruptek/criterion/issues/3 (wrongly closed)
+pkg "criterion", allowFailure = true # pending https://github.com/disruptek/criterion/issues/3 (wrongly closed)
 pkg "dashing", "nim c tests/functional.nim"
 pkg "delaunay"
 pkg "docopt"
@@ -66,12 +67,12 @@ pkg "fusion"
 pkg "gara"
 pkg "glob"
 pkg "ggplotnim", "nim c -d:noCairo -r tests/tests.nim"
-# pkg "gittyup", "nimble test", "https://github.com/disruptek/gittyup"
+pkg "gittyup", "nimble test", "https://github.com/disruptek/gittyup", allowFailure = true
 pkg "gnuplot", "nim c gnuplot.nim"
 # pkg "gram", "nim c -r --gc:arc --define:danger tests/test.nim", "https://github.com/disruptek/gram"
   # pending https://github.com/nim-lang/Nim/issues/16509
 pkg "hts", "nim c -o:htss src/hts.nim"
-# pkg "httpauth"
+pkg "httpauth", allowFailure = true
 pkg "illwill", "nimble examples"
 pkg "inim"
 pkg "itertools", "nim doc src/itertools.nim"
@@ -87,28 +88,28 @@ pkg "memo"
 pkg "msgpack4nim", "nim c -r tests/test_spec.nim"
 pkg "nake", "nim c nakefile.nim"
 pkg "neo", "nim c -d:blas=openblas tests/all.nim"
-# pkg "nesm", "nimble tests" # notice plural 'tests'
-# pkg "nico"
+pkg "nesm", "nimble tests", allowFailure = true # notice plural 'tests'
+pkg "nico", allowFailure = true
 pkg "nicy", "nim c -r src/nicy.nim"
 pkg "nigui", "nim c -o:niguii -r src/nigui.nim"
 pkg "nimcrypto", "nim r --path:. tests/testall.nim" # `--path:.` workaround needed, see D20210308T165435
 pkg "NimData", "nim c -o:nimdataa src/nimdata.nim"
 pkg "nimes", "nim c src/nimes.nim"
 pkg "nimfp", "nim c -o:nfp -r src/fp.nim"
-# pkg "nimgame2", "nim c nimgame2/nimgame.nim" # XXX Doesn't work with deprecated 'randomize', will create a PR.
+pkg "nimgame2", "nim c nimgame2/nimgame.nim", allowFailure = true # XXX Doesn't work with deprecated 'randomize', will create a PR.
 pkg "nimgen", "nim c -o:nimgenn -r src/nimgen/runcfg.nim"
 pkg "nimlsp"
 pkg "nimly", "nim c -r tests/test_readme_example.nim"
-# pkg "nimongo", "nimble test_ci"
-# pkg "nimph", "nimble test", "https://github.com/disruptek/nimph"
+pkg "nimongo", "nimble test_ci", allowFailure = true
+pkg "nimph", "nimble test", "https://github.com/disruptek/nimph", allowFailure = true
 pkg "nimpy", "nim c -r tests/nimfrompy.nim"
 pkg "nimquery"
 pkg "nimsl"
 pkg "nimsvg"
 pkg "nimterop", "nimble minitest"
 pkg "nimwc", "nim c nimwc.nim"
-# pkg "nimx", "nim c --threads:on test/main.nim"
-# pkg "nitter", "nim c src/nitter.nim", "https://github.com/zedeus/nitter"
+pkg "nimx", "nim c --threads:on test/main.nim", allowFailure = true
+pkg "nitter", "nim c src/nitter.nim", "https://github.com/zedeus/nitter", allowFailure = true
 pkg "norm", "nim c -r tests/sqlite/trows.nim"
 pkg "npeg", "nimble testarc"
 pkg "numericalnim", "nim c -r tests/test_integrate.nim"
@@ -150,7 +151,7 @@ pkg "unicodedb", "nim c -d:release -r tests/tests.nim"
 pkg "unicodeplus", "nim c -d:release -r tests/tests.nim"
 pkg "unpack"
 pkg "websocket", "nim c websocket.nim"
-# pkg "winim"
+pkg "winim", allowFailure = true
 pkg "with"
 pkg "ws"
 pkg "yaml", "nim build"
