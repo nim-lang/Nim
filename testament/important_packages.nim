@@ -49,6 +49,7 @@ pkg "chronicles", "nim c -o:chr -r chronicles.nim"
 # when not defined(osx): # testdatagram.nim(560, 54): Check failed
 #   pkg "chronos", "nim c -r -d:release tests/testall"
   # pending https://github.com/nim-lang/Nim/issues/17130
+
 pkg "cligen", "nim c --path:. -r cligen.nim"
 pkg "combparser", "nimble test --gc:orc"
 pkg "compactdict"
@@ -59,7 +60,7 @@ pkg "delaunay"
 pkg "docopt"
 pkg "easygl", "nim c -o:egl -r src/easygl.nim", "https://github.com/jackmott/easygl"
 pkg "elvis"
-# pkg "fidget" # pending https://github.com/treeform/fidget/issues/133
+pkg "fidget"
 pkg "fragments", "nim c -r fragments/dsl.nim"
 pkg "fusion"
 pkg "gara"
