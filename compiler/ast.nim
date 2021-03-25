@@ -1053,14 +1053,20 @@ const
   defaultAlignment = -1
   defaultOffset = -1
 
-template getStrVal*(a: PNode): string =
-  ## Returns underlying string for `{nkStrLit..nkTripleStrLit,nkSym,nkIdent}`.
-  let a2 = a
-  case a2.kind
-  of nkStrLit..nkTripleStrLit: a2.strVal
-  of nkSym: a2.sym.name.s
-  of nkIdent: a2.ident.s
-  else: ""
+
+var emptyString = ""
+
+proc getStrVal*(a: PNode): lent string =
+  ## Returns underlying string for `{nkStrLit..nkTripleStrLit,nkSym,nkIdent}`,
+  ## without introducing a copy.
+  # xxx generalize this pattern.
+  var ret: ptr string
+  case a.kind
+  of nkStrLit..nkTripleStrLit: ret = a.strVal.addr
+  of nkSym: ret = a.sym.name.s.addr
+  of nkIdent: ret = a.ident.s.addr
+  else: ret = emptyString.addr
+  ret[]
 
 proc getnimblePkg*(a: PSym): PSym =
   result = a
