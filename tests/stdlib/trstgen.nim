@@ -1326,6 +1326,45 @@ Test1
           output)
     check("""<th align="left">-d</th><td align="left">option</td>""" in
           output)
+
+  test "Roles: subscript prefix/postfix":
+    let outputPrefix  = "See :subscript:`some text`.".toHtml
+    let outputPostfix = "See `some text`:subscript:.".toHtml
+    check(outputPrefix == outputPostfix)
+    check(outputPrefix == "See <sub>some text</sub>.")
+
+  test "Roles: correct parsing from beginning of line":
+    let output1 = """:superscript:`3`\ He is an isotope of helium.""".toHtml
+    check(output1 == "<sup>3</sup>He is an isotope of helium.")
+    let output2 = """:sup:`3`\ He is an isotope of helium.""".toHtml
+    let output3 = """`3`:sup:\ He is an isotope of helium.""".toHtml
+    let output4 = """`3`:superscript:\ He is an isotope of helium.""".toHtml
+    check(output2 == output1)
+    check(output3 == output1)
+    check(output4 == output1)
+
+  test "(not) Roles: check escaping 1":
+    let output1 = """See \:subscript:`some text`.""".toHtml
+    let output2 = """See :subscript\:`some text`.""".toHtml
+    check(output1 == output2)
+    check(output1 == """See :subscript:<tt class="docutils literal">""" &
+                     """<span class="pre">some text</span></tt>.""")
+
+  test "(not) Roles: check escaping 2":
+    let output = """See :subscript:\`some text\`.""".toHtml
+    check(output == "See :subscript:`some text`.")
+
+  test "Field list":
+    let output = ":field: text".toHtml
+    check(output == """<table class="docinfo" frame="void" rules="none">""" &
+            """<col class="docinfo-name" /><col class="docinfo-content" />""" &
+            """<tbody valign="top"><tr><th class="docinfo-name">field:</th>""" &
+            """<td> text</td></tr>""" & "\n</tbody></table>")
+
+  test "Field list (incorrect)":
+    let output = ":field:text".toHtml
+    check(output == ":field:text")
+
 suite "RST/Code highlight":
   test "Basic Python code highlight":
     let pythonCode = """
