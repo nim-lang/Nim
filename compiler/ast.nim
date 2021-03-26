@@ -1056,17 +1056,24 @@ const
 
 var emptyString = ""
 
-proc getStrVal*(a: PNode): lent string =
-  ## Returns underlying string for `{nkStrLit..nkTripleStrLit,nkSym,nkIdent}`,
-  ## without introducing a copy.
-  # xxx generalize this pattern.
-  var ret: ptr string
+proc getStrValImpl(a: PNode): ptr string {.inline.} =
   case a.kind
-  of nkStrLit..nkTripleStrLit: ret = a.strVal.addr
-  of nkSym: ret = a.sym.name.s.addr
-  of nkIdent: ret = a.ident.s.addr
-  else: ret = emptyString.addr
-  ret[]
+  of nkStrLit..nkTripleStrLit: a.strVal.addr
+  of nkSym: a.sym.name.s.addr
+  of nkIdent:  a.ident.s.addr
+  else: emptyString.addr
+
+
+when defined(nimExperimentalViews):
+  # workaround for tests/views/tcan_compile_nim.nim, refs https://github.com/nim-lang/Nim/issues/17519
+  proc getStrVal*(a: PNode): string {.inline.} =
+    getStrValImpl(a)[]
+else:
+  proc getStrVal*(a: PNode): lent string {.inline.} =
+    ## Returns underlying string for `{nkStrLit..nkTripleStrLit,nkSym,nkIdent}`,
+    ## without introducing a copy.
+    # xxx generalize this pattern, possibly with a {.byAddr.} generalization for procs.
+    getStrValImpl(a)[]
 
 proc getnimblePkg*(a: PSym): PSym =
   result = a
