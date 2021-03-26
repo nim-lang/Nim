@@ -2827,19 +2827,19 @@ when declared(initDebugger):
 proc addEscapedChar*(s: var string, c: char) {.noSideEffect, inline.} =
   ## Adds a char to string `s` and applies the following escaping:
   ##
-  ## * replaces any ``\`` by `\\`
-  ## * replaces any `'` by `\'`
-  ## * replaces any `"` by `\"`
-  ## * replaces any `\a` by `\\a`
-  ## * replaces any `\b` by `\\b`
-  ## * replaces any `\t` by `\\t`
-  ## * replaces any `\n` by `\\n`
-  ## * replaces any `\v` by `\\v`
-  ## * replaces any `\f` by `\\f`
-  ## * replaces any `\r` by `\\r`
-  ## * replaces any `\e` by `\\e`
-  ## * replaces any other character not in the set `{\21..\126}`
-  ##   by `\xHH` where `HH` is its hexadecimal value.
+  ## * replaces any ``\`` by two ``\``
+  ## * replaces any `'` by ``\`` and `'`
+  ## * replaces any `"` by ``\`` and `"`
+  ## * replaces any ``\a`` by ``\`` and `a`
+  ## * replaces any ``\b`` by ``\`` and `b`
+  ## * replaces any ``\t`` by ``\`` and `t`
+  ## * replaces any ``\n`` by ``\`` and `n`
+  ## * replaces any ``\v`` by ``\`` and `v`
+  ## * replaces any ``\f`` by ``\`` and `f`
+  ## * replaces any ``\r`` by ``\`` and `r`
+  ## * replaces any ``\e`` by ``\`` and `e`
+  ## * replaces any other character not in the set ``{\21..\126}``
+  ##   by ``\xHH`` where `HH` is its hexadecimal value.
   ##
   ## The procedure has been designed so that its output is usable for many
   ## different common syntaxes.

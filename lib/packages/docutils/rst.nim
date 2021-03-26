@@ -1161,19 +1161,11 @@ proc parseUntil(p: var RstParser, father: PRstNode, postfix: string,
       if isInlineMarkupEnd(p, postfix):
         inc p.idx
         break
+      elif interpretBackslash:
+        parseBackslash(p, father)
       else:
-        if postfix == "`":
-          if prevTok(p).symbol == "\\" and currentTok(p).symbol == "`":
-            father.sons[^1] = newLeaf(p) # instead, we should use lookahead
-          else:
-            father.add(newLeaf(p))
-          inc p.idx
-        else:
-          if interpretBackslash:
-            parseBackslash(p, father)
-          else:
-            father.add(newLeaf(p))
-            inc p.idx
+        father.add(newLeaf(p))
+        inc p.idx
     of tkAdornment, tkWord, tkOther:
       father.add(newLeaf(p))
       inc p.idx
@@ -1323,7 +1315,7 @@ proc parseInline(p: var RstParser, father: PRstNode) =
       father.add(n)
     elif isInlineMarkupStart(p, "`"):
       var n = newRstNode(rnInterpretedText)
-      parseUntil(p, n, "`", false) # bug #17260
+      parseUntil(p, n, "`", true)
       n = parsePostfix(p, n)
       father.add(n)
     elif isInlineMarkupStart(p, "|"):
