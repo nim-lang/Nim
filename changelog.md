@@ -244,7 +244,7 @@
 
 - Added dollar `$` and `len` for `jsre.RegExp`.
 
-- Added `hasClosure` to `std/effecttraits`.
+- Added `hasClosure` to `std/typetraits`.
 
 
 ## Language changes
