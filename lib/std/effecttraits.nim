@@ -15,13 +15,11 @@
 ## via `defined(nimHasEffectTraitsModule)`.
 
 import std/macros
-import std/private/since
 
 proc getRaisesListImpl(n: NimNode): NimNode = discard "see compiler/vmops.nim"
 proc getTagsListImpl(n: NimNode): NimNode = discard "see compiler/vmops.nim"
 proc isGcSafeImpl(n: NimNode): bool = discard "see compiler/vmops.nim"
 proc hasNoSideEffectsImpl(n: NimNode): bool = discard "see compiler/vmops.nim"
-proc hasClosureImpl(n: NimNode): bool = discard "see compiler/vmops.nim"
 
 proc getRaisesList*(fn: NimNode): NimNode =
   ## Extracts the `.raises` list of the func/proc/etc `fn`.
@@ -54,11 +52,3 @@ proc hasNoSideEffects*(fn: NimNode): bool =
   ## arguments and not `untyped` arguments.
   expectKind fn, nnkSym
   result = hasNoSideEffectsImpl(fn)
-
-proc hasClosure*(fn: NimNode): bool {.since: (1, 5, 1).} =
-  ## Return true if the func/proc/etc `fn` has `closure`.
-  ## `fn` has to be a resolved symbol of kind `nnkSym`. This
-  ## implies that the macro that calls this proc should accept `typed`
-  ## arguments and not `untyped` arguments.
-  expectKind fn, nnkSym
-  result = hasClosureImpl(fn)

@@ -2,7 +2,7 @@ discard """
   targets: "c cpp js"
 """
 
-import std/effecttraits
+import std/typetraits
 
 
 
