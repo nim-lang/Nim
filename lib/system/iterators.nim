@@ -85,7 +85,7 @@ iterator items*(a: cstring): char {.inline.} =
 
 iterator mitems*(a: var cstring): var char {.inline.} =
   ## Iterates over each item of `a` so that you can modify the yielded value.
-  ## In js at RT, this will raise a defect since js strings are immutable.
+  ## In js at runtime, this will raise a defect since js strings are immutable.
   runnableExamples:
     from std/sugar import collect
     var a = "abc\0def"
