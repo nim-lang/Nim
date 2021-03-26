@@ -45,7 +45,7 @@ pkg "c2nim", "nim c testsuite/tester.nim"
 pkg "cascade"
 pkg "cello"
 pkg "chroma"
-pkg "chronicles", "nim c -o:chr -r chronicles.nim"
+# pkg "chronicles", "nim c -o:chr -r chronicles.nim"
 # when not defined(osx): # testdatagram.nim(560, 54): Check failed
 #   pkg "chronos", "nim c -r -d:release tests/testall"
   # pending https://github.com/nim-lang/Nim/issues/17130
