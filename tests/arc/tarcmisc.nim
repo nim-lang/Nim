@@ -404,3 +404,21 @@ proc test2 =
 
 static: test2() # was buggy
 test2()
+
+proc merge(x: sink seq[string], y: sink string): seq[string] =
+  newSeq(result, x.len + 1)
+  for i in 0..x.len-1:
+    result[i] = move(x[i])
+  result[x.len] = move(y)
+
+proc passSeq2(data: seq[string]) =
+  # used the system.& proc initially
+  let wat = merge(data, "hello")
+
+proc test3 =
+  let name = @["hello", "world"]
+  passSeq2(name)
+  doAssert name == @["hello", "world"]
+
+static: test3() # was buggy
+test3()

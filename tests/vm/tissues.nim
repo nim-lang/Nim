@@ -26,24 +26,3 @@ block t4952:
     let tree = newTree(nnkExprColonExpr)
     let t = (n: tree)
     doAssert: t.n.kind == tree.kind
-
-
-# bug #17199
-
-proc merge(x: sink seq[string], y: sink string): seq[string] =
-  newSeq(result, x.len + 1)
-  for i in 0..x.len-1:
-    result[i] = move(x[i])
-  result[x.len] = move(y)
-
-proc passSeq(data: seq[string]) =
-  # used the system.& proc initially
-  let wat = merge(data, "hello")
-
-proc test =
-  let name = @["hello", "world"]
-  passSeq(name)
-  doAssert name == @["hello", "world"]
-
-static: test() # was buggy
-test()
