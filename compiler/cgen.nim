@@ -1522,8 +1522,7 @@ proc registerInitProcs*(g: BModuleList; m: PSym; flags: set[ModuleBackendFlag]) 
 proc whichInitProcs*(m: BModule): set[ModuleBackendFlag] =
   # called from IC.
   result = {}
-  if m.typeNodes > 0 or m.nimTypes > 0 or m.hcrOn or
-     m.preInitProc.s(cpsInit).len > 0 or m.preInitProc.s(cpsStmts).len > 0:
+  if m.hcrOn or m.preInitProc.s(cpsInit).len > 0 or m.preInitProc.s(cpsStmts).len > 0:
     result.incl HasModuleInitProc
   for i in cfsTypeInit1..cfsDynLibInit:
     if m.s[i].len != 0:
