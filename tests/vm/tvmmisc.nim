@@ -256,7 +256,7 @@ block:
   doAssert f == @[]
 
 
-block:
+block: # bug #10815
   type
     Opcode = enum
       iChar, iSet
