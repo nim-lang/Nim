@@ -7,7 +7,7 @@ import std/[isolation, json]
 
 
 
-proc main() =
+proc main(moveZeroesOut: static bool) =
   block:
     type
       Empty = ref object
@@ -19,64 +19,76 @@ proc main() =
   block: # string literals
     var data = isolate("string")
     doAssert data.extract == "string"
-    doAssert data.extract == ""
+    if moveZeroesOut:
+      doAssert data.extract == ""
 
   block: # string literals
     var data = isolate("")
     doAssert data.extract == ""
-    doAssert data.extract == ""
+    if moveZeroesOut:
+      doAssert data.extract == ""
 
   block:
     var src = "string"
     var data = isolate(move src)
     doAssert data.extract == "string"
-    doAssert src.len == 0
+    if moveZeroesOut:
+      doAssert src.len == 0
 
   block: # int literals
     var data = isolate(1)
     doAssert data.extract == 1
-    doAssert data.extract == 0
+    if moveZeroesOut:
+      doAssert data.extract == 0
 
   block: # float literals
     var data = isolate(1.6)
     doAssert data.extract == 1.6
-    doAssert data.extract == 0.0
+    if moveZeroesOut:
+      doAssert data.extract == 0.0
 
   block:
     var data = isolate(@["1", "2"])
     doAssert data.extract == @["1", "2"]
-    doAssert data.extract == @[]
+    if moveZeroesOut:
+      doAssert data.extract == @[]
 
   block:
     var data = isolate(@["1", "2", "3", "4", "5"])
     doAssert data.extract == @["1", "2", "3", "4", "5"]
-    doAssert data.extract == @[]
+    if moveZeroesOut:
+      doAssert data.extract == @[]
 
   block:
     var data = isolate(@["", ""])
     doAssert data.extract == @["", ""]
-    doAssert data.extract == @[]
+    if moveZeroesOut:
+      doAssert data.extract == @[]
 
   block:
     var src = @["1", "2"]
     var data = isolate(move src)
     doAssert data.extract == @["1", "2"]
-    doAssert src.len == 0
+    if moveZeroesOut:
+      doAssert src.len == 0
 
   block:
     var data = isolate(@[1, 2])
     doAssert data.extract == @[1, 2]
-    doAssert data.extract == @[]
+    if moveZeroesOut:
+      doAssert data.extract == @[]
 
   block:
     var data = isolate(["1", "2"])
     doAssert data.extract == ["1", "2"]
-    doAssert data.extract == ["", ""]
+    if moveZeroesOut:
+      doAssert data.extract == ["", ""]
 
   block:
     var data = isolate([1, 2])
     doAssert data.extract == [1, 2]
-    doAssert data.extract == [0, 0]
+    if moveZeroesOut:
+      doAssert data.extract == [0, 0]
 
   block:
     type
@@ -119,5 +131,5 @@ proc main() =
     doAssert $x == """@[(value: "1234")]"""
 
 
-static: main()
-main()
+static: main(moveZeroesOut = false)
+main(moveZeroesOut = true)
