@@ -1135,7 +1135,7 @@ AST:
 .. code-block:: nim
   # ...
   nnkTypeClassTy( # note this isn't nnkConceptTy!
-    nnkArglist(
+    nnkArgList(
       # ... idents for x, y, z
     )
     # ...
