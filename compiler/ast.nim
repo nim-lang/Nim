@@ -1054,27 +1054,6 @@ const
   defaultOffset = -1
 
 
-var emptyString = ""
-
-proc getStrValImpl(a: PNode): ptr string {.inline.} =
-  case a.kind
-  of nkStrLit..nkTripleStrLit: a.strVal.addr
-  of nkSym: a.sym.name.s.addr
-  of nkIdent:  a.ident.s.addr
-  else: emptyString.addr
-
-
-when defined(nimExperimentalViews):
-  # workaround for tests/views/tcan_compile_nim.nim, refs https://github.com/nim-lang/Nim/issues/17519
-  proc getStrVal*(a: PNode): string {.inline.} =
-    getStrValImpl(a)[]
-else:
-  proc getStrVal*(a: PNode): lent string {.inline.} =
-    ## Returns underlying string for `{nkStrLit..nkTripleStrLit,nkSym,nkIdent}`,
-    ## without introducing a copy.
-    # xxx generalize this pattern, possibly with a {.byAddr.} generalization for procs.
-    getStrValImpl(a)[]
-
 proc getnimblePkg*(a: PSym): PSym =
   result = a
   while result != nil:

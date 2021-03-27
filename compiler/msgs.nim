@@ -200,21 +200,13 @@ template toFilename*(conf: ConfigRef; fileIdx: FileIndex): string =
 proc toProjPath*(conf: ConfigRef; fileIdx: FileIndex): string =
   if fileIdx.int32 < 0 or conf == nil:
     (if fileIdx == commandLineIdx: commandLineDesc else: "???")
-  elif fileIdx.int32 < conf.m.fileInfos.len:
-    conf.m.fileInfos[fileIdx.int32].projPath.string
-  else:
-    # this can happen for some reason when `conf.m.fileInfos` is not yet initialized
-    # during debugging; instead of aborting (which would make debugging harder, since
-    # this code is called in error messages), we return an easy to search fake file name.
-    "BUG_D20210325T150904_" & $fileIdx.int32
+  else: conf.m.fileInfos[fileIdx.int32].projPath.string
 
 proc toFullPath*(conf: ConfigRef; fileIdx: FileIndex): string =
   if fileIdx.int32 < 0 or conf == nil:
     result = (if fileIdx == commandLineIdx: commandLineDesc else: "???")
-  elif fileIdx.int32 < conf.m.fileInfos.len:
+  else:
     result = conf.m.fileInfos[fileIdx.int32].fullPath.string
-  else: # see remark in `toProjPath`.
-    result = "BUG_D20210325T151009_" & $fileIdx.int32
 
 proc setDirtyFile*(conf: ConfigRef; fileIdx: FileIndex; filename: AbsoluteFile) =
   assert fileIdx.int32 >= 0
