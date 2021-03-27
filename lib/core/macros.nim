@@ -78,7 +78,7 @@ type
     nnkSharedTy,           # 'shared T'
     nnkEnumTy,
     nnkEnumFieldDef,
-    nnkArglist, nnkPattern
+    nnkArgList, nnkPattern
     nnkHiddenTryStmt,
     nnkClosure,
     nnkGotoState,
