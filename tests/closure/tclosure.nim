@@ -526,11 +526,52 @@ block:
   waitFor A()
 
 block:
+  proc hello(): string {.discardable.} =
+    "q34"
+
+  proc A() {.async.} = 
+    block:
+      await sleepAsync(1000)
+      let x = hello()
+  waitFor A()
+
+block:
   proc hello(): int {.discardable.} = 12
 
   iterator test(): int {.closure.} =
     while true:
       yield 12
       discard hello()
+
+  let t {.used.} = test
+
+block:
+  proc hello(): int {.discardable.} = 12
+
+  iterator test(): int {.closure.} =
+    while true:
+      yield 12
+      let x = hello()
+
+  let t {.used.} = test
+
+
+block:
+  proc hello(): string {.discardable.} =
+    "q34"
+
+  proc A() {.async.} = 
+    block:
+      let x = hello()
+      await sleepAsync(1000)
+  waitFor A()
+
+block:
+  proc hello(): int {.discardable.} = 12
+
+  iterator test(): int {.closure.} =
+    while true:
+      let x = hello()
+      yield 12
 
   let t {.used.} = test
