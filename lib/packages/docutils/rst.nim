@@ -142,9 +142,6 @@
 ## See `packages/docutils/rstgen module <rstgen.html>`_ to know how to
 ## generate HTML or Latex strings to embed them into your documents.
 ##
-## .. Tip:: Import ``packages/docutils/rst`` to use this module
-##    programmatically.
-##
 ## .. _quick introduction: https://docutils.sourceforge.io/docs/user/rst/quickstart.html
 ## .. _RST reference: https://docutils.sourceforge.io/docs/user/rst/quickref.html
 ## .. _RST specification: https://docutils.sourceforge.io/docs/ref/rst/restructuredtext.html
