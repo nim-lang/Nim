@@ -1542,7 +1542,7 @@ proc readLine*(socket: Socket, line: var string, timeout = -1,
     var c: char
     discard waitFor(socket, waited, timeout, 1, "readLine")
     var n = recv(socket, addr(c), 1)
-    if n < 0: raiseSockError()
+    if n < 0: raiseSockError(); return
     elif n == 0: setLen(line, 0); return
     if c == '\r':
       discard waitFor(socket, waited, timeout, 1, "readLine")
