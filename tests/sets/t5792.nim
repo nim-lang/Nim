@@ -11,7 +11,7 @@ type
     case k: T
     of a:
       x: int
-    of {b, c} - {a}: # {b, c} does work
+    of {b, c} - {a}:
       y: int
 
 discard U(k: b, y: 1)
