@@ -4,6 +4,8 @@
 
 ## Standard library additions and changes
 
+- Added `sections` iterator in `parsecfg`.
+
 - Make custom op in macros.quote work for all statements.
 
 - On Windows the SSL library now checks for valid certificates.

@@ -174,6 +174,7 @@ runnableExamples:
 
 import strutils, lexbase, streams, tables
 import std/private/decode_helpers
+import std/private/since
 
 include "system/inclrtl"
 
@@ -649,3 +650,8 @@ proc delSectionKey*(dict: var Config, section, key: string) =
         dict.del(section)
       else:
         dict[section].del(key)
+
+iterator sections*(dict: Config): lent string {.since: (1, 5).} =
+  ## Iterate throught the sections in the config
+  for section in dict.keys:
+    yield section
