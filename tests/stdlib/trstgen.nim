@@ -1361,6 +1361,14 @@ Test1
             """<tbody valign="top"><tr><th class="docinfo-name">field:</th>""" &
             """<td> text</td></tr>""" & "\n</tbody></table>")
 
+  test "Field list: body after newline":
+    let output = dedent """
+      :field:
+        text1""".toHtml
+    check "<table class=\"docinfo\"" in output
+    check ">field:</th>" in output
+    check "<td>text1</td>" in output
+
   test "Field list (incorrect)":
     let output = ":field:text".toHtml
     check(output == ":field:text")

@@ -1682,7 +1682,7 @@ proc whichSection(p: RstParser): RstNodeKind =
     elif predNL(p) and
         currentTok(p).symbol in ["+", "*", "-"] and nextTok(p).kind == tkWhite:
       result = rnBulletList
-    elif match(p, p.idx, ":w: ") and predNL(p):
+    elif match(p, p.idx, ":w:E") and predNL(p):
       # (currentTok(p).symbol == ":")
       result = rnFieldList
     elif match(p, p.idx, "(e) ") or match(p, p.idx, "e) ") or
