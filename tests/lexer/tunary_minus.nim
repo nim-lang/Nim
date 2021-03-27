@@ -51,8 +51,17 @@ template main =
     doAssert x() == minusOne:
       "unable to handle negatives after semi-colon"
 
+  block:
     doAssert -0b111 == -7
     doAssert -0xff == -255
+    doAssert -128'i8 == (-128).int8
+    doAssert $(-128'i8) == "-128"
+    doAssert -32768'i16 == int16.low
+    doAssert -2147483648'i32 == int32.low
+    when int.sizeof > 4:
+      doAssert -9223372036854775808 == int.low
+    when not defined(js):
+      doAssert -9223372036854775808 == int64.low
 
   block: # check when a minus (-) is an unary op
     doAssert -one == minusOne:
@@ -67,7 +76,6 @@ template main =
       "unable to handle subtraction with surrounding spaces with a numeric literal"
     doAssert 4 - one == 3:
       "unable to handle subtraction with surrounding spaces with an identifier"
-
 
 static: main()
 main()

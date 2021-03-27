@@ -46,6 +46,7 @@ assertAST dedent """
   -38383839292839283928392839283928392839283.928493849385935898243e-50000'wrap
 
 proc `'wrap`(number: string): string = "[[" & number & "]]"
+proc wrap2(number: string): string = "[[" & number & "]]"
 doAssert lispReprStr(-1'wrap) == """(DotExpr (RStrLit "-1") (Ident "\'wrap"))"""
 
 template main =
@@ -126,25 +127,59 @@ template main =
     doAssert -12'fooplusopt(2) == ("-12", 2)
     doAssert -12'fooplusopt() == ("-12", 99)
     doAssert -12'fooplusopt == ("-12", 99)
-    macro `'bar`(a: static string): untyped =
-      var infix = newNimNode(nnkInfix)
-      infix.add newIdentNode("&")
-      infix.add newLit("got ")
-      infix.add newLit(a.repr)
-      result = newNimNode(nnkStmtList)
-      result.add infix
-    doAssert -12'bar == "got \"-12\""
+    macro `'bar`(a: static string): untyped = newLit(a.repr)
+    doAssert -12'bar == "\"-12\""
     macro deb(a): untyped = newLit(a.repr)
     doAssert deb(-12'bar) == "-12'bar"
-    # macro metawrap(): untyped =
-    #   func wrap1(a: string): string = "{" & a & "}"
-    #   func `'wrap2`(a: string): string = "{" & a & "}"
-    #   result = quote do:
-    #     let a1 = wrap1"-128"
-    #     let a2 = -128'wrap2
-    # metawrap()
-    # doAssert a1 == "{-128}"
-    # doAssert a2 == "{-128}"
+
+  block: # bug 1 from https://github.com/nim-lang/Nim/pull/17020#issuecomment-803193947
+    macro deb1(a): untyped = newLit a.repr
+    macro deb2(a): untyped = newLit a.lispRepr
+    doAssert deb1(-12'wrap) == "-12'wrap"
+    doAssert deb1(-12'nonexistant) == "-12'nonexistant"
+    doAssert deb2(-12'nonexistant) == """(DotExpr (RStrLit "-12") (Ident "\'nonexistant"))"""
+    when false: # xxx bug:
+      # this holds:
+      doAssert deb2(-12.wrap2) == """(DotExpr (IntLit -12) (Sym "wrap2"))"""
+      doAssert deb2(-12'wrap) == """(DotExpr (RStrLit "-12") (Sym "\'wrap"))"""
+      # but instead this should hold:
+      doAssert deb2(-12.wrap2) == """(DotExpr (IntLit -12) (Ident "wrap2"))"""
+      doAssert deb2(-12'wrap) == """(DotExpr (RStrLit "-12") (Ident "\'wrap"))"""
+
+  block: # bug 2 from https://github.com/nim-lang/Nim/pull/17020#issuecomment-803193947
+    template toSuf(`'suf`): untyped =
+      let x = -12'suf
+      x
+    doAssert toSuf(`'wrap`) == "[[-12]]"
+
+  block: # bug 10 from https://github.com/nim-lang/Nim/pull/17020#issuecomment-803193947
+    proc `myecho`(a: auto): auto = a
+    template fn1(): untyped =
+      let a = "abc"
+      -12'wrap
+    template fn2(): untyped =
+      `myecho` -12'wrap
+    template fn3(): untyped =
+      -12'wrap
+    doAssert fn1() == "[[-12]]"
+    doAssert fn2() == "[[-12]]"
+    doAssert fn3() == "[[-12]]"
+
+    when false: # xxx this fails; bug 9 from https://github.com/nim-lang/Nim/pull/17020#issuecomment-803193947
+      #[
+      possible workaround: use `genAst` (https://github.com/nim-lang/Nim/pull/17426) and this:
+      let a3 = `'wrap3`("-128")
+      ]#
+      block:
+        macro metawrap(): untyped =
+          func wrap1(a: string): string = "{" & a & "}"
+          func `'wrap3`(a: string): string = "{" & a & "}"
+          result = quote do:
+            let a1 = wrap1"-128"
+            let a2 = -128'wrap3
+        metawrap()
+        doAssert a1 == "{-128}"
+        doAssert a2 == "{-128}"
 
 static: main()
 main()
