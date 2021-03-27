@@ -2237,7 +2237,15 @@ proc semStmtList(c: PContext, n: PNode, flags: TExprFlags): PNode =
     if n[i].typ == c.enforceVoidContext: #or usesResult(n[i]):
       voidContext = true
       n.typ = c.enforceVoidContext
-    if i == last and (n.len == 1 or ({efWantValue, efInTypeof} * flags != {})):
+    
+    if i == last and isCallExpr(n[i]) and n[i][0].kind == nkSym and
+           n[i][0].sym.kind == skProc and
+           sfCompileTime notin n[i][0].sym.flags and
+           sfDiscardable in n[i][0].sym.flags:
+      let temp = n[i]
+      n[i] = newNodeI(nkDiscardStmt, result.info, 1)
+      n[i][0] = temp
+    elif i == last and (n.len == 1 or ({efWantValue, efInTypeof} * flags != {})):
       n.typ = n[i].typ
       if not isEmptyType(n.typ): n.transitionSonsKind(nkStmtListExpr)
     elif i != last or voidContext:
