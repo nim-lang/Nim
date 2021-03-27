@@ -2,7 +2,7 @@
 
 ## Supported Versions
 
-Securiy advisories are published at:
+Security advisories are published at:
 https://github.com/nim-lang/security/security/advisories?state=published
 
 Security fixes are provided in new releases and in bugfix releases.
