@@ -559,7 +559,8 @@ $3
 
   var codeShown: string
   if topLevel: # refs https://github.com/nim-lang/RFCs/issues/352
-    codeShown = "import $#\n$#" % [d.filename.quoted, code]
+    let title = canonicalImport(d.conf, AbsoluteFile d.filename)
+    codeShown = "import $#\n$#" % [title, code]
   else:
     codeShown = code
   result = (rdoccmd, codeShown)
