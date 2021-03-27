@@ -983,7 +983,6 @@ proc isCustomLit(n: PNode): bool =
 
 proc gsub(g: var TSrcGen, n: PNode, c: TContext) =
   if isNil(n): return
-  echo "D20210327T133002: ", g.config$n.info # this would trigger the bug: index out of bounds, the container is empty [IndexDefect]
   var
     a: TContext
   if shouldRenderComment(g, n): pushCom(g, n)
