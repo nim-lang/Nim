@@ -514,3 +514,23 @@ block:
       hello()
 
   let t {.used.} = test
+
+block:
+  proc hello(): string {.discardable.} =
+    "q34"
+
+  proc A() {.async.} = 
+    block:
+      await sleepAsync(1000)
+      discard hello()
+  waitFor A()
+
+block:
+  proc hello(): int {.discardable.} = 12
+
+  iterator test(): int {.closure.} =
+    while true:
+      yield 12
+      discard hello()
+
+  let t {.used.} = test
