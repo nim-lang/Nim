@@ -490,19 +490,26 @@ this. Another reason is that Nim can thus support `array[char, int]` or
 type is used for Unicode characters, it can represent any Unicode character.
 `Rune` is declared in the `unicode module <unicode.html>`_.
 
+A character literal that does not end in ``'`` is interpreted as ``'`` if there
+is a preceeding backtick token. There must be no whitespace between the preceeding
+backtick token and the character literal. This special rule ensures that a declaration
+like ``proc `'customLiteral`(s: string)`` is valid. See also
+`Custom Numeric Literals <#custom-numeric-literals>`_.
 
-Numerical constants
--------------------
 
-Numerical constants are of a single type and have the form::
+Numeric Literals
+----------------
+
+Numeric literals have the form::
 
   hexdigit = digit | 'A'..'F' | 'a'..'f'
   octdigit = '0'..'7'
   bindigit = '0'..'1'
-  HEX_LIT = '0' ('x' | 'X' ) hexdigit ( ['_'] hexdigit )*
-  DEC_LIT = digit ( ['_'] digit )*
-  OCT_LIT = '0' 'o' octdigit ( ['_'] octdigit )*
-  BIN_LIT = '0' ('b' | 'B' ) bindigit ( ['_'] bindigit )*
+  unary_minus = '-' # See the section about unary minus
+  HEX_LIT = unary_minus? '0' ('x' | 'X' ) hexdigit ( ['_'] hexdigit )*
+  DEC_LIT = unary_minus? digit ( ['_'] digit )*
+  OCT_LIT = unary_minus? '0' 'o' octdigit ( ['_'] octdigit )*
+  BIN_LIT = unary_minus? '0' ('b' | 'B' ) bindigit ( ['_'] bindigit )*
 
   INT_LIT = HEX_LIT
           | DEC_LIT
@@ -521,7 +528,7 @@ Numerical constants are of a single type and have the form::
   UINT64_LIT = INT_LIT ['\''] ('u' | 'U') '64'
 
   exponent = ('e' | 'E' ) ['+' | '-'] digit ( ['_'] digit )*
-  FLOAT_LIT = digit (['_'] digit)* (('.' digit (['_'] digit)* [exponent]) |exponent)
+  FLOAT_LIT = unary_minus? digit (['_'] digit)* (('.' digit (['_'] digit)* [exponent]) |exponent)
   FLOAT32_SUFFIX = ('f' | 'F') ['32']
   FLOAT32_LIT = HEX_LIT '\'' FLOAT32_SUFFIX
               | (FLOAT_LIT | DEC_LIT | OCT_LIT | BIN_LIT) ['\''] FLOAT32_SUFFIX
@@ -529,11 +536,48 @@ Numerical constants are of a single type and have the form::
   FLOAT64_LIT = HEX_LIT '\'' FLOAT64_SUFFIX
               | (FLOAT_LIT | DEC_LIT | OCT_LIT | BIN_LIT) ['\''] FLOAT64_SUFFIX
 
+  CUSTOM_NUMERIC_LIT = (FLOAT_LIT | DEC_LIT | OCT_LIT | BIN_LIT) '\'' CUSTOM_NUMERIC_SUFFIX
 
-As can be seen in the productions, numerical constants can contain underscores
+  # CUSTOM_NUMERIC_SUFFIX is any Nim identifier that is not
+  # a pre-defined type suffix.
+
+
+As can be seen in the productions, numeric literals can contain underscores
 for readability. Integer and floating-point literals may be given in decimal (no
 prefix), binary (prefix `0b`), octal (prefix `0o`), and hexadecimal
 (prefix `0x`) notation.
+
+The fact that the unary minus `-` in a number literal like `-1` is considered
+to be part of the literal is a late addition to the language. The rationale is that
+an expression `-128'i8` should be valid and without this special case, this would
+be impossible -- `128` is not a valid `int8` value, only `-128` is.
+
+For the `unary_minus` rule there are further restrictions that are not covered
+in the formal grammar. For `-` to be part of the number literal its immediately
+preceeding character has to be in the
+set `{' ', '\t', '\n', '\r', ',', ';', '(', '[', '{'}`. This set was designed to
+cover most cases in a natural manner.
+
+In the following examples, `-1` is a single token:
+
+.. code-block:: nim
+
+  echo -1
+  echo(-1)
+  echo [-1]
+  echo 3,-1
+
+  "abc";-1
+
+In the following examples, `-1` is parsed as two separate tokens (as `- 1`):
+
+.. code-block:: nim
+
+  echo x-1
+  echo (int)-1
+  echo [a]-1
+  "abc"-1
+
 
 There exists a literal for each numerical type that is
 defined. The suffix starting with an apostrophe ('\'') is called a
@@ -546,7 +590,7 @@ is optional if it is not ambiguous (only hexadecimal floating-point literals
 with a type suffix can be ambiguous).
 
 
-The type suffixes are:
+The pre-defined type suffixes are:
 
 =================    =========================
   Type Suffix        Resulting type of literal
@@ -577,6 +621,43 @@ bounds checking is done on bit width, not value range. If the literal fits in
 the bit width of the datatype, it is accepted.
 Hence: 0b10000000'u8 == 0x80'u8 == 128, but, 0b10000000'i8 == 0x80'i8 == -1
 instead of causing an overflow error.
+
+
+Custom Numeric Literals
+~~~~~~~~~~~~~~~~~~~~~~~
+
+If the suffix is not predefined, then the suffix is assumed to be a call
+to a proc, template, macro or other callable identifier that is passed the
+string containing the literal. The callable identifier needs to be declared
+with a special ``'`` prefix:
+
+.. code-block:: nim
+
+  import strutils
+  type u4 = distinct uint8 # a 4-bit unsigned integer aka "nibble"
+  proc `'u4`(n: string): u4 =
+    # The leading ' is required.
+    result = (parseInt(n) and 0x0F).u4
+
+  var x = 5'u4
+
+More formally, a custom numeric literal `123'custom` is transformed
+to r"123".`'custom` in the parsing step. There is no AST node kind that
+corresponds to this transformation. The transformation naturally handles
+the case that additional parameters are passed to the callee:
+
+.. code-block:: nim
+
+  import strutils
+  type u4 = distinct uint8 # a 4-bit unsigned integer aka "nibble"
+  proc `'u4`(n: string; moreData: int): u4 =
+    result = (parseInt(n) and 0x0F).u4
+
+  var x = 5'u4(123)
+
+Custom numeric literals are covered by the grammar rule named `CUSTOM_NUMERIC_LIT`.
+A custom numeric literal is a single token.
+
 
 Operators
 ---------

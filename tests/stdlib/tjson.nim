@@ -300,3 +300,14 @@ block: # bug #17383
   when not defined(js):
     testRoundtrip(int64.high): "9223372036854775807"
     testRoundtrip(uint64.high): "18446744073709551615"
+
+
+block:
+  let a = "18446744073709551615"
+  let b = a.parseJson
+  doAssert b.kind == JString
+  let c = $b
+  when defined(js):
+    doAssert c == "18446744073709552000"
+  else:
+    doAssert c == "18446744073709551615"

@@ -1354,9 +1354,10 @@ proc genMagic(c: PCtx; n: PNode; dest: var TDest; m: TMagic) =
     if dest < 0: dest = c.getTemp(arg.typ)
     gABC(c, arg, whichAsgnOpc(arg, requiresCopy=false), dest, a)
     # XXX use ldNullOpcode() here?
-    c.gABx(n, opcLdNull, a, c.genType(arg.typ))
-    c.gABx(n, opcNodeToReg, a, a)
-    c.genAsgnPatch(arg, a)
+    # Don't zero out the arg for now #17199
+    # c.gABx(n, opcLdNull, a, c.genType(arg.typ))
+    # c.gABx(n, opcNodeToReg, a, a)
+    # c.genAsgnPatch(arg, a)
     c.freeTemp(a)
   of mNodeId:
     c.genUnaryABC(n, dest, opcNodeId)
