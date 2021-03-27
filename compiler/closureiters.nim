@@ -384,7 +384,8 @@ proc hasYieldsInExpressions(n: PNode): bool =
   of nkSkip:
     discard
   of nkStmtListExpr:
-    if isEmptyType(n.typ):
+    if isEmptyType(n.typ) or (n[^1].kind in nkCallKinds and
+          n[^1][0].kind == nkSym and sfDiscardable in n[^1][0].sym.flags):
       for c in n:
         if c.hasYieldsInExpressions:
           return true
