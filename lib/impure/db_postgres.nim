@@ -16,8 +16,8 @@
 ## Parameter substitution
 ## ======================
 ##
-## All ``db_*`` modules support the same form of parameter substitution.
-## That is, using the ``?`` (question mark) to signify the place where a
+## All `db_*` modules support the same form of parameter substitution.
+## That is, using the `?` (question mark) to signify the place where a
 ## value should be placed. For example:
 ##
 ## .. code-block:: Nim
@@ -26,9 +26,9 @@
 ## **Note**: There are two approaches to parameter substitution support by
 ## this module.
 ##
-## 1.  ``SqlQuery`` using ``?, ?, ?, ...`` (same as all the ``db_*`` modules)
+## 1. `SqlQuery` using `?, ?, ?, ...` (same as all the `db_*` modules)
 ##
-## 2. ``SqlPrepared`` using ``$1, $2, $3, ...``
+## 2. `SqlPrepared` using `$1, $2, $3, ...`
 ##
 ## .. code-block:: Nim
 ##   prepare(db, "myExampleInsert",
@@ -47,7 +47,7 @@
 ## To use Unix sockets with `db_postgres`, change the server address to the socket file path:
 ##
 ## .. code-block:: Nim
-##   import db_postgres ## Change "localhost" or "127.0.0.1" to the socket file path
+##   import std/db_postgres ## Change "localhost" or "127.0.0.1" to the socket file path
 ##   let db = db_postgres.open("/run/postgresql", "user", "password", "database")
 ##   echo db.getAllRows(sql"SELECT version();")
 ##   db.close()
@@ -64,7 +64,7 @@
 ## ----------------------------------
 ##
 ## .. code-block:: Nim
-##     import db_postgres
+##     import std/db_postgres
 ##     let db = open("localhost", "user", "password", "dbname")
 ##     db.close()
 ##
@@ -184,8 +184,8 @@ proc setupQuery(db: DbConn, stmtName: SqlPrepared,
 
 proc prepare*(db: DbConn; stmtName: string, query: SqlQuery;
               nParams: int): SqlPrepared =
-  ## Creates a new ``SqlPrepared`` statement. Parameter substitution is done
-  ## via ``$1``, ``$2``, ``$3``, etc.
+  ## Creates a new `SqlPrepared` statement. Parameter substitution is done
+  ## via `$1`, `$2`, `$3`, etc.
   if nParams > 0 and not string(query).contains("$1"):
     dbError("parameter substitution expects \"$1\"")
   var res = pqprepare(db, stmtName, query.string, int32(nParams), nil)
@@ -488,8 +488,8 @@ proc tryInsertID*(db: DbConn, query: SqlQuery,
                   tags: [WriteDbEffect].}=
   ## executes the query (typically "INSERT") and returns the
   ## generated ID for the row or -1 in case of an error. For Postgre this adds
-  ## ``RETURNING id`` to the query, so it only works if your primary key is
-  ## named ``id``.
+  ## `RETURNING id` to the query, so it only works if your primary key is
+  ## named `id`.
   var x = pqgetvalue(setupQuery(db, SqlQuery(string(query) & " RETURNING id"),
     args), 0, 0)
   if not isNil(x):
@@ -502,8 +502,8 @@ proc insertID*(db: DbConn, query: SqlQuery,
                tags: [WriteDbEffect].} =
   ## executes the query (typically "INSERT") and returns the
   ## generated ID for the row. For Postgre this adds
-  ## ``RETURNING id`` to the query, so it only works if your primary key is
-  ## named ``id``.
+  ## `RETURNING id` to the query, so it only works if your primary key is
+  ## named `id`.
   result = tryInsertID(db, query, args)
   if result < 0: dbError(db)
 

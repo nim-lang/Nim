@@ -1,5 +1,5 @@
 discard """
-  errmsg: "cannot bind another '=destroy' to: Obj; previous declaration was constructed here implicitly: tdestructor_too_late.nim(7, 16)"
+  errormsg: "cannot bind another '=destroy' to: Obj; previous declaration was constructed here implicitly: tdestructor_too_late.nim(7, 16)"
 """
 type Obj* = object
   v*: int

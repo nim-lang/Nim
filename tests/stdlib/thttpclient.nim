@@ -1,9 +1,13 @@
 discard """
   cmd: "nim c --threads:on -d:ssl $file"
-  exitcode: 0
-  output: "OK"
-  disabled: true
+  disabled: "openbsd"
+  disabled: "freebsd"
+  disabled: "windows"
 """
+
+#[
+disabled: see https://github.com/timotheecour/Nim/issues/528
+]#
 
 import strutils
 from net import TimeoutError
@@ -39,7 +43,7 @@ proc makeIPv6HttpServer(hostname: string, port: Port,
 
 proc asyncTest() {.async.} =
   var client = newAsyncHttpClient()
-  var resp = await client.request("http://example.com/")
+  var resp = await client.request("http://example.com/", HttpGet)
   doAssert(resp.code.is2xx)
   var body = await resp.body
   body = await resp.body # Test caching
@@ -48,7 +52,7 @@ proc asyncTest() {.async.} =
   resp = await client.request("http://example.com/404")
   doAssert(resp.code.is4xx)
   doAssert(resp.code == Http404)
-  doAssert(resp.status == Http404)
+  doAssert(resp.status == $Http404)
 
   resp = await client.request("https://google.com/")
   doAssert(resp.code.is2xx or resp.code.is3xx)
@@ -102,14 +106,14 @@ proc asyncTest() {.async.} =
 
 proc syncTest() =
   var client = newHttpClient()
-  var resp = client.request("http://example.com/")
+  var resp = client.request("http://example.com/", HttpGet)
   doAssert(resp.code.is2xx)
   doAssert("<title>Example Domain</title>" in resp.body)
 
   resp = client.request("http://example.com/404")
   doAssert(resp.code.is4xx)
   doAssert(resp.code == Http404)
-  doAssert(resp.status == Http404)
+  doAssert(resp.status == $Http404)
 
   resp = client.request("https://google.com/")
   doAssert(resp.code.is2xx or resp.code.is3xx)
@@ -144,6 +148,12 @@ proc syncTest() =
 
   client.close()
 
+  # SIGSEGV on HEAD body read: issue #16743
+  block:
+    let client = newHttpClient()
+    let resp = client.head("http://httpbin.org/head")
+    doAssert(resp.body == "")
+
   when false:
     # Disabled for now because it causes troubles with AppVeyor
     # Timeout test.
@@ -168,5 +178,3 @@ proc ipv6Test() =
 ipv6Test()
 syncTest()
 waitFor(asyncTest())
-
-echo "OK"

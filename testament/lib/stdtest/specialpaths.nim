@@ -1,6 +1,6 @@
 #[
 todo: move findNimStdLibCompileTime, findNimStdLib here
-xxx: consider moving this to $nim/compiler/relpaths.nim to get relocatable paths
+xxx: factor pending https://github.com/timotheecour/Nim/issues/616
 
 ## note: $lib vs $nim
 note: these can resolve to 3 different paths if running via `nim c --lib:lib foo`,
@@ -24,12 +24,29 @@ const
     # robust way to derive other paths here
     # We don't depend on PATH so this is robust to having multiple nim binaries
   nimRootDir* = sourcePath.parentDir.parentDir.parentDir.parentDir ## root of Nim repo
+  testsFname* = "tests"
   stdlibDir* = nimRootDir / "lib"
   systemPath* = stdlibDir / "system.nim"
-  testsDir* = nimRootDir / "tests"
+  testsDir* = nimRootDir / testsFname
   buildDir* = nimRootDir / "build"
     ## refs #10268: all testament generated files should go here to avoid
     ## polluting .gitignore
+
+proc splitTestFile*(file: string): tuple[cat: string, path: string] =
+  ## At least one directory is required in the path, to use as a category name
+  runnableExamples:
+    doAssert splitTestFile("tests/fakedir/tfakename.nim") == ("fakedir", "tests/fakedir/tfakename.nim".unixToNativePath)
+  for p in file.parentDirs(inclusive = false):
+    let parent = p.parentDir
+    if parent.lastPathPart == testsFname:
+      result.cat = p.lastPathPart
+      let dir = getCurrentDir()
+      if file.isRelativeTo(dir):
+        result.path = file.relativePath(dir)
+      else:
+        result.path = file
+      return result
+  doAssert false, "file must match this pattern: '/pathto/tests/dir/**/tfile.nim', got: '" & file & "'"
 
 static:
   # sanity check

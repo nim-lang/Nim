@@ -17,10 +17,10 @@ const
   debugGC = false # we wish to debug the GC...
   logGC = false
   traceGC = false # extensive debugging
-  alwaysCycleGC = defined(smokeCycles)
-  alwaysGC = defined(fulldebug) # collect after every memory
+  alwaysCycleGC = defined(nimSmokeCycles)
+  alwaysGC = defined(nimFulldebug) # collect after every memory
                                 # allocation (for debugging)
-  leakDetector = defined(leakDetector)
+  leakDetector = defined(nimLeakDetector)
   overwriteFree = defined(nimBurnFree) # overwrite memory with 0xFF before free
   trackAllocationSource = leakDetector
 
@@ -30,7 +30,7 @@ const
   coalescRight = true
   coalescLeft = true
   logAlloc = false
-  useCellIds = defined(corruption)
+  useCellIds = defined(nimCorruption)
 
 type
   PPointer = ptr pointer
@@ -68,9 +68,7 @@ else:
       include "system/cellsets"
     when not leakDetector and not useCellIds and not defined(nimV2):
       sysAssert(sizeof(Cell) == sizeof(FreeCell), "sizeof FreeCell")
-  when compileOption("gc", "v2"):
-    include "system/gc2"
-  elif defined(gcRegions):
+  when defined(gcRegions):
     # XXX due to bootstrapping reasons, we cannot use  compileOption("gc", "stack") here
     include "system/gc_regions"
   elif defined(nimV2) or usesDestructors:

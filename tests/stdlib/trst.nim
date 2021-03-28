@@ -1,5 +1,6 @@
 discard """
   output: '''
+
 [Suite] RST include directive
 '''
 """
@@ -15,7 +16,7 @@ suite "RST include directive":
   test "Include whole":
     "other.rst".writeFile("**test1**")
     let input = ".. include:: other.rst"
-    assert "<strong>test1</strong>" == rstTohtml(input, {}, defaultConfig())
+    doAssert "<strong>test1</strong>" == rstTohtml(input, {}, defaultConfig())
     removeFile("other.rst")
 
   test "Include starting from":
@@ -29,7 +30,7 @@ OtherStart
 .. include:: other.rst
              :start-after: OtherStart
 """
-    assert "<em>Visible</em>" == rstTohtml(input, {}, defaultConfig())
+    doAssert "<em>Visible</em>" == rstTohtml(input, {}, defaultConfig())
     removeFile("other.rst")
 
   test "Include everything before":
@@ -43,7 +44,7 @@ And this should **NOT** be visible in `docs.html`
 .. include:: other.rst
              :end-before: OtherEnd
 """
-    assert "<em>Visible</em>" == rstTohtml(input, {}, defaultConfig())
+    doAssert "<em>Visible</em>" == rstTohtml(input, {}, defaultConfig())
     removeFile("other.rst")
 
 
@@ -61,7 +62,7 @@ And this should **NOT** be visible in `docs.html`
              :start-after: OtherStart
              :end-before: OtherEnd
 """
-    assert "<em>Visible</em>" == rstTohtml(input, {}, defaultConfig())
+    doAssert "<em>Visible</em>" == rstTohtml(input, {}, defaultConfig())
     removeFile("other.rst")
 
 
@@ -81,5 +82,5 @@ And this should **NOT** be visible in `docs.html`
              :start-after: OtherStart
              :end-before: OtherEnd
 """
-    assert "<em>Visible</em>" == rstTohtml(input, {}, defaultConfig())
+    doAssert "<em>Visible</em>" == rstTohtml(input, {}, defaultConfig())
     removeFile("other.rst")

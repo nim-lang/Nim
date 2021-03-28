@@ -27,7 +27,7 @@ for kind, key, val in getopt():
     of "version", "v": writeVersion()
     else:
       writeLine(stdout, "Unknown command line option: ", key, ": ", val)
-  of cmdEnd: assert(false) # cannot happen
+  of cmdEnd: doAssert(false) # cannot happen
 if filename == "":
   # no filename has been given, so we show the help:
   writeHelp()

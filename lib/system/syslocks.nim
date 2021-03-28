@@ -11,7 +11,7 @@
 
 {.push stackTrace: off.}
 
-when defined(Windows):
+when defined(windows):
   type
     Handle = int
 

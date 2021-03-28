@@ -76,7 +76,7 @@ when defined(windows):
 
   template check(expr) =
     let r = expr
-    if r == cast[type(r)](0):
+    if r == cast[typeof(r)](0):
       raiseOSError(osLastError())
 
 else:

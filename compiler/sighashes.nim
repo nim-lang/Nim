@@ -371,7 +371,7 @@ proc symBodyDigest*(graph: ModuleGraph, sym: PSym): SigHash =
   if sym.ast != nil:
     md5Init(c)
     c.md5Update(cast[cstring](result.addr), sizeof(result))
-    hashBodyTree(graph, c, sym.ast[bodyPos])
+    hashBodyTree(graph, c, getBody(graph, sym))
     c.md5Final(result.MD5Digest)
     graph.symBodyHashes[sym.id] = result
 

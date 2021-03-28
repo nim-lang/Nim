@@ -19,7 +19,7 @@
 ##
 ## Every tag in the resulting tree is in lower case.
 ##
-## **Note:** The resulting ``XmlNode`` already uses the ``clientData`` field,
+## **Note:** The resulting `XmlNode` already uses the `clientData` field,
 ## so it cannot be used by clients of this library.
 ##
 ## Example: Transforming hyperlinks
@@ -27,16 +27,16 @@
 ##
 ## This code demonstrates how you can iterate over all the tags in an HTML file
 ## and write back the modified version. In this case we look for hyperlinks
-## ending with the extension ``.rst`` and convert them to ``.html``.
+## ending with the extension `.rst` and convert them to `.html`.
 ##
 ## .. code-block:: Nim
 ##     :test:
 ##
-##   import htmlparser
-##   import xmltree  # To use '$' for XmlNode
-##   import strtabs  # To access XmlAttributes
-##   import os       # To use splitFile
-##   import strutils # To use cmpIgnoreCase
+##   import std/htmlparser
+##   import std/xmltree  # To use '$' for XmlNode
+##   import std/strtabs  # To access XmlAttributes
+##   import std/os       # To use splitFile
+##   import std/strutils # To use cmpIgnoreCase
 ##
 ##   proc transformHyperlinks() =
 ##     let html = loadHtml("input.html")
@@ -55,129 +55,129 @@ type
   HtmlTag* = enum  ## list of all supported HTML tags; order will always be
                    ## alphabetically
     tagUnknown,    ## unknown HTML element
-    tagA,          ## the HTML ``a`` element
-    tagAbbr,       ## the deprecated HTML ``abbr`` element
-    tagAcronym,    ## the HTML ``acronym`` element
-    tagAddress,    ## the HTML ``address`` element
-    tagApplet,     ## the deprecated HTML ``applet`` element
-    tagArea,       ## the HTML ``area`` element
-    tagArticle,    ## the HTML ``article`` element
-    tagAside,      ## the HTML ``aside`` element
-    tagAudio,      ## the HTML ``audio`` element
-    tagB,          ## the HTML ``b`` element
-    tagBase,       ## the HTML ``base`` element
-    tagBdi,        ## the HTML ``bdi`` element
-    tagBdo,        ## the deprecated HTML ``dbo`` element
-    tagBasefont,   ## the deprecated HTML ``basefont`` element
-    tagBig,        ## the HTML ``big`` element
-    tagBlockquote, ## the HTML ``blockquote`` element
-    tagBody,       ## the HTML ``body`` element
-    tagBr,         ## the HTML ``br`` element
-    tagButton,     ## the HTML ``button`` element
-    tagCanvas,     ## the HTML ``canvas`` element
-    tagCaption,    ## the HTML ``caption`` element
-    tagCenter,     ## the deprecated HTML ``center`` element
-    tagCite,       ## the HTML ``cite`` element
-    tagCode,       ## the HTML ``code`` element
-    tagCol,        ## the HTML ``col`` element
-    tagColgroup,   ## the HTML ``colgroup`` element
-    tagCommand,    ## the HTML ``command`` element
-    tagDatalist,   ## the HTML ``datalist`` element
-    tagDd,         ## the HTML ``dd`` element
-    tagDel,        ## the HTML ``del`` element
-    tagDetails,    ## the HTML ``details`` element
-    tagDfn,        ## the HTML ``dfn`` element
-    tagDialog,     ## the HTML ``dialog`` element
-    tagDiv,        ## the HTML ``div`` element
-    tagDir,        ## the deprecated HTLM ``dir`` element
-    tagDl,         ## the HTML ``dl`` element
-    tagDt,         ## the HTML ``dt`` element
-    tagEm,         ## the HTML ``em`` element
-    tagEmbed,      ## the HTML ``embed`` element
-    tagFieldset,   ## the HTML ``fieldset`` element
-    tagFigcaption, ## the HTML ``figcaption`` element
-    tagFigure,     ## the HTML ``figure`` element
-    tagFont,       ## the deprecated HTML ``font`` element
-    tagFooter,     ## the HTML ``footer`` element
-    tagForm,       ## the HTML ``form`` element
-    tagFrame,      ## the HTML ``frame`` element
-    tagFrameset,   ## the deprecated HTML ``frameset`` element
-    tagH1,         ## the HTML ``h1`` element
-    tagH2,         ## the HTML ``h2`` element
-    tagH3,         ## the HTML ``h3`` element
-    tagH4,         ## the HTML ``h4`` element
-    tagH5,         ## the HTML ``h5`` element
-    tagH6,         ## the HTML ``h6`` element
-    tagHead,       ## the HTML ``head`` element
-    tagHeader,     ## the HTML ``header`` element
-    tagHgroup,     ## the HTML ``hgroup`` element
-    tagHtml,       ## the HTML ``html`` element
-    tagHr,         ## the HTML ``hr`` element
-    tagI,          ## the HTML ``i`` element
-    tagIframe,     ## the deprecated HTML ``iframe`` element
-    tagImg,        ## the HTML ``img`` element
-    tagInput,      ## the HTML ``input`` element
-    tagIns,        ## the HTML ``ins`` element
-    tagIsindex,    ## the deprecated HTML ``isindex`` element
-    tagKbd,        ## the HTML ``kbd`` element
-    tagKeygen,     ## the HTML ``keygen`` element
-    tagLabel,      ## the HTML ``label`` element
-    tagLegend,     ## the HTML ``legend`` element
-    tagLi,         ## the HTML ``li`` element
-    tagLink,       ## the HTML ``link`` element
-    tagMap,        ## the HTML ``map`` element
-    tagMark,       ## the HTML ``mark`` element
-    tagMenu,       ## the deprecated HTML ``menu`` element
-    tagMeta,       ## the HTML ``meta`` element
-    tagMeter,      ## the HTML ``meter`` element
-    tagNav,        ## the HTML ``nav`` element
-    tagNobr,       ## the deprecated HTML ``nobr`` element
-    tagNoframes,   ## the deprecated HTML ``noframes`` element
-    tagNoscript,   ## the HTML ``noscript`` element
-    tagObject,     ## the HTML ``object`` element
-    tagOl,         ## the HTML ``ol`` element
-    tagOptgroup,   ## the HTML ``optgroup`` element
-    tagOption,     ## the HTML ``option`` element
-    tagOutput,     ## the HTML ``output`` element
-    tagP,          ## the HTML ``p`` element
-    tagParam,      ## the HTML ``param`` element
-    tagPre,        ## the HTML ``pre`` element
-    tagProgress,   ## the HTML ``progress`` element
-    tagQ,          ## the HTML ``q`` element
-    tagRp,         ## the HTML ``rp`` element
-    tagRt,         ## the HTML ``rt`` element
-    tagRuby,       ## the HTML ``ruby`` element
-    tagS,          ## the deprecated HTML ``s`` element
-    tagSamp,       ## the HTML ``samp`` element
-    tagScript,     ## the HTML ``script`` element
-    tagSection,    ## the HTML ``section`` element
-    tagSelect,     ## the HTML ``select`` element
-    tagSmall,      ## the HTML ``small`` element
-    tagSource,     ## the HTML ``source`` element
-    tagSpan,       ## the HTML ``span`` element
-    tagStrike,     ## the deprecated HTML ``strike`` element
-    tagStrong,     ## the HTML ``strong`` element
-    tagStyle,      ## the HTML ``style`` element
-    tagSub,        ## the HTML ``sub`` element
-    tagSummary,    ## the HTML ``summary`` element
-    tagSup,        ## the HTML ``sup`` element
-    tagTable,      ## the HTML ``table`` element
-    tagTbody,      ## the HTML ``tbody`` element
-    tagTd,         ## the HTML ``td`` element
-    tagTextarea,   ## the HTML ``textarea`` element
-    tagTfoot,      ## the HTML ``tfoot`` element
-    tagTh,         ## the HTML ``th`` element
-    tagThead,      ## the HTML ``thead`` element
-    tagTime,       ## the HTML ``time`` element
-    tagTitle,      ## the HTML ``title`` element
-    tagTr,         ## the HTML ``tr`` element
-    tagTrack,      ## the HTML ``track`` element
-    tagTt,         ## the HTML ``tt`` element
-    tagU,          ## the deprecated HTML ``u`` element
-    tagUl,         ## the HTML ``ul`` element
-    tagVar,        ## the HTML ``var`` element
-    tagVideo,      ## the HTML ``video`` element
-    tagWbr         ## the HTML ``wbr`` element
+    tagA,          ## the HTML `a` element
+    tagAbbr,       ## the deprecated HTML `abbr` element
+    tagAcronym,    ## the HTML `acronym` element
+    tagAddress,    ## the HTML `address` element
+    tagApplet,     ## the deprecated HTML `applet` element
+    tagArea,       ## the HTML `area` element
+    tagArticle,    ## the HTML `article` element
+    tagAside,      ## the HTML `aside` element
+    tagAudio,      ## the HTML `audio` element
+    tagB,          ## the HTML `b` element
+    tagBase,       ## the HTML `base` element
+    tagBdi,        ## the HTML `bdi` element
+    tagBdo,        ## the deprecated HTML `dbo` element
+    tagBasefont,   ## the deprecated HTML `basefont` element
+    tagBig,        ## the HTML `big` element
+    tagBlockquote, ## the HTML `blockquote` element
+    tagBody,       ## the HTML `body` element
+    tagBr,         ## the HTML `br` element
+    tagButton,     ## the HTML `button` element
+    tagCanvas,     ## the HTML `canvas` element
+    tagCaption,    ## the HTML `caption` element
+    tagCenter,     ## the deprecated HTML `center` element
+    tagCite,       ## the HTML `cite` element
+    tagCode,       ## the HTML `code` element
+    tagCol,        ## the HTML `col` element
+    tagColgroup,   ## the HTML `colgroup` element
+    tagCommand,    ## the HTML `command` element
+    tagDatalist,   ## the HTML `datalist` element
+    tagDd,         ## the HTML `dd` element
+    tagDel,        ## the HTML `del` element
+    tagDetails,    ## the HTML `details` element
+    tagDfn,        ## the HTML `dfn` element
+    tagDialog,     ## the HTML `dialog` element
+    tagDiv,        ## the HTML `div` element
+    tagDir,        ## the deprecated HTLM `dir` element
+    tagDl,         ## the HTML `dl` element
+    tagDt,         ## the HTML `dt` element
+    tagEm,         ## the HTML `em` element
+    tagEmbed,      ## the HTML `embed` element
+    tagFieldset,   ## the HTML `fieldset` element
+    tagFigcaption, ## the HTML `figcaption` element
+    tagFigure,     ## the HTML `figure` element
+    tagFont,       ## the deprecated HTML `font` element
+    tagFooter,     ## the HTML `footer` element
+    tagForm,       ## the HTML `form` element
+    tagFrame,      ## the HTML `frame` element
+    tagFrameset,   ## the deprecated HTML `frameset` element
+    tagH1,         ## the HTML `h1` element
+    tagH2,         ## the HTML `h2` element
+    tagH3,         ## the HTML `h3` element
+    tagH4,         ## the HTML `h4` element
+    tagH5,         ## the HTML `h5` element
+    tagH6,         ## the HTML `h6` element
+    tagHead,       ## the HTML `head` element
+    tagHeader,     ## the HTML `header` element
+    tagHgroup,     ## the HTML `hgroup` element
+    tagHtml,       ## the HTML `html` element
+    tagHr,         ## the HTML `hr` element
+    tagI,          ## the HTML `i` element
+    tagIframe,     ## the deprecated HTML `iframe` element
+    tagImg,        ## the HTML `img` element
+    tagInput,      ## the HTML `input` element
+    tagIns,        ## the HTML `ins` element
+    tagIsindex,    ## the deprecated HTML `isindex` element
+    tagKbd,        ## the HTML `kbd` element
+    tagKeygen,     ## the HTML `keygen` element
+    tagLabel,      ## the HTML `label` element
+    tagLegend,     ## the HTML `legend` element
+    tagLi,         ## the HTML `li` element
+    tagLink,       ## the HTML `link` element
+    tagMap,        ## the HTML `map` element
+    tagMark,       ## the HTML `mark` element
+    tagMenu,       ## the deprecated HTML `menu` element
+    tagMeta,       ## the HTML `meta` element
+    tagMeter,      ## the HTML `meter` element
+    tagNav,        ## the HTML `nav` element
+    tagNobr,       ## the deprecated HTML `nobr` element
+    tagNoframes,   ## the deprecated HTML `noframes` element
+    tagNoscript,   ## the HTML `noscript` element
+    tagObject,     ## the HTML `object` element
+    tagOl,         ## the HTML `ol` element
+    tagOptgroup,   ## the HTML `optgroup` element
+    tagOption,     ## the HTML `option` element
+    tagOutput,     ## the HTML `output` element
+    tagP,          ## the HTML `p` element
+    tagParam,      ## the HTML `param` element
+    tagPre,        ## the HTML `pre` element
+    tagProgress,   ## the HTML `progress` element
+    tagQ,          ## the HTML `q` element
+    tagRp,         ## the HTML `rp` element
+    tagRt,         ## the HTML `rt` element
+    tagRuby,       ## the HTML `ruby` element
+    tagS,          ## the deprecated HTML `s` element
+    tagSamp,       ## the HTML `samp` element
+    tagScript,     ## the HTML `script` element
+    tagSection,    ## the HTML `section` element
+    tagSelect,     ## the HTML `select` element
+    tagSmall,      ## the HTML `small` element
+    tagSource,     ## the HTML `source` element
+    tagSpan,       ## the HTML `span` element
+    tagStrike,     ## the deprecated HTML `strike` element
+    tagStrong,     ## the HTML `strong` element
+    tagStyle,      ## the HTML `style` element
+    tagSub,        ## the HTML `sub` element
+    tagSummary,    ## the HTML `summary` element
+    tagSup,        ## the HTML `sup` element
+    tagTable,      ## the HTML `table` element
+    tagTbody,      ## the HTML `tbody` element
+    tagTd,         ## the HTML `td` element
+    tagTextarea,   ## the HTML `textarea` element
+    tagTfoot,      ## the HTML `tfoot` element
+    tagTh,         ## the HTML `th` element
+    tagThead,      ## the HTML `thead` element
+    tagTime,       ## the HTML `time` element
+    tagTitle,      ## the HTML `title` element
+    tagTr,         ## the HTML `tr` element
+    tagTrack,      ## the HTML `track` element
+    tagTt,         ## the HTML `tt` element
+    tagU,          ## the deprecated HTML `u` element
+    tagUl,         ## the HTML `ul` element
+    tagVar,        ## the HTML `var` element
+    tagVideo,      ## the HTML `video` element
+    tagWbr         ## the HTML `wbr` element
 
 const
   tagToStr* = [
@@ -351,13 +351,13 @@ proc toHtmlTag(s: string): HtmlTag =
 
 
 proc htmlTag*(n: XmlNode): HtmlTag =
-  ## Gets `n`'s tag as a ``HtmlTag``.
+  ## Gets `n`'s tag as a `HtmlTag`.
   if n.clientData == 0:
     n.clientData = toHtmlTag(n.tag).ord
   result = HtmlTag(n.clientData)
 
 proc htmlTag*(s: string): HtmlTag =
-  ## Converts `s` to a ``HtmlTag``. If `s` is no HTML tag, ``tagUnknown`` is
+  ## Converts `s` to a `HtmlTag`. If `s` is no HTML tag, `tagUnknown` is
   ## returned.
   let s = if allLower(s): s else: toLowerAscii(s)
   result = toHtmlTag(s)
@@ -365,7 +365,7 @@ proc htmlTag*(s: string): HtmlTag =
 proc runeToEntity*(rune: Rune): string =
   ## converts a Rune to its numeric HTML entity equivalent.
   runnableExamples:
-    import unicode
+    import std/unicode
     doAssert runeToEntity(Rune(0)) == ""
     doAssert runeToEntity(Rune(-1)) == ""
     doAssert runeToEntity("Ü".runeAt(0)) == "#220"
@@ -374,11 +374,11 @@ proc runeToEntity*(rune: Rune): string =
   else: result = '#' & $rune.ord
 
 proc entityToRune*(entity: string): Rune =
-  ## Converts an HTML entity name like ``&Uuml;`` or values like ``&#220;``
-  ## or ``&#x000DC;`` to its UTF-8 equivalent.
+  ## Converts an HTML entity name like `&Uuml;` or values like `&#220;`
+  ## or `&#x000DC;` to its UTF-8 equivalent.
   ## Rune(0) is returned if the entity name is unknown.
   runnableExamples:
-    import unicode
+    import std/unicode
     doAssert entityToRune("") == Rune(0)
     doAssert entityToRune("a") == Rune(0)
     doAssert entityToRune("gt") == ">".runeAt(0)
@@ -395,7 +395,7 @@ proc entityToRune*(entity: string): Rune =
     of 'x', 'X': # not case sensitive here
       try: runeValue = parseHexInt(entity[2..^1])
       except: discard
-    else: discard # other entities are not defined with prefix ``#``
+    else: discard # other entities are not defined with prefix `#`
     if runeValue notin 0..0x10FFFF: runeValue = 0 # only return legal values
     return Rune(runeValue)
   case entity # entity names are case sensitive
@@ -1867,8 +1867,8 @@ proc entityToRune*(entity: string): Rune =
   else: Rune(0)
 
 proc entityToUtf8*(entity: string): string =
-  ## Converts an HTML entity name like ``&Uuml;`` or values like ``&#220;``
-  ## or ``&#x000DC;`` to its UTF-8 equivalent.
+  ## Converts an HTML entity name like `&Uuml;` or values like `&#220;`
+  ## or `&#x000DC;` to its UTF-8 equivalent.
   ## "" is returned if the entity name is unknown. The HTML parser
   ## already converts entities to UTF-8.
   runnableExamples:
@@ -1905,7 +1905,7 @@ template adderr(x: untyped) =
 
 proc untilElementEnd(x: var XmlParser, result: XmlNode,
                      errors: var seq[string]) =
-  # we parsed e.g. ``<br>`` and don't really expect a ``</br>``:
+  # we parsed e.g. `<br>` and don't really expect a `</br>`:
   if result.htmlTag in SingleTags:
     if x.kind != xmlElementEnd or cmpIgnoreCase(x.elemName, result.tag) != 0:
       return
@@ -1914,8 +1914,8 @@ proc untilElementEnd(x: var XmlParser, result: XmlNode,
     of xmlElementStart, xmlElementOpen:
       case result.htmlTag
       of tagP, tagInput, tagOption:
-        # some tags are common to have no ``</end>``, like ``<li>`` but
-        # allow ``<p>`` in `<dd>`, `<dt>` and ``<li>`` in next case
+        # some tags are common to have no `</end>`, like `<li>` but
+        # allow `<p>` in `<dd>`, `<dt>` and `<li>` in next case
         if htmlTag(x.elemName) in {tagLi, tagP, tagDt, tagDd, tagInput,
                                    tagOption}:
           adderr(expected(x, result))
@@ -2012,7 +2012,7 @@ proc parse(x: var XmlParser, errors: var seq[string]): XmlNode =
 
 proc parseHtml*(s: Stream, filename: string,
                 errors: var seq[string]): XmlNode =
-  ## Parses the XML from stream `s` and returns a ``XmlNode``. Every
+  ## Parses the XML from stream `s` and returns a `XmlNode`. Every
   ## occurred parsing error is added to the `errors` sequence.
   var x: XmlParser
   open(x, s, filename, {reportComments, reportWhitespace, allowUnquotedAttribs,
@@ -2036,27 +2036,27 @@ proc parseHtml*(s: Stream, filename: string,
     result = result[0]
 
 proc parseHtml*(s: Stream): XmlNode =
-  ## Parses the HTML from stream `s` and returns a ``XmlNode``. All parsing
+  ## Parses the HTML from stream `s` and returns a `XmlNode`. All parsing
   ## errors are ignored.
   var errors: seq[string] = @[]
   result = parseHtml(s, "unknown_html_doc", errors)
 
 proc parseHtml*(html: string): XmlNode =
-  ## Parses the HTML from string ``html`` and returns a ``XmlNode``. All parsing
+  ## Parses the HTML from string `html` and returns a `XmlNode`. All parsing
   ## errors are ignored.
   parseHtml(newStringStream(html))
 
 proc loadHtml*(path: string, errors: var seq[string]): XmlNode =
-  ## Loads and parses HTML from file specified by ``path``, and returns
-  ## a ``XmlNode``. Every occurred parsing error is added to
+  ## Loads and parses HTML from file specified by `path`, and returns
+  ## a `XmlNode`. Every occurred parsing error is added to
   ## the `errors` sequence.
   var s = newFileStream(path, fmRead)
   if s == nil: raise newException(IOError, "Unable to read file: " & path)
   result = parseHtml(s, path, errors)
 
 proc loadHtml*(path: string): XmlNode =
-  ## Loads and parses HTML from file specified by ``path``, and returns
-  ## a ``XmlNode``. All parsing errors are ignored.
+  ## Loads and parses HTML from file specified by `path`, and returns
+  ## a `XmlNode`. All parsing errors are ignored.
   var errors: seq[string] = @[]
   result = loadHtml(path, errors)
 

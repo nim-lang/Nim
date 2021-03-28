@@ -1,5 +1,5 @@
 discard """
-  errmsg: "type mismatch: got <int>"
+  errormsg: "type mismatch: got <int>"
   line: 17
   nimout: '''type mismatch: got <int>
 but expected one of:

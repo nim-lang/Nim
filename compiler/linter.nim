@@ -55,7 +55,9 @@ proc beautifyName(s: string, k: TSymKind): string =
   inc i
   while i < s.len:
     if s[i] == '_':
-      if i > 0 and s[i-1] in {'A'..'Z'}:
+      if i+1 >= s.len:
+        discard "trailing underscores should be stripped off"
+      elif i > 0 and s[i-1] in {'A'..'Z'}:
         # don't skip '_' as it's essential for e.g. 'GC_disable'
         result.add('_')
         inc i
@@ -123,9 +125,11 @@ proc styleCheckUse*(conf: ConfigRef; info: TLineInfo; s: PSym) =
     return
 
   let newName = s.name.s
-  let oldName = differs(conf, info, newName)
-  if oldName.len > 0:
-    lintReport(conf, info, newName, oldName)
+  let badName = differs(conf, info, newName)
+  if badName.len > 0:
+    # special rules for historical reasons
+    let forceHint = badName == "nnkArgList" and newName == "nnkArglist" or badName == "nnkArglist" and newName == "nnkArgList"
+    lintReport(conf, info, newName, badName, forceHint = forceHint)
 
 proc checkPragmaUse*(conf: ConfigRef; info: TLineInfo; w: TSpecialWord; pragmaName: string) =
   let wanted = $w

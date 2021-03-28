@@ -93,7 +93,7 @@ const
   GLUT_NORMAL* = 0
   GLUT_OVERLAY* = 1
 
-when defined(Windows):
+when defined(windows):
   const                       # Stroke font constants (use these in GLUT program).
     GLUT_STROKE_ROMAN* = cast[Pointer](0)
     GLUT_STROKE_MONO_ROMAN* = cast[Pointer](1) # Bitmap font constants (use these in GLUT program).
