@@ -18,6 +18,7 @@ const useGCC_builtins* = (defined(gcc) or defined(llvm_gcc) or
                          defined(clang)) and useBuiltins
 const useICC_builtins* = defined(icc) and useBuiltins
 const useVCC_builtins* = defined(vcc) and useBuiltins
+const arch64 = sizeof(int) == 8
 
 template countBitsImpl(n: uint32): int =
   # generic formula is from: https://graphics.stanford.edu/~seander/bithacks.html#CountBitsSetParallel

@@ -333,6 +333,7 @@ template symId*(n: NodePos): SymId = SymId tree.nodes[n.int].operand
 proc firstSon*(n: NodePos): NodePos {.inline.} = NodePos(n.int+1)
 
 when false:
+  # xxx `nkStrLit` or `nkStrLit..nkTripleStrLit:` below?
   proc strLit*(tree: PackedTree; n: NodePos): lent string =
     assert n.kind == nkStrLit
     result = tree.sh.strings[LitId tree.nodes[n.int].operand]
