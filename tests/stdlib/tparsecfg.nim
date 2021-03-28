@@ -39,7 +39,7 @@ var ss = newStringStream()
 dict1.writeConfig(ss)
 
 ## Reading a configuration file.
-var dict2 = loadConfig(newStringStream(ss.data))
+let dict2 = loadConfig(newStringStream(ss.data))
 doAssert dict2.getSectionValue("", "charset") == "utf-8"
 doAssert dict2.getSectionValue("Package", "--threads") == "on"
 doAssert dict2.getSectionValue("Package", "name") == "hello"
