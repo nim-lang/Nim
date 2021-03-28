@@ -15,20 +15,20 @@
 ## instead of allowing users to connect directly to this server.
 
 runnableExamples("-r:off"):
-  # This example will create an HTTP server on port 8080. The server will
-  # respond to all requests with a `200 OK` response code and "Hello World"
+  # This example will create an HTTP server on an automatically chosen port.
+  # It will respond to all requests with a `200 OK` response code and "Hello World"
   # as the response body.
   import std/asyncdispatch
   proc main {.async.} =
-    const port = 8080
     var server = newAsyncHttpServer()
     proc cb(req: Request) {.async.} =
       echo (req.reqMethod, req.url, req.headers)
       let headers = {"Content-type": "text/plain; charset=utf-8"}
       await req.respond(Http200, "Hello World", headers.newHttpHeaders())
 
-    echo "test this with: curl localhost:" & $port & "/"
-    server.listen(Port(port))
+    server.listen(Port(0)) # or Port(8080) to hardcode the standard HTTP port.
+    let port = server.getPort
+    echo "test this with: curl localhost:" & $port.uint16 & "/"
     while true:
       if server.shouldAcceptRequest():
         await server.acceptRequest(cb)
