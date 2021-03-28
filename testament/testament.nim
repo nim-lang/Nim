@@ -66,7 +66,8 @@ proc isNimRepoTests(): bool =
 type
   Category = distinct string
   TResults = object
-    total, passed, skipped: int
+    total, passed, failedButAllowed, skipped: int
+      ## xxx rename passed to passedOrAllowedFailure
     data: string
   TTest = object
     name: string
@@ -212,6 +213,7 @@ proc callCCompiler(cmdTemplate, filename, options: string,
 proc initResults: TResults =
   result.total = 0
   result.passed = 0
+  result.failedButAllowed = 0
   result.skipped = 0
   result.data = ""
 
@@ -239,16 +241,20 @@ template maybeStyledEcho(args: varargs[untyped]): untyped =
 
 
 proc `$`(x: TResults): string =
-  result = ("Tests passed: $1 / $3 <br />\n" &
-            "Tests skipped: $2 / $3 <br />\n") %
-            [$x.passed, $x.skipped, $x.total]
+  result = """
+Tests passed or allowed to fail: $2 / $1 <br />
+Tests failed and allowed to fail: $3 / $1 <br />
+Tests skipped: $4 / $1 <br />
+""" % [$x.total, $x.passed, $x.failedButAllowed, $x.skipped]
 
 proc addResult(r: var TResults, test: TTest, target: TTarget,
-               expected, given: string, successOrig: TResultEnum) =
+               expected, given: string, successOrig: TResultEnum, allowFailure = false) =
   # test.name is easier to find than test.name.extractFilename
   # A bit hacky but simple and works with tests/testament/tshould_not_work.nim
   var name = test.name.replace(DirSep, '/')
   name.add ' ' & $target
+  if allowFailure:
+    name.add " (allowed to fail) "
   if test.options.len > 0: name.add ' ' & test.options
 
   let duration = epochTime() - test.startTime
