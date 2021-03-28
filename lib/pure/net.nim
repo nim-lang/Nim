@@ -770,7 +770,6 @@ when defineSsl:
         raiseSSLError("No SSL certificate found.")
 
       const X509_CHECK_FLAG_ALWAYS_CHECK_SUBJECT = 0x1.cuint
-      const size = 1024
       # https://www.openssl.org/docs/man1.1.1/man3/X509_check_host.html
       let match = certificate.X509_check_host(hostname.cstring, hostname.len.cint,
         X509_CHECK_FLAG_ALWAYS_CHECK_SUBJECT, nil)
