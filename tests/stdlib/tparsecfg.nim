@@ -46,14 +46,13 @@ var pname = dict2.getSectionValue("Package", "name")
 var name = dict2.getSectionValue("Author", "name")
 var qq = dict2.getSectionValue("Author", "qq")
 var email = dict2.getSectionValue("Author", "email")
-var sections = toSeq(dict2.sections)
 doAssert charset == "utf-8"
 doAssert threads == "on"
 doAssert pname == "hello"
 doAssert name == "lihf8515"
 doAssert qq == "10214028"
 doAssert email == "lihaifeng@wxm.com"
-doAssert sections == @["", "Package", "Author"]
+doAssert toSeq(dict2.sections) == @["", "Package", "Author"]
 
 ## Modifying a configuration file.
 var dict3 = loadConfig(newStringStream(ss.data))
