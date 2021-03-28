@@ -44,6 +44,10 @@ template retryCall*(maxRetry = 3, backoffDuration = 1.0, call: untyped): bool =
     t = t * 2 # exponential backoff
   result
 
+proc stripLineEnd2(a: string): string =
+  result = a
+  stripLineEnd(result)
+
 proc execCmdEx2(cmd: string, dir = "."): (string, int) =
   when nimvm:
     doAssert dir == "." # PRTEMP: this needs adjustment
@@ -51,7 +55,9 @@ proc execCmdEx2(cmd: string, dir = "."): (string, int) =
     result = gorgeEx(cmd)
   else:
     result = execCmdEx(cmd, workingDir = dir)
-  result[0].stripLineEnd
+  # when (NimMajor, NimMinor, NimPatch) >= (1,5,1):
+  when defined(nimHasCustomLiterals):
+    result[0].stripLineEnd
 
 proc isGitRepo*(dir: string): bool =
   ## This command is used to get the relative path to the root of the repository.

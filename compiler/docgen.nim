@@ -1257,13 +1257,13 @@ proc genSection(d: PDoc, kind: TSymKind, groupedToc = false) =
 proc relLink(outDir: AbsoluteDir, destFile: AbsoluteFile, linkto: RelativeFile): Rope =
   rope($relativeTo(outDir / linkto, destFile.splitFile().dir, '/'))
 
-proc interpDocFile(d: PDoc, conf: ConfigRef, destFile: AbsoluteFile, title: string, content: Rope, toc: Rope = nil, subtitle =""): Rope =
+proc interpDocFile(d: PDoc, conf: ConfigRef, destFile: AbsoluteFile, title: string, content: Rope, toc: Rope = nil, subtitle: Rope = nil): Rope =
   result = ropeFormatNamedVars(conf, getConfigVar(conf, "doc.file"), [
       "nimdoccss", "dochackjs", "title", "subtitle", "tableofcontents", "moduledesc", "date", "time",
       "content", "author", "version", "analytics", "deprecationMsg", "projectMetadata"],
       [relLink(conf.outDir, destFile, nimdocOutCss.RelativeFile),
       relLink(conf.outDir, destFile, docHackJsFname.RelativeFile),
-      title.rope, subtitle.rope, toc, ?.d.modDesc, rope(getDateStr()), rope(getClockStr()),
+      title.rope, subtitle, toc, ?.d.modDesc, rope(getDateStr()), rope(getClockStr()),
       content, ?.d.meta[metaAuthor].rope, ?.d.meta[metaVersion].rope, ?.d.analytics.rope, ?.d.modDeprecationMsg, ?.d.projectMetadata.rope])
 
 proc genOutFile(d: PDoc, groupedToc = false): Rope =
@@ -1290,9 +1290,9 @@ proc genOutFile(d: PDoc, groupedToc = false): Rope =
   else:
     # Modules get an automatic title for the HTML, but no entry in the index.
     title = canonicalImport(d.conf, AbsoluteFile d.filename)
-  var subtitle = "" # xxx is that actually used?
+  var subtitle = rope""
   if d.meta[metaSubtitle] != "":
-    dispA(d.conf, subtitle.rope, "<h2 class=\"subtitle\">$1</h2>",
+    dispA(d.conf, subtitle, "<h2 class=\"subtitle\">$1</h2>",
         "\\\\\\vspace{0.5em}\\large $1", [d.meta[metaSubtitle].rope])
 
   var groupsection = getConfigVar(d.conf, "doc.body_toc_groupsection")
@@ -1304,11 +1304,11 @@ proc genOutFile(d: PDoc, groupedToc = false): Rope =
   let seeSrcRope = genSeeSrcRope(d, d.filename, 1)
   content = ropeFormatNamedVars(d.conf, getConfigVar(d.conf, bodyname), ["title", "subtitle",
       "tableofcontents", "moduledesc", "date", "time", "content", "deprecationMsg", "theindexhref", "body_toc_groupsection", "seeSrc"],
-      [title.rope, subtitle.rop, toc, d.modDesc, rope(getDateStr()),
+      [title.rope, subtitle, toc, d.modDesc, rope(getDateStr()),
       rope(getClockStr()), code, d.modDeprecationMsg, relLink(d.conf.outDir, d.destFile.AbsoluteFile, theindexFname.RelativeFile), groupsection.rope, seeSrcRope])
   if optCompileOnly notin d.conf.globalOptions:
     # XXX what is this hack doing here? 'optCompileOnly' means raw output!?
-    code = interpDocFile(d, d.conf, d.destFile, title = title, content=content, toc=toc, subtitle = subtitle)
+    code = interpDocFile(d, d.conf, d.destFile.AbsoluteFile, title = title, content=content, toc=toc, subtitle = subtitle)
   else:
     code = content
   result = code
