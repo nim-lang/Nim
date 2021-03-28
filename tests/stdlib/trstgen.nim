@@ -1328,35 +1328,30 @@ Test1
           output)
 
   test "Roles: subscript prefix/postfix":
-    let outputPrefix  = "See :subscript:`some text`.".toHtml
-    let outputPostfix = "See `some text`:subscript:.".toHtml
-    check(outputPrefix == outputPostfix)
-    check(outputPrefix == "See <sub>some text</sub>.")
+    let expected = "See <sub>some text</sub>."
+    check "See :subscript:`some text`.".toHtml == expected
+    check "See `some text`:subscript:.".toHtml == expected
 
   test "Roles: correct parsing from beginning of line":
-    let output1 = """:superscript:`3`\ He is an isotope of helium.""".toHtml
-    check(output1 == "<sup>3</sup>He is an isotope of helium.")
-    let output2 = """:sup:`3`\ He is an isotope of helium.""".toHtml
-    let output3 = """`3`:sup:\ He is an isotope of helium.""".toHtml
-    let output4 = """`3`:superscript:\ He is an isotope of helium.""".toHtml
-    check(output2 == output1)
-    check(output3 == output1)
-    check(output4 == output1)
+    let expected = "<sup>3</sup>He is an isotope of helium."
+    check """:superscript:`3`\ He is an isotope of helium.""".toHtml == expected
+    check """:sup:`3`\ He is an isotope of helium.""".toHtml == expected
+    check """`3`:sup:\ He is an isotope of helium.""".toHtml == expected
+    check """`3`:superscript:\ He is an isotope of helium.""".toHtml == expected
 
   test "(not) Roles: check escaping 1":
-    let output1 = """See \:subscript:`some text`.""".toHtml
-    let output2 = """See :subscript\:`some text`.""".toHtml
-    check(output1 == output2)
-    check(output1 == """See :subscript:<tt class="docutils literal">""" &
-                     """<span class="pre">some text</span></tt>.""")
+    let expected = """See :subscript:<tt class="docutils literal">""" &
+                   """<span class="pre">some text</span></tt>."""
+    check """See \:subscript:`some text`.""".toHtml == expected
+    check """See :subscript\:`some text`.""".toHtml == expected
 
   test "(not) Roles: check escaping 2":
-    let output = """See :subscript:\`some text\`.""".toHtml
-    check(output == "See :subscript:`some text`.")
+    check("""See :subscript:\`some text\`.""".toHtml ==
+          "See :subscript:`some text`.")
 
   test "Field list":
-    let output = ":field: text".toHtml
-    check(output == """<table class="docinfo" frame="void" rules="none">""" &
+    check(":field: text".toHtml ==
+            """<table class="docinfo" frame="void" rules="none">""" &
             """<col class="docinfo-name" /><col class="docinfo-content" />""" &
             """<tbody valign="top"><tr><th class="docinfo-name">field:</th>""" &
             """<td> text</td></tr>""" & "\n</tbody></table>")
@@ -1370,8 +1365,7 @@ Test1
     check "<td>text1</td>" in output
 
   test "Field list (incorrect)":
-    let output = ":field:text".toHtml
-    check(output == ":field:text")
+    check ":field:text".toHtml == ":field:text"
 
 suite "RST/Code highlight":
   test "Basic Python code highlight":
