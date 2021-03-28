@@ -1290,7 +1290,7 @@ proc genOutFile(d: PDoc, groupedToc = false): Rope =
   else:
     # Modules get an automatic title for the HTML, but no entry in the index.
     title = canonicalImport(d.conf, AbsoluteFile d.filename)
-  var subtitle = rope""
+  var subtitle = "".rope
   if d.meta[metaSubtitle] != "":
     dispA(d.conf, subtitle, "<h2 class=\"subtitle\">$1</h2>",
         "\\\\\\vspace{0.5em}\\large $1", [d.meta[metaSubtitle].rope])
