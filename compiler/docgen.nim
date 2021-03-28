@@ -16,11 +16,14 @@ import
   packages/docutils/rst, packages/docutils/rstgen,
   json, xmltree, trees, types,
   typesrenderer, astalgo, lineinfos, intsets,
-  pathutils, trees, tables, nimpaths, renderverbatim, osproc, std/wrapnils, std/private/gitutils
+  pathutils, trees, tables, nimpaths, renderverbatim, osproc, std/private/gitutils
 
 from uri import encodeUrl
 from std/private/globs import nativeToUnixPath
 
+const isRecentNim = defined(nimHasCustomLiterals) # PRTEMP
+when isRecentNim:
+  import std/wrapnils
 
 const
   exportSection = skField
@@ -1258,7 +1261,8 @@ proc relLink(outDir: AbsoluteDir, destFile: AbsoluteFile, linkto: RelativeFile):
   rope($relativeTo(outDir / linkto, destFile.splitFile().dir, '/'))
 
 proc interpDocFile(d: PDoc, conf: ConfigRef, destFile: AbsoluteFile, title: string, content: Rope, toc: Rope = nil, subtitle: Rope = nil): Rope =
-  result = ropeFormatNamedVars(conf, getConfigVar(conf, "doc.file"), [
+  when isRecentNim:
+    result = ropeFormatNamedVars(conf, getConfigVar(conf, "doc.file"), [
       "nimdoccss", "dochackjs", "title", "subtitle", "tableofcontents", "moduledesc", "date", "time",
       "content", "author", "version", "analytics", "deprecationMsg", "projectMetadata"],
       [relLink(conf.outDir, destFile, nimdocOutCss.RelativeFile),
