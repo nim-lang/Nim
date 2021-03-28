@@ -773,6 +773,8 @@ when defineSsl:
       # https://www.openssl.org/docs/man1.1.1/man3/X509_check_host.html
       let match = certificate.X509_check_host(hostname.cstring, hostname.len.cint,
         X509_CHECK_FLAG_ALWAYS_CHECK_SUBJECT, nil)
+      # https://www.openssl.org/docs/man1.1.1/man3/SSL_get_peer_certificate.html
+      X509_free(certificate)
       if match != 1:
         raiseSSLError("SSL Certificate check failed.")
 
