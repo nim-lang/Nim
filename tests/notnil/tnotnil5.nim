@@ -25,5 +25,4 @@ proc processMany(ayys: openArray[A]): seq[A] =
     let newA = ^newAflow
     if isNil(newA):
       return @[]
-    # Error: cannot prove 'newA' is not nil
     result.add(newA)
