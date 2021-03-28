@@ -399,7 +399,7 @@ proc semObjConstr(c: PContext, n: PNode, flags: TExprFlags): PNode =
   # branches will be reported as an error):
   var constrCtx = initConstrContext(t, result)
   let initResult = semConstructTypeAux(c, constrCtx, flags)
-  var hasError = false
+  var hasError = false # needed to split error detect/report for better msgs
 
   # It's possible that the object was not fully initialized while
   # specifying a .requiresInit. pragma:
