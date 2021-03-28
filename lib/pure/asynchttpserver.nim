@@ -74,31 +74,31 @@ type
     maxBody: int ## The maximum content-length that will be read for the body.
     maxFDs: int
 
-proc getPort*(a: AsyncHttpServer): Port {.since: (1, 5, 1).} =
-  ## Returns the port `a` was bound do to.
-  ## Useful when `listen(Port(0))` was called which assigns a port automatically.
+proc getPort*(self: AsyncHttpServer): Port {.since: (1, 5, 1).} =
+  ## Returns the port `self` was bound to.
+  ##
+  ## Useful for identifying what port `self` is bound to, if it
+  ## was chosen automatically, for example via `listen(Port(0))`.
   runnableExamples:
     let server = newAsyncHttpServer()
     server.listen(Port(0))
-    doAssert server.getPort.uint16 > 0
+    assert server.getPort.uint16 > 0
     server.close()
-  result = getLocalAddr(a.socket.getFd, AF_INET)[1]
+  result = getLocalAddr(self.socket.getFd, AF_INET)[1]
 
-func getSocket*(a: AsyncHttpServer): AsyncSocket {.since: (1, 5, 1).} =
-  ## Returns the `AsyncHttpServer`s internal `AsyncSocket` instance.
-  ## 
-  ## Useful for identifying what port the AsyncHttpServer is bound to, if it
-  ## was chosen automatically.
+func getSocket*(self: AsyncHttpServer): AsyncSocket {.since: (1, 5, 1).} =
+  ## Field accessor.
   runnableExamples:
     from std/asyncnet import getFd
     from std/nativesockets import getLocalAddr, AF_INET
     let server = newAsyncHttpServer()
     server.listen(Port(0)) # Socket is not bound until this point
     # note: a more direct way to get the port is `getPort`.
-    let port = getLocalAddr(server.getSocket.getFd, AF_INET)[1]
-    doAssert uint16(port) > 0
+    let (laddr, port) = getLocalAddr(server.getSocket.getFd, AF_INET)
+    assert uint16(port) > 0
+    assert laddr == "0.0.0.0"
     server.close()
-  a.socket
+  self.socket
 
 proc newAsyncHttpServer*(reuseAddr = true, reusePort = false,
                          maxBody = 8388608): AsyncHttpServer =
