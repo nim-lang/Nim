@@ -1319,7 +1319,7 @@ proc parseInline(p: var RstParser, father: PRstNode) =
       father.add(n)
     elif match(p, p.idx, ":w:") and p.tok[p.idx+3].symbol == "`":
       let k = whichRole(nextTok(p).symbol)
-      var n = newRstNode(k)
+      let n = newRstNode(k)
       inc p.idx, 3
       parseUntil(p, n, "`", false) # bug #17260
       father.add(n)
