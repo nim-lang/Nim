@@ -652,6 +652,6 @@ proc delSectionKey*(dict: var Config, section, key: string) =
         dict[section].del(key)
 
 iterator sections*(dict: Config): lent string {.since: (1, 5).} =
-  ## Iterate throught the sections in the config
+  ## Iterates through the sections in the `dict`.
   for section in dict.keys:
     yield section
