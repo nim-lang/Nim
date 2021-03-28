@@ -650,7 +650,7 @@ proc bindAddr*(socket: AsyncSocket, port = Port(0), address = "") {.
     raiseOSError(osLastError())
   freeaddrinfo(aiList)
 
-proc hasDataBuffered*(s: AsyncSocket): bool {.since: (1, 5)} =
+proc hasDataBuffered*(s: AsyncSocket): bool {.since: (1, 5).} =
   ## Determines whether an AsyncSocket has data buffered.
   result = false
   if s.isBuffered:
