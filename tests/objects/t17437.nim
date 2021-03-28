@@ -10,7 +10,7 @@ t17437.nim(20, 12) Error: expression '' has no type (or is ambiguous)
 '''
 """
 
-# bug: #17437 invalid object construction should result in error
+# bug #17437 invalid object construction should result in error
 
 type
   V = ref object
