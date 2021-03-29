@@ -86,7 +86,7 @@ type
     nnkBreakState,
     nnkFuncDef,
     nnkTupleConstr,
-    nnkError  ## errornous AST node
+    nnkError,  ## erroneous AST node
 
   NimNodeKinds* = set[NimNodeKind]
   NimTypeKind* = enum  # some types are no longer used, see ast.nim
