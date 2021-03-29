@@ -2844,7 +2844,7 @@ proc addEscapedChar*(s: var string, c: char) {.noSideEffect, inline.} =
   ## The procedure has been designed so that its output is usable for many
   ## different common syntaxes.
   ##
-  ## .. warning:: This is **not correct** for producing Ansi C code!
+  ## .. warning:: This is **not correct** for producing ANSI C code!
   ##
   case c
   of '\a': s.add "\\a" # \x07
