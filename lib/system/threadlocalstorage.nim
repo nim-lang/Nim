@@ -203,7 +203,7 @@ else:
     proc setAffinityTID(tid: Pid; setsize: csize_t; s: var CpuSet) {.
       importc: "sched_setaffinity", header: schedh.}
 
-    proc pthread_gettid_np(thread: SysThread) {.
+    proc pthread_gettid_np(thread: SysThread): Pid {.
       importc: "pthread_gettid_np", header: pthreadh.}
 
     proc setAffinity(thread: SysThread; setsize: csize_t; s: var CpuSet) =
