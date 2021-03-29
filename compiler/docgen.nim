@@ -505,7 +505,7 @@ proc runAllExamples(d: PDoc) =
 
 proc quoted(a: string): string = result.addQuoted(a)
 
-proc prepareExample(d: PDoc; n: PNode): tuple[rdoccmd: string, code: string] =
+proc prepareExample(d: PDoc; n: PNode, topLevel: bool): tuple[rdoccmd: string, code: string] =
   ## returns `rdoccmd` and source code for this runnableExamples
   var rdoccmd = ""
   if n.len < 2 or n.len > 3: globalError(d.conf, n.info, "runnableExamples invalid")
@@ -556,7 +556,14 @@ $3
   if rdoccmd notin d.exampleGroups:
     d.exampleGroups[rdoccmd] = ExampleGroup(rdoccmd: rdoccmd, docCmd: d.conf.docCmd, index: d.exampleGroups.len)
   d.exampleGroups[rdoccmd].code.add "import $1\n" % outp.string.quoted
-  result = (rdoccmd, code)
+
+  var codeShown: string
+  if topLevel: # refs https://github.com/nim-lang/RFCs/issues/352
+    let title = canonicalImport(d.conf, AbsoluteFile d.filename)
+    codeShown = "import $#\n$#" % [title, code]
+  else:
+    codeShown = code
+  result = (rdoccmd, codeShown)
   when false:
     proc extractImports(n: PNode; result: PNode) =
       if n.kind in {nkImportStmt, nkImportExceptStmt, nkFromStmt}:
@@ -576,7 +583,7 @@ type RunnableState = enum
   rsRunnable
   rsDone
 
-proc getAllRunnableExamplesImpl(d: PDoc; n: PNode, dest: var Rope, state: RunnableState): RunnableState =
+proc getAllRunnableExamplesImpl(d: PDoc; n: PNode, dest: var Rope, state: RunnableState, topLevel: bool): RunnableState =
   ##[
   Simple state machine to tell whether we render runnableExamples and doc comments.
   This is to ensure that we can interleave runnableExamples and doc comments freely;
@@ -601,7 +608,7 @@ proc getAllRunnableExamplesImpl(d: PDoc; n: PNode, dest: var Rope, state: Runnab
   of nkCallKinds:
     if isRunnableExamples(n[0]) and
         n.len >= 2 and n.lastSon.kind == nkStmtList and state in {rsStart, rsComment, rsRunnable}:
-      let (rdoccmd, code) = prepareExample(d, n)
+      let (rdoccmd, code) = prepareExample(d, n, topLevel)
       var msg = "Example:"
       if rdoccmd.len > 0: msg.add " cmd: " & rdoccmd
       dispA(d.conf, dest, "\n<p><strong class=\"examples_text\">$1</strong></p>\n",
@@ -652,19 +659,19 @@ proc getRoutineBody(n: PNode): PNode =
 proc getAllRunnableExamples(d: PDoc, n: PNode, dest: var Rope) =
   var n = n
   var state = rsStart
-  template fn(n2) =
-    state = getAllRunnableExamplesImpl(d, n2, dest, state)
+  template fn(n2, topLevel) =
+    state = getAllRunnableExamplesImpl(d, n2, dest, state, topLevel)
   dest.add genComment(d, n).rope
   case n.kind
   of routineDefs:
     n = n.getRoutineBody
     case n.kind
-    of nkCommentStmt, nkCallKinds: fn(n)
+    of nkCommentStmt, nkCallKinds: fn(n, topLevel = false)
     else:
       for i in 0..<n.safeLen:
-        fn(n[i])
+        fn(n[i], topLevel = false)
         if state == rsDone: return
-  else: fn(n)
+  else: fn(n, topLevel = true)
 
 proc isVisible(d: PDoc; n: PNode): bool =
   result = false
