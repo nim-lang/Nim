@@ -1535,6 +1535,7 @@ proc readLine*(socket: Socket, line: var string, timeout = -1,
     if flags.isDisconnectionError(lastError):
       setLen(line, 0)
     socket.socketError(n, lastError = lastError, flags = flags)
+    return
 
   var waited: Duration
 
