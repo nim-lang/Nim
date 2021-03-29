@@ -788,6 +788,14 @@ func shiftTypeTo(size: static int, shift: int): auto {.inline.} =
 
 func rotateLeftBits*[T: SomeUnsignedInt](value: T, shift: range[0..(sizeof(T) * 8)]): T {.inline.} =
   ## Left-rotate bits in a `value`.
+  runnableExamples:
+    doAssert rotateLeftBits(0b0110_1001'u8, 4) == 0b1001_0110'u8
+    doAssert rotateLeftBits(0b00111100_11000011'u16, 8) ==
+      0b11000011_00111100'u16
+    doAssert rotateLeftBits(0b0000111111110000_1111000000001111'u32, 16) ==
+      0b1111000000001111_0000111111110000'u32
+    doAssert rotateLeftBits(0b00000000111111111111111100000000_11111111000000000000000011111111'u64, 32) ==
+      0b11111111000000000000000011111111_00000000111111111111111100000000'u64
   when nimvm:
     rotl(value, shift.int32)
   else:
@@ -808,6 +816,14 @@ func rotateLeftBits*[T: SomeUnsignedInt](value: T, shift: range[0..(sizeof(T) * 
 
 func rotateRightBits*[T: SomeUnsignedInt](value: T, shift: range[0..(sizeof(T) * 8)]): T {.inline.} =
   ## Right-rotate bits in a `value`.
+  runnableExamples:
+    doAssert rotateRightBits(0b0110_1001'u8, 4) == 0b1001_0110'u8
+    doAssert rotateRightBits(0b00111100_11000011'u16, 8) ==
+      0b11000011_00111100'u16
+    doAssert rotateRightBits(0b0000111111110000_1111000000001111'u32, 16) ==
+      0b1111000000001111_0000111111110000'u32
+    doAssert rotateRightBits(0b00000000111111111111111100000000_11111111000000000000000011111111'u64, 32) ==
+      0b11111111000000000000000011111111_00000000111111111111111100000000'u64
   when nimvm:
     rotr(value, shift.int32)
   else:
