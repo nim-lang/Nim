@@ -196,11 +196,8 @@ else:
 
 
   when defined(android):
-    proc schedSetaffinity(thread: SysThread; setsize: csize_t, s: ptr CpuSet) {.
+    proc setAffinity(thread: SysThread; setsize: csize_t, s: var CpuSet) {.
       importc: "sched_setaffinity", header: schedh.}
-
-    proc setAffinity(thread: SysThread; setsize: csize_t; s: var CpuSet) =
-      schedSetaffinity(thread, setsize, addr s)
   else:
     proc setAffinity(thread: SysThread; setsize: csize_t; s: var CpuSet) {.
       importc: "pthread_setaffinity_np", header: pthreadh.}
