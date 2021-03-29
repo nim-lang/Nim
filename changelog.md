@@ -4,6 +4,8 @@
 
 ## Standard library additions and changes
 
+- Added `sections` iterator in `parsecfg`.
+
 - Make custom op in macros.quote work for all statements.
 
 - On Windows the SSL library now checks for valid certificates.
@@ -245,6 +247,8 @@
 - Added dollar `$` and `len` for `jsre.RegExp`.
 
 - Added `hasDataBuffered` to `asyncnet`.
+
+- Added `hasClosure` to `std/typetraits`.
 
 
 ## Language changes

@@ -413,7 +413,6 @@ func fastlog2Nim(x: uint64): int {.inline.} =
 
 import system/countbits_impl
 
-const arch64 = sizeof(int) == 8
 const useBuiltinsRotate = (defined(amd64) or defined(i386)) and
                           (defined(gcc) or defined(clang) or defined(vcc) or
                            (defined(icl) and not defined(cpp))) and useBuiltins

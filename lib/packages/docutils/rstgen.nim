@@ -38,8 +38,6 @@
 ## * The same goes for footnotes/citations links: they point to themselves.
 ##   No backreferences are generated since finding all references of a footnote
 ##   can be done by simply searching for [footnoteName].
-##
-## .. Tip: Import ``packages/docutils/rstgen`` to use this module
 
 import strutils, os, hashes, strtabs, rstast, rst, highlite, tables, sequtils,
   algorithm, parseutils

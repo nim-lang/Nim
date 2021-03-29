@@ -1645,6 +1645,10 @@ proc gsub(g: var TSrcGen, n: PNode, c: TContext) =
       gsons(g, n, c, 0)
   of nkTypeClassTy:
     gTypeClassTy(g, n)
+  of nkError:
+    putWithSpace(g, tkSymbol, "error")
+    #gcomma(g, n, c)
+    gsub(g, n[0], c)
   else:
     #nkNone, nkExplicitTypeListCall:
     internalError(g.config, n.info, "rnimsyn.gsub(" & $n.kind & ')')

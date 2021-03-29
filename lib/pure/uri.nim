@@ -294,7 +294,7 @@ func parseUri*(uri: string, result: var Uri) =
   var i = 0
 
   # Check if this is a reference URI (relative URI)
-  let doubleSlash = uri.len > 1 and uri[1] == '/'
+  let doubleSlash = uri.len > 1 and uri[0] == '/' and uri[1] == '/'
   if i < uri.len and uri[i] == '/':
     # Make sure `uri` doesn't begin with '//'.
     if not doubleSlash:
