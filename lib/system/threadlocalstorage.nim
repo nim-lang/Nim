@@ -194,8 +194,16 @@ else:
   proc cpusetIncl(cpu: cint; s: var CpuSet) {.
     importc: "CPU_SET", header: schedh.}
 
-  proc setAffinity(thread: SysThread; setsize: csize_t; s: var CpuSet) {.
-    importc: "pthread_setaffinity_np", header: pthreadh.}
+
+  when defined(android):
+    proc schedSetaffinity(thread: SysThread; setsize: csize_t, s: ptr CpuSet) {.
+      importc: "sched_setaffinity", header: schedh.}
+
+    proc setAffinity(thread: SysThread; setsize: csize_t; s: var CpuSet) =
+      schedSetaffinity(thread, setsize, addr s)
+  else:
+    proc setAffinity(thread: SysThread; setsize: csize_t; s: var CpuSet) {.
+      importc: "pthread_setaffinity_np", header: pthreadh.}
 
 
 const
