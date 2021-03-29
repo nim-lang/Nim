@@ -59,7 +59,7 @@ jobs:
 
     - bash: |
         # refs https://github.com/microsoft/azure-pipelines-agent/issues/2944
-        # `--no-merges` needed to avoid merge commits which occur for PR's.
+        # `--no-merges` is needed to avoid merge commits which occur for PR's.
         # $(Build.SourceVersionMessage) isn't helpful
         commitMsg=$(git log --no-merges -1 --pretty=format:"%s")
         echo commitMsg: $commitMsg

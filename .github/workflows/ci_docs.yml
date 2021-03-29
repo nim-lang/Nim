@@ -28,7 +28,6 @@ on:
       - '.github/workflows/ci_docs.yml'
       - 'koch.nim'
 
-
 jobs:
   build:
     if: |
