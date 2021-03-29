@@ -194,8 +194,20 @@ else:
   proc cpusetIncl(cpu: cint; s: var CpuSet) {.
     importc: "CPU_SET", header: schedh.}
 
-  proc setAffinity(thread: SysThread; setsize: csize_t; s: var CpuSet) {.
-    importc: "pthread_setaffinity_np", header: pthreadh.}
+  when defined(android):
+    type Pid {.importc: "pid_t", header: "<sys/types.h>".} = int32 # From posix_other.nim which handles android
+
+    proc setAffinityTID(tid: Pid; setsize: csize_t; s: var CpuSet) {.
+      importc: "sched_setaffinity", header: schedh.}
+
+    proc pthread_gettid_np(thread: SysThread) {.
+      importc: "pthread_gettid_np", header: pthreadh.}
+
+    proc setAffinity(thread: SysThread; setsize: csize_t; s: var CpuSet) =
+      setAffinityTID(pthread_gettid_np(thread), setsize, s)
+  else:
+    proc setAffinity(thread: SysThread; setsize: csize_t; s: var CpuSet) {.
+      importc: "pthread_setaffinity_np", header: pthreadh.}
 
 
 const
