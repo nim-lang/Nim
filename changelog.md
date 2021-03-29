@@ -78,6 +78,8 @@
 - `os.FileInfo` (returned by `getFileInfo`) now contains `blockSize`,
   determining preferred I/O block size for this file object.
 
+- Added `os.pathExists`.
+
 - Added a simpler to use `io.readChars` overload.
 
 - `repr` now doesn't insert trailing newline; previous behavior was very inconsistent,

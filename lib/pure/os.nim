@@ -1148,6 +1148,16 @@ when defined(windows) and not weirdTarget:
     result = f.cFileName[0].int == dot and (f.cFileName[1].int == 0 or
              f.cFileName[1].int == dot and f.cFileName[2].int == 0)
 
+template getStatImpl(path: string, a, res: untyped, followSymlinks: bool) =
+  when defined(windows):
+    when useWinUnicode:
+      wrapUnary(a, getFileAttributesW, path)
+    else:
+      let a = getFileAttributesA(path)
+  else:
+    var res: Stat
+    let a = if followSymlinks: stat(path, res) else: lstat(path, res)
+
 proc fileExists*(filename: string): bool {.rtl, extern: "nos$1",
                                           tags: [ReadDirEffect], noNimJs.} =
   ## Returns true if `filename` exists and is a regular file or symlink.
@@ -1157,16 +1167,11 @@ proc fileExists*(filename: string): bool {.rtl, extern: "nos$1",
   ## See also:
   ## * `dirExists proc <#dirExists,string>`_
   ## * `symlinkExists proc <#symlinkExists,string>`_
+  getStatImpl(filename, a, res, followSymlinks = true)
   when defined(windows):
-    when useWinUnicode:
-      wrapUnary(a, getFileAttributesW, filename)
-    else:
-      var a = getFileAttributesA(filename)
-    if a != -1'i32:
-      result = (a and FILE_ATTRIBUTE_DIRECTORY) == 0'i32
+    (a != -1) and (a and FILE_ATTRIBUTE_DIRECTORY) == 0
   else:
-    var res: Stat
-    return stat(filename, res) >= 0'i32 and S_ISREG(res.st_mode)
+    (a >= 0) and S_ISREG(res.st_mode)
 
 proc dirExists*(dir: string): bool {.rtl, extern: "nos$1", tags: [ReadDirEffect],
                                      noNimJs.} =
@@ -1176,16 +1181,11 @@ proc dirExists*(dir: string): bool {.rtl, extern: "nos$1", tags: [ReadDirEffect]
   ## See also:
   ## * `fileExists proc <#fileExists,string>`_
   ## * `symlinkExists proc <#symlinkExists,string>`_
+  getStatImpl(dir, a, res, followSymlinks = true)
   when defined(windows):
-    when useWinUnicode:
-      wrapUnary(a, getFileAttributesW, dir)
-    else:
-      var a = getFileAttributesA(dir)
-    if a != -1'i32:
-      result = (a and FILE_ATTRIBUTE_DIRECTORY) != 0'i32
+    (a != -1) and (a and FILE_ATTRIBUTE_DIRECTORY) != 0
   else:
-    var res: Stat
-    return stat(dir, res) >= 0'i32 and S_ISDIR(res.st_mode)
+    (a >= 0) and S_ISDIR(res.st_mode)
 
 proc symlinkExists*(link: string): bool {.rtl, extern: "nos$1",
                                           tags: [ReadDirEffect],
@@ -1196,19 +1196,27 @@ proc symlinkExists*(link: string): bool {.rtl, extern: "nos$1",
   ## See also:
   ## * `fileExists proc <#fileExists,string>`_
   ## * `dirExists proc <#dirExists,string>`_
+  getStatImpl(link, a, res, followSymlinks = false)
   when defined(windows):
-    when useWinUnicode:
-      wrapUnary(a, getFileAttributesW, link)
-    else:
-      var a = getFileAttributesA(link)
-    if a != -1'i32:
-      # xxx see: bug #16784 (bug9); checking `IO_REPARSE_TAG_SYMLINK`
-      # may also be needed.
-      result = (a and FILE_ATTRIBUTE_REPARSE_POINT) != 0'i32
+    # xxx see: bug #16784 (bug9); checking `IO_REPARSE_TAG_SYMLINK`
+    # may also be needed.
+    (a != -1) and (a and FILE_ATTRIBUTE_REPARSE_POINT) != 0
   else:
-    var res: Stat
-    return lstat(link, res) >= 0'i32 and S_ISLNK(res.st_mode)
+    (a >= 0) and S_ISLNK(res.st_mode)
 
+proc pathExists*(path: string): bool {.tags: [ReadDirEffect], noWeirdTarget, since: (1,5,1).} =
+  ## Returns true if `path` exists, regardless of whether it's a file, directory,
+  ## symbolic link or device.
+  runnableExamples:
+    assert currentSourcePath.pathExists
+    assert currentSourcePath.parentDir.pathExists
+    when defined(posix): assert "/dev/null".pathExists
+    assert not "nonexistant".pathExists
+  getStatImpl(path, a, res, followSymlinks = false)
+  when defined(windows):
+    a != -1
+  else:
+    a >= 0
 
 when not defined(windows):
   const maxSymlinkLen = 1024
