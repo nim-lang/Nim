@@ -1,6 +1,7 @@
 discard """
   matrix: "--os:standalone --gc:none"
-  errormsg: "value out of range"
+  exitcode: 1
+  output: "value out of range"
 """
 
 type
