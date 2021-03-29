@@ -1326,6 +1326,47 @@ Test1
           output)
     check("""<th align="left">-d</th><td align="left">option</td>""" in
           output)
+
+  test "Roles: subscript prefix/postfix":
+    let expected = "See <sub>some text</sub>."
+    check "See :subscript:`some text`.".toHtml == expected
+    check "See `some text`:subscript:.".toHtml == expected
+
+  test "Roles: correct parsing from beginning of line":
+    let expected = "<sup>3</sup>He is an isotope of helium."
+    check """:superscript:`3`\ He is an isotope of helium.""".toHtml == expected
+    check """:sup:`3`\ He is an isotope of helium.""".toHtml == expected
+    check """`3`:sup:\ He is an isotope of helium.""".toHtml == expected
+    check """`3`:superscript:\ He is an isotope of helium.""".toHtml == expected
+
+  test "(not) Roles: check escaping 1":
+    let expected = """See :subscript:<tt class="docutils literal">""" &
+                   """<span class="pre">some text</span></tt>."""
+    check """See \:subscript:`some text`.""".toHtml == expected
+    check """See :subscript\:`some text`.""".toHtml == expected
+
+  test "(not) Roles: check escaping 2":
+    check("""See :subscript:\`some text\`.""".toHtml ==
+          "See :subscript:`some text`.")
+
+  test "Field list":
+    check(":field: text".toHtml ==
+            """<table class="docinfo" frame="void" rules="none">""" &
+            """<col class="docinfo-name" /><col class="docinfo-content" />""" &
+            """<tbody valign="top"><tr><th class="docinfo-name">field:</th>""" &
+            """<td> text</td></tr>""" & "\n</tbody></table>")
+
+  test "Field list: body after newline":
+    let output = dedent """
+      :field:
+        text1""".toHtml
+    check "<table class=\"docinfo\"" in output
+    check ">field:</th>" in output
+    check "<td>text1</td>" in output
+
+  test "Field list (incorrect)":
+    check ":field:text".toHtml == ":field:text"
+
 suite "RST/Code highlight":
   test "Basic Python code highlight":
     let pythonCode = """
