@@ -30,7 +30,7 @@ on:
 
 jobs:
   build:
-    # `github.event.head_commit.message` doesn't work for PR's
+    # see D20210329T004830
     if: |
       !contains(format('{0}', github.event.pull_request.title), '[skip ci]')
     strategy:

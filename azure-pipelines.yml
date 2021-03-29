@@ -55,12 +55,13 @@ jobs:
       condition: and(succeeded(), eq(variables['Agent.OS'], 'Windows_NT'))
 
     - checkout: self
-      fetchDepth: 2 # needed for skip CI logic
+      fetchDepth: 2 # see D20210329T004830
 
     - bash: |
         # D20210329T004830:here refs https://github.com/microsoft/azure-pipelines-agent/issues/2944
         # `--no-merges` is needed to avoid merge commits which occur for PR's.
         # $(Build.SourceVersionMessage) isn't helpful
+        # nor is `github.event.head_commit.message` for github actions.
         commitMsg=$(git log --no-merges -1 --pretty=format:"%s")
         echo commitMsg: $commitMsg
         echo $commitMsg | grep -v '\[skip ci\]' # fails if [skip ci] not in commit msg
