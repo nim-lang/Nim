@@ -5,5 +5,10 @@ discard """
 
 import std/registry
 
-# bug #14010
-setUnicodeValue(r"Environment", "fakePath", "flywind", HKEY_CURRENT_USER)
+block: # bug #14010
+  let path = "Environment"
+  let key = "D20210328T202842_key"
+  let val = "D20210328T202842_val"
+  let handle = HKEY_CURRENT_USER
+  setUnicodeValue("Environment", key, val, handle)
+  doAssert getUnicodeValue(path, key, handle) == val
