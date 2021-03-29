@@ -195,7 +195,10 @@ else:
     importc: "CPU_SET", header: schedh.}
 
   when defined(android):
-    type Pid {.importc: "pid_t", header: "<sys/types.h>".} = int32 # From posix_other.nim which handles android
+    # libc of android doesn't implement pthread_setaffinity_np,
+    # it exposes pthread_gettid_np though, so we can use that in combination
+    # with sched_setaffinity to set the thread affinity.
+    type Pid {.importc: "pid_t", header: "<sys/types.h>".} = int32 # From posix_other.nim
 
     proc setAffinityTID(tid: Pid; setsize: csize_t; s: var CpuSet) {.
       importc: "sched_setaffinity", header: schedh.}
