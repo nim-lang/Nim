@@ -272,6 +272,9 @@
 
 - Custom numeric literals (e.g. `-128'bignum`) are now supported.
 
+- Tuple expressions are now parsed consistently as
+  `nnkTupleConstr` node. Will affect macros expecting nodes to be of `nnkPar`.
+
 
 ## Compiler changes
 
@@ -313,9 +316,6 @@
 - Added `unsafeIsolate` and `extract` to `std/isolation`.
 
 - `--hint:CC` now goes to stderr (like all other hints) instead of stdout.
-
-- Tuple expressions are now parsed consistently as
-  `nnkTupleConstr` node. Will affect macros expecting nodes to be of `nnkPar`.
 
 
 ## Tool changes
