@@ -153,7 +153,7 @@ type
     bufLen: int            # current length of buffer
     when defineSsl:
       isSsl: bool
-      sslHandle: SslPtr
+      sslHandle*: SslPtr
       sslContext: SslContext
       sslNoHandshake: bool # True if needs handshake.
       sslHasPeekChar: bool

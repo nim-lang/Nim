@@ -119,7 +119,7 @@ type
     bufLen: int      # current length of buffer
     isSsl: bool
     when defineSsl:
-      sslHandle: SslPtr
+      sslHandle*: SslPtr
       sslContext: SslContext
       bioIn: BIO
       bioOut: BIO
