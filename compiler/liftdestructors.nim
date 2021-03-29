@@ -230,8 +230,9 @@ proc fillBodyObjT(c: var TLiftCtx; t: PType, body, x, y: PNode) =
     # for every field (dependent on dest.kind):
     #   `=` dest.field, src.field
     # =destroy(blob)
-    if ccgIntroducedPtr(c.g.config,
-         (var dummy = newSym(skTemp, getIdent(c.g.cache, lowerings.genPrefix), nextSymId c.idgen, c.fn, c.info); dummy.typ = y.typ; dummy), y.typ):
+    var dummy = newSym(skTemp, getIdent(c.g.cache, lowerings.genPrefix), nextSymId c.idgen, c.fn, c.info)
+    dummy.typ = y.typ
+    if ccgIntroducedPtr(c.g.config, dummy, y.typ):
       # Because of potential aliasing when the src param is passed by ref, we need to check for equality here,
       # because the wasMoved(dest) call would zero out src, if dest aliases src.
       var cond = newTree(nkCall, newSymNode(c.g.getSysMagic(c.info, "==", mEqRef)),
