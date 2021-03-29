@@ -189,7 +189,7 @@ when hasAlloc and not defined(js):
 
   proc dealloc*(p: pointer) {.noconv, compilerproc, rtl, benign, raises: [], tags: [].} =
     ## Frees the memory allocated with `alloc`, `alloc0`,
-    ## `realloc` or `create`.
+    ## `realloc`, `create` or `createU`.
     ##
     ## **This procedure is dangerous!**
     ## If one forgets to free the memory a leak occurs; if one tries to
