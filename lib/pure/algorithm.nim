@@ -336,12 +336,12 @@ template `<-`(a, b) =
   else:
     copyMem(addr(a), addr(b), sizeof(T))
 
-proc merge[T](a, b: var openArray[T], lo, m, hi: int,
+proc mergeAlt[T](a, b: var openArray[T], lo, m, hi: int,
               cmp: proc (x, y: T): int {.closure.}, order: SortOrder) =
   # Optimization: If max(left) <= min(right) there is nothing to do!
   # 1 2 3 4 ## 5 6 7 8
   # -> O(n) for sorted arrays.
-  # On random data this saves up to 40% of merge calls.
+  # On random data this saves up to 40% of mergeAlt calls.
   if cmp(a[m], a[m+1]) * order <= 0: return
   var j = lo
   # copy a[j..m] into b:
@@ -424,7 +424,7 @@ func sort*[T](a: var openArray[T],
   while s < n:
     var m = n-1-s
     while m >= 0:
-      merge(a, b, max(m-s+1, 0), m, m+s, cmp, order)
+      mergeAlt(a, b, max(m-s+1, 0), m, m+s, cmp, order)
       dec(m, s*2)
     s = s*2
 

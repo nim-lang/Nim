@@ -66,7 +66,8 @@ proc isNimRepoTests(): bool =
 type
   Category = distinct string
   TResults = object
-    total, passed, skipped: int
+    total, passed, failedButAllowed, skipped: int
+      ## xxx rename passed to passedOrAllowedFailure
     data: string
   TTest = object
     name: string
@@ -82,12 +83,6 @@ type
 let
   pegLineError =
     peg"{[^(]*} '(' {\d+} ', ' {\d+} ') ' ('Error') ':' \s* {.*}"
-
-  pegLineTemplate =
-    peg"""
-      {[^(]*} '(' {\d+} ', ' {\d+} ') '
-      'template/generic instantiation' ( ' of `' [^`]+ '`' )? ' from here' .*
-    """
   pegOtherError = peg"'Error:' \s* {.*}"
   pegOfInterest = pegLineError / pegOtherError
 
@@ -165,7 +160,6 @@ proc callCompiler(cmdTemplate, filename, options, nimcache: string,
   let outp = p.outputStream
   var suc = ""
   var err = ""
-  var tmpl = ""
   var x = newStringOfCap(120)
   result.nimout = ""
   while true:
@@ -174,9 +168,6 @@ proc callCompiler(cmdTemplate, filename, options, nimcache: string,
       if x =~ pegOfInterest:
         # `err` should contain the last error/warning message
         err = x
-      elif x =~ pegLineTemplate and err == "":
-        # `tmpl` contains the last template expansion before the error
-        tmpl = x
       elif x.isSuccess:
         suc = x
     elif not running(p):
@@ -187,14 +178,7 @@ proc callCompiler(cmdTemplate, filename, options, nimcache: string,
   result.output = ""
   result.line = 0
   result.column = 0
-  result.tfile = ""
-  result.tline = 0
-  result.tcolumn = 0
   result.err = reNimcCrash
-  if tmpl =~ pegLineTemplate:
-    result.tfile = extractFilename(matches[0])
-    result.tline = parseInt(matches[1])
-    result.tcolumn = parseInt(matches[2])
   if err =~ pegLineError:
     result.file = extractFilename(matches[0])
     result.line = parseInt(matches[1])
@@ -229,6 +213,7 @@ proc callCCompiler(cmdTemplate, filename, options: string,
 proc initResults: TResults =
   result.total = 0
   result.passed = 0
+  result.failedButAllowed = 0
   result.skipped = 0
   result.data = ""
 
@@ -256,16 +241,20 @@ template maybeStyledEcho(args: varargs[untyped]): untyped =
 
 
 proc `$`(x: TResults): string =
-  result = ("Tests passed: $1 / $3 <br />\n" &
-            "Tests skipped: $2 / $3 <br />\n") %
-            [$x.passed, $x.skipped, $x.total]
+  result = """
+Tests passed or allowed to fail: $2 / $1 <br />
+Tests failed and allowed to fail: $3 / $1 <br />
+Tests skipped: $4 / $1 <br />
+""" % [$x.total, $x.passed, $x.failedButAllowed, $x.skipped]
 
 proc addResult(r: var TResults, test: TTest, target: TTarget,
-               expected, given: string, successOrig: TResultEnum) =
+               expected, given: string, successOrig: TResultEnum, allowFailure = false) =
   # test.name is easier to find than test.name.extractFilename
   # A bit hacky but simple and works with tests/testament/tshould_not_work.nim
   var name = test.name.replace(DirSep, '/')
   name.add ' ' & $target
+  if allowFailure:
+    name.add " (allowed to fail) "
   if test.options.len > 0: name.add ' ' & test.options
 
   let duration = epochTime() - test.startTime
@@ -374,22 +363,13 @@ proc cmpMsgs(r: var TResults, expected, given: TSpec, test: TTest, target: TTarg
     r.addResult(test, target, expected.msg, given.msg, reMsgsDiffer)
   elif expected.nimout.len > 0 and not greedyOrderedSubsetLines(expected.nimout, given.nimout):
     r.addResult(test, target, expected.nimout, given.nimout, reMsgsDiffer)
-  elif expected.tfile == "" and extractFilename(expected.file) != extractFilename(given.file) and
+  elif extractFilename(expected.file) != extractFilename(given.file) and
       "internal error:" notin expected.msg:
     r.addResult(test, target, expected.file, given.file, reFilesDiffer)
   elif expected.line != given.line and expected.line != 0 or
        expected.column != given.column and expected.column != 0:
     r.addResult(test, target, $expected.line & ':' & $expected.column,
-                      $given.line & ':' & $given.column,
-                      reLinesDiffer)
-  elif expected.tfile != "" and extractFilename(expected.tfile) != extractFilename(given.tfile) and
-      "internal error:" notin expected.msg:
-    r.addResult(test, target, expected.tfile, given.tfile, reFilesDiffer)
-  elif expected.tline != given.tline and expected.tline != 0 or
-       expected.tcolumn != given.tcolumn and expected.tcolumn != 0:
-    r.addResult(test, target, $expected.tline & ':' & $expected.tcolumn,
-                      $given.tline & ':' & $given.tcolumn,
-                      reLinesDiffer)
+                      $given.line & ':' & $given.column, reLinesDiffer)
   else:
     r.addResult(test, target, expected.msg, given.msg, reSuccess)
     inc(r.passed)

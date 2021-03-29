@@ -942,7 +942,7 @@ proc skipHiddenNodes(n: PNode): PNode =
     else: break
 
 proc accentedName(g: var TSrcGen, n: PNode) =
-  const backticksNeeded = OpChars + {'[', '{'}
+  const backticksNeeded = OpChars + {'[', '{', '\''}
   if n == nil: return
   let isOperator =
     if n.kind == nkIdent and n.ident.s.len > 0 and n.ident.s[0] in backticksNeeded: true
@@ -975,6 +975,11 @@ proc infixArgument(g: var TSrcGen, n: PNode, i: int) =
   gsub(g, n, i)
   if needsParenthesis:
     put(g, tkParRi, ")")
+
+proc isCustomLit(n: PNode): bool =
+  n.len == 2 and n[0].kind == nkRStrLit and
+    (n[1].kind == nkIdent and n[1].ident.s.startsWith('\'')) or
+    (n[1].kind == nkSym and n[1].sym.name.s.startsWith('\''))
 
 proc gsub(g: var TSrcGen, n: PNode, c: TContext) =
   if isNil(n): return
@@ -1195,9 +1200,14 @@ proc gsub(g: var TSrcGen, n: PNode, c: TContext) =
     gcomma(g, n, c)
     put(g, tkBracketRi, "]")
   of nkDotExpr:
-    gsub(g, n, 0)
-    put(g, tkDot, ".")
-    gsub(g, n, 1)
+    if isCustomLit(n):
+      put(g, tkCustomLit, n[0].strVal)
+      gsub(g, n, 1)
+    else:
+      gsub(g, n, 0)
+      put(g, tkDot, ".")
+      if n.len > 1:
+        accentedName(g, n[1])
   of nkBind:
     putWithSpace(g, tkBind, "bind")
     gsub(g, n, 0)

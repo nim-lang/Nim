@@ -71,7 +71,7 @@ template fn() =
     block:
       let a = (int32.high, uint32.high)
       testRoundtrip(a): "[2147483647,4294967295]"
-    when not defined(js):
+    when int.sizeof > 4:
       block:
         let a = (int64.high, uint64.high)
         testRoundtrip(a): "[9223372036854775807,18446744073709551615]"

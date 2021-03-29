@@ -1524,7 +1524,7 @@ proc semProcAnnotation(c: PContext, prc: PNode;
     return
 
 proc semInferredLambda(c: PContext, pt: TIdTable, n: PNode): PNode {.nosinks.} =
-  ## used for resolving 'auto' in lambdas based on their callsite 
+  ## used for resolving 'auto' in lambdas based on their callsite
   var n = n
   let original = n[namePos].sym
   let s = original #copySym(original, false)

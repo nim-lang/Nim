@@ -22,6 +22,7 @@ when not defined(leanCompiler):
 
 import strutils except `%` # collides with ropes.`%`
 
+from ic / ic import ModuleBackendFlag
 from modulegraphs import ModuleGraph, PPassContext
 from lineinfos import
   warnGcMem, errXMustBeCompileTime, hintDependency, errGenerated, errCannotOpenFile
@@ -1501,6 +1502,33 @@ proc genMainProc(m: BModule) =
     if m.config.cppCustomNamespace.len > 0:
       m.s[cfsProcs].add openNamespaceNim(m.config.cppCustomNamespace)
 
+proc registerInitProcs*(g: BModuleList; m: PSym; flags: set[ModuleBackendFlag]) =
+  ## Called from the IC backend.
+  if HasDatInitProc in flags:
+    let datInit = getSomeNameForModule(m) & "DatInit000"
+    g.mainModProcs.addf("N_LIB_PRIVATE N_NIMCALL(void, $1)(void);$N", [datInit])
+    g.mainDatInit.addf("\t$1();$N", [datInit])
+  if HasModuleInitProc in flags:
+    let init = getSomeNameForModule(m) & "Init000"
+    g.mainModProcs.addf("N_LIB_PRIVATE N_NIMCALL(void, $1)(void);$N", [init])
+    let initCall = "\t$1();$N" % [init]
+    if sfMainModule in m.flags:
+      g.mainModInit.add(initCall)
+    elif sfSystemModule in m.flags:
+      g.mainDatInit.add(initCall) # systemInit must called right after systemDatInit if any
+    else:
+      g.otherModsInit.add(initCall)
+
+proc whichInitProcs*(m: BModule): set[ModuleBackendFlag] =
+  # called from IC.
+  result = {}
+  if m.hcrOn or m.preInitProc.s(cpsInit).len > 0 or m.preInitProc.s(cpsStmts).len > 0:
+    result.incl HasModuleInitProc
+  for i in cfsTypeInit1..cfsDynLibInit:
+    if m.s[i].len != 0:
+      result.incl HasDatInitProc
+      break
+
 proc registerModuleToMain(g: BModuleList; m: BModule) =
   let
     init = m.getInitName
@@ -1595,6 +1623,7 @@ proc genDatInitCode(m: BModule) =
 
   if moduleDatInitRequired:
     m.s[cfsDatInitProc].add(prc)
+    #rememberFlag(m.g.graph, m.module, HasDatInitProc)
 
 # Very similar to the contents of symInDynamicLib - basically only the
 # things needed for the hot code reloading runtime procs to be loaded
@@ -1725,6 +1754,7 @@ proc genInitCode(m: BModule) =
 
   if moduleInitRequired or sfMainModule in m.module.flags:
     m.s[cfsInitProc].add(prc)
+    #rememberFlag(m.g.graph, m.module, HasModuleInitProc)
 
   genDatInitCode(m)
 
