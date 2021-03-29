@@ -316,3 +316,7 @@ proc registerAdditionalOps*(c: PCtx) =
     let fn = getNode(a, 0)
     setResult(a, (fn.typ != nil and tfNoSideEffect in fn.typ.flags) or
                  (fn.kind == nkSym and fn.sym.kind == skFunc))
+
+  registerCallback c, "stdlib.typetraits.hasClosureImpl", proc (a: VmArgs) =
+    let fn = getNode(a, 0)
+    setResult(a, fn.kind == nkClosure or (fn.typ != nil and fn.typ.callConv == ccClosure))
