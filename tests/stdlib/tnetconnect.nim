@@ -17,10 +17,11 @@ proc test() =
     wrapSocket(ctx, socket)
 
   # trying 2 sites makes it more resilent: refs #17458 this could give:
-  # Error: unhandled exception: Call to 'connect' timed out. [TimeoutError]
+  # * Call to 'connect' timed out. [TimeoutError]
+  # * No route to host [OSError]
   try:
     fn("www.nim-lang.org")
-  except TimeoutError:
+  except TimeoutError, OSError:
     fn("www.google.com")
 
 test()

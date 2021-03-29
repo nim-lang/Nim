@@ -1283,7 +1283,7 @@ all the arguments, but also the matched operators in reverse polish notation:
   echo x + y * z - x
 
 This passes the expression `x + y * z - x` to the `optM` macro as
-an `nnkArglist` node containing::
+an `nnkArgList` node containing::
 
   Arglist
     Sym "x"

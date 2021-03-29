@@ -173,7 +173,7 @@ proc gcTests(r: var TResults, cat: Category, options: string) =
 
   test "stackrefleak"
   test "cyclecollector"
-  test "trace_globals"
+  testWithoutBoehm "trace_globals"
 
 proc longGCTests(r: var TResults, cat: Category, options: string) =
   when defined(windows):
@@ -448,7 +448,10 @@ proc testNimblePackages(r: var TResults; cat: Category; packageFilter: string) =
           (outp, status) = execCmdEx(cmd, workingDir = workingDir2)
           status == QuitSuccess
         if not ok:
-          addResult(r, test, targetC, "", cmd & "\n" & outp, reFailed)
+          if pkg.allowFailure:
+            inc r.passed
+            inc r.failedButAllowed
+          addResult(r, test, targetC, "", cmd & "\n" & outp, reFailed, allowFailure = pkg.allowFailure)
           continue
         outp
 
@@ -461,7 +464,7 @@ proc testNimblePackages(r: var TResults; cat: Category; packageFilter: string) =
         discard tryCommand("nimble install --depsOnly -y", maxRetries = 3)
       discard tryCommand(pkg.cmd, reFailed = reBuildFailed)
       inc r.passed
-      r.addResult(test, targetC, "", "", reSuccess)
+      r.addResult(test, targetC, "", "", reSuccess, allowFailure = pkg.allowFailure)
 
     errors = r.total - r.passed
     if errors == 0:

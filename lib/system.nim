@@ -1321,7 +1321,7 @@ proc delete*[T](x: var seq[T], i: Natural) {.noSideEffect.} =
   ## This is an `O(n)` operation.
   ##
   ## See also:
-  ## * `del <#delete,seq[T],Natural>`_ for O(1) operation
+  ## * `del <#del,seq[T],Natural>`_ for O(1) operation
   ##
   ## .. code-block:: Nim
   ##  var i = @[1, 2, 3, 4, 5]
@@ -2827,7 +2827,7 @@ when declared(initDebugger):
 proc addEscapedChar*(s: var string, c: char) {.noSideEffect, inline.} =
   ## Adds a char to string `s` and applies the following escaping:
   ##
-  ## * replaces any `\` by `\\`
+  ## * replaces any ``\`` by `\\`
   ## * replaces any `'` by `\'`
   ## * replaces any `"` by `\"`
   ## * replaces any `\a` by `\\a`
@@ -2838,7 +2838,7 @@ proc addEscapedChar*(s: var string, c: char) {.noSideEffect, inline.} =
   ## * replaces any `\f` by `\\f`
   ## * replaces any `\r` by `\\r`
   ## * replaces any `\e` by `\\e`
-  ## * replaces any other character not in the set `{'\21..'\126'}
+  ## * replaces any other character not in the set `{\21..\126}`
   ##   by `\xHH` where `HH` is its hexadecimal value.
   ##
   ## The procedure has been designed so that its output is usable for many

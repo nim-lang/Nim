@@ -371,8 +371,6 @@ proc wrapProcForSpawn*(g: ModuleGraph; idgen: IdGenerator; owner: PSym; spawnExp
     fn = indirectAccess(castExpr, field, n.info)
   elif fn.kind == nkSym and fn.sym.kind == skIterator:
     localError(g.config, n.info, "iterator in spawn environment is not allowed")
-  elif fn.typ.callConv == ccClosure:
-    localError(g.config, n.info, "closure in spawn environment is not allowed")
 
   call.add(fn)
   var varSection = newNodeI(nkVarSection, n.info)
