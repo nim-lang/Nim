@@ -443,3 +443,4 @@ block emptyOrdered:
   var t1: OrderedTable[int, string]
   var t2: OrderedTable[int, string]
   doAssert t1 == t2
+
