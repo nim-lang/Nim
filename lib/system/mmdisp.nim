@@ -58,7 +58,7 @@ elif (defined(nogc) or defined(gcDestructors)) and defined(useMalloc):
   include system / mm / malloc
 
   when defined(nogc):
-    proc GC_getStatistics(): string = return ""
+    proc GC_getStatistics(): string = ""
     proc newObj(typ: PNimType, size: int): pointer {.compilerproc.} =
       result = alloc0(size)
 
