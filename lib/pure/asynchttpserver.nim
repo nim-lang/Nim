@@ -46,9 +46,6 @@ import std/private/since
 
 export httpcore except parseHeader
 
-since (1, 5, 1):
-  export Port
-
 const
   maxLine = 8*1024
 
@@ -80,6 +77,7 @@ proc getPort*(self: AsyncHttpServer): Port {.since: (1, 5, 1).} =
   ## Useful for identifying what port `self` is bound to, if it
   ## was chosen automatically, for example via `listen(Port(0))`.
   runnableExamples:
+    from std/nativesockets import Port
     let server = newAsyncHttpServer()
     server.listen(Port(0))
     assert server.getPort.uint16 > 0
@@ -90,7 +88,7 @@ func getSocket*(self: AsyncHttpServer): AsyncSocket {.since: (1, 5, 1).} =
   ## Field accessor.
   runnableExamples:
     from std/asyncnet import getFd
-    from std/nativesockets import getLocalAddr, AF_INET
+    from std/nativesockets import getLocalAddr, AF_INET, Port
     let server = newAsyncHttpServer()
     server.listen(Port(0)) # Socket is not bound until this point
     # note: a more direct way to get the port is `getPort`.
