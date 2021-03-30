@@ -70,6 +70,9 @@
 ##   + \`interpreted text\` with roles ``:literal:``, ``:strong:``,
 ##     ``emphasis``, ``:sub:``/``:subscript:``, ``:sup:``/``:superscript:``
 ##     (see `RST roles list`_ for description).
+##
+##     .. Note:: default role is non-standard ``:nim:`` (see below)
+##
 ##   + inline internal targets
 ##
 ## .. _`Nim-specific features`:
@@ -78,7 +81,10 @@
 ##
 ## * directives: ``code-block`` [cmp:Sphinx]_, ``title``,
 ##   ``index`` [cmp:Sphinx]_
-##
+## * predefined roles ``:nim:`` (default), ``:c:`` (C programming language),
+##   ``:python:``, ``:yaml:``, ``:java:``, ``:cpp:`` (C++), ``:csharp`` (C#).
+##   That is every language that `highlite <highlite.html>`_ supports.
+##   They turn on appropriate syntax highlighting in inline code.
 ## * ***triple emphasis*** (bold and italic) using \*\*\*
 ## * ``:idx:`` role for \`interpreted text\` to include the link to this
 ##   text into an index (example: `Nim index`_).
@@ -1019,14 +1025,36 @@ proc fixupEmbeddedRef(n, a, b: PRstNode) =
   for i in countup(sep + 1, n.len - 2): b.add(n.sons[i])
 
 proc whichRole(sym: string): RstNodeKind =
-  case sym
+  case sym.toLowerAscii
   of "idx": result = rnIdx
   of "literal": result = rnInlineLiteral
   of "strong": result = rnStrongEmphasis
   of "emphasis": result = rnEmphasis
   of "sub", "subscript": result = rnSub
   of "sup", "superscript": result = rnSup
-  else: result = rnGeneralRole
+  # c++ currently can be spelled only as cpp, c# only as csharp
+  of "nim", "yaml", "python", "java", "c", "c++", "cpp", "c#", "csharp":
+    result = rnInlineCode
+  else:  # unknown role
+    result = rnGeneralRole
+
+proc toInlineCode(n: PRstNode, language: string): PRstNode =
+  ## Creates rnInlineCode and attaches `n` contents as code (in 3rd son).
+  result = newRstNode(rnInlineCode)
+  var args = newRstNode(rnDirArg)
+  var lang = language
+  if language == "cpp": lang = "c++"
+  elif language == "csharp": lang = "c#"
+  args.add newLeaf(lang)
+  result.add args
+  result.add PRstNode(nil)
+  var lb = newRstNode(rnLiteralBlock)
+  var s: string
+  for i in n.sons:
+    assert i.kind == rnLeaf
+    s.add i.text
+  lb.add newLeaf(s)
+  result.add lb
 
 proc parsePostfix(p: var RstParser, n: PRstNode): PRstNode =
   var newKind = n.kind
@@ -1052,14 +1080,19 @@ proc parsePostfix(p: var RstParser, n: PRstNode): PRstNode =
     result = newRstNode(newKind, newSons)
   elif match(p, p.idx, ":w:"):
     # a role:
-    newKind = whichRole(nextTok(p).symbol)
+    let roleName = nextTok(p).symbol
+    newKind = whichRole(roleName)
     if newKind == rnGeneralRole:
       let newN = newRstNode(rnInner, n.sons)
-      newSons = @[newN, newLeaf(nextTok(p).symbol)]
+      newSons = @[newN, newLeaf(roleName)]
+      result = newRstNode(newKind, newSons)
+    elif newKind == rnInlineCode:
+      result = n.toInlineCode(language=roleName)
+    else:
+      result = newRstNode(newKind, newSons)
     inc p.idx, 3
-    result = newRstNode(newKind, newSons)
-  else:  # no change
-    result = n
+  else:
+    result = n.toInlineCode(language="nim")
 
 proc matchVerbatim(p: RstParser, start: int, expr: string): int =
   result = start
@@ -1315,9 +1348,12 @@ proc parseInline(p: var RstParser, father: PRstNode) =
       parseUntil(p, n, "``", false)
       father.add(n)
     elif match(p, p.idx, ":w:") and p.tok[p.idx+3].symbol == "`":
-      let k = whichRole(nextTok(p).symbol)
-      let n = newRstNode(k)
+      let roleName = nextTok(p).symbol
+      let k = whichRole(roleName)
+      var n = newRstNode(k)
       inc p.idx, 3
+      if k == rnInlineCode:
+        n = n.toInlineCode(language=roleName)
       parseUntil(p, n, "`", false) # bug #17260
       father.add(n)
     elif isInlineMarkupStart(p, "`"):

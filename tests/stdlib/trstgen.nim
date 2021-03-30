@@ -36,6 +36,11 @@ proc toHtml(input: string,
   except EParseError:
     discard
 
+# inline code tags (for parsing originated from highlite.nim)
+proc id(str: string): string = """<span class="Identifier">"""  & str & "</span>"
+proc op(str: string): string = """<span class="Operator">"""    & str & "</span>"
+proc pu(str: string): string = """<span class="Punctuation">""" & str & "</span>"
+
 suite "YAML syntax highlighting":
   test "Basics":
     let input = """.. code-block:: yaml
@@ -201,14 +206,14 @@ not in table"""
         `|` outside a table cell should render as `\|`
     consistently with markdown, see https://stackoverflow.com/a/66557930/1426932
     ]#
-    doAssert output1 == """
+    check(output1 == """
 <table border="1" class="docutils"><tr><th>A1 header</th><th>A2 | not fooled</th></tr>
 <tr><td>C1</td><td>C2 <strong>bold</strong></td></tr>
-<tr><td>D1 <tt class="docutils literal"><span class="pre">code \|</span></tt></td><td>D2</td></tr>
+<tr><td>D1 <tt class="docutils literal"><span class="pre">""" & id"code" & " " & op"\|" & """</span></tt></td><td>D2</td></tr>
 <tr><td>E1 | text</td><td></td></tr>
 <tr><td></td><td>F2 without pipe</td></tr>
 </table><p>not in table</p>
-"""
+""")
     let input2 = """
 | A1 header | A2 |
 | --- | --- |"""
@@ -556,11 +561,22 @@ let x = 1
     doAssert "<pre" in output2 and "class=\"Keyword\"" in output2
 
   test "interpreted text":
-    check """`foo.bar`""".toHtml == """<tt class="docutils literal"><span class="pre">foo.bar</span></tt>"""
-    check """`foo\`\`bar`""".toHtml == """<tt class="docutils literal"><span class="pre">foo``bar</span></tt>"""
-    check """`foo\`bar`""".toHtml == """<tt class="docutils literal"><span class="pre">foo`bar</span></tt>"""
-    check """`\`bar`""".toHtml == """<tt class="docutils literal"><span class="pre">`bar</span></tt>"""
-    check """`a\b\x\\ar`""".toHtml == """<tt class="docutils literal"><span class="pre">a\b\x\\ar</span></tt>"""
+    check("""`foo.bar`""".toHtml ==
+      """<tt class="docutils literal"><span class="pre">""" &
+      id"foo" & op"." & id"bar" & "</span></tt>")
+    check("""`foo\`\`bar`""".toHtml ==
+      """<tt class="docutils literal"><span class="pre">""" &
+      id"foo" & pu"`" & pu"`" & id"bar" & "</span></tt>")
+    check("""`foo\`bar`""".toHtml ==
+      """<tt class="docutils literal"><span class="pre">""" &
+      id"foo" & pu"`" & id"bar" & "</span></tt>")
+    check("""`\`bar`""".toHtml ==
+      """<tt class="docutils literal"><span class="pre">""" &
+      pu"`" & id"bar" & "</span></tt>")
+    check("""`a\b\x\\ar`""".toHtml ==
+      """<tt class="docutils literal"><span class="pre">""" &
+      id"a" & op"""\""" & id"b" & op"""\""" & id"x" & op"""\\""" & id"ar" &
+      "</span></tt>")
 
   test "inline literal":
     check """``foo.bar``""".toHtml == """<tt class="docutils literal"><span class="pre">foo.bar</span></tt>"""
@@ -1341,7 +1357,8 @@ Test1
 
   test "(not) Roles: check escaping 1":
     let expected = """See :subscript:<tt class="docutils literal">""" &
-                   """<span class="pre">some text</span></tt>."""
+                   """<span class="pre">""" & id"some" & " " & id"text" &
+                   "</span></tt>."
     check """See \:subscript:`some text`.""".toHtml == expected
     check """See :subscript\:`some text`.""".toHtml == expected
 

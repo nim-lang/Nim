@@ -55,12 +55,15 @@ type
                               #     * `file#id <file#id>`_
                               #     * `file#id <file#id>'_
     rnSubstitutionDef,        # a definition of a substitution
-    rnGeneralRole,            # Inline markup:
+    # Inline markup:
+    rnInlineCode,
+    rnGeneralRole,            # interpreted text with an unknown role
     rnSub, rnSup, rnIdx,
     rnEmphasis,               # "*"
     rnStrongEmphasis,         # "**"
     rnTripleEmphasis,         # "***"
-    rnInterpretedText,        # "`"
+    rnInterpretedText,        # "`" an auxiliary role for parsing that will
+                              # be converted into other kinds like rnInlineCode
     rnInlineLiteral,          # "``"
     rnInlineTarget,           # "_`target`"
     rnSubstitutionReferences, # "|"

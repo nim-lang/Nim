@@ -285,6 +285,22 @@ or
 
 the first is preferred.
 
+Inline mono spaced text can be input using \`single backticks\` or
+\`\`double backticks\`\`. The former are syntactically highlighted,
+the latter are not. To avoid accidental highlighting follow the rule:
+
+* use single backticks for fragments of code in Nim and other
+  programming languages, including identifiers
+
+* prefer double backticks otherwise:
+
+  * for file names: \`\`os.nim\`\`
+  * for fragments of strings **not** enclosed by `"` and `"` and not
+    related to code, e.g. text of compiler messages
+  * for command line options: \`\`--docInternal\`\`
+  * also when code ends with a standalone ``\`` (otherwise a combination of
+    ``\`` and a final \` would get escaped)
+
 When you specify an *RST role* (highlighting/interpretation marker) do it
 in the postfix form for uniformity, that is after \`text in backticks\`.
 For example an ``:idx:`` role for referencing a topic ("SQLite" in the
