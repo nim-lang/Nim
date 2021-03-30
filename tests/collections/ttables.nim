@@ -28,6 +28,7 @@ block tableadds:
   main()
   echo "done tableadds"
 
+
 block tcounttable:
   # bug #2625
   const s_len = 32
