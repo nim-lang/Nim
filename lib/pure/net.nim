@@ -501,10 +501,10 @@ when defineSsl:
   ERR_load_BIO_strings()
   OpenSSL_add_all_algorithms()
 
-  proc sslHandle*(socket: Socket): SslPtr =
+  proc sslHandle*(self: Socket): SslPtr =
     ## Retrieve the ssl pointer of `socket`.
     ## Useful for interfacing with `openssl`.
-    return socket.sslHandle
+    self.sslHandle
     
   proc raiseSSLError*(s = "") =
     ## Raises a new SSL error.

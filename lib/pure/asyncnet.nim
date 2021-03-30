@@ -731,10 +731,10 @@ proc close*(socket: AsyncSocket) =
         raiseSSLError()
 
 when defineSsl:
-  proc sslHandle*(socket: AsyncSocket): SslPtr =
+  proc sslHandle*(self: AsyncSocket): SslPtr =
     ## Retrieve the ssl pointer of `socket`.
     ## Useful for interfacing with `openssl`.
-    return socket.sslHandle
+    self.sslHandle
   
   proc wrapSocket*(ctx: SslContext, socket: AsyncSocket) =
     ## Wraps a socket in an SSL context. This function effectively turns
