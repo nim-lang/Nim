@@ -45,7 +45,7 @@ template main =
     doAssert lispReprStr([-1]) == """(Bracket (IntLit -1))"""
     doAssert (-1, 2)[0] == minusOne:
       "unable to handle negatives after parenthesis"
-    doAssert lispReprStr((-1, 2)) == """(Par (IntLit -1) (IntLit 2))"""
+    doAssert lispReprStr((-1, 2)) == """(TupleConstr (IntLit -1) (IntLit 2))"""
     proc x(): int =
       var a = 1;-1  # the -1 should act as the return value
     doAssert x() == minusOne:

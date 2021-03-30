@@ -274,6 +274,9 @@
 
 - Custom numeric literals (e.g. `-128'bignum`) are now supported.
 
+- Tuple expressions are now parsed consistently as
+  `nnkTupleConstr` node. Will affect macros expecting nodes to be of `nnkPar`.
+
 
 ## Compiler changes
 

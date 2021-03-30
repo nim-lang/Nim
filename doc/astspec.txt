@@ -329,19 +329,56 @@ AST:
 Parentheses
 -----------
 
-Parentheses for affecting operator precedence or tuple construction
-are built with the ``nnkPar`` node.
+Parentheses for affecting operator precedence use the ``nnkPar`` node.
 
 Concrete syntax:
 
 .. code-block:: nim
-  (1, 2, (3))
+  (a + b) * c
 
 AST:
 
 .. code-block:: nim
-  nnkPar(nnkIntLit(1), nnkIntLit(2), nnkPar(nnkIntLit(3)))
+  nnkInfix(nnkIdent("*"),
+    nnkPar(
+      nnkInfix(nnkIdent("+"), nnkIdent("a"), nnkIdent("b"))),
+    nnkIdent("c"))
 
+Tuple Constructors
+------------------
+
+Nodes for tuple construction are built with the ``nnkTupleConstr`` node.
+
+Concrete syntax:
+
+.. code-block:: nim
+  (1, 2, 3)
+  (a: 1, b: 2, c: 3)
+  ()
+
+AST:
+
+.. code-block:: nim
+  nnkTupleConstr(nnkIntLit(1), nnkIntLit(2), nnkIntLit(3))
+  nnkTupleConstr(
+    nnkExprColonExpr(nnkIdent("a"), nnkIntLit(1)),
+    nnkExprColonExpr(nnkIdent("b"), nnkIntLit(2)),
+    nnkExprColonExpr(nnkIdent("c"), nnkIntLit(3)))
+
+Since the one tuple would be syntactically identical to parentheses
+with an expression in them, the parser expects a trailing comma for
+them. For tuple constructors with field names, this is not necessary.
+
+.. code-block:: nim
+  (1,)
+  (a: 1)
+
+AST:
+
+.. code-block:: nim
+  nnkTupleConstr(nnkIntLit(1))
+  nnkTupleConstr(
+    nnkExprColonExpr(nnkIdent("a"), nnkIntLit(1)))
 
 Curly braces
 ------------
