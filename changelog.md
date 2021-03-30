@@ -260,7 +260,7 @@
 
 - `typedesc[Foo]` now renders as such instead of `type Foo` in compiler messages.
 
-
+- `nimscript` now accepts arbitrary file extensions.
 
 ## Compiler changes
 
