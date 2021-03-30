@@ -119,7 +119,7 @@ type
     bufLen: int      # current length of buffer
     isSsl: bool
     when defineSsl:
-      sslHandle*: SslPtr
+      sslHandle: SslPtr
       sslContext: SslContext
       bioIn: BIO
       bioOut: BIO
@@ -731,6 +731,11 @@ proc close*(socket: AsyncSocket) =
         raiseSSLError()
 
 when defineSsl:
+  proc sslHandle*(socket: AsyncSocket): SslPtr =
+    ## Retrieve the ssl pointer of `socket`.
+    ## Useful for interfacing with `openssl`.
+    return socket.sslHandle
+  
   proc wrapSocket*(ctx: SslContext, socket: AsyncSocket) =
     ## Wraps a socket in an SSL context. This function effectively turns
     ## `socket` into an SSL socket.
