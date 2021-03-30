@@ -18,7 +18,7 @@
 ##
 ## Unstable API.
 
-from ospaths import raiseOSError, osLastError
+from os import raiseOSError, osLastError
 
 template distance*(lhs, rhs: pointer): int =
   cast[int](rhs) - cast[int](lhs)
@@ -76,7 +76,7 @@ when defined(windows):
 
   template check(expr) =
     let r = expr
-    if r == cast[type(r)](0):
+    if r == cast[typeof(r)](0):
       raiseOSError(osLastError())
 
 else:

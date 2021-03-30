@@ -14,9 +14,9 @@
 ## ===========
 ##
 ## .. code-block:: nim
-##   import parsecsv
-##   from os import paramStr
-##   from streams import newFileStream
+##   import std/parsecsv
+##   from std/os import paramStr
+##   from std/streams import newFileStream
 ##
 ##   var s = newFileStream(paramStr(1), fmRead)
 ##   if s == nil:
@@ -34,7 +34,7 @@
 ## reference for item access with `rowEntry <#rowEntry,CsvParser,string>`_:
 ##
 ## .. code-block:: nim
-##   import parsecsv
+##   import std/parsecsv
 ##
 ##   # Prepare a file
 ##   let content = """One,Two,Three,Four
@@ -108,10 +108,10 @@ proc open*(my: var CsvParser, input: Stream, filename: string,
   ## the diverse optional parameters:
   ## - `separator`: character used to separate fields
   ## - `quote`: Used to quote fields containing special characters like
-  ##   `separator`, `quote` or new-line characters. '\0' disables the parsing
+  ##   `separator`, `quote` or new-line characters. '\\0' disables the parsing
   ##   of quotes.
   ## - `escape`: removes any special meaning from the following character;
-  ##   '\0' disables escaping; if escaping is disabled and `quote` is not '\0',
+  ##   '\\0' disables escaping; if escaping is disabled and `quote` is not '\\0',
   ##   two `quote` characters are parsed one literal `quote` character.
   ## - `skipInitialSpace`: If true, whitespace immediately following the
   ##   `separator` is ignored.
@@ -120,7 +120,7 @@ proc open*(my: var CsvParser, input: Stream, filename: string,
   ## * `open proc <#open,CsvParser,string,char,char,char>`_ which creates the
   ##   file stream for you
   runnableExamples:
-    import streams
+    import std/streams
     var strm = newStringStream("One,Two,Three\n1,2,3\n10,20,30")
     var parser: CsvParser
     parser.open(strm, "tmp.csv")
@@ -142,7 +142,7 @@ proc open*(my: var CsvParser, filename: string,
   ## Similar to the `other open proc<#open,CsvParser,Stream,string,char,char,char>`_,
   ## but creates the file stream for you.
   runnableExamples:
-    from os import removeFile
+    from std/os import removeFile
     writeFile("tmp.csv", "One,Two,Three\n1,2,3\n10,20,300")
     var parser: CsvParser
     parser.open("tmp.csv")
@@ -203,7 +203,7 @@ proc processedRows*(my: var CsvParser): int =
   ## But even if `readRow <#readRow,CsvParser,int>`_ arrived at EOF then
   ## processed rows counter is incremented.
   runnableExamples:
-    import streams
+    import std/streams
 
     var strm = newStringStream("One,Two,Three\n1,2,3")
     var parser: CsvParser
@@ -229,7 +229,7 @@ proc readRow*(my: var CsvParser, columns = 0): bool =
   ##
   ## Blank lines are skipped.
   runnableExamples:
-    import streams
+    import std/streams
     var strm = newStringStream("One,Two,Three\n1,2,3\n\n10,20,30")
     var parser: CsvParser
     parser.open(strm, "tmp.csv")
@@ -296,7 +296,7 @@ proc readHeaderRow*(my: var CsvParser) =
   ## See also:
   ## * `rowEntry proc <#rowEntry,CsvParser,string>`_
   runnableExamples:
-    import streams
+    import std/streams
 
     var strm = newStringStream("One,Two,Three\n1,2,3")
     var parser: CsvParser
@@ -322,24 +322,29 @@ proc rowEntry*(my: var CsvParser, entry: string): var string =
   ##
   ## Assumes that `readHeaderRow <#readHeaderRow,CsvParser>`_ has already been
   ## called.
+  ## 
+  ## If specified `entry` does not exist, raises KeyError.
   runnableExamples:
-    import streams
+    import std/streams
     var strm = newStringStream("One,Two,Three\n1,2,3\n\n10,20,30")
     var parser: CsvParser
     parser.open(strm, "tmp.csv")
-    ## Need calling `readHeaderRow`.
+    ## Requires calling `readHeaderRow`.
     parser.readHeaderRow()
     doAssert parser.readRow()
     doAssert parser.rowEntry("One") == "1"
     doAssert parser.rowEntry("Two") == "2"
     doAssert parser.rowEntry("Three") == "3"
-    ## `parser.rowEntry("NotExistEntry")` causes SIGSEGV fault.
+    doAssertRaises(KeyError):
+      discard parser.rowEntry("NonexistentEntry")
     parser.close()
     strm.close()
 
   let index = my.headers.find(entry)
   if index >= 0:
     result = my.row[index]
+  else:
+    raise newException(KeyError, "Entry `" & entry & "` doesn't exist")
 
 when not defined(testing) and isMainModule:
   import os
@@ -352,35 +357,3 @@ when not defined(testing) and isMainModule:
     for val in items(x.row):
       echo "##", val, "##"
   close(x)
-
-when isMainModule:
-  import os
-  import strutils
-  block: # Tests for reading the header row
-    let content = "\nOne,Two,Three,Four\n1,2,3,4\n10,20,30,40,\n100,200,300,400\n"
-    writeFile("temp.csv", content)
-
-    var p: CsvParser
-    p.open("temp.csv")
-    p.readHeaderRow()
-    while p.readRow():
-      let zeros = repeat('0', p.currRow-2)
-      doAssert p.rowEntry("One") == "1" & zeros
-      doAssert p.rowEntry("Two") == "2" & zeros
-      doAssert p.rowEntry("Three") == "3" & zeros
-      doAssert p.rowEntry("Four") == "4" & zeros
-    p.close()
-
-    when not defined(testing):
-      var parser: CsvParser
-      parser.open("temp.csv")
-      parser.readHeaderRow()
-      while parser.readRow():
-        echo "new row: "
-        for col in items(parser.headers):
-          echo "##", col, ":", parser.rowEntry(col), "##"
-      parser.close()
-      removeFile("temp.csv")
-
-    # Tidy up
-    removeFile("temp.csv")

@@ -21,11 +21,13 @@ proc `=sink`(dest: var Foo, src: Foo) =
 proc `=`(dest: var Foo, src: Foo) =
   assign_counter.inc
 
+proc createFoo(): Foo = Foo(boo: 0)
+
 proc test(): auto =
-  var a, b: Foo
+  var a, b = createFoo()
   return (a, b, Foo(boo: 5))
 
-var (a, b, _) = test()
+var (ag, bg, _) = test()
 
 doAssert assign_counter == 0
 doAssert sink_counter == 0

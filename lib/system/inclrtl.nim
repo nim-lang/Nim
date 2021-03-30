@@ -44,13 +44,7 @@ else:
   {.pragma: inl, inline.}
   {.pragma: compilerRtl, compilerproc.}
 
-when defined(nimlocks):
-  {.pragma: benign, gcsafe, locks: 0.}
-else:
-  {.pragma: benign, gcsafe.}
+{.pragma: benign, gcsafe, locks: 0.}
 
-template since(version, body: untyped) {.dirty, used.} =
-  ## limitation: can't be used to annotate a template (eg typetraits.get), would
-  ## error: cannot attach a custom pragma.
-  when (NimMajor, NimMinor) >= version:
-    body
+when defined(nimHasSinkInference):
+  {.push sinkInference: on.}

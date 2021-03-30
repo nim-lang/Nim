@@ -8,7 +8,7 @@
 #
 
 ## Serialization utilities for the compiler.
-import strutils, math
+import std/[strutils, math]
 
 # bcc on windows doesn't have C99 functions
 when defined(windows) and defined(bcc):
@@ -33,10 +33,19 @@ when defined(windows) and defined(bcc):
 
 proc c_snprintf(s: cstring; n:uint; frmt: cstring): cint {.importc: "snprintf", header: "<stdio.h>", nodecl, varargs.}
 
+
+when not declared(signbit):
+  proc c_signbit(x: SomeFloat): cint {.importc: "signbit", header: "<math.h>".}
+  proc signbit*(x: SomeFloat): bool {.inline.} =
+    result = c_signbit(x) != 0
+
 proc toStrMaxPrecision*(f: BiggestFloat, literalPostfix = ""): string =
   case classify(f)
   of fcNan:
-    result = "NAN"
+    if signbit(f):
+      result = "-NAN"
+    else:
+      result = "NAN"
   of fcNegZero:
     result = "-0.0" & literalPostfix
   of fcZero:
@@ -80,16 +89,14 @@ proc decodeStr*(s: cstring, pos: var int): string =
     else: break
   pos = i
 
-const
-  chars = "0123456789abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ"
+const chars = "0123456789abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ"
 
 {.push overflowChecks: off.}
 
 # since negative numbers require a leading '-' they use up 1 byte. Thus we
 # subtract/add `vintDelta` here to save space for small negative numbers
 # which are common in ROD files:
-const
-  vintDelta = 5
+const vintDelta = 5
 
 template encodeIntImpl(self) =
   var d: char

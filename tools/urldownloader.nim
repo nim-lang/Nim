@@ -418,7 +418,7 @@ proc downloadToFile*(szUrl: string, szFileName: string,
 
 when isMainModule:
   proc progress(status: DownloadStatus, progress: uint, progressMax: uint,
-                message: string) {.procvar,gcsafe.} =
+                message: string) {.gcsafe.} =
     const downset: set[DownloadStatus] = {statusBeginDownloading,
                                         statusDownloading, statusEndDownloading}
     if status in downset:

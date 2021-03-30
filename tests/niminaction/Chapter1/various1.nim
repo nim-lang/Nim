@@ -32,7 +32,7 @@ block: # Block added due to clash.
   let dog = Dog()
   dog.bark() #<2>
 
-import sequtils, future, strutils
+import sequtils, sugar, strutils
 let list = @["Dominik Picheta", "Andreas Rumpf", "Desmond Hume"]
 list.map(
   (x: string) -> (string, string) => (x.split[0], x.split[1])

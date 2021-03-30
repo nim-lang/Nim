@@ -1,11 +1,11 @@
 discard """
-  cmd: '''nim c -d:nimAllocStats --newruntime $file'''
+  cmd: '''nim c -d:nimAllocStats --gc:arc $file'''
   output: '''a b
 70
 hello
 hello
 hello
-(allocCount: 4, deallocCount: 4)'''
+(allocCount: 3, deallocCount: 3)'''
 """
 
 import system / ansi_c

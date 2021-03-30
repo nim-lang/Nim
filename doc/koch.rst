@@ -75,9 +75,16 @@ from rst to HTML. It also repeats the same operation but places the result in
 the ``web/upload`` which can be used to update the website at
 https://nim-lang.org.
 
-By default the documentation will be built in parallel using the number of
-available CPU cores. If any documentation build sub commands fail, they will
-be rerun in serial fashion so that meaninful error output can be gathered for
+By default, the documentation will be built in parallel using the number of
+available CPU cores. If any documentation build sub-commands fail, they will
+be rerun in serial fashion so that meaningful error output can be gathered for
 inspection. The ``--parallelBuild:n`` switch or configuration option can be
 used to force a specific number of parallel jobs or run everything serially
 from the start (``n == 1``).
+
+pdf command
+-----------
+
+The `pdf`:idx: command builds PDF versions of Nim documentation: Manual,
+Tutorial and a few other documents. To run it one needs to
+`install Latex/pdflatex <https://www.latex-project.org/get>`_ first.

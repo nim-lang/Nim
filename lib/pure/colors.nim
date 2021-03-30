@@ -440,7 +440,7 @@ proc colorNameCmp(x: tuple[name: string, col: Color], y: string): int =
 proc parseColor*(name: string): Color =
   ## Parses `name` to a color value.
   ##
-  ## If no valid color could be parsed ``ValueError`` is raised.
+  ## If no valid color could be parsed `ValueError` is raised.
   ## Case insensitive.
   ##
   runnableExamples:
@@ -452,7 +452,7 @@ proc parseColor*(name: string): Color =
     assert parseColor(b) == Color(0x01_79_fc)
     doAssertRaises(ValueError): discard parseColor(c)
 
-  if name[0] == '#':
+  if name.len > 0 and name[0] == '#':
     result = Color(parseHexInt(name))
   else:
     var idx = binarySearch(colorNames, name, colorNameCmp)
@@ -461,7 +461,7 @@ proc parseColor*(name: string): Color =
 
 proc isColor*(name: string): bool =
   ## Returns true if `name` is a known color name or a hexadecimal color
-  ## prefixed with ``#``. Case insensitive.
+  ## prefixed with `#`. Case insensitive.
   ##
   runnableExamples:
     var
@@ -472,9 +472,10 @@ proc isColor*(name: string): bool =
     assert b.isColor
     assert not c.isColor
 
+  if name.len == 0: return false
   if name[0] == '#':
     for i in 1 .. name.len-1:
-      if name[i] notin {'0'..'9', 'a'..'f', 'A'..'F'}: return false
+      if name[i] notin HexDigits: return false
     result = true
   else:
     result = binarySearch(colorNames, name, colorNameCmp) >= 0

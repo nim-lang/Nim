@@ -45,7 +45,6 @@ type
     data: TrunkBuckets
 
 type
-  AlignType = BiggestFloat
   FreeCell {.final, pure.} = object
     next: ptr FreeCell  # next free cell in chunk (overlaid with refcount)
     when not defined(gcDestructors):
@@ -68,16 +67,20 @@ type
     freeList: ptr FreeCell
     free: int            # how many bytes remain
     acc: int             # accumulator for small object allocation
-    when defined(cpu32):
-      align: int
-    data: AlignType      # start of usable memory
+    when defined(nimAlignPragma):
+      data {.align: MemAlign.}: UncheckedArray[byte]      # start of usable memory
+    else:
+      data: UncheckedArray[byte]
 
   BigChunk = object of BaseChunk # not necessarily > PageSize!
     next, prev: PBigChunk    # chunks of the same (or bigger) size
-    data: AlignType      # start of usable memory
+    when defined(nimAlignPragma):
+      data {.align: MemAlign.}: UncheckedArray[byte]      # start of usable memory
+    else:
+      data: UncheckedArray[byte]
 
-template smallChunkOverhead(): untyped = sizeof(SmallChunk)-sizeof(AlignType)
-template bigChunkOverhead(): untyped = sizeof(BigChunk)-sizeof(AlignType)
+template smallChunkOverhead(): untyped = sizeof(SmallChunk)
+template bigChunkOverhead(): untyped = sizeof(BigChunk)
 
 # ------------- chunk table ---------------------------------------------------
 # We use a PtrSet of chunk starts and a table[Page, chunksize] for chunk
@@ -250,7 +253,7 @@ proc llAlloc(a: var MemRegion, size: int): pointer =
     sysAssert roundup(size+sizeof(LLChunk), PageSize) == PageSize, "roundup 6"
     var old = a.llmem # can be nil and is correct with nil
     a.llmem = cast[PLLChunk](osAllocPages(PageSize))
-    when defined(avlcorruption):
+    when defined(nimAvlcorruption):
       trackLocation(a.llmem, PageSize)
     incCurrMem(a, PageSize)
     a.llmem.size = PageSize - sizeof(LLChunk)
@@ -273,7 +276,7 @@ proc allocAvlNode(a: var MemRegion, key, upperBound: int): PAvlNode =
     a.freeAvlNodes = a.freeAvlNodes.link[0]
   else:
     result = cast[PAvlNode](llAlloc(a, sizeof(AvlNode)))
-    when defined(avlcorruption):
+    when defined(nimAvlcorruption):
       cprintf("tracking location: %p\n", result)
   result.key = key
   result.upperBound = upperBound
@@ -281,7 +284,7 @@ proc allocAvlNode(a: var MemRegion, key, upperBound: int): PAvlNode =
   result.link[0] = bottom
   result.link[1] = bottom
   result.level = 1
-  #when defined(avlcorruption):
+  #when defined(nimAvlcorruption):
   #  track("allocAvlNode", result, sizeof(AvlNode))
   sysAssert(bottom == addr(a.bottomData), "bottom data")
   sysAssert(bottom.link[0] == bottom, "bottom link[0]")
@@ -583,7 +586,8 @@ proc freeBigChunk(a: var MemRegion, c: PBigChunk) =
 proc getBigChunk(a: var MemRegion, size: int): PBigChunk =
   sysAssert(size > 0, "getBigChunk 2")
   var size = size # roundup(size, PageSize)
-  var fl, sl: int
+  var fl = 0
+  var sl = 0
   mappingSearch(size, fl, sl)
   sysAssert((size and PageMask) == 0, "getBigChunk: unaligned chunk")
   result = findSuitableBlock(a, fl, sl)
@@ -1013,7 +1017,7 @@ when defined(nimTypeNames):
 template instantiateForRegion(allocator: untyped) {.dirty.} =
   {.push stackTrace: off.}
 
-  when defined(fulldebug):
+  when defined(nimFulldebug):
     proc interiorAllocatedPtr*(p: pointer): pointer =
       result = interiorAllocatedPtr(allocator, p)
 

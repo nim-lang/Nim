@@ -4,15 +4,24 @@ Documentation Style
 General Guidelines
 ------------------
 
+* See also `nep1<https://nim-lang.github.io/Nim/nep1.html>`_ which should probably be merged here.
 * Authors should document anything that is exported; documentation for private
   procs can be useful too (visible via ``nim doc --docInternal foo.nim``).
-* Within documentation, a period (`.`) should follow each sentence (or sentence fragment) in a comment block. The documentation may be limited to one sentence fragment, but if multiple sentences are within the documentation, each sentence after the first should be complete and in present tense.
+* Within documentation, a period (`.`) should follow each sentence (or sentence fragment) in a comment block.
+  The documentation may be limited to one sentence fragment, but if multiple sentences are within the documentation,
+  each sentence after the first should be complete and in present tense.
 * Documentation is parsed as a custom ReStructuredText (RST) with partial markdown support.
+* In nim sources, prefer single backticks to double backticks since it's simpler
+  and `nim doc` supports it. Likewise with rst files: `nim rst2html` will render those as monospace, and
+  adding `.. default-role:: code` to an rst file will also make those render as monospace when rendered directly
+  in tools such as github.
+* In nim sources, for links, prefer `[link text](link.html)` to ``` `link text<link.html>`_ ```
+  since the syntax is simpler and markdown is more common (likewise, `nim rst2html` also supports it in rst files).
 
 .. code-block:: nim
 
   proc someproc*(s: string, foo: int) =
-    ## Use single backticks for inline code, eg: `s` or `someExpr(true)`.
+    ## Use single backticks for inline code, e.g.: `s` or `someExpr(true)`.
     ## Use a backlash to follow with alphanumeric char: `int8`\s are great.
 
 
@@ -71,7 +80,7 @@ Whenever an example of usage would be helpful to the user, you should include on
       doAssert addThree(3, 125, 6) == -122
     result = x +% y +% z
 
-The commands ``nim doc`` and ``nim doc2`` will then correctly syntax highlight the Nim code within the documentation.
+The command ``nim doc`` will then correctly syntax highlight the Nim code within the documentation.
 
 Types
 -----

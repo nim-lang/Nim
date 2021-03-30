@@ -7,7 +7,7 @@
 #    distribution, for details about the copyright.
 #
 
-## This module implements the ``with`` macro for easy
+## This module implements the `with` macro for easy
 ## function chaining. See https://github.com/nim-lang/RFCs/issues/193
 ## and https://github.com/nim-lang/RFCs/issues/192 for details leading to this
 ## particular design.
@@ -36,16 +36,3 @@ macro with*(arg: typed; calls: varargs[untyped]): untyped =
 
   result = newNimNode(nnkStmtList, arg)
   underscoredCalls(result, calls, arg)
-
-when isMainModule:
-  type
-    Foo = object
-      col, pos: string
-
-  proc setColor(f: var Foo; r, g, b: int) = f.col = $(r, g, b)
-  proc setPosition(f: var Foo; x, y: float) = f.pos = $(x, y)
-
-  var f: Foo
-  with(f, setColor(2, 3, 4), setPosition(0.0, 1.0))
-  echo f
-

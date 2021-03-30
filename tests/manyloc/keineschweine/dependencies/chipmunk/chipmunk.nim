@@ -106,7 +106,7 @@ type
 
   #/ Collision begin event function callback type.
   #/ Returning false from a begin callback causes the collision to be ignored until
-  #/ the the separate callback is called when the objects stop colliding.
+  #/ the separate callback is called when the objects stop colliding.
   TCollisionBeginFunc* = proc (arb: PArbiter; space: PSpace; data: pointer): bool{.
       cdecl.}
   #/ Collision pre-solve event function callback type.

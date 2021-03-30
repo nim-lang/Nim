@@ -1,7 +1,7 @@
 discard """
 output: '''
-[Suite] memoization
 
+[Suite] memoization
 '''
 """
 

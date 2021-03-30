@@ -1,5 +1,5 @@
-import compiler/unittest_light
-import compiler/asciitables
+import stdtest/unittest_light
+import std/private/asciitables
 
 import strformat
 

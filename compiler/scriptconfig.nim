@@ -27,9 +27,9 @@ proc listDirs(a: VmArgs, filter: set[PathComponent]) =
   setResult(a, result)
 
 proc setupVM*(module: PSym; cache: IdentCache; scriptName: string;
-              graph: ModuleGraph): PEvalContext =
+              graph: ModuleGraph; idgen: IdGenerator): PEvalContext =
   # For Nimble we need to export 'setupVM'.
-  result = newCtx(module, cache, graph)
+  result = newCtx(module, cache, graph, idgen)
   result.mode = emRepl
   registerAdditionalOps(result)
   let conf = graph.config
@@ -150,7 +150,8 @@ proc setupVM*(module: PSym; cache: IdentCache; scriptName: string;
   cbconf cmpIgnoreCase:
     setResult(a, strutils.cmpIgnoreCase(a.getString 0, a.getString 1))
   cbconf setCommand:
-    conf.command = a.getString 0
+    conf.setCommandEarly(a.getString 0)
+    # xxx move remaining logic to commands.nim or other
     let arg = a.getString 1
     incl(conf.globalOptions, optWasNimscript)
     if arg.len > 0:
@@ -198,7 +199,8 @@ proc setupVM*(module: PSym; cache: IdentCache; scriptName: string;
       setResult(a, stdin.readAll())
 
 proc runNimScript*(cache: IdentCache; scriptName: AbsoluteFile;
-                   freshDefines=true; conf: ConfigRef) =
+                   idgen: IdGenerator;
+                   freshDefines=true; conf: ConfigRef, stream: PLLStream) =
   let oldSymbolFiles = conf.symbolFiles
   conf.symbolFiles = disabledSf
 
@@ -221,18 +223,22 @@ proc runNimScript*(cache: IdentCache; scriptName: AbsoluteFile;
 
   var m = graph.makeModule(scriptName)
   incl(m.flags, sfMainModule)
-  graph.vm = setupVM(m, cache, scriptName.string, graph)
+  var vm = setupVM(m, cache, scriptName.string, graph, idgen)
+  graph.vm = vm
 
   graph.compileSystemModule()
-  discard graph.processModule(m, llStreamOpen(scriptName, fmRead))
+  discard graph.processModule(m, vm.idgen, stream)
 
   # watch out, "newruntime" can be set within NimScript itself and then we need
   # to remember this:
+  if conf.selectedGC == gcUnselected:
+    conf.selectedGC = oldSelectedGC
   if optOwnedRefs in oldGlobalOptions:
     conf.globalOptions.incl {optTinyRtti, optOwnedRefs, optSeqDestructors}
     defineSymbol(conf.symbols, "nimv2")
-  if conf.selectedGC == gcUnselected:
-    conf.selectedGC = oldSelectedGC
+  if conf.selectedGC in {gcArc, gcOrc}:
+    conf.globalOptions.incl {optTinyRtti, optSeqDestructors}
+    defineSymbol(conf.symbols, "nimv2")
 
   # ensure we load 'system.nim' again for the real non-config stuff!
   resetSystemArtifacts(graph)

@@ -24,7 +24,7 @@ block tseq2:
     # multiply two int sequences:
     for i in 0..len(a)-1: result[i] = a[i] * b[i]
 
-  assert(@[1, 2, 3] * @[1, 2, 3] == @[1, 4, 9])
+  doAssert(@[1, 2, 3] * @[1, 2, 3] == @[1, 4, 9])
 
 
 
@@ -201,6 +201,16 @@ block ttoseq:
     stdout.write(x)
   for x in items(toSeq(countup(2, 6))):
     stdout.write(x)
-  var y: type("a b c".split)
+  var y: typeof("a b c".split)
   y = "xzy"
   stdout.write("\n")
+
+block tseqmapitchain:
+  doAssert @[101, 102] == [1, 2].mapIt(func (x: int): int = it + x).mapIt(it(100))
+
+
+for i in 0..100:
+  # fix #14655
+  var test = newSeqOfCap[uint32](1)
+  test.setLen(1)
+  doAssert test[0] == 0, $(test[0], i)

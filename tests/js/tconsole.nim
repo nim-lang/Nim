@@ -3,7 +3,6 @@ discard """
 Hello, console
 1 2 3
 '''
-  disabled: "freebsd"
 """
 
 # This file tests the JavaScript console

@@ -119,36 +119,3 @@ proc encodeZigzag*(x: int64): uint64 {.inline.} =
 proc decodeZigzag*(x: uint64): int64 {.inline.} =
   let casted = cast[int64](x)
   result = (`shr`(casted, 1)) xor (-(casted and 1))
-
-when isMainModule:
-  #import random
-
-  var dest: array[50, byte]
-  var got: uint64
-
-  for test in [0xFFFF_FFFF_FFFFF_FFFFu64, 77u64, 0u64, 10_000_000u64, uint64(high(int64)),
-               uint64(high(int32)),uint64(low(int32)),uint64(low(int64))]:
-    let wrLen = writeVu64(dest, test)
-    let rdLen = readVu64(dest, got)
-    assert wrLen == rdLen
-    echo(if got == test: "YES" else: "NO")
-    echo "number is ", got
-
-    if encodeZigzag(decodeZigzag(test)) != test:
-      echo "Failure for ", test, " ", encodeZigzag(decodeZigzag(test)), " ", decodeZigzag(test)
-
-  for test in 0u64..300u64:
-    let wrLen = writeVu64(dest, test)
-    let rdLen = readVu64(dest, got)
-    assert wrLen == rdLen
-    if got != test:
-      echo "BUG! expected: ", test, " got: ", got, " z0: ", dest[0]
-
-  # check this also works for floats:
-  for test in [0.0, 0.1, 2.0, +Inf, Nan, NegInf]:
-    let t = cast[uint64](test)
-    let wrLenB = writeVu64(dest, t)
-    let rdLenB = readVu64(dest, got)
-    assert wrLenB == rdLenB
-    echo rdLenB
-    echo(if cast[float64](got) == test: "YES" else: "NO")

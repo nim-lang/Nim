@@ -2,9 +2,6 @@
 
 const useLibC = not defined(nimNoLibc)
 
-when not defined(nimHasHotCodeReloading):
-  {.pragma: nonReloadable.}
-
 when useLibC:
   import ansi_c
 
@@ -45,9 +42,9 @@ proc nimCmpMem*(a, b: pointer, size: Natural): cint {.compilerproc, nonReloadabl
       if d != 0: return d
       inc i
 
-proc nimCStrLen*(a: cstring): csize_t {.compilerproc, nonReloadable, inline.} =
+proc nimCStrLen*(a: cstring): int {.compilerproc, nonReloadable, inline.} =
   when useLibC:
-    c_strlen(a)
+    cast[int](c_strlen(a))
   else:
     var a = cast[ptr byte](a)
     while a[] != 0:

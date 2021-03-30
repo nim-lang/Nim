@@ -58,23 +58,23 @@ block tgenericdefaults:
   var x1: TFoo[int, float]
 
   static:
-    assert type(x1.x) is int
-    assert type(x1.y) is float
-    assert type(x1.z) is int
+    doAssert type(x1.x) is int
+    doAssert type(x1.y) is float
+    doAssert type(x1.z) is int
 
   var x2: TFoo[string, R = float, U = seq[int]]
 
   static:
-    assert type(x2.x) is string
-    assert type(x2.y) is seq[int]
-    assert type(x2.z) is float
+    doAssert type(x2.x) is string
+    doAssert type(x2.y) is seq[int]
+    doAssert type(x2.z) is float
 
   var x3: TBar[float]
 
   static:
-    assert type(x3.x) is float
-    assert type(x3.y) is array[4, float]
-    assert type(x3.z) is float
+    doAssert type(x3.x) is float
+    doAssert type(x3.y) is array[4, float]
+    doAssert type(x3.z) is float
 
 
 
@@ -150,31 +150,31 @@ block tsharedcases:
   doAssert high(f2.data2) == 3 # int8.len - 1 == 3
 
   static:
-    assert high(f1.data1) == ord(C)
-    assert high(f1.data2) == 5 # length of MyEnum minus one, because we used T.high
+    doAssert high(f1.data1) == ord(C)
+    doAssert high(f1.data2) == 5 # length of MyEnum minus one, because we used T.high
 
-    assert high(f2.data1) == 126
-    assert high(f2.data2) == 3
+    doAssert high(f2.data1) == 126
+    doAssert high(f2.data2) == 3
 
-    assert high(f1.data3) == 6 # length of MyEnum
-    assert high(f2.data3) == 4 # length of int8
+    doAssert high(f1.data3) == 6 # length of MyEnum
+    doAssert high(f2.data3) == 4 # length of int8
 
-    assert f2.data3[0] is float
+    doAssert f2.data3[0] is float
 
 
 
 block tmap_auto:
   let x = map(@[1, 2, 3], x => x+10)
-  assert x == @[11, 12, 13]
+  doAssert x == @[11, 12, 13]
 
   let y = map(@[(1,"a"), (2,"b"), (3,"c")], x => $x[0] & x[1])
-  assert y == @["1a", "2b", "3c"]
+  doAssert y == @["1a", "2b", "3c"]
 
   proc eatsTwoArgProc[T,S,U](a: T, b: S, f: proc(t: T, s: S): U): U =
     f(a,b)
 
   let z = eatsTwoArgProc(1, "a", (t,s) => $t & s)
-  assert z == "1a"
+  doAssert z == "1a"
 
 
 

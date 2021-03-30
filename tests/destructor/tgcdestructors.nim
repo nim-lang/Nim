@@ -1,5 +1,5 @@
 discard """
-  cmd: '''nim c -d:nimAllocStats --newruntime $file'''
+  cmd: '''nim c -d:nimAllocStats --gc:arc $file'''
   output: '''hi
 ho
 ha
@@ -10,7 +10,7 @@ a: @[4, 2, 3]
 0
 30
 true
-(allocCount: 40, deallocCount: 40)'''
+(allocCount: 27, deallocCount: 27)'''
 """
 
 include system / ansi_c

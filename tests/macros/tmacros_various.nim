@@ -22,6 +22,7 @@ a[1]: 45
 x: some string
 ([("key", "val"), ("keyB", "2")], [("val", "key"), ("2", "keyB")])
 ([("key", "val"), ("keyB", "2")], [("val", "key"), ("2", "keyB")])
+0
 '''
 """
 
@@ -194,3 +195,78 @@ static:
     doAssert(v == a)
 
   echo "macrocache ok"
+
+block tupleNewLitTests:
+  macro t(): untyped =
+    result = newLit (1, "foo", (), (1,), (a1: 'x', a2: @["ba"]))
+  doAssert $t() == """(1, "foo", (), (1,), (a1: 'x', a2: @["ba"]))"""
+    # this `$` test is needed because tuple equality doesn't distinguish
+    # between named vs unnamed tuples
+  doAssert t() == (1, "foo", (), (1, ), (a1: 'x', a2: @["ba"]))
+
+from strutils import contains
+block getImplTransformed:
+  macro bar(a: typed): string =
+    # newLit a.getImpl.repr # this would be before code transformation
+    let b = a.getImplTransformed
+    newLit b.repr
+  template toExpand() =
+    for ai in 0..2: echo ai
+  proc baz(a=1): int =
+    defer: discard
+    toExpand()
+    12
+  const code = bar(baz)
+  # sanity check:
+  doAssert "finally" in code # `defer` is lowered to try/finally
+  doAssert "while" in code # `for` is lowered to `while`
+  doAssert "toExpand" notin code
+    # template is expanded (but that would already be the case with
+    # `a.getImpl.repr`, unlike the other transformations mentioned above
+
+
+# test macro resemming
+macro makeVar(): untyped =
+  quote:
+    var tensorY {.inject.}: int
+
+macro noop(a: typed): untyped =
+  a
+
+noop:
+  makeVar
+echo tensorY
+
+macro xbenchmark(body: typed): untyped =
+  result = body
+
+xbenchmark:
+  proc fastSHA(inputtest: string) =
+    discard inputtest
+  fastSHA("hey")
+
+
+block: # bug #13511
+  type
+    Builder = ref object
+      components: seq[Component]
+    Component = object
+
+  proc add(builder: var Builder, component: Component) {.compileTime.} =
+    builder.components.add(component)
+
+  macro debugAst(arg: typed): untyped =
+    ## just for debugging purpose.
+    discard arg.treeRepr
+    return arg
+
+  static:
+    var component = Component()
+    var builder = Builder()
+
+    template foo(): untyped =
+      ## WAS: this doc comment causes compilation failure.
+      builder
+
+    debugAst:
+      add(foo(), component)

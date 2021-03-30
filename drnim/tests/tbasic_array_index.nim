@@ -38,6 +38,14 @@ proc xu(a: uint) =
     let chunk = range[1u32..10u32](a)
     ru chunk
 
+proc parse(s: string) =
+  var i = 0
+
+  while i < s.len and s[i] != 'a':
+    inc i
+
+parse("abc")
+
 {.pop.}
 
 p([1, 2, 3], [4, 5])

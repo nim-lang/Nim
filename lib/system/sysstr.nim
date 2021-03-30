@@ -15,6 +15,13 @@
 # we don't use refcounts because that's a behaviour
 # the programmer may not want
 
+
+proc dataPointer(a: PGenericSeq, elemAlign: int): pointer =
+  cast[pointer](cast[ByteAddress](a) +% align(GenericSeqSize, elemAlign))
+
+proc dataPointer(a: PGenericSeq, elemAlign, elemSize, index: int): pointer =
+  cast[pointer](cast[ByteAddress](a) +% align(GenericSeqSize, elemAlign) +% (index*%elemSize))
+
 proc resize(old: int): int {.inline.} =
   if old <= 0: result = 4
   elif old < 65536: result = old * 2
@@ -245,7 +252,7 @@ proc setLengthStr(s: NimString, newLen: int): NimString {.compilerRtl.} =
 
 # ----------------- sequences ----------------------------------------------
 
-proc incrSeq(seq: PGenericSeq, elemSize: int): PGenericSeq {.compilerproc.} =
+proc incrSeq(seq: PGenericSeq, elemSize, elemAlign: int): PGenericSeq {.compilerproc.} =
   # increments the length by one:
   # this is needed for supporting ``add``;
   #
@@ -255,22 +262,17 @@ proc incrSeq(seq: PGenericSeq, elemSize: int): PGenericSeq {.compilerproc.} =
   result = seq
   if result.len >= result.space:
     let r = resize(result.space)
-    result = cast[PGenericSeq](growObj(result, elemSize * r +
-                               GenericSeqSize))
+    result = cast[PGenericSeq](growObj(result, align(GenericSeqSize, elemAlign) + elemSize * r))
     result.reserved = r
   inc(result.len)
 
-proc incrSeqV2(seq: PGenericSeq, elemSize: int): PGenericSeq {.compilerproc.} =
+proc incrSeqV2(seq: PGenericSeq, elemSize, elemAlign: int): PGenericSeq {.compilerproc.} =
   # incrSeq version 2
   result = seq
   if result.len >= result.space:
     let r = resize(result.space)
-    result = cast[PGenericSeq](growObj(result, elemSize * r +
-                               GenericSeqSize))
+    result = cast[PGenericSeq](growObj(result, align(GenericSeqSize, elemAlign) + elemSize * r))
     result.reserved = r
-
-template `+!`(p: pointer, s: int): pointer =
-  cast[pointer](cast[int](p) +% s)
 
 proc incrSeqV3(s: PGenericSeq, typ: PNimType): PGenericSeq {.compilerproc.} =
   if s == nil:
@@ -283,32 +285,29 @@ proc incrSeqV3(s: PGenericSeq, typ: PNimType): PGenericSeq {.compilerproc.} =
       when defined(nimIncrSeqV3):
         result = cast[PGenericSeq](newSeq(typ, r))
         result.len = s.len
-        copyMem(result +! GenericSeqSize, s +! GenericSeqSize, s.len * typ.base.size)
+        copyMem(dataPointer(result, typ.base.align), dataPointer(s, typ.base.align), s.len * typ.base.size)
         # since we steal the content from 's', it's crucial to set s's len to 0.
         s.len = 0
       else:
-        result = cast[PGenericSeq](growObj(result, typ.base.size * r +
-                                GenericSeqSize))
+        result = cast[PGenericSeq](growObj(result, align(GenericSeqSize, typ.base.align) + typ.base.size * r))
         result.reserved = r
 
-proc setLengthSeq(seq: PGenericSeq, elemSize, newLen: int): PGenericSeq {.
+proc setLengthSeq(seq: PGenericSeq, elemSize, elemAlign, newLen: int): PGenericSeq {.
     compilerRtl, inl.} =
   result = seq
   if result.space < newLen:
     let r = max(resize(result.space), newLen)
-    result = cast[PGenericSeq](growObj(result, elemSize * r +
-                               GenericSeqSize))
+    result = cast[PGenericSeq](growObj(result, align(GenericSeqSize, elemAlign) + elemSize * r))
     result.reserved = r
   elif newLen < result.len:
     # we need to decref here, otherwise the GC leaks!
     when not defined(boehmGC) and not defined(nogc) and
          not defined(gcMarkAndSweep) and not defined(gogc) and
          not defined(gcRegions):
-      when false: # compileOption("gc", "v2"):
+      when false: # deadcode: was used by `compileOption("gc", "v2")`
         for i in newLen..result.len-1:
           let len0 = gch.tempStack.len
-          forAllChildrenAux(cast[pointer](cast[ByteAddress](result) +%
-                            GenericSeqSize +% (i*%elemSize)),
+          forAllChildrenAux(dataPointer(result, elemAlign, elemSize, i),
                             extGetCellType(result).base, waPush)
           let len1 = gch.tempStack.len
           for i in len0 ..< len1:
@@ -317,8 +316,7 @@ proc setLengthSeq(seq: PGenericSeq, elemSize, newLen: int): PGenericSeq {.
       else:
         if ntfNoRefs notin extGetCellType(result).base.flags:
           for i in newLen..result.len-1:
-            forAllChildrenAux(cast[pointer](cast[ByteAddress](result) +%
-                              GenericSeqSize +% (i*%elemSize)),
+            forAllChildrenAux(dataPointer(result, elemAlign, elemSize, i),
                               extGetCellType(result).base, waZctDecRef)
 
     # XXX: zeroing out the memory can still result in crashes if a wiped-out
@@ -327,8 +325,7 @@ proc setLengthSeq(seq: PGenericSeq, elemSize, newLen: int): PGenericSeq {.
     # presence of user defined destructors, the user will expect the cell to be
     # "destroyed" thus creating the same problem. We can destroy the cell in the
     # finalizer of the sequence, but this makes destruction non-deterministic.
-    zeroMem(cast[pointer](cast[ByteAddress](result) +% GenericSeqSize +%
-           (newLen*%elemSize)), (result.len-%newLen) *% elemSize)
+    zeroMem(dataPointer(result, elemAlign, elemSize, newLen), (result.len-%newLen) *% elemSize)
   result.len = newLen
 
 proc setLengthSeqV2(s: PGenericSeq, typ: PNimType, newLen: int): PGenericSeq {.
@@ -339,10 +336,11 @@ proc setLengthSeqV2(s: PGenericSeq, typ: PNimType, newLen: int): PGenericSeq {.
   else:
     when defined(nimIncrSeqV3):
       let elemSize = typ.base.size
+      let elemAlign = typ.base.align
       if s.space < newLen:
         let r = max(resize(s.space), newLen)
         result = cast[PGenericSeq](newSeq(typ, r))
-        copyMem(result +! GenericSeqSize, s +! GenericSeqSize, s.len * elemSize)
+        copyMem(dataPointer(result, elemAlign), dataPointer(s, elemAlign), s.len * elemSize)
         # since we steal the content from 's', it's crucial to set s's len to 0.
         s.len = 0
       elif newLen < s.len:
@@ -353,8 +351,7 @@ proc setLengthSeqV2(s: PGenericSeq, typ: PNimType, newLen: int): PGenericSeq {.
             not defined(gcRegions):
           if ntfNoRefs notin typ.base.flags:
             for i in newLen..result.len-1:
-              forAllChildrenAux(cast[pointer](cast[ByteAddress](result) +%
-                                GenericSeqSize +% (i*%elemSize)),
+              forAllChildrenAux(dataPointer(result, elemAlign, elemSize, i),
                                 extGetCellType(result).base, waZctDecRef)
 
         # XXX: zeroing out the memory can still result in crashes if a wiped-out
@@ -363,10 +360,10 @@ proc setLengthSeqV2(s: PGenericSeq, typ: PNimType, newLen: int): PGenericSeq {.
         # presence of user defined destructors, the user will expect the cell to be
         # "destroyed" thus creating the same problem. We can destroy the cell in the
         # finalizer of the sequence, but this makes destruction non-deterministic.
-        zeroMem(cast[pointer](cast[ByteAddress](result) +% GenericSeqSize +%
-              (newLen*%elemSize)), (result.len-%newLen) *% elemSize)
+        zeroMem(dataPointer(result, elemAlign, elemSize, newLen), (result.len-%newLen) *% elemSize)
       else:
         result = s
+        zeroMem(dataPointer(result, elemAlign, elemSize, result.len), (newLen-%result.len) *% elemSize)
       result.len = newLen
     else:
       result = setLengthSeq(s, typ.base.size, newLen)

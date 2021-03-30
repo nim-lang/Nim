@@ -1,5 +1,5 @@
 discard """
-  cmd: "nim default $file"
+  cmd: "nim default --hint:cc:off --hint:cc $file"
   output: '''hello world! 0.5'''
   nimout: '''[NimScript] exec: gcc -v'''
 """

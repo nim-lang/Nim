@@ -130,7 +130,19 @@ proc isRange*(n: PNode): bool {.inline.} =
 
 proc whichPragma*(n: PNode): TSpecialWord =
   let key = if n.kind in nkPragmaCallKinds and n.len > 0: n[0] else: n
-  if key.kind == nkIdent: result = whichKeyword(key.ident)
+  case key.kind
+  of nkIdent: result = whichKeyword(key.ident)
+  of nkSym: result = whichKeyword(key.sym.name)
+  of nkCast: result = wCast
+  of nkClosedSymChoice, nkOpenSymChoice:
+    result = whichPragma(key[0])
+  else: result = wInvalid
+
+proc isNoSideEffectPragma*(n: PNode): bool =
+  var k = whichPragma(n)
+  if k == wCast:
+    k = whichPragma(n[1])
+  result = k == wNoSideEffect
 
 proc findPragma*(n: PNode, which: TSpecialWord): PNode =
   if n.kind == nkPragma:
@@ -169,3 +181,36 @@ proc flattenStmts*(n: PNode): PNode =
 proc extractRange*(k: TNodeKind, n: PNode, a, b: int): PNode =
   result = newNodeI(k, n.info, b-a+1)
   for i in 0..b-a: result[i] = n[i+a]
+
+proc isTrue*(n: PNode): bool =
+  n.kind == nkSym and n.sym.kind == skEnumField and n.sym.position != 0 or
+    n.kind == nkIntLit and n.intVal != 0
+
+proc getRoot*(n: PNode): PSym =
+  ## ``getRoot`` takes a *path* ``n``. A path is an lvalue expression
+  ## like ``obj.x[i].y``. The *root* of a path is the symbol that can be
+  ## determined as the owner; ``obj`` in the example.
+  case n.kind
+  of nkSym:
+    if n.sym.kind in {skVar, skResult, skTemp, skLet, skForVar, skParam}:
+      result = n.sym
+  of nkDotExpr, nkBracketExpr, nkHiddenDeref, nkDerefExpr,
+      nkObjUpConv, nkObjDownConv, nkCheckedFieldExpr, nkHiddenAddr, nkAddr:
+    result = getRoot(n[0])
+  of nkHiddenStdConv, nkHiddenSubConv, nkConv:
+    result = getRoot(n[1])
+  of nkCallKinds:
+    if getMagic(n) == mSlice: result = getRoot(n[1])
+  else: discard
+
+proc stupidStmtListExpr*(n: PNode): bool =
+  for i in 0..<n.len-1:
+    if n[i].kind notin {nkEmpty, nkCommentStmt}: return false
+  result = true
+
+proc dontInlineConstant*(orig, cnst: PNode): bool {.inline.} =
+  # symbols that expand to a complex constant (array, etc.) should not be
+  # inlined, unless it's the empty array:
+  result = orig.kind != cnst.kind and
+           cnst.kind in {nkCurly, nkPar, nkTupleConstr, nkBracket, nkObjConstr} and
+           cnst.len > ord(cnst.kind == nkObjConstr)

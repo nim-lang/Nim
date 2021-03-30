@@ -1,11 +1,6 @@
 discard """
-  output: '''10
-10
-10
-3
-3
+  output: '''
 noReturn
-6
 calling mystuff
 yes
 calling mystuff
@@ -13,7 +8,7 @@ yes
 '''
 """
 
-import future, macros
+import sugar, macros
 
 proc twoParams(x: (int, int) -> int): int =
   result = x(5, 5)
@@ -30,23 +25,23 @@ proc noReturn(x: () -> void) =
 proc doWithOneAndTwo(f: (int, int) -> int): int =
   f(1,2)
 
-echo twoParams(proc (a, b: auto): auto = a + b)
-echo twoParams((x, y) => x + y)
-
-echo oneParam(x => x+5)
-
-echo noParams(() => 3)
-
-echo doWithOneAndTwo((x, y) => x + y)
+doAssert twoParams(proc (a, b: auto): auto = a + b) == 10
+doAssert twoParams((x, y) => x + y) == 10
+doAssert oneParam(x => x+5) == 10
+doAssert noParams(() => 3) == 3
+doAssert doWithOneAndTwo((x, y) => x + y) == 3
 
 noReturn((() -> void) => echo("noReturn"))
 
 proc pass2(f: (int, int) -> int): (int) -> int =
   ((x: int) -> int) => f(2, x)
 
-echo pass2((x, y) => x + y)(4)
+doAssert pass2((x, y) => x + y)(4) == 6
 
+const fun = (x, y: int) {.noSideEffect.} => x + y
 
+doAssert typeof(fun) is (proc (x, y: int): int {.nimcall.})
+doAssert fun(3, 4) == 7
 
 proc register(name: string; x: proc()) =
   echo "calling ", name
@@ -72,3 +67,14 @@ macro m(x: untyped): untyped =
 m:
   proc mystuff() =
     echo "yes"
+
+const typedParamAndPragma = (x, y: int) -> int => x + y
+doAssert typedParamAndPragma(1, 2) == 3
+
+type
+  Bot = object
+    call: proc (): string {.noSideEffect.}
+
+var myBot = Bot()
+myBot.call = () {.noSideEffect.} => "I'm a bot."
+doAssert myBot.call() == "I'm a bot."

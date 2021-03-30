@@ -102,7 +102,7 @@ type
 
 # - Tparam_kind procs
 
-proc `$`*(value: Tparam_kind): string {.procvar.} =
+proc `$`*(value: Tparam_kind): string =
   ## Stringifies the type, used to generate help texts.
   case value:
   of PK_EMPTY: result = ""
@@ -137,7 +137,7 @@ proc new_parameter_specification*(consumes = PK_EMPTY,
 
 # - Tparsed_parameter procs
 
-proc `$`*(data: Tparsed_parameter): string {.procvar.} =
+proc `$`*(data: Tparsed_parameter): string =
   ## Stringifies the value, mostly for debug purposes.
   ##
   ## The proc will display the value followed by non string type in brackets.
@@ -225,7 +225,7 @@ template raise_or_quit(exception, message: untyped) =
 
 template run_custom_proc(parsed_parameter: Tparsed_parameter,
     custom_validator: Tparameter_callback,
-    parameter: TaintedString) =
+    parameter: string) =
   ## Runs the custom validator if it is not nil.
   ##
   ## Pass in the string of the parameter triggering the call. If the
@@ -251,8 +251,8 @@ proc parse_parameter(quit_on_failure: bool, param, value: string,
   case param_kind:
   of PK_INT:
     try: result.int_val = value.parseInt
-    except OverflowError:
-      raise_or_quit(OverflowError, ("parameter $1 requires an " &
+    except OverflowDefect:
+      raise_or_quit(OverflowDefect, ("parameter $1 requires an " &
         "integer, but $2 is too large to fit into one") % [param,
         escape(value)])
     except ValueError:
@@ -301,8 +301,7 @@ template build_specification_lookup():
     OrderedTable[string, ptr Tparameter_specification] =
   ## Returns the table used to keep pointers to all of the specifications.
   var result {.gensym.}: OrderedTable[string, ptr Tparameter_specification]
-  result = initOrderedTable[string, ptr Tparameter_specification](
-    tables.rightSize(expected.len))
+  result = initOrderedTable[string, ptr Tparameter_specification](expected.len)
   for i in 0..expected.len-1:
     for param_to_detect in expected[i].names:
       if result.hasKey(param_to_detect):
@@ -319,7 +318,7 @@ proc echo_help*(expected: seq[Tparameter_specification] = @[],
 
 
 proc parse*(expected: seq[Tparameter_specification] = @[],
-    type_of_positional_parameters = PK_STRING, args: seq[TaintedString] = @[],
+    type_of_positional_parameters = PK_STRING, args: seq[string] = @[],
     bad_prefixes = @["-", "--"], end_of_options = "--",
     quit_on_failure = true): Tcommandline_results =
   ## Parses parameters and returns results.
@@ -447,7 +446,7 @@ proc build_help*(expected: seq[Tparameter_specification] = @[],
 
   # First generate the joined version of input parameters in a list.
   var
-    seen = initSet[string]()
+    seen = initHashSet[string]()
     prefixes: seq[string] = @[]
     helps: seq[string] = @[]
   for key in keys:

@@ -33,7 +33,7 @@ type
     lineNumber*: int             ## the current line number
     sentinel: int
     lineStart: int               # index of last line start in buffer
-    offsetBase*: int             # use ``offsetBase + bufpos`` to get the offset
+    offsetBase*: int             # use `offsetBase + bufpos` to get the offset
     refillChars: set[char]
 
 proc close*(L: var BaseLexer) =
@@ -52,7 +52,8 @@ proc fillBuffer(L: var BaseLexer) =
   toCopy = L.buf.len - (L.sentinel + 1)
   assert(toCopy >= 0)
   if toCopy > 0:
-    when defined(js):
+    when defined(js) or defined(nimscript):
+      # nimscript has to be here to avoid compiling other branch (moveMem)
       for i in 0 ..< toCopy:
         L.buf[i] = L.buf[L.sentinel + 1 + i]
     else:

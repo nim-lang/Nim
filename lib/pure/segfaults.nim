@@ -8,17 +8,19 @@
 #
 
 ## This modules registers a signal handler that turns access violations /
-## segfaults into a ``NilAccessError`` exception. To be able to catch
-## a NilAccessError all you have to do is to import this module.
+## segfaults into a ``NilAccessDefect`` exception. To be able to catch
+## a NilAccessDefect all you have to do is to import this module.
 ##
 ## Tested on these OSes: Linux, Windows, OSX
+
+# xxx possibly broken on arm64, see bug #17178
 
 {.used.}
 
 # do allocate memory upfront:
-var se: ref NilAccessError
+var se: ref NilAccessDefect
 new(se)
-se.name = "NilAccessError"
+se.name = "NilAccessDefect"
 se.msg = "Could not access value because it is nil."
 
 when defined(windows):

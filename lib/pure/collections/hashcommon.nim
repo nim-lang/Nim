@@ -7,16 +7,11 @@
 #    distribution, for details about the copyright.
 #
 
-# An ``include`` file which contains common code for
+# An `include` file which contains common code for
 # hash sets and tables.
 
 const
   growthFactor = 2
-
-when not defined(nimHasDefault):
-  template default[T](t: typedesc[T]): T =
-    var v: T
-    v
 
 # hcode for real keys cannot be zero.  hcode==0 signifies an empty slot.  These
 # two procs retain clarity of that encoding without the space cost of an enum.
@@ -30,17 +25,23 @@ proc nextTry(h, maxHash: Hash): Hash {.inline.} =
   result = (h + 1) and maxHash
 
 proc mustRehash[T](t: T): bool {.inline.} =
+  # If this is changed, make sure to synchronize it with `slotsNeeded` below
   assert(t.dataLen > t.counter)
   result = (t.dataLen * 2 < t.counter * 3) or (t.dataLen - t.counter < 4)
 
-proc rightSize*(count: Natural): int {.inline.} =
-  ## Return the value of ``initialSize`` to support ``count`` items.
+proc slotsNeeded(count: Natural): int {.inline.} =
+  # Make sure to synchronize with `mustRehash` above
+  result = nextPowerOfTwo(count * 3 div 2 + 4)
+
+proc rightSize*(count: Natural): int {.inline, deprecated: "Deprecated since 1.4.0".} =
+  ## **Deprecated since Nim v1.4.0**, it is not needed anymore
+  ## because picking the correct size is done internally.
+  ##
+  ## Return the value of `initialSize` to support `count` items.
   ##
   ## If more items are expected to be added, simply add that
   ## expected extra amount to the parameter before calling this.
-  #
-  # Make sure to synchronize with `mustRehash`
-  result = nextPowerOfTwo(count * 3 div 2 + 4)
+  result = count
 
 template rawGetKnownHCImpl() {.dirty.} =
   if t.dataLen == 0:

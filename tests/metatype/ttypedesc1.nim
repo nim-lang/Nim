@@ -60,3 +60,9 @@ reject:
 reject:
   foo seq[int], ss
 
+# issue #12398
+reject:
+  let xs = [int, float, string]
+
+reject:
+  let data = @[int, typedesc]

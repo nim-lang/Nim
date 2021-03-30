@@ -18,12 +18,12 @@ type
 
 try:
   doAssert(false, "msg1") # doAssert test
-except AssertionError as e:
+except AssertionDefect as e:
   assert e.msg.endsWith "tassert2.nim(20, 11) `false` msg1"
 
 try:
   assert false # assert test with no msg
-except AssertionError as e:
+except AssertionDefect as e:
   assert e.msg.endsWith "tassert2.nim(25, 10) `false` "
 
 try:
@@ -31,13 +31,13 @@ try:
   doAssert(a+a==1) # assert test with Ast expression
   # BUG: const folding would make "1+1==1" appear as `false` in
   # assert message
-except AssertionError as e:
+except AssertionDefect as e:
   assert e.msg.endsWith "`a + a == 1` "
 
 try:
   let a = 1
   doAssert a+a==1 # ditto with `doAssert` and no parens
-except AssertionError as e:
+except AssertionDefect as e:
   assert e.msg.endsWith "`a + a == 1` "
 
 proc fooStatic() =
@@ -91,14 +91,14 @@ block: ## checks for issue https://github.com/nim-lang/Nim/issues/8518
 
   try:
     doAssert fun("foo1") == fun("foo2"), "mymsg"
-  except AssertionError as e:
+  except AssertionDefect as e:
     # used to expand out the template instantiaiton, sometimes filling hundreds of lines
     assert e.msg.endsWith ""
 
 block: ## checks for issue https://github.com/nim-lang/Nim/issues/9301
   try:
     doAssert 1 + 1 == 3
-  except AssertionError as e:
+  except AssertionDefect as e:
     # used to const fold as false
     assert e.msg.endsWith "tassert2.nim(100, 14) `1 + 1 == 3` "
 
@@ -106,6 +106,6 @@ block: ## checks AST isn't transformed as it used to
   let a = 1
   try:
     doAssert a > 1
-  except AssertionError as e:
+  except AssertionDefect as e:
     # used to rewrite as `1 < a`
     assert e.msg.endsWith "tassert2.nim(108, 14) `a > 1` "
