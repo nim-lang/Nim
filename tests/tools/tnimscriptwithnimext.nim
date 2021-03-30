@@ -4,6 +4,7 @@ output: '''
 foobar
 nothing
 hallo
+'''
 """
 
 # nimscript files can any extension
