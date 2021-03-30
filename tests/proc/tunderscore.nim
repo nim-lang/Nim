@@ -4,19 +4,19 @@ discard """
 
 block:
   proc ok(_, _: int) = discard
-  foo(4, 2)
+  ok(4, 2)
 
 block:
   proc ok(_, _: int) = discard
-  foo(4, 2)
+  ok(4, 2)
 
 block:
   proc ok(_: int, _: float) = discard
-  foo(1, 2.0)
+  ok(1, 2.0)
 
 block:
   proc ok(_: int, _: float, _: string) = discard
-  foo(1, 2.6, "5")
+  ok(1, 2.6, "5")
 
 proc main() =
   when defined(js):
