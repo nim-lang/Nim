@@ -245,7 +245,7 @@ proc setupArgsForParallelism(g: ModuleGraph; n: PNode; objType: PType;
       # important special case: we always create a zero-copy slice:
       let slice = newNodeI(nkCall, n.info, 4)
       slice.typ = n.typ
-      slice[0] = newSymNode(createMagic(g, "slice", mSlice))
+      slice[0] = newSymNode(createMagic(g, idgen, "slice", mSlice))
       slice[0].typ = getSysType(g, n.info, tyInt) # fake type
       var fieldB = newSym(skField, tmpName, nextSymId idgen, objType.owner, n.info, g.config.options)
       fieldB.typ = getSysType(g, n.info, tyInt)
@@ -371,8 +371,6 @@ proc wrapProcForSpawn*(g: ModuleGraph; idgen: IdGenerator; owner: PSym; spawnExp
     fn = indirectAccess(castExpr, field, n.info)
   elif fn.kind == nkSym and fn.sym.kind == skIterator:
     localError(g.config, n.info, "iterator in spawn environment is not allowed")
-  elif fn.typ.callConv == ccClosure:
-    localError(g.config, n.info, "closure in spawn environment is not allowed")
 
   call.add(fn)
   var varSection = newNodeI(nkVarSection, n.info)

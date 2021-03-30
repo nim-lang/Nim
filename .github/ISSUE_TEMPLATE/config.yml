@@ -3,7 +3,7 @@ contact_links:
     url: https://forum.nim-lang.org
     about: Please ask and answer questions here.
   - name: Discord
-    url: https://discord.com/invite/nim
+    url: https://discord.gg/nim
     about: Please ask and answer questions here.
   - name: Stack Overflow
     url: https://stackoverflow.com/questions/tagged/nim-lang

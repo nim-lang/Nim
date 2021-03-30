@@ -380,7 +380,7 @@ proc semObjConstr(c: PContext, n: PNode, flags: TExprFlags): PNode =
 
   if t == nil:
     localError(c.config, n.info, errGenerated, "object constructor needs an object type")
-    return
+    return errorNode(c, result)
 
   t = skipTypes(t, {tyGenericInst, tyAlias, tySink, tyOwned})
   if t.kind == tyRef:
@@ -392,17 +392,19 @@ proc semObjConstr(c: PContext, n: PNode, flags: TExprFlags): PNode =
       result.typ.flags.incl tfHasOwned
   if t.kind != tyObject:
     localError(c.config, n.info, errGenerated, "object constructor needs an object type")
-    return
+    return errorNode(c, result)
 
   # Check if the object is fully initialized by recursively testing each
   # field (if this is a case object, initialized fields in two different
   # branches will be reported as an error):
   var constrCtx = initConstrContext(t, result)
   let initResult = semConstructTypeAux(c, constrCtx, flags)
+  var hasError = false # needed to split error detect/report for better msgs
 
   # It's possible that the object was not fully initialized while
   # specifying a .requiresInit. pragma:
   if constrCtx.missingFields.len > 0:
+    hasError = true
     localError(c.config, result.info,
       "The $1 type requires the following fields to be initialized: $2.",
       [t.sym.name.s, listSymbolNames(constrCtx.missingFields)])
@@ -415,6 +417,7 @@ proc semObjConstr(c: PContext, n: PNode, flags: TExprFlags): PNode =
     if nfSem notin field.flags:
       if field.kind != nkExprColonExpr:
         invalidObjConstr(c, field)
+        hasError = true
         continue
       let id = considerQuotedIdent(c, field[0])
       # This node was not processed. There are two possible reasons:
@@ -423,10 +426,15 @@ proc semObjConstr(c: PContext, n: PNode, flags: TExprFlags): PNode =
         let prevId = considerQuotedIdent(c, result[j][0])
         if prevId.id == id.id:
           localError(c.config, field.info, errFieldInitTwice % id.s)
-          return
+          hasError = true
+          break
       # 2) No such field exists in the constructed type
       localError(c.config, field.info, errUndeclaredFieldX % id.s)
-      return
+      hasError = true
+      break
 
   if initResult == initFull:
     incl result.flags, nfAllFieldsSet
+  
+  # wrap in an error see #17437
+  if hasError: result = errorNode(c, result)

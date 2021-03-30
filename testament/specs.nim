@@ -79,8 +79,6 @@ type
     sortoutput*: bool
     output*: string
     line*, column*: int
-    tfile*: string
-    tline*, tcolumn*: int
     exitCode*: int
     msg*: string
     ccodeCheck*: seq[string]
@@ -230,7 +228,7 @@ proc addLine*(self: var string; a, b: string) =
 proc initSpec*(filename: string): TSpec =
   result.file = filename
 
-proc isCurrentBatch(testamentData: TestamentData; filename: string): bool =
+proc isCurrentBatch*(testamentData: TestamentData; filename: string): bool =
   if testamentData.testamentNumBatch != 0:
     hash(filename) mod testamentData.testamentNumBatch == testamentData.testamentBatch
   else:
@@ -277,12 +275,6 @@ proc parseSpec*(filename: string): TSpec =
         if result.msg.len == 0 and result.nimout.len == 0:
           result.parseErrors.addLine "errormsg or msg needs to be specified before column"
         discard parseInt(e.value, result.column)
-      of "tfile":
-        result.tfile = e.value
-      of "tline":
-        discard parseInt(e.value, result.tline)
-      of "tcolumn":
-        discard parseInt(e.value, result.tcolumn)
       of "output":
         if result.outputCheck != ocSubstr:
           result.outputCheck = ocEqual

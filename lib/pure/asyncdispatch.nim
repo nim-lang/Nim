@@ -573,7 +573,7 @@ when defined(windows) or defined(nimdoc):
     ## will complete once all data has been sent.
     ##
     ## .. warning:: Use it with caution. If `buf` refers to GC'ed object,
-    ## you must use GC_ref/GC_unref calls to avoid early freeing of the buffer.
+    ##   you must use GC_ref/GC_unref calls to avoid early freeing of the buffer.
     verifyPresence(socket)
     var retFuture = newFuture[void]("send")
 

@@ -92,7 +92,7 @@ import ssl_config
 export nativesockets.Port, nativesockets.`$`, nativesockets.`==`
 export Domain, SockType, Protocol
 
-const useWinVersion = defined(Windows) or defined(nimdoc)
+const useWinVersion = defined(windows) or defined(nimdoc)
 const defineSsl = defined(ssl) or defined(nimdoc)
 
 when useWinVersion:
@@ -200,7 +200,7 @@ when defined(nimHasStyleChecks):
 
 proc socketError*(socket: Socket, err: int = -1, async = false,
                   lastError = (-1).OSErrorCode,
-                  flags: set[SocketFlag] = {}): void {.gcsafe.}
+                  flags: set[SocketFlag] = {}) {.gcsafe.}
 
 proc isDisconnectionError*(flags: set[SocketFlag],
     lastError: OSErrorCode): bool =
@@ -770,10 +770,11 @@ when defineSsl:
         raiseSSLError("No SSL certificate found.")
 
       const X509_CHECK_FLAG_ALWAYS_CHECK_SUBJECT = 0x1.cuint
-      const size = 1024
-      var peername: string = newString(size)
+      # https://www.openssl.org/docs/man1.1.1/man3/X509_check_host.html
       let match = certificate.X509_check_host(hostname.cstring, hostname.len.cint,
-        X509_CHECK_FLAG_ALWAYS_CHECK_SUBJECT, peername)
+        X509_CHECK_FLAG_ALWAYS_CHECK_SUBJECT, nil)
+      # https://www.openssl.org/docs/man1.1.1/man3/SSL_get_peer_certificate.html
+      X509_free(certificate)
       if match != 1:
         raiseSSLError("SSL Certificate check failed.")
 
@@ -1426,7 +1427,7 @@ proc recv*(socket: Socket, data: var string, size: int, timeout = -1,
            flags = {SocketFlag.SafeDisconn}): int =
   ## Higher-level version of `recv`.
   ##
-  ## Reads **up to** `size` bytes from `socket` into `buf`.
+  ## Reads **up to** `size` bytes from `socket` into `data`.
   ##
   ## For buffered sockets this function will attempt to read all the requested
   ## data. It will read this data in `BufferSize` chunks.
@@ -1443,9 +1444,7 @@ proc recv*(socket: Socket, data: var string, size: int, timeout = -1,
   ## A timeout may be specified in milliseconds, if enough data is not received
   ## within the time specified a TimeoutError exception will be raised.
   ##
-  ## **Note**: `data` must be initialised.
-  ##
-  ## **Warning**: Only the `SafeDisconn` flag is currently supported.
+  ## .. warning:: Only the `SafeDisconn` flag is currently supported.
   data.setLen(size)
   result =
     if timeout == -1:
@@ -1463,7 +1462,7 @@ proc recv*(socket: Socket, size: int, timeout = -1,
            flags = {SocketFlag.SafeDisconn}): string {.inline.} =
   ## Higher-level version of `recv` which returns a string.
   ##
-  ## Reads **up to** `size` bytes from `socket` into `buf`.
+  ## Reads **up to** `size` bytes from `socket` into the result.
   ##
   ## For buffered sockets this function will attempt to read all the requested
   ## data. It will read this data in `BufferSize` chunks.
@@ -1480,7 +1479,7 @@ proc recv*(socket: Socket, size: int, timeout = -1,
   ## within the time specified a TimeoutError exception will be raised.
   ##
   ##
-  ## **Warning**: Only the `SafeDisconn` flag is currently supported.
+  ## .. warning:: Only the `SafeDisconn` flag is currently supported.
   result = newString(size)
   discard recv(socket, result, size, timeout, flags)
 
@@ -1523,7 +1522,7 @@ proc readLine*(socket: Socket, line: var string, timeout = -1,
   ## The `maxLength` parameter determines the maximum amount of characters
   ## that can be read. The result is truncated after that.
   ##
-  ## **Warning**: Only the `SafeDisconn` flag is currently supported.
+  ## .. warning:: Only the `SafeDisconn` flag is currently supported.
 
   template addNLIfEmpty() =
     if line.len == 0:
@@ -1534,6 +1533,7 @@ proc readLine*(socket: Socket, line: var string, timeout = -1,
     if flags.isDisconnectionError(lastError):
       setLen(line, 0)
     socket.socketError(n, lastError = lastError, flags = flags)
+    return
 
   var waited: Duration
 
@@ -1579,7 +1579,7 @@ proc recvLine*(socket: Socket, timeout = -1,
   ## The `maxLength` parameter determines the maximum amount of characters
   ## that can be read. The result is truncated after that.
   ##
-  ## **Warning**: Only the `SafeDisconn` flag is currently supported.
+  ## .. warning:: Only the `SafeDisconn` flag is currently supported.
   result = ""
   readLine(socket, result, timeout, flags, maxLength)
 
@@ -1592,10 +1592,10 @@ proc recvFrom*(socket: Socket, data: var string, length: int,
   ## If an error occurs an OSError exception will be raised. Otherwise the return
   ## value will be the length of data received.
   ##
-  ## **Warning:** This function does not yet have a buffered implementation,
-  ## so when `socket` is buffered the non-buffered implementation will be
-  ## used. Therefore if `socket` contains something in its buffer this
-  ## function will make no effort to return it.
+  ## .. warning:: This function does not yet have a buffered implementation,
+  ##   so when `socket` is buffered the non-buffered implementation will be
+  ##   used. Therefore if `socket` contains something in its buffer this
+  ##   function will make no effort to return it.
   template adaptRecvFromToDomain(domain: Domain) =
     var addrLen = sizeof(sockAddress).SockLen
     result = recvfrom(socket.fd, cstring(data), length.cint, flags.cint,

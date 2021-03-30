@@ -613,7 +613,9 @@ proc processSwitch*(switch, arg: string, pass: TCmdLinePass, info: TLineInfo;
   of "hintaserror": processSpecificNote(arg, wHintAsError, pass, info, switch, conf)
   of "hints":
     if processOnOffSwitchOrList(conf, {optHints}, arg, pass, info): listHints(conf)
-  of "threadanalysis": processOnOffSwitchG(conf, {optThreadAnalysis}, arg, pass, info)
+  of "threadanalysis":
+    if conf.backend == backendJs: discard
+    else: processOnOffSwitchG(conf, {optThreadAnalysis}, arg, pass, info)
   of "stacktrace": processOnOffSwitch(conf, {optStackTrace}, arg, pass, info)
   of "stacktracemsgs": processOnOffSwitch(conf, {optStackTraceMsgs}, arg, pass, info)
   of "excessivestacktrace": processOnOffSwitchG(conf, {optExcessiveStackTrace}, arg, pass, info)
@@ -670,7 +672,8 @@ proc processSwitch*(switch, arg: string, pass: TCmdLinePass, info: TLineInfo;
   of "linedir": processOnOffSwitch(conf, {optLineDir}, arg, pass, info)
   of "assertions", "a": processOnOffSwitch(conf, {optAssert}, arg, pass, info)
   of "threads":
-    processOnOffSwitchG(conf, {optThreads}, arg, pass, info)
+    if conf.backend == backendJs: discard
+    else: processOnOffSwitchG(conf, {optThreads}, arg, pass, info)
     #if optThreads in conf.globalOptions: conf.setNote(warnGcUnsafe)
   of "tlsemulation": processOnOffSwitchG(conf, {optTlsEmulation}, arg, pass, info)
   of "implicitstatic":
@@ -860,6 +863,10 @@ proc processSwitch*(switch, arg: string, pass: TCmdLinePass, info: TLineInfo;
     processOnOffSwitchG(conf, {optStdout}, arg, pass, info)
   of "listfullpaths":
     processOnOffSwitchG(conf, {optListFullPaths}, arg, pass, info)
+  of "spellsuggest":
+    if arg.len == 0: conf.spellSuggestMax = spellSuggestSecretSauce
+    elif arg == "auto": conf.spellSuggestMax = spellSuggestSecretSauce
+    else: conf.spellSuggestMax = parseInt(arg)
   of "declaredlocs":
     processOnOffSwitchG(conf, {optDeclaredLocs}, arg, pass, info)
   of "dynliboverride":

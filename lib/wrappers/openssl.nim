@@ -25,7 +25,7 @@
 when defined(nimHasStyleChecks):
   {.push styleChecks: off.}
 
-const useWinVersion = defined(Windows) or defined(nimdoc)
+const useWinVersion = defined(windows) or defined(nimdoc)
 
 # To force openSSL version use -d:sslVersion=1.0.0
 # See: #10281, #10230
@@ -808,6 +808,8 @@ when not defined(nimDisableCertificateValidation) and not defined(windows):
     cdecl, dynlib:DLLSSLName, importc.}
 
   proc X509_check_host*(cert: PX509, name: cstring, namelen: cint, flags:cuint, peername: cstring): cint {.cdecl, dynlib: DLLSSLName, importc.}
+
+  proc X509_free*(cert: PX509) {.cdecl, dynlib: DLLSSLName, importc.}
 
   # Certificates store
 

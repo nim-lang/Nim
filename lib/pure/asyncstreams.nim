@@ -127,7 +127,11 @@ proc read*[T](future: FutureStream[T]): owned(Future[(bool, T)]) =
       resFut.complete(res)
 
     # If the saved callback isn't nil then let's call it.
-    if not savedCb.isNil: savedCb()
+    if not savedCb.isNil:
+      if fs.queue.len > 0:
+        savedCb()
+      else:
+        future.cb = savedCb
 
   if future.queue.len > 0 or future.finished:
     newCb(future)

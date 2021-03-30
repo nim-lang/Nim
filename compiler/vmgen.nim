@@ -1354,9 +1354,10 @@ proc genMagic(c: PCtx; n: PNode; dest: var TDest; m: TMagic) =
     if dest < 0: dest = c.getTemp(arg.typ)
     gABC(c, arg, whichAsgnOpc(arg, requiresCopy=false), dest, a)
     # XXX use ldNullOpcode() here?
-    c.gABx(n, opcLdNull, a, c.genType(arg.typ))
-    c.gABx(n, opcNodeToReg, a, a)
-    c.genAsgnPatch(arg, a)
+    # Don't zero out the arg for now #17199
+    # c.gABx(n, opcLdNull, a, c.genType(arg.typ))
+    # c.gABx(n, opcNodeToReg, a, a)
+    # c.genAsgnPatch(arg, a)
     c.freeTemp(a)
   of mNodeId:
     c.genUnaryABC(n, dest, opcNodeId)
@@ -2118,7 +2119,8 @@ proc gen(c: PCtx; n: PNode; dest: var TDest; flags: TGenFlags = {}) =
     else:
       dest = tmp0
   of nkEmpty, nkCommentStmt, nkTypeSection, nkConstSection, nkPragma,
-     nkTemplateDef, nkIncludeStmt, nkImportStmt, nkFromStmt, nkExportStmt:
+     nkTemplateDef, nkIncludeStmt, nkImportStmt, nkFromStmt, nkExportStmt,
+     nkMixinStmt, nkBindStmt:
     unused(c, n, dest)
   of nkStringToCString, nkCStringToString:
     gen(c, n[0], dest)
@@ -2264,7 +2266,7 @@ proc genProc(c: PCtx; s: PSym): int =
     genParams(c, s.typ.n)
 
     # allocate additional space for any generically bound parameters
-    if s.kind == skMacro and s.ast[genericParamsPos].kind != nkEmpty:
+    if s.kind == skMacro and s.isGenericRoutineStrict:
       genGenericParams(c, s.ast[genericParamsPos])
 
     if tfCapturesEnv in s.typ.flags:

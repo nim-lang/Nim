@@ -353,7 +353,7 @@ block absolutePath:
   doAssertRaises(ValueError): discard absolutePath("a", "b")
   doAssert absolutePath("a") == getCurrentDir() / "a"
   doAssert absolutePath("a", "/b") == "/b" / "a"
-  when defined(Posix):
+  when defined(posix):
     doAssert absolutePath("a", "/b/") == "/b" / "a"
     doAssert absolutePath("a", "/b/c") == "/b/c" / "a"
     doAssert absolutePath("/a", "b/") == "/a"
@@ -549,12 +549,12 @@ block getTempDir:
       if existsEnv("TMPDIR"):
         let origTmpDir = getEnv("TMPDIR")
         putEnv("TMPDIR", "/mytmp")
-        doAssert getTempDir() == "/mytmp/"
+        doAssert getTempDir() == "/mytmp"
         delEnv("TMPDIR")
-        doAssert getTempDir() == "/tmp/"
+        doAssert getTempDir() == "/tmp"
         putEnv("TMPDIR", origTmpDir)
       else:
-        doAssert getTempDir() == "/tmp/"
+        doAssert getTempDir() == "/tmp"
 
 block osenv:
   block delEnv:
@@ -610,7 +610,7 @@ block: # normalizePathEnd
     doAssert "//".normalizePathEnd(false) == "/"
     doAssert "foo.bar//".normalizePathEnd == "foo.bar"
     doAssert "bar//".normalizePathEnd(trailingSep = true) == "bar/"
-  when defined(Windows):
+  when defined(windows):
     doAssert r"C:\foo\\".normalizePathEnd == r"C:\foo"
     doAssert r"C:\foo".normalizePathEnd(trailingSep = true) == r"C:\foo\"
     # this one is controversial: we could argue for returning `D:\` instead,
@@ -655,3 +655,10 @@ block: # normalizeExe
     doAssert "foo/../bar".dup(normalizeExe) == "foo/../bar"
   when defined(windows):
     doAssert "foo".dup(normalizeExe) == "foo"
+
+block: # isAdmin
+  let isAzure = existsEnv("TF_BUILD") # xxx factor with testament.specs.isAzure
+  # In Azure on Windows tests run as an admin user
+  if isAzure and defined(windows): doAssert isAdmin()
+  # In Azure on POSIX tests run as a normal user
+  if isAzure and defined(posix): doAssert not isAdmin()

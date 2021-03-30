@@ -598,7 +598,7 @@ template withValue*[A, B](t: var Table[A, B], key: A, value, body: untyped) =
       # block is executed only if `key` in `t`
       value.name = "Nim"
       value.uid = 1314
-    
+
     t.withValue(2, value) do:
       value.name = "No"
       value.uid = 521
@@ -702,7 +702,7 @@ iterator mpairs*[A, B](t: var Table[A, B]): (A, var B) =
       yield (t.data[h].key, t.data[h].val)
       assert(len(t) == L, "the length of the table changed while iterating over it")
 
-iterator keys*[A, B](t: Table[A, B]): A =
+iterator keys*[A, B](t: Table[A, B]): lent A =
   ## Iterates over any key in the table `t`.
   ##
   ## See also:
@@ -723,7 +723,7 @@ iterator keys*[A, B](t: Table[A, B]): A =
       yield t.data[h].key
       assert(len(t) == L, "the length of the table changed while iterating over it")
 
-iterator values*[A, B](t: Table[A, B]): B =
+iterator values*[A, B](t: Table[A, B]): lent B =
   ## Iterates over any value in the table `t`.
   ##
   ## See also:
@@ -1146,7 +1146,7 @@ iterator mpairs*[A, B](t: TableRef[A, B]): (A, var B) =
       yield (t.data[h].key, t.data[h].val)
       assert(len(t) == L, "the length of the table changed while iterating over it")
 
-iterator keys*[A, B](t: TableRef[A, B]): A =
+iterator keys*[A, B](t: TableRef[A, B]): lent A =
   ## Iterates over any key in the table `t`.
   ##
   ## See also:
@@ -1167,7 +1167,7 @@ iterator keys*[A, B](t: TableRef[A, B]): A =
       yield t.data[h].key
       assert(len(t) == L, "the length of the table changed while iterating over it")
 
-iterator values*[A, B](t: TableRef[A, B]): B =
+iterator values*[A, B](t: TableRef[A, B]): lent B =
   ## Iterates over any value in the table `t`.
   ##
   ## See also:
@@ -1724,7 +1724,7 @@ iterator mpairs*[A, B](t: var OrderedTable[A, B]): (A, var B) =
     yield (t.data[h].key, t.data[h].val)
     assert(len(t) == L, "the length of the table changed while iterating over it")
 
-iterator keys*[A, B](t: OrderedTable[A, B]): A =
+iterator keys*[A, B](t: OrderedTable[A, B]): lent A =
   ## Iterates over any key in the table `t` in insertion order.
   ##
   ## See also:
@@ -1745,7 +1745,7 @@ iterator keys*[A, B](t: OrderedTable[A, B]): A =
     yield t.data[h].key
     assert(len(t) == L, "the length of the table changed while iterating over it")
 
-iterator values*[A, B](t: OrderedTable[A, B]): B =
+iterator values*[A, B](t: OrderedTable[A, B]): lent B =
   ## Iterates over any value in the table `t` in insertion order.
   ##
   ## See also:
@@ -2132,7 +2132,7 @@ iterator mpairs*[A, B](t: OrderedTableRef[A, B]): (A, var B) =
     yield (t.data[h].key, t.data[h].val)
     assert(len(t) == L, "the length of the table changed while iterating over it")
 
-iterator keys*[A, B](t: OrderedTableRef[A, B]): A =
+iterator keys*[A, B](t: OrderedTableRef[A, B]): lent A =
   ## Iterates over any key in the table `t` in insertion order.
   ##
   ## See also:
@@ -2153,7 +2153,7 @@ iterator keys*[A, B](t: OrderedTableRef[A, B]): A =
     yield t.data[h].key
     assert(len(t) == L, "the length of the table changed while iterating over it")
 
-iterator values*[A, B](t: OrderedTableRef[A, B]): B =
+iterator values*[A, B](t: OrderedTableRef[A, B]): lent B =
   ## Iterates over any value in the table `t` in insertion order.
   ##
   ## See also:
@@ -2439,7 +2439,7 @@ proc sort*[A](t: var CountTable[A], order = SortOrder.Descending) =
   ## Sorts the count table so that, by default, the entry with the
   ## highest counter comes first.
   ##
-  ## **WARNING:** This is destructive! Once sorted, you must not modify `t` afterwards!
+  ## .. warning:: This is destructive! Once sorted, you must not modify `t` afterwards!
   ##
   ## You can use the iterators `pairs<#pairs.i,CountTable[A]>`_,
   ## `keys<#keys.i,CountTable[A]>`_, and `values<#values.i,CountTable[A]>`_
@@ -2545,7 +2545,7 @@ iterator mpairs*[A](t: var CountTable[A]): (A, var int) =
       yield (t.data[h].key, t.data[h].val)
       assert(len(t) == L, "the length of the table changed while iterating over it")
 
-iterator keys*[A](t: CountTable[A]): A =
+iterator keys*[A](t: CountTable[A]): lent A =
   ## Iterates over any key in the table `t`.
   ##
   ## See also:
