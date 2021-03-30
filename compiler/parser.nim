@@ -1990,7 +1990,8 @@ proc parseObject(p: var Parser): PNode =
     result.add(parseObjectPart(p))
 
 proc parseTypeClassParam(p: var Parser): PNode =
-  let modifier = case p.tok.tokType
+  let modifier =
+    case p.tok.tokType
     of tkOut, tkVar: nkVarTy
     of tkPtr: nkPtrTy
     of tkRef: nkRefTy
