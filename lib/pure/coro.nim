@@ -273,8 +273,7 @@ proc start*(c: proc(), stacksize: int = defaultStackSize): CoroutineRef {.discar
     coro = cast[CoroutinePtr](alloc0(sizeof(Coroutine)))
     coro.execContext = CreateFiberEx(stacksize, stacksize,
       FIBER_FLAG_FLOAT_SWITCH,
-      (proc(p: pointer): void {.stdcall.} = runCurrentTask()),
-      nil)
+      (proc(p: pointer) {.stdcall.} = runCurrentTask()), nil)
     coro.stack.size = stacksize
   else:
     coro = cast[CoroutinePtr](alloc0(sizeof(Coroutine) + stacksize))

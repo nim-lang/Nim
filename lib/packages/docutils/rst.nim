@@ -68,7 +68,7 @@
 ##     substitution references, standalone hyperlinks,
 ##     internal links (inline and outline)
 ##   + \`interpreted text\` with roles ``:literal:``, ``:strong:``,
-##     ``emphasis``, ``:sub:``/``:subscript:``, ``:sup:``/``:supscript:``
+##     ``emphasis``, ``:sub:``/``:subscript:``, ``:sup:``/``:superscript:``
 ##     (see `RST roles list`_ for description).
 ##   + inline internal targets
 ##
@@ -82,6 +82,14 @@
 ## * ***triple emphasis*** (bold and italic) using \*\*\*
 ## * ``:idx:`` role for \`interpreted text\` to include the link to this
 ##   text into an index (example: `Nim index`_).
+## * double slash `//` in option lists serves as a prefix for any option that
+##   starts from a word (without any leading symbols like `-`, `--`, `/`)::
+##
+##     //compile   compile the project
+##     //doc       generate documentation
+##
+##   Here the dummy `//` will disappear, while options ``compile``
+##   and ``doc`` will be left in the final document.
 ##
 ## .. [cmp:Sphinx] similar but different from the directives of
 ##    Python `Sphinx directives`_ extensions
@@ -133,9 +141,6 @@
 ##
 ## See `packages/docutils/rstgen module <rstgen.html>`_ to know how to
 ## generate HTML or Latex strings to embed them into your documents.
-##
-## .. Tip:: Import ``packages/docutils/rst`` to use this module
-##    programmatically.
 ##
 ## .. _quick introduction: https://docutils.sourceforge.io/docs/user/rst/quickstart.html
 ## .. _RST reference: https://docutils.sourceforge.io/docs/user/rst/quickref.html
@@ -548,6 +553,67 @@ proc pushInd(p: var RstParser, ind: int) =
 proc popInd(p: var RstParser) =
   if p.indentStack.len > 1: setLen(p.indentStack, p.indentStack.len - 1)
 
+# Working with indentation in rst.nim
+# -----------------------------------
+#
+# Every line break has an associated tkIndent.
+# The tokenizer writes back the first column of next non-blank line
+# in all preceeding tkIndent tokens to the `ival` field of tkIndent.
+#
+# RST document is separated into body elements (B.E.), every of which
+# has a dedicated handler proc (or block of logic when B.E. is a block quote)
+# that should follow the next rule:
+#   Every B.E. handler proc should finish at tkIndent (newline)
+#   after its B.E. finishes.
+#   Then its callers (which is `parseSection` or another B.E. handler)
+#   check for tkIndent ival (without necessity to advance `p.idx`)
+#   and decide themselves whether they continue processing or also stop.
+#
+# An example::
+#
+#   L    RST text fragment                  indentation
+#     +--------------------+
+#   1 |                    | <- (empty line at the start of file) no tokens
+#   2 |First paragraph.    | <- tkIndent has ival=0, and next tkWord has col=0
+#   3 |                    | <- tkIndent has ival=0
+#   4 |* bullet item and   | <- tkIndent has ival=0, and next tkPunct has col=0
+#   5 |  its continuation  | <- tkIndent has ival=2, and next tkWord has col=2
+#   6 |                    | <- tkIndent has ival=4
+#   7 |    Block quote     | <- tkIndent has ival=4, and next tkWord has col=4
+#   8 |                    | <- tkIndent has ival=0
+#   9 |                    | <- tkIndent has ival=0
+#   10|Final paragraph     | <- tkIndent has ival=0, and tkWord has col=0
+#     +--------------------+
+#    C:01234
+#
+# Here parser starts with initial `indentStack=[0]` and then calls the
+# 1st `parseSection`:
+#
+#   - `parseSection` calls `parseParagraph` and "First paragraph" is parsed
+#   - bullet list handler is started at reaching ``*`` (L4 C0), it
+#     starts bullet item logic (L4 C2), which calls `pushInd(p, ind=2)`,
+#     then calls `parseSection` (2nd call, nested) which parses
+#     paragraph "bullet list and its continuation" and then starts
+#     a block quote logic (L7 C4).
+#     The block quote logic calls calls `pushInd(p, ind=4)` and
+#     calls `parseSection` again, so a (simplified) sequence of calls now is::
+#
+#       parseSection -> parseBulletList ->
+#         parseSection (+block quote logic) -> parseSection
+#
+#     3rd `parseSection` finishes, block quote logic calls `popInd(p)`,
+#     it returns to bullet item logic, which sees that next tkIndent has
+#     ival=0 and stops there since the required indentation for a bullet item
+#     is 2 and 0<2; the bullet item logic calls `popInd(p)`.
+#     Then bullet list handler checks that next tkWord (L10 C0) has the
+#     right indentation but does not have ``*`` so stops at tkIndent (L10).
+#   - 1st `parseSection` invocation calls `parseParagraph` and the
+#     "Final paragraph" is parsed.
+#
+# If a B.E. handler has advanced `p.idx` past tkIndent to check
+# whether it should continue its processing or not, and decided not to,
+# then this B.E. handler should step back (e.g. do `dec p.idx`).
+
 proc initParser(p: var RstParser, sharedState: PSharedState) =
   p.indentStack = @[0]
   p.tok = @[]
@@ -852,6 +918,9 @@ proc isInlineMarkupEnd(p: RstParser, markup: string): bool =
   if not result: return
   # Rule 4:
   if p.idx > 0:
+    # see bug #17260; for now `\` must be written ``\``, likewise with sequences
+    # ending in an un-escaped `\`; `\\` is legal but not `\\\` for example;
+    # for this reason we can't use `["``", "`"]` here.
     if markup != "``" and prevTok(p).symbol == "\\":
       result = false
 
@@ -949,6 +1018,16 @@ proc fixupEmbeddedRef(n, a, b: PRstNode) =
   for i in countup(0, sep - incr): a.add(n.sons[i])
   for i in countup(sep + 1, n.len - 2): b.add(n.sons[i])
 
+proc whichRole(sym: string): RstNodeKind =
+  case sym
+  of "idx": result = rnIdx
+  of "literal": result = rnInlineLiteral
+  of "strong": result = rnStrongEmphasis
+  of "emphasis": result = rnEmphasis
+  of "sub", "subscript": result = rnSub
+  of "sup", "superscript": result = rnSup
+  else: result = rnGeneralRole
+
 proc parsePostfix(p: var RstParser, n: PRstNode): PRstNode =
   var newKind = n.kind
   var newSons = n.sons
@@ -973,22 +1052,8 @@ proc parsePostfix(p: var RstParser, n: PRstNode): PRstNode =
     result = newRstNode(newKind, newSons)
   elif match(p, p.idx, ":w:"):
     # a role:
-    if nextTok(p).symbol == "idx":
-      newKind = rnIdx
-    elif nextTok(p).symbol == "literal":
-      newKind = rnInlineLiteral
-    elif nextTok(p).symbol == "strong":
-      newKind = rnStrongEmphasis
-    elif nextTok(p).symbol == "emphasis":
-      newKind = rnEmphasis
-    elif nextTok(p).symbol == "sub" or
-        nextTok(p).symbol == "subscript":
-      newKind = rnSub
-    elif nextTok(p).symbol == "sup" or
-        nextTok(p).symbol == "supscript":
-      newKind = rnSup
-    else:
-      newKind = rnGeneralRole
+    newKind = whichRole(nextTok(p).symbol)
+    if newKind == rnGeneralRole:
       let newN = newRstNode(rnInner, n.sons)
       newSons = @[newN, newLeaf(nextTok(p).symbol)]
     inc p.idx, 3
@@ -1089,11 +1154,19 @@ proc parseUntil(p: var RstParser, father: PRstNode, postfix: string,
       if isInlineMarkupEnd(p, postfix):
         inc p.idx
         break
-      elif interpretBackslash:
-        parseBackslash(p, father)
       else:
-        father.add(newLeaf(p))
-        inc p.idx
+        if postfix == "`":
+          if prevTok(p).symbol == "\\" and currentTok(p).symbol == "`":
+            father.sons[^1] = newLeaf(p) # instead, we should use lookahead
+          else:
+            father.add(newLeaf(p))
+          inc p.idx
+        else:
+          if interpretBackslash:
+            parseBackslash(p, father)
+          else:
+            father.add(newLeaf(p))
+            inc p.idx
     of tkAdornment, tkWord, tkOther:
       father.add(newLeaf(p))
       inc p.idx
@@ -1241,9 +1314,15 @@ proc parseInline(p: var RstParser, father: PRstNode) =
       var n = newRstNode(rnInlineLiteral)
       parseUntil(p, n, "``", false)
       father.add(n)
+    elif match(p, p.idx, ":w:") and p.tok[p.idx+3].symbol == "`":
+      let k = whichRole(nextTok(p).symbol)
+      let n = newRstNode(k)
+      inc p.idx, 3
+      parseUntil(p, n, "`", false) # bug #17260
+      father.add(n)
     elif isInlineMarkupStart(p, "`"):
       var n = newRstNode(rnInterpretedText)
-      parseUntil(p, n, "`", true)
+      parseUntil(p, n, "`", false) # bug #17260
       n = parsePostfix(p, n)
       father.add(n)
     elif isInlineMarkupStart(p, "|"):
@@ -1600,7 +1679,7 @@ proc whichSection(p: RstParser): RstNodeKind =
     elif predNL(p) and
         currentTok(p).symbol in ["+", "*", "-"] and nextTok(p).kind == tkWhite:
       result = rnBulletList
-    elif match(p, p.idx, ":w:") and predNL(p):
+    elif match(p, p.idx, ":w:E") and predNL(p):
       # (currentTok(p).symbol == ":")
       result = rnFieldList
     elif match(p, p.idx, "(e) ") or match(p, p.idx, "e) ") or
@@ -1901,8 +1980,9 @@ proc parseBulletList(p: var RstParser): PRstNode =
 
 proc parseOptionList(p: var RstParser): PRstNode =
   result = newRstNodeA(p, rnOptionList)
+  let col = currentTok(p).col
   while true:
-    if isOptionList(p):
+    if currentTok(p).col == col and isOptionList(p):
       var a = newRstNode(rnOptionGroup)
       var b = newRstNode(rnDescription)
       var c = newRstNode(rnOptionListItem)
@@ -1925,6 +2005,7 @@ proc parseOptionList(p: var RstParser): PRstNode =
       c.add(b)
       result.add(c)
     else:
+      dec p.idx  # back to tkIndent
       break
 
 proc parseDefinitionList(p: var RstParser): PRstNode =

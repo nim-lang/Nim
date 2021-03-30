@@ -157,7 +157,8 @@ English word            To use         Notes
 -------------------     ------------   --------------------------------------
 initialize              initFoo        initializes a value type `Foo`
 new                     newFoo         initializes a reference type `Foo`
-                                       via `new`
+                                       via `new` or a value type `Foo`
+                                       with reference semantics.
 this or self            self           for method like procs, e.g.:
                                        `proc fun(self: Foo, a: int)`
                                        rationale: `self` is more unique in English

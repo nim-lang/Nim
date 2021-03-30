@@ -7,10 +7,10 @@
 from std/macros import expandMacros
 
 proc bar(a: typedesc): a = default(a)
-assert bar(float) == 0.0
-assert bar(string) == ""
+doAssert bar(float) == 0.0
+doAssert bar(string) == ""
 
 template main =
   proc baz(a: typedesc): a = default(a)
-  assert baz(float) == 0.0
+  doAssert baz(float) == 0.0
 main()

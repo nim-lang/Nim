@@ -285,6 +285,15 @@ or
 
 the first is preferred.
 
+When you specify an *RST role* (highlighting/interpretation marker) do it
+in the postfix form for uniformity, that is after \`text in backticks\`.
+For example an ``:idx:`` role for referencing a topic ("SQLite" in the
+example below) from `Nim Index`_ can be used in doc comment this way:
+
+.. code-block:: nim
+  ## A higher level `SQLite`:idx: database wrapper.
+
+.. _`Nim Index`: https://nim-lang.org/docs/theindex.html
 
 Best practices
 ==============

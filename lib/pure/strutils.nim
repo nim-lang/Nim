@@ -2198,13 +2198,21 @@ func insertSep*(s: string, sep = '_', digits = 3): string {.rtl,
 
 func escape*(s: string, prefix = "\"", suffix = "\""): string {.rtl,
     extern: "nsuEscape".} =
-  ## Escapes a string `s`. See `system.addEscapedChar
-  ## <system.html#addEscapedChar,string,char>`_ for the escaping scheme.
+  ## Escapes a string `s`.
+  ##
+  ## .. note:: The escaping scheme is different from
+  ##    `system.addEscapedChar`.
+  ##
+  ## * replaces `'\0'..'\31'` and `'\127'..'\255'` by `\xHH` where `HH` is its hexadecimal value
+  ## * replaces ``\`` by `\\`
+  ## * replaces `'` by `\'`
+  ## * replaces `"` by `\"`
   ##
   ## The resulting string is prefixed with `prefix` and suffixed with `suffix`.
   ## Both may be empty strings.
   ##
   ## See also:
+  ## * `addEscapedChar proc<system.html#addEscapedChar,string,char>`_
   ## * `unescape func<#unescape,string,string,string>`_ for the opposite
   ##   operation
   result = newStringOfCap(s.len + s.len shr 2)

@@ -2,7 +2,7 @@ discard """
   targets: "c js"
 """
 
-import parsecfg, streams
+import parsecfg, streams, sequtils
 
 when not defined(js):
   from stdtest/specialpaths import buildDir
@@ -39,19 +39,14 @@ var ss = newStringStream()
 dict1.writeConfig(ss)
 
 ## Reading a configuration file.
-var dict2 = loadConfig(newStringStream(ss.data))
-var charset = dict2.getSectionValue("", "charset")
-var threads = dict2.getSectionValue("Package", "--threads")
-var pname = dict2.getSectionValue("Package", "name")
-var name = dict2.getSectionValue("Author", "name")
-var qq = dict2.getSectionValue("Author", "qq")
-var email = dict2.getSectionValue("Author", "email")
-doAssert charset == "utf-8"
-doAssert threads == "on"
-doAssert pname == "hello"
-doAssert name == "lihf8515"
-doAssert qq == "10214028"
-doAssert email == "lihaifeng@wxm.com"
+let dict2 = loadConfig(newStringStream(ss.data))
+doAssert dict2.getSectionValue("", "charset") == "utf-8"
+doAssert dict2.getSectionValue("Package", "--threads") == "on"
+doAssert dict2.getSectionValue("Package", "name") == "hello"
+doAssert dict2.getSectionValue("Author", "name") == "lihf8515"
+doAssert dict2.getSectionValue("Author", "qq") == "10214028"
+doAssert dict2.getSectionValue("Author", "email") == "lihaifeng@wxm.com"
+doAssert toSeq(dict2.sections) == @["", "Package", "Author"]
 
 ## Modifying a configuration file.
 var dict3 = loadConfig(newStringStream(ss.data))

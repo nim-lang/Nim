@@ -2221,11 +2221,17 @@ proc setupCompileTimeVar*(module: PSym; idgen: IdGenerator; g: ModuleGraph; n: P
   discard evalConstExprAux(module, idgen, g, nil, n, emStaticStmt)
 
 proc prepareVMValue(arg: PNode): PNode =
-  ## strip nkExprColonExpr from tuple values recurively. That is how
+  ## strip nkExprColonExpr from tuple values recursively. That is how
   ## they are expected to be stored in the VM.
 
   # Early abort without copy. No transformation takes place.
   if arg.kind in nkLiterals:
+    return arg
+
+  if arg.kind == nkExprColonExpr and arg[0].typ != nil and
+     arg[0].typ.sym != nil and arg[0].typ.sym.magic == mPNimrodNode:
+    # Poor mans way of protecting static NimNodes
+    # XXX: Maybe we need a nkNimNode?
     return arg
 
   result = copyNode(arg)

@@ -726,6 +726,8 @@ proc semForVars(c: PContext, n: PNode; flags: TExprFlags): PNode =
       if n[0].kind == nkVarTuple:
         if n[0].len-1 != iterAfterVarLent.len:
           localError(c.config, n[0].info, errWrongNumberOfVariables)
+          return errorNode(c, n)
+
         for i in 0..<n[0].len-1:
           var v = symForVar(c, n[0][i])
           if getCurrOwner(c).kind == skModule: incl(v.flags, sfGlobal)
@@ -1524,7 +1526,7 @@ proc semProcAnnotation(c: PContext, prc: PNode;
     return
 
 proc semInferredLambda(c: PContext, pt: TIdTable, n: PNode): PNode {.nosinks.} =
-  ## used for resolving 'auto' in lambdas based on their callsite 
+  ## used for resolving 'auto' in lambdas based on their callsite
   var n = n
   let original = n[namePos].sym
   let s = original #copySym(original, false)
@@ -1769,23 +1771,6 @@ proc semMethodPrototype(c: PContext; s: PSym; n: PNode) =
     else:
       localError(c.config, n.info, "'method' needs a parameter that has an object type")
 
-proc setGenericParamsMisc(c: PContext; n: PNode) =
-  let orig = n[genericParamsPos]
-
-  doAssert orig.kind in {nkEmpty, nkGenericParams}
-
-  if n[genericParamsPos].kind == nkEmpty:
-    n[genericParamsPos] = newNodeI(nkGenericParams, n.info)
-  else:
-    # we keep the original params around for better error messages, see
-    # issue https://github.com/nim-lang/Nim/issues/1713
-    n[genericParamsPos] = semGenericParamList(c, orig)
-
-  if n[miscPos].kind == nkEmpty:
-    n[miscPos] = newTree(nkBracket, c.graph.emptyNode, orig)
-  else:
-    n[miscPos][1] = orig
-
 proc semProcAux(c: PContext, n: PNode, kind: TSymKind,
                 validPragmas: TSpecialWords, flags: TExprFlags = {}): PNode =
   result = semProcAnnotation(c, n, validPragmas)
@@ -1839,7 +1824,6 @@ proc semProcAux(c: PContext, n: PNode, kind: TSymKind,
 
   if n[paramsPos].kind != nkEmpty:
     semParamList(c, n[paramsPos], n[genericParamsPos], s)
-    # we maybe have implicit type parameters:
   else:
     s.typ = newProcType(c, n.info)
 

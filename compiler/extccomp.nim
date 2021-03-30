@@ -281,6 +281,11 @@ const
 
   hExt* = ".h"
 
+template writePrettyCmdsStderr(cmd) =
+  if cmd.len > 0:
+    flushDot(conf)
+    stderr.writeLine(cmd)
+
 proc nameToCC*(name: string): TSystemCC =
   ## Returns the kind of compiler referred to by `name`, or ccNone
   ## if the name doesn't refer to any known compiler.
@@ -848,11 +853,7 @@ proc callCCompiler*(conf: ConfigRef) =
   var script: Rope = nil
   var cmds: TStringSeq
   var prettyCmds: TStringSeq
-  let prettyCb = proc (idx: int) =
-    if prettyCmds[idx].len > 0:
-      flushDot(conf)
-      # xxx should probably use stderr like other compiler messages, not stdout
-      echo prettyCmds[idx]
+  let prettyCb = proc (idx: int) = writePrettyCmdsStderr(prettyCmds[idx])
 
   for idx, it in conf.toCompile:
     # call the C compiler for the .c file:
@@ -1108,9 +1109,7 @@ proc runJsonBuildInstructions*(conf: ConfigRef; projectfile: AbsoluteFile) =
     doAssert toCompile.kind == JArray
     var cmds: TStringSeq
     var prettyCmds: TStringSeq
-    let prettyCb = proc (idx: int) =
-      if prettyCmds[idx].len > 0: echo prettyCmds[idx]
-
+    let prettyCb = proc (idx: int) = writePrettyCmdsStderr(prettyCmds[idx])
     for c in toCompile:
       doAssert c.kind == JArray
       doAssert c.len >= 2
