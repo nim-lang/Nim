@@ -22,6 +22,7 @@ move /y docs-%NIMVER%.zip download
 cd ..\..
 
 Rem Build csources
+koch installDeps niminst
 koch csources -d:release || exit /b
 
 rem Grab C sources and nimsuggest

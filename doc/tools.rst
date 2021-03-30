@@ -22,7 +22,7 @@ The standard distribution ships with the following tools:
 - | `C2nim <https://github.com/nim-lang/c2nim/blob/master/doc/c2nim.rst>`_
   | C to Nim source converter. Translates C header files to Nim.
 
-- | `niminst <niminst.html>`_
+- | `niminst <https://github.com/nim-lang/niminst/blob/master/doc/niminst.rst>`_
   | niminst is a tool to generate an installer for a Nim program.
 
 - | `nimgrep <nimgrep.html>`_

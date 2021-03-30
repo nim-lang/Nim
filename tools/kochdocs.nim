@@ -120,7 +120,6 @@ tut1.rst
 tut2.rst
 tut3.rst
 nimc.rst
-niminst.rst
 gc.rst
 """.splitWhitespace().mapIt("doc" / it)
 
