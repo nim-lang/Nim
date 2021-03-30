@@ -64,7 +64,7 @@ block t7723:
 
 block t8706:
   macro varargsLen(args:varargs[untyped]): untyped =
-    doAssert args.kind == nnkArglist
+    doAssert args.kind == nnkArgList
     doAssert args.len == 0
     result = newLit(args.len)
 

@@ -93,9 +93,9 @@ block tgenericassign:
   var ret: seq[tuple[name: string, a: TAny]] = @[]
   for i in 0 .. 8000:
     var tup = ($name, newAny(nil, nil))
-    assert(tup[0] == "example")
+    doAssert(tup[0] == "example")
     ret.add(tup)
-    assert(ret[ret.len()-1][0] == "example")
+    doAssert(ret[ret.len()-1][0] == "example")
 
 
 
@@ -178,7 +178,7 @@ when false:
   proc `=`[T](d: var GenericT[T]; src: GenericT[T]) =
     shallowCopy(d.a, src.a)
     shallowCopy(d.b, src.b)
-    echo "GenericT[T] '=' ", type(T).name
+    echo "GenericT[T] '=' ", typeof(T).name
 
   var ag: GenericT[int]
   var bg: GenericT[int]

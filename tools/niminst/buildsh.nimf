@@ -159,7 +159,11 @@ case $ucpu in
       COMP_FLAGS="$COMP_FLAGS -m64"
       LINK_FLAGS="$LINK_FLAGS -m64"
       mycpu=`uname -p`
-	else
+      case $mycpu in
+        powerpc64le)
+        mycpu="powerpc64el"
+      esac
+    else
       mycpu="powerpc"
     fi
     ;;

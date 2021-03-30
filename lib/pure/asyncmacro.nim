@@ -11,6 +11,13 @@
 
 import macros, strutils, asyncfutures
 
+
+# TODO: Ref https://github.com/nim-lang/Nim/issues/5617
+# TODO: Add more line infos
+proc newCallWithLineInfo(fromNode: NimNode; theProc: NimNode, args: varargs[NimNode]): NimNode =
+  result = newCall(theProc, args)
+  result.copyLineInfo(fromNode)
+
 template createCb(retFutureSym, iteratorNameSym,
                   strName, identName, futureVarCompletions: untyped) =
   bind finished
@@ -46,27 +53,24 @@ template createCb(retFutureSym, iteratorNameSym,
         retFutureSym.fail(getCurrentException())
   identName()
 
-proc createFutureVarCompletions(futureVarIdents: seq[NimNode],
-    fromNode: NimNode): NimNode {.compileTime.} =
+proc createFutureVarCompletions(futureVarIdents: seq[NimNode], fromNode: NimNode): NimNode =
   result = newNimNode(nnkStmtList, fromNode)
   # Add calls to complete each FutureVar parameter.
   for ident in futureVarIdents:
     # Only complete them if they have not been completed already by the user.
-    # TODO: Once https://github.com/nim-lang/Nim/issues/5617 is fixed.
-    # TODO: Add line info to the complete() call!
     # In the meantime, this was really useful for debugging :)
     #result.add(newCall(newIdentNode("echo"), newStrLitNode(fromNode.lineinfo)))
     result.add newIfStmt(
       (
         newCall(newIdentNode("not"),
                 newDotExpr(ident, newIdentNode("finished"))),
-        newCall(newIdentNode("complete"), ident)
+        newCallWithLineInfo(fromNode, newIdentNode("complete"), ident)
       )
     )
 
 proc processBody(node, retFutureSym: NimNode,
                  subTypeIsVoid: bool,
-                 futureVarIdents: seq[NimNode]): NimNode {.compileTime.} =
+                 futureVarIdents: seq[NimNode]): NimNode =
   #echo(node.treeRepr)
   result = node
   case node.kind
@@ -102,7 +106,7 @@ proc processBody(node, retFutureSym: NimNode,
 
   # echo result.repr
 
-proc getName(node: NimNode): string {.compileTime.} =
+proc getName(node: NimNode): string =
   case node.kind
   of nnkPostfix:
     return node[1].strVal
@@ -113,18 +117,19 @@ proc getName(node: NimNode): string {.compileTime.} =
   else:
     error("Unknown name.", node)
 
-proc getFutureVarIdents(params: NimNode): seq[NimNode] {.compileTime.} =
+proc getFutureVarIdents(params: NimNode): seq[NimNode] =
   result = @[]
   for i in 1 ..< len(params):
     expectKind(params[i], nnkIdentDefs)
     if params[i][1].kind == nnkBracketExpr and
-       params[i][1][0].eqIdent("futurevar"):
+       params[i][1][0].eqIdent(FutureVar.astToStr):
+      ## eqIdent: first char is case sensitive!!!
       result.add(params[i][0])
 
 proc isInvalidReturnType(typeName: string): bool =
   return typeName notin ["Future"] #, "FutureStream"]
 
-proc verifyReturnType(typeName: string, node: NimNode = nil) {.compileTime.} =
+proc verifyReturnType(typeName: string, node: NimNode = nil) =
   if typeName.isInvalidReturnType:
     error("Expected return type of 'Future' got '$1'" %
           typeName, node)
@@ -138,9 +143,9 @@ template await*[T](f: Future[T]): auto {.used.} =
   yield internalTmpFuture
   (cast[typeof(f)](internalTmpFuture)).read()
 
-proc asyncSingleProc(prc: NimNode): NimNode {.compileTime.} =
+proc asyncSingleProc(prc: NimNode): NimNode =
   ## This macro transforms a single procedure into a closure iterator.
-  ## The ``async`` macro supports a stmtList holding multiple async procedures.
+  ## The `async` macro supports a stmtList holding multiple async procedures.
   if prc.kind == nnkProcTy:
     result = prc
     if prc[0][0].kind == nnkEmpty:
@@ -176,7 +181,7 @@ proc asyncSingleProc(prc: NimNode): NimNode {.compileTime.} =
   elif returnType.kind == nnkEmpty:
     baseType = returnType
   else:
-    verifyReturnType(repr(returnType), returntype)
+    verifyReturnType(repr(returnType), returnType)
 
   let subtypeIsVoid = returnType.kind == nnkEmpty or
         (baseType.kind == nnkIdent and returnType[1].eqIdent("void"))
@@ -314,8 +319,8 @@ proc stripReturnType(returnType: NimNode): NimNode =
 proc splitProc(prc: NimNode): (NimNode, NimNode) =
   ## Takes a procedure definition which takes a generic union of arguments,
   ## for example: proc (socket: Socket | AsyncSocket).
-  ## It transforms them so that ``proc (socket: Socket)`` and
-  ## ``proc (socket: AsyncSocket)`` are returned.
+  ## It transforms them so that `proc (socket: Socket)` and
+  ## `proc (socket: AsyncSocket)` are returned.
 
   result[0] = prc.copyNimTree()
   # Retrieve the `T` inside `Future[T]`.
@@ -343,8 +348,8 @@ macro multisync*(prc: untyped): untyped =
   ## Macro which processes async procedures into both asynchronous and
   ## synchronous procedures.
   ##
-  ## The generated async procedures use the ``async`` macro, whereas the
-  ## generated synchronous procedures simply strip off the ``await`` calls.
+  ## The generated async procedures use the `async` macro, whereas the
+  ## generated synchronous procedures simply strip off the `await` calls.
   let (sync, asyncPrc) = splitProc(prc)
   result = newStmtList()
   result.add(asyncSingleProc(asyncPrc))

@@ -75,6 +75,8 @@ when defined(nimArcDebug):
 elif defined(nimArcIds):
   var gRefId: int
 
+  const traceId = -1
+
 proc nimNewObj(size, alignment: int): pointer {.compilerRtl.} =
   let hdrSize = align(sizeof(RefHeader), alignment)
   let s = size + hdrSize
@@ -126,13 +128,14 @@ proc nimIncRef(p: pointer) {.compilerRtl, inl.} =
   when traceCollector:
     cprintf("[INCREF] %p\n", head(p))
 
-proc unsureAsgnRef(dest: ptr pointer, src: pointer) {.inline.} =
-  # This is only used by the old RTTI mechanism and we know
-  # that 'dest[]' is nil and needs no destruction. Which is really handy
-  # as we cannot destroy the object reliably if it's an object of unknown
-  # compile-time type.
-  dest[] = src
-  if src != nil: nimIncRef src
+when not defined(gcOrc) or defined(nimThinout):
+  proc unsureAsgnRef(dest: ptr pointer, src: pointer) {.inline.} =
+    # This is only used by the old RTTI mechanism and we know
+    # that 'dest[]' is nil and needs no destruction. Which is really handy
+    # as we cannot destroy the object reliably if it's an object of unknown
+    # compile-time type.
+    dest[] = src
+    if src != nil: nimIncRef src
 
 when not defined(nimscript) and defined(nimArcDebug):
   proc deallocatedRefId*(p: pointer): int =
@@ -160,7 +163,7 @@ proc nimRawDispose(p: pointer, alignment: int) {.compilerRtl.} =
       let hdrSize = align(sizeof(RefHeader), alignment)
       alignedDealloc(p -! hdrSize, alignment)
 
-template dispose*[T](x: owned(ref T)) = nimRawDispose(cast[pointer](x), T.alignOf)
+template `=dispose`*[T](x: owned(ref T)) = nimRawDispose(cast[pointer](x), T.alignOf)
 #proc dispose*(x: pointer) = nimRawDispose(x)
 
 proc nimDestroyAndDispose(p: pointer) {.compilerRtl, raises: [].} =
@@ -215,15 +218,15 @@ proc GC_ref*[T](x: ref T) =
 
 when not defined(gcOrc):
   template GC_fullCollect* =
-    ## Forces a full garbage collection pass. With ``--gc:arc`` a nop.
+    ## Forces a full garbage collection pass. With `--gc:arc` a nop.
     discard
 
 template setupForeignThreadGc* =
-  ## With ``--gc:arc`` a nop.
+  ## With `--gc:arc` a nop.
   discard
 
 template tearDownForeignThreadGc* =
-  ## With ``--gc:arc`` a nop.
+  ## With `--gc:arc` a nop.
   discard
 
 proc isObj(obj: PNimTypeV2, subclass: cstring): bool {.compilerRtl, inl.} =

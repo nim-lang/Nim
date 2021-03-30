@@ -1,5 +1,6 @@
 discard """
   output: '''
+
 10
 assigning z = 20
 reading field y
@@ -12,8 +13,17 @@ no params call to b
 100
 one param call to c with 10
 100
-0 4'''
+0 4
+'''
 """
+
+block:
+  type Foo = object
+  var a: Foo
+  template `.`(a: Foo, b: untyped): untyped = astToStr(b)
+  template callme(a, f): untyped = a.f
+  doAssert callme(a, f2) == "f2" # not `f`
+  doAssert a.callme(f3) == "f3"
 
 type
   T1 = object

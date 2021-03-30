@@ -329,19 +329,56 @@ AST:
 Parentheses
 -----------
 
-Parentheses for affecting operator precedence or tuple construction
-are built with the ``nnkPar`` node.
+Parentheses for affecting operator precedence use the ``nnkPar`` node.
 
 Concrete syntax:
 
 .. code-block:: nim
-  (1, 2, (3))
+  (a + b) * c
 
 AST:
 
 .. code-block:: nim
-  nnkPar(nnkIntLit(1), nnkIntLit(2), nnkPar(nnkIntLit(3)))
+  nnkInfix(nnkIdent("*"),
+    nnkPar(
+      nnkInfix(nnkIdent("+"), nnkIdent("a"), nnkIdent("b"))),
+    nnkIdent("c"))
 
+Tuple Constructors
+------------------
+
+Nodes for tuple construction are built with the ``nnkTupleConstr`` node.
+
+Concrete syntax:
+
+.. code-block:: nim
+  (1, 2, 3)
+  (a: 1, b: 2, c: 3)
+  ()
+
+AST:
+
+.. code-block:: nim
+  nnkTupleConstr(nnkIntLit(1), nnkIntLit(2), nnkIntLit(3))
+  nnkTupleConstr(
+    nnkExprColonExpr(nnkIdent("a"), nnkIntLit(1)),
+    nnkExprColonExpr(nnkIdent("b"), nnkIntLit(2)),
+    nnkExprColonExpr(nnkIdent("c"), nnkIntLit(3)))
+
+Since the one tuple would be syntactically identical to parentheses
+with an expression in them, the parser expects a trailing comma for
+them. For tuple constructors with field names, this is not necessary.
+
+.. code-block:: nim
+  (1,)
+  (a: 1)
+
+AST:
+
+.. code-block:: nim
+  nnkTupleConstr(nnkIntLit(1))
+  nnkTupleConstr(
+    nnkExprColonExpr(nnkIdent("a"), nnkIntLit(1)))
 
 Curly braces
 ------------
@@ -414,7 +451,7 @@ AST:
 Example code:
 
 .. code-block:: nim
-  macro genRepeatEcho(): stmt =
+  macro genRepeatEcho() =
     result = newNimNode(nnkStmtList)
 
     var forStmt = newNimNode(nnkForStmt) # generate a for statement
@@ -1033,7 +1070,7 @@ AST:
       nnkEmpty(), # no pragmas here
       nnkOfInherit(
         nnkIdent("RootObj") # inherits from RootObj
-      )
+      ),
       nnkEmpty()
     )
   )
@@ -1135,7 +1172,7 @@ AST:
 .. code-block:: nim
   # ...
   nnkTypeClassTy( # note this isn't nnkConceptTy!
-    nnkArglist(
+    nnkArgList(
       # ... idents for x, y, z
     )
     # ...
@@ -1392,6 +1429,17 @@ Macro declaration
 Macros behave like templates, but ``nnkTemplateDef`` is replaced with
 ``nnkMacroDef``.
 
+Hidden Standard Conversion
+--------------------------
+
+.. code-block:: nim
+  var f: float = 1
+
+The type of "f" is ``float`` but the type of "1" is actually ``int``. Inserting 
+``int`` into a ``float`` is a type error. Nim inserts the ``nnkHiddenStdConv``  
+node around the ``nnkIntLit`` node so that the new node has the correct type of 
+``float``. This works for any auto converted nodes and makes the conversion 
+explicit.
 
 Special node kinds
 ==================

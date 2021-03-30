@@ -10,11 +10,12 @@ jobs:
       matrix:
         os: [ubuntu-18.04, macos-10.15]
         cpu: [amd64]
-        pkg: [1, 2]
-    name: '${{ matrix.os }} (pkg: ${{ matrix.pkg }})'
+        batch: ["0_3", "1_3", "2_3"] # list of `index_num`
+    name: '${{ matrix.os }} (batch: ${{ matrix.batch }})'
     runs-on: ${{ matrix.os }}
     env:
-      NIM_TEST_PACKAGES: ${{ matrix.pkg }}
+      NIM_TEST_PACKAGES: "1"
+      NIM_TESTAMENT_BATCH: ${{ matrix.batch }}
     steps:
       - name: 'Checkout'
         uses: actions/checkout@v2
@@ -48,11 +49,11 @@ jobs:
           curl -L https://nim-lang.org/download/dlls.zip -o dist/dlls.zip
           7z x dist/mingw64.7z -odist
           7z x dist/dlls.zip -obin
-          echo "::add-path::${{ github.workspace }}/dist/mingw64/bin"
+          echo "${{ github.workspace }}/dist/mingw64/bin" >> "${GITHUB_PATH}"
 
       - name: 'Add build binaries to PATH'
         shell: bash
-        run: echo "::add-path::${{ github.workspace }}/bin"
+        run: echo "${{ github.workspace }}/bin" >> "${GITHUB_PATH}"
 
       - name: 'Build csources'
         shell: bash

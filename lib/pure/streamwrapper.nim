@@ -26,12 +26,12 @@ type
     baseReadLineImpl: typeof(StreamObj.readLineImpl)
     baseReadDataImpl: typeof(StreamObj.readDataImpl)
 
-proc posReadLine[T](s: Stream, line: var TaintedString): bool =
+proc posReadLine[T](s: Stream, line: var string): bool =
   var s = PipeOutStream[T](s)
   assert s.baseReadLineImpl != nil
 
   let n = s.buffer.len
-  line.string.setLen(0)
+  line.setLen(0)
   for i in 0..<n:
     var c = s.buffer.popFirst
     if c == '\c':
@@ -40,7 +40,7 @@ proc posReadLine[T](s: Stream, line: var TaintedString): bool =
     elif c == '\L': return true
     elif c == '\0':
       return line.len > 0
-    line.string.add(c)
+    line.add(c)
 
   var line2: string
   result = s.baseReadLineImpl(s, line2)
@@ -89,7 +89,7 @@ proc newPipeOutStream*[T](s: sink (ref T)): owned PipeOutStream[T] =
   ## Example:
   ##
   ## .. code-block:: Nim
-  ##   import osproc, streamwrapper
+  ##   import std/[osproc, streamwrapper]
   ##   var
   ##     p = startProcess(exePath)
   ##     outStream = p.outputStream().newPipeOutStream()

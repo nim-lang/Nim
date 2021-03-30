@@ -1,4 +1,6 @@
 import std/private/miscdollars
+import std/strutils
+from std/os import getEnv
 
 template flakyAssert*(cond: untyped, msg = "", notifySuccess = true) =
   ## API to deal with flaky or failing tests. This avoids disabling entire tests
@@ -23,3 +25,44 @@ template flakyAssert*(cond: untyped, msg = "", notifySuccess = true) =
       msg2.add " FLAKY_FAILURE "
     msg2.add $expr & " " & msg
     echo msg2
+
+proc greedyOrderedSubsetLines*(lhs, rhs: string): bool =
+  ## returns true if each stripped line in `lhs` appears in rhs, using a greedy matching.
+  let rhs = rhs.strip
+  var currentPos = 0
+  for line in lhs.strip.splitLines:
+    currentPos = rhs.find(line.strip, currentPos)
+    if currentPos < 0:
+      return false
+  return true
+
+template enableRemoteNetworking*: bool =
+  ## Allows contolling whether to run some test at a statement-level granularity.
+  ## Using environment variables simplifies propagating this all the way across
+  ## process calls, e.g. `testament all` calls itself, which in turns invokes
+  ## a `nim` invocation (possibly via additional intermediate processes).
+  getEnv("NIM_TESTAMENT_REMOTE_NETWORKING") == "1"
+
+template whenRuntimeJs*(bodyIf, bodyElse) =
+  ##[
+  Behaves as `when defined(js) and not nimvm` (which isn't legal yet).
+  pending improvements to `nimvm`, this sugar helps; use as follows:
+
+  whenRuntimeJs:
+    doAssert defined(js)
+    when nimvm: doAssert false
+    else: discard
+  do:
+    discard
+  ]##
+  when nimvm: bodyElse
+  else:
+    when defined(js): bodyIf
+    else: bodyElse
+
+template whenVMorJs*(bodyIf, bodyElse) =
+  ## Behaves as: `when defined(js) or nimvm`
+  when nimvm: bodyIf
+  else:
+    when defined(js): bodyIf
+    else: bodyElse
