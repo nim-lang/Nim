@@ -132,7 +132,7 @@ proc copyExe(source, dest: string) =
   inclFilePermissions(dest, {fpUserExec, fpGroupExec, fpOthersExec})
 
 const
-  compileNimInst = "tools/niminst/niminst"
+  compileNimInst = "dist/niminst/niminst"
   distDir = "dist"
 
 proc csource(args: string) =
@@ -190,7 +190,7 @@ proc zip(latest: bool; args: string) =
   nimexec("cc -r $2 --var:version=$1 --var:mingw=none --main:compiler/nim.nim scripts compiler/installer.ini" %
        [VersionAsString, compileNimInst])
   exec("$# --var:version=$# --var:mingw=none --main:compiler/nim.nim zip compiler/installer.ini" %
-       ["tools/niminst/niminst".exe, VersionAsString])
+       [compileNimInst.exe, VersionAsString])
 
 proc ensureCleanGit() =
   let (outp, status) = osproc.execCmdEx("git diff")
@@ -204,7 +204,7 @@ proc xz(latest: bool; args: string) =
   nimexec("cc -r $2 --var:version=$1 --var:mingw=none --main:compiler/nim.nim scripts compiler/installer.ini" %
        [VersionAsString, compileNimInst])
   exec("$# --var:version=$# --var:mingw=none --main:compiler/nim.nim xz compiler/installer.ini" %
-       ["tools" / "niminst" / "niminst".exe, VersionAsString])
+       [compileNimInst.exe, VersionAsString])
 
 proc buildTool(toolname, args: string) =
   nimexec("cc $# $#" % [args, toolname])
@@ -226,12 +226,12 @@ proc nsis(latest: bool; args: string) =
   bundleNimsuggest(args)
   bundleWinTools(args)
   # make sure we have generated the niminst executables:
-  buildTool("tools/niminst/niminst", args)
+  buildTool(compileNimInst, args)
   #buildTool("tools/nimgrep", args)
   # produce 'nim_debug.exe':
   #exec "nim c compiler" / "nim.nim"
   #copyExe("compiler/nim".exe, "bin/nim_debug".exe)
-  exec(("tools" / "niminst" / "niminst --var:version=$# --var:mingw=mingw$#" &
+  exec((compileNimInst & " --var:version=$# --var:mingw=mingw$#" &
         " nsis compiler/installer.ini") % [VersionAsString, $(sizeof(pointer)*8)])
 
 proc geninstall(args="") =
@@ -526,7 +526,7 @@ proc hostInfo(): string =
   "hostOS: $1, hostCPU: $2, int: $3, float: $4, cpuEndian: $5, cwd: $6" %
     [hostOS, hostCPU, $int.sizeof, $float.sizeof, $cpuEndian, getCurrentDir()]
 
-proc installDeps(dep: string, commit = "") =
+proc installDeps(dep: string, commit = "", args = "") =
   # the hashes/urls are version controlled here, so can be changed seamlessly
   # and tied to a nim release (mimicking git submodules)
   var commit = commit
@@ -534,6 +534,11 @@ proc installDeps(dep: string, commit = "") =
   of "tinyc":
     if commit.len == 0: commit = "916cc2f94818a8a382dd8d4b8420978816c1dfb3"
     cloneDependency(distDir, "https://github.com/timotheecour/nim-tinyc-archive", commit)
+  of "niminst":
+    # if commit.len == 0: commit = "916cc2f94818a8a382dd8d4b8420978816c1dfb3"
+    cloneDependency(distDir, "https://github.com/nim-lang/niminst", commit)
+    nimCompile(compileNimInst,
+              options = "--noNimblePath --path:. " & args)
   else: doAssert false, "unsupported: " & dep
   # xxx: also add linenoise, niminst etc, refs https://github.com/nim-lang/RFCs/issues/206
 
