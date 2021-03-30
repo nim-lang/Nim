@@ -79,3 +79,19 @@ except RangeDefect:
   success = true
 
 doAssert success, "conversion should fail at runtime"
+
+template main() =
+  # xxx move all tests under here so it gets tested in CT and RT
+  block: # bug #17572
+    type T = distinct uint64
+    func f(x: uint64): auto =
+      let a = T(x)
+      (x, a.uint64)
+    const x = 1'u64 shl 63 or 7
+    const b = T(x)
+    doAssert b.uint64 == 9223372036854775815'u64
+    doAssert $b.uint64 == "9223372036854775815"
+    doAssert f(x) == (9223372036854775815'u64, 9223372036854775815'u64)
+
+static: main()
+main()
