@@ -68,6 +68,7 @@ type
   DrnimContext = ref object
     z3: Z3_context
     graph: ModuleGraph
+    idgen: IdGenerator
     facts: seq[(PNode, VersionScope)]
     varVersions: seq[int] # this maps variable IDs to their current version.
     varSyms: seq[PSym] # mirrors 'varVersions'
@@ -80,6 +81,7 @@ type
 
   DrCon = object
     graph: ModuleGraph
+    idgen: IdGenerator
     mapping: Table[string, Z3_ast]
     canonParameterNames: bool
     assumeUniqueness: bool
@@ -301,12 +303,12 @@ proc nodeToZ3(c: var DrCon; n: PNode; scope: VersionScope; vars: var seq[PNode])
 
 proc nodeToDomain(c: var DrCon; n, q: PNode; opAnd: PSym): PNode =
   assert n.kind == nkInfix
-  let opLe = createMagic(c.graph, "<=", mLeI)
+  let opLe = createMagic(c.graph, c.idgen, "<=", mLeI)
   case $n[0]
   of "..":
     result = buildCall(opAnd, buildCall(opLe, n[1], q), buildCall(opLe, q, n[2]))
   of "..<":
-    let opLt = createMagic(c.graph, "<", mLtI)
+    let opLt = createMagic(c.graph, c.idgen, "<", mLtI)
     result = buildCall(opAnd, buildCall(opLe, n[1], q), buildCall(opLt, q, n[2]))
   else:
     notImplemented(n)
@@ -315,7 +317,7 @@ template quantorToZ3(fn) {.dirty.} =
   template ctx: untyped = c.up.z3
 
   var bound = newSeq[Z3_app](n.len-2)
-  let opAnd = createMagic(c.graph, "and", mAnd)
+  let opAnd = createMagic(c.graph, c.idgen, "and", mAnd)
   var known: PNode
   for i in 1..n.len-2:
     let it = n[i]
@@ -333,7 +335,7 @@ template quantorToZ3(fn) {.dirty.} =
 
   var dummy: seq[PNode]
   assert known != nil
-  let x = nodeToZ3(c, buildCall(createMagic(c.graph, "->", mImplies),
+  let x = nodeToZ3(c, buildCall(createMagic(c.graph, c.idgen, "->", mImplies),
                    known, n[^1]), scope, dummy)
   result = fn(ctx, 0, bound.len.cuint, addr(bound[0]), 0, nil, x)
 
@@ -395,8 +397,8 @@ proc nodeToZ3(c: var DrCon; n: PNode; scope: VersionScope; vars: var seq[PNode])
       else:
         notImplemented(n)
     of mHigh:
-      let addOpr = createMagic(c.graph, "+", mAddI)
-      let lenOpr = createMagic(c.graph, "len", mLengthOpenArray)
+      let addOpr = createMagic(c.graph, c.idgen, "+", mAddI)
+      let lenOpr = createMagic(c.graph, c.idgen, "len", mLengthOpenArray)
       let asLenExpr = addOpr.buildCall(lenOpr.buildCall(n[1]), nkIntLit.newIntNode(-1))
       result = rec asLenExpr
     of mLow:
@@ -577,8 +579,8 @@ proc addRangeInfo(c: var DrCon, n: PNode; scope: VersionScope, res: var seq[Z3_a
         res.add nodeToZ3(c, translateEnsures(ensures, n), scope, dummy)
     return
 
-  let x = newTree(nkInfix, newSymNode createMagic(c.graph, "<=", cmpOp), lowBound, n)
-  let y = newTree(nkInfix, newSymNode createMagic(c.graph, "<=", cmpOp), n, highBound)
+  let x = newTree(nkInfix, newSymNode createMagic(c.graph, c.idgen, "<=", cmpOp), lowBound, n)
+  let y = newTree(nkInfix, newSymNode createMagic(c.graph, c.idgen, "<=", cmpOp), n, highBound)
 
   var dummy: seq[PNode]
   res.add nodeToZ3(c, x, scope, dummy)
@@ -677,6 +679,7 @@ proc proofEngine(ctx: DrnimContext; assumptions: seq[(PNode, VersionScope)];
                  toProve: (PNode, VersionScope)): (bool, string) =
   var c: DrCon
   c.graph = ctx.graph
+  c.idgen = ctx.idgen
   c.assumeUniqueness = assumeUniqueness
   c.up = ctx
   result = proofEngineAux(c, assumptions, toProve)
@@ -738,10 +741,11 @@ proc compatibleProps(graph: ModuleGraph; formal, actual: PType): bool {.nimcall.
 
       var c: DrCon
       c.graph = graph
+      c.idgen = graph.idgen
       c.canonParameterNames = true
       try:
         c.up = DrnimContext(z3: setupZ3(), o: initOperators(graph), graph: graph, owner: nil,
-          opImplies: createMagic(graph, "->", mImplies))
+          opImplies: createMagic(graph, c.idgen, "->", mImplies))
         template zero: untyped = VersionScope(0)
         if not frequires.isEmpty:
           result = not arequires.isEmpty and proofEngineAux(c, @[(frequires, zero)], (arequires, zero))[0]
@@ -847,7 +851,7 @@ proc checkLe(c: DrnimContext, a, b: PNode) =
     of tyChar, tyUInt..tyUInt64: cmpOp = mLeU
     else: discard
 
-  let cmp = newTree(nkInfix, newSymNode createMagic(c.graph, "<=", cmpOp), a, b)
+  let cmp = newTree(nkInfix, newSymNode createMagic(c.graph, c.idgen, "<=", cmpOp), a, b)
   cmp.info = a.info
   discard prove(c, cmp)
 
@@ -1026,7 +1030,7 @@ proc traverseAsgn(c: DrnimContext; n: PNode) =
   proc replaceByOldParams(fact, le: PNode): PNode =
     if guards.sameTree(fact, le):
       result = newNodeIT(nkCall, fact.info, fact.typ)
-      result.add newSymNode createMagic(c.graph, "old", mOld)
+      result.add newSymNode createMagic(c.graph, c.idgen, "old", mOld)
       result.add fact
     else:
       result = shallowCopy(fact)
@@ -1176,8 +1180,9 @@ proc strongSemCheck(graph: ModuleGraph; owner: PSym; n: PNode) =
     c.z3 = setupZ3()
     c.o = initOperators(graph)
     c.graph = graph
+    c.idgen = graph.idgen
     c.owner = owner
-    c.opImplies = createMagic(c.graph, "->", mImplies)
+    c.opImplies = createMagic(c.graph, c.idgen, "->", mImplies)
     try:
       traverse(c, n)
       ensuresCheck(c, owner)
