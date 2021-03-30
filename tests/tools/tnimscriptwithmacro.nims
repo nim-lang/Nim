@@ -4,6 +4,7 @@ output: '''
 foobar
 nothing
 hallo
+'''
 """
 
 # this test ensures that the mode is resetted correctly to repr
