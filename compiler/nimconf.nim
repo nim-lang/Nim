@@ -298,14 +298,13 @@ proc loadConfigs*(cfg: RelativeFile; cache: IdentCache; conf: ConfigRef; idgen: 
     for filename in configFiles:
       # delayed to here so that `hintConf` is honored
       rawMessage(conf, hintConf, filename.string)
-  if scriptIsProj:
-    showHintConf()
-    configFiles.setLen 0
+  showHintConf()
+  configFiles.setLen 0
   if conf.cmd != cmdIdeTools:
-    runNimScriptIfExists(scriptFile, isMain = true)
+    runNimScriptIfExists(conf.projectFull, isMain = true)
   else:
     if not scriptIsProj:
-      runNimScriptIfExists(scriptFile, isMain = true)
+      runNimScriptIfExists(conf.projectFull, isMain = true)
     else:
       # 'nimsuggest foo.nims' means to just auto-complete the NimScript file
       discard
