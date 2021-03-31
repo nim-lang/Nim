@@ -84,20 +84,6 @@ proc getPort*(self: AsyncHttpServer): Port {.since: (1, 5, 1).} =
     server.close()
   result = getLocalAddr(self.socket.getFd, AF_INET)[1]
 
-func getSocket*(self: AsyncHttpServer): AsyncSocket {.since: (1, 5, 1).} =
-  ## Field accessor.
-  runnableExamples:
-    from std/asyncnet import getFd
-    from std/nativesockets import getLocalAddr, AF_INET, Port
-    let server = newAsyncHttpServer()
-    server.listen(Port(0)) # Socket is not bound until this point
-    # note: a more direct way to get the port is `getPort`.
-    let (laddr, port) = getLocalAddr(server.getSocket.getFd, AF_INET)
-    assert uint16(port) > 0
-    assert laddr == "0.0.0.0"
-    server.close()
-  self.socket
-
 proc newAsyncHttpServer*(reuseAddr = true, reusePort = false,
                          maxBody = 8388608): AsyncHttpServer =
   ## Creates a new `AsyncHttpServer` instance.
