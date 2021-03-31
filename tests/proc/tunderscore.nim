@@ -1,22 +1,38 @@
 discard """
   targets: "c cpp js"
 """
+proc test() =
+  block:
+    proc ok(_, _, a: int): int = a
+    doassert ok(4, 2, 5) == 5
 
-block:
-  proc ok(_, _: int) = discard
-  ok(4, 2)
+  block:
+    proc ok(_: int, _: int, a: int): int = a
+    doAssert ok(4, 2, 5) == 5
 
-block:
-  proc ok(_, _: int) = discard
-  ok(4, 2)
+  block:
+    proc ok(_: int, _: float, a: int): int = a
+    doAssert ok(1, 2.0, 5) == 5
 
-block:
-  proc ok(_: int, _: float) = discard
-  ok(1, 2.0)
+  block:
+    proc ok(_: int, _: float, _: string, a: int): int = a
+    doAssert ok(1, 2.6, "5", 5) == 5
 
-block:
-  proc ok(_: int, _: float, _: string) = discard
-  ok(1, 2.6, "5")
+  block:
+    template ok(_, _, a: int): int = a
+    doassert ok(4, 2, 5) == 5
+
+  block:
+    template ok(_: int, _: int, a: int): int = a
+    doAssert ok(4, 2, 5) == 5
+
+  block:
+    template ok(_: int, _: float, a: int): int = a
+    doAssert ok(1, 2.0, 5) == 5
+
+  block:
+    template ok(_: int, _: float, _: string, a: int): int = a
+    doAssert ok(1, 2.6, "5", 5) == 5
 
 proc main() =
   var x = 0
@@ -43,3 +59,6 @@ proc main() =
 when not defined(js):
   static: main()
 main()
+
+static: test()
+test()
