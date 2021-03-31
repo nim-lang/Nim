@@ -242,9 +242,8 @@ tests/newconfig/bar/mfoo.nims""".splitLines
     let filename = testsDir / "newconfig/foo2/mfoo2.customext"
     let cmd = fmt"{nim} e --hint:conf {filename}"
     let (outp, exitCode) = execCmdEx(cmd, options = {poStdErrToStdOut})
-    let dir = getCurrentDir()
     doAssert exitCode == 0
-    var expected = &"Hint: used config file '{dir / filename}' [Conf]\n"
+    var expected = &"Hint: used config file '{filename}' [Conf]\n"
     doAssert outp.endsWith "123" & "\n" & expected
 
 
