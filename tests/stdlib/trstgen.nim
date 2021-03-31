@@ -583,8 +583,44 @@ let x = 1
     check """``foo\bar``""".toHtml == """<tt class="docutils literal"><span class="pre">foo\bar</span></tt>"""
     check """``f\`o\\o\b`ar``""".toHtml == """<tt class="docutils literal"><span class="pre">f\`o\\o\b`ar</span></tt>"""
 
+  test "default-role":
+    # nim(default) -> literal -> nim -> code(=literal)
+    let input = dedent"""
+      Par1 `value1`.
+
+      .. default-role:: literal
+
+      Par2 `value2`.
+
+      .. default-role:: nim
+
+      Par3 `value3`.
+
+      .. default-role:: code
+
+      Par4 `value4`."""
+    let p1 = """Par1 <tt class="docutils literal"><span class="pre">""" & id"value1" & "</span></tt>."
+    let p2 = """<p>Par2 <tt class="docutils literal"><span class="pre">value2</span></tt>.</p>"""
+    let p3 = """<p>Par3 <tt class="docutils literal"><span class="pre">""" & id"value3" & "</span></tt>.</p>"
+    let p4 = """<p>Par4 <tt class="docutils literal"><span class="pre">value4</span></tt>.</p>"""
+    let expected = p1 & p2 & "\n" & p3 & "\n" & p4 & "\n"
+    check(input.toHtml == expected)
+
+  test "role directive":
+    let input = dedent"""
+      .. role:: y(code)
+         :language: yaml
+
+      .. role:: brainhelp(code)
+         :language: brainhelp
+    """
+    var warnings = new seq[string]
+    let output = input.toHtml(warnings=warnings)
+    check(warnings[].len == 1 and "language 'brainhelp' not supported" in warnings[0])
+
   test "RST comments":
     let input1 = """
+
 Check that comment disappears:
 
 ..

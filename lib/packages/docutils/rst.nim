@@ -460,6 +460,8 @@ type
     hTitleCnt: int              # =0 if no title, =1 if only main title,
                                 # =2 if both title and subtitle are present
     hCurLevel: int              # current section level
+    currRole: string
+    currRoleKind: RstNodeKind
     subs: seq[Substitution]     # substitutions
     refs: seq[Substitution]     # references
     anchors: seq[AnchorSubst]   # internal target substitutions
@@ -520,10 +522,15 @@ proc defaultFindFile*(filename: string): string =
   if fileExists(filename): result = filename
   else: result = ""
 
+const defaultRoleKind = rnInlineCode
+const defaultRole = "nim"
+
 proc newSharedState(options: RstParseOptions,
                     findFile: FindFileHandler,
                     msgHandler: MsgHandler): PSharedState =
   new(result)
+  result.currRoleKind = defaultRoleKind
+  result.currRole = defaultRole
   result.subs = @[]
   result.refs = @[]
   result.options = options
@@ -1024,18 +1031,24 @@ proc fixupEmbeddedRef(n, a, b: PRstNode) =
   for i in countup(0, sep - incr): a.add(n.sons[i])
   for i in countup(sep + 1, n.len - 2): b.add(n.sons[i])
 
-proc whichRole(sym: string): RstNodeKind =
-  case sym.toLowerAscii
+const supportedLanguages = ["nim", "yaml", "python", "java", "c",
+                            "c++", "cpp", "c#", "csharp"]
+proc whichRole(p: RstParser, sym: string): RstNodeKind =
+  let r = sym.toLowerAscii
+  case r
   of "idx": result = rnIdx
   of "literal": result = rnInlineLiteral
   of "strong": result = rnStrongEmphasis
   of "emphasis": result = rnEmphasis
   of "sub", "subscript": result = rnSub
   of "sup", "superscript": result = rnSup
+  # literal and code are the same in our implementation
+  of "code": result = rnInlineLiteral
   # c++ currently can be spelled only as cpp, c# only as csharp
-  of "nim", "yaml", "python", "java", "c", "c++", "cpp", "c#", "csharp":
+  elif r in supportedLanguages:
     result = rnInlineCode
   else:  # unknown role
+    rstMessage(p, mwUnsupportedLanguage, p.s.currRole)
     result = rnGeneralRole
 
 proc toInlineCode(n: PRstNode, language: string): PRstNode =
@@ -1081,7 +1094,7 @@ proc parsePostfix(p: var RstParser, n: PRstNode): PRstNode =
   elif match(p, p.idx, ":w:"):
     # a role:
     let roleName = nextTok(p).symbol
-    newKind = whichRole(roleName)
+    newKind = whichRole(p, roleName)
     if newKind == rnGeneralRole:
       let newN = newRstNode(rnInner, n.sons)
       newSons = @[newN, newLeaf(roleName)]
@@ -1092,7 +1105,11 @@ proc parsePostfix(p: var RstParser, n: PRstNode): PRstNode =
       result = newRstNode(newKind, newSons)
     inc p.idx, 3
   else:
-    result = n.toInlineCode(language="nim")
+    if p.s.currRoleKind == rnInlineCode:
+      result = n.toInlineCode(language=p.s.currRole)
+    else:
+      newKind = p.s.currRoleKind
+      result = newRstNode(newKind, newSons)
 
 proc matchVerbatim(p: RstParser, start: int, expr: string): int =
   result = start
@@ -1349,7 +1366,7 @@ proc parseInline(p: var RstParser, father: PRstNode) =
       father.add(n)
     elif match(p, p.idx, ":w:") and p.tok[p.idx+3].symbol == "`":
       let roleName = nextTok(p).symbol
-      let k = whichRole(roleName)
+      let k = whichRole(p, roleName)
       var n = newRstNode(k)
       inc p.idx, 3
       if k == rnInlineCode:
@@ -2457,6 +2474,28 @@ proc dirAdmonition(p: var RstParser, d: string): PRstNode =
 
 proc dirDefaultRole(p: var RstParser): PRstNode =
   result = parseDirective(p, rnDefaultRole, {hasArg}, nil)
+  if result.sons[0].len == 0:
+    p.s.currRoleKind = defaultRoleKind
+    p.s.currRole = defaultRole
+  else:
+    assert result.sons[0].sons[0].kind == rnLeaf
+    p.s.currRole = result.sons[0].sons[0].text
+    p.s.currRoleKind = whichRole(p, p.s.currRole)
+
+proc dirRole(p: var RstParser): PRstNode =
+  result = parseDirective(p, rnDirective, {hasArg, hasOptions}, nil)
+  # just check that language is supported, TODO: real role association
+  if result.sons[1] != nil:
+    for fld in result.sons[1].sons:
+      if fld.sons[0].sons[0].kind == rnLeaf and
+          fld.sons[0].sons[0].text == "language":
+        var s: string
+        for leaf in fld.sons[1].sons:
+          assert leaf.kind == rnLeaf
+          s.add leaf.text
+        s = s.strip
+        if s notin supportedLanguages:
+          rstMessage(p, mwUnsupportedLanguage, s)
 
 proc dirRawAux(p: var RstParser, result: var PRstNode, kind: RstNodeKind,
                contentParser: SectionParser) =
@@ -2501,7 +2540,9 @@ proc selectDir(p: var RstParser, d: string): PRstNode =
   of "code-block": result = dirCodeBlock(p, nimExtension = true)
   of "container": result = dirContainer(p)
   of "contents": result = dirContents(p)
-  of "danger", "error": result = dirAdmonition(p, d)
+  of "danger": result = dirAdmonition(p, d)
+  of "default-role": result = dirDefaultRole(p)
+  of "error": result = dirAdmonition(p, d)
   of "figure": result = dirFigure(p)
   of "hint": result = dirAdmonition(p, d)
   of "image": result = dirImage(p)
@@ -2514,10 +2555,10 @@ proc selectDir(p: var RstParser, d: string): PRstNode =
       result = dirRaw(p)
     else:
       rstMessage(p, meInvalidDirective, d)
+  of "role": result = dirRole(p)
   of "tip": result = dirAdmonition(p, d)
   of "title": result = dirTitle(p)
   of "warning": result = dirAdmonition(p, d)
-  of "default-role": result = dirDefaultRole(p)
   else:
     let tok = p.tok[p.idx-2]  # report on directive in ".. directive::"
     rstMessage(p, meInvalidDirective, d, tok.line, tok.col)
