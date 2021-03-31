@@ -238,6 +238,16 @@ tests/newconfig/bar/mfoo.nims""".splitLines
       expected.add &"Hint: used config file '{b}' [Conf]\n"
     doAssert outp.endsWith expected, outp & "\n" & expected
 
+  block: # mfoo2.customext
+    let filename = "tests/newconfig/foo2/mfoo2.customext"
+    let cmd = fmt"{nim} e --hint:conf {filename}"
+    let (outp, exitCode) = execCmdEx(cmd, options = {poStdErrToStdOut})
+    let dir = getCurrentDir()
+    doAssert exitCode == 0
+    var expected = &"Hint: used config file '{dir / filename}' [Conf]\n"
+    doAssert outp.endsWith "123" & "\n" & expected
+
+
   block: # nim --eval
     let opt = "--hints:off"
     check fmt"""{nim} {opt} --eval:"echo defined(nimscript)"""".execCmdEx == ("true\n", 0)
