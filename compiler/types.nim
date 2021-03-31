@@ -67,7 +67,7 @@ const
                     tyAlias, tyInferred, tySink, tyOwned}
   # see also ast.abstractVarRange
   abstractInst* = {tyGenericInst, tyDistinct, tyOrdinal, tyTypeDesc, tyAlias,
-                   tyInferred, tySink, tyOwned}
+                   tyInferred, tySink, tyOwned} # xxx what about tyStatic?
   abstractInstOwned* = abstractInst + {tyOwned}
   skipPtrs* = {tyVar, tyPtr, tyRef, tyGenericInst, tyTypeDesc, tyAlias,
                tyInferred, tySink, tyLent, tyOwned}
