@@ -454,7 +454,7 @@ proc genProcParams(m: BModule, t: PType, rettype, params: var Rope,
     params.add(param.loc.r)
     # declare the len field for open arrays:
     var arr = param.typ
-    if arr.kind in {tyVar, tyLent, tySink}: arr = arr.lastSon
+    if arr.kind in {tyVar, tyLent, tySink, tyOpenArray}: arr = arr.lastSon
     var j = 0
     while arr.kind in {tyOpenArray, tyVarargs}:
       # this fixes the 'sort' bug:
