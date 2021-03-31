@@ -304,8 +304,8 @@ proc addToIntersection(inter: var TIntersection, s: int) =
 proc throws(tracked, n, orig: PNode) =
   if n.typ == nil or n.typ.kind != tyError:
     if orig != nil:
-      let x = copyNode(n)
-      x.info = orig.info
+      let x = copyTree(orig)
+      x.typ = n.typ
       tracked.add x
     else:
       tracked.add n
@@ -329,7 +329,7 @@ proc createTag(g: ModuleGraph; n: PNode): PNode =
   if not n.isNil: result.info = n.info
 
 proc addRaiseEffect(a: PEffects, e, comesFrom: PNode) =
-  assert e.kind != nkRaiseStmt
+  #assert e.kind != nkRaiseStmt
   var aa = a.exc
   for i in a.bottom..<aa.len:
     # we only track the first node that can have the effect E in order
@@ -917,7 +917,7 @@ proc track(tracked: PEffects, n: PNode) =
     if n[0].kind != nkEmpty:
       n[0].info = n.info
       #throws(tracked.exc, n[0])
-      addRaiseEffect(tracked, n[0], nil)
+      addRaiseEffect(tracked, n[0], n)
       for i in 0..<n.safeLen:
         track(tracked, n[i])
       createTypeBoundOps(tracked, n[0].typ, n.info)
@@ -1163,7 +1163,9 @@ proc checkRaisesSpec(g: ModuleGraph; spec, real: PNode, msg: string, hints: bool
           break search
       # XXX call graph analysis would be nice here!
       pushInfoContext(g.config, spec.info)
-      localError(g.config, r.info, errGenerated, msg & typeToString(r.typ))
+      var rr = if r.kind == nkRaiseStmt: r[0] else: r
+      while rr.kind in {nkStmtList, nkStmtListExpr} and rr.len > 0: rr = rr.lastSon
+      localError(g.config, r.info, errGenerated, renderTree(rr) & " " & msg & typeToString(r.typ))
       popInfoContext(g.config)
   # hint about unnecessarily listed exception types:
   if hints:
