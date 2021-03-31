@@ -980,7 +980,7 @@ proc genBindSym(c: PCtx; n: PNode; dest: var TDest) =
 
 proc fitsRegister*(t: PType): bool =
   assert t != nil
-  t.skipTypes(abstractInst-{tyTypeDesc}).kind in {
+  t.skipTypes(abstractInst + {tyStatic} - {tyTypeDesc}).kind in {
     tyRange, tyEnum, tyBool, tyInt..tyUInt64, tyChar}
 
 proc ldNullOpcode(t: PType): TOpcode =
