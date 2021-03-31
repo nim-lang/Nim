@@ -73,7 +73,7 @@
 - Added `asyncdispatch.activeDescriptors` that returns the number of currently
   active async event handles/file descriptors.
 
-- Added to `asynchttpserver` `getPort` and `getSocket`.
+- Added `getPort` to `asynchttpserver`.
 
 - `--gc:orc` is now 10% faster than previously for common workloads. If
   you have trouble with its changed behavior, compile with `-d:nimOldOrc`.
