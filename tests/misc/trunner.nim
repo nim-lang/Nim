@@ -239,7 +239,7 @@ tests/newconfig/bar/mfoo.nims""".splitLines
     doAssert outp.endsWith expected, outp & "\n" & expected
 
   block: # mfoo2.customext
-    let filename = "tests/newconfig/foo2/mfoo2.customext"
+    let filename = testsDir / "newconfig/foo2/mfoo2.customext"
     let cmd = fmt"{nim} e --hint:conf {filename}"
     let (outp, exitCode) = execCmdEx(cmd, options = {poStdErrToStdOut})
     let dir = getCurrentDir()
