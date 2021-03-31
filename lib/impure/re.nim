@@ -199,6 +199,18 @@ proc findBounds*(s: string, pattern: Regex,
   ## `(-1,0)` is returned.
   result = findBounds(cstring(s), pattern, matches, start, s.len)
 
+proc findBoundsImpl(buf: cstring, pattern: Regex,
+                    start = 0, bufSize = 0, flags = 0): tuple[first, last: int] =
+  var rtarray = initRtArray[cint](3)
+  let rawMatches = rtarray.getRawData
+  let res = pcre.exec(pattern.h, pattern.e, buf, bufSize.cint, start.cint, flags.int32,
+                cast[ptr cint](rawMatches), 3)
+
+  if res < 0'i32:
+    result = (-1, 0)
+  else:
+    result = (int(rawMatches[0]), int(rawMatches[1]-1))
+
 proc findBounds*(buf: cstring, pattern: Regex,
                  start = 0, bufSize: int): tuple[first, last: int] =
   ## returns the `first` and `last` position of `pattern` in `buf`,
@@ -433,12 +445,16 @@ proc replace*(s: string, sub: Regex, by = ""): string =
     doAssert "var1=key; var2=key2".replace(re"(\w+)=(\w+)", "?") == "?; ?"
   result = ""
   var prev = 0
+  var flags = int32(0)
   while prev < s.len:
-    var match = findBounds(s, sub, prev)
+    var match = findBoundsImpl(s.cstring, sub, prev, s.len, flags)
+    flags = 0
     if match.first < 0: break
     add(result, substr(s, prev, match.first-1))
     add(result, by)
-    if match.last + 1 == prev: break
+    if match.first > match.last:
+      # 0-len match
+      flags = pcre.NOTEMPTY_ATSTART
     prev = match.last + 1
   add(result, substr(s, prev))
 
