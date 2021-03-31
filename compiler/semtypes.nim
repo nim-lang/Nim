@@ -40,12 +40,6 @@ const
   errNoGenericParamsAllowedForX = "no generic parameters allowed for $1"
   errInOutFlagNotExtern = "the '$1' modifier can be used only with imported types"
 
-
-proc isDiscardUnderscoreV(v: PSym): bool =
-  if v.name.s == "_":
-    v.flags.incl(sfGenSym)
-    result = true
-
 proc newOrPrevType(kind: TTypeKind, prev: PType, c: PContext): PType =
   if prev == nil:
     result = newTypeS(kind, c)
@@ -991,7 +985,9 @@ proc addParamOrResult(c: PContext, param: PSym, kind: TSymKind) =
       if param.owner == nil:
         param.owner = getCurrOwner(c)
     else:
-      if not isDiscardUnderscoreV(param):
+      if param.name.s == "_":
+        param.flags.incl(sfGenSym)
+      else:
         addDecl(c, param)
 
 template shouldHaveMeta(t) =
@@ -1304,7 +1300,9 @@ proc semProcTypeNode(c: PContext, n, genericParams: PNode,
       if def != nil and def.kind != nkEmpty:
         arg.ast = copyTree(def)
       # addDecl
-      if not isDiscardUnderscoreV(arg):
+      if arg.name.s == "_":
+        arg.flags.incl(sfGenSym)
+      else:
         if containsOrIncl(check, arg.name.id):
           localError(c.config, a[j].info, "attempt to redefine: '" & arg.name.s & "'")
       result.n.add newSymNode(arg)

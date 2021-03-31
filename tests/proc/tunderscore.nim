@@ -19,9 +19,6 @@ block:
   ok(1, 2.6, "5")
 
 proc main() =
-  when defined(js):
-    when nimvm:
-      return
   var x = 0
 
   block:
@@ -43,5 +40,6 @@ proc main() =
     doAssert x == 15
 
 
-static: main()
+when not defined(js):
+  static: main()
 main()
