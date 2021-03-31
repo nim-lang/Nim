@@ -188,8 +188,8 @@ when hasAlloc and not defined(js):
     cast[ptr T](realloc(p, T.sizeof * newSize))
 
   proc dealloc*(p: pointer) {.noconv, compilerproc, rtl, benign, raises: [], tags: [].} =
-    ## Frees the memory allocated with `alloc`, `alloc0` or
-    ## `realloc`.
+    ## Frees the memory allocated with `alloc`, `alloc0`,
+    ## `realloc`, `create` or `createU`.
     ##
     ## **This procedure is dangerous!**
     ## If one forgets to free the memory a leak occurs; if one tries to

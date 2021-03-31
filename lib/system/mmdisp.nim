@@ -57,6 +57,16 @@ elif defined(gogc):
 elif (defined(nogc) or defined(gcDestructors)) and defined(useMalloc):
   include system / mm / malloc
 
+  when defined(nogc):
+    proc GC_getStatistics(): string = ""
+    proc newObj(typ: PNimType, size: int): pointer {.compilerproc.} =
+      result = alloc0(size)
+
+    proc newSeq(typ: PNimType, len: int): pointer {.compilerproc.} =
+      result = newObj(typ, align(GenericSeqSize, typ.align) + len * typ.base.size)
+      cast[PGenericSeq](result).len = len
+      cast[PGenericSeq](result).reserved = len
+
 elif defined(nogc):
   include system / mm / none
 

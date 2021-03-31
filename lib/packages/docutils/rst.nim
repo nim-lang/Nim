@@ -68,7 +68,7 @@
 ##     substitution references, standalone hyperlinks,
 ##     internal links (inline and outline)
 ##   + \`interpreted text\` with roles ``:literal:``, ``:strong:``,
-##     ``emphasis``, ``:sub:``/``:subscript:``, ``:sup:``/``:supscript:``
+##     ``emphasis``, ``:sub:``/``:subscript:``, ``:sup:``/``:superscript:``
 ##     (see `RST roles list`_ for description).
 ##   + inline internal targets
 ##
@@ -141,9 +141,6 @@
 ##
 ## See `packages/docutils/rstgen module <rstgen.html>`_ to know how to
 ## generate HTML or Latex strings to embed them into your documents.
-##
-## .. Tip:: Import ``packages/docutils/rst`` to use this module
-##    programmatically.
 ##
 ## .. _quick introduction: https://docutils.sourceforge.io/docs/user/rst/quickstart.html
 ## .. _RST reference: https://docutils.sourceforge.io/docs/user/rst/quickref.html
@@ -1021,6 +1018,16 @@ proc fixupEmbeddedRef(n, a, b: PRstNode) =
   for i in countup(0, sep - incr): a.add(n.sons[i])
   for i in countup(sep + 1, n.len - 2): b.add(n.sons[i])
 
+proc whichRole(sym: string): RstNodeKind =
+  case sym
+  of "idx": result = rnIdx
+  of "literal": result = rnInlineLiteral
+  of "strong": result = rnStrongEmphasis
+  of "emphasis": result = rnEmphasis
+  of "sub", "subscript": result = rnSub
+  of "sup", "superscript": result = rnSup
+  else: result = rnGeneralRole
+
 proc parsePostfix(p: var RstParser, n: PRstNode): PRstNode =
   var newKind = n.kind
   var newSons = n.sons
@@ -1045,22 +1052,8 @@ proc parsePostfix(p: var RstParser, n: PRstNode): PRstNode =
     result = newRstNode(newKind, newSons)
   elif match(p, p.idx, ":w:"):
     # a role:
-    if nextTok(p).symbol == "idx":
-      newKind = rnIdx
-    elif nextTok(p).symbol == "literal":
-      newKind = rnInlineLiteral
-    elif nextTok(p).symbol == "strong":
-      newKind = rnStrongEmphasis
-    elif nextTok(p).symbol == "emphasis":
-      newKind = rnEmphasis
-    elif nextTok(p).symbol == "sub" or
-        nextTok(p).symbol == "subscript":
-      newKind = rnSub
-    elif nextTok(p).symbol == "sup" or
-        nextTok(p).symbol == "supscript":
-      newKind = rnSup
-    else:
-      newKind = rnGeneralRole
+    newKind = whichRole(nextTok(p).symbol)
+    if newKind == rnGeneralRole:
       let newN = newRstNode(rnInner, n.sons)
       newSons = @[newN, newLeaf(nextTok(p).symbol)]
     inc p.idx, 3
@@ -1320,6 +1313,12 @@ proc parseInline(p: var RstParser, father: PRstNode) =
     elif isInlineMarkupStart(p, "``"):
       var n = newRstNode(rnInlineLiteral)
       parseUntil(p, n, "``", false)
+      father.add(n)
+    elif match(p, p.idx, ":w:") and p.tok[p.idx+3].symbol == "`":
+      let k = whichRole(nextTok(p).symbol)
+      let n = newRstNode(k)
+      inc p.idx, 3
+      parseUntil(p, n, "`", false) # bug #17260
       father.add(n)
     elif isInlineMarkupStart(p, "`"):
       var n = newRstNode(rnInterpretedText)
@@ -1680,7 +1679,7 @@ proc whichSection(p: RstParser): RstNodeKind =
     elif predNL(p) and
         currentTok(p).symbol in ["+", "*", "-"] and nextTok(p).kind == tkWhite:
       result = rnBulletList
-    elif match(p, p.idx, ":w:") and predNL(p):
+    elif match(p, p.idx, ":w:E") and predNL(p):
       # (currentTok(p).symbol == ":")
       result = rnFieldList
     elif match(p, p.idx, "(e) ") or match(p, p.idx, "e) ") or

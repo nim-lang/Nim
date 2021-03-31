@@ -1182,7 +1182,7 @@ proc gsub(g: var TSrcGen, n: PNode, c: TContext) =
   of nkTupleConstr:
     put(g, tkParLe, "(")
     gcomma(g, n, c)
-    if n.len == 1: put(g, tkComma, ",")
+    if n.len == 1 and n[0].kind != nkExprColonExpr: put(g, tkComma, ",")
     put(g, tkParRi, ")")
   of nkCurly:
     put(g, tkCurlyLe, "{")
@@ -1645,6 +1645,10 @@ proc gsub(g: var TSrcGen, n: PNode, c: TContext) =
       gsons(g, n, c, 0)
   of nkTypeClassTy:
     gTypeClassTy(g, n)
+  of nkError:
+    putWithSpace(g, tkSymbol, "error")
+    #gcomma(g, n, c)
+    gsub(g, n[0], c)
   else:
     #nkNone, nkExplicitTypeListCall:
     internalError(g.config, n.info, "rnimsyn.gsub(" & $n.kind & ')')

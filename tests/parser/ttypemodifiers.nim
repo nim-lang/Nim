@@ -21,7 +21,7 @@ StmtList
       Ident "PtrTuple"
       Empty
       PtrTy
-        Par
+        TupleConstr
           Ident "int"
           Ident "string"
     TypeDef
@@ -43,14 +43,14 @@ StmtList
       Ident "RefTupleType"
       Empty
       RefTy
-        Par
+        TupleConstr
           Ident "int"
           Ident "string"
     TypeDef
       Ident "RefTupleVars"
       Empty
       RefTy
-        Par
+        TupleConstr
           Ident "a"
           Ident "b"
     TypeDef
@@ -80,7 +80,7 @@ StmtList
       Empty
       Command
         Ident "static"
-        Par
+        TupleConstr
           Ident "int"
           Ident "string"
     TypeDef
@@ -155,7 +155,7 @@ StmtList
       Empty
       Command
         Ident "type"
-        Par
+        TupleConstr
           Ident "a"
           Ident "b"
     TypeDef
@@ -163,7 +163,7 @@ StmtList
       Empty
       Command
         Ident "type"
-        Par
+        TupleConstr
           Ident "int"
           Ident "string"
     TypeDef
@@ -287,7 +287,7 @@ StmtList
       IdentDefs
         Ident "refTuple2"
         RefTy
-          Par
+          TupleConstr
             Ident "int"
             Ident "string"
         Empty
@@ -524,4 +524,3 @@ dumpTree:
     static:
       staticStmtList1
       staticStmtList2
-
