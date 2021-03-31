@@ -47,6 +47,8 @@
 - Added an overload for the `collect` macro that inferes the container type based
   on the syntax of the last expression. Works with std seqs, tables and sets.
 
+- `jsonutils` now handles `cstring` (including as Table key).
+
 - Added `randState` template that exposes the default random number generator.
   Useful for library authors.
 
