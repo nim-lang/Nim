@@ -415,7 +415,8 @@ proc opConv(c: PCtx; dest: var TFullReg, src: TFullReg, desttyp, srctyp: PType):
     else:
       internalError(c.config, "cannot convert to string " & desttyp.typeToString)
   else:
-    case skipTypes(desttyp, abstractVarRange).kind
+    let desttyp = skipTypes(desttyp, abstractVarRange)
+    case desttyp.kind
     of tyInt..tyInt64:
       dest.ensureKind(rkInt)
       case skipTypes(srctyp, abstractRange).kind
