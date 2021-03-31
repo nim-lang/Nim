@@ -196,9 +196,15 @@ suite "RST/Markdown general":
 |              | F2 without pipe
 not in table"""
     let output1 = input1.toHtml
-    doAssert output1 == """<table border="1" class="docutils"><tr><th>A1 header</th><th>A2 | not fooled</th></tr>
+    #[
+    TODO: `\|` inside a table cell should render as `|`
+        `|` outside a table cell should render as `\|`
+    consistently with markdown, see https://stackoverflow.com/a/66557930/1426932
+    ]#
+    doAssert output1 == """
+<table border="1" class="docutils"><tr><th>A1 header</th><th>A2 | not fooled</th></tr>
 <tr><td>C1</td><td>C2 <strong>bold</strong></td></tr>
-<tr><td>D1 <tt class="docutils literal"><span class="pre">code |</span></tt></td><td>D2</td></tr>
+<tr><td>D1 <tt class="docutils literal"><span class="pre">code \|</span></tt></td><td>D2</td></tr>
 <tr><td>E1 | text</td><td></td></tr>
 <tr><td></td><td>F2 without pipe</td></tr>
 </table><p>not in table</p>
@@ -548,6 +554,18 @@ let x = 1
 ``` """
     let output2 = input2.toHtml
     doAssert "<pre" in output2 and "class=\"Keyword\"" in output2
+
+  test "interpreted text":
+    check """`foo.bar`""".toHtml == """<tt class="docutils literal"><span class="pre">foo.bar</span></tt>"""
+    check """`foo\`\`bar`""".toHtml == """<tt class="docutils literal"><span class="pre">foo``bar</span></tt>"""
+    check """`foo\`bar`""".toHtml == """<tt class="docutils literal"><span class="pre">foo`bar</span></tt>"""
+    check """`\`bar`""".toHtml == """<tt class="docutils literal"><span class="pre">`bar</span></tt>"""
+    check """`a\b\x\\ar`""".toHtml == """<tt class="docutils literal"><span class="pre">a\b\x\\ar</span></tt>"""
+
+  test "inline literal":
+    check """``foo.bar``""".toHtml == """<tt class="docutils literal"><span class="pre">foo.bar</span></tt>"""
+    check """``foo\bar``""".toHtml == """<tt class="docutils literal"><span class="pre">foo\bar</span></tt>"""
+    check """``f\`o\\o\b`ar``""".toHtml == """<tt class="docutils literal"><span class="pre">f\`o\\o\b`ar</span></tt>"""
 
   test "RST comments":
     let input1 = """
@@ -1258,6 +1276,96 @@ Test1
     let ref3 = "<a class=\"reference internal\" href=\"#linkdot1-2021\">link.1_2021</a>"
     let refline = "Ref. " & ref1 & "! and " & ref2 & ";and " & ref3 & "."
     doAssert refline in output1
+
+  test "Option lists 1":
+    # check that "* b" is not consumed by previous bullet item because of
+    # incorrect indentation handling in option lists
+    let input = dedent """
+      * a
+        -m   desc
+        -n   very long
+             desc
+      * b"""
+    let output = input.toHtml
+    check(output.count("<ul") == 1)
+    check(output.count("<li>") == 2)
+    check(output.count("<table") == 1)
+    check("""<th align="left">-m</th><td align="left">desc</td>""" in output)
+    check("""<th align="left">-n</th><td align="left">very long desc</td>""" in
+          output)
+
+  test "Option lists 2":
+    # check that 2nd option list is not united with the 1st
+    let input = dedent """
+      * a
+        -m   desc
+        -n   very long
+             desc
+      -d  option"""
+    let output = input.toHtml
+    check(output.count("<ul") == 1)
+    check(output.count("<table") == 2)
+    check("""<th align="left">-m</th><td align="left">desc</td>""" in output)
+    check("""<th align="left">-n</th><td align="left">very long desc</td>""" in
+          output)
+    check("""<th align="left">-d</th><td align="left">option</td>""" in
+          output)
+
+  test "Option list 3 (double /)":
+    let input = dedent """
+      * a
+        //compile  compile1
+        //doc      doc1
+                   cont
+      -d  option"""
+    let output = input.toHtml
+    check(output.count("<ul") == 1)
+    check(output.count("<table") == 2)
+    check("""<th align="left">compile</th><td align="left">compile1</td>""" in output)
+    check("""<th align="left">doc</th><td align="left">doc1 cont</td>""" in
+          output)
+    check("""<th align="left">-d</th><td align="left">option</td>""" in
+          output)
+
+  test "Roles: subscript prefix/postfix":
+    let expected = "See <sub>some text</sub>."
+    check "See :subscript:`some text`.".toHtml == expected
+    check "See `some text`:subscript:.".toHtml == expected
+
+  test "Roles: correct parsing from beginning of line":
+    let expected = "<sup>3</sup>He is an isotope of helium."
+    check """:superscript:`3`\ He is an isotope of helium.""".toHtml == expected
+    check """:sup:`3`\ He is an isotope of helium.""".toHtml == expected
+    check """`3`:sup:\ He is an isotope of helium.""".toHtml == expected
+    check """`3`:superscript:\ He is an isotope of helium.""".toHtml == expected
+
+  test "(not) Roles: check escaping 1":
+    let expected = """See :subscript:<tt class="docutils literal">""" &
+                   """<span class="pre">some text</span></tt>."""
+    check """See \:subscript:`some text`.""".toHtml == expected
+    check """See :subscript\:`some text`.""".toHtml == expected
+
+  test "(not) Roles: check escaping 2":
+    check("""See :subscript:\`some text\`.""".toHtml ==
+          "See :subscript:`some text`.")
+
+  test "Field list":
+    check(":field: text".toHtml ==
+            """<table class="docinfo" frame="void" rules="none">""" &
+            """<col class="docinfo-name" /><col class="docinfo-content" />""" &
+            """<tbody valign="top"><tr><th class="docinfo-name">field:</th>""" &
+            """<td> text</td></tr>""" & "\n</tbody></table>")
+
+  test "Field list: body after newline":
+    let output = dedent """
+      :field:
+        text1""".toHtml
+    check "<table class=\"docinfo\"" in output
+    check ">field:</th>" in output
+    check "<td>text1</td>" in output
+
+  test "Field list (incorrect)":
+    check ":field:text".toHtml == ":field:text"
 
 suite "RST/Code highlight":
   test "Basic Python code highlight":

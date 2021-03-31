@@ -393,8 +393,9 @@ proc registerModule*(g: ModuleGraph; m: PSym) =
 proc registerModuleById*(g: ModuleGraph; m: FileIndex) =
   registerModule(g, g.packed[int m].module)
 
-proc initOperators(g: ModuleGraph): Operators =
+proc initOperators*(g: ModuleGraph): Operators =
   # These are safe for IC.
+  # Public because it's used by DrNim.
   result.opLe = createMagic(g, "<=", mLeI)
   result.opLt = createMagic(g, "<", mLtI)
   result.opAnd = createMagic(g, "and", mAnd)
@@ -455,11 +456,25 @@ proc getModule*(g: ModuleGraph; fileIdx: FileIndex): PSym =
     elif fileIdx.int32 < g.ifaces.len:
       result = g.ifaces[fileIdx.int32].module
 
+proc moduleOpenForCodegen*(g: ModuleGraph; m: FileIndex): bool {.inline.} =
+  if g.config.symbolFiles == disabledSf:
+    result = true
+  else:
+    result = g.packed[m.int32].status notin {undefined, stored, loaded}
+
 proc rememberEmittedTypeInfo*(g: ModuleGraph; m: FileIndex; ti: string) =
   #assert(not isCachedModule(g, m.int32))
   if g.config.symbolFiles != disabledSf:
     #assert g.encoders[m.int32].isActive
+    assert g.packed[m.int32].status != stored
     g.packed[m.int32].fromDisk.emittedTypeInfo.add ti
+    #echo "added typeinfo ", m.int32, " ", ti, " suspicious ", not g.encoders[m.int32].isActive
+
+proc rememberFlag*(g: ModuleGraph; m: PSym; flag: ModuleBackendFlag) =
+  if g.config.symbolFiles != disabledSf:
+    #assert g.encoders[m.int32].isActive
+    assert g.packed[m.position].status != stored
+    g.packed[m.position].fromDisk.backendFlags.incl flag
 
 proc closeRodFile*(g: ModuleGraph; m: PSym) =
   if g.config.symbolFiles in {readOnlySf, v2Sf}:
@@ -469,6 +484,8 @@ proc closeRodFile*(g: ModuleGraph; m: PSym) =
     let mint = m.position
     saveRodFile(toRodFile(g.config, AbsoluteFile toFullPath(g.config, FileIndex(mint))),
                 g.encoders[mint], g.packed[mint].fromDisk)
+    g.packed[mint].status = stored
+
   elif g.config.symbolFiles == stressTest:
     # debug code, but maybe a good idea for production? Could reduce the compiler's
     # memory consumption considerably at the cost of more loads from disk.

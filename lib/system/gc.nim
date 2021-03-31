@@ -12,6 +12,53 @@
 # Refcounting + Mark&Sweep. Complex algorithms avoided.
 # Been there, done that, didn't work.
 
+#[
+
+A *cell* is anything that is traced by the GC
+(sequences, refs, strings, closures).
+
+The basic algorithm is *Deferrent Reference Counting* with cycle detection.
+References on the stack are not counted for better performance and easier C
+code generation.
+
+Each cell has a header consisting of a RC and a pointer to its type
+descriptor. However the program does not know about these, so they are placed at
+negative offsets. In the GC code the type `PCell` denotes a pointer
+decremented by the right offset, so that the header can be accessed easily. It
+is extremely important that `pointer` is not confused with a `PCell`.
+
+In Nim the compiler cannot always know if a reference
+is stored on the stack or not. This is caused by var parameters.
+Consider this example:
+
+.. code-block:: Nim
+  proc setRef(r: var ref TNode) =
+    new(r)
+
+  proc usage =
+    var
+      r: ref TNode
+    setRef(r) # here we should not update the reference counts, because
+              # r is on the stack
+    setRef(r.left) # here we should update the refcounts!
+
+We have to decide at runtime whether the reference is on the stack or not.
+The generated code looks roughly like this:
+
+.. code-block:: C
+  void setref(TNode** ref) {
+    unsureAsgnRef(ref, newObj(TNode_TI, sizeof(TNode)))
+  }
+  void usage(void) {
+    setRef(&r)
+    setRef(&r->left)
+  }
+
+Note that for systems with a continuous stack (which most systems have)
+the check whether the ref is on the stack is very cheap (only two
+comparisons).
+]#
+
 {.push profiler:off.}
 
 const
@@ -435,7 +482,7 @@ proc newObjNoInit(typ: PNimType, size: int): pointer {.compilerRtl.} =
   result = rawNewObj(typ, size, gch)
   when defined(memProfiler): nimProfile(size)
 
-proc newObj(typ: PNimType, size: int): pointer {.compilerRtl.} =
+proc newObj(typ: PNimType, size: int): pointer {.compilerRtl, noinline.} =
   result = rawNewObj(typ, size, gch)
   zeroMem(result, size)
   when defined(memProfiler): nimProfile(size)
@@ -450,7 +497,7 @@ proc newSeq(typ: PNimType, len: int): pointer {.compilerRtl.} =
   when defined(memProfiler): nimProfile(size)
 {.pop.}
 
-proc newObjRC1(typ: PNimType, size: int): pointer {.compilerRtl.} =
+proc newObjRC1(typ: PNimType, size: int): pointer {.compilerRtl, noinline.} =
   # generates a new object and sets its reference counter to 1
   incTypeSize typ, size
   sysAssert(allocInv(gch.region), "newObjRC1 begin")

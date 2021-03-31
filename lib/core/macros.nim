@@ -78,14 +78,15 @@ type
     nnkSharedTy,           # 'shared T'
     nnkEnumTy,
     nnkEnumFieldDef,
-    nnkArglist, nnkPattern
+    nnkArgList, nnkPattern
     nnkHiddenTryStmt,
     nnkClosure,
     nnkGotoState,
     nnkState,
     nnkBreakState,
     nnkFuncDef,
-    nnkTupleConstr
+    nnkTupleConstr,
+    nnkError,  ## erroneous AST node
 
   NimNodeKinds* = set[NimNodeKind]
   NimTypeKind* = enum  # some types are no longer used, see ast.nim

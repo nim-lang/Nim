@@ -4,6 +4,8 @@
 
 ## Standard library additions and changes
 
+- Added `sections` iterator in `parsecfg`.
+
 - Make custom op in macros.quote work for all statements.
 
 - On Windows the SSL library now checks for valid certificates.
@@ -68,6 +70,8 @@
 
 - Added `asyncdispatch.activeDescriptors` that returns the number of currently
   active async event handles/file descriptors.
+
+- Added to `asynchttpserver` `getPort` and `getSocket`.
 
 - `--gc:orc` is now 10% faster than previously for common workloads. If
   you have trouble with its changed behavior, compile with `-d:nimOldOrc`.
@@ -212,7 +216,7 @@
 
 - `std/options` changed `$some(3)` to `"some(3)"` instead of `"Some(3)"`
   and `$none(int)` to `"none(int)"` instead of `"None[int]"`.
-  
+
 - Added `algorithm.merge`.
 
 
@@ -244,6 +248,10 @@
 
 - Added dollar `$` and `len` for `jsre.RegExp`.
 
+- Added `hasDataBuffered` to `asyncnet`.
+
+- Added `hasClosure` to `std/typetraits`.
+
 
 ## Language changes
 
@@ -263,6 +271,13 @@
 
 - `typedesc[Foo]` now renders as such instead of `type Foo` in compiler messages.
 
+- The unary minus in `-1` is now part of the integer literal, it is now parsed as a single token.
+  This implies that edge cases like `-128'i8` finally work correctly.
+
+- Custom numeric literals (e.g. `-128'bignum`) are now supported.
+
+- Tuple expressions are now parsed consistently as
+  `nnkTupleConstr` node. Will affect macros expecting nodes to be of `nnkPar`.
 
 
 ## Compiler changes
