@@ -951,7 +951,7 @@ func frexp*[T: float32|float64](x: T): tuple[frac: T, exp: int] {.inline.} =
     doAssert frexp(0.0) == (0.0, 0)
 
     # special cases:
-    doAssert frexp(-0.0) == (-0.0, 0) # signbit preserved for +-0
+    doAssert frexp(-0.0).frac.signbit # signbit preserved for +-0
     doAssert frexp(Inf).frac == Inf # +- Inf preserved
     doAssert frexp(NaN).frac.isNaN
 
