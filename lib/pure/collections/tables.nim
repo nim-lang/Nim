@@ -289,7 +289,7 @@ proc `[]=`*[A, B](t: var Table[A, B], key: A, val: sink B) =
     var a = initTable[char, int]()
     a['x'] = 7
     a['y'] = 33
-    doAssert a == {'x': 7, 'y': 33}.toTable
+    assert a == {'x': 7, 'y': 33}.toTable
 
   putImpl(enlarge)
 
@@ -327,7 +327,7 @@ proc `[]`*[A, B](t: Table[A, B], key: A): B =
   ##   the table
   runnableExamples:
     let a = {'a': 5, 'b': 9}.toTable
-    doAssert a['a'] == 5
+    assert a['a'] == 5
     doAssertRaises(KeyError):
       echo a['z']
   get(t, key)
@@ -360,8 +360,8 @@ proc hasKey*[A, B](t: Table[A, B], key: A): bool =
   ##   a custom value if the key doesn't exist
   runnableExamples:
     let a = {'a': 5, 'b': 9}.toTable
-    doAssert a.hasKey('a') == true
-    doAssert a.hasKey('z') == false
+    assert a.hasKey('a') == true
+    assert a.hasKey('z') == false
 
   var hc: Hash
   result = rawGet(t, key, hc) >= 0
@@ -371,8 +371,8 @@ proc contains*[A, B](t: Table[A, B], key: A): bool =
   ## the `in` operator.
   runnableExamples:
     let a = {'a': 5, 'b': 9}.toTable
-    doAssert 'b' in a == true
-    doAssert a.contains('z') == false
+    assert 'b' in a == true
+    assert a.contains('z') == false
 
   return hasKey[A, B](t, key)
 
@@ -392,7 +392,7 @@ proc hasKeyOrPut*[A, B](t: var Table[A, B], key: A, val: B): bool =
       a['a'] = 99
     if a.hasKeyOrPut('z', 50):
       a['z'] = 99
-    doAssert a == {'a': 99, 'b': 9, 'z': 50}.toTable
+    assert a == {'a': 99, 'b': 9, 'z': 50}.toTable
 
   hasKeyOrPutImpl(enlarge)
 
@@ -410,8 +410,8 @@ proc getOrDefault*[A, B](t: Table[A, B], key: A): B =
   ##   a custom value if the key doesn't exist
   runnableExamples:
     let a = {'a': 5, 'b': 9}.toTable
-    doAssert a.getOrDefault('a') == 5
-    doAssert a.getOrDefault('z') == 0
+    assert a.getOrDefault('a') == 5
+    assert a.getOrDefault('z') == 0
 
   getOrDefaultImpl(t, key)
 
@@ -428,8 +428,8 @@ proc getOrDefault*[A, B](t: Table[A, B], key: A, default: B): B =
   ##   a default value (e.g. zero for int) if the key doesn't exist
   runnableExamples:
     let a = {'a': 5, 'b': 9}.toTable
-    doAssert a.getOrDefault('a', 99) == 5
-    doAssert a.getOrDefault('z', 99) == 99
+    assert a.getOrDefault('a', 99) == 5
+    assert a.getOrDefault('z', 99) == 99
 
   getOrDefaultImpl(t, key, default)
 
@@ -454,9 +454,9 @@ proc mgetOrPut*[A, B](t: var Table[A, B], key: A, val: B): var B =
   ##   a custom value if the key doesn't exist
   runnableExamples:
     var a = {'a': 5, 'b': 9}.toTable
-    doAssert a.mgetOrPut('a', 99) == 5
-    doAssert a.mgetOrPut('z', 99) == 99
-    doAssert a == {'a': 5, 'b': 9, 'z': 99}.toTable
+    assert a.mgetOrPut('a', 99) == 5
+    assert a.mgetOrPut('z', 99) == 99
+    assert a == {'a': 5, 'b': 9, 'z': 99}.toTable
 
     # An example of accidentally creating a copy
     var t = initTable[int, seq[int]]()
@@ -464,10 +464,10 @@ proc mgetOrPut*[A, B](t: var Table[A, B], key: A, val: B): var B =
     # but it is not.
     var copiedSeq = t.mgetOrPut(10, @[10])
     copiedSeq.add(20)
-    doAssert t[10] == @[10]
+    assert t[10] == @[10]
     # Correct
     t.mgetOrPut(25, @[25]).add(35)
-    doAssert t[25] == @[25, 35]
+    assert t[25] == @[25, 35]
 
   mgetOrPutImpl(enlarge)
 
@@ -475,7 +475,7 @@ proc len*[A, B](t: Table[A, B]): int =
   ## Returns the number of keys in `t`.
   runnableExamples:
     let a = {'a': 5, 'b': 9}.toTable
-    doAssert len(a) == 2
+    assert len(a) == 2
 
   result = t.counter
 
@@ -502,9 +502,9 @@ proc del*[A, B](t: var Table[A, B], key: A) =
   runnableExamples:
     var a = {'a': 5, 'b': 9, 'c': 13}.toTable
     a.del('a')
-    doAssert a == {'b': 9, 'c': 13}.toTable
+    assert a == {'b': 9, 'c': 13}.toTable
     a.del('z')
-    doAssert a == {'b': 9, 'c': 13}.toTable
+    assert a == {'b': 9, 'c': 13}.toTable
 
   delImpl(tabMakeEmpty, tabCellEmpty, tabCellHash)
 
@@ -521,13 +521,13 @@ proc pop*[A, B](t: var Table[A, B], key: A, val: var B): bool =
     var
       a = {'a': 5, 'b': 9, 'c': 13}.toTable
       i: int
-    doAssert a.pop('b', i) == true
-    doAssert a == {'a': 5, 'c': 13}.toTable
-    doAssert i == 9
+    assert a.pop('b', i) == true
+    assert a == {'a': 5, 'c': 13}.toTable
+    assert i == 9
     i = 0
-    doAssert a.pop('z', i) == false
-    doAssert a == {'a': 5, 'c': 13}.toTable
-    doAssert i == 0
+    assert a.pop('z', i) == false
+    assert a == {'a': 5, 'c': 13}.toTable
+    assert i == 0
 
   var hc: Hash
   var index = rawGet(t, key, hc)
@@ -549,9 +549,9 @@ proc clear*[A, B](t: var Table[A, B]) =
   ## * `pop proc<#pop,Table[A,B],A,B>`_
   runnableExamples:
     var a = {'a': 5, 'b': 9, 'c': 13}.toTable
-    doAssert len(a) == 3
+    assert len(a) == 3
     clear(a)
-    doAssert len(a) == 0
+    assert len(a) == 0
 
   clearImpl()
 
@@ -567,7 +567,7 @@ proc `==`*[A, B](s, t: Table[A, B]): bool =
     let
       a = {'a': 5, 'b': 9, 'c': 13}.toTable
       b = {'b': 9, 'c': 13, 'a': 5}.toTable
-    doAssert a == b
+    assert a == b
 
   equalsImpl(s, t)
 
@@ -603,8 +603,8 @@ template withValue*[A, B](t: var Table[A, B], key: A, value, body: untyped) =
       value.name = "No"
       value.uid = 521
 
-    doAssert t[1].name == "Nim"
-    doAssert t[1].uid == 1314
+    assert t[1].name == "Nim"
+    assert t[1].uid == 1314
 
   mixin rawGet
   var hc: Hash
@@ -637,8 +637,8 @@ template withValue*[A, B](t: var Table[A, B], key: A,
     #   # block is executed when `key` not in `t`
     #   raise newException(KeyError, "Key not found")
 
-    doAssert t[1].name == "Nim"
-    doAssert t[1].uid == 1314
+    assert t[1].name == "Nim"
+    assert t[1].uid == 1314
   mixin rawGet
   var hc: Hash
   var index = rawGet(t, key, hc)
@@ -694,7 +694,7 @@ iterator mpairs*[A, B](t: var Table[A, B]): (A, var B) =
       }.toTable
     for k, v in a.mpairs:
       v.add(v[0] + 10)
-    doAssert a == {'e': @[2, 4, 6, 8, 12], 'o': @[1, 5, 7, 9, 11]}.toTable
+    assert a == {'e': @[2, 4, 6, 8, 12], 'o': @[1, 5, 7, 9, 11]}.toTable
 
   let L = len(t)
   for h in 0 .. high(t.data):
@@ -715,7 +715,7 @@ iterator keys*[A, B](t: Table[A, B]): lent A =
       }.toTable
     for k in a.keys:
       a[k].add(99)
-    doAssert a == {'e': @[2, 4, 6, 8, 99], 'o': @[1, 5, 7, 9, 99]}.toTable
+    assert a == {'e': @[2, 4, 6, 8, 99], 'o': @[1, 5, 7, 9, 99]}.toTable
 
   let L = len(t)
   for h in 0 .. high(t.data):
@@ -736,7 +736,7 @@ iterator values*[A, B](t: Table[A, B]): lent B =
       'e': @[2, 4, 6, 8]
       }.toTable
     for v in a.values:
-      doAssert v.len == 4
+      assert v.len == 4
 
   let L = len(t)
   for h in 0 .. high(t.data):
@@ -758,7 +758,7 @@ iterator mvalues*[A, B](t: var Table[A, B]): var B =
       }.toTable
     for v in a.mvalues:
       v.add(99)
-    doAssert a == {'e': @[2, 4, 6, 8, 99], 'o': @[1, 5, 7, 9, 99]}.toTable
+    assert a == {'e': @[2, 4, 6, 8, 99], 'o': @[1, 5, 7, 9, 99]}.toTable
 
   let L = len(t)
   for h in 0 .. high(t.data):
@@ -778,8 +778,8 @@ iterator allValues*[A, B](t: Table[A, B]; key: A): B {.deprecated:
 
     var a = {'a': 3, 'b': 5}.toTable
     for i in 1..3: a.add('z', 10*i)
-    doAssert toSeq(a.pairs).sorted == @[('a', 3), ('b', 5), ('z', 10), ('z', 20), ('z', 30)]
-    doAssert sorted(toSeq(a.allValues('z'))) == @[10, 20, 30]
+    assert toSeq(a.pairs).sorted == @[('a', 3), ('b', 5), ('z', 10), ('z', 20), ('z', 30)]
+    assert sorted(toSeq(a.allValues('z'))) == @[10, 20, 30]
   var h: Hash = genHash(key) and high(t.data)
   let L = len(t)
   while isFilled(t.data[h].hcode):
@@ -851,7 +851,7 @@ proc `[]`*[A, B](t: TableRef[A, B], key: A): var B =
   ##   the table
   runnableExamples:
     let a = {'a': 5, 'b': 9}.newTable
-    doAssert a['a'] == 5
+    assert a['a'] == 5
     doAssertRaises(KeyError):
       echo a['z']
 
@@ -869,7 +869,7 @@ proc `[]=`*[A, B](t: TableRef[A, B], key: A, val: sink B) =
     var a = newTable[char, int]()
     a['x'] = 7
     a['y'] = 33
-    doAssert a == {'x': 7, 'y': 33}.newTable
+    assert a == {'x': 7, 'y': 33}.newTable
 
   t[][key] = val
 
@@ -886,8 +886,8 @@ proc hasKey*[A, B](t: TableRef[A, B], key: A): bool =
   ##   a custom value if the key doesn't exist
   runnableExamples:
     let a = {'a': 5, 'b': 9}.newTable
-    doAssert a.hasKey('a') == true
-    doAssert a.hasKey('z') == false
+    assert a.hasKey('a') == true
+    assert a.hasKey('z') == false
 
   result = t[].hasKey(key)
 
@@ -896,8 +896,8 @@ proc contains*[A, B](t: TableRef[A, B], key: A): bool =
   ## the `in` operator.
   runnableExamples:
     let a = {'a': 5, 'b': 9}.newTable
-    doAssert 'b' in a == true
-    doAssert a.contains('z') == false
+    assert 'b' in a == true
+    assert a.contains('z') == false
 
   return hasKey[A, B](t, key)
 
@@ -917,7 +917,7 @@ proc hasKeyOrPut*[A, B](t: var TableRef[A, B], key: A, val: B): bool =
       a['a'] = 99
     if a.hasKeyOrPut('z', 50):
       a['z'] = 99
-    doAssert a == {'a': 99, 'b': 9, 'z': 50}.newTable
+    assert a == {'a': 99, 'b': 9, 'z': 50}.newTable
 
   t[].hasKeyOrPut(key, val)
 
@@ -935,8 +935,8 @@ proc getOrDefault*[A, B](t: TableRef[A, B], key: A): B =
   ##   a custom value if the key doesn't exist
   runnableExamples:
     let a = {'a': 5, 'b': 9}.newTable
-    doAssert a.getOrDefault('a') == 5
-    doAssert a.getOrDefault('z') == 0
+    assert a.getOrDefault('a') == 5
+    assert a.getOrDefault('z') == 0
 
   getOrDefault(t[], key)
 
@@ -953,8 +953,8 @@ proc getOrDefault*[A, B](t: TableRef[A, B], key: A, default: B): B =
   ##   a default value (e.g. zero for int) if the key doesn't exist
   runnableExamples:
     let a = {'a': 5, 'b': 9}.newTable
-    doAssert a.getOrDefault('a', 99) == 5
-    doAssert a.getOrDefault('z', 99) == 99
+    assert a.getOrDefault('a', 99) == 5
+    assert a.getOrDefault('z', 99) == 99
 
   getOrDefault(t[], key, default)
 
@@ -978,9 +978,9 @@ proc mgetOrPut*[A, B](t: TableRef[A, B], key: A, val: B): var B =
   ##   a custom value if the key doesn't exist
   runnableExamples:
     var a = {'a': 5, 'b': 9}.newTable
-    doAssert a.mgetOrPut('a', 99) == 5
-    doAssert a.mgetOrPut('z', 99) == 99
-    doAssert a == {'a': 5, 'b': 9, 'z': 99}.newTable
+    assert a.mgetOrPut('a', 99) == 5
+    assert a.mgetOrPut('z', 99) == 99
+    assert a == {'a': 5, 'b': 9, 'z': 99}.newTable
 
     # An example of accidentally creating a copy
     var t = newTable[int, seq[int]]()
@@ -988,17 +988,17 @@ proc mgetOrPut*[A, B](t: TableRef[A, B], key: A, val: B): var B =
     # but it is not.
     var copiedSeq = t.mgetOrPut(10, @[10])
     copiedSeq.add(20)
-    doAssert t[10] == @[10]
+    assert t[10] == @[10]
     # Correct
     t.mgetOrPut(25, @[25]).add(35)
-    doAssert t[25] == @[25, 35]
+    assert t[25] == @[25, 35]
   t[].mgetOrPut(key, val)
 
 proc len*[A, B](t: TableRef[A, B]): int =
   ## Returns the number of keys in `t`.
   runnableExamples:
     let a = {'a': 5, 'b': 9}.newTable
-    doAssert len(a) == 2
+    assert len(a) == 2
 
   result = t.counter
 
@@ -1023,9 +1023,9 @@ proc del*[A, B](t: TableRef[A, B], key: A) =
   runnableExamples:
     var a = {'a': 5, 'b': 9, 'c': 13}.newTable
     a.del('a')
-    doAssert a == {'b': 9, 'c': 13}.newTable
+    assert a == {'b': 9, 'c': 13}.newTable
     a.del('z')
-    doAssert a == {'b': 9, 'c': 13}.newTable
+    assert a == {'b': 9, 'c': 13}.newTable
 
   t[].del(key)
 
@@ -1044,13 +1044,13 @@ proc pop*[A, B](t: TableRef[A, B], key: A, val: var B): bool =
     var
       a = {'a': 5, 'b': 9, 'c': 13}.newTable
       i: int
-    doAssert a.pop('b', i) == true
-    doAssert a == {'a': 5, 'c': 13}.newTable
-    doAssert i == 9
+    assert a.pop('b', i) == true
+    assert a == {'a': 5, 'c': 13}.newTable
+    assert i == 9
     i = 0
-    doAssert a.pop('z', i) == false
-    doAssert a == {'a': 5, 'c': 13}.newTable
-    doAssert i == 0
+    assert a.pop('z', i) == false
+    assert a == {'a': 5, 'c': 13}.newTable
+    assert i == 0
 
   result = t[].pop(key, val)
 
@@ -1067,9 +1067,9 @@ proc clear*[A, B](t: TableRef[A, B]) =
   ## * `pop proc<#pop,Table[A,B],A,B>`_
   runnableExamples:
     var a = {'a': 5, 'b': 9, 'c': 13}.newTable
-    doAssert len(a) == 3
+    assert len(a) == 3
     clear(a)
-    doAssert len(a) == 0
+    assert len(a) == 0
 
   clearImpl()
 
@@ -1086,7 +1086,7 @@ proc `==`*[A, B](s, t: TableRef[A, B]): bool =
     let
       a = {'a': 5, 'b': 9, 'c': 13}.newTable
       b = {'b': 9, 'c': 13, 'a': 5}.newTable
-    doAssert a == b
+    assert a == b
 
   if isNil(s): result = isNil(t)
   elif isNil(t): result = false
@@ -1138,7 +1138,7 @@ iterator mpairs*[A, B](t: TableRef[A, B]): (A, var B) =
       }.newTable
     for k, v in a.mpairs:
       v.add(v[0] + 10)
-    doAssert a == {'e': @[2, 4, 6, 8, 12], 'o': @[1, 5, 7, 9, 11]}.newTable
+    assert a == {'e': @[2, 4, 6, 8, 12], 'o': @[1, 5, 7, 9, 11]}.newTable
 
   let L = len(t)
   for h in 0 .. high(t.data):
@@ -1159,7 +1159,7 @@ iterator keys*[A, B](t: TableRef[A, B]): lent A =
       }.newTable
     for k in a.keys:
       a[k].add(99)
-    doAssert a == {'e': @[2, 4, 6, 8, 99], 'o': @[1, 5, 7, 9, 99]}.newTable
+    assert a == {'e': @[2, 4, 6, 8, 99], 'o': @[1, 5, 7, 9, 99]}.newTable
 
   let L = len(t)
   for h in 0 .. high(t.data):
@@ -1180,7 +1180,7 @@ iterator values*[A, B](t: TableRef[A, B]): lent B =
       'e': @[2, 4, 6, 8]
       }.newTable
     for v in a.values:
-      doAssert v.len == 4
+      assert v.len == 4
 
   let L = len(t)
   for h in 0 .. high(t.data):
@@ -1201,7 +1201,7 @@ iterator mvalues*[A, B](t: TableRef[A, B]): var B =
       }.newTable
     for v in a.mvalues:
       v.add(99)
-    doAssert a == {'e': @[2, 4, 6, 8, 99], 'o': @[1, 5, 7, 9, 99]}.newTable
+    assert a == {'e': @[2, 4, 6, 8, 99], 'o': @[1, 5, 7, 9, 99]}.newTable
 
   let L = len(t)
   for h in 0 .. high(t.data):
@@ -1314,7 +1314,7 @@ proc `[]=`*[A, B](t: var OrderedTable[A, B], key: A, val: sink B) =
     var a = initOrderedTable[char, int]()
     a['x'] = 7
     a['y'] = 33
-    doAssert a == {'x': 7, 'y': 33}.toOrderedTable
+    assert a == {'x': 7, 'y': 33}.toOrderedTable
 
   putImpl(enlarge)
 
@@ -1353,7 +1353,7 @@ proc `[]`*[A, B](t: OrderedTable[A, B], key: A): B =
   ##   key is in the table
   runnableExamples:
     let a = {'a': 5, 'b': 9}.toOrderedTable
-    doAssert a['a'] == 5
+    assert a['a'] == 5
     doAssertRaises(KeyError):
       echo a['z']
 
@@ -1388,8 +1388,8 @@ proc hasKey*[A, B](t: OrderedTable[A, B], key: A): bool =
   ##   a custom value if the key doesn't exist
   runnableExamples:
     let a = {'a': 5, 'b': 9}.toOrderedTable
-    doAssert a.hasKey('a') == true
-    doAssert a.hasKey('z') == false
+    assert a.hasKey('a') == true
+    assert a.hasKey('z') == false
 
   var hc: Hash
   result = rawGet(t, key, hc) >= 0
@@ -1399,8 +1399,8 @@ proc contains*[A, B](t: OrderedTable[A, B], key: A): bool =
   ## the `in` operator.
   runnableExamples:
     let a = {'a': 5, 'b': 9}.toOrderedTable
-    doAssert 'b' in a == true
-    doAssert a.contains('z') == false
+    assert 'b' in a == true
+    assert a.contains('z') == false
 
   return hasKey[A, B](t, key)
 
@@ -1420,7 +1420,7 @@ proc hasKeyOrPut*[A, B](t: var OrderedTable[A, B], key: A, val: B): bool =
       a['a'] = 99
     if a.hasKeyOrPut('z', 50):
       a['z'] = 99
-    doAssert a == {'a': 99, 'b': 9, 'z': 50}.toOrderedTable
+    assert a == {'a': 99, 'b': 9, 'z': 50}.toOrderedTable
 
   hasKeyOrPutImpl(enlarge)
 
@@ -1438,8 +1438,8 @@ proc getOrDefault*[A, B](t: OrderedTable[A, B], key: A): B =
   ##   a custom value if the key doesn't exist
   runnableExamples:
     let a = {'a': 5, 'b': 9}.toOrderedTable
-    doAssert a.getOrDefault('a') == 5
-    doAssert a.getOrDefault('z') == 0
+    assert a.getOrDefault('a') == 5
+    assert a.getOrDefault('z') == 0
 
   getOrDefaultImpl(t, key)
 
@@ -1456,8 +1456,8 @@ proc getOrDefault*[A, B](t: OrderedTable[A, B], key: A, default: B): B =
   ##   a default value (e.g. zero for int) if the key doesn't exist
   runnableExamples:
     let a = {'a': 5, 'b': 9}.toOrderedTable
-    doAssert a.getOrDefault('a', 99) == 5
-    doAssert a.getOrDefault('z', 99) == 99
+    assert a.getOrDefault('a', 99) == 5
+    assert a.getOrDefault('z', 99) == 99
 
   getOrDefaultImpl(t, key, default)
 
@@ -1475,9 +1475,9 @@ proc mgetOrPut*[A, B](t: var OrderedTable[A, B], key: A, val: B): var B =
   ##   a custom value if the key doesn't exist
   runnableExamples:
     var a = {'a': 5, 'b': 9}.toOrderedTable
-    doAssert a.mgetOrPut('a', 99) == 5
-    doAssert a.mgetOrPut('z', 99) == 99
-    doAssert a == {'a': 5, 'b': 9, 'z': 99}.toOrderedTable
+    assert a.mgetOrPut('a', 99) == 5
+    assert a.mgetOrPut('z', 99) == 99
+    assert a == {'a': 5, 'b': 9, 'z': 99}.toOrderedTable
 
   mgetOrPutImpl(enlarge)
 
@@ -1485,7 +1485,7 @@ proc len*[A, B](t: OrderedTable[A, B]): int {.inline.} =
   ## Returns the number of keys in `t`.
   runnableExamples:
     let a = {'a': 5, 'b': 9}.toOrderedTable
-    doAssert len(a) == 2
+    assert len(a) == 2
 
   result = t.counter
 
@@ -1510,9 +1510,9 @@ proc del*[A, B](t: var OrderedTable[A, B], key: A) =
   runnableExamples:
     var a = {'a': 5, 'b': 9, 'c': 13}.toOrderedTable
     a.del('a')
-    doAssert a == {'b': 9, 'c': 13}.toOrderedTable
+    assert a == {'b': 9, 'c': 13}.toOrderedTable
     a.del('z')
-    doAssert a == {'b': 9, 'c': 13}.toOrderedTable
+    assert a == {'b': 9, 'c': 13}.toOrderedTable
 
   if t.counter == 0: return
   var n: OrderedKeyValuePairSeq[A, B]
@@ -1547,13 +1547,13 @@ proc pop*[A, B](t: var OrderedTable[A, B], key: A, val: var B): bool {.since: (1
     var
       a = {'c': 5, 'b': 9, 'a': 13}.toOrderedTable
       i: int
-    doAssert a.pop('b', i) == true
-    doAssert a == {'c': 5, 'a': 13}.toOrderedTable
-    doAssert i == 9
+    assert a.pop('b', i) == true
+    assert a == {'c': 5, 'a': 13}.toOrderedTable
+    assert i == 9
     i = 0
-    doAssert a.pop('z', i) == false
-    doAssert a == {'c': 5, 'a': 13}.toOrderedTable
-    doAssert i == 0
+    assert a.pop('z', i) == false
+    assert a == {'c': 5, 'a': 13}.toOrderedTable
+    assert i == 0
 
   var hc: Hash
   var index = rawGet(t, key, hc)
@@ -1570,9 +1570,9 @@ proc clear*[A, B](t: var OrderedTable[A, B]) =
   ## * `pop proc<#pop,OrderedTable[A,B],A,B>`_
   runnableExamples:
     var a = {'a': 5, 'b': 9, 'c': 13}.toOrderedTable
-    doAssert len(a) == 3
+    assert len(a) == 3
     clear(a)
-    doAssert len(a) == 0
+    assert len(a) == 0
 
   clearImpl()
   t.first = -1
@@ -1591,11 +1591,11 @@ proc sort*[A, B](t: var OrderedTable[A, B], cmp: proc (x, y: (A, B)): int,
     var a = initOrderedTable[char, int]()
     for i, c in "cab":
       a[c] = 10*i
-    doAssert a == {'c': 0, 'a': 10, 'b': 20}.toOrderedTable
+    assert a == {'c': 0, 'a': 10, 'b': 20}.toOrderedTable
     a.sort(system.cmp)
-    doAssert a == {'a': 10, 'b': 20, 'c': 0}.toOrderedTable
+    assert a == {'a': 10, 'b': 20, 'c': 0}.toOrderedTable
     a.sort(system.cmp, order = SortOrder.Descending)
-    doAssert a == {'c': 0, 'b': 20, 'a': 10}.toOrderedTable
+    assert a == {'c': 0, 'b': 20, 'a': 10}.toOrderedTable
 
   var list = t.first
   var
@@ -1649,7 +1649,7 @@ proc `==`*[A, B](s, t: OrderedTable[A, B]): bool =
     let
       a = {'a': 5, 'b': 9, 'c': 13}.toOrderedTable
       b = {'b': 9, 'c': 13, 'a': 5}.toOrderedTable
-    doAssert a != b
+    assert a != b
 
   if s.counter != t.counter:
     return false
@@ -1714,7 +1714,7 @@ iterator mpairs*[A, B](t: var OrderedTable[A, B]): (A, var B) =
       }.toOrderedTable
     for k, v in a.mpairs:
       v.add(v[0] + 10)
-    doAssert a == {'o': @[1, 5, 7, 9, 11],
+    assert a == {'o': @[1, 5, 7, 9, 11],
                    'e': @[2, 4, 6, 8, 12]}.toOrderedTable
 
   let L = len(t)
@@ -1735,7 +1735,7 @@ iterator keys*[A, B](t: OrderedTable[A, B]): lent A =
       }.toOrderedTable
     for k in a.keys:
       a[k].add(99)
-    doAssert a == {'o': @[1, 5, 7, 9, 99],
+    assert a == {'o': @[1, 5, 7, 9, 99],
                    'e': @[2, 4, 6, 8, 99]}.toOrderedTable
 
   let L = len(t)
@@ -1756,7 +1756,7 @@ iterator values*[A, B](t: OrderedTable[A, B]): lent B =
       'e': @[2, 4, 6, 8]
       }.toOrderedTable
     for v in a.values:
-      doAssert v.len == 4
+      assert v.len == 4
 
   let L = len(t)
   forAllOrderedPairs:
@@ -1778,7 +1778,7 @@ iterator mvalues*[A, B](t: var OrderedTable[A, B]): var B =
       }.toOrderedTable
     for v in a.mvalues:
       v.add(99)
-    doAssert a == {'o': @[1, 5, 7, 9, 99],
+    assert a == {'o': @[1, 5, 7, 9, 99],
                    'e': @[2, 4, 6, 8, 99]}.toOrderedTable
 
   let L = len(t)
@@ -1841,7 +1841,7 @@ proc `[]`*[A, B](t: OrderedTableRef[A, B], key: A): var B =
   ##   a key is in the table
   runnableExamples:
     let a = {'a': 5, 'b': 9}.newOrderedTable
-    doAssert a['a'] == 5
+    assert a['a'] == 5
     doAssertRaises(KeyError):
       echo a['z']
   result = t[][key]
@@ -1858,7 +1858,7 @@ proc `[]=`*[A, B](t: OrderedTableRef[A, B], key: A, val: sink B) =
     var a = newOrderedTable[char, int]()
     a['x'] = 7
     a['y'] = 33
-    doAssert a == {'x': 7, 'y': 33}.newOrderedTable
+    assert a == {'x': 7, 'y': 33}.newOrderedTable
 
   t[][key] = val
 
@@ -1875,8 +1875,8 @@ proc hasKey*[A, B](t: OrderedTableRef[A, B], key: A): bool =
   ##   a custom value if the key doesn't exist
   runnableExamples:
     let a = {'a': 5, 'b': 9}.newOrderedTable
-    doAssert a.hasKey('a') == true
-    doAssert a.hasKey('z') == false
+    assert a.hasKey('a') == true
+    assert a.hasKey('z') == false
 
   result = t[].hasKey(key)
 
@@ -1885,8 +1885,8 @@ proc contains*[A, B](t: OrderedTableRef[A, B], key: A): bool =
   ## the `in` operator.
   runnableExamples:
     let a = {'a': 5, 'b': 9}.newOrderedTable
-    doAssert 'b' in a == true
-    doAssert a.contains('z') == false
+    assert 'b' in a == true
+    assert a.contains('z') == false
 
   return hasKey[A, B](t, key)
 
@@ -1906,7 +1906,7 @@ proc hasKeyOrPut*[A, B](t: var OrderedTableRef[A, B], key: A, val: B): bool =
       a['a'] = 99
     if a.hasKeyOrPut('z', 50):
       a['z'] = 99
-    doAssert a == {'a': 99, 'b': 9, 'z': 50}.newOrderedTable
+    assert a == {'a': 99, 'b': 9, 'z': 50}.newOrderedTable
 
   result = t[].hasKeyOrPut(key, val)
 
@@ -1924,8 +1924,8 @@ proc getOrDefault*[A, B](t: OrderedTableRef[A, B], key: A): B =
   ##   a custom value if the key doesn't exist
   runnableExamples:
     let a = {'a': 5, 'b': 9}.newOrderedTable
-    doAssert a.getOrDefault('a') == 5
-    doAssert a.getOrDefault('z') == 0
+    assert a.getOrDefault('a') == 5
+    assert a.getOrDefault('z') == 0
 
   getOrDefault(t[], key)
 
@@ -1942,8 +1942,8 @@ proc getOrDefault*[A, B](t: OrderedTableRef[A, B], key: A, default: B): B =
   ##   a default value (e.g. zero for int) if the key doesn't exist
   runnableExamples:
     let a = {'a': 5, 'b': 9}.newOrderedTable
-    doAssert a.getOrDefault('a', 99) == 5
-    doAssert a.getOrDefault('z', 99) == 99
+    assert a.getOrDefault('a', 99) == 5
+    assert a.getOrDefault('z', 99) == 99
 
   getOrDefault(t[], key, default)
 
@@ -1961,9 +1961,9 @@ proc mgetOrPut*[A, B](t: OrderedTableRef[A, B], key: A, val: B): var B =
   ##   a custom value if the key doesn't exist
   runnableExamples:
     var a = {'a': 5, 'b': 9}.newOrderedTable
-    doAssert a.mgetOrPut('a', 99) == 5
-    doAssert a.mgetOrPut('z', 99) == 99
-    doAssert a == {'a': 5, 'b': 9, 'z': 99}.newOrderedTable
+    assert a.mgetOrPut('a', 99) == 5
+    assert a.mgetOrPut('z', 99) == 99
+    assert a == {'a': 5, 'b': 9, 'z': 99}.newOrderedTable
 
   result = t[].mgetOrPut(key, val)
 
@@ -1971,7 +1971,7 @@ proc len*[A, B](t: OrderedTableRef[A, B]): int {.inline.} =
   ## Returns the number of keys in `t`.
   runnableExamples:
     let a = {'a': 5, 'b': 9}.newOrderedTable
-    doAssert len(a) == 2
+    assert len(a) == 2
 
   result = t.counter
 
@@ -1993,9 +1993,9 @@ proc del*[A, B](t: OrderedTableRef[A, B], key: A) =
   runnableExamples:
     var a = {'a': 5, 'b': 9, 'c': 13}.newOrderedTable
     a.del('a')
-    doAssert a == {'b': 9, 'c': 13}.newOrderedTable
+    assert a == {'b': 9, 'c': 13}.newOrderedTable
     a.del('z')
-    doAssert a == {'b': 9, 'c': 13}.newOrderedTable
+    assert a == {'b': 9, 'c': 13}.newOrderedTable
 
   t[].del(key)
 
@@ -2012,13 +2012,13 @@ proc pop*[A, B](t: OrderedTableRef[A, B], key: A, val: var B): bool {.since: (1,
     var
       a = {'c': 5, 'b': 9, 'a': 13}.newOrderedTable
       i: int
-    doAssert a.pop('b', i) == true
-    doAssert a == {'c': 5, 'a': 13}.newOrderedTable
-    doAssert i == 9
+    assert a.pop('b', i) == true
+    assert a == {'c': 5, 'a': 13}.newOrderedTable
+    assert i == 9
     i = 0
-    doAssert a.pop('z', i) == false
-    doAssert a == {'c': 5, 'a': 13}.newOrderedTable
-    doAssert i == 0
+    assert a.pop('z', i) == false
+    assert a == {'c': 5, 'a': 13}.newOrderedTable
+    assert i == 0
 
   pop(t[], key, val)
 
@@ -2029,9 +2029,9 @@ proc clear*[A, B](t: OrderedTableRef[A, B]) =
   ## * `del proc<#del,OrderedTableRef[A,B],A>`_
   runnableExamples:
     var a = {'a': 5, 'b': 9, 'c': 13}.newOrderedTable
-    doAssert len(a) == 3
+    assert len(a) == 3
     clear(a)
-    doAssert len(a) == 0
+    assert len(a) == 0
 
   clear(t[])
 
@@ -2048,11 +2048,11 @@ proc sort*[A, B](t: OrderedTableRef[A, B], cmp: proc (x, y: (A, B)): int,
     var a = newOrderedTable[char, int]()
     for i, c in "cab":
       a[c] = 10*i
-    doAssert a == {'c': 0, 'a': 10, 'b': 20}.newOrderedTable
+    assert a == {'c': 0, 'a': 10, 'b': 20}.newOrderedTable
     a.sort(system.cmp)
-    doAssert a == {'a': 10, 'b': 20, 'c': 0}.newOrderedTable
+    assert a == {'a': 10, 'b': 20, 'c': 0}.newOrderedTable
     a.sort(system.cmp, order = SortOrder.Descending)
-    doAssert a == {'c': 0, 'b': 20, 'a': 10}.newOrderedTable
+    assert a == {'c': 0, 'b': 20, 'a': 10}.newOrderedTable
 
   t[].sort(cmp, order = order)
 
@@ -2069,7 +2069,7 @@ proc `==`*[A, B](s, t: OrderedTableRef[A, B]): bool =
     let
       a = {'a': 5, 'b': 9, 'c': 13}.newOrderedTable
       b = {'b': 9, 'c': 13, 'a': 5}.newOrderedTable
-    doAssert a != b
+    assert a != b
 
   if isNil(s): result = isNil(t)
   elif isNil(t): result = false
@@ -2122,7 +2122,7 @@ iterator mpairs*[A, B](t: OrderedTableRef[A, B]): (A, var B) =
       }.newOrderedTable
     for k, v in a.mpairs:
       v.add(v[0] + 10)
-    doAssert a == {'o': @[1, 5, 7, 9, 11],
+    assert a == {'o': @[1, 5, 7, 9, 11],
                    'e': @[2, 4, 6, 8, 12]}.newOrderedTable
 
   let L = len(t)
@@ -2143,7 +2143,7 @@ iterator keys*[A, B](t: OrderedTableRef[A, B]): lent A =
       }.newOrderedTable
     for k in a.keys:
       a[k].add(99)
-    doAssert a == {'o': @[1, 5, 7, 9, 99], 'e': @[2, 4, 6, 8,
+    assert a == {'o': @[1, 5, 7, 9, 99], 'e': @[2, 4, 6, 8,
         99]}.newOrderedTable
 
   let L = len(t)
@@ -2164,7 +2164,7 @@ iterator values*[A, B](t: OrderedTableRef[A, B]): lent B =
       'e': @[2, 4, 6, 8]
       }.newOrderedTable
     for v in a.values:
-      doAssert v.len == 4
+      assert v.len == 4
 
   let L = len(t)
   forAllOrderedPairs:
@@ -2185,7 +2185,7 @@ iterator mvalues*[A, B](t: OrderedTableRef[A, B]): var B =
       }.newOrderedTable
     for v in a.mvalues:
       v.add(99)
-    doAssert a == {'o': @[1, 5, 7, 9, 99],
+    assert a == {'o': @[1, 5, 7, 9, 99],
                    'e': @[2, 4, 6, 8, 99]}.newOrderedTable
 
   let L = len(t)
@@ -2312,7 +2312,7 @@ proc inc*[A](t: var CountTable[A], key: A, val = 1) =
     var a = toCountTable("aab")
     a.inc('a')
     a.inc('b', 10)
-    doAssert a == toCountTable("aaabbbbbbbbbbb")
+    assert a == toCountTable("aaabbbbbbbbbbb")
 
   assert(not t.isSorted, "CountTable must not be used after sorting")
   var index = rawGet(t, key)
@@ -2445,11 +2445,11 @@ proc sort*[A](t: var CountTable[A], order = SortOrder.Descending) =
   runnableExamples:
     import std/[algorithm, sequtils]
     var a = toCountTable("abracadabra")
-    doAssert a == "aaaaabbrrcd".toCountTable
+    assert a == "aaaaabbrrcd".toCountTable
     a.sort()
-    doAssert toSeq(a.values) == @[5, 2, 2, 1, 1]
+    assert toSeq(a.values) == @[5, 2, 2, 1, 1]
     a.sort(SortOrder.Ascending)
-    doAssert toSeq(a.values) == @[1, 1, 2, 2, 5]
+    assert toSeq(a.values) == @[1, 1, 2, 2, 5]
 
   t.data.sort(cmp = ctCmp, order = order)
   t.isSorted = true
@@ -2460,7 +2460,7 @@ proc merge*[A](s: var CountTable[A], t: CountTable[A]) =
     var a = toCountTable("aaabbc")
     let b = toCountTable("bcc")
     a.merge(b)
-    doAssert a == toCountTable("aaabbbccc")
+    assert a == toCountTable("aaabbbccc")
 
   assert(not s.isSorted, "CountTable must not be used after sorting")
   for key, value in t:
@@ -2473,7 +2473,7 @@ when (NimMajor, NimMinor) <= (1, 0):
       let
         a = toCountTable("aaabbc")
         b = toCountTable("bcc")
-      doAssert merge(a, b) == toCountTable("aaabbbccc")
+      assert merge(a, b) == toCountTable("aaabbbccc")
 
     result = initCountTable[A](nextPowerOfTwo(max(s.len, t.len)))
     for table in @[s, t]:
@@ -2535,7 +2535,7 @@ iterator mpairs*[A](t: var CountTable[A]): (A, var int) =
     var a = toCountTable("abracadabra")
     for k, v in mpairs(a):
       v = 2
-    doAssert a == toCountTable("aabbccddrr")
+    assert a == toCountTable("aabbccddrr")
 
   let L = len(t)
   for h in 0 .. high(t.data):
@@ -2553,7 +2553,7 @@ iterator keys*[A](t: CountTable[A]): lent A =
     var a = toCountTable("abracadabra")
     for k in keys(a):
       a[k] = 2
-    doAssert a == toCountTable("aabbccddrr")
+    assert a == toCountTable("aabbccddrr")
 
   let L = len(t)
   for h in 0 .. high(t.data):
@@ -2590,7 +2590,7 @@ iterator mvalues*[A](t: var CountTable[A]): var int =
     var a = toCountTable("abracadabra")
     for v in mvalues(a):
       v = 2
-    doAssert a == toCountTable("aabbccddrr")
+    assert a == toCountTable("aabbccddrr")
 
   let L = len(t)
   for h in 0 .. high(t.data):
@@ -2657,7 +2657,7 @@ proc inc*[A](t: CountTableRef[A], key: A, val = 1) =
     var a = newCountTable("aab")
     a.inc('a')
     a.inc('b', 10)
-    doAssert a == newCountTable("aaabbbbbbbbbbb")
+    assert a == newCountTable("aaabbbbbbbbbbb")
   t[].inc(key, val)
 
 proc smallest*[A](t: CountTableRef[A]): tuple[key: A, val: int] =
@@ -2749,7 +2749,7 @@ proc merge*[A](s, t: CountTableRef[A]) =
       a = newCountTable("aaabbc")
       b = newCountTable("bcc")
     a.merge(b)
-    doAssert a == newCountTable("aaabbbccc")
+    assert a == newCountTable("aaabbbccc")
 
   s[].merge(t[])
 
@@ -2811,7 +2811,7 @@ iterator mpairs*[A](t: CountTableRef[A]): (A, var int) =
     let a = newCountTable("abracadabra")
     for k, v in mpairs(a):
       v = 2
-    doAssert a == newCountTable("aabbccddrr")
+    assert a == newCountTable("aabbccddrr")
 
   let L = len(t)
   for h in 0 .. high(t.data):
@@ -2829,7 +2829,7 @@ iterator keys*[A](t: CountTableRef[A]): A =
     let a = newCountTable("abracadabra")
     for k in keys(a):
       a[k] = 2
-    doAssert a == newCountTable("aabbccddrr")
+    assert a == newCountTable("aabbccddrr")
 
   let L = len(t)
   for h in 0 .. high(t.data):
@@ -2865,7 +2865,7 @@ iterator mvalues*[A](t: CountTableRef[A]): var int =
     var a = newCountTable("abracadabra")
     for v in mvalues(a):
       v = 2
-    doAssert a == newCountTable("aabbccddrr")
+    assert a == newCountTable("aabbccddrr")
 
   let L = len(t)
   for h in 0 .. high(t.data):

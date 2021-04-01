@@ -102,7 +102,7 @@ proc addNormalizePath*(x: string; result: var string; state: var int;
 proc normalizePath*(path: string; dirSep = DirSep): string =
   runnableExamples:
     when defined(posix):
-      doAssert normalizePath("./foo//bar/../baz") == "foo/baz"
+      assert normalizePath("./foo//bar/../baz") == "foo/baz"
 
   ## - Turns multiple slashes into single slashes.
   ## - Resolves `'/foo/../bar'` to `'/bar'`.

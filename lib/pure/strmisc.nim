@@ -22,9 +22,9 @@ func expandTabs*(s: string, tabSize: int = 8): string =
   ## and inserted space, except for newline, which resets the column number
   ## back to 0.
   runnableExamples:
-    doAssert expandTabs("\t", 4) == "    "
-    doAssert expandTabs("\tfoo\t", 4) == "    foo "
-    doAssert expandTabs("a\tb\n\txy\t", 3) == "a  b\n   xy "
+    assert expandTabs("\t", 4) == "    "
+    assert expandTabs("\tfoo\t", 4) == "    foo "
+    assert expandTabs("a\tb\n\txy\t", 3) == "a  b\n   xy "
 
   result = newStringOfCap(s.len + s.len shr 2)
   var pos = 0
@@ -60,10 +60,10 @@ func partition*(s: string, sep: string,
   ## **See also:**
   ## * `rpartition proc <#rpartition,string,string>`_
   runnableExamples:
-    doAssert partition("foo:bar:baz", ":") == ("foo", ":", "bar:baz")
-    doAssert partition("foo:bar:baz", ":", right = true) == ("foo:bar", ":", "baz")
-    doAssert partition("foobar", ":") == ("foobar", "", "")
-    doAssert partition("foobar", ":", right = true) == ("", "", "foobar")
+    assert partition("foo:bar:baz", ":") == ("foo", ":", "bar:baz")
+    assert partition("foo:bar:baz", ":", right = true) == ("foo:bar", ":", "baz")
+    assert partition("foobar", ":") == ("foobar", "", "")
+    assert partition("foobar", ":", right = true) == ("", "", "foobar")
 
   let position = if right: s.rfind(sep) else: s.find(sep)
   if position != -1:
@@ -80,7 +80,7 @@ func rpartition*(s: string, sep: string): (string, string, string) =
   ## **See also:**
   ## * `partition proc <#partition,string,string,bool>`_
   runnableExamples:
-    doAssert rpartition("foo:bar:baz", ":") == ("foo:bar", ":", "baz")
-    doAssert rpartition("foobar", ":") == ("", "", "foobar")
+    assert rpartition("foo:bar:baz", ":") == ("foo:bar", ":", "baz")
+    assert rpartition("foobar", ":") == ("", "", "foobar")
 
   partition(s, sep, right = true)

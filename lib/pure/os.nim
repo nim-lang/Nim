@@ -466,10 +466,10 @@ proc relativePath*(path, base: string, sep = DirSep): string {.
 proc isRelativeTo*(path: string, base: string): bool {.since: (1, 1).} =
   ## Returns true if `path` is relative to `base`.
   runnableExamples:
-    doAssert isRelativeTo("./foo//bar", "foo")
-    doAssert isRelativeTo("foo/bar", ".")
-    doAssert isRelativeTo("/foo/bar.nim", "/foo/bar.nim")
-    doAssert not isRelativeTo("foo/bar.nims", "foo/bar.nim")
+    assert isRelativeTo("./foo//bar", "foo")
+    assert isRelativeTo("foo/bar", ".")
+    assert isRelativeTo("/foo/bar.nim", "/foo/bar.nim")
+    assert not isRelativeTo("foo/bar.nims", "foo/bar.nim")
   let path = path.normalizePath
   let base = base.normalizePath
   let ret = relativePath(path, base)
@@ -1457,9 +1457,9 @@ proc normalizeExe*(file: var string) {.since: (1, 3, 5).} =
   runnableExamples:
     import std/sugar
     when defined(posix):
-      doAssert "foo".dup(normalizeExe) == "./foo"
-      doAssert "foo/../bar".dup(normalizeExe) == "foo/../bar"
-    doAssert "".dup(normalizeExe) == ""
+      assert "foo".dup(normalizeExe) == "./foo"
+      assert "foo/../bar".dup(normalizeExe) == "foo/../bar"
+    assert "".dup(normalizeExe) == ""
   when defined(posix):
     if file.len > 0 and DirSep notin file and file != "." and file != "..":
       file = "./" & file

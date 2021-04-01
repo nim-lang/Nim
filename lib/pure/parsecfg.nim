@@ -150,27 +150,27 @@ runnableExamples:
   )
 
   let section1 = "Simple Values"
-  doAssert dict.getSectionValue(section1, "key") == "value"
-  doAssert dict.getSectionValue(section1, "spaces in keys") == "allowed"
-  doAssert dict.getSectionValue(section1, "spaces in values") == "allowed as well"
-  doAssert dict.getSectionValue(section1, "spaces around the delimiter") == "obviously"
-  doAssert dict.getSectionValue(section1, "you can also use") == "to delimit keys from values"
+  assert dict.getSectionValue(section1, "key") == "value"
+  assert dict.getSectionValue(section1, "spaces in keys") == "allowed"
+  assert dict.getSectionValue(section1, "spaces in values") == "allowed as well"
+  assert dict.getSectionValue(section1, "spaces around the delimiter") == "obviously"
+  assert dict.getSectionValue(section1, "you can also use") == "to delimit keys from values"
 
   let section2 = "All Values Are Strings"
-  doAssert dict.getSectionValue(section2, "values like this") == "19990429"
-  doAssert dict.getSectionValue(section2, "or this") == "3.14159265359"
-  doAssert dict.getSectionValue(section2, "are they treated as numbers") == "no"
-  doAssert dict.getSectionValue(section2, "integers floats and booleans are held as") == "strings"
-  doAssert dict.getSectionValue(section2, "can use the API to get converted values directly") == "true"
+  assert dict.getSectionValue(section2, "values like this") == "19990429"
+  assert dict.getSectionValue(section2, "or this") == "3.14159265359"
+  assert dict.getSectionValue(section2, "are they treated as numbers") == "no"
+  assert dict.getSectionValue(section2, "integers floats and booleans are held as") == "strings"
+  assert dict.getSectionValue(section2, "can use the API to get converted values directly") == "true"
 
   let section3 = "Seletion A"
-  doAssert dict.getSectionValue(section3, 
+  assert dict.getSectionValue(section3, 
     "space around section name will be ignored", "not an empty value") == ""
 
   let section4 = "Sections Can Be Indented"
-  doAssert dict.getSectionValue(section4, "can_values_be_as_well") == "True"
-  doAssert dict.getSectionValue(section4, "does_that_mean_anything_special") == "False"
-  doAssert dict.getSectionValue(section4, "purpose") == "formatting for readability"
+  assert dict.getSectionValue(section4, "can_values_be_as_well") == "True"
+  assert dict.getSectionValue(section4, "does_that_mean_anything_special") == "False"
+  assert dict.getSectionValue(section4, "purpose") == "formatting for readability"
 
 import strutils, lexbase, streams, tables
 import std/private/decode_helpers

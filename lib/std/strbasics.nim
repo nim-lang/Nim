@@ -46,12 +46,12 @@ func setSlice*(s: var string, slice: Slice[int]) =
     import std/sugar
 
     var a = "Hello, Nim!"
-    doassert a.dup(setSlice(7 .. 9)) == "Nim"
-    doAssert a.dup(setSlice(0 .. 0)) == "H"
-    doAssert a.dup(setSlice(0 .. 1)) == "He"
-    doAssert a.dup(setSlice(0 .. 10)) == a
-    doAssert a.dup(setSlice(1 .. 0)).len == 0
-    doAssert a.dup(setSlice(20 .. -1)).len == 0
+    assert a.dup(setSlice(7 .. 9)) == "Nim"
+    assert a.dup(setSlice(0 .. 0)) == "H"
+    assert a.dup(setSlice(0 .. 1)) == "He"
+    assert a.dup(setSlice(0 .. 10)) == a
+    assert a.dup(setSlice(1 .. 0)).len == 0
+    assert a.dup(setSlice(20 .. -1)).len == 0
 
 
     doAssertRaises(AssertionDefect):

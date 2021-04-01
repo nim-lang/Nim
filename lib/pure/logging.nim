@@ -285,9 +285,9 @@ proc substituteLog*(frmt: string, level: Level,
   ##   for the RollingFileLogger
   ## * `log template<#log.t,Level,varargs[string,]>`_
   runnableExamples:
-    doAssert substituteLog(defaultFmtStr, lvlInfo, "a message") == "INFO a message"
-    doAssert substituteLog("$levelid - ", lvlError, "an error") == "E - an error"
-    doAssert substituteLog("$levelid", lvlDebug, "error") == "Derror"
+    assert substituteLog(defaultFmtStr, lvlInfo, "a message") == "INFO a message"
+    assert substituteLog("$levelid - ", lvlError, "an error") == "E - an error"
+    assert substituteLog("$levelid", lvlDebug, "error") == "Derror"
   var msgLen = 0
   for arg in args:
     msgLen += arg.len
@@ -803,7 +803,7 @@ proc addHandler*(handler: Logger) =
   runnableExamples:
     var logger = newConsoleLogger()
     addHandler(logger)
-    doAssert logger in getHandlers()
+    assert logger in getHandlers()
   handlers.add(handler)
 
 proc getHandlers*(): seq[Logger] =
@@ -829,7 +829,7 @@ proc setLogFilter*(lvl: Level) =
   ## * `getLogFilter proc<#getLogFilter>`_
   runnableExamples:
     setLogFilter(lvlError)
-    doAssert getLogFilter() == lvlError
+    assert getLogFilter() == lvlError
   level = lvl
 
 proc getLogFilter*(): Level =

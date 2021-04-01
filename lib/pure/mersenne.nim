@@ -14,7 +14,7 @@
 
 runnableExamples:
   var rand = newMersenneTwister(uint32.high)  ## must be "var"
-  doAssert rand.getNum() != rand.getNum()  ## pseudorandom number
+  assert rand.getNum() != rand.getNum()  ## pseudorandom number
 
 ## See also
 ## ========

@@ -44,14 +44,14 @@ runnableExamples:
 
   var statistics: RunningStat  ## Must be var
   statistics.push(@[1.0, 2.0, 1.0, 4.0, 1.0, 4.0, 1.0, 2.0])
-  doAssert statistics.n == 8
-  doAssert statistics.mean() ~= 2.0
-  doAssert statistics.variance() ~= 1.5
-  doAssert statistics.varianceS() ~= 1.714285714285715
-  doAssert statistics.skewness() ~= 0.8164965809277261
-  doAssert statistics.skewnessS() ~= 1.018350154434631
-  doAssert statistics.kurtosis() ~= -1.0
-  doAssert statistics.kurtosisS() ~= -0.7000000000000008
+  assert statistics.n == 8
+  assert statistics.mean() ~= 2.0
+  assert statistics.variance() ~= 1.5
+  assert statistics.varianceS() ~= 1.714285714285715
+  assert statistics.skewness() ~= 0.8164965809277261
+  assert statistics.skewnessS() ~= 1.018350154434631
+  assert statistics.kurtosis() ~= -1.0
+  assert statistics.kurtosisS() ~= -0.7000000000000008
 
 from std/math import FloatClass, sqrt, pow, round
 

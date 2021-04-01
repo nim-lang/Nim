@@ -128,7 +128,7 @@
 ##     insertStmt.bindParams(id, dbuf)
 ##     let bres = db.tryExec(insertStmt)
 ##     ## Check insert
-##     doAssert(bres)
+##     assert(bres)
 ##     # Destroy statement
 ##     finalize(insertStmt)
 ##
@@ -141,7 +141,7 @@
 ##     copyMem(unsafeAddr(res[0]), addr(dataTest[0]), dataTest.len)
 ##
 ##     ## Check datas obtained is identical
-##     doAssert res == orig
+##     assert res == orig
 ##
 ##   db.close()
 ##
@@ -201,8 +201,8 @@ proc dbQuote*(s: string): string =
   ## Escapes the `'` (single quote) char to `''`.
   ## Because single quote is used for defining `VARCHAR` in SQL.
   runnableExamples:
-    doAssert dbQuote("'") == "''''"
-    doAssert dbQuote("A Foobar's pen.") == "'A Foobar''s pen.'"
+    assert dbQuote("'") == "''''"
+    assert dbQuote("A Foobar's pen.") == "'A Foobar''s pen.'"
 
   result = "'"
   for c in items(s):
@@ -505,16 +505,16 @@ proc getRow*(db: DbConn, query: SqlQuery,
   ##    # |  1 | item#1   |
   ##    # |  2 | item#2   |
   ##
-  ##    doAssert db.getRow(sql"SELECT id, name FROM my_table"
+  ##    assert db.getRow(sql"SELECT id, name FROM my_table"
   ##                       ) == Row(@["1", "item#1"])
-  ##    doAssert db.getRow(sql"SELECT id, name FROM my_table WHERE id = ?",
+  ##    assert db.getRow(sql"SELECT id, name FROM my_table WHERE id = ?",
   ##                       2) == Row(@["2", "item#2"])
   ##
   ##    # Returns empty.
-  ##    doAssert db.getRow(sql"INSERT INTO my_table (id, name) VALUES (?, ?)",
+  ##    assert db.getRow(sql"INSERT INTO my_table (id, name) VALUES (?, ?)",
   ##                       3, "item#3") == @[]
-  ##    doAssert db.getRow(sql"DELETE FROM my_table WHERE id = ?", 3) == @[]
-  ##    doAssert db.getRow(sql"UPDATE my_table SET name = 'ITEM#1' WHERE id = ?",
+  ##    assert db.getRow(sql"DELETE FROM my_table WHERE id = ?", 3) == @[]
+  ##    assert db.getRow(sql"UPDATE my_table SET name = 'ITEM#1' WHERE id = ?",
   ##                       1) == @[]
   ##    db.close()
   var stmt = setupQuery(db, query, args)
@@ -540,7 +540,7 @@ proc getAllRows*(db: DbConn, query: SqlQuery,
   ##    # |  1 | item#1   |
   ##    # |  2 | item#2   |
   ##
-  ##    doAssert db.getAllRows(sql"SELECT id, name FROM my_table") == @[Row(@["1", "item#1"]), Row(@["2", "item#2"])]
+  ##    assert db.getAllRows(sql"SELECT id, name FROM my_table") == @[Row(@["1", "item#1"]), Row(@["2", "item#2"])]
   ##    db.close()
   result = @[]
   for r in fastRows(db, query, args):
@@ -601,10 +601,10 @@ proc getValue*(db: DbConn, query: SqlQuery,
   ##    # |  1 | item#1   |
   ##    # |  2 | item#2   |
   ##
-  ##    doAssert db.getValue(sql"SELECT name FROM my_table WHERE id = ?",
+  ##    assert db.getValue(sql"SELECT name FROM my_table WHERE id = ?",
   ##                         2) == "item#2"
-  ##    doAssert db.getValue(sql"SELECT id, name FROM my_table") == "1"
-  ##    doAssert db.getValue(sql"SELECT name, id FROM my_table") == "item#1"
+  ##    assert db.getValue(sql"SELECT id, name FROM my_table") == "1"
+  ##    assert db.getValue(sql"SELECT name, id FROM my_table") == "item#1"
   ##
   ##    db.close()
   var stmt = setupQuery(db, query, args)
@@ -653,7 +653,7 @@ proc tryInsertID*(db: DbConn, query: SqlQuery,
   ##    let db = open("mytest.db", "", "", "")
   ##    db.exec(sql"CREATE TABLE my_table (id INTEGER, name VARCHAR(50) NOT NULL)")
   ##
-  ##    doAssert db.tryInsertID(sql"INSERT INTO not_exist_table (id, name) VALUES (?, ?)",
+  ##    assert db.tryInsertID(sql"INSERT INTO not_exist_table (id, name) VALUES (?, ?)",
   ##                            1, "item#1") == -1
   ##    db.close()
   assert(not db.isNil, "Database not connected.")
@@ -728,7 +728,7 @@ proc execAffectedRows*(db: DbConn, query: SqlQuery,
   ##    # |  1 | item#1   |
   ##    # |  2 | item#2   |
   ##
-  ##    doAssert db.execAffectedRows(sql"UPDATE my_table SET name = 'TEST'") == 2
+  ##    assert db.execAffectedRows(sql"UPDATE my_table SET name = 'TEST'") == 2
   ##
   ##    db.close()
   exec(db, query, args)

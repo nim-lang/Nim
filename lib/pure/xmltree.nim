@@ -20,7 +20,7 @@ runnableExamples:
   let att = {"key1": "first value", "key2": "second value"}.toXmlAttributes
   let k = newXmlTree("treeTag", [g, h], att)
 
-  doAssert $k == """<treeTag key1="first value" key2="second value">
+  assert $k == """<treeTag key1="first value" key2="second value">
   <myTag>some text<!-- this is comment --></myTag>
   <secondTag>&some entity;</secondTag>
 </treeTag>"""
@@ -152,7 +152,7 @@ proc newXmlTree*(tag: string, children: openArray[XmlNode],
     let att = {"key1": "first value", "key2": "second value"}.toXmlAttributes
     let k = newXmlTree("treeTag", [g, h], att)
   
-    doAssert $k == """<treeTag key1="first value" key2="second value">
+    assert $k == """<treeTag key1="first value" key2="second value">
   <myTag>some text<!-- this is comment --></myTag>
   <secondTag>&some entity;</secondTag>
 </treeTag>"""
@@ -396,13 +396,13 @@ proc clear*(n: var XmlNode) =
     let att = {"key1": "first value", "key2": "second value"}.toXmlAttributes
     var k = newXmlTree("treeTag", [g, h], att)
   
-    doAssert $k == """<treeTag key1="first value" key2="second value">
+    assert $k == """<treeTag key1="first value" key2="second value">
   <myTag>some text<!-- this is comment --></myTag>
   <secondTag>&some entity;</secondTag>
 </treeTag>"""
 
     clear(k)
-    doAssert $k == """<treeTag key1="first value" key2="second value" />"""
+    assert $k == """<treeTag key1="first value" key2="second value" />"""
 
   for i in 0 ..< n.len:
     clear(n[i])
@@ -448,7 +448,7 @@ proc toXmlAttributes*(keyValuePairs: varargs[tuple[key,
     var j = newElement("myTag")
     j.attrs = att
   
-    doAssert $j == """<myTag key1="first value" key2="second value" />"""
+    assert $j == """<myTag key1="first value" key2="second value" />"""
 
   newStringTable(keyValuePairs)
 

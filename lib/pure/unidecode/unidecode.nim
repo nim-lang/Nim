@@ -54,8 +54,8 @@ proc unidecode*(s: string): string =
   ## Finds the sequence of ASCII characters that is the closest approximation
   ## to the UTF-8 string `s`.
   runnableExamples:
-    doAssert unidecode("北京") == "Bei Jing "
-    doAssert unidecode("Äußerst") == "Ausserst"
+    assert unidecode("北京") == "Bei Jing "
+    assert unidecode("Äußerst") == "Ausserst"
 
   result = ""
   for r in runes(s):

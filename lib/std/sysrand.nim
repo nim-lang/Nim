@@ -40,9 +40,9 @@
 ##
 
 runnableExamples:
-  doAssert urandom(0).len == 0
-  doAssert urandom(113).len == 113
-  doAssert urandom(1234) != urandom(1234) # unlikely to fail in practice
+  assert urandom(0).len == 0
+  assert urandom(113).len == 113
+  assert urandom(1234) != urandom(1234) # unlikely to fail in practice
 
 ##
 ## See also

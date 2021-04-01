@@ -341,7 +341,7 @@ proc hash*(x: string): Hash =
   ## * `hashIgnoreStyle <#hashIgnoreStyle,string>`_
   ## * `hashIgnoreCase <#hashIgnoreCase,string>`_
   runnableExamples:
-    doAssert hash("abracadabra") != hash("AbracadabrA")
+    assert hash("abracadabra") != hash("AbracadabrA")
 
   when not defined(nimToOpenArrayCString):
     result = 0
@@ -357,9 +357,9 @@ proc hash*(x: string): Hash =
 proc hash*(x: cstring): Hash =
   ## Efficient hashing of null-terminated strings.
   runnableExamples:
-    doAssert hash(cstring"abracadabra") == hash("abracadabra")
-    doAssert hash(cstring"AbracadabrA") == hash("AbracadabrA")
-    doAssert hash(cstring"abracadabra") != hash(cstring"AbracadabrA")
+    assert hash(cstring"abracadabra") == hash("abracadabra")
+    assert hash(cstring"AbracadabrA") == hash("AbracadabrA")
+    assert hash(cstring"abracadabra") != hash(cstring"AbracadabrA")
 
   when not defined(nimToOpenArrayCString):
     result = 0
@@ -385,7 +385,7 @@ proc hash*(sBuf: string, sPos, ePos: int): Hash =
   ## `hash(myStr, 0, myStr.high)` is equivalent to `hash(myStr)`.
   runnableExamples:
     var a = "abracadabra"
-    doAssert hash(a, 0, 3) == hash(a, 7, 10)
+    assert hash(a, 0, 3) == hash(a, 7, 10)
 
   when not defined(nimToOpenArrayCString):
     result = 0
@@ -403,8 +403,8 @@ proc hashIgnoreStyle*(x: string): Hash =
   ## **See also:**
   ## * `hashIgnoreCase <#hashIgnoreCase,string>`_
   runnableExamples:
-    doAssert hashIgnoreStyle("aBr_aCa_dAB_ra") == hashIgnoreStyle("abracadabra")
-    doAssert hashIgnoreStyle("abcdefghi") != hash("abcdefghi")
+    assert hashIgnoreStyle("aBr_aCa_dAB_ra") == hashIgnoreStyle("abracadabra")
+    assert hashIgnoreStyle("abcdefghi") != hash("abcdefghi")
 
   var h: Hash = 0
   var i = 0
@@ -430,7 +430,7 @@ proc hashIgnoreStyle*(sBuf: string, sPos, ePos: int): Hash =
   ## to `hashIgnoreStyle(myBuf)`.
   runnableExamples:
     var a = "ABracada_b_r_a"
-    doAssert hashIgnoreStyle(a, 0, 3) == hashIgnoreStyle(a, 7, a.high)
+    assert hashIgnoreStyle(a, 0, 3) == hashIgnoreStyle(a, 7, a.high)
 
   var h: Hash = 0
   var i = sPos
@@ -453,8 +453,8 @@ proc hashIgnoreCase*(x: string): Hash =
   ## **See also:**
   ## * `hashIgnoreStyle <#hashIgnoreStyle,string>`_
   runnableExamples:
-    doAssert hashIgnoreCase("ABRAcaDABRA") == hashIgnoreCase("abRACAdabra")
-    doAssert hashIgnoreCase("abcdefghi") != hash("abcdefghi")
+    assert hashIgnoreCase("ABRAcaDABRA") == hashIgnoreCase("abRACAdabra")
+    assert hashIgnoreCase("abcdefghi") != hash("abcdefghi")
 
   var h: Hash = 0
   for i in 0..x.len-1:
@@ -474,7 +474,7 @@ proc hashIgnoreCase*(sBuf: string, sPos, ePos: int): Hash =
   ## to `hashIgnoreCase(myBuf)`.
   runnableExamples:
     var a = "ABracadabRA"
-    doAssert hashIgnoreCase(a, 0, 3) == hashIgnoreCase(a, 7, 10)
+    assert hashIgnoreCase(a, 0, 3) == hashIgnoreCase(a, 7, 10)
 
   var h: Hash = 0
   for i in sPos..ePos:
@@ -526,7 +526,7 @@ proc hash*[A](aBuf: openArray[A], sPos, ePos: int): Hash =
   ## `hash(myBuf, 0, myBuf.high)` is equivalent to `hash(myBuf)`.
   runnableExamples:
     let a = [1, 2, 5, 1, 2, 6]
-    doAssert hash(a, 0, 1) == hash(a, 3, 4)
+    assert hash(a, 0, 1) == hash(a, 3, 4)
 
   when A is byte:
     when nimvm:

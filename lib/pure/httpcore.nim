@@ -279,7 +279,7 @@ func contains*(methods: set[HttpMethod], x: string): bool =
 func `$`*(code: HttpCode): string =
   ## Converts the specified `HttpCode` into a HTTP status.
   runnableExamples:
-    doAssert($Http404 == "404 Not Found")
+    assert($Http404 == "404 Not Found")
   case code.int
   of 100: "100 Continue"
   of 101: "101 Switching Protocols"
@@ -360,7 +360,7 @@ proc `==`*(rawCode: string, code: HttpCode): bool
 func is1xx*(code: HttpCode): bool {.inline, since: (1, 5).} =
   ## Determines whether `code` is a 1xx HTTP status code.
   runnableExamples:
-    doAssert is1xx(HttpCode(103))
+    assert is1xx(HttpCode(103))
 
   code.int in {100 .. 199}
 

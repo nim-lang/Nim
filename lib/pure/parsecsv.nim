@@ -208,15 +208,15 @@ proc processedRows*(my: var CsvParser): int =
     var strm = newStringStream("One,Two,Three\n1,2,3")
     var parser: CsvParser
     parser.open(strm, "tmp.csv")
-    doAssert parser.readRow()
-    doAssert parser.processedRows() == 1
-    doAssert parser.readRow()
-    doAssert parser.processedRows() == 2
+    assert parser.readRow()
+    assert parser.processedRows() == 1
+    assert parser.readRow()
+    assert parser.processedRows() == 2
     ## Even if `readRow` arrived at EOF then `processedRows` is incremented.
-    doAssert parser.readRow() == false
-    doAssert parser.processedRows() == 3
-    doAssert parser.readRow() == false
-    doAssert parser.processedRows() == 4
+    assert parser.readRow() == false
+    assert parser.processedRows() == 3
+    assert parser.readRow() == false
+    assert parser.processedRows() == 4
     parser.close()
     strm.close()
 
@@ -233,19 +233,19 @@ proc readRow*(my: var CsvParser, columns = 0): bool =
     var strm = newStringStream("One,Two,Three\n1,2,3\n\n10,20,30")
     var parser: CsvParser
     parser.open(strm, "tmp.csv")
-    doAssert parser.readRow()
-    doAssert parser.row == @["One", "Two", "Three"]
-    doAssert parser.readRow()
-    doAssert parser.row == @["1", "2", "3"]
+    assert parser.readRow()
+    assert parser.row == @["One", "Two", "Three"]
+    assert parser.readRow()
+    assert parser.row == @["1", "2", "3"]
     ## Blank lines are skipped.
-    doAssert parser.readRow()
-    doAssert parser.row == @["10", "20", "30"]
+    assert parser.readRow()
+    assert parser.row == @["10", "20", "30"]
 
     var emptySeq: seq[string]
-    doAssert parser.readRow() == false
-    doAssert parser.row == emptySeq
-    doAssert parser.readRow() == false
-    doAssert parser.row == emptySeq
+    assert parser.readRow() == false
+    assert parser.row == emptySeq
+    assert parser.readRow() == false
+    assert parser.row == emptySeq
 
     parser.close()
     strm.close()
@@ -303,12 +303,12 @@ proc readHeaderRow*(my: var CsvParser) =
     parser.open(strm, "tmp.csv")
 
     parser.readHeaderRow()
-    doAssert parser.headers == @["One", "Two", "Three"]
-    doAssert parser.row == @["One", "Two", "Three"]
+    assert parser.headers == @["One", "Two", "Three"]
+    assert parser.row == @["One", "Two", "Three"]
 
-    doAssert parser.readRow()
-    doAssert parser.headers == @["One", "Two", "Three"]
-    doAssert parser.row == @["1", "2", "3"]
+    assert parser.readRow()
+    assert parser.headers == @["One", "Two", "Three"]
+    assert parser.row == @["1", "2", "3"]
 
     parser.close()
     strm.close()
@@ -331,10 +331,10 @@ proc rowEntry*(my: var CsvParser, entry: string): var string =
     parser.open(strm, "tmp.csv")
     ## Requires calling `readHeaderRow`.
     parser.readHeaderRow()
-    doAssert parser.readRow()
-    doAssert parser.rowEntry("One") == "1"
-    doAssert parser.rowEntry("Two") == "2"
-    doAssert parser.rowEntry("Three") == "3"
+    assert parser.readRow()
+    assert parser.rowEntry("One") == "1"
+    assert parser.rowEntry("Two") == "2"
+    assert parser.rowEntry("Three") == "3"
     doAssertRaises(KeyError):
       discard parser.rowEntry("NonexistentEntry")
     parser.close()

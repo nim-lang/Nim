@@ -116,8 +116,8 @@ const
     ##
     ## .. code-block:: nim
     ##   let invalid = AllChars - Digits
-    ##   doAssert "01234".find(invalid) == -1
-    ##   doAssert "01A34".find(invalid) == 2
+    ##   assert "01234".find(invalid) == -1
+    ##   assert "01A34".find(invalid) == 2
 
 func isAlphaAscii*(c: char): bool {.rtl, extern: "nsuIsAlphaAsciiChar".} =
   ## Checks whether or not character `c` is alphabetical.
@@ -125,9 +125,9 @@ func isAlphaAscii*(c: char): bool {.rtl, extern: "nsuIsAlphaAsciiChar".} =
   ## This checks a-z, A-Z ASCII characters only.
   ## Use `Unicode module<unicode.html>`_ for UTF-8 support.
   runnableExamples:
-    doAssert isAlphaAscii('e') == true
-    doAssert isAlphaAscii('E') == true
-    doAssert isAlphaAscii('8') == false
+    assert isAlphaAscii('e') == true
+    assert isAlphaAscii('E') == true
+    assert isAlphaAscii('8') == false
   return c in Letters
 
 func isAlphaNumeric*(c: char): bool {.rtl, extern: "nsuIsAlphaNumericChar".} =
@@ -135,9 +135,9 @@ func isAlphaNumeric*(c: char): bool {.rtl, extern: "nsuIsAlphaNumericChar".} =
   ##
   ## This checks a-z, A-Z, 0-9 ASCII characters only.
   runnableExamples:
-    doAssert isAlphaNumeric('n') == true
-    doAssert isAlphaNumeric('8') == true
-    doAssert isAlphaNumeric(' ') == false
+    assert isAlphaNumeric('n') == true
+    assert isAlphaNumeric('8') == true
+    assert isAlphaNumeric(' ') == false
   return c in Letters+Digits
 
 func isDigit*(c: char): bool {.rtl, extern: "nsuIsDigitChar".} =
@@ -145,16 +145,16 @@ func isDigit*(c: char): bool {.rtl, extern: "nsuIsDigitChar".} =
   ##
   ## This checks 0-9 ASCII characters only.
   runnableExamples:
-    doAssert isDigit('n') == false
-    doAssert isDigit('8') == true
+    assert isDigit('n') == false
+    assert isDigit('8') == true
   return c in Digits
 
 func isSpaceAscii*(c: char): bool {.rtl, extern: "nsuIsSpaceAsciiChar".} =
   ## Checks whether or not `c` is a whitespace character.
   runnableExamples:
-    doAssert isSpaceAscii('n') == false
-    doAssert isSpaceAscii(' ') == true
-    doAssert isSpaceAscii('\t') == true
+    assert isSpaceAscii('n') == false
+    assert isSpaceAscii(' ') == true
+    assert isSpaceAscii('\t') == true
   return c in Whitespace
 
 func isLowerAscii*(c: char): bool {.rtl, extern: "nsuIsLowerAsciiChar".} =
@@ -166,9 +166,9 @@ func isLowerAscii*(c: char): bool {.rtl, extern: "nsuIsLowerAsciiChar".} =
   ## See also:
   ## * `toLowerAscii func<#toLowerAscii,char>`_
   runnableExamples:
-    doAssert isLowerAscii('e') == true
-    doAssert isLowerAscii('E') == false
-    doAssert isLowerAscii('7') == false
+    assert isLowerAscii('e') == true
+    assert isLowerAscii('E') == false
+    assert isLowerAscii('7') == false
   return c in {'a'..'z'}
 
 func isUpperAscii*(c: char): bool {.rtl, extern: "nsuIsUpperAsciiChar".} =
@@ -180,9 +180,9 @@ func isUpperAscii*(c: char): bool {.rtl, extern: "nsuIsUpperAsciiChar".} =
   ## See also:
   ## * `toUpperAscii func<#toUpperAscii,char>`_
   runnableExamples:
-    doAssert isUpperAscii('e') == false
-    doAssert isUpperAscii('E') == true
-    doAssert isUpperAscii('7') == false
+    assert isUpperAscii('e') == false
+    assert isUpperAscii('E') == true
+    assert isUpperAscii('7') == false
   return c in {'A'..'Z'}
 
 
@@ -197,8 +197,8 @@ func toLowerAscii*(c: char): char {.rtl, extern: "nsuToLowerAsciiChar".} =
   ## * `isLowerAscii func<#isLowerAscii,char>`_
   ## * `toLowerAscii func<#toLowerAscii,string>`_ for converting a string
   runnableExamples:
-    doAssert toLowerAscii('A') == 'a'
-    doAssert toLowerAscii('e') == 'e'
+    assert toLowerAscii('A') == 'a'
+    assert toLowerAscii('e') == 'e'
   if c in {'A'..'Z'}:
     result = char(uint8(c) xor 0b0010_0000'u8)
   else:
@@ -219,7 +219,7 @@ func toLowerAscii*(s: string): string {.rtl, extern: "nsuToLowerAsciiStr".} =
   ## See also:
   ## * `normalize func<#normalize,string>`_
   runnableExamples:
-    doAssert toLowerAscii("FooBar!") == "foobar!"
+    assert toLowerAscii("FooBar!") == "foobar!"
   toImpl toLowerAscii
 
 func toUpperAscii*(c: char): char {.rtl, extern: "nsuToUpperAsciiChar".} =
@@ -234,8 +234,8 @@ func toUpperAscii*(c: char): char {.rtl, extern: "nsuToUpperAsciiChar".} =
   ## * `toUpperAscii func<#toUpperAscii,string>`_ for converting a string
   ## * `capitalizeAscii func<#capitalizeAscii,string>`_
   runnableExamples:
-    doAssert toUpperAscii('a') == 'A'
-    doAssert toUpperAscii('E') == 'E'
+    assert toUpperAscii('a') == 'A'
+    assert toUpperAscii('E') == 'E'
   if c in {'a'..'z'}:
     result = char(uint8(c) xor 0b0010_0000'u8)
   else:
@@ -251,7 +251,7 @@ func toUpperAscii*(s: string): string {.rtl, extern: "nsuToUpperAsciiStr".} =
   ## See also:
   ## * `capitalizeAscii func<#capitalizeAscii,string>`_
   runnableExamples:
-    doAssert toUpperAscii("FooBar!") == "FOOBAR!"
+    assert toUpperAscii("FooBar!") == "FOOBAR!"
   toImpl toUpperAscii
 
 func capitalizeAscii*(s: string): string {.rtl, extern: "nsuCapitalizeAscii".} =
@@ -263,8 +263,8 @@ func capitalizeAscii*(s: string): string {.rtl, extern: "nsuCapitalizeAscii".} =
   ## See also:
   ## * `toUpperAscii func<#toUpperAscii,char>`_
   runnableExamples:
-    doAssert capitalizeAscii("foo") == "Foo"
-    doAssert capitalizeAscii("-bar") == "-bar"
+    assert capitalizeAscii("foo") == "Foo"
+    assert capitalizeAscii("-bar") == "-bar"
   if s.len == 0: result = ""
   else: result = toUpperAscii(s[0]) & substr(s, 1)
 
@@ -274,7 +274,7 @@ func nimIdentNormalize*(s: string): string =
   ## That means to convert to lower case and remove any '_' on all characters
   ## except first one.
   runnableExamples:
-    doAssert nimIdentNormalize("Foo_bar") == "Foobar"
+    assert nimIdentNormalize("Foo_bar") == "Foobar"
   result = newString(s.len)
   if s.len > 0:
     result[0] = s[0]
@@ -297,8 +297,8 @@ func normalize*(s: string): string {.rtl, extern: "nsuNormalize".} =
   ## See also:
   ## * `toLowerAscii func<#toLowerAscii,string>`_
   runnableExamples:
-    doAssert normalize("Foo_bar") == "foobar"
-    doAssert normalize("Foo Bar") == "foo bar"
+    assert normalize("Foo_bar") == "foobar"
+    assert normalize("Foo Bar") == "foo bar"
   result = newString(s.len)
   var j = 0
   for i in 0..len(s) - 1:
@@ -317,9 +317,9 @@ func cmpIgnoreCase*(a, b: string): int {.rtl, extern: "nsuCmpIgnoreCase".} =
   ## | < 0 if a < b
   ## | > 0 if a > b
   runnableExamples:
-    doAssert cmpIgnoreCase("FooBar", "foobar") == 0
-    doAssert cmpIgnoreCase("bar", "Foo") < 0
-    doAssert cmpIgnoreCase("Foo5", "foo4") > 0
+    assert cmpIgnoreCase("FooBar", "foobar") == 0
+    assert cmpIgnoreCase("bar", "Foo") < 0
+    assert cmpIgnoreCase("Foo5", "foo4") > 0
   cmpIgnoreCaseImpl(a, b)
 
 {.push checks: off, line_trace: off.} # this is a hot-spot in the compiler!
@@ -337,8 +337,8 @@ func cmpIgnoreStyle*(a, b: string): int {.rtl, extern: "nsuCmpIgnoreStyle".} =
   ## | < 0 if a < b
   ## | > 0 if a > b
   runnableExamples:
-    doAssert cmpIgnoreStyle("foo_bar", "FooBar") == 0
-    doAssert cmpIgnoreStyle("foo_bar_5", "FooBar4") > 0
+    assert cmpIgnoreStyle("foo_bar", "FooBar") == 0
+    assert cmpIgnoreStyle("foo_bar_5", "FooBar4") > 0
   cmpIgnoreStyleImpl(a, b)
 {.pop.}
 
@@ -698,8 +698,8 @@ func split*(s: string, sep: char, maxsplit: int = -1): seq[string] {.rtl,
   ## * `splitLines func<#splitLines,string>`_
   ## * `splitWhitespace func<#splitWhitespace,string,int>`_
   runnableExamples:
-    doAssert "a,b,c".split(',') == @["a", "b", "c"]
-    doAssert "".split(' ') == @[""]
+    assert "a,b,c".split(',') == @["a", "b", "c"]
+    assert "".split(' ') == @[""]
   accResult(split(s, sep, maxsplit))
 
 func split*(s: string, seps: set[char] = Whitespace, maxsplit: int = -1): seq[
@@ -713,8 +713,8 @@ func split*(s: string, seps: set[char] = Whitespace, maxsplit: int = -1): seq[
   ## * `splitLines func<#splitLines,string>`_
   ## * `splitWhitespace func<#splitWhitespace,string,int>`_
   runnableExamples:
-    doAssert "a,b;c".split({',', ';'}) == @["a", "b", "c"]
-    doAssert "".split({' '}) == @[""]
+    assert "a,b;c".split({',', ';'}) == @["a", "b", "c"]
+    assert "".split({' '}) == @[""]
   accResult(split(s, seps, maxsplit))
 
 func split*(s: string, sep: string, maxsplit: int = -1): seq[string] {.rtl,
@@ -730,12 +730,12 @@ func split*(s: string, sep: string, maxsplit: int = -1): seq[string] {.rtl,
   ## * `splitLines func<#splitLines,string>`_
   ## * `splitWhitespace func<#splitWhitespace,string,int>`_
   runnableExamples:
-    doAssert "a,b,c".split(",") == @["a", "b", "c"]
-    doAssert "a man a plan a canal panama".split("a ") == @["", "man ", "plan ", "canal panama"]
-    doAssert "".split("Elon Musk") == @[""]
-    doAssert "a  largely    spaced sentence".split(" ") == @["a", "", "largely",
+    assert "a,b,c".split(",") == @["a", "b", "c"]
+    assert "a man a plan a canal panama".split("a ") == @["", "man ", "plan ", "canal panama"]
+    assert "".split("Elon Musk") == @[""]
+    assert "a  largely    spaced sentence".split(" ") == @["a", "", "largely",
         "", "", "", "spaced", "sentence"]
-    doAssert "a  largely    spaced sentence".split(" ", maxsplit = 1) == @["a", " largely    spaced sentence"]
+    assert "a  largely    spaced sentence".split(" ", maxsplit = 1) == @["a", " largely    spaced sentence"]
   doAssert(sep.len > 0)
 
   accResult(split(s, sep, maxsplit))
@@ -820,13 +820,13 @@ func rsplit*(s: string, sep: string, maxsplit: int = -1): seq[string] {.rtl,
   ## * `splitLines func<#splitLines,string>`_
   ## * `splitWhitespace func<#splitWhitespace,string,int>`_
   runnableExamples:
-    doAssert "a  largely    spaced sentence".rsplit(" ", maxsplit = 1) == @[
+    assert "a  largely    spaced sentence".rsplit(" ", maxsplit = 1) == @[
         "a  largely    spaced", "sentence"]
-    doAssert "a,b,c".rsplit(",") == @["a", "b", "c"]
-    doAssert "a man a plan a canal panama".rsplit("a ") == @["", "man ",
+    assert "a,b,c".rsplit(",") == @["a", "b", "c"]
+    assert "a man a plan a canal panama".rsplit("a ") == @["", "man ",
         "plan ", "canal panama"]
-    doAssert "".rsplit("Elon Musk") == @[""]
-    doAssert "a  largely    spaced sentence".rsplit(" ") == @["a", "",
+    assert "".rsplit("Elon Musk") == @[""]
+    assert "a  largely    spaced sentence".rsplit(" ") == @["a", "",
         "largely", "", "", "", "spaced", "sentence"]
   accResult(rsplit(s, sep, maxsplit))
   result.reverse()
@@ -861,9 +861,9 @@ func toBin*(x: BiggestInt, len: Positive): string {.rtl, extern: "nsuToBin".} =
     let
       a = 29
       b = 257
-    doAssert a.toBin(8) == "00011101"
-    doAssert b.toBin(8) == "00000001"
-    doAssert b.toBin(9) == "100000001"
+    assert a.toBin(8) == "00011101"
+    assert b.toBin(8) == "00000001"
+    assert b.toBin(9) == "100000001"
   var
     mask = BiggestUInt 1
     shift = BiggestUInt 0
@@ -885,9 +885,9 @@ func toOct*(x: BiggestInt, len: Positive): string {.rtl, extern: "nsuToOct".} =
     let
       a = 62
       b = 513
-    doAssert a.toOct(3) == "076"
-    doAssert b.toOct(3) == "001"
-    doAssert b.toOct(5) == "01001"
+    assert a.toOct(3) == "076"
+    assert b.toOct(3) == "001"
+    assert b.toOct(5) == "01001"
   var
     mask = BiggestUInt 7
     shift = BiggestUInt 0
@@ -918,18 +918,18 @@ func toHex*[T: SomeInteger](x: T, len: Positive): string =
     let
       a = 62'u64
       b = 4097'u64
-    doAssert a.toHex(3) == "03E"
-    doAssert b.toHex(3) == "001"
-    doAssert b.toHex(4) == "1001"
-    doAssert toHex(62, 3) == "03E"
-    doAssert toHex(-8, 6) == "FFFFF8"
+    assert a.toHex(3) == "03E"
+    assert b.toHex(3) == "001"
+    assert b.toHex(4) == "1001"
+    assert toHex(62, 3) == "03E"
+    assert toHex(-8, 6) == "FFFFF8"
   toHexImpl(cast[BiggestUInt](x), len, x < 0)
 
 func toHex*[T: SomeInteger](x: T): string =
   ## Shortcut for `toHex(x, T.sizeof * 2)`
   runnableExamples:
-    doAssert toHex(1984'i64) == "00000000000007C0"
-    doAssert toHex(1984'i16) == "07C0"
+    assert toHex(1984'i64) == "00000000000007C0"
+    assert toHex(1984'i16) == "07C0"
   toHexImpl(cast[BiggestUInt](x), 2*sizeof(T), x < 0)
 
 func toHex*(s: string): string {.rtl.} =
@@ -945,9 +945,9 @@ func toHex*(s: string): string {.rtl.} =
       a = "1"
       b = "A"
       c = "\0\255"
-    doAssert a.toHex() == "31"
-    doAssert b.toHex() == "41"
-    doAssert c.toHex() == "00FF"
+    assert a.toHex() == "31"
+    assert b.toHex() == "41"
+    assert c.toHex() == "00FF"
 
   const HexChars = "0123456789ABCDEF"
   result = newString(s.len * 2)
@@ -965,10 +965,10 @@ func toOctal*(c: char): string {.rtl, extern: "nsuToOctal".} =
   ##
   ## Do not confuse it with `toOct func<#toOct,BiggestInt,Positive>`_.
   runnableExamples:
-    doAssert toOctal('1') == "061"
-    doAssert toOctal('A') == "101"
-    doAssert toOctal('a') == "141"
-    doAssert toOctal('!') == "041"
+    assert toOctal('1') == "061"
+    assert toOctal('A') == "101"
+    assert toOctal('a') == "141"
+    assert toOctal('!') == "041"
 
   result = newString(3)
   var val = ord(c)
@@ -988,12 +988,12 @@ func fromBin*[T: SomeInteger](s: string): T =
   ## binary digits of `s` is returned without producing an error.
   runnableExamples:
     let s = "0b_0100_1000_1000_1000_1110_1110_1001_1001"
-    doAssert fromBin[int](s) == 1216933529
-    doAssert fromBin[int8](s) == 0b1001_1001'i8
-    doAssert fromBin[int8](s) == -103'i8
-    doAssert fromBin[uint8](s) == 153
-    doAssert s.fromBin[:int16] == 0b1110_1110_1001_1001'i16
-    doAssert s.fromBin[:uint64] == 1216933529'u64
+    assert fromBin[int](s) == 1216933529
+    assert fromBin[int8](s) == 0b1001_1001'i8
+    assert fromBin[int8](s) == -103'i8
+    assert fromBin[uint8](s) == 153
+    assert s.fromBin[:int16] == 0b1110_1110_1001_1001'i16
+    assert s.fromBin[:uint64] == 1216933529'u64
 
   let p = parseutils.parseBin(s, result)
   if p != s.len or p == 0:
@@ -1011,12 +1011,12 @@ func fromOct*[T: SomeInteger](s: string): T =
   ## octal digits of `s` is returned without producing an error.
   runnableExamples:
     let s = "0o_123_456_777"
-    doAssert fromOct[int](s) == 21913087
-    doAssert fromOct[int8](s) == 0o377'i8
-    doAssert fromOct[int8](s) == -1'i8
-    doAssert fromOct[uint8](s) == 255'u8
-    doAssert s.fromOct[:int16] == 24063'i16
-    doAssert s.fromOct[:uint64] == 21913087'u64
+    assert fromOct[int](s) == 21913087
+    assert fromOct[int8](s) == 0o377'i8
+    assert fromOct[int8](s) == -1'i8
+    assert fromOct[uint8](s) == 255'u8
+    assert s.fromOct[:int16] == 24063'i16
+    assert s.fromOct[:uint64] == 21913087'u64
 
   let p = parseutils.parseOct(s, result)
   if p != s.len or p == 0:
@@ -1034,12 +1034,12 @@ func fromHex*[T: SomeInteger](s: string): T =
   ## hex digits of `s` is returned without producing an error.
   runnableExamples:
     let s = "0x_1235_8df6"
-    doAssert fromHex[int](s) == 305499638
-    doAssert fromHex[int8](s) == 0xf6'i8
-    doAssert fromHex[int8](s) == -10'i8
-    doAssert fromHex[uint8](s) == 246'u8
-    doAssert s.fromHex[:int16] == -29194'i16
-    doAssert s.fromHex[:uint64] == 305499638'u64
+    assert fromHex[int](s) == 305499638
+    assert fromHex[int8](s) == 0xf6'i8
+    assert fromHex[int8](s) == -10'i8
+    assert fromHex[uint8](s) == 246'u8
+    assert s.fromHex[:int16] == -29194'i16
+    assert s.fromHex[:uint64] == 305499638'u64
 
   let p = parseutils.parseHex(s, result)
   if p != s.len or p == 0:
@@ -1052,8 +1052,8 @@ func intToStr*(x: int, minchars: Positive = 1): string {.rtl,
   ## The resulting string will be minimally `minchars` characters long. This is
   ## achieved by adding leading zeros.
   runnableExamples:
-    doAssert intToStr(1984) == "1984"
-    doAssert intToStr(1984, 6) == "001984"
+    assert intToStr(1984) == "1984"
+    assert intToStr(1984, 6) == "001984"
   result = $abs(x)
   for i in 1 .. minchars - len(result):
     result = '0' & result
@@ -1065,7 +1065,7 @@ func parseInt*(s: string): int {.rtl, extern: "nsuParseInt".} =
   ##
   ## If `s` is not a valid integer, `ValueError` is raised.
   runnableExamples:
-    doAssert parseInt("-0042") == -42
+    assert parseInt("-0042") == -42
   result = 0
   let L = parseutils.parseInt(s, result, 0)
   if L != s.len or L == 0:
@@ -1106,8 +1106,8 @@ func parseFloat*(s: string): float {.rtl, extern: "nsuParseFloat".} =
   ## If `s` is not a valid floating point number, `ValueError` is raised.
   ##`NAN`, `INF`, `-INF` are also supported (case insensitive comparison).
   runnableExamples:
-    doAssert parseFloat("3.14") == 3.14
-    doAssert parseFloat("inf") == 1.0/0
+    assert parseFloat("3.14") == 3.14
+    assert parseFloat("inf") == 1.0/0
   result = 0.0
   let L = parseutils.parseFloat(s, result, 0)
   if L != s.len or L == 0:
@@ -1123,8 +1123,8 @@ func parseBinInt*(s: string): int {.rtl, extern: "nsuParseBinInt".} =
     let
       a = "0b11_0101"
       b = "111"
-    doAssert a.parseBinInt() == 53
-    doAssert b.parseBinInt() == 7
+    assert a.parseBinInt() == 53
+    assert b.parseBinInt() == 7
 
   result = 0
   let L = parseutils.parseBin(s, result, 0)
@@ -1181,9 +1181,9 @@ func parseHexStr*(s: string): string {.rtl, extern: "nsuParseHexStr".} =
       a = "41"
       b = "3161"
       c = "00ff"
-    doAssert parseHexStr(a) == "A"
-    doAssert parseHexStr(b) == "1a"
-    doAssert parseHexStr(c) == "\0\255"
+    assert parseHexStr(a) == "A"
+    assert parseHexStr(b) == "1a"
+    assert parseHexStr(c) == "\0\255"
 
   if s.len mod 2 != 0:
     raise newException(ValueError, "Incorrect hex string len")
@@ -1208,7 +1208,7 @@ func parseBool*(s: string): bool =
   ## `ValueError` exception is raised.
   runnableExamples:
     let a = "n"
-    doAssert parseBool(a) == false
+    assert parseBool(a) == false
 
   case normalize(s)
   of "y", "yes", "true", "1", "on": result = true
@@ -1228,8 +1228,8 @@ func parseEnum*[T: enum](s: string): T =
         second,
         third = "3rd"
 
-    doAssert parseEnum[MyEnum]("1_st") == first
-    doAssert parseEnum[MyEnum]("second") == second
+    assert parseEnum[MyEnum]("1_st") == first
+    assert parseEnum[MyEnum]("second") == second
     doAssertRaises(ValueError):
       echo parseEnum[MyEnum]("third")
 
@@ -1248,9 +1248,9 @@ func parseEnum*[T: enum](s: string, default: T): T =
         second,
         third = "3rd"
 
-    doAssert parseEnum[MyEnum]("1_st") == first
-    doAssert parseEnum[MyEnum]("second") == second
-    doAssert parseEnum[MyEnum]("last", third) == third
+    assert parseEnum[MyEnum]("1_st") == first
+    assert parseEnum[MyEnum]("second") == second
+    assert parseEnum[MyEnum]("last", third) == third
 
   genEnumCaseStmt(T, s, default, ord(low(T)), ord(high(T)), nimIdentNormalize)
 
@@ -1259,14 +1259,14 @@ func repeat*(c: char, count: Natural): string {.rtl, extern: "nsuRepeatChar".} =
   ## the character `c`.
   runnableExamples:
     let a = 'z'
-    doAssert a.repeat(5) == "zzzzz"
+    assert a.repeat(5) == "zzzzz"
   result = newString(count)
   for i in 0..count-1: result[i] = c
 
 func repeat*(s: string, n: Natural): string {.rtl, extern: "nsuRepeatStr".} =
   ## Returns string `s` concatenated `n` times.
   runnableExamples:
-    doAssert "+ foo +".repeat(3) == "+ foo ++ foo ++ foo +"
+    assert "+ foo +".repeat(3) == "+ foo ++ foo ++ foo +"
 
   result = newStringOfCap(n * s.len)
   for i in 1..n: result.add(s)
@@ -1285,9 +1285,9 @@ func spaces*(n: Natural): string {.inline.} =
       width = 15
       text1 = "Hello user!"
       text2 = "This is a very long string"
-    doAssert text1 & spaces(max(0, width - text1.len)) & "|" ==
+    assert text1 & spaces(max(0, width - text1.len)) & "|" ==
              "Hello user!    |"
-    doAssert text2 & spaces(max(0, width - text2.len)) & "|" ==
+    assert text2 & spaces(max(0, width - text2.len)) & "|" ==
              "This is a very long string|"
   repeat(' ', n)
 
@@ -1360,9 +1360,9 @@ func center*(s: string, width: int, fillChar: char = ' '): string {.rtl,
   ## * `indent func<#indent,string,Natural,string>`_
   runnableExamples:
     let a = "foo"
-    doAssert a.center(2) == "foo"
-    doAssert a.center(5) == " foo "
-    doAssert a.center(6) == " foo  "
+    assert a.center(2) == "foo"
+    assert a.center(5) == " foo "
+    assert a.center(6) == " foo  "
   if width <= s.len: return s
   result = newString(width)
   # Left padding will be one fillChar
@@ -1393,7 +1393,7 @@ func indent*(s: string, count: Natural, padding: string = " "): string {.rtl,
   ## * `unindent func<#unindent,string,Natural,string>`_
   ## * `dedent func<#dedent,string,Natural>`_
   runnableExamples:
-    doAssert indent("First line\c\l and second line.", 2) ==
+    assert indent("First line\c\l and second line.", 2) ==
              "  First line\l   and second line."
   result = ""
   var i = 0
@@ -1423,7 +1423,7 @@ func unindent*(s: string, count: Natural = int.high,
         There
     """.unindent()
 
-    doAssert x == "Hello\nThere\n"
+    assert x == "Hello\nThere\n"
   result = ""
   var i = 0
   for line in s.splitLines():
@@ -1473,7 +1473,7 @@ func dedent*(s: string, count: Natural = indentation(s)): string {.rtl,
         There
     """.dedent()
 
-    doAssert x == "Hello\n  There\n"
+    assert x == "Hello\n  There\n"
   unindent(s, count, " ")
 
 func delete*(s: var string, first, last: int) {.rtl, extern: "nsuDelete".} =
@@ -1485,13 +1485,13 @@ func delete*(s: var string, first, last: int) {.rtl, extern: "nsuDelete".} =
     var a = "abracadabra"
 
     a.delete(4, 5)
-    doAssert a == "abradabra"
+    assert a == "abradabra"
 
     a.delete(1, 6)
-    doAssert a == "ara"
+    assert a == "ara"
 
     a.delete(2, 999)
-    doAssert a == "ar"
+    assert a == "ar"
 
   var i = first
   var j = min(len(s), last+1)
@@ -1512,8 +1512,8 @@ func startsWith*(s: string, prefix: char): bool {.inline.} =
   ## * `removePrefix func<#removePrefix,string,char>`_
   runnableExamples:
     let a = "abracadabra"
-    doAssert a.startsWith('a') == true
-    doAssert a.startsWith('b') == false
+    assert a.startsWith('a') == true
+    assert a.startsWith('b') == false
   result = s.len > 0 and s[0] == prefix
 
 func startsWith*(s, prefix: string): bool {.rtl, extern: "nsuStartsWith".} =
@@ -1527,8 +1527,8 @@ func startsWith*(s, prefix: string): bool {.rtl, extern: "nsuStartsWith".} =
   ## * `removePrefix func<#removePrefix,string,string>`_
   runnableExamples:
     let a = "abracadabra"
-    doAssert a.startsWith("abra") == true
-    doAssert a.startsWith("bra") == false
+    assert a.startsWith("abra") == true
+    assert a.startsWith("bra") == false
   startsWithImpl(s, prefix)
 
 func endsWith*(s: string, suffix: char): bool {.inline.} =
@@ -1540,8 +1540,8 @@ func endsWith*(s: string, suffix: char): bool {.inline.} =
   ## * `removeSuffix func<#removeSuffix,string,char>`_
   runnableExamples:
     let a = "abracadabra"
-    doAssert a.endsWith('a') == true
-    doAssert a.endsWith('b') == false
+    assert a.endsWith('a') == true
+    assert a.endsWith('b') == false
   result = s.len > 0 and s[s.high] == suffix
 
 func endsWith*(s, suffix: string): bool {.rtl, extern: "nsuEndsWith".} =
@@ -1555,8 +1555,8 @@ func endsWith*(s, suffix: string): bool {.rtl, extern: "nsuEndsWith".} =
   ## * `removeSuffix func<#removeSuffix,string,string>`_
   runnableExamples:
     let a = "abracadabra"
-    doAssert a.endsWith("abra") == true
-    doAssert a.endsWith("dab") == false
+    assert a.endsWith("abra") == true
+    assert a.endsWith("dab") == false
   endsWithImpl(s, suffix)
 
 func continuesWith*(s, substr: string, start: Natural): bool {.rtl,
@@ -1570,9 +1570,9 @@ func continuesWith*(s, substr: string, start: Natural): bool {.rtl,
   ## * `endsWith func<#endsWith,string,string>`_
   runnableExamples:
     let a = "abracadabra"
-    doAssert a.continuesWith("ca", 4) == true
-    doAssert a.continuesWith("ca", 5) == false
-    doAssert a.continuesWith("dab", 6) == true
+    assert a.continuesWith("ca", 4) == true
+    assert a.continuesWith("ca", 5) == false
+    assert a.continuesWith("dab", 6) == true
   var i = 0
   while true:
     if i >= substr.len: return true
@@ -1590,13 +1590,13 @@ func removePrefix*(s: var string, chars: set[char] = Newlines) {.rtl,
   runnableExamples:
     var userInput = "\r\n*~Hello World!"
     userInput.removePrefix
-    doAssert userInput == "*~Hello World!"
+    assert userInput == "*~Hello World!"
     userInput.removePrefix({'~', '*'})
-    doAssert userInput == "Hello World!"
+    assert userInput == "Hello World!"
 
     var otherInput = "?!?Hello!?!"
     otherInput.removePrefix({'!', '?'})
-    doAssert otherInput == "Hello!?!"
+    assert otherInput == "Hello!?!"
 
   var start = 0
   while start < s.len and s[start] in chars: start += 1
@@ -1613,7 +1613,7 @@ func removePrefix*(s: var string, c: char) {.rtl,
   runnableExamples:
     var ident = "pControl"
     ident.removePrefix('p')
-    doAssert ident == "Control"
+    assert ident == "Control"
   removePrefix(s, chars = {c})
 
 func removePrefix*(s: var string, prefix: string) {.rtl,
@@ -1626,7 +1626,7 @@ func removePrefix*(s: var string, prefix: string) {.rtl,
   runnableExamples:
     var answers = "yesyes"
     answers.removePrefix("yes")
-    doAssert answers == "yes"
+    assert answers == "yes"
   if s.startsWith(prefix):
     s.delete(0, prefix.len - 1)
 
@@ -1640,13 +1640,13 @@ func removeSuffix*(s: var string, chars: set[char] = Newlines) {.rtl,
   runnableExamples:
     var userInput = "Hello World!*~\r\n"
     userInput.removeSuffix
-    doAssert userInput == "Hello World!*~"
+    assert userInput == "Hello World!*~"
     userInput.removeSuffix({'~', '*'})
-    doAssert userInput == "Hello World!"
+    assert userInput == "Hello World!"
 
     var otherInput = "Hello!?!"
     otherInput.removeSuffix({'!', '?'})
-    doAssert otherInput == "Hello"
+    assert otherInput == "Hello"
 
   if s.len == 0: return
   var last = s.high
@@ -1664,11 +1664,11 @@ func removeSuffix*(s: var string, c: char) {.rtl,
   runnableExamples:
     var table = "users"
     table.removeSuffix('s')
-    doAssert table == "user"
+    assert table == "user"
 
     var dots = "Trailing dots......."
     dots.removeSuffix('.')
-    doAssert dots == "Trailing dots"
+    assert dots == "Trailing dots"
 
   removeSuffix(s, chars = {c})
 
@@ -1682,7 +1682,7 @@ func removeSuffix*(s: var string, suffix: string) {.rtl,
   runnableExamples:
     var answers = "yeses"
     answers.removeSuffix("es")
-    doAssert answers == "yes"
+    assert answers == "yes"
   var newLen = s.len
   if s.endsWith(suffix):
     newLen -= len(suffix)
@@ -1707,15 +1707,15 @@ func addSep*(dest: var string, sep = ", ", startLen: Natural = 0) {.inline.} =
       addSep(arr, startLen = len("["))
       add(arr, $x)
     add(arr, "]")
-    doAssert arr == "[2, 3, 5, 7, 11]"
+    assert arr == "[2, 3, 5, 7, 11]"
 
   if dest.len > startLen: add(dest, sep)
 
 func allCharsInSet*(s: string, theSet: set[char]): bool =
   ## Returns true if every character of `s` is in the set `theSet`.
   runnableExamples:
-    doAssert allCharsInSet("aeea", {'a', 'e'}) == true
-    doAssert allCharsInSet("", {'a', 'e'}) == true
+    assert allCharsInSet("aeea", {'a', 'e'}) == true
+    assert allCharsInSet("", {'a', 'e'}) == true
 
   for c in items(s):
     if c notin theSet: return false
@@ -1727,10 +1727,10 @@ func abbrev*(s: string, possibilities: openArray[string]): int =
   ##
   ## Returns -1 if no item has been found and -2 if multiple items match.
   runnableExamples:
-    doAssert abbrev("fac", ["college", "faculty", "industry"]) == 1
-    doAssert abbrev("foo", ["college", "faculty", "industry"]) == -1 # Not found
-    doAssert abbrev("fac", ["college", "faculty", "faculties"]) == -2 # Ambiguous
-    doAssert abbrev("college", ["college", "colleges", "industry"]) == 0
+    assert abbrev("fac", ["college", "faculty", "industry"]) == 1
+    assert abbrev("foo", ["college", "faculty", "industry"]) == -1 # Not found
+    assert abbrev("fac", ["college", "faculty", "faculties"]) == -2 # Ambiguous
+    assert abbrev("college", ["college", "colleges", "industry"]) == 0
 
   result = -1 # none found
   for i in 0..possibilities.len-1:
@@ -1747,7 +1747,7 @@ func join*(a: openArray[string], sep: string = ""): string {.rtl,
     extern: "nsuJoinSep".} =
   ## Concatenates all strings in the container `a`, separating them with `sep`.
   runnableExamples:
-    doAssert join(["A", "B", "Conclusion"], " -> ") == "A -> B -> Conclusion"
+    assert join(["A", "B", "Conclusion"], " -> ") == "A -> B -> Conclusion"
 
   if len(a) > 0:
     var L = sep.len * (a.len-1)
@@ -1764,7 +1764,7 @@ func join*[T: not string](a: openArray[T], sep: string = ""): string {.rtl.} =
   ## Converts all elements in the container `a` to strings using `$`,
   ## and concatenates them with `sep`.
   runnableExamples:
-    doAssert join([1, 2, 3], " -> ") == "1 -> 2 -> 3"
+    assert join([1, 2, 3], " -> ") == "1 -> 2 -> 3"
 
   result = ""
   for i, x in a:
@@ -2008,7 +2008,7 @@ func countLines*(s: string): int {.rtl, extern: "nsuCountLines".} =
   ## See also:
   ## * `splitLines func<#splitLines,string>`_
   runnableExamples:
-    doAssert countLines("First line\l and second line.") == 2
+    assert countLines("First line\l and second line.") == 2
   result = 1
   var i = 0
   while i < s.len:
@@ -2170,7 +2170,7 @@ func insertSep*(s: string, sep = '_', digits = 3): string {.rtl,
   ## Even though the algorithm works with any string `s`, it is only useful
   ## if `s` contains a number.
   runnableExamples:
-    doAssert insertSep("1000000") == "1_000_000"
+    assert insertSep("1000000") == "1_000_000"
   result = newStringOfCap(s.len)
   let hasPrefix = isDigit(s[s.low]) == false
   var idx:int
@@ -2277,7 +2277,7 @@ func validIdentifier*(s: string): bool {.rtl, extern: "nsuValidIdentifier".} =
   ## A valid identifier starts with a character of the set `IdentStartChars`
   ## and is followed by any number of characters of the set `IdentChars`.
   runnableExamples:
-    doAssert "abc_def08".validIdentifier
+    assert "abc_def08".validIdentifier
 
   if s.len > 0 and s[0] in IdentStartChars:
     for i in 1..s.len-1:
@@ -2312,9 +2312,9 @@ func formatBiggestFloat*(f: BiggestFloat, format: FloatFormatMode = ffDefault,
   ## If `precision == -1`, it tries to format it nicely.
   runnableExamples:
     let x = 123.456
-    doAssert x.formatBiggestFloat() == "123.4560000000000"
-    doAssert x.formatBiggestFloat(ffDecimal, 4) == "123.4560"
-    doAssert x.formatBiggestFloat(ffScientific, 2) == "1.23e+02"
+    assert x.formatBiggestFloat() == "123.4560000000000"
+    assert x.formatBiggestFloat(ffDecimal, 4) == "123.4560"
+    assert x.formatBiggestFloat(ffScientific, 2) == "1.23e+02"
   when defined(js):
     var precision = precision
     if precision == -1:
@@ -2385,9 +2385,9 @@ func formatFloat*(f: float, format: FloatFormatMode = ffDefault,
   ## If `precision == -1`, it tries to format it nicely.
   runnableExamples:
     let x = 123.456
-    doAssert x.formatFloat() == "123.4560000000000"
-    doAssert x.formatFloat(ffDecimal, 4) == "123.4560"
-    doAssert x.formatFloat(ffScientific, 2) == "1.23e+02"
+    assert x.formatFloat() == "123.4560000000000"
+    assert x.formatFloat(ffDecimal, 4) == "123.4560"
+    assert x.formatFloat(ffScientific, 2) == "1.23e+02"
 
   result = formatBiggestFloat(f, format, precision, decimalSep)
 
@@ -2399,7 +2399,7 @@ func trimZeros*(x: var string; decimalSep = '.') =
   runnableExamples:
     var x = "123.456000000"
     x.trimZeros()
-    doAssert x == "123.456"
+    assert x == "123.456"
 
   let sPos = find(x, decimalSep)
   if sPos >= 0:
@@ -2431,12 +2431,12 @@ func formatSize*(bytes: int64,
   ## See also:
   ## * `strformat module<strformat.html>`_ for string interpolation and formatting
   runnableExamples:
-    doAssert formatSize((1'i64 shl 31) + (300'i64 shl 20)) == "2.293GiB"
-    doAssert formatSize((2.234*1024*1024).int) == "2.234MiB"
-    doAssert formatSize(4096, includeSpace = true) == "4 KiB"
-    doAssert formatSize(4096, prefix = bpColloquial, includeSpace = true) == "4 kB"
-    doAssert formatSize(4096) == "4KiB"
-    doAssert formatSize(5_378_934, prefix = bpColloquial, decimalSep = ',') == "5,13MB"
+    assert formatSize((1'i64 shl 31) + (300'i64 shl 20)) == "2.293GiB"
+    assert formatSize((2.234*1024*1024).int) == "2.234MiB"
+    assert formatSize(4096, includeSpace = true) == "4 KiB"
+    assert formatSize(4096, prefix = bpColloquial, includeSpace = true) == "4 kB"
+    assert formatSize(4096) == "4KiB"
+    assert formatSize(5_378_934, prefix = bpColloquial, decimalSep = ',') == "5,13MB"
 
   const iecPrefixes = ["", "Ki", "Mi", "Gi", "Ti", "Pi", "Ei", "Zi", "Yi"]
   const collPrefixes = ["", "k", "M", "G", "T", "P", "E", "Z", "Y"]
@@ -2767,17 +2767,17 @@ func strip*(s: string, leading = true, trailing = true,
   runnableExamples:
     let a = "  vhellov   "
     let b = strip(a)
-    doAssert b == "vhellov"
+    assert b == "vhellov"
 
-    doAssert a.strip(leading = false) == "  vhellov"
-    doAssert a.strip(trailing = false) == "vhellov   "
+    assert a.strip(leading = false) == "  vhellov"
+    assert a.strip(trailing = false) == "vhellov   "
 
-    doAssert b.strip(chars = {'v'}) == "hello"
-    doAssert b.strip(leading = false, chars = {'v'}) == "vhello"
+    assert b.strip(chars = {'v'}) == "hello"
+    assert b.strip(leading = false, chars = {'v'}) == "vhello"
 
     let c = "blaXbla"
-    doAssert c.strip(chars = {'b', 'a'}) == "laXbl"
-    doAssert c.strip(chars = {'b', 'a', 'l'}) == "X"
+    assert c.strip(chars = {'b', 'a'}) == "laXbl"
+    assert c.strip(chars = {'b', 'a', 'l'}) == "X"
 
   var
     first = 0
@@ -2796,10 +2796,10 @@ func stripLineEnd*(s: var string) =
   runnableExamples:
     var s = "foo\n\n"
     s.stripLineEnd
-    doAssert s == "foo\n"
+    assert s == "foo\n"
     s = "foo\r\n"
     s.stripLineEnd
-    doAssert s == "foo"
+    assert s == "foo"
 
   if s.len > 0:
     case s[^1]

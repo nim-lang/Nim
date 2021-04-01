@@ -277,7 +277,7 @@ iterator fields*[T: tuple|object](x: T): RootObj {.
   runnableExamples:
     var t = (1, "foo")
     for v in fields(t): v = default(typeof(v))
-    doAssert t == (0, "")
+    assert t == (0, "")
 
 iterator fields*[S:tuple|object, T:tuple|object](x: S, y: T): tuple[key: string, val: RootObj] {.
   magic: "Fields", noSideEffect.} =
@@ -290,7 +290,7 @@ iterator fields*[S:tuple|object, T:tuple|object](x: S, y: T): tuple[key: string,
     var t1 = (1, "foo")
     var t2 = default(typeof(t1))
     for v1, v2 in fields(t1, t2): v2 = v1
-    doAssert t1 == t2
+    assert t1 == t2
 
 iterator fieldPairs*[T: tuple|object](x: T): tuple[key: string, val: RootObj] {.
   magic: "FieldPairs", noSideEffect.} =
@@ -336,4 +336,4 @@ iterator fieldPairs*[S: tuple|object, T: tuple|object](x: S, y: T): tuple[
     var a2: Foo
     for name, v1, v2 in fieldPairs(a1, a2):
       when name == "x2": v2 = v1
-    doAssert a2 == Foo(x1: 0, x2: "abc")
+    assert a2 == Foo(x1: 0, x2: "abc")

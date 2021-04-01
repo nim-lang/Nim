@@ -103,7 +103,7 @@
 ##
 ##   proc printToken(kind: CmdLineKind, key: string, val: string) =
 ##     case kind
-##     of cmdEnd: doAssert(false)  # Doesn't happen with getopt()
+##     of cmdEnd: assert(false)  # Doesn't happen with getopt()
 ##     of cmdShortOption, cmdLongOption:
 ##       if val == "":
 ##         echo "Option: ", key
@@ -315,13 +315,13 @@ proc next*(p: var OptParser) {.rtl, extern: "npo$1".} =
   runnableExamples:
     var p = initOptParser("--left -r:2 file.txt")
     p.next()
-    doAssert p.kind == cmdLongOption and p.key == "left"
+    assert p.kind == cmdLongOption and p.key == "left"
     p.next()
-    doAssert p.kind == cmdShortOption and p.key == "r" and p.val == "2"
+    assert p.kind == cmdShortOption and p.key == "r" and p.val == "2"
     p.next()
-    doAssert p.kind == cmdArgument and p.key == "file.txt"
+    assert p.kind == cmdArgument and p.key == "file.txt"
     p.next()
-    doAssert p.kind == cmdEnd
+    assert p.kind == cmdEnd
 
   if p.idx >= p.cmds.len:
     p.kind = cmdEnd
@@ -393,7 +393,7 @@ when declared(quoteShellCommand):
     ##     if p.kind == cmdLongOption and p.key == "":  # Look for "--"
     ##       break
     ##     else: continue
-    ##   doAssert p.cmdLineRest == "foo.txt bar.txt"
+    ##   assert p.cmdLineRest == "foo.txt bar.txt"
     result = p.cmds[p.idx .. ^1].quoteShellCommand
 
 proc remainingArgs*(p: OptParser): seq[string] {.rtl, extern: "npo$1".} =
@@ -411,7 +411,7 @@ proc remainingArgs*(p: OptParser): seq[string] {.rtl, extern: "npo$1".} =
   ##     if p.kind == cmdLongOption and p.key == "":  # Look for "--"
   ##       break
   ##     else: continue
-  ##   doAssert p.remainingArgs == @["foo.txt", "bar.txt"]
+  ##   assert p.remainingArgs == @["foo.txt", "bar.txt"]
   result = @[]
   for i in p.idx..<p.cmds.len: result.add p.cmds[i]
 

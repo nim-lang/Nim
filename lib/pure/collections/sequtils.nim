@@ -52,13 +52,13 @@ runnableExamples:
         if j mod 6 != 0:
           j
 
-  doAssert foo == bar
-  doAssert foo == baz
-  doAssert foo == @[2, 4, 8, 10, 14, 16, 20]
+  assert foo == bar
+  assert foo == baz
+  assert foo == @[2, 4, 8, 10, 14, 16, 20]
 
-  doAssert foo.any(x => x > 17)
-  doAssert not bar.allIt(it < 20)
-  doAssert foo.foldl(a + b) == 74 # sum of all members
+  assert foo.any(x => x > 17)
+  assert not bar.allIt(it < 20)
+  assert foo.foldl(a + b) == 74 # sum of all members
 
 
 runnableExamples:
@@ -68,8 +68,8 @@ runnableExamples:
     vowels = @"aeiou"
     foo = "sequtils is an awesome module"
 
-  doAssert (vowels is seq[char]) and (vowels == @['a', 'e', 'i', 'o', 'u'])
-  doAssert foo.filterIt(it notin vowels).join == "sqtls s n wsm mdl"
+  assert (vowels is seq[char]) and (vowels == @['a', 'e', 'i', 'o', 'u'])
+  assert foo.filterIt(it notin vowels).join == "sqtls s n wsm mdl"
 
 ## See also
 ## ========
@@ -1057,8 +1057,8 @@ macro mapLiterals*(constructor, op: untyped;
   ## be used to map every array element to some target type:
   runnableExamples:
     let x = mapLiterals([0.1, 1.2, 2.3, 3.4], int)
-    doAssert x is array[4, int]
-    doAssert x == [int(0.1), int(1.2), int(2.3), int(3.4)]
+    assert x is array[4, int]
+    assert x == [int(0.1), int(1.2), int(2.3), int(3.4)]
   ## If `nested` is true (which is the default), the literals are replaced
   ## everywhere in the `constructor` AST, otherwise only the first level
   ## is considered:

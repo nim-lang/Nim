@@ -35,8 +35,8 @@ runnableExamples:
 
 ## ## Data URI Base64
 runnableExamples:
-  doAssert getDataUri("Hello World", "text/plain") == "data:text/plain;charset=utf-8;base64,SGVsbG8gV29ybGQ="
-  doAssert getDataUri("Nim", "text/plain") == "data:text/plain;charset=utf-8;base64,Tmlt"
+  assert getDataUri("Hello World", "text/plain") == "data:text/plain;charset=utf-8;base64,SGVsbG8gV29ybGQ="
+  assert getDataUri("Nim", "text/plain") == "data:text/plain;charset=utf-8;base64,Tmlt"
 
 
 import std/[strutils, parseutils, base64]
@@ -160,8 +160,8 @@ iterator decodeQuery*(data: string): tuple[key, value: string] =
   ## value, which was the behavior in Nim < 1.5.1
   runnableExamples:
     import std/sequtils
-    doAssert toSeq(decodeQuery("foo=1&bar=2=3")) == @[("foo", "1"), ("bar", "2=3")]
-    doAssert toSeq(decodeQuery("&a&=b&=&&")) == @[("", ""), ("a", ""), ("", "b"), ("", ""), ("", "")]
+    assert toSeq(decodeQuery("foo=1&bar=2=3")) == @[("foo", "1"), ("bar", "2=3")]
+    assert toSeq(decodeQuery("&a&=b&=&&")) == @[("", ""), ("a", ""), ("", "b"), ("", ""), ("", "")]
 
   proc parseData(data: string, i: int, field: var string, sep: char): int =
     result = i
@@ -552,7 +552,7 @@ proc getDataUri*(data, mime: string, encoding = "utf-8"): string {.since: (1, 3)
   ## * `mimetypes <mimetypes.html>`_ for `mime` argument
   ## * https://tools.ietf.org/html/rfc2397
   ## * https://en.wikipedia.org/wiki/Data_URI_scheme
-  runnableExamples: static: doAssert getDataUri("Nim", "text/plain") == "data:text/plain;charset=utf-8;base64,Tmlt"
+  runnableExamples: static: assert getDataUri("Nim", "text/plain") == "data:text/plain;charset=utf-8;base64,Tmlt"
   assert encoding.len > 0 and mime.len > 0 # Must *not* be URL-Safe, see RFC-2397
   result = "data:" & mime & ";charset=" & encoding & ";base64," & base64.encode(data)
 

@@ -27,13 +27,13 @@ macro with*(arg: typed; calls: varargs[untyped]): untyped =
     with x:
       add "abc"
       add "efg"
-    doAssert x == "yayabcefg"
+    assert x == "yayabcefg"
 
     var a = 44
     with a:
       += 4
       -= 5
-    doAssert a == 43
+    assert a == 43
 
   result = newNimNode(nnkStmtList, arg)
   underscoredCalls(result, calls, arg)

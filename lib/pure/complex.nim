@@ -399,7 +399,7 @@ func rect*[T](r, phi: T): Complex[T] =
 func `$`*(z: Complex): string =
   ## Returns `z`'s string representation as `"(re, im)"`.
   runnableExamples:
-    doAssert $complex(1.0, 2.0) == "(1.0, 2.0)"
+    assert $complex(1.0, 2.0) == "(1.0, 2.0)"
 
   result = "(" & $z.re & ", " & $z.im & ")"
 

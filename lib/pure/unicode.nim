@@ -36,7 +36,7 @@ proc runeLen*(s: string): int {.rtl, extern: "nuc$1".} =
   ## Returns the number of runes of the string ``s``.
   runnableExamples:
     let a = "añyóng"
-    doAssert a.runeLen == 6
+    assert a.runeLen == 6
     ## note: a.len == 8
 
   result = 0
@@ -58,8 +58,8 @@ proc runeLenAt*(s: string, i: Natural): int =
   ## * `fastRuneAt template <#fastRuneAt.t,string,int,untyped>`_
   runnableExamples:
     let a = "añyóng"
-    doAssert a.runeLenAt(0) == 1
-    doAssert a.runeLenAt(1) == 2
+    assert a.runeLenAt(0) == 1
+    assert a.runeLenAt(1) == 2
 
   if uint(s[i]) <= 127: result = 1
   elif uint(s[i]) shr 5 == 0b110: result = 2
@@ -158,9 +158,9 @@ proc runeAt*(s: string, i: Natural): Rune =
   ## * `fastRuneAt template <#fastRuneAt.t,string,int,untyped>`_
   runnableExamples:
     let a = "añyóng"
-    doAssert a.runeAt(1) == "ñ".runeAt(0)
-    doAssert a.runeAt(2) == "ñ".runeAt(1)
-    doAssert a.runeAt(3) == "y".runeAt(0)
+    assert a.runeAt(1) == "ñ".runeAt(0)
+    assert a.runeAt(2) == "ñ".runeAt(1)
+    assert a.runeAt(3) == "y".runeAt(0)
   fastRuneAt(s, i, result, false)
 
 proc validateUtf8*(s: string): int =
@@ -261,7 +261,7 @@ proc toUTF8*(c: Rune): string {.rtl, extern: "nuc$1".} =
   ## * `fastToUTF8Copy template <#fastToUTF8Copy.t,Rune,string,int>`_
   runnableExamples:
     let a = "añyóng"
-    doAssert a.runeAt(1).toUTF8 == "ñ"
+    assert a.runeAt(1).toUTF8 == "ñ"
 
   result = ""
   fastToUTF8Copy(c, result, 0, false)
@@ -272,7 +272,7 @@ proc add*(s: var string; c: Rune) =
     var s = "abc"
     let c = "ä".runeAt(0)
     s.add(c)
-    doAssert s == "abcä"
+    assert s == "abcä"
 
   let pos = s.len
   fastToUTF8Copy(c, s, pos, false)
@@ -294,7 +294,7 @@ proc `$`*(runes: seq[Rune]): string =
     let
       someString = "öÑ"
       someRunes = toRunes(someString)
-    doAssert $someRunes == someString
+    assert $someRunes == someString
 
   result = ""
   for rune in runes:
@@ -313,9 +313,9 @@ proc runeOffset*(s: string, pos: Natural, start: Natural = 0): int =
   ## * `runeReverseOffset proc <#runeReverseOffset,string,Positive>`_
   runnableExamples:
     let a = "añyóng"
-    doAssert a.runeOffset(1) == 1
-    doAssert a.runeOffset(3) == 4
-    doAssert a.runeOffset(4) == 6
+    assert a.runeOffset(1) == 1
+    assert a.runeOffset(3) == 4
+    assert a.runeOffset(4) == 6
 
   var
     i = 0
@@ -393,12 +393,12 @@ proc runeSubStr*(s: string, pos: int, len: int = int.high): string =
   ## possible string.
   runnableExamples:
     let s = "Hänsel  ««: 10,00€"
-    doAssert(runeSubStr(s, 0, 2) == "Hä")
-    doAssert(runeSubStr(s, 10, 1) == ":")
-    doAssert(runeSubStr(s, -6) == "10,00€")
-    doAssert(runeSubStr(s, 10) == ": 10,00€")
-    doAssert(runeSubStr(s, 12, 5) == "10,00")
-    doAssert(runeSubStr(s, -6, 3) == "10,")
+    assert(runeSubStr(s, 0, 2) == "Hä")
+    assert(runeSubStr(s, 10, 1) == ":")
+    assert(runeSubStr(s, -6) == "10,00€")
+    assert(runeSubStr(s, 10) == ": 10,00€")
+    assert(runeSubStr(s, 12, 5) == "10,00")
+    assert(runeSubStr(s, -6, 3) == "10,")
 
   if pos < 0:
     let (o, rl) = runeReverseOffset(s, -pos)
@@ -437,7 +437,7 @@ proc `<=%`*(a, b: Rune): bool =
     let
       a = "ú".runeAt(0)
       b = "ü".runeAt(0)
-    doAssert a <=% b
+    assert a <=% b
   return int(a) <=% int(b)
 
 proc `<%`*(a, b: Rune): bool =
@@ -446,7 +446,7 @@ proc `<%`*(a, b: Rune): bool =
     let
       a = "ú".runeAt(0)
       b = "ü".runeAt(0)
-    doAssert a <% b
+    assert a <% b
   return int(a) <% int(b)
 
 proc `==`*(a, b: Rune): bool =
@@ -633,7 +633,7 @@ proc isAlpha*(s: string): bool {.noSideEffect,
   ## Returns true if ``s`` contains all alphabetic runes.
   runnableExamples:
     let a = "añyóng"
-    doAssert a.isAlpha
+    assert a.isAlpha
   runeCheck(s, isAlpha)
 
 proc isSpace*(s: string): bool {.noSideEffect,
@@ -641,7 +641,7 @@ proc isSpace*(s: string): bool {.noSideEffect,
   ## Returns true if ``s`` contains all whitespace runes.
   runnableExamples:
     let a = "\t\l \v\r\f"
-    doAssert a.isSpace
+    assert a.isSpace
   runeCheck(s, isWhiteSpace)
 
 
@@ -661,14 +661,14 @@ proc toUpper*(s: string): string {.noSideEffect,
   rtl, extern: "nuc$1Str".} =
   ## Converts ``s`` into upper-case runes.
   runnableExamples:
-    doAssert toUpper("abγ") == "ABΓ"
+    assert toUpper("abγ") == "ABΓ"
   convertRune(s, toUpper)
 
 proc toLower*(s: string): string {.noSideEffect,
   rtl, extern: "nuc$1Str".} =
   ## Converts ``s`` into lower-case runes.
   runnableExamples:
-    doAssert toLower("ABΓ") == "abγ"
+    assert toLower("ABΓ") == "abγ"
   convertRune(s, toLower)
 
 proc swapCase*(s: string): string {.noSideEffect,
@@ -678,7 +678,7 @@ proc swapCase*(s: string): string {.noSideEffect,
   ## Returns a new string such that the cases of all runes
   ## are swapped if possible.
   runnableExamples:
-    doAssert swapCase("Αlpha Βeta Γamma") == "αLPHA βETA γAMMA"
+    assert swapCase("Αlpha Βeta Γamma") == "αLPHA βETA γAMMA"
 
   var
     i = 0
@@ -697,7 +697,7 @@ proc capitalize*(s: string): string {.noSideEffect,
   rtl, extern: "nuc$1".} =
   ## Converts the first character of ``s`` into an upper-case rune.
   runnableExamples:
-    doAssert capitalize("βeta") == "Βeta"
+    assert capitalize("βeta") == "Βeta"
 
   if len(s) == 0:
     return ""
@@ -721,7 +721,7 @@ proc translate*(s: string, replacements: proc(key: string): string): string {.
       of "two": "2"
       else: s
     let a = "one two three four"
-    doAssert a.translate(wordToNumber) == "1 2 three four"
+    assert a.translate(wordToNumber) == "1 2 three four"
 
   # Allocate memory for the new string based on the old one.
   # If the new string length is less than the old, no allocations
@@ -767,7 +767,7 @@ proc title*(s: string): string {.noSideEffect,
   ## Returns a new string such that the first character
   ## in each word inside ``s`` is capitalized.
   runnableExamples:
-    doAssert title("αlpha βeta γamma") == "Αlpha Βeta Γamma"
+    assert title("αlpha βeta γamma") == "Αlpha Βeta Γamma"
 
   var
     i = 0
@@ -816,7 +816,7 @@ proc toRunes*(s: string): seq[Rune] =
   ## * `$ proc <#$,Rune>`_ for a reverse operation
   runnableExamples:
     let a = toRunes("aáä")
-    doAssert a == @["a".runeAt(0), "á".runeAt(0), "ä".runeAt(0)]
+    assert a == @["a".runeAt(0), "á".runeAt(0), "ä".runeAt(0)]
 
   result = newSeq[Rune]()
   for r in s.runes:
@@ -879,9 +879,9 @@ proc graphemeLen*(s: string; i: Natural): Natural =
   ## including following combining code unit.
   runnableExamples:
     let a = "añyóng"
-    doAssert a.graphemeLen(1) == 2 ## ñ
-    doAssert a.graphemeLen(2) == 1
-    doAssert a.graphemeLen(4) == 2 ## ó
+    assert a.graphemeLen(1) == 2 ## ñ
+    assert a.graphemeLen(2) == 1
+    assert a.graphemeLen(4) == 2 ## ó
 
   var j = i.int
   var r, r2: Rune
@@ -909,8 +909,8 @@ proc size*(r: Rune): int {.noSideEffect.} =
   ## Returns the number of bytes the rune ``r`` takes.
   runnableExamples:
     let a = toRunes "aá"
-    doAssert size(a[0]) == 1
-    doAssert size(a[1]) == 2
+    assert size(a[0]) == 1
+    assert size(a[1]) == 2
 
   let v = r.uint32
   if v <= 0x007F'u32: result = 1
@@ -1024,9 +1024,9 @@ proc strip*(s: string, leading = true, trailing = true,
   ## If both are false, the string is returned unchanged.
   runnableExamples:
     let a = "\táñyóng   "
-    doAssert a.strip == "áñyóng"
-    doAssert a.strip(leading = false) == "\táñyóng"
-    doAssert a.strip(trailing = false) == "áñyóng   "
+    assert a.strip == "áñyóng"
+    assert a.strip(leading = false) == "\táñyóng"
+    assert a.strip(trailing = false) == "áñyóng   "
 
   var
     sI = 0          ## starting index into string ``s``
@@ -1077,7 +1077,7 @@ proc repeat*(c: Rune, count: Natural): string {.noSideEffect,
   ## The returned string will have a rune-length of ``count``.
   runnableExamples:
     let a = "ñ".runeAt(0)
-    doAssert a.repeat(5) == "ñññññ"
+    assert a.repeat(5) == "ñññññ"
 
   let s = $c
   result = newStringOfCap(count * s.len)

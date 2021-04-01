@@ -10,7 +10,7 @@
 ## This module implements a proc to determine the number of CPUs / cores.
 
 runnableExamples:
-  doAssert countProcessors() > 0
+  assert countProcessors() > 0
 
 
 include "system/inclrtl"

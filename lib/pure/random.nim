@@ -27,21 +27,21 @@ runnableExamples:
 
   # Pick a number in 0..100.
   let num = rand(100)
-  doAssert num in 0..100
+  assert num in 0..100
 
   # Roll a six-sided die.
   let roll = rand(1..6)
-  doAssert roll in 1..6
+  assert roll in 1..6
 
   # Pick a marble from a bag.
   let marbles = ["red", "blue", "green", "yellow", "purple"]
   let pick = sample(marbles)
-  doAssert pick in marbles
+  assert pick in marbles
 
   # Shuffle some cards.
   var cards = ["Ace", "King", "Queen", "Jack", "Ten"]
   shuffle(cards)
-  doAssert cards.len == 5
+  assert cards.len == 5
 
 ## These examples all use the default RNG. The
 ## `Rand type <#Rand>`_ represents the state of an RNG.
@@ -135,9 +135,9 @@ proc next*(r: var Rand): uint64 =
   ## * `skipRandomNumbers proc<#skipRandomNumbers,Rand>`_
   runnableExamples:
     var r = initRand(2019)
-    doAssert r.next() == 138_744_656_611_299'u64
-    doAssert r.next() == 979_810_537_855_049_344'u64
-    doAssert r.next() == 3_628_232_584_225_300_704'u64
+    assert r.next() == 138_744_656_611_299'u64
+    assert r.next() == 979_810_537_855_049_344'u64
+    assert r.next() == 3_628_232_584_225_300_704'u64
 
   let s0 = r.a0
   var s1 = r.a1
@@ -187,7 +187,7 @@ proc skipRandomNumbers*(s: var Rand) =
       r.skipRandomNumbers()
 
     for val in vals:
-      doAssert abs(^val - numbers * 5) / numbers < 0.1
+      assert abs(^val - numbers * 5) / numbers < 0.1
 
   when defined(js):
     const helper = [0xbeac0467u32, 0xd86b048bu32]
@@ -216,9 +216,9 @@ proc rand*(r: var Rand; max: Natural): int {.benign.} =
   ## * `rand proc<#rand,typedesc[T]>`_ that accepts an integer or range type
   runnableExamples:
     var r = initRand(123)
-    doAssert r.rand(100) == 0
-    doAssert r.rand(100) == 96
-    doAssert r.rand(100) == 66
+    assert r.rand(100) == 0
+    assert r.rand(100) == 96
+    assert r.rand(100) == 66
 
   if max == 0: return
   while true:
@@ -243,9 +243,9 @@ proc rand*(max: int): int {.benign.} =
   ## * `rand proc<#rand,typedesc[T]>`_ that accepts an integer or range type
   runnableExamples:
     randomize(123)
-    doAssert rand(100) == 0
-    doAssert rand(100) == 96
-    doAssert rand(100) == 66
+    assert rand(100) == 0
+    assert rand(100) == 96
+    assert rand(100) == 66
 
   rand(state, max)
 
@@ -305,9 +305,9 @@ proc rand*[T: Ordinal or SomeFloat](r: var Rand; x: HSlice[T, T]): T =
   ## * `rand proc<#rand,typedesc[T]>`_ that accepts an integer or range type
   runnableExamples:
     var r = initRand(345)
-    doAssert r.rand(1..6) == 4
-    doAssert r.rand(1..6) == 4
-    doAssert r.rand(1..6) == 6
+    assert r.rand(1..6) == 4
+    assert r.rand(1..6) == 4
+    assert r.rand(1..6) == 6
     let f = r.rand(-1.0 .. 1.0) # 0.8741183448756229
   assert x.a <= x.b
   when T is SomeFloat:
@@ -333,9 +333,9 @@ proc rand*[T: Ordinal or SomeFloat](x: HSlice[T, T]): T =
   ## * `rand proc<#rand,typedesc[T]>`_ that accepts an integer or range type
   runnableExamples:
     randomize(345)
-    doAssert rand(1..6) == 4
-    doAssert rand(1..6) == 4
-    doAssert rand(1..6) == 6
+    assert rand(1..6) == 4
+    assert rand(1..6) == 4
+    assert rand(1..6) == 6
 
   result = rand(state, x)
 
@@ -354,15 +354,15 @@ proc rand*[T: SomeInteger](t: typedesc[T]): T =
   ##   that accepts a slice
   runnableExamples:
     randomize(567)
-    doAssert rand(int8) == 55
-    doAssert rand(int8) == -42
-    doAssert rand(int8) == 43
-    doAssert rand(uint32) == 578980729'u32
-    doAssert rand(uint32) == 4052940463'u32
-    doAssert rand(uint32) == 2163872389'u32
-    doAssert rand(range[1..16]) == 11
-    doAssert rand(range[1..16]) == 4
-    doAssert rand(range[1..16]) == 16
+    assert rand(int8) == 55
+    assert rand(int8) == -42
+    assert rand(int8) == 43
+    assert rand(uint32) == 578980729'u32
+    assert rand(uint32) == 4052940463'u32
+    assert rand(uint32) == 2163872389'u32
+    assert rand(range[1..16]) == 11
+    assert rand(range[1..16]) == 4
+    assert rand(range[1..16]) == 16
 
   when T is range:
     result = rand(state, low(T)..high(T))
@@ -380,9 +380,9 @@ proc sample*[T](r: var Rand; s: set[T]): T =
   runnableExamples:
     var r = initRand(987)
     let s = {1, 3, 5, 7, 9}
-    doAssert r.sample(s) == 5
-    doAssert r.sample(s) == 7
-    doAssert r.sample(s) == 1
+    assert r.sample(s) == 5
+    assert r.sample(s) == 7
+    assert r.sample(s) == 1
 
   assert card(s) != 0
   var i = rand(r, card(s) - 1)
@@ -406,9 +406,9 @@ proc sample*[T](s: set[T]): T =
   runnableExamples:
     randomize(987)
     let s = {1, 3, 5, 7, 9}
-    doAssert sample(s) == 5
-    doAssert sample(s) == 7
-    doAssert sample(s) == 1
+    assert sample(s) == 5
+    assert sample(s) == 7
+    assert sample(s) == 1
 
   sample(state, s)
 
@@ -423,9 +423,9 @@ proc sample*[T](r: var Rand; a: openArray[T]): T =
   runnableExamples:
     let marbles = ["red", "blue", "green", "yellow", "purple"]
     var r = initRand(456)
-    doAssert r.sample(marbles) == "blue"
-    doAssert r.sample(marbles) == "yellow"
-    doAssert r.sample(marbles) == "red"
+    assert r.sample(marbles) == "blue"
+    assert r.sample(marbles) == "yellow"
+    assert r.sample(marbles) == "red"
 
   result = a[r.rand(a.low..a.high)]
 
@@ -445,9 +445,9 @@ proc sample*[T](a: openArray[T]): T =
   runnableExamples:
     let marbles = ["red", "blue", "green", "yellow", "purple"]
     randomize(456)
-    doAssert sample(marbles) == "blue"
-    doAssert sample(marbles) == "yellow"
-    doAssert sample(marbles) == "red"
+    assert sample(marbles) == "blue"
+    assert sample(marbles) == "yellow"
+    assert sample(marbles) == "red"
 
   result = a[rand(a.low..a.high)]
 
@@ -476,9 +476,9 @@ proc sample*[T, U](r: var Rand; a: openArray[T]; cdf: openArray[U]): T =
     let count = [1, 6, 8, 3, 4]
     let cdf = count.cumsummed
     var r = initRand(789)
-    doAssert r.sample(marbles, cdf) == "red"
-    doAssert r.sample(marbles, cdf) == "green"
-    doAssert r.sample(marbles, cdf) == "blue"
+    assert r.sample(marbles, cdf) == "red"
+    assert r.sample(marbles, cdf) == "green"
+    assert r.sample(marbles, cdf) == "blue"
 
   assert(cdf.len == a.len) # Two basic sanity checks.
   assert(float(cdf[^1]) > 0.0)
@@ -512,9 +512,9 @@ proc sample*[T, U](a: openArray[T]; cdf: openArray[U]): T =
     let count = [1, 6, 8, 3, 4]
     let cdf = count.cumsummed
     randomize(789)
-    doAssert sample(marbles, cdf) == "red"
-    doAssert sample(marbles, cdf) == "green"
-    doAssert sample(marbles, cdf) == "blue"
+    assert sample(marbles, cdf) == "red"
+    assert sample(marbles, cdf) == "green"
+    assert sample(marbles, cdf) == "blue"
 
   state.sample(a, cdf)
 
@@ -600,7 +600,7 @@ proc shuffle*[T](r: var Rand; x: var openArray[T]) =
     var cards = ["Ace", "King", "Queen", "Jack", "Ten"]
     var r = initRand(678)
     r.shuffle(cards)
-    doAssert cards == ["King", "Ace", "Queen", "Ten", "Jack"]
+    assert cards == ["King", "Ace", "Queen", "Ten", "Jack"]
 
   for i in countdown(x.high, 1):
     let j = r.rand(i)
@@ -620,7 +620,7 @@ proc shuffle*[T](x: var openArray[T]) =
     var cards = ["Ace", "King", "Queen", "Jack", "Ten"]
     randomize(678)
     shuffle(cards)
-    doAssert cards == ["King", "Ace", "Queen", "Ten", "Jack"]
+    assert cards == ["King", "Ace", "Queen", "Ten", "Jack"]
 
   shuffle(state, x)
 

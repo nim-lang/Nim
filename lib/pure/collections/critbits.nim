@@ -16,23 +16,23 @@ runnableExamples:
   from std/sequtils import toSeq
 
   var critbitAsSet: CritBitTree[void] = ["kitten", "puppy"].toCritBitTree
-  doAssert critbitAsSet.len == 2
+  assert critbitAsSet.len == 2
   critbitAsSet.incl("")
-  doAssert "" in critbitAsSet
+  assert "" in critbitAsSet
   critbitAsSet.excl("")
-  doAssert "" notin critbitAsSet
-  doAssert toSeq(critbitAsSet.items) == @["kitten", "puppy"]
+  assert "" notin critbitAsSet
+  assert toSeq(critbitAsSet.items) == @["kitten", "puppy"]
   let same = ["puppy", "kitten", "puppy"].toCritBitTree
-  doAssert toSeq(same.keys) == toSeq(critbitAsSet.keys)
+  assert toSeq(same.keys) == toSeq(critbitAsSet.keys)
 
   var critbitAsDict: CritBitTree[int] = {"key1": 42}.toCritBitTree
-  doAssert critbitAsDict.len == 1
+  assert critbitAsDict.len == 1
   critbitAsDict["key2"] = 0
-  doAssert "key2" in critbitAsDict
-  doAssert critbitAsDict["key2"] == 0
+  assert "key2" in critbitAsDict
+  assert critbitAsDict["key2"] == 0
   critbitAsDict.excl("key1")
-  doAssert "key1" notin critbitAsDict
-  doAssert toSeq(critbitAsDict.pairs) == @[("key2", 0)]
+  assert "key1" notin critbitAsDict
+  assert toSeq(critbitAsDict.pairs) == @[("key2", 0)]
 
 import std/private/since
 
@@ -59,7 +59,7 @@ func len*[T](c: CritBitTree[T]): int {.inline.} =
   ## Returns the number of elements in `c` in O(1).
   runnableExamples:
     let c = ["key1", "key2"].toCritBitTree
-    doAssert c.len == 2
+    assert c.len == 2
 
   result = c.count
 
@@ -78,7 +78,7 @@ func contains*[T](c: CritBitTree[T], key: string): bool {.inline.} =
   runnableExamples:
     var c: CritBitTree[void]
     incl(c, "key")
-    doAssert c.contains("key")
+    assert c.contains("key")
 
   result = rawGet(c, key) != nil
 
@@ -171,7 +171,7 @@ proc excl*[T](c: var CritBitTree[T], key: string) =
     var c: CritBitTree[void]
     incl(c, "key")
     excl(c, "key")
-    doAssert not c.contains("key")
+    assert not c.contains("key")
 
   discard exclImpl(c, key)
 
@@ -186,12 +186,12 @@ proc missingOrExcl*[T](c: var CritBitTree[T], key: string): bool =
   runnableExamples:
     block:
       var c: CritBitTree[void]
-      doAssert c.missingOrExcl("key")
+      assert c.missingOrExcl("key")
     block:
       var c: CritBitTree[void]
       incl(c, "key")
-      doAssert not c.missingOrExcl("key")
-      doAssert not c.contains("key")
+      assert not c.missingOrExcl("key")
+      assert not c.contains("key")
 
   let oldCount = c.count
   discard exclImpl(c, key)
@@ -209,13 +209,13 @@ proc containsOrIncl*[T](c: var CritBitTree[T], key: string, val: T): bool =
   runnableExamples:
     block:
       var c: CritBitTree[int]
-      doAssert not c.containsOrIncl("key", 42)
-      doAssert c.contains("key")
+      assert not c.containsOrIncl("key", 42)
+      assert c.contains("key")
     block:
       var c: CritBitTree[int]
       incl(c, "key", 21)
-      doAssert c.containsOrIncl("key", 42)
-      doAssert c["key"] == 21
+      assert c.containsOrIncl("key", 42)
+      assert c["key"] == 21
 
   let oldCount = c.count
   var n = rawInsert(c, key)
@@ -235,12 +235,12 @@ proc containsOrIncl*(c: var CritBitTree[void], key: string): bool =
   runnableExamples:
     block:
       var c: CritBitTree[void]
-      doAssert not c.containsOrIncl("key")
-      doAssert c.contains("key")
+      assert not c.containsOrIncl("key")
+      assert c.contains("key")
     block:
       var c: CritBitTree[void]
       incl(c, "key")
-      doAssert c.containsOrIncl("key")
+      assert c.containsOrIncl("key")
 
   let oldCount = c.count
   discard rawInsert(c, key)
@@ -252,7 +252,7 @@ proc inc*(c: var CritBitTree[int]; key: string, val: int = 1) =
     var c: CritBitTree[int]
     c["key"] = 1
     inc(c, "key")
-    doAssert c["key"] == 2
+    assert c["key"] == 2
 
   var n = rawInsert(c, key)
   inc n.val, val
@@ -266,7 +266,7 @@ proc incl*(c: var CritBitTree[void], key: string) =
   runnableExamples:
     var c: CritBitTree[void]
     incl(c, "key")
-    doAssert c.hasKey("key")
+    assert c.hasKey("key")
 
   discard rawInsert(c, key)
 
@@ -279,7 +279,7 @@ proc incl*[T](c: var CritBitTree[T], key: string, val: T) =
   runnableExamples:
     var c: CritBitTree[int]
     incl(c, "key", 42)
-    doAssert c["key"] == 42
+    assert c["key"] == 42
 
   var n = rawInsert(c, key)
   n.val = val
@@ -338,7 +338,7 @@ iterator keys*[T](c: CritBitTree[T]): string =
     from std/sequtils import toSeq
 
     let c = {"key1": 1, "key2": 2}.toCritBitTree
-    doAssert toSeq(c.keys) == @["key1", "key2"]
+    assert toSeq(c.keys) == @["key1", "key2"]
 
   for x in leaves(c.root): yield x.key
 
@@ -352,7 +352,7 @@ iterator values*[T](c: CritBitTree[T]): T =
     from std/sequtils import toSeq
 
     let c = {"key1": 1, "key2": 2}.toCritBitTree
-    doAssert toSeq(c.values) == @[1, 2]
+    assert toSeq(c.values) == @[1, 2]
 
   for x in leaves(c.root): yield x.val
 
@@ -378,7 +378,7 @@ iterator pairs*[T](c: CritBitTree[T]): tuple[key: string, val: T] =
     from std/sequtils import toSeq
 
     let c = {"key1": 1, "key2": 2}.toCritBitTree
-    doAssert toSeq(c.pairs) == @[(key: "key1", val: 1), (key: "key2", val: 2)]
+    assert toSeq(c.pairs) == @[(key: "key1", val: 1), (key: "key2", val: 2)]
 
   for x in leaves(c.root): yield (x.key, x.val)
 
@@ -410,7 +410,7 @@ iterator keysWithPrefix*[T](c: CritBitTree[T], prefix: string): string =
     from std/sequtils import toSeq
 
     let c = {"key1": 42, "key2": 43}.toCritBitTree
-    doAssert toSeq(c.keysWithPrefix("key")) == @["key1", "key2"]
+    assert toSeq(c.keysWithPrefix("key")) == @["key1", "key2"]
 
   let top = allprefixedAux(c, prefix)
   for x in leaves(top): yield x.key
@@ -425,7 +425,7 @@ iterator valuesWithPrefix*[T](c: CritBitTree[T], prefix: string): T =
     from std/sequtils import toSeq
 
     let c = {"key1": 42, "key2": 43}.toCritBitTree
-    doAssert toSeq(c.valuesWithPrefix("key")) == @[42, 43]
+    assert toSeq(c.valuesWithPrefix("key")) == @[42, 43]
 
   let top = allprefixedAux(c, prefix)
   for x in leaves(top): yield x.val
@@ -454,7 +454,7 @@ iterator pairsWithPrefix*[T](c: CritBitTree[T],
     from std/sequtils import toSeq
 
     let c = {"key1": 42, "key2": 43}.toCritBitTree
-    doAssert toSeq(c.pairsWithPrefix("key")) == @[(key: "key1", val: 42), (key: "key2", val: 43)]
+    assert toSeq(c.pairsWithPrefix("key")) == @[(key: "key1", val: 42), (key: "key2", val: 43)]
 
   let top = allprefixedAux(c, prefix)
   for x in leaves(top): yield (x.key, x.val)
@@ -472,10 +472,10 @@ iterator mpairsWithPrefix*[T](c: var CritBitTree[T],
 func `$`*[T](c: CritBitTree[T]): string =
   ## Turns `c` into a string representation.
   runnableExamples:
-    doAssert $CritBitTree[int].default == "{:}"
-    doAssert $toCritBitTree({"key1": 1, "key2": 2}) == """{"key1": 1, "key2": 2}"""
-    doAssert $CritBitTree[void].default == "{}"
-    doAssert $toCritBitTree(["key1", "key2"]) == """{"key1", "key2"}"""
+    assert $CritBitTree[int].default == "{:}"
+    assert $toCritBitTree({"key1": 1, "key2": 2}) == """{"key1": 1, "key2": 2}"""
+    assert $CritBitTree[void].default == "{}"
+    assert $toCritBitTree(["key1", "key2"]) == """{"key1", "key2"}"""
 
   if c.len == 0:
     when T is void:
@@ -507,11 +507,11 @@ func commonPrefixLen*[T](c: CritBitTree[T]): int {.inline, since((1, 3)).} =
   ## If `c` is empty, returns 0.
   runnableExamples:
     var c: CritBitTree[void]
-    doAssert c.commonPrefixLen == 0
+    assert c.commonPrefixLen == 0
     incl(c, "key1")
-    doAssert c.commonPrefixLen == 4
+    assert c.commonPrefixLen == 4
     incl(c, "key2")
-    doAssert c.commonPrefixLen == 3
+    assert c.commonPrefixLen == 3
 
   if c.root != nil:
     if c.root.isLeaf: len(c.root.key)
@@ -521,14 +521,14 @@ func commonPrefixLen*[T](c: CritBitTree[T]): int {.inline, since((1, 3)).} =
 proc toCritBitTree*[T](pairs: openArray[(string, T)]): CritBitTree[T] {.since: (1, 3).} =
   ## Creates a new `CritBitTree` that contains the given `pairs`.
   runnableExamples:
-    doAssert {"a": "0", "b": "1", "c": "2"}.toCritBitTree is CritBitTree[string]
-    doAssert {"a": 0, "b": 1, "c": 2}.toCritBitTree is CritBitTree[int]
+    assert {"a": "0", "b": "1", "c": "2"}.toCritBitTree is CritBitTree[string]
+    assert {"a": 0, "b": 1, "c": 2}.toCritBitTree is CritBitTree[int]
 
   for item in pairs: result.incl item[0], item[1]
 
 proc toCritBitTree*(items: openArray[string]): CritBitTree[void] {.since: (1, 3).} =
   ## Creates a new `CritBitTree` that contains the given `items`.
   runnableExamples:
-    doAssert ["a", "b", "c"].toCritBitTree is CritBitTree[void]
+    assert ["a", "b", "c"].toCritBitTree is CritBitTree[void]
 
   for item in items: result.incl item

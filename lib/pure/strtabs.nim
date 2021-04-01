@@ -15,9 +15,9 @@ runnableExamples:
   var t = newStringTable()
   t["name"] = "John"
   t["city"] = "Monaco"
-  doAssert t.len == 2
-  doAssert t.hasKey "name"
-  doAssert "name" in t
+  assert t.len == 2
+  assert t.hasKey "name"
+  assert "name" in t
 
 ## String tables can be created from a table constructor:
 runnableExamples:
@@ -31,15 +31,15 @@ runnableExamples:
   x["first_name"] = "John"
   x["LastName"] = "Doe"
 
-  doAssert x["firstName"] == "John"
-  doAssert x["last_name"] == "Doe"
+  assert x["firstName"] == "John"
+  assert x["last_name"] == "Doe"
 
 ## An efficient string substitution operator
 ## `% <#%25,string,StringTableRef,set[FormatFlag]>`_ for the string table
 ## is also provided.
 runnableExamples:
   var t = {"name": "John", "city": "Monaco"}.newStringTable
-  doAssert "${name} lives in ${city}" % t == "John lives in Monaco"
+  assert "${name} lives in ${city}" % t == "John lives in Monaco"
 
 ## **See also:**
 ## * `tables module <tables.html>`_ for general hash tables
@@ -164,7 +164,7 @@ proc `[]`*(t: StringTableRef, key: string): var string {.
   ##   is in the table
   runnableExamples:
     var t = {"name": "John", "city": "Monaco"}.newStringTable
-    doAssert t["name"] == "John"
+    assert t["name"] == "John"
     doAssertRaises(KeyError):
       echo t["occupation"]
   get(t, key)
@@ -184,10 +184,10 @@ proc getOrDefault*(t: StringTableRef; key: string,
   ##   (key, value) pair in the table
   runnableExamples:
     var t = {"name": "John", "city": "Monaco"}.newStringTable
-    doAssert t.getOrDefault("name") == "John"
-    doAssert t.getOrDefault("occupation") == ""
-    doAssert t.getOrDefault("occupation", "teacher") == "teacher"
-    doAssert t.getOrDefault("name", "Paul") == "John"
+    assert t.getOrDefault("name") == "John"
+    assert t.getOrDefault("occupation") == ""
+    assert t.getOrDefault("occupation", "teacher") == "teacher"
+    assert t.getOrDefault("name", "Paul") == "John"
 
   var index = rawGet(t, key)
   if index >= 0: result = t.data[index].val
@@ -202,8 +202,8 @@ proc hasKey*(t: StringTableRef, key: string): bool {.rtlFunc,
   ## * `contains proc <#contains,StringTableRef,string>`_
   runnableExamples:
     var t = {"name": "John", "city": "Monaco"}.newStringTable
-    doAssert t.hasKey("name")
-    doAssert not t.hasKey("occupation")
+    assert t.hasKey("name")
+    assert not t.hasKey("occupation")
   result = rawGet(t, key) >= 0
 
 proc contains*(t: StringTableRef, key: string): bool =
@@ -211,8 +211,8 @@ proc contains*(t: StringTableRef, key: string): bool =
   ## the `in` operator.
   runnableExamples:
     var t = {"name": "John", "city": "Monaco"}.newStringTable
-    doAssert "name" in t
-    doAssert "occupation" notin t
+    assert "name" in t
+    assert "occupation" notin t
   return hasKey(t, key)
 
 proc rawInsert(t: StringTableRef, data: var KeyValuePairSeq, key, val: string) =
@@ -240,7 +240,7 @@ proc `[]=`*(t: StringTableRef, key, val: string) {.
   runnableExamples:
     var t = {"name": "John", "city": "Monaco"}.newStringTable
     t["occupation"] = "teacher"
-    doAssert t.hasKey("occupation")
+    assert t.hasKey("occupation")
 
   var index = rawGet(t, key)
   if index >= 0:
@@ -318,9 +318,9 @@ proc clear*(s: StringTableRef, mode: StringTableMode) {.
   runnableExamples:
     var t = {"name": "John", "city": "Monaco"}.newStringTable
     clear(t, modeCaseSensitive)
-    doAssert len(t) == 0
-    doAssert "name" notin t
-    doAssert "city" notin t
+    assert len(t) == 0
+    assert "name" notin t
+    assert "city" notin t
   s.mode = mode
   s.counter = 0
   s.data.setLen(startSize)
@@ -342,9 +342,9 @@ proc del*(t: StringTableRef, key: string) =
   runnableExamples:
     var t = {"name": "John", "city": "Monaco"}.newStringTable
     t.del("name")
-    doAssert len(t) == 1
-    doAssert "name" notin t
-    doAssert "city" in t
+    assert len(t) == 1
+    assert "name" notin t
+    assert "city" in t
 
   # Impl adapted from `tableimpl.delImplIdx`
   var i = rawGet(t, key)
@@ -391,7 +391,7 @@ proc `%`*(f: string, t: StringTableRef, flags: set[FormatFlag] = {}): string {.
   ## The `%` operator for string tables.
   runnableExamples:
     var t = {"name": "John", "city": "Monaco"}.newStringTable
-    doAssert "${name} lives in ${city}" % t == "John lives in Monaco"
+    assert "${name} lives in ${city}" % t == "John lives in Monaco"
 
   const
     PatternChars = {'a'..'z', 'A'..'Z', '0'..'9', '_', '\x80'..'\xFF'}

@@ -1512,7 +1512,7 @@ proc rstToHtml*(s: string, options: RstParseOptions,
 
 proc rstToLatex*(rstSource: string; options: RstParseOptions): string {.inline, since: (1, 3).} =
   ## Convenience proc for `renderRstToOut` and `initRstGenerator`.
-  runnableExamples: doAssert rstToLatex("*Hello* **world**", {}) == """\emph{Hello} \textbf{world}"""
+  runnableExamples: assert rstToLatex("*Hello* **world**", {}) == """\emph{Hello} \textbf{world}"""
   if rstSource.len == 0: return
   var option: bool
   var rstGenera: RstGenerator

@@ -13,10 +13,10 @@ template retryCall*(maxRetry = 3, backoffDuration = 1.0, call: untyped): bool =
   ## duraton of `backoffDuration` seconds.
   ## This is in particular useful for network commands that can fail.
   runnableExamples:
-    doAssert not retryCall(maxRetry = 2, backoffDuration = 0.1, false)
+    assert not retryCall(maxRetry = 2, backoffDuration = 0.1, false)
     var i = 0
-    doAssert: retryCall(maxRetry = 3, backoffDuration = 0.1, (i.inc; i >= 3))
-    doAssert retryCall(call = true)
+    assert: retryCall(maxRetry = 3, backoffDuration = 0.1, (i.inc; i >= 3))
+    assert retryCall(call = true)
   var result = false
   var t = backoffDuration
   for i in 0..<maxRetry:

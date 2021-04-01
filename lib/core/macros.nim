@@ -312,9 +312,9 @@ proc getTypeInst*(n: NimNode): NimNode {.magic: "NGetType", noSideEffect.} =
     var c: Vec[4, float32]
     macro dumpTypeInst(x: typed): untyped =
       newLit(x.getTypeInst.repr)
-    doAssert(dumpTypeInst(a) == "Vec4f")
-    doAssert(dumpTypeInst(b) == "Vec4[float32]")
-    doAssert(dumpTypeInst(c) == "Vec[4, float32]")
+    assert(dumpTypeInst(a) == "Vec4f")
+    assert(dumpTypeInst(b) == "Vec4[float32]")
+    assert(dumpTypeInst(c) == "Vec[4, float32]")
 
 proc getTypeInst*(n: typedesc): NimNode {.magic: "NGetType", noSideEffect.}
   ## Version of `getTypeInst` which takes a `typedesc`.
@@ -339,9 +339,9 @@ proc getTypeImpl*(n: NimNode): NimNode {.magic: "NGetType", noSideEffect.} =
 object
   arr: array[0 .. 3, float32]
 """
-    doAssert(dumpTypeImpl(a) == t)
-    doAssert(dumpTypeImpl(b) == t)
-    doAssert(dumpTypeImpl(c) == t)
+    assert(dumpTypeImpl(a) == t)
+    assert(dumpTypeImpl(b) == t)
+    assert(dumpTypeImpl(c) == t)
 
 proc signatureHash*(n: NimNode): string {.magic: "NSigHash", noSideEffect.}
   ## Returns a stable identifier derived from the signature of a symbol.
@@ -592,7 +592,7 @@ proc quote*(bl: typed, op = "``"): NimNode {.magic: "QuoteAst", noSideEffect.} =
         block:
           let a = Foo()
     bar()
-    doAssert destroyCalled
+    assert destroyCalled
 
   runnableExamples:
     # custom `op`
@@ -603,17 +603,17 @@ proc quote*(bl: typed, op = "``"): NimNode {.magic: "QuoteAst", noSideEffect.} =
         type Foo = object
         let `@ident` = 0 # custom op interpolated symbols need quoted (``)
         proc `=destroy`(a: var Foo) =
-          doAssert @x == 1.5
-          doAssert compiles(@x == 1.5)
+          assert @x == 1.5
+          assert compiles(@x == 1.5)
           let b1 = @[1,2]
           let b2 = @@[1,2]
-          doAssert $b1 == "[1, 2]"
-          doAssert $b2 == "@[1, 2]"
+          assert $b1 == "[1, 2]"
+          assert $b2 == "@[1, 2]"
           destroyCalled = true
         block:
           let a = Foo()
     bar(someident)
-    doAssert destroyCalled
+    assert destroyCalled
 
     proc `&%`(x: int): int = 1
     proc `&%`(x, y: int): int = 2
@@ -622,9 +622,9 @@ proc quote*(bl: typed, op = "``"): NimNode {.magic: "QuoteAst", noSideEffect.} =
       var x = 3
       result = quote("&%") do:
         var y = &%x # quoting operator
-        doAssert &%&%y == 1 # unary operator => need to escape
-        doAssert y &% y == 2 # binary operator => no need to escape
-        doAssert y == 3
+        assert &%&%y == 1 # unary operator => need to escape
+        assert y &% y == 2 # binary operator => no need to escape
+        assert y == 3
     bar2()
 
 proc expectKind*(n: NimNode, k: NimNodeKind) =

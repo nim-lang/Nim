@@ -95,14 +95,14 @@ macro `??.`*(a: untyped): Option =
       x2: int
     # `?.` can't distinguish between a valid vs invalid default value, but `??.` can:
     var f1 = Foo(x1: int.new, x2: 2)
-    doAssert (??.f1.x1[]).get == 0 # not enough to tell when the chain was valid.
-    doAssert (??.f1.x1[]).isSome # a nil didn't occur in the chain
-    doAssert (??.f1.x2).get == 2
+    assert (??.f1.x1[]).get == 0 # not enough to tell when the chain was valid.
+    assert (??.f1.x1[]).isSome # a nil didn't occur in the chain
+    assert (??.f1.x2).get == 2
 
     var f2: Foo
-    doAssert not (??.f2.x1[]).isSome # f2 was nil
+    assert not (??.f2.x1[]).isSome # f2 was nil
     from std/options import UnpackDefect
     doAssertRaises(UnpackDefect): discard (??.f2.x1[]).get
-    doAssert ?.f2.x1[] == 0 # in contrast, this returns default(int)
+    assert ?.f2.x1[] == 0 # in contrast, this returns default(int)
 
   result = replace(a)

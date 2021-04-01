@@ -35,17 +35,17 @@ proc name*(t: typedesc): string {.magic: "TypeTrait".} =
   ##
   ## Alias for `system.\`$\`(t) <dollars.html#$,typedesc>`_ since Nim v0.20.
   runnableExamples:
-    doAssert name(int) == "int"
-    doAssert name(seq[string]) == "seq[string]"
+    assert name(int) == "int"
+    assert name(seq[string]) == "seq[string]"
 
 proc arity*(t: typedesc): int {.magic: "TypeTrait".} =
   ## Returns the arity of the given type. This is the number of "type"
   ## components or the number of generic parameters a given type `t` has.
   runnableExamples:
-    doAssert arity(int) == 0
-    doAssert arity(seq[string]) == 1
-    doAssert arity(array[3, int]) == 2
-    doAssert arity((int, int, float, string)) == 4
+    assert arity(int) == 0
+    assert arity(seq[string]) == 1
+    assert arity(array[3, int]) == 2
+    assert arity((int, int, float, string)) == 4
 
 proc genericHead*(t: typedesc): typedesc {.magic: "TypeTrait".} =
   ## Accepts an instantiated generic type and returns its
@@ -61,21 +61,21 @@ proc genericHead*(t: typedesc): typedesc {.magic: "TypeTrait".} =
       FooInst = Foo[int]
       Foo2 = genericHead(FooInst)
 
-    doAssert Foo2 is Foo and Foo is Foo2
-    doAssert genericHead(Foo[seq[string]]) is Foo
-    doAssert not compiles(genericHead(int))
+    assert Foo2 is Foo and Foo is Foo2
+    assert genericHead(Foo[seq[string]]) is Foo
+    assert not compiles(genericHead(int))
 
     type Generic = concept f
       type _ = genericHead(typeof(f))
 
     proc bar(a: Generic): typeof(a) = a
 
-    doAssert bar(Foo[string].default) == Foo[string]()
-    doAssert not compiles bar(string.default)
+    assert bar(Foo[string].default) == Foo[string]()
+    assert not compiles bar(string.default)
 
     when false: # these don't work yet
-      doAssert genericHead(Foo[int])[float] is Foo[float]
-      doAssert seq[int].genericHead is seq
+      assert genericHead(Foo[int])[float] is Foo[float]
+      assert seq[int].genericHead is seq
 
 proc stripGenericParams*(t: typedesc): typedesc {.magic: "TypeTrait".} =
   ## This trait is similar to `genericHead <#genericHead,typedesc>`_, but
@@ -84,8 +84,8 @@ proc stripGenericParams*(t: typedesc): typedesc {.magic: "TypeTrait".} =
   runnableExamples:
     type Foo[T] = object
 
-    doAssert stripGenericParams(Foo[string]) is Foo
-    doAssert stripGenericParams(int) is int
+    assert stripGenericParams(Foo[string]) is Foo
+    assert stripGenericParams(int) is int
 
 proc supportsCopyMem*(t: typedesc): bool {.magic: "TypeTrait".}
   ## This trait returns true if the type `t` is safe to use for
@@ -96,9 +96,9 @@ proc supportsCopyMem*(t: typedesc): bool {.magic: "TypeTrait".}
 proc isNamedTuple*(T: typedesc): bool {.magic: "TypeTrait".} =
   ## Returns true for named tuples, false for any other type.
   runnableExamples:
-    doAssert not isNamedTuple(int)
-    doAssert not isNamedTuple((string, int))
-    doAssert isNamedTuple(tuple[name: string, age: int])
+    assert not isNamedTuple(int)
+    assert not isNamedTuple((string, int))
+    assert isNamedTuple(tuple[name: string, age: int])
 
 proc distinctBase*(T: typedesc): typedesc {.magic: "TypeTrait".} =
   ## Returns the base type for distinct types, or the type itself otherwise.
@@ -107,16 +107,16 @@ proc distinctBase*(T: typedesc): typedesc {.magic: "TypeTrait".} =
   ## * `distinctBase template <#distinctBase.t,T>`_
   runnableExamples:
     type MyInt = distinct int
-    doAssert distinctBase(MyInt) is int
-    doAssert distinctBase(int) is int
+    assert distinctBase(MyInt) is int
+    assert distinctBase(int) is int
 
 since (1, 1):
   template distinctBase*[T](a: T): untyped =
     ## Overload of `distinctBase <#distinctBase,typedesc>`_ for values.
     runnableExamples:
       type MyInt = distinct int
-      doAssert 12.MyInt.distinctBase == 12
-      doAssert 12.distinctBase == 12
+      assert 12.MyInt.distinctBase == 12
+      assert 12.distinctBase == 12
     when T is distinct:
       distinctBase(typeof(a))(a)
     else: # avoids hint ConvFromXtoItselfNotNeeded
@@ -128,8 +128,8 @@ since (1, 1):
     ## **See also:**
     ## * `tupleLen template <#tupleLen.t>`_
     runnableExamples:
-      doAssert tupleLen((int, int, float, string)) == 4
-      doAssert tupleLen(tuple[name: string, age: int]) == 2
+      assert tupleLen((int, int, float, string)) == 4
+      assert tupleLen(tuple[name: string, age: int]) == 2
 
   template tupleLen*(t: tuple): int =
     ## Returns the number of elements of the tuple `t`.
@@ -137,7 +137,7 @@ since (1, 1):
     ## **See also:**
     ## * `tupleLen proc <#tupleLen,typedesc>`_
     runnableExamples:
-      doAssert tupleLen((1, 2)) == 2
+      assert tupleLen((1, 2)) == 2
 
     tupleLen(typeof(t))
 
@@ -145,7 +145,7 @@ since (1, 1):
     ## Returns the `i`-th element of `T`.
     # Note: `[]` currently gives: `Error: no generic parameters allowed for ...`
     runnableExamples:
-      doAssert get((int, int, float, string), 2) is float
+      assert get((int, int, float, string), 2) is float
 
     typeof(default(T)[i])
 
@@ -161,9 +161,9 @@ since (1, 3, 5):
         for i in 0 ..< n:
           yield i
 
-      doAssert elementType(@[1,2]) is int
-      doAssert elementType("asdf") is char
-      doAssert elementType(myiter(3)) is int
+      assert elementType(@[1,2]) is int
+      assert elementType("asdf") is char
+      assert elementType(myiter(3)) is int
 
     typeof(block: (for ai in a: ai))
 
@@ -176,7 +176,7 @@ macro enumLen*(T: typedesc[enum]): int =
       fooItem1
       fooItem2
 
-    doAssert Foo.enumLen == 2
+    assert Foo.enumLen == 2
 
   let bracketExpr = getType(T)
   expectKind(bracketExpr, nnkBracketExpr)
@@ -247,19 +247,19 @@ since (1, 1):
     runnableExamples:
       type Foo[T1, T2] = object
 
-      doAssert genericParams(Foo[float, string]) is (float, string)
+      assert genericParams(Foo[float, string]) is (float, string)
 
       type Bar[N: static float, T] = object
 
-      doAssert genericParams(Bar[1.0, string]) is (StaticParam[1.0], string)
-      doAssert genericParams(Bar[1.0, string]).get(0).value == 1.0
-      doAssert genericParams(seq[Bar[2.0, string]]).get(0) is Bar[2.0, string]
+      assert genericParams(Bar[1.0, string]) is (StaticParam[1.0], string)
+      assert genericParams(Bar[1.0, string]).get(0).value == 1.0
+      assert genericParams(seq[Bar[2.0, string]]).get(0) is Bar[2.0, string]
       var s: seq[Bar[3.0, string]]
-      doAssert genericParams(typeof(s)) is (Bar[3.0, string],)
+      assert genericParams(typeof(s)) is (Bar[3.0, string],)
 
-      doAssert genericParams(array[10, int]) is (StaticParam[10], int)
+      assert genericParams(array[10, int]) is (StaticParam[10], int)
       var a: array[10, int]
-      doAssert genericParams(typeof(a)) is (range[0..9], int)
+      assert genericParams(typeof(a)) is (range[0..9], int)
 
     type T2 = T
     genericParamsImpl(T2)

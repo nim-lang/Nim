@@ -16,10 +16,10 @@ runnableExamples:
     r1 = 1 // 2
     r2 = -3 // 4
 
-  doAssert r1 + r2 == -1 // 4
-  doAssert r1 - r2 ==  5 // 4
-  doAssert r1 * r2 == -3 // 8
-  doAssert r1 / r2 == -2 // 3
+  assert r1 + r2 == -1 // 4
+  assert r1 - r2 ==  5 // 4
+  assert r1 * r2 == -3 // 8
+  assert r1 / r2 == -2 // 3
 
 import std/[math, hashes]
 
@@ -36,8 +36,8 @@ func reduce*[T: SomeInteger](x: var Rational[T]) =
   runnableExamples:
     var r = Rational[int](num: 2, den: 4) # 1/2
     reduce(r)
-    doAssert r.num == 1
-    doAssert r.den == 2
+    assert r.num == 1
+    assert r.den == 2
 
   let common = gcd(x.num, x.den)
   if x.den > 0:
@@ -63,21 +63,21 @@ func `//`*[T](num, den: T): Rational[T] =
   ## A friendlier version of `initRational <#initRational,T,T>`_.
   runnableExamples:
     let x = 1 // 3 + 1 // 5
-    doAssert x == 8 // 15
+    assert x == 8 // 15
 
   initRational[T](num, den)
 
 func `$`*[T](x: Rational[T]): string =
   ## Turns a rational number into a string.
   runnableExamples:
-    doAssert $(1 // 2) == "1/2"
+    assert $(1 // 2) == "1/2"
 
   result = $x.num & "/" & $x.den
 
 func toRational*[T: SomeInteger](x: T): Rational[T] =
   ## Converts some integer `x` to a rational number.
   runnableExamples:
-    doAssert toRational(42) == 42 // 1
+    assert toRational(42) == 42 // 1
 
   result.num = x
   result.den = 1
@@ -93,7 +93,7 @@ func toRational*(x: float,
   # With corrections from Arno Formella, May 2008
   runnableExamples:
     let x = 1.2
-    doAssert x.toRational.toFloat == x
+    assert x.toRational.toFloat == x
 
   var
     m11, m22 = 1
@@ -273,8 +273,8 @@ func `==`*(x, y: Rational): bool =
 func abs*[T](x: Rational[T]): Rational[T] =
   ## Returns the absolute value of `x`.
   runnableExamples:
-    doAssert abs(1 // 2) == 1 // 2
-    doAssert abs(-1 // 2) == 1 // 2
+    assert abs(1 // 2) == 1 // 2
+    assert abs(-1 // 2) == 1 // 2
 
   result.num = abs x.num
   result.den = abs x.den

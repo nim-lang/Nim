@@ -46,8 +46,8 @@
 ##
 ##   let jsonNode = parseJson("""{"key": 3.14}""")
 ##
-##   doAssert jsonNode.kind == JObject
-##   doAssert jsonNode["key"].kind == JFloat
+##   assert jsonNode.kind == JObject
+##   assert jsonNode["key"].kind == JFloat
 ##
 ## Reading values
 ## --------------
@@ -67,7 +67,7 @@
 ##
 ##   let jsonNode = parseJson("""{"key": 3.14}""")
 ##
-##   doAssert jsonNode["key"].getFloat() == 3.14
+##   assert jsonNode["key"].getFloat() == 3.14
 ##
 ## **Important:** The `[]` operator will raise an exception when the
 ## specified field does not exist.
@@ -84,10 +84,10 @@
 ##
 ##   let jsonNode = parseJson("{}")
 ##
-##   doAssert jsonNode{"nope"}.getInt() == 0
-##   doAssert jsonNode{"nope"}.getFloat() == 0
-##   doAssert jsonNode{"nope"}.getStr() == ""
-##   doAssert jsonNode{"nope"}.getBool() == false
+##   assert jsonNode{"nope"}.getInt() == 0
+##   assert jsonNode{"nope"}.getFloat() == 0
+##   assert jsonNode{"nope"}.getStr() == ""
+##   assert jsonNode{"nope"}.getBool() == false
 ##
 ## Using default values
 ## --------------------
@@ -100,9 +100,9 @@
 ##
 ##   let jsonNode = parseJson("""{"key": 3.14, "key2": null}""")
 ##
-##   doAssert jsonNode["key"].getFloat(6.28) == 3.14
-##   doAssert jsonNode["key2"].getFloat(3.14) == 3.14
-##   doAssert jsonNode{"nope"}.getFloat(3.14) == 3.14 # note the {}
+##   assert jsonNode["key"].getFloat(6.28) == 3.14
+##   assert jsonNode["key2"].getFloat(3.14) == 3.14
+##   assert jsonNode{"nope"}.getFloat(3.14) == 3.14 # note the {}
 ##
 ## Unmarshalling
 ## -------------
@@ -157,7 +157,7 @@ runnableExamples:
   ## this is convenient for some use cases. Example:
   type Foo = object
     a1, a2, a0, a3, a4: int
-  doAssert $(%* Foo()) == """{"a1":0,"a2":0,"a0":0,"a3":0,"a4":0}"""
+  assert $(%* Foo()) == """{"a1":0,"a2":0,"a0":0,"a3":0,"a4":0}"""
 
 import
   std/[hashes, tables, strutils, lexbase, streams, macros, parsejson]
@@ -518,8 +518,8 @@ proc `[]`*(node: JsonNode, index: BackwardsIndex): JsonNode {.inline, since: (1,
     let
       j = parseJson("[1,2,3,4,5]")
 
-    doAssert j[^1].getInt == 5
-    doAssert j[^2].getInt == 4
+    assert j[^1].getInt == 5
+    assert j[^2].getInt == 4
 
   `[]`(node, node.len - int(index))
 
@@ -548,7 +548,7 @@ proc `{}`*(node: JsonNode, keys: varargs[string]): JsonNode =
   ##
   runnableExamples:
     var myjson = %* {"parent": {"child": {"grandchild": 1}}}
-    doAssert myjson{"parent", "child", "grandchild"} == newJInt(1)
+    assert myjson{"parent", "child", "grandchild"} == newJInt(1)
 
   result = node
   for key in keys:
@@ -730,7 +730,7 @@ proc pretty*(node: JsonNode, indent = 2): string =
   runnableExamples:
     let j = %* {"name": "Isaac", "books": ["Robot Dreams"],
                 "details": {"age": 35, "pi": 3.1415}}
-    doAssert pretty(j) == """
+    assert pretty(j) == """
 {
   "name": "Isaac",
   "books": [
@@ -1306,9 +1306,9 @@ when defined(nimFixedForwardGeneric):
           list: seq[int]
 
       var data = to(jsonNode, Data)
-      doAssert data.person.name == "Nimmer"
-      doAssert data.person.age == 21
-      doAssert data.list == @[1, 2, 3, 4]
+      assert data.person.name == "Nimmer"
+      assert data.person.age == 21
+      assert data.list == @[1, 2, 3, 4]
 
     var jsonPath = ""
     initFromJson(result, node, jsonPath)

@@ -26,9 +26,9 @@ runnableExamples:
   ## Unless specified otherwise, `start` parameter in each proc indicates
   ## where the scan starts, but outputs are relative to the start of the input
   ## string, not to `start`:
-  doAssert find("uxabc", re"(?<=x|y)ab", start = 1) == 2 # lookbehind assertion
-  doAssert find("uxabc", re"ab", start = 3) == -1 # we're past `start` => not found
-  doAssert not match("xabc", re"^abc$", start = 1)
+  assert find("uxabc", re"(?<=x|y)ab", start = 1) == 2 # lookbehind assertion
+  assert find("uxabc", re"ab", start = 3) == -1 # we're past `start` => not found
+  assert not match("xabc", re"^abc$", start = 1)
     # can't match start of string since we're starting at 1
 
 import
@@ -251,9 +251,9 @@ proc matchLen*(s: string, pattern: Regex, start = 0): int {.inline.} =
   ## of zero can happen.
   ##
   runnableExamples:
-    doAssert matchLen("abcdefg", re"cde", 2) == 3
-    doAssert matchLen("abcdefg", re"abcde") == 5
-    doAssert matchLen("abcdefg", re"cde") == -1
+    assert matchLen("abcdefg", re"cde", 2) == 3
+    assert matchLen("abcdefg", re"abcde") == 5
+    assert matchLen("abcdefg", re"cde") == -1
   result = matchOrFind(cstring(s), pattern, start.cint, s.len.cint, pcre.ANCHORED)
 
 proc matchLen*(buf: cstring, pattern: Regex, start = 0, bufSize: int): int {.inline.} =
@@ -277,7 +277,7 @@ proc match*(s: string, pattern: Regex, matches: var openArray[string],
     import std/sequtils
     var matches: array[2, string]
     if match("abcdefg", re"c(d)ef(g)", matches, 2):
-      doAssert toSeq(matches) == @["d", "g"]
+      assert toSeq(matches) == @["d", "g"]
   result = matchLen(cstring(s), pattern, matches, start, s.len) != -1
 
 proc match*(buf: cstring, pattern: Regex, matches: var openArray[string],
@@ -331,12 +331,12 @@ proc find*(s: string, pattern: Regex, start = 0): int {.inline.} =
   ## returns the starting position of `pattern` in `s`. If it does not
   ## match, `-1` is returned. We start the scan at `start`.
   runnableExamples:
-    doAssert find("abcdefg", re"cde") == 2
-    doAssert find("abcdefg", re"abc") == 0
-    doAssert find("abcdefg", re"zz") == -1 # not found
-    doAssert find("abcdefg", re"cde", start = 2) == 2 # still 2
-    doAssert find("abcdefg", re"cde", start = 3) == -1 # we're past the start position
-    doAssert find("xabc", re"(?<=x|y)abc", start = 1) == 1
+    assert find("abcdefg", re"cde") == 2
+    assert find("abcdefg", re"abc") == 0
+    assert find("abcdefg", re"zz") == -1 # not found
+    assert find("abcdefg", re"cde", start = 2) == 2 # still 2
+    assert find("abcdefg", re"cde", start = 3) == -1 # we're past the start position
+    assert find("xabc", re"(?<=x|y)abc", start = 1) == 1
       # lookbehind assertion `(?<=x|y)` can look behind `start`
   result = find(cstring(s), pattern, start, s.len)
 
@@ -396,10 +396,10 @@ template `=~` *(s: string, pattern: Regex): untyped =
       elif line =~ re"\s*(\#.*)": # matches a comment
         # note that the implicit `matches` array is different from 1st branch
         result = $(matches[0],)
-      else: doAssert false
-      doAssert not declared(matches)
-    doAssert parse("NAME = LENA") == """("NAME", "LENA")"""
-    doAssert parse("   # comment ... ") == """("# comment ... ",)"""
+      else: assert false
+      assert not declared(matches)
+    assert parse("NAME = LENA") == """("NAME", "LENA")"""
+    assert parse("   # comment ... ") == """("# comment ... ",)"""
   bind MaxSubpatterns
   when not declaredInScope(matches):
     var matches {.inject.}: array[MaxSubpatterns, string]
@@ -429,8 +429,8 @@ proc replace*(s: string, sub: Regex, by = ""): string =
   ## Replaces `sub` in `s` by the string `by`. Captures cannot be
   ## accessed in `by`.
   runnableExamples:
-    doAssert "var1=key; var2=key2".replace(re"(\w+)=(\w+)") == "; "
-    doAssert "var1=key; var2=key2".replace(re"(\w+)=(\w+)", "?") == "?; ?"
+    assert "var1=key; var2=key2".replace(re"(\w+)=(\w+)") == "; "
+    assert "var1=key; var2=key2".replace(re"(\w+)=(\w+)", "?") == "?; ?"
   result = ""
   var prev = 0
   while prev < s.len:
@@ -446,7 +446,7 @@ proc replacef*(s: string, sub: Regex, by: string): string =
   ## Replaces `sub` in `s` by the string `by`. Captures can be accessed in `by`
   ## with the notation `$i` and `$#` (see strutils.\`%\`).
   runnableExamples:
-    doAssert "var1=key; var2=key2".replacef(re"(\w+)=(\w+)", "$1<-$2$2") ==
+    assert "var1=key; var2=key2".replacef(re"(\w+)=(\w+)", "$1<-$2$2") ==
       "var1<-keykey; var2<-key2key2"
   result = ""
   var caps: array[MaxSubpatterns, string]
@@ -495,7 +495,7 @@ iterator split*(s: string, sep: Regex; maxsplit = -1): string =
   ## (and the portion matched by `sep` is not returned).
   runnableExamples:
     import std/sequtils
-    doAssert toSeq(split("00232this02939is39an22example111", re"\d+")) ==
+    assert toSeq(split("00232this02939is39an22example111", re"\d+")) ==
       @["", "this", "is", "an", "example", ""]
   var last = 0
   var splits = maxsplit

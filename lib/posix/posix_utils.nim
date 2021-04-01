@@ -27,7 +27,7 @@ proc uname*(): Uname =
   when defined(posix):
     runnableExamples:
       echo uname().nodename, uname().release, uname().version
-      doAssert uname().sysname.len != 0
+      assert uname().sysname.len != 0
 
   var u: Utsname
   if uname(u) != 0:

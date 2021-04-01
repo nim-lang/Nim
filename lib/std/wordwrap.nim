@@ -25,10 +25,10 @@ proc wrapWords*(s: string, maxLineWidth = 80,
                newLine = "\n"): string {.noSideEffect.} =
   ## Word wraps `s`.
   runnableExamples:
-    doAssert "12345678901234567890".wrapWords() == "12345678901234567890"
-    doAssert "123456789012345678901234567890".wrapWords(20) == "12345678901234567890\n1234567890"
-    doAssert "Hello Bob. Hello John.".wrapWords(13, false) == "Hello Bob.\nHello John."
-    doAssert "Hello Bob. Hello John.".wrapWords(13, true, {';'}) == "Hello Bob. He\nllo John."
+    assert "12345678901234567890".wrapWords() == "12345678901234567890"
+    assert "123456789012345678901234567890".wrapWords(20) == "12345678901234567890\n1234567890"
+    assert "Hello Bob. Hello John.".wrapWords(13, false) == "Hello Bob.\nHello John."
+    assert "Hello Bob. Hello John.".wrapWords(13, true, {';'}) == "Hello Bob. He\nllo John."
   result = newStringOfCap(s.len + s.len shr 6)
   var spaceLeft = maxLineWidth
   var lastSep = ""

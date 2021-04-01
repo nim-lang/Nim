@@ -128,7 +128,7 @@ proc rope*(s: string = ""): Rope {.rtl, extern: "nro$1Str".} =
   ## Converts a string to a rope.
   runnableExamples:
     let r = rope("I'm a rope")
-    doAssert $r == "I'm a rope"
+    assert $r == "I'm a rope"
 
   if s.len == 0:
     result = nil
@@ -147,7 +147,7 @@ proc rope*(i: BiggestInt): Rope {.rtl, extern: "nro$1BiggestInt".} =
   ## Converts an int to a rope.
   runnableExamples:
     let r = rope(429)
-    doAssert $r == "429"
+    assert $r == "429"
 
   result = rope($i)
 
@@ -155,7 +155,7 @@ proc rope*(f: BiggestFloat): Rope {.rtl, extern: "nro$1BiggestFloat".} =
   ## Converts a float to a rope.
   runnableExamples:
     let r = rope(4.29)
-    doAssert $r == "4.29"
+    assert $r == "4.29"
 
   result = rope($f)
 
@@ -173,7 +173,7 @@ proc `&`*(a, b: Rope): Rope {.rtl, extern: "nroConcRopeRope".} =
   ## The concatenation operator for ropes.
   runnableExamples:
     let r = rope("Hello, ") & rope("Nim!")
-    doAssert $r == "Hello, Nim!"
+    assert $r == "Hello, Nim!"
 
   if a == nil:
     result = b
@@ -189,7 +189,7 @@ proc `&`*(a: Rope, b: string): Rope {.rtl, extern: "nroConcRopeStr".} =
   ## The concatenation operator for ropes.
   runnableExamples:
     let r = rope("Hello, ") & "Nim!"
-    doAssert $r == "Hello, Nim!"
+    assert $r == "Hello, Nim!"
 
   result = a & rope(b)
 
@@ -197,7 +197,7 @@ proc `&`*(a: string, b: Rope): Rope {.rtl, extern: "nroConcStrRope".} =
   ## The concatenation operator for ropes.
   runnableExamples:
     let r = "Hello, " & rope("Nim!")
-    doAssert $r == "Hello, Nim!"
+    assert $r == "Hello, Nim!"
 
   result = rope(a) & b
 
@@ -205,7 +205,7 @@ proc `&`*(a: openArray[Rope]): Rope {.rtl, extern: "nroConcOpenArray".} =
   ## The concatenation operator for an `openArray` of ropes.
   runnableExamples:
     let r = &[rope("Hello, "), rope("Nim"), rope("!")]
-    doAssert $r == "Hello, Nim!"
+    assert $r == "Hello, Nim!"
 
   for item in a: result = result & item
 
@@ -214,7 +214,7 @@ proc add*(a: var Rope, b: Rope) {.rtl, extern: "nro$1Rope".} =
   runnableExamples:
     var r = rope("Hello, ")
     r.add(rope("Nim!"))
-    doAssert $r == "Hello, Nim!"
+    assert $r == "Hello, Nim!"
 
   a = a & b
 
@@ -223,7 +223,7 @@ proc add*(a: var Rope, b: string) {.rtl, extern: "nro$1Str".} =
   runnableExamples:
     var r = rope("Hello, ")
     r.add("Nim!")
-    doAssert $r == "Hello, Nim!"
+    assert $r == "Hello, Nim!"
 
   a = a & b
 
@@ -233,9 +233,9 @@ proc `[]`*(r: Rope, i: int): char {.rtl, extern: "nroCharAt".} =
   runnableExamples:
     let r = rope("Hello, Nim!")
 
-    doAssert r[0] == 'H'
-    doAssert r[7] == 'N'
-    doAssert r[22] == '\0'
+    assert r[0] == 'H'
+    assert r[7] == 'N'
+    assert r[22] == '\0'
 
   var x = r
   var j = i
@@ -258,7 +258,7 @@ iterator leaves*(r: Rope): string =
     let s = ["Hello", ", Nim!"]
     var index = 0
     for leave in r.leaves:
-      doAssert leave == s[index]
+      assert leave == s[index]
       inc(index)
 
   if r != nil:
@@ -295,13 +295,13 @@ proc `%`*(frmt: string, args: openArray[Rope]): Rope {.rtl, extern: "nroFormat".
   ## nor `${identifier}` notations.
   runnableExamples:
     let r1 = "$1 $2 $3" % [rope("Nim"), rope("is"), rope("a great language")]
-    doAssert $r1 == "Nim is a great language"
+    assert $r1 == "Nim is a great language"
 
     let r2 = "$# $# $#" % [rope("Nim"), rope("is"), rope("a great language")]
-    doAssert $r2 == "Nim is a great language"
+    assert $r2 == "Nim is a great language"
 
     let r3 = "${1} ${2} ${3}" % [rope("Nim"), rope("is"), rope("a great language")]
-    doAssert $r3 == "Nim is a great language"
+    assert $r3 == "Nim is a great language"
 
   var i = 0
   var length = len(frmt)
@@ -348,7 +348,7 @@ proc addf*(c: var Rope, frmt: string, args: openArray[Rope]) {.rtl, extern: "nro
   runnableExamples:
     var r = rope("Dash: ")
     r.addf "$1 $2 $3", [rope("Nim"), rope("is"), rope("a great language")]
-    doAssert $r == "Dash: Nim is a great language"
+    assert $r == "Dash: Nim is a great language"
 
   add(c, frmt % args)
 

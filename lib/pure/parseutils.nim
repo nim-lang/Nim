@@ -22,7 +22,7 @@
 ##      var res: string
 ##      if parseUntil(log, res, ':') == 10: # YYYY-MM-DD == 10
 ##        outp.add(res & " - " & captureBetween(log, ' ', '_'))
-##    doAssert outp == @["2019-01-10 - OK", "2019-01-11 - FAIL"]
+##    assert outp == @["2019-01-10 - OK", "2019-01-11 - FAIL"]
 ##
 ## .. code-block:: nim
 ##    :test:
@@ -34,7 +34,7 @@
 ##      startYear = input1[0 .. skipWhile(input1, Digits)-1] # 2019
 ##      yearsBack = input2[0 .. skipWhile(input2, Digits)-1] # 3
 ##      examYear = parseInt(startYear) + parseInt(yearsBack)
-##    doAssert "Examination is in " & $examYear == "Examination is in 2022"
+##    assert "Examination is in " & $examYear == "Examination is in 2022"
 ##
 ## **See also:**
 ## * `strutils module<strutils.html>`_ for combined and identical parsing proc's
@@ -75,20 +75,20 @@ proc parseBin*[T: SomeInteger](s: string, number: var T, start = 0,
   ## will be stored in ``number`` without producing an error.
   runnableExamples:
     var num: int
-    doAssert parseBin("0100_1110_0110_1001_1110_1101", num) == 29
-    doAssert num == 5138925
-    doAssert parseBin("3", num) == 0
+    assert parseBin("0100_1110_0110_1001_1110_1101", num) == 29
+    assert num == 5138925
+    assert parseBin("3", num) == 0
     var num8: int8
-    doAssert parseBin("0b_0100_1110_0110_1001_1110_1101", num8) == 32
-    doAssert num8 == 0b1110_1101'i8
-    doAssert parseBin("0b_0100_1110_0110_1001_1110_1101", num8, 3, 9) == 9
-    doAssert num8 == 0b0100_1110'i8
+    assert parseBin("0b_0100_1110_0110_1001_1110_1101", num8) == 32
+    assert num8 == 0b1110_1101'i8
+    assert parseBin("0b_0100_1110_0110_1001_1110_1101", num8, 3, 9) == 9
+    assert num8 == 0b0100_1110'i8
     var num8u: uint8
-    doAssert parseBin("0b_0100_1110_0110_1001_1110_1101", num8u) == 32
-    doAssert num8u == 237
+    assert parseBin("0b_0100_1110_0110_1001_1110_1101", num8u) == 32
+    assert num8u == 237
     var num64: int64
-    doAssert parseBin("0100111001101001111011010100111001101001", num64) == 40
-    doAssert num64 == 336784608873
+    assert parseBin("0100111001101001111011010100111001101001", num64) == 40
+    assert num64 == 336784608873
   var i = start
   var output = T(0)
   var foundDigit = false
@@ -122,20 +122,20 @@ proc parseOct*[T: SomeInteger](s: string, number: var T, start = 0,
   ## will be stored in ``number`` without producing an error.
   runnableExamples:
     var num: int
-    doAssert parseOct("0o23464755", num) == 10
-    doAssert num == 5138925
-    doAssert parseOct("8", num) == 0
+    assert parseOct("0o23464755", num) == 10
+    assert num == 5138925
+    assert parseOct("8", num) == 0
     var num8: int8
-    doAssert parseOct("0o_1464_755", num8) == 11
-    doAssert num8 == -19
-    doAssert parseOct("0o_1464_755", num8, 3, 3) == 3
-    doAssert num8 == 102
+    assert parseOct("0o_1464_755", num8) == 11
+    assert num8 == -19
+    assert parseOct("0o_1464_755", num8, 3, 3) == 3
+    assert num8 == 102
     var num8u: uint8
-    doAssert parseOct("1464755", num8u) == 7
-    doAssert num8u == 237
+    assert parseOct("1464755", num8u) == 7
+    assert num8u == 237
     var num64: int64
-    doAssert parseOct("2346475523464755", num64) == 16
-    doAssert num64 == 86216859871725
+    assert parseOct("2346475523464755", num64) == 16
+    assert num64 == 86216859871725
   var i = start
   var output = T(0)
   var foundDigit = false
@@ -169,21 +169,21 @@ proc parseHex*[T: SomeInteger](s: string, number: var T, start = 0,
   ## will be stored in ``number`` without producing an error.
   runnableExamples:
     var num: int
-    doAssert parseHex("4E_69_ED", num) == 8
-    doAssert num == 5138925
-    doAssert parseHex("X", num) == 0
-    doAssert parseHex("#ABC", num) == 4
+    assert parseHex("4E_69_ED", num) == 8
+    assert num == 5138925
+    assert parseHex("X", num) == 0
+    assert parseHex("#ABC", num) == 4
     var num8: int8
-    doAssert parseHex("0x_4E_69_ED", num8) == 11
-    doAssert num8 == 0xED'i8
-    doAssert parseHex("0x_4E_69_ED", num8, 3, 2) == 2
-    doAssert num8 == 0x4E'i8
+    assert parseHex("0x_4E_69_ED", num8) == 11
+    assert num8 == 0xED'i8
+    assert parseHex("0x_4E_69_ED", num8, 3, 2) == 2
+    assert num8 == 0x4E'i8
     var num8u: uint8
-    doAssert parseHex("0x_4E_69_ED", num8u) == 11
-    doAssert num8u == 237
+    assert parseHex("0x_4E_69_ED", num8u) == 11
+    assert num8u == 237
     var num64: int64
-    doAssert parseHex("4E69ED4E69ED", num64) == 12
-    doAssert num64 == 86216859871725
+    assert parseHex("4E69ED4E69ED", num64) == 12
+    assert num64 == 86216859871725
   var i = start
   var output = T(0)
   var foundDigit = false
@@ -214,12 +214,12 @@ proc parseIdent*(s: string, ident: var string, start = 0): int =
   ## If error, the value of `ident` is not changed.
   runnableExamples:
     var res: string
-    doAssert parseIdent("Hello World", res, 0) == 5
-    doAssert res == "Hello"
-    doAssert parseIdent("Hello World", res, 1) == 4
-    doAssert res == "ello"
-    doAssert parseIdent("Hello World", res, 6) == 5
-    doAssert res == "World"
+    assert parseIdent("Hello World", res, 0) == 5
+    assert res == "Hello"
+    assert parseIdent("Hello World", res, 1) == 4
+    assert res == "ello"
+    assert parseIdent("Hello World", res, 6) == 5
+    assert res == "World"
   var i = start
   if i < s.len and s[i] in IdentStartChars:
     inc(i)
@@ -231,10 +231,10 @@ proc parseIdent*(s: string, start = 0): string =
   ## Parses an identifier and returns it or an empty string in
   ## case of an error.
   runnableExamples:
-    doAssert parseIdent("Hello World", 0) == "Hello"
-    doAssert parseIdent("Hello World", 1) == "ello"
-    doAssert parseIdent("Hello World", 5) == ""
-    doAssert parseIdent("Hello World", 6) == "World"
+    assert parseIdent("Hello World", 0) == "Hello"
+    assert parseIdent("Hello World", 1) == "ello"
+    assert parseIdent("Hello World", 5) == ""
+    assert parseIdent("Hello World", 6) == "World"
   result = ""
   var i = start
   if i < s.len and s[i] in IdentStartChars:
@@ -248,10 +248,10 @@ proc parseChar*(s: string, c: var char, start = 0): int =
   ## and the value of `c` is unchanged.
   runnableExamples:
     var c: char
-    doAssert "nim".parseChar(c, 3) == 0
-    doAssert c == '\0'
-    doAssert "nim".parseChar(c, 0) == 1
-    doAssert c == 'n'
+    assert "nim".parseChar(c, 3) == 0
+    assert c == '\0'
+    assert "nim".parseChar(c, 0) == 1
+    assert c == 'n'
   if start < s.len:
     c = s[start]
     result = 1
@@ -260,10 +260,10 @@ proc skipWhitespace*(s: string, start = 0): int {.inline.} =
   ## Skips the whitespace starting at ``s[start]``. Returns the number of
   ## skipped characters.
   runnableExamples:
-    doAssert skipWhitespace("Hello World", 0) == 0
-    doAssert skipWhitespace(" Hello World", 0) == 1
-    doAssert skipWhitespace("Hello World", 5) == 1
-    doAssert skipWhitespace("Hello  World", 5) == 2
+    assert skipWhitespace("Hello World", 0) == 0
+    assert skipWhitespace(" Hello World", 0) == 1
+    assert skipWhitespace("Hello World", 5) == 1
+    assert skipWhitespace("Hello  World", 5) == 2
   result = 0
   while start+result < s.len and s[start+result] in Whitespace: inc(result)
 
@@ -271,11 +271,11 @@ proc skip*(s, token: string, start = 0): int {.inline.} =
   ## Skips the `token` starting at ``s[start]``. Returns the length of `token`
   ## or 0 if there was no `token` at ``s[start]``.
   runnableExamples:
-    doAssert skip("2019-01-22", "2019", 0) == 4
-    doAssert skip("2019-01-22", "19", 0) == 0
-    doAssert skip("2019-01-22", "19", 2) == 2
-    doAssert skip("CAPlow", "CAP", 0) == 3
-    doAssert skip("CAPlow", "cap", 0) == 0
+    assert skip("2019-01-22", "2019", 0) == 4
+    assert skip("2019-01-22", "19", 0) == 0
+    assert skip("2019-01-22", "19", 2) == 2
+    assert skip("CAPlow", "CAP", 0) == 3
+    assert skip("CAPlow", "cap", 0) == 0
   result = 0
   while start+result < s.len and result < token.len and
       s[result+start] == token[result]:
@@ -285,8 +285,8 @@ proc skip*(s, token: string, start = 0): int {.inline.} =
 proc skipIgnoreCase*(s, token: string, start = 0): int =
   ## Same as `skip` but case is ignored for token matching.
   runnableExamples:
-    doAssert skipIgnoreCase("CAPlow", "CAP", 0) == 3
-    doAssert skipIgnoreCase("CAPlow", "cap", 0) == 3
+    assert skipIgnoreCase("CAPlow", "CAP", 0) == 3
+    assert skipIgnoreCase("CAPlow", "cap", 0) == 3
   result = 0
   while start+result < s.len and result < token.len and
       toLower(s[result+start]) == toLower(token[result]): inc(result)
@@ -297,9 +297,9 @@ proc skipUntil*(s: string, until: set[char], start = 0): int {.inline.} =
   ## or the end is reached.
   ## Returns number of characters skipped.
   runnableExamples:
-    doAssert skipUntil("Hello World", {'W', 'e'}, 0) == 1
-    doAssert skipUntil("Hello World", {'W'}, 0) == 6
-    doAssert skipUntil("Hello World", {'W', 'd'}, 0) == 6
+    assert skipUntil("Hello World", {'W', 'e'}, 0) == 1
+    assert skipUntil("Hello World", {'W'}, 0) == 6
+    assert skipUntil("Hello World", {'W', 'd'}, 0) == 6
   result = 0
   while start+result < s.len and s[result+start] notin until: inc(result)
 
@@ -308,10 +308,10 @@ proc skipUntil*(s: string, until: char, start = 0): int {.inline.} =
   ## or the end is reached.
   ## Returns number of characters skipped.
   runnableExamples:
-    doAssert skipUntil("Hello World", 'o', 0) == 4
-    doAssert skipUntil("Hello World", 'o', 4) == 0
-    doAssert skipUntil("Hello World", 'W', 0) == 6
-    doAssert skipUntil("Hello World", 'w', 0) == 11
+    assert skipUntil("Hello World", 'o', 0) == 4
+    assert skipUntil("Hello World", 'o', 4) == 0
+    assert skipUntil("Hello World", 'W', 0) == 6
+    assert skipUntil("Hello World", 'w', 0) == 11
   result = 0
   while start+result < s.len and s[result+start] != until: inc(result)
 
@@ -319,9 +319,9 @@ proc skipWhile*(s: string, toSkip: set[char], start = 0): int {.inline.} =
   ## Skips all characters while one char from the set `token` is found.
   ## Returns number of characters skipped.
   runnableExamples:
-    doAssert skipWhile("Hello World", {'H', 'e'}) == 2
-    doAssert skipWhile("Hello World", {'e'}) == 0
-    doAssert skipWhile("Hello World", {'W', 'o', 'r'}, 6) == 3
+    assert skipWhile("Hello World", {'H', 'e'}) == 2
+    assert skipWhile("Hello World", {'e'}) == 0
+    assert skipWhile("Hello World", {'W', 'o', 'r'}, 6) == 3
   result = 0
   while start+result < s.len and s[result+start] in toSkip: inc(result)
 
@@ -336,12 +336,12 @@ proc parseUntil*(s: string, token: var string, until: set[char],
   ## consists of the characters notin `until`.
   runnableExamples:
     var myToken: string
-    doAssert parseUntil("Hello World", myToken, {'W', 'o', 'r'}) == 4
-    doAssert myToken == "Hell"
-    doAssert parseUntil("Hello World", myToken, {'W', 'r'}) == 6
-    doAssert myToken == "Hello "
-    doAssert parseUntil("Hello World", myToken, {'W', 'r'}, 3) == 3
-    doAssert myToken == "lo "
+    assert parseUntil("Hello World", myToken, {'W', 'o', 'r'}) == 4
+    assert myToken == "Hell"
+    assert parseUntil("Hello World", myToken, {'W', 'r'}) == 6
+    assert myToken == "Hello "
+    assert parseUntil("Hello World", myToken, {'W', 'r'}, 3) == 3
+    assert myToken == "lo "
   var i = start
   while i < s.len and s[i] notin until: inc(i)
   result = i-start
@@ -355,12 +355,12 @@ proc parseUntil*(s: string, token: var string, until: char,
   ## consists of any character that is not the `until` character.
   runnableExamples:
     var myToken: string
-    doAssert parseUntil("Hello World", myToken, 'W') == 6
-    doAssert myToken == "Hello "
-    doAssert parseUntil("Hello World", myToken, 'o') == 4
-    doAssert myToken == "Hell"
-    doAssert parseUntil("Hello World", myToken, 'o', 2) == 2
-    doAssert myToken == "ll"
+    assert parseUntil("Hello World", myToken, 'W') == 6
+    assert myToken == "Hello "
+    assert parseUntil("Hello World", myToken, 'o') == 4
+    assert myToken == "Hell"
+    assert parseUntil("Hello World", myToken, 'o', 2) == 2
+    assert myToken == "ll"
   var i = start
   while i < s.len and s[i] != until: inc(i)
   result = i-start
@@ -374,10 +374,10 @@ proc parseUntil*(s: string, token: var string, until: string,
   ## consists of any character that comes before the `until`  token.
   runnableExamples:
     var myToken: string
-    doAssert parseUntil("Hello World", myToken, "Wor") == 6
-    doAssert myToken == "Hello "
-    doAssert parseUntil("Hello World", myToken, "Wor", 2) == 4
-    doAssert myToken == "llo "
+    assert parseUntil("Hello World", myToken, "Wor") == 6
+    assert myToken == "Hello "
+    assert parseUntil("Hello World", myToken, "Wor", 2) == 4
+    assert myToken == "llo "
   when (NimMajor, NimMinor) <= (1, 0):
     if until.len == 0:
       token.setLen(0)
@@ -401,10 +401,10 @@ proc parseWhile*(s: string, token: var string, validChars: set[char],
   ## consists of the characters in `validChars`.
   runnableExamples:
     var myToken: string
-    doAssert parseWhile("Hello World", myToken, {'W', 'o', 'r'}, 0) == 0
-    doAssert myToken.len() == 0
-    doAssert parseWhile("Hello World", myToken, {'W', 'o', 'r'}, 6) == 3
-    doAssert myToken == "Wor"
+    assert parseWhile("Hello World", myToken, {'W', 'o', 'r'}, 0) == 0
+    assert myToken.len() == 0
+    assert parseWhile("Hello World", myToken, {'W', 'o', 'r'}, 6) == 3
+    assert myToken == "Wor"
   var i = start
   while i < s.len and s[i] in validChars: inc(i)
   result = i-start
@@ -415,9 +415,9 @@ proc captureBetween*(s: string, first: char, second = '\0', start = 0): string =
   ## Finds the first occurrence of ``first``, then returns everything from there
   ## up to ``second`` (if ``second`` is '\0', then ``first`` is used).
   runnableExamples:
-    doAssert captureBetween("Hello World", 'e') == "llo World"
-    doAssert captureBetween("Hello World", 'e', 'r') == "llo Wo"
-    doAssert captureBetween("Hello World", 'l', start = 6) == "d"
+    assert captureBetween("Hello World", 'e') == "llo World"
+    assert captureBetween("Hello World", 'e', 'r') == "llo Wo"
+    assert captureBetween("Hello World", 'l', start = 6) == "d"
   var i = skipUntil(s, first, start)+1+start
   result = ""
   discard s.parseUntil(result, if second == '\0': first else: second, i)
@@ -464,8 +464,8 @@ proc parseBiggestInt*(s: string, number: var BiggestInt, start = 0): int {.
   ## `ValueError` is raised if the parsed integer is out of the valid range.
   runnableExamples:
     var res: BiggestInt
-    doAssert parseBiggestInt("9223372036854775807", res, 0) == 19
-    doAssert res == 9223372036854775807
+    assert parseBiggestInt("9223372036854775807", res, 0) == 19
+    assert res == 9223372036854775807
   var res = BiggestInt(0)
   # use 'res' for exception safety (don't write to 'number' in case of an
   # overflow exception):
@@ -480,10 +480,10 @@ proc parseInt*(s: string, number: var int, start = 0): int {.
   ## `ValueError` is raised if the parsed integer is out of the valid range.
   runnableExamples:
     var res: int
-    doAssert parseInt("2019", res, 0) == 4
-    doAssert res == 2019
-    doAssert parseInt("2019", res, 2) == 2
-    doAssert res == 19
+    assert parseInt("2019", res, 0) == 4
+    assert res == 2019
+    assert parseInt("2019", res, 2) == 2
+    assert res == 19
   var res = BiggestInt(0)
   result = parseBiggestInt(s, res, start)
   when sizeof(int) <= 4:
@@ -501,7 +501,7 @@ proc parseSaturatedNatural*(s: string, b: var int, start = 0): int {.
   runnableExamples:
     var res = 0
     discard parseSaturatedNatural("848", res)
-    doAssert res == 848
+    assert res == 848
   var i = start
   if i < s.len and s[i] == '+': inc(i)
   if i < s.len and s[i] in {'0'..'9'}:
@@ -543,10 +543,10 @@ proc parseBiggestUInt*(s: string, number: var BiggestUInt, start = 0): int {.
   ## `ValueError` is raised if the parsed integer is out of the valid range.
   runnableExamples:
     var res: BiggestUInt
-    doAssert parseBiggestUInt("12", res, 0) == 2
-    doAssert res == 12
-    doAssert parseBiggestUInt("1111111111111111111", res, 0) == 19
-    doAssert res == 1111111111111111111'u64
+    assert parseBiggestUInt("12", res, 0) == 2
+    assert res == 12
+    assert parseBiggestUInt("1111111111111111111", res, 0) == 19
+    assert res == 1111111111111111111'u64
   var res = BiggestUInt(0)
   # use 'res' for exception safety (don't write to 'number' in case of an
   # overflow exception):
@@ -561,10 +561,10 @@ proc parseUInt*(s: string, number: var uint, start = 0): int {.
   ## `ValueError` is raised if the parsed integer is out of the valid range.
   runnableExamples:
     var res: uint
-    doAssert parseUInt("3450", res) == 4
-    doAssert res == 3450
-    doAssert parseUInt("3450", res, 2) == 2
-    doAssert res == 50
+    assert parseUInt("3450", res) == 4
+    assert res == 3450
+    assert parseUInt("3450", res, 2) == 2
+    assert res == 50
   var res = BiggestUInt(0)
   result = parseBiggestUInt(s, res, start)
   when sizeof(BiggestUInt) > sizeof(uint) and sizeof(uint) <= 4:
@@ -586,12 +586,12 @@ proc parseFloat*(s: string, number: var float, start = 0): int {.
   ## error.
   runnableExamples:
     var res: float
-    doAssert parseFloat("32", res, 0) == 2
-    doAssert res == 32.0
-    doAssert parseFloat("32.57", res, 0) == 5
-    doAssert res == 32.57
-    doAssert parseFloat("32.57", res, 3) == 2
-    doAssert res == 57.00
+    assert parseFloat("32", res, 0) == 2
+    assert res == 32.0
+    assert parseFloat("32.57", res, 0) == 5
+    assert res == 32.57
+    assert parseFloat("32.57", res, 3) == 2
+    assert res == 57.00
   var bf = BiggestFloat(0.0)
   result = parseBiggestFloat(s, bf, start)
   if result != 0:
@@ -614,7 +614,7 @@ iterator interpolatedFragments*(s: string): tuple[kind: InterpolatedKind,
     var outp: seq[tuple[kind: InterpolatedKind, value: string]]
     for k, v in interpolatedFragments("  $this is ${an  example}  $$"):
       outp.add (k, v)
-    doAssert outp == @[(ikStr, "  "),
+    assert outp == @[(ikStr, "  "),
                        (ikVar, "this"),
                        (ikStr, " is "),
                        (ikExpr, "an  example"),

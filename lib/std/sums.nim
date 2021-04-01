@@ -23,9 +23,9 @@ runnableExamples:
 
   let result = first + small * n.float
 
-  doAssert abs(sum(data) - result) > 0.3
-  doAssert sumKbn(data) ~= result
-  doAssert sumPairs(data) ~= result
+  assert abs(sum(data) - result) > 0.3
+  assert sumKbn(data) ~= result
+  assert sumPairs(data) ~= result
 
 ## See also
 ## ========

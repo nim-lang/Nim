@@ -8,10 +8,10 @@ template byaddr*(lhs, typ, ex) =
     var s = @[10,11,12]
     var a {.byaddr.} = s[0]
     a+=100
-    doAssert s == @[110,11,12]
-    doAssert a is int
+    assert s == @[110,11,12]
+    assert a is int
     var b {.byaddr.}: int = s[0]
-    doAssert a.addr == b.addr
+    assert a.addr == b.addr
   when typ is typeof(nil):
     let tmp = addr(ex)
   else:

@@ -366,10 +366,10 @@ proc runeToEntity*(rune: Rune): string =
   ## converts a Rune to its numeric HTML entity equivalent.
   runnableExamples:
     import std/unicode
-    doAssert runeToEntity(Rune(0)) == ""
-    doAssert runeToEntity(Rune(-1)) == ""
-    doAssert runeToEntity("Ü".runeAt(0)) == "#220"
-    doAssert runeToEntity("∈".runeAt(0)) == "#8712"
+    assert runeToEntity(Rune(0)) == ""
+    assert runeToEntity(Rune(-1)) == ""
+    assert runeToEntity("Ü".runeAt(0)) == "#220"
+    assert runeToEntity("∈".runeAt(0)) == "#8712"
   if rune.ord <= 0: result = ""
   else: result = '#' & $rune.ord
 
@@ -379,12 +379,12 @@ proc entityToRune*(entity: string): Rune =
   ## Rune(0) is returned if the entity name is unknown.
   runnableExamples:
     import std/unicode
-    doAssert entityToRune("") == Rune(0)
-    doAssert entityToRune("a") == Rune(0)
-    doAssert entityToRune("gt") == ">".runeAt(0)
-    doAssert entityToRune("Uuml") == "Ü".runeAt(0)
-    doAssert entityToRune("quest") == "?".runeAt(0)
-    doAssert entityToRune("#x0003F") == "?".runeAt(0)
+    assert entityToRune("") == Rune(0)
+    assert entityToRune("a") == Rune(0)
+    assert entityToRune("gt") == ">".runeAt(0)
+    assert entityToRune("Uuml") == "Ü".runeAt(0)
+    assert entityToRune("quest") == "?".runeAt(0)
+    assert entityToRune("#x0003F") == "?".runeAt(0)
   if entity.len < 2: return # smallest entity has length 2
   if entity[0] == '#':
     var runeValue = 0
@@ -1873,19 +1873,19 @@ proc entityToUtf8*(entity: string): string =
   ## already converts entities to UTF-8.
   runnableExamples:
     const sigma = "Σ"
-    doAssert entityToUtf8("") == ""
-    doAssert entityToUtf8("a") == ""
-    doAssert entityToUtf8("gt") == ">"
-    doAssert entityToUtf8("Uuml") == "Ü"
-    doAssert entityToUtf8("quest") == "?"
-    doAssert entityToUtf8("#63") == "?"
-    doAssert entityToUtf8("Sigma") == sigma
-    doAssert entityToUtf8("#931") == sigma
-    doAssert entityToUtf8("#0931") == sigma
-    doAssert entityToUtf8("#x3A3") == sigma
-    doAssert entityToUtf8("#x03A3") == sigma
-    doAssert entityToUtf8("#x3a3") == sigma
-    doAssert entityToUtf8("#X3a3") == sigma
+    assert entityToUtf8("") == ""
+    assert entityToUtf8("a") == ""
+    assert entityToUtf8("gt") == ">"
+    assert entityToUtf8("Uuml") == "Ü"
+    assert entityToUtf8("quest") == "?"
+    assert entityToUtf8("#63") == "?"
+    assert entityToUtf8("Sigma") == sigma
+    assert entityToUtf8("#931") == sigma
+    assert entityToUtf8("#0931") == sigma
+    assert entityToUtf8("#x3A3") == sigma
+    assert entityToUtf8("#x03A3") == sigma
+    assert entityToUtf8("#x3a3") == sigma
+    assert entityToUtf8("#X3a3") == sigma
   let rune = entityToRune(entity)
   if rune.ord <= 0: result = ""
   else: result = toUTF8(rune)

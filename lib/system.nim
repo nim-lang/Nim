@@ -160,7 +160,7 @@ proc runnableExamples*(rdoccmd = "", body: untyped) {.magic: "RunnableExamples".
   ##     result = 2 * x
   ##     runnableExamples "-d:foo -b:cpp":
   ##       import std/compilesettings
-  ##       doAssert querySetting(backend) == "cpp"
+  ##       assert querySetting(backend) == "cpp"
   ##     runnableExamples "-r:off": ## this one is only compiled
   ##        import std/browsers
   ##        openDefaultBrowser "https://forum.nim-lang.org/"
@@ -245,15 +245,15 @@ proc typeof*(x: untyped; mode = typeOfIter): typedesc {.
     iterator myFoo(): string = yield "abc"
     iterator myFoo2(): string = yield "abc"
     iterator myFoo3(): string {.closure.} = yield "abc"
-    doAssert type(myFoo()) is string
-    doAssert typeof(myFoo()) is string
-    doAssert typeof(myFoo(), typeOfIter) is string
-    doAssert typeof(myFoo3) is "iterator"
+    assert type(myFoo()) is string
+    assert typeof(myFoo()) is string
+    assert typeof(myFoo(), typeOfIter) is string
+    assert typeof(myFoo3) is "iterator"
 
-    doAssert typeof(myFoo(), typeOfProc) is float
-    doAssert typeof(0.0, typeOfProc) is float
-    doAssert typeof(myFoo3, typeOfProc) is "iterator"
-    doAssert not compiles(typeof(myFoo2(), typeOfProc))
+    assert typeof(myFoo(), typeOfProc) is float
+    assert typeof(0.0, typeOfProc) is float
+    assert typeof(myFoo3, typeOfProc) is "iterator"
+    assert not compiles(typeof(myFoo2(), typeOfProc))
       # this would give: Error: attempting to call routine: 'myFoo2'
       # since `typeOfProc` expects a typed expression and `myFoo2()` can
       # only be used in a `for` context.
@@ -718,15 +718,15 @@ proc len*(x: cstring): int {.magic: "LengthStr", noSideEffect.} =
   ## need the byte length of the UTF-8 encoding, convert to string with
   ## `$` first then call `len`.
   runnableExamples:
-    doAssert len(cstring"abc") == 3
-    doAssert len(cstring r"ab\0c") == 5 # \0 is escaped
-    doAssert len(cstring"ab\0c") == 5 # ditto
+    assert len(cstring"abc") == 3
+    assert len(cstring r"ab\0c") == 5 # \0 is escaped
+    assert len(cstring"ab\0c") == 5 # ditto
     var a: cstring = "ab\0c"
-    when defined(js): doAssert a.len == 4 # len ignores \0 for js
-    else: doAssert a.len == 2 # \0 is a null terminator
+    when defined(js): assert a.len == 4 # len ignores \0 for js
+    else: assert a.len == 2 # \0 is a null terminator
     static:
       var a2: cstring = "ab\0c"
-      doAssert a2.len == 2 # \0 is a null terminator, even in js vm
+      assert a2.len == 2 # \0 is a null terminator, even in js vm
 
 func len*(x: (type array)|array): int {.magic: "LengthArray".} =
   ## Returns the length of an array or an array type.
@@ -761,11 +761,11 @@ func ord*[T: Ordinal|enum](x: T): int {.magic: "Ord".} =
 func chr*(u: range[0..255]): char {.magic: "Chr".} =
   ## Converts `u` to a `char`, same as `char(u)`.
   runnableExamples:
-    doAssert chr(65) == 'A'
-    doAssert chr(255) == '\255'
-    doAssert chr(255) == char(255)
-    doAssert not compiles chr(256)
-    doAssert not compiles char(256)
+    assert chr(65) == 'A'
+    assert chr(255) == '\255'
+    assert chr(255) == char(255)
+    assert not compiles chr(256)
+    assert not compiles char(256)
     var x = 256
     doAssertRaises(RangeDefect): discard chr(x)
     doAssertRaises(RangeDefect): discard char(x)
@@ -913,21 +913,21 @@ proc `of`*[T, S](x: T, y: typedesc[S]): bool {.magic: "Of", noSideEffect.} =
       Unrelated = ref object
 
     var base: Base = Sub1() # downcast
-    doAssert base of Base # generates `CondTrue` (statically true)
-    doAssert base of Sub1
-    doAssert base isnot Sub1
-    doAssert not (base of Sub2)
+    assert base of Base # generates `CondTrue` (statically true)
+    assert base of Sub1
+    assert base isnot Sub1
+    assert not (base of Sub2)
 
     base = Sub2() # re-assign
-    doAssert base of Sub2
-    doAssert Sub2(base) != nil # upcast
+    assert base of Sub2
+    assert Sub2(base) != nil # upcast
     doAssertRaises(ObjectConversionDefect): discard Sub1(base)
 
     var sub1 = Sub1()
-    doAssert sub1 of Base
-    doAssert sub1.Base of Sub1
+    assert sub1 of Base
+    assert sub1.Base of Sub1
 
-    doAssert not compiles(base of Unrelated)
+    assert not compiles(base of Unrelated)
 
 proc cmp*[T](x, y: T): int =
   ## Generic compare proc.
@@ -1485,9 +1485,9 @@ proc toInt*(f: float): int {.noSideEffect.} =
   ## cannot be accurately converted.
   ##
   ## .. code-block:: Nim
-  ##   doAssert toInt(0.49) == 0
-  ##   doAssert toInt(0.5) == 1
-  ##   doAssert toInt(-0.5) == -1 # rounding is symmetrical
+  ##   assert toInt(0.49) == 0
+  ##   assert toInt(0.5) == 1
+  ##   assert toInt(-0.5) == -1 # rounding is symmetrical
   if f >= 0: int(f+0.5) else: int(f-0.5)
 
 proc toBiggestInt*(f: BiggestFloat): BiggestInt {.noSideEffect.} =
@@ -2001,7 +2001,7 @@ when defined(js) or defined(nimdoc):
       var tmp = ""
       tmp.add(cstring("ab"))
       tmp.add(cstring("cd"))
-      doAssert tmp == "abcd"
+      assert tmp == "abcd"
     asm """
       if (`x` === null) { `x` = []; }
       var off = `x`.length;
@@ -2018,7 +2018,7 @@ when defined(js) or defined(nimdoc):
         var tmp: cstring = ""
         tmp.add(cstring("ab"))
         tmp.add(cstring("cd"))
-        doAssert tmp == cstring("abcd")
+        assert tmp == cstring("abcd")
 
 elif hasAlloc:
   {.push stackTrace: off, profiler: off.}

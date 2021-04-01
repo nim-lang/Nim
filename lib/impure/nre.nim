@@ -49,20 +49,20 @@ runnableExamples:
   ]
   var i = 0
   for match in "moigagoo".findIter(vowels):
-    doAssert match.matchBounds == expectedResults[i]
+    assert match.matchBounds == expectedResults[i]
     inc i
 
   let firstVowel = "foo".find(vowels)
   let hasVowel = firstVowel.isSome()
   if hasVowel:
     let matchBounds = firstVowel.get().captureBounds[-1]
-    doAssert matchBounds.a == 1
+    assert matchBounds.a == 1
 
   ## as with module `re`, unless specified otherwise, `start` parameter in each
   ## proc indicates where the scan starts, but outputs are relative to the start
   ## of the input string, not to `start`:
-  doAssert find("uxabc", re"(?<=x|y)ab", start = 1).get.captures[-1] == "ab"
-  doAssert find("uxabc", re"ab", start = 3).isNone
+  assert find("uxabc", re"(?<=x|y)ab", start = 1).get.captures[-1] == "ab"
+  assert find("uxabc", re"ab", start = 3).isNone
 
 from pcre import nil
 import nre/private/util
@@ -228,14 +228,14 @@ type
 
 runnableExamples:
   # This MUST be kept in sync with the examples in RegexMatch
-  doAssert "abc".match(re"(\w)").get.captures[0] == "a"
-  doAssert "abc".match(re"(?<letter>\w)").get.captures["letter"] == "a"
-  doAssert "abc".match(re"(\w)\w").get.captures[-1] == "ab"
+  assert "abc".match(re"(\w)").get.captures[0] == "a"
+  assert "abc".match(re"(?<letter>\w)").get.captures["letter"] == "a"
+  assert "abc".match(re"(\w)\w").get.captures[-1] == "ab"
 
-  doAssert "abc".match(re"(\w)").get.captureBounds[0] == 0 .. 0
-  doAssert 0 in "abc".match(re"(\w)").get.captureBounds == true
-  doAssert "abc".match(re"").get.captureBounds[-1] == 0 .. -1
-  doAssert "abc".match(re"abc").get.captureBounds[-1] == 0 .. 2
+  assert "abc".match(re"(\w)").get.captureBounds[0] == 0 .. 0
+  assert 0 in "abc".match(re"(\w)").get.captureBounds == true
+  assert "abc".match(re"").get.captureBounds[-1] == 0 .. -1
+  assert "abc".match(re"abc").get.captureBounds[-1] == 0 .. 2
 
 
 proc destroyRegex(pattern: Regex) =
@@ -542,8 +542,8 @@ proc match*(str: string, pattern: Regex, start = 0, endpos = int.high): Option[R
   ## string.
   ##
   runnableExamples:
-    doAssert "foo".match(re"f").isSome
-    doAssert "foo".match(re"o").isNone
+    assert "foo".match(re"f").isSome
+    assert "foo".match(re"o").isNone
 
   return str.matchImpl(pattern, start, endpos, pcre.ANCHORED)
 
@@ -621,9 +621,9 @@ proc contains*(str: string, pattern: Regex, start = 0, endpos = int.high): bool 
   ## This function is equivalent to `isSome(str.find(pattern, start, endpos))`.
   ##
   runnableExamples:
-    doAssert "abc".contains(re"bc")
-    doAssert not "abc".contains(re"cd")
-    doAssert not "abc".contains(re"a", start = 1)
+    assert "abc".contains(re"bc")
+    assert not "abc".contains(re"cd")
+    assert not "abc".contains(re"a", start = 1)
 
   return isSome(str.find(pattern, start, endpos))
 
@@ -635,16 +635,16 @@ proc split*(str: string, pattern: Regex, maxSplit = -1, start = 0): seq[string] 
   ##
   runnableExamples:
     # -  If the match is zero-width, then the string is still split:
-    doAssert "123".split(re"") == @["1", "2", "3"]
+    assert "123".split(re"") == @["1", "2", "3"]
 
     # -  If the pattern has a capture in it, it is added after the string
     #    split:
-    doAssert "12".split(re"(\d)") == @["", "1", "", "2", ""]
+    assert "12".split(re"(\d)") == @["", "1", "", "2", ""]
 
     # -  If `maxsplit != -1`, then the string will only be split
     #    `maxsplit - 1` times. This means that there will be `maxsplit`
     #    strings in the output seq.
-    doAssert "1.2.3".split(re"\.", maxsplit = 2) == @["1", "2.3"]
+    assert "1.2.3".split(re"\.", maxsplit = 2) == @["1", "2.3"]
 
   result = @[]
   var lastIdx = start
@@ -747,9 +747,9 @@ proc escapeRe*(str: string): string {.gcsafe.} =
   ##
   ## Escaped char: `\ + * ? [ ^ ] $ ( ) { } = ! < > | : -`
   runnableExamples:
-    doAssert escapeRe("fly+wind") == "fly\\+wind"
-    doAssert escapeRe("!") == "\\!"
-    doAssert escapeRe("nim*") == "nim\\*"
+    assert escapeRe("fly+wind") == "fly\\+wind"
+    assert escapeRe("!") == "\\!"
+    assert escapeRe("nim*") == "nim\\*"
 
   #([\\+*?[^\]$(){}=!<>|:-])
   const SpecialCharMatcher = {'\\', '+', '*', '?', '[', '^', ']', '$', '(',
