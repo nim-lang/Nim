@@ -72,7 +72,7 @@ type
     tkDot = ".", tkDotDot = "..", tkBracketLeColon = "[:",
     tkOpr, tkComment, tkAccent = "`",
     # these are fake tokens used by renderer.nim
-    tkSpaces, tkInfixOpr, tkPrefixOpr, tkPostfixOpr
+    tkSpaces, tkInfixOpr, tkPrefixOpr, tkPostfixOpr, tkHideableStart, tkHideableEnd
 
   TokTypes* = set[TokType]
 

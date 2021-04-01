@@ -446,22 +446,22 @@ proc nodeToHighlightedHtml(d: PDoc; n: PNode; result: var Rope; renderFlags: TRe
               "\\spanIdentifier{$1}", [escLit])
     of tkSpaces, tkInvalid:
       result.add(literal)
-    of tkCurlyDotLe:
+    of tkHideableStart:
       template fun(s) = dispA(d.conf, result, s, "\\spanOther{$1}", [escLit])
       if renderRunnableExamples in renderFlags: fun "$1"
-      else: fun: "<span>" & # This span is required for the JS to work properly
-        """<span class="Other">{</span><span class="Other pragmadots">...</span><span class="Other">}</span>
+      else:
+        # 1st span is required for the JS to work properly
+        fun """
+<span>
+<span class="Other pragmadots">...</span>
 </span>
-<span class="pragmawrap">
-<span class="Other">$1</span>
-<span class="pragma">""".replace("\n", "")  # Must remove newlines because wrapped in a <pre>
-    of tkCurlyDotRi:
+<span class="pragmawrap">""".replace("\n", "")  # Must remove newlines because wrapped in a <pre>
+    of tkHideableEnd:
       template fun(s) = dispA(d.conf, result, s, "\\spanOther{$1}", [escLit])
       if renderRunnableExamples in renderFlags: fun "$1"
-      else: fun """
-</span>
-<span class="Other">$1</span>
-</span>""".replace("\n", "")
+      else: fun "</span>"
+    of tkCurlyDotLe: dispA(d.conf, result, "$1", "\\spanOther{$1}", [escLit])
+    of tkCurlyDotRi: dispA(d.conf, result, "$1", "\\spanOther{$1}", [escLit])
     of tkParLe, tkParRi, tkBracketLe, tkBracketRi, tkCurlyLe, tkCurlyRi,
        tkBracketDotLe, tkBracketDotRi, tkParDotLe,
        tkParDotRi, tkComma, tkSemiColon, tkColon, tkEquals, tkDot, tkDotDot,
