@@ -551,7 +551,7 @@ proc semAsmOrEmit*(con: PContext, n: PNode, marker: char): PNode =
     var str = n[1].strVal
     if str == "":
       localError(con.config, n.info, "empty 'asm' statement")
-      return
+      return errorNode(con, n)
     # now parse the string literal and substitute symbols:
     var a = 0
     while true:
@@ -567,6 +567,9 @@ proc semAsmOrEmit*(con: PContext, n: PNode, marker: char): PNode =
         var e = searchInScopes(con, getIdent(con.cache, sub), amb)
         # XXX what to do here if 'amb' is true?
         if e != nil:
+          if e.kind == skParam and e.typ != nil and e.typ.kind == tyStatic:
+            localError(con.config, n.info, "static parameters cannot be accessed at runtime")
+            return errorNode(con, n)
           incl(e.flags, sfUsed)
           result.add newSymNode(e)
         else:
