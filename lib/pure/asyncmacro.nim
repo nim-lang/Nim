@@ -185,7 +185,7 @@ proc asyncSingleProc(prc: NimNode): NimNode =
 
   let subtypeIsVoid = returnType.kind == nnkEmpty or
         (baseType.kind == nnkSym and
-         baseType.getType[1] == ntyVoid) or
+         baseType.getType[1].typeKind == ntyVoid) or
         (baseType.kind == nnkIdent and
          baseType.eqIdent("void")) #TODO: Make it work properly
   
