@@ -194,8 +194,8 @@ proc mapType(conf: ConfigRef; typ: PType; kind: TSymKind): TCTypeKind =
     result = TCTypeKind(ord(typ.kind) - ord(tyInt) + ord(ctInt))
   of tyStatic:
     if typ.n != nil: result = mapType(conf, lastSon typ, kind)
-    else: doAssert(false, "mapType")
-  else: doAssert(false, "mapType")
+    else: doAssert(false, "mapType: " & $typ.kind)
+  else: doAssert(false, "mapType: " & $typ.kind)
 
 proc mapReturnType(conf: ConfigRef; typ: PType): TCTypeKind =
   #if skipTypes(typ, typedescInst).kind == tyArray: result = ctPtr
