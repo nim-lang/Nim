@@ -70,9 +70,6 @@
 ##   + \`interpreted text\` with roles ``:literal:``, ``:strong:``,
 ##     ``emphasis``, ``:sub:``/``:subscript:``, ``:sup:``/``:superscript:``
 ##     (see `RST roles list`_ for description).
-##
-##     .. Note:: default role is non-standard ``:nim:`` (see below)
-##
 ##   + inline internal targets
 ##
 ## .. _`Nim-specific features`:
@@ -85,6 +82,10 @@
 ##   ``:python:``, ``:yaml:``, ``:java:``, ``:cpp:`` (C++), ``:csharp`` (C#).
 ##   That is every language that `highlite <highlite.html>`_ supports.
 ##   They turn on appropriate syntax highlighting in inline code.
+##
+##   .. Note:: default role for Nim files is ``:nim:``,
+##             for ``*.rst`` it's currently ``:literal:``.
+##
 ## * ***triple emphasis*** (bold and italic) using \*\*\*
 ## * ``:idx:`` role for \`interpreted text\` to include the link to this
 ##   text into an index (example: `Nim index`_).
@@ -167,7 +168,9 @@ type
     roSupportSmilies,         ## make the RST parser support smilies like ``:)``
     roSupportRawDirective,    ## support the ``raw`` directive (don't support
                               ## it for sandboxing)
-    roSupportMarkdown         ## support additional features of Markdown
+    roSupportMarkdown,        ## support additional features of Markdown
+    roNimFile                 ## set for Nim files where default interpreted
+                              ## text role should be :nim:
 
   RstParseOptions* = set[RstParseOption]
 
@@ -460,8 +463,8 @@ type
     hTitleCnt: int              # =0 if no title, =1 if only main title,
                                 # =2 if both title and subtitle are present
     hCurLevel: int              # current section level
-    currRole: string
-    currRoleKind: RstNodeKind
+    currRole: string            # current interpreted text role
+    currRoleKind: RstNodeKind   # ... and its node kind
     subs: seq[Substitution]     # substitutions
     refs: seq[Substitution]     # references
     anchors: seq[AnchorSubst]   # internal target substitutions
@@ -522,15 +525,17 @@ proc defaultFindFile*(filename: string): string =
   if fileExists(filename): result = filename
   else: result = ""
 
-const defaultRoleKind = rnInlineCode
-const defaultRole = "nim"
+proc defaultRoleKind(options: RstParseOptions): RstNodeKind =
+  if roNimFile in options: rnInlineCode else: rnInlineLiteral
+proc defaultRole(options: RstParseOptions): string =
+  if roNimFile in options: "nim" else: "literal"
 
 proc newSharedState(options: RstParseOptions,
                     findFile: FindFileHandler,
                     msgHandler: MsgHandler): PSharedState =
   new(result)
-  result.currRoleKind = defaultRoleKind
-  result.currRole = defaultRole
+  result.currRoleKind = defaultRoleKind(options)
+  result.currRole = defaultRole(options)
   result.subs = @[]
   result.refs = @[]
   result.options = options
@@ -2475,8 +2480,8 @@ proc dirAdmonition(p: var RstParser, d: string): PRstNode =
 proc dirDefaultRole(p: var RstParser): PRstNode =
   result = parseDirective(p, rnDefaultRole, {hasArg}, nil)
   if result.sons[0].len == 0:
-    p.s.currRoleKind = defaultRoleKind
-    p.s.currRole = defaultRole
+    p.s.currRoleKind = defaultRoleKind(p.s.options)
+    p.s.currRole = defaultRole(p.s.options)
   else:
     assert result.sons[0].sons[0].kind == rnLeaf
     p.s.currRole = result.sons[0].sons[0].text

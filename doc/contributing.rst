@@ -285,12 +285,33 @@ or
 
 the first is preferred.
 
-Inline mono spaced text can be input using \`single backticks\` or
+When you specify an *RST role* (highlighting/interpretation marker) do it
+in the postfix form for uniformity, that is after \`text in backticks\`.
+For example an ``:idx:`` role for referencing a topic ("SQLite" in the
+example below) from `Nim Index`_ can be used in doc comment this way:
+
+.. code-block:: nim
+  ## A higher level `SQLite`:idx: database wrapper.
+
+.. _`Nim Index`: https://nim-lang.org/docs/theindex.html
+
+Inline monospaced text can be input using \`single backticks\` or
 \`\`double backticks\`\`. The former are syntactically highlighted,
-the latter are not. To avoid accidental highlighting follow the rule:
+the latter are not.
+To avoid accidental highlighting follow this rule in `*.nim` files:
 
 * use single backticks for fragments of code in Nim and other
-  programming languages, including identifiers
+  programming languages, including identifiers, in `*.nim` files.
+
+  For languages other than Nim add a role after final backtick,
+  e.g. for C++ inline highlighting::
+
+    `#include <stdio.h>`:cpp:
+
+  For a currently unsupported language add the `:code:` role,
+  like for SQL in this example::
+
+    `SELECT * FROM <table_name>;`:code:
 
 * prefer double backticks otherwise:
 
@@ -301,15 +322,16 @@ the latter are not. To avoid accidental highlighting follow the rule:
   * also when code ends with a standalone ``\`` (otherwise a combination of
     ``\`` and a final \` would get escaped)
 
-When you specify an *RST role* (highlighting/interpretation marker) do it
-in the postfix form for uniformity, that is after \`text in backticks\`.
-For example an ``:idx:`` role for referencing a topic ("SQLite" in the
-example below) from `Nim Index`_ can be used in doc comment this way:
+.. Note:: `*.rst` files have `:literal:` as their default role.
+          So for them the rule above is only applicable if the `:nim:` role
+          is set up manually as the default::
 
-.. code-block:: nim
-  ## A higher level `SQLite`:idx: database wrapper.
+            .. role:: nim(code)
+               :language: nim
+            .. default-role:: nim
 
-.. _`Nim Index`: https://nim-lang.org/docs/theindex.html
+          The first 2 lines are for other RST implementations,
+          including Github one.
 
 Best practices
 ==============
