@@ -2485,17 +2485,9 @@ proc dirDefaultRole(p: var RstParser): PRstNode =
 proc dirRole(p: var RstParser): PRstNode =
   result = parseDirective(p, rnDirective, {hasArg, hasOptions}, nil)
   # just check that language is supported, TODO: real role association
-  if result.sons[1] != nil:
-    for fld in result.sons[1].sons:
-      if fld.sons[0].sons[0].kind == rnLeaf and
-          fld.sons[0].sons[0].text == "language":
-        var s: string
-        for leaf in fld.sons[1].sons:
-          assert leaf.kind == rnLeaf
-          s.add leaf.text
-        s = s.strip
-        if s notin supportedLanguages:
-          rstMessage(p, mwUnsupportedLanguage, s)
+  let lang = getFieldValue(result, "language").strip
+  if lang != "" and lang notin supportedLanguages:
+    rstMessage(p, mwUnsupportedLanguage, lang)
 
 proc dirRawAux(p: var RstParser, result: var PRstNode, kind: RstNodeKind,
                contentParser: SectionParser) =
