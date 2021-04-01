@@ -184,8 +184,10 @@ proc asyncSingleProc(prc: NimNode): NimNode =
     verifyReturnType(repr(returnType), returnType)
 
   let subtypeIsVoid = returnType.kind == nnkEmpty or
-        (baseType.kind in {nnkIdent, nnkSym} and
-         baseType.eqIdent("void"))
+        (baseType.kind == nnkSym and
+         baseType.getType[1] == ntyVoid) or
+        (baseType.kind == nnkIdent and
+         baseType.eqIdent("void")) #TODO: Make it work properly
   
   let futureVarIdents = getFutureVarIdents(prc.params)
 
