@@ -2266,16 +2266,20 @@ iterator walkDir*(dir: string; relative = false, checkDir = false):
   ##        / fileA2.txt
   ##
   ## and this code:
-  ##
-  ## .. code-block:: Nim
-  ##     for kind, path in walkDir("dirA"):
-  ##       echo(path)
-  ##
+  runnableExamples("-r:off"):
+    for kind, path in walkDir("dirA"):
+      echo(path)
   ## produce this output (but not necessarily in this order!)::
   ##   dirA/dirB
   ##   dirA/dirC
   ##   dirA/fileA1.txt
   ##   dirA/fileA2.txt
+  ##
+  ## It also works in VM and produces similar results like above.
+  runnableExamples("-r:off"):
+    static:
+      for kind, path in walkDir("dirA"):
+        echo(path)
   ##
   ## See also:
   ## * `walkPattern iterator <#walkPattern.i,string>`_
