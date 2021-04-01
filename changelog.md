@@ -281,6 +281,8 @@
 - Tuple expressions are now parsed consistently as
   `nnkTupleConstr` node. Will affect macros expecting nodes to be of `nnkPar`.
 
+- `nim e` now accepts arbitrary file extensions for the nimscript file,
+  although `.nims` is still the preferred extension in general.
 
 ## Compiler changes
 
