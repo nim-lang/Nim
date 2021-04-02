@@ -19,7 +19,7 @@ proc checkPragma(ex, prag: var NimNode) =
       prag = ex[1]
       ex = ex[0]
 
-proc createProcType(p, b: NimNode): NimNode {.compileTime.} =
+proc createProcType(p, b: NimNode): NimNode =
   result = newNimNode(nnkProcTy)
   var
     formalParams = newNimNode(nnkFormalParams).add(b)

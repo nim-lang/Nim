@@ -1,4 +1,5 @@
 discard """
+  targets: "c js"
   output: '''
 tdistinct
 25
@@ -138,3 +139,34 @@ block tRequiresInit:
   accept:
     let s = "test"
     doAssert s == "test"
+
+type Foo = distinct string
+
+template main() =
+  # xxx put everything here to test under RT + VM
+  block: # bug #12282
+    block:
+      proc test() =
+        var s: Foo
+        s.string.add('c')
+        doAssert s.string == "c" # was failing
+      test()
+
+    block:
+      proc add(a: var Foo, b: char) {.borrow.}
+      proc test() =
+        var s: Foo
+        s.add('c')
+        doAssert s.string == "c" # was ok
+      test()
+
+    block:
+      proc add(a: var Foo, b: char) {.borrow.}
+      proc test() =
+        var s: string
+        s.Foo.add('c')
+        doAssert s.string == "c" # was failing
+      test()
+
+static: main()
+main()

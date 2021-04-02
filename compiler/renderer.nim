@@ -185,7 +185,7 @@ proc dedent(g: var TSrcGen) =
 proc put(g: var TSrcGen, kind: TokType, s: string; sym: PSym = nil) =
   if kind != tkSpaces:
     addPendingNL(g)
-    if s.len > 0:
+    if s.len > 0 or kind in {tkHideableStart, tkHideableEnd}:
       addTok(g, kind, s, sym)
   else:
     g.pendingWhitespace = s.len
@@ -587,13 +587,30 @@ proc putWithSpace(g: var TSrcGen, kind: TokType, s: string) =
   put(g, kind, s)
   put(g, tkSpaces, Space)
 
+proc isHideable(config: ConfigRef, n: PNode): bool =
+  # xxx compare `ident` directly with `getIdent(cache, wRaises)`, but
+  # this requires a `cache`.
+  case n.kind
+  of nkExprColonExpr: result = n[0].kind == nkIdent and n[0].ident.s in ["raises", "tags", "extern"]
+  of nkIdent: result = n.ident.s in ["gcsafe"]
+  else: result = false
+
 proc gcommaAux(g: var TSrcGen, n: PNode, ind: int, start: int = 0,
                theEnd: int = - 1, separator = tkComma) =
+  let inPragma = g.inPragma == 1 # just the top-level
+  var inHideable = false
   for i in start..n.len + theEnd:
     var c = i < n.len + theEnd
     var sublen = lsub(g, n[i]) + ord(c)
     if not fits(g, g.lineLen + sublen) and (ind + sublen < MaxLineLen): optNL(g, ind)
     let oldLen = g.tokens.len
+    if inPragma:
+      if not inHideable and isHideable(g.config, n[i]):
+        inHideable = true
+        put(g, tkHideableStart, "")
+      elif inHideable and not isHideable(g.config, n[i]):
+        inHideable = false
+        put(g, tkHideableEnd, "")
     gsub(g, n[i])
     if c:
       if g.tokens.len > oldLen:
@@ -601,6 +618,9 @@ proc gcommaAux(g: var TSrcGen, n: PNode, ind: int, start: int = 0,
       if shouldRenderComment(g) and hasCom(n[i]):
         gcoms(g)
         optNL(g, ind)
+  if inHideable:
+    put(g, tkHideableEnd, "")
+    inHideable = false
 
 proc gcomma(g: var TSrcGen, n: PNode, c: TContext, start: int = 0,
             theEnd: int = - 1) =
@@ -942,7 +962,7 @@ proc skipHiddenNodes(n: PNode): PNode =
     else: break
 
 proc accentedName(g: var TSrcGen, n: PNode) =
-  const backticksNeeded = OpChars + {'[', '{'}
+  const backticksNeeded = OpChars + {'[', '{', '\''}
   if n == nil: return
   let isOperator =
     if n.kind == nkIdent and n.ident.s.len > 0 and n.ident.s[0] in backticksNeeded: true
@@ -976,6 +996,11 @@ proc infixArgument(g: var TSrcGen, n: PNode, i: int) =
   if needsParenthesis:
     put(g, tkParRi, ")")
 
+proc isCustomLit(n: PNode): bool =
+  n.len == 2 and n[0].kind == nkRStrLit and
+    (n[1].kind == nkIdent and n[1].ident.s.startsWith('\'')) or
+    (n[1].kind == nkSym and n[1].sym.name.s.startsWith('\''))
+
 proc gsub(g: var TSrcGen, n: PNode, c: TContext) =
   if isNil(n): return
   var
@@ -1007,12 +1032,19 @@ proc gsub(g: var TSrcGen, n: PNode, c: TContext) =
   of nkCall, nkConv, nkDotCall, nkPattern, nkObjConstr:
     if n.len > 1 and n.lastSon.kind in {nkStmtList, nkStmtListExpr}:
       accentedName(g, n[0])
-      if n.len > 2:
+      var i = 1
+      while i < n.len and n[i].kind notin {nkStmtList, nkStmtListExpr}: i.inc
+      if i > 1:
         put(g, tkParLe, "(")
-        gcomma(g, n, 1, -2)
+        gcomma(g, n, 1, i - 1 - n.len)
         put(g, tkParRi, ")")
       put(g, tkColon, ":")
-      gsub(g, n, n.len-1)
+      gsub(g, n, i)
+      for j in i+1 ..< n.len:
+        optNL(g)
+        put(g, tkDo, "do")
+        put(g, tkColon, ":")
+        gsub(g, n, j)
     elif n.len >= 1:
       case bracketKind(g, n[0])
       of bkBracket:
@@ -1170,7 +1202,7 @@ proc gsub(g: var TSrcGen, n: PNode, c: TContext) =
   of nkTupleConstr:
     put(g, tkParLe, "(")
     gcomma(g, n, c)
-    if n.len == 1: put(g, tkComma, ",")
+    if n.len == 1 and n[0].kind != nkExprColonExpr: put(g, tkComma, ",")
     put(g, tkParRi, ")")
   of nkCurly:
     put(g, tkCurlyLe, "{")
@@ -1188,9 +1220,14 @@ proc gsub(g: var TSrcGen, n: PNode, c: TContext) =
     gcomma(g, n, c)
     put(g, tkBracketRi, "]")
   of nkDotExpr:
-    gsub(g, n, 0)
-    put(g, tkDot, ".")
-    gsub(g, n, 1)
+    if isCustomLit(n):
+      put(g, tkCustomLit, n[0].strVal)
+      gsub(g, n, 1)
+    else:
+      gsub(g, n, 0)
+      put(g, tkDot, ".")
+      if n.len > 1:
+        accentedName(g, n[1])
   of nkBind:
     putWithSpace(g, tkBind, "bind")
     gsub(g, n, 0)
@@ -1628,6 +1665,10 @@ proc gsub(g: var TSrcGen, n: PNode, c: TContext) =
       gsons(g, n, c, 0)
   of nkTypeClassTy:
     gTypeClassTy(g, n)
+  of nkError:
+    putWithSpace(g, tkSymbol, "error")
+    #gcomma(g, n, c)
+    gsub(g, n[0], c)
   else:
     #nkNone, nkExplicitTypeListCall:
     internalError(g.config, n.info, "rnimsyn.gsub(" & $n.kind & ')')

@@ -809,6 +809,8 @@ when not defined(nimDisableCertificateValidation) and not defined(windows):
 
   proc X509_check_host*(cert: PX509, name: cstring, namelen: cint, flags:cuint, peername: cstring): cint {.cdecl, dynlib: DLLSSLName, importc.}
 
+  proc X509_free*(cert: PX509) {.cdecl, dynlib: DLLSSLName, importc.}
+
   # Certificates store
 
   type PX509_STORE* = SslPtr

@@ -2099,7 +2099,7 @@ proc semQuoteAst(c: PContext, n: PNode): PNode =
                     identNodeSym.newSymNode
   quotes[1] = newTreeI(nkCall, n.info, identNode, newStrNode(nkStrLit, "result"))
   result = newTreeI(nkCall, n.info,
-     createMagic(c.graph, "getAst", mExpandToAst).newSymNode,
+     createMagic(c.graph, c.idgen, "getAst", mExpandToAst).newSymNode,
      newTreeI(nkCall, n.info, quotes))
   result = semExpandToAst(c, result)
 
@@ -2856,7 +2856,7 @@ proc semExpr(c: PContext, n: PNode, flags: TExprFlags = {}): PNode =
   of nkCurly: result = semSetConstr(c, n)
   of nkBracket: result = semArrayConstr(c, n, flags)
   of nkObjConstr: result = semObjConstr(c, n, flags)
-  of nkLambdaKinds: result = semLambda(c, n, flags)
+  of nkLambdaKinds: result = semProcAux(c, n, skProc, lambdaPragmas, flags)
   of nkDerefExpr: result = semDeref(c, n)
   of nkAddr:
     result = n

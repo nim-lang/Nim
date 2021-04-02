@@ -1,3 +1,5 @@
+.. default-role:: code
+
 The System module imports several separate modules, and their documentation
 is in separate files:
 
@@ -36,7 +38,7 @@ Proc                              Usage
 * `strutils module <strutils.html>`_ for common string functions
 * `strformat module <strformat.html>`_ for string interpolation and formatting
 * `unicode module <unicode.html>`_ for Unicode UTF-8 handling
-* `strscans <strscans.html>`_ for ``scanf`` and ``scanp`` macros, which offer
+* `strscans <strscans.html>`_ for `scanf` and `scanp` macros, which offer
   easier substring extraction than regular expressions
 * `strtabs module <strtabs.html>`_ for efficient hash tables
   (dictionaries, in some programming languages) mapping from strings to strings

@@ -22,8 +22,13 @@ type
     options: TOptions
     globalOptions: TGlobalOptions
 
+  ModuleBackendFlag* = enum
+    HasDatInitProc
+    HasModuleInitProc
+
   PackedModule* = object ## the parts of a PackedEncoder that are part of the .rod file
     definedSymbols: string
+    moduleFlags: TSymFlags
     includes: seq[(LitId, string)] # first entry is the module filename itself
     imports: seq[LitId] # the modules this module depends on
     toReplay: PackedTree # pragmas and VM specific state to replay.
@@ -42,6 +47,9 @@ type
     methodsPerType*: seq[(PackedItemId, int, PackedItemId)]
     enumToStringProcs*: seq[(PackedItemId, PackedItemId)]
 
+    emittedTypeInfo*: seq[string]
+    backendFlags*: set[ModuleBackendFlag]
+
     sh*: Shared
     cfg: PackedConfig
 
@@ -58,7 +66,7 @@ type
     config*: ConfigRef
 
 proc isActive*(e: PackedEncoder): bool = e.config != nil
-proc disable*(e: var PackedEncoder) = e.config = nil
+proc disable(e: var PackedEncoder) = e.config = nil
 
 template primConfigFields(fn: untyped) {.dirty.} =
   fn backend
@@ -95,6 +103,7 @@ proc rememberStartupConfig*(dest: var PackedConfig, config: ConfigRef) =
   template rem(x) =
     dest.x = config.x
   primConfigFields rem
+  dest.globalOptions.excl optForceFullMake
 
 proc hashFileCached(conf: ConfigRef; fileIdx: FileIndex): string =
   result = msgs.getHash(conf, fileIdx)
@@ -131,6 +140,7 @@ proc initEncoder*(c: var PackedEncoder; m: var PackedModule; moduleSym: PSym; co
   m.sh = Shared()
   c.thisModule = moduleSym.itemId.module
   c.config = config
+  m.moduleFlags = moduleSym.flags
   m.bodies = newTreeFrom(m.topLevel)
   m.toReplay = newTreeFrom(m.topLevel)
 
@@ -486,8 +496,14 @@ proc storeInstantiation*(c: var PackedEncoder; m: var PackedModule; s: PSym; i: 
                                           concreteTypes: t)
   toPackedGeneratedProcDef(i.sym, c, m)
 
-proc loadError(err: RodFileError; filename: AbsoluteFile) =
-  echo "Error: ", $err, " loading file: ", filename.string
+proc loadError(err: RodFileError; filename: AbsoluteFile; config: ConfigRef;) =
+  case err
+  of cannotOpen:
+    rawMessage(config, warnCannotOpenFile, filename.string)
+  of includeFileChanged:
+    rawMessage(config, warnFileChanged, filename.string)
+  else:
+    echo "Error: ", $err, " loading file: ", filename.string
 
 proc loadRodFile*(filename: AbsoluteFile; m: var PackedModule; config: ConfigRef;
                   ignoreConfig = false): RodFileError =
@@ -497,6 +513,7 @@ proc loadRodFile*(filename: AbsoluteFile; m: var PackedModule; config: ConfigRef
   f.loadSection configSection
 
   f.loadPrim m.definedSymbols
+  f.loadPrim m.moduleFlags
   f.loadPrim m.cfg
 
   if f.err == ok and not configIdentical(m, config) and not ignoreConfig:
@@ -545,6 +562,10 @@ proc loadRodFile*(filename: AbsoluteFile; m: var PackedModule; config: ConfigRef
   loadSeqSection attachedOpsSection, m.attachedOps
   loadSeqSection methodsPerTypeSection, m.methodsPerType
   loadSeqSection enumToStringProcsSection, m.enumToStringProcs
+  loadSeqSection typeInfoSection, m.emittedTypeInfo
+
+  f.loadSection backendFlagsSection
+  f.loadPrim m.backendFlags
 
   close(f)
   result = f.err
@@ -563,6 +584,7 @@ proc saveRodFile*(filename: AbsoluteFile; encoder: var PackedEncoder; m: var Pac
   f.storeHeader()
   f.storeSection configSection
   f.storePrim m.definedSymbols
+  f.storePrim m.moduleFlags
   f.storePrim m.cfg
 
   template storeSeqSection(section, data) {.dirty.} =
@@ -607,6 +629,10 @@ proc saveRodFile*(filename: AbsoluteFile; encoder: var PackedEncoder; m: var Pac
   storeSeqSection attachedOpsSection, m.attachedOps
   storeSeqSection methodsPerTypeSection, m.methodsPerType
   storeSeqSection enumToStringProcsSection, m.enumToStringProcs
+  storeSeqSection typeInfoSection, m.emittedTypeInfo
+
+  f.storeSection backendFlagsSection
+  f.storePrim m.backendFlags
 
   close(f)
   encoder.disable()
@@ -635,7 +661,8 @@ type
     storing,  # state is strictly for stress-testing purposes
     loading,
     loaded,
-    outdated
+    outdated,
+    stored    # store is complete, no further additions possible
 
   LoadedModule* = object
     status*: ModuleStatus
@@ -662,7 +689,7 @@ proc toFileIndexCached*(c: var PackedDecoder; g: PackedModuleGraph; thisModule: 
 
 proc translateLineInfo(c: var PackedDecoder; g: var PackedModuleGraph; thisModule: int;
                        x: PackedLineInfo): TLineInfo =
-  assert g[thisModule].status in {loaded, storing}
+  assert g[thisModule].status in {loaded, storing, stored}
   result = TLineInfo(line: x.line, col: x.col,
             fileIndex: toFileIndexCached(c, g, thisModule, x.file))
 
@@ -718,7 +745,7 @@ proc loadProcHeader(c: var PackedDecoder; g: var PackedModuleGraph; thisModule: 
   result = newNodeIT(k, translateLineInfo(c, g, thisModule, n.info),
     loadType(c, g, thisModule, n.typ))
   result.flags = n.flags
-  assert k in {nkProcDef, nkMethodDef, nkIteratorDef, nkFuncDef, nkConverterDef}
+  assert k in {nkProcDef, nkMethodDef, nkIteratorDef, nkFuncDef, nkConverterDef, nkLambda}
   var i = 0
   for n0 in sonsReadonly(tree, n):
     if i != bodyPos:
@@ -795,7 +822,7 @@ proc loadSym(c: var PackedDecoder; g: var PackedModuleGraph; thisModule: int; s:
     result = nil
   else:
     let si = moduleIndex(c, g, thisModule, s)
-    assert g[si].status in {loaded, storing}
+    assert g[si].status in {loaded, storing, stored}
     if not g[si].symsInit:
       g[si].symsInit = true
       setLen g[si].syms, g[si].fromDisk.sh.syms.len
@@ -841,7 +868,7 @@ proc loadType(c: var PackedDecoder; g: var PackedModuleGraph; thisModule: int; t
     result = nil
   else:
     let si = moduleIndex(c, g, thisModule, t)
-    assert g[si].status in {loaded, storing}
+    assert g[si].status in {loaded, storing, stored}
     assert t.item > 0
 
     if not g[si].typesInit:
@@ -886,8 +913,7 @@ proc setupLookupTables(g: var PackedModuleGraph; conf: ConfigRef; cache: IdentCa
                   info: newLineInfo(fileIdx, 1, 1),
                   position: int(fileIdx))
   m.module.owner = newPackage(conf, cache, fileIdx)
-  if fileIdx == conf.projectMainIdx2:
-    m.module.flags.incl sfMainModule
+  m.module.flags = m.fromDisk.moduleFlags
 
 proc loadToReplayNodes(g: var PackedModuleGraph; conf: ConfigRef; cache: IdentCache;
                        fileIdx: FileIndex; m: var LoadedModule) =
@@ -932,14 +958,14 @@ proc needsRecompile(g: var PackedModuleGraph; conf: ConfigRef; cache: IdentCache
       else:
         g[m] = LoadedModule(status: outdated, module: g[m].module)
     else:
-      loadError(err, rod)
+      loadError(err, rod, conf)
       g[m].status = outdated
       result = true
-    when false: loadError(err, rod)
+    when false: loadError(err, rod, conf)
   of loading, loaded:
     # For loading: Assume no recompile is required.
     result = false
-  of outdated, storing:
+  of outdated, storing, stored:
     result = true
 
 proc moduleFromRodFile*(g: var PackedModuleGraph; conf: ConfigRef; cache: IdentCache;
@@ -951,8 +977,8 @@ proc moduleFromRodFile*(g: var PackedModuleGraph; conf: ConfigRef; cache: IdentC
     result = g[int fileIdx].module
     assert result != nil
     assert result.position == int(fileIdx)
-    for m in cachedModules:
-      loadToReplayNodes(g, conf, cache, m, g[int m])
+  for m in cachedModules:
+    loadToReplayNodes(g, conf, cache, m, g[int m])
 
 template setupDecoder() {.dirty.} =
   var decoder = PackedDecoder(
@@ -1132,7 +1158,10 @@ proc rodViewer*(rodfile: AbsoluteFile; config: ConfigRef, cache: IdentCache) =
 
   echo "all symbols"
   for i in 0..high(m.sh.syms):
-    echo "  ", m.sh.strings[m.sh.syms[i].name], " local ID: ", i
+    if m.sh.syms[i].name != LitId(0):
+      echo "  ", m.sh.strings[m.sh.syms[i].name], " local ID: ", i, " kind ", m.sh.syms[i].kind
+    else:
+      echo "  <anon symbol?> local ID: ", i, " kind ", m.sh.syms[i].kind
 
   echo "symbols: ", m.sh.syms.len, " types: ", m.sh.types.len,
     " top level nodes: ", m.topLevel.nodes.len, " other nodes: ", m.bodies.nodes.len,

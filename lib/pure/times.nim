@@ -1323,8 +1323,10 @@ proc local*(t: Time): DateTime =
 
 proc now*(): DateTime {.tags: [TimeEffect], benign.} =
   ## Get the current time as a  `DateTime` in the local timezone.
-  ##
   ## Shorthand for `getTime().local`.
+  ##
+  ## .. warning:: Unsuitable for benchmarking, use `monotimes.getMonoTime` or
+  ##    `cpuTime` instead, depending on the use case.
   getTime().local
 
 proc initDateTime*(monthday: MonthdayRange, month: Month, year: int,
@@ -2575,6 +2577,9 @@ proc epochTime*(): float {.tags: [TimeEffect].} =
   ## on the hardware/OS).
   ##
   ## `getTime` should generally be preferred over this proc.
+  ##
+  ## .. warning:: Unsuitable for benchmarking (but still better than `now`),
+  ##    use `monotimes.getMonoTime` or `cpuTime` instead, depending on the use case.
   when defined(macosx):
     var a {.noinit.}: Timeval
     gettimeofday(a)

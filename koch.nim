@@ -458,14 +458,14 @@ proc temp(args: string) =
       inc i
 
   let d = getAppDir()
-  var output = d / "compiler" / "nim".exe
-  var finalDest = d / "bin" / "nim_temp".exe
+  let output = d / "compiler" / "nim".exe
+  let finalDest = d / "bin" / "nim_temp".exe
   # 125 is the magic number to tell git bisect to skip the current commit.
   var (bootArgs, programArgs) = splitArgs(args)
   if "doc" notin programArgs and
       "threads" notin programArgs and
       "js" notin programArgs and "rst2html" notin programArgs:
-    bootArgs.add " -d:leanCompiler"
+    bootArgs = " -d:leanCompiler" & bootArgs
   let nimexec = findNim().quoteShell()
   exec(nimexec & " c -d:debug --debugger:native -d:nimBetterRun " & bootArgs & " " & (d / "compiler" / "nim"), 125)
   copyExe(output, finalDest)
@@ -482,6 +482,22 @@ proc xtemp(cmd: string) =
     exec(cmd)
   finally:
     copyExe(d / "bin" / "nim_backup".exe, d / "bin" / "nim".exe)
+
+proc icTest(args: string) =
+  temp("")
+  let inp = os.parseCmdLine(args)[0]
+  let content = readFile(inp)
+  let nimExe = getAppDir() / "bin" / "nim_temp".exe
+  var i = 0
+  for fragment in content.split("#!EDIT!#"):
+    let file = inp.replace(".nim", "_temp.nim")
+    writeFile(file, fragment)
+    var cmd = nimExe & " cpp --ic:on --listcmd "
+    if i == 0:
+      cmd.add "-f "
+    cmd.add quoteShell(file)
+    exec(cmd)
+    inc i
 
 proc buildDrNim(args: string) =
   if not dirExists("dist/nimz3"):
@@ -531,10 +547,9 @@ proc runCI(cmd: string) =
   ## build nimble early on to enable remainder to depend on it if needed
   kochExecFold("Build Nimble", "nimble")
 
+  let batchParam = "--batch:$1" % "NIM_TESTAMENT_BATCH".getEnv("_")
   if getEnv("NIM_TEST_PACKAGES", "0") == "1":
-    execFold("Test selected Nimble packages (1)", "nim c -r testament/testament cat nimble-packages-1")
-  elif getEnv("NIM_TEST_PACKAGES", "0") == "2":
-    execFold("Test selected Nimble packages (2)", "nim c -r testament/testament cat nimble-packages-2")
+    execFold("Test selected Nimble packages", "nim r testament/testament $# pcat nimble-packages" % batchParam)
   else:
     buildTools()
 
@@ -551,11 +566,9 @@ proc runCI(cmd: string) =
       execFold("Compile tester", "nim c -d:nimCoroutines --os:genode -d:posix --compileOnly testament/testament")
 
     # main bottleneck here
-    # xxx: even though this is the main bottlneck, we could use same code to batch the other tests
-    #[
-    BUG: with initOptParser, `--batch:'' all` interprets `all` as the argument of --batch
-    ]#
-    execFold("Run tester", "nim c -r -d:nimCoroutines --putenv:NIM_TESTAMENT_REMOTE_NETWORKING:1 -d:nimStrictMode testament/testament --batch:$1 all -d:nimCoroutines" % ["NIM_TESTAMENT_BATCH".getEnv("_")])
+    # xxx: even though this is the main bottleneck, we could speedup the rest via batching with `--batch`.
+    # BUG: with initOptParser, `--batch:'' all` interprets `all` as the argument of --batch, pending bug #14343
+    execFold("Run tester", "nim c -r -d:nimCoroutines --putenv:NIM_TESTAMENT_REMOTE_NETWORKING:1 -d:nimStrictMode testament/testament $# all -d:nimCoroutines" % batchParam)
 
     block CT_FFI:
       when defined(posix): # windows can be handled in future PR's
@@ -651,6 +664,13 @@ proc showHelp() =
   quit(HelpText % [VersionAsString & spaces(44-len(VersionAsString)),
                    CompileDate, CompileTime], QuitSuccess)
 
+proc branchDone() =
+  let thisBranch = execProcess("git symbolic-ref --short HEAD").strip()
+  if thisBranch != "devel" and thisBranch != "":
+    exec("git checkout devel")
+    exec("git branch -D " & thisBranch)
+    exec("git pull --rebase")
+
 when isMainModule:
   var op = initOptParser()
   var
@@ -708,6 +728,8 @@ when isMainModule:
       of "fusion":
         let suffix = if latest: HeadHash else: FusionStableHash
         exec("nimble install -y fusion@$#" % suffix)
+      of "ic": icTest(op.cmdLineRest)
+      of "branchdone": branchDone()
       else: showHelp()
       break
     of cmdEnd: break

@@ -397,12 +397,12 @@ proc analyse(c: var AnalysisCtx; n: PNode) =
   else:
     analyseSons(c, n)
 
-proc transformSlices(g: ModuleGraph; n: PNode): PNode =
+proc transformSlices(g: ModuleGraph; idgen: IdGenerator; n: PNode): PNode =
   if n.kind in nkCallKinds and n[0].kind == nkSym:
     let op = n[0].sym
     if op.name.s == "[]" and op.fromSystem:
       result = copyNode(n)
-      let opSlice = newSymNode(createMagic(g, "slice", mSlice))
+      let opSlice = newSymNode(createMagic(g, idgen, "slice", mSlice))
       opSlice.typ = getSysType(g, n.info, tyInt)
       result.add opSlice
       result.add n[1]
@@ -413,11 +413,11 @@ proc transformSlices(g: ModuleGraph; n: PNode): PNode =
   if n.safeLen > 0:
     result = shallowCopy(n)
     for i in 0..<n.len:
-      result[i] = transformSlices(g, n[i])
+      result[i] = transformSlices(g, idgen, n[i])
   else:
     result = n
 
-proc transformSpawn(g: ModuleGraph; idgen: IdGenerator;owner: PSym; n, barrier: PNode): PNode
+proc transformSpawn(g: ModuleGraph; idgen: IdGenerator; owner: PSym; n, barrier: PNode): PNode
 proc transformSpawnSons(g: ModuleGraph; idgen: IdGenerator; owner: PSym; n, barrier: PNode): PNode =
   result = shallowCopy(n)
   for i in 0..<n.len:
@@ -431,7 +431,7 @@ proc transformSpawn(g: ModuleGraph; idgen: IdGenerator; owner: PSym; n, barrier:
       let b = it.lastSon
       if getMagic(b) == mSpawn:
         if it.len != 3: localError(g.config, it.info, "invalid context for 'spawn'")
-        let m = transformSlices(g, b)
+        let m = transformSlices(g, idgen, b)
         if result.isNil:
           result = newNodeI(nkStmtList, n.info)
           result.add n
@@ -446,12 +446,12 @@ proc transformSpawn(g: ModuleGraph; idgen: IdGenerator; owner: PSym; n, barrier:
     let b = n[1]
     if getMagic(b) == mSpawn and (let t = b[1][0].typ[0];
         spawnResult(t, true) == srByVar):
-      let m = transformSlices(g, b)
+      let m = transformSlices(g, idgen, b)
       return wrapProcForSpawn(g, idgen, owner, m, b.typ, barrier, n[0])
     result = transformSpawnSons(g, idgen, owner, n, barrier)
   of nkCallKinds:
     if getMagic(n) == mSpawn:
-      result = transformSlices(g, n)
+      result = transformSlices(g, idgen, n)
       return wrapProcForSpawn(g, idgen, owner, result, n.typ, barrier, nil)
     result = transformSpawnSons(g, idgen, owner, n, barrier)
   elif n.safeLen > 0:

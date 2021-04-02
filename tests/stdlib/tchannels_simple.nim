@@ -24,8 +24,7 @@ var worker1: Thread[void]
 createThread(worker1, firstWorker)
 
 # Block until the message arrives, then print it out.
-var dest = ""
-chan.recv(dest)
+let dest = chan.recv()
 doAssert dest == "Hello World!"
 
 # Wait for the thread to exit before moving on to the next example.

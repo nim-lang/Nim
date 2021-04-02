@@ -255,6 +255,31 @@ block:
   doAssert e == @[]
   doAssert f == @[]
 
+
+block: # bug #10815
+  type
+    Opcode = enum
+      iChar, iSet
+
+    Inst = object
+      case code: Opcode
+        of iChar:
+          c: char
+        of iSet:
+          cs: set[char]
+
+    Patt = seq[Inst]
+
+
+  proc `$`(p: Patt): string =
+    discard
+
+  proc P(): Patt =
+    result.add Inst(code: iSet)
+
+  const a = P()
+  doAssert $a == ""
+
 import tables
 
 block: # bug #8007

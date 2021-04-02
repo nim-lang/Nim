@@ -259,6 +259,10 @@ proc withTmpIfNeeded(p: BProc, a: TLoc, needsTmp: bool): TLoc =
   else:
     result = a
 
+proc literalsNeedsTmp(p: BProc, a: TLoc): TLoc =
+  getTemp(p, a.lode.typ, result, needsInit=false)
+  genAssignment(p, result, a, {})
+
 proc genArgStringToCString(p: BProc, n: PNode, needsTmp: bool): Rope {.inline.} =
   var a: TLoc
   initLocExpr(p, n[0], a)
@@ -273,7 +277,10 @@ proc genArg(p: BProc, n: PNode, param: PSym; call: PNode, needsTmp = false): Rop
     result = openArrayLoc(p, param.typ, n)
   elif ccgIntroducedPtr(p.config, param, call[0].typ[0]):
     initLocExpr(p, n, a)
-    result = addrLoc(p.config, withTmpIfNeeded(p, a, needsTmp))
+    if n.kind in {nkCharLit..nkNilLit}:
+      result = addrLoc(p.config, literalsNeedsTmp(p, a))
+    else:
+      result = addrLoc(p.config, withTmpIfNeeded(p, a, needsTmp))
   elif p.module.compileToCpp and param.typ.kind in {tyVar} and
       n.kind == nkHiddenAddr:
     initLocExprSingleUse(p, n[0], a)

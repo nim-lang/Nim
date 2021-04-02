@@ -18,12 +18,12 @@
 ## also doing cross-module dependency tracking and DCE that we don't need
 ## anymore. DCE is now done as prepass over the entire packed module graph.
 
-import std/[packedsets, algorithm]
+import std/[packedsets, algorithm, tables]
   # std/intsets would give `UnusedImport`, pending https://github.com/nim-lang/Nim/issues/14246
 import ".."/[ast, options, lineinfos, modulegraphs, cgendata, cgen,
   pathutils, extccomp, msgs]
 
-import packed_ast, to_packed_ast, dce, rodfiles
+import packed_ast, ic, dce, rodfiles
 
 proc unpackTree(g: ModuleGraph; thisModule: int;
                 tree: PackedTree; n: NodePos): PNode =
@@ -44,6 +44,12 @@ proc generateCodeForModule(g: ModuleGraph; m: var LoadedModule; alive: var Alive
     cgen.genTopLevelStmt(bmod, n)
 
   finalCodegenActions(g, bmod, newNodeI(nkStmtList, m.module.info))
+  m.fromDisk.backendFlags = cgen.whichInitProcs(bmod)
+
+proc replayTypeInfo(g: ModuleGraph; m: var LoadedModule; origin: FileIndex) =
+  for x in mitems(m.fromDisk.emittedTypeInfo):
+    #echo "found type ", x, " for file ", int(origin)
+    g.emittedTypeInfo[x] = origin
 
 proc addFileToLink(config: ConfigRef; m: PSym) =
   let filename = AbsoluteFile toFullPath(config, m.position.FileIndex)
@@ -59,11 +65,28 @@ proc addFileToLink(config: ConfigRef; m: PSym) =
                    flags: {CfileFlag.Cached})
     addFileToCompile(config, cf)
 
-proc aliveSymsChanged(config: ConfigRef; position: int; alive: AliveSyms): bool =
+when defined(debugDce):
+  import std / [os, packedsets]
+
+proc storeAliveSymsImpl(asymFile: AbsoluteFile; s: seq[int32]) =
+  var f = rodfiles.create(asymFile.string)
+  f.storeHeader()
+  f.storeSection aliveSymsSection
+  f.storeSeq(s)
+  close f
+
+template prepare {.dirty.} =
   let asymFile = toRodFile(config, AbsoluteFile toFullPath(config, position.FileIndex), ".alivesyms")
   var s = newSeqOfCap[int32](alive[position].len)
   for a in items(alive[position]): s.add int32(a)
   sort(s)
+
+proc storeAliveSyms(config: ConfigRef; position: int; alive: AliveSyms) =
+  prepare()
+  storeAliveSymsImpl(asymFile, s)
+
+proc aliveSymsChanged(config: ConfigRef; position: int; alive: AliveSyms): bool =
+  prepare()
   var f2 = rodfiles.open(asymFile.string)
   f2.loadHeader()
   f2.loadSection aliveSymsSection
@@ -73,28 +96,39 @@ proc aliveSymsChanged(config: ConfigRef; position: int; alive: AliveSyms): bool 
   if f2.err == ok and oldData == s:
     result = false
   else:
+    when defined(debugDce):
+      let oldAsSet = toPackedSet[int32](oldData)
+      let newAsSet = toPackedSet[int32](s)
+      echo "set of live symbols changed ", asymFile.changeFileExt("rod"), " ", position, " ", f2.err
+      echo "in old but not in new ", oldAsSet.difference(newAsSet)
+      echo "in new but not in old ", newAsSet.difference(oldAsSet)
+
+      if execShellCmd(getAppFilename() & " rod " & quoteShell(asymFile.changeFileExt("rod"))) != 0:
+        echo "command failed"
     result = true
-    var f = rodfiles.create(asymFile.string)
-    f.storeHeader()
-    f.storeSection aliveSymsSection
-    f.storeSeq(s)
-    close f
+    storeAliveSymsImpl(asymFile, s)
 
 proc generateCode*(g: ModuleGraph) =
   ## The single entry point, generate C(++) code for the entire
   ## Nim program aka `ModuleGraph`.
-  initStrTable(g.compilerprocs)
+  resetForBackend(g)
   var alive = computeAliveSyms(g.packed, g.config)
+
+  when false:
+    for i in 0..high(g.packed):
+      echo i, " is of status ", g.packed[i].status, " ", toFullPath(g.config, FileIndex(i))
 
   for i in 0..high(g.packed):
     # case statement here to enforce exhaustive checks.
     case g.packed[i].status
     of undefined:
       discard "nothing to do"
-    of loading:
+    of loading, stored:
       assert false
     of storing, outdated:
       generateCodeForModule(g, g.packed[i], alive)
+      closeRodFile(g, g.packed[i].module)
+      storeAliveSyms(g.config, g.packed[i].module.position, alive)
     of loaded:
       # Even though this module didn't change, DCE might trigger a change.
       # Consider this case: Module A uses symbol S from B and B does not use
@@ -104,3 +138,8 @@ proc generateCode*(g: ModuleGraph) =
         generateCodeForModule(g, g.packed[i], alive)
       else:
         addFileToLink(g.config, g.packed[i].module)
+        replayTypeInfo(g, g.packed[i], FileIndex(i))
+
+        if g.backend == nil:
+          g.backend = cgendata.newModuleList(g)
+        registerInitProcs(BModuleList(g.backend), g.packed[i].module, g.packed[i].fromDisk.backendFlags)

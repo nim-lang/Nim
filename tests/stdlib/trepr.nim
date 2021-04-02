@@ -6,6 +6,8 @@ discard """
 # if excessive, could remove 'cpp' from targets
 
 from strutils import endsWith, contains
+from std/macros import newLit
+macro deb(a): string = newLit a.repr
 
 template main() =
   doAssert repr({3,5}) == "{3, 5}"
@@ -64,6 +66,84 @@ template main() =
     when defined(js): discard # BUG: doesn't work
     else:
       doAssert reprOpenarray(arr) == "[1, 2, 3]"
+
+  block: # bug #17292
+    template foo(a, b, c, d) = discard
+    block:
+      let a = deb:
+        foo(1, 2, 3, 4)
+      doAssert a == "\nfoo(1, 2, 3, 4)"
+    block:
+      let a = deb:
+        foo(1, 2, 3): 4
+      doAssert a == """
+
+foo(1, 2, 3):
+  4"""
+
+    block:
+      let a = deb:
+        foo(1, 2): 3
+        do: 4
+      doAssert a == """
+
+foo(1, 2):
+  3
+do:
+  4"""
+
+    block:
+      let a = deb:
+        foo(1): 3
+        do: 3
+        do: 4
+      doAssert a == """
+
+foo(1):
+  3
+do:
+  3
+do:
+  4"""
+
+    block:
+      let a = deb:
+        foo(1):
+          3
+        do:
+          discard
+          3
+        do:
+          discard
+          4
+
+      doAssert a == """
+
+foo(1):
+  3
+do:
+  discard
+  3
+do:
+  discard
+  4"""
+
+    block:
+      let a = deb:
+        foo: 1
+        do: 2
+        do: 3
+        do: 4
+      doAssert a == """
+
+foo:
+  1
+do:
+  2
+do:
+  3
+do:
+  4"""
 
 static: main()
 main()

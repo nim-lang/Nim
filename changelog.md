@@ -4,6 +4,8 @@
 
 ## Standard library additions and changes
 
+- Added `sections` iterator in `parsecfg`.
+
 - Make custom op in macros.quote work for all statements.
 
 - On Windows the SSL library now checks for valid certificates.
@@ -39,8 +41,13 @@
 
 - added `jsonutils.jsonTo` overload with `opt = Joptions()` param.
 
+- `json.%`,`json.to`, `jsonutils.formJson`,`jsonutils.toJson` now work with `uint|uint64`
+  instead of raising (as in 1.4) or giving wrong results (as in 1.2).
+
 - Added an overload for the `collect` macro that inferes the container type based
   on the syntax of the last expression. Works with std seqs, tables and sets.
+
+- `jsonutils` now handles `cstring` (including as Table key).
 
 - Added `randState` template that exposes the default random number generator.
   Useful for library authors.
@@ -65,6 +72,8 @@
 
 - Added `asyncdispatch.activeDescriptors` that returns the number of currently
   active async event handles/file descriptors.
+
+- Added `getPort` to `asynchttpserver`.
 
 - `--gc:orc` is now 10% faster than previously for common workloads. If
   you have trouble with its changed behavior, compile with `-d:nimOldOrc`.
@@ -210,6 +219,9 @@
 - `std/options` changed `$some(3)` to `"some(3)"` instead of `"Some(3)"`
   and `$none(int)` to `"none(int)"` instead of `"None[int]"`.
 
+- Added `algorithm.merge`.
+
+
 - Added `std/jsfetch` module [Fetch](https://developer.mozilla.org/docs/Web/API/Fetch_API) wrapper for JavaScript target.
 
 - Added `std/jsheaders` module [Headers](https://developer.mozilla.org/en-US/docs/Web/API/Headers) wrapper for JavaScript target.
@@ -232,6 +244,17 @@
   zone offsets without colons, e.g. `UTC+7 -> +0700`.
 
 - Added `std/tempfiles`.
+- In `std/os`, `getHomeDir`, `expandTilde`, `getTempDir`, `getConfigDir` now do not include trailing `DirSep`,
+  unless `-d:nimLegacyHomeDir` is specified (for a transition period).
+
+- Added `jsconsole.dir`, `jsconsole.dirxml`, `jsconsole.timeStamp`.
+
+- Added dollar `$` and `len` for `jsre.RegExp`.
+
+- Added `hasDataBuffered` to `asyncnet`.
+
+- Added `hasClosure` to `std/typetraits`.
+
 
 ## Language changes
 
@@ -251,7 +274,16 @@
 
 - `typedesc[Foo]` now renders as such instead of `type Foo` in compiler messages.
 
+- The unary minus in `-1` is now part of the integer literal, it is now parsed as a single token.
+  This implies that edge cases like `-128'i8` finally work correctly.
 
+- Custom numeric literals (e.g. `-128'bignum`) are now supported.
+
+- Tuple expressions are now parsed consistently as
+  `nnkTupleConstr` node. Will affect macros expecting nodes to be of `nnkPar`.
+
+- `nim e` now accepts arbitrary file extensions for the nimscript file,
+  although `.nims` is still the preferred extension in general.
 
 ## Compiler changes
 
@@ -260,6 +292,8 @@
 - Deprecated `TaintedString` and `--taintmode`.
 
 - Deprecated `--nilseqs` which is now a noop.
+
+- Added `--spellSuggest` to show spelling suggestions on typos.
 
 - Source+Edit links now appear on top of every docgen'd page when
   `nim doc --git.url:url ...` is given.
@@ -290,6 +324,7 @@
 
 - Added `unsafeIsolate` and `extract` to `std/isolation`.
 
+- `--hint:CC` now goes to stderr (like all other hints) instead of stdout.
 
 
 ## Tool changes

@@ -1,3 +1,5 @@
+.. default-role:: code
+
 Testament is an advanced automatic unittests runner for Nim tests, is used for the development of Nim itself,
 offers process isolation for your tests, it can generate statistics about test cases,
 supports multiple targets (C, C++, ObjectiveC, JavaScript, etc),
@@ -9,29 +11,29 @@ so can be useful to run your tests, even the most complex ones.
 Test files location
 ===================
 
-By default Testament looks for test files on ``"./tests/*.nim"``.
-You can overwrite this pattern glob using ``pattern <glob>``.
+By default Testament looks for test files on `"./tests/*.nim"`.
+You can overwrite this pattern glob using `pattern <glob>`.
 The default working directory path can be changed using
-``--directory:"folder/subfolder/"``.
+`--directory:"folder/subfolder/"`.
 
-Testament uses the ``nim`` compiler on ``PATH``.
-You can change that using ``--nim:"folder/subfolder/nim"``.
-Running JavaScript tests with ``--targets:"js"`` requires a working NodeJS on
-``PATH``.
+Testament uses the `nim` compiler on `PATH`.
+You can change that using `--nim:"folder/subfolder/nim"`.
+Running JavaScript tests with `--targets:"js"` requires a working NodeJS on
+`PATH`.
 
 
 Options
 =======
 
-* ``--print``                   Also print results to the console
-* ``--simulate``                See what tests would be run but don't run them (for debugging)
-* ``--failing``                 Only show failing/ignored tests
-* ``--targets:"c cpp js objc"`` Run tests for specified targets (default: all)
-* ``--nim:path``                Use a particular nim executable (default: ``$PATH/nim``)
-* ``--directory:dir``           Change to directory dir before reading the tests or doing anything else.
-* ``--colors:on|off``           Turn messages coloring on|off.
-* ``--backendLogging:on|off``   Disable or enable backend logging. By default turned on.
-* ``--skipFrom:file``           Read tests to skip from ``file`` - one test per line, # comments ignored
+* `--print`                   Also print results to the console
+* `--simulate`                See what tests would be run but don't run them (for debugging)
+* `--failing`                 Only show failing/ignored tests
+* `--targets:"c cpp js objc"` Run tests for specified targets (default: all)
+* `--nim:path`                Use a particular nim executable (default: `$PATH/nim`)
+* `--directory:dir`           Change to directory dir before reading the tests or doing anything else.
+* `--colors:on|off`           Turn messages coloring on|off.
+* `--backendLogging:on|off`   Disable or enable backend logging. By default turned on.
+* `--skipFrom:file`           Read tests to skip from `file` - one test per line, # comments ignored
 
 
 Running a single test
@@ -68,7 +70,7 @@ To search for tests deeper in a directory, use
 HTML Reports
 ============
 
-Generate HTML Reports ``testresults.html`` from unittests,
+Generate HTML Reports `testresults.html` from unittests,
 you have to run at least 1 test *before* generating a report:
 
 .. code::
@@ -172,7 +174,7 @@ Example "template" **to edit** and write a Testament unittest:
   assert 42 == 42, "Assert error message"
 
 
-* As you can see the "Spec" is just a ``discard """ """``.
+* As you can see the "Spec" is just a `discard """ """`.
 * Spec has sane defaults, so you don't need to provide them all, any simple assert will work just fine.
 * `This is not the full spec of Testament, check the Testament Spec on GitHub, see parseSpec(). <https://github.com/nim-lang/Nim/blob/devel/testament/specs.nim#L238>`_
 * `Nim itself uses Testament, so there are plenty of test examples. <https://github.com/nim-lang/Nim/tree/devel/tests>`_

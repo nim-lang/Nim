@@ -1,3 +1,5 @@
+.. default-role:: code
+
 ======================
 Nim Tutorial (Part II)
 ======================
@@ -24,7 +26,7 @@ Pragmas
 
 Pragmas are Nim's method to give the compiler additional information/
 commands without introducing a massive number of new keywords. Pragmas are
-enclosed in the special ``{.`` and ``.}`` curly dot brackets. This tutorial
+enclosed in the special `{.` and `.}` curly dot brackets. This tutorial
 does not cover pragmas. See the `manual <manual.html#pragmas>`_ or `user guide
 <nimc.html#additional-features>`_ for a description of the available
 pragmas.
@@ -45,11 +47,11 @@ Inheritance
 
 Inheritance in Nim is entirely optional. To enable inheritance with
 runtime type information the object needs to inherit from
-``RootObj``.  This can be done directly, or indirectly by
-inheriting from an object that inherits from ``RootObj``.  Usually
-types with inheritance are also marked as ``ref`` types even though
+`RootObj`.  This can be done directly, or indirectly by
+inheriting from an object that inherits from `RootObj`.  Usually
+types with inheritance are also marked as `ref` types even though
 this isn't strictly enforced. To check at runtime if an object is of a certain
-type, the ``of`` operator can be used.
+type, the `of` operator can be used.
 
 .. code-block:: nim
     :test: "nim c $1"
@@ -69,16 +71,16 @@ type, the ``of`` operator can be used.
   student = Student(name: "Anton", age: 5, id: 2)
   echo student[]
 
-Inheritance is done with the ``object of`` syntax. Multiple inheritance is
-currently not supported. If an object type has no suitable ancestor, ``RootObj``
+Inheritance is done with the `object of` syntax. Multiple inheritance is
+currently not supported. If an object type has no suitable ancestor, `RootObj`
 can be used as its ancestor, but this is only a convention. Objects that have
-no ancestor are implicitly ``final``. You can use the ``inheritable`` pragma
-to introduce new object roots apart from ``system.RootObj``. (This is used
+no ancestor are implicitly `final`. You can use the `inheritable` pragma
+to introduce new object roots apart from `system.RootObj`. (This is used
 in the GTK wrapper for instance.)
 
 Ref objects should be used whenever inheritance is used. It isn't strictly
-necessary, but with non-ref objects assignments such as ``let person: Person =
-Student(id: 123)`` will truncate subclass fields.
+necessary, but with non-ref objects assignments such as `let person: Person =
+Student(id: 123)` will truncate subclass fields.
 
 **Note**: Composition (*has-a* relation) is often preferable to inheritance
 (*is-a* relation) for simple code reuse. Since objects are value types in
@@ -111,7 +113,7 @@ Example:
 Type conversions
 ----------------
 Nim distinguishes between `type casts`:idx: and `type conversions`:idx:.
-Casts are done with the ``cast`` operator and force the compiler to
+Casts are done with the `cast` operator and force the compiler to
 interpret a bit pattern to be of another type.
 
 Type conversions are a much more polite way to convert a type into another:
@@ -119,15 +121,15 @@ They preserve the abstract *value*, not necessarily the *bit-pattern*. If a
 type conversion is not possible, the compiler complains or an exception is
 raised.
 
-The syntax for type conversions is ``destination_type(expression_to_convert)``
+The syntax for type conversions is `destination_type(expression_to_convert)`
 (like an ordinary call):
 
 .. code-block:: nim
   proc getID(x: Person): int =
     Student(x).id
 
-The ``InvalidObjectConversionDefect`` exception is raised if ``x`` is not a
-``Student``.
+The `InvalidObjectConversionDefect` exception is raised if `x` is not a
+`Student`.
 
 
 Object variants
@@ -150,7 +152,7 @@ An example:
       nkSub,          # a subtraction
       nkIf            # an if statement
     Node = ref object
-      case kind: NodeKind  # the ``kind`` field is the discriminator
+      case kind: NodeKind  # the `kind` field is the discriminator
       of nkInt: intVal: int
       of nkFloat: floatVal: float
       of nkString: strVal: string
@@ -173,9 +175,9 @@ Method call syntax
 ------------------
 
 There is a syntactic sugar for calling routines:
-The syntax ``obj.method(args)`` can be used instead of ``method(obj, args)``.
+The syntax `obj.method(args)` can be used instead of `method(obj, args)`.
 If there are no remaining arguments, the parentheses can be omitted:
-``obj.len`` (instead of ``len(obj)``).
+`obj.len` (instead of `len(obj)`).
 
 This method call syntax is not restricted to objects, it can be used
 for any type:
@@ -229,10 +231,10 @@ is needed:
   new s
   s.host = 34  # same as `host=`(s, 34)
 
-(The example also shows ``inline`` procedures.)
+(The example also shows `inline` procedures.)
 
 
-The ``[]`` array access operator can be overloaded to provide
+The `[]` array access operator can be overloaded to provide
 `array properties`:idx:\ :
 
 .. code-block:: nim
@@ -258,14 +260,14 @@ The ``[]`` array access operator can be overloaded to provide
     else: assert(false)
 
 The example is silly, since a vector is better modelled by a tuple which
-already provides ``v[]`` access.
+already provides `v[]` access.
 
 
 Dynamic dispatch
 ----------------
 
 Procedures always use static dispatch. For dynamic dispatch replace the
-``proc`` keyword by ``method``:
+`proc` keyword by `method`:
 
 .. code-block:: nim
     :test: "nim c $1"
@@ -289,12 +291,12 @@ Procedures always use static dispatch. For dynamic dispatch replace the
 
   echo eval(newPlus(newPlus(newLit(1), newLit(2)), newLit(4)))
 
-Note that in the example the constructors ``newLit`` and ``newPlus`` are procs
-because it makes more sense for them to use static binding, but ``eval`` is a
+Note that in the example the constructors `newLit` and `newPlus` are procs
+because it makes more sense for them to use static binding, but `eval` is a
 method because it requires dynamic binding.
 
 **Note:** Starting from Nim 0.20, to use multi-methods one must explicitly pass
-``--multimethods:on`` when compiling.
+`--multimethods:on` when compiling.
 
 In a multi-method all parameters that have an object type are used for the
 dispatching:
@@ -324,7 +326,7 @@ dispatching:
 
 As the example demonstrates, invocation of a multi-method cannot be ambiguous:
 Collide 2 is preferred over collide 1 because the resolution works from left to
-right. Thus ``Unit, Thing`` is preferred over ``Thing, Unit``.
+right. Thus `Unit, Thing` is preferred over `Thing, Unit`.
 
 **Performance note**: Nim does not produce a virtual method table, but
 generates dispatch trees. This avoids the expensive indirect branch for method
@@ -338,19 +340,19 @@ Exceptions
 In Nim exceptions are objects. By convention, exception types are
 suffixed with 'Error'. The `system <system.html>`_ module defines an
 exception hierarchy that you might want to stick to. Exceptions derive from
-``system.Exception``, which provides the common interface.
+`system.Exception`, which provides the common interface.
 
 Exceptions have to be allocated on the heap because their lifetime is unknown.
 The compiler will prevent you from raising an exception created on the stack.
 All raised exceptions should at least specify the reason for being raised in
-the ``msg`` field.
+the `msg` field.
 
 A convention is that exceptions should be raised in *exceptional* cases,
 they should not be used as an alternative method of control flow.
 
 Raise statement
 ---------------
-Raising an exception is done with the ``raise`` statement:
+Raising an exception is done with the `raise` statement:
 
 .. code-block:: nim
     :test: "nim c $1"
@@ -360,9 +362,9 @@ Raising an exception is done with the ``raise`` statement:
   e.msg = "the request to the OS failed"
   raise e
 
-If the ``raise`` keyword is not followed by an expression, the last exception
+If the `raise` keyword is not followed by an expression, the last exception
 is *re-raised*. For the purpose of avoiding repeating this common code pattern,
-the template ``newException`` in the ``system`` module can be used:
+the template `newException` in the `system` module can be used:
 
 .. code-block:: nim
   raise newException(OSError, "the request to the OS failed")
@@ -371,7 +373,7 @@ the template ``newException`` in the ``system`` module can be used:
 Try statement
 -------------
 
-The ``try`` statement handles exceptions:
+The `try` statement handles exceptions:
 
 .. code-block:: nim
     :test: "nim c $1"
@@ -399,23 +401,23 @@ The ``try`` statement handles exceptions:
     finally:
       close(f)
 
-The statements after the ``try`` are executed unless an exception is
-raised. Then the appropriate ``except`` part is executed.
+The statements after the `try` are executed unless an exception is
+raised. Then the appropriate `except` part is executed.
 
-The empty ``except`` part is executed if there is an exception that is
-not explicitly listed. It is similar to an ``else`` part in ``if``
+The empty `except` part is executed if there is an exception that is
+not explicitly listed. It is similar to an `else` part in `if`
 statements.
 
-If there is a ``finally`` part, it is always executed after the
+If there is a `finally` part, it is always executed after the
 exception handlers.
 
-The exception is *consumed* in an ``except`` part. If an exception is not
+The exception is *consumed* in an `except` part. If an exception is not
 handled, it is propagated through the call stack. This means that often
-the rest of the procedure - that is not within a ``finally`` clause -
+the rest of the procedure - that is not within a `finally` clause -
 is not executed (if an exception occurs).
 
 If you need to *access* the actual exception object or message inside an
-``except`` branch you can use the `getCurrentException()
+`except` branch you can use the `getCurrentException()
 <system.html#getCurrentException>`_ and `getCurrentExceptionMsg()
 <system.html#getCurrentExceptionMsg>`_ procs from the `system <system.html>`_
 module. Example:
@@ -433,10 +435,10 @@ module. Example:
 Annotating procs with raised exceptions
 ---------------------------------------
 
-Through the use of the optional ``{.raises.}`` pragma you can specify that a
+Through the use of the optional `{.raises.}` pragma you can specify that a
 proc is meant to raise a specific set of exceptions, or none at all. If the
-``{.raises.}`` pragma is used, the compiler will verify that this is true. For
-instance, if you specify that a proc raises ``IOError``, and at some point it
+`{.raises.}` pragma is used, the compiler will verify that this is true. For
+instance, if you specify that a proc raises `IOError`, and at some point it
 (or one of the procs it calls) starts raising a new exception the compiler will
 prevent that proc from compiling. Usage example:
 
@@ -453,11 +455,11 @@ stopped validating the pragma and the raised exception not being caught, along
 with the file and line where the uncaught exception is being raised, which may
 help you locate the offending code which has changed.
 
-If you want to add the ``{.raises.}`` pragma to existing code, the compiler can
-also help you. You can add the ``{.effects.}`` pragma statement to your proc and
+If you want to add the `{.raises.}` pragma to existing code, the compiler can
+also help you. You can add the `{.effects.}` pragma statement to your proc and
 the compiler will output all inferred effects up to that point (exception
 tracking is part of Nim's effect system). Another more roundabout way to
-find out the list of exceptions raised by a proc is to use the Nim ``doc``
+find out the list of exceptions raised by a proc is to use the Nim `doc`
 command which generates documentation for a whole module and decorates all
 procs with the list of raised exceptions. You can read more about Nim's
 `effect system and related pragmas in the manual <manual.html#effect-system>`_.
@@ -468,14 +470,14 @@ Generics
 
 Generics are Nim's means to parametrize procs, iterators or types
 with `type parameters`:idx:. Generic parameters are written within square
-brackets, for example ``Foo[T]``. They are most useful for efficient type safe
+brackets, for example `Foo[T]`. They are most useful for efficient type safe
 containers:
 
 .. code-block:: nim
     :test: "nim c $1"
   type
     BinaryTree*[T] = ref object # BinaryTree is a generic type with
-                                # generic param ``T``
+                                # generic param `T`
       le, ri: BinaryTree[T]     # left and right subtrees; may be nil
       data: T                   # the data stored in a node
 
@@ -491,8 +493,8 @@ containers:
     else:
       var it = root
       while it != nil:
-        # compare the data items; uses the generic ``cmp`` proc
-        # that works for any type that has a ``==`` and ``<`` operator
+        # compare the data items; uses the generic `cmp` proc
+        # that works for any type that has a `==` and `<` operator
         var c = cmp(it.data, n.data)
         if c < 0:
           if it.le == nil:
@@ -522,19 +524,19 @@ containers:
         n = n.le          # and follow the left pointer
 
   var
-    root: BinaryTree[string] # instantiate a BinaryTree with ``string``
-  add(root, newNode("hello")) # instantiates ``newNode`` and ``add``
-  add(root, "world")          # instantiates the second ``add`` proc
+    root: BinaryTree[string] # instantiate a BinaryTree with `string`
+  add(root, newNode("hello")) # instantiates `newNode` and `add`
+  add(root, "world")          # instantiates the second `add` proc
   for str in preorder(root):
     stdout.writeLine(str)
 
 The example shows a generic binary tree. Depending on context, the brackets are
 used either to introduce type parameters or to instantiate a generic proc,
 iterator or type. As the example shows, generics work with overloading: the
-best match of ``add`` is used. The built-in ``add`` procedure for sequences
-is not hidden and is used in the ``preorder`` iterator.
+best match of `add` is used. The built-in `add` procedure for sequences
+is not hidden and is used in the `preorder` iterator.
 
-There is a special ``[:T]`` syntax when using generics with the method call syntax:
+There is a special `[:T]` syntax when using generics with the method call syntax:
 
 .. code-block:: nim
     :test: "nim c $1"
@@ -567,14 +569,14 @@ Example:
 
   assert(5 != 6) # the compiler rewrites that to: assert(not (5 == 6))
 
-The ``!=``, ``>``, ``>=``, ``in``, ``notin``, ``isnot`` operators are in fact
-templates: this has the benefit that if you overload the ``==`` operator,
-the ``!=`` operator is available automatically and does the right thing. (Except
+The `!=`, `>`, `>=`, `in`, `notin`, `isnot` operators are in fact
+templates: this has the benefit that if you overload the `==` operator,
+the `!=` operator is available automatically and does the right thing. (Except
 for IEEE floating point numbers - NaN breaks basic boolean logic.)
 
-``a > b`` is transformed into ``b < a``.
-``a in b`` is transformed into ``contains(b, a)``.
-``notin`` and ``isnot`` have the obvious meanings.
+`a > b` is transformed into `b < a`.
+`a in b` is transformed into `contains(b, a)`.
+`notin` and `isnot` have the obvious meanings.
 
 Templates are especially useful for lazy evaluation purposes. Consider a
 simple proc for logging:
@@ -591,11 +593,11 @@ simple proc for logging:
     x = 4
   log("x has the value: " & $x)
 
-This code has a shortcoming: if ``debug`` is set to false someday, the quite
-expensive ``$`` and ``&`` operations are still performed! (The argument
+This code has a shortcoming: if `debug` is set to false someday, the quite
+expensive `$` and `&` operations are still performed! (The argument
 evaluation for procedures is *eager*).
 
-Turning the ``log`` proc into a template solves this problem:
+Turning the `log` proc into a template solves this problem:
 
 .. code-block:: nim
     :test: "nim c $1"
@@ -609,15 +611,15 @@ Turning the ``log`` proc into a template solves this problem:
     x = 4
   log("x has the value: " & $x)
 
-The parameters' types can be ordinary types or the meta types ``untyped``,
-``typed``, or ``type``. ``type`` suggests that only a type symbol may be given
-as an argument, and ``untyped`` means symbol lookups and type resolution is not
+The parameters' types can be ordinary types or the meta types `untyped`,
+`typed`, or `type`. `type` suggests that only a type symbol may be given
+as an argument, and `untyped` means symbol lookups and type resolution is not
 performed before the expression is passed to the template.
 
 If the template has no explicit return type,
-``void`` is used for consistency with procs and methods.
+`void` is used for consistency with procs and methods.
 
-To pass a block of statements to a template, use ``untyped`` for the last parameter:
+To pass a block of statements to a template, use `untyped` for the last parameter:
 
 .. code-block:: nim
     :test: "nim c $1"
@@ -638,10 +640,10 @@ To pass a block of statements to a template, use ``untyped`` for the last parame
     txt.writeLine("line 1")
     txt.writeLine("line 2")
 
-In the example the two ``writeLine`` statements are bound to the ``body``
-parameter. The ``withFile`` template contains boilerplate code and helps to
+In the example the two `writeLine` statements are bound to the `body`
+parameter. The `withFile` template contains boilerplate code and helps to
 avoid a common bug: to forget to close the file. Note how the
-``let fn = filename`` statement ensures that ``filename`` is evaluated only
+`let fn = filename` statement ensures that `filename` is evaluated only
 once.
 
 Example: Lifting Procs
@@ -653,7 +655,7 @@ Example: Lifting Procs
 
   template liftScalarProc(fname) =
     ## Lift a proc taking one scalar parameter and returning a
-    ## scalar value (eg ``proc sssss[T](x: T): float``),
+    ## scalar value (eg `proc sssss[T](x: T): float`),
     ## to provide templated procs that can handle a single
     ## parameter of seq[T] or nested seq[seq[]] or the same type
     ##
@@ -675,15 +677,15 @@ Compilation to JavaScript
 
 Nim code can be compiled to JavaScript. However in order to write
 JavaScript-compatible code you should remember the following:
-- ``addr`` and ``ptr`` have slightly different semantic meaning in JavaScript.
+- `addr` and `ptr` have slightly different semantic meaning in JavaScript.
   It is recommended to avoid those if you're not sure how they are translated
   to JavaScript.
-- ``cast[T](x)`` in JavaScript is translated to ``(x)``, except for casting
+- `cast[T](x)` in JavaScript is translated to `(x)`, except for casting
   between signed/unsigned ints, in which case it behaves as static cast in
   C language.
-- ``cstring`` in JavaScript means JavaScript string. It is a good practice to
-  use ``cstring`` only when it is semantically appropriate. E.g. don't use
-  ``cstring`` as a binary data buffer.
+- `cstring` in JavaScript means JavaScript string. It is a good practice to
+  use `cstring` only when it is semantically appropriate. E.g. don't use
+  `cstring` as a binary data buffer.
 
 
 Part 3
