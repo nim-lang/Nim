@@ -141,6 +141,38 @@ do:
 do:
   4"""
 
+  block: # bug #17292 repr with `(discard)` (`discard` would result in illegal code)
+    let a = deb:
+      let f {.inject.} = () => (discard)
+    doAssert a == """
+let f {.inject.} = () =>
+    (discard )"""
+
+    let a2 = deb:
+      block:
+        discard
+      discard
+
+      block:
+        when true: discard
+
+      # let a = b => discard # illegal
+      discard b => (discard) # legal
+
+      block:
+        return
+    doAssert a2 == """
+block:
+  discard
+discard
+block:
+  when true:
+    discard
+discard b =>
+    (discard )
+block:
+  return"""
+
   block: # bug #17292 (bug 4)
     let a = deb:
       proc `=destroy`() = discard
@@ -154,16 +186,8 @@ proc `'foo`(): int =
   discard
 
 proc `foo bar baz`(): int =
-  discard
-"""
+  discard"""
     doAssert a2 == a
-
-  block: # bug #17292 repr with `(discard)` (`discard` would result in illegal code)
-    let a = deb:
-      let f {.inject.} = () => (discard)
-    doAssert a == """
-let f {.inject.} = () =>
-    (discard )"""
 
 static: main()
 main()
