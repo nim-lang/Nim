@@ -7039,9 +7039,9 @@ Example:
   void fun(){}
   """.}
 
-For backward compatibility, if the argument to the `emit` statement
-is a single string literal, Nim symbols can be referred to via backticks.
-This usage is however deprecated.
+.. note:: For backward compatibility, if the argument to the `emit` statement
+  is a single string literal, Nim symbols can be referred to via backticks.
+  This usage is however deprecated.
 
 For a top-level emit statement, the section where in the generated C/C++ file
 the code should be emitted can be influenced via the
