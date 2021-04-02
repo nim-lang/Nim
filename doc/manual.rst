@@ -7039,7 +7039,7 @@ Example:
   void fun(){}
   """.}
 
-.. warning:: For backward compatibility, if the argument to the `emit` statement
+.. note:: For backward compatibility, if the argument to the `emit` statement
   is a single string literal, Nim symbols can be referred to via backticks.
   This usage is however deprecated.
 
