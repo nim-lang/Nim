@@ -243,7 +243,6 @@
 - Added `ZZZ` and `ZZZZ` patterns to `times.nim` `DateTime` parsing, to match time
   zone offsets without colons, e.g. `UTC+7 -> +0700`.
 
-- Added `std/tempfiles`.
 - In `std/os`, `getHomeDir`, `expandTilde`, `getTempDir`, `getConfigDir` now do not include trailing `DirSep`,
   unless `-d:nimLegacyHomeDir` is specified (for a transition period).
 
@@ -255,6 +254,7 @@
 
 - Added `hasClosure` to `std/typetraits`.
 
+- Added `std/tempfiles`.
 
 ## Language changes
 
