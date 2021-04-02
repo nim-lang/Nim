@@ -315,6 +315,10 @@ type
                      ##
                      ## To create a new `Duration`, use `initDuration proc
                      ## <#initDuration,int64,int64,int64,int64,int64,int64,int64,int64>`_.
+                     ## To access private attributes, use
+                     ## `inSeconds proc<#inSeconds,Duration>`_,
+                     ## `inNanoseconds proc<#inNanoseconds,Duration>`_ and etc.
+                     ## 
     seconds: int64
     nanosecond: NanosecondRange
 
@@ -622,56 +626,56 @@ template convert(dur: Duration, unit: static[FixedTimeUnit]): int64 =
           convert(Nanoseconds, unit, dur.nanosecond)
 
 proc inWeeks*(dur: Duration): int64 =
-  ## Convert the duration to the number of whole weeks.
+  ## Converts the duration to the number of whole weeks.
   runnableExamples:
     let dur = initDuration(days = 8)
     doAssert dur.inWeeks == 1
   dur.convert(Weeks)
 
 proc inDays*(dur: Duration): int64 =
-  ## Convert the duration to the number of whole days.
+  ## Converts the duration to the number of whole days.
   runnableExamples:
     let dur = initDuration(hours = -50)
     doAssert dur.inDays == -2
   dur.convert(Days)
 
 proc inHours*(dur: Duration): int64 =
-  ## Convert the duration to the number of whole hours.
+  ## Converts the duration to the number of whole hours.
   runnableExamples:
     let dur = initDuration(minutes = 60, days = 2)
     doAssert dur.inHours == 49
   dur.convert(Hours)
 
 proc inMinutes*(dur: Duration): int64 =
-  ## Convert the duration to the number of whole minutes.
+  ## Converts the duration to the number of whole minutes.
   runnableExamples:
     let dur = initDuration(hours = 2, seconds = 10)
     doAssert dur.inMinutes == 120
   dur.convert(Minutes)
 
 proc inSeconds*(dur: Duration): int64 =
-  ## Convert the duration to the number of whole seconds.
+  ## Converts the duration to the number of whole seconds.
   runnableExamples:
     let dur = initDuration(hours = 2, milliseconds = 10)
     doAssert dur.inSeconds == 2 * 60 * 60
   dur.convert(Seconds)
 
 proc inMilliseconds*(dur: Duration): int64 =
-  ## Convert the duration to the number of whole milliseconds.
+  ## Converts the duration to the number of whole milliseconds.
   runnableExamples:
     let dur = initDuration(seconds = -2)
     doAssert dur.inMilliseconds == -2000
   dur.convert(Milliseconds)
 
 proc inMicroseconds*(dur: Duration): int64 =
-  ## Convert the duration to the number of whole microseconds.
+  ## Converts the duration to the number of whole microseconds.
   runnableExamples:
     let dur = initDuration(seconds = -2)
     doAssert dur.inMicroseconds == -2000000
   dur.convert(Microseconds)
 
 proc inNanoseconds*(dur: Duration): int64 =
-  ## Convert the duration to the number of whole nanoseconds.
+  ## Converts the duration to the number of whole nanoseconds.
   runnableExamples:
     let dur = initDuration(seconds = -2)
     doAssert dur.inNanoseconds == -2000000000
