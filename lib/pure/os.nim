@@ -2267,19 +2267,11 @@ iterator walkDir*(dir: string; relative = false, checkDir = false):
   ##
   ## and this code:
   runnableExamples("-r:off"):
-    for kind, path in walkDir("dirA"):
-      echo(path)
-  ## produce this output (but not necessarily in this order!)::
-  ##   dirA/dirB
-  ##   dirA/dirC
-  ##   dirA/fileA1.txt
-  ##   dirA/fileA2.txt
-  ##
-  ## It also works in VM and produces similar results like above.
-  runnableExamples("-r:off"):
-    static:
-      for kind, path in walkDir("dirA"):
-        echo(path)
+    import std/[strutils, sugar]
+    # note: order is not guaranteed
+    # this also works at compile time
+    assert collect(for k in walkDir("dirA"): k.path).join(",") ==
+                          "dirA/dirB dirA/dirC dirA/dirC dirA/fileA2.txt"
   ##
   ## See also:
   ## * `walkPattern iterator <#walkPattern.i,string>`_
