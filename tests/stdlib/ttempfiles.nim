@@ -1,6 +1,5 @@
 import std/tempfiles
 
 
-
-doAssert mkdtemp("nim", "tmp") != mkdtemp("nim", "tmp")
-doAssert mkstemp("nim", ".tmp") != mkstemp("nim", ".tmp")
+doAssert createTempDir("nim", "tmp") != createTempDir("nim", "tmp")
+doAssert createTempFile("nim", ".tmp") != createTempFile("nim", ".tmp")

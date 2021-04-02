@@ -70,7 +70,7 @@ template randomPathName(length: Natural): string =
     res[i] = letters[state.rand(61)]
   res
 
-proc mkstemp*(prefix, suffix: string, dir = ""): tuple[fd: File, name: string] =
+proc createTempFile*(prefix, suffix: string, dir = ""): tuple[fd: File, name: string] =
   var dir = dir
   if dir.len == 0:
     dir = getTempDir()
@@ -80,7 +80,7 @@ proc mkstemp*(prefix, suffix: string, dir = ""): tuple[fd: File, name: string] =
   result.name.setLen(dir.len + prefix.len + nimTempPathLength + suffix.len + 2)
 
   for i in 0 ..< maxRetry:
-    result.name = joinPath(dir, prefix & randomPathName(nimTempPathLength) & suffix)
+    result.name = dir / prefix & randomPathName(nimTempPathLength) & suffix
     try:
       result.fd = safeOpen(result.name)
     except OSError:
@@ -89,7 +89,7 @@ proc mkstemp*(prefix, suffix: string, dir = ""): tuple[fd: File, name: string] =
 
   raise newException(IOError, "Failed to create temporary file")
 
-proc mkdtemp*(prefix, suffix: string, dir = ""): string =
+proc createTempDir*(prefix, suffix: string, dir = ""): string =
   var dir = dir
   if dir.len == 0:
     dir = getTempDir()
