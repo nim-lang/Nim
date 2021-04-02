@@ -548,9 +548,6 @@ proc getAst*(macroOrTemplate: untyped): NimNode {.magic: "ExpandToAst", noSideEf
   ##     var ast = getAst(BarTemplate())
 
 proc quote*(bl: typed, op = "``"): NimNode {.magic: "QuoteAst", noSideEffect.} =
-  ## .. warning:: `quote` comes with many caveats, use `genasts <genasts.html>`_
-  ##   instead.
-  ##
   ## Quasi-quoting operator.
   ## Accepts an expression or a block and returns the AST that represents it.
   ## Within the quoted AST, you are able to interpolate NimNode expressions
@@ -563,6 +560,8 @@ proc quote*(bl: typed, op = "``"): NimNode {.magic: "QuoteAst", noSideEffect.} =
   ##
   ## A custom operator interpolation needs accent quoted (``) whenever it resolves
   ## to a symbol.
+  ##
+  ## See also `genasts <genasts.html>`_ which avoids some issues with `quote`.
   runnableExamples:
     macro check(ex: untyped) =
       # this is a simplified version of the check macro from the
