@@ -1063,7 +1063,7 @@ proc whichRole(p: RstParser, sym: string): RstNodeKind =
 proc toInlineCode(n: PRstNode, language: string): PRstNode =
   ## Creates rnInlineCode and attaches `n` contents as code (in 3rd son).
   result = newRstNode(rnInlineCode)
-  var args = newRstNode(rnDirArg)
+  let args = newRstNode(rnDirArg)
   var lang = language
   if language == "cpp": lang = "c++"
   elif language == "csharp": lang = "c#"
