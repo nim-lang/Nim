@@ -40,28 +40,28 @@ proc safeOpen(filename: string): File =
                               nil, dwCreation, dwFlags, Handle(0))
 
     if handle == INVALID_HANDLE_VALUE:
-      raiseOSError(osLastError())
+      raiseOSError(osLastError(), filename)
 
     let fileHandle = open_osfhandle(handle, O_RDWR)
     if fileHandle == -1:
       discard closeHandle(handle)
-      raiseOSError(osLastError())
+      raiseOSError(osLastError(), filename)
 
     result = c_fdopen(fileHandle, "w+")
     if result == nil:
       discard close_osfandle(fileHandle)
-      raiseOSError(osLastError())
+      raiseOSError(osLastError(), filename)
   else:
     let flags = posix.O_RDWR or posix.O_CREAT or posix.O_EXCL
 
     let fileHandle = posix.open(filename, flags)
     if fileHandle == -1:
-      raiseOsError(osLastError())
+      raiseOSError(osLastError(), filename)
 
     result = c_fdopen(fileHandle, "w+")
     if result == nil:
       discard posix.close(fileHandle)
-      raiseOSError(osLastError())
+      raiseOSError(osLastError(), filename)
 
 template randomPathName(length: Natural): string =
   var res = newString(length)
@@ -87,14 +87,14 @@ proc createTempFile*(prefix, suffix: string, dir = ""): tuple[fd: File, name: st
       continue
     return
 
-  raise newException(IOError, "Failed to create temporary file")
+  raise newException(IOError, "Failed to create a temporary file under directory " & dir)
 
 proc createTempDir*(prefix, suffix: string, dir = ""): string =
   var dir = dir
   if dir.len == 0:
     dir = getTempDir()
 
-  result.setlen(dir.len + prefix.len + nimTempPathLength + suffix.len + 2)
+  result.setLen(dir.len + prefix.len + nimTempPathLength + suffix.len + 2)
 
   createDir(dir)
 
@@ -106,4 +106,4 @@ proc createTempDir*(prefix, suffix: string, dir = ""): string =
     except OSError:
       continue
 
-  raise newException(IOError, "Failed to create temporary directory")
+  raise newException(IOError, "Failed to create a temporary directory under directory " & dir)
