@@ -327,8 +327,8 @@ proc semArrayIndex(c: PContext, n: PNode): PType =
         result = makeRangeType(c, 0, x.intVal-1, n.info,
                              x.typ.skipTypes({tyTypeDesc}))
       else:
-        result = x.typ.skipTypes({tyTypeDesc})
-        #localError(c.config, n[1].info, errConstExprExpected)
+        # result = x.typ.skipTypes({tyTypeDesc})
+        localError(c.config, n.info, errConstExprExpected)
 
 proc semArray(c: PContext, n: PNode, prev: PType): PType =
   var base: PType
