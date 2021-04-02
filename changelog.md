@@ -231,7 +231,7 @@
 - Added `ZZZ` and `ZZZZ` patterns to `times.nim` `DateTime` parsing, to match time
   zone offsets without colons, e.g. `UTC+7 -> +0700`.
 
-
+- Added `std/tempfiles`.
 
 ## Language changes
 
