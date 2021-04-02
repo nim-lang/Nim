@@ -55,12 +55,15 @@ type
                               #     * `file#id <file#id>`_
                               #     * `file#id <file#id>'_
     rnSubstitutionDef,        # a definition of a substitution
-    rnGeneralRole,            # Inline markup:
+    # Inline markup:
+    rnInlineCode,
+    rnUnknownRole,            # interpreted text with an unknown role
     rnSub, rnSup, rnIdx,
     rnEmphasis,               # "*"
     rnStrongEmphasis,         # "**"
     rnTripleEmphasis,         # "***"
-    rnInterpretedText,        # "`"
+    rnInterpretedText,        # "`" an auxiliary role for parsing that will
+                              # be converted into other kinds like rnInlineCode
     rnInlineLiteral,          # "``"
     rnInlineTarget,           # "_`target`"
     rnSubstitutionReferences, # "|"
@@ -252,7 +255,7 @@ proc renderRstToRst(d: var RenderContext, n: PRstNode, result: var string) =
     result.add(" <")
     renderRstToRst(d, n.sons[1], result)
     result.add(">`_")
-  of rnGeneralRole:
+  of rnUnknownRole:
     result.add('`')
     renderRstToRst(d, n.sons[0],result)
     result.add("`:")

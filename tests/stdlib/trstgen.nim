@@ -10,7 +10,7 @@ import unittest, strutils, strtabs
 import std/private/miscdollars
 
 proc toHtml(input: string,
-            rstOptions: RstParseOptions = {roSupportMarkdown},
+            rstOptions: RstParseOptions = {roSupportMarkdown, roNimFile},
             error: ref string = nil,
             warnings: ref seq[string] = nil): string =
   ## If `error` is nil then no errors should be generated.
@@ -35,6 +35,11 @@ proc toHtml(input: string,
                        msgHandler=testMsgHandler)
   except EParseError:
     discard
+
+# inline code tags (for parsing originated from highlite.nim)
+proc id(str: string): string = """<span class="Identifier">"""  & str & "</span>"
+proc op(str: string): string = """<span class="Operator">"""    & str & "</span>"
+proc pu(str: string): string = """<span class="Punctuation">""" & str & "</span>"
 
 suite "YAML syntax highlighting":
   test "Basics":
@@ -201,14 +206,14 @@ not in table"""
         `|` outside a table cell should render as `\|`
     consistently with markdown, see https://stackoverflow.com/a/66557930/1426932
     ]#
-    doAssert output1 == """
+    check(output1 == """
 <table border="1" class="docutils"><tr><th>A1 header</th><th>A2 | not fooled</th></tr>
 <tr><td>C1</td><td>C2 <strong>bold</strong></td></tr>
-<tr><td>D1 <tt class="docutils literal"><span class="pre">code \|</span></tt></td><td>D2</td></tr>
+<tr><td>D1 <tt class="docutils literal"><span class="pre">""" & id"code" & " " & op"\|" & """</span></tt></td><td>D2</td></tr>
 <tr><td>E1 | text</td><td></td></tr>
 <tr><td></td><td>F2 without pipe</td></tr>
 </table><p>not in table</p>
-"""
+""")
     let input2 = """
 | A1 header | A2 |
 | --- | --- |"""
@@ -556,19 +561,66 @@ let x = 1
     doAssert "<pre" in output2 and "class=\"Keyword\"" in output2
 
   test "interpreted text":
-    check """`foo.bar`""".toHtml == """<tt class="docutils literal"><span class="pre">foo.bar</span></tt>"""
-    check """`foo\`\`bar`""".toHtml == """<tt class="docutils literal"><span class="pre">foo``bar</span></tt>"""
-    check """`foo\`bar`""".toHtml == """<tt class="docutils literal"><span class="pre">foo`bar</span></tt>"""
-    check """`\`bar`""".toHtml == """<tt class="docutils literal"><span class="pre">`bar</span></tt>"""
-    check """`a\b\x\\ar`""".toHtml == """<tt class="docutils literal"><span class="pre">a\b\x\\ar</span></tt>"""
+    check("""`foo.bar`""".toHtml ==
+      """<tt class="docutils literal"><span class="pre">""" &
+      id"foo" & op"." & id"bar" & "</span></tt>")
+    check("""`foo\`\`bar`""".toHtml ==
+      """<tt class="docutils literal"><span class="pre">""" &
+      id"foo" & pu"`" & pu"`" & id"bar" & "</span></tt>")
+    check("""`foo\`bar`""".toHtml ==
+      """<tt class="docutils literal"><span class="pre">""" &
+      id"foo" & pu"`" & id"bar" & "</span></tt>")
+    check("""`\`bar`""".toHtml ==
+      """<tt class="docutils literal"><span class="pre">""" &
+      pu"`" & id"bar" & "</span></tt>")
+    check("""`a\b\x\\ar`""".toHtml ==
+      """<tt class="docutils literal"><span class="pre">""" &
+      id"a" & op"""\""" & id"b" & op"""\""" & id"x" & op"""\\""" & id"ar" &
+      "</span></tt>")
 
   test "inline literal":
     check """``foo.bar``""".toHtml == """<tt class="docutils literal"><span class="pre">foo.bar</span></tt>"""
     check """``foo\bar``""".toHtml == """<tt class="docutils literal"><span class="pre">foo\bar</span></tt>"""
     check """``f\`o\\o\b`ar``""".toHtml == """<tt class="docutils literal"><span class="pre">f\`o\\o\b`ar</span></tt>"""
 
+  test "default-role":
+    # nim(default) -> literal -> nim -> code(=literal)
+    let input = dedent"""
+      Par1 `value1`.
+
+      .. default-role:: literal
+
+      Par2 `value2`.
+
+      .. default-role:: nim
+
+      Par3 `value3`.
+
+      .. default-role:: code
+
+      Par4 `value4`."""
+    let p1 = """Par1 <tt class="docutils literal"><span class="pre">""" & id"value1" & "</span></tt>."
+    let p2 = """<p>Par2 <tt class="docutils literal"><span class="pre">value2</span></tt>.</p>"""
+    let p3 = """<p>Par3 <tt class="docutils literal"><span class="pre">""" & id"value3" & "</span></tt>.</p>"
+    let p4 = """<p>Par4 <tt class="docutils literal"><span class="pre">value4</span></tt>.</p>"""
+    let expected = p1 & p2 & "\n" & p3 & "\n" & p4 & "\n"
+    check(input.toHtml == expected)
+
+  test "role directive":
+    let input = dedent"""
+      .. role:: y(code)
+         :language: yaml
+
+      .. role:: brainhelp(code)
+         :language: brainhelp
+    """
+    var warnings = new seq[string]
+    let output = input.toHtml(warnings=warnings)
+    check(warnings[].len == 1 and "language 'brainhelp' not supported" in warnings[0])
+
   test "RST comments":
     let input1 = """
+
 Check that comment disappears:
 
 ..
@@ -1341,7 +1393,8 @@ Test1
 
   test "(not) Roles: check escaping 1":
     let expected = """See :subscript:<tt class="docutils literal">""" &
-                   """<span class="pre">some text</span></tt>."""
+                   """<span class="pre">""" & id"some" & " " & id"text" &
+                   "</span></tt>."
     check """See \:subscript:`some text`.""".toHtml == expected
     check """See :subscript\:`some text`.""".toHtml == expected
 

@@ -192,7 +192,8 @@ proc newDocumentor*(filename: AbsoluteFile; cache: IdentCache; conf: ConfigRef, 
   result.cache = cache
   result.outDir = conf.outDir.string
   initRstGenerator(result[], (if conf.cmd != cmdRst2tex: outHtml else: outLatex),
-                   conf.configVars, filename.string, {roSupportRawDirective, roSupportMarkdown},
+                   conf.configVars, filename.string,
+                   {roSupportRawDirective, roSupportMarkdown, roNimFile},
                    docgenFindFile, compilerMsgHandler)
 
   if conf.configVars.hasKey("doc.googleAnalytics"):
