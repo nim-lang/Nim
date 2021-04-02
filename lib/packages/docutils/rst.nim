@@ -525,17 +525,36 @@ proc defaultFindFile*(filename: string): string =
   if fileExists(filename): result = filename
   else: result = ""
 
-proc defaultRoleKind(options: RstParseOptions): RstNodeKind =
-  if roNimFile in options: rnInlineCode else: rnInlineLiteral
 proc defaultRole(options: RstParseOptions): string =
   if roNimFile in options: "nim" else: "literal"
+
+# mirror highlite.nim sourceLanguageToStr with substitutions c++ cpp, c# csharp
+const supportedLanguages = ["nim", "yaml", "python", "java", "c",
+                            "cpp", "csharp"]
+
+proc whichRoleAux(sym: string): RstNodeKind =
+  let r = sym.toLowerAscii
+  case r
+  of "idx": result = rnIdx
+  of "literal": result = rnInlineLiteral
+  of "strong": result = rnStrongEmphasis
+  of "emphasis": result = rnEmphasis
+  of "sub", "subscript": result = rnSub
+  of "sup", "superscript": result = rnSup
+  # literal and code are the same in our implementation
+  of "code": result = rnInlineLiteral
+  # c++ currently can be spelled only as cpp, c# only as csharp
+  elif r in supportedLanguages:
+    result = rnInlineCode
+  else:  # unknown role
+    result = rnGeneralRole
 
 proc newSharedState(options: RstParseOptions,
                     findFile: FindFileHandler,
                     msgHandler: MsgHandler): PSharedState =
   new(result)
-  result.currRoleKind = defaultRoleKind(options)
   result.currRole = defaultRole(options)
+  result.currRoleKind = whichRoleAux(result.currRole)
   result.subs = @[]
   result.refs = @[]
   result.options = options
@@ -1036,25 +1055,10 @@ proc fixupEmbeddedRef(n, a, b: PRstNode) =
   for i in countup(0, sep - incr): a.add(n.sons[i])
   for i in countup(sep + 1, n.len - 2): b.add(n.sons[i])
 
-const supportedLanguages = ["nim", "yaml", "python", "java", "c",
-                            "c++", "cpp", "c#", "csharp"]
 proc whichRole(p: RstParser, sym: string): RstNodeKind =
-  let r = sym.toLowerAscii
-  case r
-  of "idx": result = rnIdx
-  of "literal": result = rnInlineLiteral
-  of "strong": result = rnStrongEmphasis
-  of "emphasis": result = rnEmphasis
-  of "sub", "subscript": result = rnSub
-  of "sup", "superscript": result = rnSup
-  # literal and code are the same in our implementation
-  of "code": result = rnInlineLiteral
-  # c++ currently can be spelled only as cpp, c# only as csharp
-  elif r in supportedLanguages:
-    result = rnInlineCode
-  else:  # unknown role
+  result = whichRoleAux(sym)
+  if result == rnGeneralRole:
     rstMessage(p, mwUnsupportedLanguage, p.s.currRole)
-    result = rnGeneralRole
 
 proc toInlineCode(n: PRstNode, language: string): PRstNode =
   ## Creates rnInlineCode and attaches `n` contents as code (in 3rd son).
