@@ -293,9 +293,9 @@ proc start*(c: proc(), stacksize: int = defaultStackSize): CoroutineRef {.discar
   return coro.reference
 
 proc run*() =
-  initialize()
   ## Starts main coroutine scheduler loop which exits when all coroutines exit.
   ## Calling this proc starts execution of first coroutine.
+  initialize()
   ctx.current = ctx.coroutines.head
   var minDelay: float = 0
   while ctx.current != nil:
