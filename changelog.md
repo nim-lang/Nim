@@ -255,6 +255,9 @@
 - Added `hasClosure` to `std/typetraits`.
 
 
+- Added `genasts.genAst` that avoids the problems inherent with `quote do` and can
+  be used as a replacement.
+
 ## Language changes
 
 - `nimscript` now handles `except Exception as e`.

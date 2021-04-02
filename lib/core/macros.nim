@@ -539,6 +539,7 @@ proc parseStmt*(s: string): NimNode {.noSideEffect.} =
 
 proc getAst*(macroOrTemplate: untyped): NimNode {.magic: "ExpandToAst", noSideEffect.}
   ## Obtains the AST nodes returned from a macro or template invocation.
+  ## See also `genasts.genAst`.
   ## Example:
   ##
   ## .. code-block:: nim
@@ -559,6 +560,8 @@ proc quote*(bl: typed, op = "``"): NimNode {.magic: "QuoteAst", noSideEffect.} =
   ##
   ## A custom operator interpolation needs accent quoted (``) whenever it resolves
   ## to a symbol.
+  ##
+  ## See also `genasts <genasts.html>`_ which avoids some issues with `quote`.
   runnableExamples:
     macro check(ex: untyped) =
       # this is a simplified version of the check macro from the
@@ -1419,7 +1422,7 @@ proc expectIdent*(n: NimNode, name: string) {.since: (1,1).} =
   if not eqIdent(n, name):
     error("Expected identifier to be `" & name & "` here", n)
 
-proc hasArgOfName*(params: NimNode; name: string): bool=
+proc hasArgOfName*(params: NimNode; name: string): bool =
   ## Search `nnkFormalParams` for an argument.
   expectKind(params, nnkFormalParams)
   for i in 1..<params.len:
