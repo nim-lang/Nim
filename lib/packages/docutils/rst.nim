@@ -547,7 +547,7 @@ proc whichRoleAux(sym: string): RstNodeKind =
   elif r in supportedLanguages:
     result = rnInlineCode
   else:  # unknown role
-    result = rnGeneralRole
+    result = rnUnknownRole
 
 proc newSharedState(options: RstParseOptions,
                     findFile: FindFileHandler,
@@ -1057,7 +1057,7 @@ proc fixupEmbeddedRef(n, a, b: PRstNode) =
 
 proc whichRole(p: RstParser, sym: string): RstNodeKind =
   result = whichRoleAux(sym)
-  if result == rnGeneralRole:
+  if result == rnUnknownRole:
     rstMessage(p, mwUnsupportedLanguage, p.s.currRole)
 
 proc toInlineCode(n: PRstNode, language: string): PRstNode =
@@ -1104,7 +1104,7 @@ proc parsePostfix(p: var RstParser, n: PRstNode): PRstNode =
     # a role:
     let roleName = nextTok(p).symbol
     newKind = whichRole(p, roleName)
-    if newKind == rnGeneralRole:
+    if newKind == rnUnknownRole:
       let newN = newRstNode(rnInner, n.sons)
       newSons = @[newN, newLeaf(roleName)]
       result = newRstNode(newKind, newSons)

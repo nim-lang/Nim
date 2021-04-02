@@ -1313,7 +1313,7 @@ proc renderRstToOut(d: PDoc, n: PRstNode, result: var string) =
     renderAux(d, n, "|$1|", "|$1|", result)
   of rnDirective:
     renderAux(d, n, "", "", result)
-  of rnGeneralRole:
+  of rnUnknownRole:
     var tmp0 = ""
     var tmp1 = ""
     renderRstToOut(d, n.sons[0], tmp0)

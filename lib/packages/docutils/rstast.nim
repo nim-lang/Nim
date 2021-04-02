@@ -57,7 +57,7 @@ type
     rnSubstitutionDef,        # a definition of a substitution
     # Inline markup:
     rnInlineCode,
-    rnGeneralRole,            # interpreted text with an unknown role
+    rnUnknownRole,            # interpreted text with an unknown role
     rnSub, rnSup, rnIdx,
     rnEmphasis,               # "*"
     rnStrongEmphasis,         # "**"
@@ -255,7 +255,7 @@ proc renderRstToRst(d: var RenderContext, n: PRstNode, result: var string) =
     result.add(" <")
     renderRstToRst(d, n.sons[1], result)
     result.add(">`_")
-  of rnGeneralRole:
+  of rnUnknownRole:
     result.add('`')
     renderRstToRst(d, n.sons[0],result)
     result.add("`:")
