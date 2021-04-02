@@ -33,6 +33,8 @@
   `-d:nimLegacyParseQueryStrict`. `cgi.decodeData` which uses the same
   underlying code is also updated the same way.
 
+- In `std/os`, `getHomeDir`, `expandTilde`, `getTempDir`, `getConfigDir` now do not include trailing `DirSep`,
+  unless `-d:nimLegacyHomeDir` is specified (for a transition period).
 
 ## Standard library additions and changes
 
@@ -251,16 +253,12 @@
 
 - Added `jscore.debugger` to [call any available debugging functionality, such as breakpoints.](https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Statements/debugger).
 
-
 - Added `std/channels`.
 
 - Added `htmlgen.portal` for [making "SPA style" pages using HTML only](https://web.dev/hands-on-portals).
 
 - Added `ZZZ` and `ZZZZ` patterns to `times.nim` `DateTime` parsing, to match time
   zone offsets without colons, e.g. `UTC+7 -> +0700`.
-
-- In `std/os`, `getHomeDir`, `expandTilde`, `getTempDir`, `getConfigDir` now do not include trailing `DirSep`,
-  unless `-d:nimLegacyHomeDir` is specified (for a transition period).
 
 - Added `jsconsole.dir`, `jsconsole.dirxml`, `jsconsole.timeStamp`.
 
@@ -269,7 +267,6 @@
 - Added `hasDataBuffered` to `asyncnet`.
 
 - Added `hasClosure` to `std/typetraits`.
-
 
 - Added `genasts.genAst` that avoids the problems inherent with `quote do` and can
   be used as a replacement.
@@ -302,16 +299,6 @@
 
 - `nim e` now accepts arbitrary file extensions for the nimscript file,
   although `.nims` is still the preferred extension in general.
-- An enum now can't be converted to another enum directly, you must use `ord`:
-- An enum now can't be converted to another enum directly, you must use `ord` (or `cast`, but
-  compiler won't help if you misuse it).
-  ```
-  type A = enum a1, a2
-  type B = enum b1, b2
-  doAssert not compiles(a1.B)
-  doAssert compiles(a1.ord.B)
-  ```
-  for a transition period, use `-d:nimLegacyConvEnumEnum`.
 
 ## Compiler changes
 
