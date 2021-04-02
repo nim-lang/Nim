@@ -163,5 +163,54 @@ proc `foo bar baz`(): int =
 """
     doAssert a2 == a
 
+  block: # bug #14850
+    block:
+      let a = deb:
+        template bar(): untyped =
+          foo1:
+            discard
+            4
+          foo2(1):
+            discard
+            4
+          foo3(1):
+            discard
+            4
+          do: 1
+          do: 2
+          x.add foo4
+          x.add: foo5: 3
+          x.add foo6 do: 4
+          a.add(foo7 do:
+            echo "baz"
+            4)
+
+      doAssert a == """
+
+template bar(): untyped =
+  foo1:
+    discard
+    4
+  foo2(1):
+    discard
+    4
+  foo3(1):
+    discard
+    4
+  do:
+    1
+  do:
+    2
+  x.add foo4
+  x.add:
+    foo5:
+      3
+  x.add foo6 do:
+    4
+  a.add(foo7 do:
+    echo "baz"
+    4)
+"""
+
 static: main()
 main()
