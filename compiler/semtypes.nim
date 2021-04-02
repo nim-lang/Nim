@@ -328,7 +328,7 @@ proc semArrayIndex(c: PContext, n: PNode): PType =
                              x.typ.skipTypes({tyTypeDesc}))
       else:
         result = x.typ.skipTypes({tyTypeDesc})
-        if not isOrdinalType(result) and result.len > 0:
+        if not isOrdinalType(result) and result.kind == tyGenericParam and result.len > 0:
           localError(c.config, n.info, errConstExprExpected)
 
 proc semArray(c: PContext, n: PNode, prev: PType): PType =
