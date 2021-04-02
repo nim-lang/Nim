@@ -2270,8 +2270,8 @@ iterator walkDir*(dir: string; relative = false, checkDir = false):
     import std/[strutils, sugar]
     # note: order is not guaranteed
     # this also works at compile time
-    assert collect(for k in walkDir("dirA"): k.path).join(",") ==
-                          "dirA/dirB dirA/dirC dirA/dirC dirA/fileA2.txt"
+    assert collect(for k in walkDir("dirA"): k.path).join(" ") ==
+                          "dirA/dirB dirA/dirC dirA/fileA2.txt dirA/fileA1.txt"
   ##
   ## See also:
   ## * `walkPattern iterator <#walkPattern.i,string>`_
