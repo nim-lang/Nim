@@ -2479,13 +2479,11 @@ proc dirAdmonition(p: var RstParser, d: string): PRstNode =
 
 proc dirDefaultRole(p: var RstParser): PRstNode =
   result = parseDirective(p, rnDefaultRole, {hasArg}, nil)
-  if result.sons[0].len == 0:
-    p.s.currRoleKind = defaultRoleKind(p.s.options)
-    p.s.currRole = defaultRole(p.s.options)
+  if result.sons[0].len == 0: p.s.currRole = defaultRole(p.s.options)
   else:
     assert result.sons[0].sons[0].kind == rnLeaf
     p.s.currRole = result.sons[0].sons[0].text
-    p.s.currRoleKind = whichRole(p, p.s.currRole)
+  p.s.currRoleKind = whichRole(p, p.s.currRole)
 
 proc dirRole(p: var RstParser): PRstNode =
   result = parseDirective(p, rnDirective, {hasArg, hasOptions}, nil)
