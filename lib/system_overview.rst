@@ -1,3 +1,5 @@
+.. default-role:: code
+
 The System module imports several separate modules, and their documentation
 is in separate files:
 
@@ -12,8 +14,9 @@ Here is a short overview of the most commonly used functions from the
 `system` module. Function names in the tables below are clickable and
 will take you to the full documentation of the function.
 
-The amount of available functions is much larger. Use the table of contents
-on the left-hand side and/or `Ctrl+F` to navigate through this module.
+There are many more functions available than the ones listed in this overview.
+Use the table of contents on the left-hand side and/or `Ctrl+F` to navigate
+through this module.
 
 
 Strings and characters
@@ -35,7 +38,7 @@ Proc                              Usage
 * `strutils module <strutils.html>`_ for common string functions
 * `strformat module <strformat.html>`_ for string interpolation and formatting
 * `unicode module <unicode.html>`_ for Unicode UTF-8 handling
-* `strscans <strscans.html>`_ for ``scanf`` and ``scanp`` macros, which offer
+* `strscans <strscans.html>`_ for `scanf` and `scanp` macros, which offer
   easier substring extraction than regular expressions
 * `strtabs module <strtabs.html>`_ for efficient hash tables
   (dictionaries, in some programming languages) mapping from strings to strings

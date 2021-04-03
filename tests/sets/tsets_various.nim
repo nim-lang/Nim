@@ -1,14 +1,15 @@
 discard """
+  targets: "c cpp js"
   output: '''
 set is empty
 '''
 """
 
 
-import sets, hashes
+import std/[sets, hashes]
 
-from sequtils import toSeq
-from algorithm import sorted
+from std/sequtils import toSeq
+from std/algorithm import sorted
 
 proc sortedPairs[T](t: T): auto = toSeq(t.pairs).sorted
 template sortedItems(t: untyped): untyped = sorted(toSeq(t))
@@ -254,3 +255,24 @@ block: # test correctness after a number of inserts/deletes
 
   testDel(): (var t: HashSet[int])
   testDel(): (var t: OrderedSet[int])
+
+
+template main() =
+  block:
+    let a = {true, false}
+    doAssert $a == "{false, true}"
+    doAssert a.len == 2
+
+  block:
+    let a = {false .. true}
+    doAssert $a == "{false, true}"
+    doAssert a.len == 2
+
+  block:
+    let a = {false .. false}
+    doAssert $a == "{false}"
+    doAssert a.len == 1
+
+
+static: main()
+main()

@@ -42,6 +42,8 @@ runnableExamples:
 ## * `sequtils module<sequtils.html>`_ for working with the built-in seq type
 ## * `tables module<tables.html>`_ for sorting tables
 
+import std/private/since
+
 type
   SortOrder* = enum
     Descending, Ascending
@@ -334,12 +336,12 @@ template `<-`(a, b) =
   else:
     copyMem(addr(a), addr(b), sizeof(T))
 
-proc merge[T](a, b: var openArray[T], lo, m, hi: int,
+proc mergeAlt[T](a, b: var openArray[T], lo, m, hi: int,
               cmp: proc (x, y: T): int {.closure.}, order: SortOrder) =
   # Optimization: If max(left) <= min(right) there is nothing to do!
   # 1 2 3 4 ## 5 6 7 8
   # -> O(n) for sorted arrays.
-  # On random data this saves up to 40% of merge calls.
+  # On random data this saves up to 40% of mergeAlt calls.
   if cmp(a[m], a[m+1]) * order <= 0: return
   var j = lo
   # copy a[j..m] into b:
@@ -422,7 +424,7 @@ func sort*[T](a: var openArray[T],
   while s < n:
     var m = n-1-s
     while m >= 0:
-      merge(a, b, max(m-s+1, 0), m, m+s, cmp, order)
+      mergeAlt(a, b, max(m-s+1, 0), m, m+s, cmp, order)
       dec(m, s*2)
     s = s*2
 
@@ -559,26 +561,120 @@ proc isSorted*[T](a: openArray[T], order = SortOrder.Ascending): bool =
     assert isSorted(e) == false
   isSorted(a, system.cmp[T], order)
 
+proc merge*[T](
+  result: var seq[T],
+  x, y: openArray[T], cmp: proc(x, y: T): int {.closure.}
+) {.since: (1, 5, 1).} =
+  ## Merges two sorted `openArray`. `x` and `y` are assumed to be sorted.
+  ## If you do not wish to provide your own `cmp`,
+  ## you may use `system.cmp` or instead call the overloaded
+  ## version of `merge`, which uses `system.cmp`.
+  ##
+  ## .. note:: The original data of `result` is not cleared,
+  ##    new data is appended to `result`.
+  ##
+  ## **See also:**
+  ## * `merge proc<#merge,seq[T],openArray[T],openArray[T]>`_
+  runnableExamples:
+    let x = @[1, 3, 6]
+    let y = @[2, 3, 4]
+
+    block:
+      var merged = @[7] # new data is appended to merged sequence
+      merged.merge(x, y, system.cmp[int])
+      assert merged == @[7, 1, 2, 3, 3, 4, 6]
+
+    block:
+      var merged = @[7] # if you only want new data, clear merged sequence first
+      merged.setLen(0)
+      merged.merge(x, y, system.cmp[int])
+      assert merged.isSorted
+      assert merged == @[1, 2, 3, 3, 4, 6]
+
+    import std/sugar
+
+    var res: seq[(int, int)]
+    res.merge([(1, 1)], [(1, 2)], (a, b) => a[0] - b[0])
+    assert res == @[(1, 1), (1, 2)]
+
+    assert seq[int].default.dup(merge([1, 3], [2, 4])) == @[1, 2, 3, 4]
+
+  let
+    sizeX = x.len
+    sizeY = y.len
+    oldLen = result.len
+
+  result.setLen(oldLen + sizeX + sizeY)
+
+  var
+    ix = 0
+    iy = 0
+    i = oldLen
+
+  while true:
+    if ix == sizeX:
+      while iy < sizeY:
+        result[i] = y[iy]
+        inc i
+        inc iy
+      return
+
+    if iy == sizeY:
+      while ix < sizeX:
+        result[i] = x[ix]
+        inc i
+        inc ix
+      return
+
+    let itemX = x[ix]
+    let itemY = y[iy]
+
+    if cmp(itemX, itemY) > 0: # to have a stable sort
+      result[i] = itemY
+      inc iy
+    else:
+      result[i] = itemX
+      inc ix
+
+    inc i
+
+proc merge*[T](result: var seq[T], x, y: openArray[T]) {.inline, since: (1, 5, 1).} =
+  ## Shortcut version of `merge` that uses `system.cmp[T]` as the comparison function.
+  ##
+  ## **See also:**
+  ## * `merge proc<#merge,seq[T],openArray[T],openArray[T],proc(T,T)>`_
+  runnableExamples:
+    let x = [5, 10, 15, 20, 25]
+    let y = [50, 40, 30, 20, 10].sorted
+
+    var merged: seq[int]
+    merged.merge(x, y)
+    assert merged.isSorted
+    assert merged == @[5, 10, 10, 15, 20, 20, 25, 30, 40, 50]
+  merge(result, x, y, system.cmp)
+
 proc product*[T](x: openArray[seq[T]]): seq[seq[T]] =
   ## Produces the Cartesian product of the array.
   ## Every element of the result is a combination of one element from each seq in `x`,
   ## with the ith element coming from `x[i]`.
-  ## Warning: complexity may explode.
+  ## 
+  ## .. warning:: complexity may explode.
   runnableExamples:
     assert product(@[@[1], @[2]]) == @[@[1, 2]]
     assert product(@[@["A", "K"], @["Q"]]) == @[@["K", "Q"], @["A", "Q"]]
+  let xLen = x.len
   result = newSeq[seq[T]]()
-  if x.len == 0:
+  if xLen == 0:
     return
-  if x.len == 1:
+  if xLen == 1:
     result = @x
     return
   var
-    indices = newSeq[int](x.len)
-    initial = newSeq[int](x.len)
+    indices = newSeq[int](xLen)
+    initial = newSeq[int](xLen)
     index = 0
-  var next = newSeq[T](x.len)
-  for i in 0..(x.len-1):
+  var next = newSeq[T](xLen)
+  for i in 0 ..< xLen:
     if len(x[i]) == 0: return
     initial[i] = len(x[i]) - 1
   indices = initial
@@ -586,7 +682,7 @@ proc product*[T](x: openArray[seq[T]]): seq[seq[T]] =
     while indices[index] == -1:
       indices[index] = initial[index]
       index += 1
-      if index == x.len: return
+      if index == xLen: return
       indices[index] -= 1
     for ni, i in indices:
       next[ni] = x[ni][i]
@@ -710,7 +806,8 @@ proc rotateInternal[T](arg: var openArray[T]; first, middle, last: int): int =
       next = mMiddle
 
 proc rotatedInternal[T](arg: openArray[T]; first, middle, last: int): seq[T] =
-  result = newSeq[T](arg.len)
+  let argLen = arg.len
+  result = newSeq[T](argLen)
   for i in 0 ..< first:
     result[i] = arg[i]
   let n = last - middle
@@ -719,7 +816,7 @@ proc rotatedInternal[T](arg: openArray[T]; first, middle, last: int): seq[T] =
     result[first+i] = arg[middle+i]
   for i in 0 ..< m:
     result[first+n+i] = arg[first+i]
-  for i in last ..< arg.len:
+  for i in last ..< argLen:
     result[i] = arg[i]
 
 proc rotateLeft*[T](arg: var openArray[T]; slice: HSlice[int, int];
@@ -776,9 +873,9 @@ proc rotateLeft*[T](arg: var openArray[T]; dist: int): int {.discardable.} =
     assert a == [2, 3, 4, 5, 1]
     a.rotateLeft(-6)
     assert a == [1, 2, 3, 4, 5]
-  let arglen = arg.len
-  let distLeft = ((dist mod arglen) + arglen) mod arglen
-  arg.rotateInternal(0, distLeft, arglen)
+  let argLen = arg.len
+  let distLeft = ((dist mod argLen) + argLen) mod argLen
+  arg.rotateInternal(0, distLeft, argLen)
 
 proc rotatedLeft*[T](arg: openArray[T]; slice: HSlice[int, int],
                      dist: int): seq[T] =
@@ -808,7 +905,7 @@ proc rotatedLeft*[T](arg: openArray[T]; slice: HSlice[int, int],
     assert a == @[1, 5, 2, 3, 4]
   let sliceLen = slice.b + 1 - slice.a
   let distLeft = ((dist mod sliceLen) + sliceLen) mod sliceLen
-  arg.rotatedInternal(slice.a, slice.a+distLeft, slice.b+1)
+  arg.rotatedInternal(slice.a, slice.a + distLeft, slice.b + 1)
 
 proc rotatedLeft*[T](arg: openArray[T]; dist: int): seq[T] =
   ## Same as `rotateLeft`, just with the difference that it does
@@ -825,6 +922,6 @@ proc rotatedLeft*[T](arg: openArray[T]; dist: int): seq[T] =
     assert a == @[2, 3, 4, 5, 1]
     a = rotatedLeft(a, -6)
     assert a == @[1, 2, 3, 4, 5]
-  let arglen = arg.len
-  let distLeft = ((dist mod arglen) + arglen) mod arglen
-  arg.rotatedInternal(0, distLeft, arg.len)
+  let argLen = arg.len
+  let distLeft = ((dist mod argLen) + argLen) mod argLen
+  arg.rotatedInternal(0, distLeft, argLen)

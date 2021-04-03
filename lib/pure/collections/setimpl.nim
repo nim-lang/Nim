@@ -7,7 +7,7 @@
 #    distribution, for details about the copyright.
 #
 
-# An ``include`` file for the different hash set implementations.
+# An `include` file for the different hash set implementations.
 
 
 template maxHash(t): untyped = high(t.data)
@@ -86,7 +86,7 @@ proc exclImpl[A](s: var HashSet[A], key: A): bool {.inline.} =
       var j = i # The correctness of this depends on (h+1) in nextTry,
       var r = j # though may be adaptable to other simple sequences.
       s.data[i].hcode = 0 # mark current EMPTY
-      s.data[i].key = default(type(s.data[i].key))
+      s.data[i].key = default(typeof(s.data[i].key))
       doWhile((i >= r and r > j) or (r > j and j > i) or (j > i and i >= r)):
         i = (i + 1) and msk # increment mod table size
         if isEmpty(s.data[i].hcode): # end of collision cluster; So all done

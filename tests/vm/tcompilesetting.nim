@@ -3,18 +3,15 @@ cmd: "nim c --nimcache:build/myNimCache --nimblePath:myNimblePath $file"
 joinable: false
 """
 
-import strutils
+import std/[strutils,compilesettings]
+from std/os import fileExists, `/`
 
-import std / compilesettings
+template main =
+  doAssert querySetting(nimcacheDir) == nimcacheDir.querySetting
+  doAssert "myNimCache" in nimcacheDir.querySetting
+  doAssert "myNimblePath" in nimblePaths.querySettingSeq[0]
+  doAssert querySetting(backend) == "c"
+  doAssert fileExists(libPath.querySetting / "system.nim")
 
-const
-  nc = querySetting(nimcacheDir)
-  np = querySettingSeq(nimblePaths)
-
-static:
-  echo nc
-  echo np
-
-doAssert "myNimCache" in nc
-doAssert "myNimblePath" in np[0]
-doAssert querySetting(backend) == "c"
+static: main()
+main()

@@ -12,9 +12,11 @@
 ## support.
 
 import ".." / [ast, modulegraphs, trees, extccomp, btrees,
-  msgs, lineinfos, pathutils, options]
+  msgs, lineinfos, pathutils, options, cgmeth]
 
 import tables
+
+import packed_ast, ic, bitabs
 
 proc replayStateChanges*(module: PSym; g: ModuleGraph) =
   let list = module.ast
@@ -84,6 +86,62 @@ proc replayStateChanges*(module: PSym; g: ModuleGraph) =
       else:
         internalAssert g.config, false
 
-#  of nkMethodDef:
-#    methodDef(g, n[namePos].sym, fromCache=true)
+proc replayGenericCacheInformation*(g: ModuleGraph; module: int) =
+  ## We remember the generic instantiations a module performed
+  ## in order to to avoid the code bloat that generic code tends
+  ## to imply. This is cheaper than deduplication of identical
+  ## generic instantiations. However, deduplication is more
+  ## powerful and general and I hope to implement it soon too
+  ## (famous last words).
+  assert g.packed[module].status == loaded
+  for it in g.packed[module].fromDisk.typeInstCache:
+    let key = translateId(it[0], g.packed, module, g.config)
+    g.typeInstCache.mgetOrPut(key, @[]).add LazyType(id: FullId(module: module, packed: it[1]), typ: nil)
 
+  for it in mitems(g.packed[module].fromDisk.procInstCache):
+    let key = translateId(it.key, g.packed, module, g.config)
+    let sym = translateId(it.sym, g.packed, module, g.config)
+    var concreteTypes = newSeq[FullId](it.concreteTypes.len)
+    for i in 0..high(it.concreteTypes):
+      let tmp = translateId(it.concreteTypes[i], g.packed, module, g.config)
+      concreteTypes[i] = FullId(module: tmp.module, packed: it.concreteTypes[i])
+
+    g.procInstCache.mgetOrPut(key, @[]).add LazyInstantiation(
+      module: module, sym: FullId(module: sym.module, packed: it.sym),
+      concreteTypes: concreteTypes, inst: nil)
+
+  for it in mitems(g.packed[module].fromDisk.methodsPerType):
+    let key = translateId(it[0], g.packed, module, g.config)
+    let col = it[1]
+    let tmp = translateId(it[2], g.packed, module, g.config)
+    let symId = FullId(module: tmp.module, packed: it[2])
+    g.methodsPerType.mgetOrPut(key, @[]).add (col, LazySym(id: symId, sym: nil))
+
+  for it in mitems(g.packed[module].fromDisk.enumToStringProcs):
+    let key = translateId(it[0], g.packed, module, g.config)
+    let tmp = translateId(it[1], g.packed, module, g.config)
+    let symId = FullId(module: tmp.module, packed: it[1])
+    g.enumToStringProcs[key] = LazySym(id: symId, sym: nil)
+
+  for it in mitems(g.packed[module].fromDisk.methods):
+    let sym = loadSymFromId(g.config, g.cache, g.packed, module,
+                            PackedItemId(module: LitId(0), item: it))
+    methodDef(g, g.idgen, sym)
+
+  when false:
+    # not used anymore:
+    for it in mitems(g.packed[module].fromDisk.compilerProcs):
+      let symId = FullId(module: module, packed: PackedItemId(module: LitId(0), item: it[1]))
+      g.lazyCompilerprocs[g.packed[module].fromDisk.sh.strings[it[0]]] = symId
+
+  for it in mitems(g.packed[module].fromDisk.converters):
+    let symId = FullId(module: module, packed: PackedItemId(module: LitId(0), item: it))
+    g.ifaces[module].converters.add LazySym(id: symId, sym: nil)
+
+  for it in mitems(g.packed[module].fromDisk.trmacros):
+    let symId = FullId(module: module, packed: PackedItemId(module: LitId(0), item: it))
+    g.ifaces[module].patterns.add LazySym(id: symId, sym: nil)
+
+  for it in mitems(g.packed[module].fromDisk.pureEnums):
+    let symId = FullId(module: module, packed: PackedItemId(module: LitId(0), item: it))
+    g.ifaces[module].pureEnums.add LazySym(id: symId, sym: nil)

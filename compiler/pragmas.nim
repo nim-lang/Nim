@@ -14,7 +14,7 @@ import
   wordrecg, ropes, options, strutils, extccomp, math, magicsys, trees,
   types, lookups, lineinfos, pathutils, linter
 
-from ic / to_packed_ast import addCompilerProc
+from ic / ic import addCompilerProc
 
 const
   FirstCallConv* = wNimcall
@@ -22,7 +22,7 @@ const
 
 const
   declPragmas = {wImportc, wImportObjC, wImportCpp, wImportJs, wExportc, wExportCpp,
-    wExportNims, wExtern, wDeprecated, wNodecl, wError, wUsed, wAlign}
+    wExportNims, wExtern, wDeprecated, wNodecl, wError, wUsed}
     ## common pragmas for declarations, to a good approximation
   procPragmas* = declPragmas + {FirstCallConv..LastCallConv,
     wMagic, wNoSideEffect, wSideEffect, wNoreturn, wNosinks, wDynlib, wHeader,
@@ -56,22 +56,23 @@ const
     wFloatChecks, wInfChecks, wNanChecks, wPragma, wEmit, wUnroll,
     wLinearScanEnd, wPatterns, wTrMacros, wEffects, wNoForward, wReorder, wComputedGoto,
     wInjectStmt, wExperimental, wThis, wUsed, wInvariant, wAssume, wAssert}
-  lambdaPragmas* = declPragmas + {FirstCallConv..LastCallConv,
+  lambdaPragmas* = {FirstCallConv..LastCallConv,
     wNoSideEffect, wSideEffect, wNoreturn, wNosinks, wDynlib, wHeader,
     wThread, wAsmNoStackFrame,
     wRaises, wLocks, wTags, wRequires, wEnsures,
-    wGcSafe, wCodegenDecl} - {wExportNims, wError, wUsed}  # why exclude these?
+    wGcSafe, wCodegenDecl, wNoInit, wCompileTime}
   typePragmas* = declPragmas + {wMagic, wAcyclic,
     wPure, wHeader, wCompilerProc, wCore, wFinal, wSize, wShallow,
     wIncompleteStruct, wCompleteStruct, wByCopy, wByRef,
     wInheritable, wGensym, wInject, wRequiresInit, wUnchecked, wUnion, wPacked,
-    wBorrow, wGcSafe, wPartial, wExplain, wPackage}
-  fieldPragmas* = declPragmas + {
-    wGuard, wBitsize, wCursor, wRequiresInit, wNoalias} - {wExportNims, wNodecl} # why exclude these?
+    wCppNonPod, wBorrow, wGcSafe, wPartial, wExplain, wPackage}
+  fieldPragmas* = declPragmas + {wGuard, wBitsize, wCursor,
+    wRequiresInit, wNoalias, wAlign} - {wExportNims, wNodecl} # why exclude these?
   varPragmas* = declPragmas + {wVolatile, wRegister, wThreadVar,
     wMagic, wHeader, wCompilerProc, wCore, wDynlib,
     wNoInit, wCompileTime, wGlobal,
-    wGensym, wInject, wCodegenDecl, wGuard, wGoto, wCursor, wNoalias}
+    wGensym, wInject, wCodegenDecl,
+    wGuard, wGoto, wCursor, wNoalias, wAlign}
   constPragmas* = declPragmas + {wHeader, wMagic,
     wGensym, wInject,
     wIntDefine, wStrDefine, wBoolDefine, wCompilerProc, wCore}
@@ -352,6 +353,7 @@ proc processNote(c: PContext, n: PNode) =
     of wHint: handleNote(hintMin .. hintMax, c.config.notes)
     of wWarning: handleNote(warnMin .. warnMax, c.config.notes)
     of wWarningAsError: handleNote(warnMin .. warnMax, c.config.warningAsErrors)
+    of wHintAsError: handleNote(hintMin .. hintMax, c.config.warningAsErrors)
     else: invalidPragma(c, n)
   else: invalidPragma(c, n)
 
@@ -842,6 +844,8 @@ proc singlePragma(c: PContext, sym: PSym, n: PNode, i: var int,
         else: invalidPragma(c, it)
       of wImportCpp:
         processImportCpp(c, sym, getOptionalStr(c, it, "$1"), it.info)
+      of wCppNonPod:
+        incl(sym.flags, sfCppNonPod)
       of wImportJs:
         if c.config.backend != backendJs:
           localError(c.config, it.info, "`importjs` pragma requires the JavaScript target")
@@ -1241,23 +1245,23 @@ proc mergePragmas(n, pragmas: PNode) =
   else:
     for p in pragmas: n[pragmasPos].add p
 
-proc implicitPragmas*(c: PContext, sym: PSym, n: PNode,
+proc implicitPragmas*(c: PContext, sym: PSym, info: TLineInfo,
                       validPragmas: TSpecialWords) =
   if sym != nil and sym.kind != skModule:
     for it in c.optionStack:
       let o = it.otherPragmas
       if not o.isNil and sfFromGeneric notin sym.flags: # see issue #12985
-        pushInfoContext(c.config, n.info)
+        pushInfoContext(c.config, info)
         var i = 0
         while i < o.len:
           if singlePragma(c, sym, o, i, validPragmas, true, false):
-            internalError(c.config, n.info, "implicitPragmas")
+            internalError(c.config, info, "implicitPragmas")
           inc i
         popInfoContext(c.config)
         if sym.kind in routineKinds and sym.ast != nil: mergePragmas(sym.ast, o)
 
     if lfExportLib in sym.loc.flags and sfExportc notin sym.flags:
-      localError(c.config, n.info, ".dynlib requires .exportc")
+      localError(c.config, info, ".dynlib requires .exportc")
     var lib = c.optionStack[^1].dynlib
     if {lfDynamicLib, lfHeader} * sym.loc.flags == {} and
         sfImportc in sym.flags and lib != nil:
@@ -1287,4 +1291,11 @@ proc pragma(c: PContext, sym: PSym, n: PNode, validPragmas: TSpecialWords;
             isStatement: bool) =
   if n == nil: return
   pragmaRec(c, sym, n, validPragmas, isStatement)
-  implicitPragmas(c, sym, n, validPragmas)
+  # XXX: in the case of a callable def, this should use its info
+  implicitPragmas(c, sym, n.info, validPragmas)
+
+proc pragmaCallable*(c: PContext, sym: PSym, n: PNode, validPragmas: TSpecialWords,
+                    isStatement: bool = false) =
+  if n == nil: return
+  if n[pragmasPos].kind != nkEmpty:
+    pragmaRec(c, sym, n[pragmasPos], validPragmas, isStatement)

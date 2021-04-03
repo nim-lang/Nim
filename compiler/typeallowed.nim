@@ -187,7 +187,9 @@ proc typeAllowedAux(marker: var IntSet, typ: PType, kind: TSymKind,
       result = typeAllowedAux(marker, t.lastSon, kind, c, flags+{taHeap})
     else:
       result = t
-  of tyOptDeprecated: doAssert false
+  of tyConcept:
+    if kind != skParam: result = t
+    else: result = nil
 
 proc typeAllowed*(t: PType, kind: TSymKind; c: PContext; flags: TTypeAllowedFlags = {}): PType =
   # returns 'nil' on success and otherwise the part of the type that is

@@ -51,7 +51,8 @@ triggers:
 """
 
 proc main()=
-  let num = 3
+  # not too large to be resource friendly, refs bug #17107
+  let num = 2
     # if you reduce this, make sure to remove files that shouldn't be generated,
     # or better, do the cleanup logic here e.g.: `rm .builds/openbsd_*`
   for i in 0..<num:

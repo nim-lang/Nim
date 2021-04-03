@@ -41,7 +41,7 @@
 ##
 ##
 ## For SSL support this module relies on OpenSSL. If you want to
-## enable SSL, compile with ``-d:ssl``.
+## enable SSL, compile with `-d:ssl`.
 
 import net, strutils, strtabs, base64, os, strutils
 import asyncnet, asyncdispatch
@@ -72,10 +72,10 @@ proc containsNewline(xs: seq[string]): bool =
       return true
 
 proc debugSend*(smtp: Smtp | AsyncSmtp, cmd: string) {.multisync.} =
-  ## Sends ``cmd`` on the socket connected to the SMTP server.
+  ## Sends `cmd` on the socket connected to the SMTP server.
   ##
-  ## If the ``smtp`` object was created with ``debug`` enabled,
-  ## debugSend will invoke ``echo("C:" & cmd)`` before sending.
+  ## If the `smtp` object was created with `debug` enabled,
+  ## debugSend will invoke `echo("C:" & cmd)` before sending.
   ##
   ## This is a lower level proc and not something that you typically
   ## would need to call when using this module. One exception to
@@ -86,12 +86,12 @@ proc debugSend*(smtp: Smtp | AsyncSmtp, cmd: string) {.multisync.} =
     echo("C:" & cmd)
   await smtp.sock.send(cmd)
 
-proc debugRecv*(smtp: Smtp | AsyncSmtp): Future[TaintedString] {.multisync.} =
+proc debugRecv*(smtp: Smtp | AsyncSmtp): Future[string] {.multisync.} =
   ## Receives a line of data from the socket connected to the
   ## SMTP server.
   ##
-  ## If the ``smtp`` object was created with ``debug`` enabled,
-  ## debugRecv will invoke ``echo("S:" & result.string)`` after
+  ## If the `smtp` object was created with `debug` enabled,
+  ## debugRecv will invoke `echo("S:" & result.string)` after
   ## the data is received.
   ##
   ## This is a lower level proc and not something that you typically
@@ -103,7 +103,7 @@ proc debugRecv*(smtp: Smtp | AsyncSmtp): Future[TaintedString] {.multisync.} =
 
   result = await smtp.sock.recvLine()
   if smtp.debug:
-    echo("S:" & result.string)
+    echo("S:" & result)
 
 proc quitExcpt(smtp: Smtp, msg: string) =
   smtp.debugSend("QUIT")
@@ -125,8 +125,8 @@ proc createMessage*(mSubject, mBody: string, mTo, mCc: seq[string],
                 otherHeaders: openArray[tuple[name, value: string]]): Message =
   ## Creates a new MIME compliant message.
   ##
-  ## You need to make sure that ``mSubject``, ``mTo`` and ``mCc`` don't contain
-  ## any newline characters. Failing to do so will raise ``AssertionDefect``.
+  ## You need to make sure that `mSubject`, `mTo` and `mCc` don't contain
+  ## any newline characters. Failing to do so will raise `AssertionDefect`.
   doAssert(not mSubject.contains({'\c', '\L'}),
            "'mSubject' shouldn't contain any newline characters")
   doAssert(not (mTo.containsNewline() or mCc.containsNewline()),
@@ -144,8 +144,8 @@ proc createMessage*(mSubject, mBody: string, mTo,
                     mCc: seq[string] = @[]): Message =
   ## Alternate version of the above.
   ##
-  ## You need to make sure that ``mSubject``, ``mTo`` and ``mCc`` don't contain
-  ## any newline characters. Failing to do so will raise ``AssertionDefect``.
+  ## You need to make sure that `mSubject`, `mTo` and `mCc` don't contain
+  ## any newline characters. Failing to do so will raise `AssertionDefect`.
   doAssert(not mSubject.contains({'\c', '\L'}),
            "'mSubject' shouldn't contain any newline characters")
   doAssert(not (mTo.containsNewline() or mCc.containsNewline()),
@@ -157,7 +157,7 @@ proc createMessage*(mSubject, mBody: string, mTo,
   result.msgOtherHeaders = newStringTable()
 
 proc `$`*(msg: Message): string =
-  ## stringify for ``Message``.
+  ## stringify for `Message`.
   result = ""
   if msg.msgTo.len() > 0:
     result = "TO: " & msg.msgTo.join(", ") & "\c\L"
@@ -173,7 +173,7 @@ proc `$`*(msg: Message): string =
 
 proc newSmtp*(useSsl = false, debug = false,
               sslContext: SslContext = nil): Smtp =
-  ## Creates a new ``Smtp`` instance.
+  ## Creates a new `Smtp` instance.
   new result
   result.debug = debug
   result.sock = newSocket()
@@ -188,7 +188,7 @@ proc newSmtp*(useSsl = false, debug = false,
 
 proc newAsyncSmtp*(useSsl = false, debug = false,
                    sslContext: SslContext = nil): AsyncSmtp =
-  ## Creates a new ``AsyncSmtp`` instance.
+  ## Creates a new `AsyncSmtp` instance.
   new result
   result.debug = debug
 
@@ -212,9 +212,9 @@ proc quitExcpt(smtp: AsyncSmtp, msg: string): Future[void] =
 
 proc checkReply*(smtp: Smtp | AsyncSmtp, reply: string) {.multisync.} =
   ## Calls `debugRecv<#debugRecv,AsyncSmtp>`_ and checks that the received
-  ## data starts with ``reply``. If the received data does not start
-  ## with ``reply``, then a ``QUIT`` command will be sent to the SMTP
-  ## server and a ``ReplyError`` exception will be raised.
+  ## data starts with `reply`. If the received data does not start
+  ## with `reply`, then a `QUIT` command will be sent to the SMTP
+  ## server and a `ReplyError` exception will be raised.
   ##
   ## This is a lower level proc and not something that you typically
   ## would need to call when using this module. One exception to
@@ -269,12 +269,12 @@ proc auth*(smtp: Smtp | AsyncSmtp, username, password: string) {.multisync.} =
 
 proc sendMail*(smtp: Smtp | AsyncSmtp, fromAddr: string,
                toAddrs: seq[string], msg: string) {.multisync.} =
-  ## Sends ``msg`` from ``fromAddr`` to the addresses specified in ``toAddrs``.
-  ## Messages may be formed using ``createMessage`` by converting the
+  ## Sends `msg` from `fromAddr` to the addresses specified in `toAddrs`.
+  ## Messages may be formed using `createMessage` by converting the
   ## Message into a string.
   ##
-  ## You need to make sure that ``fromAddr`` and ``toAddrs`` don't contain
-  ## any newline characters. Failing to do so will raise ``AssertionDefect``.
+  ## You need to make sure that `fromAddr` and `toAddrs` don't contain
+  ## any newline characters. Failing to do so will raise `AssertionDefect`.
   doAssert(not (toAddrs.containsNewline() or fromAddr.contains({'\c', '\L'})),
            "'toAddrs' and 'fromAddr' shouldn't contain any newline characters")
 

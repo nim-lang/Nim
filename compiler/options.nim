@@ -39,7 +39,6 @@ type                          # please make sure we have under 32 options
                               # evaluation
     optTrMacros,              # en/disable pattern matching
     optMemTracker,
-    optNilSeqs,
     optSinkInference          # 'sink T' inference
     optCursorInference
 
@@ -68,7 +67,6 @@ type                          # please make sure we have under 32 options
     optThreads,               # support for multi-threading
     optStdout,                # output to stdout
     optThreadAnalysis,        # thread analysis pass
-    optTaintMode,             # taint mode turned on
     optTlsEmulation,          # thread var emulation turned on
     optGenIndex               # generate index file for documentation;
     optEmbedOrigSrc           # embed the original source in the generated code
@@ -103,8 +101,23 @@ type                          # please make sure we have under 32 options
   TGlobalOptions* = set[TGlobalOption]
 
 const
-  harmlessOptions* = {optForceFullMake, optNoLinking, optRun,
-                      optUseColors, optStdout}
+  harmlessOptions* = {optForceFullMake, optNoLinking, optRun, optUseColors, optStdout}
+  genSubDir* = RelativeDir"nimcache"
+  NimExt* = "nim"
+  RodExt* = "rod"
+  HtmlExt* = "html"
+  JsonExt* = "json"
+  TagsExt* = "tags"
+  TexExt* = "tex"
+  IniExt* = "ini"
+  DefaultConfig* = RelativeFile"nim.cfg"
+  DefaultConfigNims* = RelativeFile"config.nims"
+  DocConfig* = RelativeFile"nimdoc.cfg"
+  DocTexConfig* = RelativeFile"nimdoc.tex.cfg"
+  htmldocsDir* = htmldocsDirname.RelativeDir
+  docRootDefault* = "@default" # using `@` instead of `$` to avoid shell quoting complications
+  oKeepVariableNames* = true
+  spellSuggestSecretSauce* = -1
 
 type
   TBackend* = enum
@@ -270,6 +283,7 @@ type
     numberOfProcessors*: int   # number of processors
     lastCmdTime*: float        # when caas is enabled, we measure each command
     symbolFiles*: SymbolFilesOption
+    spellSuggestMax*: int # max number of spelling suggestions for typos
 
     cppDefines*: HashSet[string] # (*)
     headerFile*: string
@@ -381,11 +395,12 @@ proc hasWarn*(conf: ConfigRef, note: TNoteKind): bool =
 
 proc hcrOn*(conf: ConfigRef): bool = return optHotCodeReloading in conf.globalOptions
 
-template depConfigFields*(fn) {.dirty.} =
-  fn(target)
-  fn(options)
-  fn(globalOptions)
-  fn(selectedGC)
+when false:
+  template depConfigFields*(fn) {.dirty.} = # deadcode
+    fn(target)
+    fn(options)
+    fn(globalOptions)
+    fn(selectedGC)
 
 const oldExperimentalFeatures* = {implicitDeref, dotOperators, callOperator, parallel}
 
@@ -428,7 +443,8 @@ template newPackageCache*(): untyped =
 proc newProfileData(): ProfileData =
   ProfileData(data: newTable[TLineInfo, ProfileInfo]())
 
-const foreignPackageNotesDefault* = {hintProcessing, warnUnknownMagic, hintQuitCalled, hintExecuting}
+const foreignPackageNotesDefault* = {
+  hintProcessing, warnUnknownMagic, hintQuitCalled, hintExecuting, hintUser, warnUser}
 
 proc newConfigRef*(): ConfigRef =
   result = ConfigRef(
@@ -482,6 +498,7 @@ proc newConfigRef*(): ConfigRef =
     suggestMaxResults: 10_000,
     maxLoopIterationsVM: 10_000_000,
     vmProfileData: newProfileData(),
+    spellSuggestMax: spellSuggestSecretSauce,
   )
   setTargetFromSystem(result.target)
   # enable colors by default on terminals
@@ -558,23 +575,6 @@ template compilationCachePresent*(conf: ConfigRef): untyped =
 
 template optPreserveOrigSource*(conf: ConfigRef): untyped =
   optEmbedOrigSrc in conf.globalOptions
-
-const
-  genSubDir* = RelativeDir"nimcache"
-  NimExt* = "nim"
-  RodExt* = "rod"
-  HtmlExt* = "html"
-  JsonExt* = "json"
-  TagsExt* = "tags"
-  TexExt* = "tex"
-  IniExt* = "ini"
-  DefaultConfig* = RelativeFile"nim.cfg"
-  DefaultConfigNims* = RelativeFile"config.nims"
-  DocConfig* = RelativeFile"nimdoc.cfg"
-  DocTexConfig* = RelativeFile"nimdoc.tex.cfg"
-  htmldocsDir* = htmldocsDirname.RelativeDir
-  docRootDefault* = "@default" # using `@` instead of `$` to avoid shell quoting complications
-  oKeepVariableNames* = true
 
 proc mainCommandArg*(conf: ConfigRef): string =
   ## This is intended for commands like check or parse
@@ -722,9 +722,9 @@ proc completeGeneratedFilePath*(conf: ConfigRef; f: AbsoluteFile,
   result = subdir / RelativeFile f.string.splitPath.tail
   #echo "completeGeneratedFilePath(", f, ") = ", result
 
-proc toRodFile*(conf: ConfigRef; f: AbsoluteFile): AbsoluteFile =
+proc toRodFile*(conf: ConfigRef; f: AbsoluteFile; ext = RodExt): AbsoluteFile =
   result = changeFileExt(completeGeneratedFilePath(conf,
-    withPackageName(conf, f)), RodExt)
+    withPackageName(conf, f)), ext)
 
 proc rawFindFile(conf: ConfigRef; f: RelativeFile; suppressStdlib: bool): AbsoluteFile =
   for it in conf.searchPaths:
@@ -761,8 +761,25 @@ when (NimMajor, NimMinor) < (1, 1) or not declared(isRelativeTo):
     let ret = relativePath(path, base)
     result = path.len > 0 and not ret.startsWith ".."
 
-proc getRelativePathFromConfigPath*(conf: ConfigRef; f: AbsoluteFile): RelativeFile =
+const stdlibDirs = [
+  "pure", "core", "arch",
+  "pure/collections",
+  "pure/concurrency",
+  "pure/unidecode", "impure",
+  "wrappers", "wrappers/linenoise",
+  "windows", "posix", "js"]
+
+const
+  pkgPrefix = "pkg/"
+  stdPrefix = "std/"
+
+proc getRelativePathFromConfigPath*(conf: ConfigRef; f: AbsoluteFile, isTitle = false): RelativeFile =
   let f = $f
+  if isTitle:
+    for dir in stdlibDirs:
+      let path = conf.libpath.string / dir / f.lastPathPart
+      if path.cmpPaths(f) == 0:
+        return RelativeFile(stdPrefix & f.splitFile.name)
   template search(paths) =
     for it in paths:
       let it = $it
@@ -784,18 +801,8 @@ proc findFile*(conf: ConfigRef; f: string; suppressStdlib = false): AbsoluteFile
           result = rawFindFile2(conf, RelativeFile f.toLowerAscii)
   patchModule(conf)
 
-const stdlibDirs = [
-  "pure", "core", "arch",
-  "pure/collections",
-  "pure/concurrency",
-  "pure/unidecode", "impure",
-  "wrappers", "wrappers/linenoise",
-  "windows", "posix", "js"]
-
 proc findModule*(conf: ConfigRef; modulename, currentModule: string): AbsoluteFile =
   # returns path to module
-  const pkgPrefix = "pkg/"
-  const stdPrefix = "std/"
   var m = addFileExt(modulename, NimExt)
   if m.startsWith(pkgPrefix):
     result = findFile(conf, m.substr(pkgPrefix.len), suppressStdlib = true)
@@ -805,10 +812,11 @@ proc findModule*(conf: ConfigRef; modulename, currentModule: string): AbsoluteFi
       for candidate in stdlibDirs:
         let path = (conf.libpath.string / candidate / stripped)
         if fileExists(path):
-          m = path
+          result = AbsoluteFile path
           break
-    let currentPath = currentModule.splitFile.dir
-    result = AbsoluteFile currentPath / m
+    else: # If prefixed with std/ why would we add the current module path!
+      let currentPath = currentModule.splitFile.dir
+      result = AbsoluteFile currentPath / m
     if not fileExists(result):
       result = findFile(conf, m)
   patchModule(conf)

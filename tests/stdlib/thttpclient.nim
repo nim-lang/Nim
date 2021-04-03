@@ -1,6 +1,7 @@
 discard """
   cmd: "nim c --threads:on -d:ssl $file"
   disabled: "openbsd"
+  disabled: "freebsd"
   disabled: "windows"
 """
 
@@ -146,6 +147,12 @@ proc syncTest() =
                         "100mb.test")
 
   client.close()
+
+  # SIGSEGV on HEAD body read: issue #16743
+  block:
+    let client = newHttpClient()
+    let resp = client.head("http://httpbin.org/head")
+    doAssert(resp.body == "")
 
   when false:
     # Disabled for now because it causes troubles with AppVeyor

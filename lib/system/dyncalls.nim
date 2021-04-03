@@ -161,10 +161,7 @@ elif defined(windows) or defined(dos):
         dec(m)
         k = k div 10
         if k == 0: break
-      when defined(nimNoArrayToCstringConversion):
-        result = getProcAddress(cast[THINSTANCE](lib), addr decorated)
-      else:
-        result = getProcAddress(cast[THINSTANCE](lib), decorated)
+      result = getProcAddress(cast[THINSTANCE](lib), addr decorated)
       if result != nil: return
     procAddrError(name)
 

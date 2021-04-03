@@ -12,7 +12,7 @@
 ## use this representation directly in all the transformations,
 ## it is superior.
 
-import std / [hashes, tables, strtabs, md5]
+import std / [hashes, tables, strtabs]
 import bitabs
 import ".." / [ast, options]
 
@@ -26,8 +26,6 @@ type
   PackedItemId* = object
     module*: LitId       # 0 if it's this module
     item*: int32         # same as the in-memory representation
-
-  TypeId* = PackedItemId
 
 const
   nilItemId* = PackedItemId(module: LitId(0), item: -1.int32)
@@ -51,7 +49,7 @@ type
   PackedSym* = object
     kind*: TSymKind
     name*: LitId
-    typ*: TypeId
+    typ*: PackedItemId
     flags*: TSymFlags
     magic*: TMagic
     info*: PackedLineInfo
@@ -64,6 +62,7 @@ type
     position*: int
     offset*: int
     externalName*: LitId # instead of TLoc
+    locFlags*: TLocFlags
     annex*: PackedLib
     when hasFFI:
       cname*: LitId
@@ -74,19 +73,17 @@ type
     callConv*: TCallingConvention
     #nodekind*: TNodeKind
     flags*: TTypeFlags
-    types*: seq[TypeId]
+    types*: seq[PackedItemId]
     n*: NodeId
-    methods*: seq[(int, PackedItemId)]
     #nodeflags*: TNodeFlags
     sym*: PackedItemId
     owner*: PackedItemId
-    attachedOps*: array[TTypeAttachedOp, PackedItemId]
     size*: BiggestInt
     align*: int16
     paddingAtEnd*: int16
     lockLevel*: TLockLevel # lock level as required for deadlock checking
     # not serialized: loc*: TLoc because it is backend-specific
-    typeInst*: TypeId
+    typeInst*: PackedItemId
     nonUniqueId*: int32
 
   PackedNode* = object     # 20 bytes
@@ -96,16 +93,8 @@ type
                      # for kind in {nkStrLit, nkIdent, nkNumberLit}: LitId
                      # for kind in nkInt32Lit: direct value
                      # for non-atom kinds: the number of nodes (for easy skipping)
-    typeId*: TypeId
+    typeId*: PackedItemId
     info*: PackedLineInfo
-
-  ModulePhase* = enum
-    preLookup, lookedUpTopLevelStmts
-
-  GenericKey* = object
-    module*: int32
-    name*: string
-    types*: seq[MD5Digest] # is this a joke?
 
   PackedTree* = object ## usually represents a full Nim module
     nodes*: seq[PackedNode]
@@ -121,18 +110,15 @@ type
     floats*: BiTable[BiggestFloat]
     #config*: ConfigRef
 
-proc hash*(key: GenericKey): Hash =
-  var h: Hash = 0
-  h = h !& hash(key.module)
-  h = h !& hash(key.name)
-  h = h !& hash(key.types)
-  result = !$h
+  PackedInstantiation* = object
+    key*, sym*: PackedItemId
+    concreteTypes*: seq[PackedItemId]
 
 proc `==`*(a, b: SymId): bool {.borrow.}
 proc hash*(a: SymId): Hash {.borrow.}
 
 proc `==`*(a, b: NodePos): bool {.borrow.}
-#proc `==`*(a, b: TypeId): bool {.borrow.}
+#proc `==`*(a, b: PackedItemId): bool {.borrow.}
 proc `==`*(a, b: NodeId): bool {.borrow.}
 
 proc newTreeFrom*(old: PackedTree): PackedTree =
@@ -197,7 +183,7 @@ when false:
     result = PatchPos tree.nodes.len
     tree.nodes.add PackedNode(kind: kind, operand: 0, info: info)
 
-proc prepare*(tree: var PackedTree; kind: TNodeKind; flags: TNodeFlags; typeId: TypeId; info: PackedLineInfo): PatchPos =
+proc prepare*(tree: var PackedTree; kind: TNodeKind; flags: TNodeFlags; typeId: PackedItemId; info: PackedLineInfo): PatchPos =
   result = PatchPos tree.nodes.len
   tree.nodes.add PackedNode(kind: kind, flags: flags, operand: 0, info: info,
                             typeId: typeId)
@@ -307,6 +293,9 @@ template typ*(n: NodePos): PackedItemId =
 template flags*(n: NodePos): TNodeFlags =
   tree.nodes[n.int].flags
 
+template operand*(n: NodePos): int32 =
+  tree.nodes[n.int].operand
+
 proc span*(tree: PackedTree; pos: int): int {.inline.} =
   if isAtom(tree, pos): 1 else: tree.nodes[pos].operand
 
@@ -344,6 +333,7 @@ template symId*(n: NodePos): SymId = SymId tree.nodes[n.int].operand
 proc firstSon*(n: NodePos): NodePos {.inline.} = NodePos(n.int+1)
 
 when false:
+  # xxx `nkStrLit` or `nkStrLit..nkTripleStrLit:` below?
   proc strLit*(tree: PackedTree; n: NodePos): lent string =
     assert n.kind == nkStrLit
     result = tree.sh.strings[LitId tree.nodes[n.int].operand]
@@ -468,3 +458,13 @@ when false:
     dest.add nkStrLit, msg, n.info
     copyTree(dest, tree, n)
     patch dest, patchPos
+
+iterator allNodes*(tree: PackedTree): NodePos =
+  var p = 0
+  while p < tree.len:
+    yield NodePos(p)
+    let s = span(tree, p)
+    inc p, s
+
+proc toPackedItemId*(item: int32): PackedItemId {.inline.} =
+  PackedItemId(module: LitId(0), item: item)

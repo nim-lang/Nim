@@ -7,20 +7,21 @@
 #    distribution, for details about the copyright.
 #
 
-## This module implements the ``with`` macro for easy
+## This module implements the `with` macro for easy
 ## function chaining. See https://github.com/nim-lang/RFCs/issues/193
 ## and https://github.com/nim-lang/RFCs/issues/192 for details leading to this
 ## particular design.
 ##
-## **Since** version 1.2.
+## **Since:** version 1.2.
 
 import macros, private / underscored_calls
 
 macro with*(arg: typed; calls: varargs[untyped]): untyped =
-  ## This macro provides the `chaining`:idx: of function calls.
+  ## This macro provides `chaining`:idx: of function calls.
   ## It does so by patching every call in `calls` to
   ## use `arg` as the first argument.
-  ## **This evaluates `arg` multiple times!**
+  ##
+  ## .. caution:: This evaluates `arg` multiple times!
   runnableExamples:
     var x = "yay"
     with x:

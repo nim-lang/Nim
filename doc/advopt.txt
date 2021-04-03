@@ -25,7 +25,6 @@ Runtime checks (see -x):
   --floatChecks:on|off      turn all floating point (NaN/Inf) checks on|off
   --nanChecks:on|off        turn NaN checks on|off
   --infChecks:on|off        turn Inf checks on|off
-  --refChecks:on|off        turn ref checks on|off (only for --newruntime)
 
 Advanced options:
   -o:FILE, --out:FILE       set the output filename
@@ -36,13 +35,17 @@ Advanced options:
   --colors:on|off           turn compiler messages coloring on|off
   --listFullPaths:on|off    list full paths in messages
   --declaredLocs:on|off     show declaration locations in messages
+  --spellSuggest|:num       show at most `num >= 0` spelling suggestions on typos.
+                            if `num` is not specified (or `auto`), return
+                            an implementation defined set of suggestions.
   -w:on|off|list, --warnings:on|off|list
                             turn all warnings on|off or list all available
   --warning[X]:on|off       turn specific warning X on|off
   --hints:on|off|list       turn all hints on|off or list all available
   --hint[X]:on|off          turn specific hint X on|off
-  --warningAsError[X]:on|off
+  --warningAsError[X]:on|off 
                             turn specific warning X into an error on|off
+  --hintAsError[X]:on|off   turn specific hint X into an error on|off
   --styleCheck:off|hint|error
                             produce hints or errors for Nim identifiers that
                             do not adhere to Nim's official style guide
@@ -61,8 +64,8 @@ Advanced options:
   --noMain:on|off           do not generate a main procedure
   --genScript:on|off        generate a compile script (in the 'nimcache'
                             subdirectory named 'compile_$$project$$scriptext'),
+                            and a '.deps' file containing the dependencies;
                             implies --compileOnly
-  --genDeps:on|off          generate a '.deps' file containing the dependencies
   --os:SYMBOL               set the target operating system (cross-compilation)
   --cpu:SYMBOL              set the target processor (cross-compilation)
   --debuginfo:on|off        enables debug information
@@ -81,7 +84,8 @@ Advanced options:
                             if path == @default (the default and most useful), will use
                             best match among @pkg,@path.
                             if these are nonexistent, will use project path
-  -b, --backend:c|cpp|js|objc sets backend to use with commands like `nim doc` or `nim r`
+  -b, --backend:c|cpp|js|objc 
+                            sets backend to use with commands like `nim doc` or `nim r`
   --docCmd:cmd              if `cmd == skip`, skips runnableExamples
                             else, runs runnableExamples with given options, e.g.:
                             `--docCmd:"-d:foo --threads:on"`
@@ -93,7 +97,6 @@ Advanced options:
                             in the generated output
   --threadanalysis:on|off   turn thread analysis on|off
   --tlsEmulation:on|off     turn thread local storage emulation on|off
-  --taintMode:on|off        turn taint mode on|off
   --implicitStatic:on|off   turn implicit compile time evaluation on|off
   --trmacros:on|off         turn term rewriting macros on|off
   --multimethods:on|off     turn multi-methods on|off
@@ -103,8 +106,6 @@ Advanced options:
   --excessiveStackTrace:on|off
                             stack traces use full file paths
   --stackTraceMsgs:on|off   enable user defined stack frame msgs via `setFrameMsg`
-  --nilseqs:on|off          allow 'nil' for strings/seqs for
-                            backwards compatibility
   --seqsv2:on|off           use the new string/seq implementation based on
                             destructors
   --skipCfg:on|off          do not read the nim installation's configuration file
@@ -147,7 +148,7 @@ Advanced options:
                             enable experimental language feature
   --legacy:$2
                             enable obsolete/legacy language feature
-  --useVersion:1.0          emulate Nim version X of the Nim compiler
+  --useVersion:1.0|1.2      emulate Nim version X of the Nim compiler, for testing
   --profiler:on|off         enable profiling; requires `import nimprof`, and
                             works better with `--stackTrace:on`
                             see also https://nim-lang.github.io/Nim/estp.html

@@ -7,6 +7,9 @@
 #    distribution, for details about the copyright.
 #
 
+# xxx deadcode, consider removing unless something could be reused.
+
+
 #            Garbage Collector
 #
 # The basic algorithm is an incremental mark

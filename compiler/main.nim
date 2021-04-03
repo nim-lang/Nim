@@ -21,7 +21,8 @@ import
   modules,
   modulegraphs, tables, lineinfos, pathutils, vmprofiler
 
-from ic / to_packed_ast import rodViewer
+import ic / cbackend
+from ic / ic import rodViewer
 
 when not defined(leanCompiler):
   import jsgen, docgen, docgen2
@@ -73,14 +74,15 @@ proc commandCompileToC(graph: ModuleGraph) =
   setOutFile(conf)
   extccomp.initVars(conf)
   semanticPasses(graph)
-  registerPass(graph, cgenPass)
+  if conf.symbolFiles == disabledSf:
+    registerPass(graph, cgenPass)
 
-  if {optRun, optForceFullMake} * conf.globalOptions == {optRun} or isDefined(conf, "nimBetterRun"):
-    let proj = changeFileExt(conf.projectFull, "")
-    if not changeDetectedViaJsonBuildInstructions(conf, proj):
-      # nothing changed
-      graph.config.notes = graph.config.mainPackageNotes
-      return
+    if {optRun, optForceFullMake} * conf.globalOptions == {optRun} or isDefined(conf, "nimBetterRun"):
+      let proj = changeFileExt(conf.projectFull, "")
+      if not changeDetectedViaJsonBuildInstructions(conf, proj):
+        # nothing changed
+        graph.config.notes = graph.config.mainPackageNotes
+        return
 
   if not extccomp.ccHasSaneOverflow(conf):
     conf.symbols.defineSymbol("nimEmulateOverflowChecks")
@@ -88,8 +90,14 @@ proc commandCompileToC(graph: ModuleGraph) =
   compileProject(graph)
   if graph.config.errorCounter > 0:
     return # issue #9933
-  cgenWriteModules(graph.backend, conf)
-  if conf.cmd != cmdTcc:
+  if conf.symbolFiles == disabledSf:
+    cgenWriteModules(graph.backend, conf)
+  else:
+    generateCode(graph)
+    # graph.backend can be nil under IC when nothing changed at all:
+    if graph.backend != nil:
+      cgenWriteModules(graph.backend, conf)
+  if conf.cmd != cmdTcc and graph.backend != nil:
     extccomp.callCCompiler(conf)
     # for now we do not support writing out a .json file with the build instructions when HCR is on
     if not conf.hcrOn:
@@ -253,6 +261,10 @@ proc mainCommand*(graph: ModuleGraph) =
       if optGenIndex in conf.globalOptions and optWholeProject in conf.globalOptions:
         commandBuildIndex(conf, $conf.outDir)
   of cmdRst2html:
+    # XXX: why are warnings disabled by default for rst2html and rst2tex?
+    for warn in [warnUnknownSubstitutionX, warnLanguageXNotSupported,
+                 warnFieldXNotSupported, warnRstStyle]:
+      conf.setNoteDefaults(warn, true)
     conf.setNoteDefaults(warnRedefinitionOfLabel, false) # similar to issue #13218
     when defined(leanCompiler):
       quit "compiler wasn't built with documentation generator"
@@ -260,6 +272,10 @@ proc mainCommand*(graph: ModuleGraph) =
       loadConfigs(DocConfig, cache, conf, graph.idgen)
       commandRst2Html(cache, conf)
   of cmdRst2tex:
+    for warn in [warnRedefinitionOfLabel, warnUnknownSubstitutionX,
+                 warnLanguageXNotSupported,
+                 warnFieldXNotSupported, warnRstStyle]:
+      conf.setNoteDefaults(warn, true)
     when defined(leanCompiler):
       quit "compiler wasn't built with documentation generator"
     else:
@@ -326,8 +342,6 @@ proc mainCommand*(graph: ModuleGraph) =
     if conf.projectIsCmd or conf.projectIsStdin: discard
     elif not fileExists(conf.projectFull):
       rawMessage(conf, errGenerated, "NimScript file does not exist: " & conf.projectFull.string)
-    elif not conf.projectFull.string.endsWith(".nims"):
-      rawMessage(conf, errGenerated, "not a NimScript file: " & conf.projectFull.string)
     # main NimScript logic handled in `loadConfigs`.
   of cmdNop: discard
   of cmdJsonscript:

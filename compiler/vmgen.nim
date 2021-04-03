@@ -505,7 +505,10 @@ proc genCase(c: PCtx; n: PNode; dest: var TDest) =
       let it = n[i]
       if it.len == 1:
         # else stmt:
-        c.gen(it[0], dest)
+        if it[0].kind != nkNilLit or it[0].typ != nil:
+          # an nkNilLit with nil for typ implies there is no else branch, this
+          # avoids unused related errors as we've already consumed the dest
+          c.gen(it[0], dest)
       else:
         let b = rawGenLiteral(c, it)
         c.gABx(it, opcBranch, tmp, b)
@@ -830,10 +833,20 @@ proc genAddSubInt(c: PCtx; n: PNode; dest: var TDest; opc: TOpcode) =
   c.genNarrow(n, dest)
 
 proc genConv(c: PCtx; n, arg: PNode; dest: var TDest; opc=opcConv) =
-  if n.typ.kind == arg.typ.kind and arg.typ.kind == tyProc:
-    # don't do anything for lambda lifting conversions:
+  let t2 = n.typ.skipTypes({tyDistinct})
+  let targ2 = arg.typ.skipTypes({tyDistinct})
+
+  proc implicitConv(): bool =
+    if sameType(t2, targ2): return true
+    # xxx consider whether to use t2 and targ2 here
+    if n.typ.kind == arg.typ.kind and arg.typ.kind == tyProc:
+      # don't do anything for lambda lifting conversions:
+      return true
+
+  if implicitConv():
     gen(c, arg, dest)
     return
+
   let tmp = c.genx(arg)
   if dest < 0: dest = c.getTemp(n.typ)
   c.gABC(n, opc, dest, tmp)
@@ -967,7 +980,7 @@ proc genBindSym(c: PCtx; n: PNode; dest: var TDest) =
 
 proc fitsRegister*(t: PType): bool =
   assert t != nil
-  t.skipTypes(abstractInst-{tyTypeDesc}).kind in {
+  t.skipTypes(abstractInst + {tyStatic} - {tyTypeDesc}).kind in {
     tyRange, tyEnum, tyBool, tyInt..tyUInt64, tyChar}
 
 proc ldNullOpcode(t: PType): TOpcode =
@@ -1010,7 +1023,9 @@ proc genMagic(c: PCtx; n: PNode; dest: var TDest; m: TMagic) =
     c.genNarrow(n[1], d)
     c.genAsgnPatch(n[1], d)
     c.freeTemp(d)
-  of mOrd, mChr, mArrToSeq, mUnown, mIsolate: c.gen(n[1], dest)
+  of mOrd, mChr, mArrToSeq, mUnown: c.gen(n[1], dest)
+  of mIsolate:
+    genCall(c, n, dest)
   of mNew, mNewFinalize:
     unused(c, n, dest)
     c.genNew(n)
@@ -1349,9 +1364,10 @@ proc genMagic(c: PCtx; n: PNode; dest: var TDest; m: TMagic) =
     if dest < 0: dest = c.getTemp(arg.typ)
     gABC(c, arg, whichAsgnOpc(arg, requiresCopy=false), dest, a)
     # XXX use ldNullOpcode() here?
-    c.gABx(n, opcLdNull, a, c.genType(arg.typ))
-    c.gABx(n, opcNodeToReg, a, a)
-    c.genAsgnPatch(arg, a)
+    # Don't zero out the arg for now #17199
+    # c.gABx(n, opcLdNull, a, c.genType(arg.typ))
+    # c.gABx(n, opcNodeToReg, a, a)
+    # c.genAsgnPatch(arg, a)
     c.freeTemp(a)
   of mNodeId:
     c.genUnaryABC(n, dest, opcNodeId)
@@ -1419,7 +1435,7 @@ proc genAddr(c: PCtx, n: PNode, dest: var TDest, flags: TGenFlags) =
       # permanent, so that it's not used for anything else:
       c.prc.slots[tmp].kind = slotTempPerm
       # XXX this is still a hack
-      #message(n.info, warnUser, "suspicious opcode used")
+      #message(c.congig, n.info, warnUser, "suspicious opcode used")
     else:
       gABC(c, n, opcAddrReg, dest, tmp)
     c.freeTemp(tmp)
@@ -1671,7 +1687,7 @@ proc genArrAccessOpcode(c: PCtx; n: PNode; dest: var TDest; opc: TOpcode;
     c.gABC(n, opcNodeToReg, dest, cc)
     c.freeTemp(cc)
   else:
-    #message(n.info, warnUser, "argh")
+    #message(c.config, n.info, warnUser, "argh")
     #echo "FLAGS ", flags, " ", fitsRegister(n.typ), " ", typeToString(n.typ)
     c.gABC(n, opc, dest, a, b)
   c.freeTemp(a)
@@ -2113,7 +2129,8 @@ proc gen(c: PCtx; n: PNode; dest: var TDest; flags: TGenFlags = {}) =
     else:
       dest = tmp0
   of nkEmpty, nkCommentStmt, nkTypeSection, nkConstSection, nkPragma,
-     nkTemplateDef, nkIncludeStmt, nkImportStmt, nkFromStmt, nkExportStmt:
+     nkTemplateDef, nkIncludeStmt, nkImportStmt, nkFromStmt, nkExportStmt,
+     nkMixinStmt, nkBindStmt:
     unused(c, n, dest)
   of nkStringToCString, nkCStringToString:
     gen(c, n[0], dest)
@@ -2259,7 +2276,7 @@ proc genProc(c: PCtx; s: PSym): int =
     genParams(c, s.typ.n)
 
     # allocate additional space for any generically bound parameters
-    if s.kind == skMacro and s.ast[genericParamsPos].kind != nkEmpty:
+    if s.kind == skMacro and s.isGenericRoutineStrict:
       genGenericParams(c, s.ast[genericParamsPos])
 
     if tfCapturesEnv in s.typ.flags:

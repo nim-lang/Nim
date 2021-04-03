@@ -60,13 +60,13 @@ template withLock(t, x: untyped) =
 
 template withValue*[A, B](t: var SharedTable[A, B], key: A,
                           value, body: untyped) =
-  ## retrieves the value at ``t[key]``.
-  ## `value` can be modified in the scope of the ``withValue`` call.
+  ## retrieves the value at `t[key]`.
+  ## `value` can be modified in the scope of the `withValue` call.
   ##
   ## .. code-block:: nim
   ##
   ##   sharedTable.withValue(key, value) do:
-  ##     # block is executed only if ``key`` in ``t``
+  ##     # block is executed only if `key` in `t`
   ##     # value is threadsafe in block
   ##     value.name = "username"
   ##     value.uid = 1000
@@ -84,18 +84,18 @@ template withValue*[A, B](t: var SharedTable[A, B], key: A,
 
 template withValue*[A, B](t: var SharedTable[A, B], key: A,
                           value, body1, body2: untyped) =
-  ## retrieves the value at ``t[key]``.
-  ## `value` can be modified in the scope of the ``withValue`` call.
+  ## retrieves the value at `t[key]`.
+  ## `value` can be modified in the scope of the `withValue` call.
   ##
   ## .. code-block:: nim
   ##
   ##   sharedTable.withValue(key, value) do:
-  ##     # block is executed only if ``key`` in ``t``
+  ##     # block is executed only if `key` in `t`
   ##     # value is threadsafe in block
   ##     value.name = "username"
   ##     value.uid = 1000
   ##   do:
-  ##     # block is executed when ``key`` not in ``t``
+  ##     # block is executed when `key` not in `t`
   ##     raise newException(KeyError, "Key not found")
   ##
   acquire(t.lock)
@@ -112,8 +112,8 @@ template withValue*[A, B](t: var SharedTable[A, B], key: A,
     release(t.lock)
 
 proc mget*[A, B](t: var SharedTable[A, B], key: A): var B =
-  ## retrieves the value at ``t[key]``. The value can be modified.
-  ## If `key` is not in `t`, the ``KeyError`` exception is raised.
+  ## retrieves the value at `t[key]`. The value can be modified.
+  ## If `key` is not in `t`, the `KeyError` exception is raised.
   withLock t:
     var hc: Hash
     var index = rawGet(t, key, hc)
@@ -126,10 +126,10 @@ proc mget*[A, B](t: var SharedTable[A, B], key: A): var B =
       raise newException(KeyError, "key not found")
 
 proc mgetOrPut*[A, B](t: var SharedTable[A, B], key: A, val: B): var B =
-  ## retrieves value at ``t[key]`` or puts ``val`` if not present, either way
+  ## retrieves value at `t[key]` or puts `val` if not present, either way
   ## returning a value which can be modified. **Note**: This is inherently
   ## unsafe in the context of multi-threading since it returns a pointer
-  ## to ``B``.
+  ## to `B`.
   withLock t:
     mgetOrPutImpl(enlarge)
 
@@ -144,24 +144,24 @@ template tabCellHash(i)  = t.data[i].hcode
 
 proc withKey*[A, B](t: var SharedTable[A, B], key: A,
                     mapper: proc(key: A, val: var B, pairExists: var bool)) =
-  ## Computes a new mapping for the ``key`` with the specified ``mapper``
+  ## Computes a new mapping for the `key` with the specified `mapper`
   ## procedure.
   ##
-  ## The ``mapper`` takes 3 arguments:
+  ## The `mapper` takes 3 arguments:
   ##
-  ## 1. ``key`` - the current key, if it exists, or the key passed to
-  ##    ``withKey`` otherwise;
-  ## 2. ``val`` - the current value, if the key exists, or default value
+  ## 1. `key` - the current key, if it exists, or the key passed to
+  ##    `withKey` otherwise;
+  ## 2. `val` - the current value, if the key exists, or default value
   ##    of the type otherwise;
-  ## 3. ``pairExists`` - ``true`` if the key exists, ``false`` otherwise.
+  ## 3. `pairExists` - `true` if the key exists, `false` otherwise.
   ##
-  ## The ``mapper`` can can modify ``val`` and ``pairExists`` values to change
+  ## The `mapper` can can modify `val` and `pairExists` values to change
   ## the mapping of the key or delete it from the table.
-  ## When adding a value, make sure to set ``pairExists`` to ``true`` along
-  ## with modifying the ``val``.
+  ## When adding a value, make sure to set `pairExists` to `true` along
+  ## with modifying the `val`.
   ##
   ## The operation is performed atomically and other operations on the table
-  ## will be blocked while the ``mapper`` is invoked, so it should be short and
+  ## will be blocked while the `mapper` is invoked, so it should be short and
   ## simple.
   ##
   ## Example usage:
@@ -196,7 +196,7 @@ proc `[]=`*[A, B](t: var SharedTable[A, B], key: A, val: B) =
     putImpl(enlarge)
 
 proc add*[A, B](t: var SharedTable[A, B], key: A, val: B) =
-  ## puts a new (key, value)-pair into `t` even if ``t[key]`` already exists.
+  ## puts a new (key, value)-pair into `t` even if `t[key]` already exists.
   ## This can introduce duplicate keys into the table!
   withLock t:
     addImpl(enlarge)

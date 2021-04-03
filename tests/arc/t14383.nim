@@ -126,3 +126,92 @@ proc main =
   echo avals.len, " ", rankdef.len
 
 main()
+
+
+#------------------------------------------------------------------------------
+# Issue #16722, ref on distinct type, wrong destructors called
+#------------------------------------------------------------------------------
+
+type
+  Obj = object of RootObj
+  ObjFinal = object
+  ObjRef = ref Obj
+  ObjFinalRef = ref ObjFinal
+  D = distinct Obj
+  DFinal = distinct ObjFinal
+  DRef = ref D
+  DFinalRef = ref DFinal
+
+proc `=destroy`(o: var Obj) =
+  doAssert false, "no Obj is constructed in this sample"
+
+proc `=destroy`(o: var ObjFinal) =
+  doAssert false, "no ObjFinal is constructed in this sample"
+
+var dDestroyed: int
+proc `=destroy`(d: var D) =
+  dDestroyed.inc
+
+proc `=destroy`(d: var DFinal) =
+  dDestroyed.inc
+
+func newD(): DRef =
+  DRef ObjRef()
+
+func newDFinal(): DFinalRef =
+  DFinalRef ObjFinalRef()
+
+proc testRefs() =
+  discard newD()
+  discard newDFinal()
+
+testRefs()
+
+doAssert(dDestroyed == 2)
+
+
+#------------------------------------------------------------------------------
+# Issue #16185, complex self-assingment elimination
+#------------------------------------------------------------------------------
+
+type
+  CpuStorage*[T] = ref CpuStorageObj[T]
+  CpuStorageObj[T] = object
+    size*: int
+    raw_buffer*: ptr UncheckedArray[T]
+  Tensor[T] = object
+    buf*: CpuStorage[T]
+  TestObject = object
+    x: Tensor[float]
+
+proc `=destroy`[T](s: var CpuStorageObj[T]) =
+  if s.raw_buffer != nil:
+    s.raw_buffer.deallocShared()
+    s.size = 0
+    s.raw_buffer = nil
+
+proc `=`[T](a: var CpuStorageObj[T]; b: CpuStorageObj[T]) {.error.}
+
+proc allocCpuStorage[T](s: var CpuStorage[T], size: int) =
+  new(s)
+  s.raw_buffer = cast[ptr UncheckedArray[T]](allocShared0(sizeof(T) * size))
+  s.size = size
+
+proc newTensor[T](size: int): Tensor[T] =
+  allocCpuStorage(result.buf, size)
+
+proc `[]`[T](t: Tensor[T], idx: int): T = t.buf.raw_buffer[idx]
+proc `[]=`[T](t: Tensor[T], idx: int, val: T) = t.buf.raw_buffer[idx] = val
+
+proc toTensor[T](s: seq[T]): Tensor[T] =
+  result = newTensor[T](s.len)
+  for i, x in s:
+    result[i] = x
+
+proc main2() =
+  var t: TestObject
+  t.x = toTensor(@[1.0, 2, 3, 4])
+  t.x = t.x  
+  doAssert(t.x.buf != nil) # self-assignment above should be eliminated
+
+main2()

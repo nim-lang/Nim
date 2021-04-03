@@ -34,27 +34,27 @@ type
 
   TOutputCheck* = enum
     ocIgnore = "ignore"
-    ocEqual  = "equal"
+    ocEqual = "equal"
     ocSubstr = "substr"
 
   TResultEnum* = enum
-    reNimcCrash,     # nim compiler seems to have crashed
-    reMsgsDiffer,       # error messages differ
-    reFilesDiffer,      # expected and given filenames differ
-    reLinesDiffer,      # expected and given line numbers differ
+    reNimcCrash,       # nim compiler seems to have crashed
+    reMsgsDiffer,      # error messages differ
+    reFilesDiffer,     # expected and given filenames differ
+    reLinesDiffer,     # expected and given line numbers differ
     reOutputsDiffer,
-    reExitcodesDiffer,  # exit codes of program or of valgrind differ
+    reExitcodesDiffer, # exit codes of program or of valgrind differ
     reTimeout,
     reInvalidPeg,
     reCodegenFailure,
     reCodeNotFound,
     reExeNotFound,
-    reInstallFailed     # package installation failed
-    reBuildFailed       # package building failed
-    reDisabled,         # test is disabled
-    reJoined,           # test is disabled because it was joined into the megatest
-    reSuccess           # test was successful
-    reInvalidSpec       # test had problems to parse the spec
+    reInstallFailed    # package installation failed
+    reBuildFailed      # package building failed
+    reDisabled,        # test is disabled
+    reJoined,          # test is disabled because it was joined into the megatest
+    reSuccess          # test was successful
+    reInvalidSpec      # test had problems to parse the spec
 
   TTarget* = enum
     targetC = "c"
@@ -69,7 +69,7 @@ type
 
   ValgrindSpec* = enum
     disabled, enabled, leaking
-  
+
   TSpec* = object
     # xxx make sure `isJoinableSpec` takes into account each field here.
     action*: TTestAction
@@ -79,8 +79,6 @@ type
     sortoutput*: bool
     output*: string
     line*, column*: int
-    tfile*: string
-    tline*, tcolumn*: int
     exitCode*: int
     msg*: string
     ccodeCheck*: seq[string]
@@ -90,7 +88,7 @@ type
     targets*: set[TTarget]
     matrix*: seq[string]
     nimout*: string
-    parseErrors*: string # when the spec definition is invalid, this is not empty.
+    parseErrors*: string            # when the spec definition is invalid, this is not empty.
     unjoinable*: bool
     unbatchable*: bool
       # whether this test can be batchable via `NIM_TESTAMENT_BATCH`; only very
@@ -98,12 +96,12 @@ type
       # by making the dependencies explicit
     useValgrind*: ValgrindSpec
     timeout*: float # in seconds, fractions possible,
-                    # but don't rely on much precision
+                      # but don't rely on much precision
     inlineErrors*: seq[InlineError] # line information to error message
 
 proc getCmd*(s: TSpec): string =
   if s.cmd.len == 0:
-    result = compilerPrefix & " $target --hints:on -d:testing --nimblePath:tests/deps $options $file"
+    result = compilerPrefix & " $target --hints:on -d:testing --clearNimblePath --nimblePath:build/deps/pkgs $options $file"
   else:
     result = s.cmd
 
@@ -180,7 +178,7 @@ proc extractErrorMsg(s: string; i: int; line: var int; col: var int; spec: var T
 proc extractSpec(filename: string; spec: var TSpec): string =
   const
     tripleQuote = "\"\"\""
-  var s = readFile(filename).string
+  var s = readFile(filename)
 
   var i = 0
   var a = -1
@@ -209,9 +207,6 @@ proc extractSpec(filename: string; spec: var TSpec): string =
     #echo "warning: file does not contain spec: " & filename
     result = ""
 
-when not defined(nimhygiene):
-  {.pragma: inject.}
-
 proc parseTargets*(value: string): set[TTarget] =
   for v in value.normalize.splitWhitespace:
     case v
@@ -225,7 +220,7 @@ proc addLine*(self: var string; a: string) =
   self.add a
   self.add "\n"
 
-proc addLine*(self: var string; a,b: string) =
+proc addLine*(self: var string; a, b: string) =
   self.add a
   self.add b
   self.add "\n"
@@ -233,7 +228,7 @@ proc addLine*(self: var string; a,b: string) =
 proc initSpec*(filename: string): TSpec =
   result.file = filename
 
-proc isCurrentBatch(testamentData: TestamentData, filename: string): bool =
+proc isCurrentBatch*(testamentData: TestamentData; filename: string): bool =
   if testamentData.testamentNumBatch != 0:
     hash(filename) mod testamentData.testamentNumBatch == testamentData.testamentBatch
   else:
@@ -280,12 +275,6 @@ proc parseSpec*(filename: string): TSpec =
         if result.msg.len == 0 and result.nimout.len == 0:
           result.parseErrors.addLine "errormsg or msg needs to be specified before column"
         discard parseInt(e.value, result.column)
-      of "tfile":
-        result.tfile = e.value
-      of "tline":
-        discard parseInt(e.value, result.tline)
-      of "tcolumn":
-        discard parseInt(e.value, result.tcolumn)
       of "output":
         if result.outputCheck != ocSubstr:
           result.outputCheck = ocEqual
@@ -297,7 +286,7 @@ proc parseSpec*(filename: string): TSpec =
         result.output = strip(e.value)
       of "sortoutput":
         try:
-          result.sortoutput  = parseCfgBool(e.value)
+          result.sortoutput = parseCfgBool(e.value)
         except:
           result.parseErrors.addLine getCurrentExceptionMsg()
       of "exitcode":
@@ -333,8 +322,8 @@ proc parseSpec*(filename: string): TSpec =
           when defined(linux): result.err = reDisabled
         of "bsd":
           when defined(bsd): result.err = reDisabled
-        of "macosx":
-          when defined(macosx): result.err = reDisabled
+        of "osx", "macosx": # xxx remove `macosx` alias?
+          when defined(osx): result.err = reDisabled
         of "unix":
           when defined(unix): result.err = reDisabled
         of "posix":

@@ -102,8 +102,8 @@ proc rawImportSymbol(c: PContext, s, origin: PSym; importSet: var IntSet) =
           else:
             importPureEnumField(c, e)
   else:
-    if s.kind == skConverter: addConverter(c, s)
-    if hasPattern(s): addPattern(c, s)
+    if s.kind == skConverter: addConverter(c, LazySym(sym: s))
+    if hasPattern(s): addPattern(c, LazySym(sym: s))
   if s.owner != origin:
     c.exportIndirections.incl((origin.id, s.id))
 
@@ -171,11 +171,11 @@ template addUnnamedIt(c: PContext, fromMod: PSym; filter: untyped) {.dirty.} =
       addPattern(c, it)
   for it in c.graph.ifaces[fromMod.position].pureEnums:
     if filter:
-      importPureEnumFields(c, it, it.typ)
+      importPureEnumFields(c, it.sym, it.sym.typ)
 
 proc importAllSymbolsExcept(c: PContext, fromMod: PSym, exceptSet: IntSet) =
   c.addImport ImportedModule(m: fromMod, mode: importExcept, exceptSet: exceptSet)
-  addUnnamedIt(c, fromMod, it.id notin exceptSet)
+  addUnnamedIt(c, fromMod, it.sym.id notin exceptSet)
 
 proc importAllSymbols*(c: PContext, fromMod: PSym) =
   c.addImport ImportedModule(m: fromMod, mode: importAll)

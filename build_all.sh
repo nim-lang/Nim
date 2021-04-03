@@ -42,7 +42,7 @@ build_nim_csources(){
   echo_run cp bin/nim $nim_csources
 }
 
-[ -f $nim_csources ] || echo_run build_nim_csources $@
+[ -f $nim_csources ] || echo_run build_nim_csources "$@"
 
 # Note: if fails, may need to `cd csources && git pull`
 echo_run bin/nim c --skipUserCfg --skipParentCfg koch

@@ -14,11 +14,11 @@
 
 const
   buildOS* {.magic: "BuildOS".}: string = ""
-    ## The OS this build is running on. Can be different from ``system.hostOS``
+    ## The OS this build is running on. Can be different from `system.hostOS`
     ## for cross compilations.
 
   buildCPU* {.magic: "BuildCPU".}: string = ""
-    ## The CPU this build is running on. Can be different from ``system.hostCPU``
+    ## The CPU this build is running on. Can be different from `system.hostCPU`
     ## for cross compilations.
 
 template builtin = discard
@@ -57,7 +57,7 @@ proc warningImpl(arg, orig: string) = discard
 proc hintImpl(arg, orig: string) = discard
 
 proc paramStr*(i: int): string =
-  ## Retrieves the ``i``'th command line parameter.
+  ## Retrieves the `i`'th command line parameter.
   builtin
 
 proc paramCount*(): int =
@@ -66,7 +66,7 @@ proc paramCount*(): int =
 
 proc switch*(key: string, val="") =
   ## Sets a Nim compiler command line switch, for
-  ## example ``switch("checks", "on")``.
+  ## example `switch("checks", "on")`.
   builtin
 
 proc warning*(name: string; val: bool) =
@@ -82,9 +82,9 @@ proc hint*(name: string; val: bool) =
 proc patchFile*(package, filename, replacement: string) =
   ## Overrides the location of a given file belonging to the
   ## passed package.
-  ## If the ``replacement`` is not an absolute path, the path
+  ## If the `replacement` is not an absolute path, the path
   ## is interpreted to be local to the Nimscript file that contains
-  ## the call to ``patchFile``, Nim's ``--path`` is not used at all
+  ## the call to `patchFile`, Nim's `--path` is not used at all
   ## to resolve the filename!
   ##
   ## Example:
@@ -112,19 +112,19 @@ proc cmpic*(a, b: string): int =
   cmpIgnoreCase(a, b)
 
 proc getEnv*(key: string; default = ""): string {.tags: [ReadIOEffect].} =
-  ## Retrieves the environment variable of name ``key``.
+  ## Retrieves the environment variable of name `key`.
   builtin
 
 proc existsEnv*(key: string): bool {.tags: [ReadIOEffect].} =
-  ## Checks for the existence of an environment variable named ``key``.
+  ## Checks for the existence of an environment variable named `key`.
   builtin
 
 proc putEnv*(key, val: string) {.tags: [WriteIOEffect].} =
-  ## Sets the value of the environment variable named ``key`` to ``val``.
+  ## Sets the value of the environment variable named `key` to `val`.
   builtin
 
 proc delEnv*(key: string) {.tags: [WriteIOEffect].} =
-  ## Deletes the environment variable named ``key``.
+  ## Deletes the environment variable named `key`.
   builtin
 
 proc fileExists*(filename: string): bool {.tags: [ReadIOEffect].} =
@@ -159,16 +159,29 @@ proc toDll*(filename: string): string =
 
 proc strip(s: string): string =
   var i = 0
-  while s[i] in {' ', '\c', '\L'}: inc i
+  while s[i] in {' ', '\c', '\n'}: inc i
   result = s.substr(i)
+  if result[0] == '"' and result[^1] == '"':
+    result = result[1..^2]
 
 template `--`*(key, val: untyped) =
-  ## A shortcut for ``switch(astToStr(key), astToStr(val))``.
-  switch(astToStr(key), strip astToStr(val))
+  ## A shortcut for `switch <#switch,string,string>`_
+  ## Example:
+  ##
+  ## .. code-block:: nim
+  ##
+  ##   --path:somePath # same as switch("path", "somePath")
+  ##   --path:"someOtherPath" # same as switch("path", "someOtherPath")
+  switch(strip(astToStr(key)), strip(astToStr(val)))
 
 template `--`*(key: untyped) =
-  ## A shortcut for ``switch(astToStr(key)``.
-  switch(astToStr(key), "")
+  ## A shortcut for `switch <#switch,string,string>`_
+  ## Example:
+  ##
+  ## .. code-block:: nim
+  ##
+  ##   --listCmd # same as switch("listCmd")
+  switch(strip(astToStr(key)))
 
 type
   ScriptMode* {.pure.} = enum ## Controls the behaviour of the script.
@@ -252,7 +265,7 @@ proc exec*(command: string) {.
   ## Executes an external process. If the external process terminates with
   ## a non-zero exit code, an OSError exception is raised.
   ##
-  ## **Note:** If you need a version of ``exec`` that returns the exit code
+  ## **Note:** If you need a version of `exec` that returns the exit code
   ## and text output of the command, you can use `system.gorgeEx
   ## <system.html#gorgeEx,string,string,string>`_.
   log "exec: " & command:
@@ -273,7 +286,7 @@ proc exec*(command: string, input: string, cache = "") {.
 proc selfExec*(command: string) {.
   raises: [OSError], tags: [ExecIOEffect].} =
   ## Executes an external command with the current nim/nimble executable.
-  ## ``Command`` must not contain the "nim " part.
+  ## `Command` must not contain the "nim " part.
   let c = selfExe() & " " & command
   log "exec: " & c:
     if rawExec(c) != 0:
@@ -310,9 +323,9 @@ proc projectPath*(): string =
   builtin
 
 proc thisDir*(): string =
-  ## Retrieves the directory of the current ``nims`` script file. Its path is
-  ## obtained via ``currentSourcePath`` (although, currently,
-  ## ``currentSourcePath`` resolves symlinks, unlike ``thisDir``).
+  ## Retrieves the directory of the current `nims` script file. Its path is
+  ## obtained via `currentSourcePath` (although, currently,
+  ## `currentSourcePath` resolves symlinks, unlike `thisDir`).
   builtin
 
 proc cd*(dir: string) {.raises: [OSError].} =
@@ -356,25 +369,25 @@ proc writeTask(name, desc: string) =
     echo name, spaces, desc
 
 proc cppDefine*(define: string) =
-  ## tell Nim that ``define`` is a C preprocessor ``#define`` and so always
+  ## tell Nim that `define` is a C preprocessor `#define` and so always
   ## needs to be mangled.
   builtin
 
-proc stdinReadLine(): TaintedString {.
+proc stdinReadLine(): string {.
   tags: [ReadIOEffect], raises: [IOError].} =
   builtin
 
-proc stdinReadAll(): TaintedString {.
+proc stdinReadAll(): string {.
   tags: [ReadIOEffect], raises: [IOError].} =
   builtin
 
-proc readLineFromStdin*(): TaintedString {.raises: [IOError].} =
+proc readLineFromStdin*(): string {.raises: [IOError].} =
   ## Reads a line of data from stdin - blocks until \n or EOF which happens when stdin is closed
   log "readLineFromStdin":
     result = stdinReadLine()
     checkError(EOFError)
 
-proc readAllFromStdin*(): TaintedString {.raises: [IOError].} =
+proc readAllFromStdin*(): string {.raises: [IOError].} =
   ## Reads all data from stdin - blocks until EOF which happens when stdin is closed
   log "readAllFromStdin":
     result = stdinReadAll()
@@ -391,8 +404,8 @@ when not defined(nimble):
     ##  task build, "default build is via the C backend":
     ##    setCommand "c"
     ##
-    ## For a task named ``foo``, this template generates a ``proc`` named
-    ## ``fooTask``.  This is useful if you need to call one task in
+    ## For a task named `foo`, this template generates a `proc` named
+    ## `fooTask`.  This is useful if you need to call one task in
     ## another in your Nimscript.
     ##
     ## Example:

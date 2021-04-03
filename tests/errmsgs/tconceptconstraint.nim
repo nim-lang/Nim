@@ -2,7 +2,7 @@ discard """
   errormsg: "cannot instantiate B"
   line: 20
   nimout: '''
-got: <type string>
+got: <typedesc[string]>
 but expected: <T: A>
 '''
 """

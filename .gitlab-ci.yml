@@ -54,7 +54,7 @@ test-windows:
   script:
     - call ci\deps.bat
     - nim c testament\tester
-    - testament\tester.exe --pedantic all
+    - testament\tester.exe all
   tags:
     - windows
     - fast

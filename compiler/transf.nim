@@ -29,8 +29,7 @@ proc transformBody*(g: ModuleGraph; idgen: IdGenerator, prc: PSym, cache: bool):
 import closureiters, lambdalifting
 
 type
-  PTransCon = ref TTransCon
-  TTransCon{.final.} = object # part of TContext; stackable
+  PTransCon = ref object # part of TContext; stackable
     mapping: TIdNodeTable     # mapping from symbols to nodes
     owner: PSym               # current owner
     forStmt: PNode            # current for stmt
@@ -40,7 +39,7 @@ type
                               # if we encounter the 2nd yield statement
     next: PTransCon           # for stacking
 
-  TTransfContext = object
+  PTransf = ref object
     module: PSym
     transCon: PTransCon      # top of a TransCon stack
     inlining: int            # > 0 if we are in inlining context (copy vars)
@@ -49,7 +48,6 @@ type
     deferDetected, tooEarly: bool
     graph: ModuleGraph
     idgen: IdGenerator
-  PTransf = ref TTransfContext
 
 proc newTransNode(a: PNode): PNode {.inline.} =
   result = shallowCopy(a)
@@ -496,7 +494,7 @@ proc transformConv(c: PTransf, n: PNode): PNode =
   of tyOpenArray, tyVarargs:
     result = transform(c, n[1])
     #result = transformSons(c, n)
-    result.typ = takeType(n.typ, n[1].typ, c.idgen)
+    result.typ = takeType(n.typ, n[1].typ, c.graph, c.idgen)
     #echo n.info, " came here and produced ", typeToString(result.typ),
     #   " from ", typeToString(n.typ), " and ", typeToString(n[1].typ)
   of tyCString:
@@ -524,6 +522,7 @@ proc transformConv(c: PTransf, n: PNode): PNode =
         result[0] = transform(c, n[1])
       else:
         result = transform(c, n[1])
+        result.typ = n.typ
     else:
       result = transformSons(c, n)
   of tyObject:
@@ -536,6 +535,7 @@ proc transformConv(c: PTransf, n: PNode): PNode =
       result[0] = transform(c, n[1])
     else:
       result = transform(c, n[1])
+      result.typ = n.typ
   of tyGenericParam, tyOrdinal:
     result = transform(c, n[1])
     # happens sometimes for generated assignments, etc.
@@ -609,6 +609,8 @@ proc isSimpleIteratorVar(c: PTransf; iter: PSym): bool =
   var dangerousYields = 0
   rec(getBody(c.graph, iter), iter, dangerousYields)
   result = dangerousYields == 0
+
+template destructor(t: PType): PSym = getAttachedOp(c.graph, t, attachedDestructor)
 
 proc transformFor(c: PTransf, n: PNode): PNode =
   # generate access statements for the parameters (unless they are constant)
@@ -791,7 +793,7 @@ proc transformCall(c: PTransf, n: PNode): PNode =
         while (j < n.len):
           let b = transform(c, n[j])
           if not isConstExpr(b): break
-          a = evalOp(op.magic, n, a, b, nil, c.graph)
+          a = evalOp(op.magic, n, a, b, nil, c.idgen, c.graph)
           inc(j)
       result.add(a)
     if result.len == 2: result = result[1]
@@ -869,7 +871,7 @@ proc commonOptimizations*(g: ModuleGraph; idgen: IdGenerator; c: PSym, n: PNode)
         while j < args.len:
           let b = args[j]
           if not isConstExpr(b): break
-          a = evalOp(op.magic, result, a, b, nil, g)
+          a = evalOp(op.magic, result, a, b, nil, idgen, g)
           inc(j)
       result.add(a)
     if result.len == 2: result = result[1]
@@ -967,7 +969,7 @@ proc transform(c: PTransf, n: PNode): PNode =
   of nkConstSection:
     # do not replace ``const c = 3`` with ``const 3 = 3``
     return transformConstSection(c, n)
-  of nkTypeSection, nkTypeOfExpr:
+  of nkTypeSection, nkTypeOfExpr, nkMixinStmt, nkBindStmt:
     # no need to transform type sections:
     return n
   of nkVarSection, nkLetSection:

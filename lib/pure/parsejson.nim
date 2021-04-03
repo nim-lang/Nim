@@ -8,7 +8,7 @@
 #
 
 ## This module implements a json parser. It is used
-## and exported by the ``json`` standard library
+## and exported by the `json` standard library
 ## module, but can also be used in its own right.
 
 import strutils, lexbase, streams, unicode
@@ -21,13 +21,13 @@ type
     jsonString,         ## a string literal
     jsonInt,            ## an integer literal
     jsonFloat,          ## a float literal
-    jsonTrue,           ## the value ``true``
-    jsonFalse,          ## the value ``false``
-    jsonNull,           ## the value ``null``
-    jsonObjectStart,    ## start of an object: the ``{`` token
-    jsonObjectEnd,      ## end of an object: the ``}`` token
-    jsonArrayStart,     ## start of an array: the ``[`` token
-    jsonArrayEnd        ## end of an array: the ``]`` token
+    jsonTrue,           ## the value `true`
+    jsonFalse,          ## the value `false`
+    jsonNull,           ## the value `null`
+    jsonObjectStart,    ## start of an object: the `{` token
+    jsonObjectEnd,      ## end of an object: the `}` token
+    jsonArrayStart,     ## start of an array: the `[` token
+    jsonArrayEnd        ## end of an array: the `]` token
 
   TokKind* = enum # must be synchronized with TJsonEventKind!
     tkError,
@@ -49,12 +49,12 @@ type
     errNone,              ## no error
     errInvalidToken,      ## invalid token
     errStringExpected,    ## string expected
-    errColonExpected,     ## ``:`` expected
-    errCommaExpected,     ## ``,`` expected
-    errBracketRiExpected, ## ``]`` expected
-    errCurlyRiExpected,   ## ``}`` expected
-    errQuoteExpected,     ## ``"`` or ``'`` expected
-    errEOC_Expected,      ## ``*/`` expected
+    errColonExpected,     ## `:` expected
+    errCommaExpected,     ## `,` expected
+    errBracketRiExpected, ## `]` expected
+    errCurlyRiExpected,   ## `}` expected
+    errQuoteExpected,     ## `"` or `'` expected
+    errEOC_Expected,      ## `*/` expected
     errEofExpected,       ## EOF expected
     errExprExpected       ## expr expected
 
@@ -71,7 +71,7 @@ type
     filename: string
     rawStringLiterals: bool
 
-  JsonKindError* = object of ValueError ## raised by the ``to`` macro if the
+  JsonKindError* = object of ValueError ## raised by the `to` macro if the
                                         ## JSON kind is incorrect.
   JsonParsingError* = object of ValueError ## is raised for a JSON error
 
@@ -119,18 +119,18 @@ proc close*(my: var JsonParser) {.inline.} =
   lexbase.close(my)
 
 proc str*(my: JsonParser): string {.inline.} =
-  ## returns the character data for the events: ``jsonInt``, ``jsonFloat``,
-  ## ``jsonString``
+  ## returns the character data for the events: `jsonInt`, `jsonFloat`,
+  ## `jsonString`
   assert(my.kind in {jsonInt, jsonFloat, jsonString})
   return my.a
 
 proc getInt*(my: JsonParser): BiggestInt {.inline.} =
-  ## returns the number for the event: ``jsonInt``
+  ## returns the number for the event: `jsonInt`
   assert(my.kind == jsonInt)
   return parseBiggestInt(my.a)
 
 proc getFloat*(my: JsonParser): float {.inline.} =
-  ## returns the number for the event: ``jsonFloat``
+  ## returns the number for the event: `jsonFloat`
   assert(my.kind == jsonFloat)
   return parseFloat(my.a)
 
@@ -151,7 +151,7 @@ proc getFilename*(my: JsonParser): string {.inline.} =
   result = my.filename
 
 proc errorMsg*(my: JsonParser): string =
-  ## returns a helpful error message for the event ``jsonError``
+  ## returns a helpful error message for the event `jsonError`
   assert(my.kind == jsonError)
   result = "$1($2, $3) Error: $4" % [
     my.filename, $getLine(my), $getColumn(my), errorMessages[my.err]]

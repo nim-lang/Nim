@@ -57,7 +57,7 @@ proc `=destroy`(t: var Tree) {.nodestroy.} =
     let x = s.pop
     if x.left != nil: s.add(x.left)
     if x.right != nil: s.add(x.right)
-    dispose(x)
+    `=dispose`(x)
   `=destroy`(s)
 
 proc hasValue(self: var Tree, x: int32): bool =

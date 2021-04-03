@@ -1,5 +1,5 @@
 
-include prelude
+include std/prelude
 
 proc main(input, output: string) =
   type NodeKind = enum
