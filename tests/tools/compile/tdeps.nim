@@ -1,6 +1,5 @@
 discard """
-  cmd: "nim c $file"
   action: compile
 """
 
-import tools/deps
+include tools/deps
