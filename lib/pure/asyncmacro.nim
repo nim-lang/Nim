@@ -35,14 +35,11 @@ template createCb(retFutureSym, iteratorNameSym,
 
         if next == nil:
           if not retFutureSym.finished:
-            let msg = "Async procedure ($1) yielded `nil`, are you await'ing a " &
-                    "`nil` Future?"
+            let msg = "Async procedure ($1) yielded `nil`, are you await'ing a `nil` Future?"
             raise newException(AssertionDefect, msg % strName)
         else:
           {.gcsafe.}:
-            {.push hint[ConvFromXtoItselfNotNeeded]: off.}
             next.addCallback cast[proc() {.closure, gcsafe.}](identName)
-            {.pop.}
     except:
       futureVarCompletions
       if retFutureSym.finished:
