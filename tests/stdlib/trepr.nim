@@ -145,5 +145,23 @@ do:
 do:
   4"""
 
+  block: # bug #17292 (bug 4)
+    let a = deb:
+      proc `=destroy`() = discard
+      proc `'foo`(): int = discard
+      proc `foo bar baz`(): int = discard
+    let a2 = """
+
+proc `=destroy`() =
+  discard
+
+proc `'foo`(): int =
+  discard
+
+proc `foo bar baz`(): int =
+  discard
+"""
+    doAssert a2 == a
+
 static: main()
 main()

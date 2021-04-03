@@ -51,6 +51,8 @@ type
     config*: ConfigRef
     mangler: seq[PSym]
 
+proc renderTree*(n: PNode, renderFlags: TRenderFlags = {}): string
+
 # We render the source code in a two phases: The first
 # determines how long the subtree will likely be, the second
 # phase appends to a buffer that will be the output.
@@ -1314,9 +1316,23 @@ proc gsub(g: var TSrcGen, n: PNode, c: TContext) =
     put(g, tkOpr, "[]")
   of nkAccQuoted:
     put(g, tkAccent, "`")
-    if n.len > 0: gsub(g, n[0])
-    for i in 1..<n.len:
-      put(g, tkSpaces, Space)
+    for i in 0..<n.len:
+      proc getStrVal(n: PNode): string =
+        # pending https://github.com/nim-lang/Nim/pull/17540, use `getStrVal`
+        case n.kind
+        of nkIdent: n.ident.s
+        of nkSym: n.sym.name.s
+        else: ""
+      var useSpace = false
+      if i == 1 and n[0].kind == nkIdent and n[0].ident.s in ["=", "'"]:
+        let tmp = n[1].getStrVal
+        if tmp.len > 0 and tmp[0] in {'a'..'z', 'A'..'Z'}:
+          # handle `=destroy`, `'big'
+          discard
+        else:
+          useSpace = true
+      elif i > 0: useSpace = true
+      if useSpace:  put(g, tkSpaces, Space)
       gsub(g, n[i])
     put(g, tkAccent, "`")
   of nkIfExpr:
