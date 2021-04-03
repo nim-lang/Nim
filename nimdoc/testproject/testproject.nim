@@ -330,13 +330,11 @@ when true: # (most) templates
     ## ok5
     ## ok5b
     runnableExamples: assert true
+    runnableExamples: discard 1
 
     ## in or out?
-    # this is an edge case; a newline separate last runnableExamples from 
-    # next doc comment but AST isnt' aware of it; this could change in future
     discard 8
     ## out
-    runnableExamples: discard 1
 
 when true: # issue #14473
   import std/[sequtils]

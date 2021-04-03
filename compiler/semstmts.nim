@@ -726,6 +726,8 @@ proc semForVars(c: PContext, n: PNode; flags: TExprFlags): PNode =
       if n[0].kind == nkVarTuple:
         if n[0].len-1 != iterAfterVarLent.len:
           localError(c.config, n[0].info, errWrongNumberOfVariables)
+          return errorNode(c, n)
+
         for i in 0..<n[0].len-1:
           var v = symForVar(c, n[0][i])
           if getCurrOwner(c).kind == skModule: incl(v.flags, sfGlobal)

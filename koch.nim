@@ -664,6 +664,13 @@ proc showHelp() =
   quit(HelpText % [VersionAsString & spaces(44-len(VersionAsString)),
                    CompileDate, CompileTime], QuitSuccess)
 
+proc branchDone() =
+  let thisBranch = execProcess("git symbolic-ref --short HEAD").strip()
+  if thisBranch != "devel" and thisBranch != "":
+    exec("git checkout devel")
+    exec("git branch -D " & thisBranch)
+    exec("git pull --rebase")
+
 when isMainModule:
   var op = initOptParser()
   var
@@ -722,6 +729,7 @@ when isMainModule:
         let suffix = if latest: HeadHash else: FusionStableHash
         exec("nimble install -y fusion@$#" % suffix)
       of "ic": icTest(op.cmdLineRest)
+      of "branchdone": branchDone()
       else: showHelp()
       break
     of cmdEnd: break

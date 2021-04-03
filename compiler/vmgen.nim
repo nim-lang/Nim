@@ -833,10 +833,20 @@ proc genAddSubInt(c: PCtx; n: PNode; dest: var TDest; opc: TOpcode) =
   c.genNarrow(n, dest)
 
 proc genConv(c: PCtx; n, arg: PNode; dest: var TDest; opc=opcConv) =
-  if n.typ.kind == arg.typ.kind and arg.typ.kind == tyProc:
-    # don't do anything for lambda lifting conversions:
+  let t2 = n.typ.skipTypes({tyDistinct})
+  let targ2 = arg.typ.skipTypes({tyDistinct})
+
+  proc implicitConv(): bool =
+    if sameType(t2, targ2): return true
+    # xxx consider whether to use t2 and targ2 here
+    if n.typ.kind == arg.typ.kind and arg.typ.kind == tyProc:
+      # don't do anything for lambda lifting conversions:
+      return true
+
+  if implicitConv():
     gen(c, arg, dest)
     return
+
   let tmp = c.genx(arg)
   if dest < 0: dest = c.getTemp(n.typ)
   c.gABC(n, opc, dest, tmp)
@@ -970,7 +980,7 @@ proc genBindSym(c: PCtx; n: PNode; dest: var TDest) =
 
 proc fitsRegister*(t: PType): bool =
   assert t != nil
-  t.skipTypes(abstractInst-{tyTypeDesc}).kind in {
+  t.skipTypes(abstractInst + {tyStatic} - {tyTypeDesc}).kind in {
     tyRange, tyEnum, tyBool, tyInt..tyUInt64, tyChar}
 
 proc ldNullOpcode(t: PType): TOpcode =

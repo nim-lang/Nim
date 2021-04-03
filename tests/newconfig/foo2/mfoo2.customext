@@ -1,0 +1,2 @@
+doAssert defined(nimscript)
+echo "123"

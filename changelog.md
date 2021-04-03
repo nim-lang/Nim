@@ -4,6 +4,8 @@
 
 ## Standard library additions and changes
 
+- Added `sections` iterator in `parsecfg`.
+
 - Make custom op in macros.quote work for all statements.
 
 - On Windows the SSL library now checks for valid certificates.
@@ -45,6 +47,8 @@
 - Added an overload for the `collect` macro that inferes the container type based
   on the syntax of the last expression. Works with std seqs, tables and sets.
 
+- `jsonutils` now handles `cstring` (including as Table key).
+
 - Added `randState` template that exposes the default random number generator.
   Useful for library authors.
 
@@ -68,6 +72,8 @@
 
 - Added `asyncdispatch.activeDescriptors` that returns the number of currently
   active async event handles/file descriptors.
+
+- Added `getPort` to `asynchttpserver`.
 
 - `--gc:orc` is now 10% faster than previously for common workloads. If
   you have trouble with its changed behavior, compile with `-d:nimOldOrc`.
@@ -244,6 +250,13 @@
 
 - Added dollar `$` and `len` for `jsre.RegExp`.
 
+- Added `hasDataBuffered` to `asyncnet`.
+
+- Added `hasClosure` to `std/typetraits`.
+
+
+- Added `genasts.genAst` that avoids the problems inherent with `quote do` and can
+  be used as a replacement.
 
 ## Language changes
 
@@ -268,6 +281,11 @@
 
 - Custom numeric literals (e.g. `-128'bignum`) are now supported.
 
+- Tuple expressions are now parsed consistently as
+  `nnkTupleConstr` node. Will affect macros expecting nodes to be of `nnkPar`.
+
+- `nim e` now accepts arbitrary file extensions for the nimscript file,
+  although `.nims` is still the preferred extension in general.
 
 ## Compiler changes
 

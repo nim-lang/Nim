@@ -14,6 +14,7 @@ proc testRoundtrip[T](t: T, expected: string) =
   doAssert t2.toJson == j
 
 import tables, sets, algorithm, sequtils, options, strtabs
+from strutils import contains
 
 type Foo = ref object
   id: int
@@ -40,27 +41,29 @@ template fn() =
     # https://github.com/nim-lang/Nim/issues/12282
     testRoundtrip(Foo(1.5)): """1.5"""
 
-  block:
+  block: # OrderedTable
     testRoundtrip({"z": "Z", "y": "Y"}.toOrderedTable): """{"z":"Z","y":"Y"}"""
+    doAssert toJson({"z": 10, "": 11}.newTable).`$`.contains """"":11""" # allows hash to change
+    testRoundtrip({"z".cstring: 1, "".cstring: 2}.toOrderedTable): """{"z":1,"":2}"""
     testRoundtrip({"z": (f1: 'f'), }.toTable): """{"z":{"f1":102}}"""
 
-  block:
+  block: # StringTable
     testRoundtrip({"name": "John", "city": "Monaco"}.newStringTable): """{"mode":"modeCaseSensitive","table":{"city":"Monaco","name":"John"}}"""
 
   block: # complex example
     let t = {"z": "Z", "y": "Y"}.newStringTable
     type A = ref object
       a1: string
-    let a = (1.1, "fo", 'x', @[10,11], [true, false], [t,newStringTable()], [0'i8,3'i8], -4'i16, (foo: 0.5'f32, bar: A(a1: "abc"), bar2: A.default))
+    let a = (1.1, "fo", 'x', @[10,11], [true, false], [t,newStringTable()], [0'i8,3'i8], -4'i16, (foo: 0.5'f32, bar: A(a1: "abc"), bar2: A.default, cstring1: "foo", cstring2: "", cstring3: cstring(nil)))
     testRoundtrip(a):
-      """[1.1,"fo",120,[10,11],[true,false],[{"mode":"modeCaseSensitive","table":{"y":"Y","z":"Z"}},{"mode":"modeCaseSensitive","table":{}}],[0,3],-4,{"foo":0.5,"bar":{"a1":"abc"},"bar2":null}]"""
+      """[1.1,"fo",120,[10,11],[true,false],[{"mode":"modeCaseSensitive","table":{"y":"Y","z":"Z"}},{"mode":"modeCaseSensitive","table":{}}],[0,3],-4,{"foo":0.5,"bar":{"a1":"abc"},"bar2":null,"cstring1":"foo","cstring2":"","cstring3":null}]"""
 
   block:
     # edge case when user defined `==` doesn't handle `nil` well, e.g.:
     # https://github.com/nim-lang/nimble/blob/63695f490728e3935692c29f3d71944d83bb1e83/src/nimblepkg/version.nim#L105
     testRoundtrip(@[Foo(id: 10), nil]): """[{"id":10},null]"""
 
-  block:
+  block: # enum
     type Foo = enum f1, f2, f3, f4, f5
     type Bar = enum b1, b2, b3, b4
     let a = [f2: b2, f3: b3, f4: b4]

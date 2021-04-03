@@ -421,10 +421,9 @@ proc exprColonEqExprListAux(p: var Parser, endTok: TokType, result: PNode) =
     var a = exprColonEqExpr(p)
     result.add(a)
     if p.tok.tokType != tkComma: break
-    getTok(p)
-    # (1,) produces a tuple expression
-    if endTok == tkParRi and p.tok.tokType == tkParRi and result.kind == nkPar:
+    elif result.kind == nkPar:
       result.transitionSonsKind(nkTupleConstr)
+    getTok(p)
     skipComment(p, a)
   optPar(p)
   eat(p, endTok)
@@ -584,7 +583,10 @@ proc parsePar(p: var Parser): PNode =
     semiStmtList(p, result)
   elif p.tok.tokType == tkCurlyDotLe:
     result.add(parseStmtPragma(p))
-  elif p.tok.tokType != tkParRi:
+  elif p.tok.tokType == tkParRi:
+    # Empty tuple '()'
+    result.transitionSonsKind(nkTupleConstr)
+  else:
     var a = simpleExpr(p)
     if p.tok.tokType == tkDo:
       result = postExprBlocks(p, a)
@@ -605,13 +607,14 @@ proc parsePar(p: var Parser): PNode =
       semiStmtList(p, result)
     else:
       a = colonOrEquals(p, a)
+      if a.kind == nkExprColonExpr:
+        result.transitionSonsKind(nkTupleConstr)
       result.add(a)
       if p.tok.tokType == tkComma:
         getTok(p)
         skipComment(p, a)
         # (1,) produces a tuple expression:
-        if p.tok.tokType == tkParRi:
-          result.transitionSonsKind(nkTupleConstr)
+        result.transitionSonsKind(nkTupleConstr)
         # progress guaranteed
         while p.tok.tokType != tkParRi and p.tok.tokType != tkEof:
           var a = exprColonEqExpr(p)
@@ -1987,7 +1990,8 @@ proc parseObject(p: var Parser): PNode =
     result.add(parseObjectPart(p))
 
 proc parseTypeClassParam(p: var Parser): PNode =
-  let modifier = case p.tok.tokType
+  let modifier =
+    case p.tok.tokType
     of tkOut, tkVar: nkVarTy
     of tkPtr: nkPtrTy
     of tkRef: nkRefTy

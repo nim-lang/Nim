@@ -185,7 +185,7 @@ proc dedent(g: var TSrcGen) =
 proc put(g: var TSrcGen, kind: TokType, s: string; sym: PSym = nil) =
   if kind != tkSpaces:
     addPendingNL(g)
-    if s.len > 0:
+    if s.len > 0 or kind in {tkHideableStart, tkHideableEnd}:
       addTok(g, kind, s, sym)
   else:
     g.pendingWhitespace = s.len
@@ -587,13 +587,30 @@ proc putWithSpace(g: var TSrcGen, kind: TokType, s: string) =
   put(g, kind, s)
   put(g, tkSpaces, Space)
 
+proc isHideable(config: ConfigRef, n: PNode): bool =
+  # xxx compare `ident` directly with `getIdent(cache, wRaises)`, but
+  # this requires a `cache`.
+  case n.kind
+  of nkExprColonExpr: result = n[0].kind == nkIdent and n[0].ident.s in ["raises", "tags", "extern"]
+  of nkIdent: result = n.ident.s in ["gcsafe"]
+  else: result = false
+
 proc gcommaAux(g: var TSrcGen, n: PNode, ind: int, start: int = 0,
                theEnd: int = - 1, separator = tkComma) =
+  let inPragma = g.inPragma == 1 # just the top-level
+  var inHideable = false
   for i in start..n.len + theEnd:
     var c = i < n.len + theEnd
     var sublen = lsub(g, n[i]) + ord(c)
     if not fits(g, g.lineLen + sublen) and (ind + sublen < MaxLineLen): optNL(g, ind)
     let oldLen = g.tokens.len
+    if inPragma:
+      if not inHideable and isHideable(g.config, n[i]):
+        inHideable = true
+        put(g, tkHideableStart, "")
+      elif inHideable and not isHideable(g.config, n[i]):
+        inHideable = false
+        put(g, tkHideableEnd, "")
     gsub(g, n[i])
     if c:
       if g.tokens.len > oldLen:
@@ -601,6 +618,9 @@ proc gcommaAux(g: var TSrcGen, n: PNode, ind: int, start: int = 0,
       if shouldRenderComment(g) and hasCom(n[i]):
         gcoms(g)
         optNL(g, ind)
+  if inHideable:
+    put(g, tkHideableEnd, "")
+    inHideable = false
 
 proc gcomma(g: var TSrcGen, n: PNode, c: TContext, start: int = 0,
             theEnd: int = - 1) =
@@ -1182,7 +1202,7 @@ proc gsub(g: var TSrcGen, n: PNode, c: TContext) =
   of nkTupleConstr:
     put(g, tkParLe, "(")
     gcomma(g, n, c)
-    if n.len == 1: put(g, tkComma, ",")
+    if n.len == 1 and n[0].kind != nkExprColonExpr: put(g, tkComma, ",")
     put(g, tkParRi, ")")
   of nkCurly:
     put(g, tkCurlyLe, "{")
@@ -1645,6 +1665,10 @@ proc gsub(g: var TSrcGen, n: PNode, c: TContext) =
       gsons(g, n, c, 0)
   of nkTypeClassTy:
     gTypeClassTy(g, n)
+  of nkError:
+    putWithSpace(g, tkSymbol, "error")
+    #gcomma(g, n, c)
+    gsub(g, n[0], c)
   else:
     #nkNone, nkExplicitTypeListCall:
     internalError(g.config, n.info, "rnimsyn.gsub(" & $n.kind & ')')
