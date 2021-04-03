@@ -2,6 +2,40 @@
 
 
 
+## Changes affecting backward compatibility
+
+- `repr` now doesn't insert trailing newline; previous behavior was very inconsistent,
+  see #16034. Use `-d:nimLegacyReprWithNewline` for previous behavior.
+
+- An enum now can't be converted to another enum directly, you must use `ord` (or `cast`, but
+  compiler won't help if you misuse it).
+  ```
+  type A = enum a1, a2
+  type B = enum b1, b2
+  doAssert not compiles(a1.B)
+  doAssert compiles(a1.ord.B)
+  ```
+  for a transition period, use `-d:nimLegacyConvEnumEnum`.
+
+- Type mismatch errors now show more context, use `-d:nimLegacyTypeMismatch` for previous
+  behavior.
+
+- `echo` and `debugEcho` will now raise `IOError` if writing to stdout fails.  Previous behavior
+  silently ignored errors.  See #16366.  Use `-d:nimLegacyEchoNoRaise` for previous behavior.
+
+- `math.round` now is rounded "away from zero" in JS backend which is consistent
+  with other backends. See #9125. Use `-d:nimLegacyJsRound` for previous behavior.
+
+- Changed the behavior of `uri.decodeQuery` when there are unencoded `=`
+  characters in the decoded values. Prior versions would raise an error. This is
+  no longer the case to comply with the HTML spec and other languages
+  implementations. Old behavior can be obtained with
+  `-d:nimLegacyParseQueryStrict`. `cgi.decodeData` which uses the same
+  underlying code is also updated the same way.
+
+- In `std/os`, `getHomeDir`, `expandTilde`, `getTempDir`, `getConfigDir` now do not include trailing `DirSep`,
+  unless `-d:nimLegacyHomeDir` is specified (for a transition period).
+
 ## Standard library additions and changes
 
 - Added `sections` iterator in `parsecfg`.
@@ -84,9 +118,6 @@
 
 - Added a simpler to use `io.readChars` overload.
 
-- `repr` now doesn't insert trailing newline; previous behavior was very inconsistent,
-  see #16034. Use `-d:nimLegacyReprWithNewline` for previous behavior.
-
 - Added `**` to jsffi.
 
 - `writeStackTrace` is available in JS backend now.
@@ -109,9 +140,6 @@
 
 - Added `math.isNaN`.
 
-- `echo` and `debugEcho` will now raise `IOError` if writing to stdout fails.  Previous behavior
-  silently ignored errors.  See #16366.  Use `-d:nimLegacyEchoNoRaise` for previous behavior.
-
 - Added `jsbigints` module, arbitrary precision integers for JavaScript target.
 
 - Added `math.copySign`.
@@ -130,17 +158,7 @@
 - Added `posix_utils.osReleaseFile` to get system identification from `os-release` file on Linux and the BSDs.
   https://www.freedesktop.org/software/systemd/man/os-release.html
 
-- `math.round` now is rounded "away from zero" in JS backend which is consistent
-  with other backends. See #9125. Use `-d:nimLegacyJsRound` for previous behavior.
-
 - Added `socketstream` module that wraps sockets in the stream interface
-
-- Changed the behavior of `uri.decodeQuery` when there are unencoded `=`
-  characters in the decoded values. Prior versions would raise an error. This is
-  no longer the case to comply with the HTML spec and other languages
-  implementations. Old behavior can be obtained with
-  `-d:nimLegacyParseQueryStrict`. `cgi.decodeData` which uses the same
-  underlying code is also updated the same way.
 
 - Added `sugar.dumpToString` which improves on `sugar.dump`.
 
@@ -235,16 +253,12 @@
 
 - Added `jscore.debugger` to [call any available debugging functionality, such as breakpoints.](https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Statements/debugger).
 
-
 - Added `std/channels`.
 
 - Added `htmlgen.portal` for [making "SPA style" pages using HTML only](https://web.dev/hands-on-portals).
 
 - Added `ZZZ` and `ZZZZ` patterns to `times.nim` `DateTime` parsing, to match time
   zone offsets without colons, e.g. `UTC+7 -> +0700`.
-
-- In `std/os`, `getHomeDir`, `expandTilde`, `getTempDir`, `getConfigDir` now do not include trailing `DirSep`,
-  unless `-d:nimLegacyHomeDir` is specified (for a transition period).
 
 - Added `jsconsole.dir`, `jsconsole.dirxml`, `jsconsole.timeStamp`.
 
@@ -253,7 +267,6 @@
 - Added `hasDataBuffered` to `asyncnet`.
 
 - Added `hasClosure` to `std/typetraits`.
-
 
 - Added `genasts.genAst` that avoids the problems inherent with `quote do` and can
   be used as a replacement.
@@ -303,9 +316,6 @@
 - Added `nim --eval:cmd` to evaluate a command directly, see `nim --help`.
 
 - VM now supports `addr(mystring[ind])` (index + index assignment)
-
-- Type mismatch errors now show more context, use `-d:nimLegacyTypeMismatch` for previous
-  behavior.
 
 - Added `--hintAsError` with similar semantics as `--warningAsError`.
 
