@@ -484,15 +484,6 @@ proc testNimblePackages(r: var TResults; cat: Category; packageFilter: string) =
 # ---------------- IC tests ---------------------------------------------
 
 proc icTests(r: var TResults; testsDir: string, cat: Category, options: string) =
-  const
-    tooltests = ["compiler/nim.nim", "tools/nimgrep.nim"]
-    writeOnly = " --incremental:writeonly "
-    readOnly = " --incremental:readonly "
-    incrementalOn = " --incremental:on -d:nimIcIntegrityChecks "
-
-  template test(x: untyped) =
-    testSpecWithNimcache(r, makeRawTest(file, x & options, cat), nimcache)
-
   template editedTest(x: untyped) =
     var test = makeTest(file, x & options, cat)
     test.spec.targets = {getTestSpecTarget()}
@@ -509,10 +500,16 @@ proc icTests(r: var TResults; testsDir: string, cat: Category, options: string) 
         let file = it.replace(".nim", tempExt)
         writeFile(file, fragment)
         let oldPassed = r.passed
-        editedTest incrementalOn
+        editedTest " --incremental:on -d:nimIcIntegrityChecks "
         if r.passed != oldPassed+1: break
 
   when false:
+    template test(x: untyped) =
+      testSpecWithNimcache(r, makeRawTest(file, x & options, cat), nimcache)
+    const
+      tooltests = ["compiler/nim.nim", "tools/nimgrep.nim"]
+      writeOnly = " --incremental:writeonly "
+      readOnly = " --incremental:readonly "
     for file in tooltests:
       let nimcache = nimcacheDir(file, options, getTestSpecTarget())
       removeDir(nimcache)
