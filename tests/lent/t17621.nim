@@ -1,5 +1,5 @@
 discard """
-  errormsg: "`lent` is only allowed in return type"
+  errormsg: "invalid type: 'lent Test' in this context: 'proc (self: lent Test)' for proc"
 """
 
 # bug #17621
