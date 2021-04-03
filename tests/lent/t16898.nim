@@ -1,5 +1,5 @@
 discard """
-  errormsg: "lent is only allowed in return type"
+  errormsg: "`lent` is only allowed in return type"
 """
 
 # bug #16898
