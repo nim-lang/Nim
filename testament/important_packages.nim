@@ -50,7 +50,7 @@ pkg "cascade"
 pkg "cello"
 pkg "chroma"
 pkg "chronicles", "nim c -o:chr -r chronicles.nim"
-pkg "chronos", "nim c -r -d:release tests/testall"
+pkg "chronos", "nim c -r -d:release tests/testall", allowFailure = true # pending https://github.com/nim-lang/Nim/issues/17130
 pkg "cligen", "nim c --path:. -r cligen.nim"
 pkg "combparser", "nimble test --gc:orc"
 pkg "compactdict"
