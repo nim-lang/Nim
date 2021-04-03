@@ -185,7 +185,6 @@ proc asyncSingleProc(prc: NimNode): NimNode =
   var subRetType =
     if returnType.kind == nnkEmpty: newIdentNode("void")
     else: baseType
-  echo (baseType.kind, "D20210403T121503")
   outerProcBody.add(
     newVarStmt(retFutureSym,
       newCall(
@@ -214,9 +213,6 @@ proc asyncSingleProc(prc: NimNode): NimNode =
         var `resultIdent`: `baseType`
         {.pop.}
       else:
-        # const `resultIdent` = ()
-        # var `resultIdent` = ()
-        # var `resultIdent` = newFuture[void]
         var `resultIdent`: Future[void]
     procBody.add quote do:
       complete(`retFutureSym`, `resultIdent`)
@@ -254,7 +250,6 @@ proc asyncSingleProc(prc: NimNode): NimNode =
     body2.add quote do:
       `outerProcBody`
     result.body = body2
-  echo result.repr
 
 macro async*(prc: untyped): untyped =
   ## Macro which processes async procedures into the appropriate
