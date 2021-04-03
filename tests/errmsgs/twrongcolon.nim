@@ -1,7 +1,7 @@
 discard """
-errormsg: "in expression ':"
+errormsg: "in expression ' do:"
 nimout: '''
-Error: in expression ':
+Error: in expression ' do:
   890': identifier expected, but found ''
 '''
 
