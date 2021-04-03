@@ -608,20 +608,23 @@ proc getAllRunnableExamplesImpl(d: PDoc; n: PNode, dest: var Rope, state: Runnab
       return rsComment
   of nkCallKinds:
     if isRunnableExamples(n[0]) and
-        n.len >= 2 and n.lastSon.kind == nkStmtList and state in {rsStart, rsComment, rsRunnable}:
-      let (rdoccmd, code) = prepareExample(d, n, topLevel)
-      var msg = "Example:"
-      if rdoccmd.len > 0: msg.add " cmd: " & rdoccmd
-      dispA(d.conf, dest, "\n<p><strong class=\"examples_text\">$1</strong></p>\n",
-          "\n\\textbf{$1}\n", [msg.rope])
-      inc d.listingCounter
-      let id = $d.listingCounter
-      dest.add(d.config.getOrDefault"doc.listing_start" % [id, "langNim", ""])
-      var dest2 = ""
-      renderNimCode(dest2, code, isLatex = d.conf.cmd == cmdRst2tex)
-      dest.add dest2
-      dest.add(d.config.getOrDefault"doc.listing_end" % id)
-      return rsRunnable
+        n.len >= 2 and n.lastSon.kind == nkStmtList:
+      if state in {rsStart, rsComment, rsRunnable}:
+        let (rdoccmd, code) = prepareExample(d, n, topLevel)
+        var msg = "Example:"
+        if rdoccmd.len > 0: msg.add " cmd: " & rdoccmd
+        dispA(d.conf, dest, "\n<p><strong class=\"examples_text\">$1</strong></p>\n",
+            "\n\\textbf{$1}\n", [msg.rope])
+        inc d.listingCounter
+        let id = $d.listingCounter
+        dest.add(d.config.getOrDefault"doc.listing_start" % [id, "langNim", ""])
+        var dest2 = ""
+        renderNimCode(dest2, code, isLatex = d.conf.cmd == cmdRst2tex)
+        dest.add dest2
+        dest.add(d.config.getOrDefault"doc.listing_end" % id)
+        return rsRunnable
+      else:
+        localError(d.conf, n.info, errUser, "runnableExamples must appear before the first non-comment statement")
   else: discard
   return rsDone
     # change this to `rsStart` if you want to keep generating doc comments
@@ -671,7 +674,7 @@ proc getAllRunnableExamples(d: PDoc, n: PNode, dest: var Rope) =
     else:
       for i in 0..<n.safeLen:
         fn(n[i], topLevel = false)
-        if state == rsDone: return
+        if state == rsDone: discard # check all sons
   else: fn(n, topLevel = true)
 
 proc isVisible(d: PDoc; n: PNode): bool =

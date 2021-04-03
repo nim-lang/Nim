@@ -565,10 +565,9 @@ proc SSL_ctrl*(ssl: SslPtr, cmd: cint, larg: int, parg: pointer): int{.
   cdecl, dynlib: DLLSSLName, importc.}
 
 proc SSL_set_tlsext_host_name*(ssl: SslPtr, name: cstring): int =
-  result = SSL_ctrl(ssl, SSL_CTRL_SET_TLSEXT_HOSTNAME, TLSEXT_NAMETYPE_host_name, name)
   ## Set the SNI server name extension to be used in a client hello.
   ## Returns 1 if SNI was set, 0 if current SSL configuration doesn't support SNI.
-
+  result = SSL_ctrl(ssl, SSL_CTRL_SET_TLSEXT_HOSTNAME, TLSEXT_NAMETYPE_host_name, name)
 
 proc SSL_get_servername*(ssl: SslPtr, typ: cint = TLSEXT_NAMETYPE_host_name): cstring {.cdecl, dynlib: DLLSSLName, importc.}
   ## Retrieve the server name requested in the client hello. This can be used
