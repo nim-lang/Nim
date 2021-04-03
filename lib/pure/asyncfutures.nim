@@ -363,12 +363,10 @@ proc read*[T](future: Future[T] | FutureVar[T]): T =
   ## this function will fail with a `ValueError` exception.
   ##
   ## If the result of the future is an error then that error will be raised.
-  {.push hint[ConvFromXtoItselfNotNeeded]: off.}
   when future is Future[T]:
     let fut = future
   else:
     let fut = Future[T](future)
-  {.pop.}
   if fut.finished:
     if fut.error != nil:
       injectStacktrace(fut)
