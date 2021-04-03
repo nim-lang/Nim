@@ -100,20 +100,7 @@ proc extractPrimitive(a: PNode): (PNode, BiggestInt) =
       result = (PNode(nil), BiggestInt(0))
 
 proc addCmpFactRaw(c: var Context; a, b: PNode; lt: range[-1..0]) =
-  if a.isLet:
-    if b.isLiteral:
-      c.facts.y.add VarLe(a: getVarId(c, a), c: whichLit(b)+lt)
-    else:
-      let (y, yc) = extractPrimitive(b)
-      if y != nil:
-        if y.getMagic == mMinI:
-          # x <= min(a, b)
-          c.facts.x.add VarVarLe(a: getVarId(c, a), b: getVarId(c, y[1]), c: yc+lt)
-          c.facts.x.add VarVarLe(a: getVarId(c, a), b: getVarId(c, y[2]), c: yc+lt)
-        else:
-          c.facts.x.add VarVarLe(a: getVarId(c, a), b: getVarId(c, y), c: yc+lt)
-
-  elif a.isLiteral:
+  if a.isLiteral:
     let (y, yc) = extractPrimitive(b)
     if y != nil:
       if y.getMagic == mMinI:
