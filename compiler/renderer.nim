@@ -569,11 +569,11 @@ proc initContext(c: var TContext) =
   c.spacing = 0
   c.flags = {}
 
-proc gsub(g: var TSrcGen, n: PNode, c: TContext)
-proc gsub(g: var TSrcGen, n: PNode) =
+proc gsub(g: var TSrcGen, n: PNode, c: TContext, fromStmtList = false)
+proc gsub(g: var TSrcGen, n: PNode, fromStmtList = false) =
   var c: TContext
   initContext(c)
-  gsub(g, n, c)
+  gsub(g, n, c, fromStmtList = fromStmtList)
 
 proc hasCom(n: PNode): bool =
   result = false
@@ -681,7 +681,7 @@ proc gstmts(g: var TSrcGen, n: PNode, c: TContext, doIndent=true) =
       if n[i].kind in {nkStmtList, nkStmtListExpr, nkStmtListType}:
         gstmts(g, n[i], c, doIndent=false)
       else:
-        gsub(g, n[i])
+        gsub(g, n[i], fromStmtList = true)
       gcoms(g)
     if doIndent: dedent(g)
   else:
@@ -1003,7 +1003,7 @@ proc isCustomLit(n: PNode): bool =
     (n[1].kind == nkIdent and n[1].ident.s.startsWith('\'')) or
     (n[1].kind == nkSym and n[1].sym.name.s.startsWith('\''))
 
-proc gsub(g: var TSrcGen, n: PNode, c: TContext) =
+proc gsub(g: var TSrcGen, n: PNode, c: TContext, fromStmtList = false) =
   if isNil(n): return
   var
     a: TContext
@@ -1040,9 +1040,15 @@ proc gsub(g: var TSrcGen, n: PNode, c: TContext) =
         put(g, tkParLe, "(")
         gcomma(g, n, 1, i - 1 - n.len)
         put(g, tkParRi, ")")
-      put(g, tkColon, ":")
+      if fromStmtList:
+        put(g, tkColon, ":")
+      else:
+        put(g, tkSpaces, Space)
+        put(g, tkDo, "do")
+        put(g, tkColon, ":")
       gsub(g, n, i)
-      for j in i+1 ..< n.len:
+      i.inc
+      for j in i ..< n.len:
         optNL(g)
         put(g, tkDo, "do")
         put(g, tkColon, ":")

@@ -1,7 +1,6 @@
 discard """
-errormsg: "in expression ':"
+errormsg: "in expression ' do:"
 nimout: '''
-twrongcolon.nim(11, 12) Error: in expression ':
   890': identifier expected, but found ''
 '''
 
