@@ -194,14 +194,26 @@ proc complete*[T](future: Future[T], val: T) =
   #assert(not future.finished, "Future already finished, cannot finish twice.")
   checkFinished(future)
   assert(future.error == nil)
+  # when T isnot tuple[]:
+  #   future.value = val
   future.value = val
   future.finished = true
   future.callbacks.call()
   when isFutureLoggingEnabled: logFutureFinish(future)
 
 proc complete*(future: Future[void]) =
-  ## Completes a void `future`.
-  #assert(not future.finished, "Future already finished, cannot finish twice.")
+  # PRTEMP
+  # complete(future, ())
+  checkFinished(future)
+  assert(future.error == nil)
+  future.finished = true
+  future.callbacks.call()
+  when isFutureLoggingEnabled: logFutureFinish(future)
+
+# proc complete*(future: Future[void], val: tuple[]) =
+proc complete*(future: Future[void], val: Future[void]) =
+  # PRTEMP
+  # complete(future, ())
   checkFinished(future)
   assert(future.error == nil)
   future.finished = true

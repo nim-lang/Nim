@@ -209,17 +209,17 @@ proc asyncSingleProc(prc: NimNode): NimNode =
     procBody.add(createFutureVarCompletions(futureVarIdents, nil))
     let resultIdent = ident"result"
     procBody.insert(0): quote do:
-      static: echo "D20210403T122406.1"
-      static: echo `subRetType`
       when `subRetType` isnot void:
         {.push warning[resultshadowed]: off.}
         var `resultIdent`: `baseType`
         {.pop.}
-    procBody.add quote do:
-      when `subRetType` isnot void:
-        complete(`retFutureSym`, `resultIdent`)
       else:
-        complete(`retFutureSym`)
+        # const `resultIdent` = ()
+        # var `resultIdent` = ()
+        # var `resultIdent` = newFuture[void]
+        var `resultIdent`: Future[void]
+    procBody.add quote do:
+      complete(`retFutureSym`, `resultIdent`)
 
     var closureIterator = newProc(iteratorNameSym, [quote do: owned(FutureBase)],
                                   procBody, nnkIteratorDef)
