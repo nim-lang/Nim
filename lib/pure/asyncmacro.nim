@@ -11,7 +11,6 @@
 
 import macros, strutils, asyncfutures
 
-
 # TODO: Ref https://github.com/nim-lang/Nim/issues/5617
 # TODO: Add more line infos
 proc newCallWithLineInfo(fromNode: NimNode; theProc: NimNode, args: varargs[NimNode]): NimNode =
@@ -242,6 +241,7 @@ proc asyncSingleProc(prc: NimNode): NimNode =
   result = prc
   # Add discardable pragma.
   if returnType.kind == nnkEmpty:
+    # xxx consider removing `owned`? it's inconsistent with non-void case
     result.params[0] = quote do: owned(Future[void])
 
   # based on the yglukhov's patch to chronos: https://github.com/status-im/nim-chronos/pull/47
