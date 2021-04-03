@@ -66,7 +66,6 @@ proc createFutureVarCompletions(futureVarIdents: seq[NimNode], fromNode: NimNode
     )
 
 proc processBody(node, retFutureSym: NimNode, futureVarIdents: seq[NimNode]): NimNode =
-  #echo(node.treeRepr)
   result = node
   case node.kind
   of nnkReturnStmt:
@@ -208,12 +207,12 @@ proc asyncSingleProc(prc: NimNode): NimNode =
     procBody.add(createFutureVarCompletions(futureVarIdents, nil))
     let resultIdent = ident"result"
     procBody.insert(0): quote do:
+      {.push warning[resultshadowed]: off.}
       when `subRetType` isnot void:
-        {.push warning[resultshadowed]: off.}
         var `resultIdent`: `baseType`
-        {.pop.}
       else:
         var `resultIdent`: Future[void]
+      {.pop.}
     procBody.add quote do:
       complete(`retFutureSym`, `resultIdent`)
 
@@ -320,9 +319,3 @@ macro multisync*(prc: untyped): untyped =
   result = newStmtList()
   result.add(asyncSingleProc(asyncPrc))
   result.add(sync)
-  # echo result.repr
-
-# overload for await as a fallback handler, based on the yglukhov's patch to chronos: https://github.com/status-im/nim-chronos/pull/47
-# template await*(f: typed): untyped =
-  # static:
-    # error "await only available within {.async.}"
