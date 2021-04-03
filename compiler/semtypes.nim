@@ -1227,12 +1227,9 @@ proc semProcTypeNode(c: PContext, n, genericParams: PNode,
     if hasType:
       typ = semParamType(c, a[^2], constraint)
       # TODO: Disallow typed/untyped in procs in the compiler/stdlib
-      if kind in {skProc, skFunc}:
-        if (typ.kind == tyTyped or typ.kind == tyUntyped) and not isMagic(getCurrOwner(c)):
-          localError(c.config, a[^2].info, "'" & typ.sym.name.s & 
+      if kind in {skProc, skFunc} and (typ.kind == tyTyped or typ.kind == tyUntyped) and not isMagic(getCurrOwner(c)):
+        localError(c.config, a[^2].info, "'" & typ.sym.name.s & 
                   "' is only allowed in templates and macros or magic procs")
-        elif typ.kind == tyLent:
-          localError(c.config, a[^2].info, "`lent` is only allowed in return type")
 
 
     if hasDefault:
