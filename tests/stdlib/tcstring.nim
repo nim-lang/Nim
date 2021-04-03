@@ -1,6 +1,6 @@
 discard """
   targets: "c cpp js"
-  matrix: "; --gc:arc"
+  matrix: "--gc:refc; --gc:arc"
 """
 
 from std/sugar import collect
