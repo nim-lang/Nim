@@ -7,3 +7,5 @@ block: # greedyOrderedSubsetLines
 
   doAssert not greedyOrderedSubsetLines("a1\na5", "a0\na1\na2\na3\na4\nprefix:a5")
   doAssert not greedyOrderedSubsetLines("a1\na5", "a0\na1\na2\na3\na4\na5:suffix")
+  doAssert not greedyOrderedSubsetLines("a5", "a0\na1\na2\na3\na4\nprefix:a5")
+  doAssert not greedyOrderedSubsetLines("a5", "a0\na1\na2\na3\na4\na5:suffix")
