@@ -61,7 +61,8 @@ type
     args: pointer
     destroy: proc (args: pointer) {.nimcall.}
 
-proc `=destroy`*(t: var Task) =
+proc `=destroy`*(t: var Task) {.inline.} =
+  ## Frees the resources allocated for a `Task`.
   if t.args != nil:
     if t.destroy != nil:
       t.destroy(t.args)
@@ -157,7 +158,6 @@ macro toTask*(e: typed{nkCall | nkInfix | nkPrefix | nkPostfix | nkCommand | nkC
       else:
         error("not supported type kinds")
 
-    let stmtList = newStmtList()
     let scratchObjType = genSym(kind = nskType, ident = "ScratchObj")
     let scratchObj = nnkTypeSection.newTree(
                       nnkTypeDef.newTree(
@@ -184,6 +184,7 @@ macro toTask*(e: typed{nkCall | nkInfix | nkPrefix | nkPostfix | nkCommand | nkC
       if `scratchIdent`.isNil:
         raise newException(OutOfMemDefect, "Could not allocate memory")
 
+    var stmtList = newStmtList()
     stmtList.add(scratchObj)
     stmtList.add(scratchLetSection)
     stmtList.add(scratchCheck)
@@ -226,10 +227,36 @@ macro toTask*(e: typed{nkCall | nkInfix | nkPrefix | nkPostfix | nkCommand | nkC
     echo result.repr
 
 runnableExamples("--gc:orc"):
-  var num = 0
-  proc hello(a: int) = inc num, a
+  block:
+    var num = 0
+    proc hello(a: int) = inc num, a
 
-  let b = toTask hello(13)
-  b.invoke()
+    let b = toTask hello(13)
+    b.invoke()
+    assert num == 13
+    # A task can be invoked multiple times
+    b.invoke()
+    assert num == 26
 
-  assert num == 13
+  block:
+    type
+      Runnable = ref object
+        data: int
+
+    var data: int
+    proc hello(a: Runnable) {.nimcall.} =
+      a.data += 2
+      data = a.data
+
+
+    when false:
+      # the parameters of call must be isolated.
+      let x = Runnable(data: 12)
+      let b = toTask hello(x) # error ----> expression cannot be isolated: x
+      b.invoke()
+
+    let b = toTask(hello(Runnable(data: 12)))
+    b.invoke()
+    assert data == 14
+    b.invoke()
+    assert data == 16
