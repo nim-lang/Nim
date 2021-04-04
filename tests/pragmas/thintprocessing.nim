@@ -1,4 +1,5 @@
 discard """
+  disabled: windows
   matrix: "--hint:processing"
   nimout: '''
 compile start
