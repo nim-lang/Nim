@@ -812,10 +812,11 @@ proc findModule*(conf: ConfigRef; modulename, currentModule: string): AbsoluteFi
       for candidate in stdlibDirs:
         let path = (conf.libpath.string / candidate / stripped)
         if fileExists(path):
-          m = path
+          result = AbsoluteFile path
           break
-    let currentPath = currentModule.splitFile.dir
-    result = AbsoluteFile currentPath / m
+    else: # If prefixed with std/ why would we add the current module path!
+      let currentPath = currentModule.splitFile.dir
+      result = AbsoluteFile currentPath / m
     if not fileExists(result):
       result = findFile(conf, m)
   patchModule(conf)

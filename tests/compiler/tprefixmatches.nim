@@ -5,7 +5,7 @@ macro check(val, body: untyped): untyped =
   result = newStmtList()
   expectKind body, nnkStmtList
   for b in body:
-    expectKind b, nnkPar
+    expectKind b, nnkTupleConstr
     expectLen b, 2
     let p = b[0]
     let s = b[1]

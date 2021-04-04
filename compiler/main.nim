@@ -342,8 +342,6 @@ proc mainCommand*(graph: ModuleGraph) =
     if conf.projectIsCmd or conf.projectIsStdin: discard
     elif not fileExists(conf.projectFull):
       rawMessage(conf, errGenerated, "NimScript file does not exist: " & conf.projectFull.string)
-    elif not conf.projectFull.string.endsWith(".nims"):
-      rawMessage(conf, errGenerated, "not a NimScript file: " & conf.projectFull.string)
     # main NimScript logic handled in `loadConfigs`.
   of cmdNop: discard
   of cmdJsonscript:

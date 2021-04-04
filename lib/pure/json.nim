@@ -927,7 +927,7 @@ when defined(js):
 
   proc parseNativeJson(x: cstring): JSObject {.importjs: "JSON.parse(#)".}
 
-  proc getVarType(x: JSObject): JsonNodeKind =
+  proc getVarType(x: JSObject, isRawNumber: var bool): JsonNodeKind =
     result = JNull
     case $getProtoName(x) # TODO: Implicit returns fail here.
     of "[object Array]": return JArray
@@ -937,6 +937,7 @@ when defined(js):
         if isSafeInteger(x):
           return JInt
         else:
+          isRawNumber = true
           return JString
       else:
         return JFloat
@@ -946,13 +947,13 @@ when defined(js):
     else: assert false
 
   proc len(x: JSObject): int =
-    assert x.getVarType == JArray
     asm """
       `result` = `x`.length;
     """
 
   proc convertObject(x: JSObject): JsonNode =
-    case getVarType(x)
+    var isRawNumber = false
+    case getVarType(x, isRawNumber)
     of JArray:
       result = newJArray()
       for i in 0 ..< x.len:
@@ -973,7 +974,12 @@ when defined(js):
       result = newJFloat(x.to(float))
     of JString:
       # Dunno what to do with isUnquoted here
-      result = newJString($x.to(cstring))
+      if isRawNumber:
+        var value: cstring
+        {.emit: "`value` = `x`.toString();".}
+        result = newJRawNumber($value)
+      else:
+        result = newJString($x.to(cstring))
     of JBool:
       result = newJBool(x.to(bool))
     of JNull:
@@ -1069,12 +1075,13 @@ when defined(nimFixedForwardGeneric):
     dst = jsonNode.copy
 
   proc initFromJson[T: SomeInteger](dst: var T; jsonNode: JsonNode, jsonPath: var string) =
-    when T is uint|uint64:
+    when T is uint|uint64 or (not defined(js) and int.sizeof == 4):
+      verifyJsonKind(jsonNode, {JInt, JString}, jsonPath)
       case jsonNode.kind
       of JString:
-        dst = T(parseBiggestUInt(jsonNode.str))
+        let x = parseBiggestUInt(jsonNode.str)
+        dst = cast[T](x)
       else:
-        verifyJsonKind(jsonNode, {JInt}, jsonPath)
         dst = T(jsonNode.num)
     else:
       verifyJsonKind(jsonNode, {JInt}, jsonPath)

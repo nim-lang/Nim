@@ -726,6 +726,8 @@ proc semForVars(c: PContext, n: PNode; flags: TExprFlags): PNode =
       if n[0].kind == nkVarTuple:
         if n[0].len-1 != iterAfterVarLent.len:
           localError(c.config, n[0].info, errWrongNumberOfVariables)
+          return errorNode(c, n)
+
         for i in 0..<n[0].len-1:
           var v = symForVar(c, n[0][i])
           if getCurrOwner(c).kind == skModule: incl(v.flags, sfGlobal)
@@ -1524,7 +1526,7 @@ proc semProcAnnotation(c: PContext, prc: PNode;
     return
 
 proc semInferredLambda(c: PContext, pt: TIdTable, n: PNode): PNode {.nosinks.} =
-  ## used for resolving 'auto' in lambdas based on their callsite 
+  ## used for resolving 'auto' in lambdas based on their callsite
   var n = n
   let original = n[namePos].sym
   let s = original #copySym(original, false)

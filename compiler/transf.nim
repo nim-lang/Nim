@@ -29,8 +29,7 @@ proc transformBody*(g: ModuleGraph; idgen: IdGenerator, prc: PSym, cache: bool):
 import closureiters, lambdalifting
 
 type
-  PTransCon = ref TTransCon
-  TTransCon{.final.} = object # part of TContext; stackable
+  PTransCon = ref object # part of TContext; stackable
     mapping: TIdNodeTable     # mapping from symbols to nodes
     owner: PSym               # current owner
     forStmt: PNode            # current for stmt
@@ -40,7 +39,7 @@ type
                               # if we encounter the 2nd yield statement
     next: PTransCon           # for stacking
 
-  TTransfContext = object
+  PTransf = ref object
     module: PSym
     transCon: PTransCon      # top of a TransCon stack
     inlining: int            # > 0 if we are in inlining context (copy vars)
@@ -49,7 +48,6 @@ type
     deferDetected, tooEarly: bool
     graph: ModuleGraph
     idgen: IdGenerator
-  PTransf = ref TTransfContext
 
 proc newTransNode(a: PNode): PNode {.inline.} =
   result = shallowCopy(a)

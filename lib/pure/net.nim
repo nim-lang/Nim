@@ -770,10 +770,11 @@ when defineSsl:
         raiseSSLError("No SSL certificate found.")
 
       const X509_CHECK_FLAG_ALWAYS_CHECK_SUBJECT = 0x1.cuint
-      const size = 1024
-      var peername: string = newString(size)
+      # https://www.openssl.org/docs/man1.1.1/man3/X509_check_host.html
       let match = certificate.X509_check_host(hostname.cstring, hostname.len.cint,
-        X509_CHECK_FLAG_ALWAYS_CHECK_SUBJECT, peername)
+        X509_CHECK_FLAG_ALWAYS_CHECK_SUBJECT, nil)
+      # https://www.openssl.org/docs/man1.1.1/man3/SSL_get_peer_certificate.html
+      X509_free(certificate)
       if match != 1:
         raiseSSLError("SSL Certificate check failed.")
 
@@ -1426,7 +1427,7 @@ proc recv*(socket: Socket, data: var string, size: int, timeout = -1,
            flags = {SocketFlag.SafeDisconn}): int =
   ## Higher-level version of `recv`.
   ##
-  ## Reads **up to** `size` bytes from `socket` into `buf`.
+  ## Reads **up to** `size` bytes from `socket` into `data`.
   ##
   ## For buffered sockets this function will attempt to read all the requested
   ## data. It will read this data in `BufferSize` chunks.
@@ -1442,8 +1443,6 @@ proc recv*(socket: Socket, data: var string, size: int, timeout = -1,
   ##
   ## A timeout may be specified in milliseconds, if enough data is not received
   ## within the time specified a TimeoutError exception will be raised.
-  ##
-  ## **Note**: `data` must be initialised.
   ##
   ## .. warning:: Only the `SafeDisconn` flag is currently supported.
   data.setLen(size)
@@ -1463,7 +1462,7 @@ proc recv*(socket: Socket, size: int, timeout = -1,
            flags = {SocketFlag.SafeDisconn}): string {.inline.} =
   ## Higher-level version of `recv` which returns a string.
   ##
-  ## Reads **up to** `size` bytes from `socket` into `buf`.
+  ## Reads **up to** `size` bytes from `socket` into the result.
   ##
   ## For buffered sockets this function will attempt to read all the requested
   ## data. It will read this data in `BufferSize` chunks.
@@ -1534,6 +1533,7 @@ proc readLine*(socket: Socket, line: var string, timeout = -1,
     if flags.isDisconnectionError(lastError):
       setLen(line, 0)
     socket.socketError(n, lastError = lastError, flags = flags)
+    return
 
   var waited: Duration
 

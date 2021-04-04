@@ -949,18 +949,25 @@ func frexp*[T: float32|float64](x: T): tuple[frac: T, exp: int] {.inline.} =
     doAssert frexp(8.0) == (0.5, 4)
     doAssert frexp(-8.0) == (-0.5, 4)
     doAssert frexp(0.0) == (0.0, 0)
+
     # special cases:
-    when not defined(windows):
-      doAssert frexp(-0.0) == (-0.0, 0) # signbit preserved for +-0
-      doAssert frexp(Inf).frac == Inf # +- Inf preserved
-      doAssert frexp(NaN).frac.isNaN
+    doAssert frexp(-0.0).frac.signbit # signbit preserved for +-0
+    doAssert frexp(Inf).frac == Inf # +- Inf preserved
+    doAssert frexp(NaN).frac.isNaN
+
   when not defined(js):
     var exp: cint
     result.frac = c_frexp2(x, exp)
     result.exp = exp
   else:
     if x == 0.0:
-      result = (0.0, 0)
+      # reuse signbit implementation
+      let uintBuffer = toBitsImpl(x)
+      if (uintBuffer[1] shr 31) != 0:
+        # x is -0.0
+        result = (-0.0, 0)
+      else:
+        result = (0.0, 0)
     elif x < 0.0:
       result = frexp(-x)
       result.frac = -result.frac
@@ -980,6 +987,7 @@ func frexp*[T: float32|float64](x: T, exponent: var int): T {.inline.} =
     var x: int
     doAssert frexp(5.0, x) == 0.625
     doAssert x == 3
+
   (result, exponent) = frexp(x)
 
 
