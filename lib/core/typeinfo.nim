@@ -679,7 +679,7 @@ proc assign*(x, y: Any) =
   genericAssign(x.value, y.value, y.rawType)
 
 iterator elements*(x: Any): int =
-  ## Iterates over every element of `x`. `x` needs to represent a Nim bitset.
+  ## Iterates over every element of `x`. `x` needs to represent a `set`.
   assert x.rawType.kind == tySet
   let typ = x.rawType
   let p = x.value
