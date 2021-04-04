@@ -1,3 +1,4 @@
 discard """
-exitcode: 1
+  targets: "c"
+  exitcode: 1
 """

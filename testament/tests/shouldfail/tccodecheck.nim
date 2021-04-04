@@ -1,5 +1,6 @@
 discard """
-ccodecheck: "baz"
+  targets: "c"
+  ccodecheck: "baz"
 """
 
 proc foo(): void {.exportc: "bar".}=
