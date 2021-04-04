@@ -10,7 +10,8 @@
 import
   intsets, ast, astalgo, msgs, renderer, magicsys, types, idents, trees,
   wordrecg, strutils, options, guards, lineinfos, semfold, semdata,
-  modulegraphs, varpartitions, typeallowed, nilcheck, errorhandling
+  modulegraphs, varpartitions, typeallowed, nilcheck, errorhandling,
+  map_nats
 
 when defined(useDfa):
   import dfa
@@ -68,6 +69,7 @@ type
     ownerModule: PSym
     init: seq[int] # list of initialized variables
     guards: TModel # nested guards
+    nats: Context
     locked: seq[PNode] # locked locations
     gcUnsafe, isRecursive, isTopLevel, hasSideEffect, inEnforcedGcSafe: bool
     hasDangerousAssign, isInnerProc: bool
@@ -646,7 +648,9 @@ proc trackCase(tracked: PEffects, n: PNode) =
 proc trackIf(tracked: PEffects, n: PNode) =
   track(tracked, n[0][0])
   let oldFacts = tracked.guards.s.len
+  let ctxState = recordState(tracked.nats)
   addFact(tracked.guards, n[0][0])
+  addFact(tracked.nats, n[0][0], negation=false)
   let oldState = tracked.init.len
 
   var inter: TIntersection = @[]
@@ -659,10 +663,16 @@ proc trackIf(tracked: PEffects, n: PNode) =
   for i in 1..<n.len:
     let branch = n[i]
     setLen(tracked.guards.s, oldFacts)
+    rollback(tracked.nats, ctxState)
+
     for j in 0..i-1:
       addFactNeg(tracked.guards, n[j][0])
+      addFact(tracked.nats, n[j][0], negation=true)
+
     if branch.len > 1:
       addFact(tracked.guards, branch[0])
+      addFact(tracked.nats, branch[0], negation=false)
+
     setLen(tracked.init, oldState)
     for i in 0..<branch.len:
       track(tracked, branch[i])
@@ -675,6 +685,7 @@ proc trackIf(tracked: PEffects, n: PNode) =
       if count >= toCover: tracked.init.add id
     # else we can't merge as it is not exhaustive
   setLen(tracked.guards.s, oldFacts)
+  rollback(tracked.nats, ctxState)
 
 proc trackBlock(tracked: PEffects, n: PNode) =
   if n.kind in {nkStmtList, nkStmtListExpr}:
@@ -712,17 +723,22 @@ proc patchResult(c: PEffects; n: PNode) =
       patchResult(c, n[i])
 
 proc checkLe(c: PEffects; a, b: PNode) =
-  case proveLe(c.guards, a, b)
-  of impUnknown:
-    #for g in c.guards.s:
-    #  if g != nil: echo "I Know ", g
+  if not proveLe(c.nats, a, b):
     message(c.config, a.info, warnStaticIndexCheck,
       "cannot prove: " & $a & " <= " & $b)
-  of impYes:
-    discard
-  of impNo:
-    message(c.config, a.info, warnStaticIndexCheck,
-      "can prove: " & $a & " > " & $b)
+
+  when false:
+    case proveLe(c.guards, a, b)
+    of impUnknown:
+      #for g in c.guards.s:
+      #  if g != nil: echo "I Know ", g
+      message(c.config, a.info, warnStaticIndexCheck,
+        "cannot prove: " & $a & " <= " & $b)
+    of impYes:
+      discard
+    of impNo:
+      message(c.config, a.info, warnStaticIndexCheck,
+        "can prove: " & $a & " > " & $b)
 
 proc checkBounds(c: PEffects; arr, idx: PNode) =
   checkLe(c, lowBound(c.config, arr), idx)
@@ -945,6 +961,7 @@ proc track(tracked: PEffects, n: PNode) =
     track(tracked, n[0])
     dec tracked.leftPartOfAsgn
     addAsgnFact(tracked.guards, n[0], n[1])
+    addAsgnFact(tracked.nats, n[0], n[1])
     notNilCheck(tracked, n[1], n[0].typ)
     when false: cstringCheck(tracked, n)
     if tracked.owner.kind != skMacro:
@@ -968,6 +985,7 @@ proc track(tracked: PEffects, n: PNode) =
         for i in 0..<child.len-2:
           initVar(tracked, child[i], volatileCheck=false)
           addAsgnFact(tracked.guards, child[i], last)
+          addAsgnFact(tracked.nats, child[i], last)
           notNilCheck(tracked, last, child[i].typ)
       elif child.kind == nkVarTuple and last.kind != nkEmpty:
         for i in 0..<child.len-1:
@@ -977,6 +995,7 @@ proc track(tracked: PEffects, n: PNode) =
           initVar(tracked, child[i], volatileCheck=false)
           if last.kind in {nkPar, nkTupleConstr}:
             addAsgnFact(tracked.guards, child[i], last[i])
+            addAsgnFact(tracked.nats, child[i], last[i])
             notNilCheck(tracked, last[i], child[i].typ)
       # since 'var (a, b): T = ()' is not even allowed, there is always type
       # inference for (a, b) and thus no nil checking is necessary.
@@ -995,16 +1014,20 @@ proc track(tracked: PEffects, n: PNode) =
       # loop may never execute:
       let oldState = tracked.init.len
       let oldFacts = tracked.guards.s.len
+      let ctxState = recordState(tracked.nats)
       addFact(tracked.guards, n[0])
+      addFact(tracked.nats, n[0], negation=false)
       track(tracked, n[0])
       track(tracked, n[1])
       setLen(tracked.init, oldState)
       setLen(tracked.guards.s, oldFacts)
+      rollback(tracked.nats, ctxState)
   of nkForStmt, nkParForStmt:
     # we are very conservative here and assume the loop is never executed:
     let oldState = tracked.init.len
 
     let oldFacts = tracked.guards.s.len
+    let ctxState = recordState(tracked.nats)
     let iterCall = n[n.len-2]
     if optStaticBoundsCheck in tracked.currOptions and iterCall.kind in nkCallKinds:
       let op = iterCall[0]
@@ -1018,11 +1041,17 @@ proc track(tracked: PEffects, n: PNode) =
           # the same since only the iteration direction changes.
           addFactLe(tracked.guards, lower, iterVar)
           addFactLe(tracked.guards, iterVar, upper)
+
+          addFactLe(tracked.nats, lower, iterVar)
+          addFactLe(tracked.nats, iterVar, upper)
         of "..<":
           let lower = iterCall[1]
           let upper = iterCall[2]
           addFactLe(tracked.guards, lower, iterVar)
           addFactLt(tracked.guards, iterVar, upper)
+
+          addFactLe(tracked.nats, lower, iterVar)
+          addFactLt(tracked.nats, iterVar, upper)
         else: discard
 
     for i in 0..<n.len-2:
@@ -1043,6 +1072,7 @@ proc track(tracked: PEffects, n: PNode) =
     track(tracked, loopBody)
     setLen(tracked.init, oldState)
     setLen(tracked.guards.s, oldFacts)
+    rollback(tracked.nats, ctxState)
   of nkObjConstr:
     when false: track(tracked, n[0])
     let oldFacts = tracked.guards.s.len

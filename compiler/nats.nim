@@ -27,6 +27,7 @@ type
     z*: seq[ValLe]
 
 proc `==`*(a, b: VarId): bool {.borrow.}
+proc `$`*(a: VarId): string {.borrow.}
 
 proc simpleImplies(facts: Facts; v: VarVarLe): bool =
   for f in facts.x:

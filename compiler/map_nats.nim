@@ -22,10 +22,21 @@ const
   someSub = {mSubI, mSubF64, mPred}
 
 type
-  Context = object
+  Context* = object
     varMap: Table[int, VarId] # Sym Id to VarId
     facts: Facts
     nextVarId: int32
+
+  ContextState* = object
+    xlen, ylen, zlen: int
+
+proc recordState*(c: Context): ContextState =
+  ContextState(xlen: c.facts.x.len, ylen: c.facts.y.len, zlen: c.facts.z.len)
+
+proc rollback*(c: var Context; s: ContextState) =
+  c.facts.x.setLen s.xlen
+  c.facts.y.setLen s.ylen
+  c.facts.z.setLen s.zlen
 
 proc isLet(n: PNode): bool =
   if n.kind == nkSym:
@@ -73,8 +84,8 @@ proc getVarId(c: var Context; n: PNode): VarId =
 
   result = c.varMap.getOrDefault(id)
   if result == VarId(0):
-    result = VarId c.nextVarId
     inc c.nextVarId
+    result = VarId c.nextVarId
     c.varMap[id] = result
 
 proc isHigh(n: PNode): BiggestInt {.inline.} =
@@ -141,7 +152,7 @@ proc addFactLe*(c: var Context; a, b: PNode) =
 proc addFactLt*(c: var Context; a, b: PNode) =
   addCmpFactRaw(c, c.facts, a.skipStmtListExpr, b.skipStmtListExpr, -1)
 
-proc addFact(c: var Context; n: PNode; negation: bool) =
+proc addFact*(c: var Context; n: PNode; negation: bool) =
   case n.kind
   of nkStmtListExpr, nkPar:
     addFact(c, n.lastSon, negation)
