@@ -65,6 +65,8 @@ proc isLiteral(n: PNode): bool =
   of nkHiddenStdConv, nkHiddenSubConv, nkConv:
     result = isLiteral(n[1])
   else:
+    if n.getMagic in someLen+{mHigh} and n[1].typ.skipTypes(abstractInst).kind == tyArray:
+      echo "came here!"
     result = false
 
 proc whichLit(n: PNode): BiggestInt =
