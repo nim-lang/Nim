@@ -35,7 +35,7 @@ block: # aliasing `void`
   waitFor tempVoid()
   waitFor tempVoid2()
 
-block: # aliasing `void`
+block: # sanity check
   template foo() =
     proc bad(): int {.async.} = discard
   doAssert not compiles(bad())
