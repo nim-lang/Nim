@@ -7,6 +7,8 @@
 #    distribution, for details about the copyright.
 #
 
+## `std/tasks` provides basic primitives for for creating parallel programs.
+## A `Task` should be only owned by a single Thread, it cannot be shared by threads.
 
 import std/[macros, isolation, typetraits]
 import system/ansi_c
@@ -71,7 +73,6 @@ proc `=destroy`*(t: var Task) {.inline.} =
 proc invoke*(task: Task) {.inline.} =
   ## Invokes the `task`.
   task.callback(task.args)
-
 
 template checkIsolate(scratchAssignList: seq[NimNode], procParam, scratchDotExpr: NimNode) =
   # block:
