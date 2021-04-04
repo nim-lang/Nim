@@ -2067,7 +2067,7 @@ proc parseOptionList(p: var RstParser): PRstNode =
       c.add(b)
       result.add(c)
     else:
-      dec p.idx  # back to tkIndent
+      if currentTok(p).kind != tkEof: dec p.idx  # back to tkIndent
       break
 
 proc parseDefinitionList(p: var RstParser): PRstNode =

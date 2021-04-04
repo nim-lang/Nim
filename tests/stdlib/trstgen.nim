@@ -1362,6 +1362,7 @@ Test1
           output)
     check("""<th align="left">-d</th><td align="left">option</td>""" in
           output)
+    check "<p>option</p>" notin output
 
   test "Option list 3 (double /)":
     let input = dedent """
@@ -1378,6 +1379,7 @@ Test1
           output)
     check("""<th align="left">-d</th><td align="left">option</td>""" in
           output)
+    check "<p>option</p>" notin output
 
   test "Roles: subscript prefix/postfix":
     let expected = "See <sub>some text</sub>."
