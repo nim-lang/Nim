@@ -34,13 +34,13 @@ proc simpleImplies(facts: Facts; v: VarVarLe): bool =
       # if we know that  a <= b + 3 we can infer that a <= b + 4
       if f.c <= v.c: return true
 
-proc implies(facts: Facts; v: VarLe): bool =
+proc implies*(facts: Facts; v: VarLe): bool =
   for f in facts.y:
     if f.a == v.a:
       # if we know that a <= 4 we can infer that a <= 6
       if f.c <= v.c: return true
 
-proc implies(facts: Facts; v: ValLe): bool =
+proc implies*(facts: Facts; v: ValLe): bool =
   for f in facts.z:
     if f.a == v.a:
       # if we know that 4 <= a we can infer that 3 <= a
@@ -91,7 +91,7 @@ proc traverseAllPaths(facts: Facts; s: VarId; d: VarVarLe; res: var bool) =
 proc complexImplies(facts: Facts; v: VarVarLe): bool =
   traverseAllPaths(facts, v.a, v, result)
 
-proc implies(facts: Facts; v: VarVarLe): bool =
+proc implies*(facts: Facts; v: VarVarLe): bool =
   result = simpleImplies(facts, v) or complexImplies(facts, v)
 
 when isMainModule:

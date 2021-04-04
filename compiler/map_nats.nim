@@ -34,7 +34,7 @@ proc isLet(n: PNode): bool =
     elif n.sym.kind == skParam and skipTypes(n.sym.typ,
                                              abstractInst).kind notin {tyVar}:
       result = true
-  elif n.getMagic in someLen:
+  elif n.getMagic in someLen+{mHigh}:
     result = isLet(n[1])
 
 proc isLetOrMin(n: PNode): bool =
@@ -68,7 +68,7 @@ proc whichLit(n: PNode): BiggestInt =
 proc getVarId(c: var Context; n: PNode): VarId =
   let id = if n.kind == nkSym: n.sym.id
            else:
-             assert n.getMagic in someLen
+             assert n.getMagic in someLen+{mHigh}
              -n[1].sym.id
 
   result = c.varMap.getOrDefault(id)
@@ -77,74 +77,80 @@ proc getVarId(c: var Context; n: PNode): VarId =
     inc c.nextVarId
     c.varMap[id] = result
 
+proc isHigh(n: PNode): BiggestInt {.inline.} =
+  ord(n.getMagic == mHigh)
+
 proc extractPrimitive(a: PNode): (PNode, BiggestInt) =
   # Extracts (x+3) into 'x' and '3'.
   # (x) is extracted into 'x' and '0'.
   case a.getMagic
   of someAdd:
     if a[1].isLetOrMin and a[2].isLiteral:
-      result = (a[1], whichLit(a[2]))
+      result = (a[1], whichLit(a[2])+isHigh(a[1]))
     elif a[2].isLetOrMin and a[1].isLiteral:
-      result = (a[2], whichLit(a[1]))
+      result = (a[2], whichLit(a[1])+isHigh(a[2]))
     else:
       result = (PNode(nil), BiggestInt(0))
   of someSub:
     if a[1].isLetOrMin and a[2].isLiteral:
-      result = (a[1], -whichLit(a[2]))
+      result = (a[1], -whichLit(a[2])+isHigh(a[1]))
     else:
       result = (PNode(nil), BiggestInt(0))
   else:
     if a.isLetOrMin:
-      result = (a, BiggestInt(0))
+      result = (a, isHigh(a))
     else:
       result = (PNode(nil), BiggestInt(0))
 
-proc addCmpFactRaw(c: var Context; a, b: PNode; lt: range[-1..0]) =
+proc addCmpFactRaw(c: var Context; facts: var Facts; a, b: PNode; lt: range[-1..0]) =
   if a.isLiteral:
     let (y, yc) = extractPrimitive(b)
     if y != nil:
       if y.getMagic == mMinI:
         # 0 <= min(a, b)
-        c.facts.z.add ValLe(c: yc+whichLit(a)-lt, a: getVarId(c, y[1]))
-        c.facts.z.add ValLe(c: yc+whichLit(a)-lt, a: getVarId(c, y[2]))
+        facts.z.add ValLe(c: yc+whichLit(a)-lt, a: getVarId(c, y[1]))
+        facts.z.add ValLe(c: yc+whichLit(a)-lt, a: getVarId(c, y[2]))
       else:
         # semantics: c < a  -->  c+1 <= a
-        c.facts.z.add ValLe(c: yc+whichLit(a)-lt, a: getVarId(c, y))
+        facts.z.add ValLe(c: yc+whichLit(a)-lt, a: getVarId(c, y))
 
   else:
     let (x, xc) = extractPrimitive(a)
     if x != nil and x.getMagic != mMinI:
       if b.isLiteral:
         # (x + 3) < c --> x < c - 3
-        c.facts.y.add VarLe(a: getVarId(c, x), c: whichLit(b)+lt-xc)
+        facts.y.add VarLe(a: getVarId(c, x), c: whichLit(b)+lt-xc)
       else:
         let (y, yc) = extractPrimitive(b)
         if y != nil:
           if y.getMagic == mMinI:
             # x+3 <= min(a, b)
-            c.facts.x.add VarVarLe(a: getVarId(c, x), b: getVarId(c, y[1]), c: yc+lt-xc)
-            c.facts.x.add VarVarLe(a: getVarId(c, x), b: getVarId(c, y[2]), c: yc+lt-xc)
+            facts.x.add VarVarLe(a: getVarId(c, x), b: getVarId(c, y[1]), c: yc+lt-xc)
+            facts.x.add VarVarLe(a: getVarId(c, x), b: getVarId(c, y[2]), c: yc+lt-xc)
           else:
-            c.facts.x.add VarVarLe(a: getVarId(c, x), b: getVarId(c, y), c: yc+lt-xc)
+            facts.x.add VarVarLe(a: getVarId(c, x), b: getVarId(c, y), c: yc+lt-xc)
 
-proc skipStmtListExpr(n: PNode): PNode {.inline.} =
-  result = if n.kind == nkStmtListExpr and n.len > 0: n.lastSon else: n
+proc skipStmtListExpr(n: PNode): PNode =
+  result = n
+  while result.kind in {nkStmtListExpr, nkPar} and result.len > 0:
+    result = result.lastSon
 
-proc addLeFact(c: var Context; a, b: PNode) =
-  addCmpFactRaw(c, a.skipStmtListExpr, b.skipStmtListExpr, 0)
+proc addFactLe*(c: var Context; a, b: PNode) =
+  addCmpFactRaw(c, c.facts, a.skipStmtListExpr, b.skipStmtListExpr, 0)
 
-proc addLtFact(c: var Context; a, b: PNode) =
-  addCmpFactRaw(c, a.skipStmtListExpr, b.skipStmtListExpr, -1)
+proc addFactLt*(c: var Context; a, b: PNode) =
+  addCmpFactRaw(c, c.facts, a.skipStmtListExpr, b.skipStmtListExpr, -1)
 
 proc addFact(c: var Context; n: PNode; negation: bool) =
   case n.kind
-  of nkStmtListExpr:
+  of nkStmtListExpr, nkPar:
     addFact(c, n.lastSon, negation)
   of nkCallKinds:
     case n.getMagic
     of mAnd:
-      addFact(c, n[1], negation)
-      addFact(c, n[2], negation)
+      if not negation:
+        addFact(c, n[1], negation)
+        addFact(c, n[2], negation)
     of mNot:
       addFact(c, n[1], not negation)
     of mOr:
@@ -158,22 +164,38 @@ proc addFact(c: var Context; n: PNode; negation: bool) =
     of mLeI, mLeF64, mLeU, mLeEnum, mLeCh, mLeB:
       if negation:
         # not (a <= b) <--> b < a
-        addLtFact(c, n[2], n[1])
+        addFactLt(c, n[2], n[1])
       else:
-        addLeFact(c, n[1], n[2])
+        addFactLe(c, n[1], n[2])
     of mLtI, mLtF64, mLtU, mLtEnum, mLtCh, mLtB:
       if negation:
-        addLeFact(c, n[2], n[1])
+        addFactLe(c, n[2], n[1])
       else:
-        addLtFact(c, n[1], n[2])
+        addFactLt(c, n[1], n[2])
     of mEqI, mEqF64, mEqEnum, mEqCh, mEqB:
       if negation:
         discard "cannot do anything with this 'fact'"
       else:
         # (a == b)  <--> (a <= b) and (b <= a)
-        addLeFact(c, n[1], n[2])
-        addLeFact(c, n[2], n[1])
+        addFactLe(c, n[1], n[2])
+        addFactLe(c, n[2], n[1])
     else:
       discard "cannot do anything with this 'fact'"
   else:
     discard "cannot do anything with this 'fact'"
+
+proc addAsgnFact*(c: var Context; a, b: PNode) =
+  # (a == b)  <--> (a <= b) and (b <= a)
+  addFactLe(c, a, b)
+  addFactLe(c, b, a)
+
+proc proveLe*(c: var Context; a, b: PNode): bool =
+  var toProve: Facts
+  addCmpFactRaw(c, toProve, a.skipStmtListExpr, b.skipStmtListExpr, 0)
+  for x in toProve.x:
+    if not implies(c.facts, x): return false
+  for y in toProve.y:
+    if not implies(c.facts, y): return false
+  for z in toProve.z:
+    if not implies(c.facts, z): return false
+  return true
