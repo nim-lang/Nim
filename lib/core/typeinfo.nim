@@ -167,7 +167,7 @@ when declared(system.VarSlot):
 
 proc toAny*[T](x: var T): Any {.inline.} =
   ## Constructs an `Any` object from `x`. This captures `x`'s address, so
-  ## `x` can be modified with its `Any` wrapper! The user needs to ensure
+  ## `x` can be modified with its `Any` wrapper! The caller needs to ensure
   ## that the wrapper **does not** live longer than `x`!
   newAny(addr(x), cast[PNimType](getTypeInfo(x)))
 
