@@ -1188,15 +1188,20 @@ proc renderRstToOut(d: PDoc, n: PRstNode, result: var string) =
     renderAux(d, n, "<td>$1</td>", " $1\n", result)
   of rnIndex:
     renderRstToOut(d, n.sons[2], result)
+  # TODO: $2, latex, ...
   of rnOptionList:
-    renderAux(d, n, "<table$2 frame=\"void\">$1</table>",
-      "\\begin{description}\n$2\n$1\\end{description}\n", result)
+    renderAux(d, n, "$1", "$2$1", result)
   of rnOptionListItem:
-    renderAux(d, n, "<tr>$1</tr>\n", "$1", result)
+    var addclass = if n.order mod 2 == 1: " odd" else: ""
+    renderAux(d, n, "<div class=\"option-list-item" & addclass & "\">$1</div>\n", "$1", result)
   of rnOptionGroup:
-    renderAux(d, n, "<th align=\"left\">$1</th>", "\\item[$1]", result)
+    renderAux(d, n,
+      "<div class=\"option-list-label\">" &
+          "$1</div>",
+      "\\item[\\textsuperscript{[$3]}]$2 $1\n",
+      result)
   of rnDescription:
-    renderAux(d, n, "<td align=\"left\">$1</td>\n", " $1\n", result)
+    renderAux(d, n, "<div class=\"option-list-description\">$1</div>", " $1\n", result)
   of rnOption, rnOptionString, rnOptionArgument:
     doAssert false, "renderRstToOut"
   of rnLiteralBlock:
