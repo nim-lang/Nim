@@ -4,7 +4,7 @@ nimout: '''
   890': identifier expected, but found ''
 '''
 
-line: 11
+line: 10
 """
 
 var n: int : 890
