@@ -1037,7 +1037,6 @@ proc track(tracked: PEffects, n: PNode) =
         of "..", "countup", "countdown":
           let lower = iterCall[1]
           let upper = iterCall[2]
-          echo "lower ", lower, " .. ", upper
           # for i in 0..n   means  0 <= i and i <= n. Countdown is
           # the same since only the iteration direction changes.
           addFactLe(tracked.guards, lower, iterVar)

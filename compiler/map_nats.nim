@@ -11,7 +11,7 @@
 
 import std / tables
 
-import ast, types, nats, renderer
+import ast, types, nats, renderer, int128
 from trees import getMagic
 
 const
@@ -66,8 +66,9 @@ proc isLiteral(n: PNode): bool =
     result = isLiteral(n[1])
   else:
     if n.getMagic in someLen+{mHigh} and n[1].typ.skipTypes(abstractInst).kind == tyArray:
-      echo "came here!"
-    result = false
+      result = true
+    else:
+      result = false
 
 proc whichLit(n: PNode): BiggestInt =
   const badValue = -12345678
@@ -82,7 +83,13 @@ proc whichLit(n: PNode): BiggestInt =
   of nkHiddenStdConv, nkHiddenSubConv, nkConv:
     result = whichLit(n[1])
   else:
-    result = badValue
+    if n.getMagic in someLen+{mHigh} and n[1].typ.skipTypes(abstractInst).kind == tyArray:
+      if n.getMagic == mHigh:
+        result = toInt64 lastOrd(nil, n[1].typ)
+      else:
+        result = toInt64 lengthOrd(nil, n[1].typ)
+    else:
+      result = badValue
 
 proc getVarId(c: var Context; n: PNode): VarId =
   var n = n
