@@ -11,7 +11,7 @@
 
 import std / tables
 
-import ast, types, nats
+import ast, types, nats, renderer
 from trees import getMagic
 
 const
@@ -47,6 +47,8 @@ proc isLet(n: PNode): bool =
       result = true
   elif n.getMagic in someLen+{mHigh}:
     result = isLet(n[1])
+  elif n.kind in {nkHiddenStdConv, nkHiddenSubConv, nkConv}:
+    result = isLet(n[1])
 
 proc isLetOrMin(n: PNode): bool =
   if n.getMagic == mMinI:
@@ -60,6 +62,8 @@ proc isLiteral(n: PNode): bool =
     result = true
   of nkSym:
     result = n.sym.kind == skConst and isLiteral(n.sym.ast)
+  of nkHiddenStdConv, nkHiddenSubConv, nkConv:
+    result = isLiteral(n[1])
   else:
     result = false
 
@@ -73,10 +77,16 @@ proc whichLit(n: PNode): BiggestInt =
       result = n.sym.ast.intVal
     else:
       result = badValue # likely to trigger a followup error
+  of nkHiddenStdConv, nkHiddenSubConv, nkConv:
+    result = whichLit(n[1])
   else:
     result = badValue
 
 proc getVarId(c: var Context; n: PNode): VarId =
+  var n = n
+  while n.kind in {nkHiddenStdConv, nkHiddenSubConv, nkConv}:
+    n = n[1]
+
   let id = if n.kind == nkSym: n.sym.id
            else:
              assert n.getMagic in someLen+{mHigh}
