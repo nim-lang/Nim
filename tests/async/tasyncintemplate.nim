@@ -10,17 +10,13 @@ discard """
 '''
 """
 
-#[
-xxx move to tests/async/tasyncintemplate.nim
-]#
-
+# xxx move to tests/async/tasyncintemplate.nim
 import asyncdispatch
 
 block: # bug #16159
   template foo() =
     proc temp(): Future[int] {.async.} = return 42
     proc tempVoid(): Future[void] {.async.} = echo await temp()
-
   foo()
   waitFor tempVoid()
 
@@ -30,7 +26,6 @@ block: # aliasing `void`
     proc temp(): Future[int] {.async.} = return 43
     proc tempVoid(): Future[Foo] {.async.} = echo await temp()
     proc tempVoid2() {.async.} = echo await temp()
-
   foo()
   waitFor tempVoid()
   waitFor tempVoid2()
