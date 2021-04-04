@@ -159,7 +159,7 @@ when declared(system.VarSlot):
   proc toAny*(x: VarSlot): Any {.inline.} =
     ## Constructs an `Any` object from a variable slot `x`.
     ## This captures `x`'s address, so `x` can be modified with its
-    ## `Any` wrapper! The user needs to ensure that the wrapper
+    ## `Any` wrapper! The caller needs to ensure that the wrapper
     ## **does not** live longer than `x`!
     ## This is provided for easier reflection capabilities of a debugger.
     result.value = x.address
