@@ -30,6 +30,7 @@ runnableExamples:
     let mag = sigma * sqrt(-2 * ln(u1))
     result[0] = mag * cos(2 * PI * u2) + mu
     result[1] = mag * sin(2 * PI * u2) + mu
+
   assert randGaussian() != randGaussian()
 
 ## This module is available for the `JavaScript target
