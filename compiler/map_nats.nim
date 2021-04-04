@@ -222,10 +222,13 @@ proc addAsgnFact*(c: var Context; a, b: PNode) =
 proc proveLe*(c: var Context; a, b: PNode): bool =
   var toProve: Facts
   addCmpFactRaw(c, toProve, a.skipStmtListExpr, b.skipStmtListExpr, 0)
+  result = false
   for x in toProve.x:
     if not implies(c.facts, x): return false
+    result = true
   for y in toProve.y:
     if not implies(c.facts, y): return false
+    result = true
   for z in toProve.z:
     if not implies(c.facts, z): return false
-  return true
+    result = true
