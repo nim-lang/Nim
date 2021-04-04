@@ -8,7 +8,7 @@
 #
 
 
-import std/[macros, isolation]
+import std/[macros, isolation, typetraits]
 import system/ansi_c
 
 export isolation
@@ -106,6 +106,9 @@ macro toTask*(e: typed{nkCall | nkInfix | nkPrefix | nkPostfix | nkCommand | nkC
   when compileOption("threads"):
     if not isGcSafe(e[0]):
       error("'toTask' takes a GC safe call expression")
+
+  if hasClosure(e[0]):
+    error("closure call is not allowed")
 
   if e.len > 1:
     let scratchIdent = genSym(kind = nskTemp, ident = "scratch")
