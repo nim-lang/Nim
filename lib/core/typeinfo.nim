@@ -180,7 +180,7 @@ proc size*(x: Any): int {.inline.} =
   result = x.rawType.size
 
 proc baseTypeKind*(x: Any): AnyKind {.inline.} =
-  ## Gets the base type's kind. If `x` has no base type,`akNone` is returned.
+  ## Gets the base type's kind. If `x` has no base type, `akNone` is returned.
   if x.rawType.base != nil:
     result = AnyKind(ord(x.rawType.base.kind))
 
