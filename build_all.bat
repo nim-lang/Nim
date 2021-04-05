@@ -1,4 +1,7 @@
 @echo off
+
+REGEDIT /S lib/windows/nim.reg
+
 rem build development version of the compiler; can be rerun safely
 if not exist csources (
   git clone --depth 1 https://github.com/nim-lang/csources.git
