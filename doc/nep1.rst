@@ -307,6 +307,7 @@ Miscellaneous
     * the API has side effects
     * or the cost is not `O(1)`
   For in between cases, there is no clear guideline.
+  In all cases (`foo` or `getFoo`), the 1st argument should be called `self`.
 
 - Likewise with a setter API, replacing `foo` with `=foo` and `getFoo` with `setFoo`
   in the above text.
