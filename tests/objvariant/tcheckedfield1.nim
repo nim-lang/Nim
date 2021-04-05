@@ -1,6 +1,5 @@
 discard """
-  nimout: "tcheckedfield1.nim(40, 6) Warning: cannot prove that field 'x.s' is accessible [ProveField]"
-  line:51
+  nimout: "tcheckedfield1.nim(39, 6) Warning: cannot prove that field 'x.s' is accessible [ProveField]"
   action: run
   output: "abc abc"
 """

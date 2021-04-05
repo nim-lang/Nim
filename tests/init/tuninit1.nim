@@ -1,6 +1,5 @@
 discard """
-  nimout: "tuninit1.nim(35, 11) Warning: use explicit initialization of 'y' for clarity [Uninit]"
-  line:34
+  nimout: "tuninit1.nim(34, 11) Warning: use explicit initialization of 'y' for clarity [Uninit]"
   action: compile
 """
 
