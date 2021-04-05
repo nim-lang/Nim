@@ -30,6 +30,7 @@ type
 
 
 proc `$`*(lock: Lock): string =
+  # workaround for # bug #14873
   result = "()"
 
 proc initLock*(lock: var Lock) {.inline.} =
