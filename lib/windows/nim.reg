@@ -1,0 +1,8 @@
+REGEDIT4
+
+[HKEY_CLASSES_ROOT\.nim]
+@="Nim Source File"
+
+[HKEY_CLASSES_ROOT\.nim\Nim Source File\ShellNew]
+"FileName"=""
+
