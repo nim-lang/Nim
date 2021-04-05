@@ -62,7 +62,8 @@ method fn7(self: Foo): int {.base.} =
 var a = Foo()
 doAssert fn7(a) == 3
 
-const moduleName = getProcname
+const moduleName = "treflection"
+
 doAssert getProcname() == moduleName
 block:
   doAssert getProcname() == moduleName
