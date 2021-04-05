@@ -29,8 +29,8 @@ iterator mitems*[T](a: var openArray[T]): var T {.inline.} =
 
 iterator items*[IX, T](a: array[IX, T]): T {.inline.} =
   ## Iterates over each item of `a`.
-  var i = low(IX)
-  if i <= high(IX):
+  when a.len > 0:
+    var i = low(IX)
     while true:
       yield a[i]
       if i >= high(IX): break
@@ -38,8 +38,8 @@ iterator items*[IX, T](a: array[IX, T]): T {.inline.} =
 
 iterator mitems*[IX, T](a: var array[IX, T]): var T {.inline.} =
   ## Iterates over each item of `a` so that you can modify the yielded value.
-  var i = low(IX)
-  if i <= high(IX):
+  when a.len > 0:
+    var i = low(IX)
     while true:
       yield a[i]
       if i >= high(IX): break
@@ -146,8 +146,8 @@ iterator mpairs*[T](a: var openArray[T]): tuple[key: int, val: var T]{.inline.} 
 
 iterator pairs*[IX, T](a: array[IX, T]): tuple[key: IX, val: T] {.inline.} =
   ## Iterates over each item of `a`. Yields `(index, a[index])` pairs.
-  var i = low(IX)
-  if i <= high(IX):
+  when a.len > 0:
+    var i = low(IX)
     while true:
       yield (i, a[i])
       if i >= high(IX): break
@@ -156,8 +156,8 @@ iterator pairs*[IX, T](a: array[IX, T]): tuple[key: IX, val: T] {.inline.} =
 iterator mpairs*[IX, T](a: var array[IX, T]): tuple[key: IX, val: var T] {.inline.} =
   ## Iterates over each item of `a`. Yields `(index, a[index])` pairs.
   ## `a[index]` can be modified.
-  var i = low(IX)
-  if i <= high(IX):
+  when a.len > 0:
+    var i = low(IX)
     while true:
       yield (i, a[i])
       if i >= high(IX): break
