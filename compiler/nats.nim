@@ -25,6 +25,7 @@ type
     x*: seq[VarVarLe]
     y*: seq[VarLe]
     z*: seq[ValLe]
+    isAlwaysTrue*: bool
 
 proc `==`*(a, b: VarId): bool {.borrow.}
 proc `$`*(a: VarId): string {.borrow.}

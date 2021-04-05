@@ -143,6 +143,8 @@ proc addCmpFactRaw(c: var Context; facts: var Facts; a, b: PNode; lt: range[-1..
       else:
         # semantics: c < a  -->  c+1 <= a
         facts.z.add ValLe(c: yc+whichLit(a)-lt, a: getVarId(c, y))
+    elif b.isLiteral:
+      facts.isAlwaysTrue = whichLit(a) <= whichLit(b)
 
   else:
     let (x, xc) = extractPrimitive(a)
@@ -222,7 +224,7 @@ proc addAsgnFact*(c: var Context; a, b: PNode) =
 proc proveLe*(c: var Context; a, b: PNode): bool =
   var toProve: Facts
   addCmpFactRaw(c, toProve, a.skipStmtListExpr, b.skipStmtListExpr, 0)
-  result = false
+  result = toProve.isAlwaysTrue
   for x in toProve.x:
     if not implies(c.facts, x): return false
     result = true
