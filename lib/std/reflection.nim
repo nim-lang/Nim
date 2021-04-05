@@ -6,31 +6,31 @@ Experimental API, subject to change.
 ]##
 
 runnableExamples:
-  # `getProcname`
+  # `getOwnerName`
   proc fn1(a: int, b = 'x') =
-    assert getProcname() == "fn1"
-    static: assert getProcname(withType = true) == "fn1: proc (a: int; b: char)"
+    assert getOwnerName() == "fn1"
+    static: assert getOwnerName(withType = true) == "fn1: proc (a: int; b: char)"
   fn1(1)
 
   iterator fn3[T](a: T): string =
-    static: doAssert getProcname() == "fn3"
-    yield getProcname(withType = true)
+    static: doAssert getOwnerName() == "fn3"
+    yield getOwnerName(withType = true)
 
   from std/sequtils import toSeq
   assert toSeq(fn3(1.5)) == @["fn3: proc (a: float64): string"]
 
 runnableExamples:
-  # `getExportcName`
+  # `getBackendProcName`
   from std/strutils import contains
   proc fn1 =
-    assert "fn1" in getExportcName() # implementation defined, e.g. `fn1_reflection95examples49_1`
+    assert "fn1" in getBackendProcName() # implementation defined, e.g. `fn1_reflection95examples49_1`
   fn1()
 
-  proc fn2: auto {.exportc.} = getExportcName()
+  proc fn2: auto {.exportc.} = getBackendProcName()
   assert fn2() == "fn2"
 
   iterator fn3[T](a: T): string {.closure.} =
-    yield getExportcName()
+    yield getBackendProcName()
 
   from std/sequtils import toSeq
   let s1 = toSeq(fn3(1.5))[0]
@@ -40,10 +40,10 @@ runnableExamples:
 
 import std/macros
 
-template getExportcName*(): string =
+template getBackendProcName*(): string =
   ## Returns the name of the function containing the caller scope after codegen.
   ## This is only valid inside a proc/func/method/closure iterator.
-  ## See also `getProcname`.
+  ## See also `getOwnerName`.
   ##
   ## .. note:: not supported in VM.
   block:
@@ -55,7 +55,7 @@ template getExportcName*(): string =
       {.emit: "`name` = (char*)__func__;".}
     $name
 
-macro getProcnameImpl(a: typed, withType: static bool): string =
+macro getOwnerNameImpl(a: typed, withType: static bool): string =
   let n = a.owner
   var ret = n.repr
   case n.symKind
@@ -66,7 +66,7 @@ macro getProcnameImpl(a: typed, withType: static bool): string =
     ret.add n.getTypeInst.repr
   newLit ret
 
-template getProcname*(withType = false): string =
+template getOwnerName*(withType = false): string =
   ## Returns the name of proc/func/iterator/method/macro in which caller is running.
   ## When `withType = true`, the result contains an implementation defined
   ## representation of the type of the routine.
@@ -76,5 +76,5 @@ template getProcname*(withType = false): string =
   ##   they are expanded early.
   block:
     template dummy(a: int) = discard
-    const result = getProcnameImpl(dummy, withType)
+    const result = getOwnerNameImpl(dummy, withType)
     result
