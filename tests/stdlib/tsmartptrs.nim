@@ -9,7 +9,7 @@ import std/[unittest, smartptrs, isolation]
 
 block: # UniquePtr[T] test
   var a1: UniquePtr[float]
-  var a2 = newUniquePtr(isolate(0))
+  var a2 = newUniquePtr(0)
 
   check:
     $a1 == "(nil)"
@@ -30,7 +30,7 @@ block: # UniquePtr[T] test
 
 block: # SharedPtr[T] test
   var a1: SharedPtr[float]
-  let a2 = newSharedPtr(isolate(0))
+  let a2 = newSharedPtr(0)
   let a3 = a2
   check:
     $a1 == "(nil)"
@@ -44,7 +44,7 @@ block: # SharedPtr[T] test
 
 block: # ConstPtr[T] test
   var a1: ConstPtr[float]
-  let a2 = newConstPtr(isolate(0))
+  let a2 = newConstPtr(0)
   let a3 = a2
 
   check:
@@ -58,7 +58,7 @@ block: # ConstPtr[T] test
     a3[] == 0
 
 block: # UniquePtr[T] test
-  var a1 = newUniquePtr(isolate("1234"))
+  var a1 = newUniquePtr("1234")
 
   proc hello(x: string) =
     doAssert x == "1234"
@@ -67,7 +67,7 @@ block: # UniquePtr[T] test
 
 block: # SharedPtr[T] test
   let x = 5.0
-  let a1 = newSharedPtr(isolate(x))
+  let a1 = newSharedPtr(x)
   let a2 = a1
 
   proc hello(x: float) =
@@ -77,7 +77,7 @@ block: # SharedPtr[T] test
 
 block: # SharedPtr[T] test
   let x = 5.0
-  let a1 = newConstPtr(isolate(x))
+  let a1 = newConstPtr(x)
   let a2 = a1
 
   proc hello(x: float) =
