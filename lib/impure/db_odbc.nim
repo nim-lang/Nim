@@ -523,10 +523,10 @@ proc open*(connection, user, password, database: string): DbConn {.
     result.dbError()
 
 proc setEncoding*(connection: DbConn, encoding: string): bool {.
-  tags: [ReadDbEffect, WriteDbEffect], raises: [DbError].} =
+  tags: [ReadDbEffect, WriteDbEffect].} =
   ## Currently not implemented for ODBC.
   ##
   ## Sets the encoding of a database connection, returns true for
   ## success, false for failure.
-  ##result = set_character_set(connection, encoding) == 0
-  dbError("setEncoding() is currently not implemented by the db_odbc module")
+  # result = set_character_set(connection, encoding) == 0
+  raise newException(NotImplementedDefect, "")

@@ -165,34 +165,15 @@ elif defined(windows) or defined(dos):
       if result != nil: return
     procAddrError(name)
 
-elif defined(genode):
-
-  proc nimUnloadLibrary(lib: LibHandle) {.
-    error: "nimUnloadLibrary not implemented".}
-
-  proc nimLoadLibrary(path: string): LibHandle {.
-    error: "nimLoadLibrary not implemented".}
-
-  proc nimGetProcAddr(lib: LibHandle, name: cstring): ProcAddr {.
-    error: "nimGetProcAddr not implemented".}
-
-elif defined(nintendoswitch) or defined(freertos):
+elif defined(genode) or defined(nintendoswitch) or defined(freertos):
   proc nimUnloadLibrary(lib: LibHandle) =
-    cstderr.rawWrite("nimUnLoadLibrary not implemented")
-    cstderr.rawWrite("\n")
-    quit(1)
+    raise newException(NotImplementedDefect, "")
 
   proc nimLoadLibrary(path: string): LibHandle =
-    cstderr.rawWrite("nimLoadLibrary not implemented")
-    cstderr.rawWrite("\n")
-    quit(1)
-
+    raise newException(NotImplementedDefect, "")
 
   proc nimGetProcAddr(lib: LibHandle, name: cstring): ProcAddr =
-    cstderr.rawWrite("nimGetProAddr not implemented")
-    cstderr.rawWrite(name)
-    cstderr.rawWrite("\n")
-    quit(1)
+    raise newException(NotImplementedDefect, "")
 
 else:
   {.error: "no implementation for dyncalls".}

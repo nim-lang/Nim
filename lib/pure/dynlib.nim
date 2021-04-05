@@ -136,19 +136,19 @@ elif defined(nintendoswitch):
   #
 
   proc dlclose(lib: LibHandle) =
-    raise newException(OSError, "dlclose not implemented on Nintendo Switch!")
+    raise newException(NotImplementedDefect, "")
   proc dlopen(path: cstring, mode: int): LibHandle =
-    raise newException(OSError, "dlopen not implemented on Nintendo Switch!")
+    raise newException(NotImplementedDefect, "")
   proc dlsym(lib: LibHandle, name: cstring): pointer =
-    raise newException(OSError, "dlsym not implemented on Nintendo Switch!")
+    raise newException(NotImplementedDefect, "")
   proc loadLib(path: string, global_symbols = false): LibHandle =
-    raise newException(OSError, "loadLib not implemented on Nintendo Switch!")
+    raise newException(NotImplementedDefect, "")
   proc loadLib(): LibHandle =
-    raise newException(OSError, "loadLib not implemented on Nintendo Switch!")
+    raise newException(NotImplementedDefect, "")
   proc unloadLib(lib: LibHandle) =
-    raise newException(OSError, "unloadLib not implemented on Nintendo Switch!")
+    raise newException(NotImplementedDefect, "")
   proc symAddr(lib: LibHandle, name: cstring): pointer =
-    raise newException(OSError, "symAddr not implemented on Nintendo Switch!")
+    raise newException(NotImplementedDefect, "")
 
 elif defined(windows) or defined(dos):
   #

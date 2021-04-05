@@ -2891,10 +2891,10 @@ elif defined(nodejs):
       raise newException(IndexDefect, formatErrorIndexBound(i - 1, argv.len - 2))
 elif defined(nintendoswitch):
   proc paramStr*(i: int): string {.tags: [ReadIOEffect].} =
-    raise newException(OSError, "paramStr is not implemented on Nintendo Switch")
+    raise newException(NotImplementedDefect, "")
 
   proc paramCount*(): int {.tags: [ReadIOEffect].} =
-    raise newException(OSError, "paramCount is not implemented on Nintendo Switch")
+    raise newException(NotImplementedDefect, "")
 
 elif defined(windows):
   # Since we support GUI applications with Nim, we sometimes generate
@@ -2926,16 +2926,16 @@ elif defined(windows):
 
 elif defined(genode):
   proc paramStr*(i: int): string =
-    raise newException(OSError, "paramStr is not implemented on Genode")
+    raise newException(NotImplementedDefect, "")
 
   proc paramCount*(): int =
-    raise newException(OSError, "paramCount is not implemented on Genode")
+    raise newException(NotImplementedDefect, "")
 elif weirdTarget:
   proc paramStr*(i: int): string {.tags: [ReadIOEffect].} =
-    raise newException(OSError, "paramStr is not implemented on current platform")
+    raise newException(NotImplementedDefect, "")
 
   proc paramCount*(): int {.tags: [ReadIOEffect].} =
-    raise newException(OSError, "paramCount is not implemented on current platform")
+    raise newException(NotImplementedDefect, "")
 elif not defined(createNimRtl) and
   not(defined(posix) and appType == "lib"):
   # On Posix, there is no portable way to get the command line from a DLL.

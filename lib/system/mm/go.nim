@@ -68,10 +68,10 @@ proc alloc0Impl(size: Natural): pointer =
   result = goMalloc(size.uint)
 
 proc reallocImpl(p: pointer, newsize: Natural): pointer =
-  doAssert false, "not implemented"
+  raise newException(NotImplementedDefect, "")
 
 proc realloc0Impl(p: pointer, oldsize, newsize: Natural): pointer =
-  doAssert false, "not implemented"
+  raise newException(NotImplementedDefect, "")
 
 proc deallocImpl(p: pointer) =
   discard
