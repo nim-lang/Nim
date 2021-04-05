@@ -1894,6 +1894,16 @@ proc semDefined(c: PContext, n: PNode): PNode =
   result.info = n.info
   result.typ = getSysType(c.graph, n.info, tyBool)
 
+proc semGetProcname(c: PContext, n: PNode): PNode =
+  let sym = getCurrOwner(c)
+  case sym.kind
+  of skModule:
+     localError(c.config, n.info, "'getProcname' cannot be used in the top level")
+  else:
+    result = newStrNode(nkStrLit, sym.name.s)
+    result.info = n.info
+    result.typ = getSysType(c.graph, n.info, tyString)
+
 proc lookUpForDeclared(c: PContext, n: PNode, onlyCurrentScope: bool): PSym =
   case n.kind
   of nkIdent, nkAccQuoted:
@@ -2328,6 +2338,9 @@ proc semMagic(c: PContext, n: PNode, s: PSym, flags: TExprFlags): PNode =
   of mSizeOf:
     markUsed(c, n.info, s)
     result = semSizeof(c, setMs(n, s))
+  of mGetProcname:
+    markUsed(c, n.info, s)
+    result = semGetProcname(c, setMs(n, s))
   else:
     result = semDirectOp(c, n, flags)
 

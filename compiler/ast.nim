@@ -691,6 +691,8 @@ type
     mException, mBuiltinType, mSymOwner, mUncheckedArray, mGetImplTransf,
     mSymIsInstantiationOf, mNodeId
 
+    # std/magics
+    mGetProcname
 
 # things that we can evaluate safely at compile time, even if not asked for it:
 const
