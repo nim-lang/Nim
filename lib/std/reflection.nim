@@ -8,16 +8,16 @@ Experimental API, subject to change.
 runnableExamples:
   # `getOwnerName`
   proc fn1(a: int, b = 'x') =
-    assert getOwnerName() == "fn1"
-    static: assert getOwnerName(withType = true) == "fn1: proc (a: int; b: char)"
+    assert getOwnerName == "fn1"
+    static: assert getOwnerTypeString == "proc (a: int; b: char)"
   fn1(1)
 
   iterator fn3[T](a: T): string =
     static: doAssert getOwnerName() == "fn3"
-    yield getOwnerName(withType = true)
+    yield getOwnerTypeString
 
   from std/sequtils import toSeq
-  assert toSeq(fn3(1.5)) == @["fn3: proc (a: float64): string"]
+  assert toSeq(fn3(1.5)) == @["proc (a: float64): string"]
 
 runnableExamples:
   # `getBackendProcName`
@@ -55,26 +55,35 @@ template getBackendProcName*(): string =
       {.emit: "`name` = (char*)__func__;".}
     $name
 
-macro getOwnerNameImpl(a: typed, withType: static bool): string =
+macro getOwnerNameImpl(a: typed): string =
+  newLit a.owner.repr
+
+template getOwnerName*(): string =
+  ## Returns the name of the proc/func/iterator/method/macro/module in which caller is running.
+  ##
+  ## .. note:: at the top-level, it returns the module name.
+  ## .. note:: enclosing templates are expanded before this is called.
+  block:
+    template dummy(a: int) = discard
+    const result = getOwnerNameImpl(dummy)
+    result
+
+macro getOwnerTypeStringImpl(a: typed): string =
   let n = a.owner
-  var ret = n.repr
+  var ret: string
   case n.symKind
   of nskModule:
     discard
-  elif withType:
-    ret.add ": " 
-    ret.add n.getTypeInst.repr
+  else:
+    ret = n.getTypeInst.repr
   newLit ret
 
-template getOwnerName*(withType = false): string =
-  ## Returns the name of proc/func/iterator/method/macro in which caller is running.
-  ## When `withType = true`, the result contains an implementation defined
-  ## representation of the type of the routine.
+template getOwnerTypeString*(): string =
+  ## Returns the stringified type of the proc/func/iterator/method/macro in which caller is running.
   ##
-  ## .. note:: at the top-level, it returns the module name.
-  ## .. note:: this cannot be used to retrieve the name of an enclosing template,
-  ##   they are expanded early.
+  ## .. note:: at the top-level, it returns `""`.
+  ## .. note:: enclosing templates are expanded before this is called.
   block:
     template dummy(a: int) = discard
-    const result = getOwnerNameImpl(dummy, withType)
+    const result = getOwnerTypeStringImpl(dummy)
     result

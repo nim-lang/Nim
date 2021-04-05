@@ -18,7 +18,7 @@ block: # getOwnerName, getBackendProcName
     let s2 = getOwnerName() # check we can call this twice
     doAssert s1 == s2
     doAssert s1 == "fn3"
-    doAssert getOwnerName(withType = true) == """fn3: proc (a: int; b: float64; c: "def")"""
+    doAssert getOwnerTypeString == """proc (a: int; b: float64; c: "def")"""
     const x = getOwnerName()
     doAssert x == s1
     let s3 = getBackendProcName()
@@ -28,32 +28,31 @@ block: # getOwnerName, getBackendProcName
     doAssert s4 == s3
   fn3(3)
 
-  var other: string
   proc fn3b(): auto =
-    result = getOwnerName(withType = true)
-    other = getOwnerName(withType = true)
-  doAssert fn3b() == "fn3b: proc (): untyped"
-    # note: `untyped` is returned when return type is not yet known at the point
-    # where getOwnerName(withType = true) is called
-  doAssert other == "fn3b: proc (): string" # now the return type is known since `result` was set
+    doAssert getOwnerTypeString == "proc (): untyped"
+      # the return type is not known here since `result` was not yet set
+    result = 3
+    doAssert getOwnerTypeString == "proc (): int"
+      # the return type is now known
+  doAssert fn3b() == 3
 
   proc `fn1b aux`(): (string, string) =
     doAssert "fn1b" in getBackendProcName()
     doAssert "aux" in getBackendProcName()
-    (getOwnerName(), getOwnerName(withType = true))
+    (getOwnerName(), getOwnerTypeString)
 
-  doAssert `fn1b aux`() == ("fn1baux", "fn1baux: proc (): (string, string)")
+  doAssert `fn1b aux`() == ("fn1baux", "proc (): (string, string)")
 
   proc `fn1c+aux`(): (string, string) =
     doAssert "fn1c" in getBackendProcName()
     doAssert "aux" in getBackendProcName()
-    (getOwnerName(), getOwnerName(withType = true))
-  doAssert `fn1c+aux`() == ("fn1c+aux", "fn1c+aux: proc (): (string, string)")
+    (getOwnerName(), getOwnerTypeString)
+  doAssert `fn1c+aux`() == ("fn1c+aux", "proc (): (string, string)")
 
   var witness = 0
   iterator fn4(): int =
     doAssert getOwnerName() == "fn4"
-    doAssert getOwnerName(withType = true) == "fn4: proc (): int"
+    doAssert getOwnerTypeString == "proc (): int"
     witness.inc
   for a in fn4(): discard
   doAssert witness == 1
@@ -62,7 +61,7 @@ block: # getOwnerName, getBackendProcName
     witness = 0
     iterator fn5(): int {.closure.} =
       doAssert getOwnerName() == "fn5"
-      doAssert getOwnerName(withType = true) == "fn5: proc (): int"
+      doAssert getOwnerTypeString == "proc (): int"
       doAssert "fn5" in getBackendProcName()
       witness.inc
     for a in fn5(): discard
@@ -70,7 +69,7 @@ block: # getOwnerName, getBackendProcName
 
   func fn6 =
     doAssert getOwnerName() == "fn6"
-    doAssert getOwnerName(withType = true) == "fn6: proc ()"
+    doAssert getOwnerTypeString == "proc ()"
     doAssert "fn6" in getBackendProcName()
   fn6()
 
@@ -79,7 +78,7 @@ type Foo = ref object of RootObj
 
 method fn7(self: Foo): int {.base.} =
   doAssert getOwnerName() == "fn7"
-  doAssert getOwnerName(withType = true) == "fn7: proc (self: Foo): int"
+  doAssert getOwnerTypeString == "proc (self: Foo): int"
   doAssert "fn7" in getBackendProcName()
   3
 
@@ -100,7 +99,7 @@ import std/macros
 
 macro fn8(a: int, b: static int = 0): (string, string) =
   let a1 = getOwnerName()
-  let a2 = getOwnerName(withType = true)
+  let a2 = getOwnerTypeString
   result = quote: (`a1`, `a2`)
 
-doAssert fn8(1) == ("fn8", "fn8: proc (a: int; b: b:type): (string, string)")
+doAssert fn8(1) == ("fn8", "proc (a: int; b: b:type): (string, string)")
