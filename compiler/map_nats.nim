@@ -115,7 +115,10 @@ proc getVarId(c: var Context; n: PNode): VarId =
     c.varMap[id] = result
 
 proc isHigh(n: PNode): BiggestInt {.inline.} =
-  ord(n.getMagic == mHigh)
+  if n.getMagic == mMinI:
+    result = ord(n[1].getMagic == mHigh and n[2].getMagic == mHigh)
+  else:
+    result = ord(n.getMagic == mHigh)
 
 proc extractPrimitive(a: PNode): (PNode, BiggestInt) =
   # Extracts (x+3) into 'x' and '3'.
