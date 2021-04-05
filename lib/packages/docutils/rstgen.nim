@@ -980,7 +980,7 @@ proc buildLinesHtmlTable(d: PDoc; params: CodeBlockParams, code: string,
     result.beginTable.add($line & "\n")
     line.inc
     codeLines.dec
-  result.beginTable.add("</pre$3></td><td>" & (
+  result.beginTable.add("</pre></td><td>" & (
       d.config.getOrDefault"doc.listing_start" %
         [id, sourceLanguageToStr[params.lang], idStr]))
   result.endTable = (d.config.getOrDefault"doc.listing_end" % id) &

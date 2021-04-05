@@ -1089,6 +1089,16 @@ Test1
     let output0 = input0.toHtml
     doAssert "<p>Paragraph1</p>" in output0
 
+  test "Nim code-block :number-lines:":
+    let input = dedent """
+      .. code-block:: nim
+         :number-lines: 55
+
+         x
+         y
+      """
+    check "<pre class=\"line-nums\">55\n56\n</pre>" in input.toHtml
+
   test "RST admonitions":
     # check that all admonitions are implemented
     let input0 = dedent """
