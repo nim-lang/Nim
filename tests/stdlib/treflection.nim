@@ -24,7 +24,23 @@ block:
     let s3 = getExportcName()
     doAssert "fn3" in s3
     doAssert s3 != "fn3"
+    let s4 = getExportcName() # check we can call this twice
+    doAssert s4 == s3
   fn3(3)
+
+  proc `fn1b aux`(): auto =
+    doAssert "fn1b" in getExportcName()
+    doAssert "aux" in getExportcName()
+    (getProcname(), getProcname(withType = true))
+
+  # xxx bug: `untyped` is returned when return type is auto (it's a bug with `getTypeInst.repr`)
+  doAssert `fn1b aux`() == ("fn1baux", "fn1baux: proc (): untyped")
+
+  proc `fn1c+aux`(): auto =
+    doAssert "fn1c" in getExportcName()
+    doAssert "aux" in getExportcName()
+    (getProcname(), getProcname(withType = true))
+  doAssert `fn1c+aux`() == ("fn1c+aux", "fn1c+aux: proc (): untyped")
 
   var witness = 0
   iterator fn4(): int =
@@ -71,3 +87,12 @@ block:
     let x = getProcname()
     x
   doAssert fn8() == moduleName
+
+import std/macros
+
+macro fn8(a: int, b: static int = 0): (string, string) =
+  let a1 = getProcname()
+  let a2 = getProcname(withType = true)
+  result = quote: (`a1`, `a2`)
+
+doAssert fn8(1) == ("fn8", "fn8: proc (a: int; b: b:type): (string, string)")

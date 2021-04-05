@@ -67,11 +67,13 @@ macro getProcnameImpl(a: typed, withType: static bool): string =
   newLit ret
 
 template getProcname*(withType = false): string =
-  ## Returns the name of proc/func/iterator/method in which caller is running.
+  ## Returns the name of proc/func/iterator/method/macro in which caller is running.
   ## When `withType = true`, the result contains an implementation defined
   ## representation of the type of the routine.
   ##
   ## .. note:: at the top-level, it returns the module name.
+  ## .. note:: this cannot be used to retrieve the name of an enclosing template,
+  ##   they are expanded early.
   block:
     template dummy(a: int) = discard
     const result = getProcnameImpl(dummy, withType)
