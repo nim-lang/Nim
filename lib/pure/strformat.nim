@@ -446,7 +446,7 @@ proc formatValue*[T: SomeInteger](result: var string; value: T;
   ## sense to call this directly, but it is required to exist
   ## by the `&` macro.
   if specifier.len == 0:
-    result.add $value
+    result.addInt value
     return
   let spec = parseStandardFormatSpecifier(specifier)
   var radix = 10
@@ -466,7 +466,7 @@ proc formatValue*(result: var string; value: SomeFloat; specifier: string) =
   ## sense to call this directly, but it is required to exist
   ## by the `&` macro.
   if specifier.len == 0:
-    result.add $value
+    result.addFloat value
     return
   let spec = parseStandardFormatSpecifier(specifier)
 
