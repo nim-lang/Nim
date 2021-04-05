@@ -24,7 +24,7 @@ proc `=destroy`*[T](p: var UniquePtr[T]) =
     else:
       dealloc(p.val)
 
-proc `=`*[T](dest: var UniquePtr[T], src: UniquePtr[T]) {.error.}
+proc `=copy`*[T](dest: var UniquePtr[T], src: UniquePtr[T]) {.error.}
   ## The copy operation is disallowed for `UniquePtr`, it
   ## can only be moved.
 
@@ -83,7 +83,7 @@ proc `=destroy`*[T](p: var SharedPtr[T]) =
       else:
         dec(p.val[].atomicCounter)
 
-proc `=`*[T](dest: var SharedPtr[T], src: SharedPtr[T]) =
+proc `=copy`*[T](dest: var SharedPtr[T], src: SharedPtr[T]) =
   if src.val != nil:
     when compileOption("threads"):
       discard atomicInc(src.val[].atomicCounter)
