@@ -239,7 +239,8 @@
 
 - Added `jsconsole.dir`, `jsconsole.dirxml`, `jsconsole.timeStamp`.
 
-- Added `std/smartptrs`.
+- Added `std/smartptrs`, use `-d:nimExperimentalSmartptrs` 
+  to enable this experimental module.
 
 - Added dollar `$` and `len` for `jsre.RegExp`.
 
