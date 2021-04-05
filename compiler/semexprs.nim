@@ -1898,7 +1898,7 @@ proc semGetProcname(c: PContext, n: PNode): PNode =
   let sym = getCurrOwner(c)
   case sym.kind
   of skModule:
-   localError(c.config, n.info, "'getProcname' cannot be used in the top level")
+    localError(c.config, n.info, "'getProcname' cannot be used in the top level")
   else:
     result = newStrNode(nkStrLit, sym.name.s)
     result.info = n.info
