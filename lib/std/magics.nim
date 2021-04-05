@@ -1,3 +1,3 @@
 proc getProcname*(): string {.magic: "GetProcname".} =
-  ## Returns the names of procs/macros. It cannot be used
+  ## Returns the name of a proc or a macro. It cannot be used
   ## in the top level.
