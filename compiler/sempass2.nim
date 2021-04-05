@@ -724,6 +724,7 @@ proc patchResult(c: PEffects; n: PNode) =
 
 proc checkLe(c: PEffects; a, b: PNode) =
   if not proveLe(c.nats, a, b):
+    #echo c.nats
     message(c.config, a.info, warnStaticIndexCheck,
       "cannot prove: " & $a & " <= " & $b)
 

@@ -30,6 +30,8 @@ type
   ContextState* = object
     xlen, ylen, zlen: int
 
+proc `$`*(c: Context): string = $c.facts
+
 proc recordState*(c: Context): ContextState =
   ContextState(xlen: c.facts.x.len, ylen: c.facts.y.len, zlen: c.facts.z.len)
 
@@ -93,13 +95,18 @@ proc whichLit(n: PNode): BiggestInt =
 
 proc getVarId(c: var Context; n: PNode): VarId =
   var n = n
-  while n.kind in {nkHiddenStdConv, nkHiddenSubConv, nkConv}:
-    n = n[1]
+  var sign = 1
+  while true:
+    if n.kind in {nkHiddenStdConv, nkHiddenSubConv, nkConv}:
+      n = n[1]
+    elif n.getMagic in someLen+{mHigh}:
+      sign = -1
+      n = n[1]
+    else:
+      break
 
-  let id = if n.kind == nkSym: n.sym.id
-           else:
-             assert n.getMagic in someLen+{mHigh}
-             -n[1].sym.id
+  assert n.kind == nkSym
+  let id = n.sym.id * sign
 
   result = c.varMap.getOrDefault(id)
   if result == VarId(0):
@@ -113,22 +120,23 @@ proc isHigh(n: PNode): BiggestInt {.inline.} =
 proc extractPrimitive(a: PNode): (PNode, BiggestInt) =
   # Extracts (x+3) into 'x' and '3'.
   # (x) is extracted into 'x' and '0'.
+  # We map 'high(x)' to 'len(x)-1'
   case a.getMagic
   of someAdd:
     if a[1].isLetOrMin and a[2].isLiteral:
-      result = (a[1], whichLit(a[2])+isHigh(a[1]))
+      result = (a[1], whichLit(a[2])-isHigh(a[1]))
     elif a[2].isLetOrMin and a[1].isLiteral:
-      result = (a[2], whichLit(a[1])+isHigh(a[2]))
+      result = (a[2], whichLit(a[1])-isHigh(a[2]))
     else:
       result = (PNode(nil), BiggestInt(0))
   of someSub:
     if a[1].isLetOrMin and a[2].isLiteral:
-      result = (a[1], -whichLit(a[2])+isHigh(a[1]))
+      result = (a[1], -whichLit(a[2])-isHigh(a[1]))
     else:
       result = (PNode(nil), BiggestInt(0))
   else:
     if a.isLetOrMin:
-      result = (a, isHigh(a))
+      result = (a, -isHigh(a))
     else:
       result = (PNode(nil), BiggestInt(0))
 
