@@ -96,6 +96,8 @@ type
     ## Raised for unsuccessful attempts to allocate memory.
   IndexDefect* = object of Defect ## \
     ## Raised if an array index is out of bounds.
+  NotImplementedDefect* = object of Defect ## \
+    ## Raised if an API is not implemented for some configuration / environment.
 
   FieldDefect* = object of Defect ## \
     ## Raised if a record field is not accessible because its discriminant's
