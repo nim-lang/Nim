@@ -70,6 +70,8 @@ template getProcname*(withType = false): string =
   ## Returns the name of proc/func/iterator/method in which caller is running.
   ## When `withType = true`, the result contains an implementation defined
   ## representation of the type of the routine.
+  ##
+  ## .. note:: at the top-level, it returns the module name.
   block:
     template dummy(a: int) = discard
     const result = getProcnameImpl(dummy, withType)

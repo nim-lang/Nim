@@ -5,6 +5,7 @@ discard """
 import std/reflection
 from std/strutils import contains
 
+
 block:
   proc fn1 =
     doAssert getProcname() == "fn1"
@@ -60,3 +61,12 @@ method fn7(self: Foo): int {.base.} =
 
 var a = Foo()
 doAssert fn7(a) == 3
+
+const moduleName = getProcname
+doAssert getProcname() == moduleName
+block:
+  doAssert getProcname() == moduleName
+  template fn8(): string =
+    let x = getProcname()
+    x
+  doAssert fn8() == moduleName
