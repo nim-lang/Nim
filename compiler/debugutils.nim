@@ -4,7 +4,7 @@ Utilities to help with debugging nim compiler.
 Experimental API, subject to change.
 ]##
 
-import ./options
+import options
 
 var conf0: ConfigRef
 

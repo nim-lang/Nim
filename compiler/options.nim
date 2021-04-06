@@ -447,7 +447,8 @@ const foreignPackageNotesDefault* = {
   hintProcessing, warnUnknownMagic, hintQuitCalled, hintExecuting, hintUser, warnUser}
 
 proc isDefined*(conf: ConfigRef; symbol: string): bool
-import ./debugutils
+
+import debugutils
 
 proc newConfigRef*(): ConfigRef =
   result = ConfigRef(
