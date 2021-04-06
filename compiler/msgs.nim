@@ -201,6 +201,9 @@ proc toProjPath*(conf: ConfigRef; fileIdx: FileIndex): string =
   if fileIdx.int32 < 0 or conf == nil:
     (if fileIdx == commandLineIdx: commandLineDesc else: "???")
   else: conf.m.fileInfos[fileIdx.int32].projPath.string
+    # this and similar procs can give `IndexDefect` in some cases when debugging
+    # the compiler, see PR #17541. In such cases, you can try compiling nim with
+    # `-d:nimDebugUtils`, see PR #17652.
 
 proc toFullPath*(conf: ConfigRef; fileIdx: FileIndex): string =
   if fileIdx.int32 < 0 or conf == nil:
