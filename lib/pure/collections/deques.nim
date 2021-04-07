@@ -86,7 +86,7 @@ proc initDeque*[T](initialSize: int = defaultInitialSize): Deque[T] =
   ## * `toDeque proc <#toDeque,openArray[T]>`_
   result.initImpl(initialSize)
 
-proc toDeque*[T](x: sink openArray[T]): Deque[T] {.since: (1, 3).} =
+proc toDeque*[T](x: openArray[T]): Deque[T] {.since: (1, 3).} =
   ## Creates a new deque that contains the elements of `x` (in the same order).
   ##
   ## **See also:**
