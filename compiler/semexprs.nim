@@ -2962,7 +2962,8 @@ proc semExpr(c: PContext, n: PNode, flags: TExprFlags = {}): PNode =
   of nkMixinStmt: discard
   of nkBindStmt:
     if c.p != nil:
-      c.p.localBindStmts.add n
+      if n.len > 0 and n[0].kind == nkSym:
+        c.p.localBindStmts.add n
     else:
       localError(c.config, n.info, "invalid context for 'bind' statement: " &
                 renderTree(n, {renderNoComments}))
