@@ -22,7 +22,7 @@
 ## If the library fails to load or the function 'greet' is not found,
 ## it quits with a failure error code.
 ##
-## .. code-block::nim
+## .. code-block:: Nim
 ##
 ##   import std/dynlib
 ##

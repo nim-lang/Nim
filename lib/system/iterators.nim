@@ -304,7 +304,7 @@ iterator fieldPairs*[T: tuple|object](x: T): tuple[key: string, val: RootObj] {.
   ## picking the appropriate code to a secondary proc which you overload for
   ## each field type and pass the `value` to.
   ##
-  ## .. warning::: This really transforms the 'for' and unrolls the loop. The
+  ## .. warning:: This really transforms the 'for' and unrolls the loop. The
   ##   current implementation also has a bug that affects symbol binding in the
   ##   loop body.
   runnableExamples:
