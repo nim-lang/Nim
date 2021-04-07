@@ -118,6 +118,7 @@ proc typeName(typ: PType): Rope =
       rope($typ.kind & '_' & typ.sym.name.s.mangle)
     else:
       rope($typ.kind)
+  dbg result, typ.kind, typ, ?.typ.sym.name.s.mangle
 
 proc getTypeName(m: BModule; typ: PType; sig: SigHash): Rope =
   var t = typ
