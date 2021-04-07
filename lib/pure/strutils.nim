@@ -1894,25 +1894,27 @@ func find*(s, sub: string, start: Natural = 0, last = 0): int {.rtl,
   if sub.len == 1: return find(s, sub[0], start, last)
 
   template useSkipTable {.dirty.} =
-    when not declared(a):
-      var a {.noinit.}: SkipTable
+    var a {.noinit.}: SkipTable
     initSkipTable(a, sub)
     result = find(a, s, sub, start, last)
 
-  when nimvm:
+  when defined(js):
     useSkipTable()
   else:
-    when hasCStringBuiltin:
-      if last == 0 and s.len > start:
-        let found = c_strstr(s[start].unsafeAddr, sub)
-        if not found.isNil:
-          result = cast[ByteAddress](found) -% cast[ByteAddress](s.cstring)
+    when nimvm:
+      useSkipTable()
+    else:
+      when hasCStringBuiltin:
+        if last == 0 and s.len > start:
+          let found = c_strstr(s[start].unsafeAddr, sub)
+          if not found.isNil:
+            result = cast[ByteAddress](found) -% cast[ByteAddress](s.cstring)
+          else:
+            result = -1
         else:
-          result = -1
+          useSkipTable()
       else:
         useSkipTable()
-    else:
-      useSkipTable()
 
 func rfind*(s: string, sub: char, start: Natural = 0, last = -1): int {.rtl,
     extern: "nsuRFindChar".} =
