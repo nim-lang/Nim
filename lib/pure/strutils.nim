@@ -1894,7 +1894,8 @@ func find*(s, sub: string, start: Natural = 0, last = 0): int {.rtl,
   if sub.len == 1: return find(s, sub[0], start, last)
 
   template useSkipTable {.dirty.} =
-    var a {.noinit.}: SkipTable
+    when not declared(a):
+      var a {.noinit.}: SkipTable
     initSkipTable(a, sub)
     result = find(a, s, sub, start, last)
 
