@@ -448,7 +448,8 @@ const foreignPackageNotesDefault* = {
 
 proc isDefined*(conf: ConfigRef; symbol: string): bool
 
-import debugutils
+when defined(nimDebugUtils):
+  import debugutils
 
 proc newConfigRef*(): ConfigRef =
   result = ConfigRef(
