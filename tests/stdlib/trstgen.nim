@@ -151,6 +151,10 @@ suite "YAML syntax highlighting":
     check "(3, 25) Warning: RST style:" in warnings[1]
     check "RST style: too many colons for a directive (should be ::)" in warnings[1]
 
+  test "not a directive":
+    let input = "..warning:: I am not a warning."
+    check input.toHtml == input
+
   test "Anchors, Aliases, Tags":
     let input = """.. code-block:: yaml
     --- !!map
