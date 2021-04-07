@@ -1,5 +1,5 @@
 discard """
-  cmd: "nim c --compileOnly -d:danger $file"
+  cmd: "nim c --os:standalone --exceptions:quirky -d:noSignalHandler -d:danger $file"
   action: "compile"
 """
 
