@@ -134,15 +134,19 @@ macro toTask*(e: typed{nkCall | nkInfix | nkPrefix | nkPostfix | nkCommand | nkC
       objTemp = genSym(nskTemp, ident = "objTemp")
 
     for i in 1 ..< formalParams.len:
-      let param = formalParams[i][1]
+      var param = formalParams[i][1]
+
+      if param.kind == nnkBracketExpr and param[0].eqIdent("sink"):
+        param = param[0]
+
+      if param.typeKind in {ntyExpr, ntyStmt}:
+        error("'toTask'ed function cannot have a 'typed' or 'untyped' parameter")
 
       case param.kind
       of nnkVarTy:
         error("'toTask'ed function cannot have a 'var' parameter")
       of nnkBracketExpr:
-        if param[0].eqIdent("sink"):
-          addAllNode(param[1], e[i])
-        elif param[0].typeKind == ntyTypeDesc:
+        if param[0].typeKind == ntyTypeDesc:
           callNode.add nnkExprEqExpr.newTree(formalParams[i][0], e[i])
         elif param[0].typeKind in {ntyVarargs, ntyOpenArray}:
           if param[1].typeKind in {ntyExpr, ntyStmt}:
