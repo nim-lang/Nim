@@ -142,9 +142,11 @@ macro toTask*(e: typed{nkCall | nkInfix | nkPrefix | nkPostfix | nkCommand | nkC
       of nnkBracketExpr:
         if param[0].eqIdent("sink"):
           addAllNode(param[1], e[i])
-        elif param[0].eqIdent("typeDesc"):
+        elif param[0].typeKind == ntyTypeDesc:
           callNode.add nnkExprEqExpr.newTree(formalParams[i][0], e[i])
-        elif param[0].eqIdent("varargs") or param[0].eqIdent("openArray"):
+        elif param[0].typeKind in {ntyVarargs, ntyOpenArray}:
+          if param[1].typeKind in {ntyExpr, ntyStmt}:
+            error("'toTask'ed function cannot have a 'typed' or 'untyped' parameter")
           let
             seqType = nnkBracketExpr.newTree(newIdentNode("seq"), param[1])
             seqCallNode = newcall("@", e[i])
