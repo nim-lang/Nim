@@ -11,7 +11,7 @@
 ## (`RTTI`:idx:). See the `marshal <marshal.html>`_ module for an example of
 ## what this allows you to do.
 ##
-## ..note:: Even though `Any` and its operations hide the nasty low level
+## .. note:: Even though `Any` and its operations hide the nasty low level
 ##   details from its users, it remains inherently unsafe! Also, Nim's
 ##   runtime type information will evolve and may eventually be deprecated.
 ##   As an alternative approach to programmatically understanding and
