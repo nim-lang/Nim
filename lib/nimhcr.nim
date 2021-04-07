@@ -209,7 +209,7 @@ when not defined(js) and (defined(hotcodereloading) or
              else: "so"
   type
     HcrProcGetter* = proc (libHandle: pointer, procName: cstring): pointer {.nimcall.}
-    HcrGcMarkerProc = proc () {.nimcall.}
+    HcrGcMarkerProc = proc () {.nimcall, raises: [].}
     HcrModuleInitializer* = proc () {.nimcall.}
 
 when defined(createNimHcr):
@@ -606,14 +606,15 @@ when defined(createNimHcr):
   proc hcrGeneration*(): int {.nimhcr.} =
     generation
 
-  proc hcrMarkGlobals*() {.nimhcr, nimcall, gcsafe.} =
+  proc hcrMarkGlobals*() {.raises: [], compilerproc, exportc, dynlib, nimcall, gcsafe.} =
     # This is gcsafe, because it will be registered
     # only in the GC of the main thread.
-    {.gcsafe.}:
-      for _, module in modules:
-        for _, global in module.globals:
-          if global.markerProc != nil:
-            global.markerProc()
+    {.cast(gcsafe).}:
+      {.cast(raises: []).}:
+        for _, module in modules:
+          for _, global in module.globals:
+            if global.markerProc != nil:
+              global.markerProc()
 
 elif defined(hotcodereloading) or defined(testNimHcr):
   when not defined(js):
@@ -648,10 +649,10 @@ elif defined(hotcodereloading) or defined(testNimHcr):
 
     proc hcrAddEventHandler*(isBefore: bool, cb: proc ()) {.nimhcr.}
 
-    proc hcrMarkGlobals*() {.nimhcr, nimcall, gcsafe.}
+    proc hcrMarkGlobals*() {.raises: [], nimhcr, nimcall, gcsafe.}
 
     when declared(nimRegisterGlobalMarker):
-      nimRegisterGlobalMarker(hcrMarkGlobals)
+      nimRegisterGlobalMarker(cast[GlobalMarkerProc](hcrMarkGlobals))
 
   else:
     proc hcrHasModuleChanged*(moduleHash: string): bool =
