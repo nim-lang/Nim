@@ -192,7 +192,7 @@ compiled with the `-d:useNimRtl` option and they will depend on both
 the `nimrtl` library and the `nimhcr` library which implements the
 hot code reloading run-time. Both libraries can be found in the `lib`
 folder of Nim and can be compiled into dynamic libraries to satisfy
-runtime demands of the example code above. An example of compiling 
+runtime demands of the example code above. An example of compiling
 `nimhcr.nim` and `nimrtl.nim` when the source dir of Nim is installed
 with choosenim follows.
 

@@ -606,15 +606,14 @@ when defined(createNimHcr):
   proc hcrGeneration*(): int {.nimhcr.} =
     generation
 
-  proc hcrMarkGlobals*() {.raises: [], compilerproc, exportc, dynlib, nimcall, gcsafe.} =
+  proc hcrMarkGlobals*() {.compilerproc, exportc, dynlib, nimcall, gcsafe.} =
     # This is gcsafe, because it will be registered
     # only in the GC of the main thread.
-    {.cast(gcsafe).}:
-      {.cast(raises: []).}:
-        for _, module in modules:
-          for _, global in module.globals:
-            if global.markerProc != nil:
-              global.markerProc()
+    {.gcsafe.}:
+      for _, module in modules:
+        for _, global in module.globals:
+          if global.markerProc != nil:
+            global.markerProc()
 
 elif defined(hotcodereloading) or defined(testNimHcr):
   when not defined(js):
