@@ -1356,6 +1356,9 @@ proc typeSectionFinalPass(c: PContext, n: PNode) =
           checkForMetaFields(c, s.typ.n)
           # fix bug #5170: ensure locally scoped object types get a unique name:
           if s.typ.kind == tyObject and not isTopLevel(c): incl(s.flags, sfGenSym)
+          if "Foo" in $s.typ:
+            dbg s.typ, s, s.typ.kind, isTopLevel(c), s.flags
+
   #instAllTypeBoundOp(c, n.info)
 
 

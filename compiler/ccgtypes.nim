@@ -118,7 +118,8 @@ proc typeName(typ: PType): Rope =
       rope($typ.kind & '_' & typ.sym.name.s.mangle)
     else:
       rope($typ.kind)
-  dbg result, typ.kind, typ, ?.typ.sym.name.s.mangle
+  if "Foo" in $typ:
+    dbg result, typ.kind, typ, ?.typ.sym.name.s.mangle
 
 proc getTypeName(m: BModule; typ: PType; sig: SigHash): Rope =
   var t = typ
@@ -131,14 +132,22 @@ proc getTypeName(m: BModule; typ: PType; sig: SigHash): Rope =
     else:
       break
   let typ = if typ.kind in {tyAlias, tySink, tyOwned}: typ.lastSon else: typ
+  let wasNil = typ.loc.r == nil
+  var typeName2 = ""
   if typ.loc.r == nil:
     typ.loc.r = typ.typeName & $sig
+    # dbg typ.loc.r, $sig
   else:
+    # dbg typ.loc.r, $(typ.typeName & $sig), $sig
+    typeName2 = $typ.typeName
     when defined(debugSigHashes):
       # check consistency:
       assert($typ.loc.r == $(typ.typeName & $sig))
   result = typ.loc.r
   if result == nil: internalError(m.config, "getTypeName: " & $typ.kind)
+  if "Foo" in $typ:
+    dbg typ, typ.kind, typ.loc.r, sig, wasNil, typeName2
+    dbg getStacktrace()
 
 proc mapSetType(conf: ConfigRef; typ: PType): TCTypeKind =
   case int(getSize(conf, typ))
@@ -689,6 +698,8 @@ proc getTypeDescAux(m: BModule, origTyp: PType, check: var IntSet; kind: TSymKin
   if t.sym != nil: useHeader(m, t.sym)
   if t != origTyp and origTyp.sym != nil: useHeader(m, origTyp.sym)
   let sig = hashType(origTyp)
+  if "Foo" in $origTyp:
+    dbg sig, origTyp, origTyp.sym
 
   defer: # defer is the simplest in this case
     if isImportedType(t) and not m.typeABICache.containsOrIncl(sig):

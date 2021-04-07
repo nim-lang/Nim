@@ -12,7 +12,7 @@
 import ast, tables, ropes, md5, modulegraphs
 from hashes import Hash
 import types
-
+from strutils import contains
 proc `&=`(c: var MD5Context, s: string) = md5Update(c, s, s.len)
 proc `&=`(c: var MD5Context, ch: char) = md5Update(c, unsafeAddr ch, 1)
 proc `&=`(c: var MD5Context, r: Rope) =
@@ -55,6 +55,8 @@ proc hashTypeSym(c: var MD5Context, s: PSym) =
   else:
     var it = s
     while it != nil:
+      if "Foo" in $s:
+        dbg it, it.flags, it.kind, it.typ, it.name.s, it.owner == nil
       if sfFromGeneric in it.flags and it.kind in routineKinds and
           it.typ != nil:
         hashType c, it.typ, {CoProc}
@@ -143,6 +145,8 @@ proc hashType(c: var MD5Context, t: PType; flags: set[ConsiderFlag]) =
     # Every cyclic type in Nim need to be constructed via some 't.sym', so this
     # is actually safe without an infinite recursion check:
     if t.sym != nil:
+      if "Foo" in $t:
+        dbg t.sym, t, t.kind, flags, t.sym.flags
       if {sfCompilerProc} * t.sym.flags != {}:
         doAssert t.sym.loc.r != nil
         # The user has set a specific name for this type
@@ -168,6 +172,8 @@ proc hashType(c: var MD5Context, t: PType; flags: set[ConsiderFlag]) =
     else:
       c &= t.id
     if t.len > 0 and t[0] != nil:
+      if "Foo" in $t:
+        dbg()
       hashType c, t[0], flags
   of tyRef, tyPtr, tyGenericBody, tyVar:
     c &= char(t.kind)
