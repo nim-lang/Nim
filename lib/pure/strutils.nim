@@ -1898,7 +1898,7 @@ func find*(s, sub: string, start: Natural = 0, last = 0): int {.rtl,
     initSkipTable(a, sub)
     result = find(a, s, sub, start, last)
 
-  when defined(js):
+  when defined(js) or defined(nimdoc):
     useSkipTable()
   else:
     when nimvm:
