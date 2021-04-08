@@ -487,7 +487,7 @@ A character is not a Unicode character but a single byte.
 Rationale: It enables the efficient support of `array[char, int]` or
 `set[char]`.
 
-The `Rune` can represent any Unicode character.
+The `Rune` type can represent any Unicode character.
 `Rune` is declared in the `unicode module <unicode.html>`_.
 
 A character literal that does not end in ``'`` is interpreted as ``'`` if there
