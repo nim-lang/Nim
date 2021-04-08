@@ -521,12 +521,6 @@ div.option-list-item {
 div.odd {
   background-color: var(--secondary-background);
 }
-div.option-list-description {
-  width: calc(100% - 1em);
-  padding-left: 1em;
-  padding-right: 0;
-  display: inline-block;
-}
 div.option-list-label {
   margin-left: -11.5em;
   margin-right: 0em;
@@ -534,6 +528,12 @@ div.option-list-label {
   font-weight: bolder;
   display: inline-block;
   vertical-align: top;
+}
+div.option-list-description {
+  width: calc(100% - 1em);
+  padding-left: 1em;
+  padding-right: 0;
+  display: inline-block;
 }
 
 blockquote {

@@ -1371,9 +1371,17 @@ Test1
     check(output.count("<ul") == 1)
     check(output.count("<li>") == 2)
     check(output.count("<table") == 1)
-    check("""<th align="left">-m</th><td align="left">desc</td>""" in output)
-    check("""<th align="left">-n</th><td align="left">very long desc</td>""" in
+    check("""<div class="option-list-label">-m</div>""" &
+          """<div class="option-list-description">desc</div></div>""" in
           output)
+    check("""<div class="option-list-label">-n</div>""" &
+          """<div class="option-list-description">very long desc</div></div>""" in
+          output)
+    #check """<div class="option-list-description">odesc</div>""" in output
+    #check """<div class="option-list-description">very long desc</div>""" in output
+    #check("""<th align="left">-m</th><td align="left">desc</td>""" in output)
+    #check("""<th align="left">-n</th><td align="left">very long desc</td>""" in
+    #      output)
 
   test "Option lists 2":
     # check that 2nd option list is not united with the 1st
@@ -1386,10 +1394,14 @@ Test1
     let output = input.toHtml
     check(output.count("<ul") == 1)
     check(output.count("<table") == 2)
-    check("""<th align="left">-m</th><td align="left">desc</td>""" in output)
-    check("""<th align="left">-n</th><td align="left">very long desc</td>""" in
+    check("""<div class="option-list-label">-m</div>""" &
+          """<div class="option-list-description">desc</div></div>""" in
           output)
-    check("""<th align="left">-d</th><td align="left">option</td>""" in
+    check("""<div class="option-list-label">-n</div>""" &
+          """<div class="option-list-description">very long desc</div></div>""" in
+          output)
+    check("""<div class="option-list-label">-d</div>""" &
+          """<div class="option-list-description">option</div></div>""" in
           output)
     check "<p>option</p>" notin output
 
@@ -1403,10 +1415,14 @@ Test1
     let output = input.toHtml
     check(output.count("<ul") == 1)
     check(output.count("<table") == 2)
-    check("""<th align="left">compile</th><td align="left">compile1</td>""" in output)
-    check("""<th align="left">doc</th><td align="left">doc1 cont</td>""" in
+    check("""<div class="option-list-label">compile</div>""" &
+          """<div class="option-list-description">compile1</div></div>""" in
           output)
-    check("""<th align="left">-d</th><td align="left">option</td>""" in
+    check("""<div class="option-list-label">doc</div>""" &
+          """<div class="option-list-description">doc1 cont</div></div>""" in
+          output)
+    check("""<div class="option-list-label">-d</div>""" &
+          """<div class="option-list-description">option</div></div>""" in
           output)
     check "<p>option</p>" notin output
 
