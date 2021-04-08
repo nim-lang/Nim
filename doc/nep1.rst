@@ -308,5 +308,5 @@ Miscellaneous
     * or the cost is not `O(1)`
   For in between cases, there is no clear guideline.
 
-- Likewise with a setter API, replacing `foo` with `=foo` and `getFoo` with `setFoo`
+- Likewise with a setter API, replacing `foo` with `foo=` and `getFoo` with `setFoo`
   in the above text.
