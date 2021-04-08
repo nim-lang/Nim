@@ -33,6 +33,11 @@ let a = "1"
 let b = "2"
 let c = "3"
 
+block: #issues 6981,9831
+  proc bar[T]() = discard
+  proc bar[T](a:int) = discard
+  bar[int]()#must compile, not be rewritten as `()`(bar)
+
 doAssert a(b) == "(12)"
 doAssert a.b(c) == `()`(b, a, c)
 doAssert (a.b)(c) == `()`(a.b, c)

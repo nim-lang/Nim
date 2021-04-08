@@ -512,6 +512,9 @@ proc overloadedCallOpr(c: PContext, n: PNode): PNode =
   var amb = false
   if searchInScopes(c, par, amb) == nil:
     result = nil
+  elif n.kind == nkCall and n[0].kind == nkClosedSymChoice:
+    # fix for #6981,#9831
+    result = nil
   else:
     result = newNodeI(nkCall, n.info)
     result.add newIdentNode(par, n.info)
@@ -1005,6 +1008,7 @@ proc semIndirectOp(c: PContext, n: PNode, flags: TExprFlags): PNode =
     if result == nil:
       # XXX: hmm, what kind of symbols will end up here?
       # do we really need to try the overload resolution?
+      # answer: nkCall(nkClosedSymChoice), i.e. overloaded generics
       n[0] = prc
       nOrig[0] = prc
       n.flags.incl nfExprCall
