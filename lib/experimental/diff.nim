@@ -12,14 +12,14 @@
 ##
 ## A basic example of `diffInt` on 2 arrays of integers:
 ##
-## .. code::nim
+## .. code:: Nim
 ##
 ##   import experimental/diff
 ##   echo diffInt([0, 1, 2, 3, 4, 5, 6, 7, 8], [-1, 1, 2, 3, 4, 5, 666, 7, 42])
 ##
 ## Another short example of `diffText` to diff strings:
 ##
-## .. code::nim
+## .. code:: Nim
 ##
 ##   import experimental/diff
 ##   # 2 samples of text for testing (from "The Call of Cthulhu" by Lovecraft)

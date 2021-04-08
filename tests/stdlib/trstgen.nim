@@ -136,6 +136,25 @@ suite "YAML syntax highlighting":
   <span class="StringLit">not numbers</span><span class="Punctuation">:</span> <span class="Punctuation">[</span> <span class="StringLit">42e</span><span class="Punctuation">,</span> <span class="StringLit">0023</span><span class="Punctuation">,</span> <span class="StringLit">+32.37</span><span class="Punctuation">,</span> <span class="StringLit">8 ball</span><span class="Punctuation">]</span>
 <span class="Punctuation">}</span></pre>"""
 
+  test "Directives: warnings":
+    let input = dedent"""
+      .. non-existant-warning: Paragraph.
+
+      .. another.wrong:warning::: Paragraph.
+      """
+    var warnings = new seq[string]
+    let output = input.toHtml(warnings=warnings)
+    check output == ""
+    doAssert warnings[].len == 2
+    check "(1, 24) Warning: RST style:" in warnings[0]
+    check "double colon :: may be missing at end of 'non-existant-warning'" in warnings[0]
+    check "(3, 25) Warning: RST style:" in warnings[1]
+    check "RST style: too many colons for a directive (should be ::)" in warnings[1]
+
+  test "not a directive":
+    let input = "..warning:: I am not a warning."
+    check input.toHtml == input
+
   test "Anchors, Aliases, Tags":
     let input = """.. code-block:: yaml
     --- !!map
@@ -1402,6 +1421,23 @@ Test1
     check """:sup:`3`\ He is an isotope of helium.""".toHtml == expected
     check """`3`:sup:\ He is an isotope of helium.""".toHtml == expected
     check """`3`:superscript:\ He is an isotope of helium.""".toHtml == expected
+
+  test "Roles: warnings":
+    let input = dedent"""
+      See function :py:func:`spam`.
+
+      See also `egg`:py:class:.
+      """
+    var warnings = new seq[string]
+    let output = input.toHtml(warnings=warnings)
+    doAssert warnings[].len == 2
+    check "(1, 14) Warning: " in warnings[0]
+    check "language 'py:func' not supported" in warnings[0]
+    check "(3, 15) Warning: " in warnings[1]
+    check "language 'py:class' not supported" in warnings[1]
+    check("""<p>See function <span class="py:func">spam</span>.</p>""" & "\n" &
+          """<p>See also <span class="py:class">egg</span>. </p>""" & "\n" ==
+          output)
 
   test "(not) Roles: check escaping 1":
     let expected = """See :subscript:<tt class="docutils literal">""" &

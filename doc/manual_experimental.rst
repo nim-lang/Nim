@@ -330,7 +330,7 @@ Routines with the same type signature can be called differently if a parameter
 has different names. This does not need an `experimental` switch, but is an
 unstable feature.
 
-.. code-block::nim
+.. code-block:: Nim
   proc foo(x: int) =
     echo "Using x: ", x
   proc foo(y: int) =
