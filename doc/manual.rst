@@ -222,7 +222,7 @@ comment:
 
 `Documentation comments`:idx: are comments that start with two `##`.
 Documentation comments are tokens; they are only allowed at certain places in
-the input file as they belong to the syntax tree!
+the input file as they belong to the syntax tree.
 
 
 Multiline comments
@@ -315,8 +315,8 @@ it was not case-sensitive and underscores were ignored and there was not even a
 distinction between `foo` and `Foo`.
 
 
-Stropping
----------
+Keywords as identifiers
+-----------------------
 
 If a keyword is enclosed in backticks it loses its keyword property and becomes an ordinary identifier.
 
@@ -326,12 +326,12 @@ Examples
   var `var` = "Hello Stropping"
 
 .. code-block:: nim
-  type Type = object
-    `int`: int
+  type Obj = object
+    `type`: int
 
-  let `object` = Type(`int`: 9)
-  assert `object` is Type
-  assert `object`.`int` == 9
+  let `object` = Obj(`type`: 9)
+  assert `object` is Obj
+  assert `object`.`type` == 9
 
   var `var` = 42
   let `let` = 8
@@ -442,7 +442,7 @@ Terminal symbols in the grammar: `GENERALIZED_STR_LIT`,
 The construct `identifier"string literal"` (without whitespace between the
 identifier and the opening quotation mark) is a
 generalized raw string literal. It is a shortcut for the construct
-`identifier(r"string literal")`, so it denotes a procedure call with a
+`identifier(r"string literal")`, so it denotes a routine call with a
 raw string literal as its only argument. Generalized raw string literals
 are especially convenient for embedding mini languages directly into Nim
 (for example regular expressions).
@@ -457,8 +457,8 @@ Character literals
 Character literals are enclosed in single quotes `''` and can contain the
 same escape sequences as strings - with one exception: the platform
 dependent `newline`:idx: (``\p``)
-is not allowed as it may be wider than one character (often it is the pair
-CR/LF for example).  Here are the valid `escape sequences`:idx: for character
+is not allowed as it may be wider than one character (it can be the pair
+CR/LF).  Here are the valid `escape sequences`:idx: for character
 literals:
 
 ==================         ===================================================
@@ -482,19 +482,21 @@ literals:
                            exactly two hex digits are allowed
 ==================         ===================================================
 
-A character is not a Unicode character but a single byte. The reason for this
-is efficiency: for the overwhelming majority of use-cases, the resulting
-programs will still handle UTF-8 properly as UTF-8 was specially designed for
-this. Another reason is that Nim can thus support `array[char, int]` or
-`set[char]` efficiently as many algorithms rely on this feature.  The `Rune`
-type is used for Unicode characters, it can represent any Unicode character.
+A character is not a Unicode character but a single byte.
+
+Rationale: It enables the efficient support of `array[char, int]` or
+`set[char]`.
+
+The `Rune` type can represent any Unicode character.
 `Rune` is declared in the `unicode module <unicode.html>`_.
 
 A character literal that does not end in ``'`` is interpreted as ``'`` if there
 is a preceeding backtick token. There must be no whitespace between the preceeding
-backtick token and the character literal. This special rule ensures that a declaration
-like ``proc `'customLiteral`(s: string)`` is valid. See also
-`Custom Numeric Literals <#custom-numeric-literals>`_.
+backtick token and the character literal. This special case ensures that a declaration
+like ``proc `'customLiteral`(s: string)`` is valid. ``proc `'customLiteral`(s: string)``
+is the same as ``proc `'\''customLiteral`(s: string)``.
+
+See also `Custom Numeric Literals <#custom-numeric-literals>`_.
 
 
 Numeric Literals
@@ -908,37 +910,37 @@ constant expressions that may be surprising to those coming from other
 statically typed languages. For example, the following code echoes the beginning
 of the Fibonacci series **at compile-time**. (This is a demonstration of
 flexibility in defining constants, not a recommended style for solving this
-problem!)
+problem.)
 
 .. code-block:: nim
     :test: "nim c $1"
   import std/strformat
 
-  var fib_n {.compileTime.}: int
-  var fib_prev {.compileTime.}: int
-  var fib_prev_prev {.compileTime.}: int
+  var fibN {.compileTime.}: int
+  var fibPrev {.compileTime.}: int
+  var fibPrevPrev {.compileTime.}: int
 
-  proc next_fib(): int =
-    result = if fib_n < 2:
-      fib_n
+  proc nextFib(): int =
+    result = if fibN < 2:
+      fibN
     else:
-      fib_prev_prev + fib_prev
-    inc(fib_n)
-    fib_prev_prev = fib_prev
-    fib_prev = result
+      fibPrevPrev + fibPrev
+    inc(fibN)
+    fibPrevPrev = fibPrev
+    fibPrev = result
 
-  const f0 = next_fib()
-  const f1 = next_fib()
+  const f0 = nextFib()
+  const f1 = nextFib()
 
-  const display_fib = block:
-    const f2 = next_fib()
+  const displayFib = block:
+    const f2 = nextFib()
     var result = fmt"Fibonacci sequence: {f0}, {f1}, {f2}"
     for i in 3..12:
-      add(result, fmt", {next_fib()}")
+      add(result, fmt", {nextFib()}")
     result
 
   static:
-    echo display_fib
+    echo displayFib
 
 
 Restrictions on Compile-Time Execution
@@ -1013,7 +1015,9 @@ intXX
   Literals of these types have the suffix 'iXX.
 
 `uint`
-  the generic `unsigned integer`:idx: type; its size is platform-dependent and has the same size as a pointer. An integer literal with the type suffix `'u` is of this type.
+  the generic `unsigned integer`:idx: type; its size is platform-dependent and
+  has the same size as a pointer. An integer literal with the type
+  suffix `'u` is of this type.
 
 uintXX
   additional unsigned integer types of XX bits use this naming scheme
@@ -1199,12 +1203,8 @@ Character type
 --------------
 The character type is named `char` in Nim. Its size is one byte.
 Thus it cannot represent a UTF-8 character, but a part of it.
-The reason for this is efficiency: for the overwhelming majority of use-cases,
-the resulting programs will still handle UTF-8 properly as UTF-8 was especially
-designed for this.
-Another reason is that Nim can support `array[char, int]` or
-`set[char]` efficiently as many algorithms rely on this feature. The
-`Rune` type is used for Unicode characters, it can represent any Unicode
+
+The `Rune` type is used for Unicode characters, it can represent any Unicode
 character. `Rune` is declared in the `unicode module <unicode.html>`_.
 
 
@@ -1232,7 +1232,7 @@ Now the following holds::
   # Also allowed:
   ord(Direction.west) == 3
 
-Thus, north < east < south < west. The comparison operators can be used
+The implied order is: north < east < south < west. The comparison operators can be used
 with enumeration types. Instead of `north` etc, the enum value can also
 be qualified with the enum type that it resides in, `Direction.north`.
 
@@ -1248,7 +1248,7 @@ An explicit ordered enum can have *holes*:
     TokenType = enum
       a = 2, b = 4, c = 89 # holes are valid
 
-However, it is then not ordinal anymore, so it is not possible to use these
+However, it is then not ordinal anymore, so it is impossible to use these
 enums as an index type for arrays. The procedures `inc`, `dec`, `succ`
 and `pred` are not available for them either.
 
@@ -7885,4 +7885,4 @@ Threads and exceptions
 
 The interaction between threads and exceptions is simple: A *handled* exception
 in one thread cannot affect any other thread. However, an *unhandled* exception
-in one thread terminates the whole *process*!
+in one thread terminates the whole *process*.
