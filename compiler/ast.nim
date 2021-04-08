@@ -1056,6 +1056,8 @@ const
 
 proc getPIdent*(a: PNode): PIdent {.inline.} =
   ## Returns underlying `PIdent` for `{nkSym, nkIdent}`, or `nil`.
+  # xxx consider whether also returning the 1st ident for {nkOpenSymChoice, nkClosedSymChoice}
+  # which may simplify code.
   case a.kind
   of nkSym: a.sym.name
   of nkIdent:  a.ident
