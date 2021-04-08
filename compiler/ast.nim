@@ -1054,6 +1054,12 @@ const
   defaultAlignment = -1
   defaultOffset = -1
 
+proc getPIdent*(a: PNode): PIdent {.inline.} =
+  ## Returns underlying `PIdent` for `{nkSym, nkIdent}`, or `nil`.
+  case a.kind
+  of nkSym: a.sym.name
+  of nkIdent:  a.ident
+  else: nil
 
 proc getnimblePkg*(a: PSym): PSym =
   result = a
