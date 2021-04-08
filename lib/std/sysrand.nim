@@ -144,7 +144,7 @@ elif defined(windows):
     hAlgorithm: BCRYPT_ALG_HANDLE,
     pbBuffer: PUCHAR,
     cbBuffer: ULONG,
-    dwFlags: ULONG,
+    dwFlags: ULONG
   ): NTSTATUS {.stdcall, importc: "BCryptGenRandom", dynlib: "Bcrypt.dll".}
 
 
