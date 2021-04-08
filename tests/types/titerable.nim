@@ -49,6 +49,16 @@ template bad1 =
   template fn4(a: int, b: iterable[float, int]) =
     discard
 
+template bad2 =
+  proc fn4(a: iterable) = discard
+
+template bad3 =
+  proc fn4(a: iterable[int]) = discard
+
+template good4 =
+  template fn1(a: iterable) = discard
+  template fn2(a: iterable[int]) = discard
+
 # iterators
 iterator iota(n: int): auto =
   for i in 0..<n: yield i
@@ -125,6 +135,9 @@ template main() =
   doAssert toSeq2(@['x', 'y'].repeat(2)) == @[@['x', 'y'], @['x', 'y']]
 
   reject bad1
+  reject bad2
+  reject bad3
+  accept good4
 
 static: main()
 main()
