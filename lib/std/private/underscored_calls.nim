@@ -12,8 +12,8 @@
 
 import macros
 
-proc underscoredCall(n, arg0: NimNode): NimNode =
-  proc underscorePos(n: NimNode): int =
+func underscoredCall(n, arg0: NimNode): NimNode =
+  func underscorePos(n: NimNode): int =
     for i in 1 ..< n.len:
       if n[i].eqIdent("_"): return i
     return 0
@@ -38,7 +38,7 @@ proc underscoredCall(n, arg0: NimNode): NimNode =
     result.add n
     result.add arg0
 
-proc underscoredCalls*(result, calls, arg0: NimNode) =
+func underscoredCalls*(result, calls, arg0: NimNode) =
   expectKind calls, {nnkArgList, nnkStmtList, nnkStmtListExpr}
 
   for call in calls:

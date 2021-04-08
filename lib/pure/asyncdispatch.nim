@@ -208,7 +208,7 @@ proc processPendingCallbacks(p: PDispatcherBase; didSomeWork: var bool) =
     cb()
     didSomeWork = true
 
-proc adjustTimeout(
+func adjustTimeout(
   p: PDispatcherBase, pollTimeout: int, nextTimer: Option[int]
 ): int {.inline.} =
   if p.callbacks.len != 0:
@@ -277,10 +277,10 @@ when defined(windows) or defined(nimdoc):
 
     Callback* = proc (fd: AsyncFD): bool {.closure, gcsafe.}
 
-  proc hash(x: AsyncFD): Hash {.borrow.}
-  proc `==`*(x: AsyncFD, y: AsyncFD): bool {.borrow.}
+  func hash(x: AsyncFD): Hash {.borrow.}
+  func `==`*(x: AsyncFD, y: AsyncFD): bool {.borrow.}
 
-  proc newDispatcher*(): owned PDispatcher =
+  func newDispatcher*(): owned PDispatcher =
     ## Creates a new Dispatcher instance.
     new result
     result.ioPort = createIoCompletionPort(INVALID_HANDLE_VALUE, 0, 0, 1)
@@ -290,23 +290,23 @@ when defined(windows) or defined(nimdoc):
 
   var gDisp{.threadvar.}: owned PDispatcher ## Global dispatcher
 
-  proc setGlobalDispatcher*(disp: sink PDispatcher) =
+  func setGlobalDispatcher*(disp: sink PDispatcher) =
     if not gDisp.isNil:
       assert gDisp.callbacks.len == 0
     gDisp = disp
     initCallSoonProc()
 
-  proc getGlobalDispatcher*(): PDispatcher =
+  func getGlobalDispatcher*(): PDispatcher =
     if gDisp.isNil:
       setGlobalDispatcher(newDispatcher())
     result = gDisp
 
-  proc getIoHandler*(disp: PDispatcher): Handle =
+  func getIoHandler*(disp: PDispatcher): Handle =
     ## Returns the underlying IO Completion Port handle (Windows) or selector
     ## (Unix) for the specified dispatcher.
     return disp.ioPort
 
-  proc register*(fd: AsyncFD) =
+  func register*(fd: AsyncFD) =
     ## Registers `fd` with the dispatcher.
     let p = getGlobalDispatcher()
 
@@ -315,7 +315,7 @@ when defined(windows) or defined(nimdoc):
       raiseOSError(osLastError())
     p.handles.incl(fd)
 
-  proc verifyPresence(fd: AsyncFD) =
+  func verifyPresence(fd: AsyncFD) =
     ## Ensures that file descriptor has been registered with the dispatcher.
     ## Raises ValueError if `fd` has not been registered.
     let p = getGlobalDispatcher()
@@ -324,12 +324,12 @@ when defined(windows) or defined(nimdoc):
         "Operation performed on a socket which has not been registered with" &
         " the dispatcher yet.")
 
-  proc hasPendingOperations*(): bool =
+  func hasPendingOperations*(): bool =
     ## Returns `true` if the global dispatcher has pending operations.
     let p = getGlobalDispatcher()
     p.handles.len != 0 or p.timers.len != 0 or p.callbacks.len != 0
 
-  proc runOnce(timeout = 500): bool =
+  func runOnce(timeout = 500): bool =
     let p = getGlobalDispatcher()
     if p.handles.len == 0 and p.timers.len == 0 and p.callbacks.len == 0:
       raise newException(ValueError,
@@ -397,7 +397,7 @@ when defined(windows) or defined(nimdoc):
   var connectEx: WSAPROC_CONNECTEX
   var getAcceptExSockAddrs: WSAPROC_GETACCEPTEXSOCKADDRS
 
-  proc initPointer(s: SocketHandle, fun: var pointer, guid: var GUID): bool =
+  func initPointer(s: SocketHandle, fun: var pointer, guid: var GUID): bool =
     # Ref: https://github.com/powdahound/twisted/blob/master/twisted/internet/iocpreactor/iocpsupport/winsock_pointers.c
     var bytesRet: DWORD
     fun = nil
@@ -405,7 +405,7 @@ when defined(windows) or defined(nimdoc):
                       sizeof(GUID).DWORD, addr fun, sizeof(pointer).DWORD,
                       addr bytesRet, nil, nil) == 0
 
-  proc initAll() =
+  func initAll() =
     let dummySock = createNativeSocket()
     if dummySock == INVALID_SOCKET:
       raiseOSError(osLastError())
@@ -421,14 +421,14 @@ when defined(windows) or defined(nimdoc):
     getAcceptExSockAddrs = cast[WSAPROC_GETACCEPTEXSOCKADDRS](fun)
     close(dummySock)
 
-  proc newCustom*(): CustomRef =
+  func newCustom*(): CustomRef =
     result = CustomRef() # 0
     GC_ref(result) # 1  prevent destructor from doing a premature free.
     # destructor of newCustom's caller --> 0. This means
     # Windows holds a ref for us with RC == 0 (single owner).
     # This is passed back to us in the IO completion port.
 
-  proc recv*(socket: AsyncFD, size: int,
+  func recv*(socket: AsyncFD, size: int,
              flags = {SocketFlag.SafeDisconn}): owned(Future[string]) =
     ## Reads **up to** `size` bytes from `socket`. Returned future will
     ## complete once all the data requested is read, a part of the data has been
@@ -456,7 +456,7 @@ when defined(windows) or defined(nimdoc):
     var flagsio = flags.toOSFlags().DWORD
     var ol = newCustom()
     ol.data = CompletionData(fd: socket, cb:
-      proc (fd: AsyncFD, bytesCount: DWORD, errcode: OSErrorCode) =
+      func (fd: AsyncFD, bytesCount: DWORD, errcode: OSErrorCode) =
         if not retFuture.finished:
           if errcode == OSErrorCode(-1):
             if bytesCount == 0 and dataBuf.buf[0] == '\0':
@@ -501,7 +501,7 @@ when defined(windows) or defined(nimdoc):
           retFuture.complete("")
     return retFuture
 
-  proc recvInto*(socket: AsyncFD, buf: pointer, size: int,
+  func recvInto*(socket: AsyncFD, buf: pointer, size: int,
                  flags = {SocketFlag.SafeDisconn}): owned(Future[int]) =
     ## Reads **up to** `size` bytes from `socket` into `buf`, which must
     ## at least be of that size. Returned future will complete once all the
@@ -532,7 +532,7 @@ when defined(windows) or defined(nimdoc):
     var flagsio = flags.toOSFlags().DWORD
     var ol = newCustom()
     ol.data = CompletionData(fd: socket, cb:
-      proc (fd: AsyncFD, bytesCount: DWORD, errcode: OSErrorCode) =
+      func (fd: AsyncFD, bytesCount: DWORD, errcode: OSErrorCode) =
         if not retFuture.finished:
           if errcode == OSErrorCode(-1):
             retFuture.complete(bytesCount)
@@ -567,7 +567,7 @@ when defined(windows) or defined(nimdoc):
           retFuture.complete(bytesReceived)
     return retFuture
 
-  proc send*(socket: AsyncFD, buf: pointer, size: int,
+  func send*(socket: AsyncFD, buf: pointer, size: int,
              flags = {SocketFlag.SafeDisconn}): owned(Future[void]) =
     ## Sends `size` bytes from `buf` to `socket`. The returned future
     ## will complete once all data has been sent.
@@ -584,7 +584,7 @@ when defined(windows) or defined(nimdoc):
     var bytesReceived, lowFlags: DWORD
     var ol = newCustom()
     ol.data = CompletionData(fd: socket, cb:
-      proc (fd: AsyncFD, bytesCount: DWORD, errcode: OSErrorCode) =
+      func (fd: AsyncFD, bytesCount: DWORD, errcode: OSErrorCode) =
         if not retFuture.finished:
           if errcode == OSErrorCode(-1):
             retFuture.complete()
@@ -612,7 +612,7 @@ when defined(windows) or defined(nimdoc):
       # free `ol`.
     return retFuture
 
-  proc sendTo*(socket: AsyncFD, data: pointer, size: int, saddr: ptr SockAddr,
+  func sendTo*(socket: AsyncFD, data: pointer, size: int, saddr: ptr SockAddr,
                saddrLen: SockLen,
                flags = {SocketFlag.SafeDisconn}): owned(Future[void]) =
     ## Sends `data` to specified destination `saddr`, using
@@ -634,7 +634,7 @@ when defined(windows) or defined(nimdoc):
 
     var ol = newCustom()
     ol.data = CompletionData(fd: socket, cb:
-      proc (fd: AsyncFD, bytesCount: DWORD, errcode: OSErrorCode) =
+      func (fd: AsyncFD, bytesCount: DWORD, errcode: OSErrorCode) =
         if not retFuture.finished:
           if errcode == OSErrorCode(-1):
             retFuture.complete()
@@ -657,7 +657,7 @@ when defined(windows) or defined(nimdoc):
       # free `ol`.
     return retFuture
 
-  proc recvFromInto*(socket: AsyncFD, data: pointer, size: int,
+  func recvFromInto*(socket: AsyncFD, data: pointer, size: int,
                      saddr: ptr SockAddr, saddrLen: ptr SockLen,
                      flags = {SocketFlag.SafeDisconn}): owned(Future[int]) =
     ## Receives a datagram data from `socket` into `buf`, which must
@@ -675,7 +675,7 @@ when defined(windows) or defined(nimdoc):
 
     var ol = newCustom()
     ol.data = CompletionData(fd: socket, cb:
-      proc (fd: AsyncFD, bytesCount: DWORD, errcode: OSErrorCode) =
+      func (fd: AsyncFD, bytesCount: DWORD, errcode: OSErrorCode) =
         if not retFuture.finished:
           if errcode == OSErrorCode(-1):
             assert bytesCount <= size
@@ -705,7 +705,7 @@ when defined(windows) or defined(nimdoc):
           retFuture.complete(bytesReceived)
     return retFuture
 
-  proc acceptAddr*(socket: AsyncFD, flags = {SocketFlag.SafeDisconn},
+  func acceptAddr*(socket: AsyncFD, flags = {SocketFlag.SafeDisconn},
                    inheritable = defined(nimInheritHandles)):
       owned(Future[tuple[address: string, client: AsyncFD]]) =
     ## Accepts a new connection. Returns a future containing the client socket
@@ -739,7 +739,7 @@ when defined(windows) or defined(nimdoc):
       if flags.isDisconnectionError(errcode):
         var newAcceptFut = acceptAddr(socket, flags)
         newAcceptFut.callback =
-          proc () =
+          func () =
             if newAcceptFut.failed:
               retFuture.fail(newAcceptFut.readError)
             else:
@@ -774,7 +774,7 @@ when defined(windows) or defined(nimdoc):
 
     var ol = newCustom()
     ol.data = CompletionData(fd: socket, cb:
-      proc (fd: AsyncFD, bytesCount: DWORD, errcode: OSErrorCode) =
+      func (fd: AsyncFD, bytesCount: DWORD, errcode: OSErrorCode) =
         if not retFuture.finished:
           if errcode == OSErrorCode(-1):
             completeAccept()
@@ -804,20 +804,20 @@ when defined(windows) or defined(nimdoc):
 
   implementSetInheritable()
 
-  proc closeSocket*(socket: AsyncFD) =
+  func closeSocket*(socket: AsyncFD) =
     ## Closes a socket and ensures that it is unregistered.
     socket.SocketHandle.close()
     getGlobalDispatcher().handles.excl(socket)
 
-  proc unregister*(fd: AsyncFD) =
+  func unregister*(fd: AsyncFD) =
     ## Unregisters `fd`.
     getGlobalDispatcher().handles.excl(fd)
 
-  proc contains*(disp: PDispatcher, fd: AsyncFD): bool =
+  func contains*(disp: PDispatcher, fd: AsyncFD): bool =
     return fd in disp.handles
 
   {.push stackTrace: off.}
-  proc waitableCallback(param: pointer,
+  func waitableCallback(param: pointer,
                         timerOrWaitFired: WINBOOL) {.stdcall.} =
     var p = cast[PostCallbackDataPtr](param)
     discard postQueuedCompletionStatus(p.ioPort, timerOrWaitFired.DWORD,
@@ -825,7 +825,7 @@ when defined(windows) or defined(nimdoc):
                                        cast[pointer](p.ovl))
   {.pop.}
 
-  proc registerWaitableEvent(fd: AsyncFD, cb: Callback; mask: DWORD) =
+  func registerWaitableEvent(fd: AsyncFD, cb: Callback; mask: DWORD) =
     let p = getGlobalDispatcher()
     var flags = (WT_EXECUTEINWAITTHREAD or WT_EXECUTEONLYONCE).DWORD
     var hEvent = wsaCreateEvent()
@@ -908,7 +908,7 @@ when defined(windows) or defined(nimdoc):
       raiseOSError(err)
     p.handles.incl(fd)
 
-  proc addRead*(fd: AsyncFD, cb: Callback) =
+  func addRead*(fd: AsyncFD, cb: Callback) =
     ## Start watching the file descriptor for read availability and then call
     ## the callback `cb`.
     ##
@@ -926,7 +926,7 @@ when defined(windows) or defined(nimdoc):
     ## receiving notifications.
     registerWaitableEvent(fd, cb, FD_READ or FD_ACCEPT or FD_OOB or FD_CLOSE)
 
-  proc addWrite*(fd: AsyncFD, cb: Callback) =
+  func addWrite*(fd: AsyncFD, cb: Callback) =
     ## Start watching the file descriptor for write availability and then call
     ## the callback `cb`.
     ##
@@ -979,7 +979,7 @@ when defined(windows) or defined(nimdoc):
     if closeHandle(handle) == 0:
       raiseOSError(osLastError())
 
-  proc addTimer*(timeout: int, oneshot: bool, cb: Callback) =
+  func addTimer*(timeout: int, oneshot: bool, cb: Callback) =
     ## Registers callback `cb` to be called when timer expired.
     ##
     ## Parameters:
@@ -1000,7 +1000,7 @@ when defined(windows) or defined(nimdoc):
     var flags = WT_EXECUTEINWAITTHREAD.DWORD
     if oneshot: flags = flags or WT_EXECUTEONLYONCE
 
-    proc timercb(fd: AsyncFD, bytesCount: DWORD, errcode: OSErrorCode) =
+    func timercb(fd: AsyncFD, bytesCount: DWORD, errcode: OSErrorCode) =
       let res = cb(fd)
       if res or oneshot:
         closeWaitable(hEvent)
@@ -1013,7 +1013,7 @@ when defined(windows) or defined(nimdoc):
 
     registerWaitableHandle(p, hEvent, flags, pcd, timeout, timercb)
 
-  proc addProcess*(pid: int, cb: Callback) =
+  func addProcess*(pid: int, cb: Callback) =
     ## Registers callback `cb` to be called when process with process ID
     ## `pid` exited.
     const NULL = Handle(0)
@@ -1026,13 +1026,13 @@ when defined(windows) or defined(nimdoc):
     var pcd = cast[PostCallbackDataPtr](allocShared0(sizeof(PostCallbackData)))
     var flags = WT_EXECUTEINWAITTHREAD.DWORD
 
-    proc proccb(fd: AsyncFD, bytesCount: DWORD, errcode: OSErrorCode) =
+    func proccb(fd: AsyncFD, bytesCount: DWORD, errcode: OSErrorCode) =
       closeWaitable(hProcess)
       discard cb(fd)
 
     registerWaitableHandle(p, hProcess, flags, pcd, INFINITE, proccb)
 
-  proc newAsyncEvent*(): AsyncEvent =
+  func newAsyncEvent*(): AsyncEvent =
     ## Creates a new thread-safe `AsyncEvent` object.
     ##
     ## New `AsyncEvent` object is not automatically registered with
@@ -1047,12 +1047,12 @@ when defined(windows) or defined(nimdoc):
     result = cast[AsyncEvent](allocShared0(sizeof(AsyncEventImpl)))
     result.hEvent = event
 
-  proc trigger*(ev: AsyncEvent) =
+  func trigger*(ev: AsyncEvent) =
     ## Set event `ev` to signaled state.
     if setEvent(ev.hEvent) == 0:
       raiseOSError(osLastError())
 
-  proc unregister*(ev: AsyncEvent) =
+  func unregister*(ev: AsyncEvent) =
     ## Unregisters event `ev`.
     doAssert(ev.hWaiter != 0, "Event is not registered in the queue!")
     let p = getGlobalDispatcher()
@@ -1063,14 +1063,14 @@ when defined(windows) or defined(nimdoc):
         raiseOSError(err)
     ev.hWaiter = 0
 
-  proc close*(ev: AsyncEvent) =
+  func close*(ev: AsyncEvent) =
     ## Closes event `ev`.
     let res = closeHandle(ev.hEvent)
     deallocShared(cast[pointer](ev))
     if res == 0:
       raiseOSError(osLastError())
 
-  proc addEvent*(ev: AsyncEvent, cb: Callback) =
+  func addEvent*(ev: AsyncEvent, cb: Callback) =
     ## Registers callback `cb` to be called when `ev` will be signaled
     doAssert(ev.hWaiter == 0, "Event is already registered in the queue!")
 
@@ -1080,7 +1080,7 @@ when defined(windows) or defined(nimdoc):
     var pcd = cast[PostCallbackDataPtr](allocShared0(sizeof(PostCallbackData)))
     var flags = WT_EXECUTEINWAITTHREAD.DWORD
 
-    proc eventcb(fd: AsyncFD, bytesCount: DWORD, errcode: OSErrorCode) =
+    func eventcb(fd: AsyncFD, bytesCount: DWORD, errcode: OSErrorCode) =
       if ev.hWaiter != 0:
         if cb(fd):
           # we need this check to avoid exception, if `unregister(event)` was
@@ -1127,8 +1127,8 @@ else:
     PDispatcher* = ref object of PDispatcherBase
       selector: Selector[AsyncData]
 
-  proc `==`*(x, y: AsyncFD): bool {.borrow.}
-  proc `==`*(x, y: AsyncEvent): bool {.borrow.}
+  func `==`*(x, y: AsyncFD): bool {.borrow.}
+  func `==`*(x, y: AsyncEvent): bool {.borrow.}
 
   template newAsyncData(): AsyncData =
     AsyncData(
@@ -1155,7 +1155,7 @@ else:
       setGlobalDispatcher(newDispatcher())
     result = gDisp
 
-  proc getIoHandler*(disp: PDispatcher): Selector[AsyncData] =
+  func getIoHandler*(disp: PDispatcher): Selector[AsyncData] =
     return disp.selector
 
   proc register*(fd: AsyncFD) =
@@ -1169,7 +1169,7 @@ else:
   proc unregister*(ev: AsyncEvent) =
     getGlobalDispatcher().selector.unregister(SelectEvent(ev))
 
-  proc contains*(disp: PDispatcher, fd: AsyncFD): bool =
+  func contains*(disp: PDispatcher, fd: AsyncFD): bool =
     return fd.SocketHandle in disp.selector
 
   proc addRead*(fd: AsyncFD, cb: Callback) =
@@ -1649,7 +1649,7 @@ proc createAsyncNativeSocket*(domain: Domain = Domain.AF_INET,
   createAsyncNativeSocketImpl(domain, sockType, protocol, inheritable)
 
 when defined(windows) or defined(nimdoc):
-  proc bindToDomain(handle: SocketHandle, domain: Domain) =
+  func bindToDomain(handle: SocketHandle, domain: Domain) =
     # Extracted into a separate proc, because connect() on Windows requires
     # the socket to be initially bound.
     template doBind(saddr) =
@@ -1666,13 +1666,13 @@ when defined(windows) or defined(nimdoc):
       saddr.sin_family = uint16(toInt(domain))
       doBind(saddr)
 
-  proc doConnect(socket: AsyncFD, addrInfo: ptr AddrInfo): owned(Future[void]) =
+  func doConnect(socket: AsyncFD, addrInfo: ptr AddrInfo): owned(Future[void]) =
     let retFuture = newFuture[void]("doConnect")
     result = retFuture
 
     var ol = newCustom()
     ol.data = CompletionData(fd: socket, cb:
-      proc (fd: AsyncFD, bytesCount: DWORD, errcode: OSErrorCode) =
+      func (fd: AsyncFD, bytesCount: DWORD, errcode: OSErrorCode) =
         if not retFuture.finished:
           if errcode == OSErrorCode(-1):
             retFuture.complete()
@@ -1830,7 +1830,7 @@ proc connect*(socket: AsyncFD, address: string, port: Port,
     socket.SocketHandle.bindToDomain(domain)
   asyncAddrInfoLoop(aiList, socket)
 
-proc sleepAsync*(ms: int | float): owned(Future[void]) =
+func sleepAsync*(ms: int | float): owned(Future[void]) =
   ## Suspends the execution of the current async procedure for the next
   ## `ms` milliseconds.
   var retFuture = newFuture[void]("sleepAsync")
@@ -1842,7 +1842,7 @@ proc sleepAsync*(ms: int | float): owned(Future[void]) =
     p.timers.push((getMonoTime() + initDuration(nanoseconds = ns), retFuture))
   return retFuture
 
-proc withTimeout*[T](fut: Future[T], timeout: int): owned(Future[bool]) =
+func withTimeout*[T](fut: Future[T], timeout: int): owned(Future[bool]) =
   ## Returns a future which will complete once `fut` completes or after
   ## `timeout` milliseconds has elapsed.
   ##
@@ -1853,14 +1853,14 @@ proc withTimeout*[T](fut: Future[T], timeout: int): owned(Future[bool]) =
   var retFuture = newFuture[bool]("asyncdispatch.`withTimeout`")
   var timeoutFuture = sleepAsync(timeout)
   fut.callback =
-    proc () =
+    func () =
       if not retFuture.finished:
         if fut.failed:
           retFuture.fail(fut.error)
         else:
           retFuture.complete(true)
   timeoutFuture.callback =
-    proc () =
+    func () =
       if not retFuture.finished: retFuture.complete(false)
   return retFuture
 
@@ -1885,7 +1885,7 @@ proc accept*(socket: AsyncFD,
         retFut.complete(future.read.client)
   return retFut
 
-proc keepAlive(x: string) =
+func keepAlive(x: string) =
   discard "mark 'x' as escaping so that it is put into a closure for us to keep the data alive"
 
 proc send*(socket: AsyncFD, data: string,
@@ -1929,7 +1929,7 @@ proc runForever*() =
   while true:
     poll()
 
-proc waitFor*[T](fut: Future[T]): T =
+func waitFor*[T](fut: Future[T]): T =
   ## **Blocks** the current thread until the specified future completes.
   while not fut.finished:
     poll()

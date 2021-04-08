@@ -63,7 +63,7 @@ func len*[T](c: CritBitTree[T]): int {.inline.} =
 
   result = c.count
 
-proc rawGet[T](c: CritBitTree[T], key: string): Node[T] =
+func rawGet[T](c: CritBitTree[T], key: string): Node[T] =
   var it = c.root
   while it != nil:
     if not it.isLeaf:
@@ -86,7 +86,7 @@ func hasKey*[T](c: CritBitTree[T], key: string): bool {.inline.} =
   ## Alias for `contains <#contains,CritBitTree[T],string>`_.
   result = rawGet(c, key) != nil
 
-proc rawInsert[T](c: var CritBitTree[T], key: string): Node[T] =
+func rawInsert[T](c: var CritBitTree[T], key: string): Node[T] =
   if c.root == nil:
     c.root = Node[T](isleaf: true, key: key)
     result = c.root
@@ -160,13 +160,13 @@ func exclImpl[T](c: var CritBitTree[T], key: string): int =
 
   return c.count
 
-proc excl*[T](c: var CritBitTree[T], key: string) =
+func excl*[T](c: var CritBitTree[T], key: string) =
   ## Removes `key` (and its associated value) from the set `c`.
   ## If the `key` does not exist, nothing happens.
   ##
   ## **See also:**
-  ## * `incl proc <#incl,CritBitTree[void],string>`_
-  ## * `incl proc <#incl,CritBitTree[T],string,T>`_
+  ## * `incl func <#incl,CritBitTree[void],string>`_
+  ## * `incl func <#incl,CritBitTree[T],string,T>`_
   runnableExamples:
     var c: CritBitTree[void]
     incl(c, "key")
@@ -175,14 +175,14 @@ proc excl*[T](c: var CritBitTree[T], key: string) =
 
   discard exclImpl(c, key)
 
-proc missingOrExcl*[T](c: var CritBitTree[T], key: string): bool =
+func missingOrExcl*[T](c: var CritBitTree[T], key: string): bool =
   ## Returns true if `c` does not contain the given `key`. If the key
   ## does exist, `c.excl(key)` is performed.
   ##
   ## **See also:**
-  ## * `excl proc <#excl,CritBitTree[T],string>`_
-  ## * `containsOrIncl proc <#containsOrIncl,CritBitTree[T],string,T>`_
-  ## * `containsOrIncl proc <#containsOrIncl,CritBitTree[void],string>`_
+  ## * `excl func <#excl,CritBitTree[T],string>`_
+  ## * `containsOrIncl func <#containsOrIncl,CritBitTree[T],string,T>`_
+  ## * `containsOrIncl func <#containsOrIncl,CritBitTree[void],string>`_
   runnableExamples:
     block:
       var c: CritBitTree[void]
@@ -197,15 +197,15 @@ proc missingOrExcl*[T](c: var CritBitTree[T], key: string): bool =
   discard exclImpl(c, key)
   result = c.count == oldCount
 
-proc containsOrIncl*[T](c: var CritBitTree[T], key: string, val: T): bool =
+func containsOrIncl*[T](c: var CritBitTree[T], key: string, val: T): bool =
   ## Returns true if `c` contains the given `key`. If the key does not exist,
   ## `c[key] = val` is performed.
   ##
   ## **See also:**
-  ## * `incl proc <#incl,CritBitTree[void],string>`_
-  ## * `incl proc <#incl,CritBitTree[T],string,T>`_
-  ## * `containsOrIncl proc <#containsOrIncl,CritBitTree[void],string>`_
-  ## * `missingOrExcl proc <#missingOrExcl,CritBitTree[T],string>`_
+  ## * `incl func <#incl,CritBitTree[void],string>`_
+  ## * `incl func <#incl,CritBitTree[T],string,T>`_
+  ## * `containsOrIncl func <#containsOrIncl,CritBitTree[void],string>`_
+  ## * `missingOrExcl func <#missingOrExcl,CritBitTree[T],string>`_
   runnableExamples:
     block:
       var c: CritBitTree[int]
@@ -223,15 +223,15 @@ proc containsOrIncl*[T](c: var CritBitTree[T], key: string, val: T): bool =
   when T isnot void:
     if not result: n.val = val
 
-proc containsOrIncl*(c: var CritBitTree[void], key: string): bool =
+func containsOrIncl*(c: var CritBitTree[void], key: string): bool =
   ## Returns true if `c` contains the given `key`. If the key does not exist,
   ## it is inserted into `c`.
   ##
   ## **See also:**
-  ## * `incl proc <#incl,CritBitTree[void],string>`_
-  ## * `incl proc <#incl,CritBitTree[T],string,T>`_
-  ## * `containsOrIncl proc <#containsOrIncl,CritBitTree[T],string,T>`_
-  ## * `missingOrExcl proc <#missingOrExcl,CritBitTree[T],string>`_
+  ## * `incl func <#incl,CritBitTree[void],string>`_
+  ## * `incl func <#incl,CritBitTree[T],string,T>`_
+  ## * `containsOrIncl func <#containsOrIncl,CritBitTree[T],string,T>`_
+  ## * `missingOrExcl func <#missingOrExcl,CritBitTree[T],string>`_
   runnableExamples:
     block:
       var c: CritBitTree[void]
@@ -246,7 +246,7 @@ proc containsOrIncl*(c: var CritBitTree[void], key: string): bool =
   discard rawInsert(c, key)
   result = c.count == oldCount
 
-proc inc*(c: var CritBitTree[int]; key: string, val: int = 1) =
+func inc*(c: var CritBitTree[int]; key: string, val: int = 1) =
   ## Increments `c[key]` by `val`.
   runnableExamples:
     var c: CritBitTree[int]
@@ -257,12 +257,12 @@ proc inc*(c: var CritBitTree[int]; key: string, val: int = 1) =
   var n = rawInsert(c, key)
   inc n.val, val
 
-proc incl*(c: var CritBitTree[void], key: string) =
+func incl*(c: var CritBitTree[void], key: string) =
   ## Includes `key` in `c`.
   ##
   ## **See also:**
-  ## * `excl proc <#excl,CritBitTree[T],string>`_
-  ## * `incl proc <#incl,CritBitTree[T],string,T>`_
+  ## * `excl func <#excl,CritBitTree[T],string>`_
+  ## * `incl func <#incl,CritBitTree[T],string,T>`_
   runnableExamples:
     var c: CritBitTree[void]
     incl(c, "key")
@@ -270,12 +270,12 @@ proc incl*(c: var CritBitTree[void], key: string) =
 
   discard rawInsert(c, key)
 
-proc incl*[T](c: var CritBitTree[T], key: string, val: T) =
+func incl*[T](c: var CritBitTree[T], key: string, val: T) =
   ## Inserts `key` with value `val` into `c`.
   ##
   ## **See also:**
-  ## * `excl proc <#excl,CritBitTree[T],string>`_
-  ## * `incl proc <#incl,CritBitTree[void],string>`_
+  ## * `excl func <#excl,CritBitTree[T],string>`_
+  ## * `incl func <#incl,CritBitTree[void],string>`_
   runnableExamples:
     var c: CritBitTree[int]
     incl(c, "key", 42)
@@ -284,12 +284,12 @@ proc incl*[T](c: var CritBitTree[T], key: string, val: T) =
   var n = rawInsert(c, key)
   n.val = val
 
-proc `[]=`*[T](c: var CritBitTree[T], key: string, val: T) =
+func `[]=`*[T](c: var CritBitTree[T], key: string, val: T) =
   ## Alias for `incl <#incl,CritBitTree[T],string,T>`_.
   ##
   ## **See also:**
-  ## * `[] proc <#[],CritBitTree[T],string>`_
-  ## * `[] proc <#[],CritBitTree[T],string_2>`_
+  ## * `[] func <#[],CritBitTree[T],string>`_
+  ## * `[] func <#[],CritBitTree[T],string_2>`_
   var n = rawInsert(c, key)
   n.val = val
 
@@ -306,8 +306,8 @@ func `[]`*[T](c: CritBitTree[T], key: string): T {.inline.} =
   ## the key exists.
   ##
   ## **See also:**
-  ## * `[] proc <#[],CritBitTree[T],string_2>`_
-  ## * `[]= proc <#[]=,CritBitTree[T],string,T>`_
+  ## * `[] func <#[],CritBitTree[T],string_2>`_
+  ## * `[]= func <#[]=,CritBitTree[T],string,T>`_
   get(c, key)
 
 func `[]`*[T](c: var CritBitTree[T], key: string): var T {.inline.} =
@@ -315,8 +315,8 @@ func `[]`*[T](c: var CritBitTree[T], key: string): var T {.inline.} =
   ## If `key` is not in `t`, the `KeyError` exception is raised.
   ##
   ## **See also:**
-  ## * `[] proc <#[],CritBitTree[T],string>`_
-  ## * `[]= proc <#[]=,CritBitTree[T],string,T>`_
+  ## * `[] func <#[],CritBitTree[T],string>`_
+  ## * `[]= func <#[]=,CritBitTree[T],string,T>`_
   get(c, key)
 
 iterator leaves[T](n: Node[T]): Node[T] =
@@ -390,7 +390,7 @@ iterator mpairs*[T](c: var CritBitTree[T]): tuple[key: string, val: var T] =
   ## * `pairs iterator <#pairs.i,CritBitTree[T]>`_
   for x in leaves(c.root): yield (x.key, x.val)
 
-proc allprefixedAux[T](c: CritBitTree[T], key: string): Node[T] =
+func allprefixedAux[T](c: CritBitTree[T], key: string): Node[T] =
   var p = c.root
   var top = p
   if p != nil:
@@ -518,7 +518,7 @@ func commonPrefixLen*[T](c: CritBitTree[T]): int {.inline, since((1, 3)).} =
     else: c.root.byte
   else: 0
 
-proc toCritBitTree*[T](pairs: openArray[(string, T)]): CritBitTree[T] {.since: (1, 3).} =
+func toCritBitTree*[T](pairs: openArray[(string, T)]): CritBitTree[T] {.since: (1, 3).} =
   ## Creates a new `CritBitTree` that contains the given `pairs`.
   runnableExamples:
     doAssert {"a": "0", "b": "1", "c": "2"}.toCritBitTree is CritBitTree[string]
@@ -526,7 +526,7 @@ proc toCritBitTree*[T](pairs: openArray[(string, T)]): CritBitTree[T] {.since: (
 
   for item in pairs: result.incl item[0], item[1]
 
-proc toCritBitTree*(items: openArray[string]): CritBitTree[void] {.since: (1, 3).} =
+func toCritBitTree*(items: openArray[string]): CritBitTree[void] {.since: (1, 3).} =
   ## Creates a new `CritBitTree` that contains the given `items`.
   runnableExamples:
     doAssert ["a", "b", "c"].toCritBitTree is CritBitTree[void]

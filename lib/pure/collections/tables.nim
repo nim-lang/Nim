@@ -106,7 +106,7 @@ runnableExamples:
 ## `CountTable<#CountTable>`_ is useful for counting number of items of some
 ## container (e.g. string, sequence or array), as it is a mapping where the
 ## items are the keys, and their number of occurrences are the values.
-## For that purpose `toCountTable proc<#toCountTable,openArray[A]>`_
+## For that purpose `toCountTable func<#toCountTable,openArray[A]>`_
 ## comes handy:
 
 runnableExamples:
@@ -115,7 +115,7 @@ runnableExamples:
   assert $letterFrequencies == "{'a': 5, 'd': 1, 'b': 2, 'r': 2, 'c': 1}"
 
 ## The same could have been achieved by manually iterating over a container
-## and increasing each key's value with `inc proc
+## and increasing each key's value with `inc func
 ## <#inc,CountTable[A],A,int>`_:
 
 runnableExamples:
@@ -144,10 +144,10 @@ runnableExamples:
 ##   …
 ##
 ## What is happening here is that the types used for table keys require to have
-## a `hash()` proc which will convert them to a `Hash <hashes.html#Hash>`_
+## a `hash()` func which will convert them to a `Hash <hashes.html#Hash>`_
 ## value, and the compiler is listing all the hash functions it knows.
 ## Additionally there has to be a `==` operator that provides the same
-## semantics as its corresponding `hash` proc.
+## semantics as its corresponding `hash` func.
 ##
 ## After you add `hash` and `==` for your custom type everything will work.
 ## Currently, however, `hash` for objects is not defined, whereas
@@ -162,10 +162,10 @@ runnableExamples:
     Person = object
       firstName, lastName: string
 
-  proc hash(x: Person): Hash =
-    ## Piggyback on the already available string hash proc.
+  func hash(x: Person): Hash =
+    ## Piggyback on the already available string hash func.
     ##
-    ## Without this proc nothing works!
+    ## Without this func nothing works!
     result = x.firstName.hash !& x.lastName.hash
     result = !$result
 
@@ -207,12 +207,12 @@ type
     ## `data` and `counter` are internal implementation details which
     ## can't be accessed.
     ##
-    ## For creating an empty Table, use `initTable proc<#initTable>`_.
+    ## For creating an empty Table, use `initTable func<#initTable>`_.
     data: KeyValuePairSeq[A, B]
     counter: int
   TableRef*[A, B] = ref Table[A, B] ## Ref version of `Table<#Table>`_.
     ##
-    ## For creating a new empty TableRef, use `newTable proc
+    ## For creating a new empty TableRef, use `newTable func
     ## <#newTable>`_.
 
 const
@@ -240,7 +240,7 @@ template get(t, key): untyped =
     else:
       raise newException(KeyError, "key not found")
 
-proc enlarge[A, B](t: var Table[A, B]) =
+func enlarge[A, B](t: var Table[A, B]) =
   var n: KeyValuePairSeq[A, B]
   newSeq(n, len(t.data) * growthFactor)
   swap(t.data, n)
@@ -262,29 +262,29 @@ proc enlarge[A, B](t: var Table[A, B]) =
 # ------------------------------ Table ------------------------------
 # -------------------------------------------------------------------
 
-proc initTable*[A, B](initialSize = defaultInitialSize): Table[A, B] =
+func initTable*[A, B](initialSize = defaultInitialSize): Table[A, B] =
   ## Creates a new hash table that is empty.
   ##
   ## Starting from Nim v0.20, tables are initialized by default and it is
   ## not necessary to call this function explicitly.
   ##
   ## See also:
-  ## * `toTable proc<#toTable,openArray[]>`_
-  ## * `newTable proc<#newTable>`_ for creating a `TableRef`
+  ## * `toTable func<#toTable,openArray[]>`_
+  ## * `newTable func<#newTable>`_ for creating a `TableRef`
   runnableExamples:
     let
       a = initTable[int, string]()
       b = initTable[char, seq[int]]()
   initImpl(result, initialSize)
 
-proc `[]=`*[A, B](t: var Table[A, B], key: A, val: sink B) =
+func `[]=`*[A, B](t: var Table[A, B], key: A, val: sink B) =
   ## Inserts a `(key, value)` pair into `t`.
   ##
   ## See also:
-  ## * `[] proc<#[],Table[A,B],A>`_ for retrieving a value of a key
-  ## * `hasKeyOrPut proc<#hasKeyOrPut,Table[A,B],A,B>`_
-  ## * `mgetOrPut proc<#mgetOrPut,Table[A,B],A,B>`_
-  ## * `del proc<#del,Table[A,B],A>`_ for removing a key from the table
+  ## * `[] func<#[],Table[A,B],A>`_ for retrieving a value of a key
+  ## * `hasKeyOrPut func<#hasKeyOrPut,Table[A,B],A,B>`_
+  ## * `mgetOrPut func<#mgetOrPut,Table[A,B],A,B>`_
+  ## * `del func<#del,Table[A,B],A>`_ for removing a key from the table
   runnableExamples:
     var a = initTable[char, int]()
     a['x'] = 7
@@ -293,14 +293,14 @@ proc `[]=`*[A, B](t: var Table[A, B], key: A, val: sink B) =
 
   putImpl(enlarge)
 
-proc toTable*[A, B](pairs: openArray[(A, B)]): Table[A, B] =
+func toTable*[A, B](pairs: openArray[(A, B)]): Table[A, B] =
   ## Creates a new hash table that contains the given `pairs`.
   ##
   ## `pairs` is a container consisting of `(key, value)` tuples.
   ##
   ## See also:
-  ## * `initTable proc<#initTable>`_
-  ## * `newTable proc<#newTable,openArray[]>`_ for a `TableRef` version
+  ## * `initTable func<#initTable>`_
+  ## * `newTable func<#newTable,openArray[]>`_ for a `TableRef` version
   runnableExamples:
     let a = [('a', 5), ('b', 9)]
     let b = toTable(a)
@@ -309,21 +309,21 @@ proc toTable*[A, B](pairs: openArray[(A, B)]): Table[A, B] =
   result = initTable[A, B](pairs.len)
   for key, val in items(pairs): result[key] = val
 
-proc `[]`*[A, B](t: Table[A, B], key: A): B =
+func `[]`*[A, B](t: Table[A, B], key: A): B =
   ## Retrieves the value at `t[key]`.
   ##
   ## If `key` is not in `t`, the `KeyError` exception is raised.
-  ## One can check with `hasKey proc<#hasKey,Table[A,B],A>`_ whether
+  ## One can check with `hasKey func<#hasKey,Table[A,B],A>`_ whether
   ## the key exists.
   ##
   ## See also:
-  ## * `getOrDefault proc<#getOrDefault,Table[A,B],A>`_ to return
+  ## * `getOrDefault func<#getOrDefault,Table[A,B],A>`_ to return
   ##   a default value (e.g. zero for int) if the key doesn't exist
-  ## * `getOrDefault proc<#getOrDefault,Table[A,B],A,B>`_ to return
+  ## * `getOrDefault func<#getOrDefault,Table[A,B],A,B>`_ to return
   ##   a custom value if the key doesn't exist
-  ## * `[]= proc<#[]=,Table[A,B],A,B>`_ for inserting a new
+  ## * `[]= func<#[]=,Table[A,B],A,B>`_ for inserting a new
   ##   (key, value) pair in the table
-  ## * `hasKey proc<#hasKey,Table[A,B],A>`_ for checking if a key is in
+  ## * `hasKey func<#hasKey,Table[A,B],A>`_ for checking if a key is in
   ##   the table
   runnableExamples:
     let a = {'a': 5, 'b': 9}.toTable
@@ -338,25 +338,25 @@ proc `[]`*[A, B](t: var Table[A, B], key: A): var B =
   ## If `key` is not in `t`, the `KeyError` exception is raised.
   ##
   ## See also:
-  ## * `getOrDefault proc<#getOrDefault,Table[A,B],A>`_ to return
+  ## * `getOrDefault func<#getOrDefault,Table[A,B],A>`_ to return
   ##   a default value (e.g. zero for int) if the key doesn't exist
-  ## * `getOrDefault proc<#getOrDefault,Table[A,B],A,B>`_ to return
+  ## * `getOrDefault func<#getOrDefault,Table[A,B],A,B>`_ to return
   ##   a custom value if the key doesn't exist
-  ## * `[]= proc<#[]=,Table[A,B],A,B>`_ for inserting a new
+  ## * `[]= func<#[]=,Table[A,B],A,B>`_ for inserting a new
   ##   (key, value) pair in the table
-  ## * `hasKey proc<#hasKey,Table[A,B],A>`_ for checking if a key is in
+  ## * `hasKey func<#hasKey,Table[A,B],A>`_ for checking if a key is in
   ##   the table
   get(t, key)
 
-proc hasKey*[A, B](t: Table[A, B], key: A): bool =
+func hasKey*[A, B](t: Table[A, B], key: A): bool =
   ## Returns true if `key` is in the table `t`.
   ##
   ## See also:
-  ## * `contains proc<#contains,Table[A,B],A>`_ for use with the `in` operator
-  ## * `[] proc<#[],Table[A,B],A>`_ for retrieving a value of a key
-  ## * `getOrDefault proc<#getOrDefault,Table[A,B],A>`_ to return
+  ## * `contains func<#contains,Table[A,B],A>`_ for use with the `in` operator
+  ## * `[] func<#[],Table[A,B],A>`_ for retrieving a value of a key
+  ## * `getOrDefault func<#getOrDefault,Table[A,B],A>`_ to return
   ##   a default value (e.g. zero for int) if the key doesn't exist
-  ## * `getOrDefault proc<#getOrDefault,Table[A,B],A,B>`_ to return
+  ## * `getOrDefault func<#getOrDefault,Table[A,B],A,B>`_ to return
   ##   a custom value if the key doesn't exist
   runnableExamples:
     let a = {'a': 5, 'b': 9}.toTable
@@ -366,8 +366,8 @@ proc hasKey*[A, B](t: Table[A, B], key: A): bool =
   var hc: Hash
   result = rawGet(t, key, hc) >= 0
 
-proc contains*[A, B](t: Table[A, B], key: A): bool =
-  ## Alias of `hasKey proc<#hasKey,Table[A,B],A>`_ for use with
+func contains*[A, B](t: Table[A, B], key: A): bool =
+  ## Alias of `hasKey func<#hasKey,Table[A,B],A>`_ for use with
   ## the `in` operator.
   runnableExamples:
     let a = {'a': 5, 'b': 9}.toTable
@@ -376,15 +376,15 @@ proc contains*[A, B](t: Table[A, B], key: A): bool =
 
   return hasKey[A, B](t, key)
 
-proc hasKeyOrPut*[A, B](t: var Table[A, B], key: A, val: B): bool =
+func hasKeyOrPut*[A, B](t: var Table[A, B], key: A, val: B): bool =
   ## Returns true if `key` is in the table, otherwise inserts `value`.
   ##
   ## See also:
-  ## * `hasKey proc<#hasKey,Table[A,B],A>`_
-  ## * `[] proc<#[],Table[A,B],A>`_ for retrieving a value of a key
-  ## * `getOrDefault proc<#getOrDefault,Table[A,B],A>`_ to return
+  ## * `hasKey func<#hasKey,Table[A,B],A>`_
+  ## * `[] func<#[],Table[A,B],A>`_ for retrieving a value of a key
+  ## * `getOrDefault func<#getOrDefault,Table[A,B],A>`_ to return
   ##   a default value (e.g. zero for int) if the key doesn't exist
-  ## * `getOrDefault proc<#getOrDefault,Table[A,B],A,B>`_ to return
+  ## * `getOrDefault func<#getOrDefault,Table[A,B],A,B>`_ to return
   ##   a custom value if the key doesn't exist
   runnableExamples:
     var a = {'a': 5, 'b': 9}.toTable
@@ -396,17 +396,17 @@ proc hasKeyOrPut*[A, B](t: var Table[A, B], key: A, val: B): bool =
 
   hasKeyOrPutImpl(enlarge)
 
-proc getOrDefault*[A, B](t: Table[A, B], key: A): B =
+func getOrDefault*[A, B](t: Table[A, B], key: A): B =
   ## Retrieves the value at `t[key]` if `key` is in `t`. Otherwise, the
   ## default initialization value for type `B` is returned (e.g. 0 for any
   ## integer type).
   ##
   ## See also:
-  ## * `[] proc<#[],Table[A,B],A>`_ for retrieving a value of a key
-  ## * `hasKey proc<#hasKey,Table[A,B],A>`_
-  ## * `hasKeyOrPut proc<#hasKeyOrPut,Table[A,B],A,B>`_
-  ## * `mgetOrPut proc<#mgetOrPut,Table[A,B],A,B>`_
-  ## * `getOrDefault proc<#getOrDefault,Table[A,B],A,B>`_ to return
+  ## * `[] func<#[],Table[A,B],A>`_ for retrieving a value of a key
+  ## * `hasKey func<#hasKey,Table[A,B],A>`_
+  ## * `hasKeyOrPut func<#hasKeyOrPut,Table[A,B],A,B>`_
+  ## * `mgetOrPut func<#mgetOrPut,Table[A,B],A,B>`_
+  ## * `getOrDefault func<#getOrDefault,Table[A,B],A,B>`_ to return
   ##   a custom value if the key doesn't exist
   runnableExamples:
     let a = {'a': 5, 'b': 9}.toTable
@@ -415,16 +415,16 @@ proc getOrDefault*[A, B](t: Table[A, B], key: A): B =
 
   getOrDefaultImpl(t, key)
 
-proc getOrDefault*[A, B](t: Table[A, B], key: A, default: B): B =
+func getOrDefault*[A, B](t: Table[A, B], key: A, default: B): B =
   ## Retrieves the value at `t[key]` if `key` is in `t`.
   ## Otherwise, `default` is returned.
   ##
   ## See also:
-  ## * `[] proc<#[],Table[A,B],A>`_ for retrieving a value of a key
-  ## * `hasKey proc<#hasKey,Table[A,B],A>`_
-  ## * `hasKeyOrPut proc<#hasKeyOrPut,Table[A,B],A,B>`_
-  ## * `mgetOrPut proc<#mgetOrPut,Table[A,B],A,B>`_
-  ## * `getOrDefault proc<#getOrDefault,Table[A,B],A>`_ to return
+  ## * `[] func<#[],Table[A,B],A>`_ for retrieving a value of a key
+  ## * `hasKey func<#hasKey,Table[A,B],A>`_
+  ## * `hasKeyOrPut func<#hasKeyOrPut,Table[A,B],A,B>`_
+  ## * `mgetOrPut func<#mgetOrPut,Table[A,B],A,B>`_
+  ## * `getOrDefault func<#getOrDefault,Table[A,B],A>`_ to return
   ##   a default value (e.g. zero for int) if the key doesn't exist
   runnableExamples:
     let a = {'a': 5, 'b': 9}.toTable
@@ -433,7 +433,7 @@ proc getOrDefault*[A, B](t: Table[A, B], key: A, default: B): B =
 
   getOrDefaultImpl(t, key, default)
 
-proc mgetOrPut*[A, B](t: var Table[A, B], key: A, val: B): var B =
+func mgetOrPut*[A, B](t: var Table[A, B], key: A, val: B): var B =
   ## Retrieves value at `t[key]` or puts `val` if not present, either way
   ## returning a value which can be modified.
   ##
@@ -445,12 +445,12 @@ proc mgetOrPut*[A, B](t: var Table[A, B], key: A, val: B): var B =
   ## See the example below.
   ##
   ## See also:
-  ## * `[] proc<#[],Table[A,B],A>`_ for retrieving a value of a key
-  ## * `hasKey proc<#hasKey,Table[A,B],A>`_
-  ## * `hasKeyOrPut proc<#hasKeyOrPut,Table[A,B],A,B>`_
-  ## * `getOrDefault proc<#getOrDefault,Table[A,B],A>`_ to return
+  ## * `[] func<#[],Table[A,B],A>`_ for retrieving a value of a key
+  ## * `hasKey func<#hasKey,Table[A,B],A>`_
+  ## * `hasKeyOrPut func<#hasKeyOrPut,Table[A,B],A,B>`_
+  ## * `getOrDefault func<#getOrDefault,Table[A,B],A>`_ to return
   ##   a default value (e.g. zero for int) if the key doesn't exist
-  ## * `getOrDefault proc<#getOrDefault,Table[A,B],A,B>`_ to return
+  ## * `getOrDefault func<#getOrDefault,Table[A,B],A,B>`_ to return
   ##   a custom value if the key doesn't exist
   runnableExamples:
     var a = {'a': 5, 'b': 9}.toTable
@@ -471,7 +471,7 @@ proc mgetOrPut*[A, B](t: var Table[A, B], key: A, val: B): var B =
 
   mgetOrPutImpl(enlarge)
 
-proc len*[A, B](t: Table[A, B]): int =
+func len*[A, B](t: Table[A, B]): int =
   ## Returns the number of keys in `t`.
   runnableExamples:
     let a = {'a': 5, 'b': 9}.toTable
@@ -479,13 +479,13 @@ proc len*[A, B](t: Table[A, B]): int =
 
   result = t.counter
 
-proc add*[A, B](t: var Table[A, B], key: A, val: sink B) {.deprecated:
+func add*[A, B](t: var Table[A, B], key: A, val: sink B) {.deprecated:
     "Deprecated since v1.4; it was more confusing than useful, use `[]=`".} =
   ## Puts a new `(key, value)` pair into `t` even if `t[key]` already exists.
   ##
   ## **This can introduce duplicate keys into the table!**
   ##
-  ## Use `[]= proc<#[]=,Table[A,B],A,B>`_ for inserting a new
+  ## Use `[]= func<#[]=,Table[A,B],A,B>`_ for inserting a new
   ## (key, value) pair in the table without introducing duplicates.
   addImpl(enlarge)
 
@@ -493,12 +493,12 @@ template tabMakeEmpty(i) = t.data[i].hcode = 0
 template tabCellEmpty(i) = isEmpty(t.data[i].hcode)
 template tabCellHash(i)  = t.data[i].hcode
 
-proc del*[A, B](t: var Table[A, B], key: A) =
+func del*[A, B](t: var Table[A, B], key: A) =
   ## Deletes `key` from hash table `t`. Does nothing if the key does not exist.
   ##
   ## See also:
-  ## * `pop proc<#pop,Table[A,B],A,B>`_
-  ## * `clear proc<#clear,Table[A,B]>`_ to empty the whole table
+  ## * `pop func<#pop,Table[A,B],A,B>`_
+  ## * `clear func<#clear,Table[A,B]>`_ to empty the whole table
   runnableExamples:
     var a = {'a': 5, 'b': 9, 'c': 13}.toTable
     a.del('a')
@@ -508,15 +508,15 @@ proc del*[A, B](t: var Table[A, B], key: A) =
 
   delImpl(tabMakeEmpty, tabCellEmpty, tabCellHash)
 
-proc pop*[A, B](t: var Table[A, B], key: A, val: var B): bool =
+func pop*[A, B](t: var Table[A, B], key: A, val: var B): bool =
   ## Deletes the `key` from the table.
   ## Returns `true`, if the `key` existed, and sets `val` to the
   ## mapping of the key. Otherwise, returns `false`, and the `val` is
   ## unchanged.
   ##
   ## See also:
-  ## * `del proc<#del,Table[A,B],A>`_
-  ## * `clear proc<#clear,Table[A,B]>`_ to empty the whole table
+  ## * `del func<#del,Table[A,B],A>`_
+  ## * `clear func<#clear,Table[A,B]>`_ to empty the whole table
   runnableExamples:
     var
       a = {'a': 5, 'b': 9, 'c': 13}.toTable
@@ -536,17 +536,17 @@ proc pop*[A, B](t: var Table[A, B], key: A, val: var B): bool =
     val = move(t.data[index].val)
     delImplIdx(t, index, tabMakeEmpty, tabCellEmpty, tabCellHash)
 
-proc take*[A, B](t: var Table[A, B], key: A, val: var B): bool {.inline.} =
+func take*[A, B](t: var Table[A, B], key: A, val: var B): bool {.inline.} =
   ## Alias for:
-  ## * `pop proc<#pop,Table[A,B],A,B>`_
+  ## * `pop func<#pop,Table[A,B],A,B>`_
   pop(t, key, val)
 
-proc clear*[A, B](t: var Table[A, B]) =
+func clear*[A, B](t: var Table[A, B]) =
   ## Resets the table so that it is empty.
   ##
   ## See also:
-  ## * `del proc<#del,Table[A,B],A>`_
-  ## * `pop proc<#pop,Table[A,B],A,B>`_
+  ## * `del func<#del,Table[A,B],A>`_
+  ## * `pop func<#pop,Table[A,B],A,B>`_
   runnableExamples:
     var a = {'a': 5, 'b': 9, 'c': 13}.toTable
     doAssert len(a) == 3
@@ -555,12 +555,12 @@ proc clear*[A, B](t: var Table[A, B]) =
 
   clearImpl()
 
-proc `$`*[A, B](t: Table[A, B]): string =
+func `$`*[A, B](t: Table[A, B]): string =
   ## The `$` operator for hash tables. Used internally when calling `echo`
   ## on a table.
   dollarImpl()
 
-proc `==`*[A, B](s, t: Table[A, B]): bool =
+func `==`*[A, B](s, t: Table[A, B]): bool =
   ## The `==` operator for hash tables. Returns `true` if the content of both
   ## tables contains the same key-value pairs. Insert order does not matter.
   runnableExamples:
@@ -571,8 +571,8 @@ proc `==`*[A, B](s, t: Table[A, B]): bool =
 
   equalsImpl(s, t)
 
-proc indexBy*[A, B, C](collection: A, index: proc(x: B): C): Table[C, B] =
-  ## Index the collection with the proc provided.
+func indexBy*[A, B, C](collection: A, index: proc(x: B): C): Table[C, B] =
+  ## Index the collection with the func provided.
   # TODO: As soon as supported, change collection: A to collection: A[B]
   result = initTable[C, B]()
   for item in collection:
@@ -771,7 +771,7 @@ iterator allValues*[A, B](t: Table[A, B]; key: A): B {.deprecated:
   ## Iterates over any value in the table `t` that belongs to the given `key`.
   ##
   ## Used if you have a table with duplicate keys (as a result of using
-  ## `add proc<#add,Table[A,B],A,sinkB>`_).
+  ## `add func<#add,Table[A,B],A,sinkB>`_).
   ##
   runnableExamples:
     import std/[sequtils, algorithm]
@@ -795,13 +795,13 @@ iterator allValues*[A, B](t: Table[A, B]; key: A): B {.deprecated:
 # -------------------------------------------------------------------
 
 
-proc newTable*[A, B](initialSize = defaultInitialSize): <//>TableRef[A, B] =
+func newTable*[A, B](initialSize = defaultInitialSize): <//>TableRef[A, B] =
   ## Creates a new ref hash table that is empty.
   ##
   ## See also:
-  ## * `newTable proc<#newTable,openArray[]>`_ for creating a `TableRef`
+  ## * `newTable func<#newTable,openArray[]>`_ for creating a `TableRef`
   ##   from a collection of `(key, value)` pairs
-  ## * `initTable proc<#initTable>`_ for creating a `Table`
+  ## * `initTable func<#initTable>`_ for creating a `Table`
   runnableExamples:
     let
       a = newTable[int, string]()
@@ -810,14 +810,14 @@ proc newTable*[A, B](initialSize = defaultInitialSize): <//>TableRef[A, B] =
   new(result)
   result[] = initTable[A, B](initialSize)
 
-proc newTable*[A, B](pairs: openArray[(A, B)]): <//>TableRef[A, B] =
+func newTable*[A, B](pairs: openArray[(A, B)]): <//>TableRef[A, B] =
   ## Creates a new ref hash table that contains the given `pairs`.
   ##
   ## `pairs` is a container consisting of `(key, value)` tuples.
   ##
   ## See also:
-  ## * `newTable proc<#newTable>`_
-  ## * `toTable proc<#toTable,openArray[]>`_ for a `Table` version
+  ## * `newTable func<#newTable>`_
+  ## * `toTable func<#toTable,openArray[]>`_ for a `Table` version
   runnableExamples:
     let a = [('a', 5), ('b', 9)]
     let b = newTable(a)
@@ -826,28 +826,28 @@ proc newTable*[A, B](pairs: openArray[(A, B)]): <//>TableRef[A, B] =
   new(result)
   result[] = toTable[A, B](pairs)
 
-proc newTableFrom*[A, B, C](collection: A, index: proc(x: B): C): <//>TableRef[C, B] =
-  ## Index the collection with the proc provided.
+func newTableFrom*[A, B, C](collection: A, index: proc(x: B): C): <//>TableRef[C, B] =
+  ## Index the collection with the func provided.
   # TODO: As soon as supported, change collection: A to collection: A[B]
   result = newTable[C, B]()
   for item in collection:
     result[index(item)] = item
 
-proc `[]`*[A, B](t: TableRef[A, B], key: A): var B =
+func `[]`*[A, B](t: TableRef[A, B], key: A): var B =
   ## Retrieves the value at `t[key]`.
   ##
   ## If `key` is not in `t`, the  `KeyError` exception is raised.
-  ## One can check with `hasKey proc<#hasKey,TableRef[A,B],A>`_ whether
+  ## One can check with `hasKey func<#hasKey,TableRef[A,B],A>`_ whether
   ## the key exists.
   ##
   ## See also:
-  ## * `getOrDefault proc<#getOrDefault,TableRef[A,B],A>`_ to return
+  ## * `getOrDefault func<#getOrDefault,TableRef[A,B],A>`_ to return
   ##   a default value (e.g. zero for int) if the key doesn't exist
-  ## * `getOrDefault proc<#getOrDefault,TableRef[A,B],A,B>`_ to return
+  ## * `getOrDefault func<#getOrDefault,TableRef[A,B],A,B>`_ to return
   ##   a custom value if the key doesn't exist
-  ## * `[]= proc<#[]=,TableRef[A,B],A,sinkB>`_ for inserting a new
+  ## * `[]= func<#[]=,TableRef[A,B],A,sinkB>`_ for inserting a new
   ##   (key, value) pair in the table
-  ## * `hasKey proc<#hasKey,TableRef[A,B],A>`_ for checking if a key is in
+  ## * `hasKey func<#hasKey,TableRef[A,B],A>`_ for checking if a key is in
   ##   the table
   runnableExamples:
     let a = {'a': 5, 'b': 9}.newTable
@@ -857,14 +857,14 @@ proc `[]`*[A, B](t: TableRef[A, B], key: A): var B =
 
   result = t[][key]
 
-proc `[]=`*[A, B](t: TableRef[A, B], key: A, val: sink B) =
+func `[]=`*[A, B](t: TableRef[A, B], key: A, val: sink B) =
   ## Inserts a `(key, value)` pair into `t`.
   ##
   ## See also:
-  ## * `[] proc<#[],TableRef[A,B],A>`_ for retrieving a value of a key
-  ## * `hasKeyOrPut proc<#hasKeyOrPut,TableRef[A,B],A,B>`_
-  ## * `mgetOrPut proc<#mgetOrPut,TableRef[A,B],A,B>`_
-  ## * `del proc<#del,TableRef[A,B],A>`_ for removing a key from the table
+  ## * `[] func<#[],TableRef[A,B],A>`_ for retrieving a value of a key
+  ## * `hasKeyOrPut func<#hasKeyOrPut,TableRef[A,B],A,B>`_
+  ## * `mgetOrPut func<#mgetOrPut,TableRef[A,B],A,B>`_
+  ## * `del func<#del,TableRef[A,B],A>`_ for removing a key from the table
   runnableExamples:
     var a = newTable[char, int]()
     a['x'] = 7
@@ -873,16 +873,16 @@ proc `[]=`*[A, B](t: TableRef[A, B], key: A, val: sink B) =
 
   t[][key] = val
 
-proc hasKey*[A, B](t: TableRef[A, B], key: A): bool =
+func hasKey*[A, B](t: TableRef[A, B], key: A): bool =
   ## Returns true if `key` is in the table `t`.
   ##
   ## See also:
-  ## * `contains proc<#contains,TableRef[A,B],A>`_ for use with the `in`
+  ## * `contains func<#contains,TableRef[A,B],A>`_ for use with the `in`
   ##   operator
-  ## * `[] proc<#[],TableRef[A,B],A>`_ for retrieving a value of a key
-  ## * `getOrDefault proc<#getOrDefault,TableRef[A,B],A>`_ to return
+  ## * `[] func<#[],TableRef[A,B],A>`_ for retrieving a value of a key
+  ## * `getOrDefault func<#getOrDefault,TableRef[A,B],A>`_ to return
   ##   a default value (e.g. zero for int) if the key doesn't exist
-  ## * `getOrDefault proc<#getOrDefault,TableRef[A,B],A,B>`_ to return
+  ## * `getOrDefault func<#getOrDefault,TableRef[A,B],A,B>`_ to return
   ##   a custom value if the key doesn't exist
   runnableExamples:
     let a = {'a': 5, 'b': 9}.newTable
@@ -891,8 +891,8 @@ proc hasKey*[A, B](t: TableRef[A, B], key: A): bool =
 
   result = t[].hasKey(key)
 
-proc contains*[A, B](t: TableRef[A, B], key: A): bool =
-  ## Alias of `hasKey proc<#hasKey,TableRef[A,B],A>`_ for use with
+func contains*[A, B](t: TableRef[A, B], key: A): bool =
+  ## Alias of `hasKey func<#hasKey,TableRef[A,B],A>`_ for use with
   ## the `in` operator.
   runnableExamples:
     let a = {'a': 5, 'b': 9}.newTable
@@ -901,15 +901,15 @@ proc contains*[A, B](t: TableRef[A, B], key: A): bool =
 
   return hasKey[A, B](t, key)
 
-proc hasKeyOrPut*[A, B](t: var TableRef[A, B], key: A, val: B): bool =
+func hasKeyOrPut*[A, B](t: var TableRef[A, B], key: A, val: B): bool =
   ## Returns true if `key` is in the table, otherwise inserts `value`.
   ##
   ## See also:
-  ## * `hasKey proc<#hasKey,TableRef[A,B],A>`_
-  ## * `[] proc<#[],TableRef[A,B],A>`_ for retrieving a value of a key
-  ## * `getOrDefault proc<#getOrDefault,TableRef[A,B],A>`_ to return
+  ## * `hasKey func<#hasKey,TableRef[A,B],A>`_
+  ## * `[] func<#[],TableRef[A,B],A>`_ for retrieving a value of a key
+  ## * `getOrDefault func<#getOrDefault,TableRef[A,B],A>`_ to return
   ##   a default value (e.g. zero for int) if the key doesn't exist
-  ## * `getOrDefault proc<#getOrDefault,TableRef[A,B],A,B>`_ to return
+  ## * `getOrDefault func<#getOrDefault,TableRef[A,B],A,B>`_ to return
   ##   a custom value if the key doesn't exist
   runnableExamples:
     var a = {'a': 5, 'b': 9}.newTable
@@ -921,17 +921,17 @@ proc hasKeyOrPut*[A, B](t: var TableRef[A, B], key: A, val: B): bool =
 
   t[].hasKeyOrPut(key, val)
 
-proc getOrDefault*[A, B](t: TableRef[A, B], key: A): B =
+func getOrDefault*[A, B](t: TableRef[A, B], key: A): B =
   ## Retrieves the value at `t[key]` if `key` is in `t`. Otherwise, the
   ## default initialization value for type `B` is returned (e.g. 0 for any
   ## integer type).
   ##
   ## See also:
-  ## * `[] proc<#[],TableRef[A,B],A>`_ for retrieving a value of a key
-  ## * `hasKey proc<#hasKey,TableRef[A,B],A>`_
-  ## * `hasKeyOrPut proc<#hasKeyOrPut,TableRef[A,B],A,B>`_
-  ## * `mgetOrPut proc<#mgetOrPut,TableRef[A,B],A,B>`_
-  ## * `getOrDefault proc<#getOrDefault,TableRef[A,B],A,B>`_ to return
+  ## * `[] func<#[],TableRef[A,B],A>`_ for retrieving a value of a key
+  ## * `hasKey func<#hasKey,TableRef[A,B],A>`_
+  ## * `hasKeyOrPut func<#hasKeyOrPut,TableRef[A,B],A,B>`_
+  ## * `mgetOrPut func<#mgetOrPut,TableRef[A,B],A,B>`_
+  ## * `getOrDefault func<#getOrDefault,TableRef[A,B],A,B>`_ to return
   ##   a custom value if the key doesn't exist
   runnableExamples:
     let a = {'a': 5, 'b': 9}.newTable
@@ -940,16 +940,16 @@ proc getOrDefault*[A, B](t: TableRef[A, B], key: A): B =
 
   getOrDefault(t[], key)
 
-proc getOrDefault*[A, B](t: TableRef[A, B], key: A, default: B): B =
+func getOrDefault*[A, B](t: TableRef[A, B], key: A, default: B): B =
   ## Retrieves the value at `t[key]` if `key` is in `t`.
   ## Otherwise, `default` is returned.
   ##
   ## See also:
-  ## * `[] proc<#[],TableRef[A,B],A>`_ for retrieving a value of a key
-  ## * `hasKey proc<#hasKey,TableRef[A,B],A>`_
-  ## * `hasKeyOrPut proc<#hasKeyOrPut,TableRef[A,B],A,B>`_
-  ## * `mgetOrPut proc<#mgetOrPut,TableRef[A,B],A,B>`_
-  ## * `getOrDefault proc<#getOrDefault,TableRef[A,B],A>`_ to return
+  ## * `[] func<#[],TableRef[A,B],A>`_ for retrieving a value of a key
+  ## * `hasKey func<#hasKey,TableRef[A,B],A>`_
+  ## * `hasKeyOrPut func<#hasKeyOrPut,TableRef[A,B],A,B>`_
+  ## * `mgetOrPut func<#mgetOrPut,TableRef[A,B],A,B>`_
+  ## * `getOrDefault func<#getOrDefault,TableRef[A,B],A>`_ to return
   ##   a default value (e.g. zero for int) if the key doesn't exist
   runnableExamples:
     let a = {'a': 5, 'b': 9}.newTable
@@ -958,7 +958,7 @@ proc getOrDefault*[A, B](t: TableRef[A, B], key: A, default: B): B =
 
   getOrDefault(t[], key, default)
 
-proc mgetOrPut*[A, B](t: TableRef[A, B], key: A, val: B): var B =
+func mgetOrPut*[A, B](t: TableRef[A, B], key: A, val: B): var B =
   ## Retrieves value at `t[key]` or puts `val` if not present, either way
   ## returning a value which can be modified.
   ##
@@ -969,12 +969,12 @@ proc mgetOrPut*[A, B](t: TableRef[A, B], key: A, val: B): var B =
   ## See the example below.
   ##
   ## See also:
-  ## * `[] proc<#[],TableRef[A,B],A>`_ for retrieving a value of a key
-  ## * `hasKey proc<#hasKey,TableRef[A,B],A>`_
-  ## * `hasKeyOrPut proc<#hasKeyOrPut,TableRef[A,B],A,B>`_
-  ## * `getOrDefault proc<#getOrDefault,TableRef[A,B],A>`_ to return
+  ## * `[] func<#[],TableRef[A,B],A>`_ for retrieving a value of a key
+  ## * `hasKey func<#hasKey,TableRef[A,B],A>`_
+  ## * `hasKeyOrPut func<#hasKeyOrPut,TableRef[A,B],A,B>`_
+  ## * `getOrDefault func<#getOrDefault,TableRef[A,B],A>`_ to return
   ##   a default value (e.g. zero for int) if the key doesn't exist
-  ## * `getOrDefault proc<#getOrDefault,TableRef[A,B],A,B>`_ to return
+  ## * `getOrDefault func<#getOrDefault,TableRef[A,B],A,B>`_ to return
   ##   a custom value if the key doesn't exist
   runnableExamples:
     var a = {'a': 5, 'b': 9}.newTable
@@ -994,7 +994,7 @@ proc mgetOrPut*[A, B](t: TableRef[A, B], key: A, val: B): var B =
     doAssert t[25] == @[25, 35]
   t[].mgetOrPut(key, val)
 
-proc len*[A, B](t: TableRef[A, B]): int =
+func len*[A, B](t: TableRef[A, B]): int =
   ## Returns the number of keys in `t`.
   runnableExamples:
     let a = {'a': 5, 'b': 9}.newTable
@@ -1002,24 +1002,24 @@ proc len*[A, B](t: TableRef[A, B]): int =
 
   result = t.counter
 
-proc add*[A, B](t: TableRef[A, B], key: A, val: sink B) {.deprecated:
+func add*[A, B](t: TableRef[A, B], key: A, val: sink B) {.deprecated:
     "Deprecated since v1.4; it was more confusing than useful, use `[]=`".} =
   ## Puts a new `(key, value)` pair into `t` even if `t[key]` already exists.
   ##
   ## **This can introduce duplicate keys into the table!**
   ##
-  ## Use `[]= proc<#[]=,TableRef[A,B],A,sinkB>`_ for inserting a new
+  ## Use `[]= func<#[]=,TableRef[A,B],A,sinkB>`_ for inserting a new
   ## (key, value) pair in the table without introducing duplicates.
   t[].add(key, val)
 
-proc del*[A, B](t: TableRef[A, B], key: A) =
+func del*[A, B](t: TableRef[A, B], key: A) =
   ## Deletes `key` from hash table `t`. Does nothing if the key does not exist.
   ##
   ## **If duplicate keys were added, this may need to be called multiple times.**
   ##
   ## See also:
-  ## * `pop proc<#pop,TableRef[A,B],A,B>`_
-  ## * `clear proc<#clear,TableRef[A,B]>`_ to empty the whole table
+  ## * `pop func<#pop,TableRef[A,B],A,B>`_
+  ## * `clear func<#clear,TableRef[A,B]>`_ to empty the whole table
   runnableExamples:
     var a = {'a': 5, 'b': 9, 'c': 13}.newTable
     a.del('a')
@@ -1029,7 +1029,7 @@ proc del*[A, B](t: TableRef[A, B], key: A) =
 
   t[].del(key)
 
-proc pop*[A, B](t: TableRef[A, B], key: A, val: var B): bool =
+func pop*[A, B](t: TableRef[A, B], key: A, val: var B): bool =
   ## Deletes the `key` from the table.
   ## Returns `true`, if the `key` existed, and sets `val` to the
   ## mapping of the key. Otherwise, returns `false`, and the `val` is
@@ -1038,8 +1038,8 @@ proc pop*[A, B](t: TableRef[A, B], key: A, val: var B): bool =
   ## **If duplicate keys were added, this may need to be called multiple times.**
   ##
   ## See also:
-  ## * `del proc<#del,TableRef[A,B],A>`_
-  ## * `clear proc<#clear,TableRef[A,B]>`_ to empty the whole table
+  ## * `del func<#del,TableRef[A,B],A>`_
+  ## * `clear func<#clear,TableRef[A,B]>`_ to empty the whole table
   runnableExamples:
     var
       a = {'a': 5, 'b': 9, 'c': 13}.newTable
@@ -1054,17 +1054,17 @@ proc pop*[A, B](t: TableRef[A, B], key: A, val: var B): bool =
 
   result = t[].pop(key, val)
 
-proc take*[A, B](t: TableRef[A, B], key: A, val: var B): bool {.inline.} =
+func take*[A, B](t: TableRef[A, B], key: A, val: var B): bool {.inline.} =
   ## Alias for:
-  ## * `pop proc<#pop,TableRef[A,B],A,B>`_
+  ## * `pop func<#pop,TableRef[A,B],A,B>`_
   pop(t, key, val)
 
-proc clear*[A, B](t: TableRef[A, B]) =
+func clear*[A, B](t: TableRef[A, B]) =
   ## Resets the table so that it is empty.
   ##
   ## See also:
-  ## * `del proc<#del,Table[A,B],A>`_
-  ## * `pop proc<#pop,Table[A,B],A,B>`_
+  ## * `del func<#del,Table[A,B],A>`_
+  ## * `pop func<#pop,Table[A,B],A,B>`_
   runnableExamples:
     var a = {'a': 5, 'b': 9, 'c': 13}.newTable
     doAssert len(a) == 3
@@ -1073,12 +1073,12 @@ proc clear*[A, B](t: TableRef[A, B]) =
 
   clearImpl()
 
-proc `$`*[A, B](t: TableRef[A, B]): string =
+func `$`*[A, B](t: TableRef[A, B]): string =
   ## The `$` operator for hash tables. Used internally when calling `echo`
   ## on a table.
   dollarImpl()
 
-proc `==`*[A, B](s, t: TableRef[A, B]): bool =
+func `==`*[A, B](s, t: TableRef[A, B]): bool =
   ## The `==` operator for hash tables. Returns `true` if either both tables
   ## are `nil`, or neither is `nil` and the content of both tables contains the
   ## same key-value pairs. Insert order does not matter.
@@ -1227,29 +1227,29 @@ type
   OrderedTable*[A, B] = object
     ## Hash table that remembers insertion order.
     ##
-    ## For creating an empty OrderedTable, use `initOrderedTable proc
+    ## For creating an empty OrderedTable, use `initOrderedTable func
     ## <#initOrderedTable>`_.
     data: OrderedKeyValuePairSeq[A, B]
     counter, first, last: int
   OrderedTableRef*[A, B] = ref OrderedTable[A, B] ## Ref version of
     ## `OrderedTable<#OrderedTable>`_.
     ##
-    ## For creating a new empty OrderedTableRef, use `newOrderedTable proc
+    ## For creating a new empty OrderedTableRef, use `newOrderedTable func
     ## <#newOrderedTable>`_.
 
 
 # ------------------------------ helpers ---------------------------------
 
-proc rawGetKnownHC[A, B](t: OrderedTable[A, B], key: A, hc: Hash): int =
+func rawGetKnownHC[A, B](t: OrderedTable[A, B], key: A, hc: Hash): int =
   rawGetKnownHCImpl()
 
-proc rawGetDeep[A, B](t: OrderedTable[A, B], key: A, hc: var Hash): int {.inline.} =
+func rawGetDeep[A, B](t: OrderedTable[A, B], key: A, hc: var Hash): int {.inline.} =
   rawGetDeepImpl()
 
-proc rawGet[A, B](t: OrderedTable[A, B], key: A, hc: var Hash): int =
+func rawGet[A, B](t: OrderedTable[A, B], key: A, hc: var Hash): int =
   rawGetImpl()
 
-proc rawInsert[A, B](t: var OrderedTable[A, B],
+func rawInsert[A, B](t: var OrderedTable[A, B],
                      data: var OrderedKeyValuePairSeq[A, B],
                      key: A, val: sink B, hc: Hash, h: Hash) =
   rawInsertImpl()
@@ -1258,7 +1258,7 @@ proc rawInsert[A, B](t: var OrderedTable[A, B],
   if t.last >= 0: data[t.last].next = h
   t.last = h
 
-proc enlarge[A, B](t: var OrderedTable[A, B]) =
+func enlarge[A, B](t: var OrderedTable[A, B]) =
   var n: OrderedKeyValuePairSeq[A, B]
   newSeq(n, len(t.data) * growthFactor)
   var h = t.first
@@ -1286,15 +1286,15 @@ template forAllOrderedPairs(yieldStmt: untyped) {.dirty.} =
 
 # ----------------------------------------------------------------------
 
-proc initOrderedTable*[A, B](initialSize = defaultInitialSize): OrderedTable[A, B] =
+func initOrderedTable*[A, B](initialSize = defaultInitialSize): OrderedTable[A, B] =
   ## Creates a new ordered hash table that is empty.
   ##
   ## Starting from Nim v0.20, tables are initialized by default and it is
   ## not necessary to call this function explicitly.
   ##
   ## See also:
-  ## * `toOrderedTable proc<#toOrderedTable,openArray[]>`_
-  ## * `newOrderedTable proc<#newOrderedTable>`_ for creating an
+  ## * `toOrderedTable func<#toOrderedTable,openArray[]>`_
+  ## * `newOrderedTable func<#newOrderedTable>`_ for creating an
   ##   `OrderedTableRef`
   runnableExamples:
     let
@@ -1302,14 +1302,14 @@ proc initOrderedTable*[A, B](initialSize = defaultInitialSize): OrderedTable[A, 
       b = initOrderedTable[char, seq[int]]()
   initImpl(result, initialSize)
 
-proc `[]=`*[A, B](t: var OrderedTable[A, B], key: A, val: sink B) =
+func `[]=`*[A, B](t: var OrderedTable[A, B], key: A, val: sink B) =
   ## Inserts a `(key, value)` pair into `t`.
   ##
   ## See also:
-  ## * `[] proc<#[],OrderedTable[A,B],A>`_ for retrieving a value of a key
-  ## * `hasKeyOrPut proc<#hasKeyOrPut,OrderedTable[A,B],A,B>`_
-  ## * `mgetOrPut proc<#mgetOrPut,OrderedTable[A,B],A,B>`_
-  ## * `del proc<#del,OrderedTable[A,B],A>`_ for removing a key from the table
+  ## * `[] func<#[],OrderedTable[A,B],A>`_ for retrieving a value of a key
+  ## * `hasKeyOrPut func<#hasKeyOrPut,OrderedTable[A,B],A,B>`_
+  ## * `mgetOrPut func<#mgetOrPut,OrderedTable[A,B],A,B>`_
+  ## * `del func<#del,OrderedTable[A,B],A>`_ for removing a key from the table
   runnableExamples:
     var a = initOrderedTable[char, int]()
     a['x'] = 7
@@ -1318,14 +1318,14 @@ proc `[]=`*[A, B](t: var OrderedTable[A, B], key: A, val: sink B) =
 
   putImpl(enlarge)
 
-proc toOrderedTable*[A, B](pairs: openArray[(A, B)]): OrderedTable[A, B] =
+func toOrderedTable*[A, B](pairs: openArray[(A, B)]): OrderedTable[A, B] =
   ## Creates a new ordered hash table that contains the given `pairs`.
   ##
   ## `pairs` is a container consisting of `(key, value)` tuples.
   ##
   ## See also:
-  ## * `initOrderedTable proc<#initOrderedTable>`_
-  ## * `newOrderedTable proc<#newOrderedTable,openArray[]>`_ for an
+  ## * `initOrderedTable func<#initOrderedTable>`_
+  ## * `newOrderedTable func<#newOrderedTable,openArray[]>`_ for an
   ##   `OrderedTableRef` version
   runnableExamples:
     let a = [('a', 5), ('b', 9)]
@@ -1335,21 +1335,21 @@ proc toOrderedTable*[A, B](pairs: openArray[(A, B)]): OrderedTable[A, B] =
   result = initOrderedTable[A, B](pairs.len)
   for key, val in items(pairs): result[key] = val
 
-proc `[]`*[A, B](t: OrderedTable[A, B], key: A): B =
+func `[]`*[A, B](t: OrderedTable[A, B], key: A): B =
   ## Retrieves the value at `t[key]`.
   ##
   ## If `key` is not in `t`, the  `KeyError` exception is raised.
-  ## One can check with `hasKey proc<#hasKey,OrderedTable[A,B],A>`_ whether
+  ## One can check with `hasKey func<#hasKey,OrderedTable[A,B],A>`_ whether
   ## the key exists.
   ##
   ## See also:
-  ## * `getOrDefault proc<#getOrDefault,OrderedTable[A,B],A>`_ to return
+  ## * `getOrDefault func<#getOrDefault,OrderedTable[A,B],A>`_ to return
   ##   a default value (e.g. zero for int) if the key doesn't exist
-  ## * `getOrDefault proc<#getOrDefault,OrderedTable[A,B],A,B>`_ to return
+  ## * `getOrDefault func<#getOrDefault,OrderedTable[A,B],A,B>`_ to return
   ##   a custom value if the key doesn't exist
-  ## * `[]= proc<#[]=,OrderedTable[A,B],A,sinkB>`_ for inserting a new
+  ## * `[]= func<#[]=,OrderedTable[A,B],A,sinkB>`_ for inserting a new
   ##   (key, value) pair in the table
-  ## * `hasKey proc<#hasKey,OrderedTable[A,B],A>`_ for checking if a
+  ## * `hasKey func<#hasKey,OrderedTable[A,B],A>`_ for checking if a
   ##   key is in the table
   runnableExamples:
     let a = {'a': 5, 'b': 9}.toOrderedTable
@@ -1359,32 +1359,32 @@ proc `[]`*[A, B](t: OrderedTable[A, B], key: A): B =
 
   get(t, key)
 
-proc `[]`*[A, B](t: var OrderedTable[A, B], key: A): var B =
+func `[]`*[A, B](t: var OrderedTable[A, B], key: A): var B =
   ## Retrieves the value at `t[key]`. The value can be modified.
   ##
   ## If `key` is not in `t`, the `KeyError` exception is raised.
   ##
   ## See also:
-  ## * `getOrDefault proc<#getOrDefault,OrderedTable[A,B],A>`_ to return
+  ## * `getOrDefault func<#getOrDefault,OrderedTable[A,B],A>`_ to return
   ##   a default value (e.g. zero for int) if the key doesn't exist
-  ## * `getOrDefault proc<#getOrDefault,OrderedTable[A,B],A,B>`_ to return
+  ## * `getOrDefault func<#getOrDefault,OrderedTable[A,B],A,B>`_ to return
   ##   a custom value if the key doesn't exist
-  ## * `[]= proc<#[]=,OrderedTable[A,B],A,sinkB>`_ for inserting a new
+  ## * `[]= func<#[]=,OrderedTable[A,B],A,sinkB>`_ for inserting a new
   ##   (key, value) pair in the table
-  ## * `hasKey proc<#hasKey,OrderedTable[A,B],A>`_ for checking if a
+  ## * `hasKey func<#hasKey,OrderedTable[A,B],A>`_ for checking if a
   ##   key is in the table
   get(t, key)
 
-proc hasKey*[A, B](t: OrderedTable[A, B], key: A): bool =
+func hasKey*[A, B](t: OrderedTable[A, B], key: A): bool =
   ## Returns true if `key` is in the table `t`.
   ##
   ## See also:
-  ## * `contains proc<#contains,OrderedTable[A,B],A>`_ for use with the `in`
+  ## * `contains func<#contains,OrderedTable[A,B],A>`_ for use with the `in`
   ##   operator
-  ## * `[] proc<#[],OrderedTable[A,B],A>`_ for retrieving a value of a key
-  ## * `getOrDefault proc<#getOrDefault,OrderedTable[A,B],A>`_ to return
+  ## * `[] func<#[],OrderedTable[A,B],A>`_ for retrieving a value of a key
+  ## * `getOrDefault func<#getOrDefault,OrderedTable[A,B],A>`_ to return
   ##   a default value (e.g. zero for int) if the key doesn't exist
-  ## * `getOrDefault proc<#getOrDefault,OrderedTable[A,B],A,B>`_ to return
+  ## * `getOrDefault func<#getOrDefault,OrderedTable[A,B],A,B>`_ to return
   ##   a custom value if the key doesn't exist
   runnableExamples:
     let a = {'a': 5, 'b': 9}.toOrderedTable
@@ -1394,8 +1394,8 @@ proc hasKey*[A, B](t: OrderedTable[A, B], key: A): bool =
   var hc: Hash
   result = rawGet(t, key, hc) >= 0
 
-proc contains*[A, B](t: OrderedTable[A, B], key: A): bool =
-  ## Alias of `hasKey proc<#hasKey,OrderedTable[A,B],A>`_ for use with
+func contains*[A, B](t: OrderedTable[A, B], key: A): bool =
+  ## Alias of `hasKey func<#hasKey,OrderedTable[A,B],A>`_ for use with
   ## the `in` operator.
   runnableExamples:
     let a = {'a': 5, 'b': 9}.toOrderedTable
@@ -1404,15 +1404,15 @@ proc contains*[A, B](t: OrderedTable[A, B], key: A): bool =
 
   return hasKey[A, B](t, key)
 
-proc hasKeyOrPut*[A, B](t: var OrderedTable[A, B], key: A, val: B): bool =
+func hasKeyOrPut*[A, B](t: var OrderedTable[A, B], key: A, val: B): bool =
   ## Returns true if `key` is in the table, otherwise inserts `value`.
   ##
   ## See also:
-  ## * `hasKey proc<#hasKey,OrderedTable[A,B],A>`_
-  ## * `[] proc<#[],OrderedTable[A,B],A>`_ for retrieving a value of a key
-  ## * `getOrDefault proc<#getOrDefault,OrderedTable[A,B],A>`_ to return
+  ## * `hasKey func<#hasKey,OrderedTable[A,B],A>`_
+  ## * `[] func<#[],OrderedTable[A,B],A>`_ for retrieving a value of a key
+  ## * `getOrDefault func<#getOrDefault,OrderedTable[A,B],A>`_ to return
   ##   a default value (e.g. zero for int) if the key doesn't exist
-  ## * `getOrDefault proc<#getOrDefault,OrderedTable[A,B],A,B>`_ to return
+  ## * `getOrDefault func<#getOrDefault,OrderedTable[A,B],A,B>`_ to return
   ##   a custom value if the key doesn't exist
   runnableExamples:
     var a = {'a': 5, 'b': 9}.toOrderedTable
@@ -1424,17 +1424,17 @@ proc hasKeyOrPut*[A, B](t: var OrderedTable[A, B], key: A, val: B): bool =
 
   hasKeyOrPutImpl(enlarge)
 
-proc getOrDefault*[A, B](t: OrderedTable[A, B], key: A): B =
+func getOrDefault*[A, B](t: OrderedTable[A, B], key: A): B =
   ## Retrieves the value at `t[key]` if `key` is in `t`. Otherwise, the
   ## default initialization value for type `B` is returned (e.g. 0 for any
   ## integer type).
   ##
   ## See also:
-  ## * `[] proc<#[],OrderedTable[A,B],A>`_ for retrieving a value of a key
-  ## * `hasKey proc<#hasKey,OrderedTable[A,B],A>`_
-  ## * `hasKeyOrPut proc<#hasKeyOrPut,OrderedTable[A,B],A,B>`_
-  ## * `mgetOrPut proc<#mgetOrPut,OrderedTable[A,B],A,B>`_
-  ## * `getOrDefault proc<#getOrDefault,OrderedTable[A,B],A,B>`_ to return
+  ## * `[] func<#[],OrderedTable[A,B],A>`_ for retrieving a value of a key
+  ## * `hasKey func<#hasKey,OrderedTable[A,B],A>`_
+  ## * `hasKeyOrPut func<#hasKeyOrPut,OrderedTable[A,B],A,B>`_
+  ## * `mgetOrPut func<#mgetOrPut,OrderedTable[A,B],A,B>`_
+  ## * `getOrDefault func<#getOrDefault,OrderedTable[A,B],A,B>`_ to return
   ##   a custom value if the key doesn't exist
   runnableExamples:
     let a = {'a': 5, 'b': 9}.toOrderedTable
@@ -1443,16 +1443,16 @@ proc getOrDefault*[A, B](t: OrderedTable[A, B], key: A): B =
 
   getOrDefaultImpl(t, key)
 
-proc getOrDefault*[A, B](t: OrderedTable[A, B], key: A, default: B): B =
+func getOrDefault*[A, B](t: OrderedTable[A, B], key: A, default: B): B =
   ## Retrieves the value at `t[key]` if `key` is in `t`.
   ## Otherwise, `default` is returned.
   ##
   ## See also:
-  ## * `[] proc<#[],OrderedTable[A,B],A>`_ for retrieving a value of a key
-  ## * `hasKey proc<#hasKey,OrderedTable[A,B],A>`_
-  ## * `hasKeyOrPut proc<#hasKeyOrPut,OrderedTable[A,B],A,B>`_
-  ## * `mgetOrPut proc<#mgetOrPut,OrderedTable[A,B],A,B>`_
-  ## * `getOrDefault proc<#getOrDefault,OrderedTable[A,B],A>`_ to return
+  ## * `[] func<#[],OrderedTable[A,B],A>`_ for retrieving a value of a key
+  ## * `hasKey func<#hasKey,OrderedTable[A,B],A>`_
+  ## * `hasKeyOrPut func<#hasKeyOrPut,OrderedTable[A,B],A,B>`_
+  ## * `mgetOrPut func<#mgetOrPut,OrderedTable[A,B],A,B>`_
+  ## * `getOrDefault func<#getOrDefault,OrderedTable[A,B],A>`_ to return
   ##   a default value (e.g. zero for int) if the key doesn't exist
   runnableExamples:
     let a = {'a': 5, 'b': 9}.toOrderedTable
@@ -1461,17 +1461,17 @@ proc getOrDefault*[A, B](t: OrderedTable[A, B], key: A, default: B): B =
 
   getOrDefaultImpl(t, key, default)
 
-proc mgetOrPut*[A, B](t: var OrderedTable[A, B], key: A, val: B): var B =
+func mgetOrPut*[A, B](t: var OrderedTable[A, B], key: A, val: B): var B =
   ## Retrieves value at `t[key]` or puts `val` if not present, either way
   ## returning a value which can be modified.
   ##
   ## See also:
-  ## * `[] proc<#[],OrderedTable[A,B],A>`_ for retrieving a value of a key
-  ## * `hasKey proc<#hasKey,OrderedTable[A,B],A>`_
-  ## * `hasKeyOrPut proc<#hasKeyOrPut,OrderedTable[A,B],A,B>`_
-  ## * `getOrDefault proc<#getOrDefault,OrderedTable[A,B],A>`_ to return
+  ## * `[] func<#[],OrderedTable[A,B],A>`_ for retrieving a value of a key
+  ## * `hasKey func<#hasKey,OrderedTable[A,B],A>`_
+  ## * `hasKeyOrPut func<#hasKeyOrPut,OrderedTable[A,B],A,B>`_
+  ## * `getOrDefault func<#getOrDefault,OrderedTable[A,B],A>`_ to return
   ##   a default value (e.g. zero for int) if the key doesn't exist
-  ## * `getOrDefault proc<#getOrDefault,OrderedTable[A,B],A,B>`_ to return
+  ## * `getOrDefault func<#getOrDefault,OrderedTable[A,B],A,B>`_ to return
   ##   a custom value if the key doesn't exist
   runnableExamples:
     var a = {'a': 5, 'b': 9}.toOrderedTable
@@ -1481,7 +1481,7 @@ proc mgetOrPut*[A, B](t: var OrderedTable[A, B], key: A, val: B): var B =
 
   mgetOrPutImpl(enlarge)
 
-proc len*[A, B](t: OrderedTable[A, B]): int {.inline.} =
+func len*[A, B](t: OrderedTable[A, B]): int {.inline.} =
   ## Returns the number of keys in `t`.
   runnableExamples:
     let a = {'a': 5, 'b': 9}.toOrderedTable
@@ -1489,24 +1489,24 @@ proc len*[A, B](t: OrderedTable[A, B]): int {.inline.} =
 
   result = t.counter
 
-proc add*[A, B](t: var OrderedTable[A, B], key: A, val: sink B) {.deprecated:
+func add*[A, B](t: var OrderedTable[A, B], key: A, val: sink B) {.deprecated:
     "Deprecated since v1.4; it was more confusing than useful, use `[]=`".} =
   ## Puts a new `(key, value)` pair into `t` even if `t[key]` already exists.
   ##
   ## **This can introduce duplicate keys into the table!**
   ##
-  ## Use `[]= proc<#[]=,OrderedTable[A,B],A,sinkB>`_ for inserting a new
+  ## Use `[]= func<#[]=,OrderedTable[A,B],A,sinkB>`_ for inserting a new
   ## (key, value) pair in the table without introducing duplicates.
   addImpl(enlarge)
 
-proc del*[A, B](t: var OrderedTable[A, B], key: A) =
+func del*[A, B](t: var OrderedTable[A, B], key: A) =
   ## Deletes `key` from hash table `t`. Does nothing if the key does not exist.
   ##
   ## O(n) complexity.
   ##
   ## See also:
-  ## * `pop proc<#pop,OrderedTable[A,B],A,B>`_
-  ## * `clear proc<#clear,OrderedTable[A,B]>`_ to empty the whole table
+  ## * `pop func<#pop,OrderedTable[A,B],A,B>`_
+  ## * `clear func<#clear,OrderedTable[A,B]>`_ to empty the whole table
   runnableExamples:
     var a = {'a': 5, 'b': 9, 'c': 13}.toOrderedTable
     a.del('a')
@@ -1532,7 +1532,7 @@ proc del*[A, B](t: var OrderedTable[A, B], key: A) =
         rawInsert(t, t.data, move n[h].key, move n[h].val, n[h].hcode, j)
     h = nxt
 
-proc pop*[A, B](t: var OrderedTable[A, B], key: A, val: var B): bool {.since: (1, 1).} =
+func pop*[A, B](t: var OrderedTable[A, B], key: A, val: var B): bool {.since: (1, 1).} =
   ## Deletes the `key` from the table.
   ## Returns `true`, if the `key` existed, and sets `val` to the
   ## mapping of the key. Otherwise, returns `false`, and the `val` is
@@ -1541,8 +1541,8 @@ proc pop*[A, B](t: var OrderedTable[A, B], key: A, val: var B): bool {.since: (1
   ## O(n) complexity.
   ##
   ## See also:
-  ## * `del proc<#del,OrderedTable[A,B],A>`_
-  ## * `clear proc<#clear,OrderedTable[A,B]>`_ to empty the whole table
+  ## * `del func<#del,OrderedTable[A,B],A>`_
+  ## * `clear func<#clear,OrderedTable[A,B]>`_ to empty the whole table
   runnableExamples:
     var
       a = {'c': 5, 'b': 9, 'a': 13}.toOrderedTable
@@ -1562,12 +1562,12 @@ proc pop*[A, B](t: var OrderedTable[A, B], key: A, val: var B): bool {.since: (1
     val = move(t.data[index].val)
     del(t, key)
 
-proc clear*[A, B](t: var OrderedTable[A, B]) =
+func clear*[A, B](t: var OrderedTable[A, B]) =
   ## Resets the table so that it is empty.
   ##
   ## See also:
-  ## * `del proc<#del,OrderedTable[A,B],A>`_
-  ## * `pop proc<#pop,OrderedTable[A,B],A,B>`_
+  ## * `del func<#del,OrderedTable[A,B],A>`_
+  ## * `pop func<#pop,OrderedTable[A,B],A,B>`_
   runnableExamples:
     var a = {'a': 5, 'b': 9, 'c': 13}.toOrderedTable
     doAssert len(a) == 3
@@ -1578,14 +1578,14 @@ proc clear*[A, B](t: var OrderedTable[A, B]) =
   t.first = -1
   t.last = -1
 
-proc sort*[A, B](t: var OrderedTable[A, B], cmp: proc (x, y: (A, B)): int,
+func sort*[A, B](t: var OrderedTable[A, B], cmp: proc (x, y: (A, B)): int,
     order = SortOrder.Ascending) =
   ## Sorts `t` according to the function `cmp`.
   ##
   ## This modifies the internal list
   ## that kept the insertion order, so insertion order is lost after this
   ## call but key lookup and insertions remain possible after `sort` (in
-  ## contrast to the `sort proc<#sort,CountTable[A]>`_ for count tables).
+  ## contrast to the `sort func<#sort,CountTable[A]>`_ for count tables).
   runnableExamples:
     import std/[algorithm]
     var a = initOrderedTable[char, int]()
@@ -1637,12 +1637,12 @@ proc sort*[A, B](t: var OrderedTable[A, B], cmp: proc (x, y: (A, B)): int,
   t.first = list
   t.last = tail
 
-proc `$`*[A, B](t: OrderedTable[A, B]): string =
+func `$`*[A, B](t: OrderedTable[A, B]): string =
   ## The `$` operator for ordered hash tables. Used internally when calling
   ## `echo` on a table.
   dollarImpl()
 
-proc `==`*[A, B](s, t: OrderedTable[A, B]): bool =
+func `==`*[A, B](s, t: OrderedTable[A, B]): bool =
   ## The `==` operator for ordered hash tables. Returns `true` if both the
   ## content and the order are equal.
   runnableExamples:
@@ -1790,13 +1790,13 @@ iterator mvalues*[A, B](t: var OrderedTable[A, B]): var B =
 # --------------------------- OrderedTableRef -------------------------------
 # ---------------------------------------------------------------------------
 
-proc newOrderedTable*[A, B](initialSize = defaultInitialSize): <//>OrderedTableRef[A, B] =
+func newOrderedTable*[A, B](initialSize = defaultInitialSize): <//>OrderedTableRef[A, B] =
   ## Creates a new ordered ref hash table that is empty.
   ##
   ## See also:
-  ## * `newOrderedTable proc<#newOrderedTable,openArray[]>`_ for creating
+  ## * `newOrderedTable func<#newOrderedTable,openArray[]>`_ for creating
   ##   an `OrderedTableRef` from a collection of `(key, value)` pairs
-  ## * `initOrderedTable proc<#initOrderedTable>`_ for creating an
+  ## * `initOrderedTable func<#initOrderedTable>`_ for creating an
   ##   `OrderedTable`
   runnableExamples:
     let
@@ -1805,14 +1805,14 @@ proc newOrderedTable*[A, B](initialSize = defaultInitialSize): <//>OrderedTableR
   new(result)
   result[] = initOrderedTable[A, B](initialSize)
 
-proc newOrderedTable*[A, B](pairs: openArray[(A, B)]): <//>OrderedTableRef[A, B] =
+func newOrderedTable*[A, B](pairs: openArray[(A, B)]): <//>OrderedTableRef[A, B] =
   ## Creates a new ordered ref hash table that contains the given `pairs`.
   ##
   ## `pairs` is a container consisting of `(key, value)` tuples.
   ##
   ## See also:
-  ## * `newOrderedTable proc<#newOrderedTable>`_
-  ## * `toOrderedTable proc<#toOrderedTable,openArray[]>`_ for an
+  ## * `newOrderedTable func<#newOrderedTable>`_
+  ## * `toOrderedTable func<#toOrderedTable,openArray[]>`_ for an
   ##   `OrderedTable` version
   runnableExamples:
     let a = [('a', 5), ('b', 9)]
@@ -1823,21 +1823,21 @@ proc newOrderedTable*[A, B](pairs: openArray[(A, B)]): <//>OrderedTableRef[A, B]
   for key, val in items(pairs): result[key] = val
 
 
-proc `[]`*[A, B](t: OrderedTableRef[A, B], key: A): var B =
+func `[]`*[A, B](t: OrderedTableRef[A, B], key: A): var B =
   ## Retrieves the value at `t[key]`.
   ##
   ## If `key` is not in `t`, the  `KeyError` exception is raised.
-  ## One can check with `hasKey proc<#hasKey,OrderedTableRef[A,B],A>`_ whether
+  ## One can check with `hasKey func<#hasKey,OrderedTableRef[A,B],A>`_ whether
   ## the key exists.
   ##
   ## See also:
-  ## * `getOrDefault proc<#getOrDefault,OrderedTableRef[A,B],A>`_ to return
+  ## * `getOrDefault func<#getOrDefault,OrderedTableRef[A,B],A>`_ to return
   ##   a default value (e.g. zero for int) if the key doesn't exist
-  ## * `getOrDefault proc<#getOrDefault,OrderedTableRef[A,B],A,B>`_ to return
+  ## * `getOrDefault func<#getOrDefault,OrderedTableRef[A,B],A,B>`_ to return
   ##   a custom value if the key doesn't exist
-  ## * `[]= proc<#[]=,OrderedTableRef[A,B],A,sinkB>`_ for inserting a new
+  ## * `[]= func<#[]=,OrderedTableRef[A,B],A,sinkB>`_ for inserting a new
   ##   (key, value) pair in the table
-  ## * `hasKey proc<#hasKey,OrderedTableRef[A,B],A>`_ for checking if
+  ## * `hasKey func<#hasKey,OrderedTableRef[A,B],A>`_ for checking if
   ##   a key is in the table
   runnableExamples:
     let a = {'a': 5, 'b': 9}.newOrderedTable
@@ -1846,14 +1846,14 @@ proc `[]`*[A, B](t: OrderedTableRef[A, B], key: A): var B =
       echo a['z']
   result = t[][key]
 
-proc `[]=`*[A, B](t: OrderedTableRef[A, B], key: A, val: sink B) =
+func `[]=`*[A, B](t: OrderedTableRef[A, B], key: A, val: sink B) =
   ## Inserts a `(key, value)` pair into `t`.
   ##
   ## See also:
-  ## * `[] proc<#[],OrderedTableRef[A,B],A>`_ for retrieving a value of a key
-  ## * `hasKeyOrPut proc<#hasKeyOrPut,OrderedTableRef[A,B],A,B>`_
-  ## * `mgetOrPut proc<#mgetOrPut,OrderedTableRef[A,B],A,B>`_
-  ## * `del proc<#del,OrderedTableRef[A,B],A>`_ for removing a key from the table
+  ## * `[] func<#[],OrderedTableRef[A,B],A>`_ for retrieving a value of a key
+  ## * `hasKeyOrPut func<#hasKeyOrPut,OrderedTableRef[A,B],A,B>`_
+  ## * `mgetOrPut func<#mgetOrPut,OrderedTableRef[A,B],A,B>`_
+  ## * `del func<#del,OrderedTableRef[A,B],A>`_ for removing a key from the table
   runnableExamples:
     var a = newOrderedTable[char, int]()
     a['x'] = 7
@@ -1862,16 +1862,16 @@ proc `[]=`*[A, B](t: OrderedTableRef[A, B], key: A, val: sink B) =
 
   t[][key] = val
 
-proc hasKey*[A, B](t: OrderedTableRef[A, B], key: A): bool =
+func hasKey*[A, B](t: OrderedTableRef[A, B], key: A): bool =
   ## Returns true if `key` is in the table `t`.
   ##
   ## See also:
-  ## * `contains proc<#contains,OrderedTableRef[A,B],A>`_ for use with the `in`
+  ## * `contains func<#contains,OrderedTableRef[A,B],A>`_ for use with the `in`
   ##   operator
-  ## * `[] proc<#[],OrderedTableRef[A,B],A>`_ for retrieving a value of a key
-  ## * `getOrDefault proc<#getOrDefault,OrderedTableRef[A,B],A>`_ to return
+  ## * `[] func<#[],OrderedTableRef[A,B],A>`_ for retrieving a value of a key
+  ## * `getOrDefault func<#getOrDefault,OrderedTableRef[A,B],A>`_ to return
   ##   a default value (e.g. zero for int) if the key doesn't exist
-  ## * `getOrDefault proc<#getOrDefault,OrderedTableRef[A,B],A,B>`_ to return
+  ## * `getOrDefault func<#getOrDefault,OrderedTableRef[A,B],A,B>`_ to return
   ##   a custom value if the key doesn't exist
   runnableExamples:
     let a = {'a': 5, 'b': 9}.newOrderedTable
@@ -1880,8 +1880,8 @@ proc hasKey*[A, B](t: OrderedTableRef[A, B], key: A): bool =
 
   result = t[].hasKey(key)
 
-proc contains*[A, B](t: OrderedTableRef[A, B], key: A): bool =
-  ## Alias of `hasKey proc<#hasKey,OrderedTableRef[A,B],A>`_ for use with
+func contains*[A, B](t: OrderedTableRef[A, B], key: A): bool =
+  ## Alias of `hasKey func<#hasKey,OrderedTableRef[A,B],A>`_ for use with
   ## the `in` operator.
   runnableExamples:
     let a = {'a': 5, 'b': 9}.newOrderedTable
@@ -1890,15 +1890,15 @@ proc contains*[A, B](t: OrderedTableRef[A, B], key: A): bool =
 
   return hasKey[A, B](t, key)
 
-proc hasKeyOrPut*[A, B](t: var OrderedTableRef[A, B], key: A, val: B): bool =
+func hasKeyOrPut*[A, B](t: var OrderedTableRef[A, B], key: A, val: B): bool =
   ## Returns true if `key` is in the table, otherwise inserts `value`.
   ##
   ## See also:
-  ## * `hasKey proc<#hasKey,OrderedTableRef[A,B],A>`_
-  ## * `[] proc<#[],OrderedTableRef[A,B],A>`_ for retrieving a value of a key
-  ## * `getOrDefault proc<#getOrDefault,OrderedTableRef[A,B],A>`_ to return
+  ## * `hasKey func<#hasKey,OrderedTableRef[A,B],A>`_
+  ## * `[] func<#[],OrderedTableRef[A,B],A>`_ for retrieving a value of a key
+  ## * `getOrDefault func<#getOrDefault,OrderedTableRef[A,B],A>`_ to return
   ##   a default value (e.g. zero for int) if the key doesn't exist
-  ## * `getOrDefault proc<#getOrDefault,OrderedTableRef[A,B],A,B>`_ to return
+  ## * `getOrDefault func<#getOrDefault,OrderedTableRef[A,B],A,B>`_ to return
   ##   a custom value if the key doesn't exist
   runnableExamples:
     var a = {'a': 5, 'b': 9}.newOrderedTable
@@ -1910,17 +1910,17 @@ proc hasKeyOrPut*[A, B](t: var OrderedTableRef[A, B], key: A, val: B): bool =
 
   result = t[].hasKeyOrPut(key, val)
 
-proc getOrDefault*[A, B](t: OrderedTableRef[A, B], key: A): B =
+func getOrDefault*[A, B](t: OrderedTableRef[A, B], key: A): B =
   ## Retrieves the value at `t[key]` if `key` is in `t`. Otherwise, the
   ## default initialization value for type `B` is returned (e.g. 0 for any
   ## integer type).
   ##
   ## See also:
-  ## * `[] proc<#[],OrderedTableRef[A,B],A>`_ for retrieving a value of a key
-  ## * `hasKey proc<#hasKey,OrderedTableRef[A,B],A>`_
-  ## * `hasKeyOrPut proc<#hasKeyOrPut,OrderedTableRef[A,B],A,B>`_
-  ## * `mgetOrPut proc<#mgetOrPut,OrderedTableRef[A,B],A,B>`_
-  ## * `getOrDefault proc<#getOrDefault,OrderedTableRef[A,B],A,B>`_ to return
+  ## * `[] func<#[],OrderedTableRef[A,B],A>`_ for retrieving a value of a key
+  ## * `hasKey func<#hasKey,OrderedTableRef[A,B],A>`_
+  ## * `hasKeyOrPut func<#hasKeyOrPut,OrderedTableRef[A,B],A,B>`_
+  ## * `mgetOrPut func<#mgetOrPut,OrderedTableRef[A,B],A,B>`_
+  ## * `getOrDefault func<#getOrDefault,OrderedTableRef[A,B],A,B>`_ to return
   ##   a custom value if the key doesn't exist
   runnableExamples:
     let a = {'a': 5, 'b': 9}.newOrderedTable
@@ -1929,16 +1929,16 @@ proc getOrDefault*[A, B](t: OrderedTableRef[A, B], key: A): B =
 
   getOrDefault(t[], key)
 
-proc getOrDefault*[A, B](t: OrderedTableRef[A, B], key: A, default: B): B =
+func getOrDefault*[A, B](t: OrderedTableRef[A, B], key: A, default: B): B =
   ## Retrieves the value at `t[key]` if `key` is in `t`.
   ## Otherwise, `default` is returned.
   ##
   ## See also:
-  ## * `[] proc<#[],OrderedTableRef[A,B],A>`_ for retrieving a value of a key
-  ## * `hasKey proc<#hasKey,OrderedTableRef[A,B],A>`_
-  ## * `hasKeyOrPut proc<#hasKeyOrPut,OrderedTableRef[A,B],A,B>`_
-  ## * `mgetOrPut proc<#mgetOrPut,OrderedTableRef[A,B],A,B>`_
-  ## * `getOrDefault proc<#getOrDefault,OrderedTableRef[A,B],A>`_ to return
+  ## * `[] func<#[],OrderedTableRef[A,B],A>`_ for retrieving a value of a key
+  ## * `hasKey func<#hasKey,OrderedTableRef[A,B],A>`_
+  ## * `hasKeyOrPut func<#hasKeyOrPut,OrderedTableRef[A,B],A,B>`_
+  ## * `mgetOrPut func<#mgetOrPut,OrderedTableRef[A,B],A,B>`_
+  ## * `getOrDefault func<#getOrDefault,OrderedTableRef[A,B],A>`_ to return
   ##   a default value (e.g. zero for int) if the key doesn't exist
   runnableExamples:
     let a = {'a': 5, 'b': 9}.newOrderedTable
@@ -1947,17 +1947,17 @@ proc getOrDefault*[A, B](t: OrderedTableRef[A, B], key: A, default: B): B =
 
   getOrDefault(t[], key, default)
 
-proc mgetOrPut*[A, B](t: OrderedTableRef[A, B], key: A, val: B): var B =
+func mgetOrPut*[A, B](t: OrderedTableRef[A, B], key: A, val: B): var B =
   ## Retrieves value at `t[key]` or puts `val` if not present, either way
   ## returning a value which can be modified.
   ##
   ## See also:
-  ## * `[] proc<#[],OrderedTableRef[A,B],A>`_ for retrieving a value of a key
-  ## * `hasKey proc<#hasKey,OrderedTableRef[A,B],A>`_
-  ## * `hasKeyOrPut proc<#hasKeyOrPut,OrderedTableRef[A,B],A,B>`_
-  ## * `getOrDefault proc<#getOrDefault,OrderedTableRef[A,B],A>`_ to return
+  ## * `[] func<#[],OrderedTableRef[A,B],A>`_ for retrieving a value of a key
+  ## * `hasKey func<#hasKey,OrderedTableRef[A,B],A>`_
+  ## * `hasKeyOrPut func<#hasKeyOrPut,OrderedTableRef[A,B],A,B>`_
+  ## * `getOrDefault func<#getOrDefault,OrderedTableRef[A,B],A>`_ to return
   ##   a default value (e.g. zero for int) if the key doesn't exist
-  ## * `getOrDefault proc<#getOrDefault,OrderedTableRef[A,B],A,B>`_ to return
+  ## * `getOrDefault func<#getOrDefault,OrderedTableRef[A,B],A,B>`_ to return
   ##   a custom value if the key doesn't exist
   runnableExamples:
     var a = {'a': 5, 'b': 9}.newOrderedTable
@@ -1967,7 +1967,7 @@ proc mgetOrPut*[A, B](t: OrderedTableRef[A, B], key: A, val: B): var B =
 
   result = t[].mgetOrPut(key, val)
 
-proc len*[A, B](t: OrderedTableRef[A, B]): int {.inline.} =
+func len*[A, B](t: OrderedTableRef[A, B]): int {.inline.} =
   ## Returns the number of keys in `t`.
   runnableExamples:
     let a = {'a': 5, 'b': 9}.newOrderedTable
@@ -1975,21 +1975,21 @@ proc len*[A, B](t: OrderedTableRef[A, B]): int {.inline.} =
 
   result = t.counter
 
-proc add*[A, B](t: OrderedTableRef[A, B], key: A, val: sink B) {.deprecated:
+func add*[A, B](t: OrderedTableRef[A, B], key: A, val: sink B) {.deprecated:
     "Deprecated since v1.4; it was more confusing than useful, use `[]=`".} =
   ## Puts a new `(key, value)` pair into `t` even if `t[key]` already exists.
   ##
   ## **This can introduce duplicate keys into the table!**
   ##
-  ## Use `[]= proc<#[]=,OrderedTableRef[A,B],A,sinkB>`_ for inserting a new
+  ## Use `[]= func<#[]=,OrderedTableRef[A,B],A,sinkB>`_ for inserting a new
   ## (key, value) pair in the table without introducing duplicates.
   t[].add(key, val)
 
-proc del*[A, B](t: OrderedTableRef[A, B], key: A) =
+func del*[A, B](t: OrderedTableRef[A, B], key: A) =
   ## Deletes `key` from hash table `t`. Does nothing if the key does not exist.
   ##
   ## See also:
-  ## * `clear proc<#clear,OrderedTableRef[A,B]>`_ to empty the whole table
+  ## * `clear func<#clear,OrderedTableRef[A,B]>`_ to empty the whole table
   runnableExamples:
     var a = {'a': 5, 'b': 9, 'c': 13}.newOrderedTable
     a.del('a')
@@ -1999,15 +1999,15 @@ proc del*[A, B](t: OrderedTableRef[A, B], key: A) =
 
   t[].del(key)
 
-proc pop*[A, B](t: OrderedTableRef[A, B], key: A, val: var B): bool {.since: (1, 1).} =
+func pop*[A, B](t: OrderedTableRef[A, B], key: A, val: var B): bool {.since: (1, 1).} =
   ## Deletes the `key` from the table.
   ## Returns `true`, if the `key` existed, and sets `val` to the
   ## mapping of the key. Otherwise, returns `false`, and the `val` is
   ## unchanged.
   ##
   ## See also:
-  ## * `del proc<#del,OrderedTableRef[A,B],A>`_
-  ## * `clear proc<#clear,OrderedTableRef[A,B]>`_ to empty the whole table
+  ## * `del func<#del,OrderedTableRef[A,B],A>`_
+  ## * `clear func<#clear,OrderedTableRef[A,B]>`_ to empty the whole table
   runnableExamples:
     var
       a = {'c': 5, 'b': 9, 'a': 13}.newOrderedTable
@@ -2022,11 +2022,11 @@ proc pop*[A, B](t: OrderedTableRef[A, B], key: A, val: var B): bool {.since: (1,
 
   pop(t[], key, val)
 
-proc clear*[A, B](t: OrderedTableRef[A, B]) =
+func clear*[A, B](t: OrderedTableRef[A, B]) =
   ## Resets the table so that it is empty.
   ##
   ## See also:
-  ## * `del proc<#del,OrderedTableRef[A,B],A>`_
+  ## * `del func<#del,OrderedTableRef[A,B],A>`_
   runnableExamples:
     var a = {'a': 5, 'b': 9, 'c': 13}.newOrderedTable
     doAssert len(a) == 3
@@ -2035,14 +2035,14 @@ proc clear*[A, B](t: OrderedTableRef[A, B]) =
 
   clear(t[])
 
-proc sort*[A, B](t: OrderedTableRef[A, B], cmp: proc (x, y: (A, B)): int,
+func sort*[A, B](t: OrderedTableRef[A, B], cmp: proc (x, y: (A, B)): int,
     order = SortOrder.Ascending) =
   ## Sorts `t` according to the function `cmp`.
   ##
   ## This modifies the internal list
   ## that kept the insertion order, so insertion order is lost after this
   ## call but key lookup and insertions remain possible after `sort` (in
-  ## contrast to the `sort proc<#sort,CountTableRef[A]>`_ for count tables).
+  ## contrast to the `sort func<#sort,CountTableRef[A]>`_ for count tables).
   runnableExamples:
     import std/[algorithm]
     var a = newOrderedTable[char, int]()
@@ -2056,12 +2056,12 @@ proc sort*[A, B](t: OrderedTableRef[A, B], cmp: proc (x, y: (A, B)): int,
 
   t[].sort(cmp, order = order)
 
-proc `$`*[A, B](t: OrderedTableRef[A, B]): string =
+func `$`*[A, B](t: OrderedTableRef[A, B]): string =
   ## The `$` operator for hash tables. Used internally when calling `echo`
   ## on a table.
   dollarImpl()
 
-proc `==`*[A, B](s, t: OrderedTableRef[A, B]): bool =
+func `==`*[A, B](s, t: OrderedTableRef[A, B]): bool =
   ## The `==` operator for ordered hash tables. Returns true if either both
   ## tables are `nil`, or neither is `nil` and the content and the order of
   ## both are equal.
@@ -2207,7 +2207,7 @@ type
   CountTable*[A] = object
     ## Hash table that counts the number of each key.
     ##
-    ## For creating an empty CountTable, use `initCountTable proc
+    ## For creating an empty CountTable, use `initCountTable func
     ## <#initCountTable>`_.
     data: seq[tuple[key: A, val: int]]
     counter: int
@@ -2215,27 +2215,27 @@ type
   CountTableRef*[A] = ref CountTable[A] ## Ref version of
     ## `CountTable<#CountTable>`_.
     ##
-    ## For creating a new empty CountTableRef, use `newCountTable proc
+    ## For creating a new empty CountTableRef, use `newCountTable func
     ## <#newCountTable>`_.
 
 
 # ------------------------------ helpers ---------------------------------
 
-proc ctRawInsert[A](t: CountTable[A], data: var seq[tuple[key: A, val: int]],
+func ctRawInsert[A](t: CountTable[A], data: var seq[tuple[key: A, val: int]],
                   key: A, val: int) =
   var h: Hash = hash(key) and high(data)
   while data[h].val != 0: h = nextTry(h, high(data))
   data[h].key = key
   data[h].val = val
 
-proc enlarge[A](t: var CountTable[A]) =
+func enlarge[A](t: var CountTable[A]) =
   var n: seq[tuple[key: A, val: int]]
   newSeq(n, len(t.data) * growthFactor)
   for i in countup(0, high(t.data)):
     if t.data[i].val != 0: ctRawInsert(t, n, move t.data[i].key, move t.data[i].val)
   swap(t.data, n)
 
-proc rawGet[A](t: CountTable[A], key: A): int =
+func rawGet[A](t: CountTable[A], key: A): int =
   if t.data.len == 0:
     return -1
   var h: Hash = hash(key) and high(t.data) # start with real hash value
@@ -2248,38 +2248,38 @@ template ctget(t, key, default: untyped): untyped =
   var index = rawGet(t, key)
   result = if index >= 0: t.data[index].val else: default
 
-proc inc*[A](t: var CountTable[A], key: A, val = 1)
+func inc*[A](t: var CountTable[A], key: A, val = 1)
 
 # ----------------------------------------------------------------------
 
-proc initCountTable*[A](initialSize = defaultInitialSize): CountTable[A] =
+func initCountTable*[A](initialSize = defaultInitialSize): CountTable[A] =
   ## Creates a new count table that is empty.
   ##
   ## Starting from Nim v0.20, tables are initialized by default and it is
   ## not necessary to call this function explicitly.
   ##
   ## See also:
-  ## * `toCountTable proc<#toCountTable,openArray[A]>`_
-  ## * `newCountTable proc<#newCountTable>`_ for creating a
+  ## * `toCountTable func<#toCountTable,openArray[A]>`_
+  ## * `newCountTable func<#newCountTable>`_ for creating a
   ##   `CountTableRef`
   initImpl(result, initialSize)
 
-proc toCountTable*[A](keys: openArray[A]): CountTable[A] =
+func toCountTable*[A](keys: openArray[A]): CountTable[A] =
   ## Creates a new count table with every member of a container `keys`
   ## having a count of how many times it occurs in that container.
   result = initCountTable[A](keys.len)
   for key in items(keys): result.inc(key)
 
-proc `[]`*[A](t: CountTable[A], key: A): int =
+func `[]`*[A](t: CountTable[A], key: A): int =
   ## Retrieves the value at `t[key]` if `key` is in `t`.
   ## Otherwise `0` is returned.
   ##
   ## See also:
   ## * `getOrDefault<#getOrDefault,CountTable[A],A,int>`_ to return
   ##   a custom value if the key doesn't exist
-  ## * `[]= proc<#[]%3D,CountTable[A],A,int>`_ for inserting a new
+  ## * `[]= func<#[]%3D,CountTable[A],A,int>`_ for inserting a new
   ##   (key, value) pair in the table
-  ## * `hasKey proc<#hasKey,CountTable[A],A>`_ for checking if a key
+  ## * `hasKey func<#hasKey,CountTable[A],A>`_ for checking if a key
   ##   is in the table
   assert(not t.isSorted, "CountTable must not be used after sorting")
   ctget(t, key, 0)
@@ -2288,12 +2288,12 @@ template cntMakeEmpty(i) = t.data[i].val = 0
 template cntCellEmpty(i) = t.data[i].val == 0
 template cntCellHash(i)  = hash(t.data[i].key)
 
-proc `[]=`*[A](t: var CountTable[A], key: A, val: int) =
+func `[]=`*[A](t: var CountTable[A], key: A, val: int) =
   ## Inserts a `(key, value)` pair into `t`.
   ##
   ## See also:
-  ## * `[] proc<#[],CountTable[A],A>`_ for retrieving a value of a key
-  ## * `inc proc<#inc,CountTable[A],A,int>`_ for incrementing a
+  ## * `[] func<#[],CountTable[A],A>`_ for retrieving a value of a key
+  ## * `inc func<#inc,CountTable[A],A,int>`_ for incrementing a
   ##   value of a key
   assert(not t.isSorted, "CountTable must not be used after sorting")
   assert val >= 0
@@ -2306,7 +2306,7 @@ proc `[]=`*[A](t: var CountTable[A], key: A, val: int) =
     else:
       insertImpl()
 
-proc inc*[A](t: var CountTable[A], key: A, val = 1) =
+func inc*[A](t: var CountTable[A], key: A, val = 1) =
   ## Increments `t[key]` by `val` (default: 1).
   runnableExamples:
     var a = toCountTable("aab")
@@ -2324,15 +2324,15 @@ proc inc*[A](t: var CountTable[A], key: A, val = 1) =
     if val != 0:
       insertImpl()
 
-proc len*[A](t: CountTable[A]): int =
+func len*[A](t: CountTable[A]): int =
   ## Returns the number of keys in `t`.
   result = t.counter
 
-proc smallest*[A](t: CountTable[A]): tuple[key: A, val: int] =
+func smallest*[A](t: CountTable[A]): tuple[key: A, val: int] =
   ## Returns the `(key, value)` pair with the smallest `val`. Efficiency: O(n)
   ##
   ## See also:
-  ## * `largest proc<#largest,CountTable[A]>`_
+  ## * `largest func<#largest,CountTable[A]>`_
   assert t.len > 0, "counttable is empty"
   var minIdx = -1
   for h in 0 .. high(t.data):
@@ -2341,11 +2341,11 @@ proc smallest*[A](t: CountTable[A]): tuple[key: A, val: int] =
   result.key = t.data[minIdx].key
   result.val = t.data[minIdx].val
 
-proc largest*[A](t: CountTable[A]): tuple[key: A, val: int] =
+func largest*[A](t: CountTable[A]): tuple[key: A, val: int] =
   ## Returns the `(key, value)` pair with the largest `val`. Efficiency: O(n)
   ##
   ## See also:
-  ## * `smallest proc<#smallest,CountTable[A]>`_
+  ## * `smallest func<#smallest,CountTable[A]>`_
   assert t.len > 0, "counttable is empty"
   var maxIdx = 0
   for h in 1 .. high(t.data):
@@ -2353,39 +2353,39 @@ proc largest*[A](t: CountTable[A]): tuple[key: A, val: int] =
   result.key = t.data[maxIdx].key
   result.val = t.data[maxIdx].val
 
-proc hasKey*[A](t: CountTable[A], key: A): bool =
+func hasKey*[A](t: CountTable[A], key: A): bool =
   ## Returns true if `key` is in the table `t`.
   ##
   ## See also:
-  ## * `contains proc<#contains,CountTable[A],A>`_ for use with the `in`
+  ## * `contains func<#contains,CountTable[A],A>`_ for use with the `in`
   ##   operator
-  ## * `[] proc<#[],CountTable[A],A>`_ for retrieving a value of a key
-  ## * `getOrDefault proc<#getOrDefault,CountTable[A],A,int>`_ to return
+  ## * `[] func<#[],CountTable[A],A>`_ for retrieving a value of a key
+  ## * `getOrDefault func<#getOrDefault,CountTable[A],A,int>`_ to return
   ##   a custom value if the key doesn't exist
   assert(not t.isSorted, "CountTable must not be used after sorting")
   result = rawGet(t, key) >= 0
 
-proc contains*[A](t: CountTable[A], key: A): bool =
-  ## Alias of `hasKey proc<#hasKey,CountTable[A],A>`_ for use with
+func contains*[A](t: CountTable[A], key: A): bool =
+  ## Alias of `hasKey func<#hasKey,CountTable[A],A>`_ for use with
   ## the `in` operator.
   return hasKey[A](t, key)
 
-proc getOrDefault*[A](t: CountTable[A], key: A; default: int = 0): int =
+func getOrDefault*[A](t: CountTable[A], key: A; default: int = 0): int =
   ## Retrieves the value at `t[key]` if`key` is in `t`. Otherwise, the
   ## integer value of `default` is returned.
   ##
   ## See also:
-  ## * `[] proc<#[],CountTable[A],A>`_ for retrieving a value of a key
-  ## * `hasKey proc<#hasKey,CountTable[A],A>`_ for checking if a key
+  ## * `[] func<#[],CountTable[A],A>`_ for retrieving a value of a key
+  ## * `hasKey func<#hasKey,CountTable[A],A>`_ for checking if a key
   ##   is in the table
   ctget(t, key, default)
 
-proc del*[A](t: var CountTable[A], key: A) {.since: (1, 1).} =
+func del*[A](t: var CountTable[A], key: A) {.since: (1, 1).} =
   ## Deletes `key` from table `t`. Does nothing if the key does not exist.
   ##
   ## See also:
-  ## * `pop proc<#pop,CountTable[A],A,int>`_
-  ## * `clear proc<#clear,CountTable[A]>`_ to empty the whole table
+  ## * `pop func<#pop,CountTable[A],A,int>`_
+  ## * `clear func<#clear,CountTable[A]>`_ to empty the whole table
   runnableExamples:
     var a = toCountTable("aabbbccccc")
     a.del('b')
@@ -2397,15 +2397,15 @@ proc del*[A](t: var CountTable[A], key: A) {.since: (1, 1).} =
 
   delImplNoHCode(cntMakeEmpty, cntCellEmpty, cntCellHash)
 
-proc pop*[A](t: var CountTable[A], key: A, val: var int): bool {.since: (1, 1).} =
+func pop*[A](t: var CountTable[A], key: A, val: var int): bool {.since: (1, 1).} =
   ## Deletes the `key` from the table.
   ## Returns `true`, if the `key` existed, and sets `val` to the
   ## mapping of the key. Otherwise, returns `false`, and the `val` is
   ## unchanged.
   ##
   ## See also:
-  ## * `del proc<#del,CountTable[A],A>`_
-  ## * `clear proc<#clear,CountTable[A]>`_ to empty the whole table
+  ## * `del func<#del,CountTable[A],A>`_
+  ## * `clear func<#clear,CountTable[A]>`_ to empty the whole table
   runnableExamples:
     var a = toCountTable("aabbbccccc")
     var i = 0
@@ -2421,19 +2421,19 @@ proc pop*[A](t: var CountTable[A], key: A, val: var int): bool {.since: (1, 1).}
     val = move(t.data[index].val)
     delImplIdx(t, index, cntMakeEmpty, cntCellEmpty, cntCellHash)
 
-proc clear*[A](t: var CountTable[A]) =
+func clear*[A](t: var CountTable[A]) =
   ## Resets the table so that it is empty.
   ##
   ## See also:
-  ## * `del proc<#del,CountTable[A],A>`_
-  ## * `pop proc<#pop,CountTable[A],A,int>`_
+  ## * `del func<#del,CountTable[A],A>`_
+  ## * `pop func<#pop,CountTable[A],A,int>`_
   clearImpl()
   t.isSorted = false
 
 func ctCmp[T](a, b: tuple[key: T, val: int]): int =
   result = system.cmp(a.val, b.val)
 
-proc sort*[A](t: var CountTable[A], order = SortOrder.Descending) =
+func sort*[A](t: var CountTable[A], order = SortOrder.Descending) =
   ## Sorts the count table so that, by default, the entry with the
   ## highest counter comes first.
   ##
@@ -2454,7 +2454,7 @@ proc sort*[A](t: var CountTable[A], order = SortOrder.Descending) =
   t.data.sort(cmp = ctCmp, order = order)
   t.isSorted = true
 
-proc merge*[A](s: var CountTable[A], t: CountTable[A]) =
+func merge*[A](s: var CountTable[A], t: CountTable[A]) =
   ## Merges the second table into the first one (must be declared as `var`).
   runnableExamples:
     var a = toCountTable("aaabbc")
@@ -2467,7 +2467,7 @@ proc merge*[A](s: var CountTable[A], t: CountTable[A]) =
     s.inc(key, value)
 
 when (NimMajor, NimMinor) <= (1, 0):
-  proc merge*[A](s, t: CountTable[A]): CountTable[A] =
+  func merge*[A](s, t: CountTable[A]): CountTable[A] =
     ## Merges the two tables into a new one.
     runnableExamples:
       let
@@ -2480,12 +2480,12 @@ when (NimMajor, NimMinor) <= (1, 0):
       for key, value in table:
         result.inc(key, value)
 
-proc `$`*[A](t: CountTable[A]): string =
+func `$`*[A](t: CountTable[A]): string =
   ## The `$` operator for count tables. Used internally when calling `echo`
   ## on a table.
   dollarImpl()
 
-proc `==`*[A](s, t: CountTable[A]): bool =
+func `==`*[A](s, t: CountTable[A]): bool =
   ## The `==` operator for count tables. Returns `true` if both tables
   ## contain the same keys with the same count. Insert order does not matter.
   equalsImpl(s, t)
@@ -2608,50 +2608,50 @@ iterator mvalues*[A](t: var CountTable[A]): var int =
 # ---------------------------- CountTableRef --------------------------------
 # ---------------------------------------------------------------------------
 
-proc inc*[A](t: CountTableRef[A], key: A, val = 1)
+func inc*[A](t: CountTableRef[A], key: A, val = 1)
 
-proc newCountTable*[A](initialSize = defaultInitialSize): <//>CountTableRef[A] =
+func newCountTable*[A](initialSize = defaultInitialSize): <//>CountTableRef[A] =
   ## Creates a new ref count table that is empty.
   ##
   ## See also:
-  ## * `newCountTable proc<#newCountTable,openArray[A]>`_ for creating
+  ## * `newCountTable func<#newCountTable,openArray[A]>`_ for creating
   ##   a `CountTableRef` from a collection
-  ## * `initCountTable proc<#initCountTable>`_ for creating a
+  ## * `initCountTable func<#initCountTable>`_ for creating a
   ##   `CountTable`
   new(result)
   result[] = initCountTable[A](initialSize)
 
-proc newCountTable*[A](keys: openArray[A]): <//>CountTableRef[A] =
+func newCountTable*[A](keys: openArray[A]): <//>CountTableRef[A] =
   ## Creates a new ref count table with every member of a container `keys`
   ## having a count of how many times it occurs in that container.
   result = newCountTable[A](keys.len)
   for key in items(keys): result.inc(key)
 
-proc `[]`*[A](t: CountTableRef[A], key: A): int =
+func `[]`*[A](t: CountTableRef[A], key: A): int =
   ## Retrieves the value at `t[key]` if `key` is in `t`.
   ## Otherwise `0` is returned.
   ##
   ## See also:
   ## * `getOrDefault<#getOrDefault,CountTableRef[A],A,int>`_ to return
   ##   a custom value if the key doesn't exist
-  ## * `inc proc<#inc,CountTableRef[A],A,int>`_ to inc even if missing
-  ## * `[]= proc<#[]%3D,CountTableRef[A],A,int>`_ for inserting a new
+  ## * `inc func<#inc,CountTableRef[A],A,int>`_ to inc even if missing
+  ## * `[]= func<#[]%3D,CountTableRef[A],A,int>`_ for inserting a new
   ##   (key, value) pair in the table
-  ## * `hasKey proc<#hasKey,CountTableRef[A],A>`_ for checking if a key
+  ## * `hasKey func<#hasKey,CountTableRef[A],A>`_ for checking if a key
   ##   is in the table
   result = t[][key]
 
-proc `[]=`*[A](t: CountTableRef[A], key: A, val: int) =
+func `[]=`*[A](t: CountTableRef[A], key: A, val: int) =
   ## Inserts a `(key, value)` pair into `t`.
   ##
   ## See also:
-  ## * `[] proc<#[],CountTableRef[A],A>`_ for retrieving a value of a key
-  ## * `inc proc<#inc,CountTableRef[A],A,int>`_ for incrementing a
+  ## * `[] func<#[],CountTableRef[A],A>`_ for retrieving a value of a key
+  ## * `inc func<#inc,CountTableRef[A],A,int>`_ for incrementing a
   ##   value of a key
   assert val > 0
   t[][key] = val
 
-proc inc*[A](t: CountTableRef[A], key: A, val = 1) =
+func inc*[A](t: CountTableRef[A], key: A, val = 1) =
   ## Increments `t[key]` by `val` (default: 1).
   runnableExamples:
     var a = newCountTable("aab")
@@ -2660,78 +2660,78 @@ proc inc*[A](t: CountTableRef[A], key: A, val = 1) =
     doAssert a == newCountTable("aaabbbbbbbbbbb")
   t[].inc(key, val)
 
-proc smallest*[A](t: CountTableRef[A]): tuple[key: A, val: int] =
+func smallest*[A](t: CountTableRef[A]): tuple[key: A, val: int] =
   ## Returns the `(key, value)` pair with the smallest `val`. Efficiency: O(n)
   ##
   ## See also:
-  ## * `largest proc<#largest,CountTableRef[A]>`_
+  ## * `largest func<#largest,CountTableRef[A]>`_
   t[].smallest
 
-proc largest*[A](t: CountTableRef[A]): tuple[key: A, val: int] =
+func largest*[A](t: CountTableRef[A]): tuple[key: A, val: int] =
   ## Returns the `(key, value)` pair with the largest `val`. Efficiency: O(n)
   ##
   ## See also:
-  ## * `smallest proc<#smallest,CountTable[A]>`_
+  ## * `smallest func<#smallest,CountTable[A]>`_
   t[].largest
 
-proc hasKey*[A](t: CountTableRef[A], key: A): bool =
+func hasKey*[A](t: CountTableRef[A], key: A): bool =
   ## Returns true if `key` is in the table `t`.
   ##
   ## See also:
-  ## * `contains proc<#contains,CountTableRef[A],A>`_ for use with the `in`
+  ## * `contains func<#contains,CountTableRef[A],A>`_ for use with the `in`
   ##   operator
-  ## * `[] proc<#[],CountTableRef[A],A>`_ for retrieving a value of a key
-  ## * `getOrDefault proc<#getOrDefault,CountTableRef[A],A,int>`_ to return
+  ## * `[] func<#[],CountTableRef[A],A>`_ for retrieving a value of a key
+  ## * `getOrDefault func<#getOrDefault,CountTableRef[A],A,int>`_ to return
   ##   a custom value if the key doesn't exist
   result = t[].hasKey(key)
 
-proc contains*[A](t: CountTableRef[A], key: A): bool =
-  ## Alias of `hasKey proc<#hasKey,CountTableRef[A],A>`_ for use with
+func contains*[A](t: CountTableRef[A], key: A): bool =
+  ## Alias of `hasKey func<#hasKey,CountTableRef[A],A>`_ for use with
   ## the `in` operator.
   return hasKey[A](t, key)
 
-proc getOrDefault*[A](t: CountTableRef[A], key: A, default: int): int =
+func getOrDefault*[A](t: CountTableRef[A], key: A, default: int): int =
   ## Retrieves the value at `t[key]` if`key` is in `t`. Otherwise, the
   ## integer value of `default` is returned.
   ##
   ## See also:
-  ## * `[] proc<#[],CountTableRef[A],A>`_ for retrieving a value of a key
-  ## * `hasKey proc<#hasKey,CountTableRef[A],A>`_ for checking if a key
+  ## * `[] func<#[],CountTableRef[A],A>`_ for retrieving a value of a key
+  ## * `hasKey func<#hasKey,CountTableRef[A],A>`_ for checking if a key
   ##   is in the table
   result = t[].getOrDefault(key, default)
 
-proc len*[A](t: CountTableRef[A]): int =
+func len*[A](t: CountTableRef[A]): int =
   ## Returns the number of keys in `t`.
   result = t.counter
 
-proc del*[A](t: CountTableRef[A], key: A) {.since: (1, 1).} =
+func del*[A](t: CountTableRef[A], key: A) {.since: (1, 1).} =
   ## Deletes `key` from table `t`. Does nothing if the key does not exist.
   ##
   ## See also:
-  ## * `pop proc<#pop,CountTableRef[A],A,int>`_
-  ## * `clear proc<#clear,CountTableRef[A]>`_ to empty the whole table
+  ## * `pop func<#pop,CountTableRef[A],A,int>`_
+  ## * `clear func<#clear,CountTableRef[A]>`_ to empty the whole table
   del(t[], key)
 
-proc pop*[A](t: CountTableRef[A], key: A, val: var int): bool {.since: (1, 1).} =
+func pop*[A](t: CountTableRef[A], key: A, val: var int): bool {.since: (1, 1).} =
   ## Deletes the `key` from the table.
   ## Returns `true`, if the `key` existed, and sets `val` to the
   ## mapping of the key. Otherwise, returns `false`, and the `val` is
   ## unchanged.
   ##
   ## See also:
-  ## * `del proc<#del,CountTableRef[A],A>`_
-  ## * `clear proc<#clear,CountTableRef[A]>`_ to empty the whole table
+  ## * `del func<#del,CountTableRef[A],A>`_
+  ## * `clear func<#clear,CountTableRef[A]>`_ to empty the whole table
   pop(t[], key, val)
 
-proc clear*[A](t: CountTableRef[A]) =
+func clear*[A](t: CountTableRef[A]) =
   ## Resets the table so that it is empty.
   ##
   ## See also:
-  ## * `del proc<#del,CountTableRef[A],A>`_
-  ## * `pop proc<#pop,CountTableRef[A],A,int>`_
+  ## * `del func<#del,CountTableRef[A],A>`_
+  ## * `pop func<#pop,CountTableRef[A],A,int>`_
   clear(t[])
 
-proc sort*[A](t: CountTableRef[A], order = SortOrder.Descending) =
+func sort*[A](t: CountTableRef[A], order = SortOrder.Descending) =
   ## Sorts the count table so that, by default, the entry with the
   ## highest counter comes first.
   ##
@@ -2742,7 +2742,7 @@ proc sort*[A](t: CountTableRef[A], order = SortOrder.Descending) =
   ## to iterate over `t` in the sorted order.
   t[].sort(order = order)
 
-proc merge*[A](s, t: CountTableRef[A]) =
+func merge*[A](s, t: CountTableRef[A]) =
   ## Merges the second table into the first one.
   runnableExamples:
     let
@@ -2753,12 +2753,12 @@ proc merge*[A](s, t: CountTableRef[A]) =
 
   s[].merge(t[])
 
-proc `$`*[A](t: CountTableRef[A]): string =
+func `$`*[A](t: CountTableRef[A]): string =
   ## The `$` operator for count tables. Used internally when calling `echo`
   ## on a table.
   dollarImpl()
 
-proc `==`*[A](s, t: CountTableRef[A]): bool =
+func `==`*[A](s, t: CountTableRef[A]): bool =
   ## The `==` operator for count tables. Returns `true` if either both tables
   ## are `nil`, or neither is `nil` and both contain the same keys with the same
   ## count. Insert order does not matter.

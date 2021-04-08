@@ -54,7 +54,7 @@ type
   CacheCounter* = distinct string
     ## Compile-time counter, uses `int` for storing the count.
 
-proc value*(c: CacheCounter): int {.magic: "NccValue".} =
+func value*(c: CacheCounter): int {.magic: "NccValue".} =
   ## Returns the value of a counter `c`.
   runnableExamples:
     static:
@@ -65,7 +65,7 @@ proc value*(c: CacheCounter): int {.magic: "NccValue".} =
       inc counter
       assert counter.value == 1
 
-proc inc*(c: CacheCounter; by = 1) {.magic: "NccInc".} =
+func inc*(c: CacheCounter; by = 1) {.magic: "NccInc".} =
   ## Increments the counter `c` with the value `by`.
   runnableExamples:
     static:
@@ -75,7 +75,7 @@ proc inc*(c: CacheCounter; by = 1) {.magic: "NccInc".} =
 
       assert counter.value == 6
 
-proc add*(s: CacheSeq; value: NimNode) {.magic: "NcsAdd".} =
+func add*(s: CacheSeq; value: NimNode) {.magic: "NcsAdd".} =
   ## Adds `value` to `s`.
   runnableExamples:
     import std/macros
@@ -88,7 +88,7 @@ proc add*(s: CacheSeq; value: NimNode) {.magic: "NcsAdd".} =
       assert mySeq.len == 2
       assert mySeq[1].strVal == "hello ic"
 
-proc incl*(s: CacheSeq; value: NimNode) {.magic: "NcsIncl".} = 
+func incl*(s: CacheSeq; value: NimNode) {.magic: "NcsIncl".} = 
   ## Adds `value` to `s`.
   ## 
   ## .. hint:: This doesn't do anything if `value` is already in `s`.
@@ -103,7 +103,7 @@ proc incl*(s: CacheSeq; value: NimNode) {.magic: "NcsIncl".} =
       # still one element
       assert mySeq.len == 1
 
-proc len*(s: CacheSeq): int {.magic: "NcsLen".} =
+func len*(s: CacheSeq): int {.magic: "NcsLen".} =
   ## Returns the length of `s`.
   runnableExamples:
     import std/macros
@@ -117,7 +117,7 @@ proc len*(s: CacheSeq): int {.magic: "NcsLen".} =
       mySeq.add(val)
       assert mySeq.len == 2
 
-proc `[]`*(s: CacheSeq; i: int): NimNode {.magic: "NcsAt".} =
+func `[]`*(s: CacheSeq; i: int): NimNode {.magic: "NcsAt".} =
   ## Returns the `i`th value from `s`.
   runnableExamples:
     import std/macros
@@ -143,7 +143,7 @@ iterator items*(s: CacheSeq): NimNode =
   
   for i in 0 ..< len(s): yield s[i]
 
-proc `[]=`*(t: CacheTable; key: string, value: NimNode) {.magic: "NctPut".} =
+func `[]=`*(t: CacheTable; key: string, value: NimNode) {.magic: "NctPut".} =
   ## Inserts a `(key, value)` pair into `t`. 
   ## 
   ## .. warning:: `key` has to be unique! Assigning `value` to a `key` that is already
@@ -159,7 +159,7 @@ proc `[]=`*(t: CacheTable; key: string, value: NimNode) {.magic: "NctPut".} =
       # check that we can get the value back
       assert mcTable["value"].kind == nnkIntLit    
 
-proc len*(t: CacheTable): int {.magic: "NctLen".} = 
+func len*(t: CacheTable): int {.magic: "NctLen".} = 
   ## Returns the number of elements in `t`.
   runnableExamples:
     import std/macros
@@ -169,7 +169,7 @@ proc len*(t: CacheTable): int {.magic: "NctLen".} =
       dataTable["key"] = newLit(5)
       assert dataTable.len == 1
 
-proc `[]`*(t: CacheTable; key: string): NimNode {.magic: "NctGet".} =
+func `[]`*(t: CacheTable; key: string): NimNode {.magic: "NctGet".} =
   ## Retrieves the `NimNode` value at `t[key]`.
   runnableExamples:
     import std/macros
@@ -181,8 +181,8 @@ proc `[]`*(t: CacheTable; key: string): NimNode {.magic: "NctGet".} =
       # get the NimNode back
       assert mcTable["toAdd"].kind == nnkStmtList
 
-proc hasNext(t: CacheTable; iter: int): bool {.magic: "NctHasNext".}
-proc next(t: CacheTable; iter: int): (string, NimNode, int) {.magic: "NctNext".}
+func hasNext(t: CacheTable; iter: int): bool {.magic: "NctHasNext".}
+func next(t: CacheTable; iter: int): (string, NimNode, int) {.magic: "NctNext".}
 
 iterator pairs*(t: CacheTable): (string, NimNode) =
   ## Iterates over all `(key, value)` pairs in `t`.

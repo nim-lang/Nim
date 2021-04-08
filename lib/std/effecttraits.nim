@@ -16,12 +16,12 @@
 
 import macros
 
-proc getRaisesListImpl(n: NimNode): NimNode = discard "see compiler/vmops.nim"
-proc getTagsListImpl(n: NimNode): NimNode = discard "see compiler/vmops.nim"
-proc isGcSafeImpl(n: NimNode): bool = discard "see compiler/vmops.nim"
-proc hasNoSideEffectsImpl(n: NimNode): bool = discard "see compiler/vmops.nim"
+func getRaisesListImpl(n: NimNode): NimNode = discard "see compiler/vmops.nim"
+func getTagsListImpl(n: NimNode): NimNode = discard "see compiler/vmops.nim"
+func isGcSafeImpl(n: NimNode): bool = discard "see compiler/vmops.nim"
+func hasNoSideEffectsImpl(n: NimNode): bool = discard "see compiler/vmops.nim"
 
-proc getRaisesList*(fn: NimNode): NimNode =
+func getRaisesList*(fn: NimNode): NimNode =
   ## Extracts the `.raises` list of the func/proc/etc `fn`.
   ## `fn` has to be a resolved symbol of kind `nnkSym`. This
   ## implies that the macro that calls this proc should accept `typed`
@@ -29,7 +29,7 @@ proc getRaisesList*(fn: NimNode): NimNode =
   expectKind fn, nnkSym
   result = getRaisesListImpl(fn)
 
-proc getTagsList*(fn: NimNode): NimNode =
+func getTagsList*(fn: NimNode): NimNode =
   ## Extracts the `.tags` list of the func/proc/etc `fn`.
   ## `fn` has to be a resolved symbol of kind `nnkSym`. This
   ## implies that the macro that calls this proc should accept `typed`
@@ -37,7 +37,7 @@ proc getTagsList*(fn: NimNode): NimNode =
   expectKind fn, nnkSym
   result = getTagsListImpl(fn)
 
-proc isGcSafe*(fn: NimNode): bool =
+func isGcSafe*(fn: NimNode): bool =
   ## Return true if the func/proc/etc `fn` is `gcsafe`.
   ## `fn` has to be a resolved symbol of kind `nnkSym`. This
   ## implies that the macro that calls this proc should accept `typed`
@@ -45,7 +45,7 @@ proc isGcSafe*(fn: NimNode): bool =
   expectKind fn, nnkSym
   result = isGcSafeImpl(fn)
 
-proc hasNoSideEffects*(fn: NimNode): bool =
+func hasNoSideEffects*(fn: NimNode): bool =
   ## Return true if the func/proc/etc `fn` has `noSideEffect`.
   ## `fn` has to be a resolved symbol of kind `nnkSym`. This
   ## implies that the macro that calls this proc should accept `typed`

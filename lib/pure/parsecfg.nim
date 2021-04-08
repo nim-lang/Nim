@@ -236,24 +236,24 @@ proc close*(c: var CfgParser) {.rtl, extern: "npc$1".} =
   ## Closes the parser `c` and its associated input stream.
   lexbase.close(c)
 
-proc getColumn*(c: CfgParser): int {.rtl, extern: "npc$1".} =
+func getColumn*(c: CfgParser): int {.rtl, extern: "npc$1".} =
   ## Gets the current column the parser has arrived at.
   result = getColNumber(c, c.bufpos)
 
-proc getLine*(c: CfgParser): int {.rtl, extern: "npc$1".} =
+func getLine*(c: CfgParser): int {.rtl, extern: "npc$1".} =
   ## Gets the current line the parser has arrived at.
   result = c.lineNumber
 
-proc getFilename*(c: CfgParser): string {.rtl, extern: "npc$1".} =
+func getFilename*(c: CfgParser): string {.rtl, extern: "npc$1".} =
   ## Gets the filename of the file that the parser processes.
   result = c.filename
 
-proc handleDecChars(c: var CfgParser, xi: var int) =
+func handleDecChars(c: var CfgParser, xi: var int) =
   while c.buf[c.bufpos] in {'0'..'9'}:
     xi = (xi * 10) + (ord(c.buf[c.bufpos]) - ord('0'))
     inc(c.bufpos)
 
-proc getEscapedChar(c: var CfgParser, tok: var Token) =
+func getEscapedChar(c: var CfgParser, tok: var Token) =
   inc(c.bufpos) # skip '\'
   case c.buf[c.bufpos]
   of 'n', 'N':
@@ -353,7 +353,7 @@ proc getString(c: var CfgParser, tok: var Token, rawMode: bool) =
         inc(pos)
     c.bufpos = pos
 
-proc getSymbol(c: var CfgParser, tok: var Token) =
+func getSymbol(c: var CfgParser, tok: var Token) =
   var pos = c.bufpos
   while true:
     add(tok.literal, c.buf[pos])
@@ -423,19 +423,19 @@ proc rawGetTok(c: var CfgParser, tok: var Token) =
     tok.literal = "[EOF]"
   else: getSymbol(c, tok)
 
-proc errorStr*(c: CfgParser, msg: string): string {.rtl, extern: "npc$1".} =
+func errorStr*(c: CfgParser, msg: string): string {.rtl, extern: "npc$1".} =
   ## Returns a properly formatted error message containing current line and
   ## column information.
   result = `%`("$1($2, $3) Error: $4",
                 [c.filename, $getLine(c), $getColumn(c), msg])
 
-proc warningStr*(c: CfgParser, msg: string): string {.rtl, extern: "npc$1".} =
+func warningStr*(c: CfgParser, msg: string): string {.rtl, extern: "npc$1".} =
   ## Returns a properly formatted warning message containing current line and
   ## column information.
   result = `%`("$1($2, $3) Warning: $4",
                 [c.filename, $getLine(c), $getColumn(c), msg])
 
-proc ignoreMsg*(c: CfgParser, e: CfgEvent): string {.rtl, extern: "npc$1".} =
+func ignoreMsg*(c: CfgParser, e: CfgEvent): string {.rtl, extern: "npc$1".} =
   ## Returns a properly formatted warning message containing that
   ## an entry is ignored.
   case e.kind
@@ -498,7 +498,7 @@ proc next*(c: var CfgParser): CfgEvent {.rtl, extern: "npc$1".} =
 type
   Config* = OrderedTableRef[string, <//>OrderedTableRef[string, string]]
 
-proc newConfig*(): Config =
+func newConfig*(): Config =
   ## Creates a new configuration table.
   ## Useful when wanting to create a configuration file.
   result = newOrderedTable[string, <//>OrderedTableRef[string, string]]()
@@ -543,7 +543,7 @@ proc loadConfig*(filename: string): <//>Config =
   defer: fileStream.close()
   result = fileStream.loadConfig(filename)
 
-proc replace(s: string): string =
+func replace(s: string): string =
   var d = ""
   var i = 0
   while i < s.len():
@@ -619,7 +619,7 @@ proc writeConfig*(dict: Config, filename: string) =
   let fileStream = newFileStream(file)
   dict.writeConfig(fileStream)
 
-proc getSectionValue*(dict: Config, section, key: string, defaultVal = ""): string =
+func getSectionValue*(dict: Config, section, key: string, defaultVal = ""): string =
   ## Gets the key value of the specified Section.
   ## Returns the specified default value if the specified key does not exist.
   if dict.hasKey(section):
@@ -630,7 +630,7 @@ proc getSectionValue*(dict: Config, section, key: string, defaultVal = ""): stri
   else:
     result = defaultVal
 
-proc setSectionKey*(dict: var Config, section, key, value: string) =
+func setSectionKey*(dict: var Config, section, key, value: string) =
   ## Sets the Key value of the specified Section.
   var t = newOrderedTable[string, string]()
   if dict.hasKey(section):
@@ -638,11 +638,11 @@ proc setSectionKey*(dict: var Config, section, key, value: string) =
   t[key] = value
   dict[section] = t
 
-proc delSection*(dict: var Config, section: string) =
+func delSection*(dict: var Config, section: string) =
   ## Deletes the specified section and all of its sub keys.
   dict.del(section)
 
-proc delSectionKey*(dict: var Config, section, key: string) =
+func delSectionKey*(dict: var Config, section, key: string) =
   ## Deletes the key of the specified section.
   if dict.hasKey(section):
     if dict[section].hasKey(key):

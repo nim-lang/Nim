@@ -72,16 +72,16 @@ when defined(nimExperimentalJsfetch) or defined(nimdoc):
   func clone*(self: Response | Request): Response {.importjs: "#.$1()".}
     ## https://developer.mozilla.org/en-US/docs/Web/API/Response/clone
 
-  proc text*(self: Response): Future[cstring] {.importjs: "#.$1()".}
+  func text*(self: Response): Future[cstring] {.importjs: "#.$1()".}
     ## https://developer.mozilla.org/en-US/docs/Web/API/Body/text
 
-  proc json*(self: Response): Future[JsObject] {.importjs: "#.$1()".}
+  func json*(self: Response): Future[JsObject] {.importjs: "#.$1()".}
     ## https://developer.mozilla.org/en-US/docs/Web/API/Body/json
 
-  proc formData*(self: Body): Future[FormData] {.importjs: "#.$1()".}
+  func formData*(self: Body): Future[FormData] {.importjs: "#.$1()".}
     ## https://developer.mozilla.org/en-US/docs/Web/API/Body/formData
 
-  proc unsafeNewFetchOptions*(metod, body, mode, credentials, cache, referrerPolicy: cstring;
+  func unsafeNewFetchOptions*(metod, body, mode, credentials, cache, referrerPolicy: cstring;
       keepalive: bool; redirect = "follow".cstring; referrer = "client".cstring; integrity = "".cstring): FetchOptions {.importjs:
       "{method: #, body: #, mode: #, credentials: #, cache: #, referrerPolicy: #, keepalive: #, redirect: #, referrer: #, integrity: #}".}
     ## .. warning:: Unsafe `newfetchOptions`.
@@ -104,10 +104,10 @@ when defined(nimExperimentalJsfetch) or defined(nimdoc):
       )
     )
 
-  proc fetch*(url: cstring | Request): Future[Response] {.importjs: "$1(#)".}
+  func fetch*(url: cstring | Request): Future[Response] {.importjs: "$1(#)".}
     ## `fetch()` API, simple `GET` only, returns a `Future[Response]`.
 
-  proc fetch*(url: cstring | Request; options: FetchOptions): Future[Response] {.importjs: "$1(#, #)".}
+  func fetch*(url: cstring | Request; options: FetchOptions): Future[Response] {.importjs: "$1(#, #)".}
     ## `fetch()` API that takes a `FetchOptions`, returns a `Future[Response]`.
 
   func toCstring*(self: Request | Response | Body | FetchOptions): cstring {.importjs: "JSON.stringify(#)".}
@@ -175,10 +175,10 @@ runnableExamples("-d:nimExperimentalJsfetch -r:off"):
 
   if not defined(nodejs):
     block:
-      proc doFetch(): Future[Response] {.async.} =
+      func doFetch(): Future[Response] {.async.} =
         fetch "https://httpbin.org/get".cstring
 
-      proc example() {.async.} =
+      func example() {.async.} =
         let response: Response = await doFetch()
         assert response.ok
         assert response.status == 200.cint
@@ -189,7 +189,7 @@ runnableExamples("-d:nimExperimentalJsfetch -r:off"):
 
     when defined(nimExperimentalAsyncjsThen):
       block:
-        proc example2 {.async.} =
+        func example2 {.async.} =
           await fetch("https://api.github.com/users/torvalds".cstring)
             .then((response: Response) => response.json())
             .then((json: JsObject) => console.log(json))

@@ -78,24 +78,24 @@ when defined(nimdoc):
     SelectEvent* = object
       ## An object which holds user defined event
 
-  proc newSelector*[T](): Selector[T] =
+  func newSelector*[T](): Selector[T] =
     ## Creates a new selector
 
-  proc close*[T](s: Selector[T]) =
+  func close*[T](s: Selector[T]) =
     ## Closes the selector.
 
-  proc registerHandle*[T](s: Selector[T], fd: int | SocketHandle,
+  func registerHandle*[T](s: Selector[T], fd: int | SocketHandle,
                           events: set[Event], data: T) =
     ## Registers file/socket descriptor `fd` to selector `s`
     ## with events set in `events`. The `data` is application-defined
     ## data, which will be passed when an event is triggered.
 
-  proc updateHandle*[T](s: Selector[T], fd: int | SocketHandle,
+  func updateHandle*[T](s: Selector[T], fd: int | SocketHandle,
                         events: set[Event]) =
     ## Update file/socket descriptor `fd`, registered in selector
     ## `s` with new events set `event`.
 
-  proc registerTimer*[T](s: Selector[T], timeout: int, oneshot: bool,
+  func registerTimer*[T](s: Selector[T], timeout: int, oneshot: bool,
                          data: T): int {.discardable.} =
     ## Registers timer notification with `timeout` (in milliseconds)
     ## to selector `s`.
@@ -109,7 +109,7 @@ when defined(nimdoc):
     ##
     ## Returns the file descriptor for the registered timer.
 
-  proc registerSignal*[T](s: Selector[T], signal: int,
+  func registerSignal*[T](s: Selector[T], signal: int,
                           data: T): int {.discardable.} =
     ## Registers Unix signal notification with `signal` to selector
     ## `s`.
@@ -121,7 +121,7 @@ when defined(nimdoc):
     ##
     ## **Note:** This function is not supported on `Windows`.
 
-  proc registerProcess*[T](s: Selector[T], pid: int,
+  func registerProcess*[T](s: Selector[T], pid: int,
                            data: T): int {.discardable.} =
     ## Registers a process id (pid) notification (when process has
     ## exited) in selector `s`.
@@ -131,13 +131,13 @@ when defined(nimdoc):
     ##
     ## Returns the file descriptor for the registered signal.
 
-  proc registerEvent*[T](s: Selector[T], ev: SelectEvent, data: T) =
+  func registerEvent*[T](s: Selector[T], ev: SelectEvent, data: T) =
     ## Registers selector event `ev` in selector `s`.
     ##
     ## The `data` is application-defined data, which will be passed when
     ## `ev` happens.
 
-  proc registerVnode*[T](s: Selector[T], fd: cint, events: set[Event],
+  func registerVnode*[T](s: Selector[T], fd: cint, events: set[Event],
                          data: T) =
     ## Registers selector BSD/MacOSX specific vnode events for file
     ## descriptor `fd` and events `events`.
@@ -146,22 +146,22 @@ when defined(nimdoc):
     ##
     ## **Note:** This function is supported only by BSD and MacOSX.
 
-  proc newSelectEvent*(): SelectEvent =
+  func newSelectEvent*(): SelectEvent =
     ## Creates a new user-defined event.
 
-  proc trigger*(ev: SelectEvent) =
+  func trigger*(ev: SelectEvent) =
     ## Trigger event `ev`.
 
-  proc close*(ev: SelectEvent) =
+  func close*(ev: SelectEvent) =
     ## Closes user-defined event `ev`.
 
-  proc unregister*[T](s: Selector[T], ev: SelectEvent) =
+  func unregister*[T](s: Selector[T], ev: SelectEvent) =
     ## Unregisters user-defined event `ev` from selector `s`.
 
-  proc unregister*[T](s: Selector[T], fd: int|SocketHandle|cint) =
+  func unregister*[T](s: Selector[T], fd: int|SocketHandle|cint) =
     ## Unregisters file/socket descriptor `fd` from selector `s`.
 
-  proc selectInto*[T](s: Selector[T], timeout: int,
+  func selectInto*[T](s: Selector[T], timeout: int,
                       results: var openArray[ReadyKey]): int =
     ## Waits for events registered in selector `s`.
     ##
@@ -172,7 +172,7 @@ when defined(nimdoc):
     ##
     ## Returns number of triggered events.
 
-  proc select*[T](s: Selector[T], timeout: int): seq[ReadyKey] =
+  func select*[T](s: Selector[T], timeout: int): seq[ReadyKey] =
     ## Waits for events registered in selector `s`.
     ##
     ## The `timeout` argument specifies the maximum number of milliseconds
@@ -181,12 +181,12 @@ when defined(nimdoc):
     ##
     ## Returns a list of triggered events.
 
-  proc getData*[T](s: Selector[T], fd: SocketHandle|int): var T =
+  func getData*[T](s: Selector[T], fd: SocketHandle|int): var T =
     ## Retrieves application-defined `data` associated with descriptor `fd`.
     ## If specified descriptor `fd` is not registered, empty/default value
     ## will be returned.
 
-  proc setData*[T](s: Selector[T], fd: SocketHandle|int, data: var T): bool =
+  func setData*[T](s: Selector[T], fd: SocketHandle|int, data: var T): bool =
     ## Associate application-defined `data` with descriptor `fd`.
     ##
     ## Returns `true`, if data was successfully updated, `false` otherwise.
@@ -224,10 +224,10 @@ when defined(nimdoc):
     ##     raise
     ##
 
-  proc contains*[T](s: Selector[T], fd: SocketHandle|int): bool {.inline.} =
+  func contains*[T](s: Selector[T], fd: SocketHandle|int): bool {.inline.} =
     ## Determines whether selector contains a file descriptor.
 
-  proc getFd*[T](s: Selector[T]): int =
+  func getFd*[T](s: Selector[T]): int =
     ## Retrieves the underlying selector's file descriptor.
     ##
     ## For *poll* and *select* selectors `-1` is returned.
@@ -240,13 +240,13 @@ else:
     type
       SharedArray[T] = UncheckedArray[T]
 
-    proc allocSharedArray[T](nsize: int): ptr SharedArray[T] =
+    func allocSharedArray[T](nsize: int): ptr SharedArray[T] =
       result = cast[ptr SharedArray[T]](allocShared0(sizeof(T) * nsize))
 
-    proc reallocSharedArray[T](sa: ptr SharedArray[T], nsize: int): ptr SharedArray[T] =
+    func reallocSharedArray[T](sa: ptr SharedArray[T], nsize: int): ptr SharedArray[T] =
       result = cast[ptr SharedArray[T]](reallocShared(sa, sizeof(T) * nsize))
 
-    proc deallocSharedArray[T](sa: ptr SharedArray[T]) =
+    func deallocSharedArray[T](sa: ptr SharedArray[T]) =
       deallocShared(cast[pointer](sa))
   type
     Event* {.pure.} = enum
@@ -271,7 +271,7 @@ else:
   const
     InvalidIdent = -1
 
-  proc raiseIOSelectorsError[T](message: T) =
+  func raiseIOSelectorsError[T](message: T) =
     var msg = ""
     when T is string:
       msg.add(message)
@@ -318,7 +318,7 @@ else:
     key.events = {}
     key.data = empty
 
-  proc verifySelectParams(timeout: int) =
+  func verifySelectParams(timeout: int) =
     # Timeout of -1 means: wait forever
     # Anything higher is the time to wait in milliseconds.
     doAssert(timeout >= -1, "Cannot select with a negative value, got " & $timeout)

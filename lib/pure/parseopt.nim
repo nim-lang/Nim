@@ -101,7 +101,7 @@
 ## .. code-block::
 ##   import std/parseopt
 ##
-##   proc printToken(kind: CmdLineKind, key: string, val: string) =
+##   func printToken(kind: CmdLineKind, key: string, val: string) =
 ##     case kind
 ##     of cmdEnd: doAssert(false)  # Doesn't happen with getopt()
 ##     of cmdShortOption, cmdLongOption:
@@ -176,7 +176,7 @@ type
                                  ## or the argument, and the value is not "" if
                                  ## the option was given a value
 
-proc parseWord(s: string, i: int, w: var string,
+func parseWord(s: string, i: int, w: var string,
                delim: set[char] = {'\t', ' '}): int =
   result = i
   if result < s.len and s[result] == '\"':
@@ -281,7 +281,7 @@ proc initOptParser*(cmdline: seq[string], shortNoVal: set[char] = {},
   result.key = ""
   result.val = ""
 
-proc handleShortOption(p: var OptParser; cmd: string) =
+func handleShortOption(p: var OptParser; cmd: string) =
   var i = p.pos
   p.kind = cmdShortOption
   if i < cmd.len:
@@ -307,7 +307,7 @@ proc handleShortOption(p: var OptParser; cmd: string) =
     p.pos = 0
     inc p.idx
 
-proc next*(p: var OptParser) {.rtl, extern: "npo$1".} =
+func next*(p: var OptParser) {.rtl, extern: "npo$1".} =
   ## Parses the next token.
   ##
   ## `p.kind` describes what kind of token has been parsed. `p.key` and
@@ -378,7 +378,7 @@ proc next*(p: var OptParser) {.rtl, extern: "npo$1".} =
     p.pos = 0
 
 when declared(quoteShellCommand):
-  proc cmdLineRest*(p: OptParser): string {.rtl, extern: "npo$1".} =
+  func cmdLineRest*(p: OptParser): string {.rtl, extern: "npo$1".} =
     ## Retrieves the rest of the command line that has not been parsed yet.
     ##
     ## See also:
@@ -396,7 +396,7 @@ when declared(quoteShellCommand):
     ##   doAssert p.cmdLineRest == "foo.txt bar.txt"
     result = p.cmds[p.idx .. ^1].quoteShellCommand
 
-proc remainingArgs*(p: OptParser): seq[string] {.rtl, extern: "npo$1".} =
+func remainingArgs*(p: OptParser): seq[string] {.rtl, extern: "npo$1".} =
   ## Retrieves a sequence of the arguments that have not been parsed yet.
   ##
   ## See also:
@@ -429,8 +429,8 @@ iterator getopt*(p: var OptParser): tuple[kind: CmdLineKind, key,
   ##
   ## .. code-block::
   ##   # these are placeholders, of course
-  ##   proc writeHelp() = discard
-  ##   proc writeVersion() = discard
+  ##   func writeHelp() = discard
+  ##   func writeVersion() = discard
   ##
   ##   var filename: string
   ##   var p = initOptParser("--left --debug:3 -l -r:2")
@@ -478,8 +478,8 @@ iterator getopt*(cmdline: seq[string] = @[],
   ## .. code-block::
   ##
   ##   # these are placeholders, of course
-  ##   proc writeHelp() = discard
-  ##   proc writeVersion() = discard
+  ##   func writeHelp() = discard
+  ##   func writeVersion() = discard
   ##
   ##   var filename: string
   ##   let params = @["--left", "--debug:3", "-l", "-r:2"]

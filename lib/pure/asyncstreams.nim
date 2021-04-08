@@ -23,7 +23,7 @@ type
     cb: proc () {.closure, gcsafe.}
     error*: ref Exception
 
-proc newFutureStream*[T](fromProc = "unspecified"): FutureStream[T] =
+func newFutureStream*[T](fromProc = "unspecified"): FutureStream[T] =
   ## Create a new `FutureStream`. This future's callback is activated when
   ## two events occur:
   ##
@@ -56,7 +56,7 @@ proc fail*[T](future: FutureStream[T], error: ref Exception) =
 
 proc `callback=`*[T](future: FutureStream[T],
     cb: proc (future: FutureStream[T]) {.closure, gcsafe.}) =
-  ## Sets the callback proc to be called when data was placed inside the
+  ## Sets the callback func to be called when data was placed inside the
   ## future stream.
   ##
   ## The callback is also called when the future is completed. So you should
@@ -69,13 +69,13 @@ proc `callback=`*[T](future: FutureStream[T],
   if future.queue.len > 0 or future.finished:
     callSoon(future.cb)
 
-proc finished*[T](future: FutureStream[T]): bool =
+func finished*[T](future: FutureStream[T]): bool =
   ## Check if a `FutureStream` is finished. `true` value means that
   ## no more data will be placed inside the stream *and* that there is
   ## no data waiting to be retrieved.
   result = future.finished and future.queue.len == 0
 
-proc failed*[T](future: FutureStream[T]): bool =
+func failed*[T](future: FutureStream[T]): bool =
   ## Determines whether `future` completed with an error.
   return future.error != nil
 
@@ -139,6 +139,6 @@ proc read*[T](future: FutureStream[T]): owned(Future[(bool, T)]) =
     future.callback = newCb
   return resFut
 
-proc len*[T](future: FutureStream[T]): int =
+func len*[T](future: FutureStream[T]): int =
   ## Returns the amount of data pieces inside the stream.
   future.queue.len

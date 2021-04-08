@@ -31,22 +31,22 @@ type
     L: Lock
     counter: int
 
-proc initSemaphore(cv: var Semaphore) =
+func initSemaphore(cv: var Semaphore) =
   initCond(cv.c)
   initLock(cv.L)
 
-proc destroySemaphore(cv: var Semaphore) {.inline.} =
+func destroySemaphore(cv: var Semaphore) {.inline.} =
   deinitCond(cv.c)
   deinitLock(cv.L)
 
-proc blockUntil(cv: var Semaphore) =
+func blockUntil(cv: var Semaphore) =
   acquire(cv.L)
   while cv.counter <= 0:
     wait(cv.c, cv.L)
   dec cv.counter
   release(cv.L)
 
-proc signal(cv: var Semaphore) =
+func signal(cv: var Semaphore) =
   acquire(cv.L)
   inc cv.counter
   release(cv.L)
@@ -64,7 +64,7 @@ type
     cacheAlign2: array[CacheLineSize-sizeof(int), byte]
     interest: bool # whether the master is interested in the "all done" event
 
-proc barrierEnter(b: ptr Barrier) {.compilerproc, inline.} =
+func barrierEnter(b: ptr Barrier) {.compilerproc, inline.} =
   # due to the signaling between threads, it is ensured we are the only
   # one with access to 'entered' so we don't need 'atomicInc' here:
   inc b.entered
@@ -78,7 +78,7 @@ proc barrierLeave(b: ptr Barrier) {.compilerproc, inline.} =
   # so we need to check for >= instead of ==.
   if b.interest and b.left >= b.entered: signal(b.cv)
 
-proc openBarrier(b: ptr Barrier) {.compilerproc, inline.} =
+func openBarrier(b: ptr Barrier) {.compilerproc, inline.} =
   b.entered = 0
   b.left = 0
   b.interest = false
@@ -138,7 +138,7 @@ type
 
 const threadpoolWaitMs {.intdefine.}: int = 100
 
-proc blockUntil*(fv: var FlowVarBaseObj) =
+func blockUntil*(fv: var FlowVarBaseObj) =
   ## Waits until the value for `fv` arrives.
   ##
   ## Usually it is not necessary to call this explicitly.
@@ -155,7 +155,7 @@ proc selectWorker(w: ptr Worker; fn: WorkerProc; data: pointer): bool =
     blockUntil(w.taskStarted)
     result = true
 
-proc cleanFlowVars(w: ptr Worker) =
+func cleanFlowVars(w: ptr Worker) =
   let q = addr(w.q)
   acquire(q.lock)
   for i in 0 ..< q.len:
@@ -171,13 +171,13 @@ proc wakeupWorkerToProcessQueue(w: ptr Worker) =
     cpuRelax()
     discard
   w.data = nil
-  w.f = proc (w, a: pointer) {.nimcall.} =
+  w.f = func (w, a: pointer) {.nimcall.} =
     let w = cast[ptr Worker](w)
     cleanFlowVars(w)
     signal(w.q.empty)
   signal(w.taskArrived)
 
-proc attach(fv: FlowVarBase; i: int): bool =
+func attach(fv: FlowVarBase; i: int): bool =
   acquire(fv.cv.L)
   if fv.cv.counter <= 0:
     fv.idx = i
@@ -209,18 +209,18 @@ proc finished(fv: var FlowVarBaseObj) =
   # the worker thread waits for "data" to be set to nil before shutting down
   owner.data = nil
 
-proc `=destroy`[T](fv: var FlowVarObj[T]) =
+func `=destroy`[T](fv: var FlowVarObj[T]) =
   finished(fv)
   `=destroy`(fv.blob)
 
-proc nimCreateFlowVar[T](): FlowVar[T] {.compilerproc.} =
+func nimCreateFlowVar[T](): FlowVar[T] {.compilerproc.} =
   new(result)
 
-proc nimFlowVarCreateSemaphore(fv: FlowVarBase) {.compilerproc.} =
+func nimFlowVarCreateSemaphore(fv: FlowVarBase) {.compilerproc.} =
   fv.cv.initSemaphore()
   fv.usesSemaphore = true
 
-proc nimFlowVarSignal(fv: FlowVarBase) {.compilerproc.} =
+func nimFlowVarSignal(fv: FlowVarBase) {.compilerproc.} =
   if fv.ai != nil:
     acquire(fv.ai.cv.L)
     fv.ai.idx = fv.idx
@@ -230,13 +230,13 @@ proc nimFlowVarSignal(fv: FlowVarBase) {.compilerproc.} =
   if fv.usesSemaphore:
     signal(fv.cv)
 
-proc awaitAndThen*[T](fv: FlowVar[T]; action: proc (x: T) {.closure.}) =
+func awaitAndThen*[T](fv: FlowVar[T]; action: proc (x: T) {.closure.}) =
   ## Blocks until `fv` is available and then passes its value
   ## to `action`.
   ##
   ## Note that due to Nim's parameter passing semantics, this
   ## means that `T` doesn't need to be copied, so `awaitAndThen` can
-  ## sometimes be more efficient than the `^ proc <#^,FlowVar[T]>`_.
+  ## sometimes be more efficient than the `^ func <#^,FlowVar[T]>`_.
   blockUntil(fv[])
   when defined(nimV2):
     action(fv.blob)
@@ -248,7 +248,7 @@ proc awaitAndThen*[T](fv: FlowVar[T]; action: proc (x: T) {.closure.}) =
     action(fv.blob)
   finished(fv[])
 
-proc unsafeRead*[T](fv: FlowVar[ref T]): ptr T =
+func unsafeRead*[T](fv: FlowVar[ref T]): ptr T =
   ## Blocks until the value is available and then returns this value.
   blockUntil(fv[])
   when defined(nimV2):
@@ -257,7 +257,7 @@ proc unsafeRead*[T](fv: FlowVar[ref T]): ptr T =
     result = cast[ptr T](fv.data)
   finished(fv[])
 
-proc `^`*[T](fv: FlowVar[T]): T =
+func `^`*[T](fv: FlowVar[T]): T =
   ## Blocks until the value is available and then returns this value.
   blockUntil(fv[])
   when not defined(nimV2) and (T is string or T is seq or T is ref):
@@ -295,7 +295,7 @@ proc blockUntilAny*(flowVars: openArray[FlowVarBase]): int =
       discard cas(addr flowVars[i].ai, addr ai, nil)
   destroySemaphore(ai.cv)
 
-proc isReady*(fv: FlowVarBase): bool =
+func isReady*(fv: FlowVarBase): bool =
   ## Determines whether the specified `FlowVarBase`'s value is available.
   ##
   ## If `true`, awaiting `fv` will not block.
@@ -306,7 +306,7 @@ proc isReady*(fv: FlowVarBase): bool =
   else:
     result = true
 
-proc nimArgsPassingDone(p: pointer) {.compilerproc.} =
+func nimArgsPassingDone(p: pointer) {.compilerproc.} =
   let w = cast[ptr Worker](p)
   signal(w.taskStarted)
 
@@ -443,7 +443,7 @@ proc setup() =
   for i in 0..<currentPoolSize: activateWorkerThread(i)
 
 proc preferSpawn*(): bool =
-  ## Use this proc to determine quickly if a `spawn` or a direct call is
+  ## Use this func to determine quickly if a `spawn` or a direct call is
   ## preferable.
   ##
   ## If it returns `true`, a `spawn` may make sense. In general
@@ -451,32 +451,32 @@ proc preferSpawn*(): bool =
   ## <#spawnX.t>`_ instead.
   result = gSomeReady.counter > 0
 
-proc spawn*(call: sink typed) {.magic: "Spawn".}
+func spawn*(call: sink typed) {.magic: "Spawn".}
   ## Always spawns a new task, so that the `call` is never executed on
   ## the calling thread.
   ##
-  ## `call` has to be a proc call `p(...)` where `p` is gcsafe and has a
+  ## `call` has to be a func call `p(...)` where `p` is gcsafe and has a
   ## return type that is either `void` or compatible with `FlowVar[T]`.
 
-proc pinnedSpawn*(id: ThreadId; call: sink typed) {.magic: "Spawn".}
+func pinnedSpawn*(id: ThreadId; call: sink typed) {.magic: "Spawn".}
   ## Always spawns a new task on the worker thread with `id`, so that
   ## the `call` is **always** executed on the thread.
   ##
-  ## `call` has to be a proc call `p(...)` where `p` is gcsafe and has a
+  ## `call` has to be a func call `p(...)` where `p` is gcsafe and has a
   ## return type that is either `void` or compatible with `FlowVar[T]`.
 
 template spawnX*(call) =
   ## Spawns a new task if a CPU core is ready, otherwise executes the
   ## call in the calling thread.
   ##
-  ## Usually, it is advised to use the `spawn proc <#spawn,sinktyped>`_
+  ## Usually, it is advised to use the `spawn func <#spawn,sinktyped>`_
   ## in order to not block the producer for an unknown amount of time.
   ##
-  ## `call` has to be a proc call `p(...)` where `p` is gcsafe and has a
+  ## `call` has to be a func call `p(...)` where `p` is gcsafe and has a
   ## return type that is either 'void' or compatible with `FlowVar[T]`.
   (if preferSpawn(): spawn call else: call)
 
-proc parallel*(body: untyped) {.magic: "Parallel".}
+func parallel*(body: untyped) {.magic: "Parallel".}
   ## A parallel section can be used to execute a block in parallel.
   ##
   ## `body` has to be in a DSL that is a particular subset of the language.

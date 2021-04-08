@@ -37,7 +37,7 @@ template st_maybeRehashPutImpl(enlarge) {.dirty.} =
   rawInsert(t, t.data, key, val, hc, index)
   inc(t.counter)
 
-proc enlarge[A, B](t: var SharedTable[A, B]) =
+func enlarge[A, B](t: var SharedTable[A, B]) =
   let oldSize = t.dataLen
   let size = oldSize * growthFactor
   var n = cast[KeyValuePairSeq[A, B]](allocShared0(
@@ -111,7 +111,7 @@ template withValue*[A, B](t: var SharedTable[A, B], key: A,
   finally:
     release(t.lock)
 
-proc mget*[A, B](t: var SharedTable[A, B], key: A): var B =
+func mget*[A, B](t: var SharedTable[A, B], key: A): var B =
   ## retrieves the value at `t[key]`. The value can be modified.
   ## If `key` is not in `t`, the `KeyError` exception is raised.
   withLock t:
@@ -125,7 +125,7 @@ proc mget*[A, B](t: var SharedTable[A, B], key: A): var B =
     else:
       raise newException(KeyError, "key not found")
 
-proc mgetOrPut*[A, B](t: var SharedTable[A, B], key: A, val: B): var B =
+func mgetOrPut*[A, B](t: var SharedTable[A, B], key: A, val: B): var B =
   ## retrieves value at `t[key]` or puts `val` if not present, either way
   ## returning a value which can be modified. **Note**: This is inherently
   ## unsafe in the context of multi-threading since it returns a pointer
@@ -133,7 +133,7 @@ proc mgetOrPut*[A, B](t: var SharedTable[A, B], key: A, val: B): var B =
   withLock t:
     mgetOrPutImpl(enlarge)
 
-proc hasKeyOrPut*[A, B](t: var SharedTable[A, B], key: A, val: B): bool =
+func hasKeyOrPut*[A, B](t: var SharedTable[A, B], key: A, val: B): bool =
   ## returns true if `key` is in the table, otherwise inserts `value`.
   withLock t:
     hasKeyOrPutImpl(enlarge)
@@ -142,7 +142,7 @@ template tabMakeEmpty(i) = t.data[i].hcode = 0
 template tabCellEmpty(i) = isEmpty(t.data[i].hcode)
 template tabCellHash(i)  = t.data[i].hcode
 
-proc withKey*[A, B](t: var SharedTable[A, B], key: A,
+func withKey*[A, B](t: var SharedTable[A, B], key: A,
                     mapper: proc(key: A, val: var B, pairExists: var bool)) =
   ## Computes a new mapping for the `key` with the specified `mapper`
   ## procedure.
@@ -190,31 +190,31 @@ proc withKey*[A, B](t: var SharedTable[A, B], key: A,
       if pairExists:
         st_maybeRehashPutImpl(enlarge)
 
-proc `[]=`*[A, B](t: var SharedTable[A, B], key: A, val: B) =
+func `[]=`*[A, B](t: var SharedTable[A, B], key: A, val: B) =
   ## puts a (key, value)-pair into `t`.
   withLock t:
     putImpl(enlarge)
 
-proc add*[A, B](t: var SharedTable[A, B], key: A, val: B) =
+func add*[A, B](t: var SharedTable[A, B], key: A, val: B) =
   ## puts a new (key, value)-pair into `t` even if `t[key]` already exists.
   ## This can introduce duplicate keys into the table!
   withLock t:
     addImpl(enlarge)
 
-proc del*[A, B](t: var SharedTable[A, B], key: A) =
+func del*[A, B](t: var SharedTable[A, B], key: A) =
   ## deletes `key` from hash table `t`.
   withLock t:
     delImpl(tabMakeEmpty, tabCellEmpty, tabCellHash)
 
-proc len*[A, B](t: var SharedTable[A, B]): int =
+func len*[A, B](t: var SharedTable[A, B]): int =
   ## number of elements in `t`
   withLock t:
     result = t.counter
 
-proc init*[A, B](t: var SharedTable[A, B], initialSize = 32) =
+func init*[A, B](t: var SharedTable[A, B], initialSize = 32) =
   ## creates a new hash table that is empty.
   ##
-  ## This proc must be called before any other usage of `t`.
+  ## This func must be called before any other usage of `t`.
   let initialSize = slotsNeeded(initialSize)
   t.counter = 0
   t.dataLen = initialSize
@@ -222,6 +222,6 @@ proc init*[A, B](t: var SharedTable[A, B], initialSize = 32) =
                                       sizeof(KeyValuePair[A, B]) * initialSize))
   initLock t.lock
 
-proc deinitSharedTable*[A, B](t: var SharedTable[A, B]) =
+func deinitSharedTable*[A, B](t: var SharedTable[A, B]) =
   deallocShared(t.data)
   deinitLock t.lock

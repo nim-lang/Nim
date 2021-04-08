@@ -11,7 +11,7 @@
 
 import strutils, unicode
 
-proc olen(s: string; start, lastExclusive: int): int =
+func olen(s: string; start, lastExclusive: int): int =
   var i = start
   result = 0
   while i < lastExclusive:
@@ -19,7 +19,7 @@ proc olen(s: string; start, lastExclusive: int): int =
     let L = graphemeLen(s, i)
     inc i, L
 
-proc wrapWords*(s: string, maxLineWidth = 80,
+func wrapWords*(s: string, maxLineWidth = 80,
                splitLongWords = true,
                seps: set[char] = Whitespace,
                newLine = "\n"): string {.noSideEffect.} =

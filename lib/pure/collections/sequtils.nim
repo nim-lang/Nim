@@ -355,7 +355,7 @@ func distribute*[T](s: seq[T], num: Positive, spread = true): seq[seq[T]] =
         result[i].add(s[g])
       first = last
 
-proc map*[T, S](s: openArray[T], op: proc (x: T): S {.closure.}):
+func map*[T, S](s: openArray[T], op: proc (x: T): S {.closure.}):
                                                             seq[S]{.inline.} =
   ## Returns a new sequence with the results of the `op` proc applied to every
   ## item in the container `s`.
@@ -381,7 +381,7 @@ proc map*[T, S](s: openArray[T], op: proc (x: T): S {.closure.}):
   for i in 0 ..< s.len:
     result[i] = op(s[i])
 
-proc apply*[T](s: var openArray[T], op: proc (x: var T) {.closure.})
+func apply*[T](s: var openArray[T], op: proc (x: var T) {.closure.})
                                                               {.inline.} =
   ## Applies `op` to every item in `s`, modifying it directly.
   ##
@@ -400,7 +400,7 @@ proc apply*[T](s: var openArray[T], op: proc (x: var T) {.closure.})
 
   for i in 0 ..< s.len: op(s[i])
 
-proc apply*[T](s: var openArray[T], op: proc (x: T): T {.closure.})
+func apply*[T](s: var openArray[T], op: proc (x: T): T {.closure.})
                                                               {.inline.} =
   ## Applies `op` to every item in `s` modifying it directly.
   ##
@@ -420,7 +420,7 @@ proc apply*[T](s: var openArray[T], op: proc (x: T): T {.closure.})
 
   for i in 0 ..< s.len: s[i] = op(s[i])
 
-proc apply*[T](s: openArray[T], op: proc (x: T) {.closure.}) {.inline, since: (1, 3).} =
+func apply*[T](s: openArray[T], op: proc (x: T) {.closure.}) {.inline, since: (1, 3).} =
   ## Same as `apply` but for a proc that does not return anything
   ## and does not mutate `s` directly.
   runnableExamples:
@@ -452,7 +452,7 @@ iterator filter*[T](s: openArray[T], pred: proc(x: T): bool {.closure.}): T =
     if pred(s[i]):
       yield s[i]
 
-proc filter*[T](s: openArray[T], pred: proc(x: T): bool {.closure.}): seq[T]
+func filter*[T](s: openArray[T], pred: proc(x: T): bool {.closure.}): seq[T]
                                                                   {.inline.} =
   ## Returns a new sequence with all the items of `s` that fulfill the
   ## predicate `pred` (a function that returns a `bool`).
@@ -479,7 +479,7 @@ proc filter*[T](s: openArray[T], pred: proc(x: T): bool {.closure.}): seq[T]
     if pred(s[i]):
       result.add(s[i])
 
-proc keepIf*[T](s: var seq[T], pred: proc(x: T): bool {.closure.})
+func keepIf*[T](s: var seq[T], pred: proc(x: T): bool {.closure.})
                                                                 {.inline.} =
   ## Keeps the items in the passed sequence `s` if they fulfill the
   ## predicate `pred` (a function that returns a `bool`).
@@ -646,7 +646,7 @@ since (1, 1):
       if pred: result += 1
     result
 
-proc all*[T](s: openArray[T], pred: proc(x: T): bool {.closure.}): bool =
+func all*[T](s: openArray[T], pred: proc(x: T): bool {.closure.}): bool =
   ## Iterates through a container and checks if every item fulfills the
   ## predicate.
   ##
@@ -688,7 +688,7 @@ template allIt*(s, pred: untyped): bool =
       break
   result
 
-proc any*[T](s: openArray[T], pred: proc(x: T): bool {.closure.}): bool =
+func any*[T](s: openArray[T], pred: proc(x: T): bool {.closure.}): bool =
   ## Iterates through a container and checks if at least one item
   ## fulfills the predicate.
   ##
@@ -710,7 +710,7 @@ template anyIt*(s, pred: untyped): bool =
   ## Iterates through a container and checks if at least one item
   ## fulfills the predicate.
   ##
-  ## Unlike the `any proc<#any,openArray[T],proc(T)>`_,
+  ## Unlike the `any func<#any,openArray[T],proc(T)>`_,
   ## the predicate needs to be an expression using
   ## the `it` variable for testing, like: `anyIt("abba", it == 'a')`.
   ##

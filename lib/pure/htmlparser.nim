@@ -38,7 +38,7 @@
 ##   import std/os       # To use splitFile
 ##   import std/strutils # To use cmpIgnoreCase
 ##
-##   proc transformHyperlinks() =
+##   func transformHyperlinks() =
 ##     let html = loadHtml("input.html")
 ##
 ##     for a in html.findAll("a"):
@@ -217,12 +217,12 @@ const
     tagBr, tagCol, tagFrame, tagHr, tagImg, tagIsindex,
     tagLink, tagMeta, tagParam, tagWbr}
 
-proc allLower(s: string): bool =
+func allLower(s: string): bool =
   for c in s:
     if c < 'a' or c > 'z': return false
   return true
 
-proc toHtmlTag(s: string): HtmlTag =
+func toHtmlTag(s: string): HtmlTag =
   case s
   of "a": tagA
   of "abbr": tagAbbr
@@ -350,19 +350,19 @@ proc toHtmlTag(s: string): HtmlTag =
   else: tagUnknown
 
 
-proc htmlTag*(n: XmlNode): HtmlTag =
+func htmlTag*(n: XmlNode): HtmlTag =
   ## Gets `n`'s tag as a `HtmlTag`.
   if n.clientData == 0:
     n.clientData = toHtmlTag(n.tag).ord
   result = HtmlTag(n.clientData)
 
-proc htmlTag*(s: string): HtmlTag =
+func htmlTag*(s: string): HtmlTag =
   ## Converts `s` to a `HtmlTag`. If `s` is no HTML tag, `tagUnknown` is
   ## returned.
   let s = if allLower(s): s else: toLowerAscii(s)
   result = toHtmlTag(s)
 
-proc runeToEntity*(rune: Rune): string =
+func runeToEntity*(rune: Rune): string =
   ## converts a Rune to its numeric HTML entity equivalent.
   runnableExamples:
     import std/unicode
@@ -373,7 +373,7 @@ proc runeToEntity*(rune: Rune): string =
   if rune.ord <= 0: result = ""
   else: result = '#' & $rune.ord
 
-proc entityToRune*(entity: string): Rune =
+func entityToRune*(entity: string): Rune =
   ## Converts an HTML entity name like `&Uuml;` or values like `&#220;`
   ## or `&#x000DC;` to its UTF-8 equivalent.
   ## Rune(0) is returned if the entity name is unknown.
@@ -1866,7 +1866,7 @@ proc entityToRune*(entity: string): Rune =
   of "zopf": Rune(0x1D56B)
   else: Rune(0)
 
-proc entityToUtf8*(entity: string): string =
+func entityToUtf8*(entity: string): string =
   ## Converts an HTML entity name like `&Uuml;` or values like `&#220;`
   ## or `&#x000DC;` to its UTF-8 equivalent.
   ## "" is returned if the entity name is unknown. The HTML parser
@@ -1890,12 +1890,12 @@ proc entityToUtf8*(entity: string): string =
   if rune.ord <= 0: result = ""
   else: result = toUTF8(rune)
 
-proc addNode(father, son: XmlNode) =
+func addNode(father, son: XmlNode) =
   if son != nil: add(father, son)
 
 proc parse(x: var XmlParser, errors: var seq[string]): XmlNode {.gcsafe.}
 
-proc expected(x: var XmlParser, n: XmlNode): string =
+func expected(x: var XmlParser, n: XmlNode): string =
   result = errorMsg(x, "</" & n.tag & "> expected")
 
 template elemName(x: untyped): untyped = rawData(x)

@@ -24,7 +24,7 @@ else:
 
 import os, streams
 
-proc newEIO(msg: string): ref IOError =
+func newEIO(msg: string): ref IOError =
   new(result)
   result.msg = msg
 
@@ -313,7 +313,7 @@ when defined(posix) or defined(nimdoc):
         raiseOSError(osLastError())
       when defined(linux): #Maybe NetBSD, too?
         #On Linux this can be over 100 times faster than a munmap,mmap cycle.
-        proc mremap(old: pointer; oldSize, newSize: csize; flags: cint):
+        func mremap(old: pointer; oldSize, newSize: csize; flags: cint):
             pointer {.importc: "mremap", header: "<sys/mman.h>".}
         let newAddr = mremap(f.mem, csize(f.size), csize(newFileSize), cint(1))
         if newAddr == cast[pointer](MAP_FAILED):
@@ -367,11 +367,11 @@ type MemSlice* = object ## represent slice of a MemFile for iteration over delim
   data*: pointer
   size*: int
 
-proc `==`*(x, y: MemSlice): bool =
+func `==`*(x, y: MemSlice): bool =
   ## Compare a pair of MemSlice for strict equality.
   result = (x.size == y.size and equalMem(x.data, y.data, x.size))
 
-proc `$`*(ms: MemSlice): string {.inline.} =
+func `$`*(ms: MemSlice): string {.inline.} =
   ## Return a Nim string built from a MemSlice.
   result.setLen(ms.size)
   copyMem(addr(result[0]), ms.data, ms.size)
@@ -408,9 +408,9 @@ iterator memSlices*(mfile: MemFile, delim = '\l', eat = '\r'): MemSlice {.inline
   ##       inc(count)
   ##   echo count
 
-  proc c_memchr(cstr: pointer, c: char, n: csize): pointer {.
+  func c_memchr(cstr: pointer, c: char, n: csize): pointer {.
        importc: "memchr", header: "<string.h>".}
-  proc `-!`(p, q: pointer): int {.inline.} = return cast[int](p) -% cast[int](q)
+  func `-!`(p, q: pointer): int {.inline.} = return cast[int](p) -% cast[int](q)
   var ms: MemSlice
   var ending: pointer
   ms.data = mfile.mem
@@ -477,28 +477,28 @@ proc mmsClose(s: Stream) =
 
 proc mmsFlush(s: Stream) = flush(MemMapFileStream(s).mf)
 
-proc mmsAtEnd(s: Stream): bool = (MemMapFileStream(s).pos >= MemMapFileStream(s).mf.size) or
+func mmsAtEnd(s: Stream): bool = (MemMapFileStream(s).pos >= MemMapFileStream(s).mf.size) or
                                   (MemMapFileStream(s).pos < 0)
 
-proc mmsSetPosition(s: Stream, pos: int) =
+func mmsSetPosition(s: Stream, pos: int) =
   if pos > MemMapFileStream(s).mf.size or pos < 0:
     raise newEIO("cannot set pos in stream")
   MemMapFileStream(s).pos = pos
 
-proc mmsGetPosition(s: Stream): int = MemMapFileStream(s).pos
+func mmsGetPosition(s: Stream): int = MemMapFileStream(s).pos
 
-proc mmsPeekData(s: Stream, buffer: pointer, bufLen: int): int =
+func mmsPeekData(s: Stream, buffer: pointer, bufLen: int): int =
   let startAddress = cast[ByteAddress](MemMapFileStream(s).mf.mem)
   let p = cast[ByteAddress](MemMapFileStream(s).pos)
   let l = min(bufLen, MemMapFileStream(s).mf.size - p)
   moveMem(buffer, cast[pointer](startAddress + p), l)
   result = l
 
-proc mmsReadData(s: Stream, buffer: pointer, bufLen: int): int =
+func mmsReadData(s: Stream, buffer: pointer, bufLen: int): int =
   result = mmsPeekData(s, buffer, bufLen)
   inc(MemMapFileStream(s).pos, result)
 
-proc mmsWriteData(s: Stream, buffer: pointer, bufLen: int) =
+func mmsWriteData(s: Stream, buffer: pointer, bufLen: int) =
   if MemMapFileStream(s).mode == fmRead:
     raise newEIO("cannot write to read-only stream")
   let size = MemMapFileStream(s).mf.size

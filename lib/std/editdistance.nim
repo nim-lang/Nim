@@ -12,7 +12,7 @@
 
 import unicode
 
-proc editDistance*(a, b: string): int {.noSideEffect.} =
+func editDistance*(a, b: string): int =
   ## Returns the **unicode-rune** edit distance between `a` and `b`.
   ##
   ## This uses the `Levenshtein`:idx: distance algorithm with only a linear
@@ -177,7 +177,7 @@ proc editDistance*(a, b: string): int {.noSideEffect.} =
     iCurrentA = iNextA
   result = row[e]
 
-proc editDistanceAscii*(a, b: string): int {.noSideEffect.} =
+func editDistanceAscii*(a, b: string): int =
   ## Returns the edit distance between `a` and `b`.
   ##
   ## This uses the `Levenshtein`:idx: distance algorithm with only a linear

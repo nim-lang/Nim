@@ -34,13 +34,13 @@ runnableExamples("--threads:on --gc:orc"):
   # Note that isolated data passed through channels is moved around.
   var chan = newChannel[string]()
 
-  # This proc will be run in another thread using the threads module.
-  proc firstWorker() =
+  # This func will be run in another thread using the threads module.
+  func firstWorker() =
     chan.send("Hello World!")
 
-  # This is another proc to run in a background thread. This proc takes a while
+  # This is another func to run in a background thread. This func takes a while
   # to send the message since it sleeps for 2 seconds (or 2000 milliseconds).
-  proc secondWorker() =
+  func secondWorker() =
     sleep(2000)
     chan.send("Another message")
 
@@ -119,7 +119,7 @@ type
 
 # ----------------------------------------------------------------------------------
 
-proc numItems(chan: ChannelRaw): int {.inline.} =
+func numItems(chan: ChannelRaw): int {.inline.} =
   result = chan.tail - chan.head
   if result < 0:
     inc(result, 2 * chan.size)
@@ -153,9 +153,9 @@ func isUnbuffered(chan: ChannelRaw): bool =
 # ChannelRaw status and properties
 # ----------------------------------------------------------------------------------
 
-proc isClosed(chan: ChannelRaw): bool {.inline.} = load(chan.closed, moRelaxed)
+func isClosed(chan: ChannelRaw): bool {.inline.} = load(chan.closed, moRelaxed)
 
-proc peek(chan: ChannelRaw): int {.inline.} =
+func peek(chan: ChannelRaw): int {.inline.} =
   (if chan.isUnbuffered: numItemsUnbuf(chan) else: numItems(chan))
 
 # Per-thread channel cache
@@ -164,7 +164,7 @@ proc peek(chan: ChannelRaw): int {.inline.} =
 var channelCache {.threadvar.}: ChannelCache
 var channelCacheLen {.threadvar.}: int
 
-proc allocChannelCache(size, n: int): bool =
+func allocChannelCache(size, n: int): bool =
   ## Allocate a free list for storing channels of a given type
   var p = channelCache
 
@@ -187,7 +187,7 @@ proc allocChannelCache(size, n: int): bool =
   inc channelCacheLen
   result = true
 
-proc freeChannelCache*() =
+func freeChannelCache*() =
   ## Frees the entire channel cache, including all channels
   var p = channelCache
   var q: ChannelCache
@@ -213,7 +213,7 @@ proc freeChannelCache*() =
 # Channels memory ops
 # ----------------------------------------------------------------------------------
 
-proc allocChannel(size, n: int): ChannelRaw =
+func allocChannel(size, n: int): ChannelRaw =
   when nimChannelCacheSize > 0:
     var p = channelCache
 
@@ -255,7 +255,7 @@ proc allocChannel(size, n: int): ChannelRaw =
     # Allocate a cache as well if one of the proper size doesn't exist
     discard allocChannelCache(size, n)
 
-proc freeChannel(chan: ChannelRaw) =
+func freeChannel(chan: ChannelRaw) =
   if chan.isNil:
     return
 
@@ -287,7 +287,7 @@ proc freeChannel(chan: ChannelRaw) =
 # MPMC Channels (Multi-Producer Multi-Consumer)
 # ----------------------------------------------------------------------------------
 
-proc sendUnbufferedMpmc(chan: ChannelRaw, data: sink pointer, size: int, nonBlocking: bool): bool =
+func sendUnbufferedMpmc(chan: ChannelRaw, data: sink pointer, size: int, nonBlocking: bool): bool =
   if nonBlocking and chan.isFullUnbuf:
     return false
 
@@ -311,7 +311,7 @@ proc sendUnbufferedMpmc(chan: ChannelRaw, data: sink pointer, size: int, nonBloc
   signal(chan.notEmptyCond)
   result = true
 
-proc sendMpmc(chan: ChannelRaw, data: sink pointer, size: int, nonBlocking: bool): bool =
+func sendMpmc(chan: ChannelRaw, data: sink pointer, size: int, nonBlocking: bool): bool =
   assert not chan.isNil
   assert not data.isNil
 
@@ -347,7 +347,7 @@ proc sendMpmc(chan: ChannelRaw, data: sink pointer, size: int, nonBlocking: bool
   signal(chan.notEmptyCond)
   result = true
 
-proc recvUnbufferedMpmc(chan: ChannelRaw, data: pointer, size: int, nonBlocking: bool): bool =
+func recvUnbufferedMpmc(chan: ChannelRaw, data: pointer, size: int, nonBlocking: bool): bool =
   if nonBlocking and chan.isEmptyUnbuf:
     return false
 
@@ -372,7 +372,7 @@ proc recvUnbufferedMpmc(chan: ChannelRaw, data: pointer, size: int, nonBlocking:
   signal(chan.notFullCond)
   result = true
 
-proc recvMpmc(chan: ChannelRaw, data: pointer, size: int, nonBlocking: bool): bool =
+func recvMpmc(chan: ChannelRaw, data: pointer, size: int, nonBlocking: bool): bool =
   assert not chan.isNil
   assert not data.isNil
 
@@ -408,7 +408,7 @@ proc recvMpmc(chan: ChannelRaw, data: pointer, size: int, nonBlocking: bool): bo
   signal(chan.notFullCond)
   result = true
 
-proc channelCloseMpmc(chan: ChannelRaw): bool =
+func channelCloseMpmc(chan: ChannelRaw): bool =
   # Unsynchronized
 
   if chan.isClosed:
@@ -418,7 +418,7 @@ proc channelCloseMpmc(chan: ChannelRaw): bool =
   store(chan.closed, true, moRelaxed)
   result = true
 
-proc channelOpenMpmc(chan: ChannelRaw): bool =
+func channelOpenMpmc(chan: ChannelRaw): bool =
   # Unsynchronized
 
   if not chan.isClosed:
@@ -435,7 +435,7 @@ type
   Channel*[T] = object ## Typed channels
     d: ChannelRaw
 
-proc `=destroy`*[T](c: var Channel[T]) =
+func `=destroy`*[T](c: var Channel[T]) =
   if c.d != nil:
     if load(c.d.atomicCounter, moAcquire) == 0:
       if c.d.buffer != nil:
@@ -443,7 +443,7 @@ proc `=destroy`*[T](c: var Channel[T]) =
     else:
       atomicDec(c.d.atomicCounter)
 
-proc `=`*[T](dest: var Channel[T], src: Channel[T]) =
+func `=`*[T](dest: var Channel[T], src: Channel[T]) =
   ## Shares `Channel` by reference counting.
   if src.d != nil:
     atomicInc(src.d.atomicCounter)
@@ -489,7 +489,7 @@ func close*[T](c: Channel[T]): bool {.inline.} =
 
 func peek*[T](c: Channel[T]): int {.inline.} = peek(c.d)
 
-proc newChannel*[T](elements = 30): Channel[T] =
+func newChannel*[T](elements = 30): Channel[T] =
   ## Returns a new `Channel`. `elements` should be positive.
   ## `elements` is used to specify whether a channel is buffered or not.
   ## If `elements` = 1, the channel is unbuffered. If `elements` > 1, the 

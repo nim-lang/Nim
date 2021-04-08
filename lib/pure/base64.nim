@@ -143,7 +143,7 @@ template encodeImpl() {.dirty.} =
       let lookupTable = if safe: unsafeAddr(cb64safe) else: unsafeAddr(cb64)
       encodeInternal(s, lookupTable)
 
-proc encode*[T: SomeInteger|char](s: openArray[T], safe = false): string =
+func encode*[T: SomeInteger|char](s: openArray[T], safe = false): string =
   ## Encodes `s` into base64 representation.
   ##
   ## This procedure encodes an openarray (array or sequence) of either integers
@@ -199,7 +199,7 @@ proc encodeMime*(s: string, lineLen = 75, newLine = "\r\n"): string =
       result.add(newLine)
     result.add(c)
 
-proc initDecodeTable*(): array[256, char] =
+func initDecodeTable*(): array[256, char] =
   # computes a decode table at compile time
   for i in 0 ..< 256:
     let ch = char(i)
@@ -214,7 +214,7 @@ proc initDecodeTable*(): array[256, char] =
 const
   decodeTable = initDecodeTable()
 
-proc decode*(s: string): string =
+func decode*(s: string): string =
   ## Decodes string `s` in base64 representation back into its original form.
   ## The initial whitespace is skipped.
   ##
@@ -226,7 +226,7 @@ proc decode*(s: string): string =
     assert decode("  SGVsbG8gV29ybGQ=") == "Hello World"
   if s.len == 0: return
 
-  proc decodeSize(size: int): int =
+  func decodeSize(size: int): int =
     return (size * 3 div 4) + 6
 
   template inputChar(x: untyped) =

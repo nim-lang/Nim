@@ -55,7 +55,7 @@ const
          defined(PalmOS) or defined(MorphOS): false
     else: true
     ## True if the file system is case sensitive, false otherwise. Used by
-    ## `cmpPaths proc <#cmpPaths,string,string>`_ to compare filenames properly.
+    ## `cmpPaths func <#cmpPaths,string,string>`_ to compare filenames properly.
 
   ExeExt* =
     when doslikeFileSystem: "exe"

@@ -19,7 +19,7 @@ runnableExamples:
   from std/fenv import epsilon
   from std/random import rand
 
-  proc generateGaussianNoise(mu: float = 0.0, sigma: float = 1.0): (float, float) =
+  func generateGaussianNoise(mu: float = 0.0, sigma: float = 1.0): (float, float) =
     # Generates values from a normal distribution.
     # Translated from https://en.wikipedia.org/wiki/Box%E2%80%93Muller_transform#Implementation.
     var u1: float
@@ -61,13 +61,13 @@ import std/private/since
 import std/[bitops, fenv]
 
 when defined(c) or defined(cpp):
-  proc c_isnan(x: float): bool {.importc: "isnan", header: "<math.h>".}
+  func c_isnan(x: float): bool {.importc: "isnan", header: "<math.h>".}
     # a generic like `x: SomeFloat` might work too if this is implemented via a C macro.
 
-  proc c_copysign(x, y: cfloat): cfloat {.importc: "copysignf", header: "<math.h>".}
-  proc c_copysign(x, y: cdouble): cdouble {.importc: "copysign", header: "<math.h>".}
+  func c_copysign(x, y: cfloat): cfloat {.importc: "copysignf", header: "<math.h>".}
+  func c_copysign(x, y: cdouble): cdouble {.importc: "copysign", header: "<math.h>".}
 
-  proc c_signbit(x: SomeFloat): cint {.importc: "signbit", header: "<math.h>".}
+  func c_signbit(x: SomeFloat): cint {.importc: "signbit", header: "<math.h>".}
 
   func c_frexp*(x: cfloat, exponent: var cint): cfloat {.
       importc: "frexpf", header: "<math.h>", deprecated: "Use `frexp` instead".}
@@ -173,7 +173,7 @@ func isNaN*(x: SomeFloat): bool {.inline, since: (1,5,1).} =
 when defined(js):
   import std/private/jsutils
 
-  proc toBitsImpl(x: float): array[2, uint32] =
+  func toBitsImpl(x: float): array[2, uint32] =
     let buffer = newArrayBuffer(8)
     let a = newFloat64Array(buffer)
     let b = newUint32Array(buffer)
@@ -181,7 +181,7 @@ when defined(js):
     {.emit: "`result` = `b`;".}
     # result = cast[array[2, uint32]](b)
 
-  proc jsSetSign(x: float, sgn: bool): float =
+  func jsSetSign(x: float, sgn: bool): float =
     let buffer = newArrayBuffer(8)
     let a = newFloat64Array(buffer)
     let b = newUint32Array(buffer)
@@ -194,7 +194,7 @@ when defined(js):
     `result` = `a`[0]
     """
 
-proc signbit*(x: SomeFloat): bool {.inline, since: (1, 5, 1).} =
+func signbit*(x: SomeFloat): bool {.inline, since: (1, 5, 1).} =
   ## Returns true if `x` is negative, false otherwise.
   runnableExamples:
     doAssert not signbit(0.0)
@@ -884,7 +884,7 @@ func floorDiv*[T: SomeInteger](x, y: T): T =
   ## That is, `div` rounds towards `0` and `floorDiv` rounds down.
   ##
   ## **See also:**
-  ## * `system.div proc <system.html#div,int,int>`_ for integer division
+  ## * `system.div func <system.html#div,int,int>`_ for integer division
   ## * `floorMod func <#floorMod,T,T>`_ for Python-like (`%` operator) behavior
   runnableExamples:
     doAssert floorDiv( 13,  3) ==  4

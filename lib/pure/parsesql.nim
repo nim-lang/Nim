@@ -65,19 +65,19 @@ const
 proc close(L: var SqlLexer) =
   lexbase.close(L)
 
-proc getColumn(L: SqlLexer): int =
+func getColumn(L: SqlLexer): int =
   ## get the current column the parser has arrived at.
   result = getColNumber(L, L.bufpos)
 
-proc getLine(L: SqlLexer): int =
+func getLine(L: SqlLexer): int =
   result = L.lineNumber
 
-proc handleOctChar(c: var SqlLexer, xi: var int) =
+func handleOctChar(c: var SqlLexer, xi: var int) =
   if c.buf[c.bufpos] in {'0'..'7'}:
     xi = (xi shl 3) or (ord(c.buf[c.bufpos]) - ord('0'))
     inc(c.bufpos)
 
-proc getEscapedChar(c: var SqlLexer, tok: var Token) =
+func getEscapedChar(c: var SqlLexer, tok: var Token) =
   inc(c.bufpos)
   case c.buf[c.bufpos]
   of 'n', 'N':
@@ -247,7 +247,7 @@ proc getDollarString(c: var SqlLexer, tok: var Token) =
       inc(pos)
   c.bufpos = pos
 
-proc getSymbol(c: var SqlLexer, tok: var Token) =
+func getSymbol(c: var SqlLexer, tok: var Token) =
   var pos = c.bufpos
   while true:
     add(tok.literal, c.buf[pos])
@@ -258,7 +258,7 @@ proc getSymbol(c: var SqlLexer, tok: var Token) =
   c.bufpos = pos
   tok.kind = tkIdentifier
 
-proc getQuotedIdentifier(c: var SqlLexer, tok: var Token, quote = '\"') =
+func getQuotedIdentifier(c: var SqlLexer, tok: var Token, quote = '\"') =
   var pos = c.bufpos + 1
   tok.kind = tkQuotedIdentifier
   while true:
@@ -305,7 +305,7 @@ proc getBitHexString(c: var SqlLexer, tok: var Token, validChars: set[char]) =
       else: break parseLoop
   c.bufpos = pos
 
-proc getNumeric(c: var SqlLexer, tok: var Token) =
+func getNumeric(c: var SqlLexer, tok: var Token) =
   tok.kind = tkInteger
   var pos = c.bufpos
   while c.buf[pos] in Digits:
@@ -335,7 +335,7 @@ proc getNumeric(c: var SqlLexer, tok: var Token) =
       tok.kind = tkInvalid
   c.bufpos = pos
 
-proc getOperator(c: var SqlLexer, tok: var Token) =
+func getOperator(c: var SqlLexer, tok: var Token) =
   const operators = {'+', '-', '*', '/', '<', '>', '=', '~', '!', '@', '#', '%',
                      '^', '&', '|', '`', '?'}
   tok.kind = tkOperator
@@ -436,7 +436,7 @@ proc getTok(c: var SqlLexer, tok: var Token) =
     add(tok.literal, c.buf[c.bufpos])
     inc(c.bufpos)
 
-proc errorStr(L: SqlLexer, msg: string): string =
+func errorStr(L: SqlLexer, msg: string): string =
   result = "$1($2, $3) Error: $4" % [L.filename, $getLine(L), $getColumn(L), msg]
 
 
@@ -544,7 +544,7 @@ type
   SqlParser* = object of SqlLexer ## SQL parser object
     tok: Token
 
-proc newNode*(k: SqlNodeKind): SqlNode =
+func newNode*(k: SqlNodeKind): SqlNode =
   when defined(js): # bug #14117
     case k
     of LiteralNodes:
@@ -554,40 +554,40 @@ proc newNode*(k: SqlNodeKind): SqlNode =
   else:
     result = SqlNode(kind: k)
 
-proc newNode*(k: SqlNodeKind, s: string): SqlNode =
+func newNode*(k: SqlNodeKind, s: string): SqlNode =
   result = SqlNode(kind: k)
   result.strVal = s
 
-proc newNode*(k: SqlNodeKind, sons: seq[SqlNode]): SqlNode =
+func newNode*(k: SqlNodeKind, sons: seq[SqlNode]): SqlNode =
   result = SqlNode(kind: k)
   result.sons = sons
 
-proc len*(n: SqlNode): int =
+func len*(n: SqlNode): int =
   if n.kind in LiteralNodes:
     result = 0
   else:
     result = n.sons.len
 
-proc `[]`*(n: SqlNode; i: int): SqlNode = n.sons[i]
-proc `[]`*(n: SqlNode; i: BackwardsIndex): SqlNode = n.sons[n.len - int(i)]
+func `[]`*(n: SqlNode; i: int): SqlNode = n.sons[i]
+func `[]`*(n: SqlNode; i: BackwardsIndex): SqlNode = n.sons[n.len - int(i)]
 
-proc add*(father, n: SqlNode) =
+func add*(father, n: SqlNode) =
   add(father.sons, n)
 
 proc getTok(p: var SqlParser) =
   getTok(p, p.tok)
 
-proc sqlError(p: SqlParser, msg: string) =
+func sqlError(p: SqlParser, msg: string) =
   var e: ref SqlParseError
   new(e)
   e.msg = errorStr(p, msg)
   raise e
 
-proc isKeyw(p: SqlParser, keyw: string): bool =
+func isKeyw(p: SqlParser, keyw: string): bool =
   result = p.tok.kind == tkIdentifier and
            cmpIgnoreCase(p.tok.literal, keyw) == 0
 
-proc isOpr(p: SqlParser, opr: string): bool =
+func isOpr(p: SqlParser, opr: string): bool =
   result = p.tok.kind == tkOperator and
            cmpIgnoreCase(p.tok.literal, opr) == 0
 
@@ -595,11 +595,11 @@ proc optKeyw(p: var SqlParser, keyw: string) =
   if p.tok.kind == tkIdentifier and cmpIgnoreCase(p.tok.literal, keyw) == 0:
     getTok(p)
 
-proc expectIdent(p: SqlParser) =
+func expectIdent(p: SqlParser) =
   if p.tok.kind != tkIdentifier and p.tok.kind != tkQuotedIdentifier:
     sqlError(p, "identifier expected")
 
-proc expect(p: SqlParser, kind: TokKind) =
+func expect(p: SqlParser, kind: TokKind) =
   if p.tok.kind != kind:
     sqlError(p, tokKindToStr[kind] & " expected")
 
@@ -646,7 +646,7 @@ proc parseDataType(p: var SqlParser): SqlNode =
         getTok(p)
       eat(p, tkParRi)
 
-proc getPrecedence(p: SqlParser): int =
+func getPrecedence(p: SqlParser): int =
   if isOpr(p, "*") or isOpr(p, "/") or isOpr(p, "%"):
     result = 6
   elif isOpr(p, "+") or isOpr(p, "-"):
@@ -1176,32 +1176,32 @@ type
     upperCase: bool
     buffer: string
 
-proc add(s: var SqlWriter, thing: char) =
+func add(s: var SqlWriter, thing: char) =
   s.buffer.add(thing)
 
-proc prepareAdd(s: var SqlWriter) {.inline.} =
+func prepareAdd(s: var SqlWriter) {.inline.} =
   if s.buffer.len > 0 and s.buffer[^1] notin {' ', '\L', '(', '.'}:
     s.buffer.add(" ")
 
-proc add(s: var SqlWriter, thing: string) =
+func add(s: var SqlWriter, thing: string) =
   s.prepareAdd
   s.buffer.add(thing)
 
-proc addKeyw(s: var SqlWriter, thing: string) =
+func addKeyw(s: var SqlWriter, thing: string) =
   var keyw = thing
   if s.upperCase:
     keyw = keyw.toUpperAscii()
   s.add(keyw)
 
-proc addIden(s: var SqlWriter, thing: string) =
+func addIden(s: var SqlWriter, thing: string) =
   var iden = thing
   if iden.toLowerAscii() in reservedKeywords:
     iden = '"' & iden & '"'
   s.add(iden)
 
-proc ra(n: SqlNode, s: var SqlWriter) {.gcsafe.}
+func ra(n: SqlNode, s: var SqlWriter) {.gcsafe.}
 
-proc rs(n: SqlNode, s: var SqlWriter, prefix = "(", suffix = ")", sep = ", ") =
+func rs(n: SqlNode, s: var SqlWriter, prefix = "(", suffix = ")", sep = ", ") =
   if n.len > 0:
     s.add(prefix)
     for i in 0 .. n.len-1:
@@ -1209,13 +1209,13 @@ proc rs(n: SqlNode, s: var SqlWriter, prefix = "(", suffix = ")", sep = ", ") =
       ra(n.sons[i], s)
     s.add(suffix)
 
-proc addMulti(s: var SqlWriter, n: SqlNode, sep = ',') =
+func addMulti(s: var SqlWriter, n: SqlNode, sep = ',') =
   if n.len > 0:
     for i in 0 .. n.len-1:
       if i > 0: s.add(sep)
       ra(n.sons[i], s)
 
-proc addMulti(s: var SqlWriter, n: SqlNode, sep = ',', prefix, suffix: char) =
+func addMulti(s: var SqlWriter, n: SqlNode, sep = ',', prefix, suffix: char) =
   if n.len > 0:
     s.add(prefix)
     for i in 0 .. n.len-1:
@@ -1223,7 +1223,7 @@ proc addMulti(s: var SqlWriter, n: SqlNode, sep = ',', prefix, suffix: char) =
       ra(n.sons[i], s)
     s.add(suffix)
 
-proc quoted(s: string): string =
+func quoted(s: string): string =
   "\"" & replace(s, "\"", "\"\"") & "\""
 
 func escape(result: var string; s: string) =
@@ -1237,7 +1237,7 @@ func escape(result: var string; s: string) =
     else: result.add(c)
   result.add('\'')
 
-proc ra(n: SqlNode, s: var SqlWriter) =
+func ra(n: SqlNode, s: var SqlWriter) =
   if n == nil: return
   case n.kind
   of nkNone: discard
@@ -1451,7 +1451,7 @@ proc ra(n: SqlNode, s: var SqlWriter) =
     s.addKeyw("enum")
     rs(n, s)
 
-proc renderSQL*(n: SqlNode, upperCase = false): string =
+func renderSQL*(n: SqlNode, upperCase = false): string =
   ## Converts an SQL abstract syntax tree to its string representation.
   var s: SqlWriter
   s.buffer = ""
@@ -1459,11 +1459,11 @@ proc renderSQL*(n: SqlNode, upperCase = false): string =
   ra(n, s)
   return s.buffer
 
-proc `$`*(n: SqlNode): string =
+func `$`*(n: SqlNode): string =
   ## an alias for `renderSQL`.
   renderSQL(n)
 
-proc treeReprAux(s: SqlNode, level: int, result: var string) =
+func treeReprAux(s: SqlNode, level: int, result: var string) =
   result.add('\n')
   for i in 0 ..< level: result.add("  ")
 
@@ -1475,7 +1475,7 @@ proc treeReprAux(s: SqlNode, level: int, result: var string) =
     for son in s.sons:
       treeReprAux(son, level + 1, result)
 
-proc treeRepr*(s: SqlNode): string =
+func treeRepr*(s: SqlNode): string =
   result = newStringOfCap(128)
   treeReprAux(s, 0, result)
 

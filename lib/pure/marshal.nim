@@ -56,7 +56,7 @@ Please contribute a new implementation.""".}
 
 import std/[streams, typeinfo, json, intsets, tables, unicode]
 
-proc ptrToInt(x: pointer): int {.inline.} =
+func ptrToInt(x: pointer): int {.inline.} =
   result = cast[int](x) # don't skip alignment
 
 proc storeAny(s: Stream, a: Any, stored: var IntSet) =
@@ -269,7 +269,7 @@ proc loadAny(s: Stream, a: Any, t: var Table[BiggestInt, pointer]) =
   loadAny(p, a, t)
   close(p)
 
-proc load*[T](s: Stream, data: var T) =
+func load*[T](s: Stream, data: var T) =
   ## Loads `data` from the stream `s`. Raises `IOError` in case of an error.
   runnableExamples:
     import std/streams
@@ -282,7 +282,7 @@ proc load*[T](s: Stream, data: var T) =
   var tab = initTable[BiggestInt, pointer]()
   loadAny(s, toAny(data), tab)
 
-proc store*[T](s: Stream, data: T) =
+func store*[T](s: Stream, data: T) =
   ## Stores `data` into the stream `s`. Raises `IOError` in case of an error.
   runnableExamples:
     import std/streams
@@ -298,7 +298,7 @@ proc store*[T](s: Stream, data: T) =
   shallowCopy(d, data)
   storeAny(s, toAny(d), stored)
 
-proc `$$`*[T](x: T): string =
+func `$$`*[T](x: T): string =
   ## Returns a string representation of `x` (serialization, marshalling).
   ##
   ## **Note:** to serialize `x` to JSON use `%x` from the `json` module
@@ -320,7 +320,7 @@ proc `$$`*[T](x: T): string =
   storeAny(s, toAny(d), stored)
   result = s.data
 
-proc to*[T](data: string): T =
+func to*[T](data: string): T =
   ## Reads data and transforms it to a type `T` (deserialization, unmarshalling).
   runnableExamples:
     type

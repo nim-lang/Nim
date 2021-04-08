@@ -18,13 +18,13 @@ type
   Isolated*[T] = object ## Isolated data can only be moved, not copied.
     value: T
 
-proc `=`*[T](dest: var Isolated[T]; src: Isolated[T]) {.error.}
+func `=`*[T](dest: var Isolated[T]; src: Isolated[T]) {.error.}
 
-proc `=sink`*[T](dest: var Isolated[T]; src: Isolated[T]) {.inline.} =
+func `=sink`*[T](dest: var Isolated[T]; src: Isolated[T]) {.inline.} =
   # delegate to value's sink operation
   `=sink`(dest.value, src.value)
 
-proc `=destroy`*[T](dest: var Isolated[T]) {.inline.} =
+func `=destroy`*[T](dest: var Isolated[T]) {.inline.} =
   # delegate to value's destroy operation
   `=destroy`(dest.value)
 

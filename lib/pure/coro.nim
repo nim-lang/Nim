@@ -35,12 +35,12 @@ const defaultStackSize = 512 * 1024
 const useOrcArc = defined(gcArc) or defined(gcOrc)
 
 when useOrcArc:
-  proc nimGC_setStackBottom*(theStackBottom: pointer) = discard
+  func nimGC_setStackBottom*(theStackBottom: pointer) = discard
 
-proc GC_addStack(bottom: pointer) {.cdecl, importc.}
-proc GC_removeStack(bottom: pointer) {.cdecl, importc.}
-proc GC_setActiveStack(bottom: pointer) {.cdecl, importc.}
-proc GC_getActiveStack() : pointer {.cdecl, importc.}
+func GC_addStack(bottom: pointer) {.cdecl, importc.}
+func GC_removeStack(bottom: pointer) {.cdecl, importc.}
+func GC_setActiveStack(bottom: pointer) {.cdecl, importc.}
+func GC_getActiveStack() : pointer {.cdecl, importc.}
 
 const
   CORO_BACKEND_UCONTEXT = 0
@@ -80,17 +80,17 @@ elif coroBackend == CORO_BACKEND_UCONTEXT:
 
     Context = ucontext_t
 
-  proc getcontext(context: var ucontext_t): int32 {.importc,
+  func getcontext(context: var ucontext_t): int32 {.importc,
       header: "<ucontext.h>".}
-  proc setcontext(context: var ucontext_t): int32 {.importc,
+  func setcontext(context: var ucontext_t): int32 {.importc,
       header: "<ucontext.h>".}
-  proc swapcontext(fromCtx, toCtx: var ucontext_t): int32 {.importc,
+  func swapcontext(fromCtx, toCtx: var ucontext_t): int32 {.importc,
       header: "<ucontext.h>".}
-  proc makecontext(context: var ucontext_t, fn: pointer, argc: int32) {.importc,
+  func makecontext(context: var ucontext_t, fn: pointer, argc: int32) {.importc,
       header: "<ucontext.h>", varargs.}
 
 elif coroBackend == CORO_BACKEND_SETJMP:
-  proc coroExecWithStack*(fn: pointer, stack: pointer) {.noreturn,
+  func coroExecWithStack*(fn: pointer, stack: pointer) {.noreturn,
       importc: "narch_$1", fastcall.}
   when defined(amd64):
     {.compile: "../arch/x86/amd64.S".}
@@ -114,15 +114,15 @@ elif coroBackend == CORO_BACKEND_SETJMP:
       # platforms please provide implementations of these procedures.
       {.error: "Unsupported architecture.".}
 
-    proc setjmp(ctx: var JmpBuf): int {.importc: "narch_$1".}
-    proc longjmp(ctx: JmpBuf, ret = 1) {.importc: "narch_$1".}
+    func setjmp(ctx: var JmpBuf): int {.importc: "narch_$1".}
+    func longjmp(ctx: JmpBuf, ret = 1) {.importc: "narch_$1".}
   else:
     # Use setjmp/longjmp implementation provided by the system.
     type
       JmpBuf {.importc: "jmp_buf", header: "<setjmp.h>".} = object
 
-    proc setjmp(ctx: var JmpBuf): int {.importc, header: "<setjmp.h>".}
-    proc longjmp(ctx: JmpBuf, ret = 1) {.importc, header: "<setjmp.h>".}
+    func setjmp(ctx: var JmpBuf): int {.importc, header: "<setjmp.h>".}
+    func longjmp(ctx: JmpBuf, ret = 1) {.importc, header: "<setjmp.h>".}
 
   type
     Context = JmpBuf
@@ -294,7 +294,7 @@ proc start*(c: proc(), stacksize: int = defaultStackSize): CoroutineRef {.discar
 
 proc run*() =
   ## Starts main coroutine scheduler loop which exits when all coroutines exit.
-  ## Calling this proc starts execution of first coroutine.
+  ## Calling this func starts execution of first coroutine.
   initialize()
   ctx.current = ctx.coroutines.head
   var minDelay: float = 0
@@ -333,7 +333,7 @@ proc run*() =
     else:
       ctx.current = ctx.current.next
 
-proc alive*(c: CoroutineRef): bool = c.coro != nil and c.coro.state != CORO_FINISHED
+func alive*(c: CoroutineRef): bool = c.coro != nil and c.coro.state != CORO_FINISHED
   ## Returns `true` if coroutine has not returned, `false` otherwise.
 
 proc wait*(c: CoroutineRef, interval = 0.01) =

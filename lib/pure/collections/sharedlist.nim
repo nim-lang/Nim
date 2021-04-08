@@ -34,7 +34,7 @@ template withLock(t, x: untyped) =
   x
   release(t.lock)
 
-proc iterAndMutate*[A](x: var SharedList[A]; action: proc(x: A): bool) =
+func iterAndMutate*[A](x: var SharedList[A]; action: proc(x: A): bool) =
   ## iterates over the list. If 'action' returns true, the
   ## current item is removed from the list.
   withLock(x):
@@ -78,12 +78,12 @@ proc add*[A](x: var SharedList[A]; y: A) =
     node.d[node.dataLen] = y
     inc(node.dataLen)
 
-proc init*[A](t: var SharedList[A]) =
+func init*[A](t: var SharedList[A]) =
   initLock t.lock
   t.head = nil
   t.tail = nil
 
-proc clear*[A](t: var SharedList[A]) =
+func clear*[A](t: var SharedList[A]) =
   withLock(t):
     var it = t.head
     while it != nil:
@@ -93,7 +93,7 @@ proc clear*[A](t: var SharedList[A]) =
     t.head = nil
     t.tail = nil
 
-proc deinitSharedList*[A](t: var SharedList[A]) =
+func deinitSharedList*[A](t: var SharedList[A]) =
   clear(t)
   deinitLock t.lock
 

@@ -58,46 +58,46 @@ type
            ## whose value may be set by the user to affect the subsequent
            ## behavior of floating-point arithmetic.
 
-proc feclearexcept*(excepts: cint): cint {.importc, header: "<fenv.h>".}
+func feclearexcept*(excepts: cint): cint {.importc, header: "<fenv.h>".}
   ## Clear the supported exceptions represented by `excepts`.
 
-proc fegetexceptflag*(flagp: ptr Tfexcept, excepts: cint): cint {.
+func fegetexceptflag*(flagp: ptr Tfexcept, excepts: cint): cint {.
   importc, header: "<fenv.h>".}
   ## Store implementation-defined representation of the exception flags
   ## indicated by `excepts` in the object pointed to by `flagp`.
 
-proc feraiseexcept*(excepts: cint): cint {.importc, header: "<fenv.h>".}
+func feraiseexcept*(excepts: cint): cint {.importc, header: "<fenv.h>".}
   ## Raise the supported exceptions represented by `excepts`.
 
-proc fesetexceptflag*(flagp: ptr Tfexcept, excepts: cint): cint {.
+func fesetexceptflag*(flagp: ptr Tfexcept, excepts: cint): cint {.
   importc, header: "<fenv.h>".}
   ## Set complete status for exceptions indicated by `excepts` according to
   ## the representation in the object pointed to by `flagp`.
 
-proc fetestexcept*(excepts: cint): cint {.importc, header: "<fenv.h>".}
+func fetestexcept*(excepts: cint): cint {.importc, header: "<fenv.h>".}
   ## Determine which of subset of the exceptions specified by `excepts` are
   ## currently set.
 
-proc fegetround*(): cint {.importc, header: "<fenv.h>".}
+func fegetround*(): cint {.importc, header: "<fenv.h>".}
   ## Get current rounding direction.
 
-proc fesetround*(roundingDirection: cint): cint {.importc, header: "<fenv.h>".}
+func fesetround*(roundingDirection: cint): cint {.importc, header: "<fenv.h>".}
   ## Establish the rounding direction represented by `roundingDirection`.
 
-proc fegetenv*(envp: ptr Tfenv): cint {.importc, header: "<fenv.h>".}
+func fegetenv*(envp: ptr Tfenv): cint {.importc, header: "<fenv.h>".}
   ## Store the current floating-point environment in the object pointed
   ## to by `envp`.
 
-proc feholdexcept*(envp: ptr Tfenv): cint {.importc, header: "<fenv.h>".}
+func feholdexcept*(envp: ptr Tfenv): cint {.importc, header: "<fenv.h>".}
   ## Save the current environment in the object pointed to by `envp`, clear
   ## exception flags and install a non-stop mode (if available) for all
   ## exceptions.
 
-proc fesetenv*(a1: ptr Tfenv): cint {.importc, header: "<fenv.h>".}
+func fesetenv*(a1: ptr Tfenv): cint {.importc, header: "<fenv.h>".}
   ## Establish the floating-point environment represented by the object
   ## pointed to by `envp`.
 
-proc feupdateenv*(envp: ptr Tfenv): cint {.importc, header: "<fenv.h>".}
+func feupdateenv*(envp: ptr Tfenv): cint {.importc, header: "<fenv.h>".}
   ## Save current exceptions in temporary storage, install environment
   ## represented by object pointed to by `envp` and raise exceptions
   ## according to saved exceptions.

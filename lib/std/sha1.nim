@@ -60,7 +60,7 @@ template ror27(val: uint32): uint32 = (val shr 27) or (val shl  5)
 template ror2 (val: uint32): uint32 = (val shr  2) or (val shl 30)
 template ror31(val: uint32): uint32 = (val shr 31) or (val shl  1)
 
-proc transform(ctx: var Sha1State) =
+func transform(ctx: var Sha1State) =
   var w: array[80, uint32]
   var a, b, c, d, e: uint32
   var t = 0
@@ -141,7 +141,7 @@ proc transform(ctx: var Sha1State) =
   ctx.state[3] += d
   ctx.state[4] += e
 
-proc update*(ctx: var Sha1State, data: openArray[char]) =
+func update*(ctx: var Sha1State, data: openArray[char]) =
   ## Updates the `Sha1State` with `data`.
   ##
   ## If you use the `secureHash proc <#secureHash,openArray[char]>`_,
@@ -176,7 +176,7 @@ proc update*(ctx: var Sha1State, data: openArray[char]) =
       i = 0
   ctx.count += data.len
 
-proc finalize*(ctx: var Sha1State): Sha1Digest =
+func finalize*(ctx: var Sha1State): Sha1Digest =
   ## Finalizes the `Sha1State` and returns a `Sha1Digest`.
   ##
   ## If you use the `secureHash proc <#secureHash,openArray[char]>`_,
@@ -198,7 +198,7 @@ proc finalize*(ctx: var Sha1State): Sha1Digest =
 
 # Public API
 
-proc secureHash*(str: openArray[char]): SecureHash =
+func secureHash*(str: openArray[char]): SecureHash =
   ## Generates a `SecureHash` from `str`.
   ##
   ## **See also:**
@@ -235,7 +235,7 @@ proc secureHashFile*(filename: string): SecureHash =
 
   SecureHash(state.finalize())
 
-proc `$`*(self: SecureHash): string =
+func `$`*(self: SecureHash): string =
   ## Returns the string representation of a `SecureHash`.
   ##
   ## **See also:**
@@ -248,7 +248,7 @@ proc `$`*(self: SecureHash): string =
   for v in Sha1Digest(self):
     result.add(toHex(int(v), 2))
 
-proc parseSecureHash*(hash: string): SecureHash =
+func parseSecureHash*(hash: string): SecureHash =
   ## Converts a string `hash` to a `SecureHash`.
   ##
   ## **See also:**
@@ -263,7 +263,7 @@ proc parseSecureHash*(hash: string): SecureHash =
   for i in 0 ..< Sha1DigestSize:
     Sha1Digest(result)[i] = uint8(parseHexInt(hash[i*2] & hash[i*2 + 1]))
 
-proc `==`*(a, b: SecureHash): bool =
+func `==`*(a, b: SecureHash): bool =
   ## Checks if two `SecureHash` values are identical.
   runnableExamples:
     let

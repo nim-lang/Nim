@@ -56,7 +56,7 @@ const
   ariaAttr* = " role "                           ## HTML DOM Aria Attributes
   commonAttr* = coreAttr & eventAttr & ariaAttr  ## HTML DOM Common Attributes
 
-proc getIdent(e: NimNode): string =
+func getIdent(e: NimNode): string =
   case e.kind
   of nnkIdent:
     result = e.strVal.normalize
@@ -66,7 +66,7 @@ proc getIdent(e: NimNode): string =
       result.add getIdent(e[i])
   else: error("cannot extract identifier from node: " & toStrLit(e).strVal, e)
 
-proc delete[T](s: var seq[T], attr: T): bool =
+func delete[T](s: var seq[T], attr: T): bool =
   var idx = find(s, attr)
   if idx >= 0:
     var L = s.len
@@ -74,7 +74,7 @@ proc delete[T](s: var seq[T], attr: T): bool =
     setLen(s, L-1)
     result = true
 
-proc xmlCheckedTag*(argsList: NimNode, tag: string, optAttr = "", reqAttr = "",
+func xmlCheckedTag*(argsList: NimNode, tag: string, optAttr = "", reqAttr = "",
     isLeaf = false): NimNode =
   ## use this procedure to define a new XML tag
 

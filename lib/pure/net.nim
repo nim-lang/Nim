@@ -276,7 +276,7 @@ proc newSocket*(domain: Domain = AF_INET, sockType: SockType = SOCK_STREAM,
     raiseOSError(osLastError())
   result = newSocket(fd, domain, sockType, protocol, buffered)
 
-proc parseIPv4Address(addressStr: string): IpAddress =
+func parseIPv4Address(addressStr: string): IpAddress =
   ## Parses IPv4 addresses
   ## Raises ValueError on errors
   var
@@ -310,7 +310,7 @@ proc parseIPv4Address(addressStr: string): IpAddress =
     raise newException(ValueError, "Invalid IP Address")
   result.address_v4[byteCount] = cast[uint8](currentByte)
 
-proc parseIPv6Address(addressStr: string): IpAddress =
+func parseIPv6Address(addressStr: string): IpAddress =
   ## Parses IPv6 addresses
   ## Raises ValueError on errors
   result = IpAddress(family: IpAddressFamily.IPv6)
@@ -431,7 +431,7 @@ proc parseIPv6Address(addressStr: string): IpAddress =
     raise newException(ValueError,
       "Invalid IP Address. The address consists of too many groups")
 
-proc parseIpAddress*(addressStr: string): IpAddress =
+func parseIpAddress*(addressStr: string): IpAddress =
   ## Parses an IP address
   ## Raises ValueError on error
   if addressStr.len == 0:
@@ -441,7 +441,7 @@ proc parseIpAddress*(addressStr: string): IpAddress =
   else:
     return parseIPv4Address(addressStr)
 
-proc isIpAddress*(addressStr: string): bool {.tags: [].} =
+func isIpAddress*(addressStr: string): bool {.tags: [].} =
   ## Checks if a string is an IP address
   ## Returns true if it is, false otherwise
   try:
@@ -488,7 +488,7 @@ proc fromSockAddrAux(sa: ptr Sockaddr_storage, sl: SockLen,
   else:
     raise newException(ValueError, "Neither IPv4 nor IPv6")
 
-proc fromSockAddr*(sa: Sockaddr_storage | SockAddr | Sockaddr_in | Sockaddr_in6,
+func fromSockAddr*(sa: Sockaddr_storage | SockAddr | Sockaddr_in | Sockaddr_in6,
     sl: SockLen, address: var IpAddress, port: var Port) {.inline.} =
   ## Converts `SockAddr` and `SockLen` to `IpAddress` and `Port`. Raises
   ## `ObjectConversionDefect` in case of invalid `sa` and `sl` arguments.
@@ -501,7 +501,7 @@ when defineSsl:
   ERR_load_BIO_strings()
   OpenSSL_add_all_algorithms()
 
-  proc raiseSSLError*(s = "") =
+  func raiseSSLError*(s = "") =
     ## Raises a new SSL error.
     if s != "":
       raise newException(SslError, s)
@@ -517,7 +517,7 @@ when defineSsl:
       discard
     raise newException(SslError, errStr)
 
-  proc getExtraData*(ctx: SslContext, index: int): RootRef =
+  func getExtraData*(ctx: SslContext, index: int): RootRef =
     ## Retrieves arbitrary data stored inside SslContext.
     if index notin ctx.referencedData:
       raise newException(IndexDefect, "No data with that index.")
@@ -526,7 +526,7 @@ when defineSsl:
       raiseSSLError()
     return cast[RootRef](res)
 
-  proc setExtraData*(ctx: SslContext, index: int, data: RootRef) =
+  func setExtraData*(ctx: SslContext, index: int, data: RootRef) =
     ## Stores arbitrary data inside SslContext. The unique `index`
     ## should be retrieved using getSslContextExtraDataIndex.
     if index in ctx.referencedData:
@@ -540,7 +540,7 @@ when defineSsl:
     GC_ref(data)
 
   # http://simplestcodings.blogspot.co.uk/2010/08/secure-server-client-using-openssl-in-c.html
-  proc loadCertificates(ctx: SslCtx, certFile, keyFile: string) =
+  func loadCertificates(ctx: SslCtx, certFile, keyFile: string) =
     if certFile != "" and not fileExists(certFile):
       raise newException(system.IOError,
           "Certificate file could not be found: " & certFile)
@@ -661,10 +661,10 @@ when defineSsl:
     result = SslContext(context: newCTX, referencedData: initHashSet[int](),
       extraInternal: new(SslContextExtraInternal))
 
-  proc getExtraInternal(ctx: SslContext): SslContextExtraInternal =
+  func getExtraInternal(ctx: SslContext): SslContextExtraInternal =
     return ctx.extraInternal
 
-  proc destroyContext*(ctx: SslContext) =
+  func destroyContext*(ctx: SslContext) =
     ## Free memory referenced by SslContext.
 
     # We assume here that OpenSSL's internal indexes increase by 1 each time.
@@ -674,14 +674,14 @@ when defineSsl:
       GC_unref(getExtraData(ctx, i))
     ctx.context.SSL_CTX_free()
 
-  proc `pskIdentityHint=`*(ctx: SslContext, hint: string) =
+  func `pskIdentityHint=`*(ctx: SslContext, hint: string) =
     ## Sets the identity hint passed to server.
     ##
     ## Only used in PSK ciphersuites.
     if ctx.context.SSL_CTX_use_psk_identity_hint(hint) <= 0:
       raiseSSLError()
 
-  proc clientGetPskFunc*(ctx: SslContext): SslClientGetPskFunc =
+  func clientGetPskFunc*(ctx: SslContext): SslClientGetPskFunc =
     return ctx.getExtraInternal().clientGetPskFunc
 
   proc pskClientCallback(ssl: SslPtr; hint: cstring; identity: cstring;
@@ -700,7 +700,7 @@ when defineSsl:
 
     return pskString.len.cuint
 
-  proc `clientGetPskFunc=`*(ctx: SslContext, fun: SslClientGetPskFunc) =
+  func `clientGetPskFunc=`*(ctx: SslContext, fun: SslClientGetPskFunc) =
     ## Sets function that returns the client identity and the PSK based on identity
     ## hint from the server.
     ##
@@ -709,7 +709,7 @@ when defineSsl:
     ctx.context.SSL_CTX_set_psk_client_callback(
         if fun == nil: nil else: pskClientCallback)
 
-  proc serverGetPskFunc*(ctx: SslContext): SslServerGetPskFunc =
+  func serverGetPskFunc*(ctx: SslContext): SslServerGetPskFunc =
     return ctx.getExtraInternal().serverGetPskFunc
 
   proc pskServerCallback(ssl: SslCtx; identity: cstring; psk: ptr cuchar;
@@ -722,7 +722,7 @@ when defineSsl:
 
     return pskString.len.cuint
 
-  proc `serverGetPskFunc=`*(ctx: SslContext, fun: SslServerGetPskFunc) =
+  func `serverGetPskFunc=`*(ctx: SslContext, fun: SslServerGetPskFunc) =
     ## Sets function that returns PSK based on the client identity.
     ##
     ## Only used in PSK ciphersuites.
@@ -730,12 +730,12 @@ when defineSsl:
     ctx.context.SSL_CTX_set_psk_server_callback(if fun == nil: nil
                                                 else: pskServerCallback)
 
-  proc getPskIdentity*(socket: Socket): string =
+  func getPskIdentity*(socket: Socket): string =
     ## Gets the PSK identity provided by the client.
     assert socket.isSsl
     return $(socket.sslHandle.SSL_get_psk_identity)
 
-  proc wrapSocket*(ctx: SslContext, socket: Socket) =
+  func wrapSocket*(ctx: SslContext, socket: Socket) =
     ## Wraps a socket in an SSL context. This function effectively turns
     ## `socket` into an SSL socket.
     ##
@@ -759,7 +759,7 @@ when defineSsl:
     if SSL_set_fd(socket.sslHandle, socket.fd) != 1:
       raiseSSLError()
 
-  proc checkCertName(socket: Socket, hostname: string) =
+  func checkCertName(socket: Socket, hostname: string) =
     ## Check if the certificate Subject Alternative Name (SAN) or Subject CommonName (CN) matches hostname.
     ## Wildcards match only in the left-most label.
     ## When name starts with a dot it will be matched by a certificate valid for any subdomain
@@ -810,7 +810,7 @@ when defineSsl:
       let ret = SSL_accept(socket.sslHandle)
       socketError(socket, ret)
 
-  proc getPeerCertificates*(sslHandle: SslPtr): seq[Certificate] {.since: (1, 1).} =
+  func getPeerCertificates*(sslHandle: SslPtr): seq[Certificate] {.since: (1, 1).} =
     ## Returns the certificate chain received by the peer we are connected to
     ## through the OpenSSL connection represented by `sslHandle`.
     ## The handshake must have been completed and the certificate chain must
@@ -829,7 +829,7 @@ when defineSsl:
       let x509 = cast[PX509](OPENSSL_sk_value(stack, i))
       result.add(i2d_X509(x509))
 
-  proc getPeerCertificates*(socket: Socket): seq[Certificate] {.since: (1, 1).} =
+  func getPeerCertificates*(socket: Socket): seq[Certificate] {.since: (1, 1).} =
     ## Returns the certificate chain received by the peer we are connected to
     ## through the given socket.
     ## The handshake must have been completed and the certificate chain must
@@ -840,7 +840,7 @@ when defineSsl:
     else:
       result = getPeerCertificates(socket.sslHandle)
 
-  proc `sessionIdContext=`*(ctx: SslContext, sidCtx: string) =
+  func `sessionIdContext=`*(ctx: SslContext, sidCtx: string) =
     ## Sets the session id context in which a session can be reused.
     ## Used for permitting clients to reuse a session id instead of
     ## doing a new handshake.
@@ -1006,7 +1006,7 @@ proc acceptAddr*(server: Socket, client: var owned(Socket), address: var string,
         socketError(client, ret, false)
 
 when false: #defineSsl:
-  proc acceptAddrSSL*(server: Socket, client: var Socket,
+  func acceptAddrSSL*(server: Socket, client: var Socket,
                       address: var string): SSL_acceptResult {.
                       tags: [ReadIOEffect].} =
     ## This procedure should only be used for non-blocking **SSL** sockets.
@@ -1137,7 +1137,7 @@ template blockSigpipe(body: untyped): untyped =
 proc close*(socket: Socket, flags = {SocketFlag.SafeDisconn}) =
   ## Closes a socket.
   ##
-  ## If `socket` is an SSL/TLS socket, this proc will also send a closure
+  ## If `socket` is an SSL/TLS socket, this func will also send a closure
   ## notification to the peer. If `SafeDisconn` is in `flags`, failure to do so
   ## due to disconnections will be ignored. This is generally safe in
   ## practice. See
@@ -1258,7 +1258,7 @@ when defined(posix) or defined(nimdoc):
         raiseOSError(osLastError())
 
 when defined(ssl):
-  proc gotHandshake*(socket: Socket): bool =
+  func gotHandshake*(socket: Socket): bool =
     ## Determines whether a handshake has occurred between a client (`socket`)
     ## and the server that `socket` is connected to.
     ##
@@ -1268,7 +1268,7 @@ when defined(ssl):
     else:
       raiseSSLError("Socket is not an SSL socket.")
 
-proc hasDataBuffered*(s: Socket): bool =
+func hasDataBuffered*(s: Socket): bool =
   ## Determines whether a socket has data buffered.
   result = false
   if s.isBuffered:
@@ -1278,7 +1278,7 @@ proc hasDataBuffered*(s: Socket): bool =
     if s.isSsl and not result:
       result = s.sslHasPeekChar
 
-proc select(readfd: Socket, timeout = 500): int =
+func select(readfd: Socket, timeout = 500): int =
   ## Used for socket operation timeouts.
   if readfd.hasDataBuffered:
     return 1
@@ -1681,7 +1681,7 @@ proc trySend*(socket: Socket, data: string): bool {.tags: [WriteIOEffect].} =
 proc sendTo*(socket: Socket, address: string, port: Port, data: pointer,
              size: int, af: Domain = AF_INET, flags = 0'i32) {.
              tags: [WriteIOEffect].} =
-  ## This proc sends `data` to the specified `address`,
+  ## This func sends `data` to the specified `address`,
   ## which may be an IP address or a hostname, if a hostname is specified
   ## this function will try each IP of that hostname.
   ##
@@ -1690,7 +1690,7 @@ proc sendTo*(socket: Socket, address: string, port: Port, data: pointer,
   ## **Note:** You may wish to use the high-level version of this function
   ## which is defined below.
   ##
-  ## **Note:** This proc is not available for SSL sockets.
+  ## **Note:** This func is not available for SSL sockets.
   assert(socket.protocol != IPPROTO_TCP, "Cannot `sendTo` on a TCP socket")
   assert(not socket.isClosed, "Cannot `sendTo` on a closed socket")
   var aiList = getAddrInfo(address, port, af, socket.sockType, socket.protocol)
@@ -1714,7 +1714,7 @@ proc sendTo*(socket: Socket, address: string, port: Port, data: pointer,
 
 proc sendTo*(socket: Socket, address: string, port: Port,
              data: string) {.tags: [WriteIOEffect].} =
-  ## This proc sends `data` to the specified `address`,
+  ## This func sends `data` to the specified `address`,
   ## which may be an IP address or a hostname, if a hostname is specified
   ## this function will try each IP of that hostname.
   ##
@@ -1724,46 +1724,46 @@ proc sendTo*(socket: Socket, address: string, port: Port,
   socket.sendTo(address, port, cstring(data), data.len, socket.domain)
 
 
-proc isSsl*(socket: Socket): bool =
+func isSsl*(socket: Socket): bool =
   ## Determines whether `socket` is a SSL socket.
   when defineSsl:
     result = socket.isSsl
   else:
     result = false
 
-proc getFd*(socket: Socket): SocketHandle = return socket.fd
+func getFd*(socket: Socket): SocketHandle = return socket.fd
   ## Returns the socket's file descriptor
 
 when defined(nimHasStyleChecks):
   {.push styleChecks: off.}
 
-proc IPv4_any*(): IpAddress =
+func IPv4_any*(): IpAddress =
   ## Returns the IPv4 any address, which can be used to listen on all available
   ## network adapters
   result = IpAddress(
     family: IpAddressFamily.IPv4,
     address_v4: [0'u8, 0, 0, 0])
 
-proc IPv4_loopback*(): IpAddress =
+func IPv4_loopback*(): IpAddress =
   ## Returns the IPv4 loopback address (127.0.0.1)
   result = IpAddress(
     family: IpAddressFamily.IPv4,
     address_v4: [127'u8, 0, 0, 1])
 
-proc IPv4_broadcast*(): IpAddress =
+func IPv4_broadcast*(): IpAddress =
   ## Returns the IPv4 broadcast address (255.255.255.255)
   result = IpAddress(
     family: IpAddressFamily.IPv4,
     address_v4: [255'u8, 255, 255, 255])
 
-proc IPv6_any*(): IpAddress =
+func IPv6_any*(): IpAddress =
   ## Returns the IPv6 any address (::0), which can be used
   ## to listen on all available network adapters
   result = IpAddress(
     family: IpAddressFamily.IPv6,
     address_v6: [0'u8, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0])
 
-proc IPv6_loopback*(): IpAddress =
+func IPv6_loopback*(): IpAddress =
   ## Returns the IPv6 loopback address (::1)
   result = IpAddress(
     family: IpAddressFamily.IPv6,
@@ -1772,7 +1772,7 @@ proc IPv6_loopback*(): IpAddress =
 when defined(nimHasStyleChecks):
   {.pop.}
 
-proc `==`*(lhs, rhs: IpAddress): bool =
+func `==`*(lhs, rhs: IpAddress): bool =
   ## Compares two IpAddresses for Equality. Returns true if the addresses are equal
   if lhs.family != rhs.family: return false
   if lhs.family == IpAddressFamily.IPv4:
@@ -1783,7 +1783,7 @@ proc `==`*(lhs, rhs: IpAddress): bool =
       if lhs.address_v6[i] != rhs.address_v6[i]: return false
   return true
 
-proc `$`*(address: IpAddress): string =
+func `$`*(address: IpAddress): string =
   ## Converts an IpAddress into the textual representation
   result = ""
   case address.family

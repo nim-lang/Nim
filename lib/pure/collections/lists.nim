@@ -108,7 +108,7 @@ type
 
   SomeLinkedNode*[T] = SinglyLinkedNode[T] | DoublyLinkedNode[T]
 
-proc initSinglyLinkedList*[T](): SinglyLinkedList[T] =
+func initSinglyLinkedList*[T](): SinglyLinkedList[T] =
   ## Creates a new singly linked list that is empty.
   ##
   ## Singly linked lists are initialized by default, so it is not necessary to
@@ -118,7 +118,7 @@ proc initSinglyLinkedList*[T](): SinglyLinkedList[T] =
 
   discard
 
-proc initDoublyLinkedList*[T](): DoublyLinkedList[T] =
+func initDoublyLinkedList*[T](): DoublyLinkedList[T] =
   ## Creates a new doubly linked list that is empty.
   ##
   ## Doubly linked lists are initialized by default, so it is not necessary to
@@ -128,7 +128,7 @@ proc initDoublyLinkedList*[T](): DoublyLinkedList[T] =
 
   discard
 
-proc initSinglyLinkedRing*[T](): SinglyLinkedRing[T] =
+func initSinglyLinkedRing*[T](): SinglyLinkedRing[T] =
   ## Creates a new singly linked ring that is empty.
   ##
   ## Singly linked rings are initialized by default, so it is not necessary to
@@ -138,7 +138,7 @@ proc initSinglyLinkedRing*[T](): SinglyLinkedRing[T] =
 
   discard
 
-proc initDoublyLinkedRing*[T](): DoublyLinkedRing[T] =
+func initDoublyLinkedRing*[T](): DoublyLinkedRing[T] =
   ## Creates a new doubly linked ring that is empty.
   ##
   ## Doubly linked rings are initialized by default, so it is not necessary to
@@ -148,7 +148,7 @@ proc initDoublyLinkedRing*[T](): DoublyLinkedRing[T] =
 
   discard
 
-proc newDoublyLinkedNode*[T](value: T): <//>(DoublyLinkedNode[T]) =
+func newDoublyLinkedNode*[T](value: T): <//>(DoublyLinkedNode[T]) =
   ## Creates a new doubly linked node with the given `value`.
   runnableExamples:
     let n = newDoublyLinkedNode[int](5)
@@ -157,7 +157,7 @@ proc newDoublyLinkedNode*[T](value: T): <//>(DoublyLinkedNode[T]) =
   new(result)
   result.value = value
 
-proc newSinglyLinkedNode*[T](value: T): <//>(SinglyLinkedNode[T]) =
+func newSinglyLinkedNode*[T](value: T): <//>(SinglyLinkedNode[T]) =
   ## Creates a new singly linked node with the given `value`.
   runnableExamples:
     let n = newSinglyLinkedNode[int](5)
@@ -320,7 +320,7 @@ iterator nodes*[T](ring: SomeLinkedRing[T]): SomeLinkedNode[T] =
       it = nxt
       if it == ring.head: break
 
-proc `$`*[T](l: SomeLinkedCollection[T]): string =
+func `$`*[T](l: SomeLinkedCollection[T]): string =
   ## Turns a list into its string representation for logging and printing.
   runnableExamples:
     let a = [1, 2, 3, 4].toSinglyLinkedList
@@ -332,12 +332,12 @@ proc `$`*[T](l: SomeLinkedCollection[T]): string =
     result.addQuoted(x.value)
   result.add("]")
 
-proc find*[T](l: SomeLinkedCollection[T], value: T): SomeLinkedNode[T] =
+func find*[T](l: SomeLinkedCollection[T], value: T): SomeLinkedNode[T] =
   ## Searches in the list for a value. Returns `nil` if the value does not
   ## exist.
   ##
   ## **See also:**
-  ## * `contains proc <#contains,SomeLinkedCollection[T],T>`_
+  ## * `contains func <#contains,SomeLinkedCollection[T],T>`_
   runnableExamples:
     let a = [9, 8].toSinglyLinkedList
     assert a.find(9).value == 9
@@ -346,13 +346,13 @@ proc find*[T](l: SomeLinkedCollection[T], value: T): SomeLinkedNode[T] =
   for x in nodes(l):
     if x.value == value: return x
 
-proc contains*[T](l: SomeLinkedCollection[T], value: T): bool {.inline.} =
+func contains*[T](l: SomeLinkedCollection[T], value: T): bool {.inline.} =
   ## Searches in the list for a value. Returns `false` if the value does not
   ## exist, `true` otherwise. This allows the usage of the `in` and `notin`
   ## operators.
   ##
   ## **See also:**
-  ## * `find proc <#find,SomeLinkedCollection[T],T>`_
+  ## * `find func <#find,SomeLinkedCollection[T],T>`_
   runnableExamples:
     let a = [9, 8].toSinglyLinkedList
     assert a.contains(9)
@@ -362,11 +362,11 @@ proc contains*[T](l: SomeLinkedCollection[T], value: T): bool {.inline.} =
 
   result = find(l, value) != nil
 
-proc prepend*[T: SomeLinkedList](a: var T, b: T) {.since: (1, 5, 1).} =
+func prepend*[T: SomeLinkedList](a: var T, b: T) {.since: (1, 5, 1).} =
   ## Prepends a shallow copy of `b` to the beginning of `a`.
   ##
   ## **See also:**
-  ## * `prependMoved proc <#prependMoved,T,T>`_
+  ## * `prependMoved func <#prependMoved,T,T>`_
   ##   for moving the second list instead of copying
   runnableExamples:
     from std/sequtils import toSeq
@@ -382,13 +382,13 @@ proc prepend*[T: SomeLinkedList](a: var T, b: T) {.since: (1, 5, 1).} =
   tmp.addMoved(a)
   a = tmp
 
-proc prependMoved*[T: SomeLinkedList](a, b: var T) {.since: (1, 5, 1).} =
+func prependMoved*[T: SomeLinkedList](a, b: var T) {.since: (1, 5, 1).} =
   ## Moves `b` before the head of `a`. Efficiency: O(1).
   ## Note that `b` becomes empty after the operation unless it has the same address as `a`.
   ## Self-prepending results in a cycle.
   ##
   ## **See also:**
-  ## * `prepend proc <#prepend,T,T>`_
+  ## * `prepend func <#prepend,T,T>`_
   ##   for prepending a copy of a list
   runnableExamples:
     import std/[sequtils, enumerate, sugar]
@@ -411,14 +411,14 @@ proc prependMoved*[T: SomeLinkedList](a, b: var T) {.since: (1, 5, 1).} =
     (b, a) = (a, b)
   else: swap a, b
 
-proc add*[T](list: var SinglyLinkedList[T], n: SinglyLinkedNode[T]) {.inline.} =
+func add*[T](list: var SinglyLinkedList[T], n: SinglyLinkedNode[T]) {.inline.} =
   ## Appends (adds to the end) a node `n` to `list`. Efficiency: O(1).
   ##
   ## **See also:**
-  ## * `add proc <#add,SinglyLinkedList[T],T>`_ for appending a value
-  ## * `prepend proc <#prepend,SinglyLinkedList[T],SinglyLinkedNode[T]>`_
+  ## * `add func <#add,SinglyLinkedList[T],T>`_ for appending a value
+  ## * `prepend func <#prepend,SinglyLinkedList[T],SinglyLinkedNode[T]>`_
   ##   for prepending a node
-  ## * `prepend proc <#prepend,SinglyLinkedList[T],T>`_ for prepending a value
+  ## * `prepend func <#prepend,SinglyLinkedList[T],T>`_ for prepending a value
   runnableExamples:
     var a = initSinglyLinkedList[int]()
     let n = newSinglyLinkedNode[int](9)
@@ -432,14 +432,14 @@ proc add*[T](list: var SinglyLinkedList[T], n: SinglyLinkedNode[T]) {.inline.} =
   list.tail = n
   if list.head == nil: list.head = n
 
-proc add*[T](list: var SinglyLinkedList[T], value: T) {.inline.} =
+func add*[T](list: var SinglyLinkedList[T], value: T) {.inline.} =
   ## Appends (adds to the end) a value to `list`. Efficiency: O(1).
   ##
   ## **See also:**
-  ## * `add proc <#add,SinglyLinkedList[T],T>`_ for appending a value
-  ## * `prepend proc <#prepend,SinglyLinkedList[T],SinglyLinkedNode[T]>`_
+  ## * `add func <#add,SinglyLinkedList[T],T>`_ for appending a value
+  ## * `prepend func <#prepend,SinglyLinkedList[T],SinglyLinkedNode[T]>`_
   ##   for prepending a node
-  ## * `prepend proc <#prepend,SinglyLinkedList[T],T>`_ for prepending a value
+  ## * `prepend func <#prepend,SinglyLinkedList[T],T>`_ for prepending a value
   runnableExamples:
     var a = initSinglyLinkedList[int]()
     a.add(9)
@@ -448,15 +448,15 @@ proc add*[T](list: var SinglyLinkedList[T], value: T) {.inline.} =
 
   add(list, newSinglyLinkedNode(value))
 
-proc prepend*[T](list: var SinglyLinkedList[T],
+func prepend*[T](list: var SinglyLinkedList[T],
                  n: SinglyLinkedNode[T]) {.inline.} =
   ## Prepends (adds to the beginning) a node to `list`. Efficiency: O(1).
   ##
   ## **See also:**
-  ## * `add proc <#add,SinglyLinkedList[T],SinglyLinkedNode[T]>`_
+  ## * `add func <#add,SinglyLinkedList[T],SinglyLinkedNode[T]>`_
   ##   for appending a node
-  ## * `add proc <#add,SinglyLinkedList[T],T>`_ for appending a value
-  ## * `prepend proc <#prepend,SinglyLinkedList[T],T>`_ for prepending a value
+  ## * `add func <#add,SinglyLinkedList[T],T>`_ for appending a value
+  ## * `prepend func <#prepend,SinglyLinkedList[T],T>`_ for prepending a value
   runnableExamples:
     var a = initSinglyLinkedList[int]()
     let n = newSinglyLinkedNode[int](9)
@@ -467,14 +467,14 @@ proc prepend*[T](list: var SinglyLinkedList[T],
   list.head = n
   if list.tail == nil: list.tail = n
 
-proc prepend*[T](list: var SinglyLinkedList[T], value: T) {.inline.} =
+func prepend*[T](list: var SinglyLinkedList[T], value: T) {.inline.} =
   ## Prepends (adds to the beginning) a node to `list`. Efficiency: O(1).
   ##
   ## **See also:**
-  ## * `add proc <#add,SinglyLinkedList[T],SinglyLinkedNode[T]>`_
+  ## * `add func <#add,SinglyLinkedList[T],SinglyLinkedNode[T]>`_
   ##   for appending a node
-  ## * `add proc <#add,SinglyLinkedList[T],T>`_ for appending a value
-  ## * `prepend proc <#prepend,SinglyLinkedList[T],SinglyLinkedNode[T]>`_
+  ## * `add func <#add,SinglyLinkedList[T],T>`_ for appending a value
+  ## * `prepend func <#prepend,SinglyLinkedList[T],SinglyLinkedNode[T]>`_
   ##   for prepending a node
   runnableExamples:
     var a = initSinglyLinkedList[int]()
@@ -508,13 +508,13 @@ func copy*[T](a: SinglyLinkedList[T]): SinglyLinkedList[T] {.since: (1, 5, 1).} 
   for x in a.items:
     result.add(x)
 
-proc addMoved*[T](a, b: var SinglyLinkedList[T]) {.since: (1, 5, 1).} =
+func addMoved*[T](a, b: var SinglyLinkedList[T]) {.since: (1, 5, 1).} =
   ## Moves `b` to the end of `a`. Efficiency: O(1).
   ## Note that `b` becomes empty after the operation unless it has the same address as `a`.
   ## Self-adding results in a cycle.
   ##
   ## **See also:**
-  ## * `add proc <#add,T,T>`_ for adding a copy of a list
+  ## * `add func <#add,T,T>`_ for adding a copy of a list
   runnableExamples:
     import std/[sequtils, enumerate, sugar]
     var
@@ -540,15 +540,15 @@ proc addMoved*[T](a, b: var SinglyLinkedList[T]) {.since: (1, 5, 1).} =
     b.head = nil
     b.tail = nil
 
-proc add*[T](list: var DoublyLinkedList[T], n: DoublyLinkedNode[T]) =
+func add*[T](list: var DoublyLinkedList[T], n: DoublyLinkedNode[T]) =
   ## Appends (adds to the end) a node `n` to `list`. Efficiency: O(1).
   ##
   ## **See also:**
-  ## * `add proc <#add,DoublyLinkedList[T],T>`_ for appending a value
-  ## * `prepend proc <#prepend,DoublyLinkedList[T],DoublyLinkedNode[T]>`_
+  ## * `add func <#add,DoublyLinkedList[T],T>`_ for appending a value
+  ## * `prepend func <#prepend,DoublyLinkedList[T],DoublyLinkedNode[T]>`_
   ##   for prepending a node
-  ## * `prepend proc <#prepend,DoublyLinkedList[T],T>`_ for prepending a value
-  ## * `remove proc <#remove,DoublyLinkedList[T],DoublyLinkedNode[T]>`_
+  ## * `prepend func <#prepend,DoublyLinkedList[T],T>`_ for prepending a value
+  ## * `remove func <#remove,DoublyLinkedList[T],DoublyLinkedNode[T]>`_
   ##   for removing a node
   runnableExamples:
     var a = initDoublyLinkedList[int]()
@@ -564,16 +564,16 @@ proc add*[T](list: var DoublyLinkedList[T], n: DoublyLinkedNode[T]) =
   list.tail = n
   if list.head == nil: list.head = n
 
-proc add*[T](list: var DoublyLinkedList[T], value: T) =
+func add*[T](list: var DoublyLinkedList[T], value: T) =
   ## Appends (adds to the end) a value to `list`. Efficiency: O(1).
   ##
   ## **See also:**
-  ## * `add proc <#add,DoublyLinkedList[T],DoublyLinkedNode[T]>`_
+  ## * `add func <#add,DoublyLinkedList[T],DoublyLinkedNode[T]>`_
   ##   for appending a node
-  ## * `prepend proc <#prepend,DoublyLinkedList[T],DoublyLinkedNode[T]>`_
+  ## * `prepend func <#prepend,DoublyLinkedList[T],DoublyLinkedNode[T]>`_
   ##   for prepending a node
-  ## * `prepend proc <#prepend,DoublyLinkedList[T],T>`_ for prepending a value
-  ## * `remove proc <#remove,DoublyLinkedList[T],DoublyLinkedNode[T]>`_
+  ## * `prepend func <#prepend,DoublyLinkedList[T],T>`_ for prepending a value
+  ## * `remove func <#remove,DoublyLinkedList[T],DoublyLinkedNode[T]>`_
   ##   for removing a node
   runnableExamples:
     var a = initDoublyLinkedList[int]()
@@ -583,15 +583,15 @@ proc add*[T](list: var DoublyLinkedList[T], value: T) =
 
   add(list, newDoublyLinkedNode(value))
 
-proc prepend*[T](list: var DoublyLinkedList[T], n: DoublyLinkedNode[T]) =
+func prepend*[T](list: var DoublyLinkedList[T], n: DoublyLinkedNode[T]) =
   ## Prepends (adds to the beginning) a node `n` to `list`. Efficiency: O(1).
   ##
   ## **See also:**
-  ## * `add proc <#add,DoublyLinkedList[T],DoublyLinkedNode[T]>`_
+  ## * `add func <#add,DoublyLinkedList[T],DoublyLinkedNode[T]>`_
   ##   for appending a node
-  ## * `add proc <#add,DoublyLinkedList[T],T>`_ for appending a value
-  ## * `prepend proc <#prepend,DoublyLinkedList[T],T>`_ for prepending a value
-  ## * `remove proc <#remove,DoublyLinkedList[T],DoublyLinkedNode[T]>`_
+  ## * `add func <#add,DoublyLinkedList[T],T>`_ for appending a value
+  ## * `prepend func <#prepend,DoublyLinkedList[T],T>`_ for prepending a value
+  ## * `remove func <#remove,DoublyLinkedList[T],DoublyLinkedNode[T]>`_
   ##   for removing a node
   runnableExamples:
     var a = initDoublyLinkedList[int]()
@@ -607,16 +607,16 @@ proc prepend*[T](list: var DoublyLinkedList[T], n: DoublyLinkedNode[T]) =
   list.head = n
   if list.tail == nil: list.tail = n
 
-proc prepend*[T](list: var DoublyLinkedList[T], value: T) =
+func prepend*[T](list: var DoublyLinkedList[T], value: T) =
   ## Prepends (adds to the beginning) a value to `list`. Efficiency: O(1).
   ##
   ## **See also:**
-  ## * `add proc <#add,DoublyLinkedList[T],DoublyLinkedNode[T]>`_
+  ## * `add func <#add,DoublyLinkedList[T],DoublyLinkedNode[T]>`_
   ##   for appending a node
-  ## * `add proc <#add,DoublyLinkedList[T],T>`_ for appending a value
-  ## * `prepend proc <#prepend,DoublyLinkedList[T],DoublyLinkedNode[T]>`_
+  ## * `add func <#add,DoublyLinkedList[T],T>`_ for appending a value
+  ## * `prepend func <#prepend,DoublyLinkedList[T],DoublyLinkedNode[T]>`_
   ##   for prepending a node
-  ## * `remove proc <#remove,DoublyLinkedList[T],DoublyLinkedNode[T]>`_
+  ## * `remove func <#remove,DoublyLinkedList[T],DoublyLinkedNode[T]>`_
   ##   for removing a node
   runnableExamples:
     var a = initDoublyLinkedList[int]()
@@ -650,13 +650,13 @@ func copy*[T](a: DoublyLinkedList[T]): DoublyLinkedList[T] {.since: (1, 5, 1).} 
   for x in a.items:
     result.add(x)
 
-proc addMoved*[T](a, b: var DoublyLinkedList[T]) {.since: (1, 5, 1).} =
+func addMoved*[T](a, b: var DoublyLinkedList[T]) {.since: (1, 5, 1).} =
   ## Moves `b` to the end of `a`. Efficiency: O(1).
   ## Note that `b` becomes empty after the operation unless it has the same address as `a`.
   ## Self-adding results in a cycle.
   ##
   ## **See also:**
-  ## * `add proc <#add,T,T>`_
+  ## * `add func <#add,T,T>`_
   ##   for adding a copy of a list
   runnableExamples:
     import std/[sequtils, enumerate, sugar]
@@ -685,12 +685,12 @@ proc addMoved*[T](a, b: var DoublyLinkedList[T]) {.since: (1, 5, 1).} =
     b.head = nil
     b.tail = nil
 
-proc add*[T: SomeLinkedList](a: var T, b: T) {.since: (1, 5, 1).} =
+func add*[T: SomeLinkedList](a: var T, b: T) {.since: (1, 5, 1).} =
   ## Appends a shallow copy of `b` to the end of `a`.
   ##
   ## **See also:**
-  ## * `addMoved proc <#addMoved,SinglyLinkedList[T],SinglyLinkedList[T]>`_
-  ## * `addMoved proc <#addMoved,DoublyLinkedList[T],DoublyLinkedList[T]>`_
+  ## * `addMoved func <#addMoved,SinglyLinkedList[T],SinglyLinkedList[T]>`_
+  ## * `addMoved func <#addMoved,DoublyLinkedList[T],DoublyLinkedList[T]>`_
   ##   for moving the second list instead of copying
   runnableExamples:
     from std/sequtils import toSeq
@@ -705,7 +705,7 @@ proc add*[T: SomeLinkedList](a: var T, b: T) {.since: (1, 5, 1).} =
   var tmp = b.copy
   a.addMoved(tmp)
 
-proc remove*[T](list: var SinglyLinkedList[T], n: SinglyLinkedNode[T]): bool {.discardable.} =
+func remove*[T](list: var SinglyLinkedList[T], n: SinglyLinkedNode[T]): bool {.discardable.} =
   ## Removes a node `n` from `list`.
   ## Returns `true` if `n` was found in `list`.
   ## Efficiency: O(n); the list is traversed until `n` is found.
@@ -741,7 +741,7 @@ proc remove*[T](list: var SinglyLinkedList[T], n: SinglyLinkedNode[T]): bool {.d
     prev.next = n.next
   true
 
-proc remove*[T](list: var DoublyLinkedList[T], n: DoublyLinkedNode[T]) =
+func remove*[T](list: var DoublyLinkedList[T], n: DoublyLinkedNode[T]) =
   ## Removes a node `n` from `list`. Efficiency: O(1).
   ## This function assumes, for the sake of efficiency, that `n` is contained in `list`,
   ## otherwise the effects are undefined.
@@ -770,14 +770,14 @@ proc remove*[T](list: var DoublyLinkedList[T], n: DoublyLinkedNode[T]) =
 
 
 
-proc add*[T](ring: var SinglyLinkedRing[T], n: SinglyLinkedNode[T]) =
+func add*[T](ring: var SinglyLinkedRing[T], n: SinglyLinkedNode[T]) =
   ## Appends (adds to the end) a node `n` to `ring`. Efficiency: O(1).
   ##
   ## **See also:**
-  ## * `add proc <#add,SinglyLinkedRing[T],T>`_ for appending a value
-  ## * `prepend proc <#prepend,SinglyLinkedRing[T],SinglyLinkedNode[T]>`_
+  ## * `add func <#add,SinglyLinkedRing[T],T>`_ for appending a value
+  ## * `prepend func <#prepend,SinglyLinkedRing[T],SinglyLinkedNode[T]>`_
   ##   for prepending a node
-  ## * `prepend proc <#prepend,SinglyLinkedRing[T],T>`_ for prepending a value
+  ## * `prepend func <#prepend,SinglyLinkedRing[T],T>`_ for prepending a value
   runnableExamples:
     var a = initSinglyLinkedRing[int]()
     let n = newSinglyLinkedNode[int](9)
@@ -793,15 +793,15 @@ proc add*[T](ring: var SinglyLinkedRing[T], n: SinglyLinkedNode[T]) =
     ring.head = n
   ring.tail = n
 
-proc add*[T](ring: var SinglyLinkedRing[T], value: T) =
+func add*[T](ring: var SinglyLinkedRing[T], value: T) =
   ## Appends (adds to the end) a value to `ring`. Efficiency: O(1).
   ##
   ## **See also:**
-  ## * `add proc <#add,SinglyLinkedRing[T],SinglyLinkedNode[T]>`_
+  ## * `add func <#add,SinglyLinkedRing[T],SinglyLinkedNode[T]>`_
   ##   for appending a node
-  ## * `prepend proc <#prepend,SinglyLinkedRing[T],SinglyLinkedNode[T]>`_
+  ## * `prepend func <#prepend,SinglyLinkedRing[T],SinglyLinkedNode[T]>`_
   ##   for prepending a node
-  ## * `prepend proc <#prepend,SinglyLinkedRing[T],T>`_ for prepending a value
+  ## * `prepend func <#prepend,SinglyLinkedRing[T],T>`_ for prepending a value
   runnableExamples:
     var a = initSinglyLinkedRing[int]()
     a.add(9)
@@ -810,14 +810,14 @@ proc add*[T](ring: var SinglyLinkedRing[T], value: T) =
 
   add(ring, newSinglyLinkedNode(value))
 
-proc prepend*[T](ring: var SinglyLinkedRing[T], n: SinglyLinkedNode[T]) =
+func prepend*[T](ring: var SinglyLinkedRing[T], n: SinglyLinkedNode[T]) =
   ## Prepends (adds to the beginning) a node `n` to `ring`. Efficiency: O(1).
   ##
   ## **See also:**
-  ## * `add proc <#add,SinglyLinkedRing[T],SinglyLinkedNode[T]>`_
+  ## * `add func <#add,SinglyLinkedRing[T],SinglyLinkedNode[T]>`_
   ##   for appending a node
-  ## * `add proc <#add,SinglyLinkedRing[T],T>`_ for appending a value
-  ## * `prepend proc <#prepend,SinglyLinkedRing[T],T>`_ for prepending a value
+  ## * `add func <#add,SinglyLinkedRing[T],T>`_ for appending a value
+  ## * `prepend func <#prepend,SinglyLinkedRing[T],T>`_ for prepending a value
   runnableExamples:
     var a = initSinglyLinkedRing[int]()
     let n = newSinglyLinkedNode[int](9)
@@ -833,14 +833,14 @@ proc prepend*[T](ring: var SinglyLinkedRing[T], n: SinglyLinkedNode[T]) =
     ring.tail = n
   ring.head = n
 
-proc prepend*[T](ring: var SinglyLinkedRing[T], value: T) =
+func prepend*[T](ring: var SinglyLinkedRing[T], value: T) =
   ## Prepends (adds to the beginning) a value to `ring`. Efficiency: O(1).
   ##
   ## **See also:**
-  ## * `add proc <#add,SinglyLinkedRing[T],SinglyLinkedNode[T]>`_
+  ## * `add func <#add,SinglyLinkedRing[T],SinglyLinkedNode[T]>`_
   ##   for appending a node
-  ## * `add proc <#add,SinglyLinkedRing[T],T>`_ for appending a value
-  ## * `prepend proc <#prepend,SinglyLinkedRing[T],SinglyLinkedNode[T]>`_
+  ## * `add func <#add,SinglyLinkedRing[T],T>`_ for appending a value
+  ## * `prepend func <#prepend,SinglyLinkedRing[T],SinglyLinkedNode[T]>`_
   ##   for prepending a node
   runnableExamples:
     var a = initSinglyLinkedRing[int]()
@@ -852,15 +852,15 @@ proc prepend*[T](ring: var SinglyLinkedRing[T], value: T) =
 
 
 
-proc add*[T](ring: var DoublyLinkedRing[T], n: DoublyLinkedNode[T]) =
+func add*[T](ring: var DoublyLinkedRing[T], n: DoublyLinkedNode[T]) =
   ## Appends (adds to the end) a node `n` to `ring`. Efficiency: O(1).
   ##
   ## **See also:**
-  ## * `add proc <#add,DoublyLinkedRing[T],T>`_ for appending a value
-  ## * `prepend proc <#prepend,DoublyLinkedRing[T],DoublyLinkedNode[T]>`_
+  ## * `add func <#add,DoublyLinkedRing[T],T>`_ for appending a value
+  ## * `prepend func <#prepend,DoublyLinkedRing[T],DoublyLinkedNode[T]>`_
   ##   for prepending a node
-  ## * `prepend proc <#prepend,DoublyLinkedRing[T],T>`_ for prepending a value
-  ## * `remove proc <#remove,DoublyLinkedRing[T],DoublyLinkedNode[T]>`_
+  ## * `prepend func <#prepend,DoublyLinkedRing[T],T>`_ for prepending a value
+  ## * `remove func <#remove,DoublyLinkedRing[T],DoublyLinkedNode[T]>`_
   ##   for removing a node
   runnableExamples:
     var a = initDoublyLinkedRing[int]()
@@ -878,16 +878,16 @@ proc add*[T](ring: var DoublyLinkedRing[T], n: DoublyLinkedNode[T]) =
     n.next = n
     ring.head = n
 
-proc add*[T](ring: var DoublyLinkedRing[T], value: T) =
+func add*[T](ring: var DoublyLinkedRing[T], value: T) =
   ## Appends (adds to the end) a value to `ring`. Efficiency: O(1).
   ##
   ## **See also:**
-  ## * `add proc <#add,DoublyLinkedRing[T],DoublyLinkedNode[T]>`_
+  ## * `add func <#add,DoublyLinkedRing[T],DoublyLinkedNode[T]>`_
   ##   for appending a node
-  ## * `prepend proc <#prepend,DoublyLinkedRing[T],DoublyLinkedNode[T]>`_
+  ## * `prepend func <#prepend,DoublyLinkedRing[T],DoublyLinkedNode[T]>`_
   ##   for prepending a node
-  ## * `prepend proc <#prepend,DoublyLinkedRing[T],T>`_ for prepending a value
-  ## * `remove proc <#remove,DoublyLinkedRing[T],DoublyLinkedNode[T]>`_
+  ## * `prepend func <#prepend,DoublyLinkedRing[T],T>`_ for prepending a value
+  ## * `remove func <#remove,DoublyLinkedRing[T],DoublyLinkedNode[T]>`_
   ##   for removing a node
   runnableExamples:
     var a = initDoublyLinkedRing[int]()
@@ -897,15 +897,15 @@ proc add*[T](ring: var DoublyLinkedRing[T], value: T) =
 
   add(ring, newDoublyLinkedNode(value))
 
-proc prepend*[T](ring: var DoublyLinkedRing[T], n: DoublyLinkedNode[T]) =
+func prepend*[T](ring: var DoublyLinkedRing[T], n: DoublyLinkedNode[T]) =
   ## Prepends (adds to the beginning) a node `n` to `ring`. Efficiency: O(1).
   ##
   ## **See also:**
-  ## * `add proc <#add,DoublyLinkedRing[T],DoublyLinkedNode[T]>`_
+  ## * `add func <#add,DoublyLinkedRing[T],DoublyLinkedNode[T]>`_
   ##   for appending a node
-  ## * `add proc <#add,DoublyLinkedRing[T],T>`_ for appending a value
-  ## * `prepend proc <#prepend,DoublyLinkedRing[T],T>`_ for prepending a value
-  ## * `remove proc <#remove,DoublyLinkedRing[T],DoublyLinkedNode[T]>`_
+  ## * `add func <#add,DoublyLinkedRing[T],T>`_ for appending a value
+  ## * `prepend func <#prepend,DoublyLinkedRing[T],T>`_ for prepending a value
+  ## * `remove func <#remove,DoublyLinkedRing[T],DoublyLinkedNode[T]>`_
   ##   for removing a node
   runnableExamples:
     var a = initDoublyLinkedRing[int]()
@@ -923,16 +923,16 @@ proc prepend*[T](ring: var DoublyLinkedRing[T], n: DoublyLinkedNode[T]) =
     n.next = n
   ring.head = n
 
-proc prepend*[T](ring: var DoublyLinkedRing[T], value: T) =
+func prepend*[T](ring: var DoublyLinkedRing[T], value: T) =
   ## Prepends (adds to the beginning) a value to `ring`. Efficiency: O(1).
   ##
   ## **See also:**
-  ## * `add proc <#add,DoublyLinkedRing[T],DoublyLinkedNode[T]>`_
+  ## * `add func <#add,DoublyLinkedRing[T],DoublyLinkedNode[T]>`_
   ##   for appending a node
-  ## * `add proc <#add,DoublyLinkedRing[T],T>`_ for appending a value
-  ## * `prepend proc <#prepend,DoublyLinkedRing[T],DoublyLinkedNode[T]>`_
+  ## * `add func <#add,DoublyLinkedRing[T],T>`_ for appending a value
+  ## * `prepend func <#prepend,DoublyLinkedRing[T],DoublyLinkedNode[T]>`_
   ##   for prepending a node
-  ## * `remove proc <#remove,DoublyLinkedRing[T],DoublyLinkedNode[T]>`_
+  ## * `remove func <#remove,DoublyLinkedRing[T],DoublyLinkedNode[T]>`_
   ##   for removing a node
   runnableExamples:
     var a = initDoublyLinkedRing[int]()
@@ -942,7 +942,7 @@ proc prepend*[T](ring: var DoublyLinkedRing[T], value: T) =
 
   prepend(ring, newDoublyLinkedNode(value))
 
-proc remove*[T](ring: var DoublyLinkedRing[T], n: DoublyLinkedNode[T]) =
+func remove*[T](ring: var DoublyLinkedRing[T], n: DoublyLinkedNode[T]) =
   ## Removes `n` from `ring`. Efficiency: O(1).
   ## This function assumes, for the sake of efficiency, that `n` is contained in `ring`,
   ## otherwise the effects are undefined.
@@ -964,30 +964,31 @@ proc remove*[T](ring: var DoublyLinkedRing[T], n: DoublyLinkedNode[T]) =
     else:
       ring.head = p
 
-proc append*[T](a: var (SinglyLinkedList[T] | SinglyLinkedRing[T]),
+func append*[T](a: var (SinglyLinkedList[T] | SinglyLinkedRing[T]),
                 b: SinglyLinkedList[T] | SinglyLinkedNode[T] | T) =
   ## Alias for `a.add(b)`.
   ##
   ## **See also:**
-  ## * `add proc <#add,SinglyLinkedList[T],SinglyLinkedNode[T]>`_
-  ## * `add proc <#add,SinglyLinkedList[T],T>`_
-  ## * `add proc <#add,T,T>`_
+  ## * `add func <#add,SinglyLinkedList[T],SinglyLinkedNode[T]>`_
+  ## * `add func <#add,SinglyLinkedList[T],T>`_
+  ## * `add func <#add,T,T>`_
   a.add(b)
 
-proc append*[T](a: var (DoublyLinkedList[T] | DoublyLinkedRing[T]),
+func append*[T](a: var (DoublyLinkedList[T] | DoublyLinkedRing[T]),
                 b: DoublyLinkedList[T] | DoublyLinkedNode[T] | T) =
   ## Alias for `a.add(b)`.
   ##
   ## **See also:**
-  ## * `add proc <#add,DoublyLinkedList[T],DoublyLinkedNode[T]>`_
-  ## * `add proc <#add,DoublyLinkedList[T],T>`_
-  ## * `add proc <#add,T,T>`_
+  ## * `add func <#add,DoublyLinkedList[T],DoublyLinkedNode[T]>`_
+  ## * `add func <#add,DoublyLinkedList[T],T>`_
+  ## * `add func <#add,T,T>`_
   a.add(b)
 
-proc appendMoved*[T: SomeLinkedList](a, b: var T) {.since: (1, 5, 1).} =
+func appendMoved*[T: SomeLinkedList](a, b: var T) {.since: (1, 5, 1).} =
   ## Alias for `a.addMoved(b)`.
   ##
   ## **See also:**
-  ## * `addMoved proc <#addMoved,SinglyLinkedList[T],SinglyLinkedList[T]>`_
-  ## * `addMoved proc <#addMoved,DoublyLinkedList[T],DoublyLinkedList[T]>`_
+  ## * `addMoved func <#addMoved,SinglyLinkedList[T],SinglyLinkedList[T]>`_
+  ## * `addMoved func <#addMoved,DoublyLinkedList[T],DoublyLinkedList[T]>`_
   a.addMoved(b)
+

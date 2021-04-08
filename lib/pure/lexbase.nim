@@ -126,7 +126,7 @@ proc handleRefillChar*(L: var BaseLexer, pos: int): int =
   assert(L.buf[pos] in L.refillChars)
   result = fillBaseLexer(L, pos) #L.lastNL := result-1; // BUGFIX: was: result;
 
-proc skipUtf8Bom(L: var BaseLexer) =
+func skipUtf8Bom(L: var BaseLexer) =
   if (L.buf[0] == '\xEF') and (L.buf[1] == '\xBB') and (L.buf[2] == '\xBF'):
     inc(L.bufpos, 3)
     inc(L.lineStart, 3)
@@ -147,11 +147,11 @@ proc open*(L: var BaseLexer, input: Stream, bufLen: int = 8192;
   fillBuffer(L)
   skipUtf8Bom(L)
 
-proc getColNumber*(L: BaseLexer, pos: int): int =
+func getColNumber*(L: BaseLexer, pos: int): int =
   ## retrieves the current column.
   result = abs(pos - L.lineStart)
 
-proc getCurrentLine*(L: BaseLexer, marker: bool = true): string =
+func getCurrentLine*(L: BaseLexer, marker: bool = true): string =
   ## retrieves the current line.
   var i: int
   result = ""

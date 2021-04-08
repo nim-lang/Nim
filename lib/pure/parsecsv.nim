@@ -57,8 +57,8 @@
 ## ========
 ##
 ## * `streams module <streams.html>`_ for using
-##   `open proc <#open,CsvParser,Stream,string,char,char,char>`_
-##   and other stream processing (like `close proc <streams.html#close,Stream>`_)
+##   `open func <#open,CsvParser,Stream,string,char,char,char>`_
+##   and other stream processing (like `close func <streams.html#close,Stream>`_)
 ## * `parseopt module <parseopt.html>`_ for a command line parser
 ## * `parsecfg module <parsecfg.html>`_ for a configuration file parser
 ## * `parsexml module <parsexml.html>`_ for a XML / HTML parser
@@ -87,7 +87,7 @@ type
   CsvError* = object of IOError ## An exception that is raised if
                                 ## a parsing error occurs.
 
-proc raiseEInvalidCsv(filename: string, line, col: int,
+func raiseEInvalidCsv(filename: string, line, col: int,
                       msg: string) {.noreturn.} =
   var e: ref CsvError
   new(e)
@@ -97,7 +97,7 @@ proc raiseEInvalidCsv(filename: string, line, col: int,
     e.msg = filename & "(" & $line & ", " & $col & ") Error: " & msg
   raise e
 
-proc error(my: CsvParser, pos: int, msg: string) =
+func error(my: CsvParser, pos: int, msg: string) =
   raiseEInvalidCsv(my.filename, my.lineNumber, getColNumber(my, pos), msg)
 
 proc open*(my: var CsvParser, input: Stream, filename: string,
@@ -117,7 +117,7 @@ proc open*(my: var CsvParser, input: Stream, filename: string,
   ##   `separator` is ignored.
   ##
   ## See also:
-  ## * `open proc <#open,CsvParser,string,char,char,char>`_ which creates the
+  ## * `open func <#open,CsvParser,string,char,char,char>`_ which creates the
   ##   file stream for you
   runnableExamples:
     import std/streams
@@ -197,7 +197,7 @@ proc parseField(my: var CsvParser, a: var string) =
       inc(pos)
   my.bufpos = pos
 
-proc processedRows*(my: var CsvParser): int =
+func processedRows*(my: var CsvParser): int =
   ## Returns number of the processed rows.
   ##
   ## But even if `readRow <#readRow,CsvParser,int>`_ arrived at EOF then
@@ -291,10 +291,10 @@ proc close*(my: var CsvParser) {.inline.} =
   ## Closes the parser `my` and its associated input stream.
   lexbase.close(my)
 
-proc readHeaderRow*(my: var CsvParser) =
+func readHeaderRow*(my: var CsvParser) =
   ## Reads the first row and creates a look-up table for column numbers
   ## See also:
-  ## * `rowEntry proc <#rowEntry,CsvParser,string>`_
+  ## * `rowEntry func <#rowEntry,CsvParser,string>`_
   runnableExamples:
     import std/streams
 
@@ -317,7 +317,7 @@ proc readHeaderRow*(my: var CsvParser) =
   if present:
     my.headers = my.row
 
-proc rowEntry*(my: var CsvParser, entry: string): var string =
+func rowEntry*(my: var CsvParser, entry: string): var string =
   ## Accesses a specified `entry` from the current row.
   ##
   ## Assumes that `readHeaderRow <#readHeaderRow,CsvParser>`_ has already been

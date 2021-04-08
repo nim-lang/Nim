@@ -12,7 +12,7 @@
 ## .. code-block:: Nim
 ##    import std/[asyncfile, asyncdispatch, os]
 ##
-##    proc main() {.async.} =
+##    func main() {.async.} =
 ##      var file = openAsync(getTempDir() / "foobar.txt", fmReadWrite)
 ##      await file.write("test")
 ##      file.setFilePos(0)
@@ -37,7 +37,7 @@ type
     offset: int64
 
 when defined(windows) or defined(nimdoc):
-  proc getDesiredAccess(mode: FileMode): int32 =
+  func getDesiredAccess(mode: FileMode): int32 =
     case mode
     of fmRead:
       result = GENERIC_READ
@@ -46,7 +46,7 @@ when defined(windows) or defined(nimdoc):
     of fmReadWrite, fmReadWriteExisting:
       result = GENERIC_READ or GENERIC_WRITE
 
-  proc getCreationDisposition(mode: FileMode, filename: string): int32 =
+  func getCreationDisposition(mode: FileMode, filename: string): int32 =
     case mode
     of fmRead, fmReadWriteExisting:
       OPEN_EXISTING
@@ -134,7 +134,7 @@ proc readBuffer*(f: AsyncFile, buf: pointer, size: int): Future[int] =
   when defined(windows) or defined(nimdoc):
     var ol = newCustom()
     ol.data = CompletionData(fd: f.fd, cb:
-      proc (fd: AsyncFD, bytesCount: DWORD, errcode: OSErrorCode) =
+      func (fd: AsyncFD, bytesCount: DWORD, errcode: OSErrorCode) =
         if not retFuture.finished:
           if errcode == OSErrorCode(-1):
             assert bytesCount > 0
@@ -213,7 +213,7 @@ proc read*(f: AsyncFile, size: int): Future[string] =
 
     var ol = newCustom()
     ol.data = CompletionData(fd: f.fd, cb:
-      proc (fd: AsyncFD, bytesCount: DWORD, errcode: OSErrorCode) =
+      func (fd: AsyncFD, bytesCount: DWORD, errcode: OSErrorCode) =
         if not retFuture.finished:
           if errcode == OSErrorCode(-1):
             assert bytesCount > 0
@@ -307,7 +307,7 @@ proc readLine*(f: AsyncFile): Future[string] {.async.} =
     else:
       result.add(c)
 
-proc getFilePos*(f: AsyncFile): int64 =
+func getFilePos*(f: AsyncFile): int64 =
   ## Retrieves the current position of the file pointer that is
   ## used to read from the specified file. The file's first byte has the
   ## index zero.
@@ -340,7 +340,7 @@ proc writeBuffer*(f: AsyncFile, buf: pointer, size: int): Future[void] =
   when defined(windows) or defined(nimdoc):
     var ol = newCustom()
     ol.data = CompletionData(fd: f.fd, cb:
-      proc (fd: AsyncFD, bytesCount: DWORD, errcode: OSErrorCode) =
+      func (fd: AsyncFD, bytesCount: DWORD, errcode: OSErrorCode) =
         if not retFuture.finished:
           if errcode == OSErrorCode(-1):
             assert bytesCount == size.int32
@@ -413,7 +413,7 @@ proc write*(f: AsyncFile, data: string): Future[void] =
 
     var ol = newCustom()
     ol.data = CompletionData(fd: f.fd, cb:
-      proc (fd: AsyncFD, bytesCount: DWORD, errcode: OSErrorCode) =
+      func (fd: AsyncFD, bytesCount: DWORD, errcode: OSErrorCode) =
         if not retFuture.finished:
           if errcode == OSErrorCode(-1):
             assert bytesCount == data.len.int32

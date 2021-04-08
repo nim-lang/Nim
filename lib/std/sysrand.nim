@@ -98,10 +98,10 @@ when defined(js):
         dest[i] = src[i]
 
   else:
-    proc getRandomValues(p: Uint8Array) {.importjs: "window.crypto.getRandomValues(#)".}
+    func getRandomValues(p: Uint8Array) {.importjs: "window.crypto.getRandomValues(#)".}
       # The requested length of `p` must not be more than 65536.
 
-    proc assign(dest: var openArray[byte], src: Uint8Array, base: int, size: int) =
+    func assign(dest: var openArray[byte], src: Uint8Array, base: int, size: int) =
       getRandomValues(src)
       for j in 0 ..< size:
         dest[base + j] = src[j]
@@ -140,7 +140,7 @@ elif defined(windows):
     STATUS_SUCCESS = 0x00000000
     BCRYPT_USE_SYSTEM_PREFERRED_RNG = 0x00000002
 
-  proc bCryptGenRandom(
+  func bCryptGenRandom(
     hAlgorithm: BCRYPT_ALG_HANDLE,
     pbBuffer: PUCHAR,
     cbBuffer: ULONG,
@@ -148,7 +148,7 @@ elif defined(windows):
   ): NTSTATUS {.stdcall, importc: "BCryptGenRandom", dynlib: "Bcrypt.dll".}
 
 
-  proc randomBytes(pbBuffer: pointer, cbBuffer: Natural): int {.inline.} =
+  func randomBytes(pbBuffer: pointer, cbBuffer: Natural): int {.inline.} =
     bCryptGenRandom(nil, cast[PUCHAR](pbBuffer), ULONG(cbBuffer),
                             BCRYPT_USE_SYSTEM_PREFERRED_RNG)
 
@@ -165,7 +165,7 @@ elif defined(linux):
   const syscallHeader = """#include <unistd.h>
 #include <sys/syscall.h>"""
 
-  proc syscall(
+  func syscall(
     n: clong, buf: pointer, bufLen: cint, flags: cuint
   ): clong {.importc: "syscall", header: syscallHeader.}
     #  When reading from the urandom source (GRND_RANDOM is not set),
@@ -194,24 +194,24 @@ elif defined(linux):
           break
 
 elif defined(openbsd):
-  proc getentropy(p: pointer, size: cint): cint {.importc: "getentropy", header: "<unistd.h>".}
+  func getentropy(p: pointer, size: cint): cint {.importc: "getentropy", header: "<unistd.h>".}
     # Fills a buffer with high-quality entropy,
     # which can be used as input for process-context pseudorandom generators like `arc4random`.
     # The maximum buffer size permitted is 256 bytes.
 
-  proc getRandomImpl(p: pointer, size: int): int {.inline.} =
+  func getRandomImpl(p: pointer, size: int): int {.inline.} =
     result = getentropy(p, cint(size)).int
 
 elif defined(freebsd):
   type cssize_t {.importc: "ssize_t", header: "<sys/types.h>".} = int
 
-  proc getrandom(p: pointer, size: csize_t, flags: cuint): cssize_t {.importc: "getrandom", header: "<sys/random.h>".}
+  func getrandom(p: pointer, size: csize_t, flags: cuint): cssize_t {.importc: "getrandom", header: "<sys/random.h>".}
     # Upon successful completion, the number of bytes which were actually read
     # is returned. For requests larger than 256 bytes, this can be fewer bytes
     # than were requested. Otherwise, -1 is returned and the global variable
     # errno is set to indicate the error.
 
-  proc getRandomImpl(p: pointer, size: int): int {.inline.} =
+  func getRandomImpl(p: pointer, size: int): int {.inline.} =
     result = getrandom(p, csize_t(size), 0)
 
 elif defined(ios):
@@ -225,7 +225,7 @@ elif defined(ios):
     SecRandomRef = ptr SecRandom
       ## An abstract Core Foundation-type object containing information about a random number generator.
 
-  proc secRandomCopyBytes(
+  func secRandomCopyBytes(
     rnd: SecRandomRef, count: csize_t, bytes: pointer
   ): cint {.importc: "SecRandomCopyBytes", header: "<Security/SecRandom.h>".}
     ## https://developer.apple.com/documentation/security/1399291-secrandomcopybytes
@@ -242,12 +242,12 @@ elif defined(macosx):
 #include <sys/random.h>
 """
 
-  proc getentropy(p: pointer, size: csize_t): cint {.importc: "getentropy", header: sysrandomHeader.}
+  func getentropy(p: pointer, size: csize_t): cint {.importc: "getentropy", header: sysrandomHeader.}
     # getentropy() fills a buffer with random data, which can be used as input 
     # for process-context pseudorandom generators like arc4random(3).
     # The maximum buffer size permitted is 256 bytes.
 
-  proc getRandomImpl(p: pointer, size: int): int {.inline.} =
+  func getRandomImpl(p: pointer, size: int): int {.inline.} =
     result = getentropy(p, csize_t(size)).int
 
 else:

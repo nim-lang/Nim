@@ -187,14 +187,14 @@ func `/=`*(x: var JsBigInt; y: JsBigInt) {.importjs: "([#][0][0] $1 #)".} =
     big1 /= big"2"
     doAssert big1 == big"5"
 
-proc `+`*(_: JsBigInt): JsBigInt {.error:
+func `+`*(_: JsBigInt): JsBigInt {.error:
   "See https://github.com/tc39/proposal-bigint/blob/master/ADVANCED.md#dont-break-asmjs".} # Can not be used by design
   ## **Do NOT use.** https://github.com/tc39/proposal-bigint/blob/master/ADVANCED.md#dont-break-asmjs
 
-proc low*(_: typedesc[JsBigInt]): JsBigInt {.error:
+func low*(_: typedesc[JsBigInt]): JsBigInt {.error:
   "Arbitrary precision integers do not have a known low.".} ## **Do NOT use.**
 
-proc high*(_: typedesc[JsBigInt]): JsBigInt {.error:
+func high*(_: typedesc[JsBigInt]): JsBigInt {.error:
   "Arbitrary precision integers do not have a known high.".} ## **Do NOT use.**
 
 

@@ -118,51 +118,51 @@ proc close*(my: var JsonParser) {.inline.} =
   ## closes the parser `my` and its associated input stream.
   lexbase.close(my)
 
-proc str*(my: JsonParser): string {.inline.} =
+func str*(my: JsonParser): string {.inline.} =
   ## returns the character data for the events: `jsonInt`, `jsonFloat`,
   ## `jsonString`
   assert(my.kind in {jsonInt, jsonFloat, jsonString})
   return my.a
 
-proc getInt*(my: JsonParser): BiggestInt {.inline.} =
+func getInt*(my: JsonParser): BiggestInt {.inline.} =
   ## returns the number for the event: `jsonInt`
   assert(my.kind == jsonInt)
   return parseBiggestInt(my.a)
 
-proc getFloat*(my: JsonParser): float {.inline.} =
+func getFloat*(my: JsonParser): float {.inline.} =
   ## returns the number for the event: `jsonFloat`
   assert(my.kind == jsonFloat)
   return parseFloat(my.a)
 
-proc kind*(my: JsonParser): JsonEventKind {.inline.} =
+func kind*(my: JsonParser): JsonEventKind {.inline.} =
   ## returns the current event type for the JSON parser
   return my.kind
 
-proc getColumn*(my: JsonParser): int {.inline.} =
+func getColumn*(my: JsonParser): int {.inline.} =
   ## get the current column the parser has arrived at.
   result = getColNumber(my, my.bufpos)
 
-proc getLine*(my: JsonParser): int {.inline.} =
+func getLine*(my: JsonParser): int {.inline.} =
   ## get the current line the parser has arrived at.
   result = my.lineNumber
 
-proc getFilename*(my: JsonParser): string {.inline.} =
+func getFilename*(my: JsonParser): string {.inline.} =
   ## get the filename of the file that the parser processes.
   result = my.filename
 
-proc errorMsg*(my: JsonParser): string =
+func errorMsg*(my: JsonParser): string =
   ## returns a helpful error message for the event `jsonError`
   assert(my.kind == jsonError)
   result = "$1($2, $3) Error: $4" % [
     my.filename, $getLine(my), $getColumn(my), errorMessages[my.err]]
 
-proc errorMsgExpected*(my: JsonParser, e: string): string =
+func errorMsgExpected*(my: JsonParser, e: string): string =
   ## returns an error message "`e` expected" in the same format as the
   ## other error messages
   result = "$1($2, $3) Error: $4" % [
     my.filename, $getLine(my), $getColumn(my), e & " expected"]
 
-proc parseEscapedUTF16*(buf: cstring, pos: var int): int =
+func parseEscapedUTF16*(buf: cstring, pos: var int): int =
   result = 0
   #UTF-16 escape is always 4 bytes.
   for _ in 0..3:
@@ -310,7 +310,7 @@ proc skip(my: var JsonParser) =
       break
   my.bufpos = pos
 
-proc parseNumber(my: var JsonParser) =
+func parseNumber(my: var JsonParser) =
   var pos = my.bufpos
   if my.buf[pos] == '-':
     add(my.a, '-')
@@ -340,7 +340,7 @@ proc parseNumber(my: var JsonParser) =
       inc(pos)
   my.bufpos = pos
 
-proc parseName(my: var JsonParser) =
+func parseName(my: var JsonParser) =
   var pos = my.bufpos
   if my.buf[pos] in IdentStartChars:
     while my.buf[pos] in IdentChars:
@@ -510,7 +510,7 @@ proc next*(my: var JsonParser) =
       my.kind = jsonError
       my.err = errExprExpected
 
-proc raiseParseErr*(p: JsonParser, msg: string) {.noinline, noreturn.} =
+func raiseParseErr*(p: JsonParser, msg: string) {.noinline, noreturn.} =
   ## raises an `EJsonParsingError` exception.
   raise newException(JsonParsingError, errorMsgExpected(p, msg))
 

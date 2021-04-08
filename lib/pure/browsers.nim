@@ -7,7 +7,7 @@
 #    distribution, for details about the copyright.
 #
 
-## This module implements a simple proc for opening URLs with the user's
+## This module implements a simple func for opening URLs with the user's
 ## default browser.
 ##
 ## Unstable API.
@@ -62,7 +62,7 @@ proc openDefaultBrowser*(url: string) =
   ## used if it does. Otherwise the environment variable `BROWSER` is
   ## used to determine the default browser to use.
   ##
-  ## This proc doesn't raise an exception on error, beware.
+  ## This func doesn't raise an exception on error, beware.
   ##
   ## .. code-block:: nim
   ##   block: openDefaultBrowser("https://nim-lang.org")
@@ -78,7 +78,7 @@ proc openDefaultBrowser*() {.since: (1, 1).} =
   ## used if it does. Otherwise the environment variable `BROWSER` is
   ## used to determine the default browser to use.
   ##
-  ## This proc doesn't raise an exception on error, beware.
+  ## This func doesn't raise an exception on error, beware.
   ##
   ## **See also:**
   ##

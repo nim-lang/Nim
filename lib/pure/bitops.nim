@@ -77,7 +77,7 @@ func bitsliced*[T: SomeInteger](v: T; slice: Slice[int]): T {.inline, since: (1,
     uv     = when v is SomeUnsignedInt: v else: v.toUnsigned
   (uv shl (upmost - slice.b) shr (upmost - slice.b + slice.a)).T
 
-proc bitslice*[T: SomeInteger](v: var T; slice: Slice[int]) {.inline, since: (1, 3).} =
+func bitslice*[T: SomeInteger](v: var T; slice: Slice[int]) {.inline, since: (1, 3).} =
   ## Mutates `v` into an extracted (and shifted) slice of bits from `v`.
   runnableExamples:
     var x = 0b101110
@@ -103,7 +103,7 @@ func toMask*[T: SomeInteger](slice: Slice[int]): T {.inline, since: (1, 3).} =
                 bitnot(0.T).toUnsigned
   (bitmask shl (upmost - slice.b + slice.a) shr (upmost - slice.b)).T
 
-proc masked*[T: SomeInteger](v, mask :T): T {.inline, since: (1, 3).} =
+func masked*[T: SomeInteger](v, mask :T): T {.inline, since: (1, 3).} =
   ## Returns `v`, with only the `1` bits from `mask` matching those of
   ## `v` set to 1.
   ##
@@ -125,7 +125,7 @@ func masked*[T: SomeInteger](v: T; slice: Slice[int]): T {.inline, since: (1, 3)
 
   bitand(v, toMask[T](slice))
 
-proc mask*[T: SomeInteger](v: var T; mask: T) {.inline, since: (1, 3).} =
+func mask*[T: SomeInteger](v: var T; mask: T) {.inline, since: (1, 3).} =
   ## Mutates `v`, with only the `1` bits from `mask` matching those of
   ## `v` set to 1.
   ##
@@ -137,7 +137,7 @@ proc mask*[T: SomeInteger](v: var T; mask: T) {.inline, since: (1, 3).} =
 
   v = bitand(v, mask)
 
-proc mask*[T: SomeInteger](v: var T; slice: Slice[int]) {.inline, since: (1, 3).} =
+func mask*[T: SomeInteger](v: var T; slice: Slice[int]) {.inline, since: (1, 3).} =
   ## Mutates `v`, with only the `1` bits in the range of `slice`
   ## matching those of `v` set to 1.
   ##
@@ -169,7 +169,7 @@ func setMasked*[T: SomeInteger](v: T; slice: Slice[int]): T {.inline, since: (1,
 
   bitor(v, toMask[T](slice))
 
-proc setMask*[T: SomeInteger](v: var T; mask: T) {.inline.} =
+func setMask*[T: SomeInteger](v: var T; mask: T) {.inline.} =
   ## Mutates `v`, with all the `1` bits from `mask` set to 1.
   ##
   ## Effectively maps to a `bitor <#bitor.m,T,T,varargs[T]>`_ operation.
@@ -180,7 +180,7 @@ proc setMask*[T: SomeInteger](v: var T; mask: T) {.inline.} =
 
   v = bitor(v, mask)
 
-proc setMask*[T: SomeInteger](v: var T; slice: Slice[int]) {.inline, since: (1, 3).} =
+func setMask*[T: SomeInteger](v: var T; slice: Slice[int]) {.inline, since: (1, 3).} =
   ## Mutates `v`, with all the `1` bits in the range of `slice` set to 1.
   ##
   ## Effectively maps to a `bitor <#bitor.m,T,T,varargs[T]>`_ operation.
@@ -213,7 +213,7 @@ func clearMasked*[T: SomeInteger](v: T; slice: Slice[int]): T {.inline, since: (
 
   bitand(v, bitnot(toMask[T](slice)))
 
-proc clearMask*[T: SomeInteger](v: var T; mask: T) {.inline.} =
+func clearMask*[T: SomeInteger](v: var T; mask: T) {.inline.} =
   ## Mutates `v`, with all the `1` bits from `mask` set to 0.
   ##
   ## Effectively maps to a `bitand <#bitand.m,T,T,varargs[T]>`_ operation
@@ -225,7 +225,7 @@ proc clearMask*[T: SomeInteger](v: var T; mask: T) {.inline.} =
 
   v = bitand(v, bitnot(mask))
 
-proc clearMask*[T: SomeInteger](v: var T; slice: Slice[int]) {.inline, since: (1, 3).} =
+func clearMask*[T: SomeInteger](v: var T; slice: Slice[int]) {.inline, since: (1, 3).} =
   ## Mutates `v`, with all the `1` bits in the range of `slice` set to 0.
   ##
   ## Effectively maps to a `bitand <#bitand.m,T,T,varargs[T]>`_ operation
@@ -257,7 +257,7 @@ func flipMasked*[T: SomeInteger](v: T; slice: Slice[int]): T {.inline, since: (1
 
   bitxor(v, toMask[T](slice))
 
-proc flipMask*[T: SomeInteger](v: var T; mask: T) {.inline.} =
+func flipMask*[T: SomeInteger](v: var T; mask: T) {.inline.} =
   ## Mutates `v`, with all the `1` bits from `mask` flipped.
   ##
   ## Effectively maps to a `bitxor <#bitxor.m,T,T,varargs[T]>`_ operation.
@@ -268,7 +268,7 @@ proc flipMask*[T: SomeInteger](v: var T; mask: T) {.inline.} =
 
   v = bitxor(v, mask)
 
-proc flipMask*[T: SomeInteger](v: var T; slice: Slice[int]) {.inline, since: (1, 3).} =
+func flipMask*[T: SomeInteger](v: var T; slice: Slice[int]) {.inline, since: (1, 3).} =
   ## Mutates `v`, with all the `1` bits in the range of `slice` flipped.
   ##
   ## Effectively maps to a `bitxor <#bitxor.m,T,T,varargs[T]>`_ operation.
@@ -279,7 +279,7 @@ proc flipMask*[T: SomeInteger](v: var T; slice: Slice[int]) {.inline, since: (1,
 
   v = bitxor(v, toMask[T](slice))
 
-proc setBit*[T: SomeInteger](v: var T; bit: BitsRange[T]) {.inline.} =
+func setBit*[T: SomeInteger](v: var T; bit: BitsRange[T]) {.inline.} =
   ## Mutates `v`, with the bit at position `bit` set to 1.
   runnableExamples:
     var v = 0b0000_0011'u8
@@ -288,7 +288,7 @@ proc setBit*[T: SomeInteger](v: var T; bit: BitsRange[T]) {.inline.} =
 
   v.setMask(1.T shl bit)
 
-proc clearBit*[T: SomeInteger](v: var T; bit: BitsRange[T]) {.inline.} =
+func clearBit*[T: SomeInteger](v: var T; bit: BitsRange[T]) {.inline.} =
   ## Mutates `v`, with the bit at position `bit` set to 0.
   runnableExamples:
     var v = 0b0000_0011'u8
@@ -297,7 +297,7 @@ proc clearBit*[T: SomeInteger](v: var T; bit: BitsRange[T]) {.inline.} =
 
   v.clearMask(1.T shl bit)
 
-proc flipBit*[T: SomeInteger](v: var T; bit: BitsRange[T]) {.inline.} =
+func flipBit*[T: SomeInteger](v: var T; bit: BitsRange[T]) {.inline.} =
   ## Mutates `v`, with the bit at position `bit` flipped.
   runnableExamples:
     var v = 0b0000_0011'u8
@@ -347,7 +347,7 @@ macro flipBits*(v: typed; bits: varargs[typed]): untyped =
     result.add newCall("flipBit", v, bit)
 
 
-proc testBit*[T: SomeInteger](v: T; bit: BitsRange[T]): bool {.inline.} =
+func testBit*[T: SomeInteger](v: T; bit: BitsRange[T]): bool {.inline.} =
   ## Returns true if the bit in `v` at positions `bit` is set to 1.
   runnableExamples:
     let v = 0b0000_1111'u8
@@ -433,20 +433,20 @@ template parityImpl[T](value: T): int =
 
 when useGCC_builtins:
   # Returns the bit parity in value
-  proc builtin_parity(x: cuint): cint {.importc: "__builtin_parity", cdecl.}
-  proc builtin_parityll(x: culonglong): cint {.importc: "__builtin_parityll", cdecl.}
+  func builtin_parity(x: cuint): cint {.importc: "__builtin_parity", cdecl.}
+  func builtin_parityll(x: culonglong): cint {.importc: "__builtin_parityll", cdecl.}
 
   # Returns one plus the index of the least significant 1-bit of x, or if x is zero, returns zero.
-  proc builtin_ffs(x: cint): cint {.importc: "__builtin_ffs", cdecl.}
-  proc builtin_ffsll(x: clonglong): cint {.importc: "__builtin_ffsll", cdecl.}
+  func builtin_ffs(x: cint): cint {.importc: "__builtin_ffs", cdecl.}
+  func builtin_ffsll(x: clonglong): cint {.importc: "__builtin_ffsll", cdecl.}
 
   # Returns the number of leading 0-bits in x, starting at the most significant bit position. If x is 0, the result is undefined.
-  proc builtin_clz(x: cuint): cint {.importc: "__builtin_clz", cdecl.}
-  proc builtin_clzll(x: culonglong): cint {.importc: "__builtin_clzll", cdecl.}
+  func builtin_clz(x: cuint): cint {.importc: "__builtin_clz", cdecl.}
+  func builtin_clzll(x: culonglong): cint {.importc: "__builtin_clzll", cdecl.}
 
   # Returns the number of trailing 0-bits in x, starting at the least significant bit position. If x is 0, the result is undefined.
-  proc builtin_ctz(x: cuint): cint {.importc: "__builtin_ctz", cdecl.}
-  proc builtin_ctzll(x: culonglong): cint {.importc: "__builtin_ctzll", cdecl.}
+  func builtin_ctz(x: cuint): cint {.importc: "__builtin_ctz", cdecl.}
+  func builtin_ctzll(x: culonglong): cint {.importc: "__builtin_ctzll", cdecl.}
 
 elif useVCC_builtins:
   # Search the mask data from most significant bit (MSB) to least significant bit (LSB) for a set bit (1).
@@ -609,7 +609,7 @@ func countLeadingZeroBits*(x: SomeInteger): int {.inline.} =
   ## otherwise the result is undefined.
   ##
   ## **See also:**
-  ## * `countTrailingZeroBits proc <#countTrailingZeroBits,SomeInteger>`_
+  ## * `countTrailingZeroBits func <#countTrailingZeroBits,SomeInteger>`_
   runnableExamples:
     doAssert countLeadingZeroBits(0b0000_0001'u8) == 7
     doAssert countLeadingZeroBits(0b0000_0010'u8) == 6
@@ -638,7 +638,7 @@ func countTrailingZeroBits*(x: SomeInteger): int {.inline.} =
   ## otherwise the result is undefined.
   ##
   ## **See also:**
-  ## * `countLeadingZeroBits proc <#countLeadingZeroBits,SomeInteger>`_
+  ## * `countLeadingZeroBits func <#countLeadingZeroBits,SomeInteger>`_
   runnableExamples:
     doAssert countTrailingZeroBits(0b0000_0001'u8) == 0
     doAssert countTrailingZeroBits(0b0000_0010'u8) == 1

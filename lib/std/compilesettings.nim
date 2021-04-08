@@ -42,8 +42,7 @@ type
     cincludes,        ## the #include paths passed to the C/C++ compiler
     clibs             ## libraries passed to the C/C++ compiler
 
-proc querySetting*(setting: SingleValueSetting): string {.
-  compileTime, noSideEffect.} =
+func querySetting*(setting: SingleValueSetting): string {.compileTime.} =
   ## Can be used to get a string compile-time option.
   ##
   ## See also:
@@ -53,8 +52,8 @@ proc querySetting*(setting: SingleValueSetting): string {.
   runnableExamples:
     const nimcache = querySetting(SingleValueSetting.nimcacheDir)
 
-proc querySettingSeq*(setting: MultipleValueSetting): seq[string] {.
-  compileTime, noSideEffect.} =
+func querySettingSeq*(setting: MultipleValueSetting): seq[string] {.
+  compileTime.} =
   ## Can be used to get a multi-string compile-time option.
   ##
   ## See also:

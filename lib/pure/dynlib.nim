@@ -99,7 +99,7 @@ proc libCandidates*(s: string, dest: var seq[string]) =
 proc loadLibPattern*(pattern: string, globalSymbols = false): LibHandle =
   ## loads a library with name matching `pattern`, similar to what `dynlib`
   ## pragma does. Returns nil if the library could not be loaded.
-  ## .. warning:: this proc uses the GC and so cannot be used to load the GC.
+  ## .. warning:: this func uses the GC and so cannot be used to load the GC.
   var candidates = newSeq[string]()
   libCandidates(pattern, candidates)
   for c in candidates:
@@ -135,19 +135,19 @@ elif defined(nintendoswitch):
   # =========================================================================
   #
 
-  proc dlclose(lib: LibHandle) =
+  func dlclose(lib: LibHandle) =
     raise newException(OSError, "dlclose not implemented on Nintendo Switch!")
-  proc dlopen(path: cstring, mode: int): LibHandle =
+  func dlopen(path: cstring, mode: int): LibHandle =
     raise newException(OSError, "dlopen not implemented on Nintendo Switch!")
-  proc dlsym(lib: LibHandle, name: cstring): pointer =
+  func dlsym(lib: LibHandle, name: cstring): pointer =
     raise newException(OSError, "dlsym not implemented on Nintendo Switch!")
-  proc loadLib(path: string, global_symbols = false): LibHandle =
+  func loadLib(path: string, global_symbols = false): LibHandle =
     raise newException(OSError, "loadLib not implemented on Nintendo Switch!")
-  proc loadLib(): LibHandle =
+  func loadLib(): LibHandle =
     raise newException(OSError, "loadLib not implemented on Nintendo Switch!")
-  proc unloadLib(lib: LibHandle) =
+  func unloadLib(lib: LibHandle) =
     raise newException(OSError, "unloadLib not implemented on Nintendo Switch!")
-  proc symAddr(lib: LibHandle, name: cstring): pointer =
+  func symAddr(lib: LibHandle, name: cstring): pointer =
     raise newException(OSError, "symAddr not implemented on Nintendo Switch!")
 
 elif defined(windows) or defined(dos):
@@ -160,19 +160,19 @@ elif defined(windows) or defined(dos):
     HMODULE {.importc: "HMODULE".} = pointer
     FARPROC {.importc: "FARPROC".} = pointer
 
-  proc FreeLibrary(lib: HMODULE) {.importc, header: "<windows.h>", stdcall.}
-  proc winLoadLibrary(path: cstring): HMODULE {.
+  func FreeLibrary(lib: HMODULE) {.importc, header: "<windows.h>", stdcall.}
+  func winLoadLibrary(path: cstring): HMODULE {.
       importc: "LoadLibraryA", header: "<windows.h>", stdcall.}
-  proc getProcAddress(lib: HMODULE, name: cstring): FARPROC {.
+  func getProcAddress(lib: HMODULE, name: cstring): FARPROC {.
       importc: "GetProcAddress", header: "<windows.h>", stdcall.}
 
-  proc loadLib(path: string, globalSymbols = false): LibHandle =
+  func loadLib(path: string, globalSymbols = false): LibHandle =
     result = cast[LibHandle](winLoadLibrary(path))
-  proc loadLib(): LibHandle =
+  func loadLib(): LibHandle =
     result = cast[LibHandle](winLoadLibrary(nil))
-  proc unloadLib(lib: LibHandle) = FreeLibrary(cast[HMODULE](lib))
+  func unloadLib(lib: LibHandle) = FreeLibrary(cast[HMODULE](lib))
 
-  proc symAddr(lib: LibHandle, name: cstring): pointer =
+  func symAddr(lib: LibHandle, name: cstring): pointer =
     result = cast[pointer](getProcAddress(cast[HMODULE](lib), name))
 
 else:

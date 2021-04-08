@@ -14,7 +14,7 @@ from algorithm import binarySearch
 type
   Color* = distinct int ## A color stored as RGB, e.g. `0xff00cc`.
 
-proc `==` *(a, b: Color): bool {.borrow.}
+func `==` *(a, b: Color): bool {.borrow.}
   ## Compares two colors.
   ##
   ## .. code-block::
@@ -38,15 +38,15 @@ template colorOp(op): Color =
   extract(b, br, bg, bb)
   rawRGB(op(ar, br), op(ag, bg), op(ab, bb))
 
-proc satPlus(a, b: int): int {.inline.} =
+func satPlus(a, b: int): int {.inline.} =
   result = a +% b
   if result > 255: result = 255
 
-proc satMinus(a, b: int): int {.inline.} =
+func satMinus(a, b: int): int {.inline.} =
   result = a -% b
   if result < 0: result = 0
 
-proc `+`*(a, b: Color): Color =
+func `+`*(a, b: Color): Color =
   ## Adds two colors.
   ##
   ## This uses saturated arithmetic, so that each color
@@ -60,7 +60,7 @@ proc `+`*(a, b: Color): Color =
 
   colorOp(satPlus)
 
-proc `-`*(a, b: Color): Color =
+func `-`*(a, b: Color): Color =
   ## Subtracts two colors.
   ##
   ## This uses saturated arithmetic, so that each color
@@ -74,7 +74,7 @@ proc `-`*(a, b: Color): Color =
 
   colorOp(satMinus)
 
-proc extractRGB*(a: Color): tuple[r, g, b: range[0..255]] =
+func extractRGB*(a: Color): tuple[r, g, b: range[0..255]] =
   ## Extracts the red/green/blue components of the color `a`.
   ##
   runnableExamples:
@@ -94,7 +94,7 @@ proc extractRGB*(a: Color): tuple[r, g, b: range[0..255]] =
   result.g = a.int shr 8 and 0xff
   result.b = a.int and 0xff
 
-proc intensity*(a: Color, f: float): Color =
+func intensity*(a: Color, f: float): Color =
   ## Returns `a` with intensity `f`. `f` should be a float from 0.0 (completely
   ## dark) to 1.0 (full color intensity).
   ##
@@ -125,7 +125,7 @@ template mix*(a, b: Color, fn: untyped): untyped =
       a = Color(0x0a2814)
       b = Color(0x050a03)
 
-    proc myMix(x, y: int): int =
+    func myMix(x, y: int): int =
       2 * x - 3 * y
 
     assert mix(a, b, myMix) == Color(0x05_32_1f)
@@ -427,17 +427,17 @@ const
     ("yellow", colYellow),
     ("yellowgreen", colYellowGreen)]
 
-proc `$`*(c: Color): string =
+func `$`*(c: Color): string =
   ## Converts a color into its textual representation.
   ##
   runnableExamples:
     assert $colFuchsia == "#FF00FF"
   result = '#' & toHex(int(c), 6)
 
-proc colorNameCmp(x: tuple[name: string, col: Color], y: string): int =
+func colorNameCmp(x: tuple[name: string, col: Color], y: string): int =
   result = cmpIgnoreCase(x.name, y)
 
-proc parseColor*(name: string): Color =
+func parseColor*(name: string): Color =
   ## Parses `name` to a color value.
   ##
   ## If no valid color could be parsed `ValueError` is raised.
@@ -459,7 +459,7 @@ proc parseColor*(name: string): Color =
     if idx < 0: raise newException(ValueError, "unknown color: " & name)
     result = colorNames[idx][1]
 
-proc isColor*(name: string): bool =
+func isColor*(name: string): bool =
   ## Returns true if `name` is a known color name or a hexadecimal color
   ## prefixed with `#`. Case insensitive.
   ##
@@ -480,7 +480,7 @@ proc isColor*(name: string): bool =
   else:
     result = binarySearch(colorNames, name, colorNameCmp) >= 0
 
-proc rgb*(r, g, b: range[0..255]): Color =
+func rgb*(r, g, b: range[0..255]): Color =
   ## Constructs a color from RGB values.
   ##
   runnableExamples:

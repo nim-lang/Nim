@@ -15,13 +15,13 @@ import std/[strtabs, times, options]
 type
   SameSite* {.pure.} = enum ## The SameSite cookie attribute.
                             ## `Default` means that `setCookie`
-                            ## proc will not set `SameSite` attribute.
+                            ## func will not set `SameSite` attribute.
     Default, None, Lax, Strict
 
-proc parseCookies*(s: string): StringTableRef =
+func parseCookies*(s: string): StringTableRef =
   ## Parses cookies into a string table.
   ##
-  ## The proc is meant to parse the Cookie header set by a client, not the
+  ## The func is meant to parse the Cookie header set by a client, not the
   ## "Set-Cookie" header set by servers.
   runnableExamples:
     import std/strtabs
@@ -44,7 +44,7 @@ proc parseCookies*(s: string): StringTableRef =
     if i >= s.len: break
     inc(i) # skip ';'
 
-proc setCookie*(key, value: string, domain = "", path = "",
+func setCookie*(key, value: string, domain = "", path = "",
                 expires = "", noName = false,
                 secure = false, httpOnly = false, 
                 maxAge = none(int), sameSite = SameSite.Default): string =
@@ -65,7 +65,7 @@ proc setCookie*(key, value: string, domain = "", path = "",
       doAssert secure, "Cookies with SameSite=None must specify the Secure attribute!"
     result.add("; SameSite=" & $sameSite)
 
-proc setCookie*(key, value: string, expires: DateTime|Time,
+func setCookie*(key, value: string, expires: DateTime|Time,
                 domain = "", path = "", noName = false,
                 secure = false, httpOnly = false,
                 maxAge = none(int), sameSite = SameSite.Default): string =

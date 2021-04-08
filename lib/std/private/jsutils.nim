@@ -21,7 +21,7 @@ when defined(js):
   func `[]`*(arr: BigUint64Array, i: int): JsBigInt {.importjs: "#[#]".}
   func `[]=`*(arr: Float64Array, i: int, v: float) {.importjs: "#[#] = #".}
 
-  proc jsTypeOf*[T](x: T): cstring {.importjs: "typeof(#)".} =
+  func jsTypeOf*[T](x: T): cstring {.importjs: "typeof(#)".} =
     ## Returns the name of the JsObject's JavaScript type as a cstring.
     # xxx replace jsffi.jsTypeOf with this definition and add tests
     runnableExamples:
@@ -31,7 +31,7 @@ when defined(js):
       assert [1].toJs.jsTypeOf == "object" # note the difference with `getProtoName`
       assert big"1".toJs.jsTypeOf == "bigint"
 
-  proc jsConstructorName*[T](a: T): cstring =
+  func jsConstructorName*[T](a: T): cstring =
     runnableExamples:
       import std/jsffi
       let a = array[2, float64].default
@@ -39,13 +39,13 @@ when defined(js):
       assert jsConstructorName(a.toJs) == "Float64Array"
     asm """`result` = `a`.constructor.name"""
 
-  proc hasJsBigInt*(): bool =
+  func hasJsBigInt*(): bool =
     asm """`result` = typeof BigInt != 'undefined'"""
 
-  proc hasBigUint64Array*(): bool =
+  func hasBigUint64Array*(): bool =
     asm """`result` = typeof BigUint64Array != 'undefined'"""
 
-  proc getProtoName*[T](a: T): cstring {.importjs: "Object.prototype.toString.call(#)".} =
+  func getProtoName*[T](a: T): cstring {.importjs: "Object.prototype.toString.call(#)".} =
     runnableExamples:
       import std/[jsffi, jsbigints]
       type A = ref object
@@ -65,7 +65,7 @@ when defined(js):
     let a {.importjs: "Number.MAX_SAFE_INTEGER".}: int64
     assert a == maxSafeInteger
 
-  proc isInteger*[T](x: T): bool {.importjs: "Number.isInteger(#)".} =
+  func isInteger*[T](x: T): bool {.importjs: "Number.isInteger(#)".} =
     runnableExamples:
       import std/jsffi
       assert 1.isInteger
@@ -73,7 +73,7 @@ when defined(js):
       assert 1.toJs.isInteger
       assert not 1.5.toJs.isInteger
 
-  proc isSafeInteger*[T](x: T): bool {.importjs: "Number.isSafeInteger(#)".} =
+  func isSafeInteger*[T](x: T): bool {.importjs: "Number.isSafeInteger(#)".} =
     runnableExamples:
       import std/jsffi
       assert not "123".toJs.isSafeInteger

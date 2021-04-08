@@ -24,12 +24,12 @@ type
     fuzz: int32
     count: int32
 
-proc `==`*(oid1: Oid, oid2: Oid): bool {.inline.} =
+func `==`*(oid1: Oid, oid2: Oid): bool {.inline.} =
   ## Compares two OIDs for equality.
   result = (oid1.time == oid2.time) and (oid1.fuzz == oid2.fuzz) and
           (oid1.count == oid2.count)
 
-proc hash*(oid: Oid): Hash =
+func hash*(oid: Oid): Hash =
   ## Generates the hash of an OID for use in hashtables.
   var h: Hash = 0
   h = h !& hash(oid.time)
@@ -37,10 +37,10 @@ proc hash*(oid: Oid): Hash =
   h = h !& hash(oid.count)
   result = !$h
 
-proc hexbyte*(hex: char): int {.inline.} =
+func hexbyte*(hex: char): int {.inline.} =
   result = handleHexChar(hex)
 
-proc parseOid*(str: cstring): Oid =
+func parseOid*(str: cstring): Oid =
   ## Parses an OID.
   var bytes = cast[cstring](addr(result.time))
   var i = 0
@@ -67,13 +67,13 @@ template toStringImpl[T: string | cstring](result: var T, oid: Oid) =
   when T is cstring:
     result[N] = '\0'
 
-proc oidToString*(oid: Oid, str: cstring) {.deprecated: "unsafe; use `$`".} =
+func oidToString*(oid: Oid, str: cstring) {.deprecated: "unsafe; use `$`".} =
   ## Converts an oid to a string which must have space allocated for 25 elements.
   # work around a compiler bug:
   var str = str
   toStringImpl(str, oid)
 
-proc `$`*(oid: Oid): string =
+func `$`*(oid: Oid): string =
   ## Converts an OID to a string.
   toStringImpl(result, oid)
 
@@ -104,7 +104,7 @@ proc genOid*(): Oid =
     echo $genOid() # for example, "5fc7f546ddbbc84800006aaf"
   genOid(result, incr, fuzz)
 
-proc generatedTime*(oid: Oid): Time =
+func generatedTime*(oid: Oid): Time =
   ## Returns the generated timestamp of the OID.
   var tmp: int32
   var dummy = oid.time

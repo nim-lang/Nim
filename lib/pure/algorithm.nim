@@ -29,7 +29,7 @@ runnableExamples:
   assert a == @[(year: 2000, name: "John"), (year: 2005, name: "Marie"),
                 (year: 2010, name: "Jane")]
 
-  proc myCmp(x, y: People): int =
+  func myCmp(x, y: People): int =
     cmp(x.name, y.name)
 
   # Sorting with custom proc

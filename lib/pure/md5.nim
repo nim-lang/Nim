@@ -26,7 +26,7 @@ type
   MD5Block = array[0..15, uint32]
   MD5CBits = array[0..7, uint8]
   MD5Digest* = array[0..15, uint8]
-    ## MD5 checksum of a string, obtained with the `toMD5 proc <#toMD5,string>`_.
+    ## MD5 checksum of a string, obtained with the `toMD5 func <#toMD5,string>`_.
   MD5Buffer = array[0..63, uint8]
   MD5Context* {.final.} = object
     state: MD5State
@@ -44,42 +44,42 @@ const
                      "\0\0\0\0\0\0\0\0" &
                      "\0\0\0\0"
 
-proc F(x, y, z: uint32): uint32 {.inline.} =
+func F(x, y, z: uint32): uint32 {.inline.} =
   result = (x and y) or ((not x) and z)
 
-proc G(x, y, z: uint32): uint32 {.inline.} =
+func G(x, y, z: uint32): uint32 {.inline.} =
   result = (x and z) or (y and (not z))
 
-proc H(x, y, z: uint32): uint32 {.inline.} =
+func H(x, y, z: uint32): uint32 {.inline.} =
   result = x xor y xor z
 
-proc I(x, y, z: uint32): uint32 {.inline.} =
+func I(x, y, z: uint32): uint32 {.inline.} =
   result = y xor (x or (not z))
 
-proc rot(x: var uint32, n: uint8) {.inline.} =
+func rot(x: var uint32, n: uint8) {.inline.} =
   x = (x shl n) or (x shr (32'u32 - n))
 
-proc FF(a: var uint32, b, c, d, x: uint32, s: uint8, ac: uint32) =
+func FF(a: var uint32, b, c, d, x: uint32, s: uint8, ac: uint32) =
   a = a + F(b, c, d) + x + ac
   rot(a, s)
   a = a + b
 
-proc GG(a: var uint32, b, c, d, x: uint32, s: uint8, ac: uint32) =
+func GG(a: var uint32, b, c, d, x: uint32, s: uint8, ac: uint32) =
   a = a + G(b, c, d) + x + ac
   rot(a, s)
   a = a + b
 
-proc HH(a: var uint32, b, c, d, x: uint32, s: uint8, ac: uint32) =
+func HH(a: var uint32, b, c, d, x: uint32, s: uint8, ac: uint32) =
   a = a + H(b, c, d) + x + ac
   rot(a, s)
   a = a + b
 
-proc II(a: var uint32, b, c, d, x: uint32, s: uint8, ac: uint32) =
+func II(a: var uint32, b, c, d, x: uint32, s: uint8, ac: uint32) =
   a = a + I(b, c, d) + x + ac
   rot(a, s)
   a = a + b
 
-proc encode(dest: var MD5Block, src: cstring) =
+func encode(dest: var MD5Block, src: cstring) =
   var j = 0
   for i in 0..high(dest):
     dest[i] = uint32(ord(src[j])) or
@@ -88,7 +88,7 @@ proc encode(dest: var MD5Block, src: cstring) =
               uint32(ord(src[j+3])) shl 24
     inc(j, 4)
 
-proc decode(dest: var openArray[uint8], src: openArray[uint32]) =
+func decode(dest: var openArray[uint8], src: openArray[uint32]) =
   var i = 0
   for j in 0..high(src):
     dest[i] = uint8(src[j] and 0xff'u32)
@@ -97,7 +97,7 @@ proc decode(dest: var openArray[uint8], src: openArray[uint32]) =
     dest[i+3] = uint8(src[j] shr 24 and 0xff'u32)
     inc(i, 4)
 
-proc transform(buffer: pointer, state: var MD5State) =
+func transform(buffer: pointer, state: var MD5State) =
   var
     myBlock: MD5Block
   encode(myBlock, cast[cstring](buffer))
@@ -174,19 +174,19 @@ proc transform(buffer: pointer, state: var MD5State) =
   state[2] = state[2] + c
   state[3] = state[3] + d
 
-proc md5Init*(c: var MD5Context) {.raises: [], tags: [], gcsafe.}
-proc md5Update*(c: var MD5Context, input: cstring, len: int) {.raises: [],
+func md5Init*(c: var MD5Context) {.raises: [], tags: [], gcsafe.}
+func md5Update*(c: var MD5Context, input: cstring, len: int) {.raises: [],
     tags: [], gcsafe.}
-proc md5Final*(c: var MD5Context, digest: var MD5Digest) {.raises: [], tags: [], gcsafe.}
+func md5Final*(c: var MD5Context, digest: var MD5Digest) {.raises: [], tags: [], gcsafe.}
 
 
-proc toMD5*(s: string): MD5Digest =
+func toMD5*(s: string): MD5Digest =
   ## Computes the `MD5Digest` value for a string `s`.
   ##
   ## **See also:**
-  ## * `getMD5 proc <#getMD5,string>`_ which returns a string representation
+  ## * `getMD5 func <#getMD5,string>`_ which returns a string representation
   ##   of the `MD5Digest`
-  ## * `$ proc <#$,MD5Digest>`_ for converting MD5Digest to string
+  ## * `$ func <#$,MD5Digest>`_ for converting MD5Digest to string
   runnableExamples:
     assert $toMD5("abc") == "900150983cd24fb0d6963f7d28e17f72"
 
@@ -195,7 +195,7 @@ proc toMD5*(s: string): MD5Digest =
   md5Update(c, cstring(s), len(s))
   md5Final(c, result)
 
-proc `$`*(d: MD5Digest): string =
+func `$`*(d: MD5Digest): string =
   ## Converts a `MD5Digest` value into its string representation.
   const digits = "0123456789abcdef"
   result = ""
@@ -203,11 +203,11 @@ proc `$`*(d: MD5Digest): string =
     add(result, digits[(d[i].int shr 4) and 0xF])
     add(result, digits[d[i].int and 0xF])
 
-proc getMD5*(s: string): string =
+func getMD5*(s: string): string =
   ## Computes an MD5 value of `s` and returns its string representation.
   ##
   ## **See also:**
-  ## * `toMD5 proc <#toMD5,string>`_ which returns the `MD5Digest` of a string
+  ## * `toMD5 func <#toMD5,string>`_ which returns the `MD5Digest` of a string
   runnableExamples:
     assert getMD5("abc") == "900150983cd24fb0d6963f7d28e17f72"
 
@@ -219,17 +219,17 @@ proc getMD5*(s: string): string =
   md5Final(c, d)
   result = $d
 
-proc `==`*(D1, D2: MD5Digest): bool =
+func `==`*(D1, D2: MD5Digest): bool =
   ## Checks if two `MD5Digest` values are identical.
   for i in 0..15:
     if D1[i] != D2[i]: return false
   return true
 
 
-proc md5Init*(c: var MD5Context) =
+func md5Init*(c: var MD5Context) =
   ## Initializes an `MD5Context`.
   ##
-  ## If you use the `toMD5 proc <#toMD5,string>`_, there's no need to call this
+  ## If you use the `toMD5 func <#toMD5,string>`_, there's no need to call this
   ## function explicitly.
   c.state[0] = 0x67452301'u32
   c.state[1] = 0xEFCDAB89'u32
@@ -239,10 +239,10 @@ proc md5Init*(c: var MD5Context) =
   c.count[1] = 0'u32
   zeroMem(addr(c.buffer), sizeof(MD5Buffer))
 
-proc md5Update*(c: var MD5Context, input: cstring, len: int) =
+func md5Update*(c: var MD5Context, input: cstring, len: int) =
   ## Updates the `MD5Context` with the `input` data of length `len`.
   ##
-  ## If you use the `toMD5 proc <#toMD5,string>`_, there's no need to call this
+  ## If you use the `toMD5 func <#toMD5,string>`_, there's no need to call this
   ## function explicitly.
   var input = input
   var Index = int((c.count[0] shr 3) and 0x3F)
@@ -261,10 +261,10 @@ proc md5Update*(c: var MD5Context, input: cstring, len: int) =
   else:
     copyMem(addr(c.buffer[Index]), addr(input[0]), len)
 
-proc md5Final*(c: var MD5Context, digest: var MD5Digest) =
+func md5Final*(c: var MD5Context, digest: var MD5Digest) =
   ## Finishes the `MD5Context` and stores the result in `digest`.
   ##
-  ## If you use the `toMD5 proc <#toMD5,string>`_, there's no need to call this
+  ## If you use the `toMD5 func <#toMD5,string>`_, there's no need to call this
   ## function explicitly.
   var
     Bits: MD5CBits

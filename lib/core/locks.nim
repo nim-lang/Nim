@@ -29,47 +29,47 @@ type
 {.push stackTrace: off.}
 
 
-proc `$`*(lock: Lock): string =
+func `$`*(lock: Lock): string =
   # workaround bug #14873
   result = "()"
 
-proc initLock*(lock: var Lock) {.inline.} =
+func initLock*(lock: var Lock) {.inline.} =
   ## Initializes the given lock.
   when not defined(js):
     initSysLock(lock)
 
-proc deinitLock*(lock: var Lock) {.inline.} =
+func deinitLock*(lock: var Lock) {.inline.} =
   ## Frees the resources associated with the lock.
   deinitSys(lock)
 
-proc tryAcquire*(lock: var Lock): bool =
+func tryAcquire*(lock: var Lock): bool =
   ## Tries to acquire the given lock. Returns `true` on success.
   result = tryAcquireSys(lock)
 
-proc acquire*(lock: var Lock) =
+func acquire*(lock: var Lock) =
   ## Acquires the given lock.
   when not defined(js):
     acquireSys(lock)
 
-proc release*(lock: var Lock) =
+func release*(lock: var Lock) =
   ## Releases the given lock.
   when not defined(js):
     releaseSys(lock)
 
 
-proc initCond*(cond: var Cond) {.inline.} =
+func initCond*(cond: var Cond) {.inline.} =
   ## Initializes the given condition variable.
   initSysCond(cond)
 
-proc deinitCond*(cond: var Cond) {.inline.} =
+func deinitCond*(cond: var Cond) {.inline.} =
   ## Frees the resources associated with the condition variable.
   deinitSysCond(cond)
 
-proc wait*(cond: var Cond, lock: var Lock) {.inline.} =
+func wait*(cond: var Cond, lock: var Lock) {.inline.} =
   ## waits on the condition variable `cond`.
   waitSysCond(cond, lock)
 
-proc signal*(cond: var Cond) {.inline.} =
+func signal*(cond: var Cond) {.inline.} =
   ## sends a signal to the condition variable `cond`.
   signalSysCond(cond)
 

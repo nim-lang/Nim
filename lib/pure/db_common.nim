@@ -92,7 +92,7 @@ template sql*(query: string): SqlQuery =
   ## on, later versions will check the string for valid syntax.
   SqlQuery(query)
 
-proc dbError*(msg: string) {.noreturn, noinline.} =
+func dbError*(msg: string) {.noreturn, noinline.} =
   ## raises an DbError exception with message `msg`.
   var e: ref DbError
   new(e)

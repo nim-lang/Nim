@@ -19,9 +19,9 @@ runnableExamples("-r:off"):
   # It will respond to all requests with a `200 OK` response code and "Hello World"
   # as the response body.
   import std/asyncdispatch
-  proc main {.async.} =
+  func main {.async.} =
     var server = newAsyncHttpServer()
-    proc cb(req: Request) {.async.} =
+    func cb(req: Request) {.async.} =
       echo (req.reqMethod, req.url, req.headers)
       let headers = {"Content-type": "text/plain; charset=utf-8"}
       await req.respond(Http200, "Hello World", headers.newHttpHeaders())
@@ -84,12 +84,12 @@ proc getPort*(self: AsyncHttpServer): Port {.since: (1, 5, 1).} =
     server.close()
   result = getLocalAddr(self.socket.getFd, AF_INET)[1]
 
-proc newAsyncHttpServer*(reuseAddr = true, reusePort = false,
+func newAsyncHttpServer*(reuseAddr = true, reusePort = false,
                          maxBody = 8388608): AsyncHttpServer =
   ## Creates a new `AsyncHttpServer` instance.
   result = AsyncHttpServer(reuseAddr: reuseAddr, reusePort: reusePort, maxBody: maxBody)
 
-proc addHeaders(msg: var string, headers: HttpHeaders) =
+func addHeaders(msg: var string, headers: HttpHeaders) =
   for k, v in headers:
     msg.add(k & ": " & v & "\c\L")
 
@@ -110,7 +110,7 @@ proc respond*(req: Request, code: HttpCode, content: string,
   ##
   ## .. code-block:: Nim
   ##    import std/json
-  ##    proc handler(req: Request) {.async.} =
+  ##    func handler(req: Request) {.async.} =
   ##      if req.url.path == "/hello-world":
   ##        let msg = %* {"message": "Hello World"}
   ##        let headers = newHttpHeaders([("Content-Type","application/json")])
@@ -155,7 +155,7 @@ proc parseProtocol(protocol: string): tuple[orig: string, major, minor: int] =
 proc sendStatus(client: AsyncSocket, status: string): Future[void] =
   client.send("HTTP/1.1 " & status & "\c\L\c\L")
 
-func hasChunkedEncoding(request: Request): bool = 
+proc hasChunkedEncoding(request: Request): bool = 
   ## Searches for a chunked transfer encoding
   const transferEncoding = "Transfer-Encoding"
 
@@ -394,7 +394,7 @@ proc shouldAcceptRequest*(server: AsyncHttpServer;
 
 proc acceptRequest*(server: AsyncHttpServer,
             callback: proc (request: Request): Future[void] {.closure, gcsafe.}) {.async.} =
-  ## Accepts a single request. Write an explicit loop around this proc so that
+  ## Accepts a single request. Write an explicit loop around this func so that
   ## errors can be handled properly.
   var (address, client) = await server.socket.acceptAddr()
   asyncCheck processClient(server, client, address, callback)

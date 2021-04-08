@@ -75,7 +75,7 @@ func replace(n: NimNode): NimNode =
     n[0] = replace(n[0])
     result = n
 
-proc safeGet[T](a: Option[T]): T {.inline.} =
+func safeGet[T](a: Option[T]): T {.inline.} =
   get(a, default(T))
 
 macro `?.`*(a: untyped): auto =

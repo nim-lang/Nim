@@ -14,7 +14,7 @@ import macros, strutils, asyncfutures
 
 # TODO: Ref https://github.com/nim-lang/Nim/issues/5617
 # TODO: Add more line infos
-proc newCallWithLineInfo(fromNode: NimNode; theProc: NimNode, args: varargs[NimNode]): NimNode =
+func newCallWithLineInfo(fromNode: NimNode; theProc: NimNode, args: varargs[NimNode]): NimNode =
   result = newCall(theProc, args)
   result.copyLineInfo(fromNode)
 
@@ -23,7 +23,7 @@ template createCb(retFutureSym, iteratorNameSym,
   bind finished
 
   var nameIterVar = iteratorNameSym
-  proc identName {.closure.} =
+  func identName {.closure.} =
     try:
       if not nameIterVar.finished:
         var next = nameIterVar()
@@ -50,7 +50,7 @@ template createCb(retFutureSym, iteratorNameSym,
         retFutureSym.fail(getCurrentException())
   identName()
 
-proc createFutureVarCompletions(futureVarIdents: seq[NimNode], fromNode: NimNode): NimNode =
+func createFutureVarCompletions(futureVarIdents: seq[NimNode], fromNode: NimNode): NimNode =
   result = newNimNode(nnkStmtList, fromNode)
   # Add calls to complete each FutureVar parameter.
   for ident in futureVarIdents:
@@ -65,7 +65,7 @@ proc createFutureVarCompletions(futureVarIdents: seq[NimNode], fromNode: NimNode
       )
     )
 
-proc processBody(node, retFutureSym: NimNode,
+func processBody(node, retFutureSym: NimNode,
                  subTypeIsVoid: bool,
                  futureVarIdents: seq[NimNode]): NimNode =
   #echo(node.treeRepr)
@@ -103,7 +103,7 @@ proc processBody(node, retFutureSym: NimNode,
 
   # echo result.repr
 
-proc getName(node: NimNode): string =
+func getName(node: NimNode): string =
   case node.kind
   of nnkPostfix:
     return node[1].strVal
@@ -114,7 +114,7 @@ proc getName(node: NimNode): string =
   else:
     error("Unknown name.", node)
 
-proc getFutureVarIdents(params: NimNode): seq[NimNode] =
+func getFutureVarIdents(params: NimNode): seq[NimNode] =
   result = @[]
   for i in 1 ..< len(params):
     expectKind(params[i], nnkIdentDefs)
@@ -123,10 +123,10 @@ proc getFutureVarIdents(params: NimNode): seq[NimNode] =
       ## eqIdent: first char is case sensitive!!!
       result.add(params[i][0])
 
-proc isInvalidReturnType(typeName: string): bool =
+func isInvalidReturnType(typeName: string): bool =
   return typeName notin ["Future"] #, "FutureStream"]
 
-proc verifyReturnType(typeName: string, node: NimNode = nil) =
+func verifyReturnType(typeName: string, node: NimNode = nil) =
   if typeName.isInvalidReturnType:
     error("Expected return type of 'Future' got '$1'" %
           typeName, node)
@@ -140,7 +140,7 @@ template await*[T](f: Future[T]): auto {.used.} =
   yield internalTmpFuture
   (cast[typeof(f)](internalTmpFuture)).read()
 
-proc asyncSingleProc(prc: NimNode): NimNode =
+func asyncSingleProc(prc: NimNode): NimNode =
   ## This macro transforms a single procedure into a closure iterator.
   ## The `async` macro supports a stmtList holding multiple async procedures.
   if prc.kind == nnkProcTy:
@@ -156,7 +156,7 @@ proc asyncSingleProc(prc: NimNode): NimNode =
   if prc[4].kind != nnkEmpty:
     for prag in prc[4]:
       if prag.eqIdent("discardable"):
-        error("Cannot make async proc discardable. Futures have to be " &
+        error("Cannot make async func discardable. Futures have to be " &
           "checked with `asyncCheck` instead of discarded", prag)
 
   let prcName = prc.name.getName
@@ -246,7 +246,7 @@ proc asyncSingleProc(prc: NimNode): NimNode =
     closureIterator.pragma = newNimNode(nnkPragma, lineInfoFrom = prc.body)
     closureIterator.addPragma(newIdentNode("closure"))
 
-    # If proc has an explicit gcsafe pragma, we add it to iterator as well.
+    # If func has an explicit gcsafe pragma, we add it to iterator as well.
     if prc.pragma.findChild(it.kind in {nnkSym, nnkIdent} and $it ==
         "gcsafe") != nil:
       closureIterator.addPragma(newIdentNode("gcsafe"))
@@ -295,7 +295,7 @@ macro async*(prc: untyped): untyped =
   when defined(nimDumpAsync):
     echo repr result
 
-proc splitParamType(paramType: NimNode, async: bool): NimNode =
+func splitParamType(paramType: NimNode, async: bool): NimNode =
   result = paramType
   if paramType.kind == nnkInfix and paramType[0].strVal in ["|", "or"]:
     let firstAsync = "async" in paramType[1].strVal.normalize
@@ -306,7 +306,7 @@ proc splitParamType(paramType: NimNode, async: bool): NimNode =
     elif secondAsync:
       result = paramType[if async: 2 else: 1]
 
-proc stripReturnType(returnType: NimNode): NimNode =
+func stripReturnType(returnType: NimNode): NimNode =
   # Strip out the 'Future' from 'Future[T]'.
   result = returnType
   if returnType.kind == nnkBracketExpr:
@@ -314,18 +314,18 @@ proc stripReturnType(returnType: NimNode): NimNode =
     verifyReturnType(fut, returnType)
     result = returnType[1]
 
-proc splitProc(prc: NimNode): (NimNode, NimNode) =
+func splitProc(prc: NimNode): (NimNode, NimNode) =
   ## Takes a procedure definition which takes a generic union of arguments,
-  ## for example: proc (socket: Socket | AsyncSocket).
-  ## It transforms them so that `proc (socket: Socket)` and
-  ## `proc (socket: AsyncSocket)` are returned.
+  ## for example: func (socket: Socket | AsyncSocket).
+  ## It transforms them so that `func (socket: Socket)` and
+  ## `func (socket: AsyncSocket)` are returned.
 
   result[0] = prc.copyNimTree()
   # Retrieve the `T` inside `Future[T]`.
   let returnType = stripReturnType(result[0][3][0])
   result[0][3][0] = splitParamType(returnType, async = false)
   for i in 1 ..< result[0][3].len:
-    # Sync proc (0) -> FormalParams (3) -> IdentDefs, the parameter (i) ->
+    # Sync func (0) -> FormalParams (3) -> IdentDefs, the parameter (i) ->
     # parameter type (1).
     result[0][3][i][1] = splitParamType(result[0][3][i][1], async=false)
   var multisyncAwait = quote:
@@ -338,7 +338,7 @@ proc splitProc(prc: NimNode): (NimNode, NimNode) =
   if result[1][3][0].kind == nnkBracketExpr:
     result[1][3][0][1] = splitParamType(result[1][3][0][1], async = true)
   for i in 1 ..< result[1][3].len:
-    # Async proc (1) -> FormalParams (3) -> IdentDefs, the parameter (i) ->
+    # Async func (1) -> FormalParams (3) -> IdentDefs, the parameter (i) ->
     # parameter type (1).
     result[1][3][i][1] = splitParamType(result[1][3][i][1], async = true)
 

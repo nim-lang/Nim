@@ -68,7 +68,7 @@ iterator parseTableCells*(s: string, delim = '\t'): Cell =
   if s.len > 0 and s[^1] != '\n':
     finishRow()
 
-proc alignTable*(s: string, delim = '\t', fill = ' ', sep = " "): string =
+func alignTable*(s: string, delim = '\t', fill = ' ', sep = " "): string =
   ## Formats a `delim`-delimited `s` representing a table; each cell is aligned
   ## to a width that's computed for each column; consecutive columns are
   ## delimited by `sep`, and alignment space is filled using `fill`.

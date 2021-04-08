@@ -7,7 +7,7 @@
 #    distribution, for details about the copyright.
 #
 
-## This module implements a proc to determine the number of CPUs / cores.
+## This module implements a func to determine the number of CPUs / cores.
 
 runnableExamples:
   doAssert countProcessors() > 0
@@ -32,14 +32,14 @@ when defined(macosx) or defined(bsd):
     CTL_HW = 6
     HW_AVAILCPU = 25
     HW_NCPU = 3
-  proc sysctl(x: ptr array[0..3, cint], y: cint, z: pointer,
+  func sysctl(x: ptr array[0..3, cint], y: cint, z: pointer,
               a: var csize_t, b: pointer, c: csize_t): cint {.
               importc: "sysctl", nodecl.}
 
 when defined(genode):
   include genode/env
 
-  proc affinitySpaceTotal(env: GenodeEnvPtr): cuint {.
+  func affinitySpaceTotal(env: GenodeEnvPtr): cuint {.
     importcpp: "@->cpu().affinity_space().total()".}
 
 when defined(haiku):
@@ -47,7 +47,7 @@ when defined(haiku):
     SystemInfo {.importc: "system_info", header: "<OS.h>".} = object
       cpuCount {.importc: "cpu_count".}: uint32
 
-  proc getSystemInfo(info: ptr SystemInfo): int32 {.importc: "get_system_info",
+  func getSystemInfo(info: ptr SystemInfo): int32 {.importc: "get_system_info",
                                                     header: "<OS.h>".}
 
 proc countProcessors*(): int {.rtl, extern: "ncpi$1".} =
@@ -67,7 +67,7 @@ proc countProcessors*(): int {.rtl, extern: "ncpi$1".} =
         wProcessorLevel: int16
         wProcessorRevision: int16
 
-    proc GetSystemInfo(lpSystemInfo: var SYSTEM_INFO) {.stdcall, dynlib: "kernel32", importc: "GetSystemInfo".}
+    func GetSystemInfo(lpSystemInfo: var SYSTEM_INFO) {.stdcall, dynlib: "kernel32", importc: "GetSystemInfo".}
 
     var
       si: SYSTEM_INFO

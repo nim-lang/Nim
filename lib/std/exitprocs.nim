@@ -23,7 +23,7 @@ var
 initLock(gFunsLock)
 
 when defined(js):
-  proc addAtExit(quitProc: proc() {.noconv.}) =
+  func addAtExit(quitProc: proc() {.noconv.}) =
     when defined(nodejs):
       asm """
         process.on('exit', `quitProc`);
@@ -33,7 +33,7 @@ when defined(js):
         window.onbeforeunload = `quitProc`;
       """
 else:
-  proc addAtExit(quitProc: proc() {.noconv.}) {.
+  func addAtExit(quitProc: proc() {.noconv.}) {.
     importc: "atexit", header: "<stdlib.h>".}
 
 proc callClosures() {.noconv.} =

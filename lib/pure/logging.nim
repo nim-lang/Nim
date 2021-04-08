@@ -48,13 +48,13 @@
 ## .. warning::
 ##   For loggers that log to a console or to files, only error and fatal
 ##   messages will cause their output buffers to be flushed immediately.
-##   Use the `flushFile proc <io.html#flushFile,File>`_ to flush the buffer
+##   Use the `flushFile func <io.html#flushFile,File>`_ to flush the buffer
 ##   manually if needed.
 ##
 ## Handlers
 ## --------
 ##
-## When using multiple loggers, calling the log proc for each logger can
+## When using multiple loggers, calling the log func for each logger can
 ## become repetitive. Instead of doing that, register each logger that will be
 ## used with the `addHandler proc<#addHandler,Logger>`_, which is demonstrated
 ## in the following example:
@@ -381,7 +381,7 @@ method log*(logger: ConsoleLogger, level: Level, args: varargs[string, `$`]) =
       except IOError:
         discard
 
-proc newConsoleLogger*(levelThreshold = lvlAll, fmtStr = defaultFmtStr,
+func newConsoleLogger*(levelThreshold = lvlAll, fmtStr = defaultFmtStr,
     useStderr = false): ConsoleLogger =
   ## Creates a new `ConsoleLogger<#ConsoleLogger>`_.
   ##
@@ -445,16 +445,16 @@ when not defined(js):
   proc defaultFilename*(): string =
     ## Returns the filename that is used by default when naming log files.
     ##
-    ## **Note:** This proc is not available for the JavaScript backend.
+    ## **Note:** This func is not available for the JavaScript backend.
     var (path, name, _) = splitFile(getAppFilename())
     result = changeFileExt(path / name, "log")
 
-  proc newFileLogger*(file: File,
+  func newFileLogger*(file: File,
                       levelThreshold = lvlAll,
                       fmtStr = defaultFmtStr): FileLogger =
     ## Creates a new `FileLogger<#FileLogger>`_ that uses the given file handle.
     ##
-    ## **Note:** This proc is not available for the JavaScript backend.
+    ## **Note:** This func is not available for the JavaScript backend.
     ##
     ## See also:
     ## * `newConsoleLogger proc<#newConsoleLogger>`_
@@ -491,7 +491,7 @@ when not defined(js):
     ## * ``0`` - unbuffered
     ## * ``> 0`` - fixed buffer size
     ##
-    ## **Note:** This proc is not available for the JavaScript backend.
+    ## **Note:** This func is not available for the JavaScript backend.
     ##
     ## See also:
     ## * `newConsoleLogger proc<#newConsoleLogger>`_
@@ -549,7 +549,7 @@ when not defined(js):
     ## * ``0`` - unbuffered
     ## * ``> 0`` - fixed buffer size
     ##
-    ## **Note:** This proc is not available in the JavaScript backend.
+    ## **Note:** This func is not available in the JavaScript backend.
     ##
     ## See also:
     ## * `newConsoleLogger proc<#newConsoleLogger>`_
@@ -795,7 +795,7 @@ proc addHandler*(handler: Logger) =
   ## Adds a logger to the list of registered handlers.
   ##
   ## .. warning:: The list of handlers is a thread-local variable. If the given
-  ##   handler will be used in multiple threads, this proc should be called in
+  ##   handler will be used in multiple threads, this func should be called in
   ##   each of those threads.
   ##
   ## See also:
@@ -821,7 +821,7 @@ proc setLogFilter*(lvl: Level) =
   ## logged.
   ##
   ## .. warning:: The global log filter is a thread-local variable. If logging
-  ##   is being performed in multiple threads, this proc should be called in each
+  ##   is being performed in multiple threads, this func should be called in each
   ##   thread unless it is intended that different threads should log at different
   ##   logging levels.
   ##

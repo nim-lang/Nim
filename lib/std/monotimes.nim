@@ -51,12 +51,12 @@ when defined(macosx):
         header: "<mach/mach_time.h>".} = object
       numer, denom: int32
 
-  proc mach_absolute_time(): int64 {.importc, header: "<mach/mach.h>".}
-  proc mach_timebase_info(info: var MachTimebaseInfoData) {.importc,
+  func mach_absolute_time(): int64 {.importc, header: "<mach/mach.h>".}
+  func mach_timebase_info(info: var MachTimebaseInfoData) {.importc,
     header: "<mach/mach_time.h>".}
 
 when defined(js):
-  proc getJsTicks: float =
+  func getJsTicks: float =
     ## Returns ticks in the unit seconds.
     when defined(nodejs):
       {.emit: """
@@ -70,9 +70,9 @@ when defined(js):
 
   # Workaround for #6752.
   {.push overflowChecks: off.}
-  proc `-`(a, b: int64): int64 =
+  func `-`(a, b: int64): int64 =
     system.`-`(a, b)
-  proc `+`(a, b: int64): int64 =
+  func `+`(a, b: int64): int64 =
     system.`+`(a, b)
   {.pop.}
 
@@ -80,9 +80,9 @@ elif defined(posix) and not defined(osx):
   import std/posix
 
 elif defined(windows):
-  proc QueryPerformanceCounter(res: var uint64) {.
+  func QueryPerformanceCounter(res: var uint64) {.
     importc: "QueryPerformanceCounter", stdcall, dynlib: "kernel32".}
-  proc QueryPerformanceFrequency(res: var uint64) {.
+  func QueryPerformanceFrequency(res: var uint64) {.
     importc: "QueryPerformanceFrequency", stdcall, dynlib: "kernel32".}
 
 proc getMonoTime*(): MonoTime {.tags: [TimeEffect].} =
@@ -115,42 +115,42 @@ proc getMonoTime*(): MonoTime {.tags: [TimeEffect].} =
     let queryPerformanceCounterFreq = 1_000_000_000'u64 div freq
     result = MonoTime(ticks: (ticks * queryPerformanceCounterFreq).int64)
 
-proc ticks*(t: MonoTime): int64 =
+func ticks*(t: MonoTime): int64 =
   ## Returns the raw ticks value from a `MonoTime`. This value always uses
   ## nanosecond time resolution.
   t.ticks
 
-proc `$`*(t: MonoTime): string =
+func `$`*(t: MonoTime): string =
   $t.ticks
 
-proc `-`*(a, b: MonoTime): Duration =
+func `-`*(a, b: MonoTime): Duration =
   ## Returns the difference between two `MonoTime` timestamps as a `Duration`.
   initDuration(nanoseconds = (a.ticks - b.ticks))
 
-proc `+`*(a: MonoTime, b: Duration): MonoTime =
+func `+`*(a: MonoTime, b: Duration): MonoTime =
   ## Increases `a` by `b`.
   MonoTime(ticks: a.ticks + b.inNanoseconds)
 
-proc `-`*(a: MonoTime, b: Duration): MonoTime =
+func `-`*(a: MonoTime, b: Duration): MonoTime =
   ## Reduces `a` by `b`.
   MonoTime(ticks: a.ticks - b.inNanoseconds)
 
-proc `<`*(a, b: MonoTime): bool =
+func `<`*(a, b: MonoTime): bool =
   ## Returns true if `a` happened before `b`.
   a.ticks < b.ticks
 
-proc `<=`*(a, b: MonoTime): bool =
+func `<=`*(a, b: MonoTime): bool =
   ## Returns true if `a` happened before `b` or if they happened simultaneous.
   a.ticks <= b.ticks
 
-proc `==`*(a, b: MonoTime): bool =
+func `==`*(a, b: MonoTime): bool =
   ## Returns true if `a` and `b` happened simultaneous.
   a.ticks == b.ticks
 
-proc high*(typ: typedesc[MonoTime]): MonoTime =
+func high*(typ: typedesc[MonoTime]): MonoTime =
   ## Returns the highest representable `MonoTime`.
   MonoTime(ticks: high(int64))
 
-proc low*(typ: typedesc[MonoTime]): MonoTime =
+func low*(typ: typedesc[MonoTime]): MonoTime =
   ## Returns the lowest representable `MonoTime`.
   MonoTime(ticks: low(int64))

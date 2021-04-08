@@ -15,7 +15,7 @@
 const
   maxVarIntLen* = 9 ## the maximal number of bytes a varint can take
 
-proc readVu64*(z: openArray[byte]; pResult: var uint64): int =
+func readVu64*(z: openArray[byte]; pResult: var uint64): int =
   if z[0] <= 240:
     pResult = z[0]
     return 1
@@ -48,13 +48,13 @@ proc readVu64*(z: openArray[byte]; pResult: var uint64): int =
               (z[6].uint64 shl 16) + (z[7].uint64 shl 8) + z[8].uint64))
   return 9
 
-proc varintWrite32(z: var openArray[byte]; y: uint32) =
+func varintWrite32(z: var openArray[byte]; y: uint32) =
   z[0] = cast[uint8](y shr 24)
   z[1] = cast[uint8](y shr 16)
   z[2] = cast[uint8](y shr 8)
   z[3] = cast[uint8](y)
 
-proc writeVu64*(z: var openArray[byte], x: uint64): int =
+func writeVu64*(z: var openArray[byte], x: uint64): int =
   ## Write a varint into z. The buffer z must be at least 9 characters
   ## long to accommodate the largest possible varint. Returns the number of
   ## bytes used.
@@ -107,15 +107,15 @@ proc writeVu64*(z: var openArray[byte], x: uint64): int =
   varintWrite32(toOpenArray(z, 5, z.high-5), y)
   return 9
 
-proc sar(a, b: int64): int64 =
+func sar(a, b: int64): int64 =
   {.emit: [result, " = ", a, " >> ", b, ";"].}
 
-proc sal(a, b: int64): int64 =
+func sal(a, b: int64): int64 =
   {.emit: [result, " = ", a, " << ", b, ";"].}
 
-proc encodeZigzag*(x: int64): uint64 {.inline.} =
+func encodeZigzag*(x: int64): uint64 {.inline.} =
   uint64(sal(x, 1)) xor uint64(sar(x, 63))
 
-proc decodeZigzag*(x: uint64): int64 {.inline.} =
+func decodeZigzag*(x: uint64): int64 {.inline.} =
   let casted = cast[int64](x)
   result = (`shr`(casted, 1)) xor (-(casted and 1))

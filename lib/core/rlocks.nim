@@ -29,19 +29,19 @@ proc initRLock*(lock: var RLock) {.inline.} =
   else:
     initSysLock(lock)
 
-proc deinitRLock*(lock: var RLock) {.inline.} =
+func deinitRLock*(lock: var RLock) {.inline.} =
   ## Frees the resources associated with the lock.
   deinitSys(lock)
 
-proc tryAcquire*(lock: var RLock): bool =
+func tryAcquire*(lock: var RLock): bool =
   ## Tries to acquire the given lock. Returns `true` on success.
   result = tryAcquireSys(lock)
 
-proc acquire*(lock: var RLock) =
+func acquire*(lock: var RLock) =
   ## Acquires the given lock.
   acquireSys(lock)
 
-proc release*(lock: var RLock) =
+func release*(lock: var RLock) =
   ## Releases the given lock.
   releaseSys(lock)
 

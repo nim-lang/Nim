@@ -34,7 +34,7 @@ template sbind(x: int; value) =
       quit "could not bind value"
 
 when defined(memTracker):
-  proc logEntries(log: TrackLog) {.nimcall, locks: 0, tags: [], gcsafe.} =
+  func logEntries(log: TrackLog) {.nimcall, locks: 0, tags: [], gcsafe.} =
     if insertStmt.isNil:
       if prepare_v2(dbHandle, insertQuery,
           insertQuery.len, insertStmt, nil) != SQLITE_OK:

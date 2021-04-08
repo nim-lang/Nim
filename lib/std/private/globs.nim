@@ -43,7 +43,7 @@ iterator walkDirRecFilter*(dir: string, follow: proc(entry: PathEntry): bool = n
       # permissions), it'll abort iteration and there would be no way to
       # continue iteration.
 
-proc nativeToUnixPath*(path: string): string =
+func nativeToUnixPath*(path: string): string =
   # pending https://github.com/nim-lang/Nim/pull/13265
   doAssert not path.isAbsolute # not implemented here; absolute files need more care for the drive
   when DirSep == '\\':

@@ -29,7 +29,7 @@ type
 
 when defined(windows):
   import parseutils, strutils
-  proc eqEncodingNames(a, b: string): bool =
+  func eqEncodingNames(a, b: string): bool =
     var i = 0
     var j = 0
     while i < a.len and j < b.len:
@@ -217,27 +217,27 @@ when defined(windows):
         defaultChar: array[0..1, char]
         leadByte: array[0..12-1, char]
 
-    proc getCPInfo(codePage: CodePage, lpCPInfo: var CpInfo): int32 {.
+    func getCPInfo(codePage: CodePage, lpCPInfo: var CpInfo): int32 {.
       stdcall, importc: "GetCPInfo", dynlib: "kernel32".}
 
-  proc nameToCodePage*(name: string): CodePage =
+  func nameToCodePage*(name: string): CodePage =
     var nameAsInt: int
     if parseInt(name, nameAsInt) == 0: nameAsInt = -1
     for no, na in items(winEncodings):
       if no == nameAsInt or eqEncodingNames(na, name): return CodePage(no)
     result = CodePage(-1)
 
-  proc codePageToName*(c: CodePage): string =
+  func codePageToName*(c: CodePage): string =
     for no, na in items(winEncodings):
       if no == int(c):
         return if na.len != 0: na else: $no
     result = ""
 
-  proc getACP(): CodePage {.stdcall, importc: "GetACP", dynlib: "kernel32".}
-  proc getGetConsoleCP(): CodePage {.stdcall, importc: "GetConsoleCP",
+  func getACP(): CodePage {.stdcall, importc: "GetACP", dynlib: "kernel32".}
+  func getGetConsoleCP(): CodePage {.stdcall, importc: "GetConsoleCP",
       dynlib: "kernel32".}
 
-  proc multiByteToWideChar(
+  func multiByteToWideChar(
     codePage: CodePage,
     dwFlags: int32,
     lpMultiByteStr: cstring,
@@ -246,7 +246,7 @@ when defined(windows):
     cchWideChar: cint): cint {.
       stdcall, importc: "MultiByteToWideChar", dynlib: "kernel32".}
 
-  proc wideCharToMultiByte(
+  func wideCharToMultiByte(
     codePage: CodePage,
     dwFlags: int32,
     lpWideCharStr: cstring,
@@ -286,15 +286,15 @@ else:
   else:
     {.pragma: importIconv, cdecl, dynlib: iconvDll.}
 
-  proc iconvOpen(tocode, fromcode: cstring): EncodingConverter {.
+  func iconvOpen(tocode, fromcode: cstring): EncodingConverter {.
     importc: "iconv_open", importIconv.}
-  proc iconvClose(c: EncodingConverter) {.
+  func iconvClose(c: EncodingConverter) {.
     importc: "iconv_close", importIconv.}
-  proc iconv(c: EncodingConverter, inbuf: ptr cstring, inbytesLeft: ptr csize_t,
+  func iconv(c: EncodingConverter, inbuf: ptr cstring, inbytesLeft: ptr csize_t,
              outbuf: ptr cstring, outbytesLeft: ptr csize_t): csize_t {.
     importc: "iconv", importIconv.}
 
-proc getCurrentEncoding*(uiApp = false): string =
+func getCurrentEncoding*(uiApp = false): string =
   ## retrieves the current encoding. On Unix, always "UTF-8" is returned.
   ## The `uiApp` parameter is Windows specific. If true, the UI's code-page
   ## is returned, if false, the Console's code-page is returned.
@@ -303,7 +303,7 @@ proc getCurrentEncoding*(uiApp = false): string =
   else:
     result = "UTF-8"
 
-proc open*(destEncoding = "UTF-8", srcEncoding = "CP1252"): EncodingConverter =
+func open*(destEncoding = "UTF-8", srcEncoding = "CP1252"): EncodingConverter =
   ## opens a converter that can convert from `srcEncoding` to `destEncoding`.
   ## Raises `IOError` if it cannot fulfill the request.
   when not defined(windows):
@@ -322,13 +322,13 @@ proc open*(destEncoding = "UTF-8", srcEncoding = "CP1252"): EncodingConverter =
       raise newException(EncodingError,
         "cannot find encoding " & srcEncoding)
 
-proc close*(c: EncodingConverter) =
+func close*(c: EncodingConverter) =
   ## frees the resources the converter `c` holds.
   when not defined(windows):
     iconvClose(c)
 
 when defined(windows):
-  proc convertToWideString(codePage: CodePage, s: string): string =
+  func convertToWideString(codePage: CodePage, s: string): string =
     # educated guess of capacity:
     var cap = s.len + s.len shr 2
     result = newString(cap*2)
@@ -362,7 +362,7 @@ when defined(windows):
     else:
       assert(false) # cannot happen
 
-  proc convertFromWideString(codePage: CodePage, s: string): string =
+  func convertFromWideString(codePage: CodePage, s: string): string =
     let charCount = s.len div 2
     var cap = s.len + s.len shr 2
     result = newString(cap)
@@ -395,7 +395,7 @@ when defined(windows):
     else:
       assert(false) # cannot happen
 
-  proc convertWin(codePageFrom: CodePage, codePageTo: CodePage,
+  func convertWin(codePageFrom: CodePage, codePageTo: CodePage,
       s: string): string =
     # special case: empty string: needed because MultiByteToWideChar, WideCharToMultiByte
     # return 0 in case of error
@@ -417,7 +417,7 @@ when defined(windows):
     return if int(codePageTo) == 1200: wideString
            else: convertFromWideString(codePageTo, wideString)
 
-  proc convert*(c: EncodingConverter, s: string): string =
+  func convert*(c: EncodingConverter, s: string): string =
     ## converts `s` to `destEncoding` that was given to the converter `c`. It
     ## assumed that `s` is in `srcEncoding`.
     ## utf-16BE, utf-32 conversions not supported on windows

@@ -71,14 +71,14 @@
 ##
 ##   var clients {.threadvar.}: seq[AsyncSocket]
 ##
-##   proc processClient(client: AsyncSocket) {.async.} =
+##   func processClient(client: AsyncSocket) {.async.} =
 ##     while true:
 ##       let line = await client.recvLine()
 ##       if line.len == 0: break
 ##       for c in clients:
 ##         await c.send(line & "\c\L")
 ##
-##   proc serve() {.async.} =
+##   func serve() {.async.} =
 ##     clients = @[]
 ##     var server = newAsyncSocket()
 ##     server.setSockOpt(OptReuseAddr, true)
@@ -201,7 +201,7 @@ proc newAsyncSocket*(domain, sockType, protocol: cint,
                           Protocol(protocol), buffered, inheritable)
 
 when defineSsl:
-  proc getSslError(socket: AsyncSocket, err: cint): cint =
+  func getSslError(socket: AsyncSocket, err: cint): cint =
     assert socket.isSsl
     assert err < 0
     var ret = SSL_get_error(socket.sslHandle, err.cint)
@@ -650,7 +650,7 @@ proc bindAddr*(socket: AsyncSocket, port = Port(0), address = "") {.
     raiseOSError(osLastError())
   freeaddrinfo(aiList)
 
-proc hasDataBuffered*(s: AsyncSocket): bool {.since: (1, 5).} =
+func hasDataBuffered*(s: AsyncSocket): bool {.since: (1, 5).} =
   ## Determines whether an AsyncSocket has data buffered.
   # xxx dedup with std/net
   s.isBuffered and s.bufLen > 0 and s.currPos != s.bufLen
@@ -700,12 +700,12 @@ when defined(posix):
 
 elif defined(nimdoc):
 
-  proc connectUnix*(socket: AsyncSocket, path: string): owned(Future[void]) =
+  func connectUnix*(socket: AsyncSocket, path: string): owned(Future[void]) =
     ## Binds Unix socket to `path`.
     ## This only works on Unix-style systems: Mac OS X, BSD and Linux
     discard
 
-  proc bindUnix*(socket: AsyncSocket, path: string) =
+  func bindUnix*(socket: AsyncSocket, path: string) =
     ## Binds Unix socket to `path`.
     ## This only works on Unix-style systems: Mac OS X, BSD and Linux
     discard
@@ -736,7 +736,7 @@ proc close*(socket: AsyncSocket) =
         raiseSSLError()
 
 when defineSsl:
-  proc wrapSocket*(ctx: SslContext, socket: AsyncSocket) =
+  func wrapSocket*(ctx: SslContext, socket: AsyncSocket) =
     ## Wraps a socket in an SSL context. This function effectively turns
     ## `socket` into an SSL socket.
     ##
@@ -754,7 +754,7 @@ when defineSsl:
 
     socket.sslNoShutdown = true
 
-  proc wrapConnectedSocket*(ctx: SslContext, socket: AsyncSocket,
+  func wrapConnectedSocket*(ctx: SslContext, socket: AsyncSocket,
                             handshake: SslHandshakeType,
                             hostname: string = "") =
     ## Wraps a connected socket in an SSL context. This function effectively
@@ -779,7 +779,7 @@ when defineSsl:
     of handshakeAsServer:
       sslSetAcceptState(socket.sslHandle)
 
-  proc getPeerCertificates*(socket: AsyncSocket): seq[Certificate] {.since: (1, 1).} =
+  func getPeerCertificates*(socket: AsyncSocket): seq[Certificate] {.since: (1, 1).} =
     ## Returns the certificate chain received by the peer we are connected to
     ## through the given socket.
     ## The handshake must have been completed and the certificate chain must
@@ -802,29 +802,29 @@ proc setSockOpt*(socket: AsyncSocket, opt: SOBool, value: bool,
   var valuei = cint(if value: 1 else: 0)
   setSockOptInt(socket.fd, cint(level), toCInt(opt), valuei)
 
-proc isSsl*(socket: AsyncSocket): bool =
+func isSsl*(socket: AsyncSocket): bool =
   ## Determines whether `socket` is a SSL socket.
   socket.isSsl
 
-proc getFd*(socket: AsyncSocket): SocketHandle =
+func getFd*(socket: AsyncSocket): SocketHandle =
   ## Returns the socket's file descriptor.
   return socket.fd
 
-proc isClosed*(socket: AsyncSocket): bool =
+func isClosed*(socket: AsyncSocket): bool =
   ## Determines whether the socket has been closed.
   return socket.closed
 
 proc sendTo*(socket: AsyncSocket, address: string, port: Port, data: string,
              flags = {SocketFlag.SafeDisconn}): owned(Future[void])
             {.async, since: (1, 3).} =
-  ## This proc sends `data` to the specified `address`, which may be an IP
+  ## This func sends `data` to the specified `address`, which may be an IP
   ## address or a hostname. If a hostname is specified this function will try
   ## each IP of that hostname. The returned future will complete once all data
   ## has been sent.
   ##
   ## If an error occurs an OSError exception will be raised.
   ##
-  ## This proc is normally used with connectionless sockets (UDP sockets).
+  ## This func is normally used with connectionless sockets (UDP sockets).
   assert(socket.protocol != IPPROTO_TCP,
          "Cannot `sendTo` on a TCP socket. Use `send` instead")
   assert(not socket.closed, "Cannot `sendTo` on a closed socket")
@@ -872,7 +872,7 @@ proc recvFrom*(socket: AsyncSocket, data: FutureVar[string], size: int,
   ##
   ## If an error occurs an OSError exception will be raised.
   ##
-  ## This proc is normally used with connectionless sockets (UDP sockets).
+  ## This func is normally used with connectionless sockets (UDP sockets).
   ##
   ## **Notes**
   ## * `data` must be initialized to the length of `size`.
@@ -925,7 +925,7 @@ proc recvFrom*(socket: AsyncSocket, size: int,
   ##
   ## If an error occurs an OSError exception will be raised.
   ##
-  ## This proc is normally used with connectionless sockets (UDP sockets).
+  ## This func is normally used with connectionless sockets (UDP sockets).
   var
     data = newFutureVar[string]()
     address = newFutureVar[string]()
@@ -961,23 +961,23 @@ when not defined(testing) and isMainModule:
     var sock = newAsyncSocket()
     var f = connect(sock, "irc.freenode.net", Port(6667))
     f.callback =
-      proc (future: Future[void]) =
+      func (future: Future[void]) =
         echo("Connected in future!")
         for i in 0 .. 50:
           var recvF = recv(sock, 10)
           recvF.callback =
-            proc (future: Future[string]) =
+            func (future: Future[string]) =
               echo("Read ", future.read.len, ": ", future.read.repr)
   elif test == LowServer:
     var sock = newAsyncSocket()
     sock.bindAddr(Port(6667))
     sock.listen()
-    proc onAccept(future: Future[AsyncSocket]) =
+    func onAccept(future: Future[AsyncSocket]) =
       let client = future.read
       echo "Accepted ", client.fd.cint
       var t = send(client, "test\c\L")
       t.callback =
-        proc (future: Future[void]) =
+        func (future: Future[void]) =
           echo("Send")
           client.close()
 

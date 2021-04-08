@@ -21,10 +21,10 @@ type
     i, prev: int
     notFirst: bool
 
-proc hasNext*(it: PathIter; x: string): bool =
+func hasNext*(it: PathIter; x: string): bool =
   it.i < x.len
 
-proc next*(it: var PathIter; x: string): (int, int) =
+func next*(it: var PathIter; x: string): (int, int) =
   it.prev = it.i
   if not it.notFirst and x[it.i] in {DirSep, AltSep}:
     # absolute path:
@@ -47,16 +47,16 @@ iterator dirs(x: string): (int, int) =
   var it = default PathIter
   while hasNext(it, x): yield next(it, x)
 
-proc isDot(x: string; bounds: (int, int)): bool =
+func isDot(x: string; bounds: (int, int)): bool =
   bounds[1] == bounds[0] and x[bounds[0]] == '.'
 
-proc isDotDot(x: string; bounds: (int, int)): bool =
+func isDotDot(x: string; bounds: (int, int)): bool =
   bounds[1] == bounds[0] + 1 and x[bounds[0]] == '.' and x[bounds[0]+1] == '.'
 
-proc isSlash(x: string; bounds: (int, int)): bool =
+func isSlash(x: string; bounds: (int, int)): bool =
   bounds[1] == bounds[0] and x[bounds[0]] in {DirSep, AltSep}
 
-proc addNormalizePath*(x: string; result: var string; state: var int;
+func addNormalizePath*(x: string; result: var string; state: var int;
     dirSep = DirSep) =
   ## Low level proc. Undocumented.
 
@@ -99,7 +99,7 @@ proc addNormalizePath*(x: string; result: var string; state: var int;
       inc state, 2
   if result == "" and x != "": result = "."
 
-proc normalizePath*(path: string; dirSep = DirSep): string =
+func normalizePath*(path: string; dirSep = DirSep): string =
   runnableExamples:
     when defined(posix):
       doAssert normalizePath("./foo//bar/../baz") == "foo/baz"

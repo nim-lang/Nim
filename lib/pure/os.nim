@@ -32,10 +32,10 @@
 ##
 ##
 ## **See also:**
-## * `osproc module <osproc.html>`_ for process communication beyond
-##   `execShellCmd proc <#execShellCmd,string>`_
+## * `osfunc module <osproc.html>`_ for process communication beyond
+##   `execShellCmd func <#execShellCmd,string>`_
 ## * `parseopt module <parseopt.html>`_ for command-line parser beyond
-##   `parseCmdLine proc <#parseCmdLine,string>`_
+##   `parseCmdLine func <#parseCmdLine,string>`_
 ## * `uri module <uri.html>`_
 ## * `distros module <distros.html>`_
 ## * `dynlib module <dynlib.html>`_
@@ -69,13 +69,13 @@ elif defined(windows):
 elif defined(posix):
   import std/[posix, times]
 
-  proc toTime(ts: Timespec): times.Time {.inline.} =
+  func toTime(ts: Timespec): times.Time {.inline.} =
     result = initTime(ts.tv_sec.int64, ts.tv_nsec.int)
 else:
   {.error: "OS module not ported to your operating system!".}
 
 when weirdTarget:
-  {.pragma: noWeirdTarget, error: "this proc is not available on the NimScript/js target".}
+  {.pragma: noWeirdTarget, error: "this func is not available on the NimScript/js target".}
 else:
   {.pragma: noWeirdTarget.}
 
@@ -83,11 +83,11 @@ when defined(nimscript):
   # for procs already defined in scriptconfig.nim
   template noNimJs(body): untyped = discard
 elif defined(js):
-  {.pragma: noNimJs, error: "this proc is not available on the js target".}
+  {.pragma: noNimJs, error: "this func is not available on the js target".}
 else:
   {.pragma: noNimJs.}
 
-proc normalizePathAux(path: var string){.inline, raises: [], noSideEffect.}
+func normalizePathAux(path: var string){.inline, raises: [], noSideEffect.}
 
 type
   ReadEnvEffect* = object of ReadIOEffect   ## Effect that denotes a read
@@ -108,7 +108,7 @@ include "includes/osseps"
 
 proc absolutePathInternal(path: string): string {.gcsafe.}
 
-proc normalizePathEnd(path: var string, trailingSep = false) =
+func normalizePathEnd(path: var string, trailingSep = false) =
   ## Ensures ``path`` has exactly 0 or 1 trailing `DirSep`, depending on
   ## ``trailingSep``, and taking care of edge cases: it preservers whether
   ## a path is absolute or relative, and makes sure trailing sep is `DirSep`,
@@ -131,7 +131,7 @@ proc normalizePathEnd(path: var string, trailingSep = false) =
     # // => / (empty case was already taken care of)
     path = $DirSep
 
-proc normalizePathEnd(path: string, trailingSep = false): string =
+func normalizePathEnd(path: string, trailingSep = false): string =
   ## outplace overload
   runnableExamples:
     when defined(posix):
@@ -149,13 +149,13 @@ since((1, 1)):
 template endsWith(a: string, b: set[char]): bool =
   a.len > 0 and a[^1] in b
 
-proc joinPathImpl(result: var string, state: var int, tail: string) =
+func joinPathImpl(result: var string, state: var int, tail: string) =
   let trailingSep = tail.endsWith({DirSep, AltSep}) or tail.len == 0 and result.endsWith({DirSep, AltSep})
   normalizePathEnd(result, trailingSep=false)
   addNormalizePath(tail, result, state, DirSep)
   normalizePathEnd(result, trailingSep=trailingSep)
 
-proc joinPath*(head, tail: string): string {.
+func joinPath*(head, tail: string): string {.
   noSideEffect, rtl, extern: "nos$1".} =
   ## Joins two directory names to one.
   ##
@@ -164,11 +164,11 @@ proc joinPath*(head, tail: string): string {.
   ## head has one).
   ##
   ## See also:
-  ## * `joinPath(varargs) proc <#joinPath,varargs[string]>`_
-  ## * `/ proc <#/,string,string>`_
-  ## * `splitPath proc <#splitPath,string>`_
-  ## * `uri.combine proc <uri.html#combine,Uri,Uri>`_
-  ## * `uri./ proc <uri.html#/,Uri,string>`_
+  ## * `joinPath(varargs) func <#joinPath,varargs[string]>`_
+  ## * `/ func <#/,string,string>`_
+  ## * `splitPath func <#splitPath,string>`_
+  ## * `uri.combine func <uri.html#combine,Uri,Uri>`_
+  ## * `uri./ func <uri.html#/,Uri,string>`_
   runnableExamples:
     when defined(posix):
       assert joinPath("usr", "lib") == "usr/lib"
@@ -199,19 +199,19 @@ proc joinPath*(head, tail: string): string {.
       else:
         result = head & DirSep & tail
 
-proc joinPath*(parts: varargs[string]): string {.noSideEffect,
+func joinPath*(parts: varargs[string]): string {.noSideEffect,
   rtl, extern: "nos$1OpenArray".} =
-  ## The same as `joinPath(head, tail) proc <#joinPath,string,string>`_,
+  ## The same as `joinPath(head, tail) func <#joinPath,string,string>`_,
   ## but works with any number of directory parts.
   ##
   ## You need to pass at least one element or the proc
   ## will assert in debug builds and crash on release builds.
   ##
   ## See also:
-  ## * `joinPath(head, tail) proc <#joinPath,string,string>`_
-  ## * `/ proc <#/,string,string>`_
-  ## * `/../ proc <#/../,string,string>`_
-  ## * `splitPath proc <#splitPath,string>`_
+  ## * `joinPath(head, tail) func <#joinPath,string,string>`_
+  ## * `/ func <#/,string,string>`_
+  ## * `/../ func <#/../,string,string>`_
+  ## * `splitPath func <#splitPath,string>`_
   runnableExamples:
     when defined(posix):
       assert joinPath("a") == "a"
@@ -225,16 +225,16 @@ proc joinPath*(parts: varargs[string]): string {.noSideEffect,
   for i in 0..high(parts):
     joinPathImpl(result, state, parts[i])
 
-proc `/`*(head, tail: string): string {.noSideEffect, inline.} =
-  ## The same as `joinPath(head, tail) proc <#joinPath,string,string>`_.
+func `/`*(head, tail: string): string {.noSideEffect, inline.} =
+  ## The same as `joinPath(head, tail) func <#joinPath,string,string>`_.
   ##
   ## See also:
-  ## * `/../ proc <#/../,string,string>`_
-  ## * `joinPath(head, tail) proc <#joinPath,string,string>`_
-  ## * `joinPath(varargs) proc <#joinPath,varargs[string]>`_
-  ## * `splitPath proc <#splitPath,string>`_
-  ## * `uri.combine proc <uri.html#combine,Uri,Uri>`_
-  ## * `uri./ proc <uri.html#/,Uri,string>`_
+  ## * `/../ func <#/../,string,string>`_
+  ## * `joinPath(head, tail) func <#joinPath,string,string>`_
+  ## * `joinPath(varargs) func <#joinPath,varargs[string]>`_
+  ## * `splitPath func <#splitPath,string>`_
+  ## * `uri.combine func <uri.html#combine,Uri,Uri>`_
+  ## * `uri./ func <uri.html#/,Uri,string>`_
   runnableExamples:
     when defined(posix):
       assert "usr" / "" == "usr"
@@ -245,17 +245,17 @@ proc `/`*(head, tail: string): string {.noSideEffect, inline.} =
 
   result = joinPath(head, tail)
 
-proc splitPath*(path: string): tuple[head, tail: string] {.
+func splitPath*(path: string): tuple[head, tail: string] {.
   noSideEffect, rtl, extern: "nos$1".} =
   ## Splits a directory into `(head, tail)` tuple, so that
   ## ``head / tail == path`` (except for edge cases like "/usr").
   ##
   ## See also:
-  ## * `joinPath(head, tail) proc <#joinPath,string,string>`_
-  ## * `joinPath(varargs) proc <#joinPath,varargs[string]>`_
-  ## * `/ proc <#/,string,string>`_
-  ## * `/../ proc <#/../,string,string>`_
-  ## * `relativePath proc <#relativePath,string,string>`_
+  ## * `joinPath(head, tail) func <#joinPath,string,string>`_
+  ## * `joinPath(varargs) func <#joinPath,varargs[string]>`_
+  ## * `/ func <#/,string,string>`_
+  ## * `/../ func <#/../,string,string>`_
+  ## * `relativePath func <#relativePath,string,string>`_
   runnableExamples:
     assert splitPath("usr/local/bin") == ("usr/local", "bin")
     assert splitPath("usr/local/bin/") == ("usr/local/bin", "")
@@ -284,7 +284,7 @@ proc splitPath*(path: string): tuple[head, tail: string] {.
     result.head = ""
     result.tail = path
 
-proc isAbsolute*(path: string): bool {.rtl, noSideEffect, extern: "nos$1", raises: [].} =
+func isAbsolute*(path: string): bool {.rtl, noSideEffect, extern: "nos$1", raises: [].} =
   ## Checks whether a given `path` is absolute.
   ##
   ## On Windows, network paths are considered absolute too.
@@ -320,17 +320,17 @@ else:
   template `!=?`(a, b: char): bool = toLowerAscii(a) != toLowerAscii(b)
 
 when doslikeFileSystem:
-  proc isAbsFromCurrentDrive(path: string): bool {.noSideEffect, raises: []} =
+  func isAbsFromCurrentDrive(path: string): bool {.noSideEffect, raises: []} =
     ## An absolute path from the root of the current drive (e.g. "\foo")
     path.len > 0 and
     (path[0] == AltSep or
      (path[0] == DirSep and
       (path.len == 1 or path[1] notin {DirSep, AltSep, ':'})))
 
-  proc isUNCPrefix(path: string): bool {.noSideEffect, raises: []} =
+  func isUNCPrefix(path: string): bool {.noSideEffect, raises: []} =
     path[0] == DirSep and path[1] == DirSep
 
-  proc sameRoot(path1, path2: string): bool {.noSideEffect, raises: []} =
+  func sameRoot(path1, path2: string): bool {.noSideEffect, raises: []} =
     ## Return true if path1 and path2 have a same root.
     ##
     ## Detail of windows path formats:
@@ -387,9 +387,9 @@ proc relativePath*(path, base: string, sep = DirSep): string {.
   ## That means an absolute path can be returned.
   ##
   ## See also:
-  ## * `splitPath proc <#splitPath,string>`_
-  ## * `parentDir proc <#parentDir,string>`_
-  ## * `tailDir proc <#tailDir,string>`_
+  ## * `splitPath func <#splitPath,string>`_
+  ## * `parentDir func <#parentDir,string>`_
+  ## * `tailDir func <#tailDir,string>`_
   runnableExamples:
     assert relativePath("/Users/me/bar/z.nim", "/Users/other/bad", '/') == "../../me/bar/z.nim"
     assert relativePath("/Users/me/bar/z.nim", "/Users/other", '/') == "../me/bar/z.nim"
@@ -475,14 +475,14 @@ proc isRelativeTo*(path: string, base: string): bool {.since: (1, 1).} =
   let ret = relativePath(path, base)
   result = path.len > 0 and not ret.startsWith ".."
 
-proc parentDirPos(path: string): int =
+func parentDirPos(path: string): int =
   var q = 1
   if len(path) >= 1 and path[len(path)-1] in {DirSep, AltSep}: q = 2
   for i in countdown(len(path)-q, 0):
     if path[i] in {DirSep, AltSep}: return i
   result = -1
 
-proc parentDir*(path: string): string {.
+func parentDir*(path: string): string {.
   noSideEffect, rtl, extern: "nos$1".} =
   ## Returns the parent directory of `path`.
   ##
@@ -492,9 +492,9 @@ proc parentDir*(path: string): string {.
   ## <#lastPathPart,string>`_.
   ##
   ## See also:
-  ## * `relativePath proc <#relativePath,string,string>`_
-  ## * `splitPath proc <#splitPath,string>`_
-  ## * `tailDir proc <#tailDir,string>`_
+  ## * `relativePath func <#relativePath,string,string>`_
+  ## * `splitPath func <#splitPath,string>`_
+  ## * `tailDir func <#tailDir,string>`_
   ## * `parentDirs iterator <#parentDirs.i,string>`_
   runnableExamples:
     assert parentDir("") == ""
@@ -518,14 +518,14 @@ proc parentDir*(path: string): string {.
   else:
     result = "."
 
-proc tailDir*(path: string): string {.
+func tailDir*(path: string): string {.
   noSideEffect, rtl, extern: "nos$1".} =
   ## Returns the tail part of `path`.
   ##
   ## See also:
-  ## * `relativePath proc <#relativePath,string,string>`_
-  ## * `splitPath proc <#splitPath,string>`_
-  ## * `parentDir proc <#parentDir,string>`_
+  ## * `relativePath func <#relativePath,string,string>`_
+  ## * `splitPath func <#splitPath,string>`_
+  ## * `parentDir func <#parentDir,string>`_
   runnableExamples:
     assert tailDir("/bin") == "bin"
     assert tailDir("bin") == ""
@@ -543,7 +543,7 @@ proc tailDir*(path: string): string {.
     inc i
   result = ""
 
-proc isRootDir*(path: string): bool {.
+func isRootDir*(path: string): bool {.
   noSideEffect, rtl, extern: "nos$1".} =
   ## Checks whether a given `path` is a root directory.
   runnableExamples:
@@ -568,7 +568,7 @@ iterator parentDirs*(path: string, fromRoot=false, inclusive=true): string =
   ## only the directories appearing in the relative path.
   ##
   ## See also:
-  ## * `parentDir proc <#parentDir,string>`_
+  ## * `parentDir func <#parentDir,string>`_
   ##
   ## **Examples:**
   ##
@@ -608,13 +608,13 @@ iterator parentDirs*(path: string, fromRoot=false, inclusive=true): string =
 
     if inclusive: yield path
 
-proc `/../`*(head, tail: string): string {.noSideEffect.} =
+func `/../`*(head, tail: string): string {.noSideEffect.} =
   ## The same as ``parentDir(head) / tail``, unless there is no parent
   ## directory. Then ``head / tail`` is performed instead.
   ##
   ## See also:
-  ## * `/ proc <#/,string,string>`_
-  ## * `parentDir proc <#parentDir,string>`_
+  ## * `/ func <#/,string,string>`_
+  ## * `parentDir func <#parentDir,string>`_
   runnableExamples:
     when defined(posix):
       assert "a/b/c" /../ "d/e" == "a/b/d/e"
@@ -626,20 +626,20 @@ proc `/../`*(head, tail: string): string {.noSideEffect.} =
   else:
     result = head / tail
 
-proc normExt(ext: string): string =
+func normExt(ext: string): string =
   if ext == "" or ext[0] == ExtSep: result = ext # no copy needed here
   else: result = ExtSep & ext
 
-proc searchExtPos*(path: string): int =
+func searchExtPos*(path: string): int =
   ## Returns index of the `'.'` char in `path` if it signifies the beginning
   ## of extension. Returns -1 otherwise.
   ##
   ## See also:
-  ## * `splitFile proc <#splitFile,string>`_
-  ## * `extractFilename proc <#extractFilename,string>`_
-  ## * `lastPathPart proc <#lastPathPart,string>`_
-  ## * `changeFileExt proc <#changeFileExt,string,string>`_
-  ## * `addFileExt proc <#addFileExt,string,string>`_
+  ## * `splitFile func <#splitFile,string>`_
+  ## * `extractFilename func <#extractFilename,string>`_
+  ## * `lastPathPart func <#lastPathPart,string>`_
+  ## * `changeFileExt func <#changeFileExt,string,string>`_
+  ## * `addFileExt func <#addFileExt,string,string>`_
   runnableExamples:
     assert searchExtPos("a/b/c") == -1
     assert searchExtPos("c.nim") == 1
@@ -655,7 +655,7 @@ proc searchExtPos*(path: string): int =
     elif path[i] in {DirSep, AltSep}:
       break # do not skip over path
 
-proc splitFile*(path: string): tuple[dir, name, ext: string] {.
+func splitFile*(path: string): tuple[dir, name, ext: string] {.
   noSideEffect, rtl, extern: "nos$1".} =
   ## Splits a filename into `(dir, name, extension)` tuple.
   ##
@@ -667,11 +667,11 @@ proc splitFile*(path: string): tuple[dir, name, ext: string] {.
   ## If `path` has no filename component, `name` and `ext` are empty strings.
   ##
   ## See also:
-  ## * `searchExtPos proc <#searchExtPos,string>`_
-  ## * `extractFilename proc <#extractFilename,string>`_
-  ## * `lastPathPart proc <#lastPathPart,string>`_
-  ## * `changeFileExt proc <#changeFileExt,string,string>`_
-  ## * `addFileExt proc <#addFileExt,string,string>`_
+  ## * `searchExtPos func <#searchExtPos,string>`_
+  ## * `extractFilename func <#extractFilename,string>`_
+  ## * `lastPathPart func <#lastPathPart,string>`_
+  ## * `changeFileExt func <#changeFileExt,string,string>`_
+  ## * `addFileExt func <#addFileExt,string,string>`_
   runnableExamples:
     var (dir, name, ext) = splitFile("usr/local/nimc.html")
     assert dir == "usr/local"
@@ -708,7 +708,7 @@ proc splitFile*(path: string): tuple[dir, name, ext: string] {.
          path[i + 1] != ExtSep and dotPos == 0:
       dotPos = i
 
-proc extractFilename*(path: string): string {.
+func extractFilename*(path: string): string {.
   noSideEffect, rtl, extern: "nos$1".} =
   ## Extracts the filename of a given `path`.
   ##
@@ -716,11 +716,11 @@ proc extractFilename*(path: string): string {.
   ## <#splitFile,string>`_.
   ##
   ## See also:
-  ## * `searchExtPos proc <#searchExtPos,string>`_
-  ## * `splitFile proc <#splitFile,string>`_
-  ## * `lastPathPart proc <#lastPathPart,string>`_
-  ## * `changeFileExt proc <#changeFileExt,string,string>`_
-  ## * `addFileExt proc <#addFileExt,string,string>`_
+  ## * `searchExtPos func <#searchExtPos,string>`_
+  ## * `splitFile func <#splitFile,string>`_
+  ## * `lastPathPart func <#lastPathPart,string>`_
+  ## * `changeFileExt func <#changeFileExt,string,string>`_
+  ## * `addFileExt func <#addFileExt,string,string>`_
   runnableExamples:
     assert extractFilename("foo/bar/") == ""
     assert extractFilename("foo/bar") == "bar"
@@ -731,17 +731,17 @@ proc extractFilename*(path: string): string {.
   else:
     result = splitPath(path).tail
 
-proc lastPathPart*(path: string): string {.
+func lastPathPart*(path: string): string {.
   noSideEffect, rtl, extern: "nos$1".} =
-  ## Like `extractFilename proc <#extractFilename,string>`_, but ignores
+  ## Like `extractFilename func <#extractFilename,string>`_, but ignores
   ## trailing dir separator; aka: `baseName`:idx: in some other languages.
   ##
   ## See also:
-  ## * `searchExtPos proc <#searchExtPos,string>`_
-  ## * `splitFile proc <#splitFile,string>`_
-  ## * `extractFilename proc <#extractFilename,string>`_
-  ## * `changeFileExt proc <#changeFileExt,string,string>`_
-  ## * `addFileExt proc <#addFileExt,string,string>`_
+  ## * `searchExtPos func <#searchExtPos,string>`_
+  ## * `splitFile func <#splitFile,string>`_
+  ## * `extractFilename func <#extractFilename,string>`_
+  ## * `changeFileExt func <#changeFileExt,string,string>`_
+  ## * `addFileExt func <#addFileExt,string,string>`_
   runnableExamples:
     assert lastPathPart("foo/bar/") == "bar"
     assert lastPathPart("foo/bar") == "bar"
@@ -749,7 +749,7 @@ proc lastPathPart*(path: string): string {.
   let path = path.normalizePathEnd(trailingSep = false)
   result = extractFilename(path)
 
-proc changeFileExt*(filename, ext: string): string {.
+func changeFileExt*(filename, ext: string): string {.
   noSideEffect, rtl, extern: "nos$1".} =
   ## Changes the file extension to `ext`.
   ##
@@ -761,11 +761,11 @@ proc changeFileExt*(filename, ext: string): string {.
   ## of none such beast.)
   ##
   ## See also:
-  ## * `searchExtPos proc <#searchExtPos,string>`_
-  ## * `splitFile proc <#splitFile,string>`_
-  ## * `extractFilename proc <#extractFilename,string>`_
-  ## * `lastPathPart proc <#lastPathPart,string>`_
-  ## * `addFileExt proc <#addFileExt,string,string>`_
+  ## * `searchExtPos func <#searchExtPos,string>`_
+  ## * `splitFile func <#splitFile,string>`_
+  ## * `extractFilename func <#extractFilename,string>`_
+  ## * `lastPathPart func <#lastPathPart,string>`_
+  ## * `addFileExt func <#addFileExt,string,string>`_
   runnableExamples:
     assert changeFileExt("foo.bar", "baz") == "foo.baz"
     assert changeFileExt("foo.bar", "") == "foo"
@@ -775,7 +775,7 @@ proc changeFileExt*(filename, ext: string): string {.
   if extPos < 0: result = filename & normExt(ext)
   else: result = substr(filename, 0, extPos-1) & normExt(ext)
 
-proc addFileExt*(filename, ext: string): string {.
+func addFileExt*(filename, ext: string): string {.
   noSideEffect, rtl, extern: "nos$1".} =
   ## Adds the file extension `ext` to `filename`, unless
   ## `filename` already has an extension.
@@ -785,11 +785,11 @@ proc addFileExt*(filename, ext: string): string {.
   ## (Although I know of none such beast.)
   ##
   ## See also:
-  ## * `searchExtPos proc <#searchExtPos,string>`_
-  ## * `splitFile proc <#splitFile,string>`_
-  ## * `extractFilename proc <#extractFilename,string>`_
-  ## * `lastPathPart proc <#lastPathPart,string>`_
-  ## * `changeFileExt proc <#changeFileExt,string,string>`_
+  ## * `searchExtPos func <#searchExtPos,string>`_
+  ## * `splitFile func <#splitFile,string>`_
+  ## * `extractFilename func <#extractFilename,string>`_
+  ## * `lastPathPart func <#lastPathPart,string>`_
+  ## * `changeFileExt func <#changeFileExt,string,string>`_
   runnableExamples:
     assert addFileExt("foo.bar", "baz") == "foo.bar"
     assert addFileExt("foo.bar", "") == "foo.bar"
@@ -799,7 +799,7 @@ proc addFileExt*(filename, ext: string): string {.
   if extPos < 0: result = filename & normExt(ext)
   else: result = filename
 
-proc cmpPaths*(pathA, pathB: string): int {.
+func cmpPaths*(pathA, pathB: string): int {.
   noSideEffect, rtl, extern: "nos$1".} =
   ## Compares two paths.
   ##
@@ -826,7 +826,7 @@ proc cmpPaths*(pathA, pathB: string): int {.
     else:
       result = cmpIgnoreCase(a, b)
 
-proc unixToNativePath*(path: string, drive=""): string {.
+func unixToNativePath*(path: string, drive=""): string {.
   noSideEffect, rtl, extern: "nos$1".} =
   ## Converts an UNIX-like path to a native one.
   ##
@@ -890,15 +890,15 @@ proc getHomeDir*(): string {.rtl, extern: "nos$1",
   tags: [ReadEnvEffect, ReadIOEffect].} =
   ## Returns the home directory of the current user.
   ##
-  ## This proc is wrapped by the `expandTilde proc <#expandTilde,string>`_
+  ## This func is wrapped by the `expandTilde func <#expandTilde,string>`_
   ## for the convenience of processing paths coming from user configuration files.
   ##
   ## See also:
-  ## * `getConfigDir proc <#getConfigDir>`_
-  ## * `getTempDir proc <#getTempDir>`_
-  ## * `expandTilde proc <#expandTilde,string>`_
-  ## * `getCurrentDir proc <#getCurrentDir>`_
-  ## * `setCurrentDir proc <#setCurrentDir,string>`_
+  ## * `getConfigDir func <#getConfigDir>`_
+  ## * `getTempDir func <#getTempDir>`_
+  ## * `expandTilde func <#expandTilde,string>`_
+  ## * `getCurrentDir func <#getCurrentDir>`_
+  ## * `setCurrentDir func <#setCurrentDir,string>`_
   runnableExamples:
     assert getHomeDir() == expandTilde("~")
     # `getHomeDir()` doesn't end in `DirSep` even if `$HOME` (on posix) or
@@ -914,17 +914,17 @@ proc getConfigDir*(): string {.rtl, extern: "nos$1",
   tags: [ReadEnvEffect, ReadIOEffect].} =
   ## Returns the config directory of the current user for applications.
   ##
-  ## On non-Windows OSs, this proc conforms to the XDG Base Directory
-  ## spec. Thus, this proc returns the value of the `XDG_CONFIG_HOME` environment
+  ## On non-Windows OSs, this func conforms to the XDG Base Directory
+  ## spec. Thus, this func returns the value of the `XDG_CONFIG_HOME` environment
   ## variable if it is set, otherwise it returns the default configuration
   ## directory ("~/.config").
   ##
   ## See also:
-  ## * `getHomeDir proc <#getHomeDir>`_
-  ## * `getTempDir proc <#getTempDir>`_
-  ## * `expandTilde proc <#expandTilde,string>`_
-  ## * `getCurrentDir proc <#getCurrentDir>`_
-  ## * `setCurrentDir proc <#setCurrentDir,string>`_
+  ## * `getHomeDir func <#getHomeDir>`_
+  ## * `getTempDir func <#getTempDir>`_
+  ## * `expandTilde func <#expandTilde,string>`_
+  ## * `getCurrentDir func <#getCurrentDir>`_
+  ## * `setCurrentDir func <#setCurrentDir,string>`_
   runnableExamples:
     from std/strutils import endsWith
     # See `getHomeDir` for behavior regarding trailing DirSep.
@@ -938,7 +938,7 @@ proc getConfigDir*(): string {.rtl, extern: "nos$1",
 when defined(windows):
   type DWORD = uint32
 
-  proc getTempPath(
+  func getTempPath(
     nBufferLength: DWORD, lpBuffer: WideCString
   ): DWORD {.stdcall, dynlib: "kernel32.dll", importc: "GetTempPathW".} =
     ## Retrieves the path of the directory designated for temporary files.
@@ -967,14 +967,14 @@ proc getTempDir*(): string {.rtl, extern: "nos$1",
   ## You can override this implementation
   ## by adding `-d:tempDir=mytempname` to your compiler invocation.
   ##
-  ## **Note:** This proc does not check whether the returned path exists.
+  ## **Note:** This func does not check whether the returned path exists.
   ##
   ## See also:
-  ## * `getHomeDir proc <#getHomeDir>`_
-  ## * `getConfigDir proc <#getConfigDir>`_
-  ## * `expandTilde proc <#expandTilde,string>`_
-  ## * `getCurrentDir proc <#getCurrentDir>`_
-  ## * `setCurrentDir proc <#setCurrentDir,string>`_
+  ## * `getHomeDir func <#getHomeDir>`_
+  ## * `getConfigDir func <#getConfigDir>`_
+  ## * `expandTilde func <#expandTilde,string>`_
+  ## * `getCurrentDir func <#getCurrentDir>`_
+  ## * `setCurrentDir func <#setCurrentDir,string>`_
   runnableExamples:
     from std/strutils import endsWith
     # See `getHomeDir` for behavior regarding trailing DirSep.
@@ -1012,11 +1012,11 @@ proc expandTilde*(path: string): string {.
   ## .. warning:: `~bob` and `~bob/` are not yet handled correctly.
   ##
   ## See also:
-  ## * `getHomeDir proc <#getHomeDir>`_
-  ## * `getConfigDir proc <#getConfigDir>`_
-  ## * `getTempDir proc <#getTempDir>`_
-  ## * `getCurrentDir proc <#getCurrentDir>`_
-  ## * `setCurrentDir proc <#setCurrentDir,string>`_
+  ## * `getHomeDir func <#getHomeDir>`_
+  ## * `getConfigDir func <#getConfigDir>`_
+  ## * `getTempDir func <#getTempDir>`_
+  ## * `getCurrentDir func <#getCurrentDir>`_
+  ## * `setCurrentDir func <#setCurrentDir,string>`_
   runnableExamples:
     assert expandTilde("~" / "appname.cfg") == getHomeDir() / "appname.cfg"
     assert expandTilde("~/foo/bar") == getHomeDir() / "foo/bar"
@@ -1037,7 +1037,7 @@ proc expandTilde*(path: string): string {.
 
 # TODO: consider whether quoteShellPosix, quoteShellWindows, quoteShell, quoteShellCommand
 # belong in `strutils` instead; they are not specific to paths
-proc quoteShellWindows*(s: string): string {.noSideEffect, rtl, extern: "nosp$1".} =
+func quoteShellWindows*(s: string): string {.noSideEffect, rtl, extern: "nosp$1".} =
   ## Quote `s`, so it can be safely passed to Windows API.
   ##
   ## Based on Python's `subprocess.list2cmdline`.
@@ -1067,7 +1067,7 @@ proc quoteShellWindows*(s: string): string {.noSideEffect, rtl, extern: "nosp$1"
   if needQuote:
     result.add("\"")
 
-proc quoteShellPosix*(s: string): string {.noSideEffect, rtl, extern: "nosp$1".} =
+func quoteShellPosix*(s: string): string {.noSideEffect, rtl, extern: "nosp$1".} =
   ## Quote ``s``, so it can be safely passed to POSIX shell.
   ## Based on Python's `pipes.quote`.
   const safeUnixChars = {'%', '+', '-', '.', '/', '_', ':', '=', '@',
@@ -1083,7 +1083,7 @@ proc quoteShellPosix*(s: string): string {.noSideEffect, rtl, extern: "nosp$1".}
     return "'" & s.replace("'", "'\"'\"'") & "'"
 
 when defined(windows) or defined(posix) or defined(nintendoswitch):
-  proc quoteShell*(s: string): string {.noSideEffect, rtl, extern: "nosp$1".} =
+  func quoteShell*(s: string): string {.noSideEffect, rtl, extern: "nosp$1".} =
     ## Quote ``s``, so it can be safely passed to shell.
     ##
     ## When on Windows, it calls `quoteShellWindows proc
@@ -1094,7 +1094,7 @@ when defined(windows) or defined(posix) or defined(nintendoswitch):
     else:
       return quoteShellPosix(s)
 
-  proc quoteShellCommand*(args: openArray[string]): string =
+  func quoteShellCommand*(args: openArray[string]): string =
     ## Concatenates and quotes shell arguments `args`.
     runnableExamples:
       when defined(posix):
@@ -1109,15 +1109,15 @@ when defined(windows) or defined(posix) or defined(nintendoswitch):
       result.add quoteShell(args[i])
 
 when not weirdTarget:
-  proc c_system(cmd: cstring): cint {.
+  func c_system(cmd: cstring): cint {.
     importc: "system", header: "<stdlib.h>".}
 
   when not defined(windows):
-    proc c_rename(oldname, newname: cstring): cint {.
+    func c_rename(oldname, newname: cstring): cint {.
       importc: "rename", header: "<stdio.h>".}
-    proc c_strlen(a: cstring): cint {.
+    func c_strlen(a: cstring): cint {.
       importc: "strlen", header: "<string.h>", noSideEffect.}
-    proc c_free(p: pointer) {.
+    func c_free(p: pointer) {.
       importc: "free", header: "<stdlib.h>".}
 
 
@@ -1128,7 +1128,7 @@ when defined(windows) and not weirdTarget:
 
     template wrapBinary(varname, winApiProc, arg, arg2: untyped) =
       var varname = winApiProc(newWideCString(arg), arg2)
-    proc findFirstFile(a: string, b: var WIN32_FIND_DATA): Handle =
+    func findFirstFile(a: string, b: var WIN32_FIND_DATA): Handle =
       result = findFirstFileW(newWideCString(a), b)
     template findNextFile(a, b: untyped): untyped = findNextFileW(a, b)
     template getCommandLine(): untyped = getCommandLineW()
@@ -1142,21 +1142,21 @@ when defined(windows) and not weirdTarget:
 
     template getFilename(f: untyped): untyped = $cstring(addr f.cFileName)
 
-  proc skipFindData(f: WIN32_FIND_DATA): bool {.inline.} =
+  func skipFindData(f: WIN32_FIND_DATA): bool {.inline.} =
     # Note - takes advantage of null delimiter in the cstring
     const dot = ord('.')
     result = f.cFileName[0].int == dot and (f.cFileName[1].int == 0 or
              f.cFileName[1].int == dot and f.cFileName[2].int == 0)
 
-proc fileExists*(filename: string): bool {.rtl, extern: "nos$1",
+func fileExists*(filename: string): bool {.rtl, extern: "nos$1",
                                           tags: [ReadDirEffect], noNimJs.} =
   ## Returns true if `filename` exists and is a regular file or symlink.
   ##
   ## Directories, device files, named pipes and sockets return false.
   ##
   ## See also:
-  ## * `dirExists proc <#dirExists,string>`_
-  ## * `symlinkExists proc <#symlinkExists,string>`_
+  ## * `dirExists func <#dirExists,string>`_
+  ## * `symlinkExists func <#symlinkExists,string>`_
   when defined(windows):
     when useWinUnicode:
       wrapUnary(a, getFileAttributesW, filename)
@@ -1168,14 +1168,14 @@ proc fileExists*(filename: string): bool {.rtl, extern: "nos$1",
     var res: Stat
     return stat(filename, res) >= 0'i32 and S_ISREG(res.st_mode)
 
-proc dirExists*(dir: string): bool {.rtl, extern: "nos$1", tags: [ReadDirEffect],
+func dirExists*(dir: string): bool {.rtl, extern: "nos$1", tags: [ReadDirEffect],
                                      noNimJs.} =
   ## Returns true if the directory `dir` exists. If `dir` is a file, false
   ## is returned. Follows symlinks.
   ##
   ## See also:
-  ## * `fileExists proc <#fileExists,string>`_
-  ## * `symlinkExists proc <#symlinkExists,string>`_
+  ## * `fileExists func <#fileExists,string>`_
+  ## * `symlinkExists func <#symlinkExists,string>`_
   when defined(windows):
     when useWinUnicode:
       wrapUnary(a, getFileAttributesW, dir)
@@ -1194,8 +1194,8 @@ proc symlinkExists*(link: string): bool {.rtl, extern: "nos$1",
   ## regardless of whether the link points to a directory or file.
   ##
   ## See also:
-  ## * `fileExists proc <#fileExists,string>`_
-  ## * `dirExists proc <#dirExists,string>`_
+  ## * `fileExists func <#fileExists,string>`_
+  ## * `dirExists func <#dirExists,string>`_
   when defined(windows):
     when useWinUnicode:
       wrapUnary(a, getFileAttributesW, link)
@@ -1280,9 +1280,9 @@ proc getLastModificationTime*(file: string): times.Time {.rtl, extern: "nos$1", 
   ## Returns the `file`'s last modification time.
   ##
   ## See also:
-  ## * `getLastAccessTime proc <#getLastAccessTime,string>`_
-  ## * `getCreationTime proc <#getCreationTime,string>`_
-  ## * `fileNewer proc <#fileNewer,string,string>`_
+  ## * `getLastAccessTime func <#getLastAccessTime,string>`_
+  ## * `getCreationTime func <#getCreationTime,string>`_
+  ## * `fileNewer func <#fileNewer,string,string>`_
   when defined(posix):
     var res: Stat
     if stat(file, res) < 0'i32: raiseOSError(osLastError(), file)
@@ -1298,9 +1298,9 @@ proc getLastAccessTime*(file: string): times.Time {.rtl, extern: "nos$1", noWeir
   ## Returns the `file`'s last read or write access time.
   ##
   ## See also:
-  ## * `getLastModificationTime proc <#getLastModificationTime,string>`_
-  ## * `getCreationTime proc <#getCreationTime,string>`_
-  ## * `fileNewer proc <#fileNewer,string,string>`_
+  ## * `getLastModificationTime func <#getLastModificationTime,string>`_
+  ## * `getCreationTime func <#getCreationTime,string>`_
+  ## * `fileNewer func <#fileNewer,string,string>`_
   when defined(posix):
     var res: Stat
     if stat(file, res) < 0'i32: raiseOSError(osLastError(), file)
@@ -1320,9 +1320,9 @@ proc getCreationTime*(file: string): times.Time {.rtl, extern: "nos$1", noWeirdT
   ## `here <https://github.com/nim-lang/Nim/issues/1058>`_ for details.
   ##
   ## See also:
-  ## * `getLastModificationTime proc <#getLastModificationTime,string>`_
-  ## * `getLastAccessTime proc <#getLastAccessTime,string>`_
-  ## * `fileNewer proc <#fileNewer,string,string>`_
+  ## * `getLastModificationTime func <#getLastModificationTime,string>`_
+  ## * `getLastAccessTime func <#getLastAccessTime,string>`_
+  ## * `fileNewer func <#fileNewer,string,string>`_
   when defined(posix):
     var res: Stat
     if stat(file, res) < 0'i32: raiseOSError(osLastError(), file)
@@ -1339,9 +1339,9 @@ proc fileNewer*(a, b: string): bool {.rtl, extern: "nos$1", noWeirdTarget.} =
   ## modification time is later than `b`'s.
   ##
   ## See also:
-  ## * `getLastModificationTime proc <#getLastModificationTime,string>`_
-  ## * `getLastAccessTime proc <#getLastAccessTime,string>`_
-  ## * `getCreationTime proc <#getCreationTime,string>`_
+  ## * `getLastModificationTime func <#getLastModificationTime,string>`_
+  ## * `getLastAccessTime func <#getLastAccessTime,string>`_
+  ## * `getCreationTime func <#getCreationTime,string>`_
   when defined(posix):
     # If we don't have access to nanosecond resolution, use '>='
     when not StatHasNanoseconds:
@@ -1356,15 +1356,15 @@ when not defined(nimscript):
     ## Returns the `current working directory`:idx: i.e. where the built
     ## binary is run.
     ##
-    ## So the path returned by this proc is determined at run time.
+    ## So the path returned by this func is determined at run time.
     ##
     ## See also:
-    ## * `getHomeDir proc <#getHomeDir>`_
-    ## * `getConfigDir proc <#getConfigDir>`_
-    ## * `getTempDir proc <#getTempDir>`_
-    ## * `setCurrentDir proc <#setCurrentDir,string>`_
+    ## * `getHomeDir func <#getHomeDir>`_
+    ## * `getConfigDir func <#getConfigDir>`_
+    ## * `getTempDir func <#getTempDir>`_
+    ## * `setCurrentDir func <#setCurrentDir,string>`_
     ## * `currentSourcePath template <system.html#currentSourcePath.t>`_
-    ## * `getProjectPath proc <macros.html#getProjectPath>`_
+    ## * `getProjectPath func <macros.html#getProjectPath>`_
     when defined(nodejs):
       var ret: cstring
       {.emit: "`ret` = process.cwd();".}
@@ -1418,10 +1418,10 @@ proc setCurrentDir*(newDir: string) {.inline, tags: [], noWeirdTarget.} =
   ## is raised if `newDir` cannot been set.
   ##
   ## See also:
-  ## * `getHomeDir proc <#getHomeDir>`_
-  ## * `getConfigDir proc <#getConfigDir>`_
-  ## * `getTempDir proc <#getTempDir>`_
-  ## * `getCurrentDir proc <#getCurrentDir>`_
+  ## * `getHomeDir func <#getHomeDir>`_
+  ## * `getConfigDir func <#getConfigDir>`_
+  ## * `getTempDir func <#getTempDir>`_
+  ## * `getCurrentDir func <#getCurrentDir>`_
   when defined(windows):
     when useWinUnicode:
       if setCurrentDirectoryW(newWideCString(newDir)) == 0'i32:
@@ -1432,14 +1432,14 @@ proc setCurrentDir*(newDir: string) {.inline, tags: [], noWeirdTarget.} =
     if chdir(newDir) != 0'i32: raiseOSError(osLastError(), newDir)
 
 
-proc absolutePath*(path: string, root = getCurrentDir()): string =
+func absolutePath*(path: string, root = getCurrentDir()): string =
   ## Returns the absolute path of `path`, rooted at `root` (which must be absolute;
   ## default: current directory).
   ## If `path` is absolute, return it, ignoring `root`.
   ##
   ## See also:
-  ## * `normalizedPath proc <#normalizedPath,string>`_
-  ## * `normalizePath proc <#normalizePath,string>`_
+  ## * `normalizedPath func <#normalizedPath,string>`_
+  ## * `normalizePath func <#normalizePath,string>`_
   runnableExamples:
     assert absolutePath("a") == getCurrentDir() / "a"
 
@@ -1452,7 +1452,7 @@ proc absolutePath*(path: string, root = getCurrentDir()): string =
 proc absolutePathInternal(path: string): string =
   absolutePath(path, getCurrentDir())
 
-proc normalizeExe*(file: var string) {.since: (1, 3, 5).} =
+func normalizeExe*(file: var string) {.since: (1, 3, 5).} =
   ## on posix, prepends `./` if `file` doesn't contain `/` and is not `"", ".", ".."`.
   runnableExamples:
     import std/sugar
@@ -1464,7 +1464,7 @@ proc normalizeExe*(file: var string) {.since: (1, 3, 5).} =
     if file.len > 0 and DirSep notin file and file != "." and file != "..":
       file = "./" & file
 
-proc normalizePath*(path: var string) {.rtl, extern: "nos$1", tags: [].} =
+func normalizePath*(path: var string) {.rtl, extern: "nos$1", tags: [].} =
   ## Normalize a path.
   ##
   ## Consecutive directory separators are collapsed, including an initial double slash.
@@ -1476,9 +1476,9 @@ proc normalizePath*(path: var string) {.rtl, extern: "nos$1", tags: [].} =
   ##   Triple dot is not handled.
   ##
   ## See also:
-  ## * `absolutePath proc <#absolutePath,string>`_
-  ## * `normalizedPath proc <#normalizedPath,string>`_ for outplace version
-  ## * `normalizeExe proc <#normalizeExe,string>`_
+  ## * `absolutePath func <#absolutePath,string>`_
+  ## * `normalizedPath func <#normalizedPath,string>`_ for outplace version
+  ## * `normalizeExe func <#normalizeExe,string>`_
   runnableExamples:
     when defined(posix):
       var a = "a///b//..//c///d"
@@ -1513,21 +1513,21 @@ proc normalizePath*(path: var string) {.rtl, extern: "nos$1", tags: [].} =
     else:
       path = "."
 
-proc normalizePathAux(path: var string) = normalizePath(path)
+func normalizePathAux(path: var string) = normalizePath(path)
 
-proc normalizedPath*(path: string): string {.rtl, extern: "nos$1", tags: [].} =
+func normalizedPath*(path: string): string {.rtl, extern: "nos$1", tags: [].} =
   ## Returns a normalized path for the current OS.
   ##
   ## See also:
-  ## * `absolutePath proc <#absolutePath,string>`_
-  ## * `normalizePath proc <#normalizePath,string>`_ for the in-place version
+  ## * `absolutePath func <#absolutePath,string>`_
+  ## * `normalizePath func <#normalizePath,string>`_ for the in-place version
   runnableExamples:
     when defined(posix):
       assert normalizedPath("a///b//..//c///d") == "a/c/d"
   result = pathnorm.normalizePath(path)
 
 when defined(windows) and not weirdTarget:
-  proc openHandle(path: string, followSymlink=true, writeAccess=false): Handle =
+  func openHandle(path: string, followSymlink=true, writeAccess=false): Handle =
     var flags = FILE_FLAG_BACKUP_SEMANTICS or FILE_ATTRIBUTE_NORMAL
     if not followSymlink:
       flags = flags or FILE_FLAG_OPEN_REPARSE_POINT
@@ -1554,11 +1554,11 @@ proc sameFile*(path1, path2: string): bool {.rtl, extern: "nos$1",
   ## Raises `OSError` if any of the files does not
   ## exist or information about it can not be obtained.
   ##
-  ## This proc will return true if given two alternative hard-linked or
+  ## This func will return true if given two alternative hard-linked or
   ## sym-linked paths to the same file or directory.
   ##
   ## See also:
-  ## * `sameFileContent proc <#sameFileContent,string,string>`_
+  ## * `sameFileContent func <#sameFileContent,string,string>`_
   when defined(windows):
     var success = true
     var f1 = openHandle(path1)
@@ -1617,7 +1617,7 @@ proc getFilePermissions*(filename: string): set[FilePermission] {.
   ## permission is available in any case.
   ##
   ## See also:
-  ## * `setFilePermissions proc <#setFilePermissions,string,set[FilePermission]>`_
+  ## * `setFilePermissions func <#setFilePermissions,string,set[FilePermission]>`_
   ## * `FilePermission enum <#FilePermission>`_
   when defined(posix):
     var a: Stat
@@ -1740,8 +1740,8 @@ proc createSymlink*(src, dest: string) {.noWeirdTarget.} =
   ##   of symlinks to root users (administrators) or users with developper mode enabled.
   ##
   ## See also:
-  ## * `createHardlink proc <#createHardlink,string,string>`_
-  ## * `expandSymlink proc <#expandSymlink,string>`_
+  ## * `createHardlink func <#createHardlink,string,string>`_
+  ## * `expandSymlink func <#expandSymlink,string>`_
 
   when defined(windows):
     const SYMBOLIC_LINK_FLAG_ALLOW_UNPRIVILEGED_CREATE = 2
@@ -1765,7 +1765,7 @@ proc expandSymlink*(symlinkPath: string): string {.noWeirdTarget.} =
   ## On Windows this is a noop, `symlinkPath` is simply returned.
   ##
   ## See also:
-  ## * `createSymlink proc <#createSymlink,string,string>`_
+  ## * `createSymlink func <#createSymlink,string,string>`_
   when defined(windows):
     result = symlinkPath
   else:
@@ -1787,9 +1787,9 @@ when hasCCopyfile:
   type
     copyfile_state_t {.nodecl.} = pointer
     copyfile_flags_t = cint
-  proc copyfile_state_alloc(): copyfile_state_t
-  proc copyfile_state_free(state: copyfile_state_t): cint
-  proc c_copyfile(src, dst: cstring,  state: copyfile_state_t, flags: copyfile_flags_t): cint {.importc: "copyfile".}
+  func copyfile_state_alloc(): copyfile_state_t
+  func copyfile_state_free(state: copyfile_state_t): cint
+  func c_copyfile(src, dst: cstring,  state: copyfile_state_t, flags: copyfile_flags_t): cint {.importc: "copyfile".}
   # replace with `let` pending bootstrap >= 1.4.0
   var
     COPYFILE_DATA {.nodecl.}: copyfile_flags_t
@@ -1814,7 +1814,7 @@ proc copyFile*(source, dest: string, options = {cfSymlinkFollow}) {.rtl,
   ##
   ## If this fails, `OSError` is raised.
   ##
-  ## On the Windows platform this proc will
+  ## On the Windows platform this func will
   ## copy the source file's attributes into dest.
   ##
   ## On other platforms you need
@@ -1822,7 +1822,7 @@ proc copyFile*(source, dest: string, options = {cfSymlinkFollow}) {.rtl,
   ## `setFilePermissions <#setFilePermissions,string,set[FilePermission]>`_
   ## procs
   ## to copy them by hand (or use the convenience `copyFileWithPermissions
-  ## proc <#copyFileWithPermissions,string,string>`_),
+  ## func <#copyFileWithPermissions,string,string>`_),
   ## otherwise `dest` will inherit the default permissions of a newly
   ## created file for the user.
   ##
@@ -1834,11 +1834,11 @@ proc copyFile*(source, dest: string, options = {cfSymlinkFollow}) {.rtl,
   ##
   ## See also:
   ## * `CopyFlag enum <#CopyFlag>`_
-  ## * `copyDir proc <#copyDir,string,string>`_
-  ## * `copyFileWithPermissions proc <#copyFileWithPermissions,string,string>`_
-  ## * `tryRemoveFile proc <#tryRemoveFile,string>`_
-  ## * `removeFile proc <#removeFile,string>`_
-  ## * `moveFile proc <#moveFile,string,string>`_
+  ## * `copyDir func <#copyDir,string,string>`_
+  ## * `copyFileWithPermissions func <#copyFileWithPermissions,string,string>`_
+  ## * `tryRemoveFile func <#tryRemoveFile,string>`_
+  ## * `removeFile func <#removeFile,string>`_
+  ## * `moveFile func <#moveFile,string,string>`_
 
   doAssert card(copyFlagSymlink * options) == 1, "There should be exactly " &
                                                  "one cfSymlink* in options"
@@ -1904,7 +1904,7 @@ proc copyFileToDir*(source, dir: string, options = {cfSymlinkFollow})
   ##
   ## See also:
   ## * `CopyFlag enum <#CopyFlag>`_
-  ## * `copyFile proc <#copyDir,string,string>`_
+  ## * `copyFile func <#copyDir,string,string>`_
   if dir.len == 0: # treating "" as "." is error prone
     raise newException(ValueError, "dest is empty")
   copyFile(source, dir / source.lastPathPart, options)
@@ -1937,10 +1937,10 @@ proc tryRemoveFile*(file: string): bool {.rtl, extern: "nos$1", tags: [WriteDirE
   ## On Windows, ignores the read-only attribute.
   ##
   ## See also:
-  ## * `copyFile proc <#copyFile,string,string>`_
-  ## * `copyFileWithPermissions proc <#copyFileWithPermissions,string,string>`_
-  ## * `removeFile proc <#removeFile,string>`_
-  ## * `moveFile proc <#moveFile,string,string>`_
+  ## * `copyFile func <#copyFile,string,string>`_
+  ## * `copyFileWithPermissions func <#copyFileWithPermissions,string,string>`_
+  ## * `removeFile func <#removeFile,string>`_
+  ## * `moveFile func <#moveFile,string,string>`_
   result = true
   when defined(windows):
     when useWinUnicode:
@@ -1969,11 +1969,11 @@ proc removeFile*(file: string) {.rtl, extern: "nos$1", tags: [WriteDirEffect], n
   ## On Windows, ignores the read-only attribute.
   ##
   ## See also:
-  ## * `removeDir proc <#removeDir,string>`_
-  ## * `copyFile proc <#copyFile,string,string>`_
-  ## * `copyFileWithPermissions proc <#copyFileWithPermissions,string,string>`_
-  ## * `tryRemoveFile proc <#tryRemoveFile,string>`_
-  ## * `moveFile proc <#moveFile,string,string>`_
+  ## * `removeDir func <#removeDir,string>`_
+  ## * `copyFile func <#copyFile,string,string>`_
+  ## * `copyFileWithPermissions func <#copyFileWithPermissions,string,string>`_
+  ## * `tryRemoveFile func <#tryRemoveFile,string>`_
+  ## * `moveFile func <#moveFile,string,string>`_
   if not tryRemoveFile(file):
     raiseOSError(osLastError(), file)
 
@@ -2013,11 +2013,11 @@ proc moveFile*(source, dest: string) {.rtl, extern: "nos$1",
   ## Can be used to `rename files`:idx:.
   ##
   ## See also:
-  ## * `moveDir proc <#moveDir,string,string>`_
-  ## * `copyFile proc <#copyFile,string,string>`_
-  ## * `copyFileWithPermissions proc <#copyFileWithPermissions,string,string>`_
-  ## * `removeFile proc <#removeFile,string>`_
-  ## * `tryRemoveFile proc <#tryRemoveFile,string>`_
+  ## * `moveDir func <#moveDir,string,string>`_
+  ## * `copyFile func <#copyFile,string,string>`_
+  ## * `copyFileWithPermissions func <#copyFileWithPermissions,string,string>`_
+  ## * `removeFile func <#removeFile,string>`_
+  ## * `tryRemoveFile func <#tryRemoveFile,string>`_
 
   if not tryMoveFSObject(source, dest):
     when not defined(windows):
@@ -2029,7 +2029,7 @@ proc moveFile*(source, dest: string) {.rtl, extern: "nos$1",
         discard tryRemoveFile(dest)
         raise
 
-proc exitStatusLikeShell*(status: cint): cint =
+func exitStatusLikeShell*(status: cint): cint =
   ## Converts exit code from `c_system` into a shell exit code.
   when defined(posix) and not weirdTarget:
     if WIFSIGNALED(status):
@@ -2040,14 +2040,14 @@ proc exitStatusLikeShell*(status: cint): cint =
   else:
     status
 
-proc execShellCmd*(command: string): int {.rtl, extern: "nos$1",
+func execShellCmd*(command: string): int {.rtl, extern: "nos$1",
   tags: [ExecIOEffect], noWeirdTarget.} =
   ## Executes a `shell command`:idx:.
   ##
   ## Command has the form 'program args' where args are the command
-  ## line arguments given to program. The proc returns the error code
+  ## line arguments given to program. The func returns the error code
   ## of the shell when it has finished (zero if there is no error).
-  ## The proc does not return until the process has finished.
+  ## The func does not return until the process has finished.
   ##
   ## To execute a program without having a shell involved, use `osproc.execProcess proc
   ## <osproc.html#execProcess,string,string,openArray[string],StringTableRef,set[ProcessOption]>`_.
@@ -2230,7 +2230,7 @@ type
     pcDir,                ## path refers to a directory
     pcLinkToDir           ## path refers to a symbolic link to a directory
 
-proc getCurrentCompilerExe*(): string {.compileTime.} = discard
+func getCurrentCompilerExe*(): string {.compileTime.} = discard
   ## This is `getAppFilename() <#getAppFilename>`_ at compile time.
   ##
   ## Can be used to retrieve the currently executing
@@ -2239,7 +2239,7 @@ proc getCurrentCompilerExe*(): string {.compileTime.} = discard
   ## compiler API).
 
 when defined(posix) and not weirdTarget:
-  proc getSymlinkFileKind(path: string): PathComponent =
+  func getSymlinkFileKind(path: string): PathComponent =
     # Helper function.
     var s: Stat
     assert(path != "")
@@ -2248,7 +2248,7 @@ when defined(posix) and not weirdTarget:
     else:
       result = pcLinkToFile
 
-proc staticWalkDir(dir: string; relative: bool): seq[
+func staticWalkDir(dir: string; relative: bool): seq[
                   tuple[kind: PathComponent, path: string]] =
   discard
 
@@ -2424,13 +2424,13 @@ proc removeDir*(dir: string, checkDir = false) {.rtl, extern: "nos$1", tags: [
   ## existed in the first place, unless `checkDir` = true
   ##
   ## See also:
-  ## * `tryRemoveFile proc <#tryRemoveFile,string>`_
-  ## * `removeFile proc <#removeFile,string>`_
-  ## * `existsOrCreateDir proc <#existsOrCreateDir,string>`_
-  ## * `createDir proc <#createDir,string>`_
-  ## * `copyDir proc <#copyDir,string,string>`_
-  ## * `copyDirWithPermissions proc <#copyDirWithPermissions,string,string>`_
-  ## * `moveDir proc <#moveDir,string,string>`_
+  ## * `tryRemoveFile func <#tryRemoveFile,string>`_
+  ## * `removeFile func <#removeFile,string>`_
+  ## * `existsOrCreateDir func <#existsOrCreateDir,string>`_
+  ## * `createDir func <#createDir,string>`_
+  ## * `copyDir func <#copyDir,string,string>`_
+  ## * `copyDirWithPermissions func <#copyDirWithPermissions,string,string>`_
+  ## * `moveDir func <#moveDir,string,string>`_
   for kind, path in walkDir(dir, checkDir = checkDir):
     case kind
     of pcFile, pcLinkToFile, pcLinkToDir: removeFile(path)
@@ -2492,11 +2492,11 @@ proc existsOrCreateDir*(dir: string): bool {.rtl, extern: "nos$1",
   ## Returns `true` if the directory already exists, and `false` otherwise.
   ##
   ## See also:
-  ## * `removeDir proc <#removeDir,string>`_
-  ## * `createDir proc <#createDir,string>`_
-  ## * `copyDir proc <#copyDir,string,string>`_
-  ## * `copyDirWithPermissions proc <#copyDirWithPermissions,string,string>`_
-  ## * `moveDir proc <#moveDir,string,string>`_
+  ## * `removeDir func <#removeDir,string>`_
+  ## * `createDir func <#createDir,string>`_
+  ## * `copyDir func <#copyDir,string,string>`_
+  ## * `copyDirWithPermissions func <#copyDirWithPermissions,string,string>`_
+  ## * `moveDir func <#moveDir,string,string>`_
   result = not rawCreateDir(dir)
   if result:
     # path already exists - need to check that it is indeed a directory
@@ -2514,11 +2514,11 @@ proc createDir*(dir: string) {.rtl, extern: "nos$1",
   ## most usages this does not indicate an error.
   ##
   ## See also:
-  ## * `removeDir proc <#removeDir,string>`_
-  ## * `existsOrCreateDir proc <#existsOrCreateDir,string>`_
-  ## * `copyDir proc <#copyDir,string,string>`_
-  ## * `copyDirWithPermissions proc <#copyDirWithPermissions,string,string>`_
-  ## * `moveDir proc <#moveDir,string,string>`_
+  ## * `removeDir func <#removeDir,string>`_
+  ## * `existsOrCreateDir func <#existsOrCreateDir,string>`_
+  ## * `copyDir func <#copyDir,string,string>`_
+  ## * `copyDirWithPermissions func <#copyDirWithPermissions,string,string>`_
+  ## * `moveDir func <#moveDir,string,string>`_
   var omitNext = false
   when doslikeFileSystem:
     omitNext = isAbsolute(dir)
@@ -2543,22 +2543,22 @@ proc copyDir*(source, dest: string) {.rtl, extern: "nos$1",
   ##
   ## If this fails, `OSError` is raised.
   ##
-  ## On the Windows platform this proc will copy the attributes from
+  ## On the Windows platform this func will copy the attributes from
   ## `source` into `dest`.
   ##
   ## On other platforms created files and directories will inherit the
   ## default permissions of a newly created file/directory for the user.
-  ## Use `copyDirWithPermissions proc <#copyDirWithPermissions,string,string>`_
+  ## Use `copyDirWithPermissions func <#copyDirWithPermissions,string,string>`_
   ## to preserve attributes recursively on these platforms.
   ##
   ## See also:
-  ## * `copyDirWithPermissions proc <#copyDirWithPermissions,string,string>`_
-  ## * `copyFile proc <#copyFile,string,string>`_
-  ## * `copyFileWithPermissions proc <#copyFileWithPermissions,string,string>`_
-  ## * `removeDir proc <#removeDir,string>`_
-  ## * `existsOrCreateDir proc <#existsOrCreateDir,string>`_
-  ## * `createDir proc <#createDir,string>`_
-  ## * `moveDir proc <#moveDir,string,string>`_
+  ## * `copyDirWithPermissions func <#copyDirWithPermissions,string,string>`_
+  ## * `copyFile func <#copyFile,string,string>`_
+  ## * `copyFileWithPermissions func <#copyFileWithPermissions,string,string>`_
+  ## * `removeDir func <#removeDir,string>`_
+  ## * `existsOrCreateDir func <#existsOrCreateDir,string>`_
+  ## * `createDir func <#createDir,string>`_
+  ## * `moveDir func <#moveDir,string,string>`_
   createDir(dest)
   for kind, path in walkDir(source):
     var noSource = splitPath(path).tail
@@ -2576,12 +2576,12 @@ proc moveDir*(source, dest: string) {.tags: [ReadIOEffect, WriteIOEffect], noWei
   ## If this fails, `OSError` is raised.
   ##
   ## See also:
-  ## * `moveFile proc <#moveFile,string,string>`_
-  ## * `copyDir proc <#copyDir,string,string>`_
-  ## * `copyDirWithPermissions proc <#copyDirWithPermissions,string,string>`_
-  ## * `removeDir proc <#removeDir,string>`_
-  ## * `existsOrCreateDir proc <#existsOrCreateDir,string>`_
-  ## * `createDir proc <#createDir,string>`_
+  ## * `moveFile func <#moveFile,string,string>`_
+  ## * `copyDir func <#copyDir,string,string>`_
+  ## * `copyDirWithPermissions func <#copyDirWithPermissions,string,string>`_
+  ## * `removeDir func <#removeDir,string>`_
+  ## * `existsOrCreateDir func <#existsOrCreateDir,string>`_
+  ## * `createDir func <#createDir,string>`_
   if not tryMoveFSObject(source, dest):
     when not defined(windows):
       # Fallback to copy & del
@@ -2596,7 +2596,7 @@ proc createHardlink*(src, dest: string) {.noWeirdTarget.} =
   ##   root users (administrators).
   ##
   ## See also:
-  ## * `createSymlink proc <#createSymlink,string,string>`_
+  ## * `createSymlink func <#createSymlink,string,string>`_
   when defined(windows):
     when useWinUnicode:
       var wSrc = newWideCString(src)
@@ -2619,13 +2619,13 @@ proc copyFileWithPermissions*(source, dest: string,
   ## if `source` is a symlink, copies the file symlink points to. `options` is
   ## ignored on Windows: symlinks are skipped.
   ##
-  ## This is a wrapper proc around `copyFile <#copyFile,string,string>`_,
+  ## This is a wrapper func around `copyFile <#copyFile,string,string>`_,
   ## `getFilePermissions <#getFilePermissions,string>`_ and
   ## `setFilePermissions<#setFilePermissions,string,set[FilePermission]>`_
   ## procs on non-Windows platforms.
   ##
-  ## On Windows this proc is just a wrapper for `copyFile proc
-  ## <#copyFile,string,string>`_ since that proc already copies attributes.
+  ## On Windows this func is just a wrapper for `copyFile proc
+  ## <#copyFile,string,string>`_ since that func already copies attributes.
   ##
   ## On non-Windows systems permissions are copied after the file itself has
   ## been copied, which won't happen atomically and could lead to a race
@@ -2635,12 +2635,12 @@ proc copyFileWithPermissions*(source, dest: string,
   ##
   ## See also:
   ## * `CopyFlag enum <#CopyFlag>`_
-  ## * `copyFile proc <#copyFile,string,string>`_
-  ## * `copyDir proc <#copyDir,string,string>`_
-  ## * `tryRemoveFile proc <#tryRemoveFile,string>`_
-  ## * `removeFile proc <#removeFile,string>`_
-  ## * `moveFile proc <#moveFile,string,string>`_
-  ## * `copyDirWithPermissions proc <#copyDirWithPermissions,string,string>`_
+  ## * `copyFile func <#copyFile,string,string>`_
+  ## * `copyDir func <#copyDir,string,string>`_
+  ## * `tryRemoveFile func <#tryRemoveFile,string>`_
+  ## * `removeFile func <#removeFile,string>`_
+  ## * `moveFile func <#moveFile,string,string>`_
+  ## * `copyDirWithPermissions func <#copyDirWithPermissions,string,string>`_
   copyFile(source, dest, options)
   when not defined(windows):
     try:
@@ -2659,13 +2659,13 @@ proc copyDirWithPermissions*(source, dest: string,
   ## On non-Windows OSes, symlinks are copied as symlinks. On Windows, symlinks
   ## are skipped.
   ##
-  ## If this fails, `OSError` is raised. This is a wrapper proc around `copyDir
+  ## If this fails, `OSError` is raised. This is a wrapper func around `copyDir
   ## <#copyDir,string,string>`_ and `copyFileWithPermissions
   ## <#copyFileWithPermissions,string,string>`_ procs
   ## on non-Windows platforms.
   ##
-  ## On Windows this proc is just a wrapper for `copyDir proc
-  ## <#copyDir,string,string>`_ since that proc already copies attributes.
+  ## On Windows this func is just a wrapper for `copyDir proc
+  ## <#copyDir,string,string>`_ since that func already copies attributes.
   ##
   ## On non-Windows systems permissions are copied after the file or directory
   ## itself has been copied, which won't happen atomically and could lead to a
@@ -2674,13 +2674,13 @@ proc copyDirWithPermissions*(source, dest: string,
   ## `OSError`.
   ##
   ## See also:
-  ## * `copyDir proc <#copyDir,string,string>`_
-  ## * `copyFile proc <#copyFile,string,string>`_
-  ## * `copyFileWithPermissions proc <#copyFileWithPermissions,string,string>`_
-  ## * `removeDir proc <#removeDir,string>`_
-  ## * `moveDir proc <#moveDir,string,string>`_
-  ## * `existsOrCreateDir proc <#existsOrCreateDir,string>`_
-  ## * `createDir proc <#createDir,string>`_
+  ## * `copyDir func <#copyDir,string,string>`_
+  ## * `copyFile func <#copyFile,string,string>`_
+  ## * `copyFileWithPermissions func <#copyFileWithPermissions,string,string>`_
+  ## * `removeDir func <#removeDir,string>`_
+  ## * `moveDir func <#moveDir,string,string>`_
+  ## * `existsOrCreateDir func <#existsOrCreateDir,string>`_
+  ## * `createDir func <#createDir,string>`_
   createDir(dest)
   when not defined(windows):
     try:
@@ -2699,7 +2699,7 @@ proc copyDirWithPermissions*(source, dest: string,
 proc inclFilePermissions*(filename: string,
                           permissions: set[FilePermission]) {.
   rtl, extern: "nos$1", tags: [ReadDirEffect, WriteDirEffect], noWeirdTarget.} =
-  ## A convenience proc for:
+  ## A convenience func for:
   ##
   ## .. code-block:: nim
   ##   setFilePermissions(filename, getFilePermissions(filename)+permissions)
@@ -2708,17 +2708,17 @@ proc inclFilePermissions*(filename: string,
 proc exclFilePermissions*(filename: string,
                           permissions: set[FilePermission]) {.
   rtl, extern: "nos$1", tags: [ReadDirEffect, WriteDirEffect], noWeirdTarget.} =
-  ## A convenience proc for:
+  ## A convenience func for:
   ##
   ## .. code-block:: nim
   ##   setFilePermissions(filename, getFilePermissions(filename)-permissions)
   setFilePermissions(filename, getFilePermissions(filename)-permissions)
 
-proc parseCmdLine*(c: string): seq[string] {.
+func parseCmdLine*(c: string): seq[string] {.
   noSideEffect, rtl, extern: "nos$1".} =
   ## Splits a `command line`:idx: into several components.
   ##
-  ## **Note**: This proc is only occasionally useful, better use the
+  ## **Note**: This func is only occasionally useful, better use the
   ## `parseopt module <parseopt.html>`_.
   ##
   ## On Windows, it uses the `following parsing rules
@@ -2750,9 +2750,9 @@ proc parseCmdLine*(c: string): seq[string] {.
   ##
   ## See also:
   ## * `parseopt module <parseopt.html>`_
-  ## * `paramCount proc <#paramCount>`_
-  ## * `paramStr proc <#paramStr,int>`_
-  ## * `commandLineParams proc <#commandLineParams>`_
+  ## * `paramCount func <#paramCount>`_
+  ## * `paramStr func <#paramStr,int>`_
+  ## * `commandLineParams func <#commandLineParams>`_
 
   result = @[]
   var i = 0
@@ -2813,25 +2813,25 @@ proc parseCmdLine*(c: string): seq[string] {.
 
 when defined(nimdoc):
   # Common forward declaration docstring block for parameter retrieval procs.
-  proc paramCount*(): int {.tags: [ReadIOEffect].} =
+  func paramCount*(): int {.tags: [ReadIOEffect].} =
     ## Returns the number of `command line arguments`:idx: given to the
     ## application.
     ##
     ## Unlike `argc`:idx: in C, if your binary was called without parameters this
     ## will return zero.
-    ## You can query each individual parameter with `paramStr proc <#paramStr,int>`_
+    ## You can query each individual parameter with `paramStr func <#paramStr,int>`_
     ## or retrieve all of them in one go with `commandLineParams proc
     ## <#commandLineParams>`_.
     ##
     ## **Availability**: When generating a dynamic library (see `--app:lib`) on
-    ## Posix this proc is not defined.
+    ## Posix this func is not defined.
     ## Test for availability using `declared() <system.html#declared,untyped>`_.
     ##
     ## See also:
     ## * `parseopt module <parseopt.html>`_
-    ## * `parseCmdLine proc <#parseCmdLine,string>`_
-    ## * `paramStr proc <#paramStr,int>`_
-    ## * `commandLineParams proc <#commandLineParams>`_
+    ## * `parseCmdLine func <#parseCmdLine,string>`_
+    ## * `paramStr func <#paramStr,int>`_
+    ## * `commandLineParams func <#commandLineParams>`_
     ##
     ## **Examples:**
     ##
@@ -2841,12 +2841,12 @@ when defined(nimdoc):
     ##   else:
     ##     # Do something else!
 
-  proc paramStr*(i: int): string {.tags: [ReadIOEffect].} =
+  func paramStr*(i: int): string {.tags: [ReadIOEffect].} =
     ## Returns the `i`-th `command line argument`:idx: given to the application.
     ##
     ## `i` should be in the range `1..paramCount()`, the `IndexDefect`
     ## exception will be raised for invalid values. Instead of iterating
-    ## over `paramCount() <#paramCount>`_ with this proc you can
+    ## over `paramCount() <#paramCount>`_ with this func you can
     ## call the convenience `commandLineParams() <#commandLineParams>`_.
     ##
     ## Similarly to `argv`:idx: in C,
@@ -2855,15 +2855,15 @@ when defined(nimdoc):
     ## this and call `getAppFilename() <#getAppFilename>`_ instead.
     ##
     ## **Availability**: When generating a dynamic library (see `--app:lib`) on
-    ## Posix this proc is not defined.
+    ## Posix this func is not defined.
     ## Test for availability using `declared() <system.html#declared,untyped>`_.
     ##
     ## See also:
     ## * `parseopt module <parseopt.html>`_
-    ## * `parseCmdLine proc <#parseCmdLine,string>`_
-    ## * `paramCount proc <#paramCount>`_
-    ## * `commandLineParams proc <#commandLineParams>`_
-    ## * `getAppFilename proc <#getAppFilename>`_
+    ## * `parseCmdLine func <#parseCmdLine,string>`_
+    ## * `paramCount func <#paramCount>`_
+    ## * `commandLineParams func <#commandLineParams>`_
+    ## * `getAppFilename func <#getAppFilename>`_
     ##
     ## **Examples:**
     ##
@@ -2877,28 +2877,28 @@ elif defined(nimscript): discard
 elif defined(nodejs):
   type Argv = object of JSRoot
   let argv {.importjs: "process.argv".} : Argv
-  proc len(argv: Argv): int {.importjs: "#.length".}
-  proc `[]`(argv: Argv, i: int): cstring {.importjs: "#[#]".}
+  func len(argv: Argv): int {.importjs: "#.length".}
+  func `[]`(argv: Argv, i: int): cstring {.importjs: "#[#]".}
 
-  proc paramCount*(): int {.tags: [ReadDirEffect].} =
+  func paramCount*(): int {.tags: [ReadDirEffect].} =
     result = argv.len - 2
 
-  proc paramStr*(i: int): string {.tags: [ReadIOEffect].} =
+  func paramStr*(i: int): string {.tags: [ReadIOEffect].} =
     let i = i + 1
     if i < argv.len and i >= 0:
       result = $argv[i]
     else:
       raise newException(IndexDefect, formatErrorIndexBound(i - 1, argv.len - 2))
 elif defined(nintendoswitch):
-  proc paramStr*(i: int): string {.tags: [ReadIOEffect].} =
+  func paramStr*(i: int): string {.tags: [ReadIOEffect].} =
     raise newException(OSError, "paramStr is not implemented on Nintendo Switch")
 
-  proc paramCount*(): int {.tags: [ReadIOEffect].} =
+  func paramCount*(): int {.tags: [ReadIOEffect].} =
     raise newException(OSError, "paramCount is not implemented on Nintendo Switch")
 
 elif defined(windows):
   # Since we support GUI applications with Nim, we sometimes generate
-  # a WinMain entry proc. But a WinMain proc has no access to the parsed
+  # a WinMain entry proc. But a WinMain func has no access to the parsed
   # command line arguments. The way to get them differs. Thus we parse them
   # ourselves. This has the additional benefit that the program's behaviour
   # is always the same -- independent of the used C compiler.
@@ -2906,14 +2906,14 @@ elif defined(windows):
     ownArgv {.threadvar.}: seq[string]
     ownParsedArgv {.threadvar.}: bool
 
-  proc paramCount*(): int {.rtl, extern: "nos$1", tags: [ReadIOEffect].} =
+  func paramCount*(): int {.rtl, extern: "nos$1", tags: [ReadIOEffect].} =
     # Docstring in nimdoc block.
     if not ownParsedArgv:
       ownArgv = parseCmdLine($getCommandLine())
       ownParsedArgv = true
     result = ownArgv.len-1
 
-  proc paramStr*(i: int): string {.rtl, extern: "nos$1",
+  func paramStr*(i: int): string {.rtl, extern: "nos$1",
     tags: [ReadIOEffect].} =
     # Docstring in nimdoc block.
     if not ownParsedArgv:
@@ -2925,16 +2925,16 @@ elif defined(windows):
       raise newException(IndexDefect, formatErrorIndexBound(i, ownArgv.len-1))
 
 elif defined(genode):
-  proc paramStr*(i: int): string =
+  func paramStr*(i: int): string =
     raise newException(OSError, "paramStr is not implemented on Genode")
 
-  proc paramCount*(): int =
+  func paramCount*(): int =
     raise newException(OSError, "paramCount is not implemented on Genode")
 elif weirdTarget:
-  proc paramStr*(i: int): string {.tags: [ReadIOEffect].} =
+  func paramStr*(i: int): string {.tags: [ReadIOEffect].} =
     raise newException(OSError, "paramStr is not implemented on current platform")
 
-  proc paramCount*(): int {.tags: [ReadIOEffect].} =
+  func paramCount*(): int {.tags: [ReadIOEffect].} =
     raise newException(OSError, "paramCount is not implemented on current platform")
 elif not defined(createNimRtl) and
   not(defined(posix) and appType == "lib"):
@@ -2956,22 +2956,22 @@ elif not defined(createNimRtl) and
 
 when declared(paramCount) or defined(nimdoc):
   proc commandLineParams*(): seq[string] =
-    ## Convenience proc which returns the command line parameters.
+    ## Convenience func which returns the command line parameters.
     ##
     ## This returns **only** the parameters. If you want to get the application
     ## executable filename, call `getAppFilename() <#getAppFilename>`_.
     ##
     ## **Availability**: On Posix there is no portable way to get the command
-    ## line from a DLL and thus the proc isn't defined in this environment. You
+    ## line from a DLL and thus the func isn't defined in this environment. You
     ## can test for its availability with `declared()
     ## <system.html#declared,untyped>`_.
     ##
     ## See also:
     ## * `parseopt module <parseopt.html>`_
-    ## * `parseCmdLine proc <#parseCmdLine,string>`_
-    ## * `paramCount proc <#paramCount>`_
-    ## * `paramStr proc <#paramStr,int>`_
-    ## * `getAppFilename proc <#getAppFilename>`_
+    ## * `parseCmdLine func <#parseCmdLine,string>`_
+    ## * `paramCount func <#paramCount>`_
+    ## * `paramStr func <#paramStr,int>`_
+    ## * `getAppFilename func <#getAppFilename>`_
     ##
     ## **Examples:**
     ##
@@ -2984,12 +2984,12 @@ when declared(paramCount) or defined(nimdoc):
     for i in 1..paramCount():
       result.add(paramStr(i))
 else:
-  proc commandLineParams*(): seq[string] {.error:
+  func commandLineParams*(): seq[string] {.error:
   "commandLineParams() unsupported by dynamic libraries".} =
     discard
 
 when not weirdTarget and (defined(freebsd) or defined(dragonfly) or defined(netbsd)):
-  proc sysctl(name: ptr cint, namelen: cuint, oldp: pointer, oldplen: ptr csize_t,
+  func sysctl(name: ptr cint, namelen: cuint, oldp: pointer, oldplen: ptr csize_t,
               newp: pointer, newplen: csize_t): cint
        {.importc: "sysctl",header: """#include <sys/types.h>
                                       #include <sys/sysctl.h>"""}
@@ -3006,7 +3006,7 @@ when not weirdTarget and (defined(freebsd) or defined(dragonfly) or defined(netb
   else:
     const KERN_PROC_PATHNAME = 9
 
-  proc getApplFreebsd(): string =
+  func getApplFreebsd(): string =
     var pathLength = csize_t(0)
 
     when defined(netbsd):
@@ -3030,7 +3030,7 @@ when not weirdTarget and (defined(freebsd) or defined(dragonfly) or defined(netb
     setLen(result, realLen)
 
 when not weirdTarget and (defined(linux) or defined(solaris) or defined(bsd) or defined(aix)):
-  proc getApplAux(procPath: string): string =
+  func getApplAux(procPath: string): string =
     result = newString(maxSymlinkLen)
     var len = readlink(procPath, result, maxSymlinkLen)
     if len > maxSymlinkLen:
@@ -3039,7 +3039,7 @@ when not weirdTarget and (defined(linux) or defined(solaris) or defined(bsd) or 
     setLen(result, len)
 
 when not weirdTarget and defined(openbsd):
-  proc getApplOpenBsd(): string =
+  func getApplOpenBsd(): string =
     # similar to getApplHeuristic, but checks current working directory
     when declared(paramStr):
       result = ""
@@ -3093,9 +3093,9 @@ when defined(macosx):
 
   # a really hacky solution: since we like to include 2 headers we have to
   # define two procs which in reality are the same
-  proc getExecPath1(c: cstring, size: var cuint32) {.
+  func getExecPath1(c: cstring, size: var cuint32) {.
     importc: "_NSGetExecutablePath", header: "<sys/param.h>".}
-  proc getExecPath2(c: cstring, size: var cuint32): bool {.
+  func getExecPath2(c: cstring, size: var cuint32): bool {.
     importc: "_NSGetExecutablePath", header: "<mach-o/dyld.h>".}
 
 when defined(haiku):
@@ -3103,11 +3103,11 @@ when defined(haiku):
     PATH_MAX = 1024
     B_FIND_PATH_IMAGE_PATH = 1000
 
-  proc find_path(codePointer: pointer, baseDirectory: cint, subPath: cstring,
+  func find_path(codePointer: pointer, baseDirectory: cint, subPath: cstring,
                  pathBuffer: cstring, bufferSize: csize): int32
                 {.importc, header: "<FindDirectory.h>".}
 
-  proc getApplHaiku(): string =
+  func getApplHaiku(): string =
     result = newString(PATH_MAX)
 
     if find_path(nil, B_FIND_PATH_IMAGE_PATH, nil, result, PATH_MAX) == 0:
@@ -3118,11 +3118,11 @@ when defined(haiku):
 
 proc getAppFilename*(): string {.rtl, extern: "nos$1", tags: [ReadIOEffect], noWeirdTarget.} =
   ## Returns the filename of the application's executable.
-  ## This proc will resolve symlinks.
+  ## This func will resolve symlinks.
   ##
   ## See also:
-  ## * `getAppDir proc <#getAppDir>`_
-  ## * `getCurrentCompilerExe proc <#getCurrentCompilerExe>`_
+  ## * `getAppDir func <#getAppDir>`_
+  ## * `getCurrentCompilerExe func <#getCurrentCompilerExe>`_
 
   # Linux: /proc/<pid>/exe
   # Solaris:
@@ -3186,7 +3186,7 @@ proc getAppDir*(): string {.rtl, extern: "nos$1", tags: [ReadIOEffect], noWeirdT
   ## Returns the directory of the application's executable.
   ##
   ## See also:
-  ## * `getAppFilename proc <#getAppFilename>`_
+  ## * `getAppFilename func <#getAppFilename>`_
   result = splitFile(getAppFilename()).dir
 
 proc sleep*(milsecs: int) {.rtl, extern: "nos$1", tags: [TimeEffect], noWeirdTarget.} =
@@ -3230,9 +3230,9 @@ type
     ## Contains information associated with a file object.
     ##
     ## See also:
-    ## * `getFileInfo(handle) proc <#getFileInfo,FileHandle>`_
-    ## * `getFileInfo(file) proc <#getFileInfo,File>`_
-    ## * `getFileInfo(path) proc <#getFileInfo,string>`_
+    ## * `getFileInfo(handle) func <#getFileInfo,FileHandle>`_
+    ## * `getFileInfo(file) func <#getFileInfo,File>`_
+    ## * `getFileInfo(path) func <#getFileInfo,string>`_
     id*: tuple[device: DeviceId, file: FileId] ## Device and file id.
     kind*: PathComponent              ## Kind of file object - directory, symlink, etc.
     size*: BiggestInt                 ## Size of file.
@@ -3322,8 +3322,8 @@ proc getFileInfo*(handle: FileHandle): FileInfo {.noWeirdTarget.} =
   ## is invalid, `OSError` is raised.
   ##
   ## See also:
-  ## * `getFileInfo(file) proc <#getFileInfo,File>`_
-  ## * `getFileInfo(path) proc <#getFileInfo,string>`_
+  ## * `getFileInfo(file) func <#getFileInfo,File>`_
+  ## * `getFileInfo(path) func <#getFileInfo,string>`_
 
   # Done: ID, Kind, Size, Permissions, Link Count
   when defined(windows):
@@ -3344,8 +3344,8 @@ proc getFileInfo*(file: File): FileInfo {.noWeirdTarget.} =
   ## Retrieves file information for the file object.
   ##
   ## See also:
-  ## * `getFileInfo(handle) proc <#getFileInfo,FileHandle>`_
-  ## * `getFileInfo(path) proc <#getFileInfo,string>`_
+  ## * `getFileInfo(handle) func <#getFileInfo,FileHandle>`_
+  ## * `getFileInfo(path) func <#getFileInfo,string>`_
   if file.isNil:
     raise newException(IOError, "File is nil")
   result = getFileInfo(file.getFileHandle())
@@ -3366,8 +3366,8 @@ proc getFileInfo*(path: string, followSymlink = true): FileInfo {.noWeirdTarget.
   ## file information, `OSError` is raised.
   ##
   ## See also:
-  ## * `getFileInfo(handle) proc <#getFileInfo,FileHandle>`_
-  ## * `getFileInfo(file) proc <#getFileInfo,File>`_
+  ## * `getFileInfo(handle) func <#getFileInfo,FileHandle>`_
+  ## * `getFileInfo(file) func <#getFileInfo,File>`_
   when defined(windows):
     var
       handle = openHandle(path, followSymlink)
@@ -3394,7 +3394,7 @@ proc sameFileContent*(path1, path2: string): bool {.rtl, extern: "nos$1",
   ## binary content.
   ##
   ## See also:
-  ## * `sameFile proc <#sameFile,string,string>`_
+  ## * `sameFile func <#sameFile,string,string>`_
   var
     a, b: File
   if not open(a, path1): return false
@@ -3421,7 +3421,7 @@ proc sameFileContent*(path1, path2: string): bool {.rtl, extern: "nos$1",
   close(a)
   close(b)
 
-proc isHidden*(path: string): bool {.noWeirdTarget.} =
+func isHidden*(path: string): bool {.noWeirdTarget.} =
   ## Determines whether ``path`` is hidden or not, using `this
   ## reference <https://en.wikipedia.org/wiki/Hidden_file_and_hidden_directory>`_.
   ##
@@ -3457,7 +3457,7 @@ proc getCurrentProcessId*(): int {.noWeirdTarget.} =
   ## See also:
   ## * `osproc.processID(p: Process) <osproc.html#processID,Process>`_
   when defined(windows):
-    proc GetCurrentProcessId(): DWORD {.stdcall, dynlib: "kernel32",
+    func GetCurrentProcessId(): DWORD {.stdcall, dynlib: "kernel32",
                                         importc: "GetCurrentProcessId".}
     result = GetCurrentProcessId().int
   else:

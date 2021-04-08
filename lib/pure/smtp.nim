@@ -66,7 +66,7 @@ type
   Smtp* = SmtpBase[Socket]
   AsyncSmtp* = SmtpBase[AsyncSocket]
 
-proc containsNewline(xs: seq[string]): bool =
+func containsNewline(xs: seq[string]): bool =
   for x in xs:
     if x.contains({'\c', '\L'}):
       return true
@@ -77,7 +77,7 @@ proc debugSend*(smtp: Smtp | AsyncSmtp, cmd: string) {.multisync.} =
   ## If the `smtp` object was created with `debug` enabled,
   ## debugSend will invoke `echo("C:" & cmd)` before sending.
   ##
-  ## This is a lower level proc and not something that you typically
+  ## This is a lower level func and not something that you typically
   ## would need to call when using this module. One exception to
   ## this is if you are implementing any
   ## `SMTP extensions<https://en.wikipedia.org/wiki/Extended_SMTP>`_.
@@ -94,7 +94,7 @@ proc debugRecv*(smtp: Smtp | AsyncSmtp): Future[string] {.multisync.} =
   ## debugRecv will invoke `echo("S:" & result.string)` after
   ## the data is received.
   ##
-  ## This is a lower level proc and not something that you typically
+  ## This is a lower level func and not something that you typically
   ## would need to call when using this module. One exception to
   ## this is if you are implementing any
   ## `SMTP extensions<https://en.wikipedia.org/wiki/Extended_SMTP>`_.
@@ -121,7 +121,7 @@ else:
       defaultSSLContext = newContext(verifyMode = CVerifyNone)
     result = defaultSSLContext
 
-proc createMessage*(mSubject, mBody: string, mTo, mCc: seq[string],
+func createMessage*(mSubject, mBody: string, mTo, mCc: seq[string],
                 otherHeaders: openArray[tuple[name, value: string]]): Message =
   ## Creates a new MIME compliant message.
   ##
@@ -140,7 +140,7 @@ proc createMessage*(mSubject, mBody: string, mTo, mCc: seq[string],
   for n, v in items(otherHeaders):
     result.msgOtherHeaders[n] = v
 
-proc createMessage*(mSubject, mBody: string, mTo,
+func createMessage*(mSubject, mBody: string, mTo,
                     mCc: seq[string] = @[]): Message =
   ## Alternate version of the above.
   ##
@@ -156,7 +156,7 @@ proc createMessage*(mSubject, mBody: string, mTo,
   result.msgBody = mBody
   result.msgOtherHeaders = newStringTable()
 
-proc `$`*(msg: Message): string =
+func `$`*(msg: Message): string =
   ## stringify for `Message`.
   result = ""
   if msg.msgTo.len() > 0:
@@ -216,7 +216,7 @@ proc checkReply*(smtp: Smtp | AsyncSmtp, reply: string) {.multisync.} =
   ## with `reply`, then a `QUIT` command will be sent to the SMTP
   ## server and a `ReplyError` exception will be raised.
   ##
-  ## This is a lower level proc and not something that you typically
+  ## This is a lower level func and not something that you typically
   ## would need to call when using this module. One exception to
   ## this is if you are implementing any
   ## `SMTP extensions<https://en.wikipedia.org/wiki/Extended_SMTP>`_.
@@ -308,7 +308,7 @@ when not defined(testing) and isMainModule:
 
   import parsecfg
 
-  proc `[]`(c: Config, key: string): string = c.getSectionValue("", key)
+  func `[]`(c: Config, key: string): string = c.getSectionValue("", key)
 
   let
     conf = loadConfig("smtp.ini")

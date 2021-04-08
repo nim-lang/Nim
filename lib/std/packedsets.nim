@@ -53,18 +53,18 @@ type
     data: TrunkSeq
     a: array[0..33, int] # profiling shows that 34 elements are enough
 
-proc mustRehash[T](t: T): bool {.inline.} =
+func mustRehash[T](t: T): bool {.inline.} =
   let length = t.max + 1
   assert length > t.counter
   result = (length * 2 < t.counter * 3) or (length - t.counter < 4)
 
-proc nextTry(h, maxHash: Hash, perturb: var Hash): Hash {.inline.} =
+func nextTry(h, maxHash: Hash, perturb: var Hash): Hash {.inline.} =
   const PERTURB_SHIFT = 5
   var perturb2 = cast[uint](perturb) shr PERTURB_SHIFT
   perturb = cast[Hash](perturb2)
   result = ((5 * h) + 1 + perturb) and maxHash
 
-proc packedSetGet[A](t: PackedSet[A], key: int): Trunk =
+func packedSetGet[A](t: PackedSet[A], key: int): Trunk =
   var h = key and t.max
   var perturb = key
   while t.data[h] != nil:
@@ -73,7 +73,7 @@ proc packedSetGet[A](t: PackedSet[A], key: int): Trunk =
     h = nextTry(h, t.max, perturb)
   result = nil
 
-proc intSetRawInsert[A](t: PackedSet[A], data: var TrunkSeq, desc: Trunk) =
+func intSetRawInsert[A](t: PackedSet[A], data: var TrunkSeq, desc: Trunk) =
   var h = desc.key and t.max
   var perturb = desc.key
   while data[h] != nil:
@@ -82,7 +82,7 @@ proc intSetRawInsert[A](t: PackedSet[A], data: var TrunkSeq, desc: Trunk) =
   assert data[h] == nil
   data[h] = desc
 
-proc intSetEnlarge[A](t: var PackedSet[A]) =
+func intSetEnlarge[A](t: var PackedSet[A]) =
   var n: TrunkSeq
   var oldMax = t.max
   t.max = ((t.max + 1) * 2) - 1
@@ -91,7 +91,7 @@ proc intSetEnlarge[A](t: var PackedSet[A]) =
     if t.data[i] != nil: intSetRawInsert(t, n, t.data[i])
   swap(t.data, n)
 
-proc intSetPut[A](t: var PackedSet[A], key: int): Trunk =
+func intSetPut[A](t: var PackedSet[A], key: int): Trunk =
   var h = key and t.max
   var perturb = key
   while t.data[h] != nil:
@@ -110,14 +110,14 @@ proc intSetPut[A](t: var PackedSet[A], key: int): Trunk =
   t.head = result
   t.data[h] = result
 
-proc bitincl[A](s: var PackedSet[A], key: int) {.inline.} =
+func bitincl[A](s: var PackedSet[A], key: int) {.inline.} =
   var ret: Trunk
   var t = intSetPut(s, key shr TrunkShift)
   var u = key and TrunkMask
   t.bits[u shr IntShift] = t.bits[u shr IntShift] or
       (BitScalar(1) shl (u and IntMask))
 
-proc exclImpl[A](s: var PackedSet[A], key: int) =
+func exclImpl[A](s: var PackedSet[A], key: int) =
   if s.elems <= s.a.len:
     for i in 0..<s.elems:
       if s.a[i] == key:
@@ -160,7 +160,7 @@ iterator items*[A](s: PackedSet[A]): A {.inline.} =
         inc(i)
       r = r.next
 
-proc initPackedSet*[A]: PackedSet[A] =
+func initPackedSet*[A]: PackedSet[A] =
   ## Returns an empty `PackedSet[A]`.
   ## `A` must be `Ordinal`.
   ##
@@ -182,7 +182,7 @@ proc initPackedSet*[A]: PackedSet[A] =
     data: @[])
   #  a: array[0..33, int] # profiling shows that 34 elements are enough
 
-proc contains*[A](s: PackedSet[A], key: A): bool =
+func contains*[A](s: PackedSet[A], key: A): bool =
   ## Returns true if `key` is in `s`.
   ##
   ## This allows the usage of the `in` operator.
@@ -212,7 +212,7 @@ proc contains*[A](s: PackedSet[A], key: A): bool =
     else:
       result = false
 
-proc incl*[A](s: var PackedSet[A], key: A) =
+func incl*[A](s: var PackedSet[A], key: A) =
   ## Includes an element `key` in `s`.
   ##
   ## This doesn't do anything if `key` is already in `s`.
@@ -242,7 +242,7 @@ proc incl*[A](s: var PackedSet[A], key: A) =
     # fall through:
   bitincl(s, ord(key))
 
-proc incl*[A](s: var PackedSet[A], other: PackedSet[A]) =
+func incl*[A](s: var PackedSet[A], other: PackedSet[A]) =
   ## Includes all elements from `other` into `s`.
   ##
   ## This is the in-place version of `s + other <#+,PackedSet[A],PackedSet[A]>`_.
@@ -259,7 +259,7 @@ proc incl*[A](s: var PackedSet[A], other: PackedSet[A]) =
 
   for item in other.items: incl(s, item)
 
-proc toPackedSet*[A](x: openArray[A]): PackedSet[A] {.since: (1, 3).} =
+func toPackedSet*[A](x: openArray[A]): PackedSet[A] {.since: (1, 3).} =
   ## Creates a new `PackedSet[A]` that contains the elements of `x`.
   ##
   ## Duplicates are removed.
@@ -275,7 +275,7 @@ proc toPackedSet*[A](x: openArray[A]): PackedSet[A] {.since: (1, 3).} =
   for item in x:
     result.incl(item)
 
-proc containsOrIncl*[A](s: var PackedSet[A], key: A): bool =
+func containsOrIncl*[A](s: var PackedSet[A], key: A): bool =
   ## Includes `key` in the set `s` and tells if `key` was already in `s`.
   ##
   ## The difference with regards to the `incl proc <#incl,PackedSet[A],A>`_ is
@@ -310,7 +310,7 @@ proc containsOrIncl*[A](s: var PackedSet[A], key: A): bool =
       incl(s, key)
       result = false
 
-proc excl*[A](s: var PackedSet[A], key: A) =
+func excl*[A](s: var PackedSet[A], key: A) =
   ## Excludes `key` from the set `s`.
   ##
   ## This doesn't do anything if `key` is not found in `s`.
@@ -328,7 +328,7 @@ proc excl*[A](s: var PackedSet[A], key: A) =
 
   exclImpl[A](s, ord(key))
 
-proc excl*[A](s: var PackedSet[A], other: PackedSet[A]) =
+func excl*[A](s: var PackedSet[A], other: PackedSet[A]) =
   ## Excludes all elements from `other` from `s`.
   ##
   ## This is the in-place version of `s - other <#-,PackedSet[A],PackedSet[A]>`_.
@@ -346,7 +346,7 @@ proc excl*[A](s: var PackedSet[A], other: PackedSet[A]) =
   for item in other.items:
     excl(s, item)
 
-proc len*[A](s: PackedSet[A]): int {.inline.} =
+func len*[A](s: PackedSet[A]): int {.inline.} =
   ## Returns the number of elements in `s`.
   runnableExamples:
     let a = [1, 3, 5].toPackedSet
@@ -360,7 +360,7 @@ proc len*[A](s: PackedSet[A]): int {.inline.} =
       # pending bug #11167; when fixed, check each explicit `items` to see if it can be removed
       inc(result)
 
-proc missingOrExcl*[A](s: var PackedSet[A], key: A): bool =
+func missingOrExcl*[A](s: var PackedSet[A], key: A): bool =
   ## Excludes `key` from the set `s` and tells if `key` was already missing from `s`.
   ##
   ## The difference with regards to the `excl proc <#excl,PackedSet[A],A>`_ is
@@ -381,7 +381,7 @@ proc missingOrExcl*[A](s: var PackedSet[A], key: A): bool =
   exclImpl(s, ord(key))
   result = count == s.len
 
-proc clear*[A](result: var PackedSet[A]) =
+func clear*[A](result: var PackedSet[A]) =
   ## Clears the `PackedSet[A]` back to an empty state.
   runnableExamples:
     var a = [5, 7].toPackedSet
@@ -397,7 +397,7 @@ proc clear*[A](result: var PackedSet[A]) =
   result.head = nil
   result.elems = 0
 
-proc isNil*[A](x: PackedSet[A]): bool {.inline.} =
+func isNil*[A](x: PackedSet[A]): bool {.inline.} =
   ## Returns true if `x` is empty, false otherwise.
   runnableExamples:
     var a = initPackedSet[int]()
@@ -409,7 +409,7 @@ proc isNil*[A](x: PackedSet[A]): bool {.inline.} =
 
   x.head.isNil and x.elems == 0
 
-proc assign*[A](dest: var PackedSet[A], src: PackedSet[A]) =
+func assign*[A](dest: var PackedSet[A], src: PackedSet[A]) =
   ## Copies `src` to `dest`.
   ## `dest` does not need to be initialized by the `initPackedSet proc <#initPackedSet>`_.
   runnableExamples:
@@ -449,7 +449,7 @@ proc assign*[A](dest: var PackedSet[A], src: PackedSet[A]) =
       dest.data[h] = n
       it = it.next
 
-proc union*[A](s1, s2: PackedSet[A]): PackedSet[A] =
+func union*[A](s1, s2: PackedSet[A]): PackedSet[A] =
   ## Returns the union of the sets `s1` and `s2`.
   ##
   ## The same as `s1 + s2 <#+,PackedSet[A],PackedSet[A]>`_.
@@ -464,7 +464,7 @@ proc union*[A](s1, s2: PackedSet[A]): PackedSet[A] =
   result.assign(s1)
   incl(result, s2)
 
-proc intersection*[A](s1, s2: PackedSet[A]): PackedSet[A] =
+func intersection*[A](s1, s2: PackedSet[A]): PackedSet[A] =
   ## Returns the intersection of the sets `s1` and `s2`.
   ##
   ## The same as `s1 * s2 <#*,PackedSet[A],PackedSet[A]>`_.
@@ -481,7 +481,7 @@ proc intersection*[A](s1, s2: PackedSet[A]): PackedSet[A] =
     if contains(s2, item):
       incl(result, item)
 
-proc difference*[A](s1, s2: PackedSet[A]): PackedSet[A] =
+func difference*[A](s1, s2: PackedSet[A]): PackedSet[A] =
   ## Returns the difference of the sets `s1` and `s2`.
   ##
   ## The same as `s1 - s2 <#-,PackedSet[A],PackedSet[A]>`_.
@@ -498,7 +498,7 @@ proc difference*[A](s1, s2: PackedSet[A]): PackedSet[A] =
     if not contains(s2, item):
       incl(result, item)
 
-proc symmetricDifference*[A](s1, s2: PackedSet[A]): PackedSet[A] =
+func symmetricDifference*[A](s1, s2: PackedSet[A]): PackedSet[A] =
   ## Returns the symmetric difference of the sets `s1` and `s2`.
   runnableExamples:
     let
@@ -513,19 +513,19 @@ proc symmetricDifference*[A](s1, s2: PackedSet[A]): PackedSet[A] =
     if containsOrIncl(result, item):
       excl(result, item)
 
-proc `+`*[A](s1, s2: PackedSet[A]): PackedSet[A] {.inline.} =
+func `+`*[A](s1, s2: PackedSet[A]): PackedSet[A] {.inline.} =
   ## Alias for `union(s1, s2) <#union,PackedSet[A],PackedSet[A]>`_.
   result = union(s1, s2)
 
-proc `*`*[A](s1, s2: PackedSet[A]): PackedSet[A] {.inline.} =
+func `*`*[A](s1, s2: PackedSet[A]): PackedSet[A] {.inline.} =
   ## Alias for `intersection(s1, s2) <#intersection,PackedSet[A],PackedSet[A]>`_.
   result = intersection(s1, s2)
 
-proc `-`*[A](s1, s2: PackedSet[A]): PackedSet[A] {.inline.} =
+func `-`*[A](s1, s2: PackedSet[A]): PackedSet[A] {.inline.} =
   ## Alias for `difference(s1, s2) <#difference,PackedSet[A],PackedSet[A]>`_.
   result = difference(s1, s2)
 
-proc disjoint*[A](s1, s2: PackedSet[A]): bool =
+func disjoint*[A](s1, s2: PackedSet[A]): bool =
   ## Returns true if the sets `s1` and `s2` have no items in common.
   runnableExamples:
     let
@@ -540,14 +540,14 @@ proc disjoint*[A](s1, s2: PackedSet[A]): bool =
       return false
   return true
 
-proc card*[A](s: PackedSet[A]): int {.inline.} =
+func card*[A](s: PackedSet[A]): int {.inline.} =
   ## Alias for `len() <#len,PackedSet[A]>`_.
   ##
   ## Card stands for the [cardinality](http://en.wikipedia.org/wiki/Cardinality)
   ## of a set.
   result = s.len()
 
-proc `<=`*[A](s1, s2: PackedSet[A]): bool =
+func `<=`*[A](s1, s2: PackedSet[A]): bool =
   ## Returns true if `s1` is a subset of `s2`.
   ##
   ## A subset `s1` has all of its elements in `s2`, but `s2` doesn't necessarily
@@ -566,7 +566,7 @@ proc `<=`*[A](s1, s2: PackedSet[A]): bool =
       return false
   return true
 
-proc `<`*[A](s1, s2: PackedSet[A]): bool =
+func `<`*[A](s1, s2: PackedSet[A]): bool =
   ## Returns true if `s1` is a proper subset of `s2`.
   ##
   ## A strict or proper subset `s1` has all of its elements in `s2`, but `s2` has
@@ -582,7 +582,7 @@ proc `<`*[A](s1, s2: PackedSet[A]): bool =
 
   return s1 <= s2 and not (s2 <= s1)
 
-proc `==`*[A](s1, s2: PackedSet[A]): bool =
+func `==`*[A](s1, s2: PackedSet[A]): bool =
   ## Returns true if both `s1` and `s2` have the same elements and set size.
   runnableExamples:
     assert [1, 2].toPackedSet == [2, 1].toPackedSet
@@ -590,7 +590,7 @@ proc `==`*[A](s1, s2: PackedSet[A]): bool =
 
   return s1 <= s2 and s2 <= s1
 
-proc `$`*[A](s: PackedSet[A]): string =
+func `$`*[A](s: PackedSet[A]): string =
   ## Converts `s` to a string.
   runnableExamples:
     let a = [1, 2, 3].toPackedSet

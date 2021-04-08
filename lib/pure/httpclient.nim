@@ -233,13 +233,13 @@ proc code*(response: Response | AsyncResponse): HttpCode
   ## corresponding `HttpCode`.
   return response.status[0 .. 2].parseInt.HttpCode
 
-proc contentType*(response: Response | AsyncResponse): string {.inline.} =
+func contentType*(response: Response | AsyncResponse): string {.inline.} =
   ## Retrieves the specified response's content type.
   ##
   ## This is effectively the value of the "Content-Type" header.
   response.headers.getOrDefault("content-type")
 
-proc contentLength*(response: Response | AsyncResponse): int =
+func contentLength*(response: Response | AsyncResponse): int =
   ## Retrieves the specified response's content length.
   ##
   ## This is effectively the value of the "Content-Length" header.
@@ -249,7 +249,7 @@ proc contentLength*(response: Response | AsyncResponse): int =
   result = contentLengthHeader.parseInt()
   doAssert(result >= 0 and result <= high(int32))
 
-proc lastModified*(response: Response | AsyncResponse): DateTime =
+func lastModified*(response: Response | AsyncResponse): DateTime =
   ## Retrieves the specified response's last modified time.
   ##
   ## This is effectively the value of the "Last-Modified" header.
@@ -302,13 +302,13 @@ type
 
 const defUserAgent* = "Nim httpclient/" & NimVersion
 
-proc httpError(msg: string) =
+func httpError(msg: string) =
   var e: ref ProtocolError
   new(e)
   e.msg = msg
   raise e
 
-proc fileError(msg: string) =
+func fileError(msg: string) =
   var e: ref IOError
   new(e)
   e.msg = msg
@@ -326,19 +326,19 @@ proc getDefaultSSL(): SslContext =
       result = defaultSslContext
       doAssert result != nil, "failure to initialize the SSL context"
 
-proc newProxy*(url: string; auth = ""): Proxy =
+func newProxy*(url: string; auth = ""): Proxy =
   ## Constructs a new `TProxy` object.
   result = Proxy(url: parseUri(url), auth: auth)
 
-proc newProxy*(url: Uri; auth = ""): Proxy =
+func newProxy*(url: Uri; auth = ""): Proxy =
   ## Constructs a new `TProxy` object.
   result = Proxy(url: url, auth: auth)
 
-proc newMultipartData*: MultipartData {.inline.} =
+func newMultipartData*: MultipartData {.inline.} =
   ## Constructs a new `MultipartData` object.
   MultipartData()
 
-proc `$`*(data: MultipartData): string {.since: (1, 1).} =
+func `$`*(data: MultipartData): string {.since: (1, 1).} =
   ## convert MultipartData to string so it's human readable when echo
   ## see https://github.com/nim-lang/Nim/issues/11863
   const sep = "-".repeat(30)
@@ -350,7 +350,7 @@ proc `$`*(data: MultipartData): string {.since: (1, 1).} =
       result.add("Content-Type: " & entry.contentType)
     result.add("\n\n" & entry.content & "\n")
 
-proc add*(p: MultipartData, name, content: string, filename: string = "",
+func add*(p: MultipartData, name, content: string, filename: string = "",
           contentType: string = "", useStream = true) =
   ## Add a value to the multipart data.
   ##
@@ -378,7 +378,7 @@ proc add*(p: MultipartData, name, content: string, filename: string = "",
 
   p.content.add(entry)
 
-proc add*(p: MultipartData, xs: MultipartEntries): MultipartData
+func add*(p: MultipartData, xs: MultipartEntries): MultipartData
          {.discardable.} =
   ## Add a list of multipart entries to the multipart data `p`. All values are
   ## added without a filename and without a content type.
@@ -389,7 +389,7 @@ proc add*(p: MultipartData, xs: MultipartEntries): MultipartData
     p.add(name, content)
   result = p
 
-proc newMultipartData*(xs: MultipartEntries): MultipartData =
+func newMultipartData*(xs: MultipartEntries): MultipartData =
   ## Create a new multipart data object and fill it with the entries `xs`
   ## directly.
   ##
@@ -420,7 +420,7 @@ proc addFiles*(p: MultipartData, xs: openArray[tuple[name, file: string]],
     p.add(name, content, fName & ext, contentType, useStream = useStream)
   result = p
 
-proc `[]=`*(p: MultipartData, name, content: string) {.inline.} =
+func `[]=`*(p: MultipartData, name, content: string) {.inline.} =
   ## Add a multipart entry to the multipart data `p`. The value is added
   ## without a filename and without a content type.
   ##
@@ -428,7 +428,7 @@ proc `[]=`*(p: MultipartData, name, content: string) {.inline.} =
   ##   data["username"] = "NimUser"
   p.add(name, content)
 
-proc `[]=`*(p: MultipartData, name: string,
+func `[]=`*(p: MultipartData, name: string,
             file: tuple[name, contentType, content: string]) {.inline.} =
   ## Add a file to the multipart data `p`, specifying filename, contentType
   ## and content manually.
@@ -552,7 +552,7 @@ type
 type
   HttpClient* = HttpClientBase[Socket]
 
-proc newHttpClient*(userAgent = defUserAgent, maxRedirects = 5,
+func newHttpClient*(userAgent = defUserAgent, maxRedirects = 5,
                     sslContext = getDefaultSSL(), proxy: Proxy = nil,
                     timeout = -1, headers = newHttpHeaders()): HttpClient =
   ## Creates a new HttpClient instance.
@@ -576,7 +576,7 @@ proc newHttpClient*(userAgent = defUserAgent, maxRedirects = 5,
   runnableExamples:
     import std/[asyncdispatch, httpclient, strutils]
 
-    proc asyncProc(): Future[string] {.async.} =
+    func asyncProc(): Future[string] {.async.} =
       var client = newAsyncHttpClient()
       return await client.getContent("http://example.com")
 
@@ -599,7 +599,7 @@ proc newHttpClient*(userAgent = defUserAgent, maxRedirects = 5,
 type
   AsyncHttpClient* = HttpClientBase[AsyncSocket]
 
-proc newAsyncHttpClient*(userAgent = defUserAgent, maxRedirects = 5,
+func newAsyncHttpClient*(userAgent = defUserAgent, maxRedirects = 5,
                          sslContext = getDefaultSSL(), proxy: Proxy = nil,
                          headers = newHttpHeaders()): AsyncHttpClient =
   ## Creates a new AsyncHttpClient instance.
@@ -634,7 +634,7 @@ proc close*(client: HttpClient | AsyncHttpClient) =
     client.socket.close()
     client.connected = false
 
-proc getSocket*(client: HttpClient): Socket {.inline.} =
+func getSocket*(client: HttpClient): Socket {.inline.} =
   ## Get network socket, useful if you want to find out more details about the connection
   ##
   ## this example shows info about local and remote endpoints
@@ -646,7 +646,7 @@ proc getSocket*(client: HttpClient): Socket {.inline.} =
   ##
   return client.socket
 
-proc getSocket*(client: AsyncHttpClient): AsyncSocket {.inline.} =
+func getSocket*(client: AsyncHttpClient): AsyncSocket {.inline.} =
   return client.socket
 
 proc reportProgress(client: HttpClient | AsyncHttpClient,
@@ -1248,7 +1248,7 @@ proc downloadFileEx(client: AsyncHttpClient,
   parseBodyFut.addCallback do():
     if parseBodyFut.failed:
       client.bodyStream.fail(parseBodyFut.error)
-  # The `writeFromStream` proc will complete once all the data in the
+  # The `writeFromStream` func will complete once all the data in the
   # `bodyStream` has been written to the file.
   await file.writeFromStream(client.bodyStream)
 
@@ -1261,5 +1261,5 @@ proc downloadFile*(client: AsyncHttpClient, url: Uri | string,
     result.fail(exc)
   finally:
     result.addCallback(
-      proc () = client.getBody = true
+      func () = client.getBody = true
     )

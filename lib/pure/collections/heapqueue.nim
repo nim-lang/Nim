@@ -36,7 +36,7 @@ runnableExamples:
   type Job = object
     priority: int
 
-  proc `<`(a, b: Job): bool = a.priority < b.priority
+  func `<`(a, b: Job): bool = a.priority < b.priority
 
   var jobs = initHeapQueue[Job]()
   jobs.push(Job(priority: 1))
@@ -51,7 +51,7 @@ type HeapQueue*[T] = object
   ## A heap queue, commonly known as a priority queue.
   data: seq[T]
 
-proc initHeapQueue*[T](): HeapQueue[T] =
+func initHeapQueue*[T](): HeapQueue[T] =
   ## Creates a new empty heap.
   ##
   ## Heaps are initialized by default, so it is not necessary to call
@@ -61,7 +61,7 @@ proc initHeapQueue*[T](): HeapQueue[T] =
   ## * `toHeapQueue proc <#toHeapQueue,openArray[T]>`_
   discard
 
-proc len*[T](heap: HeapQueue[T]): int {.inline.} =
+func len*[T](heap: HeapQueue[T]): int {.inline.} =
   ## Returns the number of elements of `heap`.
   runnableExamples:
     let heap = [9, 5, 8].toHeapQueue
@@ -69,13 +69,13 @@ proc len*[T](heap: HeapQueue[T]): int {.inline.} =
 
   heap.data.len
 
-proc `[]`*[T](heap: HeapQueue[T], i: Natural): lent T {.inline.} =
+func `[]`*[T](heap: HeapQueue[T], i: Natural): lent T {.inline.} =
   ## Accesses the i-th element of `heap`.
   heap.data[i]
 
-proc heapCmp[T](x, y: T): bool {.inline.} = x < y
+func heapCmp[T](x, y: T): bool {.inline.} = x < y
 
-proc siftup[T](heap: var HeapQueue[T], startpos, p: int) =
+func siftup[T](heap: var HeapQueue[T], startpos, p: int) =
   ## `heap` is a heap at all indices >= `startpos`, except possibly for `p`. `p`
   ## is the index of a leaf with a possibly out-of-order value. Restores the
   ## heap invariant.
@@ -93,7 +93,7 @@ proc siftup[T](heap: var HeapQueue[T], startpos, p: int) =
       break
   heap.data[pos] = newitem
 
-proc siftdownToBottom[T](heap: var HeapQueue[T], p: int) =
+func siftdownToBottom[T](heap: var HeapQueue[T], p: int) =
   # This is faster when the element should be close to the bottom.
   let endpos = len(heap)
   var pos = p
@@ -115,7 +115,7 @@ proc siftdownToBottom[T](heap: var HeapQueue[T], p: int) =
   heap.data[pos] = newitem
   siftup(heap, startpos, pos)
 
-proc siftdown[T](heap: var HeapQueue[T], p: int) =
+func siftdown[T](heap: var HeapQueue[T], p: int) =
   let endpos = len(heap)
   var pos = p
   let newitem = heap[pos]
@@ -131,12 +131,12 @@ proc siftdown[T](heap: var HeapQueue[T], p: int) =
     childpos = 2 * pos + 1
   heap.data[pos] = newitem
 
-proc push*[T](heap: var HeapQueue[T], item: sink T) =
+func push*[T](heap: var HeapQueue[T], item: sink T) =
   ## Pushes `item` onto `heap`, maintaining the heap invariant.
   heap.data.add(item)
   siftup(heap, 0, len(heap) - 1)
 
-proc toHeapQueue*[T](x: openArray[T]): HeapQueue[T] {.since: (1, 3).} =
+func toHeapQueue*[T](x: openArray[T]): HeapQueue[T] {.since: (1, 3).} =
   ## Creates a new HeapQueue that contains the elements of `x`.
   ##
   ## **See also:**
@@ -151,7 +151,7 @@ proc toHeapQueue*[T](x: openArray[T]): HeapQueue[T] {.since: (1, 3).} =
   for i in countdown(x.len div 2 - 1, 0):
     siftdown(result, i)
 
-proc pop*[T](heap: var HeapQueue[T]): T =
+func pop*[T](heap: var HeapQueue[T]): T =
   ## Pops and returns the smallest item from `heap`,
   ## maintaining the heap invariant.
   runnableExamples:
@@ -166,7 +166,7 @@ proc pop*[T](heap: var HeapQueue[T]): T =
   else:
     result = lastelt
 
-proc find*[T](heap: HeapQueue[T], x: T): int {.since: (1, 3).} =
+func find*[T](heap: HeapQueue[T], x: T): int {.since: (1, 3).} =
   ## Linear scan to find the index of the item `x` or -1 if not found.
   runnableExamples:
     let heap = [9, 5, 8].toHeapQueue
@@ -178,7 +178,7 @@ proc find*[T](heap: HeapQueue[T], x: T): int {.since: (1, 3).} =
   for i in 0 ..< heap.len:
     if heap[i] == x: return i
 
-proc del*[T](heap: var HeapQueue[T], index: Natural) =
+func del*[T](heap: var HeapQueue[T], index: Natural) =
   ## Removes the element at `index` from `heap`, maintaining the heap invariant.
   runnableExamples:
     var heap = [9, 5, 8].toHeapQueue
@@ -192,7 +192,7 @@ proc del*[T](heap: var HeapQueue[T], index: Natural) =
   if index < newLen:
     siftdownToBottom(heap, index)
 
-proc replace*[T](heap: var HeapQueue[T], item: sink T): T =
+func replace*[T](heap: var HeapQueue[T], item: sink T): T =
   ## Pops and returns the current smallest value, and add the new item.
   ## This is more efficient than `pop()` followed by `push()`, and can be
   ## more appropriate when using a fixed-size heap. Note that the value
@@ -212,7 +212,7 @@ proc replace*[T](heap: var HeapQueue[T], item: sink T): T =
   heap.data[0] = item
   siftdown(heap, 0)
 
-proc pushpop*[T](heap: var HeapQueue[T], item: sink T): T =
+func pushpop*[T](heap: var HeapQueue[T], item: sink T): T =
   ## Fast version of a `push()` followed by a `pop()`.
   ##
   ## **See also:**
@@ -229,7 +229,7 @@ proc pushpop*[T](heap: var HeapQueue[T], item: sink T): T =
     swap(result, heap.data[0])
     siftdown(heap, 0)
 
-proc clear*[T](heap: var HeapQueue[T]) =
+func clear*[T](heap: var HeapQueue[T]) =
   ## Removes all elements from `heap`, making it empty.
   runnableExamples:
     var heap = [9, 5, 8].toHeapQueue
@@ -238,7 +238,7 @@ proc clear*[T](heap: var HeapQueue[T]) =
 
   heap.data.setLen(0)
 
-proc `$`*[T](heap: HeapQueue[T]): string =
+func `$`*[T](heap: HeapQueue[T]): string =
   ## Turns a heap into its string representation.
   runnableExamples:
     let heap = [1, 2].toHeapQueue

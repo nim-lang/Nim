@@ -17,7 +17,7 @@ export packedsets
 type
   IntSet* = PackedSet[int]
 
-proc toIntSet*(x: openArray[int]): IntSet {.since: (1, 3), inline.} = toPackedSet[int](x)
+func toIntSet*(x: openArray[int]): IntSet {.since: (1, 3), inline.} = toPackedSet[int](x)
 
-proc initIntSet*(): IntSet {.inline.} = initPackedSet[int]()
+func initIntSet*(): IntSet {.inline.} = initPackedSet[int]()
 

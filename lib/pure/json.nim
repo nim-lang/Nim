@@ -203,67 +203,67 @@ type
     of JArray:
       elems*: seq[JsonNode]
 
-proc newJString*(s: string): JsonNode =
+func newJString*(s: string): JsonNode =
   ## Creates a new `JString JsonNode`.
   result = JsonNode(kind: JString, str: s)
 
-proc newJRawNumber(s: string): JsonNode =
+func newJRawNumber(s: string): JsonNode =
   ## Creates a "raw JS number", that is a number that does not
   ## fit into Nim's `BiggestInt` field. This is really a `JString`
   ## with the additional information that it should be converted back
   ## to the string representation without the quotes.
   result = JsonNode(kind: JString, str: s, isUnquoted: true)
 
-proc newJStringMove(s: string): JsonNode =
+func newJStringMove(s: string): JsonNode =
   result = JsonNode(kind: JString)
   shallowCopy(result.str, s)
 
-proc newJInt*(n: BiggestInt): JsonNode =
+func newJInt*(n: BiggestInt): JsonNode =
   ## Creates a new `JInt JsonNode`.
   result = JsonNode(kind: JInt, num: n)
 
-proc newJFloat*(n: float): JsonNode =
+func newJFloat*(n: float): JsonNode =
   ## Creates a new `JFloat JsonNode`.
   result = JsonNode(kind: JFloat, fnum: n)
 
-proc newJBool*(b: bool): JsonNode =
+func newJBool*(b: bool): JsonNode =
   ## Creates a new `JBool JsonNode`.
   result = JsonNode(kind: JBool, bval: b)
 
-proc newJNull*(): JsonNode =
+func newJNull*(): JsonNode =
   ## Creates a new `JNull JsonNode`.
   result = JsonNode(kind: JNull)
 
-proc newJObject*(): JsonNode =
+func newJObject*(): JsonNode =
   ## Creates a new `JObject JsonNode`
   result = JsonNode(kind: JObject, fields: initOrderedTable[string, JsonNode](2))
 
-proc newJArray*(): JsonNode =
+func newJArray*(): JsonNode =
   ## Creates a new `JArray JsonNode`
   result = JsonNode(kind: JArray, elems: @[])
 
-proc getStr*(n: JsonNode, default: string = ""): string =
+func getStr*(n: JsonNode, default: string = ""): string =
   ## Retrieves the string value of a `JString JsonNode`.
   ##
   ## Returns `default` if `n` is not a `JString`, or if `n` is nil.
   if n.isNil or n.kind != JString: return default
   else: return n.str
 
-proc getInt*(n: JsonNode, default: int = 0): int =
+func getInt*(n: JsonNode, default: int = 0): int =
   ## Retrieves the int value of a `JInt JsonNode`.
   ##
   ## Returns `default` if `n` is not a `JInt`, or if `n` is nil.
   if n.isNil or n.kind != JInt: return default
   else: return int(n.num)
 
-proc getBiggestInt*(n: JsonNode, default: BiggestInt = 0): BiggestInt =
+func getBiggestInt*(n: JsonNode, default: BiggestInt = 0): BiggestInt =
   ## Retrieves the BiggestInt value of a `JInt JsonNode`.
   ##
   ## Returns `default` if `n` is not a `JInt`, or if `n` is nil.
   if n.isNil or n.kind != JInt: return default
   else: return n.num
 
-proc getFloat*(n: JsonNode, default: float = 0.0): float =
+func getFloat*(n: JsonNode, default: float = 0.0): float =
   ## Retrieves the float value of a `JFloat JsonNode`.
   ##
   ## Returns `default` if `n` is not a `JFloat` or `JInt`, or if `n` is nil.
@@ -273,14 +273,14 @@ proc getFloat*(n: JsonNode, default: float = 0.0): float =
   of JInt: return float(n.num)
   else: return default
 
-proc getBool*(n: JsonNode, default: bool = false): bool =
+func getBool*(n: JsonNode, default: bool = false): bool =
   ## Retrieves the bool value of a `JBool JsonNode`.
   ##
   ## Returns `default` if `n` is not a `JBool`, or if `n` is nil.
   if n.isNil or n.kind != JBool: return default
   else: return n.bval
 
-proc getFields*(n: JsonNode,
+func getFields*(n: JsonNode,
     default = initOrderedTable[string, JsonNode](2)):
         OrderedTable[string, JsonNode] =
   ## Retrieves the key, value pairs of a `JObject JsonNode`.
@@ -289,58 +289,58 @@ proc getFields*(n: JsonNode,
   if n.isNil or n.kind != JObject: return default
   else: return n.fields
 
-proc getElems*(n: JsonNode, default: seq[JsonNode] = @[]): seq[JsonNode] =
+func getElems*(n: JsonNode, default: seq[JsonNode] = @[]): seq[JsonNode] =
   ## Retrieves the array of a `JArray JsonNode`.
   ##
   ## Returns `default` if `n` is not a `JArray`, or if `n` is nil.
   if n.isNil or n.kind != JArray: return default
   else: return n.elems
 
-proc add*(father, child: JsonNode) =
+func add*(father, child: JsonNode) =
   ## Adds `child` to a JArray node `father`.
   assert father.kind == JArray
   father.elems.add(child)
 
-proc add*(obj: JsonNode, key: string, val: JsonNode) =
+func add*(obj: JsonNode, key: string, val: JsonNode) =
   ## Sets a field from a `JObject`.
   assert obj.kind == JObject
   obj.fields[key] = val
 
-proc `%`*(s: string): JsonNode =
+func `%`*(s: string): JsonNode =
   ## Generic constructor for JSON data. Creates a new `JString JsonNode`.
   result = JsonNode(kind: JString, str: s)
 
-proc `%`*(n: uint): JsonNode =
+func `%`*(n: uint): JsonNode =
   ## Generic constructor for JSON data. Creates a new `JInt JsonNode`.
   if n > cast[uint](int.high):
     result = newJRawNumber($n)
   else:
     result = JsonNode(kind: JInt, num: BiggestInt(n))
 
-proc `%`*(n: int): JsonNode =
+func `%`*(n: int): JsonNode =
   ## Generic constructor for JSON data. Creates a new `JInt JsonNode`.
   result = JsonNode(kind: JInt, num: n)
 
-proc `%`*(n: BiggestUInt): JsonNode =
+func `%`*(n: BiggestUInt): JsonNode =
   ## Generic constructor for JSON data. Creates a new `JInt JsonNode`.
   if n > cast[BiggestUInt](BiggestInt.high):
     result = newJRawNumber($n)
   else:
     result = JsonNode(kind: JInt, num: BiggestInt(n))
 
-proc `%`*(n: BiggestInt): JsonNode =
+func `%`*(n: BiggestInt): JsonNode =
   ## Generic constructor for JSON data. Creates a new `JInt JsonNode`.
   result = JsonNode(kind: JInt, num: n)
 
-proc `%`*(n: float): JsonNode =
+func `%`*(n: float): JsonNode =
   ## Generic constructor for JSON data. Creates a new `JFloat JsonNode`.
   result = JsonNode(kind: JFloat, fnum: n)
 
-proc `%`*(b: bool): JsonNode =
+func `%`*(b: bool): JsonNode =
   ## Generic constructor for JSON data. Creates a new `JBool JsonNode`.
   result = JsonNode(kind: JBool, bval: b)
 
-proc `%`*(keyVals: openArray[tuple[key: string, val: JsonNode]]): JsonNode =
+func `%`*(keyVals: openArray[tuple[key: string, val: JsonNode]]): JsonNode =
   ## Generic constructor for JSON data. Creates a new `JObject JsonNode`
   if keyVals.len == 0: return newJArray()
   result = newJObject()
@@ -348,17 +348,17 @@ proc `%`*(keyVals: openArray[tuple[key: string, val: JsonNode]]): JsonNode =
 
 template `%`*(j: JsonNode): JsonNode = j
 
-proc `%`*[T](elements: openArray[T]): JsonNode =
+func `%`*[T](elements: openArray[T]): JsonNode =
   ## Generic constructor for JSON data. Creates a new `JArray JsonNode`
   result = newJArray()
   for elem in elements: result.add(%elem)
 
-proc `%`*[T](table: Table[string, T]|OrderedTable[string, T]): JsonNode =
+func `%`*[T](table: Table[string, T]|OrderedTable[string, T]): JsonNode =
   ## Generic constructor for JSON data. Creates a new `JObject JsonNode`.
   result = newJObject()
   for k, v in table: result[k] = %v
 
-proc `%`*[T](opt: Option[T]): JsonNode =
+func `%`*[T](opt: Option[T]): JsonNode =
   ## Generic constructor for JSON data. Creates a new `JNull JsonNode`
   ## if `opt` is empty, otherwise it delegates to the underlying value.
   if opt.isSome: %opt.get else: newJNull()
@@ -367,7 +367,7 @@ when false:
   # For 'consistency' we could do this, but that only pushes people further
   # into that evil comfort zone where they can use Nim without understanding it
   # causing problems later on.
-  proc `%`*(elements: set[bool]): JsonNode =
+  func `%`*(elements: set[bool]): JsonNode =
     ## Generic constructor for JSON data. Creates a new `JObject JsonNode`.
     ## This can only be used with the empty set `{}` and is supported
     ## to prevent the gotcha `%*{}` which used to produce an empty
@@ -376,29 +376,29 @@ when false:
     assert false notin elements, "usage error: only empty sets allowed"
     assert true notin elements, "usage error: only empty sets allowed"
 
-proc `[]=`*(obj: JsonNode, key: string, val: JsonNode) {.inline.} =
+func `[]=`*(obj: JsonNode, key: string, val: JsonNode) {.inline.} =
   ## Sets a field from a `JObject`.
   assert(obj.kind == JObject)
   obj.fields[key] = val
 
-proc `%`*[T: object](o: T): JsonNode =
+func `%`*[T: object](o: T): JsonNode =
   ## Construct JsonNode from tuples and objects.
   result = newJObject()
   for k, v in o.fieldPairs: result[k] = %v
 
-proc `%`*(o: ref object): JsonNode =
+func `%`*(o: ref object): JsonNode =
   ## Generic constructor for JSON data. Creates a new `JObject JsonNode`
   if o.isNil:
     result = newJNull()
   else:
     result = %(o[])
 
-proc `%`*(o: enum): JsonNode =
+func `%`*(o: enum): JsonNode =
   ## Construct a JsonNode that represents the specified enum value as a
   ## string. Creates a new `JString JsonNode`.
   result = %($o)
 
-proc toJsonImpl(x: NimNode): NimNode =
+func toJsonImpl(x: NimNode): NimNode =
   case x.kind
   of nnkBracket: # array
     if x.len == 0: return newCall(bindSym"newJArray")
@@ -429,7 +429,7 @@ macro `%*`*(x: untyped): untyped =
   ## `%` for every element.
   result = toJsonImpl(x)
 
-proc `==`*(a, b: JsonNode): bool =
+func `==`*(a, b: JsonNode): bool =
   ## Check two nodes for equality
   if a.isNil:
     if b.isNil: return true
@@ -459,9 +459,9 @@ proc `==`*(a, b: JsonNode): bool =
         if b.fields[key] != val: return false
       result = true
 
-proc hash*(n: OrderedTable[string, JsonNode]): Hash {.noSideEffect.}
+func hash*(n: OrderedTable[string, JsonNode]): Hash {.noSideEffect.}
 
-proc hash*(n: JsonNode): Hash =
+func hash*(n: JsonNode): Hash =
   ## Compute the hash for a JSON node
   case n.kind
   of JArray:
@@ -479,12 +479,12 @@ proc hash*(n: JsonNode): Hash =
   of JNull:
     result = Hash(0)
 
-proc hash*(n: OrderedTable[string, JsonNode]): Hash =
+func hash*(n: OrderedTable[string, JsonNode]): Hash =
   for key, val in n:
     result = result xor (hash(key) !& hash(val))
   result = !$result
 
-proc len*(n: JsonNode): int =
+func len*(n: JsonNode): int =
   ## If `n` is a `JArray`, it returns the number of elements.
   ## If `n` is a `JObject`, it returns the number of pairs.
   ## Else it returns 0.
@@ -493,7 +493,7 @@ proc len*(n: JsonNode): int =
   of JObject: result = n.fields.len
   else: discard
 
-proc `[]`*(node: JsonNode, name: string): JsonNode {.inline.} =
+func `[]`*(node: JsonNode, name: string): JsonNode {.inline.} =
   ## Gets a field from a `JObject`, which must not be nil.
   ## If the value at `name` does not exist, raises KeyError.
   assert(not isNil(node))
@@ -502,7 +502,7 @@ proc `[]`*(node: JsonNode, name: string): JsonNode {.inline.} =
     if not node.fields.hasKey(name): return nil
   result = node.fields[name]
 
-proc `[]`*(node: JsonNode, index: int): JsonNode {.inline.} =
+func `[]`*(node: JsonNode, index: int): JsonNode {.inline.} =
   ## Gets the node at `index` in an Array. Result is undefined if `index`
   ## is out of bounds, but as long as array bound checks are enabled it will
   ## result in an exception.
@@ -510,7 +510,7 @@ proc `[]`*(node: JsonNode, index: int): JsonNode {.inline.} =
   assert(node.kind == JArray)
   return node.elems[index]
 
-proc `[]`*(node: JsonNode, index: BackwardsIndex): JsonNode {.inline, since: (1, 5, 1).} =
+func `[]`*(node: JsonNode, index: BackwardsIndex): JsonNode {.inline, since: (1, 5, 1).} =
   ## Gets the node at `array.len-i` in an array through the `^` operator.
   ##
   ## i.e. `j[^i]` is a shortcut for `j[j.len-i]`.
@@ -523,27 +523,27 @@ proc `[]`*(node: JsonNode, index: BackwardsIndex): JsonNode {.inline, since: (1,
 
   `[]`(node, node.len - int(index))
 
-proc hasKey*(node: JsonNode, key: string): bool =
+func hasKey*(node: JsonNode, key: string): bool =
   ## Checks if `key` exists in `node`.
   assert(node.kind == JObject)
   result = node.fields.hasKey(key)
 
-proc contains*(node: JsonNode, key: string): bool =
+func contains*(node: JsonNode, key: string): bool =
   ## Checks if `key` exists in `node`.
   assert(node.kind == JObject)
   node.fields.hasKey(key)
 
-proc contains*(node: JsonNode, val: JsonNode): bool =
+func contains*(node: JsonNode, val: JsonNode): bool =
   ## Checks if `val` exists in array `node`.
   assert(node.kind == JArray)
   find(node.elems, val) >= 0
 
-proc `{}`*(node: JsonNode, keys: varargs[string]): JsonNode =
+func `{}`*(node: JsonNode, keys: varargs[string]): JsonNode =
   ## Traverses the node and gets the given value. If any of the
   ## keys do not exist, returns `nil`. Also returns `nil` if one of the
   ## intermediate data structures is not an object.
   ##
-  ## This proc can be used to create tree structures on the
+  ## This func can be used to create tree structures on the
   ## fly (sometimes called `autovivification`:idx:):
   ##
   runnableExamples:
@@ -556,7 +556,7 @@ proc `{}`*(node: JsonNode, keys: varargs[string]): JsonNode =
       return nil
     result = result.fields.getOrDefault(key)
 
-proc `{}`*(node: JsonNode, index: varargs[int]): JsonNode =
+func `{}`*(node: JsonNode, index: varargs[int]): JsonNode =
   ## Traverses the node and gets the given value. If any of the
   ## indexes do not exist, returns `nil`. Also returns `nil` if one of the
   ## intermediate data structures is not an array.
@@ -566,18 +566,18 @@ proc `{}`*(node: JsonNode, index: varargs[int]): JsonNode =
       return nil
     result = result.elems[i]
 
-proc getOrDefault*(node: JsonNode, key: string): JsonNode =
+func getOrDefault*(node: JsonNode, key: string): JsonNode =
   ## Gets a field from a `node`. If `node` is nil or not an object or
   ## value at `key` does not exist, returns nil
   if not isNil(node) and node.kind == JObject:
     result = node.fields.getOrDefault(key)
 
-proc `{}`*(node: JsonNode, key: string): JsonNode =
+func `{}`*(node: JsonNode, key: string): JsonNode =
   ## Gets a field from a `node`. If `node` is nil or not an object or
   ## value at `key` does not exist, returns nil
   node.getOrDefault(key)
 
-proc `{}=`*(node: JsonNode, keys: varargs[string], value: JsonNode) =
+func `{}=`*(node: JsonNode, keys: varargs[string], value: JsonNode) =
   ## Traverses the node and tries to set the value at the given location
   ## to `value`. If any of the keys are missing, they are added.
   var node = node
@@ -587,14 +587,14 @@ proc `{}=`*(node: JsonNode, keys: varargs[string], value: JsonNode) =
     node = node[keys[i]]
   node[keys[keys.len-1]] = value
 
-proc delete*(obj: JsonNode, key: string) =
+func delete*(obj: JsonNode, key: string) =
   ## Deletes `obj[key]`.
   assert(obj.kind == JObject)
   if not obj.fields.hasKey(key):
     raise newException(KeyError, "key not in object")
   obj.fields.del(key)
 
-proc copy*(p: JsonNode): JsonNode =
+func copy*(p: JsonNode): JsonNode =
   ## Performs a deep copy of `a`.
   case p.kind
   of JString:
@@ -619,17 +619,17 @@ proc copy*(p: JsonNode): JsonNode =
 
 # ------------- pretty printing ----------------------------------------------
 
-proc indent(s: var string, i: int) =
+func indent(s: var string, i: int) =
   s.add(spaces(i))
 
-proc newIndent(curr, indent: int, ml: bool): int =
+func newIndent(curr, indent: int, ml: bool): int =
   if ml: return curr + indent
   else: return indent
 
-proc nl(s: var string, ml: bool) =
+func nl(s: var string, ml: bool) =
   s.add(if ml: "\n" else: " ")
 
-proc escapeJsonUnquoted*(s: string; result: var string) =
+func escapeJsonUnquoted*(s: string; result: var string) =
   ## Converts a string `s` to its JSON representation without quotes.
   ## Appends to `result`.
   for c in s:
@@ -646,24 +646,24 @@ proc escapeJsonUnquoted*(s: string; result: var string) =
     of '\\': result.add("\\\\")
     else: result.add(c)
 
-proc escapeJsonUnquoted*(s: string): string =
+func escapeJsonUnquoted*(s: string): string =
   ## Converts a string `s` to its JSON representation without quotes.
   result = newStringOfCap(s.len + s.len shr 3)
   escapeJsonUnquoted(s, result)
 
-proc escapeJson*(s: string; result: var string) =
+func escapeJson*(s: string; result: var string) =
   ## Converts a string `s` to its JSON representation with quotes.
   ## Appends to `result`.
   result.add("\"")
   escapeJsonUnquoted(s, result)
   result.add("\"")
 
-proc escapeJson*(s: string): string =
+func escapeJson*(s: string): string =
   ## Converts a string `s` to its JSON representation with quotes.
   result = newStringOfCap(s.len + s.len shr 3)
   escapeJson(s, result)
 
-proc toPretty(result: var string, node: JsonNode, indent = 2, ml = true,
+func toPretty(result: var string, node: JsonNode, indent = 2, ml = true,
               lstArr = false, currIndent = 0) =
   case node.kind
   of JObject:
@@ -722,7 +722,7 @@ proc toPretty(result: var string, node: JsonNode, indent = 2, ml = true,
     if lstArr: result.indent(currIndent)
     result.add("null")
 
-proc pretty*(node: JsonNode, indent = 2): string =
+func pretty*(node: JsonNode, indent = 2): string =
   ## Returns a JSON Representation of `node`, with indentation and
   ## on multiple lines.
   ##
@@ -744,7 +744,7 @@ proc pretty*(node: JsonNode, indent = 2): string =
   result = ""
   toPretty(result, node, indent)
 
-proc toUgly*(result: var string, node: JsonNode) =
+func toUgly*(result: var string, node: JsonNode) =
   ## Converts `node` to its JSON Representation, without
   ## regard for human readability. Meant to improve `$` string
   ## conversion performance.
@@ -785,7 +785,7 @@ proc toUgly*(result: var string, node: JsonNode) =
   of JNull:
     result.add "null"
 
-proc `$`*(node: JsonNode): string =
+func `$`*(node: JsonNode): string =
   ## Converts `node` to its JSON Representation on one line.
   result = newStringOfCap(node.len shl 1)
   toUgly(result, node)
@@ -925,9 +925,9 @@ when defined(js):
   from std/jsffi import JSObject, `[]`, to
   from std/private/jsutils import getProtoName, isInteger, isSafeInteger
 
-  proc parseNativeJson(x: cstring): JSObject {.importjs: "JSON.parse(#)".}
+  func parseNativeJson(x: cstring): JSObject {.importjs: "JSON.parse(#)".}
 
-  proc getVarType(x: JSObject, isRawNumber: var bool): JsonNodeKind =
+  func getVarType(x: JSObject, isRawNumber: var bool): JsonNodeKind =
     result = JNull
     case $getProtoName(x) # TODO: Implicit returns fail here.
     of "[object Array]": return JArray
@@ -946,12 +946,12 @@ when defined(js):
     of "[object String]": return JString
     else: assert false
 
-  proc len(x: JSObject): int =
+  func len(x: JSObject): int =
     asm """
       `result` = `x`.length;
     """
 
-  proc convertObject(x: JSObject): JsonNode =
+  func convertObject(x: JSObject): JsonNode =
     var isRawNumber = false
     case getVarType(x, isRawNumber)
     of JArray:
@@ -985,7 +985,7 @@ when defined(js):
     of JNull:
       result = newJNull()
 
-  proc parseJson*(buffer: string): JsonNode =
+  func parseJson*(buffer: string): JsonNode =
     when nimvm:
       return parseJson(newStringStream(buffer), "input")
     else:
@@ -1038,24 +1038,24 @@ when defined(nimFixedForwardGeneric):
 
   # forward declare all initFromJson
 
-  proc initFromJson(dst: var string; jsonNode: JsonNode; jsonPath: var string)
-  proc initFromJson(dst: var bool; jsonNode: JsonNode; jsonPath: var string)
-  proc initFromJson(dst: var JsonNode; jsonNode: JsonNode; jsonPath: var string)
-  proc initFromJson[T: SomeInteger](dst: var T; jsonNode: JsonNode, jsonPath: var string)
-  proc initFromJson[T: SomeFloat](dst: var T; jsonNode: JsonNode; jsonPath: var string)
-  proc initFromJson[T: enum](dst: var T; jsonNode: JsonNode; jsonPath: var string)
-  proc initFromJson[T](dst: var seq[T]; jsonNode: JsonNode; jsonPath: var string)
-  proc initFromJson[S, T](dst: var array[S, T]; jsonNode: JsonNode; jsonPath: var string)
-  proc initFromJson[T](dst: var Table[string, T]; jsonNode: JsonNode; jsonPath: var string)
-  proc initFromJson[T](dst: var OrderedTable[string, T]; jsonNode: JsonNode; jsonPath: var string)
-  proc initFromJson[T](dst: var ref T; jsonNode: JsonNode; jsonPath: var string)
-  proc initFromJson[T](dst: var Option[T]; jsonNode: JsonNode; jsonPath: var string)
-  proc initFromJson[T: distinct](dst: var T; jsonNode: JsonNode; jsonPath: var string)
-  proc initFromJson[T: object|tuple](dst: var T; jsonNode: JsonNode; jsonPath: var string)
+  func initFromJson(dst: var string; jsonNode: JsonNode; jsonPath: var string)
+  func initFromJson(dst: var bool; jsonNode: JsonNode; jsonPath: var string)
+  func initFromJson(dst: var JsonNode; jsonNode: JsonNode; jsonPath: var string)
+  func initFromJson[T: SomeInteger](dst: var T; jsonNode: JsonNode, jsonPath: var string)
+  func initFromJson[T: SomeFloat](dst: var T; jsonNode: JsonNode; jsonPath: var string)
+  func initFromJson[T: enum](dst: var T; jsonNode: JsonNode; jsonPath: var string)
+  func initFromJson[T](dst: var seq[T]; jsonNode: JsonNode; jsonPath: var string)
+  func initFromJson[S, T](dst: var array[S, T]; jsonNode: JsonNode; jsonPath: var string)
+  func initFromJson[T](dst: var Table[string, T]; jsonNode: JsonNode; jsonPath: var string)
+  func initFromJson[T](dst: var OrderedTable[string, T]; jsonNode: JsonNode; jsonPath: var string)
+  func initFromJson[T](dst: var ref T; jsonNode: JsonNode; jsonPath: var string)
+  func initFromJson[T](dst: var Option[T]; jsonNode: JsonNode; jsonPath: var string)
+  func initFromJson[T: distinct](dst: var T; jsonNode: JsonNode; jsonPath: var string)
+  func initFromJson[T: object|tuple](dst: var T; jsonNode: JsonNode; jsonPath: var string)
 
   # initFromJson definitions
 
-  proc initFromJson(dst: var string; jsonNode: JsonNode; jsonPath: var string) =
+  func initFromJson(dst: var string; jsonNode: JsonNode; jsonPath: var string) =
     verifyJsonKind(jsonNode, {JString, JNull}, jsonPath)
     # since strings don't have a nil state anymore, this mapping of
     # JNull to the default string is questionable. `none(string)` and
@@ -1065,16 +1065,16 @@ when defined(nimFixedForwardGeneric):
     else:
       dst = jsonNode.str
 
-  proc initFromJson(dst: var bool; jsonNode: JsonNode; jsonPath: var string) =
+  func initFromJson(dst: var bool; jsonNode: JsonNode; jsonPath: var string) =
     verifyJsonKind(jsonNode, {JBool}, jsonPath)
     dst = jsonNode.bval
 
-  proc initFromJson(dst: var JsonNode; jsonNode: JsonNode; jsonPath: var string) =
+  func initFromJson(dst: var JsonNode; jsonNode: JsonNode; jsonPath: var string) =
     if jsonNode == nil:
       raise newException(KeyError, "key not found: " & jsonPath)
     dst = jsonNode.copy
 
-  proc initFromJson[T: SomeInteger](dst: var T; jsonNode: JsonNode, jsonPath: var string) =
+  func initFromJson[T: SomeInteger](dst: var T; jsonNode: JsonNode, jsonPath: var string) =
     when T is uint|uint64 or (not defined(js) and int.sizeof == 4):
       verifyJsonKind(jsonNode, {JInt, JString}, jsonPath)
       case jsonNode.kind
@@ -1087,18 +1087,18 @@ when defined(nimFixedForwardGeneric):
       verifyJsonKind(jsonNode, {JInt}, jsonPath)
       dst = cast[T](jsonNode.num)
 
-  proc initFromJson[T: SomeFloat](dst: var T; jsonNode: JsonNode; jsonPath: var string) =
+  func initFromJson[T: SomeFloat](dst: var T; jsonNode: JsonNode; jsonPath: var string) =
     verifyJsonKind(jsonNode, {JInt, JFloat}, jsonPath)
     if jsonNode.kind == JFloat:
       dst = T(jsonNode.fnum)
     else:
       dst = T(jsonNode.num)
 
-  proc initFromJson[T: enum](dst: var T; jsonNode: JsonNode; jsonPath: var string) =
+  func initFromJson[T: enum](dst: var T; jsonNode: JsonNode; jsonPath: var string) =
     verifyJsonKind(jsonNode, {JString}, jsonPath)
     dst = parseEnum[T](jsonNode.getStr)
 
-  proc initFromJson[T](dst: var seq[T]; jsonNode: JsonNode; jsonPath: var string) =
+  func initFromJson[T](dst: var seq[T]; jsonNode: JsonNode; jsonPath: var string) =
     verifyJsonKind(jsonNode, {JArray}, jsonPath)
     dst.setLen jsonNode.len
     let orignalJsonPathLen = jsonPath.len
@@ -1109,7 +1109,7 @@ when defined(nimFixedForwardGeneric):
       initFromJson(dst[i], jsonNode[i], jsonPath)
       jsonPath.setLen orignalJsonPathLen
 
-  proc initFromJson[S,T](dst: var array[S,T]; jsonNode: JsonNode; jsonPath: var string) =
+  func initFromJson[S,T](dst: var array[S,T]; jsonNode: JsonNode; jsonPath: var string) =
     verifyJsonKind(jsonNode, {JArray}, jsonPath)
     let originalJsonPathLen = jsonPath.len
     for i in 0 ..< jsonNode.len:
@@ -1119,7 +1119,7 @@ when defined(nimFixedForwardGeneric):
       initFromJson(dst[i.S], jsonNode[i], jsonPath) # `.S` for enum indexed arrays
       jsonPath.setLen originalJsonPathLen
 
-  proc initFromJson[T](dst: var Table[string,T]; jsonNode: JsonNode; jsonPath: var string) =
+  func initFromJson[T](dst: var Table[string,T]; jsonNode: JsonNode; jsonPath: var string) =
     dst = initTable[string, T]()
     verifyJsonKind(jsonNode, {JObject}, jsonPath)
     let originalJsonPathLen = jsonPath.len
@@ -1129,7 +1129,7 @@ when defined(nimFixedForwardGeneric):
       initFromJson(mgetOrPut(dst, key, default(T)), jsonNode[key], jsonPath)
       jsonPath.setLen originalJsonPathLen
 
-  proc initFromJson[T](dst: var OrderedTable[string,T]; jsonNode: JsonNode; jsonPath: var string) =
+  func initFromJson[T](dst: var OrderedTable[string,T]; jsonNode: JsonNode; jsonPath: var string) =
     dst = initOrderedTable[string,T]()
     verifyJsonKind(jsonNode, {JObject}, jsonPath)
     let originalJsonPathLen = jsonPath.len
@@ -1139,7 +1139,7 @@ when defined(nimFixedForwardGeneric):
       initFromJson(mgetOrPut(dst, key, default(T)), jsonNode[key], jsonPath)
       jsonPath.setLen originalJsonPathLen
 
-  proc initFromJson[T](dst: var ref T; jsonNode: JsonNode; jsonPath: var string) =
+  func initFromJson[T](dst: var ref T; jsonNode: JsonNode; jsonPath: var string) =
     verifyJsonKind(jsonNode, {JObject, JNull}, jsonPath)
     if jsonNode.kind == JNull:
       dst = nil
@@ -1147,7 +1147,7 @@ when defined(nimFixedForwardGeneric):
       dst = new(T)
       initFromJson(dst[], jsonNode, jsonPath)
 
-  proc initFromJson[T](dst: var Option[T]; jsonNode: JsonNode; jsonPath: var string) =
+  func initFromJson[T](dst: var Option[T]; jsonNode: JsonNode; jsonPath: var string) =
     if jsonNode != nil and jsonNode.kind != JNull:
       when T is ref:
         dst = some(new(T))
@@ -1169,14 +1169,14 @@ when defined(nimFixedForwardGeneric):
       else:
         initFromJson( `baseTyp`(`dst`), `jsonNode`, `jsonPath`)
 
-  proc initFromJson[T: distinct](dst: var T; jsonNode: JsonNode; jsonPath: var string) =
+  func initFromJson[T: distinct](dst: var T; jsonNode: JsonNode; jsonPath: var string) =
     assignDistinctImpl(dst, jsonNode, jsonPath)
 
-  proc detectIncompatibleType(typeExpr, lineinfoNode: NimNode) =
+  func detectIncompatibleType(typeExpr, lineinfoNode: NimNode) =
     if typeExpr.kind == nnkTupleConstr:
       error("Use a named tuple instead of: " & typeExpr.repr, lineinfoNode)
 
-  proc foldObjectBody(dst, typeNode, tmpSym, jsonNode, jsonPath, originalJsonPathLen: NimNode) =
+  func foldObjectBody(dst, typeNode, tmpSym, jsonNode, jsonPath, originalJsonPathLen: NimNode) =
     case typeNode.kind
     of nnkEmpty:
       discard
@@ -1273,10 +1273,10 @@ when defined(nimFixedForwardGeneric):
     else:
       foldObjectBody(result, typeSym.getTypeImpl, dst, jsonNode, jsonPath, originalJsonPathLen)
 
-  proc initFromJson[T: object|tuple](dst: var T; jsonNode: JsonNode; jsonPath: var string) =
+  func initFromJson[T: object|tuple](dst: var T; jsonNode: JsonNode; jsonPath: var string) =
     assignObjectImpl(dst, jsonNode, jsonPath)
 
-  proc to*[T](node: JsonNode, t: typedesc[T]): T =
+  func to*[T](node: JsonNode, t: typedesc[T]): T =
     ## `Unmarshals`:idx: the specified node into the object type specified.
     ##
     ## Known limitations:

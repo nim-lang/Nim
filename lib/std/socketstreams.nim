@@ -75,14 +75,14 @@ type
   WriteSocketStreamObj* = object of ReadSocketStreamObj
     lastFlush: int
 
-proc rsAtEnd(s: Stream): bool =
+func rsAtEnd(s: Stream): bool =
   return false
 
-proc rsSetPosition(s: Stream, pos: int) =
+func rsSetPosition(s: Stream, pos: int) =
   var s = ReadSocketStream(s)
   s.pos = pos
 
-proc rsGetPosition(s: Stream): int =
+func rsGetPosition(s: Stream): int =
   var s = ReadSocketStream(s)
   return s.pos
 
@@ -113,7 +113,7 @@ proc rsReadDataStr(s: Stream, buffer: var string, slice: Slice[int]): int =
   else:
     result = 0
 
-proc wsWriteData(s: Stream, buffer: pointer, bufLen: int) =
+func wsWriteData(s: Stream, buffer: pointer, bufLen: int) =
   var s = WriteSocketStream(s)
   if s.pos < s.lastFlush:
     raise newException(IOError, "Unable to write into buffer that has already been sent")
@@ -122,7 +122,7 @@ proc wsWriteData(s: Stream, buffer: pointer, bufLen: int) =
   copyMem(s.buf[s.pos].addr, buffer, bufLen)
   s.pos += bufLen
 
-proc wsPeekData(s: Stream, buffer: pointer, bufLen: int): int =
+func wsPeekData(s: Stream, buffer: pointer, bufLen: int): int =
   var s = WriteSocketStream(s)
   result = bufLen
   if result > 0:
@@ -131,12 +131,12 @@ proc wsPeekData(s: Stream, buffer: pointer, bufLen: int): int =
     else:
       copyMem(buffer, s.buf[s.pos].addr, bufLen)
 
-proc wsReadData(s: Stream, buffer: pointer, bufLen: int): int =
+func wsReadData(s: Stream, buffer: pointer, bufLen: int): int =
   result = s.wsPeekData(buffer, bufLen)
   var s = ReadSocketStream(s)
   s.pos += bufLen
 
-proc wsAtEnd(s: Stream): bool =
+func wsAtEnd(s: Stream): bool =
   var s = WriteSocketStream(s)
   return s.pos == s.buf.len
 
@@ -150,7 +150,7 @@ proc rsClose(s: Stream) =
     var s = ReadSocketStream(s)
     s.data.close()
 
-proc newReadSocketStream*(s: Socket): owned ReadSocketStream =
+func newReadSocketStream*(s: Socket): owned ReadSocketStream =
   result = ReadSocketStream(data: s, pos: 0,
     closeImpl: rsClose,
     atEndImpl: rsAtEnd,
@@ -160,11 +160,11 @@ proc newReadSocketStream*(s: Socket): owned ReadSocketStream =
     peekDataImpl: rsPeekData,
     readDataStrImpl: rsReadDataStr)
 
-proc resetStream*(s: ReadSocketStream) =
+func resetStream*(s: ReadSocketStream) =
   s.buf = @[]
   s.pos = 0
 
-proc newWriteSocketStream*(s: Socket): owned WriteSocketStream =
+func newWriteSocketStream*(s: Socket): owned WriteSocketStream =
   result = WriteSocketStream(data: s, pos: 0,
     closeImpl: rsClose,
     atEndImpl: wsAtEnd,
@@ -175,7 +175,7 @@ proc newWriteSocketStream*(s: Socket): owned WriteSocketStream =
     peekDataImpl: wsPeekData,
     flushImpl: wsFlush)
 
-proc resetStream*(s: WriteSocketStream) =
+func resetStream*(s: WriteSocketStream) =
   s.buf = @[]
   s.pos = 0
   s.lastFlush = 0

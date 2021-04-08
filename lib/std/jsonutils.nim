@@ -40,8 +40,8 @@ type
       ## fields without corresponding JSON keys.
     # in future work: a key rename could be added
 
-proc isNamedTuple(T: typedesc): bool {.magic: "TypeTrait".}
-proc distinctBase(T: typedesc): typedesc {.magic: "TypeTrait".}
+func isNamedTuple(T: typedesc): bool {.magic: "TypeTrait".}
+func distinctBase(T: typedesc): typedesc {.magic: "TypeTrait".}
 template distinctBase[T](a: T): untyped = distinctBase(typeof(a))(a)
 
 macro getDiscriminants(a: typedesc): seq[string] =
@@ -91,7 +91,7 @@ macro initCaseObject(T: typedesc, fun: untyped): untyped =
         `fun`(`key2`, typedesc[`typ`])
       result.add newTree(nnkExprColonExpr, key, val)
 
-proc checkJsonImpl(cond: bool, condStr: string, msg = "") =
+func checkJsonImpl(cond: bool, condStr: string, msg = "") =
   if not cond:
     # just pick 1 exception type for simplicity; other choices would be:
     # JsonError, JsonParser, JsonKindError
@@ -100,7 +100,7 @@ proc checkJsonImpl(cond: bool, condStr: string, msg = "") =
 template checkJson(cond: untyped, msg = "") =
   checkJsonImpl(cond, astToStr(cond), msg)
 
-proc hasField[T](obj: T, field: string): bool =
+func hasField[T](obj: T, field: string): bool =
   for k, _ in fieldPairs(obj):
     if k == field:
       return true
@@ -149,9 +149,9 @@ template fromJsonFields(newObj, oldObj, json, discKeys, opt) =
   
   checkJson ok, $(json.len, num, numMatched, $T, json)
 
-proc fromJson*[T](a: var T, b: JsonNode, opt = Joptions())
+func fromJson*[T](a: var T, b: JsonNode, opt = Joptions())
 
-proc discKeyMatch[T](obj: T, json: JsonNode, key: static string): bool =
+func discKeyMatch[T](obj: T, json: JsonNode, key: static string): bool =
   if not json.hasKey key:
     return true
   let field = accessField(obj, key)
@@ -170,11 +170,11 @@ macro discKeysMatchBodyGen(obj: typed, json: JsonNode,
     result.add quote do:
       `r` = `r` and discKeyMatch(`obj`, `json`, `keyLit`)
 
-proc discKeysMatch[T](obj: T, json: JsonNode, keys: static seq[string]): bool =
+func discKeysMatch[T](obj: T, json: JsonNode, keys: static seq[string]): bool =
   result = true
   discKeysMatchBodyGen(obj, json, keys)
 
-proc fromJson*[T](a: var T, b: JsonNode, opt = Joptions()) =
+func fromJson*[T](a: var T, b: JsonNode, opt = Joptions()) =
   ## inplace version of `jsonTo`
   #[
   adding "json path" leading to `b` can be added in future work.
@@ -250,11 +250,11 @@ proc fromJson*[T](a: var T, b: JsonNode, opt = Joptions()) =
     # checkJson not appropriate here
     static: doAssert false, "not yet implemented: " & $T
 
-proc jsonTo*(b: JsonNode, T: typedesc, opt = Joptions()): T =
+func jsonTo*(b: JsonNode, T: typedesc, opt = Joptions()): T =
   ## reverse of `toJson`
   fromJson(result, b, opt)
 
-proc toJson*[T](a: T): JsonNode =
+func toJson*[T](a: T): JsonNode =
   ## serializes `a` to json; uses `toJsonHook(a: T)` if it's in scope to
   ## customize serialization, see strtabs.toJsonHook for an example.
   when compiles(toJsonHook(a)): result = toJsonHook(a)
@@ -281,7 +281,7 @@ proc toJson*[T](a: T): JsonNode =
   elif T is cstring: (if a == nil: result = newJNull() else: result = % $a)
   else: result = %a
 
-proc fromJsonHook*[K: string|cstring, V](t: var (Table[K, V] | OrderedTable[K, V]),
+func fromJsonHook*[K: string|cstring, V](t: var (Table[K, V] | OrderedTable[K, V]),
                          jsonNode: JsonNode) =
   ## Enables `fromJson` for `Table` and `OrderedTable` types.
   ## 
@@ -302,7 +302,7 @@ proc fromJsonHook*[K: string|cstring, V](t: var (Table[K, V] | OrderedTable[K, V
   for k, v in jsonNode:
     t[k] = jsonTo(v, V)
 
-proc toJsonHook*[K: string|cstring, V](t: (Table[K, V] | OrderedTable[K, V])): JsonNode =
+func toJsonHook*[K: string|cstring, V](t: (Table[K, V] | OrderedTable[K, V])): JsonNode =
   ## Enables `toJson` for `Table` and `OrderedTable` types.
   ##
   ## See also:
@@ -324,7 +324,7 @@ proc toJsonHook*[K: string|cstring, V](t: (Table[K, V] | OrderedTable[K, V])): J
     # not sure if $k has overhead for string
     result[(when K is string: k else: $k)] = toJson(v)
 
-proc fromJsonHook*[A](s: var SomeSet[A], jsonNode: JsonNode) =
+func fromJsonHook*[A](s: var SomeSet[A], jsonNode: JsonNode) =
   ## Enables `fromJson` for `HashSet` and `OrderedSet` types.
   ## 
   ## See also:
@@ -344,7 +344,7 @@ proc fromJsonHook*[A](s: var SomeSet[A], jsonNode: JsonNode) =
   for v in jsonNode:
     incl(s, jsonTo(v, A))
 
-proc toJsonHook*[A](s: SomeSet[A]): JsonNode =
+func toJsonHook*[A](s: SomeSet[A]): JsonNode =
   ## Enables `toJson` for `HashSet` and `OrderedSet` types.
   ##
   ## See also:
@@ -358,7 +358,7 @@ proc toJsonHook*[A](s: SomeSet[A]): JsonNode =
   for k in s:
     add(result, toJson(k))
 
-proc fromJsonHook*[T](self: var Option[T], jsonNode: JsonNode) =
+func fromJsonHook*[T](self: var Option[T], jsonNode: JsonNode) =
   ## Enables `fromJson` for `Option` types.
   ## 
   ## See also:
@@ -376,7 +376,7 @@ proc fromJsonHook*[T](self: var Option[T], jsonNode: JsonNode) =
   else:
     self = none[T]()
 
-proc toJsonHook*[T](self: Option[T]): JsonNode =
+func toJsonHook*[T](self: Option[T]): JsonNode =
   ## Enables `toJson` for `Option` types.
   ##
   ## See also:
@@ -393,7 +393,7 @@ proc toJsonHook*[T](self: Option[T]): JsonNode =
   else:
     newJNull()
 
-proc fromJsonHook*(a: var StringTableRef, b: JsonNode) =
+func fromJsonHook*(a: var StringTableRef, b: JsonNode) =
   ## Enables `fromJson` for `StringTableRef` type.
   ## 
   ## See also:
@@ -411,7 +411,7 @@ proc fromJsonHook*(a: var StringTableRef, b: JsonNode) =
   let b2 = b["table"]
   for k,v in b2: a[k] = jsonTo(v, string)
 
-proc toJsonHook*(a: StringTableRef): JsonNode =
+func toJsonHook*(a: StringTableRef): JsonNode =
   ## Enables `toJson` for `StringTableRef` type.
   ## 
   ## See also:

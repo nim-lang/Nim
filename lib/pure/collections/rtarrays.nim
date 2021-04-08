@@ -24,12 +24,12 @@ type
 
 template usesSeqPart(x): untyped = x.L > ArrayPartSize
 
-proc initRtArray*[T](len: Natural): RtArray[T] =
+func initRtArray*[T](len: Natural): RtArray[T] =
   result.L = len
   if usesSeqPart(result):
     newSeq(result.spart, len)
 
-proc getRawData*[T](x: var RtArray[T]): ptr UncheckedArray[T] =
+func getRawData*[T](x: var RtArray[T]): ptr UncheckedArray[T] =
   if usesSeqPart(x): cast[ptr UncheckedArray[T]](addr(x.spart[0]))
   else: cast[ptr UncheckedArray[T]](addr(x.apart[0]))
 

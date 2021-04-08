@@ -56,10 +56,10 @@ when defined(windows):
       wProcessorLevel: uint16
       wProcessorRevision: uint16
 
-  proc getSystemInfo(lpSystemInfo: ptr SYSTEM_INFO) {.stdcall,
+  func getSystemInfo(lpSystemInfo: ptr SYSTEM_INFO) {.stdcall,
       dynlib: "kernel32", importc: "GetSystemInfo".}
 
-  proc getAllocationGranularity: uint =
+  func getAllocationGranularity: uint =
     var sysInfo: SYSTEM_INFO
     getSystemInfo(addr sysInfo)
     return uint(sysInfo.dwAllocationGranularity)
@@ -107,14 +107,14 @@ when defined(windows):
     MEM_DECOMMIT = 0x4000
     MEM_RESERVE = 0x2000
     MEM_COMMIT = 0x1000
-  proc virtualFree(lpAddress: pointer, dwSize: int,
+  func virtualFree(lpAddress: pointer, dwSize: int,
                    dwFreeType: int32): cint {.header: "<windows.h>", stdcall,
                    importc: "VirtualFree".}
-  proc virtualAlloc(lpAddress: pointer, dwSize: int, flAllocationType,
+  func virtualAlloc(lpAddress: pointer, dwSize: int, flAllocationType,
                     flProtect: int32): pointer {.
                     header: "<windows.h>", stdcall, importc: "VirtualAlloc".}
 
-proc init*(T: type ReservedMem,
+func init*(T: type ReservedMem,
            maxLen: Natural,
            initLen: Natural = 0,
            initCommitLen = initLen,
@@ -156,7 +156,7 @@ func commitedLen*(m: ReservedMem): int =
 func maxLen*(m: ReservedMem): int =
   distance(m.memStart, m.memEnd)
 
-proc setLen*(m: var ReservedMem, newLen: int) =
+func setLen*(m: var ReservedMem, newLen: int) =
   let len = m.len
   m.usedMemEnd = m.memStart.shift(newLen)
   if newLen > len:
@@ -184,7 +184,7 @@ proc setLen*(m: var ReservedMem, newLen: int) =
 
       m.committedMemEnd = newCommitEnd
 
-proc init*(SeqType: type ReservedMemSeq,
+func init*(SeqType: type ReservedMemSeq,
            maxLen: Natural,
            initLen: Natural = 0,
            initCommitLen: Natural = 0,
@@ -218,16 +218,16 @@ func `[]`*[T](s: var ReservedMemSeq[T], rpos: BackwardsIndex): var T =
 func len*[T](s: ReservedMemSeq[T]): int =
   s.mem.len div sizeof(T)
 
-proc setLen*[T](s: var ReservedMemSeq[T], newLen: int) =
+func setLen*[T](s: var ReservedMemSeq[T], newLen: int) =
   # TODO call destructors
   s.mem.setLen(newLen * sizeof(T))
 
-proc add*[T](s: var ReservedMemSeq[T], val: T) =
+func add*[T](s: var ReservedMemSeq[T], val: T) =
   let len = s.len
   s.setLen(len + 1)
   s[len] = val
 
-proc pop*[T](s: var ReservedMemSeq[T]): T =
+func pop*[T](s: var ReservedMemSeq[T]): T =
   assert s.usedMemEnd != s.memStart
   let lastIdx = s.len - 1
   result = s[lastIdx]

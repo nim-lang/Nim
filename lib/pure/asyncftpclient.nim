@@ -23,7 +23,7 @@
 ##
 ## .. code-block:: Nim
 ##    import std/[asyncdispatch, asyncftpclient]
-##    proc main() {.async.} =
+##    func main() {.async.} =
 ##      var ftp = newAsyncFtpClient("example.com", user = "test", pass = "test")
 ##      await ftp.connect()
 ##      echo("Connected")
@@ -43,7 +43,7 @@
 ##
 ## .. code-block:: Nim
 ##    import std/[asyncdispatch, asyncftpclient]
-##    proc main() {.async.} =
+##    func main() {.async.} =
 ##      var ftp = newAsyncFtpClient("example.com", user = "test", pass = "test")
 ##      await ftp.connect()
 ##      let currentDir = await ftp.pwd()
@@ -65,12 +65,12 @@
 ## .. code-block:: Nim
 ##    import std/[asyncdispatch, asyncftpclient]
 ##
-##    proc onProgressChanged(total, progress: BiggestInt,
+##    func onProgressChanged(total, progress: BiggestInt,
 ##                            speed: float) {.async.} =
 ##      echo("Uploaded ", progress, " of ", total, " bytes")
 ##      echo("Current speed: ", speed, " kb/s")
 ##
-##    proc main() {.async.} =
+##    func main() {.async.} =
 ##      var ftp = newAsyncFtpClient("example.com", user = "test", pass = "test", progressInterval = 500)
 ##      await ftp.connect()
 ##      await ftp.store("file.txt", "/home/user/file.txt", onProgressChanged)
@@ -97,7 +97,7 @@ type
     JRetrText, JRetr, JStore
 
   FtpJob = ref object
-    prc: proc (ftp: AsyncFtpClient, async: bool): bool {.nimcall, gcsafe.}
+    prc: func (ftp: AsyncFtpClient, async: bool): bool {.nimcall, gcsafe.}
     case typ*: FtpJobType
     of JRetrText:
       lines: string

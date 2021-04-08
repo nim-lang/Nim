@@ -9,8 +9,8 @@
 
 ## This module implements efficient computations of hash values for diverse
 ## Nim types. All the procs are based on these two building blocks:
-## - `!& proc <#!&,Hash,int>`_ used to start or mix a hash value, and
-## - `!$ proc <#!$,Hash>`_ used to finish the hash value.
+## - `!& func <#!&,Hash,int>`_ used to start or mix a hash value, and
+## - `!$ func <#!$,Hash>`_ used to finish the hash value.
 ##
 ## If you want to implement hash procs for your custom types,
 ## you will end up writing the following kind of skeleton of code:
@@ -25,7 +25,7 @@ runnableExamples:
     yield hash(x.foo)
     yield hash(x.bar)
 
-  proc hash(x: Something): Hash =
+  func hash(x: Something): Hash =
     ## Computes a Hash from `x`.
     var h: Hash = 0
     # Iterate over parts of `x`.
@@ -44,7 +44,7 @@ runnableExamples:
       foo: int
       bar: string
 
-  proc hash(x: Something): Hash =
+  func hash(x: Something): Hash =
     ## Computes a Hash from `x`.
     var h: Hash = 0
     h = h !& hash(x.foo)
@@ -68,10 +68,10 @@ type
               ## always have a size of a power of two so they can use the `and`
               ## operator instead of `mod` for truncation of the hash value.
 
-proc `!&`*(h: Hash, val: int): Hash {.inline.} =
+func `!&`*(h: Hash, val: int): Hash {.inline.} =
   ## Mixes a hash value `h` with `val` to produce a new hash value.
   ##
-  ## This is only needed if you need to implement a `hash` proc for a new datatype.
+  ## This is only needed if you need to implement a `hash` func for a new datatype.
   let h = cast[uint](h)
   let val = cast[uint](val)
   var res = h + val
@@ -79,17 +79,17 @@ proc `!&`*(h: Hash, val: int): Hash {.inline.} =
   res = res xor (res shr 6)
   result = cast[Hash](res)
 
-proc `!$`*(h: Hash): Hash {.inline.} =
+func `!$`*(h: Hash): Hash {.inline.} =
   ## Finishes the computation of the hash value.
   ##
-  ## This is only needed if you need to implement a `hash` proc for a new datatype.
+  ## This is only needed if you need to implement a `hash` func for a new datatype.
   let h = cast[uint](h) # Hash is practically unsigned.
   var res = h + h shl 3
   res = res xor (res shr 11)
   res = res + res shl 15
   result = cast[Hash](res)
 
-proc hiXorLoFallback64(a, b: uint64): uint64 {.inline.} =
+func hiXorLoFallback64(a, b: uint64): uint64 {.inline.} =
   let # Fall back in 64-bit arithmetic
     aH = a shr 32
     aL = a and 0xFFFFFFFF'u64
@@ -106,7 +106,7 @@ proc hiXorLoFallback64(a, b: uint64): uint64 {.inline.} =
   let hi = rHH + (rHL shr 32) + (rLH shr 32) + c
   return hi xor lo
 
-proc hiXorLo(a, b: uint64): uint64 {.inline.} =
+func hiXorLo(a, b: uint64): uint64 {.inline.} =
   # XOR of the high & low 8 bytes of the full 16 byte product.
   when nimvm:
     result = hiXorLoFallback64(a, b) # `result =` is necessary here.
@@ -116,7 +116,7 @@ proc hiXorLo(a, b: uint64): uint64 {.inline.} =
     elif defined(gcc) or defined(llvm_gcc) or defined(clang):
       {.emit: """__uint128_t r = `a`; r *= `b`; `result` = (r >> 64) ^ r;""".}
     elif defined(windows) and not defined(tcc):
-      proc umul128(a, b: uint64, c: ptr uint64): uint64 {.importc: "_umul128", header: "intrin.h".}
+      func umul128(a, b: uint64, c: ptr uint64): uint64 {.importc: "_umul128", header: "intrin.h".}
       var b = b
       let c = umul128(a, b, addr b)
       result = c xor b
@@ -127,7 +127,7 @@ when defined(js):
   import std/jsbigints
   import std/private/jsutils
 
-  proc hiXorLoJs(a, b: JsBigInt): JsBigInt =
+  func hiXorLoJs(a, b: JsBigInt): JsBigInt =
     let
       prod = a * b
       mask = big"0xffffffffffffffff" # (big"1" shl big"64") - big"1"
@@ -154,7 +154,7 @@ when defined(js):
       y[0] = num
       big(z[0]) + big(z[1]) shl big(32)
 
-proc hashWangYi1*(x: int64|uint64|Hash): Hash {.inline.} =
+func hashWangYi1*(x: int64|uint64|Hash): Hash {.inline.} =
   ## Wang Yi's hash_v1 for 64-bit ints (see https://github.com/rurban/smhasher for
   ## more details). This passed all scrambling tests in Spring 2019 and is simple.
   ##
@@ -177,7 +177,7 @@ proc hashWangYi1*(x: int64|uint64|Hash): Hash {.inline.} =
     else:
       result = cast[Hash](h(x))
 
-proc hashData*(data: pointer, size: int): Hash =
+func hashData*(data: pointer, size: int): Hash =
   ## Hashes an array of bytes of size `size`.
   var h: Hash = 0
   when defined(js):
@@ -196,7 +196,7 @@ proc hashData*(data: pointer, size: int): Hash =
 when defined(js):
   var objectID = 0
 
-proc hash*(x: pointer): Hash {.inline.} =
+func hash*(x: pointer): Hash {.inline.} =
   ## Efficient hashing of pointers.
   when defined(js):
     asm """
@@ -212,27 +212,27 @@ proc hash*(x: pointer): Hash {.inline.} =
   else:
     result = cast[Hash](cast[uint](x) shr 3) # skip the alignment
 
-proc hash*[T: proc](x: T): Hash {.inline.} =
-  ## Efficient hashing of proc vars. Closures are supported too.
+func hash*[T: proc](x: T): Hash {.inline.} =
+  ## Efficient hashing of func vars. Closures are supported too.
   when T is "closure":
     result = hash(rawProc(x)) !& hash(rawEnv(x))
   else:
     result = hash(pointer(x))
 
-proc hashIdentity*[T: Ordinal|enum](x: T): Hash {.inline, since: (1, 3).} =
+func hashIdentity*[T: Ordinal|enum](x: T): Hash {.inline, since: (1, 3).} =
   ## The identity hash, i.e. `hashIdentity(x) = x`.
   cast[Hash](ord(x))
 
 when defined(nimIntHash1):
-  proc hash*[T: Ordinal|enum](x: T): Hash {.inline.} =
+  func hash*[T: Ordinal|enum](x: T): Hash {.inline.} =
     ## Efficient hashing of integers.
     cast[Hash](ord(x))
 else:
-  proc hash*[T: Ordinal|enum](x: T): Hash {.inline.} =
+  func hash*[T: Ordinal|enum](x: T): Hash {.inline.} =
     ## Efficient hashing of integers.
     hashWangYi1(uint64(ord(x)))
 
-proc hash*(x: float): Hash {.inline.} =
+func hash*(x: float): Hash {.inline.} =
   ## Efficient hashing of floats.
   let y = x + 0.0 # for denormalization
   when nimvm:
@@ -246,12 +246,12 @@ proc hash*(x: float): Hash {.inline.} =
 
 # Forward declarations before methods that hash containers. This allows
 # containers to contain other containers
-proc hash*[A](x: openArray[A]): Hash
-proc hash*[A](x: set[A]): Hash
+func hash*[A](x: openArray[A]): Hash
+func hash*[A](x: set[A]): Hash
 
 
 when defined(js):
-  proc imul(a, b: uint32): uint32 =
+  func imul(a, b: uint32): uint32 =
     # https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Math/imul
     let mask = 0xffff'u32
     var
@@ -263,10 +263,10 @@ when defined(js):
 else:
   template imul(a, b: uint32): untyped = a * b
 
-proc rotl32(x: uint32, r: int): uint32 {.inline.} =
+func rotl32(x: uint32, r: int): uint32 {.inline.} =
   (x shl r) or (x shr (32 - r))
 
-proc murmurHash(x: openArray[byte]): Hash =
+func murmurHash(x: openArray[byte]): Hash =
   # https://github.com/PeterScott/murmur3/blob/master/murmur3.c
   const
     c1 = 0xcc9e2d51'u32
@@ -322,19 +322,19 @@ proc murmurHash(x: openArray[byte]): Hash =
   h1 = h1 xor (h1 shr 16)
   return cast[Hash](h1)
 
-proc hashVmImpl(x: cstring, sPos, ePos: int): Hash =
+func hashVmImpl(x: cstring, sPos, ePos: int): Hash =
   doAssert false, "implementation override in compiler/vmops.nim"
 
-proc hashVmImpl(x: string, sPos, ePos: int): Hash =
+func hashVmImpl(x: string, sPos, ePos: int): Hash =
   doAssert false, "implementation override in compiler/vmops.nim"
 
-proc hashVmImplChar(x: openArray[char], sPos, ePos: int): Hash =
+func hashVmImplChar(x: openArray[char], sPos, ePos: int): Hash =
   doAssert false, "implementation override in compiler/vmops.nim"
 
-proc hashVmImplByte(x: openArray[byte], sPos, ePos: int): Hash =
+func hashVmImplByte(x: openArray[byte], sPos, ePos: int): Hash =
   doAssert false, "implementation override in compiler/vmops.nim"
 
-proc hash*(x: string): Hash =
+func hash*(x: string): Hash =
   ## Efficient hashing of strings.
   ##
   ## **See also:**
@@ -354,7 +354,7 @@ proc hash*(x: string): Hash =
     else:
       result = murmurHash(toOpenArrayByte(x, 0, high(x)))
 
-proc hash*(x: cstring): Hash =
+func hash*(x: cstring): Hash =
   ## Efficient hashing of null-terminated strings.
   runnableExamples:
     doAssert hash(cstring"abracadabra") == hash("abracadabra")
@@ -378,7 +378,7 @@ proc hash*(x: cstring): Hash =
         let xx = $x
         murmurHash(toOpenArrayByte(xx, 0, high(xx)))
 
-proc hash*(sBuf: string, sPos, ePos: int): Hash =
+func hash*(sBuf: string, sPos, ePos: int): Hash =
   ## Efficient hashing of a string buffer, from starting
   ## position `sPos` to ending position `ePos` (included).
   ##
@@ -395,7 +395,7 @@ proc hash*(sBuf: string, sPos, ePos: int): Hash =
   else:
     murmurHash(toOpenArrayByte(sBuf, sPos, ePos))
 
-proc hashIgnoreStyle*(x: string): Hash =
+func hashIgnoreStyle*(x: string): Hash =
   ## Efficient hashing of strings; style is ignored.
   ##
   ## **Note:** This uses a different hashing algorithm than `hash(string)`.
@@ -420,7 +420,7 @@ proc hashIgnoreStyle*(x: string): Hash =
       inc(i)
   result = !$h
 
-proc hashIgnoreStyle*(sBuf: string, sPos, ePos: int): Hash =
+func hashIgnoreStyle*(sBuf: string, sPos, ePos: int): Hash =
   ## Efficient hashing of a string buffer, from starting
   ## position `sPos` to ending position `ePos` (included); style is ignored.
   ##
@@ -445,7 +445,7 @@ proc hashIgnoreStyle*(sBuf: string, sPos, ePos: int): Hash =
       inc(i)
   result = !$h
 
-proc hashIgnoreCase*(x: string): Hash =
+func hashIgnoreCase*(x: string): Hash =
   ## Efficient hashing of strings; case is ignored.
   ##
   ## **Note:** This uses a different hashing algorithm than `hash(string)`.
@@ -464,7 +464,7 @@ proc hashIgnoreCase*(x: string): Hash =
     h = h !& ord(c)
   result = !$h
 
-proc hashIgnoreCase*(sBuf: string, sPos, ePos: int): Hash =
+func hashIgnoreCase*(sBuf: string, sPos, ePos: int): Hash =
   ## Efficient hashing of a string buffer, from starting
   ## position `sPos` to ending position `ePos` (included); case is ignored.
   ##
@@ -485,9 +485,9 @@ proc hashIgnoreCase*(sBuf: string, sPos, ePos: int): Hash =
   result = !$h
 
 
-proc hash*[T: tuple | object](x: T): Hash =
+func hash*[T: tuple | object](x: T): Hash =
   ## Efficient hashing of tuples and objects.
-  ## There must be a `hash` proc defined for each of the field types.
+  ## There must be a `hash` func defined for each of the field types.
   runnableExamples:
     type Obj = object
       x: int
@@ -497,15 +497,15 @@ proc hash*[T: tuple | object](x: T): Hash =
       y: string
     assert hash(Obj(x: 520, y: "Nim")) != hash(Obj(x: 520, y: "Nim2"))
     # you can define custom hashes for objects (even if they're generic):
-    proc hash(a: Obj2): Hash = hash((a.x))
+    func hash(a: Obj2): Hash = hash((a.x))
     assert hash(Obj2[float](x: 520, y: "Nim")) == hash(Obj2[float](x: 520, y: "Nim2"))
   for f in fields(x):
     result = result !& hash(f)
   result = !$result
 
-proc hash*[A](x: openArray[A]): Hash =
+func hash*[A](x: openArray[A]): Hash =
   ## Efficient hashing of arrays and sequences.
-  ## There must be a `hash` proc defined for the element type `A`.
+  ## There must be a `hash` func defined for the element type `A`.
   when A is byte:
     result = murmurHash(x)
   elif A is char:
@@ -518,10 +518,10 @@ proc hash*[A](x: openArray[A]): Hash =
       result = result !& hash(a)
     result = !$result
 
-proc hash*[A](aBuf: openArray[A], sPos, ePos: int): Hash =
+func hash*[A](aBuf: openArray[A], sPos, ePos: int): Hash =
   ## Efficient hashing of portions of arrays and sequences, from starting
   ## position `sPos` to ending position `ePos` (included).
-  ## There must be a `hash` proc defined for the element type `A`.
+  ## There must be a `hash` func defined for the element type `A`.
   ##
   ## `hash(myBuf, 0, myBuf.high)` is equivalent to `hash(myBuf)`.
   runnableExamples:
@@ -543,9 +543,9 @@ proc hash*[A](aBuf: openArray[A], sPos, ePos: int): Hash =
       result = result !& hash(aBuf[i])
     result = !$result
 
-proc hash*[A](x: set[A]): Hash =
+func hash*[A](x: set[A]): Hash =
   ## Efficient hashing of sets.
-  ## There must be a `hash` proc defined for the element type `A`.
+  ## There must be a `hash` func defined for the element type `A`.
   for it in items(x):
     result = result !& hash(it)
   result = !$result

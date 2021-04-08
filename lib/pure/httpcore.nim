@@ -155,7 +155,7 @@ func newHttpHeaders*(keyValuePairs:
 func `$`*(headers: HttpHeaders): string {.inline.} =
   $headers.table
 
-proc clear*(headers: HttpHeaders) {.inline.} =
+func clear*(headers: HttpHeaders) {.inline.} =
   headers.table.clear()
 
 func `[]`*(headers: HttpHeaders, key: string): HttpHeaderValues =
@@ -179,12 +179,12 @@ func `[]`*(headers: HttpHeaders, key: string, i: int): string =
   {.cast(noSideEffect).}:
     return headers.table[headers.toCaseInsensitive(key)][i]
 
-proc `[]=`*(headers: HttpHeaders, key, value: string) =
+func `[]=`*(headers: HttpHeaders, key, value: string) =
   ## Sets the header entries associated with `key` to the specified value.
   ## Replaces any existing values.
   headers.table[headers.toCaseInsensitive(key)] = @[value]
 
-proc `[]=`*(headers: HttpHeaders, key: string, value: seq[string]) =
+func `[]=`*(headers: HttpHeaders, key: string, value: seq[string]) =
   ## Sets the header entries associated with `key` to the specified list of
   ## values. Replaces any existing values. If `value` is empty,
   ## deletes the header entries associated with `key`.
@@ -193,7 +193,7 @@ proc `[]=`*(headers: HttpHeaders, key: string, value: seq[string]) =
   else:
     headers.table.del(headers.toCaseInsensitive(key))
 
-proc add*(headers: HttpHeaders, key, value: string) =
+func add*(headers: HttpHeaders, key, value: string) =
   ## Adds the specified value to the specified key. Appends to any existing
   ## values associated with the key.
   if not headers.table.hasKey(headers.toCaseInsensitive(key)):
@@ -201,7 +201,7 @@ proc add*(headers: HttpHeaders, key, value: string) =
   else:
     headers.table[headers.toCaseInsensitive(key)].add(value)
 
-proc del*(headers: HttpHeaders, key: string) =
+func del*(headers: HttpHeaders, key: string) =
   ## Deletes the header entries associated with `key`
   headers.table.del(headers.toCaseInsensitive(key))
 
@@ -347,13 +347,13 @@ func `$`*(code: HttpCode): string =
 
 func `==`*(a, b: HttpCode): bool {.borrow.}
 
-proc `==`*(rawCode: string, code: HttpCode): bool
+func `==`*(rawCode: string, code: HttpCode): bool
           {.deprecated: "Deprecated since v1.2; use rawCode == $code instead".} =
   ## Compare the string form of the status code with a HttpCode
   ##
   ## **Note**: According to HTTP/1.1 specification, the reason phrase is
   ##           optional and should be ignored by the client, making this
-  ##           proc only suitable for comparing the `HttpCode` against the
+  ##           func only suitable for comparing the `HttpCode` against the
   ##           string form of itself.
   return cmpIgnoreCase(rawCode, $code) == 0
 

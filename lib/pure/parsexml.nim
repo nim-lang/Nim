@@ -21,7 +21,7 @@
 ##   used.
 ## * Thus the checks would have been very difficult to implement properly with
 ##   little benefit, especially since they are simple to implement in the
-##   client. The client should use the `errorMsgExpected` proc to generate
+##   client. The client should use the `errorMsgExpected` func to generate
 ##   a nice error message that fits the other error messages this library
 ##   creates.
 ##
@@ -93,7 +93,7 @@ an HTML document contains.
 
     import os, streams, parsexml, strutils
 
-    proc `=?=` (a, b: string): bool =
+    func `=?=` (a, b: string): bool =
       # little trick: define our own comparator that ignores case
       return cmpIgnoreCase(a, b) == 0
 
@@ -236,7 +236,7 @@ proc close*(my: var XmlParser) {.inline.} =
   ## closes the parser `my` and its associated input stream.
   lexbase.close(my)
 
-proc kind*(my: XmlParser): XmlEventKind {.inline.} =
+func kind*(my: XmlParser): XmlEventKind {.inline.} =
   ## returns the current event type for the XML parser
   return my.kind
 
@@ -299,47 +299,47 @@ template piRest*(my: XmlParser): string =
   assert(my.kind == xmlPI)
   my.b
 
-proc rawData*(my: var XmlParser): lent string {.inline.} =
+func rawData*(my: var XmlParser): lent string {.inline.} =
   ## returns the underlying 'data' string by reference.
   ## This is only used for speed hacks.
   result = my.a
 
-proc rawData2*(my: var XmlParser): lent string {.inline.} =
+func rawData2*(my: var XmlParser): lent string {.inline.} =
   ## returns the underlying second 'data' string by reference.
   ## This is only used for speed hacks.
   result = my.b
 
-proc getColumn*(my: XmlParser): int {.inline.} =
+func getColumn*(my: XmlParser): int {.inline.} =
   ## get the current column the parser has arrived at.
   result = getColNumber(my, my.bufpos)
 
-proc getLine*(my: XmlParser): int {.inline.} =
+func getLine*(my: XmlParser): int {.inline.} =
   ## get the current line the parser has arrived at.
   result = my.lineNumber
 
-proc getFilename*(my: XmlParser): string {.inline.} =
+func getFilename*(my: XmlParser): string {.inline.} =
   ## get the filename of the file that the parser processes.
   result = my.filename
 
-proc errorMsg*(my: XmlParser): string =
+func errorMsg*(my: XmlParser): string =
   ## returns a helpful error message for the event ``xmlError``
   assert(my.kind == xmlError)
   result = "$1($2, $3) Error: $4" % [
     my.filename, $getLine(my), $getColumn(my), errorMessages[my.err]]
 
-proc errorMsgExpected*(my: XmlParser, tag: string): string =
+func errorMsgExpected*(my: XmlParser, tag: string): string =
   ## returns an error message "<tag> expected" in the same format as the
   ## other error messages
   result = "$1($2, $3) Error: $4" % [
     my.filename, $getLine(my), $getColumn(my), "<$1> expected" % tag]
 
-proc errorMsg*(my: XmlParser, msg: string): string =
+func errorMsg*(my: XmlParser, msg: string): string =
   ## returns an error message with text `msg` in the same format as the
   ## other error messages
   result = "$1($2, $3) Error: $4" % [
     my.filename, $getLine(my), $getColumn(my), msg]
 
-proc markError(my: var XmlParser, kind: XmlErrorKind) {.inline.} =
+func markError(my: var XmlParser, kind: XmlErrorKind) {.inline.} =
   my.err = kind
   my.state = stateError
 
@@ -421,7 +421,7 @@ const
   NameStartChar = {'A'..'Z', 'a'..'z', '_', ':', '\128'..'\255'}
   NameChar = {'A'..'Z', 'a'..'z', '0'..'9', '.', '-', '_', ':', '\128'..'\255'}
 
-proc parseName(my: var XmlParser, dest: var string) =
+func parseName(my: var XmlParser, dest: var string) =
   var pos = my.bufpos
   if my.buf[pos] in NameStartChar:
     while true:
@@ -432,7 +432,7 @@ proc parseName(my: var XmlParser, dest: var string) =
   else:
     markError(my, errNameExpected)
 
-proc parseEntity(my: var XmlParser, dest: var string) =
+func parseEntity(my: var XmlParser, dest: var string) =
   var pos = my.bufpos+1
   my.kind = xmlCharData
   if my.buf[pos] == '#':
@@ -738,7 +738,7 @@ proc rawGetTok(my: var XmlParser) =
     parseCharData(my)
   assert my.kind != xmlError
 
-proc getTok(my: var XmlParser) =
+func getTok(my: var XmlParser) =
   while true:
     let lastKind = my.kind
     rawGetTok(my)

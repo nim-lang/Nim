@@ -15,7 +15,7 @@
 when defined(windows):
   import winlean, os, strutils, math
 
-  proc `-`(a, b: FILETIME): int64 = a.rdFileTime - b.rdFileTime
+  func `-`(a, b: FILETIME): int64 = a.rdFileTime - b.rdFileTime
 elif defined(linux):
   from cpuinfo import countProcessors
 
@@ -59,7 +59,7 @@ proc advice*(s: var ThreadPoolState): ThreadPoolAdvice =
     s.prevProcKernel = procKernel
     s.prevProcUser = procUser
   elif defined(linux):
-    proc fscanf(c: File, frmt: cstring) {.varargs, importc,
+    func fscanf(c: File, frmt: cstring) {.varargs, importc,
       header: "<stdio.h>".}
 
     var f: File
@@ -86,7 +86,7 @@ proc advice*(s: var ThreadPoolState): ThreadPoolAdvice =
 when not defined(testing) and isMainModule and not defined(nimdoc):
   import random
 
-  proc busyLoop() =
+  func busyLoop() =
     while true:
       discard rand(80)
       os.sleep(100)

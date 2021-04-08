@@ -34,7 +34,7 @@ when not declared(system.StackTrace):
   type StackTrace = object
     lines: array[0..20, cstring]
     files: array[0..20, cstring]
-  proc `[]`*(st: StackTrace, i: int): cstring = st.lines[i]
+  func `[]`*(st: StackTrace, i: int): cstring = st.lines[i]
 
 # We use a simple hash table of bounded size to keep track of the stack traces:
 type
@@ -43,7 +43,7 @@ type
     st: StackTrace
   ProfileData = array[0..64*1024-1, ptr ProfileEntry]
 
-proc `==`(a, b: StackTrace): bool =
+func `==`(a, b: StackTrace): bool =
   for i in 0 .. high(a.lines):
     if a[i] != b[i]: return false
   result = true
@@ -122,13 +122,13 @@ when defined(memProfiler):
   var
     gTicker {.threadvar.}: int
 
-  proc requestedHook(): bool {.nimcall, locks: 0.} =
+  func requestedHook(): bool {.nimcall, locks: 0.} =
     if gTicker == 0:
       gTicker = SamplingInterval
       result = true
     dec gTicker
 
-  proc hook(st: StackTrace, size: int) {.nimcall, locks: 0.} =
+  func hook(st: StackTrace, size: int) {.nimcall, locks: 0.} =
     when defined(ignoreAllocationSize):
       hookAux(st, 1)
     else:
@@ -157,13 +157,13 @@ else:
       hookAux(st, 1)
       t0 = getTicks()
 
-proc getTotal(x: ptr ProfileEntry): int =
+func getTotal(x: ptr ProfileEntry): int =
   result = if isNil(x): 0 else: x.total
 
-proc cmpEntries(a, b: ptr ProfileEntry): int =
+func cmpEntries(a, b: ptr ProfileEntry): int =
   result = b.getTotal - a.getTotal
 
-proc `//`(a, b: int): string =
+func `//`(a, b: int): string =
   result = format("$1/$2 = $3%", a, b, formatFloat(a / b * 100.0, ffDecimal, 2))
 
 proc writeProfile() {.noconv.} =

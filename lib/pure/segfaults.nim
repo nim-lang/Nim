@@ -41,12 +41,12 @@ when defined(windows):
       contextRecord: pointer
 
     VectoredHandler = proc (p: PEXCEPTION_POINTERS): LONG {.stdcall.}
-  proc addVectoredExceptionHandler(firstHandler: ULONG,
+  func addVectoredExceptionHandler(firstHandler: ULONG,
                                    handler: VectoredHandler): pointer {.
     importc: "AddVectoredExceptionHandler", stdcall, dynlib: "kernel32.dll".}
 
   {.push stackTrace: off.}
-  proc segfaultHandler(p: PEXCEPTION_POINTERS): LONG {.stdcall.} =
+  func segfaultHandler(p: PEXCEPTION_POINTERS): LONG {.stdcall.} =
     if p.exceptionRecord.exceptionCode == EXCEPTION_ACCESS_VIOLATION:
       {.gcsafe.}:
         raise se
@@ -58,7 +58,7 @@ when defined(windows):
 
   when false:
     {.push stackTrace: off.}
-    proc segfaultHandler(sig: cint) {.noconv.} =
+    func segfaultHandler(sig: cint) {.noconv.} =
       {.gcsafe.}:
         rawRaise se
     {.pop.}

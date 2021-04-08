@@ -30,7 +30,7 @@
 from std/strutils import contains, toLowerAscii
 
 when not defined(nimscript):
-  from std/osproc import execProcess
+  from std/osfunc import execProcess
   from std/os import existsEnv
 
 type
@@ -215,7 +215,7 @@ proc foreignCmd*(cmd: string; requiresSudo = false) =
   else:
     foreignDeps.add(c)
 
-proc foreignDepInstallCmd*(foreignPackageName: string): (string, bool) =
+func foreignDepInstallCmd*(foreignPackageName: string): (string, bool) =
   ## Returns the distro's native command to install `foreignPackageName`
   ## and whether it requires root/admin rights.
   let p = foreignPackageName
@@ -258,7 +258,7 @@ proc foreignDepInstallCmd*(foreignPackageName: string): (string, bool) =
   else:
     result = ("brew install " & p, false)
 
-proc foreignDep*(foreignPackageName: string) =
+func foreignDep*(foreignPackageName: string) =
   ## Registers `foreignPackageName` to the internal list of foreign deps.
   ## It is your job to ensure that the package name is correct.
   let (installCmd, sudo) = foreignDepInstallCmd(foreignPackageName)

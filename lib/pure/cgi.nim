@@ -33,7 +33,7 @@ import std/[strutils, os, strtabs, cookies, uri]
 export uri.encodeUrl, uri.decodeUrl
 
 
-proc addXmlChar(dest: var string, c: char) {.inline.} =
+func addXmlChar(dest: var string, c: char) {.inline.} =
   case c
   of '&': add(dest, "&amp;")
   of '<': add(dest, "&lt;")
@@ -41,7 +41,7 @@ proc addXmlChar(dest: var string, c: char) {.inline.} =
   of '\"': add(dest, "&quot;")
   else: add(dest, c)
 
-proc xmlEncode*(s: string): string =
+func xmlEncode*(s: string): string =
   ## Encodes a value to be XML safe:
   ## * `"` is replaced by `&quot;`
   ## * `<` is replaced by `&lt;`
@@ -58,7 +58,7 @@ type
     methodPost,         ## query uses the POST method
     methodGet           ## query uses the GET method
 
-proc cgiError*(msg: string) {.noreturn.} =
+func cgiError*(msg: string) {.noreturn.} =
   ## Raises a `CgiError` exception with message `msg`.
   raise newException(CgiError, msg)
 
@@ -104,13 +104,13 @@ proc readData*(allowedMethods: set[RequestMethod] =
   for name, value in decodeData(allowedMethods):
     result[name] = value
 
-proc readData*(data: string): StringTableRef =
+func readData*(data: string): StringTableRef =
   ## Reads CGI data from a string.
   result = newStringTable()
   for name, value in decodeData(data):
     result[name] = value
 
-proc validateData*(data: StringTableRef, validKeys: varargs[string]) =
+func validateData*(data: StringTableRef, validKeys: varargs[string]) =
   ## Validates data; raises `CgiError` if this fails. This checks that each variable
   ## name of the CGI `data` occurs in the `validKeys` array.
   for key, val in pairs(data):

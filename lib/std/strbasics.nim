@@ -13,7 +13,7 @@
 
 const whitespaces = {' ', '\t', '\v', '\r', '\l', '\f'}
 
-proc add*(x: var string, y: openArray[char]) =
+func add*(x: var string, y: openArray[char]) =
   ## Concatenates `x` and `y` in place. `y` must not overlap with `x` to
   ## allow future `memcpy` optimizations.
   # Use `{.noalias.}` ?

@@ -1,4 +1,4 @@
-proc handleHexChar*(c: char, x: var int): bool {.inline.} =
+func handleHexChar*(c: char, x: var int): bool {.inline.} =
   ## Converts `%xx` hexadecimal to the ordinal number and adds the result to `x`.
   ## Returns `true` if `c` is hexadecimal.
   ##
@@ -21,14 +21,14 @@ proc handleHexChar*(c: char, x: var int): bool {.inline.} =
   else:
     result = false
 
-proc handleHexChar*(c: char): int {.inline.} =
+func handleHexChar*(c: char): int {.inline.} =
   case c
   of '0'..'9': result = (ord(c) - ord('0'))
   of 'a'..'f': result = (ord(c) - ord('a') + 10)
   of 'A'..'F': result = (ord(c) - ord('A') + 10)
   else: discard
 
-proc decodePercent*(s: openArray[char], i: var int): char =
+func decodePercent*(s: openArray[char], i: var int): char =
   ## Converts `%xx` hexadecimal to the character with ordinal number `xx`.
   ##
   ## If `xx` is not a valid hexadecimal value, it is left intact: only the

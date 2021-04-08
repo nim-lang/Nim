@@ -43,12 +43,12 @@ type
 # performance. But for the caching tree we use the leaf's left and right
 # pointers.
 
-proc len*(a: Rope): int {.rtl, extern: "nro$1".} =
+func len*(a: Rope): int {.rtl, extern: "nro$1".} =
   ## The rope's length.
   if a == nil: 0 else: a.length
 
-proc newRope(): Rope = new(result)
-proc newRope(data: string): Rope =
+func newRope(): Rope = new(result)
+func newRope(data: string): Rope =
   new(result)
   result.length = len(data)
   result.data = data
@@ -169,7 +169,7 @@ proc disableCache*() {.rtl, extern: "nro$1".} =
   cache = nil
   cacheEnabled = false
 
-proc `&`*(a, b: Rope): Rope {.rtl, extern: "nroConcRopeRope".} =
+func `&`*(a, b: Rope): Rope {.rtl, extern: "nroConcRopeRope".} =
   ## The concatenation operator for ropes.
   runnableExamples:
     let r = rope("Hello, ") & rope("Nim!")
@@ -201,7 +201,7 @@ proc `&`*(a: string, b: Rope): Rope {.rtl, extern: "nroConcStrRope".} =
 
   result = rope(a) & b
 
-proc `&`*(a: openArray[Rope]): Rope {.rtl, extern: "nroConcOpenArray".} =
+func `&`*(a: openArray[Rope]): Rope {.rtl, extern: "nroConcOpenArray".} =
   ## The concatenation operator for an `openArray` of ropes.
   runnableExamples:
     let r = &[rope("Hello, "), rope("Nim"), rope("!")]
@@ -209,7 +209,7 @@ proc `&`*(a: openArray[Rope]): Rope {.rtl, extern: "nroConcOpenArray".} =
 
   for item in a: result = result & item
 
-proc add*(a: var Rope, b: Rope) {.rtl, extern: "nro$1Rope".} =
+func add*(a: var Rope, b: Rope) {.rtl, extern: "nro$1Rope".} =
   ## Adds `b` to the rope `a`.
   runnableExamples:
     var r = rope("Hello, ")
@@ -227,7 +227,7 @@ proc add*(a: var Rope, b: string) {.rtl, extern: "nro$1Str".} =
 
   a = a & b
 
-proc `[]`*(r: Rope, i: int): char {.rtl, extern: "nroCharAt".} =
+func `[]`*(r: Rope, i: int): char {.rtl, extern: "nroCharAt".} =
   ## Returns the character at position `i` in the rope `r`. This is quite
   ## expensive! Worst-case: O(n). If `i >= r.len or i < 0`, `\0` is returned.
   runnableExamples:
@@ -285,7 +285,7 @@ proc write*(s: Stream, r: Rope) {.rtl, extern: "nroWriteStream".} =
   ## Writes a rope to a stream.
   for rs in leaves(r): write(s, rs)
 
-proc `$`*(r: Rope): string {.rtl, extern: "nroToString".} =
+func `$`*(r: Rope): string {.rtl, extern: "nroToString".} =
   ## Converts a rope back to a string.
   result = newStringOfCap(r.len)
   for s in leaves(r): add(result, s)

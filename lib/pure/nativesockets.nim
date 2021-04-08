@@ -101,7 +101,7 @@ when useWinVersion:
     nativeAfInet = winlean.AF_INET
     nativeAfInet6 = winlean.AF_INET6
 
-  proc ioctlsocket*(s: SocketHandle, cmd: clong,
+  func ioctlsocket*(s: SocketHandle, cmd: clong,
                    argptr: ptr clong): cint {.
                    stdcall, importc: "ioctlsocket", dynlib: "ws2_32.dll".}
 else:
@@ -111,10 +111,10 @@ else:
     nativeAfInet6 = posix.AF_INET6
     nativeAfUnix = posix.AF_UNIX
 
-proc `==`*(a, b: Port): bool {.borrow.}
+func `==`*(a, b: Port): bool {.borrow.}
   ## `==` for ports.
 
-proc `$`*(p: Port): string {.borrow.}
+func `$`*(p: Port): string {.borrow.}
   ## Returns the port number as a string
 
 proc toInt*(domain: Domain): cint
@@ -164,7 +164,7 @@ else:
   proc toInt(domain: Domain): cint =
     result = toU32(ord(domain)).cint
 
-  proc toKnownDomain*(family: cint): Option[Domain] =
+  func toKnownDomain*(family: cint): Option[Domain] =
     ## Converts the platform-dependent `cint` to the Domain or none(),
     ## if the `cint` is not known.
     result = if family == winlean.AF_UNSPEC: some(Domain.AF_UNSPEC)
@@ -192,7 +192,7 @@ else:
     else:
       result = cint(ord(p))
 
-proc toSockType*(protocol: Protocol): SockType =
+func toSockType*(protocol: Protocol): SockType =
   result = case protocol
   of IPPROTO_TCP:
     SOCK_STREAM
@@ -201,7 +201,7 @@ proc toSockType*(protocol: Protocol): SockType =
   of IPPROTO_IP, IPPROTO_IPV6, IPPROTO_RAW, IPPROTO_ICMP, IPPROTO_ICMPV6:
     SOCK_RAW
 
-proc getProtoByName*(name: string): int {.since: (1, 3, 5).} =
+func getProtoByName*(name: string): int {.since: (1, 3, 5).} =
   ## Returns a protocol code from the database that matches the protocol `name`.
   when useWinVersion:
     let protoent = winlean.getprotobyname(name.cstring)
@@ -213,7 +213,7 @@ proc getProtoByName*(name: string): int {.since: (1, 3, 5).} =
 
   result = protoent.p_proto.int
 
-proc close*(socket: SocketHandle) =
+func close*(socket: SocketHandle) =
   ## Closes a socket.
   when useWinVersion:
     discard winlean.closesocket(socket)
@@ -261,7 +261,7 @@ proc createNativeSocket*(domain: Domain = AF_INET,
   ## by child processes.
   createNativeSocket(toInt(domain), toInt(sockType), toInt(protocol), inheritable)
 
-proc bindAddr*(socket: SocketHandle, name: ptr SockAddr,
+func bindAddr*(socket: SocketHandle, name: ptr SockAddr,
     namelen: SockLen): cint =
   result = bindSocket(socket, name, namelen)
 
@@ -302,7 +302,7 @@ proc getAddrInfo*(address: string, port: Port, domain: Domain = AF_INET,
     else:
       raiseOSError(osLastError(), $gai_strerror(gaiResult))
 
-proc ntohl*(x: uint32): uint32 =
+func ntohl*(x: uint32): uint32 =
   ## Converts 32-bit unsigned integers from network to host byte order.
   ## On machines where the host byte order is the same as network byte order,
   ## this is a no-op; otherwise, it performs a 4-byte swap operation.
@@ -312,7 +312,7 @@ proc ntohl*(x: uint32): uint32 =
                   (x shl 8'u32 and 0xff0000'u32) or
                   (x shl 24'u32)
 
-proc ntohs*(x: uint16): uint16 =
+func ntohs*(x: uint16): uint16 =
   ## Converts 16-bit unsigned integers from network to host byte order. On
   ## machines where the host byte order is the same as network byte order,
   ## this is a no-op; otherwise, it performs a 2-byte swap operation.
@@ -524,7 +524,7 @@ proc getAddrString*(sockAddr: ptr SockAddr, strAddress: var string) =
   setLen(strAddress, len(cstring(strAddress)))
 
 when defined(posix) and not defined(nimdoc):
-  proc makeUnixAddr*(path: string): Sockaddr_un =
+  func makeUnixAddr*(path: string): Sockaddr_un =
     result.sun_family = AF_UNIX.TSa_Family
     if path.len >= Sockaddr_un_path_length:
       raise newException(ValueError, "socket path too long")
@@ -654,7 +654,7 @@ proc setBlocking*(s: SocketHandle, blocking: bool) =
       if fcntl(s, F_SETFL, mode) == -1:
         raiseOSError(osLastError())
 
-proc timeValFromMilliseconds(timeout = 500): Timeval =
+func timeValFromMilliseconds(timeout = 500): Timeval =
   if timeout != -1:
     var seconds = timeout div 1000
     when useWinVersion:
@@ -664,13 +664,13 @@ proc timeValFromMilliseconds(timeout = 500): Timeval =
       result.tv_sec = seconds.Time
       result.tv_usec = ((timeout - seconds * 1000) * 1000).Suseconds
 
-proc createFdSet(fd: var TFdSet, s: seq[SocketHandle], m: var int) =
+func createFdSet(fd: var TFdSet, s: seq[SocketHandle], m: var int) =
   FD_ZERO(fd)
   for i in items(s):
     m = max(m, int(i))
     FD_SET(i, fd)
 
-proc pruneSocketSet(s: var seq[SocketHandle], fd: var TFdSet) =
+func pruneSocketSet(s: var seq[SocketHandle], fd: var TFdSet) =
   var i = 0
   var L = s.len
   while i < L:
@@ -681,7 +681,7 @@ proc pruneSocketSet(s: var seq[SocketHandle], fd: var TFdSet) =
       inc(i)
   setLen(s, L)
 
-proc selectRead*(readfds: var seq[SocketHandle], timeout = 500): int =
+func selectRead*(readfds: var seq[SocketHandle], timeout = 500): int =
   ## When a socket in `readfds` is ready to be read from then a non-zero
   ## value will be returned specifying the count of the sockets which can be
   ## read from. The sockets which cannot be read from will also be removed
@@ -702,7 +702,7 @@ proc selectRead*(readfds: var seq[SocketHandle], timeout = 500): int =
 
   pruneSocketSet(readfds, (rd))
 
-proc selectWrite*(writefds: var seq[SocketHandle],
+func selectWrite*(writefds: var seq[SocketHandle],
                   timeout = 500): int {.tags: [ReadIOEffect].} =
   ## When a socket in `writefds` is ready to be written to then a non-zero
   ## value will be returned specifying the count of the sockets which can be
