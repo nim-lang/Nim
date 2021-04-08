@@ -312,7 +312,7 @@ proc genAssignment(p: BProc, dest, src: TLoc, flags: TAssignmentFlags) =
   let ty = skipTypes(dest.t, abstractRange + tyUserTypeClasses + {tyStatic})
   case ty.kind
   of tyRef:
-    dbg "D20210407T095632"
+    # dbg "D20210407T095632"
     linefmt(p, cpsStmts, "/* zook1 */;$n", [])
     genRefAssign(p, dest, src)
   of tySequence:

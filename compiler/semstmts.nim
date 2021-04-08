@@ -1329,6 +1329,8 @@ proc typeSectionFinalPass(c: PContext, n: PNode) =
     # check the style here after the pragmas have been processed:
     styleCheckDef(c.config, s)
     # compute the type's size and check for illegal recursions:
+    if "Foo" in $s:
+      dbg s
     if a[1].kind == nkEmpty:
       var x = a[2]
       if x.kind in nkCallKinds and nfSem in x.flags:
@@ -1338,10 +1340,14 @@ proc typeSectionFinalPass(c: PContext, n: PNode) =
           x = x.lastSon
         # we need the 'safeSkipTypes' here because illegally recursive types
         # can enter at this point, see bug #13763
+        if "Foo" in $s:
+          dbg x.kind, x, s.typ, s.typ.kind
         if x.kind notin {nkObjectTy, nkDistinctTy, nkEnumTy, nkEmpty} and
             s.typ.safeSkipTypes(abstractPtrs).kind notin {tyObject, tyEnum}:
           # type aliases are hard:
           var t = semTypeNode(c, x, nil)
+          if "Foo" in $s:
+            dbg t, t.kind
           assert t != nil
           if s.typ != nil and s.typ.kind notin {tyAlias, tySink}:
             if t.kind in {tyProc, tyGenericInst} and not t.isMetaType:
@@ -1357,6 +1363,13 @@ proc typeSectionFinalPass(c: PContext, n: PNode) =
           # fix bug #5170: ensure locally scoped object types get a unique name:
           if s.typ.kind == tyObject and not isTopLevel(c): incl(s.flags, sfGenSym)
           if "Foo" in $s.typ:
+            dbg s.typ, s, s.typ.kind, isTopLevel(c), s.flags
+        # if s.typ.kind in {tyRef} and not s.typ.n.isNil:
+        if s.typ.kind in {tyRef}:
+          if "Foo" in $s:
+            dbg()
+          if s.typ.kind == tyRef and not isTopLevel(c): incl(s.flags, sfGenSym)
+          if "Foo" in $s:
             dbg s.typ, s, s.typ.kind, isTopLevel(c), s.flags
 
   #instAllTypeBoundOp(c, n.info)

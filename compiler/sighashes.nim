@@ -55,8 +55,8 @@ proc hashTypeSym(c: var MD5Context, s: PSym) =
   else:
     var it = s
     while it != nil:
-      if "Foo" in $s:
-        dbg it, it.flags, it.kind, it.typ, it.name.s, it.owner == nil
+      # if "Foo" in $s:
+      #   dbg it, it.flags, it.kind, it.typ, it.name.s, it.owner == nil
       if sfFromGeneric in it.flags and it.kind in routineKinds and
           it.typ != nil:
         hashType c, it.typ, {CoProc}
@@ -145,8 +145,8 @@ proc hashType(c: var MD5Context, t: PType; flags: set[ConsiderFlag]) =
     # Every cyclic type in Nim need to be constructed via some 't.sym', so this
     # is actually safe without an infinite recursion check:
     if t.sym != nil:
-      if "Foo" in $t:
-        dbg t.sym, t, t.kind, flags, t.sym.flags
+      # if "Foo" in $t:
+      #   dbg t.sym, t, t.kind, flags, t.sym.flags
       if {sfCompilerProc} * t.sym.flags != {}:
         doAssert t.sym.loc.r != nil
         # The user has set a specific name for this type
@@ -155,7 +155,15 @@ proc hashType(c: var MD5Context, t: PType; flags: set[ConsiderFlag]) =
         c.hashTypeSym(t.sym)
       else:
         c.hashSym(t.sym)
-      if {sfAnon, sfGenSym} * t.sym.flags != {}:
+
+      if "Foo" in $t:
+        dbg t.sym, t, t.kind, flags, t.sym.flags, t.len
+        if t.len > 0:
+          let t2 = t[0]
+          dbg t2
+      # TODO: consider enum; consider top-level vs not
+      if {sfAnon, sfGenSym} * t.sym.flags != {} or "ObjectType" in $t:
+      # if true:
         # Generated object names can be identical, so we need to
         # disambiguate furthermore by hashing the field types and names.
         if t.n.len > 0:
@@ -172,8 +180,8 @@ proc hashType(c: var MD5Context, t: PType; flags: set[ConsiderFlag]) =
     else:
       c &= t.id
     if t.len > 0 and t[0] != nil:
-      if "Foo" in $t:
-        dbg()
+      # if "Foo" in $t:
+      #   dbg()
       hashType c, t[0], flags
   of tyRef, tyPtr, tyGenericBody, tyVar:
     c &= char(t.kind)

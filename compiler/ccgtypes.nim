@@ -145,9 +145,9 @@ proc getTypeName(m: BModule; typ: PType; sig: SigHash): Rope =
       assert($typ.loc.r == $(typ.typeName & $sig))
   result = typ.loc.r
   if result == nil: internalError(m.config, "getTypeName: " & $typ.kind)
-  if "Foo" in $typ:
-    dbg typ, typ.kind, typ.loc.r, sig, wasNil, typeName2
-    dbg getStacktrace()
+  # if "Foo" in $typ:
+    # dbg typ, typ.kind, typ.loc.r, sig, wasNil, typeName2
+    # dbg getStacktrace()
 
 proc mapSetType(conf: ConfigRef; typ: PType): TCTypeKind =
   case int(getSize(conf, typ))
