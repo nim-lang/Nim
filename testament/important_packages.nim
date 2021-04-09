@@ -30,8 +30,10 @@ type NimblePackage* = object
 
 var packages*: seq[NimblePackage]
 
-proc pkg(name: string; cmd = "nimble test"; url = "", useHead = true, allowFailure = false) =
+proc pkg(name: string; cmd = "nimble test"; url = "", useHead = true, allowFailure = false, testOrc = false) =
   packages.add NimblePackage(name: name, cmd: cmd, url: url, useHead: useHead, allowFailure: allowFailure)
+  if cmd == "nimble test" and testOrc:
+    packages.add NimblePackage(name: name, cmd: "nimble test --gc:orc", url: url, useHead: useHead, allowFailure: allowFailure)
 
 pkg "alea", allowFailure = true
 pkg "argparse"
@@ -140,7 +142,7 @@ pkg "strslice"
 pkg "strunicode", "nim c -r src/strunicode.nim"
 pkg "synthesis"
 pkg "telebot", "nim c -o:tbot -r src/telebot.nim"
-pkg "tempdir"
+pkg "tempdir", testOrc = true
 pkg "templates"
 pkg "tensordsl", "nim c -r tests/tests.nim", "https://krux02@bitbucket.org/krux02/tensordslnim.git"
 pkg "terminaltables", "nim c src/terminaltables.nim"
@@ -151,10 +153,11 @@ pkg "tiny_sqlite"
 pkg "unicodedb", "nim c -d:release -r tests/tests.nim"
 pkg "unicodeplus", "nim c -d:release -r tests/tests.nim"
 pkg "unpack"
+pkg "weave"
 pkg "websocket", "nim c websocket.nim"
 pkg "winim", allowFailure = true
-pkg "with"
+pkg "with", testOrc = true
 pkg "ws"
 pkg "yaml", "nim build"
 pkg "zero_functional", "nim c -r -d:nimWorkaround14447 test.nim"
-pkg "zippy"
+pkg "zippy", testOrc = true
