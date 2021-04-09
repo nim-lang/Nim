@@ -2644,6 +2644,28 @@ Varargs matching
 
 See `Varargs <#types-varargs>`_.
 
+iterable
+--------
+
+A called `iterator` yielding type `T` can be passed to a template or macro via
+a parameter typed as `untyped` (for unresolved expressions) or the type class
+`iterable` or `iterable[T]` (after type checking and overload resolution).
+
+.. code-block:: nim
+  iterator iota(n: int): int =
+    for i in 0..<n: yield i
+
+  template toSeq2[T](a: iterable[T]): seq[T] =
+    var ret: seq[T]
+    assert a.typeof is T
+    for ai in a: ret.add ai
+    ret
+
+  assert iota(3).toSeq2 == @[0, 1, 2]
+  assert toSeq2(5..7) == @[5, 6, 7]
+  assert not compiles(toSeq2(@[1,2])) # seq[int] is not an iterable
+  assert toSeq2(items(@[1,2])) == @[1, 2] # but items(@[1,2]) is
+
 
 Statements and expressions
 ==========================
@@ -4350,6 +4372,9 @@ would.  For example:
   for i in toItr(recCountDown(6)): # Emits: 6 5 4 3 2 1
     echo i
 
+
+See also see `iterable <#overloading-resolution-iterable>`_ for passing iterators to templates and macros.
+
 Converters
 ==========
 
@@ -5601,9 +5626,7 @@ Another common example is this:
 
   var info = something().toSeq
 
-The problem here is that the compiler already decided that `something()` as
-an iterator is not callable in this context before `toSeq` gets its
-chance to convert it into a sequence.
+This will be fixed by using the `iterable <#overloading-resolution-iterable>`_ type class in `toSeq` implementation.
 
 It is also not possible to use fully qualified identifiers with module
 symbol in method call syntax. The order in which the dot operator
