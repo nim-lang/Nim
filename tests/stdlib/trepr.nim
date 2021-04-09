@@ -163,6 +163,15 @@ proc `foo bar baz`(): int =
 """
     doAssert a2 == a
 
+  block: # setters: `foo=`
+    let a = deb:
+      proc `foo=`() = discard
+    doAssert a == """
+
+proc `foo=`() =
+  discard
+"""
+
   block: # bug #14850
     block:
       let a = deb:

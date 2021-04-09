@@ -1327,13 +1327,16 @@ proc gsub(g: var TSrcGen, n: PNode, c: TContext, fromStmtList = false) =
         of nkIdent: n.ident.s
         of nkSym: n.sym.name.s
         else: ""
+      proc isAlpha(n: PNode): bool =
+        if n.kind in {nkIdent, nkSym}:
+          let tmp = n.getStrVal
+          result = tmp.len > 0 and tmp[0] in {'a'..'z', 'A'..'Z'}
       var useSpace = false
       if i == 1 and n[0].kind == nkIdent and n[0].ident.s in ["=", "'"]:
-        let tmp = n[1].getStrVal
-        if tmp.len > 0 and tmp[0] in {'a'..'z', 'A'..'Z'}:
-          # handle `=destroy`, `'big'
-          discard
-        else:
+        if not n[1].isAlpha: # handle `=destroy`, `'big'
+          useSpace = true
+      elif i == 1 and n[1].kind == nkIdent and n[1].ident.s == "=":
+        if not n[0].isAlpha: # handle setters, e.g. `foo=`
           useSpace = true
       elif i > 0: useSpace = true
       if useSpace:  put(g, tkSpaces, Space)
