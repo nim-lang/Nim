@@ -1189,7 +1189,7 @@ proc renderRstToOut(d: PDoc, n: PRstNode, result: var string) =
   of rnIndex:
     renderRstToOut(d, n.sons[2], result)
   of rnOptionList:
-    renderAux(d, n, "<table$2 frame=\"void\">$1</table>",
+    renderAux(d, n, "<div$2 class=\"option-list\">$1</div>",
         "\\begin{rstoptlist}$2\n$1\\end{rstoptlist}", result)
   of rnOptionListItem:
     var addclass = if n.order mod 2 == 1: " odd" else: ""

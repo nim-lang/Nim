@@ -511,12 +511,15 @@ div.footnote-label {
   min-width: 1.7em;
 }
 
+div.option-list {
+  border: 0.1em solid var(--border);
+  /*border-right: 0.1em solid var(--border);*/
+}
 div.option-list-item {
-  border-left: 0.1em solid var(--border);
-  border-right: 0.1em solid var(--border);
   padding-left: 12em;
   padding-right: 0;
-  margin: 0;
+  padding-bottom: 0.3em;
+  padding-top: 0.3em;
 }
 div.odd {
   background-color: var(--secondary-background);
