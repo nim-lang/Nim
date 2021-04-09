@@ -153,7 +153,6 @@ pkg "tiny_sqlite"
 pkg "unicodedb", "nim c -d:release -r tests/tests.nim"
 pkg "unicodeplus", "nim c -d:release -r tests/tests.nim"
 pkg "unpack"
-pkg "weave"
 pkg "websocket", "nim c websocket.nim"
 pkg "winim", allowFailure = true
 pkg "with", testOrc = true
