@@ -163,14 +163,17 @@ proc addImport(c: PContext; im: sink ImportedModule) =
   c.imports.add im
 
 template addUnnamedIt(c: PContext, fromMod: PSym; filter: untyped) {.dirty.} =
-  for it in c.graph.ifaces[fromMod.position].converters:
+  for it in mitems c.graph.ifaces[fromMod.position].converters:
     if filter:
+      loadPackedSym(c.graph, it)
       addConverter(c, it)
-  for it in c.graph.ifaces[fromMod.position].patterns:
+  for it in mitems c.graph.ifaces[fromMod.position].patterns:
     if filter:
+      loadPackedSym(c.graph, it)
       addPattern(c, it)
-  for it in c.graph.ifaces[fromMod.position].pureEnums:
+  for it in mitems c.graph.ifaces[fromMod.position].pureEnums:
     if filter:
+      loadPackedSym(c.graph, it)
       importPureEnumFields(c, it.sym, it.sym.typ)
 
 proc importAllSymbolsExcept(c: PContext, fromMod: PSym, exceptSet: IntSet) =
