@@ -51,14 +51,14 @@ runnableExamples:
 ## use the default generator. Those procs are **not** thread-safe.
 ##
 ## Note that the default generator always starts in the same state.
-## The `randomize func <#randomize>`_ can be called to initialize the default
+## The `randomize proc <#randomize>`_ can be called to initialize the default
 ## generator with a seed based on the current time, and it only needs to be
 ## called once before the first usage of procs from this module. If
 ## `randomize` is not called, the default generator will always produce
 ## the same results.
 ##
 ## RNGs that are independent of the default one can be created with the
-## `initRand func <#initRand,int64>`_.
+## `initRand proc <#initRand,int64>`_.
 ##
 ## Again, it is important to remember that this module must **not** be used for
 ## cryptographic applications.
@@ -90,12 +90,12 @@ else:
 type
   Rand* = object ## State of a random number generator.
                  ##
-                 ## Create a new Rand state using the `initRand func <#initRand,int64>`_.
+                 ## Create a new Rand state using the `initRand proc <#initRand,int64>`_.
                  ##
                  ## The module contains a default Rand state for convenience.
                  ## It corresponds to the default RNG's state.
                  ## The default Rand state always starts with the same values, but the
-                 ## `randomize func <#randomize>`_ can be used to seed the default generator
+                 ## `randomize proc <#randomize>`_ can be used to seed the default generator
                  ## with a value based on the current time.
                  ##
                  ## Many procs have two variations: one that takes in a Rand parameter and
@@ -119,10 +119,10 @@ since (1, 5):
     ## Useful for module authors.
     state
 
-func rotl(x, k: Ui): Ui =
+proc rotl(x, k: Ui): Ui =
   result = (x shl k) or (x shr (Ui(64) - k))
 
-func next*(r: var Rand): uint64 =
+proc next*(r: var Rand): uint64 =
   ## Computes a random `uint64` number using the given state.
   ##
   ## **See also:**
@@ -146,10 +146,10 @@ func next*(r: var Rand): uint64 =
   r.a0 = rotl(s0, 55) xor s1 xor (s1 shl 14) # a, b
   r.a1 = rotl(s1, 36) # c
 
-func skipRandomNumbers*(s: var Rand) =
+proc skipRandomNumbers*(s: var Rand) =
   ## The jump function for the generator.
   ##
-  ## This func is equivalent to `2^64` calls to `next <#next,Rand>`_, and it can
+  ## This proc is equivalent to `2^64` calls to `next <#next,Rand>`_, and it can
   ## be used to generate `2^64` non-overlapping subsequences for parallel
   ## computations.
   ##
@@ -162,7 +162,7 @@ func skipRandomNumbers*(s: var Rand) =
   ##
   ## If many threads will generate random numbers concurrently, it is better to
   ## create a single Rand state and pass it to each thread. After passing the
-  ## Rand state to a thread, call this func before passing it to the next one.
+  ## Rand state to a thread, call this proc before passing it to the next one.
   ## By using the Rand state this way, the subsequences of random numbers
   ## generated in each thread will never overlap as long as no thread generates
   ## more than `2^64` random numbers.
@@ -175,7 +175,7 @@ func skipRandomNumbers*(s: var Rand) =
     const spawns = 4
     const numbers = 100000
 
-    func randomSum(r: Rand): int =
+    proc randomSum(r: Rand): int =
       var r = r
       for i in 1..numbers:
         result += r.rand(0..10)
@@ -205,7 +205,7 @@ func skipRandomNumbers*(s: var Rand) =
   s.a0 = s0
   s.a1 = s1
 
-func rand*(r: var Rand; max: Natural): int {.benign.} =
+proc rand*(r: var Rand; max: Natural): int {.benign.} =
   ## Returns a random integer in the range `0..max` using the given state.
   ##
   ## **See also:**
@@ -230,9 +230,9 @@ proc rand*(max: int): int {.benign.} =
   ## Returns a random integer in the range `0..max`.
   ##
   ## If `randomize <#randomize>`_ has not been called, the sequence of random
-  ## numbers returned from this func will always be the same.
+  ## numbers returned from this proc will always be the same.
   ##
-  ## This func uses the default RNG. Thus, it is **not** thread-safe.
+  ## This proc uses the default RNG. Thus, it is **not** thread-safe.
   ##
   ## **See also:**
   ## * `rand proc<#rand,Rand,Natural>`_ that returns an integer using a
@@ -249,7 +249,7 @@ proc rand*(max: int): int {.benign.} =
 
   rand(state, max)
 
-func rand*(r: var Rand; max: range[0.0 .. high(float)]): float {.benign.} =
+proc rand*(r: var Rand; max: range[0.0 .. high(float)]): float {.benign.} =
   ## Returns a random floating point number in the range `0.0..max`
   ## using the given state.
   ##
@@ -274,9 +274,9 @@ proc rand*(max: float): float {.benign.} =
   ## Returns a random floating point number in the range `0.0..max`.
   ##
   ## If `randomize <#randomize>`_ has not been called, the sequence of random
-  ## numbers returned from this func will always be the same.
+  ## numbers returned from this proc will always be the same.
   ##
-  ## This func uses the default RNG. Thus, it is **not** thread-safe.
+  ## This proc uses the default RNG. Thus, it is **not** thread-safe.
   ##
   ## **See also:**
   ## * `rand proc<#rand,Rand,range[]>`_ that returns a float using a
@@ -291,7 +291,7 @@ proc rand*(max: float): float {.benign.} =
 
   rand(state, max)
 
-func rand*[T: Ordinal or SomeFloat](r: var Rand; x: HSlice[T, T]): T =
+proc rand*[T: Ordinal or SomeFloat](r: var Rand; x: HSlice[T, T]): T =
   ## For a slice `a..b`, returns a value in the range `a..b` using the given
   ## state.
   ##
@@ -315,15 +315,15 @@ func rand*[T: Ordinal or SomeFloat](r: var Rand; x: HSlice[T, T]): T =
   else: # Integers and Enum types
     result = T(rand(r, int(x.b) - int(x.a)) + int(x.a))
 
-func rand*[T: Ordinal or SomeFloat](x: HSlice[T, T]): T =
+proc rand*[T: Ordinal or SomeFloat](x: HSlice[T, T]): T =
   ## For a slice `a..b`, returns a value in the range `a..b`.
   ##
   ## Allowed types for `T` are integers, floats, and enums without holes.
   ##
   ## If `randomize <#randomize>`_ has not been called, the sequence of random
-  ## numbers returned from this func will always be the same.
+  ## numbers returned from this proc will always be the same.
   ##
-  ## This func uses the default RNG. Thus, it is **not** thread-safe.
+  ## This proc uses the default RNG. Thus, it is **not** thread-safe.
   ##
   ## **See also:**
   ## * `rand proc<#rand,Rand,HSlice[T: Ordinal or float or float32 or float64,T: Ordinal or float or float32 or float64]>`_
@@ -339,13 +339,13 @@ func rand*[T: Ordinal or SomeFloat](x: HSlice[T, T]): T =
 
   result = rand(state, x)
 
-func rand*[T: SomeInteger](t: typedesc[T]): T =
+proc rand*[T: SomeInteger](t: typedesc[T]): T =
   ## Returns a random integer in the range `low(T)..high(T)`.
   ##
   ## If `randomize <#randomize>`_ has not been called, the sequence of random
-  ## numbers returned from this func will always be the same.
+  ## numbers returned from this proc will always be the same.
   ##
-  ## This func uses the default RNG. Thus, it is **not** thread-safe.
+  ## This proc uses the default RNG. Thus, it is **not** thread-safe.
   ##
   ## **See also:**
   ## * `rand proc<#rand,int>`_ that returns an integer
@@ -369,7 +369,7 @@ func rand*[T: SomeInteger](t: typedesc[T]): T =
   else:
     result = cast[T](state.next)
 
-func sample*[T](r: var Rand; s: set[T]): T =
+proc sample*[T](r: var Rand; s: set[T]): T =
   ## Returns a random element from the set `s` using the given state.
   ##
   ## **See also:**
@@ -390,13 +390,13 @@ func sample*[T](r: var Rand; s: set[T]): T =
     if i == 0: return e
     dec(i)
 
-func sample*[T](s: set[T]): T =
+proc sample*[T](s: set[T]): T =
   ## Returns a random element from the set `s`.
   ##
   ## If `randomize <#randomize>`_ has not been called, the order of outcomes
-  ## from this func will always be the same.
+  ## from this proc will always be the same.
   ##
-  ## This func uses the default RNG. Thus, it is **not** thread-safe.
+  ## This proc uses the default RNG. Thus, it is **not** thread-safe.
   ##
   ## **See also:**
   ## * `sample proc<#sample,Rand,set[T]>`_ that uses a provided state
@@ -412,7 +412,7 @@ func sample*[T](s: set[T]): T =
 
   sample(state, s)
 
-func sample*[T](r: var Rand; a: openArray[T]): T =
+proc sample*[T](r: var Rand; a: openArray[T]): T =
   ## Returns a random element from `a` using the given state.
   ##
   ## **See also:**
@@ -429,13 +429,13 @@ func sample*[T](r: var Rand; a: openArray[T]): T =
 
   result = a[r.rand(a.low..a.high)]
 
-func sample*[T](a: openArray[T]): T =
+proc sample*[T](a: openArray[T]): T =
   ## Returns a random element from `a`.
   ##
   ## If `randomize <#randomize>`_ has not been called, the order of outcomes
-  ## from this func will always be the same.
+  ## from this proc will always be the same.
   ##
-  ## This func uses the default RNG. Thus, it is **not** thread-safe.
+  ## This proc uses the default RNG. Thus, it is **not** thread-safe.
   ##
   ## **See also:**
   ## * `sample proc<#sample,Rand,openArray[T]>`_ that uses a provided state
@@ -451,7 +451,7 @@ func sample*[T](a: openArray[T]): T =
 
   result = a[rand(a.low..a.high)]
 
-func sample*[T, U](r: var Rand; a: openArray[T]; cdf: openArray[U]): T =
+proc sample*[T, U](r: var Rand; a: openArray[T]; cdf: openArray[U]): T =
   ## Returns an element from `a` using a cumulative distribution function
   ## (CDF) and the given state.
   ##
@@ -460,7 +460,7 @@ func sample*[T, U](r: var Rand; a: openArray[T]; cdf: openArray[U]): T =
   ## the same length as `a`. Each element in `cdf` should be greater than
   ## or equal to the previous element.
   ##
-  ## The outcome of the `cumsum<math.html#cumsum,openArray[T]>`_ func and the
+  ## The outcome of the `cumsum<math.html#cumsum,openArray[T]>`_ proc and the
   ## return value of the `cumsummed<math.html#cumsummed,openArray[T]>`_ proc,
   ## which are both in the math module, can be used as the `cdf` argument.
   ##
@@ -487,18 +487,18 @@ func sample*[T, U](r: var Rand; a: openArray[T]; cdf: openArray[U]): T =
   let u = r.rand(float(cdf[^1]))
   a[cdf.upperBound(U(u))]
 
-func sample*[T, U](a: openArray[T]; cdf: openArray[U]): T =
+proc sample*[T, U](a: openArray[T]; cdf: openArray[U]): T =
   ## Returns an element from `a` using a cumulative distribution function
   ## (CDF).
   ##
-  ## This func works similarly to
+  ## This proc works similarly to
   ## `sample <#sample,Rand,openArray[T],openArray[U]>`_.
   ## See that proc's documentation for more details.
   ##
   ## If `randomize <#randomize>`_ has not been called, the order of outcomes
-  ## from this func will always be the same.
+  ## from this proc will always be the same.
   ##
-  ## This func uses the default RNG. Thus, it is **not** thread-safe.
+  ## This proc uses the default RNG. Thus, it is **not** thread-safe.
   ##
   ## **See also:**
   ## * `sample proc<#sample,Rand,openArray[T],openArray[U]>`_ that also utilizes
@@ -518,7 +518,7 @@ func sample*[T, U](a: openArray[T]; cdf: openArray[U]): T =
 
   state.sample(a, cdf)
 
-func gauss*(r: var Rand; mu = 0.0; sigma = 1.0): float {.since: (1, 3).} =
+proc gauss*(r: var Rand; mu = 0.0; sigma = 1.0): float {.since: (1, 3).} =
   ## Returns a Gaussian random variate,
   ## with mean `mu` and standard deviation `sigma`
   ## using the given state.
@@ -539,12 +539,12 @@ proc gauss*(mu = 0.0, sigma = 1.0): float {.since: (1, 3).} =
   ## with mean `mu` and standard deviation `sigma`.
   ##
   ## If `randomize <#randomize>`_ has not been called, the order of outcomes
-  ## from this func will always be the same.
+  ## from this proc will always be the same.
   ##
-  ## This func uses the default RNG. Thus, it is **not** thread-safe.
+  ## This proc uses the default RNG. Thus, it is **not** thread-safe.
   result = gauss(state, mu, sigma)
 
-func initRand*(seed: int64): Rand =
+proc initRand*(seed: int64): Rand =
   ## Initializes a new `Rand <#Rand>`_ state using the given seed.
   ##
   ## `seed` must not be zero. Providing a specific seed will produce
@@ -591,7 +591,7 @@ proc randomize*(seed: int64) {.benign.} =
 
   state = initRand(seed)
 
-func shuffle*[T](r: var Rand; x: var openArray[T]) =
+proc shuffle*[T](r: var Rand; x: var openArray[T]) =
   ## Shuffles a sequence of elements in-place using the given state.
   ##
   ## **See also:**
@@ -606,13 +606,13 @@ func shuffle*[T](r: var Rand; x: var openArray[T]) =
     let j = r.rand(i)
     swap(x[i], x[j])
 
-func shuffle*[T](x: var openArray[T]) =
+proc shuffle*[T](x: var openArray[T]) =
   ## Shuffles a sequence of elements in-place.
   ##
   ## If `randomize <#randomize>`_ has not been called, the order of outcomes
-  ## from this func will always be the same.
+  ## from this proc will always be the same.
   ##
-  ## This func uses the default RNG. Thus, it is **not** thread-safe.
+  ## This proc uses the default RNG. Thus, it is **not** thread-safe.
   ##
   ## **See also:**
   ## * `shuffle proc<#shuffle,Rand,openArray[T]>`_ that uses a provided state
@@ -652,7 +652,7 @@ when not defined(nimscript) and not defined(standalone):
     ## Initializes the default random number generator with a seed based on
     ## the current time.
     ##
-    ## This func only needs to be called once, and it should be called before
+    ## This proc only needs to be called once, and it should be called before
     ## the first usage of procs from this module that use the default RNG.
     ##
     ## **Note:** Does not work for NimScript or the compile-time VM.

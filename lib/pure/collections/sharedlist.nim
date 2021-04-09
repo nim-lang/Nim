@@ -83,7 +83,7 @@ func init*[A](t: var SharedList[A]) =
   t.head = nil
   t.tail = nil
 
-func clear*[A](t: var SharedList[A]) =
+proc clear*[A](t: var SharedList[A]) =
   withLock(t):
     var it = t.head
     while it != nil:
@@ -93,7 +93,7 @@ func clear*[A](t: var SharedList[A]) =
     t.head = nil
     t.tail = nil
 
-func deinitSharedList*[A](t: var SharedList[A]) =
+proc deinitSharedList*[A](t: var SharedList[A]) =
   clear(t)
   deinitLock t.lock
 

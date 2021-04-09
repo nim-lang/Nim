@@ -738,7 +738,7 @@ proc rawGetTok(my: var XmlParser) =
     parseCharData(my)
   assert my.kind != xmlError
 
-func getTok(my: var XmlParser) =
+proc getTok(my: var XmlParser) =
   while true:
     let lastKind = my.kind
     rawGetTok(my)

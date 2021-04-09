@@ -16,14 +16,14 @@ type
                                    ## for invalid XML.
     errors*: seq[string]           ## All detected parsing errors.
 
-proc raiseInvalidXml(errors: seq[string]) =
+func raiseInvalidXml(errors: seq[string]) =
   var e: ref XmlError
   new(e)
   e.msg = errors[0]
   e.errors = errors
   raise e
 
-proc addNode(father, son: XmlNode) =
+func addNode(father, son: XmlNode) =
   if son != nil: add(father, son)
 
 proc parse(x: var XmlParser, errors: var seq[string]): XmlNode {.gcsafe.}

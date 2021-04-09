@@ -2813,7 +2813,7 @@ func parseCmdLine*(c: string): seq[string] {.
 
 when defined(nimdoc):
   # Common forward declaration docstring block for parameter retrieval procs.
-  func paramCount*(): int {.tags: [ReadIOEffect].} =
+  proc paramCount*(): int {.tags: [ReadIOEffect].} =
     ## Returns the number of `command line arguments`:idx: given to the
     ## application.
     ##
@@ -2841,7 +2841,7 @@ when defined(nimdoc):
     ##   else:
     ##     # Do something else!
 
-  func paramStr*(i: int): string {.tags: [ReadIOEffect].} =
+  proc paramStr*(i: int): string {.tags: [ReadIOEffect].} =
     ## Returns the `i`-th `command line argument`:idx: given to the application.
     ##
     ## `i` should be in the range `1..paramCount()`, the `IndexDefect`
@@ -2880,20 +2880,20 @@ elif defined(nodejs):
   func len(argv: Argv): int {.importjs: "#.length".}
   func `[]`(argv: Argv, i: int): cstring {.importjs: "#[#]".}
 
-  func paramCount*(): int {.tags: [ReadDirEffect].} =
+  proc paramCount*(): int {.tags: [ReadDirEffect].} =
     result = argv.len - 2
 
-  func paramStr*(i: int): string {.tags: [ReadIOEffect].} =
+  proc paramStr*(i: int): string {.tags: [ReadIOEffect].} =
     let i = i + 1
     if i < argv.len and i >= 0:
       result = $argv[i]
     else:
       raise newException(IndexDefect, formatErrorIndexBound(i - 1, argv.len - 2))
 elif defined(nintendoswitch):
-  func paramStr*(i: int): string {.tags: [ReadIOEffect].} =
+  proc paramStr*(i: int): string {.tags: [ReadIOEffect].} =
     raise newException(OSError, "paramStr is not implemented on Nintendo Switch")
 
-  func paramCount*(): int {.tags: [ReadIOEffect].} =
+  proc paramCount*(): int {.tags: [ReadIOEffect].} =
     raise newException(OSError, "paramCount is not implemented on Nintendo Switch")
 
 elif defined(windows):
@@ -2906,14 +2906,14 @@ elif defined(windows):
     ownArgv {.threadvar.}: seq[string]
     ownParsedArgv {.threadvar.}: bool
 
-  func paramCount*(): int {.rtl, extern: "nos$1", tags: [ReadIOEffect].} =
+  proc paramCount*(): int {.rtl, extern: "nos$1", tags: [ReadIOEffect].} =
     # Docstring in nimdoc block.
     if not ownParsedArgv:
       ownArgv = parseCmdLine($getCommandLine())
       ownParsedArgv = true
     result = ownArgv.len-1
 
-  func paramStr*(i: int): string {.rtl, extern: "nos$1",
+  proc paramStr*(i: int): string {.rtl, extern: "nos$1",
     tags: [ReadIOEffect].} =
     # Docstring in nimdoc block.
     if not ownParsedArgv:
@@ -2925,16 +2925,16 @@ elif defined(windows):
       raise newException(IndexDefect, formatErrorIndexBound(i, ownArgv.len-1))
 
 elif defined(genode):
-  func paramStr*(i: int): string =
+  proc paramStr*(i: int): string =
     raise newException(OSError, "paramStr is not implemented on Genode")
 
-  func paramCount*(): int =
+  proc paramCount*(): int =
     raise newException(OSError, "paramCount is not implemented on Genode")
 elif weirdTarget:
-  func paramStr*(i: int): string {.tags: [ReadIOEffect].} =
+  proc paramStr*(i: int): string {.tags: [ReadIOEffect].} =
     raise newException(OSError, "paramStr is not implemented on current platform")
 
-  func paramCount*(): int {.tags: [ReadIOEffect].} =
+  proc paramCount*(): int {.tags: [ReadIOEffect].} =
     raise newException(OSError, "paramCount is not implemented on current platform")
 elif not defined(createNimRtl) and
   not(defined(posix) and appType == "lib"):

@@ -24,7 +24,7 @@ when defined(hotcodereloading):
       error "hasModuleChanged expects a module symbol", module
     return newCall(bindSym"hcrHasModuleChanged", newLit(module.signatureHash))
 
-  proc hasAnyModuleChanged*(): bool = hcrReloadNeeded()
+  func hasAnyModuleChanged*(): bool = hcrReloadNeeded()
 
   when not defined(js):
     template performCodeReload* =

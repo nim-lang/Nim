@@ -488,7 +488,7 @@ proc fromSockAddrAux(sa: ptr Sockaddr_storage, sl: SockLen,
   else:
     raise newException(ValueError, "Neither IPv4 nor IPv6")
 
-func fromSockAddr*(sa: Sockaddr_storage | SockAddr | Sockaddr_in | Sockaddr_in6,
+proc fromSockAddr*(sa: Sockaddr_storage | SockAddr | Sockaddr_in | Sockaddr_in6,
     sl: SockLen, address: var IpAddress, port: var Port) {.inline.} =
   ## Converts `SockAddr` and `SockLen` to `IpAddress` and `Port`. Raises
   ## `ObjectConversionDefect` in case of invalid `sa` and `sl` arguments.
@@ -526,7 +526,7 @@ when defineSsl:
       raiseSSLError()
     return cast[RootRef](res)
 
-  func setExtraData*(ctx: SslContext, index: int, data: RootRef) =
+  proc setExtraData*(ctx: SslContext, index: int, data: RootRef) =
     ## Stores arbitrary data inside SslContext. The unique `index`
     ## should be retrieved using getSslContextExtraDataIndex.
     if index in ctx.referencedData:
@@ -664,7 +664,7 @@ when defineSsl:
   func getExtraInternal(ctx: SslContext): SslContextExtraInternal =
     return ctx.extraInternal
 
-  func destroyContext*(ctx: SslContext) =
+  proc destroyContext*(ctx: SslContext) =
     ## Free memory referenced by SslContext.
 
     # We assume here that OpenSSL's internal indexes increase by 1 each time.

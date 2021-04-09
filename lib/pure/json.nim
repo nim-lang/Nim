@@ -985,7 +985,7 @@ when defined(js):
     of JNull:
       result = newJNull()
 
-  func parseJson*(buffer: string): JsonNode =
+  proc parseJson*(buffer: string): JsonNode =
     when nimvm:
       return parseJson(newStringStream(buffer), "input")
     else:

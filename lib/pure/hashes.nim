@@ -196,7 +196,7 @@ func hashData*(data: pointer, size: int): Hash =
 when defined(js):
   var objectID = 0
 
-func hash*(x: pointer): Hash {.inline.} =
+proc hash*(x: pointer): Hash {.inline.} =
   ## Efficient hashing of pointers.
   when defined(js):
     asm """
@@ -212,7 +212,7 @@ func hash*(x: pointer): Hash {.inline.} =
   else:
     result = cast[Hash](cast[uint](x) shr 3) # skip the alignment
 
-func hash*[T: proc](x: T): Hash {.inline.} =
+proc hash*[T: proc](x: T): Hash {.inline.} =
   ## Efficient hashing of func vars. Closures are supported too.
   when T is "closure":
     result = hash(rawProc(x)) !& hash(rawEnv(x))
@@ -224,7 +224,7 @@ func hashIdentity*[T: Ordinal|enum](x: T): Hash {.inline, since: (1, 3).} =
   cast[Hash](ord(x))
 
 when defined(nimIntHash1):
-  func hash*[T: Ordinal|enum](x: T): Hash {.inline.} =
+  proc hash*[T: Ordinal|enum](x: T): Hash {.inline.} =
     ## Efficient hashing of integers.
     cast[Hash](ord(x))
 else:

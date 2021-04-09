@@ -73,7 +73,7 @@ type
 
 # ----------- RunningStat --------------------------
 
-proc clear*(s: var RunningStat) =
+func clear*(s: var RunningStat) =
   ## Resets `s`.
   s.n = 0
   s.min = toBiggestFloat(int.high)
@@ -84,7 +84,7 @@ proc clear*(s: var RunningStat) =
   s.mom3 = 0.0
   s.mom4 = 0.0
 
-proc push*(s: var RunningStat, x: float) =
+func push*(s: var RunningStat, x: float) =
   ## Pushes a value `x` for processing.
   if s.n == 0: s.min = x
   inc(s.n)
@@ -103,14 +103,14 @@ proc push*(s: var RunningStat, x: float) =
   s.mom2 += term1
   s.mom1 += delta_n
 
-proc push*(s: var RunningStat, x: int) =
+func push*(s: var RunningStat, x: int) =
   ## Pushes a value `x` for processing.
   ##
   ## `x` is simply converted to `float`
   ## and the other push operation is called.
   s.push(toFloat(x))
 
-proc push*(s: var RunningStat, x: openArray[float|int]) =
+func push*(s: var RunningStat, x: openArray[float|int]) =
   ## Pushes all values of `x` for processing.
   ##
   ## Int values of `x` are simply converted to `float` and
@@ -118,45 +118,45 @@ proc push*(s: var RunningStat, x: openArray[float|int]) =
   for val in x:
     s.push(val)
 
-proc mean*(s: RunningStat): float =
+func mean*(s: RunningStat): float =
   ## Computes the current mean of `s`.
   result = s.mom1
 
-proc variance*(s: RunningStat): float =
+func variance*(s: RunningStat): float =
   ## Computes the current population variance of `s`.
   result = s.mom2 / toFloat(s.n)
 
-proc varianceS*(s: RunningStat): float =
+func varianceS*(s: RunningStat): float =
   ## Computes the current sample variance of `s`.
   if s.n > 1: result = s.mom2 / toFloat(s.n - 1)
 
-proc standardDeviation*(s: RunningStat): float =
+func standardDeviation*(s: RunningStat): float =
   ## Computes the current population standard deviation of `s`.
   result = sqrt(variance(s))
 
-proc standardDeviationS*(s: RunningStat): float =
+func standardDeviationS*(s: RunningStat): float =
   ## Computes the current sample standard deviation of `s`.
   result = sqrt(varianceS(s))
 
-proc skewness*(s: RunningStat): float =
+func skewness*(s: RunningStat): float =
   ## Computes the current population skewness of `s`.
   result = sqrt(toFloat(s.n)) * s.mom3 / pow(s.mom2, 1.5)
 
-proc skewnessS*(s: RunningStat): float =
+func skewnessS*(s: RunningStat): float =
   ## Computes the current sample skewness of `s`.
   let s2 = skewness(s)
   result = sqrt(toFloat(s.n*(s.n-1)))*s2 / toFloat(s.n-2)
 
-proc kurtosis*(s: RunningStat): float =
+func kurtosis*(s: RunningStat): float =
   ## Computes the current population kurtosis of `s`.
   result = toFloat(s.n) * s.mom4 / (s.mom2 * s.mom2) - 3.0
 
-proc kurtosisS*(s: RunningStat): float =
+func kurtosisS*(s: RunningStat): float =
   ## Computes the current sample kurtosis of `s`.
   result = toFloat(s.n-1) / toFloat((s.n-2)*(s.n-3)) *
               (toFloat(s.n+1)*kurtosis(s) + 6)
 
-proc `+`*(a, b: RunningStat): RunningStat =
+func `+`*(a, b: RunningStat): RunningStat =
   ## Combines two `RunningStat`s.
   ##
   ## Useful when performing parallel analysis of data series
@@ -184,11 +184,11 @@ proc `+`*(a, b: RunningStat): RunningStat =
   result.max = max(a.max, b.max)
   result.min = min(a.min, b.min)
 
-proc `+=`*(a: var RunningStat, b: RunningStat) {.inline.} =
+func `+=`*(a: var RunningStat, b: RunningStat) {.inline.} =
   ## Adds the `RunningStat` `b` to `a`.
   a = a + b
 
-proc `$`*(a: RunningStat): string =
+func `$`*(a: RunningStat): string =
   ## Produces a string representation of the `RunningStat`. The exact
   ## format is currently unspecified and subject to change. Currently
   ## it contains:
@@ -207,55 +207,55 @@ proc `$`*(a: RunningStat): string =
 
 # ---------------------- standalone array/seq stats ---------------------
 
-proc mean*[T](x: openArray[T]): float =
+func mean*[T](x: openArray[T]): float =
   ## Computes the mean of `x`.
   var rs: RunningStat
   rs.push(x)
   result = rs.mean()
 
-proc variance*[T](x: openArray[T]): float =
+func variance*[T](x: openArray[T]): float =
   ## Computes the population variance of `x`.
   var rs: RunningStat
   rs.push(x)
   result = rs.variance()
 
-proc varianceS*[T](x: openArray[T]): float =
+func varianceS*[T](x: openArray[T]): float =
   ## Computes the sample variance of `x`.
   var rs: RunningStat
   rs.push(x)
   result = rs.varianceS()
 
-proc standardDeviation*[T](x: openArray[T]): float =
+func standardDeviation*[T](x: openArray[T]): float =
   ## Computes the population standard deviation of `x`.
   var rs: RunningStat
   rs.push(x)
   result = rs.standardDeviation()
 
-proc standardDeviationS*[T](x: openArray[T]): float =
+func standardDeviationS*[T](x: openArray[T]): float =
   ## Computes the sample standard deviation of `x`.
   var rs: RunningStat
   rs.push(x)
   result = rs.standardDeviationS()
 
-proc skewness*[T](x: openArray[T]): float =
+func skewness*[T](x: openArray[T]): float =
   ## Computes the population skewness of `x`.
   var rs: RunningStat
   rs.push(x)
   result = rs.skewness()
 
-proc skewnessS*[T](x: openArray[T]): float =
+func skewnessS*[T](x: openArray[T]): float =
   ## Computes the sample skewness of `x`.
   var rs: RunningStat
   rs.push(x)
   result = rs.skewnessS()
 
-proc kurtosis*[T](x: openArray[T]): float =
+func kurtosis*[T](x: openArray[T]): float =
   ## Computes the population kurtosis of `x`.
   var rs: RunningStat
   rs.push(x)
   result = rs.kurtosis()
 
-proc kurtosisS*[T](x: openArray[T]): float =
+func kurtosisS*[T](x: openArray[T]): float =
   ## Computes the sample kurtosis of `x`.
   var rs: RunningStat
   rs.push(x)
@@ -263,14 +263,14 @@ proc kurtosisS*[T](x: openArray[T]): float =
 
 # ---------------------- Running Regression -----------------------------
 
-proc clear*(r: var RunningRegress) =
+func clear*(r: var RunningRegress) =
   ## Resets `r`.
   r.x_stats.clear()
   r.y_stats.clear()
   r.s_xy = 0.0
   r.n = 0
 
-proc push*(r: var RunningRegress, x, y: float) =
+func push*(r: var RunningRegress, x, y: float) =
   ## Pushes two values `x` and `y` for processing.
   r.s_xy += (r.x_stats.mean() - x)*(r.y_stats.mean() - y) *
                 toFloat(r.n) / toFloat(r.n + 1)
@@ -278,35 +278,35 @@ proc push*(r: var RunningRegress, x, y: float) =
   r.y_stats.push(y)
   inc(r.n)
 
-proc push*(r: var RunningRegress, x, y: int) {.inline.} =
+func push*(r: var RunningRegress, x, y: int) {.inline.} =
   ## Pushes two values `x` and `y` for processing.
   ##
   ## `x` and `y` are converted to `float`
   ## and the other push operation is called.
   r.push(toFloat(x), toFloat(y))
 
-proc push*(r: var RunningRegress, x, y: openArray[float|int]) =
+func push*(r: var RunningRegress, x, y: openArray[float|int]) =
   ## Pushes two sets of values `x` and `y` for processing.
   assert(x.len == y.len)
   for i in 0..<x.len:
     r.push(x[i], y[i])
 
-proc slope*(r: RunningRegress): float =
+func slope*(r: RunningRegress): float =
   ## Computes the current slope of `r`.
   let s_xx = r.x_stats.varianceS()*toFloat(r.n - 1)
   result = r.s_xy / s_xx
 
-proc intercept*(r: RunningRegress): float =
+func intercept*(r: RunningRegress): float =
   ## Computes the current intercept of `r`.
   result = r.y_stats.mean() - r.slope()*r.x_stats.mean()
 
-proc correlation*(r: RunningRegress): float =
+func correlation*(r: RunningRegress): float =
   ## Computes the current correlation of the two data
   ## sets pushed into `r`.
   let t = r.x_stats.standardDeviation() * r.y_stats.standardDeviation()
   result = r.s_xy / (toFloat(r.n) * t)
 
-proc `+`*(a, b: RunningRegress): RunningRegress =
+func `+`*(a, b: RunningRegress): RunningRegress =
   ## Combines two `RunningRegress` objects.
   ##
   ## Useful when performing parallel analysis of data series
@@ -321,7 +321,7 @@ proc `+`*(a, b: RunningRegress): RunningRegress =
   result.s_xy = a.s_xy + b.s_xy +
       toFloat(a.n*b.n)*delta_x*delta_y/toFloat(result.n)
 
-proc `+=`*(a: var RunningRegress, b: RunningRegress) =
+func `+=`*(a: var RunningRegress, b: RunningRegress) =
   ## Adds the `RunningRegress` `b` to `a`.
   a = a + b
 

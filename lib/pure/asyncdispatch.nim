@@ -1169,7 +1169,7 @@ else:
   proc unregister*(ev: AsyncEvent) =
     getGlobalDispatcher().selector.unregister(SelectEvent(ev))
 
-  func contains*(disp: PDispatcher, fd: AsyncFD): bool =
+  proc contains*(disp: PDispatcher, fd: AsyncFD): bool =
     return fd.SocketHandle in disp.selector
 
   proc addRead*(fd: AsyncFD, cb: Callback) =
@@ -1830,7 +1830,7 @@ proc connect*(socket: AsyncFD, address: string, port: Port,
     socket.SocketHandle.bindToDomain(domain)
   asyncAddrInfoLoop(aiList, socket)
 
-func sleepAsync*(ms: int | float): owned(Future[void]) =
+proc sleepAsync*(ms: int | float): owned(Future[void]) =
   ## Suspends the execution of the current async procedure for the next
   ## `ms` milliseconds.
   var retFuture = newFuture[void]("sleepAsync")
@@ -1842,7 +1842,7 @@ func sleepAsync*(ms: int | float): owned(Future[void]) =
     p.timers.push((getMonoTime() + initDuration(nanoseconds = ns), retFuture))
   return retFuture
 
-func withTimeout*[T](fut: Future[T], timeout: int): owned(Future[bool]) =
+proc withTimeout*[T](fut: Future[T], timeout: int): owned(Future[bool]) =
   ## Returns a future which will complete once `fut` completes or after
   ## `timeout` milliseconds has elapsed.
   ##
@@ -1853,14 +1853,14 @@ func withTimeout*[T](fut: Future[T], timeout: int): owned(Future[bool]) =
   var retFuture = newFuture[bool]("asyncdispatch.`withTimeout`")
   var timeoutFuture = sleepAsync(timeout)
   fut.callback =
-    func () =
+    proc () =
       if not retFuture.finished:
         if fut.failed:
           retFuture.fail(fut.error)
         else:
           retFuture.complete(true)
   timeoutFuture.callback =
-    func () =
+    proc () =
       if not retFuture.finished: retFuture.complete(false)
   return retFuture
 
@@ -1929,7 +1929,7 @@ proc runForever*() =
   while true:
     poll()
 
-func waitFor*[T](fut: Future[T]): T =
+proc waitFor*[T](fut: Future[T]): T =
   ## **Blocks** the current thread until the specified future completes.
   while not fut.finished:
     poll()

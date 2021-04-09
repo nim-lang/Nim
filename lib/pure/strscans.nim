@@ -45,9 +45,9 @@ substrings starting with ``$``. These constructions are available:
                     The match is allowed to be of 0 length.
 ``$+``              Matches until the token following the ``$+`` was found.
                     The match must consist of at least one char.
-``${foo}``          User defined matcher. Uses the proc ``foo`` to perform
+``${foo}``          User defined matcher. Uses the func ``foo`` to perform
                     the match. See below for more details.
-``$[foo]``          Call user defined proc ``foo`` to **skip** some optional
+``$[foo]``          Call user defined func ``foo`` to **skip** some optional
                     parts in the input string. See below for more details.
 =================   ========================================================
 
@@ -74,18 +74,18 @@ User definable matchers
 =======================
 
 One very nice advantage over regular expressions is that ``scanf`` is
-extensible with ordinary Nim procs. The proc is either enclosed in ``${}``
+extensible with ordinary Nim procs. The func is either enclosed in ``${}``
 or in ``$[]``. ``${}`` matches and binds the result
 to a variable (that was passed to the ``scanf`` macro) while ``$[]`` merely
 matches optional tokens without any result binding.
 
 
-In this example, we define a helper proc ``someSep`` that skips some separators
+In this example, we define a helper func ``someSep`` that skips some separators
 which we then use in our scanf pattern to help us in the matching process:
 
 .. code-block:: nim
 
-  proc someSep(input: string; start: int; seps: set[char] = {':','-','.'}): int =
+  func someSep(input: string; start: int; seps: set[char] = {':','-','.'}): int =
     # Note: The parameters and return value must match to what ``scanf`` requires
     result = 0
     while start+result < input.len and input[start+result] in seps: inc result
@@ -97,7 +97,7 @@ It also possible to pass arguments to a user definable matcher:
 
 .. code-block:: nim
 
-  proc ndigits(input: string; intVal: var int; start: int; n: int): int =
+  func ndigits(input: string; intVal: var int; start: int; n: int): int =
     # matches exactly ``n`` digits. Matchers need to return 0 if nothing
     # matched or otherwise the number of processed chars.
     var x = 0
@@ -156,7 +156,7 @@ Simple example that parses the ``/etc/passwd`` file line by line:
   messagebus:x:103:107::/var/run/dbus:/bin/false
   """
 
-  proc parsePasswd(content: string): seq[string] =
+  func parsePasswd(content: string): seq[string] =
     result = @[]
     var idx = 0
     while true:
@@ -195,14 +195,14 @@ Calling ordinary Nim procs inside the macro is possible:
 
 .. code-block:: nim
 
-  proc digits(s: string; intVal: var int; start: int): int =
+  func digits(s: string; intVal: var int; start: int): int =
     var x = 0
     while result+start < s.len and s[result+start] in {'0'..'9'} and s[result+start] != ':':
       x = x * 10 + s[result+start].ord - '0'.ord
       inc result
     intVal = x
 
-  proc extractUsers(content: string): seq[string] =
+  func extractUsers(content: string): seq[string] =
     # Extracts the username and home directory
     # of each entry (with UID greater than 1000)
     const
@@ -226,7 +226,7 @@ is performed.
 
 .. code-block:: nim
 
-  proc skipUntil(s: string; until: string; unless = '\0'; start: int): int =
+  func skipUntil(s: string; until: string; unless = '\0'; start: int): int =
     # Skips all characters until the string `until` is found. Returns 0
     # if the char `unless` is found first or the end is reached.
     var i = start
@@ -286,7 +286,7 @@ efficiency and perform different checks.
 import macros, parseutils
 import std/private/since
 
-proc conditionsToIfChain(n, idx, res: NimNode; start: int): NimNode =
+func conditionsToIfChain(n, idx, res: NimNode; start: int): NimNode =
   assert n.kind == nnkStmtList
   if start >= n.len: return newAssignment(res, newLit true)
   var ifs: NimNode = nil
@@ -298,9 +298,9 @@ proc conditionsToIfChain(n, idx, res: NimNode; start: int): NimNode =
                                      conditionsToIfChain(n, idx, res, start+3))))
   result = newTree(nnkStmtList, n[start], ifs)
 
-proc notZero(x: NimNode): NimNode = newCall(bindSym"!=", x, newLit 0)
+func notZero(x: NimNode): NimNode = newCall(bindSym"!=", x, newLit 0)
 
-proc buildUserCall(x: string; args: varargs[NimNode]): NimNode =
+func buildUserCall(x: string; args: varargs[NimNode]): NimNode =
   let y = parseExpr(x)
   result = newTree(nnkCall)
   if y.kind in nnkCallKinds: result.add y[0]
@@ -535,7 +535,7 @@ macro scanp*(input, idx: typed; pattern: varargs[untyped]): bool =
 
   template interf(x): untyped = bindSym(x, brForceOpen)
 
-  proc toIfChain(n: seq[StmtTriple]; idx, res: NimNode; start: int): NimNode =
+  func toIfChain(n: seq[StmtTriple]; idx, res: NimNode; start: int): NimNode =
     if start >= n.len: return newAssignment(res, newLit true)
     var ifs: NimNode = nil
     if n[start].cond.kind == nnkEmpty:
@@ -546,11 +546,11 @@ macro scanp*(input, idx: typed; pattern: varargs[untyped]): bool =
                               toIfChain(n, idx, res, start+1))))
     result = newTree(nnkStmtList, n[start].init, ifs)
 
-  proc attach(x, attached: NimNode): NimNode =
+  func attach(x, attached: NimNode): NimNode =
     if attached == nil: x
     else: newStmtList(attached, x)
 
-  proc placeholder(n, x, j: NimNode): NimNode =
+  func placeholder(n, x, j: NimNode): NimNode =
     if n.kind == nnkPrefix and n[0].eqIdent("$"):
       let n1 = n[1]
       if n1.eqIdent"_" or n1.eqIdent"current":
@@ -566,7 +566,7 @@ macro scanp*(input, idx: typed; pattern: varargs[untyped]): bool =
       for i in 0 ..< n.len:
         result.add placeholder(n[i], x, j)
 
-  proc atm(it, input, idx, attached: NimNode): StmtTriple =
+  func atm(it, input, idx, attached: NimNode): StmtTriple =
     template `!!`(x): untyped = attach(x, attached)
     case it.kind
     of nnkIdent:

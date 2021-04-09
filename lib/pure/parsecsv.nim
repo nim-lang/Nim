@@ -291,7 +291,7 @@ proc close*(my: var CsvParser) {.inline.} =
   ## Closes the parser `my` and its associated input stream.
   lexbase.close(my)
 
-func readHeaderRow*(my: var CsvParser) =
+proc readHeaderRow*(my: var CsvParser) =
   ## Reads the first row and creates a look-up table for column numbers
   ## See also:
   ## * `rowEntry func <#rowEntry,CsvParser,string>`_

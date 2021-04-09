@@ -55,7 +55,7 @@ type
   UriParseError* = object of ValueError
 
 
-proc uriParseError*(msg: string) {.noreturn.} =
+func uriParseError*(msg: string) {.noreturn.} =
   ## Raises a `UriParseError` exception with message `msg`.
   raise newException(UriParseError, msg)
 
@@ -163,7 +163,7 @@ iterator decodeQuery*(data: string): tuple[key, value: string] =
     doAssert toSeq(decodeQuery("foo=1&bar=2=3")) == @[("foo", "1"), ("bar", "2=3")]
     doAssert toSeq(decodeQuery("&a&=b&=&&")) == @[("", ""), ("a", ""), ("", "b"), ("", ""), ("", "")]
 
-  proc parseData(data: string, i: int, field: var string, sep: char): int =
+  func parseData(data: string, i: int, field: var string, sep: char): int =
     result = i
     while result < data.len:
       let c = data[result]
@@ -546,7 +546,7 @@ func `$`*(u: Uri): string =
     result.add(u.anchor)
 
 proc getDataUri*(data, mime: string, encoding = "utf-8"): string {.since: (1, 3).} =
-  ## Convenience proc for `base64.encode` returns a standard Base64 Data URI (RFC-2397)
+  ## Convenience func for `base64.encode` returns a standard Base64 Data URI (RFC-2397)
   ##
   ## **See also:**
   ## * `mimetypes <mimetypes.html>`_ for `mime` argument

@@ -84,12 +84,12 @@ when defined(haiku):
     B_FIND_PATH_EXISTING_ONLY = 0x4
     B_FIND_PATH_DATA_DIRECTORY = 6
 
-  proc find_paths_etc(architecture: cstring, baseDirectory: cint,
+  func find_paths_etc(architecture: cstring, baseDirectory: cint,
                       subPath: cstring, flags: uint32,
                       paths: var ptr UncheckedArray[cstring],
                       pathCount: var csize): int32
                      {.importc, header: "<FindDirectory.h>".}
-  proc free(p: pointer) {.importc, header: "<stdlib.h>".}
+  func free(p: pointer) {.importc, header: "<stdlib.h>".}
 
 iterator scanSSLCertificates*(useEnvVars = false): string =
   ## Scan for SSL/TLS CA certificates on disk.
@@ -154,12 +154,12 @@ iterator scanSSLCertificates*(useEnvVars = false): string =
 #
 #   {.push stdcall, dynlib: "kernel32", importc.}
 #
-#   proc CertOpenSystemStore*(hprov: pointer=nil, szSubsystemProtocol: cstring): CertStore
+#   func CertOpenSystemStore*(hprov: pointer=nil, szSubsystemProtocol: cstring): CertStore
 #
-#   proc CertEnumCertificatesInStore*(hCertStore: CertStore, pPrevCertContext: PCCertContext): pointer
+#   func CertEnumCertificatesInStore*(hCertStore: CertStore, pPrevCertContext: PCCertContext): pointer
 #
-#   proc CertFreeCertificateContext*(pContext: PCCertContext): bool
+#   func CertFreeCertificateContext*(pContext: PCCertContext): bool
 #
-#   proc CertCloseStore*(hCertStore:CertStore, flags:cint): bool
+#   func CertCloseStore*(hCertStore:CertStore, flags:cint): bool
 #
 #   {.pop.}

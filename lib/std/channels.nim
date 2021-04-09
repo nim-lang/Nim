@@ -164,7 +164,7 @@ func peek(chan: ChannelRaw): int {.inline.} =
 var channelCache {.threadvar.}: ChannelCache
 var channelCacheLen {.threadvar.}: int
 
-func allocChannelCache(size, n: int): bool =
+proc allocChannelCache(size, n: int): bool =
   ## Allocate a free list for storing channels of a given type
   var p = channelCache
 
@@ -187,7 +187,7 @@ func allocChannelCache(size, n: int): bool =
   inc channelCacheLen
   result = true
 
-func freeChannelCache*() =
+proc freeChannelCache*() =
   ## Frees the entire channel cache, including all channels
   var p = channelCache
   var q: ChannelCache
@@ -213,7 +213,7 @@ func freeChannelCache*() =
 # Channels memory ops
 # ----------------------------------------------------------------------------------
 
-func allocChannel(size, n: int): ChannelRaw =
+proc allocChannel(size, n: int): ChannelRaw =
   when nimChannelCacheSize > 0:
     var p = channelCache
 
@@ -255,7 +255,7 @@ func allocChannel(size, n: int): ChannelRaw =
     # Allocate a cache as well if one of the proper size doesn't exist
     discard allocChannelCache(size, n)
 
-func freeChannel(chan: ChannelRaw) =
+proc freeChannel(chan: ChannelRaw) =
   if chan.isNil:
     return
 
@@ -435,7 +435,7 @@ type
   Channel*[T] = object ## Typed channels
     d: ChannelRaw
 
-func `=destroy`*[T](c: var Channel[T]) =
+proc `=destroy`*[T](c: var Channel[T]) =
   if c.d != nil:
     if load(c.d.atomicCounter, moAcquire) == 0:
       if c.d.buffer != nil:
@@ -443,7 +443,7 @@ func `=destroy`*[T](c: var Channel[T]) =
     else:
       atomicDec(c.d.atomicCounter)
 
-func `=`*[T](dest: var Channel[T], src: Channel[T]) =
+proc `=`*[T](dest: var Channel[T], src: Channel[T]) =
   ## Shares `Channel` by reference counting.
   if src.d != nil:
     atomicInc(src.d.atomicCounter)
@@ -489,7 +489,7 @@ func close*[T](c: Channel[T]): bool {.inline.} =
 
 func peek*[T](c: Channel[T]): int {.inline.} = peek(c.d)
 
-func newChannel*[T](elements = 30): Channel[T] =
+proc newChannel*[T](elements = 30): Channel[T] =
   ## Returns a new `Channel`. `elements` should be positive.
   ## `elements` is used to specify whether a channel is buffered or not.
   ## If `elements` = 1, the channel is unbuffered. If `elements` > 1, the 

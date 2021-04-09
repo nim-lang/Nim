@@ -93,7 +93,7 @@ runnableExamples:
   assert fmt"{y=}" == fmt"y={y}"
   assert fmt"{y = : <8}" == fmt"y = 3.14159 "
 
-  proc hello(a: string, b: float): int = 12
+  func hello(a: string, b: float): int = 12
   assert fmt"{hello(x, y) = }" == "hello(x, y) = 12"
   assert fmt"{x.hello(y) = }" == "x.hello(y) = 12"
   assert fmt"{hello x, y = }" == "hello x, y = 12"
@@ -132,7 +132,7 @@ as Nim code, to escape a `{` or `}`, double it.
 
 `&` delegates most of the work to an open overloaded set
 of `formatValue` procs. The required signature for a type `T` that supports
-formatting is usually `proc formatValue(result: var string; x: T; specifier: string)`.
+formatting is usually `func formatValue(result: var string; x: T; specifier: string)`.
 
 The subexpression after the colon
 (`arg` in `&"{key} is {value:arg} {{z}}"`) is optional. It will be passed as
@@ -288,16 +288,16 @@ single letter DSLs.
 import std/[macros, parseutils, unicode]
 import std/strutils except format
 
-proc mkDigit(v: int, typ: char): string {.inline.} =
+func mkDigit(v: int, typ: char): string {.inline.} =
   assert(v < 26)
   if v < 10:
     result = $chr(ord('0') + v)
   else:
     result = $chr(ord(if typ == 'x': 'a' else: 'A') + v - 10)
 
-proc alignString*(s: string, minimumWidth: int; align = '\0'; fill = ' '): string =
+func alignString*(s: string, minimumWidth: int; align = '\0'; fill = ' '): string =
   ## Aligns `s` using the `fill` char.
-  ## This is only of interest if you want to write a custom `format` proc that
+  ## This is only of interest if you want to write a custom `format` func that
   ## should support the standard format specifiers.
   if minimumWidth == 0:
     result = s
@@ -326,7 +326,7 @@ type
     endPosition*: int              ## End position in the format specifier after
                                    ## `parseStandardFormatSpecifier` returned.
 
-proc formatInt(n: SomeNumber; radix: int; spec: StandardFormatSpecifier): string =
+func formatInt(n: SomeNumber; radix: int; spec: StandardFormatSpecifier): string =
   ## Converts `n` to a string. If `n` is `SomeFloat`, it casts to `int64`.
   ## Conversion is done using `radix`. If result's length is less than
   ## `minimumWidth`, it aligns result to the right or left (depending on `a`)
@@ -388,14 +388,14 @@ proc formatInt(n: SomeNumber; radix: int; spec: StandardFormatSpecifier): string
       if toFill > 0:
         result = repeat(spec.fill, toFill) & result
 
-proc parseStandardFormatSpecifier*(s: string; start = 0;
+func parseStandardFormatSpecifier*(s: string; start = 0;
                                    ignoreUnknownSuffix = false): StandardFormatSpecifier =
-  ## An exported helper proc that parses the "standard format specifiers",
+  ## An exported helper func that parses the "standard format specifiers",
   ## as specified by the grammar::
   ##
   ##   [[fill]align][sign][#][0][minimumwidth][.precision][type]
   ##
-  ## This is only of interest if you want to write a custom `format` proc that
+  ## This is only of interest if you want to write a custom `format` func that
   ## should support the standard format specifiers. If `ignoreUnknownSuffix` is true,
   ## an unknown suffix after the `type` field is not an error.
   const alignChars = {'<', '>', '^'}
@@ -440,7 +440,7 @@ proc parseStandardFormatSpecifier*(s: string; start = 0;
     raise newException(ValueError,
       "invalid format string, cannot parse: " & s[i..^1])
 
-proc formatValue*[T: SomeInteger](result: var string; value: T;
+func formatValue*[T: SomeInteger](result: var string; value: T;
                                   specifier: string) =
   ## Standard format implementation for `SomeInteger`. It makes little
   ## sense to call this directly, but it is required to exist
@@ -461,7 +461,7 @@ proc formatValue*[T: SomeInteger](result: var string; value: T;
       " of 'x', 'X', 'b', 'd', 'o' but got: " & spec.typ)
   result.add formatInt(value, radix, spec)
 
-proc formatValue*(result: var string; value: SomeFloat; specifier: string) =
+func formatValue*(result: var string; value: SomeFloat; specifier: string) =
   ## Standard format implementation for `SomeFloat`. It makes little
   ## sense to call this directly, but it is required to exist
   ## by the `&` macro.
@@ -518,7 +518,7 @@ proc formatValue*(result: var string; value: SomeFloat; specifier: string) =
   else:
     result.add res
 
-proc formatValue*(result: var string; value: string; specifier: string) =
+func formatValue*(result: var string; value: string; specifier: string) =
   ## Standard format implementation for `string`. It makes little
   ## sense to call this directly, but it is required to exist
   ## by the `&` macro.

@@ -211,13 +211,13 @@ proc addOutputFormatter*(formatter: OutputFormatter) =
   formatters.add(formatter)
 
 proc delOutputFormatter*(formatter: OutputFormatter) =
-  keepIf(formatters, proc (x: OutputFormatter): bool =
+  keepIf(formatters, func (x: OutputFormatter): bool =
     x != formatter)
 
 proc resetOutputFormatters* {.since: (1, 1).} =
   formatters = @[]
 
-proc newConsoleOutputFormatter*(outputLevel: OutputLevel = outputLevelDefault,
+func newConsoleOutputFormatter*(outputLevel: OutputLevel = outputLevelDefault,
                                 colorOutput = true): <//>ConsoleOutputFormatter =
   ConsoleOutputFormatter(
     outputLevel: outputLevel,
@@ -300,7 +300,7 @@ method testEnded*(formatter: ConsoleOutputFormatter, testResult: TestResult) =
 method suiteEnded*(formatter: ConsoleOutputFormatter) =
   formatter.isInSuite = false
 
-proc xmlEscape(s: string): string =
+func xmlEscape(s: string): string =
   result = newStringOfCap(s.len)
   for c in items(s):
     case c:
@@ -395,7 +395,7 @@ method testEnded*(formatter: JUnitOutputFormatter, testResult: TestResult) =
 method suiteEnded*(formatter: JUnitOutputFormatter) =
   formatter.stream.writeLine("\t</testsuite>")
 
-proc glob(matcher, filter: string): bool =
+func glob(matcher, filter: string): bool =
   ## Globbing using a single `*`. Empty `filter` matches everything.
   if filter.len == 0:
     return true
@@ -414,7 +414,7 @@ proc glob(matcher, filter: string): bool =
   return matcher.startsWith(beforeAndAfter[0]) and matcher.endsWith(
       beforeAndAfter[1])
 
-proc matchFilter(suiteName, testName, filter: string): bool =
+func matchFilter(suiteName, testName, filter: string): bool =
   if filter == "":
     return true
   if testName == filter:
@@ -514,7 +514,7 @@ template suite*(name, body) {.dirty.} =
     finally:
       suiteEnded()
 
-proc exceptionTypeName(e: ref Exception): string {.inline.} =
+func exceptionTypeName(e: ref Exception): string {.inline.} =
   if e == nil: "<foreign exception>"
   else: $e.name
 
@@ -657,7 +657,7 @@ macro check*(conditions: untyped): untyped =
     when compiles(string($value)):
       checkpoint(name & " was " & $value)
 
-  proc inspectArgs(exp: NimNode): tuple[assigns, check, printOuts: NimNode] =
+  func inspectArgs(exp: NimNode): tuple[assigns, check, printOuts: NimNode] =
     result.check = copyNimTree(exp)
     result.assigns = newNimNode(nnkStmtList)
     result.printOuts = newNimNode(nnkStmtList)
@@ -740,7 +740,7 @@ macro expect*(exceptions: varargs[typed], body: untyped): untyped =
   ## exceptions. Otherwise, it fails.
   runnableExamples:
     import std/[math, random, strutils]
-    proc defectiveRobot() =
+    func defectiveRobot() =
       randomize()
       case rand(1..4)
       of 1: raise newException(OSError, "CANNOT COMPUTE!")

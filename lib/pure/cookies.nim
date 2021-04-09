@@ -18,7 +18,7 @@ type
                             ## func will not set `SameSite` attribute.
     Default, None, Lax, Strict
 
-func parseCookies*(s: string): StringTableRef =
+proc parseCookies*(s: string): StringTableRef =
   ## Parses cookies into a string table.
   ##
   ## The func is meant to parse the Cookie header set by a client, not the
@@ -44,7 +44,7 @@ func parseCookies*(s: string): StringTableRef =
     if i >= s.len: break
     inc(i) # skip ';'
 
-func setCookie*(key, value: string, domain = "", path = "",
+proc setCookie*(key, value: string, domain = "", path = "",
                 expires = "", noName = false,
                 secure = false, httpOnly = false, 
                 maxAge = none(int), sameSite = SameSite.Default): string =
@@ -65,7 +65,7 @@ func setCookie*(key, value: string, domain = "", path = "",
       doAssert secure, "Cookies with SameSite=None must specify the Secure attribute!"
     result.add("; SameSite=" & $sameSite)
 
-func setCookie*(key, value: string, expires: DateTime|Time,
+proc setCookie*(key, value: string, expires: DateTime|Time,
                 domain = "", path = "", noName = false,
                 secure = false, httpOnly = false,
                 maxAge = none(int), sameSite = SameSite.Default): string =

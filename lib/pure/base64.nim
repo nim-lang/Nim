@@ -143,7 +143,7 @@ template encodeImpl() {.dirty.} =
       let lookupTable = if safe: unsafeAddr(cb64safe) else: unsafeAddr(cb64)
       encodeInternal(s, lookupTable)
 
-func encode*[T: SomeInteger|char](s: openArray[T], safe = false): string =
+proc encode*[T: SomeInteger|char](s: openArray[T], safe = false): string =
   ## Encodes `s` into base64 representation.
   ##
   ## This procedure encodes an openarray (array or sequence) of either integers

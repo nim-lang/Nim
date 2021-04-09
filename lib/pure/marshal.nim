@@ -298,7 +298,7 @@ func store*[T](s: Stream, data: T) =
   shallowCopy(d, data)
   storeAny(s, toAny(d), stored)
 
-func `$$`*[T](x: T): string =
+proc `$$`*[T](x: T): string =
   ## Returns a string representation of `x` (serialization, marshalling).
   ##
   ## **Note:** to serialize `x` to JSON use `%x` from the `json` module
@@ -320,7 +320,7 @@ func `$$`*[T](x: T): string =
   storeAny(s, toAny(d), stored)
   result = s.data
 
-func to*[T](data: string): T =
+proc to*[T](data: string): T =
   ## Reads data and transforms it to a type `T` (deserialization, unmarshalling).
   runnableExamples:
     type

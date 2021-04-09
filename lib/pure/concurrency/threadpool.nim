@@ -155,7 +155,7 @@ proc selectWorker(w: ptr Worker; fn: WorkerProc; data: pointer): bool =
     blockUntil(w.taskStarted)
     result = true
 
-func cleanFlowVars(w: ptr Worker) =
+proc cleanFlowVars(w: ptr Worker) =
   let q = addr(w.q)
   acquire(q.lock)
   for i in 0 ..< q.len:
@@ -171,7 +171,7 @@ proc wakeupWorkerToProcessQueue(w: ptr Worker) =
     cpuRelax()
     discard
   w.data = nil
-  w.f = func (w, a: pointer) {.nimcall.} =
+  w.f = proc (w, a: pointer) {.nimcall.} =
     let w = cast[ptr Worker](w)
     cleanFlowVars(w)
     signal(w.q.empty)
@@ -209,7 +209,7 @@ proc finished(fv: var FlowVarBaseObj) =
   # the worker thread waits for "data" to be set to nil before shutting down
   owner.data = nil
 
-func `=destroy`[T](fv: var FlowVarObj[T]) =
+proc `=destroy`[T](fv: var FlowVarObj[T]) =
   finished(fv)
   `=destroy`(fv.blob)
 
@@ -236,7 +236,7 @@ func awaitAndThen*[T](fv: FlowVar[T]; action: proc (x: T) {.closure.}) =
   ##
   ## Note that due to Nim's parameter passing semantics, this
   ## means that `T` doesn't need to be copied, so `awaitAndThen` can
-  ## sometimes be more efficient than the `^ func <#^,FlowVar[T]>`_.
+  ## sometimes be more efficient than the `^ proc <#^,FlowVar[T]>`_.
   blockUntil(fv[])
   when defined(nimV2):
     action(fv.blob)
@@ -257,7 +257,7 @@ func unsafeRead*[T](fv: FlowVar[ref T]): ptr T =
     result = cast[ptr T](fv.data)
   finished(fv[])
 
-func `^`*[T](fv: FlowVar[T]): T =
+proc `^`*[T](fv: FlowVar[T]): T =
   ## Blocks until the value is available and then returns this value.
   blockUntil(fv[])
   when not defined(nimV2) and (T is string or T is seq or T is ref):

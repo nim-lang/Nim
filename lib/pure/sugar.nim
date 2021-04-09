@@ -13,13 +13,13 @@
 import std/private/since
 import std/macros
 
-proc checkPragma(ex, prag: var NimNode) =
+func checkPragma(ex, prag: var NimNode) =
   since (1, 3):
     if ex.kind == nnkPragmaExpr:
       prag = ex[1]
       ex = ex[0]
 
-proc createProcType(p, b: NimNode): NimNode =
+func createProcType(p, b: NimNode): NimNode =
   result = newNimNode(nnkProcTy)
   var
     formalParams = newNimNode(nnkFormalParams).add(b)
@@ -55,7 +55,7 @@ proc createProcType(p, b: NimNode): NimNode =
 macro `=>`*(p, b: untyped): untyped =
   ## Syntax sugar for anonymous procedures. It also supports pragmas.
   runnableExamples:
-    proc passTwoAndTwo(f: (int, int) -> int): int = f(2, 2)
+    func passTwoAndTwo(f: (int, int) -> int): int = f(2, 2)
 
     assert passTwoAndTwo((x, y) => x + y) == 4
 
@@ -68,7 +68,7 @@ macro `=>`*(p, b: untyped): untyped =
     myBot.call = (name: string) {.noSideEffect.} => "Hello " & name & ", I'm a bot."
     assert myBot.call("John") == "Hello John, I'm a bot."
 
-    let f = () => (discard) # simplest proc that returns void
+    let f = () => (discard) # simplest func that returns void
     f()
 
   var
@@ -114,7 +114,7 @@ macro `=>`*(p, b: untyped): untyped =
           for i in 1 ..< procTy[0].len:
             params.add(procTy[0][i])
         else:
-          error("Expected proc type (->) got (" & c[0].strVal & ").", c)
+          error("Expected func type (->) got (" & c[0].strVal & ").", c)
         break
       else:
         error("Incorrect procedure parameter.", c)
@@ -134,15 +134,15 @@ macro `=>`*(p, b: untyped): untyped =
 macro `->`*(p, b: untyped): untyped =
   ## Syntax sugar for procedure types. It also supports pragmas.
   runnableExamples:
-    proc passTwoAndTwo(f: (int, int) -> int): int = f(2, 2)
+    func passTwoAndTwo(f: (int, int) -> int): int = f(2, 2)
     # is the same as:
-    # proc passTwoAndTwo(f: proc (x, y: int): int): int = f(2, 2)
+    # func passTwoAndTwo(f: func (x, y: int): int): int = f(2, 2)
 
     assert passTwoAndTwo((x, y) => x + y) == 4
 
-    proc passOne(f: (int {.noSideEffect.} -> int)): int = f(1)
+    func passOne(f: (int {.noSideEffect.} -> int)): int = f(1)
     # is the same as:
-    # proc passOne(f: proc (x: int): int {.noSideEffect.}): int = f(1)
+    # func passOne(f: func (x: int): int {.noSideEffect.}): int = f(1)
 
     assert passOne(x {.noSideEffect.} => x + 1) == 2
 
@@ -194,10 +194,10 @@ macro dumpToString*(x: untyped): string =
   result.add x
 
 # TODO: consider exporting this in macros.nim
-proc freshIdentNodes(ast: NimNode): NimNode =
+func freshIdentNodes(ast: NimNode): NimNode =
   # Replace NimIdent and NimSym by a fresh ident node
   # see also https://github.com/nim-lang/Nim/pull/8531#issuecomment-410436458
-  proc inspect(node: NimNode): NimNode =
+  func inspect(node: NimNode): NimNode =
     case node.kind:
     of nnkIdent, nnkSym:
       result = ident($node)
@@ -264,7 +264,7 @@ since (1, 1):
       # but `_` is optional here since the substitution is in 1st position:
       assert "".dup(addQuoted("foo")) == "\"foo\""
 
-      proc makePalindrome(s: var string) =
+      func makePalindrome(s: var string) =
         for i in countdown(s.len-2, 0):
           s.add(s[i])
 
@@ -283,7 +283,7 @@ since (1, 1):
     underscoredCalls(result, calls, tmp)
     result.add tmp
 
-proc trans(n, res, bracketExpr: NimNode): (NimNode, NimNode, NimNode) {.since: (1, 1).} =
+func trans(n, res, bracketExpr: NimNode): (NimNode, NimNode, NimNode) {.since: (1, 1).} =
   # Looks for the last statement of the last statement, etc...
   case n.kind
   of nnkIfExpr, nnkIfStmt, nnkTryStmt, nnkCaseStmt, nnkWhenStmt:
@@ -327,7 +327,7 @@ proc trans(n, res, bracketExpr: NimNode): (NimNode, NimNode, NimNode) {.since: (
     template adder(res, v) = res.add(v)
     result[0] = getAst(adder(res, n))
 
-proc collectImpl(init, body: NimNode): NimNode {.since: (1, 1).} =
+func collectImpl(init, body: NimNode): NimNode {.since: (1, 1).} =
   let res = genSym(nskVar, "collectResult")
   var bracketExpr: NimNode
   if init != nil:

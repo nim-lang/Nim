@@ -114,7 +114,7 @@ when defined(windows):
                     flProtect: int32): pointer {.
                     header: "<windows.h>", stdcall, importc: "VirtualAlloc".}
 
-func init*(T: type ReservedMem,
+proc init*(T: type ReservedMem,
            maxLen: Natural,
            initLen: Natural = 0,
            initCommitLen = initLen,
@@ -156,7 +156,7 @@ func commitedLen*(m: ReservedMem): int =
 func maxLen*(m: ReservedMem): int =
   distance(m.memStart, m.memEnd)
 
-func setLen*(m: var ReservedMem, newLen: int) =
+proc setLen*(m: var ReservedMem, newLen: int) =
   let len = m.len
   m.usedMemEnd = m.memStart.shift(newLen)
   if newLen > len:
@@ -184,7 +184,7 @@ func setLen*(m: var ReservedMem, newLen: int) =
 
       m.committedMemEnd = newCommitEnd
 
-func init*(SeqType: type ReservedMemSeq,
+proc init*(SeqType: type ReservedMemSeq,
            maxLen: Natural,
            initLen: Natural = 0,
            initCommitLen: Natural = 0,
@@ -218,7 +218,7 @@ func `[]`*[T](s: var ReservedMemSeq[T], rpos: BackwardsIndex): var T =
 func len*[T](s: ReservedMemSeq[T]): int =
   s.mem.len div sizeof(T)
 
-func setLen*[T](s: var ReservedMemSeq[T], newLen: int) =
+proc setLen*[T](s: var ReservedMemSeq[T], newLen: int) =
   # TODO call destructors
   s.mem.setLen(newLen * sizeof(T))
 

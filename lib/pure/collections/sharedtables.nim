@@ -37,7 +37,7 @@ template st_maybeRehashPutImpl(enlarge) {.dirty.} =
   rawInsert(t, t.data, key, val, hc, index)
   inc(t.counter)
 
-func enlarge[A, B](t: var SharedTable[A, B]) =
+proc enlarge[A, B](t: var SharedTable[A, B]) =
   let oldSize = t.dataLen
   let size = oldSize * growthFactor
   var n = cast[KeyValuePairSeq[A, B]](allocShared0(
@@ -142,7 +142,7 @@ template tabMakeEmpty(i) = t.data[i].hcode = 0
 template tabCellEmpty(i) = isEmpty(t.data[i].hcode)
 template tabCellHash(i)  = t.data[i].hcode
 
-func withKey*[A, B](t: var SharedTable[A, B], key: A,
+proc withKey*[A, B](t: var SharedTable[A, B], key: A,
                     mapper: proc(key: A, val: var B, pairExists: var bool)) =
   ## Computes a new mapping for the `key` with the specified `mapper`
   ## procedure.
@@ -190,7 +190,7 @@ func withKey*[A, B](t: var SharedTable[A, B], key: A,
       if pairExists:
         st_maybeRehashPutImpl(enlarge)
 
-func `[]=`*[A, B](t: var SharedTable[A, B], key: A, val: B) =
+proc `[]=`*[A, B](t: var SharedTable[A, B], key: A, val: B) =
   ## puts a (key, value)-pair into `t`.
   withLock t:
     putImpl(enlarge)
@@ -211,7 +211,7 @@ func len*[A, B](t: var SharedTable[A, B]): int =
   withLock t:
     result = t.counter
 
-func init*[A, B](t: var SharedTable[A, B], initialSize = 32) =
+proc init*[A, B](t: var SharedTable[A, B], initialSize = 32) =
   ## creates a new hash table that is empty.
   ##
   ## This func must be called before any other usage of `t`.
