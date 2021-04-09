@@ -326,6 +326,10 @@ proc loadCompilerProc*(g: ModuleGraph; name: string): PSym =
         strTableAdd(g.compilerprocs, result)
       return result
 
+proc loadPackedSym*(g: ModuleGraph; s: var LazySym) =
+  if s.sym == nil:
+    s.sym = loadSymFromId(g.config, g.cache, g.packed, s.id.module, s.id.packed)
+
 proc `$`*(u: SigHash): string =
   toBase64a(cast[cstring](unsafeAddr u), sizeof(u))
 
