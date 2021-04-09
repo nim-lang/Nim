@@ -21,7 +21,7 @@ runnableExamples:
       foo: int
       bar: string
 
-  iterator items(x: Something): int =
+  iterator items(x: Something): Hash =
     yield hash(x.foo)
     yield hash(x.bar)
 
