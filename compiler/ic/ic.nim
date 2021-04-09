@@ -666,7 +666,7 @@ type
 
   LoadedModule* = object
     status*: ModuleStatus
-    symsInit, typesInit: bool
+    symsInit, typesInit, loadedButAliveSetChanged*: bool
     fromDisk*: PackedModule
     syms: seq[PSym] # indexed by itemId
     types: seq[PType]
