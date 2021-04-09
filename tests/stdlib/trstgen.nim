@@ -1377,11 +1377,6 @@ Test1
     check("""<div class="option-list-label">-n</div>""" &
           """<div class="option-list-description">very long desc</div></div>""" in
           output)
-    #check """<div class="option-list-description">odesc</div>""" in output
-    #check """<div class="option-list-description">very long desc</div>""" in output
-    #check("""<th align="left">-m</th><td align="left">desc</td>""" in output)
-    #check("""<th align="left">-n</th><td align="left">very long desc</td>""" in
-    #      output)
 
   test "Option lists 2":
     # check that 2nd option list is not united with the 1st

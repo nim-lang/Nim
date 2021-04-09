@@ -513,7 +513,6 @@ div.footnote-label {
 
 div.option-list {
   border: 0.1em solid var(--border);
-  /*border-right: 0.1em solid var(--border);*/
 }
 div.option-list-item {
   padding-left: 12em;
