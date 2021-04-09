@@ -264,6 +264,8 @@
 
 - Added dollar `$` and `len` for `jsre.RegExp`.
 
+- Added `std/tasks`.
+
 - Added `hasDataBuffered` to `asyncnet`.
 
 - Added `hasClosure` to `std/typetraits`.
