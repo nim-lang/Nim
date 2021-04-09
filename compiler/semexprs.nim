@@ -505,15 +505,14 @@ proc semOpAux(c: PContext, n: PNode) =
       a.typ = a[1].typ
     else:
       n[i] = semExprWithType(c, a, flags)
-
 proc overloadedCallOpr(c: PContext, n: PNode): PNode =
   # quick check if there is *any* () operator overloaded:
   var par = getIdent(c.cache, "()")
   var amb = false
   if searchInScopes(c, par, amb) == nil:
     result = nil
-  elif n.kind == nkCall and n[0].kind == nkClosedSymChoice:
-    # fix for #6981,#9831
+  elif n.hasSubnodeWith(nkClosedSymChoice):
+      # fix for #6981,#9831
     result = nil
   else:
     result = newNodeI(nkCall, n.info)
