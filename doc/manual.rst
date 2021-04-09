@@ -5615,19 +5615,6 @@ is used to invoke templates/macros:
   unknownIdentifier.declareVar
 
 
-Another common example is this:
-
-.. code-block:: nim
-  from std/sequtils import toSeq
-
-  iterator something: string =
-    yield "Hello"
-    yield "World"
-
-  var info = something().toSeq
-
-This will be fixed by using the `iterable <#overloading-resolution-iterable>`_ type class in `toSeq` implementation.
-
 It is also not possible to use fully qualified identifiers with module
 symbol in method call syntax. The order in which the dot operator
 binds to symbols prohibits this.
