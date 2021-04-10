@@ -55,7 +55,7 @@ when defined(nimExperimentalSmartptrs):
   proc get*[T](p: UniquePtr[T]): var T {.inline.} =
     ## Returns a mutable view of the internal value of `p`.
     when compileOption("boundChecks"):
-      doAssert(p.val != nil, "deferencing nil unique pointer")
+      doAssert(p.val != nil, "dereferencing a nil unique pointer")
     p.val[]
 
   proc isNil*[T](p: UniquePtr[T]): bool {.inline.} =
