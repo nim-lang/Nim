@@ -257,6 +257,10 @@ proc fieldVisible*(c: PContext, f: PSym): bool {.inline.} =
     if fmoduleId == module.id:
       result = true
       break
+  for module in c.friendModulesImportAll:
+    if fmoduleId == module.id:
+      result = true
+      break
 
 proc getQuality(s: PSym): range[0..100] =
   result = 100

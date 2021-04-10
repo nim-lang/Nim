@@ -29,6 +29,7 @@ type
     patterns*: seq[LazySym]
     pureEnums*: seq[LazySym]
     interf: TStrTable
+    interfAll: TStrTable
     uniqueName*: Rope
 
   Operators* = object

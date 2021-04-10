@@ -308,6 +308,12 @@
   `template fn(a: iterable)` instead of `template fn(a: untyped)`
 
 
+- A new import syntax `import {.all} foo` now allows to import all symbols (public or private)
+  from `foo`. It works in combination with all pre-existing import features. This
+  helps avoid using workarounds such as using `include` when you need a private symbol for
+  testing (which has known issues) or making some internal APIs public just because another internal
+  module needs those. It also helps mitigate the lack of cyclic imports in some cases.
+
 ## Compiler changes
 
 - Added `--declaredlocs` to show symbol declaration location in messages.
