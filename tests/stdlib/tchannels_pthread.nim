@@ -89,6 +89,7 @@ proc runSuite(
         capacity(chan) == 1
         isBuffered(chan) == false
         isUnbuffered(chan) == true
+
     else:
       chan = allocChannel(size = int.sizeof.int, n = 7)
       check:
@@ -109,7 +110,7 @@ proc runSuite(
       discard pthread_join(threads[0], nil)
       discard pthread_join(threads[1], nil)
 
-      freeChannel(chan)
+    freeChannel(chan)
 
 # ----------------------------------------------------------------------------------
 

@@ -1,5 +1,4 @@
 import std/private/miscdollars
-import std/strutils
 from std/os import getEnv
 
 template flakyAssert*(cond: untyped, msg = "", notifySuccess = true) =
@@ -26,15 +25,29 @@ template flakyAssert*(cond: untyped, msg = "", notifySuccess = true) =
     msg2.add $expr & " " & msg
     echo msg2
 
-proc greedyOrderedSubsetLines*(lhs, rhs: string): bool =
-  ## returns true if each stripped line in `lhs` appears in rhs, using a greedy matching.
-  let rhs = rhs.strip
-  var currentPos = 0
-  for line in lhs.strip.splitLines:
-    currentPos = rhs.find(line.strip, currentPos)
-    if currentPos < 0:
-      return false
-  return true
+when not defined(js):
+  import std/strutils
+
+  proc greedyOrderedSubsetLines*(lhs, rhs: string): bool =
+    ## Returns true if each stripped line in `lhs` appears in rhs, using a greedy matching.
+    iterator splitLinesClosure(): string {.closure.} =
+      for line in splitLines(rhs.strip):
+        yield line
+
+    var rhsIter = splitLinesClosure
+    var currentLine = strip(rhsIter())
+
+    for line in lhs.strip.splitLines:
+      let line = line.strip
+      if line.len != 0:
+        while line != currentLine:
+          currentLine = strip(rhsIter())
+          if rhsIter.finished:
+            return false
+
+      if rhsIter.finished:
+        return false
+    return true
 
 template enableRemoteNetworking*: bool =
   ## Allows contolling whether to run some test at a statement-level granularity.

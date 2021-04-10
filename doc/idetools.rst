@@ -1,3 +1,5 @@
+.. default-role:: code
+
 ================================
   Nim IDE Integration Guide
 ================================
@@ -18,8 +20,8 @@ Note: this is mostly outdated, see instead `nimsuggest <nimsuggest.html>`_
 Nim differs from many other compilers in that it is really fast,
 and being so fast makes it suited to provide external queries for
 text editors about the source code being written. Through the
-``idetools`` command of `the compiler <nimc.html>`_, any IDE
-can query a ``.nim`` source file and obtain useful information like
+`idetools` command of `the compiler <nimc.html>`_, any IDE
+can query a `.nim` source file and obtain useful information like
 definition of symbols or suggestions for completion.
 
 This document will guide you through the available options. If you
@@ -36,7 +38,7 @@ Specifying the location of the query
 ------------------------------------
 
 All of the available idetools commands require you to specify a
-query location through the ``--track`` or ``--trackDirty`` switches.
+query location through the `--track` or `--trackDirty` switches.
 The general idetools invocations are::
 
     nim idetools --track:FILE,LINE,COL <switches> proj.nim
@@ -45,35 +47,35 @@ Or::
 
     nim idetools --trackDirty:DIRTY_FILE,FILE,LINE,COL <switches> proj.nim
 
-``proj.nim``
+`proj.nim`
     This is the main *project* filename. Most of the time you will
     pass in the same as **FILE**, but for bigger projects this is
     the file which is used as main entry point for the program, the
     one which users compile to generate a final binary.
 
-``<switches>``
+`<switches>`
     This would be any of the other idetools available options, like
-    ``--def`` or ``--suggest`` explained in the following sections.
+    `--def` or `--suggest` explained in the following sections.
 
-``COL``
+`COL`
     An integer with the column you are going to query. For the
     compiler columns start at zero, so the first column will be
     **0** and the last in an 80 column terminal will be **79**.
 
-``LINE``
+`LINE`
     An integer with the line you are going to query. For the compiler
     lines start at **1**.
 
-``FILE``
+`FILE`
     The file you want to perform the query on. Usually you will
     pass in the same value as **proj.nim**.
 
-``DIRTY_FILE``
+`DIRTY_FILE`
     The **FILE** parameter is enough for static analysis, but IDEs
     tend to have *unsaved buffers* where the user may still be in
     the middle of typing a line. In such situations the IDE can
     save the current contents to a temporary file and then use the
-    ``--trackDirty`` switch.
+    `--trackDirty` switch.
 
     Dirty files are likely to contain errors and they are usually
     compiled partially only to the point needed to service the
@@ -91,7 +93,7 @@ Or::
 Definitions
 -----------
 
-The ``--def`` idetools switch performs a query about the definition
+The `--def` idetools switch performs a query about the definition
 of a specific symbol. If available, idetools will answer with the
 type, source file, line/column information and other accessory data
 if available like a docstring. With this information an IDE can
@@ -112,7 +114,7 @@ can't find any valid symbol matching the position of the query.
 Suggestions
 -----------
 
-The ``--suggest`` idetools switch performs a query about possible
+The `--suggest` idetools switch performs a query about possible
 completion symbols at some point in the file. IDEs can easily provide
 an autocompletion feature where the IDE scans the current file (and
 related ones, if it knows about the language being edited and follows
@@ -134,7 +136,7 @@ Idetools will try to return the suggestions sorted first by scope
 Invocation context
 ------------------
 
-The ``--context`` idetools switch is very similar to the suggestions
+The `--context` idetools switch is very similar to the suggestions
 switch, but instead of being used after the user has typed a dot
 character, this one is meant to be used after the user has typed
 an opening brace to start typing parameters.
@@ -143,7 +145,7 @@ an opening brace to start typing parameters.
 Symbol usages
 -------------
 
-The ``--usages`` idetools switch lists all usages of the symbol at
+The `--usages` idetools switch lists all usages of the symbol at
 a position. IDEs can use this to find all the places in the file
 where the symbol is used and offer the user to rename it in all
 places at the same time. Again, a pure string based search and
@@ -207,15 +209,15 @@ Idetools outputs is always returned on single lines separated by
 tab characters (``\t``). The values of each column are:
 
 1. Three characters indicating the type of returned answer (e.g.
-   def for definition, ``sug`` for suggestion, etc).
-2. Type of the symbol. This can be ``skProc``, ``skLet``, and just
-   about any of the enums defined in the module ``compiler/ast.nim``.
+   def for definition, `sug` for suggestion, etc).
+2. Type of the symbol. This can be `skProc`, `skLet`, and just
+   about any of the enums defined in the module `compiler/ast.nim`.
 3. Full qualified path of the symbol. If you are querying a symbol
-   defined in the ``proj.nim`` file, this would have the form
-   ``proj.symbolName``.
+   defined in the `proj.nim` file, this would have the form
+   `proj.symbolName`.
 4. Type/signature. For variables and enums this will contain the
    type of the symbol, for procs, methods and templates this will
-   contain the full unique signature (e.g. ``proc (File)``).
+   contain the full unique signature (e.g. `proc (File)`).
 5. Full path to the file containing the symbol.
 6. Line where the symbol is located in the file. Lines start to
    count at **1**.
@@ -374,8 +376,8 @@ While at the language level a method is differentiated from others
 by the parameters and return value, the signature of the method
 returned by idetools returns also the pragmas for the method.
 
-Note that at the moment the word ``proc`` is returned for the
-signature of the found method instead of the expected ``method``.
+Note that at the moment the word `proc` is returned for the
+signature of the found method instead of the expected `method`.
 This may change in the future.
 
 | **Third column**: module + [n scope nesting] + method name.
@@ -517,7 +519,7 @@ Test suite
 ==========
 
 To verify that idetools is working properly there are files in the
-``tests/caas/`` directory which provide unit testing. If you find
+`tests/caas/` directory which provide unit testing. If you find
 odd idetools behaviour and are able to reproduce it, you are welcome
 to report it as a bug and add a test to the suite to avoid future
 regressions.
@@ -533,27 +535,27 @@ run it manually. First you have to compile the tester::
 	$ cd my/nim/checkout/tests
 	$ nim c testament/caasdriver.nim
 
-Running the ``caasdriver`` without parameters will attempt to process
+Running the `caasdriver` without parameters will attempt to process
 all the test cases in all three operation modes. If a test succeeds
 nothing will be printed and the process will exit with zero. If any
 test fails, the specific line of the test preceding the failure
 and the failure itself will be dumped to stdout, along with a final
 indicator of the success state and operation mode. You can pass the
-parameter ``verbose`` to force all output even on successful tests.
+parameter `verbose` to force all output even on successful tests.
 
-The normal operation mode is called ``ProcRun`` and it involves
+The normal operation mode is called `ProcRun` and it involves
 starting a process for each command or query, similar to running
-manually the Nim compiler from the commandline. The ``CaasRun``
-mode starts a server process to answer all queries. The ``SymbolProcRun``
+manually the Nim compiler from the commandline. The `CaasRun`
+mode starts a server process to answer all queries. The `SymbolProcRun`
 mode is used by compiler developers.  This means that running all
-tests involves processing all ``*.txt`` files three times, which
+tests involves processing all `*.txt` files three times, which
 can be quite time consuming.
 
 If you don't want to run all the test case files you can pass any
-substring as a parameter to ``caasdriver``. Only files matching the
+substring as a parameter to `caasdriver`. Only files matching the
 passed substring will be run. The filtering doesn't use any globbing
 metacharacters, it's a plain match. For example, to run only
-``*-compile*.txt`` tests in verbose mode::
+`*-compile*.txt` tests in verbose mode::
 
 	./caasdriver verbose -compile
 
@@ -561,18 +563,18 @@ metacharacters, it's a plain match. For example, to run only
 Test case file format
 ---------------------
 
-All the ``tests/caas/*.txt`` files encode a session with the compiler:
+All the `tests/caas/*.txt` files encode a session with the compiler:
 
 * The first line indicates the main project file.
 
-* Lines starting with ``>`` indicate a command to be sent to the
+* Lines starting with `>` indicate a command to be sent to the
   compiler and the lines following a command include checks for
-  expected or forbidden output (``!`` for forbidden).
+  expected or forbidden output (`!` for forbidden).
 
-* If a line starts with ``#`` it will be ignored completely, so you
+* If a line starts with `#` it will be ignored completely, so you
   can use that for comments.
 
-* Since some cases are specific to either ``ProcRun`` or ``CaasRun``
+* Since some cases are specific to either `ProcRun` or `CaasRun`
   modes, you can prefix a line with the mode and the line will be
   processed only in that mode.
 

@@ -12,14 +12,14 @@
 ##
 ## A basic example of `diffInt` on 2 arrays of integers:
 ##
-## .. code::nim
+## .. code:: Nim
 ##
 ##   import experimental/diff
 ##   echo diffInt([0, 1, 2, 3, 4, 5, 6, 7, 8], [-1, 1, 2, 3, 4, 5, 666, 7, 42])
 ##
 ## Another short example of `diffText` to diff strings:
 ##
-## .. code::nim
+## .. code:: Nim
 ##
 ##   import experimental/diff
 ##   # 2 samples of text for testing (from "The Call of Cthulhu" by Lovecraft)
@@ -288,9 +288,9 @@ proc diffInt*(arrayA, arrayB: openArray[int]): seq[Item] =
   var dataB = newDiffData(@arrayB, arrayB.len)
 
   let max = dataA.len + dataB.len + 1
-  ## vector for the (0,0) to (x,y) search
+  # vector for the (0,0) to (x,y) search
   var downVector = newSeq[int](2 * max + 2)
-  ## vector for the (u,v) to (N,M) search
+  # vector for the (u,v) to (N,M) search
   var upVector = newSeq[int](2 * max + 2)
 
   lcs(dataA, 0, dataA.len, dataB, 0, dataB.len, downVector, upVector)
@@ -321,9 +321,9 @@ proc diffText*(textA, textB: string): seq[Item] =
   h.clear # free up hashtable memory (maybe)
 
   let max = dataA.len + dataB.len + 1
-  ## vector for the (0,0) to (x,y) search
+  # vector for the (0,0) to (x,y) search
   var downVector = newSeq[int](2 * max + 2)
-  ## vector for the (u,v) to (N,M) search
+  # vector for the (u,v) to (N,M) search
   var upVector = newSeq[int](2 * max + 2)
 
   lcs(dataA, 0, dataA.len, dataB, 0, dataB.len, downVector, upVector)

@@ -567,7 +567,7 @@ when defined(cpp) and appType != "lib" and not gotoBasedExceptions and
   type
     StdException {.importcpp: "std::exception", header: "<exception>".} = object
 
-  proc what(ex: StdException): cstring {.importcpp: "((char *)#.what())".}
+  proc what(ex: StdException): cstring {.importcpp: "((char *)#.what())", nodecl.}
 
   proc setTerminate(handler: proc() {.noconv.})
     {.importc: "std::set_terminate", header: "<exception>".}

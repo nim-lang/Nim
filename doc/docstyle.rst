@@ -6,7 +6,7 @@ General Guidelines
 
 * See also `nep1<https://nim-lang.github.io/Nim/nep1.html>`_ which should probably be merged here.
 * Authors should document anything that is exported; documentation for private
-  procs can be useful too (visible via ``nim doc --docInternal foo.nim``).
+  procs can be useful too (visible via `nim doc --docInternal foo.nim`).
 * Within documentation, a period (`.`) should follow each sentence (or sentence fragment) in a comment block.
   The documentation may be limited to one sentence fragment, but if multiple sentences are within the documentation,
   each sentence after the first should be complete and in present tense.
@@ -15,7 +15,7 @@ General Guidelines
   and `nim doc` supports it. Likewise with rst files: `nim rst2html` will render those as monospace, and
   adding `.. default-role:: code` to an rst file will also make those render as monospace when rendered directly
   in tools such as github.
-* In nim sources, for links, prefer `[link text](link.html)` to ``` `link text<link.html>`_ ```
+* In nim sources, for links, prefer `[link text](link.html)` to `` `link text<link.html>`_ ``
   since the syntax is simpler and markdown is more common (likewise, `nim rst2html` also supports it in rst files).
 
 .. code-block:: nim
@@ -28,8 +28,8 @@ General Guidelines
 Module-level documentation
 --------------------------
 
-Documentation of a module is placed at the top of the module itself. Each line of documentation begins with double hashes (``##``).
-Sometimes ``##[ multiline docs containing code ]##`` is preferable, see ``lib/pure/times.nim``.
+Documentation of a module is placed at the top of the module itself. Each line of documentation begins with double hashes (`##`).
+Sometimes `##[ multiline docs containing code ]##` is preferable, see `lib/pure/times.nim`.
 Code samples are encouraged, and should follow the general RST syntax:
 
 .. code-block:: Nim
@@ -80,7 +80,7 @@ Whenever an example of usage would be helpful to the user, you should include on
       doAssert addThree(3, 125, 6) == -122
     result = x +% y +% z
 
-The command ``nim doc`` will then correctly syntax highlight the Nim code within the documentation.
+The command `nim doc` will then correctly syntax highlight the Nim code within the documentation.
 
 Types
 -----
@@ -116,8 +116,8 @@ Make sure to place the documentation beside or within the object.
 .. code-block:: Nim
 
   type
-    ## Bad: this documentation disappears because it annotates the ``type`` keyword
-    ## above, not ``NamedQueue``.
+    ## Bad: this documentation disappears because it annotates the `type` keyword
+    ## above, not `NamedQueue`.
     NamedQueue*[T] = object
       name*: string ## This becomes the main documentation for the object, which
                     ## is not what we want.
@@ -127,7 +127,7 @@ Make sure to place the documentation beside or within the object.
 Var, Let, and Const
 -------------------
 
-When declaring module-wide constants and values, documentation is encouraged. The placement of doc comments is similar to the ``type`` sections.
+When declaring module-wide constants and values, documentation is encouraged. The placement of doc comments is similar to the `type` sections.
 
 .. code-block:: Nim
 
@@ -137,9 +137,9 @@ When declaring module-wide constants and values, documentation is encouraged. Th
       [1,2,3],
       [2,3,1],
       [3,1,2],
-    ] ## Doc comment for ``SpreadArray``.
+    ] ## Doc comment for `SpreadArray`.
 
-Placement of comments in other areas is usually allowed, but will not become part of the documentation output and should therefore be prefaced by a single hash (``#``).
+Placement of comments in other areas is usually allowed, but will not become part of the documentation output and should therefore be prefaced by a single hash (`#`).
 
 .. code-block:: Nim
 

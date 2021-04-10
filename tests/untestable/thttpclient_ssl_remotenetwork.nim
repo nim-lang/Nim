@@ -115,12 +115,23 @@ when enableRemoteNetworking and (defined(nimTestsEnableFlaky) or not defined(win
 
     else:
       # this is unexpected
+      var fatal = true
+      var msg = ""
       if raised:
-        echo "         $# ($#) raised: $#" % [desc, $category, exception_msg]
+        msg = "         $# ($#) raised: $#" % [desc, $category, exception_msg]
+        if "500 Internal Server Error" in exception_msg:
+          # refs https://github.com/nim-lang/Nim/issues/16338#issuecomment-804300278
+          # we got: `good (good) raised: 500 Internal Server Error`
+          fatal = false
+          msg.add " (http 500 => assuming this is not our problem)"
       else:
-        echo "         $# ($#) did not raise" % [desc, $category]
-      if category in {good, dubious, bad}:
+        msg = "         $# ($#) did not raise" % [desc, $category]
+
+      if category in {good, dubious, bad} and fatal:
+        echo "D20210322T121353: error: " & msg
         fail()
+      else:
+        echo "D20210322T121353: warning: " & msg
 
 
   suite "SSL certificate check - httpclient":

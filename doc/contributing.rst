@@ -285,6 +285,53 @@ or
 
 the first is preferred.
 
+When you specify an *RST role* (highlighting/interpretation marker) do it
+in the postfix form for uniformity, that is after \`text in backticks\`.
+For example an ``:idx:`` role for referencing a topic ("SQLite" in the
+example below) from `Nim Index`_ can be used in doc comment this way:
+
+.. code-block:: nim
+  ## A higher level `SQLite`:idx: database wrapper.
+
+.. _`Nim Index`: https://nim-lang.org/docs/theindex.html
+
+Inline monospaced text can be input using \`single backticks\` or
+\`\`double backticks\`\`. The former are syntactically highlighted,
+the latter are not.
+To avoid accidental highlighting follow this rule in `*.nim` files:
+
+* use single backticks for fragments of code in Nim and other
+  programming languages, including identifiers, in `*.nim` files.
+
+  For languages other than Nim add a role after final backtick,
+  e.g. for C++ inline highlighting::
+
+    `#include <stdio.h>`:cpp:
+
+  For a currently unsupported language add the `:code:` role,
+  like for SQL in this example::
+
+    `SELECT * FROM <table_name>;`:code:
+
+* prefer double backticks otherwise:
+
+  * for file names: \`\`os.nim\`\`
+  * for fragments of strings **not** enclosed by `"` and `"` and not
+    related to code, e.g. text of compiler messages
+  * for command line options: \`\`--docInternal\`\`
+  * also when code ends with a standalone ``\`` (otherwise a combination of
+    ``\`` and a final \` would get escaped)
+
+.. Note:: `*.rst` files have `:literal:` as their default role.
+          So for them the rule above is only applicable if the `:nim:` role
+          is set up manually as the default::
+
+            .. role:: nim(code)
+               :language: nim
+            .. default-role:: nim
+
+          The first 2 lines are for other RST implementations,
+          including Github one.
 
 Best practices
 ==============
@@ -488,7 +535,11 @@ Debugging CI failures, flaky tests, etc
     If either on you own fork or in Nim repo, it's possible from inside GitHub UI
     under checks tab, see https://github.com/timotheecour/Nim/issues/211#issuecomment-629751569
   * GitHub actions: under "Checks" tab, click "Re-run jobs" in the right.
-  * builds.sr.ht: create a sourcehut account so you can restart a PR job as illustrated
+  * builds.sr.ht: create a sourcehut account so you can restart a PR job as illustrated.
+    builds.sr.ht also allows you to ssh to a CI machine which can help a lot for debugging
+    issues, see docs in https://man.sr.ht/builds.sr.ht/build-ssh.md and
+    https://drewdevault.com/2019/08/19/Introducing-shell-access-for-builds.html; see
+    https://man.sr.ht/tutorials/set-up-account-and-git.md to generate and upload ssh keys.
 
 
 Code reviews

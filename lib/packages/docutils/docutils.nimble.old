@@ -1,0 +1,7 @@
+# xxx disabled this as this isn't really a nimble package and it affects logic
+# used to compute canonical imports, refs https://github.com/nim-lang/Nim/pull/16999#issuecomment-805442914
+
+version       = "0.10.0"
+author        = "Andreas Rumpf"
+description   = "Nim's reStructuredText processor."
+license       = "MIT"

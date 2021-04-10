@@ -268,7 +268,7 @@ proc genOp(c: var Con; op: PSym; dest: PNode): PNode =
 
 proc genOp(c: var Con; t: PType; kind: TTypeAttachedOp; dest, ri: PNode): PNode =
   var op = getAttachedOp(c.graph, t, kind)
-  if op == nil or op.ast[genericParamsPos].kind != nkEmpty:
+  if op == nil or op.ast.isGenericRoutine:
     # give up and find the canonical type instead:
     let h = sighashes.hashType(t, {CoType, CoConsiderOwned, CoDistinct})
     let canon = c.graph.canonTypes.getOrDefault(h)
@@ -278,7 +278,7 @@ proc genOp(c: var Con; t: PType; kind: TTypeAttachedOp; dest, ri: PNode): PNode 
     #echo dest.typ.id
     globalError(c.graph.config, dest.info, "internal error: '" & AttachedOpToStr[kind] &
       "' operator not found for type " & typeToString(t))
-  elif op.ast[genericParamsPos].kind != nkEmpty:
+  elif op.ast.isGenericRoutine:
     globalError(c.graph.config, dest.info, "internal error: '" & AttachedOpToStr[kind] &
       "' operator is generic")
   dbg:
@@ -350,7 +350,7 @@ proc genMarkCyclic(c: var Con; result, dest: PNode) =
       if t.kind == tyRef:
         result.add callCodegenProc(c.graph, "nimMarkCyclic", dest.info, dest)
       else:
-        let xenv = genBuiltin(c.graph, mAccessEnv, "accessEnv", dest)
+        let xenv = genBuiltin(c.graph, c.idgen, mAccessEnv, "accessEnv", dest)
         xenv.typ = getSysType(c.graph, dest.info, tyPointer)
         result.add callCodegenProc(c.graph, "nimMarkCyclic", dest.info, xenv)
 
@@ -395,21 +395,21 @@ It is best to factor out piece of object that needs custom destructor into separ
     cond.add le
     cond.add tmp
     let notExpr = newNodeIT(nkPrefix, n.info, getSysType(c.graph, unknownLineInfo, tyBool))
-    notExpr.add newSymNode(createMagic(c.graph, "not", mNot))
+    notExpr.add newSymNode(createMagic(c.graph, c.idgen, "not", mNot))
     notExpr.add cond
     result.add newTree(nkIfStmt, newTree(nkElifBranch, notExpr, c.genOp(branchDestructor, le)))
   result.add newTree(nkFastAsgn, le, tmp)
 
 proc genWasMoved(c: var Con, n: PNode): PNode =
   result = newNodeI(nkCall, n.info)
-  result.add(newSymNode(createMagic(c.graph, "wasMoved", mWasMoved)))
+  result.add(newSymNode(createMagic(c.graph, c.idgen, "wasMoved", mWasMoved)))
   result.add copyTree(n) #mWasMoved does not take the address
   #if n.kind != nkSym:
   #  message(c.graph.config, n.info, warnUser, "wasMoved(" & $n & ")")
 
 proc genDefaultCall(t: PType; c: Con; info: TLineInfo): PNode =
   result = newNodeI(nkCall, info)
-  result.add(newSymNode(createMagic(c.graph, "default", mDefault)))
+  result.add(newSymNode(createMagic(c.graph, c.idgen, "default", mDefault)))
   result.typ = t
 
 proc destructiveMoveVar(n: PNode; c: var Con; s: var Scope): PNode =
@@ -573,6 +573,7 @@ template processScopeExpr(c: var Con; s: var Scope; ret: PNode, processCall: unt
   let tmp = c.getTemp(s.parent[], ret.typ, ret.info)
   tmp.sym.flags.incl sfSingleUsedTemp
   let cpy = if hasDestructor(c, ret.typ):
+              s.parent[].final.add c.genDestroy(tmp)
               moveOrCopy(tmp, ret, c, s, isDecl = true)
             else:
               newTree(nkFastAsgn, tmp, p(ret, c, s, normal))

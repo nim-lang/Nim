@@ -1,3 +1,5 @@
+.. default-role:: code
+
 =======================
 Nim Tutorial (Part III)
 =======================

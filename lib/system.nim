@@ -1185,10 +1185,6 @@ when defined(nimdoc):
     ##
     ## Before stopping the program the "exit procedures" are called in the
     ## opposite order they were added with `addExitProc <exitprocs.html#addExitProc,proc)>`_.
-    ## `quit` never returns and ignores any exception that may have been raised
-    ## by the quit procedures.  It does *not* call the garbage collector to free
-    ## all the memory, unless a quit procedure calls `GC_fullCollect
-    ## <#GC_fullCollect>`_.
     ##
     ## The proc `quit(QuitSuccess)` is called implicitly when your nim
     ## program finishes without incident for platforms where this is the
@@ -1199,6 +1195,14 @@ when defined(nimdoc):
     ## have any compile time effect. If you need to stop the compiler inside a
     ## macro, use the `error <manual.html#pragmas-error-pragma>`_ or `fatal
     ## <manual.html#pragmas-fatal-pragma>`_ pragmas.
+    ##
+    ## .. danger:: In almost all cases, in particular in library code, prefer
+    ##   alternatives, e.g. `doAssert false` or raise a `Defect`.
+    ##   `quit` bypasses regular control flow in particular `defer`,
+    ##   `try`, `catch`, `finally` and `destructors`, and exceptions that may have been
+    ##   raised by an `addExitProc` proc, as well as cleanup code in other threads.
+    ##   It does *not* call the garbage collector to free all the memory,
+    ##   unless an `addExitProc` proc calls `GC_fullCollect <#GC_fullCollect>`_.
 
 elif defined(genode):
   include genode/env
@@ -1321,7 +1325,7 @@ proc delete*[T](x: var seq[T], i: Natural) {.noSideEffect.} =
   ## This is an `O(n)` operation.
   ##
   ## See also:
-  ## * `del <#delete,seq[T],Natural>`_ for O(1) operation
+  ## * `del <#del,seq[T],Natural>`_ for O(1) operation
   ##
   ## .. code-block:: Nim
   ##  var i = @[1, 2, 3, 4, 5]
@@ -2339,6 +2343,7 @@ when notJSnotNims:
   when hostOS != "standalone" and hostOS != "any":
     include "system/dyncalls"
 
+  import system/countbits_impl
   include "system/sets"
 
   when defined(gogc):
@@ -2826,7 +2831,7 @@ when declared(initDebugger):
 proc addEscapedChar*(s: var string, c: char) {.noSideEffect, inline.} =
   ## Adds a char to string `s` and applies the following escaping:
   ##
-  ## * replaces any `\` by `\\`
+  ## * replaces any ``\`` by `\\`
   ## * replaces any `'` by `\'`
   ## * replaces any `"` by `\"`
   ## * replaces any `\a` by `\\a`
@@ -2837,13 +2842,14 @@ proc addEscapedChar*(s: var string, c: char) {.noSideEffect, inline.} =
   ## * replaces any `\f` by `\\f`
   ## * replaces any `\r` by `\\r`
   ## * replaces any `\e` by `\\e`
-  ## * replaces any other character not in the set `{'\21..'\126'}
-  ##   by `\xHH` where `HH` is its hexadecimal value.
+  ## * replaces any other character not in the set `{\21..\126}`
+  ##   by `\xHH` where `HH` is its hexadecimal value
   ##
   ## The procedure has been designed so that its output is usable for many
   ## different common syntaxes.
   ##
-  ## **Note**: This is **not correct** for producing Ansi C code!
+  ## .. warning:: This is **not correct** for producing ANSI C code!
+  ##
   case c
   of '\a': s.add "\\a" # \x07
   of '\b': s.add "\\b" # \x08

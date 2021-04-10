@@ -87,6 +87,7 @@ block largeSize: # longer than 4 characters
 
 proc main() =
   doAssert hash(0.0) == hash(0)
+  # bug #16061
   doAssert hash(cstring"abracadabra") == 97309975
   doAssert hash(cstring"abracadabra") == hash("abracadabra")
 

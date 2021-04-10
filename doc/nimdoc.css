@@ -511,6 +511,33 @@ div.footnote-label {
   min-width: 1.7em;
 }
 
+div.option-list {
+  border: 0.1em solid var(--border);
+}
+div.option-list-item {
+  padding-left: 12em;
+  padding-right: 0;
+  padding-bottom: 0.3em;
+  padding-top: 0.3em;
+}
+div.odd {
+  background-color: var(--secondary-background);
+}
+div.option-list-label {
+  margin-left: -11.5em;
+  margin-right: 0em;
+  min-width: 11.5em;
+  font-weight: bolder;
+  display: inline-block;
+  vertical-align: top;
+}
+div.option-list-description {
+  width: calc(100% - 1em);
+  padding-left: 1em;
+  padding-right: 0;
+  display: inline-block;
+}
+
 blockquote {
   font-size: 0.9em;
   font-style: italic;

@@ -34,6 +34,10 @@ proc quitOrDebug() {.noreturn, importc: "abort", header: "<stdlib.h>", nodecl.}
 proc raiseException(e: ref Exception, ename: cstring) {.compilerRtl.} =
   sysFatal(ReraiseDefect, "exception handling is not available")
 
+proc raiseExceptionEx(e: sink(ref Exception), ename, procname, filename: cstring,
+                      line: int) {.compilerRtl.} =
+  sysFatal(ReraiseDefect, "exception handling is not available")
+
 proc reraiseException() {.compilerRtl.} =
   sysFatal(ReraiseDefect, "no exception to reraise")
 

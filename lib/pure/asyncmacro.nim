@@ -35,14 +35,11 @@ template createCb(retFutureSym, iteratorNameSym,
 
         if next == nil:
           if not retFutureSym.finished:
-            let msg = "Async procedure ($1) yielded `nil`, are you await'ing a " &
-                    "`nil` Future?"
+            let msg = "Async procedure ($1) yielded `nil`, are you await'ing a `nil` Future?"
             raise newException(AssertionDefect, msg % strName)
         else:
           {.gcsafe.}:
-            {.push hint[ConvFromXtoItselfNotNeeded]: off.}
             next.addCallback cast[proc() {.closure, gcsafe.}](identName)
-            {.pop.}
     except:
       futureVarCompletions
       if retFutureSym.finished:
@@ -53,8 +50,7 @@ template createCb(retFutureSym, iteratorNameSym,
         retFutureSym.fail(getCurrentException())
   identName()
 
-proc createFutureVarCompletions(futureVarIdents: seq[NimNode],
-    fromNode: NimNode): NimNode {.compileTime.} =
+proc createFutureVarCompletions(futureVarIdents: seq[NimNode], fromNode: NimNode): NimNode =
   result = newNimNode(nnkStmtList, fromNode)
   # Add calls to complete each FutureVar parameter.
   for ident in futureVarIdents:
@@ -71,7 +67,7 @@ proc createFutureVarCompletions(futureVarIdents: seq[NimNode],
 
 proc processBody(node, retFutureSym: NimNode,
                  subTypeIsVoid: bool,
-                 futureVarIdents: seq[NimNode]): NimNode {.compileTime.} =
+                 futureVarIdents: seq[NimNode]): NimNode =
   #echo(node.treeRepr)
   result = node
   case node.kind
@@ -107,7 +103,7 @@ proc processBody(node, retFutureSym: NimNode,
 
   # echo result.repr
 
-proc getName(node: NimNode): string {.compileTime.} =
+proc getName(node: NimNode): string =
   case node.kind
   of nnkPostfix:
     return node[1].strVal
@@ -118,7 +114,7 @@ proc getName(node: NimNode): string {.compileTime.} =
   else:
     error("Unknown name.", node)
 
-proc getFutureVarIdents(params: NimNode): seq[NimNode] {.compileTime.} =
+proc getFutureVarIdents(params: NimNode): seq[NimNode] =
   result = @[]
   for i in 1 ..< len(params):
     expectKind(params[i], nnkIdentDefs)
@@ -130,7 +126,7 @@ proc getFutureVarIdents(params: NimNode): seq[NimNode] {.compileTime.} =
 proc isInvalidReturnType(typeName: string): bool =
   return typeName notin ["Future"] #, "FutureStream"]
 
-proc verifyReturnType(typeName: string, node: NimNode = nil) {.compileTime.} =
+proc verifyReturnType(typeName: string, node: NimNode = nil) =
   if typeName.isInvalidReturnType:
     error("Expected return type of 'Future' got '$1'" %
           typeName, node)
@@ -144,7 +140,7 @@ template await*[T](f: Future[T]): auto {.used.} =
   yield internalTmpFuture
   (cast[typeof(f)](internalTmpFuture)).read()
 
-proc asyncSingleProc(prc: NimNode): NimNode {.compileTime.} =
+proc asyncSingleProc(prc: NimNode): NimNode =
   ## This macro transforms a single procedure into a closure iterator.
   ## The `async` macro supports a stmtList holding multiple async procedures.
   if prc.kind == nnkProcTy:
@@ -185,8 +181,9 @@ proc asyncSingleProc(prc: NimNode): NimNode {.compileTime.} =
     verifyReturnType(repr(returnType), returnType)
 
   let subtypeIsVoid = returnType.kind == nnkEmpty or
-        (baseType.kind == nnkIdent and returnType[1].eqIdent("void"))
-
+        (baseType.kind in {nnkIdent, nnkSym} and
+         baseType.eqIdent("void"))
+  
   let futureVarIdents = getFutureVarIdents(prc.params)
 
   var outerProcBody = newNimNode(nnkStmtList, prc.body)

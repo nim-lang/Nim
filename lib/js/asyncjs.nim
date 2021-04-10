@@ -70,7 +70,7 @@ type
     future*: T
   ## Wraps the return type of an asynchronous procedure.
 
-  PromiseJs* {.importcpp: "Promise".} = ref object
+  PromiseJs* {.importjs: "Promise".} = ref object
   ## A JavaScript Promise.
 
 
@@ -113,7 +113,7 @@ proc generateJsasync(arg: NimNode): NimNode =
 
   if len(code) > 0:
     var awaitFunction = quote:
-      proc await[T](f: Future[T]): T {.importcpp: "(await #)", used.}
+      proc await[T](f: Future[T]): T {.importjs: "(await #)", used.}
     result.body.add(awaitFunction)
 
     var resolve: NimNode
@@ -150,11 +150,11 @@ macro async*(arg: untyped): untyped =
   else:
     result = generateJsasync(arg)
 
-proc newPromise*[T](handler: proc(resolve: proc(response: T))): Future[T] {.importcpp: "(new Promise(#))".}
+proc newPromise*[T](handler: proc(resolve: proc(response: T))): Future[T] {.importjs: "(new Promise(#))".}
   ## A helper for wrapping callback-based functions
   ## into promises and async procedures.
 
-proc newPromise*(handler: proc(resolve: proc())): Future[void] {.importcpp: "(new Promise(#))".}
+proc newPromise*(handler: proc(resolve: proc())): Future[void] {.importjs: "(new Promise(#))".}
   ## A helper for wrapping callback-based functions
   ## into promises and async procedures.
 
