@@ -3597,9 +3597,9 @@ current module:
 Method call syntax
 ------------------
 
-For object-oriented programming, the syntax `obj.method(args)` can be used
-instead of `method(obj, args)`. The parentheses can be omitted if there are no
-remaining arguments: `obj.len` (instead of `len(obj)`).
+For object-oriented programming, the syntax `obj.methodName(args)` can be used
+instead of `methodName(obj, args)`. The parentheses can be omitted if
+there are no remaining arguments: `obj.len` (instead of `len(obj)`).
 
 This method call syntax is not restricted to objects, it can be used
 to supply any type of first argument for procedures:
@@ -7310,7 +7310,7 @@ ImportObjC pragma
 Similar to the `importc pragma for C
 <#foreign-function-interface-importc-pragma>`_, the `importobjc` pragma can
 be used to import `Objective C`:idx: methods.  The generated code then uses the
-Objective C method calling syntax: `[obj method param1: arg]`.
+Objective C method calling syntax: ``[obj method param1: arg]``.
 In addition with the `header` and `emit` pragmas this
 allows *sloppy* interfacing with libraries written in Objective C:
 
