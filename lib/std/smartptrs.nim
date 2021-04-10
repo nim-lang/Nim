@@ -144,7 +144,7 @@ when defined(nimExperimentalSmartptrs):
 
   template newConstPtr*[T](val: T, deleter: Deleter[T] = nil): ConstPtr[T] =
     ## Similar to `newSharedPtr<#newSharedPtr,sinkIsolated[T]>`_, but the underlying value can't be mutated.
-    newConstPtr(isolate(val), deleter)
+    SharedPtr[T](newSharedPtr(isolate(val), deleter))
 
   proc get*[T](p: ConstPtr[T]): lent T {.inline.} =
     ## Returns an immutable view of the internal value of `p`.
