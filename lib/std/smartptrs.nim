@@ -149,7 +149,7 @@ when defined(nimExperimentalSmartptrs):
   proc get*[T](p: ConstPtr[T]): lent T {.inline.} =
     ## Returns a immutable view of the internal value of `p`.
     when compileOption("boundChecks"):
-      doAssert(SharedPtr[T](p).val != nil, "deferencing nil const pointer")
+      doAssert(SharedPtr[T](p).val != nil, "dereferencing nil const pointer")
     SharedPtr[T](p).val.value
 
   proc isNil*[T](p: ConstPtr[T]): bool {.inline.} =
