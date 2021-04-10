@@ -123,7 +123,7 @@ when defined(nimExperimentalSmartptrs):
   proc get*[T](p: SharedPtr[T]): var T {.inline.} =
     ## Returns a mutable view of the internal value of `p`.
     when compileOption("boundChecks"):
-      doAssert(p.val != nil, "deferencing nil shared pointer")
+      doAssert(p.val != nil, "dereferencing a nil shared pointer")
     p.val.value
 
   proc isNil*[T](p: SharedPtr[T]): bool {.inline.} =
