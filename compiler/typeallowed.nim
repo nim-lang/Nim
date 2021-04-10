@@ -57,7 +57,8 @@ proc typeAllowedAux(marker: var IntSet, typ: PType, kind: TSymKind,
   of tyVar, tyLent:
     if kind in {skProc, skFunc, skConst} and (views notin c.features):
       result = t
-    elif t.kind == tyLent and kind != skResult and (views notin c.features):
+    elif t.kind == tyLent and ((kind != skResult and views notin c.features) or
+                              kind == skParam): # lent can't be used as parameters.
       result = t
     else:
       var t2 = skipTypes(t[0], abstractInst-{tyTypeDesc, tySink})

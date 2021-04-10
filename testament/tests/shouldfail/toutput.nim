@@ -1,7 +1,8 @@
 discard """
-output: '''
-done
-'''
+  targets: "c"
+  output: '''
+  done
+  '''
 """
 
 echo "broken"

@@ -13,7 +13,7 @@
 
 /* Genode includes */
 #include <base/semaphore.h>
-#include <base/lock.h>
+#include <base/mutex.h>
 
 namespace Nim {
 	struct SysLock;
@@ -22,15 +22,14 @@ namespace Nim {
 
 struct Nim::SysLock
 {
-	Genode::Lock _lock_a, _lock_b;
+	Genode::Mutex _mutex_a, _mutex_b;
 	bool         _locked;
 
 	void acquireSys()
 	{
-		_lock_a.lock();
+		Genode::Mutex::Guard guard(_mutex_a);
 		_locked = true;
-		_lock_a.unlock();
-		_lock_b.lock();
+		_mutex_b.acquire();
 	}
 
 	bool tryAcquireSys()
@@ -38,23 +37,22 @@ struct Nim::SysLock
 		if (_locked)
 			return false;
 
-		_lock_a.lock();
+		Genode::Mutex::Guard guard(_mutex_a);
+
 		if (_locked) {
-			_lock_a.unlock();
 			return false;
 		} else {
 			_locked = true;
-			_lock_b.lock();
-			_lock_a.unlock();
+			_mutex_b.acquire();
 			return true;
 		}
 	}
 
 	void releaseSys()
 	{
+		Genode::Mutex::Guard guard(_mutex_a);
 		_locked = false;
-		_lock_a.unlock();
-		_lock_b.unlock();
+		_mutex_b.release();
 	}
 };
 

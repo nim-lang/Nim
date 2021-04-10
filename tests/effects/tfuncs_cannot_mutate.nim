@@ -2,8 +2,8 @@ discard """
   errormsg: "'mutate' can have side effects"
   nimout: '''an object reachable from 'n' is potentially mutated
 tfuncs_cannot_mutate.nim(39, 15) the mutation is here
-tfuncs_cannot_mutate.nim(37, 7) is the statement that connected the mutation to the parameter'''
-  line: 33
+tfuncs_cannot_mutate.nim(37, 7) is the statement that connected the mutation to the parameter
+'''
 """
 
 {.experimental: "strictFuncs".}

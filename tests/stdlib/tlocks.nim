@@ -1,10 +1,10 @@
 discard """
-  output: '''3'''
-  cmd: "nim $target --threads:on $options $file"
+  targets: "c cpp js"
+  matrix: "--threads:on"
 """
 
 #bug #6049
 import uselocks
 
 var m = createMyType[int]()
-echo $m.use()
+doAssert m.use() == 3

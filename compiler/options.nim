@@ -446,6 +446,11 @@ proc newProfileData(): ProfileData =
 const foreignPackageNotesDefault* = {
   hintProcessing, warnUnknownMagic, hintQuitCalled, hintExecuting, hintUser, warnUser}
 
+proc isDefined*(conf: ConfigRef; symbol: string): bool
+
+when defined(nimDebugUtils):
+  import debugutils
+
 proc newConfigRef*(): ConfigRef =
   result = ConfigRef(
     selectedGC: gcRefc,
@@ -504,16 +509,21 @@ proc newConfigRef*(): ConfigRef =
   # enable colors by default on terminals
   if terminal.isatty(stderr):
     incl(result.globalOptions, optUseColors)
+  when defined(nimDebugUtils):
+    onNewConfigRef(result)
 
 proc newPartialConfigRef*(): ConfigRef =
   ## create a new ConfigRef that is only good enough for error reporting.
-  result = ConfigRef(
-    selectedGC: gcRefc,
-    verbosity: 1,
-    options: DefaultOptions,
-    globalOptions: DefaultGlobalOptions,
-    foreignPackageNotes: foreignPackageNotesDefault,
-    notes: NotesVerbosity[1], mainPackageNotes: NotesVerbosity[1])
+  when defined(nimDebugUtils):
+    result = getConfigRef()
+  else:
+    result = ConfigRef(
+      selectedGC: gcRefc,
+      verbosity: 1,
+      options: DefaultOptions,
+      globalOptions: DefaultGlobalOptions,
+      foreignPackageNotes: foreignPackageNotesDefault,
+      notes: NotesVerbosity[1], mainPackageNotes: NotesVerbosity[1])
 
 proc cppDefine*(c: ConfigRef; define: string) =
   c.cppDefines.incl define

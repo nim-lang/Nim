@@ -137,7 +137,7 @@ proc guardGlobal(a: PEffects; n: PNode; guard: PSym) =
   # we allow accesses nevertheless in top level statements for
   # easier initialization:
   #if a.isTopLevel:
-  #  message(n.info, warnUnguardedAccess, renderTree(n))
+  #  message(a.config, n.info, warnUnguardedAccess, renderTree(n))
   #else:
   if not a.isTopLevel:
     localError(a.config, n.info, "unguarded access: " & renderTree(n))
@@ -478,7 +478,7 @@ proc getLockLevel(s: PSym): TLockLevel =
       result = 0.TLockLevel
     else:
       result = UnknownLockLevel
-      #message(s.info, warnUser, "FOR THIS " & s.name.s)
+      #message(??.config, s.info, warnUser, "FOR THIS " & s.name.s)
 
 proc mergeLockLevels(tracked: PEffects, n: PNode, lockLevel: TLockLevel) =
   if lockLevel >= tracked.currLockLevel:
@@ -544,7 +544,7 @@ proc assumeTheWorst(tracked: PEffects; n: PNode; op: PType) =
   let lockLevel = if op.lockLevel == UnspecifiedLockLevel: UnknownLockLevel
                   else: op.lockLevel
   #if lockLevel == UnknownLockLevel:
-  #  message(n.info, warnUser, "had to assume the worst here")
+  #  message(??.config, n.info, warnUser, "had to assume the worst here")
   mergeLockLevels(tracked, n, lockLevel)
 
 proc isOwnedProcVar(n: PNode; owner: PSym): bool =

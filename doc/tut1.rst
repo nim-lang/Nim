@@ -67,6 +67,11 @@ aiming for your debugging pleasure. With `-d:release` some checks are
 `turned off and optimizations are turned on
 <nimc.html#compiler-usage-compileminustime-symbols>`_.
 
+For benchmarking or production code, use the `-d:release` switch.
+For comparing the performance with unsafe languages like C, use the `-d:danger` switch
+in order to get meaningful, comparable results. Otherwise Nim might be handicapped
+by checks that are **not even available** for C.
+
 Though it should be pretty obvious what the program does, I will explain the
 syntax: statements which are not indented are executed when the program
 starts. Indentation is Nim's way of grouping statements. Indentation is
@@ -626,7 +631,7 @@ Some terminology: in the example `question` is called a (formal) *parameter*,
 Result variable
 ---------------
 A procedure that returns a value has an implicit `result` variable declared
-that represents the return value. A `return` statement with no expression is 
+that represents the return value. A `return` statement with no expression is
 shorthand for `return result`. The `result` value is always returned
 automatically at the end of a procedure if there is no `return` statement at
 the exit.

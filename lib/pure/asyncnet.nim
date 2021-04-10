@@ -65,7 +65,7 @@
 ##
 ## The following example demonstrates a simple chat server.
 ##
-## .. code-block::nim
+## .. code-block:: Nim
 ##
 ##   import std/[asyncnet, asyncdispatch]
 ##

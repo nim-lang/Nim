@@ -94,7 +94,7 @@ type
     waZctDecRef, waPush
     #, waDebug
 
-  Finalizer {.compilerproc.} = proc (self: pointer) {.nimcall, benign.}
+  Finalizer {.compilerproc.} = proc (self: pointer) {.nimcall, benign, raises: [].}
     # A ref type can have a finalizer that is called before the object's
     # storage is freed.
 
@@ -219,11 +219,11 @@ template gcTrace(cell, state: untyped) =
   when traceGC: traceCell(cell, state)
 
 # forward declarations:
-proc collectCT(gch: var GcHeap) {.benign.}
-proc isOnStack(p: pointer): bool {.noinline, benign.}
-proc forAllChildren(cell: PCell, op: WalkOp) {.benign.}
-proc doOperation(p: pointer, op: WalkOp) {.benign.}
-proc forAllChildrenAux(dest: pointer, mt: PNimType, op: WalkOp) {.benign.}
+proc collectCT(gch: var GcHeap) {.benign, raises: [].}
+proc isOnStack(p: pointer): bool {.noinline, benign, raises: [].}
+proc forAllChildren(cell: PCell, op: WalkOp) {.benign, raises: [].}
+proc doOperation(p: pointer, op: WalkOp) {.benign, raises: [].}
+proc forAllChildrenAux(dest: pointer, mt: PNimType, op: WalkOp) {.benign, raises: [].}
 # we need the prototype here for debugging purposes
 
 proc incRef(c: PCell) {.inline.} =
@@ -636,7 +636,7 @@ proc markS(gch: var GcHeap, c: PCell) =
     if not containsOrIncl(gch.marked, d):
       forAllChildren(d, waMarkPrecise)
 
-proc markGlobals(gch: var GcHeap) =
+proc markGlobals(gch: var GcHeap) {.raises: [].} =
   if gch.gcThreadId == 0:
     for i in 0 .. globalMarkersLen-1: globalMarkers[i]()
   for i in 0 .. threadLocalMarkersLen-1: threadLocalMarkers[i]()
@@ -691,9 +691,9 @@ proc doOperation(p: pointer, op: WalkOp) =
 proc nimGCvisit(d: pointer, op: int) {.compilerRtl.} =
   doOperation(d, WalkOp(op))
 
-proc collectZCT(gch: var GcHeap): bool {.benign.}
+proc collectZCT(gch: var GcHeap): bool {.benign, raises: [].}
 
-proc collectCycles(gch: var GcHeap) =
+proc collectCycles(gch: var GcHeap) {.raises: [].} =
   when hasThreadSupport:
     for c in gch.toDispose:
       nimGCunref(c)
@@ -800,7 +800,7 @@ proc unmarkStackAndRegisters(gch: var GcHeap) =
     decRef(d[i])
   gch.decStack.len = 0
 
-proc collectCTBody(gch: var GcHeap) =
+proc collectCTBody(gch: var GcHeap) {.raises: [].} =
   when withRealTime:
     let t0 = getticks()
   sysAssert(allocInv(gch.region), "collectCT: begin")

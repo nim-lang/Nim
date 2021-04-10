@@ -78,6 +78,13 @@
 ##
 ## * directives: ``code-block`` [cmp:Sphinx]_, ``title``,
 ##   ``index`` [cmp:Sphinx]_
+## * predefined roles ``:nim:`` (default), ``:c:`` (C programming language),
+##   ``:python:``, ``:yaml:``, ``:java:``, ``:cpp:`` (C++), ``:csharp`` (C#).
+##   That is every language that `highlite <highlite.html>`_ supports.
+##   They turn on appropriate syntax highlighting in inline code.
+##
+##   .. Note:: default role for Nim files is ``:nim:``,
+##             for ``*.rst`` it's currently ``:literal:``.
 ##
 ## * ***triple emphasis*** (bold and italic) using \*\*\*
 ## * ``:idx:`` role for \`interpreted text\` to include the link to this
@@ -161,7 +168,9 @@ type
     roSupportSmilies,         ## make the RST parser support smilies like ``:)``
     roSupportRawDirective,    ## support the ``raw`` directive (don't support
                               ## it for sandboxing)
-    roSupportMarkdown         ## support additional features of Markdown
+    roSupportMarkdown,        ## support additional features of Markdown
+    roNimFile                 ## set for Nim files where default interpreted
+                              ## text role should be :nim:
 
   RstParseOptions* = set[RstParseOption]
 
@@ -454,6 +463,8 @@ type
     hTitleCnt: int              # =0 if no title, =1 if only main title,
                                 # =2 if both title and subtitle are present
     hCurLevel: int              # current section level
+    currRole: string            # current interpreted text role
+    currRoleKind: RstNodeKind   # ... and its node kind
     subs: seq[Substitution]     # substitutions
     refs: seq[Substitution]     # references
     anchors: seq[AnchorSubst]   # internal target substitutions
@@ -514,10 +525,36 @@ proc defaultFindFile*(filename: string): string =
   if fileExists(filename): result = filename
   else: result = ""
 
+proc defaultRole(options: RstParseOptions): string =
+  if roNimFile in options: "nim" else: "literal"
+
+# mirror highlite.nim sourceLanguageToStr with substitutions c++ cpp, c# csharp
+const supportedLanguages = ["nim", "yaml", "python", "java", "c",
+                            "cpp", "csharp"]
+
+proc whichRoleAux(sym: string): RstNodeKind =
+  let r = sym.toLowerAscii
+  case r
+  of "idx": result = rnIdx
+  of "literal": result = rnInlineLiteral
+  of "strong": result = rnStrongEmphasis
+  of "emphasis": result = rnEmphasis
+  of "sub", "subscript": result = rnSub
+  of "sup", "superscript": result = rnSup
+  # literal and code are the same in our implementation
+  of "code": result = rnInlineLiteral
+  # c++ currently can be spelled only as cpp, c# only as csharp
+  elif r in supportedLanguages:
+    result = rnInlineCode
+  else:  # unknown role
+    result = rnUnknownRole
+
 proc newSharedState(options: RstParseOptions,
                     findFile: FindFileHandler,
                     msgHandler: MsgHandler): PSharedState =
   new(result)
+  result.currRole = defaultRole(options)
+  result.currRoleKind = whichRoleAux(result.currRole)
   result.subs = @[]
   result.refs = @[]
   result.options = options
@@ -875,6 +912,38 @@ template newLeaf(s: string): PRstNode = newRstLeaf(s)
 proc newLeaf(p: var RstParser): PRstNode =
   result = newLeaf(currentTok(p).symbol)
 
+proc validRefnamePunct(x: string): bool =
+  ## https://docutils.sourceforge.io/docs/ref/rst/restructuredtext.html#reference-names
+  x.len == 1 and x[0] in {'-', '_', '.', ':', '+'}
+
+func getRefnameIdx(p: RstParser, startIdx: int): int =
+  ## Gets last token index of a refname ("word" in RST terminology):
+  ##
+  ##   reference names are single words consisting of alphanumerics plus
+  ##   isolated (no two adjacent) internal hyphens, underscores, periods,
+  ##   colons and plus signs; no whitespace or other characters are allowed.
+  ##
+  ## Refnames are used for:
+  ## - reference names
+  ## - role names
+  ## - directive names
+  ## - footnote labels
+  ##
+  # TODO: use this func in all other relevant places
+  var j = startIdx
+  if p.tok[j].kind == tkWord:
+    inc j
+    while p.tok[j].kind == tkPunct and validRefnamePunct(p.tok[j].symbol) and
+        p.tok[j+1].kind == tkWord:
+      inc j, 2
+  result = j - 1
+
+func getRefname(p: RstParser, startIdx: int): (string, int) =
+  let lastIdx = getRefnameIdx(p, startIdx)
+  result[1] = lastIdx
+  for j in startIdx..lastIdx:
+    result[0].add p.tok[j].symbol
+
 proc getReferenceName(p: var RstParser, endStr: string): PRstNode =
   var res = newRstNode(rnInner)
   while true:
@@ -974,7 +1043,10 @@ proc match(p: RstParser, start: int, expr: string): bool =
   var last = expr.len - 1
   while i <= last:
     case expr[i]
-    of 'w': result = p.tok[j].kind == tkWord
+    of 'w':
+      let lastIdx = getRefnameIdx(p, j)
+      result = lastIdx >= j
+      if result: j = lastIdx
     of ' ': result = p.tok[j].kind == tkWhite
     of 'i': result = p.tok[j].kind == tkIndent
     of 'I': result = p.tok[j].kind in {tkIndent, tkEof}
@@ -1018,15 +1090,33 @@ proc fixupEmbeddedRef(n, a, b: PRstNode) =
   for i in countup(0, sep - incr): a.add(n.sons[i])
   for i in countup(sep + 1, n.len - 2): b.add(n.sons[i])
 
-proc whichRole(sym: string): RstNodeKind =
-  case sym
-  of "idx": result = rnIdx
-  of "literal": result = rnInlineLiteral
-  of "strong": result = rnStrongEmphasis
-  of "emphasis": result = rnEmphasis
-  of "sub", "subscript": result = rnSub
-  of "sup", "superscript": result = rnSup
-  else: result = rnGeneralRole
+proc whichRole(p: RstParser, sym: string): RstNodeKind =
+  result = whichRoleAux(sym)
+  if result == rnUnknownRole:
+    rstMessage(p, mwUnsupportedLanguage, sym)
+
+proc toInlineCode(n: PRstNode, language: string): PRstNode =
+  ## Creates rnInlineCode and attaches `n` contents as code (in 3rd son).
+  result = newRstNode(rnInlineCode)
+  let args = newRstNode(rnDirArg)
+  var lang = language
+  if language == "cpp": lang = "c++"
+  elif language == "csharp": lang = "c#"
+  args.add newLeaf(lang)
+  result.add args
+  result.add PRstNode(nil)
+  var lb = newRstNode(rnLiteralBlock)
+  var s: string
+  for i in n.sons:
+    assert i.kind == rnLeaf
+    s.add i.text
+  lb.add newLeaf(s)
+  result.add lb
+
+proc toUnknownRole(n: PRstNode, roleName: string): PRstNode =
+  let newN = newRstNode(rnInner, n.sons)
+  let newSons = @[newN, newLeaf(roleName)]
+  result = newRstNode(rnUnknownRole, newSons)
 
 proc parsePostfix(p: var RstParser, n: PRstNode): PRstNode =
   var newKind = n.kind
@@ -1052,14 +1142,21 @@ proc parsePostfix(p: var RstParser, n: PRstNode): PRstNode =
     result = newRstNode(newKind, newSons)
   elif match(p, p.idx, ":w:"):
     # a role:
-    newKind = whichRole(nextTok(p).symbol)
-    if newKind == rnGeneralRole:
-      let newN = newRstNode(rnInner, n.sons)
-      newSons = @[newN, newLeaf(nextTok(p).symbol)]
-    inc p.idx, 3
-    result = newRstNode(newKind, newSons)
-  else:  # no change
-    result = n
+    let (roleName, lastIdx) = getRefname(p, p.idx+1)
+    newKind = whichRole(p, roleName)
+    if newKind == rnUnknownRole:
+      result = n.toUnknownRole(roleName)
+    elif newKind == rnInlineCode:
+      result = n.toInlineCode(language=roleName)
+    else:
+      result = newRstNode(newKind, newSons)
+    p.idx = lastIdx + 2
+  else:
+    if p.s.currRoleKind == rnInlineCode:
+      result = n.toInlineCode(language=p.s.currRole)
+    else:
+      newKind = p.s.currRoleKind
+      result = newRstNode(newKind, newSons)
 
 proc matchVerbatim(p: RstParser, start: int, expr: string): int =
   result = start
@@ -1079,10 +1176,6 @@ proc parseSmiley(p: var RstParser): PRstNode =
       result = newRstNode(rnSmiley)
       result.text = val
       return
-
-proc validRefnamePunct(x: string): bool =
-  ## https://docutils.sourceforge.io/docs/ref/rst/restructuredtext.html#reference-names
-  x.len == 1 and x[0] in {'-', '_', '.', ':', '+'}
 
 proc isUrl(p: RstParser, i: int): bool =
   result = p.tok[i+1].symbol == ":" and p.tok[i+2].symbol == "//" and
@@ -1314,11 +1407,18 @@ proc parseInline(p: var RstParser, father: PRstNode) =
       var n = newRstNode(rnInlineLiteral)
       parseUntil(p, n, "``", false)
       father.add(n)
-    elif match(p, p.idx, ":w:") and p.tok[p.idx+3].symbol == "`":
-      let k = whichRole(nextTok(p).symbol)
-      let n = newRstNode(k)
-      inc p.idx, 3
+    elif match(p, p.idx, ":w:") and
+        (var lastIdx = getRefnameIdx(p, p.idx + 1);
+         p.tok[lastIdx+2].symbol == "`"):
+      let (roleName, _) = getRefname(p, p.idx+1)
+      let k = whichRole(p, roleName)
+      var n = newRstNode(k)
+      p.idx = lastIdx + 2
+      if k == rnInlineCode:
+        n = n.toInlineCode(language=roleName)
       parseUntil(p, n, "`", false) # bug #17260
+      if k == rnUnknownRole:
+        n = n.toUnknownRole(roleName)
       father.add(n)
     elif isInlineMarkupStart(p, "`"):
       var n = newRstNode(rnInterpretedText)
@@ -1376,25 +1476,28 @@ proc parseInline(p: var RstParser, father: PRstNode) =
   else: discard
 
 proc getDirective(p: var RstParser): string =
-  if currentTok(p).kind == tkWhite and nextTok(p).kind == tkWord:
-    var j = p.idx
-    inc p.idx
-    result = currentTok(p).symbol
-    inc p.idx
-    while currentTok(p).kind in {tkWord, tkPunct, tkAdornment, tkOther}:
-      if currentTok(p).symbol == "::": break
-      result.add(currentTok(p).symbol)
-      inc p.idx
-    if currentTok(p).kind == tkWhite: inc p.idx
-    if currentTok(p).symbol == "::":
-      inc p.idx
-      if currentTok(p).kind == tkWhite: inc p.idx
-    else:
-      p.idx = j               # set back
-      result = ""             # error
-  else:
-    result = ""
-  result = result.toLowerAscii()
+  result = ""
+  if currentTok(p).kind == tkWhite:
+    let (name, lastIdx) = getRefname(p, p.idx + 1)
+    let afterIdx = lastIdx + 1
+    if name.len > 0:
+      if p.tok[afterIdx].symbol == "::":
+        result = name
+        p.idx = afterIdx + 1
+        if currentTok(p).kind == tkWhite:
+          inc p.idx
+        elif currentTok(p).kind != tkIndent:
+          rstMessage(p, mwRstStyle,
+              "whitespace or newline expected after directive " & name)
+        result = result.toLowerAscii()
+      elif p.tok[afterIdx].symbol == ":":
+        rstMessage(p, mwRstStyle,
+            "double colon :: may be missing at end of '" & name & "'",
+            p.tok[afterIdx].line, p.tok[afterIdx].col)
+      elif p.tok[afterIdx].kind == tkPunct and p.tok[afterIdx].symbol[0] == ':':
+        rstMessage(p, mwRstStyle,
+            "too many colons for a directive (should be ::)",
+            p.tok[afterIdx].line, p.tok[afterIdx].col)
 
 proc parseComment(p: var RstParser): PRstNode =
   case currentTok(p).kind
@@ -1649,7 +1752,8 @@ proc whichSection(p: RstParser): RstNodeKind =
       return rnCodeBlock
     elif currentTok(p).symbol == "::":
       return rnLiteralBlock
-    elif currentTok(p).symbol == ".." and predNL(p):
+    elif currentTok(p).symbol == ".."  and predNL(p) and
+       nextTok(p).kind in {tkWhite, tkIndent}:
      return rnDirective
   case currentTok(p).kind
   of tkAdornment:
@@ -1981,6 +2085,7 @@ proc parseBulletList(p: var RstParser): PRstNode =
 proc parseOptionList(p: var RstParser): PRstNode =
   result = newRstNodeA(p, rnOptionList)
   let col = currentTok(p).col
+  var order = 1
   while true:
     if currentTok(p).col == col and isOptionList(p):
       var a = newRstNode(rnOptionGroup)
@@ -2003,9 +2108,10 @@ proc parseOptionList(p: var RstParser): PRstNode =
       if currentTok(p).kind == tkIndent: inc p.idx
       c.add(a)
       c.add(b)
+      c.order = order; inc order
       result.add(c)
     else:
-      dec p.idx  # back to tkIndent
+      if currentTok(p).kind != tkEof: dec p.idx  # back to tkIndent
       break
 
 proc parseDefinitionList(p: var RstParser): PRstNode =
@@ -2421,6 +2527,18 @@ proc dirAdmonition(p: var RstParser, d: string): PRstNode =
 
 proc dirDefaultRole(p: var RstParser): PRstNode =
   result = parseDirective(p, rnDefaultRole, {hasArg}, nil)
+  if result.sons[0].len == 0: p.s.currRole = defaultRole(p.s.options)
+  else:
+    assert result.sons[0].sons[0].kind == rnLeaf
+    p.s.currRole = result.sons[0].sons[0].text
+  p.s.currRoleKind = whichRole(p, p.s.currRole)
+
+proc dirRole(p: var RstParser): PRstNode =
+  result = parseDirective(p, rnDirective, {hasArg, hasOptions}, nil)
+  # just check that language is supported, TODO: real role association
+  let lang = getFieldValue(result, "language").strip
+  if lang != "" and lang notin supportedLanguages:
+    rstMessage(p, mwUnsupportedLanguage, lang)
 
 proc dirRawAux(p: var RstParser, result: var PRstNode, kind: RstNodeKind,
                contentParser: SectionParser) =
@@ -2465,7 +2583,9 @@ proc selectDir(p: var RstParser, d: string): PRstNode =
   of "code-block": result = dirCodeBlock(p, nimExtension = true)
   of "container": result = dirContainer(p)
   of "contents": result = dirContents(p)
-  of "danger", "error": result = dirAdmonition(p, d)
+  of "danger": result = dirAdmonition(p, d)
+  of "default-role": result = dirDefaultRole(p)
+  of "error": result = dirAdmonition(p, d)
   of "figure": result = dirFigure(p)
   of "hint": result = dirAdmonition(p, d)
   of "image": result = dirImage(p)
@@ -2478,10 +2598,10 @@ proc selectDir(p: var RstParser, d: string): PRstNode =
       result = dirRaw(p)
     else:
       rstMessage(p, meInvalidDirective, d)
+  of "role": result = dirRole(p)
   of "tip": result = dirAdmonition(p, d)
   of "title": result = dirTitle(p)
   of "warning": result = dirAdmonition(p, d)
-  of "default-role": result = dirDefaultRole(p)
   else:
     let tok = p.tok[p.idx-2]  # report on directive in ".. directive::"
     rstMessage(p, meInvalidDirective, d, tok.line, tok.col)

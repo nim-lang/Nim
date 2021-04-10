@@ -10,7 +10,7 @@ import unittest, strutils, strtabs
 import std/private/miscdollars
 
 proc toHtml(input: string,
-            rstOptions: RstParseOptions = {roSupportMarkdown},
+            rstOptions: RstParseOptions = {roSupportMarkdown, roNimFile},
             error: ref string = nil,
             warnings: ref seq[string] = nil): string =
   ## If `error` is nil then no errors should be generated.
@@ -35,6 +35,11 @@ proc toHtml(input: string,
                        msgHandler=testMsgHandler)
   except EParseError:
     discard
+
+# inline code tags (for parsing originated from highlite.nim)
+proc id(str: string): string = """<span class="Identifier">"""  & str & "</span>"
+proc op(str: string): string = """<span class="Operator">"""    & str & "</span>"
+proc pu(str: string): string = """<span class="Punctuation">""" & str & "</span>"
 
 suite "YAML syntax highlighting":
   test "Basics":
@@ -131,6 +136,25 @@ suite "YAML syntax highlighting":
   <span class="StringLit">not numbers</span><span class="Punctuation">:</span> <span class="Punctuation">[</span> <span class="StringLit">42e</span><span class="Punctuation">,</span> <span class="StringLit">0023</span><span class="Punctuation">,</span> <span class="StringLit">+32.37</span><span class="Punctuation">,</span> <span class="StringLit">8 ball</span><span class="Punctuation">]</span>
 <span class="Punctuation">}</span></pre>"""
 
+  test "Directives: warnings":
+    let input = dedent"""
+      .. non-existant-warning: Paragraph.
+
+      .. another.wrong:warning::: Paragraph.
+      """
+    var warnings = new seq[string]
+    let output = input.toHtml(warnings=warnings)
+    check output == ""
+    doAssert warnings[].len == 2
+    check "(1, 24) Warning: RST style:" in warnings[0]
+    check "double colon :: may be missing at end of 'non-existant-warning'" in warnings[0]
+    check "(3, 25) Warning: RST style:" in warnings[1]
+    check "RST style: too many colons for a directive (should be ::)" in warnings[1]
+
+  test "not a directive":
+    let input = "..warning:: I am not a warning."
+    check input.toHtml == input
+
   test "Anchors, Aliases, Tags":
     let input = """.. code-block:: yaml
     --- !!map
@@ -201,14 +225,14 @@ not in table"""
         `|` outside a table cell should render as `\|`
     consistently with markdown, see https://stackoverflow.com/a/66557930/1426932
     ]#
-    doAssert output1 == """
+    check(output1 == """
 <table border="1" class="docutils"><tr><th>A1 header</th><th>A2 | not fooled</th></tr>
 <tr><td>C1</td><td>C2 <strong>bold</strong></td></tr>
-<tr><td>D1 <tt class="docutils literal"><span class="pre">code \|</span></tt></td><td>D2</td></tr>
+<tr><td>D1 <tt class="docutils literal"><span class="pre">""" & id"code" & " " & op"\|" & """</span></tt></td><td>D2</td></tr>
 <tr><td>E1 | text</td><td></td></tr>
 <tr><td></td><td>F2 without pipe</td></tr>
 </table><p>not in table</p>
-"""
+""")
     let input2 = """
 | A1 header | A2 |
 | --- | --- |"""
@@ -556,19 +580,66 @@ let x = 1
     doAssert "<pre" in output2 and "class=\"Keyword\"" in output2
 
   test "interpreted text":
-    check """`foo.bar`""".toHtml == """<tt class="docutils literal"><span class="pre">foo.bar</span></tt>"""
-    check """`foo\`\`bar`""".toHtml == """<tt class="docutils literal"><span class="pre">foo``bar</span></tt>"""
-    check """`foo\`bar`""".toHtml == """<tt class="docutils literal"><span class="pre">foo`bar</span></tt>"""
-    check """`\`bar`""".toHtml == """<tt class="docutils literal"><span class="pre">`bar</span></tt>"""
-    check """`a\b\x\\ar`""".toHtml == """<tt class="docutils literal"><span class="pre">a\b\x\\ar</span></tt>"""
+    check("""`foo.bar`""".toHtml ==
+      """<tt class="docutils literal"><span class="pre">""" &
+      id"foo" & op"." & id"bar" & "</span></tt>")
+    check("""`foo\`\`bar`""".toHtml ==
+      """<tt class="docutils literal"><span class="pre">""" &
+      id"foo" & pu"`" & pu"`" & id"bar" & "</span></tt>")
+    check("""`foo\`bar`""".toHtml ==
+      """<tt class="docutils literal"><span class="pre">""" &
+      id"foo" & pu"`" & id"bar" & "</span></tt>")
+    check("""`\`bar`""".toHtml ==
+      """<tt class="docutils literal"><span class="pre">""" &
+      pu"`" & id"bar" & "</span></tt>")
+    check("""`a\b\x\\ar`""".toHtml ==
+      """<tt class="docutils literal"><span class="pre">""" &
+      id"a" & op"""\""" & id"b" & op"""\""" & id"x" & op"""\\""" & id"ar" &
+      "</span></tt>")
 
   test "inline literal":
     check """``foo.bar``""".toHtml == """<tt class="docutils literal"><span class="pre">foo.bar</span></tt>"""
     check """``foo\bar``""".toHtml == """<tt class="docutils literal"><span class="pre">foo\bar</span></tt>"""
     check """``f\`o\\o\b`ar``""".toHtml == """<tt class="docutils literal"><span class="pre">f\`o\\o\b`ar</span></tt>"""
 
+  test "default-role":
+    # nim(default) -> literal -> nim -> code(=literal)
+    let input = dedent"""
+      Par1 `value1`.
+
+      .. default-role:: literal
+
+      Par2 `value2`.
+
+      .. default-role:: nim
+
+      Par3 `value3`.
+
+      .. default-role:: code
+
+      Par4 `value4`."""
+    let p1 = """Par1 <tt class="docutils literal"><span class="pre">""" & id"value1" & "</span></tt>."
+    let p2 = """<p>Par2 <tt class="docutils literal"><span class="pre">value2</span></tt>.</p>"""
+    let p3 = """<p>Par3 <tt class="docutils literal"><span class="pre">""" & id"value3" & "</span></tt>.</p>"
+    let p4 = """<p>Par4 <tt class="docutils literal"><span class="pre">value4</span></tt>.</p>"""
+    let expected = p1 & p2 & "\n" & p3 & "\n" & p4 & "\n"
+    check(input.toHtml == expected)
+
+  test "role directive":
+    let input = dedent"""
+      .. role:: y(code)
+         :language: yaml
+
+      .. role:: brainhelp(code)
+         :language: brainhelp
+    """
+    var warnings = new seq[string]
+    let output = input.toHtml(warnings=warnings)
+    check(warnings[].len == 1 and "language 'brainhelp' not supported" in warnings[0])
+
   test "RST comments":
     let input1 = """
+
 Check that comment disappears:
 
 ..
@@ -1037,6 +1108,16 @@ Test1
     let output0 = input0.toHtml
     doAssert "<p>Paragraph1</p>" in output0
 
+  test "Nim code-block :number-lines:":
+    let input = dedent """
+      .. code-block:: nim
+         :number-lines: 55
+
+         x
+         y
+      """
+    check "<pre class=\"line-nums\">55\n56\n</pre>" in input.toHtml
+
   test "RST admonitions":
     # check that all admonitions are implemented
     let input0 = dedent """
@@ -1174,7 +1255,7 @@ Test1
     doAssert "<dl id=\"target003\""    in output1
     doAssert "<p id=\"target004\""     in output1
     doAssert "<table id=\"target005\"" in output1  # field list
-    doAssert "<table id=\"target006\"" in output1  # option list
+    doAssert "<div id=\"target006\""   in output1  # option list
     doAssert "<pre id=\"target007\""   in output1
     doAssert "<blockquote id=\"target009\"" in output1
     doAssert "<table id=\"target010\"" in output1  # just table
@@ -1289,9 +1370,12 @@ Test1
     let output = input.toHtml
     check(output.count("<ul") == 1)
     check(output.count("<li>") == 2)
-    check(output.count("<table") == 1)
-    check("""<th align="left">-m</th><td align="left">desc</td>""" in output)
-    check("""<th align="left">-n</th><td align="left">very long desc</td>""" in
+    check(output.count("<div class=\"option-list\"") == 1)
+    check("""<div class="option-list-label">-m</div>""" &
+          """<div class="option-list-description">desc</div></div>""" in
+          output)
+    check("""<div class="option-list-label">-n</div>""" &
+          """<div class="option-list-description">very long desc</div></div>""" in
           output)
 
   test "Option lists 2":
@@ -1304,12 +1388,17 @@ Test1
       -d  option"""
     let output = input.toHtml
     check(output.count("<ul") == 1)
-    check(output.count("<table") == 2)
-    check("""<th align="left">-m</th><td align="left">desc</td>""" in output)
-    check("""<th align="left">-n</th><td align="left">very long desc</td>""" in
+    check output.count("<div class=\"option-list\"") == 2
+    check("""<div class="option-list-label">-m</div>""" &
+          """<div class="option-list-description">desc</div></div>""" in
           output)
-    check("""<th align="left">-d</th><td align="left">option</td>""" in
+    check("""<div class="option-list-label">-n</div>""" &
+          """<div class="option-list-description">very long desc</div></div>""" in
           output)
+    check("""<div class="option-list-label">-d</div>""" &
+          """<div class="option-list-description">option</div></div>""" in
+          output)
+    check "<p>option</p>" notin output
 
   test "Option list 3 (double /)":
     let input = dedent """
@@ -1320,12 +1409,17 @@ Test1
       -d  option"""
     let output = input.toHtml
     check(output.count("<ul") == 1)
-    check(output.count("<table") == 2)
-    check("""<th align="left">compile</th><td align="left">compile1</td>""" in output)
-    check("""<th align="left">doc</th><td align="left">doc1 cont</td>""" in
+    check output.count("<div class=\"option-list\"") == 2
+    check("""<div class="option-list-label">compile</div>""" &
+          """<div class="option-list-description">compile1</div></div>""" in
           output)
-    check("""<th align="left">-d</th><td align="left">option</td>""" in
+    check("""<div class="option-list-label">doc</div>""" &
+          """<div class="option-list-description">doc1 cont</div></div>""" in
           output)
+    check("""<div class="option-list-label">-d</div>""" &
+          """<div class="option-list-description">option</div></div>""" in
+          output)
+    check "<p>option</p>" notin output
 
   test "Roles: subscript prefix/postfix":
     let expected = "See <sub>some text</sub>."
@@ -1339,9 +1433,27 @@ Test1
     check """`3`:sup:\ He is an isotope of helium.""".toHtml == expected
     check """`3`:superscript:\ He is an isotope of helium.""".toHtml == expected
 
+  test "Roles: warnings":
+    let input = dedent"""
+      See function :py:func:`spam`.
+
+      See also `egg`:py:class:.
+      """
+    var warnings = new seq[string]
+    let output = input.toHtml(warnings=warnings)
+    doAssert warnings[].len == 2
+    check "(1, 14) Warning: " in warnings[0]
+    check "language 'py:func' not supported" in warnings[0]
+    check "(3, 15) Warning: " in warnings[1]
+    check "language 'py:class' not supported" in warnings[1]
+    check("""<p>See function <span class="py:func">spam</span>.</p>""" & "\n" &
+          """<p>See also <span class="py:class">egg</span>. </p>""" & "\n" ==
+          output)
+
   test "(not) Roles: check escaping 1":
     let expected = """See :subscript:<tt class="docutils literal">""" &
-                   """<span class="pre">some text</span></tt>."""
+                   """<span class="pre">""" & id"some" & " " & id"text" &
+                   "</span></tt>."
     check """See \:subscript:`some text`.""".toHtml == expected
     check """See :subscript\:`some text`.""".toHtml == expected
 

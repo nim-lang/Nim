@@ -145,5 +145,81 @@ do:
 do:
   4"""
 
+  block: # bug #17292 (bug 4)
+    let a = deb:
+      proc `=destroy`() = discard
+      proc `'foo`(): int = discard
+      proc `foo bar baz`(): int = discard
+    let a2 = """
+
+proc `=destroy`() =
+  discard
+
+proc `'foo`(): int =
+  discard
+
+proc `foo bar baz`(): int =
+  discard
+"""
+    doAssert a2 == a
+
+  block: # setters: `foo=`
+    let a = deb:
+      proc `foo=`() = discard
+    doAssert a == """
+
+proc `foo=`() =
+  discard
+"""
+
+  block: # bug #14850
+    block:
+      let a = deb:
+        template bar(): untyped =
+          foo1:
+            discard
+            4
+          foo2(1):
+            discard
+            4
+          foo3(1):
+            discard
+            4
+          do: 1
+          do: 2
+          x.add foo4
+          x.add: foo5: 3
+          x.add foo6 do: 4
+          a.add(foo7 do:
+            echo "baz"
+            4)
+
+      doAssert a == """
+
+template bar(): untyped =
+  foo1:
+    discard
+    4
+  foo2(1):
+    discard
+    4
+  foo3(1):
+    discard
+    4
+  do:
+    1
+  do:
+    2
+  x.add foo4
+  x.add:
+    foo5:
+      3
+  x.add foo6 do:
+    4
+  a.add(foo7 do:
+    echo "baz"
+    4)
+"""
+
 static: main()
 main()

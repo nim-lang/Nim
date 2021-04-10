@@ -43,7 +43,7 @@ Advanced options:
   --warning[X]:on|off       turn specific warning X on|off
   --hints:on|off|list       turn all hints on|off or list all available
   --hint[X]:on|off          turn specific hint X on|off
-  --warningAsError[X]:on|off 
+  --warningAsError[X]:on|off
                             turn specific warning X into an error on|off
   --hintAsError[X]:on|off   turn specific hint X into an error on|off
   --styleCheck:off|hint|error
@@ -84,7 +84,7 @@ Advanced options:
                             if path == @default (the default and most useful), will use
                             best match among @pkg,@path.
                             if these are nonexistent, will use project path
-  -b, --backend:c|cpp|js|objc 
+  -b, --backend:c|cpp|js|objc
                             sets backend to use with commands like `nim doc` or `nim r`
   --docCmd:cmd              if `cmd == skip`, skips runnableExamples
                             else, runs runnableExamples with given options, e.g.:
@@ -95,26 +95,22 @@ Advanced options:
   --lineDir:on|off          generation of #line directive on|off
   --embedsrc:on|off         embeds the original source code as comments
                             in the generated output
-  --threadanalysis:on|off   turn thread analysis on|off
   --tlsEmulation:on|off     turn thread local storage emulation on|off
   --implicitStatic:on|off   turn implicit compile time evaluation on|off
   --trmacros:on|off         turn term rewriting macros on|off
   --multimethods:on|off     turn multi-methods on|off
-  --memTracker:on|off       turn memory tracker on|off
   --hotCodeReloading:on|off
                             turn support for hot code reloading on|off
   --excessiveStackTrace:on|off
                             stack traces use full file paths
   --stackTraceMsgs:on|off   enable user defined stack frame msgs via `setFrameMsg`
-  --seqsv2:on|off           use the new string/seq implementation based on
-                            destructors
   --skipCfg:on|off          do not read the nim installation's configuration file
   --skipUserCfg:on|off      do not read the user's configuration file
   --skipParentCfg:on|off    do not read the parent dirs' configuration files
   --skipProjCfg:on|off      do not read the project's configuration file
   --gc:refc|arc|orc|markAndSweep|boehm|go|none|regions
                             select the GC to use; default is 'refc'
-  --exceptions:setjmp|cpp|goto
+  --exceptions:setjmp|cpp|goto|quirky
                             select the exception handling implementation
   --index:on|off            turn index file generation on|off
   --putenv:key=value        set an environment variable
@@ -149,11 +145,8 @@ Advanced options:
   --legacy:$2
                             enable obsolete/legacy language feature
   --useVersion:1.0|1.2      emulate Nim version X of the Nim compiler, for testing
-  --profiler:on|off         enable profiling; requires `import nimprof`, and
-                            works better with `--stackTrace:on`
-                            see also https://nim-lang.github.io/Nim/estp.html
-  --benchmarkVM:on|off      enable benchmarking of VM code with cpuTime()
-  --profileVM:on|off        enable compile time VM profiler
-  --sinkInference:on|off    en-/disable sink parameter inference (default: on)
+  --benchmarkVM:on|off      turn benchmarking of VM code with cpuTime() on|off
+  --profileVM:on|off        turn compile time VM profiler on|off
+  --sinkInference:on|off    turn sink parameter inference on|off (default: on)
   --panics:on|off           turn panics into process terminations (default: off)
   --deepcopy:on|off         enable 'system.deepCopy' for ``--gc:arc|orc``
