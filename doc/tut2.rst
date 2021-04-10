@@ -175,7 +175,8 @@ Method call syntax
 ------------------
 
 There is a syntactic sugar for calling routines:
-The syntax `obj.method(args)` can be used instead of `method(obj, args)`.
+The syntax `obj.methodName(args)` can be used
+instead of `methodName(obj, args)`.
 If there are no remaining arguments, the parentheses can be omitted:
 `obj.len` (instead of `len(obj)`).
 

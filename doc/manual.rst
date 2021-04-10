@@ -6023,7 +6023,7 @@ A module may gain access to symbols of another module by the `import`:idx:
 statement. `Recursive module dependencies`:idx: are allowed, but are slightly
 subtle. Only top-level symbols that are marked with an asterisk (`*`) are
 exported. A valid module name can only be a valid Nim identifier (and thus its
-filename is `identifier.nim`).
+filename is ``identifier.nim``).
 
 The algorithm for compiling modules is:
 
