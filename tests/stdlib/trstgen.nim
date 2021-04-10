@@ -1255,7 +1255,7 @@ Test1
     doAssert "<dl id=\"target003\""    in output1
     doAssert "<p id=\"target004\""     in output1
     doAssert "<table id=\"target005\"" in output1  # field list
-    doAssert "<table id=\"target006\"" in output1  # option list
+    doAssert "<div id=\"target006\""   in output1  # option list
     doAssert "<pre id=\"target007\""   in output1
     doAssert "<blockquote id=\"target009\"" in output1
     doAssert "<table id=\"target010\"" in output1  # just table
@@ -1370,9 +1370,12 @@ Test1
     let output = input.toHtml
     check(output.count("<ul") == 1)
     check(output.count("<li>") == 2)
-    check(output.count("<table") == 1)
-    check("""<th align="left">-m</th><td align="left">desc</td>""" in output)
-    check("""<th align="left">-n</th><td align="left">very long desc</td>""" in
+    check(output.count("<div class=\"option-list\"") == 1)
+    check("""<div class="option-list-label">-m</div>""" &
+          """<div class="option-list-description">desc</div></div>""" in
+          output)
+    check("""<div class="option-list-label">-n</div>""" &
+          """<div class="option-list-description">very long desc</div></div>""" in
           output)
 
   test "Option lists 2":
@@ -1385,11 +1388,15 @@ Test1
       -d  option"""
     let output = input.toHtml
     check(output.count("<ul") == 1)
-    check(output.count("<table") == 2)
-    check("""<th align="left">-m</th><td align="left">desc</td>""" in output)
-    check("""<th align="left">-n</th><td align="left">very long desc</td>""" in
+    check output.count("<div class=\"option-list\"") == 2
+    check("""<div class="option-list-label">-m</div>""" &
+          """<div class="option-list-description">desc</div></div>""" in
           output)
-    check("""<th align="left">-d</th><td align="left">option</td>""" in
+    check("""<div class="option-list-label">-n</div>""" &
+          """<div class="option-list-description">very long desc</div></div>""" in
+          output)
+    check("""<div class="option-list-label">-d</div>""" &
+          """<div class="option-list-description">option</div></div>""" in
           output)
     check "<p>option</p>" notin output
 
@@ -1402,11 +1409,15 @@ Test1
       -d  option"""
     let output = input.toHtml
     check(output.count("<ul") == 1)
-    check(output.count("<table") == 2)
-    check("""<th align="left">compile</th><td align="left">compile1</td>""" in output)
-    check("""<th align="left">doc</th><td align="left">doc1 cont</td>""" in
+    check output.count("<div class=\"option-list\"") == 2
+    check("""<div class="option-list-label">compile</div>""" &
+          """<div class="option-list-description">compile1</div></div>""" in
           output)
-    check("""<th align="left">-d</th><td align="left">option</td>""" in
+    check("""<div class="option-list-label">doc</div>""" &
+          """<div class="option-list-description">doc1 cont</div></div>""" in
+          output)
+    check("""<div class="option-list-label">-d</div>""" &
+          """<div class="option-list-description">option</div></div>""" in
           output)
     check "<p>option</p>" notin output
 

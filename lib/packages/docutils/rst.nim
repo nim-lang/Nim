@@ -2085,6 +2085,7 @@ proc parseBulletList(p: var RstParser): PRstNode =
 proc parseOptionList(p: var RstParser): PRstNode =
   result = newRstNodeA(p, rnOptionList)
   let col = currentTok(p).col
+  var order = 1
   while true:
     if currentTok(p).col == col and isOptionList(p):
       var a = newRstNode(rnOptionGroup)
@@ -2107,6 +2108,7 @@ proc parseOptionList(p: var RstParser): PRstNode =
       if currentTok(p).kind == tkIndent: inc p.idx
       c.add(a)
       c.add(b)
+      c.order = order; inc order
       result.add(c)
     else:
       if currentTok(p).kind != tkEof: dec p.idx  # back to tkIndent
