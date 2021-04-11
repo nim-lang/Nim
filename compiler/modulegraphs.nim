@@ -200,8 +200,11 @@ proc initModuleIter*(mi: var ModuleIter; g: ModuleGraph; m: PSym; name: PIdent):
     result = initRodIter(mi.rodIt, g.config, g.cache, g.packed, FileIndex mi.modIndex, name)
   else:
     # PRTEMP
-    # if optImportHidden in m.options:
-    result = initIdentIter(mi.ti, g.ifaces[mi.modIndex].interf, name)
+    dbg m.options, m
+    if optImportHidden in m.options:
+      result = initIdentIter(mi.ti, g.ifaces[mi.modIndex].interfAll, name)
+    else:
+      result = initIdentIter(mi.ti, g.ifaces[mi.modIndex].interf, name)
 
 proc nextModuleIter*(mi: var ModuleIter; g: ModuleGraph): PSym =
   if mi.fromRod:

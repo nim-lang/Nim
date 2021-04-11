@@ -182,10 +182,12 @@ template addUnnamedIt(c: PContext, fromMod: PSym; filter: untyped) {.dirty.} =
       importPureEnumFields(c, it.sym, it.sym.typ)
 
 proc importAllSymbolsExcept(c: PContext, fromMod: PSym, exceptSet: IntSet) =
+  # PRTEMP: importHidden: optImportHidden in m.options
   c.addImport ImportedModule(m: fromMod, mode: importExcept, exceptSet: exceptSet)
   addUnnamedIt(c, fromMod, it.sym.id notin exceptSet)
 
 proc importAllSymbols*(c: PContext, fromMod: PSym) =
+  # PRTEMP: importHidden: optImportHidden in m.options
   c.addImport ImportedModule(m: fromMod, mode: importAll)
   addUnnamedIt(c, fromMod, true)
   when false:
@@ -333,7 +335,7 @@ proc evalFrom*(c: PContext, n: PNode): PNode =
   if m != nil:
     n[0] = newSymNode(m)
     addDecl(c, m, n.info)               # add symbol to symbol table of module
-
+    dbg m, m.options
     var im = ImportedModule(m: m, mode: importSet, imported: initIntSet(), importHidden: optImportHidden in m.options)
     for i in 1..<n.len:
       if n[i].kind != nkNilLit:
