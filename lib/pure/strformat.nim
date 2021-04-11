@@ -629,7 +629,7 @@ macro `&`*(pattern: string): untyped = strformatImpl(pattern, '{', '}')
 macro fmt*(pattern: string): untyped = strformatImpl(pattern, '{', '}')
   ## An alias for `& <#&.m,string>`_.
 
-macro fmt*(pattern: string; openChar, closeChar: char,fmtChar=':'): untyped =
+macro fmt*(pattern: string; openChar, closeChar: char; fmtChar=':'): untyped =
   ## The same as `fmt <#fmt.m,string>`_, but uses `openChar` instead of `'{'`
   ## and `closeChar` instead of `'}'`.
   ## Change `fmtChar` to allow use of colons inside expressions
