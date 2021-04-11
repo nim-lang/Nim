@@ -31,7 +31,7 @@ type
     moduleFlags: TSymFlags
     includes: seq[(LitId, string)] # first entry is the module filename itself
     imports: seq[LitId] # the modules this module depends on
-    toReplay: PackedTree # pragmas and VM specific state to replay.
+    toReplay*: PackedTree # pragmas and VM specific state to replay.
     topLevel*: PackedTree  # top level statements
     bodies*: PackedTree # other trees. Referenced from typ.n and sym.ast by their position.
     #producedGenerics*: Table[GenericKey, SymId]
@@ -167,6 +167,7 @@ proc addExported*(c: var PackedEncoder; m: var PackedModule; s: PSym) =
   m.exports.add((nameId, s.itemId.item))
 
 proc addConverter*(c: var PackedEncoder; m: var PackedModule; s: PSym) =
+  assert c.thisModule == s.itemId.module
   m.converters.add(s.itemId.item)
 
 proc addTrmacro*(c: var PackedEncoder; m: var PackedModule; s: PSym) =

@@ -488,7 +488,7 @@ proc icTests(r: var TResults; testsDir: string, cat: Category, options: string) 
     tooltests = ["compiler/nim.nim", "tools/nimgrep.nim"]
     writeOnly = " --incremental:writeonly "
     readOnly = " --incremental:readonly "
-    incrementalOn = " --incremental:on "
+    incrementalOn = " --incremental:on -d:nimIcIntegrityChecks "
 
   template test(x: untyped) =
     testSpecWithNimcache(r, makeRawTest(file, x & options, cat), nimcache)
