@@ -1,6 +1,3 @@
-# proc `$`(x: int): string {.magic: "IntToStr", noSideEffect.}
-proc toString(x: int): string {.magic: "IntToStr", noSideEffect.}
-
 template toLocation*(result: var string, file: string | cstring, line: int, col: int) =
   ## avoids spurious allocations
   # Hopefully this can be re-used everywhere so that if a user needs to customize,
@@ -10,9 +7,9 @@ template toLocation*(result: var string, file: string | cstring, line: int, col:
     result.add "("
     # simplify this after moving moving `include strmantle` above import assertions`
     when declared(addInt): result.addInt line
-    else: result.add toString(line)
+    else: result.add $line
     if col > 0:
       result.add ", "
       when declared(addInt): result.addInt col
-      else: result.add toString(col)
+      else: result.add $col
     result.add ")"

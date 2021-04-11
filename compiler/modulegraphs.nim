@@ -380,8 +380,10 @@ when defined(nimfind):
 
 else:
   template onUse*(info: TLineInfo; s: PSym) = discard
-  template onDef*(info: TLineInfo; s: PSym) = onDefAux(info, s, getC(), false)
-  template onDefResolveForward*(info: TLineInfo; s: PSym) = onDefAux(info, s, getC(), true)
+  template onDef*(info: TLineInfo; s: PSym) = discard
+  template onDefResolveForward*(info: TLineInfo; s: PSym) = discard
+  # template onDef*(info: TLineInfo; s: PSym) = onDefAux(info, s, getC(), false)
+  # template onDefResolveForward*(info: TLineInfo; s: PSym) = onDefAux(info, s, getC(), true)
 
 proc stopCompile*(g: ModuleGraph): bool {.inline.} =
   result = g.doStopCompile != nil and g.doStopCompile()
