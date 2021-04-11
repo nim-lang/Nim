@@ -545,7 +545,7 @@ template formatValue(result: var string; value: char; specifier: string) =
 template formatValue(result: var string; value: cstring; specifier: string) =
   result.add value
 
-proc strformatImpl(pattern: NimNode; openChar, closeChar: char,fmtChar=':'): NimNode =
+proc strformatImpl(pattern: NimNode; openChar, closeChar: char; fmtChar=':'): NimNode =
   if pattern.kind notin {nnkStrLit..nnkTripleStrLit}:
     error "string formatting (fmt(), &) only works with string literals", pattern
   if openChar == fmtChar or closeChar == fmtChar:
