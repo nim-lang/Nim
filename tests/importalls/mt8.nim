@@ -15,9 +15,9 @@ doAssert not declared(m1.foo1)
   # this would fail, see D20201209T194412.
 
 # m2
-doAssert declared(m2.bar2)
+# doAssert declared(m2.bar2)
 doAssert declared(bar2)
 
 # m3
-doAssert declared(m3.m3h2)
+# doAssert declared(m3.m3h2)
 doAssert declared(m3h2)
