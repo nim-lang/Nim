@@ -75,18 +75,18 @@ runnableExamples:
 
 ##[
 # Expressions
+]##
 runnableExamples:
   let x = 3.14
   assert fmt"{(if x!=0: 1.0/x else: 0):.5}" == "0.31847"
   assert fmt"""{(block:
-    var res:string
+    var res: string
     for i in 1..15:
       res.add (if i mod 15 == 0: "FizzBuzz"
         elif i mod 5 == 0: "Buzz"
         elif i mod 3 == 0: "Fizz"
         else: $i) & " "
     res)}""" == "1 2 Fizz 4 Buzz Fizz 7 8 Fizz Buzz 11 Fizz 13 14 FizzBuzz "
-]##
 ##[
 # Debugging strings
 
