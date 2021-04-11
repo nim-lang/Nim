@@ -118,6 +118,7 @@ proc importSymbol(c: PContext, n: PNode, fromMod: PSym; importSet: var IntSet) =
     when false:
       if s.kind == skStub: loadStub(s)
     let multiImport = s.kind notin ExportableSymKinds or s.kind in skProcKinds
+    dbg s.kind, multiImport
     # for an enumeration we have to add all identifiers
     if multiImport:
       # for a overloadable syms add all overloaded routines
@@ -133,6 +134,7 @@ proc importSymbol(c: PContext, n: PNode, fromMod: PSym; importSet: var IntSet) =
     suggestSym(c.graph, n.info, s, c.graph.usageSym, false)
 
 proc addImport(c: PContext; im: sink ImportedModule) =
+  dbg c.imports.len
   for i in 0..high(c.imports):
     if c.imports[i].m == im.m:
       # we have already imported the module: Check which import
@@ -148,6 +150,7 @@ proc addImport(c: PContext; im: sink ImportedModule) =
         of importSet:
           # merge the import sets:
           c.imports[i].imported.incl im.imported
+          dbg i, c.imports[i].imported
       of importExcept:
         case im.mode
         of importAll:
@@ -208,7 +211,7 @@ proc importForwarded(c: PContext, n: PNode, exceptSet: IntSet; fromMod: PSym; im
 
 type
   ImportFlag = enum
-    ifImportAll
+    ifImportHidden
   ImportFlags = set[ImportFlag]
 
 proc importModuleAs(c: PContext; n: PNode, realModule: PSym, importFlags: ImportFlags): PSym =
@@ -221,22 +224,22 @@ proc importModuleAs(c: PContext; n: PNode, realModule: PSym, importFlags: Import
     # some misguided guy will write 'import abc.foo as foo' ...
     result = createModuleAlias(realModule, nextSymId c.idgen, n[1].ident, realModule.info,
                                c.config.options)
-  if ifImportAll in importFlags:
+  if ifImportHidden in importFlags:
     if result == realModule:
       result = createModuleAlias(realModule, nextSymId c.idgen, realModule.name, realModule.info,
                                c.config.options)
-    result.options.incl optImportAll
+    result.options.incl optImportHidden
     dbg result.options
-    c.friendModulesImportAll.add realModule # `realModule` needed, not `result`
+    c.friendModulesImportHidden.add realModule # `realModule` needed, not `result`
 
 proc transformImportAs(c: PContext; n: PNode): tuple[node: PNode, importFlags: ImportFlags] =
   var ret: typeof(result)
   proc processPragma(n2: PNode): PNode =
     if n2.kind == nkPragmaExpr:
-      if n2.len == 2 and n2[1].kind == nkPragma and n2[1].len == 1 and n2[1][0].kind == nkIdent and whichKeyword(n2[1][0].ident) == wImportAll: discard
+      if n2.len == 2 and n2[1].kind == nkPragma and n2[1].len == 1 and n2[1][0].kind == nkIdent and whichKeyword(n2[1][0].ident) == wImportHidden: discard
       else:
-        globalError(c.config, n.info, "invalid import pragma, expected: " & $wImportAll)
-      ret.importFlags.incl ifImportAll
+        globalError(c.config, n.info, "invalid import pragma, expected: " & $wImportHidden)
+      ret.importFlags.incl ifImportHidden
       result = n2[0]
     else:
       result = n2
@@ -331,7 +334,7 @@ proc evalFrom*(c: PContext, n: PNode): PNode =
     n[0] = newSymNode(m)
     addDecl(c, m, n.info)               # add symbol to symbol table of module
 
-    var im = ImportedModule(m: m, mode: importSet, imported: initIntSet())
+    var im = ImportedModule(m: m, mode: importSet, imported: initIntSet(), importHidden: optImportHidden in m.options)
     for i in 1..<n.len:
       if n[i].kind != nkNilLit:
         importSymbol(c, n[i], m, im.imported)

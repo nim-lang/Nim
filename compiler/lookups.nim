@@ -111,6 +111,7 @@ proc localSearchInScope*(c: PContext, s: PIdent): PSym =
 proc initIdentIter(ti: var ModuleIter; marked: var IntSet; im: ImportedModule; name: PIdent;
                    g: ModuleGraph): PSym =
   result = initModuleIter(ti, g, im.m, name)
+  dbg im.m, im.mode, name, result
   while result != nil:
     let b =
       case im.mode
@@ -499,6 +500,7 @@ type
 
 proc qualifiedLookUp*(c: PContext, n: PNode, flags: set[TLookupFlag]): PSym =
   const allExceptModule = {low(TSymKind)..high(TSymKind)} - {skModule, skPackage}
+  dbg n, n.kind, flags
   case n.kind
   of nkIdent, nkAccQuoted:
     var amb = false
