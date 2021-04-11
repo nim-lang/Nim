@@ -107,6 +107,7 @@ proc computeDeps(cache: IdentCache; n: PNode, declares, uses: var IntSet; topLev
       for i in 0..<n.safeLen: deps(n[i])
   of nkMixinStmt, nkBindStmt: discard
   else:
+    # XXX: for callables, this technically adds the return type dep before args
     for i in 0..<n.safeLen: deps(n[i])
 
 proc hasIncludes(n:PNode): bool =

@@ -11,8 +11,6 @@
 ## Currently only few languages are supported, other languages may be added.
 ## The interface supports one language nested in another.
 ##
-## **Note:** Import `packages/docutils/highlite` to use this module
-##
 ## You can use this to build your own syntax highlighting, check this example:
 ##
 ## .. code::nim

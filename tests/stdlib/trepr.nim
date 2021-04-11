@@ -6,6 +6,8 @@ discard """
 # if excessive, could remove 'cpp' from targets
 
 from strutils import endsWith, contains
+from std/macros import newLit
+macro deb(a): string = newLit a.repr
 
 template main() =
   doAssert repr({3,5}) == "{3, 5}"
@@ -64,6 +66,151 @@ template main() =
     when defined(js): discard # BUG: doesn't work
     else:
       doAssert reprOpenarray(arr) == "[1, 2, 3]"
+
+  block: # bug #17292
+    template foo(a, b, c, d) = discard
+    block:
+      let a = deb:
+        foo(1, 2, 3, 4)
+      doAssert a == "\nfoo(1, 2, 3, 4)"
+    block:
+      let a = deb:
+        foo(1, 2, 3): 4
+      doAssert a == """
+
+foo(1, 2, 3):
+  4"""
+
+    block:
+      let a = deb:
+        foo(1, 2): 3
+        do: 4
+      doAssert a == """
+
+foo(1, 2):
+  3
+do:
+  4"""
+
+    block:
+      let a = deb:
+        foo(1): 3
+        do: 3
+        do: 4
+      doAssert a == """
+
+foo(1):
+  3
+do:
+  3
+do:
+  4"""
+
+    block:
+      let a = deb:
+        foo(1):
+          3
+        do:
+          discard
+          3
+        do:
+          discard
+          4
+
+      doAssert a == """
+
+foo(1):
+  3
+do:
+  discard
+  3
+do:
+  discard
+  4"""
+
+    block:
+      let a = deb:
+        foo: 1
+        do: 2
+        do: 3
+        do: 4
+      doAssert a == """
+
+foo:
+  1
+do:
+  2
+do:
+  3
+do:
+  4"""
+
+  block: # bug #17292 (bug 4)
+    let a = deb:
+      proc `=destroy`() = discard
+      proc `'foo`(): int = discard
+      proc `foo bar baz`(): int = discard
+    let a2 = """
+
+proc `=destroy`() =
+  discard
+
+proc `'foo`(): int =
+  discard
+
+proc `foo bar baz`(): int =
+  discard
+"""
+    doAssert a2 == a
+
+  block: # bug #14850
+    block:
+      let a = deb:
+        template bar(): untyped =
+          foo1:
+            discard
+            4
+          foo2(1):
+            discard
+            4
+          foo3(1):
+            discard
+            4
+          do: 1
+          do: 2
+          x.add foo4
+          x.add: foo5: 3
+          x.add foo6 do: 4
+          a.add(foo7 do:
+            echo "baz"
+            4)
+
+      doAssert a == """
+
+template bar(): untyped =
+  foo1:
+    discard
+    4
+  foo2(1):
+    discard
+    4
+  foo3(1):
+    discard
+    4
+  do:
+    1
+  do:
+    2
+  x.add foo4
+  x.add:
+    foo5:
+      3
+  x.add foo6 do:
+    4
+  a.add(foo7 do:
+    echo "baz"
+    4)
+"""
 
 static: main()
 main()

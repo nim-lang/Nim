@@ -11,9 +11,8 @@
 ## represents a complete Nim project. Single modules can either be kept in RAM
 ## or stored in a rod-file.
 
-import ast, astalgo, intsets, tables, options, lineinfos, hashes, idents,
-  btrees, md5, ropes, msgs
-
+import std / [intsets, tables, hashes, md5]
+import ast, astalgo, options, lineinfos,idents, btrees, ropes, msgs, pathutils
 import ic / [packed_ast, ic]
 
 type
@@ -60,6 +59,7 @@ type
     attachedOps*: array[TTypeAttachedOp, Table[ItemId, PSym]] # Type ID, destructors, etc.
     methodsPerType*: Table[ItemId, seq[(int, LazySym)]] # Type ID, attached methods
     enumToStringProcs*: Table[ItemId, LazySym]
+    emittedTypeInfo*: Table[string, FileIndex]
 
     startupPackedConfig*: PackedConfig
     packageSyms*: TStrTable
@@ -68,7 +68,6 @@ type
     importDeps*: Table[FileIndex, seq[FileIndex]] # explicit import module dependencies
     suggestMode*: bool # whether we are in nimsuggest mode or not.
     invalidTransitiveClosure: bool
-    systemModuleComplete*: bool
     inclToMod*: Table[FileIndex, FileIndex] # mapping of include file to the
                                             # first module that included it
     importStack*: seq[FileIndex]  # The current import stack. Used for detecting recursive
@@ -394,8 +393,9 @@ proc registerModule*(g: ModuleGraph; m: PSym) =
 proc registerModuleById*(g: ModuleGraph; m: FileIndex) =
   registerModule(g, g.packed[int m].module)
 
-proc initOperators(g: ModuleGraph): Operators =
+proc initOperators*(g: ModuleGraph): Operators =
   # These are safe for IC.
+  # Public because it's used by DrNim.
   result.opLe = createMagic(g, "<=", mLeI)
   result.opLt = createMagic(g, "<", mLtI)
   result.opAnd = createMagic(g, "and", mAnd)
@@ -435,6 +435,7 @@ proc newModuleGraph*(cache: IdentCache; config: ConfigRef): ModuleGraph =
   result.canonTypes = initTable[SigHash, PType]()
   result.symBodyHashes = initTable[int, SigHash]()
   result.operators = initOperators(result)
+  result.emittedTypeInfo = initTable[string, FileIndex]()
 
 proc resetAllModules*(g: ModuleGraph) =
   initStrTable(g.packageSyms)
@@ -454,6 +455,43 @@ proc getModule*(g: ModuleGraph; fileIdx: FileIndex): PSym =
       result = g.packed[fileIdx.int32].module
     elif fileIdx.int32 < g.ifaces.len:
       result = g.ifaces[fileIdx.int32].module
+
+proc moduleOpenForCodegen*(g: ModuleGraph; m: FileIndex): bool {.inline.} =
+  if g.config.symbolFiles == disabledSf:
+    result = true
+  else:
+    result = g.packed[m.int32].status notin {undefined, stored, loaded}
+
+proc rememberEmittedTypeInfo*(g: ModuleGraph; m: FileIndex; ti: string) =
+  #assert(not isCachedModule(g, m.int32))
+  if g.config.symbolFiles != disabledSf:
+    #assert g.encoders[m.int32].isActive
+    assert g.packed[m.int32].status != stored
+    g.packed[m.int32].fromDisk.emittedTypeInfo.add ti
+    #echo "added typeinfo ", m.int32, " ", ti, " suspicious ", not g.encoders[m.int32].isActive
+
+proc rememberFlag*(g: ModuleGraph; m: PSym; flag: ModuleBackendFlag) =
+  if g.config.symbolFiles != disabledSf:
+    #assert g.encoders[m.int32].isActive
+    assert g.packed[m.position].status != stored
+    g.packed[m.position].fromDisk.backendFlags.incl flag
+
+proc closeRodFile*(g: ModuleGraph; m: PSym) =
+  if g.config.symbolFiles in {readOnlySf, v2Sf}:
+    # For stress testing we seek to reload the symbols from memory. This
+    # way much of the logic is tested but the test is reproducible as it does
+    # not depend on the hard disk contents!
+    let mint = m.position
+    saveRodFile(toRodFile(g.config, AbsoluteFile toFullPath(g.config, FileIndex(mint))),
+                g.encoders[mint], g.packed[mint].fromDisk)
+    g.packed[mint].status = stored
+
+  elif g.config.symbolFiles == stressTest:
+    # debug code, but maybe a good idea for production? Could reduce the compiler's
+    # memory consumption considerably at the cost of more loads from disk.
+    let mint = m.position
+    simulateCachedModule(g, m, g.packed[mint].fromDisk)
+    g.packed[mint].status = loaded
 
 proc dependsOn(a, b: int): int {.inline.} = (a shl 15) + b
 

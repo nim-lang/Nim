@@ -63,7 +63,22 @@ proc prettyString(a: object): string =
   for k, v in fieldPairs(a):
     result.add k & ": " & $v & "\n"
 
-proc presentationPath*(conf: ConfigRef, file: AbsoluteFile, isTitle = false): RelativeFile =
+proc canonicalImport*(conf: ConfigRef, file: AbsoluteFile): string =
+  ##[
+  Shows the canonical module import, e.g.:
+  system, std/tables, fusion/pointers, system/assertions, std/private/asciitables
+  ]##
+  var ret = getRelativePathFromConfigPath(conf, file, isTitle = true)
+  let dir = getNimbleFile(conf, $file).parentDir.AbsoluteDir
+  if not dir.isEmpty:
+    let relPath = relativeTo(file, dir)
+    if not relPath.isEmpty and (ret.isEmpty or relPath.string.len < ret.string.len):
+      ret = relPath
+  if ret.isEmpty:
+    ret = relativeTo(file, conf.projectPath)
+  result = ret.string.nativeToUnixPath.changeFileExt("")
+
+proc presentationPath*(conf: ConfigRef, file: AbsoluteFile): RelativeFile =
   ## returns a relative file that will be appended to outDir
   let file2 = $file
   template bail() =
@@ -97,10 +112,7 @@ proc presentationPath*(conf: ConfigRef, file: AbsoluteFile, isTitle = false): Re
     bail()
   if isAbsolute(result.string):
     result = file.string.splitPath()[1].RelativeFile
-  if isTitle:
-    result = result.string.nativeToUnixPath.RelativeFile
-  else:
-    result = result.string.replace("..", dotdotMangle).RelativeFile
+  result = result.string.replace("..", dotdotMangle).RelativeFile
   doAssert not result.isEmpty
   doAssert not isAbsolute(result.string)
 
@@ -180,7 +192,8 @@ proc newDocumentor*(filename: AbsoluteFile; cache: IdentCache; conf: ConfigRef, 
   result.cache = cache
   result.outDir = conf.outDir.string
   initRstGenerator(result[], (if conf.cmd != cmdRst2tex: outHtml else: outLatex),
-                   conf.configVars, filename.string, {roSupportRawDirective, roSupportMarkdown},
+                   conf.configVars, filename.string,
+                   {roSupportRawDirective, roSupportMarkdown, roNimFile},
                    docgenFindFile, compilerMsgHandler)
 
   if conf.configVars.hasKey("doc.googleAnalytics"):
@@ -404,7 +417,7 @@ proc nodeToHighlightedHtml(d: PDoc; n: PNode; result: var Rope; renderFlags: TRe
     of tkOpr:
       dispA(d.conf, result, "<span class=\"Operator\">$1</span>", "\\spanOperator{$1}",
             [escLit])
-    of tkStrLit..tkTripleStrLit:
+    of tkStrLit..tkTripleStrLit, tkCustomLit:
       dispA(d.conf, result, "<span class=\"StringLit\">$1</span>",
             "\\spanStringLit{$1}", [escLit])
     of tkCharLit:
@@ -434,22 +447,22 @@ proc nodeToHighlightedHtml(d: PDoc; n: PNode; result: var Rope; renderFlags: TRe
               "\\spanIdentifier{$1}", [escLit])
     of tkSpaces, tkInvalid:
       result.add(literal)
-    of tkCurlyDotLe:
+    of tkHideableStart:
       template fun(s) = dispA(d.conf, result, s, "\\spanOther{$1}", [escLit])
       if renderRunnableExamples in renderFlags: fun "$1"
-      else: fun: "<span>" & # This span is required for the JS to work properly
-        """<span class="Other">{</span><span class="Other pragmadots">...</span><span class="Other">}</span>
+      else:
+        # 1st span is required for the JS to work properly
+        fun """
+<span>
+<span class="Other pragmadots">...</span>
 </span>
-<span class="pragmawrap">
-<span class="Other">$1</span>
-<span class="pragma">""".replace("\n", "")  # Must remove newlines because wrapped in a <pre>
-    of tkCurlyDotRi:
+<span class="pragmawrap">""".replace("\n", "")  # Must remove newlines because wrapped in a <pre>
+    of tkHideableEnd:
       template fun(s) = dispA(d.conf, result, s, "\\spanOther{$1}", [escLit])
       if renderRunnableExamples in renderFlags: fun "$1"
-      else: fun """
-</span>
-<span class="Other">$1</span>
-</span>""".replace("\n", "")
+      else: fun "</span>"
+    of tkCurlyDotLe: dispA(d.conf, result, "$1", "\\spanOther{$1}", [escLit])
+    of tkCurlyDotRi: dispA(d.conf, result, "$1", "\\spanOther{$1}", [escLit])
     of tkParLe, tkParRi, tkBracketLe, tkBracketRi, tkCurlyLe, tkCurlyRi,
        tkBracketDotLe, tkBracketDotRi, tkParDotLe,
        tkParDotRi, tkComma, tkSemiColon, tkColon, tkEquals, tkDot, tkDotDot,
@@ -493,7 +506,7 @@ proc runAllExamples(d: PDoc) =
 
 proc quoted(a: string): string = result.addQuoted(a)
 
-proc prepareExample(d: PDoc; n: PNode): tuple[rdoccmd: string, code: string] =
+proc prepareExample(d: PDoc; n: PNode, topLevel: bool): tuple[rdoccmd: string, code: string] =
   ## returns `rdoccmd` and source code for this runnableExamples
   var rdoccmd = ""
   if n.len < 2 or n.len > 3: globalError(d.conf, n.info, "runnableExamples invalid")
@@ -544,7 +557,14 @@ $3
   if rdoccmd notin d.exampleGroups:
     d.exampleGroups[rdoccmd] = ExampleGroup(rdoccmd: rdoccmd, docCmd: d.conf.docCmd, index: d.exampleGroups.len)
   d.exampleGroups[rdoccmd].code.add "import $1\n" % outp.string.quoted
-  result = (rdoccmd, code)
+
+  var codeShown: string
+  if topLevel: # refs https://github.com/nim-lang/RFCs/issues/352
+    let title = canonicalImport(d.conf, AbsoluteFile d.filename)
+    codeShown = "import $#\n$#" % [title, code]
+  else:
+    codeShown = code
+  result = (rdoccmd, codeShown)
   when false:
     proc extractImports(n: PNode; result: PNode) =
       if n.kind in {nkImportStmt, nkImportExceptStmt, nkFromStmt}:
@@ -564,7 +584,7 @@ type RunnableState = enum
   rsRunnable
   rsDone
 
-proc getAllRunnableExamplesImpl(d: PDoc; n: PNode, dest: var Rope, state: RunnableState): RunnableState =
+proc getAllRunnableExamplesImpl(d: PDoc; n: PNode, dest: var Rope, state: RunnableState, topLevel: bool): RunnableState =
   ##[
   Simple state machine to tell whether we render runnableExamples and doc comments.
   This is to ensure that we can interleave runnableExamples and doc comments freely;
@@ -588,20 +608,23 @@ proc getAllRunnableExamplesImpl(d: PDoc; n: PNode, dest: var Rope, state: Runnab
       return rsComment
   of nkCallKinds:
     if isRunnableExamples(n[0]) and
-        n.len >= 2 and n.lastSon.kind == nkStmtList and state in {rsStart, rsComment, rsRunnable}:
-      let (rdoccmd, code) = prepareExample(d, n)
-      var msg = "Example:"
-      if rdoccmd.len > 0: msg.add " cmd: " & rdoccmd
-      dispA(d.conf, dest, "\n<p><strong class=\"examples_text\">$1</strong></p>\n",
-          "\n\\textbf{$1}\n", [msg.rope])
-      inc d.listingCounter
-      let id = $d.listingCounter
-      dest.add(d.config.getOrDefault"doc.listing_start" % [id, "langNim", ""])
-      var dest2 = ""
-      renderNimCode(dest2, code, isLatex = d.conf.cmd == cmdRst2tex)
-      dest.add dest2
-      dest.add(d.config.getOrDefault"doc.listing_end" % id)
-      return rsRunnable
+        n.len >= 2 and n.lastSon.kind == nkStmtList:
+      if state in {rsStart, rsComment, rsRunnable}:
+        let (rdoccmd, code) = prepareExample(d, n, topLevel)
+        var msg = "Example:"
+        if rdoccmd.len > 0: msg.add " cmd: " & rdoccmd
+        dispA(d.conf, dest, "\n<p><strong class=\"examples_text\">$1</strong></p>\n",
+            "\n\\textbf{$1}\n", [msg.rope])
+        inc d.listingCounter
+        let id = $d.listingCounter
+        dest.add(d.config.getOrDefault"doc.listing_start" % [id, "langNim", ""])
+        var dest2 = ""
+        renderNimCode(dest2, code, isLatex = d.conf.cmd == cmdRst2tex)
+        dest.add dest2
+        dest.add(d.config.getOrDefault"doc.listing_end" % id)
+        return rsRunnable
+      else:
+        localError(d.conf, n.info, errUser, "runnableExamples must appear before the first non-comment statement")
   else: discard
   return rsDone
     # change this to `rsStart` if you want to keep generating doc comments
@@ -640,19 +663,19 @@ proc getRoutineBody(n: PNode): PNode =
 proc getAllRunnableExamples(d: PDoc, n: PNode, dest: var Rope) =
   var n = n
   var state = rsStart
-  template fn(n2) =
-    state = getAllRunnableExamplesImpl(d, n2, dest, state)
+  template fn(n2, topLevel) =
+    state = getAllRunnableExamplesImpl(d, n2, dest, state, topLevel)
   dest.add genComment(d, n).rope
   case n.kind
   of routineDefs:
     n = n.getRoutineBody
     case n.kind
-    of nkCommentStmt, nkCallKinds: fn(n)
+    of nkCommentStmt, nkCallKinds: fn(n, topLevel = false)
     else:
       for i in 0..<n.safeLen:
-        fn(n[i])
-        if state == rsDone: return
-  else: fn(n)
+        fn(n[i], topLevel = false)
+        if state == rsDone: discard # check all sons
+  else: fn(n, topLevel = true)
 
 proc isVisible(d: PDoc; n: PNode): bool =
   result = false
@@ -1259,8 +1282,7 @@ proc genOutFile(d: PDoc, groupedToc = false): Rope =
     setIndexTerm(d[], external, "", title)
   else:
     # Modules get an automatic title for the HTML, but no entry in the index.
-    # better than `extractFilename(changeFileExt(d.filename, ""))` as it disambiguates dups
-    title = $presentationPath(d.conf, AbsoluteFile d.filename, isTitle = true).changeFileExt("")
+    title = canonicalImport(d.conf, AbsoluteFile d.filename)
   var subtitle = "".rope
   if d.meta[metaSubtitle] != "":
     dispA(d.conf, subtitle, "<h2 class=\"subtitle\">$1</h2>",

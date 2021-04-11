@@ -90,14 +90,14 @@ Algorithms
 * `algorithm <algorithm.html>`_
   This module implements some common generic algorithms like sort or binary search.
 
-* `std/enumutils <enumutils.html>`_
+* `enumutils <enumutils.html>`_
   This module adds functionality for the built-in `enum` type.
 
 * `sequtils <sequtils.html>`_
   This module implements operations for the built-in `seq` type
   which were inspired by functional programming languages.
 
-* `std/setutils <setutils.html>`_
+* `setutils <setutils.html>`_
   This module adds functionality for the built-in `set` type.
 
 
@@ -125,7 +125,7 @@ Collections
 * `options <options.html>`_
   The option type encapsulates an optional value.
 
-* `std/packedsets <packedsets.html>`_
+* `packedsets <packedsets.html>`_
   Efficient implementation of a set of ordinals as a sparse bit set.
 
 * `sets <sets.html>`_
@@ -147,7 +147,7 @@ String handling
 * `cstrutils <cstrutils.html>`_
   Utilities for `cstring` handling.
 
-* `std/editdistance <editdistance.html>`_
+* `editdistance <editdistance.html>`_
   This module contains an algorithm to compute the edit distance between two
   Unicode strings.
 
@@ -197,14 +197,14 @@ String handling
   It provides a single proc that does Unicode to ASCII transliterations.
   Based on Python's Unidecode module.
 
-* `std/wordwrap <wordwrap.html>`_
+* `wordwrap <wordwrap.html>`_
   This module contains an algorithm to wordwrap a Unicode string.
 
 
 Time handling
 -------------
 
-* `std/monotimes <monotimes.html>`_
+* `monotimes <monotimes.html>`_
   The `monotimes` module implements monotonic timestamps.
 
 * `times <times.html>`_
@@ -272,7 +272,7 @@ Math libraries
 * `random <random.html>`_
   Fast and tiny random number generator.
 
-* `std/sysrand <sysrand.html>`_
+* `sysrand <sysrand.html>`_
   Cryptographically secure pseudorandom number generator.
 
 * `rationals <rationals.html>`_
@@ -281,7 +281,7 @@ Math libraries
 * `stats <stats.html>`_
   Statistical analysis
 
-* `std/sums <sums.html>`_
+* `sums <sums.html>`_
   Accurate summation functions.
 
 
@@ -357,6 +357,9 @@ Parsers
 * `json <json.html>`_
   High-performance JSON parser.
 
+* `jsonutils <jsonutils.html>`_
+  This module implements a hookable (de)serialization for arbitrary types.
+
 * `lexbase <lexbase.html>`_
   This is a low-level module that implements an extremely efficient buffering
   scheme for lexers and parsers. This is used by the diverse parsing modules.
@@ -370,6 +373,9 @@ Parsers
 
 * `parsecsv <parsecsv.html>`_
   The `parsecsv` module implements a simple high-performance CSV parser.
+
+* `parsejson <parsejson.html>`_
+  This module implements a JSON parser. It is used and exported by the `json <json.html>`_ module, but can also be used in its own right.
 
 * `parseopt <parseopt.html>`_
   The `parseopt` module implements a command line option parser.
@@ -442,7 +448,7 @@ Hashing
   produce a globally distributed unique ID. This implementation was extracted
   from the Mongodb interface and it thus binary compatible with a Mongo OID.
 
-* `std/sha1 <sha1.html>`_
+* `sha1 <sha1.html>`_
   This module implements a sha1 encoder and decoder.
 
 
@@ -459,6 +465,9 @@ Miscellaneous
 * `coro <coro.html>`_
   This module implements experimental coroutines in Nim.
 
+* `enumerate <enumerate.html>`_
+  This module implements `enumerate` syntactic sugar based on Nim's macro system.
+
 * `logging <logging.html>`_
   This module implements a simple logger.
 
@@ -471,8 +480,12 @@ Miscellaneous
 * `unittest <unittest.html>`_
   Implements a Unit testing DSL.
 
-* `std/varints <varints.html>`_
+* `varints <varints.html>`_
   Decode variable-length integers that are compatible with SQLite.
+
+* `with <with.html>`_
+  This module implements the `with` macro for easy function chaining.
+
 
 
 Modules for JS backend
@@ -506,6 +519,7 @@ Regular expressions
   expressions. The current implementation uses PCRE.
 
 
+
 Database support
 ----------------
 
@@ -520,6 +534,13 @@ Database support
 * `db_sqlite <db_sqlite.html>`_
   A higher level SQLite database wrapper. The same interface is implemented
   for other databases too.
+
+
+Generic Operating System Services
+---------------------------------
+
+* `rdstdin <rdstdin.html>`_
+  This module contains code for reading from stdin.
 
 
 Wrappers
@@ -572,3 +593,11 @@ Network Programming and Internet Protocols
 
 * `openssl <openssl.html>`_
   Wrapper for OpenSSL.
+
+
+
+Unstable
+========
+
+* `atomics <atomics.html>`_
+  Types and operations for atomic operations and lockless algorithms.

@@ -2,7 +2,43 @@
 
 
 
+## Changes affecting backward compatibility
+
+- `repr` now doesn't insert trailing newline; previous behavior was very inconsistent,
+  see #16034. Use `-d:nimLegacyReprWithNewline` for previous behavior.
+
+- An enum now can't be converted to another enum directly, you must use `ord` (or `cast`, but
+  compiler won't help if you misuse it).
+  ```
+  type A = enum a1, a2
+  type B = enum b1, b2
+  doAssert not compiles(a1.B)
+  doAssert compiles(a1.ord.B)
+  ```
+  for a transition period, use `-d:nimLegacyConvEnumEnum`.
+
+- Type mismatch errors now show more context, use `-d:nimLegacyTypeMismatch` for previous
+  behavior.
+
+- `echo` and `debugEcho` will now raise `IOError` if writing to stdout fails.  Previous behavior
+  silently ignored errors.  See #16366.  Use `-d:nimLegacyEchoNoRaise` for previous behavior.
+
+- `math.round` now is rounded "away from zero" in JS backend which is consistent
+  with other backends. See #9125. Use `-d:nimLegacyJsRound` for previous behavior.
+
+- Changed the behavior of `uri.decodeQuery` when there are unencoded `=`
+  characters in the decoded values. Prior versions would raise an error. This is
+  no longer the case to comply with the HTML spec and other languages
+  implementations. Old behavior can be obtained with
+  `-d:nimLegacyParseQueryStrict`. `cgi.decodeData` which uses the same
+  underlying code is also updated the same way.
+
+- In `std/os`, `getHomeDir`, `expandTilde`, `getTempDir`, `getConfigDir` now do not include trailing `DirSep`,
+  unless `-d:nimLegacyHomeDir` is specified (for a transition period).
+
 ## Standard library additions and changes
+
+- Added `sections` iterator in `parsecfg`.
 
 - Make custom op in macros.quote work for all statements.
 
@@ -45,6 +81,8 @@
 - Added an overload for the `collect` macro that inferes the container type based
   on the syntax of the last expression. Works with std seqs, tables and sets.
 
+- `jsonutils` now handles `cstring` (including as Table key).
+
 - Added `randState` template that exposes the default random number generator.
   Useful for library authors.
 
@@ -69,6 +107,8 @@
 - Added `asyncdispatch.activeDescriptors` that returns the number of currently
   active async event handles/file descriptors.
 
+- Added `getPort` to `asynchttpserver`.
+
 - `--gc:orc` is now 10% faster than previously for common workloads. If
   you have trouble with its changed behavior, compile with `-d:nimOldOrc`.
 
@@ -77,9 +117,6 @@
   determining preferred I/O block size for this file object.
 
 - Added a simpler to use `io.readChars` overload.
-
-- `repr` now doesn't insert trailing newline; previous behavior was very inconsistent,
-  see #16034. Use `-d:nimLegacyReprWithNewline` for previous behavior.
 
 - Added `**` to jsffi.
 
@@ -103,9 +140,6 @@
 
 - Added `math.isNaN`.
 
-- `echo` and `debugEcho` will now raise `IOError` if writing to stdout fails.  Previous behavior
-  silently ignored errors.  See #16366.  Use `-d:nimLegacyEchoNoRaise` for previous behavior.
-
 - Added `jsbigints` module, arbitrary precision integers for JavaScript target.
 
 - Added `math.copySign`.
@@ -124,17 +158,7 @@
 - Added `posix_utils.osReleaseFile` to get system identification from `os-release` file on Linux and the BSDs.
   https://www.freedesktop.org/software/systemd/man/os-release.html
 
-- `math.round` now is rounded "away from zero" in JS backend which is consistent
-  with other backends. See #9125. Use `-d:nimLegacyJsRound` for previous behavior.
-
 - Added `socketstream` module that wraps sockets in the stream interface
-
-- Changed the behavior of `uri.decodeQuery` when there are unencoded `=`
-  characters in the decoded values. Prior versions would raise an error. This is
-  no longer the case to comply with the HTML spec and other languages
-  implementations. Old behavior can be obtained with
-  `-d:nimLegacyParseQueryStrict`. `cgi.decodeData` which uses the same
-  underlying code is also updated the same way.
 
 - Added `sugar.dumpToString` which improves on `sugar.dump`.
 
@@ -213,6 +237,9 @@
 - `std/options` changed `$some(3)` to `"some(3)"` instead of `"Some(3)"`
   and `$none(int)` to `"none(int)"` instead of `"None[int]"`.
 
+- Added `algorithm.merge`.
+
+
 - Added `std/jsfetch` module [Fetch](https://developer.mozilla.org/docs/Web/API/Fetch_API) wrapper for JavaScript target.
 
 - Added `std/jsheaders` module [Headers](https://developer.mozilla.org/en-US/docs/Web/API/Headers) wrapper for JavaScript target.
@@ -226,16 +253,12 @@
 
 - Added `jscore.debugger` to [call any available debugging functionality, such as breakpoints.](https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Statements/debugger).
 
-
 - Added `std/channels`.
 
 - Added `htmlgen.portal` for [making "SPA style" pages using HTML only](https://web.dev/hands-on-portals).
 
 - Added `ZZZ` and `ZZZZ` patterns to `times.nim` `DateTime` parsing, to match time
   zone offsets without colons, e.g. `UTC+7 -> +0700`.
-
-- In `std/os`, `getHomeDir`, `expandTilde`, `getTempDir`, `getConfigDir` now do not include trailing `DirSep`,
-  unless `-d:nimLegacyHomeDir` is specified (for a transition period).
 
 - Added `jsconsole.dir`, `jsconsole.dirxml`, `jsconsole.timeStamp`.
 
@@ -244,6 +267,12 @@
 
 - Added dollar `$` and `len` for `jsre.RegExp`.
 
+- Added `hasDataBuffered` to `asyncnet`.
+
+- Added `hasClosure` to `std/typetraits`.
+
+- Added `genasts.genAst` that avoids the problems inherent with `quote do` and can
+  be used as a replacement.
 
 ## Language changes
 
@@ -263,7 +292,16 @@
 
 - `typedesc[Foo]` now renders as such instead of `type Foo` in compiler messages.
 
+- The unary minus in `-1` is now part of the integer literal, it is now parsed as a single token.
+  This implies that edge cases like `-128'i8` finally work correctly.
 
+- Custom numeric literals (e.g. `-128'bignum`) are now supported.
+
+- Tuple expressions are now parsed consistently as
+  `nnkTupleConstr` node. Will affect macros expecting nodes to be of `nnkPar`.
+
+- `nim e` now accepts arbitrary file extensions for the nimscript file,
+  although `.nims` is still the preferred extension in general.
 
 ## Compiler changes
 
@@ -281,9 +319,6 @@
 - Added `nim --eval:cmd` to evaluate a command directly, see `nim --help`.
 
 - VM now supports `addr(mystring[ind])` (index + index assignment)
-
-- Type mismatch errors now show more context, use `-d:nimLegacyTypeMismatch` for previous
-  behavior.
 
 - Added `--hintAsError` with similar semantics as `--warningAsError`.
 
@@ -304,6 +339,7 @@
 
 - Added `unsafeIsolate` and `extract` to `std/isolation`.
 
+- `--hint:CC` now goes to stderr (like all other hints) instead of stdout.
 
 
 ## Tool changes

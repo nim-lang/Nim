@@ -4,17 +4,20 @@
   nimgrep User's manual
 =========================
 
+.. default-role:: literal
+
 :Author: Andreas Rumpf
-:Version: 0.9
+:Version: 1.6.0
 
+.. contents::
 
-Nimgrep is a command line tool for search&replace tasks. It can search for
+Nimgrep is a command line tool for search and replace tasks. It can search for
 regex or peg patterns and can search whole directories at once. User
 confirmation for every single replace operation can be requested.
 
 Nimgrep has particularly good support for Nim's
-eccentric *style insensitivity*. Apart from that it is a generic text
-manipulation tool.
+eccentric *style insensitivity* (see option `-y` below).
+Apart from that it is a generic text manipulation tool.
 
 
 Installation
@@ -30,23 +33,38 @@ And copy the executable somewhere in your `$PATH`.
 Command line switches
 =====================
 
-Usage:
-  nimgrep [options] [pattern] [replacement] (file/directory)*
-Options:
-  --find, -f          find the pattern (default)
-  --replace, -r       replace the pattern
-  --peg               pattern is a peg
-  --re                pattern is a regular expression (default); extended
-                      syntax for the regular expression is always turned on
-  --recursive         process directories recursively
-  --confirm           confirm each occurrence/replacement; there is a chance
-                      to abort any time without touching the file
-  --stdin             read pattern from stdin (to avoid the shell's confusing
-                      quoting rules)
-  --word, -w          the match should have word boundaries (buggy for pegs!)
-  --ignoreCase, -i    be case insensitive
-  --ignoreStyle, -y   be style insensitive
-  --ext:EX1|EX2|...   only search the files with the given extension(s)
-  --verbose           be verbose: list every processed file
-  --help, -h          shows this help
-  --version, -v       shows the version
+.. include:: nimgrep_cmdline.txt
+
+Examples
+========
+
+All examples below use default PCRE Regex patterns:
+
++ To search recursively in Nim files using style-insensitive identifiers::
+
+    --recursive --ext:'nim|nims' --ignoreStyle
+    # short: -r --ext:'nim|nims' -y
+
+  .. Note:: we used `'` quotes to avoid special treatment of `|` symbol
+    for shells like Bash
+
++ To exclude version control directories (Git, Mercurial=hg, Subversion=svn)
+  from the search::
+
+    --excludeDir:'^\.git$' --excludeDir:'^\.hg$' --excludeDir:'^\.svn$'
+    # short: --ed:'^\.git$' --ed:'^\.hg$' --ed:'^\.svn$'
+
++ To search only in paths containing the `tests` sub-directory recursively::
+
+    --recursive --includeDir:'(^|/)tests($|/)'
+    # short: -r --id:'(^|/)tests($|/)'
+
+  .. Attention:: note the subtle difference between `--excludeDir` and
+    `--includeDir`: the former is applied to relative directory entries
+    and the latter is applied to the whole paths
+
++ Nimgrep can search multi-line, e.g. to find files containing `import`
+  and then `strutils` use::
+
+    'import(.|\n)*?strutils'
+

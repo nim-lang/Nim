@@ -1,6 +1,7 @@
 discard """
-valgrind: true
-cmd: "nim $target --gc:arc -d:useMalloc $options $file"
+  valgrind: true
+  targets: "c"
+  cmd: "nim $target --gc:arc -d:useMalloc $options $file"
 """
 
 # this is the same check used by testament/specs.nim whether or not valgrind

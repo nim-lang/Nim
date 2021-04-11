@@ -194,8 +194,8 @@ proc mapType(conf: ConfigRef; typ: PType; kind: TSymKind): TCTypeKind =
     result = TCTypeKind(ord(typ.kind) - ord(tyInt) + ord(ctInt))
   of tyStatic:
     if typ.n != nil: result = mapType(conf, lastSon typ, kind)
-    else: doAssert(false, "mapType")
-  else: doAssert(false, "mapType")
+    else: doAssert(false, "mapType: " & $typ.kind)
+  else: doAssert(false, "mapType: " & $typ.kind)
 
 proc mapReturnType(conf: ConfigRef; typ: PType): TCTypeKind =
   #if skipTypes(typ, typedescInst).kind == tyArray: result = ctPtr
@@ -256,32 +256,8 @@ proc addAbiCheck(m: BModule, t: PType, name: Rope) =
     m.s[cfsTypeInfo].addf("NIM_STATIC_ASSERT(sizeof($1) == $2, $3);$n", [name, rope(size), msg2.rope])
     # see `testCodegenABICheck` for example error message it generates
 
-proc ccgIntroducedPtr(conf: ConfigRef; s: PSym, retType: PType): bool =
-  var pt = skipTypes(s.typ, typedescInst)
-  assert skResult != s.kind
-
-  if tfByRef in pt.flags: return true
-  elif tfByCopy in pt.flags: return false
-  case pt.kind
-  of tyObject:
-    if s.typ.sym != nil and sfForward in s.typ.sym.flags:
-      # forwarded objects are *always* passed by pointers for consistency!
-      result = true
-    elif (optByRef in s.options) or (getSize(conf, pt) > conf.target.floatSize * 3):
-      result = true           # requested anyway
-    elif (tfFinal in pt.flags) and (pt[0] == nil):
-      result = false          # no need, because no subtyping possible
-    else:
-      result = true           # ordinary objects are always passed by reference,
-                              # otherwise casting doesn't work
-  of tyTuple:
-    result = (getSize(conf, pt) > conf.target.floatSize*3) or (optByRef in s.options)
-  else:
-    result = false
-  # first parameter and return type is 'lent T'? --> use pass by pointer
-  if s.position == 0 and retType != nil and retType.kind == tyLent:
-    result = not (pt.kind in {tyVar, tyArray, tyOpenArray, tyVarargs, tyRef, tyPtr, tyPointer} or
-      pt.kind == tySet and mapSetType(conf, pt) == ctArray)
+from ccgutils import ccgIntroducedPtr
+export ccgIntroducedPtr
 
 proc fillResult(conf: ConfigRef; param: PNode) =
   fillLoc(param.sym.loc, locParam, param, ~"Result",
@@ -1357,9 +1333,6 @@ proc genTypeInfoV2Impl(m: BModule, t, origType: PType, name: Rope; info: TLineIn
   if t.kind == tyObject and t.len > 0 and t[0] != nil and optEnableDeepCopy in m.config.globalOptions:
     discard genTypeInfoV1(m, t, info)
 
-proc moduleOpenForCodegen(m: BModule; module: int32): bool {.inline.} =
-  result = module < m.g.modules.len and m.g.modules[module] != nil
-
 proc genTypeInfoV2(m: BModule, t: PType; info: TLineInfo): Rope =
   let origType = t
   # distinct types can have their own destructors
@@ -1384,9 +1357,8 @@ proc genTypeInfoV2(m: BModule, t: PType; info: TLineInfo): Rope =
   m.typeInfoMarkerV2[sig] = result
 
   let owner = t.skipTypes(typedescPtrs).itemId.module
-  if owner != m.module.position and moduleOpenForCodegen(m, owner):
+  if owner != m.module.position and moduleOpenForCodegen(m.g.graph, FileIndex owner):
     # make sure the type info is created in the owner module
-    assert m.g.modules[owner] != nil
     discard genTypeInfoV2(m.g.modules[owner], origType, info)
     # reference the type info as extern here
     discard cgsym(m, "TNimTypeV2")
@@ -1456,18 +1428,27 @@ proc genTypeInfoV1(m: BModule, t: PType; info: TLineInfo): Rope =
   result = "NTI$1$2_" % [rope(typeToC(t)), rope($sig)]
   m.typeInfoMarker[sig] = result
 
-  let owner = t.skipTypes(typedescPtrs).itemId.module
-  if owner != m.module.position and moduleOpenForCodegen(m, owner):
+  let old = m.g.graph.emittedTypeInfo.getOrDefault($result)
+  if old != FileIndex(0):
+    discard cgsym(m, "TNimType")
+    discard cgsym(m, "TNimNode")
+    declareNimType(m, "TNimType", result, old.int)
+    return prefixTI.rope & result & ")".rope
+
+  var owner = t.skipTypes(typedescPtrs).itemId.module
+  if owner != m.module.position and moduleOpenForCodegen(m.g.graph, FileIndex owner):
     # make sure the type info is created in the owner module
-    assert m.g.modules[owner] != nil
     discard genTypeInfoV1(m.g.modules[owner], origType, info)
     # reference the type info as extern here
     discard cgsym(m, "TNimType")
     discard cgsym(m, "TNimNode")
     declareNimType(m, "TNimType", result, owner)
     return prefixTI.rope & result & ")".rope
+  else:
+    owner = m.module.position.int32
 
   m.g.typeInfoMarker[sig] = (str: result, owner: owner)
+  rememberEmittedTypeInfo(m.g.graph, FileIndex(owner), $result)
 
   case t.kind
   of tyEmpty, tyVoid: result = rope"0"

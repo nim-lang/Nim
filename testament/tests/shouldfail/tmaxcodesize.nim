@@ -1,5 +1,6 @@
 discard """
-maxcodesize: 1
+  targets: "c"
+  maxcodesize: 1
 """
 
 echo "Hello World"

@@ -38,8 +38,6 @@
 ## * The same goes for footnotes/citations links: they point to themselves.
 ##   No backreferences are generated since finding all references of a footnote
 ##   can be done by simply searching for [footnoteName].
-##
-## .. Tip: Import ``packages/docutils/rstgen`` to use this module
 
 import strutils, os, hashes, strtabs, rstast, rst, highlite, tables, sequtils,
   algorithm, parseutils
@@ -944,7 +942,7 @@ proc parseCodeBlockParams(d: PDoc, n: PRstNode): CodeBlockParams =
   result.init
   if n.isNil:
     return
-  assert n.kind == rnCodeBlock
+  assert n.kind in {rnCodeBlock, rnInlineCode}
   assert(not n.sons[2].isNil)
 
   # Parse the field list for rendering parameters if there are any.
@@ -982,15 +980,15 @@ proc buildLinesHtmlTable(d: PDoc; params: CodeBlockParams, code: string,
     result.beginTable.add($line & "\n")
     line.inc
     codeLines.dec
-  result.beginTable.add("</pre$3></td><td>" & (
+  result.beginTable.add("</pre></td><td>" & (
       d.config.getOrDefault"doc.listing_start" %
         [id, sourceLanguageToStr[params.lang], idStr]))
   result.endTable = (d.config.getOrDefault"doc.listing_end" % id) &
       "</td></tr></tbody></table>" & (
       d.config.getOrDefault"doc.listing_button" % id)
 
-proc renderCodeBlock(d: PDoc, n: PRstNode, result: var string) =
-  ## Renders a code block, appending it to `result`.
+proc renderCode(d: PDoc, n: PRstNode, result: var string) =
+  ## Renders a code (code block or inline code), appending it to `result`.
   ##
   ## If the code block uses the ``number-lines`` option, a table will be
   ## generated with two columns, the first being a list of numbers and the
@@ -999,7 +997,7 @@ proc renderCodeBlock(d: PDoc, n: PRstNode, result: var string) =
   ## may also come from the parser through the internal ``default-language``
   ## option to differentiate between a plain code block and Nim's code block
   ## extension.
-  assert n.kind == rnCodeBlock
+  assert n.kind in {rnCodeBlock, rnInlineCode}
   if n.sons[2] == nil: return
   var params = d.parseCodeBlockParams(n)
   var m = n.sons[2].sons[0]
@@ -1008,10 +1006,23 @@ proc renderCodeBlock(d: PDoc, n: PRstNode, result: var string) =
   if params.testCmd.len > 0 and d.onTestSnippet != nil:
     d.onTestSnippet(d, params.filename, params.testCmd, params.status, m.text)
 
-  let (blockStart, blockEnd) = buildLinesHtmlTable(d, params, m.text,
+  var blockStart, blockEnd: string
+  case d.target
+  of outHtml:
+    if n.kind == rnCodeBlock:
+      (blockStart, blockEnd) = buildLinesHtmlTable(d, params, m.text,
                                                    n.anchor.idS)
-  dispA(d.target, result, blockStart,
-        "\\begin{rstpre}\n" & n.anchor.idS & "\n", [])
+    else:  # rnInlineCode
+      blockStart = "<tt class=\"docutils literal\"><span class=\"pre\">"
+      blockEnd = "</span></tt>"
+  of outLatex:
+    if n.kind == rnCodeBlock:
+      blockStart = "\n\n\\begin{rstpre}" & n.anchor.idS & "\n"
+      blockEnd = "\n\\end{rstpre}\n"
+    else:  # rnInlineCode
+      blockStart = "\\texttt{"
+      blockEnd = "}"
+  dispA(d.target, result, blockStart, blockStart, [])
   if params.lang == langNone:
     if len(params.langStr) > 0:
       d.msgHandler(d.filename, 1, 0, mwUnsupportedLanguage, params.langStr)
@@ -1030,7 +1041,7 @@ proc renderCodeBlock(d: PDoc, n: PRstNode, result: var string) =
           esc(d.target, substr(m.text, g.start, g.length+g.start-1)),
           tokenClassToStr[g.kind]])
     deinitGeneralTokenizer(g)
-  dispA(d.target, result, blockEnd, "\n\\end{rstpre}\n")
+  dispA(d.target, result, blockEnd, blockEnd)
 
 proc renderContainer(d: PDoc, n: PRstNode, result: var string) =
   var tmp = ""
@@ -1296,13 +1307,13 @@ proc renderRstToOut(d: PDoc, n: PRstNode, result: var string) =
       result.add addNodes(lastSon(n))
 
   of rnImage, rnFigure: renderImage(d, n, result)
-  of rnCodeBlock: renderCodeBlock(d, n, result)
+  of rnCodeBlock, rnInlineCode: renderCode(d, n, result)
   of rnContainer: renderContainer(d, n, result)
   of rnSubstitutionReferences, rnSubstitutionDef:
     renderAux(d, n, "|$1|", "|$1|", result)
   of rnDirective:
     renderAux(d, n, "", "", result)
-  of rnGeneralRole:
+  of rnUnknownRole:
     var tmp0 = ""
     var tmp1 = ""
     renderRstToOut(d, n.sons[0], tmp0)

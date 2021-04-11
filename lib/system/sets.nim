@@ -12,7 +12,6 @@
 type
   NimSet = array[0..4*2048-1, uint8]
 
-# bitops can't be imported here, therefore the code duplication.
 
 proc cardSet(s: NimSet, len: int): int {.compilerproc, inline.} =
   var i = 0

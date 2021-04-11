@@ -29,10 +29,6 @@ template main() =
       doAssert erf(6.0) > erf(5.0)
       doAssert erfc(6.0) < erfc(5.0)
 
-  when not defined(js) and not defined(windows): # xxx pending bug #17017
-    doAssert gamma(-1.0).isNaN
-
-
   block: # sgn() tests
     doAssert sgn(1'i8) == 1
     doAssert sgn(1'i16) == 1
@@ -46,6 +42,7 @@ template main() =
     doAssert sgn(123.9834'f64) == 1
     doAssert sgn(0'i32) == 0
     doAssert sgn(0'f32) == 0
+    doAssert sgn(-0.0'f64) == 0
     doAssert sgn(NegInf) == -1
     doAssert sgn(Inf) == 1
     doAssert sgn(NaN) == 0
@@ -358,7 +355,7 @@ template main() =
     doAssert almostEqual(prod([1.5, 3.4]), 5.1)
     let x: seq[float] = @[]
     doAssert prod(x) == 1.0
-  
+
   block: # clamp range
     doAssert clamp(10, 1..5) == 5
     doAssert clamp(3, 1..5) == 3
@@ -370,8 +367,42 @@ template main() =
     doAssert a1.clamp(a2..a4) == a2
     doAssert clamp((3, 0), (1, 0) .. (2, 9)) == (2, 9)
 
-  when not defined(windows): # xxx pending bug #17017
-    doAssert sqrt(-1.0).isNaN
+  block: # edge cases
+    doAssert sqrt(-4.0).isNaN
+
+    doAssert ln(0.0) == -Inf
+    doAssert ln(-0.0) == -Inf
+    doAssert ln(-12.0).isNaN
+
+    doAssert log10(0.0) == -Inf
+    doAssert log10(-0.0) == -Inf
+    doAssert log10(-12.0).isNaN
+
+    doAssert log2(0.0) == -Inf
+    doAssert log2(-0.0) == -Inf
+    doAssert log2(-12.0).isNaN
+
+    when nimvm: discard
+    else:
+      doAssert frexp(0.0) == (0.0, 0)
+      doAssert frexp(-0.0) == (-0.0, 0)
+      doAssert classify(frexp(-0.0)[0]) == fcNegZero
+
+    when not defined(js):
+      doAssert gamma(0.0) == Inf
+      doAssert gamma(-0.0) == -Inf
+      doAssert gamma(-1.0).isNaN
+
+      doAssert lgamma(0.0) == Inf
+      doAssert lgamma(-0.0) == Inf
+      doAssert lgamma(-1.0) == Inf
+
+      when nimvm: discard
+      else:
+        var exponent: cint
+        doAssert c_frexp(0.0, exponent) == 0.0
+        doAssert c_frexp(-0.0, exponent) == -0.0
+        doAssert classify(c_frexp(-0.0, exponent)) == fcNegZero
 
 static: main()
 main()

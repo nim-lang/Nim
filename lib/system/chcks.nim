@@ -29,10 +29,16 @@ proc raiseFieldError(f: string) {.compilerproc, noinline.} =
   sysFatal(FieldDefect, f)
 
 proc raiseRangeErrorI(i, a, b: BiggestInt) {.compilerproc, noinline.} =
-  sysFatal(RangeDefect, "value out of range: " & $i & " notin " & $a & " .. " & $b)
+  when defined(standalone):
+    sysFatal(RangeDefect, "value out of range")
+  else:
+    sysFatal(RangeDefect, "value out of range: " & $i & " notin " & $a & " .. " & $b)
 
 proc raiseRangeErrorF(i, a, b: float) {.compilerproc, noinline.} =
-  sysFatal(RangeDefect, "value out of range: " & $i & " notin " & $a & " .. " & $b)
+  when defined(standalone):
+    sysFatal(RangeDefect, "value out of range")
+  else:
+    sysFatal(RangeDefect, "value out of range: " & $i & " notin " & $a & " .. " & $b)
 
 proc raiseRangeErrorU(i, a, b: uint64) {.compilerproc, noinline.} =
   # todo: better error reporting

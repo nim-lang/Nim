@@ -15,20 +15,20 @@
 ## instead of allowing users to connect directly to this server.
 
 runnableExamples("-r:off"):
-  # This example will create an HTTP server on port 8080. The server will
-  # respond to all requests with a `200 OK` response code and "Hello World"
+  # This example will create an HTTP server on an automatically chosen port.
+  # It will respond to all requests with a `200 OK` response code and "Hello World"
   # as the response body.
   import std/asyncdispatch
   proc main {.async.} =
-    const port = 8080
     var server = newAsyncHttpServer()
     proc cb(req: Request) {.async.} =
       echo (req.reqMethod, req.url, req.headers)
       let headers = {"Content-type": "text/plain; charset=utf-8"}
       await req.respond(Http200, "Hello World", headers.newHttpHeaders())
 
-    echo "test this with: curl localhost:" & $port & "/"
-    server.listen(Port(port))
+    server.listen(Port(0)) # or Port(8080) to hardcode the standard HTTP port.
+    let port = server.getPort
+    echo "test this with: curl localhost:" & $port.uint16 & "/"
     while true:
       if server.shouldAcceptRequest():
         await server.acceptRequest(cb)
@@ -41,6 +41,7 @@ runnableExamples("-r:off"):
 
 import asyncnet, asyncdispatch, parseutils, uri, strutils
 import httpcore
+from nativesockets import getLocalAddr, AF_INET
 import std/private/since
 
 export httpcore except parseHeader
@@ -70,21 +71,18 @@ type
     maxBody: int ## The maximum content-length that will be read for the body.
     maxFDs: int
 
-func getSocket*(a: AsyncHttpServer): AsyncSocket {.since: (1, 5, 1).} =
-  ## Returns the `AsyncHttpServer`s internal `AsyncSocket` instance.
-  ## 
-  ## Useful for identifying what port the AsyncHttpServer is bound to, if it
-  ## was chosen automatically.
+proc getPort*(self: AsyncHttpServer): Port {.since: (1, 5, 1).} =
+  ## Returns the port `self` was bound to.
+  ##
+  ## Useful for identifying what port `self` is bound to, if it
+  ## was chosen automatically, for example via `listen(Port(0))`.
   runnableExamples:
-    from std/asyncdispatch import Port
-    from std/asyncnet import getFd
-    from std/nativesockets import getLocalAddr, AF_INET
+    from std/nativesockets import Port
     let server = newAsyncHttpServer()
-    server.listen(Port(0)) # Socket is not bound until this point
-    let port = getLocalAddr(server.getSocket.getFd, AF_INET)[1]
-    doAssert uint16(port) > 0
+    server.listen(Port(0))
+    assert server.getPort.uint16 > 0
     server.close()
-  a.socket
+  result = getLocalAddr(self.socket.getFd, AF_INET)[1]
 
 proc newAsyncHttpServer*(reuseAddr = true, reusePort = false,
                          maxBody = 8388608): AsyncHttpServer =
