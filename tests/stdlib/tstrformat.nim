@@ -549,5 +549,10 @@ proc main() =
     doAssert fmt"""{(if true: "\")\"" else: "\"(")}""" == """")""""
     doAssert &"""{(if true: "\")" else: "")}""" == "\")"
     doAssert &"{(if true: \"\\\")\" else: \"\")}" == "\")"
+    doAssert fmt"""{(if true: "')" else: "")}""" == "')"
+    doAssert fmt"""{(if true: "'" & "'" & ')' else: "")}""" == "'')"
+    doAssert &"""{(if true: "'" & "'" & ')' else: "")}""" == "'')"
+    doAssert &"{(if true: \"\'\" & \"'\" & ')' else: \"\")}" == "'')"
+
 # xxx static: main()
 main()
