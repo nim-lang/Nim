@@ -344,31 +344,43 @@ proc hash*(u: SigHash): Hash =
 
 proc hash*(x: FileIndex): Hash {.borrow.}
 
+template getC(): untyped =
+  when compiles(c.c.graph): c.c
+  else: c
+
+template onDefAux(info: TLineInfo; s0: PSym, c0: untyped, isFwd: bool) =
+  if s0.kind in ExportableSymKinds:
+    let c = c0 # in case c0 is an expression
+    var top = true
+    case s0.kind
+    of skProc, skMacro:
+      # unfortunately, can't use `c.isTopLevel` because the scope isn't closed yet
+      top = c.currentScope.depthLevel <= 3
+    else: top = c.currentScope.depthLevel <= 2
+    if top:
+      let loc = toFileLineCol(c.config, info)
+      if c.module != nil: strTableAdd(c.module.tabAll, s0)
+
 when defined(nimfind):
   template onUse*(info: TLineInfo; s: PSym) =
-    when compiles(c.c.graph):
-      if c.c.graph.onUsage != nil: c.c.graph.onUsage(c.c.graph, s, info)
-    else:
-      if c.graph.onUsage != nil: c.graph.onUsage(c.graph, s, info)
+    let c2 = getC()
+    if c2.graph.onUsage != nil: c2.graph.onUsage(c2.graph, s, info)
 
   template onDef*(info: TLineInfo; s: PSym) =
-    when compiles(c.c.graph):
-      if c.c.graph.onDefinition != nil: c.c.graph.onDefinition(c.c.graph, s, info)
-    else:
-      if c.graph.onDefinition != nil: c.graph.onDefinition(c.graph, s, info)
+    let c2 = getC()
+    onDefAux(info, s, c2, false)
+    if c2.graph.onDefinition != nil: c2.graph.onDefinition(c2.graph, s, info)
 
   template onDefResolveForward*(info: TLineInfo; s: PSym) =
-    when compiles(c.c.graph):
-      if c.c.graph.onDefinitionResolveForward != nil:
-        c.c.graph.onDefinitionResolveForward(c.c.graph, s, info)
-    else:
-      if c.graph.onDefinitionResolveForward != nil:
-        c.graph.onDefinitionResolveForward(c.graph, s, info)
+    let c2 = getC()
+    onDefAux(info, s, c2, true)
+    if c2.graph.onDefinitionResolveForward != nil:
+      c2.graph.onDefinitionResolveForward(c2.graph, s, info)
 
 else:
   template onUse*(info: TLineInfo; s: PSym) = discard
-  template onDef*(info: TLineInfo; s: PSym) = discard
-  template onDefResolveForward*(info: TLineInfo; s: PSym) = discard
+  template onDef*(info: TLineInfo; s: PSym) = onDefAux(info, s, getC(), false)
+  template onDefResolveForward*(info: TLineInfo; s: PSym) = onDefAux(info, s, getC(), true)
 
 proc stopCompile*(g: ModuleGraph): bool {.inline.} =
   result = g.doStopCompile != nil and g.doStopCompile()
