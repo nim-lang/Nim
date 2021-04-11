@@ -9,9 +9,7 @@ The changes should go to changelog.md!
 
 ## Standard library additions and changes
 
-- Added `example.exampleProc`.
-
-- Changed `example.foo` to take additional `bar` parameter.
+- Added support for evaluating `if`/`for`/etc expressions in strformat
 
 
 ## Language changes
