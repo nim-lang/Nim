@@ -646,3 +646,4 @@ macro fmt*(pattern: string; openChar, closeChar: char,fmtChar=':'): untyped =
           elif i mod 3 == 0: "Fizz"
           else: $i) & " "
       res}""".fmt('{','}','_') == "1 2 Fizz 4 Buzz Fizz 7 8 Fizz Buzz 11 Fizz 13 14 FizzBuzz "
+  strformatImpl(pattern, openChar.intVal.char, closeChar.intVal.char,fmtChar.intVal.char)
