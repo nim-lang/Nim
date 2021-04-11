@@ -221,7 +221,7 @@ proc importModuleAs(c: PContext; n: PNode, realModule: PSym, importFlags: Import
                                c.config.options)
   if ifImportAll in importFlags:
     if result == realModule:
-      result = createModuleAlias(realModule, nextId c.idgen, realModule.name, realModule.info,
+      result = createModuleAlias(realModule, nextSymId c.idgen, realModule.name, realModule.info,
                                c.config.options)
     result.options.incl optImportAll
     c.friendModulesImportAll.add realModule # `realModule` needed, not `result`

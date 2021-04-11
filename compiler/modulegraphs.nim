@@ -359,7 +359,8 @@ template onDefAux(info: TLineInfo; s0: PSym, c0: untyped, isFwd: bool) =
     else: top = c.currentScope.depthLevel <= 2
     if top:
       let loc = toFileLineCol(c.config, info)
-      if c.module != nil: strTableAdd(c.module.tabAll, s0)
+      # PRTEMP: strTableAdd(c.module.tabAll, s0); already done in addInterfaceDeclAux?
+      if c.module != nil: exportSym(c, s0)
 
 when defined(nimfind):
   template onUse*(info: TLineInfo; s: PSym) =
