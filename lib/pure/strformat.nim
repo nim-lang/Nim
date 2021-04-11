@@ -609,8 +609,10 @@ proc strformatImpl(pattern: NimNode; openChar, closeChar: char): NimNode =
           of '\\':
             if i < f.len-1 and f[i+1] in {'(',')','{','}',':'}:
               inc i
-          of '\'': inSingleQuotes = not inSingleQuotes
-          of '\"': inDoubleQuotes = not inDoubleQuotes
+          of '\'': 
+            if f[i-1]!='\\': inSingleQuotes = not inSingleQuotes
+          of '\"': 
+            if f[i-1]!='\\': inDoubleQuotes = not inDoubleQuotes
           of '(':
             if not (inSingleQuotes or inDoubleQuotes): inc inParens
           of ')':

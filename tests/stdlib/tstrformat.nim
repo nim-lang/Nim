@@ -1,4 +1,4 @@
-# xxx: test js target
+
 
 import genericstrformat
 import std/[strformat, strutils, times,tables,json]
@@ -546,5 +546,8 @@ proc main() =
   block: #parens in quotes
     doAssert fmt"{(if true: ')' else: '(')}" == ")"
     doAssert fmt"{(if true: ']' else: ')')}" == "]"
+    doAssert fmt"""{(if true: "\")\"" else: "\"(")}""" == """")""""
+    doAssert &"""{(if true: "\")" else: "")}""" == "\")"
+    doAssert &"{(if true: \"\\\")\" else: \"\")}" == "\")"
 # xxx static: main()
 main()
