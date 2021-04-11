@@ -54,7 +54,7 @@ type
     inst*: PInstantiation
 
   TExprFlag* = enum
-    efLValue, efWantIterator, efInTypeof,
+    efLValue, efWantIterator, efWantIterable, efInTypeof,
     efNeedStatic,
       # Use this in contexts where a static value is mandatory
     efPreferStatic,
