@@ -21,13 +21,38 @@ type
     checkedSyms: HashSet[ItemId]
     checkedTypes: HashSet[ItemId]
 
+proc checkType(c: var CheckedContext; typeId: PackedItemId)
+proc checkForeignSym(c: var CheckedContext; symId: PackedItemId)
+proc checkNode(c: var CheckedContext; tree: PackedTree; n: NodePos)
+
+proc checkTypeObj(c: var CheckedContext; typ: PackedType) =
+  for child in typ.types:
+    checkType(c, child)
+  if typ.n != emptyNodeId:
+    checkNode(c, c.g.packed[c.thisModule].fromDisk.bodies, NodePos typ.n)
+  if typ.sym != nilItemId:
+    checkForeignSym(c, typ.sym)
+  if typ.owner != nilItemId:
+    checkForeignSym(c, typ.owner)
+  checkType(c, typ.typeInst)
+
 proc checkType(c: var CheckedContext; typeId: PackedItemId) =
-  discard
+  if typeId == nilItemId: return
+  let itemId = translateId(typeId, c.g.packed, c.thisModule, c.g.config)
+  if not c.checkedTypes.containsOrIncl(itemId):
+    let oldThisModule = c.thisModule
+    c.thisModule = itemId.module
+    checkTypeObj c, c.g.packed[itemId.module].fromDisk.sh.types[itemId.item]
+    c.thisModule = oldThisModule
 
 proc checkSym(c: var CheckedContext; s: PackedSym) =
   if s.name != LitId(0):
     assert c.g.packed[c.thisModule].fromDisk.sh.strings.hasLitId s.name
   checkType c, s.typ
+  if s.ast != emptyNodeId:
+    checkNode(c, c.g.packed[c.thisModule].fromDisk.bodies, NodePos s.ast)
+  if s.owner != nilItemId:
+    checkForeignSym(c, s.owner)
 
 proc checkLocalSym(c: var CheckedContext; item: int32) =
   let itemId = ItemId(module: c.thisModule, item: item)
