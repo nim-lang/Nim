@@ -588,7 +588,7 @@ proc strformatImpl(pattern: NimNode; openChar, closeChar: char): NimNode =
 
         var subexpr = ""
         var inParens = 0
-        while i < f.len and f[i] != closeChar and (f[i] != fmtChar or inParens!=0):
+        while i < f.len and f[i] != closeChar and (f[i] != ':' or inParens!=0):
           case f[i]
           of '(': inc inParens
           of ')': dec inParens
@@ -596,7 +596,7 @@ proc strformatImpl(pattern: NimNode; openChar, closeChar: char): NimNode =
             let start = i
             inc i
             i += f.skipWhitespace(i)
-            if f[i] == closeChar or f[i] == fmtChar:
+            if f[i] == closeChar or f[i] == ':':
               result.add newCall(bindSym"add", res, newLit(subexpr & f[start ..< i]))
             else:
               subexpr.add f[start ..< i]
@@ -651,7 +651,6 @@ macro fmt*(pattern: string): untyped = strformatImpl(pattern, '{', '}')
 macro fmt*(pattern: string; openChar, closeChar: char): untyped =
   ## The same as `fmt <#fmt.m,string>`_, but uses `openChar` instead of `'{'`
   ## and `closeChar` instead of `'}'`.
-  ## Change `fmtChar` to allow use of colons inside expressions
   runnableExamples:
     let testInt = 123
     assert "<testInt>".fmt('<', '>') == "123"
