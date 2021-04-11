@@ -545,11 +545,11 @@ template formatValue(result: var string; value: char; specifier: string) =
 template formatValue(result: var string; value: cstring; specifier: string) =
   result.add value
 
-proc strformatImpl(pattern: NimNode; openChar, closeChar: char): NimNode =
+proc strformatImpl(pattern: NimNode; openChar, closeChar: char,fmtChar=':'): NimNode =
   if pattern.kind notin {nnkStrLit..nnkTripleStrLit}:
     error "string formatting (fmt(), &) only works with string literals", pattern
-  if openChar == ':' or closeChar == ':':
-    error "openChar and closeChar must not be ':'"
+  if openChar == fmtChar or closeChar == fmtChar:
+    error "openChar and closeChar must not be '$1'" % $fmtChar
   let f = pattern.strVal
   var i = 0
   let res = genSym(nskVar, "fmtRes")
@@ -557,7 +557,7 @@ proc strformatImpl(pattern: NimNode; openChar, closeChar: char): NimNode =
   # XXX: https://github.com/nim-lang/Nim/issues/8405
   # When compiling with -d:useNimRtl, certain procs such as `count` from the strutils
   # module are not accessible at compile-time:
-  let expectedGrowth = when defined(useNimRtl): 0 else: count(f, '{') * 10
+  let expectedGrowth = when defined(useNimRtl): 0 else: count(f, openChar) * 10
   result.add newVarStmt(res, newCall(bindSym"newStringOfCap",
                                      newLit(f.len + expectedGrowth)))
   var strlit = ""
@@ -573,12 +573,12 @@ proc strformatImpl(pattern: NimNode; openChar, closeChar: char): NimNode =
           strlit = ""
 
         var subexpr = ""
-        while i < f.len and f[i] != closeChar and f[i] != ':':
+        while i < f.len and f[i] != closeChar and f[i] != fmtChar:
           if f[i] == '=':
             let start = i
             inc i
             i += f.skipWhitespace(i)
-            if f[i] == closeChar or f[i] == ':':
+            if f[i] == closeChar or f[i] == fmtChar:
               result.add newCall(bindSym"add", res, newLit(subexpr & f[start ..< i]))
             else:
               subexpr.add f[start ..< i]
@@ -597,7 +597,7 @@ proc strformatImpl(pattern: NimNode; openChar, closeChar: char): NimNode =
             error("could not parse `" & subexpr & "`.\n", pattern)
         let formatSym = bindSym("formatValue", brOpen)
         var options = ""
-        if f[i] == ':':
+        if f[i] == fmtChar:
           inc i
           while i < f.len and f[i] != closeChar:
             options.add f[i]
@@ -608,11 +608,11 @@ proc strformatImpl(pattern: NimNode; openChar, closeChar: char): NimNode =
           doAssert false, "invalid format string: missing '}'"
         result.add newCall(formatSym, res, x, newLit(options))
     elif f[i] == closeChar:
-      if f[i+1] == closeChar:
+      if i<f.len-1 and f[i+1] == closeChar:
         strlit.add closeChar
         inc i, 2
       else:
-        doAssert false, "invalid format string: '}' instead of '}}'"
+        doAssert false, "invalid format string: '$1' instead of '$1$1'" % $closeChar
         inc i
     else:
       strlit.add f[i]
@@ -629,13 +629,20 @@ macro `&`*(pattern: string): untyped = strformatImpl(pattern, '{', '}')
 macro fmt*(pattern: string): untyped = strformatImpl(pattern, '{', '}')
   ## An alias for `& <#&.m,string>`_.
 
-macro fmt*(pattern: string; openChar, closeChar: char): untyped =
+macro fmt*(pattern: string; openChar, closeChar: char,fmtChar=':'): untyped =
   ## The same as `fmt <#fmt.m,string>`_, but uses `openChar` instead of `'{'`
   ## and `closeChar` instead of `'}'`.
+  ## Change `fmtChar` to allow use of colons inside expressions
   runnableExamples:
     let testInt = 123
     assert "<testInt>".fmt('<', '>') == "123"
     assert """(()"foo" & "bar"())""".fmt(')', '(') == "(foobar)"
     assert """ ""{"123+123"}"" """.fmt('"', '"') == " \"{246}\" "
-
-  strformatImpl(pattern, openChar.intVal.char, closeChar.intVal.char)
+    assert """{block:
+      var res:string
+      for i in 1..15:
+        res.add(if i mod 15 == 0: "FizzBuzz"
+          elif i mod 5 == 0: "Buzz"
+          elif i mod 3 == 0: "Fizz"
+          else: $i) & " "
+      res}""".fmt('{','}','_') == "1 2 Fizz 4 Buzz Fizz 7 8 Fizz Buzz 11 Fizz 13 14 FizzBuzz "
