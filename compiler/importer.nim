@@ -109,7 +109,9 @@ proc rawImportSymbol(c: PContext, s, origin: PSym; importSet: var IntSet) =
 
 proc importSymbol(c: PContext, n: PNode, fromMod: PSym; importSet: var IntSet) =
   let ident = lookups.considerQuotedIdent(c, n)
+  dbg ident, n, fromMod, fromMod.options
   let s = someSym(c.graph, fromMod, ident)
+  dbg s
   if s == nil:
     errorUndeclaredIdentifier(c, n.info, ident.s)
   else:
@@ -224,6 +226,7 @@ proc importModuleAs(c: PContext; n: PNode, realModule: PSym, importFlags: Import
       result = createModuleAlias(realModule, nextSymId c.idgen, realModule.name, realModule.info,
                                c.config.options)
     result.options.incl optImportAll
+    dbg result.options
     c.friendModulesImportAll.add realModule # `realModule` needed, not `result`
 
 proc transformImportAs(c: PContext; n: PNode): tuple[node: PNode, importFlags: ImportFlags] =

@@ -68,6 +68,7 @@ proc evalScript*(i: Interpreter; scriptStream: PLLStream = nil) =
   assert i != nil
   assert i.mainModule != nil, "no main module selected"
   initStrTable(i.mainModule.semtab(i.graph))
+  initStrTable(i.mainModule.semtabAll(i.graph))
   i.mainModule.ast = nil
 
   let s = if scriptStream != nil: scriptStream

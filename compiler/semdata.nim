@@ -363,11 +363,13 @@ proc addPattern*(c: PContext, p: LazySym) =
 
 proc exportSym*(c: PContext; s: PSym) =
   strTableAdd(c.module.semtab(c.graph), s)
+  strTableAdd(c.module.semtabAll(c.graph), s)
   if c.config.symbolFiles != disabledSf:
     addExported(c.encoder, c.packedRepr, s)
 
 proc reexportSym*(c: PContext; s: PSym) =
   strTableAdd(c.module.semtab(c.graph), s)
+  strTableAdd(c.module.semtabAll(c.graph), s)
   if c.config.symbolFiles != disabledSf:
     addReexport(c.encoder, c.packedRepr, s)
 

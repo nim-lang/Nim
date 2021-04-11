@@ -164,6 +164,9 @@ proc toBase64a(s: cstring, len: int): string =
 template semtab*(m: PSym; g: ModuleGraph): TStrTable =
   g.ifaces[m.position].interf
 
+template semtabAll*(m: PSym; g: ModuleGraph): TStrTable =
+  g.ifaces[m.position].interfAll
+
 proc isCachedModule(g: ModuleGraph; module: int): bool {.inline.} =
   result = module < g.packed.len and g.packed[module].status == loaded
 
@@ -220,7 +223,10 @@ proc someSym*(g: ModuleGraph; m: PSym; name: PIdent): PSym =
   if isCachedModule(g, m):
     result = interfaceSymbol(g.config, g.cache, g.packed, FileIndex(m.position), name)
   else:
-    result = strTableGet(g.ifaces[m.position].interf, name)
+    if optImportAll in m.options:
+      result = strTableGet(g.ifaces[m.position].interfAll, name)
+    else:
+      result = strTableGet(g.ifaces[m.position].interf, name)
 
 proc systemModuleSym*(g: ModuleGraph; name: PIdent): PSym =
   result = someSym(g, g.systemModule, name)
@@ -360,7 +366,10 @@ template onDefAux(info: TLineInfo; s0: PSym, c0: untyped, isFwd: bool) =
     if top:
       let loc = toFileLineCol(c.config, info)
       # PRTEMP: strTableAdd(c.module.tabAll, s0); already done in addInterfaceDeclAux?
-      if c.module != nil: exportSym(c, s0)
+      # if c.module != nil: strTableAdd(c.module.tabAll, s0)
+      # strTableAdd(c.module.semtabAll(c.graph), s)
+      # if c.module != nil: exportSym(c, s0)
+      if c.module != nil: strTableAdd(c.module.semtabAll(c.graph), s0)
 
 when defined(nimfind):
   template onUse*(info: TLineInfo; s: PSym) =
@@ -380,10 +389,8 @@ when defined(nimfind):
 
 else:
   template onUse*(info: TLineInfo; s: PSym) = discard
-  template onDef*(info: TLineInfo; s: PSym) = discard
-  template onDefResolveForward*(info: TLineInfo; s: PSym) = discard
-  # template onDef*(info: TLineInfo; s: PSym) = onDefAux(info, s, getC(), false)
-  # template onDefResolveForward*(info: TLineInfo; s: PSym) = onDefAux(info, s, getC(), true)
+  template onDef*(info: TLineInfo; s: PSym) = onDefAux(info, s, getC(), false)
+  template onDefResolveForward*(info: TLineInfo; s: PSym) = onDefAux(info, s, getC(), true)
 
 proc stopCompile*(g: ModuleGraph): bool {.inline.} =
   result = g.doStopCompile != nil and g.doStopCompile()
@@ -409,6 +416,7 @@ proc registerModule*(g: ModuleGraph; m: PSym) =
   g.ifaces[m.position] = Iface(module: m, converters: @[], patterns: @[],
                                uniqueName: rope(uniqueModuleName(g.config, FileIndex(m.position))))
   initStrTable(g.ifaces[m.position].interf)
+  initStrTable(g.ifaces[m.position].interfAll)
 
 proc registerModuleById*(g: ModuleGraph; m: FileIndex) =
   registerModule(g, g.packed[int m].module)
