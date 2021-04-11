@@ -144,6 +144,19 @@ An expression like `&"{key} is {value:arg} {{z}}"` is transformed into:
 Parts of the string that are enclosed in the curly braces are interpreted
 as Nim code, to escape a `{` or `}`, double it.
 
+Within a curly expression,however, '{','}', and quoted parentheses must be
+escaped with a backslash.
+To enable evaluating Nim expressions within curlies, inside parentheses
+colons do not need to be escaped.
+]##
+
+runnableExamples:
+  let x = "hello"
+  assert fmt"""{ "\{\(" & x & "\)\}" }""" == "{(hello)}"
+  assert fmt"""{{({ x })}}""" == "{(hello)}"
+  assert fmt"""{ $(\{x:1,"world":2\}) }""" == """[("hello", 1), ("world", 2)]"""
+
+##[
 `&` delegates most of the work to an open overloaded set
 of `formatValue` procs. The required signature for a type `T` that supports
 formatting is usually `proc formatValue(result: var string; x: T; specifier: string)`.
@@ -288,6 +301,7 @@ expansion order and hygienic templates. But since we generally want to
 keep the hygiene of `myTemplate`, and we do not want `arg1`
 to be injected into the context where `myTemplate` is expanded,
 everything is wrapped in a `block`.
+
 
 # Future directions
 
@@ -588,8 +602,11 @@ proc strformatImpl(pattern: NimNode; openChar, closeChar: char): NimNode =
 
         var subexpr = ""
         var inParens = 0
-        while i < f.len and f[i] != closeChar and (f[i] != ':' or inParens!=0):
+        while i < f.len and f[i] != closeChar and (f[i] != ':' or inParens != 0):
           case f[i]
+          of '\\':
+            if i < f.len-1 and f[i+1] in {'(',')','{','}',':'}:
+              inc i
           of '(': inc inParens
           of ')': dec inParens
           of '=':
