@@ -191,17 +191,17 @@ type
     modIndex: int
     ti: TIdentIter
     rodIt: RodIter
+    importHidden: bool
 
 proc initModuleIter*(mi: var ModuleIter; g: ModuleGraph; m: PSym; name: PIdent): PSym =
   assert m.kind == skModule
   mi.modIndex = m.position
   mi.fromRod = isCachedModule(g, mi.modIndex)
+  mi.importHidden = optImportHidden in m.options
   if mi.fromRod:
     result = initRodIter(mi.rodIt, g.config, g.cache, g.packed, FileIndex mi.modIndex, name)
   else:
-    # PRTEMP
-    dbg m.options, m
-    if optImportHidden in m.options:
+    if mi.importHidden:
       result = initIdentIter(mi.ti, g.ifaces[mi.modIndex].interfAll, name)
     else:
       result = initIdentIter(mi.ti, g.ifaces[mi.modIndex].interf, name)
@@ -210,7 +210,17 @@ proc nextModuleIter*(mi: var ModuleIter; g: ModuleGraph): PSym =
   if mi.fromRod:
     result = nextRodIter(mi.rodIt, g.packed)
   else:
-    result = nextIdentIter(mi.ti, g.ifaces[mi.modIndex].interf)
+    if mi.importHidden:
+      result = nextIdentIter(mi.ti, g.ifaces[mi.modIndex].interfAll)
+    else:
+      result = nextIdentIter(mi.ti, g.ifaces[mi.modIndex].interf)
+
+proc interfSelect(iface: Iface, m: PSym): TStrTable =
+  # TODO: ptr? lent?
+  if optImportHidden in m.options:
+    iface.interfAll
+  else:
+    iface.interf
 
 iterator allSyms*(g: ModuleGraph; m: PSym): PSym =
   if isCachedModule(g, m):
