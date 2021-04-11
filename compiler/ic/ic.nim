@@ -167,6 +167,7 @@ proc addExported*(c: var PackedEncoder; m: var PackedModule; s: PSym) =
   m.exports.add((nameId, s.itemId.item))
 
 proc addConverter*(c: var PackedEncoder; m: var PackedModule; s: PSym) =
+  assert c.thisModule == s.itemId.module
   m.converters.add(s.itemId.item)
 
 proc addTrmacro*(c: var PackedEncoder; m: var PackedModule; s: PSym) =

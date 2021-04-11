@@ -10,24 +10,41 @@
 ## Integrity checking for a set of .rod files.
 ## The set must cover a complete Nim project.
 
-import std / intsets
+import std / sets
 import ".." / [ast, modulegraphs]
 import packed_ast, bitabs, ic
 
 type
   CheckedContext = object
     g: ModuleGraph
-    thisModule: int
-    checkedSyms: IntSet
-    checkedTypes: IntSet
+    thisModule: int32
+    checkedSyms: HashSet[ItemId]
+    checkedTypes: HashSet[ItemId]
+
+proc checkType(c: var CheckedContext; typeId: PackedItemId) =
+  discard
+
+proc checkSym(c: var CheckedContext; s: PackedSym) =
+  if s.name != LitId(0):
+    assert c.g.packed[c.thisModule].fromDisk.sh.strings.hasLitId s.name
+  checkType c, s.typ
 
 proc checkLocalSym(c: var CheckedContext; item: int32) =
-  discard "to implement"
+  let itemId = ItemId(module: c.thisModule, item: item)
+  if not c.checkedSyms.containsOrIncl(itemId):
+    checkSym c, c.g.packed[c.thisModule].fromDisk.sh.syms[item]
 
-proc checkForeignSym(c: var CheckedContext; m: LitId; item: int32) =
-  discard "to implement"
+proc checkForeignSym(c: var CheckedContext; symId: PackedItemId) =
+  let itemId = translateId(symId, c.g.packed, c.thisModule, c.g.config)
+  if not c.checkedSyms.containsOrIncl(itemId):
+    let oldThisModule = c.thisModule
+    c.thisModule = itemId.module
+    checkSym c, c.g.packed[itemId.module].fromDisk.sh.syms[itemId.item]
+    c.thisModule = oldThisModule
 
 proc checkNode(c: var CheckedContext; tree: PackedTree; n: NodePos) =
+  if tree[n.int].typeId != nilItemId:
+    checkType(c, tree[n.int].typeId)
   case n.kind
   of nkEmpty, nkNilLit, nkType, nkNilRodNode:
     discard
@@ -47,7 +64,7 @@ proc checkNode(c: var CheckedContext; tree: PackedTree; n: NodePos) =
     let (n1, n2) = sons2(tree, n)
     assert n1.kind == nkInt32Lit
     assert n2.kind == nkInt32Lit
-    checkForeignSym(c, n1.litId, tree.nodes[n2.int].operand)
+    checkForeignSym(c, PackedItemId(module: n1.litId, item: tree.nodes[n2.int].operand))
   else:
     for n0 in sonsReadonly(tree, n):
       checkNode(c, tree, n0)
@@ -55,13 +72,44 @@ proc checkNode(c: var CheckedContext; tree: PackedTree; n: NodePos) =
 proc checkTree(c: var CheckedContext; t: PackedTree) =
   for p in allNodes(t): checkNode(c, t, p)
 
+proc checkLocalSymIds(c: var CheckedContext; m: PackedModule; symIds: seq[int32]) =
+  for symId in symIds:
+    assert symId >= 0 and symId < m.sh.syms.len, $symId & " " & $m.sh.syms.len
+
 proc checkModule(c: var CheckedContext; m: PackedModule) =
   # We check that:
-  # - Every type references existing types and symbols.
   # - Every symbol references existing types and symbols.
   # - Every tree node references existing types and symbols.
+  for i in 0..high(m.sh.syms):
+    checkLocalSym c, int32(i)
+
   checkTree c, m.toReplay
   checkTree c, m.topLevel
+
+  for e in m.exports:
+    assert e[1] >= 0 and e[1] < m.sh.syms.len
+    assert e[0] == m.sh.syms[e[1]].name
+
+  for e in m.compilerProcs:
+    assert e[1] >= 0 and e[1] < m.sh.syms.len
+    assert e[0] == m.sh.syms[e[1]].name
+
+  checkLocalSymIds c, m, m.converters
+  checkLocalSymIds c, m, m.methods
+  checkLocalSymIds c, m, m.trmacros
+  checkLocalSymIds c, m, m.pureEnums
+  #[
+    To do: Check all these fields:
+
+    reexports*: seq[(LitId, PackedItemId)]
+    macroUsages*: seq[(PackedItemId, PackedLineInfo)]
+
+    typeInstCache*: seq[(PackedItemId, PackedItemId)]
+    procInstCache*: seq[PackedInstantiation]
+    attachedOps*: seq[(TTypeAttachedOp, PackedItemId, PackedItemId)]
+    methodsPerType*: seq[(PackedItemId, int, PackedItemId)]
+    enumToStringProcs*: seq[(PackedItemId, PackedItemId)]
+  ]#
 
 proc checkIntegrity*(g: ModuleGraph) =
   var c = CheckedContext(g: g)
@@ -73,6 +121,6 @@ proc checkIntegrity*(g: ModuleGraph) =
     of loading:
       assert false, "cannot check integrity: Module still loading"
     of stored, storing, outdated, loaded:
-      c.thisModule = i
+      c.thisModule = int32 i
       checkModule(c, g.packed[i].fromDisk)
 
