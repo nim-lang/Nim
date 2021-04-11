@@ -287,6 +287,7 @@ proc mapTypeToAstX(cache: IdentCache; t: PType; info: TLineInfo;
   of tyAnd: result = mapTypeToBracket("and", mAnd, t, info)
   of tyOr: result = mapTypeToBracket("or", mOr, t, info)
   of tyNot: result = mapTypeToBracket("not", mNot, t, info)
+  of tyIterable: result = mapTypeToBracket("iterable", mIterableType, t, info)
   of tyAnything: result = atomicType("anything", mNone)
   of tyInferred: assert false
   of tyStatic, tyFromExpr:

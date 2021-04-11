@@ -440,10 +440,12 @@ type
 
     tyVoid
       # now different from tyEmpty, hurray!
+    tyIterable
 
 static:
   # remind us when TTypeKind stops to fit in a single 64-bit word
-  assert TTypeKind.high.ord <= 63
+  # assert TTypeKind.high.ord <= 63
+  discard
 
 const
   tyPureObject* = tyTuple
@@ -664,7 +666,7 @@ type
     mDefault, mUnown, mIsolate, mAccessEnv, mReset,
     mArray, mOpenArray, mRange, mSet, mSeq, mVarargs,
     mRef, mPtr, mVar, mDistinct, mVoid, mTuple,
-    mOrdinal,
+    mOrdinal, mIterableType,
     mInt, mInt8, mInt16, mInt32, mInt64,
     mUInt, mUInt8, mUInt16, mUInt32, mUInt64,
     mFloat, mFloat32, mFloat64, mFloat128,
@@ -1054,6 +1056,14 @@ const
   defaultAlignment = -1
   defaultOffset = -1
 
+proc getPIdent*(a: PNode): PIdent {.inline.} =
+  ## Returns underlying `PIdent` for `{nkSym, nkIdent}`, or `nil`.
+  # xxx consider whether also returning the 1st ident for {nkOpenSymChoice, nkClosedSymChoice}
+  # which may simplify code.
+  case a.kind
+  of nkSym: a.sym.name
+  of nkIdent:  a.ident
+  else: nil
 
 proc getnimblePkg*(a: PSym): PSym =
   result = a

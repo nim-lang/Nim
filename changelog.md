@@ -264,6 +264,8 @@
 
 - Added dollar `$` and `len` for `jsre.RegExp`.
 
+- Added `std/tasks`.
+
 - Added `hasDataBuffered` to `asyncnet`.
 
 - Added `hasClosure` to `std/typetraits`.
@@ -299,6 +301,10 @@
 
 - `nim e` now accepts arbitrary file extensions for the nimscript file,
   although `.nims` is still the preferred extension in general.
+
+- Added `iterable[T]` type class to match called iterators, which enables writing:
+  `template fn(a: iterable)` instead of `template fn(a: untyped)`
+
 
 ## Compiler changes
 
@@ -337,6 +343,7 @@
 - Added `unsafeIsolate` and `extract` to `std/isolation`.
 
 - `--hint:CC` now goes to stderr (like all other hints) instead of stdout.
+
 
 
 ## Tool changes

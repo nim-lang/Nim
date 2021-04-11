@@ -44,6 +44,9 @@ type
     hasProgress: bool         # some while loop requires progress ensurance
     lex*: Lexer               # The lexer that is used for parsing
     tok*: Token               # The current token
+    lineStartPrevious*: int
+    lineNumberPrevious*: int
+    bufposPrevious*: int
     inPragma*: int            # Pragma level
     inSemiStmtList*: int
     emptyNode: PNode
@@ -77,7 +80,7 @@ proc eat*(p: var Parser, tokType: TokType)
 proc skipInd*(p: var Parser)
 proc optPar*(p: var Parser)
 proc optInd*(p: var Parser, n: PNode)
-proc indAndComment*(p: var Parser, n: PNode)
+proc indAndComment*(p: var Parser, n: PNode, maybeMissEquals = false)
 proc setBaseFlags*(n: PNode, base: NumericalBase)
 proc parseSymbol*(p: var Parser, mode = smNormal): PNode
 proc parseTry(p: var Parser; isExpr: bool): PNode
@@ -100,6 +103,9 @@ template prettySection(body) =
 proc getTok(p: var Parser) =
   ## Get the next token from the parser's lexer, and store it in the parser's
   ## `tok` member.
+  p.lineNumberPrevious = p.lex.lineNumber
+  p.lineStartPrevious = p.lex.lineStart
+  p.bufposPrevious = p.lex.bufpos
   rawGetTok(p.lex, p.tok)
   p.hasProgress = true
   when defined(nimpretty):
@@ -223,9 +229,13 @@ proc parLineInfo(p: Parser): TLineInfo =
   ## Retrieve the line information associated with the parser's current state.
   result = getLineInfo(p.lex, p.tok)
 
-proc indAndComment(p: var Parser, n: PNode) =
+proc indAndComment(p: var Parser, n: PNode, maybeMissEquals = false) =
   if p.tok.indent > p.currInd:
     if p.tok.tokType == tkComment: rawSkipComment(p, n)
+    elif maybeMissEquals:
+      let col = p.bufposPrevious - p.lineStartPrevious
+      var info = newLineInfo(p.lex.fileIdx, p.lineNumberPrevious, col)
+      parMessage(p, "invalid indentation, maybe you forgot a '=' at $1 ?" % [p.lex.config$info])
     else: parMessage(p, errInvalidIndentation)
   else:
     skipComment(p, n)
@@ -1773,13 +1783,14 @@ proc parseRoutine(p: var Parser, kind: TNodeKind): PNode =
   else: result.add(p.emptyNode)
   # empty exception tracking:
   result.add(p.emptyNode)
-  if p.tok.tokType == tkEquals and p.validInd:
+  let maybeMissEquals = p.tok.tokType != tkEquals
+  if (not maybeMissEquals) and p.validInd:
     getTok(p)
     skipComment(p, result)
     result.add(parseStmt(p))
   else:
     result.add(p.emptyNode)
-  indAndComment(p, result)
+  indAndComment(p, result, maybeMissEquals)
 
 proc newCommentStmt(p: var Parser): PNode =
   #| commentStmt = COMMENT

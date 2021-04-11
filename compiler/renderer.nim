@@ -964,14 +964,12 @@ proc skipHiddenNodes(n: PNode): PNode =
     else: break
 
 proc accentedName(g: var TSrcGen, n: PNode) =
+  # This is for cases where ident should've really been a `nkAccQuoted`, e.g. `:tmp`
+  # or if user writes a macro with `ident":foo"`. It's unclear whether these should be legal.
   const backticksNeeded = OpChars + {'[', '{', '\''}
   if n == nil: return
-  let isOperator =
-    if n.kind == nkIdent and n.ident.s.len > 0 and n.ident.s[0] in backticksNeeded: true
-    elif n.kind == nkSym and n.sym.name.s.len > 0 and n.sym.name.s[0] in backticksNeeded: true
-    else: false
-
-  if isOperator:
+  let ident = n.getPIdent
+  if ident != nil and ident.s[0] in backticksNeeded:
     put(g, tkAccent, "`")
     gident(g, n)
     put(g, tkAccent, "`")
@@ -999,9 +997,9 @@ proc infixArgument(g: var TSrcGen, n: PNode, i: int) =
     put(g, tkParRi, ")")
 
 proc isCustomLit(n: PNode): bool =
-  n.len == 2 and n[0].kind == nkRStrLit and
-    (n[1].kind == nkIdent and n[1].ident.s.startsWith('\'')) or
-    (n[1].kind == nkSym and n[1].sym.name.s.startsWith('\''))
+  if n.len == 2 and n[0].kind == nkRStrLit:
+    let ident = n[1].getPIdent
+    result = ident != nil and ident.s.startsWith('\'')
 
 proc gsub(g: var TSrcGen, n: PNode, c: TContext, fromStmtList = false) =
   if isNil(n): return
@@ -1234,8 +1232,8 @@ proc gsub(g: var TSrcGen, n: PNode, c: TContext, fromStmtList = false) =
     else:
       gsub(g, n, 0)
       put(g, tkDot, ".")
-      if n.len > 1:
-        accentedName(g, n[1])
+      assert n.len == 2, $n.len
+      accentedName(g, n[1])
   of nkBind:
     putWithSpace(g, tkBind, "bind")
     gsub(g, n, 0)
@@ -1329,13 +1327,16 @@ proc gsub(g: var TSrcGen, n: PNode, c: TContext, fromStmtList = false) =
         of nkIdent: n.ident.s
         of nkSym: n.sym.name.s
         else: ""
+      proc isAlpha(n: PNode): bool =
+        if n.kind in {nkIdent, nkSym}:
+          let tmp = n.getStrVal
+          result = tmp.len > 0 and tmp[0] in {'a'..'z', 'A'..'Z'}
       var useSpace = false
       if i == 1 and n[0].kind == nkIdent and n[0].ident.s in ["=", "'"]:
-        let tmp = n[1].getStrVal
-        if tmp.len > 0 and tmp[0] in {'a'..'z', 'A'..'Z'}:
-          # handle `=destroy`, `'big'
-          discard
-        else:
+        if not n[1].isAlpha: # handle `=destroy`, `'big'
+          useSpace = true
+      elif i == 1 and n[1].kind == nkIdent and n[1].ident.s == "=":
+        if not n[0].isAlpha: # handle setters, e.g. `foo=`
           useSpace = true
       elif i > 0: useSpace = true
       if useSpace:  put(g, tkSpaces, Space)

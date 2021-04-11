@@ -1119,6 +1119,8 @@ proc typeRel(c: var TCandidate, f, aOrig: PType,
         return if x >= isGeneric: isGeneric else: x
     return isNone
 
+  of tyIterable:
+    if f.kind != tyIterable: return isNone
   of tyNot:
     case f.kind
     of tyNot:
@@ -1421,6 +1423,15 @@ proc typeRel(c: var TCandidate, f, aOrig: PType,
   of tyAlias, tySink:
     result = typeRel(c, lastSon(f), a, flags)
 
+  of tyIterable:
+    if a.kind == tyIterable:
+      if f.len == 1:
+        result = typeRel(c, lastSon(f), lastSon(a), flags)
+      else:
+        # f.len = 3, for some reason
+        result = isGeneric
+    else:
+      result = isNone
   of tyGenericInst:
     var prev = PType(idTableGet(c.bindings, f))
     let origF = f
@@ -2270,14 +2281,18 @@ proc prepareOperand(c: PContext; formal: PType; a: PNode): PNode =
     # a.typ == nil is valid
     result = a
   elif a.typ.isNil:
-    # XXX This is unsound! 'formal' can differ from overloaded routine to
-    # overloaded routine!
-    let flags = {efDetermineType, efAllowStmt}
-                #if formal.kind == tyIter: {efDetermineType, efWantIterator}
-                #else: {efDetermineType, efAllowStmt}
-                #elif formal.kind == tyTyped: {efDetermineType, efWantStmt}
-                #else: {efDetermineType}
-    result = c.semOperand(c, a, flags)
+    if formal.kind == tyIterable:
+      let flags = {efDetermineType, efAllowStmt, efWantIterator, efWantIterable}
+      result = c.semOperand(c, a, flags)
+    else:
+      # XXX This is unsound! 'formal' can differ from overloaded routine to
+      # overloaded routine!
+      let flags = {efDetermineType, efAllowStmt}
+                  #if formal.kind == tyIterable: {efDetermineType, efWantIterator}
+                  #else: {efDetermineType, efAllowStmt}
+                  #elif formal.kind == tyTyped: {efDetermineType, efWantStmt}
+                  #else: {efDetermineType}
+      result = c.semOperand(c, a, flags)
   else:
     result = a
     considerGenSyms(c, result)

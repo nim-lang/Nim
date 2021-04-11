@@ -40,7 +40,7 @@ proc beautifyName(s: string, k: TSymKind): string =
              "pointer", "float", "csize", "csize_t", "cdouble", "cchar", "cschar",
              "cshort", "cu", "nil", "typedesc", "auto", "any",
              "range", "openarray", "varargs", "set", "cfloat", "ref", "ptr",
-             "untyped", "typed", "static", "sink", "lent", "type", "owned"]:
+             "untyped", "typed", "static", "sink", "lent", "type", "owned", "iterable"]:
       result.add s[i]
     else:
       result.add toUpperAscii(s[i])

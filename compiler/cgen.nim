@@ -1418,7 +1418,7 @@ proc genMainProc(m: BModule) =
 
     GenodeNimMain =
       "extern Genode::Env *nim_runtime_env;$N" &
-      "extern void nim_component_construct(Genode::Env*);$N$N" &
+      "extern \"C\" void nim_component_construct(Genode::Env*);$N$N" &
       NimMainBody
 
     ComponentConstruct =

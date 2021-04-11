@@ -90,7 +90,7 @@ type
       level*: int             ## level of headings starting from 1 (main
                               ## chapter) to larger ones (minor sub-sections)
                               ## level=0 means it's document title or subtitle
-    of rnFootnote, rnCitation, rnFootnoteRef:
+    of rnFootnote, rnCitation, rnFootnoteRef, rnOptionListItem:
       order*: int             ## footnote order (for auto-symbol footnotes and
                               ## auto-numbered ones without a label)
     else:
@@ -368,7 +368,7 @@ proc renderRstToStr*(node: PRstNode, indent=0): string =
     result.add txt
   of rnHeadline, rnOverline, rnMarkdownHeadline:
     result.add "\tlevel=" & $node.level
-  of rnFootnote, rnCitation, rnFootnoteRef:
+  of rnFootnote, rnCitation, rnFootnoteRef, rnOptionListItem:
     result.add (if node.order == 0:   "" else: "\torder=" & $node.order)
   else:
     discard
