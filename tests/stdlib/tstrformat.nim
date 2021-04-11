@@ -1,7 +1,7 @@
 # xxx: test js target
 
 import genericstrformat
-import std/[strformat, strutils, times,tables,json]
+import std/[strformat, strutils, times, tables, json]
 
 proc main() =
   block: # issue #7632
