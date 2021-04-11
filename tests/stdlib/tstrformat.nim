@@ -1,4 +1,4 @@
-
+# xxx: test js target
 
 import genericstrformat
 import std/[strformat, strutils, times,tables,json]
