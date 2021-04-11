@@ -21,7 +21,7 @@ import
   modules,
   modulegraphs, tables, lineinfos, pathutils, vmprofiler
 
-import ic / cbackend
+import ic / [cbackend, integrity]
 from ic / ic import rodViewer
 
 when not defined(leanCompiler):
@@ -93,6 +93,8 @@ proc commandCompileToC(graph: ModuleGraph) =
   if conf.symbolFiles == disabledSf:
     cgenWriteModules(graph.backend, conf)
   else:
+    if isDefined(conf, "nimIcIntegrityChecks"):
+      checkIntegrity(graph)
     generateCode(graph)
     # graph.backend can be nil under IC when nothing changed at all:
     if graph.backend != nil:
