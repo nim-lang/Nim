@@ -650,6 +650,7 @@ proc symChoiceExtension(o: var TOverloadIter; c: PContext; n: PNode): PSym =
     inc o.importIdx
 
 proc nextOverloadIter*(o: var TOverloadIter, c: PContext, n: PNode): PSym =
+  dbg o.mode, n
   case o.mode
   of oimDone:
     result = nil
@@ -678,6 +679,7 @@ proc nextOverloadIter*(o: var TOverloadIter, c: PContext, n: PNode): PSym =
   of oimSelfModule:
     result = nextIdentIter(o.it, c.topLevelScope.symbols).skipAlias(n, c.config)
   of oimOtherModule:
+    dbg()
     result = nextModuleIter(o.mit, c.graph).skipAlias(n, c.config)
   of oimSymChoice:
     if o.symChoiceIndex < n.len:
