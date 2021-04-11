@@ -55,7 +55,7 @@ when defined(nimExperimentalSmartptrs):
   proc get*[T](p: UniquePtr[T]): var T {.inline.} =
     ## Returns a mutable view of the internal value of `p`.
     when compileOption("boundChecks"):
-      doAssert(p.val != nil, "deferencing nil unique pointer")
+      doAssert(p.val != nil, "dereferencing a nil unique pointer")
     p.val[]
 
   proc isNil*[T](p: UniquePtr[T]): bool {.inline.} =
@@ -123,7 +123,7 @@ when defined(nimExperimentalSmartptrs):
   proc get*[T](p: SharedPtr[T]): var T {.inline.} =
     ## Returns a mutable view of the internal value of `p`.
     when compileOption("boundChecks"):
-      doAssert(p.val != nil, "deferencing nil shared pointer")
+      doAssert(p.val != nil, "dereferencing a nil shared pointer")
     p.val.value
 
   proc isNil*[T](p: SharedPtr[T]): bool {.inline.} =
@@ -144,12 +144,12 @@ when defined(nimExperimentalSmartptrs):
 
   template newConstPtr*[T](val: T, deleter: Deleter[T] = nil): ConstPtr[T] =
     ## Similar to `newSharedPtr<#newSharedPtr,sinkIsolated[T]>`_, but the underlying value can't be mutated.
-    newConstPtr(isolate(val), deleter)
+    ConstPtr[T](newSharedPtr(isolate(val), deleter))
 
   proc get*[T](p: ConstPtr[T]): lent T {.inline.} =
-    ## Returns a immutable view of the internal value of `p`.
+    ## Returns an immutable view of the internal value of `p`.
     when compileOption("boundChecks"):
-      doAssert(SharedPtr[T](p).val != nil, "deferencing nil const pointer")
+      doAssert(SharedPtr[T](p).val != nil, "dereferencing nil const pointer")
     SharedPtr[T](p).val.value
 
   proc isNil*[T](p: ConstPtr[T]): bool {.inline.} =

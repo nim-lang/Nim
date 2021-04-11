@@ -1,7 +1,7 @@
 discard """
   targets: "c cpp"
   disabled: "freebsd"
-  matrix: "--gc:refc -d:nimExperimentalSmartptrs; --gc:orc -d: nimExperimentalSmartptrs"
+  matrix: "--gc:refc -d:nimExperimentalSmartptrs; --gc:orc -d:nimExperimentalSmartptrs"
 """
 
 
