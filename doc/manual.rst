@@ -1,5 +1,3 @@
-.. default-role:: code
-
 ==========
 Nim Manual
 ==========
@@ -7,6 +5,8 @@ Nim Manual
 :Authors: Andreas Rumpf, Zahary Karadjov
 :Version: |nimversion|
 
+.. default-role:: code
+.. include:: rstcommon.rst
 .. contents::
 
 
@@ -127,9 +127,9 @@ compiler may instead choose to allow the program to die with a fatal error.
     echo "invalid index"
 
 The current implementation allows to switch between these different behaviors
-via `--panics:on|off`. When panics are turned on, the program dies with a
+via ``--panics:on|off``. When panics are turned on, the program dies with a
 panic, if they are turned off the runtime errors are turned into
-exceptions. The benefit of `--panics:on` is that it produces smaller binary
+exceptions. The benefit of ``--panics:on`` is that it produces smaller binary
 code and the compiler has more freedom to optimize the code.
 
 An `unchecked runtime error`:idx: is an error that is not guaranteed to be
@@ -490,7 +490,7 @@ Rationale: It enables the efficient support of `array[char, int]` or
 The `Rune` type can represent any Unicode character.
 `Rune` is declared in the `unicode module <unicode.html>`_.
 
-A character literal that does not end in ``'`` is interpreted as ``'`` if there
+A character literal that does not end in `'` is interpreted as `'` if there
 is a preceeding backtick token. There must be no whitespace between the preceeding
 backtick token and the character literal. This special case ensures that a declaration
 like ``proc `'customLiteral`(s: string)`` is valid. ``proc `'customLiteral`(s: string)``
@@ -752,7 +752,7 @@ Otherwise, precedence is determined by the first character.
 Precedence level    Operators                                              First character     Terminal symbol
 ================  =======================================================  ==================  ===============
  10 (highest)                                                              `$  ^`              OP10
-  9               `*    /    div   mod   shl  shr  %`                      ``*  %  \  /``        OP9
+  9               `*    /    div   mod   shl  shr  %`                      `*  %  \  /`        OP9
   8               `+    -`                                                 `+  -  ~  |`        OP8
   7               `&`                                                      `&`                 OP7
   6               `..`                                                     `.`                 OP6
@@ -1008,7 +1008,7 @@ These integer types are pre-defined:
   literal that has no type suffix is of this type if it is in the range
   `low(int32)..high(int32)` otherwise the literal's type is `int64`.
 
-intXX
+`int`\ XX
   additional signed integer types of XX bits use this naming scheme
   (example: int16 is a 16-bit wide integer).
   The current implementation supports `int8`, `int16`, `int32`, `int64`.
@@ -1019,7 +1019,7 @@ intXX
   has the same size as a pointer. An integer literal with the type
   suffix `'u` is of this type.
 
-uintXX
+`uint`\ XX
   additional unsigned integer types of XX bits use this naming scheme
   (example: uint16 is a 16-bit wide unsigned integer).
   The current implementation supports `uint8`, `uint16`, `uint32`,
@@ -1039,22 +1039,22 @@ the `%` suffix as convention:
 ======================   ======================================================
 operation                meaning
 ======================   ======================================================
-`a +% b`               unsigned integer addition
-`a -% b`               unsigned integer subtraction
-`a *% b`               unsigned integer multiplication
-`a /% b`               unsigned integer division
-`a %% b`               unsigned integer modulo operation
-`a <% b`               treat `a` and `b` as unsigned and compare
-`a <=% b`              treat `a` and `b` as unsigned and compare
-`ze(a)`                extends the bits of `a` with zeros until it has the
+`a +% b`                 unsigned integer addition
+`a -% b`                 unsigned integer subtraction
+`a *% b`                 unsigned integer multiplication
+`a /% b`                 unsigned integer division
+`a %% b`                 unsigned integer modulo operation
+`a <% b`                 treat `a` and `b` as unsigned and compare
+`a <=% b`                treat `a` and `b` as unsigned and compare
+`ze(a)`                  extends the bits of `a` with zeros until it has the
                          width of the `int` type
-`toU8(a)`              treats `a` as unsigned and converts it to an
+`toU8(a)`                treats `a` as unsigned and converts it to an
                          unsigned integer of 8 bits (but still the
                          `int8` type)
-`toU16(a)`             treats `a` as unsigned and converts it to an
+`toU16(a)`               treats `a` as unsigned and converts it to an
                          unsigned integer of 16 bits (but still the
                          `int16` type)
-`toU32(a)`             treats `a` as unsigned and converts it to an
+`toU32(a)`               treats `a` as unsigned and converts it to an
                          unsigned integer of 32 bits (but still the
                          `int32` type)
 ======================   ======================================================
@@ -1117,9 +1117,9 @@ The following floating-point types are pre-defined:
   but now it is always mapped to `float64`.
   This type should be used in general.
 
-floatXX
+`float`\ XX
   an implementation may define additional floating-point types of XX bits using
-  this naming scheme (example: float64 is a 64-bit wide float). The current
+  this naming scheme (example: `float64` is a 64-bit wide float). The current
   implementation supports `float32` and `float64`. Literals of these types
   have the suffix 'fXX.
 
@@ -1459,7 +1459,7 @@ The notation `x[i]` can be used to access the i-th element of `x`.
 
 Arrays are always bounds checked (statically or at runtime). These
 checks can be disabled via pragmas or invoking the compiler with the
-`--boundChecks:off` command-line switch.
+``--boundChecks:off`` command-line switch.
 
 An array constructor can have explicit indexes for readability:
 
@@ -1946,7 +1946,8 @@ memory manually:
   dealloc(d)
 
 Without the `reset` call the memory allocated for the `d.s` string would
-never be freed. The example also demonstrates two important features for low-level programming: the `sizeof` proc returns the size of a type or value
+never be freed. The example also demonstrates two important features for
+low-level programming: the `sizeof` proc returns the size of a type or value
 in bytes. The `cast` operator can circumvent the type system: the compiler
 is forced to treat the result of the `alloc0` call (which returns an untyped
 pointer) as if it would have the type `ptr Data`. Casting should only be
@@ -2045,7 +2046,7 @@ Nim supports these `calling conventions`:idx:\:
     C++ class member functions on the x86 architecture.
 
 `syscall`:idx:
-    The syscall convention is the same as `__syscall` in C. It is used for
+    The syscall convention is the same as `__syscall`:c: in C. It is used for
     interrupts.
 
 `noconv`:idx:
@@ -3217,7 +3218,7 @@ Assembler statement
 The direct embedding of assembler code into Nim code is supported
 by the unsafe `asm` statement. Identifiers in the assembler code that refer to
 Nim identifiers shall be enclosed in a special character which can be
-specified in the statement's pragmas. The default special character is ``'`'``:
+specified in the statement's pragmas. The default special character is `'\`'`:
 
 .. code-block:: nim
   {.push stackTrace:off.}
@@ -3261,7 +3262,7 @@ Instead of:
 Using statement
 ---------------
 
-The using statement provides syntactic convenience in modules where
+The `using` statement provides syntactic convenience in modules where
 the same parameter names and types are used over and over. Instead of:
 
 .. code-block:: nim
@@ -3301,8 +3302,8 @@ that are explicitly typed is possible and requires a semicolon between them.
 If expression
 -------------
 
-An `if expression` is almost like an if statement, but it is an expression.
-This feature is similar to `ternary operators` in other languages.
+An `if` expression is almost like an if statement, but it is an expression.
+This feature is similar to *ternary operators* in other languages.
 Example:
 
 .. code-block:: nim
@@ -3314,12 +3315,12 @@ required. `Elif` parts are also allowed.
 When expression
 ---------------
 
-Just like an `if expression`, but corresponding to the when statement.
+Just like an `if` expression, but corresponding to the `when` statement.
 
 Case expression
 ---------------
 
-The `case expression` is again very similar to the case statement:
+The `case` expression is again very similar to the case statement:
 
 .. code-block:: nim
   var favoriteFood = case animal
@@ -3337,7 +3338,7 @@ the last expression as the result value.
 Block expression
 ----------------
 
-A `block expression` is almost like a block statement, but it is an expression
+A `block` expression is almost like a block statement, but it is an expression
 that uses the last expression under the block as the value.
 It is similar to the statement list expression, but the statement list expression
 does not open a new block scope.
@@ -3434,7 +3435,7 @@ Type casts should not be confused with *type conversions,* as mentioned in the
 prior section. Unlike type conversions, a type cast cannot change the underlying
 bit pattern of the data being casted (aside from that the size of the target type
 may differ from the source type). Casting resembles *type punning* in other
-languages or C++'s `reinterpret_cast` and `bit_cast` features.
+languages or C++'s `reinterpret_cast`:cpp: and `bit_cast`:cpp: features.
 
 The addr operator
 -----------------
@@ -3562,7 +3563,7 @@ the operator's position within an expression.) There is no way to declare
 postfix operators: all postfix operators are built-in and handled by the
 grammar explicitly.
 
-Any operator can be called like an ordinary proc with the '`opr`'
+Any operator can be called like an ordinary proc with the \`opr\`
 notation. (Thus an operator can have more than two parameters):
 
 .. code-block:: nim
@@ -3596,9 +3597,9 @@ current module:
 Method call syntax
 ------------------
 
-For object-oriented programming, the syntax `obj.method(args)` can be used
-instead of `method(obj, args)`. The parentheses can be omitted if there are no
-remaining arguments: `obj.len` (instead of `len(obj)`).
+For object-oriented programming, the syntax `obj.methodName(args)` can be used
+instead of `methodName(obj, args)`. The parentheses can be omitted if
+there are no remaining arguments: `obj.len` (instead of `len(obj)`).
 
 This method call syntax is not restricted to objects, it can be used
 to supply any type of first argument for procedures:
@@ -3813,7 +3814,7 @@ simplicity (they require specialized semantic checking)::
 
 Thus they act more like keywords than like ordinary identifiers; unlike a
 keyword however, a redefinition may `shadow`:idx: the definition in
-the `system` module. From this list the following should not be written in dot
+the system_ module. From this list the following should not be written in dot
 notation `x.f` since `x` cannot be type-checked before it gets passed
 to `f`::
 
@@ -4059,7 +4060,7 @@ Multi-methods
 --------------
 
 **Note:** Starting from Nim 0.20, to use multi-methods one must explicitly pass
-`--multimethods:on` when compiling.
+``--multimethods:on`` when compiling.
 
 In a multi-method, all parameters that have an object type are used for the
 dispatching:
@@ -4768,7 +4769,7 @@ And so is:
 
 
 The reason for this is that `DivByZeroDefect` inherits from `Defect` and
-with `--panics:on` Defects become unrecoverable errors.
+with ``--panics:on`` Defects become unrecoverable errors.
 (Since version 1.4 of the language.)
 
 
@@ -5567,7 +5568,7 @@ However, this means that the method call syntax is not available for
 
 
 **Note**: The Nim compiler prior to version 1 was more lenient about this
-requirement. Use the `--useVersion:0.19` switch for a transition period.
+requirement. Use the ``--useVersion:0.19`` switch for a transition period.
 
 
 
@@ -6022,7 +6023,7 @@ A module may gain access to symbols of another module by the `import`:idx:
 statement. `Recursive module dependencies`:idx: are allowed, but are slightly
 subtle. Only top-level symbols that are marked with an asterisk (`*`) are
 exported. A valid module name can only be a valid Nim identifier (and thus its
-filename is `identifier.nim`).
+filename is ``identifier.nim``).
 
 The algorithm for compiling modules is:
 
@@ -6484,7 +6485,7 @@ asmNoStackFrame pragma
 A proc can be marked with the `asmNoStackFrame` pragma to tell the compiler
 it should not generate a stack frame for the proc. There are also no exit
 statements like `return result;` generated and the generated C function is
-declared as `__declspec(naked)` or `__attribute__((naked))` (depending on
+declared as `__declspec(naked)`:c: or `__attribute__((naked))`:c: (depending on
 the used C compiler).
 
 **Note**: This pragma should only be used by procs which consist solely of
@@ -6879,7 +6880,7 @@ This pragma has no effect on the JS backend.
 Volatile pragma
 ---------------
 The `volatile` pragma is for variables only. It declares the variable as
-`volatile`, whatever that means in C/C++ (its semantics are not well defined
+`volatile`:c:, whatever that means in C/C++ (its semantics are not well defined
 in C/C++).
 
 **Note**: This pragma will not exist for the LLVM backend.
@@ -6906,7 +6907,7 @@ Header pragma
 -------------
 The `header` pragma is very similar to the `nodecl` pragma: It can be
 applied to almost any symbol and specifies that it should not be declared
-and instead, the generated code should contain an `#include`:
+and instead, the generated code should contain an `#include`:c:\:
 
 .. code-block:: Nim
   type
@@ -6915,8 +6916,8 @@ and instead, the generated code should contain an `#include`:
 
 The `header` pragma always expects a string constant. The string constant
 contains the header file: As usual for C, a system header file is enclosed
-in angle brackets: `<>`. If no angle brackets are given, Nim
-encloses the header file in `""` in the generated C code.
+in angle brackets: `<>`:c:. If no angle brackets are given, Nim
+encloses the header file in `""`:c: in the generated C code.
 
 **Note**: This will not work for the LLVM backend.
 
@@ -6924,7 +6925,7 @@ encloses the header file in `""` in the generated C code.
 IncompleteStruct pragma
 -----------------------
 The `incompleteStruct` pragma tells the compiler to not use the
-underlying C `struct` in a `sizeof` expression:
+underlying C `struct`:c: in a `sizeof` expression:
 
 .. code-block:: Nim
   type
@@ -6941,8 +6942,8 @@ with the project:
   {.compile: "myfile.cpp".}
 
 **Note**: Nim computes a SHA1 checksum and only recompiles the file if it
-has changed. One can use the `-f` command-line option to force the recompilation
-of the file.
+has changed. One can use the ``-f`` command-line option to force
+the recompilation of the file.
 
 Since 1.4 the `compile` pragma is also available with this syntax:
 
@@ -6964,7 +6965,7 @@ The `link` pragma can be used to link an additional file with the project:
 PassC pragma
 ------------
 The `passc` pragma can be used to pass additional parameters to the C
-compiler like one would using the command-line switch `--passc`:
+compiler like one would using the command-line switch ``--passc``:
 
 .. code-block:: Nim
   {.passc: "-Wall -Werror".}
@@ -6992,7 +6993,7 @@ the pragma resides in:
 PassL pragma
 ------------
 The `passL` pragma can be used to pass additional parameters to the linker
-like one would be using the command-line switch `--passL`:
+like one would be using the command-line switch ``--passL``:
 
 .. code-block:: Nim
   {.passL: "-lSDLmain -lSDL".}
@@ -7029,7 +7030,7 @@ Example:
   embedsC()
 
 `nimbase.h` defines `NIM_EXTERNC` C macro that can be used for
-`extern "C"` code to work with both `nim c` and `nim cpp`, e.g.:
+`extern "C"`:cpp: code to work with both `nim c` and `nim cpp`, e.g.:
 
 .. code-block:: Nim
   proc foobar() {.importc:"$1".}
@@ -7044,8 +7045,8 @@ Example:
   This usage is however deprecated.
 
 For a top-level emit statement, the section where in the generated C/C++ file
-the code should be emitted can be influenced via the
-prefixes `/*TYPESECTION*/` or `/*VARSECTION*/` or `/*INCLUDESECTION*/`:
+the code should be emitted can be influenced via the prefixes
+`/*TYPESECTION*/`:c: or `/*VARSECTION*/`:c: or `/*INCLUDESECTION*/`:c:\:
 
 .. code-block:: Nim
   {.emit: """/*TYPESECTION*/
@@ -7075,7 +7076,7 @@ Similar to the `importc pragma for C
 <#foreign-function-interface-importc-pragma>`_, the
 `importcpp` pragma can be used to import `C++`:idx: methods or C++ symbols
 in general. The generated code then uses the C++ method calling
-syntax: `obj->method(arg)`.  In combination with the `header` and `emit`
+syntax: `obj->method(arg)`:cpp:.  In combination with the `header` and `emit`
 pragmas this allows *sloppy* interfacing with libraries written in C++:
 
 .. code-block:: Nim
@@ -7105,16 +7106,16 @@ pragmas this allows *sloppy* interfacing with libraries written in C++:
   proc run(device: IrrlichtDevice): bool {.
     header: irr, importcpp: "#.run(@)".}
 
-The compiler needs to be told to generate C++ (command `cpp`) for
+The compiler needs to be told to generate C++ (command ``cpp``) for
 this to work. The conditional symbol `cpp` is defined when the compiler
 emits C++ code.
 
 Namespaces
 ~~~~~~~~~~
 
-The *sloppy interfacing* example uses `.emit` to produce `using namespace`
+The *sloppy interfacing* example uses `.emit` to produce `using namespace`:cpp:
 declarations. It is usually much better to instead refer to the imported name
-via the `namespace::identifier` notation:
+via the `namespace::identifier`:cpp: notation:
 
 .. code-block:: nim
   type
@@ -7126,7 +7127,8 @@ Importcpp for enums
 ~~~~~~~~~~~~~~~~~~~
 
 When `importcpp` is applied to an enum type the numerical enum values are
-annotated with the C++ enum type, like in this example: `((TheCppEnum)(3))`.
+annotated with the C++ enum type, like in this example:
+`((TheCppEnum)(3))`:cpp:.
 (This turned out to be the simplest way to implement it.)
 
 
@@ -7136,10 +7138,11 @@ Importcpp for procs
 Note that the `importcpp` variant for procs uses a somewhat cryptic pattern
 language for maximum flexibility:
 
-- A hash `#` symbol is replaced by the first or next argument.
-- A dot following the hash `#.` indicates that the call should use C++'s dot
+- A hash ``#`` symbol is replaced by the first or next argument.
+- A dot following the hash ``#.`` indicates that the call should use C++'s dot
   or arrow notation.
-- An at symbol `@` is replaced by the remaining arguments, separated by commas.
+- An at symbol ``@`` is replaced by the remaining arguments,
+  separated by commas.
 
 For example:
 
@@ -7155,7 +7158,7 @@ Produces:
 
 As a special rule to keep backward compatibility with older versions of the
 `importcpp` pragma, if there is no special pattern
-character (any of `# ' @`) at all, C++'s
+character (any of ``# ' @``) at all, C++'s
 dot or arrow notation is assumed, so the above example can also be written as:
 
 .. code-block:: nim
@@ -7169,11 +7172,11 @@ capabilities:
   proc dictLookup(a: Dict, k: Key): Value {.importcpp: "#[#]".}
 
 
-- An apostrophe `'` followed by an integer `i` in the range 0..9
+- An apostrophe ``'`` followed by an integer ``i`` in the range 0..9
   is replaced by the i'th parameter *type*. The 0th position is the result
   type. This can be used to pass types to C++ function templates. Between
-  the `'` and the digit, an asterisk can be used to get to the base type
-  of the type. (So it "takes away a star" from the type; `T*` becomes `T`.)
+  the ``'`` and the digit, an asterisk can be used to get to the base type
+  of the type. (So it "takes away a star" from the type; `T*`:c: becomes `T`.)
   Two stars can be used to get to the element type of the element type etc.
 
 For example:
@@ -7191,12 +7194,12 @@ Produces:
   x = SystemManager::getSubsystem<System::Input>()
 
 
-- `#@` is a special case to support a `cnew` operation. It is required so
+- ``#@`` is a special case to support a `cnew` operation. It is required so
   that the call expression is inlined directly, without going through a
   temporary location. This is only required to circumvent a limitation of the
   current code generator.
 
-For example C++'s `new` operator can be "imported" like this:
+For example C++'s `new`:cpp: operator can be "imported" like this:
 
 .. code-block:: nim
   proc cnew*[T](x: T): ptr T {.importcpp: "(new '*0#@)", nodecl.}
@@ -7211,7 +7214,7 @@ Produces:
 .. code-block:: C
   x = new Foo(3, 4)
 
-However, depending on the use case `new Foo` can also be wrapped like this
+However, depending on the use case `new Foo`:cpp: can also be wrapped like this
 instead:
 
 .. code-block:: nim
@@ -7224,7 +7227,8 @@ Wrapping constructors
 ~~~~~~~~~~~~~~~~~~~~~
 
 Sometimes a C++ class has a private copy constructor and so code like
-`Class c = Class(1,2);` must not be generated but instead `Class c(1,2);`.
+`Class c = Class(1,2);`:cpp: must not be generated but instead
+`Class c(1,2);`:cpp:.
 For this purpose the Nim proc that wraps a C++ constructor needs to be
 annotated with the `constructor`:idx: pragma. This pragma also helps to generate
 faster C++ code since construction then doesn't invoke the copy constructor:
@@ -7298,7 +7302,7 @@ ImportJs pragma
 Similar to the `importcpp pragma for C++ <#implementation-specific-pragmas-importcpp-pragma>`_,
 the `importjs` pragma can be used to import Javascript methods or
 symbols in general. The generated code then uses the Javascript method
-calling syntax: `obj.method(arg)`.
+calling syntax: ``obj.method(arg)``.
 
 
 ImportObjC pragma
@@ -7306,7 +7310,7 @@ ImportObjC pragma
 Similar to the `importc pragma for C
 <#foreign-function-interface-importc-pragma>`_, the `importobjc` pragma can
 be used to import `Objective C`:idx: methods.  The generated code then uses the
-Objective C method calling syntax: `[obj method param1: arg]`.
+Objective C method calling syntax: ``[obj method param1: arg]``.
 In addition with the `header` and `emit` pragmas this
 allows *sloppy* interfacing with libraries written in Objective C:
 
@@ -7346,8 +7350,8 @@ allows *sloppy* interfacing with libraries written in Objective C:
   g.greet(12, 34)
   g.free()
 
-The compiler needs to be told to generate Objective C (command `objc`) for
-this to work. The conditional symbol `objc` is defined when the compiler
+The compiler needs to be told to generate Objective C (command ``objc``) for
+this to work. The conditional symbol ``objc`` is defined when the compiler
 emits Objective C code.
 
 
@@ -7392,7 +7396,7 @@ will generate this code:
 
 The `.cppNonPod` pragma should be used for non-POD `importcpp` types so that they
 work properly (in particular regarding constructor and destructor) for
-`.threadvar` variables. This requires `--tlsEmulation:off`.
+`.threadvar` variables. This requires ``--tlsEmulation:off``.
 
 .. code-block:: nim
   type Foo {.cppNonPod, importcpp, header: "funs.h".} = object
@@ -7436,12 +7440,12 @@ pragma             description
 ::
    nim c -d:FooBar=42 foobar.nim
 
-In the above example, providing the -d flag causes the symbol
+In the above example, providing the ``-d`` flag causes the symbol
 `FooBar` to be overwritten at compile-time, printing out 42. If the
-`-d:FooBar=42` were to be omitted, the default value of 5 would be
+``-d:FooBar=42`` were to be omitted, the default value of 5 would be
 used. To see if a value was provided, `defined(FooBar)` can be used.
 
-The syntax `-d:flag` is actually just a shortcut for `-d:flag=true`.
+The syntax ``-d:flag`` is actually just a shortcut for ``-d:flag=true``.
 
 User-defined pragmas
 ====================
@@ -7604,7 +7608,7 @@ spelled*:
   proc printf(formatstr: cstring) {.header: "<stdio.h>", importc: "printf", varargs.}
 
 When `importc` is applied to a `let` statement it can omit its value which
-will then be expected to come from C. This can be used to import a C `const`:
+will then be expected to come from C. This can be used to import a C `const`:c:\:
 
 .. code-block::
   {.emit: "const int cconst = 42;".}
@@ -7625,8 +7629,8 @@ is not set to C, other pragmas are available:
 .. code-block:: Nim
   proc p(s: cstring) {.importc: "prefix$1".}
 
-In the example, the external name of `p` is set to `prefixp`. Only `$1`
-is available and a literal dollar sign must be written as `$$`.
+In the example, the external name of `p` is set to `prefixp`. Only ``$1``
+is available and a literal dollar sign must be written as ``$$``.
 
 
 Exportc pragma
@@ -7648,8 +7652,8 @@ The string literal passed to `exportc` can be a format string:
   proc p(s: string) {.exportc: "prefix$1".} =
     echo s
 
-In the example, the external name of `p` is set to `prefixp`. Only `$1`
-is available and a literal dollar sign must be written as `$$`.
+In the example, the external name of `p` is set to `prefixp`. Only ``$1``
+is available and a literal dollar sign must be written as ``$$``.
 
 If the symbol should also be exported to a dynamic library, the `dynlib`
 pragma should be used in addition to the `exportc` pragma. See
@@ -7665,8 +7669,8 @@ mangling. The string literal passed to `extern` can be a format string:
   proc p(s: string) {.extern: "prefix$1".} =
     echo s
 
-In the example, the external name of `p` is set to `prefixp`. Only `$1`
-is available and a literal dollar sign must be written as `$$`.
+In the example, the external name of `p` is set to `prefixp`. Only ``$1``
+is available and a literal dollar sign must be written as ``$$``.
 
 
 Bycopy pragma
@@ -7704,8 +7708,8 @@ strings automatically:
 Union pragma
 ------------
 The `union` pragma can be applied to any `object` type. It means all
-of the object's fields are overlaid in memory. This produces a `union`
-instead of a `struct` in the generated C/C++ code. The object declaration
+of the object's fields are overlaid in memory. This produces a `union`:c:
+instead of a `struct`:c: in the generated C/C++ code. The object declaration
 then must not use inheritance or any GC'ed memory but this is currently not
 checked.
 
@@ -7728,7 +7732,7 @@ a static error. Usage with inheritance should be defined and documented.
 Dynlib pragma for import
 ------------------------
 With the `dynlib` pragma, a procedure or a variable can be imported from
-a dynamic library (`.dll` files for Windows, `lib*.so` files for UNIX).
+a dynamic library (``.dll`` files for Windows, ``lib*.so`` files for UNIX).
 The non-optional argument has to be the name of the dynamic library:
 
 .. code-block:: Nim
@@ -7771,14 +7775,14 @@ string expressions in general:
 
   proc myImport(s: cstring) {.cdecl, importc, dynlib: getDllName().}
 
-**Note**: Patterns like `libtcl(|8.5|8.4).so` are only supported in constant
+**Note**: Patterns like ``libtcl(|8.5|8.4).so`` are only supported in constant
 strings, because they are precompiled.
 
 **Note**: Passing variables to the `dynlib` pragma will fail at runtime
 because of order of initialization problems.
 
 **Note**: A `dynlib` import can be overridden with
-the `--dynlibOverride:name` command-line option. The
+the ``--dynlibOverride:name`` command-line option. The
 `Compiler User Guide <nimc.html>`_ contains further information.
 
 
@@ -7793,15 +7797,15 @@ conjunction with the `exportc` pragma:
   proc exportme(): int {.cdecl, exportc, dynlib.}
 
 This is only useful if the program is compiled as a dynamic library via the
-`--app:lib` command-line option.
+``--app:lib`` command-line option.
 
 
 
 Threads
 =======
 
-To enable thread support the `--threads:on` command-line switch needs to
-be used. The `system` module then contains several threading primitives.
+To enable thread support the ``--threads:on`` command-line switch needs to
+be used. The system_ module then contains several threading primitives.
 See the `threads <threads.html>`_ and `channels <channels.html>`_ modules
 for the low-level thread API. There are also high-level parallelism constructs
 available. See `spawn <manual_experimental.html#parallel-amp-spawn>`_ for
@@ -7842,7 +7846,7 @@ any of its parameters contain a `ref` or `closure` type. This enforces
 the *no heap sharing restriction*.
 
 Routines that are imported from C are always assumed to be `gcsafe`.
-To disable the GC-safety checking the `--threadAnalysis:off` command-line
+To disable the GC-safety checking the ``--threadAnalysis:off`` command-line
 switch can be used. This is a temporary workaround to ease the porting effort
 from old code to the new threading model.
 

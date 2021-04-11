@@ -1,5 +1,3 @@
-.. default-role:: code
-
 =====================
 Nim Tutorial (Part I)
 =====================
@@ -7,6 +5,8 @@ Nim Tutorial (Part I)
 :Author: Andreas Rumpf
 :Version: |nimversion|
 
+.. default-role:: code
+.. include:: rstcommon.rst
 .. contents::
 
 Introduction
@@ -48,7 +48,7 @@ Save this code to the file "greetings.nim". Now compile and run it::
 
   nim compile --run greetings.nim
 
-With the `--run` `switch <nimc.html#compiler-usage-commandminusline-switches>`_ Nim
+With the ``--run`` `switch <nimc.html#compiler-usage-commandminusline-switches>`_ Nim
 executes the file automatically after compilation. You can give your program
 command-line arguments by appending them after the filename::
 
@@ -63,12 +63,12 @@ To compile a release version use::
   nim c -d:release greetings.nim
 
 By default, the Nim compiler generates a large number of runtime checks
-aiming for your debugging pleasure. With `-d:release` some checks are
+aiming for your debugging pleasure. With ``-d:release`` some checks are
 `turned off and optimizations are turned on
 <nimc.html#compiler-usage-compileminustime-symbols>`_.
 
-For benchmarking or production code, use the `-d:release` switch.
-For comparing the performance with unsafe languages like C, use the `-d:danger` switch
+For benchmarking or production code, use the ``-d:release`` switch.
+For comparing the performance with unsafe languages like C, use the ``-d:danger`` switch
 in order to get meaningful, comparable results. Otherwise Nim might be handicapped
 by checks that are **not even available** for C.
 
@@ -535,7 +535,7 @@ differences:
   that belong to the first condition that evaluates to `true`.
 
 The `when` statement is useful for writing platform-specific code, similar to
-the `#ifdef` construct in the C programming language.
+the `#ifdef`:c: construct in the C programming language.
 
 
 Statements and indentation
@@ -596,7 +596,7 @@ Procedures
 
 To define new commands like `echo <system.html#echo,varargs[typed,]>`_
 and `readLine <io.html#readLine,File>`_ in the examples, the concept of a
-`procedure` is needed. (Some languages call them *methods* or *functions*.)
+*procedure* is needed. (Some languages call them *methods* or *functions*.)
 In Nim new procedures are defined with the `proc` keyword:
 
 .. code-block:: nim
@@ -802,7 +802,7 @@ Operators
 ---------
 The Nim library makes heavy use of overloading - one reason for this is that
 each operator like `+` is just an overloaded proc. The parser lets you
-use operators in `infix notation` (`a + b`) or `prefix notation` (`+ a`).
+use operators in *infix notation* (`a + b`) or *prefix notation* (`+ a`).
 An infix operator always receives two arguments, a prefix operator always one.
 (Postfix operators are not possible, because this would be ambiguous: does
 `a @ @ b` mean `(a) @ (@b)` or `(a@) @ (b)`? It always means
@@ -810,7 +810,7 @@ An infix operator always receives two arguments, a prefix operator always one.
 
 Apart from a few built-in keyword operators such as `and`, `or`, `not`,
 operators always consist of these characters:
-``+  -  *  \  /  <  >  =  @  $  ~  &  %  !  ?  ^  .  |``
+`+  -  *  \  /  <  >  =  @  $  ~  &  %  !  ?  ^  .  |`
 
 User-defined operators are allowed. Nothing stops you from defining your own
 `@!?+~` operator, but doing so may reduce readability.
@@ -952,7 +952,7 @@ evaluation. For example:
 
 Characters
 ----------
-The `character type` is called `char`. Its size is always one byte, so
+The *character type* is called `char`. Its size is always one byte, so
 it cannot represent most UTF-8 characters, but it *can* represent one of the bytes
 that makes up a multi-byte UTF-8 character.
 The reason for this is efficiency: for the overwhelming majority of use-cases,
@@ -1220,7 +1220,7 @@ Arrays can be constructed using `[]`:
 The notation `x[i]` is used to access the i-th element of `x`.
 Array access is always bounds checked (at compile-time or at runtime). These
 checks can be disabled via pragmas or invoking the compiler with the
-`--bound_checks:off` command line switch.
+``--bound_checks:off`` command line switch.
 
 Arrays are value types, like any other Nim type. The assignment operator
 copies the whole array contents.
@@ -1620,11 +1620,11 @@ variables! For example:
     path = "usr/local/nimc.html"
     (dir, name, ext) = splitFile(path)
     baddir, badname, badext = splitFile(path)
-  echo dir      # outputs `usr/local`
-  echo name     # outputs `nimc`
-  echo ext      # outputs `.html`
+  echo dir      # outputs "usr/local"
+  echo name     # outputs "nimc"
+  echo ext      # outputs ".html"
   # All the following output the same line:
-  # `(dir: usr/local, name: nimc, ext: .html)`
+  # "(dir: usr/local, name: nimc, ext: .html)"
   echo baddir
   echo badname
   echo badext
@@ -1711,7 +1711,7 @@ Examples are provided in the `manual <manual.html#types-distinct-type>`_.
 
 Modules
 =======
-Nim supports splitting a program into pieces with a module concept.
+Nim supports splitting a program into pieces with a *module* concept.
 Each module is in its own file. Modules enable `information hiding`:idx: and
 `separate compilation`:idx:. A module may gain access to the symbols of another
 module by using the `import`:idx: statement. Only top-level symbols that are marked
