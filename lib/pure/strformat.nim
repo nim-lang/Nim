@@ -641,7 +641,7 @@ macro fmt*(pattern: string; openChar, closeChar: char,fmtChar=':'): untyped =
     assert """{block:
       var res:string
       for i in 1..15:
-        res.add(if i mod 15 == 0: "FizzBuzz"
+        res.add (if i mod 15 == 0: "FizzBuzz"
           elif i mod 5 == 0: "Buzz"
           elif i mod 3 == 0: "Fizz"
           else: $i) & " "
