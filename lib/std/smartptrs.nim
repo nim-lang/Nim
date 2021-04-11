@@ -9,7 +9,7 @@
 ## C++11 like smart pointers. They always use the shared allocator.
 
 
-when defined(nimExperimentalSmartptrs):
+when defined(nimExperimentalSmartptrs) or defined(nimdoc):
   import std/isolation
 
 
@@ -82,7 +82,7 @@ when defined(nimExperimentalSmartptrs):
             atomicLoadN(addr p.val[].atomicCounter, ATOMIC_CONSUME) == 0 else:
             p.val[].atomicCounter == 0):
         if p.deleter != nil:
-          p.deleter(p.val[])
+          p.deleter(p.val[].value)
         else:
           `=destroy`(p.val[])
         when compileOption("threads"):
@@ -117,7 +117,8 @@ when defined(nimExperimentalSmartptrs):
     result.deleter = deleter
 
   template newSharedPtr*[T](val: T, deleter: Deleter[T] = nil): SharedPtr[T] =
-    ## Overload of `newSharedPtr<#newSharedPtr,sinkIsolated[T]>`_.
+    ## Returns a shared pointer which shares
+    ## ownership of the object by reference counting.
     newSharedPtr(isolate(val), deleter)
 
   proc get*[T](p: SharedPtr[T]): var T {.inline.} =
@@ -143,7 +144,7 @@ when defined(nimExperimentalSmartptrs):
       ## Distinct version of `SharedPtr[T]`, which doesn't allow mutating the underlying value.
 
   template newConstPtr*[T](val: T, deleter: Deleter[T] = nil): ConstPtr[T] =
-    ## Similar to `newSharedPtr<#newSharedPtr,sinkIsolated[T]>`_, but the underlying value can't be mutated.
+    ## Similar to `newSharedPtr<#newSharedPtr,T>`_, but the underlying value can't be mutated.
     ConstPtr[T](newSharedPtr(isolate(val), deleter))
 
   proc get*[T](p: ConstPtr[T]): lent T {.inline.} =
@@ -163,7 +164,7 @@ when defined(nimExperimentalSmartptrs):
     else: "(" & $SharedPtr[T](p).val.value & ")"
 
 
-  runnableExamples:
+  runnableExamples("-d:nimExperimentalSmartptrs"):
     import std/isolation
 
     block:
