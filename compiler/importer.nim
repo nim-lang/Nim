@@ -109,16 +109,16 @@ proc rawImportSymbol(c: PContext, s, origin: PSym; importSet: var IntSet) =
 
 proc importSymbol(c: PContext, n: PNode, fromMod: PSym; importSet: var IntSet) =
   let ident = lookups.considerQuotedIdent(c, n)
-  dbg ident, n, fromMod, fromMod.options
+  # dbg ident, n, fromMod, fromMod.options
   let s = someSym(c.graph, fromMod, ident)
-  dbg s
+  # dbg s
   if s == nil:
     errorUndeclaredIdentifier(c, n.info, ident.s)
   else:
     when false:
       if s.kind == skStub: loadStub(s)
     let multiImport = s.kind notin ExportableSymKinds or s.kind in skProcKinds
-    dbg s.kind, multiImport
+    # dbg s.kind, multiImport
     # for an enumeration we have to add all identifiers
     if multiImport:
       # for a overloadable syms add all overloaded routines
@@ -134,7 +134,6 @@ proc importSymbol(c: PContext, n: PNode, fromMod: PSym; importSet: var IntSet) =
     suggestSym(c.graph, n.info, s, c.graph.usageSym, false)
 
 proc addImport(c: PContext; im: sink ImportedModule) =
-  dbg c.imports.len
   for i in 0..high(c.imports):
     if c.imports[i].m == im.m:
       # we have already imported the module: Check which import
@@ -150,7 +149,7 @@ proc addImport(c: PContext; im: sink ImportedModule) =
         of importSet:
           # merge the import sets:
           c.imports[i].imported.incl im.imported
-          dbg i, c.imports[i].imported
+          # dbg i, c.imports[i].imported
       of importExcept:
         case im.mode
         of importAll:
@@ -231,7 +230,7 @@ proc importModuleAs(c: PContext; n: PNode, realModule: PSym, importFlags: Import
       result = createModuleAlias(realModule, nextSymId c.idgen, realModule.name, realModule.info,
                                c.config.options)
     result.options.incl optImportHidden
-    dbg result.options
+    # dbg result.options
     c.friendModulesImportHidden.add realModule # `realModule` needed, not `result`
 
 proc transformImportAs(c: PContext; n: PNode): tuple[node: PNode, importFlags: ImportFlags] =
@@ -335,7 +334,7 @@ proc evalFrom*(c: PContext, n: PNode): PNode =
   if m != nil:
     n[0] = newSymNode(m)
     addDecl(c, m, n.info)               # add symbol to symbol table of module
-    dbg m, m.options
+    # dbg m, m.options
     var im = ImportedModule(m: m, mode: importSet, imported: initIntSet(), importHidden: optImportHidden in m.options)
     for i in 1..<n.len:
       if n[i].kind != nkNilLit:

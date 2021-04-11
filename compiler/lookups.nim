@@ -111,7 +111,7 @@ proc localSearchInScope*(c: PContext, s: PIdent): PSym =
 proc initIdentIter(ti: var ModuleIter; marked: var IntSet; im: ImportedModule; name: PIdent;
                    g: ModuleGraph): PSym =
   result = initModuleIter(ti, g, im.m, name)
-  dbg im.m, im.mode, name, result
+  # dbg im.m, im.mode, name, result
   while result != nil:
     let b =
       case im.mode
@@ -500,7 +500,7 @@ type
 
 proc qualifiedLookUp*(c: PContext, n: PNode, flags: set[TLookupFlag]): PSym =
   const allExceptModule = {low(TSymKind)..high(TSymKind)} - {skModule, skPackage}
-  dbg n, n.kind, flags
+  # dbg n, n.kind, flags
   case n.kind
   of nkIdent, nkAccQuoted:
     var amb = false
@@ -652,7 +652,6 @@ proc symChoiceExtension(o: var TOverloadIter; c: PContext; n: PNode): PSym =
     inc o.importIdx
 
 proc nextOverloadIter*(o: var TOverloadIter, c: PContext, n: PNode): PSym =
-  dbg o.mode, n
   case o.mode
   of oimDone:
     result = nil
@@ -681,7 +680,6 @@ proc nextOverloadIter*(o: var TOverloadIter, c: PContext, n: PNode): PSym =
   of oimSelfModule:
     result = nextIdentIter(o.it, c.topLevelScope.symbols).skipAlias(n, c.config)
   of oimOtherModule:
-    dbg()
     result = nextModuleIter(o.mit, c.graph).skipAlias(n, c.config)
   of oimSymChoice:
     if o.symChoiceIndex < n.len:
