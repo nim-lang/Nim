@@ -144,15 +144,15 @@ An expression like `&"{key} is {value:arg} {{z}}"` is transformed into:
 Parts of the string that are enclosed in the curly braces are interpreted
 as Nim code, to escape a `{` or `}`, double it.
 
-Within a curly expression,however, '{','}', and quoted parentheses must be
-escaped with a backslash.
+Within a curly expression,however, '{','}', must be escaped with a backslash.
+
 To enable evaluating Nim expressions within curlies, inside parentheses
 colons do not need to be escaped.
 ]##
 
 runnableExamples:
   let x = "hello"
-  assert fmt"""{ "\{\(" & x & "\)\}" }""" == "{(hello)}"
+  assert fmt"""{ "\{(" & x & ")\}" }""" == "{(hello)}"
   assert fmt"""{{({ x })}}""" == "{(hello)}"
   assert fmt"""{ $(\{x:1,"world":2\}) }""" == """[("hello", 1), ("world", 2)]"""
 
@@ -602,13 +602,19 @@ proc strformatImpl(pattern: NimNode; openChar, closeChar: char): NimNode =
 
         var subexpr = ""
         var inParens = 0
+        var inSingleQuotes = false
+        var inDoubleQuotes = false
         while i < f.len and f[i] != closeChar and (f[i] != ':' or inParens != 0):
           case f[i]
           of '\\':
             if i < f.len-1 and f[i+1] in {'(',')','{','}',':'}:
               inc i
-          of '(': inc inParens
-          of ')': dec inParens
+          of '\'': inSingleQuotes = not inSingleQuotes
+          of '\"': inDoubleQuotes = not inDoubleQuotes
+          of '(':
+            if not (inSingleQuotes or inDoubleQuotes): inc inParens
+          of ')':
+            if not (inSingleQuotes or inDoubleQuotes): dec inParens
           of '=':
             let start = i
             inc i
@@ -621,7 +627,7 @@ proc strformatImpl(pattern: NimNode; openChar, closeChar: char): NimNode =
           else: discard
           subexpr.add f[i]
           inc i
-         
+
         var x: NimNode
         try:
           x = parseExpr(subexpr)

@@ -1,7 +1,7 @@
 # xxx: test js target
 
 import genericstrformat
-import std/[strformat, strutils, times,tables]
+import std/[strformat, strutils, times,tables,json]
 
 proc main() =
   block: # issue #7632
@@ -295,7 +295,7 @@ proc main() =
           else: $i) & " "
       res)}""" == "1 2 Fizz 4 Buzz Fizz 7 8 Fizz Buzz 11 Fizz 13 14 FizzBuzz "
 
-    doAssert fmt"""{ "\{\(" & msg & "\)\}" }""" == "{(hello)}"
+    doAssert fmt"""{ "\{(" & msg & ")\}" }""" == "{(hello)}"
     doAssert fmt"""{{({ msg })}}""" == "{(hello)}"
     doAssert fmt"""{ $(\{msg:1,"world":2\}) }""" == """[("hello", 1), ("world", 2)]"""
   block: # tests for debug format string
@@ -538,11 +538,13 @@ proc main() =
     doAssert fmt"{(x=7;123.456)=:13e}" == "(x=7;123.456)= 1.234560e+02"
     doAssert x==7
   block: #curly bracket expressions and tuples
-    proc formatValue(result: var string; value:Table|bool; specifier:string) = result.add $value
+    proc formatValue(result: var string; value:Table|bool|JsonNode; specifier:string) = result.add $value
 
     doAssert fmt"""{\{"a"\:1,"b"\:2\}.toTable() = }""" == """{"a":1,"b":2}.toTable() = {"a": 1, "b": 2}"""
     doAssert fmt"""{(\{3: (1,"hi",0.9),4: (4,"lo",1.1)\}).toTable()}""" == """{3: (1, "hi", 0.9), 4: (4, "lo", 1.1)}"""
-    let x,y = 1
-    doAssert fmt"{x==y = }" == "x==y = true"
+    doAssert fmt"""{ (%* \{"name": "Isaac", "books": ["Robot Dreams"]\}) }""" == """{"name":"Isaac","books":["Robot Dreams"]}"""
+  block: #parens in quotes
+    doAssert fmt"{(if true: ')' else: '(')}" == ")"
+    doAssert fmt"{(if true: ']' else: ')')}" == "]"
 # xxx static: main()
 main()
