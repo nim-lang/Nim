@@ -604,15 +604,16 @@ proc strformatImpl(pattern: NimNode; openChar, closeChar: char): NimNode =
         var inParens = 0
         var inSingleQuotes = false
         var inDoubleQuotes = false
+        template notEscaped:bool = f[i-1]!='\\'
         while i < f.len and f[i] != closeChar and (f[i] != ':' or inParens != 0):
           case f[i]
           of '\\':
-            if i < f.len-1 and f[i+1] in {'(',')','{','}',':'}:
+            if i < f.len-1 and f[i+1] in {openChar,closeChar,':'}:
               inc i
           of '\'': 
-            if f[i-1]!='\\': inSingleQuotes = not inSingleQuotes
+            if not inDoubleQuotes and notEscaped: inSingleQuotes = not inSingleQuotes
           of '\"': 
-            if f[i-1]!='\\': inDoubleQuotes = not inDoubleQuotes
+            if notEscaped: inDoubleQuotes = not inDoubleQuotes
           of '(':
             if not (inSingleQuotes or inDoubleQuotes): inc inParens
           of ')':

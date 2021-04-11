@@ -543,6 +543,7 @@ proc main() =
     doAssert fmt"""{\{"a"\:1,"b"\:2\}.toTable() = }""" == """{"a":1,"b":2}.toTable() = {"a": 1, "b": 2}"""
     doAssert fmt"""{(\{3: (1,"hi",0.9),4: (4,"lo",1.1)\}).toTable()}""" == """{3: (1, "hi", 0.9), 4: (4, "lo", 1.1)}"""
     doAssert fmt"""{ (%* \{"name": "Isaac", "books": ["Robot Dreams"]\}) }""" == """{"name":"Isaac","books":["Robot Dreams"]}"""
+    doAssert """%( \%\* {"name": "Isaac"})*""".fmt('%','*') == """{"name":"Isaac"}"""
   block: #parens in quotes that fool my syntax highlighter
     doAssert fmt"{(if true: ')' else: '(')}" == ")"
     doAssert fmt"{(if true: ']' else: ')')}" == "]"
