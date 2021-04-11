@@ -512,7 +512,7 @@ proc icTests(r: var TResults; testsDir: string, cat: Category, options: string) 
         editedTest incrementalOn
         if r.passed != oldPassed+1: break
 
-  when false:
+  when true:
     for file in tooltests:
       let nimcache = nimcacheDir(file, options, getTestSpecTarget())
       removeDir(nimcache)
