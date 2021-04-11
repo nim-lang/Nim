@@ -366,8 +366,8 @@ proc hash*(u: SigHash): Hash =
 proc hash*(x: FileIndex): Hash {.borrow.}
 
 template getC(): untyped =
-  when compiles(c.c.graph): c.c
-  else: c
+  when c is PContext: c
+  else: c.c
 
 template onDefAux(info: TLineInfo; s0: PSym, c0: untyped, isFwd: bool) =
   if s0.kind in ExportableSymKinds:
