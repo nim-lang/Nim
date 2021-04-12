@@ -259,7 +259,9 @@ proc fieldVisible*(c: PContext, f: PSym): bool {.inline.} =
       if fmoduleId == module.id: return true
     let symObj = getFieldOwner(f)
     if symObj!=nil:
+      dbg c.friendSymsImportHidden.len
       for sym in c.friendSymsImportHidden:
+        dbg sym
         # TODO: do we need to check by id?
         if symObj.id == sym.id: return true
 

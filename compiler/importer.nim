@@ -13,7 +13,7 @@ import
   intsets, ast, astalgo, msgs, options, idents, lookups,
   semdata, modulepaths, sigmatch, lineinfos, sets,
   modulegraphs, wordrecg
-
+import renderer # PRTEMP
 proc readExceptSet*(c: PContext, n: PNode): IntSet =
   assert n.kind in {nkImportExceptStmt, nkExportExceptStmt}
   result = initIntSet()
@@ -82,11 +82,13 @@ proc rawImportSymbol(c: PContext, s, origin: PSym; importSet: var IntSet, import
     strTableAdd(c.importTable.symbols, s)
   else:
     importSet.incl s.id
+  dbg s, s.kind, origin
   if s.kind == skType:
     var etyp = s.typ
     case etyp.kind
     of tyObject:
       # TODO: ref object? generic? etc?
+      dbg importFields, origin.options
       if importFields or optImportFields in origin.options:
         c.friendSymsImportHidden.add s # TODO: add if not already
     of {tyBool, tyEnum}:
@@ -136,9 +138,10 @@ proc importSymbol(c: PContext, n: PNode, fromMod: PSym; importSet: var IntSet) =
     else: globalError(c.config, n.info, "expected: " & ${wImportFields})
 
   let ident = lookups.considerQuotedIdent(c, n)
+  dbg importFields, ident, fromMod, n, fromMod.options
   # dbg ident, n, fromMod, fromMod.options
   let s = someSym(c.graph, fromMod, ident)
-  # dbg s
+  dbg s
   if s == nil:
     errorUndeclaredIdentifier(c, n.info, ident.s)
   else:
@@ -209,12 +212,12 @@ template addUnnamedIt(c: PContext, fromMod: PSym; filter: untyped) {.dirty.} =
 
 proc importAllSymbolsExcept(c: PContext, fromMod: PSym, exceptSet: IntSet) =
   # PRTEMP: importHidden: optImportHidden in m.options
-  c.addImport ImportedModule(m: fromMod, mode: importExcept, exceptSet: exceptSet)
+  c.addImport ImportedModule(m: fromMod, mode: importExcept, exceptSet: exceptSet, importHidden: optImportHidden in fromMod.options)
   addUnnamedIt(c, fromMod, it.sym.id notin exceptSet)
 
 proc importAllSymbols*(c: PContext, fromMod: PSym) =
-  # PRTEMP: importHidden: optImportHidden in m.options
-  c.addImport ImportedModule(m: fromMod, mode: importAll)
+  dbg fromMod.options, fromMod
+  c.addImport ImportedModule(m: fromMod, mode: importAll, importHidden: optImportHidden in fromMod.options)
   addUnnamedIt(c, fromMod, true)
   when false:
     var exceptSet: IntSet
@@ -333,10 +336,13 @@ proc impMod(c: PContext; it: PNode; importStmtResult: PNode) =
     # ``addDecl`` needs to be done before ``importAllSymbols``!
     addModuleDecl(c, m, it.info)
     importAllSymbols(c, m)
+    # PRTEMP
     #importForwarded(c, m.ast, emptySet, m)
+    dbg m
 
 proc evalImport*(c: PContext, n: PNode): PNode =
   result = newNodeI(nkImportStmt, n.info)
+  dbg n, c.config$n.info
   for i in 0..<n.len:
     let it = n[i]
     if it.kind == nkInfix and it.len == 3 and it[2].kind == nkBracket:

@@ -1,4 +1,6 @@
+static: echo "ok1"
 import ./m1 {.all, fields.} as m
+# PRTEMP
 # from ./m1 {.all.} as mtmp import Foo5 {.fields.}
 doAssert foo1 == 2
 doAssert m.foo1 == 2
@@ -10,6 +12,8 @@ doAssert m.m3p1 == 2
 
 ## field access
 var x = Foo5(z1: "foo", z2: m.kg1)
+# var x = Foo5(z2: m.kg1)
+# var x = Foo5()
 doAssert x.z1 == "foo"
 
 var f0: Foo5
