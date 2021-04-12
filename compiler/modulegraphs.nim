@@ -378,13 +378,7 @@ template onDefAux(info: TLineInfo; s0: PSym, c0: untyped, isFwd: bool) =
       # unfortunately, can't use `c.isTopLevel` because the scope isn't closed yet
       top = c.currentScope.depthLevel <= 3
     else: top = c.currentScope.depthLevel <= 2
-    if top:
-      let loc = toFileLineCol(c.config, info)
-      # PRTEMP: strTableAdd(c.module.tabAll, s0); already done in addInterfaceDeclAux?
-      # if c.module != nil: strTableAdd(c.module.tabAll, s0)
-      # strTableAdd(c.module.semtabAll(c.graph), s)
-      # if c.module != nil: exportSym(c, s0)
-      if c.module != nil: strTableAdd(c.module.semtabAll(c.graph), s0)
+    if top and c.module != nil: strTableAdd(c.module.semtabAll(c.graph), s0)
 
 when defined(nimfind):
   template onUse*(info: TLineInfo; s: PSym) =

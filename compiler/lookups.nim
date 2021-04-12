@@ -158,8 +158,6 @@ proc allPureEnumFields(c: PContext; name: PIdent): seq[PSym] =
     result.add res
     res = nextIdentIter(ti, c.pureEnumFields)
 
-# iterator findFriendSymsImportHidden*(c: PContext): (PSym, int, bool) =
-
 iterator allSyms*(c: PContext): (PSym, int, bool) =
   # really iterate over all symbols in all the scopes. This is expensive
   # and only used by suggest.nim.
