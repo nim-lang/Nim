@@ -275,6 +275,7 @@ proc newOptionEntry*(conf: ConfigRef): POptionEntry =
   result.dynlib = nil
   result.notes = conf.notes
   result.warningAsErrors = conf.warningAsErrors
+  dbg("new ::")
 
 proc pushOptionEntry*(c: PContext): POptionEntry =
   new(result)
@@ -286,6 +287,7 @@ proc pushOptionEntry*(c: PContext): POptionEntry =
   result.warningAsErrors = c.config.warningAsErrors
   result.features = c.features
   c.optionStack.add(result)
+  dbg("push >>")
 
 proc popOptionEntry*(c: PContext) =
   c.config.options = c.optionStack[^1].options
@@ -293,6 +295,7 @@ proc popOptionEntry*(c: PContext) =
   c.config.warningAsErrors = c.optionStack[^1].warningAsErrors
   c.features = c.optionStack[^1].features
   c.optionStack.setLen(c.optionStack.len - 1)
+  dbg("pop <<")
 
 proc newContext*(graph: ModuleGraph; module: PSym): PContext =
   new(result)

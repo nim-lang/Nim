@@ -619,6 +619,7 @@ var
 
 type
   TMagic* = enum # symbols that require compiler magic:
+    # see also: magicsAfterOverloadResolution, getConstExpr, semMagic
     mNone,
     mDefined, mDeclared, mDeclaredInScope, mCompiles, mArrGet, mArrPut, mAsgn,
     mLow, mHigh, mSizeOf, mAlignOf, mOffsetOf, mTypeTrait,
@@ -691,7 +692,7 @@ type
     mInstantiationInfo, mGetTypeInfo, mGetTypeInfoV2,
     mNimvm, mIntDefine, mStrDefine, mBoolDefine, mRunnableExamples,
     mException, mBuiltinType, mSymOwner, mUncheckedArray, mGetImplTransf,
-    mSymIsInstantiationOf, mNodeId
+    mSymIsInstantiationOf, mNodeId, mPrivateAccess
 
 
 # things that we can evaluate safely at compile time, even if not asked for it:

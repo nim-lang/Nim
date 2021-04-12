@@ -210,7 +210,6 @@ proc nextModuleIter*(mi: var ModuleIter; g: ModuleGraph): PSym =
   if mi.fromRod:
     result = nextRodIter(mi.rodIt, g.packed)
   else:
-    dbg mi.importHidden, mi.modIndex
     if mi.importHidden:
       result = nextIdentIter(mi.ti, g.ifaces[mi.modIndex].interfAll)
     else:
@@ -239,7 +238,6 @@ proc someSym*(g: ModuleGraph; m: PSym; name: PIdent): PSym =
   if isCachedModule(g, m):
     result = interfaceSymbol(g.config, g.cache, g.packed, FileIndex(m.position), name)
   else:
-    dbg m.options, m, name
     if optImportHidden in m.options:
       result = strTableGet(g.ifaces[m.position].interfAll, name)
     else:

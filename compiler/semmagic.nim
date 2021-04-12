@@ -577,5 +577,15 @@ proc magicsAfterOverloadResolution(c: PContext, n: PNode,
     if n[1].typ.skipTypes(abstractInst).kind in {tyUInt..tyUInt64}:
       n[0].sym.magic = mSubU
     result = n
+  of mPrivateAccess:
+    checkMinSonsLen(n, 2, c.config)
+    let t = n[1].typ
+    internalAssert c.config, t != nil and t.kind == tyTypeDesc
+    let sym = t[0].sym
+    dbg sym
+    c.friendSymsImportHidden.add sym
+    # c.currentScope.friendSymsImportHidden.add sym
+    result = newNodeIT(nkEmpty, n.info, getSysType(c.graph, n.info, tyVoid))
+    # result.typ = newTypeS(tyVoid, c)
   else:
     result = n
