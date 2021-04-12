@@ -302,16 +302,12 @@ proc myImportModule(c: PContext, n: var PNode, importStmtResult: PNode): PSym =
     importStmtResult.add newSymNode(result, n.info)
     #newStrNode(toFullPath(c.config, f), n.info)
 
-proc addModuleDecl(c: PContext, module: PSym, info: TLineInfo) =
-  var module = module
-  addDecl(c, module, info) # add symbol to symbol table of module
-
 proc impMod(c: PContext; it: PNode; importStmtResult: PNode) =
   var it = it
   let m = myImportModule(c, it, importStmtResult)
   if m != nil:
     # ``addDecl`` needs to be done before ``importAllSymbols``!
-    addModuleDecl(c, m, it.info)
+    addDecl(c, m, it.info) # add symbol to symbol table of module
     importAllSymbols(c, m)
     # PRTEMP
     #importForwarded(c, m.ast, emptySet, m)
@@ -346,7 +342,7 @@ proc evalFrom*(c: PContext, n: PNode): PNode =
   var m = myImportModule(c, n[0], result)
   if m != nil:
     n[0] = newSymNode(m)
-    addModuleDecl(c, m, n.info)
+    addDecl(c, m, n.info) # add symbol to symbol table of module
     var im = ImportedModule(m: m, mode: importSet, imported: initIntSet(), importHidden: optImportHidden in m.options)
     for i in 1..<n.len:
       if n[i].kind != nkNilLit:
@@ -359,6 +355,6 @@ proc evalImportExcept*(c: PContext, n: PNode): PNode =
   var m = myImportModule(c, n[0], result)
   if m != nil:
     n[0] = newSymNode(m)
-    addModuleDecl(c, m, n.info)
+    addDecl(c, m, n.info) # add symbol to symbol table of module
     importAllSymbolsExcept(c, m, readExceptSet(c, n))
     #importForwarded(c, m.ast, exceptSet, m)
