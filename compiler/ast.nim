@@ -842,7 +842,7 @@ type
     depthLevel*: int
     symbols*: TStrTable
     parent*: PScope
-    friendSymsImportHidden2*: seq[PSym]
+    allowPrivateAccess*: seq[PSym] #  # enable access to private fields
 
   PScope* = ref TScope
 

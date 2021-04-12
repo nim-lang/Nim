@@ -111,7 +111,6 @@ type
     wInOut = "inout", wByCopy = "bycopy", wByRef = "byref", wOneWay = "oneway",
     wBitsize = "bitsize",
     wImportHidden = "all",
-    wImportFields = "fields",
 
   TSpecialWords* = set[TSpecialWord]
 

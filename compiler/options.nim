@@ -42,7 +42,6 @@ type                          # please make sure we have under 32 options
     optSinkInference          # 'sink T' inference
     optCursorInference
     optImportHidden
-    optImportFields
 
   TOptions* = set[TOption]
   TGlobalOption* = enum       # **keep binary compatible**

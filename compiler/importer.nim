@@ -64,7 +64,7 @@ proc importPureEnumFields(c: PContext; s: PSym; etyp: PType) =
     if e != nil:
       importPureEnumField(c, e)
 
-proc rawImportSymbol(c: PContext, s, origin: PSym; importSet: var IntSet, importFields = false) =
+proc rawImportSymbol(c: PContext, s, origin: PSym; importSet: var IntSet) =
   # This does not handle stubs, because otherwise loading on demand would be
   # pointless in practice. So importing stubs is fine here!
   # check if we have already a symbol of the same name:
@@ -83,13 +83,8 @@ proc rawImportSymbol(c: PContext, s, origin: PSym; importSet: var IntSet, import
   else:
     importSet.incl s.id
   if s.kind == skType:
-    var etyp = s.typ
-    case etyp.kind
-    of tyObject:
-      # TODO: ref object? generic? etc?
-      if importFields or optImportFields in origin.options:
-        c.friendSymsImportHidden.add s # TODO: add if not already
-    of {tyBool, tyEnum}:
+    let etyp = s.typ
+    if etyp.kind in {tyBool, tyEnum}:
       for j in 0..<etyp.n.len:
         var e = etyp.n[j].sym
         if e.kind != skEnumField:
@@ -106,7 +101,6 @@ proc rawImportSymbol(c: PContext, s, origin: PSym; importSet: var IntSet, import
             rawImportSymbol(c, e, origin, importSet)
           else:
             importPureEnumField(c, e)
-    else: discard
   else:
     if s.kind == skConverter: addConverter(c, LazySym(sym: s))
     if hasPattern(s): addPattern(c, LazySym(sym: s))
@@ -128,12 +122,9 @@ proc splitPragmas(c: PContext, n: PNode): (PNode, seq[TSpecialWord]) =
       (result[0][^1], result[1]) = splitPragmas(c, result[0][^1])
 
 proc importSymbol(c: PContext, n: PNode, fromMod: PSym; importSet: var IntSet) =
-  var importFields = false
   let (n, kws) = splitPragmas(c, n)
-  for ai in kws:
-    case ai:
-    of wImportFields: importFields = true
-    else: globalError(c.config, n.info, "expected: " & ${wImportFields})
+  if kws.len > 0:
+    globalError(c.config, n.info, "unexpected pragma")
 
   let ident = lookups.considerQuotedIdent(c, n)
   let s = someSym(c.graph, fromMod, ident)
@@ -151,10 +142,10 @@ proc importSymbol(c: PContext, n: PNode, fromMod: PSym; importSet: var IntSet) =
       while e != nil:
         if e.name.id != s.name.id: internalError(c.config, n.info, "importSymbol: 3")
         if s.kind in ExportableSymKinds:
-          rawImportSymbol(c, e, fromMod, importSet, importFields)
+          rawImportSymbol(c, e, fromMod, importSet)
         e = nextModuleIter(it, c.graph)
     else:
-      rawImportSymbol(c, s, fromMod, importSet, importFields)
+      rawImportSymbol(c, s, fromMod, importSet)
     suggestSym(c.graph, n.info, s, c.graph.usageSym, false)
 
 proc addImport(c: PContext; im: sink ImportedModule) =
@@ -235,7 +226,6 @@ proc importForwarded(c: PContext, n: PNode, exceptSet: IntSet; fromMod: PSym; im
 type
   ImportFlag = enum
     ifImportHidden
-    ifImportFields
   ImportFlags = set[ImportFlag]
 
 proc importModuleAs(c: PContext; n: PNode, realModule: PSym, importFlags: ImportFlags): PSym =
@@ -248,13 +238,12 @@ proc importModuleAs(c: PContext; n: PNode, realModule: PSym, importFlags: Import
     # some misguided guy will write 'import abc.foo as foo' ...
     result = createModuleAlias(realModule, nextSymId c.idgen, n[1].ident, realModule.info,
                                c.config.options)
-  if ifImportHidden in importFlags or ifImportFields in importFlags:
+  if ifImportHidden in importFlags:
     if result == realModule:
       # `createModuleAlias` needed otherwise `realModule` would be affected, see D20201209T194412.
       result = createModuleAlias(realModule, nextSymId c.idgen, realModule.name, realModule.info,
                                c.config.options)
-    if ifImportHidden in importFlags: result.options.incl optImportHidden
-    if ifImportFields in importFlags: result.options.incl optImportFields
+    result.options.incl optImportHidden
 
 proc transformImportAs(c: PContext; n: PNode): tuple[node: PNode, importFlags: ImportFlags] =
   var ret: typeof(result)
@@ -264,8 +253,7 @@ proc transformImportAs(c: PContext; n: PNode): tuple[node: PNode, importFlags: I
     for ai in kws:
       case ai
       of wImportHidden: ret.importFlags.incl ifImportHidden
-      of wImportFields: ret.importFlags.incl ifImportFields
-      else: globalError(c.config, n.info, "invalid pragma, expected: " & ${wImportHidden, wImportFields})
+      else: globalError(c.config, n.info, "invalid pragma, expected: " & ${wImportHidden})
 
   if n.kind == nkInfix and considerQuotedIdent(c, n[0]).s == "as":
     ret.node = newNodeI(nkImportAs, n.info)

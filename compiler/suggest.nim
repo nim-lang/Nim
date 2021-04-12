@@ -260,7 +260,7 @@ proc fieldVisible*(c: PContext, f: PSym): bool {.inline.} =
     let symObj = getFieldOwner(f)
     if symObj!=nil:
       for scope in allScopes(c.currentScope):
-        for sym in scope.friendSymsImportHidden2:
+        for sym in scope.allowPrivateAccess:
           if symObj.id == sym.id: return true
 
 proc getQuality(s: PSym): range[0..100] =
