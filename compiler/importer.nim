@@ -195,7 +195,6 @@ template addUnnamedIt(c: PContext, fromMod: PSym; filter: untyped) {.dirty.} =
       importPureEnumFields(c, it.sym, it.sym.typ)
 
 proc importAllSymbolsExcept(c: PContext, fromMod: PSym, exceptSet: IntSet) =
-  # PRTEMP: importHidden: optImportHidden in m.options
   c.addImport ImportedModule(m: fromMod, mode: importExcept, exceptSet: exceptSet, importHidden: optImportHidden in fromMod.options)
   addUnnamedIt(c, fromMod, it.sym.id notin exceptSet)
 
