@@ -842,6 +842,7 @@ type
     depthLevel*: int
     symbols*: TStrTable
     parent*: PScope
+    friendSymsImportHidden2*: seq[PSym]
 
   PScope* = ref TScope
 
