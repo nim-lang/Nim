@@ -238,6 +238,7 @@ proc someSym*(g: ModuleGraph; m: PSym; name: PIdent): PSym =
   if isCachedModule(g, m):
     result = interfaceSymbol(g.config, g.cache, g.packed, FileIndex(m.position), name)
   else:
+    dbg m.options, m, name
     if optImportHidden in m.options:
       result = strTableGet(g.ifaces[m.position].interfAll, name)
     else:

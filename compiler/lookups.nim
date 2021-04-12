@@ -538,6 +538,7 @@ proc qualifiedLookUp*(c: PContext, n: PNode, flags: set[TLookupFlag]): PSym =
         ident = n[1].ident
       elif n[1].kind == nkAccQuoted:
         ident = considerQuotedIdent(c, n[1])
+      dbg m, ident, m == c.module
       if ident != nil:
         if m == c.module:
           result = strTableGet(c.topLevelScope.symbols, ident).skipAlias(n, c.config)
