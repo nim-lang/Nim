@@ -260,9 +260,9 @@ proc storeTypeLater(t: PType; c: var PackedEncoder; m: var PackedModule): Packed
     assert t.uniqueId.module >= 0
     assert t.uniqueId.item > 0
     return PackedItemId(module: toLitId(t.uniqueId.module.FileIndex, c, m), item: t.uniqueId.item)
-  assert t.itemId.module >= 0
+  assert t.uniqueId.module >= 0
   assert t.uniqueId.item > 0
-  result = PackedItemId(module: toLitId(t.itemId.module.FileIndex, c, m), item: t.uniqueId.item)
+  result = PackedItemId(module: toLitId(t.uniqueId.module.FileIndex, c, m), item: t.uniqueId.item)
   addMissing(c, t)
 
 proc storeSymLater(s: PSym; c: var PackedEncoder; m: var PackedModule): PackedItemId =
@@ -318,9 +318,9 @@ proc storeType(t: PType; c: var PackedEncoder; m: var PackedModule): PackedItemI
     # fill the reserved slot, nothing else:
     m.sh.types[t.uniqueId.item] = p
 
-  assert t.itemId.module >= 0
+  assert t.uniqueId.module >= 0
   assert t.uniqueId.item > 0
-  result = PackedItemId(module: toLitId(t.itemId.module.FileIndex, c, m), item: t.uniqueId.item)
+  result = PackedItemId(module: toLitId(t.uniqueId.module.FileIndex, c, m), item: t.uniqueId.item)
 
 proc toPackedLib(l: PLib; c: var PackedEncoder; m: var PackedModule): PackedLib =
   ## the plib hangs off the psym via the .annex field
