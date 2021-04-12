@@ -166,6 +166,7 @@ proc importSymbol(c: PContext, n: PNode, fromMod: PSym; importSet: var IntSet) =
 proc addImport(c: PContext; im: sink ImportedModule) =
   for i in 0..high(c.imports):
     if c.imports[i].m == im.m:
+      # dbg 
       # we have already imported the module: Check which import
       # is more "powerful":
       case c.imports[i].mode
@@ -256,11 +257,13 @@ proc importModuleAs(c: PContext; n: PNode, realModule: PSym, importFlags: Import
     # some misguided guy will write 'import abc.foo as foo' ...
     result = createModuleAlias(realModule, nextSymId c.idgen, n[1].ident, realModule.info,
                                c.config.options)
+  dbg importFlags, realModule, n, result
   if ifImportHidden in importFlags or ifImportFields in importFlags:
     if result == realModule:
       # `createModuleAlias` needed otherwise `realModule` would be affected, see D20201209T194412.
       result = createModuleAlias(realModule, nextSymId c.idgen, realModule.name, realModule.info,
                                c.config.options)
+      dbg "alias", result
     if ifImportHidden in importFlags: result.options.incl optImportHidden
     if ifImportFields in importFlags: result.options.incl optImportFields
 
@@ -324,9 +327,10 @@ proc myImportModule(c: PContext, n: var PNode, importStmtResult: PNode): PSym =
 
 proc addModuleDecl(c: PContext, module: PSym, info: TLineInfo) =
   var module = module
-  let sym = module.aliasedModule
-  if sym != nil and sym.name == module.name:
-    module = sym
+  when false:
+    let sym = module.aliasedModule
+    if sym != nil and sym.name == module.name:
+      module = sym
   addDecl(c, module, info) # add symbol to symbol table of module
 
 proc impMod(c: PContext; it: PNode; importStmtResult: PNode) =
@@ -383,6 +387,7 @@ proc evalImportExcept*(c: PContext, n: PNode): PNode =
   result = newNodeI(nkImportStmt, n.info)
   checkMinSonsLen(n, 2, c.config)
   var m = myImportModule(c, n[0], result)
+  dbg m
   if m != nil:
     n[0] = newSymNode(m)
     addModuleDecl(c, m, n.info)

@@ -35,5 +35,5 @@ doAssert not declared(foo2)
 doAssert not declared(m1.foo2)
 from ./m1 {.all.} import nil
 doAssert not declared(foo2)
-# doAssert declared(m1.foo2)
+doAssert declared(m1.foo2)
 import ./m1 {.all.}

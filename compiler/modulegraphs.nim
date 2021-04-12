@@ -210,6 +210,7 @@ proc nextModuleIter*(mi: var ModuleIter; g: ModuleGraph): PSym =
   if mi.fromRod:
     result = nextRodIter(mi.rodIt, g.packed)
   else:
+    dbg mi.importHidden, mi.modIndex
     if mi.importHidden:
       result = nextIdentIter(mi.ti, g.ifaces[mi.modIndex].interfAll)
     else:

@@ -506,7 +506,11 @@ proc qualifiedLookUp*(c: PContext, n: PNode, flags: set[TLookupFlag]): PSym =
     var amb = false
     var ident = considerQuotedIdent(c, n)
     if checkModule in flags:
-      result = searchInScopes(c, ident, amb).skipAlias(n, c.config)
+      # result = searchInScopes(c, ident, amb).skipAlias(n, c.config)
+      result = searchInScopes(c, ident, amb)
+      dbg result, ident, amb
+      result = result.skipAlias(n, c.config)
+      dbg result
     else:
       let candidates = searchInScopesFilterBy(c, ident, allExceptModule) #.skipAlias(n, c.config)
       if candidates.len > 0:
@@ -532,6 +536,7 @@ proc qualifiedLookUp*(c: PContext, n: PNode, flags: set[TLookupFlag]): PSym =
   of nkDotExpr:
     result = nil
     var m = qualifiedLookUp(c, n[0], (flags * {checkUndeclared}) + {checkModule})
+    dbg m
     if m != nil and m.kind == skModule:
       var ident: PIdent = nil
       if n[1].kind == nkIdent:
