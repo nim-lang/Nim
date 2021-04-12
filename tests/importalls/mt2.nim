@@ -1,4 +1,4 @@
-from ./m1 {.all.} as r1 import foo1, Foo5 {.fields.}
+from ./m1 {.all.} as r1 import foo1
 from ./m1 {.all.} as r2 import foo7
 
 doAssert foo1 == 2
@@ -20,6 +20,8 @@ doAssert not compiles(r1.kg1b)
 doAssert not compiles(r1.foo12())
 
 ## field access
+import std/importutils
+privateAccess(r1.Foo5)
 var x = r1.Foo5(z1: "foo", z2: r1.kg1)
 doAssert x.z1 == "foo"
 

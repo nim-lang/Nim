@@ -1,6 +1,4 @@
-import ./m1 {.all, fields.} as m
-# PRTEMP
-# from ./m1 {.all.} as mtmp import Foo5 {.fields.}
+import ./m1 {.all.} as m
 doAssert foo1 == 2
 doAssert m.foo1 == 2
 
@@ -10,6 +8,8 @@ doAssert m.foo1Aux == 2
 doAssert m.m3p1 == 2
 
 ## field access
+import std/importutils
+privateAccess(Foo5)
 var x = Foo5(z1: "foo", z2: m.kg1)
 doAssert x.z1 == "foo"
 

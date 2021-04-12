@@ -582,7 +582,6 @@ proc magicsAfterOverloadResolution(c: PContext, n: PNode,
     let t = n[1].typ
     internalAssert c.config, t != nil and t.kind == tyTypeDesc
     let sym = t[0].sym
-    dbg sym
     # c.friendSymsImportHidden.add sym
     c.currentScope.friendSymsImportHidden2.add sym
     result = newNodeIT(nkEmpty, n.info, getSysType(c.graph, n.info, tyVoid))

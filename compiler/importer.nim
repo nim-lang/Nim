@@ -82,13 +82,11 @@ proc rawImportSymbol(c: PContext, s, origin: PSym; importSet: var IntSet, import
     strTableAdd(c.importTable.symbols, s)
   else:
     importSet.incl s.id
-  dbg s, s.kind, origin
   if s.kind == skType:
     var etyp = s.typ
     case etyp.kind
     of tyObject:
       # TODO: ref object? generic? etc?
-      dbg importFields, origin.options
       if importFields or optImportFields in origin.options:
         c.friendSymsImportHidden.add s # TODO: add if not already
     of {tyBool, tyEnum}:
@@ -138,17 +136,13 @@ proc importSymbol(c: PContext, n: PNode, fromMod: PSym; importSet: var IntSet) =
     else: globalError(c.config, n.info, "expected: " & ${wImportFields})
 
   let ident = lookups.considerQuotedIdent(c, n)
-  dbg importFields, ident, fromMod, n, fromMod.options
-  # dbg ident, n, fromMod, fromMod.options
   let s = someSym(c.graph, fromMod, ident)
-  dbg s
   if s == nil:
     errorUndeclaredIdentifier(c, n.info, ident.s)
   else:
     when false:
       if s.kind == skStub: loadStub(s)
     let multiImport = s.kind notin ExportableSymKinds or s.kind in skProcKinds
-    # dbg s.kind, multiImport
     # for an enumeration we have to add all identifiers
     if multiImport:
       # for a overloadable syms add all overloaded routines
@@ -166,7 +160,6 @@ proc importSymbol(c: PContext, n: PNode, fromMod: PSym; importSet: var IntSet) =
 proc addImport(c: PContext; im: sink ImportedModule) =
   for i in 0..high(c.imports):
     if c.imports[i].m == im.m:
-      # dbg 
       # we have already imported the module: Check which import
       # is more "powerful":
       case c.imports[i].mode
@@ -180,7 +173,6 @@ proc addImport(c: PContext; im: sink ImportedModule) =
         of importSet:
           # merge the import sets:
           c.imports[i].imported.incl im.imported
-          # dbg i, c.imports[i].imported
       of importExcept:
         case im.mode
         of importAll:
@@ -217,7 +209,6 @@ proc importAllSymbolsExcept(c: PContext, fromMod: PSym, exceptSet: IntSet) =
   addUnnamedIt(c, fromMod, it.sym.id notin exceptSet)
 
 proc importAllSymbols*(c: PContext, fromMod: PSym) =
-  dbg fromMod.options, fromMod
   c.addImport ImportedModule(m: fromMod, mode: importAll, importHidden: optImportHidden in fromMod.options)
   addUnnamedIt(c, fromMod, true)
   when false:
@@ -257,13 +248,11 @@ proc importModuleAs(c: PContext; n: PNode, realModule: PSym, importFlags: Import
     # some misguided guy will write 'import abc.foo as foo' ...
     result = createModuleAlias(realModule, nextSymId c.idgen, n[1].ident, realModule.info,
                                c.config.options)
-  dbg importFlags, realModule, n, result
   if ifImportHidden in importFlags or ifImportFields in importFlags:
     if result == realModule:
       # `createModuleAlias` needed otherwise `realModule` would be affected, see D20201209T194412.
       result = createModuleAlias(realModule, nextSymId c.idgen, realModule.name, realModule.info,
                                c.config.options)
-      dbg "alias", result
     if ifImportHidden in importFlags: result.options.incl optImportHidden
     if ifImportFields in importFlags: result.options.incl optImportFields
 
@@ -342,11 +331,9 @@ proc impMod(c: PContext; it: PNode; importStmtResult: PNode) =
     importAllSymbols(c, m)
     # PRTEMP
     #importForwarded(c, m.ast, emptySet, m)
-    dbg m
 
 proc evalImport*(c: PContext, n: PNode): PNode =
   result = newNodeI(nkImportStmt, n.info)
-  dbg n, c.config$n.info
   for i in 0..<n.len:
     let it = n[i]
     if it.kind == nkInfix and it.len == 3 and it[2].kind == nkBracket:
@@ -376,7 +363,6 @@ proc evalFrom*(c: PContext, n: PNode): PNode =
   if m != nil:
     n[0] = newSymNode(m)
     addModuleDecl(c, m, n.info)
-    # dbg m, m.options
     var im = ImportedModule(m: m, mode: importSet, imported: initIntSet(), importHidden: optImportHidden in m.options)
     for i in 1..<n.len:
       if n[i].kind != nkNilLit:
@@ -387,7 +373,6 @@ proc evalImportExcept*(c: PContext, n: PNode): PNode =
   result = newNodeI(nkImportStmt, n.info)
   checkMinSonsLen(n, 2, c.config)
   var m = myImportModule(c, n[0], result)
-  dbg m
   if m != nil:
     n[0] = newSymNode(m)
     addModuleDecl(c, m, n.info)
