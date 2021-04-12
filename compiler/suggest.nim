@@ -264,11 +264,21 @@ proc fieldVisible*(c: PContext, f: PSym): bool {.inline.} =
       PRTEMP: how to allow:
       from foo {.fields.} import bar
       ]#
-      for sym in c.friendSymsImportHidden:
-        dbg sym
-        # TODO: do we need to check by id?
-        if symObj.id == sym.id: return true
+
+      for scope in allScopes(c.currentScope):
+        for sym in scope.friendSymsImportHidden2:
+          if symObj.id == sym.id: return true
+          # if sym == 
+      #   if friendSymsImportHidden
+      #   result = strTableGet(scope.symbols, s)
+      #   if result != nil: return result
+      # result = someSymFromImportTable(c, s, ambiguous)
+
       # for sym in c.friendSymsImportHidden:
+      #   dbg sym
+      #   # TODO: do we need to check by id?
+      #   if symObj.id == sym.id: return true
+      # # for sym in c.friendSymsImportHidden:
 
 proc getQuality(s: PSym): range[0..100] =
   result = 100

@@ -75,7 +75,7 @@ proc closeScope*(c: PContext) =
   ensureNoMissingOrUnusedSymbols(c, c.currentScope)
   rawCloseScope(c)
 
-iterator allScopes(scope: PScope): PScope =
+iterator allScopes*(scope: PScope): PScope =
   var current = scope
   while current != nil:
     yield current
@@ -158,6 +158,8 @@ proc allPureEnumFields(c: PContext; name: PIdent): seq[PSym] =
   while res != nil:
     result.add res
     res = nextIdentIter(ti, c.pureEnumFields)
+
+# iterator findFriendSymsImportHidden*(c: PContext): (PSym, int, bool) =
 
 iterator allSyms*(c: PContext): (PSym, int, bool) =
   # really iterate over all symbols in all the scopes. This is expensive
