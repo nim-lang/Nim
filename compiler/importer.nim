@@ -304,10 +304,6 @@ proc myImportModule(c: PContext, n: var PNode, importStmtResult: PNode): PSym =
 
 proc addModuleDecl(c: PContext, module: PSym, info: TLineInfo) =
   var module = module
-  when false:
-    let sym = module.aliasedModule
-    if sym != nil and sym.name == module.name:
-      module = sym
   addDecl(c, module, info) # add symbol to symbol table of module
 
 proc impMod(c: PContext; it: PNode; importStmtResult: PNode) =

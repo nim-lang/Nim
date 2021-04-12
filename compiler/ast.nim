@@ -854,8 +854,6 @@ type
       #procInstCache*: seq[PInstantiation]
       gcUnsafetyReason*: PSym  # for better error messages wrt gcsafe
       transformedBody*: PNode  # cached body after transf pass
-    of skModule:
-      aliasedModule*: PSym       # for `createModuleAlias`
     of skLet, skVar, skField, skForVar:
       guard*: PSym
       bitsize*: int
@@ -1486,7 +1484,6 @@ proc createModuleAlias*(s: PSym, id: ItemId, newIdent: PIdent, info: TLineInfo;
                         options: TOptions): PSym =
   result = newSym(s.kind, newIdent, id, s.owner, info, options)
   # keep ID!
-  result.aliasedModule = s
   result.ast = s.ast
   #result.id = s.id # XXX figure out what to do with the ID.
   result.flags = s.flags
