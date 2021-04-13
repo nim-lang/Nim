@@ -307,12 +307,15 @@
 - Added `iterable[T]` type class to match called iterators, which enables writing:
   `template fn(a: iterable)` instead of `template fn(a: untyped)`
 
-
 - A new import syntax `import {.all} foo` now allows to import all symbols (public or private)
-  from `foo`. It works in combination with all pre-existing import features. This
-  helps avoid using workarounds such as using `include` when you need a private symbol for
-  testing (which has known issues) or making some internal APIs public just because another internal
-  module needs those. It also helps mitigate the lack of cyclic imports in some cases.
+  from `foo`. It works in combination with all pre-existing import features.
+  This reduces or eliminates the need for workarounds such as using `include` (which has known issues)
+  when you need a private symbol for testing or making some internal APIs public just because
+  another internal module needs those.
+  It also helps mitigate the lack of cyclic imports in some cases.
+
+- Added a new module `privateAccess`, and an API `privateAccess`, which allows access to private fields
+  for an object type in the current scope.
 
 ## Compiler changes
 
