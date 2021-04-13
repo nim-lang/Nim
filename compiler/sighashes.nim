@@ -157,13 +157,15 @@ proc hashType(c: var MD5Context, t: PType; flags: set[ConsiderFlag]) =
         c.hashSym(t.sym)
 
       if "Foo" in $t:
-        dbg t.sym, t, t.kind, flags, t.sym.flags, t.len
+        dbg t.sym, t, t.kind, flags, t.sym.flags, t.len, t.owner, t.sym.owner, t.owner.flags, t.owner.kind, t.owner.typ.kind
         if t.len > 0:
           let t2 = t[0]
           dbg t2
+      template hasFlag(sym): bool =
+        {sfAnon, sfGenSym} * sym.flags != {}
       # TODO: consider enum; consider top-level vs not
-      if {sfAnon, sfGenSym} * t.sym.flags != {} or "ObjectType" in $t:
-      # if true:
+      if hasFlag(t.sym) or (t.kind == tyObject and t.owner.kind == skType and t.owner.typ.kind == tyRef and hasFlag(t.owner)):
+        # for `PFoo:ObjectType`, arising from `type PFoo = ref object`
         # Generated object names can be identical, so we need to
         # disambiguate furthermore by hashing the field types and names.
         if t.n.len > 0:
