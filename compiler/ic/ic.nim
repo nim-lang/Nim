@@ -254,41 +254,31 @@ proc storeTypeLater(t: PType; c: var PackedEncoder; m: var PackedModule): Packed
   # we only write one tree into m.bodies after the other.
   if t.isNil: return nilItemId
 
-  if t.uniqueId.module != c.thisModule:
-    # XXX Assert here that it already was serialized in the foreign module!
-    # it is a foreign type:
-    assert t.uniqueId.module >= 0
-    assert t.uniqueId.item > 0
-    return PackedItemId(module: toLitId(t.uniqueId.module.FileIndex, c, m), item: t.uniqueId.item)
   assert t.uniqueId.module >= 0
   assert t.uniqueId.item > 0
   result = PackedItemId(module: toLitId(t.uniqueId.module.FileIndex, c, m), item: t.uniqueId.item)
-  addMissing(c, t)
+  if t.uniqueId.module == c.thisModule:
+    # the type belongs to this module, so serialize it here, eventually.
+    addMissing(c, t)
 
 proc storeSymLater(s: PSym; c: var PackedEncoder; m: var PackedModule): PackedItemId =
   if s.isNil: return nilItemId
   assert s.itemId.module >= 0
-  if s.itemId.module != c.thisModule:
-    # XXX Assert here that it already was serialized in the foreign module!
-    # it is a foreign symbol:
-    assert s.itemId.module >= 0
-    return PackedItemId(module: toLitId(s.itemId.module.FileIndex, c, m), item: s.itemId.item)
   assert s.itemId.module >= 0
   result = PackedItemId(module: toLitId(s.itemId.module.FileIndex, c, m), item: s.itemId.item)
-  addMissing(c, s)
+  if s.itemId.module == c.thisModule:
+    # the sym belongs to this module, so serialize it here, eventually.
+    addMissing(c, s)
 
 proc storeType(t: PType; c: var PackedEncoder; m: var PackedModule): PackedItemId =
   ## serialize a ptype
   if t.isNil: return nilItemId
 
-  if t.uniqueId.module != c.thisModule:
-    # XXX Assert here that it already was serialized in the foreign module!
-    # it is a foreign type:
-    assert t.uniqueId.module >= 0
-    assert t.uniqueId.item > 0
-    return PackedItemId(module: toLitId(t.uniqueId.module.FileIndex, c, m), item: t.uniqueId.item)
+  assert t.uniqueId.module >= 0
+  assert t.uniqueId.item > 0
+  result = PackedItemId(module: toLitId(t.uniqueId.module.FileIndex, c, m), item: t.uniqueId.item)
 
-  if not c.typeMarker.containsOrIncl(t.uniqueId.item):
+  if t.uniqueId.module == c.thisModule and not c.typeMarker.containsOrIncl(t.uniqueId.item):
     if t.uniqueId.item >= m.sh.types.len:
       setLen m.sh.types, t.uniqueId.item+1
 
@@ -296,20 +286,9 @@ proc storeType(t: PType; c: var PackedEncoder; m: var PackedModule): PackedItemI
       size: t.size, align: t.align, nonUniqueId: t.itemId.item,
       paddingAtEnd: t.paddingAtEnd, lockLevel: t.lockLevel)
     storeNode(p, t, n)
-
-    when false:
-      for op, s in pairs t.attachedOps:
-        c.addMissing s
-        p.attachedOps[op] = s.safeItemId(c, m)
-
     p.typeInst = t.typeInst.storeType(c, m)
     for kid in items t.sons:
       p.types.add kid.storeType(c, m)
-
-    when false:
-      for i, s in items t.methods:
-        c.addMissing s
-        p.methods.add (i, s.safeItemId(c, m))
     c.addMissing t.sym
     p.sym = t.sym.safeItemId(c, m)
     c.addMissing t.owner
@@ -317,10 +296,6 @@ proc storeType(t: PType; c: var PackedEncoder; m: var PackedModule): PackedItemI
 
     # fill the reserved slot, nothing else:
     m.sh.types[t.uniqueId.item] = p
-
-  assert t.uniqueId.module >= 0
-  assert t.uniqueId.item > 0
-  result = PackedItemId(module: toLitId(t.uniqueId.module.FileIndex, c, m), item: t.uniqueId.item)
 
 proc toPackedLib(l: PLib; c: var PackedEncoder; m: var PackedModule): PackedLib =
   ## the plib hangs off the psym via the .annex field
@@ -336,14 +311,9 @@ proc storeSym*(s: PSym; c: var PackedEncoder; m: var PackedModule): PackedItemId
   if s.isNil: return nilItemId
 
   assert s.itemId.module >= 0
+  result = PackedItemId(module: toLitId(s.itemId.module.FileIndex, c, m), item: s.itemId.item)
 
-  if s.itemId.module != c.thisModule:
-    # XXX Assert here that it already was serialized in the foreign module!
-    # it is a foreign symbol:
-    assert s.itemId.module >= 0
-    return PackedItemId(module: toLitId(s.itemId.module.FileIndex, c, m), item: s.itemId.item)
-
-  if not c.symMarker.containsOrIncl(s.itemId.item):
+  if s.itemId.module == c.thisModule and not c.symMarker.containsOrIncl(s.itemId.item):
     if s.itemId.item >= m.sh.syms.len:
       setLen m.sh.syms, s.itemId.item+1
 
@@ -374,9 +344,6 @@ proc storeSym*(s: PSym; c: var PackedEncoder; m: var PackedModule): PackedItemId
 
     # fill the reserved slot, nothing else:
     m.sh.syms[s.itemId.item] = p
-
-  assert s.itemId.module >= 0
-  result = PackedItemId(module: toLitId(s.itemId.module.FileIndex, c, m), item: s.itemId.item)
 
 proc addModuleRef(n: PNode; ir: var PackedTree; c: var PackedEncoder; m: var PackedModule) =
   ## add a remote symbol reference to the tree
