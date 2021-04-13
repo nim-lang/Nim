@@ -222,12 +222,7 @@ proc importForwarded(c: PContext, n: PNode, exceptSet: IntSet; fromMod: PSym; im
     for i in 0..n.safeLen-1:
       importForwarded(c, n[i], exceptSet, fromMod, importSet)
 
-type
-  ImportFlag = enum
-    ifImportHidden
-  ImportFlags = set[ImportFlag]
-
-proc importModuleAs(c: PContext; n: PNode, realModule: PSym, importFlags: ImportFlags): PSym =
+proc importModuleAs(c: PContext; n: PNode, realModule: PSym, importHidden: bool): PSym =
   result = realModule
   c.unusedImports.add((realModule, n.info))
   template createModuleAliasImpl(ident): untyped =
@@ -238,20 +233,19 @@ proc importModuleAs(c: PContext; n: PNode, realModule: PSym, importFlags: Import
   elif n[1].ident.id != realModule.name.id:
     # some misguided guy will write 'import abc.foo as foo' ...
     result = createModuleAliasImpl(n[1].ident)
-  if ifImportHidden in importFlags:
-    if result == realModule:
-      # otherwise `realModule` would be affected, see D20201209T194412.
+  if importHidden:
+    if result == realModule: # avoids modifying `realModule`, see D20201209T194412.
       result = createModuleAliasImpl(realModule.name)
     result.options.incl optImportHidden
 
-proc transformImportAs(c: PContext; n: PNode): tuple[node: PNode, importFlags: ImportFlags] =
+proc transformImportAs(c: PContext; n: PNode): tuple[node: PNode, importHidden: bool] =
   var ret: typeof(result)
   proc processPragma(n2: PNode): PNode =
     let (result2, kws) = splitPragmas(c, n2)
     result = result2
     for ai in kws:
       case ai
-      of wImportHidden: ret.importFlags.incl ifImportHidden
+      of wImportHidden: ret.importHidden = true
       else: globalError(c.config, n.info, "invalid pragma, expected: " & ${wImportHidden})
 
   if n.kind == nkInfix and considerQuotedIdent(c, n[0]).s == $wAs:
@@ -263,8 +257,8 @@ proc transformImportAs(c: PContext; n: PNode): tuple[node: PNode, importFlags: I
   return ret
 
 proc myImportModule(c: PContext, n: var PNode, importStmtResult: PNode): PSym =
-  var importFlags: ImportFlags
-  (n, importFlags) = transformImportAs(c, n)
+  let transf = transformImportAs(c, n)
+  n = transf.node
   let f = checkModuleName(c.config, n)
   if f != InvalidFileIdx:
     addImportFileDep(c, f)
@@ -281,7 +275,7 @@ proc myImportModule(c: PContext, n: var PNode, importStmtResult: PNode): PSym =
       c.recursiveDep = err
 
     discard pushOptionEntry(c)
-    result = importModuleAs(c, n, c.graph.importModuleCallback(c.graph, c.module, f), importFlags)
+    result = importModuleAs(c, n, c.graph.importModuleCallback(c.graph, c.module, f), transf.importHidden)
     popOptionEntry(c)
 
     #echo "set back to ", L
