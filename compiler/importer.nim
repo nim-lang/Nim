@@ -83,7 +83,7 @@ proc rawImportSymbol(c: PContext, s, origin: PSym; importSet: var IntSet) =
   else:
     importSet.incl s.id
   if s.kind == skType:
-    let etyp = s.typ
+    var etyp = s.typ
     if etyp.kind in {tyBool, tyEnum}:
       for j in 0..<etyp.n.len:
         var e = etyp.n[j].sym
@@ -248,7 +248,7 @@ proc transformImportAs(c: PContext; n: PNode): tuple[node: PNode, importHidden: 
       of wImportHidden: ret.importHidden = true
       else: globalError(c.config, n.info, "invalid pragma, expected: " & ${wImportHidden})
 
-  if n.kind == nkInfix and considerQuotedIdent(c, n[0]).s == $wAs:
+  if n.kind == nkInfix and considerQuotedIdent(c, n[0]).s == "as":
     ret.node = newNodeI(nkImportAs, n.info)
     ret.node.add n[1].processPragma
     ret.node.add n[2]
@@ -317,7 +317,7 @@ proc evalImport*(c: PContext, n: PNode): PNode =
       imp.add sep # dummy entry, replaced in the loop
       for x in it[2]:
         # transform `a/b/[c as d]` to `/a/b/c as d`
-        if x.kind == nkInfix and x[0].ident.s == $wAs:
+        if x.kind == nkInfix and x[0].ident.s == "as":
           let impAs = copyTree(x)
           imp[2] = x[1]
           impAs[1] = imp
