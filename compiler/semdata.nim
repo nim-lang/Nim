@@ -79,7 +79,7 @@ type
     importAll, importSet, importExcept
   ImportedModule* = object
     m*: PSym
-    importHidden*: bool
+    importHidden2*: bool
     case mode*: ImportMode
     of importAll: discard
     of importSet:
