@@ -1584,7 +1584,7 @@ proc getCustomPragmaNode(sym: NimNode, name: string): NimNode =
   else:
     error("illegal sym kind for argument: " & $sym.symKind, sym)
 
-since (1, 3):
+since (1, 5):
   export getCustomPragmaNode
 
 proc hasCustomPragma*(n: NimNode, name: string): bool =
