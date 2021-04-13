@@ -1563,7 +1563,7 @@ proc getCustomPragmaNode(sym: NimNode, name: string): NimNode =
   sym.expectKind nnkSym
   case sym.symKind
   of nskField:
-    result = getCustomPragmaNodeFromObjFieldSym(sym,name)
+    result = getCustomPragmaNodeFromObjFieldSym(sym, name)
   of nskProc:
     result = getCustomPragmaNodeFromProcSym(sym, name)
   of nskType:
