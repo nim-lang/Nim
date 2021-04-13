@@ -230,18 +230,18 @@ type
 proc importModuleAs(c: PContext; n: PNode, realModule: PSym, importFlags: ImportFlags): PSym =
   result = realModule
   c.unusedImports.add((realModule, n.info))
+  template createModuleAliasImpl(ident): untyped =
+    createModuleAlias(realModule, nextSymId c.idgen, ident, realModule.info, c.config.options)
   if n.kind != nkImportAs: discard
   elif n.len != 2 or n[1].kind != nkIdent:
     localError(c.config, n.info, "module alias must be an identifier")
   elif n[1].ident.id != realModule.name.id:
     # some misguided guy will write 'import abc.foo as foo' ...
-    result = createModuleAlias(realModule, nextSymId c.idgen, n[1].ident, realModule.info,
-                               c.config.options)
+    result = createModuleAliasImpl(n[1].ident)
   if ifImportHidden in importFlags:
     if result == realModule:
-      # `createModuleAlias` needed otherwise `realModule` would be affected, see D20201209T194412.
-      result = createModuleAlias(realModule, nextSymId c.idgen, realModule.name, realModule.info,
-                               c.config.options)
+      # otherwise `realModule` would be affected, see D20201209T194412.
+      result = createModuleAliasImpl(realModule.name)
     result.options.incl optImportHidden
 
 proc transformImportAs(c: PContext; n: PNode): tuple[node: PNode, importFlags: ImportFlags] =
@@ -254,7 +254,7 @@ proc transformImportAs(c: PContext; n: PNode): tuple[node: PNode, importFlags: I
       of wImportHidden: ret.importFlags.incl ifImportHidden
       else: globalError(c.config, n.info, "invalid pragma, expected: " & ${wImportHidden})
 
-  if n.kind == nkInfix and considerQuotedIdent(c, n[0]).s == "as":
+  if n.kind == nkInfix and considerQuotedIdent(c, n[0]).s == $wAs:
     ret.node = newNodeI(nkImportAs, n.info)
     ret.node.add n[1].processPragma
     ret.node.add n[2]
@@ -264,7 +264,7 @@ proc transformImportAs(c: PContext; n: PNode): tuple[node: PNode, importFlags: I
 
 proc myImportModule(c: PContext, n: var PNode, importStmtResult: PNode): PSym =
   var importFlags: ImportFlags
-  (n,importFlags) = transformImportAs(c, n)
+  (n, importFlags) = transformImportAs(c, n)
   let f = checkModuleName(c.config, n)
   if f != InvalidFileIdx:
     addImportFileDep(c, f)
@@ -323,7 +323,7 @@ proc evalImport*(c: PContext, n: PNode): PNode =
       imp.add sep # dummy entry, replaced in the loop
       for x in it[2]:
         # transform `a/b/[c as d]` to `/a/b/c as d`
-        if x.kind == nkInfix and x[0].ident.s == "as":
+        if x.kind == nkInfix and x[0].ident.s == $wAs:
           let impAs = copyTree(x)
           imp[2] = x[1]
           impAs[1] = imp
@@ -341,6 +341,7 @@ proc evalFrom*(c: PContext, n: PNode): PNode =
   if m != nil:
     n[0] = newSymNode(m)
     addDecl(c, m, n.info)               # add symbol to symbol table of module
+
     var im = ImportedModule(m: m, mode: importSet, imported: initIntSet())
     for i in 1..<n.len:
       if n[i].kind != nkNilLit:
