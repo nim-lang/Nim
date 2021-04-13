@@ -162,8 +162,10 @@ proc toBase64a(s: cstring, len: int): string =
     result.add cb64[(a and 3) shl 4]
 
 template interfSelect(iface: Iface, importHidden: bool): TStrTable =
-  if importHidden: iface.interfAll
-  else: iface.interf
+  var ret: ptr TStrTable # without intermediate ptr, it creates a copy and compiler becomes 10x slower!
+  if importHidden: ret = iface.interfAll.addr
+  else: ret = iface.interf.addr
+  ret[]
 
 template semtab(g: ModuleGraph, m: PSym): TStrTable =
   g.ifaces[m.position].interf
