@@ -1365,12 +1365,17 @@ proc typeSectionFinalPass(c: PContext, n: PNode) =
           if "Foo" in $s.typ:
             dbg s.typ, s, s.typ.kind, isTopLevel(c), s.flags
         # if s.typ.kind in {tyRef} and not s.typ.n.isNil:
-        if s.typ.kind in {tyRef}:
-          if "Foo" in $s:
-            dbg()
-          if s.typ.kind == tyRef and not isTopLevel(c): incl(s.flags, sfGenSym)
-          if "Foo" in $s:
-            dbg s.typ, s, s.typ.kind, isTopLevel(c), s.flags
+        # if s.typ.kind in {tyRef}:
+        # if s.typ.kind == tyEnum and not isTopLevel(c): incl(s.flags, sfGenSym)
+        if s.typ.kind == tyEnum: incl(s.flags, sfGenSym)
+        if "Foo" in $s:
+          dbg s, s.typ, s.flags
+        # if s.typ.kind in {tyRef}:
+        #   if "Foo" in $s:
+        #     dbg()
+        #   # if s.typ.kind == tyRef and not isTopLevel(c): incl(s.flags, sfGenSym)
+        #   if "Foo" in $s:
+        #     dbg s.typ, s, s.typ.kind, isTopLevel(c), s.flags
 
   #instAllTypeBoundOp(c, n.info)
 
