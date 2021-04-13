@@ -1592,6 +1592,34 @@ proc hasCustomPragma*(n: NimNode, name: string): bool =
   let pragmaNode = getCustomPragmaNode(n, name)
   result = pragmaNode != nil
 
+proc getCustomPragmaNodeSmart(n: NimNode, name: string): NimNode =
+  case n.kind
+  of nnkDotExpr:
+    result = getCustomPragmaNode(n[1], name)
+  of nnkCheckedFieldExpr:
+    expectKind n[0], nnkDotExpr
+    result = getCustomPragmaNode(n[0][1], name)
+  of nnkSym:
+    result = getCustomPragmaNode(n, name)
+  of nnkTypeOfExpr:
+    var typeSym = n.getTypeInst
+    while typeSym.kind == nnkBracketExpr and typeSym[0].eqIdent "typeDesc":
+      typeSym = typeSym[1]
+    case typeSym.kind:
+    of nnkSym:
+      result = getCustomPragmaNode(typeSym, name)
+    of nnkProcTy:
+      # It is a bad idea to support this. The annotation can't be part
+      # of a symbol.
+      let pragmaExpr = typeSym[1]
+      result = getPragmaByName(pragmaExpr, name)
+    else:
+      typeSym.expectKind nnkSym
+  of nnkBracketExpr:
+    result = nil #false
+  else:
+    n.expectKind({nnkDotExpr, nnkCheckedFieldExpr, nnkSym, nnkTypeOfExpr})
+
 macro hasCustomPragma*(n: typed, cp: typed{nkSym}): bool =
   ## Expands to `true` if expression `n` which is expected to be `nnkDotExpr`
   ## (if checking a field), a proc or a type has custom pragma `cp`.
@@ -1609,32 +1637,7 @@ macro hasCustomPragma*(n: typed, cp: typed{nkSym}): bool =
   ##   var o: MyObj
   ##   assert(o.myField.hasCustomPragma(myAttr))
   ##   assert(myProc.hasCustomPragma(myAttr))
-  case n.kind
-  of nnkDotExpr:
-    result = newLit(hasCustomPragma(n[1],$cp))
-  of nnkCheckedFieldExpr:
-    expectKind n[0], nnkDotExpr
-    result = newLit(hasCustomPragma(n[0][1],$cp))
-  of nnkSym:
-    result = newLit(hasCustomPragma(n,$cp))
-  of nnkTypeOfExpr:
-    var typeSym = n.getTypeInst
-    while typeSym.kind == nnkBracketExpr and typeSym[0].eqIdent "typeDesc":
-      typeSym = typeSym[1]
-    case typeSym.kind:
-    of nnkSym:
-      result = newLit(hasCustomPragma(typeSym, $cp))
-    of nnkProcTy:
-      # It is a bad idea to support this. The annotation can't be part
-      # of a symbol.
-      let pragmaExpr = typeSym[1]
-      result = newLit(getPragmaByName(pragmaExpr, $cp) != nil)
-    else:
-      typeSym.expectKind nnkSym
-  of nnkBracketExpr:
-    result = newLit(false)
-  else:
-    n.expectKind({nnkDotExpr, nnkCheckedFieldExpr, nnkSym, nnkTypeOfExpr})
+  result = newLit(getCustomPragmaNodeSmart(n, $cp) != nil)
 
 macro getCustomPragmaVal*(n: typed, cp: typed{nkSym}): untyped =
   ## Expands to value of custom pragma `cp` of expression `n` which is expected
@@ -1652,31 +1655,7 @@ macro getCustomPragmaVal*(n: typed, cp: typed{nkSym}): untyped =
   ##   assert(o.getCustomPragmaVal(serializationKey) == "mo")
   ##   assert(MyObj.getCustomPragmaVal(serializationKey) == "mo")
   n.expectKind({nnkDotExpr, nnkCheckedFieldExpr, nnkSym, nnkTypeOfExpr})
-  let pragmaNode =
-    case n.kind
-    of nnkDotExpr:
-      getCustomPragmaNode(n[1], $cp)
-    of nnkCheckedFieldExpr:
-      expectKind n[0], nnkDotExpr
-      getCustomPragmaNode(n[0][1],$cp)
-    of nnkSym:
-      getCustomPragmaNode(n, $cp)
-    else:
-      var typeSym = n.getTypeInst
-      while typeSym.kind == nnkBracketExpr and typeSym[0].eqIdent "typeDesc":
-        typeSym = typeSym[1]
-      case typeSym.kind:
-      of nnkSym:
-        getCustomPragmaNode(typeSym, $cp)
-      of nnkProcTy:
-        # It is a bad idea to support this. The annotation can't be part
-        # of a symbol.
-        let pragmaExpr = typeSym[1]
-        getPragmaByName(pragmaExpr, $cp)
-      else:
-        typeSym.expectKind nnkSym
-        # dead code just for the type checker
-        nil
+  let pragmaNode = getCustomPragmaNodeSmart(n, $cp)
 
   case pragmaNode.kind
   of nnkPragmaCallKinds:
