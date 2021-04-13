@@ -362,14 +362,12 @@ proc addPattern*(c: PContext, p: LazySym) =
     addTrmacro(c.encoder, c.packedRepr, p.sym)
 
 proc exportSym*(c: PContext; s: PSym) =
-  strTableAdd(c.module.semtab(c.graph), s)
-  strTableAdd(c.module.semtabAll(c.graph), s)
+  strTableAdds(c.graph, c.module, s)
   if c.config.symbolFiles != disabledSf:
     addExported(c.encoder, c.packedRepr, s)
 
 proc reexportSym*(c: PContext; s: PSym) =
-  strTableAdd(c.module.semtab(c.graph), s)
-  strTableAdd(c.module.semtabAll(c.graph), s)
+  strTableAdds(c.graph, c.module, s)
   if c.config.symbolFiles != disabledSf:
     addReexport(c.encoder, c.packedRepr, s)
 

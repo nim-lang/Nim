@@ -165,15 +165,19 @@ template interfSelect(iface: Iface, importHidden: bool): TStrTable =
   if importHidden: iface.interfAll
   else: iface.interf
 
-template semtab*(m: PSym; g: ModuleGraph): TStrTable =
+template semtab(g: ModuleGraph, m: PSym): TStrTable =
   g.ifaces[m.position].interf
 
-template semtabAll*(m: PSym; g: ModuleGraph): TStrTable =
+template semtabAll*(g: ModuleGraph, m: PSym): TStrTable =
   g.ifaces[m.position].interfAll
 
-proc initStrTables*(m: PSym; g: ModuleGraph) =
-  initStrTable(semtab(m, g))
-  initStrTable(semtabAll(m, g))
+proc initStrTables*(g: ModuleGraph, m: PSym) =
+  initStrTable(semtab(g, m))
+  initStrTable(semtabAll(g, m))
+
+proc strTableAdds*(g: ModuleGraph, m: PSym, s: PSym) =
+  strTableAdd(semtab(g, m), s)
+  strTableAdd(semtabAll(g, m), s)
 
 proc isCachedModule(g: ModuleGraph; module: int): bool {.inline.} =
   result = module < g.packed.len and g.packed[module].status == loaded
@@ -370,7 +374,7 @@ template onDefAux(info: TLineInfo; s0: PSym, c0: untyped, isFwd: bool) =
       # unfortunately, can't use `c.isTopLevel` because the scope isn't closed yet
       top = c.currentScope.depthLevel <= 3
     else: top = c.currentScope.depthLevel <= 2
-    if top and c.module != nil: strTableAdd(c.module.semtabAll(c.graph), s0)
+    if top and c.module != nil: strTableAdd(semtabAll(c.graph, c.module), s0)
 
 when defined(nimfind):
   template onUse*(info: TLineInfo; s: PSym) =
@@ -416,7 +420,7 @@ proc registerModule*(g: ModuleGraph; m: PSym) =
 
   g.ifaces[m.position] = Iface(module: m, converters: @[], patterns: @[],
                                uniqueName: rope(uniqueModuleName(g.config, FileIndex(m.position))))
-  initStrTables(m, g)
+  initStrTables(g, m)
 
 proc registerModuleById*(g: ModuleGraph; m: FileIndex) =
   registerModule(g, g.packed[int m].module)
