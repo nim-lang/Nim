@@ -25,8 +25,7 @@ runnableExamples:
   assert (?.f2.x2.x2).x3 == nil  # this terminates ?. early
 
 from std/options import Option, isSome, get, option, unsafeGet, UnpackDefect
-# export options.get, options.isSome, options.isNone
-export options.get, options.isSome
+export options.get, options.isSome, options.isNone
 
 template fakeDot*(a: Option, b): untyped =
   ## See top-level example.

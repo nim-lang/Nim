@@ -12,7 +12,7 @@
 import ast, tables, ropes, md5, modulegraphs
 from hashes import Hash
 import types
-from strutils import contains
+
 proc `&=`(c: var MD5Context, s: string) = md5Update(c, s, s.len)
 proc `&=`(c: var MD5Context, ch: char) = md5Update(c, unsafeAddr ch, 1)
 proc `&=`(c: var MD5Context, r: Rope) =
@@ -154,7 +154,6 @@ proc hashType(c: var MD5Context, t: PType; flags: set[ConsiderFlag]) =
 
       template hasFlag(sym): bool =
         {sfAnon, sfGenSym} * sym.flags != {}
-      # TODO: consider enum; consider top-level vs not
       if hasFlag(t.sym) or (t.kind == tyObject and t.owner.kind == skType and t.owner.typ.kind == tyRef and hasFlag(t.owner)):
         # for `PFoo:ObjectType`, arising from `type PFoo = ref object`
         # Generated object names can be identical, so we need to
