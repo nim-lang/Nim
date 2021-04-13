@@ -103,8 +103,9 @@ when true: # ditto, refs https://github.com/nim-lang/Nim/issues/5170#issuecommen
     var f2: Foo1
     doAssert f2.baz == 0
 
-block:
+block: # make sure `hashType` doesn't recurse infinitely
   type
     PFoo = ref object
       a, b: PFoo
       c: int
+  var a: PFoo

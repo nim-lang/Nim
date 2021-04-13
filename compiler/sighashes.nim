@@ -12,9 +12,7 @@
 import ast, tables, ropes, md5, modulegraphs
 from hashes import Hash
 import types
-import renderer
-import debugutils
-import msgs
+
 proc `&=`(c: var MD5Context, s: string) = md5Update(c, s, s.len)
 proc `&=`(c: var MD5Context, ch: char) = md5Update(c, unsafeAddr ch, 1)
 proc `&=`(c: var MD5Context, r: Rope) =
@@ -77,8 +75,6 @@ proc hashTree(c: var MD5Context, n: PNode; flags: set[ConsiderFlag]) =
   of nkIdent:
     c &= n.ident.s
   of nkSym:
-    let conf = getConfigRef()
-    dbg n, n.sym, conf$n.info
     hashSym(c, n.sym)
     if CoHashTypeInsideNode in flags and n.sym.typ != nil:
       hashType(c, n.sym.typ, flags)
@@ -159,10 +155,8 @@ proc hashType(c: var MD5Context, t: PType; flags: set[ConsiderFlag]) =
       var symWithFlags: PSym
       template hasFlag(sym): bool =
         let ret = {sfAnon, sfGenSym} * sym.flags != {}
-        if ret:
-          symWithFlags = sym
+        if ret: symWithFlags = sym
         ret
-      dbg t.sym, t, t.sym.flags, t.kind, t.owner, t.owner.kind
       if hasFlag(t.sym) or (t.kind == tyObject and t.owner.kind == skType and t.owner.typ.kind == tyRef and hasFlag(t.owner)):
         # for `PFoo:ObjectType`, arising from `type PFoo = ref object`
         # Generated object names can be identical, so we need to
@@ -170,8 +164,8 @@ proc hashType(c: var MD5Context, t: PType; flags: set[ConsiderFlag]) =
         if t.n.len > 0:
           let oldFlags = symWithFlags.flags
           # Hack to prevent endless recursion
-          # xxx intead, use a hash table to indicate we've already visited a type,
-          # it should also speed things up.
+          # xxx intead, use a hash table to indicate we've already visited a type, which
+          # would also be more efficient.
           symWithFlags.flags.excl {sfAnon, sfGenSym}
           hashTree(c, t.n, flags + {CoHashTypeInsideNode})
           symWithFlags.flags = oldFlags
