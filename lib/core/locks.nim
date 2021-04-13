@@ -61,12 +61,17 @@ proc deinitCond*(cond: var Cond) {.inline.} =
   deinitSysCond(cond)
 
 proc wait*(cond: var Cond, lock: var Lock) {.inline.} =
-  ## waits on the condition variable `cond`.
+  ## Waits on the condition variable `cond`.
   waitSysCond(cond, lock)
 
 proc signal*(cond: var Cond) {.inline.} =
-  ## sends a signal to the condition variable `cond`.
+  ## Sends a signal to the condition variable `cond`.
   signalSysCond(cond)
+
+proc broadcast*(cond: var Cond) {.inline.} =
+  ## Unblocks all threads currently blocked on the
+  ## specified condition variable `cond`.
+  broadcastSysCond(cond)
 
 template withLock*(a: Lock, body: untyped) =
   ## Acquires the given lock, executes the statements in body and
