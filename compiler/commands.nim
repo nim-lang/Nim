@@ -859,6 +859,9 @@ proc processSwitch*(switch, arg: string, pass: TCmdLinePass, info: TLineInfo;
   of "usages":
     expectNoArg(conf, switch, arg, pass, info)
     conf.ideCmd = ideUse
+  of "defusages":
+    expectNoArg(conf, switch, arg, pass, info)
+    conf.ideCmd = ideDus
   of "stdout":
     processOnOffSwitchG(conf, {optStdout}, arg, pass, info)
   of "listfullpaths":
