@@ -12,7 +12,7 @@
 import
   intsets, ast, astalgo, msgs, options, idents, lookups,
   semdata, modulepaths, sigmatch, lineinfos, sets,
-  modulegraphs
+  modulegraphs, wordrecg
 
 proc readExceptSet*(c: PContext, n: PNode): IntSet =
   assert n.kind in {nkImportExceptStmt, nkExportExceptStmt}
@@ -83,7 +83,7 @@ proc rawImportSymbol(c: PContext, s, origin: PSym; importSet: var IntSet) =
   else:
     importSet.incl s.id
   if s.kind == skType:
-    var etyp = s.typ
+    let etyp = s.typ
     if etyp.kind in {tyBool, tyEnum}:
       for j in 0..<etyp.n.len:
         var e = etyp.n[j].sym
@@ -253,7 +253,7 @@ proc myImportModule(c: PContext, n: PNode; importStmtResult: PNode): PSym =
     #newStrNode(toFullPath(c.config, f), n.info)
 
 proc transformImportAs(c: PContext; n: PNode): PNode =
-  if n.kind == nkInfix and considerQuotedIdent(c, n[0]).s == "as":
+  if n.kind == nkInfix and considerQuotedIdent(c, n[0]).s == $wAs:
     result = newNodeI(nkImportAs, n.info)
     result.add n[1]
     result.add n[2]
@@ -282,7 +282,7 @@ proc evalImport*(c: PContext, n: PNode): PNode =
       imp.add sep # dummy entry, replaced in the loop
       for x in it[2]:
         # transform `a/b/[c as d]` to `/a/b/c as d`
-        if x.kind == nkInfix and x[0].ident.s == "as":
+        if x.kind == nkInfix and x[0].ident.s == $wAs:
           let impAs = copyTree(x)
           imp[2] = x[1]
           impAs[1] = imp

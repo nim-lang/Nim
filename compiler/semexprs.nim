@@ -57,7 +57,7 @@ proc semOperand(c: PContext, n: PNode, flags: TExprFlags = {}): PNode =
       localError(c.config, n.info, errProcHasNoConcreteType % n.renderTree)
     if result.typ.kind in {tyVar, tyLent}: result = newDeref(result)
   elif {efWantStmt, efAllowStmt} * flags != {}:
-    result.typ = newTypeS(tyVoid, c)
+    result.typ = getSysType(c.graph, n.info, tyVoid)
   else:
     localError(c.config, n.info, errExprXHasNoType %
                renderTree(result, {renderNoComments}))

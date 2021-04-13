@@ -46,10 +46,13 @@ proc sysTypeFromName*(g: ModuleGraph; info: TLineInfo; name: string): PType =
   result = getSysSym(g, info, name).typ
 
 proc getSysType*(g: ModuleGraph; info: TLineInfo; kind: TTypeKind): PType =
+  # `info` is only used for error reporting.
+  # xxx instead, use something like `lastInfo`.
   template sysTypeFromName(s: string): untyped = sysTypeFromName(g, info, s)
   result = g.sysTypes[kind]
   if result == nil:
     case kind
+    of tyVoid: result = sysTypeFromName("void")
     of tyInt: result = sysTypeFromName("int")
     of tyInt8: result = sysTypeFromName("int8")
     of tyInt16: result = sysTypeFromName("int16")
