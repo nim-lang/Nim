@@ -314,7 +314,7 @@
   another internal module needs those.
   It also helps mitigate the lack of cyclic imports in some cases.
 
-- Added a new module `privateAccess`, and an API `privateAccess`, which allows access to private fields
+- Added a new module `std/importutils`, and an API `privateAccess`, which allows access to private fields
   for an object type in the current scope.
 
 ## Compiler changes

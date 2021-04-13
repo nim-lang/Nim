@@ -162,7 +162,7 @@ proc toBase64a(s: cstring, len: int): string =
     result.add cb64[(a and 3) shl 4]
 
 template interfSelect(iface: Iface, importHidden: bool): TStrTable =
-  var ret: ptr TStrTable # without intermediate ptr, it creates a copy and compiler becomes 10x slower!
+  var ret: ptr TStrTable # without intermediate ptr, it creates a copy and compiler becomes 15x slower!
   if importHidden: ret = iface.interfAll.addr
   else: ret = iface.interf.addr
   ret[]
