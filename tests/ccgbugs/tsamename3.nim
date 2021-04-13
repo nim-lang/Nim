@@ -102,3 +102,9 @@ when true: # ditto, refs https://github.com/nim-lang/Nim/issues/5170#issuecommen
       baz: int
     var f2: Foo1
     doAssert f2.baz == 0
+
+block:
+  type
+    PFoo = ref object
+      a, b: PFoo
+      c: int

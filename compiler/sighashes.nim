@@ -12,7 +12,9 @@
 import ast, tables, ropes, md5, modulegraphs
 from hashes import Hash
 import types
-
+import renderer
+import debugutils
+import msgs
 proc `&=`(c: var MD5Context, s: string) = md5Update(c, s, s.len)
 proc `&=`(c: var MD5Context, ch: char) = md5Update(c, unsafeAddr ch, 1)
 proc `&=`(c: var MD5Context, r: Rope) =
@@ -75,6 +77,8 @@ proc hashTree(c: var MD5Context, n: PNode; flags: set[ConsiderFlag]) =
   of nkIdent:
     c &= n.ident.s
   of nkSym:
+    let conf = getConfigRef()
+    dbg n, n.sym, conf$n.info
     hashSym(c, n.sym)
     if CoHashTypeInsideNode in flags and n.sym.typ != nil:
       hashType(c, n.sym.typ, flags)
@@ -152,18 +156,25 @@ proc hashType(c: var MD5Context, t: PType; flags: set[ConsiderFlag]) =
       else:
         c.hashSym(t.sym)
 
+      var symWithFlags: PSym
       template hasFlag(sym): bool =
-        {sfAnon, sfGenSym} * sym.flags != {}
+        let ret = {sfAnon, sfGenSym} * sym.flags != {}
+        if ret:
+          symWithFlags = sym
+        ret
+      dbg t.sym, t, t.sym.flags, t.kind, t.owner, t.owner.kind
       if hasFlag(t.sym) or (t.kind == tyObject and t.owner.kind == skType and t.owner.typ.kind == tyRef and hasFlag(t.owner)):
         # for `PFoo:ObjectType`, arising from `type PFoo = ref object`
         # Generated object names can be identical, so we need to
         # disambiguate furthermore by hashing the field types and names.
         if t.n.len > 0:
-          let oldFlags = t.sym.flags
-          # Mild hack to prevent endless recursion.
-          t.sym.flags.excl {sfAnon, sfGenSym}
+          let oldFlags = symWithFlags.flags
+          # Hack to prevent endless recursion
+          # xxx intead, use a hash table to indicate we've already visited a type,
+          # it should also speed things up.
+          symWithFlags.flags.excl {sfAnon, sfGenSym}
           hashTree(c, t.n, flags + {CoHashTypeInsideNode})
-          t.sym.flags = oldFlags
+          symWithFlags.flags = oldFlags
         else:
           # The object has no fields: we _must_ add something here in order to
           # make the hash different from the one we produce by hashing only the
