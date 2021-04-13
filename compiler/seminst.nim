@@ -319,14 +319,6 @@ proc instantiateProcType(c: PContext, pt: TIdTable,
   prc.typ = result
   popInfoContext(c.config)
 
-proc fillMixinScope(c: PContext) =
-  var p = c.p
-  while p != nil:
-    for bnd in p.localBindStmts:
-      for n in bnd:
-        addSym(c.currentScope, n.sym)
-    p = p.next
-
 proc generateInstance(c: PContext, fn: PSym, pt: TIdTable,
                       info: TLineInfo): PSym =
   ## Generates a new instance of a generic procedure.
@@ -352,10 +344,6 @@ proc generateInstance(c: PContext, fn: PSym, pt: TIdTable,
   result.owner = fn
   result.ast = n
   pushOwner(c, result)
-
-  # mixin scope:
-  openScope(c)
-  fillMixinScope(c)
 
   openScope(c)
   let gp = n[genericParamsPos]
@@ -407,7 +395,6 @@ proc generateInstance(c: PContext, fn: PSym, pt: TIdTable,
   popProcCon(c)
   popInfoContext(c.config)
   closeScope(c)           # close scope for parameters
-  closeScope(c)           # close scope for 'mixin' declarations
   popOwner(c)
   c.currentScope = oldScope
   discard c.friendModules.pop()

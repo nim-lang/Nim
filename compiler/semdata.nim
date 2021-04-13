@@ -38,7 +38,6 @@ type
     mappingExists*: bool
     mapping*: TIdTable
     caseContext*: seq[tuple[n: PNode, idx: int]]
-    localBindStmts*: seq[PNode]
 
   TMatchedConcept* = object
     candidateType*: PType

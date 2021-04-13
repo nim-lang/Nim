@@ -945,8 +945,7 @@ proc p(n: PNode; c: var Con; mode: ProcessMode): PNode =
     of nkNone..nkNilLit, nkTypeSection, nkProcDef, nkConverterDef,
        nkMethodDef, nkIteratorDef, nkMacroDef, nkTemplateDef, nkLambda, nkDo,
        nkFuncDef, nkConstSection, nkConstDef, nkIncludeStmt, nkImportStmt,
-       nkExportStmt, nkPragma, nkCommentStmt, nkBreakState,
-       nkMixinStmt, nkBindStmt:
+       nkExportStmt, nkPragma, nkCommentStmt, nkBreakState:
       result = n
     of nkBreakStmt:
       inc c.hasUnstructuredCf
