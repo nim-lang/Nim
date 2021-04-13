@@ -67,8 +67,7 @@ proc evalScript*(i: Interpreter; scriptStream: PLLStream = nil) =
   ## This can also be used to *reload* the script.
   assert i != nil
   assert i.mainModule != nil, "no main module selected"
-  initStrTable(i.mainModule.semtab(i.graph))
-  initStrTable(i.mainModule.semtabAll(i.graph))
+  initStrTables(i.mainModule, i.graph)
   i.mainModule.ast = nil
 
   let s = if scriptStream != nil: scriptStream

@@ -161,11 +161,19 @@ proc toBase64a(s: cstring, len: int): string =
     result.add cb64[a shr 2]
     result.add cb64[(a and 3) shl 4]
 
+template interfSelect(iface: Iface, importHidden: bool): TStrTable =
+  if importHidden: iface.interfAll
+  else: iface.interf
+
 template semtab*(m: PSym; g: ModuleGraph): TStrTable =
   g.ifaces[m.position].interf
 
 template semtabAll*(m: PSym; g: ModuleGraph): TStrTable =
   g.ifaces[m.position].interfAll
+
+proc initStrTables*(m: PSym; g: ModuleGraph) =
+  initStrTable(semtab(m, g))
+  initStrTable(semtabAll(m, g))
 
 proc isCachedModule(g: ModuleGraph; module: int): bool {.inline.} =
   result = module < g.packed.len and g.packed[module].status == loaded
@@ -201,26 +209,13 @@ proc initModuleIter*(mi: var ModuleIter; g: ModuleGraph; m: PSym; name: PIdent):
   if mi.fromRod:
     result = initRodIter(mi.rodIt, g.config, g.cache, g.packed, FileIndex mi.modIndex, name)
   else:
-    if mi.importHidden:
-      result = initIdentIter(mi.ti, g.ifaces[mi.modIndex].interfAll, name)
-    else:
-      result = initIdentIter(mi.ti, g.ifaces[mi.modIndex].interf, name)
+    result = initIdentIter(mi.ti, g.ifaces[mi.modIndex].interfSelect(mi.importHidden), name)
 
 proc nextModuleIter*(mi: var ModuleIter; g: ModuleGraph): PSym =
   if mi.fromRod:
     result = nextRodIter(mi.rodIt, g.packed)
   else:
-    if mi.importHidden:
-      result = nextIdentIter(mi.ti, g.ifaces[mi.modIndex].interfAll)
-    else:
-      result = nextIdentIter(mi.ti, g.ifaces[mi.modIndex].interf)
-
-proc interfSelect(iface: Iface, m: PSym): TStrTable =
-  # TODO: ptr? lent?
-  if optImportHidden in m.options:
-    iface.interfAll
-  else:
-    iface.interf
+    result = nextIdentIter(mi.ti, g.ifaces[mi.modIndex].interfSelect(mi.importHidden))
 
 iterator allSyms*(g: ModuleGraph; m: PSym): PSym =
   if isCachedModule(g, m):
@@ -238,10 +233,7 @@ proc someSym*(g: ModuleGraph; m: PSym; name: PIdent): PSym =
   if isCachedModule(g, m):
     result = interfaceSymbol(g.config, g.cache, g.packed, FileIndex(m.position), name)
   else:
-    if optImportHidden in m.options:
-      result = strTableGet(g.ifaces[m.position].interfAll, name)
-    else:
-      result = strTableGet(g.ifaces[m.position].interf, name)
+    result = strTableGet(g.ifaces[m.position].interfSelect(optImportHidden in m.options), name)
 
 proc systemModuleSym*(g: ModuleGraph; name: PIdent): PSym =
   result = someSym(g, g.systemModule, name)
@@ -424,8 +416,7 @@ proc registerModule*(g: ModuleGraph; m: PSym) =
 
   g.ifaces[m.position] = Iface(module: m, converters: @[], patterns: @[],
                                uniqueName: rope(uniqueModuleName(g.config, FileIndex(m.position))))
-  initStrTable(g.ifaces[m.position].interf)
-  initStrTable(g.ifaces[m.position].interfAll)
+  initStrTables(m, g)
 
 proc registerModuleById*(g: ModuleGraph; m: FileIndex) =
   registerModule(g, g.packed[int m].module)
