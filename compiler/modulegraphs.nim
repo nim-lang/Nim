@@ -229,7 +229,7 @@ iterator allSyms*(g: ModuleGraph; m: PSym): PSym =
       yield r
       r = nextRodIter(rodIt, g.packed)
   else:
-    for s in g.ifaces[m.position].interf.data:
+    for s in g.ifaces[m.position].interfSelect(optImportHidden in m.options).data:
       if s != nil:
         yield s
 
