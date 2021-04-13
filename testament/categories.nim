@@ -571,6 +571,11 @@ proc quoted(a: string): string =
 
 proc runJoinedTest(r: var TResults, cat: Category, testsDir: string) =
   ## returns a list of tests that have problems
+  #[
+  xxx create a reusable megatest API after abstracting out testament specific code,
+  refs https://github.com/timotheecour/Nim/issues/655
+  and https://github.com/nim-lang/gtk2/pull/28; it's useful in other contexts.
+  ]#
   var specs: seq[TSpec] = @[]
   for kind, dir in walkDir(testsDir):
     assert testsDir.startsWith(testsDir)
@@ -595,16 +600,16 @@ proc runJoinedTest(r: var TResults, cat: Category, testsDir: string) =
   var megatest: string
   # xxx (minor) put outputExceptedFile, outputGottenFile, megatestFile under here or `buildDir`
   var outDir = nimcacheDir(testsDir / "megatest", "", targetC)
-  const marker = "megatest:processing: "
-
+  template toMarker(file, i): string =
+    "megatest:processing: [$1] $2" % [$i, file]
   for i, runSpec in specs:
     let file = runSpec.file
-    let file2 = outDir / ("megatest_$1.nim" % $i)
+    let file2 = outDir / ("megatest_a_$1.nim" % $i)
     # `include` didn't work with `trecmod2.nim`, so using `import`
-    let code = "echo \"$1\", $2\n" % [marker, quoted(file)]
+    let code = "echo $1\nstatic: echo \"CT:\", $1\n" % [toMarker(file, i).quoted]
     createDir(file2.parentDir)
     writeFile(file2, code)
-    megatest.add "import $1\nimport $2\n" % [quoted(file2), quoted(file)]
+    megatest.add "import $1\nimport $2 as megatest_b_$3\n" % [file2.quoted, file.quoted, $i]
 
   let megatestFile = testsDir / "megatest.nim" # so it uses testsDir / "config.nims"
   writeFile(megatestFile, megatest)
@@ -626,7 +631,7 @@ proc runJoinedTest(r: var TResults, cat: Category, testsDir: string) =
   writeFile(outputGottenFile, buf)
   var outputExpected = ""
   for i, runSpec in specs:
-    outputExpected.add marker & runSpec.file & "\n"
+    outputExpected.add toMarker(runSpec.file, i) & "\n"
     if runSpec.output.len > 0:
       outputExpected.add runSpec.output
       if not runSpec.output.endsWith "\n":
