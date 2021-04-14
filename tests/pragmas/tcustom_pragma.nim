@@ -156,13 +156,20 @@ block:
   proc generic_proc[T]() =
     doAssert Annotated.hasCustomPragma(simpleAttr)
 
-
 #--------------------------------------------------------------------------
 # Pragma on proc type
 
-let a: proc(x: int) {.defaultValue(5).} = nil
+type
+  MyAnnotatedProcType {.defaultValue(4).} = proc(x: int)
+
+let a {.defaultValue(4).}: proc(x: int)  = nil
+var b: MyAnnotatedProcType = nil
+var c: proc(x: int): void {.defaultValue(5).}  = nil
 static:
-  doAssert hasCustomPragma(a.type, defaultValue)
+  doAssert hasCustomPragma(a, defaultValue)
+  doAssert hasCustomPragma(MyAnnotatedProcType, defaultValue)
+  doAssert hasCustomPragma(b, defaultValue)
+  doAssert hasCustomPragma(typeof(c), defaultValue)
 
 # bug #8371
 template thingy {.pragma.}
@@ -378,3 +385,20 @@ block:
       b {.world.}: int
 
   discard Hello(a: 1.0, b: 12)
+
+# issue #11511
+block:
+  template myAttr {.pragma.}
+
+  type TObj = object
+      a {.myAttr.}: int
+
+  macro hasMyAttr(t: typedesc): untyped =
+    let objTy = t.getType[1].getType
+    let recList = objTy[2]
+    let sym = recList[0]
+    assert sym.kind == nnkSym and sym.eqIdent("a")
+    let hasAttr = sym.hasCustomPragma("myAttr")
+    newLit(hasAttr)
+
+  doAssert hasMyAttr(TObj)

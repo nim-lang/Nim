@@ -32,6 +32,7 @@
   implementations. Old behavior can be obtained with
   `-d:nimLegacyParseQueryStrict`. `cgi.decodeData` which uses the same
   underlying code is also updated the same way.
+- Custom pragma values have now an API for use in macros.
 
 - In `std/os`, `getHomeDir`, `expandTilde`, `getTempDir`, `getConfigDir` now do not include trailing `DirSep`,
   unless `-d:nimLegacyHomeDir` is specified (for a transition period).
