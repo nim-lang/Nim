@@ -101,7 +101,7 @@ proc nav(g: ModuleGraph) =
   let fileId = g.packed[int32 mid].fromDisk.sh.strings.getKeyId(toFullPath(g.config, mid))
 
   if fileId == LitId(0):
-    echo "A huh?"
+    internalError(g.config, unpacked, "cannot find a valid file ID")
     return
 
   var c = NavContext(
@@ -114,7 +114,7 @@ proc nav(g: ModuleGraph) =
     symId = search(c, g.packed[int32 mid].fromDisk.bodies)
 
   if symId == EmptyItemId:
-    echo "B huh?"
+    localError(g.config, unpacked, "no symbol at this position")
     return
 
   for i in 0..high(g.packed):
