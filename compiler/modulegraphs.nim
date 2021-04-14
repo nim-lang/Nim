@@ -368,19 +368,19 @@ template getC(): untyped =
   when c is PContext: c
   else: c.c
 
-template onDefAux(info: TLineInfo; s0: PSym, c0: untyped, isFwd: bool) =
-  if s0.kind in ExportableSymKinds:
-    let c = c0 # in case c0 is an expression
+proc onDefAux[T](info: TLineInfo; s: PSym, c: T, isFwd: bool) =
+  # PContext is not yet declared, so we use a generic
+  if s.kind in ExportableSymKinds:
     var top = true
-    case s0.kind
+    case s.kind
     of routineKinds:
       # unfortunately, can't use `c.isTopLevel` because the scope isn't closed yet
       top = c.currentScope.depthLevel <= 3
     else: top = c.currentScope.depthLevel <= 2
     if top and c.module != nil:
-      strTableAdd(semtabAll(c.graph, c.module), s0)
+      strTableAdd(semtabAll(c.graph, c.module), s)
       if c.config.symbolFiles != disabledSf:
-        addHidden(c.encoder, c.packedRepr, s0)
+        addHidden(c.encoder, c.packedRepr, s)
 
 when defined(nimfind):
   template onUse*(info: TLineInfo; s: PSym) =
