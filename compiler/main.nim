@@ -66,6 +66,7 @@ proc commandCheck(graph: ModuleGraph) =
     of ideUse: navUsages(graph)
     of ideDus: navDefusages(graph)
     else: discard
+    writeRodFiles(graph)
 
 when not defined(leanCompiler):
   proc commandDoc2(graph: ModuleGraph; json: bool) =

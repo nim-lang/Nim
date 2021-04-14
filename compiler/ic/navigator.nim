@@ -132,3 +132,11 @@ proc nav(g: ModuleGraph) =
 proc navDefinition*(g: ModuleGraph) = nav(g)
 proc navUsages*(g: ModuleGraph) = nav(g)
 proc navDefusages*(g: ModuleGraph) = nav(g)
+
+proc writeRodFiles*(g: ModuleGraph) =
+  for i in 0..high(g.packed):
+    case g.packed[i].status
+    of undefined, loading, stored, loaded:
+      discard "nothing to do"
+    of storing, outdated:
+      closeRodFile(g, g.packed[i].module)
