@@ -1548,8 +1548,8 @@ proc tokenAfterNewline(p: RstParser): int {.inline.} =
   result = tokenAfterNewline(p, p.idx)
 
 proc getWrappableIndent(p: RstParser): int =
-  ## Gets indentation for bodies of field lists and directives.
-  ## Handles situations like this::
+  ## Gets baseline indentation for bodies of field lists and directives.
+  ## Handles situations like this (with possible de-indent in [case.3])::
   ##
   ##   :field:   definition                                          [case.1]
   ##
@@ -1591,7 +1591,7 @@ proc parseField(p: var RstParser): PRstNode =
   parseUntil(p, fieldname, ":", false)
   var fieldbody = newRstNode(rnFieldBody)
   if currentTok(p).kind == tkWhite: inc p.idx
-  var indent = getWrappableIndent(p)
+  let indent = getWrappableIndent(p)
   if indent > col:
     pushInd(p, indent)
     parseSection(p, fieldbody)
@@ -2398,9 +2398,9 @@ proc parseBlockContent(p: var RstParser, father: var PRstNode,
   ## parse the final content part of explicit markup blocks (directives,
   ## footnotes, etc). Returns true if succeeded.
   if currentTok(p).kind != tkIndent or indFollows(p):
-    var blockIndent = getWrappableIndent(p)
+    let blockIndent = getWrappableIndent(p)
     pushInd(p, blockIndent)
-    var content = contentParser(p)
+    let content = contentParser(p)
     popInd(p)
     father.add content
     result = true
