@@ -262,6 +262,10 @@ block:
     doAssert input.treeRepr & "\n" == expectedRepr
     return input
 
+  macro expectedAstRepr(expectedRepr: static[string], input: untyped): untyped =
+    doAssert input.repr == expectedRepr
+    return input
+
   const procTypeAst = """
 ProcTy
   FormalParams
@@ -280,20 +284,10 @@ ProcTy
   static: doAssert Foo is proc(x: int): Future[void]
 
   const asyncProcTypeAst = """
-ProcTy
-  FormalParams
-    BracketExpr
-      Ident "Future"
-      Ident "void"
-    IdentDefs
-      Ident "s"
-      Ident "string"
-      Empty
-  Pragma
-"""
-
+proc (s: string): Future[void] {..}"""
+  # using expectedAst would show `OpenSymChoice` for Future[void], which is fragile.
   type
-    Bar = proc (s: string) {.async, expectedAst(asyncProcTypeAst).}
+    Bar = proc (s: string) {.async, expectedAstRepr(asyncProcTypeAst).}
 
   static: doAssert Bar is proc(x: string): Future[void]
 

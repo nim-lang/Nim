@@ -6,7 +6,8 @@ tgcsafety.nim(30, 18) Error: type mismatch: got <AsyncHttpServer, Port, proc (re
 but expected one of:
 proc serve(server: AsyncHttpServer; port: Port;
            callback: proc (request: Request): Future[void] {.closure, gcsafe.};
-           address = ""; assumedDescriptorsPerRequest = -1): owned(Future[void])
+           address = ""; assumedDescriptorsPerRequest = -1): owned(
+    Future[void])
   first type mismatch at position: 3
   required type for callback: proc (request: Request): Future[system.void]{.closure, gcsafe.}
   but expression 'cb' is of type: proc (req: Request): Future[system.void]{.locks: <unknown>.}
