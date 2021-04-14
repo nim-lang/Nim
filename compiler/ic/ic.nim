@@ -479,6 +479,9 @@ proc storeInstantiation*(c: var PackedEncoder; m: var PackedModule; s: PSym; i: 
                                           concreteTypes: t)
   toPackedGeneratedProcDef(i.sym, c, m)
 
+proc storeExpansion*(c: var PackedEncoder; m: var PackedModule; info: TLineInfo; s: PSym) =
+  toPackedNode(newSymNode(s, info), m.bodies, c, m)
+
 proc loadError(err: RodFileError; filename: AbsoluteFile; config: ConfigRef;) =
   case err
   of cannotOpen:

@@ -68,7 +68,7 @@ proc isDecl(tree: PackedTree; n: NodePos): bool =
   const declarativeNodes = procDefs + {nkMacroDef, nkTemplateDef,
     nkLetSection, nkVarSection, nkUsingStmt, nkConstSection, nkTypeSection,
     nkIdentDefs, nkEnumTy, nkVarTuple}
-  result = tree[n.int].kind in declarativeNodes
+  result = n.int >= 0 and tree[n.int].kind in declarativeNodes
 
 proc usage(c: var NavContext; info: PackedLineInfo; isDecl: bool) =
   var m = if isDecl: "def\t" else: "usage\t"

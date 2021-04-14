@@ -570,3 +570,13 @@ proc sealRodFile*(c: PContext) =
         if m == c.module:
           addPragmaComputation(c, n)
     c.idgen.sealed = true # no further additions are allowed
+
+proc rememberExpansion*(c: PContext; info: TLineInfo; expandedSym: PSym) =
+  ## Templates and macros are very special in Nim; these have
+  ## inlining semantics so after semantic checking they leave no trace
+  ## in the sem'checked AST. This is very bad for IDE-like tooling
+  ## ("find all usages of this template" would not work). We need special
+  ## logic to remember macro/template expansions. This is done here and
+  ## delegated to the "rod" file mechanism.
+  if c.config.symbolFiles != disabledSf:
+    storeExpansion(c.encoder, c.packedRepr, info, expandedSym)
