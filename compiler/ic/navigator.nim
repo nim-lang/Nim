@@ -23,6 +23,7 @@ type
     g: ModuleGraph
     thisModule: int32
     trackPos: PackedLineInfo
+    alreadyEmitted: HashSet[string]
 
 proc isTracked(current, trackPos: PackedLineInfo, tokenLen: int): bool =
   if current.file == trackPos.file and current.line == trackPos.line:
@@ -73,7 +74,8 @@ proc usage(c: var NavContext; info: PackedLineInfo; isDecl: bool) =
   var m = if isDecl: "def\t" else: "usage\t"
   let file = c.g.packed[c.thisModule].fromDisk.sh.strings[info.file]
   toLocation(m, file, info.line.int, info.col.int + ColOffset)
-  echo m
+  if not c.alreadyEmitted.containsOrIncl(m):
+    echo m
 
 proc list(c: var NavContext; tree: PackedTree; sym: ItemId) =
   for i in 0..high(tree.nodes):
