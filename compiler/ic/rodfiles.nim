@@ -18,6 +18,7 @@ type
     depsSection
     numbersSection
     exportsSection
+    hiddenSection
     reexportsSection
     compilerProcsSection
     trmacrosSection

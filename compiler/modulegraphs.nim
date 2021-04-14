@@ -29,7 +29,7 @@ type
     patterns*: seq[LazySym]
     pureEnums*: seq[LazySym]
     interf: TStrTable
-    interfAll: TStrTable
+    interfHidden: TStrTable
     uniqueName*: Rope
 
   Operators* = object
@@ -162,16 +162,15 @@ proc toBase64a(s: cstring, len: int): string =
     result.add cb64[(a and 3) shl 4]
 
 template interfSelect(iface: Iface, importHidden: bool): TStrTable =
-  var ret: ptr TStrTable # without intermediate ptr, it creates a copy and compiler becomes 15x slower!
-  if importHidden: ret = iface.interfAll.addr
-  else: ret = iface.interf.addr
+  var ret = iface.interf.addr # without intermediate ptr, it creates a copy and compiler becomes 15x slower!
+  if importHidden: ret = iface.interfHidden.addr
   ret[]
 
 template semtab(g: ModuleGraph, m: PSym): TStrTable =
   g.ifaces[m.position].interf
 
 template semtabAll*(g: ModuleGraph, m: PSym): TStrTable =
-  g.ifaces[m.position].interfAll
+  g.ifaces[m.position].interfHidden
 
 proc initStrTables*(g: ModuleGraph, m: PSym) =
   initStrTable(semtab(g, m))
@@ -213,7 +212,7 @@ proc initModuleIter*(mi: var ModuleIter; g: ModuleGraph; m: PSym; name: PIdent):
   mi.fromRod = isCachedModule(g, mi.modIndex)
   mi.importHidden = optImportHidden in m.options
   if mi.fromRod:
-    result = initRodIter(mi.rodIt, g.config, g.cache, g.packed, FileIndex mi.modIndex, name)
+    result = initRodIter(mi.rodIt, g.config, g.cache, g.packed, FileIndex mi.modIndex, name, mi.importHidden)
   else:
     result = initIdentIter(mi.ti, g.ifaces[mi.modIndex].interfSelect(mi.importHidden), name)
 
@@ -224,22 +223,24 @@ proc nextModuleIter*(mi: var ModuleIter; g: ModuleGraph): PSym =
     result = nextIdentIter(mi.ti, g.ifaces[mi.modIndex].interfSelect(mi.importHidden))
 
 iterator allSyms*(g: ModuleGraph; m: PSym): PSym =
+  let importHidden = optImportHidden in m.options
   if isCachedModule(g, m):
     var rodIt: RodIter
-    var r = initRodIterAllSyms(rodIt, g.config, g.cache, g.packed, FileIndex m.position)
+    var r = initRodIterAllSyms(rodIt, g.config, g.cache, g.packed, FileIndex m.position, importHidden)
     while r != nil:
       yield r
       r = nextRodIter(rodIt, g.packed)
   else:
-    for s in g.ifaces[m.position].interfSelect(optImportHidden in m.options).data:
+    for s in g.ifaces[m.position].interfSelect(importHidden).data:
       if s != nil:
         yield s
 
 proc someSym*(g: ModuleGraph; m: PSym; name: PIdent): PSym =
+  let importHidden = optImportHidden in m.options
   if isCachedModule(g, m):
-    result = interfaceSymbol(g.config, g.cache, g.packed, FileIndex(m.position), name)
+    result = interfaceSymbol(g.config, g.cache, g.packed, FileIndex(m.position), name, importHidden)
   else:
-    result = strTableGet(g.ifaces[m.position].interfSelect(optImportHidden in m.options), name)
+    result = strTableGet(g.ifaces[m.position].interfSelect(importHidden), name)
 
 proc systemModuleSym*(g: ModuleGraph; name: PIdent): PSym =
   result = someSym(g, g.systemModule, name)
@@ -376,7 +377,10 @@ template onDefAux(info: TLineInfo; s0: PSym, c0: untyped, isFwd: bool) =
       # unfortunately, can't use `c.isTopLevel` because the scope isn't closed yet
       top = c.currentScope.depthLevel <= 3
     else: top = c.currentScope.depthLevel <= 2
-    if top and c.module != nil: strTableAdd(semtabAll(c.graph, c.module), s0)
+    if top and c.module != nil:
+      strTableAdd(semtabAll(c.graph, c.module), s0)
+      if c.config.symbolFiles != disabledSf:
+        addHidden(c.encoder, c.packedRepr, s0)
 
 when defined(nimfind):
   template onUse*(info: TLineInfo; s: PSym) =
