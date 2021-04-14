@@ -16,8 +16,7 @@ type
     stringsSection
     checkSumsSection
     depsSection
-    integersSection
-    floatsSection
+    numbersSection
     exportsSection
     reexportsSection
     compilerProcsSection

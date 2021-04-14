@@ -224,7 +224,7 @@ proc toLitId(x: string; m: var PackedModule): LitId =
 
 proc toLitId(x: BiggestInt; m: var PackedModule): LitId =
   ## store an integer as a literal
-  result = getOrIncl(m.sh.integers, x)
+  result = getOrIncl(m.sh.numbers, x)
 
 proc toPackedInfo(x: TLineInfo; c: var PackedEncoder; m: var PackedModule): PackedLineInfo =
   PackedLineInfo(line: x.line, col: x.col, file: toLitId(x.fileIndex, c, m))
@@ -400,7 +400,7 @@ proc toPackedNode*(n: PNode; ir: var PackedTree; c: var PackedEncoder; m: var Pa
                             typeId: storeTypeLater(n.typ, c, m), info: info)
   of externIntLit:
     ir.nodes.add PackedNode(kind: n.kind, flags: n.flags,
-                            operand: int32 getOrIncl(m.sh.integers, n.intVal),
+                            operand: int32 getOrIncl(m.sh.numbers, n.intVal),
                             typeId: storeTypeLater(n.typ, c, m), info: info)
   of nkStrLit..nkTripleStrLit:
     ir.nodes.add PackedNode(kind: n.kind, flags: n.flags,
@@ -408,7 +408,7 @@ proc toPackedNode*(n: PNode; ir: var PackedTree; c: var PackedEncoder; m: var Pa
                             typeId: storeTypeLater(n.typ, c, m), info: info)
   of nkFloatLit..nkFloat128Lit:
     ir.nodes.add PackedNode(kind: n.kind, flags: n.flags,
-                            operand: int32 getOrIncl(m.sh.floats, n.floatVal),
+                            operand: int32 getOrIncl(m.sh.numbers, cast[BiggestInt](n.floatVal)),
                             typeId: storeTypeLater(n.typ, c, m), info: info)
   else:
     let patchPos = ir.prepare(n.kind, n.flags,
@@ -521,8 +521,7 @@ proc loadRodFile*(filename: AbsoluteFile; m: var PackedModule; config: ConfigRef
 
   loadSeqSection depsSection, m.imports
 
-  loadTabSection integersSection, m.sh.integers
-  loadTabSection floatsSection, m.sh.floats
+  loadTabSection numbersSection, m.sh.numbers
 
   loadSeqSection exportsSection, m.exports
 
@@ -587,8 +586,7 @@ proc saveRodFile*(filename: AbsoluteFile; encoder: var PackedEncoder; m: var Pac
 
   storeSeqSection depsSection, m.imports
 
-  storeTabSection integersSection, m.sh.integers
-  storeTabSection floatsSection, m.sh.floats
+  storeTabSection numbersSection, m.sh.numbers
 
   storeSeqSection exportsSection, m.exports
 
@@ -700,11 +698,11 @@ proc loadNodes*(c: var PackedDecoder; g: var PackedModuleGraph; thisModule: int;
   of directIntLit:
     result.intVal = tree.nodes[n.int].operand
   of externIntLit:
-    result.intVal = g[thisModule].fromDisk.sh.integers[n.litId]
+    result.intVal = g[thisModule].fromDisk.sh.numbers[n.litId]
   of nkStrLit..nkTripleStrLit:
     result.strVal = g[thisModule].fromDisk.sh.strings[n.litId]
   of nkFloatLit..nkFloat128Lit:
-    result.floatVal = g[thisModule].fromDisk.sh.floats[n.litId]
+    result.floatVal = cast[BiggestFloat](g[thisModule].fromDisk.sh.numbers[n.litId])
   of nkModuleRef:
     let (n1, n2) = sons2(tree, n)
     assert n1.kind == nkInt32Lit
@@ -1151,5 +1149,4 @@ proc rodViewer*(rodfile: AbsoluteFile; config: ConfigRef, cache: IdentCache) =
 
   echo "symbols: ", m.sh.syms.len, " types: ", m.sh.types.len,
     " top level nodes: ", m.topLevel.nodes.len, " other nodes: ", m.bodies.nodes.len,
-    " strings: ", m.sh.strings.len, " integers: ", m.sh.integers.len,
-    " floats: ", m.sh.floats.len
+    " strings: ", m.sh.strings.len, " numbers: ", m.sh.numbers.len
