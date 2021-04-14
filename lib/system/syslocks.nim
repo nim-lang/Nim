@@ -102,6 +102,8 @@ elif defined(genode):
     noSideEffect, importcpp.}
   proc signalSysCond(cond: var SysCond) {.
     noSideEffect, importcpp.}
+  proc broadcastSysCond(cond: var SysCond) {.
+    noSideEffect, importcpp.}
 
 else:
   type

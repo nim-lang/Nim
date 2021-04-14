@@ -73,6 +73,11 @@ struct Nim::SysCond
 	{
 		_semaphore.up();
 	}
+
+	void broadcastSysCond()
+	{
+		_semaphore.up();
+	}
 };
 
 #endif
