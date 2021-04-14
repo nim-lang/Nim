@@ -22,6 +22,9 @@ let foo3 = 2
 type Foo4 = enum
   kg1, kg2
 
+type Foo4b {.pure.} = enum
+  foo4b1, foo4b2
+
 type Foo5 = object
   z1: string
   z2: Foo4

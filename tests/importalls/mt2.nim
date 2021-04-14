@@ -12,16 +12,31 @@ block: # different symbol kinds
   doAssert r1.foo3 == 2
 
   block: # enum
-    # r1.kg1
     var a: r1.Foo4
     let a1 = r1.kg1
     doAssert a1 == r1.Foo4.kg1
-    type Foo4b = r1.Foo4
-    doAssert a1 == Foo4b.kg1
+    type A = r1.Foo4
+    doAssert a1 == A.kg1
     doAssert not compiles(kg1)
-    doAssert compiles(Foo4b.kg1)
+    doAssert compiles(A.kg1)
     var witness = false
     for ai in r1.Foo4:
+      doAssert ai == a
+      doAssert ai == a1
+      witness = true
+      break
+    doAssert witness
+
+  block: # {.pure.} enum
+    var a: r1.Foo4b
+    doAssert not compiles(r1.foo4b1) # because pure
+    doAssert not compiles(foo4b1)
+    let a1 = r1.Foo4b.foo4b1
+    doAssert a1 == a
+    type A = r1.Foo4b
+    doAssert a1 == A.foo4b1
+    var witness = false
+    for ai in A:
       doAssert ai == a
       doAssert ai == a1
       witness = true
@@ -51,7 +66,8 @@ block: # different symbol kinds
     doAssert r1.foo16() == 2
     doAssert r1.foo17() == 2
 
-  block: # should not be visible
+  block: # declarations at block scope should not be visible
+    doAssert compiles(foo7())
     doAssert not compiles(foo10())
     doAssert not compiles(r1.Foo11)
     doAssert not compiles(r1.kg1b)

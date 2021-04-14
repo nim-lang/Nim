@@ -311,11 +311,25 @@ proc addDeclAt*(c: PContext; scope: PScope, sym: PSym) =
   if conflict != nil:
     wrongRedefinition(c, sym.info, sym.name.s, conflict.info)
 
-proc addInterfaceDeclAux(c: PContext, sym: PSym) =
-  if sfExported in sym.flags:
+from ic / ic import addHidden
+
+proc addInterfaceDeclAux*(c: PContext, sym: PSym, forceExport = false) =
+  if sfExported in sym.flags or forceExport:
     # add to interface:
     if c.module != nil: exportSym(c, sym)
     else: internalError(c.config, sym.info, "addInterfaceDeclAux")
+
+  # PRTEMP: elif?
+  if sym.kind in ExportableSymKinds and c.module != nil:
+    let top =
+      case sym.kind
+      of routineKinds: c.currentScope.depthLevel <= 3
+        # can't use `c.isTopLevel` because the scope isn't closed yet
+      else: c.currentScope.depthLevel <= 2
+    if top:
+      strTableAdd(semtabAll(c.graph, c.module), sym)
+      if c.config.symbolFiles != disabledSf:
+        addHidden(c.encoder, c.packedRepr, sym)
 
 proc addInterfaceDeclAt*(c: PContext, scope: PScope, sym: PSym) =
   addDeclAt(c, scope, sym)
