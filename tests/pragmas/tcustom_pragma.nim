@@ -160,7 +160,7 @@ block:
 # Pragma on proc type
 
 type
-  MyAnnotatedProcType {.defaultValue(4).} = proc(x: int): void
+  MyAnnotatedProcType {.defaultValue(4).} = proc(x: int)
 
 let a {.defaultValue(4).}: proc(x: int)  = nil
 var b: MyAnnotatedProcType = nil
@@ -388,10 +388,10 @@ block:
 
 # issue #11511
 block:
-  template myAttr {. pragma .}
+  template myAttr {.pragma.}
 
   type TObj = object
-      a {. myAttr .}: int
+      a {.myAttr.}: int
 
   macro hasMyAttr(t: typedesc): untyped =
     let objTy = t.getType[1].getType
