@@ -455,11 +455,10 @@ proc markGlobals(gch: var GcHeap) =
 
 proc gcMark(gch: var GcHeap, p: pointer) {.inline.} =
   # the addresses are not as cells on the stack, so turn them to cells:
-  var cell = usrToCell(p)
-  var c = cast[ByteAddress](cell)
+  var c = cast[ByteAddress](p)
   if c >% PageSize:
     # fast check: does it look like a cell?
-    var objStart = cast[PCell](interiorAllocatedPtr(gch.region, cell))
+    var objStart = cast[PCell](interiorAllocatedPtr(gch.region, p))
     if objStart != nil:
       mark(gch, objStart)
 
