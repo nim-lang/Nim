@@ -141,7 +141,7 @@ proc reversed*[T](a: openArray[T], first: Natural, last: int): seq[T] =
   ## * `reverse proc<#reverse,openArray[T]>`_
   runnableExamples:
     let
-      a = [1, 2, 3, 4, 5, 6]
+      a = @[1, 2, 3, 4, 5, 6]
       b = a.reversed(1, 3)
     assert b == @[4, 3, 2]
   assert last >= first - 1
@@ -161,10 +161,24 @@ proc reversed*[T](a: openArray[T]): seq[T] =
   ## * `reverse proc<#reverse,openArray[T]>`_
   runnableExamples:
     let
-      a = [1, 2, 3, 4, 5, 6]
+      a = @[1, 2, 3, 4, 5, 6]
       b = reversed(a)
     assert b == @[6, 5, 4, 3, 2, 1]
   reversed(a, 0, a.high)
+
+proc reversed*[T, I](a: array[T, I]): array[T, I] =
+  ## Returns the reverse of the array `a`.
+  ##
+  ## **See also:**
+  ## * `reverse proc<#reverse,openArray[T],Natural,Natural>`_ reverse a slice
+  ## * `reverse proc<#reverse,openArray[T]>`_
+  runnableExamples:
+    let
+      a = [1, 2, 3, 4, 5, 6]
+      b = reversed(a)
+    assert b == [6, 5, 4, 3, 2, 1]
+  for i in a.low..a.high:
+    result[i] = a[^i]
 
 proc binarySearch*[T, K](a: openArray[T], key: K,
                          cmp: proc (x: T, y: K): int {.closure.}): int =

@@ -47,6 +47,21 @@ block:
   for i in 0 .. high(arr1):
     doAssert arr1.reversed(0, i) == arr1.reversed()[high(arr1) - i .. high(arr1)]
     doAssert arr1.reversed(i, high(arr1)) == arr1.reversed()[0 .. high(arr1) - i]
+  # Tests for reversed array
+  var arr2 = [0, 1, 2, 3, 4]
+  doAssert arr2.reversed() == [4, 3, 2, 1, 0]
+  for i in 0 .. high(arr2):
+    doAssert arr2.reversed(0, i) == arr2.reversed()[high(arr2) - i .. high(arr2)]
+    doAssert arr2.reversed(i, high(arr2)) == arr2.reversed()[0 .. high(arr2) - i]
+  # Tests for reversed enum array
+  when false: # TODO: Enable once someArray[^i] works for enum arrays
+    type E = enum
+      one, two, three, four, five
+    var arr3 = [one: 0, two: 1, three: 2, four: 3, five: 4]
+    doAssert arr3.reversed() == [4, 3, 2, 1, 0]
+    for i in 0 .. high(arr3):
+      doAssert arr3.reversed(0, i) == arr3.reversed()[high(arr3) - i .. high(arr3)]
+      doAssert arr3.reversed(i, high(arr3)) == arr3.reversed()[0 .. high(arr3) - i]
 
 block:
   var list = [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10]
