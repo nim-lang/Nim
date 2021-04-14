@@ -15,6 +15,7 @@ Advanced commands:
   //dump                    dump all defined conditionals and search paths
                             see also: --dump.format:json (useful with: `| jq`)
   //check                   checks the project for syntax and semantic
+                            (can be combined with --track and --defusages)
 
 Runtime checks (see -x):
   --objChecks:on|off        turn obj conversion checks on|off
@@ -27,6 +28,8 @@ Runtime checks (see -x):
   --infChecks:on|off        turn Inf checks on|off
 
 Advanced options:
+  --track:FILE,LINE,COL     set the tracking position for (--defusages)
+  --defusages               find the definition and all usages of a symbol
   -o:FILE, --out:FILE       set the output filename
   --outdir:DIR              set the path where the output file will be written
   --usenimcache             will use `outdir=$$nimcache`, whichever it resolves

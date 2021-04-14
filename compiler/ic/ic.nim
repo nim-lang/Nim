@@ -89,14 +89,27 @@ proc rememberConfig(c: var PackedEncoder; m: var PackedModule; config: ConfigRef
   #primConfigFields rem
   m.cfg = pc
 
+const
+  debugConfigDiff = defined(debugConfigDiff)
+
+when debugConfigDiff:
+  import std / [hashes, tables, intsets, sha1, strutils, sets]
+
 proc configIdentical(m: PackedModule; config: ConfigRef): bool =
   result = m.definedSymbols == definedSymbolsAsString(config)
-  #if not result:
-  #  echo "A ", m.definedSymbols, " ", definedSymbolsAsString(config)
+  when debugConfigDiff:
+    if not result:
+      var wordsA = m.definedSymbols.split(Whitespace).toHashSet()
+      var wordsB = definedSymbolsAsString(config).split(Whitespace).toHashSet()
+      for c in wordsA - wordsB:
+        echo "in A but not in B ", c
+      for c in wordsB - wordsA:
+        echo "in B but not in A ", c
   template eq(x) =
     result = result and m.cfg.x == config.x
-    #if not result:
-    #  echo "B ", m.cfg.x, " ", config.x
+    when debugConfigDiff:
+      if m.cfg.x != config.x:
+        echo "B ", m.cfg.x, " ", config.x
   primConfigFields eq
 
 proc rememberStartupConfig*(dest: var PackedConfig, config: ConfigRef) =
@@ -124,7 +137,7 @@ proc toLitId(x: FileIndex; c: var PackedEncoder; m: var PackedModule): LitId =
       c.filenames[x] = result
     c.lastFile = x
     c.lastLit = result
-    assert result != LitId(0)
+  assert result != LitId(0)
 
 proc toFileIndex*(x: LitId; m: PackedModule; config: ConfigRef): FileIndex =
   result = msgs.fileInfoIdx(config, AbsoluteFile m.sh.strings[x])
@@ -143,6 +156,8 @@ proc initEncoder*(c: var PackedEncoder; m: var PackedModule; moduleSym: PSym; co
   m.moduleFlags = moduleSym.flags
   m.bodies = newTreeFrom(m.topLevel)
   m.toReplay = newTreeFrom(m.topLevel)
+
+  c.lastFile = FileIndex(-10)
 
   let thisNimFile = FileIndex c.thisModule
   var h = msgs.getHash(config, thisNimFile)
@@ -463,6 +478,9 @@ proc storeInstantiation*(c: var PackedEncoder; m: var PackedModule; s: PSym; i: 
                                           sym: storeSymLater(i.sym, c, m),
                                           concreteTypes: t)
   toPackedGeneratedProcDef(i.sym, c, m)
+
+proc storeExpansion*(c: var PackedEncoder; m: var PackedModule; info: TLineInfo; s: PSym) =
+  toPackedNode(newSymNode(s, info), m.bodies, c, m)
 
 proc loadError(err: RodFileError; filename: AbsoluteFile; config: ConfigRef;) =
   case err

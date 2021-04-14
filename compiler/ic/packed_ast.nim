@@ -258,9 +258,9 @@ iterator sonsWithoutLast2*(tree: PackedTree; n: NodePos): NodePos =
 proc parentImpl(tree: PackedTree; n: NodePos): NodePos =
   # finding the parent of a node is rather easy:
   var pos = n.int - 1
-  while pos >= 0 and isAtom(tree, pos) or (pos + tree.nodes[pos].operand - 1 < n.int):
+  while pos >= 0 and (isAtom(tree, pos) or (pos + tree.nodes[pos].operand - 1 < n.int)):
     dec pos
-  assert pos >= 0, "node has no parent"
+  #assert pos >= 0, "node has no parent"
   result = NodePos(pos)
 
 template parent*(n: NodePos): NodePos = parentImpl(tree, n)
