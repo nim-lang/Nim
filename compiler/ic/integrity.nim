@@ -79,12 +79,10 @@ proc checkNode(c: var CheckedContext; tree: PackedTree; n: NodePos) =
     checkLocalSym(c, tree.nodes[n.int].operand)
   of directIntLit:
     discard
-  of externIntLit:
-    assert c.g.packed[c.thisModule].fromDisk.sh.integers.hasLitId n.litId
+  of externIntLit, nkFloatLit..nkFloat128Lit:
+    assert c.g.packed[c.thisModule].fromDisk.sh.numbers.hasLitId n.litId
   of nkStrLit..nkTripleStrLit:
     assert c.g.packed[c.thisModule].fromDisk.sh.strings.hasLitId n.litId
-  of nkFloatLit..nkFloat128Lit:
-    assert c.g.packed[c.thisModule].fromDisk.sh.floats.hasLitId n.litId
   of nkModuleRef:
     let (n1, n2) = sons2(tree, n)
     assert n1.kind == nkInt32Lit
