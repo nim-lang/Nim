@@ -72,14 +72,17 @@ testament.db
 .*/
 ~*
 
-# testament cruft; TODO: generate these in a gitignore'd dir in the first place.
+# testament cruft; TODO: generate these in a gitignore'd dir (./build) in the first place.
 testresults/
 test.txt
 /test.ini
 
 tweeter.db
 tweeter_test.db
-megatest.nim
+
+/tests/megatest.nim
+/tests/ic/*_temp.nim
+
 
 /outputExpected.txt
 /outputGotten.txt
