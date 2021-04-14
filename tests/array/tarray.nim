@@ -590,5 +590,7 @@ block t12466:
 
 block t17705:
   # https://github.com/nim-lang/Nim/pull/17705
-  var a = array[0, int].high
-  a = int a
+  var a = array[0, int].low
+  a = int(a)
+  var b = array[0, int].high
+  b = int(b)
