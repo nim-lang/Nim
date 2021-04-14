@@ -24,6 +24,7 @@ const
   errNamedExprNotAllowed = "named expression not allowed here"
   errFieldInitTwice = "field initialized twice: '$1'"
   errUndeclaredFieldX = "undeclared field: '$1'"
+  errEmptyRange = "range is empty"
 
 proc semTemplateExpr(c: PContext, n: PNode, s: PSym,
                      flags: TExprFlags = {}): PNode =
@@ -2412,12 +2413,20 @@ proc semSetConstr(c: PContext, n: PNode): PNode =
     for i in 0..<n.len:
       if isRange(n[i]):
         checkSonsLen(n[i], 3, c.config)
-        n[i][1] = semExprWithType(c, n[i][1])
-        n[i][2] = semExprWithType(c, n[i][2])
+
+        for x in 1..2:
+          let constExpr = tryConstExpr(c, n[i][x])
+          if constExpr != nil:
+            n[i][x] = constExpr
+          else:
+            n[i][x] = semExprWithType(c, n[i][x])
+
         if typ == nil:
           typ = skipTypes(n[i][1].typ,
                           {tyGenericInst, tyVar, tyLent, tyOrdinal, tyAlias, tySink})
         n[i].typ = n[i][2].typ # range node needs type too
+        if weakLeValue(n[i][1], n[i][2]) == impNo:
+          localError(c.config, n.info, errEmptyRange)
       elif n[i].kind == nkRange:
         # already semchecked
         if typ == nil:

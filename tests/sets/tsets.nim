@@ -218,3 +218,14 @@ type Foo = enum
 
 let x = { Foo1, Foo2 }
 # bug #8425
+
+# empty range should not compile
+doAssert not compiles({hintUser..errUser})
+doAssert compiles({errUser..hintUser})
+
+# Check runtime sets
+block:
+  var
+    a = errUser
+    b = hintUser
+    r = {a..b}
