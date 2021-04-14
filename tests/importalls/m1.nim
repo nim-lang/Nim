@@ -50,3 +50,13 @@ iterator foo14a(): int = discard
 iterator foo14b*(): int = discard
 iterator foo14c(): int {.closure.} = discard
 iterator foo14d(): int {.inline.} = discard
+
+# fwd declare
+proc foo15(): int
+proc foo15(): int = 2
+
+proc foo16*(): int
+proc foo16(): int = 2
+
+proc foo17*(): int
+proc foo17*(): int = 2

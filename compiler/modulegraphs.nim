@@ -364,44 +364,42 @@ proc hash*(u: SigHash): Hash =
 
 proc hash*(x: FileIndex): Hash {.borrow.}
 
-template getC(): untyped =
+template getPContext(): untyped =
   when c is PContext: c
   else: c.c
 
-proc onDefAux[T](info: TLineInfo; s: PSym, c: T, isFwd: bool) =
+proc onDefAux[T](info: TLineInfo; s: PSym, c: T) {.inline.} =
   # PContext is not yet declared, so we use a generic
-  if s.kind in ExportableSymKinds:
-    var top = true
-    case s.kind
-    of routineKinds:
-      # unfortunately, can't use `c.isTopLevel` because the scope isn't closed yet
-      top = c.currentScope.depthLevel <= 3
-    else: top = c.currentScope.depthLevel <= 2
-    if top and c.module != nil:
+  if s.kind in ExportableSymKinds and c.module != nil:
+    let top =
+      case s.kind
+      of routineKinds: c.currentScope.depthLevel <= 3
+        # unfortunately, can't use `c.isTopLevel` because the scope isn't closed yet
+      else: c.currentScope.depthLevel <= 2
+    if top:
       strTableAdd(semtabAll(c.graph, c.module), s)
       if c.config.symbolFiles != disabledSf:
         addHidden(c.encoder, c.packedRepr, s)
 
 when defined(nimfind):
   template onUse*(info: TLineInfo; s: PSym) =
-    let c2 = getC()
-    if c2.graph.onUsage != nil: c2.graph.onUsage(c2.graph, s, info)
+    let c = getPContext()
+    if c.graph.onUsage != nil: c.graph.onUsage(c.graph, s, info)
 
   template onDef*(info: TLineInfo; s: PSym) =
-    let c2 = getC()
-    onDefAux(info, s, c2, false)
-    if c2.graph.onDefinition != nil: c2.graph.onDefinition(c2.graph, s, info)
+    let c = getPContext()
+    onDefAux(info, s, c)
+    if c.graph.onDefinition != nil: c.graph.onDefinition(c.graph, s, info)
 
   template onDefResolveForward*(info: TLineInfo; s: PSym) =
-    let c2 = getC()
-    onDefAux(info, s, c2, true)
-    if c2.graph.onDefinitionResolveForward != nil:
-      c2.graph.onDefinitionResolveForward(c2.graph, s, info)
+    let c = getPContext()
+    if c.graph.onDefinitionResolveForward != nil:
+      c.graph.onDefinitionResolveForward(c.graph, s, info)
 
 else:
   template onUse*(info: TLineInfo; s: PSym) = discard
-  template onDef*(info: TLineInfo; s: PSym) = onDefAux(info, s, getC(), false)
-  template onDefResolveForward*(info: TLineInfo; s: PSym) = onDefAux(info, s, getC(), true)
+  template onDef*(info: TLineInfo; s: PSym) = onDefAux(info, s, getPContext())
+  template onDefResolveForward*(info: TLineInfo; s: PSym) = discard
 
 proc stopCompile*(g: ModuleGraph): bool {.inline.} =
   result = g.doStopCompile != nil and g.doStopCompile()

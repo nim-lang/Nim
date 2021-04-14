@@ -34,25 +34,28 @@ block: # different symbol kinds
     doAssert compiles(a.z4)
     doAssert not compiles(a.z3)
 
-  # remaining symbol kinds
-  doAssert r1.foo6() == 2
-  doAssert r1.foo6b() == 2
-  doAssert foo7() == 2
-  doAssert r2.foo6b() == 2
+  block: # remaining symbol kinds
+    doAssert r1.foo6() == 2
+    doAssert r1.foo6b() == 2
+    doAssert foo7() == 2
+    doAssert r2.foo6b() == 2
 
-  r1.foo8()
-  r1.foo9(1)
-  doAssert r1.foo13() == 2
-  for a in r1.foo14a(): discard
-  for a in r1.foo14b(): discard
-  for a in r1.foo14c(): discard
-  for a in r1.foo14d(): discard
+    r1.foo8()
+    r1.foo9(1)
+    doAssert r1.foo13() == 2
+    for a in r1.foo14a(): discard
+    for a in r1.foo14b(): discard
+    for a in r1.foo14c(): discard
+    for a in r1.foo14d(): discard
+    doAssert r1.foo15() == 2
+    doAssert r1.foo16() == 2
+    doAssert r1.foo17() == 2
 
-  # should not be visible
-  doAssert not compiles(foo10())
-  doAssert not compiles(r1.Foo11)
-  doAssert not compiles(r1.kg1b)
-  doAssert not compiles(r1.foo12())
+  block: # should not be visible
+    doAssert not compiles(foo10())
+    doAssert not compiles(r1.Foo11)
+    doAssert not compiles(r1.kg1b)
+    doAssert not compiles(r1.foo12())
 
 ## field access
 import std/importutils
