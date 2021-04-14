@@ -1,6 +1,8 @@
 discard """
   output: '''
 
+[Suite] RST indentation
+
 [Suite] RST include directive
 '''
 """
