@@ -605,6 +605,8 @@ type
 const
   routineKinds* = {skProc, skFunc, skMethod, skIterator,
                    skConverter, skMacro, skTemplate}
+  ExportableSymKinds* = {skVar, skLet, skConst, skType, skEnumField, skStub, skAlias} + routineKinds
+
   tfUnion* = tfNoSideEffect
   tfGcSafe* = tfThread
   tfObjHasKids* = tfEnumHasHoles
@@ -1012,9 +1014,6 @@ const
   NilableTypes*: TTypeKinds = {tyPointer, tyCString, tyRef, tyPtr,
     tyProc, tyError} # TODO
   PtrLikeKinds*: TTypeKinds = {tyPointer, tyPtr} # for VM
-  ExportableSymKinds* = {skVar, skConst, skProc, skFunc, skMethod, skType,
-    skIterator,
-    skMacro, skTemplate, skConverter, skEnumField, skLet, skStub, skAlias}
   PersistentNodeFlags*: TNodeFlags = {nfBase2, nfBase8, nfBase16,
                                       nfDotSetter, nfDotField,
                                       nfIsRef, nfIsPtr, nfPreventCg, nfLL,

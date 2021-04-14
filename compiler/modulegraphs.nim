@@ -373,7 +373,7 @@ template onDefAux(info: TLineInfo; s0: PSym, c0: untyped, isFwd: bool) =
     let c = c0 # in case c0 is an expression
     var top = true
     case s0.kind
-    of skProc, skMacro:
+    of routineKinds:
       # unfortunately, can't use `c.isTopLevel` because the scope isn't closed yet
       top = c.currentScope.depthLevel <= 3
     else: top = c.currentScope.depthLevel <= 2
