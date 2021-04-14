@@ -13,9 +13,10 @@
 
 import std / sets
 
+from os import nil
 from std/private/miscdollars import toLocation
 
-import ".." / [ast, modulegraphs, msgs]
+import ".." / [ast, modulegraphs, msgs, options]
 import packed_ast, bitabs, ic
 
 type
@@ -24,11 +25,12 @@ type
     thisModule: int32
     trackPos: PackedLineInfo
     alreadyEmitted: HashSet[string]
+    outputSep: char # for easier testing, use short filenames and spaces instead of tabs.
 
 proc isTracked(current, trackPos: PackedLineInfo, tokenLen: int): bool =
   if current.file == trackPos.file and current.line == trackPos.line:
     let col = trackPos.col
-    if col >= current.col and col <= current.col+tokenLen-1:
+    if col >= current.col and col < current.col+tokenLen:
       return true
 
 proc searchLocalSym(c: var NavContext; s: PackedSym; info: PackedLineInfo): bool =
@@ -71,11 +73,13 @@ proc isDecl(tree: PackedTree; n: NodePos): bool =
   result = n.int >= 0 and tree[n.int].kind in declarativeNodes
 
 proc usage(c: var NavContext; info: PackedLineInfo; isDecl: bool) =
-  var m = if isDecl: "def\t" else: "usage\t"
-  let file = c.g.packed[c.thisModule].fromDisk.sh.strings[info.file]
+  var m = ""
+  var file = c.g.packed[c.thisModule].fromDisk.sh.strings[info.file]
+  if c.outputSep == ' ':
+    file = os.extractFilename file
   toLocation(m, file, info.line.int, info.col.int + ColOffset)
   if not c.alreadyEmitted.containsOrIncl(m):
-    echo m
+    echo (if isDecl: "def" else: "usage"), c.outputSep, m
 
 proc list(c: var NavContext; tree: PackedTree; sym: ItemId) =
   for i in 0..high(tree.nodes):
@@ -107,7 +111,8 @@ proc nav(g: ModuleGraph) =
   var c = NavContext(
     g: g,
     thisModule: int32 mid,
-    trackPos: PackedLineInfo(line: unpacked.line, col: unpacked.col, file: fileId)
+    trackPos: PackedLineInfo(line: unpacked.line, col: unpacked.col, file: fileId),
+    outputSep: if isDefined(g.config, "nimIcNavigatorTests"): ' ' else: '\t'
   )
   var symId = search(c, g.packed[int32 mid].fromDisk.topLevel)
   if symId == EmptyItemId:
