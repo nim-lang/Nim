@@ -694,7 +694,7 @@ when defineSsl:
       return 0
     if identityString.len.cuint >= max_identity_len:
       return 0
-    copyMem(identity, identityString.cstring, pskString.len + 1) # with the last zero byte
+    copyMem(identity, identityString.cstring, identityString.len + 1) # with the last zero byte
     copyMem(psk, pskString.cstring, pskString.len)
 
     return pskString.len.cuint
