@@ -18,6 +18,11 @@ import compiler/nodejs
 import lib/stdtest/testutils
 from lib/stdtest/specialpaths import splitTestFile
 
+proc trimUnitSep(x: var string) =
+  let L = x.len
+  if L > 0 and x[^1] == '\31':
+    setLen x, L-1
+
 var useColors = true
 var backendLogging = true
 var simulate = false
@@ -172,6 +177,7 @@ proc callCompiler(cmdTemplate, filename, options, nimcache: string,
   result.nimout = ""
   while true:
     if outp.readLine(x):
+      trimUnitSep x
       result.nimout.add(x & '\n')
       if x =~ pegOfInterest:
         # `err` should contain the last error/warning message
@@ -196,6 +202,7 @@ proc callCompiler(cmdTemplate, filename, options, nimcache: string,
     result.msg = matches[0]
   elif suc.isSuccess:
     result.err = reSuccess
+  trimUnitSep result.msg
 
 proc callCCompiler(cmdTemplate, filename, options: string,
                   target: TTarget): TSpec =
