@@ -62,3 +62,4 @@ template cppLang*(a: string{lit}): string = a
 template jsLang*(a: string{lit}): string = a
 template asmLang*(a: string{lit}): string = a
 template pyLang*(a: string{lit}): string = a
+# add more as needed
