@@ -37,7 +37,7 @@ proc stackTraceAux(c: PCtx; x: PStackFrame; pc: int; recursionLimit=100) =
       while x != nil:
         inc calls
         x = x.next
-      msgWriteln(c.config, $calls & " calls omitted\n")
+      msgWriteln(c.config, $calls & " calls omitted\n", {msgNoUnitSep})
       return
     stackTraceAux(c, x.next, x.comesFrom, recursionLimit-1)
     var info = c.debug[pc]
@@ -59,12 +59,12 @@ proc stackTraceAux(c: PCtx; x: PStackFrame; pc: int; recursionLimit=100) =
     if x.prc != nil:
       for k in 1..max(1, 25-s.len): s.add(' ')
       s.add(x.prc.name.s)
-    msgWriteln(c.config, s)
+    msgWriteln(c.config, s, {msgNoUnitSep})
 
 proc stackTraceImpl(c: PCtx, tos: PStackFrame, pc: int,
   msg: string, lineInfo: TLineInfo, infoOrigin: InstantiationInfo) {.noinline.} =
   # noinline to avoid code bloat
-  msgWriteln(c.config, "stack trace: (most recent call last)")
+  msgWriteln(c.config, "stack trace: (most recent call last)", {msgNoUnitSep})
   stackTraceAux(c, tos, pc)
   let action = if c.mode == emRepl: doRaise else: doNothing
     # XXX test if we want 'globalError' for every mode
@@ -470,7 +470,7 @@ template handleJmpBack() {.dirty.} =
     if allowInfiniteLoops in c.features:
       c.loopIterations = c.config.maxLoopIterationsVM
     else:
-      msgWriteln(c.config, "stack trace: (most recent call last)")
+      msgWriteln(c.config, "stack trace: (most recent call last)", {msgNoUnitSep})
       stackTraceAux(c, tos, pc)
       globalError(c.config, c.debug[pc], errTooManyIterations % $c.config.maxLoopIterationsVM)
   dec(c.loopIterations)
@@ -1163,7 +1163,7 @@ proc rawExecute(c: PCtx, start: int, tos: PStackFrame): TFullReg =
         stackTrace(c, tos, pc, "node is not a proc symbol")
     of opcEcho:
       let rb = instr.regB
-      template fn(s) = msgWriteln(c.config, s, {msgStdout})
+      template fn(s) = msgWriteln(c.config, s, {msgStdout, msgNoUnitSep})
       if rb == 1: fn(regs[ra].node.strVal)
       else:
         var outp = ""
