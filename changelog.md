@@ -4,6 +4,8 @@
 
 ## Changes affecting backward compatibility
 
+- `cuchar` now aliases `uint8` instead of `char`
+
 - `repr` now doesn't insert trailing newline; previous behavior was very inconsistent,
   see #16034. Use `-d:nimLegacyReprWithNewline` for previous behavior.
 
@@ -37,7 +39,6 @@
   unless `-d:nimLegacyHomeDir` is specified (for a transition period).
 
 ## Standard library additions and changes
-- `cuchar` now aliases `uint8` instead of `char`
 
 - Fixed buffer overflow bugs in `net`
 
