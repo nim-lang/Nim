@@ -348,6 +348,8 @@ proc high*[T](x: openArray[T]): int {.magic: "High", noSideEffect.}
 proc high*[I, T](x: array[I, T]): I {.magic: "High", noSideEffect.}
   ## Returns the highest possible index of an array `x`.
   ##
+  ## For empty arrays, the return type is `int`.
+  ##
   ## See also:
   ## * `low(array) <#low,array[I,T]>`_
   ##
@@ -359,6 +361,8 @@ proc high*[I, T](x: array[I, T]): I {.magic: "High", noSideEffect.}
 
 proc high*[I, T](x: typedesc[array[I, T]]): I {.magic: "High", noSideEffect.}
   ## Returns the highest possible index of an array type.
+  ##
+  ## For empty arrays, the return type is `int`.
   ##
   ## See also:
   ## * `low(typedesc[array]) <#low,typedesc[array[I,T]]>`_
@@ -420,6 +424,8 @@ proc low*[T](x: openArray[T]): int {.magic: "Low", noSideEffect.}
 proc low*[I, T](x: array[I, T]): I {.magic: "Low", noSideEffect.}
   ## Returns the lowest possible index of an array `x`.
   ##
+  ## For empty arrays, the return type is `int`.
+  ##
   ## See also:
   ## * `high(array) <#high,array[I,T]>`_
   ##
@@ -431,6 +437,8 @@ proc low*[I, T](x: array[I, T]): I {.magic: "Low", noSideEffect.}
 
 proc low*[I, T](x: typedesc[array[I, T]]): I {.magic: "Low", noSideEffect.}
   ## Returns the lowest possible index of an array type.
+  ##
+  ## For empty arrays, the return type is `int`.
   ##
   ## See also:
   ## * `high(typedesc[array]) <#high,typedesc[array[I,T]]>`_
