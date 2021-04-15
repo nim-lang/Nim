@@ -37,8 +37,6 @@
   unless `-d:nimLegacyHomeDir` is specified (for a transition period).
 
 ## Standard library additions and changes
-- Added support for parenthesised expressions in strformat
-
 - Fixed buffer overflow bugs in `net`
 
 - Added `sections` iterator in `parsecfg`.
