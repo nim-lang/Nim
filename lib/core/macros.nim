@@ -1661,7 +1661,10 @@ macro getCustomPragmaVal*(n: typed, cp: typed): untyped =
   ##   assert(MyObj.getCustomPragmaVal(serializationKey) == "mo")
   n.expectKind {nnkDotExpr, nnkCheckedFieldExpr, nnkSym, nnkTypeOfExpr}
   cp.expectKind {nnkSym, nnkOpenSymChoice, nnkClosedSymChoice}
-  let pragmaNode = getCustomPragmaNodesSmart(n, $cp)[^1]
+  let pragmaNodes = getCustomPragmaNodesSmart(n, $cp)
+  if pragmaNodes.len == 0:
+    error(n.repr & " doesn't have any custom pragmas")
+  let pragmaNode = pragmaNodes[^1]
 
   case pragmaNode.kind
   of nnkPragmaCallKinds:
