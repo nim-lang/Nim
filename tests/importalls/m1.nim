@@ -63,3 +63,8 @@ proc foo16(): int = 2
 
 proc foo17*(): int
 proc foo17*(): int = 2
+
+# other
+type A1 = distinct int
+type A2 = distinct int
+converter foo18(x: A1): A2 = discard

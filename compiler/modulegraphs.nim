@@ -368,20 +368,6 @@ template getPContext(): untyped =
   when c is PContext: c
   else: c.c
 
-proc onDefAux[T](info: TLineInfo; s: PSym, c: T) {.inline.} =
-  discard
-  # # PContext is not yet declared, so we use a generic
-  # if s.kind in ExportableSymKinds and c.module != nil:
-  #   let top =
-  #     case s.kind
-  #     of routineKinds: c.currentScope.depthLevel <= 3
-  #       # unfortunately, can't use `c.isTopLevel` because the scope isn't closed yet
-  #     else: c.currentScope.depthLevel <= 2
-  #   if top:
-  #     strTableAdd(semtabAll(c.graph, c.module), s)
-  #     if c.config.symbolFiles != disabledSf:
-  #       addHidden(c.encoder, c.packedRepr, s)
-
 when defined(nimfind):
   template onUse*(info: TLineInfo; s: PSym) =
     let c = getPContext()
@@ -389,7 +375,6 @@ when defined(nimfind):
 
   template onDef*(info: TLineInfo; s: PSym) =
     let c = getPContext()
-    onDefAux(info, s, c)
     if c.graph.onDefinition != nil: c.graph.onDefinition(c.graph, s, info)
 
   template onDefResolveForward*(info: TLineInfo; s: PSym) =
@@ -399,7 +384,7 @@ when defined(nimfind):
 
 else:
   template onUse*(info: TLineInfo; s: PSym) = discard
-  template onDef*(info: TLineInfo; s: PSym) = onDefAux(info, s, getPContext())
+  template onDef*(info: TLineInfo; s: PSym) = discard
   template onDefResolveForward*(info: TLineInfo; s: PSym) = discard
 
 proc stopCompile*(g: ModuleGraph): bool {.inline.} =

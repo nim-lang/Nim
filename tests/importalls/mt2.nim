@@ -65,12 +65,17 @@ block: # different symbol kinds
     doAssert r1.foo15() == 2
     doAssert r1.foo16() == 2
     doAssert r1.foo17() == 2
+    doAssert compiles(r1.foo18)
+    doAssert declared(r1.foo18)
 
   block: # declarations at block scope should not be visible
-    doAssert compiles(foo7())
-    doAssert not compiles(foo10())
-    doAssert not compiles(r1.Foo11)
-    doAssert not compiles(r1.kg1b)
+    doAssert declared(foo7)
+    doAssert declared(r1.foo6)
+    doAssert not declared(foo10)
+    doAssert not declared(foo6)
+    doAssert not declared(r1.Foo11)
+    doAssert not declared(r1.kg1b)
+    doAssert not declared(r1.foo12)
     doAssert not compiles(r1.foo12())
 
 ## field access
