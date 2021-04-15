@@ -60,13 +60,6 @@ when defined(windows):
     dwMilliseconds: int
   ): int32 {.stdcall, noSideEffect, dynlib: "kernel32", importc: "SleepConditionVariableCS".}
 
-  proc wakeConditionVariable(
-    conditionVariable: var SysCond
-  ) {.stdcall, noSideEffect, dynlib: "kernel32", importc: "WakeConditionVariable".}
-
-  proc wakeAllConditionVariable(
-    conditionVariable: var SysCond
-  ) {.stdcall, noSideEffect, dynlib: "kernel32", importc: "wakeAllConditionVariable".}
 
   proc signalSysCond(hEvent: var SysCond) {.stdcall, noSideEffect,
     dynlib: "kernel32", importc: "WakeConditionVariable".}
