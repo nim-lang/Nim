@@ -220,7 +220,15 @@ when defined(js):
       }
     """
 
-proc hash*(x: pointer | ref | ptr): Hash {.inline.} =
+proc hash*(x: pointer): Hash {.inline.} =
+  ## Efficient `hash` overload.
+  when defined(js):
+    let y = getObjectId(cast[pointer](x))
+  else:
+    let y = cast[int](x)
+  hash(y) # consistent with code expecting scrambled hashes depending on `nimIntHash1`.
+
+proc hash*[T](x: ref[T] | ptr[T]): Hash {.inline.} =
   ## Efficient `hash` overload.
   runnableExamples:
     var a: array[10, uint8]
@@ -240,14 +248,9 @@ proc hash*(x: pointer | ref | ptr): Hash {.inline.} =
       x, y: T
     proc hash(a: A): Hash = hash(a.x)
     assert A[int](x: 3, y: 4).hash == A[int](x: 3, y: 5).hash
-
-  when defined(js):
-    let id = getObjectId(cast[pointer](x))
-    result = hash(id)
-      # consistent with c backend and code expecting scrambled
-      # hashes depending on `nimIntHash1`.
-  else:
-    result = hash(cast[int](x))
+  # xxx pending bug #17733, merge as `proc hash*(pointer | ref | ptr): Hash`
+  # or `proc hash*[T: ref | ptr](x: T): Hash`
+  hash(cast[pointer](x))
 
 proc hash*[T: proc](x: T): Hash {.inline.} =
   ## Efficient hashing of proc vars. Closures are supported too.

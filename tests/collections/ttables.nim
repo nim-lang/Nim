@@ -10,6 +10,8 @@ joinable: false
 targets: "c cpp js"
 """
 
+# xxx wrap in a template to test in VM, see https://github.com/timotheecour/Nim/issues/534#issuecomment-769565033
+
 import hashes, sequtils, tables, algorithm
 
 proc sortedPairs[T](t: T): auto = toSeq(t.pairs).sorted
