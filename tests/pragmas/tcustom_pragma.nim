@@ -165,11 +165,14 @@ type
 let a {.defaultValue(4).}: proc(x: int)  = nil
 var b: MyAnnotatedProcType = nil
 var c: proc(x: int): void {.defaultValue(5).}  = nil
+var d {.defaultValue(44).}: MyAnnotatedProcType = nil
 static:
   doAssert hasCustomPragma(a, defaultValue)
   doAssert hasCustomPragma(MyAnnotatedProcType, defaultValue)
   doAssert hasCustomPragma(b, defaultValue)
   doAssert hasCustomPragma(typeof(c), defaultValue)
+  doAssert getCustomPragmaVal(d, defaultValue) == 44
+  doAssert getCustomPragmaVal(typeof(d), defaultValue) == 4
 
 # bug #8371
 template thingy {.pragma.}

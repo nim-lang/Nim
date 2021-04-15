@@ -1536,6 +1536,14 @@ proc getPragmaNodeFromTypeSym(sym: NimNode): NimNode =
     if pragmaExpr.kind == nnkPragmaExpr:
       result = pragmaExpr[1]
 
+proc getPragmaNodeFromType(typ: NimNode): NimNode =
+  case typ.kind:
+  of nnkSym:
+    result = getPragmaNodeFromTypeSym(typ)
+  of nnkProcTy:
+    result = typ[1]
+  else: error("illegal typ kind for argument: " & $typ.kind, typ)
+
 proc getPragmaNodeFromVarLetSym(sym: NimNode): NimNode =
   sym.expectKind nnkSym
   if sym.symKind notin {nskVar, nskLet}: error("expected var/let sym", sym)
@@ -1573,11 +1581,12 @@ proc getCustomPragmaNodes(sym: NimNode, name: string): seq[NimNode] =
     else:
       error("illegal sym kind for argument: " & $sym.symKind, sym)
   of nskVar, nskLet:
-    result = getPragmaNodeFromVarLetSym(sym).getPragmasByName(name)
-    # I think it is a bad idea to fall back to the typeSym. The API
-    # explicity requests a var/let symbol, not a type symbol.
-    if result.len == 0:
-      result.add getPragmaNodeFromTypeSym(sym.getTypeInst).getPragmasByName(name)
+    # This checks the type of the sym too, this is consistent with how
+    # field expressions are handled too. If this is changed, make sure to
+    # change it for fields expressions too.
+    result =
+      getPragmaNodeFromType(sym.getTypeInst).getPragmasByName(name) &
+      getPragmaNodeFromVarLetSym(sym).getPragmasByName(name)
   else:
     error("illegal sym kind for argument: " & $sym.symKind, sym)
 
@@ -1598,19 +1607,10 @@ proc getCustomPragmaNodesSmart(n: NimNode, name: string): seq[NimNode] =
   of nnkSym:
     result = getCustomPragmaNodes(n, name)
   of nnkTypeOfExpr:
-    var typeSym = n.getTypeInst
-    while typeSym.kind == nnkBracketExpr and typeSym[0].eqIdent "typeDesc":
-      typeSym = typeSym[1]
-    case typeSym.kind:
-    of nnkSym:
-      result = getCustomPragmaNodes(typeSym, name)
-    of nnkProcTy:
-      # It is a bad idea to support this. The annotation can't be part
-      # of a symbol.
-      let pragmaExpr = typeSym[1]
-      result = getPragmasByName(pragmaExpr, name)
-    else:
-      typeSym.expectKind nnkSym
+    var typ = n.getTypeInst
+    while typ.kind == nnkBracketExpr and typ[0].eqIdent "typeDesc":
+      typ = typ[1]
+    result = getPragmaNodeFromType(typ).getPragmasByName(name)
   of nnkBracketExpr:
     discard
   else:
