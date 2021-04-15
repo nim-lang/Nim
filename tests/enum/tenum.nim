@@ -6,7 +6,7 @@ ABCDC
 foo
 first0second32third64
 my value A1my value Bconc2valueCabc4abc
-my value A0my value Bconc1valueCabc3valueC
+my value A0my value Bconc1valueCabc3abc
 '''
 """
 
@@ -124,7 +124,8 @@ block tnamedfields:
   # trick the optimizer with a variable:
   var x = valueD
   echo valueA, ord(valueA), valueB, ord(valueB), valueC, valueD, ord(valueD), x
-
+  doAssert $x == $valueD, $x
+  doAssert $x == "abc", $x
 
 
 block toptions:

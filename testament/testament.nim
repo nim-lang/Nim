@@ -21,6 +21,11 @@ from lib/stdtest/specialpaths import splitTestFile
 var useColors = true
 var backendLogging = true
 var simulate = false
+var optVerbose = false
+
+proc verboseCmd(cmd: string) =
+  if optVerbose:
+    echo "executing: ", cmd
 
 const
   failString* = "FAIL: " # ensures all failures can be searched with 1 keyword in CI logs
@@ -38,7 +43,8 @@ Command:
 Arguments:
   arguments are passed to the compiler
 Options:
-  --print                   also print results to the console
+  --print                   print results to the console
+  --verbose                 print commands (compiling and running tests)
   --simulate                see what tests would be run but don't run them (for debugging)
   --failing                 only show failing/ignored tests
   --targets:"c cpp js objc" run tests for specified targets (default: all)
@@ -113,6 +119,7 @@ proc execCmdEx2(command: string, args: openArray[string]; workingDir, input: str
   for arg in args:
     result.cmdLine.add ' '
     result.cmdLine.add quoteShell(arg)
+  verboseCmd(result.cmdLine)
   var p = startProcess(command, workingDir = workingDir, args = args,
                        options = {poStdErrToStdOut, poUsePath})
   var outp = outputStream(p)
@@ -155,6 +162,7 @@ proc callCompiler(cmdTemplate, filename, options, nimcache: string,
   let c = prepareTestArgs(cmdTemplate, filename, options, nimcache, target,
                           extraOptions)
   result.cmd = quoteShellCommand(c)
+  verboseCmd(c.quoteShellCommand)
   var p = startProcess(command = c[0], args = c[1 .. ^1],
                        options = {poStdErrToStdOut, poUsePath})
   let outp = p.outputStream
@@ -491,7 +499,6 @@ proc testSpecHelper(r: var TResults, test: var TTest, expected: TSpec,
                 valgrindOptions.add "--leak-check=yes"
               args = valgrindOptions & exeCmd & args
               exeCmd = "valgrind"
-          # xxx honor `testament --verbose` here
           var (_, buf, exitCode) = execCmdEx2(exeCmd, args, input = expected.input)
           # Treat all failure codes from nodejs as 1. Older versions of nodejs used
           # to return other codes, but for us it is sufficient to know that it's not 0.
@@ -663,7 +670,8 @@ proc main() =
   p.next()
   while p.kind in {cmdLongOption, cmdShortOption}:
     case p.key.normalize
-    of "print", "verbose": optPrintResults = true
+    of "print": optPrintResults = true
+    of "verbose": optVerbose = true
     of "failing": optFailing = true
     of "pedantic": discard # deadcode refs https://github.com/nim-lang/Nim/issues/16731
     of "targets":

@@ -279,6 +279,14 @@ block: # bug #10815
 
   const a = P()
   doAssert $a == ""
+  
+when defined osx: # xxx bug https://github.com/nim-lang/Nim/issues/10815#issuecomment-476380734
+  block:
+    type CharSet {.union.} = object 
+      cs: set[char]
+      vs: array[4, uint64]
+    const a = Charset(cs: {'a'..'z'})
+    doAssert a.repr.len > 0
 
 import tables
 

@@ -350,7 +350,7 @@ proc renderRstToJson*(node: PRstNode): string =
 proc renderRstToStr*(node: PRstNode, indent=0): string =
   ## Writes the parsed RST `node` into a compact string
   ## representation in the format (one line per every sub-node):
-  ## ``indent - kind - text - level - order - anchor (if non-zero)``
+  ## ``indent - kind - [text|level|order|adType] - anchor (if non-zero)``
   ## (suitable for debugging of RST parsing).
   if node == nil:
     result.add " ".repeat(indent) & "[nil]\n"
@@ -358,21 +358,23 @@ proc renderRstToStr*(node: PRstNode, indent=0): string =
   result.add " ".repeat(indent) & $node.kind
   case node.kind
   of rnLeaf, rnSmiley:
-    result.add (if node.text == "": "" else: "\t'" & node.text & "'")
+    result.add (if node.text == "": "" else: "  '" & node.text & "'")
   of rnEnumList:
-    result.add "\tlabelFmt=" & node.labelFmt
+    result.add "  labelFmt=" & node.labelFmt
   of rnLineBlockItem:
     var txt: string
-    if node.lineIndent == "\n": txt = "\t(blank line)"
-    else: txt = "\tlineIndent=" & $node.lineIndent.len
+    if node.lineIndent == "\n": txt = "  (blank line)"
+    else: txt = "  lineIndent=" & $node.lineIndent.len
     result.add txt
+  of rnAdmonition:
+    result.add "  adType=" & node.adType
   of rnHeadline, rnOverline, rnMarkdownHeadline:
-    result.add "\tlevel=" & $node.level
+    result.add "  level=" & $node.level
   of rnFootnote, rnCitation, rnFootnoteRef, rnOptionListItem:
-    result.add (if node.order == 0:   "" else: "\torder=" & $node.order)
+    result.add (if node.order == 0:   "" else: "  order=" & $node.order)
   else:
     discard
-  result.add (if node.anchor == "": "" else: "\tanchor='" & node.anchor & "'")
+  result.add (if node.anchor == "": "" else: "  anchor='" & node.anchor & "'")
   result.add "\n"
   for son in node.sons:
     result.add renderRstToStr(son, indent=indent+2)
