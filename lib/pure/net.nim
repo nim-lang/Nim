@@ -690,12 +690,11 @@ when defineSsl:
     let ctx = SslContext(context: ssl.SSL_get_SSL_CTX)
     let hintString = if hint == nil: "" else: $hint
     let (identityString, pskString) = (ctx.clientGetPskFunc)(hintString)
-    if identityString.len.cuint >= max_identity_len:
-      return 0
     if pskString.len.cuint > max_psk_len:
       return 0
+    if identityString.len.cuint >= max_identity_len:
+      return 0
     copyMem(identity, identityString.cstring, pskString.len + 1) # with the last zero byte
-
     copyMem(psk, pskString.cstring, pskString.len)
 
     return pskString.len.cuint
