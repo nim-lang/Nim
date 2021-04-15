@@ -1671,7 +1671,7 @@ macro getCustomPragmaVal*(n: typed, cp: typed{nkSym}): untyped =
       # create a named tuple expression for pragmas with multiple arguments
       result = newTree(nnkPar)
       var i = 1
-      for (key, _, _) in iterOverFormalArgs(pragmaNode[0].getImpl[3]):
+      for (key, t, v) in iterOverFormalArgs(pragmaNode[0].getImpl[3]):
         result.add nnkExprColonExpr.newTree(key, pragmaNode[i])
         inc i
   of nnkSym:
