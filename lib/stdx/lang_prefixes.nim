@@ -3,7 +3,8 @@ This module defines templates that can help tooling (e.g. syntax highlighters or
 for interpreting string literals as being in a specified language.
 ]##
 
-runnableExamples:
+when false:
+ runnableExamples:
   when defined(c):
     {.emit: cLang"""
     #include <stdio.h>
@@ -64,10 +65,41 @@ xxx support in compiler asm with a non-string-literal, e.g.:
   asm cppLang"""#include <stdio.h>"""
 ]#
 
-template nimLang*(a: string{lit}): string = a
-template cLang*(a: string{lit}): string = a
-template cppLang*(a: string{lit}): string = a
-template jsLang*(a: string{lit}): string = a
-template asmLang*(a: string{lit}): string = a
-template pyLang*(a: string{lit}): string = a
-# add more as needed
+#[
+# template nimLang*(a: string{lit}): string = a
+# template cLang*(a: string{lit}): string = a
+# template cppLang*(a: string{lit}): string = a
+# template jsLang*(a: string{lit}): string = a
+# template asmLang*(a: string{lit}): string = a
+# template pyLang*(a: string{lit}): string = a
+# # add more as needed
+
+]#
+
+proc highlightImpl(a: string): string =
+  for i in 0..<a.len:
+    if a[i] == '\n':
+      return a[i+1..a.len-1]
+
+template highlight*(a: string{lit}): string =
+  const b = highlightImpl(a)
+  b
+
+runnableExamples:
+  let a = highlight"""js
+if (!Math.trunc) {
+  Math.trunc = function(v) {
+    v = +v;
+    if (!isFinite(v)) return v;
+    return (v - v % 1) || (v < 0 ? -0 : v === 0 ? v : 0);
+  };
+}"""
+  assert a == """
+if (!Math.trunc) {
+  Math.trunc = function(v) {
+    v = +v;
+    if (!isFinite(v)) return v;
+    return (v - v % 1) || (v < 0 ? -0 : v === 0 ? v : 0);
+  };
+}"""
+
