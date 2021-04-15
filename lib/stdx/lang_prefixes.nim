@@ -1,6 +1,6 @@
 ##[
-Templates that can be used by a syntax highlighter to highlight a string
-literal in a specified syntax.
+This module defines templates that can help tooling (e.g. syntax highlighters or linters)
+for interpreting string literals as being in a specified language.
 ]##
 
 runnableExamples:
@@ -50,6 +50,13 @@ if (!Math.trunc) {
 """
   when defined(js): {.emit: jsMathTrunc.}
 
+  const nimModule = nimLang"""
+import std/os
+echo @[1, 2]
+"""
+  # use `nimModule`, e.g. with `macros.parseStmt` or `writeFile`.
+
+
 #[
 xxx support in compiler asm with a non-string-literal, e.g.:
   asm sLang"""console.log(typeof(12n) == "bigint");"""
@@ -57,6 +64,7 @@ xxx support in compiler asm with a non-string-literal, e.g.:
   asm cppLang"""#include <stdio.h>"""
 ]#
 
+template nimLang*(a: string{lit}): string = a
 template cLang*(a: string{lit}): string = a
 template cppLang*(a: string{lit}): string = a
 template jsLang*(a: string{lit}): string = a
