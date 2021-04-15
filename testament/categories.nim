@@ -525,9 +525,40 @@ proc icTests(r: var TResults; testsDir: string, cat: Category, options: string) 
         if r.passed == oldPassed+2:
           test readOnly
 
+# --------- navigator tests; similar to IC tests but require cursor support
+
+proc navigatorTests(r: var TResults; testsDir: string, cat: Category, options: string) =
+  const
+    tooltests = ["compiler/nim.nim", "tools/nimgrep.nim"]
+    writeOnly = " --incremental:writeonly "
+    readOnly = " --incremental:readonly "
+    incrementalOn = " --incremental:on -d:nimIcIntegrityChecks "
+
+  template test(x: untyped) =
+    testSpecWithNimcache(r, makeRawTest(file, x & options, cat), nimcache)
+
+  template editedTest(x: untyped) =
+    var test = makeTest(file, x & options, cat)
+    test.spec.targets = {getTestSpecTarget()}
+    testSpecWithNimcache(r, test, nimcache)
+
+  const tempExt = "_temp.nim"
+  for it in walkDirRec(testsDir / "ic"):
+    if isTestFile(it) and not it.endsWith(tempExt):
+      let nimcache = nimcacheDir(it, options, getTestSpecTarget())
+      removeDir(nimcache)
+
+      let content = readFile(it)
+      for fragment in content.split("#!EDIT!#"):
+        let file = it.replace(".nim", tempExt)
+        writeFile(file, fragment)
+        let oldPassed = r.passed
+        editedTest incrementalOn
+        if r.passed != oldPassed+1: break
+
 # ----------------------------------------------------------------------------
 
-const AdditionalCategories = ["debugger", "examples", "lib", "ic"]
+const AdditionalCategories = ["debugger", "examples", "lib", "ic", "navigator"]
 const MegaTestCat = "megatest"
 
 proc `&.?`(a, b: string): string =
@@ -695,6 +726,8 @@ proc processCategory(r: var TResults, cat: Category,
       testNimInAction(r, cat, options)
     of "ic":
       icTests(r, testsDir, cat, options)
+    of "navigator":
+      navigatorTests(r, testsDir, cat, options)
     of "untestable":
       # These require special treatment e.g. because they depend on a third party
       # dependency; see `trunner_special` which runs some of those.
