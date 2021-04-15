@@ -396,3 +396,12 @@ block:
     newLit(hasAttr)
 
   doAssert hasMyAttr(TObj)
+
+# misc
+{.pragma: haha.}
+{.pragma: hoho.}
+template hehe(key, val: string, haha) {.pragma.}
+
+type A {.haha, hoho, haha, hehe("hi", "hu", "he").} = int
+
+assert A.getCustomPragmaVal(hehe) == (key: "hi", val: "hu", haha: "he")
