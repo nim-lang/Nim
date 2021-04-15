@@ -182,7 +182,7 @@ proc hashData*(data: pointer, size: int): Hash =
   var h: Hash = 0
   when defined(js):
     var p: cstring
-    asm """`p` = `Data`;"""
+    asm """`p` = `Data`"""
   else:
     var p = cast[cstring](data)
   var i = 0
@@ -484,11 +484,10 @@ proc hashIgnoreCase*(sBuf: string, sPos, ePos: int): Hash =
     h = h !& ord(c)
   result = !$h
 
-
-proc hash*[T: tuple | object](x: T): Hash =
-  ## Efficient hashing of tuples and objects.
-  ## There must be a `hash` proc defined for each of the field types.
+proc hash*[T: tuple | object | ref | ptr](x: T): Hash =
+  ## Efficient hashing overload.
   runnableExamples:
+    # For tuple | object, `hash` should be defined for each of the field types.
     type Obj = object
       x: int
       y: string
@@ -499,9 +498,21 @@ proc hash*[T: tuple | object](x: T): Hash =
     # you can define custom hashes for objects (even if they're generic):
     proc hash(a: Obj2): Hash = hash((a.x))
     assert hash(Obj2[float](x: 520, y: "Nim")) == hash(Obj2[float](x: 520, y: "Nim2"))
-  for f in fields(x):
-    result = result !& hash(f)
-  result = !$result
+  runnableExamples:
+    # For ref | ptr, `hash(cast[int](x))` is used.
+    discard
+  when T is tuple | object:
+    for f in fields(x):
+      result = result !& hash(f)
+    result = !$result
+  elif T is ref: result = hash(cast[int](x))
+  elif T is ptr:
+    when defined(nimLegacyHashPtr):
+      result = hash(cast[cstring](x))
+    else:
+      result = hash(cast[int](x))
+  else:
+    static: doAssert(false, $T)
 
 proc hash*[A](x: openArray[A]): Hash =
   ## Efficient hashing of arrays and sequences.
