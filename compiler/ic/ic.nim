@@ -890,17 +890,21 @@ proc setupLookupTables(g: var PackedModuleGraph; conf: ConfigRef; cache: IdentCa
                        fileIdx: FileIndex; m: var LoadedModule) =
   m.iface = initTable[PIdent, seq[PackedItemId]]()
   m.ifaceHidden = initTable[PIdent, seq[PackedItemId]]()
-  for e in m.fromDisk.exports:
+  template impl(iface, e) =
     let nameLit = e[0]
-    m.iface.mgetOrPut(cache.getIdent(m.fromDisk.sh.strings[nameLit]), @[]).add(PackedItemId(module: LitId(0), item: e[1]))
-  for re in m.fromDisk.reexports:
-    let nameLit = re[0]
-    m.iface.mgetOrPut(cache.getIdent(m.fromDisk.sh.strings[nameLit]), @[]).add(re[1])
-    m.ifaceHidden.mgetOrPut(cache.getIdent(m.fromDisk.sh.strings[nameLit]), @[]).add(re[1])
+    let e2 =
+      when e[1] is PackedItemId: e[1]
+      else: PackedItemId(module: LitId(0), item: e[1])
+    iface.mgetOrPut(cache.getIdent(m.fromDisk.sh.strings[nameLit]), @[]).add(e2)
 
+  for e in m.fromDisk.exports:
+    m.iface.impl(e)
+    m.ifaceHidden.impl(e)
+  for e in m.fromDisk.reexports:
+    m.iface.impl(e)
+    m.ifaceHidden.impl(e)
   for e in m.fromDisk.hidden:
-    let nameLit = e[0]
-    m.ifaceHidden.mgetOrPut(cache.getIdent(m.fromDisk.sh.strings[nameLit]), @[]).add(PackedItemId(module: LitId(0), item: e[1]))
+    m.ifaceHidden.impl(e)
 
   let filename = AbsoluteFile toFullPath(conf, fileIdx)
   # We cannot call ``newSym`` here, because we have to circumvent the ID

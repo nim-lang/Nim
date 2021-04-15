@@ -536,6 +536,12 @@ proc checkMinSonsLen*(n: PNode, length: int; conf: ConfigRef) =
 proc isTopLevel*(c: PContext): bool {.inline.} =
   result = c.currentScope.depthLevel <= 2
 
+proc isTopLevelInsideDeclaration*(c: PContext, sym: PSym): bool {.inline.} =
+  case sym.kind
+  of routineKinds: c.currentScope.depthLevel <= 3
+    # because the scope isn't closed yet
+  else: c.currentScope.depthLevel <= 2
+
 proc pushCaseContext*(c: PContext, caseNode: PNode) =
   c.p.caseContext.add((caseNode, 0))
 
