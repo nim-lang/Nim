@@ -3,6 +3,13 @@
 
 
 ## Standard library additions and changes
+- Added support for parenthesized expressions in `strformat`
+
+- Fixed buffer overflow bugs in `net`
+
+- Added `sections` iterator in `parsecfg`.
+
+- Make custom op in macros.quote work for all statements.
 
 - On Windows the SSL library now checks for valid certificates.
   It uses the `cacert.pem` file for this purpose which was extracted
