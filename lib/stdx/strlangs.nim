@@ -62,7 +62,12 @@ xxx support in compiler asm with a non-string-literal, e.g.:
 proc langImpl(a: string): string =
   for i in 0..<a.len:
     if a[i] == '\n' or a[i] == ' ':
-      return a[i+1..a.len-1]
+      # return a[i+1..a.len-1] # would prevent its use in low level modules,
+      # breaking for e.g. `nim js tools/nimblepkglist.nim`
+      result.setLen a.len - i - 1
+      for j in i+1..a.len-1:
+        result[j - i - 1] =  a[j]
+      return
 
 template lang*(a: string{lit}): string =
   ## returns `a` stripped from its language prefix, see examples.
