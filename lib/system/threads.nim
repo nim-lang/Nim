@@ -90,6 +90,8 @@ type
       dataFn: proc (m: TArg) {.nimcall, gcsafe.}
       data: TArg
 
+proc `=copy`*[TArg](x: var Thread[TArg], y: Thread[TArg]) {.error.}
+
 var
   threadDestructionHandlers {.rtlThreadVar.}: seq[proc () {.closure, gcsafe, raises: [].}]
 
