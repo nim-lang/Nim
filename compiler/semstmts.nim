@@ -1067,6 +1067,7 @@ proc typeDefLeftSidePass(c: PContext, typeSection: PNode, i: int) =
       elif typsym.kind == skType and sfForward in typsym.flags:
         s = typsym
         addInterfaceDecl(c, s)
+        # PRTEMP no onDef here?
       else:
         localError(c.config, name.info, typsym.name.s & " is not a type that can be forwarded")
         s = typsym
@@ -1354,8 +1355,11 @@ proc typeSectionFinalPass(c: PContext, n: PNode) =
         checkConstructedType(c.config, s.info, s.typ)
         if s.typ.kind in {tyObject, tyTuple} and not s.typ.n.isNil:
           checkForMetaFields(c, s.typ.n)
-          # fix bug #5170: ensure locally scoped object types get a unique name:
-          if s.typ.kind == tyObject and not isTopLevel(c): incl(s.flags, sfGenSym)
+
+        # fix bug #5170, bug #17162, bug #15526: ensure locally scoped types get a unique name:
+        if s.typ.kind in {tyEnum, tyRef, tyObject} and not isTopLevel(c):
+          incl(s.flags, sfGenSym)
+
   #instAllTypeBoundOp(c, n.info)
 
 

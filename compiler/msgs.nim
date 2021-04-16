@@ -418,7 +418,9 @@ proc handleError(conf: ConfigRef; msg: TMsgKind, eh: TErrorHandling, s: string) 
     inc(conf.errorCounter)
     conf.exitcode = 1'i8
     if conf.errorCounter >= conf.errorMax:
-      quit(conf, msg)
+      # only really quit when we're not in the new 'nim check --def' mode:
+      if conf.ideCmd == ideNone:
+        quit(conf, msg)
     elif eh == doAbort and conf.cmd != cmdIdeTools:
       quit(conf, msg)
     elif eh == doRaise:
