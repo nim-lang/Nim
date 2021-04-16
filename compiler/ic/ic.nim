@@ -765,7 +765,8 @@ proc symHeaderFromPacked(c: var PackedDecoder; g: var PackedModuleGraph;
     kind: s.kind, magic: s.magic, flags: s.flags,
     info: translateLineInfo(c, g, si, s.info),
     options: s.options,
-    position: s.position,
+    position: if s.kind in {skForVar, skVar, skLet, skTemp}: 0 else: s.position,
+    offset: if s.kind in routineKinds: defaultOffset else: s.offset,
     name: getIdent(c.cache, g[si].fromDisk.sh.strings[s.name])
   )
 
