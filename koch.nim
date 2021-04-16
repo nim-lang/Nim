@@ -216,8 +216,6 @@ proc buildTools(args: string = "") =
                  options = "-d:release " & args)
   when defined(windows): buildVccTool(args)
   bundleNimpretty(args)
-  nimCompileFold("Compile nimfind", "tools/nimfind.nim",
-                 options = "-d:release " & args)
   nimCompileFold("Compile testament", "testament/testament.nim",
                  options = "-d:release " & args)
 
