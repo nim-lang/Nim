@@ -3,7 +3,7 @@ discard """
 """
 
 import std/hashes
-from stdtest/testutils import disableVm
+from stdtest/testutils import disableVm, whenVMorJs
 
 when not defined(js) and not defined(cpp):
   block:
@@ -179,7 +179,11 @@ proc main() =
 
   block: # hash(ref|ptr|pointer)
     var a: array[10, uint8]
-    disableVm:
+    # disableVm:
+    whenVMorJs:
+      # pending fix proposed in https://github.com/nim-lang/Nim/issues/15952#issuecomment-786312417
+      discard
+    do:
       assert a[0].addr.hash != a[1].addr.hash
       assert cast[pointer](a[0].addr).hash == a[0].addr.hash
 
