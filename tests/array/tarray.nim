@@ -587,3 +587,10 @@ block t12466:
     a[0'u16 + i] = i
   for i in 0'u16 ..< 8'u16:
     a[0'u16 + i] = i
+
+block t17705:
+  # https://github.com/nim-lang/Nim/pull/17705
+  var a = array[0, int].low
+  a = int(a)
+  var b = array[0, int].high
+  b = int(b)

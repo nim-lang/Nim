@@ -12,7 +12,7 @@
 import
   intsets, ast, astalgo, msgs, options, idents, lookups,
   semdata, modulepaths, sigmatch, lineinfos, sets,
-  modulegraphs
+  modulegraphs, wordrecg
 
 proc readExceptSet*(c: PContext, n: PNode): IntSet =
   assert n.kind in {nkImportExceptStmt, nkExportExceptStmt}
@@ -107,7 +107,25 @@ proc rawImportSymbol(c: PContext, s, origin: PSym; importSet: var IntSet) =
   if s.owner != origin:
     c.exportIndirections.incl((origin.id, s.id))
 
+proc splitPragmas(c: PContext, n: PNode): (PNode, seq[TSpecialWord]) =
+  template bail = globalError(c.config, n.info, "invalid pragma")
+  if n.kind == nkPragmaExpr:
+    if n.len == 2 and n[1].kind == nkPragma:
+      result[0] = n[0]
+      for ni in n[1]:
+        if ni.kind == nkIdent: result[1].add whichKeyword(ni.ident)
+        else: bail()
+    else: bail()
+  else:
+    result[0] = n
+    if result[0].safeLen > 0:
+      (result[0][^1], result[1]) = splitPragmas(c, result[0][^1])
+
 proc importSymbol(c: PContext, n: PNode, fromMod: PSym; importSet: var IntSet) =
+  let (n, kws) = splitPragmas(c, n)
+  if kws.len > 0:
+    globalError(c.config, n.info, "unexpected pragma")
+
   let ident = lookups.considerQuotedIdent(c, n)
   let s = someSym(c.graph, fromMod, ident)
   if s == nil:
@@ -204,18 +222,43 @@ proc importForwarded(c: PContext, n: PNode, exceptSet: IntSet; fromMod: PSym; im
     for i in 0..n.safeLen-1:
       importForwarded(c, n[i], exceptSet, fromMod, importSet)
 
-proc importModuleAs(c: PContext; n: PNode, realModule: PSym): PSym =
+proc importModuleAs(c: PContext; n: PNode, realModule: PSym, importHidden: bool): PSym =
   result = realModule
   c.unusedImports.add((realModule, n.info))
+  template createModuleAliasImpl(ident): untyped =
+    createModuleAlias(realModule, nextSymId c.idgen, ident, realModule.info, c.config.options)
   if n.kind != nkImportAs: discard
   elif n.len != 2 or n[1].kind != nkIdent:
     localError(c.config, n.info, "module alias must be an identifier")
   elif n[1].ident.id != realModule.name.id:
     # some misguided guy will write 'import abc.foo as foo' ...
-    result = createModuleAlias(realModule, nextSymId c.idgen, n[1].ident, realModule.info,
-                               c.config.options)
+    result = createModuleAliasImpl(n[1].ident)
+  if importHidden:
+    if result == realModule: # avoids modifying `realModule`, see D20201209T194412.
+      result = createModuleAliasImpl(realModule.name)
+    result.options.incl optImportHidden
 
-proc myImportModule(c: PContext, n: PNode; importStmtResult: PNode): PSym =
+proc transformImportAs(c: PContext; n: PNode): tuple[node: PNode, importHidden: bool] =
+  var ret: typeof(result)
+  proc processPragma(n2: PNode): PNode =
+    let (result2, kws) = splitPragmas(c, n2)
+    result = result2
+    for ai in kws:
+      case ai
+      of wImportHidden: ret.importHidden = true
+      else: globalError(c.config, n.info, "invalid pragma, expected: " & ${wImportHidden})
+
+  if n.kind == nkInfix and considerQuotedIdent(c, n[0]).s == "as":
+    ret.node = newNodeI(nkImportAs, n.info)
+    ret.node.add n[1].processPragma
+    ret.node.add n[2]
+  else:
+    ret.node = n.processPragma
+  return ret
+
+proc myImportModule(c: PContext, n: var PNode, importStmtResult: PNode): PSym =
+  let transf = transformImportAs(c, n)
+  n = transf.node
   let f = checkModuleName(c.config, n)
   if f != InvalidFileIdx:
     addImportFileDep(c, f)
@@ -232,7 +275,7 @@ proc myImportModule(c: PContext, n: PNode; importStmtResult: PNode): PSym =
       c.recursiveDep = err
 
     discard pushOptionEntry(c)
-    result = importModuleAs(c, n, c.graph.importModuleCallback(c.graph, c.module, f))
+    result = importModuleAs(c, n, c.graph.importModuleCallback(c.graph, c.module, f), transf.importHidden)
     popOptionEntry(c)
 
     #echo "set back to ", L
@@ -252,16 +295,8 @@ proc myImportModule(c: PContext, n: PNode; importStmtResult: PNode): PSym =
     importStmtResult.add newSymNode(result, n.info)
     #newStrNode(toFullPath(c.config, f), n.info)
 
-proc transformImportAs(c: PContext; n: PNode): PNode =
-  if n.kind == nkInfix and considerQuotedIdent(c, n[0]).s == "as":
-    result = newNodeI(nkImportAs, n.info)
-    result.add n[1]
-    result.add n[2]
-  else:
-    result = n
-
 proc impMod(c: PContext; it: PNode; importStmtResult: PNode) =
-  let it = transformImportAs(c, it)
+  var it = it
   let m = myImportModule(c, it, importStmtResult)
   if m != nil:
     # ``addDecl`` needs to be done before ``importAllSymbols``!
@@ -296,7 +331,6 @@ proc evalImport*(c: PContext, n: PNode): PNode =
 proc evalFrom*(c: PContext, n: PNode): PNode =
   result = newNodeI(nkImportStmt, n.info)
   checkMinSonsLen(n, 2, c.config)
-  n[0] = transformImportAs(c, n[0])
   var m = myImportModule(c, n[0], result)
   if m != nil:
     n[0] = newSymNode(m)
@@ -311,7 +345,6 @@ proc evalFrom*(c: PContext, n: PNode): PNode =
 proc evalImportExcept*(c: PContext, n: PNode): PNode =
   result = newNodeI(nkImportStmt, n.info)
   checkMinSonsLen(n, 2, c.config)
-  n[0] = transformImportAs(c, n[0])
   var m = myImportModule(c, n[0], result)
   if m != nil:
     n[0] = newSymNode(m)

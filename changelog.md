@@ -38,6 +38,7 @@
   unless `-d:nimLegacyHomeDir` is specified (for a transition period).
 
 ## Standard library additions and changes
+- Added support for parenthesized expressions in `strformat`
 
 - Added `sections` iterator in `parsecfg`.
 
@@ -306,6 +307,15 @@
 - Added `iterable[T]` type class to match called iterators, which enables writing:
   `template fn(a: iterable)` instead of `template fn(a: untyped)`
 
+- A new import syntax `import foo {.all.}` now allows to import all symbols (public or private)
+  from `foo`. It works in combination with all pre-existing import features.
+  This reduces or eliminates the need for workarounds such as using `include` (which has known issues)
+  when you need a private symbol for testing or making some internal APIs public just because
+  another internal module needs those.
+  It also helps mitigate the lack of cyclic imports in some cases.
+
+- Added a new module `std/importutils`, and an API `privateAccess`, which allows access to private fields
+  for an object type in the current scope.
 
 ## Compiler changes
 

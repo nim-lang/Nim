@@ -361,12 +361,12 @@ proc addPattern*(c: PContext, p: LazySym) =
     addTrmacro(c.encoder, c.packedRepr, p.sym)
 
 proc exportSym*(c: PContext; s: PSym) =
-  strTableAdd(c.module.semtab(c.graph), s)
+  strTableAdds(c.graph, c.module, s)
   if c.config.symbolFiles != disabledSf:
     addExported(c.encoder, c.packedRepr, s)
 
 proc reexportSym*(c: PContext; s: PSym) =
-  strTableAdd(c.module.semtab(c.graph), s)
+  strTableAdds(c.graph, c.module, s)
   if c.config.symbolFiles != disabledSf:
     addReexport(c.encoder, c.packedRepr, s)
 
@@ -535,6 +535,10 @@ proc checkMinSonsLen*(n: PNode, length: int; conf: ConfigRef) =
 
 proc isTopLevel*(c: PContext): bool {.inline.} =
   result = c.currentScope.depthLevel <= 2
+
+proc isTopLevelInsideDeclaration*(c: PContext, sym: PSym): bool {.inline.} =
+  # for routeKinds the scope isn't closed yet:
+  c.currentScope.depthLevel <= 2 + ord(sym.kind in routineKinds)
 
 proc pushCaseContext*(c: PContext, caseNode: PNode) =
   c.p.caseContext.add((caseNode, 0))

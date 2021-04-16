@@ -1118,6 +1118,17 @@ Test1
       """
     check "<pre class=\"line-nums\">55\n56\n</pre>" in input.toHtml
 
+  test "Nim code-block indentation":
+    let input = dedent """
+      .. code-block:: nim
+        :number-lines: 55
+
+       x
+      """
+    let output = input.toHtml
+    check "<pre class=\"line-nums\">55\n</pre>" in output
+    check "<span class=\"Identifier\">x</span>" in output
+
   test "RST admonitions":
     # check that all admonitions are implemented
     let input0 = dedent """
@@ -1466,7 +1477,7 @@ Test1
             """<table class="docinfo" frame="void" rules="none">""" &
             """<col class="docinfo-name" /><col class="docinfo-content" />""" &
             """<tbody valign="top"><tr><th class="docinfo-name">field:</th>""" &
-            """<td> text</td></tr>""" & "\n</tbody></table>")
+            """<td>text</td></tr>""" & "\n</tbody></table>")
 
   test "Field list: body after newline":
     let output = dedent """
