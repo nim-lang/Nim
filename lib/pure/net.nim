@@ -606,6 +606,9 @@ when defineSsl:
     when not defined(openssl10) and not defined(libressl):
       let sslVersion = getOpenSSLVersion()
       if sslVersion >= 0x010101000 and not sslVersion == 0x020000000:
+        # XXX always false!
+        # XXX however, setting non-1.3 ciphers with ciphersuites will
+        # XXX cause an error, cipherList needs to be split into 1.3 and non-1.3
         # In OpenSSL >= 1.1.1, TLSv1.3 cipher suites can only be configured via
         # this API.
         if newCTX.SSL_CTX_set_ciphersuites(cipherList) != 1:
@@ -671,7 +674,7 @@ when defineSsl:
     ## Only used in PSK ciphersuites.
     if ctx.context.SSL_CTX_use_psk_identity_hint(hint.cstring) == 0:#1 on success, 0 on failure
       raiseSSLError()
-  
+
   template genpskServerCallback(pskfunc:SslServerGetPskFunc):auto =
     proc pskServerCallback(ssl: SslCtx; identity: cstring; psk: ptr cuchar;
         max_psk_len: cint): cuint {.cdecl.} =
@@ -738,7 +741,6 @@ when defineSsl:
     socket.sslNoShutdown = false
     if socket.sslHandle == nil:
       raiseSSLError()
-
     if SSL_set_fd(socket.sslHandle, socket.fd) != 1:
       raiseSSLError()
 
