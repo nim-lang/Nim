@@ -277,7 +277,7 @@
 
 - Added `stdx/` for standard library extensions, see `stdx/readme.md`
 
-- Added `stdx/lang_prefixes` to help tooling (e.g. syntax highlighters) how to interpret string literals.
+- Added `stdx/strlangs` to help tooling (e.g. syntax highlighters) how to interpret string literals.
 
 ## Language changes
 
