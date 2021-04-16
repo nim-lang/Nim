@@ -44,8 +44,6 @@
 
 - Fixed buffer overflow bugs in `net`
 
-- Fixed buffer overflow bugs in `net`
-
 - Added `sections` iterator in `parsecfg`.
 
 - Make custom op in macros.quote work for all statements.
