@@ -223,7 +223,7 @@ when defined(js):
 proc hash*(x: pointer): Hash {.inline.} =
   ## Efficient `hash` overload.
   when defined(js):
-    let y = getObjectId(cast[pointer](x))
+    let y = getObjectId(x)
   else:
     let y = cast[int](x)
   hash(y) # consistent with code expecting scrambled hashes depending on `nimIntHash1`.
