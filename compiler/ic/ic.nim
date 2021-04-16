@@ -36,6 +36,7 @@ type
     bodies*: PackedTree # other trees. Referenced from typ.n and sym.ast by their position.
     #producedGenerics*: Table[GenericKey, SymId]
     exports*: seq[(LitId, int32)]
+    hidden*: seq[(LitId, int32)]
     reexports*: seq[(LitId, PackedItemId)]
     compilerProcs*: seq[(LitId, int32)]
     converters*, methods*, trmacros*, pureEnums*: seq[int32]
@@ -176,6 +177,10 @@ proc addIncludeFileDep*(c: var PackedEncoder; m: var PackedModule; f: FileIndex)
 
 proc addImportFileDep*(c: var PackedEncoder; m: var PackedModule; f: FileIndex) =
   m.imports.add toLitId(f, c, m)
+
+proc addHidden*(c: var PackedEncoder; m: var PackedModule; s: PSym) =
+  let nameId = getOrIncl(m.sh.strings, s.name.s)
+  m.hidden.add((nameId, s.itemId.item))
 
 proc addExported*(c: var PackedEncoder; m: var PackedModule; s: PSym) =
   let nameId = getOrIncl(m.sh.strings, s.name.s)
@@ -524,7 +529,7 @@ proc loadRodFile*(filename: AbsoluteFile; m: var PackedModule; config: ConfigRef
   loadTabSection numbersSection, m.sh.numbers
 
   loadSeqSection exportsSection, m.exports
-
+  loadSeqSection hiddenSection, m.hidden
   loadSeqSection reexportsSection, m.reexports
 
   loadSeqSection compilerProcsSection, m.compilerProcs
@@ -589,7 +594,7 @@ proc saveRodFile*(filename: AbsoluteFile; encoder: var PackedEncoder; m: var Pac
   storeTabSection numbersSection, m.sh.numbers
 
   storeSeqSection exportsSection, m.exports
-
+  storeSeqSection hiddenSection, m.hidden
   storeSeqSection reexportsSection, m.reexports
 
   storeSeqSection compilerProcsSection, m.compilerProcs
@@ -655,7 +660,9 @@ type
     syms: seq[PSym] # indexed by itemId
     types: seq[PType]
     module*: PSym # the one true module symbol.
-    iface: Table[PIdent, seq[PackedItemId]] # PackedItemId so that it works with reexported symbols too
+    iface, ifaceHidden: Table[PIdent, seq[PackedItemId]]
+      # PackedItemId so that it works with reexported symbols too
+      # ifaceHidden includes private symbols
 
   PackedModuleGraph* = seq[LoadedModule] # indexed by FileIndex
 
@@ -882,12 +889,22 @@ proc newPackage(config: ConfigRef; cache: IdentCache; fileIdx: FileIndex): PSym 
 proc setupLookupTables(g: var PackedModuleGraph; conf: ConfigRef; cache: IdentCache;
                        fileIdx: FileIndex; m: var LoadedModule) =
   m.iface = initTable[PIdent, seq[PackedItemId]]()
-  for e in m.fromDisk.exports:
+  m.ifaceHidden = initTable[PIdent, seq[PackedItemId]]()
+  template impl(iface, e) =
     let nameLit = e[0]
-    m.iface.mgetOrPut(cache.getIdent(m.fromDisk.sh.strings[nameLit]), @[]).add(PackedItemId(module: LitId(0), item: e[1]))
-  for re in m.fromDisk.reexports:
-    let nameLit = re[0]
-    m.iface.mgetOrPut(cache.getIdent(m.fromDisk.sh.strings[nameLit]), @[]).add(re[1])
+    let e2 =
+      when e[1] is PackedItemId: e[1]
+      else: PackedItemId(module: LitId(0), item: e[1])
+    iface.mgetOrPut(cache.getIdent(m.fromDisk.sh.strings[nameLit]), @[]).add(e2)
+
+  for e in m.fromDisk.exports:
+    m.iface.impl(e)
+    m.ifaceHidden.impl(e)
+  for e in m.fromDisk.reexports:
+    m.iface.impl(e)
+    m.ifaceHidden.impl(e)
+  for e in m.fromDisk.hidden:
+    m.ifaceHidden.impl(e)
 
   let filename = AbsoluteFile toFullPath(conf, fileIdx)
   # We cannot call ``newSym`` here, because we have to circumvent the ID
@@ -1053,16 +1070,21 @@ type
     values: seq[PackedItemId]
     i, module: int
 
+template interfSelect(a: LoadedModule, importHidden: bool): auto =
+  var ret = a.iface.addr
+  if importHidden: ret = a.ifaceHidden.addr
+  ret[]
+
 proc initRodIter*(it: var RodIter; config: ConfigRef, cache: IdentCache;
                   g: var PackedModuleGraph; module: FileIndex;
-                  name: PIdent): PSym =
+                  name: PIdent, importHidden: bool): PSym =
   it.decoder = PackedDecoder(
     lastModule: int32(-1),
     lastLit: LitId(0),
     lastFile: FileIndex(-1),
     config: config,
     cache: cache)
-  it.values = g[int module].iface.getOrDefault(name)
+  it.values = g[int module].interfSelect(importHidden).getOrDefault(name)
   it.i = 0
   it.module = int(module)
   if it.i < it.values.len:
@@ -1070,7 +1092,7 @@ proc initRodIter*(it: var RodIter; config: ConfigRef, cache: IdentCache;
     inc it.i
 
 proc initRodIterAllSyms*(it: var RodIter; config: ConfigRef, cache: IdentCache;
-                         g: var PackedModuleGraph; module: FileIndex): PSym =
+                         g: var PackedModuleGraph; module: FileIndex, importHidden: bool): PSym =
   it.decoder = PackedDecoder(
     lastModule: int32(-1),
     lastLit: LitId(0),
@@ -1079,7 +1101,7 @@ proc initRodIterAllSyms*(it: var RodIter; config: ConfigRef, cache: IdentCache;
     cache: cache)
   it.values = @[]
   it.module = int(module)
-  for v in g[int module].iface.values:
+  for v in g[int module].interfSelect(importHidden).values:
     it.values.add v
   it.i = 0
   if it.i < it.values.len:
@@ -1093,9 +1115,9 @@ proc nextRodIter*(it: var RodIter; g: var PackedModuleGraph): PSym =
 
 iterator interfaceSymbols*(config: ConfigRef, cache: IdentCache;
                            g: var PackedModuleGraph; module: FileIndex;
-                           name: PIdent): PSym =
+                           name: PIdent, importHidden: bool): PSym =
   setupDecoder()
-  let values = g[int module].iface.getOrDefault(name)
+  let values = g[int module].interfSelect(importHidden).getOrDefault(name)
   for pid in values:
     let s = loadSym(decoder, g, int(module), pid)
     assert s != nil
@@ -1103,9 +1125,9 @@ iterator interfaceSymbols*(config: ConfigRef, cache: IdentCache;
 
 proc interfaceSymbol*(config: ConfigRef, cache: IdentCache;
                       g: var PackedModuleGraph; module: FileIndex;
-                      name: PIdent): PSym =
+                      name: PIdent, importHidden: bool): PSym =
   setupDecoder()
-  let values = g[int module].iface.getOrDefault(name)
+  let values = g[int module].interfSelect(importHidden).getOrDefault(name)
   result = loadSym(decoder, g, int(module), values[0])
 
 proc idgenFromLoadedModule*(m: LoadedModule): IdGenerator =
@@ -1139,6 +1161,10 @@ proc rodViewer*(rodfile: AbsoluteFile; config: ConfigRef, cache: IdentCache) =
     for ex in m.reexports:
       echo "  ", m.sh.strings[ex[0]]
     #  reexports*: seq[(LitId, PackedItemId)]
+
+    echo "hidden: " & $m.hidden.len
+    for ex in m.hidden:
+      echo "  ", m.sh.strings[ex[0]], " local ID: ", ex[1]
 
   echo "all symbols"
   for i in 0..high(m.sh.syms):

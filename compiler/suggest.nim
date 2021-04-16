@@ -253,10 +253,15 @@ proc filterSymNoOpr(s: PSym; prefix: PNode; res: var PrefixMatch): bool {.inline
 proc fieldVisible*(c: PContext, f: PSym): bool {.inline.} =
   let fmoduleId = getModule(f).id
   result = sfExported in f.flags or fmoduleId == c.module.id
-  for module in c.friendModules:
-    if fmoduleId == module.id:
-      result = true
-      break
+
+  if not result:
+    for module in c.friendModules:
+      if fmoduleId == module.id: return true
+    if f.kind == skField:
+      let symObj = f.owner
+      for scope in allScopes(c.currentScope):
+        for sym in scope.allowPrivateAccess:
+          if symObj.id == sym.id: return true
 
 proc getQuality(s: PSym): range[0..100] =
   result = 100

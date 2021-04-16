@@ -75,7 +75,7 @@ proc closeScope*(c: PContext) =
   ensureNoMissingOrUnusedSymbols(c, c.currentScope)
   rawCloseScope(c)
 
-iterator allScopes(scope: PScope): PScope =
+iterator allScopes*(scope: PScope): PScope =
   var current = scope
   while current != nil:
     yield current
@@ -311,11 +311,17 @@ proc addDeclAt*(c: PContext; scope: PScope, sym: PSym) =
   if conflict != nil:
     wrongRedefinition(c, sym.info, sym.name.s, conflict.info)
 
-proc addInterfaceDeclAux(c: PContext, sym: PSym) =
-  if sfExported in sym.flags:
+from ic / ic import addHidden
+
+proc addInterfaceDeclAux*(c: PContext, sym: PSym, forceExport = false) =
+  if sfExported in sym.flags or forceExport:
     # add to interface:
     if c.module != nil: exportSym(c, sym)
     else: internalError(c.config, sym.info, "addInterfaceDeclAux")
+  elif sym.kind in ExportableSymKinds and c.module != nil and isTopLevelInsideDeclaration(c, sym):
+    strTableAdd(semtabAll(c.graph, c.module), sym)
+    if c.config.symbolFiles != disabledSf:
+      addHidden(c.encoder, c.packedRepr, sym)
 
 proc addInterfaceDeclAt*(c: PContext, scope: PScope, sym: PSym) =
   addDeclAt(c, scope, sym)
