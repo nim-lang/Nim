@@ -3,6 +3,13 @@
 
 
 ## Standard library additions and changes
+- Added support for parenthesized expressions in `strformat`
+
+- Fixed buffer overflow bugs in `net`
+
+- Added `sections` iterator in `parsecfg`.
+
+- Make custom op in macros.quote work for all statements.
 
   For `net` and `nativesockets`, an `inheritable` flag has been added to all
   `proc`s that create sockets, allowing the user to control whether the
