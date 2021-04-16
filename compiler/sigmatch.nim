@@ -1405,7 +1405,7 @@ proc typeRel(c: var TCandidate, f, aOrig: PType,
     of tyNil: result = f.allowsNil
     of tyString: result = isConvertible
     of tyPtr:
-      if oldImplicitCstringConv in c.c.features:
+      if legacyImplicitCstringConv in c.c.features:
         # issue #13790
         # ptr[Tag, char] is not convertible to 'cstring' for now:
         # xxx: aren't memory regions not used anymore?

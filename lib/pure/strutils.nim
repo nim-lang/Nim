@@ -1906,7 +1906,7 @@ func find*(s, sub: string, start: Natural = 0, last = 0): int {.rtl,
     else:
       when hasCStringBuiltin:
         if last == 0 and s.len > start:
-          let found = c_strstr(s[start].unsafeAddr, sub)
+          let found = c_strstr(s[start].unsafeAddr.toCstring, sub)
           if not found.isNil:
             result = cast[ByteAddress](found) -% cast[ByteAddress](s.cstring)
           else:
