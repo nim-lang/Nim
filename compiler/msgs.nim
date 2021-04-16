@@ -398,7 +398,8 @@ proc log*(s: string) =
     close(f)
 
 proc quit(conf: ConfigRef; msg: TMsgKind) {.gcsafe.} =
-  if defined(debug) or msg == errInternal or conf.hasHint(hintStackTrace):
+  if conf.isDefined("nimDebug"): quitOrRaise(conf, $msg)
+  elif defined(debug) or msg == errInternal or conf.hasHint(hintStackTrace):
     {.gcsafe.}:
       if stackTraceAvailable() and isNil(conf.writelnHook):
         writeStackTrace()

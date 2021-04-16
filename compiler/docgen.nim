@@ -498,7 +498,7 @@ proc runAllExamples(d: PDoc) =
       "docCmd", group.docCmd,
     ]
     if os.execShellCmd(cmd) != 0:
-      quit "[runnableExamples] failed: generated file: '$1' group: '$2' cmd: $3" % [outp.string, group[].prettyString, cmd]
+      d.conf.quitOrRaise "[runnableExamples] failed: generated file: '$1' group: '$2' cmd: $3" % [outp.string, group[].prettyString, cmd]
     else:
       # keep generated source file `outp` to allow inspection.
       rawMessage(d.conf, hintSuccess, ["runnableExamples: " & outp.string])

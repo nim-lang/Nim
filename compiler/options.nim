@@ -576,6 +576,13 @@ proc isDefined*(conf: ConfigRef; symbol: string): bool =
                             osDragonfly, osMacosx}
     else: discard
 
+template quitOrRaise*(conf: ConfigRef, msg = "") =
+  # xxx in future work, consider whether to also intercept `msgQuit` calls
+  if conf.isDefined("nimDebug"):
+    doAssert false, msg
+  else:
+    quit(msg) # quits with QuitFailure
+
 proc importantComments*(conf: ConfigRef): bool {.inline.} = conf.cmd in cmdDocLike + {cmdIdeTools}
 proc usesWriteBarrier*(conf: ConfigRef): bool {.inline.} = conf.selectedGC >= gcRefc
 
@@ -732,8 +739,7 @@ proc completeGeneratedFilePath*(conf: ConfigRef; f: AbsoluteFile,
     try:
       createDir(subdir.string)
     except OSError:
-      writeLine(stdout, "cannot create directory: " & subdir.string)
-      quit(1)
+      conf.quitOrRaise "cannot create directory: " & subdir.string
   result = subdir / RelativeFile f.string.splitPath.tail
   #echo "completeGeneratedFilePath(", f, ") = ", result
 

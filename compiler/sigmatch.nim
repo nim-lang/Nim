@@ -1011,7 +1011,7 @@ proc typeRel(c: var TCandidate, f, aOrig: PType,
   when declared(deallocatedRefId):
     let corrupt = deallocatedRefId(cast[pointer](f))
     if corrupt != 0:
-      quit "it's corrupt " & $corrupt
+      c.c.config.quitOrRaise "it's corrupt " & $corrupt
 
   if f.kind == tyUntyped:
     if aOrig != nil: put(c, f, aOrig)
