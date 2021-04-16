@@ -85,3 +85,7 @@ template accept*(a) =
 
 template reject*(a) =
   doAssert not compiles(a)
+
+template disableVm*(body) =
+  when nimvm: discard
+  else: body
