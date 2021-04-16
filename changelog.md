@@ -4,6 +4,8 @@
 
 ## Changes affecting backward compatibility
 
+-  `cuchar` now aliases `uint8` instead of `char`
+
 - `repr` now doesn't insert trailing newline; previous behavior was very inconsistent,
   see #16034. Use `-d:nimLegacyReprWithNewline` for previous behavior.
 
