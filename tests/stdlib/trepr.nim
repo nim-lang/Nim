@@ -193,10 +193,8 @@ proc `foo bar baz`(): int =
     let a = deb:
       proc `foo=`() = discard
     doAssert a == """
-
 proc `foo=`() =
-  discard
-"""
+  discard"""
 
   block: # bug #14850
     block:
@@ -221,7 +219,6 @@ proc `foo=`() =
             4)
 
       doAssert a == """
-
 template bar(): untyped =
   foo1:
     discard
@@ -244,8 +241,7 @@ template bar(): untyped =
     4
   a.add(foo7 do:
     echo "baz"
-    4)
-"""
+    4)"""
 
 static: main()
 main()
