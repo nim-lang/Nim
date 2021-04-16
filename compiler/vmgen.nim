@@ -27,6 +27,8 @@
 # solves the opcLdConst vs opcAsgnConst issue. Of course whether we need
 # this copy depends on the involved types.
 
+import std / tables
+
 import
   strutils, ast, types, msgs, renderer, vmdef,
   intsets, magicsys, options, lowerings, lineinfos, transf
@@ -2248,8 +2250,8 @@ proc optimizeJumps(c: PCtx; start: int) =
     else: discard
 
 proc genProc(c: PCtx; s: PSym): int =
-  var x = s.ast[miscPos]
-  if x.kind == nkEmpty or x[0].kind == nkEmpty:
+  let pos = c.procToCodePos.getOrDefault(s.id)
+  if pos == 0:
     #if s.name.s == "outterMacro" or s.name.s == "innerProc":
     #  echo "GENERATING CODE FOR ", s.name.s
     let last = c.code.len-1
@@ -2260,11 +2262,7 @@ proc genProc(c: PCtx; s: PSym): int =
       c.debug.setLen(last)
     #c.removeLastEof
     result = c.code.len+1 # skip the jump instruction
-    if x.kind == nkEmpty:
-      x = newTree(nkBracket, newIntNode(nkIntLit, result), x)
-    else:
-      x[0] = newIntNode(nkIntLit, result)
-    s.ast[miscPos] = x
+    c.procToCodePos[s.id] = result
     # thanks to the jmp we can add top level statements easily and also nest
     # procs easily:
     let body = transformBody(c.graph, c.idgen, s, cache = not isCompileTimeProc(s))
@@ -2297,4 +2295,4 @@ proc genProc(c: PCtx; s: PSym): int =
     c.prc = oldPrc
   else:
     c.prc.maxSlots = s.offset
-    result = x[0].intVal.int
+    result = pos
