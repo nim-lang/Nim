@@ -9,7 +9,7 @@
 
 include system/indexerrors
 import std/private/miscdollars
-import stdx/lang_prefixes
+import stdx/strlangs
 
 proc log*(s: cstring) {.importc: "console.log", varargs, nodecl.}
 
@@ -198,7 +198,7 @@ proc makeNimstrLit(c: cstring): string {.asmNoStackFrame, compilerproc.} =
   """.}
 
 proc cstrToNimstr(c: cstring): string {.asmNoStackFrame, compilerproc.} =
-  {.emit: jsLang"""
+  {.emit: lang"""js
   var ln = `c`.length;
   var result = new Array(ln);
   var r = 0;
@@ -329,7 +329,7 @@ proc SetMinus(a, b: int): int {.compilerproc, asmNoStackFrame.} =
   """
 
 proc cmpStrings(a, b: string): int {.asmNoStackFrame, compilerproc.} =
-  asm jsLang"""
+  asm """
     if (`a` == `b`) return 0;
     if (!`a`) return -1;
     if (!`b`) return 1;
@@ -349,7 +349,7 @@ proc cmp(x, y: string): int =
     result = cmpStrings(x, y)
 
 proc eqStrings(a, b: string): bool {.asmNoStackFrame, compilerproc.} =
-  asm jsLang"""
+  asm """
     if (`a` == `b`) return true;
     if (`a` === null && `b`.length == 0) return true;
     if (`b` === null && `a`.length == 0) return true;

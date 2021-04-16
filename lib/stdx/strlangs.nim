@@ -10,17 +10,17 @@ var a = 3n;
 var b = 4n;"""
   doAssert a == "var a = 3n;\nvar b = 4n;" # js prefix is removed.
 
-  # works with emit sections
-  {.emit: lang"""c
+  when defined(c):
+    # works with emit sections
+    {.emit: lang"""c
 /*INCLUDESECTION*/
 #include <stdio.h>""".}
 
-  # works with emit strings containing backticks.
-  proc fn(n: int): int =
-    {.emit: lang"""c
-`result` = 3 * `n`; /* comment */
-""".}
-  doAssert fn(2) == 3 * 2
+    # works with emit strings containing backticks.
+    proc fn(n: int): int =
+      {.emit: lang"""c
+`result` = 3 * `n`; /* comment */""".}
+    doAssert fn(2) == 3 * 2
 
   # works with strutils.dedent
   from std/strutils import dedent
