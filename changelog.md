@@ -307,7 +307,7 @@
 - Added `iterable[T]` type class to match called iterators, which enables writing:
   `template fn(a: iterable)` instead of `template fn(a: untyped)`
 
-- A new import syntax `import {.all.} foo` now allows to import all symbols (public or private)
+- A new import syntax `import foo {.all.}` now allows to import all symbols (public or private)
   from `foo`. It works in combination with all pre-existing import features.
   This reduces or eliminates the need for workarounds such as using `include` (which has known issues)
   when you need a private symbol for testing or making some internal APIs public just because
