@@ -1461,7 +1461,13 @@ proc gsub(g: var TSrcGen, n: PNode, c: TContext, fromStmtList = false) =
     put(g, tkSpaces, Space)
     putWithSpace(g, tkEquals, "=")
     gsub(g, n, 1)
-  of nkStmtList, nkStmtListExpr, nkStmtListType: gstmts(g, n, emptyContext)
+  of nkStmtList, nkStmtListExpr, nkStmtListType:
+    if n.len == 1 and n[0].kind == nkDiscardStmt:
+      put(g, tkParLe, "(")
+      gsub(g, n[0])
+      put(g, tkParRi, ")")
+    else:
+      gstmts(g, n, emptyContext)
   of nkIfStmt:
     putWithSpace(g, tkIf, "if")
     gif(g, n)

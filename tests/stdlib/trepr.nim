@@ -5,9 +5,10 @@ discard """
 
 # if excessive, could remove 'cpp' from targets
 
-from strutils import endsWith, contains
+from strutils import endsWith, contains, strip
 from std/macros import newLit
-macro deb(a): string = newLit a.repr
+
+macro deb(a): string = newLit a.repr.strip
 
 template main() =
   doAssert repr({3,5}) == "{3, 5}"
@@ -67,17 +68,16 @@ template main() =
     else:
       doAssert reprOpenarray(arr) == "[1, 2, 3]"
 
-  block: # bug #17292
+  block: # bug #17292 repr with `do`
     template foo(a, b, c, d) = discard
     block:
       let a = deb:
         foo(1, 2, 3, 4)
-      doAssert a == "\nfoo(1, 2, 3, 4)"
+      doAssert a == "foo(1, 2, 3, 4)"
     block:
       let a = deb:
         foo(1, 2, 3): 4
       doAssert a == """
-
 foo(1, 2, 3):
   4"""
 
@@ -86,7 +86,6 @@ foo(1, 2, 3):
         foo(1, 2): 3
         do: 4
       doAssert a == """
-
 foo(1, 2):
   3
 do:
@@ -98,7 +97,6 @@ do:
         do: 3
         do: 4
       doAssert a == """
-
 foo(1):
   3
 do:
@@ -118,7 +116,6 @@ do:
           4
 
       doAssert a == """
-
 foo(1):
   3
 do:
@@ -135,7 +132,6 @@ do:
         do: 3
         do: 4
       doAssert a == """
-
 foo:
   1
 do:
@@ -145,13 +141,44 @@ do:
 do:
   4"""
 
+  block: # bug #17292 repr with `(discard)` (`discard` would result in illegal code)
+    let a = deb:
+      let f {.inject.} = () => (discard)
+    doAssert a == """
+let f {.inject.} = () =>
+    (discard )"""
+
+    let a2 = deb:
+      block:
+        discard
+      discard
+
+      block:
+        when true: discard
+
+      # let a = b => discard # illegal
+      discard b => (discard) # legal
+
+      block:
+        return
+    doAssert a2 == """
+block:
+  discard
+discard
+block:
+  when true:
+    discard
+discard b =>
+    (discard )
+block:
+  return"""
+
   block: # bug #17292 (bug 4)
     let a = deb:
       proc `=destroy`() = discard
       proc `'foo`(): int = discard
       proc `foo bar baz`(): int = discard
     let a2 = """
-
 proc `=destroy`() =
   discard
 
@@ -159,8 +186,7 @@ proc `'foo`(): int =
   discard
 
 proc `foo bar baz`(): int =
-  discard
-"""
+  discard"""
     doAssert a2 == a
 
   block: # setters: `foo=`
