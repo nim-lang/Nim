@@ -1054,7 +1054,7 @@ const
 
   defaultSize = -1
   defaultAlignment = -1
-  defaultOffset = -1
+  defaultOffset* = -1
 
 proc getPIdent*(a: PNode): PIdent {.inline.} =
   ## Returns underlying `PIdent` for `{nkSym, nkIdent}`, or `nil`.
