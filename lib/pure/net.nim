@@ -120,7 +120,6 @@ when defineSsl:
     SslContext* = ref object
       context*: SslCtx
       referencedData: HashSet[int]
-      extraInternal: SslContextExtraInternal
 
     SslAcceptResult* = enum
       AcceptNoClient = 0, AcceptNoHandshake, AcceptSuccess
@@ -128,13 +127,9 @@ when defineSsl:
     SslHandshakeType* = enum
       handshakeAsClient, handshakeAsServer
 
-    SslClientGetPskFunc* = proc(hint: string): tuple[identity: string, psk: string]
+    SslClientGetPskFunc* = proc(hint: string): tuple[identity: string, psk: string]{.nimcall.}
 
-    SslServerGetPskFunc* = proc(identity: string): string
-
-    SslContextExtraInternal = ref object of RootRef
-      serverGetPskFunc: SslServerGetPskFunc
-      clientGetPskFunc: SslClientGetPskFunc
+    SslServerGetPskFunc* = proc(identity: string): string{.nimcall.}
 
 else:
   type
@@ -658,11 +653,7 @@ when defineSsl:
           if not found:
             raise newException(IOError, "No SSL/TLS CA certificates found.")
 
-    result = SslContext(context: newCTX, referencedData: initHashSet[int](),
-      extraInternal: new(SslContextExtraInternal))
-
-  proc getExtraInternal(ctx: SslContext): SslContextExtraInternal =
-    return ctx.extraInternal
+    result = SslContext(context: newCTX, referencedData: initHashSet[int]())
 
   proc destroyContext*(ctx: SslContext) =
     ## Free memory referenced by SslContext.
@@ -678,56 +669,49 @@ when defineSsl:
     ## Sets the identity hint passed to server.
     ##
     ## Only used in PSK ciphersuites.
-    if ctx.context.SSL_CTX_use_psk_identity_hint(hint) <= 0:
+    if ctx.context.SSL_CTX_use_psk_identity_hint(hint.cstring) == 0:#1 on success, 0 on failure
       raiseSSLError()
+  
+  template genpskServerCallback(pskfunc:SslServerGetPskFunc):auto =
+    proc pskServerCallback(ssl: SslCtx; identity: cstring; psk: ptr cuchar;
+        max_psk_len: cint): cuint {.cdecl.} =
+      let pskString = pskfunc($identity)
+      if pskString.len.cint > max_psk_len:
+        return 0
+      copyMem(psk, pskString.cstring, pskString.len)
 
-  proc clientGetPskFunc*(ctx: SslContext): SslClientGetPskFunc =
-    return ctx.getExtraInternal().clientGetPskFunc
+      return pskString.len.cuint
+    pskServerCallback
 
-  proc pskClientCallback(ssl: SslPtr; hint: cstring; identity: cstring;
-      max_identity_len: cuint; psk: ptr cuchar;
-      max_psk_len: cuint): cuint {.cdecl.} =
-    let ctx = SslContext(context: ssl.SSL_get_SSL_CTX)
-    let hintString = if hint == nil: "" else: $hint
-    let (identityString, pskString) = (ctx.clientGetPskFunc)(hintString)
-    if pskString.len.cuint > max_psk_len:
-      return 0
-    if identityString.len.cuint >= max_identity_len:
-      return 0
-    copyMem(identity, identityString.cstring, identityString.len + 1) # with the last zero byte
-    copyMem(psk, pskString.cstring, pskString.len)
+  proc `serverGetPskFunc=`*(ctx: SslContext, fun:static SslServerGetPskFunc) =
+    ## Sets function that returns PSK based on the client identity.
+    ##
+    ## Only used in PSK ciphersuites.
+    if not fun.isNil:
+      ctx.context.SSL_CTX_set_psk_server_callback(genpskServerCallback(fun))
 
-    return pskString.len.cuint
+  template genpskClientCallback(pskfunc:SslClientGetPskFunc):auto =
+      proc pskClientCallback(ssl: SslPtr; hint: cstring; identity: cstring;
+          max_identity_len: cuint; psk: ptr cuchar;
+          max_psk_len: cuint): cuint {.cdecl.} =
+        let (identityString, pskString) = pskfunc($hint)
+        if pskString.len.cuint > max_psk_len:
+          return 0
+        if identityString.len.cuint >= max_identity_len:
+          return 0
+        copyMem(identity, identityString.cstring, identityString.len + 1) # with the last zero byte
+        copyMem(psk, pskString.cstring, pskString.len)
 
-  proc `clientGetPskFunc=`*(ctx: SslContext, fun: SslClientGetPskFunc) =
+        return pskString.len.cuint
+      pskClientCallback
+
+  proc `clientGetPskFunc=`*(ctx: SslContext, fun:static SslClientGetPskFunc) =
     ## Sets function that returns the client identity and the PSK based on identity
     ## hint from the server.
     ##
     ## Only used in PSK ciphersuites.
-    ctx.getExtraInternal().clientGetPskFunc = fun
-    ctx.context.SSL_CTX_set_psk_client_callback(
-        if fun == nil: nil else: pskClientCallback)
-
-  proc serverGetPskFunc*(ctx: SslContext): SslServerGetPskFunc =
-    return ctx.getExtraInternal().serverGetPskFunc
-
-  proc pskServerCallback(ssl: SslCtx; identity: cstring; psk: ptr cuchar;
-      max_psk_len: cint): cuint {.cdecl.} =
-    let ctx = SslContext(context: ssl.SSL_get_SSL_CTX)
-    let pskString = (ctx.serverGetPskFunc)($identity)
-    if pskString.len.cint > max_psk_len:
-      return 0
-    copyMem(psk, pskString.cstring, pskString.len)
-
-    return pskString.len.cuint
-
-  proc `serverGetPskFunc=`*(ctx: SslContext, fun: SslServerGetPskFunc) =
-    ## Sets function that returns PSK based on the client identity.
-    ##
-    ## Only used in PSK ciphersuites.
-    ctx.getExtraInternal().serverGetPskFunc = fun
-    ctx.context.SSL_CTX_set_psk_server_callback(if fun == nil: nil
-                                                else: pskServerCallback)
+    if not fun.isNil:
+      ctx.context.SSL_CTX_set_psk_client_callback(genpskClientCallback(fun))
 
   proc getPskIdentity*(socket: Socket): string =
     ## Gets the PSK identity provided by the client.
