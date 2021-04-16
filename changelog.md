@@ -17,6 +17,9 @@
 
 
 ## Library additions
+- Fixed buffer overflow bugs in `net`
+
+- Added `sections` iterator in `parsecfg`.
 
 - Added `browsers.osOpen` const alias for the operating system specific *"open"* command.
 
