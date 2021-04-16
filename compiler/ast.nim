@@ -379,7 +379,7 @@ type
     tySequence,
     tyProc,
     tyPointer, tyOpenArray,
-    tyString, tyCString, tyForward,
+    tyString, tyCstring, tyForward,
     tyInt, tyInt8, tyInt16, tyInt32, tyInt64, # signed integers
     tyFloat, tyFloat32, tyFloat64, tyFloat128,
     tyUInt, tyUInt8, tyUInt16, tyUInt32, tyUInt64,
@@ -1005,13 +1005,13 @@ const
     tyBool, tyChar, tyEnum, tyArray, tyObject,
     tySet, tyTuple, tyRange, tyPtr, tyRef, tyVar, tyLent, tySequence, tyProc,
     tyPointer,
-    tyOpenArray, tyString, tyCString, tyInt..tyInt64, tyFloat..tyFloat128,
+    tyOpenArray, tyString, tyCstring, tyInt..tyInt64, tyFloat..tyFloat128,
     tyUInt..tyUInt64}
   IntegralTypes* = {tyBool, tyChar, tyEnum, tyInt..tyInt64,
     tyFloat..tyFloat128, tyUInt..tyUInt64} # weird name because it contains tyFloat
   ConstantDataTypes*: TTypeKinds = {tyArray, tySet,
                                     tyTuple, tySequence}
-  NilableTypes*: TTypeKinds = {tyPointer, tyCString, tyRef, tyPtr,
+  NilableTypes*: TTypeKinds = {tyPointer, tyCstring, tyRef, tyPtr,
     tyProc, tyError} # TODO
   PtrLikeKinds*: TTypeKinds = {tyPointer, tyPtr} # for VM
   PersistentNodeFlags*: TNodeFlags = {nfBase2, nfBase8, nfBase16,

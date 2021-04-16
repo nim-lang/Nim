@@ -68,7 +68,7 @@ proc getSysType*(g: ModuleGraph; info: TLineInfo; kind: TTypeKind): PType =
     of tyBool: result = sysTypeFromName("bool")
     of tyChar: result = sysTypeFromName("char")
     of tyString: result = sysTypeFromName("string")
-    of tyCString: result = sysTypeFromName("cstring")
+    of tyCstring: result = sysTypeFromName("cstring")
     of tyPointer: result = sysTypeFromName("pointer")
     of tyNil: result = newSysType(g, tyNil, g.config.target.ptrSize)
     else: internalError(g.config, "request for typekind: " & $kind)

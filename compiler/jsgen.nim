@@ -210,7 +210,7 @@ proc mapType(typ: PType): TJSTypeKind =
     if t.n != nil: result = mapType(lastSon t)
     else: result = etyNone
   of tyProc: result = etyProc
-  of tyCString: result = etyString
+  of tyCstring: result = etyString
   of tyConcept, tyIterable: doAssert false
 
 proc mapType(p: PProc; typ: PType): TJSTypeKind =
@@ -1047,14 +1047,14 @@ proc needsNoCopy(p: PProc; y: PNode): bool =
   return y.kind in nodeKindsNeedNoCopy or
         ((mapType(y.typ) != etyBaseIndex or (y.kind == nkSym and y.sym.kind == skParam)) and
           (skipTypes(y.typ, abstractInst).kind in
-            {tyRef, tyPtr, tyLent, tyVar, tyCString, tyProc, tyOwned} + IntegralTypes))
+            {tyRef, tyPtr, tyLent, tyVar, tyCstring, tyProc, tyOwned} + IntegralTypes))
 
 proc genAsgnAux(p: PProc, x, y: PNode, noCopyNeeded: bool) =
   var a, b: TCompRes
   var xtyp = mapType(p, x.typ)
 
   # disable `[]=` for cstring
-  if x.kind == nkBracketExpr and x.len >= 2 and x[0].typ.skipTypes(abstractInst).kind == tyCString:
+  if x.kind == nkBracketExpr and x.len >= 2 and x[0].typ.skipTypes(abstractInst).kind == tyCstring:
     localError(p.config, x.info, "cstring doesn't support `[]=` operator")
 
   gen(p, x, a)
@@ -1263,14 +1263,14 @@ proc genArrayAccess(p: PProc, n: PNode, r: var TCompRes) =
   var ty = skipTypes(n[0].typ, abstractVarRange)
   if ty.kind in {tyRef, tyPtr, tyLent, tyOwned}: ty = skipTypes(ty.lastSon, abstractVarRange)
   case ty.kind
-  of tyArray, tyOpenArray, tySequence, tyString, tyCString, tyVarargs:
+  of tyArray, tyOpenArray, tySequence, tyString, tyCstring, tyVarargs:
     genArrayAddr(p, n, r)
   of tyTuple:
     genFieldAddr(p, n, r)
   else: internalError(p.config, n.info, "expr(nkBracketExpr, " & $ty.kind & ')')
   r.typ = mapType(n.typ)
   if r.res == nil: internalError(p.config, n.info, "genArrayAccess")
-  if ty.kind == tyCString:
+  if ty.kind == tyCstring:
     r.res = "$1.charCodeAt($2)" % [r.address, r.res]
   elif r.typ == etyBaseIndex:
     if needsTemp(p, n[0]):
@@ -1340,7 +1340,7 @@ proc genAddr(p: PProc, n: PNode, r: var TCompRes) =
     else:
       let kindOfIndexedExpr = skipTypes(n[0][0].typ, abstractVarRange).kind
       case kindOfIndexedExpr
-      of tyArray, tyOpenArray, tySequence, tyString, tyCString, tyVarargs:
+      of tyArray, tyOpenArray, tySequence, tyString, tyCstring, tyVarargs:
         genArrayAddr(p, n[0], r)
       of tyTuple:
         genFieldAddr(p, n[0], r)
@@ -1744,7 +1744,7 @@ proc createVar(p: PProc, typ: PType, indirect: bool): Rope =
       result = putToSeq("null", indirect)
   of tySequence, tyString:
     result = putToSeq("[]", indirect)
-  of tyCString, tyProc:
+  of tyCstring, tyProc:
     result = putToSeq("null", indirect)
   of tyStatic:
     if t.n != nil:
@@ -2030,7 +2030,7 @@ proc genMagic(p: PProc, n: PNode, r: var TCompRes) =
     gen(p, n[1], lhs)
     gen(p, n[2], rhs)
 
-    if skipTypes(n[1].typ, abstractVarRange).kind == tyCString:
+    if skipTypes(n[1].typ, abstractVarRange).kind == tyCstring:
       let (b, tmp) = maybeMakeTemp(p, n[2], rhs)
       r.res = "if (null != $1) { if (null == $2) $2 = $3; else $2 += $3; }" %
         [b, lhs.rdLoc, tmp]
@@ -2087,7 +2087,7 @@ proc genMagic(p: PProc, n: PNode, r: var TCompRes) =
   of mLengthStr, mLengthSeq, mLengthOpenArray, mLengthArray:
     var x: TCompRes
     gen(p, n[1], x)
-    if skipTypes(n[1].typ, abstractInst).kind == tyCString:
+    if skipTypes(n[1].typ, abstractInst).kind == tyCstring:
       let (a, tmp) = maybeMakeTemp(p, n[1], x)
       r.res = "(($1) == null ? 0 : ($2).length)" % [a, tmp]
     else:
@@ -2096,7 +2096,7 @@ proc genMagic(p: PProc, n: PNode, r: var TCompRes) =
   of mHigh:
     var x: TCompRes
     gen(p, n[1], x)
-    if skipTypes(n[1].typ, abstractInst).kind == tyCString:
+    if skipTypes(n[1].typ, abstractInst).kind == tyCstring:
       let (a, tmp) = maybeMakeTemp(p, n[1], x)
       r.res = "(($1) == null ? -1 : ($2).length - 1)" % [a, tmp]
     else:
