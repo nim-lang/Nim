@@ -79,7 +79,7 @@ proc usage(c: var NavContext; info: PackedLineInfo; isDecl: bool) =
     file = os.extractFilename file
   toLocation(m, file, info.line.int, info.col.int + ColOffset)
   if not c.alreadyEmitted.containsOrIncl(m):
-    echo (if isDecl: "def" else: "usage"), c.outputSep, m
+    msgWriteln c.g.config, (if isDecl: "def" else: "usage") & c.outputSep & m
 
 proc list(c: var NavContext; tree: PackedTree; sym: ItemId) =
   for i in 0..high(tree.nodes):
