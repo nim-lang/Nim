@@ -483,24 +483,27 @@ proc testNimblePackages(r: var TResults; cat: Category; packageFilter: string) =
 
 # ---------------- IC tests ---------------------------------------------
 
-proc icTests(r: var TResults; testsDir: string, cat: Category, options: string) =
+proc icTests(r: var TResults; testsDir: string, cat: Category, options: string;
+             isNavigatorTest: bool) =
   const
     tooltests = ["compiler/nim.nim", "tools/nimgrep.nim"]
     writeOnly = " --incremental:writeonly "
     readOnly = " --incremental:readonly "
     incrementalOn = " --incremental:on -d:nimIcIntegrityChecks "
+    navTestConfig = " --ic:on --defusages -d:nimIcNavigatorTests --hint[Conf]:off --warnings:off "
 
   template test(x: untyped) =
     testSpecWithNimcache(r, makeRawTest(file, x & options, cat), nimcache)
 
   template editedTest(x: untyped) =
     var test = makeTest(file, x & options, cat)
+    if isNavigatorTest:
+      test.spec.action = actionCompile
     test.spec.targets = {getTestSpecTarget()}
     testSpecWithNimcache(r, test, nimcache)
 
   const tempExt = "_temp.nim"
-  for it in walkDirRec(testsDir / "ic"):
-  # for it in ["tests/ic/timports.nim"]: # debugging: to try a specific test
+  for it in walkDirRec(testsDir):
     if isTestFile(it) and not it.endsWith(tempExt):
       let nimcache = nimcacheDir(it, options, getTestSpecTarget())
       removeDir(nimcache)
@@ -510,10 +513,10 @@ proc icTests(r: var TResults; testsDir: string, cat: Category, options: string) 
         let file = it.replace(".nim", tempExt)
         writeFile(file, fragment)
         let oldPassed = r.passed
-        editedTest incrementalOn
+        editedTest(if isNavigatorTest: navTestConfig else: incrementalOn)
         if r.passed != oldPassed+1: break
 
-  when false:
+  if not isNavigatorTest and false:
     for file in tooltests:
       let nimcache = nimcacheDir(file, options, getTestSpecTarget())
       removeDir(nimcache)
@@ -528,7 +531,7 @@ proc icTests(r: var TResults; testsDir: string, cat: Category, options: string) 
 
 # ----------------------------------------------------------------------------
 
-const AdditionalCategories = ["debugger", "examples", "lib", "ic"]
+const AdditionalCategories = ["debugger", "examples", "lib", "ic", "navigator"]
 const MegaTestCat = "megatest"
 
 proc `&.?`(a, b: string): string =
@@ -695,7 +698,9 @@ proc processCategory(r: var TResults, cat: Category,
     of "niminaction":
       testNimInAction(r, cat, options)
     of "ic":
-      icTests(r, testsDir, cat, options)
+      icTests(r, testsDir / cat2, cat, options, isNavigatorTest=false)
+    of "navigator":
+      icTests(r, testsDir / cat2, cat, options, isNavigatorTest=true)
     of "untestable":
       # These require special treatment e.g. because they depend on a third party
       # dependency; see `trunner_special` which runs some of those.

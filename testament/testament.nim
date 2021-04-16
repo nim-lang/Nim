@@ -157,8 +157,8 @@ proc prepareTestArgs(cmdTemplate, filename, options, nimcache: string,
                       "options", options, "file", filename.quoteShell,
                       "filedir", filename.getFileDir(), "nim", compilerPrefix])
 
-proc callCompiler(cmdTemplate, filename, options, nimcache: string,
-                  target: TTarget, extraOptions = ""): TSpec =
+proc callNimCompiler(cmdTemplate, filename, options, nimcache: string,
+                     target: TTarget, extraOptions = ""): TSpec =
   let c = prepareTestArgs(cmdTemplate, filename, options, nimcache, target,
                           extraOptions)
   result.cmd = quoteShellCommand(c)
@@ -465,11 +465,11 @@ proc testSpecHelper(r: var TResults, test: var TTest, expected: TSpec,
   test.startTime = epochTime()
   case expected.action
   of actionCompile:
-    var given = callCompiler(expected.getCmd, test.name, test.options, nimcache, target,
+    var given = callNimCompiler(expected.getCmd, test.name, test.options, nimcache, target,
           extraOptions = " --stdout --hint[Path]:off --hint[Processing]:off")
     compilerOutputTests(test, target, given, expected, r)
   of actionRun:
-    var given = callCompiler(expected.getCmd, test.name, test.options,
+    var given = callNimCompiler(expected.getCmd, test.name, test.options,
                              nimcache, target, extraOptions)
     if given.err != reSuccess:
       r.addResult(test, target, "", "$ " & given.cmd & '\n' & given.nimout, given.err)
@@ -523,7 +523,7 @@ proc testSpecHelper(r: var TResults, test: var TTest, expected: TSpec,
           else:
             compilerOutputTests(test, target, given, expected, r)
   of actionReject:
-    var given = callCompiler(expected.getCmd, test.name, test.options,
+    var given = callNimCompiler(expected.getCmd, test.name, test.options,
                               nimcache, target)
     cmpMsgs(r, expected, given, test, target)
 

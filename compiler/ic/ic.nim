@@ -494,7 +494,8 @@ proc loadError(err: RodFileError; filename: AbsoluteFile; config: ConfigRef;) =
   of includeFileChanged:
     rawMessage(config, warnFileChanged, filename.string)
   else:
-    echo "Error: ", $err, " loading file: ", filename.string
+    rawMessage(config, warnCannotOpenFile, filename.string & " reason: " & $err)
+    #echo "Error: ", $err, " loading file: ", filename.string
 
 proc loadRodFile*(filename: AbsoluteFile; m: var PackedModule; config: ConfigRef;
                   ignoreConfig = false): RodFileError =
