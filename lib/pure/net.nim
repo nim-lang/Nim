@@ -672,7 +672,7 @@ when defineSsl:
     ## Sets the identity hint passed to server.
     ##
     ## Only used in PSK ciphersuites.
-    if ctx.context.SSL_CTX_use_psk_identity_hint(hint.cstring) == 0:#1 on success, 0 on failure
+    if ctx.context.SSL_CTX_use_psk_identity_hint(hint.cstring) <= 0:
       raiseSSLError()
 
   template genpskServerCallback(pskfunc:SslServerGetPskFunc):auto =
