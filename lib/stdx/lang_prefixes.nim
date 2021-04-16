@@ -87,19 +87,16 @@ template highlight*(a: string{lit}): string =
 
 runnableExamples:
   let a = highlight"""js
-if (!Math.trunc) {
-  Math.trunc = function(v) {
-    v = +v;
-    if (!isFinite(v)) return v;
-    return (v - v % 1) || (v < 0 ? -0 : v === 0 ? v : 0);
-  };
-}"""
-  assert a == """
-if (!Math.trunc) {
-  Math.trunc = function(v) {
-    v = +v;
-    if (!isFinite(v)) return v;
-    return (v - v % 1) || (v < 0 ? -0 : v === 0 ? v : 0);
-  };
-}"""
+var a = 3n;
+var b = 4n;"""
+  doAssert a == "var a = 3n;\nvar b = 4n;"
 
+  {.emit: highlight"""c
+/*INCLUDESECTION*/
+#include <stdio.h>""".}
+
+  proc fn(n: int): int =
+    {.emit: highlight"""c
+`result` = 3 * `n`; // some comment
+""".}
+  doAssert fn(2) == 3 * 2
