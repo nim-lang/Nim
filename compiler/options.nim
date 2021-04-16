@@ -13,7 +13,7 @@ import
 
 from terminal import isatty
 from times import utc, fromUnix, local, getTime, format, DateTime
-
+from std/private/globs import nativeToUnixPath
 const
   hasTinyCBackend* = defined(tinyc)
   useEffectSystem* = true
@@ -884,6 +884,21 @@ proc findProjectNimFile*(conf: ConfigRef; pkg: string): string =
     dir = parentDir(dir)
     if dir == "": break
   return ""
+
+proc canonicalImport*(conf: ConfigRef, file: AbsoluteFile): string =
+  ##[
+  Shows the canonical module import, e.g.:
+  system, std/tables, fusion/pointers, system/assertions, std/private/asciitables
+  ]##
+  var ret = getRelativePathFromConfigPath(conf, file, isTitle = true)
+  let dir = getNimbleFile(conf, $file).parentDir.AbsoluteDir
+  if not dir.isEmpty:
+    let relPath = relativeTo(file, dir)
+    if not relPath.isEmpty and (ret.isEmpty or relPath.string.len < ret.string.len):
+      ret = relPath
+  if ret.isEmpty:
+    ret = relativeTo(file, conf.projectPath)
+  result = ret.string.nativeToUnixPath.changeFileExt("")
 
 proc canonDynlibName(s: string): string =
   let start = if s.startsWith("lib"): 3 else: 0
