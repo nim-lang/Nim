@@ -53,6 +53,37 @@ runnableExamples:
   doAssert statistics.kurtosis() ~= -1.0
   doAssert statistics.kurtosisS() ~= -0.7000000000000008
 
+  var 
+    ASv = [7,4,6,3,9,1]        #  sorted   1 3 4 6 7 9
+    A   : array[len(ASv),int]
+
+  func myCmp(x,y:int):int =
+    if x==y : 0 elif x<y : -1 else: 1
+
+  A= ASv;  doAssert quickSelect(A, 2, 5, 2, myCmp) == 1  # smallest element
+  A= ASv;  doAssert quickSelect(A, 2, 5, 5, myCmp) == 9  # largest element
+  #
+  A= ASv;  doAssert median(A,0,5,myCmp)      == 5.0
+  A= ASv;  doAssert median_low(A,0,5,myCmp)  == 4
+  A= ASv;  doAssert median_high(A,0,5,myCmp) == 6
+  #
+  A= ASv;  doAssert median(A,2,5)            == 4.5
+  A= ASv;  doAssert median_low(A,2,5)        == 3
+  A= ASv;  doAssert median_high(A,2,5)       == 6
+  #
+  A= ASv;  doAssert median(A,0,4,myCmp)      == 6.0
+  A= ASv;  doAssert median_low(A,0,4,myCmp)  == 6
+  A= ASv;  doAssert median_high(A,0,4,myCmp) == 6
+
+  func FCmp(x,y:float):int =
+    if x==y : 0
+    elif x<y : -1
+    else     : 1
+
+  var  F = [7.0,4.0,6.0,3.0,9.0,1.0]
+
+  doAssert median(F,0,5,FCmp) == 5.0
+
 from std/math import FloatClass, sqrt, pow, round
 
 {.push debugger: off.} # the user does not want to trace a part
@@ -260,6 +291,123 @@ proc kurtosisS*[T](x: openArray[T]): float =
   var rs: RunningStat
   rs.push(x)
   result = rs.kurtosisS()
+
+import random
+
+# Partition using Lomuto partition scheme
+proc partition[T](A: var openArray[T], left, right, K : Natural,
+                                      myCmp : proc(x,y:T):int ): int =
+  assert(left<=K and K<=right)
+  var pInd = K  # Pick `pIndex` as a pivot from the list
+  let pivot = A[pInd]
+  if likely(pInd != right) : swap(A[pInd],A[right])  # Move pivot to end
+  
+  #[
+    elements less than the pivot will be pushed to the left of `pIndex`;
+    elements more than the pivot will be pushed to the right of `pIndex`;
+    equal elements can go either way  ]#
+
+  pInd = left
+  #[ each time we find an element less than or equal to the pivot, `pInd`
+     is incremented, and that element would be placed before the pivot. ]#
+  
+  for i in left ..< right :
+    if myCmp(A[i],pivot) <= 0 :    # A[i] <= pivot
+      if likely(i != pInd) :  swap(A[i],A[pInd])
+      inc(pInd)
+
+  # Move pivot to its place
+  if likely(pInd < right) :  swap(A[pInd],A[right])
+  
+  result= pInd   # A[i] <= pivot  for i in left..pInd 
+
+
+proc quickSelect*[T](A: var openArray[T], left, right, K : Natural, 
+                                          myCmp : proc(x,y:T):int {.nimcall} = cmp[T]): T =
+  ##[
+    Returns the ``K``'th smallest element in a list within `left / right`
+    (i.e., ``left <= K <= right``).
+    
+    If ``K == left`` the smallest element, and if ``K == right`` the largest element of **A** will be returned.
+    
+    >>> **A** will be modified
+    
+  Timings for random arrays on an amd64 / 4GHz machine with  nim c -d:release -d:danger -z 
+   
+   ..table::
+   =============         ==============
+       Length            time (seconds)
+   =============         ============== 
+       1,000,000          0.0013
+      10,000,000          0.014
+     100,000,000          0.15
+   1,000,000,000          1.5
+  ]##
+
+  assert(left<=K and K<=right)
+  # If the list contains only one element, return that element
+  if left == right:  return A[left]
+
+  # select `pInd` between left and right
+  var pInd = left + rand(right-left)
+  pInd = partition(A, left, right, pInd, myCmp)
+
+  # The pivot is in its sorted position
+  if K == pInd:  return A[K]
+
+  elif K < pInd:  # if K is less than the pivot index
+    return quickSelect(A, left, pInd - 1, K, myCmp)
+
+  # if K is greater than the pivot index
+  else:
+    return quickSelect(A, pInd + 1, right, K, myCmp)
+
+
+proc median_low*[T](A: var openArray[T], left, right : Natural, 
+                         myCmp : proc(x,y:T):int {.nimcall} = cmp[T]): T =
+  ##[
+  The **median M** of an array/sequence of comparable items is defined such that 
+  
+  in case the array/sequence has *odd* length ``(right-left+1)`` : 
+     ``(m-1)/2`` elements are lower or equal and ``(m-1)/2`` elements are higher or equal than **M**
+
+     In this case  ``median_low(A) == median_high(A)``
+
+  in case the array/sequence has *even* length the median is only defined for
+     arrays of ``SomeNumber`` elements - see below -
+
+     In general **median_low(A)** has the property that ``m/2`` elements are less than or equal this value
+     and ``m/2+1`` elements are greater than or equal this value.
+
+     **median_high(A)** has the property that ``m/2`` elements are greater or equal than this value and
+     ``m/2+1`` elements are less or equal than this value.
+
+  >>> **A** will be modified
+  ]##
+  quickSelect(A, left,right,(right+left) div 2, myCmp)
+
+
+proc median_high*[T](A: var openArray[T], left, right : Natural, 
+                         myCmp : proc(x,y:T):int {.nimcall} = cmp[T]): T =
+  quickSelect(A, left,right,(right+left+1) div 2, myCmp)
+
+proc median*[T:SomeNumber](A: var openArray[T], left, right : Natural,
+                    myCmp : proc(x,y:T):int {.nimcall} = cmp[T]): float =
+  ##[This is a special version which returns a float value. 
+    If the length (right+1-left) is *even*, it returns (median_low + median_high)*0.5
+
+  >>> **A** will be modified
+  ]##
+  let
+    N= (right-left+1) 
+    K= left + (N-1) div 2
+
+  if  (N and 1) == 1 :  # N is odd
+    result= float(quickSelect(A, left,right, K, myCmp))
+  else :
+    result= float( quickSelect(A, left,right, K, myCmp) +
+                   quickSelect(A, left,right, K+1, myCmp) )*0.5
+
 
 # ---------------------- Running Regression -----------------------------
 
