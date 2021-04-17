@@ -8,9 +8,9 @@ discard """
   output:'''
 accepted connection
 connected with aethelfridda
-identity hint "bartholomew"
-hello from aethelfridda
 goodbye from bartholomew
+hello from aethelfridda
+identity hint "bartholomew"
 '''
   sortoutput:true
 """
@@ -22,10 +22,6 @@ var serverChannel:Channel[bool]
 proc clientFunc(identityHint: string): tuple[identity: string, psk: string] =
   echo "identity hint \"", identityHint,"\""
   return ("aethelfridda","aethelfridda-loves-"&identityHint)
-
-proc servfunc(identity:string):string =
-  echo "got id:",identity
-  "psk-of-" & identity
 
 proc client(){.thread.}=
   let context = newContext(cipherList="PSK-AES256-CBC-SHA")
