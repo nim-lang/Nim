@@ -10,7 +10,7 @@
 # this module does the semantic checking of type declarations
 # included from sem.nim
 
-import math
+import std/math
 
 const
   errStringOrIdentNodeExpected = "string or ident node expected"
@@ -138,9 +138,10 @@ proc semEnum(c: PContext, n: PNode, prev: PType): PType =
       identToReplace[] = symNode
     if e.position == 0: hasNull = true
     if result.sym != nil and sfExported in result.sym.flags:
-      incl(e.flags, sfUsed)
-      incl(e.flags, sfExported)
-      if not isPure: exportSym(c, e)
+      incl(e.flags, {sfUsed, sfExported})
+    if result.sym != nil and not isPure:
+      addInterfaceDeclAux(c, e, forceExport = sfExported in result.sym.flags)
+
     result.n.add symNode
     styleCheckDef(c.config, e)
     onDef(e.info, e)
@@ -354,6 +355,15 @@ proc semArray(c: PContext, n: PNode, prev: PType): PType =
     addSonSkipIntLit(result, base, c.idgen)
   else:
     localError(c.config, n.info, errArrayExpectsTwoTypeParams)
+    result = newOrPrevType(tyError, prev, c)
+
+proc semIterableType(c: PContext, n: PNode, prev: PType): PType =
+  result = newOrPrevType(tyIterable, prev, c)
+  if n.len == 2:
+    let base = semTypeNode(c, n[1], nil)
+    addSonSkipIntLit(result, base, c.idgen)
+  else:
+    localError(c.config, n.info, errXExpectsOneTypeParam % "iterable")
     result = newOrPrevType(tyError, prev, c)
 
 proc semOrdinal(c: PContext, n: PNode, prev: PType): PType =
@@ -1171,6 +1181,7 @@ proc liftParamType(c: PContext, procKind: TSymKind, genericParams: PNode,
   else: discard
 
 proc semParamType(c: PContext, n: PNode, constraint: var PNode): PType =
+  ## Semchecks the type of parameters.
   if n.kind == nkCurlyExpr:
     result = semTypeNode(c, n[0], nil)
     constraint = semNodeKindConstraints(n, c.config, 1)
@@ -1226,9 +1237,10 @@ proc semProcTypeNode(c: PContext, n, genericParams: PNode,
     if hasType:
       typ = semParamType(c, a[^2], constraint)
       # TODO: Disallow typed/untyped in procs in the compiler/stdlib
-      if kind == skProc and (typ.kind == tyTyped or typ.kind == tyUntyped):
+      if kind in {skProc, skFunc} and (typ.kind == tyTyped or typ.kind == tyUntyped):
         if not isMagic(getCurrOwner(c)):
           localError(c.config, a[^2].info, "'" & typ.sym.name.s & "' is only allowed in templates and macros or magic procs")
+
 
     if hasDefault:
       def = a[^1]
@@ -1842,6 +1854,7 @@ proc semTypeNode(c: PContext, n: PNode, prev: PType): PType =
     of mRange: result = semRange(c, n, prev)
     of mSet: result = semSet(c, n, prev)
     of mOrdinal: result = semOrdinal(c, n, prev)
+    of mIterableType: result = semIterableType(c, n, prev)
     of mSeq:
       result = semContainer(c, n, tySequence, "seq", prev)
       if optSeqDestructors in c.config.globalOptions:
@@ -2064,6 +2077,9 @@ proc processMagicType(c: PContext, m: PSym) =
     c.graph.sysTypes[tySequence] = m.typ
   of mOrdinal:
     setMagicIntegral(c.config, m, tyOrdinal, szUncomputedSize)
+    rawAddSon(m.typ, newTypeS(tyNone, c))
+  of mIterableType:
+    setMagicIntegral(c.config, m, tyIterable, 0)
     rawAddSon(m.typ, newTypeS(tyNone, c))
   of mPNimrodNode:
     incl m.typ.flags, tfTriggersCompileTime

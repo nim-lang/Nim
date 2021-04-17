@@ -21,7 +21,7 @@ import
   modules,
   modulegraphs, tables, lineinfos, pathutils, vmprofiler
 
-import ic / cbackend
+import ic / [cbackend, integrity, navigator]
 from ic / ic import rodViewer
 
 when not defined(leanCompiler):
@@ -54,10 +54,19 @@ proc commandGenDepend(graph: ModuleGraph) =
       ' ' & changeFileExt(project, "dot").string)
 
 proc commandCheck(graph: ModuleGraph) =
-  graph.config.setErrorMaxHighMaybe
-  defineSymbol(graph.config.symbols, "nimcheck")
+  let conf = graph.config
+  conf.setErrorMaxHighMaybe
+  defineSymbol(conf.symbols, "nimcheck")
   semanticPasses(graph)  # use an empty backend for semantic checking only
   compileProject(graph)
+
+  if conf.symbolFiles != disabledSf:
+    case conf.ideCmd
+    of ideDef: navDefinition(graph)
+    of ideUse: navUsages(graph)
+    of ideDus: navDefusages(graph)
+    else: discard
+    writeRodFiles(graph)
 
 when not defined(leanCompiler):
   proc commandDoc2(graph: ModuleGraph; json: bool) =
@@ -93,6 +102,8 @@ proc commandCompileToC(graph: ModuleGraph) =
   if conf.symbolFiles == disabledSf:
     cgenWriteModules(graph.backend, conf)
   else:
+    if isDefined(conf, "nimIcIntegrityChecks"):
+      checkIntegrity(graph)
     generateCode(graph)
     # graph.backend can be nil under IC when nothing changed at all:
     if graph.backend != nil:

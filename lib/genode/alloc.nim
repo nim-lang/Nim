@@ -17,18 +17,18 @@ when not defined(genode):
 when not declared(GenodeEnv):
   include genode/env
 
-type DataspaceCapability {.
-  importcpp: "Genode::Dataspace_capability", pure.} = object
+type RamDataspaceCapability {.
+  importcpp: "Genode::Ram_dataspace_capability", pure.} = object
 
 type
   Map = object
     attachment: pointer
     size: int
-    ds: DataspaceCapability
+    ds: RamDataspaceCapability
 
   SlabMeta = object
     next: ptr MapSlab
-    ds: DataspaceCapability
+    ds: RamDataspaceCapability
 
   MapSlab = object
     meta: SlabMeta
@@ -45,11 +45,11 @@ proc capsAvail(env: GenodeEnv): int {.
   ## Return the number of available capabilities.
   ## Each dataspace allocation consumes a capability.
 
-proc allocDataspace(env: GenodeEnv; size: int): DataspaceCapability {.
+proc allocDataspace(env: GenodeEnv; size: int): RamDataspaceCapability {.
   importcpp: "#->pd().alloc(@)".}
   ## Allocate a dataspace and its capability.
 
-proc attachDataspace(env: GenodeEnv; ds: DataspaceCapability): pointer {.
+proc attachDataspace(env: GenodeEnv; ds: RamDataspaceCapability): pointer {.
   importcpp: "#->rm().attach(@)".}
   ## Attach a dataspace into the component address-space.
 
@@ -57,7 +57,7 @@ proc detachAddress(env: GenodeEnv; p: pointer) {.
   importcpp: "#->rm().detach(@)".}
   ## Detach a dataspace from the component address-space.
 
-proc freeDataspace(env: GenodeEnv; ds: DataspaceCapability) {.
+proc freeDataspace(env: GenodeEnv; ds: RamDataspaceCapability) {.
   importcpp: "#->pd().free(@)".}
   ## Free a dataspace.
 

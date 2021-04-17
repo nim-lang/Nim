@@ -123,6 +123,10 @@ proc defined*(x: untyped): bool {.magic: "Defined", noSideEffect, compileTime.}
   ##     # Do here programmer friendly expensive sanity checks.
   ##   # Put here the normal code
 
+when defined(nimHasIterable):
+  type
+    iterable*[T] {.magic: IterableType.}  ## Represents an expression that yields `T`
+
 when defined(nimHashOrdinalFixed):
   type
     Ordinal*[T] {.magic: Ordinal.} ## Generic ordinal type. Includes integer,
@@ -344,6 +348,8 @@ proc high*[T](x: openArray[T]): int {.magic: "High", noSideEffect.}
 proc high*[I, T](x: array[I, T]): I {.magic: "High", noSideEffect.}
   ## Returns the highest possible index of an array `x`.
   ##
+  ## For empty arrays, the return type is `int`.
+  ##
   ## See also:
   ## * `low(array) <#low,array[I,T]>`_
   ##
@@ -355,6 +361,8 @@ proc high*[I, T](x: array[I, T]): I {.magic: "High", noSideEffect.}
 
 proc high*[I, T](x: typedesc[array[I, T]]): I {.magic: "High", noSideEffect.}
   ## Returns the highest possible index of an array type.
+  ##
+  ## For empty arrays, the return type is `int`.
   ##
   ## See also:
   ## * `low(typedesc[array]) <#low,typedesc[array[I,T]]>`_
@@ -416,6 +424,8 @@ proc low*[T](x: openArray[T]): int {.magic: "Low", noSideEffect.}
 proc low*[I, T](x: array[I, T]): I {.magic: "Low", noSideEffect.}
   ## Returns the lowest possible index of an array `x`.
   ##
+  ## For empty arrays, the return type is `int`.
+  ##
   ## See also:
   ## * `high(array) <#high,array[I,T]>`_
   ##
@@ -427,6 +437,8 @@ proc low*[I, T](x: array[I, T]): I {.magic: "Low", noSideEffect.}
 
 proc low*[I, T](x: typedesc[array[I, T]]): I {.magic: "Low", noSideEffect.}
   ## Returns the lowest possible index of an array type.
+  ##
+  ## For empty arrays, the return type is `int`.
   ##
   ## See also:
   ## * `high(typedesc[array]) <#high,typedesc[array[I,T]]>`_
@@ -1185,10 +1197,6 @@ when defined(nimdoc):
     ##
     ## Before stopping the program the "exit procedures" are called in the
     ## opposite order they were added with `addExitProc <exitprocs.html#addExitProc,proc)>`_.
-    ## `quit` never returns and ignores any exception that may have been raised
-    ## by the quit procedures.  It does *not* call the garbage collector to free
-    ## all the memory, unless a quit procedure calls `GC_fullCollect
-    ## <#GC_fullCollect>`_.
     ##
     ## The proc `quit(QuitSuccess)` is called implicitly when your nim
     ## program finishes without incident for platforms where this is the
@@ -1199,6 +1207,14 @@ when defined(nimdoc):
     ## have any compile time effect. If you need to stop the compiler inside a
     ## macro, use the `error <manual.html#pragmas-error-pragma>`_ or `fatal
     ## <manual.html#pragmas-fatal-pragma>`_ pragmas.
+    ##
+    ## .. danger:: In almost all cases, in particular in library code, prefer
+    ##   alternatives, e.g. `doAssert false` or raise a `Defect`.
+    ##   `quit` bypasses regular control flow in particular `defer`,
+    ##   `try`, `catch`, `finally` and `destructors`, and exceptions that may have been
+    ##   raised by an `addExitProc` proc, as well as cleanup code in other threads.
+    ##   It does *not* call the garbage collector to free all the memory,
+    ##   unless an `addExitProc` proc calls `GC_fullCollect <#GC_fullCollect>`_.
 
 elif defined(genode):
   include genode/env

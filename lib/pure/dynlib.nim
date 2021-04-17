@@ -22,7 +22,7 @@
 ## If the library fails to load or the function 'greet' is not found,
 ## it quits with a failure error code.
 ##
-## .. code-block::nim
+## .. code-block:: Nim
 ##
 ##   import std/dynlib
 ##
@@ -149,6 +149,32 @@ elif defined(nintendoswitch):
     raise newException(OSError, "unloadLib not implemented on Nintendo Switch!")
   proc symAddr(lib: LibHandle, name: cstring): pointer =
     raise newException(OSError, "symAddr not implemented on Nintendo Switch!")
+
+elif defined(genode):
+  #
+  # =========================================================================
+  # Not implemented for Genode without POSIX. Raise an error if called.
+  # =========================================================================
+  #
+
+  template raiseErr(prc: string) =
+    raise newException(OSError, prc & " not implemented, compile with POSIX suport")
+
+  proc dlclose(lib: LibHandle) =
+    raiseErr(OSError, "dlclose")
+  proc dlopen(path: cstring, mode: int): LibHandle =
+    raiseErr(OSError, "dlopen")
+  proc dlsym(lib: LibHandle, name: cstring): pointer =
+    raiseErr(OSError, "dlsym")
+  proc loadLib(path: string, global_symbols = false): LibHandle =
+    raiseErr(OSError, "loadLib")
+  proc loadLib(): LibHandle =
+    raiseErr(OSError, "loadLib")
+  proc unloadLib(lib: LibHandle) =
+    raiseErr(OSError, "unloadLib")
+  proc symAddr(lib: LibHandle, name: cstring): pointer =
+    raiseErr(OSError, "symAddr")
+
 
 elif defined(windows) or defined(dos):
   #

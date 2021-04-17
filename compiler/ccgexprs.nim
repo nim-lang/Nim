@@ -1103,15 +1103,21 @@ proc genEcho(p: BProc, n: PNode) =
     # echo directly to the Genode LOG session
     var args: Rope = nil
     var a: TLoc
-    for it in n.sons:
+    for i, it in n.sons:
       if it.skipConv.kind == nkNilLit:
         args.add(", \"\"")
-      else:
+      elif n.len != 0:
         initLocExpr(p, it, a)
-        args.add(ropecg(p.module, ", Genode::Cstring($1->data, $1->len)", [rdLoc(a)]))
+        if i > 0:
+          args.add(", ")
+        case detectStrVersion(p.module)
+        of 2:
+          args.add(ropecg(p.module, "Genode::Cstring($1.p->data, $1.len)", [a.rdLoc]))
+        else:
+          args.add(ropecg(p.module, "Genode::Cstring($1->data, $1->len)", [a.rdLoc]))
     p.module.includeHeader("<base/log.h>")
     p.module.includeHeader("<util/string.h>")
-    linefmt(p, cpsStmts, """Genode::log(""$1);$n""", [args])
+    linefmt(p, cpsStmts, """Genode::log($1);$n""", [args])
   else:
     if n.len == 0:
       linefmt(p, cpsStmts, "#echoBinSafe(NIM_NIL, $1);$n", [n.len])

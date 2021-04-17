@@ -75,6 +75,7 @@ proc `=destroy`*(t: var Task) {.inline.} =
 
 proc invoke*(task: Task) {.inline.} =
   ## Invokes the `task`.
+  assert task.callback != nil
   task.callback(task.args)
 
 template checkIsolate(scratchAssignList: seq[NimNode], procParam, scratchDotExpr: NimNode) =

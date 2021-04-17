@@ -1,6 +1,8 @@
 discard """
   output: '''
 42
+43
+43
 1
 2
 3
@@ -8,16 +10,30 @@ discard """
 '''
 """
 
+# xxx move to tests/async/tasyncintemplate.nim
 import asyncdispatch
 
-# bug #16159
-template foo() =
-  proc temp(): Future[int] {.async.} = return 42
-  proc tempVoid(): Future[void] {.async.} = echo await temp()
+block: # bug #16159
+  template foo() =
+    proc temp(): Future[int] {.async.} = return 42
+    proc tempVoid(): Future[void] {.async.} = echo await temp()
+  foo()
+  waitFor tempVoid()
 
-foo()
-waitFor tempVoid()
+block: # aliasing `void`
+  template foo() =
+    type Foo = void
+    proc temp(): Future[int] {.async.} = return 43
+    proc tempVoid(): Future[Foo] {.async.} = echo await temp()
+    proc tempVoid2() {.async.} = echo await temp()
+  foo()
+  waitFor tempVoid()
+  waitFor tempVoid2()
 
+block: # sanity check
+  template foo() =
+    proc bad(): int {.async.} = discard
+  doAssert not compiles(bad())
 
 block: # bug #16786
   block:

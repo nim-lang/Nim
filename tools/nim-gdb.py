@@ -1,6 +1,7 @@
 import gdb
 import re
 import sys
+import traceback
 
 # some feedback that the nim runtime support is loading, isn't a bad
 # thing at all.
@@ -13,14 +14,14 @@ def printErrorOnce(id, message):
   global errorSet
   if id not in errorSet:
     errorSet.add(id)
-    gdb.write(message, gdb.STDERR)
+    gdb.write("printErrorOnce: " + message, gdb.STDERR)
 
 
 ################################################################################
 #####  Type pretty printers
 ################################################################################
 
-type_hash_regex = re.compile("^\w*_([A-Za-z0-9]*)$")
+type_hash_regex = re.compile("^([A-Za-z0-9]*)_([A-Za-z0-9]*)_+([A-Za-z0-9]*)$")
 
 def getNimRti(type_name):
   """ Return a ``gdb.Value`` object for the Nim Runtime Information of ``type_name``. """
@@ -28,13 +29,20 @@ def getNimRti(type_name):
   # Get static const TNimType variable. This should be available for
   # every non trivial Nim type.
   m = type_hash_regex.match(type_name)
+  lookups = [
+    "NTI" + m.group(2).lower() + "__" + m.group(3) + "_",
+    "NTI" + "__" + m.group(3) + "_",
+    "NTI" + m.group(2).replace("colon", "58").lower() + "__" + m.group(3) + "_"
+    ]
   if m:
-    try:
-      return gdb.parse_and_eval("NTI__" + m.group(1) + "_")
-    except:
-      return None
+      for l in lookups:
+        try:
+          return gdb.parse_and_eval(l)
+        except:
+          pass
+  None
 
-def getNameFromNimRti(rti_val):
+def getNameFromNimRti(rti):
   """ Return name (or None) given a Nim RTI ``gdb.Value`` """
   try:
     # sometimes there isn't a name field -- example enums
@@ -192,6 +200,7 @@ class NimStringEqFunction (gdb.Function):
 
 NimStringEqFunction()
 
+
 ################################################################################
 #####  GDB Command, equivalent of Nim's $ operator
 ################################################################################
@@ -315,22 +324,6 @@ class NimStringPrinter:
     else:
       return ""
 
-# class NimStringPrinter:
-#   pattern = re.compile(r'^NimStringDesc$')
-
-#   def __init__(self, val):
-#     self.val = val
-  
-#   def display_hint(self):
-#     return 'string'
-  
-#   def to_string(self):
-#     if self.val:
-#       l = int(self.val['Sup']['len'])
-#       return self.val['data'].lazy_string(encoding="utf-8", length=l)
-#     else:
-#       return ""
-
 class NimRopePrinter:
   pattern = re.compile(r'^tyObject_RopeObj__([A-Za-z0-9]*) \*$')
 
@@ -372,8 +365,8 @@ def reprEnum(e, typ):
   e = int(e)
   n = typ["node"]
   flags = int(typ["flags"])
-  # 1 << 2 is {ntfEnumHole}
-  if ((1 << 2) & flags) == 0:
+  # 1 << 6 is {ntfEnumHole}
+  if ((1 << 6) & flags) == 0:
     o = e - int(n["sons"][0]["offset"])
     if o >= 0 and 0 < int(n["len"]):
       return n["sons"][o]["name"].string("utf-8", "ignore")
@@ -386,19 +379,26 @@ def reprEnum(e, typ):
 
   return str(e) + " (invalid data!)"
 
+def enumNti(typeNimName, idString):
+  typeInfoName = "NTI" + typeNimName.lower() + "__" + idString + "_"
+  nti = gdb.lookup_global_symbol(typeInfoName)
+  if nti is None:
+    typeInfoName = "NTI" + "__" + idString + "_"
+    nti = gdb.lookup_global_symbol(typeInfoName)
+  return (typeInfoName, nti)
+
 class NimEnumPrinter:
-  pattern = re.compile(r'^tyEnum_(\w*)__([A-Za-z0-9]*)$')
+  pattern = re.compile(r'^tyEnum_([A-Za-z0-9]+)__([A-Za-z0-9]*)$')
 
   def __init__(self, val):
     self.val = val
     typeName = self.val.type.name
     match = self.pattern.match(typeName)
     self.typeNimName  = match.group(1)
-    typeInfoName = "NTI__" + match.group(2) + "_"
-    self.nti = gdb.lookup_global_symbol(typeInfoName)
+    typeInfoName, self.nti = enumNti(self.typeNimName, match.group(2))
 
     if self.nti is None:
-      printErrorOnce(typeInfoName, f"NimEnumPrinter: lookup global symbol '{typeInfoName}' failed for {typeName}.\n")
+      printErrorOnce(typeInfoName, f"NimEnumPrinter: lookup global symbol: '{typeInfoName}' failed for {typeName}.\n")
 
   def to_string(self):
     if self.nti:
@@ -414,18 +414,17 @@ class NimSetPrinter:
   ## the set printer is limited to sets that fit in an integer.  Other
   ## sets are compiled to `NU8 *` (ptr uint8) and are invisible to
   ## gdb (currently).
-  pattern = re.compile(r'^tySet_tyEnum_(\w*)_([A-Za-z0-9]*)$')
+  pattern = re.compile(r'^tySet_tyEnum_([A-Za-z0-9]+)__([A-Za-z0-9]*)$')
 
   def __init__(self, val):
     self.val = val
-    match = self.pattern.match(self.val.type.name)
-    self.typeNimName  = match.group(1)
-
-    typeInfoName = "NTI__" + match.group(2) + "_"
-    self.nti = gdb.lookup_global_symbol(typeInfoName)
+    typeName = self.val.type.name
+    match = self.pattern.match(typeName)
+    self.typeNimName = match.group(1)
+    typeInfoName, self.nti = enumNti(self.typeNimName, match.group(2))
 
     if self.nti is None:
-      printErrorOnce(typeInfoName, "NimSetPrinter: lookup global symbol '"+ typeInfoName +" failed for " + self.val.type.name + ".\n")
+      printErrorOnce(typeInfoName, f"NimSetPrinter: lookup global symbol: '{typeInfoName}' failed for {typeName}.\n")
 
   def to_string(self):
     if self.nti:
@@ -563,7 +562,7 @@ class NimStringTablePrinter:
 
   def children(self):
     if self.val:
-      data = NimSeqPrinter(self.val['data'].dereference())
+      data = NimSeqPrinter(self.val['data'].referenced_value())
       for idxStr, entry in data.children():
         if int(entry['Field0']) != 0:
           yield (idxStr + ".Field0", entry['Field0'])
@@ -603,55 +602,156 @@ class NimTablePrinter:
 # this is untested, therefore disabled
 
 # class NimObjectPrinter:
-#   pattern = re.compile(r'^tyObject_.*$')
+#   pattern = re.compile(r'^tyObject_([A-Za-z0-9]+)__(_?[A-Za-z0-9]*)(:? \*)?$')
 
 #   def __init__(self, val):
 #     self.val = val
+#     self.valType = None
+#     self.valTypeNimName = None
 
 #   def display_hint(self):
 #     return 'object'
 
+#   def _determineValType(self):
+#     if self.valType is None:
+#       vt = self.val.type
+#       if vt.name is None:
+#         target = vt.target()
+#         self.valType = target.pointer()
+#         self.fields = target.fields()
+#         self.valTypeName = target.name
+#         self.isPointer = True
+#       else:
+#         self.valType = vt
+#         self.fields = vt.fields()
+#         self.valTypeName = vt.name
+#         self.isPointer = False
+
 #   def to_string(self):
-#     return str(self.val.type)
+#     if self.valTypeNimName is None:
+#       self._determineValType()
+#       match = self.pattern.match(self.valTypeName)
+#       self.valTypeNimName = match.group(1)
+
+#     return self.valTypeNimName
 
 #   def children(self):
-#     if not self.val:
-#       yield "object", "<nil>"
-#       raise StopIteration
+#     self._determineValType()
+#     if self.isPointer and int(self.val) == 0:
+#       return
+#     self.baseVal = self.val.referenced_value() if self.isPointer else self.val
 
-#     for (i, field) in enumerate(self.val.type.fields()):
-#       if field.type.code == gdb.TYPE_CODE_UNION:
-#         yield _union_field
-#       else:
-#         yield (field.name, self.val[field])
+#     for c in self.handleFields(self.baseVal, getNimRti(self.valTypeName)):
+#       yield c
+  
+#   def handleFields(self, currVal, rti, fields = None):
+#     rtiSons = None
+#     discField = (0, None)
+#     seenSup = False
+#     if fields is None:
+#       fields = self.fields
+#     try: # XXX: remove try after finished debugging this method
+#       for (i, field) in enumerate(fields):
+#         if field.name == "Sup": # inherited data
+#           seenSup = True
+#           baseRef = rti['base']
+#           if baseRef:
+#             baseRti = baseRef.referenced_value()
+#             baseVal = currVal['Sup']
+#             baseValType = baseVal.type
+#             if baseValType.name is None:
+#               baseValType = baseValType.target().pointer()
+#               baseValFields = baseValType.target().fields()
+#             else:
+#               baseValFields = baseValType.fields()
+            
+#             for c in self.handleFields(baseVal, baseRti, baseValFields):
+#               yield c
+#         else:
+#           if field.type.code == gdb.TYPE_CODE_UNION:
+#             # if not rtiSons:
+#             rtiNode = rti['node'].referenced_value()
+#             rtiSons = rtiNode['sons']
 
-#   def _union_field(self, i, field):
-#     rti = getNimRti(self.val.type.name)
-#     if rti is None:
-#       return (field.name, "UNION field can't be displayed without RTI")
+#             if not rtiSons and int(rtiNode['len']) == 0 and str(rtiNode['name']) != "0x0":
+#               rtiSons = [rti['node']] # sons are dereferenced by the consumer
+            
+#             if not rtiSons:
+#               printErrorOnce(self.valTypeName, f"NimObjectPrinter: UNION field can't be displayed without RTI {self.valTypeName}, using fallback.\n")
+#               # yield (field.name, self.baseVal[field]) # XXX: this fallback seems wrong
+#               return # XXX: this should probably continue instead?
 
-#     node_sons = rti['node'].dereference()['sons']
-#     prev_field = self.val.type.fields()[i - 1]
+#             if int(rtiNode['len']) != 0 and str(rtiNode['name']) != "0x0":
+#               gdb.write(f"wtf IT HAPPENED {self.valTypeName}\n", gdb.STDERR)
 
-#     descriminant_node = None
-#     for i in range(int(node['len'])):
-#       son = node_sons[i].dereference()
-#       if son['name'].string("utf-8", "ignore") == str(prev_field.name):
-#         descriminant_node = son
-#         break
-#     if descriminant_node is None:
-#       raise ValueError("Can't find union descriminant field in object RTI")
+#             discNode = rtiSons[discField[0]].referenced_value()
+#             if not discNode:
+#               raise ValueError("Can't find union discriminant field in object RTI")
+            
+#             discNodeLen = int(discNode['len'])
+#             discFieldVal = int(currVal[discField[1].name])
 
-#     if descriminant_node is None: raise ValueError("Can't find union field in object RTI")
-#     union_node = descriminant_node['sons'][int(self.val[prev_field])].dereference()
-#     union_val = self.val[field]
+#             unionNodeRef = None
+#             if discFieldVal < discNodeLen:
+#               unionNodeRef = discNode['sons'][discFieldVal]
+#             if not unionNodeRef:
+#               unionNodeRef = discNode['sons'][discNodeLen]
 
-#     for f1 in union_val.type.fields():
-#       for f2 in union_val[f1].type.fields():
-#         if str(f2.name) == union_node['name'].string("utf-8", "ignore"):
-#            return (str(f2.name), union_val[f1][f2])
+#             if not unionNodeRef:
+#               printErrorOnce(self.valTypeName + "no union node", f"wtf is up with sons {self.valTypeName} {unionNodeRef} {rtiNode['offset']} {discNode} {discFieldVal} {discNodeLen} {discField[1].name} {field.name} {field.type}\n")
+#               continue
 
-#     raise ValueError("RTI is absent or incomplete, can't find union definition in RTI")
+#             unionNode = unionNodeRef.referenced_value()
+            
+#             fieldName = "" if field.name == None else field.name.lower()
+#             unionNodeName = "" if not unionNode['name'] else unionNode['name'].string("utf-8", "ignore")
+#             if not unionNodeName or unionNodeName.lower() != fieldName:
+#               unionFieldName = f"_{discField[1].name.lower()}_{int(rti['node'].referenced_value()['len'])}"
+#               gdb.write(f"wtf i: {i} union: {unionFieldName} field: {fieldName} type: {field.type.name} tag: {field.type.tag}\n", gdb.STDERR)
+#             else:
+#               unionFieldName = unionNodeName
+
+#             if discNodeLen == 0:
+#               yield (unionFieldName, currVal[unionFieldName])
+#             else:
+#               unionNodeLen = int(unionNode['len'])
+#               if unionNodeLen > 0:
+#                 for u in range(unionNodeLen):
+#                   un = unionNode['sons'][u].referenced_value()['name'].string("utf-8", "ignore")
+#                   yield (un, currVal[unionFieldName][un])
+#               else:
+#                 yield(unionNodeName, currVal[unionFieldName])
+#           else:
+#             discIndex = i - 1 if seenSup else i
+#             discField = (discIndex, field) # discriminant field is the last normal field
+#             yield (field.name, currVal[field.name])
+#     except GeneratorExit:
+#       raise
+#     except:
+#       gdb.write(f"wtf {self.valTypeName} {i} fn: {field.name} df: {discField} rti: {rti} rtiNode: {rti['node'].referenced_value()} rtiSons: {rtiSons} {sys.exc_info()} {traceback.format_tb(sys.exc_info()[2], limit = 10)}\n", gdb.STDERR)
+#       gdb.write(f"wtf {self.valTypeName} {i} {field.name}\n", gdb.STDERR)
+      
+#       # seenSup = False
+#       # for (i, field) in enumerate(fields):
+#       #   # if field.name:
+#       #   #   val = currVal[field.name]
+#       #   # else:
+#       #   #   val = None
+#       #   rtiNode = rti['node'].referenced_value()
+#       #   rtiLen = int(rtiNode['len'])
+#       #   if int(rtiNode['len']) > 0:
+#       #     sons = rtiNode['sons']
+#       #   elif int(rti['len']) == 0 and str(rti['name']) != "0x0":
+#       #     sons = [rti['node']] # sons are dereferenced by the consumer
+#       #   sonsIdx = i - 1 if seenSup else i
+#       #   s = sons[sonsIdx].referenced_value()
+#       #   addr = int(currVal.address)
+#       #   off = addr + int(rtiNode['offset'])
+#       #   seenSup = seenSup or field.name == "Sup"
+
+#       #   gdb.write(f"wtf: i: {i} sonsIdx: {sonsIdx} field: {field.name} rtiLen: {rtiLen} rti: {rti} rtiNode: {rtiNode} isUnion: {field.type.code == gdb.TYPE_CODE_UNION} s: {s}\n", gdb.STDERR)
+
+#       raise
 
 
 ################################################################################

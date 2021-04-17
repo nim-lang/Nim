@@ -12,21 +12,21 @@
 ##   therefore may not be secure.
 ## 
 ## `std/sysrand` generates random numbers from a secure source provided by the operating system.
-## It is also called Cryptographically secure pseudorandom number generator.
-## It should be unpredictable enough for cryptographic applications,
+## It is a cryptographically secure pseudorandom number generator
+## and should be unpredictable enough for cryptographic applications,
 ## though its exact quality depends on the OS implementation.
 ##
-## | Targets    | Implementation|
-## | :---         | ----:       |
-## | Windows | `BCryptGenRandom`_ |
-## | Linux | `getrandom`_ |
-## | MacOSX | `getentropy`_ |
-## | IOS | `SecRandomCopyBytes`_ |
-## | OpenBSD | `getentropy openbsd`_ |
-## | FreeBSD | `getrandom freebsd`_ |
-## | JS(Web Browser) | `getRandomValues`_ |
-## | Nodejs | `randomFillSync`_ |
-## | Other Unix platforms | `/dev/urandom`_ |
+## | Targets              | Implementation        |
+## | :---                 | ----:                 |
+## | Windows              | `BCryptGenRandom`_    |
+## | Linux                | `getrandom`_          |
+## | MacOSX               | `getentropy`_         |
+## | iOS                  | `SecRandomCopyBytes`_ |
+## | OpenBSD              | `getentropy openbsd`_ |
+## | FreeBSD              | `getrandom freebsd`_  |
+## | JS (Web Browser)     | `getRandomValues`_    |
+## | Node.js              | `randomFillSync`_     |
+## | Other Unix platforms | `/dev/urandom`_       |
 ##
 ## .. _BCryptGenRandom: https://docs.microsoft.com/en-us/windows/win32/api/bcrypt/nf-bcrypt-bcryptgenrandom
 ## .. _getrandom: https://man7.org/linux/man-pages/man2/getrandom.2.html
@@ -195,7 +195,7 @@ elif defined(linux):
 
 elif defined(openbsd):
   proc getentropy(p: pointer, size: cint): cint {.importc: "getentropy", header: "<unistd.h>".}
-    # fills a buffer with high-quality entropy,
+    # Fills a buffer with high-quality entropy,
     # which can be used as input for process-context pseudorandom generators like `arc4random`.
     # The maximum buffer size permitted is 256 bytes.
 
@@ -227,7 +227,7 @@ elif defined(ios):
 
   proc secRandomCopyBytes(
     rnd: SecRandomRef, count: csize_t, bytes: pointer
-    ): cint {.importc: "SecRandomCopyBytes", header: "<Security/SecRandom.h>".}
+  ): cint {.importc: "SecRandomCopyBytes", header: "<Security/SecRandom.h>".}
     ## https://developer.apple.com/documentation/security/1399291-secrandomcopybytes
 
   template urandomImpl(result: var int, dest: var openArray[byte]) =
@@ -292,7 +292,7 @@ proc urandom*(dest: var openArray[byte]): bool =
   ## If the call succeeds, returns `true`.
   ##
   ## If `dest` is empty, `urandom` immediately returns success,
-  ## without calling underlying operating system api.
+  ## without calling the underlying operating system API.
   ##
   ## .. warning:: The code hasn't been audited by cryptography experts and
   ##   is provided as-is without guarantees. Use at your own risks. For production

@@ -50,6 +50,7 @@ proc getSysType*(g: ModuleGraph; info: TLineInfo; kind: TTypeKind): PType =
   result = g.sysTypes[kind]
   if result == nil:
     case kind
+    of tyVoid: result = sysTypeFromName("void")
     of tyInt: result = sysTypeFromName("int")
     of tyInt8: result = sysTypeFromName("int8")
     of tyInt16: result = sysTypeFromName("int16")

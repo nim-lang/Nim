@@ -32,11 +32,15 @@
   implementations. Old behavior can be obtained with
   `-d:nimLegacyParseQueryStrict`. `cgi.decodeData` which uses the same
   underlying code is also updated the same way.
+- Custom pragma values have now an API for use in macros.
 
 - In `std/os`, `getHomeDir`, `expandTilde`, `getTempDir`, `getConfigDir` now do not include trailing `DirSep`,
   unless `-d:nimLegacyHomeDir` is specified (for a transition period).
 
 ## Standard library additions and changes
+- Added support for parenthesized expressions in `strformat`
+
+- Fixed buffer overflow bugs in `net`
 
 - Added `sections` iterator in `parsecfg`.
 
@@ -302,6 +306,19 @@
 - `nim e` now accepts arbitrary file extensions for the nimscript file,
   although `.nims` is still the preferred extension in general.
 
+- Added `iterable[T]` type class to match called iterators, which enables writing:
+  `template fn(a: iterable)` instead of `template fn(a: untyped)`
+
+- A new import syntax `import foo {.all.}` now allows to import all symbols (public or private)
+  from `foo`. It works in combination with all pre-existing import features.
+  This reduces or eliminates the need for workarounds such as using `include` (which has known issues)
+  when you need a private symbol for testing or making some internal APIs public just because
+  another internal module needs those.
+  It also helps mitigate the lack of cyclic imports in some cases.
+
+- Added a new module `std/importutils`, and an API `privateAccess`, which allows access to private fields
+  for an object type in the current scope.
+
 ## Compiler changes
 
 - Added `--declaredlocs` to show symbol declaration location in messages.
@@ -339,6 +356,7 @@
 - Added `unsafeIsolate` and `extract` to `std/isolation`.
 
 - `--hint:CC` now goes to stderr (like all other hints) instead of stdout.
+
 
 
 ## Tool changes

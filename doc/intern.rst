@@ -113,7 +113,7 @@ You can import them directly for debugging:
 The compiler's architecture
 ===========================
 
-Nim uses the classic compiler architecture: A lexer/scanner feds tokens to a
+Nim uses the classic compiler architecture: A lexer/scanner feeds tokens to a
 parser. The parser builds a syntax tree that is used by the code generators.
 This syntax tree is the interface between the parser and the code generator.
 It is essential to understand most of the compiler's code.

@@ -1,5 +1,6 @@
 discard """
-outputsub: "something else"
+  outputsub: "something else"
+  targets: "c"
 """
 
 echo "Hello World!"

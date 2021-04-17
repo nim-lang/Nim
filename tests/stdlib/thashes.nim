@@ -3,7 +3,7 @@ discard """
 """
 
 import std/hashes
-
+from stdtest/testutils import disableVm, whenVMorJs
 
 when not defined(js) and not defined(cpp):
   block:
@@ -176,6 +176,26 @@ proc main() =
     doAssert hash(Obj5(t: false, x: 1)) != hash(Obj5(t: false, x: 2))
     doAssert hash(Obj5(t: false, x: 1)) == hash(Obj5(t: true, y: 1))
     doAssert hash(Obj5(t: false, x: 1)) != hash(Obj5(t: true, y: 2))
+
+  block: # hash(ref|ptr|pointer)
+    var a: array[10, uint8]
+    # disableVm:
+    whenVMorJs:
+      # pending fix proposed in https://github.com/nim-lang/Nim/issues/15952#issuecomment-786312417
+      discard
+    do:
+      assert a[0].addr.hash != a[1].addr.hash
+      assert cast[pointer](a[0].addr).hash == a[0].addr.hash
+
+  block: # hash(ref)
+    type A = ref object
+      x: int
+    let a = A(x: 3)
+    disableVm: # xxx Error: VM does not support 'cast' from tyRef to tyPointer
+      let ha = a.hash
+      assert ha != A(x: 3).hash # A(x: 3) is a different ref object from `a`.
+      a.x = 4
+      assert ha == a.hash # the hash only depends on the address
 
 static: main()
 main()
