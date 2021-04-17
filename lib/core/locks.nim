@@ -76,7 +76,6 @@ proc signal*(cond: var Cond) {.inline.} =
 template withLock*(a: Lock, body: untyped) =
   ## Acquires the given lock, executes the statements in body and
   ## releases the lock after the statements finish executing.
-  mixin acquire, release
   acquire(a)
   {.locks: [a].}:
     try:
