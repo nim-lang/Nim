@@ -675,25 +675,25 @@ when defineSsl:
     if ctx.context.SSL_CTX_use_psk_identity_hint(hint.cstring) <= 0:
       raiseSSLError()
 
-  template genpskServerCallback(pskfunc:SslServerGetPskFunc):auto =
+  template genpskServerCallback(pskfunc: SslServerGetPskFunc): auto =
     proc pskServerCallback(ssl: SslCtx; identity: cstring; psk: ptr cuchar;
         max_psk_len: cint): cuint {.cdecl.} =
       let pskString = pskfunc($identity)
       if pskString.len.cint > max_psk_len:
         return 0
       copyMem(psk, pskString.cstring, pskString.len)
-
       return pskString.len.cuint
+
     pskServerCallback
 
-  proc `serverGetPskFunc=`*(ctx: SslContext, fun:static SslServerGetPskFunc) =
+  proc `serverGetPskFunc=`*(ctx: SslContext, fun: static SslServerGetPskFunc) =
     ## Sets function that returns PSK based on the client identity.
     ##
     ## Only used in PSK ciphersuites.
     if not fun.isNil:
       ctx.context.SSL_CTX_set_psk_server_callback(genpskServerCallback(fun))
 
-  template genpskClientCallback(pskfunc:SslClientGetPskFunc):auto =
+  template genpskClientCallback(pskfunc: SslClientGetPskFunc): auto =
       proc pskClientCallback(ssl: SslPtr; hint: cstring; identity: cstring;
           max_identity_len: cuint; psk: ptr cuchar;
           max_psk_len: cuint): cuint {.cdecl.} =
@@ -704,11 +704,11 @@ when defineSsl:
           return 0
         copyMem(identity, identityString.cstring, identityString.len + 1) # with the last zero byte
         copyMem(psk, pskString.cstring, pskString.len)
-
         return pskString.len.cuint
+
       pskClientCallback
 
-  proc `clientGetPskFunc=`*(ctx: SslContext, fun:static SslClientGetPskFunc) =
+  proc `clientGetPskFunc=`*(ctx: SslContext, fun: static SslClientGetPskFunc) =
     ## Sets function that returns the client identity and the PSK based on identity
     ## hint from the server.
     ##
