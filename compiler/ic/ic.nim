@@ -1149,8 +1149,7 @@ proc rodViewer*(rodfile: AbsoluteFile; config: ConfigRef, cache: IdentCache) =
   var m: PackedModule
   let err = loadRodFile(rodfile, m, config, ignoreConfig=true)
   if err != ok:
-    echo "Error: could not load: ", rodfile.string, " reason: ", err
-    quit 1
+    config.quitOrRaise "Error: could not load: " & $rodfile.string & " reason: " & $err 
 
   when true:
     echo "exports:"

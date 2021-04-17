@@ -229,7 +229,7 @@ proc mainCommand*(graph: ModuleGraph) =
 
   template docLikeCmd(body) =
     when defined(leanCompiler):
-      quit "compiler wasn't built with documentation generator"
+      conf.quitOrRaise "compiler wasn't built with documentation generator"
     else:
       wantMainModule(conf)
       loadConfigs(DocConfig, cache, conf, graph.idgen)
@@ -278,7 +278,7 @@ proc mainCommand*(graph: ModuleGraph) =
       conf.setNoteDefaults(warn, true)
     conf.setNoteDefaults(warnRedefinitionOfLabel, false) # similar to issue #13218
     when defined(leanCompiler):
-      quit "compiler wasn't built with documentation generator"
+      conf.quitOrRaise "compiler wasn't built with documentation generator"
     else:
       loadConfigs(DocConfig, cache, conf, graph.idgen)
       commandRst2Html(cache, conf)
@@ -288,7 +288,7 @@ proc mainCommand*(graph: ModuleGraph) =
                  warnFieldXNotSupported, warnRstStyle]:
       conf.setNoteDefaults(warn, true)
     when defined(leanCompiler):
-      quit "compiler wasn't built with documentation generator"
+      conf.quitOrRaise "compiler wasn't built with documentation generator"
     else:
       loadConfigs(DocTexConfig, cache, conf, graph.idgen)
       commandRst2TeX(cache, conf)

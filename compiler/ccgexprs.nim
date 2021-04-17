@@ -2387,13 +2387,13 @@ proc genMagicExpr(p: BProc, e: PNode, d: var TLoc, op: TMagic) =
     localError(p.config, e.info, strutils.`%`(errXMustBeCompileTime, e[0].sym.name.s))
   of mSpawn:
     when defined(leanCompiler):
-      quit "compiler built without support for the 'spawn' statement"
+      p.config.quitOrRaise "compiler built without support for the 'spawn' statement"
     else:
       let n = spawn.wrapProcForSpawn(p.module.g.graph, p.module.idgen, p.module.module, e, e.typ, nil, nil)
       expr(p, n, d)
   of mParallel:
     when defined(leanCompiler):
-      quit "compiler built without support for the 'parallel' statement"
+      p.config.quitOrRaise "compiler built without support for the 'parallel' statement"
     else:
       let n = semparallel.liftParallel(p.module.g.graph, p.module.idgen, p.module.module, e)
       expr(p, n, d)
