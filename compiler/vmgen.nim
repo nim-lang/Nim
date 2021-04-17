@@ -190,7 +190,7 @@ proc getSlotKind(t: PType): TSlotKind =
   case t.skipTypes(abstractRange-{tyTypeDesc}).kind
   of tyBool, tyChar, tyEnum, tyOrdinal, tyInt..tyInt64, tyUInt..tyUInt64:
     slotTempInt
-  of tyString, tyCString:
+  of tyString, tyCstring:
     slotTempStr
   of tyFloat..tyFloat128:
     slotTempFloat
@@ -1053,7 +1053,7 @@ proc genMagic(c: PCtx; n: PNode; dest: var TDest; m: TMagic) =
   of mLengthStr:
     case n[1].typ.kind
     of tyString: genUnaryABI(c, n, dest, opcLenStr)
-    of tyCString: genUnaryABI(c, n, dest, opcLenCstring)
+    of tyCstring: genUnaryABI(c, n, dest, opcLenCstring)
     else: doAssert false, $n[1].typ.kind
   of mIncl, mExcl:
     unused(c, n, dest)
@@ -1199,7 +1199,7 @@ proc genMagic(c: PCtx; n: PNode; dest: var TDest; m: TMagic) =
     let tmp = c.genx(n[1])
     case n[1].typ.skipTypes(abstractVar-{tyTypeDesc}).kind:
     of tyString: c.gABI(n, opcLenStr, dest, tmp, 1)
-    of tyCString: c.gABI(n, opcLenCstring, dest, tmp, 1)
+    of tyCstring: c.gABI(n, opcLenCstring, dest, tmp, 1)
     else: c.gABI(n, opcLenSeq, dest, tmp, 1)
     c.freeTemp(tmp)
   of mEcho:
@@ -1530,7 +1530,7 @@ proc genAsgn(c: PCtx; le, ri: PNode; requiresCopy: bool) =
     let idx = c.genIndex(le[1], le[0].typ)
     let tmp = c.genx(ri)
     if le[0].typ.skipTypes(abstractVarRange-{tyTypeDesc}).kind in {
-        tyString, tyCString}:
+        tyString, tyCstring}:
       c.preventFalseAlias(le, opcWrStrIdx, dest, idx, tmp)
     else:
       c.preventFalseAlias(le, opcWrArr, dest, idx, tmp)
@@ -1775,7 +1775,7 @@ proc genCheckedObjAccess(c: PCtx; n: PNode; dest: var TDest; flags: TGenFlags) =
 
 proc genArrAccess(c: PCtx; n: PNode; dest: var TDest; flags: TGenFlags) =
   let arrayType = n[0].typ.skipTypes(abstractVarRange-{tyTypeDesc}).kind
-  if arrayType in {tyString, tyCString}:
+  if arrayType in {tyString, tyCstring}:
     let opc = if gfNodeAddr in flags: opcLdStrIdxAddr else: opcLdStrIdx
     genArrAccessOpcode(c, n, dest, opc, flags)
   elif arrayType == tyTypeDesc:
@@ -1813,7 +1813,7 @@ proc getNullValue(typ: PType, info: TLineInfo; conf: ConfigRef): PNode =
     result = newNodeIT(nkUIntLit, info, t)
   of tyFloat..tyFloat128:
     result = newNodeIT(nkFloatLit, info, t)
-  of tyCString, tyString:
+  of tyCstring, tyString:
     result = newNodeIT(nkStrLit, info, t)
     result.strVal = ""
   of tyVar, tyLent, tyPointer, tyPtr, tyUntyped,
