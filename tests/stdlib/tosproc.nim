@@ -285,7 +285,13 @@ else: # main driver
     var p = startProcess(output, dir)
     let inp = p.inputStream
     var count = 0
-    doAssertRaises(IOError):
+    when defined(windows):
+      # xxx we should make osproc.hsWriteData raise IOError on windows, consistent
+      # with posix; we could also (in addition) make IOError a subclass of OSError.
+      type SIGPIPEError = OSError
+    else:
+      type SIGPIPEError = IOError
+    doAssertRaises(SIGPIPEError):
       for i in 0..<100000:
         count.inc
         inp.writeLine "ok" # was giving SIGPIPE and crashing
