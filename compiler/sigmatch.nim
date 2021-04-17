@@ -409,7 +409,7 @@ proc handleRange(f, a: PType, min, max: TTypeKind): TTypeRelation =
     elif a.kind == tyRange and
       # Make sure the conversion happens between types w/ same signedness
       (f.kind in {tyInt..tyInt64} and a[0].kind in {tyInt..tyInt64} or
-       f.kind in {tyUInt8..tyUInt32} and a[0].kind in {tyUInt8..tyInt32}) and
+       f.kind in {tyUInt8..tyUInt32} and a[0].kind in {tyUInt8..tyUInt32}) and
       a.n[0].intVal >= firstOrd(nil, f) and a.n[1].intVal <= lastOrd(nil, f):
       # passing 'nil' to firstOrd/lastOrd here as type checking rules should
       # not depend on the target integer size configurations!
