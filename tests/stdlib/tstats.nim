@@ -30,6 +30,37 @@ rs1.push(@[1.0, 2.2, 1.4, 4.9])
 doAssert(rs1.sum == 9.5)
 doAssert(rs1.mean() == 2.375)
 
+var 
+  ASv = [7,4,6,3,9,1]        #  sorted   1 3 4 6 7 9
+  A   : array[len(ASv),int]
+
+func myCmp(x,y:int):int =
+  if x==y : 0 elif x<y : -1 else: 1
+
+A= ASv;  doAssert quickSelect(A, 2, 5, 2, myCmp) == 1  # smallest element
+A= ASv;  doAssert quickSelect(A, 2, 5, 5, myCmp) == 9  # largest element
+#
+A= ASv;  doAssert median(A,0,5,myCmp)      == 5.0
+A= ASv;  doAssert median_low(A,0,5,myCmp)  == 4
+A= ASv;  doAssert median_high(A,0,5,myCmp) == 6
+#
+A= ASv;  doAssert median(A,2,5)            == 4.5
+A= ASv;  doAssert median_low(A,2,5)        == 3
+A= ASv;  doAssert median_high(A,2,5)       == 6
+#
+A= ASv;  doAssert median(A,0,4,myCmp)      == 6.0
+A= ASv;  doAssert median_low(A,0,4,myCmp)  == 6
+A= ASv;  doAssert median_high(A,0,4,myCmp) == 6
+
+func FCmp(x,y:float):int =
+  if x==y : 0
+  elif x<y : -1
+  else     : 1
+
+var  F = [7.0,4.0,6.0,3.0,9.0,1.0]
+
+doAssert median(F,0,5,FCmp) == 5.0
+
 when not defined(cpu32):
   # XXX For some reason on 32bit CPUs these results differ
   var rr: RunningRegress
