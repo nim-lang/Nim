@@ -7,7 +7,7 @@ from std/uri import Uri
 
 type JsAsyncHttpClient* = ref object of JsRoot
 
-func newJsAsyncHttpClient*(): JsAsyncHttpClient {.nodecl.} = discard
+func newJsAsyncHttpClient*(): JsAsyncHttpClient = discard
 
 func fetchOptionsImpl(body: cstring; `method`: static[cstring]): FetchOptions =
   unsafeNewFetchOptions(metod = `method`, body = body, mode = "cors".cstring, credentials = "include".cstring,
