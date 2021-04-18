@@ -12,14 +12,14 @@ var serverChannel:Channel[Port]
 
 proc clientFunc(identityHint: string): tuple[identity: string, psk: string] =
   doAssert identityHint == "bartholomew"
-  return ("aethelfridda","aethelfridda-loves-"&identityHint)
+  return ("aethelfridda", "aethelfridda-loves-" & identityHint)
 
-proc client(p:Port){.thread.}=
-  let context = newContext(cipherList="PSK-AES256-CBC-SHA")
+proc client(p: Port){.thread.}=
+  let context = newContext(cipherList = "PSK-AES256-CBC-SHA")
   defer: context.destroyContext()
 
-  #turn off tls1_3 to force connection over psk
-  doAssert context.context.SSL_CTX_ctrl(124,0x0303,nil) > 0#SSL_CTX_set_max_proto_version(TLS1_2)
+  # turn off tls1_3 to force connection over psk
+  doAssert context.context.SSL_CTX_ctrl(124, 0x0303, nil) > 0 # SSL_CTX_set_max_proto_version(TLS1_2)
   context.clientGetPskFunc = clientFunc
 
   let sock = newSocket()
@@ -42,7 +42,7 @@ proc server(){.thread.}=
     sock.close()
     context.destroyContext()
   sock.bindAddr(Port(0))
-  let (_,port) = sock.getLocalAddr()
+  let (_, port) = sock.getLocalAddr()
   serverChannel.send(port)
   sock.listen()
   var client = new(Socket)
@@ -62,10 +62,10 @@ proc main()=
 
   createThread(srv,server)
 
-  #wait for server to bind a port
+  # wait for server to bind a port
   let port = serverChannel.recv()
 
-  createThread(cli,client,port)
+  createThread(cli, client, port)
 
   joinThread(srv)
   joinThread(cli)
