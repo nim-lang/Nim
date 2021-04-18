@@ -102,13 +102,14 @@ proc nav(g: ModuleGraph) =
   # translate the track position to a packed position:
   let unpacked = g.config.m.trackPos
   let mid = unpacked.fileIndex
-  let sharedPart = g.packed[int32 mid].fromDisk.sh
+  let pm = g.packed[int32 mid]
+  let filepath = toFullPath(g.config, mid)
 
-  # sharedPart being nil is stand-in for incorrect tracking info specified
-  if sharedPart == nil:
-    globalError(g.config, unpacked, "Invalid track info provided")
+  if pm.status == undefined:
+    globalError(g.config, "cannot find file '$1'", [filepath])
+    return
 
-  let fileId = sharedPart.strings.getKeyId(toFullPath(g.config, mid))
+  let fileId = pm.fromDisk.sh.strings.getKeyId(filepath)
 
   if fileId == LitId(0):
     internalError(g.config, unpacked, "cannot find a valid file ID")

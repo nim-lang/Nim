@@ -490,7 +490,7 @@ proc icTests(r: var TResults; testsDir: string, cat: Category, options: string;
     writeOnly = " --incremental:writeonly "
     readOnly = " --incremental:readonly "
     incrementalOn = " --incremental:on -d:nimIcIntegrityChecks "
-    navTestConfig = " --ic:on --defusages -d:nimIcNavigatorTests --hint[Conf]:off --warnings:off "
+    navTestConfig = " --ic:on -d:nimIcNavigatorTests --hint[Conf]:off --warnings:off "
 
   template test(x: untyped) =
     testSpecWithNimcache(r, makeRawTest(file, x & options, cat), nimcache)

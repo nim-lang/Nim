@@ -61,10 +61,6 @@ proc commandCheck(graph: ModuleGraph) =
   compileProject(graph)
 
   if conf.symbolFiles != disabledSf:
-    if not conf.m.trackPosProvided:
-      globalError(graph.config, unknownLineInfo,
-                  "Position required use --track or --trackDirty")
-
     case conf.ideCmd
     of ideDef: navDefinition(graph)
     of ideUse: navUsages(graph)

@@ -274,7 +274,6 @@ type
     trackPos*: TLineInfo
     trackPosAttached*: bool ## whether the tracking position was attached to
                             ## some close token.
-    trackPosProvided*: bool # whether track or dirty was provided
 
     errorOutputs*: TErrorOutputs
     msgContext*: seq[tuple[info: TLineInfo, detail: string]]
