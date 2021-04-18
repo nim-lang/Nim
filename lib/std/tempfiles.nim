@@ -71,7 +71,7 @@ proc safeOpen(filename: string): File =
 
     result = c_fdopen(fileHandle, "w+")
     if result == nil:
-      discard posix.close(fileHandle)
+      discard posix.close(fileHandle) # TODO handles failure when closing file
       raiseOSError(osLastError(), filename)
 
 template randomPathName(length: Natural): string =
