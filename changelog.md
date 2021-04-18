@@ -57,9 +57,6 @@
 
 - Make `{.requiresInit.}` pragma to work for `distinct` types.
 
-- Added a macros `enumLen` for returning the number of items in an enum to the
-  `typetraits.nim` module.
-
 - `prelude` now works with the JavaScript target.
   Added `sequtils` import to `prelude`.
   `prelude` can now be used via `include std/prelude`, but `include prelude` still works.
@@ -95,8 +92,6 @@
 - Added `std/enumutils` module. Added `genEnumCaseStmt` macro that generates case statement to parse string to enum.
   Added `items` for enums with holes.
   Added `symbolName` to return the enum symbol name ignoring the human readable name.
-
-- Added `typetraits.HoleyEnum` for enums with holes, `OrdinalEnum` for enums without holes.
 
 - Removed deprecated `iup` module from stdlib, it has already moved to
   [nimble](https://github.com/nim-lang/iup).
@@ -274,7 +269,14 @@
 
 - Added `hasDataBuffered` to `asyncnet`.
 
-- Added `hasClosure` to `std/typetraits`.
+- Changes to `std/typetraits`:
+  * Added `hasClosure`.
+
+  * `distinctBase` now is identity instead of error for non distinct types.
+
+  * Added `HoleyEnum` for enums with holes, `OrdinalEnum` for enums without holes.
+
+  * Added a macro `enumLen` for returning the number of items in an enum.
 
 - Added `genasts.genAst` that avoids the problems inherent with `quote do` and can
   be used as a replacement.
@@ -286,8 +288,6 @@
 - The `cstring` doesn't support `[]=` operator in JS backend.
 
 - nil dereference is not allowed at compile time. `cast[ptr int](nil)[]` is rejected at compile time.
-
-- `typetraits.distinctBase` now is identity instead of error for non distinct types.
 
 - `os.copyFile` is now 2.5x faster on OSX, by using `copyfile` from `copyfile.h`;
   use `-d:nimLegacyCopyFile` for OSX < 10.5.

@@ -169,7 +169,12 @@ since (1, 3, 5):
 
 since (1, 5, 1):
   template typeOrVoid*[T](a: T): type =
-    ## 
+    ## Returns the type of `a` or `void` if it's a statement, working around
+    ## a bug in the compiler which doesn't support `stmt is void`.
+    runnableExamples:
+      # assert (echo 1) is void # won't compile
+      assert typeOrVoid(echo 1) is void
+      assert typeOrVoid(1+1) isnot void
     T
 
 import std/macros

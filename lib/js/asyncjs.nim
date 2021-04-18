@@ -62,8 +62,8 @@
 when not defined(js) and not defined(nimsuggest):
   {.fatal: "Module asyncjs is designed to be used with the JavaScript backend.".}
 
-import std/jsffi
-import std/macros
+import std/[jsffi, macros]
+from std/typetraits import typeOrVoid
 
 type
   Future*[T] = ref object
@@ -157,10 +157,6 @@ proc newPromise*[T](handler: proc(resolve: proc(response: T))): Future[T] {.impo
 proc newPromise*(handler: proc(resolve: proc())): Future[void] {.importjs: "(new Promise(#))".}
   ## A helper for wrapping callback-based functions
   ## into promises and async procedures.
-
-template typeOrVoid[T](a: T): type =
-  # xxx this is useful, make it public in std/typetraits in future work
-  T
 
 template maybeFuture(T): untyped =
   # avoids `Future[Future[T]]`
