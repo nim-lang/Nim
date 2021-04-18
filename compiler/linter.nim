@@ -40,7 +40,7 @@ proc beautifyName(s: string, k: TSymKind): string =
              "pointer", "float", "csize", "csize_t", "cdouble", "cchar", "cschar",
              "cshort", "cu", "nil", "typedesc", "auto", "any",
              "range", "openarray", "varargs", "set", "cfloat", "ref", "ptr",
-             "untyped", "typed", "static", "sink", "lent", "type", "owned"]:
+             "untyped", "typed", "static", "sink", "lent", "type", "owned", "iterable"]:
       result.add s[i]
     else:
       result.add toUpperAscii(s[i])
@@ -125,9 +125,11 @@ proc styleCheckUse*(conf: ConfigRef; info: TLineInfo; s: PSym) =
     return
 
   let newName = s.name.s
-  let oldName = differs(conf, info, newName)
-  if oldName.len > 0:
-    lintReport(conf, info, newName, oldName)
+  let badName = differs(conf, info, newName)
+  if badName.len > 0:
+    # special rules for historical reasons
+    let forceHint = badName == "nnkArgList" and newName == "nnkArglist" or badName == "nnkArglist" and newName == "nnkArgList"
+    lintReport(conf, info, newName, badName, forceHint = forceHint)
 
 proc checkPragmaUse*(conf: ConfigRef; info: TLineInfo; w: TSpecialWord; pragmaName: string) =
   let wanted = $w

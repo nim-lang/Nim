@@ -216,8 +216,6 @@ proc buildTools(args: string = "") =
                  options = "-d:release " & args)
   when defined(windows): buildVccTool(args)
   bundleNimpretty(args)
-  nimCompileFold("Compile nimfind", "tools/nimfind.nim",
-                 options = "-d:release " & args)
   nimCompileFold("Compile testament", "testament/testament.nim",
                  options = "-d:release " & args)
 
@@ -458,8 +456,8 @@ proc temp(args: string) =
       inc i
 
   let d = getAppDir()
-  var output = d / "compiler" / "nim".exe
-  var finalDest = d / "bin" / "nim_temp".exe
+  let output = d / "compiler" / "nim".exe
+  let finalDest = d / "bin" / "nim_temp".exe
   # 125 is the magic number to tell git bisect to skip the current commit.
   var (bootArgs, programArgs) = splitArgs(args)
   if "doc" notin programArgs and
@@ -482,6 +480,22 @@ proc xtemp(cmd: string) =
     exec(cmd)
   finally:
     copyExe(d / "bin" / "nim_backup".exe, d / "bin" / "nim".exe)
+
+proc icTest(args: string) =
+  temp("")
+  let inp = os.parseCmdLine(args)[0]
+  let content = readFile(inp)
+  let nimExe = getAppDir() / "bin" / "nim_temp".exe
+  var i = 0
+  for fragment in content.split("#!EDIT!#"):
+    let file = inp.replace(".nim", "_temp.nim")
+    writeFile(file, fragment)
+    var cmd = nimExe & " cpp --ic:on -d:nimIcIntegrityChecks --listcmd "
+    if i == 0:
+      cmd.add "-f "
+    cmd.add quoteShell(file)
+    exec(cmd)
+    inc i
 
 proc buildDrNim(args: string) =
   if not dirExists("dist/nimz3"):
@@ -648,6 +662,13 @@ proc showHelp() =
   quit(HelpText % [VersionAsString & spaces(44-len(VersionAsString)),
                    CompileDate, CompileTime], QuitSuccess)
 
+proc branchDone() =
+  let thisBranch = execProcess("git symbolic-ref --short HEAD").strip()
+  if thisBranch != "devel" and thisBranch != "":
+    exec("git checkout devel")
+    exec("git branch -D " & thisBranch)
+    exec("git pull --rebase")
+
 when isMainModule:
   var op = initOptParser()
   var
@@ -705,6 +726,8 @@ when isMainModule:
       of "fusion":
         let suffix = if latest: HeadHash else: FusionStableHash
         exec("nimble install -y fusion@$#" % suffix)
+      of "ic": icTest(op.cmdLineRest)
+      of "branchdone": branchDone()
       else: showHelp()
       break
     of cmdEnd: break

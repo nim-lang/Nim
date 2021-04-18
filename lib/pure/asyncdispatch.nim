@@ -42,7 +42,7 @@
 ##
 ## Code to read some data from a socket may look something like this:
 ##
-##   .. code-block::nim
+##   .. code-block:: Nim
 ##      var future = socket.recv(100)
 ##      future.addCallback(
 ##        proc () =

@@ -74,6 +74,20 @@ runnableExamples:
   assert fmt"{123.456:13e}" == " 1.234560e+02"
 
 ##[
+# Expressions
+]##
+runnableExamples:
+  let x = 3.14
+  assert fmt"{(if x!=0: 1.0/x else: 0):.5}" == "0.31847"
+  assert fmt"""{(block:
+    var res: string
+    for i in 1..15:
+      res.add (if i mod 15 == 0: "FizzBuzz"
+        elif i mod 5 == 0: "Buzz"
+        elif i mod 3 == 0: "Fizz"
+        else: $i) & " "
+    res)}""" == "1 2 Fizz 4 Buzz Fizz 7 8 Fizz Buzz 11 Fizz 13 14 FizzBuzz "
+##[
 # Debugging strings
 
 `fmt"{expr=}"` expands to `fmt"expr={expr}"` namely the text of the expression,
@@ -130,6 +144,19 @@ An expression like `&"{key} is {value:arg} {{z}}"` is transformed into:
 Parts of the string that are enclosed in the curly braces are interpreted
 as Nim code, to escape a `{` or `}`, double it.
 
+Within a curly expression,however, '{','}', must be escaped with a backslash.
+
+To enable evaluating Nim expressions within curlies, inside parentheses
+colons do not need to be escaped.
+]##
+
+runnableExamples:
+  let x = "hello"
+  assert fmt"""{ "\{(" & x & ")\}" }""" == "{(hello)}"
+  assert fmt"""{{({ x })}}""" == "{(hello)}"
+  assert fmt"""{ $(\{x:1,"world":2\}) }""" == """[("hello", 1), ("world", 2)]"""
+
+##[
 `&` delegates most of the work to an open overloaded set
 of `formatValue` procs. The required signature for a type `T` that supports
 formatting is usually `proc formatValue(result: var string; x: T; specifier: string)`.
@@ -274,6 +301,7 @@ expansion order and hygienic templates. But since we generally want to
 keep the hygiene of `myTemplate`, and we do not want `arg1`
 to be injected into the context where `myTemplate` is expanded,
 everything is wrapped in a `block`.
+
 
 # Future directions
 
@@ -557,7 +585,7 @@ proc strformatImpl(pattern: NimNode; openChar, closeChar: char): NimNode =
   # XXX: https://github.com/nim-lang/Nim/issues/8405
   # When compiling with -d:useNimRtl, certain procs such as `count` from the strutils
   # module are not accessible at compile-time:
-  let expectedGrowth = when defined(useNimRtl): 0 else: count(f, '{') * 10
+  let expectedGrowth = when defined(useNimRtl): 0 else: count(f, openChar) * 10
   result.add newVarStmt(res, newCall(bindSym"newStringOfCap",
                                      newLit(f.len + expectedGrowth)))
   var strlit = ""
@@ -573,8 +601,23 @@ proc strformatImpl(pattern: NimNode; openChar, closeChar: char): NimNode =
           strlit = ""
 
         var subexpr = ""
-        while i < f.len and f[i] != closeChar and f[i] != ':':
-          if f[i] == '=':
+        var inParens = 0
+        var inSingleQuotes = false
+        var inDoubleQuotes = false
+        template notEscaped:bool = f[i-1]!='\\'
+        while i < f.len and f[i] != closeChar and (f[i] != ':' or inParens != 0):
+          case f[i]
+          of '\\':
+            if i < f.len-1 and f[i+1] in {openChar,closeChar,':'}: inc i
+          of '\'':
+            if not inDoubleQuotes and notEscaped: inSingleQuotes = not inSingleQuotes
+          of '\"':
+            if notEscaped: inDoubleQuotes = not inDoubleQuotes
+          of '(':
+            if not (inSingleQuotes or inDoubleQuotes): inc inParens
+          of ')':
+            if not (inSingleQuotes or inDoubleQuotes): dec inParens
+          of '=':
             let start = i
             inc i
             i += f.skipWhitespace(i)
@@ -582,9 +625,10 @@ proc strformatImpl(pattern: NimNode; openChar, closeChar: char): NimNode =
               result.add newCall(bindSym"add", res, newLit(subexpr & f[start ..< i]))
             else:
               subexpr.add f[start ..< i]
-          else:
-            subexpr.add f[i]
-            inc i
+            continue
+          else: discard
+          subexpr.add f[i]
+          inc i
 
         var x: NimNode
         try:
@@ -608,11 +652,11 @@ proc strformatImpl(pattern: NimNode; openChar, closeChar: char): NimNode =
           doAssert false, "invalid format string: missing '}'"
         result.add newCall(formatSym, res, x, newLit(options))
     elif f[i] == closeChar:
-      if f[i+1] == closeChar:
+      if i<f.len-1 and f[i+1] == closeChar:
         strlit.add closeChar
         inc i, 2
       else:
-        doAssert false, "invalid format string: '}' instead of '}}'"
+        doAssert false, "invalid format string: '$1' instead of '$1$1'" % $closeChar
         inc i
     else:
       strlit.add f[i]

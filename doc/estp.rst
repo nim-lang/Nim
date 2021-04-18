@@ -21,6 +21,14 @@ You can in fact look at `nimprof`'s source code to see how to implement
 your own profiler.
 
 The setting `--profiler:on` defines the conditional symbol `profiler`.
+You can use `when compileOption("profiler")` to make the switch seamless.
+If `profiler` is `off`, your program runs normally. Otherwise your program
+is profiled.
+
+```nim
+when compileOption("profiler"):
+  import nimprof
+```
 
 After your program has finished the profiler will create a
 file `profile_results.txt` containing the profiling results.

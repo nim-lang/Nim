@@ -7,7 +7,40 @@
 #    distribution, for details about the copyright.
 #
 
-# Efficient set of pointers for the GC (and repr)
+
+#[
+
+Efficient set of pointers for the GC (and repr)
+-----------------------------------------------
+
+The GC depends on an extremely efficient datastructure for storing a
+set of pointers - this is called a `CellSet` in the source code.
+Inserting, deleting and searching are done in constant time. However,
+modifying a `CellSet` during traversal leads to undefined behaviour.
+
+All operations on a CellSet have to perform efficiently. Because a Cellset can
+become huge a hash table alone is not suitable for this.
+
+We use a mixture of bitset and hash table for this. The hash table maps *pages*
+to a page descriptor. The page descriptor contains a bit for any possible cell
+address within this page. So including a cell is done as follows:
+
+- Find the page descriptor for the page the cell belongs to.
+- Set the appropriate bit in the page descriptor indicating that the
+  cell points to the start of a memory block.
+
+Removing a cell is analogous - the bit has to be set to zero.
+Single page descriptors are never deleted from the hash table. This is not
+needed as the data structures needs to be rebuilt periodically anyway.
+
+Complete traversal is done in this way::
+
+  for each page descriptor d:
+    for each bit in d:
+      if bit == 1:
+        traverse the pointer belonging to this bit
+
+]#
 
 when defined(gcOrc) or defined(gcArc):
   type

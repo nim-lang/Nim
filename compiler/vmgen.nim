@@ -27,6 +27,8 @@
 # solves the opcLdConst vs opcAsgnConst issue. Of course whether we need
 # this copy depends on the involved types.
 
+import std / tables
+
 import
   strutils, ast, types, msgs, renderer, vmdef,
   intsets, magicsys, options, lowerings, lineinfos, transf
@@ -188,7 +190,7 @@ proc getSlotKind(t: PType): TSlotKind =
   case t.skipTypes(abstractRange-{tyTypeDesc}).kind
   of tyBool, tyChar, tyEnum, tyOrdinal, tyInt..tyInt64, tyUInt..tyUInt64:
     slotTempInt
-  of tyString, tyCString:
+  of tyString, tyCstring:
     slotTempStr
   of tyFloat..tyFloat128:
     slotTempFloat
@@ -833,10 +835,20 @@ proc genAddSubInt(c: PCtx; n: PNode; dest: var TDest; opc: TOpcode) =
   c.genNarrow(n, dest)
 
 proc genConv(c: PCtx; n, arg: PNode; dest: var TDest; opc=opcConv) =
-  if n.typ.kind == arg.typ.kind and arg.typ.kind == tyProc:
-    # don't do anything for lambda lifting conversions:
+  let t2 = n.typ.skipTypes({tyDistinct})
+  let targ2 = arg.typ.skipTypes({tyDistinct})
+
+  proc implicitConv(): bool =
+    if sameType(t2, targ2): return true
+    # xxx consider whether to use t2 and targ2 here
+    if n.typ.kind == arg.typ.kind and arg.typ.kind == tyProc:
+      # don't do anything for lambda lifting conversions:
+      return true
+
+  if implicitConv():
     gen(c, arg, dest)
     return
+
   let tmp = c.genx(arg)
   if dest < 0: dest = c.getTemp(n.typ)
   c.gABC(n, opc, dest, tmp)
@@ -970,7 +982,7 @@ proc genBindSym(c: PCtx; n: PNode; dest: var TDest) =
 
 proc fitsRegister*(t: PType): bool =
   assert t != nil
-  t.skipTypes(abstractInst-{tyTypeDesc}).kind in {
+  t.skipTypes(abstractInst + {tyStatic} - {tyTypeDesc}).kind in {
     tyRange, tyEnum, tyBool, tyInt..tyUInt64, tyChar}
 
 proc ldNullOpcode(t: PType): TOpcode =
@@ -1041,7 +1053,7 @@ proc genMagic(c: PCtx; n: PNode; dest: var TDest; m: TMagic) =
   of mLengthStr:
     case n[1].typ.kind
     of tyString: genUnaryABI(c, n, dest, opcLenStr)
-    of tyCString: genUnaryABI(c, n, dest, opcLenCstring)
+    of tyCstring: genUnaryABI(c, n, dest, opcLenCstring)
     else: doAssert false, $n[1].typ.kind
   of mIncl, mExcl:
     unused(c, n, dest)
@@ -1187,7 +1199,7 @@ proc genMagic(c: PCtx; n: PNode; dest: var TDest; m: TMagic) =
     let tmp = c.genx(n[1])
     case n[1].typ.skipTypes(abstractVar-{tyTypeDesc}).kind:
     of tyString: c.gABI(n, opcLenStr, dest, tmp, 1)
-    of tyCString: c.gABI(n, opcLenCstring, dest, tmp, 1)
+    of tyCstring: c.gABI(n, opcLenCstring, dest, tmp, 1)
     else: c.gABI(n, opcLenSeq, dest, tmp, 1)
     c.freeTemp(tmp)
   of mEcho:
@@ -1354,9 +1366,10 @@ proc genMagic(c: PCtx; n: PNode; dest: var TDest; m: TMagic) =
     if dest < 0: dest = c.getTemp(arg.typ)
     gABC(c, arg, whichAsgnOpc(arg, requiresCopy=false), dest, a)
     # XXX use ldNullOpcode() here?
-    c.gABx(n, opcLdNull, a, c.genType(arg.typ))
-    c.gABx(n, opcNodeToReg, a, a)
-    c.genAsgnPatch(arg, a)
+    # Don't zero out the arg for now #17199
+    # c.gABx(n, opcLdNull, a, c.genType(arg.typ))
+    # c.gABx(n, opcNodeToReg, a, a)
+    # c.genAsgnPatch(arg, a)
     c.freeTemp(a)
   of mNodeId:
     c.genUnaryABC(n, dest, opcNodeId)
@@ -1424,7 +1437,7 @@ proc genAddr(c: PCtx, n: PNode, dest: var TDest, flags: TGenFlags) =
       # permanent, so that it's not used for anything else:
       c.prc.slots[tmp].kind = slotTempPerm
       # XXX this is still a hack
-      #message(n.info, warnUser, "suspicious opcode used")
+      #message(c.congig, n.info, warnUser, "suspicious opcode used")
     else:
       gABC(c, n, opcAddrReg, dest, tmp)
     c.freeTemp(tmp)
@@ -1517,7 +1530,7 @@ proc genAsgn(c: PCtx; le, ri: PNode; requiresCopy: bool) =
     let idx = c.genIndex(le[1], le[0].typ)
     let tmp = c.genx(ri)
     if le[0].typ.skipTypes(abstractVarRange-{tyTypeDesc}).kind in {
-        tyString, tyCString}:
+        tyString, tyCstring}:
       c.preventFalseAlias(le, opcWrStrIdx, dest, idx, tmp)
     else:
       c.preventFalseAlias(le, opcWrArr, dest, idx, tmp)
@@ -1676,7 +1689,7 @@ proc genArrAccessOpcode(c: PCtx; n: PNode; dest: var TDest; opc: TOpcode;
     c.gABC(n, opcNodeToReg, dest, cc)
     c.freeTemp(cc)
   else:
-    #message(n.info, warnUser, "argh")
+    #message(c.config, n.info, warnUser, "argh")
     #echo "FLAGS ", flags, " ", fitsRegister(n.typ), " ", typeToString(n.typ)
     c.gABC(n, opc, dest, a, b)
   c.freeTemp(a)
@@ -1762,7 +1775,7 @@ proc genCheckedObjAccess(c: PCtx; n: PNode; dest: var TDest; flags: TGenFlags) =
 
 proc genArrAccess(c: PCtx; n: PNode; dest: var TDest; flags: TGenFlags) =
   let arrayType = n[0].typ.skipTypes(abstractVarRange-{tyTypeDesc}).kind
-  if arrayType in {tyString, tyCString}:
+  if arrayType in {tyString, tyCstring}:
     let opc = if gfNodeAddr in flags: opcLdStrIdxAddr else: opcLdStrIdx
     genArrAccessOpcode(c, n, dest, opc, flags)
   elif arrayType == tyTypeDesc:
@@ -1800,7 +1813,7 @@ proc getNullValue(typ: PType, info: TLineInfo; conf: ConfigRef): PNode =
     result = newNodeIT(nkUIntLit, info, t)
   of tyFloat..tyFloat128:
     result = newNodeIT(nkFloatLit, info, t)
-  of tyCString, tyString:
+  of tyCstring, tyString:
     result = newNodeIT(nkStrLit, info, t)
     result.strVal = ""
   of tyVar, tyLent, tyPointer, tyPtr, tyUntyped,
@@ -2237,8 +2250,8 @@ proc optimizeJumps(c: PCtx; start: int) =
     else: discard
 
 proc genProc(c: PCtx; s: PSym): int =
-  var x = s.ast[miscPos]
-  if x.kind == nkEmpty or x[0].kind == nkEmpty:
+  let pos = c.procToCodePos.getOrDefault(s.id)
+  if pos == 0:
     #if s.name.s == "outterMacro" or s.name.s == "innerProc":
     #  echo "GENERATING CODE FOR ", s.name.s
     let last = c.code.len-1
@@ -2249,11 +2262,7 @@ proc genProc(c: PCtx; s: PSym): int =
       c.debug.setLen(last)
     #c.removeLastEof
     result = c.code.len+1 # skip the jump instruction
-    if x.kind == nkEmpty:
-      x = newTree(nkBracket, newIntNode(nkIntLit, result), x)
-    else:
-      x[0] = newIntNode(nkIntLit, result)
-    s.ast[miscPos] = x
+    c.procToCodePos[s.id] = result
     # thanks to the jmp we can add top level statements easily and also nest
     # procs easily:
     let body = transformBody(c.graph, c.idgen, s, cache = not isCompileTimeProc(s))
@@ -2286,4 +2295,4 @@ proc genProc(c: PCtx; s: PSym): int =
     c.prc = oldPrc
   else:
     c.prc.maxSlots = s.offset
-    result = x[0].intVal.int
+    result = pos

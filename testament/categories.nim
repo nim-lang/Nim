@@ -173,7 +173,7 @@ proc gcTests(r: var TResults, cat: Category, options: string) =
 
   test "stackrefleak"
   test "cyclecollector"
-  test "trace_globals"
+  testWithoutBoehm "trace_globals"
 
 proc longGCTests(r: var TResults, cat: Category, options: string) =
   when defined(windows):
@@ -448,7 +448,10 @@ proc testNimblePackages(r: var TResults; cat: Category; packageFilter: string) =
           (outp, status) = execCmdEx(cmd, workingDir = workingDir2)
           status == QuitSuccess
         if not ok:
-          addResult(r, test, targetC, "", cmd & "\n" & outp, reFailed)
+          if pkg.allowFailure:
+            inc r.passed
+            inc r.failedButAllowed
+          addResult(r, test, targetC, "", cmd & "\n" & outp, reFailed, allowFailure = pkg.allowFailure)
           continue
         outp
 
@@ -461,7 +464,7 @@ proc testNimblePackages(r: var TResults; cat: Category; packageFilter: string) =
         discard tryCommand("nimble install --depsOnly -y", maxRetries = 3)
       discard tryCommand(pkg.cmd, reFailed = reBuildFailed)
       inc r.passed
-      r.addResult(test, targetC, "", "", reSuccess)
+      r.addResult(test, targetC, "", "", reSuccess, allowFailure = pkg.allowFailure)
 
     errors = r.total - r.passed
     if errors == 0:
@@ -480,23 +483,27 @@ proc testNimblePackages(r: var TResults; cat: Category; packageFilter: string) =
 
 # ---------------- IC tests ---------------------------------------------
 
-proc icTests(r: var TResults; testsDir: string, cat: Category, options: string) =
+proc icTests(r: var TResults; testsDir: string, cat: Category, options: string;
+             isNavigatorTest: bool) =
   const
     tooltests = ["compiler/nim.nim", "tools/nimgrep.nim"]
     writeOnly = " --incremental:writeonly "
     readOnly = " --incremental:readonly "
-    incrementalOn = " --incremental:on "
+    incrementalOn = " --incremental:on -d:nimIcIntegrityChecks "
+    navTestConfig = " --ic:on --defusages -d:nimIcNavigatorTests --hint[Conf]:off --warnings:off "
 
   template test(x: untyped) =
     testSpecWithNimcache(r, makeRawTest(file, x & options, cat), nimcache)
 
   template editedTest(x: untyped) =
     var test = makeTest(file, x & options, cat)
+    if isNavigatorTest:
+      test.spec.action = actionCompile
     test.spec.targets = {getTestSpecTarget()}
     testSpecWithNimcache(r, test, nimcache)
 
   const tempExt = "_temp.nim"
-  for it in walkDirRec(testsDir / "ic"):
+  for it in walkDirRec(testsDir):
     if isTestFile(it) and not it.endsWith(tempExt):
       let nimcache = nimcacheDir(it, options, getTestSpecTarget())
       removeDir(nimcache)
@@ -506,10 +513,10 @@ proc icTests(r: var TResults; testsDir: string, cat: Category, options: string) 
         let file = it.replace(".nim", tempExt)
         writeFile(file, fragment)
         let oldPassed = r.passed
-        editedTest incrementalOn
+        editedTest(if isNavigatorTest: navTestConfig else: incrementalOn)
         if r.passed != oldPassed+1: break
 
-  when false:
+  if not isNavigatorTest and false:
     for file in tooltests:
       let nimcache = nimcacheDir(file, options, getTestSpecTarget())
       removeDir(nimcache)
@@ -524,7 +531,7 @@ proc icTests(r: var TResults; testsDir: string, cat: Category, options: string) 
 
 # ----------------------------------------------------------------------------
 
-const AdditionalCategories = ["debugger", "examples", "lib", "ic"]
+const AdditionalCategories = ["debugger", "examples", "lib", "ic", "navigator"]
 const MegaTestCat = "megatest"
 
 proc `&.?`(a, b: string): string =
@@ -568,6 +575,11 @@ proc quoted(a: string): string =
 
 proc runJoinedTest(r: var TResults, cat: Category, testsDir: string) =
   ## returns a list of tests that have problems
+  #[
+  xxx create a reusable megatest API after abstracting out testament specific code,
+  refs https://github.com/timotheecour/Nim/issues/655
+  and https://github.com/nim-lang/gtk2/pull/28; it's useful in other contexts.
+  ]#
   var specs: seq[TSpec] = @[]
   for kind, dir in walkDir(testsDir):
     assert testsDir.startsWith(testsDir)
@@ -592,16 +604,16 @@ proc runJoinedTest(r: var TResults, cat: Category, testsDir: string) =
   var megatest: string
   # xxx (minor) put outputExceptedFile, outputGottenFile, megatestFile under here or `buildDir`
   var outDir = nimcacheDir(testsDir / "megatest", "", targetC)
-  const marker = "megatest:processing: "
-
+  template toMarker(file, i): string =
+    "megatest:processing: [$1] $2" % [$i, file]
   for i, runSpec in specs:
     let file = runSpec.file
-    let file2 = outDir / ("megatest_$1.nim" % $i)
+    let file2 = outDir / ("megatest_a_$1.nim" % $i)
     # `include` didn't work with `trecmod2.nim`, so using `import`
-    let code = "echo \"$1\", $2\n" % [marker, quoted(file)]
+    let code = "echo $1\nstatic: echo \"CT:\", $1\n" % [toMarker(file, i).quoted]
     createDir(file2.parentDir)
     writeFile(file2, code)
-    megatest.add "import $1\nimport $2\n" % [quoted(file2), quoted(file)]
+    megatest.add "import $1\nimport $2 as megatest_b_$3\n" % [file2.quoted, file.quoted, $i]
 
   let megatestFile = testsDir / "megatest.nim" # so it uses testsDir / "config.nims"
   writeFile(megatestFile, megatest)
@@ -623,7 +635,7 @@ proc runJoinedTest(r: var TResults, cat: Category, testsDir: string) =
   writeFile(outputGottenFile, buf)
   var outputExpected = ""
   for i, runSpec in specs:
-    outputExpected.add marker & runSpec.file & "\n"
+    outputExpected.add toMarker(runSpec.file, i) & "\n"
     if runSpec.output.len > 0:
       outputExpected.add runSpec.output
       if not runSpec.output.endsWith "\n":
@@ -686,7 +698,9 @@ proc processCategory(r: var TResults, cat: Category,
     of "niminaction":
       testNimInAction(r, cat, options)
     of "ic":
-      icTests(r, testsDir, cat, options)
+      icTests(r, testsDir / cat2, cat, options, isNavigatorTest=false)
+    of "navigator":
+      icTests(r, testsDir / cat2, cat, options, isNavigatorTest=true)
     of "untestable":
       # These require special treatment e.g. because they depend on a third party
       # dependency; see `trunner_special` which runs some of those.

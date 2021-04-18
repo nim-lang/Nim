@@ -8,8 +8,6 @@
 #
 
 ## This module implements an AST for the `reStructuredText`:idx: parser.
-##
-## **Note:** Import ``packages/docutils/rstast`` to use this module
 
 import strutils, json
 
@@ -57,12 +55,15 @@ type
                               #     * `file#id <file#id>`_
                               #     * `file#id <file#id>'_
     rnSubstitutionDef,        # a definition of a substitution
-    rnGeneralRole,            # Inline markup:
+    # Inline markup:
+    rnInlineCode,
+    rnUnknownRole,            # interpreted text with an unknown role
     rnSub, rnSup, rnIdx,
     rnEmphasis,               # "*"
     rnStrongEmphasis,         # "**"
     rnTripleEmphasis,         # "***"
-    rnInterpretedText,        # "`"
+    rnInterpretedText,        # "`" an auxiliary role for parsing that will
+                              # be converted into other kinds like rnInlineCode
     rnInlineLiteral,          # "``"
     rnInlineTarget,           # "_`target`"
     rnSubstitutionReferences, # "|"
@@ -89,7 +90,7 @@ type
       level*: int             ## level of headings starting from 1 (main
                               ## chapter) to larger ones (minor sub-sections)
                               ## level=0 means it's document title or subtitle
-    of rnFootnote, rnCitation, rnFootnoteRef:
+    of rnFootnote, rnCitation, rnFootnoteRef, rnOptionListItem:
       order*: int             ## footnote order (for auto-symbol footnotes and
                               ## auto-numbered ones without a label)
     else:
@@ -254,7 +255,7 @@ proc renderRstToRst(d: var RenderContext, n: PRstNode, result: var string) =
     result.add(" <")
     renderRstToRst(d, n.sons[1], result)
     result.add(">`_")
-  of rnGeneralRole:
+  of rnUnknownRole:
     result.add('`')
     renderRstToRst(d, n.sons[0],result)
     result.add("`:")
@@ -349,7 +350,7 @@ proc renderRstToJson*(node: PRstNode): string =
 proc renderRstToStr*(node: PRstNode, indent=0): string =
   ## Writes the parsed RST `node` into a compact string
   ## representation in the format (one line per every sub-node):
-  ## ``indent - kind - text - level - order - anchor (if non-zero)``
+  ## ``indent - kind - [text|level|order|adType] - anchor (if non-zero)``
   ## (suitable for debugging of RST parsing).
   if node == nil:
     result.add " ".repeat(indent) & "[nil]\n"
@@ -357,21 +358,23 @@ proc renderRstToStr*(node: PRstNode, indent=0): string =
   result.add " ".repeat(indent) & $node.kind
   case node.kind
   of rnLeaf, rnSmiley:
-    result.add (if node.text == "": "" else: "\t'" & node.text & "'")
+    result.add (if node.text == "": "" else: "  '" & node.text & "'")
   of rnEnumList:
-    result.add "\tlabelFmt=" & node.labelFmt
+    result.add "  labelFmt=" & node.labelFmt
   of rnLineBlockItem:
     var txt: string
-    if node.lineIndent == "\n": txt = "\t(blank line)"
-    else: txt = "\tlineIndent=" & $node.lineIndent.len
+    if node.lineIndent == "\n": txt = "  (blank line)"
+    else: txt = "  lineIndent=" & $node.lineIndent.len
     result.add txt
+  of rnAdmonition:
+    result.add "  adType=" & node.adType
   of rnHeadline, rnOverline, rnMarkdownHeadline:
-    result.add "\tlevel=" & $node.level
-  of rnFootnote, rnCitation, rnFootnoteRef:
-    result.add (if node.order == 0:   "" else: "\torder=" & $node.order)
+    result.add "  level=" & $node.level
+  of rnFootnote, rnCitation, rnFootnoteRef, rnOptionListItem:
+    result.add (if node.order == 0:   "" else: "  order=" & $node.order)
   else:
     discard
-  result.add (if node.anchor == "": "" else: "\tanchor='" & node.anchor & "'")
+  result.add (if node.anchor == "": "" else: "  anchor='" & node.anchor & "'")
   result.add "\n"
   for son in node.sons:
     result.add renderRstToStr(son, indent=indent+2)

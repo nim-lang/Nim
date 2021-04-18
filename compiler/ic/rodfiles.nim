@@ -16,9 +16,9 @@ type
     stringsSection
     checkSumsSection
     depsSection
-    integersSection
-    floatsSection
+    numbersSection
     exportsSection
+    hiddenSection
     reexportsSection
     compilerProcsSection
     trmacrosSection
@@ -37,6 +37,7 @@ type
     methodsPerTypeSection
     enumToStringProcsSection
     typeInfoSection  # required by the backend
+    backendFlagsSection
     aliveSymsSection # beware, this is stored in a `.alivesyms` file.
 
   RodFileError* = enum

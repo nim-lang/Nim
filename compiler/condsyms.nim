@@ -130,3 +130,6 @@ proc initDefines*(symbols: StringTableRef) =
   defineSymbol("nimHasWarningAsError")
   defineSymbol("nimHasHintAsError")
   defineSymbol("nimHasSpellSuggest")
+  defineSymbol("nimHasCustomLiterals")
+  defineSymbol("nimHasUnifiedTuple")
+  defineSymbol("nimHasIterable")

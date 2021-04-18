@@ -65,7 +65,7 @@
 ##
 ## The following example demonstrates a simple chat server.
 ##
-## .. code-block::nim
+## .. code-block:: Nim
 ##
 ##   import std/[asyncnet, asyncdispatch]
 ##
@@ -649,6 +649,11 @@ proc bindAddr*(socket: AsyncSocket, port = Port(0), address = "") {.
     freeaddrinfo(aiList)
     raiseOSError(osLastError())
   freeaddrinfo(aiList)
+
+proc hasDataBuffered*(s: AsyncSocket): bool {.since: (1, 5).} =
+  ## Determines whether an AsyncSocket has data buffered.
+  # xxx dedup with std/net
+  s.isBuffered and s.bufLen > 0 and s.currPos != s.bufLen
 
 when defined(posix):
 

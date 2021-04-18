@@ -274,7 +274,6 @@ proc start*(c: proc(), stacksize: int = defaultStackSize): CoroutineRef {.discar
     coro.execContext = CreateFiberEx(stacksize, stacksize,
       FIBER_FLAG_FLOAT_SWITCH,
       (proc(p: pointer) {.stdcall.} = runCurrentTask()), nil)
-    coro.stack.size = stacksize
   else:
     coro = cast[CoroutinePtr](alloc0(sizeof(Coroutine) + stacksize))
     coro.stack.top = cast[pointer](cast[ByteAddress](coro) + sizeof(Coroutine))
@@ -293,9 +292,9 @@ proc start*(c: proc(), stacksize: int = defaultStackSize): CoroutineRef {.discar
   return coro.reference
 
 proc run*() =
-  initialize()
   ## Starts main coroutine scheduler loop which exits when all coroutines exit.
   ## Calling this proc starts execution of first coroutine.
+  initialize()
   ctx.current = ctx.coroutines.head
   var minDelay: float = 0
   while ctx.current != nil:

@@ -3,7 +3,7 @@ discard """
 """
 
 import std/strutils
-
+from stdtest/testutils import disableVm
 # xxx each instance of `disableVm` and `when not defined js:` should eventually be fixed
 
 template rejectParse(e) =
@@ -11,10 +11,6 @@ template rejectParse(e) =
     discard e
     raise newException(AssertionDefect, "This was supposed to fail: $#!" % astToStr(e))
   except ValueError: discard
-
-template disableVm(body) =
-  when nimvm: discard
-  else: body
 
 template main() =
   block: # strip

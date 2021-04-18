@@ -398,7 +398,8 @@ proc log*(s: string) =
     close(f)
 
 proc quit(conf: ConfigRef; msg: TMsgKind) {.gcsafe.} =
-  if defined(debug) or msg == errInternal or conf.hasHint(hintStackTrace):
+  if conf.isDefined("nimDebug"): quitOrRaise(conf, $msg)
+  elif defined(debug) or msg == errInternal or conf.hasHint(hintStackTrace):
     {.gcsafe.}:
       if stackTraceAvailable() and isNil(conf.writelnHook):
         writeStackTrace()
@@ -418,7 +419,9 @@ proc handleError(conf: ConfigRef; msg: TMsgKind, eh: TErrorHandling, s: string) 
     inc(conf.errorCounter)
     conf.exitcode = 1'i8
     if conf.errorCounter >= conf.errorMax:
-      quit(conf, msg)
+      # only really quit when we're not in the new 'nim check --def' mode:
+      if conf.ideCmd == ideNone:
+        quit(conf, msg)
     elif eh == doAbort and conf.cmd != cmdIdeTools:
       quit(conf, msg)
     elif eh == doRaise:
@@ -612,9 +615,9 @@ template internalAssert*(conf: ConfigRef, e: bool) =
     let arg = info2.toFileLineCol
     internalErrorImpl(conf, unknownLineInfo, arg, info2)
 
-template lintReport*(conf: ConfigRef; info: TLineInfo, beau, got: string) =
-  let m = "'$2' should be: '$1'" % [beau, got]
-  let msg = if optStyleError in conf.globalOptions: errGenerated else: hintName
+template lintReport*(conf: ConfigRef; info: TLineInfo, beau, got: string, forceHint = false) =
+  let m = "'$1' should be: '$2'" % [got, beau]
+  let msg = if optStyleError in conf.globalOptions and not forceHint: errGenerated else: hintName
   liMessage(conf, info, msg, m, doNothing, instLoc())
 
 proc quotedFilename*(conf: ConfigRef; i: TLineInfo): Rope =

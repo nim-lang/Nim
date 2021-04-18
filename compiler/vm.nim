@@ -399,7 +399,7 @@ proc opConv(c: PCtx; dest: var TFullReg, src: TFullReg, desttyp, srctyp: PType):
       dest.node.strVal = $src.floatVal
     of tyString:
       dest.node.strVal = src.node.strVal
-    of tyCString:
+    of tyCstring:
       if src.node.kind == nkBracket:
         # Array of chars
         var strVal = ""
@@ -415,7 +415,8 @@ proc opConv(c: PCtx; dest: var TFullReg, src: TFullReg, desttyp, srctyp: PType):
     else:
       internalError(c.config, "cannot convert to string " & desttyp.typeToString)
   else:
-    case skipTypes(desttyp, abstractVarRange).kind
+    let desttyp = skipTypes(desttyp, abstractVarRange)
+    case desttyp.kind
     of tyInt..tyInt64:
       dest.ensureKind(rkInt)
       case skipTypes(srctyp, abstractRange).kind
@@ -2221,11 +2222,17 @@ proc setupCompileTimeVar*(module: PSym; idgen: IdGenerator; g: ModuleGraph; n: P
   discard evalConstExprAux(module, idgen, g, nil, n, emStaticStmt)
 
 proc prepareVMValue(arg: PNode): PNode =
-  ## strip nkExprColonExpr from tuple values recurively. That is how
+  ## strip nkExprColonExpr from tuple values recursively. That is how
   ## they are expected to be stored in the VM.
 
   # Early abort without copy. No transformation takes place.
   if arg.kind in nkLiterals:
+    return arg
+
+  if arg.kind == nkExprColonExpr and arg[0].typ != nil and
+     arg[0].typ.sym != nil and arg[0].typ.sym.magic == mPNimrodNode:
+    # Poor mans way of protecting static NimNodes
+    # XXX: Maybe we need a nkNimNode?
     return arg
 
   result = copyNode(arg)

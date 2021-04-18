@@ -3,6 +3,7 @@ discard """
 """
 
 import std/uri
+from std/uri {.all.} as uri2 import removeDotSegments
 from std/sequtils import toSeq
 
 template main() =
@@ -13,6 +14,24 @@ template main() =
     doAssert encodeUrl(test1, false) == "abc%0A%2Bdef%20xyz"
     doAssert decodeUrl(encodeUrl(test1, false), false) == test1
     doAssert decodeUrl(encodeUrl(test1)) == test1
+
+  block: # removeDotSegments
+    doAssert removeDotSegments("/foo/bar/baz") == "/foo/bar/baz"
+    doAssert removeDotSegments("") == "" # empty test
+    doAssert removeDotSegments(".") == "." # trailing period
+    doAssert removeDotSegments("a1/a2/../a3/a4/a5/./a6/a7/././") == "a1/a3/a4/a5/a6/a7/"
+    doAssert removeDotSegments("https://a1/a2/../a3/a4/a5/./a6/a7/././") == "https://a1/a3/a4/a5/a6/a7/"
+    doAssert removeDotSegments("http://a1/a2") == "http://a1/a2"
+    doAssert removeDotSegments("http://www.ai.") == "http://www.ai."
+    when false: # xxx these cases are buggy
+      # this should work, refs https://webmasters.stackexchange.com/questions/73934/how-can-urls-have-a-dot-at-the-end-e-g-www-bla-de
+      doAssert removeDotSegments("http://www.ai./") == "http://www.ai./" # fails
+      echo removeDotSegments("http://www.ai./")  # http://www.ai/
+      echo removeDotSegments("a/b.../c") # b.c
+      echo removeDotSegments("a/b../c") # bc
+      echo removeDotSegments("a/.../c") # .c
+      echo removeDotSegments("a//../b") # a/b
+      echo removeDotSegments("a/b/c//") # a/b/c//
 
   block: # parseUri
     block:
@@ -282,6 +301,17 @@ template main() =
   block: # decodeQuery
     doAssert toSeq(decodeQuery("a=1&b=0")) == @[("a", "1"), ("b", "0")]
     doAssert toSeq(decodeQuery("a=1&b=2c=6")) == @[("a", "1"), ("b", "2c=6")]
+
+  block: # bug #17481
+    let u1 = parseUri("./")
+    let u2 = parseUri("./path")
+    let u3 = parseUri("a/path")
+    doAssert u1.scheme.len == 0
+    doAssert u1.path == "./"
+    doAssert u2.scheme.len == 0
+    doAssert u2.path == "./path"
+    doAssert u3.scheme.len == 0
+    doAssert u3.path == "a/path"
 
 static: main()
 main()

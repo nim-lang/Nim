@@ -10,10 +10,10 @@
 ## This module provides an API for macros to collect compile-time information
 ## across module boundaries. It should be used instead of global `{.compileTime.}`
 ## variables as those break incremental compilation.
-## 
+##
 ## The main feature of this module is that if you create `CacheTable`s or
 ## any other `Cache` types with the same name in different modules, their
-## content will be shared, meaning that you can fill a `CacheTable` in 
+## content will be shared, meaning that you can fill a `CacheTable` in
 ## one module, and iterate over its contents in another.
 
 runnableExamples:
@@ -22,20 +22,20 @@ runnableExamples:
   const mcTable = CacheTable"myTable"
   const mcSeq = CacheSeq"mySeq"
   const mcCounter = CacheCounter"myCounter"
-  
+
   static:
     # add new key "val" with the value `myval`
     let myval = newLit("hello ic")
     mcTable["val"] = myval
     assert mcTable["val"].kind == nnkStrLit
-  
+
   # Can access the same cache from different static contexts
   # All the information is retained
   static:
     # get value from `mcTable` and add it to `mcSeq`
     mcSeq.add(mcTable["val"])
     assert mcSeq.len == 1
-  
+
   static:
     assert mcSeq[0].strVal == "hello ic"
 
@@ -49,7 +49,7 @@ type
     ## Compile-time sequence of `NimNode`s.
   CacheTable* = distinct string
     ## Compile-time table of key-value pairs.
-    ## 
+    ##
     ## Keys are `string`s and values are `NimNode`s.
   CacheCounter* = distinct string
     ## Compile-time counter, uses `int` for storing the count.
@@ -80,22 +80,22 @@ proc add*(s: CacheSeq; value: NimNode) {.magic: "NcsAdd".} =
   runnableExamples:
     import std/macros
     const mySeq = CacheSeq"addTest"
-    
+
     static:
       mySeq.add(newLit(5))
       mySeq.add(newLit("hello ic"))
-  
+
       assert mySeq.len == 2
       assert mySeq[1].strVal == "hello ic"
 
-proc incl*(s: CacheSeq; value: NimNode) {.magic: "NcsIncl".} = 
+proc incl*(s: CacheSeq; value: NimNode) {.magic: "NcsIncl".} =
   ## Adds `value` to `s`.
-  ## 
+  ##
   ## .. hint:: This doesn't do anything if `value` is already in `s`.
   runnableExamples:
     import std/macros
     const mySeq = CacheSeq"inclTest"
-    
+
     static:
       mySeq.incl(newLit(5))
       mySeq.incl(newLit(5))
@@ -113,7 +113,7 @@ proc len*(s: CacheSeq): int {.magic: "NcsLen".} =
       let val = newLit("helper")
       mySeq.add(val)
       assert mySeq.len == 1
-      
+
       mySeq.add(val)
       assert mySeq.len == 2
 
@@ -132,20 +132,20 @@ iterator items*(s: CacheSeq): NimNode =
   runnableExamples:
     import std/macros
     const myseq = CacheSeq"itemsTest"
-    
+
     static:
       myseq.add(newLit(5))
       myseq.add(newLit(42))
-      
+
       for val in myseq:
         # check that all values in `myseq` are int literals
         assert val.kind == nnkIntLit
-  
+
   for i in 0 ..< len(s): yield s[i]
 
 proc `[]=`*(t: CacheTable; key: string, value: NimNode) {.magic: "NctPut".} =
-  ## Inserts a `(key, value)` pair into `t`. 
-  ## 
+  ## Inserts a `(key, value)` pair into `t`.
+  ##
   ## .. warning:: `key` has to be unique! Assigning `value` to a `key` that is already
   ##   in the table will result in a compiler error.
   runnableExamples:
@@ -155,11 +155,11 @@ proc `[]=`*(t: CacheTable; key: string, value: NimNode) {.magic: "NctPut".} =
     static:
       # assign newLit(5) to the key "value"
       mcTable["value"] = newLit(5)
-      
-      # check that we can get the value back
-      assert mcTable["value"].kind == nnkIntLit    
 
-proc len*(t: CacheTable): int {.magic: "NctLen".} = 
+      # check that we can get the value back
+      assert mcTable["value"].kind == nnkIntLit
+
+proc len*(t: CacheTable): int {.magic: "NctLen".} =
   ## Returns the number of elements in `t`.
   runnableExamples:
     import std/macros
@@ -177,7 +177,7 @@ proc `[]`*(t: CacheTable; key: string): NimNode {.magic: "NctGet".} =
     const mcTable = CacheTable"subTest"
     static:
       mcTable["toAdd"] = newStmtList()
-      
+
       # get the NimNode back
       assert mcTable["toAdd"].kind == nnkStmtList
 
@@ -189,8 +189,8 @@ iterator pairs*(t: CacheTable): (string, NimNode) =
   runnableExamples:
     import std/macros
     const mytabl = CacheTable"values"
-    
-    static: 
+
+    static:
       mytabl["intVal"] = newLit(5)
       mytabl["otherVal"] = newLit(6)
       for key, val in mytabl:

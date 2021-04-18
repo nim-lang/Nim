@@ -1,6 +1,7 @@
 discard """
-nimout: "Hello World!"
-action: compile
+  targets: "c"
+  nimout: "Hello World!"
+  action: compile
 """
 
 static:
