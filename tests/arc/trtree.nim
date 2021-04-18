@@ -71,8 +71,8 @@ proc newRStarTree*[M, D: Dim; RT, LT](minFill: range[30 .. 50] = 40): RStarTree[
   result.p = M * 30 div 100
   result.root = newLeaf[M, D, RT, LT]()
 
-proc center(r: Box): auto =#BoxCenter[r.len, type(r[0].a)] =
-  var res: BoxCenter[r.len, type(r[0].a)]
+proc center(r: Box): auto =#BoxCenter[r.len, typeof(r[0].a)] =
+  var res: BoxCenter[r.len, typeof(r[0].a)]
   for i in 0 .. r.high:
     when r[0].a is SomeInteger:
       res[i] = (r[i].a + r[i].b) div 2
@@ -82,13 +82,13 @@ proc center(r: Box): auto =#BoxCenter[r.len, type(r[0].a)] =
   return res
 
 proc distance(c1, c2: BoxCenter): auto =
-  var res: type(c1[0])
+  var res: typeof(c1[0])
   for i in 0 .. c1.high:
     res += (c1[i] - c2[i]) * (c1[i] - c2[i])
   return res
 
 proc overlap(r1, r2: Box): auto =
-  result = type(r1[0].a)(1)
+  result = typeof(r1[0].a)(1)
   for i in 0 .. r1.high:
     result *= (min(r1[i].b, r2[i].b) - max(r1[i].a, r2[i].a))
     if result <= 0: return 0
@@ -104,13 +104,13 @@ proc intersect(r1, r2: Box): bool =
       return false
   return true
 
-proc area(r: Box): auto = #type(r[0].a) =
-  result = type(r[0].a)(1)
+proc area(r: Box): auto = #typeof(r[0].a) =
+  result = typeof(r[0].a)(1)
   for i in 0 .. r.high:
     result *= r[i].b - r[i].a
 
-proc margin(r: Box): auto = #type(r[0].a) =
-  result = type(r[0].a)(0)
+proc margin(r: Box): auto = #typeof(r[0].a) =
+  result = typeof(r[0].a)(0)
   for i in 0 .. r.high:
     result += r[i].b - r[i].a
 
@@ -142,7 +142,7 @@ proc chooseSubtree[M, D: Dim; RT, LT](t: RTree[M, D, RT, LT]; b: Box[D, RT]; lev
   while it.level > level:
     let nn = Node[M, D, RT, LT](it)
     var i0 = 0 # selected index
-    var minLoss = type(b[0].a).high
+    var minLoss = typeof(b[0].a).high
     if it.level == 1: # childreen are leaves -- determine the minimum overlap costs
       for i in 0 ..< it.numEntries:
         let nx = union(nn.a[i].b, b)
@@ -179,8 +179,8 @@ proc chooseSubtree[M, D: Dim; RT, LT](t: RTree[M, D, RT, LT]; b: Box[D, RT]; lev
 
 proc pickSeeds[M, D: Dim; RT, LT](t: RTree[M, D, RT, LT]; n: Node[M, D, RT, LT] | Leaf[M, D, RT, LT]; bx: Box[D, RT]): (int, int) =
   var i0, j0: int
-  var bi, bj: type(bx)
-  var largestWaste = type(bx[0].a).low
+  var bi, bj: typeof(bx)
+  var largestWaste = typeof(bx[0].a).low
   for i in -1 .. n.a.high:
     for j in 0 .. n.a.high:
       if unlikely(i == j): continue
@@ -200,7 +200,7 @@ proc pickSeeds[M, D: Dim; RT, LT](t: RTree[M, D, RT, LT]; n: Node[M, D, RT, LT] 
 proc pickNext[M, D: Dim; RT, LT](t: RTree[M, D, RT, LT]; n0, n1, n2: Node[M, D, RT, LT] | Leaf[M, D, RT, LT]; b1, b2: Box[D, RT]): int =
   let a1 = area(b1)
   let a2 = area(b2)
-  var d = type(a1).low
+  var d = typeof(a1).low
   for i in 0 ..< n0.numEntries:
     let d1 = area(union(b1, n0.a[i].b)) - a1
     let d2 = area(union(b2, n0.a[i].b)) - a2
@@ -220,15 +220,15 @@ proc sortPlus[T](a: var openArray[T], ax: var T, cmp: proc (x, y: T): int {.clos
   a.sort(cmp, order)
 
 # R*TREE procs
-proc rstarSplit[M, D: Dim; RT, LT](t: RStarTree[M, D, RT, LT]; n: var Node[M, D, RT, LT] | var Leaf[M, D, RT, LT]; lx: L[D, RT, LT] | N[M, D, RT, LT]): type(n) =
-  type NL = type(lx)
-  var nBest: type(n)
+proc rstarSplit[M, D: Dim; RT, LT](t: RStarTree[M, D, RT, LT]; n: var Node[M, D, RT, LT] | var Leaf[M, D, RT, LT]; lx: L[D, RT, LT] | N[M, D, RT, LT]): typeof(n) =
+  type NL = typeof(lx)
+  var nBest: typeof(n)
   new nBest
   var lx = lx
   when n is Node[M, D, RT, LT]:
     lx.n.parent = n
-  var lxbest: type(lx)
-  var m0 = lx.b[0].a.high
+  var lxbest: typeof(lx)
+  var m0 = lx.b[0].a.typeof.high
   for d2 in 0 ..< 2 * D:
     let d = d2 div 2
     if d2 mod 2 == 0:
@@ -251,8 +251,8 @@ proc rstarSplit[M, D: Dim; RT, LT](t: RStarTree[M, D, RT, LT]; n: var Node[M, D,
         lxbest = lx
         m0 = m
   var i0 = -1
-  var o0 = lx.b[0].a.high
-  for i in t.m - 1 .. n.a.high - t.m + 1:
+  var o0 = lx.b[0].a.typeof.high
+  for i in t.m - 1 .. n.a.typeof.high - t.m + 1:
     var b1 = lxbest.b
     for j in 0 ..< i:
       b1 = union(nbest.a[j].b, b1)
@@ -277,8 +277,8 @@ proc rstarSplit[M, D: Dim; RT, LT](t: RStarTree[M, D, RT, LT]; n: var Node[M, D,
     for i in 0 ..< result.numEntries:
       result.a[i].n.parent = result
 
-proc quadraticSplit[M, D: Dim; RT, LT](t: RTree[M, D, RT, LT]; n: var Node[M, D, RT, LT] | var Leaf[M, D, RT, LT]; lx: L[D, RT, LT] | N[M, D, RT, LT]): type(n) =
-  var n1, n2: type(n)
+proc quadraticSplit[M, D: Dim; RT, LT](t: RTree[M, D, RT, LT]; n: var Node[M, D, RT, LT] | var Leaf[M, D, RT, LT]; lx: L[D, RT, LT] | N[M, D, RT, LT]): typeof(n) =
+  var n1, n2: typeof(n)
   var s1, s2: int
   new n1
   new n2
@@ -341,7 +341,7 @@ proc quadraticSplit[M, D: Dim; RT, LT](t: RTree[M, D, RT, LT]; n: var Node[M, D,
   n[] = n1[]
   return n2
 
-proc overflowTreatment[M, D: Dim; RT, LT](t: RStarTree[M, D, RT, LT]; n: var Node[M, D, RT, LT] | var Leaf[M, D, RT, LT]; lx: L[D, RT, LT] | N[M, D, RT, LT]): type(n)
+proc overflowTreatment[M, D: Dim; RT, LT](t: RStarTree[M, D, RT, LT]; n: var Node[M, D, RT, LT] | var Leaf[M, D, RT, LT]; lx: L[D, RT, LT] | N[M, D, RT, LT]): typeof(n)
 
 proc adjustTree[M, D: Dim; RT, LT](t: RTree[M, D, RT, LT]; l, ll: H[M, D, RT, LT]; hb: Box[D, RT]) =
   var n = l
@@ -361,7 +361,7 @@ proc adjustTree[M, D: Dim; RT, LT](t: RTree[M, D, RT, LT]; l, ll: H[M, D, RT, LT
     var i = 0
     while p.a[i].n != n:
       inc(i)
-    var b: type(p.a[0].b)
+    var b: typeof(p.a[0].b)
     if n of Leaf[M, D, RT, LT]:
       when false:#if likely(nn.isNil): # no performance gain
         b = union(p.a[i].b, Leaf[M, D, RT, LT](n).a[n.numEntries - 1].b)
@@ -427,9 +427,9 @@ proc insert*[M, D: Dim; RT, LT](t: RTree[M, D, RT, LT]; leaf: N[M, D, RT, LT] | 
 proc rsinsert[M, D: Dim; RT, LT](t: RStarTree[M, D, RT, LT]; leaf: N[M, D, RT, LT] | L[D, RT, LT]; level: int)
 
 proc reInsert[M, D: Dim; RT, LT](t: RStarTree[M, D, RT, LT]; n: var Node[M, D, RT, LT] | var Leaf[M, D, RT, LT]; lx: L[D, RT, LT] | N[M, D, RT, LT]) =
-  type NL = type(lx)
+  type NL = typeof(lx)
   var lx = lx
-  var buf: type(n.a)
+  var buf: typeof(n.a)
   let p = Node[M, D, RT, LT](n.parent)
   var i = 0
   while p.a[i].n != n:
@@ -449,7 +449,7 @@ proc reInsert[M, D: Dim; RT, LT](t: RStarTree[M, D, RT, LT]; n: var Node[M, D, R
   for i in M - t.p + 1 .. n.a.high:
     rsinsert(t, buf[i], n.level)
 
-proc overflowTreatment[M, D: Dim; RT, LT](t: RStarTree[M, D, RT, LT]; n: var Node[M, D, RT, LT] | var Leaf[M, D, RT, LT]; lx: L[D, RT, LT] | N[M, D, RT, LT]): type(n) =
+proc overflowTreatment[M, D: Dim; RT, LT](t: RStarTree[M, D, RT, LT]; n: var Node[M, D, RT, LT] | var Leaf[M, D, RT, LT]; lx: L[D, RT, LT] | N[M, D, RT, LT]): typeof(n) =
   if n.level != t.root.level and t.firstOverflow[n.level]:
     t.firstOverflow[n.level] = false
     reInsert(t, n, lx)

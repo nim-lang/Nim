@@ -344,11 +344,11 @@ block troofregression:
     if $a != b:
       echo "Failure ", a, " != ", b
 
-  check type(4 ...< 1), "HSlice[system.int, system.int]"
-  check type(4 ...< ^1), "HSlice[system.int, system.BackwardsIndex]"
-  check type(4 ... pred(^1)), "HSlice[system.int, system.BackwardsIndex]"
-  check type(4 ... mypred(8)), "HSlice[system.int, system.int]"
-  check type(4 ... mypred(^1)), "HSlice[system.int, system.BackwardsIndex]"
+  check typeof(4 ...< 1), "HSlice[system.int, system.int]"
+  check typeof(4 ...< ^1), "HSlice[system.int, system.BackwardsIndex]"
+  check typeof(4 ... pred(^1)), "HSlice[system.int, system.BackwardsIndex]"
+  check typeof(4 ... mypred(8)), "HSlice[system.int, system.int]"
+  check typeof(4 ... mypred(^1)), "HSlice[system.int, system.BackwardsIndex]"
 
   var rot = 8
 
@@ -587,3 +587,10 @@ block t12466:
     a[0'u16 + i] = i
   for i in 0'u16 ..< 8'u16:
     a[0'u16 + i] = i
+
+block t17705:
+  # https://github.com/nim-lang/Nim/pull/17705
+  var a = array[0, int].low
+  a = int(a)
+  var b = array[0, int].high
+  b = int(b)

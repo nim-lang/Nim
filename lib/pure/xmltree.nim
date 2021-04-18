@@ -744,7 +744,7 @@ proc findAll*(n: XmlNode, tag: string, caseInsensitive = false): seq[XmlNode] =
   newSeq(result, 0)
   findAll(n, tag, result, caseInsensitive)
 
-proc xmlConstructor(a: NimNode): NimNode {.compileTime.} =
+proc xmlConstructor(a: NimNode): NimNode =
   if a.kind == nnkCall:
     result = newCall("newXmlTree", toStrLit(a[0]))
     var attrs = newNimNode(nnkBracket, a)

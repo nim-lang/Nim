@@ -1,5 +1,5 @@
 discard """
-  cmd: '''nim c --newruntime $file'''
+  cmd: '''nim c --gc:arc $file'''
   output: '''@[1]
 @[116, 101, 115, 116]
 @[1953719668, 875770417]'''

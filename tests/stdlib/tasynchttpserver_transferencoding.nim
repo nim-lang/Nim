@@ -27,10 +27,9 @@ template genTest(input, expected) =
 
   let server = newAsyncHttpServer()
   waitFor runSleepLoop(server)
-  let port = getLocalAddr(server.getSocket.getFd, AF_INET)[1]
   let data = postBegin & input
   var socket = newSocket()
-  socket.connect("127.0.0.1", port)
+  socket.connect("127.0.0.1", server.getPort)
   socket.send(data)
   waitFor sleepAsync(10)
   socket.close()

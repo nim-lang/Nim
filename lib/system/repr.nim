@@ -16,14 +16,9 @@ proc reprInt(x: int64): string {.compilerproc.} = return $x
 proc reprFloat(x: float): string {.compilerproc.} = return $x
 
 proc reprPointer(x: pointer): string {.compilerproc.} =
-  when defined(nimNoArrayToCstringConversion):
-    result = newString(60)
-    let n = c_sprintf(addr result[0], "%p", x)
-    setLen(result, n)
-  else:
-    var buf: array[0..59, char]
-    discard c_sprintf(buf, "%p", x)
-    return $buf
+  result = newString(60)
+  let n = c_sprintf(addr result[0], "%p", x)
+  setLen(result, n)
 
 proc reprStrAux(result: var string, s: cstring; len: int) =
   if cast[pointer](s) == nil:
@@ -286,7 +281,7 @@ when not defined(useNimRtl):
     of tyString:
       let sp = cast[ptr string](p)
       reprStrAux(result, sp[].cstring, sp[].len)
-    of tyCString:
+    of tyCstring:
       let cs = cast[ptr cstring](p)[]
       if cs.isNil: add result, "nil"
       else: reprStrAux(result, cs, cs.len)

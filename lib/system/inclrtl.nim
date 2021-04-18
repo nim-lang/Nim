@@ -44,10 +44,7 @@ else:
   {.pragma: inl, inline.}
   {.pragma: compilerRtl, compilerproc.}
 
-when defined(nimlocks):
-  {.pragma: benign, gcsafe, locks: 0.}
-else:
-  {.pragma: benign, gcsafe.}
+{.pragma: benign, gcsafe, locks: 0.}
 
 when defined(nimHasSinkInference):
   {.push sinkInference: on.}

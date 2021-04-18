@@ -163,7 +163,7 @@ proc nimRawDispose(p: pointer, alignment: int) {.compilerRtl.} =
       let hdrSize = align(sizeof(RefHeader), alignment)
       alignedDealloc(p -! hdrSize, alignment)
 
-template dispose*[T](x: owned(ref T)) = nimRawDispose(cast[pointer](x), T.alignOf)
+template `=dispose`*[T](x: owned(ref T)) = nimRawDispose(cast[pointer](x), T.alignOf)
 #proc dispose*(x: pointer) = nimRawDispose(x)
 
 proc nimDestroyAndDispose(p: pointer) {.compilerRtl, raises: [].} =
@@ -218,15 +218,15 @@ proc GC_ref*[T](x: ref T) =
 
 when not defined(gcOrc):
   template GC_fullCollect* =
-    ## Forces a full garbage collection pass. With ``--gc:arc`` a nop.
+    ## Forces a full garbage collection pass. With `--gc:arc` a nop.
     discard
 
 template setupForeignThreadGc* =
-  ## With ``--gc:arc`` a nop.
+  ## With `--gc:arc` a nop.
   discard
 
 template tearDownForeignThreadGc* =
-  ## With ``--gc:arc`` a nop.
+  ## With `--gc:arc` a nop.
   discard
 
 proc isObj(obj: PNimTypeV2, subclass: cstring): bool {.compilerRtl, inl.} =

@@ -9,18 +9,25 @@
 
 ## This module implements helper procs for parsing Cookies.
 
-import strtabs, times
+import std/[strtabs, times, options]
+
+
+type
+  SameSite* {.pure.} = enum ## The SameSite cookie attribute.
+                            ## `Default` means that `setCookie`
+                            ## proc will not set `SameSite` attribute.
+    Default, None, Lax, Strict
 
 proc parseCookies*(s: string): StringTableRef =
-  ## parses cookies into a string table.
+  ## Parses cookies into a string table.
   ##
   ## The proc is meant to parse the Cookie header set by a client, not the
   ## "Set-Cookie" header set by servers.
-  ##
-  ## Example:
-  ##
-  ## .. code-block::Nim
-  ##     doAssert parseCookies("a=1; foo=bar") == {"a": 1, "foo": "bar"}.newStringTable
+  runnableExamples:
+    import std/strtabs
+    let cookieJar = parseCookies("a=1; foo=bar") 
+    assert cookieJar["a"] == "1"
+    assert cookieJar["foo"] == "bar"
 
   result = newStringTable(modeCaseInsensitive)
   var i = 0
@@ -39,9 +46,10 @@ proc parseCookies*(s: string): StringTableRef =
 
 proc setCookie*(key, value: string, domain = "", path = "",
                 expires = "", noName = false,
-                secure = false, httpOnly = false): string =
+                secure = false, httpOnly = false, 
+                maxAge = none(int), sameSite = SameSite.Default): string =
   ## Creates a command in the format of
-  ## ``Set-Cookie: key=value; Domain=...; ...``
+  ## `Set-Cookie: key=value; Domain=...; ...`
   result = ""
   if not noName: result.add("Set-Cookie: ")
   result.add key & "=" & value
@@ -50,12 +58,19 @@ proc setCookie*(key, value: string, domain = "", path = "",
   if expires != "": result.add("; Expires=" & expires)
   if secure: result.add("; Secure")
   if httpOnly: result.add("; HttpOnly")
+  if maxAge.isSome: result.add("; Max-Age=" & $maxAge.unsafeGet)
+
+  if sameSite != SameSite.Default:
+    if sameSite == SameSite.None:
+      doAssert secure, "Cookies with SameSite=None must specify the Secure attribute!"
+    result.add("; SameSite=" & $sameSite)
 
 proc setCookie*(key, value: string, expires: DateTime|Time,
                 domain = "", path = "", noName = false,
-                secure = false, httpOnly = false): string =
+                secure = false, httpOnly = false,
+                maxAge = none(int), sameSite = SameSite.Default): string =
   ## Creates a command in the format of
-  ## ``Set-Cookie: key=value; Domain=...; ...``
-  return setCookie(key, value, domain, path,
+  ## `Set-Cookie: key=value; Domain=...; ...`
+  result = setCookie(key, value, domain, path,
                    format(expires.utc, "ddd',' dd MMM yyyy HH:mm:ss 'GMT'"),
-                   noname, secure, httpOnly)
+                   noname, secure, httpOnly, maxAge, sameSite)

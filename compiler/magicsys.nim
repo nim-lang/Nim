@@ -50,6 +50,7 @@ proc getSysType*(g: ModuleGraph; info: TLineInfo; kind: TTypeKind): PType =
   result = g.sysTypes[kind]
   if result == nil:
     case kind
+    of tyVoid: result = sysTypeFromName("void")
     of tyInt: result = sysTypeFromName("int")
     of tyInt8: result = sysTypeFromName("int8")
     of tyInt16: result = sysTypeFromName("int16")
@@ -67,7 +68,7 @@ proc getSysType*(g: ModuleGraph; info: TLineInfo; kind: TTypeKind): PType =
     of tyBool: result = sysTypeFromName("bool")
     of tyChar: result = sysTypeFromName("char")
     of tyString: result = sysTypeFromName("string")
-    of tyCString: result = sysTypeFromName("cstring")
+    of tyCstring: result = sysTypeFromName("cstring")
     of tyPointer: result = sysTypeFromName("pointer")
     of tyNil: result = newSysType(g, tyNil, g.config.target.ptrSize)
     else: internalError(g.config, "request for typekind: " & $kind)
@@ -105,6 +106,8 @@ proc addSonSkipIntLit*(father, son: PType; id: IdGenerator) =
 proc getCompilerProc*(g: ModuleGraph; name: string): PSym =
   let ident = getIdent(g.cache, name)
   result = strTableGet(g.compilerprocs, ident)
+  if result == nil:
+    result = loadCompilerProc(g, name)
 
 proc registerCompilerProc*(g: ModuleGraph; s: PSym) =
   strTableAdd(g.compilerprocs, s)

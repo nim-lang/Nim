@@ -1,5 +1,5 @@
 discard """
-  cmd: "nim $target --nilseqs:off $options $file"
+  cmd: "nim $target $options $file"
   output: "Hello"
   ccodecheck: "\\i@'a = ((NimStringDesc*) NIM_NIL)'"
 """

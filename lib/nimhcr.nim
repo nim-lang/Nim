@@ -20,7 +20,7 @@ batchable: false
 # by storing them on the heap. For procs, we produce on the fly simple
 # trampolines that can be dynamically overwritten to jump to a different
 # target. In the host program, all globals and procs are first registered
-# here with ``hcrRegisterGlobal`` and ``hcrRegisterProc`` and then the
+# here with `hcrRegisterGlobal` and `hcrRegisterProc` and then the
 # returned permanent locations are used in every reference to these symbols
 # onwards.
 #
@@ -209,7 +209,7 @@ when not defined(js) and (defined(hotcodereloading) or
              else: "so"
   type
     HcrProcGetter* = proc (libHandle: pointer, procName: cstring): pointer {.nimcall.}
-    HcrGcMarkerProc = proc () {.nimcall.}
+    HcrGcMarkerProc = proc () {.nimcall, raises: [].}
     HcrModuleInitializer* = proc () {.nimcall.}
 
 when defined(createNimHcr):
@@ -423,7 +423,7 @@ when defined(createNimHcr):
     if modules.contains(name):
       unloadDll(name)
     else:
-      modules.add(name, newModuleDesc())
+      modules[name] = newModuleDesc()
 
     let copiedName = name & ".copy." & dllExt
     copyFileWithPermissions(name, copiedName)
@@ -601,12 +601,12 @@ when defined(createNimHcr):
 
   proc hcrAddModule*(module: cstring) {.nimhcr.} =
     if not modules.contains($module):
-      modules.add($module, newModuleDesc())
+      modules[$module] = newModuleDesc()
 
   proc hcrGeneration*(): int {.nimhcr.} =
     generation
 
-  proc hcrMarkGlobals*() {.nimhcr, nimcall, gcsafe.} =
+  proc hcrMarkGlobals*() {.compilerproc, exportc, dynlib, nimcall, gcsafe.} =
     # This is gcsafe, because it will be registered
     # only in the GC of the main thread.
     {.gcsafe.}:
@@ -648,10 +648,10 @@ elif defined(hotcodereloading) or defined(testNimHcr):
 
     proc hcrAddEventHandler*(isBefore: bool, cb: proc ()) {.nimhcr.}
 
-    proc hcrMarkGlobals*() {.nimhcr, nimcall, gcsafe.}
+    proc hcrMarkGlobals*() {.raises: [], nimhcr, nimcall, gcsafe.}
 
     when declared(nimRegisterGlobalMarker):
-      nimRegisterGlobalMarker(hcrMarkGlobals)
+      nimRegisterGlobalMarker(cast[GlobalMarkerProc](hcrMarkGlobals))
 
   else:
     proc hcrHasModuleChanged*(moduleHash: string): bool =

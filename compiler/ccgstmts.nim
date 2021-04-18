@@ -25,10 +25,10 @@ proc getTraverseProc(p: BProc, v: PSym): Rope =
 
 proc registerTraverseProc(p: BProc, v: PSym, traverseProc: Rope) =
   if sfThread in v.flags:
-    appcg(p.module, p.module.initProc.procSec(cpsInit),
+    appcg(p.module, p.module.preInitProc.procSec(cpsInit),
       "$n\t#nimRegisterThreadLocalMarker($1);$n$n", [traverseProc])
   else:
-    appcg(p.module, p.module.initProc.procSec(cpsInit),
+    appcg(p.module, p.module.preInitProc.procSec(cpsInit),
       "$n\t#nimRegisterGlobalMarker($1);$n$n", [traverseProc])
 
 proc isAssignedImmediately(conf: ConfigRef; n: PNode): bool {.inline.} =

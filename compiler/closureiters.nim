@@ -157,7 +157,7 @@ type
 
 const
   nkSkip = {nkEmpty..nkNilLit, nkTemplateDef, nkTypeSection, nkStaticStmt,
-            nkCommentStmt} + procDefs
+            nkCommentStmt, nkMixinStmt, nkBindStmt} + procDefs
 
 proc newStateAccess(ctx: var Ctx): PNode =
   if ctx.stateVarSym.isNil:
@@ -427,7 +427,8 @@ proc addExprAssgn(ctx: Ctx, output, input: PNode, sym: PSym) =
 
 proc convertExprBodyToAsgn(ctx: Ctx, exprBody: PNode, res: PSym): PNode =
   result = newNodeI(nkStmtList, exprBody.info)
-  ctx.addExprAssgn(result, exprBody, res)
+  if exprBody.typ != nil:
+    ctx.addExprAssgn(result, exprBody, res)
 
 proc newNotCall(g: ModuleGraph; e: PNode): PNode =
   result = newTree(nkCall, newSymNode(g.getSysMagic(e.info, "not", mNot), e.info), e)

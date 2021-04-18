@@ -10,7 +10,7 @@
 ## Nim OID support. An OID is a global ID that consists of a timestamp,
 ## a unique counter and a random value. This combination should suffice to
 ## produce a globally distributed unique ID. This implementation was extracted
-## from the Mongodb interface and it thus binary compatible with a Mongo OID.
+## from the MongoDB interface and is thus binary compatible with a MongoDB OID.
 ##
 ## This implementation calls `initRand()` for the first call of
 ## `genOid`.
@@ -19,18 +19,18 @@ import std/[hashes, times, endians, random]
 from std/private/decode_helpers import handleHexChar
 
 type
-  Oid* = object  ## An OID.
-    time: int32  ##
-    fuzz: int32  ##
-    count: int32 ##
+  Oid* = object ## An OID.
+    time: int32
+    fuzz: int32
+    count: int32
 
 proc `==`*(oid1: Oid, oid2: Oid): bool {.inline.} =
-  ## Compares two Mongo Object IDs for equality.
+  ## Compares two OIDs for equality.
   result = (oid1.time == oid2.time) and (oid1.fuzz == oid2.fuzz) and
           (oid1.count == oid2.count)
 
 proc hash*(oid: Oid): Hash =
-  ## Generates hash of Oid for use in hashtables.
+  ## Generates the hash of an OID for use in hashtables.
   var h: Hash = 0
   h = h !& hash(oid.time)
   h = h !& hash(oid.fuzz)
@@ -68,13 +68,13 @@ template toStringImpl[T: string | cstring](result: var T, oid: Oid) =
     result[N] = '\0'
 
 proc oidToString*(oid: Oid, str: cstring) {.deprecated: "unsafe; use `$`".} =
-  ## Converts an oid to `str` which must have space allocated for 25 elements.
+  ## Converts an oid to a string which must have space allocated for 25 elements.
   # work around a compiler bug:
   var str = str
   toStringImpl(str, oid)
 
 proc `$`*(oid: Oid): string =
-  ## Converts an oid to string.
+  ## Converts an OID to a string.
   toStringImpl(result, oid)
 
 
@@ -100,7 +100,8 @@ proc genOid*(): Oid =
   ## Generates a new OID.
   runnableExamples:
     doAssert ($genOid()).len == 24
-    if false: doAssert $genOid() == "5fc7f546ddbbc84800006aaf"
+  runnableExamples("-r:off"):
+    echo $genOid() # for example, "5fc7f546ddbbc84800006aaf"
   genOid(result, incr, fuzz)
 
 proc generatedTime*(oid: Oid): Time =

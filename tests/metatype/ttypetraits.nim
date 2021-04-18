@@ -90,6 +90,8 @@ block distinctBase:
       Foo[T] = distinct seq[T]
     var a: Foo[int]
     doAssert a.type.distinctBase is seq[int]
+    doAssert seq[int].distinctBase is seq[int]
+    doAssert "abc".distinctBase == "abc"
 
   block:
     # simplified from https://github.com/nim-lang/Nim/pull/8531#issuecomment-410436458

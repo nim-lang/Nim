@@ -79,8 +79,6 @@ type
     sortoutput*: bool
     output*: string
     line*, column*: int
-    tfile*: string
-    tline*, tcolumn*: int
     exitCode*: int
     msg*: string
     ccodeCheck*: seq[string]
@@ -103,7 +101,7 @@ type
 
 proc getCmd*(s: TSpec): string =
   if s.cmd.len == 0:
-    result = compilerPrefix & " $target --hints:on -d:testing --nimblePath:tests/deps $options $file"
+    result = compilerPrefix & " $target --hints:on -d:testing --clearNimblePath --nimblePath:build/deps/pkgs $options $file"
   else:
     result = s.cmd
 
@@ -209,9 +207,6 @@ proc extractSpec(filename: string; spec: var TSpec): string =
     #echo "warning: file does not contain spec: " & filename
     result = ""
 
-when not defined(nimhygiene):
-  {.pragma: inject.}
-
 proc parseTargets*(value: string): set[TTarget] =
   for v in value.normalize.splitWhitespace:
     case v
@@ -233,7 +228,7 @@ proc addLine*(self: var string; a, b: string) =
 proc initSpec*(filename: string): TSpec =
   result.file = filename
 
-proc isCurrentBatch(testamentData: TestamentData; filename: string): bool =
+proc isCurrentBatch*(testamentData: TestamentData; filename: string): bool =
   if testamentData.testamentNumBatch != 0:
     hash(filename) mod testamentData.testamentNumBatch == testamentData.testamentBatch
   else:
@@ -280,12 +275,6 @@ proc parseSpec*(filename: string): TSpec =
         if result.msg.len == 0 and result.nimout.len == 0:
           result.parseErrors.addLine "errormsg or msg needs to be specified before column"
         discard parseInt(e.value, result.column)
-      of "tfile":
-        result.tfile = e.value
-      of "tline":
-        discard parseInt(e.value, result.tline)
-      of "tcolumn":
-        discard parseInt(e.value, result.tcolumn)
       of "output":
         if result.outputCheck != ocSubstr:
           result.outputCheck = ocEqual
@@ -333,8 +322,8 @@ proc parseSpec*(filename: string): TSpec =
           when defined(linux): result.err = reDisabled
         of "bsd":
           when defined(bsd): result.err = reDisabled
-        of "macosx":
-          when defined(macosx): result.err = reDisabled
+        of "osx", "macosx": # xxx remove `macosx` alias?
+          when defined(osx): result.err = reDisabled
         of "unix":
           when defined(unix): result.err = reDisabled
         of "posix":

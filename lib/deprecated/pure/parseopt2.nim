@@ -13,8 +13,8 @@
 ##
 ## Supported syntax:
 ##
-## 1. short options - ``-abcd``, where a, b, c, d are names
-## 2. long option - ``--foo:bar``, ``--foo=bar`` or ``--foo``
+## 1. short options - `-abcd`, where a, b, c, d are names
+## 2. long option - `--foo:bar`, `--foo=bar` or `--foo`
 ## 3. argument - everything else
 
 {.deprecated: "Use the 'parseopt' module instead".}
@@ -29,16 +29,16 @@ type
   CmdLineKind* = enum         ## the detected command line token
     cmdEnd,                   ## end of command line reached
     cmdArgument,              ## argument detected
-    cmdLongOption,            ## a long option ``--option`` detected
-    cmdShortOption            ## a short option ``-c`` detected
+    cmdLongOption,            ## a long option `--option` detected
+    cmdShortOption            ## a short option `-c` detected
   OptParser* =
       object of RootObj ## this object implements the command line parser
     cmd: seq[string]
     pos: int
     remainingShortOptions: string
     kind*: CmdLineKind        ## the detected command line token
-    key*, val*: string        ## key and value pair; ``key`` is the option
-                              ## or the argument, ``value`` is not "" if
+    key*, val*: string        ## key and value pair; `key` is the option
+                              ## or the argument, `value` is not "" if
                               ## the option was given a value
 
 proc initOptParser*(cmdline: seq[string]): OptParser {.rtl.} =

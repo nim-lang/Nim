@@ -229,7 +229,7 @@ proc switchTo(current, to: CoroutinePtr) =
   nimGC_setStackBottom(ctx.ncbottom)
 
 proc suspend*(sleepTime: float = 0) =
-  ## Stops coroutine execution and resumes no sooner than after ``sleeptime`` seconds.
+  ## Stops coroutine execution and resumes no sooner than after `sleeptime` seconds.
   ## Until then other coroutines are executed.
   var current = getCurrent()
   current.sleepTime = sleepTime
@@ -273,9 +273,7 @@ proc start*(c: proc(), stacksize: int = defaultStackSize): CoroutineRef {.discar
     coro = cast[CoroutinePtr](alloc0(sizeof(Coroutine)))
     coro.execContext = CreateFiberEx(stacksize, stacksize,
       FIBER_FLAG_FLOAT_SWITCH,
-      (proc(p: pointer): void {.stdcall.} = runCurrentTask()),
-      nil)
-    coro.stack.size = stacksize
+      (proc(p: pointer) {.stdcall.} = runCurrentTask()), nil)
   else:
     coro = cast[CoroutinePtr](alloc0(sizeof(Coroutine) + stacksize))
     coro.stack.top = cast[pointer](cast[ByteAddress](coro) + sizeof(Coroutine))
@@ -294,9 +292,9 @@ proc start*(c: proc(), stacksize: int = defaultStackSize): CoroutineRef {.discar
   return coro.reference
 
 proc run*() =
-  initialize()
   ## Starts main coroutine scheduler loop which exits when all coroutines exit.
   ## Calling this proc starts execution of first coroutine.
+  initialize()
   ctx.current = ctx.coroutines.head
   var minDelay: float = 0
   while ctx.current != nil:
@@ -335,9 +333,9 @@ proc run*() =
       ctx.current = ctx.current.next
 
 proc alive*(c: CoroutineRef): bool = c.coro != nil and c.coro.state != CORO_FINISHED
-  ## Returns ``true`` if coroutine has not returned, ``false`` otherwise.
+  ## Returns `true` if coroutine has not returned, `false` otherwise.
 
 proc wait*(c: CoroutineRef, interval = 0.01) =
-  ## Returns only after coroutine ``c`` has returned. ``interval`` is time in seconds how often.
+  ## Returns only after coroutine `c` has returned. `interval` is time in seconds how often.
   while alive(c):
     suspend(interval)

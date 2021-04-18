@@ -38,19 +38,18 @@ const
   IntMask = 1 shl IntShift - 1
 
 type
-  PTrunk = ref Trunk
-  Trunk = object
-    next: PTrunk                                # all nodes are connected with this pointer
+  Trunk = ref object
+    next: Trunk                                 # all nodes are connected with this pointer
     key: int                                    # start address at bit 0
     bits: array[0..IntsPerTrunk - 1, BitScalar] # a bit vector
 
-  TrunkSeq = seq[PTrunk]
+  TrunkSeq = seq[Trunk]
 
   PackedSet*[A: Ordinal] = object
     ## An efficient set of `Ordinal` types implemented as a sparse bit set.
     elems: int           # only valid for small numbers
     counter, max: int
-    head: PTrunk
+    head: Trunk
     data: TrunkSeq
     a: array[0..33, int] # profiling shows that 34 elements are enough
 
@@ -65,7 +64,7 @@ proc nextTry(h, maxHash: Hash, perturb: var Hash): Hash {.inline.} =
   perturb = cast[Hash](perturb2)
   result = ((5 * h) + 1 + perturb) and maxHash
 
-proc packedSetGet[A](t: PackedSet[A], key: int): PTrunk =
+proc packedSetGet[A](t: PackedSet[A], key: int): Trunk =
   var h = key and t.max
   var perturb = key
   while t.data[h] != nil:
@@ -74,7 +73,7 @@ proc packedSetGet[A](t: PackedSet[A], key: int): PTrunk =
     h = nextTry(h, t.max, perturb)
   result = nil
 
-proc intSetRawInsert[A](t: PackedSet[A], data: var TrunkSeq, desc: PTrunk) =
+proc intSetRawInsert[A](t: PackedSet[A], data: var TrunkSeq, desc: Trunk) =
   var h = desc.key and t.max
   var perturb = desc.key
   while data[h] != nil:
@@ -92,7 +91,7 @@ proc intSetEnlarge[A](t: var PackedSet[A]) =
     if t.data[i] != nil: intSetRawInsert(t, n, t.data[i])
   swap(t.data, n)
 
-proc intSetPut[A](t: var PackedSet[A], key: int): PTrunk =
+proc intSetPut[A](t: var PackedSet[A], key: int): Trunk =
   var h = key and t.max
   var perturb = key
   while t.data[h] != nil:
@@ -112,7 +111,7 @@ proc intSetPut[A](t: var PackedSet[A], key: int): PTrunk =
   t.data[h] = result
 
 proc bitincl[A](s: var PackedSet[A], key: int) {.inline.} =
-  var ret: PTrunk
+  var ret: Trunk
   var t = intSetPut(s, key shr TrunkShift)
   var u = key and TrunkMask
   t.bits[u shr IntShift] = t.bits[u shr IntShift] or
@@ -327,7 +326,7 @@ proc excl*[A](s: var PackedSet[A], key: A) =
     a.excl(99)
     assert len(a) == 0
 
-  exclImpl[A](s, cast[int](key))
+  exclImpl[A](s, ord(key))
 
 proc excl*[A](s: var PackedSet[A], other: PackedSet[A]) =
   ## Excludes all elements from `other` from `s`.
@@ -379,7 +378,7 @@ proc missingOrExcl*[A](s: var PackedSet[A], key: A): bool =
     assert a.missingOrExcl(5) == true
 
   var count = s.len
-  exclImpl(s, cast[int](key))
+  exclImpl(s, ord(key))
   result = count == s.len
 
 proc clear*[A](result: var PackedSet[A]) =
@@ -441,7 +440,7 @@ proc assign*[A](dest: var PackedSet[A], src: PackedSet[A]) =
       var perturb = it.key
       while dest.data[h] != nil: h = nextTry(h, dest.max, perturb)
       assert dest.data[h] == nil
-      var n: PTrunk
+      var n: Trunk
       new(n)
       n.next = dest.head
       n.key = it.key

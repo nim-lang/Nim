@@ -45,7 +45,7 @@ type
       d_type*: int8 ## Type of file; not supported by all filesystem types.
                     ## (not POSIX)
       when defined(linux) or defined(openbsd):
-        d_off*: Off  ## Not an offset. Value that ``telldir()`` would return.
+        d_off*: Off  ## Not an offset. Value that `telldir()` would return.
     elif defined(haiku):
       d_pino*: Ino ## Parent inode (only for queries) (not POSIX)
       d_reclen*: cushort ## Length of this record. (not POSIX)

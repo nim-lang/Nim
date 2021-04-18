@@ -12,7 +12,7 @@ import
   ast, astalgo, modules, passes, condsyms,
   options, sem, llstream, lineinfos, vm,
   vmdef, modulegraphs, idents, os, pathutils,
-  passaux, scriptconfig
+  passaux, scriptconfig, std/compilesettings
 
 type
   Interpreter* = ref object ## Use Nim as an interpreter with this object
@@ -67,7 +67,7 @@ proc evalScript*(i: Interpreter; scriptStream: PLLStream = nil) =
   ## This can also be used to *reload* the script.
   assert i != nil
   assert i.mainModule != nil, "no main module selected"
-  initStrTable(i.mainModule.semtab(i.graph))
+  initStrTables(i.graph, i.mainModule)
   i.mainModule.ast = nil
 
   let s = if scriptStream != nil: scriptStream
@@ -92,10 +92,9 @@ proc findNimStdLib*(): string =
     return ""
 
 proc findNimStdLibCompileTime*(): string =
-  ## Same as ``findNimStdLib`` but uses source files used at compile time,
+  ## Same as `findNimStdLib` but uses source files used at compile time,
   ## and asserts on error.
-  const exe = getCurrentCompilerExe()
-  result = exe.splitFile.dir.parentDir / "lib"
+  result = querySetting(libPath)
   doAssert fileExists(result / "system.nim"), "result:" & result
 
 proc createInterpreter*(scriptName: string;

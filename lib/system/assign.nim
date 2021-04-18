@@ -167,7 +167,7 @@ when false:
     of tyPointer: k = "range"
     of tyOpenArray: k = "openarray"
     of tyString: k = "string"
-    of tyCString: k = "cstring"
+    of tyCstring: k = "cstring"
     of tyInt: k = "int"
     of tyInt32: k = "int32"
     else: k = "other"

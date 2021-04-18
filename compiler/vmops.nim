@@ -9,24 +9,28 @@
 
 # Unfortunately this cannot be a module yet:
 #import vmdeps, vm
-from math import sqrt, ln, log10, log2, exp, round, arccos, arcsin,
+from std/math import sqrt, ln, log10, log2, exp, round, arccos, arcsin,
   arctan, arctan2, cos, cosh, hypot, sinh, sin, tan, tanh, pow, trunc,
-  floor, ceil, `mod`
+  floor, ceil, `mod`, cbrt, arcsinh, arccosh, arctanh, erf, erfc, gamma,
+  lgamma
 
 when declared(math.copySign):
-  from math import copySign
+  from std/math import copySign
 
 when declared(math.signbit):
-  from math import signbit
+  from std/math import signbit
 
-from os import getEnv, existsEnv, dirExists, fileExists, putEnv, walkDir, getAppFilename
-from md5 import getMD5
+from std/os import getEnv, existsEnv, dirExists, fileExists, putEnv, walkDir,
+                   getAppFilename, raiseOSError, osLastError
+
+from std/md5 import getMD5
+from std/times import cpuTime
+from std/hashes import hash
+from std/osproc import nil
+
 from sighashes import symBodyDigest
-from times import cpuTime
 
-from hashes import hash
-from osproc import nil
-
+# There are some useful procs in vmconv.
 import vmconv
 
 template mathop(op) {.dirty.} =
@@ -131,6 +135,7 @@ when defined(nimHasInvariant):
     of compileOptions: result = conf.compileOptions
     of ccompilerPath: result = conf.cCompilerPath
     of backend: result = $conf.backend
+    of libPath: result = conf.libpath.string
 
   proc querySettingSeqImpl(conf: ConfigRef, switch: BiggestInt): seq[string] =
     template copySeq(field: untyped): untyped =
@@ -154,6 +159,7 @@ proc registerAdditionalOps*(c: PCtx) =
     setResult a, c.config.projectPath.string
 
   wrap1f_math(sqrt)
+  wrap1f_math(cbrt)
   wrap1f_math(ln)
   wrap1f_math(log10)
   wrap1f_math(log2)
@@ -161,6 +167,9 @@ proc registerAdditionalOps*(c: PCtx) =
   wrap1f_math(arccos)
   wrap1f_math(arcsin)
   wrap1f_math(arctan)
+  wrap1f_math(arcsinh)
+  wrap1f_math(arccosh)
+  wrap1f_math(arctanh)
   wrap2f_math(arctan2)
   wrap1f_math(cos)
   wrap1f_math(cosh)
@@ -173,6 +182,10 @@ proc registerAdditionalOps*(c: PCtx) =
   wrap1f_math(trunc)
   wrap1f_math(floor)
   wrap1f_math(ceil)
+  wrap1f_math(erf)
+  wrap1f_math(erfc)
+  wrap1f_math(gamma)
+  wrap1f_math(lgamma)
 
   when declared(copySign):
     wrap2f_math(copySign)
@@ -303,3 +316,7 @@ proc registerAdditionalOps*(c: PCtx) =
     let fn = getNode(a, 0)
     setResult(a, (fn.typ != nil and tfNoSideEffect in fn.typ.flags) or
                  (fn.kind == nkSym and fn.sym.kind == skFunc))
+
+  registerCallback c, "stdlib.typetraits.hasClosureImpl", proc (a: VmArgs) =
+    let fn = getNode(a, 0)
+    setResult(a, fn.kind == nkClosure or (fn.typ != nil and fn.typ.callConv == ccClosure))

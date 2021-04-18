@@ -10,7 +10,7 @@
 import
   intsets, ast, astalgo, msgs, renderer, magicsys, types, idents, trees,
   wordrecg, strutils, options, guards, lineinfos, semfold, semdata,
-  modulegraphs, varpartitions, typeallowed, nilcheck
+  modulegraphs, varpartitions, typeallowed, nilcheck, errorhandling
 
 when defined(useDfa):
   import dfa
@@ -70,7 +70,7 @@ type
     guards: TModel # nested guards
     locked: seq[PNode] # locked locations
     gcUnsafe, isRecursive, isTopLevel, hasSideEffect, inEnforcedGcSafe: bool
-    hasDangerousAssign: bool
+    hasDangerousAssign, isInnerProc: bool
     inEnforcedNoSideEffects: bool
     maxLockLevel, currLockLevel: TLockLevel
     currOptions: TOptions
@@ -137,7 +137,7 @@ proc guardGlobal(a: PEffects; n: PNode; guard: PSym) =
   # we allow accesses nevertheless in top level statements for
   # easier initialization:
   #if a.isTopLevel:
-  #  message(n.info, warnUnguardedAccess, renderTree(n))
+  #  message(a.config, n.info, warnUnguardedAccess, renderTree(n))
   #else:
   if not a.isTopLevel:
     localError(a.config, n.info, "unguarded access: " & renderTree(n))
@@ -269,6 +269,9 @@ proc useVarNoInitCheck(a: PEffects; n: PNode; s: PSym) =
       markSideEffect(a, s)
     else:
       markSideEffect(a, s)
+  if s.owner != a.owner and s.kind in {skVar, skLet, skForVar, skResult, skParam} and
+     {sfGlobal, sfThread} * s.flags == {}:
+    a.isInnerProc = true
 
 proc useVar(a: PEffects, n: PNode) =
   let s = n.sym
@@ -301,8 +304,8 @@ proc addToIntersection(inter: var TIntersection, s: int) =
 proc throws(tracked, n, orig: PNode) =
   if n.typ == nil or n.typ.kind != tyError:
     if orig != nil:
-      let x = copyNode(n)
-      x.info = orig.info
+      let x = copyTree(orig)
+      x.typ = n.typ
       tracked.add x
     else:
       tracked.add n
@@ -326,7 +329,7 @@ proc createTag(g: ModuleGraph; n: PNode): PNode =
   if not n.isNil: result.info = n.info
 
 proc addRaiseEffect(a: PEffects, e, comesFrom: PNode) =
-  assert e.kind != nkRaiseStmt
+  #assert e.kind != nkRaiseStmt
   var aa = a.exc
   for i in a.bottom..<aa.len:
     # we only track the first node that can have the effect E in order
@@ -475,7 +478,7 @@ proc getLockLevel(s: PSym): TLockLevel =
       result = 0.TLockLevel
     else:
       result = UnknownLockLevel
-      #message(s.info, warnUser, "FOR THIS " & s.name.s)
+      #message(??.config, s.info, warnUser, "FOR THIS " & s.name.s)
 
 proc mergeLockLevels(tracked: PEffects, n: PNode, lockLevel: TLockLevel) =
   if lockLevel >= tracked.currLockLevel:
@@ -541,7 +544,7 @@ proc assumeTheWorst(tracked: PEffects; n: PNode; op: PType) =
   let lockLevel = if op.lockLevel == UnspecifiedLockLevel: UnknownLockLevel
                   else: op.lockLevel
   #if lockLevel == UnknownLockLevel:
-  #  message(n.info, warnUser, "had to assume the worst here")
+  #  message(??.config, n.info, warnUser, "had to assume the worst here")
   mergeLockLevels(tracked, n, lockLevel)
 
 proc isOwnedProcVar(n: PNode; owner: PSym): bool =
@@ -693,7 +696,7 @@ proc paramType(op: PType, i: int): PType =
   if op != nil and i < op.len: result = op[i]
 
 proc cstringCheck(tracked: PEffects; n: PNode) =
-  if n[0].typ.kind == tyCString and (let a = skipConv(n[1]);
+  if n[0].typ.kind == tyCstring and (let a = skipConv(n[1]);
       a.typ.kind == tyString and a.kind notin {nkStrLit..nkTripleStrLit}):
     message(tracked.config, n.info, warnUnsafeCode, renderTree(n))
 
@@ -914,7 +917,7 @@ proc track(tracked: PEffects, n: PNode) =
     if n[0].kind != nkEmpty:
       n[0].info = n.info
       #throws(tracked.exc, n[0])
-      addRaiseEffect(tracked, n[0], nil)
+      addRaiseEffect(tracked, n[0], n)
       for i in 0..<n.safeLen:
         track(tracked, n[i])
       createTypeBoundOps(tracked, n[0].typ, n.info)
@@ -1133,6 +1136,8 @@ proc track(tracked: PEffects, n: PNode) =
     dec tracked.leftPartOfAsgn
     for i in 1 ..< n.len: track(tracked, n[i])
     inc tracked.leftPartOfAsgn
+  of nkError:
+    localError(tracked.config, n.info, errorToString(tracked.config, n))
   else:
     for i in 0..<n.safeLen: track(tracked, n[i])
 
@@ -1158,7 +1163,9 @@ proc checkRaisesSpec(g: ModuleGraph; spec, real: PNode, msg: string, hints: bool
           break search
       # XXX call graph analysis would be nice here!
       pushInfoContext(g.config, spec.info)
-      localError(g.config, r.info, errGenerated, msg & typeToString(r.typ))
+      var rr = if r.kind == nkRaiseStmt: r[0] else: r
+      while rr.kind in {nkStmtList, nkStmtListExpr} and rr.len > 0: rr = rr.lastSon
+      localError(g.config, r.info, errGenerated, renderTree(rr) & " " & msg & typeToString(r.typ))
       popInfoContext(g.config)
   # hint about unnecessarily listed exception types:
   if hints:
@@ -1252,6 +1259,15 @@ proc hasRealBody(s: PSym): bool =
   ## which is not a real implementation, refs #14314
   result = {sfForward, sfImportc} * s.flags == {}
 
+proc maybeWrappedInClosure(tracked: PEffects; t: PType): bool {.inline.} =
+  ## The spec does say when to produce destructors. However, the spec
+  ## was written in mind with the idea that "lambda lifting" already
+  ## happened. Not true in our implementation, so we need to workaround
+  ## here:
+  result = tracked.isInnerProc and
+    sfSystemModule notin tracked.c.module.flags and
+    tfCheckedForDestructor notin t.flags and containsGarbageCollectedRef(t)
+
 proc trackProc*(c: PContext; s: PSym, body: PNode) =
   let g = c.graph
   var effects = s.typ.n[0]
@@ -1270,7 +1286,8 @@ proc trackProc*(c: PContext; s: PSym, body: PNode) =
       let param = params[i].sym
       let typ = param.typ
       if isSinkTypeForParam(typ) or
-          (t.config.selectedGC in {gcArc, gcOrc} and isClosure(typ.skipTypes(abstractInst))):
+          (t.config.selectedGC in {gcArc, gcOrc} and
+            (isClosure(typ.skipTypes(abstractInst)) or maybeWrappedInClosure(t, typ))):
         createTypeBoundOps(t, typ, param.info)
       when false:
         if typ.kind == tyOut and param.id notin t.init:

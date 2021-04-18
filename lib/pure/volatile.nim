@@ -20,7 +20,7 @@ template volatileLoad*[T](src: ptr T): T =
       src[]
     else:
       var res: T
-      {.emit: [res, " = (*(", type(src[]), " volatile*)", src, ");"].}
+      {.emit: [res, " = (*(", typeof(src[]), " volatile*)", src, ");"].}
       res
 
 template volatileStore*[T](dest: ptr T, val: T) =
@@ -33,4 +33,4 @@ template volatileStore*[T](dest: ptr T, val: T) =
     when defined(js):
       dest[] = val
     else:
-      {.emit: ["*((", type(dest[]), " volatile*)(", dest, ")) = ", val, ";"].}
+      {.emit: ["*((", typeof(dest[]), " volatile*)(", dest, ")) = ", val, ";"].}

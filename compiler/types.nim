@@ -67,13 +67,13 @@ const
                     tyAlias, tyInferred, tySink, tyOwned}
   # see also ast.abstractVarRange
   abstractInst* = {tyGenericInst, tyDistinct, tyOrdinal, tyTypeDesc, tyAlias,
-                   tyInferred, tySink, tyOwned}
+                   tyInferred, tySink, tyOwned} # xxx what about tyStatic?
   abstractInstOwned* = abstractInst + {tyOwned}
   skipPtrs* = {tyVar, tyPtr, tyRef, tyGenericInst, tyTypeDesc, tyAlias,
                tyInferred, tySink, tyLent, tyOwned}
   # typedescX is used if we're sure tyTypeDesc should be included (or skipped)
   typedescPtrs* = abstractPtrs + {tyTypeDesc}
-  typedescInst* = abstractInst + {tyTypeDesc, tyOwned}
+  typedescInst* = abstractInst + {tyTypeDesc, tyOwned, tyUserTypeClass}
 
 proc invalidGenericInst*(f: PType): bool =
   result = f.kind == tyGenericInst and lastSon(f) == nil
@@ -448,6 +448,7 @@ proc rangeToStr(n: PNode): string =
 const
   typeToStr: array[TTypeKind, string] = ["None", "bool", "char", "empty",
     "Alias", "typeof(nil)", "untyped", "typed", "typeDesc",
+    # xxx typeDesc=>typedesc: typedesc is declared as such, and is 10x more common.
     "GenericInvocation", "GenericBody", "GenericInst", "GenericParam",
     "distinct $1", "enum", "ordinal[$1]", "array[$1, $2]", "object", "tuple",
     "set[$1]", "range[$1]", "ptr ", "ref ", "var ", "seq[$1]", "proc",
@@ -459,8 +460,8 @@ const
     "lent ", "varargs[$1]", "UncheckedArray[$1]", "Error Type",
     "BuiltInTypeClass", "UserTypeClass",
     "UserTypeClassInst", "CompositeTypeClass", "inferred",
-    "and", "or", "not", "any", "static", "TypeFromExpr", "out ",
-    "void"]
+    "and", "or", "not", "any", "static", "TypeFromExpr", "concept", # xxx bugfix
+    "void", "iterable"]
 
 const preferToResolveSymbols = {preferName, preferTypeName, preferModuleInfo,
   preferGenericArg, preferResolved, preferMixed}
@@ -502,7 +503,7 @@ proc typeToString(typ: PType, prefer: TPreferedDesc = preferName): string =
         result = typeToString(t[0])
       elif prefer in {preferResolved, preferMixed}:
         case t.kind
-        of IntegralTypes + {tyFloat..tyFloat128} + {tyString, tyCString}:
+        of IntegralTypes + {tyFloat..tyFloat128} + {tyString, tyCstring}:
           result = typeToStr[t.kind]
         of tyGenericBody:
           result = typeToString(t.lastSon)
@@ -550,7 +551,7 @@ proc typeToString(typ: PType, prefer: TPreferedDesc = preferName): string =
       result.add(']')
     of tyTypeDesc:
       if t[0].kind == tyNone: result = "typedesc"
-      else: result = "type " & typeToString(t[0])
+      else: result = "typedesc[" & typeToString(t[0]) & "]"
     of tyStatic:
       if prefer == preferGenericArg and t.n != nil:
         result = t.n.renderTree
@@ -644,6 +645,11 @@ proc typeToString(typ: PType, prefer: TPreferedDesc = preferName): string =
     of tyDistinct:
       result = "distinct " & typeToString(t[0],
         if prefer == preferModuleInfo: preferModuleInfo else: preferTypeName)
+    of tyIterable:
+      # xxx factor this pattern
+      result = "iterable"
+      if t.len > 0:
+        result &= "[" & typeToString(t[0]) & ']'
     of tyTuple:
       # we iterate over t.sons here, because t.n may be nil
       if t.n != nil:
@@ -756,7 +762,7 @@ proc firstOrd*(conf: ConfigRef; t: PType): Int128 =
   of tyOrdinal:
     if t.len > 0: result = firstOrd(conf, lastSon(t))
     else: internalError(conf, "invalid kind for firstOrd(" & $t.kind & ')')
-  of tyUncheckedArray, tyCString:
+  of tyUncheckedArray, tyCstring:
     result = Zero
   else:
     internalError(conf, "invalid kind for firstOrd(" & $t.kind & ')')
@@ -1123,7 +1129,7 @@ proc sameTypeAux(x, y: PType, c: var TSameTypeClosure): bool =
     return true
 
   case a.kind
-  of tyEmpty, tyChar, tyBool, tyNil, tyPointer, tyString, tyCString,
+  of tyEmpty, tyChar, tyBool, tyNil, tyPointer, tyString, tyCstring,
      tyInt..tyUInt64, tyTyped, tyUntyped, tyVoid:
     result = sameFlags(a, b)
   of tyStatic, tyFromExpr:
@@ -1190,11 +1196,12 @@ proc sameTypeAux(x, y: PType, c: var TSameTypeClosure): bool =
     result = sameTypeOrNilAux(a[0], b[0], c) and
         sameValue(a.n[0], b.n[0]) and
         sameValue(a.n[1], b.n[1])
-  of tyGenericInst, tyAlias, tyInferred:
+  of tyGenericInst, tyAlias, tyInferred, tyIterable:
     cycleCheck()
     result = sameTypeAux(a.lastSon, b.lastSon, c)
   of tyNone: result = false
-  of tyOptDeprecated: doAssert false
+  of tyConcept:
+    result = exprStructuralEquivalent(a.n, b.n)
 
 proc sameBackendType*(x, y: PType): bool =
   var c = initSameTypeClosure()
@@ -1269,6 +1276,7 @@ proc matchType*(a: PType, pattern: openArray[tuple[k:TTypeKind, i:int]],
     if i >= a.len or a[i] == nil: return false
     a = a[i]
   result = a.kind == last
+
 
 include sizealignoffsetimpl
 

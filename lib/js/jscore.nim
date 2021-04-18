@@ -13,6 +13,7 @@
 ## specific requirements and solely targets JavaScript, you should be using
 ## the relevant functions in the `math`, `json`, and `times` stdlib
 ## modules instead.
+import std/private/since
 
 when not defined(js):
   {.error: "This module only works on the JavaScript platform".}
@@ -104,3 +105,8 @@ proc setFullYear*(d: DateTime, year: int) {.importcpp.}
 #JSON library
 proc stringify*(l: JsonLib, s: JsRoot): cstring {.importcpp.}
 proc parse*(l: JsonLib, s: cstring): JsRoot {.importcpp.}
+
+
+since (1, 5):
+  func debugger*() {.importjs: "debugger@".}
+    ## https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Statements/debugger

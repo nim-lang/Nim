@@ -71,12 +71,69 @@ block: # `$`(SomeInteger)
     testType int64
     testType BiggestInt
 
-block: # #14350 for JS
+block: # #14350, #16674, #16686 for JS
   var cstr: cstring
   doAssert cstr == cstring(nil)
   doAssert cstr == nil
   doAssert cstr.isNil
   doAssert cstr != cstring("")
+  doAssert cstr.len == 0
+
+  when defined(js):
+    cstr.add(cstring("abc"))
+    doAssert cstr == cstring("abc")
+
+    var nil1, nil2: cstring = nil
+
+    nil1.add(nil2)
+    doAssert nil1 == cstring(nil)
+    doAssert nil2 == cstring(nil)
+
+    nil1.add(cstring(""))
+    doAssert nil1 == cstring("")
+    doAssert nil2 == cstring(nil)
+
+    nil1.add(nil2)
+    doAssert nil1 == cstring("")
+    doAssert nil2 == cstring(nil)
+
+    nil2.add(nil1)
+    doAssert nil1 == cstring("")
+    doAssert nil2 == cstring("")
+
+block:
+  block:
+    let x = -1'i8
+    let y = uint32(x)
+
+    doAssert $y == "4294967295"
+
+  block:
+    let x = -1'i16
+    let y = uint32(x)
+
+    doAssert $y == "4294967295"
+
+  block:
+    let x = -1'i32
+    let y = uint32(x)
+
+    doAssert $y == "4294967295"
+
+  block:
+    let x = 4294967295'u32
+    doAssert $x == "4294967295"
+
+  block:
+    doAssert $(4294967295'u32) == "4294967295"
+
+
+  block:
+    proc foo1(arg: int): string =
+      let x = uint32(arg)
+      $x
+
+    doAssert $foo1(-1) == "4294967295"
 
 
 proc main()=
@@ -99,6 +156,8 @@ proc main()=
     let b = 0
     doAssert $b == "0"
     doAssert $(0) == "0"
+
+  doAssert $uint32.high == "4294967295"
 
 
 static: main()

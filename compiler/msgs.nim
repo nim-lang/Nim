@@ -115,6 +115,7 @@ proc fileInfoIdx*(conf: ConfigRef; filename: AbsoluteFile; isKnownFile: var bool
   else:
     isKnownFile = false
     result = conf.m.fileInfos.len.FileIndex
+    #echo "ID ", result.int, " ", canon2
     conf.m.fileInfos.add(newFileInfo(canon, if pseudoPath: RelativeFile filename
                                             else: relativeTo(canon, conf.projectPath)))
     conf.m.filenameToIndexTbl[canon2] = result
@@ -397,7 +398,8 @@ proc log*(s: string) =
     close(f)
 
 proc quit(conf: ConfigRef; msg: TMsgKind) {.gcsafe.} =
-  if defined(debug) or msg == errInternal or conf.hasHint(hintStackTrace):
+  if conf.isDefined("nimDebug"): quitOrRaise(conf, $msg)
+  elif defined(debug) or msg == errInternal or conf.hasHint(hintStackTrace):
     {.gcsafe.}:
       if stackTraceAvailable() and isNil(conf.writelnHook):
         writeStackTrace()
@@ -417,7 +419,9 @@ proc handleError(conf: ConfigRef; msg: TMsgKind, eh: TErrorHandling, s: string) 
     inc(conf.errorCounter)
     conf.exitcode = 1'i8
     if conf.errorCounter >= conf.errorMax:
-      quit(conf, msg)
+      # only really quit when we're not in the new 'nim check --def' mode:
+      if conf.ideCmd == ideNone:
+        quit(conf, msg)
     elif eh == doAbort and conf.cmd != cmdIdeTools:
       quit(conf, msg)
     elif eh == doRaise:
@@ -590,6 +594,9 @@ template localError*(conf: ConfigRef; info: TLineInfo, format: string, params: o
 template message*(conf: ConfigRef; info: TLineInfo, msg: TMsgKind, arg = "") =
   liMessage(conf, info, msg, arg, doNothing, instLoc())
 
+proc warningDeprecated*(conf: ConfigRef, info: TLineInfo = gCmdLineInfo, msg = "") {.inline.} =
+  message(conf, info, warnDeprecated, msg)
+
 proc internalErrorImpl(conf: ConfigRef; info: TLineInfo, errMsg: string, info2: InstantiationInfo) =
   if conf.cmd == cmdIdeTools and conf.structuredErrorHook.isNil: return
   writeContext(conf, info)
@@ -608,9 +615,9 @@ template internalAssert*(conf: ConfigRef, e: bool) =
     let arg = info2.toFileLineCol
     internalErrorImpl(conf, unknownLineInfo, arg, info2)
 
-template lintReport*(conf: ConfigRef; info: TLineInfo, beau, got: string) =
-  let m = "'$2' should be: '$1'" % [beau, got]
-  let msg = if optStyleError in conf.globalOptions: errGenerated else: hintName
+template lintReport*(conf: ConfigRef; info: TLineInfo, beau, got: string, forceHint = false) =
+  let m = "'$1' should be: '$2'" % [got, beau]
+  let msg = if optStyleError in conf.globalOptions and not forceHint: errGenerated else: hintName
   liMessage(conf, info, msg, m, doNothing, instLoc())
 
 proc quotedFilename*(conf: ConfigRef; i: TLineInfo): Rope =
@@ -627,3 +634,28 @@ template listMsg(title, r) =
 
 proc listWarnings*(conf: ConfigRef) = listMsg("Warnings:", warnMin..warnMax)
 proc listHints*(conf: ConfigRef) = listMsg("Hints:", hintMin..hintMax)
+
+proc uniqueModuleName*(conf: ConfigRef; fid: FileIndex): string =
+  ## The unique module name is guaranteed to only contain {'A'..'Z', 'a'..'z', '0'..'9', '_'}
+  ## so that it is useful as a C identifier snippet.
+  let path = AbsoluteFile toFullPath(conf, fid)
+  let rel =
+    if path.string.startsWith(conf.libpath.string):
+      relativeTo(path, conf.libpath).string
+    else:
+      relativeTo(path, conf.projectPath).string
+  let trunc = if rel.endsWith(".nim"): rel.len - len(".nim") else: rel.len
+  result = newStringOfCap(trunc)
+  for i in 0..<trunc:
+    let c = rel[i]
+    case c
+    of 'a'..'z':
+      result.add c
+    of {os.DirSep, os.AltSep}:
+      result.add 'Z' # because it looks a bit like '/'
+    of '.':
+      result.add 'O' # a circle
+    else:
+      # We mangle upper letters and digits too so that there cannot
+      # be clashes with our special meanings of 'Z' and 'O'
+      result.addInt ord(c)

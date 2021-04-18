@@ -21,8 +21,8 @@ import
   modules,
   modulegraphs, tables, lineinfos, pathutils, vmprofiler
 
-import ic / cbackend
-from ic / to_packed_ast import rodViewer
+import ic / [cbackend, integrity, navigator]
+from ic / ic import rodViewer
 
 when not defined(leanCompiler):
   import jsgen, docgen, docgen2
@@ -54,10 +54,19 @@ proc commandGenDepend(graph: ModuleGraph) =
       ' ' & changeFileExt(project, "dot").string)
 
 proc commandCheck(graph: ModuleGraph) =
-  graph.config.setErrorMaxHighMaybe
-  defineSymbol(graph.config.symbols, "nimcheck")
+  let conf = graph.config
+  conf.setErrorMaxHighMaybe
+  defineSymbol(conf.symbols, "nimcheck")
   semanticPasses(graph)  # use an empty backend for semantic checking only
   compileProject(graph)
+
+  if conf.symbolFiles != disabledSf:
+    case conf.ideCmd
+    of ideDef: navDefinition(graph)
+    of ideUse: navUsages(graph)
+    of ideDus: navDefusages(graph)
+    else: discard
+    writeRodFiles(graph)
 
 when not defined(leanCompiler):
   proc commandDoc2(graph: ModuleGraph; json: bool) =
@@ -93,6 +102,8 @@ proc commandCompileToC(graph: ModuleGraph) =
   if conf.symbolFiles == disabledSf:
     cgenWriteModules(graph.backend, conf)
   else:
+    if isDefined(conf, "nimIcIntegrityChecks"):
+      checkIntegrity(graph)
     generateCode(graph)
     # graph.backend can be nil under IC when nothing changed at all:
     if graph.backend != nil:
@@ -218,7 +229,7 @@ proc mainCommand*(graph: ModuleGraph) =
 
   template docLikeCmd(body) =
     when defined(leanCompiler):
-      quit "compiler wasn't built with documentation generator"
+      conf.quitOrRaise "compiler wasn't built with documentation generator"
     else:
       wantMainModule(conf)
       loadConfigs(DocConfig, cache, conf, graph.idgen)
@@ -261,15 +272,23 @@ proc mainCommand*(graph: ModuleGraph) =
       if optGenIndex in conf.globalOptions and optWholeProject in conf.globalOptions:
         commandBuildIndex(conf, $conf.outDir)
   of cmdRst2html:
+    # XXX: why are warnings disabled by default for rst2html and rst2tex?
+    for warn in [warnUnknownSubstitutionX, warnLanguageXNotSupported,
+                 warnFieldXNotSupported, warnRstStyle]:
+      conf.setNoteDefaults(warn, true)
     conf.setNoteDefaults(warnRedefinitionOfLabel, false) # similar to issue #13218
     when defined(leanCompiler):
-      quit "compiler wasn't built with documentation generator"
+      conf.quitOrRaise "compiler wasn't built with documentation generator"
     else:
       loadConfigs(DocConfig, cache, conf, graph.idgen)
       commandRst2Html(cache, conf)
   of cmdRst2tex:
+    for warn in [warnRedefinitionOfLabel, warnUnknownSubstitutionX,
+                 warnLanguageXNotSupported,
+                 warnFieldXNotSupported, warnRstStyle]:
+      conf.setNoteDefaults(warn, true)
     when defined(leanCompiler):
-      quit "compiler wasn't built with documentation generator"
+      conf.quitOrRaise "compiler wasn't built with documentation generator"
     else:
       loadConfigs(DocTexConfig, cache, conf, graph.idgen)
       commandRst2TeX(cache, conf)
@@ -334,8 +353,6 @@ proc mainCommand*(graph: ModuleGraph) =
     if conf.projectIsCmd or conf.projectIsStdin: discard
     elif not fileExists(conf.projectFull):
       rawMessage(conf, errGenerated, "NimScript file does not exist: " & conf.projectFull.string)
-    elif not conf.projectFull.string.endsWith(".nims"):
-      rawMessage(conf, errGenerated, "not a NimScript file: " & conf.projectFull.string)
     # main NimScript logic handled in `loadConfigs`.
   of cmdNop: discard
   of cmdJsonscript:

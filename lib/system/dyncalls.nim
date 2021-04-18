@@ -161,23 +161,20 @@ elif defined(windows) or defined(dos):
         dec(m)
         k = k div 10
         if k == 0: break
-      when defined(nimNoArrayToCstringConversion):
-        result = getProcAddress(cast[THINSTANCE](lib), addr decorated)
-      else:
-        result = getProcAddress(cast[THINSTANCE](lib), decorated)
+      result = getProcAddress(cast[THINSTANCE](lib), addr decorated)
       if result != nil: return
     procAddrError(name)
 
 elif defined(genode):
 
-  proc nimUnloadLibrary(lib: LibHandle) {.
-    error: "nimUnloadLibrary not implemented".}
+  proc nimUnloadLibrary(lib: LibHandle) =
+    raiseAssert("nimUnloadLibrary not implemented")
 
-  proc nimLoadLibrary(path: string): LibHandle {.
-    error: "nimLoadLibrary not implemented".}
+  proc nimLoadLibrary(path: string): LibHandle =
+    raiseAssert("nimLoadLibrary not implemented")
 
-  proc nimGetProcAddr(lib: LibHandle, name: cstring): ProcAddr {.
-    error: "nimGetProcAddr not implemented".}
+  proc nimGetProcAddr(lib: LibHandle, name: cstring): ProcAddr =
+    raiseAssert("nimGetProcAddr not implemented")
 
 elif defined(nintendoswitch) or defined(freertos):
   proc nimUnloadLibrary(lib: LibHandle) =

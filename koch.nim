@@ -10,9 +10,10 @@
 #
 
 const
-  NimbleStableCommit = "8f7af860c5ce9634af880a7081c6435e1f2a5148" # master
-  FusionStableCommit = "372ee4313827ef9f2ea388840f7d6b46c2b1b014"
-
+  NimbleStableCommit = "d13f3b8ce288b4dc8c34c219a4e050aaeaf43fc9" # master
+  # examples of possible values: #head, #ea82b54, 1.2.3
+  FusionStableHash = "#372ee4313827ef9f2ea388840f7d6b46c2b1b014"
+  HeadHash = "#head"
 when not defined(windows):
   const
     Z3StableCommit = "65de3f748a6812eecd7db7c478d5fc54424d368b" # the version of Z3 that DrNim uses
@@ -66,7 +67,8 @@ Possible Commands:
                            e.g. nimble)
                            doesn't require network connectivity
   nimble                   builds the Nimble tool
-  fusion                   clone fusion into the working tree
+  fusion                   installs fusion via Nimble
+
 Boot options:
   -d:release               produce a release version of the compiler
   -d:nimUseLinenoise       use the linenoise library for interactive mode
@@ -180,14 +182,7 @@ proc bundleWinTools(args: string) =
     nimCompile(r"tools\downloader.nim",
                options = r"--cc:vcc --app:gui -d:ssl --noNimblePath --path:..\ui " & args)
 
-proc bundleFusion(latest: bool) =
-  let commit = if latest: "HEAD" else: FusionStableCommit
-  cloneDependency(distDir, "https://github.com/nim-lang/fusion.git", commit,
-                  allowBundled = true)
-  copyDir(distDir / "fusion" / "src" / "fusion", "lib" / "fusion")
-
 proc zip(latest: bool; args: string) =
-  bundleFusion(latest)
   bundleNimbleExe(latest, args)
   bundleNimsuggest(args)
   bundleNimpretty(args)
@@ -221,13 +216,10 @@ proc buildTools(args: string = "") =
                  options = "-d:release " & args)
   when defined(windows): buildVccTool(args)
   bundleNimpretty(args)
-  nimCompileFold("Compile nimfind", "tools/nimfind.nim",
-                 options = "-d:release " & args)
   nimCompileFold("Compile testament", "testament/testament.nim",
                  options = "-d:release " & args)
 
 proc nsis(latest: bool; args: string) =
-  bundleFusion(latest)
   bundleNimbleExe(latest, args)
   bundleNimsuggest(args)
   bundleWinTools(args)
@@ -272,7 +264,7 @@ proc findStartNim: string =
   # If these fail, we try to build nim with the "build.(sh|bat)" script.
   let (nim, ok) = findNimImpl()
   if ok: return nim
-  when defined(Posix):
+  when defined(posix):
     const buildScript = "build.sh"
     if fileExists(buildScript):
       if tryExec("./" & buildScript): return "bin" / nim
@@ -290,6 +282,13 @@ proc thVersion(i: int): string =
 template doUseCpp(): bool = getEnv("NIM_COMPILE_TO_CPP", "false") == "true"
 
 proc boot(args: string) =
+  ## bootstrapping is a process that involves 3 steps:
+  ## 1. use csources to produce nim1.exe. This nim1.exe is buggy but
+  ## rock solid for building a Nim compiler. It shouldn't be used for anything else.
+  ## 2. use nim1.exe to produce nim2.exe. nim2.exe is the one you really need.
+  ## 3. We use nim2.exe to build nim3.exe. nim3.exe is equal to nim2.exe except for timestamps.
+  ## This step ensures a minimum amount of quality. We know that nim2.exe can be used
+  ## for Nim compiler development.
   var output = "compiler" / "nim".exe
   var finalDest = "bin" / "nim".exe
   # default to use the 'c' command:
@@ -457,14 +456,14 @@ proc temp(args: string) =
       inc i
 
   let d = getAppDir()
-  var output = d / "compiler" / "nim".exe
-  var finalDest = d / "bin" / "nim_temp".exe
+  let output = d / "compiler" / "nim".exe
+  let finalDest = d / "bin" / "nim_temp".exe
   # 125 is the magic number to tell git bisect to skip the current commit.
   var (bootArgs, programArgs) = splitArgs(args)
   if "doc" notin programArgs and
       "threads" notin programArgs and
       "js" notin programArgs and "rst2html" notin programArgs:
-    bootArgs.add " -d:leanCompiler"
+    bootArgs = " -d:leanCompiler" & bootArgs
   let nimexec = findNim().quoteShell()
   exec(nimexec & " c -d:debug --debugger:native -d:nimBetterRun " & bootArgs & " " & (d / "compiler" / "nim"), 125)
   copyExe(output, finalDest)
@@ -481,6 +480,22 @@ proc xtemp(cmd: string) =
     exec(cmd)
   finally:
     copyExe(d / "bin" / "nim_backup".exe, d / "bin" / "nim".exe)
+
+proc icTest(args: string) =
+  temp("")
+  let inp = os.parseCmdLine(args)[0]
+  let content = readFile(inp)
+  let nimExe = getAppDir() / "bin" / "nim_temp".exe
+  var i = 0
+  for fragment in content.split("#!EDIT!#"):
+    let file = inp.replace(".nim", "_temp.nim")
+    writeFile(file, fragment)
+    var cmd = nimExe & " cpp --ic:on -d:nimIcIntegrityChecks --listcmd "
+    if i == 0:
+      cmd.add "-f "
+    cmd.add quoteShell(file)
+    exec(cmd)
+    inc i
 
 proc buildDrNim(args: string) =
   if not dirExists("dist/nimz3"):
@@ -525,17 +540,26 @@ proc runCI(cmd: string) =
   echo "runCI: ", cmd
   echo hostInfo()
   # boot without -d:nimHasLibFFI to make sure this still works
-  kochExecFold("Boot in release mode", "boot -d:release")
+  kochExecFold("Boot in release mode", "boot -d:release -d:nimStrictMode")
+
+  when false: # debugging: when you need to run only 1 test in CI, use something like this:
+    execFold("debugging test", "nim r tests/stdlib/tosproc.nim")
+    doAssert false, "debugging only"
 
   ## build nimble early on to enable remainder to depend on it if needed
   kochExecFold("Build Nimble", "nimble")
 
+  let batchParam = "--batch:$1" % "NIM_TESTAMENT_BATCH".getEnv("_")
   if getEnv("NIM_TEST_PACKAGES", "0") == "1":
-    execFold("Test selected Nimble packages (1)", "nim c -r testament/testament cat nimble-packages-1")
-  elif getEnv("NIM_TEST_PACKAGES", "0") == "2":
-    execFold("Test selected Nimble packages (2)", "nim c -r testament/testament cat nimble-packages-2")
+    execFold("Test selected Nimble packages", "nim r testament/testament $# pcat nimble-packages" % batchParam)
   else:
     buildTools()
+
+    for a in "zip opengl sdl1 jester@#head".split:
+      let buildDeps = "build"/"deps" # xxx factor pending https://github.com/timotheecour/Nim/issues/616
+      # if this gives `Additional info: "build/deps" [OSError]`, make sure nimble is >= v0.12.0,
+      # otherwise `absolutePath` is needed, refs https://github.com/nim-lang/nimble/issues/901
+      execFold("", "nimble install -y --nimbleDir:$# $#" % [buildDeps.quoteShell, a])
 
     ## run tests
     execFold("Test nimscript", "nim e tests/test_nimscript.nims")
@@ -544,11 +568,9 @@ proc runCI(cmd: string) =
       execFold("Compile tester", "nim c -d:nimCoroutines --os:genode -d:posix --compileOnly testament/testament")
 
     # main bottleneck here
-    # xxx: even though this is the main bottlneck, we could use same code to batch the other tests
-    #[
-    BUG: with initOptParser, `--batch:'' all` interprets `all` as the argument of --batch
-    ]#
-    execFold("Run tester", "nim c -r -d:nimCoroutines testament/testament --pedantic --batch:$1 all -d:nimCoroutines" % ["NIM_TESTAMENT_BATCH".getEnv("_")])
+    # xxx: even though this is the main bottleneck, we could speedup the rest via batching with `--batch`.
+    # BUG: with initOptParser, `--batch:'' all` interprets `all` as the argument of --batch, pending bug #14343
+    execFold("Run tester", "nim c -r -d:nimCoroutines --putenv:NIM_TESTAMENT_REMOTE_NETWORKING:1 -d:nimStrictMode testament/testament $# all -d:nimCoroutines" % batchParam)
 
     block CT_FFI:
       when defined(posix): # windows can be handled in future PR's
@@ -644,6 +666,13 @@ proc showHelp() =
   quit(HelpText % [VersionAsString & spaces(44-len(VersionAsString)),
                    CompileDate, CompileTime], QuitSuccess)
 
+proc branchDone() =
+  let thisBranch = execProcess("git symbolic-ref --short HEAD").strip()
+  if thisBranch != "devel" and thisBranch != "":
+    exec("git checkout devel")
+    exec("git branch -D " & thisBranch)
+    exec("git pull --rebase")
+
 when isMainModule:
   var op = initOptParser()
   var
@@ -694,12 +723,15 @@ when isMainModule:
       of "tools":
         buildTools(op.cmdLineRest)
         bundleNimbleExe(latest, op.cmdLineRest)
-        bundleFusion(latest)
       of "pushcsource", "pushcsources": pushCsources()
       of "valgrind": valgrind(op.cmdLineRest)
       of "c2nim": bundleC2nim(op.cmdLineRest)
       of "drnim": buildDrNim(op.cmdLineRest)
-      of "fusion": bundleFusion(latest)
+      of "fusion":
+        let suffix = if latest: HeadHash else: FusionStableHash
+        exec("nimble install -y fusion@$#" % suffix)
+      of "ic": icTest(op.cmdLineRest)
+      of "branchdone": branchDone()
       else: showHelp()
       break
     of cmdEnd: break

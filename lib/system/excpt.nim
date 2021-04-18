@@ -242,7 +242,7 @@ template addFrameEntry(s: var string, f: StackTraceEntry|PFrame) =
   for k in 1..max(1, 25-(s.len-oldLen)): add(s, ' ')
   add(s, f.procname)
   when NimStackTraceMsgs:
-    when type(f) is StackTraceEntry:
+    when typeof(f) is StackTraceEntry:
       add(s, f.frameMsg)
     else:
       var first = if f.prev == nil: 0 else: f.prev.frameMsgLen
@@ -351,7 +351,7 @@ var onUnhandledException*: (proc (errorMsg: string) {.
   nimcall, gcsafe.}) ## Set this error \
   ## handler to override the existing behaviour on an unhandled exception.
   ##
-  ## The default is to write a stacktrace to ``stderr`` and then call ``quit(1)``.
+  ## The default is to write a stacktrace to `stderr` and then call `quit(1)`.
   ## Unstable API.
 
 proc reportUnhandledErrorAux(e: ref Exception) {.nodestroy.} =
@@ -378,7 +378,7 @@ proc reportUnhandledErrorAux(e: ref Exception) {.nodestroy.} =
     # ugly, but avoids heap allocations :-)
     template xadd(buf, s, slen) =
       if L + slen < high(buf):
-        copyMem(addr(buf[L]), cstring(s), slen)
+        copyMem(addr(buf[L]), (when s is cstring: s else: cstring(s)), slen)
         inc L, slen
     template add(buf, s) =
       xadd(buf, s, s.len)
@@ -393,23 +393,16 @@ proc reportUnhandledErrorAux(e: ref Exception) {.nodestroy.} =
     add(buf, " [")
     xadd(buf, e.name, e.name.len)
     add(buf, "]\n")
-    when defined(nimNoArrayToCstringConversion):
-      template tbuf(): untyped = addr buf
-    else:
-      template tbuf(): untyped = buf
-
     if onUnhandledException != nil:
-      onUnhandledException($tbuf())
+      onUnhandledException($buf.addr)
     else:
-      showErrorMessage(tbuf(), L)
+      showErrorMessage(buf.addr, L)
 
 proc reportUnhandledError(e: ref Exception) {.nodestroy.} =
   if unhandledExceptionHook != nil:
     unhandledExceptionHook(e)
   when hostOS != "any":
     reportUnhandledErrorAux(e)
-  else:
-    discard ()
 
 proc nimLeaveFinally() {.compilerRtl.} =
   when defined(cpp) and not defined(noCppExceptions) and not gotoBasedExceptions:
@@ -428,7 +421,7 @@ when gotoBasedExceptions:
     result = addr(nimInErrorMode)
 
   proc nimTestErrorFlag() {.compilerRtl.} =
-    ## This proc must be called before ``currException`` is destroyed.
+    ## This proc must be called before `currException` is destroyed.
     ## It also must be called at the end of every thread to ensure no
     ## error is swallowed.
     if nimInErrorMode and currException != nil:
@@ -531,8 +524,8 @@ proc getStackTrace(e: ref Exception): string =
     result = ""
 
 proc getStackTraceEntries*(e: ref Exception): seq[StackTraceEntry] =
-  ## Returns the attached stack trace to the exception ``e`` as
-  ## a ``seq``. This is not yet available for the JS backend.
+  ## Returns the attached stack trace to the exception `e` as
+  ## a `seq`. This is not yet available for the JS backend.
   when not defined(nimSeqsV2):
     shallowCopy(result, e.trace)
   else:
@@ -574,7 +567,7 @@ when defined(cpp) and appType != "lib" and not gotoBasedExceptions and
   type
     StdException {.importcpp: "std::exception", header: "<exception>".} = object
 
-  proc what(ex: StdException): cstring {.importcpp: "((char *)#.what())".}
+  proc what(ex: StdException): cstring {.importcpp: "((char *)#.what())", nodecl.}
 
   proc setTerminate(handler: proc() {.noconv.})
     {.importc: "std::set_terminate", header: "<exception>".}
@@ -609,6 +602,9 @@ when defined(cpp) and appType != "lib" and not gotoBasedExceptions and
     quit 1
 
 when not defined(noSignalHandler) and not defined(useNimRtl):
+  type Sighandler = proc (a: cint) {.noconv, benign.}
+    # xxx factor with ansi_c.CSighandlerT, posix.Sighandler
+
   proc signalHandler(sign: cint) {.exportc: "signalHandler", noconv.} =
     template processSignal(s, action: untyped) {.dirty.} =
       if s == SIGINT: action("SIGINT: Interrupted by Ctrl-C.\n")
@@ -647,9 +643,23 @@ when not defined(noSignalHandler) and not defined(useNimRtl):
       # unless there's a good reason to use cstring in signal handler to avoid
       # using gc?
       showErrorMessage(msg, msg.len)
-    quit(1) # always quit when SIGABRT
+
+    when defined(posix):
+      # reset the signal handler to OS default
+      c_signal(sign, SIG_DFL)
+
+      # re-raise the signal, which will arrive once this handler exit.
+      # this lets the OS perform actions like core dumping and will
+      # also return the correct exit code to the shell.
+      discard c_raise(sign)
+    else:
+      quit(1)
+
+  var SIG_IGN {.importc: "SIG_IGN", header: "<signal.h>".}: Sighandler
 
   proc registerSignalHandler() =
+    # xxx `signal` is deprecated and has many caveats, we should use `sigaction` instead, e.g.
+    # https://stackoverflow.com/questions/231912/what-is-the-difference-between-sigaction-and-signal
     c_signal(SIGINT, signalHandler)
     c_signal(SIGSEGV, signalHandler)
     c_signal(SIGABRT, signalHandler)
@@ -658,14 +668,17 @@ when not defined(noSignalHandler) and not defined(useNimRtl):
     when declared(SIGBUS):
       c_signal(SIGBUS, signalHandler)
     when declared(SIGPIPE):
-      c_signal(SIGPIPE, signalHandler)
+      when defined(nimLegacySigpipeHandler):
+        c_signal(SIGPIPE, signalHandler)
+      else:
+        c_signal(SIGPIPE, SIG_IGN)
 
   registerSignalHandler() # call it in initialization section
 
 proc setControlCHook(hook: proc () {.noconv.}) =
   # ugly cast, but should work on all architectures:
-  type SignalHandler = proc (sign: cint) {.noconv, benign.}
-  c_signal(SIGINT, cast[SignalHandler](hook))
+  when declared(Sighandler):
+    c_signal(SIGINT, cast[Sighandler](hook))
 
 when not defined(noSignalHandler) and not defined(useNimRtl):
   proc unsetControlCHook() =

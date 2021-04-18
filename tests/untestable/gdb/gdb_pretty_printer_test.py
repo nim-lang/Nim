@@ -25,6 +25,7 @@ outputs = [
   'seq(3, 3) = {"one", "two", "three"}',
   'Table(3, 64) = {[4] = "four", [5] = "five", [6] = "six"}',
   'Table(3, 8) = {["two"] = 2, ["three"] = 3, ["one"] = 1}',
+  '{a = 1, b = "some string"}'
 ]
 
 for i, expected in enumerate(outputs):
@@ -32,7 +33,7 @@ for i, expected in enumerate(outputs):
   gdb.flush()
 
   functionSymbol = gdb.selected_frame().block().function
-  assert functionSymbol.line == 21
+  assert functionSymbol.line == 41, str(functionSymbol.line)
 
   if i == 6:
     # myArray is passed as pointer to int to myDebug. I look up myArray up in the stack
@@ -47,6 +48,6 @@ for i, expected in enumerate(outputs):
 
   output = str(raw)
 
-  assert output == expected, output + " != " + expected
+  assert output == expected, "{0} : output: ({1}) != expected: ({2})".format(i, output, expected)
   gdb.write(f"passed\n", gdb.STDLOG)
   gdb.execute("continue")

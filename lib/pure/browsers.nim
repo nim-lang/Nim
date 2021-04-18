@@ -20,12 +20,14 @@ when defined(windows):
   import winlean
   from os import absolutePath
 else:
-  import os, osproc
+  import os
+  when not defined(osx):
+    import osproc
 
 const osOpenCmd* =
   when defined(macos) or defined(macosx) or defined(windows): "open" else: "xdg-open" ## \
   ## Alias for the operating system specific *"open"* command,
-  ## ``"open"`` on OSX, MacOS and Windows, ``"xdg-open"`` on Linux, BSD, etc.
+  ## `"open"` on OSX, MacOS and Windows, `"xdg-open"` on Linux, BSD, etc.
 
 proc prepare(s: string): string =
   if s.contains("://"):
@@ -43,9 +45,9 @@ proc openDefaultBrowserImpl(url: string) =
   else:
     var u = quoteShell(prepare url)
     if execShellCmd(osOpenCmd & " " & u) == 0: return
-    for b in getEnv("BROWSER").string.split(PathSep):
+    for b in getEnv("BROWSER").split(PathSep):
       try:
-        # we use ``startProcess`` here because we don't want to block!
+        # we use `startProcess` here because we don't want to block!
         discard startProcess(command = b, args = [url], options = {poUsePath})
         return
       except OSError:
@@ -55,9 +57,9 @@ proc openDefaultBrowser*(url: string) =
   ## Opens `url` with the user's default browser. This does not block.
   ## The URL must not be empty string, to open on a blank page see `openDefaultBrowser()`.
   ##
-  ## Under Windows, ``ShellExecute`` is used. Under Mac OS X the ``open``
-  ## command is used. Under Unix, it is checked if ``xdg-open`` exists and
-  ## used if it does. Otherwise the environment variable ``BROWSER`` is
+  ## Under Windows, `ShellExecute` is used. Under Mac OS X the `open`
+  ## command is used. Under Unix, it is checked if `xdg-open` exists and
+  ## used if it does. Otherwise the environment variable `BROWSER` is
   ## used to determine the default browser to use.
   ##
   ## This proc doesn't raise an exception on error, beware.
@@ -71,9 +73,9 @@ proc openDefaultBrowser*() {.since: (1, 1).} =
   ## Opens the user's default browser without any `url` (blank page). This does not block.
   ## Implements IETF RFC-6694 Section 3, "about:blank" must be reserved for a blank page.
   ##
-  ## Under Windows, ``ShellExecute`` is used. Under Mac OS X the ``open``
-  ## command is used. Under Unix, it is checked if ``xdg-open`` exists and
-  ## used if it does. Otherwise the environment variable ``BROWSER`` is
+  ## Under Windows, `ShellExecute` is used. Under Mac OS X the `open`
+  ## command is used. Under Unix, it is checked if `xdg-open` exists and
+  ## used if it does. Otherwise the environment variable `BROWSER` is
   ## used to determine the default browser to use.
   ##
   ## This proc doesn't raise an exception on error, beware.

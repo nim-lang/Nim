@@ -15,7 +15,7 @@ import
   intsets, options, ast, astalgo, msgs, idents, renderer,
   magicsys, vmdef, modulegraphs, lineinfos, sets, pathutils
 
-import ic / to_packed_ast
+import ic / ic
 
 type
   TOptionEntry* = object      # entries to put on a stack for pragma parsing
@@ -42,6 +42,7 @@ type
     mappingExists*: bool
     mapping*: TIdTable
     caseContext*: seq[tuple[n: PNode, idx: int]]
+    localBindStmts*: seq[PNode]
 
   TMatchedConcept* = object
     candidateType*: PType
@@ -53,7 +54,7 @@ type
     inst*: PInstantiation
 
   TExprFlag* = enum
-    efLValue, efWantIterator, efInTypeof,
+    efLValue, efWantIterator, efWantIterable, efInTypeof,
     efNeedStatic,
       # Use this in contexts where a static value is mandatory
     efPreferStatic,
@@ -147,13 +148,12 @@ type
     selfName*: PIdent
     cache*: IdentCache
     graph*: ModuleGraph
-    encoder*: PackedEncoder
     signatures*: TStrTable
     recursiveDep*: string
     suggestionsMade*: bool
     isAmbiguous*: bool # little hack
     features*: set[Feature]
-    inTypeContext*: int
+    inTypeContext*, inConceptDecl*: int
     unusedImports*: seq[(PSym, TLineInfo)]
     exportIndirections*: HashSet[(int, int)]
     lastTLineInfo*: TLineInfo
@@ -314,9 +314,10 @@ proc newContext*(graph: ModuleGraph; module: PSym): PContext =
     assert graph.packed[id].status in {undefined, outdated}
     graph.packed[id].status = storing
     graph.packed[id].module = module
-    initEncoder result.encoder, graph.packed[id].fromDisk, module, graph.config, graph.startupPackedConfig
+    initEncoder graph, module
 
 template packedRepr*(c): untyped = c.graph.packed[c.module.position].fromDisk
+template encoder*(c): untyped = c.graph.encoders[c.module.position]
 
 proc addIncludeFileDep*(c: PContext; f: FileIndex) =
   if c.config.symbolFiles != disabledSf:
@@ -330,35 +331,42 @@ proc addPragmaComputation*(c: PContext; n: PNode) =
   if c.config.symbolFiles != disabledSf:
     addPragmaComputation(c.encoder, c.packedRepr, n)
 
-proc inclSym(sq: var seq[PSym], s: PSym) =
+proc inclSym(sq: var seq[PSym], s: PSym): bool =
   for i in 0..<sq.len:
-    if sq[i].id == s.id: return
+    if sq[i].id == s.id: return false
   sq.add s
+  result = true
 
-proc addConverter*(c: PContext, conv: PSym) =
-  inclSym(c.converters, conv)
-  inclSym(c.graph.ifaces[c.module.position].converters, conv)
-  if c.config.symbolFiles != disabledSf:
-    addConverter(c.encoder, c.packedRepr, conv)
+proc addConverter*(c: PContext, conv: LazySym) =
+  assert conv.sym != nil
+  if inclSym(c.converters, conv.sym):
+    add(c.graph.ifaces[c.module.position].converters, conv)
 
-proc addPureEnum*(c: PContext, e: PSym) =
-  inclSym(c.graph.ifaces[c.module.position].pureEnums, e)
+proc addConverterDef*(c: PContext, conv: LazySym) =
+  addConverter(c, conv)
   if c.config.symbolFiles != disabledSf:
-    addPureEnum(c.encoder, c.packedRepr, e)
+    addConverter(c.encoder, c.packedRepr, conv.sym)
 
-proc addPattern*(c: PContext, p: PSym) =
-  inclSym(c.patterns, p)
-  inclSym(c.graph.ifaces[c.module.position].patterns, p)
+proc addPureEnum*(c: PContext, e: LazySym) =
+  assert e.sym != nil
+  add(c.graph.ifaces[c.module.position].pureEnums, e)
   if c.config.symbolFiles != disabledSf:
-    addTrmacro(c.encoder, c.packedRepr, p)
+    addPureEnum(c.encoder, c.packedRepr, e.sym)
+
+proc addPattern*(c: PContext, p: LazySym) =
+  assert p.sym != nil
+  if inclSym(c.patterns, p.sym):
+    add(c.graph.ifaces[c.module.position].patterns, p)
+  if c.config.symbolFiles != disabledSf:
+    addTrmacro(c.encoder, c.packedRepr, p.sym)
 
 proc exportSym*(c: PContext; s: PSym) =
-  strTableAdd(c.module.semtab(c.graph), s)
+  strTableAdds(c.graph, c.module, s)
   if c.config.symbolFiles != disabledSf:
     addExported(c.encoder, c.packedRepr, s)
 
 proc reexportSym*(c: PContext; s: PSym) =
-  strTableAdd(c.module.semtab(c.graph), s)
+  strTableAdds(c.graph, c.module, s)
   if c.config.symbolFiles != disabledSf:
     addReexport(c.encoder, c.packedRepr, s)
 
@@ -406,14 +414,6 @@ proc makeVarType*(owner: PSym, baseType: PType; idgen: IdGenerator; kind = tyVar
     result = newType(kind, nextTypeId(idgen), owner)
     addSonSkipIntLit(result, baseType, idgen)
 
-proc makeTypeDesc*(c: PContext, typ: PType): PType =
-  if typ.kind == tyTypeDesc:
-    result = typ
-  else:
-    result = newTypeS(tyTypeDesc, c)
-    incl result.flags, tfCheckedForDestructor
-    result.addSonSkipIntLit(typ, c.idgen)
-
 proc makeTypeSymNode*(c: PContext, typ: PType, info: TLineInfo): PNode =
   let typedesc = newTypeS(tyTypeDesc, c)
   incl typedesc.flags, tfCheckedForDestructor
@@ -421,7 +421,7 @@ proc makeTypeSymNode*(c: PContext, typ: PType, info: TLineInfo): PNode =
   typedesc.addSonSkipIntLit(typ, c.idgen)
   let sym = newSym(skType, c.cache.idAnon, nextSymId(c.idgen), getCurrOwner(c), info,
                    c.config.options).linkTo(typedesc)
-  return newSymNode(sym, info)
+  result = newSymNode(sym, info)
 
 proc makeTypeFromExpr*(c: PContext, n: PNode): PType =
   result = newTypeS(tyFromExpr, c)
@@ -536,6 +536,10 @@ proc checkMinSonsLen*(n: PNode, length: int; conf: ConfigRef) =
 proc isTopLevel*(c: PContext): bool {.inline.} =
   result = c.currentScope.depthLevel <= 2
 
+proc isTopLevelInsideDeclaration*(c: PContext, sym: PSym): bool {.inline.} =
+  # for routeKinds the scope isn't closed yet:
+  c.currentScope.depthLevel <= 2 + ord(sym.kind in routineKinds)
+
 proc pushCaseContext*(c: PContext, caseNode: PNode) =
   c.p.caseContext.add((caseNode, 0))
 
@@ -563,22 +567,20 @@ proc addToGenericCache*(c: PContext; s: PSym; inst: PType) =
   if c.config.symbolFiles != disabledSf:
     storeTypeInst(c.encoder, c.packedRepr, s, inst)
 
-proc saveRodFile*(c: PContext) =
+proc sealRodFile*(c: PContext) =
   if c.config.symbolFiles != disabledSf:
-    for (m, n) in PCtx(c.graph.vm).vmstateDiff:
-      if m == c.module:
-        addPragmaComputation(c, n)
-    if sfSystemModule in c.module.flags:
-      c.graph.systemModuleComplete = true
+    if c.graph.vm != nil:
+      for (m, n) in PCtx(c.graph.vm).vmstateDiff:
+        if m == c.module:
+          addPragmaComputation(c, n)
     c.idgen.sealed = true # no further additions are allowed
-    if c.config.symbolFiles != stressTest:
-      # For stress testing we seek to reload the symbols from memory. This
-      # way much of the logic is tested but the test is reproducible as it does
-      # not depend on the hard disk contents!
-      saveRodFile(toRodFile(c.config, AbsoluteFile toFullPath(c.config, FileIndex c.module.position)),
-                  c.encoder, c.packedRepr)
-    else:
-      # debug code, but maybe a good idea for production? Could reduce the compiler's
-      # memory consumption considerably at the cost of more loads from disk.
-      simulateCachedModule(c.graph, c.module, c.packedRepr)
-    c.graph.packed[c.module.position].status = loaded
+
+proc rememberExpansion*(c: PContext; info: TLineInfo; expandedSym: PSym) =
+  ## Templates and macros are very special in Nim; these have
+  ## inlining semantics so after semantic checking they leave no trace
+  ## in the sem'checked AST. This is very bad for IDE-like tooling
+  ## ("find all usages of this template" would not work). We need special
+  ## logic to remember macro/template expansions. This is done here and
+  ## delegated to the "rod" file mechanism.
+  if c.config.symbolFiles != disabledSf:
+    storeExpansion(c.encoder, c.packedRepr, info, expandedSym)

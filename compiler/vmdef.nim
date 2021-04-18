@@ -10,6 +10,8 @@
 ## This module contains the type definitions for the new evaluation engine.
 ## An instruction is 1-3 int32s in memory, it is a register based VM.
 
+import std / tables
+
 import ast, idents, options, modulegraphs, lineinfos
 
 type TInstrType* = uint64
@@ -266,6 +268,7 @@ type
     profiler*: Profiler
     templInstCounter*: ref int # gives every template instantiation a unique ID, needed here for getAst
     vmstateDiff*: seq[(PSym, PNode)] # we remember the "diff" to global state here (feature for IC)
+    procToCodePos*: Table[int, int]
 
   PStackFrame* = ref TStackFrame
   TStackFrame* = object

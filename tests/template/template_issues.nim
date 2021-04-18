@@ -256,7 +256,7 @@ discard foo()
 type
   IteratorF*[In] = iterator() : In {.closure.}
 
-template foof(In: untyped) : untyped = 
+template foof(In: untyped) : untyped =
   proc ggg*(arg: IteratorF[In]) =
     for i in arg():
       echo "foo"
@@ -265,7 +265,7 @@ template foof(In: untyped) : untyped =
 iterator hello() : int {.closure.} =
   for i in 1 .. 3:
     yield i
-    
+
 foof(int)
 ggg(hello)
 
@@ -290,3 +290,9 @@ proc bar(t: var int) =
 
 foo(bar)
 
+block: # bug #12595
+  template test() =
+    let i = 42
+    discard {i: ""}
+
+  test()

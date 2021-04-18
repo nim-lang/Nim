@@ -13,6 +13,8 @@
 ##
 ## Tested on these OSes: Linux, Windows, OSX
 
+# xxx possibly broken on arm64, see bug #17178
+
 {.used.}
 
 # do allocate memory upfront:

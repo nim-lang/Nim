@@ -116,8 +116,8 @@ block:
   let
     a1 = some(newJNull())
     a2 = none(JsonNode)
-  doAssert $($$a1).to[:Option[JsonNode]] == "Some(null)"
-  doAssert $($$a2).to[:Option[JsonNode]] == "None[JsonNode]"
+  doAssert $($$a1).to[:Option[JsonNode]] == "some(null)"
+  doAssert $($$a2).to[:Option[JsonNode]] == "none(JsonNode)"
   doAssert ($$a1).to[:Option[JsonNode]] == some(newJNull())
   doAssert ($$a2).to[:Option[JsonNode]] == none(JsonNode)
 

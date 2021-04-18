@@ -187,4 +187,9 @@ proc processModule*(graph: ModuleGraph; module: PSym; idgen: IdGenerator;
     closeParser(p)
     if s.kind != llsStdIn: break
   closePasses(graph, a)
+  if graph.config.backend notin {backendC, backendCpp, backendObjc}:
+    # We only write rod files here if no C-like backend is active.
+    # The C-like backends have been patched to support the IC mechanism.
+    # They are responsible for closing the rod files. See `cbackend.nim`.
+    closeRodFile(graph, module)
   result = true

@@ -11,16 +11,48 @@
 ## SSL_CERT_DIR environment variables.
 
 import os, strutils
-from os import existsEnv, getEnv
-import strutils
-
-# SECURITY: this unnecessarily scans through dirs/files regardless of the
-# actual host OS/distribution. Hopefully all the paths are writeble only by
-# root.
 
 # FWIW look for files before scanning entire dirs.
 
-const certificatePaths = [
+when defined(macosx):
+  const certificatePaths = [
+    "/etc/ssl/cert.pem",
+    "/System/Library/OpenSSL/certs/cert.pem"
+  ]
+elif defined(linux):
+  const certificatePaths = [
+    # Debian, Ubuntu, Arch: maintained by update-ca-certificates, SUSE, Gentoo
+    # NetBSD (security/mozilla-rootcerts)
+    # SLES10/SLES11, https://golang.org/issue/12139
+    "/etc/ssl/certs/ca-certificates.crt",
+    # OpenSUSE
+    "/etc/ssl/ca-bundle.pem",
+    # Red Hat 5+, Fedora, Centos
+    "/etc/pki/tls/certs/ca-bundle.crt",
+    # Red Hat 4
+    "/usr/share/ssl/certs/ca-bundle.crt",
+    # Fedora/RHEL
+    "/etc/pki/tls/certs",
+    # Android
+    "/system/etc/security/cacerts",
+  ]
+elif defined(bsd):
+  const certificatePaths = [
+    # Debian, Ubuntu, Arch: maintained by update-ca-certificates, SUSE, Gentoo
+    # NetBSD (security/mozilla-rootcerts)
+    # SLES10/SLES11, https://golang.org/issue/12139
+    "/etc/ssl/certs/ca-certificates.crt",
+    # FreeBSD (security/ca-root-nss package)
+    "/usr/local/share/certs/ca-root-nss.crt",
+    # OpenBSD, FreeBSD (optional symlink)
+    "/etc/ssl/cert.pem",
+    # FreeBSD
+    "/usr/local/share/certs",
+    # NetBSD
+    "/etc/openssl/certs",
+  ]
+else:
+  const certificatePaths = [
     # Debian, Ubuntu, Arch: maintained by update-ca-certificates, SUSE, Gentoo
     # NetBSD (security/mozilla-rootcerts)
     # SLES10/SLES11, https://golang.org/issue/12139
@@ -37,8 +69,6 @@ const certificatePaths = [
     "/etc/pki/ca-trust/extracted/pem/tls-ca-bundle.pem",
     # OpenBSD, FreeBSD (optional symlink)
     "/etc/ssl/cert.pem",
-    # Mac OS X
-    "/System/Library/OpenSSL/certs/cert.pem",
     # Fedora/RHEL
     "/etc/pki/tls/certs",
     # Android
@@ -47,7 +77,7 @@ const certificatePaths = [
     "/usr/local/share/certs",
     # NetBSD
     "/etc/openssl/certs",
-]
+  ]
 
 when defined(haiku):
   const
@@ -67,16 +97,29 @@ iterator scanSSLCertificates*(useEnvVars = false): string =
   ## if `useEnvVars` is true, the SSL_CERT_FILE and SSL_CERT_DIR
   ## environment variables can be used to override the certificate
   ## directories to scan or specify a CA certificate file.
-  if existsEnv("SSL_CERT_FILE"):
+  if useEnvVars and existsEnv("SSL_CERT_FILE"):
     yield getEnv("SSL_CERT_FILE")
 
-  elif existsEnv("SSL_CERT_DIR"):
+  elif useEnvVars and existsEnv("SSL_CERT_DIR"):
     let p = getEnv("SSL_CERT_DIR")
     for fn in joinPath(p, "*").walkFiles():
       yield fn
 
   else:
-    when not defined(haiku):
+    when defined(windows):
+      const cacert = "cacert.pem"
+      let pem = getAppDir() / cacert
+      if fileExists(pem):
+        yield pem
+      else:
+        let path = getEnv("PATH")
+        for candidate in split(path, PathSep):
+          if candidate.len != 0:
+            let x = (if candidate[0] == '"' and candidate[^1] == '"':
+                      substr(candidate, 1, candidate.len-2) else: candidate) / cacert
+            if fileExists(x):
+              yield x
+    elif not defined(haiku):
       for p in certificatePaths:
         if p.endsWith(".pem") or p.endsWith(".crt"):
           if fileExists(p):

@@ -1,5 +1,6 @@
 import std/private/miscdollars
-import std/strutils
+from std/os import getEnv
+import std/[macros, genasts]
 
 template flakyAssert*(cond: untyped, msg = "", notifySuccess = true) =
   ## API to deal with flaky or failing tests. This avoids disabling entire tests
@@ -25,12 +26,86 @@ template flakyAssert*(cond: untyped, msg = "", notifySuccess = true) =
     msg2.add $expr & " " & msg
     echo msg2
 
-proc greedyOrderedSubsetLines*(lhs, rhs: string): bool =
-  ## returns true if each stripped line in `lhs` appears in rhs, using a greedy matching.
-  let rhs = rhs.strip
-  var currentPos = 0
-  for line in lhs.strip.splitLines:
-    currentPos = rhs.find(line.strip, currentPos)
-    if currentPos < 0:
-      return false
-  return true
+when not defined(js):
+  import std/strutils
+
+  proc greedyOrderedSubsetLines*(lhs, rhs: string): bool =
+    ## Returns true if each stripped line in `lhs` appears in rhs, using a greedy matching.
+    iterator splitLinesClosure(): string {.closure.} =
+      for line in splitLines(rhs.strip):
+        yield line
+
+    var rhsIter = splitLinesClosure
+    var currentLine = strip(rhsIter())
+
+    for line in lhs.strip.splitLines:
+      let line = line.strip
+      if line.len != 0:
+        while line != currentLine:
+          currentLine = strip(rhsIter())
+          if rhsIter.finished:
+            return false
+
+      if rhsIter.finished:
+        return false
+    return true
+
+template enableRemoteNetworking*: bool =
+  ## Allows contolling whether to run some test at a statement-level granularity.
+  ## Using environment variables simplifies propagating this all the way across
+  ## process calls, e.g. `testament all` calls itself, which in turns invokes
+  ## a `nim` invocation (possibly via additional intermediate processes).
+  getEnv("NIM_TESTAMENT_REMOTE_NETWORKING") == "1"
+
+template whenRuntimeJs*(bodyIf, bodyElse) =
+  ##[
+  Behaves as `when defined(js) and not nimvm` (which isn't legal yet).
+  pending improvements to `nimvm`, this sugar helps; use as follows:
+
+  whenRuntimeJs:
+    doAssert defined(js)
+    when nimvm: doAssert false
+    else: discard
+  do:
+    discard
+  ]##
+  when nimvm: bodyElse
+  else:
+    when defined(js): bodyIf
+    else: bodyElse
+
+template whenVMorJs*(bodyIf, bodyElse) =
+  ## Behaves as: `when defined(js) or nimvm`
+  when nimvm: bodyIf
+  else:
+    when defined(js): bodyIf
+    else: bodyElse
+
+template accept*(a) =
+  doAssert compiles(a)
+
+template reject*(a) =
+  doAssert not compiles(a)
+
+template disableVm*(body) =
+  when nimvm: discard
+  else: body
+
+template typeOrVoid[T](a: T): type =
+  # FACTOR with asyncjs.typeOrVoid
+  T
+
+macro assertAll*(body) =
+  ## works in VM, unlike `check`, `require`
+  runnableExamples:
+    assertAll:
+      1+1 == 2
+      var a = @[1, 2] # statements work
+      a.len == 2
+  # remove this once these support VM, pending #10129 (closed but not yet fixed)
+  result = newStmtList()
+  for a in body:
+    result.add genAst(a) do:
+      # better than: `when not compiles(typeof(a)):`
+      when typeOrVoid(a) is void: a
+      else: doAssert a

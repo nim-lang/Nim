@@ -1,6 +1,6 @@
 #[
 todo: move findNimStdLibCompileTime, findNimStdLib here
-xxx: consider moving this to $nim/compiler/relpaths.nim to get relocatable paths
+xxx: factor pending https://github.com/timotheecour/Nim/issues/616
 
 ## note: $lib vs $nim
 note: these can resolve to 3 different paths if running via `nim c --lib:lib foo`,

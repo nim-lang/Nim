@@ -1,9 +1,8 @@
 ## This module allows chains of field-access and indexing where the LHS can be nil.
 ## This simplifies code by reducing need for if-else branches around intermediate values
-## that maybe be nil.
+## that may be nil.
 ##
-## Note: experimental module and relies on {.experimental: "dotOperators".}
-## Unstable API.
+## Note: experimental module, unstable API.
 
 runnableExamples:
   type Foo = ref object
@@ -19,91 +18,91 @@ runnableExamples:
   assert ?.f2.x1 == "a" # same as f2.x1 (no nil LHS in this chain)
   assert ?.Foo(x1: "a").x1 == "a" # can use constructor inside
 
-  # when you know a sub-expression is not nil, you can scope it as follows:
-  assert ?.(f2.x2.x2).x3[] == 0 # because `f` is nil
+  # when you know a sub-expression doesn't involve a `nil` (e.g. `f2.x2.x2`),
+  # you can scope it as follows:
+  assert ?.(f2.x2.x2).x3[] == 0
 
-type Wrapnil[T] = object
-  valueImpl: T
-  validImpl: bool
+  assert (?.f2.x2.x2).x3 == nil  # this terminates ?. early
 
-proc wrapnil[T](a: T): Wrapnil[T] =
-  ## See top-level example.
-  Wrapnil[T](valueImpl: a, validImpl: true)
+from std/options import Option, isSome, get, option, unsafeGet, UnpackDefect
+export options.get, options.isSome, options.isNone
 
-template unwrap(a: Wrapnil): untyped =
-  ## See top-level example.
-  a.valueImpl
-
-{.push experimental: "dotOperators".}
-
-template `.`*(a: Wrapnil, b): untyped =
+template fakeDot*(a: Option, b): untyped =
   ## See top-level example.
   let a1 = a # to avoid double evaluations
-  let a2 = a1.valueImpl
-  type T = Wrapnil[type(a2.b)]
-  if a1.validImpl:
-    when type(a2) is ref|ptr:
+  type T = Option[typeof(unsafeGet(a1).b)]
+  if isSome(a1):
+    let a2 = unsafeGet(a1)
+    when typeof(a2) is ref|ptr:
       if a2 == nil:
         default(T)
       else:
-        wrapnil(a2.b)
+        option(a2.b)
     else:
-      wrapnil(a2.b)
+      option(a2.b)
   else:
     # nil is "sticky"; this is needed, see tests
     default(T)
 
-{.pop.}
+# xxx this should but doesn't work: func `[]`*[T, I](a: Option[T], i: I): Option {.inline.} =
 
-proc isValid(a: Wrapnil): bool =
-  ## Returns true if `a` didn't contain intermediate `nil` values (note that
-  ## `a.valueImpl` itself can be nil even in that case)
-  a.validImpl
-
-template `[]`*[I](a: Wrapnil, i: I): untyped =
+func `[]`*[T, I](a: Option[T], i: I): auto {.inline.} =
   ## See top-level example.
-  let a1 = a # to avoid double evaluations
-  if a1.validImpl:
+  if isSome(a):
     # correctly will raise IndexDefect if a is valid but wraps an empty container
-    wrapnil(a1.valueImpl[i])
-  else:
-    default(Wrapnil[type(a1.valueImpl[i])])
+    result = option(a.unsafeGet[i])
 
-template `[]`*(a: Wrapnil): untyped =
+func `[]`*[U](a: Option[U]): auto {.inline.} =
   ## See top-level example.
-  let a1 = a # to avoid double evaluations
-  let a2 = a1.valueImpl
-  type T = Wrapnil[type(a2[])]
-  if a1.validImpl:
-    if a2 == nil:
-      default(T)
-    else:
-      wrapnil(a2[])
-  else:
-    default(T)
+  if isSome(a):
+    let a2 = a.unsafeGet
+    if a2 != nil:
+      result = option(a2[])
 
 import std/macros
 
-proc replace(n: NimNode): NimNode =
-  if n.kind == nnkPar:
+func replace(n: NimNode): NimNode =
+  if n.kind == nnkDotExpr:
+    result = newCall(bindSym"fakeDot", replace(n[0]), n[1])
+  elif n.kind == nnkPar:
     doAssert n.len == 1
-    newCall(bindSym"wrapnil", n[0])
+    result = newCall(bindSym"option", n[0])
   elif n.kind in {nnkCall, nnkObjConstr}:
-    newCall(bindSym"wrapnil", n)
+    result = newCall(bindSym"option", n)
   elif n.len == 0:
-    newCall(bindSym"wrapnil", n)
+    result = newCall(bindSym"option", n)
   else:
     n[0] = replace(n[0])
-    n
+    result = n
 
-macro `?.`*(a: untyped): untyped =
+proc safeGet[T](a: Option[T]): T {.inline.} =
+  get(a, default(T))
+
+macro `?.`*(a: untyped): auto =
   ## Transforms `a` into an expression that can be safely evaluated even in
   ## presence of intermediate nil pointers/references, in which case a default
   ## value is produced.
-  #[
-  Using a template like this wouldn't work:
-    template `?.`*(a: untyped): untyped = wrapnil(a)[]
-  ]#
   result = replace(a)
   result = quote do:
-    `result`.valueImpl
+    # `result`.val # TODO: expose a way to do this directly in std/options, e.g.: `getAsIs`
+    safeGet(`result`)
+
+macro `??.`*(a: untyped): Option =
+  ## Same as `?.` but returns an `Option`.
+  runnableExamples:
+    type Foo = ref object
+      x1: ref int
+      x2: int
+    # `?.` can't distinguish between a valid vs invalid default value, but `??.` can:
+    var f1 = Foo(x1: int.new, x2: 2)
+    doAssert (??.f1.x1[]).get == 0 # not enough to tell when the chain was valid.
+    doAssert (??.f1.x1[]).isSome # a nil didn't occur in the chain
+    doAssert (??.f1.x2).get == 2
+
+    var f2: Foo
+    doAssert not (??.f2.x1[]).isSome # f2 was nil
+    from std/options import UnpackDefect
+    doAssertRaises(UnpackDefect): discard (??.f2.x1[]).get
+    doAssert ?.f2.x1[] == 0 # in contrast, this returns default(int)
+
+  result = replace(a)

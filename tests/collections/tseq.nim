@@ -201,7 +201,7 @@ block ttoseq:
     stdout.write(x)
   for x in items(toSeq(countup(2, 6))):
     stdout.write(x)
-  var y: type("a b c".split)
+  var y: typeof("a b c".split)
   y = "xzy"
   stdout.write("\n")
 

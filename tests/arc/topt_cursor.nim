@@ -4,21 +4,18 @@ discard """
   nimout: '''--expandArc: main
 
 var
+  x_cursor
   :tmpD
-  :tmpD_1
-  :tmpD_2
 try:
-  var x_cursor = ("hi", 5)
-  x_cursor = if cond:
-    :tmpD = ("different", 54)
-    :tmpD else:
-    :tmpD_1 = ("string here", 80)
-    :tmpD_1
+  x_cursor = ("hi", 5)
+  if cond:
+    x_cursor = ("different", 54) else:
+    x_cursor = ("string here", 80)
   echo [
-    :tmpD_2 = `$`(x_cursor)
-    :tmpD_2]
+    :tmpD = `$`(x_cursor)
+    :tmpD]
 finally:
-  `=destroy`(:tmpD_2)
+  `=destroy`(:tmpD)
 -- end of expandArc ------------------------
 --expandArc: sio
 

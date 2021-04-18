@@ -21,7 +21,7 @@ runnableExamples:
       foo: int
       bar: string
 
-  iterator items(x: Something): int =
+  iterator items(x: Something): Hash =
     yield hash(x.foo)
     yield hash(x.bar)
 
@@ -123,6 +123,37 @@ proc hiXorLo(a, b: uint64): uint64 {.inline.} =
     else:
       result = hiXorLoFallback64(a, b)
 
+when defined(js):
+  import std/jsbigints
+  import std/private/jsutils
+
+  proc hiXorLoJs(a, b: JsBigInt): JsBigInt =
+    let
+      prod = a * b
+      mask = big"0xffffffffffffffff" # (big"1" shl big"64") - big"1"
+    result = (prod shr big"64") xor (prod and mask)
+
+  template hashWangYiJS(x: JsBigInt): Hash =
+    let
+      P0 = big"0xa0761d6478bd642f"
+      P1 = big"0xe7037ed1a0b428db"
+      P58 = big"0xeb44accab455d16d" # big"0xeb44accab455d165" xor big"8"
+      res = hiXorLoJs(hiXorLoJs(P0, x xor P1), P58)
+    cast[Hash](toNumber(wrapToInt(res, 32)))
+
+  template toBits(num: float): JsBigInt =
+    let
+      x = newArrayBuffer(8)
+      y = newFloat64Array(x)
+    if hasBigUint64Array():
+      let z = newBigUint64Array(x)
+      y[0] = num
+      z[0]
+    else:
+      let z = newUint32Array(x)
+      y[0] = num
+      big(z[0]) + big(z[1]) shl big(32)
+
 proc hashWangYi1*(x: int64|uint64|Hash): Hash {.inline.} =
   ## Wang Yi's hash_v1 for 64-bit ints (see https://github.com/rurban/smhasher for
   ## more details). This passed all scrambling tests in Spring 2019 and is simple.
@@ -139,22 +170,10 @@ proc hashWangYi1*(x: int64|uint64|Hash): Hash {.inline.} =
       result = cast[Hash](h(x))
   else:
     when defined(js):
-      asm """
-        if (typeof BigInt == 'undefined') {
-          `result` = `x`; // For Node < 10.4, etc. we do the old identity hash
-        } else {          // Otherwise we match the low 32-bits of C/C++ hash
-          function hi_xor_lo_js(a, b) {
-            const prod = BigInt(a) * BigInt(b);
-            const mask = (BigInt(1) << BigInt(64)) - BigInt(1);
-            return (prod >> BigInt(64)) ^ (prod & mask);
-          }
-          const P0  = BigInt(0xa0761d64)<<BigInt(32)|BigInt(0x78bd642f);
-          const P1  = BigInt(0xe7037ed1)<<BigInt(32)|BigInt(0xa0b428db);
-          const P58 = BigInt(0xeb44acca)<<BigInt(32)|BigInt(0xb455d165)^BigInt(8);
-          var res   = hi_xor_lo_js(hi_xor_lo_js(P0, BigInt(`x`) ^ P1), P58);
-          `result`  = Number(res & ((BigInt(1) << BigInt(53)) - BigInt(1)));
-        }"""
-      result = result and cast[Hash](0xFFFFFFFF)
+      if hasJsBigInt():
+        result = hashWangYiJS(big(x))
+      else:
+        result = cast[Hash](x) and cast[Hash](0xFFFFFFFF)
     else:
       result = cast[Hash](h(x))
 
@@ -163,7 +182,7 @@ proc hashData*(data: pointer, size: int): Hash =
   var h: Hash = 0
   when defined(js):
     var p: cstring
-    asm """`p` = `Data`;"""
+    asm """`p` = `Data`"""
   else:
     var p = cast[cstring](data)
   var i = 0
@@ -173,32 +192,6 @@ proc hashData*(data: pointer, size: int): Hash =
     inc(i)
     dec(s)
   result = !$h
-
-when defined(js):
-  var objectID = 0
-
-proc hash*(x: pointer): Hash {.inline.} =
-  ## Efficient hashing of pointers.
-  when defined(js):
-    asm """
-      if (typeof `x` == "object") {
-        if ("_NimID" in `x`)
-          `result` = `x`["_NimID"];
-        else {
-          `result` = ++`objectID`;
-          `x`["_NimID"] = `result`;
-        }
-      }
-    """
-  else:
-    result = cast[Hash](cast[uint](x) shr 3) # skip the alignment
-
-proc hash*[T: proc](x: T): Hash {.inline.} =
-  ## Efficient hashing of proc vars. Closures are supported too.
-  when T is "closure":
-    result = hash(rawProc(x)) !& hash(rawEnv(x))
-  else:
-    result = hash(pointer(x))
 
 proc hashIdentity*[T: Ordinal|enum](x: T): Hash {.inline, since: (1, 3).} =
   ## The identity hash, i.e. `hashIdentity(x) = x`.
@@ -214,16 +207,57 @@ else:
     hashWangYi1(uint64(ord(x)))
 
 when defined(js):
-  proc asBigInt(x: float): int64 =
-    # result is a `BigInt` type in js, but we cheat the type system
-    # and say it is a `int64` type.
-    # TODO: refactor it using bigInt once jsBigInt is ready, pending pr #1640
+  var objectID = 0
+  proc getObjectId(x: pointer): int =
     asm """
-    const buffer = new ArrayBuffer(8);
-    const floatBuffer = new Float64Array(buffer);
-    const uintBuffer = new BigUint64Array(buffer);
-    floatBuffer[0] = `x`;
-    `result` = uintBuffer[0];"""
+      if (typeof `x` == "object") {
+        if ("_NimID" in `x`)
+          `result` = `x`["_NimID"];
+        else {
+          `result` = ++`objectID`;
+          `x`["_NimID"] = `result`;
+        }
+      }
+    """
+
+proc hash*(x: pointer): Hash {.inline.} =
+  ## Efficient `hash` overload.
+  when defined(js):
+    let y = getObjectId(x)
+  else:
+    let y = cast[int](x)
+  hash(y) # consistent with code expecting scrambled hashes depending on `nimIntHash1`.
+
+proc hash*[T](x: ref[T] | ptr[T]): Hash {.inline.} =
+  ## Efficient `hash` overload.
+  runnableExamples:
+    var a: array[10, uint8]
+    assert a[0].addr.hash != a[1].addr.hash
+    assert cast[pointer](a[0].addr).hash == a[0].addr.hash
+  runnableExamples:
+    type A = ref object
+      x: int
+    let a = A(x: 3)
+    let ha = a.hash
+    assert ha != A(x: 3).hash # A(x: 3) is a different ref object from `a`.
+    a.x = 4
+    assert ha == a.hash # the hash only depends on the address
+  runnableExamples:
+    # you can overload `hash` if you want to customize semantics
+    type A[T] = ref object
+      x, y: T
+    proc hash(a: A): Hash = hash(a.x)
+    assert A[int](x: 3, y: 4).hash == A[int](x: 3, y: 5).hash
+  # xxx pending bug #17733, merge as `proc hash*(pointer | ref | ptr): Hash`
+  # or `proc hash*[T: ref | ptr](x: T): Hash`
+  hash(cast[pointer](x))
+
+proc hash*[T: proc](x: T): Hash {.inline.} =
+  ## Efficient hashing of proc vars. Closures are supported too.
+  when T is "closure":
+    result = hash((rawProc(x), rawEnv(x)))
+  else:
+    result = hash(pointer(x))
 
 proc hash*(x: float): Hash {.inline.} =
   ## Efficient hashing of floats.
@@ -235,7 +269,7 @@ proc hash*(x: float): Hash {.inline.} =
     when not defined(js):
       result = hashWangYi1(cast[Hash](y))
     else:
-      result = hashWangYi1(asBigInt(y))
+      result = hashWangYiJS(toBits(y))
 
 # Forward declarations before methods that hash containers. This allows
 # containers to contain other containers
@@ -477,14 +511,23 @@ proc hashIgnoreCase*(sBuf: string, sPos, ePos: int): Hash =
     h = h !& ord(c)
   result = !$h
 
-
-proc hash*[T: tuple](x: T): Hash =
-  ## Efficient hashing of tuples.
-  ## There must be a `hash` proc defined for each of the field types.
+proc hash*[T: tuple | object](x: T): Hash =
+  ## Efficient `hash` overload.
+  ## `hash` must be defined for each component of `x`.
+  runnableExamples:
+    type Obj = object
+      x: int
+      y: string
+    type Obj2[T] = object
+      x: int
+      y: string
+    assert hash(Obj(x: 520, y: "Nim")) != hash(Obj(x: 520, y: "Nim2"))
+    # you can define custom hashes for objects (even if they're generic):
+    proc hash(a: Obj2): Hash = hash((a.x))
+    assert hash(Obj2[float](x: 520, y: "Nim")) == hash(Obj2[float](x: 520, y: "Nim2"))
   for f in fields(x):
     result = result !& hash(f)
   result = !$result
-
 
 proc hash*[A](x: openArray[A]): Hash =
   ## Efficient hashing of arrays and sequences.

@@ -46,10 +46,3 @@ $nimsuggest --tester $file
 sug;;skField;;age;;int;;$file;;6;;6;;"";;100;;Prefix
 sug;;skMethod;;twithin_macro_prefix.age_human_yrs;;proc (self: Animal): int;;$file;;8;;9;;"";;100;;Prefix
 """
-
-#[
-TODO: additional calls to `>sug $1` produces different output with errors,
-      possibly related to cached results from the first analysis, which refers
-      to expanded macros/templates which rely on imported symbols from `system`
-      module that are not present in this module.
-]#

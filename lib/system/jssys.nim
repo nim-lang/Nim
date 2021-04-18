@@ -645,7 +645,7 @@ proc genericReset(x: JSRef, ti: PNimType): JSRef {.compilerproc.} =
       asm "`result` = {m_type: `ti`};"
     else:
       asm "`result` = {};"
-  of tySequence, tyOpenArray:
+  of tySequence, tyOpenArray, tyString:
     asm """
       `result` = [];
     """

@@ -7,7 +7,7 @@
 #    distribution, for details about the copyright.
 #
 
-## The ``parsesql`` module implements a high performance SQL file
+## The `parsesql` module implements a high performance SQL file
 ## parser. It parses PostgreSQL syntax and the SQL ANSI standard.
 ##
 ## Unstable API.
@@ -1179,9 +1179,12 @@ type
 proc add(s: var SqlWriter, thing: char) =
   s.buffer.add(thing)
 
-proc add(s: var SqlWriter, thing: string) =
+proc prepareAdd(s: var SqlWriter) {.inline.} =
   if s.buffer.len > 0 and s.buffer[^1] notin {' ', '\L', '(', '.'}:
     s.buffer.add(" ")
+
+proc add(s: var SqlWriter, thing: string) =
+  s.prepareAdd
   s.buffer.add(thing)
 
 proc addKeyw(s: var SqlWriter, thing: string) =
@@ -1223,6 +1226,17 @@ proc addMulti(s: var SqlWriter, n: SqlNode, sep = ',', prefix, suffix: char) =
 proc quoted(s: string): string =
   "\"" & replace(s, "\"", "\"\"") & "\""
 
+func escape(result: var string; s: string) =
+  result.add('\'')
+  for c in items(s):
+    case c
+    of '\0'..'\31':
+      result.add("\\x")
+      result.add(toHex(ord(c), 2))
+    of '\'': result.add("''")
+    else: result.add(c)
+  result.add('\'')
+
 proc ra(n: SqlNode, s: var SqlWriter) =
   if n == nil: return
   case n.kind
@@ -1235,7 +1249,8 @@ proc ra(n: SqlNode, s: var SqlWriter) =
   of nkQuotedIdent:
     s.add(quoted(n.strVal))
   of nkStringLit:
-    s.add(escape(n.strVal, "'", "'"))
+    s.prepareAdd
+    s.buffer.escape(n.strVal)
   of nkBitStringLit:
     s.add("b'" & n.strVal & "'")
   of nkHexStringLit:

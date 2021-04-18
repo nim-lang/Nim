@@ -12,6 +12,8 @@
 import ast, astalgo, msgs, types, magicsys, semdata, renderer, options,
   lineinfos, modulegraphs
 
+from concepts import makeTypeDesc
+
 const tfInstClearedFlags = {tfHasMeta, tfUnresolved}
 
 proc checkPartialConstructedType(conf: ConfigRef; info: TLineInfo, t: PType) =
@@ -229,6 +231,8 @@ proc replaceTypeVarsN(cl: var TReplTypeVars, n: PNode; start=0): PNode =
     n = reResolveCallsWithTypedescParams(cl, n)
     result = if cl.allowMetaTypes: n
              else: cl.c.semExpr(cl.c, n)
+    if not cl.allowMetaTypes:
+      assert result.kind notin nkCallKinds
   else:
     if n.len > 0:
       newSons(result, n.len)
@@ -503,7 +507,7 @@ proc replaceTypeVarsTAux(cl: var TReplTypeVars, t: PType): PType =
   result = t
   if t == nil: return
 
-  if t.kind in {tyStatic, tyGenericParam} + tyTypeClasses:
+  if t.kind in {tyStatic, tyGenericParam, tyConcept} + tyTypeClasses:
     let lookup = cl.typeMap.lookup(t)
     if lookup != nil: return lookup
 
