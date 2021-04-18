@@ -360,6 +360,7 @@ const
   errInvalidNumber = "$1 is not a valid number"
 
 proc trackDirty(conf: ConfigRef; arg: string, info: TLineInfo) =
+  conf.m.trackPosProvided = true
   var a = arg.split(',')
   if a.len != 4: localError(conf, info,
                             "DIRTY_BUFFER,ORIGINAL_FILE,LINE,COLUMN expected")
@@ -376,6 +377,7 @@ proc trackDirty(conf: ConfigRef; arg: string, info: TLineInfo) =
   conf.m.trackPos = newLineInfo(dirtyOriginalIdx, line, column)
 
 proc track(conf: ConfigRef; arg: string, info: TLineInfo) =
+  conf.m.trackPosProvided = true
   var a = arg.split(',')
   if a.len != 3: localError(conf, info, "FILE,LINE,COLUMN expected")
   var line, column: int
