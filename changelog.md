@@ -39,6 +39,18 @@
 - In `std/os`, `getHomeDir`, `expandTilde`, `getTempDir`, `getConfigDir` now do not include trailing `DirSep`,
   unless `-d:nimLegacyHomeDir` is specified (for a transition period).
 
+- On POSIX systems, the default signal handlers used for Nim programs (it's
+  used for printing the stacktrace on fatal signals) will now re-raise the
+  signal for the OS default handlers to handle.
+
+  This lets the OS perform its default actions, which might include core
+  dumping (on select signals) and notifying the parent process about the cause
+  of termination.
+
+- On POSIX systems, we now ignore `SIGPIPE` signals, use `-d:nimLegacySigpipeHandler`
+  for previous behavior.
+
+
 ## Standard library additions and changes
 - Added support for parenthesized expressions in `strformat`
 
@@ -218,14 +230,6 @@
   arguments passed to it, so `initOptParser` has been changed to raise
   `ValueError` when the real command line is not available. `parseopt` was
   previously excluded from `prelude` for JS, as it could not be imported.
-
-- On POSIX systems, the default signal handlers used for Nim programs (it's
-  used for printing the stacktrace on fatal signals) will now re-raise the
-  signal for the OS default handlers to handle.
-
-  This lets the OS perform its default actions, which might include core
-  dumping (on select signals) and notifying the parent process about the cause
-  of termination.
 
 - Added `system.prepareStrMutation` for better support of low
   level `moveMem`, `copyMem` operations for Orc's copy-on-write string

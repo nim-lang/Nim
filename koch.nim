@@ -542,6 +542,10 @@ proc runCI(cmd: string) =
   # boot without -d:nimHasLibFFI to make sure this still works
   kochExecFold("Boot in release mode", "boot -d:release -d:nimStrictMode")
 
+  when false: # debugging: when you need to run only 1 test in CI, use something like this:
+    execFold("debugging test", "nim r tests/stdlib/tosproc.nim")
+    doAssert false, "debugging only"
+
   ## build nimble early on to enable remainder to depend on it if needed
   kochExecFold("Build Nimble", "nimble")
 
