@@ -9,8 +9,8 @@ type JsHttpClient* = ref object of XMLHttpRequest
 
 func newJsHttpClient*(): JsHttpClient = discard
 
-proc xmlHttpRequestImpl(self: JsHttpClient; url: Uri | string; body: string; metod: static[cstring]): cstring =
-  self.open(metod = metod, url = cstring($url), false)
+proc xmlHttpRequestImpl(self: JsHttpClient; url: Uri | string; body: string; `method`: static[cstring]): cstring =
+  self.open(`method` = `method`, url = cstring($url), false)
   self.send(body = body.cstring)
   self.responseText
 
