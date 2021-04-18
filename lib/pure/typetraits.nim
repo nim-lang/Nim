@@ -167,6 +167,11 @@ since (1, 3, 5):
 
     typeof(block: (for ai in a: ai))
 
+since (1, 5, 1):
+  template typeOrVoid*[T](a: T): type =
+    ## 
+    T
+
 import std/macros
 
 macro enumLen*(T: typedesc[enum]): int =
