@@ -82,15 +82,17 @@ template randomPathName(length: Natural): string =
   res
 
 proc createTempFile*(prefix, suffix: string, dir = ""): tuple[fd: File, path: string] =
-  ## `createTempFile` creates a new temporary file in the directory `dir`. If `dir` is
-  ## the empty string, the default directory for temporary files
+  ## `createTempFile` creates a new temporary file in the directory `dir`.
+  ## 
+  ## If `dir` is the empty string, the default directory for temporary files
   ## (`getTempDir <os.html#getTempDir>`_) will be used.
   ## The temporary file name begins with `prefix` and ends with `suffix`.
+  ## `createTempFile` returns a file handle to an open file and the path of that file.
+  ## 
+  ## If failing to create a temporary file, `IOError` will be raised.
   ##
   ## .. note:: It is the caller's responsibility to remove the file when no longer needed.
   ##
-  ## `createTempFile` returns a file handle to an open file and the path of that file.
-  ## If failing to create a temporary file, `IOError` will be raised.
   var dir = dir
   if dir.len == 0:
     dir = getTempDir()
@@ -108,15 +110,17 @@ proc createTempFile*(prefix, suffix: string, dir = ""): tuple[fd: File, path: st
   raise newException(IOError, "Failed to create a temporary file under directory " & dir)
 
 proc createTempDir*(prefix, suffix: string, dir = ""): string =
-  ## `createTempDir` creates a new temporary directory in the directory `dir`. If `dir` is
-  ## the empty string, the default directory for temporary files
+  ## `createTempDir` creates a new temporary directory in the directory `dir`.
+  ##
+  ## If `dir` is the empty string, the default directory for temporary files
   ## (`getTempDir <os.html#getTempDir>`_) will be used.
   ## The temporary directory name begins with `prefix` and ends with `suffix`.
+  ## `createTempDir` returns the path of that temporary firectory.
+  ##
+  ## If failing to create a temporary directory, `IOError` will be raised.
   ##
   ## .. note:: It is the caller's responsibility to remove the directory when no longer needed.
   ##
-  ## `createTempDir` returns the path of that temporary firectory.
-  ## If failing to create a temporary directory, `IOError` will be raised.
   var dir = dir
   if dir.len == 0:
     dir = getTempDir()
