@@ -78,7 +78,7 @@ template randomPathName(length: Natural): string =
   var res = newString(length)
   var state = initRand()
   for i in 0 ..< length:
-    res[i] = letters[state.rand(61)]
+    res[i] = state.sample(letters)
   res
 
 proc createTempFile*(prefix, suffix: string, dir = ""): tuple[fd: File, name: string] =
@@ -98,7 +98,7 @@ proc createTempFile*(prefix, suffix: string, dir = ""): tuple[fd: File, name: st
   createDir(dir)
 
   for i in 0 ..< maxRetry:
-    result.name = dir / prefix & randomPathName(nimTempPathLength) & suffix
+    result.name = dir / (prefix & randomPathName(nimTempPathLength) & suffix)
     try:
       result.fd = safeOpen(result.name)
     except OSError:
@@ -124,7 +124,7 @@ proc createTempDir*(prefix, suffix: string, dir = ""): string =
   createDir(dir)
 
   for i in 0 ..< maxRetry:
-    result = joinPath(dir, prefix & randomPathName(nimTempPathLength) & suffix)
+    result = dir / (prefix & randomPathName(nimTempPathLength) & suffix)
     try:
       if not existsOrCreateDir(result):
         return
