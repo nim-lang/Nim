@@ -104,11 +104,10 @@ proc aliveSymsChanged(config: ConfigRef; position: int; alive: AliveSyms): bool 
       let oldAsSet = toPackedSet[int32](oldData)
       let newAsSet = toPackedSet[int32](s)
       echo "set of live symbols changed ", asymFile.changeFileExt("rod"), " ", position, " ", f2.err
-      echo "in old but not in new ", oldAsSet.difference(newAsSet)
-      echo "in new but not in old ", newAsSet.difference(oldAsSet)
-
-      if execShellCmd(getAppFilename() & " rod " & quoteShell(asymFile.changeFileExt("rod"))) != 0:
-        echo "command failed"
+      echo "in old but not in new ", oldAsSet.difference(newAsSet), " number of entries in old ", oldAsSet.len
+      echo "in new but not in old ", newAsSet.difference(oldAsSet), " number of entries in new ", newAsSet.len
+      #if execShellCmd(getAppFilename() & " rod " & quoteShell(asymFile.changeFileExt("rod"))) != 0:
+      #  echo "command failed"
     result = true
     storeAliveSymsImpl(asymFile, s)
 
@@ -151,9 +150,9 @@ proc generateCode*(g: ModuleGraph) =
     of loading, stored:
       assert false
     of storing, outdated:
+      storeAliveSyms(g.config, g.packed[i].module.position, alive)
       generateCodeForModule(g, g.packed[i], alive)
       closeRodFile(g, g.packed[i].module)
-      storeAliveSyms(g.config, g.packed[i].module.position, alive)
     of loaded:
       if g.packed[i].loadedButAliveSetChanged:
         generateCodeForModule(g, g.packed[i], alive)
