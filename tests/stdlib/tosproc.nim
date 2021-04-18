@@ -206,8 +206,8 @@ else: # main driver
       var line = newStringOfCap(120)
       while true:
         if outp.readLine(line):
-          result[0].string.add(line.string)
-          result[0].string.add("\n")
+          result[0].add(line)
+          result[0].add("\n")
         else:
           result[1] = peekExitCode(p)
           if result[1] != -1: break
@@ -279,3 +279,22 @@ else: # main driver
     when defined(posix):
       doAssert execCmdEx("echo $FO", env = newStringTable({"FO": "B"})) == ("B\n", 0)
       doAssert execCmdEx("echo $PWD", workingDir = "/") == ("/\n", 0)
+
+  block: # bug #17749
+    let output = compileNimProg("-d:case_testfile4", "D20210417T011153")
+    var p = startProcess(output, dir)
+    let inp = p.inputStream
+    var count = 0
+    when defined(windows):
+      # xxx we should make osproc.hsWriteData raise IOError on windows, consistent
+      # with posix; we could also (in addition) make IOError a subclass of OSError.
+      type SIGPIPEError = OSError
+    else:
+      type SIGPIPEError = IOError
+    doAssertRaises(SIGPIPEError):
+      for i in 0..<100000:
+        count.inc
+        inp.writeLine "ok" # was giving SIGPIPE and crashing
+    doAssert count >= 100
+    doAssert waitForExit(p) == QuitFailure
+    close(p) # xxx isn't that missing in other places?
