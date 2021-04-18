@@ -97,8 +97,6 @@ proc createTempFile*(prefix, suffix: string, dir = ""): tuple[fd: File, name: st
 
   createDir(dir)
 
-  result.name.setLen(dir.len + prefix.len + nimTempPathLength + suffix.len + 2)
-
   for i in 0 ..< maxRetry:
     result.name = dir / prefix & randomPathName(nimTempPathLength) & suffix
     try:
@@ -122,8 +120,6 @@ proc createTempDir*(prefix, suffix: string, dir = ""): string =
   var dir = dir
   if dir.len == 0:
     dir = getTempDir()
-
-  result.setLen(dir.len + prefix.len + nimTempPathLength + suffix.len + 2)
 
   createDir(dir)
 
