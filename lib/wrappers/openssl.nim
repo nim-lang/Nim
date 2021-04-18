@@ -52,14 +52,23 @@ when sslVersion != "":
     from posix import SocketHandle
 
 elif useWinVersion:
-  when not defined(nimOldDlls) and defined(cpu64):
+  when defined(openssl10) or defined(nimOldDlls):
+    when defined(cpu64):
+      const
+        DLLSSLName* = "(ssleay32|ssleay64).dll"
+        DLLUtilName* = "(libeay32|libeay64).dll"
+    else:
+      const
+        DLLSSLName* = "ssleay32.dll"
+        DLLUtilName* = "libeay32.dll"
+  elif defined(cpu64):
     const
       DLLSSLName* = "(libssl-1_1-x64|ssleay64|libssl64).dll"
       DLLUtilName* = "(libcrypto-1_1-x64|libeay64).dll"
   else:
     const
       DLLSSLName* = "(libssl-1_1|ssleay32|libssl32).dll"
-      DLLUtilName* =  "(libcrypto-1_1|libeay32).dll"
+      DLLUtilName* = "(libcrypto-1_1|libeay32).dll"
 
   from winlean import SocketHandle
 else:
