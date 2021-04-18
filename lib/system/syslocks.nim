@@ -56,7 +56,7 @@ when defined(windows):
 
   proc sleepConditionVariableCS(
     conditionVariable: var SysCond,
-    PCRITICAL_SECTION: SysLock,
+    PCRITICAL_SECTION: var SysLock,
     dwMilliseconds: int
   ): int32 {.stdcall, noSideEffect, dynlib: "kernel32", importc: "SleepConditionVariableCS".}
 
