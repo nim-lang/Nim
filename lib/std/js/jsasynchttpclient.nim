@@ -52,7 +52,7 @@ runnableExamples("-d:nimExperimentalJsfetch -d:nimExperimentalAsyncjsThen -r:off
 
   proc example(): Future[void] {.async.} =
     let client = newJsAsyncHttpClient()
-    const data = """{"key": "value"}""".cstring
+    const data = """{"key": "value"}"""
 
     block:
       let url = parseUri("http://nim-lang.org")
