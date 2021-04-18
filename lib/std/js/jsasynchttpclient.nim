@@ -49,14 +49,12 @@ proc head*(self: JsAsyncHttpClient; url: Uri | string): Future[Response] {.async
   fetch(cstring($url), fetchOptionsImpl("".cstring, "HEAD".cstring))
 
 
-runnableExamples("-d:nimExperimentalJsfetch -r:off"):
-  import std/asyncjs
-  from std/jsfetch import Response
-  from std/uri import parseUri, Uri
+runnableExamples("-d:nimExperimentalJsfetch -d:nimExperimentalAsyncjsThen -r:off"):
+  import std/[asyncjs, jsfetch, uri]
 
-  proc example() {.async.} =
+  proc example(): Future[void] {.async.} =
     let client = newJsAsyncHttpClient()
-    const data = """{"key": "value"}"""
+    const data = """{"key": "value"}""".cstring
 
     block:
       let url = parseUri("http://nim-lang.org")
