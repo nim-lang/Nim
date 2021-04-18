@@ -258,7 +258,9 @@ proc fieldVisible*(c: PContext, f: PSym): bool {.inline.} =
     for module in c.friendModules:
       if fmoduleId == module.id: return true
     if f.kind == skField:
-      let symObj = f.owner
+      var symObj = f.owner
+      if symObj.typ.kind in {tyRef, tyPtr}:
+        symObj = symObj.typ[0].sym
       for scope in allScopes(c.currentScope):
         for sym in scope.allowPrivateAccess:
           if symObj.id == sym.id: return true

@@ -578,9 +578,9 @@ proc magicsAfterOverloadResolution(c: PContext, n: PNode,
       n[0].sym.magic = mSubU
     result = n
   of mPrivateAccess:
-    let sym = n[1].typ[0].sym
-    assert sym != nil
-    c.currentScope.allowPrivateAccess.add sym
+    var t = n[1].typ[0]
+    if t.kind in {tyRef, tyPtr}: t = t[0]
+    c.currentScope.allowPrivateAccess.add t.sym
     result = newNodeIT(nkEmpty, n.info, getSysType(c.graph, n.info, tyVoid))
   else:
     result = n
