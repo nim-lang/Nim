@@ -81,7 +81,7 @@ template randomPathName(length: Natural): string =
     res[i] = state.sample(letters)
   res
 
-proc createTempFile*(prefix, suffix: string, dir = ""): tuple[fd: File, name: string] =
+proc createTempFile*(prefix, suffix: string, dir = ""): tuple[fd: File, path: string] =
   ## `createTempFile` creates a new temporary file in the directory `dir`. If `dir` is
   ## the empty string, the default directory for temporary files
   ## (`getTempDir <os.html#getTempDir>`_) will be used.
@@ -98,9 +98,9 @@ proc createTempFile*(prefix, suffix: string, dir = ""): tuple[fd: File, name: st
   createDir(dir)
 
   for i in 0 ..< maxRetry:
-    result.name = dir / (prefix & randomPathName(nimTempPathLength) & suffix)
+    result.path = dir / (prefix & randomPathName(nimTempPathLength) & suffix)
     try:
-      result.fd = safeOpen(result.name)
+      result.fd = safeOpen(result.path)
     except OSError:
       continue
     return
