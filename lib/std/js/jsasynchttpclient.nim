@@ -1,6 +1,4 @@
 ## `Async <asyncjs.html>`_ `HttpClient <httpclient.html>`_ for JavaScript implemented on top of `jsfetch <jsfetch.html>`_
-##
-## .. Note:: jsasynchttpclient module requires `-d:nimExperimentalJsfetch`
 when not defined(js):
   {.fatal: "Module jsasynchttpclient is designed to be used with the JavaScript backend.".}
 
