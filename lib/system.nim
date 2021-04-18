@@ -980,7 +980,7 @@ proc `@`* [IDX, T](a: sink array[IDX, T]): seq[T] {.magic: "ArrToSeq", noSideEff
   ##   echo @a # => @[1, 3, 5]
   ##   echo @b # => @['f', 'o', 'o']
 
-proc default*(T: typedesc): T {.magic: "Default", noSideEffect.} =
+proc default*[T](_: typedesc[T]): T {.magic: "Default", noSideEffect.} =
   ## returns the default value of the type `T`.
   runnableExamples:
     assert (int, float).default == (0, 0.0)
