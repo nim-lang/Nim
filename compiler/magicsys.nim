@@ -28,7 +28,7 @@ proc getSysSym*(g: ModuleGraph; info: TLineInfo; name: string): PSym =
     localError(g.config, info, "system module needs: " & name)
     result = newSym(skError, getIdent(g.cache, name), nextSymId(g.idgen), g.systemModule, g.systemModule.info, {})
     result.typ = newType(tyError, nextTypeId(g.idgen), g.systemModule)
-  if result.kind == skAlias: result = result.owner
+  if result.kind == skAliasVisible: result = result.owner
 
 proc getSysMagic*(g: ModuleGraph; info: TLineInfo; name: string, m: TMagic): PSym =
   let id = getIdent(g.cache, name)

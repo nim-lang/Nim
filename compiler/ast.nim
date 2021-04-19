@@ -571,9 +571,8 @@ type
                           # order is important for the documentation generator!
     skUnknown,            # unknown symbol: used for parsing assembler blocks
                           # and first phase symbol lookup in generics
-    skConditional,        # symbol for the preprocessor (may become obsolete)
-    skDynLib,             # symbol represents a dynamic library; this is used
-                          # internally; it does not exist in Nim code
+    skConditional,        # deadcode
+    skDynLib,             # deadcode
     skParam,              # a parameter
     skGenericParam,       # a generic parameter; eq in ``proc x[eq=`==`]()``
     skTemp,               # a temporary variable (introduced by compiler)
@@ -599,13 +598,13 @@ type
                           # file (it is loaded on demand, which may
                           # mean: never)
     skPackage,            # symbol is a package (used for canonicalization)
-    skAlias               # an alias (needs to be resolved immediately)
+    skAliasVisible        # a visible alias (needs to be resolved immediately)
   TSymKinds* = set[TSymKind]
 
 const
   routineKinds* = {skProc, skFunc, skMethod, skIterator,
                    skConverter, skMacro, skTemplate}
-  ExportableSymKinds* = {skVar, skLet, skConst, skType, skEnumField, skStub, skAlias} + routineKinds
+  ExportableSymKinds* = {skVar, skLet, skConst, skType, skEnumField, skStub, skAliasVisible} + routineKinds
 
   tfUnion* = tfNoSideEffect
   tfGcSafe* = tfThread
