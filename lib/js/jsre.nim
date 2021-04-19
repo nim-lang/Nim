@@ -75,7 +75,7 @@ runnableExamples:
     assert not("a".contains jsRegex)
 
   block:
-    let jsRegex = newRegExp("a", "i")  ## "i" means "Case Insensitive" flag.
+    let jsRegex = newRegExp("a", "i")  # "i" means "Case Insensitive" flag.
     assert "a".contains jsRegex
     assert "a".contains jsRegex
     assert "a".contains jsRegex
