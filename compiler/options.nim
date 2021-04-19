@@ -902,7 +902,7 @@ proc canonicalImportAux*(conf: ConfigRef, file: AbsoluteFile): string =
 
 proc canonicalImport*(conf: ConfigRef, file: AbsoluteFile): string =
   let ret = canonicalImportAux(conf, file)
-  result = ret.string.nativeToUnixPath.changeFileExt("")
+  result = ret.nativeToUnixPath.changeFileExt("")
 
 proc canonDynlibName(s: string): string =
   let start = if s.startsWith("lib"): 3 else: 0
