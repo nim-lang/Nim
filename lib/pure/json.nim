@@ -1148,12 +1148,16 @@ when defined(nimFixedForwardGeneric):
       initFromJson(dst[], jsonNode, jsonPath)
 
   proc initFromJson[T](dst: var Option[T]; jsonNode: JsonNode; jsonPath: var string) =
-    if jsonNode != nil and jsonNode.kind != JNull:
-      when T is ref:
-        dst = some(new(T))
+    if jsonNode != nil:
+      if jsonNode.kind != JNull:
+        when T is ref:
+          dst = some(new(T))
+        else:
+          dst = some(default(T))
+        initFromJson(dst.get, jsonNode, jsonPath)
       else:
-        dst = some(default(T))
-      initFromJson(dst.get, jsonNode, jsonPath)
+        when T is JsonNode:
+          dst = some(newJNull()) 
 
   macro assignDistinctImpl[T: distinct](dst: var T;jsonNode: JsonNode; jsonPath: var string) =
     let typInst = getTypeInst(dst)

@@ -96,6 +96,11 @@
 - `json.%`,`json.to`, `jsonutils.formJson`,`jsonutils.toJson` now work with `uint|uint64`
   instead of raising (as in 1.4) or giving wrong results (as in 1.2).
 
+- `json.to[Foo]` now handles explicit nulls better. 
+  When type `Foo` which has a field `foo: Option[JsonNode]` was converted, 
+  a JNull value was converted to `Option[none]`. 
+  Now, it is correctly converted to `Option[JsonNode]` (a JNull value).
+
 - Added an overload for the `collect` macro that inferes the container type based
   on the syntax of the last expression. Works with std seqs, tables and sets.
 

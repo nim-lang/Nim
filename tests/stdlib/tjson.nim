@@ -7,7 +7,7 @@ discard """
 Note: Macro tests are in tests/stdlib/tjsonmacro.nim
 ]#
 
-import std/[json,parsejson,strutils]
+import std/[json,parsejson,strutils, options]
 when not defined(js):
   import std/streams
 
@@ -311,3 +311,13 @@ block:
     doAssert c == "18446744073709552000"
   else:
     doAssert c == "18446744073709551615"
+
+# bug #17788 
+block:
+  type
+    Foo = object
+      a: Option[JsonNode]
+
+  let foo = """{"a": null}""".parseJson.to(Foo)
+
+  doAssert foo.a.get.kind == JNull
