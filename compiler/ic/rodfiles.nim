@@ -23,8 +23,8 @@ from typetraits import supportsCopyMem
 ## (`RodFileError`). The file format broken up into sections (`RodSection`)
 ## and preceeded by a header (see: `cookie`). The precise layout, section
 ## ordering and data following the section are determined by the user. See
-## `ic.loadRoadFile`.
-## 
+## `ic.loadRodFile`.
+##
 ## A basic but "wrong" example of the lifecycle:
 ## ---------------------------------------------
 ## 1. `create` or `open`        - create a new one or open an existing
@@ -45,10 +45,10 @@ from typetraits import supportsCopyMem
 ## The API is centered around IO and prone to error, each operation checks or
 ## sets the `RodFile.err` field. A user of this API needs to handle these
 ## appropriately.
-## 
+##
 ## API Notes
 ## =========
-## 
+##
 ## Valid inputs for Rod files
 ## --------------------------
 ## ASTs, hopes, dreams, and anything as long as it and any children it may have
@@ -61,7 +61,7 @@ from typetraits import supportsCopyMem
 ## ----------------------------
 ## A flag based approach is used where operations no-op in case of a
 ## preexisting error and set the flag if they encounter one.
-## 
+##
 ## Misc
 ## ----
 ## * 'Prim' is short for 'primitive', as in a non-sequence type
