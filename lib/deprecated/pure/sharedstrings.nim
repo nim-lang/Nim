@@ -37,7 +37,7 @@ proc `=destroy`*(s: SharedString) =
     decRef(s.buffer)
 
 when false:
-  proc `=`*(dest: var SharedString; src: SharedString) =
+  proc `=copy`*(dest: var SharedString; src: SharedString) =
     incRef(src.buffer)
     if not dest.buffer.isNil:
       decRef(dest.buffer)
