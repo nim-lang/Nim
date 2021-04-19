@@ -64,7 +64,7 @@ runnableExamples:
     assert "0123456789abcd".contains jsRegex
     assert $jsRegex == "/[0-9]/i"
 
-  ## "Global" flag may or may not cause "alternating" behaviour,
+  ## "Global" flag may cause "alternating" behaviour,
   ## this is not caused by Nim, but each interpreter implementation.
   ## https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/RegExp#the_difference_between_the_sticky_flag_and_the_global_flag
   block:
