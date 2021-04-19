@@ -120,7 +120,7 @@ type
     nskProc, nskFunc, nskMethod, nskIterator,
     nskConverter, nskMacro, nskTemplate, nskField,
     nskEnumField, nskForVar, nskLabel,
-    nskStub, nskPackage , nskAliasVisible
+    nskStub, nskPackage , nskAlias
 
   TNimSymKinds* {.deprecated.} = set[NimSymKind]
 

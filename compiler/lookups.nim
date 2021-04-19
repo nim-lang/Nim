@@ -87,7 +87,7 @@ iterator localScopesFrom*(c: PContext; scope: PScope): PScope =
     yield s
 
 proc skipAlias*(s: PSym; n: PNode; conf: ConfigRef): PSym =
-  if s == nil or s.kind != skAliasVisible:
+  if s == nil or s.kind != skAlias:
     result = s
   else:
     result = s.owner

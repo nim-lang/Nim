@@ -605,13 +605,13 @@ type
                           # file (it is loaded on demand, which may
                           # mean: never)
     skPackage,            # symbol is a package (used for canonicalization)
-    skAliasVisible        # a visible alias (needs to be resolved immediately)
+    skAlias               # an alias (needs to be resolved immediately)
   TSymKinds* = set[TSymKind]
 
 const
   routineKinds* = {skProc, skFunc, skMethod, skIterator,
                    skConverter, skMacro, skTemplate}
-  ExportableSymKinds* = {skVar, skLet, skConst, skType, skEnumField, skStub, skAliasVisible} + routineKinds
+  ExportableSymKinds* = {skVar, skLet, skConst, skType, skEnumField, skStub, skAlias} + routineKinds
 
   tfUnion* = tfNoSideEffect
   tfGcSafe* = tfThread
