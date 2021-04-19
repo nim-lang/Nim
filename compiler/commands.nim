@@ -368,13 +368,16 @@ proc setTrackingInfo(conf: ConfigRef; dirty, file, line, column: string,
   if parseUtils.parseInt(column, col) <= 0:
     localError(conf, info, errInvalidNumber % column)
 
-  if dirty == "":
-    conf.m.trackPos = newLineInfo(conf, AbsoluteFile file, ln, col)
-  else:
-    let dirtyOriginalIdx = fileInfoIdx(conf, AbsoluteFile file)
-    if dirtyOriginalIdx.int32 >= 0:
-      msgs.setDirtyFile(conf, dirtyOriginalIdx, AbsoluteFile dirty)
-    conf.m.trackPos = newLineInfo(dirtyOriginalIdx, ln, col)
+  try:
+    if dirty == "":
+      conf.m.trackPos = newLineInfo(conf, AbsoluteFile expandFilename(file), ln, col)
+    else:
+      let dirtyOriginalIdx = fileInfoIdx(conf, AbsoluteFile file)
+      if dirtyOriginalIdx.int32 >= 0:
+        msgs.setDirtyFile(conf, dirtyOriginalIdx, AbsoluteFile expandFilename(dirty))
+      conf.m.trackPos = newLineInfo(dirtyOriginalIdx, ln, col)
+  except OSError:
+    localError(conf, info, getCurrentExceptionMsg())
 
 proc trackDirty(conf: ConfigRef; arg: string, info: TLineInfo) =
   var a = arg.split(',')
