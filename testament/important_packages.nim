@@ -65,7 +65,7 @@ pkg "fidget"
 pkg "fragments", "nim c -r fragments/dsl.nim"
 pkg "fusion"
 pkg "gara"
-pkg "glob", allowFailure = true # pending https://github.com/citycide/glob/pull/56
+pkg "glob"
 pkg "ggplotnim", "nim c -d:noCairo -r tests/tests.nim"
 pkg "gittyup", "nimble test", "https://github.com/disruptek/gittyup", allowFailure = true
 pkg "gnuplot", "nim c gnuplot.nim"
@@ -110,7 +110,7 @@ pkg "nimterop", "nimble minitest"
 pkg "nimwc", "nim c nimwc.nim"
 pkg "nimx", "nim c --threads:on test/main.nim", allowFailure = true
 pkg "nitter", "nim c src/nitter.nim", "https://github.com/zedeus/nitter"
-pkg "norm", "nim c -r tests/sqlite/trows.nim", allowFailure = true
+pkg "norm", "nim c -r tests/sqlite/trows.nim"
 pkg "npeg", "nimble testarc"
 pkg "numericalnim", "nim c -r tests/test_integrate.nim"
 pkg "optionsutils"
