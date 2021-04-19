@@ -7,4 +7,4 @@ import threadpool
 # bug #7535
 proc print_parallel_nok(r: uint32) =
   for x in 0..r:
-      spawn (proc (x: uint32) = echo x)
+    spawn (proc (x: uint32) = echo x)
