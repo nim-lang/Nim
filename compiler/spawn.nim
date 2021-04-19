@@ -205,6 +205,11 @@ proc setupArgsForConcurrency(g: ModuleGraph; n: PNode; objType: PType;
     if i < formals.len:
       if formals[i].typ.kind in {tyVar, tyLent}:
         localError(g.config, n[i].info, "'spawn'ed function cannot have a 'var' parameter")
+
+      if formals[i].typ.kind == tyVarargs and (formals[i].typ[0].kind in {tyTyped, tyUntyped} or
+            formals[i].typ.kind in {tyTyped, tyUntyped}):
+        localError(g.config, n[i].info, "'spawn'ed function cannot have a 'typed' or 'untyped' parameter")
+
       if formals[i].typ.kind in {tyTypeDesc, tyStatic}:
         continue
     #elif containsTyRef(argType):
@@ -233,6 +238,10 @@ proc setupArgsForParallelism(g: ModuleGraph; n: PNode; objType: PType;
     let n = n[i]
     if i < formals.len and formals[i].typ.kind in {tyStatic, tyTypeDesc}:
       continue
+
+    if formals[i].typ.kind == tyVarargs and formals[i].typ[0].kind in {tyTyped, tyUntyped} or 
+            formals[i].typ.kind in {tyTyped, tyUntyped}:
+      localError(g.config, n.info, "'spawn'ed function cannot have a 'typed' or 'untyped' parameter")
     let argType = skipTypes(if i < formals.len: formals[i].typ else: n.typ,
                             abstractInst)
     #if containsTyRef(argType):
