@@ -28,7 +28,7 @@ bootSwitch(usedNoGC, defined(nogc), "--gc:none")
 import
   os, msgs, options, nversion, condsyms, strutils, extccomp, platform,
   wordrecg, parseutils, nimblecmd, parseopt, sequtils, lineinfos,
-  pathutils, strtabs
+  pathutils, strtabs, pathnorm
 
 from ast import eqTypeFlags, tfGcSafe, tfNoSideEffect
 
@@ -359,6 +359,12 @@ proc processCfgPath(conf: ConfigRef; path: string, info: TLineInfo): AbsoluteDir
 const
   errInvalidNumber = "$1 is not a valid number"
 
+proc makeAbsolute(s: string): AbsoluteFile =
+  if isAbsolute(s):
+    AbsoluteFile pathnorm.normalizePath(s)
+  else:
+    AbsoluteFile pathnorm.normalizePath(os.getCurrentDir() / s)
+
 proc setTrackingInfo(conf: ConfigRef; dirty, file, line, column: string,
                      info: TLineInfo) =
   ## set tracking info, common code for track, trackDirty, & ideTrack
@@ -368,16 +374,14 @@ proc setTrackingInfo(conf: ConfigRef; dirty, file, line, column: string,
   if parseUtils.parseInt(column, col) <= 0:
     localError(conf, info, errInvalidNumber % column)
 
-  try:
-    if dirty == "":
-      conf.m.trackPos = newLineInfo(conf, AbsoluteFile expandFilename(file), ln, col)
-    else:
-      let dirtyOriginalIdx = fileInfoIdx(conf, AbsoluteFile file)
-      if dirtyOriginalIdx.int32 >= 0:
-        msgs.setDirtyFile(conf, dirtyOriginalIdx, AbsoluteFile expandFilename(dirty))
-      conf.m.trackPos = newLineInfo(dirtyOriginalIdx, ln, col)
-  except OSError:
-    localError(conf, info, getCurrentExceptionMsg())
+  let a = makeAbsolute(file)
+  if dirty == "":
+    conf.m.trackPos = newLineInfo(conf, a, ln, col)
+  else:
+    let dirtyOriginalIdx = fileInfoIdx(conf, a)
+    if dirtyOriginalIdx.int32 >= 0:
+      msgs.setDirtyFile(conf, dirtyOriginalIdx, makeAbsolute(dirty))
+    conf.m.trackPos = newLineInfo(dirtyOriginalIdx, ln, col)
 
 proc trackDirty(conf: ConfigRef; arg: string, info: TLineInfo) =
   var a = arg.split(',')
