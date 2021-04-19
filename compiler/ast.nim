@@ -30,7 +30,7 @@ type
     ccNoConvention = "noconv"       # needed for generating proper C procs sometimes
 
 type
-  TNodeKind* = enum
+  TNodeKind* = enum ## \
       ## order is extremely important, because ranges are used
       ## to check whether a node belongs to a certain class
       ## see also `tast.sanityCheck` which ensures this is kept insync
@@ -226,7 +226,7 @@ type
     nkTupleConstr         # a tuple constructor
     nkError               # erroneous AST node
 
-    ## fields below are not exported to `macros.NimNodeKind`
+    # fields below are not exported to `macros.NimNodeKind`
     nkModuleRef           # for .rod file support: A (moduleId, itemId) pair
     nkReplayAction        # for .rod file support: A replay action
     nkNilRodNode          # for .rod file support: a 'nil' PNode

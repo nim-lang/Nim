@@ -111,7 +111,8 @@ proc checkModule(c: var CheckedContext; m: PackedModule) =
 
   for e in m.exports:
     assert e[1] >= 0 and e[1] < m.syms.len
-    assert e[0] == m.syms[e[1]].name
+    # assert e[0] == m.syms[e[1]].name
+    assert e[0] == m.syms[e[1]].name, $(e[0], m.syms[e[1]].name)
 
   for e in m.compilerProcs:
     assert e[1] >= 0 and e[1] < m.syms.len

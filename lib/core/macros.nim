@@ -124,9 +124,16 @@ type
 
   TNimSymKinds* {.deprecated.} = set[NimSymKind]
 
-{.deprecated: [ntyExpr: ntyUntyped].}
-{.deprecated: [ntyStmt: ntyTyped].}
-{.deprecated: [ntyOptDeprecated: ntyConcept].}
+const
+  ntyExpr* = ntyUntyped ## deprecated alias for `ntyUntyped`
+  ntyStmt* = ntyTyped ## deprecated alias for `ntyTyped`
+  ntyOptDeprecated* = ntyConcept ## deprecated alias for `ntyConcept`
+
+when false:
+  # xxx use this instead, pending fixing ic bug: `tests/ic/tgenerics.nim` wouldl fail
+  {.deprecated: [ntyExpr: ntyUntyped].}
+  {.deprecated: [ntyStmt: ntyTyped].}
+  {.deprecated: [ntyOptDeprecated: ntyConcept].}
 
 type
   NimIdent* {.deprecated.} = object of RootObj
