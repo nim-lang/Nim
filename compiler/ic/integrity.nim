@@ -42,12 +42,12 @@ proc checkType(c: var CheckedContext; typeId: PackedItemId) =
   if not c.checkedTypes.containsOrIncl(itemId):
     let oldThisModule = c.thisModule
     c.thisModule = itemId.module
-    checkTypeObj c, c.g.packed[itemId.module].fromDisk.sh.types[itemId.item]
+    checkTypeObj c, c.g.packed[itemId.module].fromDisk.types[itemId.item]
     c.thisModule = oldThisModule
 
 proc checkSym(c: var CheckedContext; s: PackedSym) =
   if s.name != LitId(0):
-    assert c.g.packed[c.thisModule].fromDisk.sh.strings.hasLitId s.name
+    assert c.g.packed[c.thisModule].fromDisk.strings.hasLitId s.name
   checkType c, s.typ
   if s.ast != emptyNodeId:
     checkNode(c, c.g.packed[c.thisModule].fromDisk.bodies, NodePos s.ast)
@@ -57,14 +57,14 @@ proc checkSym(c: var CheckedContext; s: PackedSym) =
 proc checkLocalSym(c: var CheckedContext; item: int32) =
   let itemId = ItemId(module: c.thisModule, item: item)
   if not c.checkedSyms.containsOrIncl(itemId):
-    checkSym c, c.g.packed[c.thisModule].fromDisk.sh.syms[item]
+    checkSym c, c.g.packed[c.thisModule].fromDisk.syms[item]
 
 proc checkForeignSym(c: var CheckedContext; symId: PackedItemId) =
   let itemId = translateId(symId, c.g.packed, c.thisModule, c.g.config)
   if not c.checkedSyms.containsOrIncl(itemId):
     let oldThisModule = c.thisModule
     c.thisModule = itemId.module
-    checkSym c, c.g.packed[itemId.module].fromDisk.sh.syms[itemId.item]
+    checkSym c, c.g.packed[itemId.module].fromDisk.syms[itemId.item]
     c.thisModule = oldThisModule
 
 proc checkNode(c: var CheckedContext; tree: PackedTree; n: NodePos) =
@@ -74,15 +74,15 @@ proc checkNode(c: var CheckedContext; tree: PackedTree; n: NodePos) =
   of nkEmpty, nkNilLit, nkType, nkNilRodNode:
     discard
   of nkIdent:
-    assert c.g.packed[c.thisModule].fromDisk.sh.strings.hasLitId n.litId
+    assert c.g.packed[c.thisModule].fromDisk.strings.hasLitId n.litId
   of nkSym:
     checkLocalSym(c, tree.nodes[n.int].operand)
   of directIntLit:
     discard
   of externIntLit, nkFloatLit..nkFloat128Lit:
-    assert c.g.packed[c.thisModule].fromDisk.sh.numbers.hasLitId n.litId
+    assert c.g.packed[c.thisModule].fromDisk.numbers.hasLitId n.litId
   of nkStrLit..nkTripleStrLit:
-    assert c.g.packed[c.thisModule].fromDisk.sh.strings.hasLitId n.litId
+    assert c.g.packed[c.thisModule].fromDisk.strings.hasLitId n.litId
   of nkModuleRef:
     let (n1, n2) = sons2(tree, n)
     assert n1.kind == nkInt32Lit
@@ -97,25 +97,25 @@ proc checkTree(c: var CheckedContext; t: PackedTree) =
 
 proc checkLocalSymIds(c: var CheckedContext; m: PackedModule; symIds: seq[int32]) =
   for symId in symIds:
-    assert symId >= 0 and symId < m.sh.syms.len, $symId & " " & $m.sh.syms.len
+    assert symId >= 0 and symId < m.syms.len, $symId & " " & $m.syms.len
 
 proc checkModule(c: var CheckedContext; m: PackedModule) =
   # We check that:
   # - Every symbol references existing types and symbols.
   # - Every tree node references existing types and symbols.
-  for i in 0..high(m.sh.syms):
+  for i in 0..high(m.syms):
     checkLocalSym c, int32(i)
 
   checkTree c, m.toReplay
   checkTree c, m.topLevel
 
   for e in m.exports:
-    assert e[1] >= 0 and e[1] < m.sh.syms.len
-    assert e[0] == m.sh.syms[e[1]].name
+    assert e[1] >= 0 and e[1] < m.syms.len
+    assert e[0] == m.syms[e[1]].name
 
   for e in m.compilerProcs:
-    assert e[1] >= 0 and e[1] < m.sh.syms.len
-    assert e[0] == m.sh.syms[e[1]].name
+    assert e[1] >= 0 and e[1] < m.syms.len
+    assert e[0] == m.syms[e[1]].name
 
   checkLocalSymIds c, m, m.converters
   checkLocalSymIds c, m, m.methods

@@ -35,12 +35,12 @@ proc isTracked(current, trackPos: PackedLineInfo, tokenLen: int): bool =
 
 proc searchLocalSym(c: var NavContext; s: PackedSym; info: PackedLineInfo): bool =
   result = s.name != LitId(0) and
-    isTracked(info, c.trackPos, c.g.packed[c.thisModule].fromDisk.sh.strings[s.name].len)
+    isTracked(info, c.trackPos, c.g.packed[c.thisModule].fromDisk.strings[s.name].len)
 
 proc searchForeignSym(c: var NavContext; s: ItemId; info: PackedLineInfo): bool =
-  let name = c.g.packed[s.module].fromDisk.sh.syms[s.item].name
+  let name = c.g.packed[s.module].fromDisk.syms[s.item].name
   result = name != LitId(0) and
-    isTracked(info, c.trackPos, c.g.packed[s.module].fromDisk.sh.strings[name].len)
+    isTracked(info, c.trackPos, c.g.packed[s.module].fromDisk.strings[name].len)
 
 const
   EmptyItemId = ItemId(module: -1'i32, item: -1'i32)
@@ -51,7 +51,7 @@ proc search(c: var NavContext; tree: PackedTree): ItemId =
     case tree.nodes[i].kind
     of nkSym:
       let item = tree.nodes[i].operand
-      if searchLocalSym(c, c.g.packed[c.thisModule].fromDisk.sh.syms[item], tree.nodes[i].info):
+      if searchLocalSym(c, c.g.packed[c.thisModule].fromDisk.syms[item], tree.nodes[i].info):
         return ItemId(module: c.thisModule, item: item)
     of nkModuleRef:
       if tree.nodes[i].info.line == c.trackPos.line and tree.nodes[i].info.file == c.trackPos.file:
@@ -74,7 +74,7 @@ proc isDecl(tree: PackedTree; n: NodePos): bool =
 
 proc usage(c: var NavContext; info: PackedLineInfo; isDecl: bool) =
   var m = ""
-  var file = c.g.packed[c.thisModule].fromDisk.sh.strings[info.file]
+  var file = c.g.packed[c.thisModule].fromDisk.strings[info.file]
   if c.outputSep == ' ':
     file = os.extractFilename file
   toLocation(m, file, info.line.int, info.col.int + ColOffset)
@@ -102,7 +102,7 @@ proc nav(g: ModuleGraph) =
   # translate the track position to a packed position:
   let unpacked = g.config.m.trackPos
   let mid = unpacked.fileIndex
-  let fileId = g.packed[int32 mid].fromDisk.sh.strings.getKeyId(toFullPath(g.config, mid))
+  let fileId = g.packed[int32 mid].fromDisk.strings.getKeyId(toFullPath(g.config, mid))
 
   if fileId == LitId(0):
     internalError(g.config, unpacked, "cannot find a valid file ID")

@@ -98,17 +98,6 @@ type
 
   PackedTree* = object ## usually represents a full Nim module
     nodes*: seq[PackedNode]
-    #sh*: Shared
-
-  Shared* = ref object # shared between different versions of 'Module'.
-                       # (though there is always exactly one valid
-                       # version of a module)
-    syms*: seq[PackedSym]
-    types*: seq[PackedType]
-    strings*: BiTable[string] # we could share these between modules.
-    numbers*: BiTable[BiggestInt] # we also store floats in here so
-                                  # that we can assure that every bit is kept
-    #config*: ConfigRef
 
   PackedInstantiation* = object
     key*, sym*: PackedItemId
@@ -373,51 +362,6 @@ const
   externSIntLit* = {nkIntLit, nkInt8Lit, nkInt16Lit, nkInt64Lit}
   externUIntLit* = {nkUIntLit, nkUInt8Lit, nkUInt16Lit, nkUInt32Lit, nkUInt64Lit}
   directIntLit* = nkInt32Lit
-
-proc toString*(tree: PackedTree; n: NodePos; sh: Shared; nesting: int;
-               result: var string) =
-  let pos = n.int
-  if result.len > 0 and result[^1] notin {' ', '\n'}:
-    result.add ' '
-
-  result.add $tree[pos].kind
-  case tree.nodes[pos].kind
-  of nkNone, nkEmpty, nkNilLit, nkType: discard
-  of nkIdent, nkStrLit..nkTripleStrLit:
-    result.add " "
-    result.add sh.strings[LitId tree.nodes[pos].operand]
-  of nkSym:
-    result.add " "
-    result.add sh.strings[sh.syms[tree.nodes[pos].operand].name]
-  of directIntLit:
-    result.add " "
-    result.addInt tree.nodes[pos].operand
-  of externSIntLit:
-    result.add " "
-    result.addInt sh.numbers[LitId tree.nodes[pos].operand]
-  of externUIntLit:
-    result.add " "
-    result.add $cast[uint64](sh.numbers[LitId tree.nodes[pos].operand])
-  of nkFloatLit..nkFloat128Lit:
-    result.add " "
-    result.add $cast[BiggestFloat](sh.numbers[LitId tree.nodes[pos].operand])
-  else:
-    result.add "(\n"
-    for i in 1..(nesting+1)*2: result.add ' '
-    for child in sonsReadonly(tree, n):
-      toString(tree, child, sh, nesting + 1, result)
-    result.add "\n"
-    for i in 1..nesting*2: result.add ' '
-    result.add ")"
-    #for i in 1..nesting*2: result.add ' '
-
-
-proc toString*(tree: PackedTree; n: NodePos; sh: Shared): string =
-  result = ""
-  toString(tree, n, sh, 0, result)
-
-proc debug*(tree: PackedTree; sh: Shared) =
-  stdout.write toString(tree, NodePos 0, sh)
 
 when false:
   proc identIdImpl(tree: PackedTree; n: NodePos): LitId =
