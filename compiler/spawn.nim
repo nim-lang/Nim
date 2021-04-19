@@ -239,8 +239,8 @@ proc setupArgsForParallelism(g: ModuleGraph; n: PNode; objType: PType;
     if i < formals.len and formals[i].typ.kind in {tyStatic, tyTypeDesc}:
       continue
 
-    if formals[i].typ.kind == tyVarargs and formals[i].typ[0].kind in {tyTyped, tyUntyped} or 
-            formals[i].typ.kind in {tyTyped, tyUntyped}:
+    if formals[i].typ.kind == tyVarargs and (formals[i].typ[0].kind in {tyTyped, tyUntyped} or 
+            formals[i].typ.kind in {tyTyped, tyUntyped}):
       localError(g.config, n.info, "'spawn'ed function cannot have a 'typed' or 'untyped' parameter")
     let argType = skipTypes(if i < formals.len: formals[i].typ else: n.typ,
                             abstractInst)
@@ -429,4 +429,3 @@ proc wrapProcForSpawn*(g: ModuleGraph; idgen: IdGenerator; owner: PSym; spawnExp
     wrapperProc.newSymNode, genAddrOf(scratchObj.newSymNode, idgen), nil, spawnExpr)
 
   if spawnKind == srFlowVar: result.add fvField
-
