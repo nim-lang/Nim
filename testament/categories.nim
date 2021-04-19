@@ -573,7 +573,7 @@ proc quoted(a: string): string =
   # todo: consider moving to system.nim
   result.addQuoted(a)
 
-proc runJoinedTest(r: var TResults, cat: Category, testsDir: string) =
+proc runJoinedTest(r: var TResults, cat: Category, testsDir: string, options: string) =
   ## returns a list of tests that have problems
   #[
   xxx create a reusable megatest API after abstracting out testament specific code,
@@ -619,7 +619,11 @@ proc runJoinedTest(r: var TResults, cat: Category, testsDir: string) =
   writeFile(megatestFile, megatest)
 
   let root = getCurrentDir()
-  let args = ["c", "--nimCache:" & outDir, "-d:testing", "-d:nimMegatest", "--listCmd", "--path:" & root, megatestFile]
+
+  var args = @["c", "--nimCache:" & outDir, "-d:testing", "-d:nimMegatest", "--listCmd",
+              "--path:" & root]
+  args.add options.parseCmdLine
+  args.add megatestFile
   var (cmdLine, buf, exitCode) = execCmdEx2(command = compilerPrefix, args = args, input = "")
   if exitCode != 0:
     echo "$ " & cmdLine & "\n" & buf
@@ -710,7 +714,7 @@ proc processCategory(r: var TResults, cat: Category,
   if not handled:
     case cat2
     of "megatest":
-      runJoinedTest(r, cat, testsDir)
+      runJoinedTest(r, cat, testsDir, options)
     else:
       var testsRun = 0
       var files: seq[string]
