@@ -453,7 +453,7 @@ proc genProcParams(m: BModule, t: PType, rettype, params: var Rope,
       params.add(~"NIM_NOALIAS ")
     params.add(param.loc.r)
     # declare the len field for open arrays:
-    var arr = param.typ
+    var arr = param.typ.skipTypes({tyGenericInst})
     if arr.kind in {tyVar, tyLent, tySink}: arr = arr.lastSon
     var j = 0
     while arr.kind in {tyOpenArray, tyVarargs}:
