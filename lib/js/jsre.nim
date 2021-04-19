@@ -70,6 +70,7 @@ runnableExamples:
     assert "a".contains regex
     assert not("a".contains regex)
     assert "a".contains regex
+    assert not("a".contains regex)
   block:
     let regex = newRegExp("a", "i")
     assert "a".contains regex
