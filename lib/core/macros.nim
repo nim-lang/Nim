@@ -87,9 +87,6 @@ type
     nnkFuncDef,
     nnkTupleConstr,
     nnkError,  ## erroneous AST node
-    nnkModuleRef
-    nnkReplayAction
-    nnkNilRodNode
 
   NimNodeKinds* = set[NimNodeKind]
   NimTypeKind* = enum  # some types are no longer used, see ast.nim

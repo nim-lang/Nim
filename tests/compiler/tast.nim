@@ -36,7 +36,11 @@ proc sanityCheck() =
           if s1[i] == "proxy" and s2[i] == "error": continue
           if s1[i] == "builtInTypeClass" and s2[i] == "builtinTypeClass": continue
         doAssert s1[i] == s2[i], $(i, s1[i], s2[i], $T1)
-      doAssert s1.len == s2.len, $(s1.len, s2.len)
+      when T1 is TNodeKind:
+        # if nodeKindsExposedInMacros
+        doAssert lastKindExposedInMacros.ord + 1 == s2.len, $(lastKindExposedInMacros.ord, s2.len)
+      else:
+        doAssert s1.len == s2.len, $(s1.len, s2.len)
   fn(TSymKind, NimSymKind)
   fn(TTypeKind, NimTypeKind)
   fn(TNodeKind, NimNodeKind)
