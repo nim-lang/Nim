@@ -106,8 +106,8 @@ type
     syms*: seq[PackedSym]
     types*: seq[PackedType]
     strings*: BiTable[string] # we could share these between modules.
-    integers*: BiTable[BiggestInt]
-    floats*: BiTable[BiggestFloat]
+    numbers*: BiTable[BiggestInt] # we also store floats in here so
+                                  # that we can assure that every bit is kept
     #config*: ConfigRef
 
   PackedInstantiation* = object
@@ -258,9 +258,9 @@ iterator sonsWithoutLast2*(tree: PackedTree; n: NodePos): NodePos =
 proc parentImpl(tree: PackedTree; n: NodePos): NodePos =
   # finding the parent of a node is rather easy:
   var pos = n.int - 1
-  while pos >= 0 and isAtom(tree, pos) or (pos + tree.nodes[pos].operand - 1 < n.int):
+  while pos >= 0 and (isAtom(tree, pos) or (pos + tree.nodes[pos].operand - 1 < n.int)):
     dec pos
-  assert pos >= 0, "node has no parent"
+  #assert pos >= 0, "node has no parent"
   result = NodePos(pos)
 
 template parent*(n: NodePos): NodePos = parentImpl(tree, n)
@@ -394,10 +394,13 @@ proc toString*(tree: PackedTree; n: NodePos; sh: Shared; nesting: int;
     result.addInt tree.nodes[pos].operand
   of externSIntLit:
     result.add " "
-    result.addInt sh.integers[LitId tree.nodes[pos].operand]
+    result.addInt sh.numbers[LitId tree.nodes[pos].operand]
   of externUIntLit:
     result.add " "
-    result.add $cast[uint64](sh.integers[LitId tree.nodes[pos].operand])
+    result.add $cast[uint64](sh.numbers[LitId tree.nodes[pos].operand])
+  of nkFloatLit..nkFloat128Lit:
+    result.add " "
+    result.add $cast[BiggestFloat](sh.numbers[LitId tree.nodes[pos].operand])
   else:
     result.add "(\n"
     for i in 1..(nesting+1)*2: result.add ' '

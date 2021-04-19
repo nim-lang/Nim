@@ -1,13 +1,13 @@
 The set type models the mathematical notion of a set. The set's basetype can
 only be an ordinal type of a certain size, namely:
 
-* ``int8``-``int16``
-* ``uint8``/``byte``-``uint16``
-* ``char``
-* ``enum``
+* `int8`-`int16`
+* `uint8`/`byte`-`uint16`
+* `char`
+* `enum`
 
 or equivalent. For signed integers the set's base type is defined to be in the
-range ``0 .. MaxSetElements-1`` where ``MaxSetElements`` is currently always
+range `0 .. MaxSetElements-1` where `MaxSetElements` is currently always
 2^16.
 
 The reason is that sets are implemented as high performance bit vectors.
@@ -17,7 +17,7 @@ Attempting to declare a set with a larger type will result in an error:
 
   var s: set[int64] # Error: set is too large
 
-Sets can be constructed via the set constructor: ``{}`` is the empty set. The
+Sets can be constructed via the set constructor: `{}` is the empty set. The
 empty set is type compatible with any concrete set type. The constructor
 can also be used to include elements (and ranges of elements):
 
@@ -35,18 +35,18 @@ These operations are supported by sets:
 ==================    ========================================================
 operation             meaning
 ==================    ========================================================
-``A + B``             union of two sets
-``A * B``             intersection of two sets
-``A - B``             difference of two sets (A without B's elements)
-``A == B``            set equality
-``A <= B``            subset relation (A is subset of B or equal to B)
-``A < B``             strict subset relation (A is a proper subset of B)
-``e in A``            set membership (A contains element e)
-``e notin A``         A does not contain element e
-``contains(A, e)``    A contains element e
-``card(A)``           the cardinality of A (number of elements in A)
-``incl(A, elem)``     same as ``A = A + {elem}``
-``excl(A, elem)``     same as ``A = A - {elem}``
+`A + B`               union of two sets
+`A * B`               intersection of two sets
+`A - B`               difference of two sets (A without B's elements)
+`A == B`              set equality
+`A <= B`              subset relation (A is subset of B or equal to B)
+`A < B`               strict subset relation (A is a proper subset of B)
+`e in A`              set membership (A contains element e)
+`e notin A`           A does not contain element e
+`contains(A, e)`      A contains element e
+`card(A)`             the cardinality of A (number of elements in A)
+`incl(A, elem)`       same as `A = A + {elem}`
+`excl(A, elem)`       same as `A = A - {elem}`
 ==================    ========================================================
 
 Bit fields
@@ -54,7 +54,7 @@ Bit fields
 
 Sets are often used to define a type for the *flags* of a procedure.
 This is a cleaner (and type safe) solution than defining integer
-constants that have to be ``or``'ed together.
+constants that have to be `or`'ed together.
 
 Enum, sets and casting can be used together as in:
 

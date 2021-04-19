@@ -47,9 +47,9 @@ proc release*(lock: var RLock) =
 
 template withRLock*(lock: var RLock, code: untyped): untyped =
   ## Acquires the given lock and then executes the code.
-  block:
-    acquire(lock)
-    defer:
-      release(lock)
-    {.locks: [lock].}:
+  acquire(lock)
+  {.locks: [lock].}:
+    try:
       code
+    finally:
+      release(lock)

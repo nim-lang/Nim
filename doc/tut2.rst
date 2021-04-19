@@ -1,5 +1,3 @@
-.. default-role:: code
-
 ======================
 Nim Tutorial (Part II)
 ======================
@@ -7,6 +5,8 @@ Nim Tutorial (Part II)
 :Author: Andreas Rumpf
 :Version: |nimversion|
 
+.. default-role:: code
+.. include:: rstcommon.rst
 .. contents::
 
 
@@ -175,7 +175,8 @@ Method call syntax
 ------------------
 
 There is a syntactic sugar for calling routines:
-The syntax `obj.method(args)` can be used instead of `method(obj, args)`.
+The syntax `obj.methodName(args)` can be used
+instead of `methodName(obj, args)`.
 If there are no remaining arguments, the parentheses can be omitted:
 `obj.len` (instead of `len(obj)`).
 
@@ -296,7 +297,7 @@ because it makes more sense for them to use static binding, but `eval` is a
 method because it requires dynamic binding.
 
 **Note:** Starting from Nim 0.20, to use multi-methods one must explicitly pass
-`--multimethods:on` when compiling.
+``--multimethods:on`` when compiling.
 
 In a multi-method all parameters that have an object type are used for the
 dispatching:
@@ -459,7 +460,7 @@ If you want to add the `{.raises.}` pragma to existing code, the compiler can
 also help you. You can add the `{.effects.}` pragma statement to your proc and
 the compiler will output all inferred effects up to that point (exception
 tracking is part of Nim's effect system). Another more roundabout way to
-find out the list of exceptions raised by a proc is to use the Nim `doc`
+find out the list of exceptions raised by a proc is to use the Nim ``doc``
 command which generates documentation for a whole module and decorates all
 procs with the list of raised exceptions. You can read more about Nim's
 `effect system and related pragmas in the manual <manual.html#effect-system>`_.

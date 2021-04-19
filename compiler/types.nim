@@ -460,8 +460,8 @@ const
     "lent ", "varargs[$1]", "UncheckedArray[$1]", "Error Type",
     "BuiltInTypeClass", "UserTypeClass",
     "UserTypeClassInst", "CompositeTypeClass", "inferred",
-    "and", "or", "not", "any", "static", "TypeFromExpr", "out ",
-    "void"]
+    "and", "or", "not", "any", "static", "TypeFromExpr", "concept", # xxx bugfix
+    "void", "iterable"]
 
 const preferToResolveSymbols = {preferName, preferTypeName, preferModuleInfo,
   preferGenericArg, preferResolved, preferMixed}
@@ -503,7 +503,7 @@ proc typeToString(typ: PType, prefer: TPreferedDesc = preferName): string =
         result = typeToString(t[0])
       elif prefer in {preferResolved, preferMixed}:
         case t.kind
-        of IntegralTypes + {tyFloat..tyFloat128} + {tyString, tyCString}:
+        of IntegralTypes + {tyFloat..tyFloat128} + {tyString, tyCstring}:
           result = typeToStr[t.kind]
         of tyGenericBody:
           result = typeToString(t.lastSon)
@@ -645,6 +645,11 @@ proc typeToString(typ: PType, prefer: TPreferedDesc = preferName): string =
     of tyDistinct:
       result = "distinct " & typeToString(t[0],
         if prefer == preferModuleInfo: preferModuleInfo else: preferTypeName)
+    of tyIterable:
+      # xxx factor this pattern
+      result = "iterable"
+      if t.len > 0:
+        result &= "[" & typeToString(t[0]) & ']'
     of tyTuple:
       # we iterate over t.sons here, because t.n may be nil
       if t.n != nil:
@@ -757,7 +762,7 @@ proc firstOrd*(conf: ConfigRef; t: PType): Int128 =
   of tyOrdinal:
     if t.len > 0: result = firstOrd(conf, lastSon(t))
     else: internalError(conf, "invalid kind for firstOrd(" & $t.kind & ')')
-  of tyUncheckedArray, tyCString:
+  of tyUncheckedArray, tyCstring:
     result = Zero
   else:
     internalError(conf, "invalid kind for firstOrd(" & $t.kind & ')')
@@ -1124,7 +1129,7 @@ proc sameTypeAux(x, y: PType, c: var TSameTypeClosure): bool =
     return true
 
   case a.kind
-  of tyEmpty, tyChar, tyBool, tyNil, tyPointer, tyString, tyCString,
+  of tyEmpty, tyChar, tyBool, tyNil, tyPointer, tyString, tyCstring,
      tyInt..tyUInt64, tyTyped, tyUntyped, tyVoid:
     result = sameFlags(a, b)
   of tyStatic, tyFromExpr:
@@ -1191,7 +1196,7 @@ proc sameTypeAux(x, y: PType, c: var TSameTypeClosure): bool =
     result = sameTypeOrNilAux(a[0], b[0], c) and
         sameValue(a.n[0], b.n[0]) and
         sameValue(a.n[1], b.n[1])
-  of tyGenericInst, tyAlias, tyInferred:
+  of tyGenericInst, tyAlias, tyInferred, tyIterable:
     cycleCheck()
     result = sameTypeAux(a.lastSon, b.lastSon, c)
   of tyNone: result = false

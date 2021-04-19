@@ -399,7 +399,7 @@ proc opConv(c: PCtx; dest: var TFullReg, src: TFullReg, desttyp, srctyp: PType):
       dest.node.strVal = $src.floatVal
     of tyString:
       dest.node.strVal = src.node.strVal
-    of tyCString:
+    of tyCstring:
       if src.node.kind == nkBracket:
         # Array of chars
         var strVal = ""

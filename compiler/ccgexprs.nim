@@ -399,7 +399,7 @@ proc genAssignment(p: BProc, dest, src: TLoc, flags: TAssignmentFlags) =
               [rdLoc(dest), rdLoc(src), getSize(p.config, dest.t)])
     else:
       linefmt(p, cpsStmts, "$1 = $2;$n", [rdLoc(dest), rdLoc(src)])
-  of tyPtr, tyPointer, tyChar, tyBool, tyEnum, tyCString,
+  of tyPtr, tyPointer, tyChar, tyBool, tyEnum, tyCstring,
      tyInt..tyUInt64, tyRange, tyVar, tyLent, tyNil:
     linefmt(p, cpsStmts, "$1 = $2;$n", [rdLoc(dest), rdLoc(src)])
   else: internalError(p.config, "genAssignment: " & $ty.kind)
@@ -449,7 +449,7 @@ proc genDeepCopy(p: BProc; dest, src: TLoc) =
               [rdLoc(dest), rdLoc(src), getSize(p.config, dest.t)])
     else:
       linefmt(p, cpsStmts, "$1 = $2;$n", [rdLoc(dest), rdLoc(src)])
-  of tyPointer, tyChar, tyBool, tyEnum, tyCString,
+  of tyPointer, tyChar, tyBool, tyEnum, tyCstring,
      tyInt..tyUInt64, tyRange, tyVar, tyLent:
     linefmt(p, cpsStmts, "$1 = $2;$n", [rdLoc(dest), rdLoc(src)])
   else: internalError(p.config, "genDeepCopy: " & $ty.kind)
@@ -1016,7 +1016,7 @@ proc genBracketExpr(p: BProc; n: PNode; d: var TLoc) =
   of tyArray: genArrayElem(p, n, n[0], n[1], d)
   of tyOpenArray, tyVarargs: genOpenArrayElem(p, n, n[0], n[1], d)
   of tySequence, tyString: genSeqElem(p, n, n[0], n[1], d)
-  of tyCString: genCStringElem(p, n, n[0], n[1], d)
+  of tyCstring: genCStringElem(p, n, n[0], n[1], d)
   of tyTuple: genTupleElem(p, n, d)
   else: internalError(p.config, n.info, "expr(nkBracketExpr, " & $ty.kind & ')')
   discard getTypeDesc(p.module, n.typ)
@@ -1666,7 +1666,7 @@ proc genRepr(p: BProc, e: PNode, d: var TLoc) =
     putIntoDest(p, d, e,
         ropecg(p.module, "#reprOpenArray($1, $2)", [rdLoc(b),
         genTypeInfoV1(p.module, elemType(t), e.info)]), a.storage)
-  of tyCString, tyArray, tyRef, tyPtr, tyPointer, tyNil, tySequence:
+  of tyCstring, tyArray, tyRef, tyPtr, tyPointer, tyNil, tySequence:
     putIntoDest(p, d, e,
                 ropecg(p.module, "#reprAny($1, $2)", [
                 rdLoc(a), genTypeInfoV1(p.module, t, e.info)]), a.storage)
@@ -1745,7 +1745,7 @@ proc genArrayLen(p: BProc, e: PNode, d: var TLoc, op: TMagic) =
       else:
         if op == mHigh: unaryExpr(p, e, d, "($1.Field1-1)")
         else: unaryExpr(p, e, d, "$1.Field1")
-  of tyCString:
+  of tyCstring:
     if op == mHigh: unaryExpr(p, e, d, "($1 ? (#nimCStrLen($1)-1) : -1)")
     else: unaryExpr(p, e, d, "($1 ? #nimCStrLen($1) : 0)")
   of tyString:
@@ -2387,13 +2387,13 @@ proc genMagicExpr(p: BProc, e: PNode, d: var TLoc, op: TMagic) =
     localError(p.config, e.info, strutils.`%`(errXMustBeCompileTime, e[0].sym.name.s))
   of mSpawn:
     when defined(leanCompiler):
-      quit "compiler built without support for the 'spawn' statement"
+      p.config.quitOrRaise "compiler built without support for the 'spawn' statement"
     else:
       let n = spawn.wrapProcForSpawn(p.module.g.graph, p.module.idgen, p.module.module, e, e.typ, nil, nil)
       expr(p, n, d)
   of mParallel:
     when defined(leanCompiler):
-      quit "compiler built without support for the 'parallel' statement"
+      p.config.quitOrRaise "compiler built without support for the 'parallel' statement"
     else:
       let n = semparallel.liftParallel(p.module.g.graph, p.module.idgen, p.module.module, e)
       expr(p, n, d)
@@ -2920,7 +2920,7 @@ proc getDefaultValue(p: BProc; typ: PType; info: TLineInfo): Rope =
   of tyBool: result = rope"NIM_FALSE"
   of tyEnum, tyChar, tyInt..tyInt64, tyUInt..tyUInt64: result = rope"0"
   of tyFloat..tyFloat128: result = rope"0.0"
-  of tyCString, tyVar, tyLent, tyPointer, tyPtr, tyUntyped,
+  of tyCstring, tyVar, tyLent, tyPointer, tyPtr, tyUntyped,
      tyTyped, tyTypeDesc, tyStatic, tyRef, tyNil:
     result = rope"NIM_NIL"
   of tyString, tySequence:
@@ -3187,7 +3187,7 @@ proc genBracedInit(p: BProc, n: PNode; isConst: bool; optionalType: PType): Rope
 
     of tyObject:
       result = genConstObjConstr(p, n, isConst)
-    of tyString, tyCString:
+    of tyString, tyCstring:
       if optSeqDestructors in p.config.globalOptions and n.kind != nkNilLit and ty == tyString:
         result = genStringLiteralV2Const(p.module, n, isConst)
       else:

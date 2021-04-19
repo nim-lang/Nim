@@ -7,7 +7,11 @@ And we get here
 3
 '''
 joinable: false
+targets: "c cpp js"
 """
+
+# xxx wrap in a template to test in VM, see https://github.com/timotheecour/Nim/issues/534#issuecomment-769565033
+
 import hashes, sequtils, tables, algorithm
 
 proc sortedPairs[T](t: T): auto = toSeq(t.pairs).sorted
@@ -444,3 +448,13 @@ block emptyOrdered:
   var t2: OrderedTable[int, string]
   doAssert t1 == t2
 
+block: # Table[ref, int]
+  type A = ref object
+    x: int
+  var t: OrderedTable[A, int]
+  let a1 = A(x: 3)
+  let a2 = A(x: 3)
+  t[a1] = 10
+  t[a2] = 11
+  doAssert t[a1] == 10
+  doAssert t[a2] == 11

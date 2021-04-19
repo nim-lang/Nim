@@ -95,7 +95,7 @@ proc semEnum(c: PContext, n: PNode, prev: PType): PType =
       of tyTuple:
         if v.len == 2:
           strVal = v[1] # second tuple part is the string value
-          if skipTypes(strVal.typ, abstractInst).kind in {tyString, tyCString}:
+          if skipTypes(strVal.typ, abstractInst).kind in {tyString, tyCstring}:
             if not isOrdinalType(v[0].typ, allowEnumWithHoles=true):
               localError(c.config, v[0].info, errOrdinalTypeExpected & "; given: " & typeToString(v[0].typ, preferDesc))
             x = toInt64(getOrdValue(v[0])) # first tuple part is the ordinal
@@ -104,7 +104,7 @@ proc semEnum(c: PContext, n: PNode, prev: PType): PType =
             localError(c.config, strVal.info, errStringLiteralExpected)
         else:
           localError(c.config, v.info, errWrongNumberOfVariables)
-      of tyString, tyCString:
+      of tyString, tyCstring:
         strVal = v
         x = counter
       else:
@@ -138,9 +138,10 @@ proc semEnum(c: PContext, n: PNode, prev: PType): PType =
       identToReplace[] = symNode
     if e.position == 0: hasNull = true
     if result.sym != nil and sfExported in result.sym.flags:
-      incl(e.flags, sfUsed)
-      incl(e.flags, sfExported)
-      if not isPure: exportSym(c, e)
+      incl(e.flags, {sfUsed, sfExported})
+    if result.sym != nil and not isPure:
+      addInterfaceDeclAux(c, e, forceExport = sfExported in result.sym.flags)
+
     result.n.add symNode
     styleCheckDef(c.config, e)
     onDef(e.info, e)
@@ -354,6 +355,15 @@ proc semArray(c: PContext, n: PNode, prev: PType): PType =
     addSonSkipIntLit(result, base, c.idgen)
   else:
     localError(c.config, n.info, errArrayExpectsTwoTypeParams)
+    result = newOrPrevType(tyError, prev, c)
+
+proc semIterableType(c: PContext, n: PNode, prev: PType): PType =
+  result = newOrPrevType(tyIterable, prev, c)
+  if n.len == 2:
+    let base = semTypeNode(c, n[1], nil)
+    addSonSkipIntLit(result, base, c.idgen)
+  else:
+    localError(c.config, n.info, errXExpectsOneTypeParam % "iterable")
     result = newOrPrevType(tyError, prev, c)
 
 proc semOrdinal(c: PContext, n: PNode, prev: PType): PType =
@@ -1453,9 +1463,9 @@ proc semGeneric(c: PContext, n: PNode, s: PSym, prev: PType): PType =
     matches(c, n, copyTree(n), m)
 
     if m.state != csMatch:
-      let err = "cannot instantiate " & typeToString(t) & "\n" &
-                "got: <" & describeArgs(c, n) & ">\n" &
-                "but expected: <" & describeArgs(c, t.n, 0) & ">"
+      var err = "cannot instantiate "
+      err.addTypeHeader(c.config, t)
+      err.add "\ngot: <$1>\nbut expected: <$2>" % [describeArgs(c, n), describeArgs(c, t.n, 0)]
       localError(c.config, n.info, errGenerated, err)
       return newOrPrevType(tyError, prev, c)
 
@@ -1844,6 +1854,7 @@ proc semTypeNode(c: PContext, n: PNode, prev: PType): PType =
     of mRange: result = semRange(c, n, prev)
     of mSet: result = semSet(c, n, prev)
     of mOrdinal: result = semOrdinal(c, n, prev)
+    of mIterableType: result = semIterableType(c, n, prev)
     of mSeq:
       result = semContainer(c, n, tySequence, "seq", prev)
       if optSeqDestructors in c.config.globalOptions:
@@ -2026,7 +2037,7 @@ proc processMagicType(c: PContext, m: PSym) =
     if optSeqDestructors in c.config.globalOptions:
       incl m.typ.flags, tfHasAsgn
   of mCstring:
-    setMagicIntegral(c.config, m, tyCString, c.config.target.ptrSize)
+    setMagicIntegral(c.config, m, tyCstring, c.config.target.ptrSize)
     rawAddSon(m.typ, getSysType(c.graph, m.info, tyChar))
   of mPointer: setMagicIntegral(c.config, m, tyPointer, c.config.target.ptrSize)
   of mNil: setMagicType(c.config, m, tyNil, c.config.target.ptrSize)
@@ -2066,6 +2077,9 @@ proc processMagicType(c: PContext, m: PSym) =
     c.graph.sysTypes[tySequence] = m.typ
   of mOrdinal:
     setMagicIntegral(c.config, m, tyOrdinal, szUncomputedSize)
+    rawAddSon(m.typ, newTypeS(tyNone, c))
+  of mIterableType:
+    setMagicIntegral(c.config, m, tyIterable, 0)
     rawAddSon(m.typ, newTypeS(tyNone, c))
   of mPNimrodNode:
     incl m.typ.flags, tfTriggersCompileTime

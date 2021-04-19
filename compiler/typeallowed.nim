@@ -97,6 +97,9 @@ proc typeAllowedAux(marker: var IntSet, typ: PType, kind: TSymKind,
       result = nil
   of tyUntyped, tyTyped:
     if kind notin {skParam, skResult} or taNoUntyped in flags: result = t
+  of tyIterable:
+    if kind notin {skParam} or taNoUntyped in flags: result = t
+      # tyIterable is only for templates and macros.
   of tyStatic:
     if kind notin {skParam}: result = t
   of tyVoid:
@@ -113,7 +116,7 @@ proc typeAllowedAux(marker: var IntSet, typ: PType, kind: TSymKind,
     result = t
   of tyNil:
     if kind != skConst and kind != skParam: result = t
-  of tyString, tyBool, tyChar, tyEnum, tyInt..tyUInt64, tyCString, tyPointer:
+  of tyString, tyBool, tyChar, tyEnum, tyInt..tyUInt64, tyCstring, tyPointer:
     result = nil
   of tyOrdinal:
     if kind != skParam: result = t

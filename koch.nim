@@ -216,8 +216,6 @@ proc buildTools(args: string = "") =
                  options = "-d:release " & args)
   when defined(windows): buildVccTool(args)
   bundleNimpretty(args)
-  nimCompileFold("Compile nimfind", "tools/nimfind.nim",
-                 options = "-d:release " & args)
   nimCompileFold("Compile testament", "testament/testament.nim",
                  options = "-d:release " & args)
 
@@ -492,7 +490,7 @@ proc icTest(args: string) =
   for fragment in content.split("#!EDIT!#"):
     let file = inp.replace(".nim", "_temp.nim")
     writeFile(file, fragment)
-    var cmd = nimExe & " cpp --ic:on --listcmd "
+    var cmd = nimExe & " cpp --ic:on -d:nimIcIntegrityChecks --listcmd "
     if i == 0:
       cmd.add "-f "
     cmd.add quoteShell(file)
@@ -543,6 +541,10 @@ proc runCI(cmd: string) =
   echo hostInfo()
   # boot without -d:nimHasLibFFI to make sure this still works
   kochExecFold("Boot in release mode", "boot -d:release -d:nimStrictMode")
+
+  when false: # debugging: when you need to run only 1 test in CI, use something like this:
+    execFold("debugging test", "nim r tests/stdlib/tosproc.nim")
+    doAssert false, "debugging only"
 
   ## build nimble early on to enable remainder to depend on it if needed
   kochExecFold("Build Nimble", "nimble")
