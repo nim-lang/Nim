@@ -379,8 +379,7 @@ proc semObjConstr(c: PContext, n: PNode, flags: TExprFlags): PNode =
   for child in n: result.add child
 
   if t == nil:
-    localError(c.config, n.info, errGenerated, "object constructor needs an object type")
-    return errorNode(c, result)
+    return localErrorNode(c, result, errGenerated, "object constructor needs an object type")
 
   t = skipTypes(t, {tyGenericInst, tyAlias, tySink, tyOwned})
   if t.kind == tyRef:
@@ -391,8 +390,7 @@ proc semObjConstr(c: PContext, n: PNode, flags: TExprFlags): PNode =
       # multiple times as long as they don't have closures.
       result.typ.flags.incl tfHasOwned
   if t.kind != tyObject:
-    localError(c.config, n.info, errGenerated, "object constructor needs an object type")
-    return errorNode(c, result)
+    return localErrorNode(c, result, errGenerated, "object constructor needs an object type")
 
   # Check if the object is fully initialized by recursively testing each
   # field (if this is a case object, initialized fields in two different
