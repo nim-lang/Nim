@@ -42,16 +42,16 @@ proc deinitLock*(lock: var Lock) {.inline.} =
   ## Frees the resources associated with the lock.
   deinitSys(lock)
 
-proc tryAcquire*(lock: var Lock): bool =
+proc tryAcquire*(lock: var Lock): bool {.inline.} =
   ## Tries to acquire the given lock. Returns `true` on success.
   result = tryAcquireSys(lock)
 
-proc acquire*(lock: var Lock) =
+proc acquire*(lock: var Lock) {.inline.} =
   ## Acquires the given lock.
   when not defined(js):
     acquireSys(lock)
 
-proc release*(lock: var Lock) =
+proc release*(lock: var Lock) {.inline.} =
   ## Releases the given lock.
   when not defined(js):
     releaseSys(lock)
@@ -66,17 +66,21 @@ proc deinitCond*(cond: var Cond) {.inline.} =
   deinitSysCond(cond)
 
 proc wait*(cond: var Cond, lock: var Lock) {.inline.} =
-  ## waits on the condition variable `cond`.
+  ## Waits on the condition variable `cond`.
   waitSysCond(cond, lock)
 
 proc signal*(cond: var Cond) {.inline.} =
-  ## sends a signal to the condition variable `cond`.
+  ## Sends a signal to the condition variable `cond`.
   signalSysCond(cond)
+
+proc broadcast*(cond: var Cond) {.inline.} =
+  ## Unblocks all threads currently blocked on the
+  ## specified condition variable `cond`.
+  broadcastSysCond(cond)
 
 template withLock*(a: Lock, body: untyped) =
   ## Acquires the given lock, executes the statements in body and
   ## releases the lock after the statements finish executing.
-  mixin acquire, release
   acquire(a)
   {.locks: [a].}:
     try:
