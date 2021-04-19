@@ -29,7 +29,7 @@ type
   PackedModule* = object ## the parts of a PackedEncoder that are part of the .rod file
     definedSymbols: string
     moduleFlags: TSymFlags
-    includes: seq[(LitId, string)] # first entry is the module filename itself
+    includes*: seq[(LitId, string)] # first entry is the module filename itself
     imports: seq[LitId] # the modules this module depends on
     toReplay*: PackedTree # pragmas and VM specific state to replay.
     topLevel*: PackedTree  # top level statements
