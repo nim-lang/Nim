@@ -1,7 +1,6 @@
 discard """
   errormsg: "type mismatch: got <int>"
-  line: 17
-  nimout: '''tprevent_forloopvar_mutations.nim(17, 7) Error: type mismatch: got <int>
+  nimout: '''tprevent_forloopvar_mutations.nim(16, 7) Error: type mismatch: got <int>
 but expected one of:
 proc inc[T: Ordinal](x: var T; y = 1)
   first type mismatch at position: 1

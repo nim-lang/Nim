@@ -307,8 +307,8 @@ proc sendUnbufferedMpmc(chan: ChannelRaw, data: sink pointer, size: int, nonBloc
 
   chan.head = 1
 
-  release(chan.headLock)
   signal(chan.notEmptyCond)
+  release(chan.headLock)
   result = true
 
 proc sendMpmc(chan: ChannelRaw, data: sink pointer, size: int, nonBlocking: bool): bool =
@@ -343,8 +343,8 @@ proc sendMpmc(chan: ChannelRaw, data: sink pointer, size: int, nonBlocking: bool
   if chan.tail == 2 * chan.size:
     chan.tail = 0
 
-  release(chan.tailLock)
   signal(chan.notEmptyCond)
+  release(chan.tailLock)
   result = true
 
 proc recvUnbufferedMpmc(chan: ChannelRaw, data: pointer, size: int, nonBlocking: bool): bool =
@@ -368,8 +368,8 @@ proc recvUnbufferedMpmc(chan: ChannelRaw, data: pointer, size: int, nonBlocking:
 
   chan.head = 0
 
-  release(chan.headLock)
   signal(chan.notFullCond)
+  release(chan.headLock)
   result = true
 
 proc recvMpmc(chan: ChannelRaw, data: pointer, size: int, nonBlocking: bool): bool =
@@ -404,8 +404,8 @@ proc recvMpmc(chan: ChannelRaw, data: pointer, size: int, nonBlocking: bool): bo
   if chan.head == 2 * chan.size:
     chan.head = 0
 
-  release(chan.headLock)
   signal(chan.notFullCond)
+  release(chan.headLock)
   result = true
 
 proc channelCloseMpmc(chan: ChannelRaw): bool =

@@ -143,7 +143,7 @@ proc evalOp(m: TMagic, n, a, b, c: PNode; idgen: IdGenerator; g: ModuleGraph): P
     elif a.kind in {nkStrLit..nkTripleStrLit}:
       if a.typ.kind == tyString:
         result = newIntNodeT(toInt128(a.strVal.len), n, idgen, g)
-      elif a.typ.kind == tyCString:
+      elif a.typ.kind == tyCstring:
         result = newIntNodeT(toInt128(nimCStrLen(a.strVal)), n, idgen, g)
     else:
       result = newIntNodeT(toInt128(a.len), n, idgen, g)
@@ -578,7 +578,7 @@ proc getConstExpr(m: PSym, n: PNode; idgen: IdGenerator; g: ModuleGraph): PNode 
           result = newIntNodeT(firstOrd(g.config, n[1].typ), n, idgen, g)
       of mHigh:
         if skipTypes(n[1].typ, abstractVar+{tyUserTypeClassInst}).kind notin
-            {tySequence, tyString, tyCString, tyOpenArray, tyVarargs}:
+            {tySequence, tyString, tyCstring, tyOpenArray, tyVarargs}:
           if skipTypes(n[1].typ, abstractVarRange).kind in tyFloat..tyFloat64:
             result = newFloatNodeT(lastFloat(n[1].typ), n, g)
           else:

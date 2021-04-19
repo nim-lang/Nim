@@ -602,6 +602,9 @@ when defined(cpp) and appType != "lib" and not gotoBasedExceptions and
     quit 1
 
 when not defined(noSignalHandler) and not defined(useNimRtl):
+  type Sighandler = proc (a: cint) {.noconv, benign.}
+    # xxx factor with ansi_c.CSighandlerT, posix.Sighandler
+
   proc signalHandler(sign: cint) {.exportc: "signalHandler", noconv.} =
     template processSignal(s, action: untyped) {.dirty.} =
       if s == SIGINT: action("SIGINT: Interrupted by Ctrl-C.\n")
@@ -652,7 +655,11 @@ when not defined(noSignalHandler) and not defined(useNimRtl):
     else:
       quit(1)
 
+  var SIG_IGN {.importc: "SIG_IGN", header: "<signal.h>".}: Sighandler
+
   proc registerSignalHandler() =
+    # xxx `signal` is deprecated and has many caveats, we should use `sigaction` instead, e.g.
+    # https://stackoverflow.com/questions/231912/what-is-the-difference-between-sigaction-and-signal
     c_signal(SIGINT, signalHandler)
     c_signal(SIGSEGV, signalHandler)
     c_signal(SIGABRT, signalHandler)
@@ -661,14 +668,17 @@ when not defined(noSignalHandler) and not defined(useNimRtl):
     when declared(SIGBUS):
       c_signal(SIGBUS, signalHandler)
     when declared(SIGPIPE):
-      c_signal(SIGPIPE, signalHandler)
+      when defined(nimLegacySigpipeHandler):
+        c_signal(SIGPIPE, signalHandler)
+      else:
+        c_signal(SIGPIPE, SIG_IGN)
 
   registerSignalHandler() # call it in initialization section
 
 proc setControlCHook(hook: proc () {.noconv.}) =
   # ugly cast, but should work on all architectures:
-  type SignalHandler = proc (sign: cint) {.noconv, benign.}
-  c_signal(SIGINT, cast[SignalHandler](hook))
+  when declared(Sighandler):
+    c_signal(SIGINT, cast[Sighandler](hook))
 
 when not defined(noSignalHandler) and not defined(useNimRtl):
   proc unsetControlCHook() =

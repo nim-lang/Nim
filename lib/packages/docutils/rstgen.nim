@@ -1165,7 +1165,7 @@ proc renderRstToOut(d: PDoc, n: PRstNode, result: var string) =
     renderAux(d, n, "<dl$2 class=\"docutils\">$1</dl>\n",
                     "\\begin{description}\n$2\n$1\\end{description}\n", result)
   of rnDefItem: renderAux(d, n, result)
-  of rnDefName: renderAux(d, n, "<dt$2>$1</dt>\n", "$2\\item[$1] ", result)
+  of rnDefName: renderAux(d, n, "<dt$2>$1</dt>\n", "$2\\item[$1]\\  ", result)
   of rnDefBody: renderAux(d, n, "<dd$2>$1</dd>\n", "$2\n$1\n", result)
   of rnFieldList:
     var tmp = ""
@@ -1189,14 +1189,20 @@ proc renderRstToOut(d: PDoc, n: PRstNode, result: var string) =
   of rnIndex:
     renderRstToOut(d, n.sons[2], result)
   of rnOptionList:
-    renderAux(d, n, "<table$2 frame=\"void\">$1</table>",
-      "\\begin{description}\n$2\n$1\\end{description}\n", result)
+    renderAux(d, n, "<div$2 class=\"option-list\">$1</div>",
+        "\\begin{rstoptlist}$2\n$1\\end{rstoptlist}", result)
   of rnOptionListItem:
-    renderAux(d, n, "<tr>$1</tr>\n", "$1", result)
+    var addclass = if n.order mod 2 == 1: " odd" else: ""
+    renderAux(d, n,
+        "<div class=\"option-list-item" & addclass & "\">$1</div>\n",
+        "$1", result)
   of rnOptionGroup:
-    renderAux(d, n, "<th align=\"left\">$1</th>", "\\item[$1]", result)
+    renderAux(d, n,
+        "<div class=\"option-list-label\">$1</div>",
+        "\\item[$1]", result)
   of rnDescription:
-    renderAux(d, n, "<td align=\"left\">$1</td>\n", " $1\n", result)
+    renderAux(d, n, "<div class=\"option-list-description\">$1</div>",
+        " $1\n", result)
   of rnOption, rnOptionString, rnOptionArgument:
     doAssert false, "renderRstToOut"
   of rnLiteralBlock:

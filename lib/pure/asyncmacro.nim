@@ -11,7 +11,6 @@
 
 import macros, strutils, asyncfutures
 
-
 # TODO: Ref https://github.com/nim-lang/Nim/issues/5617
 # TODO: Add more line infos
 proc newCallWithLineInfo(fromNode: NimNode; theProc: NimNode, args: varargs[NimNode]): NimNode =
@@ -65,10 +64,7 @@ proc createFutureVarCompletions(futureVarIdents: seq[NimNode], fromNode: NimNode
       )
     )
 
-proc processBody(node, retFutureSym: NimNode,
-                 subTypeIsVoid: bool,
-                 futureVarIdents: seq[NimNode]): NimNode =
-  #echo(node.treeRepr)
+proc processBody(node, retFutureSym: NimNode, futureVarIdents: seq[NimNode]): NimNode =
   result = node
   case node.kind
   of nnkReturnStmt:
@@ -78,14 +74,9 @@ proc processBody(node, retFutureSym: NimNode,
     result.add createFutureVarCompletions(futureVarIdents, node)
 
     if node[0].kind == nnkEmpty:
-      if not subTypeIsVoid:
-        result.add newCall(newIdentNode("complete"), retFutureSym,
-            newIdentNode("result"))
-      else:
-        result.add newCall(newIdentNode("complete"), retFutureSym)
+      result.add newCall(newIdentNode("complete"), retFutureSym, newIdentNode("result"))
     else:
-      let x = node[0].processBody(retFutureSym, subTypeIsVoid,
-                                  futureVarIdents)
+      let x = node[0].processBody(retFutureSym, futureVarIdents)
       if x.kind == nnkYieldStmt: result.add x
       else:
         result.add newCall(newIdentNode("complete"), retFutureSym, x)
@@ -98,8 +89,7 @@ proc processBody(node, retFutureSym: NimNode,
   else: discard
 
   for i in 0 ..< result.len:
-    result[i] = processBody(result[i], retFutureSym, subTypeIsVoid,
-                            futureVarIdents)
+    result[i] = processBody(result[i], retFutureSym, futureVarIdents)
 
   # echo result.repr
 
@@ -146,7 +136,7 @@ proc asyncSingleProc(prc: NimNode): NimNode =
   if prc.kind == nnkProcTy:
     result = prc
     if prc[0][0].kind == nnkEmpty:
-      result[0][0] = parseExpr("Future[void]")
+      result[0][0] = quote do: Future[void]
     return result
 
   if prc.kind notin {nnkProcDef, nnkLambda, nnkMethodDef, nnkDo}:
@@ -180,12 +170,7 @@ proc asyncSingleProc(prc: NimNode): NimNode =
   else:
     verifyReturnType(repr(returnType), returnType)
 
-  let subtypeIsVoid = returnType.kind == nnkEmpty or
-        (baseType.kind in {nnkIdent, nnkSym} and
-         baseType.eqIdent("void"))
-  
   let futureVarIdents = getFutureVarIdents(prc.params)
-
   var outerProcBody = newNimNode(nnkStmtList, prc.body)
 
   # Extract the documentation comment from the original procedure declaration.
@@ -213,42 +198,30 @@ proc asyncSingleProc(prc: NimNode): NimNode =
   # ->   <proc_body>
   # ->   complete(retFuture, result)
   var iteratorNameSym = genSym(nskIterator, $prcName & "Iter")
-  var procBody = prc.body.processBody(retFutureSym, subtypeIsVoid,
-                                    futureVarIdents)
+  var procBody = prc.body.processBody(retFutureSym, futureVarIdents)
   # don't do anything with forward bodies (empty)
   if procBody.kind != nnkEmpty:
     # fix #13899, defer should not escape its original scope
     procBody = newStmtList(newTree(nnkBlockStmt, newEmptyNode(), procBody))
-
     procBody.add(createFutureVarCompletions(futureVarIdents, nil))
+    let resultIdent = ident"result"
+    procBody.insert(0): quote do:
+      {.push warning[resultshadowed]: off.}
+      when `subRetType` isnot void:
+        var `resultIdent`: `subRetType`
+      else:
+        var `resultIdent`: Future[void]
+      {.pop.}
+    procBody.add quote do:
+      complete(`retFutureSym`, `resultIdent`)
 
-    if not subtypeIsVoid:
-      procBody.insert(0, newNimNode(nnkPragma).add(newIdentNode("push"),
-        newNimNode(nnkExprColonExpr).add(newNimNode(nnkBracketExpr).add(
-          newIdentNode("warning"), newIdentNode("resultshadowed")),
-        newIdentNode("off")))) # -> {.push warning[resultshadowed]: off.}
-
-      procBody.insert(1, newNimNode(nnkVarSection, prc.body).add(
-        newIdentDefs(newIdentNode("result"), baseType))) # -> var result: T
-
-      procBody.insert(2, newNimNode(nnkPragma).add(
-        newIdentNode("pop"))) # -> {.pop.})
-
-      procBody.add(
-        newCall(newIdentNode("complete"),
-          retFutureSym, newIdentNode("result"))) # -> complete(retFuture, result)
-    else:
-      # -> complete(retFuture)
-      procBody.add(newCall(newIdentNode("complete"), retFutureSym))
-
-    var closureIterator = newProc(iteratorNameSym, [parseExpr("owned(FutureBase)")],
+    var closureIterator = newProc(iteratorNameSym, [quote do: owned(FutureBase)],
                                   procBody, nnkIteratorDef)
     closureIterator.pragma = newNimNode(nnkPragma, lineInfoFrom = prc.body)
     closureIterator.addPragma(newIdentNode("closure"))
 
     # If proc has an explicit gcsafe pragma, we add it to iterator as well.
-    if prc.pragma.findChild(it.kind in {nnkSym, nnkIdent} and $it ==
-        "gcsafe") != nil:
+    if prc.pragma.findChild(it.kind in {nnkSym, nnkIdent} and $it == "gcsafe") != nil:
       closureIterator.addPragma(newIdentNode("gcsafe"))
     outerProcBody.add(closureIterator)
 
@@ -266,22 +239,16 @@ proc asyncSingleProc(prc: NimNode): NimNode =
     outerProcBody.add newNimNode(nnkReturnStmt, prc.body[^1]).add(retFutureSym)
 
   result = prc
-
-  if subtypeIsVoid:
-    # Add discardable pragma.
-    if returnType.kind == nnkEmpty:
-      # Add Future[void]
-      result.params[0] = parseExpr("owned(Future[void])")
+  # Add discardable pragma.
+  if returnType.kind == nnkEmpty:
+    # xxx consider removing `owned`? it's inconsistent with non-void case
+    result.params[0] = quote do: owned(Future[void])
 
   # based on the yglukhov's patch to chronos: https://github.com/status-im/nim-chronos/pull/47
   if procBody.kind != nnkEmpty:
     body2.add quote do:
       `outerProcBody`
     result.body = body2
-
-  #echo(treeRepr(result))
-  #if prcName == "recvLineInto":
-  #  echo(toStrLit(result))
 
 macro async*(prc: untyped): untyped =
   ## Macro which processes async procedures into the appropriate
@@ -352,9 +319,3 @@ macro multisync*(prc: untyped): untyped =
   result = newStmtList()
   result.add(asyncSingleProc(asyncPrc))
   result.add(sync)
-  # echo result.repr
-
-# overload for await as a fallback handler, based on the yglukhov's patch to chronos: https://github.com/status-im/nim-chronos/pull/47
-# template await*(f: typed): untyped =
-  # static:
-    # error "await only available within {.async.}"

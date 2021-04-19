@@ -11,7 +11,7 @@
 ## (`RTTI`:idx:). See the `marshal <marshal.html>`_ module for an example of
 ## what this allows you to do.
 ##
-## ..note:: Even though `Any` and its operations hide the nasty low level
+## .. note:: Even though `Any` and its operations hide the nasty low level
 ##   details from its users, it remains inherently unsafe! Also, Nim's
 ##   runtime type information will evolve and may eventually be deprecated.
 ##   As an alternative approach to programmatically understanding and
@@ -322,12 +322,12 @@ proc base*(x: Any): Any =
 proc isNil*(x: Any): bool =
   ## `isNil` for an `x` that represents a cstring, proc or
   ## some pointer type.
-  assert x.rawType.kind in {tyCString, tyRef, tyPtr, tyPointer, tyProc}
+  assert x.rawType.kind in {tyCstring, tyRef, tyPtr, tyPointer, tyProc}
   result = isNil(cast[ppointer](x.value)[])
 
 const pointerLike =
-  when defined(gcDestructors): {tyCString, tyRef, tyPtr, tyPointer, tyProc}
-  else: {tyString, tyCString, tyRef, tyPtr, tyPointer, tySequence, tyProc}
+  when defined(gcDestructors): {tyCstring, tyRef, tyPtr, tyPointer, tyProc}
+  else: {tyString, tyCstring, tyRef, tyPtr, tyPointer, tySequence, tyProc}
 
 proc getPointer*(x: Any): pointer =
   ## Retrieves the pointer value out of `x`. `x` needs to be of kind
@@ -669,7 +669,7 @@ proc setString*(x: Any, y: string) =
 
 proc getCString*(x: Any): cstring =
   ## Retrieves the `cstring` value out of `x`. `x` needs to represent a `cstring`.
-  assert x.rawType.kind == tyCString
+  assert x.rawType.kind == tyCstring
   result = cast[ptr cstring](x.value)[]
 
 proc assign*(x, y: Any) =

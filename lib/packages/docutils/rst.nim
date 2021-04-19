@@ -912,6 +912,38 @@ template newLeaf(s: string): PRstNode = newRstLeaf(s)
 proc newLeaf(p: var RstParser): PRstNode =
   result = newLeaf(currentTok(p).symbol)
 
+proc validRefnamePunct(x: string): bool =
+  ## https://docutils.sourceforge.io/docs/ref/rst/restructuredtext.html#reference-names
+  x.len == 1 and x[0] in {'-', '_', '.', ':', '+'}
+
+func getRefnameIdx(p: RstParser, startIdx: int): int =
+  ## Gets last token index of a refname ("word" in RST terminology):
+  ##
+  ##   reference names are single words consisting of alphanumerics plus
+  ##   isolated (no two adjacent) internal hyphens, underscores, periods,
+  ##   colons and plus signs; no whitespace or other characters are allowed.
+  ##
+  ## Refnames are used for:
+  ## - reference names
+  ## - role names
+  ## - directive names
+  ## - footnote labels
+  ##
+  # TODO: use this func in all other relevant places
+  var j = startIdx
+  if p.tok[j].kind == tkWord:
+    inc j
+    while p.tok[j].kind == tkPunct and validRefnamePunct(p.tok[j].symbol) and
+        p.tok[j+1].kind == tkWord:
+      inc j, 2
+  result = j - 1
+
+func getRefname(p: RstParser, startIdx: int): (string, int) =
+  let lastIdx = getRefnameIdx(p, startIdx)
+  result[1] = lastIdx
+  for j in startIdx..lastIdx:
+    result[0].add p.tok[j].symbol
+
 proc getReferenceName(p: var RstParser, endStr: string): PRstNode =
   var res = newRstNode(rnInner)
   while true:
@@ -1011,7 +1043,10 @@ proc match(p: RstParser, start: int, expr: string): bool =
   var last = expr.len - 1
   while i <= last:
     case expr[i]
-    of 'w': result = p.tok[j].kind == tkWord
+    of 'w':
+      let lastIdx = getRefnameIdx(p, j)
+      result = lastIdx >= j
+      if result: j = lastIdx
     of ' ': result = p.tok[j].kind == tkWhite
     of 'i': result = p.tok[j].kind == tkIndent
     of 'I': result = p.tok[j].kind in {tkIndent, tkEof}
@@ -1058,7 +1093,7 @@ proc fixupEmbeddedRef(n, a, b: PRstNode) =
 proc whichRole(p: RstParser, sym: string): RstNodeKind =
   result = whichRoleAux(sym)
   if result == rnUnknownRole:
-    rstMessage(p, mwUnsupportedLanguage, p.s.currRole)
+    rstMessage(p, mwUnsupportedLanguage, sym)
 
 proc toInlineCode(n: PRstNode, language: string): PRstNode =
   ## Creates rnInlineCode and attaches `n` contents as code (in 3rd son).
@@ -1077,6 +1112,11 @@ proc toInlineCode(n: PRstNode, language: string): PRstNode =
     s.add i.text
   lb.add newLeaf(s)
   result.add lb
+
+proc toUnknownRole(n: PRstNode, roleName: string): PRstNode =
+  let newN = newRstNode(rnInner, n.sons)
+  let newSons = @[newN, newLeaf(roleName)]
+  result = newRstNode(rnUnknownRole, newSons)
 
 proc parsePostfix(p: var RstParser, n: PRstNode): PRstNode =
   var newKind = n.kind
@@ -1102,17 +1142,15 @@ proc parsePostfix(p: var RstParser, n: PRstNode): PRstNode =
     result = newRstNode(newKind, newSons)
   elif match(p, p.idx, ":w:"):
     # a role:
-    let roleName = nextTok(p).symbol
+    let (roleName, lastIdx) = getRefname(p, p.idx+1)
     newKind = whichRole(p, roleName)
     if newKind == rnUnknownRole:
-      let newN = newRstNode(rnInner, n.sons)
-      newSons = @[newN, newLeaf(roleName)]
-      result = newRstNode(newKind, newSons)
+      result = n.toUnknownRole(roleName)
     elif newKind == rnInlineCode:
       result = n.toInlineCode(language=roleName)
     else:
       result = newRstNode(newKind, newSons)
-    inc p.idx, 3
+    p.idx = lastIdx + 2
   else:
     if p.s.currRoleKind == rnInlineCode:
       result = n.toInlineCode(language=p.s.currRole)
@@ -1138,10 +1176,6 @@ proc parseSmiley(p: var RstParser): PRstNode =
       result = newRstNode(rnSmiley)
       result.text = val
       return
-
-proc validRefnamePunct(x: string): bool =
-  ## https://docutils.sourceforge.io/docs/ref/rst/restructuredtext.html#reference-names
-  x.len == 1 and x[0] in {'-', '_', '.', ':', '+'}
 
 proc isUrl(p: RstParser, i: int): bool =
   result = p.tok[i+1].symbol == ":" and p.tok[i+2].symbol == "//" and
@@ -1373,14 +1407,18 @@ proc parseInline(p: var RstParser, father: PRstNode) =
       var n = newRstNode(rnInlineLiteral)
       parseUntil(p, n, "``", false)
       father.add(n)
-    elif match(p, p.idx, ":w:") and p.tok[p.idx+3].symbol == "`":
-      let roleName = nextTok(p).symbol
+    elif match(p, p.idx, ":w:") and
+        (var lastIdx = getRefnameIdx(p, p.idx + 1);
+         p.tok[lastIdx+2].symbol == "`"):
+      let (roleName, _) = getRefname(p, p.idx+1)
       let k = whichRole(p, roleName)
       var n = newRstNode(k)
-      inc p.idx, 3
+      p.idx = lastIdx + 2
       if k == rnInlineCode:
         n = n.toInlineCode(language=roleName)
       parseUntil(p, n, "`", false) # bug #17260
+      if k == rnUnknownRole:
+        n = n.toUnknownRole(roleName)
       father.add(n)
     elif isInlineMarkupStart(p, "`"):
       var n = newRstNode(rnInterpretedText)
@@ -1438,25 +1476,28 @@ proc parseInline(p: var RstParser, father: PRstNode) =
   else: discard
 
 proc getDirective(p: var RstParser): string =
-  if currentTok(p).kind == tkWhite and nextTok(p).kind == tkWord:
-    var j = p.idx
-    inc p.idx
-    result = currentTok(p).symbol
-    inc p.idx
-    while currentTok(p).kind in {tkWord, tkPunct, tkAdornment, tkOther}:
-      if currentTok(p).symbol == "::": break
-      result.add(currentTok(p).symbol)
-      inc p.idx
-    if currentTok(p).kind == tkWhite: inc p.idx
-    if currentTok(p).symbol == "::":
-      inc p.idx
-      if currentTok(p).kind == tkWhite: inc p.idx
-    else:
-      p.idx = j               # set back
-      result = ""             # error
-  else:
-    result = ""
-  result = result.toLowerAscii()
+  result = ""
+  if currentTok(p).kind == tkWhite:
+    let (name, lastIdx) = getRefname(p, p.idx + 1)
+    let afterIdx = lastIdx + 1
+    if name.len > 0:
+      if p.tok[afterIdx].symbol == "::":
+        result = name
+        p.idx = afterIdx + 1
+        if currentTok(p).kind == tkWhite:
+          inc p.idx
+        elif currentTok(p).kind != tkIndent:
+          rstMessage(p, mwRstStyle,
+              "whitespace or newline expected after directive " & name)
+        result = result.toLowerAscii()
+      elif p.tok[afterIdx].symbol == ":":
+        rstMessage(p, mwRstStyle,
+            "double colon :: may be missing at end of '" & name & "'",
+            p.tok[afterIdx].line, p.tok[afterIdx].col)
+      elif p.tok[afterIdx].kind == tkPunct and p.tok[afterIdx].symbol[0] == ':':
+        rstMessage(p, mwRstStyle,
+            "too many colons for a directive (should be ::)",
+            p.tok[afterIdx].line, p.tok[afterIdx].col)
 
 proc parseComment(p: var RstParser): PRstNode =
   case currentTok(p).kind
@@ -1491,6 +1532,55 @@ proc parseUntilNewline(p: var RstParser, father: PRstNode) =
     of tkEof, tkIndent: break
 
 proc parseSection(p: var RstParser, result: PRstNode) {.gcsafe.}
+
+proc tokenAfterNewline(p: RstParser, start: int): int =
+  result = start
+  while true:
+    case p.tok[result].kind
+    of tkEof:
+      break
+    of tkIndent:
+      inc result
+      break
+    else: inc result
+
+proc tokenAfterNewline(p: RstParser): int {.inline.} =
+  result = tokenAfterNewline(p, p.idx)
+
+proc getWrappableIndent(p: RstParser): int =
+  ## Gets baseline indentation for bodies of field lists and directives.
+  ## Handles situations like this (with possible de-indent in [case.3])::
+  ##
+  ##   :field:   definition                                          [case.1]
+  ##
+  ##   currInd   currentTok(p).col
+  ##   |         |
+  ##   v         v
+  ##
+  ##   .. Note:: defItem:                                            [case.2]
+  ##                 definition
+  ##
+  ##                 ^
+  ##                 |
+  ##                 nextIndent
+  ##
+  ##   .. Note:: - point1                                            [case.3]
+  ##       - point 2
+  ##
+  ##       ^
+  ##       |
+  ##       nextIndent
+  if currentTok(p).kind == tkIndent:
+    result = currentTok(p).ival
+  else:
+    var nextIndent = p.tok[tokenAfterNewline(p)-1].ival
+    if nextIndent <= currInd(p):          # parse only this line     [case.1]
+      result = currentTok(p).col
+    elif nextIndent >= currentTok(p).col: # may be a definition list [case.2]
+      result = currentTok(p).col
+    else:
+      result = nextIndent                 #                          [case.3]
+
 proc parseField(p: var RstParser): PRstNode =
   ## Returns a parsed rnField node.
   ##
@@ -1500,13 +1590,12 @@ proc parseField(p: var RstParser): PRstNode =
   var fieldname = newRstNode(rnFieldName)
   parseUntil(p, fieldname, ":", false)
   var fieldbody = newRstNode(rnFieldBody)
-  if currentTok(p).kind != tkIndent: parseLine(p, fieldbody)
-  if currentTok(p).kind == tkIndent:
-    var indent = currentTok(p).ival
-    if indent > col:
-      pushInd(p, indent)
-      parseSection(p, fieldbody)
-      popInd(p)
+  if currentTok(p).kind == tkWhite: inc p.idx
+  let indent = getWrappableIndent(p)
+  if indent > col:
+    pushInd(p, indent)
+    parseSection(p, fieldbody)
+    popInd(p)
   result.add(fieldname)
   result.add(fieldbody)
 
@@ -1611,20 +1700,6 @@ proc countTitles(p: var RstParser, n: PRstNode) =
         if p.s.hTitleCnt >= 2:
           break
 
-proc tokenAfterNewline(p: RstParser, start: int): int =
-  result = start
-  while true:
-    case p.tok[result].kind
-    of tkEof:
-      break
-    of tkIndent:
-      inc result
-      break
-    else: inc result
-
-proc tokenAfterNewline(p: RstParser): int {.inline.} =
-  result = tokenAfterNewline(p, p.idx)
-
 proc isAdornmentHeadline(p: RstParser, adornmentIdx: int): bool =
   ## check that underline/overline length is enough for the heading.
   ## No support for Unicode.
@@ -1711,7 +1786,8 @@ proc whichSection(p: RstParser): RstNodeKind =
       return rnCodeBlock
     elif currentTok(p).symbol == "::":
       return rnLiteralBlock
-    elif currentTok(p).symbol == ".." and predNL(p):
+    elif currentTok(p).symbol == ".."  and
+       nextTok(p).kind in {tkWhite, tkIndent}:
      return rnDirective
   case currentTok(p).kind
   of tkAdornment:
@@ -1738,10 +1814,9 @@ proc whichSection(p: RstParser): RstNodeKind =
     elif match(p, tokenAfterNewline(p), "aI") and
         isAdornmentHeadline(p, tokenAfterNewline(p)):
       result = rnHeadline
-    elif predNL(p) and
-        currentTok(p).symbol in ["+", "*", "-"] and nextTok(p).kind == tkWhite:
+    elif currentTok(p).symbol in ["+", "*", "-"] and nextTok(p).kind == tkWhite:
       result = rnBulletList
-    elif match(p, p.idx, ":w:E") and predNL(p):
+    elif match(p, p.idx, ":w:E"):
       # (currentTok(p).symbol == ":")
       result = rnFieldList
     elif match(p, p.idx, "(e) ") or match(p, p.idx, "e) ") or
@@ -2043,6 +2118,7 @@ proc parseBulletList(p: var RstParser): PRstNode =
 proc parseOptionList(p: var RstParser): PRstNode =
   result = newRstNodeA(p, rnOptionList)
   let col = currentTok(p).col
+  var order = 1
   while true:
     if currentTok(p).col == col and isOptionList(p):
       var a = newRstNode(rnOptionGroup)
@@ -2065,6 +2141,7 @@ proc parseOptionList(p: var RstParser): PRstNode =
       if currentTok(p).kind == tkIndent: inc p.idx
       c.add(a)
       c.add(b)
+      c.order = order; inc order
       result.add(c)
     else:
       if currentTok(p).kind != tkEof: dec p.idx  # back to tkIndent
@@ -2306,9 +2383,11 @@ proc parseDirective(p: var RstParser, k: RstNodeKind, flags: DirFlags): PRstNode
       parseLine(p, args)
   result.add(args)
   if hasOptions in flags:
-    if currentTok(p).kind == tkIndent and currentTok(p).ival >= 3 and
+    if currentTok(p).kind == tkIndent and currentTok(p).ival > currInd(p) and
         nextTok(p).symbol == ":":
+      pushInd(p, currentTok(p).ival)
       options = parseFields(p)
+      popInd(p)
   result.add(options)
 
 proc indFollows(p: RstParser): bool =
@@ -2319,11 +2398,9 @@ proc parseBlockContent(p: var RstParser, father: var PRstNode,
   ## parse the final content part of explicit markup blocks (directives,
   ## footnotes, etc). Returns true if succeeded.
   if currentTok(p).kind != tkIndent or indFollows(p):
-    var nextIndent = p.tok[tokenAfterNewline(p)-1].ival
-    if nextIndent <= currInd(p):  # parse only this line
-      nextIndent = currentTok(p).col
-    pushInd(p, nextIndent)
-    var content = contentParser(p)
+    let blockIndent = getWrappableIndent(p)
+    pushInd(p, blockIndent)
+    let content = contentParser(p)
     popInd(p)
     father.add content
     result = true

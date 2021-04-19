@@ -108,7 +108,7 @@ proc respond*(req: Request, code: HttpCode, content: string,
   ##
   ## Example:
   ##
-  ## .. code-block::nim
+  ## .. code-block:: Nim
   ##    import std/json
   ##    proc handler(req: Request) {.async.} =
   ##      if req.url.path == "/hello-world":

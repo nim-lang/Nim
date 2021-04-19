@@ -696,7 +696,7 @@ proc paramType(op: PType, i: int): PType =
   if op != nil and i < op.len: result = op[i]
 
 proc cstringCheck(tracked: PEffects; n: PNode) =
-  if n[0].typ.kind == tyCString and (let a = skipConv(n[1]);
+  if n[0].typ.kind == tyCstring and (let a = skipConv(n[1]);
       a.typ.kind == tyString and a.kind notin {nkStrLit..nkTripleStrLit}):
     message(tracked.config, n.info, warnUnsafeCode, renderTree(n))
 

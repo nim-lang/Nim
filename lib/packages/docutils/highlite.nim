@@ -13,7 +13,7 @@
 ##
 ## You can use this to build your own syntax highlighting, check this example:
 ##
-## .. code::nim
+## .. code:: Nim
 ##   let code = """for x in $int.high: echo x.ord mod 2 == 0"""
 ##   var toknizr: GeneralTokenizer
 ##   initGeneralTokenizer(toknizr, code)
@@ -34,7 +34,7 @@
 ##
 ## The proc `getSourceLanguage` can get the language `enum` from a string:
 ##
-## .. code::nim
+## .. code:: Nim
 ##   for l in ["C", "c++", "jAvA", "Nim", "c#"]: echo getSourceLanguage(l)
 ##
 

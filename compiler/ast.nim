@@ -379,7 +379,7 @@ type
     tySequence,
     tyProc,
     tyPointer, tyOpenArray,
-    tyString, tyCString, tyForward,
+    tyString, tyCstring, tyForward,
     tyInt, tyInt8, tyInt16, tyInt32, tyInt64, # signed integers
     tyFloat, tyFloat32, tyFloat64, tyFloat128,
     tyUInt, tyUInt8, tyUInt16, tyUInt32, tyUInt64,
@@ -440,10 +440,12 @@ type
 
     tyVoid
       # now different from tyEmpty, hurray!
+    tyIterable
 
 static:
   # remind us when TTypeKind stops to fit in a single 64-bit word
-  assert TTypeKind.high.ord <= 63
+  # assert TTypeKind.high.ord <= 63
+  discard
 
 const
   tyPureObject* = tyTuple
@@ -603,6 +605,8 @@ type
 const
   routineKinds* = {skProc, skFunc, skMethod, skIterator,
                    skConverter, skMacro, skTemplate}
+  ExportableSymKinds* = {skVar, skLet, skConst, skType, skEnumField, skStub, skAlias} + routineKinds
+
   tfUnion* = tfNoSideEffect
   tfGcSafe* = tfThread
   tfObjHasKids* = tfEnumHasHoles
@@ -664,7 +668,7 @@ type
     mDefault, mUnown, mIsolate, mAccessEnv, mReset,
     mArray, mOpenArray, mRange, mSet, mSeq, mVarargs,
     mRef, mPtr, mVar, mDistinct, mVoid, mTuple,
-    mOrdinal,
+    mOrdinal, mIterableType,
     mInt, mInt8, mInt16, mInt32, mInt64,
     mUInt, mUInt8, mUInt16, mUInt32, mUInt64,
     mFloat, mFloat32, mFloat64, mFloat128,
@@ -689,7 +693,7 @@ type
     mInstantiationInfo, mGetTypeInfo, mGetTypeInfoV2,
     mNimvm, mIntDefine, mStrDefine, mBoolDefine, mRunnableExamples,
     mException, mBuiltinType, mSymOwner, mUncheckedArray, mGetImplTransf,
-    mSymIsInstantiationOf, mNodeId
+    mSymIsInstantiationOf, mNodeId, mPrivateAccess
 
 
 # things that we can evaluate safely at compile time, even if not asked for it:
@@ -839,6 +843,7 @@ type
     depthLevel*: int
     symbols*: TStrTable
     parent*: PScope
+    allowPrivateAccess*: seq[PSym] #  # enable access to private fields
 
   PScope* = ref TScope
 
@@ -1000,18 +1005,15 @@ const
     tyBool, tyChar, tyEnum, tyArray, tyObject,
     tySet, tyTuple, tyRange, tyPtr, tyRef, tyVar, tyLent, tySequence, tyProc,
     tyPointer,
-    tyOpenArray, tyString, tyCString, tyInt..tyInt64, tyFloat..tyFloat128,
+    tyOpenArray, tyString, tyCstring, tyInt..tyInt64, tyFloat..tyFloat128,
     tyUInt..tyUInt64}
   IntegralTypes* = {tyBool, tyChar, tyEnum, tyInt..tyInt64,
     tyFloat..tyFloat128, tyUInt..tyUInt64} # weird name because it contains tyFloat
   ConstantDataTypes*: TTypeKinds = {tyArray, tySet,
                                     tyTuple, tySequence}
-  NilableTypes*: TTypeKinds = {tyPointer, tyCString, tyRef, tyPtr,
+  NilableTypes*: TTypeKinds = {tyPointer, tyCstring, tyRef, tyPtr,
     tyProc, tyError} # TODO
   PtrLikeKinds*: TTypeKinds = {tyPointer, tyPtr} # for VM
-  ExportableSymKinds* = {skVar, skConst, skProc, skFunc, skMethod, skType,
-    skIterator,
-    skMacro, skTemplate, skConverter, skEnumField, skLet, skStub, skAlias}
   PersistentNodeFlags*: TNodeFlags = {nfBase2, nfBase8, nfBase16,
                                       nfDotSetter, nfDotField,
                                       nfIsRef, nfIsPtr, nfPreventCg, nfLL,
@@ -1052,8 +1054,16 @@ const
 
   defaultSize = -1
   defaultAlignment = -1
-  defaultOffset = -1
+  defaultOffset* = -1
 
+proc getPIdent*(a: PNode): PIdent {.inline.} =
+  ## Returns underlying `PIdent` for `{nkSym, nkIdent}`, or `nil`.
+  # xxx consider whether also returning the 1st ident for {nkOpenSymChoice, nkClosedSymChoice}
+  # which may simplify code.
+  case a.kind
+  of nkSym: a.sym.name
+  of nkIdent:  a.ident
+  else: nil
 
 proc getnimblePkg*(a: PSym): PSym =
   result = a

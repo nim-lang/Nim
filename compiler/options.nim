@@ -41,7 +41,7 @@ type                          # please make sure we have under 32 options
     optMemTracker,
     optSinkInference          # 'sink T' inference
     optCursorInference
-
+    optImportHidden
 
   TOptions* = set[TOption]
   TGlobalOption* = enum       # **keep binary compatible**
@@ -446,6 +446,11 @@ proc newProfileData(): ProfileData =
 const foreignPackageNotesDefault* = {
   hintProcessing, warnUnknownMagic, hintQuitCalled, hintExecuting, hintUser, warnUser}
 
+proc isDefined*(conf: ConfigRef; symbol: string): bool
+
+when defined(nimDebugUtils):
+  import debugutils
+
 proc newConfigRef*(): ConfigRef =
   result = ConfigRef(
     selectedGC: gcRefc,
@@ -504,16 +509,21 @@ proc newConfigRef*(): ConfigRef =
   # enable colors by default on terminals
   if terminal.isatty(stderr):
     incl(result.globalOptions, optUseColors)
+  when defined(nimDebugUtils):
+    onNewConfigRef(result)
 
 proc newPartialConfigRef*(): ConfigRef =
   ## create a new ConfigRef that is only good enough for error reporting.
-  result = ConfigRef(
-    selectedGC: gcRefc,
-    verbosity: 1,
-    options: DefaultOptions,
-    globalOptions: DefaultGlobalOptions,
-    foreignPackageNotes: foreignPackageNotesDefault,
-    notes: NotesVerbosity[1], mainPackageNotes: NotesVerbosity[1])
+  when defined(nimDebugUtils):
+    result = getConfigRef()
+  else:
+    result = ConfigRef(
+      selectedGC: gcRefc,
+      verbosity: 1,
+      options: DefaultOptions,
+      globalOptions: DefaultGlobalOptions,
+      foreignPackageNotes: foreignPackageNotesDefault,
+      notes: NotesVerbosity[1], mainPackageNotes: NotesVerbosity[1])
 
 proc cppDefine*(c: ConfigRef; define: string) =
   c.cppDefines.incl define
@@ -565,6 +575,13 @@ proc isDefined*(conf: ConfigRef; symbol: string): bool =
       result = conf.target.targetOS in {osSolaris, osNetbsd, osFreebsd, osOpenbsd,
                             osDragonfly, osMacosx}
     else: discard
+
+template quitOrRaise*(conf: ConfigRef, msg = "") =
+  # xxx in future work, consider whether to also intercept `msgQuit` calls
+  if conf.isDefined("nimDebug"):
+    doAssert false, msg
+  else:
+    quit(msg) # quits with QuitFailure
 
 proc importantComments*(conf: ConfigRef): bool {.inline.} = conf.cmd in cmdDocLike + {cmdIdeTools}
 proc usesWriteBarrier*(conf: ConfigRef): bool {.inline.} = conf.selectedGC >= gcRefc
@@ -675,6 +692,11 @@ proc getOsCacheDir(): string =
     result = getHomeDir() / genSubDir.string
 
 proc getNimcacheDir*(conf: ConfigRef): AbsoluteDir =
+  proc nimcacheSuffix(conf: ConfigRef): string =
+    if conf.cmd == cmdCheck: "_check"
+    elif isDefined(conf, "release") or isDefined(conf, "danger"): "_r"
+    else: "_d"
+
   # XXX projectName should always be without a file extension!
   result = if not conf.nimcacheDir.isEmpty:
              conf.nimcacheDir
@@ -682,7 +704,7 @@ proc getNimcacheDir*(conf: ConfigRef): AbsoluteDir =
              conf.projectPath / genSubDir
            else:
             AbsoluteDir(getOsCacheDir() / splitFile(conf.projectName).name &
-               (if isDefined(conf, "release") or isDefined(conf, "danger"): "_r" else: "_d"))
+               nimcacheSuffix(conf))
 
 proc pathSubs*(conf: ConfigRef; p, config: string): string =
   let home = removeTrailingDirSep(os.getHomeDir())
@@ -717,8 +739,7 @@ proc completeGeneratedFilePath*(conf: ConfigRef; f: AbsoluteFile,
     try:
       createDir(subdir.string)
     except OSError:
-      writeLine(stdout, "cannot create directory: " & subdir.string)
-      quit(1)
+      conf.quitOrRaise "cannot create directory: " & subdir.string
   result = subdir / RelativeFile f.string.splitPath.tail
   #echo "completeGeneratedFilePath(", f, ") = ", result
 
