@@ -411,8 +411,14 @@ proc resolveOverloads(c: PContext, n, orig: PNode,
 
     if overloadsState == csEmpty and result.state == csEmpty:
       if efNoUndeclared notin flags: # for tests/pragmas/tcustom_pragma.nim
-        # xxx adapt/use errorUndeclaredIdentifierHint(c, n, f.ident)
-        localError(c.config, n.info, getMsgDiagnostic(c, flags, n, f))
+        if n[0].kind == nkIdent and n[0].ident.s == ".=" and n[2].kind == nkIdent:
+          let sym = n[1].typ.sym
+          let field = n[2].ident.s
+          let msg = errUndeclaredField % field & " for type " & getProcHeader(c.config, sym)
+          localError(c.config, orig[2].info, msg)
+        else:
+          # xxx adapt/use errorUndeclaredIdentifierHint(c, n, f.ident)
+          localError(c.config, n.info, getMsgDiagnostic(c, flags, n, f))
       return
     elif result.state != csMatch:
       if nfExprCall in n.flags:
