@@ -229,7 +229,6 @@ proc storeSection*(f: var RodFile; s: RodSection) =
 
 proc loadSection*(f: var RodFile; expected: RodSection) =
   ## read the bytes value of s, sets and error if the section is incorrect.
-  ## XXX: should this not update `f.currentSection`?
   if f.err != ok: return
   var s: RodSection
   loadPrim(f, s)
