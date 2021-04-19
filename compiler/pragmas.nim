@@ -567,6 +567,9 @@ proc semAsmOrEmit*(con: PContext, n: PNode, marker: char): PNode =
         var e = searchInScopes(con, getIdent(con.cache, sub), amb)
         # XXX what to do here if 'amb' is true?
         if e != nil:
+          if e.kind in routineKinds:
+            localError(con.config, n.info, "symbols cannot be routine kinds")
+            return
           incl(e.flags, sfUsed)
           result.add newSymNode(e)
         else:
