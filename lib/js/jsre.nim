@@ -53,26 +53,28 @@ func contains*(pattern: cstring; self: RegExp): bool =
 
 
 runnableExamples:
+
   block:
     let jsRegex: RegExp = newRegExp(r"\s+", r"i")
-    jsregex.compile(r"\w+", r"i")
-    assert "nim javascript".contains jsregex
-    assert jsregex.exec(r"nim javascript") == @["nim".cstring]
-    assert jsregex.toCstring() == r"/\w+/i"
-    jsregex.compile(r"[0-9]", r"i")
-    assert "0123456789abcd".contains jsregex
-    assert $jsregex == "/[0-9]/i"
+    jsRegex.compile(r"\w+", r"i")
+    assert "nim javascript".contains jsRegex
+    assert jsRegex.exec(r"nim javascript") == @["nim".cstring]
+    assert jsRegex.toCstring() == r"/\w+/i"
+    jsRegex.compile(r"[0-9]", r"i")
+    assert "0123456789abcd".contains jsRegex
+    assert $jsRegex == "/[0-9]/i"
 
   ## "Global" flag may or may not cause "alternating" behaviour.
   ## https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/RegExp#the_difference_between_the_sticky_flag_and_the_global_flag
   block:
-    let regex = newRegExp("a", "g")
-    assert "a".contains regex
-    assert not("a".contains regex)
-    assert "a".contains regex
-    assert not("a".contains regex)
+    let jsRegex = newRegExp("a", "g")  ## "g" means "Global" flag.
+    assert "a".contains jsRegex
+    assert not("a".contains jsRegex)
+    assert "a".contains jsRegex
+    assert not("a".contains jsRegex)
+
   block:
-    let regex = newRegExp("a", "i")
-    assert "a".contains regex
-    assert "a".contains regex
-    assert "a".contains regex
+    let jsRegex = newRegExp("a", "i")  ## "i" means "Case Insensitive" flag.
+    assert "a".contains jsRegex
+    assert "a".contains jsRegex
+    assert "a".contains jsRegex
