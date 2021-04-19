@@ -426,11 +426,11 @@ proc listPackages(packageFilter: string): seq[NimblePackage] =
   else:
     let pkgs1 = pkgs.filterIt(it.allowFailure)
     let pkgs2 = pkgs.filterIt(not it.allowFailure)
-    if testamentData0.testamentBatch == 0:
+    if testamentData0.batchArg == "allowed_failures":
       result = pkgs1
     else:
       for i in 0..<pkgs2.len:
-        if i mod (testamentData0.testamentNumBatch - 1) == (testamentData0.testamentBatch - 1):
+        if i mod testamentData0.testamentNumBatch == testamentData0.testamentBatch:
           result.add pkgs2[i]
 
 proc makeSupTest(test, options: string, cat: Category, debugInfo = ""): TTest =
