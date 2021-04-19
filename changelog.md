@@ -50,6 +50,10 @@
 - On POSIX systems, we now ignore `SIGPIPE` signals, use `-d:nimLegacySigpipeHandler`
   for previous behavior.
 
+- `hashes.hash` now supports `object`, but can be overloaded.
+- `hashes.hash` now supports `ref`, but can be overloaded.
+- `hashes.hash(proc|ptr|ref|pointer)` now calls `hash(int)` and honors `-d:nimIntHash1`,
+  `hashes.hash(closure)` has also been improved.
 
 ## Standard library additions and changes
 - Added support for parenthesized expressions in `strformat`
@@ -235,12 +239,9 @@
   level `moveMem`, `copyMem` operations for Orc's copy-on-write string
   implementation.
 
-- `hashes.hash` now supports `object`, but can be overloaded.
-
 - Added `std/strbasics` for high performance string operations.
   Added `strip`, `setSlice`, `add(a: var string, b: openArray[char])`.
 
-- `hashes.hash` now supports `object`, but can be overloaded.
 
 - Added to `wrapnils` an option-like API via `??.`, `isSome`, `get`.
 
