@@ -54,7 +54,7 @@ func contains*(pattern: cstring; self: RegExp): bool =
 
 runnableExamples:
   block:
-    let jsregex: RegExp = newRegExp(r"\s+", r"i")
+    let jsRegex: RegExp = newRegExp(r"\s+", r"i")
     jsregex.compile(r"\w+", r"i")
     assert "nim javascript".contains jsregex
     assert jsregex.exec(r"nim javascript") == @["nim".cstring]
