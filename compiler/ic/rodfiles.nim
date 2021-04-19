@@ -52,7 +52,7 @@ from typetraits import supportsCopyMem
 ## Valid inputs for Rod files
 ## --------------------------
 ## ASTs, hopes, dreams, and anything as long as it and any children it may have
-## support `copyMem`. At a glance these are:
+## support `copyMem`. This means anything that is not a pointer and that does not contain a pointer. At a glance these are:
 ## * string
 ## * objects & tuples (fields are recursed)
 ## * sequences AKA `seq[T]`
