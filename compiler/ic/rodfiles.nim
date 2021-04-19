@@ -64,7 +64,7 @@ from typetraits import supportsCopyMem
 ## 
 ## Misc
 ## ----
-## * 'Prim' is short for 'primitivate', as in a non-sequence type
+## * 'Prim' is short for 'primitive', as in a non-sequence type
 
 type
   RodSection* = enum
