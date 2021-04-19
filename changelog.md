@@ -50,8 +50,7 @@
 - On POSIX systems, we now ignore `SIGPIPE` signals, use `-d:nimLegacySigpipeHandler`
   for previous behavior.
 
-- `hashes.hash` now supports `object`, but can be overloaded.
-- `hashes.hash` now supports `ref`, but can be overloaded.
+- `hashes.hash` now supports `object` and `ref` (can be overloaded in user code).
 - `hashes.hash(proc|ptr|ref|pointer)` now calls `hash(int)` and honors `-d:nimIntHash1`,
   `hashes.hash(closure)` has also been improved.
 
