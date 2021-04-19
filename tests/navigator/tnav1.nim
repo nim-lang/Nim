@@ -1,5 +1,5 @@
 discard """
-  cmd: "nim check $options --track:$file,12,7 $file"
+  cmd: "nim check $options --defusages:$file,12,7 $file"
   nimout: '''def tnav1_temp.nim(11, 10)
 usage tnav1_temp.nim(12, 8)
   '''
@@ -16,7 +16,7 @@ echo "yes", 1 != 3
 
 #!EDIT!#
 discard """
-  cmd: "nim check $options --track:$file,15,2 $file"
+  cmd: "nim check $options --defusages:$file,15,2 $file"
   nimout: '''def tnav1_temp.nim(12, 6)
 usage tnav1_temp.nim(15, 1)
   '''
