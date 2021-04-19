@@ -1198,7 +1198,8 @@ proc renderRstToOut(d: PDoc, n: PRstNode, result: var string) =
         "$1", result)
   of rnOptionGroup:
     renderAux(d, n,
-        "<div class=\"option-list-label\">$1</div>",
+        "<div class=\"option-list-label\"><tt><span class=\"option\">" &
+        "$1</span></tt></div>",
         "\\item[$1]", result)
   of rnDescription:
     renderAux(d, n, "<div class=\"option-list-description\">$1</div>",
@@ -1319,13 +1320,22 @@ proc renderRstToOut(d: PDoc, n: PRstNode, result: var string) =
     renderAux(d, n, "|$1|", "|$1|", result)
   of rnDirective:
     renderAux(d, n, "", "", result)
-  of rnUnknownRole:
+  of rnUnknownRole, rnCodeFragment:
     var tmp0 = ""
     var tmp1 = ""
     renderRstToOut(d, n.sons[0], tmp0)
     renderRstToOut(d, n.sons[1], tmp1)
-    dispA(d.target, result, "<span class=\"$2\">$1</span>", "\\span$2{$1}",
-          [tmp0, tmp1])
+    var class = tmp1
+    # don't allow missing role break latex compilation:
+    if d.target == outLatex and n.kind == rnUnknownRole: class = "Other"
+    if n.kind == rnCodeFragment:
+      dispA(d.target, result,
+            "<tt class=\"docutils literal\"><span class=\"pre $2\">" &
+              "$1</span></tt>",
+            "\\texttt{\\span$2{$1}}", [tmp0, class])
+    else:  # rnUnknownRole, not necessarily code/monospace font
+      dispA(d.target, result, "<span class=\"$2\">$1</span>", "\\span$2{$1}",
+            [tmp0, class])
   of rnSub: renderAux(d, n, "<sub>$1</sub>", "\\rstsub{$1}", result)
   of rnSup: renderAux(d, n, "<sup>$1</sup>", "\\rstsup{$1}", result)
   of rnEmphasis: renderAux(d, n, "<em>$1</em>", "\\emph{$1}", result)
