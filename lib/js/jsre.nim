@@ -53,11 +53,23 @@ func contains*(pattern: cstring; self: RegExp): bool =
 
 
 runnableExamples:
-  let jsregex: RegExp = newRegExp(r"\s+", r"i")
-  jsregex.compile(r"\w+", r"i")
-  assert "nim javascript".contains jsregex
-  assert jsregex.exec(r"nim javascript") == @["nim".cstring]
-  assert jsregex.toCstring() == r"/\w+/i"
-  jsregex.compile(r"[0-9]", r"i")
-  assert "0123456789abcd".contains jsregex
-  assert $jsregex == "/[0-9]/i"
+  block:
+    let jsregex: RegExp = newRegExp(r"\s+", r"i")
+    jsregex.compile(r"\w+", r"i")
+    assert "nim javascript".contains jsregex
+    assert jsregex.exec(r"nim javascript") == @["nim".cstring]
+    assert jsregex.toCstring() == r"/\w+/i"
+    jsregex.compile(r"[0-9]", r"i")
+    assert "0123456789abcd".contains jsregex
+    assert $jsregex == "/[0-9]/i"
+  ## See https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/RegExp#the_difference_between_the_sticky_flag_and_the_global_flag
+  block:
+    let regex = newRegExp("a", "g")  ## "Global" flag causes "alternating" behaviour.
+    assert "a".contains regex
+    assert not("a".contains regex)
+    assert "a".contains regex
+  block:
+    let regex = newRegExp("a", "i")
+    assert "a".contains regex
+    assert "a".contains regex
+    assert "a".contains regex
