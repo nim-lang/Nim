@@ -885,7 +885,7 @@ proc findProjectNimFile*(conf: ConfigRef; pkg: string): string =
     if dir == "": break
   return ""
 
-proc canonicalImport*(conf: ConfigRef, file: AbsoluteFile): string =
+proc canonicalImportAux*(conf: ConfigRef, file: AbsoluteFile): string =
   ##[
   Shows the canonical module import, e.g.:
   system, std/tables, fusion/pointers, system/assertions, std/private/asciitables
@@ -898,6 +898,10 @@ proc canonicalImport*(conf: ConfigRef, file: AbsoluteFile): string =
       ret = relPath
   if ret.isEmpty:
     ret = relativeTo(file, conf.projectPath)
+  result = ret.string
+
+proc canonicalImport*(conf: ConfigRef, file: AbsoluteFile): string =
+  let ret = canonicalImportAux(conf, file)
   result = ret.string.nativeToUnixPath.changeFileExt("")
 
 proc canonDynlibName(s: string): string =

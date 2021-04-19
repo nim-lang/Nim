@@ -255,14 +255,10 @@ proc toFilenameOption*(conf: ConfigRef, fileIdx: FileIndex, opt: FilenameOption)
   of foRelProject: result = toProjPath(conf, fileIdx)
   of foMagicSauce:
     let absPath = toFullPath(conf, fileIdx)
-    result = canonicalImport(conf, absPath.AbsoluteFile)
-    #   relPath = toProjPath(conf, fileIdx)
-    # result = if (optListFullPaths in conf.globalOptions) or
-    #             (relPath.len > absPath.len) or
-    #             (relPath.count("..") > 2):
-    #            absPath
-    #          else:
-    #            relPath
+    if optListFullPaths in conf.globalOptions:
+      result = absPath
+    else:
+      result = canonicalImportAux(conf, absPath.AbsoluteFile)
   of foName: result = toProjPath(conf, fileIdx).lastPathPart
   of foStacktrace:
     if optExcessiveStackTrace in conf.globalOptions:
