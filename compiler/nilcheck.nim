@@ -1283,7 +1283,7 @@ proc typeNilability(typ: PType): Nilability =
   # echo "typeNilability ", $typ.flags, " ", $typ.kind
   result = if tfNotNil in typ.flags:
     Safe
-  elif typ.kind in {tyRef, tyCString, tyPtr, tyPointer}:
+  elif typ.kind in {tyRef, tyCstring, tyPtr, tyPointer}:
     #
     # tyVar ? tyVarargs ? tySink ? tyLent ?
     # TODO spec? tests?

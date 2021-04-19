@@ -139,7 +139,7 @@ proc matchType(c: PContext; f, a: PType; m: var MatchCon): bool =
           if result:
             when logBindings: echo "A adding ", f, " ", ak
             m.inferred.add((f, ak))
-        elif m.magic == mArrGet and ak.kind in {tyArray, tyOpenArray, tySequence, tyVarargs, tyCString, tyString}:
+        elif m.magic == mArrGet and ak.kind in {tyArray, tyOpenArray, tySequence, tyVarargs, tyCstring, tyString}:
           when logBindings: echo "B adding ", f, " ", lastSon ak
           m.inferred.add((f, lastSon ak))
           result = true
@@ -165,7 +165,7 @@ proc matchType(c: PContext; f, a: PType; m: var MatchCon): bool =
       result = false
   of tyEnum, tyObject, tyDistinct:
     result = sameType(f, a)
-  of tyEmpty, tyString, tyCString, tyPointer, tyNil, tyUntyped, tyTyped, tyVoid:
+  of tyEmpty, tyString, tyCstring, tyPointer, tyNil, tyUntyped, tyTyped, tyVoid:
     result = a.skipTypes(ignorableForArgType).kind == f.kind
   of tyBool, tyChar, tyInt..tyUInt64:
     let ak = a.skipTypes(ignorableForArgType)

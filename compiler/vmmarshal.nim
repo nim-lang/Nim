@@ -121,7 +121,7 @@ proc storeAny(s: var string; t: PType; a: PNode; stored: var IntSet;
       s.add(", ")
       storeAny(s, t.lastSon, a, stored, conf)
       s.add("]")
-  of tyString, tyCString:
+  of tyString, tyCstring:
     if a.kind == nkNilLit: s.add("null")
     else: s.add(escapeJson(a.strVal))
   of tyInt..tyInt64, tyUInt..tyUInt64: s.add($a.intVal)
@@ -255,7 +255,7 @@ proc loadAny(p: var JsonParser, t: PType,
       if p.kind == jsonArrayEnd: next(p)
       else: raiseParseErr(p, "']' end of ref-address pair expected")
     else: raiseParseErr(p, "int for pointer type expected")
-  of tyString, tyCString:
+  of tyString, tyCstring:
     case p.kind
     of jsonNull:
       result = newNode(nkNilLit)

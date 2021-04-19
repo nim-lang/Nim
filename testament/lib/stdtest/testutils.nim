@@ -1,5 +1,6 @@
 import std/private/miscdollars
 from std/os import getEnv
+import std/[macros, genasts]
 
 template flakyAssert*(cond: untyped, msg = "", notifySuccess = true) =
   ## API to deal with flaky or failing tests. This avoids disabling entire tests
@@ -85,3 +86,26 @@ template accept*(a) =
 
 template reject*(a) =
   doAssert not compiles(a)
+
+template disableVm*(body) =
+  when nimvm: discard
+  else: body
+
+template typeOrVoid[T](a: T): type =
+  # FACTOR with asyncjs.typeOrVoid
+  T
+
+macro assertAll*(body) =
+  ## works in VM, unlike `check`, `require`
+  runnableExamples:
+    assertAll:
+      1+1 == 2
+      var a = @[1, 2] # statements work
+      a.len == 2
+  # remove this once these support VM, pending #10129 (closed but not yet fixed)
+  result = newStmtList()
+  for a in body:
+    result.add genAst(a) do:
+      # better than: `when not compiles(typeof(a)):`
+      when typeOrVoid(a) is void: a
+      else: doAssert a

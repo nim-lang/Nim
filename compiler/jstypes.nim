@@ -128,7 +128,7 @@ proc genTypeInfo(p: PProc, typ: PType): Rope =
   case t.kind
   of tyDistinct:
     result = genTypeInfo(p, t[0])
-  of tyPointer, tyProc, tyBool, tyChar, tyCString, tyString, tyInt..tyUInt64:
+  of tyPointer, tyProc, tyBool, tyChar, tyCstring, tyString, tyInt..tyUInt64:
     var s =
       "var $1 = {size: 0,kind: $2,base: null,node: null,finalizer: null};$n" %
       [result, rope(ord(t.kind))]

@@ -375,10 +375,12 @@ proc semLowHigh(c: PContext, n: PNode, m: TMagic): PNode =
     n[1] = semExprWithType(c, n[1], {efDetermineType})
     var typ = skipTypes(n[1].typ, abstractVarRange + {tyTypeDesc, tyUserTypeClassInst})
     case typ.kind
-    of tySequence, tyString, tyCString, tyOpenArray, tyVarargs:
+    of tySequence, tyString, tyCstring, tyOpenArray, tyVarargs:
       n.typ = getSysType(c.graph, n.info, tyInt)
     of tyArray:
       n.typ = typ[0] # indextype
+      if n.typ.kind == tyRange and emptyRange(n.typ.n[0], n.typ.n[1]): #Invalid range
+        n.typ = getSysType(c.graph, n.info, tyInt)
     of tyInt..tyInt64, tyChar, tyBool, tyEnum, tyUInt..tyUInt64, tyFloat..tyFloat64:
       n.typ = n[1].typ.skipTypes({tyTypeDesc})
     of tyGenericParam:
@@ -1506,7 +1508,7 @@ proc semSubscript(c: PContext, n: PNode, flags: TExprFlags): PNode =
       arr = arr.base
 
   case arr.kind
-  of tyArray, tyOpenArray, tyVarargs, tySequence, tyString, tyCString,
+  of tyArray, tyOpenArray, tyVarargs, tySequence, tyString, tyCstring,
     tyUncheckedArray:
     if n.len != 2: return nil
     n[0] = makeDeref(n[0])

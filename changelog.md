@@ -4,6 +4,8 @@
 
 ## Changes affecting backward compatibility
 
+-  `cuchar` now aliases `uint8` instead of `char`
+
 - `repr` now doesn't insert trailing newline; previous behavior was very inconsistent,
   see #16034. Use `-d:nimLegacyReprWithNewline` for previous behavior.
 
@@ -37,7 +39,22 @@
 - In `std/os`, `getHomeDir`, `expandTilde`, `getTempDir`, `getConfigDir` now do not include trailing `DirSep`,
   unless `-d:nimLegacyHomeDir` is specified (for a transition period).
 
+- On POSIX systems, the default signal handlers used for Nim programs (it's
+  used for printing the stacktrace on fatal signals) will now re-raise the
+  signal for the OS default handlers to handle.
+
+  This lets the OS perform its default actions, which might include core
+  dumping (on select signals) and notifying the parent process about the cause
+  of termination.
+
+- On POSIX systems, we now ignore `SIGPIPE` signals, use `-d:nimLegacySigpipeHandler`
+  for previous behavior.
+
+
 ## Standard library additions and changes
+- Added support for parenthesized expressions in `strformat`
+
+- Fixed buffer overflow bugs in `net`
 
 - Added `sections` iterator in `parsecfg`.
 
@@ -214,14 +231,6 @@
   `ValueError` when the real command line is not available. `parseopt` was
   previously excluded from `prelude` for JS, as it could not be imported.
 
-- On POSIX systems, the default signal handlers used for Nim programs (it's
-  used for printing the stacktrace on fatal signals) will now re-raise the
-  signal for the OS default handlers to handle.
-
-  This lets the OS perform its default actions, which might include core
-  dumping (on select signals) and notifying the parent process about the cause
-  of termination.
-
 - Added `system.prepareStrMutation` for better support of low
   level `moveMem`, `copyMem` operations for Orc's copy-on-write string
   implementation.
@@ -306,6 +315,15 @@
 - Added `iterable[T]` type class to match called iterators, which enables writing:
   `template fn(a: iterable)` instead of `template fn(a: untyped)`
 
+- A new import syntax `import foo {.all.}` now allows to import all symbols (public or private)
+  from `foo`. It works in combination with all pre-existing import features.
+  This reduces or eliminates the need for workarounds such as using `include` (which has known issues)
+  when you need a private symbol for testing or making some internal APIs public just because
+  another internal module needs those.
+  It also helps mitigate the lack of cyclic imports in some cases.
+
+- Added a new module `std/importutils`, and an API `privateAccess`, which allows access to private fields
+  for an object type in the current scope.
 
 ## Compiler changes
 

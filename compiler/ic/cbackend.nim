@@ -104,13 +104,34 @@ proc aliveSymsChanged(config: ConfigRef; position: int; alive: AliveSyms): bool 
       let oldAsSet = toPackedSet[int32](oldData)
       let newAsSet = toPackedSet[int32](s)
       echo "set of live symbols changed ", asymFile.changeFileExt("rod"), " ", position, " ", f2.err
-      echo "in old but not in new ", oldAsSet.difference(newAsSet)
-      echo "in new but not in old ", newAsSet.difference(oldAsSet)
-
-      if execShellCmd(getAppFilename() & " rod " & quoteShell(asymFile.changeFileExt("rod"))) != 0:
-        echo "command failed"
+      echo "in old but not in new ", oldAsSet.difference(newAsSet), " number of entries in old ", oldAsSet.len
+      echo "in new but not in old ", newAsSet.difference(oldAsSet), " number of entries in new ", newAsSet.len
+      #if execShellCmd(getAppFilename() & " rod " & quoteShell(asymFile.changeFileExt("rod"))) != 0:
+      #  echo "command failed"
     result = true
     storeAliveSymsImpl(asymFile, s)
+
+proc genPackedModule(g: ModuleGraph, i: int; alive: var AliveSyms) =
+  # case statement here to enforce exhaustive checks.
+  case g.packed[i].status
+  of undefined:
+    discard "nothing to do"
+  of loading, stored:
+    assert false
+  of storing, outdated:
+    storeAliveSyms(g.config, g.packed[i].module.position, alive)
+    generateCodeForModule(g, g.packed[i], alive)
+    closeRodFile(g, g.packed[i].module)
+  of loaded:
+    if g.packed[i].loadedButAliveSetChanged:
+      generateCodeForModule(g, g.packed[i], alive)
+    else:
+      addFileToLink(g.config, g.packed[i].module)
+      replayTypeInfo(g, g.packed[i], FileIndex(i))
+
+      if g.backend == nil:
+        g.backend = cgendata.newModuleList(g)
+      registerInitProcs(BModuleList(g.backend), g.packed[i].module, g.packed[i].fromDisk.backendFlags)
 
 proc generateCode*(g: ModuleGraph) =
   ## The single entry point, generate C(++) code for the entire
@@ -143,24 +164,11 @@ proc generateCode*(g: ModuleGraph) =
         setupBackendModule(g, g.packed[i])
 
   # Second pass: Code generation.
+  let mainModuleIdx = g.config.projectMainIdx2.int
+  # We need to generate the main module last, because only then
+  # all init procs have been registered:
   for i in 0..high(g.packed):
-    # case statement here to enforce exhaustive checks.
-    case g.packed[i].status
-    of undefined:
-      discard "nothing to do"
-    of loading, stored:
-      assert false
-    of storing, outdated:
-      generateCodeForModule(g, g.packed[i], alive)
-      closeRodFile(g, g.packed[i].module)
-      storeAliveSyms(g.config, g.packed[i].module.position, alive)
-    of loaded:
-      if g.packed[i].loadedButAliveSetChanged:
-        generateCodeForModule(g, g.packed[i], alive)
-      else:
-        addFileToLink(g.config, g.packed[i].module)
-        replayTypeInfo(g, g.packed[i], FileIndex(i))
-
-        if g.backend == nil:
-          g.backend = cgendata.newModuleList(g)
-        registerInitProcs(BModuleList(g.backend), g.packed[i].module, g.packed[i].fromDisk.backendFlags)
+    if i != mainModuleIdx:
+      genPackedModule(g, i, alive)
+  if mainModuleIdx >= 0:
+    genPackedModule(g, mainModuleIdx, alive)
