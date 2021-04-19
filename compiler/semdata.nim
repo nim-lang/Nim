@@ -501,6 +501,19 @@ proc errorNode*(c: PContext, n: PNode): PNode =
   result = newNodeI(nkEmpty, n.info)
   result.typ = errorType(c)
 
+proc localErrorNode*(c: PContext, n: PNode, info: TLineInfo, msg: TMsgKind, arg: string): PNode =
+  localError(c.config, info, msg, arg)
+  result = errorNode(c, n)
+
+proc localErrorNode*(c: PContext, n: PNode, info: TLineInfo, arg: string): PNode =
+  localErrorNode(c, n, info, errGenerated, arg)
+
+proc localErrorNode*(c: PContext, n: PNode, msg: TMsgKind, arg: string): PNode =
+  localErrorNode(c, n, n.info, msg, arg)
+
+proc localErrorNode*(c: PContext, n: PNode, arg: string): PNode =
+  localErrorNode(c, n, n.info, errGenerated, arg)
+
 proc fillTypeS*(dest: PType, kind: TTypeKind, c: PContext) =
   dest.kind = kind
   dest.owner = getCurrOwner(c)

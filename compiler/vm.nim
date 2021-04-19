@@ -2269,10 +2269,10 @@ iterator genericParamsInMacroCall*(macroSym: PSym, call: PNode): (PSym, PNode) =
 # to prevent endless recursion in macro instantiation
 const evalMacroLimit = 1000
 
-proc errorNode(idgen: IdGenerator; owner: PSym, n: PNode): PNode =
-  result = newNodeI(nkEmpty, n.info)
-  result.typ = newType(tyError, nextTypeId idgen, owner)
-  result.typ.flags.incl tfCheckedForDestructor
+#proc errorNode(idgen: IdGenerator; owner: PSym, n: PNode): PNode =
+#  result = newNodeI(nkEmpty, n.info)
+#  result.typ = newType(tyError, nextTypeId idgen, owner)
+#  result.typ.flags.incl tfCheckedForDestructor
 
 proc evalMacroCall*(module: PSym; idgen: IdGenerator; g: ModuleGraph; templInstCounter: ref int;
                     n, nOrig: PNode, sym: PSym): PNode =

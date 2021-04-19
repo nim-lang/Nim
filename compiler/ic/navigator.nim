@@ -98,11 +98,31 @@ proc list(c: var NavContext; tree: PackedTree; sym: ItemId) =
         usage(c, tree.nodes[i].info, isDecl(tree, parent(NodePos i)))
     else: discard
 
+proc searchForIncludeFile(g: ModuleGraph; fullPath: string): int =
+  for i in 0..high(g.packed):
+    for k in 1..high(g.packed[i].fromDisk.includes):
+      # we start from 1 because the first "include" file is
+      # the module's filename.
+      if os.cmpPaths(g.packed[i].fromDisk.strings[g.packed[i].fromDisk.includes[k][0]], fullPath) == 0:
+        return i
+  return -1
+
 proc nav(g: ModuleGraph) =
   # translate the track position to a packed position:
   let unpacked = g.config.m.trackPos
-  let mid = unpacked.fileIndex
-  let fileId = g.packed[int32 mid].fromDisk.strings.getKeyId(toFullPath(g.config, mid))
+  var mid = unpacked.fileIndex.int
+
+  let fullPath = toFullPath(g.config, unpacked.fileIndex)
+
+  if g.packed[mid].status == undefined:
+    # check if 'mid' is an include file of some other module:
+    mid = searchForIncludeFile(g, fullPath)
+
+  if mid < 0:
+    localError(g.config, unpacked, "unknown file name: " & fullPath)
+    return
+
+  let fileId = g.packed[mid].fromDisk.strings.getKeyId(fullPath)
 
   if fileId == LitId(0):
     internalError(g.config, unpacked, "cannot find a valid file ID")
@@ -114,9 +134,9 @@ proc nav(g: ModuleGraph) =
     trackPos: PackedLineInfo(line: unpacked.line, col: unpacked.col, file: fileId),
     outputSep: if isDefined(g.config, "nimIcNavigatorTests"): ' ' else: '\t'
   )
-  var symId = search(c, g.packed[int32 mid].fromDisk.topLevel)
+  var symId = search(c, g.packed[mid].fromDisk.topLevel)
   if symId == EmptyItemId:
-    symId = search(c, g.packed[int32 mid].fromDisk.bodies)
+    symId = search(c, g.packed[mid].fromDisk.bodies)
 
   if symId == EmptyItemId:
     localError(g.config, unpacked, "no symbol at this position")
