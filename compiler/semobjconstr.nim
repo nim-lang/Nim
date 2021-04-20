@@ -11,6 +11,8 @@
 
 # included from sem.nim
 
+from sugar import dup
+
 type
   ObjConstrContext = object
     typ: PType               # The constructed type
@@ -389,7 +391,8 @@ proc semObjConstr(c: PContext, n: PNode, flags: TExprFlags): PNode =
       # multiple times as long as they don't have closures.
       result.typ.flags.incl tfHasOwned
   if t.kind != tyObject:
-    return localErrorNode(c, result, "object constructor needs an object type")
+    return localErrorNode(c, result,
+      "object constructor needs an object type".dup(addDeclaredLoc(c.config, t)))
 
   # Check if the object is fully initialized by recursively testing each
   # field (if this is a case object, initialized fields in two different

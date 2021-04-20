@@ -130,7 +130,7 @@ proc addDeclaredLocMaybe*(result: var string, conf: ConfigRef; sym: PSym) =
   if optDeclaredLocs in conf.globalOptions and sym != nil:
     addDeclaredLoc(result, conf, sym)
 
-proc addDeclaredLoc(result: var string, conf: ConfigRef; typ: PType) =
+proc addDeclaredLoc*(result: var string, conf: ConfigRef; typ: PType) =
   let typ = typ.skipTypes(abstractInst - {tyRange})
   result.add " [$1" % typ.kind.toHumanStr
   if typ.sym != nil:
