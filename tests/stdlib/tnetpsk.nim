@@ -5,12 +5,14 @@ discard """
   targets: "c cpp"
   timeout:5
 """
-import net
-from openssl import SSL_CTX_ctrl
+import std/net
+from std/openssl import SSL_CTX_ctrl
+
 when defined(osx):
   {.passl:"-Wl,-rpath,/usr/local/opt/openssl/lib".}
-#using channels_builtin
-var serverChannel:Channel[Port]
+
+# using channels_builtin
+var serverChannel: Channel[Port]
 
 proc clientFunc(identityHint: string): tuple[identity: string, psk: string] =
   doAssert identityHint == "bartholomew"
