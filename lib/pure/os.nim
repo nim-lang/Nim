@@ -44,7 +44,7 @@
 include system/inclrtl
 import std/private/since
 
-import std/[strutils, pathnorm]
+import strutils, pathnorm
 
 const weirdTarget = defined(nimscript) or defined(js)
 
@@ -1008,7 +1008,7 @@ proc expandTilde*(path: string): string {.
   ##
   ## Windows: this is still supported despite Windows platform not having this
   ## convention; also, both ``~/`` and ``~\`` are handled.
-  ## 
+  ##
   ## .. warning:: `~bob` and `~bob/` are not yet handled correctly.
   ##
   ## See also:
