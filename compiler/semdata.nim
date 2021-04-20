@@ -501,13 +501,9 @@ proc errorNode*(c: PContext, n: PNode): PNode =
   result = newNodeI(nkEmpty, n.info)
   result.typ = errorType(c)
 
-  # template instLoc*(): InstantiationInfo = instantiationInfo(-2, fullPaths = true)
-template localErrorNode*(c: PContext, n: PNode, arg: string, info: TLineInfo, kind: TMsgKind = errGenerated): PNode =
+template localErrorNode*(c: PContext, n: PNode, arg: string, info2: auto = (), kind: TMsgKind = errGenerated): PNode =
+  let info = when info2 is tuple[]: n.info else: info2
   liMessage(c.config, info, kind, arg, doNothing, instLoc())
-  errorNode(c, n)
-
-template localErrorNode*(c: PContext, n: PNode, arg: string, kind: TMsgKind = errGenerated): PNode =
-  liMessage(c.config, n.info, kind, arg, doNothing, instLoc())
   errorNode(c, n)
 
 proc fillTypeS*(dest: PType, kind: TTypeKind, c: PContext) =
