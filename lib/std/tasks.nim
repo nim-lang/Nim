@@ -215,7 +215,7 @@ macro toTask*(e: typed{nkCall | nkInfix | nkPrefix | nkPostfix | nkCommand | nkC
     result = quote do:
       `stmtList`
 
-      proc `funcName`(args: pointer) {.nimcall.} =
+      proc `funcName`(args: pointer) {.gcsafe, nimcall.} =
         let `objTemp` = cast[ptr `scratchObjType`](args)
         `functionStmtList`
 
@@ -229,7 +229,7 @@ macro toTask*(e: typed{nkCall | nkInfix | nkPrefix | nkPostfix | nkCommand | nkC
     let funcName = genSym(nskProc, e[0].strVal)
 
     result = quote do:
-      proc `funcName`(args: pointer) {.nimcall.} =
+      proc `funcName`(args: pointer) {.gcsafe, nimcall.} =
         `funcCall`
 
       Task(callback: `funcName`, args: nil)
