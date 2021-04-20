@@ -1205,6 +1205,7 @@ proc mainCommand(graph: ModuleGraph) =
   registerPass graph, semPass
   compileProject(graph)
   if conf.errorCounter == 0:
+    # xxx deduplicate with D20210419T170230
     let mem =
       when declared(system.getMaxMem): formatSize(getMaxMem()) & " peakmem"
       else: formatSize(getTotalMem()) & " totmem"
@@ -1213,7 +1214,7 @@ proc mainCommand(graph: ModuleGraph) =
                 elif isDefined(conf, "release"): "Release"
                 else: "Debug"
     let sec = formatFloat(epochTime() - conf.lastCmdTime, ffDecimal, 3)
-    let project = if optListFullPaths in conf.globalOptions: $conf.projectFull else: $conf.projectName
+    let project = if conf.filenameOption == foAbs: $conf.projectFull else: $conf.projectName
     rawMessage(conf, hintSuccessX, [
       "loc", loc,
       "sec", sec,
