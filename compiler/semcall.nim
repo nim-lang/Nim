@@ -62,7 +62,7 @@ proc pickBestCandidate(c: PContext, headSymbol: PNode,
                        best, alt: var TCandidate,
                        errors: var CandidateErrors,
                        diagnosticsFlag: bool,
-                       errorsEnabled: bool) =
+                       errorsEnabled: bool, flags: TExprFlags) =
   var o: TOverloadIter
   var sym = initOverloadIter(o, c, headSymbol)
   var scope = o.lastOverloadScope
@@ -95,7 +95,11 @@ proc pickBestCandidate(c: PContext, headSymbol: PNode,
       matches(c, n, orig, z)
       if z.state == csMatch:
         # little hack so that iterators are preferred over everything else:
-        if sym.kind == skIterator: inc(z.exactMatches, 200)
+        if sym.kind == skIterator:
+          if not (efWantIterator notin flags and efWantIterable in flags):
+            inc(z.exactMatches, 200)
+          else:
+            dec(z.exactMatches, 200)
         case best.state
         of csEmpty, csNoMatch: best = z
         of csMatch:
@@ -356,7 +360,7 @@ proc resolveOverloads(c: PContext, n, orig: PNode,
   template pickBest(headSymbol) =
     pickBestCandidate(c, headSymbol, n, orig, initialBinding,
                       filter, result, alt, errors, efExplain in flags,
-                      errorsEnabled)
+                      errorsEnabled, flags)
   pickBest(f)
 
   let overloadsState = result.state
@@ -407,6 +411,7 @@ proc resolveOverloads(c: PContext, n, orig: PNode,
 
     if overloadsState == csEmpty and result.state == csEmpty:
       if efNoUndeclared notin flags: # for tests/pragmas/tcustom_pragma.nim
+        # xxx adapt/use errorUndeclaredIdentifierHint(c, n, f.ident)
         localError(c.config, n.info, getMsgDiagnostic(c, flags, n, f))
       return
     elif result.state != csMatch:
@@ -444,7 +449,7 @@ proc instGenericConvertersArg*(c: PContext, a: PNode, x: TCandidate) =
   let a = if a.kind == nkHiddenDeref: a[0] else: a
   if a.kind == nkHiddenCallConv and a[0].kind == nkSym:
     let s = a[0].sym
-    if s.ast != nil and s.ast[genericParamsPos].kind != nkEmpty:
+    if s.isGenericRoutineStrict:
       let finalCallee = generateInstance(c, s, x.bindings, a.info)
       a[0].sym = finalCallee
       a[0].typ = finalCallee.typ
@@ -476,7 +481,7 @@ proc inferWithMetatype(c: PContext, formal: PType,
     result.typ = generateTypeInstance(c, m.bindings, arg.info,
                                       formal.skipTypes({tyCompositeTypeClass}))
   else:
-    typeMismatch(c.config, arg.info, formal, arg.typ)
+    typeMismatch(c.config, arg.info, formal, arg.typ, arg)
     # error correction:
     result = copyTree(arg)
     result.typ = formal
@@ -523,7 +528,7 @@ proc semResolvedCall(c: PContext, x: TCandidate,
       if result.typ.kind == tyError: incl result.typ.flags, tfCheckedForDestructor
     return
   let gp = finalCallee.ast[genericParamsPos]
-  if gp.kind != nkEmpty:
+  if gp.isGenericParams:
     if x.calleeSym.kind notin {skMacro, skTemplate}:
       if x.calleeSym.magic in {mArrGet, mArrPut}:
         finalCallee = x.calleeSym
@@ -685,9 +690,9 @@ proc searchForBorrowProc(c: PContext, startScope: PScope, fn: PSym): PSym =
     var x: PType
     if param.typ.kind == tyVar:
       x = newTypeS(param.typ.kind, c)
-      x.addSonSkipIntLit(t.baseOfDistinct(c.idgen), c.idgen)
+      x.addSonSkipIntLit(t.baseOfDistinct(c.graph, c.idgen), c.idgen)
     else:
-      x = t.baseOfDistinct(c.idgen)
+      x = t.baseOfDistinct(c.graph, c.idgen)
     call.add(newNodeIT(nkEmpty, fn.info, x))
   if hasDistinct:
     let filter = if fn.kind in {skProc, skFunc}: {skProc, skFunc} else: {fn.kind}

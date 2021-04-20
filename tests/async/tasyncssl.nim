@@ -69,5 +69,5 @@ when defined(ssl):
   elif defined(linux) and int.sizeof == 8:
     # currently:  msgCount == 10
     flakyAssert cond()
-    assert msgCount > 0
-  else: assert cond(), $msgCount
+    doAssert msgCount > 0
+  else: doAssert cond(), $msgCount

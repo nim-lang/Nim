@@ -30,7 +30,7 @@ deinstall.sh
 
 doc/html/
 doc/*.html
-doc/*.pdf
+doc/pdf
 doc/*.idx
 /web/upload
 /build/*
@@ -66,20 +66,24 @@ testament.db
 /tests/**/*.js
 /csources
 /dist/
-/lib/fusion
+# /lib/fusion # fusion is now unbundled; `git status` should reveal if it's there so users can act on it
 
 # Private directories and files (IDEs)
 .*/
 ~*
 
-# testament cruft; TODO: generate these in a gitignore'd dir in the first place.
+# testament cruft; TODO: generate these in a gitignore'd dir (./build) in the first place.
 testresults/
 test.txt
 /test.ini
 
 tweeter.db
 tweeter_test.db
-megatest.nim
+
+/tests/megatest.nim
+/tests/ic/*_temp.nim
+/tests/navigator/*_temp.nim
+
 
 /outputExpected.txt
 /outputGotten.txt
@@ -100,3 +104,5 @@ htmldocs
 
 ## these are not needed anymore unless checkout old older versions
 nimdoc.out.css
+# except here:
+!/nimdoc/testproject/expected/*

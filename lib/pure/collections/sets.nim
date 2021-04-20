@@ -7,7 +7,7 @@
 #    distribution, for details about the copyright.
 #
 
-## The ``sets`` module implements an efficient `hash set`:idx: and
+## The `sets` module implements an efficient `hash set`:idx: and
 ## ordered hash set.
 ##
 ## Hash sets are different from the `built in set type
@@ -16,7 +16,7 @@
 ##
 ## Common usages of sets:
 ## * removing duplicates from a container by converting it with `toHashSet proc
-##   <#toHashSet,openArray[A]>`_ (see also `sequtils.deduplicate proc
+##   <#toHashSet,openArray[A]>`_ (see also `sequtils.deduplicate func
 ##   <sequtils.html#deduplicate,openArray[T],bool>`_)
 ## * membership testing
 ## * mathematical operations on two sets, such as
@@ -40,7 +40,7 @@
 ##
 ##
 ## Note: The data types declared here have *value semantics*: This means
-## that ``=`` performs a copy of the set.
+## that `=` performs a copy of the set.
 ##
 ## **See also:**
 ## * `intsets module <intsets.html>`_ for efficient int sets
@@ -51,9 +51,6 @@ import
   hashes, math
 
 {.pragma: myShallow.}
-when not defined(nimhygiene):
-  {.pragma: dirty.}
-
 # For "integer-like A" that are too big for intsets/bit-vectors to be practical,
 # it would be best to shrink hcode to the same size as the integer.  Larger
 # codes should never be needed, and this can pack more entries per cache-line.
@@ -64,7 +61,7 @@ type
   HashSet*[A] {.myShallow.} = object ## \
     ## A generic hash set.
     ##
-    ## Use `init proc <#init,HashSet[A],int>`_ or `initHashSet proc <#initHashSet,int>`_
+    ## Use `init proc <#init,HashSet[A]>`_ or `initHashSet proc <#initHashSet,int>`_
     ## before calling other procs on it.
     data: KeyValuePairSeq[A]
     counter: int
@@ -76,8 +73,8 @@ type
   OrderedSet*[A] {.myShallow.} = object ## \
     ## A generic hash set that remembers insertion order.
     ##
-    ## Use `init proc <#init,OrderedSet[A],int>`_ or `initOrderedSet proc
-    ## <#initOrderedSet,int>`_ before calling other procs on it.
+    ## Use `init proc <#init,OrderedSet[A]>`_ or `initOrderedSet proc
+    ## <#initOrderedSet>`_ before calling other procs on it.
     data: OrderedKeyValuePairSeq[A]
     counter, first, last: int
   SomeSet*[A] = HashSet[A] | OrderedSet[A]
@@ -104,7 +101,7 @@ proc init*[A](s: var HashSet[A], initialSize = defaultInitialSize) =
   ## existing values and calling `excl() <#excl,HashSet[A],A>`_ on them.
   ##
   ## See also:
-  ## * `initHashSet proc <#initHashSet,int>`_
+  ## * `initHashSet proc <#initHashSet>`_
   ## * `toHashSet proc <#toHashSet,openArray[A]>`_
   runnableExamples:
     var a: HashSet[int]
@@ -113,10 +110,10 @@ proc init*[A](s: var HashSet[A], initialSize = defaultInitialSize) =
   initImpl(s, initialSize)
 
 proc initHashSet*[A](initialSize = defaultInitialSize): HashSet[A] =
-  ## Wrapper around `init proc <#init,HashSet[A],int>`_ for initialization of
+  ## Wrapper around `init proc <#init,HashSet[A]>`_ for initialization of
   ## hash sets.
   ##
-  ## Returns an empty hash set you can assign directly in ``var`` blocks in a
+  ## Returns an empty hash set you can assign directly in `var` blocks in a
   ## single line.
   ##
   ## Starting from Nim v0.20, sets are initialized by default and it is
@@ -133,7 +130,7 @@ proc initHashSet*[A](initialSize = defaultInitialSize): HashSet[A] =
 
 proc `[]`*[A](s: var HashSet[A], key: A): var A =
   ## Returns the element that is actually stored in `s` which has the same
-  ## value as `key` or raises the ``KeyError`` exception.
+  ## value as `key` or raises the `KeyError` exception.
   ##
   ## This is useful when one overloaded `hash` and `==` but still needs
   ## reference semantics for sharing.
@@ -166,6 +163,27 @@ proc contains*[A](s: HashSet[A], key: A): bool =
   var hc: Hash
   var index = rawGet(s, key, hc)
   result = index >= 0
+
+proc len*[A](s: HashSet[A]): int =
+  ## Returns the number of elements in `s`.
+  ##
+  ## Due to an implementation detail you can call this proc on variables which
+  ## have not been initialized yet. The proc will return zero as the length
+  ## then.
+  runnableExamples:
+    var a: HashSet[string]
+    assert len(a) == 0
+    let s = toHashSet([3, 5, 7])
+    assert len(s) == 3
+
+  result = s.counter
+
+proc card*[A](s: HashSet[A]): int =
+  ## Alias for `len() <#len,HashSet[A]>`_.
+  ##
+  ## Card stands for the `cardinality
+  ## <http://en.wikipedia.org/wiki/Cardinality>`_ of a set.
+  result = s.counter
 
 proc incl*[A](s: var HashSet[A], key: A) =
   ## Includes an element `key` in `s`.
@@ -209,7 +227,7 @@ proc toHashSet*[A](keys: openArray[A]): HashSet[A] =
   ## Duplicates are removed.
   ##
   ## See also:
-  ## * `initHashSet proc <#initHashSet,int>`_
+  ## * `initHashSet proc <#initHashSet>`_
   runnableExamples:
     let
       a = toHashSet([5, 3, 2])
@@ -241,8 +259,11 @@ iterator items*[A](s: HashSet[A]): A =
   ##   assert a.len == 2
   ##   echo b
   ##   # --> {(a: 1, b: 3), (a: 0, b: 4)}
+  let length = s.len
   for h in 0 .. high(s.data):
-    if isFilled(s.data[h].hcode): yield s.data[h].key
+    if isFilled(s.data[h].hcode):
+      yield s.data[h].key
+      assert(len(s) == length, "the length of the HashSet changed while iterating over it")
 
 proc containsOrIncl*[A](s: var HashSet[A], key: A): bool =
   ## Includes `key` in the set `s` and tells if `key` was already in `s`.
@@ -355,28 +376,7 @@ proc clear*[A](s: var HashSet[A]) =
   s.counter = 0
   for i in 0 ..< s.data.len:
     s.data[i].hcode = 0
-    s.data[i].key = default(type(s.data[i].key))
-
-proc len*[A](s: HashSet[A]): int =
-  ## Returns the number of elements in `s`.
-  ##
-  ## Due to an implementation detail you can call this proc on variables which
-  ## have not been initialized yet. The proc will return zero as the length
-  ## then.
-  runnableExamples:
-    var a: HashSet[string]
-    assert len(a) == 0
-    let s = toHashSet([3, 5, 7])
-    assert len(s) == 3
-
-  result = s.counter
-
-proc card*[A](s: HashSet[A]): int =
-  ## Alias for `len() <#len,HashSet[A]>`_.
-  ##
-  ## Card stands for the `cardinality
-  ## <http://en.wikipedia.org/wiki/Cardinality>`_ of a set.
-  result = s.counter
+    s.data[i].key = default(typeof(s.data[i].key))
 
 
 proc union*[A](s1, s2: HashSet[A]): HashSet[A] =
@@ -601,7 +601,7 @@ proc toSet*[A](keys: openArray[A]): HashSet[A] {.deprecated:
 proc isValid*[A](s: HashSet[A]): bool {.deprecated:
      "Deprecated since v0.20; sets are initialized by default".} =
   ## Returns `true` if the set has been initialized (with `initHashSet proc
-  ## <#initHashSet,int>`_ or `init proc <#init,HashSet[A],int>`_).
+  ## <#initHashSet>`_ or `init proc <#init,HashSet[A]>`_).
   ##
   ## **Examples:**
   ##
@@ -640,7 +640,7 @@ proc init*[A](s: var OrderedSet[A], initialSize = defaultInitialSize) =
   ## existing values and calling `excl() <#excl,HashSet[A],A>`_ on them.
   ##
   ## See also:
-  ## * `initOrderedSet proc <#initOrderedSet,int>`_
+  ## * `initOrderedSet proc <#initOrderedSet>`_
   ## * `toOrderedSet proc <#toOrderedSet,openArray[A]>`_
   runnableExamples:
     var a: OrderedSet[int]
@@ -649,10 +649,10 @@ proc init*[A](s: var OrderedSet[A], initialSize = defaultInitialSize) =
   initImpl(s, initialSize)
 
 proc initOrderedSet*[A](initialSize = defaultInitialSize): OrderedSet[A] =
-  ## Wrapper around `init proc <#init,OrderedSet[A],int>`_ for initialization of
+  ## Wrapper around `init proc <#init,OrderedSet[A]>`_ for initialization of
   ## ordered hash sets.
   ##
-  ## Returns an empty ordered hash set you can assign directly in ``var`` blocks
+  ## Returns an empty ordered hash set you can assign directly in `var` blocks
   ## in a single line.
   ##
   ## Starting from Nim v0.20, sets are initialized by default and it is
@@ -674,7 +674,7 @@ proc toOrderedSet*[A](keys: openArray[A]): OrderedSet[A] =
   ## Duplicates are removed.
   ##
   ## See also:
-  ## * `initOrderedSet proc <#initOrderedSet,int>`_
+  ## * `initOrderedSet proc <#initOrderedSet>`_
   runnableExamples:
     let
       a = toOrderedSet([5, 3, 2])
@@ -812,7 +812,7 @@ proc clear*[A](s: var OrderedSet[A]) =
   for i in 0 ..< s.data.len:
     s.data[i].hcode = 0
     s.data[i].next = 0
-    s.data[i].key = default(type(s.data[i].key))
+    s.data[i].key = default(typeof(s.data[i].key))
 
 proc len*[A](s: OrderedSet[A]): int {.inline.} =
   ## Returns the number of elements in `s`.
@@ -901,8 +901,10 @@ iterator items*[A](s: OrderedSet[A]): A =
   ##   # --> Got 5
   ##   # --> Got 8
   ##   # --> Got 4
+  let length = s.len
   forAllOrderedPairs:
     yield s.data[h].key
+    assert(len(s) == length, "the length of the OrderedSet changed while iterating over it")
 
 iterator pairs*[A](s: OrderedSet[A]): tuple[a: int, b: A] =
   ## Iterates through (position, value) tuples of OrderedSet `s`.
@@ -913,5 +915,7 @@ iterator pairs*[A](s: OrderedSet[A]): tuple[a: int, b: A] =
       p.add(x)
     assert p == @[(0, 'a'), (1, 'b'), (2, 'r'), (3, 'c'), (4, 'd')]
 
+  let length = s.len
   forAllOrderedPairs:
     yield (idx, s.data[h].key)
+    assert(len(s) == length, "the length of the OrderedSet changed while iterating over it")

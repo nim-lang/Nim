@@ -1,5 +1,5 @@
 import punycode
 
-assert(decode(encode("", "bücher")) == "bücher")
-assert(decode(encode("münchen")) == "münchen")
-assert encode("xn--", "münchen") == "xn--mnchen-3ya"
+doAssert(decode(encode("", "bücher")) == "bücher")
+doAssert(decode(encode("münchen")) == "münchen")
+doAssert encode("xn--", "münchen") == "xn--mnchen-3ya"

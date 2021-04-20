@@ -281,6 +281,8 @@ proc loadConfigs*(cfg: RelativeFile; cache: IdentCache; conf: ConfigRef; idgen: 
 
   if optSkipProjConfigFile notin conf.globalOptions:
     readConfigFile(pd / cfg)
+    if cfg == DefaultConfig:
+      runNimScriptIfExists(pd / DefaultConfigNims)
 
     if conf.projectName.len != 0:
       # new project wide config file:
@@ -289,8 +291,6 @@ proc loadConfigs*(cfg: RelativeFile; cache: IdentCache; conf: ConfigRef; idgen: 
         projectConfig = changeFileExt(conf.projectFull, "nim.cfg")
       readConfigFile(projectConfig)
 
-    if cfg == DefaultConfig:
-      runNimScriptIfExists(pd / DefaultConfigNims)
 
   let scriptFile = conf.projectFull.changeFileExt("nims")
   let scriptIsProj = scriptFile == conf.projectFull
@@ -298,11 +298,14 @@ proc loadConfigs*(cfg: RelativeFile; cache: IdentCache; conf: ConfigRef; idgen: 
     for filename in configFiles:
       # delayed to here so that `hintConf` is honored
       rawMessage(conf, hintConf, filename.string)
-  if scriptIsProj:
+  if conf.cmd == cmdNimscript:
     showHintConf()
     configFiles.setLen 0
   if conf.cmd != cmdIdeTools:
-    runNimScriptIfExists(scriptFile, isMain = true)
+    if conf.cmd == cmdNimscript:
+      runNimScriptIfExists(conf.projectFull, isMain = true)
+    else:
+      runNimScriptIfExists(scriptFile, isMain = true)
   else:
     if not scriptIsProj:
       runNimScriptIfExists(scriptFile, isMain = true)

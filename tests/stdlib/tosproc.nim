@@ -195,19 +195,19 @@ else: # main driver
     # bugfix: windows stdin.close was a noop and led to blocking reads
     proc startProcessTest(command: string, options: set[ProcessOption] = {
                     poStdErrToStdOut, poUsePath}, input = ""): tuple[
-                    output: TaintedString,
+                    output: string,
                     exitCode: int] {.tags:
                     [ExecIOEffect, ReadIOEffect, RootEffect], gcsafe.} =
       var p = startProcess(command, options = options + {poEvalCommand})
       var outp = outputStream(p)
       if input.len > 0: inputStream(p).write(input)
       close inputStream(p)
-      result = (TaintedString"", -1)
-      var line = newStringOfCap(120).TaintedString
+      result = ("", -1)
+      var line = newStringOfCap(120)
       while true:
         if outp.readLine(line):
-          result[0].string.add(line.string)
-          result[0].string.add("\n")
+          result[0].add(line)
+          result[0].add("\n")
         else:
           result[1] = peekExitCode(p)
           if result[1] != -1: break
@@ -223,7 +223,7 @@ else: # main driver
     p.inputStream.flush()
     var line = ""
     var s: seq[string]
-    while p.outputStream.readLine(line.TaintedString):
+    while p.outputStream.readLine(line):
       s.add line
     doAssert s == @["10"]
 
@@ -235,15 +235,15 @@ else: # main driver
       deferScoped: p.close()
       do:
         var sout: seq[string]
-        while p.outputStream.readLine(x.TaintedString): sout.add x
+        while p.outputStream.readLine(x): sout.add x
         doAssert sout == @["start ta_out", "to stdout", "to stdout", "to stderr", "to stderr", "to stdout", "to stdout", "end ta_out"]
     block: # startProcess stderr (replaces old test `tstderr` + `ta_out`)
       var p = startProcess(output, dir, options={})
       deferScoped: p.close()
       do:
         var serr, sout: seq[string]
-        while p.errorStream.readLine(x.TaintedString): serr.add x
-        while p.outputStream.readLine(x.TaintedString): sout.add x
+        while p.errorStream.readLine(x): serr.add x
+        while p.outputStream.readLine(x): sout.add x
         doAssert serr == @["to stderr", "to stderr"]
         doAssert sout == @["start ta_out", "to stdout", "to stdout", "to stdout", "to stdout", "end ta_out"]
 
@@ -279,3 +279,22 @@ else: # main driver
     when defined(posix):
       doAssert execCmdEx("echo $FO", env = newStringTable({"FO": "B"})) == ("B\n", 0)
       doAssert execCmdEx("echo $PWD", workingDir = "/") == ("/\n", 0)
+
+  block: # bug #17749
+    let output = compileNimProg("-d:case_testfile4", "D20210417T011153")
+    var p = startProcess(output, dir)
+    let inp = p.inputStream
+    var count = 0
+    when defined(windows):
+      # xxx we should make osproc.hsWriteData raise IOError on windows, consistent
+      # with posix; we could also (in addition) make IOError a subclass of OSError.
+      type SIGPIPEError = OSError
+    else:
+      type SIGPIPEError = IOError
+    doAssertRaises(SIGPIPEError):
+      for i in 0..<100000:
+        count.inc
+        inp.writeLine "ok" # was giving SIGPIPE and crashing
+    doAssert count >= 100
+    doAssert waitForExit(p) == QuitFailure
+    close(p) # xxx isn't that missing in other places?

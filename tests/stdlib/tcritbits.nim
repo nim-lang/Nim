@@ -1,3 +1,7 @@
+discard """
+  targets: "c js"
+"""
+
 import std/[sequtils,critbits]
 
 template main =
@@ -12,48 +16,48 @@ template main =
   doAssert r.contains"def"
 
   r.excl "def"
-  assert r.missingOrExcl("foo") == false
-  assert "foo" notin toSeq(r.items)
+  doAssert r.missingOrExcl("foo") == false
+  doAssert "foo" notin toSeq(r.items)
 
-  assert r.missingOrExcl("foo") == true
+  doAssert r.missingOrExcl("foo") == true
 
-  assert toSeq(r.items) == @["abc", "definition", "prefix", "xyz"]
+  doAssert toSeq(r.items) == @["abc", "definition", "prefix", "xyz"]
 
-  assert toSeq(r.itemsWithPrefix("de")) == @["definition"]
+  doAssert toSeq(r.itemsWithPrefix("de")) == @["definition"]
   var c = CritBitTree[int]()
 
   c.inc("a")
-  assert c["a"] == 1
+  doAssert c["a"] == 1
 
   c.inc("a", 4)
-  assert c["a"] == 5
+  doAssert c["a"] == 5
 
   c.inc("a", -5)
-  assert c["a"] == 0
+  doAssert c["a"] == 0
 
   c.inc("b", 2)
-  assert c["b"] == 2
+  doAssert c["b"] == 2
 
   c.inc("c", 3)
-  assert c["c"] == 3
+  doAssert c["c"] == 3
 
   c.inc("a", 1)
-  assert c["a"] == 1
+  doAssert c["a"] == 1
 
   var cf = CritBitTree[float]()
 
   cf.incl("a", 1.0)
-  assert cf["a"] == 1.0
+  doAssert cf["a"] == 1.0
 
   cf.incl("b", 2.0)
-  assert cf["b"] == 2.0
+  doAssert cf["b"] == 2.0
 
   cf.incl("c", 3.0)
-  assert cf["c"] == 3.0
+  doAssert cf["c"] == 3.0
 
-  assert cf.len == 3
+  doAssert cf.len == 3
   cf.excl("c")
-  assert cf.len == 2
+  doAssert cf.len == 2
 
   var cb: CritBitTree[string]
   cb.incl("help", "help")
@@ -64,6 +68,20 @@ template main =
     var strings: CritBitTree[int]
     discard strings.containsOrIncl("foo", 3)
     doAssert strings["foo"] == 3
+
+  block tcritbitsToString:
+    block:
+      var t: CritBitTree[int]
+      t["a"] = 1
+      doAssert $t == """{"a": 1}"""
+    block:
+      var t: CritBitTree[string]
+      t["a"] = "1"
+      doAssert $t == """{"a": "1"}"""
+    block:
+      var t: CritBitTree[char]
+      t["a"] = '1'
+      doAssert $t == """{"a": '1'}"""
 
 main()
 static: main()

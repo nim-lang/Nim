@@ -8,6 +8,24 @@
 #
 
 ## This module implements a mimetypes database
+
+runnableExamples:
+  var m = newMimetypes()
+  doAssert m.getMimetype("mp4") == "video/mp4"
+  doAssert m.getExt("text/html") == "html"
+  ## Values can be uppercase too.
+  doAssert m.getMimetype("MP4") == "video/mp4"
+  doAssert m.getExt("TEXT/HTML") == "html"
+  ## If values are invalid then `default` is returned.
+  doAssert m.getMimetype("INVALID") == "text/plain"
+  doAssert m.getExt("INVALID/NONEXISTENT") == "txt"
+  doAssert m.getMimetype("") == "text/plain"
+  doAssert m.getExt("") == "txt"
+  ## Register new Mimetypes.
+  m.register(ext = "fakext", mimetype = "text/fakelang")
+  doAssert m.getMimetype("fakext") == "text/fakelang"
+  doAssert m.getMimetype("FaKeXT") == "text/fakelang"
+
 import strtabs
 from strutils import startsWith, toLowerAscii, strip
 
@@ -1888,9 +1906,9 @@ func newMimetypes*(): MimeDB =
   result.mimes = mimes.newStringTable()
 
 func getMimetype*(mimedb: MimeDB, ext: string, default = "text/plain"): string =
-  ## Gets mimetype which corresponds to ``ext``. Returns ``default`` if ``ext``
-  ## could not be found. ``ext`` can start with an optional dot which is ignored.
-  ## ``ext`` is lowercased before querying ``mimedb``.
+  ## Gets mimetype which corresponds to `ext`. Returns `default` if `ext`
+  ## could not be found. `ext` can start with an optional dot which is ignored.
+  ## `ext` is lowercased before querying `mimedb`.
   if ext.startsWith("."):
     result = mimedb.mimes.getOrDefault(ext.toLowerAscii.substr(1))
   else:
@@ -1899,9 +1917,9 @@ func getMimetype*(mimedb: MimeDB, ext: string, default = "text/plain"): string =
     return default
 
 func getExt*(mimedb: MimeDB, mimetype: string, default = "txt"): string =
-  ## Gets extension which corresponds to ``mimetype``. Returns ``default`` if
-  ## ``mimetype`` could not be found. Extensions are returned without the
-  ## leading dot. ``mimetype`` is lowercased before querying ``mimedb``.
+  ## Gets extension which corresponds to `mimetype`. Returns `default` if
+  ## `mimetype` could not be found. Extensions are returned without the
+  ## leading dot. `mimetype` is lowercased before querying `mimedb`.
   result = default
   let mimeLowered = mimetype.toLowerAscii()
   for e, m in mimedb.mimes:
@@ -1910,28 +1928,9 @@ func getExt*(mimedb: MimeDB, mimetype: string, default = "txt"): string =
       break
 
 func register*(mimedb: var MimeDB, ext: string, mimetype: string) =
-  ## Adds ``mimetype`` to the ``mimedb``.
-  ## ``mimetype`` and ``ext`` are lowercased before registering on ``mimedb``.
+  ## Adds `mimetype` to the `mimedb`.
+  ## `mimetype` and `ext` are lowercased before registering on `mimedb`.
   assert ext.strip.len > 0, "ext argument can not be empty string"
   assert mimetype.strip.len > 0, "mimetype argument can not be empty string"
   {.noSideEffect.}:
     mimedb.mimes[ext.toLowerAscii()] = mimetype.toLowerAscii()
-
-runnableExamples:
-  static:
-    block:
-      var m = newMimetypes()
-      doAssert m.getMimetype("mp4") == "video/mp4"
-      doAssert m.getExt("text/html") == "html"
-      ## Values can be uppercase too.
-      doAssert m.getMimetype("MP4") == "video/mp4"
-      doAssert m.getExt("TEXT/HTML") == "html"
-      ## If values are invalid then ``default`` is returned.
-      doAssert m.getMimetype("INVALID") == "text/plain"
-      doAssert m.getExt("INVALID/NONEXISTENT") == "txt"
-      doAssert m.getMimetype("") == "text/plain"
-      doAssert m.getExt("") == "txt"
-      ## Register new Mimetypes.
-      m.register(ext = "fakext", mimetype = "text/fakelang")
-      doAssert m.getMimetype("fakext") == "text/fakelang"
-      doAssert m.getMimetype("FaKeXT") == "text/fakelang"

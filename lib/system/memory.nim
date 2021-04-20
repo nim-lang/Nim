@@ -2,9 +2,6 @@
 
 const useLibC = not defined(nimNoLibc)
 
-when not defined(nimHasHotCodeReloading):
-  {.pragma: nonReloadable.}
-
 when useLibC:
   import ansi_c
 

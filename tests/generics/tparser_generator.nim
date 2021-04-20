@@ -147,7 +147,7 @@ proc literal*[N, T, P](pattern: P, kind: N): Rule[N, T] =
   let parser = proc (text: T, start: int, nodes: var seq[Node[N]]): int =
     if start == len(text):
       return -1
-    assert(len(text)>start, "Attempting to match at $#, string length is $# " % [$start, $len(text)])
+    doAssert(len(text)>start, "Attempting to match at $#, string length is $# " % [$start, $len(text)])
     when P is string or P is seq[N]:
       debug(debugLex, "Literal[" & $kind & "]: testing " & $pattern & " at " & $start & ": " & $text[start..start+len(pattern)-1])
       if text.continuesWith(pattern, start):
@@ -177,7 +177,7 @@ proc token[N, T](pattern: T, kind: N): Rule[N, T] =
     debug(debugLex, "Token[" & $kind & "]: testing " & pattern & " at " & $start)
     if start == len(text):
       return -1
-    assert(len(text)>start, "Attempting to match at $#, string length is $# " % [$start, $len(text)])
+    doAssert(len(text)>start, "Attempting to match at $#, string length is $# " % [$start, $len(text)])
     let m = text.match(re(pattern), start)
     if m.isSome:
       let node = initNode(start, len(m.get.match), kind)
@@ -192,7 +192,7 @@ proc chartest[N, T, S](testfunc: proc(s: S): bool, kind: N): Rule[N, T] =
   let parser = proc (text: T, start: int, nodes: var seq[Node[N]]): int =
     if start == len(text):
       return -1
-    assert(len(text)>start, "Attempting to match at $#, string length is $# " % [$start, $len(text)])
+    doAssert(len(text)>start, "Attempting to match at $#, string length is $# " % [$start, $len(text)])
     if testfunc(text[start]):
       nodes.add(initNode(start, 1, kind))
       result = 1
@@ -252,11 +252,11 @@ proc fail*[N, T](message: string, kind: N): Rule[N, T] =
 proc `+`*[N, T](left: Rule[N, T], right: Rule[N, T]): Rule[N, T] =
   let parser = proc (text: T, start: int, nodes: var seq[Node[N]]): int =
     var mynodes = newSeq[Node[N]]()
-    assert(not isNil(left.parser), "Left hand side parser is nil")
+    doAssert(not isNil(left.parser), "Left hand side parser is nil")
     let leftlength = left.parser(text, start, mynodes)
     if leftlength == -1:
       return leftlength
-    assert(not isNil(right.parser), "Right hand side parser is nil")
+    doAssert(not isNil(right.parser), "Right hand side parser is nil")
     let rightlength = right.parser(text, start+leftlength, mynodes)
     if rightlength == -1:
       return rightlength
@@ -267,13 +267,13 @@ proc `+`*[N, T](left: Rule[N, T], right: Rule[N, T]): Rule[N, T] =
 proc `/`*[N, T](left: Rule[N, T], right: Rule[N, T]): Rule[N, T] =
   let parser = proc (text: T, start: int, nodes: var seq[Node[N]]): int =
     var mynodes = newSeq[Node[N]]()
-    assert(not isNil(left.parser), "Left hand side of / is not fully defined")
+    doAssert(not isNil(left.parser), "Left hand side of / is not fully defined")
     let leftlength = left.parser(text, start, mynodes)
     if leftlength != -1:
       nodes.add(mynodes)
       return leftlength
     mynodes = newSeq[Node[N]]()
-    assert(not isNil(right.parser), "Right hand side of / is not fully defined")
+    doAssert(not isNil(right.parser), "Right hand side of / is not fully defined")
     let rightlength = right.parser(text, start, mynodes)
     if rightlength == -1:
       return rightlength
@@ -360,7 +360,7 @@ proc `/`*[N, T](rule: Rule[N, T]): Rule[N, T] =
   result = newRule[N, T](parser, rule.kind)
 
 proc `->`*(rule: Rule, production: Rule) =
-  assert(not isnil(production.parser), "Right hand side of -> is nil - has the rule been defined yet?")
+  doAssert(not isnil(production.parser), "Right hand side of -> is nil - has the rule been defined yet?")
   rule.parser = production.parser
 
 template grammar*[K](Kind, Text, Symbol: typedesc; default: K, code: untyped): typed {.hint[XDeclaredButNotUsed]: off.} =

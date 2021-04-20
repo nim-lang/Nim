@@ -34,6 +34,10 @@ proc quitOrDebug() {.noreturn, importc: "abort", header: "<stdlib.h>", nodecl.}
 proc raiseException(e: ref Exception, ename: cstring) {.compilerRtl.} =
   sysFatal(ReraiseDefect, "exception handling is not available")
 
+proc raiseExceptionEx(e: sink(ref Exception), ename, procname, filename: cstring,
+                      line: int) {.compilerRtl.} =
+  sysFatal(ReraiseDefect, "exception handling is not available")
+
 proc reraiseException() {.compilerRtl.} =
   sysFatal(ReraiseDefect, "no exception to reraise")
 
@@ -44,3 +48,13 @@ proc setControlCHook(hook: proc () {.noconv.}) = discard
 
 proc closureIterSetupExc(e: ref Exception) {.compilerproc, inline.} =
   sysFatal(ReraiseDefect, "exception handling is not available")
+
+when gotoBasedExceptions:
+  var nimInErrorMode {.threadvar.}: bool
+
+  proc nimErrorFlag(): ptr bool {.compilerRtl, inl.} =
+    result = addr(nimInErrorMode)
+
+  proc nimTestErrorFlag() {.compilerRtl.} =
+    if nimInErrorMode:
+      sysFatal(ReraiseDefect, "exception handling is not available")

@@ -43,7 +43,7 @@ proc liftLocals(n: PNode; i: int; c: var Ctx) =
   of nkSym:
     if interestingVar(it.sym):
       n[i] = lookupOrAdd(c, it.sym, it.info)
-  of procDefs, nkTypeSection: discard
+  of procDefs, nkTypeSection, nkMixinStmt, nkBindStmt: discard
   else:
     for i in 0..<it.safeLen:
       liftLocals(it, i, c)

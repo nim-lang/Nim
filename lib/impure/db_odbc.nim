@@ -22,8 +22,8 @@
 ## Parameter substitution
 ## ======================
 ##
-## All ``db_*`` modules support the same form of parameter substitution.
-## That is, using the ``?`` (question mark) to signify the place where a
+## All `db_*` modules support the same form of parameter substitution.
+## That is, using the `?` (question mark) to signify the place where a
 ## value should be placed. For example:
 ##
 ## .. code-block:: Nim
@@ -37,7 +37,7 @@
 ## ----------------------------------
 ##
 ## .. code-block:: Nim
-##     import db_odbc
+##     import std/db_odbc
 ##     var db = open("localhost", "user", "password", "dbname")
 ##     db.close()
 ##
@@ -62,7 +62,7 @@
 ##
 ## .. code-block:: Nim
 ##
-##  import db_odbc, math
+##  import std/[db_odbc, math]
 ##
 ##  var theDb = open("localhost", "nim", "nim", "test")
 ##
@@ -168,7 +168,7 @@ proc dbError*(db: var DbConn) {.
     raise e
 
 proc sqlCheck(db: var DbConn, resVal: TSqlSmallInt) {.raises: [DbError]} =
-  ## Wrapper that raises [EDb] if ``resVal`` is neither SQL_SUCCESS or SQL_NO_DATA
+  ## Wrapper that raises [EDb] if `resVal` is neither SQL_SUCCESS or SQL_NO_DATA
   if resVal notIn [SQL_SUCCESS, SQL_NO_DATA]: dbError(db)
 
 proc sqlGetDBMS(db: var DbConn): string {.
@@ -195,7 +195,7 @@ proc dbQuote*(s: string): string {.noSideEffect.} =
 
 proc dbFormat(formatstr: SqlQuery, args: varargs[string]): string {.
                   noSideEffect.} =
-  ## Replace any ``?`` placeholders with `args`,
+  ## Replace any `?` placeholders with `args`,
   ## and quotes the arguments
   result = ""
   var a = 0
@@ -498,7 +498,7 @@ proc open*(connection, user, password, database: string): DbConn {.
   ## Raises `EDb` if the connection could not be established.
   ##
   ## Currently the database parameter is ignored,
-  ## but included to match ``open()`` in the other db_xxxxx library modules.
+  ## but included to match `open()` in the other db_xxxxx library modules.
   var
     val = SQL_OV_ODBC3
     resLen = 0

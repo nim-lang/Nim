@@ -1,291 +1,196 @@
 discard """
 output: '''
-true
-true
-true
-true
-true
-true
-true
-true
-true
-true
-true
-true
-true
-true
-true
-true
 3
 2
 12
 Event { name: 'click: test' }
 Event { name: 'reloaded: test' }
 Event { name: 'updates: test' }
-true
-true
-true
-true
-true
-true
-true
 '''
 """
 
 import jsffi, jsconsole
 
 # Tests for JsObject
-# Test JsObject []= and []
-block:
-  proc test(): bool =
-    let obj = newJsObject()
-    var working = true
-    obj["a"] = 11
-    obj["b"] = "test"
-    obj["c"] = "test".cstring
-    working = working and obj["a"].to(int) == 11
-    working = working and obj["c"].to(cstring) == "test".cstring
-    working
-  echo test()
+block: # Test JsObject []= and []
+  let obj = newJsObject()
+  obj["a"] = 11
+  obj["b"] = "test"
+  obj["c"] = "test".cstring
+  doAssert obj["a"].to(int) == 11
+  doAssert obj["c"].to(cstring) == "test".cstring
 
-# Test JsObject .= and .
-block:
-  proc test(): bool =
-    let obj = newJsObject()
-    var working = true
-    obj.a = 11
-    obj.b = "test"
-    obj.c = "test".cstring
-    obj.`$!&` = 42
-    obj.`while` = 99
-    working = working and obj.a.to(int) == 11
-    working = working and obj.b.to(string) == "test"
-    working = working and obj.c.to(cstring) == "test".cstring
-    working = working and obj.`$!&`.to(int) == 42
-    working = working and obj.`while`.to(int) == 99
-    working
-  echo test()
+block: # Test JsObject .= and .
+  let obj = newJsObject()
+  obj.a = 11
+  obj.b = "test"
+  obj.c = "test".cstring
+  obj.`$!&` = 42
+  obj.`while` = 99
+  doAssert obj.a.to(int) == 11
+  doAssert obj.b.to(string) == "test"
+  doAssert obj.c.to(cstring) == "test".cstring
+  doAssert obj.`$!&`.to(int) == 42
+  doAssert obj.`while`.to(int) == 99
 
-# Test JsObject .()
-block:
-  proc test(): bool =
-    let obj = newJsObject()
-    obj.`?!$` = proc(x, y, z: int, t: cstring): cstring = t & $(x + y + z)
-    obj.`?!$`(1, 2, 3, "Result is: ").to(cstring) == cstring"Result is: 6"
-  echo test()
+block: # Test JsObject .()
+  let obj = newJsObject()
+  obj.`?!$` = proc(x, y, z: int, t: cstring): cstring = t & $(x + y + z)
+  doAssert obj.`?!$`(1, 2, 3, "Result is: ").to(cstring) == cstring"Result is: 6"
 
-# Test JsObject []()
-block:
-  proc test(): bool =
-    let obj = newJsObject()
-    obj.a = proc(x, y, z: int, t: string): string = t & $(x + y + z)
-    let call = obj["a"].to(proc(x, y, z: int, t: string): string)
-    call(1, 2, 3, "Result is: ") == "Result is: 6"
-  echo test()
+block: # Test JsObject []()
+  let obj = newJsObject()
+  obj.a = proc(x, y, z: int, t: string): string = t & $(x + y + z)
+  let call = obj["a"].to(proc(x, y, z: int, t: string): string)
+  doAssert call(1, 2, 3, "Result is: ") == "Result is: 6"
 
 # Test JsObject Iterators
-block:
-  proc testPairs(): bool =
-    let obj = newJsObject()
-    var working = true
-    obj.a = 10
-    obj.b = 20
-    obj.c = 30
-    for k, v in obj.pairs:
-      case $k
-      of "a":
-        working = working and v.to(int) == 10
-      of "b":
-        working = working and v.to(int) == 20
-      of "c":
-        working = working and v.to(int) == 30
-      else:
-        return false
-    working
-  proc testItems(): bool =
-    let obj = newJsObject()
-    var working = true
-    obj.a = 10
-    obj.b = 20
-    obj.c = 30
-    for v in obj.items:
-      working = working and v.to(int) in [10, 20, 30]
-    working
-  proc testKeys(): bool =
-    let obj = newJsObject()
-    var working = true
-    obj.a = 10
-    obj.b = 20
-    obj.c = 30
-    for v in obj.keys:
-      working = working and $v in ["a", "b", "c"]
-    working
-  proc test(): bool = testPairs() and testItems() and testKeys()
-  echo test()
+block: # testPairs
+  let obj = newJsObject()
+  obj.a = 10
+  obj.b = 20
+  obj.c = 30
+  for k, v in obj.pairs:
+    case $k
+    of "a":
+      doAssert v.to(int) == 10
+    of "b":
+      doAssert v.to(int) == 20
+    of "c":
+      doAssert v.to(int) == 30
+    else:
+      doAssert false
+block: # testItems
+  let obj = newJsObject()
+  obj.a = 10
+  obj.b = 20
+  obj.c = 30
+  for v in obj.items:
+    doAssert v.to(int) in [10, 20, 30]
+block: # testKeys
+  let obj = newJsObject()
+  obj.a = 10
+  obj.b = 20
+  obj.c = 30
+  for v in obj.keys:
+    doAssert $v in ["a", "b", "c"]
 
-# Test JsObject equality
-block:
-  proc test(): bool =
-    {. emit: "var comparison = {a: 22, b: 'test'};" .}
-    var comparison {. importjs, nodecl .}: JsObject
-    let obj = newJsObject()
-    obj.a = 22
-    obj.b = "test".cstring
-    obj.a == comparison.a and obj.b == comparison.b
-  echo test()
+block: # Test JsObject equality
+  {. emit: "var comparison = {a: 22, b: 'test'};" .}
+  var comparison {. importjs, nodecl .}: JsObject
+  let obj = newJsObject()
+  obj.a = 22
+  obj.b = "test".cstring
+  doAssert obj.a == comparison.a and obj.b == comparison.b
 
-# Test JsObject literal
-block:
-  proc test(): bool =
-    {. emit: "var comparison = {a: 22, b: 'test'};" .}
-    var comparison {. importjs, nodecl .}: JsObject
-    let obj = JsObject{ a: 22, b: "test".cstring }
-    obj.a == comparison.a and obj.b == comparison.b
-  echo test()
+block: # Test JsObject literal
+  {. emit: "var comparison = {a: 22, b: 'test'};" .}
+  var comparison {. importjs, nodecl .}: JsObject
+  let obj = JsObject{ a: 22, b: "test".cstring }
+  doAssert obj.a == comparison.a and obj.b == comparison.b
 
 # Tests for JsAssoc
-# Test JsAssoc []= and []
-block:
-  proc test(): bool =
-    let obj = newJsAssoc[int, int]()
-    var working = true
-    obj[1] = 11
-    working = working and not compiles(obj["a"] = 11)
-    working = working and not compiles(obj["a"])
-    working = working and not compiles(obj[2] = "test")
-    working = working and not compiles(obj[3] = "test".cstring)
-    working = working and obj[1] == 11
-    working
-  echo test()
+block: # Test JsAssoc []= and []
+  let obj = newJsAssoc[int, int]()
+  obj[1] = 11
+  doAssert not compiles(obj["a"] = 11)
+  doAssert not compiles(obj["a"])
+  doAssert not compiles(obj[2] = "test")
+  doAssert not compiles(obj[3] = "test".cstring)
+  doAssert obj[1] == 11
 
-# Test JsAssoc .= and .
-block:
-  proc test(): bool =
-    let obj = newJsAssoc[cstring, int]()
-    var working = true
-    obj.a = 11
-    obj.`$!&` = 42
-    working = working and not compiles(obj.b = "test")
-    working = working and not compiles(obj.c = "test".cstring)
-    working = working and obj.a == 11
-    working = working and obj.`$!&` == 42
-    working
-  echo test()
+block: # Test JsAssoc .= and .
+  let obj = newJsAssoc[cstring, int]()
+  var working = true
+  obj.a = 11
+  obj.`$!&` = 42
+  doAssert not compiles(obj.b = "test")
+  doAssert not compiles(obj.c = "test".cstring)
+  doAssert obj.a == 11
+  doAssert obj.`$!&` == 42
 
-# Test JsAssoc .()
-block:
-  proc test(): bool =
-    let obj = newJsAssoc[cstring, proc(e: int): int]()
-    obj.a = proc(e: int): int = e * e
-    obj.a(10) == 100
-  echo test()
+block: # Test JsAssoc .()
+  let obj = newJsAssoc[cstring, proc(e: int): int]()
+  obj.a = proc(e: int): int = e * e
+  doAssert obj.a(10) == 100
 
-# Test JsAssoc []()
-block:
-  proc test(): bool =
-    let obj = newJsAssoc[cstring, proc(e: int): int]()
-    obj.a = proc(e: int): int = e * e
-    let call = obj["a"]
-    call(10) == 100
-  echo test()
+block: # Test JsAssoc []()
+  let obj = newJsAssoc[cstring, proc(e: int): int]()
+  obj.a = proc(e: int): int = e * e
+  let call = obj["a"]
+  doAssert call(10) == 100
 
 # Test JsAssoc Iterators
-block:
-  proc testPairs(): bool =
-    let obj = newJsAssoc[cstring, int]()
-    var working = true
-    obj.a = 10
-    obj.b = 20
-    obj.c = 30
-    for k, v in obj.pairs:
-      case $k
-      of "a":
-        working = working and v == 10
-      of "b":
-        working = working and v == 20
-      of "c":
-        working = working and v == 30
-      else:
-        return false
-    working
-  proc testItems(): bool =
-    let obj = newJsAssoc[cstring, int]()
-    var working = true
-    obj.a = 10
-    obj.b = 20
-    obj.c = 30
-    for v in obj.items:
-      working = working and v in [10, 20, 30]
-    working
-  proc testKeys(): bool =
-    let obj = newJsAssoc[cstring, int]()
-    var working = true
-    obj.a = 10
-    obj.b = 20
-    obj.c = 30
-    for v in obj.keys:
-      working = working and v in [cstring"a", cstring"b", cstring"c"]
-    working
-  proc test(): bool = testPairs() and testItems() and testKeys()
-  echo test()
+block: # testPairs
+  let obj = newJsAssoc[cstring, int]()
+  obj.a = 10
+  obj.b = 20
+  obj.c = 30
+  for k, v in obj.pairs:
+    case $k
+    of "a":
+      doAssert v == 10
+    of "b":
+      doAssert v == 20
+    of "c":
+      doAssert v == 30
+    else:
+      doAssert false
+block: # testItems
+  let obj = newJsAssoc[cstring, int]()
+  obj.a = 10
+  obj.b = 20
+  obj.c = 30
+  for v in obj.items:
+    doAssert v in [10, 20, 30]
+block: # testKeys
+  let obj = newJsAssoc[cstring, int]()
+  obj.a = 10
+  obj.b = 20
+  obj.c = 30
+  for v in obj.keys:
+    doAssert v in [cstring"a", cstring"b", cstring"c"]
 
-# Test JsAssoc equality
-block:
-  proc test(): bool =
-    {. emit: "var comparison = {a: 22, b: 55};" .}
-    var comparison {. importjs, nodecl .}: JsAssoc[cstring, int]
-    let obj = newJsAssoc[cstring, int]()
-    obj.a = 22
-    obj.b = 55
-    obj.a == comparison.a and obj.b == comparison.b
-  echo test()
+block: # Test JsAssoc equality
+  {. emit: "var comparison = {a: 22, b: 55};" .}
+  var comparison {. importjs, nodecl .}: JsAssoc[cstring, int]
+  let obj = newJsAssoc[cstring, int]()
+  obj.a = 22
+  obj.b = 55
+  doAssert obj.a == comparison.a and obj.b == comparison.b
 
-# Test JsAssoc literal
-block:
-  proc test(): bool =
-    {. emit: "var comparison = {a: 22, b: 55};" .}
-    var comparison {. importjs, nodecl .}: JsAssoc[cstring, int]
-    let obj = JsAssoc[cstring, int]{ a: 22, b: 55 }
-    var working = true
-    working = working and
-      compiles(JsAssoc[int, int]{ 1: 22, 2: 55 })
-    working = working and
-      comparison.a == obj.a and comparison.b == obj.b
-    working = working and
-      not compiles(JsAssoc[cstring, int]{ a: "test" })
-    working
-  echo test()
+block: # Test JsAssoc literal
+  {. emit: "var comparison = {a: 22, b: 55};" .}
+  var comparison {. importjs, nodecl .}: JsAssoc[cstring, int]
+  let obj = JsAssoc[cstring, int]{ a: 22, b: 55 }
+  doAssert compiles(JsAssoc[int, int]{ 1: 22, 2: 55 })
+  doAssert comparison.a == obj.a and comparison.b == obj.b
+  doAssert not compiles(JsAssoc[cstring, int]{ a: "test" })
 
 # Tests for macros on non-JsRoot objects
-# Test lit
-block:
+block: # Test lit
   type TestObject = object
     a: int
     b: cstring
-  proc test(): bool =
-    {. emit: "var comparison = {a: 1};" .}
-    var comparison {. importjs, nodecl .}: TestObject
-    let obj = TestObject{ a: 1 }
-    obj == comparison
-  echo test()
+  {. emit: "var comparison = {a: 1};" .}
+  var comparison {. importjs, nodecl .}: TestObject
+  let obj = TestObject{ a: 1 }
+  doAssert obj == comparison
 
-# Test bindMethod
-block:
+block: # Test bindMethod
   type TestObject = object
     a: int
     onWhatever: proc(e: int): int
   proc handleWhatever(this: TestObject, e: int): int =
     e + this.a
-  proc test(): bool =
+  block:
     let obj = TestObject(a: 9, onWhatever: bindMethod(handleWhatever))
-    obj.onWhatever(1) == 10
-  echo test()
+    doAssert obj.onWhatever(1) == 10
 
 block:
   {.emit: "function jsProc(n) { return n; }" .}
   proc jsProc(x: int32): JsObject {.importjs: "jsProc(#)".}
-
-  proc test() =
+  block:
     var x = jsProc(1)
     var y = jsProc(2)
     console.log x + y
@@ -293,8 +198,6 @@ block:
 
     x += jsProc(10)
     console.log x
-
-  test()
 
 block:
   {.emit:
@@ -323,13 +226,13 @@ block:
     console.log jsarguments[0]
 
 block:
-  echo jsUndefined == jsNull
-  echo jsUndefined == nil
-  echo jsNull == nil
-  echo jsUndefined.isNil
-  echo jsNull.isNil
-  echo jsNull.isNull
-  echo jsUndefined.isUndefined
+  doAssert jsUndefined == jsNull
+  doAssert jsUndefined == nil
+  doAssert jsNull == nil
+  doAssert jsUndefined.isNil
+  doAssert jsNull.isNil
+  doAssert jsNull.isNull
+  doAssert jsUndefined.isUndefined
 
 block: # test **
   var a = toJs(0)
@@ -362,4 +265,3 @@ block: # test **
   doAssert to(`**`(a + a, b), int) == 2
 
   doAssert to(`**`(toJs(1) + toJs(1), toJs(2)), int) == 4
-

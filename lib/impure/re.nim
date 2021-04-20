@@ -37,14 +37,14 @@ import
 const
   MaxSubpatterns* = 20
     ## defines the maximum number of subpatterns that can be captured.
-    ## This limit still exists for ``replacef`` and ``parallelReplace``.
+    ## This limit still exists for `replacef` and `parallelReplace`.
 
 type
   RegexFlag* = enum     ## options for regular expressions
     reIgnoreCase = 0,    ## do caseless matching
-    reMultiLine = 1,     ## ``^`` and ``$`` match newlines within data
-    reDotAll = 2,        ## ``.`` matches anything including NL
-    reExtended = 3,      ## ignore whitespace and ``#`` comments
+    reMultiLine = 1,     ## `^` and `$` match newlines within data
+    reDotAll = 2,        ## `.` matches anything including NL
+    reExtended = 3,      ## ignore whitespace and `#` comments
     reStudy = 4          ## study the expression (may be omitted if the
                          ## expression will be used only once)
 
@@ -79,7 +79,7 @@ proc rawCompile(pattern: string, flags: cint): ptr Pcre =
 
 proc finalizeRegEx(x: Regex) =
   # XXX This is a hack, but PCRE does not export its "free" function properly.
-  # Sigh. The hack relies on PCRE's implementation (see ``pcre_get.c``).
+  # Sigh. The hack relies on PCRE's implementation (see `pcre_get.c`).
   # Fortunately the implementation is unlikely to change.
   pcre.free_substring(cast[cstring](x.h))
   if not isNil(x.e):
@@ -89,8 +89,8 @@ proc re*(s: string, flags = {reStudy}): Regex =
   ## Constructor of regular expressions.
   ##
   ## Note that Nim's
-  ## extended raw string literals support the syntax ``re"[abc]"`` as
-  ## a short form for ``re(r"[abc]")``. Also note that since this
+  ## extended raw string literals support the syntax `re"[abc]"` as
+  ## a short form for `re(r"[abc]")`. Also note that since this
   ## compiles the regular expression, which is expensive, you should
   ## avoid putting it directly in the arguments of the functions like
   ## the examples show below if you plan to use it a lot of times, as
@@ -143,11 +143,11 @@ proc matchOrFind(buf: cstring, pattern: Regex, matches: var openArray[string],
 
 proc findBounds*(buf: cstring, pattern: Regex, matches: var openArray[string],
                  start = 0, bufSize: int): tuple[first, last: int] =
-  ## returns the starting position and end position of ``pattern`` in ``buf``
-  ## (where ``buf`` has length ``bufSize`` and is not necessarily ``'\0'`` terminated),
+  ## returns the starting position and end position of `pattern` in `buf`
+  ## (where `buf` has length `bufSize` and is not necessarily `'\0'` terminated),
   ## and the captured
-  ## substrings in the array ``matches``. If it does not match, nothing
-  ## is written into ``matches`` and ``(-1,0)`` is returned.
+  ## substrings in the array `matches`. If it does not match, nothing
+  ## is written into `matches` and `(-1,0)` is returned.
   var
     rtarray = initRtArray[cint]((matches.len+1)*3)
     rawMatches = rtarray.getRawData
@@ -163,20 +163,20 @@ proc findBounds*(buf: cstring, pattern: Regex, matches: var openArray[string],
 
 proc findBounds*(s: string, pattern: Regex, matches: var openArray[string],
                  start = 0): tuple[first, last: int] {.inline.} =
-  ## returns the starting position and end position of ``pattern`` in ``s``
-  ## and the captured substrings in the array ``matches``.
+  ## returns the starting position and end position of `pattern` in `s`
+  ## and the captured substrings in the array `matches`.
   ## If it does not match, nothing
-  ## is written into ``matches`` and ``(-1,0)`` is returned.
+  ## is written into `matches` and `(-1,0)` is returned.
   result = findBounds(cstring(s), pattern, matches, start, s.len)
 
 proc findBounds*(buf: cstring, pattern: Regex,
                  matches: var openArray[tuple[first, last: int]],
                  start = 0, bufSize = 0): tuple[first, last: int] =
-  ## returns the starting position and end position of ``pattern`` in ``buf``
-  ## (where ``buf`` has length ``bufSize`` and is not necessarily ``'\0'`` terminated),
-  ## and the captured substrings in the array ``matches``.
-  ## If it does not match, nothing is written into ``matches`` and
-  ## ``(-1,0)`` is returned.
+  ## returns the starting position and end position of `pattern` in `buf`
+  ## (where `buf` has length `bufSize` and is not necessarily `'\0'` terminated),
+  ## and the captured substrings in the array `matches`.
+  ## If it does not match, nothing is written into `matches` and
+  ## `(-1,0)` is returned.
   var
     rtarray = initRtArray[cint]((matches.len+1)*3)
     rawMatches = rtarray.getRawData
@@ -193,17 +193,17 @@ proc findBounds*(buf: cstring, pattern: Regex,
 proc findBounds*(s: string, pattern: Regex,
                  matches: var openArray[tuple[first, last: int]],
                  start = 0): tuple[first, last: int] {.inline.} =
-  ## returns the starting position and end position of ``pattern`` in ``s``
-  ## and the captured substrings in the array ``matches``.
-  ## If it does not match, nothing is written into ``matches`` and
-  ## ``(-1,0)`` is returned.
+  ## returns the starting position and end position of `pattern` in `s`
+  ## and the captured substrings in the array `matches`.
+  ## If it does not match, nothing is written into `matches` and
+  ## `(-1,0)` is returned.
   result = findBounds(cstring(s), pattern, matches, start, s.len)
 
 proc findBounds*(buf: cstring, pattern: Regex,
                  start = 0, bufSize: int): tuple[first, last: int] =
-  ## returns the ``first`` and ``last`` position of ``pattern`` in ``buf``,
-  ## where ``buf`` has length ``bufSize`` (not necessarily ``'\0'`` terminated).
-  ## If it does not match, ``(-1,0)`` is returned.
+  ## returns the `first` and `last` position of `pattern` in `buf`,
+  ## where `buf` has length `bufSize` (not necessarily `'\0'` terminated).
+  ## If it does not match, `(-1,0)` is returned.
   var
     rtarray = initRtArray[cint](3)
     rawMatches = rtarray.getRawData
@@ -214,8 +214,8 @@ proc findBounds*(buf: cstring, pattern: Regex,
 
 proc findBounds*(s: string, pattern: Regex,
                  start = 0): tuple[first, last: int] {.inline.} =
-  ## returns the ``first`` and ``last`` position of ``pattern`` in ``s``.
-  ## If it does not match, ``(-1,0)`` is returned.
+  ## returns the `first` and `last` position of `pattern` in `s`.
+  ## If it does not match, `(-1,0)` is returned.
   ##
   ## Note: there is a speed improvement if the matches do not need to be captured.
   runnableExamples:
@@ -233,21 +233,21 @@ proc matchOrFind(buf: cstring, pattern: Regex, start, bufSize: int, flags: cint)
 
 proc matchLen*(s: string, pattern: Regex, matches: var openArray[string],
               start = 0): int {.inline.} =
-  ## the same as ``match``, but it returns the length of the match,
-  ## if there is no match, ``-1`` is returned. Note that a match length
+  ## the same as `match`, but it returns the length of the match,
+  ## if there is no match, `-1` is returned. Note that a match length
   ## of zero can happen.
   result = matchOrFind(cstring(s), pattern, matches, start.cint, s.len.cint, pcre.ANCHORED)
 
 proc matchLen*(buf: cstring, pattern: Regex, matches: var openArray[string],
               start = 0, bufSize: int): int {.inline.} =
-  ## the same as ``match``, but it returns the length of the match,
-  ## if there is no match, ``-1`` is returned. Note that a match length
+  ## the same as `match`, but it returns the length of the match,
+  ## if there is no match, `-1` is returned. Note that a match length
   ## of zero can happen.
   return matchOrFind(buf, pattern, matches, start.cint, bufSize.cint, pcre.ANCHORED)
 
 proc matchLen*(s: string, pattern: Regex, start = 0): int {.inline.} =
-  ## the same as ``match``, but it returns the length of the match,
-  ## if there is no match, ``-1`` is returned. Note that a match length
+  ## the same as `match`, but it returns the length of the match,
+  ## if there is no match, `-1` is returned. Note that a match length
   ## of zero can happen.
   ##
   runnableExamples:
@@ -257,24 +257,24 @@ proc matchLen*(s: string, pattern: Regex, start = 0): int {.inline.} =
   result = matchOrFind(cstring(s), pattern, start.cint, s.len.cint, pcre.ANCHORED)
 
 proc matchLen*(buf: cstring, pattern: Regex, start = 0, bufSize: int): int {.inline.} =
-  ## the same as ``match``, but it returns the length of the match,
-  ## if there is no match, ``-1`` is returned. Note that a match length
+  ## the same as `match`, but it returns the length of the match,
+  ## if there is no match, `-1` is returned. Note that a match length
   ## of zero can happen.
   result = matchOrFind(buf, pattern, start.cint, bufSize, pcre.ANCHORED)
 
 proc match*(s: string, pattern: Regex, start = 0): bool {.inline.} =
-  ## returns ``true`` if ``s[start..]`` matches the ``pattern``.
+  ## returns `true` if `s[start..]` matches the `pattern`.
   result = matchLen(cstring(s), pattern, start, s.len) != -1
 
 proc match*(s: string, pattern: Regex, matches: var openArray[string],
            start = 0): bool {.inline.} =
-  ## returns ``true`` if ``s[start..]`` matches the ``pattern`` and
-  ## the captured substrings in the array ``matches``. If it does not
-  ## match, nothing is written into ``matches`` and ``false`` is
+  ## returns `true` if `s[start..]` matches the `pattern` and
+  ## the captured substrings in the array `matches`. If it does not
+  ## match, nothing is written into `matches` and `false` is
   ## returned.
   ##
   runnableExamples:
-    import sequtils
+    import std/sequtils
     var matches: array[2, string]
     if match("abcdefg", re"c(d)ef(g)", matches, 2):
       doAssert toSeq(matches) == @["d", "g"]
@@ -282,19 +282,19 @@ proc match*(s: string, pattern: Regex, matches: var openArray[string],
 
 proc match*(buf: cstring, pattern: Regex, matches: var openArray[string],
            start = 0, bufSize: int): bool {.inline.} =
-  ## returns ``true`` if ``buf[start..<bufSize]`` matches the ``pattern`` and
-  ## the captured substrings in the array ``matches``. If it does not
-  ## match, nothing is written into ``matches`` and ``false`` is
+  ## returns `true` if `buf[start..<bufSize]` matches the `pattern` and
+  ## the captured substrings in the array `matches`. If it does not
+  ## match, nothing is written into `matches` and `false` is
   ## returned.
-  ## ``buf`` has length ``bufSize`` (not necessarily ``'\0'`` terminated).
+  ## `buf` has length `bufSize` (not necessarily `'\0'` terminated).
   result = matchLen(buf, pattern, matches, start, bufSize) != -1
 
 proc find*(buf: cstring, pattern: Regex, matches: var openArray[string],
            start = 0, bufSize = 0): int =
-  ## returns the starting position of ``pattern`` in ``buf`` and the captured
-  ## substrings in the array ``matches``. If it does not match, nothing
-  ## is written into ``matches`` and ``-1`` is returned.
-  ## ``buf`` has length ``bufSize`` (not necessarily ``'\0'`` terminated).
+  ## returns the starting position of `pattern` in `buf` and the captured
+  ## substrings in the array `matches`. If it does not match, nothing
+  ## is written into `matches` and `-1` is returned.
+  ## `buf` has length `bufSize` (not necessarily `'\0'` terminated).
   var
     rtarray = initRtArray[cint]((matches.len+1)*3)
     rawMatches = rtarray.getRawData
@@ -310,15 +310,15 @@ proc find*(buf: cstring, pattern: Regex, matches: var openArray[string],
 
 proc find*(s: string, pattern: Regex, matches: var openArray[string],
            start = 0): int {.inline.} =
-  ## returns the starting position of ``pattern`` in ``s`` and the captured
-  ## substrings in the array ``matches``. If it does not match, nothing
-  ## is written into ``matches`` and ``-1`` is returned.
+  ## returns the starting position of `pattern` in `s` and the captured
+  ## substrings in the array `matches`. If it does not match, nothing
+  ## is written into `matches` and `-1` is returned.
   result = find(cstring(s), pattern, matches, start, s.len)
 
 proc find*(buf: cstring, pattern: Regex, start = 0, bufSize: int): int =
-  ## returns the starting position of ``pattern`` in ``buf``,
-  ## where ``buf`` has length ``bufSize`` (not necessarily ``'\0'`` terminated).
-  ## If it does not match, ``-1`` is returned.
+  ## returns the starting position of `pattern` in `buf`,
+  ## where `buf` has length `bufSize` (not necessarily `'\0'` terminated).
+  ## If it does not match, `-1` is returned.
   var
     rtarray = initRtArray[cint](3)
     rawMatches = rtarray.getRawData
@@ -328,8 +328,8 @@ proc find*(buf: cstring, pattern: Regex, start = 0, bufSize: int): int =
   return rawMatches[0]
 
 proc find*(s: string, pattern: Regex, start = 0): int {.inline.} =
-  ## returns the starting position of ``pattern`` in ``s``. If it does not
-  ## match, ``-1`` is returned. We start the scan at `start`.
+  ## returns the starting position of `pattern` in `s`. If it does not
+  ## match, `-1` is returned. We start the scan at `start`.
   runnableExamples:
     doAssert find("abcdefg", re"cde") == 2
     doAssert find("abcdefg", re"abc") == 0
@@ -360,7 +360,7 @@ iterator findAll*(s: string, pattern: Regex, start = 0): string =
     i = b
 
 iterator findAll*(buf: cstring, pattern: Regex, start = 0, bufSize: int): string =
-  ## Yields all matching `substrings` of ``s`` that match ``pattern``.
+  ## Yields all matching `substrings` of `s` that match `pattern`.
   ##
   ## Note that since this is an iterator you should not modify the string you
   ## are iterating over: bad things could happen.
@@ -381,23 +381,20 @@ iterator findAll*(buf: cstring, pattern: Regex, start = 0, bufSize: int): string
     i = b
 
 proc findAll*(s: string, pattern: Regex, start = 0): seq[string] {.inline.} =
-  ## returns all matching `substrings` of ``s`` that match ``pattern``.
+  ## returns all matching `substrings` of `s` that match `pattern`.
   ## If it does not match, @[] is returned.
   result = @[]
   for x in findAll(s, pattern, start): result.add x
 
-when not defined(nimhygiene):
-  {.pragma: inject.}
-
 template `=~` *(s: string, pattern: Regex): untyped =
-  ## This calls ``match`` with an implicit declared ``matches`` array that
-  ## can be used in the scope of the ``=~`` call:
+  ## This calls `match` with an implicit declared `matches` array that
+  ## can be used in the scope of the `=~` call:
   runnableExamples:
     proc parse(line: string): string =
       if line =~ re"\s*(\w+)\s*\=\s*(\w+)": # matches a key=value pair:
         result = $(matches[0], matches[1])
       elif line =~ re"\s*(\#.*)": # matches a comment
-        # note that the implicit ``matches`` array is different from 1st branch
+        # note that the implicit `matches` array is different from 1st branch
         result = $(matches[0],)
       else: doAssert false
       doAssert not declared(matches)
@@ -411,12 +408,12 @@ template `=~` *(s: string, pattern: Regex): untyped =
 # ------------------------- more string handling ------------------------------
 
 proc contains*(s: string, pattern: Regex, start = 0): bool {.inline.} =
-  ## same as ``find(s, pattern, start) >= 0``
+  ## same as `find(s, pattern, start) >= 0`
   return find(s, pattern, start) >= 0
 
 proc contains*(s: string, pattern: Regex, matches: var openArray[string],
               start = 0): bool {.inline.} =
-  ## same as ``find(s, pattern, matches, start) >= 0``
+  ## same as `find(s, pattern, matches, start) >= 0`
   return find(s, pattern, matches, start) >= 0
 
 proc startsWith*(s: string, prefix: Regex): bool {.inline.} =
@@ -429,8 +426,8 @@ proc endsWith*(s: string, suffix: Regex): bool {.inline.} =
     if matchLen(s, suffix, i) == s.len - i: return true
 
 proc replace*(s: string, sub: Regex, by = ""): string =
-  ## Replaces ``sub`` in ``s`` by the string ``by``. Captures cannot be
-  ## accessed in ``by``.
+  ## Replaces `sub` in `s` by the string `by`. Captures cannot be
+  ## accessed in `by`.
   runnableExamples:
     doAssert "var1=key; var2=key2".replace(re"(\w+)=(\w+)") == "; "
     doAssert "var1=key; var2=key2".replace(re"(\w+)=(\w+)", "?") == "?; ?"
@@ -446,8 +443,8 @@ proc replace*(s: string, sub: Regex, by = ""): string =
   add(result, substr(s, prev))
 
 proc replacef*(s: string, sub: Regex, by: string): string =
-  ## Replaces ``sub`` in ``s`` by the string ``by``. Captures can be accessed in ``by``
-  ## with the notation ``$i`` and ``$#`` (see strutils.\`%\`).
+  ## Replaces `sub` in `s` by the string `by`. Captures can be accessed in `by`
+  ## with the notation `$i` and `$#` (see strutils.\`%\`).
   runnableExamples:
     doAssert "var1=key; var2=key2".replacef(re"(\w+)=(\w+)", "$1<-$2$2") ==
       "var1<-keykey; var2<-key2key2"
@@ -465,7 +462,7 @@ proc replacef*(s: string, sub: Regex, by: string): string =
 
 proc multiReplace*(s: string, subs: openArray[
                    tuple[pattern: Regex, repl: string]]): string =
-  ## Returns a modified copy of ``s`` with the substitutions in ``subs``
+  ## Returns a modified copy of `s` with the substitutions in `subs`
   ## applied in parallel.
   result = ""
   var i = 0
@@ -485,19 +482,19 @@ proc multiReplace*(s: string, subs: openArray[
 
 proc transformFile*(infile, outfile: string,
                     subs: openArray[tuple[pattern: Regex, repl: string]]) =
-  ## reads in the file ``infile``, performs a parallel replacement (calls
-  ## ``parallelReplace``) and writes back to ``outfile``. Raises ``IOError`` if an
+  ## reads in the file `infile`, performs a parallel replacement (calls
+  ## `parallelReplace`) and writes back to `outfile`. Raises `IOError` if an
   ## error occurs. This is supposed to be used for quick scripting.
-  var x = readFile(infile).string
+  var x = readFile(infile)
   writeFile(outfile, x.multiReplace(subs))
 
 iterator split*(s: string, sep: Regex; maxsplit = -1): string =
-  ## Splits the string ``s`` into substrings.
+  ## Splits the string `s` into substrings.
   ##
-  ## Substrings are separated by the regular expression ``sep``
-  ## (and the portion matched by ``sep`` is not returned).
+  ## Substrings are separated by the regular expression `sep`
+  ## (and the portion matched by `sep` is not returned).
   runnableExamples:
-    import sequtils
+    import std/sequtils
     doAssert toSeq(split("00232this02939is39an22example111", re"\d+")) ==
       @["", "this", "is", "an", "example", ""]
   var last = 0
@@ -522,14 +519,14 @@ iterator split*(s: string, sep: Regex; maxsplit = -1): string =
     inc(last, sepLen)
 
 proc split*(s: string, sep: Regex, maxsplit = -1): seq[string] {.inline.} =
-  ## Splits the string ``s`` into a seq of substrings.
+  ## Splits the string `s` into a seq of substrings.
   ##
-  ## The portion matched by ``sep`` is not returned.
+  ## The portion matched by `sep` is not returned.
   result = @[]
   for x in split(s, sep, maxsplit): result.add x
 
 proc escapeRe*(s: string): string =
-  ## escapes ``s`` so that it is matched verbatim when used as a regular
+  ## escapes `s` so that it is matched verbatim when used as a regular
   ## expression.
   result = ""
   for c in items(s):

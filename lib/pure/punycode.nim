@@ -161,13 +161,13 @@ proc decode*(encoded: string): string {.raises: [PunyError].} =
         break
       w *= Base - t
       k += Base
-    bias = adapt(i - oldi, runelen(result) + 1, oldi == 0)
+    bias = adapt(i - oldi, runeLen(result) + 1, oldi == 0)
 
-    if i div (runelen(result) + 1) > high(int32) - n:
+    if i div (runeLen(result) + 1) > high(int32) - n:
       raise newException(PunyError, "Value too large")
 
-    n += i div (runelen(result) + 1)
-    i = i mod (runelen(result) + 1)
+    n += i div (runeLen(result) + 1)
+    i = i mod (runeLen(result) + 1)
     insert(result, $Rune(n), i)
     inc i
 

@@ -23,15 +23,15 @@
 ## Encoding data
 ## -------------
 ##
-## .. code-block::nim
-##    import base64
+## .. code-block:: Nim
+##    import std/base64
 ##    let encoded = encode("Hello World")
 ##    assert encoded == "SGVsbG8gV29ybGQ="
 ##
 ## Apart from strings you can also encode lists of integers or characters:
 ##
-## .. code-block::nim
-##    import base64
+## .. code-block:: Nim
+##    import std/base64
 ##    let encodedInts = encode([1,2,3])
 ##    assert encodedInts == "AQID"
 ##    let encodedChars = encode(['h','e','y'])
@@ -41,16 +41,16 @@
 ## Decoding data
 ## -------------
 ##
-## .. code-block::nim
-##    import base64
+## .. code-block:: Nim
+##    import std/base64
 ##    let decoded = decode("SGVsbG8gV29ybGQ=")
 ##    assert decoded == "Hello World"
 ##
 ## URL Safe Base64
 ## ---------------
 ##
-## .. code-block::nim
-##    import base64
+## .. code-block:: Nim
+##    import std/base64
 ##    doAssert encode("c\xf7>", safe = true) == "Y_c-"
 ##    doAssert encode("c\xf7>", safe = false) == "Y/c+"
 ##
@@ -149,9 +149,9 @@ proc encode*[T: SomeInteger|char](s: openArray[T], safe = false): string =
   ## This procedure encodes an openarray (array or sequence) of either integers
   ## or characters.
   ##
-  ## If ``safe`` is ``true`` then it will encode using the
+  ## If `safe` is `true` then it will encode using the
   ## URL-Safe and Filesystem-safe standard alphabet characters,
-  ## which substitutes ``-`` instead of ``+`` and ``_`` instead of ``/``.
+  ## which substitutes `-` instead of `+` and `_` instead of `/`.
   ## * https://en.wikipedia.org/wiki/Base64#URL_applications
   ## * https://tools.ietf.org/html/rfc4648#page-7
   ##
@@ -165,13 +165,13 @@ proc encode*[T: SomeInteger|char](s: openArray[T], safe = false): string =
   encodeImpl()
 
 proc encode*(s: string, safe = false): string =
-  ## Encodes ``s`` into base64 representation.
+  ## Encodes `s` into base64 representation.
   ##
   ## This procedure encodes a string.
   ##
-  ## If ``safe`` is ``true`` then it will encode using the
+  ## If `safe` is `true` then it will encode using the
   ## URL-Safe and Filesystem-safe standard alphabet characters,
-  ## which substitutes ``-`` instead of ``+`` and ``_`` instead of ``/``.
+  ## which substitutes `-` instead of `+` and `_` instead of `/`.
   ## * https://en.wikipedia.org/wiki/Base64#URL_applications
   ## * https://tools.ietf.org/html/rfc4648#page-7
   ##
@@ -183,8 +183,8 @@ proc encode*(s: string, safe = false): string =
   encodeImpl()
 
 proc encodeMime*(s: string, lineLen = 75, newLine = "\r\n"): string =
-  ## Encodes ``s`` into base64 representation as lines.
-  ## Used in email MIME format, use ``lineLen`` and ``newline``.
+  ## Encodes `s` into base64 representation as lines.
+  ## Used in email MIME format, use `lineLen` and `newline`.
   ##
   ## This procedure encodes a string according to MIME spec.
   ##
@@ -193,6 +193,7 @@ proc encodeMime*(s: string, lineLen = 75, newLine = "\r\n"): string =
   ## * `decode proc<#decode,string>`_ for decoding a string
   runnableExamples:
     assert encodeMime("Hello World", 4, "\n") == "SGVs\nbG8g\nV29y\nbGQ="
+  result = newStringOfCap(encodeSize(s.len))
   for i, c in encode(s):
     if i != 0 and (i mod lineLen == 0):
       result.add(newLine)
@@ -214,7 +215,7 @@ const
   decodeTable = initDecodeTable()
 
 proc decode*(s: string): string =
-  ## Decodes string ``s`` in base64 representation back into its original form.
+  ## Decodes string `s` in base64 representation back into its original form.
   ## The initial whitespace is skipped.
   ##
   ## **See also:**

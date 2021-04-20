@@ -14,13 +14,15 @@ import
   wordrecg, ropes, options, strutils, extccomp, math, magicsys, trees,
   types, lookups, lineinfos, pathutils, linter
 
+from ic / ic import addCompilerProc
+
 const
   FirstCallConv* = wNimcall
   LastCallConv* = wNoconv
 
 const
   declPragmas = {wImportc, wImportObjC, wImportCpp, wImportJs, wExportc, wExportCpp,
-    wExportNims, wExtern, wDeprecated, wNodecl, wError, wUsed, wAlign}
+    wExportNims, wExtern, wDeprecated, wNodecl, wError, wUsed}
     ## common pragmas for declarations, to a good approximation
   procPragmas* = declPragmas + {FirstCallConv..LastCallConv,
     wMagic, wNoSideEffect, wSideEffect, wNoreturn, wNosinks, wDynlib, wHeader,
@@ -54,22 +56,23 @@ const
     wFloatChecks, wInfChecks, wNanChecks, wPragma, wEmit, wUnroll,
     wLinearScanEnd, wPatterns, wTrMacros, wEffects, wNoForward, wReorder, wComputedGoto,
     wInjectStmt, wExperimental, wThis, wUsed, wInvariant, wAssume, wAssert}
-  lambdaPragmas* = declPragmas + {FirstCallConv..LastCallConv,
+  lambdaPragmas* = {FirstCallConv..LastCallConv,
     wNoSideEffect, wSideEffect, wNoreturn, wNosinks, wDynlib, wHeader,
     wThread, wAsmNoStackFrame,
     wRaises, wLocks, wTags, wRequires, wEnsures,
-    wGcSafe, wCodegenDecl} - {wExportNims, wError, wUsed}  # why exclude these?
+    wGcSafe, wCodegenDecl, wNoInit, wCompileTime}
   typePragmas* = declPragmas + {wMagic, wAcyclic,
     wPure, wHeader, wCompilerProc, wCore, wFinal, wSize, wShallow,
     wIncompleteStruct, wCompleteStruct, wByCopy, wByRef,
     wInheritable, wGensym, wInject, wRequiresInit, wUnchecked, wUnion, wPacked,
-    wBorrow, wGcSafe, wPartial, wExplain, wPackage}
-  fieldPragmas* = declPragmas + {
-    wGuard, wBitsize, wCursor, wRequiresInit, wNoalias} - {wExportNims, wNodecl} # why exclude these?
+    wCppNonPod, wBorrow, wGcSafe, wPartial, wExplain, wPackage}
+  fieldPragmas* = declPragmas + {wGuard, wBitsize, wCursor,
+    wRequiresInit, wNoalias, wAlign} - {wExportNims, wNodecl} # why exclude these?
   varPragmas* = declPragmas + {wVolatile, wRegister, wThreadVar,
     wMagic, wHeader, wCompilerProc, wCore, wDynlib,
     wNoInit, wCompileTime, wGlobal,
-    wGensym, wInject, wCodegenDecl, wGuard, wGoto, wCursor, wNoalias}
+    wGensym, wInject, wCodegenDecl,
+    wGuard, wGoto, wCursor, wNoalias, wAlign}
   constPragmas* = declPragmas + {wHeader, wMagic,
     wGensym, wInject,
     wIntDefine, wStrDefine, wBoolDefine, wCompilerProc, wCore}
@@ -94,10 +97,10 @@ proc pragma*(c: PContext, sym: PSym, n: PNode, validPragmas: TSpecialWords;
             isStatement: bool = false)
 
 proc recordPragma(c: PContext; n: PNode; args: varargs[string]) =
-  var recorded = newNodeI(nkCommentStmt, n.info)
+  var recorded = newNodeI(nkReplayAction, n.info)
   for i in 0..args.high:
     recorded.add newStrNode(args[i], n.info)
-  c.graph.recordStmt(c.graph, c.module, recorded)
+  addPragmaComputation(c, recorded)
 
 const
   errStringLiteralExpected = "string literal expected"
@@ -121,7 +124,7 @@ proc pragmaEnsures(c: PContext, n: PNode) =
     openScope(c)
     let o = getCurrOwner(c)
     if o.kind in routineKinds and o.typ != nil and o.typ.sons[0] != nil:
-      var s = newSym(skResult, getIdent(c.cache, "result"), nextId(c.idgen), o, n.info)
+      var s = newSym(skResult, getIdent(c.cache, "result"), nextSymId(c.idgen), o, n.info)
       s.typ = o.typ.sons[0]
       incl(s.flags, sfUsed)
       addDecl(c, s)
@@ -350,6 +353,7 @@ proc processNote(c: PContext, n: PNode) =
     of wHint: handleNote(hintMin .. hintMax, c.config.notes)
     of wWarning: handleNote(warnMin .. warnMax, c.config.notes)
     of wWarningAsError: handleNote(warnMin .. warnMax, c.config.warningAsErrors)
+    of wHintAsError: handleNote(hintMin .. hintMax, c.config.warningAsErrors)
     else: invalidPragma(c, n)
   else: invalidPragma(c, n)
 
@@ -559,10 +563,10 @@ proc semAsmOrEmit*(con: PContext, n: PNode, marker: char): PNode =
       if c < 0: sub = substr(str, b + 1)
       else: sub = substr(str, b + 1, c - 1)
       if sub != "":
-        var e = searchInScopes(con, getIdent(con.cache, sub))
+        var amb = false
+        var e = searchInScopes(con, getIdent(con.cache, sub), amb)
+        # XXX what to do here if 'amb' is true?
         if e != nil:
-          when false:
-            if e.kind == skStub: loadStub(e)
           incl(e.flags, sfUsed)
           result.add newSymNode(e)
         else:
@@ -636,7 +640,7 @@ proc processPragma(c: PContext, n: PNode, i: int) =
   elif it.safeLen != 2 or it[0].kind != nkIdent or it[1].kind != nkIdent:
     invalidPragma(c, n)
 
-  var userPragma = newSym(skTemplate, it[1].ident, nextId(c.idgen), nil, it.info, c.config.options)
+  var userPragma = newSym(skTemplate, it[1].ident, nextSymId(c.idgen), nil, it.info, c.config.options)
   userPragma.ast = newTreeI(nkPragma, n.info, n.sons[i+1..^1])
   strTableAdd(c.userPragmas, userPragma)
 
@@ -702,6 +706,8 @@ proc markCompilerProc(c: PContext; s: PSym) =
   incl(s.flags, sfCompilerProc)
   incl(s.flags, sfUsed)
   registerCompilerProc(c.graph, s)
+  if c.config.symbolFiles != disabledSf:
+    addCompilerProc(c.encoder, c.packedRepr, s)
 
 proc deprecatedStmt(c: PContext; outerPragma: PNode) =
   let pragma = outerPragma[1]
@@ -717,7 +723,7 @@ proc deprecatedStmt(c: PContext; outerPragma: PNode) =
       if dest == nil or dest.kind in routineKinds:
         localError(c.config, n.info, warnUser, "the .deprecated pragma is unreliable for routines")
       let src = considerQuotedIdent(c, n[0])
-      let alias = newSym(skAlias, src, nextId(c.idgen), dest, n[0].info, c.config.options)
+      let alias = newSym(skAlias, src, nextSymId(c.idgen), dest, n[0].info, c.config.options)
       incl(alias.flags, sfExported)
       if sfCompilerProc in dest.flags: markCompilerProc(c, alias)
       addInterfaceDecl(c, alias)
@@ -739,7 +745,7 @@ proc pragmaGuard(c: PContext; it: PNode; kind: TSymKind): PSym =
       # We return a dummy symbol; later passes over the type will repair it.
       # Generic instantiation needs to know about this too. But we're lazy
       # and perform the lookup on demand instead.
-      result = newSym(skUnknown, considerQuotedIdent(c, n), nextId(c.idgen), nil, n.info,
+      result = newSym(skUnknown, considerQuotedIdent(c, n), nextSymId(c.idgen), nil, n.info,
         c.config.options)
   else:
     result = qualifiedLookUp(c, n, {checkUndeclared})
@@ -838,6 +844,8 @@ proc singlePragma(c: PContext, sym: PSym, n: PNode, i: var int,
         else: invalidPragma(c, it)
       of wImportCpp:
         processImportCpp(c, sym, getOptionalStr(c, it, "$1"), it.info)
+      of wCppNonPod:
+        incl(sym.flags, sfCppNonPod)
       of wImportJs:
         if c.config.backend != backendJs:
           localError(c.config, it.info, "`importjs` pragma requires the JavaScript target")
@@ -1237,23 +1245,23 @@ proc mergePragmas(n, pragmas: PNode) =
   else:
     for p in pragmas: n[pragmasPos].add p
 
-proc implicitPragmas*(c: PContext, sym: PSym, n: PNode,
+proc implicitPragmas*(c: PContext, sym: PSym, info: TLineInfo,
                       validPragmas: TSpecialWords) =
   if sym != nil and sym.kind != skModule:
     for it in c.optionStack:
       let o = it.otherPragmas
       if not o.isNil and sfFromGeneric notin sym.flags: # see issue #12985
-        pushInfoContext(c.config, n.info)
+        pushInfoContext(c.config, info)
         var i = 0
         while i < o.len:
           if singlePragma(c, sym, o, i, validPragmas, true, false):
-            internalError(c.config, n.info, "implicitPragmas")
+            internalError(c.config, info, "implicitPragmas")
           inc i
         popInfoContext(c.config)
         if sym.kind in routineKinds and sym.ast != nil: mergePragmas(sym.ast, o)
 
     if lfExportLib in sym.loc.flags and sfExportc notin sym.flags:
-      localError(c.config, n.info, ".dynlib requires .exportc")
+      localError(c.config, info, ".dynlib requires .exportc")
     var lib = c.optionStack[^1].dynlib
     if {lfDynamicLib, lfHeader} * sym.loc.flags == {} and
         sfImportc in sym.flags and lib != nil:
@@ -1283,4 +1291,11 @@ proc pragma(c: PContext, sym: PSym, n: PNode, validPragmas: TSpecialWords;
             isStatement: bool) =
   if n == nil: return
   pragmaRec(c, sym, n, validPragmas, isStatement)
-  implicitPragmas(c, sym, n, validPragmas)
+  # XXX: in the case of a callable def, this should use its info
+  implicitPragmas(c, sym, n.info, validPragmas)
+
+proc pragmaCallable*(c: PContext, sym: PSym, n: PNode, validPragmas: TSpecialWords,
+                    isStatement: bool = false) =
+  if n == nil: return
+  if n[pragmasPos].kind != nkEmpty:
+    pragmaRec(c, sym, n[pragmasPos], validPragmas, isStatement)

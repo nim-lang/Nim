@@ -39,7 +39,7 @@ type
     parent*: ref Exception ## Parent exception (can be used as a stack).
     name*: cstring         ## The exception's name is its Nim identifier.
                            ## This field is filled automatically in the
-                           ## ``raise`` statement.
+                           ## `raise` statement.
     msg* {.exportc: "message".}: string ## The exception's message. Not
                                         ## providing an exception message
                                         ## is bad style.
@@ -52,7 +52,7 @@ type
   Defect* = object of Exception ## \
     ## Abstract base class for all exceptions that Nim's runtime raises
     ## but that are strictly uncatchable as they can also be mapped to
-    ## a ``quit`` / ``trap`` / ``exit`` operation.
+    ## a `quit` / `trap` / `exit` operation.
 
   CatchableError* = object of Exception ## \
     ## Abstract class for all exceptions that are catchable.
@@ -110,13 +110,13 @@ type
     ## Raised if an object gets assigned to its parent's object.
   ObjectConversionDefect* = object of Defect ## \
     ## Raised if an object is converted to an incompatible object type.
-    ## You can use ``of`` operator to check if conversion will succeed.
+    ## You can use `of` operator to check if conversion will succeed.
   FloatingPointDefect* = object of Defect ## \
     ## Base class for floating point exceptions.
   FloatInvalidOpDefect* = object of FloatingPointDefect ## \
     ## Raised by invalid operations according to IEEE.
     ##
-    ## Raised by ``0.0/0.0``, for example.
+    ## Raised by `0.0/0.0`, for example.
   FloatDivByZeroDefect* = object of FloatingPointDefect ## \
     ## Raised by division by zero.
     ##
@@ -134,13 +134,13 @@ type
     ## Raised for inexact results.
     ##
     ## The operation produced a result that cannot be represented with infinite
-    ## precision -- for example: ``2.0 / 3.0, log(1.1)``
+    ## precision -- for example: `2.0 / 3.0, log(1.1)`
     ##
     ## **Note**: Nim currently does not detect these!
   DeadThreadDefect* = object of Defect ## \
     ## Raised if it is attempted to send a message to a dead thread.
   NilAccessDefect* = object of Defect ## \
-    ## Raised on dereferences of ``nil`` pointers.
+    ## Raised on dereferences of `nil` pointers.
     ##
     ## This is only raised if the `segfaults module <segfaults.html>`_ was imported!
 

@@ -36,11 +36,8 @@ proc newDepN(id: int, pnode: PNode): DepN =
 proc accQuoted(cache: IdentCache; n: PNode): PIdent =
   var id = ""
   for i in 0..<n.len:
-    let x = n[i]
-    case x.kind
-    of nkIdent: id.add(x.ident.s)
-    of nkSym: id.add(x.sym.name.s)
-    else: discard
+    let ident = n[i].getPIdent
+    if ident != nil: id.add(ident.s)
   result = getIdent(cache, id)
 
 proc addDecl(cache: IdentCache; n: PNode; declares: var IntSet) =
@@ -105,7 +102,9 @@ proc computeDeps(cache: IdentCache; n: PNode, declares, uses: var IntSet; topLev
       decl(a[1])
     else:
       for i in 0..<n.safeLen: deps(n[i])
+  of nkMixinStmt, nkBindStmt: discard
   else:
+    # XXX: for callables, this technically adds the return type dep before args
     for i in 0..<n.safeLen: deps(n[i])
 
 proc hasIncludes(n:PNode): bool =
@@ -190,7 +189,7 @@ proc mergeSections(conf: ConfigRef; comps: seq[seq[DepN]], res: PNode) =
         # their original relative order and make sure to re-merge
         # consecutive type and const sections
         var wmsg = "Circular dependency detected. `codeReordering` pragma may not be able to" &
-          " reorder some nodes properely"
+          " reorder some nodes properly"
         when defined(debugReorder):
           wmsg &= ":\n"
           for i in 0..<cs.len-1:

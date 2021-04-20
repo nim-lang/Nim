@@ -9,8 +9,10 @@
 
 ## Floating-point environment. Handling of floating-point rounding and
 ## exceptions (overflow, division by zero, etc.).
+## The types, vars and procs are bindings for the C standard library
+## [<fenv.h>](https://en.cppreference.com/w/c/numeric/fenv) header.
 
-when defined(Posix) and not defined(genode):
+when defined(posix) and not defined(genode):
   {.passl: "-lm".}
 
 var
@@ -35,8 +37,8 @@ var
   FE_UPWARD* {.importc, header: "<fenv.h>".}: cint
     ## round toward +Inf
   FE_DFL_ENV* {.importc, header: "<fenv.h>".}: cint
-    ## macro of type pointer to fenv_t to be used as the argument
-    ## to functions taking an argument of type fenv_t; in this
+    ## macro of type pointer to `fenv_t` to be used as the argument
+    ## to functions taking an argument of type `fenv_t`; in this
     ## case the default environment will be used
 
 type
@@ -128,7 +130,7 @@ template fpRadix*: int = FLT_RADIX
   ## point type on the architecture used to build the program.
 
 template mantissaDigits*(T: typedesc[float32]): int = FLT_MANT_DIG
-  ## Number of digits (in base ``floatingPointRadix``) in the mantissa
+  ## Number of digits (in base `floatingPointRadix`) in the mantissa
   ## of 32-bit floating-point numbers.
 template digits*(T: typedesc[float32]): int = FLT_DIG
   ## Number of decimal digits that can be represented in a
@@ -154,7 +156,7 @@ template epsilon*(T: typedesc[float32]): float32 = FLT_EPSILON
   ## 1.0 that can be represented in a 32-bit floating-point type.
 
 template mantissaDigits*(T: typedesc[float64]): int = DBL_MANT_DIG
-  ## Number of digits (in base ``floatingPointRadix``) in the mantissa
+  ## Number of digits (in base `floatingPointRadix`) in the mantissa
   ## of 64-bit floating-point numbers.
 template digits*(T: typedesc[float64]): int = DBL_DIG
   ## Number of decimal digits that can be represented in a

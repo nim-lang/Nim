@@ -42,14 +42,14 @@ proc main =
   st.add("www.weather.com",      "63.111.66.11")
   st.add("www.yahoo.com",        "216.109.118.65")
 
-  assert st.getOrDefault("www.cs.princeton.edu") == "abc"
-  assert st.getOrDefault("www.harvardsucks.com") == ""
+  doAssert st.getOrDefault("www.cs.princeton.edu") == "abc"
+  doAssert st.getOrDefault("www.harvardsucks.com") == ""
 
-  assert st.getOrDefault("www.simpsons.com") == "209.052.165.60"
-  assert st.getOrDefault("www.apple.com") == "17.112.152.32"
-  assert st.getOrDefault("www.ebay.com") == "66.135.192.87"
-  assert st.getOrDefault("www.dell.com") == "143.166.224.230"
-  assert(st.len == 16)
+  doAssert st.getOrDefault("www.simpsons.com") == "209.052.165.60"
+  doAssert st.getOrDefault("www.apple.com") == "17.112.152.32"
+  doAssert st.getOrDefault("www.ebay.com") == "66.135.192.87"
+  doAssert st.getOrDefault("www.dell.com") == "143.166.224.230"
+  doAssert(st.len == 16)
 
   for k, v in st:
     echo k, ": ", v

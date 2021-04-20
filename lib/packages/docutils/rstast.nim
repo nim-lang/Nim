@@ -8,8 +8,6 @@
 #
 
 ## This module implements an AST for the `reStructuredText`:idx: parser.
-##
-## **Note:** Import ``packages/docutils/rstast`` to use this module
 
 import strutils, json
 
@@ -18,6 +16,7 @@ type
     rnInner,                  # an inner node or a root
     rnHeadline,               # a headline
     rnOverline,               # an over- and underlined headline
+    rnMarkdownHeadline,       # a Markdown headline
     rnTransition,             # a transition (the ------------- <hr> thingie)
     rnParagraph,              # a paragraph
     rnBulletList,             # a bullet list
@@ -35,14 +34,19 @@ type
     rnOptionList, rnOptionListItem, rnOptionGroup, rnOption, rnOptionString,
     rnOptionArgument, rnDescription, rnLiteralBlock, rnQuotedLiteralBlock,
     rnLineBlock,              # the | thingie
-    rnLineBlockItem,          # sons of the | thing
+    rnLineBlockItem,          # a son of rnLineBlock - one line inside it.
+                              # When `RstNode` lineIndent="\n" the line's empty
     rnBlockQuote,             # text just indented
     rnTable, rnGridTable, rnMarkdownTable, rnTableRow, rnTableHeaderCell, rnTableDataCell,
-    rnLabel,                  # used for footnotes and other things
     rnFootnote,               # a footnote
-    rnCitation,               # similar to footnote
-    rnStandaloneHyperlink, rnHyperlink, rnRef, rnDirective, # a directive
-    rnDirArg, rnRaw, rnTitle, rnContents, rnImage, rnFigure, rnCodeBlock,
+    rnCitation,               # similar to footnote, so use rnFootnote instead
+    rnFootnoteGroup,          # footnote group - exists for a purely stylistic
+                              # reason: to display a few footnotes as 1 block
+    rnStandaloneHyperlink, rnHyperlink, rnRef, rnInternalRef, rnFootnoteRef,
+    rnDirective,              # a general directive
+    rnDirArg,                 # a directive argument (for some directives).
+                              # here are directives that are not rnDirective:
+    rnRaw, rnTitle, rnContents, rnImage, rnFigure, rnCodeBlock, rnAdmonition,
     rnRawHtml, rnRawLatex,
     rnContainer,              # ``container`` directive
     rnIndex,                  # index directve:
@@ -51,38 +55,64 @@ type
                               #     * `file#id <file#id>`_
                               #     * `file#id <file#id>'_
     rnSubstitutionDef,        # a definition of a substitution
-    rnGeneralRole,            # Inline markup:
+    # Inline markup:
+    rnInlineCode,
+    rnUnknownRole,            # interpreted text with an unknown role
     rnSub, rnSup, rnIdx,
     rnEmphasis,               # "*"
     rnStrongEmphasis,         # "**"
     rnTripleEmphasis,         # "***"
-    rnInterpretedText,        # "`"
+    rnInterpretedText,        # "`" an auxiliary role for parsing that will
+                              # be converted into other kinds like rnInlineCode
     rnInlineLiteral,          # "``"
+    rnInlineTarget,           # "_`target`"
     rnSubstitutionReferences, # "|"
     rnSmiley,                 # some smiley
+    rnDefaultRole,            # .. default-role:: code
     rnLeaf                    # a leaf; the node's text field contains the
                               # leaf val
 
 
   PRstNode* = ref RstNode    ## an RST node
   RstNodeSeq* = seq[PRstNode]
-  RstNode* {.acyclic, final.} = object ## an RST node's description
-    kind*: RstNodeKind       ## the node's kind
-    text*: string             ## valid for leafs in the AST; and the title of
-                              ## the document or the section
-    level*: int               ## valid for some node kinds
+  RstNode* {.acyclic, final.} = object ## AST node (result of RST parsing)
+    case kind*: RstNodeKind ## the node's kind
+    of rnLeaf, rnSmiley:
+      text*: string           ## string that is expected to be displayed
+    of rnEnumList:
+      labelFmt*: string       ## label format like "(1)"
+    of rnLineBlockItem:
+      lineIndent*: string     ## a few spaces or newline at the line beginning
+    of rnAdmonition:
+      adType*: string         ## admonition type: "note", "caution", etc. This
+                              ## text will set the style and also be displayed
+    of rnOverline, rnHeadline, rnMarkdownHeadline:
+      level*: int             ## level of headings starting from 1 (main
+                              ## chapter) to larger ones (minor sub-sections)
+                              ## level=0 means it's document title or subtitle
+    of rnFootnote, rnCitation, rnFootnoteRef, rnOptionListItem:
+      order*: int             ## footnote order (for auto-symbol footnotes and
+                              ## auto-numbered ones without a label)
+    else:
+      discard
+    anchor*: string           ## anchor, internal link target
+                              ## (aka HTML id tag, aka Latex label/hypertarget)
     sons*: RstNodeSeq        ## the node's sons
 
 proc len*(n: PRstNode): int =
   result = len(n.sons)
 
-proc newRstNode*(kind: RstNodeKind): PRstNode =
-  new(result)
-  result.sons = @[]
-  result.kind = kind
+proc newRstNode*(kind: RstNodeKind, sons: seq[PRstNode] = @[],
+                 anchor = ""): PRstNode =
+  result = PRstNode(kind: kind, sons: sons)
 
-proc newRstNode*(kind: RstNodeKind, s: string): PRstNode =
+proc newRstNode*(kind: RstNodeKind, s: string): PRstNode {.deprecated.} =
+  assert kind in {rnLeaf, rnSmiley}
   result = newRstNode(kind)
+  result.text = s
+
+proc newRstLeaf*(s: string): PRstNode =
+  result = newRstNode(rnLeaf)
   result.text = s
 
 proc lastSon*(n: PRstNode): PRstNode =
@@ -92,7 +122,7 @@ proc add*(father, son: PRstNode) =
   add(father.sons, son)
 
 proc add*(father: PRstNode; s: string) =
-  add(father.sons, newRstNode(rnLeaf, s))
+  add(father.sons, newRstLeaf(s))
 
 proc addIfNotNil*(father, son: PRstNode) =
   if son != nil: add(father, son)
@@ -225,7 +255,7 @@ proc renderRstToRst(d: var RenderContext, n: PRstNode, result: var string) =
     result.add(" <")
     renderRstToRst(d, n.sons[1], result)
     result.add(">`_")
-  of rnGeneralRole:
+  of rnUnknownRole:
     result.add('`')
     renderRstToRst(d, n.sons[0],result)
     result.add("`:")
@@ -298,7 +328,7 @@ proc renderRstToJsonNode(node: PRstNode): JsonNode =
       (key: "kind", val: %($node.kind)),
       (key: "level", val: %BiggestInt(node.level))
      ]
-  if node.text.len > 0:
+  if node.kind in {rnLeaf, rnSmiley} and node.text.len > 0:
     result.add("text", %node.text)
   if len(node.sons) > 0:
     var accm = newSeq[JsonNode](len(node.sons))
@@ -316,3 +346,35 @@ proc renderRstToJson*(node: PRstNode): string =
   ##     "sons":optional node array
   ##   }
   renderRstToJsonNode(node).pretty
+
+proc renderRstToStr*(node: PRstNode, indent=0): string =
+  ## Writes the parsed RST `node` into a compact string
+  ## representation in the format (one line per every sub-node):
+  ## ``indent - kind - [text|level|order|adType] - anchor (if non-zero)``
+  ## (suitable for debugging of RST parsing).
+  if node == nil:
+    result.add " ".repeat(indent) & "[nil]\n"
+    return
+  result.add " ".repeat(indent) & $node.kind
+  case node.kind
+  of rnLeaf, rnSmiley:
+    result.add (if node.text == "": "" else: "  '" & node.text & "'")
+  of rnEnumList:
+    result.add "  labelFmt=" & node.labelFmt
+  of rnLineBlockItem:
+    var txt: string
+    if node.lineIndent == "\n": txt = "  (blank line)"
+    else: txt = "  lineIndent=" & $node.lineIndent.len
+    result.add txt
+  of rnAdmonition:
+    result.add "  adType=" & node.adType
+  of rnHeadline, rnOverline, rnMarkdownHeadline:
+    result.add "  level=" & $node.level
+  of rnFootnote, rnCitation, rnFootnoteRef, rnOptionListItem:
+    result.add (if node.order == 0:   "" else: "  order=" & $node.order)
+  else:
+    discard
+  result.add (if node.anchor == "": "" else: "  anchor='" & node.anchor & "'")
+  result.add "\n"
+  for son in node.sons:
+    result.add renderRstToStr(son, indent=indent+2)

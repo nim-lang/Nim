@@ -1,4 +1,4 @@
-import complex, math
+import std/[complex, math]
 
 
 proc `=~`[T](x, y: Complex[T]): bool =
@@ -7,7 +7,7 @@ proc `=~`[T](x, y: Complex[T]): bool =
 proc `=~`[T](x: Complex[T]; y: T): bool =
   result = abs(x.re-y) < 1e-6 and abs(x.im) < 1e-6
 
-var
+let
   z: Complex64 = complex(0.0, 0.0)
   oo: Complex64 = complex(1.0, 1.0)
   a: Complex64 = complex(1.0, 2.0)
@@ -76,12 +76,12 @@ doAssert(arccsch(a) =~ arcsinh(1.0/a))
 doAssert(arccoth(a) =~ arctanh(1.0/a))
 
 doAssert(phase(a) == 1.1071487177940904)
-var t = polar(a)
+let t = polar(a)
 doAssert(rect(t.r, t.phi) =~ a)
 doAssert(rect(1.0, 2.0) =~ complex(-0.4161468365471424, 0.9092974268256817))
 
 
-var
+let
   i64: Complex32 = complex(0.0f, 1.0f)
   a64: Complex32 = 2.0f*i64 + 1.0.float32
   b64: Complex32 = complex(-1.0'f32, -2.0'f32)
@@ -96,7 +96,7 @@ doAssert(sin(arcsin(b64)) =~ b64)
 doAssert(cosh(arccosh(a64)) =~ a64)
 
 doAssert(phase(a64) - 1.107149f < 1e-6)
-var t64 = polar(a64)
+let t64 = polar(a64)
 doAssert(rect(t64.r, t64.phi) =~ a64)
 doAssert(rect(1.0f, 2.0f) =~ complex(-0.4161468f, 0.90929742f))
 doAssert(sizeof(a64) == 8)
@@ -104,5 +104,5 @@ doAssert(sizeof(a) == 16)
 
 doAssert 123.0.im + 456.0 == complex64(456, 123)
 
-var localA = complex(0.1'f32)
+let localA = complex(0.1'f32)
 doAssert localA.im is float32

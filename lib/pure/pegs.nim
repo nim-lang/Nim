@@ -21,6 +21,7 @@ const
   useUnicode = true ## change this to deactivate proper UTF-8 support
 
 import strutils, macros
+import std/private/decode_helpers
 
 when useUnicode:
   import unicode
@@ -940,7 +941,7 @@ template eventParser*(pegAst, handlers: untyped): (proc(s: string): int) =
   ## evaluates an arithmetic expression defined by a simple PEG:
   ##
   ## .. code-block:: nim
-  ##  import strutils, pegs
+  ##  import std/[strutils, pegs]
   ##
   ##  let
   ##    pegAst = """
@@ -1157,9 +1158,6 @@ proc findAll*(s: string, pattern: Peg, start = 0): seq[string] {.
   result = @[]
   for it in findAll(s, pattern, start): result.add it
 
-when not defined(nimhygiene):
-  {.pragma: inject.}
-
 template `=~`*(s: string, pattern: Peg): bool =
   ## This calls ``match`` with an implicit declared ``matches`` array that
   ## can be used in the scope of the ``=~`` call:
@@ -1331,7 +1329,7 @@ when not defined(js):
     ## error occurs. This is supposed to be used for quick scripting.
     ##
     ## **Note**: this proc does not exist while using the JS backend.
-    var x = readFile(infile).string
+    var x = readFile(infile)
     writeFile(outfile, x.parallelReplace(subs))
 
 
@@ -1466,19 +1464,6 @@ proc errorStr(L: PegLexer, msg: string, line = -1, col = -1): string =
   var col = if col < 0: getColumn(L) else: col
   result = "$1($2, $3) Error: $4" % [L.filename, $line, $col, msg]
 
-proc handleHexChar(c: var PegLexer, xi: var int) =
-  case c.buf[c.bufpos]
-  of '0'..'9':
-    xi = (xi shl 4) or (ord(c.buf[c.bufpos]) - ord('0'))
-    inc(c.bufpos)
-  of 'a'..'f':
-    xi = (xi shl 4) or (ord(c.buf[c.bufpos]) - ord('a') + 10)
-    inc(c.bufpos)
-  of 'A'..'F':
-    xi = (xi shl 4) or (ord(c.buf[c.bufpos]) - ord('A') + 10)
-    inc(c.bufpos)
-  else: discard
-
 proc getEscapedChar(c: var PegLexer, tok: var Token) =
   inc(c.bufpos)
   if c.bufpos >= len(c.buf):
@@ -1515,8 +1500,10 @@ proc getEscapedChar(c: var PegLexer, tok: var Token) =
       tok.kind = tkInvalid
       return
     var xi = 0
-    handleHexChar(c, xi)
-    handleHexChar(c, xi)
+    if handleHexChar(c.buf[c.bufpos], xi):
+      inc(c.bufpos)
+      if handleHexChar(c.buf[c.bufpos], xi):
+        inc(c.bufpos)
     if xi == 0: tok.kind = tkInvalid
     else: add(tok.literal, chr(xi))
   of '0'..'9':

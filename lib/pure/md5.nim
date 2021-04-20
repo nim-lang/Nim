@@ -7,11 +7,14 @@
 #    distribution, for details about the copyright.
 #
 
-## Module for computing `MD5 checksums <https://en.wikipedia.org/wiki/MD5>`_.
+## Module for computing [MD5 checksums](https://en.wikipedia.org/wiki/MD5).
 ##
-## **See also:**
-## * `base64 module<base64.html>`_ implements a base64 encoder and decoder
-## * `std/sha1 module <sha1.html>`_ for a sha1 encoder and decoder
+## **Note:** The procs in this module can be used at compile time.
+##
+## See also
+## ========
+## * `base64 module<base64.html>`_ implements a Base64 encoder and decoder
+## * `std/sha1 module <sha1.html>`_ for a SHA-1 encoder and decoder
 ## * `hashes module<hashes.html>`_ for efficient computations of hash values
 ##   for diverse Nim types
 
@@ -22,8 +25,8 @@ type
   MD5State = array[0..3, uint32]
   MD5Block = array[0..15, uint32]
   MD5CBits = array[0..7, uint8]
-  MD5Digest* = array[0..15, uint8] ## \
-    ## MD5 checksum of a string, obtained with `toMD5 proc <#toMD5,string>`_.
+  MD5Digest* = array[0..15, uint8]
+    ## MD5 checksum of a string, obtained with the `toMD5 proc <#toMD5,string>`_.
   MD5Buffer = array[0..63, uint8]
   MD5Context* {.final.} = object
     state: MD5State
@@ -180,7 +183,7 @@ proc md5Final*(c: var MD5Context, digest: var MD5Digest) {.raises: [], tags: [],
 proc toMD5*(s: string): MD5Digest =
   ## Computes the `MD5Digest` value for a string `s`.
   ##
-  ## See also:
+  ## **See also:**
   ## * `getMD5 proc <#getMD5,string>`_ which returns a string representation
   ##   of the `MD5Digest`
   ## * `$ proc <#$,MD5Digest>`_ for converting MD5Digest to string
@@ -202,10 +205,8 @@ proc `$`*(d: MD5Digest): string =
 
 proc getMD5*(s: string): string =
   ## Computes an MD5 value of `s` and returns its string representation.
-  ## .. note::
-  ## available at compile time
   ##
-  ## See also:
+  ## **See also:**
   ## * `toMD5 proc <#toMD5,string>`_ which returns the `MD5Digest` of a string
   runnableExamples:
     assert getMD5("abc") == "900150983cd24fb0d6963f7d28e17f72"
@@ -226,9 +227,9 @@ proc `==`*(D1, D2: MD5Digest): bool =
 
 
 proc md5Init*(c: var MD5Context) =
-  ## Initializes a `MD5Context`.
+  ## Initializes an `MD5Context`.
   ##
-  ## If you use `toMD5 proc <#toMD5,string>`_ there's no need to call this
+  ## If you use the `toMD5 proc <#toMD5,string>`_, there's no need to call this
   ## function explicitly.
   c.state[0] = 0x67452301'u32
   c.state[1] = 0xEFCDAB89'u32
@@ -241,7 +242,7 @@ proc md5Init*(c: var MD5Context) =
 proc md5Update*(c: var MD5Context, input: cstring, len: int) =
   ## Updates the `MD5Context` with the `input` data of length `len`.
   ##
-  ## If you use `toMD5 proc <#toMD5,string>`_ there's no need to call this
+  ## If you use the `toMD5 proc <#toMD5,string>`_, there's no need to call this
   ## function explicitly.
   var input = input
   var Index = int((c.count[0] shr 3) and 0x3F)
@@ -263,7 +264,7 @@ proc md5Update*(c: var MD5Context, input: cstring, len: int) =
 proc md5Final*(c: var MD5Context, digest: var MD5Digest) =
   ## Finishes the `MD5Context` and stores the result in `digest`.
   ##
-  ## If you use `toMD5 proc <#toMD5,string>`_ there's no need to call this
+  ## If you use the `toMD5 proc <#toMD5,string>`_, there's no need to call this
   ## function explicitly.
   var
     Bits: MD5CBits

@@ -60,12 +60,12 @@ block titerator1:
   for key, val in fieldPairs(x):
     echo key, ": ", val
 
-  assert x != y
-  assert x == x
-  assert(not (x < x))
-  assert x <= x
-  assert y < x
-  assert y <= x
+  doAssert x != y
+  doAssert x == x
+  doAssert(not (x < x))
+  doAssert x <= x
+  doAssert y < x
+  doAssert y <= x
 
 
 block titerator2:

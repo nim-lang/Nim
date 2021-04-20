@@ -8,8 +8,9 @@
 #
 
 ## Profiling support for Nim. This is an embedded profiler that requires
-## ``--profiler:on``. You only need to import this module to get a profiling
-## report at program exit.
+## `--profiler:on`. You only need to import this module to get a profiling
+## report at program exit. See `Embedded Stack Trace Profiler <estp.html>`_
+## for usage.
 
 when not defined(profiler) and not defined(memProfiler):
   {.error: "Profiling support is turned off! Enable profiling by passing `--profiler:on --stackTrace:on` to the compiler (see the Nim Compiler User Guide for more options).".}
@@ -222,8 +223,9 @@ proc enableProfiling*() =
       system.profilingRequestedHook = requestedHook
 
 when declared(system.StackTrace):
+  import std/exitprocs
   system.profilingRequestedHook = requestedHook
   system.profilerHook = hook
-  addQuitProc(writeProfile)
+  addExitProc(writeProfile)
 
 {.pop.}

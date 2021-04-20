@@ -22,7 +22,7 @@
 ##
 ## .. code-block:: nim
 ##
-##    import os, parsecfg, strutils, streams
+##    import std/[os, parsecfg, strutils, streams]
 ##
 ##    var f = newFileStream(paramStr(1), fmRead)
 ##    if f != nil:
@@ -32,7 +32,7 @@
 ##        var e = next(p)
 ##        case e.kind
 ##        of cfgEof: break
-##        of cfgSectionStart:   ## a ``[section]`` has been parsed
+##        of cfgSectionStart:   ## a `[section]` has been parsed
 ##          echo("new section: " & e.section)
 ##        of cfgKeyValuePair:
 ##          echo("key-value-pair: " & e.key & ": " & e.value)
@@ -66,7 +66,7 @@
 ## -----------------------------
 ## .. code-block:: nim
 ##
-##     import parsecfg
+##     import std/parsecfg
 ##     var dict=newConfig()
 ##     dict.setSectionKey("","charset","utf-8")
 ##     dict.setSectionKey("Package","name","hello")
@@ -80,7 +80,7 @@
 ## ----------------------------
 ## .. code-block:: nim
 ##
-##     import parsecfg
+##     import std/parsecfg
 ##     var dict = loadConfig("config.ini")
 ##     var charset = dict.getSectionValue("","charset")
 ##     var threads = dict.getSectionValue("Package","--threads")
@@ -94,7 +94,7 @@
 ## ------------------------------
 ## .. code-block:: nim
 ##
-##     import parsecfg
+##     import std/parsecfg
 ##     var dict = loadConfig("config.ini")
 ##     dict.setSectionKey("Author","name","lhf")
 ##     dict.writeConfig("config.ini")
@@ -103,7 +103,7 @@
 ## ----------------------------------------------
 ## .. code-block:: nim
 ##
-##     import parsecfg
+##     import std/parsecfg
 ##     var dict = loadConfig("config.ini")
 ##     dict.delSectionKey("Author","email")
 ##     dict.writeConfig("config.ini")
@@ -115,7 +115,7 @@
 
 # taken from https://docs.python.org/3/library/configparser.html#supported-ini-file-structure
 runnableExamples:
-  import streams
+  import std/streams
 
   var dict = loadConfig(newStringStream("""[Simple Values]
     key=value
@@ -172,8 +172,9 @@ runnableExamples:
   doAssert dict.getSectionValue(section4, "does_that_mean_anything_special") == "False"
   doAssert dict.getSectionValue(section4, "purpose") == "formatting for readability"
 
-import
-  strutils, lexbase, streams, tables
+import strutils, lexbase, streams, tables
+import std/private/decode_helpers
+import std/private/since
 
 include "system/inclrtl"
 
@@ -247,20 +248,6 @@ proc getFilename*(c: CfgParser): string {.rtl, extern: "npc$1".} =
   ## Gets the filename of the file that the parser processes.
   result = c.filename
 
-proc handleHexChar(c: var CfgParser, xi: var int) =
-  case c.buf[c.bufpos]
-  of '0'..'9':
-    xi = (xi shl 4) or (ord(c.buf[c.bufpos]) - ord('0'))
-    inc(c.bufpos)
-  of 'a'..'f':
-    xi = (xi shl 4) or (ord(c.buf[c.bufpos]) - ord('a') + 10)
-    inc(c.bufpos)
-  of 'A'..'F':
-    xi = (xi shl 4) or (ord(c.buf[c.bufpos]) - ord('A') + 10)
-    inc(c.bufpos)
-  else:
-    discard
-
 proc handleDecChars(c: var CfgParser, xi: var int) =
   while c.buf[c.bufpos] in {'0'..'9'}:
     xi = (xi * 10) + (ord(c.buf[c.bufpos]) - ord('0'))
@@ -305,8 +292,10 @@ proc getEscapedChar(c: var CfgParser, tok: var Token) =
   of 'x', 'X':
     inc(c.bufpos)
     var xi = 0
-    handleHexChar(c, xi)
-    handleHexChar(c, xi)
+    if handleHexChar(c.buf[c.bufpos], xi):
+      inc(c.bufpos)
+      if handleHexChar(c.buf[c.bufpos], xi):
+        inc(c.bufpos)
     add(tok.literal, chr(xi))
   of '0'..'9':
     var xi = 0
@@ -661,3 +650,8 @@ proc delSectionKey*(dict: var Config, section, key: string) =
         dict.del(section)
       else:
         dict[section].del(key)
+
+iterator sections*(dict: Config): lent string {.since: (1, 5).} =
+  ## Iterates through the sections in the `dict`.
+  for section in dict.keys:
+    yield section

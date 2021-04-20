@@ -30,11 +30,11 @@ doAssert editDistanceAscii("kitten", "sitting") == 3 # from Wikipedia
 doAssert editDistanceAscii("flaw", "lawn") == 2 # from Wikipedia
 
 
-assert(editDistance("prefix__hallo_suffix", "prefix__hallo_suffix") == 0)
-assert(editDistance("prefix__hallo_suffix", "prefix__hallo_suffi1") == 1)
-assert(editDistance("prefix__hallo_suffix", "prefix__HALLO_suffix") == 5)
-assert(editDistance("prefix__hallo_suffix", "prefix__ha_suffix") == 3)
-assert(editDistance("prefix__hallo_suffix", "prefix") == 14)
-assert(editDistance("prefix__hallo_suffix", "suffix") == 14)
-assert(editDistance("prefix__hallo_suffix", "prefix__hao_suffix") == 2)
-assert(editDistance("main", "malign") == 2)
+doAssert(editDistance("prefix__hallo_suffix", "prefix__hallo_suffix") == 0)
+doAssert(editDistance("prefix__hallo_suffix", "prefix__hallo_suffi1") == 1)
+doAssert(editDistance("prefix__hallo_suffix", "prefix__HALLO_suffix") == 5)
+doAssert(editDistance("prefix__hallo_suffix", "prefix__ha_suffix") == 3)
+doAssert(editDistance("prefix__hallo_suffix", "prefix") == 14)
+doAssert(editDistance("prefix__hallo_suffix", "suffix") == 14)
+doAssert(editDistance("prefix__hallo_suffix", "prefix__hao_suffix") == 2)
+doAssert(editDistance("main", "malign") == 2)

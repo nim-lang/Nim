@@ -11,7 +11,8 @@
 
 import
   intsets, ast, astalgo, idents, semdata, types, msgs, options,
-  renderer, nimfix/prettybase, lineinfos, strutils
+  renderer, nimfix/prettybase, lineinfos, strutils,
+  modulegraphs
 
 proc ensureNoMissingOrUnusedSymbols(c: PContext; scope: PScope)
 
@@ -74,11 +75,16 @@ proc closeScope*(c: PContext) =
   ensureNoMissingOrUnusedSymbols(c, c.currentScope)
   rawCloseScope(c)
 
-iterator walkScopes*(scope: PScope): PScope =
+iterator allScopes*(scope: PScope): PScope =
   var current = scope
   while current != nil:
     yield current
     current = current.parent
+
+iterator localScopesFrom*(c: PContext; scope: PScope): PScope =
+  for s in allScopes(scope):
+    if s == c.topLevelScope: break
+    yield s
 
 proc skipAlias*(s: PSym; n: PNode; conf: ConfigRef): PSym =
   if s == nil or s.kind != skAlias:
@@ -91,7 +97,8 @@ proc skipAlias*(s: PSym; n: PNode; conf: ConfigRef): PSym =
       message(conf, n.info, warnDeprecated, "use " & result.name.s & " instead; " &
               s.name.s & " is deprecated")
 
-proc isShadowScope*(s: PScope): bool {.inline.} = s.parent != nil and s.parent.depthLevel == s.depthLevel
+proc isShadowScope*(s: PScope): bool {.inline.} =
+  s.parent != nil and s.parent.depthLevel == s.depthLevel
 
 proc localSearchInScope*(c: PContext, s: PIdent): PSym =
   var scope = c.currentScope
@@ -101,30 +108,121 @@ proc localSearchInScope*(c: PContext, s: PIdent): PSym =
     scope = scope.parent
     result = strTableGet(scope.symbols, s)
 
-proc searchInScopes*(c: PContext, s: PIdent): PSym =
-  for scope in walkScopes(c.currentScope):
-    result = strTableGet(scope.symbols, s)
-    if result != nil: return
-  result = nil
+proc initIdentIter(ti: var ModuleIter; marked: var IntSet; im: ImportedModule; name: PIdent;
+                   g: ModuleGraph): PSym =
+  result = initModuleIter(ti, g, im.m, name)
+  while result != nil:
+    let b =
+      case im.mode
+      of importAll: true
+      of importSet: result.id in im.imported
+      of importExcept: name.id notin im.exceptSet
+    if b and not containsOrIncl(marked, result.id):
+      return result
+    result = nextModuleIter(ti, g)
 
-proc debugScopes*(c: PContext; limit=0) {.deprecated.} =
+proc nextIdentIter(ti: var ModuleIter; marked: var IntSet; im: ImportedModule;
+                   g: ModuleGraph): PSym =
+  while true:
+    result = nextModuleIter(ti, g)
+    if result == nil: return nil
+    case im.mode
+    of importAll:
+      if not containsOrIncl(marked, result.id):
+        return result
+    of importSet:
+      if result.id in im.imported and not containsOrIncl(marked, result.id):
+        return result
+    of importExcept:
+      if result.name.id notin im.exceptSet and not containsOrIncl(marked, result.id):
+        return result
+
+iterator symbols(im: ImportedModule; marked: var IntSet; name: PIdent; g: ModuleGraph): PSym =
+  var ti: ModuleIter
+  var candidate = initIdentIter(ti, marked, im, name, g)
+  while candidate != nil:
+    yield candidate
+    candidate = nextIdentIter(ti, marked, im, g)
+
+iterator importedItems*(c: PContext; name: PIdent): PSym =
+  var marked = initIntSet()
+  for im in c.imports.mitems:
+    for s in symbols(im, marked, name, c.graph):
+      yield s
+
+proc allPureEnumFields(c: PContext; name: PIdent): seq[PSym] =
+  var ti: TIdentIter
+  result = @[]
+  var res = initIdentIter(ti, c.pureEnumFields, name)
+  while res != nil:
+    result.add res
+    res = nextIdentIter(ti, c.pureEnumFields)
+
+iterator allSyms*(c: PContext): (PSym, int, bool) =
+  # really iterate over all symbols in all the scopes. This is expensive
+  # and only used by suggest.nim.
+  var isLocal = true
+  var scopeN = 0
+  for scope in allScopes(c.currentScope):
+    if scope == c.topLevelScope: isLocal = false
+    dec scopeN
+    for item in scope.symbols:
+      yield (item, scopeN, isLocal)
+
+  dec scopeN
+  isLocal = false
+  for im in c.imports.mitems:
+    for s in modulegraphs.allSyms(c.graph, im.m):
+      assert s != nil
+      yield (s, scopeN, isLocal)
+
+proc someSymFromImportTable*(c: PContext; name: PIdent; ambiguous: var bool): PSym =
+  var marked = initIntSet()
+  result = nil
+  for im in c.imports.mitems:
+    for s in symbols(im, marked, name, c.graph):
+      if result == nil:
+        result = s
+      else:
+        if s.kind notin OverloadableSyms or result.kind notin OverloadableSyms:
+          ambiguous = true
+
+proc searchInScopes*(c: PContext, s: PIdent; ambiguous: var bool): PSym =
+  for scope in allScopes(c.currentScope):
+    result = strTableGet(scope.symbols, s)
+    if result != nil: return result
+  result = someSymFromImportTable(c, s, ambiguous)
+
+proc debugScopes*(c: PContext; limit=0, max = int.high) {.deprecated.} =
   var i = 0
-  for scope in walkScopes(c.currentScope):
+  var count = 0
+  for scope in allScopes(c.currentScope):
     echo "scope ", i
     for h in 0..high(scope.symbols.data):
       if scope.symbols.data[h] != nil:
-        echo scope.symbols.data[h].name.s
-    if i == limit: break
+        if count >= max: return
+        echo count, ": ", scope.symbols.data[h].name.s
+        count.inc
+    if i == limit: return
     inc i
 
-proc searchInScopes*(c: PContext, s: PIdent, filter: TSymKinds): PSym =
-  for scope in walkScopes(c.currentScope):
+proc searchInScopesFilterBy*(c: PContext, s: PIdent, filter: TSymKinds): seq[PSym] =
+  result = @[]
+  for scope in allScopes(c.currentScope):
     var ti: TIdentIter
     var candidate = initIdentIter(ti, scope.symbols, s)
     while candidate != nil:
-      if candidate.kind in filter: return candidate
+      if candidate.kind in filter:
+        if result.len == 0:
+          result.add candidate
       candidate = nextIdentIter(ti, scope.symbols)
-  result = nil
+
+  if result.len == 0:
+    var marked = initIntSet()
+    for im in c.imports.mitems:
+      for s in symbols(im, marked, s, c.graph):
+        if s.kind in filter:
+          result.add s
 
 proc errorSym*(c: PContext, n: PNode): PSym =
   ## creates an error symbol to avoid cascading errors (for IDE support)
@@ -135,12 +233,12 @@ proc errorSym*(c: PContext, n: PNode): PSym =
       considerQuotedIdent(c, m)
     else:
       getIdent(c.cache, "err:" & renderTree(m))
-  result = newSym(skError, ident, nextId(c.idgen), getCurrOwner(c), n.info, {})
+  result = newSym(skError, ident, nextSymId(c.idgen), getCurrOwner(c), n.info, {})
   result.typ = errorType(c)
   incl(result.flags, sfDiscardable)
-  # pretend it's imported from some unknown module to prevent cascading errors:
+  # pretend it's from the top level scope to prevent cascading errors:
   if c.config.cmd != cmdInteractive and c.compilesContextId == 0:
-    c.importTable.addSym(result)
+    c.moduleScope.addSym(result)
 
 type
   TOverloadIterMode* = enum
@@ -148,11 +246,13 @@ type
     oimSymChoiceLocalLookup
   TOverloadIter* = object
     it*: TIdentIter
+    mit*: ModuleIter
     m*: PSym
     mode*: TOverloadIterMode
     symChoiceIndex*: int
-    scope*: PScope
-    inSymChoice: IntSet
+    currentScope: PScope
+    importIdx: int
+    marked: IntSet
 
 proc getSymRepr*(conf: ConfigRef; s: PSym, getDeclarationPath = true): string =
   case s.kind
@@ -187,6 +287,7 @@ proc ensureNoMissingOrUnusedSymbols(c: PContext; scope: PScope) =
 
 proc wrongRedefinition*(c: PContext; info: TLineInfo, s: string;
                         conflictsWith: TLineInfo) =
+  ## Emit a redefinition error if in non-interactive mode
   if c.config.cmd != cmdInteractive:
     localError(c.config, info,
       "redefinition of '$1'; previous declaration here: $2" %
@@ -210,11 +311,17 @@ proc addDeclAt*(c: PContext; scope: PScope, sym: PSym) =
   if conflict != nil:
     wrongRedefinition(c, sym.info, sym.name.s, conflict.info)
 
-proc addInterfaceDeclAux(c: PContext, sym: PSym) =
-  if sfExported in sym.flags:
+from ic / ic import addHidden
+
+proc addInterfaceDeclAux*(c: PContext, sym: PSym, forceExport = false) =
+  if sfExported in sym.flags or forceExport:
     # add to interface:
-    if c.module != nil: strTableAdd(c.module.tab, sym)
+    if c.module != nil: exportSym(c, sym)
     else: internalError(c.config, sym.info, "addInterfaceDeclAux")
+  elif sym.kind in ExportableSymKinds and c.module != nil and isTopLevelInsideDeclaration(c, sym):
+    strTableAdd(semtabAll(c.graph, c.module), sym)
+    if c.config.symbolFiles != disabledSf:
+      addHidden(c.encoder, c.packedRepr, sym)
 
 proc addInterfaceDeclAt*(c: PContext, scope: PScope, sym: PSym) =
   addDeclAt(c, scope, sym)
@@ -257,39 +364,106 @@ proc mergeShadowScope*(c: PContext) =
     else:
       c.addInterfaceDecl(sym)
 
-when defined(nimfix):
-  # when we cannot find the identifier, retry with a changed identifier:
-  proc altSpelling(x: PIdent): PIdent =
+when false:
+  # `nimfix` used to call `altSpelling` and prettybase.replaceDeprecated(n.info, ident, alt)
+  proc altSpelling(c: PContext, x: PIdent): PIdent =
     case x.s[0]
-    of 'A'..'Z': result = getIdent(toLowerAscii(x.s[0]) & x.s.substr(1))
-    of 'a'..'z': result = getIdent(toLowerAscii(x.s[0]) & x.s.substr(1))
+    of 'A'..'Z': result = getIdent(c.cache, toLowerAscii(x.s[0]) & x.s.substr(1))
+    of 'a'..'z': result = getIdent(c.cache, toLowerAscii(x.s[0]) & x.s.substr(1))
     else: result = x
 
-  template fixSpelling(n: PNode; ident: PIdent; op: untyped) =
-    let alt = ident.altSpelling
-    result = op(c, alt).skipAlias(n)
-    if result != nil:
-      prettybase.replaceDeprecated(n.info, ident, alt)
-      return result
-else:
-  template fixSpelling(n: PNode; ident: PIdent; op: untyped) = discard
+import std/[editdistance, heapqueue]
 
-proc errorUseQualifier*(c: PContext; info: TLineInfo; s: PSym) =
+type SpellCandidate = object
+  dist: int
+  depth: int
+  msg: string
+  sym: PSym
+
+template toOrderTup(a: SpellCandidate): auto =
+  # `dist` is first, to favor nearby matches
+  # `depth` is next, to favor nearby enclosing scopes among ties
+  # `sym.name.s` is last, to make the list ordered and deterministic among ties
+  (a.dist, a.depth, a.msg)
+
+proc `<`(a, b: SpellCandidate): bool =
+  a.toOrderTup < b.toOrderTup
+
+proc mustFixSpelling(c: PContext): bool {.inline.} =
+  result = c.config.spellSuggestMax != 0 and c.compilesContextId == 0
+    # don't slowdown inside compiles()
+
+proc fixSpelling(c: PContext, n: PNode, ident: PIdent, result: var string) =
+  ## when we cannot find the identifier, suggest nearby spellings
+  var list = initHeapQueue[SpellCandidate]()
+  let name0 = ident.s.nimIdentNormalize
+
+  for (sym, depth, isLocal) in allSyms(c):
+    let depth = -depth - 1
+    let dist = editDistance(name0, sym.name.s.nimIdentNormalize)
+    var msg: string
+    msg.add "\n ($1, $2): '$3'" % [$dist, $depth, sym.name.s]
+    addDeclaredLoc(msg, c.config, sym) # `msg` needed for deterministic ordering.
+    list.push SpellCandidate(dist: dist, depth: depth, msg: msg, sym: sym)
+
+  if list.len == 0: return
+  let e0 = list[0]
+  var count = 0
+  while true:
+    # pending https://github.com/timotheecour/Nim/issues/373 use more efficient `itemsSorted`.
+    if list.len == 0: break
+    let e = list.pop()
+    if c.config.spellSuggestMax == spellSuggestSecretSauce:
+      const
+        smallThres = 2
+        maxCountForSmall = 4
+        # avoids ton of operator matches when mis-matching short symbols such as `i`
+        # other heuristics could be devised, such as only suggesting operators if `name0`
+        # is an operator (likewise with non-operators).
+      if e.dist > e0.dist or (name0.len <= smallThres and count >= maxCountForSmall): break
+    elif count >= c.config.spellSuggestMax: break
+    if count == 0:
+      result.add "\ncandidates (edit distance, scope distance); see '--spellSuggest': "
+    result.add e.msg
+    count.inc
+
+proc errorUseQualifier(c: PContext; info: TLineInfo; s: PSym; amb: var bool): PSym =
   var err = "ambiguous identifier: '" & s.name.s & "'"
-  var ti: TIdentIter
-  var candidate = initIdentIter(ti, c.importTable.symbols, s.name)
   var i = 0
-  while candidate != nil:
+  var ignoredModules = 0
+  for candidate in importedItems(c, s.name):
     if i == 0: err.add " -- use one of the following:\n"
     else: err.add "\n"
     err.add "  " & candidate.owner.name.s & "." & candidate.name.s
     err.add ": " & typeToString(candidate.typ)
-    candidate = nextIdentIter(ti, c.importTable.symbols)
+    if candidate.kind == skModule:
+      inc ignoredModules
+    else:
+      result = candidate
+    inc i
+  if ignoredModules != i-1:
+    localError(c.config, info, errGenerated, err)
+    result = nil
+  else:
+    amb = false
+
+proc errorUseQualifier*(c: PContext; info: TLineInfo; s: PSym) =
+  var amb: bool
+  discard errorUseQualifier(c, info, s, amb)
+
+proc errorUseQualifier(c: PContext; info: TLineInfo; candidates: seq[PSym]) =
+  var err = "ambiguous identifier: '" & candidates[0].name.s & "'"
+  var i = 0
+  for candidate in candidates:
+    if i == 0: err.add " -- use one of the following:\n"
+    else: err.add "\n"
+    err.add "  " & candidate.owner.name.s & "." & candidate.name.s
+    err.add ": " & typeToString(candidate.typ)
     inc i
   localError(c.config, info, errGenerated, err)
 
-proc errorUndeclaredIdentifier*(c: PContext; info: TLineInfo; name: string) =
-  var err = "undeclared identifier: '" & name & "'"
+proc errorUndeclaredIdentifier*(c: PContext; info: TLineInfo; name: string, extra = "") =
+  var err = "undeclared identifier: '" & name & "'" & extra
   if c.recursiveDep.len > 0:
     err.add "\nThis might be caused by a recursive module dependency:\n"
     err.add c.recursiveDep
@@ -297,29 +471,31 @@ proc errorUndeclaredIdentifier*(c: PContext; info: TLineInfo; name: string) =
     c.recursiveDep = ""
   localError(c.config, info, errGenerated, err)
 
+proc errorUndeclaredIdentifierHint*(c: PContext; n: PNode, ident: PIdent): PSym =
+  var extra = ""
+  if c.mustFixSpelling: fixSpelling(c, n, ident, extra)
+  errorUndeclaredIdentifier(c, n.info, ident.s, extra)
+  result = errorSym(c, n)
+
 proc lookUp*(c: PContext, n: PNode): PSym =
   # Looks up a symbol. Generates an error in case of nil.
+  var amb = false
   case n.kind
   of nkIdent:
-    result = searchInScopes(c, n.ident).skipAlias(n, c.config)
-    if result == nil:
-      fixSpelling(n, n.ident, searchInScopes)
-      errorUndeclaredIdentifier(c, n.info, n.ident.s)
-      result = errorSym(c, n)
+    result = searchInScopes(c, n.ident, amb).skipAlias(n, c.config)
+    if result == nil: result = errorUndeclaredIdentifierHint(c, n, n.ident)
   of nkSym:
     result = n.sym
   of nkAccQuoted:
     var ident = considerQuotedIdent(c, n)
-    result = searchInScopes(c, ident).skipAlias(n, c.config)
-    if result == nil:
-      fixSpelling(n, ident, searchInScopes)
-      errorUndeclaredIdentifier(c, n.info, ident.s)
-      result = errorSym(c, n)
+    result = searchInScopes(c, ident, amb).skipAlias(n, c.config)
+    if result == nil: result = errorUndeclaredIdentifierHint(c, n, ident)
   else:
     internalError(c.config, n.info, "lookUp")
     return
-  if contains(c.ambiguousSymbols, result.id):
-    errorUseQualifier(c, n.info, result)
+  if amb:
+    #contains(c.ambiguousSymbols, result.id):
+    result = errorUseQualifier(c, n.info, result, amb)
   when false:
     if result.kind == skStub: loadStub(result)
 
@@ -328,29 +504,38 @@ type
     checkAmbiguity, checkUndeclared, checkModule, checkPureEnumFields
 
 proc qualifiedLookUp*(c: PContext, n: PNode, flags: set[TLookupFlag]): PSym =
-  const allExceptModule = {low(TSymKind)..high(TSymKind)}-{skModule,skPackage}
+  const allExceptModule = {low(TSymKind)..high(TSymKind)} - {skModule, skPackage}
   case n.kind
   of nkIdent, nkAccQuoted:
+    var amb = false
     var ident = considerQuotedIdent(c, n)
     if checkModule in flags:
-      result = searchInScopes(c, ident).skipAlias(n, c.config)
+      result = searchInScopes(c, ident, amb).skipAlias(n, c.config)
     else:
-      result = searchInScopes(c, ident, allExceptModule).skipAlias(n, c.config)
-    if result == nil and checkPureEnumFields in flags:
-      result = strTableGet(c.pureEnumFields, ident)
+      let candidates = searchInScopesFilterBy(c, ident, allExceptModule) #.skipAlias(n, c.config)
+      if candidates.len > 0:
+        result = candidates[0]
+        amb = candidates.len > 1
+        if amb and checkAmbiguity in flags:
+          errorUseQualifier(c, n.info, candidates)
+    if result == nil:
+      let candidates = allPureEnumFields(c, ident)
+      if candidates.len > 0:
+        result = candidates[0]
+        amb = candidates.len > 1
+        if amb and checkAmbiguity in flags:
+          errorUseQualifier(c, n.info, candidates)
+
     if result == nil and checkUndeclared in flags:
-      fixSpelling(n, ident, searchInScopes)
-      errorUndeclaredIdentifier(c, n.info, ident.s)
-      result = errorSym(c, n)
-    elif checkAmbiguity in flags and result != nil and result.id in c.ambiguousSymbols:
-      errorUseQualifier(c, n.info, result)
+      result = errorUndeclaredIdentifierHint(c, n, ident)
+    elif checkAmbiguity in flags and result != nil and amb:
+      result = errorUseQualifier(c, n.info, result, amb)
+    c.isAmbiguous = amb
   of nkSym:
     result = n.sym
-    if checkAmbiguity in flags and contains(c.ambiguousSymbols, result.id):
-      errorUseQualifier(c, n.info, n.sym)
   of nkDotExpr:
     result = nil
-    var m = qualifiedLookUp(c, n[0], (flags*{checkUndeclared})+{checkModule})
+    var m = qualifiedLookUp(c, n[0], (flags * {checkUndeclared}) + {checkModule})
     if m != nil and m.kind == skModule:
       var ident: PIdent = nil
       if n[1].kind == nkIdent:
@@ -361,11 +546,9 @@ proc qualifiedLookUp*(c: PContext, n: PNode, flags: set[TLookupFlag]): PSym =
         if m == c.module:
           result = strTableGet(c.topLevelScope.symbols, ident).skipAlias(n, c.config)
         else:
-          result = strTableGet(m.tab, ident).skipAlias(n, c.config)
+          result = someSym(c.graph, m, ident).skipAlias(n, c.config)
         if result == nil and checkUndeclared in flags:
-          fixSpelling(n[1], ident, searchInScopes)
-          errorUndeclaredIdentifier(c, n[1].info, ident.s)
-          result = errorSym(c, n[1])
+          result = errorUndeclaredIdentifierHint(c, n[1], ident)
       elif n[1].kind == nkSym:
         result = n[1].sym
       elif checkUndeclared in flags and
@@ -379,18 +562,29 @@ proc qualifiedLookUp*(c: PContext, n: PNode, flags: set[TLookupFlag]): PSym =
     if result != nil and result.kind == skStub: loadStub(result)
 
 proc initOverloadIter*(o: var TOverloadIter, c: PContext, n: PNode): PSym =
+  o.importIdx = -1
+  o.marked = initIntSet()
   case n.kind
   of nkIdent, nkAccQuoted:
     var ident = considerQuotedIdent(c, n)
-    o.scope = c.currentScope
+    var scope = c.currentScope
     o.mode = oimNoQualifier
     while true:
-      result = initIdentIter(o.it, o.scope.symbols, ident).skipAlias(n, c.config)
+      result = initIdentIter(o.it, scope.symbols, ident).skipAlias(n, c.config)
       if result != nil:
+        o.currentScope = scope
         break
       else:
-        o.scope = o.scope.parent
-        if o.scope == nil: break
+        scope = scope.parent
+        if scope == nil:
+          for i in 0..c.imports.high:
+            result = initIdentIter(o.mit, o.marked, c.imports[i], ident, c.graph).skipAlias(n, c.config)
+            if result != nil:
+              o.currentScope = nil
+              o.importIdx = i
+              return result
+          return nil
+
   of nkSym:
     result = n.sym
     o.mode = oimDone
@@ -410,7 +604,7 @@ proc initOverloadIter*(o: var TOverloadIter, c: PContext, n: PNode): PSym =
                                  ident).skipAlias(n, c.config)
           o.mode = oimSelfModule
         else:
-          result = initIdentIter(o.it, o.m.tab, ident).skipAlias(n, c.config)
+          result = initModuleIter(o.mit, c.graph, o.m, ident).skipAlias(n, c.config)
       else:
         noidentError(c.config, n[1], n)
         result = errorSym(c, n[1])
@@ -422,60 +616,120 @@ proc initOverloadIter*(o: var TOverloadIter, c: PContext, n: PNode): PSym =
       o.mode = oimDone
       return nil
     o.symChoiceIndex = 1
-    o.inSymChoice = initIntSet()
-    incl(o.inSymChoice, result.id)
+    o.marked = initIntSet()
+    incl(o.marked, result.id)
   else: discard
   when false:
     if result != nil and result.kind == skStub: loadStub(result)
 
 proc lastOverloadScope*(o: TOverloadIter): int =
   case o.mode
-  of oimNoQualifier: result = if o.scope.isNil: -1 else: o.scope.depthLevel
+  of oimNoQualifier:
+    result = if o.importIdx >= 0: 0
+             elif o.currentScope.isNil: -1
+             else: o.currentScope.depthLevel
   of oimSelfModule:  result = 1
   of oimOtherModule: result = 0
   else: result = -1
+
+proc nextOverloadIterImports(o: var TOverloadIter, c: PContext, n: PNode): PSym =
+  assert o.currentScope == nil
+  var idx = o.importIdx+1
+  o.importIdx = c.imports.len # assume the other imported modules lack this symbol too
+  while idx < c.imports.len:
+    result = initIdentIter(o.mit, o.marked, c.imports[idx], o.it.name, c.graph).skipAlias(n, c.config)
+    if result != nil:
+      # oh, we were wrong, some other module had the symbol, so remember that:
+      o.importIdx = idx
+      break
+    inc idx
+
+proc symChoiceExtension(o: var TOverloadIter; c: PContext; n: PNode): PSym =
+  assert o.currentScope == nil
+  while o.importIdx < c.imports.len:
+    result = initIdentIter(o.mit, o.marked, c.imports[o.importIdx], o.it.name, c.graph).skipAlias(n, c.config)
+    #while result != nil and result.id in o.marked:
+    #  result = nextIdentIter(o.it, o.marked, c.imports[o.importIdx])
+    if result != nil:
+      #assert result.id notin o.marked
+      return result
+    inc o.importIdx
 
 proc nextOverloadIter*(o: var TOverloadIter, c: PContext, n: PNode): PSym =
   case o.mode
   of oimDone:
     result = nil
   of oimNoQualifier:
-    if o.scope != nil:
-      result = nextIdentIter(o.it, o.scope.symbols).skipAlias(n, c.config)
+    if o.currentScope != nil:
+      assert o.importIdx < 0
+      result = nextIdentIter(o.it, o.currentScope.symbols).skipAlias(n, c.config)
       while result == nil:
-        o.scope = o.scope.parent
-        if o.scope == nil: break
-        result = initIdentIter(o.it, o.scope.symbols, o.it.name).skipAlias(n, c.config)
-        # BUGFIX: o.it.name <-> n.ident
+        o.currentScope = o.currentScope.parent
+        if o.currentScope != nil:
+          result = initIdentIter(o.it, o.currentScope.symbols, o.it.name).skipAlias(n, c.config)
+          # BUGFIX: o.it.name <-> n.ident
+        else:
+          o.importIdx = 0
+          if c.imports.len > 0:
+            result = initIdentIter(o.mit, o.marked, c.imports[o.importIdx], o.it.name, c.graph).skipAlias(n, c.config)
+            if result == nil:
+              result = nextOverloadIterImports(o, c, n)
+          break
+    elif o.importIdx < c.imports.len:
+      result = nextIdentIter(o.mit, o.marked, c.imports[o.importIdx], c.graph).skipAlias(n, c.config)
+      if result == nil:
+        result = nextOverloadIterImports(o, c, n)
     else:
       result = nil
   of oimSelfModule:
     result = nextIdentIter(o.it, c.topLevelScope.symbols).skipAlias(n, c.config)
   of oimOtherModule:
-    result = nextIdentIter(o.it, o.m.tab).skipAlias(n, c.config)
+    result = nextModuleIter(o.mit, c.graph).skipAlias(n, c.config)
   of oimSymChoice:
     if o.symChoiceIndex < n.len:
       result = n[o.symChoiceIndex].sym
-      incl(o.inSymChoice, result.id)
+      incl(o.marked, result.id)
       inc o.symChoiceIndex
     elif n.kind == nkOpenSymChoice:
       # try 'local' symbols too for Koenig's lookup:
       o.mode = oimSymChoiceLocalLookup
-      o.scope = c.currentScope
-      result = firstIdentExcluding(o.it, o.scope.symbols,
-                                   n[0].sym.name, o.inSymChoice).skipAlias(n, c.config)
+      o.currentScope = c.currentScope
+      result = firstIdentExcluding(o.it, o.currentScope.symbols,
+                                   n[0].sym.name, o.marked).skipAlias(n, c.config)
       while result == nil:
-        o.scope = o.scope.parent
-        if o.scope == nil: break
-        result = firstIdentExcluding(o.it, o.scope.symbols,
-                                     n[0].sym.name, o.inSymChoice).skipAlias(n, c.config)
+        o.currentScope = o.currentScope.parent
+        if o.currentScope != nil:
+          result = firstIdentExcluding(o.it, o.currentScope.symbols,
+                                      n[0].sym.name, o.marked).skipAlias(n, c.config)
+        else:
+          o.importIdx = 0
+          result = symChoiceExtension(o, c, n)
+          break
+      if result != nil:
+        incl o.marked, result.id
   of oimSymChoiceLocalLookup:
-    result = nextIdentExcluding(o.it, o.scope.symbols, o.inSymChoice).skipAlias(n, c.config)
-    while result == nil:
-      o.scope = o.scope.parent
-      if o.scope == nil: break
-      result = firstIdentExcluding(o.it, o.scope.symbols,
-                                   n[0].sym.name, o.inSymChoice).skipAlias(n, c.config)
+    if o.currentScope != nil:
+      result = nextIdentExcluding(o.it, o.currentScope.symbols, o.marked).skipAlias(n, c.config)
+      while result == nil:
+        o.currentScope = o.currentScope.parent
+        if o.currentScope != nil:
+          result = firstIdentExcluding(o.it, o.currentScope.symbols,
+                                      n[0].sym.name, o.marked).skipAlias(n, c.config)
+        else:
+          o.importIdx = 0
+          result = symChoiceExtension(o, c, n)
+          break
+      if result != nil:
+        incl o.marked, result.id
+
+    elif o.importIdx < c.imports.len:
+      result = nextIdentIter(o.mit, o.marked, c.imports[o.importIdx], c.graph).skipAlias(n, c.config)
+      #assert result.id notin o.marked
+      #while result != nil and result.id in o.marked:
+      #  result = nextIdentIter(o.it, c.imports[o.importIdx]).skipAlias(n, c.config)
+      if result == nil:
+        inc o.importIdx
+        result = symChoiceExtension(o, c, n)
 
   when false:
     if result != nil and result.kind == skStub: loadStub(result)

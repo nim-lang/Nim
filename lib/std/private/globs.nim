@@ -4,7 +4,9 @@ this can eventually be moved to std/os and `walkDirRec` can be implemented in te
 to avoid duplication
 ]##
 
-import std/[os,strutils]
+import std/[os]
+when defined(windows):
+  from strutils import replace
 
 type
   PathEntry* = object

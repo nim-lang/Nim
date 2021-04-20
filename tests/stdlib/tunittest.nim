@@ -19,9 +19,10 @@ discard """
 
 [Suite] test name filtering
 '''
+targets: "c js"
 """
 
-import unittest, sequtils
+import std/[unittest, sequtils]
 
 proc doThings(spuds: var int): int =
   spuds = 24
@@ -32,12 +33,12 @@ test "#964":
   check spuds == 24
 
 
-from strutils import toUpperAscii
+from std/strutils import toUpperAscii
 test "#1384":
   check(@["hello", "world"].map(toUpperAscii) == @["HELLO", "WORLD"])
 
 
-import options
+import std/options
 test "unittest typedescs":
   check(none(int) == none(int))
   check(none(int) != some(1))
@@ -48,14 +49,14 @@ test "unittest multiple requires":
   require(true)
 
 
-import random
-from strutils import parseInt
+import std/random
+from std/strutils import parseInt
 proc defectiveRobot() =
   case rand(1..4)
   of 1: raise newException(OSError, "CANNOT COMPUTE!")
   of 2: discard parseInt("Hello World!")
   of 3: raise newException(IOError, "I can't do that Dave.")
-  else: assert 2 + 2 == 5
+  else: doAssert 2 + 2 == 5
 test "unittest expect":
   expect IOError, OSError, ValueError, AssertionDefect:
     defectiveRobot()
@@ -176,3 +177,16 @@ suite "test name filtering":
     check false == matchFilter("suite1", "foo", "*ite2::")
     check matchFilter("suite1", "q**we::foo", "q**we::foo")
     check matchFilter("suite1", "a::b*c::d*e", "a::b*c::d*e")
+
+
+block:
+  type MyFoo = object
+  var obj = MyFoo()
+  let check = 1
+  check(obj == obj)
+
+block:
+  let check = 123
+  var a = 1
+  var b = 1
+  check(a == b)

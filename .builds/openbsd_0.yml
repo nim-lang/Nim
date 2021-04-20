@@ -13,7 +13,7 @@ packages:
 sources:
 - https://github.com/nim-lang/Nim
 environment:
-  NIM_TESTAMENT_BATCH: "0_3"
+  NIM_TESTAMENT_BATCH: "0_2"
   CC: /usr/bin/clang
 tasks:
 - setup: |

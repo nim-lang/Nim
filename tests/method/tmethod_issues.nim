@@ -2,6 +2,8 @@ discard """
   output: '''
 wof!
 wof!
+type A
+type B
 '''
 """
 
@@ -126,3 +128,34 @@ var obj2 = Class2()
 
 obj1.test(obj2) 
 obj2.test(obj1)
+
+
+# -------------------------------------------------------
+# issue #16516
+
+type
+  A = ref object of RootObj
+    x: int
+
+  B = ref object of A
+
+method foo(v: sink A, lst: var seq[A]) {.base,locks:0.} =
+  echo "type A"
+  lst.add v
+
+method foo(v: sink B, lst: var seq[A]) =
+  echo "type B"
+  lst.add v
+
+proc main() =
+  let
+    a = A(x: 5)
+    b: A = B(x: 5)
+
+  var lst: seq[A]
+
+  foo(a, lst)
+  foo(b, lst)
+
+main()
+

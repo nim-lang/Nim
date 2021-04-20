@@ -1,9 +1,11 @@
 discard """
+  targets: "c js"
   output:'''@["3", "2", "1"]
 '''
 """
 #12928,10456
-import sequtils, strutils, algorithm, json
+
+import std/[sequtils, algorithm, json, sugar]
 
 proc test() = 
   try: 
@@ -14,37 +16,37 @@ proc test() =
     echo prefixes
   except:
     discard
-  
+
 test()
 
 block:
   # Tests for lowerBound
   var arr = @[1, 2, 3, 5, 6, 7, 8, 9]
-  assert arr.lowerBound(0) == 0
-  assert arr.lowerBound(4) == 3
-  assert arr.lowerBound(5) == 3
-  assert arr.lowerBound(10) == 8
+  doAssert arr.lowerBound(0) == 0
+  doAssert arr.lowerBound(4) == 3
+  doAssert arr.lowerBound(5) == 3
+  doAssert arr.lowerBound(10) == 8
   arr = @[1, 5, 10]
-  assert arr.lowerBound(4) == 1
-  assert arr.lowerBound(5) == 1
-  assert arr.lowerBound(6) == 2
+  doAssert arr.lowerBound(4) == 1
+  doAssert arr.lowerBound(5) == 1
+  doAssert arr.lowerBound(6) == 2
   # Tests for isSorted
   var srt1 = [1, 2, 3, 4, 4, 4, 4, 5]
   var srt2 = ["iello", "hello"]
   var srt3 = [1.0, 1.0, 1.0]
   var srt4: seq[int]
-  assert srt1.isSorted(cmp) == true
-  assert srt2.isSorted(cmp) == false
-  assert srt3.isSorted(cmp) == true
-  assert srt4.isSorted(cmp) == true
+  doAssert srt1.isSorted(cmp) == true
+  doAssert srt2.isSorted(cmp) == false
+  doAssert srt3.isSorted(cmp) == true
+  doAssert srt4.isSorted(cmp) == true
   var srtseq = newSeq[int]()
-  assert srtseq.isSorted(cmp) == true
+  doAssert srtseq.isSorted(cmp) == true
   # Tests for reversed
   var arr1 = @[0, 1, 2, 3, 4]
-  assert arr1.reversed() == @[4, 3, 2, 1, 0]
+  doAssert arr1.reversed() == @[4, 3, 2, 1, 0]
   for i in 0 .. high(arr1):
-    assert arr1.reversed(0, i) == arr1.reversed()[high(arr1) - i .. high(arr1)]
-    assert arr1.reversed(i, high(arr1)) == arr1.reversed()[0 .. high(arr1) - i]
+    doAssert arr1.reversed(0, i) == arr1.reversed()[high(arr1) - i .. high(arr1)]
+    doAssert arr1.reversed(i, high(arr1)) == arr1.reversed()[0 .. high(arr1) - i]
 
 block:
   var list = [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10]
@@ -113,3 +115,159 @@ block:
     doAssert binarySearch(moreData, 6) == -1
     doAssert binarySearch(moreData, 4711) == 4
     doAssert binarySearch(moreData, 4712) == -1
+
+# merge
+proc main() =
+  block:
+    var x = @[1, 7, 8, 11, 21, 33, 45, 99]
+    var y = @[6, 7, 9, 12, 57, 66]
+
+    var merged: seq[int]
+    merged.merge(x, y)
+    doAssert merged.isSorted
+    doAssert merged == sorted(x & y)
+
+  block:
+    var x = @[111, 88, 76, 56, 45, 31, 22, 19, 11, 3]
+    var y = @[99, 85, 83, 82, 69, 64, 48, 42, 33, 31, 26, 13]
+
+    var merged: seq[int]
+    merged.merge(x, y, (x, y) => -system.cmp(x, y))
+    doAssert merged.isSorted((x, y) => -system.cmp(x, y))
+    doAssert merged == sorted(x & y, SortOrder.Descending)
+
+  block:
+    var x: seq[int] = @[]
+    var y = @[1]
+
+    var merged: seq[int]
+    merged.merge(x, y)
+    doAssert merged.isSorted
+    doAssert merged.isSorted(SortOrder.Descending)
+    doAssert merged == @[1]
+
+  block:
+    var x = [1, 3, 5, 5, 7]
+    var y: seq[int] = @[]
+
+    var merged: seq[int]
+    merged.merge(x, y)
+    doAssert merged.isSorted
+    doAssert merged == @x
+
+  block:
+    var x = [1, 3, 5, 5, 7]
+    var y: seq[int] = @[]
+
+    var merged: seq[int] = @[1, 2, 3, 5, 6, 56, 99, 2, 34]
+    merged.merge(x, y)
+    doAssert merged == @[1, 2, 3, 5, 6, 56, 99, 2, 34, 1, 3, 5, 5, 7]
+
+
+  block:
+    var x: array[0, int]
+    var y = [1, 4, 6, 7, 9]
+
+    var merged: seq[int]
+    merged.merge(x, y)
+    doAssert merged.isSorted
+    doAssert merged == @y
+
+  block:
+    var x: array[0, int]
+    var y: array[0, int]
+
+    var merged: seq[int]
+    merged.merge(x, y)
+    doAssert merged.isSorted
+    doAssert merged.len == 0
+
+  block:
+    var x: array[0, int]
+    var y: array[0, int]
+
+    var merged: seq[int] = @[99, 99, 99]
+    merged.setLen(0)
+    merged.merge(x, y)
+    doAssert merged.isSorted
+    doAssert merged.len == 0
+
+  block:
+    var x: seq[int]
+    var y: seq[int]
+
+    var merged: seq[int]
+    merged.merge(x, y)
+    doAssert merged.isSorted
+    doAssert merged.len == 0
+
+  block:
+    type
+      Record = object
+        id: int
+    
+    proc r(id: int): Record =
+      Record(id: id)
+
+    proc cmp(x, y: Record): int =
+      if x.id == y.id: return 0
+      if x.id < y.id: return -1
+      result = 1
+
+    var x = @[r(-12), r(1), r(3), r(8), r(13), r(88)]
+    var y = @[r(4), r(7), r(12), r(13), r(77), r(99)]
+
+    var merged: seq[Record] = @[]
+    merged.merge(x, y, cmp)
+    doAssert merged.isSorted(cmp)
+    doAssert merged.len == 12
+
+  block:
+    type
+      Record = object
+        id: int
+    
+    proc r(id: int): Record =
+      Record(id: id)
+
+    proc ascendingCmp(x, y: Record): int =
+      if x.id == y.id: return 0
+      if x.id < y.id: return -1
+      result = 1
+
+    proc descendingCmp(x, y: Record): int =
+      if x.id == y.id: return 0
+      if x.id < y.id: return 1
+      result = -1
+
+    var x = @[r(-12), r(1), r(3), r(8), r(13), r(88)]
+    var y = @[r(4), r(7), r(12), r(13), r(77), r(99)]
+
+    var merged: seq[Record]
+    merged.setLen(0)
+    merged.merge(x, y, ascendingCmp)
+    doAssert merged.isSorted(ascendingCmp)
+    doAssert merged == sorted(x & y, ascendingCmp)
+
+    reverse(x)
+    reverse(y)
+
+    merged.setLen(0)
+    merged.merge(x, y, descendingCmp)
+    doAssert merged.isSorted(descendingCmp)
+    doAssert merged == sorted(x & y, ascendingCmp, SortOrder.Descending)
+
+    reverse(x)
+    reverse(y)
+    merged.setLen(0)
+    merged.merge(x, y, proc (x, y: Record): int = -descendingCmp(x, y))
+    doAssert merged.isSorted(proc (x, y: Record): int = -descendingCmp(x, y))
+    doAssert merged == sorted(x & y, ascendingCmp)
+
+
+  var x: seq[(int, int)]
+  x.merge([(1,1)], [(1,2)], (a,b) => a[0] - b[0])
+  doAssert x == @[(1, 1), (1, 2)]
+
+static: main()
+main()

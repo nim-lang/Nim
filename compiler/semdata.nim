@@ -9,9 +9,13 @@
 
 ## This module contains the data structures for the semantic checking phase.
 
+import std / tables
+
 import
   intsets, options, ast, astalgo, msgs, idents, renderer,
-  magicsys, vmdef, modulegraphs, lineinfos, sets
+  magicsys, vmdef, modulegraphs, lineinfos, sets, pathutils
+
+import ic / ic
 
 type
   TOptionEntry* = object      # entries to put on a stack for pragma parsing
@@ -38,6 +42,7 @@ type
     mappingExists*: bool
     mapping*: TIdTable
     caseContext*: seq[tuple[n: PNode, idx: int]]
+    localBindStmts*: seq[PNode]
 
   TMatchedConcept* = object
     candidateType*: PType
@@ -49,7 +54,7 @@ type
     inst*: PInstantiation
 
   TExprFlag* = enum
-    efLValue, efWantIterator, efInTypeof,
+    efLValue, efWantIterator, efWantIterable, efInTypeof,
     efNeedStatic,
       # Use this in contexts where a static value is mandatory
     efPreferStatic,
@@ -70,24 +75,36 @@ type
 
   TExprFlags* = set[TExprFlag]
 
+  ImportMode* = enum
+    importAll, importSet, importExcept
+  ImportedModule* = object
+    m*: PSym
+    case mode*: ImportMode
+    of importAll: discard
+    of importSet:
+      imported*: IntSet          # of PIdent.id
+    of importExcept:
+      exceptSet*: IntSet         # of PIdent.id
+
   PContext* = ref TContext
   TContext* = object of TPassContext # a context represents the module
                                      # that is currently being compiled
     enforceVoidContext*: PType
     module*: PSym              # the module sym belonging to the context
     currentScope*: PScope      # current scope
-    importTable*: PScope       # scope for all imported symbols
+    moduleScope*: PScope       # scope for modules
+    imports*: seq[ImportedModule] # scope for all imported symbols
     topLevelScope*: PScope     # scope for all top-level symbols
     p*: PProcCon               # procedure context
+    intTypeCache*: array[-5..32, PType] # cache some common integer types
+                                        # to avoid type allocations
+    nilTypeCache*: PType
     matchedConcept*: ptr TMatchedConcept # the current concept being matched
     friendModules*: seq[PSym]  # friend modules; may access private data;
                                # this is used so that generic instantiations
                                # can access private object fields
     instCounter*: int          # to prevent endless instantiations
     templInstCounter*: ref int # gives every template instantiation a unique id
-
-    ambiguousSymbols*: IntSet  # ids of all ambiguous symbols (cannot
-                               # store this info in the syms themselves!)
     inGenericContext*: int     # > 0 if we are in a generic type
     inStaticContext*: int      # > 0 if we are inside a static: block
     inUnrolledContext*: int    # > 0 if we are unrolling a loop
@@ -134,18 +151,58 @@ type
     signatures*: TStrTable
     recursiveDep*: string
     suggestionsMade*: bool
+    isAmbiguous*: bool # little hack
     features*: set[Feature]
-    inTypeContext*: int
-    typesWithOps*: seq[(PType, PType)] #\
-      # We need to instantiate the type bound ops lazily after
-      # the generic type has been constructed completely. See
-      # tests/destructor/topttree.nim for an example that
-      # would otherwise fail.
+    inTypeContext*, inConceptDecl*: int
     unusedImports*: seq[(PSym, TLineInfo)]
     exportIndirections*: HashSet[(int, int)]
     lastTLineInfo*: TLineInfo
 
 template config*(c: PContext): ConfigRef = c.graph.config
+
+proc getIntLitType*(c: PContext; literal: PNode): PType =
+  # we cache some common integer literal types for performance:
+  let value = literal.intVal
+  if value >= low(c.intTypeCache) and value <= high(c.intTypeCache):
+    result = c.intTypeCache[value.int]
+    if result == nil:
+      let ti = getSysType(c.graph, literal.info, tyInt)
+      result = copyType(ti, nextTypeId(c.idgen), ti.owner)
+      result.n = literal
+      c.intTypeCache[value.int] = result
+  else:
+    let ti = getSysType(c.graph, literal.info, tyInt)
+    result = copyType(ti, nextTypeId(c.idgen), ti.owner)
+    result.n = literal
+
+proc setIntLitType*(c: PContext; result: PNode) =
+  let i = result.intVal
+  case c.config.target.intSize
+  of 8: result.typ = getIntLitType(c, result)
+  of 4:
+    if i >= low(int32) and i <= high(int32):
+      result.typ = getIntLitType(c, result)
+    else:
+      result.typ = getSysType(c.graph, result.info, tyInt64)
+  of 2:
+    if i >= low(int16) and i <= high(int16):
+      result.typ = getIntLitType(c, result)
+    elif i >= low(int32) and i <= high(int32):
+      result.typ = getSysType(c.graph, result.info, tyInt32)
+    else:
+      result.typ = getSysType(c.graph, result.info, tyInt64)
+  of 1:
+    # 8 bit CPUs are insane ...
+    if i >= low(int8) and i <= high(int8):
+      result.typ = getIntLitType(c, result)
+    elif i >= low(int16) and i <= high(int16):
+      result.typ = getSysType(c.graph, result.info, tyInt16)
+    elif i >= low(int32) and i <= high(int32):
+      result.typ = getSysType(c.graph, result.info, tyInt32)
+    else:
+      result.typ = getSysType(c.graph, result.info, tyInt64)
+  else:
+    internalError(c.config, result.info, "invalid int size")
 
 proc makeInstPair*(s: PSym, inst: PInstantiation): TInstantiationPair =
   result.genericSym = s
@@ -237,8 +294,6 @@ proc popOptionEntry*(c: PContext) =
 
 proc newContext*(graph: ModuleGraph; module: PSym): PContext =
   new(result)
-  result.enforceVoidContext = PType(kind: tyTyped)
-  result.ambiguousSymbols = initIntSet()
   result.optionStack = @[newOptionEntry(graph.config)]
   result.libs = @[]
   result.module = module
@@ -253,19 +308,67 @@ proc newContext*(graph: ModuleGraph; module: PSym): PContext =
   result.cache = graph.cache
   result.graph = graph
   initStrTable(result.signatures)
-  result.typesWithOps = @[]
   result.features = graph.config.features
+  if graph.config.symbolFiles != disabledSf:
+    let id = module.position
+    assert graph.packed[id].status in {undefined, outdated}
+    graph.packed[id].status = storing
+    graph.packed[id].module = module
+    initEncoder graph, module
 
-proc inclSym(sq: var seq[PSym], s: PSym) =
+template packedRepr*(c): untyped = c.graph.packed[c.module.position].fromDisk
+template encoder*(c): untyped = c.graph.encoders[c.module.position]
+
+proc addIncludeFileDep*(c: PContext; f: FileIndex) =
+  if c.config.symbolFiles != disabledSf:
+    addIncludeFileDep(c.encoder, c.packedRepr, f)
+
+proc addImportFileDep*(c: PContext; f: FileIndex) =
+  if c.config.symbolFiles != disabledSf:
+    addImportFileDep(c.encoder, c.packedRepr, f)
+
+proc addPragmaComputation*(c: PContext; n: PNode) =
+  if c.config.symbolFiles != disabledSf:
+    addPragmaComputation(c.encoder, c.packedRepr, n)
+
+proc inclSym(sq: var seq[PSym], s: PSym): bool =
   for i in 0..<sq.len:
-    if sq[i].id == s.id: return
+    if sq[i].id == s.id: return false
   sq.add s
+  result = true
 
-proc addConverter*(c: PContext, conv: PSym) =
-  inclSym(c.converters, conv)
+proc addConverter*(c: PContext, conv: LazySym) =
+  assert conv.sym != nil
+  if inclSym(c.converters, conv.sym):
+    add(c.graph.ifaces[c.module.position].converters, conv)
 
-proc addPattern*(c: PContext, p: PSym) =
-  inclSym(c.patterns, p)
+proc addConverterDef*(c: PContext, conv: LazySym) =
+  addConverter(c, conv)
+  if c.config.symbolFiles != disabledSf:
+    addConverter(c.encoder, c.packedRepr, conv.sym)
+
+proc addPureEnum*(c: PContext, e: LazySym) =
+  assert e.sym != nil
+  add(c.graph.ifaces[c.module.position].pureEnums, e)
+  if c.config.symbolFiles != disabledSf:
+    addPureEnum(c.encoder, c.packedRepr, e.sym)
+
+proc addPattern*(c: PContext, p: LazySym) =
+  assert p.sym != nil
+  if inclSym(c.patterns, p.sym):
+    add(c.graph.ifaces[c.module.position].patterns, p)
+  if c.config.symbolFiles != disabledSf:
+    addTrmacro(c.encoder, c.packedRepr, p.sym)
+
+proc exportSym*(c: PContext; s: PSym) =
+  strTableAdds(c.graph, c.module, s)
+  if c.config.symbolFiles != disabledSf:
+    addExported(c.encoder, c.packedRepr, s)
+
+proc reexportSym*(c: PContext; s: PSym) =
+  strTableAdds(c.graph, c.module, s)
+  if c.config.symbolFiles != disabledSf:
+    addReexport(c.encoder, c.packedRepr, s)
 
 proc newLib*(kind: TLibKind): PLib =
   new(result)
@@ -277,10 +380,10 @@ proc addToLib*(lib: PLib, sym: PSym) =
   sym.annex = lib
 
 proc newTypeS*(kind: TTypeKind, c: PContext): PType =
-  result = newType(kind, nextId(c.idgen), getCurrOwner(c))
+  result = newType(kind, nextTypeId(c.idgen), getCurrOwner(c))
 
 proc makePtrType*(owner: PSym, baseType: PType; idgen: IdGenerator): PType =
-  result = newType(tyPtr, nextId(idgen), owner)
+  result = newType(tyPtr, nextTypeId(idgen), owner)
   addSonSkipIntLit(result, baseType, idgen)
 
 proc makePtrType*(c: PContext, baseType: PType): PType =
@@ -308,25 +411,17 @@ proc makeVarType*(owner: PSym, baseType: PType; idgen: IdGenerator; kind = tyVar
   if baseType.kind == kind:
     result = baseType
   else:
-    result = newType(kind, nextId(idgen), owner)
+    result = newType(kind, nextTypeId(idgen), owner)
     addSonSkipIntLit(result, baseType, idgen)
-
-proc makeTypeDesc*(c: PContext, typ: PType): PType =
-  if typ.kind == tyTypeDesc:
-    result = typ
-  else:
-    result = newTypeS(tyTypeDesc, c)
-    incl result.flags, tfCheckedForDestructor
-    result.addSonSkipIntLit(typ, c.idgen)
 
 proc makeTypeSymNode*(c: PContext, typ: PType, info: TLineInfo): PNode =
   let typedesc = newTypeS(tyTypeDesc, c)
   incl typedesc.flags, tfCheckedForDestructor
   internalAssert(c.config, typ != nil)
   typedesc.addSonSkipIntLit(typ, c.idgen)
-  let sym = newSym(skType, c.cache.idAnon, nextId(c.idgen), getCurrOwner(c), info,
+  let sym = newSym(skType, c.cache.idAnon, nextSymId(c.idgen), getCurrOwner(c), info,
                    c.config.options).linkTo(typedesc)
-  return newSymNode(sym, info)
+  result = newSymNode(sym, info)
 
 proc makeTypeFromExpr*(c: PContext, n: PNode): PType =
   result = newTypeS(tyFromExpr, c)
@@ -335,12 +430,12 @@ proc makeTypeFromExpr*(c: PContext, n: PNode): PType =
 
 proc newTypeWithSons*(owner: PSym, kind: TTypeKind, sons: seq[PType];
                       idgen: IdGenerator): PType =
-  result = newType(kind, nextId(idgen), owner)
+  result = newType(kind, nextTypeId(idgen), owner)
   result.sons = sons
 
 proc newTypeWithSons*(c: PContext, kind: TTypeKind,
                       sons: seq[PType]): PType =
-  result = newType(kind, nextId(c.idgen), getCurrOwner(c))
+  result = newType(kind, nextTypeId(c.idgen), getCurrOwner(c))
   result.sons = sons
 
 proc makeStaticExpr*(c: PContext, n: PNode): PNode =
@@ -406,6 +501,19 @@ proc errorNode*(c: PContext, n: PNode): PNode =
   result = newNodeI(nkEmpty, n.info)
   result.typ = errorType(c)
 
+proc localErrorNode*(c: PContext, n: PNode, info: TLineInfo, msg: TMsgKind, arg: string): PNode =
+  localError(c.config, info, msg, arg)
+  result = errorNode(c, n)
+
+proc localErrorNode*(c: PContext, n: PNode, info: TLineInfo, arg: string): PNode =
+  localErrorNode(c, n, info, errGenerated, arg)
+
+proc localErrorNode*(c: PContext, n: PNode, msg: TMsgKind, arg: string): PNode =
+  localErrorNode(c, n, n.info, msg, arg)
+
+proc localErrorNode*(c: PContext, n: PNode, arg: string): PNode =
+  localErrorNode(c, n, n.info, errGenerated, arg)
+
 proc fillTypeS*(dest: PType, kind: TTypeKind, c: PContext) =
   dest.kind = kind
   dest.owner = getCurrOwner(c)
@@ -441,6 +549,10 @@ proc checkMinSonsLen*(n: PNode, length: int; conf: ConfigRef) =
 proc isTopLevel*(c: PContext): bool {.inline.} =
   result = c.currentScope.depthLevel <= 2
 
+proc isTopLevelInsideDeclaration*(c: PContext, sym: PSym): bool {.inline.} =
+  # for routeKinds the scope isn't closed yet:
+  c.currentScope.depthLevel <= 2 + ord(sym.kind in routineKinds)
+
 proc pushCaseContext*(c: PContext, caseNode: PNode) =
   c.p.caseContext.add((caseNode, 0))
 
@@ -449,3 +561,39 @@ proc popCaseContext*(c: PContext) =
 
 proc setCaseContextIdx*(c: PContext, idx: int) =
   c.p.caseContext[^1].idx = idx
+
+template addExport*(c: PContext; s: PSym) =
+  ## convenience to export a symbol from the current module
+  addExport(c.graph, c.module, s)
+
+proc storeRodNode*(c: PContext, n: PNode) =
+  if c.config.symbolFiles != disabledSf:
+    toPackedNodeTopLevel(n, c.encoder, c.packedRepr)
+
+proc addToGenericProcCache*(c: PContext; s: PSym; inst: PInstantiation) =
+  c.graph.procInstCache.mgetOrPut(s.itemId, @[]).add LazyInstantiation(module: c.module.position, inst: inst)
+  if c.config.symbolFiles != disabledSf:
+    storeInstantiation(c.encoder, c.packedRepr, s, inst)
+
+proc addToGenericCache*(c: PContext; s: PSym; inst: PType) =
+  c.graph.typeInstCache.mgetOrPut(s.itemId, @[]).add LazyType(typ: inst)
+  if c.config.symbolFiles != disabledSf:
+    storeTypeInst(c.encoder, c.packedRepr, s, inst)
+
+proc sealRodFile*(c: PContext) =
+  if c.config.symbolFiles != disabledSf:
+    if c.graph.vm != nil:
+      for (m, n) in PCtx(c.graph.vm).vmstateDiff:
+        if m == c.module:
+          addPragmaComputation(c, n)
+    c.idgen.sealed = true # no further additions are allowed
+
+proc rememberExpansion*(c: PContext; info: TLineInfo; expandedSym: PSym) =
+  ## Templates and macros are very special in Nim; these have
+  ## inlining semantics so after semantic checking they leave no trace
+  ## in the sem'checked AST. This is very bad for IDE-like tooling
+  ## ("find all usages of this template" would not work). We need special
+  ## logic to remember macro/template expansions. This is done here and
+  ## delegated to the "rod" file mechanism.
+  if c.config.symbolFiles != disabledSf:
+    storeExpansion(c.encoder, c.packedRepr, info, expandedSym)

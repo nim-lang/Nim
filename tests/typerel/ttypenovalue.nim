@@ -1,5 +1,5 @@
 discard """
-  errormsg: "invalid type: 'type seq[tuple[title: string, body: string]]' for var"
+  errormsg: "invalid type: 'typedesc[seq[tuple[title: string, body: string]]]' for var"
   line: 7
 """
 

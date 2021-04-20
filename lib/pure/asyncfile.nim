@@ -10,7 +10,7 @@
 ## This module implements asynchronous file reading and writing.
 ##
 ## .. code-block:: Nim
-##    import asyncfile, asyncdispatch, os
+##    import std/[asyncfile, asyncdispatch, os]
 ##
 ##    proc main() {.async.} =
 ##      var file = openAsync(getTempDir() / "foobar.txt", fmReadWrite)
@@ -90,8 +90,8 @@ proc newAsyncFile*(fd: AsyncFD): AsyncFile =
   register(fd)
 
 proc openAsync*(filename: string, mode = fmRead): AsyncFile =
-  ## Opens a file specified by the path in ``filename`` using
-  ## the specified FileMode ``mode`` asynchronously.
+  ## Opens a file specified by the path in `filename` using
+  ## the specified FileMode `mode` asynchronously.
   when defined(windows) or defined(nimdoc):
     let flags = FILE_FLAG_OVERLAPPED or FILE_ATTRIBUTE_NORMAL
     let desiredAccess = getDesiredAccess(mode)
@@ -124,11 +124,11 @@ proc openAsync*(filename: string, mode = fmRead): AsyncFile =
     result = newAsyncFile(fd.AsyncFD)
 
 proc readBuffer*(f: AsyncFile, buf: pointer, size: int): Future[int] =
-  ## Read ``size`` bytes from the specified file asynchronously starting at
+  ## Read `size` bytes from the specified file asynchronously starting at
   ## the current position of the file pointer.
   ##
   ## If the file pointer is past the end of the file then zero is returned
-  ## and no bytes are read into ``buf``
+  ## and no bytes are read into `buf`
   var retFuture = newFuture[int]("asyncfile.readBuffer")
 
   when defined(windows) or defined(nimdoc):
@@ -201,7 +201,7 @@ proc readBuffer*(f: AsyncFile, buf: pointer, size: int): Future[int] =
   return retFuture
 
 proc read*(f: AsyncFile, size: int): Future[string] =
-  ## Read ``size`` bytes from the specified file asynchronously starting at
+  ## Read `size` bytes from the specified file asynchronously starting at
   ## the current position of the file pointer.
   ##
   ## If the file pointer is past the end of the file then an empty string is
@@ -332,7 +332,7 @@ proc readAll*(f: AsyncFile): Future[string] {.async.} =
     result.add data
 
 proc writeBuffer*(f: AsyncFile, buf: pointer, size: int): Future[void] =
-  ## Writes ``size`` bytes from ``buf`` to the file specified asynchronously.
+  ## Writes `size` bytes from `buf` to the file specified asynchronously.
   ##
   ## The returned Future will complete once all data has been written to the
   ## specified file.
@@ -401,7 +401,7 @@ proc writeBuffer*(f: AsyncFile, buf: pointer, size: int): Future[void] =
   return retFuture
 
 proc write*(f: AsyncFile, data: string): Future[void] =
-  ## Writes ``data`` to the file specified asynchronously.
+  ## Writes `data` to the file specified asynchronously.
   ##
   ## The returned Future will complete once all data has been written to the
   ## specified file.

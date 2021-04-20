@@ -59,8 +59,8 @@ block: # Deletion from OrderedTable should account for collision groups. See iss
   }.toOrderedTable()
 
   t.del(key1)
-  assert(t.len == 1)
-  assert(key2 in t)
+  doAssert(t.len == 1)
+  doAssert(key2 in t)
 
 var
   t1 = initCountTable[string]()
@@ -72,9 +72,9 @@ t2.inc("foo", 4)
 t2.inc("bar")
 t2.inc("baz", 11)
 merge(t1, t2)
-assert(t1["foo"] == 5)
-assert(t1["bar"] == 3)
-assert(t1["baz"] == 14)
+doAssert(t1["foo"] == 5)
+doAssert(t1["bar"] == 3)
+doAssert(t1["baz"] == 14)
 
 let
   t1r = newCountTable[string]()
@@ -86,9 +86,9 @@ t2r.inc("foo", 4)
 t2r.inc("bar")
 t2r.inc("baz", 11)
 merge(t1r, t2r)
-assert(t1r["foo"] == 5)
-assert(t1r["bar"] == 3)
-assert(t1r["baz"] == 14)
+doAssert(t1r["foo"] == 5)
+doAssert(t1r["bar"] == 3)
+doAssert(t1r["baz"] == 14)
 
 var
   t1l = initCountTable[string]()
@@ -127,28 +127,28 @@ block: #5482
   var b = newOrderedTable[string, string](initialSize = 2)
   b["wrong?"] = "foo"
   b["wrong?"] = "foo2"
-  assert a == b
+  doAssert a == b
 
 block: #5482
   var a = {"wrong?": "foo", "wrong?": "foo2"}.newOrderedTable()
   var b = newOrderedTable[string, string](initialSize = 2)
   b["wrong?"] = "foo"
   b["wrong?"] = "foo2"
-  assert a == b
+  doAssert a == b
 
 block: #5487
   var a = {"wrong?": "foo", "wrong?": "foo2"}.newOrderedTable()
   var b = newOrderedTable[string, string]()         # notice, default size!
   b["wrong?"] = "foo"
   b["wrong?"] = "foo2"
-  assert a == b
+  doAssert a == b
 
 block: #5487
   var a = [("wrong?", "foo"), ("wrong?", "foo2")].newOrderedTable()
   var b = newOrderedTable[string, string]()         # notice, default size!
   b["wrong?"] = "foo"
   b["wrong?"] = "foo2"
-  assert a == b
+  doAssert a == b
 
 block:
   var a = {"wrong?": "foo", "wrong?": "foo2"}.newOrderedTable()
@@ -156,22 +156,22 @@ block:
   var c = newOrderedTable[string, string]()         # notice, default size!
   c["wrong?"] = "foo"
   c["wrong?"] = "foo2"
-  assert a == b
-  assert a == c
+  doAssert a == b
+  doAssert a == c
 
 block: #6250
   let
     a = {3: 1}.toOrderedTable
     b = {3: 2}.toOrderedTable
-  assert((a == b) == false)
-  assert((b == a) == false)
+  doAssert((a == b) == false)
+  doAssert((b == a) == false)
 
 block: #6250
   let
     a = {3: 2}.toOrderedTable
     b = {3: 2}.toOrderedTable
-  assert((a == b) == true)
-  assert((b == a) == true)
+  doAssert((a == b) == true)
+  doAssert((b == a) == true)
 
 block: # CountTable.smallest
   let t = toCountTable([0, 0, 5, 5, 5])

@@ -19,7 +19,7 @@ const
   useEffectSystem* = true
   useWriteTracking* = false
   hasFFI* = defined(nimHasLibFFI)
-  copyrightYear* = "2020"
+  copyrightYear* = "2021"
 
 type                          # please make sure we have under 32 options
                               # (improves code efficiency a lot!)
@@ -39,10 +39,9 @@ type                          # please make sure we have under 32 options
                               # evaluation
     optTrMacros,              # en/disable pattern matching
     optMemTracker,
-    optNilSeqs,
     optSinkInference          # 'sink T' inference
     optCursorInference
-
+    optImportHidden
 
   TOptions* = set[TOption]
   TGlobalOption* = enum       # **keep binary compatible**
@@ -68,7 +67,6 @@ type                          # please make sure we have under 32 options
     optThreads,               # support for multi-threading
     optStdout,                # output to stdout
     optThreadAnalysis,        # thread analysis pass
-    optTaintMode,             # taint mode turned on
     optTlsEmulation,          # thread var emulation turned on
     optGenIndex               # generate index file for documentation;
     optEmbedOrigSrc           # embed the original source in the generated code
@@ -103,8 +101,23 @@ type                          # please make sure we have under 32 options
   TGlobalOptions* = set[TGlobalOption]
 
 const
-  harmlessOptions* = {optForceFullMake, optNoLinking, optRun,
-                      optUseColors, optStdout}
+  harmlessOptions* = {optForceFullMake, optNoLinking, optRun, optUseColors, optStdout}
+  genSubDir* = RelativeDir"nimcache"
+  NimExt* = "nim"
+  RodExt* = "rod"
+  HtmlExt* = "html"
+  JsonExt* = "json"
+  TagsExt* = "tags"
+  TexExt* = "tex"
+  IniExt* = "ini"
+  DefaultConfig* = RelativeFile"nim.cfg"
+  DefaultConfigNims* = RelativeFile"config.nims"
+  DocConfig* = RelativeFile"nimdoc.cfg"
+  DocTexConfig* = RelativeFile"nimdoc.tex.cfg"
+  htmldocsDir* = htmldocsDirname.RelativeDir
+  docRootDefault* = "@default" # using `@` instead of `$` to avoid shell quoting complications
+  oKeepVariableNames* = true
+  spellSuggestSecretSauce* = -1
 
 type
   TBackend* = enum
@@ -124,7 +137,7 @@ type
     cmdTcc # run the project via TCC backend
     cmdCheck # semantic checking for whole project
     cmdParse # parse a single file (for debugging)
-    cmdScan # scan a single file (for debugging)
+    cmdRod # .rod to some text representation (for debugging)
     cmdIdeTools # ide tools (e.g. nimsuggest)
     cmdNimscript # evaluate nimscript
     cmdDoc0
@@ -176,7 +189,8 @@ type
       ## Note: this feature can't be localized with {.push.}
     vmopsDanger,
     strictFuncs,
-    views
+    views,
+    strictNotNil
 
   LegacyFeature* = enum
     allowSemcheckedAstModification,
@@ -189,7 +203,7 @@ type
       ## are not anymore.
 
   SymbolFilesOption* = enum
-    disabledSf, writeOnlySf, readOnlySf, v2Sf
+    disabledSf, writeOnlySf, readOnlySf, v2Sf, stressTest
 
   TSystemCC* = enum
     ccNone, ccGcc, ccNintendoSwitch, ccLLVM_Gcc, ccCLang, ccBcc, ccVcc,
@@ -240,6 +254,10 @@ type
   ProfileData* = ref object
     data*: TableRef[TLineInfo, ProfileInfo]
 
+  StdOrrKind* = enum
+    stdOrrStdout
+    stdOrrStderr
+
   ConfigRef* = ref object ## every global configuration
                           ## fields marked with '*' are subject to
                           ## the incremental compilation mechanisms
@@ -265,6 +283,7 @@ type
     numberOfProcessors*: int   # number of processors
     lastCmdTime*: float        # when caas is enabled, we measure each command
     symbolFiles*: SymbolFilesOption
+    spellSuggestMax*: int # max number of spelling suggestions for typos
 
     cppDefines*: HashSet[string] # (*)
     headerFile*: string
@@ -304,7 +323,7 @@ type
     projectPath*: AbsoluteDir # holds a path like /home/alice/projects/nim/compiler/
     projectFull*: AbsoluteFile # projectPath/projectName
     projectIsStdin*: bool # whether we're compiling from stdin
-    lastMsgWasDot*: bool # the last compiler message was a single '.'
+    lastMsgWasDot*: set[StdOrrKind] # the last compiler message was a single '.'
     projectMainIdx*: FileIndex # the canonical path id of the main module
     projectMainIdx2*: FileIndex # consider merging with projectMainIdx
     command*: string # the main command (e.g. cc, check, scan, etc)
@@ -363,8 +382,11 @@ proc setNote*(conf: ConfigRef, note: TNoteKind, enabled = true) =
     if enabled: incl(conf.notes, note) else: excl(conf.notes, note)
 
 proc hasHint*(conf: ConfigRef, note: TNoteKind): bool =
+  # ternary states instead of binary states would simplify logic
   if optHints notin conf.options: false
-  elif note in {hintConf}: # could add here other special notes like hintSource
+  elif note in {hintConf, hintProcessing}:
+    # could add here other special notes like hintSource
+    # these notes apply globally.
     note in conf.mainPackageNotes
   else: note in conf.notes
 
@@ -373,11 +395,12 @@ proc hasWarn*(conf: ConfigRef, note: TNoteKind): bool =
 
 proc hcrOn*(conf: ConfigRef): bool = return optHotCodeReloading in conf.globalOptions
 
-template depConfigFields*(fn) {.dirty.} =
-  fn(target)
-  fn(options)
-  fn(globalOptions)
-  fn(selectedGC)
+when false:
+  template depConfigFields*(fn) {.dirty.} = # deadcode
+    fn(target)
+    fn(options)
+    fn(globalOptions)
+    fn(selectedGC)
 
 const oldExperimentalFeatures* = {implicitDeref, dotOperators, callOperator, parallel}
 
@@ -420,6 +443,14 @@ template newPackageCache*(): untyped =
 proc newProfileData(): ProfileData =
   ProfileData(data: newTable[TLineInfo, ProfileInfo]())
 
+const foreignPackageNotesDefault* = {
+  hintProcessing, warnUnknownMagic, hintQuitCalled, hintExecuting, hintUser, warnUser}
+
+proc isDefined*(conf: ConfigRef; symbol: string): bool
+
+when defined(nimDebugUtils):
+  import debugutils
+
 proc newConfigRef*(): ConfigRef =
   result = ConfigRef(
     selectedGC: gcRefc,
@@ -431,8 +462,7 @@ proc newConfigRef*(): ConfigRef =
     arcToExpand: newStringTable(modeStyleInsensitive),
     m: initMsgConfig(),
     cppDefines: initHashSet[string](),
-    headerFile: "", features: {}, legacyFeatures: {}, foreignPackageNotes: {hintProcessing, warnUnknownMagic,
-    hintQuitCalled, hintExecuting},
+    headerFile: "", features: {}, legacyFeatures: {}, foreignPackageNotes: foreignPackageNotesDefault,
     notes: NotesVerbosity[1], mainPackageNotes: NotesVerbosity[1],
     configVars: newStringTable(modeStyleInsensitive),
     symbols: newStringTable(modeStyleInsensitive),
@@ -473,22 +503,27 @@ proc newConfigRef*(): ConfigRef =
     suggestMaxResults: 10_000,
     maxLoopIterationsVM: 10_000_000,
     vmProfileData: newProfileData(),
+    spellSuggestMax: spellSuggestSecretSauce,
   )
   setTargetFromSystem(result.target)
   # enable colors by default on terminals
   if terminal.isatty(stderr):
     incl(result.globalOptions, optUseColors)
+  when defined(nimDebugUtils):
+    onNewConfigRef(result)
 
 proc newPartialConfigRef*(): ConfigRef =
   ## create a new ConfigRef that is only good enough for error reporting.
-  result = ConfigRef(
-    selectedGC: gcRefc,
-    verbosity: 1,
-    options: DefaultOptions,
-    globalOptions: DefaultGlobalOptions,
-    foreignPackageNotes: {hintProcessing, warnUnknownMagic,
-    hintQuitCalled, hintExecuting},
-    notes: NotesVerbosity[1], mainPackageNotes: NotesVerbosity[1])
+  when defined(nimDebugUtils):
+    result = getConfigRef()
+  else:
+    result = ConfigRef(
+      selectedGC: gcRefc,
+      verbosity: 1,
+      options: DefaultOptions,
+      globalOptions: DefaultGlobalOptions,
+      foreignPackageNotes: foreignPackageNotesDefault,
+      notes: NotesVerbosity[1], mainPackageNotes: NotesVerbosity[1])
 
 proc cppDefine*(c: ConfigRef; define: string) =
   c.cppDefines.incl define
@@ -541,6 +576,13 @@ proc isDefined*(conf: ConfigRef; symbol: string): bool =
                             osDragonfly, osMacosx}
     else: discard
 
+template quitOrRaise*(conf: ConfigRef, msg = "") =
+  # xxx in future work, consider whether to also intercept `msgQuit` calls
+  if conf.isDefined("nimDebug"):
+    doAssert false, msg
+  else:
+    quit(msg) # quits with QuitFailure
+
 proc importantComments*(conf: ConfigRef): bool {.inline.} = conf.cmd in cmdDocLike + {cmdIdeTools}
 proc usesWriteBarrier*(conf: ConfigRef): bool {.inline.} = conf.selectedGC >= gcRefc
 
@@ -550,23 +592,6 @@ template compilationCachePresent*(conf: ConfigRef): untyped =
 
 template optPreserveOrigSource*(conf: ConfigRef): untyped =
   optEmbedOrigSrc in conf.globalOptions
-
-const
-  genSubDir* = RelativeDir"nimcache"
-  NimExt* = "nim"
-  RodExt* = "rod"
-  HtmlExt* = "html"
-  JsonExt* = "json"
-  TagsExt* = "tags"
-  TexExt* = "tex"
-  IniExt* = "ini"
-  DefaultConfig* = RelativeFile"nim.cfg"
-  DefaultConfigNims* = RelativeFile"config.nims"
-  DocConfig* = RelativeFile"nimdoc.cfg"
-  DocTexConfig* = RelativeFile"nimdoc.tex.cfg"
-  htmldocsDir* = htmldocsDirname.RelativeDir
-  docRootDefault* = "@default" # using `@` instead of `$` to avoid shell quoting complications
-  oKeepVariableNames* = true
 
 proc mainCommandArg*(conf: ConfigRef): string =
   ## This is intended for commands like check or parse
@@ -667,14 +692,22 @@ proc getOsCacheDir(): string =
     result = getHomeDir() / genSubDir.string
 
 proc getNimcacheDir*(conf: ConfigRef): AbsoluteDir =
+  proc nimcacheSuffix(conf: ConfigRef): string =
+    if conf.cmd == cmdCheck: "_check"
+    elif isDefined(conf, "release") or isDefined(conf, "danger"): "_r"
+    else: "_d"
+
   # XXX projectName should always be without a file extension!
   result = if not conf.nimcacheDir.isEmpty:
              conf.nimcacheDir
            elif conf.backend == backendJs:
-             conf.projectPath / genSubDir
+             if conf.outDir.isEmpty:
+               conf.projectPath / genSubDir
+             else:
+               conf.outDir / genSubDir
            else:
             AbsoluteDir(getOsCacheDir() / splitFile(conf.projectName).name &
-               (if isDefined(conf, "release") or isDefined(conf, "danger"): "_r" else: "_d"))
+               nimcacheSuffix(conf))
 
 proc pathSubs*(conf: ConfigRef; p, config: string): string =
   let home = removeTrailingDirSep(os.getHomeDir())
@@ -709,10 +742,13 @@ proc completeGeneratedFilePath*(conf: ConfigRef; f: AbsoluteFile,
     try:
       createDir(subdir.string)
     except OSError:
-      writeLine(stdout, "cannot create directory: " & subdir.string)
-      quit(1)
+      conf.quitOrRaise "cannot create directory: " & subdir.string
   result = subdir / RelativeFile f.string.splitPath.tail
   #echo "completeGeneratedFilePath(", f, ") = ", result
+
+proc toRodFile*(conf: ConfigRef; f: AbsoluteFile; ext = RodExt): AbsoluteFile =
+  result = changeFileExt(completeGeneratedFilePath(conf,
+    withPackageName(conf, f)), ext)
 
 proc rawFindFile(conf: ConfigRef; f: RelativeFile; suppressStdlib: bool): AbsoluteFile =
   for it in conf.searchPaths:
@@ -749,8 +785,25 @@ when (NimMajor, NimMinor) < (1, 1) or not declared(isRelativeTo):
     let ret = relativePath(path, base)
     result = path.len > 0 and not ret.startsWith ".."
 
-proc getRelativePathFromConfigPath*(conf: ConfigRef; f: AbsoluteFile): RelativeFile =
+const stdlibDirs = [
+  "pure", "core", "arch",
+  "pure/collections",
+  "pure/concurrency",
+  "pure/unidecode", "impure",
+  "wrappers", "wrappers/linenoise",
+  "windows", "posix", "js"]
+
+const
+  pkgPrefix = "pkg/"
+  stdPrefix = "std/"
+
+proc getRelativePathFromConfigPath*(conf: ConfigRef; f: AbsoluteFile, isTitle = false): RelativeFile =
   let f = $f
+  if isTitle:
+    for dir in stdlibDirs:
+      let path = conf.libpath.string / dir / f.lastPathPart
+      if path.cmpPaths(f) == 0:
+        return RelativeFile(stdPrefix & f.splitFile.name)
   template search(paths) =
     for it in paths:
       let it = $it
@@ -772,18 +825,8 @@ proc findFile*(conf: ConfigRef; f: string; suppressStdlib = false): AbsoluteFile
           result = rawFindFile2(conf, RelativeFile f.toLowerAscii)
   patchModule(conf)
 
-const stdlibDirs = [
-  "pure", "core", "arch",
-  "pure/collections",
-  "pure/concurrency",
-  "pure/unidecode", "impure",
-  "wrappers", "wrappers/linenoise",
-  "windows", "posix", "js"]
-
 proc findModule*(conf: ConfigRef; modulename, currentModule: string): AbsoluteFile =
   # returns path to module
-  const pkgPrefix = "pkg/"
-  const stdPrefix = "std/"
   var m = addFileExt(modulename, NimExt)
   if m.startsWith(pkgPrefix):
     result = findFile(conf, m.substr(pkgPrefix.len), suppressStdlib = true)
@@ -793,10 +836,11 @@ proc findModule*(conf: ConfigRef; modulename, currentModule: string): AbsoluteFi
       for candidate in stdlibDirs:
         let path = (conf.libpath.string / candidate / stripped)
         if fileExists(path):
-          m = path
+          result = AbsoluteFile path
           break
-    let currentPath = currentModule.splitFile.dir
-    result = AbsoluteFile currentPath / m
+    else: # If prefixed with std/ why would we add the current module path!
+      let currentPath = currentModule.splitFile.dir
+      result = AbsoluteFile currentPath / m
     if not fileExists(result):
       result = findFile(conf, m)
   patchModule(conf)

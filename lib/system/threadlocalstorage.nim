@@ -17,6 +17,9 @@ when defined(windows):
   proc winResumeThread(hThread: SysThread): int32 {.
     stdcall, dynlib: "kernel32", importc: "ResumeThread".}
 
+  proc waitForSingleObject(hHandle: SysThread, dwMilliseconds: int32): int32 {.
+    stdcall, dynlib: "kernel32", importc: "WaitForSingleObject".}
+
   proc waitForMultipleObjects(nCount: int32,
                               lpHandles: ptr SysThread,
                               bWaitAll: int32,
@@ -194,8 +197,23 @@ else:
   proc cpusetIncl(cpu: cint; s: var CpuSet) {.
     importc: "CPU_SET", header: schedh.}
 
-  proc setAffinity(thread: SysThread; setsize: csize_t; s: var CpuSet) {.
-    importc: "pthread_setaffinity_np", header: pthreadh.}
+  when defined(android):
+    # libc of android doesn't implement pthread_setaffinity_np,
+    # it exposes pthread_gettid_np though, so we can use that in combination
+    # with sched_setaffinity to set the thread affinity.
+    type Pid {.importc: "pid_t", header: "<sys/types.h>".} = int32 # From posix_other.nim
+
+    proc setAffinityTID(tid: Pid; setsize: csize_t; s: var CpuSet) {.
+      importc: "sched_setaffinity", header: schedh.}
+
+    proc pthread_gettid_np(thread: SysThread): Pid {.
+      importc: "pthread_gettid_np", header: pthreadh.}
+
+    proc setAffinity(thread: SysThread; setsize: csize_t; s: var CpuSet) =
+      setAffinityTID(pthread_gettid_np(thread), setsize, s)
+  else:
+    proc setAffinity(thread: SysThread; setsize: csize_t; s: var CpuSet) {.
+      importc: "pthread_setaffinity_np", header: pthreadh.}
 
 
 const
@@ -208,7 +226,7 @@ when emulatedThreadVars:
 
 # we preallocate a fixed size for thread local storage, so that no heap
 # allocations are needed. Currently less than 16K are used on a 64bit machine.
-# We use ``float`` for proper alignment:
+# We use `float` for proper alignment:
 const nimTlsSize {.intdefine.} = 16000
 type
   ThreadLocalStorage = array[0..(nimTlsSize div sizeof(float)), float]

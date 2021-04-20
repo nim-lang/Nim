@@ -12,7 +12,7 @@ import
   ast, astalgo, modules, passes, condsyms,
   options, sem, llstream, lineinfos, vm,
   vmdef, modulegraphs, idents, os, pathutils,
-  passaux, scriptconfig
+  passaux, scriptconfig, std/compilesettings
 
 type
   Interpreter* = ref object ## Use Nim as an interpreter with this object
@@ -24,11 +24,8 @@ type
 iterator exportedSymbols*(i: Interpreter): PSym =
   assert i != nil
   assert i.mainModule != nil, "no main module selected"
-  var it: TTabIter
-  var s = initTabIter(it, i.mainModule.tab)
-  while s != nil:
+  for s in modulegraphs.allSyms(i.graph, i.mainModule):
     yield s
-    s = nextIter(it, i.mainModule.tab)
 
 proc selectUniqueSymbol*(i: Interpreter; name: string;
                          symKinds: set[TSymKind] = {skLet, skVar}): PSym =
@@ -37,14 +34,14 @@ proc selectUniqueSymbol*(i: Interpreter; name: string;
   assert i != nil
   assert i.mainModule != nil, "no main module selected"
   let n = getIdent(i.graph.cache, name)
-  var it: TIdentIter
-  var s = initIdentIter(it, i.mainModule.tab, n)
+  var it: ModuleIter
+  var s = initModuleIter(it, i.graph, i.mainModule, n)
   result = nil
   while s != nil:
     if s.kind in symKinds:
       if result == nil: result = s
       else: return nil # ambiguous
-    s = nextIdentIter(it, i.mainModule.tab)
+    s = nextModuleIter(it, i.graph)
 
 proc selectRoutine*(i: Interpreter; name: string): PSym =
   ## Selects a declared routine (proc/func/etc) from the main module.
@@ -70,7 +67,7 @@ proc evalScript*(i: Interpreter; scriptStream: PLLStream = nil) =
   ## This can also be used to *reload* the script.
   assert i != nil
   assert i.mainModule != nil, "no main module selected"
-  initStrTable(i.mainModule.tab)
+  initStrTables(i.graph, i.mainModule)
   i.mainModule.ast = nil
 
   let s = if scriptStream != nil: scriptStream
@@ -95,10 +92,9 @@ proc findNimStdLib*(): string =
     return ""
 
 proc findNimStdLibCompileTime*(): string =
-  ## Same as ``findNimStdLib`` but uses source files used at compile time,
+  ## Same as `findNimStdLib` but uses source files used at compile time,
   ## and asserts on error.
-  const exe = getCurrentCompilerExe()
-  result = exe.splitFile.dir.parentDir / "lib"
+  result = querySetting(libPath)
   doAssert fileExists(result / "system.nim"), "result:" & result
 
 proc createInterpreter*(scriptName: string;

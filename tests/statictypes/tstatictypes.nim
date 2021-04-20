@@ -2,6 +2,8 @@ discard """
 nimout: '''
 staticAlialProc instantiated with 358
 staticAlialProc instantiated with 368
+0: Foo
+1: Bar
 '''
 output: '''
 16
@@ -17,14 +19,14 @@ Val1
 
 import macros
 
-template ok(x) = assert(x)
-template no(x) = assert(not x)
+template ok(x) = doAssert(x)
+template no(x) = doAssert(not x)
 
 template accept(x) =
-  static: assert(compiles(x))
+  static: doAssert(compiles(x))
 
 template reject(x) =
-  static: assert(not compiles(x))
+  static: doAssert(not compiles(x))
 
 proc plus(a, b: int): int = a + b
 
@@ -54,8 +56,8 @@ when true:
                        b: static[int],
                        c: static int) =
     static:
-      assert a.isStatic and b.isStatic and c.isStatic
-      assert isStatic(a + plus(b, c))
+      doAssert a.isStatic and b.isStatic and c.isStatic
+      doAssert isStatic(a + plus(b, c))
       echo "staticAlialProc instantiated with ", a, b, c
 
     when b mod a == 0:
@@ -111,9 +113,9 @@ when true:
   var aw3: ArrayWrapper3[(10, "str")]
 
   static:
-    assert aw1.data.high == 5
-    assert aw2.data.high == 6
-    assert aw3.data.high == 9
+    doAssert aw1.data.high == 5
+    doAssert aw2.data.high == 6
+    doAssert aw3.data.high == 9
 
 # #6077
 block:
@@ -289,8 +291,10 @@ macro fooParam(x: static array[2, string]): untyped =
     echo i, ": ", val
 
 macro barParam(x: static Table[int, string]): untyped =
-  for i, val in x:
+  let barParamInsides = proc(i: int, val: string): NimNode =
     echo i, ": ", val
+  for i, val in x:
+    discard barParamInsides(i, val)
 
 fooM()
 barM()
@@ -366,3 +370,19 @@ block:
   block:
     type Foo[N: static int] = array[int32(0) .. int32(N), float]
     type T = Foo[3]
+
+
+#------------------------------------------------------------------------------------------
+# static proc/lambda param
+func isSorted2[T](a: openArray[T], cmp: static proc(x, y: T): bool {.inline.}): bool =
+  result = true
+  for i in 0..<len(a)-1:
+    if not cmp(a[i], a[i+1]):
+      return false
+
+proc compare(a, b: int): bool {.inline.} = a < b
+
+var sorted = newSeq[int](1000)
+for i in 0..<sorted.len: sorted[i] = i*2
+doAssert isSorted2(sorted, compare)
+doAssert isSorted2(sorted, proc (a, b: int): bool {.inline.} = a < b)

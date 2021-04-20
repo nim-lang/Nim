@@ -1,6 +1,6 @@
 discard """
 errormsg: '''
-not all cases are covered; missing: {nnkComesFrom, nnkDotCall, nnkHiddenCallConv, nnkVarTuple, nnkCurlyExpr, nnkRange, nnkCheckedFieldExpr, nnkDerefExpr, nnkElifExpr, nnkElseExpr, nnkLambda, nnkDo, nnkBind, nnkClosedSymChoice, nnkHiddenSubConv, nnkConv, nnkStaticExpr, nnkAddr, nnkHiddenAddr, nnkHiddenDeref, nnkObjDownConv, nnkObjUpConv, nnkChckRangeF, nnkChckRange64, nnkChckRange, nnkStringToCString, nnkCStringToString, nnkFastAsgn, nnkGenericParams, nnkFormalParams, nnkOfInherit, nnkImportAs, nnkConverterDef, nnkMacroDef, nnkTemplateDef, nnkIteratorDef, nnkOfBranch, nnkElifBranch, nnkExceptBranch, nnkElse, nnkAsmStmt, nnkTypeDef, nnkFinally, nnkContinueStmt, nnkImportStmt, nnkImportExceptStmt, nnkExportStmt, nnkExportExceptStmt, nnkFromStmt, nnkIncludeStmt, nnkUsingStmt, nnkBlockExpr, nnkStmtListType, nnkBlockType, nnkWith, nnkWithout, nnkTypeOfExpr, nnkObjectTy, nnkTupleTy, nnkTupleClassTy, nnkTypeClassTy, nnkStaticTy, nnkRecList, nnkRecCase, nnkRecWhen, nnkVarTy, nnkConstTy, nnkMutableTy, nnkDistinctTy, nnkProcTy, nnkIteratorTy, nnkSharedTy, nnkEnumTy, nnkEnumFieldDef, nnkArglist, nnkPattern, nnkReturnToken, nnkClosure, nnkGotoState, nnkState, nnkBreakState, nnkFuncDef, nnkTupleConstr}
+not all cases are covered; missing: {nnkComesFrom, nnkDotCall, nnkHiddenCallConv, nnkVarTuple, nnkCurlyExpr, nnkRange, nnkCheckedFieldExpr, nnkDerefExpr, nnkElifExpr, nnkElseExpr, nnkLambda, nnkDo, nnkBind, nnkClosedSymChoice, nnkHiddenSubConv, nnkConv, nnkStaticExpr, nnkAddr, nnkHiddenAddr, nnkHiddenDeref, nnkObjDownConv, nnkObjUpConv, nnkChckRangeF, nnkChckRange64, nnkChckRange, nnkStringToCString, nnkCStringToString, nnkFastAsgn, nnkGenericParams, nnkFormalParams, nnkOfInherit, nnkImportAs, nnkConverterDef, nnkMacroDef, nnkTemplateDef, nnkIteratorDef, nnkOfBranch, nnkElifBranch, nnkExceptBranch, nnkElse, nnkAsmStmt, nnkTypeDef, nnkFinally, nnkContinueStmt, nnkImportStmt, nnkImportExceptStmt, nnkExportStmt, nnkExportExceptStmt, nnkFromStmt, nnkIncludeStmt, nnkUsingStmt, nnkBlockExpr, nnkStmtListType, nnkBlockType, nnkWith, nnkWithout, nnkTypeOfExpr, nnkObjectTy, nnkTupleTy, nnkTupleClassTy, nnkTypeClassTy, nnkStaticTy, nnkRecList, nnkRecCase, nnkRecWhen, nnkVarTy, nnkConstTy, nnkMutableTy, nnkDistinctTy, nnkProcTy, nnkIteratorTy, nnkSharedTy, nnkEnumTy, nnkEnumFieldDef, nnkArgList, nnkPattern, nnkReturnToken, nnkClosure, nnkGotoState, nnkState, nnkBreakState, nnkFuncDef, nnkTupleConstr}
 '''
 """
 
@@ -62,7 +62,7 @@ type
     nnkSharedTy,           # 'shared T'
     nnkEnumTy,
     nnkEnumFieldDef,
-    nnkArglist, nnkPattern
+    nnkArgList, nnkPattern
     nnkReturnToken,
     nnkClosure,
     nnkGotoState,

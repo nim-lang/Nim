@@ -1,7 +1,7 @@
 discard """
   action: run
   exitcode: 1
-  target: "c cpp"
+  targets: "c cpp"
   disabled: "openbsd"
   disabled: "netbsd"
 """

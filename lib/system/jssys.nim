@@ -189,9 +189,8 @@ proc setConstr() {.varargs, asmNoStackFrame, compilerproc.} =
 
 proc makeNimstrLit(c: cstring): string {.asmNoStackFrame, compilerproc.} =
   {.emit: """
-  var ln = `c`.length;
-  var result = new Array(ln);
-  for (var i = 0; i < ln; ++i) {
+  var result = [];
+  for (var i = 0; i < `c`.length; ++i) {
     result[i] = `c`.charCodeAt(i);
   }
   return result;
@@ -341,7 +340,12 @@ proc cmpStrings(a, b: string): int {.asmNoStackFrame, compilerproc.} =
   """
 
 proc cmp(x, y: string): int =
-  return cmpStrings(x, y)
+  when nimvm:
+    if x == y: result = 0
+    elif x < y: result = -1
+    else: result = 1
+  else:
+    result = cmpStrings(x, y)
 
 proc eqStrings(a, b: string): bool {.asmNoStackFrame, compilerproc.} =
   asm """
@@ -491,11 +495,13 @@ proc negInt64(a: int64): int64 {.compilerproc.} =
 
 proc nimFloatToString(a: float): cstring {.compilerproc.} =
   ## ensures the result doesn't print like an integer, i.e. return 2.0, not 2
+  # print `-0.0` properly
   asm """
     function nimOnlyDigitsOrMinus(n) {
       return n.toString().match(/^-?\d+$/);
     }
-    if (Number.isSafeInteger(`a`)) `result` =  `a`+".0"
+    if (Number.isSafeInteger(`a`))
+      `result` = `a` === 0 && 1 / `a` < 0 ? "-0.0" : `a`+".0"
     else {
       `result` = `a`+""
       if(nimOnlyDigitsOrMinus(`result`)){
@@ -639,7 +645,7 @@ proc genericReset(x: JSRef, ti: PNimType): JSRef {.compilerproc.} =
       asm "`result` = {m_type: `ti`};"
     else:
       asm "`result` = {};"
-  of tySequence, tyOpenArray:
+  of tySequence, tyOpenArray, tyString:
     asm """
       `result` = [];
     """

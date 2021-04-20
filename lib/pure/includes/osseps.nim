@@ -1,5 +1,5 @@
 # Include file that implements 'DirSep' and friends. Do not import this when
-# you also import ``os.nim``!
+# you also import `os.nim`!
 
 # Improved based on info in 'compiler/platform.nim'
 
@@ -47,7 +47,7 @@ const
     elif defined(PalmOS) or defined(MorphOS): ':' # platform has ':' but osseps has ';'
     else: ':'
     ## The character conventionally used by the operating system to separate
-    ## search patch components (as in PATH), such as `':'` for POSIX
+    ## search path components (as in PATH), such as `':'` for POSIX
     ## or `';'` for Windows.
 
   FileSystemCaseSensitive* =
@@ -88,7 +88,7 @@ const
 
   ExtSep* = '.'
     ## The character which separates the base filename from the extension;
-    ## for example, the `'.'` in ``os.nim``.
+    ## for example, the `'.'` in `os.nim`.
 
   #  MacOS paths
   #  ===========
