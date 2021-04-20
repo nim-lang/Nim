@@ -59,7 +59,7 @@ when compileOption("threads"):
 
 type
   Task* = object ## `Task` contains the callback and its arguments.
-    callback: proc (args: pointer) {.nimcall.}
+    callback: proc (args: pointer) {.nimcall, gcsafe.}
     args: pointer
     destroy: proc (args: pointer) {.nimcall.}
 
@@ -73,7 +73,7 @@ proc `=destroy`*(t: var Task) {.inline.} =
       t.destroy(t.args)
     c_free(t.args)
 
-proc invoke*(task: Task) {.inline.} =
+proc invoke*(task: Task) {.inline, gcsafe.} =
   ## Invokes the `task`.
   assert task.callback != nil
   task.callback(task.args)
