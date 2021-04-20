@@ -7,6 +7,8 @@ discard """
 """
 import net
 from openssl import SSL_CTX_ctrl
+when defined(osx):
+  {.passl:"-Wl,-rpath,/usr/local/opt/openssl/lib".}
 #using channels_builtin
 var serverChannel:Channel[Port]
 
