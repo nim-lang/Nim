@@ -54,7 +54,7 @@ Please use alternative packages for serialization.
 It is possible to reimplement this module using generics and type traits.
 Please contribute a new implementation.""".}
 
-import std/[streams, typeinfo, json, intsets, tables, unicode]
+import streams, typeinfo, json, intsets, tables, unicode
 
 proc ptrToInt(x: pointer): int {.inline.} =
   result = cast[int](x) # don't skip alignment

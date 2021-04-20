@@ -313,8 +313,8 @@ help with readability, since there is only so much you can cram into
 single letter DSLs.
 ]##
 
-import std/[macros, parseutils, unicode]
-import std/strutils except format
+import macros, parseutils, unicode
+import strutils except format
 
 proc mkDigit(v: int, typ: char): string {.inline.} =
   assert(v < 26)

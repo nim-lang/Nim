@@ -15,7 +15,7 @@
 ## This implementation calls `initRand()` for the first call of
 ## `genOid`.
 
-import std/[hashes, times, endians, random]
+import hashes, times, endians, random
 from std/private/decode_helpers import handleHexChar
 
 type

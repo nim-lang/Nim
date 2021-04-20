@@ -39,7 +39,7 @@ runnableExamples:
   doAssert getDataUri("Nim", "text/plain") == "data:text/plain;charset=utf-8;base64,Tmlt"
 
 
-import std/[strutils, parseutils, base64]
+import strutils, parseutils, base64
 import std/private/[since, decode_helpers]
 
 

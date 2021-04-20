@@ -65,9 +65,9 @@ since (1, 1):
 when weirdTarget:
   discard
 elif defined(windows):
-  import std/[winlean, times]
+  import winlean, times
 elif defined(posix):
-  import std/[posix, times]
+  import posix, times
 
   proc toTime(ts: Timespec): times.Time {.inline.} =
     result = initTime(ts.tv_sec.int64, ts.tv_nsec.int)
