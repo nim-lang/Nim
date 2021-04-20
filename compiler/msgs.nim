@@ -488,11 +488,12 @@ proc sourceLine*(conf: ConfigRef; i: TLineInfo): string =
 
   result = conf.m.fileInfos[i.fileIndex.int32].lines[i.line.int-1]
 
-proc writeSurroundingSrc(conf: ConfigRef; info: TLineInfo) =
-  const indent = "  "
-  msgWrite(conf, indent & $sourceLine(conf, info))
-  if info.col >= 0:
-    msgWrite(conf, "\n" & indent & spaces(info.col) & '^')
+proc getSurroundingSrc(conf: ConfigRef; info: TLineInfo): string =
+  if conf.hasHint(hintSource) and info != unknownLineInfo:
+    const indent = "  "
+    result = "\n" & indent & $sourceLine(conf, info)
+    if info.col >= 0:
+      result.add "\n" & indent & spaces(info.col) & '^'
 
 proc formatMsg*(conf: ConfigRef; info: TLineInfo, msg: TMsgKind, arg: string): string =
   let title = case msg
@@ -554,10 +555,8 @@ proc liMessage*(conf: ConfigRef; info: TLineInfo, msg: TMsgKind, arg: string,
       if msg == hintProcessing:
         msgWrite(conf, ".")
       else:
-        styledMsgWriteln(styleBright, loc, resetStyle, color, title, resetStyle, s, KindColor, kindmsg)
-        if conf.hasHint(hintSource) and info != unknownLineInfo:
-          conf.writeSurroundingSrc(info)
-        msgWrite(conf, UnitSep & "\n")
+        styledMsgWriteln(styleBright, loc, resetStyle, color, title, resetStyle, s, KindColor, kindmsg,
+                         resetStyle, conf.getSurroundingSrc(info), UnitSep)
         if hintMsgOrigin in conf.mainPackageNotes:
           styledMsgWriteln(styleBright, toFileLineCol(info2), resetStyle,
             " compiler msg initiated here", KindColor,
