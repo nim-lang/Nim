@@ -1,4 +1,4 @@
-{.passC: "-march=native -O3".}
+{.passC: "-march=native -O3 -fPIC".}
 # nim c -d:release -d:danger -x -r tstats.nim
 import algorithm, math, random, sequtils, stats, strformat, times
 
@@ -18,10 +18,10 @@ block:
     B = A
     t0, t1 : float
   t0 = cpuTime()
-  let xS = quickSelect(A,0,Dim,dimH)
+  discard quickSelect(A,0,Dim,dimH)
   t0 = cpuTime()-t0
   t1 = cpuTime()
-  let xN = selectNaive(B,dimH)
+  discard selectNaive(B,dimH)
   t1 = cpuTime()-t1
   
   echo &"quickSelect is {100.0*(1.0-t0/t1):6.2f}% faster than sort-based method for a sequence of length {Dim}"
