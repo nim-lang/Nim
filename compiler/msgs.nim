@@ -14,7 +14,7 @@ import std/private/miscdollars
 import strutils2
 
 type InstantiationInfo* = typeof(instantiationInfo())
-template instLoc(): InstantiationInfo = instantiationInfo(-2, fullPaths = true)
+template instLoc*(): InstantiationInfo = instantiationInfo(-2, fullPaths = true)
 
 template toStdOrrKind(stdOrr): untyped =
   if stdOrr == stdout: stdOrrStdout else: stdOrrStderr
