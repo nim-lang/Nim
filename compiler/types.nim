@@ -124,6 +124,9 @@ proc isFloatLit*(t: PType): bool {.inline.} =
   result = t.kind == tyFloat and t.n != nil and t.n.kind == nkFloatLit
 
 proc addDeclaredLoc*(result: var string, conf: ConfigRef; sym: PSym) =
+  var sym = sym
+  while sym.typ.kind in {tyStatic}:
+    sym = sym.typ[0].sym
   result.add " [$1 declared in $2]" % [sym.kind.toHumanStr, toFileLineCol(conf, sym.info)]
 
 proc addDeclaredLocMaybe*(result: var string, conf: ConfigRef; sym: PSym) =
@@ -131,7 +134,10 @@ proc addDeclaredLocMaybe*(result: var string, conf: ConfigRef; sym: PSym) =
     addDeclaredLoc(result, conf, sym)
 
 proc addDeclaredLoc*(result: var string, conf: ConfigRef; typ: PType) =
-  let typ = typ.skipTypes(abstractInst - {tyRange})
+  # xxx figure out how to resolve `tyGenericParam`, e.g. for
+  # proc fn[T](a: T, b: T) = discard
+  # fn(1.1, "a")
+  let typ = typ.skipTypes(abstractInst + {tyStatic} - {tyRange})
   result.add " [$1" % typ.kind.toHumanStr
   if typ.sym != nil:
     result.add " declared in " & toFileLineCol(conf, typ.sym.info)
