@@ -27,7 +27,7 @@
 # solves the opcLdConst vs opcAsgnConst issue. Of course whether we need
 # this copy depends on the involved types.
 
-import std / tables
+import tables
 
 import
   strutils, ast, types, msgs, renderer, vmdef,

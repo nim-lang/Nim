@@ -8,7 +8,7 @@
 #
 
 import ast, renderer, intsets, tables, msgs, options, lineinfos, strformat, idents, treetab, hashes
-import sequtils, strutils, std / sets
+import sequtils, strutils, sets
 
 # IMPORTANT: notes not up to date, i'll update this comment again
 #
