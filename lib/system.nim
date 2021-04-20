@@ -478,6 +478,7 @@ proc `[]`*[I: Ordinal;T](a: T; i: I): T {.
 proc `[]=`*[I: Ordinal;T,S](a: T; i: I;
   x: sink S) {.noSideEffect, magic: "ArrPut".}
 proc `=`*[T](dest: var T; src: T) {.noSideEffect, magic: "Asgn".}
+proc `=copy`*[T](dest: var T; src: T) {.noSideEffect, magic: "Asgn".}
 
 proc arrGet[I: Ordinal;T](a: T; i: I): T {.
   noSideEffect, magic: "ArrGet".}
@@ -509,13 +510,15 @@ proc `..`*[T, U](a: sink T, b: sink U): HSlice[T, U] {.noSideEffect, inline, mag
   ##   echo a[2 .. 3] # @[30, 40]
   result = HSlice[T, U](a: a, b: b)
 
-proc `..`*[T](b: sink T): HSlice[int, T] {.noSideEffect, inline, magic: "DotDot".} =
-  ## Unary `slice`:idx: operator that constructs an interval `[default(int), b]`.
-  ##
-  ## .. code-block:: Nim
-  ##   let a = [10, 20, 30, 40, 50]
-  ##   echo a[.. 2] # @[10, 20, 30]
-  result = HSlice[int, T](a: 0, b: b)
+when defined(nimLegacyUnarySlice):
+  proc `..`*[T](b: sink T): HSlice[int, T]
+    {.noSideEffect, inline, magic: "DotDot", deprecated: "replace `..b` with `0..b`".} =
+    ## Unary `slice`:idx: operator that constructs an interval `[default(int), b]`.
+    ##
+    ## .. code-block:: Nim
+    ##   let a = [10, 20, 30, 40, 50]
+    ##   echo a[.. 2] # @[10, 20, 30]
+    result = HSlice[int, T](a: 0, b: b)
 
 when defined(hotCodeReloading):
   {.pragma: hcrInline, inline.}
@@ -980,7 +983,7 @@ proc `@`* [IDX, T](a: sink array[IDX, T]): seq[T] {.magic: "ArrToSeq", noSideEff
   ##   echo @a # => @[1, 3, 5]
   ##   echo @b # => @['f', 'o', 'o']
 
-proc default*(T: typedesc): T {.magic: "Default", noSideEffect.} =
+proc default*[T](_: typedesc[T]): T {.magic: "Default", noSideEffect.} =
   ## returns the default value of the type `T`.
   runnableExamples:
     assert (int, float).default == (0, 0.0)
@@ -1452,7 +1455,7 @@ type # these work for most platforms:
     ## This is the same as the type `long double` in *C*.
     ## This C type is not supported by Nim's code generator.
 
-  cuchar* {.importc: "unsigned char", nodecl.} = char
+  cuchar* {.importc: "unsigned char", nodecl.} = uint8
     ## This is the same as the type `unsigned char` in *C*.
   cushort* {.importc: "unsigned short", nodecl.} = uint16
     ## This is the same as the type `unsigned short` in *C*.

@@ -4,6 +4,8 @@
 
 ## Changes affecting backward compatibility
 
+-  `cuchar` now aliases `uint8` instead of `char`
+
 - `repr` now doesn't insert trailing newline; previous behavior was very inconsistent,
   see #16034. Use `-d:nimLegacyReprWithNewline` for previous behavior.
 
@@ -36,6 +38,24 @@
 
 - In `std/os`, `getHomeDir`, `expandTilde`, `getTempDir`, `getConfigDir` now do not include trailing `DirSep`,
   unless `-d:nimLegacyHomeDir` is specified (for a transition period).
+
+- On POSIX systems, the default signal handlers used for Nim programs (it's
+  used for printing the stacktrace on fatal signals) will now re-raise the
+  signal for the OS default handlers to handle.
+
+  This lets the OS perform its default actions, which might include core
+  dumping (on select signals) and notifying the parent process about the cause
+  of termination.
+
+- On POSIX systems, we now ignore `SIGPIPE` signals, use `-d:nimLegacySigpipeHandler`
+  for previous behavior.
+
+- `hashes.hash` now supports `object` and `ref` (can be overloaded in user code).
+- `hashes.hash(proc|ptr|ref|pointer)` now calls `hash(int)` and honors `-d:nimIntHash1`,
+  `hashes.hash(closure)` has also been improved.
+
+- The unary slice `..b` was removed, use `0..b` instead or use `-d:nimLegacyUnarySlice`
+  for a deprecation period.
 
 ## Standard library additions and changes
 - Added support for parenthesized expressions in `strformat`
@@ -217,24 +237,13 @@
   `ValueError` when the real command line is not available. `parseopt` was
   previously excluded from `prelude` for JS, as it could not be imported.
 
-- On POSIX systems, the default signal handlers used for Nim programs (it's
-  used for printing the stacktrace on fatal signals) will now re-raise the
-  signal for the OS default handlers to handle.
-
-  This lets the OS perform its default actions, which might include core
-  dumping (on select signals) and notifying the parent process about the cause
-  of termination.
-
 - Added `system.prepareStrMutation` for better support of low
   level `moveMem`, `copyMem` operations for Orc's copy-on-write string
   implementation.
 
-- `hashes.hash` now supports `object`, but can be overloaded.
-
 - Added `std/strbasics` for high performance string operations.
   Added `strip`, `setSlice`, `add(a: var string, b: openArray[char])`.
 
-- `hashes.hash` now supports `object`, but can be overloaded.
 
 - Added to `wrapnils` an option-like API via `??.`, `isSome`, `get`.
 

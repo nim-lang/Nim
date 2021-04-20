@@ -171,7 +171,7 @@ block tableconstr:
   # NEW:
   doAssert 56 in 50..100
 
-  doAssert 56 in ..60
+  doAssert 56 in 0..60
 
 
 block ttables2:

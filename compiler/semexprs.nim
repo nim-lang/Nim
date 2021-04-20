@@ -375,7 +375,7 @@ proc semLowHigh(c: PContext, n: PNode, m: TMagic): PNode =
     n[1] = semExprWithType(c, n[1], {efDetermineType})
     var typ = skipTypes(n[1].typ, abstractVarRange + {tyTypeDesc, tyUserTypeClassInst})
     case typ.kind
-    of tySequence, tyString, tyCString, tyOpenArray, tyVarargs:
+    of tySequence, tyString, tyCstring, tyOpenArray, tyVarargs:
       n.typ = getSysType(c.graph, n.info, tyInt)
     of tyArray:
       n.typ = typ[0] # indextype
@@ -1044,8 +1044,7 @@ proc buildEchoStmt(c: PContext, n: PNode): PNode =
   if e != nil:
     result.add(newSymNode(e))
   else:
-    localError(c.config, n.info, "system needs: echo")
-    result.add(errorNode(c, n))
+    result.add localErrorNode(c, n, "system needs: echo")
   result.add(n)
   result = semExpr(c, result)
 
@@ -1508,7 +1507,7 @@ proc semSubscript(c: PContext, n: PNode, flags: TExprFlags): PNode =
       arr = arr.base
 
   case arr.kind
-  of tyArray, tyOpenArray, tyVarargs, tySequence, tyString, tyCString,
+  of tyArray, tyOpenArray, tyVarargs, tySequence, tyString, tyCstring,
     tyUncheckedArray:
     if n.len != 2: return nil
     n[0] = makeDeref(n[0])
@@ -2621,8 +2620,7 @@ proc semTupleConstr(c: PContext, n: PNode, flags: TExprFlags): PNode =
     # check if either everything or nothing is tyTypeDesc
     for i in 1..<tupexp.len:
       if isTupleType != (tupexp[i].typ.kind == tyTypeDesc):
-        localError(c.config, tupexp[i].info, "Mixing types and values in tuples is not allowed.")
-        return(errorNode(c,n))
+        return localErrorNode(c, n, tupexp[i].info, "Mixing types and values in tuples is not allowed.")
   if isTupleType: # expressions as ``(int, string)`` are reinterpret as type expressions
     result = n
     var typ = semTypeNode(c, n, nil).skipTypes({tyTypeDesc})

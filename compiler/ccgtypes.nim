@@ -189,7 +189,7 @@ proc mapType(conf: ConfigRef; typ: PType; kind: TSymKind): TCTypeKind =
   of tySequence: result = ctNimSeq
   of tyProc: result = if typ.callConv != ccClosure: ctProc else: ctStruct
   of tyString: result = ctNimStr
-  of tyCString: result = ctCString
+  of tyCstring: result = ctCString
   of tyInt..tyUInt64:
     result = TCTypeKind(ord(typ.kind) - ord(tyInt) + ord(ctInt))
   of tyStatic:
@@ -292,7 +292,7 @@ proc getSimpleTypeDesc(m: BModule, typ: PType): Rope =
     else:
       discard cgsym(m, "NimStringDesc")
       result = typeNameOrLiteral(m, typ, "NimStringDesc*")
-  of tyCString: result = typeNameOrLiteral(m, typ, "NCSTRING")
+  of tyCstring: result = typeNameOrLiteral(m, typ, "NCSTRING")
   of tyBool: result = typeNameOrLiteral(m, typ, "NIM_BOOL")
   of tyChar: result = typeNameOrLiteral(m, typ, "NIM_CHAR")
   of tyNil: result = typeNameOrLiteral(m, typ, "void*")
@@ -453,7 +453,7 @@ proc genProcParams(m: BModule, t: PType, rettype, params: var Rope,
       params.add(~"NIM_NOALIAS ")
     params.add(param.loc.r)
     # declare the len field for open arrays:
-    var arr = param.typ
+    var arr = param.typ.skipTypes({tyGenericInst})
     if arr.kind in {tyVar, tyLent, tySink}: arr = arr.lastSon
     var j = 0
     while arr.kind in {tyOpenArray, tyVarargs}:
@@ -1452,7 +1452,7 @@ proc genTypeInfoV1(m: BModule, t: PType; info: TLineInfo): Rope =
 
   case t.kind
   of tyEmpty, tyVoid: result = rope"0"
-  of tyPointer, tyBool, tyChar, tyCString, tyString, tyInt..tyUInt64, tyVar, tyLent:
+  of tyPointer, tyBool, tyChar, tyCstring, tyString, tyInt..tyUInt64, tyVar, tyLent:
     genTypeInfoAuxBase(m, t, t, result, rope"0", info)
   of tyStatic:
     if t.n != nil: result = genTypeInfoV1(m, lastSon t, info)

@@ -17,6 +17,9 @@ when defined(windows):
   proc winResumeThread(hThread: SysThread): int32 {.
     stdcall, dynlib: "kernel32", importc: "ResumeThread".}
 
+  proc waitForSingleObject(hHandle: SysThread, dwMilliseconds: int32): int32 {.
+    stdcall, dynlib: "kernel32", importc: "WaitForSingleObject".}
+
   proc waitForMultipleObjects(nCount: int32,
                               lpHandles: ptr SysThread,
                               bWaitAll: int32,

@@ -508,9 +508,10 @@ Continuous Integration (CI)
 
 1. Continuous Integration is by default run on every push in a PR; this clogs
    the CI pipeline and affects other PR's; if you don't need it (e.g. for WIP or
-   documentation only changes), add `[ci skip]` to your commit message title.
-   This convention is supported by `Appveyor
-   <https://www.appveyor.com/docs/how-to/filtering-commits/#skip-directive-in-commit-message>`_
+   documentation only changes), add `[skip ci]` to your commit message title.
+   This convention is supported by our github actions pipelines and our azure pipeline
+   as well as our former other pipelines:
+   `Appveyor <https://www.appveyor.com/docs/how-to/filtering-commits/#skip-directive-in-commit-message>`_
    and `Travis <https://docs.travis-ci.com/user/customizing-the-build/#skipping-a-build>`_.
 
 2. Consider enabling CI (azure, GitHub actions and builds.sr.ht) in your own Nim fork, and

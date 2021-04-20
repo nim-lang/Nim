@@ -443,7 +443,7 @@ proc `=destroy`*[T](c: var Channel[T]) =
     else:
       atomicDec(c.d.atomicCounter)
 
-proc `=`*[T](dest: var Channel[T], src: Channel[T]) =
+proc `=copy`*[T](dest: var Channel[T], src: Channel[T]) =
   ## Shares `Channel` by reference counting.
   if src.d != nil:
     atomicInc(src.d.atomicCounter)

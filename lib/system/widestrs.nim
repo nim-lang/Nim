@@ -32,7 +32,7 @@ when defined(nimv2):
       else:
         dealloc(a.data)
 
-  proc `=`(a: var WideCStringObj; b: WideCStringObj) {.error.}
+  proc `=copy`(a: var WideCStringObj; b: WideCStringObj) {.error.}
 
   proc `=sink`(a: var WideCStringObj; b: WideCStringObj) =
     a.bytes = b.bytes
