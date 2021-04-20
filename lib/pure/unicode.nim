@@ -333,7 +333,7 @@ proc runeReverseOffset*(s: string, rev: Positive): (int, int) =
   ## from the end (starting with 1) and the total
   ## number of runes in the string.
   ##
-  ## Returns a negative value for offset if there are to few runes in
+  ## Returns a negative value for offset if there are too few runes in
   ## the string to satisfy the request.
   ##
   ## **Beware:** This can lead to unoptimized code and slow execution!
@@ -353,9 +353,7 @@ proc runeReverseOffset*(s: string, rev: Positive): (int, int) =
       x += r
     dec a
 
-  if a > 0:
-    return (-a, rev.int-a)
-  return (x, -a+rev.int)
+  result = if a > 0: (-a, rev.int-a) else: (x, -a+rev.int)
 
 proc runeAtPos*(s: string, pos: int): Rune =
   ## Returns the rune at position ``pos``.
@@ -419,12 +417,7 @@ proc runeSubStr*(s: string, pos: int, len: int = int.high): string =
     elif len == int.high:
       result = s.substr(o, s.len-1)
     elif len < 0:
-      let (e, rl) = runeReverseOffset(s, -len)
-      discard rl
-      if e <= 0:
-        result = ""
-      else:
-        result = s.substr(o, e-1)
+      result = runeSubStr(s, pos, s.runeLen+len)
     else:
       var e = runeOffset(s, len, o)
       if e < 0:
