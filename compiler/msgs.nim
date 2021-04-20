@@ -600,9 +600,6 @@ template localError*(conf: ConfigRef; info: TLineInfo, msg: TMsgKind, arg = "") 
 template localError*(conf: ConfigRef; info: TLineInfo, arg: string) =
   liMessage(conf, info, errGenerated, arg, doNothing, instLoc())
 
-template localError*(conf: ConfigRef; info: TLineInfo, format: string, params: openArray[string]) =
-  liMessage(conf, info, errGenerated, format % params, doNothing, instLoc())
-
 template message*(conf: ConfigRef; info: TLineInfo, msg: TMsgKind, arg = "") =
   liMessage(conf, info, msg, arg, doNothing, instLoc())
 
