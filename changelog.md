@@ -54,6 +54,9 @@
 - `hashes.hash(proc|ptr|ref|pointer)` now calls `hash(int)` and honors `-d:nimIntHash1`,
   `hashes.hash(closure)` has also been improved.
 
+- The unary slice `..b` was removed, use `0..b` instead or use `-d:nimLegacyUnarySlice`
+  for a deprecation period.
+
 ## Standard library additions and changes
 - Added support for parenthesized expressions in `strformat`
 
