@@ -37,6 +37,18 @@
 ## .. code:: Nim
 ##   for l in ["C", "c++", "jAvA", "Nim", "c#"]: echo getSourceLanguage(l)
 ##
+## There is also a `Cmd` pseudo-language supported, which is a simple generic
+## shell/cmdline tokenizer (UNIX shell/Powershell/Windows Command):
+## no escaping, no programming language constructs besides variable definition
+## at the beginning of line. It supports these operators:
+##
+## .. code:: Cmd
+##    &  &&  |  ||  (  )  ''  ""  ;  # for comments
+##
+## Instead of escaping always use quotes like here
+## `nimgrep --ext:'nim|nims' file.name`:cmd: shows how to input ``|``.
+## Any argument that contains ``.`` or ``/`` or ``\`` will be treated
+## as a file or directory.
 
 import
   strutils
@@ -902,8 +914,6 @@ proc pythonNextToken(g: var GeneralTokenizer) =
   nimNextToken(g, keywords)
 
 proc cmdNextToken(g: var GeneralTokenizer) =
-  # A simple shell/cmdline tokenizer (UNIX shell/Powershell/Windows Command):
-  # no escaping, no programming language constructs besides simple variables.
   var pos = g.pos
   g.start = g.pos
   if g.state == low(TokenClass):
@@ -919,7 +929,7 @@ proc cmdNextToken(g: var GeneralTokenizer) =
     g.kind = gtOption
     let q = g.buf[pos]
     inc(pos)
-    while g.buf[pos] notin {q, '\n', '\0'}:
+    while g.buf[pos] notin {q, '\0'}:
       inc(pos)
     if g.buf[pos] == q: inc(pos)
   of '#':
