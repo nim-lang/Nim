@@ -196,7 +196,7 @@ runnableExamples:
 
 
 import std/private/since
-import std/[hashes, math, algorithm]
+import hashes, math, algorithm
 
 type
   KeyValuePair[A, B] = tuple[hcode: Hash, key: A, val: B]
