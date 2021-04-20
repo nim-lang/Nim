@@ -112,7 +112,7 @@ proc getTokenLenFromSource(conf: ConfigRef; ident: string; info: TLineInfo): int
     if ident[^1] == '=' and ident[0] in linter.Letters:
       if sourceIdent != "=":
         result = 0
-    elif sourceIdent.len > ident.len and sourceIdent[..ident.high] == ident:
+    elif sourceIdent.len > ident.len and sourceIdent[0..ident.high] == ident:
       result = ident.len
     elif sourceIdent != ident:
       result = 0

@@ -52,10 +52,20 @@ jobs:
   steps:
     - bash: git config --global core.autocrlf false
       displayName: 'Disable auto conversion to CRLF by git (Windows-only)'
-      condition: eq(variables['Agent.OS'], 'Windows_NT')
+      condition: and(succeeded(), eq(variables['Agent.OS'], 'Windows_NT'))
 
     - checkout: self
-      fetchDepth: 1
+      fetchDepth: 2 # see D20210329T004830
+
+    - bash: |
+        # D20210329T004830:here refs https://github.com/microsoft/azure-pipelines-agent/issues/2944
+        # `--no-merges` is needed to avoid merge commits which occur for PR's.
+        # $(Build.SourceVersionMessage) is not helpful
+        # nor is `github.event.head_commit.message` for github actions.
+        commitMsg=$(git log --no-merges -1 --pretty=format:"%s")
+        echo commitMsg: $commitMsg
+        echo $commitMsg | grep -v '\[skip ci\]' # fails if [skip ci] not in commit msg
+      displayName: 'Check whether to skip CI'
 
     - bash: git clone --depth 1 https://github.com/nim-lang/csources
       displayName: 'Checkout Nim csources'
@@ -73,7 +83,7 @@ jobs:
           echo_run sudo apt-fast install --no-install-recommends -yq \
             libcurl4-openssl-dev libgc-dev libsdl1.2-dev libsfml-dev valgrind libc6-dbg
       displayName: 'Install dependencies (amd64 Linux)'
-      condition: and(eq(variables['Agent.OS'], 'Linux'), eq(variables['CPU'], 'amd64'))
+      condition: and(succeeded(), eq(variables['Agent.OS'], 'Linux'), eq(variables['CPU'], 'amd64'))
 
     - bash: |
         set -e
@@ -113,11 +123,11 @@ jobs:
         echo_run chmod 755 bin/g++
 
       displayName: 'Install dependencies (i386 Linux)'
-      condition: and(eq(variables['Agent.OS'], 'Linux'), eq(variables['CPU'], 'i386'))
+      condition: and(succeeded(), eq(variables['Agent.OS'], 'Linux'), eq(variables['CPU'], 'i386'))
 
     - bash: brew install boehmgc make sfml
       displayName: 'Install dependencies (OSX)'
-      condition: eq(variables['Agent.OS'], 'Darwin')
+      condition: and(succeeded(), eq(variables['Agent.OS'], 'Darwin'))
 
     - bash: |
         set -e
@@ -130,7 +140,7 @@ jobs:
         echo_run echo '##vso[task.prependpath]$(System.DefaultWorkingDirectory)/dist/mingw64/bin'
 
       displayName: 'Install dependencies (Windows)'
-      condition: eq(variables['Agent.OS'], 'Windows_NT')
+      condition: and(succeeded(), eq(variables['Agent.OS'], 'Windows_NT'))
 
     - bash: echo '##vso[task.prependpath]$(System.DefaultWorkingDirectory)/bin'
       displayName: 'Add build binaries to PATH'
