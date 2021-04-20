@@ -9,7 +9,10 @@
 
 ## Dead code elimination (=DCE) for IC.
 
-import intsets, tables
+# PRTEMP
+import std / [intsets, tables]
+# import intsets, tables
+
 import ".." / [ast, options, lineinfos, types]
 
 import packed_ast, ic, bitabs
