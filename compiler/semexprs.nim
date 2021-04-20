@@ -2282,16 +2282,14 @@ proc semMagic(c: PContext, n: PNode, s: PSym, flags: TExprFlags): PNode =
   of mSpawn:
     markUsed(c, n.info, s)
     when defined(leanCompiler):
-      localError(c.config, n.info, "compiler was built without 'spawn' support")
-      result = errorNode(c, n)
+      result = localErrorNode(c, n, "compiler was built without 'spawn' support")
     else:
       result = setMs(n, s)
       for i in 1..<n.len:
         result[i] = semExpr(c, n[i])
 
       if n.len > 1 and n[1].kind notin nkCallKinds:
-        localError(c.config, n[1].info, "'spawn' takes a call expression; got " & $n[1])
-        return errorNode(c, n)
+        return localErrorNode(c, n, n[1].info, "'spawn' takes a call expression; got " & $n[1])
 
       let typ = result[^1].typ
       if not typ.isEmptyType:
