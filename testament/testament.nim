@@ -692,7 +692,7 @@ proc main() =
         quit Usage
     of "batch":
       testamentData0.batchArg = p.val
-      if p.val != "_":
+      if p.val != "_" and p.val.len > 0 and p.val[0] in {'0'..'9'}:
         let s = p.val.split("_")
         doAssert s.len == 2, $(p.val, s)
         testamentData0.testamentBatch = s[0].parseInt
