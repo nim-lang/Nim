@@ -7,7 +7,7 @@
 #    distribution, for details about the copyright.
 #
 
-## Supports the "nim check --ic:on --def --track:FILE,LINE,COL"
+## Supports the "nim check --ic:on --defusages:FILE,LINE,COL"
 ## IDE-like features. It uses the set of .rod files to accomplish
 ## its task. The set must cover a complete Nim project.
 
