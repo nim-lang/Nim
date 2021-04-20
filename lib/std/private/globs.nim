@@ -4,7 +4,7 @@ this can eventually be moved to std/os and `walkDirRec` can be implemented in te
 to avoid duplication
 ]##
 
-import std/[os]
+import os
 when defined(windows):
   from strutils import replace
 
