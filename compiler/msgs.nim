@@ -490,9 +490,9 @@ proc sourceLine*(conf: ConfigRef; i: TLineInfo): string =
 
 proc writeSurroundingSrc(conf: ConfigRef; info: TLineInfo) =
   const indent = "  "
-  msgWriteln(conf, indent & $sourceLine(conf, info), {msgNoUnitSep})
+  msgWrite(conf, indent & $sourceLine(conf, info))
   if info.col >= 0:
-    msgWriteln(conf, indent & spaces(info.col) & '^', {msgNoUnitSep})
+    msgWrite(conf, "\n" & indent & spaces(info.col) & '^')
 
 proc formatMsg*(conf: ConfigRef; info: TLineInfo, msg: TMsgKind, arg: string): string =
   let title = case msg
@@ -554,9 +554,10 @@ proc liMessage*(conf: ConfigRef; info: TLineInfo, msg: TMsgKind, arg: string,
       if msg == hintProcessing:
         msgWrite(conf, ".")
       else:
-        styledMsgWriteln(styleBright, loc, resetStyle, color, title, resetStyle, s, KindColor, kindmsg, UnitSep)
+        styledMsgWriteln(styleBright, loc, resetStyle, color, title, resetStyle, s, KindColor, kindmsg)
         if conf.hasHint(hintSource) and info != unknownLineInfo:
           conf.writeSurroundingSrc(info)
+        msgWrite(conf, UnitSep & "\n")
         if hintMsgOrigin in conf.mainPackageNotes:
           styledMsgWriteln(styleBright, toFileLineCol(info2), resetStyle,
             " compiler msg initiated here", KindColor,
