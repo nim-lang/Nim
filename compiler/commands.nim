@@ -898,11 +898,11 @@ proc processSwitch*(switch, arg: string, pass: TCmdLinePass, info: TLineInfo;
     case arg.normalize
     of "abs": conf.filenameOption = foAbs
     of "canonical": conf.filenameOption = foCanonical
-    of "magic": conf.filenameOption = foMagicSauce
-    else: localError(conf, info, "expected: abs|canonical|magic, got: $1" % arg)
+    of "legacyrelproj": conf.filenameOption = foLegacyRelProj
+    else: localError(conf, info, "expected: abs|canonical|legacyRelProj, got: $1" % arg)
   of "listfullpaths":
-    conf.filenameOption = if switchOn(arg): foAbs else: foMagicSauce
-      # xxx in future work, s/foMagicSauce/foCanonical/ here
+    # xxx in future work, use `warningDeprecated`
+    conf.filenameOption = if switchOn(arg): foAbs else: foCanonical
   of "spellsuggest":
     if arg.len == 0: conf.spellSuggestMax = spellSuggestSecretSauce
     elif arg == "auto": conf.spellSuggestMax = spellSuggestSecretSauce

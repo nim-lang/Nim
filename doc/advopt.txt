@@ -36,7 +36,7 @@ Advanced options:
                             to after all options have been processed
   --stdout:on|off           output to stdout
   --colors:on|off           turn compiler messages coloring on|off
-  --filenames:abs|canonical|magic
+  --filenames:abs|canonical|legacyRelProj
                             customize how filenames are rendered in compiler messages,
                             defaults to `abs` (absolute)
   --declaredLocs:on|off     show declaration locations in messages

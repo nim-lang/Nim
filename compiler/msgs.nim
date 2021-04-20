@@ -249,7 +249,7 @@ proc toFilenameOption*(conf: ConfigRef, fileIdx: FileIndex, opt: FilenameOption)
     let absPath = toFullPath(conf, fileIdx)
     result = canonicalImportAux(conf, absPath.AbsoluteFile)
   of foName: result = toProjPath(conf, fileIdx).lastPathPart
-  of foMagicSauce:
+  of foLegacyRelProj:
     let
       absPath = toFullPath(conf, fileIdx)
       relPath = toProjPath(conf, fileIdx)
@@ -551,6 +551,7 @@ proc liMessage*(conf: ConfigRef; info: TLineInfo, msg: TMsgKind, arg: string,
         styledMsgWriteln(styleBright, loc, resetStyle, color, title, resetStyle, s, KindColor, kindmsg,
                          resetStyle, conf.getSurroundingSrc(info), UnitSep)
         if hintMsgOrigin in conf.mainPackageNotes:
+          # xxx needs a bit of refactoring to honor `conf.filenameOption`
           styledMsgWriteln(styleBright, toFileLineCol(info2), resetStyle,
             " compiler msg initiated here", KindColor,
             KindFormat % $hintMsgOrigin,
