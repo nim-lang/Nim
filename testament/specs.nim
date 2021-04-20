@@ -202,7 +202,7 @@ proc extractSpec(filename: string; spec: var TSpec): string =
 
   # look for """ only in the first section
   if a >= 0 and b > a and a < 40:
-    result = s.substr(a+3, b-1).replace("'''", tripleQuote)
+    result = s.substr(a+3, b-1).multiReplace({"'''": tripleQuote, "\\31": "\31"})
   else:
     #echo "warning: file does not contain spec: " & filename
     result = ""

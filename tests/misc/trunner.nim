@@ -235,7 +235,7 @@ tests/newconfig/bar/mfoo.nims""".splitLines
     var expected = ""
     for a in files:
       let b = dir / a
-      expected.add &"Hint: used config file '{b}' [Conf]\n"
+      expected.add &"Hint: used config file '{b}' [Conf]\31\n"
     doAssert outp.endsWith expected, outp & "\n" & expected
 
   block: # mfoo2.customext
@@ -243,7 +243,7 @@ tests/newconfig/bar/mfoo.nims""".splitLines
     let cmd = fmt"{nim} e --hint:conf {filename}"
     let (outp, exitCode) = execCmdEx(cmd, options = {poStdErrToStdOut})
     doAssert exitCode == 0
-    var expected = &"Hint: used config file '{filename}' [Conf]\n"
+    var expected = &"Hint: used config file '{filename}' [Conf]\31\n"
     doAssert outp.endsWith "123" & "\n" & expected
 
 

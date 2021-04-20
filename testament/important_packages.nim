@@ -74,7 +74,7 @@ pkg "gnuplot", "nim c gnuplot.nim"
 pkg "hts", "nim c -o:htss src/hts.nim"
 pkg "httpauth"
 pkg "illwill", "nimble examples"
-pkg "inim"
+pkg "inim", allowFailure=true
 pkg "itertools", "nim doc src/itertools.nim"
 pkg "iterutils"
 pkg "karax", "nim c -r tests/tester.nim"
