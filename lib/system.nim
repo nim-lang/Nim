@@ -1334,6 +1334,7 @@ proc del*[T](x: var seq[T], i: Natural) {.noSideEffect.} =
 
 proc delete*[T](x: var seq[T], i: Natural) {.noSideEffect.} =
   ## Deletes the item at index `i` by moving all `x[i+1..]` items by one position.
+  ## If `i` is greater than the last index, deletes the last item of `x`.
   ##
   ## This is an `O(n)` operation.
   ##
