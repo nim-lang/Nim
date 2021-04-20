@@ -1537,7 +1537,7 @@ proc getPragmaNodeFromTypeSym(sym: NimNode): NimNode =
       result = pragmaExpr[1]
 
 proc getPragmaNodeFromType(typ: NimNode): NimNode =
-  case typ.kind:
+  case typ.kind
   of nnkSym:
     result = getPragmaNodeFromTypeSym(typ)
   of nnkProcTy:
@@ -1584,9 +1584,8 @@ proc getCustomPragmaNodes(sym: NimNode, name: string): seq[NimNode] =
     # This checks the type of the sym too, this is consistent with how
     # field expressions are handled too. If this is changed, make sure to
     # change it for fields expressions too.
-    result =
-      getPragmaNodeFromType(sym.getTypeInst).getPragmasByName(name) &
-      getPragmaNodeFromVarLetSym(sym).getPragmasByName(name)
+    result = getPragmaNodeFromType(sym.getTypeInst).getPragmasByName(name)
+    result.add getPragmaNodeFromVarLetSym(sym).getPragmasByName(name)
   else:
     error("illegal sym kind for argument: " & $sym.symKind, sym)
 
