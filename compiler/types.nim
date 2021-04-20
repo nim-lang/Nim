@@ -124,9 +124,6 @@ proc isFloatLit*(t: PType): bool {.inline.} =
   result = t.kind == tyFloat and t.n != nil and t.n.kind == nkFloatLit
 
 proc addDeclaredLoc*(result: var string, conf: ConfigRef; sym: PSym) =
-  var sym = sym
-  while sym.typ.kind in {tyStatic}:
-    sym = sym.typ[0].sym
   result.add " [$1 declared in $2]" % [sym.kind.toHumanStr, toFileLineCol(conf, sym.info)]
 
 proc addDeclaredLocMaybe*(result: var string, conf: ConfigRef; sym: PSym) =
