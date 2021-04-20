@@ -192,6 +192,11 @@ proc createCastExpr(argsParam: PSym; objType: PType; idgen: IdGenerator): PNode 
   result.typ = newType(tyPtr, nextTypeId idgen, objType.owner)
   result.typ.rawAddSon(objType)
 
+template checkMagicProcs(g: ModuleGraph, n: PNode, formal: PNode) =
+  if (formal.typ.kind == tyVarargs and formal.typ[0].kind in {tyTyped, tyUntyped}) or
+          formal.typ.kind in {tyTyped, tyUntyped}:
+    localError(g.config, n.info, "'spawn'ed function cannot have a 'typed' or 'untyped' parameter")
+
 proc setupArgsForConcurrency(g: ModuleGraph; n: PNode; objType: PType;
                              idgen: IdGenerator; owner: PSym; scratchObj: PSym,
                              castExpr, call,
@@ -205,6 +210,9 @@ proc setupArgsForConcurrency(g: ModuleGraph; n: PNode; objType: PType;
     if i < formals.len:
       if formals[i].typ.kind in {tyVar, tyLent}:
         localError(g.config, n[i].info, "'spawn'ed function cannot have a 'var' parameter")
+
+      checkMagicProcs(g, n[i], formals[i])
+
       if formals[i].typ.kind in {tyTypeDesc, tyStatic}:
         continue
     #elif containsTyRef(argType):
@@ -233,6 +241,9 @@ proc setupArgsForParallelism(g: ModuleGraph; n: PNode; objType: PType;
     let n = n[i]
     if i < formals.len and formals[i].typ.kind in {tyStatic, tyTypeDesc}:
       continue
+
+    checkMagicProcs(g, n, formals[i])
+
     let argType = skipTypes(if i < formals.len: formals[i].typ else: n.typ,
                             abstractInst)
     #if containsTyRef(argType):
@@ -420,4 +431,3 @@ proc wrapProcForSpawn*(g: ModuleGraph; idgen: IdGenerator; owner: PSym; spawnExp
     wrapperProc.newSymNode, genAddrOf(scratchObj.newSymNode, idgen), nil, spawnExpr)
 
   if spawnKind == srFlowVar: result.add fvField
-
