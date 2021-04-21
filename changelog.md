@@ -331,6 +331,8 @@
 - Added a new module `std/importutils`, and an API `privateAccess`, which allows access to private fields
   for an object type in the current scope.
 
+- `typeof(stmt)` now works and returns `void`.
+
 ## Compiler changes
 
 - Added `--declaredlocs` to show symbol declaration location in messages.
