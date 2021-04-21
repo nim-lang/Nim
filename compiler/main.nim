@@ -362,6 +362,7 @@ proc mainCommand*(graph: ModuleGraph) =
     rawMessage(conf, errGenerated, "invalid command: " & conf.command)
 
   if conf.errorCounter == 0 and conf.cmd notin {cmdTcc, cmdDump, cmdNop}:
+    # D20210419T170230:here
     let mem =
       when declared(system.getMaxMem): formatSize(getMaxMem()) & " peakmem"
       else: formatSize(getTotalMem()) & " totmem"
@@ -370,8 +371,8 @@ proc mainCommand*(graph: ModuleGraph) =
                 elif isDefined(conf, "release"): "Release"
                 else: "Debug"
     let sec = formatFloat(epochTime() - conf.lastCmdTime, ffDecimal, 3)
-    let project = if optListFullPaths in conf.globalOptions: $conf.projectFull else: $conf.projectName
-
+    let project = if conf.filenameOption == foAbs: $conf.projectFull else: $conf.projectName
+      # xxx honor conf.filenameOption more accurately
     var output: string
     if optCompileOnly in conf.globalOptions and conf.cmd != cmdJsonscript:
       output = $conf.jsonBuildFile
@@ -380,7 +381,8 @@ proc mainCommand*(graph: ModuleGraph) =
       output = "unknownOutput"
     else:
       output = $conf.absOutFile
-    if optListFullPaths notin conf.globalOptions: output = output.AbsoluteFile.extractFilename
+    if conf.filenameOption != foAbs: output = output.AbsoluteFile.extractFilename
+      # xxx honor filenameOption more accurately
     if optProfileVM in conf.globalOptions:
       echo conf.dump(conf.vmProfileData)
     rawMessage(conf, hintSuccessX, [
