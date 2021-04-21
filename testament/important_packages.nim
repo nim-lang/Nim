@@ -51,7 +51,7 @@ pkg "cello"
 pkg "chroma"
 pkg "chronicles", "nim c -o:chr -r chronicles.nim"
 pkg "chronos", "nim c -r -d:release tests/testall", allowFailure = true # pending https://github.com/nim-lang/Nim/issues/17130
-pkg "cligen", "nim c --path:. -r cligen.nim"
+pkg "cligen", "nim c --path:. -r cligen.nim", allowFailure = true # pending https://github.com/c-blake/cligen/pull/193
 pkg "combparser", "nimble test --gc:orc"
 pkg "compactdict"
 pkg "comprehension", "nimble test", "https://github.com/alehander42/comprehension"
@@ -121,7 +121,8 @@ pkg "pixie", useHead = false
 pkg "plotly", "nim c examples/all.nim"
 pkg "pnm"
 pkg "polypbren"
-pkg "prologue", "nimble tcompile"
+pkg "prologue", "nimble tcompile", allowFailure = true
+  # pending https://github.com/c-blake/cligen/pull/193 (yes, cligen is the thing that breaks here)
 pkg "protobuf", "nim c -o:protobuff -r src/protobuf.nim"
 pkg "pylib"
 pkg "rbtree"
