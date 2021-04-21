@@ -141,6 +141,15 @@ proc splitSwitch(conf: ConfigRef; switch: string, cmd, arg: var string, pass: TC
   elif switch[i] == '[': arg = substr(switch, i)
   else: invalidCmdLineOption(conf, pass, switch, info)
 
+template switchOn(arg: string): bool =
+  # xxx use `switchOn` wherever appropriate
+  case arg.normalize
+  of "", "on": true
+  of "off": false
+  else:
+    localError(conf, info, errOnOrOffExpectedButXFound % arg)
+    false
+
 proc processOnOffSwitch(conf: ConfigRef; op: TOptions, arg: string, pass: TCmdLinePass,
                         info: TLineInfo) =
   case arg.normalize
@@ -885,8 +894,15 @@ proc processSwitch*(switch, arg: string, pass: TCmdLinePass, info: TLineInfo;
     trackIde(conf, ideDus, arg, info)
   of "stdout":
     processOnOffSwitchG(conf, {optStdout}, arg, pass, info)
+  of "filenames":
+    case arg.normalize
+    of "abs": conf.filenameOption = foAbs
+    of "canonical": conf.filenameOption = foCanonical
+    of "legacyrelproj": conf.filenameOption = foLegacyRelProj
+    else: localError(conf, info, "expected: abs|canonical|legacyRelProj, got: $1" % arg)
   of "listfullpaths":
-    processOnOffSwitchG(conf, {optListFullPaths}, arg, pass, info)
+    # xxx in future work, use `warningDeprecated`
+    conf.filenameOption = if switchOn(arg): foAbs else: foCanonical
   of "spellsuggest":
     if arg.len == 0: conf.spellSuggestMax = spellSuggestSecretSauce
     elif arg == "auto": conf.spellSuggestMax = spellSuggestSecretSauce

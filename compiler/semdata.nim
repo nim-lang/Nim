@@ -9,7 +9,7 @@
 
 ## This module contains the data structures for the semantic checking phase.
 
-import std / tables
+import tables
 
 import
   intsets, options, ast, astalgo, msgs, idents, renderer,
@@ -501,18 +501,24 @@ proc errorNode*(c: PContext, n: PNode): PNode =
   result = newNodeI(nkEmpty, n.info)
   result.typ = errorType(c)
 
-proc localErrorNode*(c: PContext, n: PNode, info: TLineInfo, msg: TMsgKind, arg: string): PNode =
-  localError(c.config, info, msg, arg)
-  result = errorNode(c, n)
+# These mimic localError
+template localErrorNode*(c: PContext, n: PNode, info: TLineInfo, msg: TMsgKind, arg: string): PNode =
+  liMessage(c.config, info, msg, arg, doNothing, instLoc())
+  errorNode(c, n)
 
-proc localErrorNode*(c: PContext, n: PNode, info: TLineInfo, arg: string): PNode =
-  localErrorNode(c, n, info, errGenerated, arg)
+template localErrorNode*(c: PContext, n: PNode, info: TLineInfo, arg: string): PNode =
+  liMessage(c.config, info, errGenerated, arg, doNothing, instLoc())
+  errorNode(c, n)
 
-proc localErrorNode*(c: PContext, n: PNode, msg: TMsgKind, arg: string): PNode =
-  localErrorNode(c, n, n.info, msg, arg)
+template localErrorNode*(c: PContext, n: PNode, msg: TMsgKind, arg: string): PNode =
+  let n2 = n
+  liMessage(c.config, n2.info, msg, arg, doNothing, instLoc())
+  errorNode(c, n2)
 
-proc localErrorNode*(c: PContext, n: PNode, arg: string): PNode =
-  localErrorNode(c, n, n.info, errGenerated, arg)
+template localErrorNode*(c: PContext, n: PNode, arg: string): PNode =
+  let n2 = n
+  liMessage(c.config, n2.info, errGenerated, arg, doNothing, instLoc())
+  errorNode(c, n2)
 
 proc fillTypeS*(dest: PType, kind: TTypeKind, c: PContext) =
   dest.kind = kind

@@ -10,7 +10,7 @@
 # this module does the semantic checking of type declarations
 # included from sem.nim
 
-import std/math
+import math
 
 const
   errStringOrIdentNodeExpected = "string or ident node expected"

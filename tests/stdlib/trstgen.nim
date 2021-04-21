@@ -40,6 +40,10 @@ proc toHtml(input: string,
 proc id(str: string): string = """<span class="Identifier">"""  & str & "</span>"
 proc op(str: string): string = """<span class="Operator">"""    & str & "</span>"
 proc pu(str: string): string = """<span class="Punctuation">""" & str & "</span>"
+proc optionListLabel(opt: string): string =
+  """<div class="option-list-label"><tt><span class="option">""" &
+  opt &
+  "</span></tt></div>"
 
 suite "YAML syntax highlighting":
   test "Basics":
@@ -1382,10 +1386,10 @@ Test1
     check(output.count("<ul") == 1)
     check(output.count("<li>") == 2)
     check(output.count("<div class=\"option-list\"") == 1)
-    check("""<div class="option-list-label">-m</div>""" &
+    check(optionListLabel("-m") &
           """<div class="option-list-description">desc</div></div>""" in
           output)
-    check("""<div class="option-list-label">-n</div>""" &
+    check(optionListLabel("-n") &
           """<div class="option-list-description">very long desc</div></div>""" in
           output)
 
@@ -1400,13 +1404,13 @@ Test1
     let output = input.toHtml
     check(output.count("<ul") == 1)
     check output.count("<div class=\"option-list\"") == 2
-    check("""<div class="option-list-label">-m</div>""" &
+    check(optionListLabel("-m") &
           """<div class="option-list-description">desc</div></div>""" in
           output)
-    check("""<div class="option-list-label">-n</div>""" &
+    check(optionListLabel("-n") &
           """<div class="option-list-description">very long desc</div></div>""" in
           output)
-    check("""<div class="option-list-label">-d</div>""" &
+    check(optionListLabel("-d") &
           """<div class="option-list-description">option</div></div>""" in
           output)
     check "<p>option</p>" notin output
@@ -1421,13 +1425,13 @@ Test1
     let output = input.toHtml
     check(output.count("<ul") == 1)
     check output.count("<div class=\"option-list\"") == 2
-    check("""<div class="option-list-label">compile</div>""" &
+    check(optionListLabel("compile") &
           """<div class="option-list-description">compile1</div></div>""" in
           output)
-    check("""<div class="option-list-label">doc</div>""" &
+    check(optionListLabel("doc") &
           """<div class="option-list-description">doc1 cont</div></div>""" in
           output)
-    check("""<div class="option-list-label">-d</div>""" &
+    check(optionListLabel("-d") &
           """<div class="option-list-description">option</div></div>""" in
           output)
     check "<p>option</p>" notin output

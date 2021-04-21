@@ -372,7 +372,7 @@ when false:
     of 'a'..'z': result = getIdent(c.cache, toLowerAscii(x.s[0]) & x.s.substr(1))
     else: result = x
 
-import std/[editdistance, heapqueue]
+import std/editdistance, heapqueue
 
 type SpellCandidate = object
   dist: int

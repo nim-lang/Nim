@@ -14,7 +14,7 @@ import std/private/miscdollars
 import strutils2
 
 type InstantiationInfo* = typeof(instantiationInfo())
-template instLoc(): InstantiationInfo = instantiationInfo(-2, fullPaths = true)
+template instLoc*(): InstantiationInfo = instantiationInfo(-2, fullPaths = true)
 
 template toStdOrrKind(stdOrr): untyped =
   if stdOrr == stdout: stdOrrStdout else: stdOrrStderr
@@ -241,37 +241,30 @@ template toFullPath*(conf: ConfigRef; info: TLineInfo): string =
 template toFullPathConsiderDirty*(conf: ConfigRef; info: TLineInfo): string =
   string toFullPathConsiderDirty(conf, info.fileIndex)
 
-type
-  FilenameOption* = enum
-    foAbs # absolute path, e.g.: /pathto/bar/foo.nim
-    foRelProject # relative to project path, e.g.: ../foo.nim
-    foMagicSauce # magic sauce, shortest of (foAbs, foRelProject)
-    foName # lastPathPart, e.g.: foo.nim
-    foStacktrace # if optExcessiveStackTrace: foAbs else: foName
-
 proc toFilenameOption*(conf: ConfigRef, fileIdx: FileIndex, opt: FilenameOption): string =
   case opt
   of foAbs: result = toFullPath(conf, fileIdx)
   of foRelProject: result = toProjPath(conf, fileIdx)
-  of foMagicSauce:
+  of foCanonical:
+    let absPath = toFullPath(conf, fileIdx)
+    result = canonicalImportAux(conf, absPath.AbsoluteFile)
+  of foName: result = toProjPath(conf, fileIdx).lastPathPart
+  of foLegacyRelProj:
     let
       absPath = toFullPath(conf, fileIdx)
       relPath = toProjPath(conf, fileIdx)
-    result = if (optListFullPaths in conf.globalOptions) or
-                (relPath.len > absPath.len) or
-                (relPath.count("..") > 2):
+    result = if (relPath.len > absPath.len) or (relPath.count("..") > 2):
                absPath
              else:
                relPath
-  of foName: result = toProjPath(conf, fileIdx).lastPathPart
   of foStacktrace:
     if optExcessiveStackTrace in conf.globalOptions:
       result = toFilenameOption(conf, fileIdx, foAbs)
     else:
       result = toFilenameOption(conf, fileIdx, foName)
 
-proc toMsgFilename*(conf: ConfigRef; info: FileIndex): string =
-  toFilenameOption(conf, info, foMagicSauce)
+proc toMsgFilename*(conf: ConfigRef; fileIdx: FileIndex): string =
+  toFilenameOption(conf, fileIdx, conf.filenameOption)
 
 template toMsgFilename*(conf: ConfigRef; info: TLineInfo): string =
   toMsgFilename(conf, info.fileIndex)
@@ -558,6 +551,7 @@ proc liMessage*(conf: ConfigRef; info: TLineInfo, msg: TMsgKind, arg: string,
         styledMsgWriteln(styleBright, loc, resetStyle, color, title, resetStyle, s, KindColor, kindmsg,
                          resetStyle, conf.getSurroundingSrc(info), UnitSep)
         if hintMsgOrigin in conf.mainPackageNotes:
+          # xxx needs a bit of refactoring to honor `conf.filenameOption`
           styledMsgWriteln(styleBright, toFileLineCol(info2), resetStyle,
             " compiler msg initiated here", KindColor,
             KindFormat % $hintMsgOrigin,
@@ -591,17 +585,11 @@ template globalError*(conf: ConfigRef; info: TLineInfo, msg: TMsgKind, arg = "")
 template globalError*(conf: ConfigRef; info: TLineInfo, arg: string) =
   liMessage(conf, info, errGenerated, arg, doRaise, instLoc())
 
-template globalError*(conf: ConfigRef; format: string, params: openArray[string]) =
-  liMessage(conf, unknownLineInfo, errGenerated, format % params, doRaise, instLoc())
-
 template localError*(conf: ConfigRef; info: TLineInfo, msg: TMsgKind, arg = "") =
   liMessage(conf, info, msg, arg, doNothing, instLoc())
 
 template localError*(conf: ConfigRef; info: TLineInfo, arg: string) =
   liMessage(conf, info, errGenerated, arg, doNothing, instLoc())
-
-template localError*(conf: ConfigRef; info: TLineInfo, format: string, params: openArray[string]) =
-  liMessage(conf, info, errGenerated, format % params, doNothing, instLoc())
 
 template message*(conf: ConfigRef; info: TLineInfo, msg: TMsgKind, arg = "") =
   liMessage(conf, info, msg, arg, doNothing, instLoc())

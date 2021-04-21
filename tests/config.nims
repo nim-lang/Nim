@@ -6,7 +6,7 @@ switch("path", "$lib/../testament/lib")
 ## prevent common user config settings to interfere with testament expectations
 ## Indifidual tests can override this if needed to test for these options.
 switch("colors", "off")
-switch("listFullPaths", "off")
+switch("filenames", "legacyRelProj")
 switch("excessiveStackTrace", "off")
 switch("spellSuggest", "0")
 

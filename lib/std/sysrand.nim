@@ -10,7 +10,7 @@
 ## .. warning:: This module was added in Nim 1.6. If you are using it for cryptographic purposes,
 ##   keep in mind that so far this has not been audited by any security professionals,
 ##   therefore may not be secure.
-## 
+##
 ## `std/sysrand` generates random numbers from a secure source provided by the operating system.
 ## It is a cryptographically secure pseudorandom number generator
 ## and should be unpredictable enough for cryptographic applications,
@@ -52,10 +52,10 @@ runnableExamples:
 
 
 when not defined(js):
-  import std/os
+  import os
 
 when defined(posix):
-  import std/posix
+  import posix
 
 const
   batchImplOS = defined(freebsd) or defined(openbsd) or (defined(macosx) and not defined(ios))
@@ -243,7 +243,7 @@ elif defined(macosx):
 """
 
   proc getentropy(p: pointer, size: csize_t): cint {.importc: "getentropy", header: sysrandomHeader.}
-    # getentropy() fills a buffer with random data, which can be used as input 
+    # getentropy() fills a buffer with random data, which can be used as input
     # for process-context pseudorandom generators like arc4random(3).
     # The maximum buffer size permitted is 256 bytes.
 
@@ -310,7 +310,7 @@ proc urandom*(dest: var openArray[byte]): bool =
 
 proc urandom*(size: Natural): seq[byte] {.inline.} =
   ## Returns random bytes suitable for cryptographic use.
-  ## 
+  ##
   ## .. warning:: The code hasn't been audited by cryptography experts and
   ##   is provided as-is without guarantees. Use at your own risks. For production
   ##   systems we advise you to request an external audit.
