@@ -49,7 +49,7 @@ jobs:
     runs-on: ${{ matrix.os }}
 
     steps:
-      - name: 'Checkout2'
+      - name: 'Checkout3'
         uses: actions/checkout@v2
         with:
           fetch-depth: 2
