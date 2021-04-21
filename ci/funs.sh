@@ -8,17 +8,22 @@ echo_run () {
   "$@"
 }
 
-set_skipci_azure () {
+nimGetLastCommit() {
+  git log --no-merges -1 --pretty=format:"%s"
+}
+
+nimIsCiSkip(){
   # D20210329T004830:here refs https://github.com/microsoft/azure-pipelines-agent/issues/2944
   # `--no-merges` is needed to avoid merge commits which occur for PR's.
   # $(Build.SourceVersionMessage) is not helpful
   # nor is `github.event.head_commit.message` for github actions.
-  commitMsg=$(git log --no-merges -1 --pretty=format:"%s")
-  echo commitMsg: $commitMsg
+  commitMsg=$(nimGetLastCommit)
+  echo_run echo $commitMsg
   if [[ $commitMsg == *"[skip ci]"* ]]; then
     echo "skipci: true"
-    echo '##vso[task.setvariable variable=skipci]true' # sets `skipci` to true
+    return 0
   else
     echo "skipci: false"
+    return 1
   fi
 }
