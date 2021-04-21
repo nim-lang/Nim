@@ -17,6 +17,7 @@ nimIsCiSkip(){
   # `--no-merges` is needed to avoid merge commits which occur for PR's.
   # $(Build.SourceVersionMessage) is not helpful
   # nor is `github.event.head_commit.message` for github actions.
+  # Note: `[skip ci]` is now handled automatically for github actions, see https://github.blog/changelog/2021-02-08-github-actions-skip-pull-request-and-push-workflows-with-skip-ci/
   commitMsg=$(nimGetLastCommit)
   echo commitMsg: "$commitMsg"
   if [[ $commitMsg == *"[skip ci]"* ]]; then
