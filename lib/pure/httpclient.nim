@@ -962,12 +962,15 @@ proc format(client: HttpClient | AsyncHttpClient,
 
 proc override(fallback, override: HttpHeaders): HttpHeaders =
   # Right-biased map union for `HttpHeaders`
-  if override.isNil:
-    return fallback
 
   result = newHttpHeaders()
   # Copy by value
   result.table[] = fallback.table[]
+
+  if override.isNil:
+    # Return the copy of fallback so it does not get modified
+    return result
+
   for k, vs in override.table:
     result[k] = vs
 
