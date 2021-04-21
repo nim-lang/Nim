@@ -14,7 +14,7 @@ import std/private/miscdollars
 import strutils2
 
 type InstantiationInfo* = typeof(instantiationInfo())
-template instLoc(): InstantiationInfo = instantiationInfo(-2, fullPaths = true)
+template instLoc*(): InstantiationInfo = instantiationInfo(-2, fullPaths = true)
 
 template toStdOrrKind(stdOrr): untyped =
   if stdOrr == stdout: stdOrrStdout else: stdOrrStderr
@@ -599,9 +599,6 @@ template localError*(conf: ConfigRef; info: TLineInfo, msg: TMsgKind, arg = "") 
 
 template localError*(conf: ConfigRef; info: TLineInfo, arg: string) =
   liMessage(conf, info, errGenerated, arg, doNothing, instLoc())
-
-template localError*(conf: ConfigRef; info: TLineInfo, format: string, params: openArray[string]) =
-  liMessage(conf, info, errGenerated, format % params, doNothing, instLoc())
 
 template message*(conf: ConfigRef; info: TLineInfo, msg: TMsgKind, arg = "") =
   liMessage(conf, info, msg, arg, doNothing, instLoc())
