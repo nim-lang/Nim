@@ -152,6 +152,7 @@ jobs:
       condition: and(succeeded(), eq(variables['skipci'], 'false'), eq(variables['Agent.OS'], 'Windows_NT'))
 
     - bash: echo '##vso[task.prependpath]$(System.DefaultWorkingDirectory)/bin'
+      condition: and(succeeded(), eq(variables['skipci'], 'false'))
       displayName: 'Add build binaries to PATH'
 
     - bash: |
