@@ -23,10 +23,10 @@
 ##
 ## Nim can output the result to HTML [#html]_ or Latex [#latex]_.
 ##
-## .. [#html] commands ``nim doc`` for ``*.nim`` files and
-##    ``nim rst2html`` for ``*.rst`` files
+## .. [#html] commands `nim doc`:cmd: for ``*.nim`` files and
+##    `nim rst2html`:cmd: for ``*.rst`` files
 ##
-## .. [#latex] command ``nim rst2tex`` for ``*.rst``.
+## .. [#latex] command `nim rst2tex`:cmd: for ``*.rst``.
 ##
 ## If you are new to RST please consider reading the following:
 ##
@@ -78,14 +78,21 @@
 ##
 ## * directives: ``code-block`` [cmp:Sphinx]_, ``title``,
 ##   ``index`` [cmp:Sphinx]_
-## * predefined roles ``:nim:`` (default), ``:c:`` (C programming language),
-##   ``:python:``, ``:yaml:``, ``:java:``, ``:cpp:`` (C++), ``:csharp`` (C#).
-##   That is every language that `highlite <highlite.html>`_ supports.
-##   They turn on appropriate syntax highlighting in inline code.
+## * predefined roles
+##   - ``:nim:`` (default), ``:c:`` (C programming language),
+##     ``:python:``, ``:yaml:``, ``:java:``, ``:cpp:`` (C++), ``:csharp`` (C#).
+##     That is every language that `highlite <highlite.html>`_ supports.
+##     They turn on appropriate syntax highlighting in inline code.
 ##
-##   .. Note:: default role for Nim files is ``:nim:``,
-##             for ``*.rst`` it's currently ``:literal:``.
+##     .. Note:: default role for Nim files is ``:nim:``,
+##               for ``*.rst`` it's currently ``:literal:``.
 ##
+##   - generic command line highlighting roles:
+##     - ``:cmd:`` for commands and common shells syntax
+##     - ``:program:`` for executable names [cmp:Sphinx]_
+##       (one can just use ``:cmd:`` on single word)
+##     - ``:option:`` for command line options [cmp:Sphinx]_
+##   - ``:tok:``, a role for highlighting of programming language tokens
 ## * ***triple emphasis*** (bold and italic) using \*\*\*
 ## * ``:idx:`` role for \`interpreted text\` to include the link to this
 ##   text into an index (example: `Nim index`_).
@@ -95,11 +102,11 @@
 ##     //compile   compile the project
 ##     //doc       generate documentation
 ##
-##   Here the dummy `//` will disappear, while options ``compile``
-##   and ``doc`` will be left in the final document.
+##   Here the dummy `//` will disappear, while options `compile`:option:
+##   and `doc`:option: will be left in the final document.
 ##
 ## .. [cmp:Sphinx] similar but different from the directives of
-##    Python `Sphinx directives`_ extensions
+##    Python `Sphinx directives`_ and `Sphinx roles`_ extensions
 ##
 ## .. _`extra features`:
 ##
@@ -144,7 +151,7 @@
 ## -----
 ##
 ## See `Nim DocGen Tools Guide <docgen.html>`_ for the details about
-## ``nim doc``, ``nim rst2html`` and ``nim rst2tex`` commands.
+## `nim doc`:cmd:, `nim rst2html`:cmd: and `nim rst2tex`:cmd: commands.
 ##
 ## See `packages/docutils/rstgen module <rstgen.html>`_ to know how to
 ## generate HTML or Latex strings to embed them into your documents.
@@ -156,6 +163,7 @@
 ## .. _RST roles list: https://docutils.sourceforge.io/docs/ref/rst/roles.html
 ## .. _Nim index: https://nim-lang.org/docs/theindex.html
 ## .. _Sphinx directives: https://www.sphinx-doc.org/en/master/usage/restructuredtext/directives.html
+## .. _Sphinx roles: https://www.sphinx-doc.org/en/master/usage/restructuredtext/roles.html
 
 import
   os, strutils, rstast, std/enumutils, algorithm, lists, sequtils,
@@ -530,7 +538,7 @@ proc defaultRole(options: RstParseOptions): string =
 
 # mirror highlite.nim sourceLanguageToStr with substitutions c++ cpp, c# csharp
 const supportedLanguages = ["nim", "yaml", "python", "java", "c",
-                            "cpp", "csharp"]
+                            "cpp", "csharp", "cmd"]
 
 proc whichRoleAux(sym: string): RstNodeKind =
   let r = sym.toLowerAscii
@@ -543,6 +551,7 @@ proc whichRoleAux(sym: string): RstNodeKind =
   of "sup", "superscript": result = rnSup
   # literal and code are the same in our implementation
   of "code": result = rnInlineLiteral
+  of "program", "option", "tok": result = rnCodeFragment
   # c++ currently can be spelled only as cpp, c# only as csharp
   elif r in supportedLanguages:
     result = rnInlineCode
@@ -1113,10 +1122,10 @@ proc toInlineCode(n: PRstNode, language: string): PRstNode =
   lb.add newLeaf(s)
   result.add lb
 
-proc toUnknownRole(n: PRstNode, roleName: string): PRstNode =
+proc toOtherRole(n: PRstNode, kind: RstNodeKind, roleName: string): PRstNode =
   let newN = newRstNode(rnInner, n.sons)
   let newSons = @[newN, newLeaf(roleName)]
-  result = newRstNode(rnUnknownRole, newSons)
+  result = newRstNode(kind, newSons)
 
 proc parsePostfix(p: var RstParser, n: PRstNode): PRstNode =
   var newKind = n.kind
@@ -1144,8 +1153,8 @@ proc parsePostfix(p: var RstParser, n: PRstNode): PRstNode =
     # a role:
     let (roleName, lastIdx) = getRefname(p, p.idx+1)
     newKind = whichRole(p, roleName)
-    if newKind == rnUnknownRole:
-      result = n.toUnknownRole(roleName)
+    if newKind in {rnUnknownRole, rnCodeFragment}:
+      result = n.toOtherRole(newKind, roleName)
     elif newKind == rnInlineCode:
       result = n.toInlineCode(language=roleName)
     else:
@@ -1417,8 +1426,8 @@ proc parseInline(p: var RstParser, father: PRstNode) =
       if k == rnInlineCode:
         n = n.toInlineCode(language=roleName)
       parseUntil(p, n, "`", false) # bug #17260
-      if k == rnUnknownRole:
-        n = n.toUnknownRole(roleName)
+      if k in {rnUnknownRole, rnCodeFragment}:
+        n = n.toOtherRole(k, roleName)
       father.add(n)
     elif isInlineMarkupStart(p, "`"):
       var n = newRstNode(rnInterpretedText)
