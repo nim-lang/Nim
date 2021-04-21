@@ -9,7 +9,7 @@
 
 ## This module creates temporary files and directories.
 
-import std/[os, random]
+import os, random
 
 
 const
@@ -19,7 +19,7 @@ const
 
 
 when defined(windows):
-  import std/winlean
+  import winlean
 
   var O_RDWR {.importc: "_O_RDWR", header: "<fcntl.h>".}: cint
 
@@ -34,7 +34,7 @@ when defined(windows):
   proc close_osfandle(fd: cint): cint {.
     importc: "_close", header: "<io.h>".}
 else:
-  import std/posix
+  import posix
 
   proc c_fdopen(
     filehandle: cint,
@@ -43,6 +43,7 @@ else:
 
 
 proc safeOpen(filename: string): File =
+  ## Open files exclusively.
   when defined(windows):
     let dwShareMode = FILE_SHARE_DELETE or FILE_SHARE_READ or FILE_SHARE_WRITE
     let dwCreation = CREATE_NEW
