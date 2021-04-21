@@ -51,7 +51,7 @@ pkg "cello"
 pkg "chroma"
 pkg "chronicles", "nim c -o:chr -r chronicles.nim"
 pkg "chronos", "nim c -r -d:release tests/testall", allowFailure = true # pending https://github.com/nim-lang/Nim/issues/17130
-pkg "cligen", "nim c --path:. -r cligen.nim", allowFailure = true # pending https://github.com/c-blake/cligen/pull/193
+pkg "cligen", "nim c --path:. -r cligen.nim"
 pkg "combparser", "nimble test --gc:orc"
 pkg "compactdict"
 pkg "comprehension", "nimble test", "https://github.com/alehander42/comprehension"
@@ -106,7 +106,8 @@ pkg "nimpy", "nim c -r tests/nimfrompy.nim"
 pkg "nimquery", allowFailure = true # pending https://github.com/GULPF/nimquery/pull/10
 pkg "nimsl"
 pkg "nimsvg"
-pkg "nimterop", "nimble minitest"
+pkg "nimterop", "nimble minitest", allowFailure = true
+  # pending https://github.com/c-blake/cligen/pull/193 (yes, cligen is the thing that breaks here)
 pkg "nimwc", "nim c nimwc.nim"
 pkg "nimx", "nim c --threads:on test/main.nim", allowFailure = true
 pkg "nitter", "nim c src/nitter.nim", "https://github.com/zedeus/nitter"
