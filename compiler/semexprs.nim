@@ -2289,7 +2289,7 @@ proc semMagic(c: PContext, n: PNode, s: PSym, flags: TExprFlags): PNode =
         result[i] = semExpr(c, n[i])
 
       if n.len > 1 and n[1].kind notin nkCallKinds:
-        return localErrorNode(c, n, n[1].info, "'spawn' takes a call expression; got " & $n[1])
+        return localErrorNode(c, n, "'spawn' takes a call expression; got " & $n[1], n[1].info)
 
       let typ = result[^1].typ
       if not typ.isEmptyType:
