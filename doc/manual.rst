@@ -261,8 +261,9 @@ and underscores, with the following restrictions:
 
 * begins with a letter
 * does not end with an underscore `_`
-* two immediate following underscores `__` are not allowed::
+* two immediate following underscores `__` are not allowed:
 
+.. code-block::
   letter ::= 'A'..'Z' | 'a'..'z' | '\x80'..'\xff'
   digit ::= '0'..'9'
   IDENTIFIER ::= letter ( ['_'] (letter | digit) )*
