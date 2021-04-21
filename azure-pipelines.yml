@@ -7,6 +7,10 @@ pr:
     include:
     - '*'
 
+variables:
+- name: skipci
+  value: false 
+
 jobs:
 - job: packages
 
@@ -63,17 +67,22 @@ jobs:
         # $(Build.SourceVersionMessage) is not helpful
         # nor is `github.event.head_commit.message` for github actions.
         commitMsg=$(git log --no-merges -1 --pretty=format:"%s")
+        if [[ $commitMsg == *"[skip ci]"* ]]; then
+          echo '##vso[task.setvariable variable=skipci]true' # sets `skipci` to true
+        fi
         echo commitMsg: $commitMsg
-        echo $commitMsg | grep -v '\[skip ci\]' # fails if [skip ci] not in commit msg
+        echo skipci: $(skipci)
       displayName: 'Check whether to skip CI'
 
     - bash: git clone --depth 1 https://github.com/nim-lang/csources_v1 csources
       displayName: 'Checkout Nim csources'
+      condition: and(succeeded(), eq(variables['skipci'], 'false'))
 
     - task: NodeTool@0
       inputs:
         versionSpec: '12.x'
       displayName: 'Install node.js 12.x'
+      condition: and(succeeded(), eq(variables['skipci'], 'false'))
 
     - bash: |
         set -e
@@ -83,7 +92,7 @@ jobs:
           echo_run sudo apt-fast install --no-install-recommends -yq \
             libcurl4-openssl-dev libgc-dev libsdl1.2-dev libsfml-dev valgrind libc6-dbg
       displayName: 'Install dependencies (amd64 Linux)'
-      condition: and(succeeded(), eq(variables['Agent.OS'], 'Linux'), eq(variables['CPU'], 'amd64'))
+      condition: and(succeeded(), eq(variables['skipci'], 'false'), eq(variables['Agent.OS'], 'Linux'), eq(variables['CPU'], 'amd64'))
 
     - bash: |
         set -e
@@ -123,11 +132,11 @@ jobs:
         echo_run chmod 755 bin/g++
 
       displayName: 'Install dependencies (i386 Linux)'
-      condition: and(succeeded(), eq(variables['Agent.OS'], 'Linux'), eq(variables['CPU'], 'i386'))
+      condition: and(succeeded(), eq(variables['skipci'], 'false'), eq(variables['Agent.OS'], 'Linux'), eq(variables['CPU'], 'i386'))
 
     - bash: brew install boehmgc make sfml
       displayName: 'Install dependencies (OSX)'
-      condition: and(succeeded(), eq(variables['Agent.OS'], 'Darwin'))
+      condition: and(succeeded(), eq(variables['skipci'], 'false'), eq(variables['Agent.OS'], 'Darwin'))
 
     - bash: |
         set -e
@@ -140,7 +149,7 @@ jobs:
         echo_run echo '##vso[task.prependpath]$(System.DefaultWorkingDirectory)/dist/mingw64/bin'
 
       displayName: 'Install dependencies (Windows)'
-      condition: and(succeeded(), eq(variables['Agent.OS'], 'Windows_NT'))
+      condition: and(succeeded(), eq(variables['skipci'], 'false'), eq(variables['Agent.OS'], 'Windows_NT'))
 
     - bash: echo '##vso[task.prependpath]$(System.DefaultWorkingDirectory)/bin'
       displayName: 'Add build binaries to PATH'
@@ -155,15 +164,18 @@ jobs:
         echo_run node -v
         echo_run echo '##[section]make version'
         echo_run make -v
+      condition: and(succeeded(), eq(variables['skipci'], 'false'))
       displayName: 'System information'
 
     - bash: echo '##vso[task.setvariable variable=csources_version]'"$(git -C csources rev-parse HEAD)"
+      condition: and(succeeded(), eq(variables['skipci'], 'false'))
       displayName: 'Get csources version'
 
     - task: Cache@2
       inputs:
         key: 'csources | "$(Agent.OS)" | $(CPU) | $(csources_version)'
         path: csources/bin
+      condition: and(succeeded(), eq(variables['skipci'], 'false'))
       displayName: 'Restore built csources'
 
     - bash: |
@@ -192,13 +204,16 @@ jobs:
         fi
 
         echo_run cp csources/bin/nim$ext bin
+      condition: and(succeeded(), eq(variables['skipci'], 'false'))
       displayName: 'Build 1-stage compiler from csources'
 
     - bash: nim c koch
+      condition: and(succeeded(), eq(variables['skipci'], 'false'))
       displayName: 'Build koch'
 
       # set result to omit the "bash exited with error code '1'" message
     - bash: ./koch runCI || echo '##vso[task.complete result=Failed]'
+      condition: and(succeeded(), eq(variables['skipci'], 'false'))
       displayName: 'Run CI'
       env:
         SYSTEM_ACCESSTOKEN: $(System.AccessToken)
