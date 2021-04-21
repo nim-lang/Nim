@@ -591,8 +591,8 @@ template globalError*(conf: ConfigRef; info: TLineInfo, msg: TMsgKind, arg = "")
 template globalError*(conf: ConfigRef; info: TLineInfo, arg: string) =
   liMessage(conf, info, errGenerated, arg, doRaise, instLoc())
 
-template globalError*(conf: ConfigRef; format: string, params: openArray[string]) =
-  liMessage(conf, unknownLineInfo, errGenerated, format % params, doRaise, instLoc())
+template localError*(conf: ConfigRef; info: TLineInfo, msg: TMsgKind, arg = "") =
+  liMessage(conf, info, msg, arg, doNothing, instLoc())
 
 template localError*(conf: ConfigRef; info: TLineInfo, arg: string) =
   liMessage(conf, info, errGenerated, arg, doNothing, instLoc())
