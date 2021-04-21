@@ -59,7 +59,7 @@ when compileOption("threads"):
 
 type
   Task* = object ## `Task` contains the callback and its arguments.
-    callback: proc (args: pointer) {.nimcall.}
+    callback: proc (args: pointer) {.nimcall, gcsafe.}
     args: pointer
     destroy: proc (args: pointer) {.nimcall.}
 
@@ -73,7 +73,7 @@ proc `=destroy`*(t: var Task) {.inline.} =
       t.destroy(t.args)
     c_free(t.args)
 
-proc invoke*(task: Task) {.inline.} =
+proc invoke*(task: Task) {.inline, gcsafe.} =
   ## Invokes the `task`.
   assert task.callback != nil
   task.callback(task.args)
@@ -215,7 +215,7 @@ macro toTask*(e: typed{nkCall | nkInfix | nkPrefix | nkPostfix | nkCommand | nkC
     result = quote do:
       `stmtList`
 
-      proc `funcName`(args: pointer) {.nimcall.} =
+      proc `funcName`(args: pointer) {.gcsafe, nimcall.} =
         let `objTemp` = cast[ptr `scratchObjType`](args)
         `functionStmtList`
 
@@ -229,7 +229,7 @@ macro toTask*(e: typed{nkCall | nkInfix | nkPrefix | nkPostfix | nkCommand | nkC
     let funcName = genSym(nskProc, e[0].strVal)
 
     result = quote do:
-      proc `funcName`(args: pointer) {.nimcall.} =
+      proc `funcName`(args: pointer) {.gcsafe, nimcall.} =
         `funcCall`
 
       Task(callback: `funcName`, args: nil)
