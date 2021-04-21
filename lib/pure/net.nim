@@ -688,33 +688,35 @@ when defineSsl:
 
   proc `serverGetPskFunc=`*(ctx: SslContext, fun: static SslServerGetPskFunc) =
     ## Sets function that returns PSK based on the client identity.
+    ## Call with nil to remove the callback
     ##
     ## Only used in PSK ciphersuites.
-    if not fun.isNil:
-      ctx.context.SSL_CTX_set_psk_server_callback(genpskServerCallback(fun))
+    ctx.context.SSL_CTX_set_psk_server_callback(
+      when fun.isNil: nil else: genpskServerCallback(fun))
 
   template genpskClientCallback(pskfunc: SslClientGetPskFunc): auto =
-      proc pskClientCallback(ssl: SslPtr; hint: cstring; identity: cstring;
-          max_identity_len: cuint; psk: ptr cuchar;
-          max_psk_len: cuint): cuint {.cdecl.} =
-        let (identityString, pskString) = pskfunc($hint)
-        if pskString.len.cuint > max_psk_len:
-          return 0
-        if identityString.len.cuint >= max_identity_len:
-          return 0
-        copyMem(identity, identityString.cstring, identityString.len + 1) # with the last zero byte
-        copyMem(psk, pskString.cstring, pskString.len)
-        return pskString.len.cuint
+    proc pskClientCallback(ssl: SslPtr; hint: cstring; identity: cstring;
+        max_identity_len: cuint; psk: ptr cuchar;
+        max_psk_len: cuint): cuint {.cdecl.} =
+      let (identityString, pskString) = pskfunc($hint)
+      if pskString.len.cuint > max_psk_len:
+        return 0
+      if identityString.len.cuint >= max_identity_len:
+        return 0
+      copyMem(identity, identityString.cstring, identityString.len + 1) # with the last zero byte
+      copyMem(psk, pskString.cstring, pskString.len)
+      return pskString.len.cuint
 
-      pskClientCallback
+    pskClientCallback
 
   proc `clientGetPskFunc=`*(ctx: SslContext, fun: static SslClientGetPskFunc) =
     ## Sets function that returns the client identity and the PSK based on identity
     ## hint from the server.
+    ## Call with nil to remove the callback.
     ##
     ## Only used in PSK ciphersuites.
-    if not fun.isNil:
-      ctx.context.SSL_CTX_set_psk_client_callback(genpskClientCallback(fun))
+    ctx.context.SSL_CTX_set_psk_client_callback(
+      when fun.isNil: nil else: genpskClientCallback(fun))
 
   proc getPskIdentity*(socket: Socket): string =
     ## Gets the PSK identity provided by the client.
