@@ -58,6 +58,7 @@ jobs:
         shell: bash
         run: |
           # see D20210329T004830
+          # xxx reuse nimIsCiSkip
           commitMsg=$(git log --no-merges -1 --pretty=format:"%s")
           echo commitMsg: $commitMsg
           echo $commitMsg | grep -v '\[skip ci\]'

@@ -18,7 +18,7 @@ nimIsCiSkip(){
   # $(Build.SourceVersionMessage) is not helpful
   # nor is `github.event.head_commit.message` for github actions.
   commitMsg=$(nimGetLastCommit)
-  echo_run echo $commitMsg
+  echo commitMsg: "$commitMsg"
   if [[ $commitMsg == *"[skip ci]"* ]]; then
     echo "skipci: true"
     return 0
