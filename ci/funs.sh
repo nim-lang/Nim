@@ -89,7 +89,7 @@ nimBuildCsourcesIfNeeded(){
       echo "$nim_csourcesDir exists."
     else
       # depth 1: adjust as needed in case useful for `git bisect`
-      echo_run git -C "$nim_csourcesDir" clone -q --depth 1 $nim_csourcesUrl
+      echo_run git clone -q --depth 1 $nim_csourcesUrl "$nim_csourcesDir"
       echo_run git -C "$nim_csourcesDir" checkout $nim_csourcesHash
     fi
     _nimBuildCsourcesIfNeeded "$@"
