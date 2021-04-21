@@ -2620,7 +2620,7 @@ proc semTupleConstr(c: PContext, n: PNode, flags: TExprFlags): PNode =
     # check if either everything or nothing is tyTypeDesc
     for i in 1..<tupexp.len:
       if isTupleType != (tupexp[i].typ.kind == tyTypeDesc):
-        return localErrorNode(c, n, "Mixing types and values in tuples is not allowed.", tupexp[i].info)
+        return localErrorNode(c, n, tupexp[i].info, "Mixing types and values in tuples is not allowed.")
   if isTupleType: # expressions as ``(int, string)`` are reinterpret as type expressions
     result = n
     var typ = semTypeNode(c, n, nil).skipTypes({tyTypeDesc})
