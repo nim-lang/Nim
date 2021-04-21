@@ -67,7 +67,7 @@ jobs:
         echo $commitMsg | grep -v '\[skip ci\]' # fails if [skip ci] not in commit msg
       displayName: 'Check whether to skip CI'
 
-    - bash: git clone --depth 1 https://github.com/nim-lang/csources
+    - bash: git clone --depth 1 https://github.com/nim-lang/csources_v1 csources
       displayName: 'Checkout Nim csources'
 
     - task: NodeTool@0

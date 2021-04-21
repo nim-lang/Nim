@@ -18,8 +18,8 @@
 ## also doing cross-module dependency tracking and DCE that we don't need
 ## anymore. DCE is now done as prepass over the entire packed module graph.
 
-import std/[packedsets, algorithm, tables]
-  # std/intsets would give `UnusedImport`, pending https://github.com/nim-lang/Nim/issues/14246
+import std/packedsets, algorithm, tables
+
 import ".."/[ast, options, lineinfos, modulegraphs, cgendata, cgen,
   pathutils, extccomp, msgs]
 
@@ -70,7 +70,7 @@ proc addFileToLink(config: ConfigRef; m: PSym) =
     addFileToCompile(config, cf)
 
 when defined(debugDce):
-  import std / [os, packedsets]
+  import os, std/packedsets
 
 proc storeAliveSymsImpl(asymFile: AbsoluteFile; s: seq[int32]) =
   var f = rodfiles.create(asymFile.string)

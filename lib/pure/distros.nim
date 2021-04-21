@@ -27,11 +27,11 @@
 ##
 ## See `packaging <packaging.html>`_ for hints on distributing Nim using OS packages.
 
-from std/strutils import contains, toLowerAscii
+from strutils import contains, toLowerAscii
 
 when not defined(nimscript):
-  from std/osproc import execProcess
-  from std/os import existsEnv
+  from osproc import execProcess
+  from os import existsEnv
 
 type
   Distribution* {.pure.} = enum ## the list of known distributions

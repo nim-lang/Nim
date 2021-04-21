@@ -7,16 +7,16 @@
 #    distribution, for details about the copyright.
 #
 
-import std/macros
-from std/typetraits import OrdinalEnum, HoleyEnum
+import macros
+from typetraits import OrdinalEnum, HoleyEnum
 
 # xxx `genEnumCaseStmt` needs tests and runnableExamples
 
-macro genEnumCaseStmt*(typ: typedesc, argSym: typed, default: typed, 
+macro genEnumCaseStmt*(typ: typedesc, argSym: typed, default: typed,
             userMin, userMax: static[int], normalizer: static[proc(s :string): string]): untyped =
   # generates a case stmt, which assigns the correct enum field given
   # a normalized string comparison to the `argSym` input.
-  # string normalization is done using passed normalizer. 
+  # string normalization is done using passed normalizer.
   # NOTE: for an enum with fields Foo, Bar, ... we cannot generate
   # `of "Foo".nimIdentNormalize: Foo`.
   # This will fail, if the enum is not defined at top level (e.g. in a block).

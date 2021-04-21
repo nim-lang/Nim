@@ -8,7 +8,7 @@
 #
 
 ## Serialization utilities for the compiler.
-import std/[strutils, math]
+import strutils, math
 
 # bcc on windows doesn't have C99 functions
 when defined(windows) and defined(bcc):

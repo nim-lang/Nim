@@ -11,7 +11,7 @@
 ## IDE-like features. It uses the set of .rod files to accomplish
 ## its task. The set must cover a complete Nim project.
 
-import std / sets
+import sets
 
 from os import nil
 from std/private/miscdollars import toLocation

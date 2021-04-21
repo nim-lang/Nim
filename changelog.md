@@ -283,8 +283,11 @@
 
 - Added `hasClosure` to `std/typetraits`.
 
+- Added `std/tempfiles`.
+
 - Added `genasts.genAst` that avoids the problems inherent with `quote do` and can
   be used as a replacement.
+
 
 ## Language changes
 
@@ -337,6 +340,8 @@
 - Deprecated `--nilseqs` which is now a noop.
 
 - Added `--spellSuggest` to show spelling suggestions on typos.
+
+- Added `--filenames:abs|canonical|magic` which replaces --listFullPaths:on|off
 
 - Source+Edit links now appear on top of every docgen'd page when
   `nim doc --git.url:url ...` is given.

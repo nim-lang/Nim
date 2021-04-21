@@ -10,7 +10,7 @@
 ## This module contains the type definitions for the new evaluation engine.
 ## An instruction is 1-3 int32s in memory, it is a register based VM.
 
-import std / tables
+import tables
 
 import ast, idents, options, modulegraphs, lineinfos
 
