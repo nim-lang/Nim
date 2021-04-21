@@ -40,11 +40,10 @@ type
     reexports*: seq[(LitId, PackedItemId)]
     compilerProcs*: seq[(LitId, int32)]
     converters*, methods*, trmacros*, pureEnums*: seq[int32]
-    macroUsages*: seq[(PackedItemId, PackedLineInfo)]
 
     typeInstCache*: seq[(PackedItemId, PackedItemId)]
     procInstCache*: seq[PackedInstantiation]
-    attachedOps*: seq[(TTypeAttachedOp, PackedItemId, PackedItemId)]
+    attachedOps*: seq[(PackedItemId, TTypeAttachedOp, PackedItemId)]
     methodsPerType*: seq[(PackedItemId, int, PackedItemId)]
     enumToStringProcs*: seq[(PackedItemId, PackedItemId)]
 
@@ -523,6 +522,14 @@ proc toPackedGeneratedProcDef*(s: PSym, encoder: var PackedEncoder; m: var Packe
   toPackedProcDef(s.ast, m.topLevel, encoder, m)
   #flush encoder, m
 
+proc storeAttachedProcDef*(t: PType; op: TTypeAttachedOp; s: PSym,
+                           encoder: var PackedEncoder; m: var PackedModule) =
+  assert s.kind in routineKinds
+  #toPackedProcDef(s.ast, m.topLevel, encoder, m)
+  let tid = storeTypeLater(t, encoder, m)
+  let sid = storeSymLater(s, encoder, m)
+  m.attachedOps.add (tid, op, sid)
+
 proc storeInstantiation*(c: var PackedEncoder; m: var PackedModule; s: PSym; i: PInstantiation) =
   var t = newSeq[PackedItemId](i.concreteTypes.len)
   for j in 0..high(i.concreteTypes):
@@ -587,7 +594,6 @@ proc loadRodFile*(filename: AbsoluteFile; m: var PackedModule; config: ConfigRef
   loadSeqSection convertersSection, m.converters
   loadSeqSection methodsSection, m.methods
   loadSeqSection pureEnumsSection, m.pureEnums
-  loadSeqSection macroUsagesSection, m.macroUsages
 
   loadSeqSection toReplaySection, m.toReplay.nodes
   loadSeqSection topLevelSection, m.topLevel.nodes
@@ -651,7 +657,6 @@ proc saveRodFile*(filename: AbsoluteFile; encoder: var PackedEncoder; m: var Pac
   storeSeqSection convertersSection, m.converters
   storeSeqSection methodsSection, m.methods
   storeSeqSection pureEnumsSection, m.pureEnums
-  storeSeqSection macroUsagesSection, m.macroUsages
 
   storeSeqSection toReplaySection, m.toReplay.nodes
   storeSeqSection topLevelSection, m.topLevel.nodes
@@ -892,16 +897,10 @@ proc typeBodyFromPacked(c: var PackedDecoder; g: var PackedModuleGraph;
                         t: PackedType; si, item: int32; result: PType) =
   result.sym = loadSym(c, g, si, t.sym)
   result.owner = loadSym(c, g, si, t.owner)
-  when false:
-    for op, item in pairs t.attachedOps:
-      result.attachedOps[op] = loadSym(c, g, si, item)
   result.typeInst = loadType(c, g, si, t.typeInst)
   for son in items t.types:
     result.sons.add loadType(c, g, si, son)
   loadAstBody(t, n)
-  when false:
-    for gen, id in items t.methods:
-      result.methods.add((gen, loadSym(c, g, si, id)))
 
 proc loadType(c: var PackedDecoder; g: var PackedModuleGraph; thisModule: int; t: PackedItemId): PType =
   if t == nilItemId:

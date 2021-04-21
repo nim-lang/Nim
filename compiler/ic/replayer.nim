@@ -117,6 +117,13 @@ proc replayGenericCacheInformation*(g: ModuleGraph; module: int) =
     let symId = FullId(module: tmp.module, packed: it[2])
     g.methodsPerType.mgetOrPut(key, @[]).add (col, LazySym(id: symId, sym: nil))
 
+  for it in mitems(g.packed[module].fromDisk.attachedOps):
+    let key = translateId(it[0], g.packed, module, g.config)
+    let op = it[1]
+    let tmp = translateId(it[2], g.packed, module, g.config)
+    let symId = FullId(module: tmp.module, packed: it[2])
+    g.attachedOps[op][key] = LazySym(id: symId, sym: nil)
+
   for it in mitems(g.packed[module].fromDisk.enumToStringProcs):
     let key = translateId(it[0], g.packed, module, g.config)
     let tmp = translateId(it[1], g.packed, module, g.config)
