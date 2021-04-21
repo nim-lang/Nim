@@ -61,7 +61,7 @@ jobs:
     - checkout: self
       fetchDepth: 2 # see D20210329T004830
 
-    - bash: . ci/funs.sh && set_skipci_azure2
+    - bash: . ci/funs.sh && set_skipci_azure
       displayName: 'Check whether to skip CI'
 
     - bash: git clone --depth 1 https://github.com/nim-lang/csources_v1 csources
