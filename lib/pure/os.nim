@@ -943,6 +943,8 @@ proc expandTilde*(path: string): string {.
   ## Windows: this is still supported despite Windows platform not having this
   ## convention; also, both ``~/`` and ``~\`` are handled.
   ##
+  ## **Warning**: `~bob` and `~bob/` are not yet handled correctly.
+  ##
   ## See also:
   ## * `getHomeDir proc <#getHomeDir>`_
   ## * `getConfigDir proc <#getConfigDir>`_

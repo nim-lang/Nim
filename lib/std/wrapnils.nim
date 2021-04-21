@@ -1,6 +1,6 @@
 ## This module allows chains of field-access and indexing where the LHS can be nil.
 ## This simplifies code by reducing need for if-else branches around intermediate values
-## that maybe be nil.
+## that may be nil.
 ##
 ## Note: experimental module and relies on {.experimental: "dotOperators".}
 ## Unstable API.
@@ -82,7 +82,7 @@ template `[]`*(a: Wrapnil): untyped =
   else:
     default(T)
 
-import std/macros
+import macros
 
 proc replace(n: NimNode): NimNode =
   if n.kind == nnkPar:

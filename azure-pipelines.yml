@@ -53,7 +53,7 @@ jobs:
     - checkout: self
       fetchDepth: 1
 
-    - bash: git clone --depth 1 https://github.com/nim-lang/csources
+    - bash: git clone --depth 1 https://github.com/nim-lang/csources_v1 csources
       displayName: 'Checkout Nim csources'
 
     - task: NodeTool@0
