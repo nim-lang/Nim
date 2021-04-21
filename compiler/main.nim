@@ -335,8 +335,8 @@ proc mainCommand*(graph: ModuleGraph) =
       msgWriteln(conf, $dumpdata, {msgStdout, msgSkipHook})
     else:
       msgWriteln(conf, "-- list of currently defined symbols --",
-                 {msgStdout, msgSkipHook})
-      for s in definedSymbolNames(conf.symbols): msgWriteln(conf, s, {msgStdout, msgSkipHook})
+                 {msgStdout, msgSkipHook, msgNoUnitSep})
+      for s in definedSymbolNames(conf.symbols): msgWriteln(conf, s, {msgStdout, msgSkipHook, msgNoUnitSep})
       msgWriteln(conf, "-- end of list --", {msgStdout, msgSkipHook})
 
       for it in conf.searchPaths: msgWriteln(conf, it.string)
