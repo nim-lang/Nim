@@ -106,8 +106,7 @@ pkg "nimpy", "nim c -r tests/nimfrompy.nim"
 pkg "nimquery", allowFailure = true # pending https://github.com/GULPF/nimquery/pull/10
 pkg "nimsl"
 pkg "nimsvg"
-pkg "nimterop", "nimble minitest", allowFailure = true
-  # pending https://github.com/c-blake/cligen/pull/193 (yes, cligen is the thing that breaks here)
+pkg "nimterop", "nimble minitest"
 pkg "nimwc", "nim c nimwc.nim"
 pkg "nimx", "nim c --threads:on test/main.nim", allowFailure = true
 pkg "nitter", "nim c src/nitter.nim", "https://github.com/zedeus/nitter"
@@ -122,8 +121,7 @@ pkg "pixie", useHead = false
 pkg "plotly", "nim c examples/all.nim"
 pkg "pnm"
 pkg "polypbren"
-pkg "prologue", "nimble tcompile", allowFailure = true
-  # pending https://github.com/c-blake/cligen/pull/193 (yes, cligen is the thing that breaks here)
+pkg "prologue", "nimble tcompile"
 pkg "protobuf", "nim c -o:protobuff -r src/protobuf.nim"
 pkg "pylib"
 pkg "rbtree"
