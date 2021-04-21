@@ -90,6 +90,9 @@ type
   TContext* = object of TPassContext # a context represents the module
                                      # that is currently being compiled
     enforceVoidContext*: PType
+      # for `if cond: stmt else: foo`, `foo` will be evaluated under
+      # enforceVoidContext != nil
+    voidType*: PType # for typeof(stmt)
     module*: PSym              # the module sym belonging to the context
     currentScope*: PScope      # current scope
     moduleScope*: PScope       # scope for modules
