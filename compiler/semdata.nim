@@ -501,13 +501,23 @@ proc errorNode*(c: PContext, n: PNode): PNode =
   result = newNodeI(nkEmpty, n.info)
   result.typ = errorType(c)
 
-template localErrorNode*(c: PContext, n: PNode, arg: string, info: TLineInfo, kind: TMsgKind = errGenerated): PNode =
-  liMessage(c.config, info, kind, arg, doNothing, instLoc())
+# These mimic localError
+template localErrorNode*(c: PContext, n: PNode, info: TLineInfo, msg: TMsgKind, arg: string): PNode =
+  liMessage(c.config, info, msg, arg, doNothing, instLoc())
   errorNode(c, n)
 
-template localErrorNode*(c: PContext, n: PNode, arg: string, kind: TMsgKind = errGenerated): PNode =
+template localErrorNode*(c: PContext, n: PNode, info: TLineInfo, arg: string): PNode =
+  liMessage(c.config, info, errGenerated, arg, doNothing, instLoc())
+  errorNode(c, n)
+
+template localErrorNode*(c: PContext, n: PNode, msg: TMsgKind, arg: string): PNode =
   let n2 = n
-  liMessage(c.config, n2.info, kind, arg, doNothing, instLoc())
+  liMessage(c.config, n2.info, msg, arg, doNothing, instLoc())
+  errorNode(c, n2)
+
+template localErrorNode*(c: PContext, n: PNode, arg: string): PNode =
+  let n2 = n
+  liMessage(c.config, n2.info, errGenerated, arg, doNothing, instLoc())
   errorNode(c, n2)
 
 proc fillTypeS*(dest: PType, kind: TTypeKind, c: PContext) =
