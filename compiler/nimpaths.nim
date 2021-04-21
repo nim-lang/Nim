@@ -16,7 +16,7 @@ interpolation variables:
 Unstable API
 ]##
 
-import std/[os,strutils]
+import os, strutils
 
 const
   docCss* = "$nimr/doc/nimdoc.css"

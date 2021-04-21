@@ -74,7 +74,7 @@ jobs:
         id: csources-version
         shell: bash
         run: |
-          sha=$(git ls-remote https://github.com/nim-lang/csources master | cut -f 1)
+          sha=$(git ls-remote https://github.com/nim-lang/csources_v1 master | cut -f 1)
           echo "::set-output name=sha::$sha"
 
       - name: 'Get prebuilt csources from cache'
@@ -88,7 +88,7 @@ jobs:
         if: steps.csources-cache.outputs.cache-hit != 'true'
         uses: actions/checkout@v2
         with:
-          repository: nim-lang/csources
+          repository: nim-lang/csources_v1
           path: csources
 
       - name: 'Build 1-stage compiler from csources'

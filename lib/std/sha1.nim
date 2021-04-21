@@ -33,8 +33,8 @@ runnableExamples:
 ## * `hashes module<hashes.html>`_ for efficient computations of hash values for diverse Nim types
 ## * `md5 module<md5.html>`_ implements the MD5 checksum algorithm
 
-import std/strutils
-from std/endians import bigEndian32, bigEndian64
+import strutils
+from endians import bigEndian32, bigEndian64
 
 const Sha1DigestSize = 20
 

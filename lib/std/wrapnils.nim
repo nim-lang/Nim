@@ -82,7 +82,7 @@ template `[]`*(a: Wrapnil): untyped =
   else:
     default(T)
 
-import std/macros
+import macros
 
 proc replace(n: NimNode): NimNode =
   if n.kind == nnkPar:

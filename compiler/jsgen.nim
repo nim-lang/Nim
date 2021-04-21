@@ -35,7 +35,7 @@ import
   cgmeth, lowerings, sighashes, modulegraphs, lineinfos, rodutils,
   transf, injectdestructors, sourcemap
 
-import std/[json, sets, math, tables, intsets, strutils]
+import json, sets, math, tables, intsets, strutils
 
 from modulegraphs import ModuleGraph, PPassContext
 

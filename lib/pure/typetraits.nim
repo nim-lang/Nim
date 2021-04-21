@@ -108,7 +108,7 @@ since (1, 3, 5):
       doAssert elementType(myiter(3)) is int
     typeof(block: (for ai in a: ai))
 
-import std/macros
+import macros
 
 macro genericParamsImpl(T: typedesc): untyped =
   # auxiliary macro needed, can't do it directly in `genericParams`
