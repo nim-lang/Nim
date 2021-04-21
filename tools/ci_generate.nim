@@ -33,15 +33,15 @@ environment:
   CC: /usr/bin/clang
 tasks:
 - setup: |
+    set -e
     cd Nim
-    git clone --depth 1 -q https://github.com/nim-lang/csources.git
-    gmake -C csources -j $(sysctl -n hw.ncpuonline)
-    bin/nim c koch
+    . ci/funs.sh && nimBuildCsourcesIfNeeded
+    $nim_csources c koch
     echo 'export PATH=$HOME/Nim/bin:$PATH' >> $HOME/.buildenv
 - test: |
     cd Nim
     if ! ./koch runCI; then
-      nim c -r tools/ci_testresults.nim
+      nim r tools/ci_testresults.nim
       exit 1
     fi
 triggers:

@@ -23,7 +23,7 @@ install:
   - IF not exist "%MINGW_ARCHIVE%" appveyor DownloadFile "%MINGW_URL%" -FileName "%MINGW_ARCHIVE%"
   - 7z x -y "%MINGW_ARCHIVE%" -o"%CD%\DIST"> nul
   - SET PATH=%CD%\DIST\%MINGW_DIR%\BIN;%CD%\BIN;%PATH%
-  - git clone --depth 1 https://github.com/nim-lang/csources
+  - git clone --depth 1 https://github.com/nim-lang/csources # xxx use nimBuildCsourcesIfNeeded
   - cd csources
   - build64.bat
   - cd ..

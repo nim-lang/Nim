@@ -69,7 +69,7 @@ jobs:
         fi
       displayName: 'Check whether to skip CI'
 
-    - bash: git clone --depth 1 https://github.com/nim-lang/csources_v1 csources
+    - bash: . ci/funs.sh && nimBuildCsourcesIfNeeded
       displayName: 'Checkout Nim csources'
       condition: and(succeeded(), eq(variables['skipci'], 'false'))
 

@@ -14,10 +14,10 @@ environment:
   CC: /usr/bin/clang
 tasks:
 - setup: |
+    set -e
     cd Nim
-    git clone --depth 1 -q https://github.com/nim-lang/csources_v1.git csources
-    gmake -C csources -j $(sysctl -n hw.ncpu)
-    bin/nim c --skipUserCfg --skipParentCfg koch
+    . ci/funs.sh && nimBuildCsourcesIfNeeded
+    $nim_csources c --skipUserCfg --skipParentCfg koch
     echo 'export PATH=$HOME/Nim/bin:$PATH' >> $HOME/.buildenv
 - test: |
     cd Nim

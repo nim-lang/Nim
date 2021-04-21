@@ -1,10 +1,10 @@
+set -e
+
+. ci/funs.sh
 sh ci/deps.sh
 
-# Build from C sources.
-git clone --depth 1 https://github.com/nim-lang/csources_v1.git csources
-cd csources
-sh build.sh
-cd ..
+nimBuildCsourcesIfNeeded
+
 # Add Nim to the PATH
 export PATH=$(pwd)/bin${PATH:+:$PATH}
 # Bootstrap.
