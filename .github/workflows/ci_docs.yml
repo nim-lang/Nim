@@ -49,19 +49,19 @@ jobs:
     runs-on: ${{ matrix.os }}
 
     steps:
-      - name: 'Checkout'
+      - name: 'Checkout2'
         uses: actions/checkout@v2
         with:
           fetch-depth: 2
 
-      - name: 'Check whether to skip CI'
-        shell: bash
-        run: |
-          # see D20210329T004830
-          # xxx reuse nimIsCiSkip
-          commitMsg=$(git log --no-merges -1 --pretty=format:"%s")
-          echo commitMsg: $commitMsg
-          echo $commitMsg | grep -v '\[skip ci\]'
+      # - name: 'Check whether to skip CI'
+      #   shell: bash
+      #   run: |
+      #     # see D20210329T004830
+      #     # xxx reuse nimIsCiSkip
+      #     commitMsg=$(git log --no-merges -1 --pretty=format:"%s")
+      #     echo commitMsg: $commitMsg
+      #     echo $commitMsg | grep -v '\[skip ci\]'
 
       - name: 'Install build dependencies (macOS)'
         if: runner.os == 'macOS'
