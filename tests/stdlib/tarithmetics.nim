@@ -2,43 +2,48 @@ discard """
   targets: "c cpp js"
 """
 
-# TODO: in future work move existing arithmetic tests here, where they belong: Nim/tests/arithm
+# TODO: in future work move existing arithmetic tests (tests/arithm/*) into this file
 # FYI https://github.com/nim-lang/Nim/pull/17767
 
 template main =
   # put all arithmetic tests
 
   block tshr:
-
-    # Signed types
-    block:
+    block: # Signed types
       let
-        t0: int = -3 shr 2
-        t1: int8 = -4'i8 shr 1'i8
-        t2: int16 = -5'i16 shr 1'i16
-        t3: int32 = -7'i32 shr 1'i32
-        t4: int64 = -9'i64 shr 1'i64
+        a1 = -3
+        a2 = -2
+        b1 = -4'i8
+        b2 = 1'i8
+        c1 = -5'i16
+        c2 = 1'i16
+        d1 = -7i32
+        d2 = 1'i32
+        e1 = -9'i64
+        e2 = 1'i64
+      doAssert a1 shr a2 == -1
+      doAssert b1 shr b2 == -2
+      doAssert c1 shr c2 == -3
+      doAssert d1 shr d2 == -4
+      doAssert e1 shr e2 == -5
 
-      doAssert t0 == -1
-      doAssert t1 == -2
-      doAssert t2 == -3
-      doAssert t3 == -4
-      doAssert t4 == -5
-
-    # Unsigned types
-    block:
-      let        
-        t5: uint = 3'u shr 2'u
-        t6: uint8 = 2'u8 shr 1'u8
-        t7: uint16 = 5'u16 shr 1'u16
-        t8: uint32 = 6'u32 shr 1'u32
-        t9: uint64 = 8'u64 shr 1'u64
-      
-      doAssert t5 == 0
-      doAssert t6 == 1
-      doAssert t7 == 2
-      doAssert t8 == 3
-      doAssert t9 == 4
+    block: # Unsigned types
+      let
+        a1 = 3'u
+        a2 = 2'u
+        b1 = 2'u8
+        b2 = 1'u8
+        c1 = 5'u16
+        c2 = 1'u16
+        d1 = 6'u32
+        d2 = 1'u32
+        e1 = 8'u64
+        e2 = 1'u64
+      doAssert a1 shr a2 == 0
+      doAssert b1 shr b2 == 1
+      doAssert c1 shr c2 == 2
+      doAssert d1 shr d2 == 3
+      doAssert e1 shr e2 == 4
 
 static: main()
 main()
