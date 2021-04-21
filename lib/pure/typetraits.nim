@@ -57,11 +57,11 @@ proc getTypeId*(t: typedesc): TypeId {.since: (1, 1).} =
   runnableExamples:
     type Foo[T] = object
     type Foo2 = Foo
-    doAssert Foo[int].getTypeId == Foo2[type(1)].getTypeId
-    doAssert Foo[int].getTypeId != Foo[float].getTypeId
+    assert Foo[int].getTypeId == Foo2[type(1)].getTypeId
+    assert Foo[int].getTypeId != Foo[float].getTypeId
   TypeId(getTypeIdImpl(t))
 
-proc name*(t: typedesc): string {.magic: "TypeTrait".}
+proc name*(t: typedesc): string {.magic: "TypeTrait".} =
   ## Returns the name of the given type.
   ##
   ## Alias for `system.\`$\`(t) <dollars.html#$,typedesc>`_ since Nim v0.20.
