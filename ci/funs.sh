@@ -18,5 +18,7 @@ set_skipci_azure () {
   if [[ $commitMsg == *"[skip ci]"* ]]; then
     echo "skipci: true"
     echo '##vso[task.setvariable variable=skipci]true' # sets `skipci` to true
+  else
+    echo "skipci: false"
   fi
 }
