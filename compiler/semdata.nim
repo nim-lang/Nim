@@ -9,7 +9,7 @@
 
 ## This module contains the data structures for the semantic checking phase.
 
-import std / tables
+import tables
 
 import
   intsets, options, ast, astalgo, msgs, idents, renderer,

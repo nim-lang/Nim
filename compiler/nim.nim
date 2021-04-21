@@ -24,7 +24,7 @@ import
   idents, lineinfos, cmdlinehelper,
   pathutils, modulegraphs
 
-from std/browsers import openDefaultBrowser
+from browsers import openDefaultBrowser
 from nodejs import findNodeJs
 
 when hasTinyCBackend:

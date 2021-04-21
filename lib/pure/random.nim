@@ -72,7 +72,7 @@ runnableExamples:
 ## * `list of cryptographic and hashing modules <lib.html#pure-libraries-hashing>`_
 ##   in the standard library
 
-import std/[algorithm, math]
+import algorithm, math
 import std/private/since
 
 include system/inclrtl
@@ -625,7 +625,7 @@ proc shuffle*[T](x: var openArray[T]) =
   shuffle(state, x)
 
 when not defined(nimscript) and not defined(standalone):
-  import std/times
+  import times
 
   proc initRand(): Rand =
     ## Initializes a new Rand state with a seed based on the current time.

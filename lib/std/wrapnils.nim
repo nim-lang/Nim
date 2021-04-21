@@ -24,7 +24,7 @@ runnableExamples:
 
   assert (?.f2.x2.x2).x3 == nil  # this terminates ?. early
 
-from std/options import Option, isSome, get, option, unsafeGet, UnpackDefect
+from options import Option, isSome, get, option, unsafeGet, UnpackDefect
 export options.get, options.isSome, options.isNone
 
 template fakeDot*(a: Option, b): untyped =
@@ -59,7 +59,7 @@ func `[]`*[U](a: Option[U]): auto {.inline.} =
     if a2 != nil:
       result = option(a2[])
 
-import std/macros
+import macros
 
 func replace(n: NimNode): NimNode =
   if n.kind == nnkDotExpr:
