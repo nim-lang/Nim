@@ -32,11 +32,11 @@ nimIsCiSkip(){
 
 nimDefineVars(){
   # D20210421T185609:here
-  nim_csources=bin/nim_csources_v1
-  nim_csourcesDir=csources
-  nim_csourcesDir_v0=csources_v0
+  nim_csourcesDir=csources # where we clone the latest csources (currently csources_v1.git)
+  nim_csourcesDir_v0=csources_v0 # where we move or clone the old csources.git
   nim_csourcesUrl=https://github.com/nim-lang/csources_v1.git
   nim_csourcesHash=a8a5241f9475099c823cfe1a5e0ca4022ac201ff
+  nim_csources=bin/nim_csources_$nim_csourcesHash
 }
 
 _build_nim_csources_via_script(){
