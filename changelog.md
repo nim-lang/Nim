@@ -98,7 +98,7 @@
 
 - `json.to[Foo]` now handles explicit nulls better. 
   When type `Foo` which has a field `foo: Option[JsonNode]` was converted, 
-  a JNull value was converted to `Option[none]`. 
+  a JNull value was converted to `none(JsonNode)`. 
   Now, it is correctly converted to `Option[JsonNode]` (a JNull value).
 
 - Added an overload for the `collect` macro that inferes the container type based
