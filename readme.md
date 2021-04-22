@@ -84,10 +84,6 @@ Next, run the appropriate build shell script for your platform:
 * `build_all.sh` (Linux, Mac)
 * `build_all.bat` (Windows)
 
-Windows requires a number of other dependencies that you may need to install including
-PCRE and OpenSSL. Nim hosts a zip package containing known working versions of the
-required DLLs [here](https://nim-lang.org/download/dlls.zip).
-
 Finally, once you have finished the build steps (on Windows, Mac, or Linux) you
 should add the ``bin`` directory to your PATH.
 
