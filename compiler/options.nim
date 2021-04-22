@@ -287,6 +287,7 @@ type
     implicitCmd*: bool # whether some flag triggered an implicit `command`
     selectedGC*: TGCMode       # the selected GC (+)
     exc*: ExceptionSystem
+    hintProcessingDots*: bool # true for dots, false for filenames
     verbosity*: int            # how verbose the compiler is
     numberOfProcessors*: int   # number of processors
     lastCmdTime*: float        # when caas is enabled, we measure each command
@@ -458,20 +459,25 @@ proc isDefined*(conf: ConfigRef; symbol: string): bool
 when defined(nimDebugUtils):
   import debugutils
 
+proc initConfigRefCommon(conf: ConfigRef) =
+    conf.selectedGC = gcRefc
+    conf.verbosity = 1
+    conf.hintProcessingDots = true
+    conf.options = DefaultOptions
+    conf.globalOptions = DefaultGlobalOptions
+    conf.filenameOption = foAbs
+    conf.foreignPackageNotes = foreignPackageNotesDefault
+    conf.notes = NotesVerbosity[1]
+    conf.mainPackageNotes = NotesVerbosity[1]
+
 proc newConfigRef*(): ConfigRef =
   result = ConfigRef(
-    selectedGC: gcRefc,
     cCompiler: ccGcc,
-    verbosity: 1,
-    options: DefaultOptions,
-    globalOptions: DefaultGlobalOptions,
     macrosToExpand: newStringTable(modeStyleInsensitive),
     arcToExpand: newStringTable(modeStyleInsensitive),
     m: initMsgConfig(),
-    filenameOption: foAbs,
     cppDefines: initHashSet[string](),
-    headerFile: "", features: {}, legacyFeatures: {}, foreignPackageNotes: foreignPackageNotesDefault,
-    notes: NotesVerbosity[1], mainPackageNotes: NotesVerbosity[1],
+    headerFile: "", features: {}, legacyFeatures: {},
     configVars: newStringTable(modeStyleInsensitive),
     symbols: newStringTable(modeStyleInsensitive),
     packageCache: newPackageCache(),
@@ -513,6 +519,7 @@ proc newConfigRef*(): ConfigRef =
     vmProfileData: newProfileData(),
     spellSuggestMax: spellSuggestSecretSauce,
   )
+  initConfigRefCommon(result)
   setTargetFromSystem(result.target)
   # enable colors by default on terminals
   if terminal.isatty(stderr):
@@ -522,18 +529,11 @@ proc newConfigRef*(): ConfigRef =
 
 proc newPartialConfigRef*(): ConfigRef =
   ## create a new ConfigRef that is only good enough for error reporting.
-  # xxx FACTOR with `newConfigRef`
   when defined(nimDebugUtils):
     result = getConfigRef()
   else:
-    result = ConfigRef(
-      selectedGC: gcRefc,
-      verbosity: 1,
-      options: DefaultOptions,
-      globalOptions: DefaultGlobalOptions,
-      filenameOption: foAbs,
-      foreignPackageNotes: foreignPackageNotesDefault,
-      notes: NotesVerbosity[1], mainPackageNotes: NotesVerbosity[1])
+    result = ConfigRef()
+    initConfigRefCommon(result)
 
 proc cppDefine*(c: ConfigRef; define: string) =
   c.cppDefines.incl define

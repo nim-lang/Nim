@@ -900,6 +900,16 @@ proc processSwitch*(switch, arg: string, pass: TCmdLinePass, info: TLineInfo;
     of "canonical": conf.filenameOption = foCanonical
     of "legacyrelproj": conf.filenameOption = foLegacyRelProj
     else: localError(conf, info, "expected: abs|canonical|legacyRelProj, got: $1" % arg)
+  of "processing":
+    incl(conf.notes, hintProcessing)
+    incl(conf.mainPackageNotes, hintProcessing)
+    case arg.normalize
+    of "dots": conf.hintProcessingDots = true
+    of "filenames": conf.hintProcessingDots = false
+    of "off":
+      excl(conf.notes, hintProcessing)
+      excl(conf.mainPackageNotes, hintProcessing)
+    else: localError(conf, info, "expected: dots|filenames|off, got: $1" % arg)
   of "listfullpaths":
     # xxx in future work, use `warningDeprecated`
     conf.filenameOption = if switchOn(arg): foAbs else: foCanonical

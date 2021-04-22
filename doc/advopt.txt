@@ -39,6 +39,8 @@ Advanced options:
   --filenames:abs|canonical|legacyRelProj
                             customize how filenames are rendered in compiler messages,
                             defaults to `abs` (absolute)
+  --processing:dots|filenames|off
+                            show files as they're being processed by nim compiler
   --declaredLocs:on|off     show declaration locations in messages
   --spellSuggest|:num       show at most `num >= 0` spelling suggestions on typos.
                             if `num` is not specified (or `auto`), return
