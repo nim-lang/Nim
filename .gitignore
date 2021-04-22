@@ -101,6 +101,8 @@ tweeter_test.db
 
 # for `nim c -r nimdoc/tester` etc; this can be in multiple places
 htmldocs
+# for nim r -b:js --browser`
+htmljs
 
 ## these are not needed anymore unless checkout old older versions
 nimdoc.out.css

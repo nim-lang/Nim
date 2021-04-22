@@ -548,11 +548,13 @@ proc processSwitch*(switch, arg: string, pass: TCmdLinePass, info: TLineInfo;
   of "doccmd": conf.docCmd = arg
   of "jshtml":
     case arg.normalize
-    of "","on": conf.useJshtml = true
+    of "","on":
+      conf.useJshtml = true
+      conf.useBrowser = true
     of "off": conf.useJshtml = false
     else:
-      conf.useJshtml = true
       conf.jshtml = arg
+      conf.useJshtml = true
       conf.useBrowser = true
   of "browser":
     case arg.normalize

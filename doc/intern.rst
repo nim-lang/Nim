@@ -4,6 +4,7 @@
     Internals of the Nim Compiler
 =========================================
 
+
 :Author: Andreas Rumpf
 :Version: |nimversion|
 

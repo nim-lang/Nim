@@ -28,10 +28,6 @@ proc buildHtml(inner: string): string =
 </body>
 </html>
 """
-<html>
-<head>
-<title>Nim</title>
-</head>
 
 # proc serveJsBrowser*(fileJs: string, port: int) =
 proc serveJsBrowser*(fileJs: string) =
@@ -69,7 +65,6 @@ proc serveJsBrowserLivereload*(fileJs: string, fileHtml = "", port = portOff) =
   ##[
   [livereload-js - npm](https://www.npmjs.com/package/livereload-js)
   ]##
-
   let content = fileJs.readFile
   var extra = livereloadString(port)
   let html = buildHtml(fmt"""
@@ -82,7 +77,7 @@ proc serveJsBrowserLivereload*(fileJs: string, fileHtml = "", port = portOff) =
   if fileHtml.len == 0:
     when (NimMajor, NimMinor, NimPatch) >= (1, 5, 1):
       fileHtml = getHtmlFile(querySetting(nimcacheDir), fileJs)
-    else:
+    else: # bootstrap
       doAssert false
   createDir(fileHtml.parentDir)
   writeFile(fileHtml, html)

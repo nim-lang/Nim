@@ -91,12 +91,9 @@ proc handleCmdLine(cache: IdentCache; conf: ConfigRef) =
       tccgen.run(conf, conf.arguments)
   if optRun in conf.globalOptions:
     let output = conf.absOutFile
-
     proc execProg(cmdPrefix = "") =
-      # No space before command otherwise on windows you'd get a cryptic:
-      # `The parameter is incorrect`
+      # No space after `cmdPrefix` otherwise on windows you'd get a cryptic: `The parameter is incorrect`
       execExternalProgram(conf, cmdPrefix & output.quoteShell & ' ' & conf.arguments)
-
     case conf.cmd
     of cmdBackends, cmdTcc:
       case conf.backend
