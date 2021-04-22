@@ -445,12 +445,12 @@ proc `=destroy`*[T](c: var Channel[T]) =
 
 proc `=copy`*[T](dest: var Channel[T], src: Channel[T]) =
   ## Shares `Channel` by reference counting.
-  if src.d != nil:
-    atomicInc(src.d.atomicCounter)
-
-  if dest.d != nil:
-    `=destroy`(dest)
-  dest.d = src.d
+  if dest.d != src.d:
+    if dest.d != nil:
+      `=destroy`(dest)
+    if src.d != nil:
+      atomicInc(src.d.atomicCounter)
+    dest.d = src.d
 
 func trySend*[T](c: Channel[T], src: var Isolated[T]): bool {.inline.} =
   ## Sends item to the channel(non blocking).
