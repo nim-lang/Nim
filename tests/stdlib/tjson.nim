@@ -7,7 +7,7 @@ discard """
 Note: Macro tests are in tests/stdlib/tjsonmacro.nim
 ]#
 
-import std/[json,parsejson,strutils, options]
+import std/[json, parsejson, strutils, options]
 when not defined(js):
   import std/streams
 
