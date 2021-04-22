@@ -16,18 +16,28 @@ import std/strformat
 from std/strutils import `%`
 import std/compilesettings
 
-# proc serveJsBrowser*(fileJs: string, port: int) =
-proc serveJsBrowser*(fileJs: string) =
-  let port = 7031 # PRTEMP
-  let jsname = "input.js"
-  let html = fmt"""
+proc buildHtml(inner: string): string =
+  fmt"""
 <!DOCTYPE html>
 <html>
-<script src="{jsname}"></script>
+<head>
+  <title>NimBrowserTest</title>
+</head>
+{inner}
 <body>
 </body>
 </html>
 """
+<html>
+<head>
+<title>Nim</title>
+</head>
+
+# proc serveJsBrowser*(fileJs: string, port: int) =
+proc serveJsBrowser*(fileJs: string) =
+  let port = 7031 # PRTEMP
+  let jsname = "input.js"
+  let html = buildHtml(fmt"""<script src="{jsname}"></script>""")
   let dir = getTempDir() / "D20210227T155249" # PRTEMP mkstmp ?
   createDir(dir)
   let fileHtml = dir / "index.html"
@@ -62,17 +72,12 @@ proc serveJsBrowserLivereload*(fileJs: string, fileHtml = "", port = portOff) =
 
   let content = fileJs.readFile
   var extra = livereloadString(port)
-  let html = fmt"""
-<!DOCTYPE html>
-<html>
+  let html = buildHtml(fmt"""
 {extra}
 <script>
 {content}
 </script>
-<body>
-</body>
-</html>
-"""
+""")
   var fileHtml = fileHtml
   if fileHtml.len == 0:
     when (NimMajor, NimMinor, NimPatch) >= (1, 5, 1):
