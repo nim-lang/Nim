@@ -92,7 +92,7 @@ else: # don't run twice the same test
       of 5: nimcache / htmldocsDirname
       else: file.parentDir / htmldocsDirname
 
-      var cmd = fmt"{nim} doc --index:on --listFullPaths --hint:successX:on --nimcache:{nimcache} {options[i]} {file}"
+      var cmd = fmt"{nim} doc --index:on --filenames:abs --hint:successX:on --nimcache:{nimcache} {options[i]} {file}"
       removeDir(htmldocsDir)
       let (outp, exitCode) = execCmdEx(cmd)
       check exitCode == 0

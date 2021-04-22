@@ -460,15 +460,15 @@ when defined(nimDebugUtils):
   import debugutils
 
 proc initConfigRefCommon(conf: ConfigRef) =
-    conf.selectedGC = gcRefc
-    conf.verbosity = 1
-    conf.hintProcessingDots = true
-    conf.options = DefaultOptions
-    conf.globalOptions = DefaultGlobalOptions
-    conf.filenameOption = foAbs
-    conf.foreignPackageNotes = foreignPackageNotesDefault
-    conf.notes = NotesVerbosity[1]
-    conf.mainPackageNotes = NotesVerbosity[1]
+  conf.selectedGC = gcRefc
+  conf.verbosity = 1
+  conf.hintProcessingDots = true
+  conf.options = DefaultOptions
+  conf.globalOptions = DefaultGlobalOptions
+  conf.filenameOption = foAbs
+  conf.foreignPackageNotes = foreignPackageNotesDefault
+  conf.notes = NotesVerbosity[1]
+  conf.mainPackageNotes = NotesVerbosity[1]
 
 proc newConfigRef*(): ConfigRef =
   result = ConfigRef(
