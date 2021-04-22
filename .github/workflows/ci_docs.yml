@@ -70,7 +70,7 @@ jobs:
         shell: bash
         run: echo "${{ github.workspace }}/bin" >> "${GITHUB_PATH}"
 
-      - name: 'Build csources'
+      - name: 'Build csourcesAny'
         shell: bash
         run: . ci/funs.sh && nimBuildCsourcesIfNeeded
           # was previously using caching via `actions/cache@v1` but this wasn't

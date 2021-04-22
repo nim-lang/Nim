@@ -65,9 +65,8 @@ testament.db
 /tests/**/*.json
 /tests/**/*.js
 
-# factor with D20210421T185609
 /csources
-/csources_v0
+/csources_v1
 
 /dist/
 # /lib/fusion # fusion is now unbundled; `git status` should reveal if it's there so users can act on it

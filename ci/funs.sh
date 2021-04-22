@@ -32,20 +32,10 @@ nimIsCiSkip(){
 }
 
 nimDefineVars(){
-  # D20210421T185609:here
-  nim_csourcesDir=csources # where we clone the latest csources (currently csources_v1.git)
-  nim_csourcesDir_v0=csources_v0 # where we move or clone the old csources.git
+  nim_csourcesDir=csources_v1 # where we clone
   nim_csourcesUrl=https://github.com/nim-lang/csources_v1.git
   nim_csourcesHash=a8a5241f9475099c823cfe1a5e0ca4022ac201ff
   nim_csources=bin/nim_csources_$nim_csourcesHash
-}
-
-_build_nim_csources_via_script(){
-  # avoid changing dir in case of failure
-  (
-    echo_run cd $nim_csourcesDir
-    echo_run sh build.sh "$@"
-  )
 }
 
 _nimNumCpu(){
@@ -57,12 +47,16 @@ _nimNumCpu(){
 }
 
 _nimBuildCsourcesIfNeeded(){
-  if [ $# -ne 0 ]; then
-    # some args were passed (e.g.: `--cpu i386`), need to call build.sh
-    _build_nim_csources_via_script "$@"
-  else
-    # no args, use multiple Make jobs (5X faster on 16 cores: 10s instead of 50s)
-
+  if [ "${NIM_CSOURCES_USE_BUILD:-0}" == "1" ]; then
+    # call build.sh; slower and should be less useful
+    # allows passing args (e.g.: `--cpu i386`),
+    # but note that `make` also allows args (e.g. `CC`, `ucpu`).
+    (
+      # `()` avoid changing dir in case of failure
+      echo_run cd $nim_csourcesDir
+      echo_run sh build.sh "$@"
+    )
+  else # use `make`, allowing parallel jobs (5X faster on 16 cores: 10s instead of 50s)
     unamestr=$(uname)
     # uname values: https://en.wikipedia.org/wiki/Uname
     if [ "$unamestr" = 'FreeBSD' ]; then
@@ -73,17 +67,12 @@ _nimBuildCsourcesIfNeeded(){
       makeX=make
     fi
     nCPU=$(_nimNumCpu)
-    which $makeX && echo_run $makeX -C $nim_csourcesDir -j $((nCPU + 2)) -l $nCPU || _build_nim_csources_via_script
+    echo_run which $makeX
+    echo_run $makeX -C $nim_csourcesDir -j $((nCPU + 2)) -l $nCPU "$@"
   fi
   # keep $nim_csources in case needed to investigate bootstrap issues
-  # without having to rebuild from csources
+  # without having to rebuild
   echo_run cp bin/nim $nim_csources
-}
-
-_cloneCsources(){
-  # depth 1: adjust as needed in case useful for `git bisect`
-  echo_run git clone -q --depth 1 $nim_csourcesUrl "$nim_csourcesDir"
-  echo_run git -C "$nim_csourcesDir" checkout $nim_csourcesHash
 }
 
 nimCsourcesHash(){
@@ -93,27 +82,18 @@ nimCsourcesHash(){
 
 nimBuildCsourcesIfNeeded(){
   # goal: allow cachine each tagged version independently
-  # to avoid rebuilding csources, so that tools
-  # like `git bisect` can grab a cached past version
-  # of `$nim_csources` without rebuilding.
+  # to avoid rebuilding, so that tools like `git bisect`
+  # can grab a cached past version without rebuilding.
   nimDefineVars
   if test -f "$nim_csources"; then
     echo "$nim_csources exists."
   else
     if test -d "$nim_csourcesDir"; then
-      if [ $(git config --get remote.origin.url) = "$nim_csourcesUrl" ]; then
-        echo "$nim_csourcesDir exists with correct url."
-      else
-        if test -d "$nim_csourcesDir_v0"; then
-          echo "$nim_csourcesDir_v0 already exists, bailing out"
-          exit 1
-        else
-          echo_run mv "$nim_csourcesDir" "$nim_csourcesDir_v0"
-          _cloneCsources
-        fi
-      fi
+      echo "$nim_csourcesDir exists."
     else
-      _cloneCsources
+      # depth 1: adjust as needed in case useful for `git bisect`
+      echo_run git clone -q --depth 1 $nim_csourcesUrl "$nim_csourcesDir"
+      echo_run git -C "$nim_csourcesDir" checkout $nim_csourcesHash
     fi
     _nimBuildCsourcesIfNeeded "$@"
   fi

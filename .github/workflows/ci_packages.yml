@@ -51,10 +51,9 @@ jobs:
         shell: bash
         run: echo "${{ github.workspace }}/bin" >> "${GITHUB_PATH}"
 
-      - name: 'Build csources'
+      - name: 'Build csourcesAny'
         shell: bash
-        run: . ci/funs.sh && nimBuildCsourcesIfNeeded
-          # was: make -C csources -j $ncpu CC=gcc ucpu='${{ matrix.cpu }}'
+        run: . ci/funs.sh && nimBuildCsourcesIfNeeded CC=gcc ucpu='${{ matrix.cpu }}'
 
       - name: 'Build koch'
         shell: bash

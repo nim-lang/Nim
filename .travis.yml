@@ -23,8 +23,7 @@ addons:
     - valgrind
 
 before_script:
-  -  . ci/funs.sh && nimBuildCsourcesIfNeeded
-  # was using: make -C csources -j 2 LD=$CC ucpu=$CPU
+  -  . ci/funs.sh && nimBuildCsourcesIfNeeded LD=$CC ucpu=$CPU
   - export PATH="$PWD/bin${PATH:+:$PATH}"
 
 script:

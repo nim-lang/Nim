@@ -24,10 +24,9 @@ install:
   - IF not exist "%MINGW_ARCHIVE%" appveyor DownloadFile "%MINGW_URL%" -FileName "%MINGW_ARCHIVE%"
   - 7z x -y "%MINGW_ARCHIVE%" -o"%CD%\DIST"> nul
   - SET PATH=%CD%\DIST\%MINGW_DIR%\BIN;%CD%\BIN;%PATH%
-  - git clone --depth 1 https://github.com/nim-lang/csources # xxx use nimBuildCsourcesIfNeeded
-  - cd csources
-  - build64.bat
-  - cd ..
+  # may need adjustments, untested, see similar examples here:
+  # https://chromium.googlesource.com/external/github.com/swig/swig/+/1e36f51346d95f8b9848e682c2eb986e9cb9b4f4/appveyor.yml
+  - bash -c ". ci/funs.sh && nimBuildCsourcesIfNeeded"
 
 build_script:
   - openssl version
