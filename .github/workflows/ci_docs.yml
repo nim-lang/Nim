@@ -70,55 +70,12 @@ jobs:
         shell: bash
         run: echo "${{ github.workspace }}/bin" >> "${GITHUB_PATH}"
 
-      - name: 'Get current csources version'
-        id: csources-version
+      - name: 'Build csources'
         shell: bash
-        run: |
-          set -e
-          . ci/funs.sh
-          sha=$(nimCsourcesHash)
-          echo "::set-output name=sha::$sha"
-
-      - name: 'Get prebuilt csources from cache'
-        id: csources-cache
-        uses: actions/cache@v1
-        with:
-          path: bin
-          key: '${{ matrix.os }}-${{ steps.csources-version.outputs.sha }}'
-
-      - name: 'Checkout csources'
-        if: steps.csources-cache.outputs.cache-hit != 'true'
-        uses: actions/checkout@v2
-        with:
-          repository: nim-lang/csources_v1
-          path: csources
-
-      - name: 'Build 1-stage compiler from csources'
-        shell: bash
-        run: |
-          ext=
-          [[ '${{ runner.os }}' == 'Windows' ]] && ext=.exe
-          if [[ ! -x bin/nim-csources$ext ]]; then
-            ncpu=
-            case '${{ runner.os }}' in
-            'Linux')
-              ncpu=$(nproc)
-              ;;
-            'macOS')
-              ncpu=$(sysctl -n hw.ncpu)
-              ;;
-            'Windows')
-              ncpu=$NUMBER_OF_PROCESSORS
-              ;;
-            esac
-            [[ -z "$ncpu" || $ncpu -le 0 ]] && ncpu=1
-
-            make -C csources -j $ncpu CC=gcc
-            cp bin/nim{,-csources}$ext
-          else
-            echo 'Cache hit, using prebuilt csources'
-            cp bin/nim{-csources,}$ext
-          fi
+        run: . ci/funs.sh && nimBuildCsourcesIfNeeded
+          # was previously using caching via `actions/cache@v1` but this wasn't
+          # used in other CI pipelines and it's unclear the added complexity
+          # was worth the saving; can be revisited if needed.
 
       - name: 'Build koch'
         shell: bash
