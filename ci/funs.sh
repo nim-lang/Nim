@@ -120,6 +120,4 @@ nimBuildCsourcesIfNeeded(){
 
   echo_run cp $nim_csources bin/nim
   echo_run $nim_csources -v
-
-  # PRTEMP see build.sh: sh build.sh
 }
