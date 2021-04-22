@@ -33,6 +33,7 @@ nimIsCiSkip(){
 nimDefineVars(){
   nim_csources=bin/nim_csources_v1
   nim_csourcesDir=csources
+  nim_csourcesDir_v0=csources_v0
   nim_csourcesUrl=https://github.com/nim-lang/csources_v1.git
   nim_csourcesHash=a8a5241f9475099c823cfe1a5e0ca4022ac201ff
 }
@@ -65,15 +66,17 @@ _nimBuildCsourcesIfNeeded(){
 
     nCPU=$(nproc 2>/dev/null || sysctl -n hw.logicalcpu 2>/dev/null || getconf _NPROCESSORS_ONLN 2>/dev/null || 1)
 
-  # on travis:
-  # - make -C csources -j 2 LD=$CC ucpu=$CPU
-  # -  . ci/funs.sh && LD=$CC ucpu=$CPU nimBuildCsourcesIfNeeded
-
     which $makeX && echo_run $makeX -C $nim_csourcesDir -j $((nCPU + 2)) -l $nCPU || _build_nim_csources_via_script
   fi
   # keep $nim_csources in case needed to investigate bootstrap issues
   # without having to rebuild from csources
   echo_run cp bin/nim $nim_csources
+}
+
+_cloneCsources(){
+  # depth 1: adjust as needed in case useful for `git bisect`
+  echo_run git clone -q --depth 1 $nim_csourcesUrl "$nim_csourcesDir"
+  echo_run git -C "$nim_csourcesDir" checkout $nim_csourcesHash
 }
 
 nimBuildCsourcesIfNeeded(){
@@ -86,11 +89,19 @@ nimBuildCsourcesIfNeeded(){
     echo "$nim_csources exists."
   else
     if test -d "$nim_csourcesDir"; then
-      echo "$nim_csourcesDir exists."
+      if [ $(git config --get remote.origin.url) = "$nim_csourcesUrl" ]; then
+        echo "$nim_csourcesDir exists with correct url."
+      else
+        if test -d "$nim_csourcesDir_v0"; then
+          echo "$nim_csourcesDir_v0 already exists, bailing out"
+          exit 1
+        else
+          echo_run mv "$nim_csourcesDir" "$nim_csourcesDir_v0"
+          _cloneCsources
+        fi
+      fi
     else
-      # depth 1: adjust as needed in case useful for `git bisect`
-      echo_run git clone -q --depth 1 $nim_csourcesUrl "$nim_csourcesDir"
-      echo_run git -C "$nim_csourcesDir" checkout $nim_csourcesHash
+      _cloneCsources
     fi
     _nimBuildCsourcesIfNeeded "$@"
   fi
@@ -98,6 +109,5 @@ nimBuildCsourcesIfNeeded(){
   echo_run cp $nim_csources bin/nim
   echo_run $nim_csources -v
 
-  # build.sh:
-  # sh build.sh
+  # PRTEMP see build.sh: sh build.sh
 }

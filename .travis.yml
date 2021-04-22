@@ -22,6 +22,7 @@ addons:
     - valgrind
 
 before_script:
+  # PRTEMP check that `LD=$CC ucpu=$CPU` are forwarded properly 
   -  . ci/funs.sh && LD=$CC ucpu=$CPU nimBuildCsourcesIfNeeded
   - export PATH="$PWD/bin${PATH:+:$PATH}"
 

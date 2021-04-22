@@ -45,7 +45,7 @@ Compiling the Nim compiler is quite straightforward if you follow these steps:
 First, the C source of an older version of the Nim compiler is needed to
 bootstrap the latest version because the Nim compiler itself is written in the
 Nim programming language. Those C sources are available within the
-[``nim-lang/csources``][csources-repo] repository.
+[``nim-lang/csources_v1``][csources-v1-repo] repository.
 
 Next, to build from source you will need:
 
