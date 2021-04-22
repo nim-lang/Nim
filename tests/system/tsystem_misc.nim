@@ -63,6 +63,16 @@ doAssert high(float64) > low(float64)
 var s = @[1]
 s.delete(0)
 
+# deleting nonexistent index should raise #16544
+block:
+  var s = @["foo", "bar"]
+  s.delete(1)
+  doAssert @["foo"] == s
+
+  var s2 = @["foo"]
+  doAssertRaises(IndexDefect):
+    s.delete(1)
+
 
 proc foo(a: openArray[int]) =
   for x in a: echo x

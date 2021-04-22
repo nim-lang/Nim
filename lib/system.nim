@@ -1345,6 +1345,13 @@ proc delete*[T](x: var seq[T], i: Natural) {.noSideEffect.} =
   ## .. code-block:: Nim
   ##  var i = @[1, 2, 3, 4, 5]
   ##  i.delete(2) # => @[1, 2, 4, 5]
+  if i > high(x):
+    var e: ref IndexDefect
+    new(e)
+    e.msg = "out of bounds!"
+    raise e
+    # raiseIndexError2(i, high(x))
+
   template defaultImpl =
     let xl = x.len
     for j in i.int..xl-2: movingCopy(x[j], x[j+1])
