@@ -31,6 +31,7 @@ nimIsCiSkip(){
 }
 
 nimDefineVars(){
+  # D20210421T185609:here
   nim_csources=bin/nim_csources_v1
   nim_csourcesDir=csources
   nim_csourcesDir_v0=csources_v0
