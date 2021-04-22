@@ -48,26 +48,31 @@ _build_nim_csources_via_script(){
   )
 }
 
+_nimNumCpu(){
+  # linux: $(nproc)
+  # FreeBSD | macOS: $(sysctl -n hw.ncpu)
+  # OpenBSD: $(sysctl -n hw.ncpuonline)
+  # windows: $NUMBER_OF_PROCESSORS ?
+  echo $(nproc 2>/dev/null || sysctl -n hw.logicalcpu 2>/dev/null || getconf _NPROCESSORS_ONLN 2>/dev/null || 1)
+}
+
 _nimBuildCsourcesIfNeeded(){
   if [ $# -ne 0 ]; then
     # some args were passed (e.g.: `--cpu i386`), need to call build.sh
     _build_nim_csources_via_script "$@"
   else
     # no args, use multiple Make jobs (5X faster on 16 cores: 10s instead of 50s)
-    makeX=make
-    # uname values: https://en.wikipedia.org/wiki/Uname
+
     unamestr=$(uname)
+    # uname values: https://en.wikipedia.org/wiki/Uname
     if [ "$unamestr" = 'FreeBSD' ]; then
       makeX=gmake
-      # nCPU=$(sysctl -n hw.ncpu) ?
-    fi
-    if [ "$unamestr" = 'OpenBSD' ]; then
+    elif [ "$unamestr" = 'OpenBSD' ]; then
       makeX=gmake
-      # nCPU=$(sysctl -n hw.ncpuonline) ?
+    else
+      makeX=make
     fi
-
-    nCPU=$(nproc 2>/dev/null || sysctl -n hw.logicalcpu 2>/dev/null || getconf _NPROCESSORS_ONLN 2>/dev/null || 1)
-
+    nCPU=$(_nimNumCpu)
     which $makeX && echo_run $makeX -C $nim_csourcesDir -j $((nCPU + 2)) -l $nCPU || _build_nim_csources_via_script
   fi
   # keep $nim_csources in case needed to investigate bootstrap issues

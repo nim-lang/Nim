@@ -20,16 +20,11 @@ jobs:
         with:
           fetch-depth: 2
 
-      - name: 'Checkout csources'
-        uses: actions/checkout@v2
-        with:
-          repository: nim-lang/csources
-          path: csources
-
       - name: 'Install node.js 12.x'
         uses: actions/setup-node@v1
         with:
           node-version: '12.x'
+
       - name: 'Install dependencies (Linux amd64)'
         if: runner.os == 'Linux' && matrix.cpu == 'amd64'
         run: |
@@ -58,22 +53,9 @@ jobs:
 
       - name: 'Build csources'
         shell: bash
-        run: |
-          ncpu=
-          case '${{ runner.os }}' in
-          'Linux')
-            ncpu=$(nproc)
-            ;;
-          'macOS')
-            ncpu=$(sysctl -n hw.ncpu)
-            ;;
-          'Windows')
-            ncpu=$NUMBER_OF_PROCESSORS
-            ;;
-          esac
-          [[ -z "$ncpu" || $ncpu -le 0 ]] && ncpu=1
+        run: . ci/funs.sh && nimBuildCsourcesIfNeeded
+          # was: make -C csources -j $ncpu CC=gcc ucpu='${{ matrix.cpu }}'
 
-          make -C csources -j $ncpu CC=gcc ucpu='${{ matrix.cpu }}'
       - name: 'Build koch'
         shell: bash
         run: nim c koch
