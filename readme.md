@@ -217,7 +217,7 @@ Copyright © 2006-2021 Andreas Rumpf, all rights reserved.
 [nim-bitcoin]: https://blockchain.info/address/1BXfuKM2uvoD6mbx4g5xM3eQhLzkCK77tJ
 [nimble-repo]: https://github.com/nim-lang/nimble
 [nimsuggest-repo]: https://github.com/nim-lang/nimsuggest
-[csources-repo]: https://github.com/nim-lang/csources
+[csources-repo-deprecated]: https://github.com/nim-lang/csources
 [csources-v1-repo]: https://github.com/nim-lang/csources_v1
 [badge-nim-travisci]: https://img.shields.io/travis/nim-lang/Nim/devel.svg?style=flat-square
 [badge-nim-irc]: https://img.shields.io/badge/chat-on_irc-blue.svg?style=flat-square

@@ -74,7 +74,9 @@ jobs:
         id: csources-version
         shell: bash
         run: |
-          sha=$(git ls-remote https://github.com/nim-lang/csources_v1 master | cut -f 1)
+          set -e
+          . ci/funs.sh
+          sha=$(nimCsourcesHash)
           echo "::set-output name=sha::$sha"
 
       - name: 'Get prebuilt csources from cache'

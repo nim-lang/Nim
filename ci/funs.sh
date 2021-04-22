@@ -81,6 +81,11 @@ _cloneCsources(){
   echo_run git -C "$nim_csourcesDir" checkout $nim_csourcesHash
 }
 
+nimCsourcesHash(){
+  nimDefineVars
+  echo $nim_csourcesHash
+}
+
 nimBuildCsourcesIfNeeded(){
   # goal: allow cachine each tagged version independently
   # to avoid rebuilding csources, so that tools
