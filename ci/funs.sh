@@ -1,6 +1,7 @@
 # Utilities used in CI pipelines and tooling to avoid duplication.
 # Avoid top-level statements.
 # Prefer nim scripts whenever possible.
+# functions starting with `_` are considered internal, less stable.
 
 echo_run () {
   # echo's a command before running it, which helps understanding logs
@@ -84,7 +85,7 @@ nimBuildCsourcesIfNeeded(){
   # goal: allow cachine each tagged version independently
   # to avoid rebuilding csources, so that tools
   # like `git bisect` can grab a cached past version
-  # of bin/nim_csources without rebuilding.
+  # of `$nim_csources` without rebuilding.
   nimDefineVars
   if test -f "$nim_csources"; then
     echo "$nim_csources exists."

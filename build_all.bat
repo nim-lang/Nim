@@ -1,6 +1,8 @@
 @echo off
 rem build development version of the compiler; can be rerun safely
-rem xxx call nimBuildCsourcesIfNeeded
+rem TODO: this is not up to date, call nimBuildCsourcesIfNeeded if possible
+rem or auto-generate this file (from a nim script) to avoid duplication wrt
+rem csources hashes, etc.
 if not exist csources (
   git clone --depth 1 https://github.com/nim-lang/csources.git
 )
