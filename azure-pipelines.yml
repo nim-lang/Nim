@@ -142,18 +142,6 @@ jobs:
       displayName: 'Install dependencies (Windows)'
       condition: and(succeeded(), eq(variables['skipci'], 'false'), eq(variables['Agent.OS'], 'Windows_NT'))
 
-    - bash: . ci/funs.sh && nimBuildCsourcesIfNeeded CC=gcc ucpu=$(CPU)
-      displayName: 'Build csourcesAny'
-      condition: and(succeeded(), eq(variables['skipci'], 'false'))
-
-    # this could be revived if performance justifies it (needs a few updates)
-    # - task: Cache@2
-    #   inputs:
-    #     key: 'csourcesAny | "$(Agent.OS)" | $(CPU) | $(csources_version)'
-    #     path: $(nim_csources)
-    #   condition: and(succeeded(), eq(variables['skipci'], 'false'))
-    #   displayName: 'Restore built csourcesAny'
-
     - bash: echo '##vso[task.prependpath]$(System.DefaultWorkingDirectory)/bin'
       condition: and(succeeded(), eq(variables['skipci'], 'false'))
       displayName: 'Add build binaries to PATH'
@@ -170,6 +158,18 @@ jobs:
         echo_run make -v
       condition: and(succeeded(), eq(variables['skipci'], 'false'))
       displayName: 'System information'
+
+    - bash: . ci/funs.sh && nimBuildCsourcesIfNeeded CC=gcc ucpu=$(CPU)
+      condition: and(succeeded(), eq(variables['skipci'], 'false'))
+      displayName: 'Build csourcesAny'
+
+    # this could be revived if performance justifies it (needs a few updates)
+    # - task: Cache@2
+    #   inputs:
+    #     key: 'csourcesAny | "$(Agent.OS)" | $(CPU) | $(csources_version)'
+    #     path: $(nim_csources)
+    #   condition: and(succeeded(), eq(variables['skipci'], 'false'))
+    #   displayName: 'Restore built csourcesAny'
 
     - bash: nim c koch
       condition: and(succeeded(), eq(variables['skipci'], 'false'))

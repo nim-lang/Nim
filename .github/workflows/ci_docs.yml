@@ -72,7 +72,7 @@ jobs:
 
       - name: 'Build csourcesAny'
         shell: bash
-        run: . ci/funs.sh && nimBuildCsourcesIfNeeded
+        run: . ci/funs.sh && nimBuildCsourcesIfNeeded CC=gcc
           # was previously using caching via `actions/cache@v1` but this wasn't
           # used in other CI pipelines and it's unclear the added complexity
           # was worth the saving; can be revisited if needed.
