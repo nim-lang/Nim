@@ -89,7 +89,6 @@ Commands for core developers:
   tests [options]          run the testsuite (run a subset of tests by
                            specifying a category, e.g. `tests cat async`)
   temp options             creates a temporary compiler for testing
-  pushcsource              push generated C sources to its repo
 Web options:
   --googleAnalytics:UA-... add the given google analytics code to the docs. To
                            build the official docs, use UA-48159761-1
@@ -582,31 +581,6 @@ proc runCI(cmd: string) =
     when defined(posix):
       execFold("Run nimsuggest tests", "nim c -r nimsuggest/tester")
 
-const csourcesDir = "csources_v1" # xxx should this be `../csources_v1` ?
-
-proc pushCsources() =
-  if not dirExists(csourcesDir/".git"):
-    quit "[Error] no csourcesAny git repository found"
-  csource("-d:danger")
-  let cwd = getCurrentDir()
-  try:
-    copyDir("build/c_code", csourcesDir/"c_code")
-    copyFile("build/build.sh", csourcesDir/"build.sh")
-    copyFile("build/build.bat", csourcesDir/"build.bat")
-    copyFile("build/build64.bat", csourcesDir/"build64.bat")
-    copyFile("build/makefile", csourcesDir/"makefile")
-
-    setCurrentDir(csourcesDir) # xxx instead use `-C csourcesDir`
-    for kind, path in walkDir("c_code"):
-      if kind == pcDir:
-        exec("git add " & path / "*.c")
-    exec("git commit -am \"updated csourcesAny to version " & NimVersion & "\"")
-    exec("git push origin master")
-    exec("git tag -am \"Version $1\" v$1" % NimVersion)
-    exec("git push origin v$1" % NimVersion)
-  finally:
-    setCurrentDir(cwd)
-
 proc testUnixInstall(cmdLineRest: string) =
   csource("-d:danger" & cmdLineRest)
   xz(false, cmdLineRest)
@@ -720,7 +694,8 @@ when isMainModule:
       of "tools":
         buildTools(op.cmdLineRest)
         bundleNimbleExe(latest, op.cmdLineRest)
-      of "pushcsource", "pushcsources": pushCsources()
+      of "pushcsource":
+        quit "use this instead: https://github.com/nim-lang/csources_v1/blob/master/push_c_code.nim"
       of "valgrind": valgrind(op.cmdLineRest)
       of "c2nim": bundleC2nim(op.cmdLineRest)
       of "drnim": buildDrNim(op.cmdLineRest)
