@@ -1,3 +1,5 @@
+# out of date and unused but revivable
+
 name: Continous Integration
 on: [push, pull_request]
 
@@ -30,11 +32,6 @@ jobs:
     steps:
       - name: 'Checkout'
         uses: actions/checkout@v2
-      - name: 'Checkout csources'
-        uses: actions/checkout@v2
-        with:
-          repository: nim-lang/csources
-          path: csources
 
       - name: 'Install node.js 8.x'
         uses: actions/setup-node@v1
@@ -91,24 +88,10 @@ jobs:
         shell: bash
         run: echo "${{ github.workspace }}/bin" >> "${GITHUB_PATH}"
 
-      - name: 'Build csources'
+      - name: 'Build csourcesAny'
         shell: bash
-        run: |
-          ncpu=
-          case '${{ runner.os }}' in
-          'Linux')
-            ncpu=$(nproc)
-            ;;
-          'macOS')
-            ncpu=$(sysctl -n hw.ncpu)
-            ;;
-          'Windows')
-            ncpu=$NUMBER_OF_PROCESSORS
-            ;;
-          esac
-          [[ -z "$ncpu" || $ncpu -le 0 ]] && ncpu=1
+        run: . ci/funs.sh && nimBuildCsourcesIfNeeded CC=gcc ucpu='${{ matrix.cpu }}'
 
-          make -C csources -j $ncpu CC=gcc ucpu='${{ matrix.cpu }}'
       - name: 'Build koch'
         shell: bash
         run: nim c koch

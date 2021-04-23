@@ -1,3 +1,4 @@
+# deprecated, out of date and unused
 sudo: false
 language: c
 
@@ -22,9 +23,8 @@ addons:
     - valgrind
 
 before_script:
-  - git clone --depth 1 https://github.com/nim-lang/csources.git
+  -  . ci/funs.sh && nimBuildCsourcesIfNeeded LD=$CC ucpu=$CPU
   - export PATH="$PWD/bin${PATH:+:$PATH}"
-  - make -C csources -j 2 LD=$CC ucpu=$CPU
 
 script:
   - echo "travis_fold:start:nim_c_koch"

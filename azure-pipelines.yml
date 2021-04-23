@@ -69,10 +69,6 @@ jobs:
         fi
       displayName: 'Check whether to skip CI'
 
-    - bash: git clone --depth 1 https://github.com/nim-lang/csources_v1 csources
-      displayName: 'Checkout Nim csources'
-      condition: and(succeeded(), eq(variables['skipci'], 'false'))
-
     - task: NodeTool@0
       inputs:
         versionSpec: '12.x'
@@ -163,45 +159,17 @@ jobs:
       condition: and(succeeded(), eq(variables['skipci'], 'false'))
       displayName: 'System information'
 
-    - bash: echo '##vso[task.setvariable variable=csources_version]'"$(git -C csources rev-parse HEAD)"
+    - bash: . ci/funs.sh && nimBuildCsourcesIfNeeded CC=gcc ucpu=$(CPU)
       condition: and(succeeded(), eq(variables['skipci'], 'false'))
-      displayName: 'Get csources version'
+      displayName: 'Build csourcesAny'
 
-    - task: Cache@2
-      inputs:
-        key: 'csources | "$(Agent.OS)" | $(CPU) | $(csources_version)'
-        path: csources/bin
-      condition: and(succeeded(), eq(variables['skipci'], 'false'))
-      displayName: 'Restore built csources'
-
-    - bash: |
-        set -e
-        . ci/funs.sh
-        ncpu=
-        ext=
-        case '$(Agent.OS)' in
-        'Linux')
-          ncpu=$(nproc)
-          ;;
-        'Darwin')
-          ncpu=$(sysctl -n hw.ncpu)
-          ;;
-        'Windows_NT')
-          ncpu=$NUMBER_OF_PROCESSORS
-          ext=.exe
-          ;;
-        esac
-        [[ -z "$ncpu" || $ncpu -le 0 ]] && ncpu=1
-
-        if [[ -x csources/bin/nim$ext ]]; then
-          echo_run echo "Found cached compiler, skipping build"
-        else
-          echo_run make -C csources -j $ncpu CC=gcc ucpu=$(CPU) koch=no
-        fi
-
-        echo_run cp csources/bin/nim$ext bin
-      condition: and(succeeded(), eq(variables['skipci'], 'false'))
-      displayName: 'Build 1-stage compiler from csources'
+    # this could be revived if performance justifies it (needs a few updates)
+    # - task: Cache@2
+    #   inputs:
+    #     key: 'csourcesAny | "$(Agent.OS)" | $(CPU) | $(csources_version)'
+    #     path: $(nim_csources)
+    #   condition: and(succeeded(), eq(variables['skipci'], 'false'))
+    #   displayName: 'Restore built csourcesAny'
 
     - bash: nim c koch
       condition: and(succeeded(), eq(variables['skipci'], 'false'))

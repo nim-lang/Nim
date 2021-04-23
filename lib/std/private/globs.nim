@@ -52,5 +52,5 @@ proc nativeToUnixPath*(path: string): string =
 
 when isMainModule:
   import sugar
-  for a in walkDirRecFilter(".", follow = a=>a.path.lastPathPart notin ["nimcache", ".git", ".csources", "bin"]):
+  for a in walkDirRecFilter(".", follow = a=>a.path.lastPathPart notin ["nimcache", ".git", "csources_v1", "csources", "bin"]):
     echo a

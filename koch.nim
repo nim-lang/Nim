@@ -89,7 +89,6 @@ Commands for core developers:
   tests [options]          run the testsuite (run a subset of tests by
                            specifying a category, e.g. `tests cat async`)
   temp options             creates a temporary compiler for testing
-  pushcsource              push generated C sources to its repo
 Web options:
   --googleAnalytics:UA-... add the given google analytics code to the docs. To
                            build the official docs, use UA-48159761-1
@@ -283,7 +282,7 @@ template doUseCpp(): bool = getEnv("NIM_COMPILE_TO_CPP", "false") == "true"
 
 proc boot(args: string) =
   ## bootstrapping is a process that involves 3 steps:
-  ## 1. use csources to produce nim1.exe. This nim1.exe is buggy but
+  ## 1. use csourcesAny to produce nim1.exe. This nim1.exe is buggy but
   ## rock solid for building a Nim compiler. It shouldn't be used for anything else.
   ## 2. use nim1.exe to produce nim2.exe. nim2.exe is the one you really need.
   ## 3. We use nim2.exe to build nim3.exe. nim3.exe is equal to nim2.exe except for timestamps.
@@ -315,13 +314,8 @@ proc boot(args: string) =
       let ret = execCmdEx(nimStart & " --version")
       doAssert ret.exitCode == 0
       let version = ret.output.splitLines[0]
-      # remove these when csources get updated
-      template addLib() =
+      if version.startsWith "Nim Compiler Version 0.20.0":
         extraOption.add " --lib:lib" # see https://github.com/nim-lang/Nim/pull/14291
-      if version.startsWith "Nim Compiler Version 0.19.0":
-        extraOption.add " -d:nimBoostrapCsources0_19_0"
-        addLib()
-      elif version.startsWith "Nim Compiler Version 0.20.0": addLib()
 
     # in order to use less memory, we split the build into two steps:
     # --compileOnly produces a $project.json file and does not run GCC/Clang.
@@ -587,29 +581,6 @@ proc runCI(cmd: string) =
     when defined(posix):
       execFold("Run nimsuggest tests", "nim c -r nimsuggest/tester")
 
-proc pushCsources() =
-  if not dirExists("../csources/.git"):
-    quit "[Error] no csources git repository found"
-  csource("-d:danger")
-  let cwd = getCurrentDir()
-  try:
-    copyDir("build/c_code", "../csources/c_code")
-    copyFile("build/build.sh", "../csources/build.sh")
-    copyFile("build/build.bat", "../csources/build.bat")
-    copyFile("build/build64.bat", "../csources/build64.bat")
-    copyFile("build/makefile", "../csources/makefile")
-
-    setCurrentDir("../csources")
-    for kind, path in walkDir("c_code"):
-      if kind == pcDir:
-        exec("git add " & path / "*.c")
-    exec("git commit -am \"updated csources to version " & NimVersion & "\"")
-    exec("git push origin master")
-    exec("git tag -am \"Version $1\" v$1" % NimVersion)
-    exec("git push origin v$1" % NimVersion)
-  finally:
-    setCurrentDir(cwd)
-
 proc testUnixInstall(cmdLineRest: string) =
   csource("-d:danger" & cmdLineRest)
   xz(false, cmdLineRest)
@@ -723,7 +694,8 @@ when isMainModule:
       of "tools":
         buildTools(op.cmdLineRest)
         bundleNimbleExe(latest, op.cmdLineRest)
-      of "pushcsource", "pushcsources": pushCsources()
+      of "pushcsource":
+        quit "use this instead: https://github.com/nim-lang/csources_v1/blob/master/push_c_code.nim"
       of "valgrind": valgrind(op.cmdLineRest)
       of "c2nim": bundleC2nim(op.cmdLineRest)
       of "drnim": buildDrNim(op.cmdLineRest)
