@@ -517,7 +517,7 @@ Continuous Integration (CI)
    the CI pipeline and affects other PR's; if you don't need it (e.g. for WIP or
    documentation only changes), add ``[skip ci]`` to your commit message title.
    This convention is supported by our github actions pipelines and our azure pipeline
-   as well as our former other pipelines:
+   (using custom logic, which should complete in < 1mn) as well as our former other pipelines:
    `Appveyor <https://www.appveyor.com/docs/how-to/filtering-commits/#skip-directive-in-commit-message>`_
    and `Travis <https://docs.travis-ci.com/user/customizing-the-build/#skipping-a-build>`_.
 
