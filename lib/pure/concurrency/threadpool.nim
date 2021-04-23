@@ -586,7 +586,7 @@ proc nimSpawn4(fn: WorkerProc; data: pointer; id: ThreadId) {.compilerproc.} =
 
 
 proc sync*() =
-  ## A simple barrier to wait for all `spawn`ed tasks.
+  ## A simple barrier to wait for all `spawn`\ed tasks.
   ##
   ## If you need more elaborate waiting, you have to use an explicit barrier.
   while true:

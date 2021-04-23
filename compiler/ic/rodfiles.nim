@@ -152,7 +152,7 @@ proc storePrim*[T](f: var RodFile; x: T) =
     {.error: "unsupported type for 'storePrim'".}
 
 proc storeSeq*[T](f: var RodFile; s: seq[T]) =
-  ## Stores a sequence of `T`s, with the len as a prefix for later retrieval.
+  ## Stores a sequence of `T`\s, with the len as a prefix for later retrieval.
   if f.err != ok: return
   if s.len >= high(int32):
     setError f, tooBig

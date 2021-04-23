@@ -7,7 +7,7 @@
 #    distribution, for details about the copyright.
 #
 
-## This module implements some common generic algorithms on `openArray`s.
+## This module implements some common generic algorithms on `openArray`\s.
 ##
 ## Basic usage
 ## ===========

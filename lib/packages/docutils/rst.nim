@@ -277,6 +277,7 @@ type
     line*, col*, baseIndent*: int
     skipPounds*: bool
     adornmentLine*: bool
+    escapeNext*: bool
 
 proc getThing(L: var Lexer, tok: var Token, s: set[char]) =
   tok.kind = tkWord
@@ -314,10 +315,18 @@ proc getPunctAdornment(L: var Lexer, tok: var Token) =
   tok.col = L.col
   var pos = L.bufpos
   let c = L.buf[pos]
-  while true:
+  if not L.escapeNext and (c != '\\' or L.adornmentLine):
+    while true:
+      tok.symbol.add(L.buf[pos])
+      inc pos
+      if L.buf[pos] != c: break
+  elif L.escapeNext:
     tok.symbol.add(L.buf[pos])
     inc pos
-    if L.buf[pos] != c: break
+  else:  # not L.escapeNext and c == '\\' and not L.adornmentLine
+    tok.symbol.add '\\'
+    inc pos
+    L.escapeNext = true
   inc L.col, pos - L.bufpos
   L.bufpos = pos
   if tok.symbol == "\\": tok.kind = tkPunct
@@ -429,7 +438,9 @@ proc getTokens(buffer: string, skipPounds: bool, tokens: var TokenSeq): int =
   while true:
     inc length
     setLen(tokens, length)
+    let toEscape = L.escapeNext
     rawGetTok(L, tokens[length - 1])
+    if toEscape: L.escapeNext = false
     if tokens[length - 1].kind == tkEof: break
   if tokens[0].kind == tkWhite:
     # BUGFIX
@@ -981,16 +992,21 @@ proc expect(p: var RstParser, tok: string) =
   if currentTok(p).symbol == tok: inc p.idx
   else: rstMessage(p, meExpected, tok)
 
-proc isInlineMarkupEnd(p: RstParser, markup: string): bool =
+proc isInlineMarkupEnd(p: RstParser, markup: string, exact: bool): bool =
   # rst rules: https://docutils.sourceforge.io/docs/ref/rst/restructuredtext.html#inline-markup-recognition-rules
-  result = currentTok(p).symbol == markup
+  if exact:
+    result = currentTok(p).symbol == markup
+  else:
+    result = currentTok(p).symbol.endsWith markup
+    if (not result) and markup == "``":
+      # check that escaping may have splitted `` to 2 tokens ` and `
+      result = currentTok(p).symbol == "`" and prevTok(p).symbol == "`"
   if not result: return
   # Rule 2:
   result = prevTok(p).kind notin {tkIndent, tkWhite}
   if not result: return
   # Rule 7:
   result = nextTok(p).kind in {tkIndent, tkWhite, tkEof} or
-      markup in ["``", "`"] and nextTok(p).kind in {tkIndent, tkWhite, tkWord, tkEof} or
       nextTok(p).symbol[0] in
       {'\'', '\"', ')', ']', '}', '>', '-', '/', '\\', ':', '.', ',', ';', '!', '?', '_'}
   if not result: return
@@ -1130,7 +1146,8 @@ proc toOtherRole(n: PRstNode, kind: RstNodeKind, roleName: string): PRstNode =
 proc parsePostfix(p: var RstParser, n: PRstNode): PRstNode =
   var newKind = n.kind
   var newSons = n.sons
-  if isInlineMarkupEnd(p, "_") or isInlineMarkupEnd(p, "__"):
+  if isInlineMarkupEnd(p, "_", exact=true) or
+      isInlineMarkupEnd(p, "__", exact=true):
     inc p.idx
     if p.tok[p.idx-2].symbol == "`" and p.tok[p.idx-3].symbol == ">":
       var a = newRstNode(rnInner)
@@ -1215,7 +1232,7 @@ proc parseWordOrRef(p: var RstParser, father: PRstNode) =
     inc p.idx
     while currentTok(p).kind in {tkWord, tkPunct}:
       if currentTok(p).kind == tkPunct:
-        if isInlineMarkupEnd(p, "_"):
+        if isInlineMarkupEnd(p, "_", exact=true):
           isRef = true
           break
         if not validRefnamePunct(currentTok(p).symbol):
@@ -1253,7 +1270,15 @@ proc parseUntil(p: var RstParser, father: PRstNode, postfix: string,
   while true:
     case currentTok(p).kind
     of tkPunct:
-      if isInlineMarkupEnd(p, postfix):
+      if isInlineMarkupEnd(p, postfix, exact=false):
+        let l = currentTok(p).symbol.len
+        if l > postfix.len:
+          # handle cases like *emphasis with stars****. (It's valid RST!)
+          father.add newLeaf(currentTok(p).symbol[0 ..< l - postfix.len])
+        elif postfix == "``" and currentTok(p).symbol == "`" and
+            prevTok(p).symbol == "`":
+          # handle cases like ``literal\`` - delete ` already added after \
+          father.sons.setLen(father.sons.len - 1)
         inc p.idx
         break
       else:

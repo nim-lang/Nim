@@ -4,6 +4,8 @@ discard """
 [Suite] RST indentation
 
 [Suite] RST include directive
+
+[Suite] RST inline markup
 '''
 """
 
@@ -267,3 +269,133 @@ And this should **NOT** be visible in `docs.html`
 """
     doAssert "<em>Visible</em>" == rstTohtml(input, {}, defaultConfig())
     removeFile("other.rst")
+
+suite "RST inline markup":
+  test "end-string has repeating symbols":
+    check("*emphasis content****".toAst == dedent"""
+      rnEmphasis
+        rnLeaf  'emphasis'
+        rnLeaf  ' '
+        rnLeaf  'content'
+        rnLeaf  '***'
+      """)
+
+    check("""*emphasis content\****""".toAst == dedent"""
+      rnEmphasis
+        rnLeaf  'emphasis'
+        rnLeaf  ' '
+        rnLeaf  'content'
+        rnLeaf  '*'
+        rnLeaf  '**'
+      """)  # exact configuration of leafs with * is not really essential,
+            # only total number of * is essential
+
+    check("**strong content****".toAst == dedent"""
+      rnStrongEmphasis
+        rnLeaf  'strong'
+        rnLeaf  ' '
+        rnLeaf  'content'
+        rnLeaf  '**'
+      """)
+
+    check("""**strong content*\****""".toAst == dedent"""
+      rnStrongEmphasis
+        rnLeaf  'strong'
+        rnLeaf  ' '
+        rnLeaf  'content'
+        rnLeaf  '*'
+        rnLeaf  '*'
+        rnLeaf  '*'
+      """)
+
+    check("``lit content`````".toAst == dedent"""
+      rnInlineLiteral
+        rnLeaf  'lit'
+        rnLeaf  ' '
+        rnLeaf  'content'
+        rnLeaf  '```'
+      """)
+
+
+  test """interpreted text can be ended with \` """:
+    let output = (".. default-role:: literal\n" & """`\``""").toAst
+    check(output.endsWith """
+  rnParagraph
+    rnInlineLiteral
+      rnLeaf  '`'""" & "\n")
+
+    let output2 = """`\``""".toAst
+    check(output2 == dedent"""
+      rnInlineCode
+        rnDirArg
+          rnLeaf  'nim'
+        [nil]
+        rnLiteralBlock
+          rnLeaf  '`'
+      """)
+
+    let output3 = """`proc \`+\``""".toAst
+    check(output3 == dedent"""
+      rnInlineCode
+        rnDirArg
+          rnLeaf  'nim'
+        [nil]
+        rnLiteralBlock
+          rnLeaf  'proc `+`'
+      """)
+
+  test """inline literals can contain \ anywhere""":
+    check("""``\``""".toAst == dedent"""
+      rnInlineLiteral
+        rnLeaf  '\'
+      """)
+
+    check("""``\\``""".toAst == dedent"""
+      rnInlineLiteral
+        rnLeaf  '\'
+        rnLeaf  '\'
+      """)
+
+    check("""``\```""".toAst == dedent"""
+      rnInlineLiteral
+        rnLeaf  '\'
+        rnLeaf  '`'
+      """)
+
+    check("""``\\```""".toAst == dedent"""
+      rnInlineLiteral
+        rnLeaf  '\'
+        rnLeaf  '\'
+        rnLeaf  '`'
+      """)
+
+    check("""``\````""".toAst == dedent"""
+      rnInlineLiteral
+        rnLeaf  '\'
+        rnLeaf  '`'
+        rnLeaf  '`'
+      """)
+
+  test "references with _ at the end":
+    check(dedent"""
+      .. _lnk: https
+
+      lnk_""".toAst ==
+      dedent"""
+        rnHyperlink
+          rnInner
+            rnLeaf  'lnk'
+          rnInner
+            rnLeaf  'https'
+      """)
+
+  test "not a hyper link":
+    check(dedent"""
+      .. _lnk: https
+
+      lnk___""".toAst ==
+      dedent"""
+        rnInner
+          rnLeaf  'lnk'
+          rnLeaf  '___'
+      """)
