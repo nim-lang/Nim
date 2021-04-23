@@ -83,7 +83,9 @@ proc semExprCheck(c: PContext, n: PNode, flags: TExprFlags): PNode =
 
 proc semExprWithType(c: PContext, n: PNode, flags: TExprFlags = {}): PNode =
   result = semExprCheck(c, n, flags)
-  if result.typ == nil or result.typ == c.enforceVoidContext:
+  if result.typ == nil and efInTypeof in flags:
+    result.typ = c.voidType
+  elif result.typ == nil or result.typ == c.enforceVoidContext:
     localError(c.config, n.info, errExprXHasNoType %
                 renderTree(result, {renderNoComments}))
     result.typ = errorType(c)
