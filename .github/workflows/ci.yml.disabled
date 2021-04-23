@@ -90,7 +90,7 @@ jobs:
 
       - name: 'Build csourcesAny'
         shell: bash
-        run: . ci/funs.sh && nimBuildCsourcesIfNeeded
+        run: . ci/funs.sh && nimBuildCsourcesIfNeeded CC=gcc ucpu='${{ matrix.cpu }}'
 
       - name: 'Build koch'
         shell: bash
