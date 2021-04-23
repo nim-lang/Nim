@@ -5,6 +5,8 @@ discard """
 
 [Suite] RST include directive
 
+[Suite] RST escaping
+
 [Suite] RST inline markup
 '''
 """
@@ -269,6 +271,33 @@ And this should **NOT** be visible in `docs.html`
 """
     doAssert "<em>Visible</em>" == rstTohtml(input, {}, defaultConfig())
     removeFile("other.rst")
+
+suite "RST escaping":
+  test "backspaces":
+    check("""\ this""".toAst == dedent"""
+      rnLeaf  'this'
+      """)
+
+    check("""\\ this""".toAst == dedent"""
+      rnInner
+        rnLeaf  '\'
+        rnLeaf  ' '
+        rnLeaf  'this'
+      """)
+
+    check("""\\\ this""".toAst == dedent"""
+      rnInner
+        rnLeaf  '\'
+        rnLeaf  'this'
+      """)
+
+    check("""\\\\ this""".toAst == dedent"""
+      rnInner
+        rnLeaf  '\'
+        rnLeaf  '\'
+        rnLeaf  ' '
+        rnLeaf  'this'
+      """)
 
 suite "RST inline markup":
   test "end-string has repeating symbols":
