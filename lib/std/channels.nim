@@ -291,24 +291,21 @@ proc sendUnbufferedMpmc(chan: ChannelRaw, data: sink pointer, size: int, nonBloc
   if nonBlocking and chan.isFullUnbuf:
     return false
 
-  acquire(chan.headLock)
+  withLock chan.headLock:
+    if nonBlocking and chan.isFullUnbuf:
+      # Another thread was faster
+      return false
 
-  if nonBlocking and chan.isFullUnbuf:
-    # Another thread was faster
-    release(chan.headLock)
-    return false
+    while chan.isFullUnbuf:
+      wait(chan.notFullcond, chan.headLock)
 
-  while chan.isFullUnbuf:
-    wait(chan.notFullcond, chan.headLock)
+    assert chan.isEmptyUnbuf
+    assert size <= chan.itemsize
+    copyMem(chan.buffer, data, size)
 
-  assert chan.isEmptyUnbuf
-  assert size <= chan.itemsize
-  copyMem(chan.buffer, data, size)
+    chan.head = 1
 
-  chan.head = 1
-
-  signal(chan.notEmptyCond)
-  release(chan.headLock)
+    signal(chan.notEmptyCond)
   result = true
 
 proc sendMpmc(chan: ChannelRaw, data: sink pointer, size: int, nonBlocking: bool): bool =
@@ -321,55 +318,49 @@ proc sendMpmc(chan: ChannelRaw, data: sink pointer, size: int, nonBlocking: bool
   if nonBlocking and chan.isFull:
     return false
 
-  acquire(chan.tailLock)
+  withLock chan.tailLock:
+    if nonBlocking and chan.isFull:
+      # Another thread was faster
+      return false
 
-  if nonBlocking and chan.isFull:
-    # Another thread was faster
-    release(chan.tailLock)
-    return false
+    while chan.isFull:
+      wait(chan.notFullcond, chan.tailLock)
 
-  while chan.isFull:
-    wait(chan.notFullcond, chan.tailLock)
+    assert not chan.isFull
+    assert size <= chan.itemsize
 
-  assert not chan.isFull
-  assert size <= chan.itemsize
+    let writeIdx = if chan.tail < chan.size: chan.tail
+                  else: chan.tail - chan.size
 
-  let writeIdx = if chan.tail < chan.size: chan.tail
-                 else: chan.tail - chan.size
+    copyMem(chan.buffer[writeIdx * chan.itemsize].addr, data, size)
 
-  copyMem(chan.buffer[writeIdx * chan.itemsize].addr, data, size)
+    inc chan.tail
+    if chan.tail == 2 * chan.size:
+      chan.tail = 0
 
-  inc chan.tail
-  if chan.tail == 2 * chan.size:
-    chan.tail = 0
-
-  signal(chan.notEmptyCond)
-  release(chan.tailLock)
+    signal(chan.notEmptyCond)
   result = true
 
 proc recvUnbufferedMpmc(chan: ChannelRaw, data: pointer, size: int, nonBlocking: bool): bool =
   if nonBlocking and chan.isEmptyUnbuf:
     return false
 
-  acquire(chan.headLock)
+  withLock chan.headLock:
+    if nonBlocking and chan.isEmptyUnbuf:
+      # Another thread was faster
+      return false
 
-  if nonBlocking and chan.isEmptyUnbuf:
-    # Another thread was faster
-    release(chan.headLock)
-    return false
+    while chan.isEmptyUnbuf:
+      wait(chan.notEmptyCond, chan.headLock)
 
-  while chan.isEmptyUnbuf:
-    wait(chan.notEmptyCond, chan.headLock)
+    assert chan.isFullUnbuf
+    assert size <= chan.itemsize
 
-  assert chan.isFullUnbuf
-  assert size <= chan.itemsize
+    copyMem(data, chan.buffer, size)
 
-  copyMem(data, chan.buffer, size)
+    chan.head = 0
 
-  chan.head = 0
-
-  signal(chan.notFullCond)
-  release(chan.headLock)
+    signal(chan.notFullCond)
   result = true
 
 proc recvMpmc(chan: ChannelRaw, data: pointer, size: int, nonBlocking: bool): bool =
@@ -382,30 +373,27 @@ proc recvMpmc(chan: ChannelRaw, data: pointer, size: int, nonBlocking: bool): bo
   if nonBlocking and chan.isEmpty:
     return false
 
-  acquire(chan.headLock)
+  withLock chan.headLock:
+    if nonBlocking and chan.isEmpty:
+      # Another thread took the last data
+      return false
 
-  if nonBlocking and chan.isEmpty:
-    # Another thread took the last data
-    release(chan.headLock)
-    return false
+    while chan.isEmpty:
+      wait(chan.notEmptyCond, chan.headLock)
 
-  while chan.isEmpty:
-    wait(chan.notEmptyCond, chan.headLock)
+    assert not chan.isEmpty
+    assert size <= chan.itemsize
 
-  assert not chan.isEmpty
-  assert size <= chan.itemsize
+    let readIdx = if chan.head < chan.size: chan.head
+                  else: chan.head - chan.size
 
-  let readIdx = if chan.head < chan.size: chan.head
-                else: chan.head - chan.size
+    copyMem(data, chan.buffer[readIdx * chan.itemsize].addr, size)
 
-  copyMem(data, chan.buffer[readIdx * chan.itemsize].addr, size)
+    inc chan.head
+    if chan.head == 2 * chan.size:
+      chan.head = 0
 
-  inc chan.head
-  if chan.head == 2 * chan.size:
-    chan.head = 0
-
-  signal(chan.notFullCond)
-  release(chan.headLock)
+    signal(chan.notFullCond)
   result = true
 
 proc channelCloseMpmc(chan: ChannelRaw): bool =
