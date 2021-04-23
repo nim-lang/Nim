@@ -47,29 +47,23 @@ _nimNumCpu(){
 }
 
 _nimBuildCsourcesIfNeeded(){
-  if [ "${NIM_CSOURCES_USE_BUILD:-0}" == "1" ]; then
-    # call build.sh; slower and should be less useful
-    # allows passing args (e.g.: `--cpu i386`),
-    # but note that `make` also allows args (e.g. `CC`, `ucpu`).
-    (
-      # `()` avoid changing dir in case of failure
-      echo_run cd $nim_csourcesDir
-      echo_run sh build.sh "$@"
-    )
-  else # use `make`, allowing parallel jobs (5X faster on 16 cores: 10s instead of 50s)
-    unamestr=$(uname)
-    # uname values: https://en.wikipedia.org/wiki/Uname
-    if [ "$unamestr" = 'FreeBSD' ]; then
-      makeX=gmake
-    elif [ "$unamestr" = 'OpenBSD' ]; then
-      makeX=gmake
-    else
-      makeX=make
-    fi
-    nCPU=$(_nimNumCpu)
-    echo_run which $makeX
-    echo_run $makeX -C $nim_csourcesDir -j $((nCPU + 2)) -l $nCPU "$@"
+  # if some systems cannot use make or gmake, we could add support for calling `build.sh`
+  # but this is slower (not parallel jobs) and would require making build.sh
+  # understand the arguments passed to the makefile (e.g. `CC=gcc ucpu=amd64 uos=darwin`),
+  # instead of `--cpu amd64 --os darwin`.
+  unamestr=$(uname)
+  # uname values: https://en.wikipedia.org/wiki/Uname
+  if [ "$unamestr" = 'FreeBSD' ]; then
+    makeX=gmake
+  elif [ "$unamestr" = 'OpenBSD' ]; then
+    makeX=gmake
+  else
+    makeX=make
   fi
+  nCPU=$(_nimNumCpu)
+  echo_run which $makeX
+  # parallel jobs (5X faster on 16 cores: 10s instead of 50s)
+  echo_run $makeX -C $nim_csourcesDir -j $((nCPU + 2)) -l $nCPU "$@"
   # keep $nim_csources in case needed to investigate bootstrap issues
   # without having to rebuild
   echo_run cp bin/nim $nim_csources
@@ -85,19 +79,23 @@ nimBuildCsourcesIfNeeded(){
   # to avoid rebuilding, so that tools like `git bisect`
   # can grab a cached past version without rebuilding.
   nimDefineVars
-  if test -f "$nim_csources"; then
-    echo "$nim_csources exists."
-  else
-    if test -d "$nim_csourcesDir"; then
-      echo "$nim_csourcesDir exists."
+  (
+    set -e
+    # avoid polluting caller scope with internal variable definitions.
+    if test -f "$nim_csources"; then
+      echo "$nim_csources exists."
     else
-      # depth 1: adjust as needed in case useful for `git bisect`
-      echo_run git clone -q --depth 1 $nim_csourcesUrl "$nim_csourcesDir"
-      echo_run git -C "$nim_csourcesDir" checkout $nim_csourcesHash
+      if test -d "$nim_csourcesDir"; then
+        echo "$nim_csourcesDir exists."
+      else
+        # depth 1: adjust as needed in case useful for `git bisect`
+        echo_run git clone -q --depth 1 $nim_csourcesUrl "$nim_csourcesDir"
+        echo_run git -C "$nim_csourcesDir" checkout $nim_csourcesHash
+      fi
+      _nimBuildCsourcesIfNeeded "$@"
     fi
-    _nimBuildCsourcesIfNeeded "$@"
-  fi
 
-  echo_run cp $nim_csources bin/nim
-  echo_run $nim_csources -v
+    echo_run cp $nim_csources bin/nim
+    echo_run $nim_csources -v
+  )
 }
