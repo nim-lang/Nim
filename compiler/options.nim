@@ -978,10 +978,9 @@ proc setOutFile*(conf: ConfigRef) =
   if conf.outFile.isEmpty:
     let base = conf.projectName
     let targetName =
-      if optGenDynLib in conf.globalOptions:
+      if conf.backend == backendJs: base & ".js"
+      elif optGenDynLib in conf.globalOptions:
         platform.OS[conf.target.targetOS].dllFrmt % base
-      elif optGenStaticLib in conf.globalOptions:
-        libNameTmpl(conf) % base
-      else:
-        base & platform.OS[conf.target.targetOS].exeExt
+      elif optGenStaticLib in conf.globalOptions: libNameTmpl(conf) % base
+      else: base & platform.OS[conf.target.targetOS].exeExt
     conf.outFile = RelativeFile targetName

@@ -80,7 +80,6 @@ when not defined(leanCompiler):
 
 proc commandCompileToC(graph: ModuleGraph) =
   let conf = graph.config
-  setOutFile(conf)
   extccomp.initVars(conf)
   semanticPasses(graph)
   if conf.symbolFiles == disabledSf:
@@ -121,23 +120,17 @@ proc commandJsonScript(graph: ModuleGraph) =
   extccomp.runJsonBuildInstructions(graph.config, proj)
 
 proc commandCompileToJS(graph: ModuleGraph) =
+  let conf = graph.config
   when defined(leanCompiler):
-    globalError(graph.config, unknownLineInfo, "compiler wasn't built with JS code generator")
+    globalError(conf, unknownLineInfo, "compiler wasn't built with JS code generator")
   else:
-    let conf = graph.config
     conf.exc = excCpp
-
-    if conf.outFile.isEmpty:
-      conf.outFile = RelativeFile(conf.projectName & ".js")
-
-    #incl(gGlobalOptions, optSafeCode)
-    setTarget(graph.config.target, osJS, cpuJS)
-    #initDefines()
-    defineSymbol(graph.config.symbols, "ecmascript") # For backward compatibility
+    setTarget(conf.target, osJS, cpuJS)
+    defineSymbol(conf.symbols, "ecmascript") # For backward compatibility
     semanticPasses(graph)
     registerPass(graph, JSgenPass)
     compileProject(graph)
-    if optGenScript in graph.config.globalOptions:
+    if optGenScript in conf.globalOptions:
       writeDepsFile(graph)
 
 proc interactivePasses(graph: ModuleGraph) =
@@ -220,6 +213,7 @@ proc mainCommand*(graph: ModuleGraph) =
 
   proc compileToBackend() =
     customizeForBackend(conf.backend)
+    setOutFile(conf)
     case conf.backend
     of backendC: commandCompileToC(graph)
     of backendCpp: commandCompileToC(graph)
