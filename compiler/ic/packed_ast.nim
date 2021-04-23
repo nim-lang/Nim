@@ -86,7 +86,7 @@ type
     typeInst*: PackedItemId
     nonUniqueId*: int32
 
-  PackedNode* = object     # 20 bytes
+  PackedNode* = object     # 28 bytes
     kind*: TNodeKind
     flags*: TNodeFlags
     operand*: int32  # for kind in {nkSym, nkSymDef}: SymId
