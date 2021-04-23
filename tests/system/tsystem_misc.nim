@@ -81,6 +81,7 @@ block:
   doAssertRaises(IndexDefect):
     s4.delete(0)
 
+  doAssert not compiles(@["foo"].delete(-1))
 
 proc foo(a: openArray[int]) =
   for x in a: echo x
