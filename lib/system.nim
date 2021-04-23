@@ -1342,15 +1342,18 @@ proc delete*[T](x: var seq[T], i: Natural) {.noSideEffect.} =
   ## See also:
   ## * `del <#del,seq[T],Natural>`_ for O(1) operation
   ##
-  ## .. code-block:: Nim
-  ##  var i = @[1, 2, 3, 4, 5]
-  ##  i.delete(2) # => @[1, 2, 4, 5]
+  runnableExamples:
+    var s = @[1, 2, 3, 4, 5]
+    s.delete(2)
+    doAssert s == @[1, 2, 4, 5]
+
+    doAssertRaises(IndexDefect):
+        s.delete(10)
+
   if i > high(x):
-    var e: ref IndexDefect
-    new(e)
-    e.msg = "out of bounds!"
-    raise e
-    # raiseIndexError2(i, high(x))
+    # xxx this should call `raiseIndexError2(i, high(x))` after some refactoring
+    # raise (ref IndexDefect)(msg: "index out of bounds: '" & $i & "' < '" & $x.len & "' failed")
+    raise (ref IndexDefect)(msg: "index out of bounds")
 
   template defaultImpl =
     let xl = x.len
