@@ -286,7 +286,7 @@ efficiency and perform different checks.
 import macros, parseutils
 import std/private/since
 
-proc conditionsToIfChain(n, idx, res: NimNode; start: int): NimNode =
+func conditionsToIfChain(n, idx, res: NimNode; start: int): NimNode =
   assert n.kind == nnkStmtList
   if start >= n.len: return newAssignment(res, newLit true)
   var ifs: NimNode = nil
@@ -298,9 +298,9 @@ proc conditionsToIfChain(n, idx, res: NimNode; start: int): NimNode =
                                      conditionsToIfChain(n, idx, res, start+3))))
   result = newTree(nnkStmtList, n[start], ifs)
 
-proc notZero(x: NimNode): NimNode = newCall(bindSym"!=", x, newLit 0)
+func notZero(x: NimNode): NimNode = newCall(bindSym"!=", x, newLit 0)
 
-proc buildUserCall(x: string; args: varargs[NimNode]): NimNode =
+func buildUserCall(x: string; args: varargs[NimNode]): NimNode =
   let y = parseExpr(x)
   result = newTree(nnkCall)
   if y.kind in nnkCallKinds: result.add y[0]
@@ -535,7 +535,7 @@ macro scanp*(input, idx: typed; pattern: varargs[untyped]): bool =
 
   template interf(x): untyped = bindSym(x, brForceOpen)
 
-  proc toIfChain(n: seq[StmtTriple]; idx, res: NimNode; start: int): NimNode =
+  func toIfChain(n: seq[StmtTriple]; idx, res: NimNode; start: int): NimNode =
     if start >= n.len: return newAssignment(res, newLit true)
     var ifs: NimNode = nil
     if n[start].cond.kind == nnkEmpty:
@@ -546,11 +546,11 @@ macro scanp*(input, idx: typed; pattern: varargs[untyped]): bool =
                               toIfChain(n, idx, res, start+1))))
     result = newTree(nnkStmtList, n[start].init, ifs)
 
-  proc attach(x, attached: NimNode): NimNode =
+  func attach(x, attached: NimNode): NimNode =
     if attached == nil: x
     else: newStmtList(attached, x)
 
-  proc placeholder(n, x, j: NimNode): NimNode =
+  func placeholder(n, x, j: NimNode): NimNode =
     if n.kind == nnkPrefix and n[0].eqIdent("$"):
       let n1 = n[1]
       if n1.eqIdent"_" or n1.eqIdent"current":
