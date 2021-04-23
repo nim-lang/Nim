@@ -266,6 +266,13 @@ proc resolveSym(g: ModuleGraph; t: var LazySym): PSym =
     t.sym = result
   assert result != nil
 
+proc resolveAttachedOp(g: ModuleGraph; t: var LazySym): PSym =
+  result = t.sym
+  if result == nil:
+    result = loadSymFromId(g.config, g.cache, g.packed, t.id.module, t.id.packed)
+    t.sym = result
+  assert result != nil
+
 proc resolveInst(g: ModuleGraph; t: var LazyInstantiation): PInstantiation =
   result = t.inst
   if result == nil and isCachedModule(g, t.module):
@@ -293,7 +300,7 @@ proc getAttachedOp*(g: ModuleGraph; t: PType; op: TTypeAttachedOp): PSym =
   ## returns the requested attached operation for type `t`. Can return nil
   ## if no such operation exists.
   if g.attachedOps[op].contains(t.itemId):
-    result = resolveSym(g, g.attachedOps[op][t.itemId])
+    result = resolveAttachedOp(g, g.attachedOps[op][t.itemId])
   else:
     result = nil
 

@@ -2891,6 +2891,10 @@ proc expr(p: BProc, n: PNode, d: var TLoc) =
       if useAliveDataFromDce in p.module.flags:
         if p.module.alive.contains(prc.itemId.item) and prc.magic in {mNone, mIsolate}:
           genProc(p.module, prc)
+        elif prc.name.s[0] == '=':
+          genProc(p.module, prc)
+          echo "came here for ", prc.name.s
+
       elif prc.skipGenericOwner.kind == skModule and sfCompileTime notin prc.flags:
         if ({sfExportc, sfCompilerProc} * prc.flags == {sfExportc}) or
             (sfExportc in prc.flags and lfExportLib in prc.loc.flags) or

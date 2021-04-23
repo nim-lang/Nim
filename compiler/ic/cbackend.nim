@@ -23,7 +23,7 @@ import std/packedsets, algorithm, tables
 import ".."/[ast, options, lineinfos, modulegraphs, cgendata, cgen,
   pathutils, extccomp, msgs]
 
-import packed_ast, ic, dce, rodfiles
+import packed_ast, ic, dce, rodfiles, replayer
 
 proc unpackTree(g: ModuleGraph; thisModule: int;
                 tree: PackedTree; n: NodePos): PNode =
@@ -153,8 +153,11 @@ proc generateCode*(g: ModuleGraph) =
     of loading, stored:
       assert false
     of storing, outdated:
+      replayBackendProcs(g, i)
       setupBackendModule(g, g.packed[i])
     of loaded:
+      replayBackendProcs(g, i)
+
       # Even though this module didn't change, DCE might trigger a change.
       # Consider this case: Module A uses symbol S from B and B does not use
       # S itself. A is then edited not to use S either. Thus we have to
