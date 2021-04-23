@@ -681,7 +681,7 @@ when defineSsl:
     if ctx.context.SSL_CTX_use_psk_identity_hint(hint) <= 0:
       raiseSSLError()
 
-  proc clientGetPskFunc*(ctx: SslContext): SslClientGetPskFunc =
+  proc clientGetPskFunc*(ctx: SslContext): SslClientGetPskFunc {.deprecated.} =
     return ctx.getExtraInternal().clientGetPskFunc
 
   proc pskClientCallback(ssl: SslPtr; hint: cstring; identity: cstring;
@@ -699,7 +699,7 @@ when defineSsl:
 
     return pskString.len.cuint
 
-  proc `clientGetPskFunc=`*(ctx: SslContext, fun: SslClientGetPskFunc) =
+  proc `clientGetPskFunc=`*(ctx: SslContext, fun: SslClientGetPskFunc) {.deprecated.} =
     ## Sets function that returns the client identity and the PSK based on identity
     ## hint from the server.
     ##
@@ -708,7 +708,7 @@ when defineSsl:
     ctx.context.SSL_CTX_set_psk_client_callback(
         if fun == nil: nil else: pskClientCallback)
 
-  proc serverGetPskFunc*(ctx: SslContext): SslServerGetPskFunc =
+  proc serverGetPskFunc*(ctx: SslContext): SslServerGetPskFunc {.deprecated.} =
     return ctx.getExtraInternal().serverGetPskFunc
 
   proc pskServerCallback(ssl: SslCtx; identity: cstring; psk: ptr cuchar;
@@ -721,7 +721,7 @@ when defineSsl:
 
     return pskString.len.cuint
 
-  proc `serverGetPskFunc=`*(ctx: SslContext, fun: SslServerGetPskFunc) =
+  proc `serverGetPskFunc=`*(ctx: SslContext, fun: SslServerGetPskFunc) {.deprecated.} =
     ## Sets function that returns PSK based on the client identity.
     ##
     ## Only used in PSK ciphersuites.
