@@ -155,7 +155,7 @@ To run a single test:
   ./koch test run tests/stdlib/tos.nim # can also provide relative path
 
 For reproducible tests (to reproduce an environment more similar to the one
-run by Continuous Integration on travis/appveyor), you may want to disable your
+run by Continuous Integration on github actions/azure pipelines), you may want to disable your
 local configuration (e.g. in ``~/.config/nim/nim.cfg``) which may affect some
 tests; this can also be achieved by using
 `export XDG_CONFIG_HOME=pathtoAlternateConfig`:cmd: before running `./koch`:cmd:

@@ -328,9 +328,9 @@ proc parseSpec*(filename: string): TSpec =
           when defined(unix): result.err = reDisabled
         of "posix":
           when defined(posix): result.err = reDisabled
-        of "travis":
+        of "travis": # deprecated
           if isTravis: result.err = reDisabled
-        of "appveyor":
+        of "appveyor": # deprecated
           if isAppVeyor: result.err = reDisabled
         of "azure":
           if isAzure: result.err = reDisabled

@@ -1,6 +1,5 @@
 discard """
 output: "15"
-disabled: "appveyor"
 """
 
 import memfiles
