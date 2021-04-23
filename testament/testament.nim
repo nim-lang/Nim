@@ -104,7 +104,7 @@ proc isSuccess(input: string): bool =
   # not clear how to do the equivalent of pkg/regex's: re"FOO(.*?)BAR" in pegs
   # note: this doesn't handle colors, eg: `\e[1m\e[0m\e[32mHint:`; while we
   # could handle colors, there would be other issues such as handling other flags
-  # that may appear in user config (eg: `--listFullPaths`).
+  # that may appear in user config (eg: `--filenames`).
   # Passing `XDG_CONFIG_HOME= testament args...` can be used to ignore user config
   # stored in XDG_CONFIG_HOME, refs https://wiki.archlinux.org/index.php/XDG_Base_Directory
   input.startsWith("Hint: ") and input.endsWith("[SuccessX]")

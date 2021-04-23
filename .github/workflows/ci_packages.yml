@@ -3,9 +3,6 @@ on: [push, pull_request]
 
 jobs:
   build:
-    # see D20210329T004830
-    if: |
-      !contains(format('{0}', github.event.pull_request.title), '[skip ci]')
     strategy:
       fail-fast: false
       matrix:
@@ -22,14 +19,6 @@ jobs:
         uses: actions/checkout@v2
         with:
           fetch-depth: 2
-
-      - name: 'Check whether to skip CI'
-        shell: bash
-        run: |
-          # see D20210329T004830
-          commitMsg=$(git log --no-merges -1 --pretty=format:"%s")
-          echo commitMsg: $commitMsg
-          echo $commitMsg | grep -v '\[skip ci\]'
 
       - name: 'Checkout csources'
         uses: actions/checkout@v2

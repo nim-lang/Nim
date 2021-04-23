@@ -255,7 +255,6 @@ proc runEpcTest(filename: string): int =
                        options={poStdErrToStdOut, poUsePath,
                        poInteractive, poDaemon})
   let outp = p.outputStream
-  let inp = p.inputStream
   var report = ""
   var socket = newSocket()
   try:
@@ -315,8 +314,12 @@ proc runTest(filename: string): int =
           answer.add '\L'
         doReport(filename, answer, resp, report)
   finally:
-    inp.writeLine("quit")
-    inp.flush()
+    try:
+      inp.writeLine("quit")
+      inp.flush()
+    except:
+      # assume it's SIGPIPE, ie, the child already died
+      discard
     close(p)
   if report.len > 0:
     echo "==== STDIN ======================================"

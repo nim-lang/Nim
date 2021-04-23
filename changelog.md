@@ -343,6 +343,8 @@
 
 - Added `--filenames:abs|canonical|magic` which replaces --listFullPaths:on|off
 
+- Added `--processing:dots|filenames|off` which customizes `hintProcessing`
+
 - Source+Edit links now appear on top of every docgen'd page when
   `nim doc --git.url:url ...` is given.
 
