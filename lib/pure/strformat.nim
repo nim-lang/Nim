@@ -325,7 +325,7 @@ func mkDigit(v: int, typ: char): string {.inline.} =
 
 func alignString*(s: string, minimumWidth: int; align = '\0'; fill = ' '): string =
   ## Aligns `s` using the `fill` char.
-  ## This is only of interest if you want to write a custom `format` func that
+  ## This is only of interest if you want to write a custom `format` proc that
   ## should support the standard format specifiers.
   if minimumWidth == 0:
     result = s
@@ -418,12 +418,12 @@ func formatInt(n: SomeNumber; radix: int; spec: StandardFormatSpecifier): string
 
 func parseStandardFormatSpecifier*(s: string; start = 0;
                                    ignoreUnknownSuffix = false): StandardFormatSpecifier =
-  ## An exported helper func that parses the "standard format specifiers",
+  ## An exported helper proc that parses the "standard format specifiers",
   ## as specified by the grammar::
   ##
   ##   [[fill]align][sign][#][0][minimumwidth][.precision][type]
   ##
-  ## This is only of interest if you want to write a custom `format` func that
+  ## This is only of interest if you want to write a custom `format` proc that
   ## should support the standard format specifiers. If `ignoreUnknownSuffix` is true,
   ## an unknown suffix after the `type` field is not an error.
   const alignChars = {'<', '>', '^'}
