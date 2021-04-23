@@ -89,7 +89,7 @@ const
   growthFactor = 2
   startSize = 64
 
-proc mode*(t: StringTableRef): StringTableMode {.inline.} = t.mode
+func mode*(t: StringTableRef): StringTableMode {.inline.} = t.mode
 
 iterator pairs*(t: StringTableRef): tuple[key, value: string] =
   ## Iterates over every `(key, value)` pair in the table `t`.
@@ -110,26 +110,26 @@ iterator values*(t: StringTableRef): string =
       yield t.data[h].val
 
 
-proc myhash(t: StringTableRef, key: string): Hash =
+func myhash(t: StringTableRef, key: string): Hash =
   case t.mode
   of modeCaseSensitive: result = hashes.hash(key)
   of modeCaseInsensitive: result = hashes.hashIgnoreCase(key)
   of modeStyleInsensitive: result = hashes.hashIgnoreStyle(key)
 
-proc myCmp(t: StringTableRef, a, b: string): bool =
+func myCmp(t: StringTableRef, a, b: string): bool =
   case t.mode
   of modeCaseSensitive: result = cmp(a, b) == 0
   of modeCaseInsensitive: result = cmpIgnoreCase(a, b) == 0
   of modeStyleInsensitive: result = cmpIgnoreStyle(a, b) == 0
 
-proc mustRehash(length, counter: int): bool =
+func mustRehash(length, counter: int): bool =
   assert(length > counter)
   result = (length * 2 < counter * 3) or (length - counter < 4)
 
-proc nextTry(h, maxHash: Hash): Hash {.inline.} =
+func nextTry(h, maxHash: Hash): Hash {.inline.} =
   result = (h + 1) and maxHash
 
-proc rawGet(t: StringTableRef, key: string): int =
+func rawGet(t: StringTableRef, key: string): int =
   var h: Hash = myhash(t, key) and high(t.data) # start with real hash value
   while t.data[h].hasValue:
     if myCmp(t, t.data[h].key, key):
@@ -144,23 +144,23 @@ template get(t: StringTableRef, key: string) =
     raise newException(KeyError, "key not found: " & key)
 
 
-proc len*(t: StringTableRef): int {.rtlFunc, extern: "nst$1".} =
+func len*(t: StringTableRef): int {.rtlFunc, extern: "nst$1".} =
   ## Returns the number of keys in `t`.
   result = t.counter
 
-proc `[]`*(t: StringTableRef, key: string): var string {.
+func `[]`*(t: StringTableRef, key: string): var string {.
            rtlFunc, extern: "nstTake".} =
   ## Retrieves the location at ``t[key]``.
   ##
   ## If `key` is not in `t`, the ``KeyError`` exception is raised.
-  ## One can check with `hasKey proc <#hasKey,StringTableRef,string>`_
+  ## One can check with `hasKey func <#hasKey,StringTableRef,string>`_
   ## whether the key exists.
   ##
   ## See also:
-  ## * `getOrDefault proc <#getOrDefault,StringTableRef,string,string>`_
+  ## * `getOrDefault func <#getOrDefault,StringTableRef,string,string>`_
   ## * `[]= proc <#[]=,StringTableRef,string,string>`_ for inserting a new
   ##   (key, value) pair in the table
-  ## * `hasKey proc <#hasKey,StringTableRef,string>`_ for checking if a key
+  ## * `hasKey func <#hasKey,StringTableRef,string>`_ for checking if a key
   ##   is in the table
   runnableExamples:
     var t = {"name": "John", "city": "Monaco"}.newStringTable
@@ -169,7 +169,7 @@ proc `[]`*(t: StringTableRef, key: string): var string {.
       echo t["occupation"]
   get(t, key)
 
-proc getOrDefault*(t: StringTableRef; key: string,
+func getOrDefault*(t: StringTableRef; key: string,
     default: string = ""): string =
   ## Retrieves the location at ``t[key]``.
   ##
@@ -177,8 +177,8 @@ proc getOrDefault*(t: StringTableRef; key: string,
   ## it is an empty string (`""`)).
   ##
   ## See also:
-  ## * `[] proc <#[],StringTableRef,string>`_ for retrieving a value of a key
-  ## * `hasKey proc <#hasKey,StringTableRef,string>`_ for checking if a key
+  ## * `[] func <#[],StringTableRef,string>`_ for retrieving a value of a key
+  ## * `hasKey func <#hasKey,StringTableRef,string>`_ for checking if a key
   ##   is in the table
   ## * `[]= proc <#[]=,StringTableRef,string,string>`_ for inserting a new
   ##   (key, value) pair in the table
@@ -193,21 +193,21 @@ proc getOrDefault*(t: StringTableRef; key: string,
   if index >= 0: result = t.data[index].val
   else: result = default
 
-proc hasKey*(t: StringTableRef, key: string): bool {.rtlFunc,
+func hasKey*(t: StringTableRef, key: string): bool {.rtlFunc,
     extern: "nst$1".} =
   ## Returns true if `key` is in the table `t`.
   ##
   ## See also:
-  ## * `getOrDefault proc <#getOrDefault,StringTableRef,string,string>`_
-  ## * `contains proc <#contains,StringTableRef,string>`_
+  ## * `getOrDefault func <#getOrDefault,StringTableRef,string,string>`_
+  ## * `contains func <#contains,StringTableRef,string>`_
   runnableExamples:
     var t = {"name": "John", "city": "Monaco"}.newStringTable
     doAssert t.hasKey("name")
     doAssert not t.hasKey("occupation")
   result = rawGet(t, key) >= 0
 
-proc contains*(t: StringTableRef, key: string): bool =
-  ## Alias of `hasKey proc <#hasKey,StringTableRef,string>`_ for use with
+func contains*(t: StringTableRef, key: string): bool =
+  ## Alias of `hasKey func <#hasKey,StringTableRef,string>`_ for use with
   ## the `in` operator.
   runnableExamples:
     var t = {"name": "John", "city": "Monaco"}.newStringTable
@@ -215,7 +215,7 @@ proc contains*(t: StringTableRef, key: string): bool =
     doAssert "occupation" notin t
   return hasKey(t, key)
 
-proc rawInsert(t: StringTableRef, data: var KeyValuePairSeq, key, val: string) =
+func rawInsert(t: StringTableRef, data: var KeyValuePairSeq, key, val: string) =
   var h: Hash = myhash(t, key) and high(data)
   while data[h].hasValue:
     h = nextTry(h, high(data))
@@ -235,7 +235,7 @@ proc `[]=`*(t: StringTableRef, key, val: string) {.
   ## Inserts a `(key, value)` pair into `t`.
   ##
   ## See also:
-  ## * `[] proc <#[],StringTableRef,string>`_ for retrieving a value of a key
+  ## * `[] func <#[],StringTableRef,string>`_ for retrieving a value of a key
   ## * `del proc <#del,StringTableRef,string>`_ for removing a key from the table
   runnableExamples:
     var t = {"name": "John", "city": "Monaco"}.newStringTable
@@ -250,7 +250,7 @@ proc `[]=`*(t: StringTableRef, key, val: string) {.
     rawInsert(t, t.data, key, val)
     inc(t.counter)
 
-proc newStringTable*(mode: StringTableMode): owned(StringTableRef) {.
+func newStringTable*(mode: StringTableMode): owned(StringTableRef) {.
   rtlFunc, extern: "nst$1", noSideEffect.} =
   ## Creates a new empty string table.
   ##
@@ -262,7 +262,7 @@ proc newStringTable*(mode: StringTableMode): owned(StringTableRef) {.
   result.counter = 0
   newSeq(result.data, startSize)
 
-proc newStringTable*(keyValuePairs: varargs[string],
+func newStringTable*(keyValuePairs: varargs[string],
                      mode: StringTableMode): owned(StringTableRef) {.
   rtlFunc, extern: "nst$1WithPairs", noSideEffect.} =
   ## Creates a new string table with given `key, value` string pairs.
@@ -279,7 +279,7 @@ proc newStringTable*(keyValuePairs: varargs[string],
       result[keyValuePairs[i]] = keyValuePairs[i + 1]
     inc(i, 2)
 
-proc newStringTable*(keyValuePairs: varargs[tuple[key, val: string]],
+func newStringTable*(keyValuePairs: varargs[tuple[key, val: string]],
     mode: StringTableMode = modeCaseSensitive): owned(StringTableRef) {.
     rtlFunc, extern: "nst$1WithTableConstr", noSideEffect.} =
   ## Creates a new string table with given `(key, value)` tuple pairs.
@@ -295,7 +295,7 @@ proc newStringTable*(keyValuePairs: varargs[tuple[key, val: string]],
     {.noSideEffect.}:
       result[key] = val
 
-proc raiseFormatException(s: string) =
+func raiseFormatException(s: string) =
   raise newException(ValueError, "format string: key not found: " & s)
 
 proc getValue(t: StringTableRef, flags: set[FormatFlag], key: string): string =
@@ -372,7 +372,7 @@ proc del*(t: StringTableRef, key: string) =
         else:
           shallowCopy(t.data[j], t.data[i]) # data[j] will be marked EMPTY next loop
 
-proc `$`*(t: StringTableRef): string {.rtlFunc, extern: "nstDollar".} =
+func `$`*(t: StringTableRef): string {.rtlFunc, extern: "nstDollar".} =
   ## The `$` operator for string tables. Used internally when calling
   ## `echo` on a table.
   if t.len == 0:
