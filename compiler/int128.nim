@@ -354,18 +354,6 @@ proc low64(a: Int128): uint64 =
   bitconcat(a.udata[1], a.udata[0])
 
 proc `*`*(lhs, rhs: Int128): Int128 =
-  let
-    a = cast[uint64](lhs.udata[0])
-    b = cast[uint64](lhs.udata[1])
-    c = cast[uint64](lhs.udata[2])
-    d = cast[uint64](lhs.udata[3])
-
-    e = cast[uint64](rhs.udata[0])
-    f = cast[uint64](rhs.udata[1])
-    g = cast[uint64](rhs.udata[2])
-    h = cast[uint64](rhs.udata[3])
-
-
   let a32 = cast[uint64](lhs.udata[1])
   let a00 = cast[uint64](lhs.udata[0])
   let b32 = cast[uint64](rhs.udata[1])
