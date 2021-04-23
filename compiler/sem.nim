@@ -17,7 +17,8 @@ import
   intsets, transf, vmdef, vm, aliases, cgmeth, lambdalifting,
   evaltempl, patterns, parampatterns, sempass2, linter, semmacrosanity,
   lowerings, plugins/active, lineinfos, strtabs, int128,
-  isolation_check, typeallowed, modulegraphs, enumtostr, concepts
+  isolation_check, typeallowed, modulegraphs, enumtostr, concepts,
+  finalast
 
 when defined(nimfix):
   import nimfix/prettybase
@@ -639,6 +640,7 @@ proc myProcess(context: PPassContext, n: PNode): PNode {.nosinks.} =
       else:
         result = newNodeI(nkEmpty, n.info)
       #if c.config.cmd == cmdIdeTools: findSuggest(c, n)
+  result = finalToplevelStmt(c.graph, c.idgen, c.module, result)
   storeRodNode(c, result)
 
 proc reportUnusedModules(c: PContext) =

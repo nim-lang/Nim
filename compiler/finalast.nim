@@ -10,11 +10,13 @@
 ## This module implements a tiny intermediate layer.
 
 import
-  ast, transf,
+  ast, transf, injectdestructors, modulegraphs
 
-proc finalProcBody*(prc: PSym; n: PNode): PNode =
+proc finalProcBody*(g: ModuleGraph; idgen: IdGenerator; prc: PSym; n: PNode): PNode =
   ## Transformations after sem'checking that we need to do.
-  result = transformBody(m.g.graph, m.idgen, prc, cache = false)
+  result = transformBody(g, idgen, prc, dontUseCache)
   if sfInjectDestructors in prc.flags:
-    result = injectDestructorCalls(m.g.graph, m.idgen, prc, result)
+    result = injectDestructorCalls(g, idgen, prc, result)
 
+proc finalToplevelStmt*(g: ModuleGraph; idgen: IdGenerator; module: PSym; n: PNode): PNode =
+  result = transformStmt(g, idgen, module, n)

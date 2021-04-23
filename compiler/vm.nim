@@ -1124,6 +1124,7 @@ proc rawExecute(c: PCtx, start: int, tos: PStackFrame): TFullReg =
       if a.kind == nkVarTy: a = a[0]
       if a.kind == nkSym:
         regs[ra].node = if a.sym.ast.isNil: newNode(nkNilLit)
+                        elif a.sym.kind in routineKinds: copyTree(a.sym.semcheckedBody)
                         else: copyTree(a.sym.ast)
         regs[ra].node.flags.incl nfIsRef
       else:
@@ -1136,11 +1137,13 @@ proc rawExecute(c: PCtx, start: int, tos: PStackFrame): TFullReg =
           if a.sym.ast.isNil:
             newNode(nkNilLit)
           else:
-            let ast = a.sym.ast.shallowCopy
-            for i in 0..<a.sym.ast.len:
-              ast[i] = a.sym.ast[i]
-            ast[bodyPos] = transformBody(c.graph, c.idgen, a.sym, cache=true)
-            ast.copyTree()
+            when false:
+              let ast = a.sym.ast.shallowCopy
+              for i in 0..<a.sym.ast.len:
+                ast[i] = a.sym.ast[i]
+              ast[bodyPos] = transformBody(c.graph, c.idgen, a.sym, cache=true)
+              ast.copyTree()
+            getBody(c.graph, a.sym)
     of opcSymOwner:
       decodeB(rkNode)
       let a = regs[rb].node

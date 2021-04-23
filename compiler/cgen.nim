@@ -1014,9 +1014,11 @@ proc genProcAux(m: BModule, prc: PSym) =
   var returnStmt: Rope = nil
   assert(prc.ast != nil)
 
-  var procBody = transformBody(m.g.graph, m.idgen, prc, cache = false)
-  if sfInjectDestructors in prc.flags:
-    procBody = injectDestructorCalls(m.g.graph, m.idgen, prc, procBody)
+  when false:
+    var procBody = transformBody(m.g.graph, m.idgen, prc, cache = false)
+    if sfInjectDestructors in prc.flags:
+      procBody = injectDestructorCalls(m.g.graph, m.idgen, prc, procBody)
+  let procBody = getBody(m.g.graph, prc)
 
   if sfPure notin prc.flags and prc.typ[0] != nil:
     if resultPos >= prc.ast.len:

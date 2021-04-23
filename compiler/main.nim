@@ -17,7 +17,7 @@ import
   condsyms, times,
   sem, idents, passes, extccomp,
   cgen, json, nversion,
-  platform, nimconf, passaux, depends, vm,
+  nimconf, passaux, depends, vm,
   modules,
   modulegraphs, tables, lineinfos, pathutils, vmprofiler
 

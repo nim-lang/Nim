@@ -11,47 +11,7 @@
 
 import
   intsets, options, ast, msgs, idents, renderer, types, magicsys,
-  sempass2, strutils, modulegraphs, lineinfos
-
-proc genConv(n: PNode, d: PType, downcast: bool; conf: ConfigRef): PNode =
-  var dest = skipTypes(d, abstractPtrs)
-  var source = skipTypes(n.typ, abstractPtrs)
-  if (source.kind == tyObject) and (dest.kind == tyObject):
-    var diff = inheritanceDiff(dest, source)
-    if diff == high(int):
-      # no subtype relation, nothing to do
-      result = n
-    elif diff < 0:
-      result = newNodeIT(nkObjUpConv, n.info, d)
-      result.add n
-      if downcast: internalError(conf, n.info, "cgmeth.genConv: no upcast allowed")
-    elif diff > 0:
-      result = newNodeIT(nkObjDownConv, n.info, d)
-      result.add n
-      if not downcast:
-        internalError(conf, n.info, "cgmeth.genConv: no downcast allowed")
-    else:
-      result = n
-  else:
-    result = n
-
-proc getDispatcher*(s: PSym): PSym =
-  ## can return nil if is has no dispatcher.
-  if dispatcherPos < s.ast.len:
-    result = s.ast[dispatcherPos].sym
-    doAssert sfDispatcher in result.flags
-
-proc methodCall*(n: PNode; conf: ConfigRef): PNode =
-  result = n
-  # replace ordinary method by dispatcher method:
-  let disp = getDispatcher(result[0].sym)
-  if disp != nil:
-    result[0].sym = disp
-    # change the arguments to up/downcasts to fit the dispatcher's parameters:
-    for i in 1..<result.len:
-      result[i] = genConv(result[i], disp.typ[i], true, conf)
-  else:
-    localError(conf, n.info, "'" & $result[0] & "' lacks a dispatcher")
+  sempass2, strutils, modulegraphs, lineinfos, transf
 
 type
   MethodResult = enum No, Invalid, Yes

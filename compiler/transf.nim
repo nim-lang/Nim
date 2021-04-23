@@ -20,11 +20,15 @@
 
 import
   options, ast, astalgo, trees, msgs,
-  idents, renderer, types, semfold, magicsys, cgmeth,
+  idents, renderer, types, semfold, magicsys,
   lowerings, liftlocals,
-  modulegraphs, lineinfos
+  modulegraphs, lineinfos, ic / ic
 
-proc transformBody*(g: ModuleGraph; idgen: IdGenerator, prc: PSym, cache: bool): PNode
+type
+  TransformBodyFlag* = enum
+    dontUseCache, useCache
+
+#proc transformBody*(g: ModuleGraph; idgen: IdGenerator; prc: PSym; flag: TransformBodyFlag): PNode
 
 import closureiters, lambdalifting
 
@@ -109,8 +113,8 @@ proc newAsgnStmt(c: PTransf, kind: TNodeKind, le: PNode, ri: PNode): PNode =
 proc transformSymAux(c: PTransf, n: PNode): PNode =
   let s = n.sym
   if s.typ != nil and s.typ.callConv == ccClosure:
-    if s.kind in routineKinds:
-      discard transformBody(c.graph, c.idgen, s, true)
+    #if s.kind in routineKinds:
+    #  discard transformBody(c.graph, c.idgen, s, useCache)
     if s.kind == skIterator:
       if c.tooEarly: return n
       else: return liftIterSym(c.graph, n, c.idgen, getCurrOwner(c))
@@ -665,6 +669,10 @@ proc transformFor(c: PTransf, n: PNode): PNode =
   newC.forLoopBody = loopBody
   # this can fail for 'nimsuggest' and 'check':
   if iter.kind != skIterator: return result
+  if c.graph.config.symbolFiles != disabledSf:
+    storeExpansion(c.graph.encoders[c.module.position],
+                   c.graph.packed[c.module.position].fromDisk, call[0].info, iter)
+
   # generate access statements for the parameters (unless they are constant)
   pushTransCon(c, newC)
   for i in 1..<call.len:
@@ -701,7 +709,7 @@ proc transformFor(c: PTransf, n: PNode): PNode =
       stmtList.add(newAsgnStmt(c, nkFastAsgn, temp, arg))
       idNodeTablePut(newC.mapping, formal, temp)
 
-  let body = transformBody(c.graph, c.idgen, iter, true)
+  let body = getBody(c.graph, iter) # transformBody(c.graph, c.idgen, iter, useCache)
   pushInfoContext(c.graph.config, n.info)
   inc(c.inlining)
   stmtList.add(transform(c, body))
@@ -777,6 +785,46 @@ proc flattenTree(root: PNode): PNode =
     flattenTreeAux(result, root, op)
   else:
     result = root
+
+proc genConv*(n: PNode, d: PType, downcast: bool; conf: ConfigRef): PNode =
+  var dest = skipTypes(d, abstractPtrs)
+  var source = skipTypes(n.typ, abstractPtrs)
+  if (source.kind == tyObject) and (dest.kind == tyObject):
+    var diff = inheritanceDiff(dest, source)
+    if diff == high(int):
+      # no subtype relation, nothing to do
+      result = n
+    elif diff < 0:
+      result = newNodeIT(nkObjUpConv, n.info, d)
+      result.add n
+      if downcast: internalError(conf, n.info, "cgmeth.genConv: no upcast allowed")
+    elif diff > 0:
+      result = newNodeIT(nkObjDownConv, n.info, d)
+      result.add n
+      if not downcast:
+        internalError(conf, n.info, "cgmeth.genConv: no downcast allowed")
+    else:
+      result = n
+  else:
+    result = n
+
+proc getDispatcher*(s: PSym): PSym =
+  ## can return nil if is has no dispatcher.
+  if dispatcherPos < s.ast.len:
+    result = s.ast[dispatcherPos].sym
+    doAssert sfDispatcher in result.flags
+
+proc methodCall*(n: PNode; conf: ConfigRef): PNode =
+  result = n
+  # replace ordinary method by dispatcher method:
+  let disp = getDispatcher(result[0].sym)
+  if disp != nil:
+    result[0].sym = disp
+    # change the arguments to up/downcasts to fit the dispatcher's parameters:
+    for i in 1..<result.len:
+      result[i] = genConv(result[i], disp.typ[i], true, conf)
+  else:
+    localError(conf, n.info, "'" & $result[0] & "' lacks a dispatcher")
 
 proc transformCall(c: PTransf, n: PNode): PNode =
   var n = flattenTree(n)
@@ -1084,7 +1132,7 @@ template liftDefer(c, root) =
   if c.deferDetected:
     liftDeferAux(root)
 
-proc transformBody*(g: ModuleGraph; idgen: IdGenerator; prc: PSym; cache: bool): PNode =
+proc transformBody*(g: ModuleGraph; idgen: IdGenerator; prc: PSym; flag: TransformBodyFlag): PNode =
   assert prc.kind in routineKinds
 
   if prc.transformedBody != nil:
@@ -1104,7 +1152,7 @@ proc transformBody*(g: ModuleGraph; idgen: IdGenerator; prc: PSym; cache: bool):
 
     incl(result.flags, nfTransf)
 
-    if cache or prc.typ.callConv == ccInline:
+    if flag == useCache or prc.typ.callConv == ccInline:
       # genProc for inline procs will be called multiple times from different modules,
       # it is important to transform exactly once to get sym ids and locations right
       prc.transformedBody = result
