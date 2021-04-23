@@ -59,30 +59,6 @@ doAssert high(float) > low(float)
 doAssert high(float32) > low(float32)
 doAssert high(float64) > low(float64)
 
-# bug #6710
-var s = @[1]
-s.delete(0)
-
-# bug #16544: deleting out of bounds index should raise
-block:
-  var s1 = @["foo", "bar"]
-  s1.delete(1)
-  doAssert @["foo"] == s1
-
-  var s2 = @["foo"]
-  s2.delete(0)
-  doAssert newSeq[string]() == s2
-
-  var s3 = @["foo"]
-  doAssertRaises(IndexDefect):
-    s3.delete(1)
-
-  var s4 = newSeq[string]()
-  doAssertRaises(IndexDefect):
-    s4.delete(0)
-
-  doAssert not compiles(@["foo"].delete(-1))
-
 proc foo(a: openArray[int]) =
   for x in a: echo x
 
