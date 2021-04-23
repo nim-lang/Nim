@@ -10,10 +10,8 @@ TODO:
 # fileHtml = getHtmlFile(nimcacheDir.querySetting, fileJs)
 ]#
 
-from std/browsers import openDefaultBrowser
-import std/os
-import std/strformat
-from std/strutils import `%`
+from browsers import openDefaultBrowser
+import os, strformat
 import std/compilesettings
 
 proc buildHtml(inner: string): string =
