@@ -25,8 +25,24 @@ putEnv("HEAPTRASHING", "Indeed")
 
 let s1 = getAllocStats()
 
+
+proc newTableOwned[A, B](initialSize = defaultInitialSize): owned(TableRef[A, B]) =
+  ## Creates a new ref hash table that is empty.
+  ##
+  ## See also:
+  ## * `newTable proc<#newTable,openArray[]>`_ for creating a `TableRef`
+  ##   from a collection of `(key, value)` pairs
+  ## * `initTable proc<#initTable>`_ for creating a `Table`
+  runnableExamples:
+    let
+      a = newTable[int, string]()
+      b = newTable[char, seq[int]]()
+
+  new(result)
+  result[] = initTable[A, B](initialSize)
+
 proc main =
-  var w = newTable[string, owned Node]()
+  var w = newTableOwned[string, owned Node]()
   w["key"] = Node(field: "value")
   echo w["key"][]
   echo getEnv("HEAPTRASHING")
