@@ -496,17 +496,17 @@ proc next*(c: var CfgParser): CfgEvent {.rtl, extern: "npc$1".} =
 
 # ---------------- Configuration file related operations ----------------
 type
-  Config* = OrderedTableRef[string, <//>OrderedTableRef[string, string]]
+  Config* = OrderedTableRef[string, OrderedTableRef[string, string]]
 
 proc newConfig*(): Config =
   ## Creates a new configuration table.
   ## Useful when wanting to create a configuration file.
-  result = newOrderedTable[string, <//>OrderedTableRef[string, string]]()
+  result = newOrderedTable[string, OrderedTableRef[string, string]]()
 
-proc loadConfig*(stream: Stream, filename: string = "[stream]"): <//>Config =
+proc loadConfig*(stream: Stream, filename: string = "[stream]"): Config =
   ## Loads the specified configuration from stream into a new Config instance.
   ## `filename` parameter is only used for nicer error messages.
-  var dict = newOrderedTable[string, <//>OrderedTableRef[string, string]]()
+  var dict = newOrderedTable[string, OrderedTableRef[string, string]]()
   var curSection = "" ## Current section,
                       ## the default value of the current section is "",
                       ## which means that the current section is a common
@@ -536,7 +536,7 @@ proc loadConfig*(stream: Stream, filename: string = "[stream]"): <//>Config =
   close(p)
   result = dict
 
-proc loadConfig*(filename: string): <//>Config =
+proc loadConfig*(filename: string): Config =
   ## Loads the specified configuration file into a new Config instance.
   let file = open(filename, fmRead)
   let fileStream = newFileStream(file)
