@@ -1,6 +1,6 @@
 discard """
   matrix: "--threads:on"
-  errormsg: "'spawn' takes a call expression; got proc (x: uint32) = echo [x]"
+  errormsg: "'spawn' takes a call expression; got: proc (x: uint32) = echo [x]"
 """
 
 import threadpool
