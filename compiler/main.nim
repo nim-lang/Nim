@@ -19,7 +19,7 @@ import
   cgen, json, nversion,
   platform, nimconf, passaux, depends, vm,
   modules,
-  modulegraphs, tables, lineinfos, pathutils, vmprofiler, std/sha1, macros
+  modulegraphs, tables, lineinfos, pathutils, vmprofiler, std/[sha1, with]
 
 import ic / [cbackend, integrity, navigator]
 from ic / ic import rodViewer
@@ -178,18 +178,12 @@ const
   PrintRopeCacheStats = false
 
 proc hashMainCompilationParams*(conf: ConfigRef): string =
-  ## doesn't have to be complete; worst case results in a cache hit and a
-  ## recompilation.
+  ## doesn't have to be complete; worst case is a cache hit and recompilation.
   var state = newSha1State()
-  macro updateState(state, body) =
-    result = newStmtList()
-    for ai in body:
-      result.add quote do:
-        `state`.update($`ai`)
-  updateState(state):
-    os.getAppFilename() # nim compiler
-    conf.commandLine # excludes `arguments`, as it should
-    conf.projectFull
+  with state:
+    update os.getAppFilename() # nim compiler
+    update conf.commandLine # excludes `arguments`, as it should
+    update $conf.projectFull # so that running `nim r main` from 2 directories caches differently
   result = $SecureHash(state.finalize())
 
 proc setOutFile*(conf: ConfigRef) =
