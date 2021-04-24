@@ -67,7 +67,6 @@ proc semOperand(c: PContext, n: PNode, flags: TExprFlags = {}): PNode =
 proc semExprCheck(c: PContext, n: PNode, flags: TExprFlags): PNode =
   rejectEmptyNode(n)
   result = semExpr(c, n, flags+{efWantValue})
-
   let
     isEmpty = result.kind == nkEmpty
     isTypeError = result.typ != nil and result.typ.kind == tyError
@@ -603,8 +602,12 @@ proc semArrayConstr(c: PContext, n: PNode, flags: TExprFlags): PNode =
         lastIndex = firstIndex
         indexType = idx.typ
         lastValidIndex = lastOrd(c.config, indexType)
-        x = x[1]
-
+        x = x[1]     
+    if n.typ != nil:
+      if n.typ.kind == tyArray:
+        x.typ = n.typ[1] # we want the `T` from `array[i, T]` of an array.
+        x.typ.flags.incl tfHasExpected
+    
     let yy = semExprWithType(c, x)
     var typ = yy.typ
     result.add yy
@@ -617,6 +620,9 @@ proc semArrayConstr(c: PContext, n: PNode, flags: TExprFlags): PNode =
           "type '$1' by $2 elements" % [typeToString(validIndex), $(n.len-i)])
 
       x = n[i]
+      if typ != nil:
+        x.typ = typ.exactReplica
+
       if x.kind == nkExprColonExpr and x.len == 2:
         var idx = semConstExpr(c, x[0])
         idx = fitNode(c, indexType, idx, x.info)
@@ -2414,8 +2420,16 @@ proc semSetConstr(c: PContext, n: PNode): PNode =
     # only semantic checking for all elements, later type checking:
     var typ: PType = nil
     for i in 0..<n.len:
+      if n.typ != nil:
+        if n.typ.kind == tySet: # We want the `T` from `set[T]`
+          n[i].typ = n.typ[0]
+        else:
+          n[i].typ = n.typ
+
       if isRange(n[i]):
         checkSonsLen(n[i], 3, c.config)
+        n[i][1].typ = n[i].typ
+        n[i][2].typ = n[i].typ
         n[i][1] = semExprWithType(c, n[i][1])
         n[i][2] = semExprWithType(c, n[i][2])
         if typ == nil:
@@ -2692,12 +2706,39 @@ proc getNilType(c: PContext): PType =
     result.align = c.config.target.ptrSize.int16
     c.nilTypeCache = result
 
+proc inferType(c: PContext, n: PNode) =
+  const IntLits = {tyChar, tyInt..tyInt64, tyUInt..tyUInt64}
+  if n.kind in {nkCharLit..nkFloat64Lit} and n.typ.kind in IntegralTypes - {tyEnum, tyBool}:
+    var failed = false
+    if n.kind in nkCharLit..nkUInt64Lit:
+      if n.typ.kind in IntLits and
+        n.getInt in firstOrd(c.config, n.typ)..lastOrd(c.config, n.typ):
+        n.typ = n.typ
+
+      elif n.typ.kind in tyFloat..tyFloat64 and floatRangeCheck(n.intVal.float, n.typ):
+        n.typ = n.typ
+      else: failed = true
+
+    elif n.kind in nkFloatLit..nkFloat64Lit:
+      if n.typ.kind in tyFloat..tyFloat64 and
+        (classify(n.floatVal) in {fcNan, fcNegInf, fcInf} or floatRangeCheck(n.floatVal, n.typ)):
+        n.typ = n.typ
+
+      elif n.typ.kind in IntLits and n.floatVal.int64 in firstOrd(c.config, n.typ)..lastOrd(c.config, n.typ):
+        n.typ = n.typ
+      else: failed = true
+    if failed:
+      localError(c.config, n.info, "cannot convert " & $n &
+                                          " to " & typeToString(n.typ))
+
 proc semExpr(c: PContext, n: PNode, flags: TExprFlags = {}): PNode =
   when defined(nimCompilerStackraceHints):
     setFrameMsg c.config$n.info & " " & $n.kind
   result = n
   if c.config.cmd == cmdIdeTools: suggestExpr(c, n)
   if nfSem in n.flags: return
+  if n.typ != nil and tfHasExpected in n.typ.flags:
+      inferType(c, n)
   case n.kind
   of nkIdent, nkAccQuoted:
     let checks = if efNoEvaluateGeneric in flags:

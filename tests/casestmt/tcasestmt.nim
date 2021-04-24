@@ -272,7 +272,6 @@ func foo2(b, input: string): int =
                   else: continue
     else: return
 
-
 static:
   doAssert(foo("3") == 3)
   doAssert(foo("a") == 0)

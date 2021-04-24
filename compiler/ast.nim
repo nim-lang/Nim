@@ -564,6 +564,8 @@ type
       # (for importc types); type is fully specified, allowing to compute
       # sizeof, alignof, offsetof at CT
     tfExplicitCallConv
+    tfHasExpected  # Used for type inference, 
+                   # so we know the `typ` is to be inferred
 
   TTypeFlags* = set[TTypeFlag]
 

@@ -268,7 +268,6 @@ proc considerGenSyms*(c: PContext; n: PNode) =
   else:
     for i in 0..<n.safeLen:
       considerGenSyms(c, n[i])
-
 proc newOptionEntry*(conf: ConfigRef): POptionEntry =
   new(result)
   result.options = conf.options

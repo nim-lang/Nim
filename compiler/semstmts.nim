@@ -497,6 +497,10 @@ proc semVarOrLet(c: PContext, n: PNode, symkind: TSymKind): PNode =
 
     var def: PNode = c.graph.emptyNode
     if a[^1].kind != nkEmpty:
+      if typ != nil:
+        a[^1].typ = typ.exactReplica
+        a[^1].typ.flags.incl tfHasExpected
+
       def = semExprWithType(c, a[^1], {efAllowDestructor})
 
       if def.kind == nkSym and def.sym.kind in {skTemplate, skMacro}:
@@ -940,6 +944,7 @@ proc semCase(c: PContext, n: PNode; flags: TExprFlags): PNode =
   var typ = commonTypeBegin
   var hasElse = false
   let caseTyp = skipTypes(n[0].typ, abstractVar-{tyTypeDesc})
+
   const shouldChckCovered = {tyInt..tyInt64, tyChar, tyEnum, tyUInt..tyUInt32, tyBool}
   case caseTyp.kind
   of shouldChckCovered:
@@ -967,7 +972,7 @@ proc semCase(c: PContext, n: PNode; flags: TExprFlags): PNode =
     case x.kind
     of nkOfBranch:
       checkMinSonsLen(x, 2, c.config)
-      semCaseBranch(c, n, x, i, covered)
+      semCaseBranch(c, n, x, i, covered, caseTyp)
       var last = x.len-1
       x[last] = semExprBranchScope(c, x[last])
       typ = commonType(c, typ, x[last])

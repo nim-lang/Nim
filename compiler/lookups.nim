@@ -509,22 +509,29 @@ proc qualifiedLookUp*(c: PContext, n: PNode, flags: set[TLookupFlag]): PSym =
   of nkIdent, nkAccQuoted:
     var amb = false
     var ident = considerQuotedIdent(c, n)
+    template findBestSym =
+      if candidates.len > 0:
+        result = candidates[0]
+        amb = candidates.len > 1
+        if amb and checkAmbiguity in flags:
+          block findSymbol:
+            if n.typ != nil and tfHasExpected in n.typ.flags: # If we're ambigious but have a type we want, we can find the desired.
+              for candidate in candidates:
+                if candidate.owner == n.typ.sym:
+                  result = candidate
+                  amb = false
+                  break findSymbol
+            errorUseQualifier(c, n.info, candidates)
     if checkModule in flags:
       result = searchInScopes(c, ident, amb).skipAlias(n, c.config)
     else:
       let candidates = searchInScopesFilterBy(c, ident, allExceptModule) #.skipAlias(n, c.config)
-      if candidates.len > 0:
-        result = candidates[0]
-        amb = candidates.len > 1
-        if amb and checkAmbiguity in flags:
-          errorUseQualifier(c, n.info, candidates)
+      findBestSym()
+          
     if result == nil:
       let candidates = allPureEnumFields(c, ident)
-      if candidates.len > 0:
-        result = candidates[0]
-        amb = candidates.len > 1
-        if amb and checkAmbiguity in flags:
-          errorUseQualifier(c, n.info, candidates)
+      findBestSym()
+
 
     if result == nil and checkUndeclared in flags:
       result = errorUndeclaredIdentifierHint(c, n, ident)
