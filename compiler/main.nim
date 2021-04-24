@@ -19,7 +19,7 @@ import
   cgen, json, nversion,
   platform, nimconf, passaux, depends, vm,
   modules,
-  modulegraphs, tables, lineinfos, pathutils, vmprofiler
+  modulegraphs, tables, lineinfos, pathutils, vmprofiler, std/sha1, macros
 
 import ic / [cbackend, integrity, navigator]
 from ic / ic import rodViewer
@@ -86,8 +86,7 @@ proc commandCompileToC(graph: ModuleGraph) =
     registerPass(graph, cgenPass)
 
     if {optRun, optForceFullMake} * conf.globalOptions == {optRun} or isDefined(conf, "nimBetterRun"):
-      let proj = changeFileExt(conf.projectFull, "")
-      if not changeDetectedViaJsonBuildInstructions(conf, proj):
+      if not changeDetectedViaJsonBuildInstructions(conf, conf.jsonBuildInstructionsFile):
         # nothing changed
         graph.config.notes = graph.config.mainPackageNotes
         return
@@ -116,8 +115,7 @@ proc commandCompileToC(graph: ModuleGraph) =
       writeDepsFile(graph)
 
 proc commandJsonScript(graph: ModuleGraph) =
-  let proj = changeFileExt(graph.config.projectFull, "")
-  extccomp.runJsonBuildInstructions(graph.config, proj)
+  extccomp.runJsonBuildInstructions(graph.config, graph.config.jsonBuildInstructionsFile)
 
 proc commandCompileToJS(graph: ModuleGraph) =
   let conf = graph.config
@@ -178,6 +176,37 @@ proc commandView(graph: ModuleGraph) =
 
 const
   PrintRopeCacheStats = false
+
+proc hashMainCompilationParams*(conf: ConfigRef): string =
+  ## doesn't have to be complete; worst case results in a cache hit and a
+  ## recompilation.
+  var state = newSha1State()
+  macro updateState(state, body) =
+    result = newStmtList()
+    for ai in body:
+      result.add quote do:
+        `state`.update($`ai`)
+  updateState(state):
+    os.getAppFilename() # nim compiler
+    conf.commandLine # excludes `arguments`, as it should
+    conf.projectFull
+  result = $SecureHash(state.finalize())
+
+proc setOutFile*(conf: ConfigRef) =
+  proc libNameTmpl(conf: ConfigRef): string {.inline.} =
+    result = if conf.target.targetOS == osWindows: "$1.lib" else: "lib$1.a"
+
+  if conf.outFile.isEmpty:
+    var base = conf.projectName
+    if optUseNimcache in conf.globalOptions:
+      base.add "_" & hashMainCompilationParams(conf)
+    let targetName =
+      if conf.backend == backendJs: base & ".js"
+      elif optGenDynLib in conf.globalOptions:
+        platform.OS[conf.target.targetOS].dllFrmt % base
+      elif optGenStaticLib in conf.globalOptions: libNameTmpl(conf) % base
+      else: base & platform.OS[conf.target.targetOS].exeExt
+    conf.outFile = RelativeFile targetName
 
 proc mainCommand*(graph: ModuleGraph) =
   let conf = graph.config

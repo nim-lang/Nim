@@ -934,8 +934,13 @@ proc callCCompiler*(conf: ConfigRef) =
     script.add("\n")
     generateScript(conf, script)
 
-
 template hashNimExe(): string = $secureHashFile(os.getAppFilename())
+
+proc jsonBuildInstructionsFile*(conf: ConfigRef): AbsoluteFile =
+  # `outFile` is better than `projectName`, as it allows having different json
+  # files for a given source file compiled with different options; it also
+  # works out of the box with `hashMainCompilationParams`.
+  result = getNimcacheDir(conf) / conf.outFile.changeFileExt("json")
 
 proc writeJsonBuildInstructions*(conf: ConfigRef) =
   template lit(x: string) = f.write x
@@ -993,8 +998,7 @@ proc writeJsonBuildInstructions*(conf: ConfigRef) =
 
 
   var buf = newStringOfCap(50)
-
-  let jsonFile = conf.getNimcacheDir / RelativeFile(conf.projectName & ".json")
+  let jsonFile = conf.jsonBuildInstructionsFile
   conf.jsonBuildFile = jsonFile
   let output = conf.absOutFile
 
@@ -1038,8 +1042,7 @@ proc writeJsonBuildInstructions*(conf: ConfigRef) =
     lit "\L}\L"
     close(f)
 
-proc changeDetectedViaJsonBuildInstructions*(conf: ConfigRef; projectfile: AbsoluteFile): bool =
-  let jsonFile = toGeneratedFile(conf, projectfile, "json")
+proc changeDetectedViaJsonBuildInstructions*(conf: ConfigRef; jsonFile: AbsoluteFile): bool =
   if not fileExists(jsonFile): return true
   if not fileExists(conf.absOutFile): return true
   result = false
@@ -1090,11 +1093,9 @@ proc changeDetectedViaJsonBuildInstructions*(conf: ConfigRef; projectfile: Absol
     echo "Warning: JSON processing failed: ", getCurrentExceptionMsg()
     result = true
 
-proc runJsonBuildInstructions*(conf: ConfigRef; projectfile: AbsoluteFile) =
-  let jsonFile = toGeneratedFile(conf, projectfile, "json")
+proc runJsonBuildInstructions*(conf: ConfigRef; jsonFile: AbsoluteFile) =
   try:
     let data = json.parseFile(jsonFile.string)
-
     let output = data["outputFile"].getStr
     createDir output.parentDir
     let outputCurrent = $conf.absOutFile
