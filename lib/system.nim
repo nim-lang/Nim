@@ -885,8 +885,6 @@ when defined(nimOwnedEnabled) and not defined(nimscript):
   proc unown*[T](x: T): T {.magic: "Unown", noSideEffect.}
     ## Use the expression `x` ignoring its ownership attribute.
 
-  # This is only required to make 0.20 compile with the 0.19 line.
-  template `<//>`*(t: untyped): untyped = owned(t)
 
 else:
   template unown*(x: typed): untyped = x
@@ -908,8 +906,6 @@ else:
     new(r)
     return r
 
-  # This is only required to make 0.20 compile with the 0.19 line.
-  template `<//>`*(t: untyped): untyped = t
 
 template disarm*(x: typed) =
   ## Useful for `disarming` dangling pointers explicitly for `--newruntime`.
