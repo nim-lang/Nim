@@ -751,7 +751,7 @@ proc parseBody(client: HttpClient | AsyncHttpClient, headers: HttpHeaders,
           httpError("Got disconnected while trying to read body.")
         if recvLen != length:
           httpError("Received length doesn't match expected length. Wanted " &
-                    $length & " got " & $recvLen)
+                    $length & " got: " & $recvLen)
     else:
       # (http://tools.ietf.org/html/rfc2616#section-4.4) NR.4 TODO
 
