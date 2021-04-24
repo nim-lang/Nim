@@ -57,6 +57,8 @@
 - The unary slice `..b` was removed, use `0..b` instead or use `-d:nimLegacyUnarySlice`
   for a deprecation period.
 
+- Moved `.travis.yml`, `appveyor.yml.disabled`, `.github/workflows/ci.yml.disabled` to `unmaintained/`.
+
 ## Standard library additions and changes
 - Added support for parenthesized expressions in `strformat`
 
