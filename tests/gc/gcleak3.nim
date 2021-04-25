@@ -18,7 +18,7 @@ for i in 0..1024:
 
 proc limit*[t](a: var seq[t]) =
   var loop = s.len() - 512
-  for i in 0..<s.len:
+  for i in 0..high(int):
     if i > high(s): break
     #echo i
     #GC_fullCollect()
