@@ -113,7 +113,7 @@ proc addPrefix(switch: string): string =
 const
   errInvalidCmdLineOption = "invalid command line option: '$1'"
   errOnOrOffExpectedButXFound = "'on' or 'off' expected, but '$1' found"
-  errOnOffOrListExpectedButXFound = "'on', 'off' or 'list' expected, but '$1' found"
+  errOnOffOrListExpectedButXFound = "expected 'on|off|all|none', but '$1' found"
   errOffHintsError = "'off', 'hint' or 'error' expected, but '$1' found"
 
 proc invalidCmdLineOption(conf: ConfigRef; pass: TCmdLinePass, switch: string, info: TLineInfo) =
@@ -155,11 +155,22 @@ proc processOnOffSwitch(conf: ConfigRef; op: TOptions, arg: string, pass: TCmdLi
   else: localError(conf, info, errOnOrOffExpectedButXFound % arg)
 
 proc processOnOffSwitchOrList(conf: ConfigRef; op: TOptions, arg: string, pass: TCmdLinePass,
-                              info: TLineInfo): bool =
+                              info: TLineInfo, noteSet: set[TMsgKind]): bool =
   result = false
   case arg.normalize
   of "on": conf.options.incl op
   of "off": conf.options.excl op
+  of "all":
+    # xxx either of these give a codegen error:
+    # conf.notes = noteSet
+    # conf.notes.incl noteSet
+    for a in noteSet: conf.notes.incl a
+    for a in noteSet: conf.foreignPackageNotes.incl a
+    for a in noteSet: conf.mainPackageNotes.incl a
+  of "none":
+    conf.notes = {}
+    conf.foreignPackageNotes = {}
+    conf.mainPackageNotes = {}
   of "list": result = true
   else: localError(conf, info, errOnOffOrListExpectedButXFound % arg)
 
@@ -645,13 +656,13 @@ proc processSwitch*(switch, arg: string, pass: TCmdLinePass, info: TLineInfo;
       of "v2": warningOptionNoop(arg)
       else: localError(conf, info, errNoneBoehmRefcExpectedButXFound % arg)
   of "warnings", "w":
-    if processOnOffSwitchOrList(conf, {optWarns}, arg, pass, info): listWarnings(conf)
+    if processOnOffSwitchOrList(conf, {optWarns}, arg, pass, info, {warnMin..warnMax}): listWarnings(conf)
   of "warning": processSpecificNote(arg, wWarning, pass, info, switch, conf)
   of "hint": processSpecificNote(arg, wHint, pass, info, switch, conf)
   of "warningaserror": processSpecificNote(arg, wWarningAsError, pass, info, switch, conf)
   of "hintaserror": processSpecificNote(arg, wHintAsError, pass, info, switch, conf)
   of "hints":
-    if processOnOffSwitchOrList(conf, {optHints}, arg, pass, info): listHints(conf)
+    if processOnOffSwitchOrList(conf, {optHints}, arg, pass, info, {hintMin..hintMax}): listHints(conf)
   of "threadanalysis":
     if conf.backend == backendJs: discard
     else: processOnOffSwitchG(conf, {optThreadAnalysis}, arg, pass, info)
