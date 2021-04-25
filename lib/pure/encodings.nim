@@ -72,6 +72,7 @@ when defined(windows):
       (875, "cp875"),          # IBM EBCDIC Greek Modern
       (932, "shift_jis"),      # ANSI/OEM Japanese; Japanese (Shift-JIS)
       (936, "gb2312"),         # ANSI/OEM Simplified Chinese (PRC, Singapore); Chinese Simplified (GB2312)
+      (936, "gbk"),            # Alias for GB2312 encoding
       (949, "ks_c_5601-1987"), # ANSI/OEM Korean (Unified Hangul Code)
       (950, "big5"),           # ANSI/OEM Traditional Chinese (Taiwan; Hong Kong SAR, PRC); Chinese Traditional (Big5)
       (1026, "IBM1026"),       # IBM EBCDIC Turkish (Latin 5)
