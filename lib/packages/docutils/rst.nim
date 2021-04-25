@@ -1867,10 +1867,10 @@ proc whichSection(p: RstParser): RstNodeKind =
     elif match(p, p.idx, "(e) ") or match(p, p.idx, "e) ") or
          match(p, p.idx, "e. "):
       result = rnEnumList
-    elif isDefList(p):
-      result = rnDefList
     elif isOptionList(p):
       result = rnOptionList
+    elif isDefList(p):
+      result = rnDefList
     else:
       result = rnParagraph
   of tkWord, tkOther, tkWhite:

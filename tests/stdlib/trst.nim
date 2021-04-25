@@ -1,6 +1,8 @@
 discard """
   output: '''
 
+[Suite] RST parsing
+
 [Suite] RST indentation
 
 [Suite] RST include directive
@@ -54,6 +56,30 @@ proc toAst(input: string,
     result = renderRstToStr(rst)
   except EParseError:
     discard
+
+suite "RST parsing":
+  test "option list has priority over definition list":
+    check(dedent"""
+        --defusages
+                      file
+        -o            set
+        """.toAst ==
+      dedent"""
+        rnOptionList
+          rnOptionListItem  order=1
+            rnOptionGroup
+              rnLeaf  '--'
+              rnLeaf  'defusages'
+            rnDescription
+              rnInner
+                rnLeaf  'file'
+          rnOptionListItem  order=2
+            rnOptionGroup
+              rnLeaf  '-'
+              rnLeaf  'o'
+            rnDescription
+              rnLeaf  'set'
+        """)
 
 suite "RST indentation":
   test "nested bullet lists":
