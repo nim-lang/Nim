@@ -77,6 +77,7 @@ pkg "illwill", "nimble examples"
 pkg "inim", allowFailure=true
 pkg "itertools", "nim doc src/itertools.nim"
 pkg "iterutils"
+pkg "jstin"
 pkg "karax", "nim c -r tests/tester.nim"
 pkg "kdtree", "nimble test", "https://github.com/jblindsay/kdtree"
 pkg "loopfusion"
