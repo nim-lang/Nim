@@ -13,7 +13,7 @@ runnableExamples:
   let j = a.toJson
   assert j.jsonTo(typeof(a)).toJson == j
 
-import std/[json,strutils,tables,sets,strtabs,options]
+import json, strutils, tables, sets, strtabs, options
 
 #[
 Future directions:
@@ -27,7 +27,7 @@ add a way to customize serialization, for e.g.:
   objects.
 ]#
 
-import std/macros
+import macros
 
 type
   Joptions* = object
@@ -106,7 +106,7 @@ proc hasField[T](obj: T, field: string): bool =
       return true
   return false
 
-macro accessField(obj: typed, name: static string): untyped = 
+macro accessField(obj: typed, name: static string): untyped =
   newDotExpr(obj, ident(name))
 
 template fromJsonFields(newObj, oldObj, json, discKeys, opt) =
@@ -146,7 +146,7 @@ template fromJsonFields(newObj, oldObj, json, discKeys, opt) =
       json.len == numMatched
     else:
       json.len == num and num == numMatched
-  
+
   checkJson ok, $(json.len, num, numMatched, $T, json)
 
 proc fromJson*[T](a: var T, b: JsonNode, opt = Joptions())
@@ -284,7 +284,7 @@ proc toJson*[T](a: T): JsonNode =
 proc fromJsonHook*[K: string|cstring, V](t: var (Table[K, V] | OrderedTable[K, V]),
                          jsonNode: JsonNode) =
   ## Enables `fromJson` for `Table` and `OrderedTable` types.
-  ## 
+  ##
   ## See also:
   ## * `toJsonHook proc<#toJsonHook>`_
   runnableExamples:
@@ -326,7 +326,7 @@ proc toJsonHook*[K: string|cstring, V](t: (Table[K, V] | OrderedTable[K, V])): J
 
 proc fromJsonHook*[A](s: var SomeSet[A], jsonNode: JsonNode) =
   ## Enables `fromJson` for `HashSet` and `OrderedSet` types.
-  ## 
+  ##
   ## See also:
   ## * `toJsonHook proc<#toJsonHook,SomeSet[A]>`_
   runnableExamples:
@@ -360,7 +360,7 @@ proc toJsonHook*[A](s: SomeSet[A]): JsonNode =
 
 proc fromJsonHook*[T](self: var Option[T], jsonNode: JsonNode) =
   ## Enables `fromJson` for `Option` types.
-  ## 
+  ##
   ## See also:
   ## * `toJsonHook proc<#toJsonHook,Option[T]>`_
   runnableExamples:
@@ -395,7 +395,7 @@ proc toJsonHook*[T](self: Option[T]): JsonNode =
 
 proc fromJsonHook*(a: var StringTableRef, b: JsonNode) =
   ## Enables `fromJson` for `StringTableRef` type.
-  ## 
+  ##
   ## See also:
   ## * `toJsonHook proc<#toJsonHook,StringTableRef>`_
   runnableExamples:
@@ -413,7 +413,7 @@ proc fromJsonHook*(a: var StringTableRef, b: JsonNode) =
 
 proc toJsonHook*(a: StringTableRef): JsonNode =
   ## Enables `toJson` for `StringTableRef` type.
-  ## 
+  ##
   ## See also:
   ## * `fromJsonHook proc<#fromJsonHook,StringTableRef,JsonNode>`_
   runnableExamples:

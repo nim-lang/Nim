@@ -14,6 +14,7 @@
 
 import important_packages
 import std/strformat
+from std/sequtils import filterIt
 
 const
   specialCategories = [
@@ -339,7 +340,7 @@ proc findMainFile(dir: string): string =
   var nimFiles = 0
   for kind, file in os.walkDir(dir):
     if kind == pcFile:
-      if file.endsWith(cfgExt): return file[ .. ^(cfgExt.len+1)] & ".nim"
+      if file.endsWith(cfgExt): return file[0..^(cfgExt.len+1)] & ".nim"
       elif file.endsWith(".nim"):
         if result.len == 0: result = file
         inc nimFiles
@@ -399,8 +400,7 @@ proc testStdlib(r: var TResults, pattern, options: string, cat: Category) =
     testSpec r, testObj
 
 # ----------------------------- nimble ----------------------------------------
-proc listPackages(packageFilter: string): seq[NimblePackage] =
-  # xxx document `packageFilter`, seems like a bad API (at least should be a regex; a substring match makes no sense)
+proc listPackagesAll(): seq[NimblePackage] =
   var nimbleDir = getEnv("NIMBLE_DIR")
   if nimbleDir.len == 0: nimbleDir = getHomeDir() / ".nimble"
   let packageIndex = nimbleDir / "packages_official.json"
@@ -409,14 +409,29 @@ proc listPackages(packageFilter: string): seq[NimblePackage] =
     for a in packageList:
       if a["name"].str == name: return a
   for pkg in important_packages.packages.items:
-    if isCurrentBatch(testamentData0, pkg.name) and packageFilter in pkg.name:
-      var pkg = pkg
-      if pkg.url.len == 0:
-        let pkg2 = findPackage(pkg.name)
-        if pkg2 == nil:
-          raise newException(ValueError, "Cannot find package '$#'." % pkg.name)
-        pkg.url = pkg2["url"].str
-      result.add pkg
+    var pkg = pkg
+    if pkg.url.len == 0:
+      let pkg2 = findPackage(pkg.name)
+      if pkg2 == nil:
+        raise newException(ValueError, "Cannot find package '$#'." % pkg.name)
+      pkg.url = pkg2["url"].str
+    result.add pkg
+
+proc listPackages(packageFilter: string): seq[NimblePackage] =
+  let pkgs = listPackagesAll()
+  if packageFilter.len != 0:
+    # xxx document `packageFilter`, seems like a bad API,
+    # at least should be a regex; a substring match makes no sense.
+    result = pkgs.filterIt(packageFilter in it.name)
+  else:
+    let pkgs1 = pkgs.filterIt(it.allowFailure)
+    let pkgs2 = pkgs.filterIt(not it.allowFailure)
+    if testamentData0.batchArg == "allowed_failures":
+      result = pkgs1
+    else:
+      for i in 0..<pkgs2.len:
+        if i mod testamentData0.testamentNumBatch == testamentData0.testamentBatch:
+          result.add pkgs2[i]
 
 proc makeSupTest(test, options: string, cat: Category, debugInfo = ""): TTest =
   result.cat = cat
@@ -490,7 +505,7 @@ proc icTests(r: var TResults; testsDir: string, cat: Category, options: string;
     writeOnly = " --incremental:writeonly "
     readOnly = " --incremental:readonly "
     incrementalOn = " --incremental:on -d:nimIcIntegrityChecks "
-    navTestConfig = " --ic:on --defusages -d:nimIcNavigatorTests --hint[Conf]:off --warnings:off "
+    navTestConfig = " --ic:on -d:nimIcNavigatorTests --hint[Conf]:off --warnings:off "
 
   template test(x: untyped) =
     testSpecWithNimcache(r, makeRawTest(file, x & options, cat), nimcache)

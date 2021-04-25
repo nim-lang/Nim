@@ -7,12 +7,12 @@
 #    distribution, for details about the copyright.
 #
 
-import std / [hashes, tables, intsets, sha1]
+import hashes, tables, intsets, std/sha1
 import packed_ast, bitabs, rodfiles
 import ".." / [ast, idents, lineinfos, msgs, ropes, options,
   pathutils, condsyms]
 #import ".." / [renderer, astalgo]
-from std / os import removeFile, isAbsolute
+from os import removeFile, isAbsolute
 
 type
   PackedConfig* = object
@@ -29,7 +29,7 @@ type
   PackedModule* = object ## the parts of a PackedEncoder that are part of the .rod file
     definedSymbols: string
     moduleFlags: TSymFlags
-    includes: seq[(LitId, string)] # first entry is the module filename itself
+    includes*: seq[(LitId, string)] # first entry is the module filename itself
     imports: seq[LitId] # the modules this module depends on
     toReplay*: PackedTree # pragmas and VM specific state to replay.
     topLevel*: PackedTree  # top level statements
@@ -143,7 +143,7 @@ const
   debugConfigDiff = defined(debugConfigDiff)
 
 when debugConfigDiff:
-  import std / [hashes, tables, intsets, sha1, strutils, sets]
+  import hashes, tables, intsets, sha1, strutils, sets
 
 proc configIdentical(m: PackedModule; config: ConfigRef): bool =
   result = m.definedSymbols == definedSymbolsAsString(config)

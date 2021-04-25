@@ -44,7 +44,7 @@
 include system/inclrtl
 import std/private/since
 
-import std/[strutils, pathnorm]
+import strutils, pathnorm
 
 const weirdTarget = defined(nimscript) or defined(js)
 
@@ -65,9 +65,9 @@ since (1, 1):
 when weirdTarget:
   discard
 elif defined(windows):
-  import std/[winlean, times]
+  import winlean, times
 elif defined(posix):
-  import std/[posix, times]
+  import posix, times
 
   proc toTime(ts: Timespec): times.Time {.inline.} =
     result = initTime(ts.tv_sec.int64, ts.tv_nsec.int)
@@ -1008,7 +1008,7 @@ proc expandTilde*(path: string): string {.
   ##
   ## Windows: this is still supported despite Windows platform not having this
   ## convention; also, both ``~/`` and ``~\`` are handled.
-  ## 
+  ##
   ## .. warning:: `~bob` and `~bob/` are not yet handled correctly.
   ##
   ## See also:

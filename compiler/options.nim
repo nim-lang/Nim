@@ -13,7 +13,7 @@ import
 
 from terminal import isatty
 from times import utc, fromUnix, local, getTime, format, DateTime
-
+from std/private/globs import nativeToUnixPath
 const
   hasTinyCBackend* = defined(tinyc)
   useEffectSystem* = true
@@ -78,7 +78,6 @@ type                          # please make sure we have under 32 options
     optWholeProject           # for 'doc': output any dependency
     optDocInternal            # generate documentation for non-exported symbols
     optMixedMode              # true if some module triggered C++ codegen
-    optListFullPaths          # use full paths in toMsgFilename
     optDeclaredLocs           # show declaration locations in messages
     optNoNimblePath
     optHotCodeReloading
@@ -258,6 +257,14 @@ type
     stdOrrStdout
     stdOrrStderr
 
+  FilenameOption* = enum
+    foAbs # absolute path, e.g.: /pathto/bar/foo.nim
+    foRelProject # relative to project path, e.g.: ../foo.nim
+    foCanonical # canonical module name
+    foLegacyRelProj # legacy, shortest of (foAbs, foRelProject)
+    foName # lastPathPart, e.g.: foo.nim
+    foStacktrace # if optExcessiveStackTrace: foAbs else: foName
+
   ConfigRef* = ref object ## every global configuration
                           ## fields marked with '*' are subject to
                           ## the incremental compilation mechanisms
@@ -270,6 +277,7 @@ type
     macrosToExpand*: StringTableRef
     arcToExpand*: StringTableRef
     m*: MsgConfig
+    filenameOption*: FilenameOption # how to render paths in compiler messages
     evalTemplateCounter*: int
     evalMacroCounter*: int
     exitcode*: int8
@@ -279,6 +287,7 @@ type
     implicitCmd*: bool # whether some flag triggered an implicit `command`
     selectedGC*: TGCMode       # the selected GC (+)
     exc*: ExceptionSystem
+    hintProcessingDots*: bool # true for dots, false for filenames
     verbosity*: int            # how verbose the compiler is
     numberOfProcessors*: int   # number of processors
     lastCmdTime*: float        # when caas is enabled, we measure each command
@@ -413,8 +422,7 @@ const
     optBoundsCheck, optOverflowCheck, optAssert, optWarns, optRefCheck,
     optHints, optStackTrace, optLineTrace, # consider adding `optStackTraceMsgs`
     optTrMacros, optStyleCheck, optCursorInference}
-  DefaultGlobalOptions* = {optThreadAnalysis,
-    optExcessiveStackTrace, optListFullPaths}
+  DefaultGlobalOptions* = {optThreadAnalysis, optExcessiveStackTrace}
 
 proc getSrcTimestamp(): DateTime =
   try:
@@ -451,19 +459,25 @@ proc isDefined*(conf: ConfigRef; symbol: string): bool
 when defined(nimDebugUtils):
   import debugutils
 
+proc initConfigRefCommon(conf: ConfigRef) =
+  conf.selectedGC = gcRefc
+  conf.verbosity = 1
+  conf.hintProcessingDots = true
+  conf.options = DefaultOptions
+  conf.globalOptions = DefaultGlobalOptions
+  conf.filenameOption = foAbs
+  conf.foreignPackageNotes = foreignPackageNotesDefault
+  conf.notes = NotesVerbosity[1]
+  conf.mainPackageNotes = NotesVerbosity[1]
+
 proc newConfigRef*(): ConfigRef =
   result = ConfigRef(
-    selectedGC: gcRefc,
     cCompiler: ccGcc,
-    verbosity: 1,
-    options: DefaultOptions,
-    globalOptions: DefaultGlobalOptions,
     macrosToExpand: newStringTable(modeStyleInsensitive),
     arcToExpand: newStringTable(modeStyleInsensitive),
     m: initMsgConfig(),
     cppDefines: initHashSet[string](),
-    headerFile: "", features: {}, legacyFeatures: {}, foreignPackageNotes: foreignPackageNotesDefault,
-    notes: NotesVerbosity[1], mainPackageNotes: NotesVerbosity[1],
+    headerFile: "", features: {}, legacyFeatures: {},
     configVars: newStringTable(modeStyleInsensitive),
     symbols: newStringTable(modeStyleInsensitive),
     packageCache: newPackageCache(),
@@ -505,6 +519,7 @@ proc newConfigRef*(): ConfigRef =
     vmProfileData: newProfileData(),
     spellSuggestMax: spellSuggestSecretSauce,
   )
+  initConfigRefCommon(result)
   setTargetFromSystem(result.target)
   # enable colors by default on terminals
   if terminal.isatty(stderr):
@@ -517,13 +532,8 @@ proc newPartialConfigRef*(): ConfigRef =
   when defined(nimDebugUtils):
     result = getConfigRef()
   else:
-    result = ConfigRef(
-      selectedGC: gcRefc,
-      verbosity: 1,
-      options: DefaultOptions,
-      globalOptions: DefaultGlobalOptions,
-      foreignPackageNotes: foreignPackageNotesDefault,
-      notes: NotesVerbosity[1], mainPackageNotes: NotesVerbosity[1])
+    result = ConfigRef()
+    initConfigRefCommon(result)
 
 proc cppDefine*(c: ConfigRef; define: string) =
   c.cppDefines.incl define
@@ -701,7 +711,10 @@ proc getNimcacheDir*(conf: ConfigRef): AbsoluteDir =
   result = if not conf.nimcacheDir.isEmpty:
              conf.nimcacheDir
            elif conf.backend == backendJs:
-             conf.projectPath / genSubDir
+             if conf.outDir.isEmpty:
+               conf.projectPath / genSubDir
+             else:
+               conf.outDir / genSubDir
            else:
             AbsoluteDir(getOsCacheDir() / splitFile(conf.projectName).name &
                nimcacheSuffix(conf))
@@ -881,6 +894,25 @@ proc findProjectNimFile*(conf: ConfigRef; pkg: string): string =
     dir = parentDir(dir)
     if dir == "": break
   return ""
+
+proc canonicalImportAux*(conf: ConfigRef, file: AbsoluteFile): string =
+  ##[
+  Shows the canonical module import, e.g.:
+  system, std/tables, fusion/pointers, system/assertions, std/private/asciitables
+  ]##
+  var ret = getRelativePathFromConfigPath(conf, file, isTitle = true)
+  let dir = getNimbleFile(conf, $file).parentDir.AbsoluteDir
+  if not dir.isEmpty:
+    let relPath = relativeTo(file, dir)
+    if not relPath.isEmpty and (ret.isEmpty or relPath.string.len < ret.string.len):
+      ret = relPath
+  if ret.isEmpty:
+    ret = relativeTo(file, conf.projectPath)
+  result = ret.string
+
+proc canonicalImport*(conf: ConfigRef, file: AbsoluteFile): string =
+  let ret = canonicalImportAux(conf, file)
+  result = ret.nativeToUnixPath.changeFileExt("")
 
 proc canonDynlibName(s: string): string =
   let start = if s.startsWith("lib"): 3 else: 0

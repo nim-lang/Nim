@@ -50,7 +50,7 @@ runnableExamples:
 
 import std/private/since
 
-import std/math
+import math
 
 type
   Deque*[T] = object
@@ -379,8 +379,7 @@ proc popFirst*[T](deq: var Deque[T]): T {.inline, discardable.} =
 
   emptyCheck(deq)
   dec deq.count
-  result = deq.data[deq.head]
-  destroy(deq.data[deq.head])
+  result = move deq.data[deq.head]
   deq.head = (deq.head + 1) and deq.mask
 
 proc popLast*[T](deq: var Deque[T]): T {.inline, discardable.} =
@@ -398,8 +397,7 @@ proc popLast*[T](deq: var Deque[T]): T {.inline, discardable.} =
   emptyCheck(deq)
   dec deq.count
   deq.tail = (deq.tail - 1) and deq.mask
-  result = deq.data[deq.tail]
-  destroy(deq.data[deq.tail])
+  result = move deq.data[deq.tail]
 
 proc clear*[T](deq: var Deque[T]) {.inline.} =
   ## Resets the deque so that it is empty.

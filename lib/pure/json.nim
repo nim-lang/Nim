@@ -159,10 +159,9 @@ runnableExamples:
     a1, a2, a0, a3, a4: int
   doAssert $(%* Foo()) == """{"a1":0,"a2":0,"a0":0,"a3":0,"a4":0}"""
 
-import
-  std/[hashes, tables, strutils, lexbase, streams, macros, parsejson]
+import hashes, tables, strutils, lexbase, streams, macros, parsejson
 
-import std/options # xxx remove this dependency using same approach as https://github.com/nim-lang/Nim/pull/14563
+import options # xxx remove this dependency using same approach as https://github.com/nim-lang/Nim/pull/14563
 import std/private/since
 
 export
@@ -921,7 +920,7 @@ proc parseJson*(s: Stream, filename: string = ""; rawIntegers = false, rawFloats
     p.close()
 
 when defined(js):
-  from std/math import `mod`
+  from math import `mod`
   from std/jsffi import JSObject, `[]`, to
   from std/private/jsutils import getProtoName, isInteger, isSafeInteger
 

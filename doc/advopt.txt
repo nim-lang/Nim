@@ -14,8 +14,8 @@ Advanced commands:
                             module dependency graph
   //dump                    dump all defined conditionals and search paths
                             see also: --dump.format:json (useful with: `| jq`)
-  //check                   checks the project for syntax and semantic
-                            (can be combined with --track and --defusages)
+  //check                   checks the project for syntax and semantics
+                            (can be combined with --defusages)
 
 Runtime checks (see -x):
   --objChecks:on|off        turn obj conversion checks on|off
@@ -28,15 +28,19 @@ Runtime checks (see -x):
   --infChecks:on|off        turn Inf checks on|off
 
 Advanced options:
-  --track:FILE,LINE,COL     set the tracking position for (--defusages)
-  --defusages               find the definition and all usages of a symbol
+  --defusages:FILE,LINE,COL
+                            find the definition and all usages of a symbol
   -o:FILE, --out:FILE       set the output filename
   --outdir:DIR              set the path where the output file will be written
   --usenimcache             will use `outdir=$$nimcache`, whichever it resolves
                             to after all options have been processed
   --stdout:on|off           output to stdout
   --colors:on|off           turn compiler messages coloring on|off
-  --listFullPaths:on|off    list full paths in messages
+  --filenames:abs|canonical|legacyRelProj
+                            customize how filenames are rendered in compiler messages,
+                            defaults to `abs` (absolute)
+  --processing:dots|filenames|off
+                            show files as they're being processed by nim compiler
   --declaredLocs:on|off     show declaration locations in messages
   --spellSuggest|:num       show at most `num >= 0` spelling suggestions on typos.
                             if `num` is not specified (or `auto`), return

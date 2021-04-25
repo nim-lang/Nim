@@ -1018,7 +1018,7 @@ proc genTypeInfoAuxBase(m: BModule; typ, origType: PType;
   var flags = 0
   if not containsGarbageCollectedRef(typ): flags = flags or 1
   if not canFormAcycle(typ): flags = flags or 2
-  #else MessageOut("can contain a cycle: " & typeToString(typ))
+  #else echo("can contain a cycle: " & typeToString(typ))
   if flags != 0:
     m.s[cfsTypeInit3].addf("$1.flags = $2;$n", [nameHcr, rope(flags)])
   discard cgsym(m, "TNimType")

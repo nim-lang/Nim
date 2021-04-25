@@ -12,7 +12,7 @@
 ## use this representation directly in all the transformations,
 ## it is superior.
 
-import std / [hashes, tables, strtabs]
+import hashes, tables, strtabs
 import bitabs
 import ".." / [ast, options]
 
@@ -86,7 +86,7 @@ type
     typeInst*: PackedItemId
     nonUniqueId*: int32
 
-  PackedNode* = object     # 20 bytes
+  PackedNode* = object     # 28 bytes
     kind*: TNodeKind
     flags*: TNodeFlags
     operand*: int32  # for kind in {nkSym, nkSymDef}: SymId

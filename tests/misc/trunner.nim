@@ -92,7 +92,7 @@ else: # don't run twice the same test
       of 5: nimcache / htmldocsDirname
       else: file.parentDir / htmldocsDirname
 
-      var cmd = fmt"{nim} doc --index:on --listFullPaths --hint:successX:on --nimcache:{nimcache} {options[i]} {file}"
+      var cmd = fmt"{nim} doc --index:on --filenames:abs --hint:successX:on --nimcache:{nimcache} {options[i]} {file}"
       removeDir(htmldocsDir)
       let (outp, exitCode) = execCmdEx(cmd)
       check exitCode == 0
@@ -235,7 +235,7 @@ tests/newconfig/bar/mfoo.nims""".splitLines
     var expected = ""
     for a in files:
       let b = dir / a
-      expected.add &"Hint: used config file '{b}' [Conf]\n"
+      expected.add &"Hint: used config file '{b}' [Conf]\31\n"
     doAssert outp.endsWith expected, outp & "\n" & expected
 
   block: # mfoo2.customext
@@ -243,7 +243,7 @@ tests/newconfig/bar/mfoo.nims""".splitLines
     let cmd = fmt"{nim} e --hint:conf {filename}"
     let (outp, exitCode) = execCmdEx(cmd, options = {poStdErrToStdOut})
     doAssert exitCode == 0
-    var expected = &"Hint: used config file '{filename}' [Conf]\n"
+    var expected = &"Hint: used config file '{filename}' [Conf]\31\n"
     doAssert outp.endsWith "123" & "\n" & expected
 
 

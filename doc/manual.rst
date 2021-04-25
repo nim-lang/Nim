@@ -261,8 +261,9 @@ and underscores, with the following restrictions:
 
 * begins with a letter
 * does not end with an underscore `_`
-* two immediate following underscores `__` are not allowed::
+* two immediate following underscores `__` are not allowed:
 
+.. code-block::
   letter ::= 'A'..'Z' | 'a'..'z' | '\x80'..'\xff'
   digit ::= '0'..'9'
   IDENTIFIER ::= letter ( ['_'] (letter | digit) )*
@@ -1702,7 +1703,17 @@ has the syntax `T(fieldA: valueA, fieldB: valueB, ...)` where `T` is
 an `object` type or a `ref object` type:
 
 .. code-block:: nim
-  var student = Student(name: "Anton", age: 5, id: 3)
+  type
+    Student = object
+      name: string
+      age: int
+    PStudent = ref Student
+  var a1 = Student(name: "Anton", age: 5)
+  var a2 = PStudent(name: "Anton", age: 5)
+  # this also works directly:
+  var a3 = (ref Student)(name: "Anton", age: 5)
+  # not all fields need to be mentioned, and they can be mentioned out of order:
+  var a4 = Student(age: 5)
 
 Note that, unlike tuples, objects require the field names along with their values.
 For a `ref object` type `system.new` is invoked implicitly.

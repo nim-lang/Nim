@@ -50,6 +50,14 @@
 - On POSIX systems, we now ignore `SIGPIPE` signals, use `-d:nimLegacySigpipeHandler`
   for previous behavior.
 
+- `hashes.hash` now supports `object` and `ref` (can be overloaded in user code).
+- `hashes.hash(proc|ptr|ref|pointer)` now calls `hash(int)` and honors `-d:nimIntHash1`,
+  `hashes.hash(closure)` has also been improved.
+
+- The unary slice `..b` was removed, use `0..b` instead or use `-d:nimLegacyUnarySlice`
+  for a deprecation period.
+
+- Moved `.travis.yml`, `appveyor.yml.disabled`, `.github/workflows/ci.yml.disabled` to `unmaintained/`.
 
 ## Standard library additions and changes
 - Added support for parenthesized expressions in `strformat`
@@ -235,12 +243,9 @@
   level `moveMem`, `copyMem` operations for Orc's copy-on-write string
   implementation.
 
-- `hashes.hash` now supports `object`, but can be overloaded.
-
 - Added `std/strbasics` for high performance string operations.
   Added `strip`, `setSlice`, `add(a: var string, b: openArray[char])`.
 
-- `hashes.hash` now supports `object`, but can be overloaded.
 
 - Added to `wrapnils` an option-like API via `??.`, `isSome`, `get`.
 
@@ -280,8 +285,11 @@
 
 - Added `hasClosure` to `std/typetraits`.
 
+- Added `std/tempfiles`.
+
 - Added `genasts.genAst` that avoids the problems inherent with `quote do` and can
   be used as a replacement.
+
 
 ## Language changes
 
@@ -325,6 +333,8 @@
 - Added a new module `std/importutils`, and an API `privateAccess`, which allows access to private fields
   for an object type in the current scope.
 
+- `typeof(voidStmt)` now works and returns `void`.
+
 ## Compiler changes
 
 - Added `--declaredlocs` to show symbol declaration location in messages.
@@ -334,6 +344,10 @@
 - Deprecated `--nilseqs` which is now a noop.
 
 - Added `--spellSuggest` to show spelling suggestions on typos.
+
+- Added `--filenames:abs|canonical|magic` which replaces --listFullPaths:on|off
+
+- Added `--processing:dots|filenames|off` which customizes `hintProcessing`
 
 - Source+Edit links now appear on top of every docgen'd page when
   `nim doc --git.url:url ...` is given.

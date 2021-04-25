@@ -83,7 +83,9 @@ proc semExprCheck(c: PContext, n: PNode, flags: TExprFlags): PNode =
 
 proc semExprWithType(c: PContext, n: PNode, flags: TExprFlags = {}): PNode =
   result = semExprCheck(c, n, flags)
-  if result.typ == nil or result.typ == c.enforceVoidContext:
+  if result.typ == nil and efInTypeof in flags:
+    result.typ = c.voidType
+  elif result.typ == nil or result.typ == c.enforceVoidContext:
     localError(c.config, n.info, errExprXHasNoType %
                 renderTree(result, {renderNoComments}))
     result.typ = errorType(c)
@@ -2282,12 +2284,15 @@ proc semMagic(c: PContext, n: PNode, s: PSym, flags: TExprFlags): PNode =
   of mSpawn:
     markUsed(c, n.info, s)
     when defined(leanCompiler):
-      localError(c.config, n.info, "compiler was built without 'spawn' support")
-      result = n
+      result = localErrorNode(c, n, "compiler was built without 'spawn' support")
     else:
       result = setMs(n, s)
       for i in 1..<n.len:
         result[i] = semExpr(c, n[i])
+
+      if n.len > 1 and n[1].kind notin nkCallKinds:
+        return localErrorNode(c, n, n[1].info, "'spawn' takes a call expression; got: " & $n[1])
+
       let typ = result[^1].typ
       if not typ.isEmptyType:
         if spawnResult(typ, c.inParallelStmt > 0) == srFlowVar:

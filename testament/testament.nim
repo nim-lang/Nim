@@ -18,6 +18,11 @@ import compiler/nodejs
 import lib/stdtest/testutils
 from lib/stdtest/specialpaths import splitTestFile
 
+proc trimUnitSep(x: var string) =
+  let L = x.len
+  if L > 0 and x[^1] == '\31':
+    setLen x, L-1
+
 var useColors = true
 var backendLogging = true
 var simulate = false
@@ -99,7 +104,7 @@ proc isSuccess(input: string): bool =
   # not clear how to do the equivalent of pkg/regex's: re"FOO(.*?)BAR" in pegs
   # note: this doesn't handle colors, eg: `\e[1m\e[0m\e[32mHint:`; while we
   # could handle colors, there would be other issues such as handling other flags
-  # that may appear in user config (eg: `--listFullPaths`).
+  # that may appear in user config (eg: `--filenames`).
   # Passing `XDG_CONFIG_HOME= testament args...` can be used to ignore user config
   # stored in XDG_CONFIG_HOME, refs https://wiki.archlinux.org/index.php/XDG_Base_Directory
   input.startsWith("Hint: ") and input.endsWith("[SuccessX]")
@@ -172,6 +177,7 @@ proc callNimCompiler(cmdTemplate, filename, options, nimcache: string,
   result.nimout = ""
   while true:
     if outp.readLine(x):
+      trimUnitSep x
       result.nimout.add(x & '\n')
       if x =~ pegOfInterest:
         # `err` should contain the last error/warning message
@@ -196,6 +202,7 @@ proc callNimCompiler(cmdTemplate, filename, options, nimcache: string,
     result.msg = matches[0]
   elif suc.isSuccess:
     result.err = reSuccess
+  trimUnitSep result.msg
 
 proc callCCompiler(cmdTemplate, filename, options: string,
                   target: TTarget): TSpec =
@@ -692,7 +699,7 @@ proc main() =
         quit Usage
     of "batch":
       testamentData0.batchArg = p.val
-      if p.val != "_":
+      if p.val != "_" and p.val.len > 0 and p.val[0] in {'0'..'9'}:
         let s = p.val.split("_")
         doAssert s.len == 2, $(p.val, s)
         testamentData0.testamentBatch = s[0].parseInt
