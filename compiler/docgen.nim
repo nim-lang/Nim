@@ -609,7 +609,7 @@ proc getAllRunnableExamplesImpl(d: PDoc; n: PNode, dest: var Rope, state: Runnab
         dest.add(d.config.getOrDefault"doc.listing_end" % id)
         return rsRunnable
       else:
-        localError(d.conf, n.info, errUser, "runnableExamples must appear before the first non-comment statement")
+        localError(d.conf, n.info, warnUser, "runnableExamples must appear before the first non-comment statement")
   else: discard
   return rsDone
     # change this to `rsStart` if you want to keep generating doc comments
