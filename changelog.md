@@ -377,7 +377,16 @@
 
 - `--hint:CC` now goes to stderr (like all other hints) instead of stdout.
 
+- json build instructions are now generated in `$nimcache/outFileBasename.json`
+  instead of `$nimcache/projectName.json`. This allows avoiding recompiling a given project
+  compiled with different options if the output file differs.
 
+- `--usenimcache` (implied by `nim r main`) now generates an output file that includes a hash of
+  some of the compilation options, which allows caching generated binaries:
+  nim r main # recompiles
+  nim r -d:foo main # recompiles
+  nim r main # uses cached binary
+  nim r main arg1 arg2 # ditto (runtime arguments are irrelevant)
 
 ## Tool changes
 
