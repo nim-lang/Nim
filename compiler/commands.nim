@@ -154,6 +154,24 @@ proc processOnOffSwitch(conf: ConfigRef; op: TOptions, arg: string, pass: TCmdLi
   of "off": conf.options.excl op
   else: localError(conf, info, errOnOrOffExpectedButXFound % arg)
 
+proc processSpecificNoteImpl(conf: ConfigRef, pass: TCmdLinePass, n: TNoteKind, isOn: bool, noteAsError: bool) =
+  if n notin conf.cmdlineNotes or pass == passCmd1:
+    if pass == passCmd1: incl(conf.cmdlineNotes, n)
+    incl(conf.modifiedyNotes, n)
+    if isOn:
+      if noteAsError:
+        incl(conf.warningAsErrors, n) # xxx rename warningAsErrors to noteAsErrors
+      else:
+        incl(conf.notes, n)
+        incl(conf.mainPackageNotes, n)
+    else:
+      if noteAsError:
+        excl(conf.warningAsErrors, n)
+      else:
+        excl(conf.notes, n)
+        excl(conf.mainPackageNotes, n)
+        excl(conf.foreignPackageNotes, n)
+
 proc processOnOffSwitchOrList(conf: ConfigRef; op: TOptions, arg: string, pass: TCmdLinePass,
                               info: TLineInfo, noteSet: set[TMsgKind]): bool =
   result = false
@@ -164,13 +182,17 @@ proc processOnOffSwitchOrList(conf: ConfigRef; op: TOptions, arg: string, pass: 
     # xxx either of these give a codegen error:
     # conf.notes = noteSet
     # conf.notes.incl noteSet
-    for a in noteSet: conf.notes.incl a
-    for a in noteSet: conf.foreignPackageNotes.incl a
-    for a in noteSet: conf.mainPackageNotes.incl a
+    # for a in noteSet: conf.notes.incl a
+    # for a in noteSet: conf.foreignPackageNotes.incl a
+    # for a in noteSet: conf.mainPackageNotes.incl a
+    for note in noteSet:
+      processSpecificNoteImpl(conf, pass, note, true, noteAsError = false)
   of "none":
-    conf.notes = {}
-    conf.foreignPackageNotes = {}
-    conf.mainPackageNotes = {}
+    for note in noteSet:
+      processSpecificNoteImpl(conf, pass, note, false, noteAsError = false)
+    # conf.notes = {}
+    # conf.foreignPackageNotes = {}
+    # conf.mainPackageNotes = {}
   of "list": result = true
   else: localError(conf, info, errOnOffOrListExpectedButXFound % arg)
 
@@ -188,24 +210,6 @@ proc expectArg(conf: ConfigRef; switch, arg: string, pass: TCmdLinePass, info: T
 proc expectNoArg(conf: ConfigRef; switch, arg: string, pass: TCmdLinePass, info: TLineInfo) =
   if arg != "":
     localError(conf, info, "invalid argument for command line option: '$1'" % addPrefix(switch))
-
-proc processSpecificNoteImpl(conf: ConfigRef, pass: TCmdLinePass, state: TSpecialWord, n: TNoteKind, isOn: bool) =
-  if n notin conf.cmdlineNotes or pass == passCmd1:
-    if pass == passCmd1: incl(conf.cmdlineNotes, n)
-    incl(conf.modifiedyNotes, n)
-    if isOn:
-      if state in {wWarningAsError, wHintAsError}:
-        incl(conf.warningAsErrors, n) # xxx rename warningAsErrors to noteAsErrors
-      else:
-        incl(conf.notes, n)
-        incl(conf.mainPackageNotes, n)
-    else:
-      if state in {wWarningAsError, wHintAsError}:
-        excl(conf.warningAsErrors, n)
-      else:
-        excl(conf.notes, n)
-        excl(conf.mainPackageNotes, n)
-        excl(conf.foreignPackageNotes, n)
 
 proc processSpecificNote*(arg: string, state: TSpecialWord, pass: TCmdLinePass,
                          info: TLineInfo; orig: string; conf: ConfigRef) =
@@ -241,7 +245,7 @@ proc processSpecificNote*(arg: string, state: TSpecialWord, pass: TCmdLinePass,
   if val notin ["on", "off"]:
     localError(conf, info, errOnOrOffExpectedButXFound % arg)
   else:
-    processSpecificNoteImpl(conf, pass, state, n, val == "on")
+    processSpecificNoteImpl(conf, pass, n, val == "on", noteAsError = state in {wWarningAsError, wHintAsError})
 
 proc processCompile(conf: ConfigRef; filename: string) =
   var found = findFile(conf, filename)
