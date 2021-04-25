@@ -290,6 +290,8 @@
 - Added `genasts.genAst` that avoids the problems inherent with `quote do` and can
   be used as a replacement.
 
+- Added `jsre.groups` for [Named Capture Groups](https://caniuse.com/mdn-javascript_builtins_regexp_named_capture_groups).
+
 
 ## Language changes
 
