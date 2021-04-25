@@ -174,25 +174,15 @@ proc processSpecificNoteImpl(conf: ConfigRef, pass: TCmdLinePass, n: TNoteKind, 
 
 proc processOnOffSwitchOrList(conf: ConfigRef; op: TOptions, arg: string, pass: TCmdLinePass,
                               info: TLineInfo, noteSet: set[TMsgKind]): bool =
+  # xxx in future work we should also allow users to have control over `foreignPackageNotes`
+  # so that they can enable hints|warnings|warningAsErrors for all the code they depend on.
   result = false
   case arg.normalize
   of "on": conf.options.incl op
   of "off": conf.options.excl op
-  of "all":
-    # xxx either of these give a codegen error:
-    # conf.notes = noteSet
-    # conf.notes.incl noteSet
-    # for a in noteSet: conf.notes.incl a
-    # for a in noteSet: conf.foreignPackageNotes.incl a
-    # for a in noteSet: conf.mainPackageNotes.incl a
-    for note in noteSet:
-      processSpecificNoteImpl(conf, pass, note, true, noteAsError = false)
-  of "none":
-    for note in noteSet:
-      processSpecificNoteImpl(conf, pass, note, false, noteAsError = false)
-    # conf.notes = {}
-    # conf.foreignPackageNotes = {}
-    # conf.mainPackageNotes = {}
+  of "all", "none":
+    let isOn = arg.normalize == "all"
+    for n in noteSet: processSpecificNoteImpl(conf, pass, n, isOn, noteAsError = false)
   of "list": result = true
   else: localError(conf, info, errOnOffOrListExpectedButXFound % arg)
 

@@ -279,7 +279,7 @@ tests/newconfig/bar/mfoo.nims""".splitLines
       check3 "2" in outp
 
   block: # nim secret
-    let opt = fmt"--hints:none --hint:processing"
+    let opt = "--hints:none --hint:processing"
     template check3(cond) = doAssert cond, $(outp,)
     for extra in ["", "--stdout"]:
       let cmd = fmt"""{nim} secret {opt} {extra}"""
