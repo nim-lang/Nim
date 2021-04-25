@@ -24,9 +24,8 @@ when defined(windows):
       LockSemaphore: int
       SpinCount: int
 
-    RTL_CONDITION_VARIABLE {.importc: "RTL_CONDITION_VARIABLE", header: "synchapi.h".} = object
+    SysCond {.importc: "RTL_CONDITION_VARIABLE", header: "<windows.h>".} = object
       thePtr {.importc: "ptr".} : Handle
-    SysCond = RTL_CONDITION_VARIABLE
 
   proc initSysLock(L: var SysLock) {.importc: "InitializeCriticalSection",
                                      header: "<windows.h>".}

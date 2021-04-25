@@ -19,7 +19,7 @@ import
   cgen, json, nversion,
   platform, nimconf, passaux, depends, vm,
   modules,
-  modulegraphs, tables, lineinfos, pathutils, vmprofiler
+  modulegraphs, tables, lineinfos, pathutils, vmprofiler, std/[sha1, with]
 
 import ic / [cbackend, integrity, navigator]
 from ic / ic import rodViewer
@@ -80,15 +80,13 @@ when not defined(leanCompiler):
 
 proc commandCompileToC(graph: ModuleGraph) =
   let conf = graph.config
-  setOutFile(conf)
   extccomp.initVars(conf)
   semanticPasses(graph)
   if conf.symbolFiles == disabledSf:
     registerPass(graph, cgenPass)
 
     if {optRun, optForceFullMake} * conf.globalOptions == {optRun} or isDefined(conf, "nimBetterRun"):
-      let proj = changeFileExt(conf.projectFull, "")
-      if not changeDetectedViaJsonBuildInstructions(conf, proj):
+      if not changeDetectedViaJsonBuildInstructions(conf, conf.jsonBuildInstructionsFile):
         # nothing changed
         graph.config.notes = graph.config.mainPackageNotes
         return
@@ -117,27 +115,20 @@ proc commandCompileToC(graph: ModuleGraph) =
       writeDepsFile(graph)
 
 proc commandJsonScript(graph: ModuleGraph) =
-  let proj = changeFileExt(graph.config.projectFull, "")
-  extccomp.runJsonBuildInstructions(graph.config, proj)
+  extccomp.runJsonBuildInstructions(graph.config, graph.config.jsonBuildInstructionsFile)
 
 proc commandCompileToJS(graph: ModuleGraph) =
+  let conf = graph.config
   when defined(leanCompiler):
-    globalError(graph.config, unknownLineInfo, "compiler wasn't built with JS code generator")
+    globalError(conf, unknownLineInfo, "compiler wasn't built with JS code generator")
   else:
-    let conf = graph.config
     conf.exc = excCpp
-
-    if conf.outFile.isEmpty:
-      conf.outFile = RelativeFile(conf.projectName & ".js")
-
-    #incl(gGlobalOptions, optSafeCode)
-    setTarget(graph.config.target, osJS, cpuJS)
-    #initDefines()
-    defineSymbol(graph.config.symbols, "ecmascript") # For backward compatibility
+    setTarget(conf.target, osJS, cpuJS)
+    defineSymbol(conf.symbols, "ecmascript") # For backward compatibility
     semanticPasses(graph)
     registerPass(graph, JSgenPass)
     compileProject(graph)
-    if optGenScript in graph.config.globalOptions:
+    if optGenScript in conf.globalOptions:
       writeDepsFile(graph)
 
 proc interactivePasses(graph: ModuleGraph) =
@@ -186,6 +177,31 @@ proc commandView(graph: ModuleGraph) =
 const
   PrintRopeCacheStats = false
 
+proc hashMainCompilationParams*(conf: ConfigRef): string =
+  ## doesn't have to be complete; worst case is a cache hit and recompilation.
+  var state = newSha1State()
+  with state:
+    update os.getAppFilename() # nim compiler
+    update conf.commandLine # excludes `arguments`, as it should
+    update $conf.projectFull # so that running `nim r main` from 2 directories caches differently
+  result = $SecureHash(state.finalize())
+
+proc setOutFile*(conf: ConfigRef) =
+  proc libNameTmpl(conf: ConfigRef): string {.inline.} =
+    result = if conf.target.targetOS == osWindows: "$1.lib" else: "lib$1.a"
+
+  if conf.outFile.isEmpty:
+    var base = conf.projectName
+    if optUseNimcache in conf.globalOptions:
+      base.add "_" & hashMainCompilationParams(conf)
+    let targetName =
+      if conf.backend == backendJs: base & ".js"
+      elif optGenDynLib in conf.globalOptions:
+        platform.OS[conf.target.targetOS].dllFrmt % base
+      elif optGenStaticLib in conf.globalOptions: libNameTmpl(conf) % base
+      else: base & platform.OS[conf.target.targetOS].exeExt
+    conf.outFile = RelativeFile targetName
+
 proc mainCommand*(graph: ModuleGraph) =
   let conf = graph.config
   let cache = graph.cache
@@ -220,6 +236,7 @@ proc mainCommand*(graph: ModuleGraph) =
 
   proc compileToBackend() =
     customizeForBackend(conf.backend)
+    setOutFile(conf)
     case conf.backend
     of backendC: commandCompileToC(graph)
     of backendCpp: commandCompileToC(graph)

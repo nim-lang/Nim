@@ -1513,8 +1513,8 @@ proc rawExecute(c: PCtx, start: int, tos: PStackFrame): TFullReg =
         # reference with the value `nil`, so `isNil` should be false!
         (node.kind == nkNilLit and nfIsRef notin node.flags) or
         (not node.typ.isNil and node.typ.kind == tyProc and
-          node.typ.callConv == ccClosure and node[0].kind == nkNilLit and
-          node[1].kind == nkNilLit))
+          node.typ.callConv == ccClosure and node.safeLen > 0 and
+          node[0].kind == nkNilLit and node[1].kind == nkNilLit))
     of opcNBindSym:
       # cannot use this simple check
       # if dynamicBindSym notin c.config.features:
