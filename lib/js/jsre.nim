@@ -51,6 +51,17 @@ func contains*(pattern: cstring; self: RegExp): bool =
     assert "xabc".contains jsregex
   asm "`result` = `self`.test(`pattern`);"
 
+template groups*(self: RegExp; pattern: cstring; groups: varargs[var cstring]) =
+  ## Named capture groups.
+  ## Similar to `var [a, b, c] = regex.exec(pattern).slice(1);` in JavaScript.
+  runnableExamples:
+    let rex = newRegExp("([2000-2021]{4})-([01-12]{2})-([01-31]{2})T([00-59]{2}):([00-59]{2}):([00-59]{2})")
+    var year, month, day, hour, minute, second: cstring
+    rex.groups "2021-02-31T12:59:30.666", year, month, day, hour, minute, second
+    assert year == "2021" and month == "02" and day == "31"
+    assert hour == "12" and minute == "59" and second == "30"
+  {.emit: [groups, " = ", self, ".exec('", pattern, "').slice(1);"] .}
+
 
 runnableExamples:
   let jsregex: RegExp = newRegExp(r"\s+", r"i")
