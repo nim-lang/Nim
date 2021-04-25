@@ -189,6 +189,24 @@ proc expectNoArg(conf: ConfigRef; switch, arg: string, pass: TCmdLinePass, info:
   if arg != "":
     localError(conf, info, "invalid argument for command line option: '$1'" % addPrefix(switch))
 
+proc processSpecificNoteImpl(conf: ConfigRef, pass: TCmdLinePass, state: TSpecialWord, n: TNoteKind, isOn: bool) =
+  if n notin conf.cmdlineNotes or pass == passCmd1:
+    if pass == passCmd1: incl(conf.cmdlineNotes, n)
+    incl(conf.modifiedyNotes, n)
+    if isOn:
+      if state in {wWarningAsError, wHintAsError}:
+        incl(conf.warningAsErrors, n) # xxx rename warningAsErrors to noteAsErrors
+      else:
+        incl(conf.notes, n)
+        incl(conf.mainPackageNotes, n)
+    else:
+      if state in {wWarningAsError, wHintAsError}:
+        excl(conf.warningAsErrors, n)
+      else:
+        excl(conf.notes, n)
+        excl(conf.mainPackageNotes, n)
+        excl(conf.foreignPackageNotes, n)
+
 proc processSpecificNote*(arg: string, state: TSpecialWord, pass: TCmdLinePass,
                          info: TLineInfo; orig: string; conf: ConfigRef) =
   var id = ""  # arg = key or [key] or key:val or [key]:val;  with val=on|off
@@ -222,23 +240,8 @@ proc processSpecificNote*(arg: string, state: TSpecialWord, pass: TCmdLinePass,
   if val == "": val = "on"
   if val notin ["on", "off"]:
     localError(conf, info, errOnOrOffExpectedButXFound % arg)
-  elif n notin conf.cmdlineNotes or pass == passCmd1:
-    if pass == passCmd1: incl(conf.cmdlineNotes, n)
-    incl(conf.modifiedyNotes, n)
-    case val
-    of "on":
-      if state in {wWarningAsError, wHintAsError}:
-        incl(conf.warningAsErrors, n) # xxx rename warningAsErrors to noteAsErrors
-      else:
-        incl(conf.notes, n)
-        incl(conf.mainPackageNotes, n)
-    of "off":
-      if state in {wWarningAsError, wHintAsError}:
-        excl(conf.warningAsErrors, n)
-      else:
-        excl(conf.notes, n)
-        excl(conf.mainPackageNotes, n)
-        excl(conf.foreignPackageNotes, n)
+  else:
+    processSpecificNoteImpl(conf, pass, state, n, val == "on")
 
 proc processCompile(conf: ConfigRef; filename: string) =
   var found = findFile(conf, filename)
