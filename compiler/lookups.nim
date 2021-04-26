@@ -470,6 +470,7 @@ proc errorUndeclaredIdentifier*(c: PContext; info: TLineInfo; name: string, extr
     # prevent excessive errors for 'nim check'
     c.recursiveDep = ""
   localError(c.config, info, errGenerated, err)
+  echo "D20210426T144701.1: ", getStacktrace()
 
 proc errorUndeclaredIdentifierHint*(c: PContext; n: PNode, ident: PIdent): PSym =
   var extra = ""

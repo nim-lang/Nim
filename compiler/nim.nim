@@ -125,4 +125,6 @@ when not defined(selftest):
   handleCmdLine(newIdentCache(), conf)
   when declared(GC_setMaxPause):
     echo GC_getStatistics()
-  msgQuit(int8(conf.errorCounter > 0))
+  # msgQuit(int8(conf.errorCounter > 0))
+  if conf.errorCounter > 0:
+    quitOrRaise(conf, "errorCounter: " & $conf.errorCounter)

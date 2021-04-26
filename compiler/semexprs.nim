@@ -76,6 +76,7 @@ proc semExprCheck(c: PContext, n: PNode, flags: TExprFlags): PNode =
     # bug #12741, redundant error messages are the lesser evil here:
     localError(c.config, n.info, errExprXHasNoType %
                 renderTree(result, {renderNoComments}))
+    echo "D20210426T144701.4: ", getStacktrace()
 
   if isEmpty:
     # do not produce another redundant error message:
@@ -2808,6 +2809,9 @@ proc semExpr(c: PContext, n: PNode, flags: TExprFlags = {}): PNode =
       of skProc, skFunc, skMethod, skConverter, skIterator:
         if s.magic == mNone: result = semDirectOp(c, n, flags)
         else: result = semMagic(c, n, s, flags)
+      of skUnknown:
+        # PRTEMP: see also errorSubNode, newError
+        result = errorNode(c, n)
       else:
         #liMessage(n.info, warnUser, renderTree(n));
         result = semIndirectOp(c, n, flags)

@@ -399,7 +399,10 @@ proc log*(s: string) =
     close(f)
 
 proc quit(conf: ConfigRef; msg: TMsgKind) {.gcsafe.} =
-  if conf.isDefined("nimDebug"): quitOrRaise(conf, $msg)
+  dbg "ok1"
+  if conf.isDefined("nimDebug"):
+    dbg "ok2"
+    quitOrRaise(conf, $msg)
   elif defined(debug) or msg == errInternal or conf.hasHint(hintStackTrace):
     {.gcsafe.}:
       if stackTraceAvailable() and isNil(conf.writelnHook):
@@ -409,6 +412,7 @@ proc quit(conf: ConfigRef; msg: TMsgKind) {.gcsafe.} =
 No stack traceback available
 To create a stacktrace, rerun compilation with './koch temp $1 <file>', see $2 for details""" %
           [conf.command, "intern.html#debugging-the-compiler".createDocLink], UnitSep)
+  dbg "ok3"
   quit 1
 
 proc handleError(conf: ConfigRef; msg: TMsgKind, eh: TErrorHandling, s: string) =
