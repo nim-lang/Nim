@@ -591,3 +591,7 @@ proc moduleFromRodFile*(g: ModuleGraph; fileIdx: FileIndex;
 
 proc configComplete*(g: ModuleGraph) =
   rememberStartupConfig(g.startupPackedConfig, g.config)
+
+proc setRoutineBody*(g: ModuleGraph; s: PSym; body: PNode) =
+  # XXX Check sanity of IC implementation for this here.
+  s.ast[bodyPos] = body

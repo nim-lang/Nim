@@ -734,11 +734,10 @@ proc liftCapturedVars(n: PNode; owner: PSym; d: var DetectionPass;
         c.inContainer = 0
         var body = getBody(d.graph, s) #transformBody(d.graph, d.idgen, s, dontUseCache)
         body = liftCapturedVars(body, s, d, c)
-        if c.envVars.getOrDefault(s.id).isNil:
-          s.transformedBody = body
-        else:
-          s.transformedBody = newTree(nkStmtList, rawClosureCreation(s, d, c, n.info), body)
-          finishClosureCreation(s, d, c, n.info, s.transformedBody)
+        if not c.envVars.getOrDefault(s.id).isNil:
+          body = newTree(nkStmtList, rawClosureCreation(s, d, c, n.info), body)
+          finishClosureCreation(s, d, c, n.info, body)
+        setRoutineBody(d.graph, s, body)
         c.inContainer = oldInContainer
 
       if s.typ.callConv == ccClosure:

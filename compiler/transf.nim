@@ -1135,12 +1135,10 @@ template liftDefer(c, root) =
 proc transformBody*(g: ModuleGraph; idgen: IdGenerator; prc: PSym; flag: TransformBodyFlag): PNode =
   assert prc.kind in routineKinds
 
-  if prc.transformedBody != nil:
-    result = prc.transformedBody
-  elif nfTransf in getBody(g, prc).flags or prc.kind in {skTemplate}:
+  if nfTransf in getBody(g, prc).flags or prc.kind in {skTemplate}:
     result = getBody(g, prc)
   else:
-    prc.transformedBody = newNode(nkEmpty) # protects from recursion
+    #prc.transformedBody = newNode(nkEmpty) # protects from recursion
     var c = openTransf(g, prc.getModule, "", idgen)
     result = liftLambdas(g, prc, getBody(g, prc), c.tooEarly, c.idgen)
     result = processTransf(c, result, prc)
@@ -1152,13 +1150,14 @@ proc transformBody*(g: ModuleGraph; idgen: IdGenerator; prc: PSym; flag: Transfo
 
     incl(result.flags, nfTransf)
 
-    if flag == useCache or prc.typ.callConv == ccInline:
-      # genProc for inline procs will be called multiple times from different modules,
-      # it is important to transform exactly once to get sym ids and locations right
-      prc.transformedBody = result
-    else:
-      prc.transformedBody = nil
-    # XXX Rodfile support for transformedBody!
+    when false:
+      if flag == useCache or prc.typ.callConv == ccInline:
+        # genProc for inline procs will be called multiple times from different modules,
+        # it is important to transform exactly once to get sym ids and locations right
+        prc.transformedBody = result
+      else:
+        prc.transformedBody = nil
+      # XXX Rodfile support for transformedBody!
 
   #if prc.name.s == "main":
   #  echo "transformed into ", renderTree(result, {renderIds})
