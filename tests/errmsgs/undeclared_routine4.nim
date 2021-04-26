@@ -1,7 +1,7 @@
 discard """
 cmd: '''nim c --hints:off $file'''
 errormsg: "undeclared field: 'bar'"
-nimout: '''undeclared_routime4.nim(10, 10) Error: undeclared field: 'bar'
+nimout: '''undeclared_routine4.nim(10, 10) Error: undeclared field: 'bar'
 '''
 """
 
