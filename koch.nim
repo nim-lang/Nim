@@ -579,7 +579,7 @@ proc runCI(cmd: string) =
     execFold("Run rst2html tests", "nim c -r nimdoc/rsttester")
     execFold("Run nimpretty tests", "nim c -r nimpretty/tester.nim")
     when defined(posix):
-      execFold("Run nimsuggest tests", "nim c -r nimsuggest/tester")
+      execFold("Run nimsuggest tests", "nim r nimsuggest/tester")
 
 proc testUnixInstall(cmdLineRest: string) =
   csource("-d:danger" & cmdLineRest)
