@@ -60,7 +60,11 @@ Next, to build from source you will need:
     * [MinGW32.7z](https://nim-lang.org/download/mingw32.7z)
     * [MinGW64.7z](https://nim-lang.org/download/mingw64.7z)
 
-**Windows Note: Cygwin and similar POSIX runtime environments are not supported.**
+**Windows Notes:**
+
+**- Cygwin and similar POSIX runtime environments are not supported**
+
+- Avoid spaces (blanks) in the path to MinGW and Nim sources it may break the build process
 
 Then, if you are on a \*nix system or Windows, the following steps should compile
 Nim from source using ``gcc``, ``git``, and the ``koch`` build tool.
