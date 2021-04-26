@@ -16,6 +16,7 @@ type
 
 const
   DummyEof = "!EOF!"
+  bin = "bin"
   tpath = "nimsuggest/tests"
   # we could also use `stdtest/specialpaths`
 
