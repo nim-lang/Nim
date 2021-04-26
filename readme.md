@@ -62,9 +62,9 @@ Next, to build from source you will need:
 
 **Windows Notes:**
 
-**- Cygwin and similar POSIX runtime environments are not supported**
+* **Cygwin and similar POSIX runtime environments are not supported**
 
-- Avoid spaces (blanks) in the path to MinGW and Nim sources it may break the build process
+* Avoid spaces (blanks) in the path to MinGW and Nim sources it may break the build process
 
 Then, if you are on a \*nix system or Windows, the following steps should compile
 Nim from source using ``gcc``, ``git``, and the ``koch`` build tool.
