@@ -19,7 +19,8 @@ import
   cgen, json, nversion,
   nimconf, passaux, depends, vm,
   modules,
-  modulegraphs, tables, lineinfos, pathutils, vmprofiler
+  modulegraphs, tables, lineinfos, pathutils, vmprofiler,
+  platform
 
 import ic / [cbackend, integrity, navigator]
 from ic / ic import rodViewer
