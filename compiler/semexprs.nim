@@ -67,18 +67,7 @@ proc semOperand(c: PContext, n: PNode, flags: TExprFlags = {}): PNode =
 proc semExprCheck(c: PContext, n: PNode, flags: TExprFlags): PNode =
   rejectEmptyNode(n)
   result = semExpr(c, n, flags+{efWantValue})
-
-  let
-    isEmpty = result.kind == nkEmpty
-    isTypeError = result.typ != nil and result.typ.kind == tyError
-
-  # if isEmpty or isTypeError:
-  #   # bug #12741, redundant error messages are the lesser evil here:
-  #   localError(c.config, n.info, errExprXHasNoType %
-  #               renderTree(result, {renderNoComments}))
-  #   echo "D20210426T144701.4: ", getStacktrace()
-
-  if isEmpty or isTypeError:
+  if result.kind == nkEmpty or (result.typ != nil and result.typ.kind == tyError):
     # do not produce another redundant error message:
     result = errorNode(c, n)
 
@@ -2810,7 +2799,9 @@ proc semExpr(c: PContext, n: PNode, flags: TExprFlags = {}): PNode =
         if s.magic == mNone: result = semDirectOp(c, n, flags)
         else: result = semMagic(c, n, s, flags)
       of skUnknown:
-        # PRTEMP: see also errorSubNode, newError
+        # xxx: see also `errorSubNode`, `newError`; `errorNode` uses `skEmpty`
+        # which causes redundant errors in D20210426T153714 for `let a = nonexistant`,
+        # because nim can't distinguish with `let a {.importc:"foo".}` which is valid.
         result = errorNode(c, n)
       else:
         #liMessage(n.info, warnUser, renderTree(n));

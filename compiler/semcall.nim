@@ -284,7 +284,6 @@ proc notFoundError*(c: PContext, n: PNode, errors: CandidateErrors) =
     return
   if errors.len == 0:
     localError(c.config, n.info, "expression '$1' cannot be called" % n[0].renderTree)
-    echo "D20210426T144701.2: ", getStacktrace()
     return
 
   let (prefer, candidates) = presentFailedCandidates(c, n, errors)
@@ -414,7 +413,6 @@ proc resolveOverloads(c: PContext, n, orig: PNode,
       if efNoUndeclared notin flags: # for tests/pragmas/tcustom_pragma.nim
         # xxx adapt/use errorUndeclaredIdentifierHint(c, n, f.ident)
         localError(c.config, n.info, getMsgDiagnostic(c, flags, n, f))
-        echo "D20210426T144701.3: ", getStacktrace()
       return
     elif result.state != csMatch:
       if nfExprCall in n.flags:
