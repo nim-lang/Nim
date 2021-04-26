@@ -72,13 +72,13 @@ proc semExprCheck(c: PContext, n: PNode, flags: TExprFlags): PNode =
     isEmpty = result.kind == nkEmpty
     isTypeError = result.typ != nil and result.typ.kind == tyError
 
-  if isEmpty or isTypeError:
-    # bug #12741, redundant error messages are the lesser evil here:
-    localError(c.config, n.info, errExprXHasNoType %
-                renderTree(result, {renderNoComments}))
-    echo "D20210426T144701.4: ", getStacktrace()
+  # if isEmpty or isTypeError:
+  #   # bug #12741, redundant error messages are the lesser evil here:
+  #   localError(c.config, n.info, errExprXHasNoType %
+  #               renderTree(result, {renderNoComments}))
+  #   echo "D20210426T144701.4: ", getStacktrace()
 
-  if isEmpty:
+  if isEmpty or isTypeError:
     # do not produce another redundant error message:
     result = errorNode(c, n)
 
