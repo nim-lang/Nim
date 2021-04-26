@@ -1290,10 +1290,7 @@ proc gsub(g: var TSrcGen, n: PNode, c: TContext, fromStmtList = false) =
       put(g, tkSpaces, Space)
     infixArgument(g, n, 2)
   of nkPrefix:
-    if n.len > 0 and n[0].kind == nkIdent and n[0].ident.s == "<//>":
-      discard "XXX Remove this hack after 0.20 has been released!"
-    else:
-      gsub(g, n, 0)
+    gsub(g, n, 0)
     if n.len > 1:
       let opr = if n[0].kind == nkIdent: n[0].ident
                 elif n[0].kind == nkSym: n[0].sym.name
