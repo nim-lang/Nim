@@ -9,9 +9,9 @@ tundeclared_routine.nim(29, 28) Error: invalid pragma: myPragma
 tundeclared_routine.nim(36, 13) Error: undeclared field: 'bar3' for type tundeclared_routine.Foo [type declared in tundeclared_routine.nim(33, 8)]
   found tundeclared_routine.bar3() [iterator declared in tundeclared_routine.nim(35, 12)]
 tundeclared_routine.nim(41, 13) Error: undeclared field: 'bar4' for type tundeclared_routine.Foo [type declared in tundeclared_routine.nim(39, 8)]
+tundeclared_routine.nim(44, 15) Error: attempting to call routine: 'bad5'
 '''
 """
-
 
 
 
@@ -39,3 +39,6 @@ block:
   type Foo = object
   var a = Foo()
   let a2 = a.bar4
+
+block:
+  let a = bad5(1)
