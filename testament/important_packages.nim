@@ -139,7 +139,7 @@ pkg "stint", "nim r stint.nim"
 pkg "strslice"
 pkg "strunicode", "nim c -r src/strunicode.nim"
 pkg "synthesis"
-pkg "telebot", "nim c -o:tbot -r src/telebot.nim"
+pkg "telebot", "nim c -o:tbot -r src/telebot.nim", allowFailure = true # pending https://github.com/ba0f3/telebot.nim/issues/59
 pkg "tempdir"
 pkg "templates"
 pkg "tensordsl", "nim c -r tests/tests.nim", "https://krux02@bitbucket.org/krux02/tensordslnim.git"
