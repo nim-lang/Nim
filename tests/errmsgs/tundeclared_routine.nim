@@ -6,11 +6,11 @@ tundeclared_routine.nim(24, 17) Error: attempting to call routine: 'myiter'
   found tundeclared_routine.myiter(a: string) [iterator declared in tundeclared_routine.nim(22, 12)]
   found tundeclared_routine.myiter() [iterator declared in tundeclared_routine.nim(23, 12)]
 tundeclared_routine.nim(29, 28) Error: invalid pragma: myPragma
-tundeclared_routine.nim(36, 13) Error: undeclared field: 'bar' for type tundeclared_routine.Foo [type declared in tundeclared_routine.nim(33, 8)]
-  found tundeclared_routine.bar() [iterator declared in tundeclared_routine.nim(35, 12)]
+tundeclared_routine.nim(36, 13) Error: undeclared field: 'bar3' for type tundeclared_routine.Foo [type declared in tundeclared_routine.nim(33, 8)]
+  found tundeclared_routine.bar3() [iterator declared in tundeclared_routine.nim(35, 12)]
+tundeclared_routine.nim(41, 13) Error: undeclared field: 'bar4' for type tundeclared_routine.Foo [type declared in tundeclared_routine.nim(39, 8)]
 '''
 """
-
 
 
 
@@ -32,5 +32,10 @@ block:
 block:
   type Foo = object
   var a = Foo()
-  iterator bar():int=discard
-  let a2 = a.bar
+  iterator bar3():int=discard
+  let a2 = a.bar3
+
+block:
+  type Foo = object
+  var a = Foo()
+  let a2 = a.bar4
