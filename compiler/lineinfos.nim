@@ -144,7 +144,7 @@ const
     hintSuccess: "operation successful: $#",
     # keep in sync with `testament.isSuccess`
     hintSuccessX: "$loc lines; ${sec}s; $mem; proj: $project; out: $output",
-    hintBuildMode: "$build",
+    hintBuildMode: "$1",
     hintCC: "CC: $1",
     hintLineTooLong: "line too long",
     hintXDeclaredButNotUsed: "'$1' is declared but not used",
