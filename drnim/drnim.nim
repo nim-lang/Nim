@@ -1222,9 +1222,7 @@ proc mainCommand(graph: ModuleGraph) =
       "project", project,
       "output", ""
       ])
-    rawMessage(conf, hintBuildMode, [
-      "build", build,
-      ])
+    rawMessage(conf, hintBuildMode, build)
 
 proc processCmdLine(pass: TCmdLinePass, cmd: string; config: ConfigRef) =
   var p = parseopt.initOptParser(cmd)
