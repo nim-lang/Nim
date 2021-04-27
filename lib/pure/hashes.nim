@@ -228,29 +228,34 @@ proc hash*(x: pointer): Hash {.inline.} =
     let y = cast[int](x)
   hash(y) # consistent with code expecting scrambled hashes depending on `nimIntHash1`.
 
-proc hash*[T](x: ref[T] | ptr[T]): Hash {.inline.} =
+proc hash*[T](x: ptr[T]): Hash {.inline.} =
   ## Efficient `hash` overload.
   runnableExamples:
     var a: array[10, uint8]
     assert a[0].addr.hash != a[1].addr.hash
     assert cast[pointer](a[0].addr).hash == a[0].addr.hash
-  runnableExamples:
-    type A = ref object
-      x: int
-    let a = A(x: 3)
-    let ha = a.hash
-    assert ha != A(x: 3).hash # A(x: 3) is a different ref object from `a`.
-    a.x = 4
-    assert ha == a.hash # the hash only depends on the address
-  runnableExamples:
-    # you can overload `hash` if you want to customize semantics
-    type A[T] = ref object
-      x, y: T
-    proc hash(a: A): Hash = hash(a.x)
-    assert A[int](x: 3, y: 4).hash == A[int](x: 3, y: 5).hash
-  # xxx pending bug #17733, merge as `proc hash*(pointer | ref | ptr): Hash`
-  # or `proc hash*[T: ref | ptr](x: T): Hash`
   hash(cast[pointer](x))
+
+when not defined(nimLegacyNoHashRef):
+  proc hash*[T](x: ref[T]): Hash {.inline.} =
+    ## Efficient `hash` overload.
+    runnableExamples:
+      type A = ref object
+        x: int
+      let a = A(x: 3)
+      let ha = a.hash
+      assert ha != A(x: 3).hash # A(x: 3) is a different ref object from `a`.
+      a.x = 4
+      assert ha == a.hash # the hash only depends on the address
+    runnableExamples:
+      # you can overload `hash` if you want to customize semantics
+      type A[T] = ref object
+        x, y: T
+      proc hash(a: A): Hash = hash(a.x)
+      assert A[int](x: 3, y: 4).hash == A[int](x: 3, y: 5).hash
+    # xxx pending bug #17733, merge as `proc hash*(pointer | ref | ptr): Hash`
+    # or `proc hash*[T: ref | ptr](x: T): Hash`
+    hash(cast[pointer](x))
 
 proc hash*[T: proc](x: T): Hash {.inline.} =
   ## Efficient hashing of proc vars. Closures are supported too.

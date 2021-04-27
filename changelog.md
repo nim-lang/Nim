@@ -51,6 +51,7 @@
   for previous behavior.
 
 - `hashes.hash` now supports `object` and `ref` (can be overloaded in user code).
+  For a transition period, use `-d:nimLegacyNoHashRef` to avoid defining `hash(ref)`.
 - `hashes.hash(proc|ptr|ref|pointer)` now calls `hash(int)` and honors `-d:nimIntHash1`,
   `hashes.hash(closure)` has also been improved.
 
