@@ -88,6 +88,7 @@ type
     targets*: set[TTarget]
     matrix*: seq[string]
     nimout*: string
+    nimoutFull*: bool # whether nimout is all compiler output or a subset
     parseErrors*: string            # when the spec definition is invalid, this is not empty.
     unjoinable*: bool
     unbatchable*: bool
@@ -297,6 +298,8 @@ proc parseSpec*(filename: string): TSpec =
         result.action = actionReject
       of "nimout":
         result.nimout = e.value
+      of "nimoutfull":
+        result.nimoutFull = parseCfgBool(e.value)
       of "batchable":
         result.unbatchable = not parseCfgBool(e.value)
       of "joinable":

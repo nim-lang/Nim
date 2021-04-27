@@ -21,6 +21,8 @@ Failure: reCodegenFailure
 max allowed size: 1
 FAIL: tests/shouldfail/tnimout.nim c
 Failure: reMsgsDiffer
+FAIL: tests/shouldfail/tnimoutfull.nim c
+Failure: reMsgsDiffer
 FAIL: tests/shouldfail/toutput.nim c
 Failure: reOutputsDiffer
 FAIL: tests/shouldfail/toutputsub.nim c
