@@ -2834,7 +2834,11 @@ proc semExpr(c: PContext, n: PNode, flags: TExprFlags = {}): PNode =
         # xxx: see also `errorSubNode`, `newError`; `errorNode` uses `skEmpty`
         # which causes redundant errors in D20210426T153714 for `let a = nonexistant`,
         # because nim can't distinguish with `let a {.importc:"foo".}` which is valid.
-        result = errorNode(c, n)
+        when defined(nimsuggest):
+          # hack, see D20210427T164219. Maybe there's a better way but this works for now.
+          result = semIndirectOp(c, n, flags)
+        else:
+          result = errorNode(c, n)
       else:
         #liMessage(n.info, warnUser, renderTree(n));
         result = semIndirectOp(c, n, flags)
