@@ -398,3 +398,6 @@
 
 - `fusion` is now un-bundled from nim, `./koch fusion` will
   install it via nimble at a fixed hash.
+
+- testament: added `nimoutFull: bool` spec to compare full output of compiler
+  instead of a subset.
