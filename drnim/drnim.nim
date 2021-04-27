@@ -1219,9 +1219,11 @@ proc mainCommand(graph: ModuleGraph) =
       "loc", loc,
       "sec", sec,
       "mem", mem,
-      "build", build,
       "project", project,
       "output", ""
+      ])
+    rawMessage(conf, hintBuildMode, [
+      "build", build,
       ])
 
 proc processCmdLine(pass: TCmdLinePass, cmd: string; config: ConfigRef) =

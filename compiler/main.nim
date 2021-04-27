@@ -406,9 +406,11 @@ proc mainCommand*(graph: ModuleGraph) =
       "loc", loc,
       "sec", sec,
       "mem", mem,
-      "build", build,
       "project", project,
       "output", output,
+      ])
+    rawMessage(conf, hintBuildMode, [
+      "build", build,
       ])
 
   when PrintRopeCacheStats:
