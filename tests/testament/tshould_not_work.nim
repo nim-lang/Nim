@@ -37,9 +37,3 @@ FAIL: tests/shouldfail/tvalgrind.nim c
 Failure: reExitcodesDiffer
 '''
 """
-
-#[
-FAIL: tests/shouldfail/tnimoutfull.nim c
-Failure: reMsgsDiffer
-
-]#

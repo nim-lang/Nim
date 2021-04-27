@@ -373,15 +373,11 @@ proc checkForInlineErrors(r: var TResults, expected, given: TSpec, test: TTest, 
 
 proc nimoutCheck(expected, given: TSpec): bool =
   result = true
-  # if expected.nimoutFull and false:
   if expected.nimoutFull:
     if expected.nimout != given.nimout:
       result = false
-  # elif expected.nimout.len > 0 and not greedyOrderedSubsetLines(expected.nimout, given.nimout):
-  elif expected.nimout.len > 0:
-    let nimout2 = given.nimout.strip
-    if not greedyOrderedSubsetLines(expected.nimout, nimout2):
-      result = false
+  elif expected.nimout.len > 0 and not greedyOrderedSubsetLines(expected.nimout, given.nimout):
+    result = false
 
 proc cmpMsgs(r: var TResults, expected, given: TSpec, test: TTest, target: TTarget) =
   if expected.inlineErrors.len > 0:
