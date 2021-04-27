@@ -1,3 +1,4 @@
+proc `gook`(a: int) = discard
 proc `%%%`(a: int) = discard
 proc `cast`() = discard
 tsug_accquote.#[!]#

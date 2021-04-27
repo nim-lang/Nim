@@ -315,6 +315,8 @@ proc runTest(filename: string): int =
           if a == DummyEof: break
           answer.add a
           answer.add '\L'
+        echo answer
+        doAssert false
         doReport(filename, answer, resp, report)
   finally:
     try:
