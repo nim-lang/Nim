@@ -55,7 +55,7 @@ runnableExamples("-r:off"):
 ##     --threads:on
 ##     [Author]
 ##     name = "nim-lang"
-##     webiste = "nim-lang.org"
+##     website = "nim-lang.org"
 
 ##[
 ## Creating a configuration file
@@ -67,7 +67,7 @@ runnableExamples("-r:off"):
   dict.setSectionKey("Package", "name", "hello")
   dict.setSectionKey("Package", "--threads", "on")
   dict.setSectionKey("Author", "name", "nim-lang")
-  dict.setSectionKey("Author", "webiste", "nim-lang.org")
+  dict.setSectionKey("Author", "website", "nim-lang.org")
   dict.writeConfig("config.ini")
 
 ##[
