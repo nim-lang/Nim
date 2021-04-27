@@ -32,13 +32,13 @@ runnableExamples("-r:off"):
     case e.kind
     of cfgEof: break
     of cfgSectionStart:   ## a `[section]` has been parsed
-      echo("new section: " & e.section)
+      echo "new section: " & e.section
     of cfgKeyValuePair:
-      echo("key-value-pair: " & e.key & ": " & e.value)
+      echo "key-value-pair: " & e.key & ": " & e.value
     of cfgOption:
-      echo("command: " & e.key & ": " & e.value)
+      echo "command: " & e.key & ": " & e.value
     of cfgError:
-      echo(e.msg)
+      echo e.msg
   close(p)
 
 ##[
