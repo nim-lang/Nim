@@ -24,3 +24,7 @@ block:
 block: # bug #12741
   macro foo = discard
   let x = foo
+
+# block: # PRTEMP
+#   macro foo2 = discard
+#   discard foo2
