@@ -373,7 +373,8 @@ proc checkForInlineErrors(r: var TResults, expected, given: TSpec, test: TTest, 
 
 proc nimoutCheck(expected, given: TSpec): bool =
   result = true
-  if expected.nimoutFull and false:
+  # if expected.nimoutFull and false:
+  if expected.nimoutFull:
     if expected.nimout != given.nimout:
       result = false
   # elif expected.nimout.len > 0 and not greedyOrderedSubsetLines(expected.nimout, given.nimout):

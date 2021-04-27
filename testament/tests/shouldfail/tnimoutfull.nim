@@ -1,22 +1,15 @@
 discard """
-  cmd: '''nim check --hints:off --spellSuggest:0 --filenames:legacyRelProj $file'''
-  nimout: '''
-tnimoutfull.nim(21, 1) Error: undeclared identifier: 'asdf4'
-'''
   targets: "c"
-  action: reject
+  nimout: '''
+msg1
+msg2
+'''
+  action: compile
+  nimoutFull: true
 """
 
-
-
-
-
-
-
-
-
-
-
-# line 20
-asdf1
-asdf2
+# should fail because `msg3` is not in nimout and `nimoutFill: true` was given
+static:
+  echo "msg1"
+  echo "msg2"
+  echo "msg3"
