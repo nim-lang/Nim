@@ -5,9 +5,9 @@ nimoutFull: true
 nimout: '''
 t16178_nimcheck_redundant.nim(22, 11) Error: undeclared identifier: 'bad5'
 t16178_nimcheck_redundant.nim(22, 7) Error: 'let' symbol requires an initialization
+t16178_nimcheck_redundant.nim(26, 7) Error: 'let' symbol requires an initialization
 '''
 """
-
 
 
 
@@ -21,3 +21,6 @@ be reported
 block:
   let a = bad5(1)
 
+block: # bug #12741
+  macro foo = discard
+  let x = foo
