@@ -80,7 +80,7 @@ runnableExamples("-r:off"):
   var threads = dict.getSectionValue("Package","--threads")
   var pname = dict.getSectionValue("Package","name")
   var name = dict.getSectionValue("Author","name")
-  var website = dict.getSectionValue("Author","webiste")
+  var website = dict.getSectionValue("Author","website")
   echo pname & "\n" & name & "\n" & website
 
 ##[
