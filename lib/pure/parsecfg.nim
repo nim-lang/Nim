@@ -47,7 +47,7 @@ runnableExamples("-r:off"):
 ]##
 
 ##
-## .. code-block:: cfg
+## .. code-block:: nim
 ##
 ##     charset = "utf-8"
 ##     [Package]
