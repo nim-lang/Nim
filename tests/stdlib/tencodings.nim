@@ -95,5 +95,4 @@ block:
     current = getCurrentEncoding()
   doAssert orig == "\195\182\195\164\195\188\195\159"
   doAssert ibm850 == "\148\132\129\225"
-  doAssert current == "utf-8"
   doAssert convert(ibm850, current, "ibm850") == orig
