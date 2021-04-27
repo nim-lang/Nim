@@ -943,6 +943,7 @@ proc jsonBuildInstructionsFile*(conf: ConfigRef): AbsoluteFile =
   result = getNimcacheDir(conf) / conf.outFile.changeFileExt("json")
 
 proc writeJsonBuildInstructions*(conf: ConfigRef) =
+  # xxx use std/json instead, will result in simpler, more maintainable code.
   template lit(x: string) = f.write x
   template str(x: string) =
     buf.setLen 0
@@ -964,23 +965,18 @@ proc writeJsonBuildInstructions*(conf: ConfigRef) =
   proc linkfiles(conf: ConfigRef; f: File; buf, objfiles: var string; clist: CfileList;
                  llist: seq[string]) =
     var pastStart = false
+    template impl(path) =
+      let path2 = quoteShell(path)
+      objfiles.add(' ')
+      objfiles.add(path2)
+      if pastStart: lit ",\L"
+      str path2
+      pastStart = true
     for it in llist:
-      let objfile = if noAbsolutePaths(conf): it.extractFilename
-                    else: it
-      let objstr = addFileExt(objfile, CC[conf.cCompiler].objExt)
-      objfiles.add(' ')
-      objfiles.add(objstr)
-      if pastStart: lit ",\L"
-      str objstr
-      pastStart = true
-
+      let objfile = if noAbsolutePaths(conf): it.extractFilename else: it
+      impl(addFileExt(objfile, CC[conf.cCompiler].objExt))
     for it in clist:
-      let objstr = quoteShell(it.obj)
-      objfiles.add(' ')
-      objfiles.add(objstr)
-      if pastStart: lit ",\L"
-      str objstr
-      pastStart = true
+      impl(it.obj)
     lit "\L"
 
   proc depfiles(conf: ConfigRef; f: File; buf: var string) =
