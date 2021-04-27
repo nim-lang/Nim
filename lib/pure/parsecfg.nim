@@ -19,99 +19,91 @@
 ##     :literal:
 ##
 ## Here is an example of how to use the configuration file parser:
-##
-## .. code-block:: nim
-##
-##    import std/[os, parsecfg, strutils, streams]
-##
-##    var f = newFileStream(paramStr(1), fmRead)
-##    if f != nil:
-##      var p: CfgParser
-##      open(p, f, paramStr(1))
-##      while true:
-##        var e = next(p)
-##        case e.kind
-##        of cfgEof: break
-##        of cfgSectionStart:   ## a `[section]` has been parsed
-##          echo("new section: " & e.section)
-##        of cfgKeyValuePair:
-##          echo("key-value-pair: " & e.key & ": " & e.value)
-##        of cfgOption:
-##          echo("command: " & e.key & ": " & e.value)
-##        of cfgError:
-##          echo(e.msg)
-##      close(p)
-##    else:
-##      echo("cannot open: " & paramStr(1))
-##
-##
-## Examples
-## ========
-##
+runnableExamples("-r:off"):
+  import std/[os, strutils, streams]
+
+  var f = newFileStream(paramStr(1), fmRead)
+  if f != nil:
+    var p: CfgParser
+    open(p, f, paramStr(1))
+    while true:
+      var e = next(p)
+      case e.kind
+      of cfgEof: break
+      of cfgSectionStart:   ## a `[section]` has been parsed
+        echo("new section: " & e.section)
+      of cfgKeyValuePair:
+        echo("key-value-pair: " & e.key & ": " & e.value)
+      of cfgOption:
+        echo("command: " & e.key & ": " & e.value)
+      of cfgError:
+        echo(e.msg)
+    close(p)
+  else:
+    echo("cannot open: " & paramStr(1))
+
+##[
 ## Configuration file example
-## --------------------------
+]##
+
 ##
-## .. code-block:: nim
+## .. code-block:: cfg
 ##
 ##     charset = "utf-8"
 ##     [Package]
 ##     name = "hello"
 ##     --threads:on
 ##     [Author]
-##     name = "lihf8515"
-##     qq = "10214028"
-##     email = "lihaifeng@wxm.com"
-##
+##     name = "nim-lang"
+##     webiste = "nim-lang.org"
+
+##[
 ## Creating a configuration file
-## -----------------------------
-## .. code-block:: nim
-##
-##     import std/parsecfg
-##     var dict=newConfig()
-##     dict.setSectionKey("","charset","utf-8")
-##     dict.setSectionKey("Package","name","hello")
-##     dict.setSectionKey("Package","--threads","on")
-##     dict.setSectionKey("Author","name","lihf8515")
-##     dict.setSectionKey("Author","qq","10214028")
-##     dict.setSectionKey("Author","email","lihaifeng@wxm.com")
-##     dict.writeConfig("config.ini")
-##
+]##
+
+runnableExamples("-r:off"):
+  var dict = newConfig()
+  dict.setSectionKey("","charset", "utf-8")
+  dict.setSectionKey("Package", "name", "hello")
+  dict.setSectionKey("Package", "--threads", "on")
+  dict.setSectionKey("Author", "name", "nim-lang")
+  dict.setSectionKey("Author", "webiste", "nim-lang.org")
+  dict.writeConfig("config.ini")
+
+##[
 ## Reading a configuration file
-## ----------------------------
-## .. code-block:: nim
-##
-##     import std/parsecfg
-##     var dict = loadConfig("config.ini")
-##     var charset = dict.getSectionValue("","charset")
-##     var threads = dict.getSectionValue("Package","--threads")
-##     var pname = dict.getSectionValue("Package","name")
-##     var name = dict.getSectionValue("Author","name")
-##     var qq = dict.getSectionValue("Author","qq")
-##     var email = dict.getSectionValue("Author","email")
-##     echo pname & "\n" & name & "\n" & qq & "\n" & email
-##
+]##
+
+runnableExamples("-r:off"):
+  var dict = loadConfig("config.ini")
+  var charset = dict.getSectionValue("","charset")
+  var threads = dict.getSectionValue("Package","--threads")
+  var pname = dict.getSectionValue("Package","name")
+  var name = dict.getSectionValue("Author","name")
+  var website = dict.getSectionValue("Author","webiste")
+  echo pname & "\n" & name & "\n" & website
+
+##[
 ## Modifying a configuration file
-## ------------------------------
-## .. code-block:: nim
-##
-##     import std/parsecfg
-##     var dict = loadConfig("config.ini")
-##     dict.setSectionKey("Author","name","lhf")
-##     dict.writeConfig("config.ini")
-##
+]##
+
+runnableExamples("-r:off"):
+  var dict = loadConfig("config.ini")
+  dict.setSectionKey("Author", "name", "nim-lang")
+  dict.writeConfig("config.ini")
+
+##[
 ## Deleting a section key in a configuration file
-## ----------------------------------------------
-## .. code-block:: nim
-##
-##     import std/parsecfg
-##     var dict = loadConfig("config.ini")
-##     dict.delSectionKey("Author","email")
-##     dict.writeConfig("config.ini")
-## 
+]##
+
+runnableExamples("-r:off"):
+  var dict = loadConfig("config.ini")
+  dict.delSectionKey("Author", "website")
+  dict.writeConfig("config.ini")
+
+##[
 ## Supported INI File structure
-## ----------------------------
-## The examples below are supported:
-##
+]##
 
 # taken from https://docs.python.org/3/library/configparser.html#supported-ini-file-structure
 runnableExamples:
@@ -564,7 +556,7 @@ proc replace(s: string): string =
 proc writeConfig*(dict: Config, stream: Stream) =
   ## Writes the contents of the table to the specified stream.
   ##
-  ## **Note:** Comment statement will be ignored.
+  ## .. note:: Comment statement will be ignored.
   for section, sectionData in dict.pairs():
     if section != "": ## Not general section
       if not allCharsInSet(section, SymChars): ## Non system character
@@ -604,7 +596,7 @@ proc writeConfig*(dict: Config, stream: Stream) =
 proc `$`*(dict: Config): string =
   ## Writes the contents of the table to string.
   ## 
-  ## **Note:** Comment statement will be ignored.
+  ## .. note:: Comment statement will be ignored.
   let stream = newStringStream()
   defer: stream.close()
   dict.writeConfig(stream)
@@ -613,7 +605,7 @@ proc `$`*(dict: Config): string =
 proc writeConfig*(dict: Config, filename: string) =
   ## Writes the contents of the table to the specified configuration file.
   ## 
-  ## **Note:** Comment statement will be ignored.
+  ## .. note:: Comment statement will be ignored.
   let file = open(filename, fmWrite)
   defer: file.close()
   let fileStream = newFileStream(file)
