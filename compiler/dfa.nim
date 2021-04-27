@@ -696,9 +696,10 @@ proc skipTrivials(c: var Con, n: PNode): PNode =
 proc genUse(c: var Con; orig: PNode) =
   let n = c.skipTrivials(orig)
 
-  if n.kind == nkSym and n.sym.kind in InterestingSyms:
-    c.code.add Instr(n: orig, kind: use)
-  elif n.kind in nkCallKinds:
+  if n.kind == nkSym:
+    if n.sym.kind in InterestingSyms:
+      c.code.add Instr(n: orig, kind: use)
+  else:
     gen(c, n)
 
 proc genDef(c: var Con; orig: PNode) =
