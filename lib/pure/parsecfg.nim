@@ -60,14 +60,22 @@ runnableExamples("-r:off"):
 ## Creating a configuration file
 ]##
 
-runnableExamples("-r:off"):
+runnableExamples:
   var dict = newConfig()
   dict.setSectionKey("","charset", "utf-8")
   dict.setSectionKey("Package", "name", "hello")
   dict.setSectionKey("Package", "--threads", "on")
   dict.setSectionKey("Author", "name", "nim-lang")
   dict.setSectionKey("Author", "website", "nim-lang.org")
-  dict.writeConfig("config.ini")
+  assert $dict == """
+charset=utf-8
+[Package]
+name=hello
+--threads:on
+[Author]
+name=nim-lang
+website=nim-lang.org
+"""
 
 ##[
 ## Reading a configuration file
