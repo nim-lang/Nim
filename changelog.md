@@ -345,7 +345,7 @@
 
 - Added `--spellSuggest` to show spelling suggestions on typos.
 
-- Added `--filenames:abs|canonical|magic` which replaces --listFullPaths:on|off
+- Added `--filenames:abs|canonical|legacyRelProj` which replaces --listFullPaths:on|off
 
 - Added `--processing:dots|filenames|off` which customizes `hintProcessing`
 
