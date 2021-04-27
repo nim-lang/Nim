@@ -19,37 +19,32 @@
 ##     :literal:
 ##
 ## Here is an example of how to use the configuration file parser:
-##
-## .. code-block:: nim
-##
-##    import std/[os, parsecfg, strutils, streams]
-##
-##    var f = newFileStream(paramStr(1), fmRead)
-##    if f != nil:
-##      var p: CfgParser
-##      open(p, f, paramStr(1))
-##      while true:
-##        var e = next(p)
-##        case e.kind
-##        of cfgEof: break
-##        of cfgSectionStart:   ## a `[section]` has been parsed
-##          echo("new section: " & e.section)
-##        of cfgKeyValuePair:
-##          echo("key-value-pair: " & e.key & ": " & e.value)
-##        of cfgOption:
-##          echo("command: " & e.key & ": " & e.value)
-##        of cfgError:
-##          echo(e.msg)
-##      close(p)
-##    else:
-##      echo("cannot open: " & paramStr(1))
-##
-##
-## Examples
-## ========
-##
+runnableExamples("-r:off"):
+  import std/[strutils, streams]
+
+  let configFile = "example.ini"
+  var f = newFileStream(configFile, fmRead)
+  assert f != nil, "cannot open " & configFile
+  var p: CfgParser
+  open(p, f, configFile)
+  while true:
+    var e = next(p)
+    case e.kind
+    of cfgEof: break
+    of cfgSectionStart:   ## a `[section]` has been parsed
+      echo "new section: " & e.section
+    of cfgKeyValuePair:
+      echo "key-value-pair: " & e.key & ": " & e.value
+    of cfgOption:
+      echo "command: " & e.key & ": " & e.value
+    of cfgError:
+      echo e.msg
+  close(p)
+
+##[
 ## Configuration file example
-## --------------------------
+]##
+
 ##
 ## .. code-block:: nim
 ##
@@ -58,60 +53,64 @@
 ##     name = "hello"
 ##     --threads:on
 ##     [Author]
-##     name = "lihf8515"
-##     qq = "10214028"
-##     email = "lihaifeng@wxm.com"
-##
+##     name = "nim-lang"
+##     website = "nim-lang.org"
+
+##[
 ## Creating a configuration file
-## -----------------------------
-## .. code-block:: nim
-##
-##     import std/parsecfg
-##     var dict=newConfig()
-##     dict.setSectionKey("","charset","utf-8")
-##     dict.setSectionKey("Package","name","hello")
-##     dict.setSectionKey("Package","--threads","on")
-##     dict.setSectionKey("Author","name","lihf8515")
-##     dict.setSectionKey("Author","qq","10214028")
-##     dict.setSectionKey("Author","email","lihaifeng@wxm.com")
-##     dict.writeConfig("config.ini")
-##
+]##
+
+runnableExamples:
+  var dict = newConfig()
+  dict.setSectionKey("","charset", "utf-8")
+  dict.setSectionKey("Package", "name", "hello")
+  dict.setSectionKey("Package", "--threads", "on")
+  dict.setSectionKey("Author", "name", "nim-lang")
+  dict.setSectionKey("Author", "website", "nim-lang.org")
+  assert $dict == """
+charset=utf-8
+[Package]
+name=hello
+--threads:on
+[Author]
+name=nim-lang
+website=nim-lang.org
+"""
+
+##[
 ## Reading a configuration file
-## ----------------------------
-## .. code-block:: nim
-##
-##     import std/parsecfg
-##     var dict = loadConfig("config.ini")
-##     var charset = dict.getSectionValue("","charset")
-##     var threads = dict.getSectionValue("Package","--threads")
-##     var pname = dict.getSectionValue("Package","name")
-##     var name = dict.getSectionValue("Author","name")
-##     var qq = dict.getSectionValue("Author","qq")
-##     var email = dict.getSectionValue("Author","email")
-##     echo pname & "\n" & name & "\n" & qq & "\n" & email
-##
+]##
+
+runnableExamples("-r:off"):
+  let dict = loadConfig("config.ini")
+  let charset = dict.getSectionValue("","charset")
+  let threads = dict.getSectionValue("Package","--threads")
+  let pname = dict.getSectionValue("Package","name")
+  let name = dict.getSectionValue("Author","name")
+  let website = dict.getSectionValue("Author","website")
+  echo pname & "\n" & name & "\n" & website
+
+##[
 ## Modifying a configuration file
-## ------------------------------
-## .. code-block:: nim
-##
-##     import std/parsecfg
-##     var dict = loadConfig("config.ini")
-##     dict.setSectionKey("Author","name","lhf")
-##     dict.writeConfig("config.ini")
-##
+]##
+
+runnableExamples("-r:off"):
+  var dict = loadConfig("config.ini")
+  dict.setSectionKey("Author", "name", "nim-lang")
+  dict.writeConfig("config.ini")
+
+##[
 ## Deleting a section key in a configuration file
-## ----------------------------------------------
-## .. code-block:: nim
-##
-##     import std/parsecfg
-##     var dict = loadConfig("config.ini")
-##     dict.delSectionKey("Author","email")
-##     dict.writeConfig("config.ini")
-## 
+]##
+
+runnableExamples("-r:off"):
+  var dict = loadConfig("config.ini")
+  dict.delSectionKey("Author", "website")
+  dict.writeConfig("config.ini")
+
+##[
 ## Supported INI File structure
-## ----------------------------
-## The examples below are supported:
-##
+]##
 
 # taken from https://docs.python.org/3/library/configparser.html#supported-ini-file-structure
 runnableExamples:
@@ -150,27 +149,27 @@ runnableExamples:
   )
 
   let section1 = "Simple Values"
-  doAssert dict.getSectionValue(section1, "key") == "value"
-  doAssert dict.getSectionValue(section1, "spaces in keys") == "allowed"
-  doAssert dict.getSectionValue(section1, "spaces in values") == "allowed as well"
-  doAssert dict.getSectionValue(section1, "spaces around the delimiter") == "obviously"
-  doAssert dict.getSectionValue(section1, "you can also use") == "to delimit keys from values"
+  assert dict.getSectionValue(section1, "key") == "value"
+  assert dict.getSectionValue(section1, "spaces in keys") == "allowed"
+  assert dict.getSectionValue(section1, "spaces in values") == "allowed as well"
+  assert dict.getSectionValue(section1, "spaces around the delimiter") == "obviously"
+  assert dict.getSectionValue(section1, "you can also use") == "to delimit keys from values"
 
   let section2 = "All Values Are Strings"
-  doAssert dict.getSectionValue(section2, "values like this") == "19990429"
-  doAssert dict.getSectionValue(section2, "or this") == "3.14159265359"
-  doAssert dict.getSectionValue(section2, "are they treated as numbers") == "no"
-  doAssert dict.getSectionValue(section2, "integers floats and booleans are held as") == "strings"
-  doAssert dict.getSectionValue(section2, "can use the API to get converted values directly") == "true"
+  assert dict.getSectionValue(section2, "values like this") == "19990429"
+  assert dict.getSectionValue(section2, "or this") == "3.14159265359"
+  assert dict.getSectionValue(section2, "are they treated as numbers") == "no"
+  assert dict.getSectionValue(section2, "integers floats and booleans are held as") == "strings"
+  assert dict.getSectionValue(section2, "can use the API to get converted values directly") == "true"
 
   let section3 = "Seletion A"
-  doAssert dict.getSectionValue(section3, 
+  assert dict.getSectionValue(section3, 
     "space around section name will be ignored", "not an empty value") == ""
 
   let section4 = "Sections Can Be Indented"
-  doAssert dict.getSectionValue(section4, "can_values_be_as_well") == "True"
-  doAssert dict.getSectionValue(section4, "does_that_mean_anything_special") == "False"
-  doAssert dict.getSectionValue(section4, "purpose") == "formatting for readability"
+  assert dict.getSectionValue(section4, "can_values_be_as_well") == "True"
+  assert dict.getSectionValue(section4, "does_that_mean_anything_special") == "False"
+  assert dict.getSectionValue(section4, "purpose") == "formatting for readability"
 
 import strutils, lexbase, streams, tables
 import std/private/decode_helpers
@@ -564,7 +563,7 @@ proc replace(s: string): string =
 proc writeConfig*(dict: Config, stream: Stream) =
   ## Writes the contents of the table to the specified stream.
   ##
-  ## **Note:** Comment statement will be ignored.
+  ## .. note:: Comment statement will be ignored.
   for section, sectionData in dict.pairs():
     if section != "": ## Not general section
       if not allCharsInSet(section, SymChars): ## Non system character
@@ -604,7 +603,7 @@ proc writeConfig*(dict: Config, stream: Stream) =
 proc `$`*(dict: Config): string =
   ## Writes the contents of the table to string.
   ## 
-  ## **Note:** Comment statement will be ignored.
+  ## .. note:: Comment statement will be ignored.
   let stream = newStringStream()
   defer: stream.close()
   dict.writeConfig(stream)
@@ -613,7 +612,7 @@ proc `$`*(dict: Config): string =
 proc writeConfig*(dict: Config, filename: string) =
   ## Writes the contents of the table to the specified configuration file.
   ## 
-  ## **Note:** Comment statement will be ignored.
+  ## .. note:: Comment statement will be ignored.
   let file = open(filename, fmWrite)
   defer: file.close()
   let fileStream = newFileStream(file)
