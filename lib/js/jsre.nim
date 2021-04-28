@@ -95,4 +95,4 @@ runnableExamples:
   jsregex.compile(r"[lw]", r"i")
   assert "hello world".replace(jsregex,"X") == "heXlo world"
   jsregex.compile(r"[lw]", r"g")
-  assert "hello world".replaceAll(jsregex,"X") == "heXXo XorXd"
+  assert "hello world".replaceAll(jsregex,"X") == "heXXo XorXd" 
