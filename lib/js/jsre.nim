@@ -67,7 +67,7 @@ func startsWith*(pattern: cstring; self: RegExp): bool =
   ## Tests if string starts with given RegExp
   runnableExamples:
     let jsregex: RegExp = newRegExp(r"abc", r"i")
-    assert "abcde".startsWith jsregex
+    assert "abcd".startsWith jsregex
   pattern.contains(newRegExp(("^" & $(self.source)).cstring))
 
 func endsWith*(pattern: cstring; self: RegExp): bool =
@@ -87,3 +87,7 @@ runnableExamples:
   jsregex.compile(r"[0-9]", r"i")
   assert "0123456789abcd".contains jsregex
   assert $jsregex == "/[0-9]/i"
+  jsregex.compile(r"abc", r"i")
+  assert "abcd".startsWith jsregex
+  assert "dabc".endsWith jsregex
+  
