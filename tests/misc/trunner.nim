@@ -71,6 +71,7 @@ ret=[s1:foobar s2:foobar age:25 pi:3.14]
 
 else: # don't run twice the same test
   import std/strutils
+  import std/json
   template check2(msg) = doAssert msg in output, output
 
   block: # tests with various options `nim doc --project --index --docroot`
@@ -237,7 +238,7 @@ tests/newconfig/bar/mfoo.nims""".splitLines
     var expected = ""
     for a in files:
       let b = dir / a
-      expected.add &"Hint: used config file '{b}' [Conf]\31\n"
+      expected.add &"Hint: used config file '{b}' [Conf]\n"
     doAssert outp.endsWith expected, outp & "\n" & expected
 
   block: # mfoo2.customext
@@ -245,7 +246,7 @@ tests/newconfig/bar/mfoo.nims""".splitLines
     let cmd = fmt"{nim} e --hint:conf {filename}"
     let (outp, exitCode) = execCmdEx(cmd, options = {poStdErrToStdOut})
     doAssert exitCode == 0
-    var expected = &"Hint: used config file '{filename}' [Conf]\31\n"
+    var expected = &"Hint: used config file '{filename}' [Conf]\n"
     doAssert outp.endsWith "123" & "\n" & expected
 
 
@@ -317,3 +318,13 @@ compiling: v3
 running: v3
 running: v2
 """, ret
+
+  block: # nim dump
+    let cmd = fmt"{nim} dump --dump.format:json -d:D20210428T161003 --hints:off ."
+    let (ret, status) = execCmdEx(cmd)
+    doAssert status == 0
+    let j = ret.parseJson
+    # sanity checks
+    doAssert "D20210428T161003" in j["defined_symbols"].to(seq[string])
+    doAssert j["version"].to(string) == NimVersion
+    doAssert j["nimExe"].to(string) == getCurrentCompilerExe()

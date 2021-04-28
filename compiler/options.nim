@@ -44,7 +44,7 @@ type                          # please make sure we have under 32 options
     optImportHidden
 
   TOptions* = set[TOption]
-  TGlobalOption* = enum       # **keep binary compatible**
+  TGlobalOption* = enum
     gloptNone, optForceFullMake,
     optWasNimscript,          # redundant with `cmdNimscript`, could be removed
     optListCmd, optCompileOnly, optNoLinking,
@@ -66,6 +66,7 @@ type                          # please make sure we have under 32 options
     optUseColors,             # use colors for hints, warnings, and errors
     optThreads,               # support for multi-threading
     optStdout,                # output to stdout
+    optMsgSep,                # use message separator for IDEs
     optThreadAnalysis,        # thread analysis pass
     optTlsEmulation,          # thread var emulation turned on
     optGenIndex               # generate index file for documentation;

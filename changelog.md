@@ -378,6 +378,9 @@
 
 - `--hint:CC` now goes to stderr (like all other hints) instead of stdout.
 
+- Added `--msgSep:on|off` to add ASCII unit separator before a newline for every end of any kind of message,
+  so tooling can tell when messages start and end.
+
 - json build instructions are now generated in `$nimcache/outFileBasename.json`
   instead of `$nimcache/projectName.json`. This allows avoiding recompiling a given project
   compiled with different options if the output file differs.

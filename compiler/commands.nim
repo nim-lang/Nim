@@ -894,6 +894,8 @@ proc processSwitch*(switch, arg: string, pass: TCmdLinePass, info: TLineInfo;
     trackIde(conf, ideDus, arg, info)
   of "stdout":
     processOnOffSwitchG(conf, {optStdout}, arg, pass, info)
+  of "msgsep":
+    processOnOffSwitchG(conf, {optMsgSep}, arg, pass, info)
   of "filenames":
     case arg.normalize
     of "abs": conf.filenameOption = foAbs
