@@ -17,10 +17,9 @@ for i in 0..1024:
   s.add(obj)
 
 proc limit*[t](a: var seq[t]) =
-  var loop = s.len() - 512
   while s.len > 0:
     if getOccupiedMem() > 3000_000: quit("still a leak!")
-    s.delete(high(s))
+    s.delete(0)
 
 s.limit()
 echo "no leak: ", getOccupiedMem()
