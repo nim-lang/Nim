@@ -63,17 +63,6 @@ func contains*(pattern: cstring; self: RegExp): bool =
     assert "xabc".contains jsregex
   asm "`result` = `self`.test(`pattern`);"
 
-
-runnableExamples:
-  let jsregex: RegExp = newRegExp(r"\s+", r"i")
-  jsregex.compile(r"\w+", r"i")
-  assert "nim javascript".contains jsregex
-  assert jsregex.exec(r"nim javascript") == @["nim".cstring]
-  assert jsregex.toCstring() == r"/\w+/i"
-  jsregex.compile(r"[0-9]", r"i")
-  assert "0123456789abcd".contains jsregex
-  assert $jsregex == "/[0-9]/i"
-
 func startsWith*(pattern: cstring; self: RegExp): bool =
   ## Tests if string starts with given RegExp
   runnableExamples:
@@ -87,3 +76,14 @@ func endsWith*(pattern: cstring; self: RegExp): bool =
     let jsregex: RegExp = newRegExp(r"bcd", r"i")
     assert "abcd".endsWith jsregex
   pattern.contains(newRegExp(($(self.source) & "$").cstring))
+
+
+runnableExamples:
+  let jsregex: RegExp = newRegExp(r"\s+", r"i")
+  jsregex.compile(r"\w+", r"i")
+  assert "nim javascript".contains jsregex
+  assert jsregex.exec(r"nim javascript") == @["nim".cstring]
+  assert jsregex.toCstring() == r"/\w+/i"
+  jsregex.compile(r"[0-9]", r"i")
+  assert "0123456789abcd".contains jsregex
+  assert $jsregex == "/[0-9]/i"
