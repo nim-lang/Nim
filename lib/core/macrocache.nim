@@ -46,11 +46,11 @@ runnableExamples:
 
 type
   CacheSeq* = distinct string
-    ## Compile-time sequence of `NimNode`\s.
+    ## Compile-time sequence of `NimNode`s.
   CacheTable* = distinct string
     ## Compile-time table of key-value pairs.
     ##
-    ## Keys are `string`\s and values are `NimNode`\s.
+    ## Keys are `string`s and values are `NimNode`s.
   CacheCounter* = distinct string
     ## Compile-time counter, uses `int` for storing the count.
 

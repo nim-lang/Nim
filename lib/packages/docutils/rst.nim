@@ -11,9 +11,9 @@
 ##                rst
 ## ==================================
 ##
-## ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-## Nim-flavored reStructuredText
-## ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+## ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+## Nim-flavored reStructuredText and Markdown
+## ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 ##
 ## This module implements a `reStructuredText`:idx: (RST) parser.
 ## A large subset is implemented with some limitations_ and
@@ -177,6 +177,8 @@ type
     roSupportRawDirective,    ## support the ``raw`` directive (don't support
                               ## it for sandboxing)
     roSupportMarkdown,        ## support additional features of Markdown
+    roPreferMarkdown,         ## parse as Markdown (keeping RST as "extension"
+                              ## to Markdown) -- implies `roSupportMarkdown`
     roNimFile                 ## set for Nim files where default interpreted
                               ## text role should be :nim:
 
@@ -1007,6 +1009,9 @@ proc isInlineMarkupEnd(p: RstParser, markup: string, exact: bool): bool =
   if not result: return
   # Rule 7:
   result = nextTok(p).kind in {tkIndent, tkWhite, tkEof} or
+      (roPreferMarkdown in p.s.options and
+        markup in ["``", "`"] and
+        nextTok(p).kind in {tkIndent, tkWhite, tkWord, tkEof}) or
       nextTok(p).symbol[0] in
       {'\'', '\"', ')', ']', '}', '>', '-', '/', '\\', ':', '.', ',', ';', '!', '?', '_'}
   if not result: return

@@ -31,7 +31,7 @@
 ## - intercept
 ## - correlation
 ##
-## Procs are provided to calculate statistics on `openArray`\s.
+## Procs are provided to calculate statistics on `openArray`s.
 ##
 ## However, if more than a single statistical calculation is required, it is more
 ## efficient to push the data once to a `RunningStat` object and then
@@ -157,7 +157,7 @@ proc kurtosisS*(s: RunningStat): float =
               (toFloat(s.n+1)*kurtosis(s) + 6)
 
 proc `+`*(a, b: RunningStat): RunningStat =
-  ## Combines two `RunningStat`\s.
+  ## Combines two `RunningStat`s.
   ##
   ## Useful when performing parallel analysis of data series
   ## and needing to re-combine parallel result sets.
