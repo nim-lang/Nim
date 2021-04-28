@@ -3,7 +3,7 @@
 import strutils, os, sequtils
 
 const
-  dir = "nimpretty/tests/"
+  dir = "nimpretty/tests"
   outputdir = dir / "outputdir"
 
 var
