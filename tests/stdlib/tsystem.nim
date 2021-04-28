@@ -27,7 +27,7 @@ template main =
     block: # bug #6710
       var s = @["foo"]
       s.delete(0)
-      doAssert newSeq[string]() == s
+      doAssert s == @[]
   
     block: # bug #16544: deleting out of bounds index should raise
       var s = @["foo"]
