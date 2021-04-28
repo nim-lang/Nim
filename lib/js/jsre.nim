@@ -93,6 +93,6 @@ runnableExamples:
   jsregex.compile(r"\d", r"i")
   assert "do1ne".split(jsregex) == @["do".cstring, "ne".cstring]
   jsregex.compile(r"[lw]", r"i")
-  assert "hello world".replace(jsregex),"X" == "heXlo world"
+  assert "hello world".replace(jsregex,"X") == "heXlo world"
   jsregex.compile(r"[lw]", r"g")
-  assert "hello world".replaceAll(jsregex),"X" == "heXXo XorXd"
+  assert "hello world".replaceAll(jsregex,"X") == "heXXo XorXd"
