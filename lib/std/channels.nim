@@ -101,13 +101,14 @@ type
   ChannelObj = object
     headLock, tailLock: Lock
     notFullCond, notEmptyCond: Cond
-    closed: Atomic[bool]
     size: int
     itemsize: int # up to itemsize bytes can be exchanged over this channel
-    head {.align: cacheLineSize.} : int     # Items are taken from head and new items are inserted at tail
-    tail: int
     buffer: ptr UncheckedArray[byte]
     atomicCounter: Atomic[int]
+    closed: Atomic[bool]
+    head {.align: cacheLineSize.} : int     # Items are taken from head and new items are inserted at tail
+    pad: array[cacheLineSize-sizeof(int), byte] # Separate by at-least a cache line
+    tail: int
 
   ChannelCache = ptr ChannelCacheObj
   ChannelCacheObj = object
