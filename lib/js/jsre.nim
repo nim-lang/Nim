@@ -90,4 +90,5 @@ runnableExamples:
   jsregex.compile(r"abc", r"i")
   assert "abcd".startsWith jsregex
   assert "dabc".endsWith jsregex
-  
+  jsregex.compile(r"\d", r"i")
+  assert "do1ne".split(jsregex) == @["do".cstring, "ne".cstring]
