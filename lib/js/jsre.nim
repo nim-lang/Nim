@@ -68,14 +68,14 @@ func startsWith*(pattern: cstring; self: RegExp): bool =
   runnableExamples:
     let jsregex: RegExp = newRegExp(r"abc", r"i")
     assert "abcd".startsWith jsregex
-  pattern.contains(newRegExp(("^" & $(self.source)).cstring))
+  pattern.contains(newRegExp(("^" & $(self.source)).cstring, self.flags))
 
 func endsWith*(pattern: cstring; self: RegExp): bool =
   ## Tests if string ends with given RegExp
   runnableExamples:
     let jsregex: RegExp = newRegExp(r"bcd", r"i")
     assert "abcd".endsWith jsregex
-  pattern.contains(newRegExp(($(self.source) & "$").cstring))
+  pattern.contains(newRegExp(($(self.source) & "$").cstring, self.flags))
 
 
 runnableExamples:
