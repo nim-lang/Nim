@@ -54,6 +54,14 @@ func test*(self: RegExp; pattern: cstring): bool {.importjs: "#.test(#)", deprec
 
 func toString*(self: RegExp): cstring {.importjs: "#.toString()", deprecated: "Use toCstring instead".}
 
+func startsWith*(pattern: cstring; self: RegExp): bool =
+  ## Tests if string starts with given RegExp
+  newRegExp("^" + self.source).test(pattern)
+
+func endsWith*(pattern: cstring; self: RegExp): bool =
+  ## Tests if string ends with given RegExp
+  newRegExp(self.source + "$").test(pattern)
+
 func contains*(pattern: cstring; self: RegExp): bool =
   ## Tests for a substring match in its string parameter.
   runnableExamples:
