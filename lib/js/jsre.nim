@@ -36,7 +36,7 @@ func replace*(pattern: cstring; self: RegExp; replacement: cstring): cstring {.i
 func replaceAll*(pattern: cstring; self: RegExp; replacement: cstring): cstring {.importjs: "#.replaceAll(#,#)".}
   ## Returns a new string with all matches of a pattern replaced by given replacement
 
-func split*(pattern: cstring; self: RegExp; sep: cstring): seq[cstring] {.importjs: "#.split(#,#)".}
+func split*(pattern: cstring; self: RegExp): seq[cstring] {.importjs: "#.split(#)".}
   ## Divides a string into an ordered list of substrings and returns the array
 
 func match*(pattern: cstring; self: RegExp): seq[cstring] {.importjs: "#.match(#)".}
