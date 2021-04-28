@@ -10,14 +10,15 @@ template main =
     block:
       var s = @[1]
       s.delete(0)
+      doAssert s == @[]
 
     block:
       var s = @["foo", "bar"]
       s.delete(1)
-      doAssert @["foo"] == s
+      doAssert s == @["foo"]
   
     block:
-      var s = newSeq[string]()
+      var s: seq[string]
       doAssertRaises(IndexDefect):
         s.delete(0)
 
