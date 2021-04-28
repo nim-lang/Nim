@@ -19,9 +19,6 @@
 
 ##[
 # Basic usage
-]##
-
-##[
 ## Encoding data
 ]##
 
