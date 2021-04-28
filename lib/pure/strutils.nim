@@ -2812,7 +2812,7 @@ func strip*(s: string, leading = true, trailing = true,
   result = substr(s, first, last)
 
 func stripLineEnd*(s: var string) =
-  ## Returns `s` stripped from one of these suffixes:
+  ## Strips one of these suffixes from `s` in-place:
   ## `\r, \n, \r\n, \f, \v` (at most once instance).
   ## For example, can be useful in conjunction with `osproc.execCmdEx`.
   ## aka: `chomp`:idx:
