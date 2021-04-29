@@ -1846,6 +1846,10 @@ proc `$`*(address: IpAddress): string =
 
           printedLastGroup = true
 
+var fdPerDomain: array[low(Domain).ord..high(Domain).ord, SocketHandle]
+for i in low(fdPerDomain)..high(fdPerDomain):
+  fdPerDomain[i] = osInvalidSocket
+
 proc dial*(address: string, port: Port,
            protocol = IPPROTO_TCP, buffered = true): owned(Socket)
            {.tags: [ReadIOEffect, WriteIOEffect].} =
@@ -1858,9 +1862,6 @@ proc dial*(address: string, port: Port,
 
   let aiList = getAddrInfo(address, port, AF_UNSPEC, sockType, protocol)
 
-  var fdPerDomain: array[low(Domain).ord..high(Domain).ord, SocketHandle]
-  for i in low(fdPerDomain)..high(fdPerDomain):
-    fdPerDomain[i] = osInvalidSocket
   template closeUnusedFds(domainToKeep = -1) {.dirty.} =
     for i, fd in fdPerDomain:
       if fd != osInvalidSocket and i != domainToKeep:
