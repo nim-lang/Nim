@@ -42,8 +42,10 @@ else:
   ): File {.importc: "fdopen",header: "<stdio.h>".}
 
 
-proc safeOpen(filename: string): File =
+proc safeOpen(filename: string, mode: Mode): File =
   ## Open files exclusively.
+  # xxx this should be clarified; it doesn't in particular prevent other processes
+  # from opening the file, at least currently.
   when defined(windows):
     let dwShareMode = FILE_SHARE_DELETE or FILE_SHARE_READ or FILE_SHARE_WRITE
     let dwCreation = CREATE_NEW
@@ -65,8 +67,7 @@ proc safeOpen(filename: string): File =
       raiseOSError(osLastError(), filename)
   else:
     let flags = posix.O_RDWR or posix.O_CREAT or posix.O_EXCL
-
-    let fileHandle = posix.open(filename, flags)
+    let fileHandle = posix.open(filename, flags, mode)
     if fileHandle == -1:
       raiseOSError(osLastError(), filename)
 
@@ -93,17 +94,21 @@ proc createTempFile*(prefix, suffix: string, dir = ""): tuple[fd: File, path: st
   ## If failing to create a temporary file, `IOError` will be raised.
   ##
   ## .. note:: It is the caller's responsibility to remove the file when no longer needed.
-  ##
   var dir = dir
   if dir.len == 0:
     dir = getTempDir()
 
   createDir(dir)
 
+  # xxx we need a `proc toMode(a: FilePermission): Mode`, possibly by
+  # exposing fusion/filepermissions.fromFilePermissions to stdlib; then we need
+  # to add a `perm` param so users can customize this (e.g. the temp file may
+  # need execute permissions).
+  let mode = Mode(S_IRUSR or S_IWUSR)
   for i in 0 ..< maxRetry:
     result.path = dir / (prefix & randomPathName(nimTempPathLength) & suffix)
     try:
-      result.fd = safeOpen(result.path)
+      result.fd = safeOpen(result.path, mode)
     except OSError:
       continue
     return
