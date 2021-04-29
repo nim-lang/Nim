@@ -138,7 +138,7 @@ proc createTempDir*(prefix, suffix: string, dir = ""): string =
   let dir = getTempDirImpl(dir)
   createDir(dir)
   for i in 0 ..< maxRetry:
-    result.path = genTempPath(prefix, suffix, dir)
+    result = genTempPath(prefix, suffix, dir)
     try:
       if not existsOrCreateDir(result):
         return
