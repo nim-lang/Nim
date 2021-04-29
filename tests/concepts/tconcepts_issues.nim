@@ -19,7 +19,7 @@ true
 true
 true
 true
-p has been called.
+p has been called. PRTEMP FAKE VAL to show effect of diffStrings
 p has been called.
 implicit generic
 generic

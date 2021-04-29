@@ -1,6 +1,7 @@
 discard """
   output: '''
-Error: cannot open 'a.nim'\31
+Error: cannot open 'a.nim'
+PRTEMP FAKE
 Error: cannot open 'b.nim'\31
 '''
   targets: "c"
