@@ -42,7 +42,7 @@ else:
   ): File {.importc: "fdopen",header: "<stdio.h>".}
 
 
-proc safeOpen(filename: string, mode: Mode): File =
+proc safeOpen(filename: string): File =
   ## Open files exclusively.
   # xxx this should be clarified; it doesn't in particular prevent other processes
   # from opening the file, at least currently.
@@ -66,6 +66,11 @@ proc safeOpen(filename: string, mode: Mode): File =
       discard close_osfandle(fileHandle)
       raiseOSError(osLastError(), filename)
   else:
+    # xxx we need a `proc toMode(a: FilePermission): Mode`, possibly by
+    # exposing fusion/filepermissions.fromFilePermissions to stdlib; then we need
+    # to expose a `perm` param so users can customize this (e.g. the temp file may
+    # need execute permissions), and figure out how to make the API cross platform.
+    let mode = Mode(S_IRUSR or S_IWUSR)
     let flags = posix.O_RDWR or posix.O_CREAT or posix.O_EXCL
     let fileHandle = posix.open(filename, flags, mode)
     if fileHandle == -1:
@@ -100,15 +105,10 @@ proc createTempFile*(prefix, suffix: string, dir = ""): tuple[fd: File, path: st
 
   createDir(dir)
 
-  # xxx we need a `proc toMode(a: FilePermission): Mode`, possibly by
-  # exposing fusion/filepermissions.fromFilePermissions to stdlib; then we need
-  # to add a `perm` param so users can customize this (e.g. the temp file may
-  # need execute permissions).
-  let mode = Mode(S_IRUSR or S_IWUSR)
   for i in 0 ..< maxRetry:
     result.path = dir / (prefix & randomPathName(nimTempPathLength) & suffix)
     try:
-      result.fd = safeOpen(result.path, mode)
+      result.fd = safeOpen(result.path)
     except OSError:
       continue
     return
