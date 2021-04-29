@@ -90,7 +90,7 @@ template randomPathName(length: Natural): string =
     res[i] = state.sample(letters)
   res
 
-proc getTempDirImpl(dir: string): string =
+proc getTempDirImpl(dir: string): string {.inline.} =
   result = dir
   if result.len == 0:
     result = getTempDir()
