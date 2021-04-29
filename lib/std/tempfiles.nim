@@ -116,7 +116,7 @@ proc createTempFile*(prefix, suffix: string, dir = ""): tuple[fd: File, path: st
   createDir(dir)
 
   for i in 0 ..< maxRetry:
-    result.path = createTempPath(prefix, suffix, dir)
+    result.path = genTempPath(prefix, suffix, dir)
     try:
       result.fd = safeOpen(result.path)
     except OSError:

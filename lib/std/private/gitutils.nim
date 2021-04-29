@@ -45,17 +45,20 @@ proc diffStrings*(a, b: string): string =
     let b = "ok1\nok2 alt\nok3"
     let c = diffStrings(a, b)
     echo c
+    let c2 = diffStrings(a, a)
+    echo c2
 
   template tmpFileImpl(prefix, str): auto =
     # pending https://github.com/nim-lang/Nim/pull/17889
     # let (fd, path) = createTempFile(prefix, "")
     let path = genTempPath(prefix, "")
-    defer:
-      removeFile(path)
     writeFile(path, str)
-    (fd, path)
-  let (fda, patha) = tmpFileImpl("diffStrings_a", a)
-  let (fdb, pathb) = tmpFileImpl("diffStrings_b", b)
+    path
+  let patha = tmpFileImpl("diffStrings_a_", a)
+  let pathb = tmpFileImpl("diffStrings_b_", b)
+  defer:
+    removeFile(patha)
+    removeFile(pathb)
   # could be customized, e.g. non-git diff with `diff -uNdr`, or with git diff options.
   var status = 0
   (result, status) = execCmdEx("git diff --no-index $1 $2" % [patha.quoteShell, pathb.quoteShell])
