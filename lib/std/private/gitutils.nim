@@ -39,14 +39,27 @@ proc isGitRepo*(dir: string): bool =
   # remove trailing whitespaces from the result.
   result = status == 0 and output.strip() == ""
 
-proc diffStrings*(a, b: string): string =
+proc diffFiles*(path1, path2: string): tuple[output: string, same: bool] =
+  # could be customized, e.g. non-git diff with `diff -uNdr`, or with git diff options (e.g. --color-moved, --word-diff).
+  # in general, git diff has more options.
+  var status = 0
+  (result.output, status) = execCmdEx("git diff --no-index $1 $2" % [path1.quoteShell, path2.quoteShell])
+  doAssert (status == 0) or (status == 1)
+  result.same = status == 0
+
+proc diffStrings*(a, b: string): tuple[output: string, same: bool] =
   runnableExamples:
-    let a = "ok1\nok2\nok3"
-    let b = "ok1\nok2 alt\nok3"
-    let c = diffStrings(a, b)
-    echo c
-    let c2 = diffStrings(a, a)
-    echo c2
+    let a = "ok1\nok2\nok3\n"
+    let b = "ok1\nok2 alt\nok3\nok4\n"
+    let (c, same) = diffStrings(a, b)
+    doAssert not same
+    let (c2, same2) = diffStrings(a, a)
+    doAssert same2
+
+  runnableExamples("-r:off"):
+    let a = "ok1\nok2\nok3\n"
+    let b = "ok1\nok2 alt\nok3\nok4\n"
+    echo diffStrings(a, b).output
 
   template tmpFileImpl(prefix, str): auto =
     # pending https://github.com/nim-lang/Nim/pull/17889
@@ -59,7 +72,4 @@ proc diffStrings*(a, b: string): string =
   defer:
     removeFile(patha)
     removeFile(pathb)
-  # could be customized, e.g. non-git diff with `diff -uNdr`, or with git diff options.
-  var status = 0
-  (result, status) = execCmdEx("git diff --no-index $1 $2" % [patha.quoteShell, pathb.quoteShell])
-  echo status
+  result = diffFiles(patha, pathb)
