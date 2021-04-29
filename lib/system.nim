@@ -55,35 +55,62 @@ type
 include "system/basic_types"
 
 
+proc runnableExamples*(rdoccmd = "", body: untyped) {.magic: "RunnableExamples".}
+  ## A section you should use to mark `runnable example`:idx: code with.
+  ##
+  ## - In normal debug and release builds code within
+  ##   a `runnableExamples` section is ignored.
+  ## - The documentation generator is aware of these examples and considers them
+  ##   part of the `##` doc comment. As the last step of documentation
+  ##   generation each runnableExample is put in its own file `$file_examples$i.nim`,
+  ##   compiled and tested. The collected examples are
+  ##   put into their own module to ensure the examples do not refer to
+  ##   non-exported symbols.
+  ##
+  ## Usage:
+  ##
+  ## .. code-block:: Nim
+  ##   proc double*(x: int): int =
+  ##     ## This proc doubles a number.
+  ##     runnableExamples:
+  ##       ## at module scope
+  ##       assert double(5) == 10
+  ##       block: ## at block scope
+  ##         defer: echo "done"
+  ##     result = 2 * x
+  ##     runnableExamples "-d:foo -b:cpp":
+  ##       import std/compilesettings
+  ##       doAssert querySetting(backend) == "cpp"
+  ##     runnableExamples "-r:off": ## this one is only compiled
+  ##        import std/browsers
+  ##        openDefaultBrowser "https://forum.nim-lang.org/"
+
 proc compileOption*(option: string): bool {.
-  magic: "CompileOption", noSideEffect.}
+  magic: "CompileOption", noSideEffect.} =
   ## Can be used to determine an `on|off` compile-time option.
   ##
   ## See also:
   ## * `compileOption <#compileOption,string,string>`_ for enum options
   ## * `defined <#defined,untyped>`_
   ## * `std/compilesettings module <compilesettings.html>`_
-  ##
-  ## Example:
-  ##
-  ## .. code-block:: Nim
-  ##   when compileOption("floatchecks"):
-  ##     echo "compiled with floating point NaN and Inf checks"
+  runnableExamples("--floatChecks:off"):
+    static: doAssert not compileOption("floatchecks")
+    {.push floatChecks: on.}
+    static: doAssert compileOption("floatchecks")
+    # floating point NaN and Inf checks enabled in this scope
+    {.pop.}
 
 proc compileOption*(option, arg: string): bool {.
-  magic: "CompileOptionArg", noSideEffect.}
+  magic: "CompileOptionArg", noSideEffect.} =
   ## Can be used to determine an enum compile-time option.
   ##
   ## See also:
   ## * `compileOption <#compileOption,string>`_ for `on|off` options
   ## * `defined <#defined,untyped>`_
   ## * `std/compilesettings module <compilesettings.html>`_
-  ##
-  ## Example:
-  ##
-  ## .. code-block:: Nim
-  ##   when compileOption("opt", "size") and compileOption("gc", "boehm"):
-  ##     echo "compiled with optimization for size and uses Boehm's GC"
+  runnableExamples:
+    when compileOption("opt", "size") and compileOption("gc", "boehm"):
+      discard "compiled with optimization for size and uses Boehm's GC"
 
 {.push warning[GcMem]: off, warning[Uninit]: off.}
 {.push hints: off.}
@@ -138,36 +165,6 @@ else:
   type
     OrdinalImpl[T] {.magic: Ordinal.}
     Ordinal* = OrdinalImpl | uint | uint64
-
-proc runnableExamples*(rdoccmd = "", body: untyped) {.magic: "RunnableExamples".}
-  ## A section you should use to mark `runnable example`:idx: code with.
-  ##
-  ## - In normal debug and release builds code within
-  ##   a `runnableExamples` section is ignored.
-  ## - The documentation generator is aware of these examples and considers them
-  ##   part of the `##` doc comment. As the last step of documentation
-  ##   generation each runnableExample is put in its own file `$file_examples$i.nim`,
-  ##   compiled and tested. The collected examples are
-  ##   put into their own module to ensure the examples do not refer to
-  ##   non-exported symbols.
-  ##
-  ## Usage:
-  ##
-  ## .. code-block:: Nim
-  ##   proc double*(x: int): int =
-  ##     ## This proc doubles a number.
-  ##     runnableExamples:
-  ##       ## at module scope
-  ##       assert double(5) == 10
-  ##       block: ## at block scope
-  ##         defer: echo "done"
-  ##     result = 2 * x
-  ##     runnableExamples "-d:foo -b:cpp":
-  ##       import std/compilesettings
-  ##       doAssert querySetting(backend) == "cpp"
-  ##     runnableExamples "-r:off": ## this one is only compiled
-  ##        import std/browsers
-  ##        openDefaultBrowser "https://forum.nim-lang.org/"
 
 when defined(nimHasDeclaredMagic):
   proc declared*(x: untyped): bool {.magic: "Declared", noSideEffect, compileTime.}
