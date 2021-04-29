@@ -64,7 +64,8 @@ type
     warnFileChanged = "FileChanged",
     warnUser = "User",
 
-    hintSuccess = "Success", hintSuccessX = "SuccessX", hintCC = "CC",
+    hintSuccess = "Success", hintSuccessX = "SuccessX", hintBuildMode = "BuildMode",
+    hintCC = "CC",
     hintLineTooLong = "LineTooLong", hintXDeclaredButNotUsed = "XDeclaredButNotUsed",
     hintXCannotRaiseY = "XCannotRaiseY", hintConvToBaseNotNeeded = "ConvToBaseNotNeeded",
     hintConvFromXtoItselfNotNeeded = "ConvFromXtoItselfNotNeeded", hintExprAlwaysX = "ExprAlwaysX",
@@ -142,7 +143,8 @@ const
     warnUser: "$1",
     hintSuccess: "operation successful: $#",
     # keep in sync with `testament.isSuccess`
-    hintSuccessX: "${loc} lines; ${sec}s; $mem; $build build; proj: $project; out: $output",
+    hintSuccessX: "$loc lines; ${sec}s; $mem; proj: $project; out: $output",
+    hintBuildMode: "$1",
     hintCC: "CC: $1",
     hintLineTooLong: "line too long",
     hintXDeclaredButNotUsed: "'$1' is declared but not used",
@@ -196,7 +198,7 @@ proc computeNotesVerbosity(): array[0..3, TNoteKinds] =
   result[1] = result[2] - {warnProveField, warnProveIndex,
     warnGcUnsafe, hintPath, hintDependency, hintCodeBegin, hintCodeEnd,
     hintSource, hintGlobalVar, hintGCStats, hintMsgOrigin}
-  result[0] = result[1] - {hintSuccessX, hintSuccess, hintConf,
+  result[0] = result[1] - {hintSuccessX, hintBuildMode, hintSuccess, hintConf,
     hintProcessing, hintPattern, hintExecuting, hintLinking, hintCC}
 
 const

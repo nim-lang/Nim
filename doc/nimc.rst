@@ -102,6 +102,7 @@ Source                           The source line that triggered a diagnostic
                                  message.
 StackTrace
 Success, SuccessX                Successful compilation of a library or a binary.
+BuildMode                        Kind of build: debug, release, danger
 User
 UserRaw
 XDeclaredButNotUsed              Unused symbols in the code.
