@@ -291,6 +291,7 @@ proc `??`* (conf: ConfigRef; info: TLineInfo, filename: string): bool =
 
 const
   UnitSep = "\31"
+    # this needs care to avoid issues similar to https://github.com/nim-lang/Nim/issues/17853
 
 type
   MsgFlag* = enum  ## flags altering msgWriteln behavior

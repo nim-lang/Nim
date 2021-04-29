@@ -44,7 +44,7 @@ type                          # please make sure we have under 32 options
     optImportHidden
 
   TOptions* = set[TOption]
-  TGlobalOption* = enum       # **keep binary compatible**
+  TGlobalOption* = enum
     gloptNone, optForceFullMake,
     optWasNimscript,          # redundant with `cmdNimscript`, could be removed
     optListCmd, optCompileOnly, optNoLinking,
