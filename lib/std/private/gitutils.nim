@@ -39,7 +39,6 @@ proc isGitRepo*(dir: string): bool =
   # remove trailing whitespaces from the result.
   result = status == 0 and output.strip() == ""
 
-
 proc diffStrings*(a, b: string): string =
   runnableExamples:
     let a = "ok1\nok2\nok3"
@@ -48,10 +47,10 @@ proc diffStrings*(a, b: string): string =
     echo c
 
   template tmpFileImpl(prefix, str): auto =
-    # pending 
-    let (fd, path) = createTempFile(prefix, "")
+    # pending https://github.com/nim-lang/Nim/pull/17889
+    # let (fd, path) = createTempFile(prefix, "")
+    let path = genTempPath(prefix, "")
     defer:
-      close fd
       removeFile(path)
     writeFile(path, str)
     (fd, path)

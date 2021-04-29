@@ -90,13 +90,21 @@ template randomPathName(length: Natural): string =
     res[i] = state.sample(letters)
   res
 
+proc genTempPath*(prefix, suffix: string, dir = ""): string =
+  ## Generates a path name in `dir`.
+  ##
+  ## If `dir` is empty, (`getTempDir <os.html#getTempDir>`_) will be used.
+  ## The path begins with `prefix` and ends with `suffix`.
+  var dir = dir
+  if dir.len == 0:
+    dir = getTempDir()
+  result = dir / (prefix & randomPathName(nimTempPathLength) & suffix)
+
 proc createTempFile*(prefix, suffix: string, dir = ""): tuple[fd: File, path: string] =
-  ## `createTempFile` creates a new temporary file in the directory `dir`.
+  ## Creates a new temporary file in the directory `dir`.
   ## 
-  ## If `dir` is the empty string, the default directory for temporary files
-  ## (`getTempDir <os.html#getTempDir>`_) will be used.
-  ## The temporary file name begins with `prefix` and ends with `suffix`.
-  ## `createTempFile` returns a file handle to an open file and the path of that file.
+  ## This generates a path name using `genTempPath(prefix, suffix, dir)` and
+  ## returns a file handle to an open file and the path of that file.
   ## 
   ## If failing to create a temporary file, `IOError` will be raised.
   ##
@@ -108,7 +116,7 @@ proc createTempFile*(prefix, suffix: string, dir = ""): tuple[fd: File, path: st
   createDir(dir)
 
   for i in 0 ..< maxRetry:
-    result.path = dir / (prefix & randomPathName(nimTempPathLength) & suffix)
+    result.path = createTempPath(prefix, suffix, dir)
     try:
       result.fd = safeOpen(result.path)
     except OSError:
