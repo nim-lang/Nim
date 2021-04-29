@@ -256,8 +256,8 @@ proc semRangeAux(c: PContext, n: PNode, prev: PType): PType =
     else:
       result.n.add semConstExpr(c, range[i])
 
-  if (result.n[0].kind in {nkFloatLit..nkFloat64Lit} and classify(result.n[0].floatVal) == fcNan) or
-      (result.n[1].kind in {nkFloatLit..nkFloat64Lit} and classify(result.n[1].floatVal) == fcNan):
+  if (result.n[0].kind in {nkFloatLit..nkFloat64Lit} and result.n[0].floatVal.isNaN) or
+      (result.n[1].kind in {nkFloatLit..nkFloat64Lit} and result.n[1].floatVal.isNaN):
     localError(c.config, n.info, "NaN is not a valid start or end for a range")
 
   if weakLeValue(result.n[0], result.n[1]) == impNo:
