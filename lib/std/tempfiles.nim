@@ -8,6 +8,8 @@
 #
 
 ## This module creates temporary files and directories.
+##
+## Experimental API, subject to change.
 
 import os, random
 
