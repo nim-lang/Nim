@@ -184,7 +184,7 @@ proc dlsym*(a1: pointer, a2: cstring): pointer {.importc, header: "<dlfcn.h>", s
 proc creat*(a1: cstring, a2: Mode): cint {.importc, header: "<fcntl.h>", sideEffect.}
 proc fcntl*(a1: cint | SocketHandle, a2: cint): cint {.varargs, importc, header: "<fcntl.h>", sideEffect.}
 proc openImpl(a1: cstring, a2: cint): cint {.varargs, importc: "open", header: "<fcntl.h>", sideEffect.}
-proc open*(a1: cstring, a2: cint, mode = 0.Mode): cint {.inline.} =
+proc open*(a1: cstring, a2: cint, mode: Mode | cint = 0.Mode): cint {.inline.} =
   # prevents bug #17888
   openImpl(a1, a2, mode)
 
