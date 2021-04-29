@@ -259,8 +259,6 @@ tests/newconfig/bar/mfoo.nims""".splitLines
       var expected = expectedArr[i]
       var exitCode = exitCodeArr[i]
       check execCmdEx(cmd) == (expected, exitCode)
-    let cmd = fmt"{nim} --hints:off --eval:'echo 123'"
-    check execCmdEx(cmd) == ("123\n", 0)
 
   block: # nim --eval
     let opt = "--hints:off"
