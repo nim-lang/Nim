@@ -255,10 +255,10 @@ proc loadConfigs*(cfg: RelativeFile; cache: IdentCache; conf: ConfigRef; idgen: 
       if conf.projectIsStdin: s = stdin.llStreamOpen
       elif conf.projectIsCmd: s = llStreamOpen(conf.cmdInput)
     if not fileExists(conf.projectFull):
-      # ex) pass --eval, existing Nimscript
-      if conf.cmd == cmdNimscript: discard
-      # ex) nim foo main.noextension
-      elif conf.cmd == cmdUnknown: rawMessage(conf, errGenerated, conf.projectFull.string() & " not found")
+      if conf.cmd == cmdUnknown: # e.g. nim foo main.badext
+        rawMessage(conf, errGenerated, conf.projectFull.string & " not found")
+      else: # e.g. nim --eval:code
+        discard
     if s == nil and fileExists(p): s = llStreamOpen(p, fmRead)
     if s != nil:
       configFiles.add(p)
