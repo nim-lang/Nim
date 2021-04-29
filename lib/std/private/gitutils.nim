@@ -62,8 +62,6 @@ proc diffStrings*(a, b: string): tuple[output: string, same: bool] =
     echo diffStrings(a, b).output
 
   template tmpFileImpl(prefix, str): auto =
-    # pending https://github.com/nim-lang/Nim/pull/17889
-    # let (fd, path) = createTempFile(prefix, "")
     let path = genTempPath(prefix, "")
     writeFile(path, str)
     path
