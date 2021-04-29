@@ -59,8 +59,7 @@ type
     entered: int
     cv: Semaphore # Semaphore takes 3 words at least
     left {.align(CacheLineSize).}: int
-    pad: array[CacheLineSize-sizeof(int), byte]
-    interest: bool # whether the master is interested in the "all done" event
+    interest {.align(CacheLineSize).} : bool # whether the master is interested in the "all done" event
 
 proc barrierEnter(b: ptr Barrier) {.compilerproc, inline.} =
   # due to the signaling between threads, it is ensured we are the only
