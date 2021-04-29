@@ -90,14 +90,17 @@ template randomPathName(length: Natural): string =
     res[i] = state.sample(letters)
   res
 
+proc getTempDirImpl(dir: string): string =
+  result = dir
+  if result.len == 0:
+    result = getTempDir()
+
 proc genTempPath*(prefix, suffix: string, dir = ""): string =
   ## Generates a path name in `dir`.
   ##
   ## If `dir` is empty, (`getTempDir <os.html#getTempDir>`_) will be used.
   ## The path begins with `prefix` and ends with `suffix`.
-  var dir = dir
-  if dir.len == 0:
-    dir = getTempDir()
+  let dir = getTempDirImpl(dir)
   result = dir / (prefix & randomPathName(nimTempPathLength) & suffix)
 
 proc createTempFile*(prefix, suffix: string, dir = ""): tuple[fd: File, path: string] =
@@ -110,12 +113,8 @@ proc createTempFile*(prefix, suffix: string, dir = ""): tuple[fd: File, path: st
   ## If failing to create a temporary file, `IOError` will be raised.
   ##
   ## .. note:: It is the caller's responsibility to remove the file when no longer needed.
-  var dir = dir
-  if dir.len == 0:
-    dir = getTempDir()
-
+  let dir = getTempDirImpl(dir)
   createDir(dir)
-
   for i in 0 ..< maxRetry:
     result.path = genTempPath(prefix, suffix, dir)
     try:
@@ -136,13 +135,8 @@ proc createTempDir*(prefix, suffix: string, dir = ""): string =
   ## If failing to create a temporary directory, `IOError` will be raised.
   ##
   ## .. note:: It is the caller's responsibility to remove the directory when no longer needed.
-  ##
-  var dir = dir
-  if dir.len == 0:
-    dir = getTempDir()
-
+  let dir = getTempDirImpl(dir)
   createDir(dir)
-
   for i in 0 ..< maxRetry:
     result.path = genTempPath(prefix, suffix, dir)
     try:
