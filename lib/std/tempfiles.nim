@@ -8,6 +8,8 @@
 #
 
 ## This module creates temporary files and directories.
+##
+## Experimental API, subject to change.
 
 import os, random
 
@@ -44,6 +46,8 @@ else:
 
 proc safeOpen(filename: string): File =
   ## Open files exclusively.
+  # xxx this should be clarified; it doesn't in particular prevent other processes
+  # from opening the file, at least currently.
   when defined(windows):
     let dwShareMode = FILE_SHARE_DELETE or FILE_SHARE_READ or FILE_SHARE_WRITE
     let dwCreation = CREATE_NEW
@@ -64,9 +68,13 @@ proc safeOpen(filename: string): File =
       discard close_osfandle(fileHandle)
       raiseOSError(osLastError(), filename)
   else:
+    # xxx we need a `proc toMode(a: FilePermission): Mode`, possibly by
+    # exposing fusion/filepermissions.fromFilePermissions to stdlib; then we need
+    # to expose a `perm` param so users can customize this (e.g. the temp file may
+    # need execute permissions), and figure out how to make the API cross platform.
+    let mode = Mode(S_IRUSR or S_IWUSR)
     let flags = posix.O_RDWR or posix.O_CREAT or posix.O_EXCL
-
-    let fileHandle = posix.open(filename, flags)
+    let fileHandle = posix.open(filename, flags, mode)
     if fileHandle == -1:
       raiseOSError(osLastError(), filename)
 
@@ -93,7 +101,6 @@ proc createTempFile*(prefix, suffix: string, dir = ""): tuple[fd: File, path: st
   ## If failing to create a temporary file, `IOError` will be raised.
   ##
   ## .. note:: It is the caller's responsibility to remove the file when no longer needed.
-  ##
   var dir = dir
   if dir.len == 0:
     dir = getTempDir()
