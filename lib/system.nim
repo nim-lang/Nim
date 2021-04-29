@@ -55,7 +55,7 @@ type
 include "system/basic_types"
 
 
-proc runnableExamples*(rdoccmd = "", body: untyped) {.magic: "RunnableExamples".}
+proc runnableExamples*(rdoccmd = "", body: untyped) {.magic: "RunnableExamples".} =
   ## A section you should use to mark `runnable example`:idx: code with.
   ##
   ## - In normal debug and release builds code within
@@ -66,24 +66,23 @@ proc runnableExamples*(rdoccmd = "", body: untyped) {.magic: "RunnableExamples".
   ##   compiled and tested. The collected examples are
   ##   put into their own module to ensure the examples do not refer to
   ##   non-exported symbols.
-  ##
-  ## Usage:
-  ##
-  ## .. code-block:: Nim
-  ##   proc double*(x: int): int =
-  ##     ## This proc doubles a number.
-  ##     runnableExamples:
-  ##       ## at module scope
-  ##       assert double(5) == 10
-  ##       block: ## at block scope
-  ##         defer: echo "done"
-  ##     result = 2 * x
-  ##     runnableExamples "-d:foo -b:cpp":
-  ##       import std/compilesettings
-  ##       doAssert querySetting(backend) == "cpp"
-  ##     runnableExamples "-r:off": ## this one is only compiled
-  ##        import std/browsers
-  ##        openDefaultBrowser "https://forum.nim-lang.org/"
+  runnableExamples:
+    proc timesTwo*(x: int): int =
+      ## This proc doubles a number.
+      runnableExamples:
+        # at module scope
+        const exported* = 123
+        assert timesTwo(5) == 10
+        block: # at block scope
+          defer: echo "done"
+      runnableExamples "-d:foo -b:cpp":
+        import std/compilesettings
+        assert querySetting(backend) == "cpp"
+        assert defined(foo)
+      runnableExamples "-r:off": ## this one is only compiled
+         import std/browsers
+         openDefaultBrowser "https://forum.nim-lang.org/"
+      2 * x
 
 proc compileOption*(option: string): bool {.
   magic: "CompileOption", noSideEffect.} =
