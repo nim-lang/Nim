@@ -60,6 +60,10 @@
 
 - Removed `.travis.yml`, `appveyor.yml.disabled`, `.github/workflows/ci.yml.disabled`.
 
+- Nim compiler now adds ASCII unit separator `\31` before a newline for every generated
+  message (potentially multiline), so tooling can tell when messages start and end.
+
+
 ## Standard library additions and changes
 - Added support for parenthesized expressions in `strformat`
 
@@ -377,9 +381,6 @@
 - Added `unsafeIsolate` and `extract` to `std/isolation`.
 
 - `--hint:CC` now goes to stderr (like all other hints) instead of stdout.
-
-- Added `--msgSep:on|off` to add ASCII unit separator before a newline for every end of any kind of message,
-  so tooling can tell when messages start and end.
 
 - json build instructions are now generated in `$nimcache/outFileBasename.json`
   instead of `$nimcache/projectName.json`. This allows avoiding recompiling a given project

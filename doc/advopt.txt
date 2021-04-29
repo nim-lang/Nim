@@ -35,8 +35,6 @@ Advanced options:
   --usenimcache             will use `outdir=$$nimcache`, whichever it resolves
                             to after all options have been processed
   --stdout:on|off           output to stdout
-  --msgSep:on|off           insert ASCII unit separator `\31` after each
-                            compiler message for IDE support.
   --colors:on|off           turn compiler messages coloring on|off
   --filenames:abs|canonical|legacyRelProj
                             customize how filenames are rendered in compiler messages,

@@ -349,7 +349,8 @@ proc mainCommand*(graph: ModuleGraph) =
         (key: "warnings", val: warnings),
       ]
 
-      msgWriteln(conf, $dumpdata, {msgStdout, msgSkipHook})
+      msgWriteln(conf, $dumpdata, {msgStdout, msgSkipHook, msgNoUnitSep})
+        # `msgNoUnitSep` to avoid generating invalid json, refs bug #17853
     else:
       msgWriteln(conf, "-- list of currently defined symbols --",
                  {msgStdout, msgSkipHook, msgNoUnitSep})
