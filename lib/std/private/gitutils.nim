@@ -4,7 +4,7 @@ internal API for now, API subject to change
 
 # xxx move other git utilities here; candidate for stdlib.
 
-import std/[os, osproc, strutils]
+import std/[os, osproc, strutils, tempfiles]
 
 const commitHead* = "HEAD"
 
@@ -38,3 +38,26 @@ proc isGitRepo*(dir: string): bool =
   # usually a series of ../), so we know that it's safe to unconditionally
   # remove trailing whitespaces from the result.
   result = status == 0 and output.strip() == ""
+
+
+proc diffStrings*(a, b: string): string =
+  runnableExamples:
+    let a = "ok1\nok2\nok3"
+    let b = "ok1\nok2 alt\nok3"
+    let c = diffStrings(a, b)
+    echo c
+
+  template tmpFileImpl(prefix, str): auto =
+    # pending 
+    let (fd, path) = createTempFile(prefix, "")
+    defer:
+      close fd
+      removeFile(path)
+    writeFile(path, str)
+    (fd, path)
+  let (fda, patha) = tmpFileImpl("diffStrings_a", a)
+  let (fdb, pathb) = tmpFileImpl("diffStrings_b", b)
+  # could be customized, e.g. non-git diff with `diff -uNdr`, or with git diff options.
+  var status = 0
+  (result, status) = execCmdEx("git diff --no-index $1 $2" % [patha.quoteShell, pathb.quoteShell])
+  echo status
