@@ -11,7 +11,7 @@ echo_run(){
   "$@"
 }
 
-[ -d csources ] || echo_run git clone -q --depth 1 https://github.com/nim-lang/csources.git
+[ -d csources ] || echo_run git clone -q --depth 1 https://github.com/nim-lang/csources_v1.git csources
 
 nim_csources=bin/nim_csources
 
