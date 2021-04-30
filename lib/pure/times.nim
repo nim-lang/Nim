@@ -880,6 +880,11 @@ since((1, 1)):
   export fromUnixFloat
   export toUnixFloat
 
+
+when defined(windows): # TODO to replace
+  proc getSystemTimePreciseAsFileTime(lpSystemTimeAsFileTime: var FILETIME) {.
+    importc: "GetSystemTimePreciseAsFileTime", dynlib: "kernel32", stdcall, sideEffect.}
+
 proc fromWinTime*(win: int64): Time =
   ## Convert a Windows file time (100-nanosecond intervals since
   ## `1601-01-01T00:00:00Z`) to a `Time`.
@@ -912,7 +917,7 @@ proc getTime*(): Time {.tags: [TimeEffect], benign.} =
     result = initTime(ts.tv_sec.int64, ts.tv_nsec.int)
   elif defined(windows):
     var f {.noinit.}: FILETIME
-    getSystemTimeAsFileTime(f)
+    getSystemTimePreciseAsFileTime(f)
     result = fromWinTime(rdFileTime(f))
 
 proc `-`*(a, b: Time): Duration {.operator, extern: "ntDiffTime".} =
@@ -2595,7 +2600,7 @@ proc epochTime*(): float {.tags: [TimeEffect].} =
       toBiggestFloat(ts.tv_nsec.int64) / 1_000_000_000
   elif defined(windows):
     var f {.noinit.}: winlean.FILETIME
-    getSystemTimeAsFileTime(f)
+    getSystemTimePreciseAsFileTime(f)
     var i64 = rdFileTime(f) - epochDiff
     var secs = i64 div rateDiff
     var subsecs = i64 mod rateDiff

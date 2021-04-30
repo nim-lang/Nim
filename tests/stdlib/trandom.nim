@@ -164,3 +164,15 @@ block: # random sample
       let stdDev = sqrt(n * p * (1.0 - p))
       # NOTE: like unnormalized int CDF test, P(wholeTestFails) =~ 0.01.
       doAssert abs(float(histo[values[i]]) - expected) <= 3.0 * stdDev
+
+
+when not defined(js):
+  block: # bug #17898
+    var unique: HashSet[Rand]
+
+    let size = 10
+
+    for i in 0 ..< size:
+      unique.incl initRand()
+
+    doAssert unique.len == size
