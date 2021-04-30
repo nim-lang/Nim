@@ -252,7 +252,7 @@ proc write*(f: File, s: string) {.tags: [WriteIOEffect], benign.} =
       raiseEIO("cannot write string to file")
 {.pop.}
 
-when NoFakeVars:
+when defined(nimscript):
   when defined(windows):
     const
       IOFBF = cint(0)

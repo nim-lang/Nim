@@ -146,7 +146,7 @@ proc closureIterSetupExc(e: ref Exception) {.compilerproc, inline.} =
 
 # some platforms have native support for stack traces:
 const
-  nativeStackTraceSupported* = (defined(macosx) or defined(linux)) and
+  nativeStackTraceSupported = (defined(macosx) or defined(linux)) and
                               not NimStackTrace
   hasSomeStackTrace = NimStackTrace or defined(nimStackTraceOverride) or
     (defined(nativeStackTrace) and nativeStackTraceSupported)
