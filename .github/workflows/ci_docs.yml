@@ -70,12 +70,24 @@ jobs:
         shell: bash
         run: echo "${{ github.workspace }}/bin" >> "${GITHUB_PATH}"
 
-      - name: 'Build csourcesAny'
+      - name: 'Build csourcesAny (posix)'
+        # this would work on windows and other CI use this on windows,
+        # but we ensure here that build_all.bat keeps working on windows.
+        if: runner.os != 'Windows'
         shell: bash
         run: . ci/funs.sh && nimBuildCsourcesIfNeeded CC=gcc
           # was previously using caching via `actions/cache@v1` but this wasn't
           # used in other CI pipelines and it's unclear the added complexity
           # was worth the saving; can be revisited if needed.
+
+      - name: 'Build csourcesAny (windows)'
+        if: runner.os == 'Windows'
+        shell: cmd
+        # can this be passed? `CC=gcc`
+        # we could also either pass an argument (or env variable) to skip
+        # building koch + tools, or not build those in this CI to avoid redoing this work.
+        run: |
+          build_all.bat
 
       - name: 'Build koch'
         shell: bash
