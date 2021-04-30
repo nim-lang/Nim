@@ -22,7 +22,7 @@ addons:
     - valgrind
 
 before_script:
-  - git clone --depth 1 https://github.com/nim-lang/csources.git
+  - git clone --depth 1 https://github.com/nim-lang/csources_v1.git csources
   - export PATH="$PWD/bin${PATH:+:$PATH}"
   - make -C csources -j 2 LD=$CC ucpu=$CPU
 
