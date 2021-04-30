@@ -83,10 +83,8 @@ jobs:
       - name: 'Build csourcesAny (windows)'
         if: runner.os == 'Windows'
         shell: cmd
-        # can this be passed? `CC=gcc`
-        # we could also either pass an argument (or env variable) to skip
-        # building koch + tools, or not build those in this CI to avoid redoing this work.
         run: |
+          SET nim_build_all_only_csources=1
           build_all.bat
 
       - name: 'Build koch'

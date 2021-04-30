@@ -16,14 +16,19 @@ if not exist %nim_csourcesDir% (
 if not exist %nim_csources% (
   cd %nim_csourcesDir%
   git checkout %nim_csourcesHash%
-  git heckout $nim_csourcesHash
   if PROCESSOR_ARCHITECTURE == AMD64 (
     SET ARCH=64
   )
   CALL build.bat
   cd ..
+  cp bin\nim.exe  %nim_csources%
 )
 
-bin\nim.exe c --skipUserCfg --skipParentCfg --hints:off koch
-koch.exe boot -d:release --skipUserCfg --skipParentCfg --hints:off
-koch.exe tools --skipUserCfg --skipParentCfg --hints:off
+if "%nim_build_all_only_csources%"=="" (
+  echo "skipping building koch and tools"
+) else (
+  echo "building koch and tools"
+  bin\nim.exe c --skipUserCfg --skipParentCfg --hints:off koch
+  koch.exe boot -d:release --skipUserCfg --skipParentCfg --hints:off
+  koch.exe tools --skipUserCfg --skipParentCfg --hints:off
+)
