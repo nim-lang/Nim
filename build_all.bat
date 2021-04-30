@@ -21,7 +21,7 @@ if not exist %nim_csources% (
   )
   CALL build.bat
   cd ..
-  cp bin\nim.exe  %nim_csources%
+  copy /y bin\nim.exe  %nim_csources%
 )
 
 if "%nim_build_all_only_csources%"=="1" (
