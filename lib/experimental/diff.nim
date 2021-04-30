@@ -10,27 +10,30 @@
 ## This module implements an algorithm to compute the
 ## `diff`:idx: between two sequences of lines.
 ##
-## A basic example of `diffInt` on 2 arrays of integers:
-##
-## .. code:: Nim
-##
-##   import experimental/diff
-##   echo diffInt([0, 1, 2, 3, 4, 5, 6, 7, 8], [-1, 1, 2, 3, 4, 5, 666, 7, 42])
-##
-## Another short example of `diffText` to diff strings:
-##
-## .. code:: Nim
-##
-##   import experimental/diff
-##   # 2 samples of text for testing (from "The Call of Cthulhu" by Lovecraft)
-##   let txt0 = """I have looked upon all the universe has to hold of horror,
-##   even skies of spring and flowers of summer must ever be poison to me."""
-##   let txt1 = """I have looked upon all your code has to hold of bugs,
-##   even skies of spring and flowers of summer must ever be poison to me."""
-##
-##   echo diffText(txt0, txt1)
-##
 ## - To learn more see `Diff on Wikipedia. <http://wikipedia.org/wiki/Diff>`_
+
+runnableExamples:
+  assert diffInt(
+    [0, 1, 2, 3, 4, 5, 6, 7, 8],
+    [-1, 1, 2, 3, 4, 5, 666, 7, 42]) ==
+    @[Item(startA: 0, startB: 0, deletedA: 1, insertedB: 1),
+      Item(startA: 6, startB: 6, deletedA: 1, insertedB: 1),
+      Item(startA: 8, startB: 8, deletedA: 1, insertedB: 1)]
+
+runnableExamples:
+  # 2 samples of text (from "The Call of Cthulhu" by Lovecraft)
+  let txt0 = """
+abc
+def ghi
+jkl2"""
+  let txt1 = """
+bacx
+abc
+def ghi
+jkl"""
+  assert diffText(txt0, txt1) ==
+    @[Item(startA: 0, startB: 0, deletedA: 0, insertedB: 1),
+      Item(startA: 2, startB: 3, deletedA: 1, insertedB: 1)]
 
 # code owner: Arne Döring
 #
@@ -309,7 +312,7 @@ proc diffText*(textA, textB: string): seq[Item] =
   ## `textB` B-version of the text (usually the new one)
   ##
   ## Returns a seq of Items that describe the differences.
-
+  # See also `gitutils.diffStrings`.
   # prepare the input-text and convert to comparable numbers.
   var h = initTable[string, int]()  # TextA.len + TextB.len  <- probably wrong initial size
   # The A-Version of the data (original data) to be compared.
