@@ -90,6 +90,7 @@ nimBuildCsourcesIfNeeded(){
         # via `git clone -q --depth 1 --branch $tag $nim_csourcesUrl`.
         echo_run git clone -q --depth 1 $nim_csourcesUrl "$nim_csourcesDir"
         echo_run git -C "$nim_csourcesDir" checkout $nim_csourcesHash
+        # if needed we could also add: `git reset --hard $nim_csourcesHash`
       fi
       _nimBuildCsourcesIfNeeded "$@"
     fi
