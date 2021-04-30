@@ -26,7 +26,7 @@ tasks:
     set -e
     cd Nim
     if ! ./koch runCI; then
-      nim r tools/ci_testresults.nim
+      nim c -r tools/ci_testresults.nim
       exit 1
     fi
 triggers:
