@@ -257,13 +257,6 @@ when not defined(nimLegacyNoHashRef):
     # or `proc hash*[T: ref | ptr](x: T): Hash`
     hash(cast[pointer](x))
 
-proc hash*[T: proc](x: T): Hash {.inline.} =
-  ## Efficient hashing of proc vars. Closures are supported too.
-  when T is "closure":
-    result = hash((rawProc(x), rawEnv(x)))
-  else:
-    result = hash(pointer(x))
-
 proc hash*(x: float): Hash {.inline.} =
   ## Efficient hashing of floats.
   let y = x + 0.0 # for denormalization
@@ -516,10 +509,10 @@ proc hashIgnoreCase*(sBuf: string, sPos, ePos: int): Hash =
     h = h !& ord(c)
   result = !$h
 
-proc hash*[T: tuple | object](x: T): Hash =
+proc hash*[T: tuple | object | proc](x: T): Hash {.inline.} =
   ## Efficient `hash` overload.
-  ## `hash` must be defined for each component of `x`.
   runnableExamples:
+    ## `hash` must be defined for each component of `x`.
     type Obj = object
       x: int
       y: string
@@ -530,9 +523,23 @@ proc hash*[T: tuple | object](x: T): Hash =
     # you can define custom hashes for objects (even if they're generic):
     proc hash(a: Obj2): Hash = hash((a.x))
     assert hash(Obj2[float](x: 520, y: "Nim")) == hash(Obj2[float](x: 520, y: "Nim2"))
-  for f in fields(x):
-    result = result !& hash(f)
-  result = !$result
+  runnableExamples:
+    proc fn1() = discard
+    var a = 0
+    proc fn2() = a.inc
+    assert hash(fn1) != hash(fn2)
+    const fn1b = fn1
+    assert hash(fn1b) == hash(fn1)
+    let fn2b = fn2
+    assert hash(fn2b) == hash(fn2)
+  when T is "closure":
+    result = hash((rawProc(x), rawEnv(x)))
+  elif T is (proc):
+    result = hash(pointer(x))
+  else:
+    for f in fields(x):
+      result = result !& hash(f)
+    result = !$result
 
 proc hash*[A](x: openArray[A]): Hash =
   ## Efficient hashing of arrays and sequences.
