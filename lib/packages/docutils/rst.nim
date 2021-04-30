@@ -2250,11 +2250,10 @@ proc parseEnumList(p: var RstParser): PRstNode =
         let n = p.line + p.tok[j].line
         let msg = "\n" & """
           not enough indentation on line $2
-              (should be at column $3 if it's a continuation of enum. list),
+            (should be at column $3 if it's a continuation of enum. list),
           or no blank line after line $1 (if it should be the next paragraph),
           or no escaping \ at the beginning of line $1
-              (if lines $1..$2 are a normal paragraph, not enum. list)""".
-          unindent(8)
+            (if lines $1..$2 are a normal paragraph, not enum. list)""".dedent
         let c = p.col + requiredIndent + ColRstOffset
         rstMessage(p, mwRstStyle, msg % [$(n-1), $n, $c],
                    p.tok[j].line, p.tok[j].col)
