@@ -52,6 +52,7 @@ triggers:
 """
 
 proc main()=
+  let dir = ".builds"
   # not too large to be resource friendly, refs bug #17107
   let num = 2
     # if you reduce this, make sure to remove files that shouldn't be generated,
@@ -60,6 +61,9 @@ proc main()=
     let file = fmt".builds/openbsd_{i}.yml"
     let code = genCIopenbsd(i, num)
     writeFile(file, code)
+  let file = fmt".builds/freebsd.yml"
+  let code = genCIopenbsd(i, num)
+  writeFile(file, code)
 
 when isMainModule:
   main()
