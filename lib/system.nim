@@ -1472,7 +1472,7 @@ type # these work for most platforms:
   PInt32* = ptr int32        ## An alias for `ptr int32`.
 
 proc toFloat*(i: int): float {.noSideEffect, inline.} =
-  ## Converts an integer `i` into a `float`.
+  ## Converts an integer `i` into a `float`. Same as `float(i)`.
   ##
   ## If the conversion fails, `ValueError` is raised.
   ## However, on most platforms the conversion cannot fail.
@@ -1494,7 +1494,8 @@ proc toInt*(f: float): int {.noSideEffect.} =
   ##
   ## Conversion rounds `f` half away from 0, see
   ## `Round half away from zero
-  ## <https://en.wikipedia.org/wiki/Rounding#Round_half_away_from_zero>`_.
+  ## <https://en.wikipedia.org/wiki/Rounding#Round_half_away_from_zero>`_,
+  ## as opposed to a type conversion which rounds towards zero.
   ##
   ## Note that some floating point numbers (e.g. infinity or even 1e19)
   ## cannot be accurately converted.
