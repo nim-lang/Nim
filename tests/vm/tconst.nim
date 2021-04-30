@@ -4,33 +4,32 @@ discard """
 
 import std/strutils
 
-const
-  HelpText = """
-+-----------------------------------------------------------------+
-|         Maintenance program for Nim                             |
-|             Version $1|
-|             (c) 2012 Andreas Rumpf                              |
-+-----------------------------------------------------------------+
-Compiled at: $2, $3
+template forceConst(a: untyped): untyped =
+  ## Force evaluation at CT, but `static(a)` is simpler
+  const ret = a
+  ret
 
-Usage:
-  koch [options] command [options for command]
-Options:
-  --force, -f, -B, -b      forces rebuild
-  --help, -h               shows this help and quits
-Possible Commands:
-  boot [options]           bootstraps with given command line options
-  clean                    cleans Nim project; removes generated files
-  web                      generates the website
-  csource [options]        builds the C sources for installation
-  zip                      builds the installation ZIP package
-  inno                     builds the Inno Setup installer
-""" % [NimVersion & spaces(44-len(NimVersion)),
-       CompileDate, CompileTime] # xxx this could be simplified  for this test
+proc isNimVm(): bool =
+  when nimvm: result = true
+  else: result = false
+
+block:
+  doAssert forceConst(isNimVm())
+  doAssert not isNimVm()
+  doAssert forceConst(isNimVm()) == static(isNimVm())
+  doAssert forceConst(isNimVm()) == isNimVm().static
 
 template main() =
+  # xxx merge more const related tests here
   block:
-    let a = $HelpText
-    doAssert a.len == 929
+    const
+      a = """
+    Version $1|
+    Compiled at: $2, $3
+    """ % [NimVersion & spaces(44-len(NimVersion)), CompileDate, CompileTime]
+    let b = $a
+    doAssert CompileTime in b
+    doAssert NimVersion in b
+
 static: main()
 main()
