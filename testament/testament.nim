@@ -17,6 +17,7 @@ from std/sugar import dup
 import compiler/nodejs
 import lib/stdtest/testutils
 from lib/stdtest/specialpaths import splitTestFile
+from std/private/gitutils import diffStrings
 
 proc trimUnitSep(x: var string) =
   let L = x.len
@@ -307,7 +308,7 @@ proc addResult(r: var TResults, test: TTest, target: TTarget,
       maybeStyledEcho styleBright, expected, "\n"
       maybeStyledEcho fgYellow, "Gotten:"
       maybeStyledEcho styleBright, given, "\n"
-
+      echo diffStrings(expected, given).output
 
   if backendLogging and (isAppVeyor or isAzure):
     let (outcome, msg) =

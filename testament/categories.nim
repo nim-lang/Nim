@@ -665,8 +665,8 @@ proc runJoinedTest(r: var TResults, cat: Category, testsDir: string, options: st
 
   if buf != outputExpected:
     writeFile(outputExceptedFile, outputExpected)
-    discard execShellCmd("diff -uNdr $1 $2" % [outputExceptedFile, outputGottenFile])
-    echo failString & "megatest output different!"
+    echo diffFiles(outputGottenFile, outputExceptedFile).output
+    echo failString & "megatest output different, see $1 vs $2" % [outputGottenFile, outputExceptedFile]
     # outputGottenFile, outputExceptedFile not removed on purpose for debugging.
     quit 1
   else:

@@ -90,25 +90,33 @@ template randomPathName(length: Natural): string =
     res[i] = state.sample(letters)
   res
 
+proc getTempDirImpl(dir: string): string {.inline.} =
+  result = dir
+  if result.len == 0:
+    result = getTempDir()
+
+proc genTempPath*(prefix, suffix: string, dir = ""): string =
+  ## Generates a path name in `dir`.
+  ##
+  ## If `dir` is empty, (`getTempDir <os.html#getTempDir>`_) will be used.
+  ## The path begins with `prefix` and ends with `suffix`.
+  let dir = getTempDirImpl(dir)
+  result = dir / (prefix & randomPathName(nimTempPathLength) & suffix)
+
 proc createTempFile*(prefix, suffix: string, dir = ""): tuple[fd: File, path: string] =
-  ## `createTempFile` creates a new temporary file in the directory `dir`.
+  ## Creates a new temporary file in the directory `dir`.
   ## 
-  ## If `dir` is the empty string, the default directory for temporary files
-  ## (`getTempDir <os.html#getTempDir>`_) will be used.
-  ## The temporary file name begins with `prefix` and ends with `suffix`.
-  ## `createTempFile` returns a file handle to an open file and the path of that file.
+  ## This generates a path name using `genTempPath(prefix, suffix, dir)` and
+  ## returns a file handle to an open file and the path of that file, possibly after
+  ## retrying to ensure it doesn't already exist.
   ## 
   ## If failing to create a temporary file, `IOError` will be raised.
   ##
   ## .. note:: It is the caller's responsibility to remove the file when no longer needed.
-  var dir = dir
-  if dir.len == 0:
-    dir = getTempDir()
-
+  let dir = getTempDirImpl(dir)
   createDir(dir)
-
   for i in 0 ..< maxRetry:
-    result.path = dir / (prefix & randomPathName(nimTempPathLength) & suffix)
+    result.path = genTempPath(prefix, suffix, dir)
     try:
       result.fd = safeOpen(result.path)
     except OSError:
@@ -118,25 +126,19 @@ proc createTempFile*(prefix, suffix: string, dir = ""): tuple[fd: File, path: st
   raise newException(IOError, "Failed to create a temporary file under directory " & dir)
 
 proc createTempDir*(prefix, suffix: string, dir = ""): string =
-  ## `createTempDir` creates a new temporary directory in the directory `dir`.
+  ## Creates a new temporary directory in the directory `dir`.
   ##
-  ## If `dir` is the empty string, the default directory for temporary files
-  ## (`getTempDir <os.html#getTempDir>`_) will be used.
-  ## The temporary directory name begins with `prefix` and ends with `suffix`.
-  ## `createTempDir` returns the path of that temporary firectory.
+  ## This generates a dir name using `genTempPath(prefix, suffix, dir)`, creates
+  ## the directory and returns it, possibly after retrying to ensure it doesn't
+  ## already exist.
   ##
   ## If failing to create a temporary directory, `IOError` will be raised.
   ##
   ## .. note:: It is the caller's responsibility to remove the directory when no longer needed.
-  ##
-  var dir = dir
-  if dir.len == 0:
-    dir = getTempDir()
-
+  let dir = getTempDirImpl(dir)
   createDir(dir)
-
   for i in 0 ..< maxRetry:
-    result = dir / (prefix & randomPathName(nimTempPathLength) & suffix)
+    result = genTempPath(prefix, suffix, dir)
     try:
       if not existsOrCreateDir(result):
         return
