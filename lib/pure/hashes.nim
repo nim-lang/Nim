@@ -512,7 +512,7 @@ proc hashIgnoreCase*(sBuf: string, sPos, ePos: int): Hash =
 proc hash*[T: tuple | object | proc](x: T): Hash {.inline.} =
   ## Efficient `hash` overload.
   runnableExamples:
-    ## `hash` must be defined for each component of `x`.
+    # for `tuple|object`, `hash` must be defined for each component of `x`.
     type Obj = object
       x: int
       y: string
@@ -524,6 +524,7 @@ proc hash*[T: tuple | object | proc](x: T): Hash {.inline.} =
     proc hash(a: Obj2): Hash = hash((a.x))
     assert hash(Obj2[float](x: 520, y: "Nim")) == hash(Obj2[float](x: 520, y: "Nim2"))
   runnableExamples:
+    # proc and closure examples
     proc fn1() = discard
     var a = 0
     proc fn2() = a.inc
