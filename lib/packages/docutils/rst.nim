@@ -1224,8 +1224,9 @@ proc parseUrl(p: var RstParser): PRstNode =
   while lastIdx >= p.idx and p.tok[lastIdx].kind == tkPunct and
       p.tok[lastIdx].symbol != "/":
     dec lastIdx
-  for i in p.idx .. lastIdx:
-    result.add newLeaf(p.tok[i].symbol)
+  var s = ""
+  for i in p.idx .. lastIdx: s.add p.tok[i].symbol
+  result.add s
   p.idx = lastIdx + 1
 
 proc parseWordOrRef(p: var RstParser, father: PRstNode) =

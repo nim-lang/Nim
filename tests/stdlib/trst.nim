@@ -439,12 +439,7 @@ suite "RST inline markup":
           rnLeaf  ' '
           rnLeaf  '('
           rnStandaloneHyperlink
-            rnLeaf  'http'
-            rnLeaf  ':'
-            rnLeaf  '//'
-            rnLeaf  'no'
-            rnLeaf  '.'
-            rnLeaf  'org'
+            rnLeaf  'http://no.org'
           rnLeaf  ')'
           rnLeaf  ']'
           rnLeaf  ','
@@ -461,13 +456,7 @@ suite "RST inline markup":
           rnLeaf  'See'
           rnLeaf  ' '
           rnStandaloneHyperlink
-            rnLeaf  'http'
-            rnLeaf  ':'
-            rnLeaf  '//'
-            rnLeaf  'no'
-            rnLeaf  '.'
-            rnLeaf  'org'
-            rnLeaf  '/'
+            rnLeaf  'http://no.org/'
           rnLeaf  ' '
           rnLeaf  'end'
         """)
