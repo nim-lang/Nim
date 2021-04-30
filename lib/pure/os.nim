@@ -936,12 +936,7 @@ proc getConfigDir*(): string {.rtl, extern: "nos$1",
   result.normalizePathEnd(trailingSep = defined(nimLegacyHomeDir))
 
 when defined(windows):
-  type DWORD = uint32
-
-  proc getTempPath(
-    nBufferLength: DWORD, lpBuffer: WideCString
-  ): DWORD {.stdcall, dynlib: "kernel32.dll", importc: "GetTempPathW".} =
-    ## Retrieves the path of the directory designated for temporary files.
+  import std/winapis
 
 template getEnvImpl(result: var string, tempDirList: openArray[string]) =
   for dir in tempDirList:
@@ -988,11 +983,11 @@ proc getTempDir*(): string {.rtl, extern: "nos$1",
       getTempDirImpl(result)
     else:
       when defined(windows):
-        let size = getTempPath(0, nil)
+        let size = getTempPath(winapis.DWORD(0), nil)
         # If the function fails, the return value is zero.
         if size > 0:
           let buffer = newWideCString(size.int)
-          if getTempPath(size, buffer) > 0:
+          if getTempPath(winapis.DWORD(size), buffer) > 0:
             result = $buffer
       elif defined(android): result = "/data/local/tmp"
       else:
