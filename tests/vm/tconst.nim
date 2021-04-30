@@ -1,8 +1,8 @@
 discard """
-action: compile
+  targets: "c cpp js"
 """
 
-import strutils
+import std/strutils
 
 const
   HelpText = """
@@ -26,6 +26,11 @@ Possible Commands:
   zip                      builds the installation ZIP package
   inno                     builds the Inno Setup installer
 """ % [NimVersion & spaces(44-len(NimVersion)),
-       CompileDate, CompileTime]
+       CompileDate, CompileTime] # xxx this could be simplified  for this test
 
-echo HelpText
+template main() =
+  block:
+    let a = $HelpText
+    doAssert a.len == 929
+static: main()
+main()
