@@ -964,7 +964,7 @@ proc p(n: PNode; c: var Con; s: var Scope; mode: ProcessMode): PNode =
       result[0] = p(n[0], c, s, mode)
       for i in 1..<n.len:
         result[i] = n[i]
-    of nkGotoState, nkState, nkAsmStmt:
+    of nkGotoState, nkState, nkAsmStmt, nkOpenSymChoice, nkClosedSymChoice:
       result = n
     else:
       internalError(c.graph.config, n.info, "cannot inject destructors to node kind: " & $n.kind)

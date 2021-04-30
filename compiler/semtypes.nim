@@ -2083,7 +2083,7 @@ proc processMagicType(c: PContext, m: PSym) =
     rawAddSon(m.typ, newTypeS(tyNone, c))
   of mPNimrodNode:
     incl m.typ.flags, tfTriggersCompileTime
-    incl m.typ.flags, tfCheckedForDestructor
+    #incl m.typ.flags, tfCheckedForDestructor
   of mException: discard
   of mBuiltinType:
     case m.name.s

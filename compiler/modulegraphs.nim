@@ -595,3 +595,7 @@ proc configComplete*(g: ModuleGraph) =
 proc setRoutineBody*(g: ModuleGraph; s: PSym; body: PNode) =
   # XXX Check sanity of IC implementation for this here.
   s.ast[bodyPos] = body
+
+proc getSemcheckedBody*(g: ModuleGraph; s: PSym): PNode =
+  # XXX IC support
+  result = s.semcheckedBody

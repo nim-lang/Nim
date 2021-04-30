@@ -1162,6 +1162,15 @@ proc transformBody*(g: ModuleGraph; idgen: IdGenerator; prc: PSym; flag: Transfo
   #if prc.name.s == "main":
   #  echo "transformed into ", renderTree(result, {renderIds})
 
+proc transformBodyForVM*(g: ModuleGraph; idgen: IdGenerator; prc: PSym): PNode =
+  var c = openTransf(g, prc.getModule, "", idgen)
+  result = liftLambdas(g, prc, getSemcheckedBody(g, prc), c.tooEarly, c.idgen)
+  result = processTransf(c, result, prc)
+  liftDefer(c, result)
+  result = liftLocalsIfRequested(prc, result, g.cache, g.config, c.idgen)
+  if prc.isIterator:
+    result = g.transformClosureIterator(c.idgen, prc, result)
+
 proc transformStmt*(g: ModuleGraph; idgen: IdGenerator; module: PSym, n: PNode): PNode =
   if nfTransf in n.flags:
     result = n

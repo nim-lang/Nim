@@ -31,7 +31,8 @@ import tables
 
 import
   strutils, ast, types, msgs, renderer, vmdef,
-  intsets, magicsys, options, lowerings, lineinfos
+  intsets, magicsys, options, lowerings, lineinfos,
+  transf
 
 from modulegraphs import getBody
 
@@ -2265,7 +2266,8 @@ proc genProc(c: PCtx; s: PSym): int =
     c.procToCodePos[s.id] = result
     # thanks to the jmp we can add top level statements easily and also nest
     # procs easily:
-    let body = getBody(c.graph, s) #transformBody(c.graph, c.idgen, s, cache = not isCompileTimeProc(s))
+    let body = transformBodyForVM(c.graph, c.idgen, s)
+    #getBody(c.graph, s) #transformBody(c.graph, c.idgen, s, cache = not isCompileTimeProc(s))
     let procStart = c.xjmp(body, opcJmp, 0)
     var p = PProc(blocks: @[], sym: s)
     let oldPrc = c.prc
