@@ -30,7 +30,7 @@ func newRegExp*(pattern: cstring): RegExp {.importjs: "new RegExp(@)".}
 func compile*(self: RegExp; pattern: cstring; flags: cstring) {.importjs: "#.compile(@)".}
   ## Recompiles a regular expression during execution of a script.
 
-func replace*(pattern: cstring; self: RegExp; replacement: cstring): cstring {.importjs: "#.replace(#,#)".}
+func replace*(pattern: cstring; self: RegExp; replacement: cstring): cstring {.importjs: "#.replace(#, #)".}
   ## Returns a new string with some or all matches of a pattern replaced by given replacement
 
 func split*(pattern: cstring; self: RegExp): seq[cstring] {.importjs: "#.split(#)".}
