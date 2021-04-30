@@ -20,10 +20,19 @@ tasks:
     set -e
     cd Nim
     . ci/funs.sh && nimBuildCsourcesIfNeeded
-    $nim_csources c koch
+    # $nim_csources c koch
+    $nim_csources c --skipUserCfg --skipParentCfg koch
     echo 'export PATH=$HOME/Nim/bin:$PATH' >> $HOME/.buildenv
 - test: |
+    set -e
     cd Nim
+    . ci/funs.sh
+    echo_run which nim
+    echo_run nim -v
+    echo_run nim --skipusercfg dump .
+    echo_run nim --skipusercfg --lib:lib dump .
+    echo_run nim --skipusercfg --lib:lib dump .
+    echo_run nim --skipusercfg dump --dump.format:json .
     if ! ./koch runCI; then
       nim r tools/ci_testresults.nim
       exit 1
