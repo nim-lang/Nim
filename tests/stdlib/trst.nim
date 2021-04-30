@@ -428,3 +428,46 @@ suite "RST inline markup":
           rnLeaf  'lnk'
           rnLeaf  '___'
       """)
+
+  test "no punctuation in the end of a standalone URI is allowed":
+    check(dedent"""
+        [see (http://no.org)], end""".toAst ==
+      dedent"""
+        rnInner
+          rnLeaf  '['
+          rnLeaf  'see'
+          rnLeaf  ' '
+          rnLeaf  '('
+          rnStandaloneHyperlink
+            rnLeaf  'http'
+            rnLeaf  ':'
+            rnLeaf  '//'
+            rnLeaf  'no'
+            rnLeaf  '.'
+            rnLeaf  'org'
+          rnLeaf  ')'
+          rnLeaf  ']'
+          rnLeaf  ','
+          rnLeaf  ' '
+          rnLeaf  'end'
+        """)
+
+    # but `/` at the end is OK
+    check(
+      dedent"""
+        See http://no.org/ end""".toAst ==
+      dedent"""
+        rnInner
+          rnLeaf  'See'
+          rnLeaf  ' '
+          rnStandaloneHyperlink
+            rnLeaf  'http'
+            rnLeaf  ':'
+            rnLeaf  '//'
+            rnLeaf  'no'
+            rnLeaf  '.'
+            rnLeaf  'org'
+            rnLeaf  '/'
+          rnLeaf  ' '
+          rnLeaf  'end'
+        """)

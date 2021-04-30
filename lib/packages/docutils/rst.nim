@@ -1213,23 +1213,28 @@ proc isUrl(p: RstParser, i: int): bool =
     p.tok[i+3].kind == tkWord and
     p.tok[i].symbol in ["http", "https", "ftp", "telnet", "file"]
 
+proc parseUrl(p: var RstParser): PRstNode =
+  ## https://docutils.sourceforge.io/docs/ref/rst/restructuredtext.html#standalone-hyperlinks
+  result = newRstNode(rnStandaloneHyperlink)
+  var lastIdx = p.idx
+  while p.tok[lastIdx].kind in {tkWord, tkPunct, tkOther}:
+    inc lastIdx
+  dec lastIdx
+  # standalone URL can not end with punctuation in RST
+  while lastIdx >= p.idx and p.tok[lastIdx].kind == tkPunct and
+      p.tok[lastIdx].symbol != "/":
+    dec lastIdx
+  for i in p.idx .. lastIdx:
+    result.add newLeaf(p.tok[i].symbol)
+  p.idx = lastIdx + 1
+
 proc parseWordOrRef(p: var RstParser, father: PRstNode) =
   ## Parses a normal word or may be a reference or URL.
   if nextTok(p).kind != tkPunct:  # <- main path, a normal word
     father.add newLeaf(p)
     inc p.idx
   elif isUrl(p, p.idx):           # URL http://something
-    var n = newRstNode(rnStandaloneHyperlink)
-    while true:
-      case currentTok(p).kind
-      of tkWord, tkAdornment, tkOther: discard
-      of tkPunct:
-        if nextTok(p).kind notin {tkWord, tkAdornment, tkOther, tkPunct}:
-          break
-      else: break
-      n.add(newLeaf(p))
-      inc p.idx
-    father.add(n)
+    father.add parseUrl(p)
   else:
     # check for reference (probably, long one like some.ref.with.dots_ )
     var saveIdx = p.idx
