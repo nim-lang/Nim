@@ -533,6 +533,7 @@ proc hash*[T: tuple | object | proc](x: T): Hash {.inline.} =
     assert hash(fn1b) == hash(fn1)
     let fn2b = fn2
     assert hash(fn2b) == hash(fn2)
+
   when T is "closure":
     result = hash((rawProc(x), rawEnv(x)))
   elif T is (proc):

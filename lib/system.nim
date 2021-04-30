@@ -2435,7 +2435,7 @@ when notJSnotNims:
     ## useful for interfacing closures with C.
     when T is "closure":
       {.emit: """
-      `result` = `x`.ClP_0;
+      `result` = (void*)`x`.ClP_0;
       """.}
     else:
       {.error: "Only closure function and iterator are allowed!".}

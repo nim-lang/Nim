@@ -184,8 +184,8 @@ proc main() =
       # pending fix proposed in https://github.com/nim-lang/Nim/issues/15952#issuecomment-786312417
       discard
     do:
-      assert a[0].addr.hash != a[1].addr.hash
-      assert cast[pointer](a[0].addr).hash == a[0].addr.hash
+      doAssert a[0].addr.hash != a[1].addr.hash
+      doAssert cast[pointer](a[0].addr).hash == a[0].addr.hash
 
   block: # hash(ref)
     type A = ref object
@@ -193,9 +193,20 @@ proc main() =
     let a = A(x: 3)
     disableVm: # xxx Error: VM does not support 'cast' from tyRef to tyPointer
       let ha = a.hash
-      assert ha != A(x: 3).hash # A(x: 3) is a different ref object from `a`.
+      doAssert ha != A(x: 3).hash # A(x: 3) is a different ref object from `a`.
       a.x = 4
-      assert ha == a.hash # the hash only depends on the address
+      doAssert ha == a.hash # the hash only depends on the address
+
+  block: # hash(proc)
+    proc fn1() = discard
+    var a = 0
+    proc fn2() = a.inc
+    disableVm:
+      doAssert hash(fn1) != hash(fn2)
+      const fn1b = fn1
+      doAssert hash(fn1b) == hash(fn1)
+      let fn2b = fn2
+      doAssert hash(fn2b) == hash(fn2)
 
 static: main()
 main()
