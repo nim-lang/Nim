@@ -36,9 +36,10 @@ tasks:
     set -e
     cd Nim
     . ci/funs.sh && nimBuildCsourcesIfNeeded
-    $nim_csources c koch
+    $nim_csources c --skipUserCfg --skipParentCfg koch
     echo 'export PATH=$HOME/Nim/bin:$PATH' >> $HOME/.buildenv
 - test: |
+    set -e
     cd Nim
     if ! ./koch runCI; then
       nim r tools/ci_testresults.nim
