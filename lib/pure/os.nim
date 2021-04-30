@@ -936,7 +936,7 @@ proc getConfigDir*(): string {.rtl, extern: "nos$1",
   result.normalizePathEnd(trailingSep = defined(nimLegacyHomeDir))
 
 when defined(windows):
-  import std/winapis
+  from std/winapis import nil
 
 template getEnvImpl(result: var string, tempDirList: openArray[string]) =
   for dir in tempDirList:
@@ -983,11 +983,11 @@ proc getTempDir*(): string {.rtl, extern: "nos$1",
       getTempDirImpl(result)
     else:
       when defined(windows):
-        let size = getTempPath(winapis.DWORD(0), nil)
+        let size = winapis.getTempPath(winapis.DWORD(0), nil)
         # If the function fails, the return value is zero.
         if size > 0:
           let buffer = newWideCString(size.int)
-          if getTempPath(winapis.DWORD(size), buffer) > 0:
+          if winapis.getTempPath(winapis.DWORD(size), buffer) > 0:
             result = $buffer
       elif defined(android): result = "/data/local/tmp"
       else:
