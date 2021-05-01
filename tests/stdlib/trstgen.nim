@@ -849,7 +849,7 @@ Test1
     let output8 = input8.toHtml(warnings = warnings8)
     check(warnings8[].len == 1)
     check("input(6, 1) Warning: RST style: \n" &
-          "  not enough indentation on line 6" in warnings8[0])
+          "not enough indentation on line 6" in warnings8[0])
     doAssert output8 == "Paragraph.<ol class=\"upperalpha simple\">" &
         "<li>stringA</li>\n<li>stringB</li>\n</ol>\n<p>C. string1 string2 </p>\n"
 

@@ -178,7 +178,8 @@ proc newDocumentor*(filename: AbsoluteFile; cache: IdentCache; conf: ConfigRef, 
   result.outDir = conf.outDir.string
   initRstGenerator(result[], (if conf.cmd != cmdRst2tex: outHtml else: outLatex),
                    conf.configVars, filename.string,
-                   {roSupportRawDirective, roSupportMarkdown, roNimFile},
+                   {roSupportRawDirective, roSupportMarkdown,
+                    roPreferMarkdown, roNimFile},
                    docgenFindFile, compilerMsgHandler)
 
   if conf.configVars.hasKey("doc.googleAnalytics"):
@@ -1380,7 +1381,9 @@ proc commandRstAux(cache: IdentCache, conf: ConfigRef;
   d.isPureRst = true
   var rst = parseRst(readFile(filen.string), filen.string,
                      line=LineRstInit, column=ColRstInit,
-                     d.hasToc, {roSupportRawDirective, roSupportMarkdown}, conf)
+                     d.hasToc,
+                     {roSupportRawDirective, roSupportMarkdown, roPreferMarkdown},
+                     conf)
   var modDesc = newStringOfCap(30_000)
   renderRstToOut(d[], rst, modDesc)
   d.modDesc = rope(modDesc)

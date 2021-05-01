@@ -1,5 +1,5 @@
 discard """
-  targets: "c js"
+  targets: "c cpp js"
   output: '''
 PEG AST traversal output
 ------------------------
@@ -51,8 +51,7 @@ Event parser output
 '''
 """
 
-import strutils, streams
-import pegs
+import std/[strutils, streams, pegs]
 
 const
   indent = "  "
@@ -125,7 +124,7 @@ block:
                 discard
             of "Sum", "Product":
               try:
-                let val = matchStr.parseFloat
+                let val {.used.} = matchStr.parseFloat
               except ValueError:
                 if valStack.len > 1 and opStack.len > 0:
                   valStack[^2] = case opStack[^1]
@@ -147,3 +146,154 @@ block:
   echo "-------------------"
   let pLen = parseArithExpr(txt)
   doAssert txt.len == pLen
+
+
+import std/importutils
+
+block:
+  proc pegsTest() =
+    privateAccess(NonTerminal)
+    privateAccess(Captures)
+
+    doAssert escapePeg("abc''def'") == r"'abc'\x27\x27'def'\x27"
+    doAssert match("(a b c)", peg"'(' @ ')'")
+    doAssert match("W_HI_Le", peg"\y 'while'")
+    doAssert(not match("W_HI_L", peg"\y 'while'"))
+    doAssert(not match("W_HI_Le", peg"\y v'while'"))
+    doAssert match("W_HI_Le", peg"y'while'")
+
+    doAssert($ +digits == $peg"\d+")
+    doAssert "0158787".match(peg"\d+")
+    doAssert "ABC 0232".match(peg"\w+\s+\d+")
+    doAssert "ABC".match(peg"\d+ / \w+")
+
+    var accum: seq[string] = @[]
+    for word in split("00232this02939is39an22example111", peg"\d+"):
+      accum.add(word)
+    doAssert(accum == @["this", "is", "an", "example"])
+
+    doAssert matchLen("key", ident) == 3
+
+    var pattern = sequence(ident, *whitespace, term('='), *whitespace, ident)
+    doAssert matchLen("key1=  cal9", pattern) == 11
+
+    var ws = newNonTerminal("ws", 1, 1)
+    ws.rule = *whitespace
+
+    var expr = newNonTerminal("expr", 1, 1)
+    expr.rule = sequence(capture(ident), *sequence(
+                  nonterminal(ws), term('+'), nonterminal(ws), nonterminal(expr)))
+
+    var c: Captures
+    var s = "a+b +  c +d+e+f"
+    doAssert rawMatch(s, expr.rule, 0, c) == len(s)
+    var a = ""
+    for i in 0..c.ml-1:
+      a.add(substr(s, c.matches[i][0], c.matches[i][1]))
+    doAssert a == "abcdef"
+    #echo expr.rule
+
+    #const filename = "lib/devel/peg/grammar.txt"
+    #var grammar = parsePeg(newFileStream(filename, fmRead), filename)
+    #echo "a <- [abc]*?".match(grammar)
+    doAssert find("_____abc_______", term("abc"), 2) == 5
+    doAssert match("_______ana", peg"A <- 'ana' / . A")
+    doAssert match("abcs%%%", peg"A <- ..A / .A / '%'")
+
+    var matches: array[0..MaxSubpatterns-1, string]
+    if "abc" =~ peg"{'a'}'bc' 'xyz' / {\ident}":
+      doAssert matches[0] == "abc"
+    else:
+      doAssert false
+
+    var g2 = peg"""S <- A B / C D
+                   A <- 'a'+
+                   B <- 'b'+
+                   C <- 'c'+
+                   D <- 'd'+
+                """
+    doAssert($g2 == "((A B) / (C D))")
+    doAssert match("cccccdddddd", g2)
+    doAssert("var1=key; var2=key2".replacef(peg"{\ident}'='{\ident}", "$1<-$2$2") ==
+           "var1<-keykey; var2<-key2key2")
+    doAssert("var1=key; var2=key2".replace(peg"{\ident}'='{\ident}", "$1<-$2$2") ==
+           "$1<-$2$2; $1<-$2$2")
+    doAssert "var1=key; var2=key2".endsWith(peg"{\ident}'='{\ident}")
+
+    if "aaaaaa" =~ peg"'aa' !. / ({'a'})+":
+      doAssert matches[0] == "a"
+    else:
+      doAssert false
+
+    if match("abcdefg", peg"c {d} ef {g}", matches, 2):
+      doAssert matches[0] == "d"
+      doAssert matches[1] == "g"
+    else:
+      doAssert false
+
+    accum = @[]
+    for x in findAll("abcdef", peg".", 3):
+      accum.add(x)
+    doAssert(accum == @["d", "e", "f"])
+
+    for x in findAll("abcdef", peg"^{.}", 3):
+      doAssert x == "d"
+
+    if "f(a, b)" =~ peg"{[0-9]+} / ({\ident} '(' {@} ')')":
+      doAssert matches[0] == "f"
+      doAssert matches[1] == "a, b"
+    else:
+      doAssert false
+
+    doAssert match("eine übersicht und außerdem", peg"(\letter \white*)+")
+    # ß is not a lower cased letter?!
+    doAssert match("eine übersicht und auerdem", peg"(\lower \white*)+")
+    doAssert match("EINE ÜBERSICHT UND AUSSERDEM", peg"(\upper \white*)+")
+    doAssert(not match("456678", peg"(\letter)+"))
+
+    doAssert("var1 = key; var2 = key2".replacef(
+      peg"\skip(\s*) {\ident}'='{\ident}", "$1<-$2$2") ==
+           "var1<-keykey;var2<-key2key2")
+
+    doAssert match("prefix/start", peg"^start$", 7)
+
+    if "foo" =~ peg"{'a'}?.*":
+      doAssert matches[0].len == 0
+    else: doAssert false
+
+    if "foo" =~ peg"{''}.*":
+      doAssert matches[0] == ""
+    else: doAssert false
+
+    if "foo" =~ peg"{'foo'}":
+      doAssert matches[0] == "foo"
+    else: doAssert false
+
+    let empty_test = peg"^\d*"
+    let str = "XYZ"
+
+    doAssert(str.find(empty_test) == 0)
+    doAssert(str.match(empty_test))
+
+    proc handleMatches(m: int, n: int, c: openArray[string]): string =
+      result = ""
+
+      if m > 0:
+        result.add ", "
+
+      result.add case n:
+        of 2: toLowerAscii(c[0]) & ": '" & c[1] & "'"
+        of 1: toLowerAscii(c[0]) & ": ''"
+        else: ""
+
+    doAssert("Var1=key1;var2=Key2;   VAR3".
+      replace(peg"{\ident}('='{\ident})* ';'* \s*",
+      handleMatches) == "var1: 'key1', var2: 'Key2', var3: ''")
+
+
+    doAssert "test1".match(peg"""{@}$""")
+    doAssert "test2".match(peg"""{(!$ .)*} $""")
+  pegsTest()
+  static:
+    pegsTest()
+

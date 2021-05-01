@@ -32,9 +32,7 @@ nimIsCiSkip(){
 }
 
 nimDefineVars(){
-  nim_csourcesDir=csources_v1 # where we clone
-  nim_csourcesUrl=https://github.com/nim-lang/csources_v1.git
-  nim_csourcesHash=a8a5241f9475099c823cfe1a5e0ca4022ac201ff
+  . config/build_config.txt
   nim_csources=bin/nim_csources_$nim_csourcesHash
 }
 
@@ -88,9 +86,11 @@ nimBuildCsourcesIfNeeded(){
       if test -d "$nim_csourcesDir"; then
         echo "$nim_csourcesDir exists."
       else
-        # depth 1: adjust as needed in case useful for `git bisect`
+        # Note: using git tags would allow fetching just what's needed, unlike git hashes, e.g.
+        # via `git clone -q --depth 1 --branch $tag $nim_csourcesUrl`.
         echo_run git clone -q --depth 1 $nim_csourcesUrl "$nim_csourcesDir"
         echo_run git -C "$nim_csourcesDir" checkout $nim_csourcesHash
+        # if needed we could also add: `git reset --hard $nim_csourcesHash`
       fi
       _nimBuildCsourcesIfNeeded "$@"
     fi

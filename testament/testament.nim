@@ -17,6 +17,7 @@ from std/sugar import dup
 import compiler/nodejs
 import lib/stdtest/testutils
 from lib/stdtest/specialpaths import splitTestFile
+from std/private/gitutils import diffStrings
 
 proc trimUnitSep(x: var string) =
   let L = x.len
@@ -107,7 +108,8 @@ proc isSuccess(input: string): bool =
   # that may appear in user config (eg: `--filenames`).
   # Passing `XDG_CONFIG_HOME= testament args...` can be used to ignore user config
   # stored in XDG_CONFIG_HOME, refs https://wiki.archlinux.org/index.php/XDG_Base_Directory
-  input.startsWith("Hint: ") and input.endsWith("[SuccessX]")
+  input.startsWith("Hint: ") and
+    (input.endsWith("[SuccessX]") or input.endsWith("[BuildMode]"))
 
 proc getFileDir(filename: string): string =
   result = filename.splitFile().dir
@@ -306,7 +308,7 @@ proc addResult(r: var TResults, test: TTest, target: TTarget,
       maybeStyledEcho styleBright, expected, "\n"
       maybeStyledEcho fgYellow, "Gotten:"
       maybeStyledEcho styleBright, given, "\n"
-
+      echo diffStrings(expected, given).output
 
   if backendLogging and (isAppVeyor or isAzure):
     let (outcome, msg) =
@@ -371,12 +373,20 @@ proc checkForInlineErrors(r: var TResults, expected, given: TSpec, test: TTest, 
     r.addResult(test, target, "", given.msg, reSuccess)
     inc(r.passed)
 
+proc nimoutCheck(expected, given: TSpec): bool =
+  result = true
+  if expected.nimoutFull:
+    if expected.nimout != given.nimout:
+      result = false
+  elif expected.nimout.len > 0 and not greedyOrderedSubsetLines(expected.nimout, given.nimout):
+    result = false
+
 proc cmpMsgs(r: var TResults, expected, given: TSpec, test: TTest, target: TTarget) =
   if expected.inlineErrors.len > 0:
     checkForInlineErrors(r, expected, given, test, target)
   elif strip(expected.msg) notin strip(given.msg):
     r.addResult(test, target, expected.msg, given.msg, reMsgsDiffer)
-  elif expected.nimout.len > 0 and not greedyOrderedSubsetLines(expected.nimout, given.nimout):
+  elif not nimoutCheck(expected, given):
     r.addResult(test, target, expected.nimout, given.nimout, reMsgsDiffer)
   elif extractFilename(expected.file) != extractFilename(given.file) and
       "internal error:" notin expected.msg:
@@ -424,10 +434,6 @@ proc codegenCheck(test: TTest, target: TTarget, spec: TSpec, expectedMsg: var st
     given.err = reCodeNotFound
     echo getCurrentExceptionMsg()
 
-proc nimoutCheck(test: TTest; expectedNimout: string; given: var TSpec) =
-  if not greedyOrderedSubsetLines(expectedNimout, given.nimout):
-    given.err = reMsgsDiffer
-
 proc compilerOutputTests(test: TTest, target: TTarget, given: var TSpec,
                          expected: TSpec; r: var TResults) =
   var expectedmsg: string = ""
@@ -436,10 +442,10 @@ proc compilerOutputTests(test: TTest, target: TTarget, given: var TSpec,
     if expected.needsCodegenCheck:
       codegenCheck(test, target, expected, expectedmsg, given)
       givenmsg = given.msg
-    if expected.nimout.len > 0:
+    if not nimoutCheck(expected, given):
+      given.err = reMsgsDiffer
       expectedmsg = expected.nimout
       givenmsg = given.nimout.strip
-      nimoutCheck(test, expectedmsg, given)
   else:
     givenmsg = "$ " & given.cmd & '\n' & given.nimout
   if given.err == reSuccess: inc(r.passed)

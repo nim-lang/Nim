@@ -55,35 +55,61 @@ type
 include "system/basic_types"
 
 
+proc runnableExamples*(rdoccmd = "", body: untyped) {.magic: "RunnableExamples".} =
+  ## A section you should use to mark `runnable example`:idx: code with.
+  ##
+  ## - In normal debug and release builds code within
+  ##   a `runnableExamples` section is ignored.
+  ## - The documentation generator is aware of these examples and considers them
+  ##   part of the `##` doc comment. As the last step of documentation
+  ##   generation each runnableExample is put in its own file `$file_examples$i.nim`,
+  ##   compiled and tested. The collected examples are
+  ##   put into their own module to ensure the examples do not refer to
+  ##   non-exported symbols.
+  runnableExamples:
+    proc timesTwo*(x: int): int =
+      ## This proc doubles a number.
+      runnableExamples:
+        # at module scope
+        const exported* = 123
+        assert timesTwo(5) == 10
+        block: # at block scope
+          defer: echo "done"
+      runnableExamples "-d:foo -b:cpp":
+        import std/compilesettings
+        assert querySetting(backend) == "cpp"
+        assert defined(foo)
+      runnableExamples "-r:off": ## this one is only compiled
+         import std/browsers
+         openDefaultBrowser "https://forum.nim-lang.org/"
+      2 * x
+
 proc compileOption*(option: string): bool {.
-  magic: "CompileOption", noSideEffect.}
+  magic: "CompileOption", noSideEffect.} =
   ## Can be used to determine an `on|off` compile-time option.
   ##
   ## See also:
   ## * `compileOption <#compileOption,string,string>`_ for enum options
   ## * `defined <#defined,untyped>`_
   ## * `std/compilesettings module <compilesettings.html>`_
-  ##
-  ## Example:
-  ##
-  ## .. code-block:: Nim
-  ##   when compileOption("floatchecks"):
-  ##     echo "compiled with floating point NaN and Inf checks"
+  runnableExamples("--floatChecks:off"):
+    static: doAssert not compileOption("floatchecks")
+    {.push floatChecks: on.}
+    static: doAssert compileOption("floatchecks")
+    # floating point NaN and Inf checks enabled in this scope
+    {.pop.}
 
 proc compileOption*(option, arg: string): bool {.
-  magic: "CompileOptionArg", noSideEffect.}
+  magic: "CompileOptionArg", noSideEffect.} =
   ## Can be used to determine an enum compile-time option.
   ##
   ## See also:
   ## * `compileOption <#compileOption,string>`_ for `on|off` options
   ## * `defined <#defined,untyped>`_
   ## * `std/compilesettings module <compilesettings.html>`_
-  ##
-  ## Example:
-  ##
-  ## .. code-block:: Nim
-  ##   when compileOption("opt", "size") and compileOption("gc", "boehm"):
-  ##     echo "compiled with optimization for size and uses Boehm's GC"
+  runnableExamples:
+    when compileOption("opt", "size") and compileOption("gc", "boehm"):
+      discard "compiled with optimization for size and uses Boehm's GC"
 
 {.push warning[GcMem]: off, warning[Uninit]: off.}
 {.push hints: off.}
@@ -138,36 +164,6 @@ else:
   type
     OrdinalImpl[T] {.magic: Ordinal.}
     Ordinal* = OrdinalImpl | uint | uint64
-
-proc runnableExamples*(rdoccmd = "", body: untyped) {.magic: "RunnableExamples".}
-  ## A section you should use to mark `runnable example`:idx: code with.
-  ##
-  ## - In normal debug and release builds code within
-  ##   a `runnableExamples` section is ignored.
-  ## - The documentation generator is aware of these examples and considers them
-  ##   part of the `##` doc comment. As the last step of documentation
-  ##   generation each runnableExample is put in its own file `$file_examples$i.nim`,
-  ##   compiled and tested. The collected examples are
-  ##   put into their own module to ensure the examples do not refer to
-  ##   non-exported symbols.
-  ##
-  ## Usage:
-  ##
-  ## .. code-block:: Nim
-  ##   proc double*(x: int): int =
-  ##     ## This proc doubles a number.
-  ##     runnableExamples:
-  ##       ## at module scope
-  ##       assert double(5) == 10
-  ##       block: ## at block scope
-  ##         defer: echo "done"
-  ##     result = 2 * x
-  ##     runnableExamples "-d:foo -b:cpp":
-  ##       import std/compilesettings
-  ##       doAssert querySetting(backend) == "cpp"
-  ##     runnableExamples "-r:off": ## this one is only compiled
-  ##        import std/browsers
-  ##        openDefaultBrowser "https://forum.nim-lang.org/"
 
 when defined(nimHasDeclaredMagic):
   proc declared*(x: untyped): bool {.magic: "Declared", noSideEffect, compileTime.}
@@ -541,7 +537,7 @@ const
 
 include "system/inclrtl"
 
-const NoFakeVars* = defined(nimscript) ## `true` if the backend doesn't support \
+const NoFakeVars = defined(nimscript) ## `true` if the backend doesn't support \
   ## "fake variables" like `var EBADF {.importc.}: cint`.
 
 const notJSnotNims = not defined(js) and not defined(nimscript)
@@ -885,8 +881,6 @@ when defined(nimOwnedEnabled) and not defined(nimscript):
   proc unown*[T](x: T): T {.magic: "Unown", noSideEffect.}
     ## Use the expression `x` ignoring its ownership attribute.
 
-  # This is only required to make 0.20 compile with the 0.19 line.
-  template `<//>`*(t: untyped): untyped = owned(t)
 
 else:
   template unown*(x: typed): untyped = x
@@ -908,8 +902,6 @@ else:
     new(r)
     return r
 
-  # This is only required to make 0.20 compile with the 0.19 line.
-  template `<//>`*(t: untyped): untyped = t
 
 template disarm*(x: typed) =
   ## Useful for `disarming` dangling pointers explicitly for `--newruntime`.
@@ -1140,7 +1132,6 @@ const
 const
   hasThreadSupport = compileOption("threads") and not defined(nimscript)
   hasSharedHeap = defined(boehmgc) or defined(gogc) # don't share heaps; every thread has its own
-  nimEnableCovariance* = defined(nimEnableCovariance) # or true
 
 when hasThreadSupport and defined(tcc) and not compileOption("tlsEmulation"):
   # tcc doesn't support TLS
@@ -1476,7 +1467,7 @@ type # these work for most platforms:
   PInt32* = ptr int32        ## An alias for `ptr int32`.
 
 proc toFloat*(i: int): float {.noSideEffect, inline.} =
-  ## Converts an integer `i` into a `float`.
+  ## Converts an integer `i` into a `float`. Same as `float(i)`.
   ##
   ## If the conversion fails, `ValueError` is raised.
   ## However, on most platforms the conversion cannot fail.
@@ -1498,7 +1489,8 @@ proc toInt*(f: float): int {.noSideEffect.} =
   ##
   ## Conversion rounds `f` half away from 0, see
   ## `Round half away from zero
-  ## <https://en.wikipedia.org/wiki/Rounding#Round_half_away_from_zero>`_.
+  ## <https://en.wikipedia.org/wiki/Rounding#Round_half_away_from_zero>`_,
+  ## as opposed to a type conversion which rounds towards zero.
   ##
   ## Note that some floating point numbers (e.g. infinity or even 1e19)
   ## cannot be accurately converted.
@@ -1927,24 +1919,7 @@ include "system/gc_interface"
 # we have to compute this here before turning it off in except.nim anyway ...
 const NimStackTrace = compileOption("stacktrace")
 
-template coroutinesSupportedPlatform(): bool =
-  when defined(sparc) or defined(ELATE) or defined(boehmgc) or defined(gogc) or
-    defined(nogc) or defined(gcRegions) or defined(gcMarkAndSweep):
-    false
-  else:
-    true
-
-when defined(nimCoroutines):
-  # Explicit opt-in.
-  when not coroutinesSupportedPlatform():
-    {.error: "Coroutines are not supported on this architecture and/or garbage collector.".}
-  const nimCoroutines* = true
-elif defined(noNimCoroutines):
-  # Explicit opt-out.
-  const nimCoroutines* = false
-else:
-  # Autodetect coroutine support.
-  const nimCoroutines* = false
+import system/coro_detection
 
 {.push checks: off.}
 # obviously we cannot generate checking operations here :-)
@@ -2439,17 +2414,22 @@ when notJSnotNims:
 
   proc rawProc*[T: proc](x: T): pointer {.noSideEffect, inline.} =
     ## Retrieves the raw proc pointer of the closure `x`. This is
-    ## useful for interfacing closures with C.
+    ## useful for interfacing closures with C/C++, hash compuations, etc.
     when T is "closure":
+      #[
+      The conversion from function pointer to `void*` is a tricky topic, but this
+      should work at least for c++ >= c++11, e.g. for `dlsym` support.
+      refs: https://gcc.gnu.org/bugzilla/show_bug.cgi?id=57869,
+      https://stackoverflow.com/questions/14125474/casts-between-pointer-to-function-and-pointer-to-object-in-c-and-c
+      ]#
       {.emit: """
-      `result` = `x`.ClP_0;
+      `result` = (void*)`x`.ClP_0;
       """.}
     else:
       {.error: "Only closure function and iterator are allowed!".}
 
   proc rawEnv*[T: proc](x: T): pointer {.noSideEffect, inline.} =
-    ## Retrieves the raw environment pointer of the closure `x`. This is
-    ## useful for interfacing closures with C.
+    ## Retrieves the raw environment pointer of the closure `x`. See also `rawProc`.
     when T is "closure":
       {.emit: """
       `result` = `x`.ClE_0;

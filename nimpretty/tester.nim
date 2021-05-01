@@ -1,9 +1,10 @@
 # Small program that runs the test cases
 
 import strutils, os, sequtils
+from std/private/gitutils import diffFiles
 
 const
-  dir = "nimpretty/tests/"
+  dir = "nimpretty/tests"
   outputdir = dir / "outputdir"
 
 var
@@ -26,7 +27,7 @@ proc test(infile, ext: string) =
   let produced = dir / nimFile.changeFileExt(ext)
   if readFile(expected) != readFile(produced):
     echo "FAILURE: files differ: ", nimFile
-    discard execShellCmd("diff -uNdr " & expected & " " & produced)
+    echo diffFiles(expected, produced).output
     failures += 1
   else:
     echo "SUCCESS: files identical: ", nimFile
@@ -43,7 +44,7 @@ proc testTogether(infiles: seq[string]) =
     let produced = dir / "outputdir" / infile
     if readFile(expected) != readFile(produced):
       echo "FAILURE: files differ: ", nimFile
-      discard execShellCmd("diff -uNdr " & expected & " " & produced)
+      echo diffFiles(expected, produced).output
       failures += 1
     else:
       echo "SUCCESS: files identical: ", nimFile

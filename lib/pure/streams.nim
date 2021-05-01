@@ -1503,6 +1503,7 @@ when false:
       of fmReadWrite: flags = O_RDWR or int(O_CREAT)
       of fmReadWriteExisting: flags = O_RDWR
       of fmAppend: flags = O_WRONLY or int(O_CREAT) or O_APPEND
+      static: doAssert false # handle bug #17888
       var handle = open(filename, flags)
       if handle < 0: raise newEOS("posix.open() call failed")
     result = newFileHandleStream(handle)

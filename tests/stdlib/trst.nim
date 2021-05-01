@@ -4,6 +4,10 @@ discard """
 [Suite] RST indentation
 
 [Suite] RST include directive
+
+[Suite] RST escaping
+
+[Suite] RST inline markup
 '''
 """
 
@@ -267,3 +271,210 @@ And this should **NOT** be visible in `docs.html`
 """
     doAssert "<em>Visible</em>" == rstTohtml(input, {}, defaultConfig())
     removeFile("other.rst")
+
+suite "RST escaping":
+  test "backspaces":
+    check("""\ this""".toAst == dedent"""
+      rnLeaf  'this'
+      """)
+
+    check("""\\ this""".toAst == dedent"""
+      rnInner
+        rnLeaf  '\'
+        rnLeaf  ' '
+        rnLeaf  'this'
+      """)
+
+    check("""\\\ this""".toAst == dedent"""
+      rnInner
+        rnLeaf  '\'
+        rnLeaf  'this'
+      """)
+
+    check("""\\\\ this""".toAst == dedent"""
+      rnInner
+        rnLeaf  '\'
+        rnLeaf  '\'
+        rnLeaf  ' '
+        rnLeaf  'this'
+      """)
+
+suite "RST inline markup":
+  test "end-string has repeating symbols":
+    check("*emphasis content****".toAst == dedent"""
+      rnEmphasis
+        rnLeaf  'emphasis'
+        rnLeaf  ' '
+        rnLeaf  'content'
+        rnLeaf  '***'
+      """)
+
+    check("""*emphasis content\****""".toAst == dedent"""
+      rnEmphasis
+        rnLeaf  'emphasis'
+        rnLeaf  ' '
+        rnLeaf  'content'
+        rnLeaf  '*'
+        rnLeaf  '**'
+      """)  # exact configuration of leafs with * is not really essential,
+            # only total number of * is essential
+
+    check("**strong content****".toAst == dedent"""
+      rnStrongEmphasis
+        rnLeaf  'strong'
+        rnLeaf  ' '
+        rnLeaf  'content'
+        rnLeaf  '**'
+      """)
+
+    check("""**strong content*\****""".toAst == dedent"""
+      rnStrongEmphasis
+        rnLeaf  'strong'
+        rnLeaf  ' '
+        rnLeaf  'content'
+        rnLeaf  '*'
+        rnLeaf  '*'
+        rnLeaf  '*'
+      """)
+
+    check("``lit content`````".toAst == dedent"""
+      rnInlineLiteral
+        rnLeaf  'lit'
+        rnLeaf  ' '
+        rnLeaf  'content'
+        rnLeaf  '```'
+      """)
+
+
+  test """interpreted text can be ended with \` """:
+    let output = (".. default-role:: literal\n" & """`\``""").toAst
+    check(output.endsWith """
+  rnParagraph
+    rnInlineLiteral
+      rnLeaf  '`'""" & "\n")
+
+    let output2 = """`\``""".toAst
+    check(output2 == dedent"""
+      rnInlineCode
+        rnDirArg
+          rnLeaf  'nim'
+        [nil]
+        rnLiteralBlock
+          rnLeaf  '`'
+      """)
+
+    let output3 = """`proc \`+\``""".toAst
+    check(output3 == dedent"""
+      rnInlineCode
+        rnDirArg
+          rnLeaf  'nim'
+        [nil]
+        rnLiteralBlock
+          rnLeaf  'proc `+`'
+      """)
+
+  test """inline literals can contain \ anywhere""":
+    check("""``\``""".toAst == dedent"""
+      rnInlineLiteral
+        rnLeaf  '\'
+      """)
+
+    check("""``\\``""".toAst == dedent"""
+      rnInlineLiteral
+        rnLeaf  '\'
+        rnLeaf  '\'
+      """)
+
+    check("""``\```""".toAst == dedent"""
+      rnInlineLiteral
+        rnLeaf  '\'
+        rnLeaf  '`'
+      """)
+
+    check("""``\\```""".toAst == dedent"""
+      rnInlineLiteral
+        rnLeaf  '\'
+        rnLeaf  '\'
+        rnLeaf  '`'
+      """)
+
+    check("""``\````""".toAst == dedent"""
+      rnInlineLiteral
+        rnLeaf  '\'
+        rnLeaf  '`'
+        rnLeaf  '`'
+      """)
+
+  test "references with _ at the end":
+    check(dedent"""
+      .. _lnk: https
+
+      lnk_""".toAst ==
+      dedent"""
+        rnHyperlink
+          rnInner
+            rnLeaf  'lnk'
+          rnInner
+            rnLeaf  'https'
+      """)
+
+  test "not a hyper link":
+    check(dedent"""
+      .. _lnk: https
+
+      lnk___""".toAst ==
+      dedent"""
+        rnInner
+          rnLeaf  'lnk'
+          rnLeaf  '___'
+      """)
+
+  test "no punctuation in the end of a standalone URI is allowed":
+    check(dedent"""
+        [see (http://no.org)], end""".toAst ==
+      dedent"""
+        rnInner
+          rnLeaf  '['
+          rnLeaf  'see'
+          rnLeaf  ' '
+          rnLeaf  '('
+          rnStandaloneHyperlink
+            rnLeaf  'http://no.org'
+          rnLeaf  ')'
+          rnLeaf  ']'
+          rnLeaf  ','
+          rnLeaf  ' '
+          rnLeaf  'end'
+        """)
+
+    # but `/` at the end is OK
+    check(
+      dedent"""
+        See http://no.org/ end""".toAst ==
+      dedent"""
+        rnInner
+          rnLeaf  'See'
+          rnLeaf  ' '
+          rnStandaloneHyperlink
+            rnLeaf  'http://no.org/'
+          rnLeaf  ' '
+          rnLeaf  'end'
+        """)
+
+    # a more complex URL with some made-up ending '&='.
+    # Github Markdown would include final &= and
+    # so would rst2html.py in contradiction with RST spec.
+    check(
+      dedent"""
+        See https://www.google.com/url?sa=t&source=web&cd=&cad=rja&url=https%3A%2F%2Fnim-lang.github.io%2FNim%2Frst.html%23features&usg=AO&= end""".toAst ==
+      dedent"""
+        rnInner
+          rnLeaf  'See'
+          rnLeaf  ' '
+          rnStandaloneHyperlink
+            rnLeaf  'https://www.google.com/url?sa=t&source=web&cd=&cad=rja&url=https%3A%2F%2Fnim-lang.github.io%2FNim%2Frst.html%23features&usg=AO'
+          rnLeaf  '&'
+          rnLeaf  '='
+          rnLeaf  ' '
+          rnLeaf  'end'
+        """)

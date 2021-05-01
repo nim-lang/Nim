@@ -524,7 +524,7 @@ proc insert*(db: DbConn, query: SqlQuery, pkName: string,
             {.tags: [WriteDbEffect], since: (1, 3).} =
   ## executes the query (typically "INSERT") and returns the
   ## generated ID
-  result = tryInsertID(db, query, args)
+  result = tryInsert(db, query, pkName, args)
   if result < 0: dbError(db)
 
 proc execAffectedRows*(db: DbConn, query: SqlQuery,

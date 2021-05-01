@@ -34,9 +34,6 @@ from ast import eqTypeFlags, tfGcSafe, tfNoSideEffect
 
 # but some have deps to imported modules. Yay.
 bootSwitch(usedTinyC, hasTinyCBackend, "-d:tinyc")
-bootSwitch(usedNativeStacktrace,
-  defined(nativeStackTrace) and nativeStackTraceSupported,
-  "-d:nativeStackTrace")
 bootSwitch(usedFFI, hasFFI, "-d:nimHasLibFFI")
 
 type
@@ -101,7 +98,7 @@ proc writeVersionInfo(conf: ConfigRef; pass: TCmdLinePass) =
       msgWriteln(conf, "git hash: " & gitHash, {msgStdout})
 
     msgWriteln(conf, "active boot switches:" & usedRelease & usedDanger &
-      usedTinyC & useLinenoise & usedNativeStacktrace &
+      usedTinyC & useLinenoise &
       usedFFI & usedBoehm & usedMarkAndSweep & usedGoGC & usedNoGC,
                {msgStdout})
     msgQuit(0)

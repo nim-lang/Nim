@@ -3,6 +3,7 @@
 # to change expected results (after carefully verifying everything), use -d:fixup
 
 import strutils, os
+from std/private/gitutils import diffFiles
 
 var
   failures = 0
@@ -40,7 +41,7 @@ proc testNimDoc(prjDir, docsDir: string; switches: NimSwitches; fixup = false) =
       inc failures
     elif readFile(expected) != readFile(produced):
       echo "FAILURE: files differ: ", produced
-      discard execShellCmd("diff -uNdr " & expected & " " & produced)
+      echo diffFiles(expected, produced).output
       inc failures
       if fixup:
         copyFile(produced, expected)

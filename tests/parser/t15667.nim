@@ -7,9 +7,9 @@ t15667.nim(28, 5) Error: invalid indentation, maybe you forgot a '=' at t15667.n
 t15667.nim(33, 5) Error: invalid indentation, maybe you forgot a '=' at t15667.nim(31, 25) ?
 t15667.nim(42, 5) Error: invalid indentation, maybe you forgot a '=' at t15667.nim(38, 12) ?
 t15667.nim(56, 5) Error: invalid indentation, maybe you forgot a '=' at t15667.nim(55, 13) ?
+t15667.nim(61, 48) Error: expression expected, but found ','
 '''
 """
-
 
 
 
@@ -56,3 +56,6 @@ block:
     runnableExamples:
       discard
     discard
+
+# semiStmtList loop issue
+proc bar(k:static bool):SomeNumber = (when k: 3, else: 3.0)

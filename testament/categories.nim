@@ -576,6 +576,9 @@ proc isJoinableSpec(spec: TSpec): bool =
     spec.exitCode == 0 and
     spec.input.len == 0 and
     spec.nimout.len == 0 and
+    spec.nimoutFull == false and
+      # so that tests can have `nimoutFull: true` with `nimout.len == 0` with
+      # the meaning that they expect empty output.
     spec.matrix.len == 0 and
     spec.outputCheck != ocSubstr and
     spec.ccodeCheck.len == 0 and
@@ -662,8 +665,8 @@ proc runJoinedTest(r: var TResults, cat: Category, testsDir: string, options: st
 
   if buf != outputExpected:
     writeFile(outputExceptedFile, outputExpected)
-    discard execShellCmd("diff -uNdr $1 $2" % [outputExceptedFile, outputGottenFile])
-    echo failString & "megatest output different!"
+    echo diffFiles(outputGottenFile, outputExceptedFile).output
+    echo failString & "megatest output different, see $1 vs $2" % [outputGottenFile, outputExceptedFile]
     # outputGottenFile, outputExceptedFile not removed on purpose for debugging.
     quit 1
   else:

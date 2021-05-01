@@ -1,4 +1,5 @@
 import os, strutils
+from std/private/gitutils import diffFiles
 
 const
   baseDir = "nimdoc/rst2html"
@@ -19,7 +20,7 @@ proc testRst2Html(fixup = false) =
     exec("$1 rst2html $2" % [nimExe, sourceFile])
     let producedHtml = expectedHtml.replace('\\', '/').replace("/expected/", "/source/htmldocs/")
     if readFile(expectedHtml) != readFile(producedHtml):
-      discard execShellCmd("diff -uNdr " & expectedHtml & " " & producedHtml)
+      echo diffFiles(expectedHtml, producedHtml).output
       inc failures
       if fixup:
         copyFile(producedHtml, expectedHtml)

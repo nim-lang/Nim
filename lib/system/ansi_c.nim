@@ -74,7 +74,7 @@ elif defined(haiku):
     SIGPIPE* = cint(7)
     SIG_DFL* = cast[CSighandlerT](0)
 else:
-  when NoFakeVars:
+  when defined(nimscript):
     {.error: "SIGABRT not ported to your platform".}
   else:
     var

@@ -51,13 +51,18 @@
   for previous behavior.
 
 - `hashes.hash` now supports `object` and `ref` (can be overloaded in user code).
+  For a transition period, use `-d:nimLegacyNoHashRef` to avoid defining `hash(ref)`.
 - `hashes.hash(proc|ptr|ref|pointer)` now calls `hash(int)` and honors `-d:nimIntHash1`,
   `hashes.hash(closure)` has also been improved.
 
 - The unary slice `..b` was removed, use `0..b` instead or use `-d:nimLegacyUnarySlice`
   for a deprecation period.
 
-- Moved `.travis.yml`, `appveyor.yml.disabled`, `.github/workflows/ci.yml.disabled` to `unmaintained/`.
+- Removed `.travis.yml`, `appveyor.yml.disabled`, `.github/workflows/ci.yml.disabled`.
+
+- Nim compiler now adds ASCII unit separator `\31` before a newline for every generated
+  message (potentially multiline), so tooling can tell when messages start and end.
+
 
 ## Standard library additions and changes
 - Added support for parenthesized expressions in `strformat`
@@ -345,7 +350,7 @@
 
 - Added `--spellSuggest` to show spelling suggestions on typos.
 
-- Added `--filenames:abs|canonical|magic` which replaces --listFullPaths:on|off
+- Added `--filenames:abs|canonical|legacyRelProj` which replaces --listFullPaths:on|off
 
 - Added `--processing:dots|filenames|off` which customizes `hintProcessing`
 
@@ -398,3 +403,6 @@
 
 - `fusion` is now un-bundled from nim, `./koch fusion` will
   install it via nimble at a fixed hash.
+
+- testament: added `nimoutFull: bool` spec to compare full output of compiler
+  instead of a subset.

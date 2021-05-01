@@ -1,5 +1,3 @@
-.. default-role:: code
-
 ===================================
    Nim Compiler User Guide
 ===================================
@@ -7,7 +5,11 @@
 :Author: Andreas Rumpf
 :Version: |nimversion|
 
+.. default-role:: code
+.. include:: rstcommon.rst
 .. contents::
+
+..
 
   "Look at you, hacker. A pathetic creature of meat and bone, panting and
   sweating as you run through my corridors. How can you challenge a perfect,
@@ -32,6 +34,9 @@ Command-line switches
 ---------------------
 Basic command-line switches are:
 
+.. no syntax highlighting in the below included files at the moment
+.. default-role:: code
+
 Usage:
 
 .. include:: basicopt.txt
@@ -43,11 +48,12 @@ Advanced command-line switches are:
 .. include:: advopt.txt
 
 
+.. include:: rstcommon.rst
 
 List of warnings
 ----------------
 
-Each warning can be activated individually with `--warning[NAME]:on|off` or
+Each warning can be activated individually with `--warning[NAME]:on|off`:option: or
 in a `push` pragma.
 
 ==========================       ============================================
@@ -71,7 +77,7 @@ User                             Some user-defined warning.
 List of hints
 -------------
 
-Each hint can be activated individually with `--hint[NAME]:on|off` or in a
+Each hint can be activated individually with `--hint[NAME]:on|off`:option: or in a
 `push` pragma.
 
 ==========================       ============================================
@@ -102,6 +108,7 @@ Source                           The source line that triggered a diagnostic
                                  message.
 StackTrace
 Success, SuccessX                Successful compilation of a library or a binary.
+BuildMode                        Kind of build: debug, release, danger
 User
 UserRaw
 XDeclaredButNotUsed              Unused symbols in the code.
@@ -131,22 +138,22 @@ Level  Description
 Compile-time symbols
 --------------------
 
-Through the `-d:x` or `--define:x` switch you can define compile-time
+Through the `-d:x`:option: or `--define:x`:option: switch you can define compile-time
 symbols for conditional compilation. The defined switches can be checked in
 source code with the `when statement
 <manual.html#statements-and-expressions-when-statement>`_ and
 `defined proc <system.html#defined,untyped>`_. The typical use of this switch is
-to enable builds in release mode (`-d:release`) where optimizations are
-enabled for better performance. Another common use is the `-d:ssl` switch to
+to enable builds in release mode (`-d:release`:option:) where optimizations are
+enabled for better performance. Another common use is the `-d:ssl`:option: switch to
 activate SSL sockets.
 
-Additionally, you may pass a value along with the symbol: `-d:x=y`
+Additionally, you may pass a value along with the symbol: `-d:x=y`:option:
 which may be used in conjunction with the `compile-time define
 pragmas<manual.html#implementation-specific-pragmas-compileminustime-define-pragmas>`_
 to override symbols during build time.
 
 Compile-time symbols are completely **case insensitive** and underscores are
-ignored too. `--define:FOO` and `--define:foo` are identical.
+ignored too. `--define:FOO`:option: and `--define:foo`:option: are identical.
 
 Compile-time symbols starting with the `nim` prefix are reserved for the
 implementation and should not be used elsewhere.
@@ -155,28 +162,47 @@ implementation and should not be used elsewhere.
 Configuration files
 -------------------
 
-**Note:** The *project file name* is the name of the `.nim` file that is
+**Note:** The *project file name* is the name of the ``.nim`` file that is
 passed as a command-line argument to the compiler.
 
 
-The `nim` executable processes configuration files in the following
+The `nim`:cmd: executable processes configuration files in the following
 directories (in this order; later files overwrite previous settings):
 
-1) `$nim/config/nim.cfg`, `/etc/nim/nim.cfg` (UNIX) or ``<Nim's installation directory>\config\nim.cfg`` (Windows). This file can be skipped with the `--skipCfg` command line option.
-2) If environment variable `XDG_CONFIG_HOME` is defined, `$XDG_CONFIG_HOME/nim/nim.cfg` or `~/.config/nim/nim.cfg` (POSIX) or `%APPDATA%/nim/nim.cfg` (Windows). This file can be skipped with the `--skipUserCfg` command line option.
-3) `$parentDir/nim.cfg` where `$parentDir` stands for any parent  directory of the project file's path. These files can be skipped with the `--skipParentCfg` command-line option.
-4) `$projectDir/nim.cfg` where `$projectDir` stands for the project  file's path. This file can be skipped with the `--skipProjCfg` command-line option.
-5) A project can also have a project-specific configuration file named `$project.nim.cfg` that resides in the same directory as `$project.nim`. This file can be skipped with the `--skipProjCfg` command-line option.
+1) ``$nim/config/nim.cfg``, ``/etc/nim/nim.cfg`` (UNIX) or
+   ``<Nim's installation directory>\config\nim.cfg`` (Windows).
+   This file can be skipped with the `--skipCfg`:option: command line option.
+2) If environment variable `XDG_CONFIG_HOME` is defined,
+   ``$XDG_CONFIG_HOME/nim/nim.cfg`` or ``~/.config/nim/nim.cfg`` (POSIX) or
+   ``%APPDATA%/nim/nim.cfg`` (Windows).
+   This file can be skipped with the `--skipUserCfg`:option: command line
+   option.
+3) ``$parentDir/nim.cfg`` where ``$parentDir`` stands for any parent 
+   directory of the project file's path.
+   These files can be skipped with the `--skipParentCfg`:option:
+   command-line option.
+4) ``$projectDir/nim.cfg`` where ``$projectDir`` stands for the project
+   file's path.
+   This file can be skipped with the `--skipProjCfg`:option:
+   command-line option.
+5) A project can also have a project-specific configuration file named
+   ``$project.nim.cfg`` that resides in the same directory as ``$project.nim``.
+   This file can be skipped with the `--skipProjCfg`:option:
+   command-line option.
 
 
 Command-line settings have priority over configuration file settings.
 
 The default build of a project is a `debug build`:idx:. To compile a
-`release build`:idx: define the `release` symbol::
+`release build`:idx: define the `release` symbol:
+
+.. code:: cmd
 
   nim c -d:release myproject.nim
 
- To compile a `dangerous release build`:idx: define the `danger` symbol::
+To compile a `dangerous release build`:idx: define the `danger` symbol:
+
+.. code:: cmd
 
   nim c -d:danger myproject.nim
 
@@ -188,10 +214,10 @@ Nim has the concept of a global search path (PATH) that is queried to
 determine where to find imported modules or include files. If multiple files are
 found an ambiguity error is produced.
 
-`nim dump` shows the contents of the PATH.
+`nim dump`:cmd: shows the contents of the PATH.
 
 However before the PATH is used the current directory is checked for the
-file's existence. So if PATH contains `$lib` and `$lib/bar` and the
+file's existence. So if PATH contains ``$lib`` and ``$lib/bar`` and the
 directory structure looks like this::
 
   $lib/x.nim
@@ -201,26 +227,26 @@ directory structure looks like this::
   other.nim
 
 And `main` imports `x`, `foo/x` is imported. If `other` imports `x`
-then both `$lib/x.nim` and `$lib/bar/x.nim` match but `$lib/x.nim` is used
+then both ``$lib/x.nim`` and ``$lib/bar/x.nim`` match but ``$lib/x.nim`` is used
 as it is the first match.
 
 
 Generated C code directory
 --------------------------
 The generated files that Nim produces all go into a subdirectory called
-`nimcache`. Its full path is
+``nimcache``. Its full path is
 
-- `$XDG_CACHE_HOME/nim/$projectname(_r|_d)` or `~/.cache/nim/$projectname(_r|_d)`
+- ``$XDG_CACHE_HOME/nim/$projectname(_r|_d)`` or ``~/.cache/nim/$projectname(_r|_d)``
   on Posix
-- `$HOME/nimcache/$projectname(_r|_d)` on Windows.
+- ``$HOME\nimcache\$projectname(_r|_d)`` on Windows.
 
 The `_r` suffix is used for release builds, `_d` is for debug builds.
 
 This makes it easy to delete all generated files.
 
-The `--nimcache`
+The `--nimcache`:option:
 `compiler switch <#compiler-usage-commandminusline-switches>`_ can be used to
-to change the `nimcache` directory.
+to change the ``nimcache`` directory.
 
 However, the generated C code is not platform-independent. C code generated for
 Linux does not compile on Windows, for instance. The comment on top of the
@@ -230,34 +256,40 @@ C file lists the OS, CPU, and CC the file has been compiled for.
 Compiler Selection
 ==================
 
-To change the compiler from the default compiler (at the command line)::
+To change the compiler from the default compiler (at the command line):
+
+.. code:: cmd
 
   nim c --cc:llvm_gcc --compile_only myfile.nim
 
-This uses the configuration defined in ``config\nim.cfg`` for `lvm_gcc`.
+This uses the configuration defined in ``config\nim.cfg`` for `llvm_gcc`:cmd:.
 
 If nimcache already contains compiled code from a different compiler for the same project,
-add the `-f` flag to force all files to be recompiled.
+add the `-f`:option: flag to force all files to be recompiled.
 
 The default compiler is defined at the top of ``config\nim.cfg``.
-Changing this setting affects the compiler used by `koch` to (re)build Nim.
+Changing this setting affects the compiler used by `koch`:cmd: to (re)build Nim.
 
-To use the `CC` environment variable, use `nim c --cc:env myfile.nim`. To use the
-`CXX` environment variable, use `nim cpp --cc:env myfile.nim`. `--cc:env` is available
-since Nim version 1.4.
+To use the `CC` environment variable, use `nim c --cc:env myfile.nim`:cmd:.
+To use the `CXX` environment variable, use `nim cpp --cc:env myfile.nim`:cmd:.
+`--cc:env`:option: is available since Nim version 1.4.
 
 
 Cross-compilation
 =================
 
-To cross compile, use for example::
+To cross compile, use for example:
+
+.. code:: cmd
 
   nim c --cpu:i386 --os:linux --compileOnly --genScript myproject.nim
 
-Then move the C code and the compile script `compile_myproject.sh` to your
+Then move the C code and the compile script `compile_myproject.sh`:cmd: to your
 Linux i386 machine and run the script.
 
-Another way is to make Nim invoke a cross compiler toolchain::
+Another way is to make Nim invoke a cross compiler toolchain:
+
+.. code:: cmd
 
   nim c --cpu:arm --os:linux myproject.nim
 
@@ -273,17 +305,22 @@ configuration file should contain something like::
 Cross-compilation for Windows
 =============================
 
-To cross-compile for Windows from Linux or macOS using the MinGW-w64 toolchain::
+To cross-compile for Windows from Linux or macOS using the MinGW-w64 toolchain:
+
+.. code:: cmd
 
   nim c -d:mingw myproject.nim
 
-Use `--cpu:i386` or `--cpu:amd64` to switch the CPU architecture.
+Use `--cpu:i386`:option: or `--cpu:amd64`:option: to switch the CPU architecture.
 
-The MinGW-w64 toolchain can be installed as follows::
+The MinGW-w64 toolchain can be installed as follows:
 
-  Ubuntu: apt install mingw-w64
-  CentOS: yum install mingw32-gcc | mingw64-gcc - requires EPEL
-  OSX: brew install mingw-w64
+.. code:: cmd
+
+  apt install mingw-w64   # Ubuntu
+  yum install mingw32-gcc
+  yum install mingw64-gcc # CentOS - requires EPEL
+  brew install mingw-w64  # OSX
 
 
 Cross-compilation for Android
@@ -297,7 +334,7 @@ The first one is to treat Android as a simple Linux and use
 directly on android as if it was Linux. These programs are console-only
 programs that can't be distributed in the Play Store.
 
-Use regular `nim c` inside termux to make Android terminal programs.
+Use regular `nim c`:cmd: inside termux to make Android terminal programs.
 
 Normal Android apps are written in Java, to use Nim inside an Android app
 you need a small Java stub that calls out to a native library written in
@@ -305,16 +342,16 @@ Nim using the `NDK <https://developer.android.com/ndk>`_. You can also use
 `native-activity <https://developer.android.com/ndk/samples/sample_na>`_
 to have the Java stub be auto-generated for you.
 
-Use `nim c -c --cpu:arm --os:android -d:androidNDK --noMain:on` to
+Use `nim c -c --cpu:arm --os:android -d:androidNDK --noMain:on`:cmd: to
 generate the C source files you need to include in your Android Studio
 project. Add the generated C files to CMake build script in your Android
 project. Then do the final compile with Android Studio which uses Gradle
 to call CMake to compile the project.
 
-Because Nim is part of a library it can't have its own c style `main()`
-so you would need to define your own `android_main` and init the Java
+Because Nim is part of a library it can't have its own C-style `main()`:c:
+so you would need to define your own `android_main`:c: and init the Java
 environment, or use a library like SDL2 or GLFM to do it. After the Android
-stuff is done, it's very important to call `NimMain()` in order to
+stuff is done, it's very important to call `NimMain()`:c: in order to
 initialize Nim's garbage collector and to run the top level statements
 of your program.
 
@@ -333,14 +370,14 @@ Normal languages for iOS development are Swift and Objective C. Both of these
 use LLVM and can be compiled into object files linked together with C, C++
 or Objective C code produced by Nim.
 
-Use `nim c -c --os:ios --noMain:on` to generate C files and include them in
+Use `nim c -c --os:ios --noMain:on`:cmd: to generate C files and include them in
 your XCode project. Then you can use XCode to compile, link, package and
 sign everything.
 
-Because Nim is part of a library it can't have its own c style `main()` so you
+Because Nim is part of a library it can't have its own C-style `main()`:c: so you
 would need to define `main` that calls `autoreleasepool` and
 `UIApplicationMain` to do it, or use a library like SDL2 or GLFM. After
-the iOS setup is done, it's very important to call `NimMain()` to
+the iOS setup is done, it's very important to call `NimMain()`:c: to
 initialize Nim's garbage collector and to run the top-level statements
 of your program.
 
@@ -357,17 +394,16 @@ so you need to clean those files manually to do a clean build.
 Cross-compilation for Nintendo Switch
 =====================================
 
-Simply add --os:nintendoswitch
-to your usual `nim c` or `nim cpp` command and set the `passC`
-and `passL` command line switches to something like:
+Simply add `--os:nintendoswitch`:option:
+to your usual `nim c`:cmd: or `nim cpp`:cmd: command and set the `passC`:option:
+and `passL`:option: command line switches to something like:
 
-.. code-block:: console
+.. code-block:: cmd
   nim c ... --passC="-I$DEVKITPRO/libnx/include" ...
   --passL="-specs=$DEVKITPRO/libnx/switch.specs -L$DEVKITPRO/libnx/lib -lnx"
 
-or setup a nim.cfg file like so:
+or setup a ``nim.cfg`` file like so::
 
-.. code-block:: Nim
   #nim.cfg
   --passC="-I$DEVKITPRO/libnx/include"
   --passL="-specs=$DEVKITPRO/libnx/switch.specs -L$DEVKITPRO/libnx/lib -lnx"
@@ -376,12 +412,14 @@ The DevkitPro setup must be the same as the default with their new installer
 `here for Mac/Linux <https://github.com/devkitPro/pacman/releases>`_ or
 `here for Windows <https://github.com/devkitPro/installer/releases>`_.
 
-For example, with the above-mentioned config::
+For example, with the above-mentioned config:
+
+.. code:: cmd
 
   nim c --os:nintendoswitch switchhomebrew.nim
 
-This will generate a file called `switchhomebrew.elf` which can then be turned into
-an nro file with the `elf2nro` tool in the DevkitPro release. Examples can be found at
+This will generate a file called ``switchhomebrew.elf`` which can then be turned into
+an nro file with the `elf2nro`:cmd: tool in the DevkitPro release. Examples can be found at
 `the nim-libnx github repo <https://github.com/jyapayne/nim-libnx.git>`_.
 
 There are a few things that don't work because the DevkitPro libraries don't support them.
@@ -401,16 +439,20 @@ DLL generation
 
 Nim supports the generation of DLLs. However, there must be only one
 instance of the GC per process/address space. This instance is contained in
-`nimrtl.dll`. This means that every generated Nim DLL depends
-on `nimrtl.dll`. To generate the "nimrtl.dll" file, use the command::
+``nimrtl.dll``. This means that every generated Nim DLL depends
+on ``nimrtl.dll``. To generate the "nimrtl.dll" file, use the command:
+
+.. code:: cmd
 
   nim c -d:release lib/nimrtl.nim
 
-To link against `nimrtl.dll` use the command::
+To link against ``nimrtl.dll`` use the command:
+
+.. code:: cmd
 
   nim c -d:useNimRtl myprog.nim
 
-**Note**: Currently the creation of `nimrtl.dll` with thread support has
+**Note**: Currently the creation of ``nimrtl.dll`` with thread support has
 never been tested and is unlikely to work!
 
 
@@ -426,20 +468,20 @@ Define                   Effect
 ======================   =========================================================
 `release`                Turns on the optimizer.
                          More aggressive optimizations are possible, e.g.:
-                         `--passC:-ffast-math` (but see issue #10305)
+                         `--passC:-ffast-math`:option: (but see issue #10305)
 `danger`                 Turns off all runtime checks and turns on the optimizer.
-`useFork`                Makes `osproc` use `fork` instead of `posix_spawn`.
-`useNimRtl`              Compile and link against `nimrtl.dll`.
+`useFork`                Makes `osproc` use `fork`:c: instead of `posix_spawn`:c:.
+`useNimRtl`              Compile and link against ``nimrtl.dll``.
 `useMalloc`              Makes Nim use C's `malloc`:idx: instead of Nim's
                          own memory manager, albeit prefixing each allocation with
                          its size to support clearing memory on reallocation.
-                         This only works with `gc:none`, `gc:arc` and
-                         `--gc:orc`.
+                         This only works with `--gc:none`:option:,
+                         `--gc:arc`:option: and `--gc:orc`:option:.
 `useRealtimeGC`          Enables support of Nim's GC for *soft* realtime
                          systems. See the documentation of the `gc <gc.html>`_
                          for further information.
 `logGC`                  Enable GC logging to stdout.
-`nodejs`                 The JS target is actually `node.js`.
+`nodejs`                 The JS target is actually ``node.js``.
 `ssl`                    Enables OpenSSL support for the sockets module.
 `memProfiler`            Enables memory profiling for the native GC.
 `uClibc`                 Use uClibc instead of libc. (Relevant for Unix-like OSes)
@@ -447,16 +489,16 @@ Define                   Effect
                          what's in the Nim file with what's in the C header.
                          This may become enabled by default in the future.
 `tempDir`                This symbol takes a string as its value, like
-                         `--define:tempDir:/some/temp/path` to override the
-                         temporary directory returned by `os.getTempDir()`.
+                         `--define:tempDir:/some/temp/path`:option: to override
+                         the temporary directory returned by `os.getTempDir()`.
                          The value **should** end with a directory separator
                          character. (Relevant for the Android platform)
 `useShPath`              This symbol takes a string as its value, like
-                         `--define:useShPath:/opt/sh/bin/sh` to override the
-                         path for the `sh` binary, in cases where it is not
-                         located in the default location `/bin/sh`.
-`noSignalHandler`        Disable the crash handler from `system.nim`.
-`globalSymbols`          Load all `{.dynlib.}` libraries with the `RTLD_GLOBAL`
+                         `--define:useShPath:/opt/sh/bin/sh`:option: to override
+                         the path for the `sh`:cmd: binary, in cases where it is
+                         not located in the default location ``/bin/sh``.
+`noSignalHandler`        Disable the crash handler from ``system.nim``.
+`globalSymbols`          Load all `{.dynlib.}` libraries with the `RTLD_GLOBAL`:c:
                          flag on Posix systems to resolve symbols in subsequently
                          loaded libraries.
 ======================   =========================================================
@@ -473,20 +515,21 @@ generator and are subject to change.
 
 LineDir option
 --------------
-The `lineDir` option can be turned on or off. If turned on the
-generated C code contains `#line` directives. This may be helpful for
+The `--lineDir`:option: option can be turned on or off. If turned on the
+generated C code contains `#line`:c: directives. This may be helpful for
 debugging with GDB.
 
 
 StackTrace option
 -----------------
-If the `stackTrace` option is turned on, the generated C contains code to
+If the `--stackTrace`:option: option is turned on, the generated C contains code to
 ensure that proper stack traces are given if the program crashes or some uncaught exception is raised.
 
 
 LineTrace option
 ----------------
-The `lineTrace` option implies the `stackTrace` option. If turned on,
+The `--lineTrace`:option: option implies the `stackTrace`:option: option.
+If turned on,
 the generated C contains code to ensure that proper stack traces with line
 number information are given if the program crashes or an uncaught exception
 is raised.
@@ -496,11 +539,13 @@ DynlibOverride
 ==============
 
 By default Nim's `dynlib` pragma causes the compiler to generate
-`GetProcAddress` (or their Unix counterparts)
-calls to bind to a DLL. With the `dynlibOverride` command line switch this
-can be prevented and then via `--passL` the static library can be linked
+`GetProcAddress`:cpp: (or their Unix counterparts)
+calls to bind to a DLL. With the `dynlibOverride`:option: command line switch this
+can be prevented and then via `--passL`:option: the static library can be linked
 against. For instance, to link statically against Lua this command might work
-on Linux::
+on Linux:
+
+.. code:: cmd
 
   nim c --dynlibOverride:lua --passL:liblua.lib program.nim
 
@@ -508,8 +553,8 @@ on Linux::
 Backend language options
 ========================
 
-The typical compiler usage involves using the `compile` or `c` command to
-transform a `.nim` file into one or more `.c` files which are then
+The typical compiler usage involves using the `compile`:option: or `c`:option:
+command to transform a ``.nim`` file into one or more ``.c`` files which are then
 compiled with the platform's C compiler into a static binary. However, there
 are other commands to compile to C++, Objective-C, or JavaScript. More details
 can be read in the `Nim Backend Integration document <backends.html>`_.
@@ -519,7 +564,7 @@ Nim documentation tools
 =======================
 
 Nim provides the `doc`:idx: command to generate HTML
-documentation from `.nim` source files. Only exported symbols will appear in
+documentation from ``.nim`` source files. Only exported symbols will appear in
 the output. For more details `see the docgen documentation <docgen.html>`_.
 
 Nim idetools integration
@@ -557,19 +602,21 @@ embedded microprocessors with only a few kilobytes of memory.
 A good start is to use the `any` operating target together with the
 `malloc` memory allocator and the `arc` garbage collector. For example:
 
-`nim c --os:any --gc:arc -d:useMalloc [...] x.nim`
+.. code:: cmd
 
-- `--gc:arc` will enable the reference counting memory management instead
+   nim c --os:any --gc:arc -d:useMalloc [...] x.nim
+
+- `--gc:arc`:option: will enable the reference counting memory management instead
   of the default garbage collector. This enables Nim to use heap memory which
   is required for strings and seqs, for example.
 
-- The `--os:any` target makes sure Nim does not depend on any specific
+- The `--os:any`:option: target makes sure Nim does not depend on any specific
   operating system primitives. Your platform should support only some basic
   ANSI C library `stdlib` and `stdio` functions which should be available
   on almost any platform.
 
-- The `-d:useMalloc` option configures Nim to use only the standard C memory
-  manage primitives `malloc()`, `free()`, `realloc()`.
+- The `-d:useMalloc`:option: option configures Nim to use only the standard C memory
+  manage primitives `malloc()`:c:, `free()`:c:, `realloc()`:c:.
 
 If your platform does not provide these functions it should be trivial to
 provide an implementation for them and link these to your program.
@@ -579,13 +626,13 @@ additional flags to both the Nim compiler and the C compiler and/or linker
 to optimize the build for size. For example, the following flags can be used
 when targeting a gcc compiler:
 
-`--opt:size --passC:-flto --passL:-flto`
+`--opt:size --passC:-flto --passL:-flto`:option:
 
-The `--opt:size` flag instructs Nim to optimize code generation for small
-size (with the help of the C compiler), the `flto` flags enable link-time
+The `--opt:size`:option: flag instructs Nim to optimize code generation for small
+size (with the help of the C compiler), the `-flto`:option: flags enable link-time
 optimization in the compiler and linker.
 
-Check the `Cross-compilation` section for instructions on how to compile the
+Check the `Cross-compilation`_ section for instructions on how to compile the
 program for your target.
 
 Nim for realtime systems
@@ -602,7 +649,7 @@ The Nim programming language has no concept of Posix's signal handling
 mechanisms. However, the standard library offers some rudimentary support
 for signal handling, in particular, segmentation faults are turned into
 fatal errors that produce a stack trace. This can be disabled with the
-`-d:noSignalHandler` switch.
+`-d:noSignalHandler`:option: switch.
 
 
 Optimizing for Nim

@@ -21,7 +21,7 @@ proc isDots(a: string): bool =
   a.startsWith(".") and a.strip(chars = {'.'}) == ""
 
 const
-  defaultHintsOff = "--hint:successx:off --hint:exec:off --hint:link:off --hint:cc:off --hint:conf:off --hint:processing:off --hint:QuitCalled:off"
+  defaultHintsOff = "--hint:successx:off --hint:buildmode:off --hint:exec:off --hint:link:off --hint:cc:off --hint:conf:off --hint:processing:off --hint:QuitCalled:off"
     # useful when you want to turn only some hints on, and some common ones off.
     # pending https://github.com/timotheecour/Nim/issues/453, simplify to: `--hints:off`
   nim = getCurrentCompilerExe()
@@ -71,6 +71,7 @@ ret=[s1:foobar s2:foobar age:25 pi:3.14]
 
 else: # don't run twice the same test
   import std/strutils
+  import std/json
   template check2(msg) = doAssert msg in output, output
 
   block: # tests with various options `nim doc --project --index --docroot`
@@ -317,3 +318,13 @@ compiling: v3
 running: v3
 running: v2
 """, ret
+
+  block: # nim dump
+    let cmd = fmt"{nim} dump --dump.format:json -d:D20210428T161003 --hints:off ."
+    let (ret, status) = execCmdEx(cmd)
+    doAssert status == 0
+    let j = ret.parseJson
+    # sanity checks
+    doAssert "D20210428T161003" in j["defined_symbols"].to(seq[string])
+    doAssert j["version"].to(string) == NimVersion
+    doAssert j["nimExe"].to(string) == getCurrentCompilerExe()

@@ -1,11 +1,13 @@
-.. default-role:: code
-
 ================================
    Nim Backend Integration
 ================================
 
 :Author: Puppet Master
 :Version: |nimversion|
+
+.. default-role:: code
+.. include:: rstcommon.rst
+.. no syntax highlighting here by default:
 
 .. contents::
   "Heresy grows from idleness." -- Unknown.
@@ -15,8 +17,9 @@ Introduction
 ============
 
 The `Nim Compiler User Guide <nimc.html>`_ documents the typical
-compiler invocation, using the `compile` or `c` command to transform a
-`.nim` file into one or more `.c` files which are then compiled with the
+compiler invocation, using the `compile`:option:
+or `c`:option: command to transform a
+``.nim`` file into one or more ``.c`` files which are then compiled with the
 platform's C compiler into a static binary. However, there are other commands
 to compile to C++, Objective-C, or JavaScript. This document tries to
 concentrate in a single place all the backend and interfacing options.
@@ -25,7 +28,7 @@ The Nim compiler supports mainly two backend families: the C, C++ and
 Objective-C targets and the JavaScript target. `The C like targets
 <#backends-the-c-like-targets>`_ creates source files that can be compiled
 into a library or a final executable. `The JavaScript target
-<#backends-the-javascript-target>`_ can generate a `.js` file which you
+<#backends-the-javascript-target>`_ can generate a ``.js`` file which you
 reference from an HTML file or create a `standalone Node.js program
 <http://nodejs.org>`_.
 
@@ -42,20 +45,22 @@ The C like targets
 
 The commands to compile to either C, C++ or Objective-C are:
 
-  //compileToC, cc          compile project with C code generator
-  //compileToCpp, cpp       compile project to C++ code
-  //compileToOC, objc       compile project to Objective C code
+//compileToC, cc          compile project with C code generator
+//compileToCpp, cpp       compile project to C++ code
+//compileToOC, objc       compile project to Objective C code
 
 The most significant difference between these commands is that if you look
-into the `nimcache` directory you will find `.c`, `.cpp` or `.m`
+into the ``nimcache`` directory you will find ``.c``, ``.cpp`` or ``.m``
 files, other than that all of them will produce a native binary for your
 project.  This allows you to take the generated code and place it directly
 into a project using any of these languages. Here are some typical command-
-line invocations::
+line invocations:
 
-    $ nim c hallo.nim
-    $ nim cpp hallo.nim
-    $ nim objc hallo.nim
+.. code:: cmd
+
+   nim c hallo.nim
+   nim cpp hallo.nim
+   nim objc hallo.nim
 
 The compiler commands select the target backend, but if needed you can
 `specify additional switches for cross-compilation
@@ -66,11 +71,11 @@ or compiler/linker commands.
 The JavaScript target
 ---------------------
 
-Nim can also generate `JavaScript`:idx: code through the `js` command.
+Nim can also generate `JavaScript`:idx: code through the `js`:option: command.
 
 Nim targets JavaScript 1.5 which is supported by any widely used browser.
 Since JavaScript does not have a portable means to include another module,
-Nim just generates a long `.js` file.
+Nim just generates a long ``.js`` file.
 
 Features or modules that the JavaScript platform does not support are not
 available. This includes:
@@ -88,10 +93,12 @@ To compensate, the standard library has modules `catered to the JS backend
 and more support will come in the future (for instance, Node.js bindings
 to get OS info).
 
-To compile a Nim module into a `.js` file use the `js` command; the
-default is a `.js` file that is supposed to be referenced in an `.html`
+To compile a Nim module into a ``.js`` file use the `js`:option: command; the
+default is a ``.js`` file that is supposed to be referenced in an ``.html``
 file. However, you can also run the code with `nodejs`:idx:
-(`<http://nodejs.org>`_)::
+(`<http://nodejs.org>`_):
+
+.. code:: cmd
 
   nim js -d:nodejs -r examples/hallo.nim
 
@@ -150,7 +157,7 @@ interface.
 C invocation example
 ~~~~~~~~~~~~~~~~~~~~
 
-Create a `logic.c` file with the following content:
+Create a ``logic.c`` file with the following content:
 
 .. code-block:: c
   int addTwoIntegers(int a, int b)
@@ -158,7 +165,7 @@ Create a `logic.c` file with the following content:
     return a + b;
   }
 
-Create a `calculator.nim` file with the following content:
+Create a ``calculator.nim`` file with the following content:
 
 .. code-block:: nim
 
@@ -168,26 +175,28 @@ Create a `calculator.nim` file with the following content:
   when isMainModule:
     echo addTwoIntegers(3, 7)
 
-With these two files in place, you can run `nim c -r calculator.nim` and
-the Nim compiler will compile the `logic.c` file in addition to
-`calculator.nim` and link both into an executable, which outputs `10` when
+With these two files in place, you can run `nim c -r calculator.nim`:cmd: and
+the Nim compiler will compile the ``logic.c`` file in addition to
+``calculator.nim`` and link both into an executable, which outputs `10` when
 run. Another way to link the C file statically and get the same effect would
-be to remove the line with the `compile` pragma and run the following typical
-Unix commands::
+be to remove the line with the `compile` pragma and run the following
+typical Unix commands:
 
-    $ gcc -c logic.c
-    $ ar rvs mylib.a logic.o
-    $ nim c --passL:mylib.a -r calculator.nim
+.. code:: cmd
 
-Just like in this example we pass the path to the `mylib.a` library (and we
-could as well pass `logic.o`) we could be passing switches to link any other
+    gcc -c logic.c
+    ar rvs mylib.a logic.o
+    nim c --passL:mylib.a -r calculator.nim
+
+Just like in this example we pass the path to the ``mylib.a`` library (and we
+could as well pass ``logic.o``) we could be passing switches to link any other
 static C library.
 
 
 JavaScript invocation example
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
-Create a `host.html` file with the following content:
+Create a ``host.html`` file with the following content:
 
 .. code-block::
 
@@ -201,7 +210,7 @@ Create a `host.html` file with the following content:
   <script type="text/javascript" src="calculator.js"></script>
   </body></html>
 
-Create a `calculator.nim` file with the following content (or reuse the one
+Create a ``calculator.nim`` file with the following content (or reuse the one
 from the previous section):
 
 .. code-block:: nim
@@ -212,7 +221,7 @@ from the previous section):
     echo addTwoIntegers(3, 7)
 
 Compile the Nim code to JavaScript with `nim js -o:calculator.js
-calculator.nim` and open `host.html` in a browser. If the browser supports
+calculator.nim`:cmd: and open ``host.html`` in a browser. If the browser supports
 javascript, you should see the value `10` in the browser's console. Use the
 `dom module <dom.html>`_ for specific DOM querying and modification procs
 or take a look at `karax <https://github.com/pragmagic/karax>`_ for how to
@@ -237,7 +246,7 @@ Also, C code requires you to specify a forward declaration for functions or
 the compiler will assume certain types for the return value and parameters
 which will likely make your program crash at runtime.
 
-The Nim compiler can generate a C interface header through the `--header`
+The Nim compiler can generate a C interface header through the `--header`:option:
 command-line switch. The generated header will contain all the exported
 symbols and the `NimMain` proc which you need to call before any other
 Nim code.
@@ -246,7 +255,7 @@ Nim code.
 Nim invocation example from C
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
-Create a `fib.nim` file with the following content:
+Create a ``fib.nim`` file with the following content:
 
 .. code-block:: nim
 
@@ -256,7 +265,7 @@ Create a `fib.nim` file with the following content:
     else:
       result = fib(a - 1) + fib(a - 2)
 
-Create a `maths.c` file with the following content:
+Create a ``maths.c`` file with the following content:
 
 .. code-block:: c
 
@@ -273,36 +282,40 @@ Create a `maths.c` file with the following content:
 
 Now you can run the following Unix like commands to first generate C sources
 from the Nim code, then link them into a static binary along your main C
-program::
+program:
 
-  $ nim c --noMain --noLinking --header:fib.h fib.nim
-  $ gcc -o m -I$HOME/.cache/nim/fib_d -Ipath/to/nim/lib $HOME/.cache/nim/fib_d/*.c maths.c
+.. code:: cmd
+
+  nim c --noMain --noLinking --header:fib.h fib.nim
+  gcc -o m -I$HOME/.cache/nim/fib_d -Ipath/to/nim/lib $HOME/.cache/nim/fib_d/*.c maths.c
 
 The first command runs the Nim compiler with three special options to avoid
-generating a `main()` function in the generated files, avoid linking the
+generating a `main()`:c: function in the generated files, avoid linking the
 object files into a final binary, and explicitly generate a header file for C
-integration. All the generated files are placed into the `nimcache`
-directory. That's why the next command compiles the `maths.c` source plus
-all the `.c` files from `nimcache`. In addition to this path, you also
-have to tell the C compiler where to find Nim's `nimbase.h` header file.
+integration. All the generated files are placed into the ``nimcache``
+directory. That's why the next command compiles the ``maths.c`` source plus
+all the ``.c`` files from ``nimcache``. In addition to this path, you also
+have to tell the C compiler where to find Nim's ``nimbase.h`` header file.
 
-Instead of depending on the generation of the individual `.c` files you can
-also ask the Nim compiler to generate a statically linked library::
+Instead of depending on the generation of the individual ``.c`` files you can
+also ask the Nim compiler to generate a statically linked library:
 
-  $ nim c --app:staticLib --noMain --header fib.nim
-  $ gcc -o m -Inimcache -Ipath/to/nim/lib libfib.nim.a maths.c
+.. code:: cmd
+
+  nim c --app:staticLib --noMain --header fib.nim
+  gcc -o m -Inimcache -Ipath/to/nim/lib libfib.nim.a maths.c
 
 The Nim compiler will handle linking the source files generated in the
-`nimcache` directory into the `libfib.nim.a` static library, which you can
+``nimcache`` directory into the ``libfib.nim.a`` static library, which you can
 then link into your C program.  Note that these commands are generic and will
 vary for each system. For instance, on Linux systems you will likely need to
-use `-ldl` too to link in required dlopen functionality.
+use `-ldl`:option: too to link in required dlopen functionality.
 
 
 Nim invocation example from JavaScript
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
-Create a `mhost.html` file with the following content:
+Create a ``mhost.html`` file with the following content:
 
 .. code-block::
 
@@ -313,7 +326,7 @@ Create a `mhost.html` file with the following content:
   </script>
   </body></html>
 
-Create a `fib.nim` file with the following content (or reuse the one
+Create a ``fib.nim`` file with the following content (or reuse the one
 from the previous section):
 
 .. code-block:: nim
@@ -324,9 +337,9 @@ from the previous section):
     else:
       result = fib(a - 1) + fib(a - 2)
 
-Compile the Nim code to JavaScript with `nim js -o:fib.js fib.nim` and
-open `mhost.html` in a browser. If the browser supports javascript, you
-should see an alert box displaying the text `Fib for 9 is 34`. As mentioned
+Compile the Nim code to JavaScript with `nim js -o:fib.js fib.nim`:cmd: and
+open ``mhost.html`` in a browser. If the browser supports javascript, you
+should see an alert box displaying the text ``Fib for 9 is 34``. As mentioned
 earlier, JavaScript doesn't require an initialization call to `NimMain` or
 a similar function and you can call the exported Nim proc directly.
 
@@ -337,7 +350,7 @@ Nimcache naming logic
 The `nimcache`:idx: directory is generated during compilation and will hold
 either temporary or final files depending on your backend target. The default
 name for the directory depends on the used backend and on your OS but you can
-use the `--nimcache` `compiler switch
+use the `--nimcache`:option: `compiler switch
 <nimc.html#compiler-usage-commandminusline-switches>`_ to change it.
 
 
@@ -362,8 +375,8 @@ painless. Most C functions accepting a Nim string converted to a
 `cstring` will likely not need to keep this string around and by the time
 they return the string won't be needed anymore. However, for the rare cases
 where a Nim string has to be preserved and made available to the C backend
-as a `cstring`, you will need to manually prevent the string data from being
-freed with `GC_ref <system.html#GC_ref,string>`_ and `GC_unref
+as a `cstring`, you will need to manually prevent the string data
+from being freed with `GC_ref <system.html#GC_ref,string>`_ and `GC_unref
 <system.html#GC_unref,string>`_.
 
 A similar thing happens with C code invoking Nim code which returns a
@@ -399,7 +412,7 @@ Again, if you are wrapping a library which *mallocs* and *frees* data
 structures, you need to expose the appropriate *free* function to Nim so
 you can clean it up. And of course, once cleaned you should avoid accessing it
 from Nim (or C for that matter). Typically C data structures have their own
-`malloc_structure` and `free_structure` specific functions, so wrapping
+`malloc_structure`:c: and `free_structure`:c: specific functions, so wrapping
 these for the Nim side should be enough.
 
 

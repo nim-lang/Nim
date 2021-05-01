@@ -1910,7 +1910,7 @@ proc copyFileToDir*(source, dir: string, options = {cfSymlinkFollow})
   copyFile(source, dir / source.lastPathPart, options)
 
 when not declared(ENOENT) and not defined(windows):
-  when NoFakeVars:
+  when defined(nimscript):
     when not defined(haiku):
       const ENOENT = cint(2) # 2 on most systems including Solaris
     else:

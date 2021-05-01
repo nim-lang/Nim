@@ -16,44 +16,42 @@
 ## Each Base64 digit represents exactly 6 bits of data. Three 8-bit
 ## bytes (i.e., a total of 24 bits) can therefore be represented by
 ## four 6-bit Base64 digits.
-##
-## Basic usage
-## ===========
-##
+
+##[
+# Basic usage
 ## Encoding data
-## -------------
-##
-## .. code-block:: Nim
-##    import std/base64
-##    let encoded = encode("Hello World")
-##    assert encoded == "SGVsbG8gV29ybGQ="
+]##
+
+runnableExamples:
+  let encoded = encode("Hello World")
+  assert encoded == "SGVsbG8gV29ybGQ="
+
 ##
 ## Apart from strings you can also encode lists of integers or characters:
 ##
-## .. code-block:: Nim
-##    import std/base64
-##    let encodedInts = encode([1,2,3])
-##    assert encodedInts == "AQID"
-##    let encodedChars = encode(['h','e','y'])
-##    assert encodedChars == "aGV5"
-##
-##
+
+runnableExamples:
+  let encodedInts = encode([1,2,3])
+  assert encodedInts == "AQID"
+  let encodedChars = encode(['h','e','y'])
+  assert encodedChars == "aGV5"
+
+##[
 ## Decoding data
-## -------------
-##
-## .. code-block:: Nim
-##    import std/base64
-##    let decoded = decode("SGVsbG8gV29ybGQ=")
-##    assert decoded == "Hello World"
-##
+]##
+
+runnableExamples:
+  let decoded = decode("SGVsbG8gV29ybGQ=")
+  assert decoded == "Hello World"
+
+##[
 ## URL Safe Base64
-## ---------------
-##
-## .. code-block:: Nim
-##    import std/base64
-##    doAssert encode("c\xf7>", safe = true) == "Y_c-"
-##    doAssert encode("c\xf7>", safe = false) == "Y/c+"
-##
+]##
+
+runnableExamples:
+  assert encode("c\xf7>", safe = true) == "Y_c-"
+  assert encode("c\xf7>", safe = false) == "Y/c+"
+
 ## See also
 ## ========
 ##
