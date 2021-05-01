@@ -102,7 +102,8 @@ proc genTempPath*(prefix, suffix: string, dir = ""): string =
   ##
   ## If `dir` is empty, (`getTempDir <os.html#getTempDir>`_) will be used.
   ## The path begins with `prefix` and ends with `suffix`.
-  ## The `dir` argument must be a valid existent directory.
+  ##
+  ## Raises `IOError` when `dir` does not exist.
   let dir = getTempDirImpl(dir)
   result = dir / (prefix & randomPathName(nimTempPathLength) & suffix)
 
