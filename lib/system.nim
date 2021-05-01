@@ -1923,24 +1923,7 @@ include "system/gc_interface"
 # we have to compute this here before turning it off in except.nim anyway ...
 const NimStackTrace = compileOption("stacktrace")
 
-template coroutinesSupportedPlatform(): bool =
-  when defined(sparc) or defined(ELATE) or defined(boehmgc) or defined(gogc) or
-    defined(nogc) or defined(gcRegions) or defined(gcMarkAndSweep):
-    false
-  else:
-    true
-
-when defined(nimCoroutines):
-  # Explicit opt-in.
-  when not coroutinesSupportedPlatform():
-    {.error: "Coroutines are not supported on this architecture and/or garbage collector.".}
-  const nimCoroutines = true
-elif defined(noNimCoroutines):
-  # Explicit opt-out.
-  const nimCoroutines = false
-else:
-  # Autodetect coroutine support.
-  const nimCoroutines = false
+import system/coro_detection
 
 {.push checks: off.}
 # obviously we cannot generate checking operations here :-)
