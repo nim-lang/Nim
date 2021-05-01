@@ -63,21 +63,6 @@ proc prettyString(a: object): string =
   for k, v in fieldPairs(a):
     result.add k & ": " & $v & "\n"
 
-proc canonicalImport*(conf: ConfigRef, file: AbsoluteFile): string =
-  ##[
-  Shows the canonical module import, e.g.:
-  system, std/tables, fusion/pointers, system/assertions, std/private/asciitables
-  ]##
-  var ret = getRelativePathFromConfigPath(conf, file, isTitle = true)
-  let dir = getNimbleFile(conf, $file).parentDir.AbsoluteDir
-  if not dir.isEmpty:
-    let relPath = relativeTo(file, dir)
-    if not relPath.isEmpty and (ret.isEmpty or relPath.string.len < ret.string.len):
-      ret = relPath
-  if ret.isEmpty:
-    ret = relativeTo(file, conf.projectPath)
-  result = ret.string.nativeToUnixPath.changeFileExt("")
-
 proc presentationPath*(conf: ConfigRef, file: AbsoluteFile): RelativeFile =
   ## returns a relative file that will be appended to outDir
   let file2 = $file
@@ -193,7 +178,8 @@ proc newDocumentor*(filename: AbsoluteFile; cache: IdentCache; conf: ConfigRef, 
   result.outDir = conf.outDir.string
   initRstGenerator(result[], (if conf.cmd != cmdRst2tex: outHtml else: outLatex),
                    conf.configVars, filename.string,
-                   {roSupportRawDirective, roSupportMarkdown, roNimFile},
+                   {roSupportRawDirective, roSupportMarkdown,
+                    roPreferMarkdown, roNimFile},
                    docgenFindFile, compilerMsgHandler)
 
   if conf.configVars.hasKey("doc.googleAnalytics"):
@@ -498,7 +484,7 @@ proc runAllExamples(d: PDoc) =
       "docCmd", group.docCmd,
     ]
     if os.execShellCmd(cmd) != 0:
-      quit "[runnableExamples] failed: generated file: '$1' group: '$2' cmd: $3" % [outp.string, group[].prettyString, cmd]
+      d.conf.quitOrRaise "[runnableExamples] failed: generated file: '$1' group: '$2' cmd: $3" % [outp.string, group[].prettyString, cmd]
     else:
       # keep generated source file `outp` to allow inspection.
       rawMessage(d.conf, hintSuccess, ["runnableExamples: " & outp.string])
@@ -1395,7 +1381,9 @@ proc commandRstAux(cache: IdentCache, conf: ConfigRef;
   d.isPureRst = true
   var rst = parseRst(readFile(filen.string), filen.string,
                      line=LineRstInit, column=ColRstInit,
-                     d.hasToc, {roSupportRawDirective, roSupportMarkdown}, conf)
+                     d.hasToc,
+                     {roSupportRawDirective, roSupportMarkdown, roPreferMarkdown},
+                     conf)
   var modDesc = newStringOfCap(30_000)
   renderRstToOut(d[], rst, modDesc)
   d.modDesc = rope(modDesc)

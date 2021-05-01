@@ -40,6 +40,10 @@ proc toHtml(input: string,
 proc id(str: string): string = """<span class="Identifier">"""  & str & "</span>"
 proc op(str: string): string = """<span class="Operator">"""    & str & "</span>"
 proc pu(str: string): string = """<span class="Punctuation">""" & str & "</span>"
+proc optionListLabel(opt: string): string =
+  """<div class="option-list-label"><tt><span class="option">""" &
+  opt &
+  "</span></tt></div>"
 
 suite "YAML syntax highlighting":
   test "Basics":
@@ -135,6 +139,25 @@ suite "YAML syntax highlighting":
   <span class="StringLit">more numbers</span><span class="Punctuation">:</span> <span class="Punctuation">[</span><span class="DecNumber">-783</span><span class="Punctuation">,</span> <span class="FloatNumber">11e78</span><span class="Punctuation">]</span><span class="Punctuation">,</span>
   <span class="StringLit">not numbers</span><span class="Punctuation">:</span> <span class="Punctuation">[</span> <span class="StringLit">42e</span><span class="Punctuation">,</span> <span class="StringLit">0023</span><span class="Punctuation">,</span> <span class="StringLit">+32.37</span><span class="Punctuation">,</span> <span class="StringLit">8 ball</span><span class="Punctuation">]</span>
 <span class="Punctuation">}</span></pre>"""
+
+  test "Directives: warnings":
+    let input = dedent"""
+      .. non-existant-warning: Paragraph.
+
+      .. another.wrong:warning::: Paragraph.
+      """
+    var warnings = new seq[string]
+    let output = input.toHtml(warnings=warnings)
+    check output == ""
+    doAssert warnings[].len == 2
+    check "(1, 24) Warning: RST style:" in warnings[0]
+    check "double colon :: may be missing at end of 'non-existant-warning'" in warnings[0]
+    check "(3, 25) Warning: RST style:" in warnings[1]
+    check "RST style: too many colons for a directive (should be ::)" in warnings[1]
+
+  test "not a directive":
+    let input = "..warning:: I am not a warning."
+    check input.toHtml == input
 
   test "Anchors, Aliases, Tags":
     let input = """.. code-block:: yaml
@@ -826,7 +849,7 @@ Test1
     let output8 = input8.toHtml(warnings = warnings8)
     check(warnings8[].len == 1)
     check("input(6, 1) Warning: RST style: \n" &
-          "  not enough indentation on line 6" in warnings8[0])
+          "not enough indentation on line 6" in warnings8[0])
     doAssert output8 == "Paragraph.<ol class=\"upperalpha simple\">" &
         "<li>stringA</li>\n<li>stringB</li>\n</ol>\n<p>C. string1 string2 </p>\n"
 
@@ -1089,6 +1112,27 @@ Test1
     let output0 = input0.toHtml
     doAssert "<p>Paragraph1</p>" in output0
 
+  test "Nim code-block :number-lines:":
+    let input = dedent """
+      .. code-block:: nim
+         :number-lines: 55
+
+         x
+         y
+      """
+    check "<pre class=\"line-nums\">55\n56\n</pre>" in input.toHtml
+
+  test "Nim code-block indentation":
+    let input = dedent """
+      .. code-block:: nim
+        :number-lines: 55
+
+       x
+      """
+    let output = input.toHtml
+    check "<pre class=\"line-nums\">55\n</pre>" in output
+    check "<span class=\"Identifier\">x</span>" in output
+
   test "RST admonitions":
     # check that all admonitions are implemented
     let input0 = dedent """
@@ -1226,7 +1270,7 @@ Test1
     doAssert "<dl id=\"target003\""    in output1
     doAssert "<p id=\"target004\""     in output1
     doAssert "<table id=\"target005\"" in output1  # field list
-    doAssert "<table id=\"target006\"" in output1  # option list
+    doAssert "<div id=\"target006\""   in output1  # option list
     doAssert "<pre id=\"target007\""   in output1
     doAssert "<blockquote id=\"target009\"" in output1
     doAssert "<table id=\"target010\"" in output1  # just table
@@ -1341,9 +1385,12 @@ Test1
     let output = input.toHtml
     check(output.count("<ul") == 1)
     check(output.count("<li>") == 2)
-    check(output.count("<table") == 1)
-    check("""<th align="left">-m</th><td align="left">desc</td>""" in output)
-    check("""<th align="left">-n</th><td align="left">very long desc</td>""" in
+    check(output.count("<div class=\"option-list\"") == 1)
+    check(optionListLabel("-m") &
+          """<div class="option-list-description">desc</div></div>""" in
+          output)
+    check(optionListLabel("-n") &
+          """<div class="option-list-description">very long desc</div></div>""" in
           output)
 
   test "Option lists 2":
@@ -1356,12 +1403,17 @@ Test1
       -d  option"""
     let output = input.toHtml
     check(output.count("<ul") == 1)
-    check(output.count("<table") == 2)
-    check("""<th align="left">-m</th><td align="left">desc</td>""" in output)
-    check("""<th align="left">-n</th><td align="left">very long desc</td>""" in
+    check output.count("<div class=\"option-list\"") == 2
+    check(optionListLabel("-m") &
+          """<div class="option-list-description">desc</div></div>""" in
           output)
-    check("""<th align="left">-d</th><td align="left">option</td>""" in
+    check(optionListLabel("-n") &
+          """<div class="option-list-description">very long desc</div></div>""" in
           output)
+    check(optionListLabel("-d") &
+          """<div class="option-list-description">option</div></div>""" in
+          output)
+    check "<p>option</p>" notin output
 
   test "Option list 3 (double /)":
     let input = dedent """
@@ -1372,12 +1424,17 @@ Test1
       -d  option"""
     let output = input.toHtml
     check(output.count("<ul") == 1)
-    check(output.count("<table") == 2)
-    check("""<th align="left">compile</th><td align="left">compile1</td>""" in output)
-    check("""<th align="left">doc</th><td align="left">doc1 cont</td>""" in
+    check output.count("<div class=\"option-list\"") == 2
+    check(optionListLabel("compile") &
+          """<div class="option-list-description">compile1</div></div>""" in
           output)
-    check("""<th align="left">-d</th><td align="left">option</td>""" in
+    check(optionListLabel("doc") &
+          """<div class="option-list-description">doc1 cont</div></div>""" in
           output)
+    check(optionListLabel("-d") &
+          """<div class="option-list-description">option</div></div>""" in
+          output)
+    check "<p>option</p>" notin output
 
   test "Roles: subscript prefix/postfix":
     let expected = "See <sub>some text</sub>."
@@ -1390,6 +1447,23 @@ Test1
     check """:sup:`3`\ He is an isotope of helium.""".toHtml == expected
     check """`3`:sup:\ He is an isotope of helium.""".toHtml == expected
     check """`3`:superscript:\ He is an isotope of helium.""".toHtml == expected
+
+  test "Roles: warnings":
+    let input = dedent"""
+      See function :py:func:`spam`.
+
+      See also `egg`:py:class:.
+      """
+    var warnings = new seq[string]
+    let output = input.toHtml(warnings=warnings)
+    doAssert warnings[].len == 2
+    check "(1, 14) Warning: " in warnings[0]
+    check "language 'py:func' not supported" in warnings[0]
+    check "(3, 15) Warning: " in warnings[1]
+    check "language 'py:class' not supported" in warnings[1]
+    check("""<p>See function <span class="py:func">spam</span>.</p>""" & "\n" &
+          """<p>See also <span class="py:class">egg</span>. </p>""" & "\n" ==
+          output)
 
   test "(not) Roles: check escaping 1":
     let expected = """See :subscript:<tt class="docutils literal">""" &
@@ -1407,7 +1481,7 @@ Test1
             """<table class="docinfo" frame="void" rules="none">""" &
             """<col class="docinfo-name" /><col class="docinfo-content" />""" &
             """<tbody valign="top"><tr><th class="docinfo-name">field:</th>""" &
-            """<td> text</td></tr>""" & "\n</tbody></table>")
+            """<td>text</td></tr>""" & "\n</tbody></table>")
 
   test "Field list: body after newline":
     let output = dedent """

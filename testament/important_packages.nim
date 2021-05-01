@@ -49,7 +49,7 @@ pkg "c2nim", "nim c testsuite/tester.nim"
 pkg "cascade"
 pkg "cello"
 pkg "chroma"
-pkg "chronicles", "nim c -o:chr -r chronicles.nim", allowFailure = true # pending https://github.com/status-im/nim-chronos/issues/169
+pkg "chronicles", "nim c -o:chr -r chronicles.nim"
 pkg "chronos", "nim c -r -d:release tests/testall", allowFailure = true # pending https://github.com/nim-lang/Nim/issues/17130
 pkg "cligen", "nim c --path:. -r cligen.nim"
 pkg "combparser", "nimble test --gc:orc"
@@ -72,9 +72,9 @@ pkg "gnuplot", "nim c gnuplot.nim"
 # pkg "gram", "nim c -r --gc:arc --define:danger tests/test.nim", "https://github.com/disruptek/gram"
   # pending https://github.com/nim-lang/Nim/issues/16509
 pkg "hts", "nim c -o:htss src/hts.nim"
-pkg "httpauth", allowFailure = true
+pkg "httpauth"
 pkg "illwill", "nimble examples"
-pkg "inim"
+pkg "inim", allowFailure=true
 pkg "itertools", "nim doc src/itertools.nim"
 pkg "iterutils"
 pkg "jstin"
@@ -110,7 +110,7 @@ pkg "nimsvg"
 pkg "nimterop", "nimble minitest"
 pkg "nimwc", "nim c nimwc.nim"
 pkg "nimx", "nim c --threads:on test/main.nim", allowFailure = true
-pkg "nitter", "nim c src/nitter.nim", "https://github.com/zedeus/nitter", allowFailure = true
+pkg "nitter", "nim c src/nitter.nim", "https://github.com/zedeus/nitter"
 pkg "norm", "nim c -r tests/sqlite/trows.nim"
 pkg "npeg", "nimble testarc"
 pkg "numericalnim", "nim c -r tests/test_integrate.nim"
@@ -139,7 +139,7 @@ pkg "stint", "nim r stint.nim"
 pkg "strslice"
 pkg "strunicode", "nim c -r src/strunicode.nim"
 pkg "synthesis"
-pkg "telebot", "nim c -o:tbot -r src/telebot.nim"
+pkg "telebot", "nim c -o:tbot -r src/telebot.nim", allowFailure = true # pending https://github.com/ba0f3/telebot.nim/issues/59
 pkg "tempdir"
 pkg "templates"
 pkg "tensordsl", "nim c -r tests/tests.nim", "https://krux02@bitbucket.org/krux02/tensordslnim.git"

@@ -17,10 +17,21 @@ from std/sugar import dup
 import compiler/nodejs
 import lib/stdtest/testutils
 from lib/stdtest/specialpaths import splitTestFile
+from std/private/gitutils import diffStrings
+
+proc trimUnitSep(x: var string) =
+  let L = x.len
+  if L > 0 and x[^1] == '\31':
+    setLen x, L-1
 
 var useColors = true
 var backendLogging = true
 var simulate = false
+var optVerbose = false
+
+proc verboseCmd(cmd: string) =
+  if optVerbose:
+    echo "executing: ", cmd
 
 const
   failString* = "FAIL: " # ensures all failures can be searched with 1 keyword in CI logs
@@ -38,7 +49,8 @@ Command:
 Arguments:
   arguments are passed to the compiler
 Options:
-  --print                   also print results to the console
+  --print                   print results to the console
+  --verbose                 print commands (compiling and running tests)
   --simulate                see what tests would be run but don't run them (for debugging)
   --failing                 only show failing/ignored tests
   --targets:"c cpp js objc" run tests for specified targets (default: all)
@@ -93,10 +105,11 @@ proc isSuccess(input: string): bool =
   # not clear how to do the equivalent of pkg/regex's: re"FOO(.*?)BAR" in pegs
   # note: this doesn't handle colors, eg: `\e[1m\e[0m\e[32mHint:`; while we
   # could handle colors, there would be other issues such as handling other flags
-  # that may appear in user config (eg: `--listFullPaths`).
+  # that may appear in user config (eg: `--filenames`).
   # Passing `XDG_CONFIG_HOME= testament args...` can be used to ignore user config
   # stored in XDG_CONFIG_HOME, refs https://wiki.archlinux.org/index.php/XDG_Base_Directory
-  input.startsWith("Hint: ") and input.endsWith("[SuccessX]")
+  input.startsWith("Hint: ") and
+    (input.endsWith("[SuccessX]") or input.endsWith("[BuildMode]"))
 
 proc getFileDir(filename: string): string =
   result = filename.splitFile().dir
@@ -113,6 +126,7 @@ proc execCmdEx2(command: string, args: openArray[string]; workingDir, input: str
   for arg in args:
     result.cmdLine.add ' '
     result.cmdLine.add quoteShell(arg)
+  verboseCmd(result.cmdLine)
   var p = startProcess(command, workingDir = workingDir, args = args,
                        options = {poStdErrToStdOut, poUsePath})
   var outp = outputStream(p)
@@ -150,11 +164,12 @@ proc prepareTestArgs(cmdTemplate, filename, options, nimcache: string,
                       "options", options, "file", filename.quoteShell,
                       "filedir", filename.getFileDir(), "nim", compilerPrefix])
 
-proc callCompiler(cmdTemplate, filename, options, nimcache: string,
-                  target: TTarget, extraOptions = ""): TSpec =
+proc callNimCompiler(cmdTemplate, filename, options, nimcache: string,
+                     target: TTarget, extraOptions = ""): TSpec =
   let c = prepareTestArgs(cmdTemplate, filename, options, nimcache, target,
                           extraOptions)
   result.cmd = quoteShellCommand(c)
+  verboseCmd(c.quoteShellCommand)
   var p = startProcess(command = c[0], args = c[1 .. ^1],
                        options = {poStdErrToStdOut, poUsePath})
   let outp = p.outputStream
@@ -164,6 +179,7 @@ proc callCompiler(cmdTemplate, filename, options, nimcache: string,
   result.nimout = ""
   while true:
     if outp.readLine(x):
+      trimUnitSep x
       result.nimout.add(x & '\n')
       if x =~ pegOfInterest:
         # `err` should contain the last error/warning message
@@ -188,6 +204,7 @@ proc callCompiler(cmdTemplate, filename, options, nimcache: string,
     result.msg = matches[0]
   elif suc.isSuccess:
     result.err = reSuccess
+  trimUnitSep result.msg
 
 proc callCCompiler(cmdTemplate, filename, options: string,
                   target: TTarget): TSpec =
@@ -291,7 +308,7 @@ proc addResult(r: var TResults, test: TTest, target: TTarget,
       maybeStyledEcho styleBright, expected, "\n"
       maybeStyledEcho fgYellow, "Gotten:"
       maybeStyledEcho styleBright, given, "\n"
-
+      echo diffStrings(expected, given).output
 
   if backendLogging and (isAppVeyor or isAzure):
     let (outcome, msg) =
@@ -356,12 +373,20 @@ proc checkForInlineErrors(r: var TResults, expected, given: TSpec, test: TTest, 
     r.addResult(test, target, "", given.msg, reSuccess)
     inc(r.passed)
 
+proc nimoutCheck(expected, given: TSpec): bool =
+  result = true
+  if expected.nimoutFull:
+    if expected.nimout != given.nimout:
+      result = false
+  elif expected.nimout.len > 0 and not greedyOrderedSubsetLines(expected.nimout, given.nimout):
+    result = false
+
 proc cmpMsgs(r: var TResults, expected, given: TSpec, test: TTest, target: TTarget) =
   if expected.inlineErrors.len > 0:
     checkForInlineErrors(r, expected, given, test, target)
   elif strip(expected.msg) notin strip(given.msg):
     r.addResult(test, target, expected.msg, given.msg, reMsgsDiffer)
-  elif expected.nimout.len > 0 and not greedyOrderedSubsetLines(expected.nimout, given.nimout):
+  elif not nimoutCheck(expected, given):
     r.addResult(test, target, expected.nimout, given.nimout, reMsgsDiffer)
   elif extractFilename(expected.file) != extractFilename(given.file) and
       "internal error:" notin expected.msg:
@@ -409,10 +434,6 @@ proc codegenCheck(test: TTest, target: TTarget, spec: TSpec, expectedMsg: var st
     given.err = reCodeNotFound
     echo getCurrentExceptionMsg()
 
-proc nimoutCheck(test: TTest; expectedNimout: string; given: var TSpec) =
-  if not greedyOrderedSubsetLines(expectedNimout, given.nimout):
-    given.err = reMsgsDiffer
-
 proc compilerOutputTests(test: TTest, target: TTarget, given: var TSpec,
                          expected: TSpec; r: var TResults) =
   var expectedmsg: string = ""
@@ -421,10 +442,10 @@ proc compilerOutputTests(test: TTest, target: TTarget, given: var TSpec,
     if expected.needsCodegenCheck:
       codegenCheck(test, target, expected, expectedmsg, given)
       givenmsg = given.msg
-    if expected.nimout.len > 0:
+    if not nimoutCheck(expected, given):
+      given.err = reMsgsDiffer
       expectedmsg = expected.nimout
       givenmsg = given.nimout.strip
-      nimoutCheck(test, expectedmsg, given)
   else:
     givenmsg = "$ " & given.cmd & '\n' & given.nimout
   if given.err == reSuccess: inc(r.passed)
@@ -457,11 +478,11 @@ proc testSpecHelper(r: var TResults, test: var TTest, expected: TSpec,
   test.startTime = epochTime()
   case expected.action
   of actionCompile:
-    var given = callCompiler(expected.getCmd, test.name, test.options, nimcache, target,
+    var given = callNimCompiler(expected.getCmd, test.name, test.options, nimcache, target,
           extraOptions = " --stdout --hint[Path]:off --hint[Processing]:off")
     compilerOutputTests(test, target, given, expected, r)
   of actionRun:
-    var given = callCompiler(expected.getCmd, test.name, test.options,
+    var given = callNimCompiler(expected.getCmd, test.name, test.options,
                              nimcache, target, extraOptions)
     if given.err != reSuccess:
       r.addResult(test, target, "", "$ " & given.cmd & '\n' & given.nimout, given.err)
@@ -491,7 +512,6 @@ proc testSpecHelper(r: var TResults, test: var TTest, expected: TSpec,
                 valgrindOptions.add "--leak-check=yes"
               args = valgrindOptions & exeCmd & args
               exeCmd = "valgrind"
-          # xxx honor `testament --verbose` here
           var (_, buf, exitCode) = execCmdEx2(exeCmd, args, input = expected.input)
           # Treat all failure codes from nodejs as 1. Older versions of nodejs used
           # to return other codes, but for us it is sufficient to know that it's not 0.
@@ -516,7 +536,7 @@ proc testSpecHelper(r: var TResults, test: var TTest, expected: TSpec,
           else:
             compilerOutputTests(test, target, given, expected, r)
   of actionReject:
-    var given = callCompiler(expected.getCmd, test.name, test.options,
+    var given = callNimCompiler(expected.getCmd, test.name, test.options,
                               nimcache, target)
     cmpMsgs(r, expected, given, test, target)
 
@@ -663,7 +683,8 @@ proc main() =
   p.next()
   while p.kind in {cmdLongOption, cmdShortOption}:
     case p.key.normalize
-    of "print", "verbose": optPrintResults = true
+    of "print": optPrintResults = true
+    of "verbose": optVerbose = true
     of "failing": optFailing = true
     of "pedantic": discard # deadcode refs https://github.com/nim-lang/Nim/issues/16731
     of "targets":
@@ -684,7 +705,7 @@ proc main() =
         quit Usage
     of "batch":
       testamentData0.batchArg = p.val
-      if p.val != "_":
+      if p.val != "_" and p.val.len > 0 and p.val[0] in {'0'..'9'}:
         let s = p.val.split("_")
         doAssert s.len == 2, $(p.val, s)
         testamentData0.testamentBatch = s[0].parseInt

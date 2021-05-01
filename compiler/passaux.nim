@@ -19,9 +19,10 @@ type
     config: ConfigRef
 
 proc verboseOpen(graph: ModuleGraph; s: PSym; idgen: IdGenerator): PPassContext =
-  #MessageOut('compiling ' + s.name.s);
-  result = VerboseRef(config: graph.config, idgen: idgen)
-  rawMessage(graph.config, hintProcessing, s.name.s)
+  let conf = graph.config
+  result = VerboseRef(config: conf, idgen: idgen)
+  let path = toFilenameOption(conf, s.position.FileIndex, conf.filenameOption)
+  rawMessage(conf, hintProcessing, path)
 
 proc verboseProcess(context: PPassContext, n: PNode): PNode =
   result = n

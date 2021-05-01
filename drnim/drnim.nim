@@ -1205,23 +1205,24 @@ proc mainCommand(graph: ModuleGraph) =
   registerPass graph, semPass
   compileProject(graph)
   if conf.errorCounter == 0:
+    # xxx deduplicate with D20210419T170230
     let mem =
       when declared(system.getMaxMem): formatSize(getMaxMem()) & " peakmem"
       else: formatSize(getTotalMem()) & " totmem"
     let loc = $conf.linesCompiled
-    let build = if isDefined(conf, "danger"): "Dangerous Release"
-                elif isDefined(conf, "release"): "Release"
-                else: "Debug"
+    let build = if isDefined(conf, "danger"): "Dangerous Release build"
+                elif isDefined(conf, "release"): "Release build"
+                else: "***SLOW, DEBUG BUILD***; -d:release makes code run faster."
     let sec = formatFloat(epochTime() - conf.lastCmdTime, ffDecimal, 3)
-    let project = if optListFullPaths in conf.globalOptions: $conf.projectFull else: $conf.projectName
+    let project = if conf.filenameOption == foAbs: $conf.projectFull else: $conf.projectName
     rawMessage(conf, hintSuccessX, [
       "loc", loc,
       "sec", sec,
       "mem", mem,
-      "build", build,
       "project", project,
       "output", ""
       ])
+    rawMessage(conf, hintBuildMode, build)
 
 proc processCmdLine(pass: TCmdLinePass, cmd: string; config: ConfigRef) =
   var p = parseopt.initOptParser(cmd)

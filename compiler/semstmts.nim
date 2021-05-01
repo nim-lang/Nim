@@ -725,8 +725,7 @@ proc semForVars(c: PContext, n: PNode; flags: TExprFlags): PNode =
     if n.len == 3:
       if n[0].kind == nkVarTuple:
         if n[0].len-1 != iterAfterVarLent.len:
-          localError(c.config, n[0].info, errWrongNumberOfVariables)
-          return errorNode(c, n)
+          return localErrorNode(c, n, n[0].info, errWrongNumberOfVariables)
 
         for i in 0..<n[0].len-1:
           var v = symForVar(c, n[0][i])
@@ -1025,8 +1024,7 @@ proc semRaise(c: PContext, n: PNode): PNode =
       if typ.kind != tyRef:
         localError(c.config, n.info, errExprCannotBeRaised)
       if typ.len > 0 and not isException(typ.lastSon):
-        localError(c.config, n.info, "raised object of type $1 does not inherit from Exception",
-                          [typeToString(typ)])
+        localError(c.config, n.info, "raised object of type $1 does not inherit from Exception" % typeToString(typ))
 
 proc addGenericParamListToScope(c: PContext, n: PNode) =
   if n.kind != nkGenericParams: illFormedAst(n, c.config)
@@ -1067,6 +1065,7 @@ proc typeDefLeftSidePass(c: PContext, typeSection: PNode, i: int) =
       elif typsym.kind == skType and sfForward in typsym.flags:
         s = typsym
         addInterfaceDecl(c, s)
+        # PRTEMP no onDef here?
       else:
         localError(c.config, name.info, typsym.name.s & " is not a type that can be forwarded")
         s = typsym
@@ -1354,8 +1353,11 @@ proc typeSectionFinalPass(c: PContext, n: PNode) =
         checkConstructedType(c.config, s.info, s.typ)
         if s.typ.kind in {tyObject, tyTuple} and not s.typ.n.isNil:
           checkForMetaFields(c, s.typ.n)
-          # fix bug #5170: ensure locally scoped object types get a unique name:
-          if s.typ.kind == tyObject and not isTopLevel(c): incl(s.flags, sfGenSym)
+
+        # fix bug #5170, bug #17162, bug #15526: ensure locally scoped types get a unique name:
+        if s.typ.kind in {tyEnum, tyRef, tyObject} and not isTopLevel(c):
+          incl(s.flags, sfGenSym)
+
   #instAllTypeBoundOp(c, n.info)
 
 
@@ -2093,7 +2095,7 @@ proc semConverterDef(c: PContext, n: PNode): PNode =
   var t = s.typ
   if t[0] == nil: localError(c.config, n.info, errXNeedsReturnType % "converter")
   if t.len != 2: localError(c.config, n.info, "a converter takes exactly one argument")
-  addConverter(c, LazySym(sym: s))
+  addConverterDef(c, LazySym(sym: s))
 
 proc semMacroDef(c: PContext, n: PNode): PNode =
   checkSonsLen(n, bodyPos + 1, c.config)
@@ -2198,8 +2200,7 @@ proc inferConceptStaticParam(c: PContext, inferred, n: PNode) =
   if not sameType(res.typ, typ.base):
     localError(c.config, n.info,
       "cannot infer the concept parameter '%s', due to a type mismatch. " &
-      "attempt to equate '%s' and '%s'.",
-      [inferred.renderTree, $res.typ, $typ.base])
+      "attempt to equate '%s' and '%s'." % [inferred.renderTree, $res.typ, $typ.base])
   typ.n = res
 
 proc semStmtList(c: PContext, n: PNode, flags: TExprFlags): PNode =

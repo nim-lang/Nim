@@ -55,35 +55,61 @@ type
 include "system/basic_types"
 
 
+proc runnableExamples*(rdoccmd = "", body: untyped) {.magic: "RunnableExamples".} =
+  ## A section you should use to mark `runnable example`:idx: code with.
+  ##
+  ## - In normal debug and release builds code within
+  ##   a `runnableExamples` section is ignored.
+  ## - The documentation generator is aware of these examples and considers them
+  ##   part of the `##` doc comment. As the last step of documentation
+  ##   generation each runnableExample is put in its own file `$file_examples$i.nim`,
+  ##   compiled and tested. The collected examples are
+  ##   put into their own module to ensure the examples do not refer to
+  ##   non-exported symbols.
+  runnableExamples:
+    proc timesTwo*(x: int): int =
+      ## This proc doubles a number.
+      runnableExamples:
+        # at module scope
+        const exported* = 123
+        assert timesTwo(5) == 10
+        block: # at block scope
+          defer: echo "done"
+      runnableExamples "-d:foo -b:cpp":
+        import std/compilesettings
+        assert querySetting(backend) == "cpp"
+        assert defined(foo)
+      runnableExamples "-r:off": ## this one is only compiled
+         import std/browsers
+         openDefaultBrowser "https://forum.nim-lang.org/"
+      2 * x
+
 proc compileOption*(option: string): bool {.
-  magic: "CompileOption", noSideEffect.}
+  magic: "CompileOption", noSideEffect.} =
   ## Can be used to determine an `on|off` compile-time option.
   ##
   ## See also:
   ## * `compileOption <#compileOption,string,string>`_ for enum options
   ## * `defined <#defined,untyped>`_
   ## * `std/compilesettings module <compilesettings.html>`_
-  ##
-  ## Example:
-  ##
-  ## .. code-block:: Nim
-  ##   when compileOption("floatchecks"):
-  ##     echo "compiled with floating point NaN and Inf checks"
+  runnableExamples("--floatChecks:off"):
+    static: doAssert not compileOption("floatchecks")
+    {.push floatChecks: on.}
+    static: doAssert compileOption("floatchecks")
+    # floating point NaN and Inf checks enabled in this scope
+    {.pop.}
 
 proc compileOption*(option, arg: string): bool {.
-  magic: "CompileOptionArg", noSideEffect.}
+  magic: "CompileOptionArg", noSideEffect.} =
   ## Can be used to determine an enum compile-time option.
   ##
   ## See also:
   ## * `compileOption <#compileOption,string>`_ for `on|off` options
   ## * `defined <#defined,untyped>`_
   ## * `std/compilesettings module <compilesettings.html>`_
-  ##
-  ## Example:
-  ##
-  ## .. code-block:: Nim
-  ##   when compileOption("opt", "size") and compileOption("gc", "boehm"):
-  ##     echo "compiled with optimization for size and uses Boehm's GC"
+  runnableExamples:
+    when compileOption("opt", "size") and compileOption("gc", "boehm"):
+      discard "compiled with optimization for size and uses Boehm's GC"
 
 {.push warning[GcMem]: off, warning[Uninit]: off.}
 {.push hints: off.}
@@ -123,6 +149,10 @@ proc defined*(x: untyped): bool {.magic: "Defined", noSideEffect, compileTime.}
   ##     # Do here programmer friendly expensive sanity checks.
   ##   # Put here the normal code
 
+when defined(nimHasIterable):
+  type
+    iterable*[T] {.magic: IterableType.}  ## Represents an expression that yields `T`
+
 when defined(nimHashOrdinalFixed):
   type
     Ordinal*[T] {.magic: Ordinal.} ## Generic ordinal type. Includes integer,
@@ -134,36 +164,6 @@ else:
   type
     OrdinalImpl[T] {.magic: Ordinal.}
     Ordinal* = OrdinalImpl | uint | uint64
-
-proc runnableExamples*(rdoccmd = "", body: untyped) {.magic: "RunnableExamples".}
-  ## A section you should use to mark `runnable example`:idx: code with.
-  ##
-  ## - In normal debug and release builds code within
-  ##   a `runnableExamples` section is ignored.
-  ## - The documentation generator is aware of these examples and considers them
-  ##   part of the `##` doc comment. As the last step of documentation
-  ##   generation each runnableExample is put in its own file `$file_examples$i.nim`,
-  ##   compiled and tested. The collected examples are
-  ##   put into their own module to ensure the examples do not refer to
-  ##   non-exported symbols.
-  ##
-  ## Usage:
-  ##
-  ## .. code-block:: Nim
-  ##   proc double*(x: int): int =
-  ##     ## This proc doubles a number.
-  ##     runnableExamples:
-  ##       ## at module scope
-  ##       assert double(5) == 10
-  ##       block: ## at block scope
-  ##         defer: echo "done"
-  ##     result = 2 * x
-  ##     runnableExamples "-d:foo -b:cpp":
-  ##       import std/compilesettings
-  ##       doAssert querySetting(backend) == "cpp"
-  ##     runnableExamples "-r:off": ## this one is only compiled
-  ##        import std/browsers
-  ##        openDefaultBrowser "https://forum.nim-lang.org/"
 
 when defined(nimHasDeclaredMagic):
   proc declared*(x: untyped): bool {.magic: "Declared", noSideEffect, compileTime.}
@@ -344,6 +344,8 @@ proc high*[T](x: openArray[T]): int {.magic: "High", noSideEffect.}
 proc high*[I, T](x: array[I, T]): I {.magic: "High", noSideEffect.}
   ## Returns the highest possible index of an array `x`.
   ##
+  ## For empty arrays, the return type is `int`.
+  ##
   ## See also:
   ## * `low(array) <#low,array[I,T]>`_
   ##
@@ -355,6 +357,8 @@ proc high*[I, T](x: array[I, T]): I {.magic: "High", noSideEffect.}
 
 proc high*[I, T](x: typedesc[array[I, T]]): I {.magic: "High", noSideEffect.}
   ## Returns the highest possible index of an array type.
+  ##
+  ## For empty arrays, the return type is `int`.
   ##
   ## See also:
   ## * `low(typedesc[array]) <#low,typedesc[array[I,T]]>`_
@@ -416,6 +420,8 @@ proc low*[T](x: openArray[T]): int {.magic: "Low", noSideEffect.}
 proc low*[I, T](x: array[I, T]): I {.magic: "Low", noSideEffect.}
   ## Returns the lowest possible index of an array `x`.
   ##
+  ## For empty arrays, the return type is `int`.
+  ##
   ## See also:
   ## * `high(array) <#high,array[I,T]>`_
   ##
@@ -427,6 +433,8 @@ proc low*[I, T](x: array[I, T]): I {.magic: "Low", noSideEffect.}
 
 proc low*[I, T](x: typedesc[array[I, T]]): I {.magic: "Low", noSideEffect.}
   ## Returns the lowest possible index of an array type.
+  ##
+  ## For empty arrays, the return type is `int`.
   ##
   ## See also:
   ## * `high(typedesc[array]) <#high,typedesc[array[I,T]]>`_
@@ -466,6 +474,7 @@ proc `[]`*[I: Ordinal;T](a: T; i: I): T {.
 proc `[]=`*[I: Ordinal;T,S](a: T; i: I;
   x: sink S) {.noSideEffect, magic: "ArrPut".}
 proc `=`*[T](dest: var T; src: T) {.noSideEffect, magic: "Asgn".}
+proc `=copy`*[T](dest: var T; src: T) {.noSideEffect, magic: "Asgn".}
 
 proc arrGet[I: Ordinal;T](a: T; i: I): T {.
   noSideEffect, magic: "ArrGet".}
@@ -497,13 +506,15 @@ proc `..`*[T, U](a: sink T, b: sink U): HSlice[T, U] {.noSideEffect, inline, mag
   ##   echo a[2 .. 3] # @[30, 40]
   result = HSlice[T, U](a: a, b: b)
 
-proc `..`*[T](b: sink T): HSlice[int, T] {.noSideEffect, inline, magic: "DotDot".} =
-  ## Unary `slice`:idx: operator that constructs an interval `[default(int), b]`.
-  ##
-  ## .. code-block:: Nim
-  ##   let a = [10, 20, 30, 40, 50]
-  ##   echo a[.. 2] # @[10, 20, 30]
-  result = HSlice[int, T](a: 0, b: b)
+when defined(nimLegacyUnarySlice):
+  proc `..`*[T](b: sink T): HSlice[int, T]
+    {.noSideEffect, inline, magic: "DotDot", deprecated: "replace `..b` with `0..b`".} =
+    ## Unary `slice`:idx: operator that constructs an interval `[default(int), b]`.
+    ##
+    ## .. code-block:: Nim
+    ##   let a = [10, 20, 30, 40, 50]
+    ##   echo a[.. 2] # @[10, 20, 30]
+    result = HSlice[int, T](a: 0, b: b)
 
 when defined(hotCodeReloading):
   {.pragma: hcrInline, inline.}
@@ -870,8 +881,6 @@ when defined(nimOwnedEnabled) and not defined(nimscript):
   proc unown*[T](x: T): T {.magic: "Unown", noSideEffect.}
     ## Use the expression `x` ignoring its ownership attribute.
 
-  # This is only required to make 0.20 compile with the 0.19 line.
-  template `<//>`*(t: untyped): untyped = owned(t)
 
 else:
   template unown*(x: typed): untyped = x
@@ -893,8 +902,6 @@ else:
     new(r)
     return r
 
-  # This is only required to make 0.20 compile with the 0.19 line.
-  template `<//>`*(t: untyped): untyped = t
 
 template disarm*(x: typed) =
   ## Useful for `disarming` dangling pointers explicitly for `--newruntime`.
@@ -968,7 +975,7 @@ proc `@`* [IDX, T](a: sink array[IDX, T]): seq[T] {.magic: "ArrToSeq", noSideEff
   ##   echo @a # => @[1, 3, 5]
   ##   echo @b # => @['f', 'o', 'o']
 
-proc default*(T: typedesc): T {.magic: "Default", noSideEffect.} =
+proc default*[T](_: typedesc[T]): T {.magic: "Default", noSideEffect.} =
   ## returns the default value of the type `T`.
   runnableExamples:
     assert (int, float).default == (0, 0.0)
@@ -1185,10 +1192,6 @@ when defined(nimdoc):
     ##
     ## Before stopping the program the "exit procedures" are called in the
     ## opposite order they were added with `addExitProc <exitprocs.html#addExitProc,proc)>`_.
-    ## `quit` never returns and ignores any exception that may have been raised
-    ## by the quit procedures.  It does *not* call the garbage collector to free
-    ## all the memory, unless a quit procedure calls `GC_fullCollect
-    ## <#GC_fullCollect>`_.
     ##
     ## The proc `quit(QuitSuccess)` is called implicitly when your nim
     ## program finishes without incident for platforms where this is the
@@ -1199,6 +1202,14 @@ when defined(nimdoc):
     ## have any compile time effect. If you need to stop the compiler inside a
     ## macro, use the `error <manual.html#pragmas-error-pragma>`_ or `fatal
     ## <manual.html#pragmas-fatal-pragma>`_ pragmas.
+    ##
+    ## .. danger:: In almost all cases, in particular in library code, prefer
+    ##   alternatives, e.g. `doAssert false` or raise a `Defect`.
+    ##   `quit` bypasses regular control flow in particular `defer`,
+    ##   `try`, `catch`, `finally` and `destructors`, and exceptions that may have been
+    ##   raised by an `addExitProc` proc, as well as cleanup code in other threads.
+    ##   It does *not* call the garbage collector to free all the memory,
+    ##   unless an `addExitProc` proc calls `GC_fullCollect <#GC_fullCollect>`_.
 
 elif defined(genode):
   include genode/env
@@ -1436,7 +1447,7 @@ type # these work for most platforms:
     ## This is the same as the type `long double` in *C*.
     ## This C type is not supported by Nim's code generator.
 
-  cuchar* {.importc: "unsigned char", nodecl.} = char
+  cuchar* {.importc: "unsigned char", nodecl.} = uint8
     ## This is the same as the type `unsigned char` in *C*.
   cushort* {.importc: "unsigned short", nodecl.} = uint16
     ## This is the same as the type `unsigned short` in *C*.
@@ -1457,7 +1468,7 @@ type # these work for most platforms:
   PInt32* = ptr int32        ## An alias for `ptr int32`.
 
 proc toFloat*(i: int): float {.noSideEffect, inline.} =
-  ## Converts an integer `i` into a `float`.
+  ## Converts an integer `i` into a `float`. Same as `float(i)`.
   ##
   ## If the conversion fails, `ValueError` is raised.
   ## However, on most platforms the conversion cannot fail.
@@ -1479,7 +1490,8 @@ proc toInt*(f: float): int {.noSideEffect.} =
   ##
   ## Conversion rounds `f` half away from 0, see
   ## `Round half away from zero
-  ## <https://en.wikipedia.org/wiki/Rounding#Round_half_away_from_zero>`_.
+  ## <https://en.wikipedia.org/wiki/Rounding#Round_half_away_from_zero>`_,
+  ## as opposed to a type conversion which rounds towards zero.
   ##
   ## Note that some floating point numbers (e.g. infinity or even 1e19)
   ## cannot be accurately converted.

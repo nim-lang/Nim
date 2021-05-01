@@ -11,7 +11,7 @@
 ## macro system.
 
 import std/private/since
-import std/macros
+import macros
 
 proc checkPragma(ex, prag: var NimNode) =
   since (1, 3):

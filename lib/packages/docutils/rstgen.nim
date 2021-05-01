@@ -980,7 +980,7 @@ proc buildLinesHtmlTable(d: PDoc; params: CodeBlockParams, code: string,
     result.beginTable.add($line & "\n")
     line.inc
     codeLines.dec
-  result.beginTable.add("</pre$3></td><td>" & (
+  result.beginTable.add("</pre></td><td>" & (
       d.config.getOrDefault"doc.listing_start" %
         [id, sourceLanguageToStr[params.lang], idStr]))
   result.endTable = (d.config.getOrDefault"doc.listing_end" % id) &
@@ -1165,7 +1165,7 @@ proc renderRstToOut(d: PDoc, n: PRstNode, result: var string) =
     renderAux(d, n, "<dl$2 class=\"docutils\">$1</dl>\n",
                     "\\begin{description}\n$2\n$1\\end{description}\n", result)
   of rnDefItem: renderAux(d, n, result)
-  of rnDefName: renderAux(d, n, "<dt$2>$1</dt>\n", "$2\\item[$1] ", result)
+  of rnDefName: renderAux(d, n, "<dt$2>$1</dt>\n", "$2\\item[$1]\\  ", result)
   of rnDefBody: renderAux(d, n, "<dd$2>$1</dd>\n", "$2\n$1\n", result)
   of rnFieldList:
     var tmp = ""
@@ -1189,14 +1189,21 @@ proc renderRstToOut(d: PDoc, n: PRstNode, result: var string) =
   of rnIndex:
     renderRstToOut(d, n.sons[2], result)
   of rnOptionList:
-    renderAux(d, n, "<table$2 frame=\"void\">$1</table>",
-      "\\begin{description}\n$2\n$1\\end{description}\n", result)
+    renderAux(d, n, "<div$2 class=\"option-list\">$1</div>",
+        "\\begin{rstoptlist}$2\n$1\\end{rstoptlist}", result)
   of rnOptionListItem:
-    renderAux(d, n, "<tr>$1</tr>\n", "$1", result)
+    var addclass = if n.order mod 2 == 1: " odd" else: ""
+    renderAux(d, n,
+        "<div class=\"option-list-item" & addclass & "\">$1</div>\n",
+        "$1", result)
   of rnOptionGroup:
-    renderAux(d, n, "<th align=\"left\">$1</th>", "\\item[$1]", result)
+    renderAux(d, n,
+        "<div class=\"option-list-label\"><tt><span class=\"option\">" &
+        "$1</span></tt></div>",
+        "\\item[$1]", result)
   of rnDescription:
-    renderAux(d, n, "<td align=\"left\">$1</td>\n", " $1\n", result)
+    renderAux(d, n, "<div class=\"option-list-description\">$1</div>",
+        " $1\n", result)
   of rnOption, rnOptionString, rnOptionArgument:
     doAssert false, "renderRstToOut"
   of rnLiteralBlock:
@@ -1313,13 +1320,22 @@ proc renderRstToOut(d: PDoc, n: PRstNode, result: var string) =
     renderAux(d, n, "|$1|", "|$1|", result)
   of rnDirective:
     renderAux(d, n, "", "", result)
-  of rnUnknownRole:
+  of rnUnknownRole, rnCodeFragment:
     var tmp0 = ""
     var tmp1 = ""
     renderRstToOut(d, n.sons[0], tmp0)
     renderRstToOut(d, n.sons[1], tmp1)
-    dispA(d.target, result, "<span class=\"$2\">$1</span>", "\\span$2{$1}",
-          [tmp0, tmp1])
+    var class = tmp1
+    # don't allow missing role break latex compilation:
+    if d.target == outLatex and n.kind == rnUnknownRole: class = "Other"
+    if n.kind == rnCodeFragment:
+      dispA(d.target, result,
+            "<tt class=\"docutils literal\"><span class=\"pre $2\">" &
+              "$1</span></tt>",
+            "\\texttt{\\span$2{$1}}", [tmp0, class])
+    else:  # rnUnknownRole, not necessarily code/monospace font
+      dispA(d.target, result, "<span class=\"$2\">$1</span>", "\\span$2{$1}",
+            [tmp0, class])
   of rnSub: renderAux(d, n, "<sub>$1</sub>", "\\rstsub{$1}", result)
   of rnSup: renderAux(d, n, "<sup>$1</sup>", "\\rstsup{$1}", result)
   of rnEmphasis: renderAux(d, n, "<em>$1</em>", "\\emph{$1}", result)

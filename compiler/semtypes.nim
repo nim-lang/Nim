@@ -95,7 +95,7 @@ proc semEnum(c: PContext, n: PNode, prev: PType): PType =
       of tyTuple:
         if v.len == 2:
           strVal = v[1] # second tuple part is the string value
-          if skipTypes(strVal.typ, abstractInst).kind in {tyString, tyCString}:
+          if skipTypes(strVal.typ, abstractInst).kind in {tyString, tyCstring}:
             if not isOrdinalType(v[0].typ, allowEnumWithHoles=true):
               localError(c.config, v[0].info, errOrdinalTypeExpected & "; given: " & typeToString(v[0].typ, preferDesc))
             x = toInt64(getOrdValue(v[0])) # first tuple part is the ordinal
@@ -104,7 +104,7 @@ proc semEnum(c: PContext, n: PNode, prev: PType): PType =
             localError(c.config, strVal.info, errStringLiteralExpected)
         else:
           localError(c.config, v.info, errWrongNumberOfVariables)
-      of tyString, tyCString:
+      of tyString, tyCstring:
         strVal = v
         x = counter
       else:
@@ -138,9 +138,10 @@ proc semEnum(c: PContext, n: PNode, prev: PType): PType =
       identToReplace[] = symNode
     if e.position == 0: hasNull = true
     if result.sym != nil and sfExported in result.sym.flags:
-      incl(e.flags, sfUsed)
-      incl(e.flags, sfExported)
-      if not isPure: exportSym(c, e)
+      incl(e.flags, {sfUsed, sfExported})
+    if result.sym != nil and not isPure:
+      addInterfaceDeclAux(c, e, forceExport = sfExported in result.sym.flags)
+
     result.n.add symNode
     styleCheckDef(c.config, e)
     onDef(e.info, e)
@@ -255,8 +256,8 @@ proc semRangeAux(c: PContext, n: PNode, prev: PType): PType =
     else:
       result.n.add semConstExpr(c, range[i])
 
-  if (result.n[0].kind in {nkFloatLit..nkFloat64Lit} and classify(result.n[0].floatVal) == fcNan) or
-      (result.n[1].kind in {nkFloatLit..nkFloat64Lit} and classify(result.n[1].floatVal) == fcNan):
+  if (result.n[0].kind in {nkFloatLit..nkFloat64Lit} and result.n[0].floatVal.isNaN) or
+      (result.n[1].kind in {nkFloatLit..nkFloat64Lit} and result.n[1].floatVal.isNaN):
     localError(c.config, n.info, "NaN is not a valid start or end for a range")
 
   if weakLeValue(result.n[0], result.n[1]) == impNo:
@@ -354,6 +355,15 @@ proc semArray(c: PContext, n: PNode, prev: PType): PType =
     addSonSkipIntLit(result, base, c.idgen)
   else:
     localError(c.config, n.info, errArrayExpectsTwoTypeParams)
+    result = newOrPrevType(tyError, prev, c)
+
+proc semIterableType(c: PContext, n: PNode, prev: PType): PType =
+  result = newOrPrevType(tyIterable, prev, c)
+  if n.len == 2:
+    let base = semTypeNode(c, n[1], nil)
+    addSonSkipIntLit(result, base, c.idgen)
+  else:
+    localError(c.config, n.info, errXExpectsOneTypeParam % "iterable")
     result = newOrPrevType(tyError, prev, c)
 
 proc semOrdinal(c: PContext, n: PNode, prev: PType): PType =
@@ -1171,6 +1181,7 @@ proc liftParamType(c: PContext, procKind: TSymKind, genericParams: PNode,
   else: discard
 
 proc semParamType(c: PContext, n: PNode, constraint: var PNode): PType =
+  ## Semchecks the type of parameters.
   if n.kind == nkCurlyExpr:
     result = semTypeNode(c, n[0], nil)
     constraint = semNodeKindConstraints(n, c.config, 1)
@@ -1226,9 +1237,10 @@ proc semProcTypeNode(c: PContext, n, genericParams: PNode,
     if hasType:
       typ = semParamType(c, a[^2], constraint)
       # TODO: Disallow typed/untyped in procs in the compiler/stdlib
-      if kind == skProc and (typ.kind == tyTyped or typ.kind == tyUntyped):
+      if kind in {skProc, skFunc} and (typ.kind == tyTyped or typ.kind == tyUntyped):
         if not isMagic(getCurrOwner(c)):
           localError(c.config, a[^2].info, "'" & typ.sym.name.s & "' is only allowed in templates and macros or magic procs")
+
 
     if hasDefault:
       def = a[^1]
@@ -1451,9 +1463,9 @@ proc semGeneric(c: PContext, n: PNode, s: PSym, prev: PType): PType =
     matches(c, n, copyTree(n), m)
 
     if m.state != csMatch:
-      let err = "cannot instantiate " & typeToString(t) & "\n" &
-                "got: <" & describeArgs(c, n) & ">\n" &
-                "but expected: <" & describeArgs(c, t.n, 0) & ">"
+      var err = "cannot instantiate "
+      err.addTypeHeader(c.config, t)
+      err.add "\ngot: <$1>\nbut expected: <$2>" % [describeArgs(c, n), describeArgs(c, t.n, 0)]
       localError(c.config, n.info, errGenerated, err)
       return newOrPrevType(tyError, prev, c)
 
@@ -1842,6 +1854,7 @@ proc semTypeNode(c: PContext, n: PNode, prev: PType): PType =
     of mRange: result = semRange(c, n, prev)
     of mSet: result = semSet(c, n, prev)
     of mOrdinal: result = semOrdinal(c, n, prev)
+    of mIterableType: result = semIterableType(c, n, prev)
     of mSeq:
       result = semContainer(c, n, tySequence, "seq", prev)
       if optSeqDestructors in c.config.globalOptions:
@@ -2024,7 +2037,7 @@ proc processMagicType(c: PContext, m: PSym) =
     if optSeqDestructors in c.config.globalOptions:
       incl m.typ.flags, tfHasAsgn
   of mCstring:
-    setMagicIntegral(c.config, m, tyCString, c.config.target.ptrSize)
+    setMagicIntegral(c.config, m, tyCstring, c.config.target.ptrSize)
     rawAddSon(m.typ, getSysType(c.graph, m.info, tyChar))
   of mPointer: setMagicIntegral(c.config, m, tyPointer, c.config.target.ptrSize)
   of mNil: setMagicType(c.config, m, tyNil, c.config.target.ptrSize)
@@ -2064,6 +2077,9 @@ proc processMagicType(c: PContext, m: PSym) =
     c.graph.sysTypes[tySequence] = m.typ
   of mOrdinal:
     setMagicIntegral(c.config, m, tyOrdinal, szUncomputedSize)
+    rawAddSon(m.typ, newTypeS(tyNone, c))
+  of mIterableType:
+    setMagicIntegral(c.config, m, tyIterable, 0)
     rawAddSon(m.typ, newTypeS(tyNone, c))
   of mPNimrodNode:
     incl m.typ.flags, tfTriggersCompileTime

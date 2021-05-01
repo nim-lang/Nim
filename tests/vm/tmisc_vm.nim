@@ -19,6 +19,7 @@ foo4
 (a: 0, b: 0)
 '''
 """
+import std/sets
 
 #bug #1009
 type
@@ -94,8 +95,6 @@ proc simpleTryFinally()=
 static: simpleTryFinally()
 
 # bug #10981
-
-import sets
 
 proc main =
   for i in 0..<15:

@@ -272,17 +272,17 @@ Math libraries
 * `random <random.html>`_
   Fast and tiny random number generator.
 
-* `sysrand <sysrand.html>`_
-  Cryptographically secure pseudorandom number generator.
-
 * `rationals <rationals.html>`_
   This module implements rational numbers and relevant mathematical operations.
 
 * `stats <stats.html>`_
-  Statistical analysis
+  Statistical analysis.
 
 * `sums <sums.html>`_
   Accurate summation functions.
+
+* `sysrand <sysrand.html>`_
+  Cryptographically secure pseudorandom number generator.
 
 
 Internet Protocols and Support

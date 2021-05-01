@@ -35,6 +35,8 @@ Modified by Boyd Greenfield and narimiran
   --escapeSequence: #c4891b;
   --number: #252dbe;
   --literal: #a4255b;
+  --program: #6060c0;
+  --option: #508000;
   --raw-data: #a4255b;
 }
 
@@ -63,6 +65,8 @@ Modified by Boyd Greenfield and narimiran
   --escapeSequence: #bd93f9;
   --number: #bd93f9;
   --literal: #f1fa8c;
+  --program: #9090c0;
+  --option: #90b010;
   --raw-data: #8be9fd;
 }
 
@@ -511,6 +515,32 @@ div.footnote-label {
   min-width: 1.7em;
 }
 
+div.option-list {
+  border: 0.1em solid var(--border);
+}
+div.option-list-item {
+  padding-left: 12em;
+  padding-right: 0;
+  padding-bottom: 0.3em;
+  padding-top: 0.3em;
+}
+div.odd {
+  background-color: var(--secondary-background);
+}
+div.option-list-label {
+  margin-left: -11.5em;
+  margin-right: 0em;
+  min-width: 11.5em;
+  display: inline-block;
+  vertical-align: top;
+}
+div.option-list-description {
+  width: calc(100% - 1em);
+  padding-left: 1em;
+  padding-right: 0;
+  display: inline-block;
+}
+
 blockquote {
   font-size: 0.9em;
   font-style: italic;
@@ -519,7 +549,7 @@ blockquote {
   border-left: 5px solid #bbc;
 }
 
-.pre {
+.pre, span.tok {
   font-family: "Source Code Pro", Monaco, Menlo, Consolas, "Courier New", monospace;
   font-weight: 500;
   font-size: 0.85em;
@@ -528,6 +558,12 @@ blockquote {
   padding-left: 3px;
   padding-right: 3px;
   border-radius: 4px;
+}
+
+span.tok {
+  border: 1px solid #808080;
+  padding-bottom: 0.1em;
+  margin-right: 0.2em;
 }
 
 pre {
@@ -817,9 +853,6 @@ span.classifier {
 span.classifier-delimiter {
   font-weight: bold; }
 
-span.option {
-  white-space: nowrap; }
-
 span.problematic {
   color: #b30000; }
 
@@ -898,6 +931,21 @@ span.Preprocessor {
 
 span.Directive {
   color: #252dbe; }
+
+span.option {
+  font-weight: bold;
+  font-family: "Source Code Pro", Monaco, Menlo, Consolas, "Courier New", monospace;
+  color: var(--option);
+}
+
+span.program {
+  font-weight: bold;
+  color: var(--program);
+  text-decoration: underline;
+  text-decoration-color: var(--hint);
+  text-decoration-thickness: 0.05em;
+  text-underline-offset: 0.15em;
+}
 
 span.Command, span.Rule, span.Hyperlink, span.Label, span.Reference,
 span.Other {

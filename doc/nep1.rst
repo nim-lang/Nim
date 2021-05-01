@@ -301,3 +301,12 @@ Miscellaneous
     let a = """foo
     bar
     """
+
+- A getter API for a private field `foo` should preferably be named `foo`, not `getFoo`.
+  A getter-like API should preferably be named `getFoo`, not `foo` if:
+    * the API has side effects
+    * or the cost is not `O(1)`
+  For in between cases, there is no clear guideline.
+
+- Likewise with a setter API, replacing `foo` with `foo=` and `getFoo` with `setFoo`
+  in the above text.

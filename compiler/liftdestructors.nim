@@ -825,7 +825,7 @@ proc ownedClosureOp(c: var TLiftCtx; t: PType; body, x, y: PNode) =
 proc fillBody(c: var TLiftCtx; t: PType; body, x, y: PNode) =
   case t.kind
   of tyNone, tyEmpty, tyVoid: discard
-  of tyPointer, tySet, tyBool, tyChar, tyEnum, tyInt..tyUInt64, tyCString,
+  of tyPointer, tySet, tyBool, tyChar, tyEnum, tyInt..tyUInt64, tyCstring,
       tyPtr, tyUncheckedArray, tyVar, tyLent:
     defaultOp(c, t, body, x, y)
   of tyRef:
@@ -908,7 +908,7 @@ proc fillBody(c: var TLiftCtx; t: PType; body, x, y: PNode) =
   of tyOrdinal, tyRange, tyInferred,
      tyGenericInst, tyAlias, tySink:
     fillBody(c, lastSon(t), body, x, y)
-  of tyConcept: doAssert false
+  of tyConcept, tyIterable: doAssert false
 
 proc produceSymDistinctType(g: ModuleGraph; c: PContext; typ: PType;
                             kind: TTypeAttachedOp; info: TLineInfo;

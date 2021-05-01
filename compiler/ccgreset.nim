@@ -85,7 +85,7 @@ proc specializeResetT(p: BProc, accessor: Rope, typ: PType) =
       lineCg(p, cpsStmts, "$1 = NIM_NIL;$n", [accessor])
   of tyChar, tyBool, tyEnum, tyInt..tyUInt64:
     lineCg(p, cpsStmts, "$1 = 0;$n", [accessor])
-  of tyCString, tyPointer, tyPtr, tyVar, tyLent:
+  of tyCstring, tyPointer, tyPtr, tyVar, tyLent:
     lineCg(p, cpsStmts, "$1 = NIM_NIL;$n", [accessor])
   else:
     discard

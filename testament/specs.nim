@@ -88,6 +88,7 @@ type
     targets*: set[TTarget]
     matrix*: seq[string]
     nimout*: string
+    nimoutFull*: bool # whether nimout is all compiler output or a subset
     parseErrors*: string            # when the spec definition is invalid, this is not empty.
     unjoinable*: bool
     unbatchable*: bool
@@ -202,7 +203,7 @@ proc extractSpec(filename: string; spec: var TSpec): string =
 
   # look for """ only in the first section
   if a >= 0 and b > a and a < 40:
-    result = s.substr(a+3, b-1).replace("'''", tripleQuote)
+    result = s.substr(a+3, b-1).multiReplace({"'''": tripleQuote, "\\31": "\31"})
   else:
     #echo "warning: file does not contain spec: " & filename
     result = ""
@@ -297,6 +298,8 @@ proc parseSpec*(filename: string): TSpec =
         result.action = actionReject
       of "nimout":
         result.nimout = e.value
+      of "nimoutfull":
+        result.nimoutFull = parseCfgBool(e.value)
       of "batchable":
         result.unbatchable = not parseCfgBool(e.value)
       of "joinable":
@@ -328,9 +331,9 @@ proc parseSpec*(filename: string): TSpec =
           when defined(unix): result.err = reDisabled
         of "posix":
           when defined(posix): result.err = reDisabled
-        of "travis":
+        of "travis": # deprecated
           if isTravis: result.err = reDisabled
-        of "appveyor":
+        of "appveyor": # deprecated
           if isAppVeyor: result.err = reDisabled
         of "azure":
           if isAzure: result.err = reDisabled

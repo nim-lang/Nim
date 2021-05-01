@@ -7,6 +7,10 @@ pr:
     include:
     - '*'
 
+variables:
+- name: skipci
+  value: false 
+
 jobs:
 - job: packages
 
@@ -52,18 +56,24 @@ jobs:
   steps:
     - bash: git config --global core.autocrlf false
       displayName: 'Disable auto conversion to CRLF by git (Windows-only)'
-      condition: eq(variables['Agent.OS'], 'Windows_NT')
+      condition: and(succeeded(), eq(variables['Agent.OS'], 'Windows_NT'))
 
     - checkout: self
-      fetchDepth: 1
+      fetchDepth: 2 # see D20210329T004830
 
-    - bash: git clone --depth 1 https://github.com/nim-lang/csources
-      displayName: 'Checkout Nim csources'
+    - bash: |
+        set -e
+        . ci/funs.sh
+        if nimIsCiSkip; then
+          echo '##vso[task.setvariable variable=skipci]true'
+        fi
+      displayName: 'Check whether to skip CI'
 
     - task: NodeTool@0
       inputs:
         versionSpec: '12.x'
       displayName: 'Install node.js 12.x'
+      condition: and(succeeded(), eq(variables['skipci'], 'false'))
 
     - bash: |
         set -e
@@ -73,7 +83,7 @@ jobs:
           echo_run sudo apt-fast install --no-install-recommends -yq \
             libcurl4-openssl-dev libgc-dev libsdl1.2-dev libsfml-dev valgrind libc6-dbg
       displayName: 'Install dependencies (amd64 Linux)'
-      condition: and(eq(variables['Agent.OS'], 'Linux'), eq(variables['CPU'], 'amd64'))
+      condition: and(succeeded(), eq(variables['skipci'], 'false'), eq(variables['Agent.OS'], 'Linux'), eq(variables['CPU'], 'amd64'))
 
     - bash: |
         set -e
@@ -113,11 +123,11 @@ jobs:
         echo_run chmod 755 bin/g++
 
       displayName: 'Install dependencies (i386 Linux)'
-      condition: and(eq(variables['Agent.OS'], 'Linux'), eq(variables['CPU'], 'i386'))
+      condition: and(succeeded(), eq(variables['skipci'], 'false'), eq(variables['Agent.OS'], 'Linux'), eq(variables['CPU'], 'i386'))
 
     - bash: brew install boehmgc make sfml
       displayName: 'Install dependencies (OSX)'
-      condition: eq(variables['Agent.OS'], 'Darwin')
+      condition: and(succeeded(), eq(variables['skipci'], 'false'), eq(variables['Agent.OS'], 'Darwin'))
 
     - bash: |
         set -e
@@ -130,9 +140,10 @@ jobs:
         echo_run echo '##vso[task.prependpath]$(System.DefaultWorkingDirectory)/dist/mingw64/bin'
 
       displayName: 'Install dependencies (Windows)'
-      condition: eq(variables['Agent.OS'], 'Windows_NT')
+      condition: and(succeeded(), eq(variables['skipci'], 'false'), eq(variables['Agent.OS'], 'Windows_NT'))
 
     - bash: echo '##vso[task.prependpath]$(System.DefaultWorkingDirectory)/bin'
+      condition: and(succeeded(), eq(variables['skipci'], 'false'))
       displayName: 'Add build binaries to PATH'
 
     - bash: |
@@ -145,50 +156,28 @@ jobs:
         echo_run node -v
         echo_run echo '##[section]make version'
         echo_run make -v
+      condition: and(succeeded(), eq(variables['skipci'], 'false'))
       displayName: 'System information'
 
-    - bash: echo '##vso[task.setvariable variable=csources_version]'"$(git -C csources rev-parse HEAD)"
-      displayName: 'Get csources version'
+    - bash: . ci/funs.sh && nimBuildCsourcesIfNeeded CC=gcc ucpu=$(CPU)
+      condition: and(succeeded(), eq(variables['skipci'], 'false'))
+      displayName: 'Build csourcesAny'
 
-    - task: Cache@2
-      inputs:
-        key: 'csources | "$(Agent.OS)" | $(CPU) | $(csources_version)'
-        path: csources/bin
-      displayName: 'Restore built csources'
-
-    - bash: |
-        set -e
-        . ci/funs.sh
-        ncpu=
-        ext=
-        case '$(Agent.OS)' in
-        'Linux')
-          ncpu=$(nproc)
-          ;;
-        'Darwin')
-          ncpu=$(sysctl -n hw.ncpu)
-          ;;
-        'Windows_NT')
-          ncpu=$NUMBER_OF_PROCESSORS
-          ext=.exe
-          ;;
-        esac
-        [[ -z "$ncpu" || $ncpu -le 0 ]] && ncpu=1
-
-        if [[ -x csources/bin/nim$ext ]]; then
-          echo_run echo "Found cached compiler, skipping build"
-        else
-          echo_run make -C csources -j $ncpu CC=gcc ucpu=$(CPU) koch=no
-        fi
-
-        echo_run cp csources/bin/nim$ext bin
-      displayName: 'Build 1-stage compiler from csources'
+    # this could be revived if performance justifies it (needs a few updates)
+    # - task: Cache@2
+    #   inputs:
+    #     key: 'csourcesAny | "$(Agent.OS)" | $(CPU) | $(csources_version)'
+    #     path: $(nim_csources)
+    #   condition: and(succeeded(), eq(variables['skipci'], 'false'))
+    #   displayName: 'Restore built csourcesAny'
 
     - bash: nim c koch
+      condition: and(succeeded(), eq(variables['skipci'], 'false'))
       displayName: 'Build koch'
 
       # set result to omit the "bash exited with error code '1'" message
     - bash: ./koch runCI || echo '##vso[task.complete result=Failed]'
+      condition: and(succeeded(), eq(variables['skipci'], 'false'))
       displayName: 'Run CI'
       env:
         SYSTEM_ACCESSTOKEN: $(System.AccessToken)

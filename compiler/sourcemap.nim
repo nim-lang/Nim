@@ -8,13 +8,13 @@ type
     name*:      string
     children*:  seq[Child]
 
-  C = enum cSourceNode, cString
+  C = enum cSourceNode, cSourceString
 
   Child* = ref object
     case kind*: C:
     of cSourceNode:
       node*:  SourceNode
-    of cString:
+    of cSourceString:
       s*:     string
 
   SourceMap* = ref object
@@ -44,7 +44,7 @@ type
 
 
 proc child*(s: string): Child =
-  Child(kind: cString, s: s)
+  Child(kind: cSourceString, s: s)
 
 
 proc child*(node: SourceNode): Child =
@@ -72,7 +72,7 @@ proc text*(sourceNode: SourceNode, depth: int): string =
   let empty = "  "
   result = &"{repeat(empty, depth)}SourceNode({sourceNode.source}:{sourceNode.line}:{sourceNode.column}):\n"
   for child in sourceNode.children:
-    if child.kind == cString:
+    if child.kind == cSourceString:
       result.add(&"{repeat(empty, depth + 1)}{child.s}\n")
     else:
       result.add(child.node.text(depth + 1))
@@ -308,7 +308,7 @@ proc addMapping*(map: SourceMapGenerator, mapping: Mapping) =
 
 proc walk*(node: SourceNode, fn: proc(line: string, original: SourceNode)) =
   for child in node.children:
-    if child.kind == cString and child.s.len > 0:
+    if child.kind == cSourceString and child.s.len > 0:
       fn(child.s, node)
     else:
       child.node.walk(fn)

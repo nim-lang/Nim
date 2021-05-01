@@ -68,7 +68,7 @@ type
     ## A node of a doubly linked list.
     ##
     ## It consists of a `value` field, and pointers to `next` and `prev`.
-    next*: <//>(DoublyLinkedNode[T])
+    next*: DoublyLinkedNode[T]
     prev* {.cursor.}: DoublyLinkedNode[T]
     value*: T
   DoublyLinkedNode*[T] = ref DoublyLinkedNodeObj[T]
@@ -77,23 +77,23 @@ type
     ## A node of a singly linked list.
     ##
     ## It consists of a `value` field, and a pointer to `next`.
-    next*: <//>(SinglyLinkedNode[T])
+    next*: SinglyLinkedNode[T]
     value*: T
   SinglyLinkedNode*[T] = ref SinglyLinkedNodeObj[T]
 
   SinglyLinkedList*[T] = object
     ## A singly linked list.
-    head*: <//>(SinglyLinkedNode[T])
+    head*: SinglyLinkedNode[T]
     tail* {.cursor.}: SinglyLinkedNode[T]
 
   DoublyLinkedList*[T] = object
     ## A doubly linked list.
-    head*: <//>(DoublyLinkedNode[T])
+    head*: DoublyLinkedNode[T]
     tail* {.cursor.}: DoublyLinkedNode[T]
 
   SinglyLinkedRing*[T] = object
     ## A singly linked ring.
-    head*: <//>(SinglyLinkedNode[T])
+    head*: SinglyLinkedNode[T]
     tail* {.cursor.}: SinglyLinkedNode[T]
 
   DoublyLinkedRing*[T] = object
@@ -148,7 +148,7 @@ proc initDoublyLinkedRing*[T](): DoublyLinkedRing[T] =
 
   discard
 
-proc newDoublyLinkedNode*[T](value: T): <//>(DoublyLinkedNode[T]) =
+proc newDoublyLinkedNode*[T](value: T): DoublyLinkedNode[T] =
   ## Creates a new doubly linked node with the given `value`.
   runnableExamples:
     let n = newDoublyLinkedNode[int](5)
@@ -157,7 +157,7 @@ proc newDoublyLinkedNode*[T](value: T): <//>(DoublyLinkedNode[T]) =
   new(result)
   result.value = value
 
-proc newSinglyLinkedNode*[T](value: T): <//>(SinglyLinkedNode[T]) =
+proc newSinglyLinkedNode*[T](value: T): SinglyLinkedNode[T] =
   ## Creates a new singly linked node with the given `value`.
   runnableExamples:
     let n = newSinglyLinkedNode[int](5)

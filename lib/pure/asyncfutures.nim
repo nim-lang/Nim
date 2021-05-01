@@ -189,24 +189,22 @@ proc add(callbacks: var CallbackList, function: CallbackFunc) =
         last = last.next
       last.next = newCallback
 
-proc complete*[T](future: Future[T], val: T) =
-  ## Completes `future` with value `val`.
+proc completeImpl[T, U](future: Future[T], val: U, isVoid: static bool) =
   #assert(not future.finished, "Future already finished, cannot finish twice.")
   checkFinished(future)
   assert(future.error == nil)
-  future.value = val
+  when not isVoid:
+    future.value = val
   future.finished = true
   future.callbacks.call()
   when isFutureLoggingEnabled: logFutureFinish(future)
 
-proc complete*(future: Future[void]) =
-  ## Completes a void `future`.
-  #assert(not future.finished, "Future already finished, cannot finish twice.")
-  checkFinished(future)
-  assert(future.error == nil)
-  future.finished = true
-  future.callbacks.call()
-  when isFutureLoggingEnabled: logFutureFinish(future)
+proc complete*[T](future: Future[T], val: T) =
+  ## Completes `future` with value `val`.
+  completeImpl(future, val, false)
+
+proc complete*(future: Future[void], val = Future[void].default) =
+  completeImpl(future, (), true)
 
 proc complete*[T](future: FutureVar[T]) =
   ## Completes a `FutureVar`.
@@ -363,12 +361,10 @@ proc read*[T](future: Future[T] | FutureVar[T]): T =
   ## this function will fail with a `ValueError` exception.
   ##
   ## If the result of the future is an error then that error will be raised.
-  {.push hint[ConvFromXtoItselfNotNeeded]: off.}
   when future is Future[T]:
     let fut = future
   else:
     let fut = Future[T](future)
-  {.pop.}
   if fut.finished:
     if fut.error != nil:
       injectStacktrace(fut)

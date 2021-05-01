@@ -415,7 +415,7 @@ else:
 # end of non-portable code
 # ----------------------------------------------------------------------------
 
-proc prepareDealloc(cell: PCell) =
+proc prepareDealloc(cell: PCell) {.raises: [].} =
   when declared(useMarkForDebug):
     when useMarkForDebug:
       gcAssert(cell notin gch.marked, "Cell still alive!")
@@ -458,7 +458,7 @@ proc deallocHeap*(runFinalizers = true; allowGcAfterwards = true) =
     initGC()
 
 type
-  GlobalMarkerProc = proc () {.nimcall, benign.}
+  GlobalMarkerProc = proc () {.nimcall, benign, raises: [].}
 var
   globalMarkersLen {.exportc.}: int
   globalMarkers {.exportc.}: array[0..3499, GlobalMarkerProc]

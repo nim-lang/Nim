@@ -13,7 +13,6 @@ The changes should go to changelog.md!
 
 - Changed `example.foo` to take additional `bar` parameter.
 
-
 ## Language changes
 
 

@@ -158,10 +158,6 @@ proc newPromise*(handler: proc(resolve: proc())): Future[void] {.importjs: "(new
   ## A helper for wrapping callback-based functions
   ## into promises and async procedures.
 
-template typeOrVoid[T](a: T): type =
-  # xxx this is useful, make it public in std/typetraits in future work
-  T
-
 template maybeFuture(T): untyped =
   # avoids `Future[Future[T]]`
   when T is Future: T
@@ -221,7 +217,8 @@ when defined(nimExperimentalAsyncjsThen):
             assert witness == 3
 
       template impl(call): untyped =
-        when typeOrVoid(call) is void:
+        # see D20210421T014713
+        when typeof(block: call) is void:
           var ret: Future[void]
         else:
           var ret = default(maybeFuture(typeof(call)))
