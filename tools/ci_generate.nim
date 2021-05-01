@@ -18,6 +18,7 @@ proc genCiBsd(header: string, batch: int, num: int): string =
 ## {doNotEdit}
 
 {header}
+
 sources:
 - https://github.com/nim-lang/Nim
 environment:
