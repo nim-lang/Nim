@@ -2434,6 +2434,8 @@ when notJSnotNims:
     ## Retrieves the raw proc pointer of the closure `x`. This is
     ## useful for interfacing closures with C.
     when T is "closure":
+      # PRTEMP: is that sound in C++?
+      # without cast it gives: assigning to 'void *' from incompatible type 'void (*)(void *)'
       {.emit: """
       `result` = (void*)`x`.ClP_0;
       """.}
