@@ -24,6 +24,3 @@ if not exist %nim_csources% (
   cd ..
   copy /y bin\nim.exe  %nim_csources%
 )
- bin\nim.exe c --skipUserCfg --skipParentCfg --hints:off koch
- koch boot -d:release --skipUserCfg --skipParentCfg --hints:off
- koch tools --skipUserCfg --skipParentCfg --hints:off
