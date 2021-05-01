@@ -72,7 +72,7 @@ jobs:
 
       - name: 'Build csourcesAny (posix)'
         # this would work on windows and other CI use this on windows,
-        # but we ensure here that build_all.bat keeps working on windows.
+        # but we ensure here that `ci/build_autogen.bat` keeps working on windows.
         if: runner.os != 'Windows'
         shell: bash
         run: . ci/funs.sh && nimBuildCsourcesIfNeeded CC=gcc
@@ -83,9 +83,7 @@ jobs:
       - name: 'Build csourcesAny (windows)'
         if: runner.os == 'Windows'
         shell: cmd
-        run: |
-          SET nim_build_all_only_csources=1
-          build_all.bat
+        run: ci/build_autogen.bat
 
       - name: 'Build koch'
         shell: bash
