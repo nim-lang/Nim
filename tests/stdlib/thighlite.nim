@@ -2,7 +2,7 @@
 import unittest
 import ../../lib/packages/docutils/highlite
 
-suite "Nim tokenizing":
+block: # Nim tokenizing"
   test "string literals and escape seq":
     check("\"ok1\\nok2\\nok3\"".tokenize(langNim) ==
        @[("\"ok1", gtStringLit), ("\\n", gtEscapeSequence), ("ok2", gtStringLit),
