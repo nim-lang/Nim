@@ -95,7 +95,7 @@ proc getTempDirImpl(dir: string): string {.inline.} =
   if result.len == 0:
     result = getTempDir()
   elif not dirExists(result):
-    raise newException(IOError, "dir argument must be a valid existent directory")
+    raise newException(IOError, "the specified directory does not exist: " & dir)
 
 proc genTempPath*(prefix, suffix: string, dir = ""): string =
   ## Generates a path name in `dir`.
