@@ -95,6 +95,8 @@ nimBuildCsourcesIfNeeded(){
       _nimBuildCsourcesIfNeeded "$@"
     fi
 
+    echo_run rm -f bin/nim
+      # fixes bug #17913, but it's unclear why it's needed, maybe specific to MacOS Big Sur 11.3 on M1 arch?
     echo_run cp $nim_csources bin/nim
     echo_run $nim_csources -v
   )
