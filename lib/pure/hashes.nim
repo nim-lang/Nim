@@ -524,15 +524,21 @@ proc hash*[T: tuple | object | proc](x: T): Hash {.inline.} =
     proc hash(a: Obj2): Hash = hash((a.x))
     assert hash(Obj2[float](x: 520, y: "Nim")) == hash(Obj2[float](x: 520, y: "Nim2"))
   runnableExamples:
-    # proc and closure examples
+    # proc
     proc fn1() = discard
-    var a = 0
-    proc fn2() = a.inc
-    assert hash(fn1) != hash(fn2)
     const fn1b = fn1
     assert hash(fn1b) == hash(fn1)
-    let fn2b = fn2
-    assert hash(fn2b) == hash(fn2)
+
+    # closure
+    proc outer =
+      var a = 0
+      proc fn2() = a.inc
+      assert fn2 is "closure"
+      let fn2b = fn2
+      assert hash(fn2b) == hash(fn2)
+      assert hash(fn2) != hash(fn1)
+    outer()
+
   when T is "closure":
     result = hash((rawProc(x), rawEnv(x)))
   elif T is (proc):
