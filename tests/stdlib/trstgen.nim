@@ -142,7 +142,7 @@ suite "YAML syntax highlighting":
 
   test "Directives: warnings":
     let input = dedent"""
-      .. non-existant-warning: Paragraph.
+      .. non-existent-warning: Paragraph.
 
       .. another.wrong:warning::: Paragraph.
       """
@@ -151,7 +151,7 @@ suite "YAML syntax highlighting":
     check output == ""
     doAssert warnings[].len == 2
     check "(1, 24) Warning: RST style:" in warnings[0]
-    check "double colon :: may be missing at end of 'non-existant-warning'" in warnings[0]
+    check "double colon :: may be missing at end of 'non-existent-warning'" in warnings[0]
     check "(3, 25) Warning: RST style:" in warnings[1]
     check "RST style: too many colons for a directive (should be ::)" in warnings[1]
 
