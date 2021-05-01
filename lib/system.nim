@@ -2432,10 +2432,14 @@ when notJSnotNims:
 
   proc rawProc*[T: proc](x: T): pointer {.noSideEffect, inline.} =
     ## Retrieves the raw proc pointer of the closure `x`. This is
-    ## useful for interfacing closures with C.
+    ## useful for interfacing closures with C/C++, hash compuations, etc.
     when T is "closure":
-      # PRTEMP: is that sound in C++?
-      # without cast it gives: assigning to 'void *' from incompatible type 'void (*)(void *)'
+      #[
+      The conversion from function pointer to `void*` is a tricky topic, but this
+      should work at least for c++ >= c++11, e.g. for `dlsym` support.
+      refs: https://gcc.gnu.org/bugzilla/show_bug.cgi?id=57869,
+      https://stackoverflow.com/questions/14125474/casts-between-pointer-to-function-and-pointer-to-object-in-c-and-c
+      ]#
       {.emit: """
       `result` = (void*)`x`.ClP_0;
       """.}
@@ -2443,8 +2447,7 @@ when notJSnotNims:
       {.error: "Only closure function and iterator are allowed!".}
 
   proc rawEnv*[T: proc](x: T): pointer {.noSideEffect, inline.} =
-    ## Retrieves the raw environment pointer of the closure `x`. This is
-    ## useful for interfacing closures with C.
+    ## Retrieves the raw environment pointer of the closure `x`. See also `rawProc`.
     when T is "closure":
       {.emit: """
       `result` = `x`.ClE_0;

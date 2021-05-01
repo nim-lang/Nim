@@ -198,15 +198,26 @@ proc main() =
       doAssert ha == a.hash # the hash only depends on the address
 
   block: # hash(proc)
-    proc fn1() = discard
-    var a = 0
-    proc fn2() = a.inc
-    disableVm:
-      doAssert hash(fn1) != hash(fn2)
-      const fn1b = fn1
-      doAssert hash(fn1b) == hash(fn1)
-      let fn2b = fn2
-      doAssert hash(fn2b) == hash(fn2)
+    proc fn(a: int): auto = a*2
+    doAssert fn isnot "closure"
+    doAssert fn is (proc)
+    const fn2 = fn
+    let fn3 = fn
+    whenVMorJs: discard
+    do:
+      doAssert hash(fn2) == hash(fn)
+      doAssert hash(fn3) == hash(fn)
+
+  block: # hash(closure)
+    proc outer() =
+      var a = 0
+      proc inner() = a.inc
+      doAssert inner is "closure"
+      let inner2 = inner
+      whenVMorJs: discard
+      do:
+        doAssert hash(inner2) == hash(inner)
+    outer()
 
 static: main()
 main()
