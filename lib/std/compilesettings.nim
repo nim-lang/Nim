@@ -8,7 +8,7 @@
 #
 
 ## This module allows querying the compiler about
-## diverse configuration settings.
+## diverse configuration settings. See also `compileOption`.
 
 # Note: Only add new enum values at the end to ensure binary compatibility with
 # other Nim compiler versions!
