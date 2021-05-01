@@ -27,7 +27,7 @@ proc add*(x: var string, y: openArray[char]) =
     i.inc
   # xxx use `nimCopyMem(x[n].addr, y[0].addr, y.len)` after some refactoring
 
-func stripSlice(s: openArray[char], leading = true, trailing = true, chars: set[char] = whitespaces): Slice[int] =
+func stripSlice(s: openArray[char], leading = true, trailing = true, chars: set[char] = whitespaces): Slice[int] {.noinit.} =
   ## Returns the slice range of `s` which is stripped `chars`.
   runnableExamples:
     assert stripSlice(" abc  ") == 1 .. 3
