@@ -428,3 +428,53 @@ suite "RST inline markup":
           rnLeaf  'lnk'
           rnLeaf  '___'
       """)
+
+  test "no punctuation in the end of a standalone URI is allowed":
+    check(dedent"""
+        [see (http://no.org)], end""".toAst ==
+      dedent"""
+        rnInner
+          rnLeaf  '['
+          rnLeaf  'see'
+          rnLeaf  ' '
+          rnLeaf  '('
+          rnStandaloneHyperlink
+            rnLeaf  'http://no.org'
+          rnLeaf  ')'
+          rnLeaf  ']'
+          rnLeaf  ','
+          rnLeaf  ' '
+          rnLeaf  'end'
+        """)
+
+    # but `/` at the end is OK
+    check(
+      dedent"""
+        See http://no.org/ end""".toAst ==
+      dedent"""
+        rnInner
+          rnLeaf  'See'
+          rnLeaf  ' '
+          rnStandaloneHyperlink
+            rnLeaf  'http://no.org/'
+          rnLeaf  ' '
+          rnLeaf  'end'
+        """)
+
+    # a more complex URL with some made-up ending '&='.
+    # Github Markdown would include final &= and
+    # so would rst2html.py in contradiction with RST spec.
+    check(
+      dedent"""
+        See https://www.google.com/url?sa=t&source=web&cd=&cad=rja&url=https%3A%2F%2Fnim-lang.github.io%2FNim%2Frst.html%23features&usg=AO&= end""".toAst ==
+      dedent"""
+        rnInner
+          rnLeaf  'See'
+          rnLeaf  ' '
+          rnStandaloneHyperlink
+            rnLeaf  'https://www.google.com/url?sa=t&source=web&cd=&cad=rja&url=https%3A%2F%2Fnim-lang.github.io%2FNim%2Frst.html%23features&usg=AO'
+          rnLeaf  '&'
+          rnLeaf  '='
+          rnLeaf  ' '
+          rnLeaf  'end'
+        """)
