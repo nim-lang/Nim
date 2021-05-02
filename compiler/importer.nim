@@ -224,7 +224,6 @@ proc importForwarded(c: PContext, n: PNode, exceptSet: IntSet; fromMod: PSym; im
 
 proc importModuleAs(c: PContext; n: PNode, realModule: PSym, importHidden: bool): PSym =
   result = realModule
-  c.unusedImports.add((realModule, n.info))
   template createModuleAliasImpl(ident): untyped =
     createModuleAlias(realModule, nextSymId c.idgen, ident, realModule.info, c.config.options)
   if n.kind != nkImportAs: discard
@@ -233,10 +232,13 @@ proc importModuleAs(c: PContext; n: PNode, realModule: PSym, importHidden: bool)
   elif n[1].ident.id != realModule.name.id:
     # some misguided guy will write 'import abc.foo as foo' ...
     result = createModuleAliasImpl(n[1].ident)
+  if result == realModule:
+    # avoids modifying `realModule`, see D20201209T194412 for `import {.all.}`
+    # and also for `import foo; {.used: foo.}`
+    result = createModuleAliasImpl(realModule.name)
   if importHidden:
-    if result == realModule: # avoids modifying `realModule`, see D20201209T194412.
-      result = createModuleAliasImpl(realModule.name)
     result.options.incl optImportHidden
+  c.unusedImports.add((result, n.info))
 
 proc transformImportAs(c: PContext; n: PNode): tuple[node: PNode, importHidden: bool] =
   var ret: typeof(result)

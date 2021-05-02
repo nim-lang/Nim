@@ -1213,22 +1213,13 @@ proc singlePragma(c: PContext, sym: PSym, n: PNode, i: var int,
       of wBoolDefine:
         sym.magic = mBoolDefine
       of wUsed:
-        dbg sym
         if sym == nil or sym.kind == skModule:
-          dbg it.kind, it
           if it.kind != nkExprColonExpr:
-          # if it.kind notin nkCallKinds:
             invalidPragma(c, it)
           else:
             let ni = it[1]
             block:
-            # for i in 1..it.len:
-              # let ni = it[i]
-              # dbg ni, ni.kind
               let sym2 = qualifiedLookUp(c, ni, {checkUndeclared, checkModule})
-              # let sym2 = considerQuotedIdent(c, it)
-              dbg sym2
-              dbg sym2, sym2.kind
               sym2.flags.incl sfUsed
         else:
           noVal(c, it)
