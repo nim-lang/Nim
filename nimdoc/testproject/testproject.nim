@@ -185,7 +185,7 @@ when true: # procs without `=` (using comment field)
     ## the c printf.
     ## etc.
 
-  proc c_nonexistant*(frmt: cstring): cint {.importc: "nonexistant", header: "<stdio.h>", varargs, discardable.}
+  proc c_nonexistent*(frmt: cstring): cint {.importc: "nonexistent", header: "<stdio.h>", varargs, discardable.}
 
 when true: # tests RST inside comments
   proc low*[T: Ordinal|enum|range](x: T): T {.magic: "Low", noSideEffect.}

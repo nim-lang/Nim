@@ -38,7 +38,7 @@ block fileOperations:
   doAssert dirExists(dname)
 
   block: # copyFile, copyFileToDir
-    doAssertRaises(OSError): copyFile(dname/"nonexistant.txt", dname/"nonexistant.txt")
+    doAssertRaises(OSError): copyFile(dname/"nonexistent.txt", dname/"nonexistent.txt")
     let fname = "D20201009T112235"
     let fname2 = "D20201009T112235.2"
     let str = "foo1\0foo2\nfoo3\0"
@@ -164,7 +164,7 @@ block fileOperations:
     const subDir2 = dname/"sub2"
     const brokenSymlinkName = "D20210101T191320_BROKEN_SYMLINK"
     const brokenSymlink = dname/brokenSymlinkName
-    const brokenSymlinkSrc = "D20210101T191320_nonexistant"
+    const brokenSymlinkSrc = "D20210101T191320_nonexistent"
     const brokenSymlinkCopy = brokenSymlink & "_COPY"
     const brokenSymlinkInSubDir = subDir/brokenSymlinkName
     const brokenSymlinkInSubDir2 = subDir2/brokenSymlinkName
@@ -296,9 +296,9 @@ block walkDirRec:
 
 block: # walkDir
   doAssertRaises(OSError):
-    for a in walkDir("nonexistant", checkDir = true): discard
+    for a in walkDir("nonexistent", checkDir = true): discard
   doAssertRaises(OSError):
-    for p in walkDirRec("nonexistant", checkDir = true): discard
+    for p in walkDirRec("nonexistent", checkDir = true): discard
 
   when not defined(windows):
     block walkDirRelative:

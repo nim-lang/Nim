@@ -93,7 +93,7 @@ when true: # runnableExamples with rdoccmd
 
   template fun3Impl(): untyped =
     runnableExamples(rdoccmd="-d:foo"):
-      nonexistant
+      nonexistent
         # bugfix: this shouldn't be semchecked when `runnableExamples`
         # has more than 1 argument
     discard
@@ -126,7 +126,7 @@ runnableExamples:
 
   block:
     template fn(body: untyped): untyped = true
-    doAssert(fn do: nonexistant)
+    doAssert(fn do: nonexistent)
   import std/macros
   macro foo*(x, y) =
     result = newLetStmt(x[0][0], x[0][1])

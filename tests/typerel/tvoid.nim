@@ -94,5 +94,5 @@ block: # typeof(stmt)
     doAssert not compiles(bad1())
 
   block:
-    template bad2 = echo (nonexistant; discard)
+    template bad2 = echo (nonexistent; discard)
     doAssert not compiles(bad2())

@@ -136,8 +136,8 @@ template main =
     macro deb1(a): untyped = newLit a.repr
     macro deb2(a): untyped = newLit a.lispRepr
     doAssert deb1(-12'wrap) == "-12'wrap"
-    doAssert deb1(-12'nonexistant) == "-12'nonexistant"
-    doAssert deb2(-12'nonexistant) == """(DotExpr (RStrLit "-12") (Ident "\'nonexistant"))"""
+    doAssert deb1(-12'nonexistent) == "-12'nonexistent"
+    doAssert deb2(-12'nonexistent) == """(DotExpr (RStrLit "-12") (Ident "\'nonexistent"))"""
     when false: # xxx bug:
       # this holds:
       doAssert deb2(-12.wrap2) == """(DotExpr (IntLit -12) (Sym "wrap2"))"""
