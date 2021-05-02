@@ -11,6 +11,12 @@
 ##
 ## Experimental API, subject to change.
 
+#[
+See also:
+* `GetTempFileName` (on windows), refs https://docs.microsoft.com/en-us/windows/win32/api/fileapi/nf-fileapi-gettempfilenamea
+* `mkstemp` (posix), refs https://man7.org/linux/man-pages/man3/mkstemp.3.html
+]#
+
 import os, random
 
 
