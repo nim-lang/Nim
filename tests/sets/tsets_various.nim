@@ -276,10 +276,9 @@ template main() =
   block: # bug #16123
     whenVMorJs: discard
     do:
-      type callType = proc() {.closure.}
-      var setA = initHashSet[callType]()
-
-      let foo = proc()= discard
+      type CallType = proc() {.closure.}
+      var setA = initHashSet[CallType]()
+      let foo = proc() = discard
       setA.incl(foo)
       doAssert setA.contains(foo)
 
