@@ -56,7 +56,7 @@ proc safeOpen(filename: string): File =
                               nil, dwCreation, dwFlags, Handle(0))
 
     if handle == INVALID_HANDLE_VALUE:
-      if errno == ERROR_FILE_EXISTS:
+      if getLastError() == ERROR_FILE_EXISTS:
         return nil
       else:
         raiseOSError(osLastError(), filename)
@@ -80,6 +80,7 @@ proc safeOpen(filename: string): File =
     let fileHandle = posix.open(filename, flags, mode)
     if fileHandle == -1:
       if errno == EEXIST:
+        # xxx `getLastError()` should be defined on posix too and resolve to `errno`?
         return nil
       else:
         raiseOSError(osLastError(), filename)
