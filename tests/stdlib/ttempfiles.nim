@@ -6,12 +6,18 @@ doAssert createTempDir("nim", "tmp") != createTempDir("nim", "tmp")
 block:
   var t1 = createTempFile("nim", ".tmp")
   var t2 = createTempFile("nim", ".tmp")
+  defer:
+    close(t1.cfile)
+    close(t2.cfile)
+    removeFile(t1.path)
+    removeFile(t2.path)
+
   doAssert t1.path != t2.path
 
-  write(t1.fd, "1234")
-  doAssert readAll(t2.fd) == ""
+  let s = "1234"
+  write(t1.cfile, s)
+  doAssert readAll(t2.cfile) == ""
+  doAssert readAll(t1.cfile) == ""
+  t1.cfile.setFilePos 0
+  doAssert readAll(t1.cfile) == s
 
-  close(t1.fd)
-  close(t2.fd)
-  removeFile(t1.path)
-  removeFile(t2.path)
