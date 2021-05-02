@@ -344,6 +344,9 @@
 
 - `typeof(voidStmt)` now works and returns `void`.
 
+- `{.used.}` now accepts symbols, e.g. `{.used: mymodule.}` or `{.used: myFun.}`.
+
+
 ## Compiler changes
 
 - Added `--declaredlocs` to show symbol declaration location in messages.
