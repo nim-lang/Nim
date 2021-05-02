@@ -126,14 +126,15 @@ proc createTempFile*(prefix, suffix: string, dir = ""): tuple[cfile: File, path:
   ## 
   ## If failing to create a temporary file, `OSError` will be raised.
   ##
-  ## .. note:: It is the caller's responsibility to remove the file when no longer needed.
+  ## .. note:: It is the caller's responsibility to close `result.cfile` and
+  ## remove `result.file` when no longer needed.
   runnableExamples:
-    import std/[os, nre]
+    import std/os
     doAssertRaises(OSError): discard createTempFile("", "", "nonexistent")
-    let (cfile, path) = createTempFile("D20210501T170028", "end")
+    let (cfile, path) = createTempFile("tmpprefix_", "_end.tmp")
+    # path looks like: getTempDir() / "tmpprefix_FDCIRZA0_end.tmp"
     cfile.write "foo"
     cfile.setFilePos 0
-    assert path.lastPathPart.contains(re"^D20210501T170028(\w+)end$")
     assert readAll(cfile) == "foo"
     close cfile
     assert readFile(path) == "foo"
@@ -160,10 +161,10 @@ proc createTempDir*(prefix, suffix: string, dir = ""): string =
   ##
   ## .. note:: It is the caller's responsibility to remove the directory when no longer needed.
   runnableExamples:
-    import std/[os, nre]
+    import std/os
     doAssertRaises(OSError): discard createTempDir("", "", "nonexistent")
-    let dir = createTempDir("D20210501T171932", "end")
-    assert dir.lastPathPart.contains(re"^D20210501T171932(\w+)end$")
+    let dir = createTempDir("tmpprefix_", "_end")
+    # dir looks like: getTempDir() / "tmpprefix_YEl9VuVj_end"
     assert dirExists(dir)
     removeDir(dir)
   let dir = getTempDirImpl(dir)
