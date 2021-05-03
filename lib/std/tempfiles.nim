@@ -117,8 +117,7 @@ proc genTempPath*(prefix, suffix: string, dir = ""): string =
   result = dir / (prefix & randomPathName(nimTempPathLength) & suffix)
 
 proc createTempFile*(prefix, suffix: string, dir = ""): tuple[cfile: File, path: string] =
-  ## Creates a new temporary file in the directory `dir`, which must exist
-  ## (empty `dir` will resolve to `getTempDir()`).
+  ## Creates a new temporary file in the directory `dir`.
   ## 
   ## This generates a path name using `genTempPath(prefix, suffix, dir)` and
   ## returns a file handle to an open file and the path of that file, possibly after
@@ -127,7 +126,8 @@ proc createTempFile*(prefix, suffix: string, dir = ""): tuple[cfile: File, path:
   ## If failing to create a temporary file, `OSError` will be raised.
   ##
   ## .. note:: It is the caller's responsibility to close `result.cfile` and
-  ## remove `result.file` when no longer needed.
+  ##    remove `result.file` when no longer needed.
+  ## .. note:: `dir` must exist (empty `dir` will resolve to `getTempDir()`).
   runnableExamples:
     import std/os
     doAssertRaises(OSError): discard createTempFile("", "", "nonexistent")
@@ -150,8 +150,7 @@ proc createTempFile*(prefix, suffix: string, dir = ""): tuple[cfile: File, path:
   raise newException(OSError, "Failed to create a temporary file under directory " & dir)
 
 proc createTempDir*(prefix, suffix: string, dir = ""): string =
-  ## Creates a new temporary directory in the directory `dir`, which must exist
-  ## (empty `dir` will resolve to `getTempDir()`).
+  ## Creates a new temporary directory in the directory `dir`.
   ##
   ## This generates a dir name using `genTempPath(prefix, suffix, dir)`, creates
   ## the directory and returns it, possibly after retrying to ensure it doesn't
@@ -160,6 +159,7 @@ proc createTempDir*(prefix, suffix: string, dir = ""): string =
   ## If failing to create a temporary directory, `OSError` will be raised.
   ##
   ## .. note:: It is the caller's responsibility to remove the directory when no longer needed.
+  ## .. note:: `dir` must exist (empty `dir` will resolve to `getTempDir()`).
   runnableExamples:
     import std/os
     doAssertRaises(OSError): discard createTempDir("", "", "nonexistent")
