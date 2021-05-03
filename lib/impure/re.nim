@@ -10,6 +10,9 @@
 when defined(js):
   {.error: "This library needs to be compiled with a c-like backend, and depends on PCRE; See jsre for JS backend.".}
 
+## NOTE: The `re` module is outdated, but going to be kept for backward
+## compatibility reasons, please use github.com/nitely/nim-regex instead.
+##
 ## Regular expression support for Nim.
 ##
 ## This module is implemented by providing a wrapper around the

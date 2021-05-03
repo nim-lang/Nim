@@ -9,6 +9,9 @@
 when defined(js):
   {.error: "This library needs to be compiled with a c-like backend, and depends on PCRE; See jsre for JS backend.".}
 
+## NOTE: The `nre` module is outdated, but going to be kept for backward
+## compatibility reasons, please use github.com/nitely/nim-regex instead.
+##
 ## What is NRE?
 ## ============
 ##
