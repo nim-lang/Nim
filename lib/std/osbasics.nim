@@ -1,6 +1,3 @@
-# Include file that implements 'DirSep' and friends. Do not import this when
-# you also import `os.nim`!
-
 # Improved based on info in 'compiler/platform.nim'
 
 const
@@ -44,7 +41,7 @@ const
   PathSep* =
     when defined(macos) or defined(RISCOS): ','
     elif doslikeFileSystem or defined(vxworks): ';'
-    elif defined(PalmOS) or defined(MorphOS): ':' # platform has ':' but osseps has ';'
+    elif defined(PalmOS) or defined(MorphOS): ':' # platform has ':' but osbasics has ';'
     else: ':'
     ## The character conventionally used by the operating system to separate
     ## search path components (as in PATH), such as `':'` for POSIX

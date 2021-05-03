@@ -1,5 +1,9 @@
+include system/inclrtl
+
 import std/private/since
 import strutils
+
+import std/osbasics
 
 since (1, 1):
   const
@@ -55,7 +59,120 @@ const
     # refs https://social.technet.microsoft.com/Forums/windows/en-US/43945b2c-f123-46d7-9ba9-dd6abc967dd4/maximum-path-length-limitation-on-windows-is-255-or-247?forum=w7itprogeneral
     # offers a good explanation; see also: https://en.wikipedia.org/wiki/8.3_filename
 
-from os import splitFile
+proc splitFile*(path: string): tuple[dir, name, ext: string] {.
+  noSideEffect, rtl, extern: "nos$1".} =
+  ## Splits a filename into `(dir, name, extension)` tuple.
+  ##
+  ## `dir` does not end in `DirSep <#DirSep>`_ unless it's `/`.
+  ## `extension` includes the leading dot.
+  ##
+  ## If `path` has no extension, `ext` is the empty string.
+  ## If `path` has no directory component, `dir` is the empty string.
+  ## If `path` has no filename component, `name` and `ext` are empty strings.
+  ##
+  ## See also:
+  ## * `searchExtPos proc <#searchExtPos,string>`_
+  ## * `extractFilename proc <#extractFilename,string>`_
+  ## * `lastPathPart proc <#lastPathPart,string>`_
+  ## * `changeFileExt proc <#changeFileExt,string,string>`_
+  ## * `addFileExt proc <#addFileExt,string,string>`_
+  runnableExamples:
+    var (dir, name, ext) = splitFile("usr/local/nimc.html")
+    assert dir == "usr/local"
+    assert name == "nimc"
+    assert ext == ".html"
+    (dir, name, ext) = splitFile("/usr/local/os")
+    assert dir == "/usr/local"
+    assert name == "os"
+    assert ext == ""
+    (dir, name, ext) = splitFile("/usr/local/")
+    assert dir == "/usr/local"
+    assert name == ""
+    assert ext == ""
+    (dir, name, ext) = splitFile("/tmp.txt")
+    assert dir == "/"
+    assert name == "tmp"
+    assert ext == ".txt"
+
+  var namePos = 0
+  var dotPos = 0
+  for i in countdown(len(path) - 1, 0):
+    if path[i] in {DirSep, AltSep} or i == 0:
+      if path[i] in {DirSep, AltSep}:
+        result.dir = substr(path, 0, if likely(i >= 1): i - 1 else: 0)
+        namePos = i + 1
+      if dotPos > i:
+        result.name = substr(path, namePos, dotPos - 1)
+        result.ext = substr(path, dotPos)
+      else:
+        result.name = substr(path, namePos)
+      break
+    elif path[i] == ExtSep and i > 0 and i < len(path) - 1 and
+         path[i - 1] notin {DirSep, AltSep} and
+         path[i + 1] != ExtSep and dotPos == 0:
+      dotPos = i
+
+proc splitPath*(path: string): tuple[head, tail: string] {.
+  noSideEffect, rtl, extern: "nos$1".} =
+  ## Splits a directory into `(head, tail)` tuple, so that
+  ## ``head / tail == path`` (except for edge cases like "/usr").
+  ##
+  ## See also:
+  ## * `joinPath(head, tail) proc <#joinPath,string,string>`_
+  ## * `joinPath(varargs) proc <#joinPath,varargs[string]>`_
+  ## * `/ proc <#/,string,string>`_
+  ## * `/../ proc <#/../,string,string>`_
+  ## * `relativePath proc <#relativePath,string,string>`_
+  runnableExamples:
+    assert splitPath("usr/local/bin") == ("usr/local", "bin")
+    assert splitPath("usr/local/bin/") == ("usr/local/bin", "")
+    assert splitPath("/bin/") == ("/bin", "")
+    when (NimMajor, NimMinor) <= (1, 0):
+      assert splitPath("/bin") == ("", "bin")
+    else:
+      assert splitPath("/bin") == ("/", "bin")
+    assert splitPath("bin") == ("", "bin")
+    assert splitPath("") == ("", "")
+
+  var sepPos = -1
+  for i in countdown(len(path)-1, 0):
+    if path[i] in {DirSep, AltSep}:
+      sepPos = i
+      break
+  if sepPos >= 0:
+    result.head = substr(path, 0,
+      when (NimMajor, NimMinor) <= (1, 0):
+        sepPos-1
+      else:
+        if likely(sepPos >= 1): sepPos-1 else: 0
+    )
+    result.tail = substr(path, sepPos+1)
+  else:
+    result.head = ""
+    result.tail = path
+
+proc extractFilename*(path: string): string {.
+  noSideEffect, rtl, extern: "nos$1".} =
+  ## Extracts the filename of a given `path`.
+  ##
+  ## This is the same as ``name & ext`` from `splitFile(path) proc
+  ## <#splitFile,string>`_.
+  ##
+  ## See also:
+  ## * `searchExtPos proc <#searchExtPos,string>`_
+  ## * `splitFile proc <#splitFile,string>`_
+  ## * `lastPathPart proc <#lastPathPart,string>`_
+  ## * `changeFileExt proc <#changeFileExt,string,string>`_
+  ## * `addFileExt proc <#addFileExt,string,string>`_
+  runnableExamples:
+    assert extractFilename("foo/bar/") == ""
+    assert extractFilename("foo/bar") == "bar"
+    assert extractFilename("foo/bar.baz") == "bar.baz"
+
+  if path.len == 0 or path[path.len-1] in {DirSep, AltSep}:
+    result = ""
+  else:
+    result = splitPath(path).tail
 
 func isPortableFilename*(filename: string, maxLen = windowsFilenameMaxLen): bool {.since: (1, 5, 1).} =
   ## Returns true if `filename` is portable for cross-platform use.
@@ -107,3 +224,7 @@ func isPortableFilename*(filename: string, maxLen = windowsFilenameMaxLen): bool
     for a in invalidFilenames:
       if cmpIgnoreCase(f.name, a) == 0: return false
     result = true
+
+func isValidFilename*(path: string, maxLen = windowsFilenameMaxLen): bool {.since: (1, 1), deprecated: "use isPortableFilename(extractFilename(path)".} =
+  ## Returns `path.extractFilename.isPortableFilename(maxLen)`.
+  result = path.extractFilename.isPortableFilename(maxLen)

@@ -12,9 +12,7 @@
 ##
 ## Unstable API.
 
-# Yes, this uses import here, not include so that
-# we don't end up exporting these symbols from pathnorm and os:
-import includes/osseps
+import std/osbasics
 
 type
   PathIter* = object
