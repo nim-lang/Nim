@@ -619,32 +619,13 @@ block: # normalizePathEnd
     doAssert r"E:/".normalizePathEnd(trailingSep = true) == r"E:\"
     doAssert "/".normalizePathEnd == r"\"
 
-block: # isValidFilename
-  # Negative Tests.
-  doAssert not isValidFilename("abcd", maxLen = 2)
-  doAssert not isValidFilename("0123456789", maxLen = 8)
-  doAssert not isValidFilename("con")
-  doAssert not isValidFilename("aux")
-  doAssert not isValidFilename("prn")
-  doAssert not isValidFilename("OwO|UwU")
-  doAssert not isValidFilename(" foo")
-  doAssert not isValidFilename("foo ")
-  doAssert not isValidFilename("foo.")
-  doAssert not isValidFilename("con.txt")
-  doAssert not isValidFilename("aux.bat")
-  doAssert not isValidFilename("prn.exe")
-  doAssert not isValidFilename("nim>.nim")
-  doAssert not isValidFilename(" foo.log")
-  # Positive Tests.
-  doAssert isValidFilename("abcd", maxLen = 42.Positive)
-  doAssert isValidFilename("c0n")
-  doAssert isValidFilename("foo.aux")
-  doAssert isValidFilename("bar.prn")
-  doAssert isValidFilename("OwO_UwU")
-  doAssert isValidFilename("cron")
-  doAssert isValidFilename("ux.bat")
-  doAssert isValidFilename("nim.nim")
-  doAssert isValidFilename("foo.log")
+block: # isPortableFilename
+  doAssert isPortableFilename("abc", maxLen = 3)
+  doAssert not isPortableFilename("abcd", maxLen = 3)
+  for a in ["con", "aux", "prn", "OwO|UwU", " foo", "foo ", "foo.", "con.txt", "aux.bat", "prn.exe", "nim>.nim", " foo.log"]:
+    doAssert not isPortableFilename(a), a
+  for a in ["c0n", "foo.aux", "bar.prn", "OwO_UwU", "cron", "ux.bat", "nim.nim", "foo.log", "foo.bar.baz", "foo bar .baz"]:
+    doAssert isPortableFilename(a), a
 
 import sugar
 
