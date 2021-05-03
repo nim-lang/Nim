@@ -82,6 +82,7 @@ since (1, 1):
     ## See also `isPortableFilename`.
     ##
     ## Mac bans ``{':', `/`, '\0'}``, Linux bans ``{`/`, '\0'}``, Windows bans all of these.
+    ##
     ## .. Note:: other characters that may cause problems are non-printable characters, e.g.
     ##    ascii characters in the range `0..31`, or characters not in the range `128..255`.
     invalidFilenames* = [
@@ -3524,11 +3525,12 @@ func isPortableFilename*(filename: string, maxLen = windowsFilenameMaxLen): bool
   ##
   ## This is useful if you want to copy or save files across Windows, Linux, Mac, etc.
   ## It uses `invalidFilenameChars`, `invalidFilenames` and `maxLen` to verify `filename`.
+  ##
   ## .. Note:: this can also be used for validating dir components, but note that
   ##   windows paths have other limits, see `windowsPathMaxLen`, `windowsDirPartMaxLen`, `windowsDirMaxLen`.
   runnableExamples:
     block:
-      assert isPortableFilename("abc", maxLen = 3) # `maxLen` excludes the trailing '\0'
+      assert isPortableFilename("abc", maxLen = 3) # `maxLen` excludes the trailing ``\0``
       assert not isPortableFilename("abcd", maxLen = 3)
 
     for name in [
