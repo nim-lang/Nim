@@ -190,31 +190,33 @@ proc nimNextToken(g: var GeneralTokenizer, keywords: openArray[string] = @[]) =
   var pos = g.pos
   g.start = g.pos
   if g.state == gtStringLit:
-    g.kind = gtStringLit
-    while true:
+    if g.buf[pos] == '\\':
+      g.kind = gtEscapeSequence
+      inc(pos)
       case g.buf[pos]
-      of '\\':
-        g.kind = gtEscapeSequence
+      of 'x', 'X':
         inc(pos)
-        case g.buf[pos]
-        of 'x', 'X':
-          inc(pos)
-          if g.buf[pos] in hexChars: inc(pos)
-          if g.buf[pos] in hexChars: inc(pos)
-        of '0'..'9':
-          while g.buf[pos] in {'0'..'9'}: inc(pos)
-        of '\0':
-          g.state = gtNone
-        else: inc(pos)
-        break
-      of '\0', '\r', '\n':
+        if g.buf[pos] in hexChars: inc(pos)
+        if g.buf[pos] in hexChars: inc(pos)
+      of '0'..'9':
+        while g.buf[pos] in {'0'..'9'}: inc(pos)
+      of '\0':
         g.state = gtNone
-        break
-      of '\"':
-        inc(pos)
-        g.state = gtNone
-        break
       else: inc(pos)
+    else:
+      g.kind = gtStringLit
+      while true:
+        case g.buf[pos]
+        of '\\':
+          break
+        of '\0', '\r', '\n':
+          g.state = gtNone
+          break
+        of '\"':
+          inc(pos)
+          g.state = gtNone
+          break
+        else: inc(pos)
   else:
     case g.buf[pos]
     of ' ', '\t'..'\r':
@@ -984,6 +986,18 @@ proc getNextToken*(g: var GeneralTokenizer, lang: SourceLanguage) =
   of langYaml: yamlNextToken(g)
   of langPython: pythonNextToken(g)
   of langCmd: cmdNextToken(g)
+
+proc tokenize*(text: string, lang: SourceLanguage): seq[(string, TokenClass)] =
+  var g: GeneralTokenizer
+  initGeneralTokenizer(g, text)
+  var prevPos = 0
+  while true:
+    getNextToken(g, lang)
+    if g.kind == gtEof:
+      break
+    var s = text[prevPos ..< g.pos]
+    result.add (s, g.kind)
+    prevPos = g.pos
 
 when isMainModule:
   var keywords: seq[string]
