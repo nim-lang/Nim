@@ -79,14 +79,14 @@ proc nodeTableRawInsert(data: var TNodePairSeq, k: Hash, key: PNode,
   data[h].val = val
 
 proc nodeTablePut*(t: var TNodeTable, key: PNode, val: int) =
-  var n: TNodePairSeq
-  var k: Hash = hashTree(key)
-  var index = nodeTableRawGet(t, k, key)
+  let k = hashTree(key)
+  let index = nodeTableRawGet(t, k, key)
   if index >= 0:
     assert(t.data[index].key != nil)
     t.data[index].val = val
   else:
     if mustRehash(t.data.len, t.counter):
+      var n: TNodePairSeq
       newSeq(n, t.data.len * GrowthFactor)
       for i in 0..high(t.data):
         if t.data[i].key != nil:
@@ -96,14 +96,14 @@ proc nodeTablePut*(t: var TNodeTable, key: PNode, val: int) =
     inc(t.counter)
 
 proc nodeTableTestOrSet*(t: var TNodeTable, key: PNode, val: int): int =
-  var n: TNodePairSeq
-  var k: Hash = hashTree(key)
-  var index = nodeTableRawGet(t, k, key)
+  let k = hashTree(key)
+  let index = nodeTableRawGet(t, k, key)
   if index >= 0:
     assert(t.data[index].key != nil)
     result = t.data[index].val
   else:
     if mustRehash(t.data.len, t.counter):
+      var n: TNodePairSeq
       newSeq(n, t.data.len * GrowthFactor)
       for i in 0..high(t.data):
         if t.data[i].key != nil:
