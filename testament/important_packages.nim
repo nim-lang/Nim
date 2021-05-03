@@ -79,7 +79,7 @@ pkg "itertools", "nim doc src/itertools.nim"
 pkg "iterutils"
 pkg "jstin"
 pkg "karax", "nim c -r tests/tester.nim"
-pkg "kdtree", "nimble test", "https://github.com/jblindsay/kdtree"
+pkg "kdtree", "nimble test", "https://github.com/jblindsay/kdtree", allowFailure = true # pending hard-coded rand tests
 pkg "loopfusion"
 pkg "macroutils"
 pkg "manu"
