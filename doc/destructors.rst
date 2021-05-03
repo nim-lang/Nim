@@ -1,5 +1,3 @@
-.. default-role:: code
-
 ==================================
 Nim Destructors and Move Semantics
 ==================================
@@ -7,6 +5,8 @@ Nim Destructors and Move Semantics
 :Authors: Andreas Rumpf
 :Version: |nimversion|
 
+.. include:: rstcommon.rst
+.. default-role:: nim
 .. contents::
 
 
@@ -273,7 +273,7 @@ Sink parameter inference
 ========================
 
 The current implementation can do a limited form of sink parameter
-inference. But it has to be enabled via `--sinkInference:on`, either
+inference. But it has to be enabled via `--sinkInference:on`:option:, either
 on the command line or via a `push` pragma.
 
 To enable it for a section of code, one can
@@ -496,10 +496,11 @@ for expressions of type `lent T` or of type `var T`.
 The .cursor annotation
 ======================
 
-Under the `--gc:arc|orc` modes Nim's `ref` type is implemented via the same runtime
-"hooks" and thus via reference counting. This means that cyclic structures cannot be freed
-immediately (`--gc:orc` ships with a cycle collector). With the `.cursor` annotation
-one can break up cycles declaratively:
+Under the `--gc:arc|orc`:option: modes Nim's `ref` type is implemented
+via the same runtime "hooks" and thus via reference counting.
+This means that cyclic structures cannot be freed
+immediately (`--gc:orc`:option: ships with a cycle collector).
+With the `.cursor` annotation one can break up cycles declaratively:
 
 .. code-block:: nim
 

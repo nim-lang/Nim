@@ -49,6 +49,11 @@
 ## `nimgrep --ext:'nim|nims' file.name`:cmd: shows how to input ``|``.
 ## Any argument that contains ``.`` or ``/`` or ``\`` will be treated
 ## as a file or directory.
+##
+## In addition to `Cmd` there is also `Console` language for
+## displaying interactive sessions.
+## Lines with a command should start with ``$``, other lines are considered
+## as program output.
 
 import
   strutils
@@ -57,7 +62,7 @@ from algorithm import binarySearch
 type
   SourceLanguage* = enum
     langNone, langNim, langCpp, langCsharp, langC, langJava,
-    langYaml, langPython, langCmd
+    langYaml, langPython, langCmd, langConsole
   TokenClass* = enum
     gtEof, gtNone, gtWhitespace, gtDecNumber, gtBinNumber, gtHexNumber,
     gtOctNumber, gtFloatNumber, gtIdentifier, gtKeyword, gtStringLit,
@@ -65,7 +70,7 @@ type
     gtOperator, gtPunctuation, gtComment, gtLongComment, gtRegularExpression,
     gtTagStart, gtTagEnd, gtKey, gtValue, gtRawData, gtAssembler,
     gtPreprocessor, gtDirective, gtCommand, gtRule, gtHyperlink, gtLabel,
-    gtReference, gtProgram, gtOption, gtOther
+    gtReference, gtPrompt, gtProgramOutput, gtProgram, gtOption, gtOther
   GeneralTokenizer* = object of RootObj
     kind*: TokenClass
     start*, length*: int
@@ -76,14 +81,17 @@ type
 
 const
   sourceLanguageToStr*: array[SourceLanguage, string] = ["none",
-    "Nim", "C++", "C#", "C", "Java", "Yaml", "Python", "Cmd"]
+    "Nim", "C++", "C#", "C", "Java", "Yaml", "Python", "Cmd", "Console"]
+  sourceLanguageToAlpha*: array[SourceLanguage, string] = ["none",
+    "Nim", "cpp", "csharp", "C", "Java", "Yaml", "Python", "Cmd", "Console"]
+    ## list of languages spelled with alpabetic characters
   tokenClassToStr*: array[TokenClass, string] = ["Eof", "None", "Whitespace",
     "DecNumber", "BinNumber", "HexNumber", "OctNumber", "FloatNumber",
     "Identifier", "Keyword", "StringLit", "LongStringLit", "CharLit",
     "EscapeSequence", "Operator", "Punctuation", "Comment", "LongComment",
     "RegularExpression", "TagStart", "TagEnd", "Key", "Value", "RawData",
     "Assembler", "Preprocessor", "Directive", "Command", "Rule", "Hyperlink",
-    "Label", "Reference",
+    "Label", "Reference", "Prompt", "ProgramOutput",
     # start from lower-case if there is a corresponding RST role (see rst.nim)
     "program", "option",
     "Other"]
@@ -103,8 +111,10 @@ const
     "xor", "yield"]
 
 proc getSourceLanguage*(name: string): SourceLanguage =
-  for i in countup(succ(low(SourceLanguage)), high(SourceLanguage)):
+  for i in succ(low(SourceLanguage)) .. high(SourceLanguage):
     if cmpIgnoreStyle(name, sourceLanguageToStr[i]) == 0:
+      return i
+    if cmpIgnoreStyle(name, sourceLanguageToAlpha[i]) == 0:
       return i
   result = langNone
 
@@ -915,17 +925,17 @@ proc pythonNextToken(g: var GeneralTokenizer) =
       "with", "yield"]
   nimNextToken(g, keywords)
 
-proc cmdNextToken(g: var GeneralTokenizer) =
+proc cmdNextToken(g: var GeneralTokenizer, dollarPrompt = false) =
   var pos = g.pos
   g.start = g.pos
   if g.state == low(TokenClass):
-    g.state = gtProgram
+    g.state = if dollarPrompt: gtPrompt else: gtProgram
   case g.buf[pos]
   of ' ', '\t'..'\r':
     g.kind = gtWhitespace
     while g.buf[pos] in {' ', '\t'..'\r'}:
       if g.buf[pos] == '\n':
-        g.state = gtProgram
+        g.state = if dollarPrompt: gtPrompt else: gtProgram
       inc(pos)
   of '\'', '"':
     g.kind = gtOption
@@ -955,6 +965,15 @@ proc cmdNextToken(g: var GeneralTokenizer) =
     g.kind = gtOperator
     inc(pos)
   of '\0': g.kind = gtEof
+  elif dollarPrompt and g.state == gtPrompt:
+    if g.buf[pos] == '$' and g.buf[pos+1] in {' ', '\t'}:
+      g.kind = gtPrompt
+      inc pos, 2
+      g.state = gtProgram
+    else:
+      g.kind = gtProgramOutput
+      while g.buf[pos] notin {'\n', '\0'}:
+        inc(pos)
   else:
     if g.state == gtProgram:
       g.kind = gtProgram
@@ -986,6 +1005,7 @@ proc getNextToken*(g: var GeneralTokenizer, lang: SourceLanguage) =
   of langYaml: yamlNextToken(g)
   of langPython: pythonNextToken(g)
   of langCmd: cmdNextToken(g)
+  of langConsole: cmdNextToken(g, dollarPrompt=true)
 
 proc tokenize*(text: string, lang: SourceLanguage): seq[(string, TokenClass)] =
   var g: GeneralTokenizer

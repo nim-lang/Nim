@@ -89,6 +89,8 @@
 ##
 ##   - generic command line highlighting roles:
 ##     - ``:cmd:`` for commands and common shells syntax
+##     - ``:console:`` the same  for interactive sessions
+##       (commands should be prepended by ``$``)
 ##     - ``:program:`` for executable names [cmp:Sphinx]_
 ##       (one can just use ``:cmd:`` on single word)
 ##     - ``:option:`` for command line options [cmp:Sphinx]_
@@ -168,6 +170,7 @@
 import
   os, strutils, rstast, std/enumutils, algorithm, lists, sequtils,
   std/private/miscdollars
+from highlite import SourceLanguage, getSourceLanguage
 
 type
   RstParseOption* = enum     ## options for the RST parser
@@ -549,10 +552,6 @@ proc defaultFindFile*(filename: string): string =
 proc defaultRole(options: RstParseOptions): string =
   if roNimFile in options: "nim" else: "literal"
 
-# mirror highlite.nim sourceLanguageToStr with substitutions c++ cpp, c# csharp
-const supportedLanguages = ["nim", "yaml", "python", "java", "c",
-                            "cpp", "csharp", "cmd"]
-
 proc whichRoleAux(sym: string): RstNodeKind =
   let r = sym.toLowerAscii
   case r
@@ -566,7 +565,7 @@ proc whichRoleAux(sym: string): RstNodeKind =
   of "code": result = rnInlineLiteral
   of "program", "option", "tok": result = rnCodeFragment
   # c++ currently can be spelled only as cpp, c# only as csharp
-  elif r in supportedLanguages:
+  elif getSourceLanguage(r) != langNone:
     result = rnInlineCode
   else:  # unknown role
     result = rnUnknownRole
@@ -2614,7 +2613,7 @@ proc dirRole(p: var RstParser): PRstNode =
   result = parseDirective(p, rnDirective, {hasArg, hasOptions}, nil)
   # just check that language is supported, TODO: real role association
   let lang = getFieldValue(result, "language").strip
-  if lang != "" and lang notin supportedLanguages:
+  if lang != "" and getSourceLanguage(lang) == langNone:
     rstMessage(p, mwUnsupportedLanguage, lang)
 
 proc dirRawAux(p: var RstParser, result: var PRstNode, kind: RstNodeKind,

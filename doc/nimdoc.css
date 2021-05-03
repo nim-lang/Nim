@@ -938,6 +938,14 @@ span.option {
   color: var(--option);
 }
 
+span.Prompt {
+  font-weight: bold;
+  color: red; }
+
+span.ProgramOutput {
+  font-weight: bold;
+  color: #808080; }
+
 span.program {
   font-weight: bold;
   color: var(--program);
