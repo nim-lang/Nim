@@ -48,7 +48,7 @@ import strutils, pathnorm
 
 const weirdTarget = defined(nimscript) or defined(js)
 
-from std/osfilenames import splitFile, extractFilename, splitPath
+from std/paths import splitFile, extractFilename, splitPath
 
 import std/osbasics
 
@@ -3367,13 +3367,7 @@ when not defined(nimscript):
   # {.deprecated: [existsFile: fileExists].} # pending bug #14819; this would avoid above mentioned issue
 
 since (1, 1):
-  from std/osfilenames import isPortableFilename, windowsFilenameMaxLen
-  func isValidFilename*(path: string, maxLen = windowsFilenameMaxLen): bool {.since: (1, 1), deprecated: "use osfilenames.isPortableFilename(extractFilename(path)".} =
+  from std/paths import isPortableFilename, windowsFilenameMaxLen
+  func isValidFilename*(path: string, maxLen = windowsFilenameMaxLen): bool {.since: (1, 1), deprecated: "use paths.isPortableFilename(extractFilename(path)".} =
     ## Returns `path.extractFilename.isPortableFilename(maxLen)`.
     result = path.extractFilename.isPortableFilename(maxLen)
-
-# # from osfilenames import isPortableFilename, windowsFilenameMaxLen
-# from std/osfilenames import isPortableFilename, windowsFilenameMaxLen
-# func isValidFilename*(path: string, maxLen = windowsFilenameMaxLen): bool {.since: (1, 1), deprecated: "use osfilenames.isPortableFilename(extractFilename(path)".} =
-#   ## Returns `path.extractFilename.isPortableFilename(maxLen)`.
-#   result = path.extractFilename.isPortableFilename(maxLen)
