@@ -50,17 +50,17 @@ const weirdTarget = defined(nimscript) or defined(js)
 
 since (1, 1):
   const 
-    windowsPathMaxLen* = 259 ## Maximum path length on windows excluding a terminating '\0'.
+    windowsPathMaxLen* = 259 ## Maximum path length on windows excluding a terminating ``\0``.
       # See also https://docs.microsoft.com/en-us/windows/win32/fileio/maximum-file-path-limitation?tabs=cmd
       # This is intentionally exposed for all platforms, and prefixed with `windows`,
       # so clients can write portable code.
-      # This corresponds to `MAX_PATH` = 260 which include trailings '\0'.
+      # This corresponds to `MAX_PATH` = 260 which include trailings ``\0``.
 
   const
-    windowsFilenameMaxLen* = 255 ## Maximum filename length on windows, e.g., 255 consecutive 'a' is valid.
-    # it's hard to find official docs regarding whether it includes or excludes terminating '\0', but
+    windowsFilenameMaxLen* = 255 ## Maximum filename length on windows, e.g., 255 consecutive `a` is valid.
+    # it's hard to find official docs regarding whether it includes or excludes terminating ``\0``, but
     # this link shows it excludes it: https://arstechnica.com/civis/viewtopic.php?f=17&t=1466908
-    # the doc comment makes this hopefully clear. '\0' is only meaningful for the whole path, not a path component.
+    # the doc comment makes this hopefully clear. ``\0`` is only meaningful for the whole path, not a path component.
     # see also `lpMaximumComponentLength`.
 
   const
@@ -68,10 +68,10 @@ since (1, 1):
       ## Maximum length of a directory component on windows, e.g. `foo` has length 3.
 
     windowsDirMaxLen* = 246
-      ## Maximum length of a directory name on windows, including the drive prefix, e.g. `C:\a\foo` has length 8.
+      ## Maximum length of a directory name on windows, including the drive prefix, e.g. ``C:\a\foo`` has length 8.
       ##
-      ## This is such that you can always create an `8.3` file (e.g. `12345678.txt`) inside it, e.g.:
-      ## 246 + 1('\') + 12 + 1('\0') = 259 + 1
+      ## This is such that you can always create an ``8.3`` file (e.g. ``12345678.txt``) inside it, e.g.:
+      ## ``246 + 1('\') + 12 + 1('\0') = 259 + 1``
       # refs https://social.technet.microsoft.com/Forums/windows/en-US/43945b2c-f123-46d7-9ba9-dd6abc967dd4/maximum-path-length-limitation-on-windows-is-255-or-247?forum=w7itprogeneral
       # offers a good explanation; see also: https://en.wikipedia.org/wiki/8.3_filename
 
@@ -81,9 +81,9 @@ since (1, 1):
     ## You can check if your filename contains these chars and strip them for safety,
     ## See also `isPortableFilename`.
     ##
-    ## Mac bans `{':', `/`, '\0'}`, Linux bans `{`/`, '\0'}`, Windows bans all of these.
+    ## Mac bans ``{':', `/`, '\0'}``, Linux bans ``{`/`, '\0'}``, Windows bans all of these.
     ## .. Note:: other characters that may cause problems are non-printable characters, e.g.
-    ##    ascii characters in the range 0..31, or characters not in the range `128..255`.
+    ##    ascii characters in the range `0..31`, or characters not in the range `128..255`.
     invalidFilenames* = [
       "CON", "PRN", "AUX", "NUL",
       "COM1", "COM2", "COM3", "COM4", "COM5", "COM6", "COM7", "COM8", "COM9",
