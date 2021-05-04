@@ -96,7 +96,7 @@ proc raiseEInvalidCsv(filename: string, line, col: int,
     e.msg = filename & "(" & $line & ", " & $col & ") Error: " & msg
   raise e
 
-proc error(self: CsvParser, pos: int, msg: string) {.inline.} =
+proc error(self: CsvParser, pos: int, msg: string) =
   raiseEInvalidCsv(self.filename, self.lineNumber, getColNumber(self, pos), msg)
 
 proc open*(self: var CsvParser, input: Stream, filename: string,
