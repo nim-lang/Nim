@@ -1,5 +1,5 @@
 discard """
-  errormsg: "A module cannot import itself"
+  errormsg: "module 'tselfimport' cannot import itself"
   file: "tselfimport.nim"
   line: 7
 """
