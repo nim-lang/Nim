@@ -14,7 +14,7 @@ import
   options, ast, llstream, msgs,
   idents,
   syntaxes, modulegraphs, reorder,
-  lineinfos, pathutils, wordrecg
+  lineinfos, pathutils
 from parser import parseString
 from sugar import dup
 from strutils import `%`

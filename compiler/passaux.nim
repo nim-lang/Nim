@@ -10,7 +10,7 @@
 ## implements some little helper passes
 
 import
-  ast, passes, idents, msgs, options, lineinfos
+  ast, passes, msgs, options, lineinfos
 
 from modulegraphs import ModuleGraph, PPassContext
 
