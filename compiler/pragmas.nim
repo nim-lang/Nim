@@ -1219,6 +1219,7 @@ proc singlePragma(c: PContext, sym: PSym, n: PNode, i: var int,
             let ni = it[1]
             block:
               let sym2 = qualifiedLookUp(c, ni, {checkUndeclared, checkModule})
+              # dbg sym2, it, ni
               sym2.flags.incl sfUsed
         else:
           noVal(c, it)
