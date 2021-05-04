@@ -59,8 +59,8 @@ proc considerQuotedIdent*(c: PContext; n: PNode, origin: PNode = nil): PIdent =
 template addSym*(scope: PScope, s: PSym) =
   strTableAdd(scope.symbols, s)
 
-proc addUniqueSym*(scope: PScope, s: PSym): PSym =
-  result = strTableInclReportConflict(scope.symbols, s)
+proc addUniqueSym*(scope: PScope, s: PSym, onConflictKeepOld: bool): PSym =
+  result = strTableInclReportConflict(scope.symbols, s, onConflictKeepOld)
 
 proc openScope*(c: PContext): PScope {.discardable.} =
   result = PScope(parent: c.currentScope,
@@ -286,17 +286,21 @@ proc ensureNoMissingOrUnusedSymbols(c: PContext; scope: PScope) =
     s = nextIter(it, scope.symbols)
 
 proc wrongRedefinition*(c: PContext; info: TLineInfo, s: string;
-                        conflictsWith: TLineInfo) =
+                        conflictsWith: TLineInfo, note = errGenerated) =
   ## Emit a redefinition error if in non-interactive mode
   if c.config.cmd != cmdInteractive:
-    localError(c.config, info,
+    localError(c.config, info, note,
       "redefinition of '$1'; previous declaration here: $2" %
       [s, c.config $ conflictsWith])
 
 proc addDecl*(c: PContext, sym: PSym, info: TLineInfo) =
-  let conflict = c.currentScope.addUniqueSym(sym)
+  let conflict = c.currentScope.addUniqueSym(sym, onConflictKeepOld = true)
   if conflict != nil:
-    wrongRedefinition(c, info, sym.name.s, conflict.info)
+    var note = errGenerated
+    if sym.kind == skModule and conflict.kind == skModule and sym.owner == conflict.owner:
+      # import foo; import foo
+      note = warnDuplicateModuleImport
+    wrongRedefinition(c, info, sym.name.s, conflict.info, note)
 
 proc addDecl*(c: PContext, sym: PSym) =
   let conflict = strTableInclReportConflict(c.currentScope.symbols, sym, true)
@@ -304,10 +308,10 @@ proc addDecl*(c: PContext, sym: PSym) =
     wrongRedefinition(c, sym.info, sym.name.s, conflict.info)
 
 proc addPrelimDecl*(c: PContext, sym: PSym) =
-  discard c.currentScope.addUniqueSym(sym)
+  discard c.currentScope.addUniqueSym(sym, onConflictKeepOld = false)
 
 proc addDeclAt*(c: PContext; scope: PScope, sym: PSym) =
-  let conflict = scope.addUniqueSym(sym)
+  let conflict = scope.addUniqueSym(sym, onConflictKeepOld = true)
   if conflict != nil:
     wrongRedefinition(c, sym.info, sym.name.s, conflict.info)
 
