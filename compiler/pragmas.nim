@@ -1215,8 +1215,6 @@ proc singlePragma(c: PContext, sym: PSym, n: PNode, i: var int,
       of wUsed:
         case it.kind
         of nkExprColonExpr: # {.used: mysym.}
-          # if sym != nil or sym.kind != skModule:
-          # localError(c.config, it.info, "'this' pragma is allowed to have zero or one arguments")
           let sym2 = qualifiedLookUp(c, it[1], {checkUndeclared, checkModule})
           assert sym2 != nil # PRTEMP: localError
           sym2.flags.incl sfUsed
