@@ -28,7 +28,7 @@ template main() =
     Compiled at: $2, $3
     """ % [NimVersion & spaces(44-len(NimVersion)), CompileDate, CompileTime]
     let b = $a
-    doAssert CompileTime in b
+    doAssert CompileTime in b, $(b, CompileTime)
     doAssert NimVersion in b
 
 static: main()

@@ -2640,7 +2640,9 @@ proc genConstSetup(p: BProc; sym: PSym): bool =
   result = lfNoDecl notin sym.loc.flags
 
 proc genConstHeader(m, q: BModule; p: BProc, sym: PSym) =
-  assert(sym.loc.r != nil)
+  if sym.loc.r == nil:
+    if not genConstSetup(p, sym): return
+  assert(sym.loc.r != nil, $sym.name.s & $sym.itemId)
   if m.hcrOn:
     m.s[cfsVars].addf("static $1* $2;$n", [getTypeDesc(m, sym.loc.t, skVar), sym.loc.r]);
     m.initProc.procSec(cpsLocals).addf(
