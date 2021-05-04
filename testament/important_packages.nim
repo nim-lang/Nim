@@ -104,7 +104,7 @@ pkg "nimly", "nim c -r tests/test_readme_example.nim"
 pkg "nimongo", "nimble test_ci", allowFailure = true
 pkg "nimph", "nimble test", "https://github.com/disruptek/nimph", allowFailure = true
 pkg "nimpy", "nim c -r tests/nimfrompy.nim"
-pkg "nimquery", allowFailure = true # pending https://github.com/GULPF/nimquery/pull/10
+pkg "nimquery"
 pkg "nimsl"
 pkg "nimsvg"
 pkg "nimterop", "nimble minitest"
