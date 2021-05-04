@@ -133,7 +133,7 @@ proc next*(r: var Rand): uint64 =
   ##   that accepts a slice
   ## * `rand proc<#rand,typedesc[T]>`_ that accepts an integer or range type
   ## * `skipRandomNumbers proc<#skipRandomNumbers,Rand>`_
-  runnableExamples:
+  runnableExamples("-r:off"):
     var r = initRand(2019)
     assert r.next() == 13223559681708962501'u64 # implementation defined
     assert r.next() == 7229677234260823147'u64 # ditto
@@ -349,7 +349,8 @@ proc rand*[T: SomeInteger](t: typedesc[T]): T =
       assert rand(int8) == -42
       assert rand(uint32) == 578980729'u32
       assert rand(range[1..16]) == 11
-  # pending csources >= 1.4.0, use `runnableExamples("-r:off")` instead (a strang error)
+  # pending csources >= 1.4.0 or fixing https://github.com/timotheecour/Nim/issues/251#issuecomment-831599772,
+  # use `runnableExamples("-r:off")` instead of `if false`
   when T is range:
     result = rand(state, low(T)..high(T))
   else:

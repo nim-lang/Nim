@@ -63,6 +63,10 @@
 - Nim compiler now adds ASCII unit separator `\31` before a newline for every generated
   message (potentially multiline), so tooling can tell when messages start and end.
 
+- `random.initRand(seed)` now produces non-skewed values for the 1st call to `rand()` after
+  initialization with a small (< 30000) seed. Use `-d:nimLegacyRandomInitRand` to restore
+  previous behavior for a transition time, see PR #17467.
+
 
 ## Standard library additions and changes
 - Added support for parenthesized expressions in `strformat`
@@ -120,10 +124,6 @@
 - Added `random.initRand()` overload with no argument which uses the current time as a seed.
 
 - `random.initRand(seed)` now allows `seed == 0`.
-
-- `random.initRand(seed)` now produces non-skewed values for the 1st call to rand() after
-  initialization with a small (< 30000) seed. Use `-d:nimLegacyRandomInitRand` to restore
-  previous behavior for a transition time, see PR #17467.
 
 - Added `std/sysrand` module to get random numbers from a secure source
   provided by the operating system.
