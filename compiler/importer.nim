@@ -13,6 +13,7 @@ import
   intsets, ast, astalgo, msgs, options, idents, lookups,
   semdata, modulepaths, sigmatch, lineinfos, sets,
   modulegraphs, wordrecg
+from strutils import `%`
 
 proc readExceptSet*(c: PContext, n: PNode): IntSet =
   assert n.kind in {nkImportExceptStmt, nkExportExceptStmt}
@@ -225,7 +226,7 @@ proc importForwarded(c: PContext, n: PNode, exceptSet: IntSet; fromMod: PSym; im
 proc importModuleAs(c: PContext; n: PNode, realModule: PSym, importHidden: bool): PSym =
   result = realModule
   template createModuleAliasImpl(ident): untyped =
-    createModuleAlias(realModule, nextSymId c.idgen, ident, realModule.info, c.config.options)
+    createModuleAlias(realModule, nextSymId c.idgen, ident, n.info, c.config.options)
   if n.kind != nkImportAs: discard
   elif n.len != 2 or n[1].kind != nkIdent:
     localError(c.config, n.info, "module alias must be an identifier")
@@ -283,11 +284,9 @@ proc myImportModule(c: PContext, n: var PNode, importStmtResult: PNode): PSym =
     #echo "set back to ", L
     c.graph.importStack.setLen(L)
     # we cannot perform this check reliably because of
-    # test: modules/import_in_config)
-    when true:
-      if result.info.fileIndex == c.module.info.fileIndex and
-          result.info.fileIndex == n.info.fileIndex:
-        localError(c.config, n.info, "A module cannot import itself")
+    # test: modules/import_in_config) # xxx is that still true?
+    if result.resolveModuleAlias == c.module:
+      localError(c.config, n.info, "module '$1' cannot import itself" % c.module.name.s)
     if sfDeprecated in result.flags:
       if result.constraint != nil:
         message(c.config, n.info, warnDeprecated, result.constraint.strVal & "; " & result.name.s & " is deprecated")
