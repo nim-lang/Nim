@@ -853,6 +853,8 @@ type
   TSym* {.acyclic.} = object of TIdObj # Keep in sync with PackedSym
     # proc and type instantiations are cached in the generic symbol
     case kind*: TSymKind
+    of skModule:
+      realModule*: PSym # for `createModuleAlias`
     of routineKinds:
       #procInstCache*: seq[PInstantiation]
       gcUnsafetyReason*: PSym  # for better error messages wrt gcsafe
@@ -1495,6 +1497,13 @@ proc createModuleAlias*(s: PSym, id: ItemId, newIdent: PIdent, info: TLineInfo;
   result.position = s.position
   result.loc = s.loc
   result.annex = s.annex
+  result.realModule = s # xxx can we just use id ?
+
+proc resolveModuleAlias*(s: PSym): PSym =
+  assert s.kind == skModule
+  result = s
+  if result.realModule != nil: # owner is unrelated
+    result = result.realModule
 
 proc initStrTable*(x: var TStrTable) =
   x.counter = 0
