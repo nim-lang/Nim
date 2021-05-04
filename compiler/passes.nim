@@ -14,7 +14,11 @@ import
   options, ast, llstream, msgs,
   idents,
   syntaxes, modulegraphs, reorder,
-  lineinfos, pathutils
+  lineinfos, pathutils, wordrecg
+from parser import parseString
+from sugar import dup
+from strutils import `%`
+from os import splitFile
 
 type
   TPassData* = tuple[input: PNode, closeOutput: PNode]
@@ -88,11 +92,15 @@ proc processImplicits(graph: ModuleGraph; implicits: seq[string], nodeKind: TNod
   for module in items(implicits):
     # implicit imports should not lead to a module importing itself
     if m.position != resolveMod(graph.config, module, relativeTo).int32:
-      var importStmt = newNodeI(nodeKind, m.info)
-      var str = newStrNode(nkStrLit, module)
-      str.info = m.info
-      importStmt.add str
-      if not processTopLevelStmt(graph, importStmt, a): break
+      var code = ""
+      let quoted = "".dup(addQuoted(module))
+      let name = module.splitFile.name
+      case nodeKind
+      of nkImportStmt: code = "import $1 as $2\n{.used: $2.}" % [quoted, name]
+      of nkIncludeStmt: code = "include $1" % quoted
+      else: assert false
+      let node = parseString(code, graph.cache, graph.config, filename = "", line = 0, errorHandler = nil)
+      if not processTopLevelStmt(graph, node, a): break
 
 const
   imperativeCode = {low(TNodeKind)..high(TNodeKind)} - {nkTemplateDef, nkProcDef, nkMethodDef,
