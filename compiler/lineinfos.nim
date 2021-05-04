@@ -67,6 +67,7 @@ type
     warnResultUsed = "ResultUsed",
     warnCannotOpen = "CannotOpen",
     warnFileChanged = "FileChanged",
+    warnDuplicateModuleImport = "DuplicateModuleImport",
     warnUser = "User",
     # hints
     hintSuccess = "Success", hintSuccessX = "SuccessX",
@@ -148,6 +149,7 @@ const
     warnResultUsed: "used 'result' variable",
     warnCannotOpen: "cannot open: $1",
     warnFileChanged: "file changed: $1",
+    warnDuplicateModuleImport: "$1",
     warnUser: "$1",
     hintSuccess: "operation successful: $#",
     # keep in sync with `testament.isSuccess`

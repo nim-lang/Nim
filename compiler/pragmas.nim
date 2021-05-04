@@ -1213,18 +1213,17 @@ proc singlePragma(c: PContext, sym: PSym, n: PNode, i: var int,
       of wBoolDefine:
         sym.magic = mBoolDefine
       of wUsed:
-        if sym == nil or sym.kind == skModule:
-          if it.kind != nkExprColonExpr:
-            invalidPragma(c, it)
-          else:
-            let ni = it[1]
-            block:
-              let sym2 = qualifiedLookUp(c, ni, {checkUndeclared, checkModule})
-              # dbg sym2, it, ni
-              sym2.flags.incl sfUsed
-        else:
-          noVal(c, it)
-          sym.flags.incl sfUsed
+        case it.kind
+        of nkExprColonExpr: # {.used: mysym.}
+          # if sym != nil or sym.kind != skModule:
+          # localError(c.config, it.info, "'this' pragma is allowed to have zero or one arguments")
+          let sym2 = qualifiedLookUp(c, it[1], {checkUndeclared, checkModule})
+          assert sym2 != nil # PRTEMP: localError
+          sym2.flags.incl sfUsed
+        of nkIdent: # {.used.}
+          if sym == nil: invalidPragma(c, it)
+          else: sym.flags.incl sfUsed
+        else: invalidPragma(c, it)
       of wLiftLocals: discard
       of wRequires, wInvariant, wAssume, wAssert:
         pragmaProposition(c, it)
