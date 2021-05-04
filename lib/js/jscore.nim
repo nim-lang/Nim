@@ -115,6 +115,7 @@ since (1, 5):
   func copyWithin*[T](self: openArray[T]; target, start: int): seq[T] {.importjs: "#.copyWithin(#, #)".}
   func copyWithin*[T](self: openArray[T]; target, start, ends: int): seq[T] {.importjs: "#.copyWithin(#, #, #)".} =
     ## https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Array/copyWithin
+    ## `copyWithin` uses shallow copy.
     runnableExamples:
       assert ['a', 'b', 'c', 'd', 'e'].copyWithin(0, 3, 4) == @['d', 'b', 'c', 'd', 'e']
       assert ['a', 'b', 'c', 'd', 'e'].copyWithin(1, 3) == @['a', 'd', 'e', 'd', 'e']
