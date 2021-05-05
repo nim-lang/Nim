@@ -16,8 +16,8 @@ tused2.nim(43, 8) Warning: imported and not used: 'mused2b' [UnusedImport]
 tused2.nim(45, 11) Warning: imported and not used: 'strutils' [UnusedImport]
 Hint: ***SLOW, DEBUG BUILD***; -d:release makes code run faster. [BuildMode]
 '''
+  disabled: "i386" # see D20210504T200053 for reason and how to fix
 """
-  # matrix: "--hint:conf:off --hint:link:off --hint:cc:off --hint:SuccessX:off --import:tests/pragmas/mused2e"
 
 #[
 xxx the `testament.isSuccess` logic makes `nimoutFull` awkward to use, forcing it to show `BuildMode`; 
