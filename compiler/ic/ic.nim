@@ -394,11 +394,15 @@ proc storeSym*(s: PSym; c: var PackedEncoder; m: var PackedModule): PackedItemId
     storeNode(p, s, ast)
     storeNode(p, s, constraint)
 
-    if s.kind in {skLet, skVar, skField, skForVar}:
+    case s.kind
+    of {skLet, skVar, skField, skForVar}:
       c.addMissing s.guard
       p.guard = s.guard.safeItemId(c, m)
       p.bitsize = s.bitsize
       p.alignment = s.alignment
+    of skModule:
+      p.realModule = s.realModule.safeItemId(c, m)
+    else: discard
 
     p.externalName = toLitId(if s.loc.r.isNil: "" else: $s.loc.r, m)
     p.locFlags = s.loc.flags
@@ -850,10 +854,14 @@ proc symBodyFromPacked(c: var PackedDecoder; g: var PackedModuleGraph;
   when hasFFI:
     result.cname = g[si].fromDisk.strings[s.cname]
 
-  if s.kind in {skLet, skVar, skField, skForVar}:
+  case s.kind
+  of {skLet, skVar, skField, skForVar}:
     result.guard = loadSym(c, g, si, s.guard)
     result.bitsize = s.bitsize
     result.alignment = s.alignment
+  of skModule:
+    result.realModule = loadSym(c, g, si, s.realModule)
+  else: discard
   result.owner = loadSym(c, g, si, s.owner)
   let externalName = g[si].fromDisk.strings[s.externalName]
   if externalName != "":
