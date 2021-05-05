@@ -282,6 +282,8 @@ proc ensureNoMissingOrUnusedSymbols(c: PContext; scope: PScope) =
         # maybe they can be made skGenericParam as well.
         if s.typ != nil and tfImplicitTypeParam notin s.typ.flags and
            s.typ.kind != tyGenericParam:
+          # xxx D20210504T200053:here these should be sorted to have reproducible errors, in particular
+          # across 32 vs 64 bit; can be done by buffering those and then sorting.
           message(c.config, s.info, hintXDeclaredButNotUsed, s.name.s)
     s = nextIter(it, scope.symbols)
 
