@@ -797,8 +797,7 @@ Nim provides the ability to overload procedures similar to C++:
 (Note that `toString` is usually the `$ <dollars.html>`_ operator in
 Nim.) The compiler chooses the most appropriate proc for the `toString`
 calls. How this overloading resolution algorithm works exactly is not
-discussed here. However, it does not lead to nasty surprises and is based
-on a quite simple unification algorithm. Ambiguous calls are reported as errors.
+discussed here -- see the manual for details. Ambiguous calls are reported as errors.
 
 
 Operators
