@@ -285,13 +285,14 @@ proc myImportModule(c: PContext, n: var PNode, importStmtResult: PNode): PSym =
     c.graph.importStack.setLen(L)
     # we cannot perform this check reliably because of
     # test: modules/import_in_config) # xxx is that still true?
-    if result.resolveModuleAlias == c.module:
+    let realModuule = result.resolveModuleAlias
+    if realModuule == c.module:
       localError(c.config, n.info, "module '$1' cannot import itself" % c.module.name.s)
-    if sfDeprecated in result.flags:
-      if result.constraint != nil:
-        message(c.config, n.info, warnDeprecated, result.constraint.strVal & "; " & result.name.s & " is deprecated")
+    if sfDeprecated in realModuule.flags:
+      if realModuule.constraint != nil:
+        message(c.config, n.info, warnDeprecated, realModuule.constraint.strVal & "; " & realModuule.name.s & " is deprecated")
       else:
-        message(c.config, n.info, warnDeprecated, result.name.s & " is deprecated")
+        message(c.config, n.info, warnDeprecated, realModuule.name.s & " is deprecated")
     suggestSym(c.graph, n.info, result, c.graph.usageSym, false)
     importStmtResult.add newSymNode(result, n.info)
     #newStrNode(toFullPath(c.config, f), n.info)
