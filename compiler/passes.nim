@@ -14,10 +14,7 @@ import
   options, ast, llstream, msgs,
   idents,
   syntaxes, modulegraphs, reorder,
-  lineinfos, pathutils
-from parser import parseString
-from sugar import dup
-from strutils import `%`
+  lineinfos, pathutils, vmconv
 from os import splitFile
 
 type
@@ -92,14 +89,18 @@ proc processImplicits(graph: ModuleGraph; implicits: seq[string], nodeKind: TNod
   for module in items(implicits):
     # implicit imports should not lead to a module importing itself
     if m.position != resolveMod(graph.config, module, relativeTo).int32:
-      var code = ""
-      let quoted = "".dup(addQuoted(module))
-      let name = module.splitFile.name
+      var c = GenContext(cache: graph.cache, info: m.info)
+      var node: PNode
       case nodeKind
-      of nkImportStmt: code = "import $1 as $2\n{.used: $2.}" % [quoted, name]
-      of nkIncludeStmt: code = "include $1" % quoted
+      of nkImportStmt:
+        let name = graph.cache.getIdent(module.splitFile.name)
+        node = genPNode(c, module, name):
+          import module as name
+          {.used: name.}
+      of nkIncludeStmt:
+        node = genPNode(c, module):
+          include module
       else: assert false
-      let node = parseString(code, graph.cache, graph.config, filename = "", line = 0, errorHandler = nil)
       if not processTopLevelStmt(graph, node, a): break
 
 const
