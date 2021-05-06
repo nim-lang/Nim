@@ -36,8 +36,6 @@ type
     selfSym*: PSym            # the 'self' symbol (if available)
     nestedLoopCounter*: int   # whether we are in a loop or not
     nestedBlockCounter*: int  # whether we are in a block or not
-    inTryStmt*: int           # whether we are in a try statement; works also
-                              # in standalone ``except`` and ``finally``
     next*: PProcCon           # used for stacking procedure contexts
     mappingExists*: bool
     mapping*: TIdTable
