@@ -1,5 +1,3 @@
-.. default-role:: code
-
 =========================================
     Internals of the Nim Compiler
 =========================================
@@ -8,6 +6,8 @@
 :Author: Andreas Rumpf
 :Version: |nimversion|
 
+.. include:: rstcommon.rst
+.. default-role:: Nim
 .. contents::
 
   "Abstraction is layering ignorance on top of reality." -- Richard Gabriel
@@ -38,25 +38,31 @@ Path           Purpose
 Bootstrapping the compiler
 ==========================
 
-**Note**: Add ``.`` to your PATH so that `koch` can be used without the `./`.
+**Note**: Add ``.`` to your PATH so that `koch`:cmd: can be used without the ``./``.
 
-Compiling the compiler is a simple matter of running::
+Compiling the compiler is a simple matter of running:
+
+.. code:: cmd
 
   nim c koch.nim
   koch boot -d:release
 
-For a debug version use::
+For a debug version use:
+
+.. code:: cmd
 
   nim c koch.nim
   koch boot
 
 
-And for a debug version compatible with GDB::
+And for a debug version compatible with GDB:
+
+.. code:: cmd
 
   nim c koch.nim
   koch boot --debuginfo --linedir:on
 
-The `koch` program is Nim's maintenance script. It is a replacement for
+The `koch`:cmd: program is Nim's maintenance script. It is a replacement for
 make and shell scripting with the advantage that it is much more portable.
 More information about its options can be found in the `koch <koch.html>`_
 documentation.
@@ -65,15 +71,17 @@ documentation.
 Developing the compiler
 =======================
 
-To create a new compiler for each run, use `koch temp`::
+To create a new compiler for each run, use `koch temp`:cmd:\:
+
+.. code:: cmd
 
   koch temp c test.nim
 
-`koch temp` creates a debug build of the compiler, which is useful
+`koch temp`:cmd: creates a debug build of the compiler, which is useful
 to create stacktraces for compiler debugging.
 
 You can of course use GDB or Visual Studio to debug the
-compiler (via `--debuginfo --lineDir:on`). However, there
+compiler (via `--debuginfo --lineDir:on`:option:). However, there
 are also lots of procs that aid in debugging:
 
 
@@ -136,16 +144,18 @@ examples how the AST represents each syntactic structure.
 Bisecting for regressions
 =========================
 
-`koch temp` returns 125 as the exit code in case the compiler
-compilation fails. This exit code tells `git bisect` to skip the
-current commit.::
+`koch temp`:cmd: returns 125 as the exit code in case the compiler
+compilation fails. This exit code tells `git bisect`:cmd: to skip the
+current commit:
+
+.. code:: cmd
 
   git bisect start bad-commit good-commit
   git bisect run ./koch temp -r c test-source.nim
 
 You can also bisect using custom options to build the compiler, for example if
 you don't need a debug version of the compiler (which runs slower), you can replace
-`./koch temp` by explicit compilation command, see `Rebuilding the compiler`_.
+`./koch temp`:cmd: by explicit compilation command, see `Rebuilding the compiler`_.
 
 
 Runtimes
@@ -182,7 +192,7 @@ check that the OS, System modules work and recompile Nim.
 
 The only case where things aren't as easy is when old runtime's garbage
 collectors need some assembler tweaking to work. The default
-implementation uses C's `setjmp` function to store all registers
+implementation uses C's `setjmp`:c: function to store all registers
 on the hardware stack. It may be necessary that the new platform needs to
 replace this generic code by some assembler code.
 
@@ -207,7 +217,7 @@ Complex assignments
 
 We already know the type information as a graph in the compiler.
 Thus we need to serialize this graph as RTTI for C code generation.
-Look at the file `lib/system/hti.nim` for more information.
+Look at the file ``lib/system/hti.nim`` for more information.
 
 
 Magics and compilerProcs
@@ -368,7 +378,7 @@ pass generates code to setup the environment and to pass it around. However,
 this pass does not change the types! So we have some kind of mismatch here; on
 the one hand the proc expression becomes an explicit tuple, on the other hand
 the tyProc(ccClosure) type is not changed. For C code generation it's also
-important the hidden formal param is `void*` and not something more
+important the hidden formal param is `void*`:c: and not something more
 specialized. However the more specialized env type needs to passed to the
 backend somehow. We deal with this by modifying `s.ast[paramPos]` to contain
 the formal hidden parameter, but not `s.typ`!
