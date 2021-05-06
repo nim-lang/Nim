@@ -1,3 +1,7 @@
+discard """
+  joinable: false
+"""
+
 const expected = """
 FAIL: tests/shouldfail/tccodecheck.nim
 Failure: reCodegenFailure
