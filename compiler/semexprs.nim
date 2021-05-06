@@ -167,11 +167,6 @@ proc checkConvertible(c: PContext, targetTyp: PType, src: PNode): TConvStatus =
     result = checkConversionBetweenObjects(d.skipTypes(abstractInst), s.skipTypes(abstractInst), pointers)
   elif (targetBaseTyp.kind in IntegralTypes) and
       (srcBaseTyp.kind in IntegralTypes):
-    if targetTyp.kind == tyEnum and srcBaseTyp.kind == tyEnum:
-      if c.config.isDefined("nimLegacyConvEnumEnum"):
-        message(c.config, src.info, warnUser, "enum to enum conversion is now deprecated")
-      else: result = convNotLegal
-    # `elif` would be incorrect here
     if targetTyp.kind == tyBool:
       discard "convOk"
     elif targetTyp.isOrdinalType:

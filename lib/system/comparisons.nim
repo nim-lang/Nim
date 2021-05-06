@@ -9,7 +9,7 @@ proc `==`*[Enum: enum](x, y: Enum): bool {.magic: "EqEnum", noSideEffect.} =
         place1, place2 = 3
     var
       e1 = field1
-      e2 = place2.ord.Enum1
+      e2 = place2.Enum1
     assert e1 == e2
     assert not compiles(e1 == place2) # raises error
 proc `==`*(x, y: pointer): bool {.magic: "EqRef", noSideEffect.} =

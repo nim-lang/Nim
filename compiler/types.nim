@@ -1597,9 +1597,6 @@ proc typeMismatch*(conf: ConfigRef; info: TLineInfo, formal, actual: PType, n: P
         msg.add "\n.tag effect is 'any tag allowed'"
       of efLockLevelsDiffer:
         msg.add "\nlock levels differ"
-
-    if formal.kind == tyEnum and actual.kind == tyEnum:
-      msg.add "\nmaybe use `-d:nimLegacyConvEnumEnum` for a transition period"
     localError(conf, info, msg)
 
 proc isTupleRecursive(t: PType, cycleDetector: var IntSet): bool =

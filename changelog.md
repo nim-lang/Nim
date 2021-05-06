@@ -11,16 +11,6 @@
 - `repr` now doesn't insert trailing newline; previous behavior was very inconsistent,
   see #16034. Use `-d:nimLegacyReprWithNewline` for previous behavior.
 
-- An enum now can't be converted to another enum directly, you must use `ord` (or `cast`, but
-  compiler won't help if you misuse it).
-  ```
-  type A = enum a1, a2
-  type B = enum b1, b2
-  doAssert not compiles(a1.B)
-  doAssert compiles(a1.ord.B)
-  ```
-  for a transition period, use `-d:nimLegacyConvEnumEnum`.
-
 - Type mismatch errors now show more context, use `-d:nimLegacyTypeMismatch` for previous
   behavior.
 
