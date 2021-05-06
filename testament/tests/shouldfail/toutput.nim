@@ -1,5 +1,4 @@
 discard """
-  targets: "c"
   output: '''
   done
   '''

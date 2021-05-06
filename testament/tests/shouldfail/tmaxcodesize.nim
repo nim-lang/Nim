@@ -1,5 +1,4 @@
 discard """
-  targets: "c"
   maxcodesize: 1
 """
 

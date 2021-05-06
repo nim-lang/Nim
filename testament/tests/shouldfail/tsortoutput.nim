@@ -1,6 +1,5 @@
 discard """
   sortoutput: true
-  targets: "c"
   output: '''
   2
   1

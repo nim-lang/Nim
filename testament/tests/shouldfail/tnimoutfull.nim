@@ -1,5 +1,4 @@
 discard """
-  targets: "c"
   nimout: '''
 msg1
 msg2

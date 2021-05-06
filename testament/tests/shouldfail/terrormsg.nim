@@ -1,6 +1,5 @@
 discard """
   errormsg: "wrong error message"
-  targets: "c"
   line: 9
   column: 6
 """
