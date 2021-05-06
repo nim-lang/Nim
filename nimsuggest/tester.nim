@@ -338,6 +338,10 @@ proc main() =
   else:
     for x in walkFiles(tpath / "t*.nim"):
       echo "Test ", x
+      when defined(i386):
+        if x == "nimsuggest/tests/tmacro_highlight.nim":
+          echo "skipping" # workaround bug #17945
+          continue
       let xx = expandFilename x
       when not defined(windows):
         # XXX Windows IO redirection seems bonkers:
