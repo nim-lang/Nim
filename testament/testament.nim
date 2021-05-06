@@ -288,16 +288,18 @@ proc addResult(r: var TResults, test: TTest, target: TTarget,
                             expected = expected,
                             given = given)
   r.data.addf("$#\t$#\t$#\t$#", name, expected, given, $success)
+  template dispNonSkipped(color, outcome) =
+    maybeStyledEcho color, outcome, fgCyan, test.debugInfo, alignLeft(name, 60), fgBlue, " (", durationStr, " sec)"
   template disp(msg) =
     maybeStyledEcho styleDim, fgYellow, msg & ' ', styleBright, fgCyan, name
   if success == reSuccess:
-    maybeStyledEcho fgGreen, "PASS: ", fgCyan, test.debugInfo, alignLeft(name, 60), fgBlue, " (", durationStr, " sec)"
+    dispNonSkipped(fgGreen, "PASS: ")
   elif success == reDisabled:
     if test.spec.inCurrentBatch: disp("SKIP:")
     else: disp("NOTINBATCH:")
   elif success == reJoined: disp("JOINED:")
   else:
-    maybeStyledEcho styleBright, fgRed, failString, fgCyan, name
+    dispNonSkipped(fgRed, failString)
     maybeStyledEcho styleBright, fgCyan, "Test \"", test.name, "\"", " in category \"", test.cat.string, "\""
     maybeStyledEcho styleBright, fgRed, "Failure: ", $success
     if success in {reBuildFailed, reNimcCrash, reInstallFailed}:
