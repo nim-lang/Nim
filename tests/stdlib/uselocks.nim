@@ -11,5 +11,6 @@ proc use* (m: var MyType): int =
     result = 3
 
 block:
+  # bug #14873
   var l: Lock
   doAssert $l == "()"
