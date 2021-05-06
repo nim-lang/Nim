@@ -69,6 +69,8 @@
 
 - Fixed buffer overflow bugs in `net`
 
+- Exported `sslHandle` from `net` and `asyncnet`.
+
 - Added `sections` iterator in `parsecfg`.
 
 - Make custom op in macros.quote work for all statements.
