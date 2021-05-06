@@ -13,7 +13,9 @@ proc use* (m: var MyType): int =
 block:
   # bug #14873
   var l: Lock
-  doAssert $l == "()"
+  doAssert ($l).len > 0
+    # on posix, "()", on windows, something else, but that shouldn't be part of the spec
+    # what matters is that `$` doesn't cause the codegen bug mentioned
 
 when true: # intentional
   # bug https://github.com/nim-lang/Nim/issues/14873#issuecomment-784241605
