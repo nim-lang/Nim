@@ -152,7 +152,7 @@ proc open*(self: var CsvParser, filename: string,
   var s = newFileStream(filename, fmRead)
   if s == nil: self.error(0, "cannot open: " & filename)
   open(self, s, filename, separator,
-       quote, escape, skipInitialSpace)
+       quote, escape, skipInitialSpace, initialSize)
 
 proc parseField(self: var CsvParser, a: var string) =
   var pos = self.bufpos
