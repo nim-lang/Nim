@@ -179,6 +179,7 @@ proc extractErrorMsg(s: string; i: int; line: var int; col: var int; spec: var T
 proc extractSpec(filename: string; spec: var TSpec): string =
   const
     tripleQuote = "\"\"\""
+    specStart = "discard " & tripleQuote
   var s = readFile(filename)
 
   var i = 0
@@ -187,25 +188,34 @@ proc extractSpec(filename: string; spec: var TSpec): string =
   var line = 1
   var col = 1
   while i < s.len:
-    if s.continuesWith(tripleQuote, i):
-      if a < 0: a = i
-      elif b < 0: b = i
-      inc i, 2
-      inc col
+    if (i == 0 or s[i-1] != ' ') and s.continuesWith(specStart, i):
+      # `s[i-1] == '\n'` would not work because of `tests/stdlib/tbase64.nim` which contains BOM (https://en.wikipedia.org/wiki/Byte_order_mark)
+      const lineMax = 10
+      if a != -1:
+        raise newException(ValueError, "testament spec violation: duplicate `specStart` found: " & $(filename, a, b, line))
+      elif line > lineMax:
+        # not overly restrictive, but prevents mistaking some `specStart` as spec if deeep inside a test file
+        raise newException(ValueError, "testament spec violation: `specStart` should be before line $1, or be indented; info: $2" % [$lineMax, $(filename, a, b, line)])
+      i += specStart.len
+      a = i
+    elif a > -1 and b == -1 and s.continuesWith(tripleQuote, i):
+      b = i
+      i += tripleQuote.len
     elif s[i] == '\n':
       inc line
+      inc i
       col = 1
     elif s.continuesWith(inlineErrorMarker, i):
       i = extractErrorMsg(s, i, line, col, spec)
     else:
       inc col
-    inc i
+      inc i
 
-  # look for """ only in the first section
-  if a >= 0 and b > a and a < 40:
-    result = s.substr(a+3, b-1).multiReplace({"'''": tripleQuote, "\\31": "\31"})
+  if a >= 0 and b > a:
+    result = s.substr(a, b-1).multiReplace({"'''": tripleQuote, "\\31": "\31"})
+  elif a >= 0:
+    raise newException(ValueError, "testament spec violation: `specStart` found but not trailing `tripleQuote`: $1" % $(filename, a, b, line))
   else:
-    #echo "warning: file does not contain spec: " & filename
     result = ""
 
 proc parseTargets*(value: string): set[TTarget] =
