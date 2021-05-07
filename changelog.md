@@ -299,6 +299,8 @@
 
 - Added `copyWithin` [for `seq` and `array` for JavaScript targets](https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Array/copyWithin).
 
+- Added `initialSize` to `parsecsv.open` for the initial size to allocate for the rows of the CSV.
+
 
 ## Language changes
 
