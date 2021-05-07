@@ -179,7 +179,7 @@ proc extractErrorMsg(s: string; i: int; line: var int; col: var int; spec: var T
 proc extractSpec(filename: string; spec: var TSpec): string =
   const
     tripleQuote = "\"\"\""
-    specStart = "discard \"\"\""
+    specStart = "discard " & tripleQuote
   var s = readFile(filename)
 
   var i = 0
@@ -188,7 +188,8 @@ proc extractSpec(filename: string; spec: var TSpec): string =
   var line = 1
   var col = 1
   while i < s.len:
-    if (i == 0 or s[i-1] == '\n') and s.continuesWith(specStart, i):
+    if (i == 0 or s[i-1] != ' ') and s.continuesWith(specStart, i):
+      # `s[i-1] == '\n'` would not work because of `tests/stdlib/tbase64.nim` which contains BOM (https://en.wikipedia.org/wiki/Byte_order_mark)
       const lineMax = 10
       if a != -1:
         raise newException(ValueError, "testament spec violation: duplicate `specStart` found: " & $(filename, a, b, line))
@@ -212,6 +213,8 @@ proc extractSpec(filename: string; spec: var TSpec): string =
 
   if a >= 0 and b > a:
     result = s.substr(a, b-1).multiReplace({"'''": tripleQuote, "\\31": "\31"})
+  elif a >= 0:
+    raise newException(ValueError, "testament spec violation: `specStart` found but not trailing `tripleQuote`: $1" % $(filename, a, b, line))
   else:
     result = ""
 
