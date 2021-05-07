@@ -459,7 +459,7 @@ Character literals are enclosed in single quotes `''` and can contain the
 same escape sequences as strings - with one exception: the platform
 dependent `newline`:idx: (``\p``)
 is not allowed as it may be wider than one character (it can be the pair
-CR/LF).  Here are the valid `escape sequences`:idx: for character
+CR/LF). Here are the valid `escape sequences`:idx: for character
 literals:
 
 ==================         ===================================================
@@ -1843,7 +1843,7 @@ untraced references are *unsafe*. However, for certain low-level operations
 (accessing the hardware) untraced references are unavoidable.
 
 Traced references are declared with the **ref** keyword, untraced references
-are declared with the **ptr** keyword.  In general, a `ptr T` is implicitly
+are declared with the **ptr** keyword. In general, a `ptr T` is implicitly
 convertible to the `pointer` type.
 
 An empty subscript `[]` notation can be used to de-refer a reference,
@@ -2255,7 +2255,7 @@ conversions from `string` to `SQL` are allowed:
 
   db.query("SELECT FROM users WHERE name = '$1'".SQL % [username])
 
-Now we have compile-time checking against SQL injection attacks.  Since
+Now we have compile-time checking against SQL injection attacks. Since
 `"".SQL` is transformed to `SQL("")` no new syntax is needed for nice
 looking `SQL` string literals. The hypothetical `SQL` type actually
 exists in the library as the `SqlQuery type <db_common.html#SqlQuery>`_ of
@@ -4252,7 +4252,7 @@ Closure iterators and inline iterators have some restrictions:
 5. Closure iterators are not supported by the JS backend.
 
 (*) Closure iterators can be co-recursive with a factory proc which results
-in similar syntax to a recursive iterator.  More details follow.
+in similar syntax to a recursive iterator. More details follow.
 
 Iterators that are neither marked `{.closure.}` nor `{.inline.}` explicitly
 default to being inline, but this may change in future versions of the
@@ -4366,12 +4366,12 @@ The call can be made more like an inline iterator with a for loop macro:
     echo f
 
 Because of full backend function call aparatus involvment, closure iterator
-invocation is typically higher cost than inline iterators.  Adornment by
+invocation is typically higher cost than inline iterators. Adornment by
 a macro wrapper at the call site like this is a possibly useful reminder.
 
-The factory `proc`, as an ordinary procedure, can be recursive.  The
+The factory `proc`, as an ordinary procedure, can be recursive. The
 above macro allows such recursion to look much like a recursive iterator
-would.  For example:
+would. For example:
 
 .. code-block:: nim
   proc recCountDown(n: int): iterator(): int =
@@ -7094,7 +7094,7 @@ Similar to the `importc pragma for C
 <#foreign-function-interface-importc-pragma>`_, the
 `importcpp` pragma can be used to import `C++`:idx: methods or C++ symbols
 in general. The generated code then uses the C++ method calling
-syntax: `obj->method(arg)`:cpp:.  In combination with the `header` and `emit`
+syntax: `obj->method(arg)`:cpp:. In combination with the `header` and `emit`
 pragmas this allows *sloppy* interfacing with libraries written in C++:
 
 .. code-block:: Nim
@@ -7327,7 +7327,7 @@ ImportObjC pragma
 -----------------
 Similar to the `importc pragma for C
 <#foreign-function-interface-importc-pragma>`_, the `importobjc` pragma can
-be used to import `Objective C`:idx: methods.  The generated code then uses the
+be used to import `Objective C`:idx: methods. The generated code then uses the
 Objective C method calling syntax: ``[obj method param1: arg]``.
 In addition with the `header` and `emit` pragmas this
 allows *sloppy* interfacing with libraries written in Objective C:
@@ -7656,7 +7656,7 @@ Exportc pragma
 --------------
 The `exportc` pragma provides a means to export a type, a variable, or a
 procedure to C. Enums and constants can't be exported. The optional argument
-is a string containing the C identifier.  If the argument is missing, the C
+is a string containing the C identifier. If the argument is missing, the C
 name is the Nim identifier *exactly as spelled*:
 
 .. code-block:: Nim
