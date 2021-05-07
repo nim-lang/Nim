@@ -101,7 +101,7 @@ proc error(self: CsvParser, pos: int, msg: string) =
 
 proc open*(self: var CsvParser, input: Stream, filename: string,
            separator = ',', quote = '"', escape = '\0',
-           skipInitialSpace = false) =
+           skipInitialSpace = false; initialSize = 32.Positive) =
   ## Initializes the parser with an input stream. `Filename` is only used
   ## for nice error messages. The parser's behaviour can be controlled by
   ## the diverse optional parameters:
@@ -114,6 +114,7 @@ proc open*(self: var CsvParser, input: Stream, filename: string,
   ##   two `quote` characters are parsed one literal `quote` character.
   ## - `skipInitialSpace`: If true, whitespace immediately following the
   ##   `separator` is ignored.
+  ## - `initialSize`: Initial size to allocate for the rows of the CSV, must be a positive integer value.
   ##
   ## See also:
   ## * `open proc <#open,CsvParser,string,char,char,char>`_ which creates the
@@ -132,10 +133,12 @@ proc open*(self: var CsvParser, input: Stream, filename: string,
   self.quote = quote
   self.esc = escape
   self.skipWhite = skipInitialSpace
+  self.headers = newSeqOfCap[string](initialSize)
+  self.row = CsvRow(newSeqOfCap[string](initialSize))
 
 proc open*(self: var CsvParser, filename: string,
            separator = ',', quote = '"', escape = '\0',
-           skipInitialSpace = false) =
+           skipInitialSpace = false; initialSize = 32.Positive) =
   ## Similar to the `other open proc<#open,CsvParser,Stream,string,char,char,char>`_,
   ## but creates the file stream for you.
   runnableExamples:
