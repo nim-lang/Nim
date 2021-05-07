@@ -464,6 +464,8 @@ const
   # consider renaming as `tyAbstractVarRange`
   abstractVarRange* = {tyGenericInst, tyRange, tyVar, tyDistinct, tyOrdinal,
                        tyTypeDesc, tyAlias, tyInferred, tySink, tyOwned}
+  abstractInst* = {tyGenericInst, tyDistinct, tyOrdinal, tyTypeDesc, tyAlias,
+                   tyInferred, tySink, tyOwned} # xxx what about tyStatic?
 
 type
   TTypeKinds* = set[TTypeKind]
