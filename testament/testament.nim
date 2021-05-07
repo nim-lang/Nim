@@ -173,7 +173,8 @@ proc callNimCompiler(cmdTemplate, filename, options, nimcache: string,
   var p = startProcess(command = c[0], args = c[1 .. ^1],
                        options = {poStdErrToStdOut, poUsePath})
   let outp = p.outputStream
-  var suc = ""
+  var foundSuccessMsg = false
+  var foundErrorMsg = false
   var err = ""
   var x = newStringOfCap(120)
   result.nimout = ""
@@ -182,10 +183,11 @@ proc callNimCompiler(cmdTemplate, filename, options, nimcache: string,
       trimUnitSep x
       result.nimout.add(x & '\n')
       if x =~ pegOfInterest:
-        # `err` should contain the last error/warning message
+        # `err` should contain the last error message
         err = x
+        foundErrorMsg = true
       elif x.isSuccess:
-        suc = x
+        foundSuccessMsg = true
     elif not running(p):
       break
   close(p)
@@ -194,7 +196,23 @@ proc callNimCompiler(cmdTemplate, filename, options, nimcache: string,
   result.output = ""
   result.line = 0
   result.column = 0
+
   result.err = reNimcCrash
+  let exitCode = p.peekExitCode
+  case exitCode
+  of 0:
+    if foundErrorMsg:
+      result.debugInfo.add " compiler exit code was 0 but some Error's were found."
+    else:
+      result.err = reSuccess
+  of 1:
+    if not foundErrorMsg:
+      result.debugInfo.add " compiler exit code was 1 but no Error's were found."
+    if foundSuccessMsg:
+      result.debugInfo.add " compiler exit code was 1 but no `isSuccess` was true."
+  else:
+    result.debugInfo.add " expected compiler exit code 0 or 1, got $1." % $exitCode
+
   if err =~ pegLineError:
     result.file = extractFilename(matches[0])
     result.line = parseInt(matches[1])
@@ -202,8 +220,6 @@ proc callNimCompiler(cmdTemplate, filename, options, nimcache: string,
     result.msg = matches[3]
   elif err =~ pegOtherError:
     result.msg = matches[0]
-  elif suc.isSuccess:
-    result.err = reSuccess
   trimUnitSep result.msg
 
 proc callCCompiler(cmdTemplate, filename, options: string,
