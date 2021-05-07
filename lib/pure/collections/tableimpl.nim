@@ -149,8 +149,11 @@ template clearImpl() {.dirty.} =
   for i in 0 ..< t.dataLen:
     when compiles(t.data[i].hcode): # CountTable records don't contain a hcode
       t.data[i].hcode = 0
-    t.data[i].key = default(typeof(t.data[i].key))
-    t.data[i].val = default(typeof(t.data[i].val))
+    # The default of the type of `t.data[0].key` is the same as `t.data[N].key`,
+    # so we use a literal zero `t.data[0].key` instead of run-time value `i`,
+    # ideally with a static index the rest of rhs is more correct and efficient.
+    t.data[i].key = default(typeOf(t.data[0].key))
+    t.data[i].val = default(typeOf(t.data[0].val))
   t.counter = 0
 
 template ctAnd(a, b): bool =
