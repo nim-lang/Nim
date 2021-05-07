@@ -101,7 +101,7 @@ proc nep1CheckDefImpl(conf: ConfigRef; info: TLineInfo; s: PSym; k: TSymKind) =
     lintReport(conf, info, beau, s.name.s)
 
 template styleCheckDef*(conf: ConfigRef; info: TLineInfo; s: PSym; k: TSymKind) =
-  if {optStyleHint, optStyleError} * conf.globalOptions != {}:
+  if {optStyleHint, optStyleError} * conf.globalOptions != {} and optStyleUsages notin conf.globalOptions:
     nep1CheckDefImpl(conf, info, s, k)
 
 template styleCheckDef*(conf: ConfigRef; info: TLineInfo; s: PSym) =

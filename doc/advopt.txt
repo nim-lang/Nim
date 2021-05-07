@@ -42,6 +42,8 @@ Advanced options:
                             produce hints or errors for Nim identifiers that
                             do not adhere to Nim's official style guide
                             https://nim-lang.org/docs/nep1.html
+  --styleCheck:usages       only enforce consistent spellings of identifiers,
+                            do not enforce the style on declarations
   --showAllMismatches:on|off
                             show all mismatching candidates in overloading
                             resolution

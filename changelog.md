@@ -194,5 +194,10 @@
 ## Compiler changes
 
 
+- The style checking of the compiler now supports a `--styleCheck:usages` switch. This switch
+  enforces that every symbol is written as it was declared, not enforcing
+  the official Nim style guide. To be enabled, this has to be combined either
+  with `--styleCheck:error` or `--styleCheck:hint`.
+
 ## Tool changes
 
