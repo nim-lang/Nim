@@ -54,6 +54,7 @@ type
 
   UriParseError* = object of ValueError
 
+const unsafeUrlBytesToRemove = ["\t", "\r", "\n"]
 
 proc uriParseError*(msg: string) {.noreturn.} =
   ## Raises a `UriParseError` exception with message `msg`.
@@ -277,6 +278,12 @@ func resetUri(uri: var Uri) =
     else:
       f = false
 
+func removeUnsafeBytesFromUri(uri: string): string =
+  var u = uri
+  for b in unsafeUrlBytesToRemove:
+    u = replace(u, b)
+  return u
+
 func parseUri*(uri: string, result: var Uri) =
   ## Parses a URI. The `result` variable will be cleared before.
   ##
@@ -289,6 +296,16 @@ func parseUri*(uri: string, result: var Uri) =
     assert res.scheme == "https"
     assert res.hostname == "nim-lang.org"
     assert res.path == "/docs/manual.html"
+
+    parseUri("https://nim-lang\n.org\t/docs\nalert('msg\r\n')/?query\n=\tvalue#frag\nment", res)
+    assert res.scheme == "https"
+    assert res.hostname == "nim-lang.org"
+    assert res.path == "/docs/alert('msg')/"
+    assert res.query == "query=value"
+    assert res.anchor == "fragment"
+
+  let uri = removeUnsafeBytesFromUri(uri)
+
   resetUri(result)
 
   var i = 0
