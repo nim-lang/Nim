@@ -444,7 +444,7 @@ proc raiseExceptionAux(e: sink(ref Exception)) {.nodestroy.} =
       {.emit: "throw;".}
     else:
       pushCurrentException(e)
-      {.emit: "throw e;".}
+      {.emit: "throw `e`;".}
   elif defined(nimQuirky) or gotoBasedExceptions:
     # XXX This check should likely also be done in the setjmp case below.
     if e != currException:

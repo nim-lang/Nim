@@ -21,14 +21,17 @@ block:
 
 template main() =
   # xxx merge more const related tests here
+  const ct = CompileTime
+    # refs https://github.com/timotheecour/Nim/issues/718, apparently `CompileTime`
+    # isn't cached, which seems surprising.
   block:
     const
       a = """
     Version $1|
     Compiled at: $2, $3
-    """ % [NimVersion & spaces(44-len(NimVersion)), CompileDate, CompileTime]
+    """ % [NimVersion & spaces(44-len(NimVersion)), CompileDate, ct]
     let b = $a
-    doAssert CompileTime in b, $(b, CompileTime)
+    doAssert ct in b, $(b, ct)
     doAssert NimVersion in b
 
 static: main()
