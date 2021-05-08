@@ -63,6 +63,7 @@
 - Nim compiler now adds ASCII unit separator `\31` before a newline for every generated
   message (potentially multiline), so tooling can tell when messages start and end.
 
+- Deprecated `uri.initUri()`
 
 ## Standard library additions and changes
 - Added support for parenthesized expressions in `strformat`
