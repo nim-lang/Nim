@@ -268,7 +268,7 @@ func parseUri*(uri: string, result: var Uri) =
   ## * `Uri type <#Uri>`_ for available fields in the URI type
   ## * `initUri func <#initUri>`_ for initializing a URI
   runnableExamples:
-    var res: Uri
+    var res = initUri()
     parseUri("https://nim-lang.org/docs/manual.html", res)
     assert res.scheme == "https"
     assert res.hostname == "nim-lang.org"
@@ -319,6 +319,7 @@ func parseUri*(uri: string): Uri =
     assert res.username == "Username"
     assert res.password == "Password"
     assert res.scheme == "ftp"
+  result = initUri()
   parseUri(uri, result)
 
 func removeDotSegments(path: string): string =
@@ -395,6 +396,7 @@ func combine*(base: Uri, reference: Uri): Uri =
     dest.port = src.port
     dest.password = src.password
 
+  result = initUri()
   if reference.scheme != base.scheme and reference.scheme != "":
     result = reference
     result.path = removeDotSegments(result.path)
