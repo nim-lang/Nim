@@ -90,7 +90,7 @@ proc nodeTablePut*(t: var TNodeTable, key: PNode, val: int) =
       for i in 0..high(t.data):
         if t.data[i].key != nil:
           nodeTableRawInsert(n, t.data[i].h, t.data[i].key, t.data[i].val)
-      t.data = n
+      t.data = move n
     nodeTableRawInsert(t.data, k, key, val)
     inc(t.counter)
 
@@ -106,7 +106,7 @@ proc nodeTableTestOrSet*(t: var TNodeTable, key: PNode, val: int): int =
       for i in 0..high(t.data):
         if t.data[i].key != nil:
           nodeTableRawInsert(n, t.data[i].h, t.data[i].key, t.data[i].val)
-      t.data = n
+      t.data = move n
     nodeTableRawInsert(t.data, k, key, val)
     result = val
     inc(t.counter)
