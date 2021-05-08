@@ -224,7 +224,6 @@ func parseAuthority(authority: string, result: var Uri) =
     i.inc
 
 func parsePath(uri: string, i: var int, result: var Uri) =
-
   i.inc parseUntil(uri, result.path, {'?', '#'}, i)
 
   # The 'mailto' scheme's PATH actually contains the hostname/username
@@ -240,10 +239,7 @@ func parsePath(uri: string, i: var int, result: var Uri) =
     i.inc # Skip '#'
     i.inc parseUntil(uri, result.anchor, {}, i)
 
-func initUri*(): Uri {.deprecated: "use Uri.default or `initUri(isIpv6)`".} =
-  discard
-
-func initUri*(isIpv6: bool): Uri {.since: (1, 3, 5).} =
+func initUri*(isIpv6 = false): Uri =
   ## Initializes a URI with `scheme`, `username`, `password`,
   ## `hostname`, `port`, `path`, `query`, `anchor` and `isIpv6`.
   ##
@@ -272,7 +268,7 @@ func parseUri*(uri: string, result: var Uri) =
   ## * `Uri type <#Uri>`_ for available fields in the URI type
   ## * `initUri func <#initUri>`_ for initializing a URI
   runnableExamples:
-    var res = initUri()
+    var res: Uri
     parseUri("https://nim-lang.org/docs/manual.html", res)
     assert res.scheme == "https"
     assert res.hostname == "nim-lang.org"
@@ -323,7 +319,6 @@ func parseUri*(uri: string): Uri =
     assert res.username == "Username"
     assert res.password == "Password"
     assert res.scheme == "ftp"
-  result = initUri()
   parseUri(uri, result)
 
 func removeDotSegments(path: string): string =
@@ -400,7 +395,6 @@ func combine*(base: Uri, reference: Uri): Uri =
     dest.port = src.port
     dest.password = src.password
 
-  result = initUri()
   if reference.scheme != base.scheme and reference.scheme != "":
     result = reference
     result.path = removeDotSegments(result.path)
