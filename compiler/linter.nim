@@ -9,8 +9,8 @@
 
 ## This module implements the style checker.
 
-import strutils
-from sugar import dup
+import std/strutils
+from std/sugar import dup
 
 import options, ast, msgs, idents, lineinfos, wordrecg, astmsgs
 
