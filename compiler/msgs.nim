@@ -616,8 +616,8 @@ template internalAssert*(conf: ConfigRef, e: bool) =
     let arg = info2.toFileLineCol
     internalErrorImpl(conf, unknownLineInfo, arg, info2)
 
-template lintReport*(conf: ConfigRef; info: TLineInfo, beau, got: string, forceHint = false) =
-  let m = "'$1' should be: '$2'" % [got, beau]
+template lintReport*(conf: ConfigRef; info: TLineInfo, beau, got: string, forceHint = false, extraMsg = "") =
+  let m = "'$1' should be: '$2'$3" % [got, beau, extraMsg]
   let msg = if optStyleError in conf.globalOptions and not forceHint: errGenerated else: hintName
   liMessage(conf, info, msg, m, doNothing, instLoc())
 

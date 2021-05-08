@@ -11,7 +11,7 @@
 
 import
   intsets, ast, astalgo, trees, msgs, strutils, platform, renderer, options,
-  lineinfos, int128, modulegraphs
+  lineinfos, int128, modulegraphs, astmsgs
 
 type
   TPreferedDesc* = enum
@@ -65,9 +65,6 @@ const
                   tyAlias, tyInferred, tySink, tyLent, tyOwned}
   abstractRange* = {tyGenericInst, tyRange, tyDistinct, tyOrdinal, tyTypeDesc,
                     tyAlias, tyInferred, tySink, tyOwned}
-  # see also ast.abstractVarRange
-  abstractInst* = {tyGenericInst, tyDistinct, tyOrdinal, tyTypeDesc, tyAlias,
-                   tyInferred, tySink, tyOwned} # xxx what about tyStatic?
   abstractInstOwned* = abstractInst + {tyOwned}
   skipPtrs* = {tyVar, tyPtr, tyRef, tyGenericInst, tyTypeDesc, tyAlias,
                tyInferred, tySink, tyLent, tyOwned}
@@ -122,26 +119,6 @@ proc isIntLit*(t: PType): bool {.inline.} =
 
 proc isFloatLit*(t: PType): bool {.inline.} =
   result = t.kind == tyFloat and t.n != nil and t.n.kind == nkFloatLit
-
-proc addDeclaredLoc*(result: var string, conf: ConfigRef; sym: PSym) =
-  result.add " [$1 declared in $2]" % [sym.kind.toHumanStr, toFileLineCol(conf, sym.info)]
-
-proc addDeclaredLocMaybe*(result: var string, conf: ConfigRef; sym: PSym) =
-  if optDeclaredLocs in conf.globalOptions and sym != nil:
-    addDeclaredLoc(result, conf, sym)
-
-proc addDeclaredLoc*(result: var string, conf: ConfigRef; typ: PType) =
-  # xxx figure out how to resolve `tyGenericParam`, e.g. for
-  # proc fn[T](a: T, b: T) = discard
-  # fn(1.1, "a")
-  let typ = typ.skipTypes(abstractInst + {tyStatic} - {tyRange})
-  result.add " [$1" % typ.kind.toHumanStr
-  if typ.sym != nil:
-    result.add " declared in " & toFileLineCol(conf, typ.sym.info)
-  result.add "]"
-
-proc addDeclaredLocMaybe*(result: var string, conf: ConfigRef; typ: PType) =
-  if optDeclaredLocs in conf.globalOptions: addDeclaredLoc(result, conf, typ)
 
 proc addTypeHeader*(result: var string, conf: ConfigRef; typ: PType; prefer: TPreferedDesc = preferMixed; getDeclarationPath = true) =
   result.add typeToString(typ, prefer)
