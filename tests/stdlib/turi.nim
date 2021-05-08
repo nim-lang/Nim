@@ -141,6 +141,18 @@ template main() =
       doAssert test.port == ""
       doAssert test.path == "/foo/bar/baz.txt"
 
+    block: # Strict
+      doAssertRaises(UriParseError):
+        discard parseUri("https://nim-lang\n.org\t/docs/\nalert('msg\r\n')/?query\n=\tvalue#frag\nment")
+
+      # Non-strict would sanitize newline and tab characters from input
+      let test = parseUri("https://nim-lang\n.org\t/docs/\nalert('msg\r\n')/?query\n=\tvalue#frag\nment", strict=false)
+      assert test.scheme == "https"
+      assert test.hostname == "nim-lang.org"
+      assert test.path == "/docs/alert('msg')/"
+      assert test.query == "query=value"
+      assert test.anchor == "fragment"
+
   block: # combine
     block:
       let concat = combine(parseUri("http://google.com/foo/bar/"), parseUri("baz"))

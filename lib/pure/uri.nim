@@ -54,6 +54,7 @@ type
 
   UriParseError* = object of ValueError
 
+# https://url.spec.whatwg.org/#concept-basic-url-parser
 const unsafeUrlBytesToRemove = {'\t', '\r', '\n'}
 
 proc uriParseError*(msg: string) {.noreturn.} =
@@ -295,26 +296,24 @@ func parseUri*(uri: string, result: var Uri, strict = true) =
     assert res.hostname == "nim-lang.org"
     assert res.path == "/docs/manual.html"
 
-    res = initUri()
-
     # Non-strict
-    parseUri("https://nim-lang\n.org\t/docs/\nalert('msg\r\n')/?query\n=\tvalue#frag\nment", res, strict=false)
+    res = initUri()
+    parseUri("https://nim-lang\n.org\t/docs/", res, strict=false)
     assert res.scheme == "https"
     assert res.hostname == "nim-lang.org"
-    assert res.path == "/docs/alert('msg')/"
-    assert res.query == "query=value"
-    assert res.anchor == "fragment"
+    assert res.path == "/docs/"
 
-    # Strict by default
+    # Strict
     res = initUri()
     doAssertRaises(UriParseError):
-      parseUri("https://nim-lang\n.org\t/docs/\nalert('msg\r\n')/?query\n=\tvalue#frag\nment", res)
+      parseUri("https://nim-lang\n.org\t/docs/", res)
 
+  var uri = uri
   if strict:
     for c in uri:
       if c in unsafeUrlBytesToRemove: uriParseError("Invalid uri '$#'" % uri)
-
-  let uri = removeUnsafeBytesFromUri(uri)
+  else:
+    uri = removeUnsafeBytesFromUri(uri)
 
   resetUri(result)
 
