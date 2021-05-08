@@ -54,7 +54,7 @@ type
 
   UriParseError* = object of ValueError
 
-const unsafeUrlBytesToRemove = ["\t", "\r", "\n"]
+const unsafeUrlBytesToRemove = {'\t', '\r', '\n'}
 
 proc uriParseError*(msg: string) {.noreturn.} =
   ## Raises a `UriParseError` exception with message `msg`.
@@ -279,12 +279,10 @@ func resetUri(uri: var Uri) =
       f = false
 
 func removeUnsafeBytesFromUri(uri: string): string =
-  var u = uri
-  for b in unsafeUrlBytesToRemove:
-    u = replace(u, b)
-  return u
+  for c in uri:
+    if c notin unsafeUrlBytesToRemove: result.add c
 
-func parseUri*(uri: string, result: var Uri) =
+func parseUri*(uri: string, result: var Uri, strict = true) =
   ## Parses a URI. The `result` variable will be cleared before.
   ##
   ## **See also:**
@@ -297,12 +295,24 @@ func parseUri*(uri: string, result: var Uri) =
     assert res.hostname == "nim-lang.org"
     assert res.path == "/docs/manual.html"
 
-    parseUri("https://nim-lang\n.org\t/docs\nalert('msg\r\n')/?query\n=\tvalue#frag\nment", res)
+    res = initUri()
+
+    # Non-strict
+    parseUri("https://nim-lang\n.org\t/docs/\nalert('msg\r\n')/?query\n=\tvalue#frag\nment", res, strict=false)
     assert res.scheme == "https"
     assert res.hostname == "nim-lang.org"
     assert res.path == "/docs/alert('msg')/"
     assert res.query == "query=value"
     assert res.anchor == "fragment"
+
+    # Strict by default
+    res = initUri()
+    doAssertRaises(UriParseError):
+      parseUri("https://nim-lang\n.org\t/docs/\nalert('msg\r\n')/?query\n=\tvalue#frag\nment", res)
+
+  if strict:
+    for c in uri:
+      if c in unsafeUrlBytesToRemove: uriParseError("Invalid uri '$#'" % uri)
 
   let uri = removeUnsafeBytesFromUri(uri)
 
@@ -342,7 +352,7 @@ func parseUri*(uri: string, result: var Uri) =
   # Path
   parsePath(uri, i, result)
 
-func parseUri*(uri: string): Uri =
+func parseUri*(uri: string, strict = true): Uri =
   ## Parses a URI and returns it.
   ##
   ## **See also:**
@@ -353,7 +363,7 @@ func parseUri*(uri: string): Uri =
     assert res.password == "Password"
     assert res.scheme == "ftp"
   result = initUri()
-  parseUri(uri, result)
+  parseUri(uri, result, strict)
 
 func removeDotSegments(path: string): string =
   ## Collapses `..` and `.` in `path` in a similar way as done in `os.normalizedPath`
