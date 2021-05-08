@@ -129,35 +129,24 @@ type
   Pid* {.importc: "pid_t", header: "<sys/types.h>".} = cint
   Pthread_attr* {.importc: "pthread_attr_t", header: "<sys/types.h>",
                   pure, final.} = object
-    abi: array[56 div sizeof(clong), clong]
-
   Pthread_barrier* {.importc: "pthread_barrier_t",
                       header: "<sys/types.h>", pure, final.} = object
-    abi: array[32 div sizeof(clong), clong]
   Pthread_barrierattr* {.importc: "pthread_barrierattr_t",
                           header: "<sys/types.h>", pure, final.} = object
-    abi: array[4 div sizeof(cint), cint]
-
   Pthread_cond* {.importc: "pthread_cond_t", header: "<sys/types.h>",
                   pure, final.} = object
-    abi: array[48 div sizeof(clonglong), clonglong]
   Pthread_condattr* {.importc: "pthread_condattr_t",
                        header: "<sys/types.h>", pure, final.} = object
-    abi: array[4 div sizeof(cint), cint]
   Pthread_key* {.importc: "pthread_key_t", header: "<sys/types.h>".} = cuint
   Pthread_mutex* {.importc: "pthread_mutex_t", header: "<sys/types.h>",
                    pure, final.} = object
-    abi: array[48 div sizeof(clong), clong]
   Pthread_mutexattr* {.importc: "pthread_mutexattr_t",
                         header: "<sys/types.h>", pure, final.} = object
-    abi: array[4 div sizeof(cint), cint]
   Pthread_once* {.importc: "pthread_once_t", header: "<sys/types.h>".} = cint
   Pthread_rwlock* {.importc: "pthread_rwlock_t",
                      header: "<sys/types.h>", pure, final.} = object
-    abi: array[56 div sizeof(clong), clong]
   Pthread_rwlockattr* {.importc: "pthread_rwlockattr_t",
                          header: "<sys/types.h>".} = object
-    abi: array[8 div sizeof(clong), clong]
   Pthread_spinlock* {.importc: "pthread_spinlock_t",
                        header: "<sys/types.h>".} = cint
   Pthread* {.importc: "pthread_t", header: "<sys/types.h>".} = culong
@@ -180,7 +169,6 @@ type
       domainname*: array[65, char]
 
   Sem* {.importc: "sem_t", header: "<semaphore.h>", final, pure.} = object
-    abi: array[32 div sizeof(clong), clong]
 
   Stat* {.importc: "struct stat",
            header: "<sys/stat.h>", final, pure.} = object ## struct stat
@@ -305,9 +293,7 @@ type
              final, pure.} = object ## struct timeval
     tv_sec*: Time       ## Seconds.
     tv_usec*: Suseconds ## Microseconds.
-  TFdSet* {.importc: "fd_set", header: "<sys/select.h>",
-           final, pure.} = object
-    abi: array[((64+(sizeof(clong) * 8)-1) div (sizeof(clong) * 8)), clong]
+  TFdSet* {.importc: "fd_set", header: "<sys/select.h>", final, pure.} = object
 
 proc si_pid*(info: SigInfo): Pid =
   ## This might not be correct behavior. si_pid doesn't exist in Switch's

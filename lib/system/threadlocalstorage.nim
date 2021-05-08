@@ -132,7 +132,6 @@ else:
                   header: "<sys/types.h>" .} = distinct culong
       Pthread_attr {.importc: "pthread_attr_t",
                     header: "<sys/types.h>".} = object
-        abi: array[56 div sizeof(clong), clong]
       ThreadVarSlot {.importc: "pthread_key_t",
                     header: "<sys/types.h>".} = distinct cuint
   elif defined(openbsd) and defined(amd64):
@@ -190,8 +189,6 @@ else:
     result = pthread_getspecific(s)
 
   type CpuSet {.importc: "cpu_set_t", header: schedh.} = object
-     when defined(linux) and defined(amd64):
-       abi: array[1024 div (8 * sizeof(culong)), culong]
 
   proc cpusetZero(s: var CpuSet) {.importc: "CPU_ZERO", header: schedh.}
   proc cpusetIncl(cpu: cint; s: var CpuSet) {.
