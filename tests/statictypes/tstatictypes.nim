@@ -274,7 +274,7 @@ block:
   fails(foo)
 
 
-import macros, tables
+import tables
 
 var foo{.compileTime.} = [
   "Foo",
