@@ -6,6 +6,8 @@ discard """
 ## tests that don't quite fit the mold and are easier to handle via `execCmdEx`
 ## A few others could be added to here to simplify code.
 ## Note: this test is a bit slow but tests a lot of things; please don't disable.
+## Note: if needed, we could use `matrix: "-d:case1; -d:case2"` to split this
+## into several independent tests while retaining the common test helpers.
 
 import std/[strformat,os,osproc,unittest,compilesettings]
 from std/sequtils import toSeq,mapIt
