@@ -1497,7 +1497,7 @@ proc createModuleAlias*(s: PSym, id: ItemId, newIdent: PIdent, info: TLineInfo;
   result.position = s.position
   result.loc = s.loc
   result.annex = s.annex
-  result.realModule = s # xxx can we just use id ?
+  result.realModule = s
 
 proc resolveModuleAlias*(s: PSym): PSym =
   assert s.kind == skModule
