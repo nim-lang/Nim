@@ -478,14 +478,16 @@ proc equalModuloLastNewline(a, b: string): bool =
 proc testSpecHelper(r: var TResults, test: var TTest, expected: TSpec,
                     target: TTarget, nimcache: string, extraOptions = "") =
   test.startTime = epochTime()
+  template callNimCompilerImpl(): untyped = 
+    # xxx this used to also pass: `--stdout --hint:Path:off`, but was done inconsistently
+    # with other branches
+    callNimCompiler(expected.getCmd, test.name, test.options, nimcache, target, extraOptions)
   case expected.action
   of actionCompile:
-    var given = callNimCompiler(expected.getCmd, test.name, test.options, nimcache, target,
-          extraOptions = " --stdout --hint[Path]:off --hint[Processing]:off")
+    var given = callNimCompilerImpl()
     compilerOutputTests(test, target, given, expected, r)
   of actionRun:
-    var given = callNimCompiler(expected.getCmd, test.name, test.options,
-                             nimcache, target, extraOptions)
+    var given = callNimCompilerImpl()
     if given.err != reSuccess:
       r.addResult(test, target, "", "$ " & given.cmd & '\n' & given.nimout, given.err)
     else:
@@ -538,8 +540,7 @@ proc testSpecHelper(r: var TResults, test: var TTest, expected: TSpec,
           else:
             compilerOutputTests(test, target, given, expected, r)
   of actionReject:
-    var given = callNimCompiler(expected.getCmd, test.name, test.options,
-                              nimcache, target)
+    let given = callNimCompilerImpl()
     cmpMsgs(r, expected, given, test, target)
 
 proc targetHelper(r: var TResults, test: TTest, expected: TSpec, extraOptions = "") =

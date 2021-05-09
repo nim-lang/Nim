@@ -1,10 +1,10 @@
 discard """
   action: reject
   nimout: '''tusages.nim(22, 5) Error: 'BAD_STYLE' should be: 'BADSTYLE' [proc declared in tusages.nim(11, 6)]'''
-  cmd: "nim $target --styleCheck:error --styleCheck:usages $file"
+  matrix: "--styleCheck:error --styleCheck:usages"
 """
 
-# xxx pending bug #17960, use: matrix: "--styleCheck:error --styleCheck:usages"
+
 
 import strutils
 
