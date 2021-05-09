@@ -1241,10 +1241,7 @@ else: # after 1.3 or JS not defined
     if bufLen <= 0:
       return
     if s.pos + bufLen > s.data.len:
-      if s.growthRate <= 0:
-        setLen(s.data, s.pos + bufLen)
-      else:
-        setLen(s.data, (s.data.len + 1) * s.growthRate) # 0 * 2 == 0 so we offset left by one
+      setLen(s.data, max((s.data.len + 1) * s.growthRate, s.pos + bufLen)) # 0 * 2 == 0 so we offset left by one
     when defined(js):
       try:
         s.data[s.pos..<s.pos+bufLen] = cast[ptr string](buffer)[][0..<bufLen]
