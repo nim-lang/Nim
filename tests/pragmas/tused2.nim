@@ -19,9 +19,9 @@ Hint: ***SLOW, DEBUG BUILD***; -d:release makes code run faster. [BuildMode]
 """
 
 #[
-xxx the `testament.isSuccess` logic makes `nimoutFull` awkward to use, forcing it to show `BuildMode`; 
-we should improve this.
+xxx improve this pending https://github.com/nim-lang/Nim/pull/17968
 ]#
+
 
 
 
