@@ -235,7 +235,6 @@ proc importModuleAs(c: PContext; n: PNode, realModule: PSym, importHidden: bool)
     result = createModuleAliasImpl(n[1].ident)
   if result == realModule:
     # avoids modifying `realModule`, see D20201209T194412 for `import {.all.}`
-    # and also for `import foo; {.used: foo.}`
     result = createModuleAliasImpl(realModule.name)
   if importHidden:
     result.options.incl optImportHidden
