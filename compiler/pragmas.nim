@@ -1213,15 +1213,9 @@ proc singlePragma(c: PContext, sym: PSym, n: PNode, i: var int,
       of wBoolDefine:
         sym.magic = mBoolDefine
       of wUsed:
-        case it.kind
-        of nkExprColonExpr: # {.used: mysym.}
-          let sym2 = qualifiedLookUp(c, it[1], {checkUndeclared, checkModule})
-          assert sym2 != nil # PRTEMP: localError
-          sym2.flags.incl sfUsed
-        of nkIdent: # {.used.}
-          if sym == nil: invalidPragma(c, it)
-          else: sym.flags.incl sfUsed
-        else: invalidPragma(c, it)
+        noVal(c, it)
+        if sym == nil: invalidPragma(c, it)
+        else: sym.flags.incl sfUsed
       of wLiftLocals: discard
       of wRequires, wInvariant, wAssume, wAssert:
         pragmaProposition(c, it)
