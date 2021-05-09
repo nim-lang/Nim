@@ -1437,16 +1437,34 @@ proc semBorrow(c: PContext, n: PNode, s: PSym) =
   else:
     localError(c.config, n.info, errNoSymbolToBorrowFromFound)
 
+proc swapResult(n: PNode, sRes: PSym, dNode: PNode) =
+  ## Swap nodes that are (skResult) symbols to d(estination)Node.
+  for i in 0..<n.safeLen:
+    if n[i].kind == nkSym:
+      if n[i].sym == sRes:
+        n[i] = dNode
+    swapResult(n[i], sRes, dNode)
+
 proc addResult(c: PContext, n: PNode, t: PType, owner: TSymKind) =
+  template genResSym(s) =
+    var s = newSym(skResult, getIdent(c.cache, "result"), nextSymId c.idgen,
+                   getCurrOwner(c), n.info)
+    s.typ = t
+    incl(s.flags, sfUsed)
+
   if owner == skMacro or t != nil:
     if n.len > resultPos and n[resultPos] != nil:
-      if n[resultPos].sym.kind != skResult or n[resultPos].sym.owner != getCurrOwner(c):
+      if n[resultPos].sym.kind != skResult:
         localError(c.config, n.info, "incorrect result proc symbol")
+      if n[resultPos].sym.owner != getCurrOwner(c):
+        # re-write result with new ownership, and re-write the proc accordingly
+        let sResSym = n[resultPos].sym
+        genResSym(s)
+        n[resultPos] = newSymNode(s)
+        swapResult(n, sResSym, n[resultPos])
       c.p.resultSym = n[resultPos].sym
     else:
-      var s = newSym(skResult, getIdent(c.cache, "result"), nextSymId c.idgen, getCurrOwner(c), n.info)
-      s.typ = t
-      incl(s.flags, sfUsed)
+      genResSym(s)
       c.p.resultSym = s
       n.add newSymNode(c.p.resultSym)
     addParamOrResult(c, c.p.resultSym, owner)
