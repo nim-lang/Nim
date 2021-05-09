@@ -18,7 +18,7 @@ import compiler/nodejs
 import lib/stdtest/testutils
 from lib/stdtest/specialpaths import splitTestFile
 from std/private/gitutils import diffStrings
-
+import timn/dbgs
 proc trimUnitSep(x: var string) =
   let L = x.len
   if L > 0 and x[^1] == '\31':
@@ -392,6 +392,7 @@ proc cmpMsgs(r: var TResults, expected, given: TSpec, test: TTest, target: TTarg
     r.addResult(test, target, expected.nimout, given.nimout, reMsgsDiffer)
   elif extractFilename(expected.file) != extractFilename(given.file) and
       "internal error:" notin expected.msg:
+    dbg expected.file, given.file, expected.msg
     r.addResult(test, target, expected.file, given.file, reFilesDiffer)
   elif expected.line != given.line and expected.line != 0 or
        expected.column != given.column and expected.column != 0:
@@ -478,14 +479,16 @@ proc equalModuloLastNewline(a, b: string): bool =
 proc testSpecHelper(r: var TResults, test: var TTest, expected: TSpec,
                     target: TTarget, nimcache: string, extraOptions = "") =
   test.startTime = epochTime()
+  template callNimCompilerImpl(): untyped = 
+    # xxx this used to also pass: `--stdout --hint:Path:off`, but was done inconsistently
+    # with other branches
+    callNimCompiler(expected.getCmd, test.name, test.options, nimcache, target, extraOptions)
   case expected.action
   of actionCompile:
-    var given = callNimCompiler(expected.getCmd, test.name, test.options, nimcache, target,
-          extraOptions = " --stdout --hint[Path]:off --hint[Processing]:off")
+    var given = callNimCompilerImpl()
     compilerOutputTests(test, target, given, expected, r)
   of actionRun:
-    var given = callNimCompiler(expected.getCmd, test.name, test.options,
-                             nimcache, target, extraOptions)
+    var given = callNimCompilerImpl()
     if given.err != reSuccess:
       r.addResult(test, target, "", "$ " & given.cmd & '\n' & given.nimout, given.err)
     else:
@@ -538,8 +541,7 @@ proc testSpecHelper(r: var TResults, test: var TTest, expected: TSpec,
           else:
             compilerOutputTests(test, target, given, expected, r)
   of actionReject:
-    var given = callNimCompiler(expected.getCmd, test.name, test.options,
-                              nimcache, target)
+    let given = callNimCompilerImpl()
     cmpMsgs(r, expected, given, test, target)
 
 proc targetHelper(r: var TResults, test: TTest, expected: TSpec, extraOptions = "") =
