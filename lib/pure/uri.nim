@@ -51,6 +51,8 @@ type
 
   UriParseError* = object of ValueError
 
+# https://url.spec.whatwg.org/#concept-basic-url-parser
+const unsafeUrlBytesToRemove = {'\t', '\r', '\n'}
 
 proc uriParseError*(msg: string) {.noreturn.} =
   ## Raises a `UriParseError` exception with message `msg`.
@@ -261,7 +263,11 @@ func resetUri(uri: var Uri) =
     else:
       f = false
 
-func parseUri*(uri: string, result: var Uri) =
+func removeUnsafeBytesFromUri(uri: string): string =
+  for c in uri:
+    if c notin unsafeUrlBytesToRemove: result.add c
+
+func parseUri*(uri: string, result: var Uri, strict = true) =
   ## Parses a URI. The `result` variable will be cleared before.
   ##
   ## **See also:**
@@ -273,6 +279,26 @@ func parseUri*(uri: string, result: var Uri) =
     assert res.scheme == "https"
     assert res.hostname == "nim-lang.org"
     assert res.path == "/docs/manual.html"
+
+    # Non-strict
+    res = initUri()
+    parseUri("https://nim-lang\n.org\t/docs/", res, strict=false)
+    assert res.scheme == "https"
+    assert res.hostname == "nim-lang.org"
+    assert res.path == "/docs/"
+
+    # Strict
+    res = initUri()
+    doAssertRaises(UriParseError):
+      parseUri("https://nim-lang\n.org\t/docs/", res)
+
+  var uri = uri
+  if strict:
+    for c in uri:
+      if c in unsafeUrlBytesToRemove: uriParseError("Invalid uri '$#'" % uri)
+  else:
+    uri = removeUnsafeBytesFromUri(uri)
+
   resetUri(result)
 
   var i = 0
@@ -309,7 +335,7 @@ func parseUri*(uri: string, result: var Uri) =
   # Path
   parsePath(uri, i, result)
 
-func parseUri*(uri: string): Uri =
+func parseUri*(uri: string, strict = true): Uri =
   ## Parses a URI and returns it.
   ##
   ## **See also:**
@@ -320,7 +346,7 @@ func parseUri*(uri: string): Uri =
     assert res.password == "Password"
     assert res.scheme == "ftp"
   result = initUri()
-  parseUri(uri, result)
+  parseUri(uri, result, strict)
 
 func removeDotSegments(path: string): string =
   ## Collapses `..` and `.` in `path` in a similar way as done in `os.normalizedPath`

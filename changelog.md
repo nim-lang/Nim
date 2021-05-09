@@ -299,6 +299,7 @@
 
 - Added `copyWithin` [for `seq` and `array` for JavaScript targets](https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Array/copyWithin).
 
+- Added optional `strict` argument to `parseUri` of `uri` module to raise a `UriParseError` if input contains newline or tab characters, or [remove them in non-strict case](https://url.spec.whatwg.org/#concept-basic-url-parser).
 
 ## Language changes
 
