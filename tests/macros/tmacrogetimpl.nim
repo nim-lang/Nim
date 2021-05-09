@@ -1,15 +1,6 @@
-discard """
-output: '''
-1.0
-10.0
-1.0
-buzz lightyear
-macros
-'''
-"""
 import macros
 
-# 5034
+# bug #5034
 
 macro copyImpl(srsProc: typed, toSym: untyped) =
   result = copyNimTree(getImplTransformed(srsProc))
@@ -25,16 +16,16 @@ proc bar1(what: string): string =
   proc buzz: string =
     result = "lightyear"
   if what == "buzz":
-    result = ("buzz " & buzz())
+    result = "buzz " & buzz()
   else:
     result = what
   return result
 
 copyImpl(foo1, foo2)
-echo foo1(1'f)
-echo foo2(10.0, false)
-echo foo2(10.0)
+doAssert foo1(1'f) == 1.0
+doAssert foo2(10.0, false) == 10.0
+doAssert foo2(10.0) == 1.0
 
 copyImpl(bar1, bar2)
-echo bar1("buzz")
-echo bar1("macros")
+doAssert bar1("buzz") == "buzz lightyear"
+doAssert bar1("macros") == "macros"

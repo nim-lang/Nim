@@ -1440,8 +1440,7 @@ proc semBorrow(c: PContext, n: PNode, s: PSym) =
 proc swapResult(n: PNode, sRes: PSym, dNode: PNode) =
   ## Swap nodes that are (skResult) symbols to d(estination)Node.
   for i in 0..<n.safeLen:
-    if n[i].kind == nkSym:
-      if n[i].sym == sRes:
+    if n[i].kind == nkSym and n[i].sym == sRes:
         n[i] = dNode
     swapResult(n[i], sRes, dNode)
 
