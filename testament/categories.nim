@@ -15,7 +15,7 @@
 import important_packages
 import std/strformat
 from std/sequtils import filterIt
-
+import timn/dbgs
 const
   specialCategories = [
     "assert",
@@ -26,7 +26,6 @@ const
     "flags",
     "gc",
     "io",
-    "js",
     "ic",
     "lib",
     "longgc",
@@ -43,6 +42,9 @@ const
     "dir with space",
     "destructor"
   ]
+  # specialCategories2 = [ # PRTEMP
+  #   "js",
+  # ]
 
 proc isTestFile*(file: string): bool =
   let (_, name, ext) = splitFile(file)
@@ -230,11 +232,14 @@ proc debuggerTests(r: var TResults, cat: Category, options: string) =
 
 proc jsTests(r: var TResults, cat: Category, options: string) =
   template test(filename: untyped) =
-    testSpec r, makeTest(filename, options, cat), {targetJS}
-    testSpec r, makeTest(filename, options & " -d:release", cat), {targetJS}
+    var test = makeTest(filename, options, cat)
+    testSpec r, test, {targetJS}
+    test.spec.matrix = test.spec.matrix & @["-d:release"]
+    testSpec r, test, {targetJS}
 
   for t in os.walkFiles("tests/js/t*.nim"):
     test(t)
+  # xxx these should use `targets: "c js"`
   for testfile in ["exception/texceptions", "exception/texcpt1",
                    "exception/texcsub", "exception/tfinally",
                    "exception/tfinally2", "exception/tfinally3",
@@ -547,7 +552,11 @@ proc icTests(r: var TResults; testsDir: string, cat: Category, options: string;
 # ----------------------------------------------------------------------------
 
 const AdditionalCategories = ["debugger", "examples", "lib", "ic", "navigator"]
-const MegaTestCats = ["megatest_c", "megatest_js"]
+let megatestCats = [
+  (targetC, ""),
+  (targetJS, ""),
+  (targetJS, "-d:release"),
+]
 
 proc `&.?`(a, b: string): string =
   # candidate for the stdlib?
@@ -589,15 +598,30 @@ proc isJoinableSpec(spec: TSpec, target: TTarget, matrixFlat: string): bool =
       result = false
 
 proc isJoinableSpec(spec: TSpec): bool =
-  for a in {targetC, targetJs}:
-    if isJoinableSpec(spec, a, ""): return true
+  for (t, m) in megatestCats:
+    if isJoinableSpec(spec, t, m): return true
   result = false
+
+proc isTestEnabled(r: var TResults, test: TTest): bool =
+  doAssert test.spec.isFlat
+  var test = test
+  result = true
+  if test.spec.err in {reDisabled}: result = false
+  else:
+    # dbg test.name, isJoinableSpec(test.spec), test.spec.unjoinable, test.spec
+    if isJoinableSpec(test.spec):
+      test.spec.err = reJoined
+      result = false
+  if not result:
+    r.addResult(test, test.spec.targetFlat, "", "", test.spec.err)
+    inc(r.skipped)
+    inc(r.total)
 
 proc quoted(a: string): string =
   # todo: consider moving to system.nim
   result.addQuoted(a)
 
-proc runJoinedTest(r: var TResults, cat: Category, testsDir: string, options: string, target: TTarget) =
+proc runJoinedTest(r: var TResults, cat: Category, testsDir: string, options: string, target: TTarget, matrixFlat: string) =
   ## returns a list of tests that have problems
   #[
   xxx create a reusable megatest API after abstracting out testament specific code,
@@ -620,15 +644,15 @@ proc runJoinedTest(r: var TResults, cat: Category, testsDir: string, options: st
             echo "parseSpec failed for: '$1', assuming this will be handled outside of megatest" % file
             continue
           for spec2 in flattentSepc(spec):
-            if isJoinableSpec(spec2, target, ""):
+            if isJoinableSpec(spec2, target, matrixFlat):
               specs.add spec2
 
   proc cmp(a: TSpec, b: TSpec): auto = cmp(a.file, b.file)
   sort(specs, cmp = cmp) # reproducible order
-  echo "joinable specs: ", specs.len
+  echo "magatest joinable specs: target: $# options: $# count: $#: " % [$target, matrixFlat, $specs.len]
 
   if simulate:
-    var s = "runJoinedTest: $1" % $target 
+    var s = "runJoinedTest: $1 $2" % [$target, matrixFlat]
     for a in specs: s.add a.file & " "
     echo s
     return
@@ -706,12 +730,7 @@ proc processCategory(r: var TResults, cat: Category,
     handled = true
     case cat2
     of "js":
-      # only run the JS tests on Windows or Linux because Travis is bad
-      # and other OSes like Haiku might lack nodejs:
-      if not defined(linux) and isTravis:
-        discard
-      else:
-        jsTests(r, cat, options)
+      jsTests(r, cat, options)
     of "dll":
       dllTests(r, cat, options)
     of "flags":
@@ -753,10 +772,10 @@ proc processCategory(r: var TResults, cat: Category,
       handled = false
   if not handled:
     case cat2
-    of "megatestc", "megatest":
-      runJoinedTest(r, cat, testsDir, options, targetC)
-    of "megatestjs":
-      runJoinedTest(r, cat, testsDir, options, targetJS)
+    of "megatest":
+      for (t, m) in megatestCats:
+      # for (t, m) in megatestCats[^1..^1]: # PRTEMP
+        runJoinedTest(r, cat, testsDir, options, t, m)
     else:
       var testsRun = 0
       var files: seq[string]
@@ -765,13 +784,11 @@ proc processCategory(r: var TResults, cat: Category,
       files.sort # give reproducible order
       for i, name in files:
         var test = makeTest(name, options, cat) # we could factor with the code already doing this in `runJoinedTest`
+        if cat.string in specialCategories or runJoinableTests:
+          test.spec.unjoinable = true
         for spec2 in flattentSepc(test.spec):
           var test = test
           test.spec = spec2
-          if runJoinableTests or not isJoinableSpec(spec2) or cat.string in specialCategories:
-            discard "run the test"
-          else:
-            test.spec.err = reJoined
           testSpec r, test
           inc testsRun
       if testsRun == 0:

@@ -24,6 +24,13 @@ let isTravis* = existsEnv("TRAVIS")
 let isAppVeyor* = existsEnv("APPVEYOR")
 let isAzure* = existsEnv("TF_BUILD")
 
+proc isNimRepoTests*(): bool =
+  # this logic could either be specific to cwd, or to some file derived from
+  # the input file, eg testament r /pathto/tests/foo/tmain.nim; we choose
+  # the former since it's simpler and also works with `testament all`.
+  let file = "testament"/"testament.nim.cfg"
+  result = file.fileExists
+
 var skips*: seq[string]
 
 type
@@ -107,12 +114,20 @@ type
                       # but don't rely on much precision
     inlineErrors*: seq[InlineError] # line information to error message
 
+import timn/dbgs
+
 iterator flattentSepc*(a: TSpec): TSpec =
   doAssert not a.isFlat
   let matrix = if a.matrix.len == 0: @[""] else: a.matrix
   var targets = a.targets
-  if targets == {}: targets = {targetC} # PRTEMP getTestSpecTarget() ?
-    # TODO: move this logic to parseSpec?
+  if targets == {}:
+    if a.file.isRelativeTo("tests/js") and isNimRepoTests():
+      targets = {targetJs}
+    else:
+      targets = {targetC} # PRTEMP getTestSpecTarget() ?
+      # TODO: move this logic to parseSpec?
+
+  # dbg a.file
   for t in targets:
     for m in matrix:
       var a2 = a

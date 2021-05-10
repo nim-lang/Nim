@@ -2,7 +2,7 @@ block:
   var x: string
   var y = "foo"
 
-  echo x
+  doAssert $x == ""
   doAssert x == ""
   doAssert "" == x
 

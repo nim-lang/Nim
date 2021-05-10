@@ -18,7 +18,7 @@ import compiler/nodejs
 import lib/stdtest/testutils
 from lib/stdtest/specialpaths import splitTestFile
 from std/private/gitutils import diffStrings
-
+import timn/dbgs
 proc trimUnitSep(x: var string) =
   let L = x.len
   if L > 0 and x[^1] == '\31':
@@ -68,13 +68,6 @@ Experimental: using environment variable `NIM_TESTAMENT_REMOTE_NETWORKING=1` ena
 tests with remote networking (as in CI).
 """ % resultsFile
 
-proc isNimRepoTests(): bool =
-  # this logic could either be specific to cwd, or to some file derived from
-  # the input file, eg testament r /pathto/tests/foo/tmain.nim; we choose
-  # the former since it's simpler and also works with `testament all`.
-  let file = "testament"/"testament.nim.cfg"
-  result = file.fileExists
-
 type
   Category = distinct string
   TResults = object
@@ -91,6 +84,7 @@ type
     debugInfo: string
 
 # ----------------------------------------------------------------------------
+proc isTestEnabled(r: var TResults, test: TTest): bool
 
 let
   pegLineError =
@@ -269,7 +263,8 @@ proc addResult(r: var TResults, test: TTest, target: TTarget,
   # test.name is easier to find than test.name.extractFilename
   # A bit hacky but simple and works with tests/testament/tshould_not_work.nim
   var name = test.name.replace(DirSep, '/')
-  name.add ' ' & $target
+  doAssert test.spec.isFlat
+  name.add ' ' & $target & " " & test.spec.matrixFlat
   if allowFailure:
     name.add " (allowed to fail) "
   if test.options.len > 0: name.add ' ' & test.options
@@ -459,17 +454,6 @@ proc getTestSpecTarget(): TTarget =
   else:
     result = targetC
 
-proc checkDisabled(r: var TResults, test: TTest): bool =
-  # xxx rename to `isEnabled`
-  doAssert test.spec.isFlat
-  if test.spec.err in {reDisabled, reJoined}:
-    r.addResult(test, test.spec.targetFlat, "", "", test.spec.err)
-    inc(r.skipped)
-    inc(r.total)
-    result = false
-  else:
-    result = true
-
 var count = 0
 
 proc equalModuloLastNewline(a, b: string): bool =
@@ -546,6 +530,7 @@ proc testSpecHelper(r: var TResults, test: var TTest, expected: TSpec,
 
 proc targetHelper(r: var TResults, test: TTest, expected: TSpec) =
   doAssert expected.isFlat
+  doAssert test.spec.isFlat
   let target = expected.targetFlat
   inc(r.total)
   if target notin gTargets: # PRTEMP?
@@ -570,20 +555,20 @@ proc testSpec(r: var TResults, test: TTest, targets: set[TTarget] = {}) =
   if expected.targets == {}:
     expected.targets = {getTestSpecTarget()}
   if expected.isFlat:
-    if checkDisabled(r, test):
+    if isTestEnabled(r, test):
       targetHelper(r, test, expected)
   else:
     for spec2 in flattentSepc(expected):
-      var test2 = test
-      test2.spec = spec2
-      if checkDisabled(r, test2):
+      var test = test
+      test.spec = spec2
+      if isTestEnabled(r, test):
         targetHelper(r, test, spec2)
 
 proc testSpecWithNimcache(r: var TResults, test: TTest; nimcache: string) {.used.} =
   for spec2 in flattentSepc(test.spec):
     var test2 = test
     test2.spec = spec2
-    if checkDisabled(r, test):
+    if isTestEnabled(r, test):
       inc(r.total)
       testSpecHelper(r, test2, spec2, spec2.targetFlat, nimcache, spec2.matrixFlat) # PRTEMP: bugfix: honors matrix
 
@@ -592,7 +577,7 @@ proc testC(r: var TResults, test: TTest, action: TTestAction) =
   for spec2 in flattentSepc(test.spec):
     var test = test
     test.spec = spec2
-    if checkDisabled(r, test):
+    if isTestEnabled(r, test):
       let tname = test.name.addFileExt(".c")
       inc(r.total)
       maybeStyledEcho "Processing ", fgCyan, extractFilename(tname)
@@ -610,7 +595,7 @@ proc testExec(r: var TResults, test: TTest) =
   for spec2 in flattentSepc(test.spec):
     var test = test
     test.spec = spec2
-    if checkDisabled(r, test):
+    if isTestEnabled(r, test):
       inc(r.total)
       let (outp, errC) = execCmdEx(test.options.strip())
       var given: TSpec
@@ -775,7 +760,7 @@ proc main() =
         cats.add cat
     if isNimRepoTests():
       cats.add AdditionalCategories
-    if useMegatest: cats.add MegaTestCats
+    if useMegatest: cats.add "megatest"
 
     var cmds: seq[string]
     for cat in cats:
