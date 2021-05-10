@@ -310,7 +310,7 @@ proc setNote*(conf: ConfigRef, note: TNoteKind, enabled = true) =
 proc hasHint*(conf: ConfigRef, note: TNoteKind): bool =
   optHints in conf.options and note in conf.notes
 
-proc hasWarn*(conf: ConfigRef, note: TNoteKind): bool =
+proc hasWarn*(conf: ConfigRef, note: TNoteKind): bool {.inline.} =
   optWarns in conf.options and note in conf.notes
 
 proc hcrOn*(conf: ConfigRef): bool = return optHotCodeReloading in conf.globalOptions
