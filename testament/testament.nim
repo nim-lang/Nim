@@ -74,6 +74,10 @@ type
     total, passed, failedButAllowed, skipped: int
       ## xxx rename passed to passedOrAllowedFailure
     data: string
+    config*: TestManager
+  TestManager* = ref object
+    flatSpecs*: seq[TSpec] # flat tests
+    useMegatest: bool
   TTest = object
     name: string
     cat: Category
@@ -82,6 +86,18 @@ type
     spec: TSpec
     startTime: float
     debugInfo: string
+
+proc initResults: TResults =
+  result.total = 0
+  result.passed = 0
+  result.failedButAllowed = 0
+  result.skipped = 0
+  result.data = ""
+
+proc initTestManager*(): TestManager =
+  # analog to ConfigRef in nim compiler: holds global data
+  result = TestManager()
+  result.useMegatest = true
 
 # ----------------------------------------------------------------------------
 proc isTestEnabled(r: var TResults, test: TTest): bool
@@ -220,13 +236,6 @@ proc callCCompiler(cmdTemplate, filename, options: string,
   close(p)
   if p.peekExitCode == 0:
     result.err = reSuccess
-
-proc initResults: TResults =
-  result.total = 0
-  result.passed = 0
-  result.failedButAllowed = 0
-  result.skipped = 0
-  result.data = ""
 
 macro ignoreStyleEcho(args: varargs[typed]): untyped =
   let typForegroundColor = bindSym"ForegroundColor".getType
@@ -666,14 +675,18 @@ proc loadSkipFrom(name: string): seq[string] =
       result.add sline
 
 proc main() =
+  let config = initTestManager()
+  var r = initResults()
+  r.config = config
+
   azure.init()
   backend.open()
+  # xxx move these inside `TestManager`
   var optPrintResults = false
   var optFailing = false
   var targetsStr = ""
   var isMainProcess = true
   var skipFrom = ""
-  var useMegatest = true
 
   var p = initOptParser()
   p.next()
@@ -713,9 +726,9 @@ proc main() =
     of "megatest":
       case p.val:
       of "on":
-        useMegatest = true
+        config.useMegatest = true
       of "off":
-        useMegatest = false
+        config.useMegatest = false
       else:
         quit Usage
     of "backendlogging":
@@ -735,7 +748,7 @@ proc main() =
     quit Usage
   var action = p.key.normalize
   p.next()
-  var r = initResults()
+
   case action
   of "all":
     #processCategory(r, Category"megatest", p.cmdLineRest, testsDir, runJoinableTests = false)
@@ -760,11 +773,11 @@ proc main() =
         cats.add cat
     if isNimRepoTests():
       cats.add AdditionalCategories
-    if useMegatest: cats.add "megatest"
+    if config.useMegatest: cats.add "megatest"
 
     var cmds: seq[string]
     for cat in cats:
-      let runtype = if useMegatest: " pcat " else: " cat "
+      let runtype = if config.useMegatest: " pcat " else: " cat "
       cmds.add(myself & runtype & quoteShell(cat) & rest)
 
     proc progressStatus(idx: int) =

@@ -98,7 +98,7 @@ proc handleCmdLine(cache: IdentCache; conf: ConfigRef) =
       of backendJs:
         # D20210217T215950:here this flag is needed for node < v15.0.0, otherwise
         # tasyncjs_fail` would fail, refs https://nodejs.org/api/cli.html#cli_unhandled_rejections_mode
-        cmdPrefix = findNodeJs() & " --unhandled-rejections=strict "
+        cmdPrefix = findNodeJs() & " --unhandled-rejections=strict " # PRTEMP
       else: doAssert false, $conf.backend
       # No space before command otherwise on windows you'd get a cryptic:
       # `The parameter is incorrect`
