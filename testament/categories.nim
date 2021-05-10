@@ -767,13 +767,19 @@ proc processCategory(r: var TResults, cat: Category,
         if isTestFile(file): files.add file
       files.sort # give reproducible order
       for i, name in files:
-        var test = makeTest(name, options, cat)
-        if runJoinableTests or not isJoinableSpec(test.spec) or cat.string in specialCategories:
-          discard "run the test"
-        else:
-          test.spec.err = reJoined
-        testSpec r, test
-        inc testsRun
+        var test = makeTest(name, options, cat) # we could factor with the code already doing this in `runJoinedTest`
+        for spec2 in flattentSepc(test.spec):
+          var test = test
+          test.spec = spec2
+          # dbg i, name, cat, options
+          if runJoinableTests or not isJoinableSpec(spec2) or cat.string in specialCategories:
+            discard "run the test"
+          else:
+            test.spec.err = reJoined
+          # dbg test, test.spec, test.spec.isFlat
+          # dbg test.name, test.spec.isFlat
+          testSpec r, test
+          inc testsRun
       if testsRun == 0:
         const whiteListedDirs = ["deps", "htmldocs", "pkgs"]
           # `pkgs` because bug #16556 creates `pkgs` dirs and this can affect some users

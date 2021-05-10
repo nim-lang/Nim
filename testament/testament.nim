@@ -18,7 +18,7 @@ import compiler/nodejs
 import lib/stdtest/testutils
 from lib/stdtest/specialpaths import splitTestFile
 from std/private/gitutils import diffStrings
-
+import timn/dbgs
 proc trimUnitSep(x: var string) =
   let L = x.len
   if L > 0 and x[^1] == '\31':
@@ -460,9 +460,10 @@ proc getTestSpecTarget(): TTarget =
     result = targetC
 
 proc checkDisabled(r: var TResults, test: TTest): bool =
+  # xxx rename to `isEnabled`
+  doAssert test.spec.isFlat
   if test.spec.err in {reDisabled, reJoined}:
-    # targetC is a lie, but parameter is required
-    r.addResult(test, targetC, "", "", test.spec.err)
+    r.addResult(test, test.spec.targetFlat, "", "", test.spec.err)
     inc(r.skipped)
     inc(r.total)
     result = false
@@ -565,51 +566,62 @@ proc testSpec(r: var TResults, test: TTest, targets: set[TTarget] = {}) =
     r.addResult(test, targetC, "", expected.parseErrors, reInvalidSpec)
     inc(r.total)
     return
-  if not checkDisabled(r, test): return # PRTEMP in flattentSepc block?
   expected.targets.incl targets
   if expected.targets == {}:
     expected.targets = {getTestSpecTarget()}
-  for spec2 in flattentSepc(expected):
-    targetHelper(r, test, spec2)
+  if expected.isFlat:
+    if checkDisabled(r, test):
+      targetHelper(r, test, expected)
+  else:
+    for spec2 in flattentSepc(expected):
+      var test2 = test
+      test2.spec = spec2
+      if checkDisabled(r, test2):
+        targetHelper(r, test, spec2)
 
 proc testSpecWithNimcache(r: var TResults, test: TTest; nimcache: string) {.used.} =
-  if not checkDisabled(r, test): return # PRTEMP
   for spec2 in flattentSepc(test.spec):
-    inc(r.total)
-    var testClone = test
-    testSpecHelper(r, testClone, test.spec, spec2.targetFlat, nimcache, spec2.matrixFlat) # PRTEMP: bugfix: honors matrix
+    var test2 = test
+    test2.spec = spec2
+    if checkDisabled(r, test):
+      inc(r.total)
+      testSpecHelper(r, test2, spec2, spec2.targetFlat, nimcache, spec2.matrixFlat) # PRTEMP: bugfix: honors matrix
 
 proc testC(r: var TResults, test: TTest, action: TTestAction) =
   # runs C code. Doesn't support any specs, just goes by exit code.
-  if not checkDisabled(r, test): return
-
-  let tname = test.name.addFileExt(".c")
-  inc(r.total)
-  maybeStyledEcho "Processing ", fgCyan, extractFilename(tname)
-  var given = callCCompiler(getCmd(TSpec()), test.name & ".c", test.options, targetC)
-  if given.err != reSuccess:
-    r.addResult(test, targetC, "", given.msg, given.err)
-  elif action == actionRun:
-    let exeFile = changeFileExt(test.name, ExeExt)
-    var (_, exitCode) = execCmdEx(exeFile, options = {poStdErrToStdOut, poUsePath})
-    if exitCode != 0: given.err = reExitcodesDiffer
-  if given.err == reSuccess: inc(r.passed)
+  for spec2 in flattentSepc(test.spec):
+    var test = test
+    test.spec = spec2
+    if checkDisabled(r, test):
+      let tname = test.name.addFileExt(".c")
+      inc(r.total)
+      maybeStyledEcho "Processing ", fgCyan, extractFilename(tname)
+      var given = callCCompiler(getCmd(TSpec()), test.name & ".c", test.options, targetC)
+      if given.err != reSuccess:
+        r.addResult(test, targetC, "", given.msg, given.err)
+      elif action == actionRun:
+        let exeFile = changeFileExt(test.name, ExeExt)
+        var (_, exitCode) = execCmdEx(exeFile, options = {poStdErrToStdOut, poUsePath})
+        if exitCode != 0: given.err = reExitcodesDiffer
+      if given.err == reSuccess: inc(r.passed)
 
 proc testExec(r: var TResults, test: TTest) =
   # runs executable or script, just goes by exit code
-  if not checkDisabled(r, test): return
+  for spec2 in flattentSepc(test.spec):
+    var test = test
+    test.spec = spec2
+    if checkDisabled(r, test):
+      inc(r.total)
+      let (outp, errC) = execCmdEx(test.options.strip())
+      var given: TSpec
+      if errC == 0:
+        given.err = reSuccess
+      else:
+        given.err = reExitcodesDiffer
+        given.msg = outp
 
-  inc(r.total)
-  let (outp, errC) = execCmdEx(test.options.strip())
-  var given: TSpec
-  if errC == 0:
-    given.err = reSuccess
-  else:
-    given.err = reExitcodesDiffer
-    given.msg = outp
-
-  if given.err == reSuccess: inc(r.passed)
-  r.addResult(test, targetC, "", given.msg, given.err)
+      if given.err == reSuccess: inc(r.passed)
+      r.addResult(test, targetC, "", given.msg, given.err)
 
 proc makeTest(test, options: string, cat: Category): TTest =
   result.cat = cat
