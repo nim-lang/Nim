@@ -15,7 +15,6 @@
 import important_packages
 import std/strformat
 from std/sequtils import filterIt
-import timn/dbgs
 
 const
   specialCategories = [
@@ -548,7 +547,7 @@ proc icTests(r: var TResults; testsDir: string, cat: Category, options: string;
 # ----------------------------------------------------------------------------
 
 const AdditionalCategories = ["debugger", "examples", "lib", "ic", "navigator"]
-const MegaTestCat = "megatest"
+const MegaTestCats = ["megatest_c", "megatest_js"]
 
 proc `&.?`(a, b: string): string =
   # candidate for the stdlib?
@@ -754,7 +753,7 @@ proc processCategory(r: var TResults, cat: Category,
       handled = false
   if not handled:
     case cat2
-    of "megatest":
+    of "megatestc", "megatest":
       runJoinedTest(r, cat, testsDir, options, targetC)
     of "megatestjs":
       runJoinedTest(r, cat, testsDir, options, targetJS)
