@@ -83,13 +83,11 @@ test.txt
 tweeter.db
 tweeter_test.db
 
-/tests/megatest.nim
+/tests/megatest_*.nim
 /tests/ic/*_temp.nim
 /tests/navigator/*_temp.nim
 
 
-/outputExpected.txt
-/outputGotten.txt
 /t15148.txt
 /tests/vm/tfile_rw.txt
 

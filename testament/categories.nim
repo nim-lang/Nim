@@ -622,7 +622,6 @@ proc runJoinedTest(r: var TResults, cat: Category, testsDir: string, options: st
             continue
           for spec2 in flattentSepc(spec):
             if isJoinableSpec(spec2, target, ""):
-              echo file
               specs.add spec2
 
   proc cmp(a: TSpec, b: TSpec): auto = cmp(a.file, b.file)
@@ -635,21 +634,25 @@ proc runJoinedTest(r: var TResults, cat: Category, testsDir: string, options: st
     echo s
     return
 
+  let megatestName = "megatest_" & $target
+  let buildDir = if isNimRepoTests(): "build" else: "." # FACTOR
+  let megatestFile = testsDir / (megatestName & ".nim") # so it uses testsDir / "config.nims"
+  let outputExceptedFile = buildDir / megatestName & "_expected.txt"
+  let outputGottenFile = buildDir / megatestName & "_gotten.txt"
+
   var megatest: string
-  # xxx (minor) put outputExceptedFile, outputGottenFile, megatestFile under here or `buildDir`
-  var outDir = nimcacheDir(testsDir / "megatest", "", target)
+  var outDir = nimcacheDir(testsDir / megatestName, "", target)
   template toMarker(file, i): string =
     "megatest:processing: [$1] $2" % [$i, file]
   for i, runSpec in specs:
     let file = runSpec.file
-    let file2 = outDir / ("megatest_a_$1.nim" % $i)
+    let file2 = outDir / ("$1_a_$2.nim" % [megatestName, $i])
     # `include` didn't work with `trecmod2.nim`, so using `import`
     let code = "echo $1\nstatic: echo \"CT:\", $1\n" % [toMarker(file, i).quoted]
     createDir(file2.parentDir)
     writeFile(file2, code)
     megatest.add "import $1\nimport $2 as megatest_b_$3\n" % [file2.quoted, file.quoted, $i]
 
-  let megatestFile = testsDir / "megatest.nim" # so it uses testsDir / "config.nims"
   writeFile(megatestFile, megatest)
 
   let root = getCurrentDir()
@@ -662,24 +665,20 @@ proc runJoinedTest(r: var TResults, cat: Category, testsDir: string, options: st
   var (cmdLine, buf, exitCode) = execCmdEx2(command = compilerPrefix, args = args, input = "")
   if exitCode != 0:
     echo "$ " & cmdLine & "\n" & buf
-    quit(failString & "megatest compilation failed")
+    quit(failString & "$1 compilation failed" % megatestName)
 
   case target
   of targetC:
     (buf, exitCode) = execCmdEx(megatestFile.changeFileExt(ExeExt).dup normalizeExe)
   of targetJs:
-    # PRTEMP FACTOR
     let output = megatestFile.changeFileExt("js")
     let cmd2 = "$1 --unhandled-rejections=strict $2" % [findNodeJs(), output.quoteShell]
-    # dbg cmd2
     (buf, exitCode) = execCmdEx(cmd2)
   else: doAssert false
   if exitCode != 0:
     echo buf
-    quit(failString & "megatest execution failed")
+    quit(failString & "$1 execution failed" % megatestName)
 
-  const outputExceptedFile = "outputExpected.txt"
-  const outputGottenFile = "outputGotten.txt"
   writeFile(outputGottenFile, buf)
   var outputExpected = ""
   for i, runSpec in specs:
@@ -692,11 +691,10 @@ proc runJoinedTest(r: var TResults, cat: Category, testsDir: string, options: st
   if buf != outputExpected:
     writeFile(outputExceptedFile, outputExpected)
     echo diffFiles(outputGottenFile, outputExceptedFile).output
-    echo failString & "megatest output different, see $1 vs $2" % [outputGottenFile, outputExceptedFile]
-    # outputGottenFile, outputExceptedFile not removed on purpose for debugging.
+    echo failString & "$# output different, see $# vs $#" % [megatestName, outputGottenFile, outputExceptedFile]
     quit 1
   else:
-    echo "megatest output OK"
+    echo "$1 output OK" % megatestName
 
 
 # ---------------------------------------------------------------------------
