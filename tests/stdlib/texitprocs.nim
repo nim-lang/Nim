@@ -6,6 +6,7 @@ ok3
 ok2
 ok1
 '''
+joinable: false
 """
 
 import std/exitprocs

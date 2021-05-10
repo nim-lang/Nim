@@ -15,6 +15,7 @@
 import important_packages
 import std/strformat
 from std/sequtils import filterIt
+import timn/dbgs
 
 const
   specialCategories = [
@@ -43,6 +44,10 @@ const
     "dir with space",
     "destructor"
   ]
+
+type MegatestMode = enum
+  megatestC
+  megatestJs
 
 proc isTestFile*(file: string): bool =
   let (_, name, ext) = splitFile(file)
@@ -561,9 +566,18 @@ proc processSingleTest(r: var TResults, cat: Category, options, test: string, ta
   doAssert fileExists(test), test & " test does not exist"
   testSpec r, makeTest(test, options, cat), targets
 
-proc isJoinableSpec(spec: TSpec): bool =
+proc isJoinableSpec(spec: TSpec, mode: MegatestMode): bool =
   # xxx simplify implementation using a whitelist of fields that are allowed to be
   # set to non-default values (use `fieldPairs`), to avoid issues like bug #16576.
+  template isCompatibleTarget(targets): bool =
+    # PRTEMP: make sure a test is partially joinable if it has, say, targets: "c cpp js"
+    case mode
+    of megatestC:
+      targets == {} or targets == {targetC}
+    of megatestJs:
+      # targets == {targetJs}
+      targetJs in targets
+
   result = not spec.sortoutput and
     spec.action == actionRun and
     not fileExists(spec.file.changeFileExt("cfg")) and
@@ -582,16 +596,21 @@ proc isJoinableSpec(spec: TSpec): bool =
     spec.matrix.len == 0 and
     spec.outputCheck != ocSubstr and
     spec.ccodeCheck.len == 0 and
-    (spec.targets == {} or spec.targets == {targetC})
+    isCompatibleTarget(spec.targets)
   if result:
     if spec.file.readFile.contains "when isMainModule":
       result = false
+
+proc isJoinableSpec(spec: TSpec): bool =
+  for a in MegatestMode:
+    if isJoinableSpec(spec, a): return true
+  result = false
 
 proc quoted(a: string): string =
   # todo: consider moving to system.nim
   result.addQuoted(a)
 
-proc runJoinedTest(r: var TResults, cat: Category, testsDir: string, options: string) =
+proc runJoinedTest(r: var TResults, cat: Category, testsDir: string, options: string, mode: MegatestMode) =
   ## returns a list of tests that have problems
   #[
   xxx create a reusable megatest API after abstracting out testament specific code,
@@ -613,7 +632,7 @@ proc runJoinedTest(r: var TResults, cat: Category, testsDir: string, options: st
             # specs; this will be handled elsewhere
             echo "parseSpec failed for: '$1', assuming this will be handled outside of megatest" % file
             continue
-          if isJoinableSpec(spec):
+          if isJoinableSpec(spec, mode):
             specs.add spec
 
   proc cmp(a: TSpec, b: TSpec): auto = cmp(a.file, b.file)
@@ -621,7 +640,7 @@ proc runJoinedTest(r: var TResults, cat: Category, testsDir: string, options: st
   echo "joinable specs: ", specs.len
 
   if simulate:
-    var s = "runJoinedTest: "
+    var s = "runJoinedTest: $1" % $mode 
     for a in specs: s.add a.file & " "
     echo s
     return
@@ -644,9 +663,17 @@ proc runJoinedTest(r: var TResults, cat: Category, testsDir: string, options: st
   writeFile(megatestFile, megatest)
 
   let root = getCurrentDir()
-
-  var args = @["c", "--nimCache:" & outDir, "-d:testing", "-d:nimMegatest", "--listCmd",
-              "--path:" & root]
+  var
+    optionsExtra = ""
+    backend = ""
+  case mode
+  of megatestC:
+    backend = "c"
+  of megatestJs:
+    backend = "js"
+    optionsExtra = "-d:nodejs"
+  var args = @[backend, "--nimCache:" & outDir, "-d:testing", "-d:nimMegatest", "--listCmd",
+              "--path:" & root] & optionsExtra.split
   args.add options.parseCmdLine
   args.add megatestFile
   var (cmdLine, buf, exitCode) = execCmdEx2(command = compilerPrefix, args = args, input = "")
@@ -654,7 +681,15 @@ proc runJoinedTest(r: var TResults, cat: Category, testsDir: string, options: st
     echo "$ " & cmdLine & "\n" & buf
     quit(failString & "megatest compilation failed")
 
-  (buf, exitCode) = execCmdEx(megatestFile.changeFileExt(ExeExt).dup normalizeExe)
+  case mode
+  of megatestC:
+    (buf, exitCode) = execCmdEx(megatestFile.changeFileExt(ExeExt).dup normalizeExe)
+  of megatestJs:
+    # PRTEMP FACTOR
+    let output = megatestFile.changeFileExt("js")
+    let cmd2 = "$1 --unhandled-rejections=strict $2" % [findNodeJs(), output.quoteShell]
+    # dbg cmd2
+    (buf, exitCode) = execCmdEx(cmd2)
   if exitCode != 0:
     echo buf
     quit(failString & "megatest execution failed")
@@ -681,7 +716,6 @@ proc runJoinedTest(r: var TResults, cat: Category, testsDir: string, options: st
 
 
 # ---------------------------------------------------------------------------
-
 proc processCategory(r: var TResults, cat: Category,
                      options, testsDir: string,
                      runJoinableTests: bool) =
@@ -739,7 +773,9 @@ proc processCategory(r: var TResults, cat: Category,
   if not handled:
     case cat2
     of "megatest":
-      runJoinedTest(r, cat, testsDir, options)
+      runJoinedTest(r, cat, testsDir, options, megatestC)
+    of "megatestjs":
+      runJoinedTest(r, cat, testsDir, options, megatestJs)
     else:
       var testsRun = 0
       var files: seq[string]
