@@ -85,8 +85,15 @@ type
     maxCodeSize*: int
     err*: TResultEnum
     inCurrentBatch*: bool
+
     targets*: set[TTarget]
     matrix*: seq[string]
+
+    # xxx use case object
+    isFlat*: bool # flattened TSpec (1 TSpec with N targets and M matrix gives N*M flattened TSpec)
+    targetFlat*: TTarget
+    matrixFlat*: string
+
     nimout*: string
     nimoutFull*: bool # whether nimout is all compiler output or a subset
     parseErrors*: string            # when the spec definition is invalid, this is not empty.
@@ -99,6 +106,20 @@ type
     timeout*: float # in seconds, fractions possible,
                       # but don't rely on much precision
     inlineErrors*: seq[InlineError] # line information to error message
+
+iterator flattentSepc*(a: TSpec): TSpec =
+  doAssert not a.isFlat
+  let matrix = if a.matrix.len == 0: @[""] else: a.matrix
+  var targets = a.targets
+  if targets == {}: targets = {targetC} # PRTEMP getTestSpecTarget() ?
+    # TODO: move this logic to parseSpec?
+  for t in targets:
+    for m in matrix:
+      var a2 = a
+      a2.isFlat = true
+      a2.targetFlat = t
+      a2.matrixFlat = m
+      yield a2
 
 proc getCmd*(s: TSpec): string =
   if s.cmd.len == 0:

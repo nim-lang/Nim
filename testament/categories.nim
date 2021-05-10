@@ -45,10 +45,6 @@ const
     "destructor"
   ]
 
-type MegatestMode = enum
-  megatestC
-  megatestJs
-
 proc isTestFile*(file: string): bool =
   let (_, name, ext) = splitFile(file)
   result = ext == ".nim" and name.startsWith("t")
@@ -566,20 +562,10 @@ proc processSingleTest(r: var TResults, cat: Category, options, test: string, ta
   doAssert fileExists(test), test & " test does not exist"
   testSpec r, makeTest(test, options, cat), targets
 
-proc isJoinableSpec(spec: TSpec, mode: MegatestMode): bool =
+proc isJoinableSpec(spec: TSpec, target: TTarget, matrixFlat: string): bool =
   # xxx simplify implementation using a whitelist of fields that are allowed to be
   # set to non-default values (use `fieldPairs`), to avoid issues like bug #16576.
-  template isCompatibleTarget(targets): bool =
-    # PRTEMP: make sure a test with `targets: c js cpp` will not be run more than needed
-    # PRTEMP: tests/js
-    case mode
-    of megatestC:
-      # targets == {} or targets == {targetC}
-      targets == {} or targetC in targets
-    of megatestJs:
-      # targets == {targetJs}
-      targetJs in targets
-
+  doAssert spec.isFlat
   result = not spec.sortoutput and
     spec.action == actionRun and
     not fileExists(spec.file.changeFileExt("cfg")) and
@@ -595,24 +581,24 @@ proc isJoinableSpec(spec: TSpec, mode: MegatestMode): bool =
     spec.nimoutFull == false and
       # so that tests can have `nimoutFull: true` with `nimout.len == 0` with
       # the meaning that they expect empty output.
-    spec.matrix.len == 0 and
+    spec.matrixFlat == matrixFlat and
     spec.outputCheck != ocSubstr and
     spec.ccodeCheck.len == 0 and
-    isCompatibleTarget(spec.targets)
+    spec.targetFlat == target
   if result:
     if spec.file.readFile.contains "when isMainModule":
       result = false
 
 proc isJoinableSpec(spec: TSpec): bool =
-  for a in MegatestMode:
-    if isJoinableSpec(spec, a): return true
+  for a in {targetC, targetJs}:
+    if isJoinableSpec(spec, a, ""): return true
   result = false
 
 proc quoted(a: string): string =
   # todo: consider moving to system.nim
   result.addQuoted(a)
 
-proc runJoinedTest(r: var TResults, cat: Category, testsDir: string, options: string, mode: MegatestMode) =
+proc runJoinedTest(r: var TResults, cat: Category, testsDir: string, options: string, target: TTarget) =
   ## returns a list of tests that have problems
   #[
   xxx create a reusable megatest API after abstracting out testament specific code,
@@ -634,22 +620,24 @@ proc runJoinedTest(r: var TResults, cat: Category, testsDir: string, options: st
             # specs; this will be handled elsewhere
             echo "parseSpec failed for: '$1', assuming this will be handled outside of megatest" % file
             continue
-          if isJoinableSpec(spec, mode):
-            specs.add spec
+          for spec2 in flattentSepc(spec):
+            if isJoinableSpec(spec2, target, ""):
+              echo file
+              specs.add spec2
 
   proc cmp(a: TSpec, b: TSpec): auto = cmp(a.file, b.file)
   sort(specs, cmp = cmp) # reproducible order
   echo "joinable specs: ", specs.len
 
   if simulate:
-    var s = "runJoinedTest: $1" % $mode 
+    var s = "runJoinedTest: $1" % $target 
     for a in specs: s.add a.file & " "
     echo s
     return
 
   var megatest: string
   # xxx (minor) put outputExceptedFile, outputGottenFile, megatestFile under here or `buildDir`
-  var outDir = nimcacheDir(testsDir / "megatest", "", targetC)
+  var outDir = nimcacheDir(testsDir / "megatest", "", target)
   template toMarker(file, i): string =
     "megatest:processing: [$1] $2" % [$i, file]
   for i, runSpec in specs:
@@ -665,17 +653,10 @@ proc runJoinedTest(r: var TResults, cat: Category, testsDir: string, options: st
   writeFile(megatestFile, megatest)
 
   let root = getCurrentDir()
-  var
-    optionsExtra = ""
-    backend = ""
-  case mode
-  of megatestC:
-    backend = "c"
-  of megatestJs:
-    backend = "js"
-    optionsExtra = "-d:nodejs"
-  var args = @[backend, "--nimCache:" & outDir, "-d:testing", "-d:nimMegatest", "--listCmd",
-              "--path:" & root]
+  var optionsExtra = ""
+  if target == targetJs:
+    optionsExtra = "-d:nodejs" # PRTEMP FACTOR
+  var args = @[$target, "--nimCache:" & outDir, "-d:testing", "-d:nimMegatest", "--listCmd", "--path:" & root]
   if optionsExtra.len > 0: args.add optionsExtra.split # PRTEMP D20210509T235553
 
   args.add options.parseCmdLine
@@ -685,15 +666,16 @@ proc runJoinedTest(r: var TResults, cat: Category, testsDir: string, options: st
     echo "$ " & cmdLine & "\n" & buf
     quit(failString & "megatest compilation failed")
 
-  case mode
-  of megatestC:
+  case target
+  of targetC:
     (buf, exitCode) = execCmdEx(megatestFile.changeFileExt(ExeExt).dup normalizeExe)
-  of megatestJs:
+  of targetJs:
     # PRTEMP FACTOR
     let output = megatestFile.changeFileExt("js")
     let cmd2 = "$1 --unhandled-rejections=strict $2" % [findNodeJs(), output.quoteShell]
     # dbg cmd2
     (buf, exitCode) = execCmdEx(cmd2)
+  else: doAssert false
   if exitCode != 0:
     echo buf
     quit(failString & "megatest execution failed")
@@ -777,9 +759,9 @@ proc processCategory(r: var TResults, cat: Category,
   if not handled:
     case cat2
     of "megatest":
-      runJoinedTest(r, cat, testsDir, options, megatestC)
+      runJoinedTest(r, cat, testsDir, options, targetC)
     of "megatestjs":
-      runJoinedTest(r, cat, testsDir, options, megatestJs)
+      runJoinedTest(r, cat, testsDir, options, targetJS)
     else:
       var testsRun = 0
       var files: seq[string]
