@@ -769,13 +769,10 @@ proc processCategory(r: var TResults, cat: Category,
         for spec2 in flattentSepc(test.spec):
           var test = test
           test.spec = spec2
-          # dbg i, name, cat, options
           if runJoinableTests or not isJoinableSpec(spec2) or cat.string in specialCategories:
             discard "run the test"
           else:
             test.spec.err = reJoined
-          # dbg test, test.spec, test.spec.isFlat
-          # dbg test.name, test.spec.isFlat
           testSpec r, test
           inc testsRun
       if testsRun == 0:
