@@ -15,7 +15,7 @@
 import important_packages
 import std/strformat
 from std/sequtils import filterIt
-# import timn/dbgs
+import timn/dbgs
 const
   specialCategories = [
     "assert",
@@ -513,6 +513,7 @@ proc icTests(r: var TResults; testsDir: string, cat: Category, options: string;
     navTestConfig = " --ic:on -d:nimIcNavigatorTests --hint[Conf]:off --warnings:off "
 
   template test(x: untyped) =
+    dbg x
     testSpecWithNimcache(r, makeRawTest(file, x & options, cat), nimcache)
 
   template editedTest(x: untyped) =
@@ -605,13 +606,13 @@ proc isJoinableSpec(spec: TSpec): bool =
 proc isTestEnabled(r: var TResults, test: TTest): bool =
   doAssert test.spec.isFlat
   var test = test
+  if isNimRepoTests() and test.cat.string in specialCategories:
+    test.spec.unjoinable = true
   result = true
   if test.spec.err in {reDisabled}: result = false
-  else:
-    # dbg test.name, isJoinableSpec(test.spec), test.spec.unjoinable, test.spec
-    if isJoinableSpec(test.spec):
-      test.spec.err = reJoined
-      result = false
+  elif isJoinableSpec(test.spec):
+    test.spec.err = reJoined
+    result = false
   if not result:
     r.addResult(test, test.spec.targetFlat, "", "", test.spec.err)
     inc(r.skipped)
@@ -784,7 +785,7 @@ proc processCategory(r: var TResults, cat: Category,
       files.sort # give reproducible order
       for i, name in files:
         var test = makeTest(name, options, cat) # we could factor with the code already doing this in `runJoinedTest`
-        if cat.string in specialCategories or runJoinableTests:
+        if runJoinableTests:
           test.spec.unjoinable = true
         for spec2 in flattentSepc(test.spec):
           var test = test

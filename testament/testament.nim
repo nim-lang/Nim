@@ -18,7 +18,7 @@ import compiler/nodejs
 import lib/stdtest/testutils
 from lib/stdtest/specialpaths import splitTestFile
 from std/private/gitutils import diffStrings
-# import timn/dbgs
+import timn/dbgs
 proc trimUnitSep(x: var string) =
   let L = x.len
   if L > 0 and x[^1] == '\31':
@@ -566,11 +566,11 @@ proc testSpec(r: var TResults, test: TTest, targets: set[TTarget] = {}) =
 
 proc testSpecWithNimcache(r: var TResults, test: TTest; nimcache: string) {.used.} =
   for spec2 in flattentSepc(test.spec):
-    var test2 = test
-    test2.spec = spec2
+    var test = test
+    test.spec = spec2
     if isTestEnabled(r, test):
       inc(r.total)
-      testSpecHelper(r, test2, spec2, spec2.targetFlat, nimcache, spec2.matrixFlat) # PRTEMP: bugfix: honors matrix
+      testSpecHelper(r, test, spec2, spec2.targetFlat, nimcache, spec2.matrixFlat) # PRTEMP: bugfix: honors matrix
 
 proc testC(r: var TResults, test: TTest, action: TTestAction) =
   # runs C code. Doesn't support any specs, just goes by exit code.
