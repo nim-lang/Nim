@@ -263,7 +263,7 @@ proc addResult(r: var TResults, test: TTest, target: TTarget,
   # test.name is easier to find than test.name.extractFilename
   # A bit hacky but simple and works with tests/testament/tshould_not_work.nim
   var name = test.name.replace(DirSep, '/')
-  doAssert test.spec.isFlat
+  doAssert test.spec.isFlat or (test.spec.matrix.len == 0 and test.spec.targets.len == 0)
   name.add ' ' & $target & " " & test.spec.matrixFlat
   if allowFailure:
     name.add " (allowed to fail) "
