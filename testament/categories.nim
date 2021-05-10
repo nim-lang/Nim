@@ -653,9 +653,7 @@ proc runJoinedTest(r: var TResults, cat: Category, testsDir: string, options: st
   writeFile(megatestFile, megatest)
 
   let root = getCurrentDir()
-  var optionsExtra = ""
-  if target == targetJs:
-    optionsExtra = "-d:nodejs" # PRTEMP FACTOR
+  let optionsExtra = defaultOptions(target)
   var args = @[$target, "--nimCache:" & outDir, "-d:testing", "-d:nimMegatest", "--listCmd", "--path:" & root]
   if optionsExtra.len > 0: args.add optionsExtra.split # PRTEMP D20210509T235553
 

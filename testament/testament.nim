@@ -543,19 +543,20 @@ proc testSpecHelper(r: var TResults, test: var TTest, expected: TSpec,
     let given = callNimCompilerImpl()
     cmpMsgs(r, expected, given, test, target)
 
-proc targetHelper(r: var TResults, test: TTest, expected: TSpec, extraOptions = "") =
-  for target in expected.targets:
-    inc(r.total)
-    if target notin gTargets:
-      r.addResult(test, target, "", "", reDisabled)
-      inc(r.skipped)
-    elif simulate:
-      inc count
-      echo "testSpec count: ", count, " expected: ", expected
-    else:
-      let nimcache = nimcacheDir(test.name, test.options, target)
-      var testClone = test
-      testSpecHelper(r, testClone, expected, target, nimcache, extraOptions)
+proc targetHelper(r: var TResults, test: TTest, expected: TSpec) =
+  doAssert expected.isFlat
+  let target = expected.targetFlat
+  inc(r.total)
+  if target notin gTargets: # PRTEMP?
+    r.addResult(test, target, "", "", reDisabled)
+    inc(r.skipped)
+  elif simulate:
+    inc count
+    echo "testSpec count: ", count, " expected: ", expected
+  else:
+    let nimcache = nimcacheDir(test.name, test.options, target)
+    var testClone = test
+    testSpecHelper(r, testClone, expected, target, nimcache, expected.matrixFlat)
 
 proc testSpec(r: var TResults, test: TTest, targets: set[TTarget] = {}) =
   var expected = test.spec
@@ -564,24 +565,19 @@ proc testSpec(r: var TResults, test: TTest, targets: set[TTarget] = {}) =
     r.addResult(test, targetC, "", expected.parseErrors, reInvalidSpec)
     inc(r.total)
     return
-  if not checkDisabled(r, test): return
-
+  if not checkDisabled(r, test): return # PRTEMP in flattentSepc block?
   expected.targets.incl targets
-  # still no target specified at all
   if expected.targets == {}:
     expected.targets = {getTestSpecTarget()}
-  if test.spec.matrix.len > 0:
-    for m in test.spec.matrix:
-      targetHelper(r, test, expected, m)
-  else:
-    targetHelper(r, test, expected)
+  for spec2 in flattentSepc(expected):
+    targetHelper(r, test, spec2)
 
 proc testSpecWithNimcache(r: var TResults, test: TTest; nimcache: string) {.used.} =
-  if not checkDisabled(r, test): return
-  for target in test.spec.targets:
+  if not checkDisabled(r, test): return # PRTEMP
+  for spec2 in flattentSepc(test.spec):
     inc(r.total)
     var testClone = test
-    testSpecHelper(r, testClone, test.spec, target, nimcache)
+    testSpecHelper(r, testClone, test.spec, spec2.targetFlat, nimcache, spec2.matrixFlat) # PRTEMP: bugfix: honors matrix
 
 proc testC(r: var TResults, test: TTest, action: TTestAction) =
   # runs C code. Doesn't support any specs, just goes by exit code.
