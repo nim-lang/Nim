@@ -362,9 +362,9 @@ proc read*[T](future: Future[T] | FutureVar[T]): T =
   ##
   ## If the result of the future is an error then that error will be raised.
   when future is Future[T]:
-    let fut = future
+    let fut {.cursor.} = future
   else:
-    let fut = Future[T](future)
+    let fut {.cursor.} = Future[T](future)
   if fut.finished:
     if fut.error != nil:
       injectStacktrace(fut)

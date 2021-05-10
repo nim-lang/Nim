@@ -8,7 +8,7 @@ doing shady stuff...
 192.168.0.1
 192.168.0.1
 192.168.0.1'''
-  cmd: '''nim c --gc:arc --expandArc:newTarget --expandArc:delete --expandArc:p1 --expandArc:tt --hint:Performance:off --assertions:off --expandArc:extractConfig $file'''
+  cmd: '''nim c --gc:arc --expandArc:newTarget --expandArc:delete --expandArc:p1 --expandArc:tt --hint:Performance:off --assertions:off --expandArc:extractConfig --expandArc:mergeShadowScope $file'''
   nimout: '''--expandArc: newTarget
 
 var
@@ -108,6 +108,25 @@ try:
           `=destroy`(splitted)
 finally:
   `=destroy_1`(lan_ip)
+--expandArc: mergeShadowScope
+
+var shadowScope
+`=copy`(shadowScope, c.currentScope)
+rawCloseScope(c)
+block :tmp:
+  var sym
+  var i = 0
+  let L = len(shadowScope.symbols)
+  block :tmp_1:
+    while i < L:
+      var :tmpD
+      sym = shadowScope.symbols[i]
+      addInterfaceDecl(c):
+        wasMoved(:tmpD)
+        `=copy_1`(:tmpD, sym)
+        :tmpD
+      inc(i, 1)
+`=destroy`(shadowScope)
 -- end of expandArc ------------------------'''
 """
 
@@ -277,3 +296,29 @@ proc extractConfig() =
     echo splitted[1] # Without this line everything works
 
 extractConfig()
+
+
+type
+  Symbol = ref object
+    name: string
+
+  Scope = ref object
+    parent: Scope
+    symbols: seq[Symbol]
+
+  PContext = ref object
+    currentScope: Scope
+
+proc rawCloseScope(c: PContext) =
+  c.currentScope = c.currentScope.parent
+
+proc addInterfaceDecl(c: PContext; s: Symbol) =
+  c.currentScope.symbols.add s
+
+proc mergeShadowScope*(c: PContext) =
+  let shadowScope = c.currentScope
+  c.rawCloseScope
+  for sym in shadowScope.symbols:
+    c.addInterfaceDecl(sym)
+
+mergeShadowScope(PContext(currentScope: Scope(parent: Scope())))

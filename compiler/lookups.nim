@@ -12,7 +12,7 @@
 import
   intsets, ast, astalgo, idents, semdata, types, msgs, options,
   renderer, nimfix/prettybase, lineinfos, strutils,
-  modulegraphs
+  modulegraphs, astmsgs
 
 proc ensureNoMissingOrUnusedSymbols(c: PContext; scope: PScope)
 

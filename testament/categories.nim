@@ -600,12 +600,19 @@ proc runJoinedTest(r: var TResults, cat: Category, testsDir: string, options: st
   ]#
   var specs: seq[TSpec] = @[]
   for kind, dir in walkDir(testsDir):
-    assert testsDir.startsWith(testsDir)
+    assert dir.startsWith(testsDir)
     let cat = dir[testsDir.len .. ^1]
     if kind == pcDir and cat notin specialCategories:
       for file in walkDirRec(testsDir / cat):
         if isTestFile(file):
-          let spec = parseSpec(file)
+          var spec: TSpec
+          try:
+            spec = parseSpec(file)
+          except ValueError:
+            # e.g. for `tests/navigator/tincludefile.nim` which have multiple
+            # specs; this will be handled elsewhere
+            echo "parseSpec failed for: '$1', assuming this will be handled outside of megatest" % file
+            continue
           if isJoinableSpec(spec):
             specs.add spec
 

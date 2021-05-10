@@ -28,11 +28,6 @@ type
 
 {.push stackTrace: off.}
 
-
-proc `$`*(lock: Lock): string =
-  # workaround bug #14873
-  result = "()"
-
 proc initLock*(lock: var Lock) {.inline.} =
   ## Initializes the given lock.
   when not defined(js):

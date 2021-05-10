@@ -193,28 +193,28 @@ proc setActive*(t: PTextEntry) =
   if not t.isNil and not t.inputClient.isNil:
     input_helpers.setActive(t.inputClient)
 
+when false:
+  proc newMessageArea*(container: PGuiContainer; position: TVector2f): PMessageArea =
+    new(result)
+    result.messages = @[]
+    result.pos = position
+    container.add(result)
+  proc add*(m: PMessageArea, text: string): PText =
+    result = messageProto.copy()
+    result.setString(text)
+    m.messages.add(result)
+    let nmsgs = len(m.messages)
+    var pos   = vec2f(m.pos.x, m.pos.y)
+    for i in countdown(nmsgs - 1, max(nmsgs - 30, 0)):
+      setPosition(m.messages[i], pos)
+      pos.y -= 16.0
 
-discard """proc newMessageArea*(container: PGuiContainer; position: TVector2f): PMessageArea =
-  new(result)
-  result.messages = @[]
-  result.pos = position
-  container.add(result)
-proc add*(m: PMessageArea, text: string): PText =
-  result = messageProto.copy()
-  result.setString(text)
-  m.messages.add(result)
-  let nmsgs = len(m.messages)
-  var pos   = vec2f(m.pos.x, m.pos.y)
-  for i in countdown(nmsgs - 1, max(nmsgs - 30, 0)):
-    setPosition(m.messages[i], pos)
-    pos.y -= 16.0
+  proc draw*(window: PRenderWindow; m: PMessageArea) =
+    let nmsgs = len(m.messages)
+    if nmsgs == 0: return
+    for i in countdown(nmsgs - 1, max(nmsgs - 30, 0)):
+      window.draw(m.messages[i])
 
-proc draw*(window: PRenderWindow; m: PMessageArea) =
-  let nmsgs = len(m.messages)
-  if nmsgs == 0: return
-  for i in countdown(nmsgs - 1, max(nmsgs - 30, 0)):
-    window.draw(m.messages[i])
-"""
 proc newMessageArea*(container: PGuiContainer; position: TVector2f): PMessageArea =
   new(result)
   result.messages = @[]

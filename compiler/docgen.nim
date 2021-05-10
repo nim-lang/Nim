@@ -206,7 +206,7 @@ proc newDocumentor*(filename: AbsoluteFile; cache: IdentCache; conf: ConfigRef, 
     proc (gen: var RstGenerator; filename, cmd: string; status: int; content: string) =
       if conf.docCmd == docCmdSkip: return
       inc(gen.id)
-      var d = TDocumentor(gen)
+      var d = (ptr TDocumentor)(addr gen)
       var outp: AbsoluteFile
       if filename.len == 0:
         let nameOnly = splitFile(d.filename).name
