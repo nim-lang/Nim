@@ -2,6 +2,7 @@
 discard """
   targets: "c cpp"
   output: ""
+  joinable: false # xxx otherwise D20210510T164627 SIGSEGV on windows in `alloc.nim(376)           isSmallChunk`
 """
 
 ## Bugs 9698 and 9699
