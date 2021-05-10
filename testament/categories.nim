@@ -15,7 +15,7 @@
 import important_packages
 import std/strformat
 from std/sequtils import filterIt
-import timn/dbgs
+# import timn/dbgs
 const
   specialCategories = [
     "assert",

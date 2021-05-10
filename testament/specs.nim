@@ -114,7 +114,7 @@ type
                       # but don't rely on much precision
     inlineErrors*: seq[InlineError] # line information to error message
 
-import timn/dbgs
+# import timn/dbgs
 
 iterator flattentSepc*(a: TSpec): TSpec =
   doAssert not a.isFlat
