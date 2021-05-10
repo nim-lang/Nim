@@ -211,22 +211,22 @@ proc getFreeRegister(cc: PCtx; k: TSlotKind; start: int): TRegister =
   # we prefer the same slot kind here for efficiency. Unfortunately for
   # discardable return types we may not know the desired type. This can happen
   # for e.g. mNAdd[Multiple]:
-  for i in start..c.maxSlots-1:
-    if c.slots[i].kind == k and not c.slots[i].inUse:
-      c.slots[i].inUse = true
+  for i in start..c.regInfo.len-1:
+    if c.regInfo[i].kind == k and not c.regInfo[i].inUse:
+      c.regInfo[i].inUse = true
       return TRegister(i)
 
   # if register pressure is high, we re-use more aggressively:
-  if c.maxSlots >= high(TRegister):
-    for i in start..c.maxSlots-1:
-      if not c.slots[i].inUse:
-        c.slots[i] = (inUse: true, kind: k)
+  if c.regInfo.len >= high(TRegister):
+    for i in start..c.regInfo.len-1:
+      if not c.regInfo[i].inUse:
+        c.regInfo[i] = (inUse: true, kind: k)
         return TRegister(i)
-  if c.maxSlots >= high(TRegister):
+  if c.regInfo.len >= high(TRegister):
     globalError(cc.config, cc.bestEffort, "VM problem: too many registers required")
-  result = TRegister(max(c.maxSlots, start))
-  c.slots[result] = (inUse: true, kind: k)
-  c.maxSlots = result + 1
+  result = TRegister(max(c.regInfo.len, start))
+  c.regInfo.setLen int(result)+1
+  c.regInfo[result] = (inUse: true, kind: k)
 
 proc getTemp(cc: PCtx; tt: PType): TRegister =
   let typ = tt.skipTypesOrNil({tyStatic})
@@ -244,29 +244,29 @@ proc getTemp(cc: PCtx; tt: PType): TRegister =
 
 proc freeTemp(c: PCtx; r: TRegister) =
   let c = c.prc
-  if c.slots[r].kind in {slotSomeTemp..slotTempComplex}:
+  if c.regInfo[r].kind in {slotSomeTemp..slotTempComplex}:
     # this seems to cause https://github.com/nim-lang/Nim/issues/10647
-    c.slots[r].inUse = false
+    c.regInfo[r].inUse = false
 
 proc getTempRange(cc: PCtx; n: int; kind: TSlotKind): TRegister =
   # if register pressure is high, we re-use more aggressively:
   let c = cc.prc
   # we could also customize via the following (with proper caching in ConfigRef):
   # let highRegisterPressure = cc.config.getConfigVar("vm.highRegisterPressure", "40").parseInt
-  if c.maxSlots >= HighRegisterPressure or c.maxSlots+n >= high(TRegister):
-    for i in 0..c.maxSlots-n:
-      if not c.slots[i].inUse:
+  if c.regInfo.len >= HighRegisterPressure or c.regInfo.len+n >= high(TRegister):
+    for i in 0..c.regInfo.len-n:
+      if not c.regInfo[i].inUse:
         block search:
           for j in i+1..i+n-1:
-            if c.slots[j].inUse: break search
+            if c.regInfo[j].inUse: break search
           result = TRegister(i)
-          for k in result..result+n-1: c.slots[k] = (inUse: true, kind: kind)
+          for k in result..result+n-1: c.regInfo[k] = (inUse: true, kind: kind)
           return
-  if c.maxSlots+n >= high(TRegister):
+  if c.regInfo.len+n >= high(TRegister):
     globalError(cc.config, cc.bestEffort, "VM problem: too many registers required")
-  result = TRegister(c.maxSlots)
-  inc c.maxSlots, n
-  for k in result..result+n-1: c.slots[k] = (inUse: true, kind: kind)
+  result = TRegister(c.regInfo.len)
+  setLen c.regInfo, c.regInfo.len+n
+  for k in result..result+n-1: c.regInfo[k] = (inUse: true, kind: kind)
 
 proc freeTempRange(c: PCtx; start: TRegister, n: int) =
   for i in start..start+n-1: c.freeTemp(TRegister(i))
@@ -350,21 +350,21 @@ proc genWhile(c: PCtx; n: PNode) =
       c.patch(lab2)
 
 proc genBlock(c: PCtx; n: PNode; dest: var TDest) =
-  let oldRegisterCount = c.prc.maxSlots
+  let oldRegisterCount = c.prc.regInfo.len
   withBlock(n[0].sym):
     c.gen(n[1], dest)
 
-  for i in oldRegisterCount..<c.prc.maxSlots:
-    #if c.prc.slots[i].kind in {slotFixedVar, slotFixedLet}:
+  for i in oldRegisterCount..<c.prc.regInfo.len:
+    #if c.prc.regInfo[i].kind in {slotFixedVar, slotFixedLet}:
     if i != dest:
       when not defined(release):
-        if c.prc.slots[i].inUse and c.prc.slots[i].kind in {slotTempUnknown,
+        if c.prc.regInfo[i].inUse and c.prc.regInfo[i].kind in {slotTempUnknown,
                                   slotTempInt,
                                   slotTempFloat,
                                   slotTempStr,
                                   slotTempComplex}:
-          doAssert false, "leaking temporary " & $i & " " & $c.prc.slots[i].kind
-      c.prc.slots[i] = (inUse: false, kind: slotEmpty)
+          doAssert false, "leaking temporary " & $i & " " & $c.prc.regInfo[i].kind
+      c.prc.regInfo[i] = (inUse: false, kind: slotEmpty)
 
   c.clearDest(n, dest)
 
@@ -416,7 +416,7 @@ proc genIf(c: PCtx, n: PNode; dest: var TDest) =
   c.clearDest(n, dest)
 
 proc isTemp(c: PCtx; dest: TDest): bool =
-  result = dest >= 0 and c.prc.slots[dest].kind >= slotTempUnknown
+  result = dest >= 0 and c.prc.regInfo[dest].kind >= slotTempUnknown
 
 proc genAndOr(c: PCtx; n: PNode; opc: TOpcode; dest: var TDest) =
   #   asgn dest, a
@@ -583,7 +583,7 @@ proc genLit(c: PCtx; n: PNode; dest: var TDest) =
   # assignments now:
   #var opc = opcLdConst
   if dest < 0: dest = c.getTemp(n.typ)
-  #elif c.prc.slots[dest].kind == slotFixedVar: opc = opcAsgnConst
+  #elif c.prc.regInfo[dest].kind == slotFixedVar: opc = opcAsgnConst
   let lit = genLiteral(c, n)
   c.gABx(n, opcLdConst, dest, lit)
 
@@ -814,7 +814,7 @@ proc genVarargsABC(c: PCtx; n: PNode; dest: var TDest; opc: TOpcode) =
     var r: TRegister = x+i-1
     c.gen(n[i], r)
   c.gABC(n, opc, dest, x, n.len-1)
-  c.freeTempRange(x, n.len)
+  c.freeTempRange(x, n.len-1)
 
 proc isInt8Lit(n: PNode): bool =
   if n.kind in {nkCharLit..nkUInt64Lit}:
@@ -1431,11 +1431,11 @@ proc genAddr(c: PCtx, n: PNode, dest: var TDest, flags: TGenFlags) =
   else:
     let tmp = c.genx(n[0], newflags)
     if dest < 0: dest = c.getTemp(n.typ)
-    if c.prc.slots[tmp].kind >= slotTempUnknown:
+    if c.prc.regInfo[tmp].kind >= slotTempUnknown:
       gABC(c, n, opcAddrNode, dest, tmp)
       # hack ahead; in order to fix bug #1781 we mark the temporary as
       # permanent, so that it's not used for anything else:
-      c.prc.slots[tmp].kind = slotTempPerm
+      c.prc.regInfo[tmp].kind = slotTempPerm
       # XXX this is still a hack
       #message(c.congig, n.info, warnUser, "suspicious opcode used")
     else:
@@ -1662,10 +1662,10 @@ proc genRdVar(c: PCtx; n: PNode; dest: var TDest; flags: TGenFlags) =
                           s.kind in {skParam, skResult}):
       if dest < 0:
         dest = s.position + ord(s.kind == skParam)
-        internalAssert(c.config, c.prc.slots[dest].kind < slotSomeTemp)
+        internalAssert(c.config, c.prc.regInfo[dest].kind < slotSomeTemp)
       else:
         # we need to generate an assignment:
-        let requiresCopy = c.prc.slots[dest].kind >= slotSomeTemp and
+        let requiresCopy = c.prc.regInfo[dest].kind >= slotSomeTemp and
           gfIsParam notin flags
         genAsgn(c, dest, n, requiresCopy)
     else:
@@ -2188,10 +2188,10 @@ proc genExpr*(c: PCtx; n: PNode, requiresValue = true): int =
 
 proc genParams(c: PCtx; params: PNode) =
   # res.sym.position is already 0
-  c.prc.slots[0] = (inUse: true, kind: slotFixedVar)
+  setLen(c.prc.regInfo, max(params.len, 1))
+  c.prc.regInfo[0] = (inUse: true, kind: slotFixedVar)
   for i in 1..<params.len:
-    c.prc.slots[i] = (inUse: true, kind: slotFixedLet)
-  c.prc.maxSlots = max(params.len, 1)
+    c.prc.regInfo[i] = (inUse: true, kind: slotFixedLet)
 
 proc finalJumpTarget(c: PCtx; pc, diff: int) =
   internalAssert(c.config, regBxMin < diff and diff < regBxMax)
@@ -2201,12 +2201,12 @@ proc finalJumpTarget(c: PCtx; pc, diff: int) =
                 TInstrType(diff+wordExcess) shl regBxShift).TInstr
 
 proc genGenericParams(c: PCtx; gp: PNode) =
-  var base = c.prc.maxSlots
+  var base = c.prc.regInfo.len
+  setLen c.prc.regInfo, base + gp.len
   for i in 0..<gp.len:
     var param = gp[i].sym
     param.position = base + i # XXX: fix this earlier; make it consistent with templates
-    c.prc.slots[base + i] = (inUse: true, kind: slotFixedLet)
-  c.prc.maxSlots = base + gp.len
+    c.prc.regInfo[base + i] = (inUse: true, kind: slotFixedLet)
 
 proc optimizeJumps(c: PCtx; start: int) =
   const maxIterations = 10
@@ -2280,19 +2280,18 @@ proc genProc(c: PCtx; s: PSym): int =
     if tfCapturesEnv in s.typ.flags:
       #let env = s.ast[paramsPos].lastSon.sym
       #assert env.position == 2
-      c.prc.slots[c.prc.maxSlots] = (inUse: true, kind: slotFixedLet)
-      inc c.prc.maxSlots
+      c.prc.regInfo.add (inUse: true, kind: slotFixedLet)
     gen(c, body)
     # generate final 'return' statement:
     c.gABC(body, opcRet)
     c.patch(procStart)
     c.gABC(body, opcEof, eofInstr.regA)
     c.optimizeJumps(result)
-    s.offset = c.prc.maxSlots
+    s.offset = c.prc.regInfo.len
     #if s.name.s == "main" or s.name.s == "[]":
     #  echo renderTree(body)
     #  c.echoCode(result)
     c.prc = oldPrc
   else:
-    c.prc.maxSlots = s.offset
+    c.prc.regInfo.setLen s.offset
     result = pos
