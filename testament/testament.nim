@@ -18,7 +18,7 @@ import compiler/nodejs
 import lib/stdtest/testutils
 from lib/stdtest/specialpaths import splitTestFile
 from std/private/gitutils import diffStrings
-import timn/dbgs
+# import timn/dbgs
 proc trimUnitSep(x: var string) =
   let L = x.len
   if L > 0 and x[^1] == '\31':

@@ -15,7 +15,7 @@
 import important_packages
 import std/strformat
 from std/sequtils import filterIt
-import timn/dbgs
+# import timn/dbgs
 const
   specialCategories = [
     "assert",
@@ -513,7 +513,6 @@ proc icTests(r: var TResults; testsDir: string, cat: Category, options: string;
     navTestConfig = " --ic:on -d:nimIcNavigatorTests --hint[Conf]:off --warnings:off "
 
   template test(x: untyped) =
-    dbg x
     testSpecWithNimcache(r, makeRawTest(file, x & options, cat), nimcache)
 
   template editedTest(x: untyped) =
