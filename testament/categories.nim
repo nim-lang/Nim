@@ -223,7 +223,7 @@ proc asyncTests(r: var TResults, cat: Category, options: string) =
 # ------------------------- debugger tests ------------------------------------
 
 proc debuggerTests(r: var TResults, cat: Category, options: string) =
-  if fileExists("tools/nimgrep.nim"):
+  if fileExists("tools/nimgrep.nim"): # PRTEMP: isNimRepoTests
     var t = makeTest("tools/nimgrep", options & " --debugger:on", cat)
     t.spec.action = actionCompile
     # force target to C because of MacOS 10.15 SDK headers bug
@@ -571,6 +571,7 @@ proc isJoinableSpec(spec: TSpec, mode: MegatestMode): bool =
   # set to non-default values (use `fieldPairs`), to avoid issues like bug #16576.
   template isCompatibleTarget(targets): bool =
     # PRTEMP: make sure a test with `targets: c js cpp` will not be run more than needed
+    # PRTEMP: tests/js
     case mode
     of megatestC:
       # targets == {} or targets == {targetC}
