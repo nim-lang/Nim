@@ -570,10 +570,11 @@ proc isJoinableSpec(spec: TSpec, mode: MegatestMode): bool =
   # xxx simplify implementation using a whitelist of fields that are allowed to be
   # set to non-default values (use `fieldPairs`), to avoid issues like bug #16576.
   template isCompatibleTarget(targets): bool =
-    # PRTEMP: make sure a test is partially joinable if it has, say, targets: "c cpp js"
+    # PRTEMP: make sure a test with `targets: c js cpp` will not be run more than needed
     case mode
     of megatestC:
-      targets == {} or targets == {targetC}
+      # targets == {} or targets == {targetC}
+      targets == {} or targetC in targets
     of megatestJs:
       # targets == {targetJs}
       targetJs in targets
@@ -673,7 +674,9 @@ proc runJoinedTest(r: var TResults, cat: Category, testsDir: string, options: st
     backend = "js"
     optionsExtra = "-d:nodejs"
   var args = @[backend, "--nimCache:" & outDir, "-d:testing", "-d:nimMegatest", "--listCmd",
-              "--path:" & root] & optionsExtra.split
+              "--path:" & root]
+  if optionsExtra.len > 0: args.add optionsExtra.split # PRTEMP D20210509T235553
+
   args.add options.parseCmdLine
   args.add megatestFile
   var (cmdLine, buf, exitCode) = execCmdEx2(command = compilerPrefix, args = args, input = "")

@@ -1,5 +1,6 @@
 discard """
   targets: "c cpp"
+  joinable: false
 """
 import std/atomics
 

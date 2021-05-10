@@ -3,6 +3,7 @@ discard """
   exitcode: 0
   targets: "c cpp"
   disabled: openbsd
+  joinable: false
 """
 
 echo "foo1"
