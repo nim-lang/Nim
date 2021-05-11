@@ -282,6 +282,9 @@ proc toJson*[T](a: T): JsonNode =
   elif T is bool: result = %(a)
   elif T is SomeInteger: result = %a
   elif T is Ordinal: result = %(a.ord)
+  elif T is enum:
+    when defined(nimLegacyJsonutilsHoleyEnum): result = %a
+    else: result = %(a.ord)
   elif T is cstring: (if a == nil: result = newJNull() else: result = % $a)
   else: result = %a
 
