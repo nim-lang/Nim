@@ -742,7 +742,7 @@ proc hash*(x: ItemId): Hash =
 
 
 type
-  TIdObj* = object of RootObj
+  TIdObj* {.acyclic.} = object of RootObj
     itemId*: ItemId
   PIdObj* = ref TIdObj
 

@@ -268,7 +268,7 @@ type
     foName # lastPathPart, e.g.: foo.nim
     foStacktrace # if optExcessiveStackTrace: foAbs else: foName
 
-  ConfigRef* = ref object ## every global configuration
+  ConfigRef* {.acyclic.} = ref object ## every global configuration
                           ## fields marked with '*' are subject to
                           ## the incremental compilation mechanisms
                           ## (+) means "part of the dependency"
