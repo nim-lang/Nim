@@ -387,7 +387,8 @@ proc isFinal*(t: PType): bool =
 
 proc canFormAcycle*(typ: PType): bool =
   var marker = initIntSet()
-  result = canFormAcycleAux(marker, typ, typ.id)
+  let t = skipTypes(typ, abstractInst+{tyOwned}-{tyTypeDesc})
+  result = canFormAcycleAux(marker, t, t.id)
 
 proc mutateTypeAux(marker: var IntSet, t: PType, iter: TTypeMutator,
                    closure: RootRef): PType

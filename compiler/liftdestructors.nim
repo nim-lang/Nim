@@ -598,16 +598,19 @@ proc atomicRefOp(c: var TLiftCtx; t: PType; body, x, y: PNode) =
     body.add genIf(c, cond, actions)
   of attachedDeepCopy: assert(false, "cannot happen")
   of attachedTrace:
-    if isFinal(elemType):
-      let typInfo = genBuiltin(c.g, mGetTypeInfoV2, "getTypeInfoV2", newNodeIT(nkType, x.info, elemType))
-      typInfo.typ = getSysType(c.g, c.info, tyPointer)
-      body.add callCodegenProc(c.g, "nimTraceRef", c.info, genAddrOf(x), typInfo, y)
-    else:
-      # If the ref is polymorphic we have to account for this
-      body.add callCodegenProc(c.g, "nimTraceRefDyn", c.info, genAddrOf(x), y)
+    if isCyclic:
+      if isFinal(elemType):
+        let typInfo = genBuiltin(c.g, mGetTypeInfoV2, "getTypeInfoV2", newNodeIT(nkType, x.info, elemType))
+        typInfo.typ = getSysType(c.g, c.info, tyPointer)
+        body.add callCodegenProc(c.g, "nimTraceRef", c.info, genAddrOf(x), typInfo, y)
+      else:
+        # If the ref is polymorphic we have to account for this
+        body.add callCodegenProc(c.g, "nimTraceRefDyn", c.info, genAddrOf(x), y)
   of attachedDispose:
     # this is crucial! dispose is like =destroy but we don't follow refs
     # as that is dealt within the cycle collector.
+    if not isCyclic:
+      body.add genIf(c, cond, actions)
     when false:
       let cond = copyTree(x)
       cond.typ = getSysType(c.g, x.info, tyBool)
