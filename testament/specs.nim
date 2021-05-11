@@ -99,6 +99,7 @@ type
     timeout*: float # in seconds, fractions possible,
                       # but don't rely on much precision
     inlineErrors*: seq[InlineError] # line information to error message
+    debugInfo*: string # debug info to give more context
 
 proc getCmd*(s: TSpec): string =
   if s.cmd.len == 0:

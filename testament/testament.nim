@@ -173,7 +173,8 @@ proc callNimCompiler(cmdTemplate, filename, options, nimcache: string,
   var p = startProcess(command = c[0], args = c[1 .. ^1],
                        options = {poStdErrToStdOut, poUsePath})
   let outp = p.outputStream
-  var suc = ""
+  var foundSuccessMsg = false
+  var foundErrorMsg = false
   var err = ""
   var x = newStringOfCap(120)
   result.nimout = ""
@@ -182,10 +183,11 @@ proc callNimCompiler(cmdTemplate, filename, options, nimcache: string,
       trimUnitSep x
       result.nimout.add(x & '\n')
       if x =~ pegOfInterest:
-        # `err` should contain the last error/warning message
+        # `err` should contain the last error message
         err = x
+        foundErrorMsg = true
       elif x.isSuccess:
-        suc = x
+        foundSuccessMsg = true
     elif not running(p):
       break
   close(p)
@@ -194,7 +196,23 @@ proc callNimCompiler(cmdTemplate, filename, options, nimcache: string,
   result.output = ""
   result.line = 0
   result.column = 0
+
   result.err = reNimcCrash
+  let exitCode = p.peekExitCode
+  case exitCode
+  of 0:
+    if foundErrorMsg:
+      result.debugInfo.add " compiler exit code was 0 but some Error's were found."
+    else:
+      result.err = reSuccess
+  of 1:
+    if not foundErrorMsg:
+      result.debugInfo.add " compiler exit code was 1 but no Error's were found."
+    if foundSuccessMsg:
+      result.debugInfo.add " compiler exit code was 1 but no `isSuccess` was true."
+  else:
+    result.debugInfo.add " expected compiler exit code 0 or 1, got $1." % $exitCode
+
   if err =~ pegLineError:
     result.file = extractFilename(matches[0])
     result.line = parseInt(matches[1])
@@ -202,8 +220,6 @@ proc callNimCompiler(cmdTemplate, filename, options, nimcache: string,
     result.msg = matches[3]
   elif err =~ pegOtherError:
     result.msg = matches[0]
-  elif suc.isSuccess:
-    result.err = reSuccess
   trimUnitSep result.msg
 
 proc callCCompiler(cmdTemplate, filename, options: string,
@@ -226,6 +242,8 @@ proc callCCompiler(cmdTemplate, filename, options: string,
   close(p)
   if p.peekExitCode == 0:
     result.err = reSuccess
+  else:
+    result.err = reNimcCrash
 
 proc initResults: TResults =
   result.total = 0
@@ -265,7 +283,9 @@ Tests skipped: $4 / $1 <br />
 """ % [$x.total, $x.passed, $x.failedButAllowed, $x.skipped]
 
 proc addResult(r: var TResults, test: TTest, target: TTarget,
-               expected, given: string, successOrig: TResultEnum, allowFailure = false) =
+               expected, given: string, successOrig: TResultEnum, allowFailure = false, givenSpec: ptr TSpec = nil) =
+  # instead of `ptr TSpec` we could also use `Option[TSpec]`; passing `givenSpec` makes it easier to get what we need
+  # instead of having to pass individual fields, or abusing existing ones like expected vs given.
   # test.name is easier to find than test.name.extractFilename
   # A bit hacky but simple and works with tests/testament/tshould_not_work.nim
   var name = test.name.replace(DirSep, '/')
@@ -302,6 +322,8 @@ proc addResult(r: var TResults, test: TTest, target: TTarget,
     dispNonSkipped(fgRed, failString)
     maybeStyledEcho styleBright, fgCyan, "Test \"", test.name, "\"", " in category \"", test.cat.string, "\""
     maybeStyledEcho styleBright, fgRed, "Failure: ", $success
+    if givenSpec != nil and givenSpec.debugInfo.len > 0:
+      echo "debugInfo: " & givenSpec.debugInfo
     if success in {reBuildFailed, reNimcCrash, reInstallFailed}:
       # expected is empty, no reason to print it.
       echo given
@@ -489,7 +511,7 @@ proc testSpecHelper(r: var TResults, test: var TTest, expected: TSpec,
   of actionRun:
     var given = callNimCompilerImpl()
     if given.err != reSuccess:
-      r.addResult(test, target, "", "$ " & given.cmd & '\n' & given.nimout, given.err)
+      r.addResult(test, target, "", "$ " & given.cmd & '\n' & given.nimout, given.err, givenSpec = given.addr)
     else:
       let isJsTarget = target == targetJS
       var exeFile = changeFileExt(test.name, if isJsTarget: "js" else: ExeExt)
