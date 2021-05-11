@@ -72,9 +72,9 @@ template fn() =
 
   block: # set
     type Foo = enum f1, f2, f3, f4, f5
-    # type Goo = enum g1 = 10, g2 = 15, g3 = 17, g4 # in future PR, elements for holey enum should be treated as enum, not string
-    let a = ({f1, f3}, {1'u8, 7'u8}, {'0'..'9'}, {123'u16, 456, 789, 1121, 1122, 1542})
-    testRoundtrip(a): """[[0,2],[1,7],[48,49,50,51,52,53,54,55,56,57],[123,456,789,1121,1122,1542]]"""
+    type Goo = enum g1 = 10, g2 = 15, g3 = 17, g4
+    let a = ({f1, f3}, {1'u8, 7'u8}, {'0'..'9'}, {123'u16, 456, 789, 1121, 1122, 1542}, {g2, g3})
+    testRoundtrip(a): """[[0,2],[1,7],[48,49,50,51,52,53,54,55,56,57],[123,456,789,1121,1122,1542],[15,17]]"""
 
   block: # bug #17383
     block:
