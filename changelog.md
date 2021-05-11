@@ -110,15 +110,15 @@
 
 - Added `BackwardsIndex` overload for `JsonNode`.
 
-- added `jsonutils.jsonTo` overload with `opt = Joptions()` param.
-
 - `json.%`,`json.to`, `jsonutils.formJson`,`jsonutils.toJson` now work with `uint|uint64`
   instead of raising (as in 1.4) or giving wrong results (as in 1.2).
 
+- added `jsonutils.jsonTo` overload with `opt = Joptions()` param.
+
+- `jsonutils` now handles `cstring` (including as Table key), and `set`.
+
 - Added an overload for the `collect` macro that inferes the container type based
   on the syntax of the last expression. Works with std seqs, tables and sets.
-
-- `jsonutils` now handles `cstring` (including as Table key).
 
 - Added `randState` template that exposes the default random number generator.
   Useful for library authors.

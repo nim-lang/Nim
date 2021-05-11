@@ -214,6 +214,10 @@ proc fromJson*[T](a: var T, b: JsonNode, opt = Joptions()) =
     for ai in mitems(a):
       fromJson(ai, b[i], opt)
       i.inc
+  elif T is set:
+    type E = typeof(for ai in a: ai)
+    for val in b.getElems:
+      incl a, jsonTo(val, E)
   elif T is seq:
     a.setLen b.len
     for i, val in b.getElems:
@@ -268,7 +272,7 @@ proc toJson*[T](a: T): JsonNode =
   elif T is ref | ptr:
     if system.`==`(a, nil): result = newJNull()
     else: result = toJson(a[])
-  elif T is array | seq:
+  elif T is array | seq | set:
     result = newJArray()
     for ai in a: result.add toJson(ai)
   elif T is pointer: result = toJson(cast[int](a))
