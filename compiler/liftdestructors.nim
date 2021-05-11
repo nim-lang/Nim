@@ -485,8 +485,9 @@ proc forallElements(c: var TLiftCtx; t: PType; body, x, y: PNode) =
   let elemType = t.lastSon
   let b = if c.kind == attachedTrace: y else: y.at(i, elemType)
   fillBody(c, elemType, whileLoop[1], x.at(i, elemType), b)
-  addIncStmt(c, whileLoop[1], i)
-  body.add whileLoop
+  if whileLoop[1].len > 0:
+    addIncStmt(c, whileLoop[1], i)
+    body.add whileLoop
 
 proc fillSeqOp(c: var TLiftCtx; t: PType; body, x, y: PNode) =
   case c.kind
