@@ -46,6 +46,13 @@ type
     sinkArg
 
 const toDebug {.strdefine.} = ""
+when toDebug.len > 0:
+  var shouldDebug = false
+
+template dbg(body) =
+  when toDebug.len > 0:
+    if shouldDebug:
+      body
 
 proc hasDestructor(c: Con; t: PType): bool {.inline.} =
   result = ast.hasDestructor(t)
@@ -53,11 +60,6 @@ proc hasDestructor(c: Con; t: PType): bool {.inline.} =
     # for more effective debugging
     if not result and c.graph.config.selectedGC in {gcArc, gcOrc}:
       assert(not containsGarbageCollectedRef(t))
-
-template dbg(body) =
-  when toDebug.len > 0:
-    if c.owner.name.s == toDebug or toDebug == "always":
-      body
 
 proc getTemp(c: var Con; s: var Scope; typ: PType; info: TLineInfo): PNode =
   let sym = newSym(skTemp, getIdent(c.graph.cache, ":tmpD"), nextSymId c.idgen, c.owner, info)
@@ -1096,6 +1098,8 @@ proc injectDefaultCalls(n: PNode, c: var Con) =
       injectDefaultCalls(n[i], c)
 
 proc injectDestructorCalls*(g: ModuleGraph; idgen: IdGenerator; owner: PSym; n: PNode): PNode =
+  when toDebug.len > 0:
+    shouldDebug = toDebug == owner.name.s or toDebug == "always"
   if sfGeneratedOp in owner.flags or (owner.kind == skIterator and isInlineIterator(owner.typ)):
     return n
   var c = Con(owner: owner, graph: g, g: constructCfg(owner, n), idgen: idgen)
