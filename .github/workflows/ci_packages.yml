@@ -53,7 +53,7 @@ jobs:
 
       - name: 'System information'
         shell: bash
-        run: . ci/funs.sh && nimCiSysmtemInfo
+        run: . ci/funs.sh && nimCiSystemInfo
 
       - name: 'Build csourcesAny'
         shell: bash

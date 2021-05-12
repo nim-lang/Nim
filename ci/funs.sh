@@ -67,7 +67,7 @@ _nimBuildCsourcesIfNeeded(){
   echo_run cp bin/nim $nim_csources
 }
 
-nimCiSysmtemInfo(){
+nimCiSystemInfo(){
   nimDefineVars
   echo_run eval echo '$'nim_csources
   echo_run pwd

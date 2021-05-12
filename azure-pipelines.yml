@@ -147,7 +147,7 @@ jobs:
       condition: and(succeeded(), eq(variables['skipci'], 'false'))
       displayName: 'Add build binaries to PATH'
 
-    - bash: . ci/funs.sh && nimCiSysmtemInfo
+    - bash: . ci/funs.sh && nimCiSystemInfo
       condition: and(succeeded(), eq(variables['skipci'], 'false'))
       displayName: 'System information'
 
