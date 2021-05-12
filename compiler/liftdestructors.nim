@@ -468,8 +468,9 @@ proc fillSeqOp(c: var TLiftCtx; t: PType; body, x, y: PNode) =
     forallElements(c, t, body, x, y)
     body.add genBuiltin(c.g, mDestroy, "destroy", x)
   of attachedTrace:
-    # follow all elements:
-    forallElements(c, t, body, x, y)
+    if canFormAcycle(t.elemType):
+      # follow all elements:
+      forallElements(c, t, body, x, y)
   of attachedDispose:
     forallElements(c, t, body, x, y)
     body.add genBuiltin(c.g, mDestroy, "destroy", x)

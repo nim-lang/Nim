@@ -1754,6 +1754,7 @@ when not defined(js) and defined(nimV2):
       traceImpl: pointer
       disposeImpl: pointer
       typeInfoV1: pointer # for backwards compat, usually nil
+      flags: int
     PNimTypeV2 = ptr TNimTypeV2
 
 when notJSnotNims and defined(nimSeqsV2):
