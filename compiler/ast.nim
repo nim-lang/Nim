@@ -807,7 +807,7 @@ type
 
   PInstantiation* = ref TInstantiation
 
-  TScope* = object
+  TScope* {.acyclic.} = object
     depthLevel*: int
     symbols*: TStrTable
     parent*: PScope

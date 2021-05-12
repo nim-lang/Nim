@@ -31,7 +31,7 @@ import ast, intsets, tables, options, lineinfos, hashes, idents,
 type
   SigHash* = distinct MD5Digest
 
-  ModuleGraph* = ref object
+  ModuleGraph* {.acyclic.} = ref object
     modules*: seq[PSym]  ## indexed by int32 fileIdx
     packageSyms*: TStrTable
     deps*: IntSet # the dependency graph or potentially its transitive closure.

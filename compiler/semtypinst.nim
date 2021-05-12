@@ -67,7 +67,7 @@ proc cacheTypeInst*(inst: PType) =
   gt.sym.typeInstCache.add(inst)
 
 type
-  LayeredIdTable* = ref object
+  LayeredIdTable* {.acyclic.} = ref object
     topLayer*: TIdTable
     nextLayer*: LayeredIdTable
 

@@ -19,7 +19,7 @@ const
   useEffectSystem* = true
   useWriteTracking* = false
   hasFFI* = defined(nimHasLibFFI)
-  copyrightYear* = "2020"
+  copyrightYear* = "2021"
 
 type                          # please make sure we have under 32 options
                               # (improves code efficiency a lot!)
@@ -230,7 +230,7 @@ type
   ProfileData* = ref object
     data*: TableRef[TLineInfo, ProfileInfo]
 
-  ConfigRef* = ref object ## every global configuration
+  ConfigRef* {.acyclic.} = ref object ## every global configuration
                           ## fields marked with '*' are subject to
                           ## the incremental compilation mechanisms
                           ## (+) means "part of the dependency"

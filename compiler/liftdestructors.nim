@@ -435,13 +435,17 @@ proc setLenSeqCall(c: var TLiftCtx; t: PType; x, y: PNode): PNode =
   result = newTree(nkCall, newSymNode(op, x.info), x, lenCall)
 
 proc forallElements(c: var TLiftCtx; t: PType; body, x, y: PNode) =
+  let counterIdx = body.len
   let i = declareCounter(c, body, toInt64(firstOrd(c.g.config, t)))
   let whileLoop = genWhileLoop(c, i, x)
   let elemType = t.lastSon
   let b = if c.kind == attachedTrace: y else: y.at(i, elemType)
   fillBody(c, elemType, whileLoop[1], x.at(i, elemType), b)
-  addIncStmt(c, whileLoop[1], i)
-  body.add whileLoop
+  if whileLoop[1].len > 0:
+    addIncStmt(c, whileLoop[1], i)
+    body.add whileLoop
+  else:
+    body.sons.setLen counterIdx
 
 proc fillSeqOp(c: var TLiftCtx; t: PType; body, x, y: PNode) =
   case c.kind
@@ -606,6 +610,7 @@ proc atomicRefOp(c: var TLiftCtx; t: PType; body, x, y: PNode) =
       else:
         # If the ref is polymorphic we have to account for this
         body.add callCodegenProc(c.g, "nimTraceRefDyn", c.info, genAddrOf(x), y)
+      #echo "can follow ", elemType, " static ", isFinal(elemType)
   of attachedDispose:
     # this is crucial! dispose is like =destroy but we don't follow refs
     # as that is dealt within the cycle collector.
