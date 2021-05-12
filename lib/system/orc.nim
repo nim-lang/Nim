@@ -444,10 +444,15 @@ proc GC_disableMarkAndSweep*() =
   ## For `--gc:orc` an alias for `GC_disableOrc`.
   GC_disableOrc()
 
+const
+  acyclicFlag = 1 # see also cggtypes.nim, proc genTypeInfoV2Impl
+
 when optimizedOrc:
-  template markedAsCyclic(s: Cell): bool = (s.rc and maybeCycle) != 0
+  template markedAsCyclic(s: Cell; desc: PNimTypeV2): bool =
+    (desc.flags and acyclicFlag) == 0 and (s.rc and maybeCycle) != 0
 else:
-  template markedAsCyclic(s: Cell): bool = true
+  template markedAsCyclic(s: Cell; desc: PNimTypeV2): bool =
+    (desc.flags and acyclicFlag) == 0
 
 proc rememberCycle(isDestroyAction: bool; s: Cell; desc: PNimTypeV2) {.noinline.} =
   if isDestroyAction:
@@ -456,7 +461,7 @@ proc rememberCycle(isDestroyAction: bool; s: Cell; desc: PNimTypeV2) {.noinline.
   else:
     # do not call 'rememberCycle' again unless this cell
     # got an 'incRef' event:
-    if s.rootIdx == 0 and markedAsCyclic(s):
+    if s.rootIdx == 0 and markedAsCyclic(s, desc):
       s.setColor colBlack
       registerCycle(s, desc)
 
