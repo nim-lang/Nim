@@ -742,7 +742,7 @@ proc hash*(x: ItemId): Hash =
 
 
 type
-  TIdObj* = object of RootObj
+  TIdObj* {.acyclic.} = object of RootObj
     itemId*: ItemId
   PIdObj* = ref TIdObj
 
@@ -841,7 +841,7 @@ type
 
   PInstantiation* = ref TInstantiation
 
-  TScope* = object
+  TScope* {.acyclic.} = object
     depthLevel*: int
     symbols*: TStrTable
     parent*: PScope
