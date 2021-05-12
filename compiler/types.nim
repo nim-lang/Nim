@@ -359,13 +359,13 @@ proc canFormAcycleAux(marker: var IntSet, typ: PType, startId: int): bool =
   if tfAcyclic in t.flags: return
   case t.kind
   of tyTuple, tyObject, tyRef, tySequence, tyArray, tyOpenArray, tyVarargs:
-    if not containsOrIncl(marker, t.id):
+    if t.id == startId:
+      result = true
+    elif not containsOrIncl(marker, t.id):
       for i in 0..<t.len:
         result = canFormAcycleAux(marker, t[i], startId)
         if result: return
       if t.n != nil: result = canFormAcycleNode(marker, t.n, startId)
-    else:
-      result = t.id == startId
     # Inheritance can introduce cyclic types, however this is not relevant
     # as the type that is passed to 'new' is statically known!
     # er but we use it also for the write barrier ...
