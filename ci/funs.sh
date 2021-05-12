@@ -6,7 +6,7 @@
 echo_run () {
   # echo's a command before running it, which helps understanding logs
   echo ""
-  echo "$@"
+  echo "cmd: $@" # in azure we could also use this: echo '##[section]"$@"'
   "$@"
 }
 
@@ -65,6 +65,19 @@ _nimBuildCsourcesIfNeeded(){
   # keep $nim_csources in case needed to investigate bootstrap issues
   # without having to rebuild
   echo_run cp bin/nim $nim_csources
+}
+
+nimCiSysmtemInfo(){
+  nimDefineVars
+  echo_run eval echo '$'nim_csources
+  echo_run pwd
+  echo_run date
+  echo_run uname -a
+  echo_run git log --no-merges -1 --pretty=oneline
+  echo_run eval echo '$'PATH
+  echo_run gcc -v
+  echo_run node -v
+  echo_run make -v
 }
 
 nimCsourcesHash(){

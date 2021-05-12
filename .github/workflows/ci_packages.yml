@@ -20,10 +20,10 @@ jobs:
         with:
           fetch-depth: 2
 
-      - name: 'Install node.js 12.x'
+      - name: 'Install node.js 16.x'
         uses: actions/setup-node@v2
         with:
-          node-version: '12.x'
+          node-version: '16.x'
 
       - name: 'Install dependencies (Linux amd64)'
         if: runner.os == 'Linux' && matrix.cpu == 'amd64'
@@ -50,6 +50,10 @@ jobs:
       - name: 'Add build binaries to PATH'
         shell: bash
         run: echo "${{ github.workspace }}/bin" >> "${GITHUB_PATH}"
+
+      - name: 'System information'
+        shell: bash
+        run: . ci/funs.sh && nimCiSysmtemInfo
 
       - name: 'Build csourcesAny'
         shell: bash
