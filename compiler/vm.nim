@@ -524,7 +524,7 @@ proc rawExecute(c: PCtx, start: int, tos: PStackFrame): TFullReg =
   # Used to keep track of where the execution is resumed.
   var savedPC = -1
   var savedFrame: PStackFrame
-  when defined(gcArc):
+  when defined(gcArc) or defined(gcOrc):
     template updateRegsAlias = discard
     template regs: untyped = tos.slots
   else:

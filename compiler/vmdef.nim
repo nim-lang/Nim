@@ -270,7 +270,7 @@ type
     procToCodePos*: Table[int, int]
 
   PStackFrame* = ref TStackFrame
-  TStackFrame* = object
+  TStackFrame* {.acyclic.} = object
     prc*: PSym                 # current prc; proc that is evaluated
     slots*: seq[TFullReg]      # parameters passed to the proc + locals;
                               # parameters come first
