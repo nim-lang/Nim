@@ -49,8 +49,13 @@ proc getBool*(a: VmArgs; i: Natural): bool = getInt(a, i) != 0
 proc getFloat*(a: VmArgs; i: Natural): BiggestFloat = getX(rkFloat, floatVal)
 proc getString*(a: VmArgs; i: Natural): string =
   doAssert i < a.rc-1
-  doAssert a.slots[i+a.rb+1].kind == rkNode
+  doAssert a.slots[i+a.rb+1].kind == rkNode, $a.slots[i+a.rb+1].kind
   result = a.slots[i+a.rb+1].node.strVal
+
+proc getVar*(a: VmArgs; i: Natural): ptr TFullReg =
+  doAssert i < a.rc-1
+  doAssert a.slots[i+a.rb+1].kind == rkRegisterAddr
+  result = a.slots[i+a.rb+1].regAddr
 
 proc getNode*(a: VmArgs; i: Natural): PNode =
   doAssert i < a.rc-1

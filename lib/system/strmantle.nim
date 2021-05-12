@@ -145,7 +145,7 @@ proc addCstringN(result: var string, buf: cstring; buflen: int) =
 
 import formatfloat
 
-proc addFloat*(result: var string; x: float) =
+proc addFloat*(result: var string; x: float)
   ## Converts float to its string representation and appends it to `result`.
   ##
   ## .. code-block:: Nim
@@ -153,12 +153,33 @@ proc addFloat*(result: var string; x: float) =
   ##     a = "123"
   ##     b = 45.67
   ##   a.addFloat(b) # a <- "12345.67"
-  when nimvm:
-    result.add $x
-  else:
-    var buffer {.noinit.}: array[65, char]
-    let n = writeFloatToBuffer(buffer, x)
-    result.addCstringN(cstring(buffer[0].addr), n)
+
+when defined(nimLegacyAddFloat):
+  proc addFloat(result: var string; x: float) =
+    when nimvm:
+      result.add $x
+    else:
+      var buffer {.noinit.}: array[65, char]
+      let n = writeFloatToBuffer(buffer, x)
+      result.addCstringN(cstring(buffer[0].addr), n)
+else:
+  import std/private/dragonbox_impl2
+
+  proc addFloat*(result: var string; x: float) =
+    ## Converts float to its string representation and appends it to `result`.
+    ##
+    ## .. code-block:: Nim
+    ##   var
+    ##     a = "123"
+    ##     b = 45.67
+    ##   a.addFloat(b) # a <- "12345.67"
+    # when nimvm:
+    # else:
+    var buffer {.noinit.}: array[DtoaMinBufferLength, char]
+    let first = buffer[0].addr
+    let ret = dragonboxToString(first, x)
+    let n = cast[int](ret) - cast[int](first)
+    result.addCstringN(cstring(first), n)
 
 proc nimFloatToStr(f: float): string {.compilerproc.} =
   result = newStringOfCap(8)

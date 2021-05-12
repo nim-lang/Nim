@@ -320,3 +320,8 @@ proc registerAdditionalOps*(c: PCtx) =
   registerCallback c, "stdlib.typetraits.hasClosureImpl", proc (a: VmArgs) =
     let fn = getNode(a, 0)
     setResult(a, fn.kind == nkClosure or (fn.typ != nil and fn.typ.callConv == ccClosure))
+
+  registerCallback c, "stdlib.system.addFloat", proc(a: VmArgs) =
+    let p = a.getVar(0)
+    let x = a.getFloat(1)
+    addFloat(p.node.strVal, x)
