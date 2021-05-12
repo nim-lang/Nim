@@ -38,7 +38,7 @@ const
   IntMask = 1 shl IntShift - 1
 
 type
-  Trunk = ref object
+  Trunk {.acyclic.} = ref object
     next: Trunk                                 # all nodes are connected with this pointer
     key: int                                    # start address at bit 0
     bits: array[0..IntsPerTrunk - 1, BitScalar] # a bit vector

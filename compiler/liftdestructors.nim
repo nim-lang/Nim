@@ -513,8 +513,9 @@ proc fillSeqOp(c: var TLiftCtx; t: PType; body, x, y: PNode) =
     forallElements(c, t, body, x, y)
     body.add genBuiltin(c, mDestroy, "destroy", x)
   of attachedTrace:
-    # follow all elements:
-    forallElements(c, t, body, x, y)
+    if canFormAcycle(t.elemType):
+      # follow all elements:
+      forallElements(c, t, body, x, y)
   of attachedDispose:
     forallElements(c, t, body, x, y)
     body.add genBuiltin(c, mDestroy, "destroy", x)
@@ -550,10 +551,11 @@ proc useSeqOrStrOp(c: var TLiftCtx; t: PType; body, x, y: PNode) =
     doAssert t.destructor != nil
     body.add destructorCall(c, t.destructor, x)
   of attachedTrace:
-    let op = getAttachedOp(c.g, t, c.kind)
-    if op == nil:
-      return # protect from recursion
-    body.add newHookCall(c, op, x, y)
+    if t.kind != tyString and canFormAcycle(t.elemType):
+      let op = getAttachedOp(c.g, t, c.kind)
+      if op == nil:
+        return # protect from recursion
+      body.add newHookCall(c, op, x, y)
   of attachedDispose:
     let op = getAttachedOp(c.g, t, c.kind)
     if op == nil:

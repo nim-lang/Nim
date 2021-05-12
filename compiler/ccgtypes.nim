@@ -1301,6 +1301,10 @@ proc genHook(m: BModule; t: PType; info: TLineInfo; op: TTypeAttachedOp): Rope =
 
     genProc(m, theProc)
     result = theProc.loc.r
+
+    when false:
+      if not canFormAcycle(t) and op == attachedTrace:
+        echo "ayclic but has this =trace ", t, " ", theProc.ast
   else:
     when false:
       if op == attachedTrace and m.config.selectedGC == gcOrc and

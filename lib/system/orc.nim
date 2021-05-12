@@ -109,9 +109,21 @@ proc free(s: Cell; desc: PNimTypeV2) {.inline.} =
 
   nimRawDispose(p, desc.align)
 
+template orcAssert(cond, msg) =
+  when logOrc:
+    if not cond:
+      cfprintf(cstderr, "[Bug!] %s\n", msg)
+      quit 1
+
+when logOrc:
+  proc strstr(s, sub: cstring): cstring {.header: "<string.h>", importc.}
+
 proc nimTraceRef(q: pointer; desc: PNimTypeV2; env: pointer) {.compilerRtl, inline.} =
   let p = cast[ptr pointer](q)
   if p[] != nil:
+
+    orcAssert strstr(desc.name, "TType") == nil, "following a TType but it's acyclic!"
+
     var j = cast[ptr GcEnv](env)
     j.traceStack.add(head p[], desc)
 
@@ -120,12 +132,6 @@ proc nimTraceRefDyn(q: pointer; env: pointer) {.compilerRtl, inline.} =
   if p[] != nil:
     var j = cast[ptr GcEnv](env)
     j.traceStack.add(head p[], cast[ptr PNimTypeV2](p[])[])
-
-template orcAssert(cond, msg) =
-  when logOrc:
-    if not cond:
-      cfprintf(cstderr, "[Bug!] %s\n", msg)
-      quit 1
 
 var
   roots {.threadvar.}: CellSeq
@@ -401,6 +407,8 @@ proc registerCycle(s: Cell; desc: PNimTypeV2) =
     collectCycles()
   when logOrc:
     writeCell("[added root]", s, desc)
+
+  orcAssert strstr(desc.name, "TType") == nil, "added a TType as a root!"
 
 proc GC_runOrc* =
   ## Forces a cycle collection pass.
