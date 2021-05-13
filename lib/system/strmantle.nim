@@ -145,17 +145,23 @@ proc addCstringN(result: var string, buf: cstring; buflen: int) =
 
 import formatfloat
 
-proc addFloat*(result: var string; x: float)
-  ## Converts float to its string representation and appends it to `result`.
-  ##
-  ## .. code-block:: Nim
-  ##   var
-  ##     a = "123"
-  ##     b = 45.67
-  ##   a.addFloat(b) # a <- "12345.67"
+when defined(nimdoc):
+  proc addFloat*(result: var string; x: float) =
+    ## Converts float to its string representation and appends it to `result`.
+    runnableExamples:
+      var a = "prefix:"
+      a.addFloat(0.1)
+      assert a == "prefix:0.1"
 
-when defined(nimLegacyAddFloat) or not defined(nimHasDragonbox):
-  proc addFloat(result: var string; x: float) =
+      a.setLen 0
+      var b = 0.1
+      var c = b + 0.2
+      a.addFloat(c)
+      assert a == "0.30000000000000004"
+      assert c != 0.3 # indeed, binary representation is not exact
+
+elif defined(nimLegacyAddFloat) or not defined(nimHasDragonbox):
+  proc addFloat*(result: var string; x: float) =
     when nimvm:
       result.add $x
     else:
@@ -163,18 +169,11 @@ when defined(nimLegacyAddFloat) or not defined(nimHasDragonbox):
       let n = writeFloatToBuffer(buffer, x)
       result.addCstringN(cstring(buffer[0].addr), n)
 else:
-  import std/private/dragonbox_impl2
-
+  import ../std/private/dependency_utils
+  static: addDependency("dragonbox")
+  const DtoaMinBufferLength* = 64
+  proc dragonboxToString*(buffer: ptr char, value: cdouble): ptr char {.importc: "nim_dragonbox_Dtoa".}
   proc addFloat*(result: var string; x: float) =
-    ## Converts float to its string representation and appends it to `result`.
-    ##
-    ## .. code-block:: Nim
-    ##   var
-    ##     a = "123"
-    ##     b = 45.67
-    ##   a.addFloat(b) # a <- "12345.67"
-    # when nimvm:
-    # else:
     var buffer {.noinit.}: array[DtoaMinBufferLength, char]
     let first = buffer[0].addr
     let ret = dragonboxToString(first, x)

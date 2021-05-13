@@ -72,6 +72,9 @@
 
 - `json` and `jsonutils` now serialize NaN, Inf, -Inf as strings, so that
   `%[NaN, -Inf]` is the string `["nan","-inf"]` instead of `[nan,-inf]` which was invalid json.
+- `system.addFloat` now uses dragonbox algorithm, which ensures roundtrip guarantee, minimum length,
+  and correct rounding. Use `-d:nimLegacyAddFloat` for a transition period.
+
 
 - `strformat` is now part of `include std/prelude`.
 

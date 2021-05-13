@@ -57,3 +57,5 @@ proc writeFloatToBuffer*(buf: var array[65, char]; value: BiggestFloat): int =
     else:
       writeToBuffer(buf, "inf")
       result = 3
+
+# PRTEMP: here?
