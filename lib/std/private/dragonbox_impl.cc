@@ -1,3 +1,5 @@
+// ADAPTED from https://github.com/abolz/Drachennest/blob/master/src/dragonbox.cc
+
 // Copyright 2020 Junekey Jeon
 // Copyright 2020 Alexander Bolz
 //
