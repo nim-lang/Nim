@@ -154,7 +154,7 @@ proc addFloat*(result: var string; x: float)
   ##     b = 45.67
   ##   a.addFloat(b) # a <- "12345.67"
 
-when defined(nimLegacyAddFloat):
+when defined(nimLegacyAddFloat) or not defined(nimHasDragonbox):
   proc addFloat(result: var string; x: float) =
     when nimvm:
       result.add $x

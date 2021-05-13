@@ -134,3 +134,4 @@ proc initDefines*(symbols: StringTableRef) =
   defineSymbol("nimHasUnifiedTuple")
   defineSymbol("nimHasIterable")
   defineSymbol("nimHasTypeofVoid")
+  defineSymbol("nimHasDragonbox")

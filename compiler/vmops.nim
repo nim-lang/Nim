@@ -29,6 +29,7 @@ from std/hashes import hash
 from std/osproc import nil
 
 from sighashes import symBodyDigest
+from builddeps import addDependency
 
 # There are some useful procs in vmconv.
 import vmconv
@@ -234,18 +235,19 @@ proc registerAdditionalOps*(c: PCtx) =
   registerCallback c, "stdlib.os.getCurrentCompilerExe", proc (a: VmArgs) {.nimcall.} =
     setResult(a, getAppFilename())
 
+  proc stackTrace2(msg: string, n: PNode) =
+    stackTrace(c, PStackFrame(prc: c.prc.sym, comesFrom: 0, next: nil), c.exceptionInstr, msg, n.info)
+
   registerCallback c, "stdlib.macros.symBodyHash", proc (a: VmArgs) =
     let n = getNode(a, 0)
     if n.kind != nkSym:
-      stackTrace(c, PStackFrame(prc: c.prc.sym, comesFrom: 0, next: nil), c.exceptionInstr,
-                  "symBodyHash() requires a symbol. '" & $n & "' is of kind '" & $n.kind & "'", n.info)
+      stackTrace2("symBodyHash() requires a symbol. '" & $n & "' is of kind '" & $n.kind & "'", n)
     setResult(a, $symBodyDigest(c.graph, n.sym))
 
   registerCallback c, "stdlib.macros.isExported", proc(a: VmArgs) =
     let n = getNode(a, 0)
     if n.kind != nkSym:
-      stackTrace(c, PStackFrame(prc: c.prc.sym, comesFrom: 0, next: nil), c.exceptionInstr,
-                  "isExported() requires a symbol. '" & $n & "' is of kind '" & $n.kind & "'", n.info)
+      stackTrace2("isExported() requires a symbol. '" & $n & "' is of kind '" & $n.kind & "'", n)
     setResult(a, sfExported in n.sym.flags)
 
   proc hashVmImpl(a: VmArgs) =
@@ -325,3 +327,6 @@ proc registerAdditionalOps*(c: PCtx) =
     let p = a.getVar(0)
     let x = a.getFloat(1)
     addFloat(p.node.strVal, x)
+
+  registerCallback c, "stdlib.dependency_utils.addDependency", proc(a: VmArgs) =
+    addDependency(c.config,  getString(a, 0), a.currentLineInfo)

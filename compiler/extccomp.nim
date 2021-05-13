@@ -281,7 +281,7 @@ const
 
   hExt* = ".h"
 
-template writePrettyCmdsStderr(cmd) =
+template writePrettyCmdsStderr*(cmd) =
   if cmd.len > 0:
     flushDot(conf)
     stderr.writeLine(cmd)
@@ -835,7 +835,7 @@ proc hcrLinkTargetName(conf: ConfigRef, objFile: string, isMain = false): Absolu
                    else: platform.OS[conf.target.targetOS].dllFrmt % basename
   result = conf.getNimcacheDir / RelativeFile(targetName)
 
-proc displayProgressCC(conf: ConfigRef, path, compileCmd: string): string =
+proc displayProgressCC*(conf: ConfigRef, path, compileCmd: string): string =
   if conf.hasHint(hintCC):
     if optListCmd in conf.globalOptions or conf.verbosity > 1:
       result = MsgKindToStr[hintCC] % (demanglePackageName(path.splitFile.name) & ": " & compileCmd)

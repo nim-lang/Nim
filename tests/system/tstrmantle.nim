@@ -9,6 +9,8 @@ runs c cpp js tests, not honoring a spec that has `targets: "cpp js"`
 workaround: use: --targets:'cpp js'
 e.g.:
 XDG_CONFIG_HOME= nim r -b:cpp --lib:lib testament/testament.nim --nim:$nimb --targets:'cpp js' r $nim_prs_D/tests/system/tstrmantle.nim
+
+# PRTEMP: add tests for addFloat
 ]#
 
 template main =
