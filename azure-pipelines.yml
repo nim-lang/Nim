@@ -72,8 +72,8 @@ jobs:
 
     - task: NodeTool@0
       inputs:
-        versionSpec: '12.x'
-      displayName: 'Install node.js 12.x'
+        versionSpec: '16.x'
+      displayName: 'Install node.js 16.x'
       condition: and(succeeded(), eq(variables['skipci'], 'false'))
 
     - bash: |
@@ -147,16 +147,7 @@ jobs:
       condition: and(succeeded(), eq(variables['skipci'], 'false'))
       displayName: 'Add build binaries to PATH'
 
-    - bash: |
-        set -e
-        . ci/funs.sh
-        echo_run echo 'PATH:' "$PATH"
-        echo_run echo '##[section]gcc version'
-        echo_run gcc -v
-        echo_run echo '##[section]nodejs version'
-        echo_run node -v
-        echo_run echo '##[section]make version'
-        echo_run make -v
+    - bash: . ci/funs.sh && nimCiSystemInfo
       condition: and(succeeded(), eq(variables['skipci'], 'false'))
       displayName: 'System information'
 
