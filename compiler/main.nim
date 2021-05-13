@@ -73,12 +73,11 @@ when not defined(leanCompiler):
     handleDocOutputOptions graph.config
     graph.config.setErrorMaxHighMaybe
     semanticPasses(graph)
-    if ext == TexExt:
-      registerPass(graph, docgen2TexPass)
-    elif ext == JsonExt:
-      registerPass(graph, docgen2JsonPass)
-    else:  # ext == HtmlExt
-      registerPass(graph, docgen2Pass)
+    case ext:
+    of TexExt:  registerPass(graph, docgen2TexPass)
+    of JsonExt: registerPass(graph, docgen2JsonPass)
+    of HtmlExt: registerPass(graph, docgen2Pass)
+    else: doAssert false, $ext
     compileProject(graph)
     finishDoc2Pass(graph.config.projectName)
 

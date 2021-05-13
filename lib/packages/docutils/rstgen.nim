@@ -200,16 +200,9 @@ proc addTexChar(dest: var string, c: char) =
   # Escapes 10 special Latex characters. Note that [, ], and ` are not
   # considered as such. TODO: neither is @, am I wrong?
   case c
-  of '_': add(dest, "\\_")
-  of '{': add(dest, "\\{")
-  of '}': add(dest, "\\}")
-  of '$': add(dest, "\\$")
-  of '&': add(dest, "\\&")
-  of '#': add(dest, "\\#")
-  of '%': add(dest, "\\%")
-  # \~ and \^ have special meaning unless they are followed by {}
-  of '~': add(dest, "\\~{}")
-  of '^': add(dest, "\\^{}")
+  of '_', '{', '}', '$', '&', '#', '%': add(dest, "\\" & c)
+  # \~ and \^ have a special meaning unless they are followed by {}
+  of '~', '^': add(dest, "\\" & c & "{}")
   # add {} to avoid gobbling up space by \textbackslash
   of '\\': add(dest, "\\textbackslash{}")
   else: add(dest, c)
