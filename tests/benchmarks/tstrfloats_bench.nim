@@ -1,6 +1,6 @@
 #[
 on OSX:
-nim r -d:danger tests/benchmarks/tstrfloats.nim
+nim r -d:danger tests/benchmarks/tstrfloats_bench.nim
 ("toStringSprintf", "genFloatCast", 11.956240000000001)
 ("toStringSprintf", "genFloatConf", 1.581176000000001)
 ("toStringDragonbox", "genFloatCast", 0.1652149999999999)
