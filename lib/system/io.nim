@@ -12,7 +12,7 @@
 
 include inclrtl
 import std/private/since
-import formatfloat
+import std/strfloats
 
 # ----------------- IO Part ------------------------------------------------
 type
@@ -506,15 +506,16 @@ proc write*(f: File, b: bool) {.tags: [WriteIOEffect], benign.} =
   if b: write(f, "true")
   else: write(f, "false")
 
+template writeFloatImpl(f: File, r: float32 | BiggestFloat) =
+  var buffer {.noinit.}: array[strFloatBufLen, char]
+  let n = toString(buffer, r)
+  if c_fprintf(f, "%.*s", buffer[0].addr, n) < 0: checkErr(f)
+
 proc write*(f: File, r: float32) {.tags: [WriteIOEffect], benign.} =
-  var buffer {.noinit.}: array[65, char]
-  discard writeFloatToBuffer(buffer, r)
-  if c_fprintf(f, "%s", buffer[0].addr) < 0: checkErr(f)
+  writeFloatImpl(f, r)
 
 proc write*(f: File, r: BiggestFloat) {.tags: [WriteIOEffect], benign.} =
-  var buffer {.noinit.}: array[65, char]
-  discard writeFloatToBuffer(buffer, r)
-  if c_fprintf(f, "%s", buffer[0].addr) < 0: checkErr(f)
+  writeFloatImpl(f, r)
 
 proc write*(f: File, c: char) {.tags: [WriteIOEffect], benign.} =
   discard c_putc(cint(c), f)

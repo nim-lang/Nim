@@ -136,49 +136,8 @@ proc nimIntToStr(x: int): string {.compilerRtl.} =
   result = newStringOfCap(sizeof(x)*4)
   result.addInt x
 
-proc addCstringN(result: var string, buf: cstring; buflen: int) =
-  # no nimvm support needed, so it doesn't need to be fast here either
-  let oldLen = result.len
-  let newLen = oldLen + buflen
-  result.setLen newLen
-  copyMem(result[oldLen].addr, buf, buflen)
-
-import formatfloat
-
-when defined(nimdoc):
-  proc addFloat*(result: var string; x: float) =
-    ## Converts float to its string representation and appends it to `result`.
-    runnableExamples:
-      var a = "prefix:"
-      a.addFloat(0.1)
-      assert a == "prefix:0.1"
-
-      a.setLen 0
-      var b = 0.1
-      var c = b + 0.2
-      a.addFloat(c)
-      assert a == "0.30000000000000004"
-      assert c != 0.3 # indeed, binary representation is not exact
-
-elif defined(nimLegacyAddFloat) or not defined(nimHasDragonbox):
-  proc addFloat*(result: var string; x: float) =
-    when nimvm:
-      result.add $x
-    else:
-      var buffer {.noinit.}: array[65, char]
-      let n = writeFloatToBuffer(buffer, x)
-      result.addCstringN(cstring(buffer[0].addr), n)
-else:
-  import ../std/private/dependency_utils
-  static: addDependency("dragonbox")
-  const DtoaMinBufferLength* = 64
-  proc dragonboxToString*(buffer: ptr char, value: cdouble): ptr char {.importc: "nim_dragonbox_Dtoa".}
-  proc addFloat*(result: var string; x: float) =
-    var buffer {.noinit.}: array[DtoaMinBufferLength, char]
-    let first = buffer[0].addr
-    let ret = dragonboxToString(first, x)
-    let n = cast[int](ret) - cast[int](first)
-    result.addCstringN(cstring(first), n)
+import std/strfloats
+export addFloat
 
 proc nimFloatToStr(f: float): string {.compilerproc.} =
   result = newStringOfCap(8)

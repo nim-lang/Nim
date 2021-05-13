@@ -323,10 +323,10 @@ proc registerAdditionalOps*(c: PCtx) =
     let fn = getNode(a, 0)
     setResult(a, fn.kind == nkClosure or (fn.typ != nil and fn.typ.callConv == ccClosure))
 
-  registerCallback c, "stdlib.system.addFloat", proc(a: VmArgs) =
+  registerCallback c, "stdlib.strfloats.addFloat", proc(a: VmArgs) =
     let p = a.getVar(0)
     let x = a.getFloat(1)
-    addFloat(p.node.strVal, x)
+    addFloat(p.strVal, x)
 
   registerCallback c, "stdlib.dependency_utils.addDependency", proc(a: VmArgs) =
     addDependency(c.config,  getString(a, 0), a.currentLineInfo)
