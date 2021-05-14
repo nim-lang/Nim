@@ -509,7 +509,7 @@ proc write*(f: File, b: bool) {.tags: [WriteIOEffect], benign.} =
 template writeFloatImpl(f: File, r: float32 | BiggestFloat) =
   var buffer {.noinit.}: array[strFloatBufLen, char]
   let n = toString(buffer, r)
-  if c_fprintf(f, "%.*s", buffer[0].addr, n) < 0: checkErr(f)
+  if c_fprintf(f, "%.*s", n, buffer[0].addr) < 0: checkErr(f)
 
 proc write*(f: File, r: float32) {.tags: [WriteIOEffect], benign.} =
   writeFloatImpl(f, r)
