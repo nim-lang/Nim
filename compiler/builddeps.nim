@@ -36,7 +36,7 @@ proc addDependency*(conf: ConfigRef, name: string, info: TLineInfo) =
           let options = "-fPIE"
         else:
           let options = ""
-        let inputFile = conf.libpath.string / "vendor/dragonbox.cc"
+        let inputFile = conf.libpath.string / "vendor/drachennest/dragonbox.cc"
         let cmd = "$# -c -std=c++11 $# -O3 -o $# $#" % [cppExe.quoteShell, options, objFile.quoteShell, inputFile.quoteShell]
         # xxx use md5 hash to recompile if needed
         writePrettyCmdsStderr displayProgressCC(conf, inputFile, cmd)

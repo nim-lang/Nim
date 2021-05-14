@@ -29,7 +29,6 @@ from std/hashes import hash
 from std/osproc import nil
 
 from sighashes import symBodyDigest
-from builddeps import addDependency
 
 # There are some useful procs in vmconv.
 import vmconv
@@ -327,6 +326,3 @@ proc registerAdditionalOps*(c: PCtx) =
     let p = a.getVar(0)
     let x = a.getFloat(1)
     addFloat(p.strVal, x)
-
-  registerCallback c, "stdlib.dependency_utils.addDependency", proc(a: VmArgs) =
-    addDependency(c.config,  getString(a, 0), a.currentLineInfo)
