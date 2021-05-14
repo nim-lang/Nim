@@ -169,14 +169,17 @@ proc getOutFile2(conf: ConfigRef; filename: RelativeFile,
   else:
     result = getOutFile(conf, filename, ext)
 
-proc newDocumentor*(filename: AbsoluteFile; cache: IdentCache; conf: ConfigRef, outExt: string = HtmlExt, module: PSym = nil): PDoc =
+proc isLatexCmd(conf: ConfigRef): bool = conf.cmd in {cmdRst2tex, cmdDoc2tex}
+
+proc newDocumentor*(filename: AbsoluteFile; cache: IdentCache; conf: ConfigRef,
+                    outExt: string = HtmlExt, module: PSym = nil): PDoc =
   declareClosures()
   new(result)
   result.module = module
   result.conf = conf
   result.cache = cache
   result.outDir = conf.outDir.string
-  initRstGenerator(result[], (if conf.cmd != cmdRst2tex: outHtml else: outLatex),
+  initRstGenerator(result[], (if conf.isLatexCmd: outLatex else: outHtml),
                    conf.configVars, filename.string,
                    {roSupportRawDirective, roSupportMarkdown,
                     roPreferMarkdown, roNimFile},
@@ -249,7 +252,7 @@ proc newDocumentor*(filename: AbsoluteFile; cache: IdentCache; conf: ConfigRef, 
 
 template dispA(conf: ConfigRef; dest: var string, xml, tex: string,
                args: openArray[string]) =
-  if conf.cmd != cmdRst2tex: dest.addf(xml, args)
+  if not conf.isLatexCmd: dest.addf(xml, args)
   else: dest.addf(tex, args)
 
 proc getVarIdx(varnames: openArray[string], id: string): int =
@@ -551,7 +554,7 @@ proc getAllRunnableExamplesImpl(d: PDoc; n: PNode, dest: var string,
         let id = $d.listingCounter
         dest.add(d.config.getOrDefault"doc.listing_start" % [id, "langNim", ""])
         var dest2 = ""
-        renderNimCode(dest2, code, isLatex = d.conf.cmd == cmdRst2tex)
+        renderNimCode(dest2, code, d.target)
         dest.add dest2
         dest.add(d.config.getOrDefault"doc.listing_end" % id)
         return rsRunnable
@@ -821,7 +824,8 @@ proc genItem(d: PDoc, n, nameNode: PNode, k: TSymKind, docFlags: DocFlags) =
 
   inc(d.id)
   let
-    plainNameEsc = xmltree.escape(plainName.strip)
+    plainNameEsc = esc(d.target, plainName.strip)
+    uniqueName = if k in routineKinds: plainNameEsc else: name
     cleanPlainSymbol = renderPlainSymbolName(nameNode)
     complexSymbol = complexName(k, n, cleanPlainSymbol)
     plainSymbolEnc = encodeUrl(cleanPlainSymbol)
@@ -835,7 +839,8 @@ proc genItem(d: PDoc, n, nameNode: PNode, k: TSymKind, docFlags: DocFlags) =
   let seeSrc = genSeeSrc(d, toFullPath(d.conf, n.info), n.info.line.int)
 
   d.section[k].add(getConfigVar(d.conf, "doc.item") %
-    ["name", name, "header", result, "desc", comm, "itemID", $d.id,
+    ["name", name, "uniqueName", uniqueName,
+     "header", result, "desc", comm, "itemID", $d.id,
      "header_plain", plainNameEsc, "itemSym", cleanPlainSymbol,
      "itemSymOrID", symbolOrId, "itemSymEnc", plainSymbolEnc,
      "itemSymOrIDEnc", symbolOrIdEnc, "seeSrc", seeSrc,
@@ -1199,7 +1204,8 @@ proc genOutFile(d: PDoc, groupedToc = false): string =
     var shouldSort = i in routineKinds and groupedToc
     genSection(d, i, shouldSort)
     toc.add(d.toc[i])
-  if toc != "":
+  if toc != "" or d.target == outLatex:
+    # for Latex $doc.toc will automatically generate TOC if `d.hasToc` is set
     toc = getConfigVar(d.conf, "doc.toc") % ["content", toc]
   for i in TSymKind: code.add(d.section[i])
 
@@ -1217,7 +1223,7 @@ proc genOutFile(d: PDoc, groupedToc = false): string =
         "\\\\\\vspace{0.5em}\\large $1", [d.meta[metaSubtitle]])
 
   var groupsection = getConfigVar(d.conf, "doc.body_toc_groupsection")
-  let bodyname = if d.hasToc and not d.isPureRst:
+  let bodyname = if d.hasToc and not d.isPureRst and not d.conf.isLatexCmd:
                    groupsection.setLen 0
                    "doc.body_toc_group"
                  elif d.hasToc: "doc.body_toc"

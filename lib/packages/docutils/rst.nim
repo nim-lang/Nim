@@ -26,7 +26,8 @@
 ## .. [#html] commands `nim doc`:cmd: for ``*.nim`` files and
 ##    `nim rst2html`:cmd: for ``*.rst`` files
 ##
-## .. [#latex] command `nim rst2tex`:cmd: for ``*.rst``.
+## .. [#latex] commands `nim doc2tex`:cmd: for ``*.nim`` and
+##    `nim rst2tex`:cmd: for ``*.rst``.
 ##
 ## If you are new to RST please consider reading the following:
 ##

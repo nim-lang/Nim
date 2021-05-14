@@ -444,6 +444,7 @@ proc parseCommand*(command: string): Command =
   of "e": cmdNimscript
   of "doc0": cmdDoc0
   of "doc2", "doc": cmdDoc2
+  of "doc2tex": cmdDoc2tex
   of "rst2html": cmdRst2html
   of "rst2tex": cmdRst2tex
   of "jsondoc0": cmdJsondoc0
