@@ -370,13 +370,13 @@ const
     ## This can be set on the command line during compilation
     ## via `-d:nimMaxDescriptorsFallback=N`
 
-proc listen*(server: AsyncHttpServer; port: Port; address = "") =
-  ## Listen to the given port and address.
+proc listen*(server: AsyncHttpServer; port: Port; address = "", domain = AF_INET) =
+  ## Listen to the given port and address with specific domain.
   when declared(maxDescriptors):
     server.maxFDs = try: maxDescriptors() except: nimMaxDescriptorsFallback
   else:
     server.maxFDs = nimMaxDescriptorsFallback
-  server.socket = newAsyncSocket()
+  server.socket = newAsyncSocket(domain)
   if server.reuseAddr:
     server.socket.setSockOpt(OptReuseAddr, true)
   if server.reusePort:
