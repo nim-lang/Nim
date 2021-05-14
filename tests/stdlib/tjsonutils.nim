@@ -6,6 +6,7 @@ import std/jsonutils
 import std/json
 from std/math import isNaN, signbit
 from stdtest/testutils import whenRuntimeJs
+from std/fenv import epsilon
 
 proc testRoundtrip[T](t: T, expected: string) =
   # checks that `T => json => T2 => json2` is such that json2 = json
@@ -137,6 +138,16 @@ template fn() =
     doAssert not b[1].signbit
     doAssert b[2].signbit
     doAssert not b[3].signbit
+
+  block: # bug #15397, bug #13196
+    let a = 0.1
+    let x = 0.12345678901234567890123456789
+    let b = (a + 0.2, 0.3, x)
+    testRoundtrip2(b): "[0.30000000000000004,0.3,0.12345678901234568]"
+
+    testRoundtripVal(0.12345678901234567890123456789): "0.12345678901234568"
+    testRoundtripVal(epsilon(float64)): "2.220446049250313e-16"
+    testRoundtripVal(1.0 + epsilon(float64)): "1.0000000000000002"
 
   block: # case object
     type Foo = object

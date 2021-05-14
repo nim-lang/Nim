@@ -5,6 +5,7 @@ discard """
 import stdtest/testutils
 
 from std/math import PI
+from std/fenv import epsilon
 
 template main =
   var res = newStringOfCap(24)
