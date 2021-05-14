@@ -27,9 +27,9 @@ proc addCharsN*(result: var string, buf: ptr char; n: int) = # PRTEMP MOVE
   result.setLen oldLen + n
   nimCopyMem(result[oldLen].addr, buf, n)
 
-template addCstring(result: array[strFloatBufLen, char], buf: cstring) =
-  const n = buf.len
-  nimCopyMem(result[0].addr, cast[pointer](buf), n)
+proc addCstring(result: var array[strFloatBufLen, char], buf: openArray[char]) {.inline.} =
+  for i in 0..<buf.len:
+    result[i] = buf[i]
 
 proc toStringSprintf*(buf: var array[strFloatBufLen, char]; value: BiggestFloat): int =
   ## This is the old implementation to format floats in the Nim
