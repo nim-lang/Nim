@@ -1,4 +1,4 @@
-import std/private/dependency_utils
+import std/private/deputils
 
 doAssert not compiles(addDependency("nonexistant"))
 

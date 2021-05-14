@@ -73,7 +73,7 @@ proc toStringSprintf*(buf: var array[strFloatBufLen, char]; value: BiggestFloat)
       result = 3
 
 when useDragonbox:
-  import private/dependency_utils
+  import private/deputils
   addDependency("dragonbox")
   proc dragonboxToString(buf: ptr char, value: cdouble): ptr char {.importc: "nim_dragonbox_Dtoa".}
 
