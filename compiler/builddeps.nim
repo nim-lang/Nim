@@ -1,6 +1,6 @@
 #[
 ## TODO
-* this will show `CC: dragonbox_impl`:
+* this will show `CC: dragonbox`:
 `nim r -f --hint:cc --filenames:abs --processing:filenames --hint:conf nonexistant`
 we could refine the logic to delay compilation until cgen phase instead.
 (see also `tests/osproc/treadlines.nim`)
@@ -36,7 +36,7 @@ proc addDependency*(conf: ConfigRef, name: string, info: TLineInfo) =
           let options = "-fPIE"
         else:
           let options = ""
-        let inputFile = conf.libpath.string / "std/private/dragonbox_impl.cc"
+        let inputFile = conf.libpath.string / "vendor/dragonbox.cc"
         let cmd = "$# -c -std=c++11 $# -O3 -o $# $#" % [cppExe.quoteShell, options, objFile.quoteShell, inputFile.quoteShell]
         # xxx use md5 hash to recompile if needed
         writePrettyCmdsStderr displayProgressCC(conf, inputFile, cmd)
