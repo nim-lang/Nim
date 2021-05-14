@@ -35,5 +35,9 @@ template gen(algo) =
   gen(algo, genFloatCast)
   gen(algo, genFloatConf)
 
-gen(toStringSprintf)
-gen(toStringDragonbox)
+template main =
+  gen(toStringSprintf)
+  gen(toStringDragonbox)
+
+when isMainModule:
+  main()
