@@ -1317,10 +1317,10 @@ proc del*[T](x: var seq[T], i: Natural) {.noSideEffect.} =
   ##
   ## See also:
   ## * `delete <#delete,seq[T],Natural>`_ for preserving the order
-  ##
-  ## .. code-block:: Nim
-  ##  var i = @[1, 2, 3, 4, 5]
-  ##  i.del(2) # => @[1, 2, 5, 4]
+  runnableExamples:
+    var a = @[10, 11, 12, 13, 14]
+    a.del(2)
+    assert a == @[10, 11, 14, 13]
   let xl = x.len - 1
   movingCopy(x[i], x[xl])
   setLen(x, xl)
