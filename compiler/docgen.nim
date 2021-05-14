@@ -1217,10 +1217,11 @@ proc genOutFile(d: PDoc, groupedToc = false): string =
   else:
     # Modules get an automatic title for the HTML, but no entry in the index.
     title = canonicalImport(d.conf, AbsoluteFile d.filename)
+  title = esc(d.target, title)
   var subtitle = ""
   if d.meta[metaSubtitle] != "":
     dispA(d.conf, subtitle, "<h2 class=\"subtitle\">$1</h2>",
-        "\\\\\\vspace{0.5em}\\large $1", [d.meta[metaSubtitle]])
+        "\\\\\\vspace{0.5em}\\large $1", [esc(d.target, d.meta[metaSubtitle])])
 
   var groupsection = getConfigVar(d.conf, "doc.body_toc_groupsection")
   let bodyname = if d.hasToc and not d.isPureRst and not d.conf.isLatexCmd:
@@ -1247,7 +1248,7 @@ proc genOutFile(d: PDoc, groupedToc = false): string =
         "title", title, "subtitle", subtitle, "tableofcontents", toc,
         "moduledesc", d.modDesc, "date", getDateStr(), "time", getClockStr(),
         "content", content, "author", d.meta[metaAuthor],
-        "version", d.meta[metaVersion], "analytics", d.analytics,
+        "version", esc(d.target, d.meta[metaVersion]), "analytics", d.analytics,
         "deprecationMsg", d.modDeprecationMsg]
   else:
     code = content
