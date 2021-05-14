@@ -12,7 +12,7 @@
 ## support.
 
 import ".." / [ast, modulegraphs, trees, extccomp, btrees,
-  msgs, lineinfos, pathutils, options, cgmeth]
+  msgs, lineinfos, pathutils, options, cgmeth, builddeps]
 
 import tables
 
@@ -32,6 +32,9 @@ proc replayStateChanges*(module: PSym; g: ModuleGraph) =
       of "hint": message(g.config, n.info, hintUser, n[1].strVal)
       of "warning": message(g.config, n.info, warnUser, n[1].strVal)
       of "error": localError(g.config, n.info, errUser, n[1].strVal)
+      of "addDependency":
+        echo ("in replayer", n[1].strVal)
+        addDependency(g.config, n[1].strVal, n.info)
       of "compile":
         internalAssert g.config, n.len == 4 and n[2].kind == nkStrLit
         let cname = AbsoluteFile n[1].strVal

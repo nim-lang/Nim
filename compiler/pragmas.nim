@@ -96,11 +96,11 @@ proc getPragmaVal*(procAst: PNode; name: TSpecialWord): PNode =
 proc pragma*(c: PContext, sym: PSym, n: PNode, validPragmas: TSpecialWords;
             isStatement: bool = false)
 
-proc recordPragma(c: PContext; n: PNode; args: varargs[string]) =
-  var recorded = newNodeI(nkReplayAction, n.info)
-  for i in 0..args.high:
-    recorded.add newStrNode(args[i], n.info)
-  addPragmaComputation(c, recorded)
+# proc recordPragma(c: PContext; n: PNode; args: varargs[string]) =
+#   var recorded = newNodeI(nkReplayAction, n.info)
+#   for i in 0..args.high:
+#     recorded.add newStrNode(args[i], n.info)
+#   addPragmaComputation(c, recorded)
 
 const
   errStringLiteralExpected = "string literal expected"
@@ -494,6 +494,8 @@ proc relativeFile(c: PContext; n: PNode; ext=""): AbsoluteFile =
       if result.isEmpty: result = AbsoluteFile s
 
 proc processCompile(c: PContext, n: PNode) =
+  # echo (filename, found, "D20210513T234512", conf.toCompile)
+  echo ("processCompile", "D20210513T234512", n.renderTree)
   proc docompile(c: PContext; it: PNode; src, dest: AbsoluteFile; customArgs: string) =
     var cf = Cfile(nimname: splitFile(src).name,
                    cname: src, obj: dest, flags: {CfileFlag.External},
