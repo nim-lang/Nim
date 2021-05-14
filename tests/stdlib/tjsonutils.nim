@@ -22,6 +22,13 @@ type Foo = ref object
 proc `==`(a, b: Foo): bool =
   a.id == b.id
 
+type MyEnum = enum me0, me1 = "me1Alt", me2, me3, me4
+
+proc `$`(a: MyEnum): string =
+  # putting this here pending https://github.com/nim-lang/Nim/issues/13747
+  if a == me2: "me2Modif"
+  else: system.`$`(a)
+
 template fn() = 
   block: # toJson, jsonTo
     type Foo = distinct float
@@ -69,6 +76,12 @@ template fn() =
     let a = [f2: b2, f3: b3, f4: b4]
     doAssert b2.ord == 1 # explains the `1`
     testRoundtrip(a): """[1,2,3]"""
+
+  block: # ToJsonOptions
+    let a = (me1, me2)
+    doAssert $a.toJson() == "[1,2]"
+    doAssert $a.toJson(ToJsonOptions(enumMode: joptEnumSymbol)) == """["me1","me2"]"""
+    doAssert $a.toJson(ToJsonOptions(enumMode: joptEnumString)) == """["me1Alt","me2Modif"]"""
 
   block: # set
     type Foo = enum f1, f2, f3, f4, f5

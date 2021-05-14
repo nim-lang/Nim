@@ -116,9 +116,11 @@
 - `json.%`,`json.to`, `jsonutils.formJson`,`jsonutils.toJson` now work with `uint|uint64`
   instead of raising (as in 1.4) or giving wrong results (as in 1.2).
 
+- `jsonutils` now handles `cstring` (including as Table key), and `set`.
+
 - added `jsonutils.jsonTo` overload with `opt = Joptions()` param.
 
-- `jsonutils` now handles `cstring` (including as Table key), and `set`.
+- `jsonutils.toJson` now supports customization via `ToJsonOptions`.
 
 - Added an overload for the `collect` macro that inferes the container type based
   on the syntax of the last expression. Works with std seqs, tables and sets.
