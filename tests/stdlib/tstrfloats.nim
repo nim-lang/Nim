@@ -43,6 +43,7 @@ template main =
       toStr(5e22) == "5e+22"
       toStr(-5e22) == "-5e+22"
       toStr(50e20) == "5e+21"
+      toStr(1.0 + epsilon(float64)) == "1.0000000000000002"
 
     block: # nan, inf + cases that differ in js RT
       whenRuntimeJs:
