@@ -1,7 +1,7 @@
 discard """
   output: '''
-Error: cannot open 'a.nim'\31
-Error: cannot open 'b.nim'\31
+Error: cannot open 'nonexistant_a.nim'\31
+Error: cannot open 'nonexistant_b.nim'\31
 '''
   targets: "c"
 """
@@ -11,9 +11,9 @@ from std/os import getCurrentCompilerExe
 
 var ps: seq[Process] # compile & run 2 progs in parallel
 const nim = getCurrentCompilerExe()
-for prog in ["a", "b"]:
+for prog in ["nonexistant_a", "nonexistant_b"]:
   ps.add startProcess(nim, "",
-                      ["r", "--hint:Conf:off", "--hint:Processing:off", prog],
+                      ["r", "--hints:off", prog],
                       options = {poUsePath, poDaemon, poStdErrToStdOut})
 
 for p in ps:
