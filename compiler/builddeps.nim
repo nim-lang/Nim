@@ -29,7 +29,7 @@ proc addDependency*(conf: ConfigRef, name: string, info: TLineInfo) =
         when defined(osx):
           let cppExe = "clang++"
         else:
-          let cppExe = "gcc++"
+          let cppExe = "g++"
         when defined(linux):
             # PRTEMP: avoids:
             # /usr/bin/ld: /home/runner/work/Nim/Nim/nimcache/r_linux_amd64/nimdragonbox.o: relocation R_X86_64_32S against `.rodata' can not be used when making a PIE object; recompile with -fPIE
