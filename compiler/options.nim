@@ -359,6 +359,7 @@ type
 
     externalToLink*: seq[string]  # files to link in addition to the file
                                   # we compiled (*)
+    dependencies*: seq[string]     # dependencies
     linkOptionsCmd*: string
     compileOptionsCmd*: seq[string]
     linkOptions*: string          # (*)

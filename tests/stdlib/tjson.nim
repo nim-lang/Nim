@@ -11,7 +11,7 @@ import std/[json,parsejson,strutils]
 from std/math import isNaN
 when not defined(js):
   import std/streams
-
+import stdtest/testutils
 from std/fenv import epsilon
 
 proc testRoundtrip[T](t: T, expected: string) =
@@ -326,6 +326,11 @@ block: # bug #18007
     testRoundtripVal([inf, -inf, 0.0, -0.0, 1.0]): """["inf","-inf",0.0,-0.0,1.0]"""
   let a = parseJson($(%NaN)).to(float)
   doAssert a.isNaN
+
+  whenRuntimeJs: discard # pending https://github.com/nim-lang/Nim/issues/18009
+  do:
+    testRoundtripVal(0.0): "0.0"
+    testRoundtripVal(-0.0): "-0.0"
 
 block: # bug #15397, bug #13196
   testRoundtripVal(1.0 + epsilon(float64)): "1.0000000000000002"
