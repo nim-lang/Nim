@@ -1,5 +1,5 @@
-# third party files go here.
+# third party files go here
 
-## files
-### dragonbox.cc
-adapted from https://github.com/abolz/Drachennest/blob/master/src/dragonbox.cc
+difference with `$nim/dist`:
+`$nim/dist` is for automatically imported third party files
+this directory is for third party files we check in this repo
