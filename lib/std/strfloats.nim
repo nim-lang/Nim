@@ -13,7 +13,6 @@
 * support more rounding modes and other options, see https://github.com/jk-jeon/dragonbox
 ]#
 
-from system/memory import nimCopyMem
 
 const useDragonbox = defined(nimHasDragonbox) and not defined(nimLegacyAddFloat) and not defined(nimscript)
 
@@ -22,10 +21,16 @@ const dragonboxBufLen = 64
 
 const strFloatBufLen* = dragonboxBufLen
 
+when not defined(nimscript): # eg for `tests/stdlib/tlwip.nim`
+  from system/memory import nimCopyMem
+
 proc addCharsN*(result: var string, buf: ptr char; n: int) = # PRTEMP MOVE
   let oldLen = result.len
   result.setLen oldLen + n
-  nimCopyMem(result[oldLen].addr, buf, n)
+  when declared(nimCopyMem):
+    nimCopyMem(result[oldLen].addr, buf, n)
+  else:
+    doAssert false
 
 proc addCstring(result: var array[strFloatBufLen, char], buf: openArray[char]) {.inline.} =
   for i in 0..<buf.len:
