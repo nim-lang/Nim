@@ -576,22 +576,9 @@ proc magicsAfterOverloadResolution(c: PContext, n: PNode,
   of mAddDependency:
     let x = c.semConstExpr(c, n[1])
     case x.kind
-    of nkStrKinds:
-      addDependency(c.config, x.strVal, n.info)
-    else:
-      localError(c.config, n.info, "cannot evaluate at compile time")
-    echo ("addPragmaComputation", n.renderTree)
-    #   proc recordPragma(c: PContext; n: PNode; args: varargs[string]) =
-    # var recorded = newNodeI(nkReplayAction, n.info)
-    # for i in 0..args.high:
-    #   recorded.add newStrNode(args[i], n.info)
-    # addPragmaComputation(c, recorded)
-    # addPragmaComputation(c, n)
+    of nkStrKinds: addDependency(c.config, x.strVal, n.info)
+    else: localError(c.config, n.info, "cannot evaluate at compile time")
     recordPragma(c, n, "addDependency", x.strVal)
-    # var recorded = newNodeI(nkReplayAction, n.info)
-    # for i in 0..args.high:
-    #   recorded.add newStrNode(args[i], n.info)
-    # addPragmaComputation(c, recorded)
     result = newNodeIT(nkEmpty, n.info, getSysType(c.graph, n.info, tyVoid))
   of mPrivateAccess:
     var t = n[1].typ[0]

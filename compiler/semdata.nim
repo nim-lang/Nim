@@ -333,6 +333,7 @@ proc addPragmaComputation*(c: PContext; n: PNode) =
     addPragmaComputation(c.encoder, c.packedRepr, n)
 
 proc recordPragma*(c: PContext; n: PNode; args: varargs[string]) =
+  # xxx rename to `recordAction`, since it can record things other than pragmas
   var recorded = newNodeI(nkReplayAction, n.info)
   for i in 0..args.high:
     recorded.add newStrNode(args[i], n.info)

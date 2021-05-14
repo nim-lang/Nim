@@ -14,7 +14,6 @@ import msgs, options, ast, lineinfos, extccomp, pathutils
 const prefix = "__" # prevent clashing with user files
 
 proc addDependency*(conf: ConfigRef, name: string, info: TLineInfo) =
-  echo "D20210513T231239"
   case name
   of "dragonbox":
     if name notin conf.dependencies:

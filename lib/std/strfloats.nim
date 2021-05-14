@@ -74,10 +74,7 @@ proc toStringSprintf*(buf: var array[strFloatBufLen, char]; value: BiggestFloat)
 
 when useDragonbox:
   import private/dependency_utils
-  # static: addDependency("dragonbox")
-  static: echo "D20210513T234052.1"
   addDependency("dragonbox")
-  static: echo "D20210513T234052.2"
   proc dragonboxToString(buf: ptr char, value: cdouble): ptr char {.importc: "nim_dragonbox_Dtoa".}
 
   proc toStringDragonbox*(buf: var array[strFloatBufLen, char]; value: BiggestFloat): int {.inline.} =
