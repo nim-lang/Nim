@@ -1,6 +1,6 @@
 #[
 on OSX:
-nim r -d:danger tests/benchmarks/tstrfloats_bench.nim
+nim r -d:danger -d:numIter:100_000_00 tests/benchmarks/tstrfloats_bench.nim
 ("toStringSprintf", "genFloatCast", 11.956240000000001)
 ("toStringSprintf", "genFloatConf", 1.581176000000001)
 ("toStringDragonbox", "genFloatCast", 0.1652149999999999)
@@ -9,13 +9,14 @@ nim r -d:danger tests/benchmarks/tstrfloats_bench.nim
 
 import std/[times, strfloats]
 
+const numIter {.intdefine.} = 10
+
 template gen(algo, genFloat) =
   proc main {.gensym.} =
-    let n = 100_000_00
     var buf: array[strFloatBufLen, char]
     var c = 0
     let t = cpuTime()
-    for i in 0..<n:
+    for i in 0..<numIter:
       let x = genFloat(i)
       let m = algo(buf, x)
       when false: # debugging
