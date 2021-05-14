@@ -86,6 +86,17 @@ iterator items*[T: HoleyEnum](E: typedesc[T]): T =
     assert B[float].toSeq == [B[float].b0, B[float].b1]
   for a in enumFullRange(E): yield a
 
+func symbolRankImpl[T](a: T): int {.inline.} =
+  var i = 0
+  for ai in items(T):
+    if ai == a: return i
+    inc(i)
+  raise newException(IndexDefect, $ord(a) & " invalid for " & $T)
+
+template symbolRank*[T: enum](a: T): int =
+  when T is Ordinal: ord(a) - T.low.ord.static
+  else: symbolRankImpl(a)
+
 func symbolName*[T: OrdinalEnum](a: T): string =
   ## Returns the symbol name of an enum.
   runnableExamples:
