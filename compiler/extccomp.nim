@@ -391,11 +391,6 @@ proc resetCompilationLists*(conf: ConfigRef) =
   # Maybe we can do that in checkDep on the other hand?
   conf.externalToLink.setLen 0
 
-# proc addExternalFileToLink*(conf: ConfigRef; filename: AbsoluteFile, avoidDups = false) =
-#   if avoidDups:
-#     for a in conf.externalToLink:
-#       if a == filename.string:
-#         return
 proc addExternalFileToLink*(conf: ConfigRef; filename: AbsoluteFile) =
   conf.externalToLink.insert(filename.string, 0)
 

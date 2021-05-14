@@ -2,6 +2,10 @@ discard """
   targets: "c cpp js"
 """
 
+#[
+xxx deduplicate with tdollars, tests/float/tfloat4.nim, tests/float/tfloat6.nim etc
+]#
+
 import stdtest/testutils
 
 from std/math import PI

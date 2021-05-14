@@ -9,7 +9,7 @@
 
 # This include file implements the semantic checking for magics.
 # included from sem.nim
-
+from builddeps import addDependency
 proc semAddrArg(c: PContext; n: PNode; isUnsafeAddr = false): PNode =
   let x = semExprWithType(c, n)
   if x.kind == nkSym:
@@ -573,6 +573,14 @@ proc magicsAfterOverloadResolution(c: PContext, n: PNode,
     if n[1].typ.skipTypes(abstractInst).kind in {tyUInt..tyUInt64}:
       n[0].sym.magic = mSubU
     result = n
+  of mAddDependency:
+    let x = c.semConstExpr(c, n[1])
+    case x.kind
+    of nkStrKinds:
+      addDependency(c.config, x.strVal, n.info)
+    else:
+      localError(c.config, n.info, "cannot evaluate at compile time")
+    result = newNodeIT(nkEmpty, n.info, getSysType(c.graph, n.info, tyVoid))
   of mPrivateAccess:
     var t = n[1].typ[0]
     if t.kind in {tyRef, tyPtr}: t = t[0]
