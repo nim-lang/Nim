@@ -45,5 +45,4 @@ proc addDependency*(conf: ConfigRef, name: string, info: TLineInfo) =
           localError(conf, info, "building '$#' failed: cmd: $#\noutput:\n$#" % [name, cmd, outp])
       conf.addExternalFileToLink(objFile.AbsoluteFile)
   else:
-    # see https://github.com/timotheecour/Nim/issues/731
     localError(conf, info, "expected: 'dragonbox', got: '$1'" % name)

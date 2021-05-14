@@ -403,8 +403,7 @@ proc hasHint*(conf: ConfigRef, note: TNoteKind): bool =
     # could add here other special notes like hintSource
     # these notes apply globally.
     note in conf.mainPackageNotes
-  else:
-    note in conf.notes
+  else: note in conf.notes
 
 proc hasWarn*(conf: ConfigRef, note: TNoteKind): bool {.inline.} =
   optWarns in conf.options and note in conf.notes
