@@ -75,6 +75,7 @@
 - `system.addFloat` now uses dragonbox algorithm, which ensures roundtrip guarantee, minimum length,
   and correct rounding. Use `-d:nimLegacyAddFloat` for a transition period.
 
+- `system/formatfloat` (an internal module) was deprecated; use the new module `std/strfloats` instead.
 
 - `strformat` is now part of `include std/prelude`.
 
