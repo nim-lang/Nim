@@ -308,7 +308,7 @@
 
 - Added `copyWithin` [for `seq` and `array` for JavaScript targets](https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Array/copyWithin).
 
-- Remove deprecated `oids.oidToString`.
+- Removed deprecated `oids.oidToString`.
 
 
 ## Language changes
