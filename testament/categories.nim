@@ -424,11 +424,12 @@ proc listPackages(packageFilter: string): seq[NimblePackage] =
     # at least should be a regex; a substring match makes no sense.
     result = pkgs.filterIt(packageFilter in it.name)
   else:
-    let pkgs1 = pkgs.filterIt(it.allowFailure)
-    let pkgs2 = pkgs.filterIt(not it.allowFailure)
-    if testamentData0.batchArg == "allowed_failures":
-      result = pkgs1
+    if testamentData0.testamentNumBatch == 0:
+      result = pkgs
+    elif testamentData0.batchArg == "allowed_failures":
+      result = pkgs.filterIt(it.allowFailure)
     else:
+      let pkgs2 = pkgs.filterIt(not it.allowFailure)
       for i in 0..<pkgs2.len:
         if i mod testamentData0.testamentNumBatch == testamentData0.testamentBatch:
           result.add pkgs2[i]
