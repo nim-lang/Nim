@@ -649,8 +649,8 @@ proc fixAbstractType(c: PContext, n: PNode) =
           changeType(c, it[1], s, check=true)
         n[i] = it[1]
 
-proc isAssignable(c: PContext, n: PNode; isUnsafeAddr=false): TAssignableResult =
-  result = parampatterns.isAssignable(c.p.owner, n, isUnsafeAddr)
+proc isAssignable(c: PContext, n: PNode): TAssignableResult =
+  result = parampatterns.isAssignable(c.p.owner, n)
 
 proc isUnresolvedSym(s: PSym): bool =
   result = s.kind == skGenericParam
@@ -1630,9 +1630,11 @@ proc takeImplicitAddr(c: PContext, n: PNode; isLent: bool): PNode =
     # `proc fun(a: var int): var int = a`
     discard
   else: discard
-  let valid = isAssignable(c, n, isLent)
+  let valid = isAssignable(c, n)
   if valid != arLValue:
-    if valid == arLocalLValue:
+    if valid in {arAddressableConst, arLentValue} and isLent:
+      discard "ok"
+    elif valid == arLocalLValue:
       localError(c.config, n.info, errXStackEscape % renderTree(n, {renderNoComments}))
     else:
       localError(c.config, n.info, errExprHasNoAddress)
@@ -1753,7 +1755,7 @@ proc semAsgn(c: PContext, n: PNode; mode=asgnNormal): PNode =
   if le == nil:
     localError(c.config, a.info, "expression has no type")
   elif (skipTypes(le, {tyGenericInst, tyAlias, tySink}).kind notin {tyVar} and
-        isAssignable(c, a) in {arNone, arLentValue}) or (
+        isAssignable(c, a) in {arNone, arLentValue, arAddressableConst}) or (
       skipTypes(le, abstractVar).kind in {tyOpenArray, tyVarargs} and views notin c.features):
     # Direct assignment to a discriminant is allowed!
     localError(c.config, a.info, errXCannotBeAssignedTo %
@@ -2240,7 +2242,7 @@ proc semMagic(c: PContext, n: PNode, s: PSym, flags: TExprFlags): PNode =
     markUsed(c, n.info, s)
     checkSonsLen(n, 2, c.config)
     result[0] = newSymNode(s, n[0].info)
-    result[1] = semAddrArg(c, n[1], s.name.s == "unsafeAddr")
+    result[1] = semAddrArg(c, n[1])
     result.typ = makePtrType(c, result[1].typ)
   of mTypeOf:
     markUsed(c, n.info, s)

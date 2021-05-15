@@ -176,6 +176,7 @@ type
     arLocalLValue,            # is an l-value, but local var; must not escape
                               # its stack frame!
     arDiscriminant,           # is a discriminant
+    arAddressableConst,       # an addressable const
     arLentValue,              # lent value
     arStrange                 # it is a strange beast like 'typedesc[var T]'
 
@@ -209,7 +210,7 @@ proc exprRoot*(n: PNode): PSym =
     else:
       break
 
-proc isAssignable*(owner: PSym, n: PNode; isUnsafeAddr=false): TAssignableResult =
+proc isAssignable*(owner: PSym, n: PNode): TAssignableResult =
   ## 'owner' can be nil!
   result = arNone
   case n.kind
@@ -217,14 +218,11 @@ proc isAssignable*(owner: PSym, n: PNode; isUnsafeAddr=false): TAssignableResult
     if n.typ != nil and n.typ.kind in {tyVar}:
       result = arLValue
   of nkSym:
-    let kinds = if isUnsafeAddr: {skVar, skResult, skTemp, skParam, skLet, skForVar}
-                else: {skVar, skResult, skTemp}
-    if n.sym.kind == skParam and n.sym.typ.kind in {tyVar, tySink}:
-      result = arLValue
-    elif isUnsafeAddr and n.sym.kind == skParam:
-      result = arLValue
-    elif isUnsafeAddr and n.sym.kind == skConst and dontInlineConstant(n, n.sym.ast):
-      result = arLValue
+    const kinds = {skVar, skResult, skTemp, skParam, skLet, skForVar}
+    if n.sym.kind == skParam:
+      result = if n.sym.typ.kind in {tyVar, tySink}: arLValue else: arAddressableConst
+    elif n.sym.kind == skConst and dontInlineConstant(n, n.sym.ast):
+      result = arAddressableConst
     elif n.sym.kind in kinds:
       if owner != nil and owner == n.sym.owner and
           sfGlobal notin n.sym.flags:
@@ -238,10 +236,10 @@ proc isAssignable*(owner: PSym, n: PNode; isUnsafeAddr=false): TAssignableResult
     let t = skipTypes(n[0].typ, abstractInst-{tyTypeDesc})
     if t.kind in {tyVar, tySink, tyPtr, tyRef}:
       result = arLValue
-    elif isUnsafeAddr and t.kind == tyLent:
-      result = arLValue
+    elif t.kind == tyLent:
+      result = arAddressableConst
     else:
-      result = isAssignable(owner, n[0], isUnsafeAddr)
+      result = isAssignable(owner, n[0])
     if result != arNone and n[1].kind == nkSym and
         sfDiscriminant in n[1].sym.flags:
       result = arDiscriminant
@@ -249,23 +247,23 @@ proc isAssignable*(owner: PSym, n: PNode; isUnsafeAddr=false): TAssignableResult
     let t = skipTypes(n[0].typ, abstractInst-{tyTypeDesc})
     if t.kind in {tyVar, tySink, tyPtr, tyRef}:
       result = arLValue
-    elif isUnsafeAddr and t.kind == tyLent:
-      result = arLValue
+    elif t.kind == tyLent:
+      result = arAddressableConst
     else:
-      result = isAssignable(owner, n[0], isUnsafeAddr)
+      result = isAssignable(owner, n[0])
   of nkHiddenStdConv, nkHiddenSubConv, nkConv:
     # Object and tuple conversions are still addressable, so we skip them
     # XXX why is 'tyOpenArray' allowed here?
     if skipTypes(n.typ, abstractPtrs-{tyTypeDesc}).kind in
         {tyOpenArray, tyTuple, tyObject}:
-      result = isAssignable(owner, n[1], isUnsafeAddr)
+      result = isAssignable(owner, n[1])
     elif compareTypes(n.typ, n[1].typ, dcEqIgnoreDistinct):
       # types that are equal modulo distinction preserve l-value:
-      result = isAssignable(owner, n[1], isUnsafeAddr)
+      result = isAssignable(owner, n[1])
   of nkHiddenDeref:
     let n0 = n[0]
     if n0.typ.kind == tyLent:
-      if isUnsafeAddr or (n0.kind == nkSym and n0.sym.kind == skResult):
+      if n0.kind == nkSym and n0.sym.kind == skResult:
         result = arLValue
       else:
         result = arLentValue
@@ -274,18 +272,19 @@ proc isAssignable*(owner: PSym, n: PNode; isUnsafeAddr=false): TAssignableResult
   of nkDerefExpr, nkHiddenAddr:
     result = arLValue
   of nkObjUpConv, nkObjDownConv, nkCheckedFieldExpr:
-    result = isAssignable(owner, n[0], isUnsafeAddr)
+    result = isAssignable(owner, n[0])
   of nkCallKinds:
     # builtin slice keeps lvalue-ness:
     if getMagic(n) in {mArrGet, mSlice}:
-      result = isAssignable(owner, n[1], isUnsafeAddr)
-    elif n.typ != nil and n.typ.kind in {tyVar}:
-      result = arLValue
-    elif isUnsafeAddr and n.typ != nil and n.typ.kind == tyLent:
-      result = arLValue
+      result = isAssignable(owner, n[1])
+    elif n.typ != nil:
+      case n.typ.kind
+      of tyVar: result = arLValue
+      of tyLent: result = arLentValue
+      else: discard
   of nkStmtList, nkStmtListExpr:
     if n.typ != nil:
-      result = isAssignable(owner, n.lastSon, isUnsafeAddr)
+      result = isAssignable(owner, n.lastSon)
   of nkVarTy:
     # XXX: The fact that this is here is a bit of a hack.
     # The goal is to allow the use of checks such as "foo(var T)"
