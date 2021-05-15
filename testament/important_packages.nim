@@ -76,9 +76,9 @@ pkg "httpauth"
 pkg "illwill", "nimble examples"
 pkg "inim", allowFailure=true
 pkg "itertools", "nim doc src/itertools.nim"
-pkg "iterutils"
+# pkg "iterutils"  # https://github.com/nim-lang/Nim/pull/18018
 pkg "jstin"
-pkg "karax", "nim c -r tests/tester.nim"
+# pkg "karax", "nim c -r tests/tester.nim"  # https://github.com/nim-lang/Nim/pull/18018
 pkg "kdtree", "nimble test -d:nimLegacyRandomInitRand", "https://github.com/jblindsay/kdtree"
 pkg "loopfusion"
 pkg "macroutils"
@@ -95,7 +95,7 @@ pkg "nigui", "nim c -o:niguii -r src/nigui.nim"
 pkg "nimcrypto", "nim r --path:. tests/testall.nim" # `--path:.` workaround needed, see D20210308T165435
 pkg "NimData", "nim c -o:nimdataa src/nimdata.nim"
 pkg "nimes", "nim c src/nimes.nim"
-pkg "nimfp", "nim c -o:nfp -r src/fp.nim"
+# pkg "nimfp", "nim c -o:nfp -r src/fp.nim"  # https://github.com/nim-lang/Nim/pull/18018
 pkg "nimgame2", "nim c -d:nimLegacyConvEnumEnum nimgame2/nimgame.nim", allowFailure = true
   # XXX Doesn't work with deprecated 'randomize', will create a PR.
 pkg "nimgen", "nim c -o:nimgenn -r src/nimgen/runcfg.nim"
