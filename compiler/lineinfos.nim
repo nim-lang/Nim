@@ -110,7 +110,7 @@ const
     warnFieldXNotSupported: "field '$1' not supported",
     warnRstStyle: "RST style: $1",
     warnCommentXIgnored: "comment '$1' ignored",
-    warnTypelessParam: "'$1' has no type. Typeless parameters are deprecated; only allowed for 'template'",
+    warnTypelessParam: "'$1' has no type. Typeless parameters are are not allowed, except for 'template'; See 'using' statement instead",
     warnUseBase: "use {.base.} for base methods; baseless methods are deprecated",
     warnWriteToForeignHeap: "write to foreign heap",
     warnUnsafeCode: "unsafe code: '$1'",
