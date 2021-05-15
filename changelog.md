@@ -309,6 +309,9 @@
 - Added `copyWithin` [for `seq` and `array` for JavaScript targets](https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Array/copyWithin).
 
 
+- Removed deprecated `math.c_frexp`.
+
+
 ## Language changes
 
 - `nimscript` now handles `except Exception as e`.
