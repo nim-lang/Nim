@@ -1297,7 +1297,7 @@ proc semProcTypeNode(c: PContext, n, genericParams: PNode,
         let param = strTableGet(c.signatures, arg.name)
         if param != nil: typ = param.typ
         else:
-          localError(c.config, a.info, "typeless parameters are obsolete")
+          localError(c.config, a.info, "typeless parameters are not allowed; See 'using' statement instead")
           typ = errorType(c)
       let lifted = liftParamType(c, kind, genericParams, typ,
                                  arg.name.s, arg.info)
