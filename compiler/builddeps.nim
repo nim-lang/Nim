@@ -24,16 +24,15 @@ proc addDependency*(conf: ConfigRef, name: string, info: TLineInfo) =
       let objFile = dir / ("$1nimdragonbox.o" % prefix)
       if optForceFullMake in conf.globalOptions or not objFile.fileExists:
         # xxx
-        # let cppExe = getCompilerExe(c.config; compiler: TSystemCC; cfile: AbsoluteFile): string =
-            # compilePattern = getCompilerExe(conf, c, cfile.cname)
+        # compilePattern = getCompilerExe(conf, c, cfile.cname)
+        let cppExe2 = getCompilerExe(conf; compiler: TSystemCC; "D20210515T150427.cpp")
+        echo ("D20210515T150411", cppExe2)
         when defined(osx):
           let cppExe = "clang++"
         else:
           let cppExe = "g++"
         when defined(linux):
-            # PRTEMP: avoids:
-            # /usr/bin/ld: /home/runner/work/Nim/Nim/nimcache/r_linux_amd64/nimdragonbox.o: relocation R_X86_64_32S against `.rodata' can not be used when making a PIE object; recompile with -fPIE
-          let options = "-fPIE"
+          let options = "-fPIE" # avoids: `relocation R_X86_64_32S against `.rodata' can not be used when making a PIE object`
         else:
           let options = ""
         let inputFile = conf.libpath.string / "vendor/drachennest/dragonbox.cc"
