@@ -159,7 +159,7 @@ runnableExamples:
     a1, a2, a0, a3, a4: int
   doAssert $(%* Foo()) == """{"a1":0,"a2":0,"a0":0,"a3":0,"a4":0}"""
 
-import hashes, tables, strutils, lexbase, streams, macros, parsejson
+import hashes, tables, strutils, lexbase, streams, macros, math, parsejson
 
 import options # xxx remove this dependency using same approach as https://github.com/nim-lang/Nim/pull/14563
 import std/private/since
@@ -333,7 +333,10 @@ proc `%`*(n: BiggestInt): JsonNode =
 
 proc `%`*(n: float): JsonNode =
   ## Generic constructor for JSON data. Creates a new `JFloat JsonNode`.
-  result = JsonNode(kind: JFloat, fnum: n)
+  case n.classify
+  of fcNan, fcInf, fcNegInf: result = newJNull()
+  of fcZero, fcNegZero: result = newJInt(0)
+  else: result = JsonNode(kind: JFloat, fnum: n)
 
 proc `%`*(b: bool): JsonNode =
   ## Generic constructor for JSON data. Creates a new `JBool JsonNode`.
