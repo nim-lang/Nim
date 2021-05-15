@@ -69,11 +69,6 @@ when defined(c) or defined(cpp):
 
   proc c_signbit(x: SomeFloat): cint {.importc: "signbit", header: "<math.h>".}
 
-  func c_frexp*(x: cfloat, exponent: var cint): cfloat {.
-      importc: "frexpf", header: "<math.h>", deprecated: "Use `frexp` instead".}
-  func c_frexp*(x: cdouble, exponent: var cint): cdouble {.
-      importc: "frexp", header: "<math.h>", deprecated: "Use `frexp` instead".}
-
   # don't export `c_frexp` in the future and remove `c_frexp2`.
   func c_frexp2(x: cfloat, exponent: var cint): cfloat {.
       importc: "frexpf", header: "<math.h>".}
