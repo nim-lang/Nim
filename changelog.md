@@ -308,6 +308,8 @@
 
 - Added `copyWithin` [for `seq` and `array` for JavaScript targets](https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Array/copyWithin).
 
+- Removed deprecated `future` module, use `sugar` instead.
+
 
 ## Language changes
 
