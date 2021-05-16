@@ -91,6 +91,10 @@ template fn() =
       else:
         testRoundtrip(a): "[9223372036854775807,18446744073709551615]"
 
+  block: # bug #18007
+    testRoundtrip((NaN, Inf, -Inf, 0.0, -0.0, 1.0)): "[nan,inf,-inf,0.0,-0.0,1.0]"
+    testRoundtrip((float32(NaN), Inf, -Inf, 0.0, -0.0, 1.0)): "[nan,inf,-inf,0.0,-0.0,1.0]"
+
   block: # case object
     type Foo = object
       x0: float

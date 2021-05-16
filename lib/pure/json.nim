@@ -333,7 +333,10 @@ proc `%`*(n: BiggestInt): JsonNode =
 
 proc `%`*(n: float): JsonNode =
   ## Generic constructor for JSON data. Creates a new `JFloat JsonNode`.
-  result = JsonNode(kind: JFloat, fnum: n)
+  if n != n: newJRawNumber("nan")
+  elif n == Inf: newJRawNumber("inf")
+  elif n == -Inf: newJRawNumber("-inf")
+  else: JsonNode(kind: JFloat, fnum: n)
 
 proc `%`*(b: bool): JsonNode =
   ## Generic constructor for JSON data. Creates a new `JBool JsonNode`.
@@ -1087,11 +1090,32 @@ when defined(nimFixedForwardGeneric):
       dst = cast[T](jsonNode.num)
 
   proc initFromJson[T: SomeFloat](dst: var T; jsonNode: JsonNode; jsonPath: var string) =
-    verifyJsonKind(jsonNode, {JInt, JFloat}, jsonPath)
-    if jsonNode.kind == JFloat:
-      dst = T(jsonNode.fnum)
+    if jsonNode.isUnquoted:
+      assert jsonNode.kind == JString # instead of exception, because isUnquoted is internal logic
+      # when nimvm:
+      when true:
+        case jsonNode.str
+        of "nan":
+          let b = NaN
+          dst = T(b)
+          # dst = NaN # would fail some tests because range conversions would cause CT error
+          # in some cases; but this is not a hot-spot inside this branch and backend can optimize
+          # this.
+        of "inf":
+          let b = Inf
+          dst = T(b)
+        of "-inf":
+          let b = -Inf
+          dst = T(b)
+        else: raise newException(JsonKindError, "expected 'nan|inf|-inf', got " & jsonNode.str)
+      else:
+        discard
     else:
-      dst = T(jsonNode.num)
+      verifyJsonKind(jsonNode, {JInt, JFloat}, jsonPath)
+      if jsonNode.kind == JFloat:
+        dst = T(jsonNode.fnum)
+      else:
+        dst = T(jsonNode.num)
 
   proc initFromJson[T: enum](dst: var T; jsonNode: JsonNode; jsonPath: var string) =
     verifyJsonKind(jsonNode, {JString}, jsonPath)

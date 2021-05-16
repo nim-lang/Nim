@@ -70,6 +70,8 @@
 - `jsonutils` now serializes/deserializes holey enums as regular enums (via `ord`) instead of as strings.
   Use `-d:nimLegacyJsonutilsHoleyEnum` for a transition period.
 
+- `json` and `jsonutils` now serialize NaN, Inf, -Inf as "nan", "inf", "-inf", using raw strings (the same
+  that are used to encode numbers that can't fit in native number types).
 
 ## Standard library additions and changes
 - Added support for parenthesized expressions in `strformat`
