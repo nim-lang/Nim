@@ -107,12 +107,18 @@ func symbolRankImpl[T](a: T): int {.inline.} =
   const thres = 255 # must be <= `invalidSlot`, but this should be tuned.
   when n <= thres:
     const lookup = genLookup(T)
-    let lookup2 = lookup # xxx improve pending https://github.com/timotheecour/Nim/issues/553
+    let lookup2 {.global.} = lookup # xxx improve pending https://github.com/timotheecour/Nim/issues/553
     # TODO: global?
-    let ret = lookup2[ord(a) - T.low.ord]
+    #[
+    This could be optimized using a hash adapted to `T` (possible since it's known at CT)
+    to get better key distribution before indexing into the lookup table table.
+    ]#
+    {.noSideEffect.}: # because it's immutable
+      let ret = lookup2[ord(a) - T.low.ord]
     if ret != invalidSlot: return ret.int
   else:
     var i = 0
+    # we could also generate a case statement as optimization
     for ai in items(T):
       if ai == a: return i
       inc(i)
@@ -135,11 +141,6 @@ template symbolRank*[T: enum](a: T): int =
     assert a2.ord == 11
     var invalid = 7.A
     doAssertRaises(IndexDefect): discard invalid.symbolRank
-  #[
-  xxx the cost for `HoleyEnum` could be improved in several ways:
-  * using a generated case statement, eg: `case a.ord of v0: ... v1: ...`
-  * using a hash table implemented in 
-  ]#
   when T is Ordinal: ord(a) - T.low.ord.static
   else: symbolRankImpl(a)
 
