@@ -23,13 +23,7 @@ proc testRoundtripVal[T](t: T, expected: string) =
   doAssert j2 == expected, j2
   let j3 = j2.parseJson
   let t2 = j3.jsonTo(T)
-  when T is float: # special case to test NaN
-    if t.isNaN:
-      doAssert t2.isNaN
-    else:
-      doAssert t2 == t
-  else:
-    doAssert t2 == t
+  doAssert t2 == t
   doAssert $t2.toJson == j2 # still needed, because -0.0 = 0.0 but their json representation differs
 
 import tables, sets, algorithm, sequtils, options, strtabs
@@ -114,7 +108,7 @@ template fn() =
     testRoundtrip((NaN, Inf, -Inf, 0.0, -0.0, 1.0)): """["nan","inf","-inf",0.0,-0.0,1.0]"""
     testRoundtrip((float32(NaN), Inf, -Inf, 0.0, -0.0, 1.0)): """["nan","inf","-inf",0.0,-0.0,1.0]"""
     testRoundtripVal((Inf, -Inf, 0.0, -0.0, 1.0)): """["inf","-inf",0.0,-0.0,1.0]"""
-    testRoundtripVal(NaN): """"nan""""
+    doAssert ($NaN.toJson).parseJson.jsonTo(float).isNaN
 
   block: # case object
     type Foo = object
