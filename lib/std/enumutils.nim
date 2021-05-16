@@ -108,7 +108,6 @@ func symbolRankImpl[T](a: T): int {.inline.} =
   when n <= thres:
     const lookup = genLookup(T)
     let lookup2 {.global.} = lookup # xxx improve pending https://github.com/timotheecour/Nim/issues/553
-    # TODO: global?
     #[
     This could be optimized using a hash adapted to `T` (possible since it's known at CT)
     to get better key distribution before indexing into the lookup table table.
