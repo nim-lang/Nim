@@ -200,7 +200,7 @@ proc findBounds*(s: string, pattern: Regex,
   result = findBounds(cstring(s), pattern, matches, start, s.len)
 
 proc findBounds*(buf: cstring, pattern: Regex,
-                 start = 0, bufSize: int): tuple[first, last: int] =
+                 start = 0, bufSize = 0): tuple[first, last: int] =
   ## returns the `first` and `last` position of `pattern` in `buf`,
   ## where `buf` has length `bufSize` (not necessarily `'\0'` terminated).
   ## If it does not match, `(-1,0)` is returned.
