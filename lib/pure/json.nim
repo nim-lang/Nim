@@ -333,9 +333,12 @@ proc `%`*(n: BiggestInt): JsonNode =
 
 proc `%`*(n: float): JsonNode =
   ## Generic constructor for JSON data. Creates a new `JFloat JsonNode`.
-  if n != n: newJRawNumber("nan")
-  elif n == Inf: newJRawNumber("inf")
-  elif n == -Inf: newJRawNumber("-inf")
+  # for those special cases, we could also have used `newJRawNumber` but then
+  # it would've been inconsisten with the case of `parseJson` vs `%` for representing
+  # nan|inf.
+  if n != n: newJString("nan")
+  elif n == Inf: newJString("inf")
+  elif n == -Inf: newJString("-inf")
   else: JsonNode(kind: JFloat, fnum: n)
 
 proc `%`*(b: bool): JsonNode =
@@ -694,14 +697,7 @@ proc toUgly*(result: var string, node: JsonNode) =
     result.add "}"
   of JString:
     if node.isUnquoted:
-      # xxx rename `isUnquoted` to isRawString so that it better represents its meaning:
-      # allows encoding bigints and nan,inf,-inf
-      if node.str.len > 0 and node.str[0] in {'i', 'n'} or node.str.len > 1 and node.str[1] in {'i'}:
-        # nan, inf, -inf
-        assert node.str in ["nan", "inf", "-inf"] # sanity check
-        escapeJson(node.str, result)
-      else:
-        result.add node.str
+      result.add node.str
     else:
       escapeJson(node.str, result)
   of JInt:
@@ -1095,7 +1091,6 @@ when defined(nimFixedForwardGeneric):
 
   proc initFromJson[T: SomeFloat](dst: var T; jsonNode: JsonNode; jsonPath: var string) =
     if jsonNode.kind == JString:
-      # `isUnquoted` will be true if coming from `Inf.toJson`, false if coming from "inf".parseJson
       case jsonNode.str
       of "nan":
         let b = NaN
