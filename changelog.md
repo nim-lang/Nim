@@ -71,7 +71,7 @@
   Use `-d:nimLegacyJsonutilsHoleyEnum` for a transition period.
 
 - `json` and `jsonutils` now serialize NaN, Inf, -Inf as strings, so that
-  `%[NaN, -Inf]` is the string `["nan","-inf"]` insetad of `[nan,-inf]` which was invalid json.
+  `%[NaN, -Inf]` is the string `["nan","-inf"]` instead of `[nan,-inf]` which was invalid json.
 
 ## Standard library additions and changes
 - Added support for parenthesized expressions in `strformat`
