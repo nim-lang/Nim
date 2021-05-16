@@ -12,6 +12,9 @@ runnableExamples:
   let a = (1.5'f32, (b: "b2", a: "a2"), 'x', @[Foo(t: true, z1: -3), nil], [{"name": "John"}.newStringTable])
   let j = a.toJson
   assert j.jsonTo(typeof(a)).toJson == j
+  assert $[NaN, Inf, -Inf, 0.0, -0.0, 1.0, 1e-2].toJson == """["nan","inf","-inf",0.0,-0.0,1.0,0.01]"""
+  assert 0.0.toJson.kind == JFloat
+  assert Inf.toJson.kind == JString
 
 import json, strutils, tables, sets, strtabs, options
 
