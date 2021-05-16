@@ -127,7 +127,7 @@ template symbolRank*[T: enum](a: T): int =
   ## Returns the index in which `a` is listed in `T`.
   ##
   ## The cost for a `HoleyEnum` is implementation defined, currently optimized
-  ## for enums with `T.span` <= 255, otherwise is `O(T.enumLen)`.
+  ## for small enums, otherwise is `O(T.enumLen)`.
   runnableExamples:
     type
       A = enum a0 = -3, a1 = 10, a2, a3 = (20, "f3Alt") # HoleyEnum
