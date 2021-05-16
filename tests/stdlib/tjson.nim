@@ -302,11 +302,11 @@ block: # bug #17383
     testRoundtrip(uint64.high): "18446744073709551615"
 
 block: # bug #18007
-  testRoundtrip([NaN, Inf, -Inf, 0.0, -0.0, 1.0]): "[nan,inf,-inf,0.0,-0.0,1.0]"
+  testRoundtrip([NaN, Inf, -Inf, 0.0, -0.0, 1.0]): """["nan","inf","-inf",0.0,-0.0,1.0]"""
   # pending https://github.com/nim-lang/Nim/issues/18025 use:
-  # testRoundtrip([float32(NaN), Inf, -Inf, 0.0, -0.0, 1.0]): "[nan,inf,-inf,0.0,-0.0,1.0]"
+  # testRoundtrip([float32(NaN), Inf, -Inf, 0.0, -0.0, 1.0])
   let inf = float32(Inf)
-  testRoundtrip([float32(NaN), inf, -inf, 0.0, -0.0, 1.0]): "[nan,inf,-inf,0.0,-0.0,1.0]"
+  testRoundtrip([float32(NaN), inf, -inf, 0.0, -0.0, 1.0]): """["nan","inf","-inf",0.0,-0.0,1.0]"""
 
 block:
   let a = "18446744073709551615"

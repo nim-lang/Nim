@@ -665,6 +665,54 @@ proc escapeJson*(s: string): string =
   result = newStringOfCap(s.len + s.len shr 3)
   escapeJson(s, result)
 
+proc toUgly*(result: var string, node: JsonNode) =
+  ## Converts `node` to its JSON Representation, without
+  ## regard for human readability. Meant to improve `$` string
+  ## conversion performance.
+  ##
+  ## JSON representation is stored in the passed `result`
+  ##
+  ## This provides higher efficiency than the `pretty` procedure as it
+  ## does **not** attempt to format the resulting JSON to make it human readable.
+  var comma = false
+  case node.kind:
+  of JArray:
+    result.add "["
+    for child in node.elems:
+      if comma: result.add ","
+      else: comma = true
+      result.toUgly child
+    result.add "]"
+  of JObject:
+    result.add "{"
+    for key, value in pairs(node.fields):
+      if comma: result.add ","
+      else: comma = true
+      key.escapeJson(result)
+      result.add ":"
+      result.toUgly value
+    result.add "}"
+  of JString:
+    if node.isUnquoted:
+      # xxx rename `isUnquoted` to isRawString so that it better represents its meaning:
+      # allows encoding bigints and nan,inf,-inf
+      if node.str.len > 0 and node.str[0] in {'i', 'n'} or node.str.len > 1 and node.str[1] in {'i'}:
+        # nan, inf, -inf
+        assert node.str in ["nan", "inf", "-inf"] # sanity check
+        escapeJson(node.str, result)
+      else:
+        result.add node.str
+    else:
+      escapeJson(node.str, result)
+  of JInt:
+    result.addInt(node.num)
+  of JFloat:
+    result.addFloat(node.fnum)
+  of JBool:
+    result.add(if node.bval: "true" else: "false")
+  of JNull:
+    result.add "null"
+
 proc toPretty(result: var string, node: JsonNode, indent = 2, ml = true,
               lstArr = false, currIndent = 0) =
   case node.kind
@@ -692,10 +740,7 @@ proc toPretty(result: var string, node: JsonNode, indent = 2, ml = true,
       result.add("{}")
   of JString:
     if lstArr: result.indent(currIndent)
-    if node.isUnquoted:
-      result.add node.str
-    else:
-      escapeJson(node.str, result)
+    toUgly(result, node)
   of JInt:
     if lstArr: result.indent(currIndent)
     result.addInt(node.num)
@@ -745,47 +790,6 @@ proc pretty*(node: JsonNode, indent = 2): string =
 }"""
   result = ""
   toPretty(result, node, indent)
-
-proc toUgly*(result: var string, node: JsonNode) =
-  ## Converts `node` to its JSON Representation, without
-  ## regard for human readability. Meant to improve `$` string
-  ## conversion performance.
-  ##
-  ## JSON representation is stored in the passed `result`
-  ##
-  ## This provides higher efficiency than the `pretty` procedure as it
-  ## does **not** attempt to format the resulting JSON to make it human readable.
-  var comma = false
-  case node.kind:
-  of JArray:
-    result.add "["
-    for child in node.elems:
-      if comma: result.add ","
-      else: comma = true
-      result.toUgly child
-    result.add "]"
-  of JObject:
-    result.add "{"
-    for key, value in pairs(node.fields):
-      if comma: result.add ","
-      else: comma = true
-      key.escapeJson(result)
-      result.add ":"
-      result.toUgly value
-    result.add "}"
-  of JString:
-    if node.isUnquoted:
-      result.add node.str
-    else:
-      node.str.escapeJson(result)
-  of JInt:
-    result.addInt(node.num)
-  of JFloat:
-    result.addFloat(node.fnum)
-  of JBool:
-    result.add(if node.bval: "true" else: "false")
-  of JNull:
-    result.add "null"
 
 proc `$`*(node: JsonNode): string =
   ## Converts `node` to its JSON Representation on one line.
@@ -1090,26 +1094,21 @@ when defined(nimFixedForwardGeneric):
       dst = cast[T](jsonNode.num)
 
   proc initFromJson[T: SomeFloat](dst: var T; jsonNode: JsonNode; jsonPath: var string) =
-    if jsonNode.isUnquoted:
-      assert jsonNode.kind == JString # instead of exception, because isUnquoted is internal logic
-      # when nimvm:
-      when true:
-        case jsonNode.str
-        of "nan":
-          let b = NaN
-          dst = T(b)
-          # dst = NaN # would fail some tests because range conversions would cause CT error
-          # in some cases; but this is not a hot-spot inside this branch and backend can optimize
-          # this.
-        of "inf":
-          let b = Inf
-          dst = T(b)
-        of "-inf":
-          let b = -Inf
-          dst = T(b)
-        else: raise newException(JsonKindError, "expected 'nan|inf|-inf', got " & jsonNode.str)
-      else:
-        discard
+    if jsonNode.kind == JString:
+      # `isUnquoted` will be true if coming from `Inf.toJson`, false if coming from "inf".parseJson
+      case jsonNode.str
+      of "nan":
+        let b = NaN
+        dst = T(b)
+        # dst = NaN # would fail some tests because range conversions would cause CT error
+        # in some cases; but this is not a hot-spot inside this branch and backend can optimize this.
+      of "inf":
+        let b = Inf
+        dst = T(b)
+      of "-inf":
+        let b = -Inf
+        dst = T(b)
+      else: raise newException(JsonKindError, "expected 'nan|inf|-inf', got " & jsonNode.str)
     else:
       verifyJsonKind(jsonNode, {JInt, JFloat}, jsonPath)
       if jsonNode.kind == JFloat:
