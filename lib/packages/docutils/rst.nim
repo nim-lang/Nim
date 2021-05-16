@@ -1153,12 +1153,13 @@ proc parsePostfix(p: var RstParser, n: PRstNode): PRstNode =
   var newSons = n.sons
 
   proc finalizeInterpreted(node: PRstNode, newKind: RstNodeKind,
-                           roleName: string): PRstNode =
+                           newSons: seq[PRstNode], roleName: string):
+                          PRstNode {.nimcall.} =
     # fixes interpreted text (`x` or `y`:role:) to proper internal AST format
     if newKind in {rnUnknownRole, rnCodeFragment}:
-      result = n.toOtherRole(newKind, roleName)
+      result = node.toOtherRole(newKind, roleName)
     elif newKind == rnInlineCode:
-      result = n.toInlineCode(language=roleName)
+      result = node.toInlineCode(language=roleName)
     else:
       result = newRstNode(newKind, newSons)
 
@@ -1186,10 +1187,10 @@ proc parsePostfix(p: var RstParser, n: PRstNode): PRstNode =
     # a role:
     let (roleName, lastIdx) = getRefname(p, p.idx+1)
     newKind = whichRole(p, roleName)
-    result = finalizeInterpreted(n, newKind, roleName)
+    result = n.finalizeInterpreted(newKind, newSons, roleName)
     p.idx = lastIdx + 2
   else:
-    result = n.finalizeInterpreted(p.s.currRoleKind, p.s.currRole)
+    result = n.finalizeInterpreted(p.s.currRoleKind, newSons, p.s.currRole)
 
 proc matchVerbatim(p: RstParser, start: int, expr: string): int =
   result = start
