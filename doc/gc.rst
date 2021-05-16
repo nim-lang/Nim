@@ -1,8 +1,9 @@
-.. default-role:: code
-
 =======================
 Nim's Memory Management
 =======================
+
+.. default-role:: code
+.. include:: rstcommon.rst
 
 :Author: Andreas Rumpf
 :Version: |nimversion|
@@ -29,24 +30,28 @@ and how the memory management strategies other than garbage collectors work.
 Multi-paradigm Memory Management Strategies
 ===========================================
 
+.. default-role:: option
+
 To choose the memory management strategy use the `--gc:` switch.
 
-- `--gc:refc`. This is the default GC. It's a
+--gc:refc    This is the default GC. It's a
   deferred reference counting based garbage collector
   with a simple Mark&Sweep backup GC in order to collect cycles. Heaps are thread-local.
-- `--gc:markAndSweep`. Simple Mark-And-Sweep based garbage collector. Heaps are thread-local.
-- `--gc:boehm`. Boehm based garbage collector, it offers a shared heap.
-- `--gc:go`. Go's garbage collector, useful for interoperability with Go. Offers a shared heap.
-- `--gc:arc`. Plain reference counting with
+--gc:markAndSweep  Simple Mark-And-Sweep based garbage collector.
+  Heaps are thread-local.
+--gc:boehm    Boehm based garbage collector, it offers a shared heap.
+--gc:go    Go's garbage collector, useful for interoperability with Go.
+  Offers a shared heap.
+--gc:arc    Plain reference counting with
   `move semantic optimizations <destructors.html#move-semantics>`_, offers a shared heap.
   It offers deterministic performance for `hard realtime`:idx: systems. Reference cycles
   cause memory leaks, beware.
 
-- `--gc:orc`. Same as `--gc:arc` but adds a cycle collector based on "trial deletion".
+--gc:orc    Same as `--gc:arc` but adds a cycle collector based on "trial deletion".
   Unfortunately, that makes its performance profile hard to reason about so it is less
   useful for hard real-time systems.
 
-- `--gc:none`. No memory management strategy nor a garbage collector. Allocated memory is
+--gc:none    No memory management strategy nor a garbage collector. Allocated memory is
   simply never freed. You should use `--gc:arc` instead.
 
 
@@ -61,6 +66,9 @@ Boehm              Shared   Cycle Collector   Yes            `--gc:boehm`
 Go                 Shared   Cycle Collector   Yes            `--gc:go`
 None               Manual   Manual            Manual         `--gc:none`
 ================== ======== ================= ============== ===================
+
+.. default-role:: code
+.. include:: rstcommon.rst
 
 JavaScript's garbage collector is used for the `JavaScript and NodeJS
 <backends.html#backends-the-javascript-target>`_ compilation targets.
@@ -82,7 +90,7 @@ Soft real-time support
 ----------------------
 
 To enable real-time support, the symbol `useRealtimeGC`:idx: needs to be
-defined via `--define:useRealtimeGC` (you can put this into your config
+defined via `--define:useRealtimeGC`:option: (you can put this into your config
 file as well).
 With this switch the garbage collector supports the following operations:
 
@@ -132,7 +140,7 @@ Time measurement with garbage collectors
 ----------------------------------------
 
 The garbage collectors' way of measuring time uses
-(see `lib/system/timers.nim` for the implementation):
+(see ``lib/system/timers.nim`` for the implementation):
 
 1) `QueryPerformanceCounter` and `QueryPerformanceFrequency` on Windows.
 2) `mach_absolute_time` on Mac OS X.
@@ -170,7 +178,7 @@ Other useful procs from `system <system.html>`_ you can use to keep track of mem
 * `GC_getStatistics()` Garbage collector statistics as a human-readable string.
 
 These numbers are usually only for the running thread, not for the whole heap,
-with the exception of `--gc:boehm` and `--gc:go`.
+with the exception of `--gc:boehm`:option: and `--gc:go`:option:.
 
 In addition to `GC_ref` and `GC_unref` you can avoid the garbage collector by manually
 allocating memory with procs like `alloc`, `alloc0`, `allocShared`, `allocShared0` or `allocCStringArray`.
@@ -184,7 +192,8 @@ Heap dump
 
 The heap dump feature is still in its infancy, but it already proved
 useful for us, so it might be useful for you. To get a heap dump, compile
-with `-d:nimTypeNames` and call `dumpNumberOfInstances` at a strategic place in your program.
+with `-d:nimTypeNames`:option: and call `dumpNumberOfInstances`
+at a strategic place in your program.
 This produces a list of the used types in your program and for every type
 the total amount of object instances for this type as well as the total
 amount of bytes these instances take up.

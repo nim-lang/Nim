@@ -1151,6 +1151,18 @@ proc toOtherRole(n: PRstNode, kind: RstNodeKind, roleName: string): PRstNode =
 proc parsePostfix(p: var RstParser, n: PRstNode): PRstNode =
   var newKind = n.kind
   var newSons = n.sons
+
+  proc finalizeInterpreted(node: PRstNode, newKind: RstNodeKind,
+                           newSons: seq[PRstNode], roleName: string):
+                          PRstNode {.nimcall.} =
+    # fixes interpreted text (`x` or `y`:role:) to proper internal AST format
+    if newKind in {rnUnknownRole, rnCodeFragment}:
+      result = node.toOtherRole(newKind, roleName)
+    elif newKind == rnInlineCode:
+      result = node.toInlineCode(language=roleName)
+    else:
+      result = newRstNode(newKind, newSons)
+
   if isInlineMarkupEnd(p, "_", exact=true) or
       isInlineMarkupEnd(p, "__", exact=true):
     inc p.idx
@@ -1175,19 +1187,10 @@ proc parsePostfix(p: var RstParser, n: PRstNode): PRstNode =
     # a role:
     let (roleName, lastIdx) = getRefname(p, p.idx+1)
     newKind = whichRole(p, roleName)
-    if newKind in {rnUnknownRole, rnCodeFragment}:
-      result = n.toOtherRole(newKind, roleName)
-    elif newKind == rnInlineCode:
-      result = n.toInlineCode(language=roleName)
-    else:
-      result = newRstNode(newKind, newSons)
+    result = n.finalizeInterpreted(newKind, newSons, roleName)
     p.idx = lastIdx + 2
   else:
-    if p.s.currRoleKind == rnInlineCode:
-      result = n.toInlineCode(language=p.s.currRole)
-    else:
-      newKind = p.s.currRoleKind
-      result = newRstNode(newKind, newSons)
+    result = n.finalizeInterpreted(p.s.currRoleKind, newSons, p.s.currRole)
 
 proc matchVerbatim(p: RstParser, start: int, expr: string): int =
   result = start

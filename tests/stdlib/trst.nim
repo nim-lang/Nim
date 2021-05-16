@@ -371,6 +371,27 @@ suite "RST inline markup":
         rnLeaf  '```'
       """)
 
+  test "interpreted text parsing: code fragments":
+    check(dedent"""
+        .. default-role:: option
+
+        `--gc:refc`""".toAst ==
+      dedent"""
+        rnInner
+          rnDefaultRole
+            rnDirArg
+              rnLeaf  'option'
+            [nil]
+            [nil]
+          rnParagraph
+            rnCodeFragment
+              rnInner
+                rnLeaf  '--'
+                rnLeaf  'gc'
+                rnLeaf  ':'
+                rnLeaf  'refc'
+              rnLeaf  'option'
+        """)
 
   test """interpreted text can be ended with \` """:
     let output = (".. default-role:: literal\n" & """`\``""").toAst
