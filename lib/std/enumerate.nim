@@ -73,9 +73,12 @@ macro staticUnroll*(x: ForLoopStmt): untyped =
   runnableExamples:
     var msg = ""
     for T in staticUnroll([int, float]):
-      var a: T
+      var a: T # a is gensym'd so won't cause a redifinition error
+      proc fn() {.gensym.} = discard # gensym needed here
+      proc fn2(a: T): auto = a # regular overloading here
       msg.add $T & " "
     assert msg == "int float "
+    assert fn2(1.1) == 1.1 # `staticUnroll` is evaluated in caller scope
 
     # with 2 loop parameters, the 1st one is a const int indexing the element
     for i, T in staticUnroll([int, float, string]):
@@ -83,8 +86,9 @@ macro staticUnroll*(x: ForLoopStmt): untyped =
       elif i == 1: assert T is float
       else: assert T is string
 
-    # nesting loops
-    msg = ""
+  runnableExamples:
+    # example showing nested loops
+    var msg = ""
     proc fn1(a: auto) = msg.add $("fn1", a)
     proc fn2(a: auto) = msg.add $("fn1", a)
     for fn in staticUnroll([fn1, fn2]):
@@ -92,6 +96,19 @@ macro staticUnroll*(x: ForLoopStmt): untyped =
         fn(T.default)
     assert msg == """("fn1", 0)("fn1", 0.0)("fn1", 0)("fn1", 0.0)"""
 
+  runnableExamples:
+    # example showing passing untyped arguments to define variables
+    for i, name in staticUnroll([name0, name1]):
+      const name = i
+    assert name1 == 1
+
+  runnableExamples:
+    template baz =
+      for i, name in staticUnroll([name0, name1]):
+        const name = i
+      assert name1 == 1
+    baz()
+  # xxx maybe `fieldPairs`, `fields` implementation in compiler could reuse this trick
   expectKind x, nnkForStmt
   var varIndex: NimNode
   if x.len == 3: discard
@@ -112,28 +129,3 @@ macro staticUnroll*(x: ForLoopStmt): untyped =
       result.add quote do:
         template impl(`varIndex`, `varName`) {.gensym.} = `body`
         impl(`i2`, `ai`)
-  # echo result.repr
-
-when isMainModule:
-  #[
-  TODO: see also: fieldPairs, fields
-  ]#
-  for i,T in staticUnroll([int, float]):
-    echo $T
-  for T in staticUnroll([int, float]):
-    echo $T
-  # for i, bi in staticUnroll([int, float]):
-  #   for j, bj in staticUnroll([fn1, fn2]):
-  #     const i2 = i + j
-  #     echo ($bi, astToStr(bj), i, j, i2)
-
-  # for i, T in staticUnroll([int, float]):
-  #   var z = i
-  #   const z2 = i
-  #   var z3: T
-  #   echo (z, z2, i, $T, T.default)
-  #   proc bar() {.gensym.} = echo (z,)
-  #   bar()
-  #   proc bar2(a: T) = echo ($T, "in bar")
-  # bar2(1)
-  # bar2(1.2)

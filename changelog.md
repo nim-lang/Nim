@@ -310,6 +310,8 @@
 
 - Added `copyWithin` [for `seq` and `array` for JavaScript targets](https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Array/copyWithin).
 
+- Added `enumerate.staticUnroll`, aka in other languages as `static for`.
+
 
 ## Language changes
 
