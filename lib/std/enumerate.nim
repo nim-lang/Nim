@@ -71,56 +71,69 @@ macro enumerate*(x: ForLoopStmt): untyped {.since: (1, 3).} =
 macro staticUnroll*(x: ForLoopStmt): untyped =
   ## Also known as `static for` in some other languages.
   runnableExamples:
-    for i, T in staticUnroll([int, float]):
+    var msg = ""
+    for T in staticUnroll([int, float]):
+      var a: T
+      msg.add $T & " "
+    assert msg == "int float "
+
+    # with 2 loop parameters, the 1st one is a const int indexing the element
+    for i, T in staticUnroll([int, float, string]):
       when i == 0: assert T is int
-      else: assert T is float
+      elif i == 1: assert T is float
+      else: assert T is string
 
-    proc fn1(x: auto): auto = x
-    proc fn2(x: auto): auto = x * x
-    # for i, fn in staticUnroll([fn1, fn2]):
-    #   for j, T in staticUnroll([int, float]):
-    #     let a = fn(T.default)
+    # nesting loops
+    msg = ""
+    proc fn1(a: auto) = msg.add $("fn1", a)
+    proc fn2(a: auto) = msg.add $("fn1", a)
+    for fn in staticUnroll([fn1, fn2]):
+      for T in staticUnroll([int, float]):
+        fn(T.default)
+    assert msg == """("fn1", 0)("fn1", 0.0)("fn1", 0)("fn1", 0.0)"""
 
-    #     const i2 = i + j
-    #     echo ($bi, astToStr(bj), i, j, i2)
-
-  # RENAME: unroll?
   expectKind x, nnkForStmt
-  # check if the starting count is specified:
-  var countStart = if x[^2].len == 2: newLit(0) else: x[^2][1]
+  var varIndex: NimNode
+  if x.len == 3: discard
+  elif x.len == 4: varIndex = x[^4]
+  else: doAssert false, $x.len
   result = newStmtList()
-  var body = x[^1].copyNimTree
-  var elems = x[^2]
-  var varIndex = x[0] # PRTEMP
-  var varName = x[1] # PRTEMP
-  let varIndex2 = genSym(nskConst, varIndex.strVal)
+  let
+    body = x[^1]
+    elems = x[^2]
+    varName = x[^3]
   for i, ai in elems[1]:
-    let i2 = newLit(i)
-    let ret = quote do:
-      template impl(`varIndex`, `varName`) {.gensym.}=
-        `body`
-      impl(`i2`, `ai`)
-    result.add ret
-  echo result.repr
+    if varIndex == nil:
+      result.add quote do:
+        template impl(`varName`) {.gensym.} = `body`
+        impl(`ai`)
+    else:
+      let i2 = newLit(i)
+      result.add quote do:
+        template impl(`varIndex`, `varName`) {.gensym.} = `body`
+        impl(`i2`, `ai`)
+  # echo result.repr
 
 when isMainModule:
   #[
   TODO: see also: fieldPairs, fields
   ]#
-  # for T in staticUnroll([int, float]):
-  #   echo $T
-  for i, bi in staticUnroll([int, float]):
-    for j, bj in staticUnroll([fn1, fn2]):
-      const i2 = i + j
-      echo ($bi, astToStr(bj), i, j, i2)
+  for i,T in staticUnroll([int, float]):
+    echo $T
+  for T in staticUnroll([int, float]):
+    echo $T
+  # for i, bi in staticUnroll([int, float]):
+  #   for j, bj in staticUnroll([fn1, fn2]):
+  #     const i2 = i + j
+  #     echo ($bi, astToStr(bj), i, j, i2)
 
-  for i, T in staticUnroll([int, float]):
-    var z = i
-    const z2 = i
-    var z3: T
-    echo (z, z2, i, $T, T.default)
-    proc bar() {.gensym.} = echo (z,)
-    bar()
-    proc bar2(a: T) = echo ($T, "in bar")
-  bar2(1)
-  bar2(1.2)
+  # for i, T in staticUnroll([int, float]):
+  #   var z = i
+  #   const z2 = i
+  #   var z3: T
+  #   echo (z, z2, i, $T, T.default)
+  #   proc bar() {.gensym.} = echo (z,)
+  #   bar()
+  #   proc bar2(a: T) = echo ($T, "in bar")
+  # bar2(1)
+  # bar2(1.2)
