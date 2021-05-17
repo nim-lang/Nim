@@ -4,14 +4,27 @@ discard """
 
 import std/jsonutils
 import std/json
+from std/math import isNaN
 
 proc testRoundtrip[T](t: T, expected: string) =
+  # checks that `T => json => T2 => json2` is such that json2 = json
   let j = t.toJson
-  doAssert $j == expected, $j
+  doAssert $j == expected, "\n" & $j & "\n" & expected
   doAssert j.jsonTo(T).toJson == j
   var t2: T
   t2.fromJson(j)
   doAssert t2.toJson == j
+
+proc testRoundtripVal[T](t: T, expected: string) =
+  # similar to testRoundtrip, but also checks that the `T => json => T2` is such that `T2 == T`
+  # note that this isn't always possible, e.g. for pointer-like types.
+  let j = t.toJson
+  let j2 = $j
+  doAssert j2 == expected, j2
+  let j3 = j2.parseJson
+  let t2 = j3.jsonTo(T)
+  doAssert t2 == t
+  doAssert $t2.toJson == j2 # still needed, because -0.0 = 0.0 but their json representation differs
 
 import tables, sets, algorithm, sequtils, options, strtabs
 from strutils import contains
@@ -90,6 +103,12 @@ template fn() =
         testRoundtrip(a): "[2147483647,4294967295]"
       else:
         testRoundtrip(a): "[9223372036854775807,18446744073709551615]"
+
+  block: # bug #18007
+    testRoundtrip((NaN, Inf, -Inf, 0.0, -0.0, 1.0)): """["nan","inf","-inf",0.0,-0.0,1.0]"""
+    testRoundtrip((float32(NaN), Inf, -Inf, 0.0, -0.0, 1.0)): """["nan","inf","-inf",0.0,-0.0,1.0]"""
+    testRoundtripVal((Inf, -Inf, 0.0, -0.0, 1.0)): """["inf","-inf",0.0,-0.0,1.0]"""
+    doAssert ($NaN.toJson).parseJson.jsonTo(float).isNaN
 
   block: # case object
     type Foo = object
