@@ -68,7 +68,8 @@ template main =
     block:
       let a = 123456789
       when not defined(js):
-        # xxx in VM, gives: Error: VM does not support 'cast' from tyInt to tyFloat
+        # pending https://github.com/timotheecour/Nim/issues/733
+        # int VM, would give: Error: VM does not support 'cast' from tyInt to tyFloat
         let b = cast[float](a)
         assertAll:
           # xxx in js RT, this shows 123456789.0, ie, the cast is interpreted as a conversion
