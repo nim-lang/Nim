@@ -57,14 +57,6 @@ jobs:
         shell: bash
         run: . ci/funs.sh && nimBuildCsourcesIfNeeded CC=gcc ucpu='${{ matrix.cpu }}'
 
-      - name: 'Build koch'
+      - name: 'koch, Run CI'
         shell: bash
-        run: nim c koch
-      - name: 'Run CI'
-        shell: bash
-        run: ./koch runCI
-
-      - name: 'Show failed tests'
-        if: failure()
-        shell: bash
-        run: nim c -r tools/ci_testresults.nim
+        run: . ci/funs.sh && nimInternalBuildKochAndRunCI

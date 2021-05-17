@@ -31,6 +31,24 @@ nimIsCiSkip(){
   fi
 }
 
+nimInternalInstallDepsWindows(){
+  echo_run mkdir dist
+  echo_run curl -L https://nim-lang.org/download/mingw64.7z -o dist/mingw64.7z
+  echo_run curl -L https://nim-lang.org/download/dlls.zip -o dist/dlls.zip
+  echo_run 7z x dist/mingw64.7z -odist
+  echo_run 7z x dist/dlls.zip -obin
+}
+
+nimInternalBuildKochAndRunCI(){
+  echo_run nim c koch
+  echo_run ./koch runCI
+  if [ $? -ne 0 ]; then
+    echo_run echo "runCI failed"
+    echo_run nim r tools/ci_testresults.nim
+    exit 1
+  fi
+}
+
 nimDefineVars(){
   . config/build_config.txt
   nim_csources=bin/nim_csources_$nim_csourcesHash

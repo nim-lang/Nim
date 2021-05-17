@@ -159,13 +159,9 @@ jobs:
     #   condition: and(succeeded(), eq(variables['skipci'], 'false'))
     #   displayName: 'Restore built csourcesAny'
 
-    - bash: nim c koch
+    - bash: . ci/funs.sh && nimInternalBuildKochAndRunCI
+      # would could also show on failure: echo '##vso[task.complete result=Failed]'
       condition: and(succeeded(), eq(variables['skipci'], 'false'))
-      displayName: 'Build koch'
-
-      # set result to omit the "bash exited with error code '1'" message
-    - bash: ./koch runCI || echo '##vso[task.complete result=Failed]'
-      condition: and(succeeded(), eq(variables['skipci'], 'false'))
-      displayName: 'Run CI'
+      displayName: 'koch, Run CI'
       env:
         SYSTEM_ACCESSTOKEN: $(System.AccessToken)
