@@ -23,10 +23,7 @@ proc addDependency*(conf: ConfigRef, name: string, info: TLineInfo) =
       createDir dir
       let objFile = dir / ("$1nimdragonbox.o" % prefix)
       if optForceFullMake in conf.globalOptions or not objFile.fileExists:
-        # xxx
-        # compilePattern = getCompilerExe(conf, c, cfile.cname)
-        let cppExe2 = getCompilerExe(conf; compiler: TSystemCC; "D20210515T150427.cpp")
-        echo ("D20210515T150411", cppExe2)
+        # consider using instead: `getCompilerExe(conf, ...)`
         when defined(osx):
           let cppExe = "clang++"
         else:
