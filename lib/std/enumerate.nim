@@ -68,27 +68,17 @@ macro enumerate*(x: ForLoopStmt): untyped {.since: (1, 3).} =
   # now wrap the whole macro in a block to create a new scope
   result = newBlockStmt(result)
 
-# FACTOR PRTEMP replaceIdentBySym
-proc replaceIdent(n: NimNode, identOld: NimNode, nNew: NimNode): NimNode =
-  case n.kind
-  of nnkIdent: # TODO: nnkSym?
-    if eqIdent(n, identOld): return nNew
-    else: return n
-  else:
-    for i in 0..<len(n):
-      n[i] = replaceIdent(n[i], identOld, nNew)
-    return n
-
-macro staticFor*(x: ForLoopStmt): untyped =
+macro staticUnroll*(x: ForLoopStmt): untyped =
+  ## Also known as `static for` in some other languages.
   runnableExamples:
-    for i, T in staticFor([int, float]):
+    for i, T in staticUnroll([int, float]):
       when i == 0: assert T is int
       else: assert T is float
 
     proc fn1(x: auto): auto = x
     proc fn2(x: auto): auto = x * x
-    # for i, fn in staticFor([fn1, fn2]):
-    #   for j, T in staticFor([int, float]):
+    # for i, fn in staticUnroll([fn1, fn2]):
+    #   for j, T in staticUnroll([int, float]):
     #     let a = fn(T.default)
 
     #     const i2 = i + j
@@ -105,15 +95,11 @@ macro staticFor*(x: ForLoopStmt): untyped =
   var varName = x[1] # PRTEMP
   let varIndex2 = genSym(nskConst, varIndex.strVal)
   for i, ai in elems[1]:
-    echo (i, ai.repr)
     let i2 = newLit(i)
-    var n2 = replaceIdent(body.copyNimTree, varName, ai)
-    n2 = replaceIdent(n2, varIndex2, i2)
     let ret = quote do:
-      template tmp =
-        `n2`
-      tmp
-    # result.add n2
+      template impl(`varIndex`, `varName`) {.gensym.}=
+        `body`
+      impl(`i2`, `ai`)
     result.add ret
   echo result.repr
 
@@ -121,12 +107,14 @@ when isMainModule:
   #[
   TODO: see also: fieldPairs, fields
   ]#
-  for i, bi in staticFor([int, float]):
-    for j, bj in staticFor([fn1, fn2]):
+  # for T in staticUnroll([int, float]):
+  #   echo $T
+  for i, bi in staticUnroll([int, float]):
+    for j, bj in staticUnroll([fn1, fn2]):
       const i2 = i + j
       echo ($bi, astToStr(bj), i, j, i2)
 
-  for i, T in staticFor([int, float]):
+  for i, T in staticUnroll([int, float]):
     var z = i
     const z2 = i
     var z3: T
