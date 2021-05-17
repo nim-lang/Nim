@@ -7,8 +7,7 @@
 #    distribution, for details about the copyright.
 #
 
-## This module implements `enumerate` syntactic sugar based on Nim's
-## macro system.
+## This module implements enumeration APIs.
 
 import std/private/since
 import macros
@@ -68,3 +67,72 @@ macro enumerate*(x: ForLoopStmt): untyped {.since: (1, 3).} =
   result.add newFor
   # now wrap the whole macro in a block to create a new scope
   result = newBlockStmt(result)
+
+# FACTOR PRTEMP replaceIdentBySym
+proc replaceIdent(n: NimNode, identOld: NimNode, nNew: NimNode): NimNode =
+  case n.kind
+  of nnkIdent: # TODO: nnkSym?
+    if eqIdent(n, identOld): return nNew
+    else: return n
+  else:
+    for i in 0..<len(n):
+      n[i] = replaceIdent(n[i], identOld, nNew)
+    return n
+
+macro staticFor*(x: ForLoopStmt): untyped =
+  runnableExamples:
+    for i, T in staticFor([int, float]):
+      when i == 0: assert T is int
+      else: assert T is float
+
+    proc fn1(x: auto): auto = x
+    proc fn2(x: auto): auto = x * x
+    # for i, fn in staticFor([fn1, fn2]):
+    #   for j, T in staticFor([int, float]):
+    #     let a = fn(T.default)
+
+    #     const i2 = i + j
+    #     echo ($bi, astToStr(bj), i, j, i2)
+
+  # RENAME: unroll?
+  expectKind x, nnkForStmt
+  # check if the starting count is specified:
+  var countStart = if x[^2].len == 2: newLit(0) else: x[^2][1]
+  result = newStmtList()
+  var body = x[^1].copyNimTree
+  var elems = x[^2]
+  var varIndex = x[0] # PRTEMP
+  var varName = x[1] # PRTEMP
+  let varIndex2 = genSym(nskConst, varIndex.strVal)
+  for i, ai in elems[1]:
+    echo (i, ai.repr)
+    let i2 = newLit(i)
+    var n2 = replaceIdent(body.copyNimTree, varName, ai)
+    n2 = replaceIdent(n2, varIndex2, i2)
+    let ret = quote do:
+      template tmp =
+        `n2`
+      tmp
+    # result.add n2
+    result.add ret
+  echo result.repr
+
+when isMainModule:
+  #[
+  TODO: see also: fieldPairs, fields
+  ]#
+  for i, bi in staticFor([int, float]):
+    for j, bj in staticFor([fn1, fn2]):
+      const i2 = i + j
+      echo ($bi, astToStr(bj), i, j, i2)
+
+  for i, T in staticFor([int, float]):
+    var z = i
+    const z2 = i
+    var z3: T
+    echo (z, z2, i, $T, T.default)
+    proc bar() {.gensym.} = echo (z,)
+    bar()
+    proc bar2(a: T) = echo ($T, "in bar")
+  bar2(1)
+  bar2(1.2)
