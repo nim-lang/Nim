@@ -12,7 +12,7 @@
 import std/private/since
 import macros
 
-
+# xxx this code should be simplified using quote/genAst (e.g. as done in PR #17633)
 macro enumerate*(x: ForLoopStmt): untyped {.since: (1, 3).} =
   ## Enumerating iterator for collections.
   ##
