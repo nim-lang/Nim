@@ -102,12 +102,6 @@ macro staticUnroll*(x: ForLoopStmt): untyped =
       const name = i
     assert name1 == 1
 
-  runnableExamples:
-    template baz =
-      for i, name in staticUnroll([name0, name1]):
-        const name = i
-      assert name1 == 1
-    baz()
   # xxx maybe `fieldPairs`, `fields` implementation in compiler could reuse this trick
   expectKind x, nnkForStmt
   var varIndex: NimNode
