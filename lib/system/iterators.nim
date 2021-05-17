@@ -274,6 +274,7 @@ iterator fields*[T: tuple|object](x: T): RootObj {.
   ## .. warning:: This really transforms the 'for' and unrolls the loop.
   ##   The current implementation also has a bug
   ##   that affects symbol binding in the loop body.
+  # see also `enumerate.staticUnroll`
   runnableExamples:
     var t = (1, "foo")
     for v in fields(t): v = default(typeof(v))
