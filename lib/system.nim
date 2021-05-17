@@ -112,7 +112,7 @@ proc compileOption*(option, arg: string): bool {.
       discard "compiled with optimization for size and uses Boehm's GC"
 
 {.push warning[GcMem]: off, warning[Uninit]: off.}
-# {.push hints: off.}
+{.push hints: off.}
 
 proc `or`*(a, b: typedesc): typedesc {.magic: "TypeTrait", noSideEffect.}
   ## Constructs an `or` meta class.
@@ -2471,7 +2471,7 @@ proc quit*(errormsg: string, errorcode = QuitFailure) {.noreturn.} =
   quit(errorcode)
 
 {.pop.} # checks: off
-# {.pop.} # hints: off
+{.pop.} # hints: off
 
 proc `/`*(x, y: int): float {.inline, noSideEffect.} =
   ## Division of integers that results in a float.
