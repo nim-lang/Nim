@@ -16,7 +16,7 @@
       "image": "ghcr.io/alaviss/nim-ci:sha-87f5a84",
       "commands": [
         ". ci/funs.sh",
-        "nimBuildCsourcesIfNeeded",
+        "nimBuildCsourcesIfNeeded ucpu=arm64",
         "export PATH=$PWD/bin:$PATH",
         "./koch runCI || { nim c -r tools/ci_testresults; exit 1 }"
       ]
@@ -41,7 +41,7 @@
       "image": "ghcr.io/alaviss/nim-ci:sha-87f5a84",
       "commands": [
         ". ci/funs.sh",
-        "nimBuildCsourcesIfNeeded",
+        "nimBuildCsourcesIfNeeded ucpu=arm",
         "export PATH=$PWD/bin:$PATH",
         "./koch runCI || { nim c -r tools/ci_testresults; exit 1 }"
       ]

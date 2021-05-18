@@ -132,7 +132,7 @@ proc genDroneScript(): string =
           "image": Image,
           "commands": [
             ". ci/funs.sh",
-            "nimBuildCsourcesIfNeeded",
+            &"nimBuildCsourcesIfNeeded ucpu={arch}",
             "export PATH=$PWD/bin:$PATH",
             "./koch runCI || { nim c -r tools/ci_testresults; exit 1 }"
           ]
