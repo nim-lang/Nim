@@ -1,5 +1,5 @@
 discard """
-  outputsub: "(allocCount: 201, deallocCount: 201)"
+  output: "(allocCount: 201, deallocCount: 201)"
   cmd: "nim c --gc:orc -d:nimAllocStats $file"
 """
 
