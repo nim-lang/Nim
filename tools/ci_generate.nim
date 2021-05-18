@@ -109,8 +109,8 @@ proc genDroneScript(): string =
       arm64
       arm
 
-  result.add &"# {doNotEdit}\n"
   for arch in Arch:
+    result.add "---\n"
     result.add pretty(%*{
       "kind": "pipeline",
       "type": "docker",
@@ -133,6 +133,7 @@ proc genDroneScript(): string =
             ". ci/funs.sh",
             &"nimBuildCsourcesIfNeeded ucpu={arch}",
             "export PATH=$PWD/bin:$PATH",
+            "nim c koch",
             dedent"""
             if ! ./koch runCI; then
               nim c -r tools/ci_testresults
