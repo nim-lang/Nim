@@ -10,16 +10,18 @@
   "clone": {
     "depth": 1
   },
-  "steps": {
-    "name": "Run Nim CI",
-    "image": "ghcr.io/alaviss/nim-ci:sha-87f5a84",
-    "commands": [
-      ". ci/funs.sh",
-      "nimBuildCsourcesIfNeeded",
-      "export PATH=$PWD/bin:$PATH",
-      "./koch runCI || { nim c -r tools/ci_testresults; exit 1 }"
-    ]
-  }
+  "steps": [
+    {
+      "name": "Run Nim CI",
+      "image": "ghcr.io/alaviss/nim-ci:sha-87f5a84",
+      "commands": [
+        ". ci/funs.sh",
+        "nimBuildCsourcesIfNeeded",
+        "export PATH=$PWD/bin:$PATH",
+        "./koch runCI || { nim c -r tools/ci_testresults; exit 1 }"
+      ]
+    }
+  ]
 }
 ---
 {
@@ -33,14 +35,17 @@
   "clone": {
     "depth": 1
   },
-  "steps": {
-    "name": "Run Nim CI",
-    "image": "ghcr.io/alaviss/nim-ci:sha-87f5a84",
-    "commands": [
-      ". ci/funs.sh",
-      "nimBuildCsourcesIfNeeded",
-      "export PATH=$PWD/bin:$PATH",
-      "./koch runCI || { nim c -r tools/ci_testresults; exit 1 }"
-    ]
-  }
+  "steps": [
+    {
+      "name": "Run Nim CI",
+      "image": "ghcr.io/alaviss/nim-ci:sha-87f5a84",
+      "commands": [
+        ". ci/funs.sh",
+        "nimBuildCsourcesIfNeeded",
+        "export PATH=$PWD/bin:$PATH",
+        "./koch runCI || { nim c -r tools/ci_testresults; exit 1 }"
+      ]
+    }
+  ]
 }
+...

@@ -126,16 +126,18 @@ proc genDroneScript(): string =
         "depth": 1
       },
 
-      "steps": {
-        "name": "Run Nim CI",
-        "image": Image,
-        "commands": [
-          ". ci/funs.sh",
-          "nimBuildCsourcesIfNeeded",
-          "export PATH=$PWD/bin:$PATH",
-          "./koch runCI || { nim c -r tools/ci_testresults; exit 1 }"
-        ]
-      }
+      "steps": [
+        {
+          "name": "Run Nim CI",
+          "image": Image,
+          "commands": [
+            ". ci/funs.sh",
+            "nimBuildCsourcesIfNeeded",
+            "export PATH=$PWD/bin:$PATH",
+            "./koch runCI || { nim c -r tools/ci_testresults; exit 1 }"
+          ]
+        }
+      ]
     })
 
     result.add "\n"
