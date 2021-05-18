@@ -19,7 +19,7 @@
         ". ci/funs.sh",
         "nimBuildCsourcesIfNeeded ucpu=arm64",
         "export PATH=$PWD/bin:$PATH",
-        "./koch runCI || { nim c -r tools/ci_testresults; exit 1 }"
+        "if ! ./koch runCI; then\n  nim c -r tools/ci_testresults\n  exit 1\nfi\n"
       ]
     }
   ]
@@ -44,7 +44,7 @@
         ". ci/funs.sh",
         "nimBuildCsourcesIfNeeded ucpu=arm",
         "export PATH=$PWD/bin:$PATH",
-        "./koch runCI || { nim c -r tools/ci_testresults; exit 1 }"
+        "if ! ./koch runCI; then\n  nim c -r tools/ci_testresults\n  exit 1\nfi\n"
       ]
     }
   ]
