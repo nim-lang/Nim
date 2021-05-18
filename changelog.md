@@ -50,6 +50,9 @@
 - On POSIX systems, we now ignore `SIGPIPE` signals, use `-d:nimLegacySigpipeHandler`
   for previous behavior.
 
+- In `std / [locks, rlocks]` types use destructors. Assignment is not allowed as it
+  involves a memory copy.
+
 - `hashes.hash` now supports `object` and `ref` (can be overloaded in user code).
   For a transition period, use `-d:nimLegacyNoHashRef` to avoid defining `hash(ref)`.
 - `hashes.hash(proc|ptr|ref|pointer)` now calls `hash(int)` and honors `-d:nimIntHash1`,

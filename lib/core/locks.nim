@@ -28,6 +28,13 @@ type
 
 {.push stackTrace: off.}
 
+proc `=destroy`*(x: var Lock) = deinitSys(x)
+proc `=sink`*(dest: var Lock; source: Lock) {.error.}
+proc `=copy`*(dest: var Lock; source: Lock) {.error.}
+
+proc `=destroy`*(x: var Cond) = deinitSysCond(x)
+proc `=sink`*(dest: var Cond; source: Cond) {.error.}
+proc `=copy`*(dest: var Cond; source: Cond) {.error.}
 
 proc `$`*(lock: Lock): string =
   # workaround bug #14873
@@ -38,9 +45,10 @@ proc initLock*(lock: var Lock) {.inline.} =
   when not defined(js):
     initSysLock(lock)
 
-proc deinitLock*(lock: var Lock) {.inline.} =
+proc deinitLock*(lock: var Lock) {.inline,
+    deprecated: "Deprecated since v1.5.1; Lock uses destructors".} =
   ## Frees the resources associated with the lock.
-  deinitSys(lock)
+  discard
 
 proc tryAcquire*(lock: var Lock): bool {.inline.} =
   ## Tries to acquire the given lock. Returns `true` on success.
@@ -56,14 +64,14 @@ proc release*(lock: var Lock) {.inline.} =
   when not defined(js):
     releaseSys(lock)
 
-
 proc initCond*(cond: var Cond) {.inline.} =
   ## Initializes the given condition variable.
   initSysCond(cond)
 
-proc deinitCond*(cond: var Cond) {.inline.} =
+proc deinitCond*(cond: var Cond) {.inline,
+    deprecated: "Deprecated since v1.5.1; Cond uses destructors".} =
   ## Frees the resources associated with the condition variable.
-  deinitSysCond(cond)
+  discard
 
 proc wait*(cond: var Cond, lock: var Lock) {.inline.} =
   ## Waits on the condition variable `cond`.

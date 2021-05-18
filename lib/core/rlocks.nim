@@ -19,6 +19,10 @@ include "system/syslocks"
 type
   RLock* = SysLock ## Nim lock, re-entrant
 
+proc `=destroy`*(x: var RLock) = deinitSys(x)
+proc `=sink`*(dest: var RLock; source: RLock) {.error.}
+proc `=copy`*(dest: var RLock; source: RLock) {.error.}
+
 proc initRLock*(lock: var RLock) {.inline.} =
   ## Initializes the given lock.
   when defined(posix):
@@ -29,9 +33,10 @@ proc initRLock*(lock: var RLock) {.inline.} =
   else:
     initSysLock(lock)
 
-proc deinitRLock*(lock: var RLock) {.inline.} =
+proc deinitRLock*(lock: var RLock) {.inline,
+    deprecated: "Deprecated since v1.5.1; RLock uses destructors".} =
   ## Frees the resources associated with the lock.
-  deinitSys(lock)
+  discard
 
 proc tryAcquire*(lock: var RLock): bool {.inline.} =
   ## Tries to acquire the given lock. Returns `true` on success.
