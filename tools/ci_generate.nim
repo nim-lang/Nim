@@ -111,8 +111,6 @@ proc genDroneScript(): string =
 
   result.add &"# {doNotEdit}\n"
   for arch in Arch:
-    result.add "---\n"
-
     result.add pretty(%*{
       "kind": "pipeline",
       "type": "docker",
@@ -147,8 +145,6 @@ proc genDroneScript(): string =
     })
 
     result.add "\n"
-
-  result.add "..."
 
 proc main()=
   let dir = ".builds"
