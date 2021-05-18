@@ -109,6 +109,7 @@ proc genDroneScript(): string =
       arm64
       arm
 
+  result.add &"# {doNotEdit}\n"
   for arch in Arch:
     result.add "---\n"
 
