@@ -2324,7 +2324,12 @@ proc genMagicExpr(p: BProc, e: PNode, d: var TLoc, op: TMagic) =
       gcUsage(p.config, e)
     else:
       genNewFinalize(p, e)
-  of mNewSeq: genNewSeq(p, e)
+  of mNewSeq:
+    if optSeqDestructors in p.config.globalOptions:
+      e[1] = makeAddr(e[1], p.module.idgen)
+      genCall(p, e, d)
+    else:
+      genNewSeq(p, e)
   of mNewSeqOfCap: genNewSeqOfCap(p, e, d)
   of mSizeOf:
     let t = e[1].typ.skipTypes({tyTypeDesc})
