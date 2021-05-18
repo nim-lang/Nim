@@ -125,4 +125,6 @@ proc setLen[T](s: var seq[T], newlen: Natural) =
         xu.p = cast[typeof(xu.p)](prepareSeqAdd(oldLen, xu.p, newlen - oldLen, sizeof(T), alignof(T)))
       xu.len = newlen
 
-proc newSeq[T](s: var seq[T], len: Natural) = setLen(s, len)
+proc newSeq[T](s: var seq[T], len: Natural) =
+  shrink(s, 0)
+  grow(s, len, default(T))
