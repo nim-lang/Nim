@@ -1297,7 +1297,7 @@ proc semProcTypeNode(c: PContext, n, genericParams: PNode,
         let param = strTableGet(c.signatures, arg.name)
         if param != nil: typ = param.typ
         else:
-          localError(c.config, a.info, "typeless parameters are not allowed, except with 'using' or for 'templates|macros|generics parameters'")
+          localError(c.config, a.info, "parameter '$1' requires a type" % param.name.s)
           typ = errorType(c)
       let lifted = liftParamType(c, kind, genericParams, typ,
                                  arg.name.s, arg.info)
