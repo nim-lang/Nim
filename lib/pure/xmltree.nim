@@ -70,7 +70,7 @@ proc newXmlNode(kind: XmlNodeKind): XmlNode =
   ## Creates a new ``XmlNode``.
   result = XmlNode(k: kind)
 
-proc newElement*(tag: string): XmlNode =
+proc newElement*(tag: sink string): XmlNode =
   ## Creates a new ``XmlNode`` of kind ``xnElement`` with the given `tag`.
   ##
   ## See also:
@@ -89,7 +89,7 @@ proc newElement*(tag: string): XmlNode =
   result.s = @[]
   # init attributes lazily to save memory
 
-proc newText*(text: string): XmlNode =
+proc newText*(text: sink string): XmlNode =
   ## Creates a new ``XmlNode`` of kind ``xnText`` with the text `text`.
   runnableExamples:
     var b = newText("my text")
@@ -99,13 +99,13 @@ proc newText*(text: string): XmlNode =
   result = newXmlNode(xnText)
   result.fText = text
 
-proc newVerbatimText*(text: string): XmlNode {.since: (1, 3).} =
+proc newVerbatimText*(text: sink string): XmlNode {.since: (1, 3).} =
   ## Creates a new ``XmlNode`` of kind ``xnVerbatimText`` with the text `text`.
   ## **Since**: Version 1.3.
   result = newXmlNode(xnVerbatimText)
   result.fText = text
 
-proc newComment*(comment: string): XmlNode =
+proc newComment*(comment: sink string): XmlNode =
   ## Creates a new ``XmlNode`` of kind ``xnComment`` with the text `comment`.
   runnableExamples:
     var c = newComment("my comment")
@@ -115,7 +115,7 @@ proc newComment*(comment: string): XmlNode =
   result = newXmlNode(xnComment)
   result.fText = comment
 
-proc newCData*(cdata: string): XmlNode =
+proc newCData*(cdata: sink string): XmlNode =
   ## Creates a new ``XmlNode`` of kind ``xnCData`` with the text `cdata`.
   runnableExamples:
     var d = newCData("my cdata")
@@ -135,7 +135,7 @@ proc newEntity*(entity: string): XmlNode =
   result = newXmlNode(xnEntity)
   result.fText = entity
 
-proc newXmlTree*(tag: string, children: openArray[XmlNode],
+proc newXmlTree*(tag: sink string, children: openArray[XmlNode],
                  attributes: XmlAttributes = nil): XmlNode =
   ## Creates a new XML tree with `tag`, `children` and `attributes`.
   ##
@@ -151,7 +151,7 @@ proc newXmlTree*(tag: string, children: openArray[XmlNode],
     h.add newEntity("some entity")
     let att = {"key1": "first value", "key2": "second value"}.toXmlAttributes
     let k = newXmlTree("treeTag", [g, h], att)
-  
+
     doAssert $k == """<treeTag key1="first value" key2="second value">
   <myTag>some text<!-- this is comment --></myTag>
   <secondTag>&some entity;</secondTag>
@@ -163,7 +163,7 @@ proc newXmlTree*(tag: string, children: openArray[XmlNode],
   for i in 0..children.len-1: result.s[i] = children[i]
   result.fAttr = attributes
 
-proc text*(n: XmlNode): string {.inline.} =
+proc text*(n: XmlNode): lent string {.inline.} =
   ## Gets the associated text with the node `n`.
   ##
   ## `n` can be a CDATA, Text, comment, or entity node.
@@ -181,7 +181,7 @@ proc text*(n: XmlNode): string {.inline.} =
   assert n.k in {xnText, xnComment, xnCData, xnEntity}
   result = n.fText
 
-proc `text=`*(n: XmlNode, text: string){.inline.} =
+proc `text=`*(n: XmlNode, text: sink string) {.inline.} =
   ## Sets the associated text with the node `n`.
   ##
   ## `n` can be a CDATA, Text, comment, or entity node.
@@ -199,7 +199,7 @@ proc `text=`*(n: XmlNode, text: string){.inline.} =
   assert n.k in {xnText, xnComment, xnCData, xnEntity}
   n.fText = text
 
-proc tag*(n: XmlNode): string {.inline.} =
+proc tag*(n: XmlNode): lent string {.inline.} =
   ## Gets the tag name of `n`.
   ##
   ## `n` has to be an ``xnElement`` node.
@@ -220,7 +220,7 @@ proc tag*(n: XmlNode): string {.inline.} =
   assert n.k == xnElement
   result = n.fTag
 
-proc `tag=`*(n: XmlNode, tag: string) {.inline.} =
+proc `tag=`*(n: XmlNode, tag: sink string) {.inline.} =
   ## Sets the tag name of `n`.
   ##
   ## `n` has to be an ``xnElement`` node.
@@ -389,13 +389,13 @@ proc clear*(n: var XmlNode) =
     var g = newElement("myTag")
     g.add newText("some text")
     g.add newComment("this is comment")
-  
+
     var h = newElement("secondTag")
     h.add newEntity("some entity")
-  
+
     let att = {"key1": "first value", "key2": "second value"}.toXmlAttributes
     var k = newXmlTree("treeTag", [g, h], att)
-  
+
     doAssert $k == """<treeTag key1="first value" key2="second value">
   <myTag>some text<!-- this is comment --></myTag>
   <secondTag>&some entity;</secondTag>
@@ -447,7 +447,7 @@ proc toXmlAttributes*(keyValuePairs: varargs[tuple[key,
     let att = {"key1": "first value", "key2": "second value"}.toXmlAttributes
     var j = newElement("myTag")
     j.attrs = att
-  
+
     doAssert $j == """<myTag key1="first value" key2="second value" />"""
 
   newStringTable(keyValuePairs)
