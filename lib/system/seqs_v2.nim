@@ -127,4 +127,4 @@ proc setLen[T](s: var seq[T], newlen: Natural) =
 
 proc newSeq[T](s: var seq[T], len: Natural) =
   shrink(s, 0)
-  grow(s, len, default(T))
+  setLen(s, len)
