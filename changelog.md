@@ -38,6 +38,7 @@
 - Added `asyncdispatch.activeDescriptors` that returns the number of currently
   active async event handles/file descriptors
 
+- Fixed premature garbage collection in asyncdispatch, when a stack trace override is in place.
 
 ## Language changes
 
