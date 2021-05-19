@@ -487,11 +487,11 @@ proc maybeMakeTempAssignable(p: PProc, n: PNode; x: TCompRes): tuple[a, tmp: Rop
       if typ.kind == tyArray:
         first = firstOrd(p.config, typ[0])
       if optBoundsCheck in p.options:
-        useMagic(p, "checkIndex")
+        useMagic(p, "chckIndx")
         if first == 0: # save a couple chars
-          index.res = "checkIndex($1, 0, ($2).length - 1)" % [index.res, tmp1]
+          index.res = "chckIndx($1, 0, ($2).length - 1)" % [index.res, tmp1]
         else:
-          index.res = "checkIndex($1, $2, ($3).length + ($2) - 1) - ($2)" % [
+          index.res = "chckIndx($1, $2, ($3).length + ($2) - 1) - ($2)" % [
             index.res, rope(first), tmp1]
       elif first != 0:
         index.res = "($1) - ($2)" % [index.res, rope(first)]
@@ -1246,11 +1246,11 @@ proc genArrayAddr(p: PProc, n: PNode, r: var TCompRes) =
   if typ.kind == tyArray:
     first = firstOrd(p.config, typ[0])
   if optBoundsCheck in p.options:
-    useMagic(p, "checkIndex")
+    useMagic(p, "chckIndx")
     if first == 0: # save a couple chars
-      r.res = "checkIndex($1, 0, ($2).length - 1)" % [b.res, tmp]
+      r.res = "chckIndx($1, 0, ($2).length - 1)" % [b.res, tmp]
     else:
-      r.res = "checkIndex($1, $2, ($3).length + ($2) - 1) - ($2)" % [
+      r.res = "chckIndx($1, $2, ($3).length + ($2) - 1) - ($2)" % [
         b.res, rope(first), tmp]
   elif first != 0:
     r.res = "($1) - ($2)" % [b.res, rope(first)]
@@ -2298,8 +2298,8 @@ proc genRangeChck(p: PProc, n: PNode, r: var TCompRes, magic: string) =
   else:
     gen(p, n[1], a)
     gen(p, n[2], b)
-    useMagic(p, "checkRange")
-    r.res = "checkRange($1, $2, $3)" % [r.res, a.res, b.res]
+    useMagic(p, "chckRange")
+    r.res = "chckRange($1, $2, $3)" % [r.res, a.res, b.res]
     r.kind = resExpr
 
 proc convStrToCStr(p: PProc, n: PNode, r: var TCompRes) =
@@ -2578,9 +2578,9 @@ proc gen(p: PProc, n: PNode, r: var TCompRes) =
   of nkObjDownConv: gen(p, n[0], r)
   of nkObjUpConv: upConv(p, n, r)
   of nkCast: genCast(p, n, r)
-  of nkChckRangeF: genRangeChck(p, n, r, "checkRangeF")
-  of nkChckRange64: genRangeChck(p, n, r, "checkRange64")
-  of nkChckRange: genRangeChck(p, n, r, "checkRange")
+  of nkChckRangeF: genRangeChck(p, n, r, "chckRangeF")
+  of nkChckRange64: genRangeChck(p, n, r, "chckRange64")
+  of nkChckRange: genRangeChck(p, n, r, "chckRange")
   of nkStringToCString: convStrToCStr(p, n, r)
   of nkCStringToString: convCStrToStr(p, n, r)
   of nkEmpty: discard
