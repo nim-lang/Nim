@@ -73,6 +73,9 @@
 - `json` and `jsonutils` now serialize NaN, Inf, -Inf as strings, so that
   `%[NaN, -Inf]` is the string `["nan","-inf"]` instead of `[nan,-inf]` which was invalid json.
 
+- `strformat` is now part of `include std/prelude`.
+
+
 ## Standard library additions and changes
 - Added support for parenthesized expressions in `strformat`
 
