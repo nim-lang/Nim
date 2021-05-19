@@ -29,7 +29,7 @@ type
       programCounter*: uint ## Program counter - will be used to get the rest of the info,
                             ## when `$` is called on this type. We can't use
                             ## "cuintptr_t" in here.
-      procnameStr*, filenameStr*: string ## GC-ed objects holding the cstrings in "procname" and "filename"
+      procnameStr*, filenameStr*: string ## GC-ed alternatives to "procname" and "filename"
 
   Exception* {.compilerproc, magic: "Exception".} = object of RootObj ## \
     ## Base exception class.

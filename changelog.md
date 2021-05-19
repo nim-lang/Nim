@@ -147,6 +147,161 @@
 - Added `asyncdispatch.maxDescriptors` that returns the maximum number of
   active async event handles/file descriptors.
 
+- Added `getPort` to `asynchttpserver`.
+
+- `--gc:orc` is now 10% faster than previously for common workloads. If
+  you have trouble with its changed behavior, compile with `-d:nimOldOrc`.
+
+
+- `os.FileInfo` (returned by `getFileInfo`) now contains `blockSize`,
+  determining preferred I/O block size for this file object.
+
+- Added a simpler to use `io.readChars` overload.
+
+- Added `**` to jsffi.
+
+- `writeStackTrace` is available in JS backend now.
+
+- Added `decodeQuery` to `std/uri`.
+
+- `strscans.scanf` now supports parsing single characters.
+
+- `strscans.scanTuple` added which uses `strscans.scanf` internally,
+  returning a tuple which can be unpacked for easier usage of `scanf`.
+
+- Added `setutils.toSet` that can take any iterable and convert it to a built-in `set`,
+  if the iterable yields a built-in settable type.
+
+- Added `setutils.fullSet` which returns a full built-in `set` for a valid type.
+
+- Added `setutils.complement` which returns the complement of a built-in `set`.
+
+- Added `setutils.[]=`.
+
+- Added `math.isNaN`.
+
+- Added `jsbigints` module, arbitrary precision integers for JavaScript target.
+
+- Added `math.copySign`.
+
+- Added new operations for singly- and doubly linked lists: `lists.toSinglyLinkedList`
+  and `lists.toDoublyLinkedList` convert from `openArray`s; `lists.copy` implements
+  shallow copying; `lists.add` concatenates two lists - an O(1) variation that consumes
+  its argument, `addMoved`, is also supplied.
+
+- Added `euclDiv` and `euclMod` to `math`.
+
+- Added `httpcore.is1xx` and missing HTTP codes.
+
+- Added `jsconsole.jsAssert` for JavaScript target.
+
+- Added `posix_utils.osReleaseFile` to get system identification from `os-release` file on Linux and the BSDs.
+  https://www.freedesktop.org/software/systemd/man/os-release.html
+
+- Added `socketstream` module that wraps sockets in the stream interface
+
+- Added `sugar.dumpToString` which improves on `sugar.dump`.
+
+- Added `math.signbit`.
+
+- Removed the optional `longestMatch` parameter of the `critbits._WithPrefix` iterators (it never worked reliably)
+
+- In `lists`: renamed `append` to `add` and retained `append` as an alias;
+  added `prepend` and `prependMoved` analogously to `add` and `addMoved`;
+  added `remove` for `SinglyLinkedList`s.
+
+- Deprecated `any`. See https://github.com/nim-lang/RFCs/issues/281
+
+- Added optional `options` argument to `copyFile`, `copyFileToDir`, and
+  `copyFileWithPermissions`. By default, on non-Windows OSes, symlinks are
+  followed (copy files symlinks point to); on Windows, `options` argument is
+  ignored and symlinks are skipped.
+
+- On non-Windows OSes, `copyDir` and `copyDirWithPermissions` copy symlinks as
+  symlinks (instead of skipping them as it was before); on Windows symlinks are
+  skipped.
+
+- On non-Windows OSes, `moveFile` and `moveDir` move symlinks as symlinks
+  (instead of skipping them sometimes as it was before).
+
+- Added optional `followSymlinks` argument to `setFilePermissions`.
+
+- Added `os.isAdmin` to tell whether the caller's process is a member of the
+  Administrators local group (on Windows) or a root (on POSIX).
+
+- Added experimental `linenoise.readLineStatus` to get line and status (e.g. ctrl-D or ctrl-C).
+
+- Added `compilesettings.SingleValueSetting.libPath`.
+
+- `std/wrapnils` doesn't use `experimental:dotOperators` anymore, avoiding
+  issues like https://github.com/nim-lang/Nim/issues/13063 (which affected error messages)
+  for modules importing `std/wrapnils`.
+  Added `??.` macro which returns an `Option`.
+
+- Added `math.frexp` overload procs. Deprecated `c_frexp`, use `frexp` instead.
+
+- `parseopt.initOptParser` has been made available and `parseopt` has been
+  added back to `prelude` for all backends. Previously `initOptParser` was
+  unavailable if the `os` module did not have `paramCount` or `paramStr`,
+  but the use of these in `initOptParser` were conditionally to the runtime
+  arguments passed to it, so `initOptParser` has been changed to raise
+  `ValueError` when the real command line is not available. `parseopt` was
+  previously excluded from `prelude` for JS, as it could not be imported.
+
+- Added `system.prepareStrMutation` for better support of low
+  level `moveMem`, `copyMem` operations for Orc's copy-on-write string
+  implementation.
+
+- Added `std/strbasics` for high performance string operations.
+  Added `strip`, `setSlice`, `add(a: var string, b: openArray[char])`.
+
+
+- Added to `wrapnils` an option-like API via `??.`, `isSome`, `get`.
+
+- `std/options` changed `$some(3)` to `"some(3)"` instead of `"Some(3)"`
+  and `$none(int)` to `"none(int)"` instead of `"None[int]"`.
+
+- Added `algorithm.merge`.
+
+
+- Added `std/jsfetch` module [Fetch](https://developer.mozilla.org/docs/Web/API/Fetch_API) wrapper for JavaScript target.
+
+- Added `std/jsheaders` module [Headers](https://developer.mozilla.org/en-US/docs/Web/API/Headers) wrapper for JavaScript target.
+
+- Added `std/jsformdata` module [FormData](https://developer.mozilla.org/en-US/docs/Web/API/FormData) wrapper for JavaScript target.
+
+- `system.addEscapedChar` now renders `\r` as `\r` instead of `\c`, to be compatible
+  with most other languages.
+
+- Removed support for named procs in `sugar.=>`.
+
+- Added `jscore.debugger` to [call any available debugging functionality, such as breakpoints.](https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Statements/debugger).
+
+- Added `std/channels`.
+
+- Added `htmlgen.portal` for [making "SPA style" pages using HTML only](https://web.dev/hands-on-portals).
+
+- Added `ZZZ` and `ZZZZ` patterns to `times.nim` `DateTime` parsing, to match time
+  zone offsets without colons, e.g. `UTC+7 -> +0700`.
+
+- Added `jsconsole.dir`, `jsconsole.dirxml`, `jsconsole.timeStamp`.
+
+- Added dollar `$` and `len` for `jsre.RegExp`.
+
+- Added `std/tasks`.
+
+- Added `hasDataBuffered` to `asyncnet`.
+
+- Added `hasClosure` to `std/typetraits`.
+
+- Added `std/tempfiles`.
+
+- Added `genasts.genAst` that avoids the problems inherent with `quote do` and can
+  be used as a replacement.
+
+- Added `copyWithin` [for `seq` and `array` for JavaScript targets](https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Array/copyWithin).
+
+- Fixed premature garbage collection in asyncdispatch, when a stack trace override is in place.
 
 ## Language changes
 - In newruntime it is now allowed to assign discriminator field without restrictions as long as case object doesn't have custom destructor. Discriminator value doesn't have to be a constant either. If you have custom destructor for case object and you do want to freely assign discriminator fields, it is recommended to refactor object into 2 objects like this: 
