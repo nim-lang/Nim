@@ -303,6 +303,8 @@ func isPowerOfTwo*(x: int): bool =
 
   return (x > 0) and ((x and (x - 1)) == 0)
 
+from std/private/lookuptables import nil
+
 func nextPowerOfTwo*(x: int): int =
   ## Returns `x` rounded up to the nearest power of two.
   ##
@@ -315,18 +317,7 @@ func nextPowerOfTwo*(x: int): int =
     doAssert nextPowerOfTwo(5) == 8
     doAssert nextPowerOfTwo(0) == 1
     doAssert nextPowerOfTwo(-16) == 1
-
-  result = x - 1
-  when defined(cpu64):
-    result = result or (result shr 32)
-  when sizeof(int) > 2:
-    result = result or (result shr 16)
-  when sizeof(int) > 1:
-    result = result or (result shr 8)
-  result = result or (result shr 4)
-  result = result or (result shr 2)
-  result = result or (result shr 1)
-  result += 1 + ord(x <= 0)
+  lookuptables.nextPowerOfTwo(x)
 
 func sum*[T](x: openArray[T]): T =
   ## Computes the sum of the elements in `x`.

@@ -139,10 +139,12 @@
 
 - Added `std/enumutils` module. Added `genEnumCaseStmt` macro that generates case statement to parse string to enum.
   Added `items` for enums with holes.
-  Added `symbolName` to return the enum symbol name ignoring the human readable name.
-  Added `symbolRank` to return the index in which an enum member is listed in an enum.
+  Added `symbolName` to return the enum symbol name ignoring the human readable name (`O(1)` cost).
+  Added `symbolRank` to return the index in which an enum member is listed in an enum (`O(1)` cost).
 
 - Added `typetraits.HoleyEnum` for enums with holes, `OrdinalEnum` for enums without holes.
+
+- Added a (private for now) `std/private/lookuptables` for writing efficient lookup tables.
 
 - Removed deprecated `iup` module from stdlib, it has already moved to
   [nimble](https://github.com/nim-lang/iup).
