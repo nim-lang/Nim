@@ -649,7 +649,6 @@ proc makeRawTest(test, options: string, cat: Category): TTest {.used.} =
   result.name = test
   result.options = options
   result.spec = initSpec(addFileExt(test, ".nim"))
-  result.startTime = epochTime()
   result.spec.action = actionCompile
   result.spec.targets = {getTestSpecTarget()}
   result.startTime = epochTime()
