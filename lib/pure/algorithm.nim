@@ -131,40 +131,21 @@ proc reverse*[T](a: var openArray[T]) =
   # the max is needed, since a.high is -1 if a is empty
   reverse(a, 0, max(0, a.high))
 
-proc reversed*[T](a: openArray[T], first: Natural, last: int): seq[T] =
-  ## Returns the reverse of the slice `a[first..last]`.
-  ##
-  ## If an invalid range is passed, it raises `IndexDefect`.
+proc reversed*[T](a: openArray[T]): seq[T] {.inline.} =
+  ## Returns the elements of `a` in reverse order.
   ##
   ## **See also:**
-  ## * `reverse proc<#reverse,openArray[T],Natural,Natural>`_ reverse a slice
   ## * `reverse proc<#reverse,openArray[T]>`_
   runnableExamples:
-    let
-      a = [1, 2, 3, 4, 5, 6]
-      b = a.reversed(1, 3)
-    assert b == @[4, 3, 2]
-  assert last >= first - 1
-  var i = last - first
-  var x = first.int
-  result = newSeq[T](i + 1)
-  while i >= 0:
-    result[i] = a[x]
-    dec(i)
-    inc(x)
+    assert [10, 11, 12].reversed == @[12, 11, 10]
+    assert seq[string].default.reversed == @[]
+  let n = a.len
+  result.setLen(n)
+  for i in 0..<n: result[i] = a[n - (i + 1)]
 
-proc reversed*[T](a: openArray[T]): seq[T] =
-  ## Returns the reverse of the container `a`.
-  ##
-  ## **See also:**
-  ## * `reverse proc<#reverse,openArray[T],Natural,Natural>`_ reverse a slice
-  ## * `reverse proc<#reverse,openArray[T]>`_
-  runnableExamples:
-    let
-      a = [1, 2, 3, 4, 5, 6]
-      b = reversed(a)
-    assert b == @[6, 5, 4, 3, 2, 1]
-  reversed(a, 0, a.high)
+proc reversed*[T](a: openArray[T], first: Natural, last: int): seq[T]
+  {.inline, deprecated: "use: `reversed(toOpenArray(a, first, last))`".} =
+  reversed(toOpenArray(a, first, last))
 
 proc binarySearch*[T, K](a: openArray[T], key: K,
                          cmp: proc (x: T, y: K): int {.closure.}): int =

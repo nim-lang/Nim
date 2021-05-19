@@ -80,6 +80,9 @@
   other defines.
 
 
+- in `std/algorithm`, deprecated `proc reversed*[T](a: openArray[T], first: Natural, last: int): seq[T]`
+
+
 ## Standard library additions and changes
 - Added support for parenthesized expressions in `strformat`
 
