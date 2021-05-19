@@ -1815,6 +1815,7 @@ proc semReturn(c: PContext, n: PNode): PNode =
     localError(c.config, n.info, "'return' not allowed here")
 
 proc semProcBody(c: PContext, n: PNode): PNode =
+  debugScopes2()
   openScope(c)
   result = semExpr(c, n)
   if c.p.resultSym != nil and not isEmptyType(result.typ):

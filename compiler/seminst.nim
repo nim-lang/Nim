@@ -127,6 +127,7 @@ proc freshGenSyms(c: PContext; n: PNode, owner, orig: PSym, symMap: var TIdTable
 proc addParamOrResult(c: PContext, param: PSym, kind: TSymKind)
 
 proc instantiateBody(c: PContext, n, params: PNode, result, orig: PSym) =
+  debugScopes2()
   if n[bodyPos].kind != nkEmpty:
     let procParams = result.typ.n
     for i in 1..<procParams.len:
@@ -345,7 +346,9 @@ proc generateInstance(c: PContext, fn: PSym, pt: TIdTable,
   let oldMatchedConcept = c.matchedConcept
   c.matchedConcept = nil
   let oldScope = c.currentScope
-  while not isTopLevel(c): c.currentScope = c.currentScope.parent
+  debugScopes2() # PRTEMP: this is where we loose
+  # while not isTopLevel(c): c.currentScope = c.currentScope.parent
+  debugScopes2()
   result = copySym(fn, nextSymId c.idgen)
   incl(result.flags, sfFromGeneric)
   result.owner = fn
