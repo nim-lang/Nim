@@ -348,6 +348,7 @@ proc generateInstance(c: PContext, fn: PSym, pt: TIdTable,
   let oldScope = c.currentScope
   # debugScopes2() # PRTEMP: this is where we loose
   # while not isTopLevel(c): c.currentScope = c.currentScope.parent
+  # openScope(c)
   # debugScopes2()
   result = copySym(fn, nextSymId c.idgen)
   incl(result.flags, sfFromGeneric)

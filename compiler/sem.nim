@@ -239,6 +239,7 @@ proc semIdentWithPragma(c: PContext, kind: TSymKind, n: PNode,
 
 proc typeAllowedCheck(c: PContext; info: TLineInfo; typ: PType; kind: TSymKind;
                       flags: TTypeAllowedFlags = {}) =
+  debugScopes2()
   let t = typeAllowed(typ, kind, c, flags)
   if t != nil:
     var err: string

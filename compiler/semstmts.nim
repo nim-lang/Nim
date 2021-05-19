@@ -513,6 +513,8 @@ proc semVarOrLet(c: PContext, n: PNode, symkind: TSymKind): PNode =
     var def: PNode = c.graph.emptyNode
     if a[^1].kind != nkEmpty:
       def = semExprWithType(c, a[^1], {efAllowDestructor})
+      if isCompilerDebug():
+        dbg def.kind
 
       if def.kind == nkSym and def.sym.kind in {skTemplate, skMacro}:
         typFlags.incl taIsTemplateOrMacro
@@ -551,6 +553,8 @@ proc semVarOrLet(c: PContext, n: PNode, symkind: TSymKind): PNode =
 
     if c.matchedConcept != nil:
       typFlags.incl taConcept
+    if isCompilerDebug():
+      dbg c.config$a.info, a.renderTree, typ, symkind, typFlags
     typeAllowedCheck(c, a.info, typ, symkind, typFlags)
 
     var tup = skipTypes(typ, {tyGenericInst, tyAlias, tySink})
