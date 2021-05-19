@@ -500,7 +500,7 @@ proc equalModuloLastNewline(a, b: string): bool =
 proc testSpecHelper(r: var TResults, test: var TTest, expected: TSpec,
                     target: TTarget, nimcache: string, extraOptions = "") =
   test.startTime = epochTime()
-  template callNimCompilerImpl(): untyped = 
+  template callNimCompilerImpl(): untyped =
     # xxx this used to also pass: `--stdout --hint:Path:off`, but was done inconsistently
     # with other branches
     callNimCompiler(expected.getCmd, test.name, test.options, nimcache, target, extraOptions)
@@ -652,6 +652,7 @@ proc makeRawTest(test, options: string, cat: Category): TTest {.used.} =
   result.startTime = epochTime()
   result.spec.action = actionCompile
   result.spec.targets = {getTestSpecTarget()}
+  result.startTime = epochTime()
 
 # TODO: fix these files
 const disabledFilesDefault = @[
