@@ -186,10 +186,14 @@ proc someSymFromImportTable*(c: PContext; name: PIdent; ambiguous: var bool): PS
         if s.kind notin OverloadableSyms or result.kind notin OverloadableSyms:
           ambiguous = true
 
-proc searchInScopes*(c: PContext, s: PIdent; ambiguous: var bool): PSym =
+proc searchInScopes*(c: PContext, s: PIdent; ambiguous: var bool, allowMixin = false): PSym =
   for scope in allScopes(c.currentScope):
     result = strTableGet(scope.symbols, s)
-    if result != nil: return result
+    if result != nil:
+      if result.kind == skMixin and not allowMixin:
+        # TODO: allowMixin
+        continue
+      return result
   result = someSymFromImportTable(c, s, ambiguous)
 
 proc debugScopes*(c: PContext; limit=0, max = int.high) {.deprecated.} =

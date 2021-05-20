@@ -91,6 +91,14 @@ proc symChoice(c: PContext, n: PNode, s: PSym, r: TSymChoiceRule;
         result.add newSymNode(a, info)
         onUse(info, a)
       a = nextOverloadIter(o, c, n)
+    if result.len == 0:
+      if n.kind == nkIdent: # TODO: nkAccQuoted ?
+        # do we need another TSymKind or cna we use a flag? skUnknown? skGenericParam? skParam? skStub?
+        let sym = newSym(skMixin, n.ident, nextSymId c.idgen, owner = c.getCurrOwner(), info, options = {})
+        # incl(sym.flags, sfUsed) # leave uncommented or remove!
+        # markOwnerModuleAsUsed(c, a)
+        result.add newSymNode(sym, info)
+        onUse(info, sym)
 
 proc semBindStmt(c: PContext, n: PNode, toBind: var IntSet): PNode =
   result = copyNode(n)
@@ -126,6 +134,13 @@ proc semMixinStmt(c: PContext, n: PNode, toMixin: var IntSet): PNode =
       dbg s, toMixin.len
       echo getStacktrace()
     result.add s
+
+    # this wouldn't honor :`when defined(foo): mixin bar` during instantiation
+    # if s.kind == nkOpenSymChoice and s.len == 1 and s[0].sym.kind == skMixin:
+    #   if isCompilerDebug():
+    #     dbg s[0].sym
+    #   addDecl(c, s[0].sym)
+
     # addDecl(c, s, n.info) # PRTEMP; depends on whether  0th child missing for nkOpenSymChoice?
     # addDecl(c, s.sym) # PRTEMP; depends on whether  0th child missing for nkOpenSymChoice?
     # result.add symChoice(c, n[i], nil, scForceOpen)

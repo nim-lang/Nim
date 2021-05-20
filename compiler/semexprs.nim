@@ -1922,20 +1922,25 @@ proc lookUpForDeclared(c: PContext, n: PNode, onlyCurrentScope: bool): PSym =
     result = if onlyCurrentScope:
                localSearchInScope(c, ident)
              else:
-               searchInScopes(c, ident, amb)
+               searchInScopes(c, ident, amb, allowMixin = true)
     if isCompilerDebug():
-      dbg result, n.renderTree
+      # dbg result, n.renderTree, result.kind
       if result != nil:
         dbg result.flags, c.getCurrOwner, result.owner
         echo getStacktrace()
       debugScopes2()
     # PRTEMP: FACTOR
     if result != nil:
-      # TODO: we need a way to tell if we're instantiating a generic
-      if c.getCurrOwner.kind != skModule and c.getCurrOwner != result.owner:
-        # result was not a symbol when generic was instantiated (otherwise n.kind wouldn't be nkIdent etc)
-        # we found a symbol, but it's owner was from caller scope, not from generic scope, so it should remain invisible
-        result = nil
+      if result.kind == skMixin:
+        result = searchInScopes(c, ident, amb, allowMixin = false)
+      else:
+        # TODO: we need a way to tell if we're instantiating a generic
+        if c.getCurrOwner.kind != skModule and c.getCurrOwner != result.owner:
+          # result was not a symbol when generic was instantiated (otherwise n.kind wouldn't be nkIdent etc)
+          # we found a symbol, but it's owner was from caller scope, not from generic scope, so it should remain invisible
+          # if result.kind == skMixin:
+          # TODO: how come result.owner wasn't updated for skMixin?
+          result = nil
   of nkDotExpr:
     result = nil
     if onlyCurrentScope: return
@@ -3031,11 +3036,16 @@ proc semExpr(c: PContext, n: PNode, flags: TExprFlags = {}): PNode =
       n[i] = semExpr(c, n[i])
   of nkComesFrom: discard "ignore the comes from information for now"
   of nkMixinStmt:
-    # dbgIf()
-    if isCompilerDebug():
-      dbg n.renderTree, flags, n.kind, c.p
-      # localBindStmts
-
+    for ni in n:
+      if isCompilerDebug():
+        dbg ni
+      if ni.kind == nkOpenSymChoice and ni.len == 1 and ni[0].sym.kind == skMixin:
+        addDecl(c, ni[0].sym)
+        if isCompilerDebug():
+          dbg ni[0].sym
+          dbg "D20210520T122601", n.len, n
+          debugScopes2()
+          #   # localBindStmts
   of nkBindStmt:
     if c.p != nil:
       if n.len > 0 and n[0].kind == nkSym:
