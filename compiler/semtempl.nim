@@ -58,6 +58,7 @@ proc symChoice(c: PContext, n: PNode, s: PSym, r: TSymChoiceRule;
   while a != nil:
     if i == 1:
       # this is needed, see D20210519T200936 and D20210519T201000
+      # dbg c.getCurrOwner, c.getCurrOwner.kind, a0.owner, a0, a.owner, a, a.owner.kind
       if c.getCurrOwner.kind != skModule and c.getCurrOwner == a0.owner and a.owner != a0.owner:
         break
     if a.kind != skModule:
