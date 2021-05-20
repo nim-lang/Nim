@@ -134,6 +134,7 @@ proc instantiateBody(c: PContext, n, params: PNode, result, orig: PSym) =
     maybeAddResult(c, result, result.ast)
 
     inc c.inGenericInst
+    c.genericInstStack.add result
     # add it here, so that recursive generic procs are possible:
     var b = n[bodyPos]
     var symMap: TIdTable
@@ -149,6 +150,7 @@ proc instantiateBody(c: PContext, n, params: PNode, result, orig: PSym) =
     excl(result.flags, sfForward)
     trackProc(c, result, result.ast[bodyPos])
     dec c.inGenericInst
+    discard c.genericInstStack.pop
 
 proc fixupInstantiatedSymbols(c: PContext, s: PSym) =
   for i in 0..<c.generics.len:

@@ -187,6 +187,11 @@ proc someSymFromImportTable*(c: PContext; name: PIdent; ambiguous: var bool): PS
           ambiguous = true
 
 proc searchInScopes*(c: PContext, s: PIdent; ambiguous: var bool): PSym =
+  if isCompilerDebug():
+    dbg s
+  defer:
+    if isCompilerDebug():
+      dbg result
   var foundMixin = false
   for scope in allScopes(c.currentScope):
     result = strTableGet(scope.symbols, s)
@@ -195,13 +200,16 @@ proc searchInScopes*(c: PContext, s: PIdent; ambiguous: var bool): PSym =
         foundMixin = true
         continue
       if c.inGenericInst > 0 and not foundMixin:
+        # c.genericInstStack
         var parent = result.owner
         while true:
-          if parent == c.p.owner:
+          if parent == c.genericInstStack[^1]:
             break
           if parent != nil:
             parent = parent.owner
           else:
+            if isCompilerDebug():
+              dbg s, result, result.owner, c.p.owner, c.inGenericInst, c.genericInstStack[^1]
             return nil
       return result
 
