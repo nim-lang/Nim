@@ -2727,8 +2727,7 @@ proc semExpr(c: PContext, n: PNode, flags: TExprFlags = {}): PNode =
 
   result = n
   if c.config.cmd == cmdIdeTools: suggestExpr(c, n)
-  if isCompilerDebug():
-    dbg n.flags, c.config$n.info, n.renderTree, n.kind # PRTEMP: this is nkSym vs nkIdent depending on whether symbol is inside generic or not; makes sense since symbol doesn't exist yet until generic is instantiated!
+  # this is nkSym vs nkIdent depending on whether symbol is inside generic or not; makes sense since symbol doesn't exist yet until generic is instantiated!
   if nfSem in n.flags: return
   case n.kind
   of nkIdent, nkAccQuoted:
@@ -2740,8 +2739,6 @@ proc semExpr(c: PContext, n: PNode, flags: TExprFlags = {}): PNode =
         {checkUndeclared, checkModule, checkAmbiguity, checkPureEnumFields}
     var s = qualifiedLookUp(c, n, checks)
     if c.matchedConcept == nil: semCaptureSym(s, c.p.owner)
-    if isCompilerDebug():
-      dbg s
     if s.kind in {skProc, skFunc, skMethod, skConverter, skIterator}:
       #performProcvarCheck(c, n, s)
       result = symChoice(c, n, s, scClosed)

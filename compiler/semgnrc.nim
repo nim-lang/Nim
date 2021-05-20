@@ -140,8 +140,6 @@ proc newDot(n, b: PNode): PNode =
 
 proc fuzzyLookup(c: PContext, n: PNode, flags: TSemGenericFlags,
                  ctx: var GenericCtx; isMacro: var bool): PNode =
-  if isCompilerDebug():
-    dbg c.config$n.info, flags, isMacro, n.renderTree
   assert n.kind == nkDotExpr
   semIdeForTemplateOrGenericCheck(c.config, n, ctx.cursorInBody)
 
@@ -167,8 +165,6 @@ proc fuzzyLookup(c: PContext, n: PNode, flags: TSemGenericFlags,
         let syms = semGenericStmtSymbol(c, n, s, ctx, flags, fromDotExpr=true)
         if syms.kind == nkSym:
           let choice = symChoice(c, n, s, scForceOpen)
-          if isCompilerDebug():
-            dbg choice
           choice.transitionSonsKind(nkClosedSymChoice)
           result = newDot(result, choice)
         else:
