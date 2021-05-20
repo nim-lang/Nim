@@ -391,6 +391,19 @@ proc handleStdinInput*(conf: ConfigRef) =
   if conf.outDir.isEmpty:
     conf.outDir = getNimcacheDir(conf)
 
+proc specialDefine(conf: ConfigRef, key: string) =
+  # Keep this syncronized with the default config/nim.cfg!
+  if cmpIgnoreStyle(key, "nimQuirky") == 0:
+    conf.exc = excQuirky
+  elif cmpIgnoreStyle(key, "release") == 0 or cmpIgnoreStyle(key, "danger") == 0:
+    conf.options.excl {optStackTrace, optLineTrace, optLineDir, optOptimizeSize}
+    conf.globalOptions.excl {optExcessiveStackTrace, optCDebug}
+    conf.options.incl optOptimizeSpeed
+  if cmpIgnoreStyle(key, "danger") == 0 or cmpIgnoreStyle(key, "quick") == 0:
+    conf.options.excl {optObjCheck, optFieldCheck, optRangeCheck, optBoundsCheck,
+      optOverflowCheck, optAssert, optStackTrace, optLineTrace, optLineDir}
+    conf.globalOptions.excl {optCDebug}
+
 proc processSwitch*(switch, arg: string, pass: TCmdLinePass, info: TLineInfo;
                     conf: ConfigRef) =
   var
@@ -450,12 +463,10 @@ proc processSwitch*(switch, arg: string, pass: TCmdLinePass, info: TLineInfo;
     expectArg(conf, switch, arg, pass, info)
     if {':', '='} in arg:
       splitSwitch(conf, arg, key, val, pass, info)
-      if cmpIgnoreStyle(key, "nimQuirky") == 0:
-        conf.exc = excQuirky
+      specialDefine(conf, key)
       defineSymbol(conf.symbols, key, val)
     else:
-      if cmpIgnoreStyle(arg, "nimQuirky") == 0:
-        conf.exc = excQuirky
+      specialDefine(conf, arg)
       defineSymbol(conf.symbols, arg)
   of "undef", "u":
     expectArg(conf, switch, arg, pass, info)
