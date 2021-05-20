@@ -194,15 +194,7 @@ proc searchInScopes*(c: PContext, s: PIdent; ambiguous: var bool): PSym =
       if result.kind == skMixin: # TODO: not for generic prepass?
         foundMixin = true
         continue
-        # TODO: consider c.inGenericInst ? consider whether scope is an instantiation one?
-      # if c.getCurrOwner.kind != skModule and c.getCurrOwner != result.owner:
-      # if c.inGenericInst > 0 and c.getCurrOwner != result.owner: # TODO: may need to walk up
-        # if not foundMixin:
-          # return nil
-      # if result.kind == skMixin and not allowMixin:
-      #   # TODO: allowMixin
-      #   continue
-      if c.inGenericInst > 0 and not foundMixin: # TODO: lowerThan instead of != ?
+      if c.inGenericInst > 0 and not foundMixin:
         var parent = result.owner
         while true:
           if parent == c.p.owner:
@@ -211,10 +203,6 @@ proc searchInScopes*(c: PContext, s: PIdent; ambiguous: var bool): PSym =
             parent = parent.owner
           else:
             return nil
-          # parent = parent.owner
-          # c.getCurrOwner != result.owner
-        # dbg c.inGenericInst, foundMixin, c.getCurrOwner, result.owner, result.kind, result, s
-        # return nil
       return result
 
   if c.inGenericInst > 0 and not foundMixin: # PRTEMP
@@ -528,7 +516,6 @@ proc errorUndeclaredIdentifier*(c: PContext; info: TLineInfo; name: string, extr
     err.add c.recursiveDep
     # prevent excessive errors for 'nim check'
     c.recursiveDep = ""
-  debugScopes2()
   localError(c.config, info, errGenerated, err)
 
 proc errorUndeclaredIdentifierHint*(c: PContext; n: PNode, ident: PIdent): PSym =
