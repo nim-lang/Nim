@@ -75,6 +75,10 @@
 
 - `strformat` is now part of `include std/prelude`.
 
+- The configuration subsystem now allows for `-d:release` and `-d:danger` to work as expected.
+  The downside is that these defines now have custom logic that doesn't apply for
+  other defines.
+
 
 ## Standard library additions and changes
 - Added support for parenthesized expressions in `strformat`
