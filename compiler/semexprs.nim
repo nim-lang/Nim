@@ -1815,7 +1815,6 @@ proc semReturn(c: PContext, n: PNode): PNode =
     localError(c.config, n.info, "'return' not allowed here")
 
 proc semProcBody(c: PContext, n: PNode): PNode =
-  # debugScopes2()
   openScope(c)
   result = semExpr(c, n)
   if c.p.resultSym != nil and not isEmptyType(result.typ):
@@ -2727,7 +2726,6 @@ proc semExpr(c: PContext, n: PNode, flags: TExprFlags = {}): PNode =
 
   result = n
   if c.config.cmd == cmdIdeTools: suggestExpr(c, n)
-  # this is nkSym vs nkIdent depending on whether symbol is inside generic or not; makes sense since symbol doesn't exist yet until generic is instantiated!
   if nfSem in n.flags: return
   case n.kind
   of nkIdent, nkAccQuoted:

@@ -192,7 +192,6 @@ proc searchInScopes*(c: PContext, s: PIdent; ambiguous: var bool): PSym =
     if result != nil: return result
   result = someSymFromImportTable(c, s, ambiguous)
 
-import astmsgs
 proc debugScopes*(c: PContext; limit=0, max = int.high) {.deprecated.} =
   var i = 0
   var count = 0
@@ -201,12 +200,7 @@ proc debugScopes*(c: PContext; limit=0, max = int.high) {.deprecated.} =
     for h in 0..high(scope.symbols.data):
       if scope.symbols.data[h] != nil:
         if count >= max: return
-        let sym = scope.symbols.data[h]
-        # echo count, ": ", sym.name.s
-        # echo count, ": ", sym
-        var msg = "$#: $#" % [$count, $sym]
-        addDeclaredLoc(msg, c.config, sym)
-        echo msg
+        echo count, ": ", scope.symbols.data[h].name.s
         count.inc
     if i == limit: return
     inc i
@@ -562,7 +556,6 @@ proc qualifiedLookUp*(c: PContext, n: PNode, flags: set[TLookupFlag]): PSym =
           errorUseQualifier(c, n.info, candidates)
 
     if result == nil and checkUndeclared in flags:
-      # debugScopes2()
       result = errorUndeclaredIdentifierHint(c, n, ident)
     elif checkAmbiguity in flags and result != nil and amb:
       result = errorUseQualifier(c, n.info, result, amb)
