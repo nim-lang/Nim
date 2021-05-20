@@ -20,7 +20,7 @@ when defined(t13747_case1):
     mixin valV1
     T.valV1
 
-  template funV1() = 
+  template funV1() =
     template valV1(t: type): untyped = 11
     doAssert int.byVal1V1() == 11
     doAssert int.byVal2V1() == 11
@@ -39,7 +39,7 @@ when defined(t13747_case2):
     mixin valV2
     T.valV2
 
-  template funV2() = 
+  template funV2() =
     template valV2(t: type): untyped = 12
     doAssert int.byVal1V2() == 12 # ok(workaround)
     doAssert int.byVal2V2() == 12 # was giving CT error
@@ -63,7 +63,7 @@ when defined(t13747_case3):
     mixin valV3
     T.valV3
 
-  template funV3() = 
+  template funV3() =
     template valV3(t: type): untyped = 13
     doAssert int.byVal1V3() == 13 # ok(workaround)
     doAssert int.byVal2V3() == 13 # was giving CT error
