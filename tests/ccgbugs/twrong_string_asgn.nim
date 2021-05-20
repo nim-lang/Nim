@@ -1,6 +1,5 @@
 discard """
   output: "adf"
-  joinable: false # PRTEMP
 """
 
 import asyncdispatch
