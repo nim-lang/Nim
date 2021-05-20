@@ -7,36 +7,26 @@ import std/threadpool
 template genTest(input, expected: string) =
   var sanity = false
   proc my_handler(request: Request) {.async.} =
-      echo "Body: ", request.body
-      echo "Request: ", request
       doAssert(request.body == expected)
       doAssert(request.headers.hasKey("Transfer-Encoding"))
+      # TODO: This assert depends on client-side code, not server-side code
+      # Currently, the Nim Http Client does not support Transfer-Encoding-style
+      # requests
       # doAssert(not request.headers.hasKey("Content-Length"))
       sanity = true
       await request.respond(Http200, "Good")
 
   proc send_request(server: AsyncHttpServer): Future[AsyncResponse] {.async.} =
-    echo "hit 3a"
     let client = newAsyncHttpClient()
-    echo "hit 3b"
     let headers = newHttpHeaders({"Transfer-Encoding": "chunked"})
     let  clientResponse = await client.request("http://localhost:64123/", body=input, headers=headers, httpMethod=HttpPost)
-    echo "hit 3c"
     server.close()
-    echo "hit 3d"
     return clientResponse
 
   proc run_server(): void =
-    echo "hit 1"
     let server = newAsyncHttpServer()
-    echo "hit 2"
     discard server.serve(Port(64123), my_handler)
-    echo "hit 3"
-    let response = waitFor server.send_request
-    echo "hit 4"
-    let body = waitFor(response.body)
-    echo "body resp: ", body
-    echo "hit 5"
+    discard waitFor server.send_request
 
   spawn run_server()
   sync()
