@@ -186,14 +186,28 @@ proc someSymFromImportTable*(c: PContext; name: PIdent; ambiguous: var bool): PS
         if s.kind notin OverloadableSyms or result.kind notin OverloadableSyms:
           ambiguous = true
 
-proc searchInScopes*(c: PContext, s: PIdent; ambiguous: var bool, allowMixin = false): PSym =
+proc searchInScopes*(c: PContext, s: PIdent; ambiguous: var bool): PSym =
+  var foundMixin = false
   for scope in allScopes(c.currentScope):
     result = strTableGet(scope.symbols, s)
     if result != nil:
-      if result.kind == skMixin and not allowMixin:
-        # TODO: allowMixin
+      if result.kind == skMixin: # TODO: not for generic prepass?
+        foundMixin = true
         continue
+        # TODO: consider c.inGenericInst ? consider whether scope is an instantiation one?
+      # if c.getCurrOwner.kind != skModule and c.getCurrOwner != result.owner:
+      # if c.inGenericInst > 0 and c.getCurrOwner != result.owner: # TODO: may need to walk up
+        # if not foundMixin:
+          # return nil
+      # if result.kind == skMixin and not allowMixin:
+      #   # TODO: allowMixin
+      #   continue
+      if c.inGenericInst > 0 and not foundMixin and c.getCurrOwner != result.owner: # TODO: lowerThan instead of != ?
+        return nil
       return result
+
+  if c.inGenericInst > 0 and not foundMixin: # PRTEMP
+    return nil
   result = someSymFromImportTable(c, s, ambiguous)
 
 proc debugScopes*(c: PContext; limit=0, max = int.high) {.deprecated.} =
