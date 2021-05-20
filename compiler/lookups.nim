@@ -192,6 +192,7 @@ proc searchInScopes*(c: PContext, s: PIdent; ambiguous: var bool): PSym =
     if result != nil: return result
   result = someSymFromImportTable(c, s, ambiguous)
 
+import astmsgs
 proc debugScopes*(c: PContext; limit=0, max = int.high) {.deprecated.} =
   var i = 0
   var count = 0
@@ -200,7 +201,12 @@ proc debugScopes*(c: PContext; limit=0, max = int.high) {.deprecated.} =
     for h in 0..high(scope.symbols.data):
       if scope.symbols.data[h] != nil:
         if count >= max: return
-        echo count, ": ", scope.symbols.data[h].name.s
+        let sym = scope.symbols.data[h]
+        # echo count, ": ", sym.name.s
+        # echo count, ": ", sym
+        var msg = "$#: $#" % [$count, $sym]
+        addDeclaredLoc(msg, c.config, sym)
+        echo msg
         count.inc
     if i == limit: return
     inc i

@@ -49,35 +49,56 @@ type
 
 proc symChoice(c: PContext, n: PNode, s: PSym, r: TSymChoiceRule;
                isField = false): PNode =
+  if isCompilerDebug():
+    dbg c.config$n.info, s, r, isField
+    echo getStacktrace()
+
   var
     a: PSym
     o: TOverloadIter
   var i = 0
   a = initOverloadIter(o, c, n)
+  if isCompilerDebug():
+    dbg a, a == s, s.flags, s.owner
   while a != nil:
+    if i == 1:
+      if c.getCurrOwner == s.owner and a.owner != s.owner:
+        break
+      if isCompilerDebug():
+        dbg a, a.owner, c.inGenericContext, c.getCurrOwner
+    # if i == 1:
+    # if a.kind != skModule:
     if a.kind != skModule:
       inc(i)
       if i > 1: break
     a = nextOverloadIter(o, c, n)
   let info = getCallLineInfo(n)
+  if isCompilerDebug():
+    dbg i, r
   if i <= 1 and r != scForceOpen:
+    if isCompilerDebug(): dbg()
     # XXX this makes more sense but breaks bootstrapping for now:
     # (s.kind notin routineKinds or s.magic != mNone):
     # for instance 'nextTry' is both in tables.nim and astalgo.nim ...
     if not isField or sfGenSym notin s.flags:
+      if isCompilerDebug(): dbg()
       result = newSymNode(s, info)
       markUsed(c, info, s)
       onUse(info, s)
     else:
+      if isCompilerDebug(): dbg()
       result = n
   else:
     # semantic checking requires a type; ``fitNode`` deals with it
     # appropriately
     let kind = if r == scClosed or n.kind == nkDotExpr: nkClosedSymChoice
                else: nkOpenSymChoice
+    if isCompilerDebug(): dbg kind
     result = newNodeIT(kind, info, newTypeS(tyNone, c))
     a = initOverloadIter(o, c, n)
+    if isCompilerDebug(): dbg a
     while a != nil:
+      if isCompilerDebug(): dbg a
       if a.kind != skModule and (not isField or sfGenSym notin s.flags):
         incl(a.flags, sfUsed)
         markOwnerModuleAsUsed(c, a)
