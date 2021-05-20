@@ -271,21 +271,8 @@ proc processRequest(
         await client.sendStatus("417 Expectation Failed")
 
   # Read the body
-  # - Check for Content-length header
-  if request.headers.hasKey("Content-Length"):
-    var contentLength = 0
-    if parseSaturatedNatural(request.headers["Content-Length"], contentLength) == 0:
-      await request.respond(Http400, "Bad Request. Invalid Content-Length.")
-      return true
-    else:
-      if contentLength > server.maxBody:
-        await request.respondError(Http413)
-        return false
-      request.body = await client.recv(contentLength)
-      if request.body.len != contentLength:
-        await request.respond(Http400, "Bad Request. Content-Length does not match actual.")
-        return true
-  elif hasChunkedEncoding(request):
+  # - Check for Transfer-Encoding header
+  if hasChunkedEncoding(request):
     # https://developer.mozilla.org/en-US/docs/Web/HTTP/Headers/Transfer-Encoding
     var sizeOrData = 0
     var bytesToRead = 0
@@ -322,6 +309,20 @@ proc processRequest(
           return true
 
       inc sizeOrData
+  # - Check for Content-length header
+  elif request.headers.hasKey("Content-Length"):
+    var contentLength = 0
+    if parseSaturatedNatural(request.headers["Content-Length"], contentLength) == 0:
+      await request.respond(Http400, "Bad Request. Invalid Content-Length.")
+      return true
+    else:
+      if contentLength > server.maxBody:
+        await request.respondError(Http413)
+        return false
+      request.body = await client.recv(contentLength)
+      if request.body.len != contentLength:
+        await request.respond(Http400, "Bad Request. Content-Length does not match actual.")
+        return true
   elif request.reqMethod == HttpPost:
     await request.respond(Http411, "Content-Length required.")
     return true

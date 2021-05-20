@@ -1,44 +1,49 @@
 import httpclient, asynchttpserver, asyncdispatch, asyncfutures
 import net
 
-import std/asyncnet
 import std/nativesockets
+import std/threadpool
 
-const postBegin = """
-POST / HTTP/1.1
-Transfer-Encoding:chunked
-
-"""
-
-template genTest(input, expected) =
+template genTest(input, expected: string) =
   var sanity = false
-  proc handler(request: Request) {.async.} =
+  proc my_handler(request: Request) {.async.} =
+      echo "Body: ", request.body
+      echo "Request: ", request
       doAssert(request.body == expected)
       doAssert(request.headers.hasKey("Transfer-Encoding"))
-      doAssert(not request.headers.hasKey("Content-Length"))
+      # doAssert(not request.headers.hasKey("Content-Length"))
       sanity = true
       await request.respond(Http200, "Good")
 
-  proc runSleepLoop(server: AsyncHttpServer) {.async.} = 
-    server.listen(Port(0))
-    proc wrapper() = 
-      waitFor server.acceptRequest(handler)
-    asyncdispatch.callSoon wrapper
+  proc send_request(server: AsyncHttpServer): Future[AsyncResponse] {.async.} =
+    echo "hit 3a"
+    let client = newAsyncHttpClient()
+    echo "hit 3b"
+    let headers = newHttpHeaders({"Transfer-Encoding": "chunked"})
+    let  clientResponse = await client.request("http://localhost:64123/", body=input, headers=headers, httpMethod=HttpPost)
+    echo "hit 3c"
+    server.close()
+    echo "hit 3d"
+    return clientResponse
 
-  let server = newAsyncHttpServer()
-  waitFor runSleepLoop(server)
-  let data = postBegin & input
-  var socket = newSocket()
-  socket.connect("127.0.0.1", server.getPort)
-  socket.send(data)
-  waitFor sleepAsync(10)
-  socket.close()
-  server.close()
+  proc run_server(): void =
+    echo "hit 1"
+    let server = newAsyncHttpServer()
+    echo "hit 2"
+    discard server.serve(Port(64123), my_handler)
+    echo "hit 3"
+    let response = waitFor server.send_request
+    echo "hit 4"
+    let body = waitFor(response.body)
+    echo "body resp: ", body
+    echo "hit 5"
 
-  # Verify we ran the handler and its asserts
-  doAssert(sanity)
+  spawn run_server()
+  sync()
+  doAssert sanity
 
 block:
+  echo "test"
   const expected = "hello=world"
   const input = ("b\r\n" &
                  "hello=world\r\n" &
