@@ -417,7 +417,8 @@ proc mainCommand*(graph: ModuleGraph) =
       "project", project,
       "output", output,
       ])
-    rawMessage(conf, hintBuildMode, build)
+    if conf.cmd in cmdBackends:
+      rawMessage(conf, hintBuildMode, build)
 
   when PrintRopeCacheStats:
     echo "rope cache stats: "
