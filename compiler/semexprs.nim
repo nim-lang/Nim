@@ -1913,8 +1913,6 @@ proc semDefined(c: PContext, n: PNode): PNode =
   result.typ = getSysType(c.graph, n.info, tyBool)
 
 proc lookUpForDeclared(c: PContext, n: PNode, onlyCurrentScope: bool): PSym =
-  if isCompilerDebug():
-    dbg n.renderTree, n.kind
   case n.kind
   of nkIdent, nkAccQuoted:
     var amb = false
@@ -1923,24 +1921,6 @@ proc lookUpForDeclared(c: PContext, n: PNode, onlyCurrentScope: bool): PSym =
                localSearchInScope(c, ident)
              else:
                searchInScopes(c, ident, amb)
-    # if isCompilerDebug():
-    #   # dbg result, n.renderTree, result.kind
-    #   if result != nil:
-    #     dbg result.flags, c.getCurrOwner, result.owner
-    #     echo getStacktrace()
-    #   debugScopes2()
-    # PRTEMP: FACTOR
-    # if result != nil:
-    #   if result.kind == skMixin:
-    #     result = searchInScopes(c, ident, amb, allowMixin = false)
-    #   else:
-    #     # TODO: we need a way to tell if we're instantiating a generic
-    #     if c.getCurrOwner.kind != skModule and c.getCurrOwner != result.owner:
-    #       # result was not a symbol when generic was instantiated (otherwise n.kind wouldn't be nkIdent etc)
-    #       # we found a symbol, but it's owner was from caller scope, not from generic scope, so it should remain invisible
-    #       # if result.kind == skMixin:
-    #       # TODO: how come result.owner wasn't updated for skMixin?
-    #       result = nil
   of nkDotExpr:
     result = nil
     if onlyCurrentScope: return
@@ -1955,7 +1935,6 @@ proc lookUpForDeclared(c: PContext, n: PNode, onlyCurrentScope: bool): PSym =
   of nkSym:
     result = n.sym
   of nkOpenSymChoice, nkClosedSymChoice:
-    dbgIf()
     result = n[0].sym
   else:
     localError(c.config, n.info, "identifier expected, but got: " & renderTree(n))
@@ -1968,9 +1947,6 @@ proc semDeclared(c: PContext, n: PNode, onlyCurrentScope: bool): PNode =
   result.intVal = ord lookUpForDeclared(c, n[1], onlyCurrentScope) != nil
   result.info = n.info
   result.typ = getSysType(c.graph, n.info, tyBool)
-  if isCompilerDebug():
-    dbg c.config$n.info, result.intVal
-    # echo getStackTrace()
 
 proc expectMacroOrTemplateCall(c: PContext, n: PNode): PSym =
   ## The argument to the proc should be nkCall(...) or similar
@@ -2259,8 +2235,6 @@ proc semSizeof(c: PContext, n: PNode): PNode =
 
 proc semMagic(c: PContext, n: PNode, s: PSym, flags: TExprFlags): PNode =
   # this is a hotspot in the compiler!
-  if isCompilerDebug():
-    dbg s.magic, flags
   result = n
   case s.magic # magics that need special treatment
   of mAddr:
@@ -2749,9 +2723,6 @@ proc semExpr(c: PContext, n: PNode, flags: TExprFlags = {}): PNode =
     defer:
       if isCompilerDebug():
         echo ("<", c.config$n.info, n, ?.result.typ)
-
-  if isCompilerDebug():
-    dbg n.renderTree, flags, n.kind
   result = n
   if c.config.cmd == cmdIdeTools: suggestExpr(c, n)
   if nfSem in n.flags: return
@@ -2854,7 +2825,6 @@ proc semExpr(c: PContext, n: PNode, flags: TExprFlags = {}): PNode =
       of skType:
         # XXX think about this more (``set`` procs)
         let ambig = c.isAmbiguous
-        dbgIf()
         if not (n[0].kind in {nkClosedSymChoice, nkOpenSymChoice, nkIdent} and ambig) and n.len == 2:
           result = semConv(c, n)
         elif ambig and n.len == 1:
@@ -2963,7 +2933,6 @@ proc semExpr(c: PContext, n: PNode, flags: TExprFlags = {}): PNode =
   of nkTableConstr:
     result = semTableConstr(c, n)
   of nkClosedSymChoice, nkOpenSymChoice:
-    dbgIf()
     # handling of sym choices is context dependent
     # the node is left intact for now
     discard
@@ -3037,15 +3006,8 @@ proc semExpr(c: PContext, n: PNode, flags: TExprFlags = {}): PNode =
   of nkComesFrom: discard "ignore the comes from information for now"
   of nkMixinStmt:
     for ni in n:
-      if isCompilerDebug():
-        dbg ni
       if ni.kind == nkOpenSymChoice and ni.len == 1 and ni[0].sym.kind == skMixin:
         addDecl(c, ni[0].sym)
-        if isCompilerDebug():
-          dbg ni[0].sym
-          dbg "D20210520T122601", n.len, n
-          debugScopes2()
-          #   # localBindStmts
   of nkBindStmt:
     if c.p != nil:
       if n.len > 0 and n[0].kind == nkSym:

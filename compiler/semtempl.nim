@@ -58,7 +58,7 @@ proc symChoice(c: PContext, n: PNode, s: PSym, r: TSymChoiceRule;
   while a != nil:
     if i == 1:
       # this is needed, see D20210519T200936 and D20210519T201000
-      # dbg c.getCurrOwner, c.getCurrOwner.kind, a0.owner, a0, a.owner, a, a.owner.kind
+      # TODO: consider inGenericInst ?
       if c.getCurrOwner.kind != skModule and c.getCurrOwner == a0.owner and a.owner != a0.owner:
         break
     if a.kind != skModule:
@@ -81,14 +81,8 @@ proc symChoice(c: PContext, n: PNode, s: PSym, r: TSymChoiceRule;
     # appropriately
     let kind = if r == scClosed or n.kind == nkDotExpr: nkClosedSymChoice
                else: nkOpenSymChoice
-    if isCompilerDebug():
-      dbg s, isField, n.kind, n.renderTree, kind, r
-      if s != nil:
-        dbg s.kind
     result = newNodeIT(kind, info, newTypeS(tyNone, c))
     a = initOverloadIter(o, c, n)
-    if isCompilerDebug():
-      dbg a
     while a != nil:
       if a.kind != skModule and (not isField or sfGenSym notin s.flags):
         incl(a.flags, sfUsed)
@@ -129,29 +123,11 @@ proc semBindStmt(c: PContext, n: PNode, toBind: var IntSet): PNode =
       illFormedAst(a, c.config)
 
 proc semMixinStmt(c: PContext, n: PNode, toMixin: var IntSet): PNode =
-  if isCompilerDebug():
-    dbg n.renderTree, n.kind, n.len
   result = copyNode(n)
   for i in 0..<n.len:
     toMixin.incl(considerQuotedIdent(c, n[i]).id)
     let s = symChoice(c, n[i], nil, scForceOpen)
-    if isCompilerDebug():
-      dbg s, toMixin.len
-      echo getStacktrace()
     result.add s
-
-    # this wouldn't honor :`when defined(foo): mixin bar` during instantiation
-    # if s.kind == nkOpenSymChoice and s.len == 1 and s[0].sym.kind == skMixin:
-    #   if isCompilerDebug():
-    #     dbg s[0].sym
-    #   addDecl(c, s[0].sym)
-
-    # addDecl(c, s, n.info) # PRTEMP; depends on whether  0th child missing for nkOpenSymChoice?
-    # addDecl(c, s.sym) # PRTEMP; depends on whether  0th child missing for nkOpenSymChoice?
-    # result.add symChoice(c, n[i], nil, scForceOpen)
-  if isCompilerDebug():
-    dbg result.renderTree, result.len, result.kind
-    dbg result[0].kind, result[0], result[0].len
 
 proc replaceIdentBySym(c: PContext; n: var PNode, s: PNode) =
   case n.kind

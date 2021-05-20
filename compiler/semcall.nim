@@ -672,7 +672,6 @@ proc explicitGenericInstantiation(c: PContext, n: PNode, s: PSym): PNode =
     result = explicitGenericSym(c, n, s)
     if result == nil: result = explicitGenericInstError(c, n)
   elif a.kind in {nkClosedSymChoice, nkOpenSymChoice}:
-    dbgIf()
     # choose the generic proc with the proper number of type parameters.
     # XXX I think this could be improved by reusing sigmatch.paramTypesMatch.
     # It's good enough for now.

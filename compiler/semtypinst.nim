@@ -200,7 +200,6 @@ proc replaceTypeVarsN(cl: var TReplTypeVars, n: PNode; start=0): PNode =
   of nkNone..pred(nkSym), succ(nkSym)..nkNilLit:
     discard
   of nkOpenSymChoice, nkClosedSymChoice:
-    dbgIf() # PRTEMP
     result = n
   of nkSym:
     result.sym = replaceTypeVarsS(cl, n.sym)

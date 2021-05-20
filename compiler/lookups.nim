@@ -202,8 +202,19 @@ proc searchInScopes*(c: PContext, s: PIdent; ambiguous: var bool): PSym =
       # if result.kind == skMixin and not allowMixin:
       #   # TODO: allowMixin
       #   continue
-      if c.inGenericInst > 0 and not foundMixin and c.getCurrOwner != result.owner: # TODO: lowerThan instead of != ?
-        return nil
+      if c.inGenericInst > 0 and not foundMixin: # TODO: lowerThan instead of != ?
+        var parent = result.owner
+        while true:
+          if parent == c.p.owner:
+            break
+          if parent != nil:
+            parent = parent.owner
+          else:
+            return nil
+          # parent = parent.owner
+          # c.getCurrOwner != result.owner
+        # dbg c.inGenericInst, foundMixin, c.getCurrOwner, result.owner, result.kind, result, s
+        # return nil
       return result
 
   if c.inGenericInst > 0 and not foundMixin: # PRTEMP
@@ -218,7 +229,8 @@ proc debugScopes*(c: PContext; limit=0, max = int.high) {.deprecated.} =
     for h in 0..high(scope.symbols.data):
       if scope.symbols.data[h] != nil:
         if count >= max: return
-        echo count, ": ", scope.symbols.data[h].name.s
+        let sym = scope.symbols.data[h]
+        echo count, ": ", sym, " owner:", sym.owner
         count.inc
     if i == limit: return
     inc i
@@ -516,6 +528,7 @@ proc errorUndeclaredIdentifier*(c: PContext; info: TLineInfo; name: string, extr
     err.add c.recursiveDep
     # prevent excessive errors for 'nim check'
     c.recursiveDep = ""
+  debugScopes2()
   localError(c.config, info, errGenerated, err)
 
 proc errorUndeclaredIdentifierHint*(c: PContext; n: PNode, ident: PIdent): PSym =
@@ -556,8 +569,6 @@ proc qualifiedLookUp*(c: PContext, n: PNode, flags: set[TLookupFlag]): PSym =
   of nkIdent, nkAccQuoted:
     var amb = false
     var ident = considerQuotedIdent(c, n)
-    if isCompilerDebug():
-      dbg ident, flags
     if checkModule in flags:
       result = searchInScopes(c, ident, amb).skipAlias(n, c.config)
     else:
@@ -658,7 +669,6 @@ proc initOverloadIter*(o: var TOverloadIter, c: PContext, n: PNode): PSym =
         noidentError(c.config, n[1], n)
         result = errorSym(c, n[1])
   of nkClosedSymChoice, nkOpenSymChoice:
-    dbgIf()
     o.mode = oimSymChoice
     if n[0].kind == nkSym:
       result = n[0].sym

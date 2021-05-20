@@ -55,12 +55,18 @@ proc isCompilerDebug*(): bool =
       echo 'x'
   conf0.isDefined("nimCompilerDebug")
 
-template debugScopes2* =
+template debugScopesIf* =
   if isCompilerDebug():
     # TODO: callSite?
     const infom1 = instantiationInfo(-1, true)
     dbg(info = infom1)
     debugScopes(c, limit = 100)
+
+template debugScopes2* =
+  # TODO: callSite?
+  const infom1 = instantiationInfo(-1, true)
+  dbg(info = infom1)
+  debugScopes(c, limit = 100)
 
 template dbgIf* =
   if isCompilerDebug():

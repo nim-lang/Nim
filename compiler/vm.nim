@@ -1827,7 +1827,6 @@ proc rawExecute(c: PCtx, start: int, tos: PStackFrame): TFullReg =
       of nkSym:
         aStrVal = aNode.sym.name.s.cstring
       of nkOpenSymChoice, nkClosedSymChoice:
-        dbgIf()
         aStrVal = aNode[0].sym.name.s.cstring
       else:
         discard
@@ -1840,7 +1839,6 @@ proc rawExecute(c: PCtx, start: int, tos: PStackFrame): TFullReg =
       of nkSym:
         bStrVal = bNode.sym.name.s.cstring
       of nkOpenSymChoice, nkClosedSymChoice:
-        dbgIf()
         bStrVal = bNode[0].sym.name.s.cstring
       else:
         discard

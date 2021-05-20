@@ -953,7 +953,6 @@ proc genBindSym(c: PCtx; n: PNode; dest: var TDest) =
   if n.len == 2: # hmm, reliable?
     # bindSym with static input
     if n[1].kind in {nkClosedSymChoice, nkOpenSymChoice, nkSym}:
-      dbgIf()
       let idx = c.genLiteral(n[1])
       if dest < 0: dest = c.getTemp(n.typ)
       c.gABx(n, opcNBindSym, dest, idx)

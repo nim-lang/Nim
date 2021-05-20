@@ -234,8 +234,6 @@ proc semGenericStmt(c: PContext, n: PNode,
     if s != nil:
       incl(s.flags, sfUsed)
       mixinContext = s.magic in {mDefined, mDeclared, mDeclaredInScope, mCompiles, mAstToStr}
-      # mixinContext = s.magic in {mDefined, mDeclaredInScope, mCompiles, mAstToStr}
-      # dbg "D20210520T084716", s.magic
       let whichChoice = if s.id in ctx.toBind: scClosed
                         elif s.isMixedIn: scForceOpen
                         else: scOpen

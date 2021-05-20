@@ -64,7 +64,6 @@ proc sameTrees*(a, b: PNode): bool =
         result = true
 
 proc inSymChoice(sc, x: PNode): bool =
-  # dbgIf()
   if sc.kind == nkClosedSymChoice:
     for i in 0..<sc.len:
       if sc[i].sym == x.sym: return true

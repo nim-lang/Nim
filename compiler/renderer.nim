@@ -933,8 +933,6 @@ proc gsub(g: var TSrcGen; n: PNode; i: int) =
   if i < n.len:
     gsub(g, n[i])
   else:
-    if isCompilerDebug():
-      dbg i, n.len, n.kind
     put(g, tkOpr, "<<" & $i & "th child missing for " & $n.kind & " >>")
 
 type
