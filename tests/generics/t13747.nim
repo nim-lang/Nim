@@ -1,7 +1,7 @@
 discard """
   joinable: false
-  matrix: "-d:t13747_case1 -d:t13747_case2 -d:t13747_case3 -d:t13747_case4 -d:t13747_case5 -d:t13747_case6 -d:t13747_case7 -d:t13747_case8"
-  # this allows testing each one individually; each of those (except t13747_case1) were failing
+  matrix: "-d:t13747_case1 -d:t13747_case2 -d:t13747_case3 -d:t13747_case4 -d:t13747_case5 -d:t13747_case6 -d:t13747_case7 -d:t13747_case8 -d:t13747_case9"
+  # this allows testing each one individually; each of those (except t13747_case1, t13747_case7, t13747_case8) were failing
 """
 
 # bug #13747 generic sandwich non-module scope symbols were ignored
@@ -128,15 +128,25 @@ when defined(t13747_case6): # bug #17965
     doAssert @[a] == @[b] # was failing
 
 when defined(t13747_case7):
-  # makes sure this keeps working
+  # D20210519T201000:here makes sure this keeps working
   proc cmp(a: string) = discard
   template genericTests() =
     let fn = cmp[int]
   genericTests()
 
+when defined t13747_case8: # bug #2752
+  # D20210519T200936:here makes sure this keeps working; this is a minimized version of bug #2752;
+  # the non-minimized is in tests/generics/tgenerics_issues.nim (formerly tests/generics/tdont_use_inner_scope.nim)
+  proc myFilter[T](a: T) =
+    proc aNameWhichWillConflict(z: int) = discard
+    let foo = aNameWhichWillConflict # semstmts.nim:500:12 in: semVarOrLet def.kind: nkClosedSymChoice;
+  block:
+    proc aNameWhichWillConflict(x: string) = discard
+    myFilter(1)
+
 # tests that need an stdlib import come after
 
-when defined(t13747_case8): # bug #13970
+when defined(t13747_case9): # bug #13970
   # (also reported in https://github.com/nim-lang/Nim/issues/13747#issuecomment-612905795)
   import algorithm
   block:
