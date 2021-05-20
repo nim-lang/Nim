@@ -81,9 +81,14 @@ proc symChoice(c: PContext, n: PNode, s: PSym, r: TSymChoiceRule;
     # appropriately
     let kind = if r == scClosed or n.kind == nkDotExpr: nkClosedSymChoice
                else: nkOpenSymChoice
-    dbgIf()
+    if isCompilerDebug():
+      dbg s, isField, n.kind, n.renderTree, kind, r
+      if s != nil:
+        dbg s.kind
     result = newNodeIT(kind, info, newTypeS(tyNone, c))
     a = initOverloadIter(o, c, n)
+    if isCompilerDebug():
+      dbg a
     while a != nil:
       if a.kind != skModule and (not isField or sfGenSym notin s.flags):
         incl(a.flags, sfUsed)

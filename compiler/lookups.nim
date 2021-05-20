@@ -542,6 +542,8 @@ proc qualifiedLookUp*(c: PContext, n: PNode, flags: set[TLookupFlag]): PSym =
   of nkIdent, nkAccQuoted:
     var amb = false
     var ident = considerQuotedIdent(c, n)
+    if isCompilerDebug():
+      dbg ident, flags
     if checkModule in flags:
       result = searchInScopes(c, ident, amb).skipAlias(n, c.config)
     else:
