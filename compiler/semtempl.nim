@@ -54,9 +54,10 @@ proc symChoice(c: PContext, n: PNode, s: PSym, r: TSymChoiceRule;
     o: TOverloadIter
   var i = 0
   a = initOverloadIter(o, c, n)
+  let a0 = a
   while a != nil:
     if i == 1:
-      if c.getCurrOwner == s.owner and a.owner != s.owner:
+      if c.getCurrOwner == a0.owner and a.owner != a0.owner:
         break
     if a.kind != skModule:
       inc(i)
