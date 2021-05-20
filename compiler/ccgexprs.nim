@@ -2326,7 +2326,7 @@ proc genMagicExpr(p: BProc, e: PNode, d: var TLoc, op: TMagic) =
       genNewFinalize(p, e)
   of mNewSeq:
     if optSeqDestructors in p.config.globalOptions:
-      e[1] = makeAddr(e[1], p.module.idgen)
+      e[1] = makeAddr(e[1])
       genCall(p, e, d)
     else:
       genNewSeq(p, e)
