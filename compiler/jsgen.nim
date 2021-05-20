@@ -322,7 +322,7 @@ proc isSimpleExpr(p: PProc; n: PNode): bool =
 
 proc getTemp(p: PProc, defineInLocals: bool = true): Rope =
   inc(p.unique)
-  result = "Tmp$1" % [rope(p.unique)]
+  result = "Temporary$1" % [rope(p.unique)]
   if defineInLocals:
     p.locals.add(p.indentLine("var $1;$n" % [result]))
 
@@ -489,12 +489,12 @@ proc maybeMakeTempAssignable(p: PProc, n: PNode; x: TCompRes): tuple[a, tmp: Rop
       if optBoundsCheck in p.options:
         useMagic(p, "chckIndx")
         if first == 0: # save a couple chars
-          index.res = "chckIndx($1, 0, ($2).length-1)" % [index.res, tmp1]
+          index.res = "chckIndx($1, 0, ($2).length - 1)" % [index.res, tmp1]
         else:
-          index.res = "chckIndx($1, $2, ($3).length+($2)-1)-($2)" % [
+          index.res = "chckIndx($1, $2, ($3).length + ($2) - 1) - ($2)" % [
             index.res, rope(first), tmp1]
       elif first != 0:
-        index.res = "($1)-($2)" % [index.res, rope(first)]
+        index.res = "($1) - ($2)" % [index.res, rope(first)]
       else:
         discard # index.res = index.res
       let (n1, tmp2) = maybeMakeTemp(p, n[1], index)
@@ -607,12 +607,12 @@ proc arithAux(p: PProc, n: PNode, r: var TCompRes, op: TMagic) =
     if n[1].typ.size <= 4:
       applyFormat("($1 << $2)", "($1 << $2)")
     else:
-      applyFormat("($1 * Math.pow(2,$2))", "($1 * Math.pow(2,$2))")
+      applyFormat("($1 * Math.pow(2, $2))", "($1 * Math.pow(2, $2))")
   of mAshrI:
     if n[1].typ.size <= 4:
       applyFormat("($1 >> $2)", "($1 >> $2)")
     else:
-      applyFormat("Math.floor($1 / Math.pow(2,$2))", "Math.floor($1 / Math.pow(2,$2))")
+      applyFormat("Math.floor($1 / Math.pow(2, $2))", "Math.floor($1 / Math.pow(2, $2))")
   of mBitandI: applyFormat("($1 & $2)", "($1 & $2)")
   of mBitorI: applyFormat("($1 | $2)", "($1 | $2)")
   of mBitxorI: applyFormat("($1 ^ $2)", "($1 ^ $2)")
@@ -656,8 +656,8 @@ proc arithAux(p: PProc, n: PNode, r: var TCompRes, op: TMagic) =
   of mUnaryMinusF64: applyFormat("-($1)", "-($1)")
   of mCharToStr: applyFormat("nimCharToStr($1)", "nimCharToStr($1)")
   of mBoolToStr: applyFormat("nimBoolToStr($1)", "nimBoolToStr($1)")
-  of mIntToStr: applyFormat("cstrToNimstr(($1)+\"\")", "cstrToNimstr(($1)+\"\")")
-  of mInt64ToStr: applyFormat("cstrToNimstr(($1)+\"\")", "cstrToNimstr(($1)+\"\")")
+  of mIntToStr: applyFormat("cstrToNimstr(($1) + \"\")", "cstrToNimstr(($1) + \"\")")
+  of mInt64ToStr: applyFormat("cstrToNimstr(($1) + \"\")", "cstrToNimstr(($1) + \"\")")
   of mFloatToStr:
     useMagic(p, "nimFloatToString")
     applyFormat "cstrToNimstr(nimFloatToString($1))"
@@ -704,7 +704,7 @@ proc hasFrameInfo(p: PProc): bool =
       ((p.prc == nil) or not (sfPure in p.prc.flags))
 
 proc lineDir(config: ConfigRef, info: TLineInfo, line: int): Rope =
-  ropes.`%`("// line $2 \"$1\"$n",
+  ropes.`%`("/* line $2 \"$1\" */$n",
          [rope(toFullPath(config, info)), rope(line)])
 
 proc genLineDir(p: PProc, n: PNode) =
@@ -725,9 +725,9 @@ proc genWhileStmt(p: PProc, n: PNode) =
   p.blocks[^1].id = -p.unique
   p.blocks[^1].isLoop = true
   let labl = p.unique.rope
-  lineF(p, "L$1: while (true) {$n", [labl])
+  lineF(p, "Label$1: while (true) {$n", [labl])
   p.nested: gen(p, n[0], cond)
-  lineF(p, "if (!$1) break L$2;$n",
+  lineF(p, "if (!$1) break Label$2;$n",
        [cond.res, labl])
   p.nested: genStmt(p, n[1])
   lineF(p, "}$n", [labl])
@@ -750,8 +750,8 @@ proc genTry(p: PProc, n: PNode, r: var TCompRes) =
   #  try {
   #    stmts;
   #    --excHandler;
-  #  } catch (EXC) {
-  #    var prevJSError = lastJSError; lastJSError = EXC;
+  #  } catch (EXCEPTION) {
+  #    var prevJSError = lastJSError; lastJSError = EXCEPTION;
   #    framePtr = tmpFramePtr;
   #    --excHandler;
   #    if (e.typ && e.typ == NTI433 || e.typ == NTI2321) {
@@ -785,8 +785,8 @@ proc genTry(p: PProc, n: PNode, r: var TCompRes) =
   moveInto(p, a, r)
   var generalCatchBranchExists = false
   if catchBranchesExist:
-    p.body.addf("--excHandler;$n} catch (EXC) {$n var prevJSError = lastJSError;$n" &
-        " lastJSError = EXC;$n --excHandler;$n", [])
+    p.body.addf("--excHandler;$n} catch (EXCEPTION) {$n var prevJSError = lastJSError;$n" &
+        " lastJSError = EXCEPTION;$n --excHandler;$n", [])
     line(p, "framePtr = $1;$n" % [tmpFramePtr])
   while i < n.len and n[i].kind == nkExceptBranch:
     if n[i].len == 1:
@@ -928,12 +928,12 @@ proc genBlock(p: PProc, n: PNode, r: var TCompRes) =
     sym.loc.k = locOther
     sym.position = idx+1
   let labl = p.unique
-  lineF(p, "L$1: do {$n", [labl.rope])
+  lineF(p, "Label$1: do {$n", [labl.rope])
   setLen(p.blocks, idx + 1)
   p.blocks[idx].id = - p.unique # negative because it isn't used yet
   gen(p, n[1], r)
   setLen(p.blocks, idx)
-  lineF(p, "} while(false);$n", [labl.rope])
+  lineF(p, "} while (false);$n", [labl.rope])
 
 proc genBreakStmt(p: PProc, n: PNode) =
   var idx: int
@@ -951,7 +951,7 @@ proc genBreakStmt(p: PProc, n: PNode) =
     if idx < 0 or not p.blocks[idx].isLoop:
       internalError(p.config, n.info, "no loop to break")
   p.blocks[idx].id = abs(p.blocks[idx].id) # label is used
-  lineF(p, "break L$1;$n", [rope(p.blocks[idx].id)])
+  lineF(p, "break Label$1;$n", [rope(p.blocks[idx].id)])
 
 proc genAsmOrEmitStmt(p: PProc, n: PNode) =
   genLineDir(p, n)
@@ -1248,12 +1248,12 @@ proc genArrayAddr(p: PProc, n: PNode, r: var TCompRes) =
   if optBoundsCheck in p.options:
     useMagic(p, "chckIndx")
     if first == 0: # save a couple chars
-      r.res = "chckIndx($1, 0, ($2).length-1)" % [b.res, tmp]
+      r.res = "chckIndx($1, 0, ($2).length - 1)" % [b.res, tmp]
     else:
-      r.res = "chckIndx($1, $2, ($3).length+($2)-1)-($2)" % [
+      r.res = "chckIndx($1, $2, ($3).length + ($2) - 1) - ($2)" % [
         b.res, rope(first), tmp]
   elif first != 0:
-    r.res = "($1)-($2)" % [b.res, rope(first)]
+    r.res = "($1) - ($2)" % [b.res, rope(first)]
   else:
     r.res = b.res
   r.kind = resExpr
@@ -1876,13 +1876,13 @@ proc genNewSeq(p: PProc, n: PNode) =
   gen(p, n[1], x)
   gen(p, n[2], y)
   let t = skipTypes(n[1].typ, abstractVar)[0]
-  lineF(p, "$1 = new Array($2); for (var i=0;i<$2;++i) {$1[i]=$3;}", [
+  lineF(p, "$1 = new Array($2); for (var i = 0 ; i < $2 ; ++i) { $1[i] = $3; }", [
     x.rdLoc, y.rdLoc, createVar(p, t, false)])
 
 proc genOrd(p: PProc, n: PNode, r: var TCompRes) =
   case skipTypes(n[1].typ, abstractVar + abstractRange).kind
   of tyEnum, tyInt..tyUInt64, tyChar: gen(p, n[1], r)
-  of tyBool: unaryExpr(p, n, r, "", "($1 ? 1:0)")
+  of tyBool: unaryExpr(p, n, r, "", "($1 ? 1 : 0)")
   else: internalError(p.config, n.info, "genOrd")
 
 proc genConStrStr(p: PProc, n: PNode, r: var TCompRes) =
@@ -2122,7 +2122,7 @@ proc genMagic(p: PProc, n: PNode, r: var TCompRes) =
     let t = skipTypes(n[1].typ, abstractVar)[0]
     let (a, tmp) = maybeMakeTemp(p, n[1], x)
     let (b, tmp2) = maybeMakeTemp(p, n[2], y)
-    r.res = """if ($1.length < $2) { for (var i=$4.length;i<$5;++i) $4.push($3); }
+    r.res = """if ($1.length < $2) { for (var i = $4.length ; i < $5 ; ++i) $4.push($3); }
                else { $4.length = $5; }""" % [a, b, createVar(p, t, false), tmp, tmp2]
     r.kind = resExpr
   of mCard: unaryExpr(p, n, r, "SetCard", "SetCard($1)")
@@ -2159,7 +2159,7 @@ proc genMagic(p: PProc, n: PNode, r: var TCompRes) =
     gen(p, n[1], x)
     gen(p, n[2], y)
     gen(p, n[3], z)
-    r.res = "($1.slice($2, $3+1))" % [x.rdLoc, y.rdLoc, z.rdLoc]
+    r.res = "($1.slice($2, $3 + 1))" % [x.rdLoc, y.rdLoc, z.rdLoc]
     r.kind = resExpr
   of mMove:
     genMove(p, n, r)
@@ -2281,7 +2281,7 @@ proc genConv(p: PProc, n: PNode, r: var TCompRes) =
     r.res = "(!!($1))" % [r.res]
     r.kind = resExpr
   elif toInt:
-    r.res = "(($1)|0)" % [r.res]
+    r.res = "(($1) | 0)" % [r.res]
   else:
     # TODO: What types must we handle here?
     discard
@@ -2337,7 +2337,7 @@ proc genReturnStmt(p: PProc, n: PNode) =
 
 proc frameCreate(p: PProc; procname, filename: Rope): Rope =
   const frameFmt =
-    "var F={procname:$1,prev:framePtr,filename:$2,line:0};$n"
+    "var F = {procname: $1, prev: framePtr, filename: $2, line: 0};$n"
 
   result = p.indentLine(frameFmt % [procname, filename])
   result.add p.indentLine(ropes.`%`("framePtr = F;$n", []))
@@ -2431,10 +2431,10 @@ proc genProc(oldProc: PProc, prc: PSym): Rope =
       # references will end up calling the reloaded code.
       var thunkName = name
       name = name & "IMLP"
-      result.add("function $#() { return $#.apply(this, arguments); }$n" %
+      result.add("\Lfunction $#() { return $#.apply(this, arguments); }$n" %
                  [thunkName, name])
 
-    def = "function $#($#) {$n$#$#$#$#$#" %
+    def = "\Lfunction $#($#) {$n$#$#$#$#$#" %
             [ name,
               header,
               optionalLine(p.globals),
@@ -2482,7 +2482,7 @@ proc genCast(p: PProc, n: PNode, r: var TCompRes) =
     elif fromUint:
       if src.size == 4 and dest.size == 4:
         # XXX prevent multi evaluations
-        r.res = "($1|0)" % [r.res]
+        r.res = "($1 | 0)" % [r.res]
       else:
         let trimmer = unsignedTrimmer(dest.size)
         let minuend = case dest.size
