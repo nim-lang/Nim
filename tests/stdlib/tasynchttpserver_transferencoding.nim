@@ -33,7 +33,6 @@ template genTest(input, expected: string) =
   doAssert sanity
 
 block:
-  echo "test"
   const expected = "hello=world"
   const input = ("b\r\n" &
                  "hello=world\r\n" &
