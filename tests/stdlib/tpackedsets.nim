@@ -1,7 +1,3 @@
-discard """
-  joinable:false
-"""
-
 import std/packedsets
 import std/sets
 

@@ -57,7 +57,7 @@ proc symChoice(c: PContext, n: PNode, s: PSym, r: TSymChoiceRule;
   let a0 = a
   while a != nil:
     if i == 1:
-      if c.getCurrOwner == a0.owner and a.owner != a0.owner:
+      if c.getCurrOwner.kind != skModule and c.getCurrOwner == a0.owner and a.owner != a0.owner:
         break
     if a.kind != skModule:
       inc(i)
