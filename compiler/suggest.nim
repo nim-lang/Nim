@@ -236,6 +236,7 @@ proc filterSym(s: PSym; prefix: PNode; res: var PrefixMatch): bool {.inline.} =
     of nkIdent: result = n.ident.s.prefixMatch(s.name.s)
     of nkSym: result = n.sym.name.s.prefixMatch(s.name.s)
     of nkOpenSymChoice, nkClosedSymChoice, nkAccQuoted:
+      dbgIf()
       if n.len > 0:
         result = prefixMatch(s, n[0])
     else: discard
@@ -309,7 +310,9 @@ proc suggestObject(c: PContext, n, f: PNode; info: TLineInfo, outputs: var Sugge
 
 proc nameFits(c: PContext, s: PSym, n: PNode): bool =
   var op = if n.kind in nkCallKinds: n[0] else: n
-  if op.kind in {nkOpenSymChoice, nkClosedSymChoice}: op = op[0]
+  if op.kind in {nkOpenSymChoice, nkClosedSymChoice}:
+    dbgIf()
+    op = op[0]
   if op.kind == nkDotExpr: op = op[1]
   var opr: PIdent
   case op.kind

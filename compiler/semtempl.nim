@@ -81,6 +81,7 @@ proc symChoice(c: PContext, n: PNode, s: PSym, r: TSymChoiceRule;
     # appropriately
     let kind = if r == scClosed or n.kind == nkDotExpr: nkClosedSymChoice
                else: nkOpenSymChoice
+    dbgIf()
     result = newNodeIT(kind, info, newTypeS(tyNone, c))
     a = initOverloadIter(o, c, n)
     while a != nil:
@@ -115,10 +116,22 @@ proc semBindStmt(c: PContext, n: PNode, toBind: var IntSet): PNode =
       illFormedAst(a, c.config)
 
 proc semMixinStmt(c: PContext, n: PNode, toMixin: var IntSet): PNode =
+  if isCompilerDebug():
+    dbg n.renderTree, n.kind, n.len
   result = copyNode(n)
   for i in 0..<n.len:
     toMixin.incl(considerQuotedIdent(c, n[i]).id)
-    result.add symChoice(c, n[i], nil, scForceOpen)
+    let s = symChoice(c, n[i], nil, scForceOpen)
+    if isCompilerDebug():
+      dbg s, toMixin.len
+      echo getStacktrace()
+    result.add s
+    # addDecl(c, s, n.info) # PRTEMP; depends on whether  0th child missing for nkOpenSymChoice?
+    # addDecl(c, s.sym) # PRTEMP; depends on whether  0th child missing for nkOpenSymChoice?
+    # result.add symChoice(c, n[i], nil, scForceOpen)
+  if isCompilerDebug():
+    dbg result.renderTree, result.len, result.kind
+    dbg result[0].kind, result[0], result[0].len
 
 proc replaceIdentBySym(c: PContext; n: var PNode, s: PNode) =
   case n.kind

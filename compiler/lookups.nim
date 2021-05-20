@@ -638,6 +638,7 @@ proc initOverloadIter*(o: var TOverloadIter, c: PContext, n: PNode): PSym =
         noidentError(c.config, n[1], n)
         result = errorSym(c, n[1])
   of nkClosedSymChoice, nkOpenSymChoice:
+    dbgIf()
     o.mode = oimSymChoice
     if n[0].kind == nkSym:
       result = n[0].sym

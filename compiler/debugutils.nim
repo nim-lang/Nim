@@ -61,3 +61,8 @@ template debugScopes2* =
     const infom1 = instantiationInfo(-1, true)
     dbg(info = infom1)
     debugScopes(c, limit = 100)
+
+template dbgIf* =
+  if isCompilerDebug():
+    const infom1 = instantiationInfo(-1, true)
+    dbg(info = infom1)
