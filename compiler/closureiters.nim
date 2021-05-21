@@ -606,6 +606,13 @@ proc lowerStmtListExprs(ctx: var Ctx, n: PNode, needsSplit: var bool): PNode =
             internalError(ctx.g.config, "lowerStmtListExpr(nkCaseStmt): " & $branch.kind)
         result.add(n)
         result.add(ctx.newEnvVarAccess(tmp))
+      else:
+        result = newNodeI(nkStmtList, n.info)
+        if n[0].kind == nkStmtListExpr:
+          let (st, ex) = exprToStmtList(n[0])
+          result.add(st)
+          n[0] = ex
+        result.add(n)
 
   of nkCallKinds, nkChckRange, nkChckRangeF, nkChckRange64:
     var ns = false
