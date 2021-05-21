@@ -27,7 +27,7 @@ type
 proc copyNode(ctx: TemplCtx, a, b: PNode): PNode =
   result = copyNode(a)
   if ctx.instLines: result.info = b.info
-
+# import lookups
 proc evalTemplateAux(templ, actual: PNode, c: var TemplCtx, result: PNode) =
   template handleParam(param) =
     let x = param
@@ -36,6 +36,8 @@ proc evalTemplateAux(templ, actual: PNode, c: var TemplCtx, result: PNode) =
     else:
       result.add copyTree(x)
 
+  if isCompilerDebug():
+    dbg templ, templ.kind, actual, result
   case templ.kind
   of nkSym:
     var s = templ.sym
@@ -46,7 +48,15 @@ proc evalTemplateAux(templ, actual: PNode, c: var TemplCtx, result: PNode) =
            s.kind == skType and s.typ != nil and s.typ.kind == tyGenericParam):
         handleParam actual[s.owner.typ.len + s.position - 1]
       else:
-        internalAssert c.config, sfGenSym in s.flags or s.kind == skType
+        if sfGenSym in s.flags or s.kind == skType:
+          discard
+        elif s.kind == skMixin:
+          if isCompilerDebug():
+            dbg()
+        else:
+          dbg s, s.flags, s.kind, templ, actual, result
+          # debugScopes2()
+          internalAssert c.config, sfGenSym in s.flags or s.kind == skType
         var x = PSym(idTableGet(c.mapping, s))
         if x == nil:
           x = copySym(s, nextSymId(c.idgen))

@@ -777,10 +777,18 @@ proc strTableInclReportConflict*(t: var TStrTable, n: PSym;
       replaceSlot = h
     h = nextTry(h, high(t.data))
   if replaceSlot >= 0:
-    result = t.data[replaceSlot] # found it
-    if not onConflictKeepOld:
-      t.data[replaceSlot] = n # overwrite it with newer definition!
-    return result # but return the old one
+    # another option would be to keep both but handle conflict resolution by prefering the non-skMixin
+    # see D20210521T082944
+    if t.data[replaceSlot].kind == skMixin:
+      t.data[replaceSlot] = n
+      return nil # report no conflict
+    elif n.kind == skMixin:
+      return nil # report no conflict
+    else:
+      result = t.data[replaceSlot] # found it
+      if not onConflictKeepOld:
+        t.data[replaceSlot] = n # overwrite it with newer definition!
+      return result # but return the old one
   elif mustRehash(t.data.len, t.counter):
     strTableEnlarge(t)
     strTableRawInsert(t.data, n)
