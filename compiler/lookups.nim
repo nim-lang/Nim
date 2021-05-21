@@ -197,14 +197,17 @@ proc searchInScopes*(c: PContext, s: PIdent; ambiguous: var bool): PSym =
       if c.inGenericInst > 0 and not foundMixin:
         var parent = result.owner
         while true:
+          # if isCompilerDebug(): dbg parent
           if parent == c.genericInstStack[^1]:
+            # if isCompilerDebug(): dbg()
             break
           if parent != nil:
+            # if isCompilerDebug(): dbg()
             parent = parent.owner
           else:
+            # if isCompilerDebug(): dbg()
             return nil
       return result
-
   if c.inGenericInst > 0 and not foundMixin: # PRTEMP
     return nil
   result = someSymFromImportTable(c, s, ambiguous)
@@ -559,6 +562,7 @@ proc qualifiedLookUp*(c: PContext, n: PNode, flags: set[TLookupFlag]): PSym =
     if checkModule in flags:
       result = searchInScopes(c, ident, amb).skipAlias(n, c.config)
     else:
+      # PRTEMP : also handle searchInScopesFilterBy
       let candidates = searchInScopesFilterBy(c, ident, allExceptModule) #.skipAlias(n, c.config)
       if candidates.len > 0:
         result = candidates[0]

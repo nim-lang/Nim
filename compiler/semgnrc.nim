@@ -185,7 +185,6 @@ proc semGenericStmt(c: PContext, n: PNode,
 
   #if conf.cmd == cmdIdeTools: suggestStmt(c, n)
   semIdeForTemplateOrGenericCheck(c.config, n, ctx.cursorInBody)
-
   case n.kind
   of nkIdent, nkAccQuoted:
     result = lookup(c, n, flags, ctx)
@@ -488,7 +487,24 @@ proc semGenericStmt(c: PContext, n: PNode,
     else: body = n[bodyPos]
     n[bodyPos] = semGenericStmtScope(c, body, flags, ctx)
     closeScope(c)
-  of nkPragma, nkPragmaExpr: discard
+  of nkPragma, nkPragmaExpr:
+    #[
+    # TODO: nkPragmaBlock ?
+    D20210521T115234 PRTEMP
+    {.define(foo).}
+    {.noSideEffect.}
+    {.warning[resultshadowed]: zook.}: discard
+    {.pushwarning[resultshadowed]: zook.}
+    {.push, warning[resultshadowed]: off.}
+    {.pop.}
+    {.push warnings: off.}
+    {.push warning[GcMem]: off, warning[Uninit]: off.}
+  
+  PRTEMP: FACTOR with D20210521T130909
+    ]#
+    for i in 0..<n.len:
+      if n[i].kind == nkExprColonExpr:
+        result[i] = semGenericStmt(c, n[i], flags, ctx)
   of nkExprColonExpr, nkExprEqExpr:
     checkMinSonsLen(n, 2, c.config)
     result[1] = semGenericStmt(c, n[1], flags, ctx)

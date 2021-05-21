@@ -495,7 +495,7 @@ proc semTemplBody(c: var TemplCtx, n: PNode): PNode =
     result[0] = semTemplBody(c, n[0])
   of nkPostfix:
     result[1] = semTemplBody(c, n[1])
-  of nkPragma:
+  of nkPragma: # D20210521T130909:here
     for x in n:
       if x.kind == nkExprColonExpr:
         x[1] = semTemplBody(c, x[1])
