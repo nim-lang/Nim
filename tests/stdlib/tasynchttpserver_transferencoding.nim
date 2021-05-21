@@ -1,3 +1,9 @@
+discard """
+  cmd: "nim c --threads:on $file"
+  exitcode: 0
+  disabled: false
+"""
+
 import httpclient, asynchttpserver, asyncdispatch, asyncfutures
 import net
 
