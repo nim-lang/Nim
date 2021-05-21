@@ -304,7 +304,7 @@ proc `==`*[T](x, y: seq[T]): bool {.noSideEffect.} =
 
   if x.len != y.len:
     return false
-
+  mixin items # items not declared yet!
   for i in 0..x.len-1:
     if x[i] != y[i]:
       return false
