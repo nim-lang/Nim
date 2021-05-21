@@ -1236,6 +1236,8 @@ else:
 template sysAssert(cond: bool, msg: string) =
   when defined(useSysAssert):
     if not cond:
+      # when not declared(cstderr):
+      #   mixin cstderr
       cstderr.rawWrite "[SYSASSERT] "
       cstderr.rawWrite msg
       cstderr.rawWrite "\n"
