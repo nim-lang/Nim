@@ -36,8 +36,6 @@ proc evalTemplateAux(templ, actual: PNode, c: var TemplCtx, result: PNode) =
     else:
       result.add copyTree(x)
 
-  if isCompilerDebug():
-    dbg templ, templ.kind, actual, result
   case templ.kind
   of nkSym:
     var s = templ.sym
@@ -51,11 +49,8 @@ proc evalTemplateAux(templ, actual: PNode, c: var TemplCtx, result: PNode) =
         if sfGenSym in s.flags or s.kind == skType:
           discard
         elif s.kind == skMixin:
-          if isCompilerDebug():
-            dbg()
+          discard
         else:
-          dbg s, s.flags, s.kind, templ, actual, result
-          # debugScopes2()
           internalAssert c.config, sfGenSym in s.flags or s.kind == skType
         var x = PSym(idTableGet(c.mapping, s))
         if x == nil:

@@ -187,20 +187,13 @@ proc someSymFromImportTable*(c: PContext; name: PIdent; ambiguous: var bool): PS
           ambiguous = true
 
 proc searchInScopes*(c: PContext, s: PIdent; ambiguous: var bool): PSym =
-  if isCompilerDebug():
-    dbg s
   var foundMixin = false
   for scope in allScopes(c.currentScope):
     result = strTableGet(scope.symbols, s)
     if result != nil:
       if result.kind == skMixin: # TODO: not for generic prepass?
         foundMixin = true
-        dbg result
         continue
-      
-      if isCompilerDebug():
-        dbg result, result.kind
-
       if c.inGenericInst > 0 and not foundMixin:
         var parent = result.owner
         while true:
@@ -559,8 +552,6 @@ type
 
 proc qualifiedLookUp*(c: PContext, n: PNode, flags: set[TLookupFlag]): PSym =
   const allExceptModule = {low(TSymKind)..high(TSymKind)} - {skModule, skPackage}
-  if isCompilerDebug():
-    dbg n, n.kind, flags
   case n.kind
   of nkIdent, nkAccQuoted:
     var amb = false

@@ -2820,8 +2820,6 @@ proc semExpr(c: PContext, n: PNode, flags: TExprFlags = {}): PNode =
     c.isAmbiguous = false
     var s = qualifiedLookUp(c, n[0], mode)
     if s != nil:
-      if isCompilerDebug():
-        dbg s, s.kind, mode
       #if c.config.cmd == cmdNimfix and n[0].kind == nkDotExpr:
       #  pretty.checkUse(n[0][1].info, s)
       case s.kind
