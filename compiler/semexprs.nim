@@ -2149,7 +2149,8 @@ proc tryExpr(c: PContext, n: PNode, flags: TExprFlags = {}): PNode =
   let oldInGenericContext = c.inGenericContext
   let oldInUnrolledContext = c.inUnrolledContext
   let oldInGenericInst = c.inGenericInst
-  assert c.genericInstStack.len == c.inGenericInst
+  let oldgenericInstStackLen = c.genericInstStack.len
+  # assert c.genericInstStack.len == c.inGenericInst
   let oldInStaticContext = c.inStaticContext
   let oldProcCon = c.p
   c.generics = @[]
@@ -2168,8 +2169,12 @@ proc tryExpr(c: PContext, n: PNode, flags: TExprFlags = {}): PNode =
   c.inGenericContext = oldInGenericContext
   c.inUnrolledContext = oldInUnrolledContext
   c.inGenericInst = oldInGenericInst
-  assert c.genericInstStack.len >= oldInGenericInst
-  c.genericInstStack.setLen oldInGenericInst
+
+  # assert c.genericInstStack.len >= oldInGenericInst
+  # c.genericInstStack.setLen oldInGenericInst
+  assert c.genericInstStack.len >= oldgenericInstStackLen
+  c.genericInstStack.setLen oldgenericInstStackLen
+
   c.inStaticContext = oldInStaticContext
   c.p = oldProcCon
   msgs.setInfoContextLen(c.config, oldContextLen)

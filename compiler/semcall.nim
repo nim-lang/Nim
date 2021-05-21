@@ -489,7 +489,10 @@ proc inferWithMetatype(c: PContext, formal: PType,
                        arg: PNode, coerceDistincts = false): PNode =
   var m = newCandidate(c, formal)
   m.coerceDistincts = coerceDistincts
+  dbgIf()
   result = paramTypesMatch(m, formal, arg.typ, arg, nil)
+  if isCompilerDebug():
+    dbg result
   if m.genericConverter and result != nil:
     instGenericConvertersArg(c, result, m)
   if result != nil:
@@ -499,6 +502,7 @@ proc inferWithMetatype(c: PContext, formal: PType,
     result.typ = generateTypeInstance(c, m.bindings, arg.info,
                                       formal.skipTypes({tyCompositeTypeClass}))
   else:
+    dbgIf()
     typeMismatch(c.config, arg.info, formal, arg.typ, arg)
     # error correction:
     result = copyTree(arg)

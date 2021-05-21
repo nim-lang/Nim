@@ -519,6 +519,7 @@ proc errorUndeclaredIdentifier*(c: PContext; info: TLineInfo; name: string, extr
     err.add c.recursiveDep
     # prevent excessive errors for 'nim check'
     c.recursiveDep = ""
+  echo getStacktrace()
   localError(c.config, info, errGenerated, err)
 
 proc errorUndeclaredIdentifierHint*(c: PContext; n: PNode, ident: PIdent): PSym =
@@ -559,9 +560,14 @@ proc qualifiedLookUp*(c: PContext, n: PNode, flags: set[TLookupFlag]): PSym =
   of nkIdent, nkAccQuoted:
     var amb = false
     var ident = considerQuotedIdent(c, n)
+    if isCompilerDebug():
+      dbg flags, n
+      debugScopes2()
     if checkModule in flags:
+      dbgIf()
       result = searchInScopes(c, ident, amb).skipAlias(n, c.config)
     else:
+      dbgIf()
       # PRTEMP : also handle searchInScopesFilterBy
       let candidates = searchInScopesFilterBy(c, ident, allExceptModule) #.skipAlias(n, c.config)
       if candidates.len > 0:
@@ -570,6 +576,7 @@ proc qualifiedLookUp*(c: PContext, n: PNode, flags: set[TLookupFlag]): PSym =
         if amb and checkAmbiguity in flags:
           errorUseQualifier(c, n.info, candidates)
     if result == nil:
+      dbgIf()
       let candidates = allPureEnumFields(c, ident)
       if candidates.len > 0:
         result = candidates[0]
@@ -578,6 +585,7 @@ proc qualifiedLookUp*(c: PContext, n: PNode, flags: set[TLookupFlag]): PSym =
           errorUseQualifier(c, n.info, candidates)
 
     if result == nil and checkUndeclared in flags:
+      dbgIf()
       result = errorUndeclaredIdentifierHint(c, n, ident)
     elif checkAmbiguity in flags and result != nil and amb:
       result = errorUseQualifier(c, n.info, result, amb)
