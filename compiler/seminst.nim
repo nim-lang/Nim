@@ -222,6 +222,53 @@ proc instGenericContainer(c: PContext, info: TLineInfo, header: PType,
   result = replaceTypeVarsT(cl, header)
   closeScope(c)
 
+proc instGenericContainer2(cl: var TReplTypeVars, info: TLineInfo, header: PType): PType =
+  let c = cl.c
+  internalAssert c.config, header.kind == tyGenericInvocation
+  # initIdTable(cl.symMap)
+  # initIdTable(cl.localCache)
+  # cl.typeMap = LayeredIdTable()
+  # initIdTable(cl.typeMap.topLayer)
+
+  # cl.info = info
+  # cl.c = c
+  # cl.allowMetaTypes = allowMetaTypes
+
+  # We must add all generic params in scope, because the generic body
+  # may include tyFromExpr nodes depending on these generic params.
+  # XXX: This looks quite similar to the code in matchUserTypeClass,
+  # perhaps the code can be extracted in a shared function.
+  openScope(c)
+  let genericTyp = header.base
+  for i in 0..<genericTyp.len - 1:
+    let genParam = genericTyp[i]
+    var param: PSym
+
+    template paramSym(kind): untyped =
+      newSym(kind, genParam.sym.name, nextSymId c.idgen, genericTyp.sym, genParam.sym.info)
+
+    if isCompilerDebug():
+      dbg i, genericTyp.len, genParam, genParam.kind, header
+
+    if genParam.kind == tyStatic:
+      param = paramSym skConst
+      param.ast = header[i+1].n
+      param.typ = header[i+1]
+    else:
+      param = paramSym skType
+      param.typ = makeTypeDesc(c, header[i+1])
+    if isCompilerDebug():
+      dbg param, param.kind, param.typ, param.typ.kind
+    param.typ = replaceTypeVarsT(cl, param.typ) # PRTEMP
+
+    # this scope was not created by the user,
+    # unused params shouldn't be reported.
+    param.flags.incl sfUsed
+    addDecl(c, param)
+
+  result = replaceTypeVarsT(cl, header)
+  closeScope(c)
+
 proc referencesAnotherParam(n: PNode, p: PSym): bool =
   if n.kind == nkSym:
     return n.sym.kind == skParam and n.sym.owner == p
@@ -311,8 +358,15 @@ proc instantiateProcType(c: PContext, pt: TIdTable,
   resetIdTable(cl.symMap)
   resetIdTable(cl.localCache)
   cl.isReturnType = true
-  result[0] = replaceTypeVarsT(cl, result[0])
-  # result[0] = instGenericContainer(c: PContext, info: TLineInfo, header: PType, allowMetaTypes = false): PType =
+
+  dbgIf()
+  if result[0] != nil and result[0].kind == tyGenericInvocation: # PRTEMP
+    # result[0] = instGenericContainer(c, info, result[0], allowMetaTypes = false)
+    result[0] = instGenericContainer2(cl, info, result[0])
+  else:
+    result[0] = replaceTypeVarsT(cl, result[0])
+  # proc semGeneric(c: PContext, n: PNode, s: PSym, prev: PType): PType =
+
   cl.isReturnType = false
   result.n[0] = originalParams[0].copyTree
   if result[0] != nil:
