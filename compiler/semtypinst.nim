@@ -115,8 +115,18 @@ template checkMetaInvariants(cl: TReplTypeVars, t: PType) = # noop code
       writeStackTrace()
 
 proc replaceTypeVarsT*(cl: var TReplTypeVars, t: PType): PType =
+  when defined(nimCompilerStackraceHints):
+    if isCompilerDebug():
+      # setFrameMsg $(t, ?.t.sym, ?.t.sym.owner, cl.owner)
+      setFrameMsg $t
+  if isCompilerDebug():
+    dbg t, ?.t.sym, ?.t.sym.owner, cl.owner
+  if t != nil and t.sym != nil:
+    cl.c.genericInstStack.add t.sym
   result = replaceTypeVarsTAux(cl, t)
   checkMetaInvariants(cl, result)
+  if t != nil and t.sym != nil:
+    discard cl.c.genericInstStack.pop
 
 proc prepareNode(cl: var TReplTypeVars, n: PNode): PNode =
   let t = replaceTypeVarsT(cl, n.typ)

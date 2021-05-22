@@ -134,6 +134,8 @@ proc instantiateBody(c: PContext, n, params: PNode, result, orig: PSym) =
     maybeAddResult(c, result, result.ast)
 
     inc c.inGenericInst
+    if isCompilerDebug():
+      dbg result, orig, params, n
     c.genericInstStack.add result
     # add it here, so that recursive generic procs are possible:
     var b = n[bodyPos]
@@ -310,6 +312,7 @@ proc instantiateProcType(c: PContext, pt: TIdTable,
   resetIdTable(cl.localCache)
   cl.isReturnType = true
   result[0] = replaceTypeVarsT(cl, result[0])
+  # result[0] = instGenericContainer(c: PContext, info: TLineInfo, header: PType, allowMetaTypes = false): PType =
   cl.isReturnType = false
   result.n[0] = originalParams[0].copyTree
   if result[0] != nil:
@@ -354,6 +357,9 @@ proc generateInstance(c: PContext, fn: PSym, pt: TIdTable,
   result.owner = fn
   result.ast = n
   pushOwner(c, result)
+  # if isCompilerDebug():
+  #   dbg result
+  # c.genericInstStack.add result
 
   # mixin scope:
   openScope(c)
@@ -410,6 +416,7 @@ proc generateInstance(c: PContext, fn: PSym, pt: TIdTable,
   popInfoContext(c.config)
   closeScope(c)           # close scope for parameters
   closeScope(c)           # close scope for 'mixin' declarations
+  # discard c.genericInstStack.pop
   popOwner(c)
   c.currentScope = oldScope
   discard c.friendModules.pop()

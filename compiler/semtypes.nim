@@ -1428,6 +1428,8 @@ proc semObjectTypeForInheritedGenericInst(c: PContext, n: PNode, t: PType) =
   semRecordNodeAux(c, t.n, check, pos, newf, t)
 
 proc semGeneric(c: PContext, n: PNode, s: PSym, prev: PType): PType =
+  if isCompilerDebug():
+    dbg s, n, prev
   if s.typ == nil:
     localError(c.config, n.info, "cannot instantiate the '$1' $2" %
                [s.name.s, s.kind.toHumanStr])
