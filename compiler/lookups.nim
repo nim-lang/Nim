@@ -197,15 +197,11 @@ proc searchInScopes*(c: PContext, s: PIdent; ambiguous: var bool): PSym =
       if c.inGenericInst > 0 and not foundMixin:
         var parent = result.owner
         while true:
-          # if isCompilerDebug(): dbg parent
           if parent == c.genericInstStack[^1]:
-            # if isCompilerDebug(): dbg()
             break
           if parent != nil:
-            # if isCompilerDebug(): dbg()
             parent = parent.owner
           else:
-            # if isCompilerDebug(): dbg()
             return nil
       return result
   if c.inGenericInst > 0 and not foundMixin: # PRTEMP
@@ -560,14 +556,9 @@ proc qualifiedLookUp*(c: PContext, n: PNode, flags: set[TLookupFlag]): PSym =
   of nkIdent, nkAccQuoted:
     var amb = false
     var ident = considerQuotedIdent(c, n)
-    if isCompilerDebug():
-      dbg flags, n
-      debugScopes2()
     if checkModule in flags:
-      dbgIf()
       result = searchInScopes(c, ident, amb).skipAlias(n, c.config)
     else:
-      dbgIf()
       # PRTEMP : also handle searchInScopesFilterBy
       let candidates = searchInScopesFilterBy(c, ident, allExceptModule) #.skipAlias(n, c.config)
       if candidates.len > 0:
@@ -576,7 +567,6 @@ proc qualifiedLookUp*(c: PContext, n: PNode, flags: set[TLookupFlag]): PSym =
         if amb and checkAmbiguity in flags:
           errorUseQualifier(c, n.info, candidates)
     if result == nil:
-      dbgIf()
       let candidates = allPureEnumFields(c, ident)
       if candidates.len > 0:
         result = candidates[0]
@@ -585,7 +575,6 @@ proc qualifiedLookUp*(c: PContext, n: PNode, flags: set[TLookupFlag]): PSym =
           errorUseQualifier(c, n.info, candidates)
 
     if result == nil and checkUndeclared in flags:
-      dbgIf()
       result = errorUndeclaredIdentifierHint(c, n, ident)
     elif checkAmbiguity in flags and result != nil and amb:
       result = errorUseQualifier(c, n.info, result, amb)

@@ -656,7 +656,6 @@ proc typeRangeRel(f, a: PType): TTypeRelation {.noinline.} =
 
 
 proc matchUserTypeClass*(m: var TCandidate; ff, a: PType): PType =
-  dbgIf()
   var
     c = m.c
     typeClass = ff.skipTypes({tyUserTypeClassInst})
@@ -677,18 +676,7 @@ proc matchUserTypeClass*(m: var TCandidate; ff, a: PType): PType =
   typeClass[0][0] = a
   c.matchedConcept = addr(matchedConceptContext)
   let genericInstStackLenOld = c.genericInstStack.len
-  if isCompilerDebug():
-    dbg a
-    dbg a.sym
-    dbg ff
-    dbg typeClass
-    dbg typeClass.sym
-    dbg prevCandidateType
   c.genericInstStack.add typeClass.sym # PRTEMP : desync w inGenericInst ?
-  # TMatchedConcept* = object
-  #   candidateType*: PType
-  #   prev*: ptr TMatchedConcept
-  #   depth*: int
 
   # PRTEMP similar to D20210521T170223
   pushOwner(c, typeClass.sym)
@@ -2006,9 +1994,6 @@ proc paramTypesMatchAux(m: var TCandidate, f, a: PType,
     a = a
     c = m.c
 
-  if isCompilerDebug():
-    dbg fMaybeStatic.flags
-    dbg fMaybeStatic
   if tfHasStatic in fMaybeStatic.flags:
     # XXX: When implicit statics are the default
     # this will be done earlier - we just have to
@@ -2203,16 +2188,9 @@ proc paramTypesMatchAux(m: var TCandidate, f, a: PType,
 
 proc paramTypesMatch*(m: var TCandidate, f, a: PType,
                       arg, argOrig: PNode): PNode =
-  if isCompilerDebug():
-    dbg f, a, arg, argOrig
   if arg == nil or arg.kind notin nkSymChoices:
-    dbgIf()
     result = paramTypesMatchAux(m, f, a, arg, argOrig)
-    if isCompilerDebug():
-      dbg result
-    dbgIf()
   else:
-    dbgIf()
     # CAUTION: The order depends on the used hashing scheme. Thus it is
     # incorrect to simply use the first fitting match. However, to implement
     # this correctly is inefficient. We have to copy `m` here to be able to
@@ -2226,7 +2204,6 @@ proc paramTypesMatch*(m: var TCandidate, f, a: PType,
     y.calleeSym = m.calleeSym
     z.calleeSym = m.calleeSym
     var best = -1
-    dbgIf()
     for i in 0..<arg.len:
       if arg[i].sym.kind in {skProc, skFunc, skMethod, skConverter,
                                   skIterator, skMacro, skTemplate}:
