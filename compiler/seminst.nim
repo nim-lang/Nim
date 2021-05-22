@@ -198,6 +198,8 @@ proc instGenericContainer(c: PContext, info: TLineInfo, header: PType,
   # XXX: This looks quite similar to the code in matchUserTypeClass,
   # perhaps the code can be extracted in a shared function.
   openScope(c)
+  cl.c.genericInstStack.add header.sym
+
   let genericTyp = header.base
   for i in 0..<genericTyp.len - 1:
     let genParam = genericTyp[i]
@@ -220,6 +222,7 @@ proc instGenericContainer(c: PContext, info: TLineInfo, header: PType,
     addDecl(c, param)
 
   result = replaceTypeVarsT(cl, header)
+  discard cl.c.genericInstStack.pop
   closeScope(c)
 
 proc instGenericContainer2(cl: var TReplTypeVars, info: TLineInfo, header: PType): PType =
@@ -239,6 +242,13 @@ proc instGenericContainer2(cl: var TReplTypeVars, info: TLineInfo, header: PType
   # XXX: This looks quite similar to the code in matchUserTypeClass,
   # perhaps the code can be extracted in a shared function.
   openScope(c)
+
+  # if t != nil and t.sym != nil:
+    # cl.c.genericInstStack.add t.sym
+  if isCompilerDebug():
+    dbg header, header.sym
+  cl.c.genericInstStack.add header.sym
+
   let genericTyp = header.base
   for i in 0..<genericTyp.len - 1:
     let genParam = genericTyp[i]
@@ -267,6 +277,11 @@ proc instGenericContainer2(cl: var TReplTypeVars, info: TLineInfo, header: PType
     addDecl(c, param)
 
   result = replaceTypeVarsT(cl, header)
+
+  # if t != nil and t.sym != nil:
+  #   discard cl.c.genericInstStack.pop
+  discard cl.c.genericInstStack.pop
+
   closeScope(c)
 
 proc referencesAnotherParam(n: PNode, p: PSym): bool =
