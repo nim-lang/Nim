@@ -156,6 +156,7 @@ proc fixupInstantiatedSymbols(c: PContext, s: PSym) =
   for i in 0..<c.generics.len:
     if c.generics[i].genericSym.id == s.id:
       var oldPrc = c.generics[i].inst.sym
+      # D20210521T170223:here
       pushProcCon(c, oldPrc)
       pushOwner(c, oldPrc)
       pushInfoContext(c.config, oldPrc.info)

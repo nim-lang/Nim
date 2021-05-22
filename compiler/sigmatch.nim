@@ -690,9 +690,13 @@ proc matchUserTypeClass*(m: var TCandidate; ff, a: PType): PType =
   #   prev*: ptr TMatchedConcept
   #   depth*: int
 
+  # PRTEMP similar to D20210521T170223
+  pushOwner(c, typeClass.sym)
+  # pushInfoContext(c.config, oldPrc.info)
 
   defer:
     c.genericInstStack.setLen genericInstStackLenOld
+    popOwner(c)
     c.matchedConcept = prevMatchedConcept
     typeClass[0][0] = prevCandidateType
     closeScope(c)
