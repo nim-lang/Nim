@@ -500,11 +500,15 @@ proc semGenericStmt(c: PContext, n: PNode,
     {.push warnings: off.}
     {.push warning[GcMem]: off, warning[Uninit]: off.}
   
-  PRTEMP: FACTOR with D20210521T130909
+    PRTEMP: FACTOR with D20210521T130909
     ]#
     for i in 0..<n.len:
       if n[i].kind == nkExprColonExpr:
-        result[i] = semGenericStmt(c, n[i], flags, ctx)
+        if n[i][0].kind == nkIdent and getIdent(c.cache, "pragma") == n[i][0].ident:
+          # handles: `{.pragma: myprag, inline.}`, where `myprag` shouldn't be passed through `semGenericStmt`
+          discard
+        else:
+          result[i][1] = semGenericStmt(c, n[i][1], flags, ctx)
   of nkExprColonExpr, nkExprEqExpr:
     checkMinSonsLen(n, 2, c.config)
     result[1] = semGenericStmt(c, n[1], flags, ctx)
