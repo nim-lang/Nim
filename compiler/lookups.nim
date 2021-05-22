@@ -515,7 +515,6 @@ proc errorUndeclaredIdentifier*(c: PContext; info: TLineInfo; name: string, extr
     err.add c.recursiveDep
     # prevent excessive errors for 'nim check'
     c.recursiveDep = ""
-  echo getStacktrace()
   localError(c.config, info, errGenerated, err)
 
 proc errorUndeclaredIdentifierHint*(c: PContext; n: PNode, ident: PIdent): PSym =

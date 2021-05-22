@@ -17,7 +17,6 @@ template no(check) = assert(not check)
 
 type
   Enumerable[T] = concept e
-    # for v in items(e):
     for v in e:
       v is T
 
