@@ -1,5 +1,5 @@
 discard """
-  cmd: "nim c --threads:on $file"
+  cmd: "nim r --threads:on $file"
   exitcode: 0
   disabled: false
 """
