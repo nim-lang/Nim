@@ -2150,7 +2150,6 @@ proc tryExpr(c: PContext, n: PNode, flags: TExprFlags = {}): PNode =
   let oldInUnrolledContext = c.inUnrolledContext
   let oldInGenericInst = c.inGenericInst
   let oldgenericInstStackLen = c.genericInstStack.len
-  # assert c.genericInstStack.len == c.inGenericInst
   let oldInStaticContext = c.inStaticContext
   let oldProcCon = c.p
   c.generics = @[]
@@ -2170,8 +2169,6 @@ proc tryExpr(c: PContext, n: PNode, flags: TExprFlags = {}): PNode =
   c.inUnrolledContext = oldInUnrolledContext
   c.inGenericInst = oldInGenericInst
 
-  # assert c.genericInstStack.len >= oldInGenericInst
-  # c.genericInstStack.setLen oldInGenericInst
   assert c.genericInstStack.len >= oldgenericInstStackLen
   c.genericInstStack.setLen oldgenericInstStackLen
 

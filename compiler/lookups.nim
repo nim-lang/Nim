@@ -187,11 +187,35 @@ proc someSymFromImportTable*(c: PContext; name: PIdent; ambiguous: var bool): PS
           ambiguous = true
 
 proc searchInScopes*(c: PContext, s: PIdent; ambiguous: var bool): PSym =
+  #[
+  This is the key algorithm to solve the generic sandwich problem:
+  Inside generics, we stop the search at c.genericInstStack[^1] unless we found
+  a mixin; this means:
+
+  # module m1:
+  proc bar1()=discard
+  proc fn*[T]
+    mixin bar3
+    proc bar2() = discard
+    bar1() # ok, this is resolved as a symbol during generic prepass
+    bar2() # ok, ditto
+    bar3() # ok, this is resolved as a skMixin symbol during generic prepass
+    bar4() # error, this is not visible
+    bar5() # error, ditto, even if bar5 is at module scope in m2
+
+  # module m2:
+  import m1
+  proc bar5() = discard
+  proc main =
+    proc bar3() = discard
+    proc bar4() = discard
+    fn[int]()
+  ]#
   var foundMixin = false
   for scope in allScopes(c.currentScope):
     result = strTableGet(scope.symbols, s)
     if result != nil:
-      if result.kind == skMixin: # TODO: not for generic prepass?
+      if result.kind == skMixin:
         foundMixin = true
         continue
       if c.inGenericInst > 0 and not foundMixin:
@@ -204,8 +228,7 @@ proc searchInScopes*(c: PContext, s: PIdent; ambiguous: var bool): PSym =
           else:
             return nil
       return result
-  if c.inGenericInst > 0 and not foundMixin: # PRTEMP
-    return nil
+  if c.inGenericInst > 0 and not foundMixin: return nil
   result = someSymFromImportTable(c, s, ambiguous)
 
 proc debugScopes*(c: PContext; limit=0, max = int.high) {.deprecated.} =

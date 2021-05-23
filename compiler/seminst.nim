@@ -241,8 +241,6 @@ proc instGenericContainer2(cl: var TReplTypeVars, info: TLineInfo, header: PType
   # perhaps the code can be extracted in a shared function.
   openScope(c)
 
-  # if t != nil and t.sym != nil:
-    # cl.c.genericInstStack.add t.sym
   cl.c.genericInstStack.add header.sym
 
   let genericTyp = header.base
@@ -269,8 +267,6 @@ proc instGenericContainer2(cl: var TReplTypeVars, info: TLineInfo, header: PType
 
   result = replaceTypeVarsT(cl, header)
 
-  # if t != nil and t.sym != nil:
-  #   discard cl.c.genericInstStack.pop
   discard cl.c.genericInstStack.pop
 
   closeScope(c)
@@ -472,7 +468,6 @@ proc generateInstance(c: PContext, fn: PSym, pt: TIdTable,
   popInfoContext(c.config)
   closeScope(c)           # close scope for parameters
   closeScope(c)           # close scope for 'mixin' declarations
-  # discard c.genericInstStack.pop
   popOwner(c)
   c.currentScope = oldScope
   discard c.friendModules.pop()

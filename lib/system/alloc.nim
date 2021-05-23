@@ -498,9 +498,6 @@ proc contains[T](list, x: T): bool =
     it = it.next
 
 proc listAdd[T](head: var T, c: T) {.inline.} =
-  # mixin cstderr
-  # let zoo = cstderr
-  # discard cstderr
   sysAssert(c notin head, "listAdd 1")
   sysAssert c.prev == nil, "listAdd 2"
   sysAssert c.next == nil, "listAdd 3"

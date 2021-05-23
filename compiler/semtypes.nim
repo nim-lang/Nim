@@ -1734,7 +1734,6 @@ proc semTypeNode(c: PContext, n: PNode, prev: PType): PType =
   of nkTupleConstr: result = semAnonTuple(c, n, prev)
   of nkCallKinds:
     let x = n[0]
-
     let ident = case x.kind
                 of nkIdent: x.ident
                 of nkSym: x.sym.name
@@ -1835,11 +1834,7 @@ proc semTypeNode(c: PContext, n: PNode, prev: PType): PType =
         result = semTypeExpr(c, n[1], prev)
       else:
         if c.inGenericContext > 0 and n.kind == nkCall:
-          #[
-          eg:
-          type Foo[T; N: static int]=object
-            f0: fun(T, N, int, 3)
-          ]#
+          # e.g.: type Foo[T; N: static int]=object: f0: fun(T, N, int, 3)
           let n2 = semGenericStmtInTypeSection(c, n.copyTree)
           result = makeTypeFromExpr(c, n2)
         else:

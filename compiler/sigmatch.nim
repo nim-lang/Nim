@@ -676,7 +676,7 @@ proc matchUserTypeClass*(m: var TCandidate; ff, a: PType): PType =
   typeClass[0][0] = a
   c.matchedConcept = addr(matchedConceptContext)
   let genericInstStackLenOld = c.genericInstStack.len
-  c.genericInstStack.add typeClass.sym # PRTEMP : desync w inGenericInst ?
+  c.genericInstStack.add typeClass.sym
 
   # PRTEMP similar to D20210521T170223
   pushOwner(c, typeClass.sym)
