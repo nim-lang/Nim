@@ -118,7 +118,7 @@ pkg "optionsutils"
 pkg "ormin", "nim c -o:orminn ormin.nim"
 pkg "parsetoml"
 pkg "patty"
-pkg "pixie", useHead = false
+pkg "pixie"
 pkg "plotly", "nim c examples/all.nim"
 pkg "pnm"
 pkg "polypbren"
