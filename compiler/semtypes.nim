@@ -377,6 +377,7 @@ proc semOrdinal(c: PContext, n: PNode, prev: PType): PType =
     result = newOrPrevType(tyError, prev, c)
 
 proc semTypeIdent(c: PContext, n: PNode): PSym =
+  dbgIf n, n.kind
   if n.kind == nkSym:
     result = getGenSym(c, n.sym)
   else:
@@ -1428,8 +1429,6 @@ proc semObjectTypeForInheritedGenericInst(c: PContext, n: PNode, t: PType) =
   semRecordNodeAux(c, t.n, check, pos, newf, t)
 
 proc semGeneric(c: PContext, n: PNode, s: PSym, prev: PType): PType =
-  if isCompilerDebug():
-    dbg s, n, prev
   if s.typ == nil:
     localError(c.config, n.info, "cannot instantiate the '$1' $2" %
                [s.name.s, s.kind.toHumanStr])
@@ -1722,6 +1721,7 @@ proc semTypeNode(c: PContext, n: PNode, prev: PType): PType =
   inc c.inTypeContext
 
   if c.config.cmd == cmdIdeTools: suggestExpr(c, n)
+  dbgIf n, n.kind, prev
   case n.kind
   of nkEmpty: result = n.typ
   of nkTypeOfExpr:
@@ -1741,6 +1741,8 @@ proc semTypeNode(c: PContext, n: PNode, prev: PType): PType =
                 of nkSym: x.sym.name
                 of nkClosedSymChoice, nkOpenSymChoice: x[0].sym.name
                 else: nil
+    dbgIf x, ident, x.kind
+    # var s = searchInScopes(c, ident, amb).skipAlias(n, c.config)
     if ident != nil and ident.s == "[]":
       let b = newNodeI(nkBracketExpr, n.info)
       for i in 1..<n.len: b.add(n[i])

@@ -134,8 +134,6 @@ proc instantiateBody(c: PContext, n, params: PNode, result, orig: PSym) =
     maybeAddResult(c, result, result.ast)
 
     inc c.inGenericInst
-    if isCompilerDebug():
-      dbg result, orig, params, n
     c.genericInstStack.add result
     # add it here, so that recursive generic procs are possible:
     var b = n[bodyPos]
@@ -245,8 +243,6 @@ proc instGenericContainer2(cl: var TReplTypeVars, info: TLineInfo, header: PType
 
   # if t != nil and t.sym != nil:
     # cl.c.genericInstStack.add t.sym
-  if isCompilerDebug():
-    dbg header, header.sym
   cl.c.genericInstStack.add header.sym
 
   let genericTyp = header.base
@@ -257,9 +253,6 @@ proc instGenericContainer2(cl: var TReplTypeVars, info: TLineInfo, header: PType
     template paramSym(kind): untyped =
       newSym(kind, genParam.sym.name, nextSymId c.idgen, genericTyp.sym, genParam.sym.info)
 
-    if isCompilerDebug():
-      dbg i, genericTyp.len, genParam, genParam.kind, header
-
     if genParam.kind == tyStatic:
       param = paramSym skConst
       param.ast = header[i+1].n
@@ -267,8 +260,6 @@ proc instGenericContainer2(cl: var TReplTypeVars, info: TLineInfo, header: PType
     else:
       param = paramSym skType
       param.typ = makeTypeDesc(c, header[i+1])
-    if isCompilerDebug():
-      dbg param, param.kind, param.typ, param.typ.kind
     param.typ = replaceTypeVarsT(cl, param.typ) # PRTEMP
 
     # this scope was not created by the user,
@@ -374,7 +365,6 @@ proc instantiateProcType(c: PContext, pt: TIdTable,
   resetIdTable(cl.localCache)
   cl.isReturnType = true
 
-  dbgIf()
   if result[0] != nil and result[0].kind == tyGenericInvocation: # PRTEMP
     # result[0] = instGenericContainer(c, info, result[0], allowMetaTypes = false)
     result[0] = instGenericContainer2(cl, info, result[0])
@@ -426,9 +416,6 @@ proc generateInstance(c: PContext, fn: PSym, pt: TIdTable,
   result.owner = fn
   result.ast = n
   pushOwner(c, result)
-  # if isCompilerDebug():
-  #   dbg result
-  # c.genericInstStack.add result
 
   # mixin scope:
   openScope(c)

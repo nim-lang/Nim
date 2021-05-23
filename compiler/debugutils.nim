@@ -13,6 +13,15 @@ useful debugging flags:
 ## future work
 * expose and improve astalgo.debug, replacing it by std/prettyprints,
   refs https://github.com/nim-lang/RFCs/issues/385
+
+## examples:
+{.define(nimCompilerDebug).}
+code
+{.undef(nimCompilerDebug).}
+
+when defined(nimDebugUtils):
+  if isCompilerDebug():
+    dbg t, ?.t.sym, ?.t.sym.owner, cl.owner
 ]#
 
 import options
@@ -68,7 +77,7 @@ template debugScopes2* =
   dbg(info = infom1)
   debugScopes(c, limit = 100)
 
-template dbgIf* =
+template dbgIf*(args: varargs[untyped]) =
   if isCompilerDebug():
     const infom1 = instantiationInfo(-1, true)
-    dbg(info = infom1)
+    dbg(info = infom1, args)

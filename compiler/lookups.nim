@@ -574,8 +574,10 @@ proc qualifiedLookUp*(c: PContext, n: PNode, flags: set[TLookupFlag]): PSym =
           errorUseQualifier(c, n.info, candidates)
 
     if result == nil and checkUndeclared in flags:
-      if isCompilerDebug():
-        debugScopes2()
+      when defined(nimDebugUtils):
+        dbgIf c.genericInstStack.len, c.genericInstStack
+        if isCompilerDebug(): # PRTEMP
+          debugScopes2()
       result = errorUndeclaredIdentifierHint(c, n, ident)
     elif checkAmbiguity in flags and result != nil and amb:
       result = errorUseQualifier(c, n.info, result, amb)
