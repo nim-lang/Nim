@@ -377,7 +377,6 @@ proc semOrdinal(c: PContext, n: PNode, prev: PType): PType =
     result = newOrPrevType(tyError, prev, c)
 
 proc semTypeIdent(c: PContext, n: PNode): PSym =
-  dbgIf n, n.kind
   if n.kind == nkSym:
     result = getGenSym(c, n.sym)
   else:
@@ -1721,7 +1720,6 @@ proc semTypeNode(c: PContext, n: PNode, prev: PType): PType =
   inc c.inTypeContext
 
   if c.config.cmd == cmdIdeTools: suggestExpr(c, n)
-  dbgIf n, n.kind, prev
   case n.kind
   of nkEmpty: result = n.typ
   of nkTypeOfExpr:
@@ -1742,8 +1740,6 @@ proc semTypeNode(c: PContext, n: PNode, prev: PType): PType =
                 of nkSym: x.sym.name
                 of nkClosedSymChoice, nkOpenSymChoice: x[0].sym.name
                 else: nil
-    dbgIf x, ident, x.kind
-    # var s = searchInScopes(c, ident, amb).skipAlias(n, c.config)
     if ident != nil and ident.s == "[]":
       let b = newNodeI(nkBracketExpr, n.info)
       for i in 1..<n.len: b.add(n[i])
@@ -1841,16 +1837,10 @@ proc semTypeNode(c: PContext, n: PNode, prev: PType): PType =
         if c.inGenericContext > 0 and n.kind == nkCall:
           #[
           eg:
-          type Foo[T]=object
-            x: fun(args)
+          type Foo[T; N: static int]=object
+            f0: fun(T, N, int, 3)
           ]#
-          # result = makeTypeFromExpr(c, n.copyTree)
-          # var s = qualifiedLookUp(c, x, {})
-          # dbgIf s
-          var n2 = n.copyTree
-          n2 = semGenericStmtInTypeSection(c, n2) # TODO: is copyTree needed?
-          # xxx FACTOR w semGenericStmt?
-          # for i in 0..<n2.len:
+          let n2 = semGenericStmtInTypeSection(c, n.copyTree)
           result = makeTypeFromExpr(c, n2)
         else:
           result = semTypeExpr(c, n, prev)
