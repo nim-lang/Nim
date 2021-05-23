@@ -856,7 +856,9 @@ proc nestList*(op: NimNode; pack: NimNode; init: NimNode): NimNode =
   for i in countdown(pack.len - 1, 0):
     result = newCall(op, pack[i], result)
 
-proc treeTraverse(n: NimNode; res: var string; level = 0; isLisp = false, indented = false) {.benign.} =
+const collapseSymChoiceDefault = not defined(nimLegacyMacrosCollapseSymChoice)
+
+proc treeTraverse(n: NimNode; res: var string; level = 0; isLisp = false, indented = false, collapseSymChoice = collapseSymChoiceDefault) {.benign.} =
   if level > 0:
     if indented:
       res.add("\n")
@@ -883,28 +885,32 @@ proc treeTraverse(n: NimNode; res: var string; level = 0; isLisp = false, indent
     res.add(" " & $n.strVal.newLit.repr)
   of nnkNone:
     assert false
+  elif n.kind in {nnkOpenSymChoice, nnkClosedSymChoice} and collapseSymChoice:
+    res.add(" " & $n.len)
+    if n.len > 0:
+      res.add(" " & $n[0].strVal.newLit.repr)
   else:
-    for j in 0 .. n.len-1:
+    for j in 0 ..< n.len:
       n[j].treeTraverse(res, level+1, isLisp, indented)
 
   if isLisp:
     res.add(")")
 
-proc treeRepr*(n: NimNode): string {.benign.} =
+proc treeRepr*(n: NimNode, collapseSymChoice = collapseSymChoiceDefault): string {.benign.} =
   ## Convert the AST `n` to a human-readable tree-like string.
   ##
   ## See also `repr`, `lispRepr`, and `astGenRepr`.
   result = ""
-  n.treeTraverse(result, isLisp = false, indented = true)
+  n.treeTraverse(result, isLisp = false, indented = true, collapseSymChoice = collapseSymChoice)
 
-proc lispRepr*(n: NimNode; indented = false): string {.benign.} =
+proc lispRepr*(n: NimNode; indented = false, collapseSymChoice = collapseSymChoiceDefault): string {.benign.} =
   ## Convert the AST `n` to a human-readable lisp-like string.
   ##
   ## See also `repr`, `treeRepr`, and `astGenRepr`.
   result = ""
-  n.treeTraverse(result, isLisp = true, indented = indented)
+  n.treeTraverse(result, isLisp = true, indented = indented, collapseSymChoice = collapseSymChoice)
 
-proc astGenRepr*(n: NimNode): string {.benign.} =
+proc astGenRepr*(n: NimNode, collapseSymChoice = collapseSymChoiceDefault): string {.benign.} =
   ## Convert the AST `n` to the code required to generate that AST.
   ##
   ## See also `repr`, `treeRepr`, and `lispRepr`.
@@ -932,6 +938,10 @@ proc astGenRepr*(n: NimNode): string {.benign.} =
     of nnkStrLit..nnkTripleStrLit, nnkCommentStmt, nnkIdent, nnkSym:
       res.add(n.strVal.newLit.repr)
     of nnkNone: assert false
+    elif n.kind in {nnkOpenSymChoice, nnkClosedSymChoice} and collapseSymChoice:
+      res.add(", # unrepresentable symbols: " & $n.len)
+      if n.len > 0:
+        res.add(" " & n[0].strVal.newLit.repr)
     else:
       res.add(".newTree(")
       for j in 0..<n.len:
