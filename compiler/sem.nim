@@ -19,6 +19,9 @@ import
   lowerings, plugins/active, lineinfos, strtabs, int128,
   isolation_check, typeallowed, modulegraphs, enumtostr, concepts, astmsgs
 
+when defined(nimCompilerStackraceHints):
+  import std/stackframes
+
 when defined(nimfix):
   import nimfix/prettybase
 
