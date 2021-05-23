@@ -34,11 +34,11 @@ block:
   type
     Banana[T] = object
       b: T
-      a: getColor(Fruit) # this one works
+      a: getColor(Fruit)
 
     Apple[T] = object
       a: T
-      b: getColor(T) # this one failed to compile
+      b: getColor(T)
       
   var x: Banana[int]
   x.b = 13
