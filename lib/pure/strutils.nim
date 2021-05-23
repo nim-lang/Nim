@@ -2236,8 +2236,7 @@ func escape*(s: string, prefix = "\"", suffix = "\""): string {.rtl,
   ##
   ## See also:
   ## * `addEscapedChar proc<system.html#addEscapedChar,string,char>`_
-  ## * `unescape func<#unescape,string,string,string>`_ for the opposite
-  ##   operation
+  ## * `unescape func<#unescape,string,string,string>`_ for the opposite operation
   result = newStringOfCap(s.len + s.len shr 2)
   result.add(prefix)
   for c in items(s):
