@@ -81,6 +81,7 @@
 
 
 - in `std/algorithm`, deprecated `proc reversed*[T](a: openArray[T], first: Natural, last: int): seq[T]`
+- Deprecated `proc reversed*[T](a: openArray[T], first: Natural, last: int): seq[T]` in `std/algorithm`.
 
 
 ## Standard library additions and changes
