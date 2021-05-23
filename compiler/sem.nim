@@ -496,6 +496,7 @@ proc semConstBoolExpr(c: PContext, n: PNode): PNode =
 
 proc semGenericStmt(c: PContext, n: PNode): PNode
 proc semConceptBody(c: PContext, n: PNode): PNode
+proc semGenericStmtInTypeSection(c: PContext, n: PNode): PNode
 
 include semtypes
 

@@ -178,6 +178,9 @@ proc addTempDecl(c: PContext; n: PNode; kind: TSymKind) =
 
 proc semGenericStmt(c: PContext, n: PNode,
                     flags: TSemGenericFlags, ctx: var GenericCtx): PNode =
+  when defined(nimCompilerStackraceHints):
+    setFrameMsg c.config$n.info & " " & $n.kind
+
   result = n
 
   when defined(nimsuggest):
@@ -520,6 +523,14 @@ proc semGenericStmt(c: PContext, n: PNode,
     if withinTypeDesc in flags: dec c.inTypeContext
 
 proc semGenericStmt(c: PContext, n: PNode): PNode =
+  var ctx: GenericCtx
+  ctx.toMixin = initIntSet()
+  ctx.toBind = initIntSet()
+  result = semGenericStmt(c, n, {}, ctx)
+  semIdeForTemplateOrGeneric(c, result, ctx.cursorInBody)
+
+proc semGenericStmtInTypeSection(c: PContext, n: PNode): PNode =
+  # PRTEMP
   var ctx: GenericCtx
   ctx.toMixin = initIntSet()
   ctx.toBind = initIntSet()

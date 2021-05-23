@@ -80,4 +80,8 @@ template debugScopes2* =
 template dbgIf*(args: varargs[untyped]) =
   if isCompilerDebug():
     const infom1 = instantiationInfo(-1, true)
-    dbg(info = infom1, args)
+    when varargsLen(args) > 0:
+      dbg(info = infom1, args)
+    else:
+      # otherwise info is wrong (points to here)
+      dbg(info = infom1)
