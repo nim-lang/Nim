@@ -4,7 +4,8 @@ discard """
 
 import std/jsonutils
 import std/json
-from std/math import isNaN
+from std/math import isNaN, signbit
+from stdtest/testutils import whenRuntimeJs
 
 proc testRoundtrip[T](t: T, expected: string) =
   # checks that `T => json => T2 => json2` is such that json2 = json
@@ -122,6 +123,20 @@ template fn() =
     testRoundtrip((float32(NaN), Inf, -Inf, 0.0, -0.0, 1.0)): """["nan","inf","-inf",0.0,-0.0,1.0]"""
     testRoundtripVal((Inf, -Inf, 0.0, -0.0, 1.0)): """["inf","-inf",0.0,-0.0,1.0]"""
     doAssert ($NaN.toJson).parseJson.jsonTo(float).isNaN
+
+  block: # bug #18009; unfixable unless we change parseJson (which would have overhead),
+         # but at least we can guarantee that the distinction between 0.0 and -0.0 is preserved.
+    let a = (0, 0.0, -0.0, 0.5, 1, 1.0)
+    testRoundtripVal(a): "[0,0.0,-0.0,0.5,1,1.0]"
+    let a2 = $($a.toJson).parseJson
+    whenRuntimeJs:
+      doAssert a2 == "[0,0,-0.0,0.5,1,1]"
+    do:
+      doAssert a2 == "[0,0.0,-0.0,0.5,1,1.0]"
+    let b = a2.parseJson.jsonTo(type(a))
+    doAssert not b[1].signbit
+    doAssert b[2].signbit
+    doAssert not b[3].signbit
 
   block: # case object
     type Foo = object

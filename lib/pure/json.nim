@@ -938,7 +938,7 @@ when defined(js):
     of "[object Array]": return JArray
     of "[object Object]": return JObject
     of "[object Number]":
-      if isInteger(x):
+      if isInteger(x) and 1.0 / cast[float](x) != -Inf: # preserve -0.0 as float
         if isSafeInteger(x):
           return JInt
         else:
