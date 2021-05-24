@@ -573,16 +573,6 @@ proc newHttpClient*(userAgent = defUserAgent, maxRedirects = 5,
   ## `TimeoutError` is raised.
   ##
   ## `headers` specifies the HTTP Headers.
-  runnableExamples:
-    import std/[asyncdispatch, httpclient, strutils]
-
-    proc asyncProc(): Future[string] {.async.} =
-      var client = newAsyncHttpClient()
-      return await client.getContent("http://example.com")
-
-    let exampleHtml = waitFor asyncProc()
-    assert "Example Domain" in exampleHtml
-    assert not ("Pizza" in exampleHtml)
 
   new result
   result.headers = headers
@@ -616,6 +606,17 @@ proc newAsyncHttpClient*(userAgent = defUserAgent, maxRedirects = 5,
   ## connections.
   ##
   ## `headers` specifies the HTTP Headers.
+  runnableExamples:
+    import std/[asyncdispatch, httpclient, strutils]
+
+    proc asyncProc(): Future[string] {.async.} =
+      var client = newAsyncHttpClient()
+      return await client.getContent("http://example.com")
+
+    let exampleHtml = waitFor asyncProc()
+    assert "Example Domain" in exampleHtml
+    assert not ("Pizza" in exampleHtml)
+  
   new result
   result.headers = headers
   result.userAgent = userAgent
