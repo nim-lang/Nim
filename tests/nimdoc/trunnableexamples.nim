@@ -152,6 +152,16 @@ when true: # bug #18054
     inner1()
     inner2()
 
+when true: # bug #17835
+  template anyItFake*(s, pred: untyped): bool =
+    ## Foo
+    runnableExamples: discard
+    true
+
+  proc anyItFakeMain*(n: seq[int]): bool =
+    result = anyItFake(n, it == 0)
+      # this was giving: Error: runnableExamples must appear before the first non-comment statement
+
 runnableExamples:
   block: # bug #17279
     when int.sizeof == 8:
