@@ -131,8 +131,7 @@ when true:
       # BUG: this currently this won't be run since not exported
       # but probably should
       doAssert false
-  # discard bazNonExported() XDeclaredButNotUsed
-  if false: bazNonExported() # XDeclaredButNotUsed
+  if false: bazNonExported() # silence XDeclaredButNotUsed
 
   proc z17*() =
     # BUG: a comment before 1st doc comment currently doesn't prevent
