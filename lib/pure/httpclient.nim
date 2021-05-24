@@ -573,6 +573,16 @@ proc newHttpClient*(userAgent = defUserAgent, maxRedirects = 5,
   ## `TimeoutError` is raised.
   ##
   ## `headers` specifies the HTTP Headers.
+  runnableExamples:
+    import std/[httpclient, strutils]
+
+    proc syncProc(): string =
+      var client = newHttpClient()
+      return client.getContent("http://example.com")
+
+    let exampleHtml = syncProc()
+    assert "Example Domain" in exampleHtml
+    assert not ("Pizza" in exampleHtml)
 
   new result
   result.headers = headers
