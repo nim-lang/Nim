@@ -85,7 +85,7 @@ type
     name: string
     cat: Category
     options: string
-    args: seq[string]
+    testArgs: seq[string]
     spec: TSpec
     startTime: float
     debugInfo: string
@@ -154,24 +154,23 @@ proc nimcacheDir(filename, options: string, target: TTarget): string =
   let hashInput = options & $target
   result = "nimcache" / (filename & '_' & hashInput.getMD5)
 
-proc prepareTestArgs(cmdTemplate, filename, options, nimcache: string,
-                     target: TTarget, extraOptions = ""): seq[string] =
+proc prepareTestCmd(cmdTemplate, filename, options, nimcache: string,
+                     target: TTarget, extraOptions = ""): string =
   var options = target.defaultOptions & ' ' & options
-  # improve pending https://github.com/nim-lang/Nim/issues/14343
-  if nimcache.len > 0: options.add ' ' & ("--nimCache:" & nimcache).quoteShell
+  if nimcache.len > 0: options.add(" --nimCache:$#" % nimcache.quoteShell)
   options.add ' ' & extraOptions
-  result = parseCmdLine(cmdTemplate % ["target", targetToCmd[target],
+  # we avoid using `parseCmdLine` which is buggy, refs bug #14343
+  result = cmdTemplate % ["target", targetToCmd[target],
                       "options", options, "file", filename.quoteShell,
-                      "filedir", filename.getFileDir(), "nim", compilerPrefix])
+                      "filedir", filename.getFileDir(), "nim", compilerPrefix]
 
 proc callNimCompiler(cmdTemplate, filename, options, nimcache: string,
                      target: TTarget, extraOptions = ""): TSpec =
-  let c = prepareTestArgs(cmdTemplate, filename, options, nimcache, target,
+  result.cmd = prepareTestCmd(cmdTemplate, filename, options, nimcache, target,
                           extraOptions)
-  result.cmd = quoteShellCommand(c)
-  verboseCmd(c.quoteShellCommand)
-  var p = startProcess(command = c[0], args = c[1 .. ^1],
-                       options = {poStdErrToStdOut, poUsePath})
+  verboseCmd(result.cmd)
+  var p = startProcess(command = result.cmd,
+                       options = {poStdErrToStdOut, poUsePath, poEvalCommand})
   let outp = p.outputStream
   var foundSuccessMsg = false
   var foundErrorMsg = false
@@ -224,9 +223,33 @@ proc callNimCompiler(cmdTemplate, filename, options, nimcache: string,
 
 proc callCCompiler(cmdTemplate, filename, options: string,
                   target: TTarget): TSpec =
-  let c = prepareTestArgs(cmdTemplate, filename, options, nimcache = "", target)
+  let cmd = prepareTestCmd(cmdTemplate, filename, options, nimcache = "", target)
+  doAssert false
+  #[
+  this code hasn't been run in a while, and should be removed which simplifies code
+  there are better ways to do this anyways (e.g. running c code from a nim file)
+  
+  the only place where this is called is:
+  `testC r, makeTest("tests/realtimeGC/cmain", cOptions, cat), actionRun`
+  which isn't run unless you call:
+  XDG_CONFIG_HOME= nim r --lib:lib --stacktrace:on testament/testament.nim r longgc
+
+  and this fails since at least nim 1.0 with:
+  testament/testament.nim(851) testament
+  testament/testament.nim(822) main
+  testament/categories.nim(713) processCategory
+  testament/categories.nim(189) longGCTests
+  testament/testament.nim(644) makeTest
+  testament/specs.nim(251) parseSpec
+  testament/specs.nim(184) extractSpec
+  lib/system/io.nim(861) readFile
+  Error: unhandled exception: cannot open: tests/realtimeGC/cmain.nim [IOError]
+
+  Also, `c[5 .. ^1]` is too magical.
+  ]#
+  let c = cmd.parseCmdLine
   var p = startProcess(command = "gcc", args = c[5 .. ^1],
-                       options = {poStdErrToStdOut, poUsePath})
+                       options = {poStdErrToStdOut, poUsePath, poEvalCommand})
   let outp = p.outputStream
   var x = newStringOfCap(120)
   result.nimout = ""
@@ -525,7 +548,7 @@ proc testSpecHelper(r: var TResults, test: var TTest, expected: TSpec,
                       reExeNotFound)
         else:
           var exeCmd: string
-          var args = test.args
+          var args = test.testArgs
           if isJsTarget:
             exeCmd = nodejs
             # see D20210217T215950
