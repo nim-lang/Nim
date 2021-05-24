@@ -25,7 +25,7 @@ just like an ordinary procedure call with named or positional arguments. The
 available parameters depend on the invoked filter. Before version 0.12.0 of
 the language `#!` was used instead of `#?`.
 
-**Hint:** With `--hint[codeBegin]:on`:option: or `--verbosity:2`:option:
+**Hint:** With `--hint:codeBegin:on`:option: or `--verbosity:2`:option:
 (or higher) while compiling or `nim check`:cmd:, Nim lists the processed code after
 each filter application.
 
