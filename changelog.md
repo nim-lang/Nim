@@ -50,8 +50,9 @@
 - On POSIX systems, we now ignore `SIGPIPE` signals, use `-d:nimLegacySigpipeHandler`
   for previous behavior.
 
-- `hashes.hash` now supports `object` and `ref` (can be overloaded in user code).
-  For a transition period, use `-d:nimLegacyNoHashRef` to avoid defining `hash(ref)`.
+- `hashes.hash` can now support `object` and `ref` (can be overloaded in user code),
+  if `-d:nimEnableHashRef` is used.
+
 - `hashes.hash(proc|ptr|ref|pointer)` now calls `hash(int)` and honors `-d:nimIntHash1`,
   `hashes.hash(closure)` has also been improved.
 
@@ -80,7 +81,9 @@
   other defines.
 
 
+
 ## Standard library additions and changes
+
 - Added support for parenthesized expressions in `strformat`
 
 - Fixed buffer overflow bugs in `net`
@@ -96,7 +99,6 @@
   from `https://curl.se/ca/cacert.pem`. Besides
   the OpenSSL DLLs (e.g. libssl-1_1-x64.dll, libcrypto-1_1-x64.dll) you
   now also need to ship `cacert.pem` with your `.exe` file.
-
 
 - Make `{.requiresInit.}` pragma to work for `distinct` types.
 
@@ -322,6 +324,8 @@
 
 - Fixed premature garbage collection in asyncdispatch, when a stack trace override is in place.
 
+
+
 ## Language changes
 
 - `nimscript` now handles `except Exception as e`.
@@ -366,6 +370,8 @@
 
 - `typeof(voidStmt)` now works and returns `void`.
 
+
+
 ## Compiler changes
 
 - Added `--declaredlocs` to show symbol declaration location in messages.
@@ -392,7 +398,8 @@
 - TLS: OSX now uses native TLS (`--tlsEmulation:off`), TLS now works with importcpp non-POD types,
   such types must use `.cppNonPod` and `--tlsEmulation:off`should be used.
 
-- Now array literals(JS backend) uses JS typed arrays when the corresponding js typed array exists, for example `[byte(1), 2, 3]` generates `new Uint8Array([1, 2, 3])`.
+- Now array literals(JS backend) uses JS typed arrays when the corresponding js typed array exists,
+  for example `[byte(1), 2, 3]` generates `new Uint8Array([1, 2, 3])`.
 
 - docgen: rst files can now use single backticks instead of double backticks and correctly render
   in both rst2html (as before) as well as common tools rendering rst directly (e.g. github), by
@@ -423,6 +430,8 @@
   enforces that every symbol is written as it was declared, not enforcing
   the official Nim style guide. To be enabled, this has to be combined either
   with `--styleCheck:error` or `--styleCheck:hint`.
+
+
 
 ## Tool changes
 

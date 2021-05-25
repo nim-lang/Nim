@@ -8,6 +8,7 @@ And we get here
 '''
 joinable: false
 targets: "c cpp js"
+matrix: "-d:nimEnableHashRef"
 """
 
 # xxx wrap in a template to test in VM, see https://github.com/timotheecour/Nim/issues/534#issuecomment-769565033
