@@ -91,6 +91,10 @@ template fn() =
     doAssert b2.ord == 1 # explains the `1`
     testRoundtrip(a): """[1,2,3]"""
 
+  block: # JsonNode
+    let a = ((1, 2.5, "abc").toJson, (3, 4.5, "foo"))
+    testRoundtripVal(a): """[[1,2.5,"abc"],[3,4.5,"foo"]]"""
+
   block: # ToJsonOptions
     let a = (me1, me2)
     doAssert $a.toJson() == "[1,2]"

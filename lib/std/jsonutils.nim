@@ -50,7 +50,7 @@ type
     joptEnumString
   ToJsonOptions* = object
     enumMode*: EnumMode
-    # xxx charMode
+    # xxx charMode, etc
 
 proc initToJsonOptions*(): ToJsonOptions =
   ## initializes `ToJsonOptions` with sane options.
@@ -286,8 +286,13 @@ proc toJson*[T](a: T, opt = initToJsonOptions()): JsonNode =
       result = newJArray()
       for v in a.fields: result.add toJson(v, opt)
   elif T is ref | ptr:
-    if system.`==`(a, nil): result = newJNull()
-    else: result = toJson(a[], opt)
+    when T is JsonNode:
+      # xxx this should be the default, but we could customize this via some
+      # flags in `ToJsonOptions`, e.g. `jsonNodeDeepCopy` or `jsonNodeAsObject`.
+      result = a
+    else:
+      if system.`==`(a, nil): result = newJNull()
+      else: result = toJson(a[], opt)
   elif T is array | seq | set:
     result = newJArray()
     for ai in a: result.add toJson(ai, opt)
