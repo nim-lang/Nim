@@ -1,6 +1,1 @@
-discard """
-  targets: "c"
-  action: compile
-"""
-
-echo "--genscript"
+echo "from genscript"

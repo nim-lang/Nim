@@ -405,6 +405,7 @@ proc execExternalProgram*(conf: ConfigRef; cmd: string, msg = hintExecuting) =
 
 proc generateScript(conf: ConfigRef; script: Rope) =
   let (_, name, _) = splitFile(conf.outFile.string)
+  # D20210524T214856:here
   let filename = getNimcacheDir(conf) / RelativeFile(addFileExt("compile_" & name,
                                      platform.OS[conf.target.targetOS].scriptExt))
   if not writeRope(script, filename):
