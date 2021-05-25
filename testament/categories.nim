@@ -156,19 +156,6 @@ proc gcTests(r: var TResults, cat: Category, options: string) =
   test "cyclecollector"
   testWithoutBoehm "trace_globals"
 
-proc longGCTests(r: var TResults, cat: Category, options: string) =
-  when defined(windows):
-    let cOptions = "-ldl -DWIN"
-  else:
-    let cOptions = "-ldl"
-
-  var c = initResults()
-  # According to ioTests, this should compile the file
-  testSpec c, makeTest("tests/realtimeGC/shared", options, cat)
-  #        ^- why is this not appended to r? Should this be discarded?
-  testC r, makeTest("tests/realtimeGC/cmain", cOptions, cat), actionRun
-  testSpec r, makeTest("tests/realtimeGC/nmain", options & "--threads: on", cat)
-
 # ------------------------- threading tests -----------------------------------
 
 proc threadTests(r: var TResults, cat: Category, options: string) =
@@ -186,6 +173,11 @@ proc ioTests(r: var TResults, cat: Category, options: string) =
   # dummy compile result:
   var c = initResults()
   testSpec c, makeTest("tests/system/helpers/readall_echo", options, cat)
+  #        ^- why is this not appended to r? Should this be discarded?
+  # EDIT: this should be replaced by something like in D20210524T180826,
+  # likewise in similar instances where `testSpec c` is used, or more generally
+  # when a test depends on another test, as it makes tests non-independent,
+  # creating complications for batching and megatest logic.
   testSpec r, makeTest("tests/system/tio", options, cat)
 
 # ------------------------- async tests ---------------------------------------
@@ -687,8 +679,6 @@ proc processCategory(r: var TResults, cat: Category,
       dllTests(r, cat, options)
     of "gc":
       gcTests(r, cat, options)
-    of "longgc":
-      longGCTests(r, cat, options)
     of "debugger":
       debuggerTests(r, cat, options)
     of "manyloc":
