@@ -625,7 +625,7 @@ proc newAsyncHttpClient*(userAgent = defUserAgent, maxRedirects = 5,
 
     let exampleHtml = waitFor asyncProc()
     assert "Example Domain" in exampleHtml
-    assert not ("Pizza" in exampleHtml)
+    assert "Pizza" notin exampleHtml
   
   new result
   result.headers = headers
