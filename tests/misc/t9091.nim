@@ -1,3 +1,5 @@
+# bug #9091
+
 import streams
 
 block:
