@@ -620,7 +620,7 @@ proc newAsyncHttpClient*(userAgent = defUserAgent, maxRedirects = 5,
     import std/[asyncdispatch, httpclient, strutils]
 
     proc asyncProc(): Future[string] {.async.} =
-      var client = newAsyncHttpClient()
+      let client = newAsyncHttpClient()
       return await client.getContent("http://example.com")
 
     let exampleHtml = waitFor asyncProc()
