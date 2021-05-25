@@ -55,6 +55,8 @@ _nimBuildCsourcesIfNeeded(){
     makeX=gmake
   elif [ "$unamestr" = 'OpenBSD' ]; then
     makeX=gmake
+  elif [ "$unamestr" = 'NetBSD' ]; then
+    makeX=gmake
   else
     makeX=make
   fi

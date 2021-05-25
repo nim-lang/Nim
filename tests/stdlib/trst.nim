@@ -1,6 +1,8 @@
 discard """
   output: '''
 
+[Suite] RST parsing
+
 [Suite] RST indentation
 
 [Suite] RST include directive
@@ -21,7 +23,7 @@ import std/private/miscdollars
 import os
 
 proc toAst(input: string,
-            rstOptions: RstParseOptions = {roSupportMarkdown, roNimFile},
+            rstOptions: RstParseOptions = {roPreferMarkdown, roSupportMarkdown, roNimFile},
             error: ref string = nil,
             warnings: ref seq[string] = nil): string =
   ## If `error` is nil then no errors should be generated.
@@ -34,10 +36,11 @@ proc toAst(input: string,
     toLocation(message, filename, line, col + ColRstOffset)
     message.add " $1: $2" % [$mc, a]
     if mc == mcError:
-      doAssert error != nil, "unexpected RST error '" & message & "'"
+      if error == nil:
+        raise newException(EParseError, "[unexpected error] " & message)
       error[] = message
       # we check only first error because subsequent ones may be meaningless
-      raise newException(EParseError, message)
+      raise newException(EParseError, "")
     else:
       doAssert warnings != nil, "unexpected RST warning '" & message & "'"
       warnings[].add message
@@ -52,8 +55,33 @@ proc toAst(input: string,
     var rst = rstParse(input, filen, line=LineRstInit, column=ColRstInit,
                        dummyHasToc, rstOptions, myFindFile, testMsgHandler)
     result = renderRstToStr(rst)
-  except EParseError:
-    discard
+  except EParseError as e:
+    if e.msg != "":
+      result = e.msg
+
+suite "RST parsing":
+  test "option list has priority over definition list":
+    check(dedent"""
+        --defusages
+                      file
+        -o            set
+        """.toAst ==
+      dedent"""
+        rnOptionList
+          rnOptionListItem  order=1
+            rnOptionGroup
+              rnLeaf  '--'
+              rnLeaf  'defusages'
+            rnDescription
+              rnInner
+                rnLeaf  'file'
+          rnOptionListItem  order=2
+            rnOptionGroup
+              rnLeaf  '-'
+              rnLeaf  'o'
+            rnDescription
+              rnLeaf  'set'
+        """)
 
 suite "RST indentation":
   test "nested bullet lists":
@@ -300,6 +328,28 @@ suite "RST escaping":
       """)
 
 suite "RST inline markup":
+  test "* and ** surrounded by spaces are not inline markup":
+    check("a * b * c ** d ** e".toAst == dedent"""
+      rnInner
+        rnLeaf  'a'
+        rnLeaf  ' '
+        rnLeaf  '*'
+        rnLeaf  ' '
+        rnLeaf  'b'
+        rnLeaf  ' '
+        rnLeaf  '*'
+        rnLeaf  ' '
+        rnLeaf  'c'
+        rnLeaf  ' '
+        rnLeaf  '**'
+        rnLeaf  ' '
+        rnLeaf  'd'
+        rnLeaf  ' '
+        rnLeaf  '**'
+        rnLeaf  ' '
+        rnLeaf  'e'
+      """)
+
   test "end-string has repeating symbols":
     check("*emphasis content****".toAst == dedent"""
       rnEmphasis
@@ -345,6 +395,27 @@ suite "RST inline markup":
         rnLeaf  '```'
       """)
 
+  test "interpreted text parsing: code fragments":
+    check(dedent"""
+        .. default-role:: option
+
+        `--gc:refc`""".toAst ==
+      dedent"""
+        rnInner
+          rnDefaultRole
+            rnDirArg
+              rnLeaf  'option'
+            [nil]
+            [nil]
+          rnParagraph
+            rnCodeFragment
+              rnInner
+                rnLeaf  '--'
+                rnLeaf  'gc'
+                rnLeaf  ':'
+                rnLeaf  'refc'
+              rnLeaf  'option'
+        """)
 
   test """interpreted text can be ended with \` """:
     let output = (".. default-role:: literal\n" & """`\``""").toAst
@@ -372,6 +443,37 @@ suite "RST inline markup":
         rnLiteralBlock
           rnLeaf  'proc `+`'
       """)
+
+    check("""`\\`""".toAst ==
+      dedent"""
+        rnInlineCode
+          rnDirArg
+            rnLeaf  'nim'
+          [nil]
+          rnLiteralBlock
+            rnLeaf  '\\'
+        """)
+
+  test "Markdown-style code/backtick":
+    # no whitespace is required before `
+    check("`try`...`except`".toAst ==
+      dedent"""
+        rnInner
+          rnInlineCode
+            rnDirArg
+              rnLeaf  'nim'
+            [nil]
+            rnLiteralBlock
+              rnLeaf  'try'
+          rnLeaf  '...'
+          rnInlineCode
+            rnDirArg
+              rnLeaf  'nim'
+            [nil]
+            rnLiteralBlock
+              rnLeaf  'except'
+        """)
+
 
   test """inline literals can contain \ anywhere""":
     check("""``\``""".toAst == dedent"""

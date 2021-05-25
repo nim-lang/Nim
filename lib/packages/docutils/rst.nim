@@ -130,6 +130,32 @@
 ## .. warning:: Using Nim-specific features can cause other RST implementations
 ##   to fail on your document.
 ##
+## Idiosyncrasies
+## --------------
+##
+## Currently we do **not** aim at 100% Markdown or RST compatibility in inline
+## markup recognition rules because that would provide very little user value.
+## This parser has 2 modes for inline markup:
+##
+## 1) Markdown-like mode which is enabled by `roPreferMarkdown` option
+##    (turned **on** by default).
+##
+##    .. Note:: RST features like directives are still turned **on**
+##
+## 2) Compatibility mode which is RST rules.
+##
+## .. Note:: in both modes the parser interpretes text between single
+##    backticks (code) identically:
+##      backslash does not escape; the only exception: ``\`` folowed by `
+##      does escape so that we can always input a single backtick ` in
+##      inline code. However that makes impossible to input code with
+##      ``\`` at the end in *single* backticks, one must use *double*
+##      backticks::
+##
+##        `\`   -- WRONG
+##        ``\`` -- GOOD
+##        So single backticks can always be input: `\`` will turn to ` code
+##
 ## Limitations
 ## -----------
 ##
@@ -994,8 +1020,22 @@ proc expect(p: var RstParser, tok: string) =
   if currentTok(p).symbol == tok: inc p.idx
   else: rstMessage(p, meExpected, tok)
 
-proc isInlineMarkupEnd(p: RstParser, markup: string, exact: bool): bool =
+proc inlineMarkdownEnd(p: RstParser): bool =
+  result = prevTok(p).kind notin {tkIndent, tkWhite}
+  ## (For a special case of ` we don't allow spaces surrounding it
+  ## unlike original Markdown because this behavior confusing/useless)
+
+proc inlineRstEnd(p: RstParser): bool =
   # rst rules: https://docutils.sourceforge.io/docs/ref/rst/restructuredtext.html#inline-markup-recognition-rules
+  # Rule 2:
+  result = prevTok(p).kind notin {tkIndent, tkWhite}
+  if not result: return
+  # Rule 7:
+  result = nextTok(p).kind in {tkIndent, tkWhite, tkEof} or
+      nextTok(p).symbol[0] in
+      {'\'', '\"', ')', ']', '}', '>', '-', '/', '\\', ':', '.', ',', ';', '!', '?', '_'}
+
+proc isInlineMarkupEnd(p: RstParser, markup: string, exact: bool): bool =
   if exact:
     result = currentTok(p).symbol == markup
   else:
@@ -1004,55 +1044,58 @@ proc isInlineMarkupEnd(p: RstParser, markup: string, exact: bool): bool =
       # check that escaping may have splitted `` to 2 tokens ` and `
       result = currentTok(p).symbol == "`" and prevTok(p).symbol == "`"
   if not result: return
-  # Rule 2:
-  result = prevTok(p).kind notin {tkIndent, tkWhite}
-  if not result: return
-  # Rule 7:
-  result = nextTok(p).kind in {tkIndent, tkWhite, tkEof} or
-      (roPreferMarkdown in p.s.options and
-        markup in ["``", "`"] and
-        nextTok(p).kind in {tkIndent, tkWhite, tkWord, tkEof}) or
-      nextTok(p).symbol[0] in
-      {'\'', '\"', ')', ']', '}', '>', '-', '/', '\\', ':', '.', ',', ';', '!', '?', '_'}
-  if not result: return
-  # Rule 4:
-  if p.idx > 0:
-    # see bug #17260; for now `\` must be written ``\``, likewise with sequences
-    # ending in an un-escaped `\`; `\\` is legal but not `\\\` for example;
-    # for this reason we can't use `["``", "`"]` here.
-    if markup != "``" and prevTok(p).symbol == "\\":
-      result = false
+  # surroundings check
+  if markup in ["_", "__"]:
+    result = inlineRstEnd(p)
+  else:
+    if roPreferMarkdown in p.s.options: result = inlineMarkdownEnd(p)
+    else: result = inlineRstEnd(p)
 
-proc isInlineMarkupStart(p: RstParser, markup: string): bool =
-  # rst rules: https://docutils.sourceforge.io/docs/ref/rst/restructuredtext.html#inline-markup-recognition-rules
-  var d: char
-  if markup != "_`":
-    result = currentTok(p).symbol == markup
-  else:  # _` is a 2 token case
-    result = currentTok(p).symbol == "_" and nextTok(p).symbol == "`"
+proc rstRuleSurround(p: RstParser): bool =
+  result = true
+  # Rules 4 & 5:
+  if p.idx > 0:
+    var d: char
+    var c = prevTok(p).symbol[0]
+    case c
+    of '\'', '\"': d = c
+    of '(': d = ')'
+    of '[': d = ']'
+    of '{': d = '}'
+    of '<': d = '>'
+    else: d = '\0'
+    if d != '\0': result = nextTok(p).symbol[0] != d
+
+proc inlineMarkdownStart(p: RstParser): bool =
+  result = nextTok(p).kind notin {tkIndent, tkWhite, tkEof}
   if not result: return
-  # Rule 6:
+  # this rst rule is really nice, let us use it in Markdown mode too.
+  result = rstRuleSurround(p)
+
+proc inlineRstStart(p: RstParser): bool =
+  ## rst rules: https://docutils.sourceforge.io/docs/ref/rst/restructuredtext.html#inline-markup-recognition-rules
+  # Rule 6
   result = p.idx == 0 or prevTok(p).kind in {tkIndent, tkWhite} or
-      (markup in ["``", "`"] and prevTok(p).kind in {tkIndent, tkWhite, tkWord}) or
       prevTok(p).symbol[0] in {'\'', '\"', '(', '[', '{', '<', '-', '/', ':', '_'}
   if not result: return
   # Rule 1:
   result = nextTok(p).kind notin {tkIndent, tkWhite, tkEof}
   if not result: return
-  # Rules 4 & 5:
-  if p.idx > 0:
-    if prevTok(p).symbol == "\\":
-      result = false
-    else:
-      var c = prevTok(p).symbol[0]
-      case c
-      of '\'', '\"': d = c
-      of '(': d = ')'
-      of '[': d = ']'
-      of '{': d = '}'
-      of '<': d = '>'
-      else: d = '\0'
-      if d != '\0': result = nextTok(p).symbol[0] != d
+  result = rstRuleSurround(p)
+
+proc isInlineMarkupStart(p: RstParser, markup: string): bool =
+  if markup != "_`":
+    result = currentTok(p).symbol == markup
+  else:  # _` is a 2 token case
+    result = currentTok(p).symbol == "_" and nextTok(p).symbol == "`"
+  if not result: return
+  # surroundings check
+  if markup in ["_", "__", "[", "|"]:
+    # Note: we require space/punctuation even before [markdown link](...)
+    result = inlineRstStart(p)
+  else:
+    if roPreferMarkdown in p.s.options: result = inlineMarkdownStart(p)
+    else: result = inlineRstStart(p)
 
 proc match(p: RstParser, start: int, expr: string): bool =
   # regular expressions are:
@@ -1151,6 +1194,18 @@ proc toOtherRole(n: PRstNode, kind: RstNodeKind, roleName: string): PRstNode =
 proc parsePostfix(p: var RstParser, n: PRstNode): PRstNode =
   var newKind = n.kind
   var newSons = n.sons
+
+  proc finalizeInterpreted(node: PRstNode, newKind: RstNodeKind,
+                           newSons: seq[PRstNode], roleName: string):
+                          PRstNode {.nimcall.} =
+    # fixes interpreted text (`x` or `y`:role:) to proper internal AST format
+    if newKind in {rnUnknownRole, rnCodeFragment}:
+      result = node.toOtherRole(newKind, roleName)
+    elif newKind == rnInlineCode:
+      result = node.toInlineCode(language=roleName)
+    else:
+      result = newRstNode(newKind, newSons)
+
   if isInlineMarkupEnd(p, "_", exact=true) or
       isInlineMarkupEnd(p, "__", exact=true):
     inc p.idx
@@ -1175,19 +1230,10 @@ proc parsePostfix(p: var RstParser, n: PRstNode): PRstNode =
     # a role:
     let (roleName, lastIdx) = getRefname(p, p.idx+1)
     newKind = whichRole(p, roleName)
-    if newKind in {rnUnknownRole, rnCodeFragment}:
-      result = n.toOtherRole(newKind, roleName)
-    elif newKind == rnInlineCode:
-      result = n.toInlineCode(language=roleName)
-    else:
-      result = newRstNode(newKind, newSons)
+    result = n.finalizeInterpreted(newKind, newSons, roleName)
     p.idx = lastIdx + 2
   else:
-    if p.s.currRoleKind == rnInlineCode:
-      result = n.toInlineCode(language=p.s.currRole)
-    else:
-      newKind = p.s.currRoleKind
-      result = newRstNode(newKind, newSons)
+    result = n.finalizeInterpreted(p.s.currRoleKind, newSons, p.s.currRole)
 
 proc matchVerbatim(p: RstParser, start: int, expr: string): int =
   result = start
@@ -1260,10 +1306,7 @@ proc parseWordOrRef(p: var RstParser, father: PRstNode) =
 
 proc parseBackslash(p: var RstParser, father: PRstNode) =
   assert(currentTok(p).kind == tkPunct)
-  if currentTok(p).symbol == "\\\\":
-    father.add newLeaf("\\")
-    inc p.idx
-  elif currentTok(p).symbol == "\\":
+  if currentTok(p).symbol == "\\":
     # XXX: Unicode?
     inc p.idx
     if currentTok(p).kind != tkWhite: father.add(newLeaf(p))
@@ -1294,11 +1337,20 @@ proc parseUntil(p: var RstParser, father: PRstNode, postfix: string,
         break
       else:
         if postfix == "`":
-          if prevTok(p).symbol == "\\" and currentTok(p).symbol == "`":
-            father.sons[^1] = newLeaf(p) # instead, we should use lookahead
+          if currentTok(p).symbol == "\\":
+            if nextTok(p).symbol == "\\":
+              father.add newLeaf("\\")
+              father.add newLeaf("\\")
+              inc p.idx, 2
+            elif nextTok(p).symbol == "`":  # escape `
+              father.add newLeaf("`")
+              inc p.idx, 2
+            else:
+              father.add newLeaf("\\")
+              inc p.idx
           else:
             father.add(newLeaf(p))
-          inc p.idx
+            inc p.idx
         else:
           if interpretBackslash:
             parseBackslash(p, father)
@@ -1867,10 +1919,10 @@ proc whichSection(p: RstParser): RstNodeKind =
     elif match(p, p.idx, "(e) ") or match(p, p.idx, "e) ") or
          match(p, p.idx, "e. "):
       result = rnEnumList
-    elif isDefList(p):
-      result = rnDefList
     elif isOptionList(p):
       result = rnOptionList
+    elif isDefList(p):
+      result = rnDefList
     else:
       result = rnParagraph
   of tkWord, tkOther, tkWhite:

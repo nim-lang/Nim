@@ -424,11 +424,12 @@ proc listPackages(packageFilter: string): seq[NimblePackage] =
     # at least should be a regex; a substring match makes no sense.
     result = pkgs.filterIt(packageFilter in it.name)
   else:
-    let pkgs1 = pkgs.filterIt(it.allowFailure)
-    let pkgs2 = pkgs.filterIt(not it.allowFailure)
     if testamentData0.batchArg == "allowed_failures":
-      result = pkgs1
+      result = pkgs.filterIt(it.allowFailure)
+    elif testamentData0.testamentNumBatch == 0:
+      result = pkgs
     else:
+      let pkgs2 = pkgs.filterIt(not it.allowFailure)
       for i in 0..<pkgs2.len:
         if i mod testamentData0.testamentNumBatch == testamentData0.testamentBatch:
           result.add pkgs2[i]
@@ -501,7 +502,7 @@ proc testNimblePackages(r: var TResults; cat: Category; packageFilter: string) =
 proc icTests(r: var TResults; testsDir: string, cat: Category, options: string;
              isNavigatorTest: bool) =
   const
-    tooltests = ["compiler/nim.nim", "tools/nimgrep.nim"]
+    tooltests = ["compiler/nim.nim"]
     writeOnly = " --incremental:writeonly "
     readOnly = " --incremental:readonly "
     incrementalOn = " --incremental:on -d:nimIcIntegrityChecks "
@@ -517,6 +518,24 @@ proc icTests(r: var TResults; testsDir: string, cat: Category, options: string;
     test.spec.targets = {getTestSpecTarget()}
     testSpecWithNimcache(r, test, nimcache)
 
+  template checkTest() =
+    var test = makeRawTest(file, options, cat)
+    test.spec.cmd = compilerPrefix & " check --hint[Conf]:off --warnings:off --ic:on $options " & file
+    testSpecWithNimcache(r, test, nimcache)
+
+  if not isNavigatorTest:
+    for file in tooltests:
+      let nimcache = nimcacheDir(file, options, getTestSpecTarget())
+      removeDir(nimcache)
+
+      let oldPassed = r.passed
+      checkTest()
+
+      if r.passed == oldPassed+1:
+        checkTest()
+        if r.passed == oldPassed+2:
+          checkTest()
+
   const tempExt = "_temp.nim"
   for it in walkDirRec(testsDir):
     if isTestFile(it) and not it.endsWith(tempExt):
@@ -530,19 +549,6 @@ proc icTests(r: var TResults; testsDir: string, cat: Category, options: string;
         let oldPassed = r.passed
         editedTest(if isNavigatorTest: navTestConfig else: incrementalOn)
         if r.passed != oldPassed+1: break
-
-  if not isNavigatorTest and false:
-    for file in tooltests:
-      let nimcache = nimcacheDir(file, options, getTestSpecTarget())
-      removeDir(nimcache)
-
-      let oldPassed = r.passed
-      test writeOnly
-
-      if r.passed == oldPassed+1:
-        test readOnly
-        if r.passed == oldPassed+2:
-          test readOnly
 
 # ----------------------------------------------------------------------------
 
