@@ -347,7 +347,7 @@ running: v2
     let output = runNimCmdChk(input, fmt"""--genscript --nimcache:{nimcache2.quoteShell} --eval:"echo(12345)" """)
     doAssert output.len == 0, output
     let ext = when defined(windows): ".bat" else: ".sh"
-    let filename = fmt"compile_{input}{ext}" # synchronize with D20210524T214856
+    let filename = fmt"compile_{input}{ext}" # synchronize with `generateScript`
     doAssert fileExists(nimcache2/filename), nimcache2/filename
     let (outp, status) = execCmdEx(genShellCmd(filename), options = {poStdErrToStdOut}, workingDir = nimcache2)
     doAssert status == 0, outp

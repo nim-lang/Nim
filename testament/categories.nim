@@ -684,8 +684,6 @@ proc processCategory(r: var TResults, cat: Category,
         jsTests(r, cat, options)
     of "dll":
       dllTests(r, cat, options)
-    of "flags":
-      flagTests(r, cat, options)
     of "gc":
       gcTests(r, cat, options)
     of "longgc":
