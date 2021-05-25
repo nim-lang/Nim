@@ -28,7 +28,6 @@ const
     "js",
     "ic",
     "lib",
-    "longgc",
     "manyloc",
     "nimble-packages",
     "niminaction",
@@ -39,7 +38,6 @@ const
     "coroutines",
     "osproc",
     "shouldfail",
-    "dir with space",
     "destructor"
   ]
 
