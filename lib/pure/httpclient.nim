@@ -578,7 +578,7 @@ proc newHttpClient*(userAgent = defUserAgent, maxRedirects = 5,
 
     proc syncProc(): string =
       var client = newHttpClient()
-      return client.getContent("http://example.com")
+      result = client.getContent("http://example.com")
 
     let exampleHtml = syncProc()
     assert "Example Domain" in exampleHtml
