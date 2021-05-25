@@ -576,13 +576,9 @@ proc newHttpClient*(userAgent = defUserAgent, maxRedirects = 5,
   runnableExamples:
     import std/strutils
 
-    proc syncProc(): string =
-      var client = newHttpClient()
-      result = client.getContent("http://example.com")
-
-    let exampleHtml = syncProc()
+    let exampleHtml = newHttpClient().getContent("http://example.com")
     assert "Example Domain" in exampleHtml
-    assert not ("Pizza" in exampleHtml)
+    assert "Pizza" notin exampleHtml
 
   new result
   result.headers = headers
