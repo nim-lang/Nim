@@ -48,13 +48,18 @@ type
     joptEnumOrd
     joptEnumSymbol
     joptEnumString
+  JsonNodeMode* = enum ## controls `toJson` for JsonNode types
+    joptJsonNodeAsRef ## returns the ref as is
+    joptJsonNodeAsCopy ## returns a deep copy of the JsonNode
+    joptJsonNodeAsObject ## treats JsonNode as a regular ref object
   ToJsonOptions* = object
     enumMode*: EnumMode
+    jsonNodeMode*: JsonNodeMode
     # xxx charMode, etc
 
 proc initToJsonOptions*(): ToJsonOptions =
   ## initializes `ToJsonOptions` with sane options.
-  ToJsonOptions(enumMode: joptEnumOrd)
+  ToJsonOptions(enumMode: joptEnumOrd, jsonNodeMode: joptJsonNodeAsRef)
 
 proc isNamedTuple(T: typedesc): bool {.magic: "TypeTrait".}
 proc distinctBase(T: typedesc): typedesc {.magic: "TypeTrait".}
@@ -286,13 +291,15 @@ proc toJson*[T](a: T, opt = initToJsonOptions()): JsonNode =
       result = newJArray()
       for v in a.fields: result.add toJson(v, opt)
   elif T is ref | ptr:
-    when T is JsonNode:
-      # xxx this should be the default, but we could customize this via some
-      # flags in `ToJsonOptions`, e.g. `jsonNodeDeepCopy` or `jsonNodeAsObject`.
-      result = a
-    else:
+    template impl =
       if system.`==`(a, nil): result = newJNull()
       else: result = toJson(a[], opt)
+    when T is JsonNode:
+      case opt.jsonNodeMode
+      of joptJsonNodeAsRef: result = a
+      of joptJsonNodeAsCopy: result = copy(a)
+      of joptJsonNodeAsObject: impl()
+    else: impl()
   elif T is array | seq | set:
     result = newJArray()
     for ai in a: result.add toJson(ai, opt)

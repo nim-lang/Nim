@@ -69,7 +69,8 @@
 
 - `jsonutils` now serializes/deserializes holey enums as regular enums (via `ord`) instead of as strings.
   Use `-d:nimLegacyJsonutilsHoleyEnum` for a transition period. `toJson` now serializes `JsonNode`
-  as is (without a deep copy) instead of treating `JsonNode` as a regular ref object.
+  as is via reference (without a deep copy) instead of treating `JsonNode` as a regular ref object,
+  this can be customized via `jsonNodeMode`.
 
 - `json` and `jsonutils` now serialize NaN, Inf, -Inf as strings, so that
   `%[NaN, -Inf]` is the string `["nan","-inf"]` instead of `[nan,-inf]` which was invalid json.

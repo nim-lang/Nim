@@ -95,6 +95,24 @@ template fn() =
     let a = ((1, 2.5, "abc").toJson, (3, 4.5, "foo"))
     testRoundtripVal(a): """[[1,2.5,"abc"],[3,4.5,"foo"]]"""
 
+    block:
+      template toInt(a): untyped = cast[int](a)
+
+      let a = 3.toJson
+      let b = (a, a)
+
+      let c1 = b.toJson
+      doAssert c1[0].toInt == a.toInt
+      doAssert c1[1].toInt == a.toInt
+
+      let c2 = b.toJson(ToJsonOptions(jsonNodeMode: joptJsonNodeAsCopy))
+      doAssert c2[0].toInt != a.toInt
+      doAssert c2[1].toInt != c2[0].toInt
+      doAssert c2[1] == c2[0]
+
+      let c3 = b.toJson(ToJsonOptions(jsonNodeMode: joptJsonNodeAsObject))
+      doAssert $c3 == """[{"isUnquoted":false,"kind":2,"num":3},{"isUnquoted":false,"kind":2,"num":3}]"""
+
   block: # ToJsonOptions
     let a = (me1, me2)
     doAssert $a.toJson() == "[1,2]"
