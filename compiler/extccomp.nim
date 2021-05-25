@@ -942,101 +942,56 @@ proc jsonBuildInstructionsFile*(conf: ConfigRef): AbsoluteFile =
   # works out of the box with `hashMainCompilationParams`.
   result = getNimcacheDir(conf) / conf.outFile.changeFileExt("json")
 
+import std/jsonutils
 proc writeJsonBuildInstructions*(conf: ConfigRef) =
-  # xxx use std/json instead, will result in simpler, more maintainable code.
-  template lit(x: string) = f.write x
-  template str(x: string) =
-    buf.setLen 0
-    escapeJson(x, buf)
-    f.write buf
-
-  proc cfiles(conf: ConfigRef; f: File; buf: var string; clist: CfileList, isExternal: bool) =
-    var comma = false
+  proc cfiles(clist: CfileList): JsonNode =
+    result = newJArray()
     for i, it in clist:
+      echo (it.cname, it.flags, "D20210525T094642")
       if CfileFlag.Cached in it.flags: continue
-      let compileCmd = getCompileCFileCmd(conf, it)
-      if comma: lit ",\L" else: comma = true
-      lit "["
-      str it.cname.string
-      lit ", "
-      str compileCmd
-      lit "]"
+      result.add toJson([it.cname.string, getCompileCFileCmd(conf, it)])
 
-  proc linkfiles(conf: ConfigRef; f: File; buf, objfiles: var string; clist: CfileList;
-                 llist: seq[string]) =
-    var pastStart = false
+  proc linkfiles(objfiles: var string; clist: CfileList; llist: seq[string]): JsonNode =
+    result = newJArray()
     template impl(path) =
-      let path2 = quoteShell(path)
-      objfiles.add(' ')
-      objfiles.add(path2)
-      if pastStart: lit ",\L"
-      str path2
-      pastStart = true
+      objfiles.add ' '  & quoteShell(path)
+      result.add path.toJson # xxx WAS:quoteShell
     for it in llist:
       let objfile = if noAbsolutePaths(conf): it.extractFilename else: it
-      impl(addFileExt(objfile, CC[conf.cCompiler].objExt))
+      impl(objfile.addFileExt(CC[conf.cCompiler].objExt))
     for it in clist:
       impl(it.obj)
-    lit "\L"
 
-  proc depfiles(conf: ConfigRef; f: File; buf: var string) =
-    var i = 0
+  proc depfiles(): JsonNode =
+    result = newJArray()
     for it in conf.m.fileInfos:
       let path = it.fullPath.string
       if isAbsolute(path): # TODO: else?
-        if i > 0: lit "],\L"
-        lit "["
-        str path
-        lit ", "
-        str $secureHashFile(path)
-        inc i
-    lit "]\L"
+        result.add toJson((path, $secureHashFile(path)))
 
-
-  var buf = newStringOfCap(50)
-  let jsonFile = conf.jsonBuildInstructionsFile
-  conf.jsonBuildFile = jsonFile
   let output = conf.absOutFile
-
-  var f: File
-  if open(f, jsonFile.string, fmWrite):
-    lit "{\L"
-    lit "\"outputFile\": "
-    str $output
-
-    lit ",\L\"compile\":[\L"
-    cfiles(conf, f, buf, conf.toCompile, false)
-    lit "],\L\"link\":[\L"
-    var objfiles = ""
-    # XXX add every file here that is to link
-    linkfiles(conf, f, buf, objfiles, conf.toCompile, conf.externalToLink)
-
-    lit "],\L\"linkcmd\": "
-    str getLinkCmd(conf, output, objfiles)
-
-    lit ",\L\"extraCmds\": "
-    lit $(%* getExtraCmds(conf, conf.absOutFile))
-
-    lit ",\L\"stdinInput\": "
-    lit $(%* conf.projectIsStdin)
-    lit ",\L\"projectIsCmd\": "
-    lit $(%* conf.projectIsCmd)
-    lit ",\L\"cmdInput\": "
-    lit $(%* conf.cmdInput)
-    lit ",\L\"currentDir\": "
-    lit $(%* getCurrentDir())
-
-    if optRun in conf.globalOptions or isDefined(conf, "nimBetterRun"):
-      lit ",\L\"cmdline\": "
-      str conf.commandLine
-      lit ",\L\"depfiles\":[\L"
-      depfiles(conf, f, buf)
-      lit "],\L\"nimexe\": \L"
-      str hashNimExe()
-      lit "\L"
-
-    lit "\L}\L"
-    close(f)
+  var objfiles = ""
+  let j = (
+    outputFile: $output,
+    compile: cfiles(conf.toCompile),
+    link: linkfiles(objfiles, conf.toCompile, conf.externalToLink),
+      # XXX add every file here that is to link
+    linkcmd: getLinkCmd(conf, output, objfiles),
+    extraCmds: getExtraCmds(conf, conf.absOutFile),
+    stdinInput: conf.projectIsStdin,
+    projectIsCmd: conf.projectIsCmd,
+    cmdInput: conf.cmdInput,
+    currentDir: getCurrentDir(),
+  ).toJson
+  if optRun in conf.globalOptions or isDefined(conf, "nimBetterRun"):
+    let j2 = (
+      cmdline: conf.commandLine,
+      depfiles: depfiles(),
+      nimexe: hashNimExe(),
+    ).toJson
+    for k,v in j2: j[k] = v
+  conf.jsonBuildFile = conf.jsonBuildInstructionsFile
+  conf.jsonBuildFile.string.writeFile(j.pretty)
 
 proc changeDetectedViaJsonBuildInstructions*(conf: ConfigRef; jsonFile: AbsoluteFile): bool =
   if not fileExists(jsonFile): return true
