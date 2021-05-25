@@ -574,7 +574,7 @@ proc newHttpClient*(userAgent = defUserAgent, maxRedirects = 5,
   ##
   ## `headers` specifies the HTTP Headers.
   runnableExamples:
-    import std/[httpclient, strutils]
+    import std/strutils
 
     proc syncProc(): string =
       var client = newHttpClient()
