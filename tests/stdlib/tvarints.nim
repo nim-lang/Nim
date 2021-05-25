@@ -1,15 +1,6 @@
-discard """
-  cmd:      "nim c -r --styleCheck:hint --panics:on $options $file"
-  matrix:   "-d:danger; -d:release"
-  targets:  "c cpp"
-  nimout:   ""
-  action:   "run"
-  exitcode: 0
-  timeout:  60.0
-"""
-
 import std/varints
 
+# xxx doesn't work with js: tvarints.nim(18, 14) `wrLen == rdLen`  [AssertionDefect]
 
 block:
   var dest: array[50, byte]
