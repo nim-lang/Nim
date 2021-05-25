@@ -617,7 +617,7 @@ proc newAsyncHttpClient*(userAgent = defUserAgent, maxRedirects = 5,
 
     proc asyncProc(): Future[string] {.async.} =
       let client = newAsyncHttpClient()
-      return await client.getContent("http://example.com")
+      result = await client.getContent("http://example.com")
 
     let exampleHtml = waitFor asyncProc()
     assert "Example Domain" in exampleHtml
