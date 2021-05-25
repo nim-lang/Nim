@@ -1,7 +1,5 @@
 discard """
-  cmd: "nim r --threads:on $file"
-  exitcode: 0
-  disabled: false
+  matrix: "--gc:arc --threads:on; --gc:arc --threads:on -d:danger; --threads:on"
 """
 
 import httpclient, asynchttpserver, asyncdispatch, asyncfutures
