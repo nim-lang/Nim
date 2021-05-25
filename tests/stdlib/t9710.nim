@@ -1,11 +1,6 @@
 discard """
-  cmd:      "nim c -r --debugger:native --panics:on $options $file"
-  targets:  "c"
-  nimout:   ""
-  action:   "run"
-  exitcode: 0
-  timeout:  60.0
+  matrix: "--debugger:native"
 """
-
+# bug #9710
 for i in 1 || 200:
   discard i
