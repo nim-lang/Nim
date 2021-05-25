@@ -1,1 +1,0 @@
-echo "from genscript"

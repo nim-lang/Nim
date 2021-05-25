@@ -23,7 +23,6 @@ const
     "debugger",
     "dll",
     "examples",
-    "flags",
     "gc",
     "io",
     "js",
@@ -47,26 +46,6 @@ const
 proc isTestFile*(file: string): bool =
   let (_, name, ext) = splitFile(file)
   result = ext == ".nim" and name.startsWith("t")
-
-# --------------------- flags tests -------------------------------------------
-
-proc flagTests(r: var TResults, cat: Category, options: string) =
-  # --genscript
-  const filename = testsDir/"flags"/"tgenscript"
-  const genopts = " --genscript"
-  let nimcache = nimcacheDir(filename, genopts, targetC)
-  testSpec r, makeTest(filename, genopts, cat)
-
-  when defined(windows):
-    testExec r, makeTest(filename, " cmd /c cd " & nimcache &
-                         " && compile_tgenscript.bat", cat)
-
-  elif defined(posix):
-    testExec r, makeTest(filename, " sh -c \"cd " & nimcache &
-                         " && sh compile_tgenscript.sh\"", cat)
-
-  # Run
-  testExec r, makeTest(filename, " " & nimcache / "tgenscript", cat)
 
 # --------------------- DLL generation tests ----------------------------------
 
