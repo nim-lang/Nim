@@ -997,52 +997,18 @@ proc changeDetectedViaJsonBuildInstructions*(conf: ConfigRef; jsonFile: Absolute
   if not fileExists(jsonFile): return true
   if not fileExists(conf.absOutFile): return true
   result = false
-  try:
-    let data = json.parseFile(jsonFile.string)
-    for key in "depfiles cmdline stdinInput currentDir".split:
-      if not data.hasKey(key): return true
-    if getCurrentDir() != data["currentDir"].getStr:
-      # fixes bug #16271
-      # Note that simply comparing `expandFilename(projectFile)` would
-      # not be sufficient in case other flags depend implicitly on `getCurrentDir`,
-      # and would require much more care. Simply re-compiling is safer for now.
-      # A better strategy for future work would be to cache (with an LRU cache)
-      # the N most recent unique build instructions, as done with `rdmd`,
-      # which is both robust and avoids recompilation when switching back and forth
-      # between projects, see https://github.com/timotheecour/Nim/issues/199
-      return true
-    let oldCmdLine = data["cmdline"].getStr
-    if conf.commandLine != oldCmdLine:
-      return true
-    if hashNimExe() != data["nimexe"].getStr:
-      return true
-    let stdinInput = data["stdinInput"].getBool
-    let projectIsCmd = data["projectIsCmd"].getBool
-    if conf.projectIsStdin or stdinInput:
-      # could optimize by returning false if stdin input was the same,
-      # but I'm not sure how to get full stding input
-      return true
-
-    if conf.projectIsCmd or projectIsCmd:
-      if not (conf.projectIsCmd and projectIsCmd): return true
-      if not data.hasKey("cmdInput"): return true
-      let cmdInput = data["cmdInput"].getStr
-      if cmdInput != conf.cmdInput: return true
-
-    let depfilesPairs = data["depfiles"]
-    doAssert depfilesPairs.kind == JArray
-    for p in depfilesPairs:
-      doAssert p.kind == JArray
-      # >= 2 for forwards compatibility with potential later .json files:
-      doAssert p.len >= 2
-      let depFilename = p[0].getStr
-      let oldHashValue = p[1].getStr
-      let newHashValue = $secureHashFile(depFilename)
-      if oldHashValue != newHashValue:
-        return true
+  var bcache: BuildCache
+  try: bcache.fromJson(jsonFile.string.parseFile)
   except IOError, OSError, ValueError:
-    echo "Warning: JSON processing failed: ", getCurrentExceptionMsg()
-    result = true
+    stderr.write "Warning: JSON processing failed: $#\n" % getCurrentExceptionMsg()
+    return true
+  if bcache.currentDir != getCurrentDir() or # fixes bug #16271
+     bcache.cmdline != conf.commandLine or bcache.nimexe != hashNimExe() or
+     bcache.projectIsCmd != conf.projectIsCmd or conf.cmdInput != bcache.cmdInput: return true
+  if bcache.stdinInput or conf.projectIsStdin: return true
+    # xxx optimize by returning false if stdin input was the same
+  for (file, hash) in bcache.depfiles:
+    if $secureHashFile(file) != hash: return true
 
 proc runJsonBuildInstructions*(conf: ConfigRef; jsonFile: AbsoluteFile) =
   try:
