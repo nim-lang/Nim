@@ -15,6 +15,7 @@
 import ropes, platform, condsyms, options, msgs, lineinfos, pathutils
 
 import os, strutils, osproc, std/sha1, streams, sequtils, times, strtabs, json
+from sugar import collect
 
 type
   TInfoCCProp* = enum         # properties of the C compiler:
@@ -959,12 +960,8 @@ type BuildCache = object
   nimexe: string
 
 proc writeJsonBuildInstructions*(conf: ConfigRef) =
-  proc cfiles(clist: CfileList): seq[(string, string)] =
-    for i, it in clist:
-      if CfileFlag.Cached notin it.flags:
-        result.add (it.cname.string, getCompileCFileCmd(conf, it))
-
-  proc linkfiles(objfiles: var string; clist: CfileList; llist: seq[string]): seq[string] =
+  var objfiles = ""
+  proc linkfiles(clist: CfileList; llist: seq[string]): seq[string] =
     template impl(path) =
       objfiles.add ' '  & quoteShell(path)
       result.add path.string # xxx WAS:quoteShell
@@ -974,30 +971,24 @@ proc writeJsonBuildInstructions*(conf: ConfigRef) =
     for it in clist:
       impl(it.obj)
 
-  proc depfiles(): seq[(string, string)] =
-    for it in conf.m.fileInfos:
-      let path = it.fullPath.string
-      if isAbsolute(path): # TODO: else?
-        result.add (path, $secureHashFile(path))
-
   let output = conf.absOutFile
-  var objfiles = ""
-
   var bcache = BuildCache(
     outputFile: $output,
-    compile: cfiles(conf.toCompile),
-    link: linkfiles(objfiles, conf.toCompile, conf.externalToLink),
-      # XXX add every file here that is to link
+    compile: collect(for i, it in conf.toCompile:
+      if CfileFlag.Cached notin it.flags: (it.cname.string, getCompileCFileCmd(conf, it))),
+    link: linkfiles(conf.toCompile, conf.externalToLink),
     linkcmd: getLinkCmd(conf, output, objfiles),
     extraCmds: getExtraCmds(conf, conf.absOutFile),
     stdinInput: conf.projectIsStdin,
     projectIsCmd: conf.projectIsCmd,
     cmdInput: conf.cmdInput,
-    currentDir: getCurrentDir(),
-  )
+    currentDir: getCurrentDir())
   if optRun in conf.globalOptions or isDefined(conf, "nimBetterRun"):
     bcache.cmdline = conf.commandLine
-    bcache.depfiles = depfiles()
+    bcache.depfiles = collect(for it in conf.m.fileInfos:
+      let path = it.fullPath.string
+      if isAbsolute(path): # TODO: else?
+        (path, $secureHashFile(path)))
     bcache.nimexe = hashNimExe()
   conf.jsonBuildFile = conf.jsonBuildInstructionsFile
   conf.jsonBuildFile.string.writeFile(bcache.toJson.pretty)
