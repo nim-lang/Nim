@@ -72,7 +72,7 @@ template `.=`*[T](s: SharedPtr[T]; field, value: untyped) =
 from macros import unpackVarargs
 
 template `.()`*[T](s: SharedPtr[T]; field: untyped, args: varargs[untyped]): untyped =
-  unpackVarargs(s.x.field, args)
+  s.x.field(args)
 
 
 type

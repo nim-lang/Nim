@@ -1681,7 +1681,8 @@ macro getCustomPragmaVal*(n: typed, cp: typed): untyped =
   else:
     error(n.repr & " doesn't have a pragma named " & cp.repr, n)
 
-macro unpackVarargs*(callee: untyped; args: varargs[untyped]): untyped =
+macro unpackVarargs*(callee: untyped; args: varargs[untyped]): untyped
+  {.deprecated: "use directly `callee(args)`".} =
   result = newCall(callee)
   for i in 0 ..< args.len:
     result.add args[i]

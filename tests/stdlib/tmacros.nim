@@ -10,3 +10,14 @@ block: # hasArgOfName
 
 block: # bug #17454
   proc f(v: NimNode): string {.raises: [].} = $v
+
+block: # unpackVarargs
+  proc bar1(a: varargs[int]): string =
+    for ai in a: result.add " " & $ai
+  proc bar2(a: varargs[int]) =
+    let s1 = bar1(a)
+    let s2 = unpackVarargs(bar1, a) # `unpackVarargs` doesn't seem useful...
+    doAssert s1 == s2
+  bar2(1, 2, 3)
+  bar2(1)
+  bar2()
