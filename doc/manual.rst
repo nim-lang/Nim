@@ -2985,6 +2985,7 @@ Example:
   of "delete-everything", "restart-computer":
     echo "permission denied"
   of "go-for-a-walk":     echo "please yourself"
+  elif defined(windows):  echo "bsod"
   else:                   echo "unknown command"
 
   # indentation of the branches is also allowed; and so is an optional colon
