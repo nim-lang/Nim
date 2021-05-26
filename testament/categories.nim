@@ -87,8 +87,9 @@ proc runBasicDLLTest(c, r: var TResults, cat: Category, options: string) =
     var hcri = makeTest("tests/dll/nimhcr_integration.nim",
                                    options & " --forceBuild --hotCodeReloading:on" & rpath, cat)
     let nimcache = nimcacheDir(hcri.name, hcri.options, getTestSpecTarget())
-    hcri.args = prepareTestArgs(hcri.spec.getCmd, hcri.name,
+    let cmd = prepareTestCmd(hcri.spec.getCmd, hcri.name,
                                 hcri.options, nimcache, getTestSpecTarget())
+    hcri.testArgs = cmd.parseCmdLine
     testSpec r, hcri
 
 proc dllTests(r: var TResults, cat: Category, options: string) =
