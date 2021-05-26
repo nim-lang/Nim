@@ -963,25 +963,18 @@ type BuildCache = object
   nimexe: string
 
 proc writeJsonBuildInstructions*(conf: ConfigRef) =
-  var objfiles = ""
-  proc linkfiles(clist: CfileList; llist: seq[string]): seq[string] =
-    template impl(path) =
-      objfiles.add ' '  & quoteShell(path)
-      result.add path.string # xxx WAS:quoteShell
-    for it in llist:
-      let objfile = if noAbsolutePaths(conf): it.extractFilename else: it
-      impl(objfile.addFileExt(CC[conf.cCompiler].objExt))
-    for it in clist:
-      impl(it.obj)
-
-  let output = conf.absOutFile
+  var linkFiles = collect(for it in conf.externalToLink:
+    var it = it
+    if conf.noAbsolutePaths: it = it.extractFilename
+    it.addFileExt(CC[conf.cCompiler].objExt))
+  for it in conf.toCompile: linkFiles.add it.obj.string
   var bcache = BuildCache(
     cacheVersion: cacheVersion,
-    outputFile: $output,
+    outputFile: conf.absOutFile.string,
     compile: collect(for i, it in conf.toCompile:
       if CfileFlag.Cached notin it.flags: (it.cname.string, getCompileCFileCmd(conf, it))),
-    link: linkfiles(conf.toCompile, conf.externalToLink),
-    linkcmd: getLinkCmd(conf, output, objfiles),
+    link: linkFiles,
+    linkcmd: getLinkCmd(conf, conf.absOutFile, linkFiles.quoteShellCommand),
     extraCmds: getExtraCmds(conf, conf.absOutFile),
     stdinInput: conf.projectIsStdin,
     projectIsCmd: conf.projectIsCmd,
