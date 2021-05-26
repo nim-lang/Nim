@@ -2997,19 +2997,22 @@ Example:
     else:                   echo "unknown command"
 
 
-The `case` statement is similar to the if statement, but it represents
+The `case` statement is similar to the `if` statement, but it represents
 a multi-branch selection. The expression after the keyword `case` is
 evaluated and if its value is in a *slicelist* the corresponding statements
 (after the `of` keyword) are executed. If the value is not in any
-given *slicelist* the `else` part is executed. If there is no `else`
-part and not all possible values that `expr` can hold occur in a
-*slicelist*, a static error occurs. This holds only for expressions of
-ordinal types. "All possible values" of `expr` are determined by `expr`'s
-type. To suppress the static error an `else` part with an
-empty `discard` statement should be used.
+given *slicelist*, trailing `elif` and `else` parts are executed using same
+semantics as for `if` statement. If there are no `else` or `elif` parts and not
+all possible values that `expr` can hold occur in a *slicelist*, a static error occurs.
+This holds only for expressions of ordinal types.
+"All possible values" of `expr` are determined by `expr`'s type.
+To suppress the static error an `else: discard` should be used.
 
 For non-ordinal types, it is not possible to list every possible value and so
 these always require an `else` part.
+An exception to this rule is for the `string` type, which currently doesn't
+require a trailing `else` or `elif` branch; it's unspecified whether this will
+keep working in future versions.
 
 Because case statements are checked for exhaustiveness during semantic analysis,
 the value in every `of` branch must be a constant expression.
@@ -3055,15 +3058,15 @@ won't work:
   var foo = Foo(x: @[])
   foo.get_x().add("asd")
 
-This can be fixed by explicitly using `return`:
+This can be fixed by explicitly using `result` or `return`:
 
 .. code-block:: nim
   proc get_x(x: Foo): var seq[string] =
     case true
     of true:
-      return x.x
+      result = x.x
     else:
-      return x.x
+      result = x.x
 
 
 When statement
