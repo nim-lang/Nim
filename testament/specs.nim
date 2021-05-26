@@ -404,7 +404,7 @@ proc parseSpec*(filename: string): TSpec =
     result.err = reDisabled
 
   if nimoutFound and result.nimout.len == 0 and not result.nimoutFull:
-    doAssert false, "empty `nimout` is vacuously true, use `nimoutFull:true` if intentional"
+    result.parseErrors.addLine "empty `nimout` is vacuously true, use `nimoutFull:true` if intentional"
 
   result.inCurrentBatch = isCurrentBatch(testamentData0, filename) or result.unbatchable
   if not result.inCurrentBatch:
