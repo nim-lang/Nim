@@ -14,8 +14,7 @@
 
 import ropes, platform, condsyms, options, msgs, lineinfos, pathutils
 
-import os, strutils, osproc, std/sha1, streams, sequtils, times, strtabs, json
-from sugar import collect
+import std/[os, strutils, osproc, sha1, streams, sequtils, times, strtabs, json, jsonutils, sugar]
 
 type
   TInfoCCProp* = enum         # properties of the C compiler:
@@ -943,8 +942,6 @@ proc jsonBuildInstructionsFile*(conf: ConfigRef): AbsoluteFile =
   # works out of the box with `hashMainCompilationParams`.
   result = getNimcacheDir(conf) / conf.outFile.changeFileExt("json")
 
-import std/jsonutils
-
 const cacheVersion = "D20210525T193831" # update when `BuildCache` spec changes
 type BuildCache = object
   cacheVersion: string
@@ -994,7 +991,6 @@ proc writeJsonBuildInstructions*(conf: ConfigRef) =
 proc changeDetectedViaJsonBuildInstructions*(conf: ConfigRef; jsonFile: AbsoluteFile): bool =
   if not fileExists(jsonFile) or not fileExists(conf.absOutFile): return true
   var bcache: BuildCache
-  # bcache.fromJson(jsonFile.string.parseFile)
   try: bcache.fromJson(jsonFile.string.parseFile)
   except IOError, OSError, ValueError:
     stderr.write "Warning: JSON processing failed for $#: $#\n" % [jsonFile.string, getCurrentExceptionMsg()]
