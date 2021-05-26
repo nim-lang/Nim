@@ -648,8 +648,10 @@ proc getConstExpr(m: PSym, n: PNode; idgen: IdGenerator; g: ModuleGraph): PNode 
   #  incl(result.flags, nfAllConst)
   of nkPar, nkTupleConstr:
     # tuple constructor
+    echo (n.kind, n.len, n.renderTree)
     result = copyNode(n)
     if (n.len > 0) and (n[0].kind == nkExprColonExpr):
+      echo "zook1"
       for i, expr in n.pairs:
         let exprNew = copyNode(expr) # nkExprColonExpr
         exprNew.add expr[0]
@@ -658,11 +660,20 @@ proc getConstExpr(m: PSym, n: PNode; idgen: IdGenerator; g: ModuleGraph): PNode 
         exprNew.add a
         result.add exprNew
     else:
+      echo "zook2"
       for i, expr in n.pairs:
         let a = getConstExpr(m, expr, idgen, g)
         if a == nil: return nil
         result.add a
     incl(result.flags, nfAllConst)
+    echo "D20210526T160922 result.repr"
+    echo "aaaaaaaaaaa"
+    echo result.renderTree
+    echo "bbbbbbbbbb"
+    echo n.renderTree
+    # echo " "
+    # echo result.repr
+    echo "------------- "
   of nkChckRangeF, nkChckRange64, nkChckRange:
     var a = getConstExpr(m, n[0], idgen, g)
     if a == nil: return

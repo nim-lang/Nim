@@ -1006,6 +1006,9 @@ proc gsub(g: var TSrcGen, n: PNode, c: TContext, fromStmtList = false) =
   var
     a: TContext
   if shouldRenderComment(g, n): pushCom(g, n)
+  # dbg n.kind
+  # echo n.kind, c.config$n.info
+  echo n.kind
   case n.kind                 # atoms:
   of nkTripleStrLit: put(g, tkTripleStrLit, atom(g, n))
   of nkEmpty: discard
@@ -1207,7 +1210,9 @@ proc gsub(g: var TSrcGen, n: PNode, c: TContext, fromStmtList = false) =
     put(g, tkParRi, ")")
   of nkTupleConstr:
     put(g, tkParLe, "(")
+    # echo "D20210526T160523"
     gcomma(g, n, c)
+    # echo ("D20210526T160523.2", n.len, n[0].kind, n.kind)
     if n.len == 1 and n[0].kind != nkExprColonExpr: put(g, tkComma, ",")
     put(g, tkParRi, ")")
   of nkCurly:
