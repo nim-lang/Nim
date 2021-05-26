@@ -994,15 +994,14 @@ proc writeJsonBuildInstructions*(conf: ConfigRef) =
   conf.jsonBuildFile.string.writeFile(bcache.toJson.pretty)
 
 proc changeDetectedViaJsonBuildInstructions*(conf: ConfigRef; jsonFile: AbsoluteFile): bool =
-  if not fileExists(jsonFile): return true
-  if not fileExists(conf.absOutFile): return true
-  result = false
+  if not fileExists(jsonFile) or not fileExists(conf.absOutFile): return true
   var bcache: BuildCache
   try: bcache.fromJson(jsonFile.string.parseFile)
   except IOError, OSError, ValueError:
     stderr.write "Warning: JSON processing failed: $#\n" % getCurrentExceptionMsg()
     return true
   if bcache.currentDir != getCurrentDir() or # fixes bug #16271
+     bcache.outputFile != conf.absOutFile.string or
      bcache.cmdline != conf.commandLine or bcache.nimexe != hashNimExe() or
      bcache.projectIsCmd != conf.projectIsCmd or conf.cmdInput != bcache.cmdInput: return true
   if bcache.stdinInput or conf.projectIsStdin: return true
