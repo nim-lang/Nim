@@ -221,53 +221,6 @@ proc callNimCompiler(cmdTemplate, filename, options, nimcache: string,
     result.msg = matches[0]
   trimUnitSep result.msg
 
-proc callCCompiler(cmdTemplate, filename, options: string,
-                  target: TTarget): TSpec =
-  let cmd = prepareTestCmd(cmdTemplate, filename, options, nimcache = "", target)
-  doAssert false
-  #[
-  this code hasn't been run in a while, and should be removed which simplifies code
-  there are better ways to do this anyways (e.g. running c code from a nim file)
-  
-  the only place where this is called is:
-  `testC r, makeTest("tests/realtimeGC/cmain", cOptions, cat), actionRun`
-  which isn't run unless you call:
-  XDG_CONFIG_HOME= nim r --lib:lib --stacktrace:on testament/testament.nim r longgc
-
-  and this fails since at least nim 1.0 with:
-  testament/testament.nim(851) testament
-  testament/testament.nim(822) main
-  testament/categories.nim(713) processCategory
-  testament/categories.nim(189) longGCTests
-  testament/testament.nim(644) makeTest
-  testament/specs.nim(251) parseSpec
-  testament/specs.nim(184) extractSpec
-  lib/system/io.nim(861) readFile
-  Error: unhandled exception: cannot open: tests/realtimeGC/cmain.nim [IOError]
-
-  Also, `c[5 .. ^1]` is too magical.
-  ]#
-  let c = cmd.parseCmdLine
-  var p = startProcess(command = "gcc", args = c[5 .. ^1],
-                       options = {poStdErrToStdOut, poUsePath, poEvalCommand})
-  let outp = p.outputStream
-  var x = newStringOfCap(120)
-  result.nimout = ""
-  result.msg = ""
-  result.file = ""
-  result.output = ""
-  result.line = -1
-  while true:
-    if outp.readLine(x):
-      result.nimout.add(x & '\n')
-    elif not running(p):
-      break
-  close(p)
-  if p.peekExitCode == 0:
-    result.err = reSuccess
-  else:
-    result.err = reNimcCrash
-
 proc initResults: TResults =
   result.total = 0
   result.passed = 0
@@ -627,22 +580,6 @@ proc testSpecWithNimcache(r: var TResults, test: TTest; nimcache: string) {.used
     inc(r.total)
     var testClone = test
     testSpecHelper(r, testClone, test.spec, target, nimcache)
-
-proc testC(r: var TResults, test: TTest, action: TTestAction) =
-  # runs C code. Doesn't support any specs, just goes by exit code.
-  if not checkDisabled(r, test): return
-
-  let tname = test.name.addFileExt(".c")
-  inc(r.total)
-  maybeStyledEcho "Processing ", fgCyan, extractFilename(tname)
-  var given = callCCompiler(getCmd(TSpec()), test.name & ".c", test.options, targetC)
-  if given.err != reSuccess:
-    r.addResult(test, targetC, "", given.msg, given.err)
-  elif action == actionRun:
-    let exeFile = changeFileExt(test.name, ExeExt)
-    var (_, exitCode) = execCmdEx(exeFile, options = {poStdErrToStdOut, poUsePath})
-    if exitCode != 0: given.err = reExitcodesDiffer
-  if given.err == reSuccess: inc(r.passed)
 
 proc makeTest(test, options: string, cat: Category): TTest =
   result.cat = cat
