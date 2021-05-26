@@ -12,9 +12,8 @@
 
 # TODO: Clean up the exports a bit and everything else in general.
 
-import os, options
+import os, options, strbasics
 import std/private/since
-
 
 when hostOS == "solaris":
   {.passl: "-lsocket -lnsl".}
@@ -434,21 +433,17 @@ proc getHostByName*(name: string): Hostent {.tags: [ReadIOEffect].} =
     result.addrList = cstringArrayToSeq(s.h_addr_list)
   result.length = int(s.h_length)
 
+proc addCstring(result: var string, buf: array) =
+  # xxx move to std/strbasics, it's a common pattern
+  add(result, toOpenArray(buf, 0, cast[cstring](buf[0].addr).len - 1)
+
 proc getHostname*(): string {.tags: [ReadIOEffect].} =
   ## Returns the local hostname (not the FQDN)
   # https://tools.ietf.org/html/rfc1035#section-2.3.1
   # https://tools.ietf.org/html/rfc2181#section-11
-  const size = 256
-  result = newString(size)
-  when useWinVersion:
-    let success = winlean.gethostname(result, size)
-  else:
-    # Posix
-    let success = posix.gethostname(result, size)
-  if success != 0.cint:
-    raiseOSError(osLastError())
-  let x = len(cstring(result))
-  result.setLen(x)
+  var buf {.noinit.}: array[256, char]
+  if gethostname(buf[0].addr, buf.len) != 0: raiseOSError(osLastError())
+  addCstring(result, buf)
 
 proc getSockDomain*(socket: SocketHandle): Domain =
   ## Returns the socket's domain (AF_INET or AF_INET6).

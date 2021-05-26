@@ -1,8 +1,13 @@
+discard """
+  targets: "c cpp"
+"""
+
 import std/nativesockets
 import stdtest/testutils
 
 block:
   let hostname = getHostname()
+  echo hostname
   doAssert hostname.len > 0
 
 when defined(windows):
