@@ -621,22 +621,6 @@ proc testC(r: var TResults, test: TTest, action: TTestAction) =
     if exitCode != 0: given.err = reExitcodesDiffer
   if given.err == reSuccess: inc(r.passed)
 
-proc testExec(r: var TResults, test: TTest) =
-  # runs executable or script, just goes by exit code
-  if not checkDisabled(r, test): return
-
-  inc(r.total)
-  let (outp, errC) = execCmdEx(test.options.strip())
-  var given: TSpec
-  if errC == 0:
-    given.err = reSuccess
-  else:
-    given.err = reExitcodesDiffer
-    given.msg = outp
-
-  if given.err == reSuccess: inc(r.passed)
-  r.addResult(test, targetC, "", given.msg, given.err)
-
 proc makeTest(test, options: string, cat: Category): TTest =
   result.cat = cat
   result.name = test
