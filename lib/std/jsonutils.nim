@@ -286,12 +286,8 @@ proc toJson*[T](a: T, opt = initToJsonOptions()): JsonNode =
       result = newJArray()
       for v in a.fields: result.add toJson(v, opt)
   elif T is ref | ptr:
-    when T is JsonNode:
-      # xxx we could customize this by ignoring json special case
-      result = a
-    else:
-      if system.`==`(a, nil): result = newJNull()
-      else: result = toJson(a[], opt)
+    if system.`==`(a, nil): result = newJNull()
+    else: result = toJson(a[], opt)
   elif T is array | seq | set:
     result = newJArray()
     for ai in a: result.add toJson(ai, opt)

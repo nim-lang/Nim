@@ -945,7 +945,9 @@ proc jsonBuildInstructionsFile*(conf: ConfigRef): AbsoluteFile =
 
 import std/jsonutils
 
+const cacheVersion = "D20210525T192431" # update when `BuildCache` spec changes
 type BuildCache = object
+  cacheVersion: string
   outputFile: string
   compile: seq[(string, string)]
   link: seq[string]
@@ -973,6 +975,7 @@ proc writeJsonBuildInstructions*(conf: ConfigRef) =
 
   let output = conf.absOutFile
   var bcache = BuildCache(
+    cacheVersion: cacheVersion,
     outputFile: $output,
     compile: collect(for i, it in conf.toCompile:
       if CfileFlag.Cached notin it.flags: (it.cname.string, getCompileCFileCmd(conf, it))),
@@ -998,10 +1001,10 @@ proc changeDetectedViaJsonBuildInstructions*(conf: ConfigRef; jsonFile: Absolute
   var bcache: BuildCache
   try: bcache.fromJson(jsonFile.string.parseFile)
   except IOError, OSError, ValueError:
-    stderr.write "Warning: JSON processing failed: $#\n" % getCurrentExceptionMsg()
+    stderr.write "Warning: JSON processing failed for $#: $#\n" % [jsonFile.string.parseFile, getCurrentExceptionMsg()]
     return true
   if bcache.currentDir != getCurrentDir() or # fixes bug #16271
-     bcache.outputFile != conf.absOutFile.string or
+     bcache.cacheVersion != cacheVersion or bcache.outputFile != conf.absOutFile.string or
      bcache.cmdline != conf.commandLine or bcache.nimexe != hashNimExe() or
      bcache.projectIsCmd != conf.projectIsCmd or conf.cmdInput != bcache.cmdInput: return true
   if bcache.stdinInput or conf.projectIsStdin: return true
@@ -1010,47 +1013,27 @@ proc changeDetectedViaJsonBuildInstructions*(conf: ConfigRef; jsonFile: Absolute
     if $secureHashFile(file) != hash: return true
 
 proc runJsonBuildInstructions*(conf: ConfigRef; jsonFile: AbsoluteFile) =
-  try:
-    let data = json.parseFile(jsonFile.string)
-    let output = data["outputFile"].getStr
-    createDir output.parentDir
-    let outputCurrent = $conf.absOutFile
-    if output != outputCurrent:
-      # previously, any specified output file would be silently ignored;
-      # simply copying won't work in some cases, for example with `extraCmds`,
-      # so we just make it an error, user should use same command for jsonscript
-      # as was used with --compileOnly.
-      globalError(conf, gCmdLineInfo, "jsonscript command outputFile '$1' must match '$2' which was specified during --compileOnly, see \"outputFile\" entry in '$3' " % [outputCurrent, output, jsonFile.string])
-
-    let toCompile = data["compile"]
-    doAssert toCompile.kind == JArray
-    var cmds: TStringSeq
-    var prettyCmds: TStringSeq
-    let prettyCb = proc (idx: int) = writePrettyCmdsStderr(prettyCmds[idx])
-    for c in toCompile:
-      doAssert c.kind == JArray
-      doAssert c.len >= 2
-
-      cmds.add(c[1].getStr)
-      prettyCmds.add displayProgressCC(conf, c[0].getStr, c[1].getStr)
-
-    execCmdsInParallel(conf, cmds, prettyCb)
-
-    let linkCmd = data["linkcmd"]
-    doAssert linkCmd.kind == JString
-    execLinkCmd(conf, linkCmd.getStr)
-    if data.hasKey("extraCmds"):
-      let extraCmds = data["extraCmds"]
-      doAssert extraCmds.kind == JArray
-      for cmd in extraCmds:
-        doAssert cmd.kind == JString, $cmd.kind
-        let cmd2 = cmd.getStr
-        execExternalProgram(conf, cmd2, hintExecuting)
-
+  var bcache: BuildCache
+  try: bcache.fromJson(jsonFile.string.parseFile)
   except:
     let e = getCurrentException()
-    conf.quitOrRaise "\ncaught exception:\n" & e.msg & "\nstacktrace:\n" & e.getStackTrace() &
-         "error evaluating JSON file: " & jsonFile.string
+    conf.quitOrRaise "\ncaught exception:\n$#\nstacktrace:\n$#error evaluating JSON file: $#" %
+      [e.msg, e.getStackTrace(), jsonFile.string]
+  let output = bcache.outputFile
+  createDir output.parentDir
+  let outputCurrent = $conf.absOutFile
+  if output != outputCurrent or bcache.cacheVersion != cacheVersion:
+    globalError(conf, gCmdLineInfo,
+      "jsonscript command outputFile '$1' must match '$2' which was specified during --compileOnly, see \"outputFile\" entry in '$3' " %
+      [outputCurrent, output, jsonFile.string])
+  var cmds, prettyCmds: TStringSeq
+  let prettyCb = proc (idx: int) = writePrettyCmdsStderr(prettyCmds[idx])
+  for (name, cmd) in bcache.compile:
+    cmds.add cmd
+    prettyCmds.add displayProgressCC(conf, name, cmd)
+  execCmdsInParallel(conf, cmds, prettyCb)
+  execLinkCmd(conf, bcache.linkcmd)
+  for cmd in bcache.extraCmds: execExternalProgram(conf, cmd, hintExecuting)
 
 proc genMappingFiles(conf: ConfigRef; list: CfileList): Rope =
   for it in list:
