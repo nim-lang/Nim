@@ -53,8 +53,8 @@ Advanced command-line switches are:
 List of warnings
 ----------------
 
-Each warning can be activated individually with `--warning[NAME]:on|off`:option: or
-in a `push` pragma.
+Each warning can be activated individually with `--warning:NAME:on|off`:option: or
+in a `push` pragma with `{.warning[NAME]:on|off.}`.
 
 ==========================       ============================================
 Name                             Description
@@ -77,8 +77,8 @@ User                             Some user-defined warning.
 List of hints
 -------------
 
-Each hint can be activated individually with `--hint[NAME]:on|off`:option: or in a
-`push` pragma.
+Each hint can be activated individually with `--hint:NAME:on|off`:option: or in a
+`push` pragma with `{.hint[NAME]:on|off.}`.
 
 ==========================       ============================================
 Name                             Description
