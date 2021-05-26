@@ -20,17 +20,17 @@ template genTest(input, expected: string) =
       sanity = true
       await request.respond(Http200, "Good")
 
-  proc send_request(server: AsyncHttpServer): Future[AsyncResponse] {.async.} =
+  proc send_request(server: AsyncHttpServer, port: Port): Future[AsyncResponse] {.async.} =
     let client = newAsyncHttpClient()
     let headers = newHttpHeaders({"Transfer-Encoding": "chunked"})
-    let  clientResponse = await client.request("http://localhost:64123/", body=input, headers=headers, httpMethod=HttpPost)
+    let  clientResponse = await client.request("http://localhost:" & $port & "/", body=input, headers=headers, httpMethod=HttpPost)
     server.close()
     return clientResponse
 
   proc run_server(): void =
     let server = newAsyncHttpServer()
-    discard server.serve(Port(64123), my_handler)
-    discard waitFor server.send_request
+    discard server.serve(Port(0), my_handler)
+    discard waitFor server.send_request(server.getPort)
 
   spawn run_server()
   sync()
