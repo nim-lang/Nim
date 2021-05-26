@@ -194,7 +194,7 @@ proc searchInScopes*(c: PContext, s: PIdent; ambiguous: var bool): PSym =
 
   # module m1:
   proc bar1()=discard
-  proc fn*[T]
+  proc fn*[T] =
     mixin bar3
     proc bar2() = discard
     bar1() # ok, this is resolved as a symbol during generic prepass
