@@ -2985,8 +2985,8 @@ Example:
   of "delete-everything", "restart-computer":
     echo "permission denied"
   of "go-for-a-walk":     echo "please yourself"
-  elif defined(windows):  echo "bsod"
-  else:                   echo "unknown command"
+  elif defined(windows):  echo "bsod" # optional `elif` must come after `of` branches
+  else:                   echo "unknown command" # ditto
 
   # indentation of the branches is also allowed; and so is an optional colon
   # after the selecting expression:
