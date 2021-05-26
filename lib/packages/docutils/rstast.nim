@@ -349,8 +349,24 @@ proc renderRstToJson*(node: PRstNode): string =
   ##   }
   renderRstToJsonNode(node).pretty
 
+proc renderRstToText*(node: PRstNode): string =
+  ## minimal text representation of markup node
+  const code = {rnCodeFragment, rnInterpretedText, rnInlineLiteral, rnInlineCode}
+  if node == nil:
+    return ""
+  case node.kind
+  of rnLeaf, rnSmiley:
+    result.add node.text
+  else:
+    if node.kind in code: result.add "`"
+    for i in 0 ..< node.sons.len:
+      if node.kind in {rnInlineCode, rnCodeBlock} and i == 0:
+        continue  # omit language specifier
+      result.add renderRstToText(node.sons[i])
+    if node.kind in code: result.add "`"
+
 proc renderRstToStr*(node: PRstNode, indent=0): string =
-  ## Writes the parsed RST `node` into a compact string
+  ## Writes the parsed RST `node` into an AST tree with compact string
   ## representation in the format (one line per every sub-node):
   ## ``indent - kind - [text|level|order|adType] - anchor (if non-zero)``
   ## (suitable for debugging of RST parsing).

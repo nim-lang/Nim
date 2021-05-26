@@ -549,7 +549,7 @@ proc getAllRunnableExamplesImpl(d: PDoc; n: PNode, dest: var string,
         var msg = "Example:"
         if rdoccmd.len > 0: msg.add " cmd: " & rdoccmd
         dispA(d.conf, dest, "\n<p><strong class=\"examples_text\">$1</strong></p>\n",
-            "\n\\textbf{$1}\n", [msg])
+            "\n\n\\textbf{$1}\n", [msg])
         inc d.listingCounter
         let id = $d.listingCounter
         dest.add(d.config.getOrDefault"doc.listing_start" % [id, "langNim", ""])

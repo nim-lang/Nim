@@ -259,7 +259,7 @@ A2     A3
 A4     A5
 ====   === """
     let output1 = rstToLatex(input1, {})
-    doAssert "{|X|X|}" in output1  # 2 columns
+    doAssert "{LL}" in output1  # 2 columns
     doAssert count(output1, "\\\\") == 4  # 4 rows
     for cell in ["H0", "H1", "A0", "A1", "A2", "A3", "A4", "A5"]:
       doAssert cell in output1
@@ -274,7 +274,7 @@ A0     A1   X
        Ax   Y
 ====   ===  = """
     let output2 = rstToLatex(input2, {})
-    doAssert "{|X|X|X|}" in output2  # 3 columns
+    doAssert "{LLL}" in output2  # 3 columns
     doAssert count(output2, "\\\\") == 2  # 2 rows
     for cell in ["H0", "H1", "H", "A0", "A1", "X", "Ax", "Y"]:
       doAssert cell in output2

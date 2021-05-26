@@ -197,12 +197,14 @@ proc addRtfChar(dest: var string, c: char) =
   else: add(dest, c)
 
 proc addTexChar(dest: var string, c: char) =
-  # Escapes 10 special Latex characters. Note that [, ], and ` are not
+  # Escapes 10 special Latex characters and `. Note that [, ] are not
   # considered as such. TODO: neither is @, am I wrong?
   case c
   of '_', '{', '}', '$', '&', '#', '%': add(dest, "\\" & c)
   # \~ and \^ have a special meaning unless they are followed by {}
   of '~', '^': add(dest, "\\" & c & "{}")
+  # Latex loves to substitute ` to opening quote, even in texttt mode!
+  of '`': add(dest, "\\textasciigrave{}")
   # add {} to avoid gobbling up space by \textbackslash
   of '\\': add(dest, "\\textbackslash{}")
   else: add(dest, c)
@@ -760,6 +762,8 @@ proc renderHeadline(d: PDoc, n: PRstNode, result: var string) =
       sectionPrefix = rstnodeToRefname(n2) & "-"
       break
   var refname = sectionPrefix & rstnodeToRefname(n)
+  var tocName = esc(d.target, renderRstToText(n))
+    # for Latex: simple text without commands that may break TOC/hyperref
   if d.hasToc:
     var length = len(d.tocPart)
     setLen(d.tocPart, length + 1)
@@ -768,13 +772,14 @@ proc renderHeadline(d: PDoc, n: PRstNode, result: var string) =
     d.tocPart[length].header = tmp
 
     dispA(d.target, result, "\n<h$1><a class=\"toc-backref\"" &
-      "$2 href=\"#$5\">$3</a></h$1>", "\\rsth$4{$3}$2\n",
-      [$n.level, refname.idS, tmp, $chr(n.level - 1 + ord('A')), refname])
+      "$2 href=\"#$5\">$3</a></h$1>", "\\rsth$4[$6]{$3}$2\n",
+      [$n.level, refname.idS, tmp,
+       $chr(n.level - 1 + ord('A')), refname, tocName])
   else:
     dispA(d.target, result, "\n<h$1$2>$3</h$1>",
-                            "\\rsth$4{$3}$2\n", [
+                            "\\rsth$4[$5]{$3}$2\n", [
         $n.level, refname.idS, tmp,
-        $chr(n.level - 1 + ord('A'))])
+        $chr(n.level - 1 + ord('A')), tocName])
 
   # Generate index entry using spaces to indicate TOC level for the output HTML.
   assert n.level >= 0
@@ -802,9 +807,10 @@ proc renderOverline(d: PDoc, n: PRstNode, result: var string) =
     var tmp = ""
     for i in countup(0, len(n) - 1): renderRstToOut(d, n.sons[i], tmp)
     d.currentSection = tmp
+    var tocName = esc(d.target, renderRstToText(n))
     dispA(d.target, result, "<h$1$2><center>$3</center></h$1>",
-                   "\\rstov$4{$3}$2\n", [$n.level,
-        rstnodeToRefname(n).idS, tmp, $chr(n.level - 1 + ord('A'))])
+                   "\\rstov$4[$5]{$3}$2\n", [$n.level,
+        rstnodeToRefname(n).idS, tmp, $chr(n.level - 1 + ord('A')), tocName])
 
 
 proc renderTocEntry(d: PDoc, e: TocEntry, result: var string) =
@@ -1031,10 +1037,10 @@ proc renderCode(d: PDoc, n: PRstNode, result: var string) =
       blockEnd = "</span></tt>"
   of outLatex:
     if n.kind == rnCodeBlock:
-      blockStart = "\n\n\\begin{rstpre}" & n.anchor.idS & "\n"
-      blockEnd = "\n\\end{rstpre}\n"
+      blockStart = "\n\n" & n.anchor.idS & "\\begin{rstpre}\n"
+      blockEnd = "\n\\end{rstpre}\n\n"
     else:  # rnInlineCode
-      blockStart = "\\texttt{"
+      blockStart = "\\rstcode{"
       blockEnd = "}"
   dispA(d.target, result, blockStart, blockStart, [])
   if params.lang == langNone:
@@ -1055,9 +1061,8 @@ proc renderContainer(d: PDoc, n: PRstNode, result: var string) =
     dispA(d.target, result, "<div class=\"$1\">$2</div>", "$2", [arg, tmp])
 
 proc texColumns(n: PRstNode): string =
-  result = ""
   let nColumns = if n.sons.len > 0: len(n.sons[0]) else: 1
-  for i in countup(1, nColumns): add(result, "|X")
+  result = "L".repeat(nColumns)
 
 proc renderField(d: PDoc, n: PRstNode, result: var string) =
   var b = false
@@ -1144,9 +1149,10 @@ proc renderAdmonition(d: PDoc, n: PRstNode, result: var string) =
   renderAux(d, n,
       htmlHead & "<span$2 class=\"" & htmlCls & "-text\"><b>" & txt &
         ":</b></span>\n" & "$1</div>\n",
-      "\n\n\\begin{mdframed}[linecolor=" & texColor & "]$2\n" &
+      "\n\n\\begin{rstadmonition}[borderline west={0.2em}{0pt}{" &
+        texColor & "}]$2\n" &
         "{" & texSz & "\\color{" & texColor & "}{\\textbf{" & txt & ":}}} " &
-        "$1\n\\end{mdframed}\n",
+        "$1\n\\end{rstadmonition}\n",
       result)
 
 proc renderRstToOut(d: PDoc, n: PRstNode, result: var string) =
@@ -1155,8 +1161,8 @@ proc renderRstToOut(d: PDoc, n: PRstNode, result: var string) =
   of rnInner: renderAux(d, n, result)
   of rnHeadline, rnMarkdownHeadline: renderHeadline(d, n, result)
   of rnOverline: renderOverline(d, n, result)
-  of rnTransition: renderAux(d, n, "<hr$2 />\n", "\\hrule$2\n", result)
-  of rnParagraph: renderAux(d, n, "<p$2>$1</p>\n", "$2\n$1\n\n", result)
+  of rnTransition: renderAux(d, n, "<hr$2 />\n", "\n\n\\vspace{0.6em}\\hrule$2\n", result)
+  of rnParagraph: renderAux(d, n, "<p$2>$1</p>\n", "\n\n$2\n$1\n\n", result)
   of rnBulletList:
     renderAux(d, n, "<ul$2 class=\"simple\">$1</ul>\n",
                     "\\begin{itemize}\n$2\n$1\\end{itemize}\n", result)
@@ -1210,7 +1216,7 @@ proc renderRstToOut(d: PDoc, n: PRstNode, result: var string) =
     doAssert false, "renderRstToOut"
   of rnLiteralBlock:
     renderAux(d, n, "<pre$2>$1</pre>\n",
-                    "\\begin{rstpre}\n$2\n$1\n\\end{rstpre}\n", result)
+                    "\n\n\\begin{rstpre}\n$2\n$1\n\\end{rstpre}\n\n", result)
   of rnQuotedLiteralBlock:
     doAssert false, "renderRstToOut"
   of rnLineBlock:
@@ -1237,8 +1243,8 @@ proc renderRstToOut(d: PDoc, n: PRstNode, result: var string) =
   of rnTable, rnGridTable, rnMarkdownTable:
     renderAux(d, n,
       "<table$2 border=\"1\" class=\"docutils\">$1</table>",
-      "\\begin{table}\n$2\n\\begin{rsttab}{" &
-        texColumns(n) & "|}\n\\hline\n$1\\end{rsttab}\\end{table}", result)
+      "\n$2\n\\begin{rsttab}{" &
+        texColumns(n) & "}\n\\hline\n$1\\end{rsttab}", result)
   of rnTableRow:
     if len(n) >= 1:
       if d.target == outLatex:
@@ -1334,7 +1340,7 @@ proc renderRstToOut(d: PDoc, n: PRstNode, result: var string) =
       dispA(d.target, result,
             "<tt class=\"docutils literal\"><span class=\"pre $2\">" &
               "$1</span></tt>",
-            "\\texttt{\\span$2{$1}}", [tmp0, class])
+            "\\rstcode{\\span$2{$1}}", [tmp0, class])
     else:  # rnUnknownRole, not necessarily code/monospace font
       dispA(d.target, result, "<span class=\"$2\">$1</span>", "\\span$2{$1}",
             [tmp0, class])
@@ -1351,7 +1357,7 @@ proc renderRstToOut(d: PDoc, n: PRstNode, result: var string) =
   of rnInlineLiteral, rnInterpretedText:
     renderAux(d, n,
       "<tt class=\"docutils literal\"><span class=\"pre\">$1</span></tt>",
-      "\\texttt{$1}", result)
+      "\\rstcode{$1}", result)
   of rnInlineTarget:
     var tmp = ""
     renderAux(d, n, tmp)
