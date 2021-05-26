@@ -1682,6 +1682,17 @@ macro getCustomPragmaVal*(n: typed, cp: typed): untyped =
     error(n.repr & " doesn't have a pragma named " & cp.repr, n)
 
 macro unpackVarargs*(callee: untyped; args: varargs[untyped]): untyped =
+  ## Unpacks `args` and adds them as individual args to the `callee` proc.
+  runnableExamples:
+    template dbg(args: varargs[string, `$`]) =
+      var
+        updatedArgs = @["dbg: "]
+      for arg in args:
+        updatedArgs.add(arg & " ")
+      unpackVarargs(stdout.writeLine, updatedArgs)
+
+    dbg "hello", 1, 2, 345.678 # dbg: hello 1 2 345.678
+  ##
   result = newCall(callee)
   for i in 0 ..< args.len:
     result.add args[i]
