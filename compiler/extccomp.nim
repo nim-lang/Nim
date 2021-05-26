@@ -943,11 +943,11 @@ proc jsonBuildInstructionsFile*(conf: ConfigRef): AbsoluteFile =
   result = getNimcacheDir(conf) / conf.outFile.changeFileExt("json")
 
 import std/jsonutils
+
 proc writeJsonBuildInstructions*(conf: ConfigRef) =
   proc cfiles(clist: CfileList): JsonNode =
     result = newJArray()
     for i, it in clist:
-      echo (it.cname, it.flags, "D20210525T094642")
       if CfileFlag.Cached in it.flags: continue
       result.add toJson([it.cname.string, getCompileCFileCmd(conf, it)])
 
