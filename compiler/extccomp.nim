@@ -944,34 +944,46 @@ proc jsonBuildInstructionsFile*(conf: ConfigRef): AbsoluteFile =
 
 import std/jsonutils
 
-proc writeJsonBuildInstructions*(conf: ConfigRef) =
-  proc cfiles(clist: CfileList): JsonNode =
-    result = newJArray()
-    for i, it in clist:
-      if CfileFlag.Cached in it.flags: continue
-      result.add toJson([it.cname.string, getCompileCFileCmd(conf, it)])
+type BuildCache = object
+  outputFile: string
+  compile: seq[(string, string)]
+  link: seq[string]
+  linkcmd: string
+  extraCmds: seq[string]
+  stdinInput: bool
+  projectIsCmd: bool
+  cmdInput: string
+  currentDir: string
+  cmdline: string
+  depfiles: seq[(string, string)]
+  nimexe: string
 
-  proc linkfiles(objfiles: var string; clist: CfileList; llist: seq[string]): JsonNode =
-    result = newJArray()
+proc writeJsonBuildInstructions*(conf: ConfigRef) =
+  proc cfiles(clist: CfileList): seq[(string, string)] =
+    for i, it in clist:
+      if CfileFlag.Cached notin it.flags:
+        result.add (it.cname.string, getCompileCFileCmd(conf, it))
+
+  proc linkfiles(objfiles: var string; clist: CfileList; llist: seq[string]): seq[string] =
     template impl(path) =
       objfiles.add ' '  & quoteShell(path)
-      result.add path.toJson # xxx WAS:quoteShell
+      result.add path.string # xxx WAS:quoteShell
     for it in llist:
       let objfile = if noAbsolutePaths(conf): it.extractFilename else: it
       impl(objfile.addFileExt(CC[conf.cCompiler].objExt))
     for it in clist:
       impl(it.obj)
 
-  proc depfiles(): JsonNode =
-    result = newJArray()
+  proc depfiles(): seq[(string, string)] =
     for it in conf.m.fileInfos:
       let path = it.fullPath.string
       if isAbsolute(path): # TODO: else?
-        result.add toJson((path, $secureHashFile(path)))
+        result.add (path, $secureHashFile(path))
 
   let output = conf.absOutFile
   var objfiles = ""
-  let j = (
+
+  var bcache = BuildCache(
     outputFile: $output,
     compile: cfiles(conf.toCompile),
     link: linkfiles(objfiles, conf.toCompile, conf.externalToLink),
@@ -982,16 +994,13 @@ proc writeJsonBuildInstructions*(conf: ConfigRef) =
     projectIsCmd: conf.projectIsCmd,
     cmdInput: conf.cmdInput,
     currentDir: getCurrentDir(),
-  ).toJson
+  )
   if optRun in conf.globalOptions or isDefined(conf, "nimBetterRun"):
-    let j2 = (
-      cmdline: conf.commandLine,
-      depfiles: depfiles(),
-      nimexe: hashNimExe(),
-    ).toJson
-    for k,v in j2: j[k] = v
+    bcache.cmdline = conf.commandLine
+    bcache.depfiles = depfiles()
+    bcache.nimexe = hashNimExe()
   conf.jsonBuildFile = conf.jsonBuildInstructionsFile
-  conf.jsonBuildFile.string.writeFile(j.pretty)
+  conf.jsonBuildFile.string.writeFile(bcache.toJson.pretty)
 
 proc changeDetectedViaJsonBuildInstructions*(conf: ConfigRef; jsonFile: AbsoluteFile): bool =
   if not fileExists(jsonFile): return true
