@@ -79,4 +79,5 @@ let
                                             "$1/$2" % [test2Dir, test2DocsDir]])
 testNimDoc(test2Dir, test2DocsDir, test2Switches, fixup)
 
-doAssert failures == 0, "$# failures occurred; see note in tester.nim regarding -d:nimTestsNimdocFixup" %  $failures
+if failures > 0:
+  quit "$# failures occurred; see note in tester.nim regarding -d:nimTestsNimdocFixup" %  $failures
