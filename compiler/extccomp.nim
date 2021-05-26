@@ -945,7 +945,7 @@ proc jsonBuildInstructionsFile*(conf: ConfigRef): AbsoluteFile =
 
 import std/jsonutils
 
-const cacheVersion = "D20210525T192431" # update when `BuildCache` spec changes
+const cacheVersion = "D20210525T193831" # update when `BuildCache` spec changes
 type BuildCache = object
   cacheVersion: string
   outputFile: string
@@ -953,6 +953,7 @@ type BuildCache = object
   link: seq[string]
   linkcmd: string
   extraCmds: seq[string]
+  configFiles: seq[string] # the hash shouldn't be needed
   stdinInput: bool
   projectIsCmd: bool
   cmdInput: string
@@ -985,6 +986,7 @@ proc writeJsonBuildInstructions*(conf: ConfigRef) =
     stdinInput: conf.projectIsStdin,
     projectIsCmd: conf.projectIsCmd,
     cmdInput: conf.cmdInput,
+    configFiles: conf.configFiles.mapIt(it.string),
     currentDir: getCurrentDir())
   if optRun in conf.globalOptions or isDefined(conf, "nimBetterRun"):
     bcache.cmdline = conf.commandLine
@@ -999,11 +1001,13 @@ proc writeJsonBuildInstructions*(conf: ConfigRef) =
 proc changeDetectedViaJsonBuildInstructions*(conf: ConfigRef; jsonFile: AbsoluteFile): bool =
   if not fileExists(jsonFile) or not fileExists(conf.absOutFile): return true
   var bcache: BuildCache
+  # bcache.fromJson(jsonFile.string.parseFile)
   try: bcache.fromJson(jsonFile.string.parseFile)
   except IOError, OSError, ValueError:
-    stderr.write "Warning: JSON processing failed for $#: $#\n" % [jsonFile.string.parseFile, getCurrentExceptionMsg()]
+    stderr.write "Warning: JSON processing failed for $#: $#\n" % [jsonFile.string, getCurrentExceptionMsg()]
     return true
   if bcache.currentDir != getCurrentDir() or # fixes bug #16271
+     bcache.configFiles != conf.configFiles.mapIt(it.string) or
      bcache.cacheVersion != cacheVersion or bcache.outputFile != conf.absOutFile.string or
      bcache.cmdline != conf.commandLine or bcache.nimexe != hashNimExe() or
      bcache.projectIsCmd != conf.projectIsCmd or conf.cmdInput != bcache.cmdInput: return true
