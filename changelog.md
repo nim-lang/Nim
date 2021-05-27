@@ -70,6 +70,15 @@
 - `jsonutils` now serializes/deserializes holey enums as regular enums (via `ord`) instead of as strings.
   Use `-d:nimLegacyJsonutilsHoleyEnum` for a transition period.
 
+- `json` and `jsonutils` now serialize NaN, Inf, -Inf as strings, so that
+  `%[NaN, -Inf]` is the string `["nan","-inf"]` instead of `[nan,-inf]` which was invalid json.
+
+- `strformat` is now part of `include std/prelude`.
+
+- The configuration subsystem now allows for `-d:release` and `-d:danger` to work as expected.
+  The downside is that these defines now have custom logic that doesn't apply for
+  other defines.
+
 
 ## Standard library additions and changes
 - Added support for parenthesized expressions in `strformat`
@@ -116,9 +125,11 @@
 - `json.%`,`json.to`, `jsonutils.formJson`,`jsonutils.toJson` now work with `uint|uint64`
   instead of raising (as in 1.4) or giving wrong results (as in 1.2).
 
+- `jsonutils` now handles `cstring` (including as Table key), and `set`.
+
 - added `jsonutils.jsonTo` overload with `opt = Joptions()` param.
 
-- `jsonutils` now handles `cstring` (including as Table key), and `set`.
+- `jsonutils.toJson` now supports customization via `ToJsonOptions`.
 
 - Added an overload for the `collect` macro that inferes the container type based
   on the syntax of the last expression. Works with std seqs, tables and sets.
@@ -136,6 +147,7 @@
 - Added `std/enumutils` module. Added `genEnumCaseStmt` macro that generates case statement to parse string to enum.
   Added `items` for enums with holes.
   Added `symbolName` to return the enum symbol name ignoring the human readable name.
+  Added `symbolRank` to return the index in which an enum member is listed in an enum.
 
 - Added `typetraits.HoleyEnum` for enums with holes, `OrdinalEnum` for enums without holes.
 
@@ -308,6 +320,7 @@
 
 - Added `copyWithin` [for `seq` and `array` for JavaScript targets](https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Array/copyWithin).
 
+- Fixed premature garbage collection in asyncdispatch, when a stack trace override is in place.
 
 ## Language changes
 

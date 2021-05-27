@@ -40,12 +40,10 @@ jobs:
         if: runner.os == 'Windows'
         shell: bash
         run: |
-          mkdir dist
-          curl -L https://nim-lang.org/download/mingw64.7z -o dist/mingw64.7z
-          curl -L https://nim-lang.org/download/dlls.zip -o dist/dlls.zip
-          7z x dist/mingw64.7z -odist
-          7z x dist/dlls.zip -obin
-          echo "${{ github.workspace }}/dist/mingw64/bin" >> "${GITHUB_PATH}"
+          set -e
+          . ci/funs.sh
+          nimInternalInstallDepsWindows
+          echo_run echo "${{ github.workspace }}/dist/mingw64/bin" >> "${GITHUB_PATH}"
 
       - name: 'Add build binaries to PATH'
         shell: bash
@@ -59,14 +57,6 @@ jobs:
         shell: bash
         run: . ci/funs.sh && nimBuildCsourcesIfNeeded CC=gcc ucpu='${{ matrix.cpu }}'
 
-      - name: 'Build koch'
+      - name: 'koch, Run CI'
         shell: bash
-        run: nim c koch
-      - name: 'Run CI'
-        shell: bash
-        run: ./koch runCI
-
-      - name: 'Show failed tests'
-        if: failure()
-        shell: bash
-        run: nim c -r tools/ci_testresults.nim
+        run: . ci/funs.sh && nimInternalBuildKochAndRunCI
