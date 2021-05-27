@@ -58,7 +58,7 @@ import std/private/since
 {.push debugger: off.} # the user does not want to trace a part
                        # of the standard library!
 
-import std/[bitops, fenv]
+import bitops, fenv
 
 when defined(c) or defined(cpp):
   proc c_isnan(x: float): bool {.importc: "isnan", header: "<math.h>".}

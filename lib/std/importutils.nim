@@ -17,7 +17,7 @@ when defined(nimImportutilsExample):
     x1: int # private
   proc initFoo*(): auto = Foo()
 
-proc privateAccess*(t: typedesc) {.magic: "PrivateAccess".} =
+proc privateAccess*(t: typedesc[object|(ref object)|(ptr object)]) {.magic: "PrivateAccess".} =
   ## Enables access to private fields of `t` in current scope.
   runnableExamples("-d:nimImportutilsExample"):
     # here we're importing a module containing:

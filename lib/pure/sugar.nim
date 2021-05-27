@@ -11,7 +11,7 @@
 ## macro system.
 
 import std/private/since
-import std/macros
+import macros
 
 proc checkPragma(ex, prag: var NimNode) =
   since (1, 3):
@@ -186,7 +186,7 @@ macro dumpToString*(x: untyped): string =
     assert dumpToString(a + x) == "a + x: 1 + x = 11"
     template square(x): untyped = x * x
     assert dumpToString(square(x)) == "square(x): x * x = 100"
-    assert not compiles dumpToString(1 + nonexistant)
+    assert not compiles dumpToString(1 + nonexistent)
     import std/strutils
     assert "failedAssertImpl" in dumpToString(assert true) # example with a statement
   result = newCall(bindSym"dumpToStringImpl")

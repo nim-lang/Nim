@@ -11,7 +11,7 @@
 ## represents a complete Nim project. Single modules can either be kept in RAM
 ## or stored in a rod-file.
 
-import std / [intsets, tables, hashes, md5]
+import intsets, tables, hashes, md5
 import ast, astalgo, options, lineinfos,idents, btrees, ropes, msgs, pathutils
 import ic / [packed_ast, ic]
 
@@ -50,7 +50,7 @@ type
     concreteTypes*: seq[FullId]
     inst*: PInstantiation
 
-  ModuleGraph* = ref object
+  ModuleGraph* {.acyclic.} = ref object
     ifaces*: seq[Iface]  ## indexed by int32 fileIdx
     packed*: PackedModuleGraph
     encoders*: seq[PackedEncoder]

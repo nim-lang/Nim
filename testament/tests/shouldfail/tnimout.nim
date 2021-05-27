@@ -1,5 +1,4 @@
 discard """
-  targets: "c"
   nimout: "Hello World!"
   action: compile
 """

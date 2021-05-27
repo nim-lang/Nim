@@ -7,11 +7,11 @@
 #    distribution, for details about the copyright.
 #
 
-## Supports the "nim check --ic:on --def --track:FILE,LINE,COL"
+## Supports the "nim check --ic:on --defusages:FILE,LINE,COL"
 ## IDE-like features. It uses the set of .rod files to accomplish
 ## its task. The set must cover a complete Nim project.
 
-import std / sets
+import sets
 
 from os import nil
 from std/private/miscdollars import toLocation
@@ -35,12 +35,12 @@ proc isTracked(current, trackPos: PackedLineInfo, tokenLen: int): bool =
 
 proc searchLocalSym(c: var NavContext; s: PackedSym; info: PackedLineInfo): bool =
   result = s.name != LitId(0) and
-    isTracked(info, c.trackPos, c.g.packed[c.thisModule].fromDisk.sh.strings[s.name].len)
+    isTracked(info, c.trackPos, c.g.packed[c.thisModule].fromDisk.strings[s.name].len)
 
 proc searchForeignSym(c: var NavContext; s: ItemId; info: PackedLineInfo): bool =
-  let name = c.g.packed[s.module].fromDisk.sh.syms[s.item].name
+  let name = c.g.packed[s.module].fromDisk.syms[s.item].name
   result = name != LitId(0) and
-    isTracked(info, c.trackPos, c.g.packed[s.module].fromDisk.sh.strings[name].len)
+    isTracked(info, c.trackPos, c.g.packed[s.module].fromDisk.strings[name].len)
 
 const
   EmptyItemId = ItemId(module: -1'i32, item: -1'i32)
@@ -51,7 +51,7 @@ proc search(c: var NavContext; tree: PackedTree): ItemId =
     case tree.nodes[i].kind
     of nkSym:
       let item = tree.nodes[i].operand
-      if searchLocalSym(c, c.g.packed[c.thisModule].fromDisk.sh.syms[item], tree.nodes[i].info):
+      if searchLocalSym(c, c.g.packed[c.thisModule].fromDisk.syms[item], tree.nodes[i].info):
         return ItemId(module: c.thisModule, item: item)
     of nkModuleRef:
       if tree.nodes[i].info.line == c.trackPos.line and tree.nodes[i].info.file == c.trackPos.file:
@@ -74,7 +74,7 @@ proc isDecl(tree: PackedTree; n: NodePos): bool =
 
 proc usage(c: var NavContext; info: PackedLineInfo; isDecl: bool) =
   var m = ""
-  var file = c.g.packed[c.thisModule].fromDisk.sh.strings[info.file]
+  var file = c.g.packed[c.thisModule].fromDisk.strings[info.file]
   if c.outputSep == ' ':
     file = os.extractFilename file
   toLocation(m, file, info.line.int, info.col.int + ColOffset)
@@ -98,11 +98,31 @@ proc list(c: var NavContext; tree: PackedTree; sym: ItemId) =
         usage(c, tree.nodes[i].info, isDecl(tree, parent(NodePos i)))
     else: discard
 
+proc searchForIncludeFile(g: ModuleGraph; fullPath: string): int =
+  for i in 0..high(g.packed):
+    for k in 1..high(g.packed[i].fromDisk.includes):
+      # we start from 1 because the first "include" file is
+      # the module's filename.
+      if os.cmpPaths(g.packed[i].fromDisk.strings[g.packed[i].fromDisk.includes[k][0]], fullPath) == 0:
+        return i
+  return -1
+
 proc nav(g: ModuleGraph) =
   # translate the track position to a packed position:
   let unpacked = g.config.m.trackPos
-  let mid = unpacked.fileIndex
-  let fileId = g.packed[int32 mid].fromDisk.sh.strings.getKeyId(toFullPath(g.config, mid))
+  var mid = unpacked.fileIndex.int
+
+  let fullPath = toFullPath(g.config, unpacked.fileIndex)
+
+  if g.packed[mid].status == undefined:
+    # check if 'mid' is an include file of some other module:
+    mid = searchForIncludeFile(g, fullPath)
+
+  if mid < 0:
+    localError(g.config, unpacked, "unknown file name: " & fullPath)
+    return
+
+  let fileId = g.packed[mid].fromDisk.strings.getKeyId(fullPath)
 
   if fileId == LitId(0):
     internalError(g.config, unpacked, "cannot find a valid file ID")
@@ -114,9 +134,9 @@ proc nav(g: ModuleGraph) =
     trackPos: PackedLineInfo(line: unpacked.line, col: unpacked.col, file: fileId),
     outputSep: if isDefined(g.config, "nimIcNavigatorTests"): ' ' else: '\t'
   )
-  var symId = search(c, g.packed[int32 mid].fromDisk.topLevel)
+  var symId = search(c, g.packed[mid].fromDisk.topLevel)
   if symId == EmptyItemId:
-    symId = search(c, g.packed[int32 mid].fromDisk.bodies)
+    symId = search(c, g.packed[mid].fromDisk.bodies)
 
   if symId == EmptyItemId:
     localError(g.config, unpacked, "no symbol at this position")

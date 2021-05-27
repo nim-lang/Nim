@@ -1,8 +1,9 @@
-.. default-role:: code
-
 ===================================================
   Embedded Stack Trace Profiler (ESTP) User Guide
 ===================================================
+
+.. include:: rstcommon.rst
+.. default-role:: Nim
 
 :Author: Andreas Rumpf
 :Version: |nimversion|
@@ -12,7 +13,7 @@ Nim comes with a platform independent profiler -
 the Embedded Stack Trace Profiler (ESTP). The profiler
 is *embedded* into your executable. To activate the profiler you need to do:
 
-* compile your program with the `--profiler:on --stackTrace:on` command
+* compile your program with the `--profiler:on --stackTrace:on`:option: command
   line options
 * import the `nimprof` module
 * run your program as usual.
@@ -20,10 +21,10 @@ is *embedded* into your executable. To activate the profiler you need to do:
 You can in fact look at `nimprof`'s source code to see how to implement
 your own profiler.
 
-The setting `--profiler:on` defines the conditional symbol `profiler`.
+The setting `--profiler:on`:option: defines the conditional symbol `profiler`.
 You can use `when compileOption("profiler")` to make the switch seamless.
-If `profiler` is `off`, your program runs normally. Otherwise your program
-is profiled.
+If `profiler`:option: is `off`:option:, your program runs normally.
+Otherwise your program is profiled.
 
 ```nim
 when compileOption("profiler"):
@@ -31,10 +32,10 @@ when compileOption("profiler"):
 ```
 
 After your program has finished the profiler will create a
-file `profile_results.txt` containing the profiling results.
+file ``profile_results.txt`` containing the profiling results.
 
 Since the profiler works by examining stack traces, it's essential that
-the option `--stackTrace:on` is active! Unfortunately this means that a
+the option `--stackTrace:on`:option: is active! Unfortunately this means that a
 profiling build is much slower than a release build.
 
 
@@ -45,8 +46,9 @@ You can also use ESTP as a memory profiler to see which stack traces allocate
 the most memory and thus create the most GC pressure. It may also help to
 find memory leaks. To activate the memory profiler you need to do:
 
-* compile your program with the `--profiler:off --stackTrace:on -d:memProfiler`
-  command line options. Yes it's `--profiler:off`.
+* compile your program with the
+  `--profiler:off --stackTrace:on -d:memProfiler`:option:
+  command line options. Yes it's `--profiler:off`:option:.
 * import the `nimprof` module
 * run your program as usual.
 

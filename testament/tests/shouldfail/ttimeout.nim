@@ -1,6 +1,5 @@
 discard """
   timeout: "0.1"
-  targets: "c"
 """
 
 import os

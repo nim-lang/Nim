@@ -574,15 +574,11 @@ proc newHttpClient*(userAgent = defUserAgent, maxRedirects = 5,
   ##
   ## `headers` specifies the HTTP Headers.
   runnableExamples:
-    import std/[asyncdispatch, httpclient, strutils]
+    import std/strutils
 
-    proc asyncProc(): Future[string] {.async.} =
-      var client = newAsyncHttpClient()
-      return await client.getContent("http://example.com")
-
-    let exampleHtml = waitFor asyncProc()
+    let exampleHtml = newHttpClient().getContent("http://example.com")
     assert "Example Domain" in exampleHtml
-    assert not ("Pizza" in exampleHtml)
+    assert "Pizza" notin exampleHtml
 
   new result
   result.headers = headers
@@ -616,6 +612,17 @@ proc newAsyncHttpClient*(userAgent = defUserAgent, maxRedirects = 5,
   ## connections.
   ##
   ## `headers` specifies the HTTP Headers.
+  runnableExamples:
+    import std/[asyncdispatch, strutils]
+
+    proc asyncProc(): Future[string] {.async.} =
+      let client = newAsyncHttpClient()
+      result = await client.getContent("http://example.com")
+
+    let exampleHtml = waitFor asyncProc()
+    assert "Example Domain" in exampleHtml
+    assert "Pizza" notin exampleHtml
+  
   new result
   result.headers = headers
   result.userAgent = userAgent
@@ -751,7 +758,7 @@ proc parseBody(client: HttpClient | AsyncHttpClient, headers: HttpHeaders,
           httpError("Got disconnected while trying to read body.")
         if recvLen != length:
           httpError("Received length doesn't match expected length. Wanted " &
-                    $length & " got " & $recvLen)
+                    $length & " got: " & $recvLen)
     else:
       # (http://tools.ietf.org/html/rfc2616#section-4.4) NR.4 TODO
 
@@ -962,12 +969,15 @@ proc format(client: HttpClient | AsyncHttpClient,
 
 proc override(fallback, override: HttpHeaders): HttpHeaders =
   # Right-biased map union for `HttpHeaders`
-  if override.isNil:
-    return fallback
 
   result = newHttpHeaders()
   # Copy by value
   result.table[] = fallback.table[]
+
+  if override.isNil:
+    # Return the copy of fallback so it does not get modified
+    return result
+
   for k, vs in override.table:
     result[k] = vs
 

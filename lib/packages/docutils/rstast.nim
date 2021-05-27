@@ -56,7 +56,9 @@ type
                               #     * `file#id <file#id>'_
     rnSubstitutionDef,        # a definition of a substitution
     # Inline markup:
-    rnInlineCode,
+    rnInlineCode,             # interpreted text with code in a known language
+    rnCodeFragment,           # inline code for highlighting with the specified
+                              # class (which cannot be inferred from context)
     rnUnknownRole,            # interpreted text with an unknown role
     rnSub, rnSup, rnIdx,
     rnEmphasis,               # "*"

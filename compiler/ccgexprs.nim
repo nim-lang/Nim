@@ -2319,7 +2319,12 @@ proc genMagicExpr(p: BProc, e: PNode, d: var TLoc, op: TMagic) =
       gcUsage(p.config, e)
     else:
       genNewFinalize(p, e)
-  of mNewSeq: genNewSeq(p, e)
+  of mNewSeq:
+    if optSeqDestructors in p.config.globalOptions:
+      e[1] = makeAddr(e[1], p.module.idgen)
+      genCall(p, e, d)
+    else:
+      genNewSeq(p, e)
   of mNewSeqOfCap: genNewSeqOfCap(p, e, d)
   of mSizeOf:
     let t = e[1].typ.skipTypes({tyTypeDesc})
@@ -2640,7 +2645,9 @@ proc genConstSetup(p: BProc; sym: PSym): bool =
   result = lfNoDecl notin sym.loc.flags
 
 proc genConstHeader(m, q: BModule; p: BProc, sym: PSym) =
-  assert(sym.loc.r != nil)
+  if sym.loc.r == nil:
+    if not genConstSetup(p, sym): return
+  assert(sym.loc.r != nil, $sym.name.s & $sym.itemId)
   if m.hcrOn:
     m.s[cfsVars].addf("static $1* $2;$n", [getTypeDesc(m, sym.loc.t, skVar), sym.loc.r]);
     m.initProc.procSec(cpsLocals).addf(

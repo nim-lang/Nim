@@ -28,15 +28,12 @@ bootSwitch(usedNoGC, defined(nogc), "--gc:none")
 import
   os, msgs, options, nversion, condsyms, strutils, extccomp, platform,
   wordrecg, parseutils, nimblecmd, parseopt, sequtils, lineinfos,
-  pathutils, strtabs
+  pathutils, strtabs, pathnorm
 
 from ast import eqTypeFlags, tfGcSafe, tfNoSideEffect
 
 # but some have deps to imported modules. Yay.
 bootSwitch(usedTinyC, hasTinyCBackend, "-d:tinyc")
-bootSwitch(usedNativeStacktrace,
-  defined(nativeStackTrace) and nativeStackTraceSupported,
-  "-d:nativeStackTrace")
 bootSwitch(usedFFI, hasFFI, "-d:nimHasLibFFI")
 
 type
@@ -101,7 +98,7 @@ proc writeVersionInfo(conf: ConfigRef; pass: TCmdLinePass) =
       msgWriteln(conf, "git hash: " & gitHash, {msgStdout})
 
     msgWriteln(conf, "active boot switches:" & usedRelease & usedDanger &
-      usedTinyC & useLinenoise & usedNativeStacktrace &
+      usedTinyC & useLinenoise &
       usedFFI & usedBoehm & usedMarkAndSweep & usedGoGC & usedNoGC,
                {msgStdout})
     msgQuit(0)
@@ -141,10 +138,19 @@ proc splitSwitch(conf: ConfigRef; switch: string, cmd, arg: var string, pass: TC
   elif switch[i] == '[': arg = substr(switch, i)
   else: invalidCmdLineOption(conf, pass, switch, info)
 
+template switchOn(arg: string): bool =
+  # xxx use `switchOn` wherever appropriate
+  case arg.normalize
+  of "", "on": true
+  of "off": false
+  else:
+    localError(conf, info, errOnOrOffExpectedButXFound % arg)
+    false
+
 proc processOnOffSwitch(conf: ConfigRef; op: TOptions, arg: string, pass: TCmdLinePass,
                         info: TLineInfo) =
   case arg.normalize
-  of "","on": conf.options.incl op
+  of "", "on": conf.options.incl op
   of "off": conf.options.excl op
   else: localError(conf, info, errOnOrOffExpectedButXFound % arg)
 
@@ -359,31 +365,52 @@ proc processCfgPath(conf: ConfigRef; path: string, info: TLineInfo): AbsoluteDir
 const
   errInvalidNumber = "$1 is not a valid number"
 
+proc makeAbsolute(s: string): AbsoluteFile =
+  if isAbsolute(s):
+    AbsoluteFile pathnorm.normalizePath(s)
+  else:
+    AbsoluteFile pathnorm.normalizePath(os.getCurrentDir() / s)
+
+proc setTrackingInfo(conf: ConfigRef; dirty, file, line, column: string,
+                     info: TLineInfo) =
+  ## set tracking info, common code for track, trackDirty, & ideTrack
+  var ln, col: int
+  if parseUtils.parseInt(line, ln) <= 0:
+    localError(conf, info, errInvalidNumber % line)
+  if parseUtils.parseInt(column, col) <= 0:
+    localError(conf, info, errInvalidNumber % column)
+
+  let a = makeAbsolute(file)
+  if dirty == "":
+    conf.m.trackPos = newLineInfo(conf, a, ln, col)
+  else:
+    let dirtyOriginalIdx = fileInfoIdx(conf, a)
+    if dirtyOriginalIdx.int32 >= 0:
+      msgs.setDirtyFile(conf, dirtyOriginalIdx, makeAbsolute(dirty))
+    conf.m.trackPos = newLineInfo(dirtyOriginalIdx, ln, col)
+
 proc trackDirty(conf: ConfigRef; arg: string, info: TLineInfo) =
   var a = arg.split(',')
   if a.len != 4: localError(conf, info,
                             "DIRTY_BUFFER,ORIGINAL_FILE,LINE,COLUMN expected")
-  var line, column: int
-  if parseUtils.parseInt(a[2], line) <= 0:
-    localError(conf, info, errInvalidNumber % a[1])
-  if parseUtils.parseInt(a[3], column) <= 0:
-    localError(conf, info, errInvalidNumber % a[2])
-
-  let dirtyOriginalIdx = fileInfoIdx(conf, AbsoluteFile a[1])
-  if dirtyOriginalIdx.int32 >= 0:
-    msgs.setDirtyFile(conf, dirtyOriginalIdx, AbsoluteFile a[0])
-
-  conf.m.trackPos = newLineInfo(dirtyOriginalIdx, line, column)
+  setTrackingInfo(conf, a[0], a[1], a[2], a[3], info)
 
 proc track(conf: ConfigRef; arg: string, info: TLineInfo) =
   var a = arg.split(',')
   if a.len != 3: localError(conf, info, "FILE,LINE,COLUMN expected")
-  var line, column: int
-  if parseUtils.parseInt(a[1], line) <= 0:
-    localError(conf, info, errInvalidNumber % a[1])
-  if parseUtils.parseInt(a[2], column) <= 0:
-    localError(conf, info, errInvalidNumber % a[2])
-  conf.m.trackPos = newLineInfo(conf, AbsoluteFile a[0], line, column)
+  setTrackingInfo(conf, "", a[0], a[1], a[2], info)
+
+proc trackIde(conf: ConfigRef; cmd: IdeCmd, arg: string, info: TLineInfo) =
+  ## set the tracking info related to an ide cmd, supports optional dirty file
+  var a = arg.split(',')
+  case a.len
+  of 4:
+    setTrackingInfo(conf, a[0], a[1], a[2], a[3], info)
+  of 3:
+    setTrackingInfo(conf, "", a[0], a[1], a[2], info)
+  else:
+    localError(conf, info, "[DIRTY_BUFFER,]ORIGINAL_FILE,LINE,COLUMN expected")
+  conf.ideCmd = cmd
 
 proc dynlibOverride(conf: ConfigRef; switch, arg: string, pass: TCmdLinePass, info: TLineInfo) =
   if pass in {passCmd2, passPP}:
@@ -417,6 +444,7 @@ proc parseCommand*(command: string): Command =
   of "e": cmdNimscript
   of "doc0": cmdDoc0
   of "doc2", "doc": cmdDoc2
+  of "doc2tex": cmdDoc2tex
   of "rst2html": cmdRst2html
   of "rst2tex": cmdRst2tex
   of "jsondoc0": cmdJsondoc0
@@ -453,6 +481,19 @@ proc setCommandEarly*(conf: ConfigRef, command: string) =
     conf.foreignPackageNotes = {hintSuccessX}
   else:
     conf.foreignPackageNotes = foreignPackageNotesDefault
+
+proc specialDefine(conf: ConfigRef, key: string) =
+  # Keep this syncronized with the default config/nim.cfg!
+  if cmpIgnoreStyle(key, "nimQuirky") == 0:
+    conf.exc = excQuirky
+  elif cmpIgnoreStyle(key, "release") == 0 or cmpIgnoreStyle(key, "danger") == 0:
+    conf.options.excl {optStackTrace, optLineTrace, optLineDir, optOptimizeSize}
+    conf.globalOptions.excl {optExcessiveStackTrace, optCDebug}
+    conf.options.incl optOptimizeSpeed
+  if cmpIgnoreStyle(key, "danger") == 0 or cmpIgnoreStyle(key, "quick") == 0:
+    conf.options.excl {optObjCheck, optFieldCheck, optRangeCheck, optBoundsCheck,
+      optOverflowCheck, optAssert, optStackTrace, optLineTrace, optLineDir}
+    conf.globalOptions.excl {optCDebug}
 
 proc processSwitch*(switch, arg: string, pass: TCmdLinePass, info: TLineInfo;
                     conf: ConfigRef) =
@@ -520,12 +561,10 @@ proc processSwitch*(switch, arg: string, pass: TCmdLinePass, info: TLineInfo;
     expectArg(conf, switch, arg, pass, info)
     if {':', '='} in arg:
       splitSwitch(conf, arg, key, val, pass, info)
-      if cmpIgnoreStyle(key, "nimQuirky") == 0:
-        conf.exc = excQuirky
+      specialDefine(conf, key)
       defineSymbol(conf.symbols, key, val)
     else:
-      if cmpIgnoreStyle(arg, "nimQuirky") == 0:
-        conf.exc = excQuirky
+      specialDefine(conf, arg)
       defineSymbol(conf.symbols, arg)
   of "undef", "u":
     expectArg(conf, switch, arg, pass, info)
@@ -851,21 +890,38 @@ proc processSwitch*(switch, arg: string, pass: TCmdLinePass, info: TLineInfo;
     expectNoArg(conf, switch, arg, pass, info)
     conf.ideCmd = ideSug
   of "def":
-    expectNoArg(conf, switch, arg, pass, info)
-    conf.ideCmd = ideDef
+    expectArg(conf, switch, arg, pass, info)
+    trackIde(conf, ideDef, arg, info)
   of "context":
     expectNoArg(conf, switch, arg, pass, info)
     conf.ideCmd = ideCon
   of "usages":
-    expectNoArg(conf, switch, arg, pass, info)
-    conf.ideCmd = ideUse
+    expectArg(conf, switch, arg, pass, info)
+    trackIde(conf, ideUse, arg, info)
   of "defusages":
-    expectNoArg(conf, switch, arg, pass, info)
-    conf.ideCmd = ideDus
+    expectArg(conf, switch, arg, pass, info)
+    trackIde(conf, ideDus, arg, info)
   of "stdout":
     processOnOffSwitchG(conf, {optStdout}, arg, pass, info)
+  of "filenames":
+    case arg.normalize
+    of "abs": conf.filenameOption = foAbs
+    of "canonical": conf.filenameOption = foCanonical
+    of "legacyrelproj": conf.filenameOption = foLegacyRelProj
+    else: localError(conf, info, "expected: abs|canonical|legacyRelProj, got: $1" % arg)
+  of "processing":
+    incl(conf.notes, hintProcessing)
+    incl(conf.mainPackageNotes, hintProcessing)
+    case arg.normalize
+    of "dots": conf.hintProcessingDots = true
+    of "filenames": conf.hintProcessingDots = false
+    of "off":
+      excl(conf.notes, hintProcessing)
+      excl(conf.mainPackageNotes, hintProcessing)
+    else: localError(conf, info, "expected: dots|filenames|off, got: $1" % arg)
   of "listfullpaths":
-    processOnOffSwitchG(conf, {optListFullPaths}, arg, pass, info)
+    # xxx in future work, use `warningDeprecated`
+    conf.filenameOption = if switchOn(arg): foAbs else: foCanonical
   of "spellsuggest":
     if arg.len == 0: conf.spellSuggestMax = spellSuggestSecretSauce
     elif arg == "auto": conf.spellSuggestMax = spellSuggestSecretSauce
@@ -927,6 +983,7 @@ proc processSwitch*(switch, arg: string, pass: TCmdLinePass, info: TLineInfo;
     of "off": conf.globalOptions = conf.globalOptions - {optStyleHint, optStyleError}
     of "hint": conf.globalOptions = conf.globalOptions + {optStyleHint} - {optStyleError}
     of "error": conf.globalOptions = conf.globalOptions + {optStyleError}
+    of "usages": conf.globalOptions.incl optStyleUsages
     else: localError(conf, info, errOffHintsError % arg)
   of "showallmismatches":
     processOnOffSwitchG(conf, {optShowAllMismatches}, arg, pass, info)

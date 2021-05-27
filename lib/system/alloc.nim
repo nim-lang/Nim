@@ -373,7 +373,7 @@ iterator elements(t: IntSet): int {.inline.} =
       r = r.next
 
 proc isSmallChunk(c: PChunk): bool {.inline.} =
-  return c.size <= SmallChunkSize-smallChunkOverhead()
+  result = c.size <= SmallChunkSize-smallChunkOverhead()
 
 proc chunkUnused(c: PChunk): bool {.inline.} =
   result = (c.prevSize and 1) == 0

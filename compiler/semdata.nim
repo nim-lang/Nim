@@ -9,7 +9,7 @@
 
 ## This module contains the data structures for the semantic checking phase.
 
-import std / tables
+import tables
 
 import
   intsets, options, ast, astalgo, msgs, idents, renderer,
@@ -29,15 +29,13 @@ type
 
   POptionEntry* = ref TOptionEntry
   PProcCon* = ref TProcCon
-  TProcCon* = object          # procedure context; also used for top-level
-                              # statements
+  TProcCon* {.acyclic.} = object # procedure context; also used for top-level
+                                 # statements
     owner*: PSym              # the symbol this context belongs to
     resultSym*: PSym          # the result symbol (if we are in a proc)
     selfSym*: PSym            # the 'self' symbol (if available)
     nestedLoopCounter*: int   # whether we are in a loop or not
     nestedBlockCounter*: int  # whether we are in a block or not
-    inTryStmt*: int           # whether we are in a try statement; works also
-                              # in standalone ``except`` and ``finally``
     next*: PProcCon           # used for stacking procedure contexts
     mappingExists*: bool
     mapping*: TIdTable
@@ -90,6 +88,9 @@ type
   TContext* = object of TPassContext # a context represents the module
                                      # that is currently being compiled
     enforceVoidContext*: PType
+      # for `if cond: stmt else: foo`, `foo` will be evaluated under
+      # enforceVoidContext != nil
+    voidType*: PType # for typeof(stmt)
     module*: PSym              # the module sym belonging to the context
     currentScope*: PScope      # current scope
     moduleScope*: PScope       # scope for modules
@@ -500,6 +501,25 @@ proc errorType*(c: PContext): PType =
 proc errorNode*(c: PContext, n: PNode): PNode =
   result = newNodeI(nkEmpty, n.info)
   result.typ = errorType(c)
+
+# These mimic localError
+template localErrorNode*(c: PContext, n: PNode, info: TLineInfo, msg: TMsgKind, arg: string): PNode =
+  liMessage(c.config, info, msg, arg, doNothing, instLoc())
+  errorNode(c, n)
+
+template localErrorNode*(c: PContext, n: PNode, info: TLineInfo, arg: string): PNode =
+  liMessage(c.config, info, errGenerated, arg, doNothing, instLoc())
+  errorNode(c, n)
+
+template localErrorNode*(c: PContext, n: PNode, msg: TMsgKind, arg: string): PNode =
+  let n2 = n
+  liMessage(c.config, n2.info, msg, arg, doNothing, instLoc())
+  errorNode(c, n2)
+
+template localErrorNode*(c: PContext, n: PNode, arg: string): PNode =
+  let n2 = n
+  liMessage(c.config, n2.info, errGenerated, arg, doNothing, instLoc())
+  errorNode(c, n2)
 
 proc fillTypeS*(dest: PType, kind: TTypeKind, c: PContext) =
   dest.kind = kind

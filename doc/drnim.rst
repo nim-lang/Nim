@@ -1,5 +1,3 @@
-.. default-role:: code
-
 ===================================
    DrNim User Guide
 ===================================
@@ -7,6 +5,8 @@
 :Author: Andreas Rumpf
 :Version: |nimversion|
 
+.. include:: rstcommon.rst
+.. default-role:: Nim
 .. contents::
 
 
@@ -43,7 +43,8 @@ your code.
 Installation
 ============
 
-Run `koch drnim`, the executable will afterwards be in `$nim/bin/drnim`.
+Run `koch drnim`:option:, the executable will afterwards be
+in ``$nim/bin/drnim``.
 
 
 Motivating Example

@@ -50,7 +50,7 @@ runnableExamples:
 
 import std/private/since
 
-import std/math
+import math
 
 type
   Deque*[T] = object
@@ -262,7 +262,7 @@ proc expandIfNeeded[T](deq: var Deque[T]) =
     var n = newSeq[T](cap * 2)
     var i = 0
     for x in mitems(deq):
-      when nimVM: n[i] = x # workaround for VM bug
+      when nimvm: n[i] = x # workaround for VM bug
       else: n[i] = move(x)
       inc i
     deq.data = move(n)
@@ -379,8 +379,7 @@ proc popFirst*[T](deq: var Deque[T]): T {.inline, discardable.} =
 
   emptyCheck(deq)
   dec deq.count
-  result = deq.data[deq.head]
-  destroy(deq.data[deq.head])
+  result = move deq.data[deq.head]
   deq.head = (deq.head + 1) and deq.mask
 
 proc popLast*[T](deq: var Deque[T]): T {.inline, discardable.} =
@@ -398,8 +397,7 @@ proc popLast*[T](deq: var Deque[T]): T {.inline, discardable.} =
   emptyCheck(deq)
   dec deq.count
   deq.tail = (deq.tail - 1) and deq.mask
-  result = deq.data[deq.tail]
-  destroy(deq.data[deq.tail])
+  result = move deq.data[deq.tail]
 
 proc clear*[T](deq: var Deque[T]) {.inline.} =
   ## Resets the deque so that it is empty.

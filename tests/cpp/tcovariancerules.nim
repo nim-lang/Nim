@@ -31,7 +31,7 @@ import macros
 macro skipElse(n: untyped): untyped = n[0]
 
 template acceptWithCovariance(x, otherwise): untyped =
-  when nimEnableCovariance:
+  when defined nimEnableCovariance:
     x
   else:
     reject(x)

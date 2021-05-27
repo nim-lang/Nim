@@ -14,7 +14,7 @@
 
 import ropes, platform, condsyms, options, msgs, lineinfos, pathutils
 
-import std/[os, strutils, osproc, sha1, streams, sequtils, times, strtabs, json]
+import os, strutils, osproc, std/sha1, streams, sequtils, times, strtabs, json
 
 type
   TInfoCCProp* = enum         # properties of the C compiler:
@@ -934,10 +934,16 @@ proc callCCompiler*(conf: ConfigRef) =
     script.add("\n")
     generateScript(conf, script)
 
-
 template hashNimExe(): string = $secureHashFile(os.getAppFilename())
 
+proc jsonBuildInstructionsFile*(conf: ConfigRef): AbsoluteFile =
+  # `outFile` is better than `projectName`, as it allows having different json
+  # files for a given source file compiled with different options; it also
+  # works out of the box with `hashMainCompilationParams`.
+  result = getNimcacheDir(conf) / conf.outFile.changeFileExt("json")
+
 proc writeJsonBuildInstructions*(conf: ConfigRef) =
+  # xxx use std/json instead, will result in simpler, more maintainable code.
   template lit(x: string) = f.write x
   template str(x: string) =
     buf.setLen 0
@@ -959,23 +965,18 @@ proc writeJsonBuildInstructions*(conf: ConfigRef) =
   proc linkfiles(conf: ConfigRef; f: File; buf, objfiles: var string; clist: CfileList;
                  llist: seq[string]) =
     var pastStart = false
+    template impl(path) =
+      let path2 = quoteShell(path)
+      objfiles.add(' ')
+      objfiles.add(path2)
+      if pastStart: lit ",\L"
+      str path2
+      pastStart = true
     for it in llist:
-      let objfile = if noAbsolutePaths(conf): it.extractFilename
-                    else: it
-      let objstr = addFileExt(objfile, CC[conf.cCompiler].objExt)
-      objfiles.add(' ')
-      objfiles.add(objstr)
-      if pastStart: lit ",\L"
-      str objstr
-      pastStart = true
-
+      let objfile = if noAbsolutePaths(conf): it.extractFilename else: it
+      impl(addFileExt(objfile, CC[conf.cCompiler].objExt))
     for it in clist:
-      let objstr = quoteShell(it.obj)
-      objfiles.add(' ')
-      objfiles.add(objstr)
-      if pastStart: lit ",\L"
-      str objstr
-      pastStart = true
+      impl(it.obj)
     lit "\L"
 
   proc depfiles(conf: ConfigRef; f: File; buf: var string) =
@@ -993,8 +994,7 @@ proc writeJsonBuildInstructions*(conf: ConfigRef) =
 
 
   var buf = newStringOfCap(50)
-
-  let jsonFile = conf.getNimcacheDir / RelativeFile(conf.projectName & ".json")
+  let jsonFile = conf.jsonBuildInstructionsFile
   conf.jsonBuildFile = jsonFile
   let output = conf.absOutFile
 
@@ -1038,8 +1038,7 @@ proc writeJsonBuildInstructions*(conf: ConfigRef) =
     lit "\L}\L"
     close(f)
 
-proc changeDetectedViaJsonBuildInstructions*(conf: ConfigRef; projectfile: AbsoluteFile): bool =
-  let jsonFile = toGeneratedFile(conf, projectfile, "json")
+proc changeDetectedViaJsonBuildInstructions*(conf: ConfigRef; jsonFile: AbsoluteFile): bool =
   if not fileExists(jsonFile): return true
   if not fileExists(conf.absOutFile): return true
   result = false
@@ -1090,11 +1089,9 @@ proc changeDetectedViaJsonBuildInstructions*(conf: ConfigRef; projectfile: Absol
     echo "Warning: JSON processing failed: ", getCurrentExceptionMsg()
     result = true
 
-proc runJsonBuildInstructions*(conf: ConfigRef; projectfile: AbsoluteFile) =
-  let jsonFile = toGeneratedFile(conf, projectfile, "json")
+proc runJsonBuildInstructions*(conf: ConfigRef; jsonFile: AbsoluteFile) =
   try:
     let data = json.parseFile(jsonFile.string)
-
     let output = data["outputFile"].getStr
     createDir output.parentDir
     let outputCurrent = $conf.absOutFile

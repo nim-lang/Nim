@@ -30,6 +30,15 @@ func newRegExp*(pattern: cstring): RegExp {.importjs: "new RegExp(@)".}
 func compile*(self: RegExp; pattern: cstring; flags: cstring) {.importjs: "#.compile(@)".}
   ## Recompiles a regular expression during execution of a script.
 
+func replace*(pattern: cstring; self: RegExp; replacement: cstring): cstring {.importjs: "#.replace(#, #)".}
+  ## Returns a new string with some or all matches of a pattern replaced by given replacement
+
+func split*(pattern: cstring; self: RegExp): seq[cstring] {.importjs: "#.split(#)".}
+  ## Divides a string into an ordered list of substrings and returns the array
+
+func match*(pattern: cstring; self: RegExp): seq[cstring] {.importjs: "#.match(#)".}
+  ## Returns an array of matches of a RegExp against given string
+
 func exec*(self: RegExp; pattern: cstring): seq[cstring] {.importjs: "#.exec(#)".}
   ## Executes a search for a match in its string parameter.
 
@@ -51,6 +60,20 @@ func contains*(pattern: cstring; self: RegExp): bool =
     assert "xabc".contains jsregex
   asm "`result` = `self`.test(`pattern`);"
 
+func startsWith*(pattern: cstring; self: RegExp): bool =
+  ## Tests if string starts with given RegExp
+  runnableExamples:
+    let jsregex: RegExp = newRegExp(r"abc", r"i")
+    assert "abcd".startsWith jsregex
+  pattern.contains(newRegExp(("^" & $(self.source)).cstring, self.flags))
+
+func endsWith*(pattern: cstring; self: RegExp): bool =
+  ## Tests if string ends with given RegExp
+  runnableExamples:
+    let jsregex: RegExp = newRegExp(r"bcd", r"i")
+    assert "abcd".endsWith jsregex
+  pattern.contains(newRegExp(($(self.source) & "$").cstring, self.flags))
+
 
 runnableExamples:
   let jsregex: RegExp = newRegExp(r"\s+", r"i")
@@ -61,3 +84,10 @@ runnableExamples:
   jsregex.compile(r"[0-9]", r"i")
   assert "0123456789abcd".contains jsregex
   assert $jsregex == "/[0-9]/i"
+  jsregex.compile(r"abc", r"i")
+  assert "abcd".startsWith jsregex
+  assert "dabc".endsWith jsregex
+  jsregex.compile(r"\d", r"i")
+  assert "do1ne".split(jsregex) == @["do".cstring, "ne".cstring]
+  jsregex.compile(r"[lw]", r"i")
+  assert "hello world".replace(jsregex,"X") == "heXlo world"

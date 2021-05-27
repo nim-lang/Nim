@@ -272,10 +272,10 @@ else: # main driver
     stripLineEnd(result[0])
     doAssert result == ("12", 0)
     when not defined(windows):
-      doAssert execCmdEx("ls --nonexistant").exitCode != 0
+      doAssert execCmdEx("ls --nonexistent").exitCode != 0
     when false:
       # bug: on windows, this raises; on posix, passes
-      doAssert execCmdEx("nonexistant").exitCode != 0
+      doAssert execCmdEx("nonexistent").exitCode != 0
     when defined(posix):
       doAssert execCmdEx("echo $FO", env = newStringTable({"FO": "B"})) == ("B\n", 0)
       doAssert execCmdEx("echo $PWD", workingDir = "/") == ("/\n", 0)

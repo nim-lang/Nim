@@ -71,10 +71,15 @@ template myOpenImpl(ext: untyped) {.dirty.} =
 proc myOpen(graph: ModuleGraph; module: PSym; idgen: IdGenerator): PPassContext =
   myOpenImpl(HtmlExt)
 
+proc myOpenTex(graph: ModuleGraph; module: PSym; idgen: IdGenerator): PPassContext =
+  myOpenImpl(TexExt)
+
 proc myOpenJson(graph: ModuleGraph; module: PSym; idgen: IdGenerator): PPassContext =
   myOpenImpl(JsonExt)
 
 const docgen2Pass* = makePass(open = myOpen, process = processNode, close = close)
+const docgen2TexPass* = makePass(open = myOpenTex, process = processNode,
+                                 close = close)
 const docgen2JsonPass* = makePass(open = myOpenJson, process = processNodeJson,
                                   close = closeJson)
 

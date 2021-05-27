@@ -17,7 +17,7 @@ import
   intsets, transf, vmdef, vm, aliases, cgmeth, lambdalifting,
   evaltempl, patterns, parampatterns, sempass2, linter, semmacrosanity,
   lowerings, plugins/active, lineinfos, strtabs, int128,
-  isolation_check, typeallowed, modulegraphs, enumtostr, concepts
+  isolation_check, typeallowed, modulegraphs, enumtostr, concepts, astmsgs
 
 when defined(nimfix):
   import nimfix/prettybase
@@ -296,8 +296,7 @@ proc fixupTypeAfterEval(c: PContext, evaluated, eOrig: PNode): PNode =
       result = evaluated
       let expectedType = eOrig.typ.skipTypes({tyStatic})
       if hasCycle(result):
-        globalError(c.config, eOrig.info, "the resulting AST is cyclic and cannot be processed further")
-        result = errorNode(c, eOrig)
+        result = localErrorNode(c, eOrig, "the resulting AST is cyclic and cannot be processed further")
       else:
         semmacrosanity.annotateType(result, expectedType, c.config)
   else:
@@ -526,6 +525,7 @@ proc myOpen(graph: ModuleGraph; module: PSym; idgen: IdGenerator): PPassContext 
   var c = newContext(graph, module)
   c.idgen = idgen
   c.enforceVoidContext = newType(tyTyped, nextTypeId(idgen), nil)
+  c.voidType = newType(tyVoid, nextTypeId(idgen), nil)
 
   if c.p != nil: internalError(graph.config, module.info, "sem.myOpen")
   c.semConstExpr = semConstExpr

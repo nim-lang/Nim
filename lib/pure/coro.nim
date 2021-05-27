@@ -21,6 +21,8 @@
 ##
 ## Unstable API.
 
+import system/coro_detection
+
 when not nimCoroutines and not defined(nimdoc):
   when defined(noNimCoroutines):
     {.error: "Coroutines can not be used with -d:noNimCoroutines".}

@@ -784,3 +784,37 @@ proc main3 =
 
 main3()
 
+# misc
+proc smoltest(x: bool): bool =
+  while true:
+    if true: return x
+
+discard smoltest(true)
+
+# bug #18002
+type
+  TTypeAttachedOp = enum
+    attachedAsgn
+    attachedSink
+    attachedTrace
+
+  PNode = ref object
+    discard
+
+proc genAddrOf(n: PNode) =
+  assert n != nil, "moved?!"
+
+proc atomicClosureOp =
+  let x = PNode()
+
+  genAddrOf:
+    block:
+      x
+
+  case attachedTrace
+  of attachedSink: discard
+  of attachedAsgn: discard
+  of attachedTrace: genAddrOf(x)
+
+atomicClosureOp()
+

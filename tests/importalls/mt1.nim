@@ -10,8 +10,8 @@ doAssert m.m3p1 == 2
 ## field access
 import std/importutils
 privateAccess(Foo5)
-# var x = Foo5(z1: "foo", z2: m.kg1)
-# doAssert x.z1 == "foo"
+var x = Foo5(z1: "foo", z2: m.kg1)
+doAssert x.z1 == "foo"
 
 var f0: Foo5
 f0.z3 = 3

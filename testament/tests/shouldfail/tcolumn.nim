@@ -1,6 +1,5 @@
 discard """
   errormsg: "undeclared identifier: 'undeclared'"
-  targets: "c"
   line: 9
   column: 7
 """

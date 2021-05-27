@@ -467,7 +467,7 @@ proc genCase(c: var Con; n: PNode) =
       # treat the last branch as 'else' if this is an exhaustive case statement.
       c.gen(it.lastSon)
       if endings.len != 0:
-          c.patch(endings[^1])
+        c.patch(endings[^1])
     else:
       forkT(it.lastSon):
         c.gen(it.lastSon)
@@ -696,9 +696,10 @@ proc skipTrivials(c: var Con, n: PNode): PNode =
 proc genUse(c: var Con; orig: PNode) =
   let n = c.skipTrivials(orig)
 
-  if n.kind == nkSym and n.sym.kind in InterestingSyms:
-    c.code.add Instr(n: orig, kind: use)
-  elif n.kind in nkCallKinds:
+  if n.kind == nkSym:
+    if n.sym.kind in InterestingSyms:
+      c.code.add Instr(n: orig, kind: use)
+  else:
     gen(c, n)
 
 proc genDef(c: var Con; orig: PNode) =

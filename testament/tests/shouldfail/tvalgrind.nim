@@ -1,6 +1,5 @@
 discard """
   valgrind: true
-  targets: "c"
   cmd: "nim $target --gc:arc -d:useMalloc $options $file"
 """
 

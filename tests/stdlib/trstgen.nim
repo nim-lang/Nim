@@ -10,7 +10,7 @@ import unittest, strutils, strtabs
 import std/private/miscdollars
 
 proc toHtml(input: string,
-            rstOptions: RstParseOptions = {roSupportMarkdown, roNimFile},
+            rstOptions: RstParseOptions = {roPreferMarkdown, roSupportMarkdown, roNimFile},
             error: ref string = nil,
             warnings: ref seq[string] = nil): string =
   ## If `error` is nil then no errors should be generated.
@@ -23,23 +23,29 @@ proc toHtml(input: string,
     toLocation(message, filename, line, col + ColRstOffset)
     message.add " $1: $2" % [$mc, a]
     if mc == mcError:
-      doAssert error != nil, "unexpected RST error '" & message & "'"
+      if error == nil:
+        raise newException(EParseError, "[unexpected error] " & message)
       error[] = message
       # we check only first error because subsequent ones may be meaningless
-      raise newException(EParseError, message)
+      raise newException(EParseError, "")
     else:
       doAssert warnings != nil, "unexpected RST warning '" & message & "'"
       warnings[].add message
   try:
     result = rstToHtml(input, rstOptions, defaultConfig(),
                        msgHandler=testMsgHandler)
-  except EParseError:
-    discard
+  except EParseError as e:
+    if e.msg != "":
+      result = e.msg
 
 # inline code tags (for parsing originated from highlite.nim)
 proc id(str: string): string = """<span class="Identifier">"""  & str & "</span>"
 proc op(str: string): string = """<span class="Operator">"""    & str & "</span>"
 proc pu(str: string): string = """<span class="Punctuation">""" & str & "</span>"
+proc optionListLabel(opt: string): string =
+  """<div class="option-list-label"><tt><span class="option">""" &
+  opt &
+  "</span></tt></div>"
 
 suite "YAML syntax highlighting":
   test "Basics":
@@ -138,7 +144,7 @@ suite "YAML syntax highlighting":
 
   test "Directives: warnings":
     let input = dedent"""
-      .. non-existant-warning: Paragraph.
+      .. non-existent-warning: Paragraph.
 
       .. another.wrong:warning::: Paragraph.
       """
@@ -147,7 +153,7 @@ suite "YAML syntax highlighting":
     check output == ""
     doAssert warnings[].len == 2
     check "(1, 24) Warning: RST style:" in warnings[0]
-    check "double colon :: may be missing at end of 'non-existant-warning'" in warnings[0]
+    check "double colon :: may be missing at end of 'non-existent-warning'" in warnings[0]
     check "(3, 25) Warning: RST style:" in warnings[1]
     check "RST style: too many colons for a directive (should be ::)" in warnings[1]
 
@@ -845,7 +851,7 @@ Test1
     let output8 = input8.toHtml(warnings = warnings8)
     check(warnings8[].len == 1)
     check("input(6, 1) Warning: RST style: \n" &
-          "  not enough indentation on line 6" in warnings8[0])
+          "not enough indentation on line 6" in warnings8[0])
     doAssert output8 == "Paragraph.<ol class=\"upperalpha simple\">" &
         "<li>stringA</li>\n<li>stringB</li>\n</ol>\n<p>C. string1 string2 </p>\n"
 
@@ -1382,10 +1388,10 @@ Test1
     check(output.count("<ul") == 1)
     check(output.count("<li>") == 2)
     check(output.count("<div class=\"option-list\"") == 1)
-    check("""<div class="option-list-label">-m</div>""" &
+    check(optionListLabel("-m") &
           """<div class="option-list-description">desc</div></div>""" in
           output)
-    check("""<div class="option-list-label">-n</div>""" &
+    check(optionListLabel("-n") &
           """<div class="option-list-description">very long desc</div></div>""" in
           output)
 
@@ -1400,13 +1406,13 @@ Test1
     let output = input.toHtml
     check(output.count("<ul") == 1)
     check output.count("<div class=\"option-list\"") == 2
-    check("""<div class="option-list-label">-m</div>""" &
+    check(optionListLabel("-m") &
           """<div class="option-list-description">desc</div></div>""" in
           output)
-    check("""<div class="option-list-label">-n</div>""" &
+    check(optionListLabel("-n") &
           """<div class="option-list-description">very long desc</div></div>""" in
           output)
-    check("""<div class="option-list-label">-d</div>""" &
+    check(optionListLabel("-d") &
           """<div class="option-list-description">option</div></div>""" in
           output)
     check "<p>option</p>" notin output
@@ -1421,13 +1427,13 @@ Test1
     let output = input.toHtml
     check(output.count("<ul") == 1)
     check output.count("<div class=\"option-list\"") == 2
-    check("""<div class="option-list-label">compile</div>""" &
+    check(optionListLabel("compile") &
           """<div class="option-list-description">compile1</div></div>""" in
           output)
-    check("""<div class="option-list-label">doc</div>""" &
+    check(optionListLabel("doc") &
           """<div class="option-list-description">doc1 cont</div></div>""" in
           output)
-    check("""<div class="option-list-label">-d</div>""" &
+    check(optionListLabel("-d") &
           """<div class="option-list-description">option</div></div>""" in
           output)
     check "<p>option</p>" notin output

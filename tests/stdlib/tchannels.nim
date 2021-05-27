@@ -1,5 +1,5 @@
 discard """
-  timeout:  5.0 # but typically < 1s
+  timeout:  60.0 # but typically < 1s (in isolation but other tests running in parallel can affect this since based on epochTime)
   disabled: "freebsd"
   matrix: "--gc:arc --threads:on; --gc:arc --threads:on -d:danger"
 """

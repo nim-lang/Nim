@@ -1379,6 +1379,9 @@ proc `class=`*(n: Node; v: cstring) {.importcpp: "#.className = #", nodecl.}
 proc value*(n: Node): cstring {.importcpp: "#.value", nodecl.}
 proc `value=`*(n: Node; v: cstring) {.importcpp: "#.value = #", nodecl.}
 
+proc checked*(n: Node): bool {.importcpp: "#.checked", nodecl.}
+proc `checked=`*(n: Node; v: bool) {.importcpp: "#.checked = #", nodecl.}
+
 proc `disabled=`*(n: Node; v: bool) {.importcpp: "#.disabled = #", nodecl.}
 
 when defined(nodejs):
@@ -1496,7 +1499,9 @@ proc find*(w: Window, text: cstring, caseSensitive = false,
            backwards = false)
 proc focus*(w: Window)
 proc forward*(w: Window)
-proc getComputedStyle*(w: Window, e: Node, pe:Node = nil): Style
+proc getComputedStyle*(w: Window, e: Node, pe: Node = nil): Style
+  ## .. warning:: The returned Style may or may not be read-only at run-time in the browser. getComputedStyle is performance costly.
+
 proc handleEvent*(w: Window, e: Event)
 proc home*(w: Window)
 proc moveBy*(w: Window, x, y: int)

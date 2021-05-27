@@ -695,7 +695,7 @@ proc traverse(c: var Partitions; n: PNode) =
               # 'paramType[0]' is still a view type, this is not a typo!
               if directViewType(paramType[0]) == noView and classifyViewType(paramType[0]) != noView:
                 borrowingCall(c, paramType[0], n, i)
-        elif borrowChecking in c.goals and m == mNone:
+        elif m == mNone:
           potentialMutationViaArg(c, n[i], parameters)
 
   of nkAddr, nkHiddenAddr:
@@ -921,4 +921,4 @@ proc computeCursors*(s: PSym; n: PNode; g: ModuleGraph) =
         discard "cannot cursor into a graph that is mutated"
       else:
         v.sym.flags.incl sfCursor
-        #echo "this is now a cursor ", v.sym, " ", par.s[rid].flags, " ", config $ v.sym.info
+        #echo "this is now a cursor ", v.sym, " ", par.s[rid].flags, " ", g.config $ v.sym.info
