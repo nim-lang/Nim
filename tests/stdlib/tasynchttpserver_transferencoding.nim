@@ -5,36 +5,52 @@ discard """
 import httpclient, asynchttpserver, asyncdispatch, asyncfutures
 import net
 
+import std/asyncnet
 import std/nativesockets
 import std/threadpool
 
+const postBegin = """
+POST / HTTP/1.1
+Transfer-Encoding:chunked
+
+"""
+
 template genTest(input, expected: string) =
-  var sanity = false
-  proc my_handler(request: Request) {.async.} =
+  proc handler(request: Request, future: Future[bool]): Future[void] {.async, gcsafe.} =
       doAssert(request.body == expected)
       doAssert(request.headers.hasKey("Transfer-Encoding"))
-      # TODO: This assert depends on client-side code, not server-side code
-      # Currently, the Nim Http Client does not support Transfer-Encoding-style
-      # requests
-      # doAssert(not request.headers.hasKey("Content-Length"))
-      sanity = true
+      doAssert(not request.headers.hasKey("Content-Length"))
+      future.complete(true)
       await request.respond(Http200, "Good")
 
-  proc send_request(server: AsyncHttpServer, port: Port): Future[AsyncResponse] {.async.} =
-    let client = newAsyncHttpClient()
-    let headers = newHttpHeaders({"Transfer-Encoding": "chunked"})
-    let  clientResponse = await client.request("http://localhost:" & $port & "/", body=input, headers=headers, httpMethod=HttpPost)
-    server.close()
-    return clientResponse
+  proc runSleepLoop(server: AsyncHttpServer, future: Future[bool]) {.async, gcsafe.} = 
+    proc wrapper(request: Request): Future[void] {.gcsafe, closure.} =
+      # Capture the future
+      handler(request, future)
+    await server.acceptRequest(wrapper)
 
-  proc run_server(): void =
+  proc sendData(data: string, port: Port): void =
+    var socket = newSocket()
+    defer: socket.close()
+
+    socket.connect("127.0.0.1", port)
+    socket.send(data)
+
+  proc runTest(): Future[bool] {.async.} =
+    var handlerFuture = newFuture[bool]("runTest")
+    let data = postBegin & input
     let server = newAsyncHttpServer()
-    discard server.serve(Port(0), my_handler)
-    discard waitFor server.send_request(server.getPort)
+    server.listen(Port(0))
 
-  spawn run_server()
-  sync()
-  doAssert sanity
+    spawn sendData(data, server.getPort)
+    asyncCheck runSleepLoop(server, handlerFuture)
+    doAssert await handlerFuture
+    sync()
+    
+    server.close()
+    return true
+
+  doAssert waitFor runTest()
 
 block:
   const expected = "hello=world"
