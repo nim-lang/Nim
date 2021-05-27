@@ -22,11 +22,45 @@ runnableExamples:
   discard "in top3"
 ## top3 after
 
+proc fn(a: int): auto = a*10
+
 const
   C_A* = 0x7FF0000000000000'f64
   C_B* = 0o377'i8
   C_C* = 0o277'i8
   C_D* = 0o177777'i16
+
+  Tuple1* = (field1: fn(1)) ## in Tuple1
+  Tuple2* = (field2: 2*10) ## in Tuple2
+  Tuple3* = (3*10,) ## in Tuple3
+  Tuple4* = (a1: 1, a2: 2*3, a3: "abc",) ## in Tuple4
+
+  Tuple5* = (
+    a1: 1, ## in a1
+    a2: 2*3, ## in a2
+    a3: "abc", ## in a3
+  )
+# xxx `in a3` is missing from docs
+
+#[
+xxx docgen messed up in this case:
+const
+  Tuple6* = (
+    a1: 1, ## in a1
+    a2: 2*3, ## in a2
+    a3: "abc", ## in a3
+  )  ## in Tuple5
+
+ditto here:
+  Tuple7* = (
+    a1: 1, ## in a1
+    a2: 2*3, ## in a2
+    a3: "abc") ## in Tuple5
+]#
+
+let someLet1* = (a1: fn(3), a2: 2)
+  ## in someLet1
+
 
 proc bar*[T](a, b: T): T =
   result = a + b

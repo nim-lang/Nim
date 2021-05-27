@@ -2197,7 +2197,7 @@ proc fixupVmArtifacts(n: PNode): PNode =
       for i in 0..<result.len:
         let ni = result[i]
         if ni.kind != nkExprColonExpr:
-          let n2 = newNodeIT(nkExprColonExpr, ni.info, ni.typ) # PRTEMP for typ
+          let n2 = newNodeIT(nkExprColonExpr, ni.info, ni.typ)
           n2.add result.typ.n[i]
           n2.add ni
           result[i] = n2

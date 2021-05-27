@@ -3,6 +3,12 @@ C_A	testproject.html#C_A	testproject: C_A
 C_B	testproject.html#C_B	testproject: C_B	
 C_C	testproject.html#C_C	testproject: C_C	
 C_D	testproject.html#C_D	testproject: C_D	
+Tuple1	testproject.html#Tuple1	testproject: Tuple1	
+Tuple2	testproject.html#Tuple2	testproject: Tuple2	
+Tuple3	testproject.html#Tuple3	testproject: Tuple3	
+Tuple4	testproject.html#Tuple4	testproject: Tuple4	
+Tuple5	testproject.html#Tuple5	testproject: Tuple5	
+someLet1	testproject.html#someLet1	testproject: someLet1	
 bar	testproject.html#bar,T,T	testproject: bar[T](a, b: T): T	
 baz	testproject.html#baz,T,T	testproject: baz[T](a, b: T): T	
 buzz	testproject.html#buzz,T,T	testproject: buzz[T](a, b: T): T	
