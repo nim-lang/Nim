@@ -82,8 +82,6 @@
   The downside is that these defines now have custom logic that doesn't apply for
   other defines.
 
-- Deprecated `macros.unpackVarargs` which wasn't useful.
-
 
 
 ## Standard library additions and changes

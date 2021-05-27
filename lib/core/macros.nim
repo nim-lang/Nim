@@ -1681,8 +1681,18 @@ macro getCustomPragmaVal*(n: typed, cp: typed): untyped =
   else:
     error(n.repr & " doesn't have a pragma named " & cp.repr, n)
 
-macro unpackVarargs*(callee: untyped; args: varargs[untyped]): untyped
-  {.deprecated: "use directly `callee(args)`".} =
+macro unpackVarargs*(callee: untyped; args: varargs[untyped]): untyped =
+  ## Calls `callee` with `args` unpacked as individual arguments.
+  ## This is only useful in the case where `args` can potentially be empty, due
+  ## to a compiler limitation, see examples.
+  runnableExamples:
+    template call(fun: typed; args: varargs[untyped]): untyped =
+      unpackVarargs(fun, args)
+      # when varargsLen(args) > 0: fun(args) else: fun() # this would also work
+    proc fn1(a = 0, b = 1) = discard (a, b)
+    call(fn1, 10, 11)
+    call(fn1, 10)
+    call(fn1) # `args` is empty in this case
   result = newCall(callee)
   for i in 0 ..< args.len:
     result.add args[i]
