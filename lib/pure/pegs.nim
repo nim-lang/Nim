@@ -326,7 +326,7 @@ proc backrefIgnoreStyle*(index: range[1..MaxSubpatterns]): Peg {.
   ## from 1. Ignores style for matching.
   result = Peg(kind: pkBackRefIgnoreStyle, index: index-1)
 
-proc spaceCost(n: Peg): int =
+proc spaceCost(n: Peg): int {.noSideEffect.} =
   case n.kind
   of pkEmpty: discard
   of pkTerminal, pkTerminalIgnoreCase, pkTerminalIgnoreStyle, pkChar,
@@ -433,7 +433,7 @@ proc charSetEsc(cc: set[char]): string =
   else:
     result = '[' & charSetEscAux(cc) & ']'
 
-proc toStrAux(r: Peg, res: var string) =
+proc toStrAux(r: Peg, res: var string) {.noSideEffect.} =
   case r.kind
   of pkEmpty: add(res, "()")
   of pkAny: add(res, '.')
@@ -556,7 +556,7 @@ template matchOrParse(mopProc: untyped) =
   # procs. For the former, *enter* and *leave* event handler code generators
   # are provided which just return *discard*.
 
-  proc mopProc(s: string, p: Peg, start: int, c: var Captures): int =
+  proc mopProc(s: string, p: Peg, start: int, c: var Captures): int {.noSideEffect.} =
     proc matchBackRef(s: string, p: Peg, start: int, c: var Captures): int =
       # Parse handler code must run in an *of* clause of its own for each
       # *PegKind*, so we encapsulate the identical clause body for
