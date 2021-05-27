@@ -197,8 +197,9 @@ proc addRtfChar(dest: var string, c: char) =
   else: add(dest, c)
 
 proc addTexChar(dest: var string, c: char) =
-  # Escapes 10 special Latex characters and `. Note that [, ] are not
+  # Escapes 10 special Latex characters and ` and ]. Note that [ is not
   # considered as such. TODO: neither is @, am I wrong?
+  # All escapes should start from \ to work in code blocks (fancyvrb/fvextra).
   case c
   of '_', '{', '}', '$', '&', '#', '%': add(dest, "\\" & c)
   # \~ and \^ have a special meaning unless they are followed by {}
@@ -207,6 +208,8 @@ proc addTexChar(dest: var string, c: char) =
   of '`': add(dest, "\\textasciigrave{}")
   # add {} to avoid gobbling up space by \textbackslash
   of '\\': add(dest, "\\textbackslash{}")
+  # ] should be escaped inside an optional argument, e.g. \section[static[T]]{..
+  of ']': add(dest, "\\text{]}")
   else: add(dest, c)
 
 proc escChar*(target: OutputTarget, dest: var string, c: char) {.inline.} =
