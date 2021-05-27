@@ -654,10 +654,7 @@ proc getConstExpr(m: PSym, n: PNode; idgen: IdGenerator; g: ModuleGraph): PNode 
         let exprNew = copyNode(expr) # nkExprColonExpr
         exprNew.add expr[0]
         let a = getConstExpr(m, expr[1], idgen, g)
-        if a == nil:
-          # if expr[1].renderTree == "fn(123456)":
-          #   echo getStackTrace()
-          return nil
+        if a == nil: return nil
         exprNew.add a
         result.add exprNew
     else:

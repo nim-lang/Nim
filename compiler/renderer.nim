@@ -1207,13 +1207,6 @@ proc gsub(g: var TSrcGen, n: PNode, c: TContext, fromStmtList = false) =
     put(g, tkParRi, ")")
   of nkTupleConstr:
     put(g, tkParLe, "(")
-    # if isCompilerDebug():
-    #   if n.len > 0:
-    #     dbgIf n.kind, n[0].kind, n.len, n.typ
-    #     if n.typ!=nil:
-    #       for ni in n.typ.sons:
-    #         dbg ni.kind
-    #       dbg n.typ.n.kind
     gcomma(g, n, c)
     if n.len == 1 and n[0].kind != nkExprColonExpr: put(g, tkComma, ",")
     put(g, tkParRi, ")")

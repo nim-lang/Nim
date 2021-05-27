@@ -2189,48 +2189,32 @@ proc myClose(graph: ModuleGraph; c: PPassContext, n: PNode): PNode =
 
 const evalPass* = makePass(myOpen, myProcess, myClose)
 
-import astalgo # PRTEMP
-
 proc fixupVmArtifacts(n: PNode): PNode =
   result = n
   case result.kind
   of nkTupleConstr:
     if result.typ.n != nil and result.typ.n.kind == nkRecList:
-      # for i, ni in mitems(result.sons):
       for i in 0..<result.len:
         let ni = result[i]
         if ni.kind != nkExprColonExpr:
-          # ni = newNodeIT(nkExprColonExpr, ni.info, newType[i])
           let n2 = newNodeIT(nkExprColonExpr, ni.info, ni.typ) # PRTEMP for typ
           n2.add result.typ.n[i]
           n2.add ni
-          # ni = n2
           result[i] = n2
-          dbgIf n2
-          # nkExprColonExpr
-            # var m = n[i]
-            # var a = newNodeIT(nkExprColonExpr, m.info, newType[i])
-            # a.add newSymNode(newType.n[i].sym)
-            # a.add m
-            # changeType(m, tup[i], check)
   else:
-    # for ni in mitems(result): # PRTEMP support
-    for i in 0..<result.safeLen:
+    for i in 0..<result.safeLen: # xxx support mitems(result)
       result[i] = fixupVmArtifacts(result[i])
-      # result[i] = fixupVmArtifacts(ai)
 
 proc evalConstExprAux(module: PSym; idgen: IdGenerator;
                       g: ModuleGraph; prc: PSym, n: PNode,
                       mode: TEvalMode): PNode =
   #if g.config.errorCounter > 0: return n
   let n = transformExpr(g, idgen, module, n)
-  dbgIf n
   setupGlobalCtx(module, g, idgen)
   var c = PCtx g.vm
   let oldMode = c.mode
   c.mode = mode
   let start = genExpr(c, n, requiresValue = mode!=emStaticStmt)
-  # dbgIf start
   if c.code[start].opcode == opcEof: return newNodeI(nkEmpty, n.info)
   assert c.code[start].opcode != opcEof
   when debugEchoCode: c.echoCode start
@@ -2239,19 +2223,6 @@ proc evalConstExprAux(module: PSym; idgen: IdGenerator;
   #for i in 0..<c.prc.regInfo.len: tos.slots[i] = newNode(nkEmpty)
   result = rawExecute(c, start, tos).regToNode
   result = fixupVmArtifacts(result)
-  if isCompilerDebug():
-    dbgIf result
-    dbgIf result.typ
-    dbgIf result.typ.n
-    dbgIf result.typ.n.kind
-    dbgIf result.typ.n.len
-    for i, ai in result.typ.n:
-      dbg i, ai, ai.kind
-    debug(result.typ.n)
-
-    for i, ai in result.typ.sons:
-      dbgIf i, ai
-    dbgIf n.typ
   if result.info.col < 0: result.info = n.info
   c.mode = oldMode
 

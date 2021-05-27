@@ -18,6 +18,4 @@ proc getConfigRef*(): ConfigRef =
   ## nil, if -d:nimDebugUtils wasn't specified
   result = conf0
 
-# import timn/exp/nim_compiler_debugutils
-# export nim_compiler_debugutils
 include timn/exp/nim_compiler_debugutils
