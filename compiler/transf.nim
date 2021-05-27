@@ -891,6 +891,9 @@ proc transform(c: PTransf, n: PNode): PNode =
                   nkBlockStmt, nkBlockExpr}:
       oldDeferAnchor = c.deferAnchor
       c.deferAnchor = n
+  dbgIf n.kind, n
+  defer:
+    dbgIf n.kind, n, result, ?.result.kind
   case n.kind
   of nkSym:
     result = transformSym(c, n)
@@ -1021,8 +1024,10 @@ proc transform(c: PTransf, n: PNode): PNode =
                           n.typ.kind == tyPointer
   if not exprIsPointerCast:
     var cnst = getConstExpr(c.module, result, c.idgen, c.graph)
+    dbgIf cnst
     # we inline constants if they are not complex constants:
     if cnst != nil and not dontInlineConstant(n, cnst):
+      dbgIf()
       result = cnst # do not miss an optimization
 
 proc processTransf(c: PTransf, n: PNode, owner: PSym): PNode =
@@ -1135,3 +1140,4 @@ proc transformExpr*(g: ModuleGraph; idgen: IdGenerator; module: PSym, n: PNode):
     # expressions are not to be injected with destructor calls as that
     # the list of top level statements needs to be collected before.
     incl(result.flags, nfTransf)
+  dbgIf result

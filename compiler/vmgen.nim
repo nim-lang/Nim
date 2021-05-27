@@ -2000,6 +2000,7 @@ proc procIsCallback(c: PCtx; s: PSym): bool =
     dec i
 
 proc gen(c: PCtx; n: PNode; dest: var TDest; flags: TGenFlags = {}) =
+  dbgIf n, n.kind
   case n.kind
   of nkSym:
     let s = n.sym
