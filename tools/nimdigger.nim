@@ -27,8 +27,10 @@ find a which commit introduced a bugfix
 $ nim r tools/nimdigger.nim --oldnew:v0.19.0..v0.20.0 --bisectBugfix --bisectCmd:'bin/nim -v | grep 0.20.0'
 be9c38d2659496f918fb39e129b9b5b055eafd88 is the first BUGFIX commit
 ```
+Note that this is fast (e.g. 3s) if intermediate nim binaries have already been built/cached in prior runs.
 
-find an actual regression, taken from https://github.com/nim-lang/Nim/issues/16376; copy this snippet to /tmp/t16376.nim:
+find an actual regression, e.g. for https://github.com/nim-lang/Nim/issues/16376,
+copy this snippet to /tmp/t16376.nim:
 ```nim
 type Matrix[T] = object
   data: T
@@ -77,7 +79,7 @@ type
     verbose: bool
 
     # bisect cmds
-    # TODO: specify whether we should compile nim
+    # TODO: allow user to not compile nim, for cases where it's not needed
     oldnew: string # eg: v0.20.0~10..v0.20.0
     bisectCmd: string # eg: bin/nim c --hints:off --skipparentcfg --skipusercfg $timn_D/tests/nim/all/t12329.nim 'arg1 bar' 'arg2'
     bisectBugfix: bool
@@ -109,7 +111,7 @@ proc isSimulate(): bool =
   defined(nimDiggerSimulate)
 
 proc runCmd(cmd: string) =
-  # TODO: allow `dir` param
+  # TODO: allow `dir` param (or use `runCmdOutput`)
   if isSimulate():
     dbg cmd
   else:
@@ -302,12 +304,11 @@ proc main2(opt: DiggerOpt) =
     var msg2 = opt.bisectCmd
     if opt.bisectBugfix:
       msg2 = fmt"! ({msg2})" # negate exit code
-    let bisectCmd2 = fmt"{exe} --compileNim && {msg2}" # TODO: inside () in case it does weird things?
+    let bisectCmd2 = fmt"{exe} --compileNim && ( {msg2} )"
     runCmd(fmt"git -C {state.nimDir.quoteShell} bisect run bash -c {bisectCmd2.quoteShell}")
 
 proc main(rev = "", nimDir = "", compileNim = false, fetch = false, oldnew = "", bisectBugfix = false, verbose = false, bisectCmd = "", args: seq[string]) =
-  # nimdigger.verbose = verbose
-  nimdigger.verbose = true
+  nimdigger.verbose = verbose
   var bisectCmd = bisectCmd
   if bisectCmd.len == 0:
     bisectCmd = args.quoteShellCommand
