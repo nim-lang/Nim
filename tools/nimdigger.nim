@@ -8,19 +8,7 @@ import std/[os, osproc, strformat, macros, strutils, tables, algorithm]
 import timn/dbgs
 
 type
-  CsourcesOpt = ref object
-    url: string
-    dir: string
-    rev: string
-    binDir: string
-    csourcesBuildArgs: string
-    revs: seq[string]
-    fetch: bool
-    name: string
-    nimCsourcesExe: string
-  # DiggerState = ref object
-  DiggerOpt = object
-    # input fields
+  DiggerOpt = object ## nimdigger input
     rev: string
     nimDir: string
     compileNim: bool
@@ -34,11 +22,22 @@ type
     bisectCmd: string
     bisectBugfix: bool
     oldrev, newrev: string
-
-    # state fieles (TODO: split out these)
+  CsourcesOpt = ref object
+    url: string
+    dir: string
+    rev: string
+    binDir: string
+    csourcesBuildArgs: string
+    revs: seq[string]
+    fetch: bool
+    name: string
+    nimCsourcesExe: string
+  DiggerState = ref object ## nimdigger internal state
     coptv0: CsourcesOpt
     coptv1: CsourcesOpt
     binDir: string
+    nimDir: string
+    rev: string
 
 const
   csourcesRevs = "v0.9.4 v0.13.0 v0.15.2 v0.16.0 v0.17.0 v0.17.2 v0.18.0 v0.19.0 v0.20.0 64e3477".split
@@ -155,33 +154,33 @@ proc toCsourcesRev(rev: string): string =
   # v0.9.4 seems broken
   return csourcesRevs[1]
 
-proc getNimCsourcesAnyExe(opt: DiggerOpt): CsourcesOpt =
-  let file = opt.nimDir/"config/build_config.txt" # for newer nim versions, this file specifies correct csources_v1 to use
+proc getNimCsourcesAnyExe(state: DiggerState): CsourcesOpt =
+  let file = state.nimDir/"config/build_config.txt" # for newer nim versions, this file specifies correct csources_v1 to use
   if file.fileExists:
     let tab = file.readFile.parseKeyVal
-    result = opt.coptv1
+    result = state.coptv1
     result.rev = tab["nim_csourcesHash"]
-  elif gitIsAncestorOf(opt.nimDir, "a9b62de", opt.rev): # commit that introduced csources_v1
-    result = opt.coptv1
+  elif gitIsAncestorOf(state.nimDir, "a9b62de", state.rev): # commit that introduced csources_v1
+    result = state.coptv1
     result.rev = csourcesV1Revs[0]
   else:
-    let tag = gitLatestTag(opt.nimDir)
-    result = opt.coptv0
+    let tag = gitLatestTag(state.nimDir)
+    result = state.coptv0
     result.rev = tag.toCsourcesRev
-  result.nimCsourcesExe = toNimCsourcesExe(opt.binDir, result.name, result.rev)
+  result.nimCsourcesExe = toNimCsourcesExe(state.binDir, result.name, result.rev)
 
 proc main2(opt: DiggerOpt) =
   const
     csourcesName = "csources"
     csourcesV1Name = "csources_v1"
-  var opt = opt
+  let state = DiggerState(nimDir: opt.nimDir, rev: opt.rev)
   let nimdiggerHome = getEnv(NimDiggerEnv, getHomeDir() / ".nimdigger")
-  if opt.nimDir.len == 0:
-    opt.nimDir = nimdiggerHome / "cache/Nim"
-  if verbose: dbg opt
-  let nimDir = opt.nimDir
-  opt.binDir = nimDir/"bin"
-  let nimDiggerExe = opt.binDir / "nim_nimdigger"
+  if state.nimDir.len == 0:
+    state.nimDir = nimdiggerHome / "cache/Nim"
+  if verbose: dbg state
+  let nimDir = state.nimDir
+  state.binDir = nimDir/"bin"
+  let nimDiggerExe = state.binDir / "nim_nimdigger"
 
   if nimDir.dirExists:
     doAssert fileExists(nimDir / "lib/system.nim"), fmt"nimDir is not a nim repo: {nimDir}"
@@ -189,20 +188,20 @@ proc main2(opt: DiggerOpt) =
     createDir nimDir.parentDir
     gitClone("https://github.com/nim-lang/Nim", nimDir)
 
-  opt.coptv0 = CsourcesOpt(dir: nimDir/csourcesName, url: "https://github.com/nim-lang/csources.git", name: csourcesName, revs: csourcesRevs)
-  opt.coptv1 = CsourcesOpt(dir: nimDir/csourcesV1Name, url: "https://github.com/nim-lang/csources_v1.git", name: csourcesV1Name, revs: csourcesV1Revs)
-  for copt in [opt.coptv0, opt.coptv1]:
-    copt.binDir = opt.binDir
+  state.coptv0 = CsourcesOpt(dir: nimDir/csourcesName, url: "https://github.com/nim-lang/csources.git", name: csourcesName, revs: csourcesRevs)
+  state.coptv1 = CsourcesOpt(dir: nimDir/csourcesV1Name, url: "https://github.com/nim-lang/csources_v1.git", name: csourcesV1Name, revs: csourcesV1Revs)
+  for copt in [state.coptv0, state.coptv1]:
+    copt.binDir = state.binDir
     copt.fetch = opt.fetch
     if opt.buildAllCsources:
       buildCsourcesAnyRevs(copt)
 
   if opt.fetch: gitFetch(nimDir)
-  if opt.rev.len > 0: gitResetHard(nimDir, opt.rev)
-  else: opt.rev = "HEAD"
+  if state.rev.len > 0: gitResetHard(nimDir, state.rev)
+  else: state.rev = "HEAD"
 
   if opt.compileNim:
-    let copt = getNimCsourcesAnyExe(opt)
+    let copt = getNimCsourcesAnyExe(state)
     buildCsourcesRev(copt)
     # TODO: we could also cache those, optionally maybe (could get large?) or use this as hint in nim bisect to prefer those
     discard runCmdOutput(fmt"{copt.nimCsourcesExe} c -o:{nimDiggerExe} --hints:off --skipUserCfg compiler/nim.nim", nimDir)
@@ -210,13 +209,13 @@ proc main2(opt: DiggerOpt) =
   if opt.bisectCmd.len > 0:
     doAssert opt.oldrev.len > 0 # for regressions, aka goodrev
     doAssert opt.newrev.len > 0 # for a regressions, aka badrev 
-    runCmd(fmt"git -C {opt.nimDir.quoteShell} bisect start {opt.newrev} {opt.oldrev}")
+    runCmd(fmt"git -C {state.nimDir.quoteShell} bisect start {opt.newrev} {opt.oldrev}")
     let exe = getAppFileName()
     var msg2 = opt.bisectCmd
     if opt.bisectBugfix:
       msg2 = fmt"! ({msg2})" # negate exit code
     let bisectCmd2 = fmt"{exe} --compileNim && cp {nimDiggerExe.quoteShell} bin/nim && {msg2}" # TODO: inside () in case it does weird things?
-    runCmd(fmt"git -C {opt.nimDir.quoteShell} bisect run bash -c {bisectCmd2.quoteShell}")
+    runCmd(fmt"git -C {state.nimDir.quoteShell} bisect run bash -c {bisectCmd2.quoteShell}")
 
 proc main(rev = "", nimDir = "", compileNim = false, fetch = false, bisectCmd = "", newrev = "", oldrev = "", bisectBugfix = false, verbose = false) =
   nimdigger.verbose = verbose
