@@ -2,6 +2,10 @@
 
 ## notes
 can build as far back as: v0.12.0~157
+
+##
+nim r tools/nimdigger.nim --oldnew:v0.19.0..v0.20.0 -- bin/nim c --hints:off --skipparentcfg --skipusercfg $timn_D/tests/nim/all/t12329.nim
+
 ]#
 
 import std/[os, osproc, strformat, macros, strutils, tables, algorithm]
@@ -21,7 +25,8 @@ type
     # TODO: specify whether we should compile nim
     bisectCmd: string
     bisectBugfix: bool
-    oldrev, newrev: string
+    oldnew: string
+    args: seq[string]
   CsourcesOpt = ref object
     url: string
     dir: string
@@ -33,8 +38,7 @@ type
     name: string
     nimCsourcesExe: string
   DiggerState = ref object ## nimdigger internal state
-    coptv0: CsourcesOpt
-    coptv1: CsourcesOpt
+    coptv0, coptv1: CsourcesOpt
     binDir: string
     nimDir: string
     rev: string
@@ -170,12 +174,9 @@ proc getNimCsourcesAnyExe(state: DiggerState): CsourcesOpt =
   result.nimCsourcesExe = toNimCsourcesExe(state.binDir, result.name, result.rev)
 
 proc main2(opt: DiggerOpt) =
-  const
-    csourcesName = "csources"
-    csourcesV1Name = "csources_v1"
   let state = DiggerState(nimDir: opt.nimDir, rev: opt.rev)
-  let nimdiggerHome = getEnv(NimDiggerEnv, getHomeDir() / ".nimdigger")
   if state.nimDir.len == 0:
+    let nimdiggerHome = getEnv(NimDiggerEnv, getHomeDir() / ".nimdigger")
     state.nimDir = nimdiggerHome / "cache/Nim"
   if verbose: dbg state
   let nimDir = state.nimDir
@@ -187,14 +188,17 @@ proc main2(opt: DiggerOpt) =
   else:
     createDir nimDir.parentDir
     gitClone("https://github.com/nim-lang/Nim", nimDir)
-
-  state.coptv0 = CsourcesOpt(dir: nimDir/csourcesName, url: "https://github.com/nim-lang/csources.git", name: csourcesName, revs: csourcesRevs)
-  state.coptv1 = CsourcesOpt(dir: nimDir/csourcesV1Name, url: "https://github.com/nim-lang/csources_v1.git", name: csourcesV1Name, revs: csourcesV1Revs)
-  for copt in [state.coptv0, state.coptv1]:
-    copt.binDir = state.binDir
-    copt.fetch = opt.fetch
-    if opt.buildAllCsources:
-      buildCsourcesAnyRevs(copt)
+  block:
+    const
+      csourcesName = "csources"
+      csourcesV1Name = "csources_v1"
+    state.coptv0 = CsourcesOpt(dir: nimDir/csourcesName, url: "https://github.com/nim-lang/csources.git", name: csourcesName, revs: csourcesRevs)
+    state.coptv1 = CsourcesOpt(dir: nimDir/csourcesV1Name, url: "https://github.com/nim-lang/csources_v1.git", name: csourcesV1Name, revs: csourcesV1Revs)
+    for copt in [state.coptv0, state.coptv1]:
+      copt.binDir = state.binDir
+      copt.fetch = opt.fetch
+      if opt.buildAllCsources:
+        buildCsourcesAnyRevs(copt)
 
   if opt.fetch: gitFetch(nimDir)
   if state.rev.len > 0: gitResetHard(nimDir, state.rev)
@@ -206,20 +210,29 @@ proc main2(opt: DiggerOpt) =
     # TODO: we could also cache those, optionally maybe (could get large?) or use this as hint in nim bisect to prefer those
     discard runCmdOutput(fmt"{copt.nimCsourcesExe} c -o:{nimDiggerExe} --hints:off --skipUserCfg compiler/nim.nim", nimDir)
 
-  if opt.bisectCmd.len > 0:
-    doAssert opt.oldrev.len > 0 # for regressions, aka goodrev
-    doAssert opt.newrev.len > 0 # for a regressions, aka badrev 
-    runCmd(fmt"git -C {state.nimDir.quoteShell} bisect start {opt.newrev} {opt.oldrev}")
+  if opt.oldnew.len > 0:
+    let oldnew2 = opt.oldnew.split("..")
+    doAssert oldnew2.len == 2, opt.oldnew
+    let oldrev = oldnew2[0]
+    let newrev = oldnew2[1]
+    doAssert oldrev.len > 0 # for regressions, aka goodrev
+    doAssert newrev.len > 0 # for a regressions, aka badrev 
+    runCmd(fmt"git -C {state.nimDir.quoteShell} bisect start {newrev} {oldrev}")
     let exe = getAppFileName()
-    var msg2 = opt.bisectCmd
+    var msg2: string
+    if opt.bisectCmd.len > 0:
+      msg2 = opt.bisectCmd
+      doAssert opt.args.len == 0
+    else:
+      msg2 = opt.args.quoteShellCommand
     if opt.bisectBugfix:
       msg2 = fmt"! ({msg2})" # negate exit code
     let bisectCmd2 = fmt"{exe} --compileNim && cp {nimDiggerExe.quoteShell} bin/nim && {msg2}" # TODO: inside () in case it does weird things?
     runCmd(fmt"git -C {state.nimDir.quoteShell} bisect run bash -c {bisectCmd2.quoteShell}")
 
-proc main(rev = "", nimDir = "", compileNim = false, fetch = false, bisectCmd = "", newrev = "", oldrev = "", bisectBugfix = false, verbose = false) =
+proc main(rev = "", nimDir = "", compileNim = false, fetch = false, bisectCmd = "", oldnew = "", bisectBugfix = false, verbose = false, args: seq[string]) =
   nimdigger.verbose = verbose
-  main2(DiggerOpt.ctor(rev, nimDir, compileNim, fetch, bisectCmd, newrev, oldrev, bisectBugfix))
+  main2(DiggerOpt.ctor(rev, nimDir, compileNim, fetch, bisectCmd, oldnew, bisectBugfix, args))
 
 when isMainModule:
   import pkg/cligen
