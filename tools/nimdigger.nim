@@ -50,6 +50,7 @@ const
   NimDiggerEnv = "NIMDIGGER_HOME"
 
 var verbose = false
+
 proc isSimulate(): bool =
   defined(nimDiggerSimulate)
 
@@ -64,7 +65,7 @@ proc runCmd(cmd: string) =
 proc runCmdOutput(cmd: string, dir = ""): string =
   if verbose: dbg cmd, dir
   let (outp, status) = execCmdEx(cmd, workingDir = dir)
-  doAssert status == 0, &"status: {status}\ncmd: {cmd}\ndir: {dir}\noutput: {outp}"
+  doAssert status == 0, indent(&"status: {status}\ncmd: {cmd}\ndir: {dir}\noutput: {outp}", 2)
   result = outp
   stripLineEnd(result)
 
@@ -108,7 +109,7 @@ proc parseNimGitTag(tag: string): (int, int, int) =
 
 proc toNimCsourcesExe(binDir: string, name: string, rev: string): string =
   let rev2 = rev.replace(".", "_")
-  result = binDir / fmt"nim_digger_{name}_{rev2}"
+  result = binDir / fmt"nim_nimdigger_{name}_{rev2}"
 
 proc buildCsourcesRev(copt: CsourcesOpt) =
   # sync with `_nimBuildCsourcesIfNeeded`
@@ -123,6 +124,8 @@ proc buildCsourcesRev(copt: CsourcesOpt) =
     let make = "gmake"
   else:
     let make = "make"
+  let oldNim = copt.binDir / "nim"
+  removeFile(oldNim) # otherwise `make` may incorrectly decide there's notthing to build
   let ncpu = countProcessors()
   if copt.rev.isGitNimTag and copt.rev.parseNimGitTag < (0,15,2):
     # avoids: make: *** No rule to make target `c_code/3_2/compiler_testability.o', needed by `../bin/nim'.  Stop.
@@ -132,7 +135,7 @@ proc buildCsourcesRev(copt: CsourcesOpt) =
   if isSimulate():
     dbg csourcesExe
   else:
-    copyFile(copt.binDir / "nim", csourcesExe) # TODO: windows exe etc?
+    copyFile(oldNim, csourcesExe) # TODO: windows: do i need to add exe or it's smart enough?
 
 proc buildCsourcesAnyRevs(copt: CsourcesOpt) =
   for rev in copt.revs:
@@ -181,7 +184,7 @@ proc main2(opt: DiggerOpt) =
   let csourcesDir = nimDir/csourcesName
   let csourcesV1Dir = nimDir/csourcesV1Name
   opt.binDir = nimDir/"bin"
-  let nimDiggerExe = opt.binDir / "nim_digger"
+  let nimDiggerExe = opt.binDir / "nim_nimdigger"
 
   if nimDir.dirExists:
     doAssert fileExists(nimDir / "lib/system.nim"), fmt"nimDir is not a nim repo: {nimDir}"
@@ -215,11 +218,11 @@ proc main2(opt: DiggerOpt) =
     var msg2 = opt.bisectCmd
     if opt.bisectBugfix:
       msg2 = fmt"! ({msg2})" # negate exit code
-    let bisectCmd2 = fmt"{exe} --compileNim && cp {nimDiggerExe.quoteShell} bin/nim && {msg2}"
+    let bisectCmd2 = fmt"{exe} --compileNim && cp {nimDiggerExe.quoteShell} bin/nim && {msg2}" # TODO: inside () in case it does weird things?
     runCmd(fmt"git -C {opt.nimDir.quoteShell} bisect run bash -c {bisectCmd2.quoteShell}")
 
 proc main(rev = "", nimDir = "", compileNim = false, fetch = false, bisectCmd = "", newrev = "", oldrev = "", bisectBugfix = false, verbose = false) =
-  digger.verbose = verbose
+  nimdigger.verbose = verbose
   main2(DiggerOpt.ctor(rev, nimDir, compileNim, fetch, bisectCmd, newrev, oldrev, bisectBugfix))
 
 when isMainModule:
