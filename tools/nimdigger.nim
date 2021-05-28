@@ -1,24 +1,60 @@
-#[
+##[
+`nimdigger` is a tool to build nim at any revision (including custom branches), taking
+care of details such as figuring out automatically the correct csources/csources_v1 revision to use.
 
-## notes
-can build as far back as: v0.12.0~157
+## design goals
+* ease of use: 1 liner for running `git bisect` workflows, or to build nim at past revisions
+* performance: via caching both csources built binaries, and intermediate nim binaries
+* lazyness: build artifacts on demand
+* go as far back as possible, currently oldest buildable nim version is v0.12.0~157
 
 ## examples
-nim r tools/nimdigger.nim --oldnew:v0.19.0..v0.20.0 --bisectCmd:'bin/nim -v | grep 0.19.0'
+build at any revision >= v0.12.0~157
+```
+$ nim r tools/nimdigger.nim --compileNim --rev:v0.15.2~10
+$ $HOME/.nimdigger/cache/Nim/bin/nim -v
+Nim Compiler Version 0.15.2 (2021-05-28) [MacOSX: amd64] [...]
+```
+
+find a which commit introduced a regression
+```
+$ nim r tools/nimdigger.nim --oldnew:v0.19.0..v0.20.0 --bisectCmd:'bin/nim -v | grep 0.19.0'
 66c0f7c3fb214485ca6cfd799af6e50798fcdf6d is the first REGRESSION commit
+```
 
-nim r tools/nimdigger.nim --oldnew:v0.19.0..v0.20.0 --bisectBugfix --bisectCmd:'bin/nim -v | grep 0.20.0'
+find a which commit introduced a bugfix
+```
+$ nim r tools/nimdigger.nim --oldnew:v0.19.0..v0.20.0 --bisectBugfix --bisectCmd:'bin/nim -v | grep 0.20.0'
 be9c38d2659496f918fb39e129b9b5b055eafd88 is the first BUGFIX commit
+```
 
-nim r tools/nimdigger.nim --oldnew:v0.19.0..v0.20.0 -- bin/nim c --hints:off --skipparentcfg --skipusercfg $timn_D/tests/nim/all/t12329.nim
+find an actual regression, taken from https://github.com/nim-lang/Nim/issues/16376; copy this snippet to /tmp/t16376.nim:
+```nim
+type Matrix[T] = object
+  data: T
+proc randMatrix*[T](m, n: int, max: T): Matrix[T] = discard
+proc randMatrix*[T](m, n: int, x: Slice[T]): Matrix[T] = discard
+template randMatrix*[T](m, n: int): Matrix[T] = randMatrix[T](m, n, T(1.0))
+let B = randMatrix[float32](20, 10)
+```
+```
+$ nim r tools/nimdigger.nim --oldnew:v0.19.0..v0.20.0 -- bin/nim c --hints:off --skipparentcfg --skipusercfg /tmp/t16376.nim
+fd16875561634e3ef24072631cf85eeead6213f2 is the first REGRESSION commit
+```
 
-## note:
-https://stackoverflow.com/a/22592593/1426932 Magic exit statuses
-anything above 127 makes the bisection fail with something like:
-125 is magic and makes the run be skipped with git bisect skip.
+## notes
+Unstable API, subject to change
+]##
 
+#[
 ## TODO
 allow a way to verify that oldnew revisions honor what's implied by bisectBugfix:true|false
+
+## note
+we should give exit code = 125 to commits where nim won't build, to skip over, see also:
+https://stackoverflow.com/a/22592593/1426932 (Magic exit statuses)
+> anything above 127 makes the bisection fail with something like:
+> 125 is magic and makes the run be skipped with git bisect skip.
 ]#
 
 import std/[os, osproc, strformat, macros, strutils, tables, algorithm]
@@ -83,7 +119,7 @@ proc runCmdOutput(cmd: string, dir = ""): string =
 
 macro ctor(obj: untyped, a: varargs[untyped]): untyped =
   ## Generates an object constructor call from a list of fields.
-  # xxx expose in some `fusion/macros` or std/macros; FACTOR with pr_fusion_globs PR
+  # xxx expose in std/sugar, factor with https://github.com/nim-lang/fusion/pull/32
   runnableExamples:
     type Foo = object
       a, b: int
@@ -100,6 +136,7 @@ proc parseKeyVal(a: string): OrderedTable[string, string] =
     doAssert b.len == 2, $(ai, b)
     result[b[0]] = b[1]
 
+# xxx move some of these to std/private/gitutils.nim
 proc gitClone(url: string, dir: string) = runCmd fmt"git clone -q {url} {dir.quoteShell}"
 proc gitResetHard(dir: string, rev: string) = runCmd fmt"git -C {dir.quoteShell} reset --hard {rev}"
 proc gitCleanDanger(dir: string, requireConfirmation = true) =
