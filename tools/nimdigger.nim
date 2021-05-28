@@ -5,7 +5,6 @@ can build as far back as: v0.12.0~157
 
 ##
 nim r tools/nimdigger.nim --oldnew:v0.19.0..v0.20.0 -- bin/nim c --hints:off --skipparentcfg --skipusercfg $timn_D/tests/nim/all/t12329.nim
-
 ]#
 
 import std/[os, osproc, strformat, macros, strutils, tables, algorithm]
@@ -25,8 +24,8 @@ type
     # TODO: specify whether we should compile nim
     bisectCmd: string
     bisectBugfix: bool
-    oldnew: string
-    args: seq[string]
+    oldnew: string # eg: v0.20.0~10..v0.20.0
+    args: seq[string] # eg: bin/nim c --hints:off --skipparentcfg --skipusercfg $timn_D/tests/nim/all/t12329.nim 'arg1 bar' 'arg2'
   CsourcesOpt = ref object
     url: string
     dir: string
@@ -181,7 +180,6 @@ proc main2(opt: DiggerOpt) =
   if verbose: dbg state
   let nimDir = state.nimDir
   state.binDir = nimDir/"bin"
-  let nimDiggerExe = state.binDir / "nim_nimdigger"
 
   if nimDir.dirExists:
     doAssert fileExists(nimDir / "lib/system.nim"), fmt"nimDir is not a nim repo: {nimDir}"
@@ -204,6 +202,7 @@ proc main2(opt: DiggerOpt) =
   if state.rev.len > 0: gitResetHard(nimDir, state.rev)
   else: state.rev = "HEAD"
 
+  let nimDiggerExe = state.binDir / "nim_nimdigger"
   if opt.compileNim:
     let copt = getNimCsourcesAnyExe(state)
     buildCsourcesRev(copt)
