@@ -7,7 +7,6 @@ import net
 
 import std/asyncnet
 import std/nativesockets
-import std/threadpool
 
 const postBegin = """
 POST / HTTP/1.1
@@ -16,20 +15,14 @@ Transfer-Encoding:chunked
 """
 
 template genTest(input, expected: string) =
-  proc handler(request: Request, future: Future[bool]): Future[void] {.async, gcsafe.} =
-      doAssert(request.body == expected)
-      doAssert(request.headers.hasKey("Transfer-Encoding"))
-      doAssert(not request.headers.hasKey("Content-Length"))
-      future.complete(true)
-      await request.respond(Http200, "Good")
+  proc handler(request: Request, future: Future[bool]) {.async, gcsafe.} =
+    doAssert(request.body == expected)
+    doAssert(request.headers.hasKey("Transfer-Encoding"))
+    doAssert(not request.headers.hasKey("Content-Length"))
+    future.complete(true)
+    await request.respond(Http200, "Good")
 
-  proc runSleepLoop(server: AsyncHttpServer, future: Future[bool]) {.async, gcsafe.} = 
-    proc wrapper(request: Request): Future[void] {.gcsafe, closure.} =
-      # Capture the future
-      handler(request, future)
-    await server.acceptRequest(wrapper)
-
-  proc sendData(data: string, port: Port): void =
+  proc sendData(data: string, port: Port) {.async.} =
     var socket = newSocket()
     defer: socket.close()
 
@@ -42,10 +35,12 @@ template genTest(input, expected: string) =
     let server = newAsyncHttpServer()
     server.listen(Port(0))
 
-    spawn sendData(data, server.getPort)
-    asyncCheck runSleepLoop(server, handlerFuture)
+    proc wrapper(request: Request): Future[void] {.gcsafe, closure.} =
+      handler(request, handlerFuture)
+    
+    asyncCheck sendData(data, server.getPort)
+    asyncCheck server.acceptRequest(wrapper)
     doAssert await handlerFuture
-    sync()
     
     server.close()
     return true
