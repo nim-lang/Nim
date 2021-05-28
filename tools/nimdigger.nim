@@ -3,8 +3,22 @@
 ## notes
 can build as far back as: v0.12.0~157
 
-##
+## examples
+nim r tools/nimdigger.nim --oldnew:v0.19.0..v0.20.0 --bisectCmd:'bin/nim -v | grep 0.19.0'
+66c0f7c3fb214485ca6cfd799af6e50798fcdf6d is the first REGRESSION commit
+
+nim r tools/nimdigger.nim --oldnew:v0.19.0..v0.20.0 --bisectBugfix --bisectCmd:'bin/nim -v | grep 0.20.0'
+be9c38d2659496f918fb39e129b9b5b055eafd88 is the first BUGFIX commit
+
 nim r tools/nimdigger.nim --oldnew:v0.19.0..v0.20.0 -- bin/nim c --hints:off --skipparentcfg --skipusercfg $timn_D/tests/nim/all/t12329.nim
+
+## note:
+https://stackoverflow.com/a/22592593/1426932 Magic exit statuses
+anything above 127 makes the bisection fail with something like:
+125 is magic and makes the run be skipped with git bisect skip.
+
+## TODO
+allow a way to verify that oldnew revisions honor what's implied by bisectBugfix:true|false
 ]#
 
 import std/[os, osproc, strformat, macros, strutils, tables, algorithm]
@@ -22,10 +36,9 @@ type
 
     # bisect cmds
     # TODO: specify whether we should compile nim
-    bisectCmd: string
-    bisectBugfix: bool
     oldnew: string # eg: v0.20.0~10..v0.20.0
-    args: seq[string] # eg: bin/nim c --hints:off --skipparentcfg --skipusercfg $timn_D/tests/nim/all/t12329.nim 'arg1 bar' 'arg2'
+    bisectCmd: string # eg: bin/nim c --hints:off --skipparentcfg --skipusercfg $timn_D/tests/nim/all/t12329.nim 'arg1 bar' 'arg2'
+    bisectBugfix: bool
   CsourcesOpt = ref object
     url: string
     dir: string
@@ -43,9 +56,10 @@ type
     rev: string
 
 const
-  csourcesRevs = "v0.9.4 v0.13.0 v0.15.2 v0.16.0 v0.17.0 v0.17.2 v0.18.0 v0.19.0 v0.20.0 64e3477".split
+  csourcesRevs = "v0.9.4 v0.13.0 v0.15.2 v0.16.0 v0.17.0 v0.17.2 v0.18.0 v0.19.0 v0.20.0 64e34778fa7e114b4afc753c7845dee250584167".split
   csourcesV1Revs = "a8a5241f9475099c823cfe1a5e0ca4022ac201ff".split
   NimDiggerEnv = "NIMDIGGER_HOME"
+  ExeExt2 = when ExeExt.len > 0: "." & ExeExt else: ""
 
 var verbose = false
 
@@ -77,10 +91,43 @@ macro ctor(obj: untyped, a: varargs[untyped]): untyped =
   result = nnkObjConstr.newTree(obj)
   for ai in a: result.add nnkExprColonExpr.newTree(ai, ai)
 
+proc parseKeyVal(a: string): OrderedTable[string, string] =
+  ## parse bash-like entries of the form key=val
+  let a2 = a.splitLines
+  for i, ai in a2:
+    if ai.len == 0 or ai.startsWith "#": continue
+    let b = split(ai, "=", maxsplit = 1)
+    doAssert b.len == 2, $(ai, b)
+    result[b[0]] = b[1]
+
 proc gitClone(url: string, dir: string) = runCmd fmt"git clone -q {url} {dir.quoteShell}"
 proc gitResetHard(dir: string, rev: string) = runCmd fmt"git -C {dir.quoteShell} reset --hard {rev}"
+proc gitCleanDanger(dir: string, requireConfirmation = true) =
+  #[
+  This is needed to avoid `git bisect` aborting with this error: The following untracked working tree files would be overwritten by checkout.
+  For example, this would happen in cases like this:
+  ```
+  cd $HOME/.nimdigger/cache/Nim
+  git checkout abaa42fd8a239ea62ddb39f6f58c3180137d750c
+  touch testament/testamenthtml.templ
+  cd -
+  nim r tools/nimdigger.nim --oldnew:v0.19.0..v0.20.0 --bisectCmd:'bin/nim -v | grep 0.19.0'
+  ```
+  so we handle cleaning untracked files via dry run (-n) followed by -f if user confirms.
+  ]#
+  let files = runCmdOutput fmt"git -C {dir.quoteShell} clean -n"
+  if files.len > 0:
+    var runClean = true
+    if requireConfirmation:
+      echo &"untracked files may prevent `git bisect` from working, `git -C {dir.quoteShell} clean -n` returned:\n{files}"
+      echo fmt"enter `yes` to proceed with `git clean -f` in: {dir.quoteShell}"
+      let answer = stdin.readLine()
+      runClean = answer == "yes"
+    if runClean:
+      runCmd fmt"git -C {dir.quoteShell} clean -f"
 proc gitFetch(dir: string) = runCmd fmt"git -C {dir.quoteShell} fetch"
 proc gitLatestTag(dir: string): string = runCmdOutput("git describe --abbrev=0 HEAD", dir)
+proc gitCurrentRev(dir: string): string = runCmdOutput("git rev-parse HEAD", dir)
 proc gitCheck(dir: string) =
   # checks whether we're in a valid git repo; there may be better ways
   discard runCmdOutput("git describe HEAD", dir)
@@ -107,7 +154,7 @@ proc parseNimGitTag(tag: string): (int, int, int) =
 
 proc toNimCsourcesExe(binDir: string, name: string, rev: string): string =
   let rev2 = rev.replace(".", "_")
-  result = binDir / fmt"nim_nimdigger_{name}_{rev2}"
+  result = binDir / fmt"nim_nimdigger_{name}_{rev2}{ExeExt2}"
 
 proc buildCsourcesRev(copt: CsourcesOpt) =
   # sync with `_nimBuildCsourcesIfNeeded`
@@ -122,7 +169,7 @@ proc buildCsourcesRev(copt: CsourcesOpt) =
     let make = "gmake"
   else:
     let make = "make"
-  let oldNim = copt.binDir / "nim"
+  let oldNim = copt.binDir / "nim" & ExeExt2
   removeFile(oldNim) # otherwise `make` may incorrectly decide there's notthing to build
   let ncpu = countProcessors()
   if copt.rev.isGitNimTag and copt.rev.parseNimGitTag < (0,15,2):
@@ -133,29 +180,19 @@ proc buildCsourcesRev(copt: CsourcesOpt) =
   if isSimulate():
     dbg csourcesExe
   else:
-    copyFile(oldNim, csourcesExe) # TODO: windows: do i need to add exe or it's smart enough?
+    copyFile(oldNim, csourcesExe)
 
 proc buildCsourcesAnyRevs(copt: CsourcesOpt) =
   for rev in copt.revs:
     copt.rev = rev
     buildCsourcesRev(copt)
 
-proc parseKeyVal(a: string): OrderedTable[string, string] =
-  ## parse bash-like entries of the form key=val
-  let a2 = a.splitLines
-  for i, ai in a2:
-    if ai.len == 0 or ai.startsWith "#": continue
-    let b = split(ai, "=", maxsplit = 1)
-    doAssert b.len == 2, $(ai, b)
-    result[b[0]] = b[1]
-
 proc toCsourcesRev(rev: string): string =
   let ver = rev.parseNimGitTag
   if ver >= (1, 0, 0): return csourcesRevs[^1]
   for a in csourcesRevs[1 ..< ^1].reversed:
     if ver >= a.parseNimGitTag: return a
-  # v0.9.4 seems broken
-  return csourcesRevs[1]
+  return csourcesRevs[1] # because v0.9.4 seems broken
 
 proc getNimCsourcesAnyExe(state: DiggerState): CsourcesOpt =
   let file = state.nimDir/"config/build_config.txt" # for newer nim versions, this file specifies correct csources_v1 to use
@@ -186,28 +223,25 @@ proc main2(opt: DiggerOpt) =
   else:
     createDir nimDir.parentDir
     gitClone("https://github.com/nim-lang/Nim", nimDir)
-  block:
-    const
-      csourcesName = "csources"
-      csourcesV1Name = "csources_v1"
-    state.coptv0 = CsourcesOpt(dir: nimDir/csourcesName, url: "https://github.com/nim-lang/csources.git", name: csourcesName, revs: csourcesRevs)
-    state.coptv1 = CsourcesOpt(dir: nimDir/csourcesV1Name, url: "https://github.com/nim-lang/csources_v1.git", name: csourcesV1Name, revs: csourcesV1Revs)
-    for copt in [state.coptv0, state.coptv1]:
-      copt.binDir = state.binDir
-      copt.fetch = opt.fetch
-      if opt.buildAllCsources:
-        buildCsourcesAnyRevs(copt)
+  state.coptv0 = CsourcesOpt(dir: nimDir/"csources", url: "https://github.com/nim-lang/csources.git", name: "csources", revs: csourcesRevs)
+  state.coptv1 = CsourcesOpt(dir: nimDir/"csources_v1", url: "https://github.com/nim-lang/csources_v1.git", name: "csources_v1", revs: csourcesV1Revs)
+  for copt in [state.coptv0, state.coptv1]:
+    copt.binDir = state.binDir
+    copt.fetch = opt.fetch
+    if opt.buildAllCsources:
+      buildCsourcesAnyRevs(copt)
 
   if opt.fetch: gitFetch(nimDir)
-  if state.rev.len > 0: gitResetHard(nimDir, state.rev)
-  else: state.rev = "HEAD"
-
-  let nimDiggerExe = state.binDir / "nim_nimdigger"
+  if state.rev.len > 0:
+    gitResetHard(nimDir, state.rev)
+  state.rev = gitCurrentRev(state.nimDir)
+  let nimDiggerExe = state.binDir / fmt"nim_nimdigger_nim_{state.rev}{ExeExt2}"
   if opt.compileNim:
-    let copt = getNimCsourcesAnyExe(state)
-    buildCsourcesRev(copt)
-    # TODO: we could also cache those, optionally maybe (could get large?) or use this as hint in nim bisect to prefer those
-    discard runCmdOutput(fmt"{copt.nimCsourcesExe} c -o:{nimDiggerExe} --hints:off --skipUserCfg compiler/nim.nim", nimDir)
+    if not nimDiggerExe.fileExists:
+      let copt = getNimCsourcesAnyExe(state)
+      buildCsourcesRev(copt)
+      discard runCmdOutput(fmt"{copt.nimCsourcesExe} c -o:{nimDiggerExe} --hints:off --skipUserCfg compiler/nim.nim", nimDir)
+    copyFile(nimDiggerExe, state.binDir / "nim" & ExeExt2)
 
   if opt.oldnew.len > 0:
     let oldnew2 = opt.oldnew.split("..")
@@ -216,22 +250,26 @@ proc main2(opt: DiggerOpt) =
     let newrev = oldnew2[1]
     doAssert oldrev.len > 0 # for regressions, aka goodrev
     doAssert newrev.len > 0 # for a regressions, aka badrev 
-    runCmd(fmt"git -C {state.nimDir.quoteShell} bisect start {newrev} {oldrev}")
+    gitCleanDanger(state.nimDir, requireConfirmation = true)
+    proc bisectStart(old, new: string)=
+      runCmd(fmt"git -C {state.nimDir.quoteShell} bisect start --term-old {old} --term-new {new} {newrev} {oldrev}")
+    if opt.bisectBugfix: bisectStart("BROKEN", "BUGFIX")
+    else: bisectStart("WORKS", "REGRESSION")
     let exe = getAppFileName()
-    var msg2: string
-    if opt.bisectCmd.len > 0:
-      msg2 = opt.bisectCmd
-      doAssert opt.args.len == 0
-    else:
-      msg2 = opt.args.quoteShellCommand
+    var msg2 = opt.bisectCmd
     if opt.bisectBugfix:
       msg2 = fmt"! ({msg2})" # negate exit code
-    let bisectCmd2 = fmt"{exe} --compileNim && cp {nimDiggerExe.quoteShell} bin/nim && {msg2}" # TODO: inside () in case it does weird things?
+    let bisectCmd2 = fmt"{exe} --compileNim && {msg2}" # TODO: inside () in case it does weird things?
     runCmd(fmt"git -C {state.nimDir.quoteShell} bisect run bash -c {bisectCmd2.quoteShell}")
 
-proc main(rev = "", nimDir = "", compileNim = false, fetch = false, bisectCmd = "", oldnew = "", bisectBugfix = false, verbose = false, args: seq[string]) =
+proc main(rev = "", nimDir = "", compileNim = false, fetch = false, oldnew = "", bisectBugfix = false, verbose = false, bisectCmd = "", args: seq[string]) =
   nimdigger.verbose = verbose
-  main2(DiggerOpt.ctor(rev, nimDir, compileNim, fetch, bisectCmd, oldnew, bisectBugfix, args))
+  var bisectCmd = bisectCmd
+  if bisectCmd.len == 0:
+    bisectCmd = args.quoteShellCommand
+  else:
+    doAssert args.len == 0
+  main2(DiggerOpt.ctor(rev, nimDir, compileNim, fetch, bisectCmd, oldnew, bisectBugfix))
 
 when isMainModule:
   import pkg/cligen
