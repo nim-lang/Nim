@@ -18,6 +18,7 @@ type
     fetch: bool
     name: string
     nimCsourcesExe: string
+  # DiggerState = ref object
   DiggerOpt = object
     # input fields
     rev: string
@@ -40,11 +41,6 @@ type
     binDir: string
 
 const
-  nimUrl = "https://github.com/nim-lang/Nim"
-  csourcesUrl = "https://github.com/nim-lang/csources.git"
-  csourcesV1Url = "https://github.com/nim-lang/csources_v1.git"
-  csourcesName = "csources"
-  csourcesV1Name = "csources_v1"
   csourcesRevs = "v0.9.4 v0.13.0 v0.15.2 v0.16.0 v0.17.0 v0.17.2 v0.18.0 v0.19.0 v0.20.0 64e3477".split
   csourcesV1Revs = "a8a5241f9475099c823cfe1a5e0ca4022ac201ff".split
   NimDiggerEnv = "NIMDIGGER_HOME"
@@ -175,14 +171,15 @@ proc getNimCsourcesAnyExe(opt: DiggerOpt): CsourcesOpt =
   result.nimCsourcesExe = toNimCsourcesExe(opt.binDir, result.name, result.rev)
 
 proc main2(opt: DiggerOpt) =
+  const
+    csourcesName = "csources"
+    csourcesV1Name = "csources_v1"
   var opt = opt
   let nimdiggerHome = getEnv(NimDiggerEnv, getHomeDir() / ".nimdigger")
   if opt.nimDir.len == 0:
     opt.nimDir = nimdiggerHome / "cache/Nim"
   if verbose: dbg opt
   let nimDir = opt.nimDir
-  let csourcesDir = nimDir/csourcesName
-  let csourcesV1Dir = nimDir/csourcesV1Name
   opt.binDir = nimDir/"bin"
   let nimDiggerExe = opt.binDir / "nim_nimdigger"
 
@@ -190,10 +187,10 @@ proc main2(opt: DiggerOpt) =
     doAssert fileExists(nimDir / "lib/system.nim"), fmt"nimDir is not a nim repo: {nimDir}"
   else:
     createDir nimDir.parentDir
-    gitClone(nimUrl, nimDir)
+    gitClone("https://github.com/nim-lang/Nim", nimDir)
 
-  opt.coptv0 = CsourcesOpt(dir: csourcesDir, url: csourcesUrl, name: csourcesName, revs: csourcesRevs)
-  opt.coptv1 = CsourcesOpt(dir: csourcesV1Dir, url: csourcesV1Url, name: csourcesV1Name, revs: csourcesV1Revs)
+  opt.coptv0 = CsourcesOpt(dir: nimDir/csourcesName, url: "https://github.com/nim-lang/csources.git", name: csourcesName, revs: csourcesRevs)
+  opt.coptv1 = CsourcesOpt(dir: nimDir/csourcesV1Name, url: "https://github.com/nim-lang/csources_v1.git", name: csourcesV1Name, revs: csourcesV1Revs)
   for copt in [opt.coptv0, opt.coptv1]:
     copt.binDir = opt.binDir
     copt.fetch = opt.fetch
