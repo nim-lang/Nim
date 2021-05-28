@@ -58,7 +58,13 @@ https://stackoverflow.com/a/22592593/1426932 (Magic exit statuses)
 ]#
 
 import std/[os, osproc, strformat, macros, strutils, tables, algorithm]
-import timn/dbgs
+
+proc `$`(a: ref): string =
+  if a == nil: "nil" else: $a[]
+
+template dbg(args: varargs[untyped]): untyped =
+  # so users can swap in their own better logging until stdlib has one
+  echo args
 
 type
   DiggerOpt = object ## nimdigger input
@@ -300,7 +306,8 @@ proc main2(opt: DiggerOpt) =
     runCmd(fmt"git -C {state.nimDir.quoteShell} bisect run bash -c {bisectCmd2.quoteShell}")
 
 proc main(rev = "", nimDir = "", compileNim = false, fetch = false, oldnew = "", bisectBugfix = false, verbose = false, bisectCmd = "", args: seq[string]) =
-  nimdigger.verbose = verbose
+  # nimdigger.verbose = verbose
+  nimdigger.verbose = true
   var bisectCmd = bisectCmd
   if bisectCmd.len == 0:
     bisectCmd = args.quoteShellCommand
