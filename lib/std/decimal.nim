@@ -1,5 +1,5 @@
 ##[
-  The ``decimal`` module supports the storage of numbers in decimal format.
+  The `decimal` module supports the storage of numbers in decimal format.
 
   The primary benefit of this is it avoids conversion errors when converting to/from
   decimal (base 10) and binary (base 2). The is critical for applications where
@@ -12,6 +12,13 @@
 
   Examples
   ========
+]##
+runnableExamples:
+  var a = newDecimal("1234.50")
+  doAssert a.places == 2
+  doAssert a.significantDigitCount == 6
+  doAssert a.sci == "1.23450E+3"
+##[
   .. code-block:: nim
     import decimal
 
@@ -21,9 +28,8 @@
 
 ]##
 
-import strutils except strip
-import strformat
-import unicode
+import std/strutils except strip
+import std/[strformat, unicode]
 
 #
 # Type definitions
@@ -31,7 +37,7 @@ import unicode
 
 # public types
 type
-  Decimal* = object of RootObj
+  Decimal* = object
     a: uint32
     b: uint32
     c: uint32
@@ -111,7 +117,7 @@ when not defined(js):
 
 
 # public constants
-let
+const
   nan* = Decimal(a: comboLongNanFlag, b:0, c:0, d:0)
   infinity* = Decimal(a: comboLongInfinityFlag, b: 0, c:0, d:0)
   negativeInfinity* = Decimal(a: (comboLongInfinityFlag or signMask), b: 0, c:0, d:0)
@@ -564,19 +570,14 @@ proc parseFromString(str: string): (DecimalKind, bool, TempSignificandArray, int
       psSignForExp,     # we are reading the +/- of an exponent
       psExp,            # we are reading the decimals of an exponent
       psDone            # ignore everything else
-
   const
-    IGNORED_CHARS: seq[char] = @[
-      '_', 
-      ','
-    ]
+    ignoredChars = ['_', ',']
 
   var significand: TempSignificandArray
   var negative: bool = false
   var exponent: int = 0
 
   let s = str.toLower().strip()
-
   if s.startsWith("nan"):
     result = (dkNaN, false, significand, exponent)
     return
@@ -634,7 +635,7 @@ proc parseFromString(str: string): (DecimalKind, bool, TempSignificandArray, int
     of psIntCoeff:
       if DIGITS.contains(ch):
         discard
-      elif IGNORED_CHARS.contains(ch):
+      elif ignoredChars.contains(ch):
         discard
       elif ch == '.':
         state = psDecimalPoint
@@ -650,7 +651,7 @@ proc parseFromString(str: string): (DecimalKind, bool, TempSignificandArray, int
     of psFracCoeff:
       if DIGITS.contains(ch):
         discard
-      elif IGNORED_CHARS.contains(ch):
+      elif ignoredChars.contains(ch):
         discard
       elif ch == 'e':
         state = psSignForExp
@@ -682,14 +683,14 @@ proc parseFromString(str: string): (DecimalKind, bool, TempSignificandArray, int
       legit = true
     of psIntCoeff:
       # given the state table, the 'find' function should never return -1
-      if not IGNORED_CHARS.contains(ch):
+      if not ignoredChars.contains(ch):
         digitList.add(DIGITS.find(ch).byte)
         legit = true
     of psDecimalPoint:
       discard
     of psFracCoeff:
       # given the state table, the 'find' function should never return -1
-      if not IGNORED_CHARS.contains(ch):
+      if not ignoredChars.contains(ch):
         digitList.add(DIGITS.find(ch).byte)
         exponent -= 1
         legit = true
@@ -760,7 +761,7 @@ proc negative*(number: Decimal): bool =
     else:
       result = false
 
-proc significance*(number: Decimal): int =
+proc significantDigitCount*(number: Decimal): int =
   ## Get the precise number of significant digits in the decimal number.
   ##
   ## If a real number, then it will be a number between 1 and 34. Even a value of "0" has
@@ -785,28 +786,28 @@ proc significance*(number: Decimal): int =
 proc places*(number: Decimal): int =
   ## Get the precise number of known digits after/before the decimal point.
   ## Also referred to as "the number of decimal places"
-  ## 
+  ##
   ## An integer has zero places.
-  ## 
+  ##
   ## Some numbers can have negative places if the significance does not include
   ## lesser whole digits. For example, an estimate of 45 million is 45E+6
   ## (or 4.5E+7) and has -6 places.
-  ## 
+  ##
   ## Think of missing digits as Nulls (?). So,
-  ## 
+  ##
   ## 1123.30   (aka 1123.30???????...) has  2 places
   ## 1123.3    (aka 1123.3????????...) has  1 places
   ## 1123      (aka 1123.?????????...) has  0 places
   ## 1.1E+3    (aka 11??.?????????...) has -2 places
   ## 1E+3      (aka 1???.?????????...) has -3 places
-  ## 
+  ##
   ## Zero can also be given decimal places.
-  ## 
+  ##
   ## 0         (aka 0.??????????...) has 0 places
   ## 0.00000   (aka 0.00000?????...) has 5 places
-  ## 
+  ##
   ## "0.00000" means the number is precisely zero to 5 decimals places.
-  ## 
+  ##
   ## Infinite and NaN have no decimal places and will return a zero (0).
   let (decKind, exponent, upper) = determineKindExponentAndUpper(number)
   case decKind:
@@ -821,10 +822,10 @@ proc `places=`*(number: var Decimal, newValue: int) {.inline.} =
   ## Change a Decimal to the supplied number decimal places.
   ##
   ## The scale must be a value from −6144 to +6143.
-  ## 
+  ##
   ## A negative value means the significance is adjusted so that the
   ## value is only accurate to the number of digits *before* the decimal place.
-  ## 
+  ##
   ## For example:
   ##     var x = newDecimal("123.4")
   ##     x.places = -1
@@ -869,19 +870,20 @@ proc `places=`*(number: var Decimal, newValue: int) {.inline.} =
 proc `~==`(left: Decimal, right: Decimal): bool =
   ## Determines whether two numbers match in the context of their
   ## least-common significance.
-  ## 
+  ##
   ## For example:
-  ## 
-  ##   assert (1.1'm  ~== 1.0'm ) == false
-  ##   assert (1.0'm  ~== 1.0'm ) == true
-  ##   assert (1.0'm  ~== 1.01'm) == true
-  ##   assert (1.01'm ~== 1.0'm ) == true
-  ##   assert (1.01'm ~== 1.00'm) == false
-  ## 
+  runnableExamples:
+    assert (1.1'm  ~== 1.0'm ) == false
+    assert (1.0'm  ~== 1.0'm ) == true
+    assert (1.0'm  ~== 1.01'm) == true
+    assert (1.01'm ~== 1.0'm ) == true
+    assert (1.01'm ~== 1.00'm) == false
+  ##
   ## Use this with care with currency or financial work:
-  ## 
-  ##   assert (5'm    ~== 5.23'm) == true
-  ##   assert (5.00'm ~== 5.23'm) == false 
+  runnableExamples:
+    assert (5'm    ~== 5.23'm) == true
+    assert (5.00'm ~== 5.23'm) == false 
+  #
   # let (leftKind, leftExponent, leftUpper) = determineKindExponentAndUpper(left)
   # let (rightKind, rightExponent, rightUpper) = determineKindExponentAndUpper(right)
   # case leftKind:
@@ -997,7 +999,7 @@ proc generateNumberString(number: Decimal, exponent: int16, upper: uint32): stri
 
 proc sci*(number: Decimal): string =
   ## Express the Decimal value in Scientific Notation
-  var (decKind, exponent, upper) = determineKindExponentAndUpper(number)
+  let (decKind, exponent, upper) = determineKindExponentAndUpper(number)
   case deckind:
   of dkValued:
     let digits = generateDigits(number, upper)
@@ -1034,7 +1036,7 @@ proc `$`*(number: Decimal): string =
     result = "NaN"
 
 proc internalRepr*(number: Decimal): string =
-  result = "Decimal($1 $2 $3 $4)".format(number.a, number.b, number.c, number.d)
+  "Decimal($1 $2 $3 $4)".format(number.a, number.b, number.c, number.d)
 
 proc toHex*(number: Decimal): string =
-  result = number.a.toHex & number.b.toHex & number.c.toHex & number.d.toHex
+  number.a.toHex & number.b.toHex & number.c.toHex & number.d.toHex
