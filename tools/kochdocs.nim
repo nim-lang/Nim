@@ -320,9 +320,9 @@ proc buildDocsDir*(args: string, dir: string) =
   let args = nimArgs & " " & args
   let docHackJsSource = buildJS()
   createDir(dir)
-  # buildDocSamples(args, dir)
-  # buildDoc(args, dir) # bottleneck
-  # copyFile(dir / "overview.html", dir / "index.html")
+  buildDocSamples(args, dir)
+  buildDoc(args, dir) # bottleneck
+  copyFile(dir / "overview.html", dir / "index.html")
   buildDocPackages(args, dir)
   copyFile(docHackJsSource, dir / docHackJsSource.lastPathPart)
 
