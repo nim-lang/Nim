@@ -87,21 +87,21 @@ type
     oldnew: string # eg: v0.20.0~10..v0.20.0
     bisectCmd: string # eg: bin/nim c --hints:off --skipparentcfg --skipusercfg $timn_D/tests/nim/all/t12329.nim 'arg1 bar' 'arg2'
     bisectBugfix: bool
-  CsourcesOpt = ref object
+  CsourcesState = ref object ## represents csources or csources_v1 repos
     url: string
-    dir: string
+    dir: string # e.g. /pathto/Nim/csources
     rev: string
     binDir: string
-    csourcesBuildArgs: string
+    csourcesBuildArgs: string ## extra args to build csources
     revs: seq[string]
     fetch: bool
     name: string
     nimCsourcesExe: string
   DiggerState = ref object ## nimdigger internal state
-    coptv0, coptv1: CsourcesOpt
-    binDir: string
-    nimDir: string
-    rev: string
+    nimDir: string # e.g.: /pathto/Nim
+    binDir: string # e.g.: $nimDir/bin
+    rev: string # e.g.: hash obtained from `git rev-parse HEAD`
+    csourceV0, csourceV1: CsourcesState
 
 const
   csourcesRevs = "v0.9.4 v0.13.0 v0.15.2 v0.16.0 v0.17.0 v0.17.2 v0.18.0 v0.19.0 v0.20.0 64e34778fa7e114b4afc753c7845dee250584167".split
@@ -205,7 +205,7 @@ proc toNimCsourcesExe(binDir: string, name: string, rev: string): string =
   let rev2 = rev.replace(".", "_")
   result = binDir / fmt"nim_nimdigger_{name}_{rev2}{ExeExt2}"
 
-proc buildCsourcesRev(copt: CsourcesOpt) =
+proc buildCsourcesRev(copt: CsourcesState) =
   # sync with `_nimBuildCsourcesIfNeeded`
   let csourcesExe = toNimCsourcesExe(copt.binDir, copt.name, copt.rev)
   if csourcesExe.fileExists:
@@ -231,7 +231,7 @@ proc buildCsourcesRev(copt: CsourcesOpt) =
   else:
     copyFile(oldNim, csourcesExe)
 
-proc buildCsourcesAnyRevs(copt: CsourcesOpt) =
+proc buildCsourcesAnyRevs(copt: CsourcesState) =
   for rev in copt.revs:
     copt.rev = rev
     buildCsourcesRev(copt)
@@ -243,18 +243,18 @@ proc toCsourcesRev(rev: string): string =
     if ver >= a.parseNimGitTag: return a
   return csourcesRevs[1] # because v0.9.4 seems broken
 
-proc getNimCsourcesAnyExe(state: DiggerState): CsourcesOpt =
+proc getCsourcesState(state: DiggerState): CsourcesState =
   let file = state.nimDir/"config/build_config.txt" # for newer nim versions, this file specifies correct csources_v1 to use
   if file.fileExists:
     let tab = file.readFile.parseKeyVal
-    result = state.coptv1
+    result = state.csourceV1
     result.rev = tab["nim_csourcesHash"]
   elif gitIsAncestorOf(state.nimDir, "a9b62de", state.rev): # commit that introduced csources_v1
-    result = state.coptv1
+    result = state.csourceV1
     result.rev = csourcesV1Revs[0]
   else:
     let tag = gitLatestTag(state.nimDir)
-    result = state.coptv0
+    result = state.csourceV0
     result.rev = tag.toCsourcesRev
   result.nimCsourcesExe = toNimCsourcesExe(state.binDir, result.name, result.rev)
 
@@ -272,9 +272,9 @@ proc main2(opt: DiggerOpt) =
   else:
     createDir nimDir.parentDir
     gitClone("https://github.com/nim-lang/Nim", nimDir)
-  state.coptv0 = CsourcesOpt(dir: nimDir/"csources", url: "https://github.com/nim-lang/csources.git", name: "csources", revs: csourcesRevs)
-  state.coptv1 = CsourcesOpt(dir: nimDir/"csources_v1", url: "https://github.com/nim-lang/csources_v1.git", name: "csources_v1", revs: csourcesV1Revs)
-  for copt in [state.coptv0, state.coptv1]:
+  state.csourceV0 = CsourcesState(dir: nimDir/"csources", url: "https://github.com/nim-lang/csources.git", name: "csources", revs: csourcesRevs)
+  state.csourceV1 = CsourcesState(dir: nimDir/"csources_v1", url: "https://github.com/nim-lang/csources_v1.git", name: "csources_v1", revs: csourcesV1Revs)
+  for copt in [state.csourceV0, state.csourceV1]:
     copt.binDir = state.binDir
     copt.fetch = opt.fetch
     if opt.buildAllCsources:
@@ -289,7 +289,7 @@ proc main2(opt: DiggerOpt) =
     let isCached = nimDiggerExe.fileExists
     echo fmt"digger getting nim: {nimDiggerExe} cached: {isCached}"
     if not isCached:
-      let copt = getNimCsourcesAnyExe(state)
+      let copt = getCsourcesState(state)
       buildCsourcesRev(copt)
       discard runCmdOutput(fmt"{copt.nimCsourcesExe} c -o:{nimDiggerExe} -d:release --hints:off --skipUserCfg compiler/nim.nim", nimDir)
     copyFile(nimDiggerExe, state.binDir / "nim" & ExeExt2)
