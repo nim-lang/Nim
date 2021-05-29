@@ -104,7 +104,8 @@ type
     csourceV0, csourceV1: CsourcesState
 
 const
-  csourcesRevs = "v0.9.4 v0.13.0 v0.15.2 v0.16.0 v0.17.0 v0.17.2 v0.18.0 v0.19.0 v0.20.0 64e34778fa7e114b4afc753c7845dee250584167".split
+  csourcesRevs = "v0.9.4 v0.13.0 v0.15.2 v0.16.0 v0.17.0 v0.17.2 v0.18.0 v0.19.0 v0.20.0".split &
+    "64e34778fa7e114b4afc753c7845dee250584167"
   csourcesV1Revs = "a8a5241f9475099c823cfe1a5e0ca4022ac201ff".split
   NimDiggerEnv = "NIMDIGGER_HOME"
   ExeExt2 = when ExeExt.len > 0: "." & ExeExt else: ""
