@@ -307,10 +307,10 @@ proc main2(opt: DiggerOpt) =
     if opt.bisectBugfix: bisectStart("BROKEN", "BUGFIX")
     else: bisectStart("WORKS", "REGRESSION")
     let exe = getAppFileName()
-    var msg2 = opt.bisectCmd
+    var msg = opt.bisectCmd
     if opt.bisectBugfix:
-      msg2 = fmt"! ({msg2})" # negate exit code
-    let bisectCmd2 = fmt"{exe} --compileNim && ( {msg2} )"
+      msg = fmt"! ({msg})" # negate exit code
+    let bisectCmd2 = fmt"{exe} --compileNim && ( {msg} )"
     runCmd(fmt"git -C {state.nimDir.quoteShell} bisect run bash -c {bisectCmd2.quoteShell}")
 
 proc main(rev = "", nimDir = "", compileNim = false, fetch = false, oldnew = "", bisectBugfix = false, verbose = false, bisectCmd = "", args: seq[string]) =
