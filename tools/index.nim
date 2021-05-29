@@ -1,5 +1,5 @@
 ##[
-This module only exists to generate docs for `tools/`.
+This module only exists to generate internal docs for `tools/`.
 
 ## links
 * [main docs](../lib.html)

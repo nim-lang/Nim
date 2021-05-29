@@ -1,5 +1,5 @@
 ##[
-This module only exists to generate docs for the compiler.
+This module only exists to generate internal docs for the compiler.
 
 ## links
 * [main docs](../lib.html)

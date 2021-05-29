@@ -48,7 +48,8 @@ fd16875561634e3ef24072631cf85eeead6213f2 is the first REGRESSION commit
 ```
 
 ## notes
-Unstable API, subject to change
+* this uses `git` (in particular `bisect`), `csources`, `csources_v`, `bash`, `make`/`gmake`
+* Unstable API, subject to change
 ]##
 
 #[
