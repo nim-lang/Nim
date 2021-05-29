@@ -142,12 +142,11 @@ macro ctor(obj: untyped, a: varargs[untyped]): untyped =
 
 proc parseKeyVal(a: string): OrderedTable[string, string] =
   ## parse bash-like entries of the form key=val
-  let a2 = a.splitLines
-  for i, ai in a2:
+  for ai in a.splitLines:
     if ai.len == 0 or ai.startsWith "#": continue
-    let b = split(ai, "=", maxsplit = 1)
-    doAssert b.len == 2, $(ai, b)
-    result[b[0]] = b[1]
+    let kv = split(ai, "=", maxsplit = 1)
+    doAssert kv.len == 2, $(ai, kv)
+    result[kv[0]] = kv[1]
 
 # xxx move some of these to std/private/gitutils.nim
 proc gitClone(url: string, dir: string) = runCmd fmt"git clone -q {url.quoteShell} {dir.quoteShell}"
