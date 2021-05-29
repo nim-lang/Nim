@@ -282,10 +282,12 @@ proc main2(opt: DiggerOpt) =
   state.rev = gitCurrentRev(state.nimDir)
   let nimDiggerExe = state.binDir / fmt"nim_nimdigger_nim_{state.rev}{ExeExt2}"
   if opt.compileNim:
-    if not nimDiggerExe.fileExists:
+    let isCached = nimDiggerExe.fileExists
+    echo fmt"digger getting nim: {nimDiggerExe} cached: {isCached}"
+    if not isCached:
       let copt = getNimCsourcesAnyExe(state)
       buildCsourcesRev(copt)
-      discard runCmdOutput(fmt"{copt.nimCsourcesExe} c -o:{nimDiggerExe} --hints:off --skipUserCfg compiler/nim.nim", nimDir)
+      discard runCmdOutput(fmt"{copt.nimCsourcesExe} c -o:{nimDiggerExe} -d:release --hints:off --skipUserCfg compiler/nim.nim", nimDir)
     copyFile(nimDiggerExe, state.binDir / "nim" & ExeExt2)
 
   if opt.oldnew.len > 0:
