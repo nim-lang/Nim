@@ -20,18 +20,15 @@
 ## ## Combine URIs
 runnableExamples:
   let host = parseUri("https://nim-lang.org")
-  let blog = "/blog.html"
-  let bloguri = host / blog
   assert $host == "https://nim-lang.org"
-  assert $bloguri == "https://nim-lang.org/blog.html"
+  assert $(host / "/blog.html") == "https://nim-lang.org/blog.html"
+  assert $(host / "blog2.html") == "https://nim-lang.org/blog2.html"
 
 ## ## Access URI item
 runnableExamples:
   let res = parseUri("sftp://127.0.0.1:4343")
-  if isAbsolute(res):
-    assert res.port == "4343"
-  else:
-    echo "Wrong format"
+  assert isAbsolute(res)
+  assert res.port == "4343"
 
 ## ## Data URI Base64
 runnableExamples:
@@ -39,7 +36,7 @@ runnableExamples:
   doAssert getDataUri("Nim", "text/plain") == "data:text/plain;charset=utf-8;base64,Tmlt"
 
 
-import std/[strutils, parseutils, base64]
+import strutils, parseutils, base64
 import std/private/[since, decode_helpers]
 
 
@@ -160,8 +157,8 @@ iterator decodeQuery*(data: string): tuple[key, value: string] =
   ## value, which was the behavior in Nim < 1.5.1
   runnableExamples:
     import std/sequtils
-    doAssert toSeq(decodeQuery("foo=1&bar=2=3")) == @[("foo", "1"), ("bar", "2=3")]
-    doAssert toSeq(decodeQuery("&a&=b&=&&")) == @[("", ""), ("a", ""), ("", "b"), ("", ""), ("", "")]
+    assert toSeq(decodeQuery("foo=1&bar=2=3")) == @[("foo", "1"), ("bar", "2=3")]
+    assert toSeq(decodeQuery("&a&=b&=&&")) == @[("", ""), ("a", ""), ("", "b"), ("", ""), ("", "")]
 
   proc parseData(data: string, i: int, field: var string, sep: char): int =
     result = i
@@ -227,7 +224,6 @@ func parseAuthority(authority: string, result: var Uri) =
     i.inc
 
 func parsePath(uri: string, i: var int, result: var Uri) =
-
   i.inc parseUntil(uri, result.path, {'?', '#'}, i)
 
   # The 'mailto' scheme's PATH actually contains the hostname/username
@@ -243,19 +239,7 @@ func parsePath(uri: string, i: var int, result: var Uri) =
     i.inc # Skip '#'
     i.inc parseUntil(uri, result.anchor, {}, i)
 
-func initUri*(): Uri =
-  ## Initializes a URI with `scheme`, `username`, `password`,
-  ## `hostname`, `port`, `path`, `query` and `anchor`.
-  ##
-  ## **See also:**
-  ## * `Uri type <#Uri>`_ for available fields in the URI type
-  runnableExamples:
-    var uri2: Uri
-    assert initUri() == uri2
-  result = Uri(scheme: "", username: "", password: "", hostname: "", port: "",
-                path: "", query: "", anchor: "")
-
-func initUri*(isIpv6: bool): Uri {.since: (1, 3, 5).} =
+func initUri*(isIpv6 = false): Uri =
   ## Initializes a URI with `scheme`, `username`, `password`,
   ## `hostname`, `port`, `path`, `query`, `anchor` and `isIpv6`.
   ##
@@ -455,10 +439,8 @@ func combine*(uris: varargs[Uri]): Uri =
 func isAbsolute*(uri: Uri): bool =
   ## Returns true if URI is absolute, false otherwise.
   runnableExamples:
-    let foo = parseUri("https://nim-lang.org")
-    assert isAbsolute(foo) == true
-    let bar = parseUri("nim-lang")
-    assert isAbsolute(bar) == false
+    assert parseUri("https://nim-lang.org").isAbsolute
+    assert not parseUri("nim-lang").isAbsolute
   return uri.scheme != "" and (uri.hostname != "" or uri.path != "")
 
 func `/`*(x: Uri, path: string): Uri =
@@ -506,8 +488,7 @@ func `?`*(u: Uri, query: openArray[(string, string)]): Uri =
 func `$`*(u: Uri): string =
   ## Returns the string representation of the specified URI object.
   runnableExamples:
-    let foo = parseUri("https://nim-lang.org")
-    assert $foo == "https://nim-lang.org"
+    assert $parseUri("https://nim-lang.org") == "https://nim-lang.org"
   result = ""
   if u.scheme.len > 0:
     result.add(u.scheme)
@@ -552,28 +533,6 @@ proc getDataUri*(data, mime: string, encoding = "utf-8"): string {.since: (1, 3)
   ## * `mimetypes <mimetypes.html>`_ for `mime` argument
   ## * https://tools.ietf.org/html/rfc2397
   ## * https://en.wikipedia.org/wiki/Data_URI_scheme
-  runnableExamples: static: doAssert getDataUri("Nim", "text/plain") == "data:text/plain;charset=utf-8;base64,Tmlt"
+  runnableExamples: static: assert getDataUri("Nim", "text/plain") == "data:text/plain;charset=utf-8;base64,Tmlt"
   assert encoding.len > 0 and mime.len > 0 # Must *not* be URL-Safe, see RFC-2397
   result = "data:" & mime & ";charset=" & encoding & ";base64," & base64.encode(data)
-
-when isMainModule and defined(testing):
-  # needed (pending https://github.com/nim-lang/Nim/pull/11865) because
-  # `removeDotSegments` is private, the other tests are in `turi`.
-  block: # removeDotSegments
-    # `removeDotSegments` is exported for -d:testing only
-    doAssert removeDotSegments("/foo/bar/baz") == "/foo/bar/baz"
-    doAssert removeDotSegments("") == "" # empty test
-    doAssert removeDotSegments(".") == "." # trailing period
-    doAssert removeDotSegments("a1/a2/../a3/a4/a5/./a6/a7/././") == "a1/a3/a4/a5/a6/a7/"
-    doAssert removeDotSegments("https://a1/a2/../a3/a4/a5/./a6/a7/././") == "https://a1/a3/a4/a5/a6/a7/"
-    doAssert removeDotSegments("http://a1/a2") == "http://a1/a2"
-    doAssert removeDotSegments("http://www.ai.") == "http://www.ai."
-    when false: # xxx these cases are buggy
-      # this should work, refs https://webmasters.stackexchange.com/questions/73934/how-can-urls-have-a-dot-at-the-end-e-g-www-bla-de
-      doAssert removeDotSegments("http://www.ai./") == "http://www.ai./" # fails
-      echo removeDotSegments("http://www.ai./")  # http://www.ai/
-      echo removeDotSegments("a/b.../c") # b.c
-      echo removeDotSegments("a/b../c") # bc
-      echo removeDotSegments("a/.../c") # .c
-      echo removeDotSegments("a//../b") # a/b
-      echo removeDotSegments("a/b/c//") # a/b/c//

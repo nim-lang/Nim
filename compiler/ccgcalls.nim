@@ -178,7 +178,7 @@ proc genOpenArraySlice(p: BProc; q: PNode; formalType, destType: PType): (Rope, 
     else:
       result = ("($3*)($1)+($2)" % [rdLoc(a), rdLoc(b), dest],
                 lengthExpr)
-  of tyUncheckedArray, tyCString:
+  of tyUncheckedArray, tyCstring:
     result = ("($3*)($1)+($2)" % [rdLoc(a), rdLoc(b), dest],
               lengthExpr)
   of tyString, tySequence:

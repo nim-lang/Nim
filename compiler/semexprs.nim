@@ -27,6 +27,7 @@ const
 
 proc semTemplateExpr(c: PContext, n: PNode, s: PSym,
                      flags: TExprFlags = {}): PNode =
+  rememberExpansion(c, n.info, s)
   let info = getCallLineInfo(n)
   markUsed(c, info, s)
   onUse(info, s)
@@ -82,7 +83,9 @@ proc semExprCheck(c: PContext, n: PNode, flags: TExprFlags): PNode =
 
 proc semExprWithType(c: PContext, n: PNode, flags: TExprFlags = {}): PNode =
   result = semExprCheck(c, n, flags)
-  if result.typ == nil or result.typ == c.enforceVoidContext:
+  if result.typ == nil and efInTypeof in flags:
+    result.typ = c.voidType
+  elif result.typ == nil or result.typ == c.enforceVoidContext:
     localError(c.config, n.info, errExprXHasNoType %
                 renderTree(result, {renderNoComments}))
     result.typ = errorType(c)
@@ -374,10 +377,12 @@ proc semLowHigh(c: PContext, n: PNode, m: TMagic): PNode =
     n[1] = semExprWithType(c, n[1], {efDetermineType})
     var typ = skipTypes(n[1].typ, abstractVarRange + {tyTypeDesc, tyUserTypeClassInst})
     case typ.kind
-    of tySequence, tyString, tyCString, tyOpenArray, tyVarargs:
+    of tySequence, tyString, tyCstring, tyOpenArray, tyVarargs:
       n.typ = getSysType(c.graph, n.info, tyInt)
     of tyArray:
       n.typ = typ[0] # indextype
+      if n.typ.kind == tyRange and emptyRange(n.typ.n[0], n.typ.n[1]): #Invalid range
+        n.typ = getSysType(c.graph, n.info, tyInt)
     of tyInt..tyInt64, tyChar, tyBool, tyEnum, tyUInt..tyUInt64, tyFloat..tyFloat64:
       n.typ = n[1].typ.skipTypes({tyTypeDesc})
     of tyGenericParam:
@@ -1041,8 +1046,7 @@ proc buildEchoStmt(c: PContext, n: PNode): PNode =
   if e != nil:
     result.add(newSymNode(e))
   else:
-    localError(c.config, n.info, "system needs: echo")
-    result.add(errorNode(c, n))
+    result.add localErrorNode(c, n, "system needs: echo")
   result.add(n)
   result = semExpr(c, result)
 
@@ -1242,6 +1246,9 @@ proc semSym(c: PContext, n: PNode, sym: PSym, flags: TExprFlags): PNode =
     # not sure the symbol really ends up being used:
     # var len = 0 # but won't be called
     # genericThatUsesLen(x) # marked as taking a closure?
+    if hasWarn(c.config, warnResultUsed):
+      message(c.config, n.info, warnResultUsed)
+
   of skGenericParam:
     onUse(n.info, s)
     if s.typ.kind == tyStatic:
@@ -1505,7 +1512,7 @@ proc semSubscript(c: PContext, n: PNode, flags: TExprFlags): PNode =
       arr = arr.base
 
   case arr.kind
-  of tyArray, tyOpenArray, tyVarargs, tySequence, tyString, tyCString,
+  of tyArray, tyOpenArray, tyVarargs, tySequence, tyString, tyCstring,
     tyUncheckedArray:
     if n.len != 2: return nil
     n[0] = makeDeref(n[0])
@@ -2280,12 +2287,15 @@ proc semMagic(c: PContext, n: PNode, s: PSym, flags: TExprFlags): PNode =
   of mSpawn:
     markUsed(c, n.info, s)
     when defined(leanCompiler):
-      localError(c.config, n.info, "compiler was built without 'spawn' support")
-      result = n
+      result = localErrorNode(c, n, "compiler was built without 'spawn' support")
     else:
       result = setMs(n, s)
       for i in 1..<n.len:
         result[i] = semExpr(c, n[i])
+
+      if n.len > 1 and n[1].kind notin nkCallKinds:
+        return localErrorNode(c, n, n[1].info, "'spawn' takes a call expression; got: " & $n[1])
+
       let typ = result[^1].typ
       if not typ.isEmptyType:
         if spawnResult(typ, c.inParallelStmt > 0) == srFlowVar:
@@ -2618,8 +2628,7 @@ proc semTupleConstr(c: PContext, n: PNode, flags: TExprFlags): PNode =
     # check if either everything or nothing is tyTypeDesc
     for i in 1..<tupexp.len:
       if isTupleType != (tupexp[i].typ.kind == tyTypeDesc):
-        localError(c.config, tupexp[i].info, "Mixing types and values in tuples is not allowed.")
-        return(errorNode(c,n))
+        return localErrorNode(c, n, tupexp[i].info, "Mixing types and values in tuples is not allowed.")
   if isTupleType: # expressions as ``(int, string)`` are reinterpret as type expressions
     result = n
     var typ = semTypeNode(c, n, nil).skipTypes({tyTypeDesc})

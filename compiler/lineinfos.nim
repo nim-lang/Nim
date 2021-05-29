@@ -60,11 +60,13 @@ type
     warnInconsistentSpacing = "Spacing",  warnCaseTransition = "CaseTransition",
     warnCycleCreated = "CycleCreated", warnObservableStores = "ObservableStores",
     warnStrictNotNil = "StrictNotNil",
+    warnResultUsed = "ResultUsed",
     warnCannotOpen = "CannotOpen",
     warnFileChanged = "FileChanged",
     warnUser = "User",
 
-    hintSuccess = "Success", hintSuccessX = "SuccessX", hintCC = "CC",
+    hintSuccess = "Success", hintSuccessX = "SuccessX", hintBuildMode = "BuildMode",
+    hintCC = "CC",
     hintLineTooLong = "LineTooLong", hintXDeclaredButNotUsed = "XDeclaredButNotUsed",
     hintXCannotRaiseY = "XCannotRaiseY", hintConvToBaseNotNeeded = "ConvToBaseNotNeeded",
     hintConvFromXtoItselfNotNeeded = "ConvFromXtoItselfNotNeeded", hintExprAlwaysX = "ExprAlwaysX",
@@ -108,7 +110,7 @@ const
     warnFieldXNotSupported: "field '$1' not supported",
     warnRstStyle: "RST style: $1",
     warnCommentXIgnored: "comment '$1' ignored",
-    warnTypelessParam: "'$1' has no type. Typeless parameters are deprecated; only allowed for 'template'",
+    warnTypelessParam: "", # deadcode
     warnUseBase: "use {.base.} for base methods; baseless methods are deprecated",
     warnWriteToForeignHeap: "write to foreign heap",
     warnUnsafeCode: "unsafe code: '$1'",
@@ -137,12 +139,14 @@ const
     warnCycleCreated: "$1",
     warnObservableStores: "observable stores to '$1'",
     warnStrictNotNil: "$1",
+    warnResultUsed: "used 'result' variable",
     warnCannotOpen: "cannot open: $1",
     warnFileChanged: "file changed: $1",
     warnUser: "$1",
     hintSuccess: "operation successful: $#",
     # keep in sync with `testament.isSuccess`
-    hintSuccessX: "${loc} lines; ${sec}s; $mem; $build build; proj: $project; out: $output",
+    hintSuccessX: "$loc lines; ${sec}s; $mem; proj: $project; out: $output",
+    hintBuildMode: "$1",
     hintCC: "CC: $1",
     hintLineTooLong: "line too long",
     hintXDeclaredButNotUsed: "'$1' is declared but not used",
@@ -191,12 +195,12 @@ type
   TNoteKinds* = set[TNoteKind]
 
 proc computeNotesVerbosity(): array[0..3, TNoteKinds] =
-  result[3] = {low(TNoteKind)..high(TNoteKind)} - {warnObservableStores}
+  result[3] = {low(TNoteKind)..high(TNoteKind)} - {warnObservableStores, warnResultUsed}
   result[2] = result[3] - {hintStackTrace, warnUninit, hintExtendedContext, hintDeclaredLoc}
   result[1] = result[2] - {warnProveField, warnProveIndex,
     warnGcUnsafe, hintPath, hintDependency, hintCodeBegin, hintCodeEnd,
-    hintSource, hintGlobalVar, hintGCStats, hintMsgOrigin}
-  result[0] = result[1] - {hintSuccessX, hintSuccess, hintConf,
+    hintSource, hintGlobalVar, hintGCStats, hintMsgOrigin, hintPerformance}
+  result[0] = result[1] - {hintSuccessX, hintBuildMode, hintSuccess, hintConf,
     hintProcessing, hintPattern, hintExecuting, hintLinking, hintCC}
 
 const

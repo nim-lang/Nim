@@ -179,7 +179,9 @@ proc writeIndexFile*(g: var RstGenerator, outfile: string) =
   ## If the index is empty the file won't be created.
   if g.theIndex.len > 0: writeFile(outfile, g.theIndex)
 
-proc addXmlChar(dest: var string, c: char) =
+proc addHtmlChar(dest: var string, c: char) =
+  # Escapes HTML characters. Note that single quote ' is not escaped as
+  # &apos; -- unlike XML (for standards pre HTML5 it was even forbidden).
   case c
   of '&': add(dest, "&amp;")
   of '<': add(dest, "&lt;")
@@ -195,26 +197,19 @@ proc addRtfChar(dest: var string, c: char) =
   else: add(dest, c)
 
 proc addTexChar(dest: var string, c: char) =
+  # Escapes 10 special Latex characters. Note that [, ], and ` are not
+  # considered as such. TODO: neither is @, am I wrong?
   case c
-  of '_': add(dest, "\\_")
-  of '{': add(dest, "\\symbol{123}")
-  of '}': add(dest, "\\symbol{125}")
-  of '[': add(dest, "\\symbol{91}")
-  of ']': add(dest, "\\symbol{93}")
-  of '\\': add(dest, "\\symbol{92}")
-  of '$': add(dest, "\\$")
-  of '&': add(dest, "\\&")
-  of '#': add(dest, "\\#")
-  of '%': add(dest, "\\%")
-  of '~': add(dest, "\\symbol{126}")
-  of '@': add(dest, "\\symbol{64}")
-  of '^': add(dest, "\\symbol{94}")
-  of '`': add(dest, "\\symbol{96}")
+  of '_', '{', '}', '$', '&', '#', '%': add(dest, "\\" & c)
+  # \~ and \^ have a special meaning unless they are followed by {}
+  of '~', '^': add(dest, "\\" & c & "{}")
+  # add {} to avoid gobbling up space by \textbackslash
+  of '\\': add(dest, "\\textbackslash{}")
   else: add(dest, c)
 
 proc escChar*(target: OutputTarget, dest: var string, c: char) {.inline.} =
   case target
-  of outHtml:  addXmlChar(dest, c)
+  of outHtml:  addHtmlChar(dest, c)
   of outLatex: addTexChar(dest, c)
 
 proc addSplitter(target: OutputTarget; dest: var string) {.inline.} =
@@ -987,6 +982,25 @@ proc buildLinesHtmlTable(d: PDoc; params: CodeBlockParams, code: string,
       "</td></tr></tbody></table>" & (
       d.config.getOrDefault"doc.listing_button" % id)
 
+proc renderCodeLang*(result: var string, lang: SourceLanguage, code: string,
+                     target: OutputTarget) =
+  var g: GeneralTokenizer
+  initGeneralTokenizer(g, code)
+  while true:
+    getNextToken(g, lang)
+    case g.kind
+    of gtEof: break
+    of gtNone, gtWhitespace:
+      add(result, substr(code, g.start, g.length + g.start - 1))
+    else:
+      dispA(target, result, "<span class=\"$2\">$1</span>", "\\span$2{$1}", [
+        esc(target, substr(code, g.start, g.length+g.start-1)),
+        tokenClassToStr[g.kind]])
+  deinitGeneralTokenizer(g)
+
+proc renderNimCode*(result: var string, code: string, target: OutputTarget) =
+  renderCodeLang(result, langNim, code, target)
+
 proc renderCode(d: PDoc, n: PRstNode, result: var string) =
   ## Renders a code (code block or inline code), appending it to `result`.
   ##
@@ -1028,19 +1042,7 @@ proc renderCode(d: PDoc, n: PRstNode, result: var string) =
       d.msgHandler(d.filename, 1, 0, mwUnsupportedLanguage, params.langStr)
     for letter in m.text: escChar(d.target, result, letter)
   else:
-    var g: GeneralTokenizer
-    initGeneralTokenizer(g, m.text)
-    while true:
-      getNextToken(g, params.lang)
-      case g.kind
-      of gtEof: break
-      of gtNone, gtWhitespace:
-        add(result, substr(m.text, g.start, g.length + g.start - 1))
-      else:
-        dispA(d.target, result, "<span class=\"$2\">$1</span>", "\\span$2{$1}", [
-          esc(d.target, substr(m.text, g.start, g.length+g.start-1)),
-          tokenClassToStr[g.kind]])
-    deinitGeneralTokenizer(g)
+    renderCodeLang(result, params.lang, m.text, d.target)
   dispA(d.target, result, blockEnd, blockEnd)
 
 proc renderContainer(d: PDoc, n: PRstNode, result: var string) =
@@ -1198,7 +1200,8 @@ proc renderRstToOut(d: PDoc, n: PRstNode, result: var string) =
         "$1", result)
   of rnOptionGroup:
     renderAux(d, n,
-        "<div class=\"option-list-label\">$1</div>",
+        "<div class=\"option-list-label\"><tt><span class=\"option\">" &
+        "$1</span></tt></div>",
         "\\item[$1]", result)
   of rnDescription:
     renderAux(d, n, "<div class=\"option-list-description\">$1</div>",
@@ -1319,13 +1322,22 @@ proc renderRstToOut(d: PDoc, n: PRstNode, result: var string) =
     renderAux(d, n, "|$1|", "|$1|", result)
   of rnDirective:
     renderAux(d, n, "", "", result)
-  of rnUnknownRole:
+  of rnUnknownRole, rnCodeFragment:
     var tmp0 = ""
     var tmp1 = ""
     renderRstToOut(d, n.sons[0], tmp0)
     renderRstToOut(d, n.sons[1], tmp1)
-    dispA(d.target, result, "<span class=\"$2\">$1</span>", "\\span$2{$1}",
-          [tmp0, tmp1])
+    var class = tmp1
+    # don't allow missing role break latex compilation:
+    if d.target == outLatex and n.kind == rnUnknownRole: class = "Other"
+    if n.kind == rnCodeFragment:
+      dispA(d.target, result,
+            "<tt class=\"docutils literal\"><span class=\"pre $2\">" &
+              "$1</span></tt>",
+            "\\texttt{\\span$2{$1}}", [tmp0, class])
+    else:  # rnUnknownRole, not necessarily code/monospace font
+      dispA(d.target, result, "<span class=\"$2\">$1</span>", "\\span$2{$1}",
+            [tmp0, class])
   of rnSub: renderAux(d, n, "<sub>$1</sub>", "\\rstsub{$1}", result)
   of rnSup: renderAux(d, n, "<sup>$1</sup>", "\\rstsup{$1}", result)
   of rnEmphasis: renderAux(d, n, "<em>$1</em>", "\\emph{$1}", result)

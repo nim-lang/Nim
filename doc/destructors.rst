@@ -1,5 +1,3 @@
-.. default-role:: code
-
 ==================================
 Nim Destructors and Move Semantics
 ==================================
@@ -7,6 +5,8 @@ Nim Destructors and Move Semantics
 :Authors: Andreas Rumpf
 :Version: |nimversion|
 
+.. include:: rstcommon.rst
+.. default-role:: nim
 .. contents::
 
 
@@ -273,11 +273,11 @@ Sink parameter inference
 ========================
 
 The current implementation can do a limited form of sink parameter
-inference. But it has to be enabled via `--sinkInference:on`, either
+inference. But it has to be enabled via `--sinkInference:on`:option:, either
 on the command line or via a `push` pragma.
 
 To enable it for a section of code, one can
-use `{.push sinkInference: on.}`...`{.pop.}`.
+use `{.push sinkInference: on.}` ... `{.pop.}`.
 
 The `.nosinks`:idx: pragma can be used to disable this inference
 for a single routine:
@@ -496,10 +496,11 @@ for expressions of type `lent T` or of type `var T`.
 The .cursor annotation
 ======================
 
-Under the `--gc:arc|orc` modes Nim's `ref` type is implemented via the same runtime
-"hooks" and thus via reference counting. This means that cyclic structures cannot be freed
-immediately (`--gc:orc` ships with a cycle collector). With the `.cursor` annotation
-one can break up cycles declaratively:
+Under the `--gc:arc|orc`:option: modes Nim's `ref` type is implemented
+via the same runtime "hooks" and thus via reference counting.
+This means that cyclic structures cannot be freed
+immediately (`--gc:orc`:option: ships with a cycle collector).
+With the `.cursor` annotation one can break up cycles declaratively:
 
 .. code-block:: nim
 
@@ -661,12 +662,12 @@ There is no copy during assigning operations.
   y[0] = 'h'     # copy
 
 The program above shows when the copy operations happen.
-When mutating the variable `y`, the Nim compiler creates a fresh copy of `x`, 
-the variable `y` won't point to the string literal anymore. 
-Instead it points to the copy of `x` of which the memory can be mutated 
+When mutating the variable `y`, the Nim compiler creates a fresh copy of `x`,
+the variable `y` won't point to the string literal anymore.
+Instead it points to the copy of `x` of which the memory can be mutated
 and the variable `y` becomes a mutable string.
 
-.. Note:: The abstraction fails for `addr x` because whether the address is going to be used for mutations is unknown. 
+.. Note:: The abstraction fails for `addr x` because whether the address is going to be used for mutations is unknown.
 
 Let's look at a silly example demonstrating this behaviour:
 

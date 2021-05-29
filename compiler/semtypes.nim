@@ -10,7 +10,7 @@
 # this module does the semantic checking of type declarations
 # included from sem.nim
 
-import std/math
+import math
 
 const
   errStringOrIdentNodeExpected = "string or ident node expected"
@@ -95,7 +95,7 @@ proc semEnum(c: PContext, n: PNode, prev: PType): PType =
       of tyTuple:
         if v.len == 2:
           strVal = v[1] # second tuple part is the string value
-          if skipTypes(strVal.typ, abstractInst).kind in {tyString, tyCString}:
+          if skipTypes(strVal.typ, abstractInst).kind in {tyString, tyCstring}:
             if not isOrdinalType(v[0].typ, allowEnumWithHoles=true):
               localError(c.config, v[0].info, errOrdinalTypeExpected & "; given: " & typeToString(v[0].typ, preferDesc))
             x = toInt64(getOrdValue(v[0])) # first tuple part is the ordinal
@@ -104,7 +104,7 @@ proc semEnum(c: PContext, n: PNode, prev: PType): PType =
             localError(c.config, strVal.info, errStringLiteralExpected)
         else:
           localError(c.config, v.info, errWrongNumberOfVariables)
-      of tyString, tyCString:
+      of tyString, tyCstring:
         strVal = v
         x = counter
       else:
@@ -138,9 +138,10 @@ proc semEnum(c: PContext, n: PNode, prev: PType): PType =
       identToReplace[] = symNode
     if e.position == 0: hasNull = true
     if result.sym != nil and sfExported in result.sym.flags:
-      incl(e.flags, sfUsed)
-      incl(e.flags, sfExported)
-      if not isPure: exportSym(c, e)
+      incl(e.flags, {sfUsed, sfExported})
+    if result.sym != nil and not isPure:
+      addInterfaceDeclAux(c, e, forceExport = sfExported in result.sym.flags)
+
     result.n.add symNode
     styleCheckDef(c.config, e)
     onDef(e.info, e)
@@ -255,8 +256,8 @@ proc semRangeAux(c: PContext, n: PNode, prev: PType): PType =
     else:
       result.n.add semConstExpr(c, range[i])
 
-  if (result.n[0].kind in {nkFloatLit..nkFloat64Lit} and classify(result.n[0].floatVal) == fcNan) or
-      (result.n[1].kind in {nkFloatLit..nkFloat64Lit} and classify(result.n[1].floatVal) == fcNan):
+  if (result.n[0].kind in {nkFloatLit..nkFloat64Lit} and result.n[0].floatVal.isNaN) or
+      (result.n[1].kind in {nkFloatLit..nkFloat64Lit} and result.n[1].floatVal.isNaN):
     localError(c.config, n.info, "NaN is not a valid start or end for a range")
 
   if weakLeValue(result.n[0], result.n[1]) == impNo:
@@ -853,7 +854,7 @@ proc addInheritedFields(c: PContext, check: var IntSet, pos: var int,
     addInheritedFields(c, check, pos, obj[0].skipGenericInvocation)
   addInheritedFieldsAux(c, check, pos, obj.n)
 
-proc semObjectNode(c: PContext, n: PNode, prev: PType; isInheritable: bool): PType =
+proc semObjectNode(c: PContext, n: PNode, prev: PType; flags: TTypeFlags): PType =
   if n.len == 0:
     return newConstraint(c, tyObject)
   var check = initIntSet()
@@ -889,8 +890,9 @@ proc semObjectNode(c: PContext, n: PNode, prev: PType; isInheritable: bool): PTy
   if n.kind != nkObjectTy: internalError(c.config, n.info, "semObjectNode")
   result = newOrPrevType(tyObject, prev, c)
   rawAddSon(result, realBase)
-  if realBase == nil and isInheritable:
+  if realBase == nil and tfInheritable in flags:
     result.flags.incl tfInheritable
+  if tfAcyclic in flags: result.flags.incl tfAcyclic
   if result.n.isNil:
     result.n = newNodeI(nkRecList, n.info)
   else:
@@ -915,8 +917,8 @@ proc semAnyRef(c: PContext; n: PNode; kind: TTypeKind; prev: PType): PType =
     let n = if n[0].kind == nkBracket: n[0] else: n
     checkMinSonsLen(n, 1, c.config)
     let body = n.lastSon
-    var t = if prev != nil and body.kind == nkObjectTy and tfInheritable in prev.flags:
-              semObjectNode(c, body, nil, isInheritable=true)
+    var t = if prev != nil and body.kind == nkObjectTy:
+              semObjectNode(c, body, nil, prev.flags)
             else:
               semTypeNode(c, body, nil)
     if t.kind == tyTypeDesc and tfUnresolved notin t.flags:
@@ -1295,7 +1297,7 @@ proc semProcTypeNode(c: PContext, n, genericParams: PNode,
         let param = strTableGet(c.signatures, arg.name)
         if param != nil: typ = param.typ
         else:
-          localError(c.config, a.info, "typeless parameters are obsolete")
+          localError(c.config, a.info, "parameter '$1' requires a type" % param.name.s)
           typ = errorType(c)
       let lifted = liftParamType(c, kind, genericParams, typ,
                                  arg.name.s, arg.info)
@@ -1462,9 +1464,9 @@ proc semGeneric(c: PContext, n: PNode, s: PSym, prev: PType): PType =
     matches(c, n, copyTree(n), m)
 
     if m.state != csMatch:
-      let err = "cannot instantiate " & typeToString(t) & "\n" &
-                "got: <" & describeArgs(c, n) & ">\n" &
-                "but expected: <" & describeArgs(c, t.n, 0) & ">"
+      var err = "cannot instantiate "
+      err.addTypeHeader(c.config, t)
+      err.add "\ngot: <$1>\nbut expected: <$2>" % [describeArgs(c, n), describeArgs(c, t.n, 0)]
       localError(c.config, n.info, errGenerated, err)
       return newOrPrevType(tyError, prev, c)
 
@@ -1956,7 +1958,7 @@ proc semTypeNode(c: PContext, n: PNode, prev: PType): PType =
           localError(c.config, n.info, "type expected, but got symbol '$1' of kind '$2'" %
             [s.name.s, s.kind.toHumanStr])
       result = newOrPrevType(tyError, prev, c)
-  of nkObjectTy: result = semObjectNode(c, n, prev, isInheritable=false)
+  of nkObjectTy: result = semObjectNode(c, n, prev, {})
   of nkTupleTy: result = semTuple(c, n, prev)
   of nkTupleClassTy: result = newConstraint(c, tyTuple)
   of nkTypeClassTy: result = semTypeClass(c, n, prev)
@@ -2036,7 +2038,7 @@ proc processMagicType(c: PContext, m: PSym) =
     if optSeqDestructors in c.config.globalOptions:
       incl m.typ.flags, tfHasAsgn
   of mCstring:
-    setMagicIntegral(c.config, m, tyCString, c.config.target.ptrSize)
+    setMagicIntegral(c.config, m, tyCstring, c.config.target.ptrSize)
     rawAddSon(m.typ, getSysType(c.graph, m.info, tyChar))
   of mPointer: setMagicIntegral(c.config, m, tyPointer, c.config.target.ptrSize)
   of mNil: setMagicType(c.config, m, tyNil, c.config.target.ptrSize)

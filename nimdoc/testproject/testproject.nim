@@ -185,7 +185,7 @@ when true: # procs without `=` (using comment field)
     ## the c printf.
     ## etc.
 
-  proc c_nonexistant*(frmt: cstring): cint {.importc: "nonexistant", header: "<stdio.h>", varargs, discardable.}
+  proc c_nonexistent*(frmt: cstring): cint {.importc: "nonexistent", header: "<stdio.h>", varargs, discardable.}
 
 when true: # tests RST inside comments
   proc low*[T: Ordinal|enum|range](x: T): T {.magic: "Low", noSideEffect.}
@@ -341,7 +341,7 @@ when true: # issue #14473
   template doit(): untyped =
     ## doit
     ## return output only
-    toSeq([1,2])
+    toSeq(["D20210427T172228"]) # make it searcheable at least until we figure out a way to avoid echo
   echo doit() # using doAssert or similar to avoid echo would "hide" the original bug
 
 when true: # issue #14846

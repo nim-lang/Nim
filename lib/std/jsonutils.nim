@@ -12,8 +12,11 @@ runnableExamples:
   let a = (1.5'f32, (b: "b2", a: "a2"), 'x', @[Foo(t: true, z1: -3), nil], [{"name": "John"}.newStringTable])
   let j = a.toJson
   assert j.jsonTo(typeof(a)).toJson == j
+  assert $[NaN, Inf, -Inf, 0.0, -0.0, 1.0, 1e-2].toJson == """["nan","inf","-inf",0.0,-0.0,1.0,0.01]"""
+  assert 0.0.toJson.kind == JFloat
+  assert Inf.toJson.kind == JString
 
-import std/[json,strutils,tables,sets,strtabs,options]
+import json, strutils, tables, sets, strtabs, options
 
 #[
 Future directions:
@@ -27,10 +30,12 @@ add a way to customize serialization, for e.g.:
   objects.
 ]#
 
-import std/macros
+import macros
+from enumutils import symbolName
+from typetraits import OrdinalEnum
 
 type
-  Joptions* = object
+  Joptions* = object # xxx rename FromJsonOptions
     ## Options controlling the behavior of `fromJson`.
     allowExtraKeys*: bool
       ## If `true` Nim's object to which the JSON is parsed is not required to
@@ -39,6 +44,17 @@ type
       ## If `true` Nim's object to which JSON is parsed is allowed to have
       ## fields without corresponding JSON keys.
     # in future work: a key rename could be added
+  EnumMode* = enum
+    joptEnumOrd
+    joptEnumSymbol
+    joptEnumString
+  ToJsonOptions* = object
+    enumMode*: EnumMode
+    # xxx charMode
+
+proc initToJsonOptions*(): ToJsonOptions =
+  ## initializes `ToJsonOptions` with sane options.
+  ToJsonOptions(enumMode: joptEnumOrd)
 
 proc isNamedTuple(T: typedesc): bool {.magic: "TypeTrait".}
 proc distinctBase(T: typedesc): typedesc {.magic: "TypeTrait".}
@@ -106,7 +122,7 @@ proc hasField[T](obj: T, field: string): bool =
       return true
   return false
 
-macro accessField(obj: typed, name: static string): untyped = 
+macro accessField(obj: typed, name: static string): untyped =
   newDotExpr(obj, ident(name))
 
 template fromJsonFields(newObj, oldObj, json, discKeys, opt) =
@@ -146,7 +162,7 @@ template fromJsonFields(newObj, oldObj, json, discKeys, opt) =
       json.len == numMatched
     else:
       json.len == num and num == numMatched
-  
+
   checkJson ok, $(json.len, num, numMatched, $T, json)
 
 proc fromJson*[T](a: var T, b: JsonNode, opt = Joptions())
@@ -214,6 +230,10 @@ proc fromJson*[T](a: var T, b: JsonNode, opt = Joptions()) =
     for ai in mitems(a):
       fromJson(ai, b[i], opt)
       i.inc
+  elif T is set:
+    type E = typeof(for ai in a: ai)
+    for val in b.getElems:
+      incl a, jsonTo(val, E)
   elif T is seq:
     a.setLen b.len
     for i, val in b.getElems:
@@ -254,29 +274,40 @@ proc jsonTo*(b: JsonNode, T: typedesc, opt = Joptions()): T =
   ## reverse of `toJson`
   fromJson(result, b, opt)
 
-proc toJson*[T](a: T): JsonNode =
+proc toJson*[T](a: T, opt = initToJsonOptions()): JsonNode =
   ## serializes `a` to json; uses `toJsonHook(a: T)` if it's in scope to
   ## customize serialization, see strtabs.toJsonHook for an example.
   when compiles(toJsonHook(a)): result = toJsonHook(a)
   elif T is object | tuple:
     when T is object or isNamedTuple(T):
       result = newJObject()
-      for k, v in a.fieldPairs: result[k] = toJson(v)
+      for k, v in a.fieldPairs: result[k] = toJson(v, opt)
     else:
       result = newJArray()
-      for v in a.fields: result.add toJson(v)
+      for v in a.fields: result.add toJson(v, opt)
   elif T is ref | ptr:
     if system.`==`(a, nil): result = newJNull()
-    else: result = toJson(a[])
-  elif T is array | seq:
+    else: result = toJson(a[], opt)
+  elif T is array | seq | set:
     result = newJArray()
-    for ai in a: result.add toJson(ai)
-  elif T is pointer: result = toJson(cast[int](a))
+    for ai in a: result.add toJson(ai, opt)
+  elif T is pointer: result = toJson(cast[int](a), opt)
     # edge case: `a == nil` could've also led to `newJNull()`, but this results
     # in simpler code for `toJson` and `fromJson`.
-  elif T is distinct: result = toJson(a.distinctBase)
+  elif T is distinct: result = toJson(a.distinctBase, opt)
   elif T is bool: result = %(a)
   elif T is SomeInteger: result = %a
+  elif T is enum:
+    case opt.enumMode
+    of joptEnumOrd:
+      when T is Ordinal or not defined(nimLegacyJsonutilsHoleyEnum): %(a.ord)
+      else: toJson($a, opt)
+    of joptEnumSymbol:
+      when T is OrdinalEnum:
+        toJson(symbolName(a), opt)
+      else:
+        toJson($a, opt)
+    of joptEnumString: toJson($a, opt)
   elif T is Ordinal: result = %(a.ord)
   elif T is cstring: (if a == nil: result = newJNull() else: result = % $a)
   else: result = %a
@@ -284,7 +315,7 @@ proc toJson*[T](a: T): JsonNode =
 proc fromJsonHook*[K: string|cstring, V](t: var (Table[K, V] | OrderedTable[K, V]),
                          jsonNode: JsonNode) =
   ## Enables `fromJson` for `Table` and `OrderedTable` types.
-  ## 
+  ##
   ## See also:
   ## * `toJsonHook proc<#toJsonHook>`_
   runnableExamples:
@@ -326,7 +357,7 @@ proc toJsonHook*[K: string|cstring, V](t: (Table[K, V] | OrderedTable[K, V])): J
 
 proc fromJsonHook*[A](s: var SomeSet[A], jsonNode: JsonNode) =
   ## Enables `fromJson` for `HashSet` and `OrderedSet` types.
-  ## 
+  ##
   ## See also:
   ## * `toJsonHook proc<#toJsonHook,SomeSet[A]>`_
   runnableExamples:
@@ -360,7 +391,7 @@ proc toJsonHook*[A](s: SomeSet[A]): JsonNode =
 
 proc fromJsonHook*[T](self: var Option[T], jsonNode: JsonNode) =
   ## Enables `fromJson` for `Option` types.
-  ## 
+  ##
   ## See also:
   ## * `toJsonHook proc<#toJsonHook,Option[T]>`_
   runnableExamples:
@@ -395,7 +426,7 @@ proc toJsonHook*[T](self: Option[T]): JsonNode =
 
 proc fromJsonHook*(a: var StringTableRef, b: JsonNode) =
   ## Enables `fromJson` for `StringTableRef` type.
-  ## 
+  ##
   ## See also:
   ## * `toJsonHook proc<#toJsonHook,StringTableRef>`_
   runnableExamples:
@@ -413,7 +444,7 @@ proc fromJsonHook*(a: var StringTableRef, b: JsonNode) =
 
 proc toJsonHook*(a: StringTableRef): JsonNode =
   ## Enables `toJson` for `StringTableRef` type.
-  ## 
+  ##
   ## See also:
   ## * `fromJsonHook proc<#fromJsonHook,StringTableRef,JsonNode>`_
   runnableExamples:

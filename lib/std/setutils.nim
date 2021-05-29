@@ -14,7 +14,7 @@
 ## * `std/packedsets <packedsets.html>`_
 ## * `std/sets <sets.html>`_
 
-import std/[typetraits, macros]
+import typetraits, macros
 
 #[
   type SetElement* = char|byte|bool|int16|uint16|enum|uint8|int8

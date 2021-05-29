@@ -717,13 +717,14 @@ const
   FILE_WRITE_DATA* = 0x00000002 # file & pipe
 
 # Error Constants
-const
-  ERROR_FILE_NOT_FOUND* = 2
+const 
+  ERROR_FILE_NOT_FOUND* = 2 ## https://docs.microsoft.com/en-us/windows/win32/debug/system-error-codes--0-499-
   ERROR_PATH_NOT_FOUND* = 3
   ERROR_ACCESS_DENIED* = 5
   ERROR_NO_MORE_FILES* = 18
   ERROR_LOCK_VIOLATION* = 33
   ERROR_HANDLE_EOF* = 38
+  ERROR_FILE_EXISTS* = 80
   ERROR_BAD_ARGUMENTS* = 165
 
 proc duplicateHandle*(hSourceProcessHandle: Handle, hSourceHandle: Handle,

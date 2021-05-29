@@ -497,14 +497,14 @@ proc transformConv(c: PTransf, n: PNode): PNode =
     result.typ = takeType(n.typ, n[1].typ, c.graph, c.idgen)
     #echo n.info, " came here and produced ", typeToString(result.typ),
     #   " from ", typeToString(n.typ), " and ", typeToString(n[1].typ)
-  of tyCString:
+  of tyCstring:
     if source.kind == tyString:
       result = newTransNode(nkStringToCString, n, 1)
       result[0] = transform(c, n[1])
     else:
       result = transformSons(c, n)
   of tyString:
-    if source.kind == tyCString:
+    if source.kind == tyCstring:
       result = newTransNode(nkCStringToString, n, 1)
       result[0] = transform(c, n[1])
     else:

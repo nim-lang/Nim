@@ -8,13 +8,26 @@ Note: Macro tests are in tests/stdlib/tjsonmacro.nim
 ]#
 
 import std/[json,parsejson,strutils]
+from std/math import isNaN
 when not defined(js):
   import std/streams
 
 proc testRoundtrip[T](t: T, expected: string) =
+  # checks that `T => json => T2 => json2` is such that json2 = json
   let j = %t
   doAssert $j == expected, $j
   doAssert %(j.to(T)) == j
+
+proc testRoundtripVal[T](t: T, expected: string) =
+  # similar to testRoundtrip, but also checks that the `T => json => T2` is such that `T2 == T`
+  # note that this isn't always possible, e.g. for pointer-like types or nans
+  let j = %t
+  doAssert $j == expected, $j
+  let j2 = ($j).parseJson
+  doAssert $j2 == expected, $(j2, t)
+  let t2 = j2.to(T)
+  doAssert t2 == t
+  doAssert $(%* t2) == expected # sanity check, because -0.0 = 0.0 but their json representation differs
 
 let testJson = parseJson"""{ "a": [1, 2, 3, 4], "b": "asd", "c": "\ud83c\udf83", "d": "\u00E6"}"""
 # nil passthrough
@@ -301,6 +314,16 @@ block: # bug #17383
     testRoundtrip(int64.high): "9223372036854775807"
     testRoundtrip(uint64.high): "18446744073709551615"
 
+block: # bug #18007
+  testRoundtrip([NaN, Inf, -Inf, 0.0, -0.0, 1.0]): """["nan","inf","-inf",0.0,-0.0,1.0]"""
+  # pending https://github.com/nim-lang/Nim/issues/18025 use:
+  # testRoundtrip([float32(NaN), Inf, -Inf, 0.0, -0.0, 1.0])
+  let inf = float32(Inf)
+  testRoundtrip([float32(NaN), inf, -inf, 0.0, -0.0, 1.0]): """["nan","inf","-inf",0.0,-0.0,1.0]"""
+  when not defined(js): # because of Infinity vs inf
+    testRoundtripVal([inf, -inf, 0.0, -0.0, 1.0]): """["inf","-inf",0.0,-0.0,1.0]"""
+  let a = parseJson($(%NaN)).to(float)
+  doAssert a.isNaN
 
 block:
   let a = "18446744073709551615"

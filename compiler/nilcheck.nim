@@ -8,7 +8,7 @@
 #
 
 import ast, renderer, intsets, tables, msgs, options, lineinfos, strformat, idents, treetab, hashes
-import sequtils, strutils, std / sets
+import sequtils, strutils, sets
 
 # IMPORTANT: notes not up to date, i'll update this comment again
 #
@@ -1283,7 +1283,7 @@ proc typeNilability(typ: PType): Nilability =
   # echo "typeNilability ", $typ.flags, " ", $typ.kind
   result = if tfNotNil in typ.flags:
     Safe
-  elif typ.kind in {tyRef, tyCString, tyPtr, tyPointer}:
+  elif typ.kind in {tyRef, tyCstring, tyPtr, tyPointer}:
     #
     # tyVar ? tyVarargs ? tySink ? tyLent ?
     # TODO spec? tests?

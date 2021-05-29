@@ -1,8 +1,6 @@
 import strutils
-from xmltree import addEscaped
 
 import ast, options, msgs
-import packages/docutils/highlite
 
 const isDebug = false
 when isDebug:
@@ -131,22 +129,3 @@ proc extractRunnableExamplesSource*(conf: ConfigRef; n: PNode): string =
       lastNonemptyPos = result.len
   result.setLen lastNonemptyPos
 
-proc renderNimCode*(result: var string, code: string, isLatex = false) =
-  var toknizr: GeneralTokenizer
-  initGeneralTokenizer(toknizr, code)
-  var buf = ""
-  template append(kind, val) =
-    buf.setLen 0
-    buf.addEscaped(val)
-    let class = tokenClassToStr[kind]
-    if isLatex:
-      result.addf "\\span$1{$2}", [class, buf]
-    else:
-      result.addf  "<span class=\"$1\">$2</span>", [class, buf]
-  while true:
-    getNextToken(toknizr, langNim)
-    case toknizr.kind
-    of gtEof: break  # End Of File (or string)
-    else:
-      # TODO: avoid alloc; maybe toOpenArray
-      append(toknizr.kind, substr(code, toknizr.start, toknizr.length + toknizr.start - 1))

@@ -110,7 +110,9 @@ proc dbQuote*(s: string): string =
   ## DB quotes the string.
   result = "'"
   for c in items(s):
-    if c == '\'': add(result, "''")
+    case c
+    of '\'': add(result, "''")
+    of '\0': add(result, "\\0")
     else: add(result, c)
   add(result, '\'')
 
@@ -524,7 +526,7 @@ proc insert*(db: DbConn, query: SqlQuery, pkName: string,
             {.tags: [WriteDbEffect], since: (1, 3).} =
   ## executes the query (typically "INSERT") and returns the
   ## generated ID
-  result = tryInsertID(db, query, args)
+  result = tryInsert(db, query, pkName, args)
   if result < 0: dbError(db)
 
 proc execAffectedRows*(db: DbConn, query: SqlQuery,

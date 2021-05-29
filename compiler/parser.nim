@@ -556,6 +556,7 @@ proc semiStmtList(p: var Parser, result: PNode) =
       let a = complexOrSimpleStmt(p)
       if a.kind == nkEmpty:
         parMessage(p, errExprExpected, p.tok)
+        getTok(p)
       else:
         result.add a
   dec p.inSemiStmtList

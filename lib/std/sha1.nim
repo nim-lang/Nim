@@ -26,8 +26,8 @@ runnableExamples("-r:off"):
     b = parseSecureHash("10DFAEBF6BFDBC7939957068E2EFACEC4972933C")
   assert a == b, "files don't match"
 
-import std/strutils
-from std/endians import bigEndian32, bigEndian64
+import strutils
+from endians import bigEndian32, bigEndian64
 
 const Sha1DigestSize = 20
 

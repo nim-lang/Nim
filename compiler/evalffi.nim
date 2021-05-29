@@ -92,7 +92,7 @@ proc mapType(conf: ConfigRef, t: ast.PType): ptr libffi.Type =
     else: result = nil
   of tyFloat, tyFloat64: result = addr libffi.type_double
   of tyFloat32: result = addr libffi.type_float
-  of tyVar, tyLent, tyPointer, tyPtr, tyRef, tyCString, tySequence, tyString, tyUntyped,
+  of tyVar, tyLent, tyPointer, tyPtr, tyRef, tyCstring, tySequence, tyString, tyUntyped,
      tyTyped, tyTypeDesc, tyProc, tyArray, tyStatic, tyNil:
     result = addr libffi.type_pointer
   of tyDistinct, tyAlias, tySink:
@@ -205,7 +205,7 @@ proc pack(conf: ConfigRef, v: PNode, typ: PType, res: pointer) =
   of tyFloat32: awr(float32, v.floatVal)
   of tyFloat64: awr(float64, v.floatVal)
 
-  of tyPointer, tyProc,  tyCString, tyString:
+  of tyPointer, tyProc,  tyCstring, tyString:
     if v.kind == nkNilLit:
       # nothing to do since the memory is 0 initialized anyway
       discard
@@ -386,7 +386,7 @@ proc unpack(conf: ConfigRef, x: pointer, typ: PType, n: PNode): PNode =
     result = unpackObject(conf, x, typ, n)
   of tyArray:
     result = unpackArray(conf, x, typ, n)
-  of tyCString, tyString:
+  of tyCstring, tyString:
     let p = rd(cstring, x)
     if p.isNil:
       setNil()
@@ -402,7 +402,7 @@ proc unpack(conf: ConfigRef, x: pointer, typ: PType, n: PNode): PNode =
 
 proc fficast*(conf: ConfigRef, x: PNode, destTyp: PType): PNode =
   if x.kind == nkPtrLit and x.typ.kind in {tyPtr, tyRef, tyVar, tyLent, tyPointer,
-                                           tyProc, tyCString, tyString,
+                                           tyProc, tyCstring, tyString,
                                            tySequence}:
     result = newNodeIT(x.kind, x.info, destTyp)
     result.intVal = x.intVal

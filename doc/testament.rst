@@ -1,4 +1,10 @@
-.. default-role:: code
+===========
+ Testament
+===========
+
+.. include:: rstcommon.rst
+.. default-role:: nim
+.. contents::
 
 Testament is an advanced automatic unittests runner for Nim tests, is used for the development of Nim itself,
 offers process isolation for your tests, it can generate statistics about test cases,
@@ -11,29 +17,34 @@ so can be useful to run your tests, even the most complex ones.
 Test files location
 ===================
 
-By default Testament looks for test files on `"./tests/*.nim"`.
-You can overwrite this pattern glob using `pattern <glob>`.
+By default Testament looks for test files on ``"./tests/*.nim"``.
+You can overwrite this pattern glob using `pattern <glob>`:option:.
 The default working directory path can be changed using
-`--directory:"folder/subfolder/"`.
+`--directory:"folder/subfolder/"`:option:.
 
-Testament uses the `nim` compiler on `PATH`.
-You can change that using `--nim:"folder/subfolder/nim"`.
-Running JavaScript tests with `--targets:"js"` requires a working NodeJS on
-`PATH`.
+Testament uses the `nim`:cmd: compiler on `PATH`.
+You can change that using `--nim:"folder/subfolder/nim"`:option:.
+Running JavaScript tests with `--targets:"js"`:option: requires
+a working NodeJS on `PATH`.
 
 
 Options
 =======
 
-* `--print`                   Also print results to the console
-* `--simulate`                See what tests would be run but don't run them (for debugging)
-* `--failing`                 Only show failing/ignored tests
-* `--targets:"c cpp js objc"` Run tests for specified targets (default: all)
-* `--nim:path`                Use a particular nim executable (default: `$PATH/nim`)
-* `--directory:dir`           Change to directory dir before reading the tests or doing anything else.
-* `--colors:on|off`           Turn messages coloring on|off.
-* `--backendLogging:on|off`   Disable or enable backend logging. By default turned on.
-* `--skipFrom:file`           Read tests to skip from `file` - one test per line, # comments ignored
+--print                   Also print results to the console
+--simulate                See what tests would be run but don't run them
+                          (for debugging)
+--failing                 Only show failing/ignored tests
+--targets:"c cpp js objc"
+                          Run tests for specified targets (default: all)
+--nim:path                Use a particular nim executable (default: $PATH/nim)
+--directory:dir           Change to directory dir before reading the tests
+                          or doing anything else.
+--colors:on|off           Turn messages coloring on|off.
+--backendLogging:on|off   Disable or enable backend logging.
+                          By default turned on.
+--skipFrom:file           Read tests to skip from ``file`` - one test per
+                          line, # comments ignored
 
 
 Running a single test
@@ -42,27 +53,26 @@ Running a single test
 This is a minimal example to understand the basics,
 not very useful for production, but easy to understand:
 
-.. code::
+.. code:: console
 
   $ mkdir tests
   $ echo "assert 42 == 42" > tests/test0.nim
   $ testament run test0.nim
-    PASS: tests/test0.nim C                                       ( 0.2 sec)
-
+  PASS: tests/test0.nim C                                    ( 0.2 sec)
   $ testament r test0
-    PASS: tests/test0.nim C                                       ( 0.2 sec)
+  PASS: tests/test0.nim C                                    ( 0.2 sec)
 
 
 Running all tests from a directory
 ==================================
 
-.. code::
+.. code:: console
 
   $ testament pattern "tests/*.nim"
 
 To search for tests deeper in a directory, use
 
-.. code::
+.. code:: console
 
   $ testament pattern "tests/**/*.nim"    # one level deeper
   $ testament pattern "tests/**/**/*.nim" # two levels deeper
@@ -70,10 +80,10 @@ To search for tests deeper in a directory, use
 HTML Reports
 ============
 
-Generate HTML Reports `testresults.html` from unittests,
+Generate HTML Reports ``testresults.html`` from unittests,
 you have to run at least 1 test *before* generating a report:
 
-.. code::
+.. code:: console
 
   $ testament html
 

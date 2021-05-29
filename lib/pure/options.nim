@@ -69,7 +69,7 @@ supports pattern matching on `Option`s, with the `Some(<pattern>)` and
 # xxx pending https://github.com/timotheecour/Nim/issues/376 use `runnableExamples` and `whichModule`
 
 
-import std/typetraits
+import typetraits
 
 when (NimMajor, NimMinor) >= (1, 1):
   type

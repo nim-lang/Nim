@@ -37,7 +37,7 @@ proc stackTraceAux(c: PCtx; x: PStackFrame; pc: int; recursionLimit=100) =
       while x != nil:
         inc calls
         x = x.next
-      msgWriteln(c.config, $calls & " calls omitted\n")
+      msgWriteln(c.config, $calls & " calls omitted\n", {msgNoUnitSep})
       return
     stackTraceAux(c, x.next, x.comesFrom, recursionLimit-1)
     var info = c.debug[pc]
@@ -59,12 +59,12 @@ proc stackTraceAux(c: PCtx; x: PStackFrame; pc: int; recursionLimit=100) =
     if x.prc != nil:
       for k in 1..max(1, 25-s.len): s.add(' ')
       s.add(x.prc.name.s)
-    msgWriteln(c.config, s)
+    msgWriteln(c.config, s, {msgNoUnitSep})
 
 proc stackTraceImpl(c: PCtx, tos: PStackFrame, pc: int,
   msg: string, lineInfo: TLineInfo, infoOrigin: InstantiationInfo) {.noinline.} =
   # noinline to avoid code bloat
-  msgWriteln(c.config, "stack trace: (most recent call last)")
+  msgWriteln(c.config, "stack trace: (most recent call last)", {msgNoUnitSep})
   stackTraceAux(c, tos, pc)
   let action = if c.mode == emRepl: doRaise else: doNothing
     # XXX test if we want 'globalError' for every mode
@@ -399,7 +399,7 @@ proc opConv(c: PCtx; dest: var TFullReg, src: TFullReg, desttyp, srctyp: PType):
       dest.node.strVal = $src.floatVal
     of tyString:
       dest.node.strVal = src.node.strVal
-    of tyCString:
+    of tyCstring:
       if src.node.kind == nkBracket:
         # Array of chars
         var strVal = ""
@@ -470,7 +470,7 @@ template handleJmpBack() {.dirty.} =
     if allowInfiniteLoops in c.features:
       c.loopIterations = c.config.maxLoopIterationsVM
     else:
-      msgWriteln(c.config, "stack trace: (most recent call last)")
+      msgWriteln(c.config, "stack trace: (most recent call last)", {msgNoUnitSep})
       stackTraceAux(c, tos, pc)
       globalError(c.config, c.debug[pc], errTooManyIterations % $c.config.maxLoopIterationsVM)
   dec(c.loopIterations)
@@ -524,7 +524,7 @@ proc rawExecute(c: PCtx, start: int, tos: PStackFrame): TFullReg =
   # Used to keep track of where the execution is resumed.
   var savedPC = -1
   var savedFrame: PStackFrame
-  when defined(gcArc):
+  when defined(gcArc) or defined(gcOrc):
     template updateRegsAlias = discard
     template regs: untyped = tos.slots
   else:
@@ -1163,7 +1163,7 @@ proc rawExecute(c: PCtx, start: int, tos: PStackFrame): TFullReg =
         stackTrace(c, tos, pc, "node is not a proc symbol")
     of opcEcho:
       let rb = instr.regB
-      template fn(s) = msgWriteln(c.config, s, {msgStdout})
+      template fn(s) = msgWriteln(c.config, s, {msgStdout, msgNoUnitSep})
       if rb == 1: fn(regs[ra].node.strVal)
       else:
         var outp = ""
@@ -1513,8 +1513,8 @@ proc rawExecute(c: PCtx, start: int, tos: PStackFrame): TFullReg =
         # reference with the value `nil`, so `isNil` should be false!
         (node.kind == nkNilLit and nfIsRef notin node.flags) or
         (not node.typ.isNil and node.typ.kind == tyProc and
-          node.typ.callConv == ccClosure and node[0].kind == nkNilLit and
-          node[1].kind == nkNilLit))
+          node.typ.callConv == ccClosure and node.safeLen > 0 and
+          node[0].kind == nkNilLit and node[1].kind == nkNilLit))
     of opcNBindSym:
       # cannot use this simple check
       # if dynamicBindSym notin c.config.features:
@@ -2106,7 +2106,7 @@ proc rawExecute(c: PCtx, start: int, tos: PStackFrame): TFullReg =
 
 proc execute(c: PCtx, start: int): PNode =
   var tos = PStackFrame(prc: nil, comesFrom: 0, next: nil)
-  newSeq(tos.slots, c.prc.maxSlots)
+  newSeq(tos.slots, c.prc.regInfo.len)
   result = rawExecute(c, start, tos).regToNode
 
 proc execProc*(c: PCtx; sym: PSym; args: openArray[PNode]): PNode =
@@ -2203,8 +2203,8 @@ proc evalConstExprAux(module: PSym; idgen: IdGenerator;
   assert c.code[start].opcode != opcEof
   when debugEchoCode: c.echoCode start
   var tos = PStackFrame(prc: prc, comesFrom: 0, next: nil)
-  newSeq(tos.slots, c.prc.maxSlots)
-  #for i in 0..<c.prc.maxSlots: tos.slots[i] = newNode(nkEmpty)
+  newSeq(tos.slots, c.prc.regInfo.len)
+  #for i in 0..<c.prc.regInfo.len: tos.slots[i] = newNode(nkEmpty)
   result = rawExecute(c, start, tos).regToNode
   if result.info.col < 0: result.info = n.info
   c.mode = oldMode
@@ -2269,10 +2269,10 @@ iterator genericParamsInMacroCall*(macroSym: PSym, call: PNode): (PSym, PNode) =
 # to prevent endless recursion in macro instantiation
 const evalMacroLimit = 1000
 
-proc errorNode(idgen: IdGenerator; owner: PSym, n: PNode): PNode =
-  result = newNodeI(nkEmpty, n.info)
-  result.typ = newType(tyError, nextTypeId idgen, owner)
-  result.typ.flags.incl tfCheckedForDestructor
+#proc errorNode(idgen: IdGenerator; owner: PSym, n: PNode): PNode =
+#  result = newNodeI(nkEmpty, n.info)
+#  result.typ = newType(tyError, nextTypeId idgen, owner)
+#  result.typ.flags.incl tfCheckedForDestructor
 
 proc evalMacroCall*(module: PSym; idgen: IdGenerator; g: ModuleGraph; templInstCounter: ref int;
                     n, nOrig: PNode, sym: PSym): PNode =

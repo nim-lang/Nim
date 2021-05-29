@@ -19,9 +19,9 @@ import
   cgen, json, nversion,
   platform, nimconf, passaux, depends, vm,
   modules,
-  modulegraphs, tables, lineinfos, pathutils, vmprofiler
+  modulegraphs, tables, lineinfos, pathutils, vmprofiler, std/[sha1, with]
 
-import ic / [cbackend, integrity]
+import ic / [cbackend, integrity, navigator]
 from ic / ic import rodViewer
 
 when not defined(leanCompiler):
@@ -54,32 +54,42 @@ proc commandGenDepend(graph: ModuleGraph) =
       ' ' & changeFileExt(project, "dot").string)
 
 proc commandCheck(graph: ModuleGraph) =
-  graph.config.setErrorMaxHighMaybe
-  defineSymbol(graph.config.symbols, "nimcheck")
+  let conf = graph.config
+  conf.setErrorMaxHighMaybe
+  defineSymbol(conf.symbols, "nimcheck")
   semanticPasses(graph)  # use an empty backend for semantic checking only
   compileProject(graph)
 
+  if conf.symbolFiles != disabledSf:
+    case conf.ideCmd
+    of ideDef: navDefinition(graph)
+    of ideUse: navUsages(graph)
+    of ideDus: navDefusages(graph)
+    else: discard
+    writeRodFiles(graph)
+
 when not defined(leanCompiler):
-  proc commandDoc2(graph: ModuleGraph; json: bool) =
+  proc commandDoc2(graph: ModuleGraph; ext: string) =
     handleDocOutputOptions graph.config
     graph.config.setErrorMaxHighMaybe
     semanticPasses(graph)
-    if json: registerPass(graph, docgen2JsonPass)
-    else: registerPass(graph, docgen2Pass)
+    case ext:
+    of TexExt:  registerPass(graph, docgen2TexPass)
+    of JsonExt: registerPass(graph, docgen2JsonPass)
+    of HtmlExt: registerPass(graph, docgen2Pass)
+    else: doAssert false, $ext
     compileProject(graph)
     finishDoc2Pass(graph.config.projectName)
 
 proc commandCompileToC(graph: ModuleGraph) =
   let conf = graph.config
-  setOutFile(conf)
   extccomp.initVars(conf)
   semanticPasses(graph)
   if conf.symbolFiles == disabledSf:
     registerPass(graph, cgenPass)
 
     if {optRun, optForceFullMake} * conf.globalOptions == {optRun} or isDefined(conf, "nimBetterRun"):
-      let proj = changeFileExt(conf.projectFull, "")
-      if not changeDetectedViaJsonBuildInstructions(conf, proj):
+      if not changeDetectedViaJsonBuildInstructions(conf, conf.jsonBuildInstructionsFile):
         # nothing changed
         graph.config.notes = graph.config.mainPackageNotes
         return
@@ -108,27 +118,20 @@ proc commandCompileToC(graph: ModuleGraph) =
       writeDepsFile(graph)
 
 proc commandJsonScript(graph: ModuleGraph) =
-  let proj = changeFileExt(graph.config.projectFull, "")
-  extccomp.runJsonBuildInstructions(graph.config, proj)
+  extccomp.runJsonBuildInstructions(graph.config, graph.config.jsonBuildInstructionsFile)
 
 proc commandCompileToJS(graph: ModuleGraph) =
+  let conf = graph.config
   when defined(leanCompiler):
-    globalError(graph.config, unknownLineInfo, "compiler wasn't built with JS code generator")
+    globalError(conf, unknownLineInfo, "compiler wasn't built with JS code generator")
   else:
-    let conf = graph.config
     conf.exc = excCpp
-
-    if conf.outFile.isEmpty:
-      conf.outFile = RelativeFile(conf.projectName & ".js")
-
-    #incl(gGlobalOptions, optSafeCode)
-    setTarget(graph.config.target, osJS, cpuJS)
-    #initDefines()
-    defineSymbol(graph.config.symbols, "ecmascript") # For backward compatibility
+    setTarget(conf.target, osJS, cpuJS)
+    defineSymbol(conf.symbols, "ecmascript") # For backward compatibility
     semanticPasses(graph)
     registerPass(graph, JSgenPass)
     compileProject(graph)
-    if optGenScript in graph.config.globalOptions:
+    if optGenScript in conf.globalOptions:
       writeDepsFile(graph)
 
 proc interactivePasses(graph: ModuleGraph) =
@@ -177,6 +180,31 @@ proc commandView(graph: ModuleGraph) =
 const
   PrintRopeCacheStats = false
 
+proc hashMainCompilationParams*(conf: ConfigRef): string =
+  ## doesn't have to be complete; worst case is a cache hit and recompilation.
+  var state = newSha1State()
+  with state:
+    update os.getAppFilename() # nim compiler
+    update conf.commandLine # excludes `arguments`, as it should
+    update $conf.projectFull # so that running `nim r main` from 2 directories caches differently
+  result = $SecureHash(state.finalize())
+
+proc setOutFile*(conf: ConfigRef) =
+  proc libNameTmpl(conf: ConfigRef): string {.inline.} =
+    result = if conf.target.targetOS == osWindows: "$1.lib" else: "lib$1.a"
+
+  if conf.outFile.isEmpty:
+    var base = conf.projectName
+    if optUseNimcache in conf.globalOptions:
+      base.add "_" & hashMainCompilationParams(conf)
+    let targetName =
+      if conf.backend == backendJs: base & ".js"
+      elif optGenDynLib in conf.globalOptions:
+        platform.OS[conf.target.targetOS].dllFrmt % base
+      elif optGenStaticLib in conf.globalOptions: libNameTmpl(conf) % base
+      else: base & platform.OS[conf.target.targetOS].exeExt
+    conf.outFile = RelativeFile targetName
+
 proc mainCommand*(graph: ModuleGraph) =
   let conf = graph.config
   let cache = graph.cache
@@ -211,6 +239,7 @@ proc mainCommand*(graph: ModuleGraph) =
 
   proc compileToBackend() =
     customizeForBackend(conf.backend)
+    setOutFile(conf)
     case conf.backend
     of backendC: commandCompileToC(graph)
     of backendCpp: commandCompileToC(graph)
@@ -220,10 +249,11 @@ proc mainCommand*(graph: ModuleGraph) =
 
   template docLikeCmd(body) =
     when defined(leanCompiler):
-      quit "compiler wasn't built with documentation generator"
+      conf.quitOrRaise "compiler wasn't built with documentation generator"
     else:
       wantMainModule(conf)
-      loadConfigs(DocConfig, cache, conf, graph.idgen)
+      let docConf = if conf.cmd == cmdDoc2tex: DocTexConfig else: DocConfig
+      loadConfigs(docConf, cache, conf, graph.idgen)
       defineSymbol(conf.symbols, "nimdoc")
       body
 
@@ -259,7 +289,7 @@ proc mainCommand*(graph: ModuleGraph) =
         # of labels links in doc comments, e.g. for random.rand:
         #  ## * `rand proc<#rand,Rand,Natural>`_ that returns an integer
         #  ## * `rand proc<#rand,Rand,range[]>`_ that returns a float
-      commandDoc2(graph, false)
+      commandDoc2(graph, HtmlExt)
       if optGenIndex in conf.globalOptions and optWholeProject in conf.globalOptions:
         commandBuildIndex(conf, $conf.outDir)
   of cmdRst2html:
@@ -269,22 +299,25 @@ proc mainCommand*(graph: ModuleGraph) =
       conf.setNoteDefaults(warn, true)
     conf.setNoteDefaults(warnRedefinitionOfLabel, false) # similar to issue #13218
     when defined(leanCompiler):
-      quit "compiler wasn't built with documentation generator"
+      conf.quitOrRaise "compiler wasn't built with documentation generator"
     else:
       loadConfigs(DocConfig, cache, conf, graph.idgen)
       commandRst2Html(cache, conf)
-  of cmdRst2tex:
+  of cmdRst2tex, cmdDoc2tex:
     for warn in [warnRedefinitionOfLabel, warnUnknownSubstitutionX,
                  warnLanguageXNotSupported,
                  warnFieldXNotSupported, warnRstStyle]:
       conf.setNoteDefaults(warn, true)
     when defined(leanCompiler):
-      quit "compiler wasn't built with documentation generator"
+      conf.quitOrRaise "compiler wasn't built with documentation generator"
     else:
-      loadConfigs(DocTexConfig, cache, conf, graph.idgen)
-      commandRst2TeX(cache, conf)
+      if conf.cmd == cmdRst2tex:
+        loadConfigs(DocTexConfig, cache, conf, graph.idgen)
+        commandRst2TeX(cache, conf)
+      else:
+        docLikeCmd commandDoc2(graph, TexExt)
   of cmdJsondoc0: docLikeCmd commandJson(cache, conf)
-  of cmdJsondoc: docLikeCmd commandDoc2(graph, true)
+  of cmdJsondoc: docLikeCmd commandDoc2(graph, JsonExt)
   of cmdCtags: docLikeCmd commandTags(cache, conf)
   of cmdBuildindex: docLikeCmd commandBuildIndex(conf, $conf.projectFull, conf.outFile)
   of cmdGendepend: commandGenDepend(graph)
@@ -323,11 +356,12 @@ proc mainCommand*(graph: ModuleGraph) =
         (key: "warnings", val: warnings),
       ]
 
-      msgWriteln(conf, $dumpdata, {msgStdout, msgSkipHook})
+      msgWriteln(conf, $dumpdata, {msgStdout, msgSkipHook, msgNoUnitSep})
+        # `msgNoUnitSep` to avoid generating invalid json, refs bug #17853
     else:
       msgWriteln(conf, "-- list of currently defined symbols --",
-                 {msgStdout, msgSkipHook})
-      for s in definedSymbolNames(conf.symbols): msgWriteln(conf, s, {msgStdout, msgSkipHook})
+                 {msgStdout, msgSkipHook, msgNoUnitSep})
+      for s in definedSymbolNames(conf.symbols): msgWriteln(conf, s, {msgStdout, msgSkipHook, msgNoUnitSep})
       msgWriteln(conf, "-- end of list --", {msgStdout, msgSkipHook})
 
       for it in conf.searchPaths: msgWriteln(conf, it.string)
@@ -353,16 +387,17 @@ proc mainCommand*(graph: ModuleGraph) =
     rawMessage(conf, errGenerated, "invalid command: " & conf.command)
 
   if conf.errorCounter == 0 and conf.cmd notin {cmdTcc, cmdDump, cmdNop}:
+    # D20210419T170230:here
     let mem =
       when declared(system.getMaxMem): formatSize(getMaxMem()) & " peakmem"
       else: formatSize(getTotalMem()) & " totmem"
     let loc = $conf.linesCompiled
-    let build = if isDefined(conf, "danger"): "Dangerous Release"
-                elif isDefined(conf, "release"): "Release"
-                else: "Debug"
+    let build = if isDefined(conf, "danger"): "Dangerous Release build"
+                elif isDefined(conf, "release"): "Release build"
+                else: "***SLOW, DEBUG BUILD***; -d:release makes code run faster."
     let sec = formatFloat(epochTime() - conf.lastCmdTime, ffDecimal, 3)
-    let project = if optListFullPaths in conf.globalOptions: $conf.projectFull else: $conf.projectName
-
+    let project = if conf.filenameOption == foAbs: $conf.projectFull else: $conf.projectName
+      # xxx honor conf.filenameOption more accurately
     var output: string
     if optCompileOnly in conf.globalOptions and conf.cmd != cmdJsonscript:
       output = $conf.jsonBuildFile
@@ -371,17 +406,19 @@ proc mainCommand*(graph: ModuleGraph) =
       output = "unknownOutput"
     else:
       output = $conf.absOutFile
-    if optListFullPaths notin conf.globalOptions: output = output.AbsoluteFile.extractFilename
+    if conf.filenameOption != foAbs: output = output.AbsoluteFile.extractFilename
+      # xxx honor filenameOption more accurately
     if optProfileVM in conf.globalOptions:
       echo conf.dump(conf.vmProfileData)
     rawMessage(conf, hintSuccessX, [
       "loc", loc,
       "sec", sec,
       "mem", mem,
-      "build", build,
       "project", project,
       "output", output,
       ])
+    if conf.cmd in cmdBackends:
+      rawMessage(conf, hintBuildMode, build)
 
   when PrintRopeCacheStats:
     echo "rope cache stats: "

@@ -9,7 +9,7 @@
 
 ## This module contains the data structures for the semantic checking phase.
 
-import std / tables
+import tables
 
 import
   intsets, options, ast, astalgo, msgs, idents, renderer,
@@ -29,15 +29,13 @@ type
 
   POptionEntry* = ref TOptionEntry
   PProcCon* = ref TProcCon
-  TProcCon* = object          # procedure context; also used for top-level
-                              # statements
+  TProcCon* {.acyclic.} = object # procedure context; also used for top-level
+                                 # statements
     owner*: PSym              # the symbol this context belongs to
     resultSym*: PSym          # the result symbol (if we are in a proc)
     selfSym*: PSym            # the 'self' symbol (if available)
     nestedLoopCounter*: int   # whether we are in a loop or not
     nestedBlockCounter*: int  # whether we are in a block or not
-    inTryStmt*: int           # whether we are in a try statement; works also
-                              # in standalone ``except`` and ``finally``
     next*: PProcCon           # used for stacking procedure contexts
     mappingExists*: bool
     mapping*: TIdTable
@@ -90,6 +88,9 @@ type
   TContext* = object of TPassContext # a context represents the module
                                      # that is currently being compiled
     enforceVoidContext*: PType
+      # for `if cond: stmt else: foo`, `foo` will be evaluated under
+      # enforceVoidContext != nil
+    voidType*: PType # for typeof(stmt)
     module*: PSym              # the module sym belonging to the context
     currentScope*: PScope      # current scope
     moduleScope*: PScope       # scope for modules
@@ -361,12 +362,12 @@ proc addPattern*(c: PContext, p: LazySym) =
     addTrmacro(c.encoder, c.packedRepr, p.sym)
 
 proc exportSym*(c: PContext; s: PSym) =
-  strTableAdd(c.module.semtab(c.graph), s)
+  strTableAdds(c.graph, c.module, s)
   if c.config.symbolFiles != disabledSf:
     addExported(c.encoder, c.packedRepr, s)
 
 proc reexportSym*(c: PContext; s: PSym) =
-  strTableAdd(c.module.semtab(c.graph), s)
+  strTableAdds(c.graph, c.module, s)
   if c.config.symbolFiles != disabledSf:
     addReexport(c.encoder, c.packedRepr, s)
 
@@ -501,6 +502,25 @@ proc errorNode*(c: PContext, n: PNode): PNode =
   result = newNodeI(nkEmpty, n.info)
   result.typ = errorType(c)
 
+# These mimic localError
+template localErrorNode*(c: PContext, n: PNode, info: TLineInfo, msg: TMsgKind, arg: string): PNode =
+  liMessage(c.config, info, msg, arg, doNothing, instLoc())
+  errorNode(c, n)
+
+template localErrorNode*(c: PContext, n: PNode, info: TLineInfo, arg: string): PNode =
+  liMessage(c.config, info, errGenerated, arg, doNothing, instLoc())
+  errorNode(c, n)
+
+template localErrorNode*(c: PContext, n: PNode, msg: TMsgKind, arg: string): PNode =
+  let n2 = n
+  liMessage(c.config, n2.info, msg, arg, doNothing, instLoc())
+  errorNode(c, n2)
+
+template localErrorNode*(c: PContext, n: PNode, arg: string): PNode =
+  let n2 = n
+  liMessage(c.config, n2.info, errGenerated, arg, doNothing, instLoc())
+  errorNode(c, n2)
+
 proc fillTypeS*(dest: PType, kind: TTypeKind, c: PContext) =
   dest.kind = kind
   dest.owner = getCurrOwner(c)
@@ -536,6 +556,10 @@ proc checkMinSonsLen*(n: PNode, length: int; conf: ConfigRef) =
 proc isTopLevel*(c: PContext): bool {.inline.} =
   result = c.currentScope.depthLevel <= 2
 
+proc isTopLevelInsideDeclaration*(c: PContext, sym: PSym): bool {.inline.} =
+  # for routeKinds the scope isn't closed yet:
+  c.currentScope.depthLevel <= 2 + ord(sym.kind in routineKinds)
+
 proc pushCaseContext*(c: PContext, caseNode: PNode) =
   c.p.caseContext.add((caseNode, 0))
 
@@ -570,3 +594,13 @@ proc sealRodFile*(c: PContext) =
         if m == c.module:
           addPragmaComputation(c, n)
     c.idgen.sealed = true # no further additions are allowed
+
+proc rememberExpansion*(c: PContext; info: TLineInfo; expandedSym: PSym) =
+  ## Templates and macros are very special in Nim; these have
+  ## inlining semantics so after semantic checking they leave no trace
+  ## in the sem'checked AST. This is very bad for IDE-like tooling
+  ## ("find all usages of this template" would not work). We need special
+  ## logic to remember macro/template expansions. This is done here and
+  ## delegated to the "rod" file mechanism.
+  if c.config.symbolFiles != disabledSf:
+    storeExpansion(c.encoder, c.packedRepr, info, expandedSym)

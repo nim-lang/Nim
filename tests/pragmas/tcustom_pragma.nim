@@ -156,13 +156,23 @@ block:
   proc generic_proc[T]() =
     doAssert Annotated.hasCustomPragma(simpleAttr)
 
-
 #--------------------------------------------------------------------------
 # Pragma on proc type
 
-let a: proc(x: int) {.defaultValue(5).} = nil
+type
+  MyAnnotatedProcType {.defaultValue(4).} = proc(x: int)
+
+let a {.defaultValue(4).}: proc(x: int)  = nil
+var b: MyAnnotatedProcType = nil
+var c: proc(x: int): void {.defaultValue(5).}  = nil
+var d {.defaultValue(44).}: MyAnnotatedProcType = nil
 static:
-  doAssert hasCustomPragma(a.type, defaultValue)
+  doAssert hasCustomPragma(a, defaultValue)
+  doAssert hasCustomPragma(MyAnnotatedProcType, defaultValue)
+  doAssert hasCustomPragma(b, defaultValue)
+  doAssert hasCustomPragma(typeof(c), defaultValue)
+  doAssert getCustomPragmaVal(d, defaultValue) == 44
+  doAssert getCustomPragmaVal(typeof(d), defaultValue) == 4
 
 # bug #8371
 template thingy {.pragma.}
@@ -255,6 +265,10 @@ block:
     doAssert input.treeRepr & "\n" == expectedRepr
     return input
 
+  macro expectedAstRepr(expectedRepr: static[string], input: untyped): untyped =
+    doAssert input.repr == expectedRepr
+    return input
+
   const procTypeAst = """
 ProcTy
   FormalParams
@@ -273,20 +287,10 @@ ProcTy
   static: doAssert Foo is proc(x: int): Future[void]
 
   const asyncProcTypeAst = """
-ProcTy
-  FormalParams
-    BracketExpr
-      Ident "Future"
-      Ident "void"
-    IdentDefs
-      Ident "s"
-      Ident "string"
-      Empty
-  Pragma
-"""
-
+proc (s: string): Future[void] {..}"""
+  # using expectedAst would show `OpenSymChoice` for Future[void], which is fragile.
   type
-    Bar = proc (s: string) {.async, expectedAst(asyncProcTypeAst).}
+    Bar = proc (s: string) {.async, expectedAstRepr(asyncProcTypeAst).}
 
   static: doAssert Bar is proc(x: string): Future[void]
 
@@ -378,3 +382,36 @@ block:
       b {.world.}: int
 
   discard Hello(a: 1.0, b: 12)
+
+# issue #11511
+block:
+  template myAttr {.pragma.}
+
+  type TObj = object
+      a {.myAttr.}: int
+
+  macro hasMyAttr(t: typedesc): untyped =
+    let objTy = t.getType[1].getType
+    let recList = objTy[2]
+    let sym = recList[0]
+    assert sym.kind == nnkSym and sym.eqIdent("a")
+    let hasAttr = sym.hasCustomPragma("myAttr")
+    newLit(hasAttr)
+
+  doAssert hasMyAttr(TObj)
+
+# misc
+{.pragma: haha.}
+{.pragma: hoho.}
+template hehe(key, val: string, haha) {.pragma.}
+
+type A {.haha, hoho, haha, hehe("hi", "hu", "he").} = int
+
+assert A.getCustomPragmaVal(hehe) == (key: "hi", val: "hu", haha: "he")
+
+template hehe(key, val: int) {.pragma.}
+
+var bb {.haha, hoho, hehe(1, 2), haha, hehe("hi", "hu", "he").} = 3
+
+# left-to-right priority/override order for getCustomPragmaVal
+assert bb.getCustomPragmaVal(hehe) == (key: "hi", val: "hu", haha: "he")
