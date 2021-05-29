@@ -150,7 +150,7 @@ proc parseKeyVal(a: string): OrderedTable[string, string] =
     result[b[0]] = b[1]
 
 # xxx move some of these to std/private/gitutils.nim
-proc gitClone(url: string, dir: string) = runCmd fmt"git clone -q {url} {dir.quoteShell}"
+proc gitClone(url: string, dir: string) = runCmd fmt"git clone -q {url.quoteShell} {dir.quoteShell}"
 proc gitResetHard(dir: string, rev: string) = runCmd fmt"git -C {dir.quoteShell} reset --hard {rev}"
 proc gitCleanDanger(dir: string, requireConfirmation = true) =
   #[
