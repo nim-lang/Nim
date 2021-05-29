@@ -5,7 +5,7 @@ duplication that could be removed.
 
 ## usage
 edit this file as needed and then re-generate via:
-```
+```bash
 nim r tools/ci_generate.nim
 ```
 ]##

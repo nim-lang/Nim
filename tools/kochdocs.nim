@@ -243,6 +243,8 @@ proc buildDocPackages(nimArgs, destPath: string) =
   # xxx keep in sync with what's in $nim_prs_D/config/nimdoc.cfg, or, rather,
   # start using nims instead of nimdoc.cfg
   docProject(destPath/"compiler", extra, "compiler/index.nim")
+  docProject(destPath/"tools", extra & " --threads", "tools/index.nim")
+    # --threads needed for nimgrep
 
 proc buildDoc(nimArgs, destPath: string) =
   # call nim for the documentation:
@@ -318,9 +320,9 @@ proc buildDocsDir*(args: string, dir: string) =
   let args = nimArgs & " " & args
   let docHackJsSource = buildJS()
   createDir(dir)
-  buildDocSamples(args, dir)
-  buildDoc(args, dir) # bottleneck
-  copyFile(dir / "overview.html", dir / "index.html")
+  # buildDocSamples(args, dir)
+  # buildDoc(args, dir) # bottleneck
+  # copyFile(dir / "overview.html", dir / "index.html")
   buildDocPackages(args, dir)
   copyFile(docHackJsSource, dir / docHackJsSource.lastPathPart)
 
