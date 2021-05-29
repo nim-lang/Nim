@@ -10,27 +10,29 @@ care of details such as figuring out automatically the correct csources/csources
 
 ## examples
 build at any revision >= v0.12.0~157
-```
+```bash
 $ nim r tools/nimdigger.nim --compileNim --rev:v0.15.2~10
 $ $HOME/.nimdigger/cache/Nim/bin/nim -v
 Nim Compiler Version 0.15.2 (2021-05-28) [MacOSX: amd64] [...]
 ```
 
 find a which commit introduced a regression
-```
-$ nim r tools/nimdigger.nim --oldnew:v0.19.0..v0.20.0 --bisectCmd:'bin/nim -v | grep 0.19.0'
+```bash
+$ nim r tools/nimdigger.nim --oldnew:v0.19.0..v0.20.0 \
+  --bisectCmd:'bin/nim -v | grep 0.19.0'
 66c0f7c3fb214485ca6cfd799af6e50798fcdf6d is the first REGRESSION commit
 ```
 
 find a which commit introduced a bugfix
-```
-$ nim r tools/nimdigger.nim --oldnew:v0.19.0..v0.20.0 --bisectBugfix --bisectCmd:'bin/nim -v | grep 0.20.0'
+```bash
+$ nim r tools/nimdigger.nim --oldnew:v0.19.0..v0.20.0 --bisectBugfix \
+  --bisectCmd:'bin/nim -v | grep 0.20.0'
 be9c38d2659496f918fb39e129b9b5b055eafd88 is the first BUGFIX commit
 ```
 Note that this is fast (e.g. 3s) if intermediate nim binaries have already been built/cached in prior runs.
 
 find an actual regression, e.g. for https://github.com/nim-lang/Nim/issues/16376,
-copy this snippet to /tmp/t16376.nim:
+copy this snippet to /tmp/t16376.nim
 ```nim
 type Matrix[T] = object
   data: T
@@ -39,8 +41,9 @@ proc randMatrix*[T](m, n: int, x: Slice[T]): Matrix[T] = discard
 template randMatrix*[T](m, n: int): Matrix[T] = randMatrix[T](m, n, T(1.0))
 let B = randMatrix[float32](20, 10)
 ```
-```
-$ nim r tools/nimdigger.nim --oldnew:v0.19.0..v0.20.0 -- bin/nim c --hints:off --skipparentcfg --skipusercfg /tmp/t16376.nim
+```bash
+$ nim r tools/nimdigger.nim --oldnew:v0.19.0..v0.20.0 -- \
+  bin/nim c --hints:off --skipparentcfg --skipusercfg /tmp/t16376.nim
 fd16875561634e3ef24072631cf85eeead6213f2 is the first REGRESSION commit
 ```
 
