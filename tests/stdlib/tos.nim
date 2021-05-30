@@ -557,7 +557,7 @@ block getTempDir:
         doAssert getTempDir() == "/tmp"
 
 block: # getCacheDir
-  doAssert getCacheDir().fileExists
+  doAssert getCacheDir().dirExists
 
 block osenv:
   block delEnv:

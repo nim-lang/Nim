@@ -936,13 +936,15 @@ proc getConfigDir*(): string {.rtl, extern: "nos$1",
 proc getCacheDir*(): string =
   ## Returns the cache directory of the current user for applications.
   ## 
-  ## on windows: `getEnv("LOCALAPPDATA")`
+  ## This makes use of the following environment variables:
   ##
-  ## on osx: `getEnv("XDG_CACHE_HOME", getEnv("HOME") / "Library/Caches")`
+  ## * On Windows: `getEnv("LOCALAPPDATA")`
   ##
-  ## else: `getEnv("XDG_CACHE_HOME", getEnv("HOME") / ".cache")`
+  ## * On macOS: `getEnv("XDG_CACHE_HOME", getEnv("HOME") / "Library/Caches")`
   ##
-  ## See also:
+  ## * On other platforms: `getEnv("XDG_CACHE_HOME", getEnv("HOME") / ".cache")`
+  ##
+  ## **See also:**
   ## * `getHomeDir proc <#getHomeDir>`_
   ## * `getTempDir proc <#getTempDir>`_
   ## * `getConfigDir proc <#getConfigDir>`_
@@ -958,9 +960,9 @@ proc getCacheDir*(): string =
 proc getCacheDir*(app: string): string =
   ## Returns the cache directory for an application `app`.
   ##
-  ## on windows: `getCacheDir() / app / "cache"`
+  ## * On windows, this uses: `getCacheDir() / app / "cache"`
   ##
-  ## else:: `getCacheDir() / "cache"`
+  ## * On other platforms, this uses: `getCacheDir() / app`
   when defined(windows):
     getCacheDir() / app / "cache"
   else:
