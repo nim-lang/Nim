@@ -947,9 +947,6 @@ proc getCacheDir*(): string =
   ## * `getTempDir proc <#getTempDir>`_
   ## * `getConfigDir proc <#getConfigDir>`_
   # follows https://crates.io/crates/platform-dirs
-  runnableExamples:
-    from std/strutils import endsWith
-    assert not getCacheDir().endsWith DirSep
   when defined(windows):
     result = getEnv("LOCALAPPDATA")
   elif defined(osx):
