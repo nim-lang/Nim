@@ -171,7 +171,7 @@ proc findBounds*(s: string, pattern: Regex, matches: var openArray[string],
 
 proc findBounds*(buf: cstring, pattern: Regex,
                  matches: var openArray[tuple[first, last: int]],
-                 start = 0, bufSize = 0): tuple[first, last: int] =
+                 start = 0, bufSize: int): tuple[first, last: int] =
   ## returns the starting position and end position of `pattern` in `buf`
   ## (where `buf` has length `bufSize` and is not necessarily `'\0'` terminated),
   ## and the captured substrings in the array `matches`.
@@ -290,7 +290,7 @@ proc match*(buf: cstring, pattern: Regex, matches: var openArray[string],
   result = matchLen(buf, pattern, matches, start, bufSize) != -1
 
 proc find*(buf: cstring, pattern: Regex, matches: var openArray[string],
-           start = 0, bufSize = 0): int =
+           start = 0, bufSize: int): int =
   ## returns the starting position of `pattern` in `buf` and the captured
   ## substrings in the array `matches`. If it does not match, nothing
   ## is written into `matches` and `-1` is returned.
