@@ -60,6 +60,10 @@ type
   MetaEnum* = enum
     metaNone, metaTitle, metaSubtitle, metaAuthor, metaVersion
 
+  EscapeMode = enum  # in Latex text inside options [] and URLs is
+                     # escaped slightly differently than in normal text
+    emText, emOption, emUrl  # emText is currently used for code also
+
   RstGenerator* = object of RootObj
     target*: OutputTarget
     config*: StringTableRef
@@ -84,6 +88,7 @@ type
     id*: int               ## A counter useful for generating IDs.
     onTestSnippet*: proc (d: var RstGenerator; filename, cmd: string; status: int;
                           content: string)
+    escMode*: EscapeMode
 
   PDoc = var RstGenerator ## Alias to type less.
 
@@ -161,6 +166,7 @@ proc initRstGenerator*(g: var RstGenerator, target: OutputTarget,
   g.findFile = findFile
   g.currentSection = ""
   g.id = 0
+  g.escMode = emText
   let fileParts = filename.splitFile
   if fileParts.ext == ".nim":
     g.currentSection = "Module " & fileParts.name
@@ -189,33 +195,34 @@ proc addHtmlChar(dest: var string, c: char) =
   of '\"': add(dest, "&quot;")
   else: add(dest, c)
 
-proc addRtfChar(dest: var string, c: char) =
+proc addTexChar(dest: var string, c: char, escMode: EscapeMode) =
+  ## Escapes 10 special Latex characters and sometimes ` and [, ].
+  ## TODO: @ is always a normal symbol (besides the header), am I wrong?
+  ## All escapes that need to work in text and code blocks (`emText` mode)
+  ## should start from \ (to be compatible with fancyvrb/fvextra).
   case c
-  of '{': add(dest, "\\{")
-  of '}': add(dest, "\\}")
-  of '\\': add(dest, "\\\\")
-  else: add(dest, c)
-
-proc addTexChar(dest: var string, c: char) =
-  # Escapes 10 special Latex characters and ` and ]. Note that [ is not
-  # considered as such. TODO: neither is @, am I wrong?
-  # All escapes should start from \ to work in code blocks (fancyvrb/fvextra).
-  case c
-  of '_', '{', '}', '$', '&', '#', '%': add(dest, "\\" & c)
+  of '_', '$', '&', '#', '%': add(dest, "\\" & c)
   # \~ and \^ have a special meaning unless they are followed by {}
   of '~', '^': add(dest, "\\" & c & "{}")
   # Latex loves to substitute ` to opening quote, even in texttt mode!
   of '`': add(dest, "\\textasciigrave{}")
   # add {} to avoid gobbling up space by \textbackslash
   of '\\': add(dest, "\\textbackslash{}")
-  # ] should be escaped inside an optional argument, e.g. \section[static[T]]{..
-  of ']': add(dest, "\\text{]}")
+  # Using { and } in URL in Latex: https://tex.stackexchange.com/a/469175
+  of '{':
+    add(dest, if escMode == emUrl: "\\%7B" else: "\\{")
+  of '}':
+    add(dest, if escMode == emUrl: "\\%7D" else: "\\}")
+  of ']':
+    # escape ] inside an optional argument in e.g. \section[static[T]]{..
+    add(dest, if escMode == emOption: "\\text{]}" else: "]")
   else: add(dest, c)
 
-proc escChar*(target: OutputTarget, dest: var string, c: char) {.inline.} =
+proc escChar*(target: OutputTarget, dest: var string,
+              c: char, escMode: EscapeMode) {.inline.} =
   case target
   of outHtml:  addHtmlChar(dest, c)
-  of outLatex: addTexChar(dest, c)
+  of outLatex: addTexChar(dest, c, escMode)
 
 proc addSplitter(target: OutputTarget; dest: var string) {.inline.} =
   case target
@@ -234,7 +241,7 @@ proc nextSplitPoint*(s: string, start: int): int =
     inc(result)
   dec(result)                 # last valid index
 
-proc esc*(target: OutputTarget, s: string, splitAfter = -1): string =
+proc esc*(target: OutputTarget, s: string, splitAfter = -1, escMode = emText): string =
   ## Escapes the HTML.
   result = ""
   if splitAfter >= 0:
@@ -245,11 +252,11 @@ proc esc*(target: OutputTarget, s: string, splitAfter = -1): string =
       #if (splitter != " ") or (partLen + k - j + 1 > splitAfter):
       partLen = 0
       addSplitter(target, result)
-      for i in countup(j, k): escChar(target, result, s[i])
+      for i in countup(j, k): escChar(target, result, s[i], escMode)
       inc(partLen, k - j + 1)
       j = k + 1
   else:
-    for i in countup(0, len(s) - 1): escChar(target, result, s[i])
+    for i in countup(0, len(s) - 1): escChar(target, result, s[i], escMode)
 
 
 proc disp(target: OutputTarget, xml, tex: string): string =
@@ -765,7 +772,7 @@ proc renderHeadline(d: PDoc, n: PRstNode, result: var string) =
       sectionPrefix = rstnodeToRefname(n2) & "-"
       break
   var refname = sectionPrefix & rstnodeToRefname(n)
-  var tocName = esc(d.target, renderRstToText(n))
+  var tocName = esc(d.target, renderRstToText(n), escMode = emOption)
     # for Latex: simple text without commands that may break TOC/hyperref
   if d.hasToc:
     var length = len(d.tocPart)
@@ -810,7 +817,7 @@ proc renderOverline(d: PDoc, n: PRstNode, result: var string) =
     var tmp = ""
     for i in countup(0, len(n) - 1): renderRstToOut(d, n.sons[i], tmp)
     d.currentSection = tmp
-    var tocName = esc(d.target, renderRstToText(n))
+    var tocName = esc(d.target, renderRstToText(n), escMode=emOption)
     dispA(d.target, result, "<h$1$2><center>$3</center></h$1>",
                    "\\rstov$4[$5]{$3}$2\n", [$n.level,
         rstnodeToRefname(n).idS, tmp, $chr(n.level - 1 + ord('A')), tocName])
@@ -879,7 +886,7 @@ proc renderImage(d: PDoc, n: PRstNode, result: var string) =
     htmlOut = "<img$3 src=\"$1\"$2/>"
 
   # support for `:target:` links for images:
-  var target = esc(d.target, getFieldValue(n, "target").strip())
+  var target = esc(d.target, getFieldValue(n, "target").strip(), escMode=emUrl)
   if target.len > 0:
     # `htmlOut` needs to be of the following format for link to work for images:
     # <a class="reference external" href="target"><img src=\"$1\"$2/></a>
@@ -1049,7 +1056,7 @@ proc renderCode(d: PDoc, n: PRstNode, result: var string) =
   if params.lang == langNone:
     if len(params.langStr) > 0:
       d.msgHandler(d.filename, 1, 0, mwUnsupportedLanguage, params.langStr)
-    for letter in m.text: escChar(d.target, result, letter)
+    for letter in m.text: escChar(d.target, result, letter, emText)
   else:
     renderCodeLang(result, params.lang, m.text, d.target)
   dispA(d.target, result, blockEnd, blockEnd)
@@ -1158,6 +1165,24 @@ proc renderAdmonition(d: PDoc, n: PRstNode, result: var string) =
         "$1\n\\end{rstadmonition}\n",
       result)
 
+proc renderHyperlink(d: PDoc, text, link: PRstNode, result: var string, external: bool) =
+  var linkStr = ""
+  block:
+    let mode = d.escMode
+    d.escMode = emUrl
+    renderRstToOut(d, link, linkStr)
+    d.escMode = mode
+  var textStr = ""
+  renderRstToOut(d, text, textStr)
+  if external:
+    dispA(d.target, result,
+      "<a class=\"reference external\" href=\"$2\">$1</a>",
+      "\\href{$2}{$1}", [textStr, linkStr])
+  else:
+    dispA(d.target, result,
+      "<a class=\"reference internal\" href=\"#$2\">$1</a>",
+      "\\hyperlink{$2}{$1} (p.~\\pageref{$2})", [textStr, linkStr])
+
 proc renderRstToOut(d: PDoc, n: PRstNode, result: var string) =
   if n == nil: return
   case n.kind
@@ -1211,7 +1236,7 @@ proc renderRstToOut(d: PDoc, n: PRstNode, result: var string) =
     renderAux(d, n,
         "<div class=\"option-list-label\"><tt><span class=\"option\">" &
         "$1</span></tt></div>",
-        "\\item[$1]", result)
+        "\\item[\\rstcodeitem{\\spanoption{$1}}]", result)
   of rnDescription:
     renderAux(d, n, "<div class=\"option-list-description\">$1</div>",
         " $1\n", result)
@@ -1284,21 +1309,13 @@ proc renderRstToOut(d: PDoc, n: PRstNode, result: var string) =
       "\\item[\\textsuperscript{[$3]}]$2 $1\n",
       [body, n.anchor.idS, mark, n.anchor])
   of rnRef:
-    var tmp = ""
-    renderAux(d, n, tmp)
-    dispA(d.target, result,
-      "<a class=\"reference external\" href=\"#$2\">$1</a>",
-      "$1\\ref{$2}", [tmp, rstnodeToRefname(n)])
+    renderHyperlink(d, text=n.sons[0], link=n.sons[0], result, external=false)
   of rnStandaloneHyperlink:
-    renderAux(d, n,
-      "<a class=\"reference external\" href=\"$1\">$1</a>",
-      "\\href{$1}{$1}", result)
+    renderHyperlink(d, text=n.sons[0], link=n.sons[0], result, external=true)
   of rnInternalRef:
-    var tmp = ""
-    renderAux(d, n.sons[0], tmp)
-    dispA(d.target, result,
-      "<a class=\"reference internal\" href=\"#$2\">$1</a>",
-      "\\hyperlink{$2}{$1} (p.~\\pageref{$2})", [tmp, n.sons[1].text])
+    renderHyperlink(d, text=n.sons[0], link=n.sons[1], result, external=false)
+  of rnHyperlink:
+    renderHyperlink(d, text=n.sons[0], link=n.sons[1], result, external=true)
   of rnFootnoteRef:
     var tmp = "["
     renderAux(d, n.sons[0], tmp)
@@ -1308,14 +1325,6 @@ proc renderRstToOut(d: PDoc, n: PRstNode, result: var string) =
           "$1</a></strong></sup>",
       "\\textsuperscript{\\hyperlink{$2}{\\textbf{$1}}}",
       [tmp, n.sons[1].text])
-  of rnHyperlink:
-    var tmp0 = ""
-    var tmp1 = ""
-    renderRstToOut(d, n.sons[0], tmp0)
-    renderRstToOut(d, n.sons[1], tmp1)
-    dispA(d.target, result,
-      "<a class=\"reference external\" href=\"$2\">$1</a>",
-      "\\href{$2}{$1}", [tmp0, tmp1])
   of rnDirArg, rnRaw: renderAux(d, n, result)
   of rnRawHtml:
     if d.target != outLatex and not lastSon(n).isNil:
@@ -1369,7 +1378,7 @@ proc renderRstToOut(d: PDoc, n: PRstNode, result: var string) =
       "\\label{$2}\\hypertarget{$2}{$1}",
       [tmp, rstnodeToRefname(n)])
   of rnSmiley: renderSmiley(d, n, result)
-  of rnLeaf: result.add(esc(d.target, n.text))
+  of rnLeaf: result.add(esc(d.target, n.text, escMode=d.escMode))
   of rnContents: d.hasToc = true
   of rnDefaultRole: discard
   of rnTitle:
