@@ -74,6 +74,10 @@
 - `json` and `jsonutils` now serialize NaN, Inf, -Inf as strings, so that
   `%[NaN, -Inf]` is the string `["nan","-inf"]` instead of `[nan,-inf]` which was invalid json.
 
+- `system.addFloat` now uses the "Dragonbox" algorithm, which ensures correct roundtrips of floating point
+  numbers, that the minimum length representation of a floating point number is used and correct rounding.
+  Use `-d:nimLegacyAddFloat` for a transition period.
+
 - `strformat` is now part of `include std/prelude`.
 
 - Deprecated `proc reversed*[T](a: openArray[T], first: Natural, last: int): seq[T]` in `std/algorithm`.
