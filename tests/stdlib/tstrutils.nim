@@ -271,33 +271,18 @@ template main() =
       doAssert "abcd".find("ab", start=1, last=last) == -1
       doAssert "abcd".find("bc", start=1, last=last) == -1
       doAssert "abcd".find("bc", start=2, last=last) == -1
-      doAssert "abcd".find("bc", start=3, last=last) == -1
-      doAssert "abcd".find("cd", start=0, last=last) == -1
-      doAssert "abcd".find("cd", start=1, last=last) == -1
-      doAssert "abcd".find("cd", start=2, last=last) == -1
-      doAssert "abcd".find("cd", start=3, last=last) == -1
     block:
       let last: int = 0
       doAssert "abcd".find("ab", start=0, last=last) == 0
       doAssert "abcd".find("ab", start=1, last=last) == -1
       doAssert "abcd".find("bc", start=1, last=last) == 1
       doAssert "abcd".find("bc", start=2, last=last) == -1
-      doAssert "abcd".find("bc", start=3, last=last) == -1
-      doAssert "abcd".find("cd", start=0, last=last) == 2
-      doAssert "abcd".find("cd", start=1, last=last) == 2
-      doAssert "abcd".find("cd", start=2, last=last) == 2
-      doAssert "abcd".find("cd", start=3, last=last) == -1
     block:
       let last: int = 1
       doAssert "abcd".find("ab", start=0, last=last) == 0
       doAssert "abcd".find("ab", start=1, last=last) == -1
       doAssert "abcd".find("bc", start=1, last=last) == -1
       doAssert "abcd".find("bc", start=2, last=last) == -1
-      doAssert "abcd".find("bc", start=3, last=last) == -1
-      doAssert "abcd".find("cd", start=0, last=last) == -1
-      doAssert "abcd".find("cd", start=1, last=last) == -1
-      doAssert "abcd".find("cd", start=2, last=last) == -1
-      doAssert "abcd".find("cd", start=3, last=last) == -1
 
   block: # rfind
     doAssert "0123456789ABCDEFGAH".rfind('A') == 17
@@ -368,33 +353,18 @@ template main() =
       doAssert "abcd".rfind("ab", start=1, last=last) == -1
       doAssert "abcd".rfind("bc", start=1, last=last) == 1
       doAssert "abcd".rfind("bc", start=2, last=last) == -1
-      doAssert "abcd".rfind("bc", start=3, last=last) == -1
-      doAssert "abcd".rfind("cd", start=0, last=last) == 2
-      doAssert "abcd".rfind("cd", start=1, last=last) == 2
-      doAssert "abcd".rfind("cd", start=2, last=last) == 2
-      doAssert "abcd".rfind("cd", start=3, last=last) == -1
     block:
       let last: int = 0
       doAssert "abcd".rfind("ab", start=0, last=last) == -1
       doAssert "abcd".rfind("ab", start=1, last=last) == -1
       doAssert "abcd".rfind("bc", start=1, last=last) == -1
       doAssert "abcd".rfind("bc", start=2, last=last) == -1
-      doAssert "abcd".rfind("bc", start=3, last=last) == -1
-      doAssert "abcd".rfind("cd", start=0, last=last) == -1
-      doAssert "abcd".rfind("cd", start=1, last=last) == -1
-      doAssert "abcd".rfind("cd", start=2, last=last) == -1
-      doAssert "abcd".rfind("cd", start=3, last=last) == -1
     block:
       let last: int = 1
       doAssert "abcd".rfind("ab", start=0, last=last) == 0
       doAssert "abcd".rfind("ab", start=1, last=last) == -1
       doAssert "abcd".rfind("bc", start=1, last=last) == -1
       doAssert "abcd".rfind("bc", start=2, last=last) == -1
-      doAssert "abcd".rfind("bc", start=3, last=last) == -1
-      doAssert "abcd".rfind("cd", start=0, last=last) == -1
-      doAssert "abcd".rfind("cd", start=1, last=last) == -1
-      doAssert "abcd".rfind("cd", start=2, last=last) == -1
-      doAssert "abcd".rfind("cd", start=3, last=last) == -1
 
   block: # trimZeros
     var x = "1200"
