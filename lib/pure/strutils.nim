@@ -1779,7 +1779,7 @@ func initSkipTable*(a: var SkipTable, sub: string) {.rtl,
     extern: "nsuInitSkipTable".} =
   ## Preprocess table `a` for `sub`.
   let m = len(sub)
-  algorithm.fill[int](a, m)
+  fill(a, m)
 
   for i in 0 ..< m - 1:
     a[sub[i]] = m - 1 - i
