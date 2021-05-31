@@ -175,9 +175,10 @@
 - `--gc:orc` is now 10% faster than previously for common workloads. If
   you have trouble with its changed behavior, compile with `-d:nimOldOrc`.
 
-
 - `os.FileInfo` (returned by `getFileInfo`) now contains `blockSize`,
   determining preferred I/O block size for this file object.
+
+- Added `os.getCacheDir()` to return platform specific cache directory.
 
 - Added a simpler to use `io.readChars` overload.
 

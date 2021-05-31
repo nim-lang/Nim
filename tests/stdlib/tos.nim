@@ -556,6 +556,9 @@ block getTempDir:
       else:
         doAssert getTempDir() == "/tmp"
 
+block: # getCacheDir
+  doAssert getCacheDir().dirExists
+
 block osenv:
   block delEnv:
     const dummyEnvVar = "DUMMY_ENV_VAR" # This env var wouldn't be likely to exist to begin with
