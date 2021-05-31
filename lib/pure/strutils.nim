@@ -72,7 +72,7 @@ runnableExamples:
 
 import parseutils
 from math import pow, floor, log10
-from algorithm import reverse
+from algorithm import fill, reverse
 import std/enumutils
 
 from unicode import toLower, toUpper
@@ -1779,17 +1779,7 @@ func initSkipTable*(a: var SkipTable, sub: string) {.rtl,
     extern: "nsuInitSkipTable".} =
   ## Preprocess table `a` for `sub`.
   let m = len(sub)
-  var i = 0
-  while i <= 0xff-7:
-    a[chr(i + 0)] = m
-    a[chr(i + 1)] = m
-    a[chr(i + 2)] = m
-    a[chr(i + 3)] = m
-    a[chr(i + 4)] = m
-    a[chr(i + 5)] = m
-    a[chr(i + 6)] = m
-    a[chr(i + 7)] = m
-    i += 8
+  algorithm.fill[int](a, m)
 
   for i in 0 ..< m - 1:
     a[sub[i]] = m - 1 - i
