@@ -224,24 +224,22 @@ template main() =
     block:
       const haystack: string = "ABCABABABABCAB"
       doAssert haystack.len == 14
-      doAssert haystack.find("ABC") == 0
-      doAssert haystack.find("ABC", last=13) == 0
-      doAssert haystack.find("ABC", last=12) == 0
-      doAssert haystack.find("ABC", last=11) == 0
-      doAssert haystack.find("ABC", last=10) == 0
 
+      # only last argument
+      doAssert haystack.find("ABC") == 0
+      doAssert haystack.find("ABC", last=13) == 0 # after the second ABC
+      doAssert haystack.find("ABC", last=5) == 0 # before the second ABC
+
+      # only start argument
       doAssert haystack.find("ABC", start=0) == 0
       doAssert haystack.find("ABC", start=1) == 9
-      doAssert haystack.find("ABC", start=2) == 9
       doAssert haystack.find("ABC", start=9) == 9
       doAssert haystack.find("ABC", start=10) == -1
-      doAssert haystack.find("ABC", start=11) == -1
-      doAssert haystack.find("ABC", start=12) == -1
 
+      # both start and last arguments
+      doAssert haystack.find("ABC", start=0, last=14) == 0
       doAssert haystack.find("ABC", start=0, last=13) == 0
       doAssert haystack.find("ABC", start=0, last=12) == 0
-      doAssert haystack.find("ABC", start=0, last=11) == 0
-      doAssert haystack.find("ABC", start=0, last=10) == 0
       doAssert haystack.find("ABC", start=1, last=13) == 9
       doAssert haystack.find("ABC", start=1, last=12) == 9
       doAssert haystack.find("ABC", start=1, last=11) == 9
@@ -334,11 +332,8 @@ template main() =
 
       doAssert haystack.rfind("ABC", start=0) == 9
       doAssert haystack.rfind("ABC", start=1) == 9
-      doAssert haystack.rfind("ABC", start=2) == 9
       doAssert haystack.rfind("ABC", start=9) == 9
       doAssert haystack.rfind("ABC", start=10) == -1
-      doAssert haystack.rfind("ABC", start=11) == -1
-      doAssert haystack.rfind("ABC", start=12) == -1
 
       doAssert haystack.rfind("ABC", start=0, last=13) == 9
       doAssert haystack.rfind("ABC", start=0, last=12) == 9
