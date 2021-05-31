@@ -6,7 +6,7 @@
 echo_run () {
   # echo's a command before running it, which helps understanding logs
   echo ""
-  echo "$@"
+  echo "cmd: $@" # in azure we could also use this: echo '##[section]"$@"'
   "$@"
 }
 
@@ -27,6 +27,23 @@ nimIsCiSkip(){
     return 0
   else
     echo "skipci: false"
+    return 1
+  fi
+}
+
+nimInternalInstallDepsWindows(){
+  echo_run mkdir dist
+  echo_run curl -L https://nim-lang.org/download/mingw64.7z -o dist/mingw64.7z
+  echo_run curl -L https://nim-lang.org/download/dlls.zip -o dist/dlls.zip
+  echo_run 7z x dist/mingw64.7z -odist
+  echo_run 7z x dist/dlls.zip -obin
+}
+
+nimInternalBuildKochAndRunCI(){
+  echo_run nim c koch
+  if ! echo_run ./koch runCI; then
+    echo_run echo "runCI failed"
+    echo_run nim r tools/ci_testresults.nim
     return 1
   fi
 }
@@ -55,6 +72,8 @@ _nimBuildCsourcesIfNeeded(){
     makeX=gmake
   elif [ "$unamestr" = 'OpenBSD' ]; then
     makeX=gmake
+  elif [ "$unamestr" = 'NetBSD' ]; then
+    makeX=gmake
   else
     makeX=make
   fi
@@ -65,6 +84,19 @@ _nimBuildCsourcesIfNeeded(){
   # keep $nim_csources in case needed to investigate bootstrap issues
   # without having to rebuild
   echo_run cp bin/nim $nim_csources
+}
+
+nimCiSystemInfo(){
+  nimDefineVars
+  echo_run eval echo '$'nim_csources
+  echo_run pwd
+  echo_run date
+  echo_run uname -a
+  echo_run git log --no-merges -1 --pretty=oneline
+  echo_run eval echo '$'PATH
+  echo_run gcc -v
+  echo_run node -v
+  echo_run make -v
 }
 
 nimCsourcesHash(){

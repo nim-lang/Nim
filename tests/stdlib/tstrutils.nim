@@ -243,6 +243,34 @@ template main() =
     doAssert "/1/2/3".rfind('/', last=1) == 0
     doAssert "/1/2/3".rfind('0') == -1
 
+    block:
+      const haystack: string = "ABCABABABABCAB"
+      doAssert haystack.len == 14
+      doAssert haystack.rfind("ABC") == 9
+      doAssert haystack.rfind("ABC", last=13) == 9
+      doAssert haystack.rfind("ABC", last=12) == 9
+      doAssert haystack.rfind("ABC", last=11) == 9
+      doAssert haystack.rfind("ABC", last=10) == 0
+
+      doAssert haystack.rfind("ABC", start=0) == 9
+      doAssert haystack.rfind("ABC", start=1) == 9
+      doAssert haystack.rfind("ABC", start=2) == 9
+      doAssert haystack.rfind("ABC", start=9) == 9
+      doAssert haystack.rfind("ABC", start=10) == -1
+      doAssert haystack.rfind("ABC", start=11) == -1
+      doAssert haystack.rfind("ABC", start=12) == -1
+
+      doAssert haystack.rfind("ABC", start=0, last=13) == 9
+      doAssert haystack.rfind("ABC", start=0, last=12) == 9
+      doAssert haystack.rfind("ABC", start=0, last=11) == 9
+      doAssert haystack.rfind("ABC", start=0, last=10) == 0
+      doAssert haystack.rfind("ABC", start=1, last=10) == -1
+
+    doAssert "".rfind("/") == -1
+    doAssert "/".rfind("/") == 0
+    doAssert "/".rfind("//") == -1
+    doAssert "///".rfind("//", start=3) == -1
+
   block: # trimZeros
     var x = "1200"
     x.trimZeros()

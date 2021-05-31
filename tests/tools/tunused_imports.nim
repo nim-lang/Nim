@@ -1,5 +1,5 @@
 discard """
-  cmd: '''nim c --hint[Processing]:off $file'''
+  cmd: '''nim c --hint:Processing:off $file'''
   nimout: '''
 tunused_imports.nim(11, 10) Warning: BEGIN [User]
 tunused_imports.nim(36, 10) Warning: END [User]

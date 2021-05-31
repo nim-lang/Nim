@@ -10,7 +10,7 @@ import unittest, strutils, strtabs
 import std/private/miscdollars
 
 proc toHtml(input: string,
-            rstOptions: RstParseOptions = {roSupportMarkdown, roNimFile},
+            rstOptions: RstParseOptions = {roPreferMarkdown, roSupportMarkdown, roNimFile},
             error: ref string = nil,
             warnings: ref seq[string] = nil): string =
   ## If `error` is nil then no errors should be generated.
@@ -23,18 +23,20 @@ proc toHtml(input: string,
     toLocation(message, filename, line, col + ColRstOffset)
     message.add " $1: $2" % [$mc, a]
     if mc == mcError:
-      doAssert error != nil, "unexpected RST error '" & message & "'"
+      if error == nil:
+        raise newException(EParseError, "[unexpected error] " & message)
       error[] = message
       # we check only first error because subsequent ones may be meaningless
-      raise newException(EParseError, message)
+      raise newException(EParseError, "")
     else:
       doAssert warnings != nil, "unexpected RST warning '" & message & "'"
       warnings[].add message
   try:
     result = rstToHtml(input, rstOptions, defaultConfig(),
                        msgHandler=testMsgHandler)
-  except EParseError:
-    discard
+  except EParseError as e:
+    if e.msg != "":
+      result = e.msg
 
 # inline code tags (for parsing originated from highlite.nim)
 proc id(str: string): string = """<span class="Identifier">"""  & str & "</span>"

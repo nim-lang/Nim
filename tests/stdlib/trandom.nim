@@ -1,5 +1,5 @@
 discard """
-  joinable: false
+  joinable: false # to avoid messing with global rand state
   targets: "c js"
 """
 
@@ -37,11 +37,14 @@ main()
 
 block:
   when not defined(js):
-    doAssert almostEqual(rand(12.5), 4.012897747078944)
-    doAssert almostEqual(rand(2233.3322), 879.702755321298)
+    doAssert almostEqual(rand(12.5), 7.355175342026979)
+    doAssert almostEqual(rand(2233.3322), 499.342386778917)
 
   type DiceRoll = range[0..6]
-  doAssert rand(DiceRoll).int == 4
+  when not defined(js):
+    doAssert rand(DiceRoll).int == 3
+  else:
+    doAssert rand(DiceRoll).int == 6
 
 var rs: RunningStat
 for j in 1..5:
@@ -164,3 +167,23 @@ block: # random sample
       let stdDev = sqrt(n * p * (1.0 - p))
       # NOTE: like unnormalized int CDF test, P(wholeTestFails) =~ 0.01.
       doAssert abs(float(histo[values[i]]) - expected) <= 3.0 * stdDev
+
+block:
+  # 0 is a valid seed
+  var r = initRand(0)
+  doAssert r.rand(1.0) != r.rand(1.0)
+  r = initRand(10)
+  doAssert r.rand(1.0) != r.rand(1.0)
+  # changing the seed changes the sequence
+  var r1 = initRand(123)
+  var r2 = initRand(124)
+  doAssert r1.rand(1.0) != r2.rand(1.0)
+
+block: # bug #17467
+  let n = 1000
+  for i in -n .. n:
+    var r = initRand(i)
+    let x = r.rand(1.0)
+    doAssert x > 1e-4, $(x, i)
+      # This used to fail for each i in 0..<26844, i.e. the 1st produced value
+      # was predictable and < 1e-4, skewing distributions.

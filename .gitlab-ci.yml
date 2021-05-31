@@ -1,4 +1,6 @@
-image: ubuntu:16.04
+# xxx unused, out of date
+
+image: ubuntu:18.04
 
 stages:
   - pre-build

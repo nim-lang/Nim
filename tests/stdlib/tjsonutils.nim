@@ -4,14 +4,28 @@ discard """
 
 import std/jsonutils
 import std/json
+from std/math import isNaN, signbit
+from stdtest/testutils import whenRuntimeJs
 
 proc testRoundtrip[T](t: T, expected: string) =
+  # checks that `T => json => T2 => json2` is such that json2 = json
   let j = t.toJson
-  doAssert $j == expected, $j
+  doAssert $j == expected, "\n" & $j & "\n" & expected
   doAssert j.jsonTo(T).toJson == j
   var t2: T
   t2.fromJson(j)
   doAssert t2.toJson == j
+
+proc testRoundtripVal[T](t: T, expected: string) =
+  # similar to testRoundtrip, but also checks that the `T => json => T2` is such that `T2 == T`
+  # note that this isn't always possible, e.g. for pointer-like types.
+  let j = t.toJson
+  let j2 = $j
+  doAssert j2 == expected, j2
+  let j3 = j2.parseJson
+  let t2 = j3.jsonTo(T)
+  doAssert t2 == t
+  doAssert $t2.toJson == j2 # still needed, because -0.0 = 0.0 but their json representation differs
 
 import tables, sets, algorithm, sequtils, options, strtabs
 from strutils import contains
@@ -21,6 +35,13 @@ type Foo = ref object
 
 proc `==`(a, b: Foo): bool =
   a.id == b.id
+
+type MyEnum = enum me0, me1 = "me1Alt", me2, me3, me4
+
+proc `$`(a: MyEnum): string =
+  # putting this here pending https://github.com/nim-lang/Nim/issues/13747
+  if a == me2: "me2Modif"
+  else: system.`$`(a)
 
 template fn() = 
   block: # toJson, jsonTo
@@ -70,6 +91,40 @@ template fn() =
     doAssert b2.ord == 1 # explains the `1`
     testRoundtrip(a): """[1,2,3]"""
 
+  block: # JsonNode
+    let a = ((1, 2.5, "abc").toJson, (3, 4.5, "foo"))
+    testRoundtripVal(a): """[[1,2.5,"abc"],[3,4.5,"foo"]]"""
+
+    block:
+      template toInt(a): untyped = cast[int](a)
+
+      let a = 3.toJson
+      let b = (a, a)
+
+      let c1 = b.toJson
+      doAssert c1[0].toInt == a.toInt
+      doAssert c1[1].toInt == a.toInt
+
+      let c2 = b.toJson(ToJsonOptions(jsonNodeMode: joptJsonNodeAsCopy))
+      doAssert c2[0].toInt != a.toInt
+      doAssert c2[1].toInt != c2[0].toInt
+      doAssert c2[1] == c2[0]
+
+      let c3 = b.toJson(ToJsonOptions(jsonNodeMode: joptJsonNodeAsObject))
+      doAssert $c3 == """[{"isUnquoted":false,"kind":2,"num":3},{"isUnquoted":false,"kind":2,"num":3}]"""
+
+  block: # ToJsonOptions
+    let a = (me1, me2)
+    doAssert $a.toJson() == "[1,2]"
+    doAssert $a.toJson(ToJsonOptions(enumMode: joptEnumSymbol)) == """["me1","me2"]"""
+    doAssert $a.toJson(ToJsonOptions(enumMode: joptEnumString)) == """["me1Alt","me2Modif"]"""
+
+  block: # set
+    type Foo = enum f1, f2, f3, f4, f5
+    type Goo = enum g1 = 10, g2 = 15, g3 = 17, g4
+    let a = ({f1, f3}, {1'u8, 7'u8}, {'0'..'9'}, {123'u16, 456, 789, 1121, 1122, 1542}, {g2, g3})
+    testRoundtrip(a): """[[0,2],[1,7],[48,49,50,51,52,53,54,55,56,57],[123,456,789,1121,1122,1542],[15,17]]"""
+
   block: # bug #17383
     block:
       let a = (int32.high, uint32.high)
@@ -84,6 +139,26 @@ template fn() =
         testRoundtrip(a): "[2147483647,4294967295]"
       else:
         testRoundtrip(a): "[9223372036854775807,18446744073709551615]"
+
+  block: # bug #18007
+    testRoundtrip((NaN, Inf, -Inf, 0.0, -0.0, 1.0)): """["nan","inf","-inf",0.0,-0.0,1.0]"""
+    testRoundtrip((float32(NaN), Inf, -Inf, 0.0, -0.0, 1.0)): """["nan","inf","-inf",0.0,-0.0,1.0]"""
+    testRoundtripVal((Inf, -Inf, 0.0, -0.0, 1.0)): """["inf","-inf",0.0,-0.0,1.0]"""
+    doAssert ($NaN.toJson).parseJson.jsonTo(float).isNaN
+
+  block: # bug #18009; unfixable unless we change parseJson (which would have overhead),
+         # but at least we can guarantee that the distinction between 0.0 and -0.0 is preserved.
+    let a = (0, 0.0, -0.0, 0.5, 1, 1.0)
+    testRoundtripVal(a): "[0,0.0,-0.0,0.5,1,1.0]"
+    let a2 = $($a.toJson).parseJson
+    whenRuntimeJs:
+      doAssert a2 == "[0,0,-0.0,0.5,1,1]"
+    do:
+      doAssert a2 == "[0,0.0,-0.0,0.5,1,1.0]"
+    let b = a2.parseJson.jsonTo(type(a))
+    doAssert not b[1].signbit
+    doAssert b[2].signbit
+    doAssert not b[3].signbit
 
   block: # case object
     type Foo = object

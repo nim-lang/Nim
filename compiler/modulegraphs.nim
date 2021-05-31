@@ -50,7 +50,7 @@ type
     concreteTypes*: seq[FullId]
     inst*: PInstantiation
 
-  ModuleGraph* = ref object
+  ModuleGraph* {.acyclic.} = ref object
     ifaces*: seq[Iface]  ## indexed by int32 fileIdx
     packed*: PackedModuleGraph
     encoders*: seq[PackedEncoder]

@@ -1,5 +1,6 @@
 discard """
   targets: "c cpp js"
+  matrix: "-d:nimEnableHashRef"
 """
 
 import std/hashes

@@ -144,6 +144,7 @@ type
     cmdNimscript # evaluate nimscript
     cmdDoc0
     cmdDoc2
+    cmdDoc2tex
     cmdRst2html # convert a reStructuredText file to HTML
     cmdRst2tex # convert a reStructuredText file to TeX
     cmdJsondoc0
@@ -160,7 +161,8 @@ type
 
 const
   cmdBackends* = {cmdCompileToC, cmdCompileToCpp, cmdCompileToOC, cmdCompileToJS, cmdCrun}
-  cmdDocLike* = {cmdDoc0, cmdDoc2, cmdJsondoc0, cmdJsondoc, cmdCtags, cmdBuildindex}
+  cmdDocLike* = {cmdDoc0, cmdDoc2, cmdDoc2tex, cmdJsondoc0, cmdJsondoc,
+                 cmdCtags, cmdBuildindex}
 
 type
   TStringSeq* = seq[string]
@@ -268,7 +270,7 @@ type
     foName # lastPathPart, e.g.: foo.nim
     foStacktrace # if optExcessiveStackTrace: foAbs else: foName
 
-  ConfigRef* = ref object ## every global configuration
+  ConfigRef* {.acyclic.} = ref object ## every global configuration
                           ## fields marked with '*' are subject to
                           ## the incremental compilation mechanisms
                           ## (+) means "part of the dependency"
@@ -402,7 +404,7 @@ proc hasHint*(conf: ConfigRef, note: TNoteKind): bool =
     note in conf.mainPackageNotes
   else: note in conf.notes
 
-proc hasWarn*(conf: ConfigRef, note: TNoteKind): bool =
+proc hasWarn*(conf: ConfigRef, note: TNoteKind): bool {.inline.} =
   optWarns in conf.options and note in conf.notes
 
 proc hcrOn*(conf: ConfigRef): bool = return optHotCodeReloading in conf.globalOptions

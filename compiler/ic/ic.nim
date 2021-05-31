@@ -507,6 +507,9 @@ proc toPackedNodeIgnoreProcDefs(n: PNode, encoder: var PackedEncoder; m: var Pac
   of nkStmtList, nkStmtListExpr:
     for it in n:
       toPackedNodeIgnoreProcDefs(it, encoder, m)
+  of nkImportStmt, nkImportExceptStmt, nkExportStmt, nkExportExceptStmt,
+     nkFromStmt, nkIncludeStmt:
+    discard "nothing to do"
   else:
     toPackedNode(n, m.topLevel, encoder, m)
 

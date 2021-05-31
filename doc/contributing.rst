@@ -453,9 +453,9 @@ General commit rules
 1. Important, critical bugfixes that have a tiny chance of breaking
    somebody's code should be backported to the latest stable release
    branch (currently 1.4.x) and maybe also all the way back to the 1.0.x branch.
-   The commit message should contain the tag ``[backport]`` for "backport to all
-   stable releases" and the tag ``[backport:$VERSION]`` for backporting to the
-   given $VERSION.
+   The commit message should contain the tag ``[backport]`` for "backport to the latest
+   stable release" and the tag ``[backport:$VERSION]`` for backporting back to the
+   given $VERSION (and all newer releases).
 
 2. If you introduce changes which affect backward compatibility,
    make breaking changes, or have PR which is tagged as ``[feature]``,

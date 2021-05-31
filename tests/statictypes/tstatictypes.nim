@@ -11,7 +11,6 @@ staticAlialProc instantiated with 368
 1: Bar
 0: Foo
 1: Bar
-Hint: ***SLOW, DEBUG BUILD***; -d:release makes code run faster. [BuildMode]
 '''
 output: '''
 16
@@ -23,10 +22,8 @@ heyho
 Val1
 Val1
 '''
-matrix: "--hint:XDeclaredButNotUsed:off --hint:cc:off --hint:link:off --hint:SuccessX:off --hint:conf:off"
+matrix: "--hints:off"
 """
-
-# pending https://github.com/nim-lang/Nim/pull/17852 use `--hints:none --hint:SuccessX:off`, or improve `isSuccess`
 
 import macros
 

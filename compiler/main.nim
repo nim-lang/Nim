@@ -69,12 +69,15 @@ proc commandCheck(graph: ModuleGraph) =
     writeRodFiles(graph)
 
 when not defined(leanCompiler):
-  proc commandDoc2(graph: ModuleGraph; json: bool) =
+  proc commandDoc2(graph: ModuleGraph; ext: string) =
     handleDocOutputOptions graph.config
     graph.config.setErrorMaxHighMaybe
     semanticPasses(graph)
-    if json: registerPass(graph, docgen2JsonPass)
-    else: registerPass(graph, docgen2Pass)
+    case ext:
+    of TexExt:  registerPass(graph, docgen2TexPass)
+    of JsonExt: registerPass(graph, docgen2JsonPass)
+    of HtmlExt: registerPass(graph, docgen2Pass)
+    else: doAssert false, $ext
     compileProject(graph)
     finishDoc2Pass(graph.config.projectName)
 
@@ -249,7 +252,8 @@ proc mainCommand*(graph: ModuleGraph) =
       conf.quitOrRaise "compiler wasn't built with documentation generator"
     else:
       wantMainModule(conf)
-      loadConfigs(DocConfig, cache, conf, graph.idgen)
+      let docConf = if conf.cmd == cmdDoc2tex: DocTexConfig else: DocConfig
+      loadConfigs(docConf, cache, conf, graph.idgen)
       defineSymbol(conf.symbols, "nimdoc")
       body
 
@@ -285,7 +289,7 @@ proc mainCommand*(graph: ModuleGraph) =
         # of labels links in doc comments, e.g. for random.rand:
         #  ## * `rand proc<#rand,Rand,Natural>`_ that returns an integer
         #  ## * `rand proc<#rand,Rand,range[]>`_ that returns a float
-      commandDoc2(graph, false)
+      commandDoc2(graph, HtmlExt)
       if optGenIndex in conf.globalOptions and optWholeProject in conf.globalOptions:
         commandBuildIndex(conf, $conf.outDir)
   of cmdRst2html:
@@ -299,7 +303,7 @@ proc mainCommand*(graph: ModuleGraph) =
     else:
       loadConfigs(DocConfig, cache, conf, graph.idgen)
       commandRst2Html(cache, conf)
-  of cmdRst2tex:
+  of cmdRst2tex, cmdDoc2tex:
     for warn in [warnRedefinitionOfLabel, warnUnknownSubstitutionX,
                  warnLanguageXNotSupported,
                  warnFieldXNotSupported, warnRstStyle]:
@@ -307,10 +311,13 @@ proc mainCommand*(graph: ModuleGraph) =
     when defined(leanCompiler):
       conf.quitOrRaise "compiler wasn't built with documentation generator"
     else:
-      loadConfigs(DocTexConfig, cache, conf, graph.idgen)
-      commandRst2TeX(cache, conf)
+      if conf.cmd == cmdRst2tex:
+        loadConfigs(DocTexConfig, cache, conf, graph.idgen)
+        commandRst2TeX(cache, conf)
+      else:
+        docLikeCmd commandDoc2(graph, TexExt)
   of cmdJsondoc0: docLikeCmd commandJson(cache, conf)
-  of cmdJsondoc: docLikeCmd commandDoc2(graph, true)
+  of cmdJsondoc: docLikeCmd commandDoc2(graph, JsonExt)
   of cmdCtags: docLikeCmd commandTags(cache, conf)
   of cmdBuildindex: docLikeCmd commandBuildIndex(conf, $conf.projectFull, conf.outFile)
   of cmdGendepend: commandGenDepend(graph)
@@ -410,7 +417,8 @@ proc mainCommand*(graph: ModuleGraph) =
       "project", project,
       "output", output,
       ])
-    rawMessage(conf, hintBuildMode, build)
+    if conf.cmd in cmdBackends:
+      rawMessage(conf, hintBuildMode, build)
 
   when PrintRopeCacheStats:
     echo "rope cache stats: "

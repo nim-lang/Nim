@@ -236,7 +236,7 @@ proc hash*[T](x: ptr[T]): Hash {.inline.} =
     assert cast[pointer](a[0].addr).hash == a[0].addr.hash
   hash(cast[pointer](x))
 
-when not defined(nimLegacyNoHashRef):
+when defined(nimEnableHashRef):
   proc hash*[T](x: ref[T]): Hash {.inline.} =
     ## Efficient `hash` overload.
     runnableExamples:

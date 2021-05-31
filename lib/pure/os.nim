@@ -922,9 +922,7 @@ proc getConfigDir*(): string {.rtl, extern: "nos$1",
   ## See also:
   ## * `getHomeDir proc <#getHomeDir>`_
   ## * `getTempDir proc <#getTempDir>`_
-  ## * `expandTilde proc <#expandTilde,string>`_
-  ## * `getCurrentDir proc <#getCurrentDir>`_
-  ## * `setCurrentDir proc <#setCurrentDir,string>`_
+  ## * `getCacheDir proc <#getCacheDir>`_
   runnableExamples:
     from std/strutils import endsWith
     # See `getHomeDir` for behavior regarding trailing DirSep.
@@ -934,6 +932,42 @@ proc getConfigDir*(): string {.rtl, extern: "nos$1",
   else:
     result = getEnv("XDG_CONFIG_HOME", getEnv("HOME") / ".config")
   result.normalizePathEnd(trailingSep = defined(nimLegacyHomeDir))
+
+proc getCacheDir*(): string =
+  ## Returns the cache directory of the current user for applications.
+  ## 
+  ## This makes use of the following environment variables:
+  ##
+  ## * On Windows: `getEnv("LOCALAPPDATA")`
+  ##
+  ## * On macOS: `getEnv("XDG_CACHE_HOME", getEnv("HOME") / "Library/Caches")`
+  ##
+  ## * On other platforms: `getEnv("XDG_CACHE_HOME", getEnv("HOME") / ".cache")`
+  ##
+  ## **See also:**
+  ## * `getHomeDir proc <#getHomeDir>`_
+  ## * `getTempDir proc <#getTempDir>`_
+  ## * `getConfigDir proc <#getConfigDir>`_
+  # follows https://crates.io/crates/platform-dirs
+  when defined(windows):
+    result = getEnv("LOCALAPPDATA")
+  elif defined(osx):
+    result = getEnv("XDG_CACHE_HOME", getEnv("HOME") / "Library/Caches")
+  else:
+    result = getEnv("XDG_CACHE_HOME", getEnv("HOME") / ".cache")
+  result.normalizePathEnd(false)
+
+proc getCacheDir*(app: string): string =
+  ## Returns the cache directory for an application `app`.
+  ##
+  ## * On windows, this uses: `getCacheDir() / app / "cache"`
+  ##
+  ## * On other platforms, this uses: `getCacheDir() / app`
+  when defined(windows):
+    getCacheDir() / app / "cache"
+  else:
+    getCacheDir() / app
+
 
 when defined(windows):
   type DWORD = uint32
@@ -972,9 +1006,7 @@ proc getTempDir*(): string {.rtl, extern: "nos$1",
   ## See also:
   ## * `getHomeDir proc <#getHomeDir>`_
   ## * `getConfigDir proc <#getConfigDir>`_
-  ## * `expandTilde proc <#expandTilde,string>`_
-  ## * `getCurrentDir proc <#getCurrentDir>`_
-  ## * `setCurrentDir proc <#setCurrentDir,string>`_
+  ## * `getCacheDir proc <#getCacheDir>`_
   runnableExamples:
     from std/strutils import endsWith
     # See `getHomeDir` for behavior regarding trailing DirSep.

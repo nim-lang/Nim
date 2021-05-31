@@ -11,6 +11,12 @@
 ##
 ## Experimental API, subject to change.
 
+#[
+See also:
+* `GetTempFileName` (on windows), refs https://docs.microsoft.com/en-us/windows/win32/api/fileapi/nf-fileapi-gettempfilenamea
+* `mkstemp` (posix), refs https://man7.org/linux/man-pages/man3/mkstemp.3.html
+]#
+
 import os, random
 
 
@@ -45,7 +51,7 @@ else:
 
 
 proc safeOpen(filename: string): File =
-  ## Open files exclusively.
+  ## Open files exclusively; returns `nil` if the file already exists.
   # xxx this should be clarified; it doesn't in particular prevent other processes
   # from opening the file, at least currently.
   when defined(windows):
@@ -56,7 +62,10 @@ proc safeOpen(filename: string): File =
                               nil, dwCreation, dwFlags, Handle(0))
 
     if handle == INVALID_HANDLE_VALUE:
-      raiseOSError(osLastError(), filename)
+      if getLastError() == ERROR_FILE_EXISTS:
+        return nil
+      else:
+        raiseOSError(osLastError(), filename)
 
     let fileHandle = open_osfhandle(handle, O_RDWR)
     if fileHandle == -1:
@@ -76,7 +85,11 @@ proc safeOpen(filename: string): File =
     let flags = posix.O_RDWR or posix.O_CREAT or posix.O_EXCL
     let fileHandle = posix.open(filename, flags, mode)
     if fileHandle == -1:
-      raiseOSError(osLastError(), filename)
+      if errno == EEXIST:
+        # xxx `getLastError()` should be defined on posix too and resolve to `errno`?
+        return nil
+      else:
+        raiseOSError(osLastError(), filename)
 
     result = c_fdopen(fileHandle, "w+")
     if result == nil:
@@ -103,27 +116,38 @@ proc genTempPath*(prefix, suffix: string, dir = ""): string =
   let dir = getTempDirImpl(dir)
   result = dir / (prefix & randomPathName(nimTempPathLength) & suffix)
 
-proc createTempFile*(prefix, suffix: string, dir = ""): tuple[fd: File, path: string] =
+proc createTempFile*(prefix, suffix: string, dir = ""): tuple[cfile: File, path: string] =
   ## Creates a new temporary file in the directory `dir`.
   ## 
   ## This generates a path name using `genTempPath(prefix, suffix, dir)` and
   ## returns a file handle to an open file and the path of that file, possibly after
   ## retrying to ensure it doesn't already exist.
   ## 
-  ## If failing to create a temporary file, `IOError` will be raised.
+  ## If failing to create a temporary file, `OSError` will be raised.
   ##
-  ## .. note:: It is the caller's responsibility to remove the file when no longer needed.
+  ## .. note:: It is the caller's responsibility to close `result.cfile` and
+  ##    remove `result.file` when no longer needed.
+  ## .. note:: `dir` must exist (empty `dir` will resolve to `getTempDir()`).
+  runnableExamples:
+    import std/os
+    doAssertRaises(OSError): discard createTempFile("", "", "nonexistent")
+    let (cfile, path) = createTempFile("tmpprefix_", "_end.tmp")
+    # path looks like: getTempDir() / "tmpprefix_FDCIRZA0_end.tmp"
+    cfile.write "foo"
+    cfile.setFilePos 0
+    assert readAll(cfile) == "foo"
+    close cfile
+    assert readFile(path) == "foo"
+    removeFile(path)
+  # xxx why does above work without `cfile.flushFile` ?
   let dir = getTempDirImpl(dir)
-  createDir(dir)
   for i in 0 ..< maxRetry:
     result.path = genTempPath(prefix, suffix, dir)
-    try:
-      result.fd = safeOpen(result.path)
-    except OSError:
-      continue
-    return
+    result.cfile = safeOpen(result.path)
+    if result.cfile != nil:
+      return
 
-  raise newException(IOError, "Failed to create a temporary file under directory " & dir)
+  raise newException(OSError, "Failed to create a temporary file under directory " & dir)
 
 proc createTempDir*(prefix, suffix: string, dir = ""): string =
   ## Creates a new temporary directory in the directory `dir`.
@@ -132,17 +156,21 @@ proc createTempDir*(prefix, suffix: string, dir = ""): string =
   ## the directory and returns it, possibly after retrying to ensure it doesn't
   ## already exist.
   ##
-  ## If failing to create a temporary directory, `IOError` will be raised.
+  ## If failing to create a temporary directory, `OSError` will be raised.
   ##
   ## .. note:: It is the caller's responsibility to remove the directory when no longer needed.
+  ## .. note:: `dir` must exist (empty `dir` will resolve to `getTempDir()`).
+  runnableExamples:
+    import std/os
+    doAssertRaises(OSError): discard createTempDir("", "", "nonexistent")
+    let dir = createTempDir("tmpprefix_", "_end")
+    # dir looks like: getTempDir() / "tmpprefix_YEl9VuVj_end"
+    assert dirExists(dir)
+    removeDir(dir)
   let dir = getTempDirImpl(dir)
-  createDir(dir)
   for i in 0 ..< maxRetry:
     result = genTempPath(prefix, suffix, dir)
-    try:
-      if not existsOrCreateDir(result):
-        return
-    except OSError:
-      continue
+    if not existsOrCreateDir(result):
+      return
 
-  raise newException(IOError, "Failed to create a temporary directory under directory " & dir)
+  raise newException(OSError, "Failed to create a temporary directory under directory " & dir)

@@ -112,7 +112,7 @@ proc compileOption*(option, arg: string): bool {.
       discard "compiled with optimization for size and uses Boehm's GC"
 
 {.push warning[GcMem]: off, warning[Uninit]: off.}
-{.push hints: off.}
+# {.push hints: off.}
 
 proc `or`*(a, b: typedesc): typedesc {.magic: "TypeTrait", noSideEffect.}
   ## Constructs an `or` meta class.
@@ -1317,10 +1317,10 @@ proc del*[T](x: var seq[T], i: Natural) {.noSideEffect.} =
   ##
   ## See also:
   ## * `delete <#delete,seq[T],Natural>`_ for preserving the order
-  ##
-  ## .. code-block:: Nim
-  ##  var i = @[1, 2, 3, 4, 5]
-  ##  i.del(2) # => @[1, 2, 5, 4]
+  runnableExamples:
+    var a = @[10, 11, 12, 13, 14]
+    a.del(2)
+    assert a == @[10, 11, 14, 13]
   let xl = x.len - 1
   movingCopy(x[i], x[xl])
   setLen(x, xl)
@@ -1805,6 +1805,7 @@ when not defined(js) and defined(nimV2):
       traceImpl: pointer
       disposeImpl: pointer
       typeInfoV1: pointer # for backwards compat, usually nil
+      flags: int
     PNimTypeV2 = ptr TNimTypeV2
 
 when notJSnotNims and defined(nimSeqsV2):
@@ -2470,7 +2471,7 @@ proc quit*(errormsg: string, errorcode = QuitFailure) {.noreturn.} =
   quit(errorcode)
 
 {.pop.} # checks: off
-{.pop.} # hints: off
+# {.pop.} # hints: off
 
 proc `/`*(x, y: int): float {.inline, noSideEffect.} =
   ## Division of integers that results in a float.

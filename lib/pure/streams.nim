@@ -1258,7 +1258,7 @@ else: # after 1.3 or JS not defined
     var s = StringStream(s)
     s.data = ""
 
-  proc newStringStream*(s: string = "", growthRate = 0): owned StringStream =
+  proc newStringStream*(s: sink string = "", growthRate = 0): owned StringStream =
     ## Creates a new stream from the string `s`.
     ## 
     ## If `growthRate` is less than or equal to `1` the internal data is sized exactly,

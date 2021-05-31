@@ -1379,6 +1379,9 @@ proc `class=`*(n: Node; v: cstring) {.importcpp: "#.className = #", nodecl.}
 proc value*(n: Node): cstring {.importcpp: "#.value", nodecl.}
 proc `value=`*(n: Node; v: cstring) {.importcpp: "#.value = #", nodecl.}
 
+proc checked*(n: Node): bool {.importcpp: "#.checked", nodecl.}
+proc `checked=`*(n: Node; v: bool) {.importcpp: "#.checked = #", nodecl.}
+
 proc `disabled=`*(n: Node; v: bool) {.importcpp: "#.disabled = #", nodecl.}
 
 when defined(nodejs):

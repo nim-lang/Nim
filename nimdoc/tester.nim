@@ -1,9 +1,11 @@
 # Small program that runs the test cases for 'nim doc'.
 # To run this, cd to the git repo root, and run "nim r nimdoc/tester.nim".
-# to change expected results (after carefully verifying everything), use -d:fixup
+# to change expected results (after carefully verifying everything), use -d:nimTestsNimdocFixup
 
 import strutils, os
 from std/private/gitutils import diffFiles
+
+const fixup = defined(nimTestsNimdocFixup)
 
 var
   failures = 0
@@ -62,7 +64,7 @@ let
                                      "$1/$2.nim" % [test1Dir, test1PrjName]],
                               buildIndex: @["--out:$1/$2/theindex.html" % [test1Dir, test1DocsDir],
                                             "$1/$2" % [test1Dir, test1DocsDir]])
-testNimDoc(test1Dir, test1DocsDir, test1Switches, defined(fixup))
+testNimDoc(test1Dir, test1DocsDir, test1Switches, fixup)
 
 # Test "nim doc --out:.. --index:on .."
 let
@@ -75,7 +77,7 @@ let
                                      "$1/$2.nim" % [test2Dir, test2PrjName]],
                               buildIndex: @["--out:$1/$2/theindex.html" % [test2Dir, test2DocsDir],
                                             "$1/$2" % [test2Dir, test2DocsDir]])
-testNimDoc(test2Dir, test2DocsDir, test2Switches, defined(fixup))
+testNimDoc(test2Dir, test2DocsDir, test2Switches, fixup)
 
-# Check for failures
-if failures > 0: quit($failures & " failures occurred.")
+if failures > 0:
+  quit "$# failures occurred; see note in tester.nim regarding -d:nimTestsNimdocFixup" %  $failures

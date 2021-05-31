@@ -143,7 +143,7 @@ Merging usually merges maps and alias sets: nilabilities are merged like this:
     else:
       MaybeNil
 
-Special handling is for `.isNil` and ` == nil`, also for `not`, `and` and `or`.
+Special handling is for `.isNil` and `== nil`, also for `not`, `and` and `or`.
 
 `not` reverses the nilability, `and` is similar to "forking" : the right expression is checked in the layer resulting from the left one and `or` is similar to "merging": the right and left expression should be both checked in the original layer.
 

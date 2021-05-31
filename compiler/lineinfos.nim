@@ -60,6 +60,7 @@ type
     warnInconsistentSpacing = "Spacing",  warnCaseTransition = "CaseTransition",
     warnCycleCreated = "CycleCreated", warnObservableStores = "ObservableStores",
     warnStrictNotNil = "StrictNotNil",
+    warnResultUsed = "ResultUsed",
     warnCannotOpen = "CannotOpen",
     warnFileChanged = "FileChanged",
     warnUser = "User",
@@ -109,7 +110,7 @@ const
     warnFieldXNotSupported: "field '$1' not supported",
     warnRstStyle: "RST style: $1",
     warnCommentXIgnored: "comment '$1' ignored",
-    warnTypelessParam: "'$1' has no type. Typeless parameters are deprecated; only allowed for 'template'",
+    warnTypelessParam: "", # deadcode
     warnUseBase: "use {.base.} for base methods; baseless methods are deprecated",
     warnWriteToForeignHeap: "write to foreign heap",
     warnUnsafeCode: "unsafe code: '$1'",
@@ -138,6 +139,7 @@ const
     warnCycleCreated: "$1",
     warnObservableStores: "observable stores to '$1'",
     warnStrictNotNil: "$1",
+    warnResultUsed: "used 'result' variable",
     warnCannotOpen: "cannot open: $1",
     warnFileChanged: "file changed: $1",
     warnUser: "$1",
@@ -193,11 +195,11 @@ type
   TNoteKinds* = set[TNoteKind]
 
 proc computeNotesVerbosity(): array[0..3, TNoteKinds] =
-  result[3] = {low(TNoteKind)..high(TNoteKind)} - {warnObservableStores}
+  result[3] = {low(TNoteKind)..high(TNoteKind)} - {warnObservableStores, warnResultUsed}
   result[2] = result[3] - {hintStackTrace, warnUninit, hintExtendedContext, hintDeclaredLoc}
   result[1] = result[2] - {warnProveField, warnProveIndex,
     warnGcUnsafe, hintPath, hintDependency, hintCodeBegin, hintCodeEnd,
-    hintSource, hintGlobalVar, hintGCStats, hintMsgOrigin}
+    hintSource, hintGlobalVar, hintGCStats, hintMsgOrigin, hintPerformance}
   result[0] = result[1] - {hintSuccessX, hintBuildMode, hintSuccess, hintConf,
     hintProcessing, hintPattern, hintExecuting, hintLinking, hintCC}
 

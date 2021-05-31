@@ -114,7 +114,7 @@ String and character literals
 -----------------------------
 
 String literals are enclosed in double-quotes; character literals in single
-quotes. Special characters are escaped with ``\\``: ``\n`` means newline, ``\t``
+quotes. Special characters are escaped with ``\``: ``\n`` means newline, ``\t``
 means tabulator, etc. There are also *raw* string literals:
 
 .. code-block:: Nim
