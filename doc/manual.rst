@@ -2981,11 +2981,12 @@ Example:
 
 .. code-block:: nim
 
-  case readline(stdin)
+  let line = readline(stdin)
+  case line
   of "delete-everything", "restart-computer":
     echo "permission denied"
   of "go-for-a-walk":     echo "please yourself"
-  elif defined(windows):  echo "bsod" # optional `elif` must come after `of` branches
+  elif line.len == 0:     echo "empty" # optional, must come after `of` branches
   else:                   echo "unknown command" # ditto
 
   # indentation of the branches is also allowed; and so is an optional colon
@@ -3002,7 +3003,8 @@ a multi-branch selection. The expression after the keyword `case` is
 evaluated and if its value is in a *slicelist* the corresponding statements
 (after the `of` keyword) are executed. If the value is not in any
 given *slicelist*, trailing `elif` and `else` parts are executed using same
-semantics as for `if` statement. If there are no `else` or `elif` parts and not
+semantics as for `if` statement, and `elif` is handled just like `else: if`.
+If there are no `else` or `elif` parts and not
 all possible values that `expr` can hold occur in a *slicelist*, a static error occurs.
 This holds only for expressions of ordinal types.
 "All possible values" of `expr` are determined by `expr`'s type.
