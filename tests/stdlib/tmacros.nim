@@ -33,10 +33,30 @@ block: # unpackVarargs
 
     proc fn1(a = 0, b = 1) = discard (a, b)
 
-    call1(fn1, 10, 11)
-    call1(fn1, 10)
     call1(fn1)
+    call1(fn1, 10)
+    call1(fn1, 10, 11)
 
-    call2(fn1, 10, 11)
-    call2(fn1, 10)
     call2(fn1)
+    call2(fn1, 10)
+    call2(fn1, 10, 11)
+
+  block:
+    template call1(fun: typed; args: varargs[typed]): untyped =
+      unpackVarargs(fun, args)
+    template call2(fun: typed; args: varargs[typed]): untyped =
+      # xxx this would give a confusing error message:
+      # required type for a: varargs[typed] [varargs] but expression '[10]' is of type: varargs[typed] [varargs]
+      when varargsLen(args) > 0: fun(args)
+      else: fun()
+    macro toString(a: varargs[typed, `$`]): string =
+      var msg = genSym(nskVar, "msg")
+      result = newStmtList()
+      result.add quote do:
+        var `msg` = ""
+      for ai in a:
+        result.add quote do: `msg`.add $`ai`
+      result.add quote do: `msg`
+    doAssert call1(toString) == ""
+    doAssert call1(toString, 10) == "10"
+    doAssert call1(toString, 10, 11) == "1011"
