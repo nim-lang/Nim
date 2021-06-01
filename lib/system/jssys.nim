@@ -69,6 +69,9 @@ proc getCurrentExceptionMsg*(): string =
         return $msg
   return ""
 
+proc setCurrentException*(exc: ref Exception) =
+  lastJSError = cast[PJSError](exc)
+
 proc auxWriteStackTrace(f: PCallFrame): string =
   type
     TempFrame = tuple[procname: cstring, line: int, filename: cstring]
