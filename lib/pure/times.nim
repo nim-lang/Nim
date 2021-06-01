@@ -881,7 +881,7 @@ since((1, 1)):
   export toUnixFloat
 
 
-when defined(windows): # TODO put to a seperate module
+when defined(windows): # TODO put to a separate module
   proc getSystemTimePreciseAsFileTime(lpSystemTimeAsFileTime: var FILETIME) {.
     importc: "GetSystemTimePreciseAsFileTime", dynlib: "kernel32", stdcall, sideEffect.}
 
