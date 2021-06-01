@@ -187,3 +187,15 @@ block: # bug #17467
     doAssert x > 1e-4, $(x, i)
       # This used to fail for each i in 0..<26844, i.e. the 1st produced value
       # was predictable and < 1e-4, skewing distributions.
+
+when not defined(js) and not defined(macosx):
+  ## TODO improve `getTime` precision on MacOS
+  block: # bug #17898
+    var unique: HashSet[Rand]
+
+    let size = 10
+
+    for i in 0 ..< size:
+      unique.incl initRand()
+
+    doAssert unique.len == size
