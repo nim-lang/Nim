@@ -1073,7 +1073,7 @@ proc memmove(a, b: cstring; L: int) {.importc, nodecl.}
 
 proc utoa8DigitsSkipTrailingZeros*(buf: cstring; digits: uint32): int32 {.inline.} =
   dragonbox_Assert(digits >= 1)
-  dragonbox_Assert(digits <= 99999999)
+  dragonbox_Assert(digits <= 99999999'u32)
   let q: uint32 = digits div 10000
   let r: uint32 = digits mod 10000
   let qH: uint32 = q div 100
@@ -1097,9 +1097,9 @@ proc printDecimalDigitsBackwards*(buf: cstring; output64: uint64): int32 {.inlin
   var nd: int32 = 0
   ##  number of decimal digits processed.
   ##  At most 17 digits remaining
-  if output64 >= 100000000:
-    let q: uint64 = output64 div 100000000
-    let r: uint32 = cast[uint32](output64 mod 100000000)
+  if output64 >= 100000000'u64:
+    let q: uint64 = output64 div 100000000'u64
+    let r: uint32 = cast[uint32](output64 mod 100000000'u64)
     output64 = q
     dec(buf, 8)
     if r != 0:
