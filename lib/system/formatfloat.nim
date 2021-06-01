@@ -7,7 +7,8 @@
 #    distribution, for details about the copyright.
 #
 
-when not defined(nimLegacyAddFloat) and not defined(nimscript) and not defined(js):
+when not defined(nimLegacyAddFloat) and not defined(nimscript) and
+    not defined(js) and not defined(nimFirstBootIteration):
   import dragonbox
 
   proc writeFloatToBuffer*(buf: var array[65, char]; value: BiggestFloat): int =
