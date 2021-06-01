@@ -221,6 +221,7 @@ type
     nkBreakState,         # special break statement for easier code generation
     nkFuncDef,            # a func
     nkTupleConstr         # a tuple constructor
+    nkError               # erroneous AST node
     nkModuleRef           # for .rod file support: A (moduleId, itemId) pair
     nkReplayAction        # for .rod file support: A replay action
     nkNilRodNode          # for .rod file support: a 'nil' PNode
@@ -378,7 +379,7 @@ type
     tySequence,
     tyProc,
     tyPointer, tyOpenArray,
-    tyString, tyCString, tyForward,
+    tyString, tyCstring, tyForward,
     tyInt, tyInt8, tyInt16, tyInt32, tyInt64, # signed integers
     tyFloat, tyFloat32, tyFloat64, tyFloat128,
     tyUInt, tyUInt8, tyUInt16, tyUInt32, tyUInt64,
@@ -434,16 +435,17 @@ type
       # instantiation and prior to this it has the potential to
       # be any type.
 
-    tyOptDeprecated
-      # 'out' parameter. Comparable to a 'var' parameter but every
-      # path must assign a value to it before it can be read from.
+    tyConcept
+      # new style concept.
 
     tyVoid
       # now different from tyEmpty, hurray!
+    tyIterable
 
 static:
   # remind us when TTypeKind stops to fit in a single 64-bit word
-  assert TTypeKind.high.ord <= 63
+  # assert TTypeKind.high.ord <= 63
+  discard
 
 const
   tyPureObject* = tyTuple
@@ -462,6 +464,8 @@ const
   # consider renaming as `tyAbstractVarRange`
   abstractVarRange* = {tyGenericInst, tyRange, tyVar, tyDistinct, tyOrdinal,
                        tyTypeDesc, tyAlias, tyInferred, tySink, tyOwned}
+  abstractInst* = {tyGenericInst, tyDistinct, tyOrdinal, tyTypeDesc, tyAlias,
+                   tyInferred, tySink, tyOwned} # xxx what about tyStatic?
 
 type
   TTypeKinds* = set[TTypeKind]
@@ -491,6 +495,8 @@ type
     nfDefaultRefsParam # a default param value references another parameter
                        # the flag is applied to proc default values and to calls
     nfExecuteOnReload  # A top-level statement that will be executed during reloads
+    nfLastRead  # this node is a last read
+    nfFirstWrite# this node is a first write
 
   TNodeFlags* = set[TNodeFlag]
   TTypeFlag* = enum   # keep below 32 for efficiency reasons (now: ~40)
@@ -601,6 +607,8 @@ type
 const
   routineKinds* = {skProc, skFunc, skMethod, skIterator,
                    skConverter, skMacro, skTemplate}
+  ExportableSymKinds* = {skVar, skLet, skConst, skType, skEnumField, skStub, skAlias} + routineKinds
+
   tfUnion* = tfNoSideEffect
   tfGcSafe* = tfThread
   tfObjHasKids* = tfEnumHasHoles
@@ -662,7 +670,7 @@ type
     mDefault, mUnown, mIsolate, mAccessEnv, mReset,
     mArray, mOpenArray, mRange, mSet, mSeq, mVarargs,
     mRef, mPtr, mVar, mDistinct, mVoid, mTuple,
-    mOrdinal,
+    mOrdinal, mIterableType,
     mInt, mInt8, mInt16, mInt32, mInt64,
     mUInt, mUInt8, mUInt16, mUInt32, mUInt64,
     mFloat, mFloat32, mFloat64, mFloat128,
@@ -687,7 +695,7 @@ type
     mInstantiationInfo, mGetTypeInfo, mGetTypeInfoV2,
     mNimvm, mIntDefine, mStrDefine, mBoolDefine, mRunnableExamples,
     mException, mBuiltinType, mSymOwner, mUncheckedArray, mGetImplTransf,
-    mSymIsInstantiationOf, mNodeId
+    mSymIsInstantiationOf, mNodeId, mPrivateAccess
 
 
 # things that we can evaluate safely at compile time, even if not asked for it:
@@ -734,7 +742,7 @@ proc hash*(x: ItemId): Hash =
 
 
 type
-  TIdObj* = object of RootObj
+  TIdObj* {.acyclic.} = object of RootObj
     itemId*: ItemId
   PIdObj* = ref TIdObj
 
@@ -833,10 +841,11 @@ type
 
   PInstantiation* = ref TInstantiation
 
-  TScope* = object
+  TScope* {.acyclic.} = object
     depthLevel*: int
     symbols*: TStrTable
     parent*: PScope
+    allowPrivateAccess*: seq[PSym] #  # enable access to private fields
 
   PScope* = ref TScope
 
@@ -998,23 +1007,20 @@ const
     tyBool, tyChar, tyEnum, tyArray, tyObject,
     tySet, tyTuple, tyRange, tyPtr, tyRef, tyVar, tyLent, tySequence, tyProc,
     tyPointer,
-    tyOpenArray, tyString, tyCString, tyInt..tyInt64, tyFloat..tyFloat128,
+    tyOpenArray, tyString, tyCstring, tyInt..tyInt64, tyFloat..tyFloat128,
     tyUInt..tyUInt64}
   IntegralTypes* = {tyBool, tyChar, tyEnum, tyInt..tyInt64,
     tyFloat..tyFloat128, tyUInt..tyUInt64} # weird name because it contains tyFloat
   ConstantDataTypes*: TTypeKinds = {tyArray, tySet,
                                     tyTuple, tySequence}
-  NilableTypes*: TTypeKinds = {tyPointer, tyCString, tyRef, tyPtr,
+  NilableTypes*: TTypeKinds = {tyPointer, tyCstring, tyRef, tyPtr,
     tyProc, tyError} # TODO
   PtrLikeKinds*: TTypeKinds = {tyPointer, tyPtr} # for VM
-  ExportableSymKinds* = {skVar, skConst, skProc, skFunc, skMethod, skType,
-    skIterator,
-    skMacro, skTemplate, skConverter, skEnumField, skLet, skStub, skAlias}
   PersistentNodeFlags*: TNodeFlags = {nfBase2, nfBase8, nfBase16,
                                       nfDotSetter, nfDotField,
                                       nfIsRef, nfIsPtr, nfPreventCg, nfLL,
                                       nfFromTemplate, nfDefaultRefsParam,
-                                      nfExecuteOnReload}
+                                      nfExecuteOnReload, nfLastRead, nfFirstWrite}
   namePos* = 0
   patternPos* = 1    # empty except for term rewriting macros
   genericParamsPos* = 2
@@ -1039,6 +1045,7 @@ const
   declarativeDefs* = {nkProcDef, nkFuncDef, nkMethodDef, nkIteratorDef, nkConverterDef}
   routineDefs* = declarativeDefs + {nkMacroDef, nkTemplateDef}
   procDefs* = nkLambdaKinds + declarativeDefs
+  callableDefs* = nkLambdaKinds + routineDefs
 
   nkSymChoices* = {nkClosedSymChoice, nkOpenSymChoice}
   nkStrKinds* = {nkStrLit..nkTripleStrLit}
@@ -1049,8 +1056,16 @@ const
 
   defaultSize = -1
   defaultAlignment = -1
-  defaultOffset = -1
+  defaultOffset* = -1
 
+proc getPIdent*(a: PNode): PIdent {.inline.} =
+  ## Returns underlying `PIdent` for `{nkSym, nkIdent}`, or `nil`.
+  # xxx consider whether also returning the 1st ident for {nkOpenSymChoice, nkClosedSymChoice}
+  # which may simplify code.
+  case a.kind
+  of nkSym: a.sym.name
+  of nkIdent:  a.ident
+  else: nil
 
 proc getnimblePkg*(a: PSym): PSym =
   result = a
@@ -1158,6 +1173,7 @@ when defined(useNodeIds):
   var gNodeId: int
 
 proc newNode*(kind: TNodeKind): PNode =
+  ## new node with unknown line info, no type, and no children
   result = PNode(kind: kind, info: unknownLineInfo)
   when defined(useNodeIds):
     result.id = gNodeId
@@ -1167,6 +1183,7 @@ proc newNode*(kind: TNodeKind): PNode =
     inc gNodeId
 
 proc newNodeI*(kind: TNodeKind, info: TLineInfo): PNode =
+  ## new node with line info, no type, and no children
   result = PNode(kind: kind, info: info)
   when defined(useNodeIds):
     result.id = gNodeId
@@ -1176,6 +1193,7 @@ proc newNodeI*(kind: TNodeKind, info: TLineInfo): PNode =
     inc gNodeId
 
 proc newNodeI*(kind: TNodeKind, info: TLineInfo, children: int): PNode =
+  ## new node with line info, type, and children
   result = PNode(kind: kind, info: info)
   if children > 0:
     newSeq(result.sons, children)
@@ -1187,6 +1205,7 @@ proc newNodeI*(kind: TNodeKind, info: TLineInfo, children: int): PNode =
     inc gNodeId
 
 proc newNodeIT*(kind: TNodeKind, info: TLineInfo, typ: PType): PNode =
+  ## new node with line info, type, and no children
   result = newNode(kind)
   result.info = info
   result.typ = typ
@@ -1227,17 +1246,10 @@ proc newSym*(symKind: TSymKind, name: PIdent, id: ItemId, owner: PSym,
   result = PSym(name: name, kind: symKind, flags: {}, info: info, itemId: id,
                 options: options, owner: owner, offset: defaultOffset)
   when false:
-    if id.item > 2141:
-      let s = getStackTrace()
-      const words = ["createTypeBoundOps",
-        "initOperators",
-        "generateInstance",
-        "semIdentDef", "addLocalDecl"]
-      for w in words:
-        if w in s:
-          x.inc w
-          return
-      x.inc "<no category>"
+    if id.module == 48 and id.item == 39:
+      writeStackTrace()
+      echo "kind ", symKind, " ", name.s
+      if owner != nil: echo owner.name.s
 
 proc astdef*(s: PSym): PNode =
   # get only the definition (initializer) portion of the ast
@@ -1414,7 +1426,7 @@ proc newType*(kind: TTypeKind, id: ItemId; owner: PSym): PType =
                  lockLevel: UnspecifiedLockLevel,
                  uniqueId: id)
   when false:
-    if result.id == 76426:
+    if result.itemId.module == 55 and result.itemId.item == 2:
       echo "KNID ", kind
       writeStackTrace()
 
@@ -1759,12 +1771,32 @@ proc getStrOrChar*(a: PNode): string =
     #internalError(a.info, "getStrOrChar")
     #result = ""
 
-proc isGenericRoutine*(s: PSym): bool =
-  case s.kind
-  of skProcKinds:
-    result = sfFromGeneric in s.flags or
-             (s.ast != nil and s.ast[genericParamsPos].kind != nkEmpty)
-  else: discard
+proc isGenericParams*(n: PNode): bool {.inline.} =
+  ## used to judge whether a node is generic params.
+  n != nil and n.kind == nkGenericParams
+
+proc isGenericRoutine*(n: PNode): bool  {.inline.} =
+  n != nil and n.kind in callableDefs and n[genericParamsPos].isGenericParams
+
+proc isGenericRoutineStrict*(s: PSym): bool {.inline.} =
+  ## determines if this symbol represents a generic routine
+  ## the unusual name is so it doesn't collide and eventually replaces
+  ## `isGenericRoutine`
+  s.kind in skProcKinds and s.ast.isGenericRoutine
+
+proc isGenericRoutine*(s: PSym): bool {.inline.} =
+  ## determines if this symbol represents a generic routine or an instance of
+  ## one. This should be renamed accordingly and `isGenericRoutineStrict`
+  ## should take this name instead.
+  ##
+  ## Warning/XXX: Unfortunately, it considers a proc kind symbol flagged with
+  ## sfFromGeneric as a generic routine. Instead this should likely not be the
+  ## case and the concepts should be teased apart:
+  ## - generic definition
+  ## - generic instance
+  ## - either generic definition or instance
+  s.kind in skProcKinds and (sfFromGeneric in s.flags or
+                             s.ast.isGenericRoutine)
 
 proc skipGenericOwner*(s: PSym): PSym =
   ## Generic instantiations are owned by their originating generic
@@ -1973,3 +2005,7 @@ proc toHumanStr*(kind: TTypeKind): string =
 
 proc skipAddr*(n: PNode): PNode {.inline.} =
   (if n.kind == nkHiddenAddr: n[0] else: n)
+
+proc isNewStyleConcept*(n: PNode): bool {.inline.} =
+  assert n.kind == nkTypeClassTy
+  result = n[0].kind == nkEmpty

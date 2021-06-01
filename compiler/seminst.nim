@@ -62,30 +62,29 @@ iterator instantiateGenericParamList(c: PContext, n: PNode, pt: TIdTable): PSym 
   for i, a in n.pairs:
     internalAssert c.config, a.kind == nkSym
     var q = a.sym
-    if q.typ.kind notin {tyTypeDesc, tyGenericParam, tyStatic}+tyTypeClasses:
-      continue
-    let symKind = if q.typ.kind == tyStatic: skConst else: skType
-    var s = newSym(symKind, q.name, nextSymId c.idgen, getCurrOwner(c), q.info)
-    s.flags.incl {sfUsed, sfFromGeneric}
-    var t = PType(idTableGet(pt, q.typ))
-    if t == nil:
-      if tfRetType in q.typ.flags:
-        # keep the generic type and allow the return type to be bound
-        # later by semAsgn in return type inference scenario
-        t = q.typ
-      else:
-        localError(c.config, a.info, errCannotInstantiateX % s.name.s)
+    if q.typ.kind in {tyTypeDesc, tyGenericParam, tyStatic, tyConcept}+tyTypeClasses:
+      let symKind = if q.typ.kind == tyStatic: skConst else: skType
+      var s = newSym(symKind, q.name, nextSymId(c.idgen), getCurrOwner(c), q.info)
+      s.flags.incl {sfUsed, sfFromGeneric}
+      var t = PType(idTableGet(pt, q.typ))
+      if t == nil:
+        if tfRetType in q.typ.flags:
+          # keep the generic type and allow the return type to be bound
+          # later by semAsgn in return type inference scenario
+          t = q.typ
+        else:
+          localError(c.config, a.info, errCannotInstantiateX % s.name.s)
+          t = errorType(c)
+      elif t.kind in {tyGenericParam, tyConcept}:
+        localError(c.config, a.info, errCannotInstantiateX % q.name.s)
         t = errorType(c)
-    elif t.kind == tyGenericParam:
-      localError(c.config, a.info, errCannotInstantiateX % q.name.s)
-      t = errorType(c)
-    elif t.kind == tyGenericInvocation:
-      #t = instGenericContainer(c, a, t)
-      t = generateTypeInstance(c, pt, a, t)
-      #t = ReplaceTypeVarsT(cl, t)
-    s.typ = t
-    if t.kind == tyStatic: s.ast = t.n
-    yield s
+      elif t.kind == tyGenericInvocation:
+        #t = instGenericContainer(c, a, t)
+        t = generateTypeInstance(c, pt, a, t)
+        #t = ReplaceTypeVarsT(cl, t)
+      s.typ = t
+      if t.kind == tyStatic: s.ast = t.n
+      yield s
 
 proc sameInstantiation(a, b: TInstantiation): bool =
   if a.concreteTypes.len == b.concreteTypes.len:
@@ -319,6 +318,14 @@ proc instantiateProcType(c: PContext, pt: TIdTable,
   prc.typ = result
   popInfoContext(c.config)
 
+proc fillMixinScope(c: PContext) =
+  var p = c.p
+  while p != nil:
+    for bnd in p.localBindStmts:
+      for n in bnd:
+        addSym(c.currentScope, n.sym)
+    p = p.next
+
 proc generateInstance(c: PContext, fn: PSym, pt: TIdTable,
                       info: TLineInfo): PSym {.nosinks.} =
   ## Generates a new instance of a generic procedure.
@@ -345,9 +352,13 @@ proc generateInstance(c: PContext, fn: PSym, pt: TIdTable,
   result.ast = n
   pushOwner(c, result)
 
+  # mixin scope:
+  openScope(c)
+  fillMixinScope(c)
+
   openScope(c)
   let gp = n[genericParamsPos]
-  internalAssert c.config, gp.kind != nkEmpty
+  internalAssert c.config, gp.kind == nkGenericParams
   n[namePos] = newSymNode(result)
   pushInfoContext(c.config, info, fn.detailedInfo)
   var entry = TInstantiation.new
@@ -395,6 +406,7 @@ proc generateInstance(c: PContext, fn: PSym, pt: TIdTable,
   popProcCon(c)
   popInfoContext(c.config)
   closeScope(c)           # close scope for parameters
+  closeScope(c)           # close scope for 'mixin' declarations
   popOwner(c)
   c.currentScope = oldScope
   discard c.friendModules.pop()

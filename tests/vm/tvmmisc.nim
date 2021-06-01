@@ -255,6 +255,39 @@ block:
   doAssert e == @[]
   doAssert f == @[]
 
+
+block: # bug #10815
+  type
+    Opcode = enum
+      iChar, iSet
+
+    Inst = object
+      case code: Opcode
+        of iChar:
+          c: char
+        of iSet:
+          cs: set[char]
+
+    Patt = seq[Inst]
+
+
+  proc `$`(p: Patt): string =
+    discard
+
+  proc P(): Patt =
+    result.add Inst(code: iSet)
+
+  const a = P()
+  doAssert $a == ""
+  
+when defined osx: # xxx bug https://github.com/nim-lang/Nim/issues/10815#issuecomment-476380734
+  block:
+    type CharSet {.union.} = object 
+      cs: set[char]
+      vs: array[4, uint64]
+    const a = Charset(cs: {'a'..'z'})
+    doAssert a.repr.len > 0
+
 import tables
 
 block: # bug #8007

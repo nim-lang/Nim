@@ -7,9 +7,45 @@ outputsub: ""
 import ../../lib/packages/docutils/rstgen
 import ../../lib/packages/docutils/rst
 import unittest, strutils, strtabs
+import std/private/miscdollars
 
-proc toHtml(input: string): string =
-  rstToHtml(input, {roSupportMarkdown}, defaultConfig())
+proc toHtml(input: string,
+            rstOptions: RstParseOptions = {roPreferMarkdown, roSupportMarkdown, roNimFile},
+            error: ref string = nil,
+            warnings: ref seq[string] = nil): string =
+  ## If `error` is nil then no errors should be generated.
+  ## The same goes for `warnings`.
+  proc testMsgHandler(filename: string, line, col: int, msgkind: MsgKind,
+                      arg: string) =
+    let mc = msgkind.whichMsgClass
+    let a = $msgkind % arg
+    var message: string
+    toLocation(message, filename, line, col + ColRstOffset)
+    message.add " $1: $2" % [$mc, a]
+    if mc == mcError:
+      if error == nil:
+        raise newException(EParseError, "[unexpected error] " & message)
+      error[] = message
+      # we check only first error because subsequent ones may be meaningless
+      raise newException(EParseError, "")
+    else:
+      doAssert warnings != nil, "unexpected RST warning '" & message & "'"
+      warnings[].add message
+  try:
+    result = rstToHtml(input, rstOptions, defaultConfig(),
+                       msgHandler=testMsgHandler)
+  except EParseError as e:
+    if e.msg != "":
+      result = e.msg
+
+# inline code tags (for parsing originated from highlite.nim)
+proc id(str: string): string = """<span class="Identifier">"""  & str & "</span>"
+proc op(str: string): string = """<span class="Operator">"""    & str & "</span>"
+proc pu(str: string): string = """<span class="Punctuation">""" & str & "</span>"
+proc optionListLabel(opt: string): string =
+  """<div class="option-list-label"><tt><span class="option">""" &
+  opt &
+  "</span></tt></div>"
 
 suite "YAML syntax highlighting":
   test "Basics":
@@ -24,7 +60,7 @@ suite "YAML syntax highlighting":
     ? key
     : value
     ..."""
-    let output = rstTohtml(input, {}, defaultConfig())
+    let output = input.toHtml({})
     doAssert output == """<pre class = "listing"><span class="Directive">%YAML 1.2</span>
 <span class="Keyword">---</span>
 <span class="StringLit">a string</span><span class="Punctuation">:</span> <span class="StringLit">string</span>
@@ -50,7 +86,7 @@ suite "YAML syntax highlighting":
     another literal block scalar:
       |+ # comment after header
      allowed, since more indented than parent"""
-    let output = rstToHtml(input, {}, defaultConfig())
+    let output = input.toHtml({})
     doAssert output == """<pre class = "listing"><span class="StringLit">a literal block scalar</span><span class="Punctuation">:</span> <span class="Command">|</span><span class="Command"></span><span class="LongStringLit">
   some text
   # not a comment
@@ -76,7 +112,7 @@ suite "YAML syntax highlighting":
     % not a directive
     ...
     %TAG ! !foo:"""
-    let output = rstToHtml(input, {}, defaultConfig())
+    let output = input.toHtml({})
     doAssert output == """<pre class = "listing"><span class="Directive">%YAML 1.2</span>
 <span class="Keyword">---</span>
 <span class="StringLit">%not a directive</span>
@@ -97,7 +133,7 @@ suite "YAML syntax highlighting":
       more numbers: [-783, 11e78],
       not numbers: [ 42e, 0023, +32.37, 8 ball]
     }"""
-    let output = rstToHtml(input, {}, defaultConfig())
+    let output = input.toHtml({})
     doAssert output == """<pre class = "listing"><span class="Punctuation">{</span>
   <span class="StringLit">&quot;</span><span class="StringLit">quoted string&quot;</span><span class="Punctuation">:</span> <span class="DecNumber">42</span><span class="Punctuation">,</span>
   <span class="StringLit">'single quoted string'</span><span class="Punctuation">:</span> <span class="StringLit">false</span><span class="Punctuation">,</span>
@@ -105,6 +141,25 @@ suite "YAML syntax highlighting":
   <span class="StringLit">more numbers</span><span class="Punctuation">:</span> <span class="Punctuation">[</span><span class="DecNumber">-783</span><span class="Punctuation">,</span> <span class="FloatNumber">11e78</span><span class="Punctuation">]</span><span class="Punctuation">,</span>
   <span class="StringLit">not numbers</span><span class="Punctuation">:</span> <span class="Punctuation">[</span> <span class="StringLit">42e</span><span class="Punctuation">,</span> <span class="StringLit">0023</span><span class="Punctuation">,</span> <span class="StringLit">+32.37</span><span class="Punctuation">,</span> <span class="StringLit">8 ball</span><span class="Punctuation">]</span>
 <span class="Punctuation">}</span></pre>"""
+
+  test "Directives: warnings":
+    let input = dedent"""
+      .. non-existent-warning: Paragraph.
+
+      .. another.wrong:warning::: Paragraph.
+      """
+    var warnings = new seq[string]
+    let output = input.toHtml(warnings=warnings)
+    check output == ""
+    doAssert warnings[].len == 2
+    check "(1, 24) Warning: RST style:" in warnings[0]
+    check "double colon :: may be missing at end of 'non-existent-warning'" in warnings[0]
+    check "(3, 25) Warning: RST style:" in warnings[1]
+    check "RST style: too many colons for a directive (should be ::)" in warnings[1]
+
+  test "not a directive":
+    let input = "..warning:: I am not a warning."
+    check input.toHtml == input
 
   test "Anchors, Aliases, Tags":
     let input = """.. code-block:: yaml
@@ -114,7 +169,7 @@ suite "YAML syntax highlighting":
     : !localtag foo
     alias: *anchor
     """
-    let output = rstToHtml(input, {}, defaultConfig())
+    let output = input.toHtml({})
     doAssert output == """<pre class = "listing"><span class="Keyword">---</span> <span class="TagStart">!!map</span>
 <span class="TagStart">!!str</span> <span class="StringLit">string</span><span class="Punctuation">:</span> <span class="TagStart">!&lt;tag:yaml.org,2002:int&gt;</span> <span class="DecNumber">42</span>
 <span class="Punctuation">?</span> <span class="Label">&amp;anchor</span> <span class="TagStart">!!seq</span> <span class="Punctuation">[</span><span class="Punctuation">]</span><span class="Punctuation">:</span>
@@ -134,7 +189,7 @@ suite "YAML syntax highlighting":
     example.com/not/a#comment:
       ?not a map key
     """
-    let output = rstToHtml(input, {}, defaultConfig())
+    let output = input.toHtml({})
     doAssert output == """<pre class = "listing"><span class="Keyword">...</span>
  <span class="StringLit">%a string</span><span class="Punctuation">:</span>
   <span class="StringLit">a:string:not:a:map</span>
@@ -154,14 +209,12 @@ suite "RST/Markdown general":
       "<em>Hello</em> <strong>world</strong>!"
 
   test "Markdown links":
-    let
-      a = rstToHtml("(( [Nim](https://nim-lang.org/) ))", {roSupportMarkdown}, defaultConfig())
-      b = rstToHtml("(([Nim](https://nim-lang.org/)))", {roSupportMarkdown}, defaultConfig())
-      c = rstToHtml("[[Nim](https://nim-lang.org/)]", {roSupportMarkdown}, defaultConfig())
-
-    doAssert a == """(( <a class="reference external" href="https://nim-lang.org/">Nim</a> ))"""
-    doAssert b == """((<a class="reference external" href="https://nim-lang.org/">Nim</a>))"""
-    doAssert c == """[<a class="reference external" href="https://nim-lang.org/">Nim</a>]"""
+    check("(( [Nim](https://nim-lang.org/) ))".toHtml ==
+        """(( <a class="reference external" href="https://nim-lang.org/">Nim</a> ))""")
+    check("(([Nim](https://nim-lang.org/)))".toHtml ==
+        """((<a class="reference external" href="https://nim-lang.org/">Nim</a>))""")
+    check("[[Nim](https://nim-lang.org/)]".toHtml ==
+        """[<a class="reference external" href="https://nim-lang.org/">Nim</a>]""")
 
   test "Markdown tables":
     let input1 = """
@@ -172,18 +225,24 @@ suite "RST/Markdown general":
 | E1 \| text   |
 |              | F2 without pipe
 not in table"""
-    let output1 = rstToHtml(input1, {roSupportMarkdown}, defaultConfig())
-    doAssert output1 == """<table border="1" class="docutils"><tr><th>A1 header</th><th>A2 | not fooled</th></tr>
+    let output1 = input1.toHtml
+    #[
+    TODO: `\|` inside a table cell should render as `|`
+        `|` outside a table cell should render as `\|`
+    consistently with markdown, see https://stackoverflow.com/a/66557930/1426932
+    ]#
+    check(output1 == """
+<table border="1" class="docutils"><tr><th>A1 header</th><th>A2 | not fooled</th></tr>
 <tr><td>C1</td><td>C2 <strong>bold</strong></td></tr>
-<tr><td>D1 <tt class="docutils literal"><span class="pre">code |</span></tt></td><td>D2</td></tr>
+<tr><td>D1 <tt class="docutils literal"><span class="pre">""" & id"code" & " " & op"\|" & """</span></tt></td><td>D2</td></tr>
 <tr><td>E1 | text</td><td></td></tr>
 <tr><td></td><td>F2 without pipe</td></tr>
 </table><p>not in table</p>
-"""
+""")
     let input2 = """
 | A1 header | A2 |
 | --- | --- |"""
-    let output2 = rstToHtml(input2, {roSupportMarkdown}, defaultConfig())
+    let output2 = input2.toHtml
     doAssert output2 == """<table border="1" class="docutils"><tr><th>A1 header</th><th>A2</th></tr>
 </table>"""
 
@@ -225,7 +284,7 @@ A0     A1   X
     let input1 = """
 Check that a few punctuation symbols are not parsed as adornments:
 :word1: word2 .... word3 """
-    let output1 = rstToHtml(input1, {roSupportMarkdown}, defaultConfig())
+    let output1 = input1.toHtml
     discard output1
 
   test "RST sections":
@@ -233,7 +292,7 @@ Check that a few punctuation symbols are not parsed as adornments:
 Long chapter name
 '''''''''''''''''''
 """
-    let output1 = rstToHtml(input1, {roSupportMarkdown}, defaultConfig())
+    let output1 = input1.toHtml
     doAssert "Long chapter name" in output1 and "<h1" in output1
 
     let input2 = """
@@ -242,7 +301,7 @@ Short chapter name:
 ChA
 ===
 """
-    let output2 = rstToHtml(input2, {roSupportMarkdown}, defaultConfig())
+    let output2 = input2.toHtml
     doAssert "ChA" in output2 and "<h1" in output2
 
     let input3 = """
@@ -251,7 +310,7 @@ Very short chapter name:
 X
 ~
 """
-    let output3 = rstToHtml(input3, {roSupportMarkdown}, defaultConfig())
+    let output3 = input3.toHtml
     doAssert "X" in output3 and "<h1" in output3
 
     let input4 = """
@@ -261,8 +320,10 @@ Wrong chapter
 ------------
 
 """
-    let output4 = rstToHtml(input4, {roSupportMarkdown}, defaultConfig())
-    doAssert "Wrong chapter" in output4 and "<h1" notin output4
+    var error4 = new string
+    let output4 = input4.toHtml(error = error4)
+    check(error4[] == "input(3, 1) Error: new section expected (underline " &
+            "\'------------\' is too short)")
 
     let input5 = """
 Check that punctuation after adornment and indent are not detected as adornment.
@@ -271,23 +332,208 @@ Some chapter
 --------------
 
   "punctuation symbols" """
-    let output5 = rstToHtml(input5, {roSupportMarkdown}, defaultConfig())
+    let output5 = input5.toHtml
     doAssert "&quot;punctuation symbols&quot;" in output5 and "<h1" in output5
 
     # check that EOF after adornment does not prevent it parsing as heading
     let input6 = dedent """
       Some chapter
       ------------"""
-    let output6 = rstToHtml(input6, {roSupportMarkdown}, defaultConfig())
+    let output6 = input6.toHtml
     doAssert "<h1 id=\"some-chapter\">Some chapter</h1>" in output6
 
+    # check that overline and underline match
+    let input7 = dedent """
+      ------------
+      Some chapter
+      -----------
+      """
+    var error7 = new string
+    let output7 = input7.toHtml(error=error7)
+    check(error7[] == "input(1, 1) Error: new section expected (underline " &
+            "\'-----------\' does not match overline \'------------\')")
+
+    let input8 = dedent """
+      -----------
+          Overflow
+      -----------
+      """
+    var error8 = new string
+    let output8 = input8.toHtml(error=error8)
+    check(error8[] == "input(1, 1) Error: new section expected (overline " &
+            "\'-----------\' is too short)")
+
+    # check that hierarchy of title styles works
+    let input9good = dedent """
+      Level1
+      ======
+
+      Level2
+      ------
+
+      Level3
+      ~~~~~~
+
+      L1
+      ==
+
+      Another2
+      --------
+
+      More3
+      ~~~~~
+
+      """
+    let output9good = input9good.toHtml
+    doAssert "<h1 id=\"level1\">Level1</h1>" in output9good
+    doAssert "<h2 id=\"level2\">Level2</h2>" in output9good
+    doAssert "<h3 id=\"level3\">Level3</h3>" in output9good
+    doAssert "<h1 id=\"l1\">L1</h1>" in output9good
+    doAssert "<h2 id=\"another2\">Another2</h2>" in output9good
+    doAssert "<h3 id=\"more3\">More3</h3>" in output9good
+
+    # check that swap causes an exception
+    let input9Bad = dedent """
+      Level1
+      ======
+
+      Level2
+      ------
+      
+      Level3
+      ~~~~~~
+
+      L1
+      ==
+
+      More
+      ~~~~
+      
+      Another
+      -------
+
+      """
+    var error9Bad = new string
+    let output9Bad = input9bad.toHtml(error=error9Bad)
+    check(error9Bad[] == "input(15, 1) Error: new section expected (section " &
+            "level inconsistent: underline ~~~~~ unexpectedly found, while " &
+            "the following intermediate section level(s) are missing on " &
+            "lines 12..15: underline -----)")
+
+    # the same as input9good but with overline headings
+    # first overline heading has a special meaning: document title
+    let input10 = dedent """
+      ======
+      Title0
+      ======
+
+      +++++++++
+      SubTitle0
+      +++++++++
+
+      ------
+      Level1
+      ------
+
+      Level2
+      ------
+
+      ~~~~~~
+      Level3
+      ~~~~~~
+
+      --
+      L1
+      --
+
+      Another2
+      --------
+
+      ~~~~~
+      More3
+      ~~~~~
+
+      """
+    var option: bool
+    var rstGenera: RstGenerator
+    var output10: string
+    rstGenera.initRstGenerator(outHtml, defaultConfig(), "input", {})
+    rstGenera.renderRstToOut(rstParse(input10, "", 1, 1, option, {}), output10)
+    doAssert rstGenera.meta[metaTitle] == "Title0"
+    doAssert rstGenera.meta[metaSubTitle] == "SubTitle0"
+    doAssert "<h1 id=\"level1\"><center>Level1</center></h1>" in output10
+    doAssert "<h2 id=\"level2\">Level2</h2>" in output10
+    doAssert "<h3 id=\"level3\"><center>Level3</center></h3>" in output10
+    doAssert "<h1 id=\"l1\"><center>L1</center></h1>" in output10
+    doAssert "<h2 id=\"another2\">Another2</h2>" in output10
+    doAssert "<h3 id=\"more3\"><center>More3</center></h3>" in output10
+
+    # check that a paragraph prevents interpreting overlines as document titles
+    let input11 = dedent """
+      Paragraph
+
+      ======
+      Title0
+      ======
+
+      +++++++++
+      SubTitle0
+      +++++++++
+      """
+    var option11: bool
+    var rstGenera11: RstGenerator
+    var output11: string
+    rstGenera11.initRstGenerator(outHtml, defaultConfig(), "input", {})
+    rstGenera11.renderRstToOut(rstParse(input11, "", 1, 1, option11, {}), output11)
+    doAssert rstGenera11.meta[metaTitle] == ""
+    doAssert rstGenera11.meta[metaSubTitle] == ""
+    doAssert "<h1 id=\"title0\"><center>Title0</center></h1>" in output11
+    doAssert "<h2 id=\"subtitle0\"><center>SubTitle0</center></h2>" in output11
+
+    # check that RST and Markdown headings don't interfere
+    let input12 = dedent """
+      ======
+      Title0
+      ======
+
+      MySection1a
+      +++++++++++
+
+      # MySection1b
+
+      MySection1c
+      +++++++++++
+
+      ##### MySection5a
+
+      MySection2a
+      -----------
+      """
+    var option12: bool
+    var rstGenera12: RstGenerator
+    var output12: string
+    rstGenera12.initRstGenerator(outHtml, defaultConfig(), "input", {})
+    rstGenera12.renderRstToOut(rstParse(input12, "", 1, 1, option12, {roSupportMarkdown}), output12)
+    doAssert rstGenera12.meta[metaTitle] == "Title0"
+    doAssert rstGenera12.meta[metaSubTitle] == ""
+    doAssert output12 ==
+             "\n<h1 id=\"mysection1a\">MySection1a</h1>" & # RST
+             "\n<h1 id=\"mysection1b\">MySection1b</h1>" & # Markdown
+             "\n<h1 id=\"mysection1c\">MySection1c</h1>" & # RST
+             "\n<h5 id=\"mysection5a\">MySection5a</h5>" & # Markdown
+             "\n<h2 id=\"mysection2a\">MySection2a</h2>"   # RST
+
+  test "RST inline text":
+    let input1 = "GC_step"
+    let output1 = input1.toHtml
+    doAssert output1 == "GC_step"
 
   test "RST links":
     let input1 = """
 Want to learn about `my favorite programming language`_?
 
 .. _my favorite programming language: https://nim-lang.org"""
-    let output1 = rstToHtml(input1, {roSupportMarkdown}, defaultConfig())
+    let output1 = input1.toHtml
     doAssert "<a" in output1 and "href=\"https://nim-lang.org\"" in output1
 
   test "RST transitions":
@@ -298,7 +544,7 @@ context1
 
 context2
 """
-    let output1 = rstToHtml(input1, {roSupportMarkdown}, defaultConfig())
+    let output1 = input1.toHtml
     doAssert "<hr" in output1
 
     let input2 = """
@@ -308,8 +554,10 @@ This is too short to be a transition:
 
 context2
 """
-    let output2 = rstToHtml(input2, {roSupportMarkdown}, defaultConfig())
-    doAssert "<hr" notin output2
+    var error2 = new string
+    let output2 = input2.toHtml(error=error2)
+    check(error2[] == "input(3, 1) Error: new section expected (overline " &
+            "\'---\' is too short)")
 
   test "RST literal block":
     let input1 = """
@@ -318,7 +566,7 @@ Test literal block
 ::
 
   check """
-    let output1 = rstToHtml(input1, {roSupportMarkdown}, defaultConfig())
+    let output1 = input1.toHtml
     doAssert "<pre>" in output1
 
   test "Markdown code block":
@@ -326,7 +574,7 @@ Test literal block
 ```
 let x = 1
 ``` """
-    let output1 = rstToHtml(input1, {roSupportMarkdown}, defaultConfig())
+    let output1 = input1.toHtml
     doAssert "<pre" in output1 and "class=\"Keyword\"" notin output1
 
     let input2 = """
@@ -334,16 +582,75 @@ Parse the block with language specifier:
 ```Nim
 let x = 1
 ``` """
-    let output2 = rstToHtml(input2, {roSupportMarkdown}, defaultConfig())
+    let output2 = input2.toHtml
     doAssert "<pre" in output2 and "class=\"Keyword\"" in output2
+
+  test "interpreted text":
+    check("""`foo.bar`""".toHtml ==
+      """<tt class="docutils literal"><span class="pre">""" &
+      id"foo" & op"." & id"bar" & "</span></tt>")
+    check("""`foo\`\`bar`""".toHtml ==
+      """<tt class="docutils literal"><span class="pre">""" &
+      id"foo" & pu"`" & pu"`" & id"bar" & "</span></tt>")
+    check("""`foo\`bar`""".toHtml ==
+      """<tt class="docutils literal"><span class="pre">""" &
+      id"foo" & pu"`" & id"bar" & "</span></tt>")
+    check("""`\`bar`""".toHtml ==
+      """<tt class="docutils literal"><span class="pre">""" &
+      pu"`" & id"bar" & "</span></tt>")
+    check("""`a\b\x\\ar`""".toHtml ==
+      """<tt class="docutils literal"><span class="pre">""" &
+      id"a" & op"""\""" & id"b" & op"""\""" & id"x" & op"""\\""" & id"ar" &
+      "</span></tt>")
+
+  test "inline literal":
+    check """``foo.bar``""".toHtml == """<tt class="docutils literal"><span class="pre">foo.bar</span></tt>"""
+    check """``foo\bar``""".toHtml == """<tt class="docutils literal"><span class="pre">foo\bar</span></tt>"""
+    check """``f\`o\\o\b`ar``""".toHtml == """<tt class="docutils literal"><span class="pre">f\`o\\o\b`ar</span></tt>"""
+
+  test "default-role":
+    # nim(default) -> literal -> nim -> code(=literal)
+    let input = dedent"""
+      Par1 `value1`.
+
+      .. default-role:: literal
+
+      Par2 `value2`.
+
+      .. default-role:: nim
+
+      Par3 `value3`.
+
+      .. default-role:: code
+
+      Par4 `value4`."""
+    let p1 = """Par1 <tt class="docutils literal"><span class="pre">""" & id"value1" & "</span></tt>."
+    let p2 = """<p>Par2 <tt class="docutils literal"><span class="pre">value2</span></tt>.</p>"""
+    let p3 = """<p>Par3 <tt class="docutils literal"><span class="pre">""" & id"value3" & "</span></tt>.</p>"
+    let p4 = """<p>Par4 <tt class="docutils literal"><span class="pre">value4</span></tt>.</p>"""
+    let expected = p1 & p2 & "\n" & p3 & "\n" & p4 & "\n"
+    check(input.toHtml == expected)
+
+  test "role directive":
+    let input = dedent"""
+      .. role:: y(code)
+         :language: yaml
+
+      .. role:: brainhelp(code)
+         :language: brainhelp
+    """
+    var warnings = new seq[string]
+    let output = input.toHtml(warnings=warnings)
+    check(warnings[].len == 1 and "language 'brainhelp' not supported" in warnings[0])
 
   test "RST comments":
     let input1 = """
+
 Check that comment disappears:
 
 ..
   some comment """
-    let output1 = rstToHtml(input1, {roSupportMarkdown}, defaultConfig())
+    let output1 = input1.toHtml
     doAssert output1 == "Check that comment disappears:"
 
   test "RST line blocks":
@@ -378,7 +685,7 @@ Test1
 
       Paragraph2"""
 
-    let output2 = rstToHtml(input2, {roSupportMarkdown}, defaultConfig())
+    let output2 = input2.toHtml
     doAssert "Paragraph1<p><br/></p> <p>Paragraph2</p>\n" == output2
 
     let input3 = dedent"""
@@ -386,7 +693,7 @@ Test1
       |   yyy
       |     zzz"""
 
-    let output3 = rstToHtml(input3, {roSupportMarkdown}, defaultConfig())
+    let output3 = input3.toHtml
     doAssert "xxx<br/>" in output3
     doAssert "<span style=\"margin-left: 1.0em\">yyy</span><br/>" in output3
     doAssert "<span style=\"margin-left: 2.0em\">zzz</span><br/>" in output3
@@ -397,7 +704,7 @@ Test1
       |      
       |     zzz"""
 
-    let output4 = rstToHtml(input4, {roSupportMarkdown}, defaultConfig())
+    let output4 = input4.toHtml
     doAssert "xxx<br/><br/>" in output4
     doAssert "<span style=\"margin-left: 2.0em\">zzz</span><br/>" in output4
 
@@ -420,7 +727,7 @@ Test1
       5. line5
          5
       """
-    let output1 = rstToHtml(input1, {roSupportMarkdown}, defaultConfig())
+    let output1 = input1.toHtml
     for i in 1..5:
       doAssert ($i & ". line" & $i) notin output1
       doAssert ("<li>line" & $i & " " & $i & "</li>") in output1
@@ -442,7 +749,7 @@ Test1
 
       8. line8
       """
-    let output2 = rstToHtml(input2, {roSupportMarkdown}, defaultConfig())
+    let output2 = input2.toHtml
     for i in [3, 4, 5, 7, 8]:
       doAssert ($i & ". line" & $i) notin output2
       doAssert ("<li>line" & $i & "</li>") in output2
@@ -452,7 +759,7 @@ Test1
       1.  a) string1
       2. string2
       """
-    let output3 = rstToHtml(input3, {roSupportMarkdown}, defaultConfig())
+    let output3 = input3.toHtml
     doAssert count(output3, "<ol ") == 2
     doAssert count(output3, "</ol>") == 2
     doAssert "<li>string1</li>" in output3 and "<li>string2</li>" in output3
@@ -468,7 +775,7 @@ Test1
       c) string5
       e) string6
       """
-    let output4 = rstToHtml(input4, {roSupportMarkdown}, defaultConfig())
+    let output4 = input4.toHtml
     doAssert count(output4, "<ol ") == 4
     doAssert count(output4, "</ol>") == 4
     for enumerator in [9, 12]:
@@ -488,7 +795,7 @@ Test1
       #) string5
       #) string6
       """
-    let output5 = rstToHtml(input5, {roSupportMarkdown}, defaultConfig())
+    let output5 = input5.toHtml
     doAssert count(output5, "<ol ") == 2
     doAssert count(output5, "</ol>") == 2
     doAssert count(output5, "<li>") == 5
@@ -500,7 +807,7 @@ Test1
       #. string2
       #. string3
       """
-    let output5a = rstToHtml(input5a, {roSupportMarkdown}, defaultConfig())
+    let output5a = input5a.toHtml
     doAssert count(output5a, "<ol ") == 1
     doAssert count(output5a, "</ol>") == 1
     doAssert count(output5a, "<li>") == 3
@@ -512,7 +819,7 @@ Test1
       #. string2
       #. string3
       """
-    let output6 = rstToHtml(input6, {roSupportMarkdown}, defaultConfig())
+    let output6 = input6.toHtml
     doAssert count(output6, "<ol ") == 1
     doAssert count(output6, "</ol>") == 1
     doAssert count(output6, "<li>") == 3
@@ -525,11 +832,28 @@ Test1
       #. string2
       #. string3
       """
-    let output7 = rstToHtml(input7, {roSupportMarkdown}, defaultConfig())
+    let output7 = input7.toHtml
     doAssert count(output7, "<ol ") == 1
     doAssert count(output7, "</ol>") == 1
     doAssert count(output7, "<li>") == 3
     doAssert "start=\"3\"" in output7 and "class=\"upperalpha simple\"" in output7
+
+    # check that it's not recognized as enum.list without indentation on 2nd line
+    let input8 = dedent """
+      Paragraph.
+
+      A. stringA
+      B. stringB
+      C. string1
+      string2
+      """
+    var warnings8 = new seq[string]
+    let output8 = input8.toHtml(warnings = warnings8)
+    check(warnings8[].len == 1)
+    check("input(6, 1) Warning: RST style: \n" &
+          "not enough indentation on line 6" in warnings8[0])
+    doAssert output8 == "Paragraph.<ol class=\"upperalpha simple\">" &
+        "<li>stringA</li>\n<li>stringB</li>\n</ol>\n<p>C. string1 string2 </p>\n"
 
   test "Markdown enumerated lists":
     let input1 = dedent """
@@ -543,7 +867,7 @@ Test1
 
       #. lineA
       """
-    let output1 = rstToHtml(input1, {roSupportMarkdown}, defaultConfig())
+    let output1 = input1.toHtml
     for i in 1..5:
       doAssert ($i & ". line" & $i) notin output1
       doAssert ("<li>line" & $i & "</li>") in output1
@@ -569,7 +893,7 @@ Test1
       * line5
         5
       """
-    let output1 = rstToHtml(input1, {roSupportMarkdown}, defaultConfig())
+    let output1 = input1.toHtml
     for i in 1..5:
       doAssert ("<li>line" & $i & " " & $i & "</li>") in output1
     doAssert count(output1, "<ul ") == 1
@@ -671,9 +995,11 @@ Test1
 
       Ref. [#note]_
       """
-    # TODO: find out hot to configure proper exception instead of defect
-    expect(AssertionDefect):
-      let output5 = input5.toHtml
+    var error5 = new string
+    let output5 = input5.toHtml(error=error5)
+    check(error5[] == "input(6, 1) Error: mismatch in number of footnotes " &
+            "and their refs: 1 (lines 2) != 0 (lines ) for auto-numbered " &
+            "footnotes")
 
     # extra [*]_
     let input6 = dedent """
@@ -683,8 +1009,11 @@ Test1
 
       Ref. [*]_
       """
-    expect(AssertionDefect):
-      let output6 = input6.toHtml
+    var error6 = new string
+    let output6 = input6.toHtml(error=error6)
+    check(error6[] == "input(6, 1) Error: mismatch in number of footnotes " &
+            "and their refs: 1 (lines 3) != 2 (lines 2, 6) for auto-symbol " &
+            "footnotes")
 
     let input7 = dedent """
       .. [Some:CITATION-2020] Citation.
@@ -703,8 +1032,10 @@ Test1
 
       Ref. [som]_.
       """
-    expect(AssertionDefect):
-      let output8 = input8.toHtml
+    var warnings8 = new seq[string]
+    let output8 = input8.toHtml(warnings=warnings8)
+    check(warnings8[] == @["input(4, 1) Warning: unknown substitution " &
+            "\'citation-som\'"])
 
     # check that footnote group does not break parsing of other directives:
     let input9 = dedent """
@@ -780,8 +1111,29 @@ Test1
          :number-lines: 0
 
       Paragraph1"""
-    let output0 = rstToHtml(input0, {roSupportMarkdown}, defaultConfig())
+    let output0 = input0.toHtml
     doAssert "<p>Paragraph1</p>" in output0
+
+  test "Nim code-block :number-lines:":
+    let input = dedent """
+      .. code-block:: nim
+         :number-lines: 55
+
+         x
+         y
+      """
+    check "<pre class=\"line-nums\">55\n56\n</pre>" in input.toHtml
+
+  test "Nim code-block indentation":
+    let input = dedent """
+      .. code-block:: nim
+        :number-lines: 55
+
+       x
+      """
+    let output = input.toHtml
+    check "<pre class=\"line-nums\">55\n</pre>" in output
+    check "<span class=\"Identifier\">x</span>" in output
 
   test "RST admonitions":
     # check that all admonitions are implemented
@@ -797,7 +1149,7 @@ Test1
       .. tip:: endOf tip
       .. warning:: endOf warning
     """
-    let output0 = rstToHtml(input0, {roSupportMarkdown}, defaultConfig())
+    let output0 = input0.toHtml
     for a in ["admonition", "attention", "caution", "danger", "error", "hint",
         "important", "note", "tip", "warning" ]:
       doAssert "endOf " & a & "</div>" in output0
@@ -808,7 +1160,7 @@ Test1
 
       Test paragraph.
     """
-    let output1 = rstToHtml(input1, {roSupportMarkdown}, defaultConfig())
+    let output1 = input1.toHtml
     doAssert "endOfError</div>" in output1
     doAssert "<p>Test paragraph. </p>" in output1
     doAssert "class=\"admonition admonition-error\"" in output1
@@ -820,7 +1172,7 @@ Test1
 
       Test paragraph.
     """
-    let output2 = rstToHtml(input2, {roSupportMarkdown}, defaultConfig())
+    let output2 = input2.toHtml
     doAssert "endOfError Test2p.</div>" in output2
     doAssert "<p>Test paragraph. </p>" in output2
     doAssert "class=\"admonition admonition-error\"" in output2
@@ -828,7 +1180,7 @@ Test1
     let input3 = dedent """
       .. note:: endOfNote
     """
-    let output3 = rstToHtml(input3, {roSupportMarkdown}, defaultConfig())
+    let output3 = input3.toHtml
     doAssert "endOfNote</div>" in output3
     doAssert "class=\"admonition admonition-info\"" in output3
 
@@ -913,14 +1265,14 @@ Test1
 
       That was a transition.
     """
-    let output1 = rstToHtml(input1, {roSupportMarkdown}, defaultConfig())
+    let output1 = input1.toHtml
     doAssert "<p id=\"target000\""     in output1
     doAssert "<ul id=\"target001\""    in output1
     doAssert "<ol id=\"target002\""    in output1
     doAssert "<dl id=\"target003\""    in output1
     doAssert "<p id=\"target004\""     in output1
     doAssert "<table id=\"target005\"" in output1  # field list
-    doAssert "<table id=\"target006\"" in output1  # option list
+    doAssert "<div id=\"target006\""   in output1  # option list
     doAssert "<pre id=\"target007\""   in output1
     doAssert "<blockquote id=\"target009\"" in output1
     doAssert "<table id=\"target010\"" in output1  # just table
@@ -939,7 +1291,7 @@ Test1
 
       Ref. target101_
     """
-    let output1 = rstToHtml(input1, {roSupportMarkdown}, defaultConfig())
+    let output1 = input1.toHtml
     # "target101" should be erased and changed to "section-xyz":
     doAssert "href=\"#target101\"" notin output1
     doAssert "id=\"target101\""    notin output1
@@ -968,7 +1320,7 @@ Test1
       Ref. target103_.
 
     """
-    let output2 = rstToHtml(input2, {roSupportMarkdown}, defaultConfig())
+    let output2 = input2.toHtml
     # "target101" should be erased and changed to "section-xyz":
     doAssert "href=\"#target300\"" notin output2
     doAssert "id=\"target300\""    notin output2
@@ -992,11 +1344,157 @@ Test1
 
       Ref. `some definition`_.
     """
-    let output1 = rstToHtml(input1, {roSupportMarkdown}, defaultConfig())
+    let output1 = input1.toHtml
     doAssert "<span class=\"target\" " &
         "id=\"some-definition\">some definition</span>" in output1
     doAssert "Ref. <a class=\"reference internal\" " &
         "href=\"#some-definition\">some definition</a>" in output1
+
+  test "RST references (additional symbols)":
+    # check that ., _, -, +, : are allowed symbols in references without ` `
+    let input1 = dedent """
+      sec.1
+      -----
+
+      2-other:sec+c_2
+      ^^^^^^^^^^^^^^^
+
+      .. _link.1_2021:
+
+      Paragraph
+
+      Ref. sec.1_! and 2-other:sec+c_2_;and link.1_2021_.
+    """
+    let output1 = input1.toHtml
+    doAssert "id=\"secdot1\"" in output1
+    doAssert "id=\"Z2minusothercolonsecplusc-2\"" in output1
+    doAssert "id=\"linkdot1-2021\"" in output1
+    let ref1 = "<a class=\"reference internal\" href=\"#secdot1\">sec.1</a>"
+    let ref2 = "<a class=\"reference internal\" href=\"#Z2minusothercolonsecplusc-2\">2-other:sec+c_2</a>"
+    let ref3 = "<a class=\"reference internal\" href=\"#linkdot1-2021\">link.1_2021</a>"
+    let refline = "Ref. " & ref1 & "! and " & ref2 & ";and " & ref3 & "."
+    doAssert refline in output1
+
+  test "Option lists 1":
+    # check that "* b" is not consumed by previous bullet item because of
+    # incorrect indentation handling in option lists
+    let input = dedent """
+      * a
+        -m   desc
+        -n   very long
+             desc
+      * b"""
+    let output = input.toHtml
+    check(output.count("<ul") == 1)
+    check(output.count("<li>") == 2)
+    check(output.count("<div class=\"option-list\"") == 1)
+    check(optionListLabel("-m") &
+          """<div class="option-list-description">desc</div></div>""" in
+          output)
+    check(optionListLabel("-n") &
+          """<div class="option-list-description">very long desc</div></div>""" in
+          output)
+
+  test "Option lists 2":
+    # check that 2nd option list is not united with the 1st
+    let input = dedent """
+      * a
+        -m   desc
+        -n   very long
+             desc
+      -d  option"""
+    let output = input.toHtml
+    check(output.count("<ul") == 1)
+    check output.count("<div class=\"option-list\"") == 2
+    check(optionListLabel("-m") &
+          """<div class="option-list-description">desc</div></div>""" in
+          output)
+    check(optionListLabel("-n") &
+          """<div class="option-list-description">very long desc</div></div>""" in
+          output)
+    check(optionListLabel("-d") &
+          """<div class="option-list-description">option</div></div>""" in
+          output)
+    check "<p>option</p>" notin output
+
+  test "Option list 3 (double /)":
+    let input = dedent """
+      * a
+        //compile  compile1
+        //doc      doc1
+                   cont
+      -d  option"""
+    let output = input.toHtml
+    check(output.count("<ul") == 1)
+    check output.count("<div class=\"option-list\"") == 2
+    check(optionListLabel("compile") &
+          """<div class="option-list-description">compile1</div></div>""" in
+          output)
+    check(optionListLabel("doc") &
+          """<div class="option-list-description">doc1 cont</div></div>""" in
+          output)
+    check(optionListLabel("-d") &
+          """<div class="option-list-description">option</div></div>""" in
+          output)
+    check "<p>option</p>" notin output
+
+  test "Roles: subscript prefix/postfix":
+    let expected = "See <sub>some text</sub>."
+    check "See :subscript:`some text`.".toHtml == expected
+    check "See `some text`:subscript:.".toHtml == expected
+
+  test "Roles: correct parsing from beginning of line":
+    let expected = "<sup>3</sup>He is an isotope of helium."
+    check """:superscript:`3`\ He is an isotope of helium.""".toHtml == expected
+    check """:sup:`3`\ He is an isotope of helium.""".toHtml == expected
+    check """`3`:sup:\ He is an isotope of helium.""".toHtml == expected
+    check """`3`:superscript:\ He is an isotope of helium.""".toHtml == expected
+
+  test "Roles: warnings":
+    let input = dedent"""
+      See function :py:func:`spam`.
+
+      See also `egg`:py:class:.
+      """
+    var warnings = new seq[string]
+    let output = input.toHtml(warnings=warnings)
+    doAssert warnings[].len == 2
+    check "(1, 14) Warning: " in warnings[0]
+    check "language 'py:func' not supported" in warnings[0]
+    check "(3, 15) Warning: " in warnings[1]
+    check "language 'py:class' not supported" in warnings[1]
+    check("""<p>See function <span class="py:func">spam</span>.</p>""" & "\n" &
+          """<p>See also <span class="py:class">egg</span>. </p>""" & "\n" ==
+          output)
+
+  test "(not) Roles: check escaping 1":
+    let expected = """See :subscript:<tt class="docutils literal">""" &
+                   """<span class="pre">""" & id"some" & " " & id"text" &
+                   "</span></tt>."
+    check """See \:subscript:`some text`.""".toHtml == expected
+    check """See :subscript\:`some text`.""".toHtml == expected
+
+  test "(not) Roles: check escaping 2":
+    check("""See :subscript:\`some text\`.""".toHtml ==
+          "See :subscript:`some text`.")
+
+  test "Field list":
+    check(":field: text".toHtml ==
+            """<table class="docinfo" frame="void" rules="none">""" &
+            """<col class="docinfo-name" /><col class="docinfo-content" />""" &
+            """<tbody valign="top"><tr><th class="docinfo-name">field:</th>""" &
+            """<td>text</td></tr>""" & "\n</tbody></table>")
+
+  test "Field list: body after newline":
+    let output = dedent """
+      :field:
+        text1""".toHtml
+    check "<table class=\"docinfo\"" in output
+    check ">field:</th>" in output
+    check "<td>text1</td>" in output
+
+  test "Field list (incorrect)":
+    check ":field:text".toHtml == ":field:text"
 
 suite "RST/Code highlight":
   test "Basic Python code highlight":

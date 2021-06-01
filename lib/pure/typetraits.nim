@@ -15,6 +15,21 @@
 import std/private/since
 export system.`$` # for backward compatibility
 
+type HoleyEnum* = (not Ordinal) and enum ## Enum with holes.
+type OrdinalEnum* = Ordinal and enum ## Enum without holes.
+
+runnableExamples:
+  type A = enum a0 = 2, a1 = 4, a2
+  type B = enum b0 = 2, b1, b2
+  assert A is enum
+  assert A is HoleyEnum
+  assert A isnot OrdinalEnum
+  assert B isnot HoleyEnum
+  assert B is OrdinalEnum
+  assert int isnot HoleyEnum
+  type C[T] = enum h0 = 2, h1 = 4
+  assert C[float] is HoleyEnum
+
 proc name*(t: typedesc): string {.magic: "TypeTrait".} =
   ## Returns the name of the given type.
   ##
@@ -152,7 +167,7 @@ since (1, 3, 5):
 
     typeof(block: (for ai in a: ai))
 
-import std/macros
+import macros
 
 macro enumLen*(T: typedesc[enum]): int =
   ## Returns the number of items in the enum `T`.
@@ -248,3 +263,14 @@ since (1, 1):
 
     type T2 = T
     genericParamsImpl(T2)
+
+
+proc hasClosureImpl(n: NimNode): bool = discard "see compiler/vmops.nim"
+
+proc hasClosure*(fn: NimNode): bool {.since: (1, 5, 1).} =
+  ## Return true if the func/proc/etc `fn` has `closure`.
+  ## `fn` has to be a resolved symbol of kind `nnkSym`. This
+  ## implies that the macro that calls this proc should accept `typed`
+  ## arguments and not `untyped` arguments.
+  expectKind fn, nnkSym
+  result = hasClosureImpl(fn)

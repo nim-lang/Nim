@@ -1,11 +1,12 @@
 discard """
   valgrind: true
-  cmd: '''nim c -d:nimAllocStats --newruntime -d:useMalloc $file'''
+  cmd: '''nim c -d:nimAllocStats --gc:arc -d:useMalloc $file'''
   output: '''
 @[(input: @["KXSC", "BGMC"]), (input: @["PXFX"]), (input: @["WXRQ", "ZSCZD"])]
 14
 First tasks completed.
-Second tasks completed.'''
+Second tasks completed.
+test1'''
 """
 
 import strutils, os, std / wordwrap
@@ -241,3 +242,13 @@ when true:
   test_string_b.setLen new_len_b
 
   echo "Second tasks completed."
+
+# bug #17450
+proc main =
+  var i = 1
+  echo:
+    block:
+      "test" & $i
+
+main()
+

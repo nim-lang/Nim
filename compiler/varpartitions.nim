@@ -57,6 +57,7 @@ type
     ownsData,
     preventCursor,
     isReassigned,
+    isConditionallyReassigned,
     viewDoesMutate,
     viewBorrowsFromConst
 
@@ -98,6 +99,7 @@ type
     goals: set[Goal]
     unanalysableMutation: bool
     inAsgnSource, inConstructor, inNoSideEffectSection: int
+    inConditional, inLoop: int
     owner: PSym
     g: ModuleGraph
 
@@ -629,7 +631,8 @@ const
     nkTypeSection, nkProcDef, nkConverterDef,
     nkMethodDef, nkIteratorDef, nkMacroDef, nkTemplateDef, nkLambda, nkDo,
     nkFuncDef, nkConstSection, nkConstDef, nkIncludeStmt, nkImportStmt,
-    nkExportStmt, nkPragma, nkCommentStmt, nkBreakState, nkTypeOfExpr}
+    nkExportStmt, nkPragma, nkCommentStmt, nkBreakState,
+    nkTypeOfExpr, nkMixinStmt, nkBindStmt}
 
 proc potentialMutationViaArg(c: var Partitions; n: PNode; callee: PType) =
   if constParameters in c.goals and tfNoSideEffect in callee.flags:
@@ -692,7 +695,7 @@ proc traverse(c: var Partitions; n: PNode) =
               # 'paramType[0]' is still a view type, this is not a typo!
               if directViewType(paramType[0]) == noView and classifyViewType(paramType[0]) != noView:
                 borrowingCall(c, paramType[0], n, i)
-        elif borrowChecking in c.goals and m == mNone:
+        elif m == mNone:
           potentialMutationViaArg(c, n[i], parameters)
 
   of nkAddr, nkHiddenAddr:
@@ -748,6 +751,13 @@ proc traverse(c: var Partitions; n: PNode) =
   else:
     for child in n: traverse(c, child)
 
+proc markAsReassigned(c: var Partitions; vid: int) {.inline.} =
+  c.s[vid].flags.incl isReassigned
+  if c.inConditional > 0 and c.inLoop > 0:
+    # bug #17033: live ranges with loops and conditionals are too
+    # complex for our current analysis, so we prevent the cursorfication.
+    c.s[vid].flags.incl isConditionallyReassigned
+
 proc computeLiveRanges(c: var Partitions; n: PNode) =
   # first pass: Compute live ranges for locals.
   # **Watch out!** We must traverse the tree like 'traverse' does
@@ -777,7 +787,7 @@ proc computeLiveRanges(c: var Partitions; n: PNode) =
         if n[1].kind == nkSym and (c.s[vid].reassignedTo == 0 or c.s[vid].reassignedTo == n[1].sym.id):
           c.s[vid].reassignedTo = n[1].sym.id
         else:
-          c.s[vid].flags.incl isReassigned
+          markAsReassigned(c, vid)
 
   of nkSym:
     dec c.abstractTime
@@ -804,7 +814,7 @@ proc computeLiveRanges(c: var Partitions; n: PNode) =
         if not paramType.isCompileTimeOnly and paramType.kind == tyVar:
           let vid = variableId(c, it.sym)
           if vid >= 0:
-            c.s[vid].flags.incl isReassigned
+            markAsReassigned(c, vid)
 
   of nkAddr, nkHiddenAddr:
     computeLiveRanges(c, n[0])
@@ -822,7 +832,13 @@ proc computeLiveRanges(c: var Partitions; n: PNode) =
     #   while cond:
     #     mutate(graph)
     #     connect(graph, cursorVar)
+    inc c.inLoop
     for child in n: computeLiveRanges(c, child)
+    inc c.inLoop
+  of nkElifBranch, nkElifExpr, nkElse, nkOfBranch:
+    inc c.inConditional
+    for child in n: computeLiveRanges(c, child)
+    dec c.inConditional
   else:
     for child in n: computeLiveRanges(c, child)
 
@@ -896,7 +912,8 @@ proc computeCursors*(s: PSym; n: PNode; g: ModuleGraph) =
   var par = computeGraphPartitions(s, n, g, {cursorInference})
   for i in 0 ..< par.s.len:
     let v = addr(par.s[i])
-    if v.flags * {ownsData, preventCursor} == {} and v.sym.kind notin {skParam, skResult} and
+    if v.flags * {ownsData, preventCursor, isConditionallyReassigned} == {} and
+        v.sym.kind notin {skParam, skResult} and
         v.sym.flags * {sfThread, sfGlobal} == {} and hasDestructor(v.sym.typ) and
         v.sym.typ.skipTypes({tyGenericInst, tyAlias}).kind != tyOwned:
       let rid = root(par, i)
@@ -904,4 +921,4 @@ proc computeCursors*(s: PSym; n: PNode; g: ModuleGraph) =
         discard "cannot cursor into a graph that is mutated"
       else:
         v.sym.flags.incl sfCursor
-        #echo "this is now a cursor ", v.sym, " ", par.s[rid].flags, " ", config $ v.sym.info
+        #echo "this is now a cursor ", v.sym, " ", par.s[rid].flags, " ", g.config $ v.sym.info

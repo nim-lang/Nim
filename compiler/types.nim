@@ -11,7 +11,7 @@
 
 import
   intsets, ast, astalgo, trees, msgs, strutils, platform, renderer, options,
-  lineinfos, int128, modulegraphs
+  lineinfos, int128, modulegraphs, astmsgs
 
 type
   TPreferedDesc* = enum
@@ -65,9 +65,6 @@ const
                   tyAlias, tyInferred, tySink, tyLent, tyOwned}
   abstractRange* = {tyGenericInst, tyRange, tyDistinct, tyOrdinal, tyTypeDesc,
                     tyAlias, tyInferred, tySink, tyOwned}
-  # see also ast.abstractVarRange
-  abstractInst* = {tyGenericInst, tyDistinct, tyOrdinal, tyTypeDesc, tyAlias,
-                   tyInferred, tySink, tyOwned}
   abstractInstOwned* = abstractInst + {tyOwned}
   skipPtrs* = {tyVar, tyPtr, tyRef, tyGenericInst, tyTypeDesc, tyAlias,
                tyInferred, tySink, tyLent, tyOwned}
@@ -122,23 +119,6 @@ proc isIntLit*(t: PType): bool {.inline.} =
 
 proc isFloatLit*(t: PType): bool {.inline.} =
   result = t.kind == tyFloat and t.n != nil and t.n.kind == nkFloatLit
-
-proc addDeclaredLoc*(result: var string, conf: ConfigRef; sym: PSym) =
-  result.add " [$1 declared in $2]" % [sym.kind.toHumanStr, toFileLineCol(conf, sym.info)]
-
-proc addDeclaredLocMaybe*(result: var string, conf: ConfigRef; sym: PSym) =
-  if optDeclaredLocs in conf.globalOptions and sym != nil:
-    addDeclaredLoc(result, conf, sym)
-
-proc addDeclaredLoc(result: var string, conf: ConfigRef; typ: PType) =
-  let typ = typ.skipTypes(abstractInst - {tyRange})
-  result.add " [$1" % typ.kind.toHumanStr
-  if typ.sym != nil:
-    result.add " declared in " & toFileLineCol(conf, typ.sym.info)
-  result.add "]"
-
-proc addDeclaredLocMaybe*(result: var string, conf: ConfigRef; typ: PType) =
-  if optDeclaredLocs in conf.globalOptions: addDeclaredLoc(result, conf, typ)
 
 proc addTypeHeader*(result: var string, conf: ConfigRef; typ: PType; prefer: TPreferedDesc = preferMixed; getDeclarationPath = true) =
   result.add typeToString(typ, prefer)
@@ -379,13 +359,13 @@ proc canFormAcycleAux(marker: var IntSet, typ: PType, startId: int): bool =
   if tfAcyclic in t.flags: return
   case t.kind
   of tyTuple, tyObject, tyRef, tySequence, tyArray, tyOpenArray, tyVarargs:
-    if not containsOrIncl(marker, t.id):
+    if t.id == startId:
+      result = true
+    elif not containsOrIncl(marker, t.id):
       for i in 0..<t.len:
         result = canFormAcycleAux(marker, t[i], startId)
         if result: return
       if t.n != nil: result = canFormAcycleNode(marker, t.n, startId)
-    else:
-      result = t.id == startId
     # Inheritance can introduce cyclic types, however this is not relevant
     # as the type that is passed to 'new' is statically known!
     # er but we use it also for the write barrier ...
@@ -401,7 +381,8 @@ proc isFinal*(t: PType): bool =
 
 proc canFormAcycle*(typ: PType): bool =
   var marker = initIntSet()
-  result = canFormAcycleAux(marker, typ, typ.id)
+  let t = skipTypes(typ, abstractInst+{tyOwned}-{tyTypeDesc})
+  result = canFormAcycleAux(marker, t, t.id)
 
 proc mutateTypeAux(marker: var IntSet, t: PType, iter: TTypeMutator,
                    closure: RootRef): PType
@@ -460,8 +441,8 @@ const
     "lent ", "varargs[$1]", "UncheckedArray[$1]", "Error Type",
     "BuiltInTypeClass", "UserTypeClass",
     "UserTypeClassInst", "CompositeTypeClass", "inferred",
-    "and", "or", "not", "any", "static", "TypeFromExpr", "out ",
-    "void"]
+    "and", "or", "not", "any", "static", "TypeFromExpr", "concept", # xxx bugfix
+    "void", "iterable"]
 
 const preferToResolveSymbols = {preferName, preferTypeName, preferModuleInfo,
   preferGenericArg, preferResolved, preferMixed}
@@ -503,7 +484,7 @@ proc typeToString(typ: PType, prefer: TPreferedDesc = preferName): string =
         result = typeToString(t[0])
       elif prefer in {preferResolved, preferMixed}:
         case t.kind
-        of IntegralTypes + {tyFloat..tyFloat128} + {tyString, tyCString}:
+        of IntegralTypes + {tyFloat..tyFloat128} + {tyString, tyCstring}:
           result = typeToStr[t.kind]
         of tyGenericBody:
           result = typeToString(t.lastSon)
@@ -645,6 +626,11 @@ proc typeToString(typ: PType, prefer: TPreferedDesc = preferName): string =
     of tyDistinct:
       result = "distinct " & typeToString(t[0],
         if prefer == preferModuleInfo: preferModuleInfo else: preferTypeName)
+    of tyIterable:
+      # xxx factor this pattern
+      result = "iterable"
+      if t.len > 0:
+        result &= "[" & typeToString(t[0]) & ']'
     of tyTuple:
       # we iterate over t.sons here, because t.n may be nil
       if t.n != nil:
@@ -757,7 +743,7 @@ proc firstOrd*(conf: ConfigRef; t: PType): Int128 =
   of tyOrdinal:
     if t.len > 0: result = firstOrd(conf, lastSon(t))
     else: internalError(conf, "invalid kind for firstOrd(" & $t.kind & ')')
-  of tyUncheckedArray, tyCString:
+  of tyUncheckedArray, tyCstring:
     result = Zero
   else:
     internalError(conf, "invalid kind for firstOrd(" & $t.kind & ')')
@@ -1124,7 +1110,7 @@ proc sameTypeAux(x, y: PType, c: var TSameTypeClosure): bool =
     return true
 
   case a.kind
-  of tyEmpty, tyChar, tyBool, tyNil, tyPointer, tyString, tyCString,
+  of tyEmpty, tyChar, tyBool, tyNil, tyPointer, tyString, tyCstring,
      tyInt..tyUInt64, tyTyped, tyUntyped, tyVoid:
     result = sameFlags(a, b)
   of tyStatic, tyFromExpr:
@@ -1191,11 +1177,12 @@ proc sameTypeAux(x, y: PType, c: var TSameTypeClosure): bool =
     result = sameTypeOrNilAux(a[0], b[0], c) and
         sameValue(a.n[0], b.n[0]) and
         sameValue(a.n[1], b.n[1])
-  of tyGenericInst, tyAlias, tyInferred:
+  of tyGenericInst, tyAlias, tyInferred, tyIterable:
     cycleCheck()
     result = sameTypeAux(a.lastSon, b.lastSon, c)
   of tyNone: result = false
-  of tyOptDeprecated: doAssert false
+  of tyConcept:
+    result = exprStructuralEquivalent(a.n, b.n)
 
 proc sameBackendType*(x, y: PType): bool =
   var c = initSameTypeClosure()
@@ -1270,6 +1257,7 @@ proc matchType*(a: PType, pattern: openArray[tuple[k:TTypeKind, i:int]],
     if i >= a.len or a[i] == nil: return false
     a = a[i]
   result = a.kind == last
+
 
 include sizealignoffsetimpl
 
@@ -1515,6 +1503,8 @@ proc typeMismatch*(conf: ConfigRef; info: TLineInfo, formal, actual: PType, n: P
         msg.add "\n.tag effect is 'any tag allowed'"
       of efLockLevelsDiffer:
         msg.add "\nlock levels differ"
+    if formal.kind == tyEnum and actual.kind == tyEnum:
+      msg.add "\nmaybe use `-d:nimLegacyConvEnumEnum` for a transition period"
     localError(conf, info, msg)
 
 proc isTupleRecursive(t: PType, cycleDetector: var IntSet): bool =

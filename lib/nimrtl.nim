@@ -12,7 +12,7 @@ batchable: false
 #
 
 ## Main file to generate a DLL from the standard library.
-## The default Nimrtl does not only contain the ``system`` module, but these
+## The default Nimrtl does not only contain the `system` module, but these
 ## too:
 ##
 ## * parseutils

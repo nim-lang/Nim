@@ -12,7 +12,7 @@
 ## use this representation directly in all the transformations,
 ## it is superior.
 
-import std / [hashes, tables, strtabs]
+import hashes, tables, strtabs
 import bitabs
 import ".." / [ast, options]
 
@@ -86,7 +86,7 @@ type
     typeInst*: PackedItemId
     nonUniqueId*: int32
 
-  PackedNode* = object     # 20 bytes
+  PackedNode* = object     # 28 bytes
     kind*: TNodeKind
     flags*: TNodeFlags
     operand*: int32  # for kind in {nkSym, nkSymDef}: SymId
@@ -98,17 +98,6 @@ type
 
   PackedTree* = object ## usually represents a full Nim module
     nodes*: seq[PackedNode]
-    #sh*: Shared
-
-  Shared* = ref object # shared between different versions of 'Module'.
-                       # (though there is always exactly one valid
-                       # version of a module)
-    syms*: seq[PackedSym]
-    types*: seq[PackedType]
-    strings*: BiTable[string] # we could share these between modules.
-    integers*: BiTable[BiggestInt]
-    floats*: BiTable[BiggestFloat]
-    #config*: ConfigRef
 
   PackedInstantiation* = object
     key*, sym*: PackedItemId
@@ -258,9 +247,9 @@ iterator sonsWithoutLast2*(tree: PackedTree; n: NodePos): NodePos =
 proc parentImpl(tree: PackedTree; n: NodePos): NodePos =
   # finding the parent of a node is rather easy:
   var pos = n.int - 1
-  while pos >= 0 and isAtom(tree, pos) or (pos + tree.nodes[pos].operand - 1 < n.int):
+  while pos >= 0 and (isAtom(tree, pos) or (pos + tree.nodes[pos].operand - 1 < n.int)):
     dec pos
-  assert pos >= 0, "node has no parent"
+  #assert pos >= 0, "node has no parent"
   result = NodePos(pos)
 
 template parent*(n: NodePos): NodePos = parentImpl(tree, n)
@@ -333,6 +322,7 @@ template symId*(n: NodePos): SymId = SymId tree.nodes[n.int].operand
 proc firstSon*(n: NodePos): NodePos {.inline.} = NodePos(n.int+1)
 
 when false:
+  # xxx `nkStrLit` or `nkStrLit..nkTripleStrLit:` below?
   proc strLit*(tree: PackedTree; n: NodePos): lent string =
     assert n.kind == nkStrLit
     result = tree.sh.strings[LitId tree.nodes[n.int].operand]
@@ -372,48 +362,6 @@ const
   externSIntLit* = {nkIntLit, nkInt8Lit, nkInt16Lit, nkInt64Lit}
   externUIntLit* = {nkUIntLit, nkUInt8Lit, nkUInt16Lit, nkUInt32Lit, nkUInt64Lit}
   directIntLit* = nkInt32Lit
-
-proc toString*(tree: PackedTree; n: NodePos; sh: Shared; nesting: int;
-               result: var string) =
-  let pos = n.int
-  if result.len > 0 and result[^1] notin {' ', '\n'}:
-    result.add ' '
-
-  result.add $tree[pos].kind
-  case tree.nodes[pos].kind
-  of nkNone, nkEmpty, nkNilLit, nkType: discard
-  of nkIdent, nkStrLit..nkTripleStrLit:
-    result.add " "
-    result.add sh.strings[LitId tree.nodes[pos].operand]
-  of nkSym:
-    result.add " "
-    result.add sh.strings[sh.syms[tree.nodes[pos].operand].name]
-  of directIntLit:
-    result.add " "
-    result.addInt tree.nodes[pos].operand
-  of externSIntLit:
-    result.add " "
-    result.addInt sh.integers[LitId tree.nodes[pos].operand]
-  of externUIntLit:
-    result.add " "
-    result.add $cast[uint64](sh.integers[LitId tree.nodes[pos].operand])
-  else:
-    result.add "(\n"
-    for i in 1..(nesting+1)*2: result.add ' '
-    for child in sonsReadonly(tree, n):
-      toString(tree, child, sh, nesting + 1, result)
-    result.add "\n"
-    for i in 1..nesting*2: result.add ' '
-    result.add ")"
-    #for i in 1..nesting*2: result.add ' '
-
-
-proc toString*(tree: PackedTree; n: NodePos; sh: Shared): string =
-  result = ""
-  toString(tree, n, sh, 0, result)
-
-proc debug*(tree: PackedTree; sh: Shared) =
-  stdout.write toString(tree, NodePos 0, sh)
 
 when false:
   proc identIdImpl(tree: PackedTree; n: NodePos): LitId =
@@ -464,3 +412,6 @@ iterator allNodes*(tree: PackedTree): NodePos =
     yield NodePos(p)
     let s = span(tree, p)
     inc p, s
+
+proc toPackedItemId*(item: int32): PackedItemId {.inline.} =
+  PackedItemId(module: LitId(0), item: item)

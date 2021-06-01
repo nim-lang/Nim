@@ -28,6 +28,10 @@ proc toLit*[T](a: T): PNode =
   elif T is tuple:
     result = newTree(nkTupleConstr)
     for ai in fields(a): result.add toLit(ai)
+  elif T is seq:
+    result = newNode(nkBracket)
+    for ai in a:
+      result.add toLit(ai)
   elif T is object:
     result = newTree(nkObjConstr)
     result.add(newNode(nkEmpty))

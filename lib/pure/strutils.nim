@@ -38,7 +38,7 @@ runnableExamples:
 ## `method call syntax<manual.html#procedures-method-call-syntax>`_:
 
 runnableExamples:
-  from sequtils import map
+  from std/sequtils import map
 
   let jenny = "867-5309"
   assert jenny.split('-').map(parseInt) == @[867, 5309]
@@ -75,9 +75,8 @@ from math import pow, floor, log10
 from algorithm import reverse
 import std/enumutils
 
-when defined(nimVmExportFixed):
-  from unicode import toLower, toUpper
-  export toLower, toUpper
+from unicode import toLower, toUpper
+export toLower, toUpper
 
 include "system/inclrtl"
 import std/private/since
@@ -1827,6 +1826,9 @@ func find*(a: SkipTable, s, sub: string, start: Natural = 0, last = 0): int {.
 when not (defined(js) or defined(nimdoc) or defined(nimscript)):
   func c_memchr(cstr: pointer, c: char, n: csize_t): pointer {.
                 importc: "memchr", header: "<string.h>".}
+  func c_strstr(haystack, needle: cstring): cstring {.
+    importc: "strstr", header: "<string.h>".}
+
   const hasCStringBuiltin = true
 else:
   const hasCStringBuiltin = false
@@ -1888,11 +1890,31 @@ func find*(s, sub: string, start: Natural = 0, last = 0): int {.rtl,
   ## See also:
   ## * `rfind func<#rfind,string,string,Natural>`_
   ## * `replace func<#replace,string,string,string>`_
-  if sub.len > s.len: return -1
+  if sub.len > s.len - start: return -1
   if sub.len == 1: return find(s, sub[0], start, last)
-  var a {.noinit.}: SkipTable
-  initSkipTable(a, sub)
-  result = find(a, s, sub, start, last)
+
+  template useSkipTable {.dirty.} =
+    var a {.noinit.}: SkipTable
+    initSkipTable(a, sub)
+    result = find(a, s, sub, start, last)
+
+  when not hasCStringBuiltin:
+    useSkipTable()
+  else:
+    when nimvm:
+      useSkipTable()
+    else:
+      when hasCStringBuiltin:
+        if last == 0 and s.len > start:
+          let found = c_strstr(s[start].unsafeAddr, sub)
+          if not found.isNil:
+            result = cast[ByteAddress](found) -% cast[ByteAddress](s.cstring)
+          else:
+            result = -1
+        else:
+          useSkipTable()
+      else:
+        useSkipTable()
 
 func rfind*(s: string, sub: char, start: Natural = 0, last = -1): int {.rtl,
     extern: "nsuRFindChar".} =
@@ -1944,6 +1966,8 @@ func rfind*(s, sub: string, start: Natural = 0, last = -1): int {.rtl,
   ## See also:
   ## * `find func<#find,string,string,Natural,int>`_
   if sub.len == 0:
+    return -1
+  if sub.len > s.len - start:
     return -1
   let last = if last == -1: s.high else: last
   result = 0
@@ -2038,7 +2062,7 @@ func contains*(s: string, chars: set[char]): bool =
 
 func replace*(s, sub: string, by = ""): string {.rtl,
     extern: "nsuReplaceStr".} =
-  ## Replaces `sub` in `s` by the string `by`.
+  ## Replaces every occurrence of the string `sub` in `s` with the string `by`.
   ##
   ## See also:
   ## * `find func<#find,string,string,Natural,int>`_
@@ -2080,7 +2104,8 @@ func replace*(s, sub: string, by = ""): string {.rtl,
 
 func replace*(s: string, sub, by: char): string {.rtl,
     extern: "nsuReplaceChar".} =
-  ## Replaces `sub` in `s` by the character `by`.
+  ## Replaces every occurrence of the character `sub` in `s` with the character
+  ## `by`.
   ##
   ## Optimized version of `replace <#replace,string,string,string>`_ for
   ## characters.
@@ -2098,7 +2123,7 @@ func replace*(s: string, sub, by: char): string {.rtl,
 
 func replaceWord*(s, sub: string, by = ""): string {.rtl,
     extern: "nsuReplaceWord".} =
-  ## Replaces `sub` in `s` by the string `by`.
+  ## Replaces every occurrence of the string `sub` in `s` with the string `by`.
   ##
   ## Each occurrence of `sub` has to be surrounded by word boundaries
   ## (comparable to `\b` in regular expressions), otherwise it is not
@@ -2198,15 +2223,23 @@ func insertSep*(s: string, sep = '_', digits = 3): string {.rtl,
 
 func escape*(s: string, prefix = "\"", suffix = "\""): string {.rtl,
     extern: "nsuEscape".} =
-  ## Escapes a string `s`. See `system.addEscapedChar
-  ## <system.html#addEscapedChar,string,char>`_ for the escaping scheme.
+  ## Escapes a string `s`.
+  ##
+  ## .. note:: The escaping scheme is different from
+  ##    `system.addEscapedChar`.
+  ##
+  ## * replaces `'\0'..'\31'` and `'\127'..'\255'` by `\xHH` where `HH` is its hexadecimal value
+  ## * replaces ``\`` by `\\`
+  ## * replaces `'` by `\'`
+  ## * replaces `"` by `\"`
   ##
   ## The resulting string is prefixed with `prefix` and suffixed with `suffix`.
   ## Both may be empty strings.
   ##
   ## See also:
+  ## * `addEscapedChar proc<system.html#addEscapedChar,string,char>`_
   ## * `unescape func<#unescape,string,string,string>`_ for the opposite
-  ## operation
+  ##   operation
   result = newStringOfCap(s.len + s.len shr 2)
   result.add(prefix)
   for c in items(s):
@@ -2341,17 +2374,11 @@ func formatBiggestFloat*(f: BiggestFloat, format: FloatFormatMode = ffDefault,
       frmtstr[3] = '*'
       frmtstr[4] = floatFormatToChar[format]
       frmtstr[5] = '\0'
-      when defined(nimNoArrayToCstringConversion):
-        L = c_sprintf(addr buf, addr frmtstr, precision, f)
-      else:
-        L = c_sprintf(buf, frmtstr, precision, f)
+      L = c_sprintf(addr buf, addr frmtstr, precision, f)
     else:
       frmtstr[1] = floatFormatToChar[format]
       frmtstr[2] = '\0'
-      when defined(nimNoArrayToCstringConversion):
-        L = c_sprintf(addr buf, addr frmtstr, f)
-      else:
-        L = c_sprintf(buf, frmtstr, f)
+      L = c_sprintf(addr buf, addr frmtstr, f)
     result = newString(L)
     for i in 0 ..< L:
       # Depending on the locale either dot or comma is produced,
@@ -2760,6 +2787,7 @@ func strip*(s: string, leading = true, trailing = true,
   ## If both are false, the string is returned unchanged.
   ##
   ## See also:
+  ## * `strip proc<strbasics.html#strip,string,set[char]>`_ Inplace version.
   ## * `stripLineEnd func<#stripLineEnd,string>`_
   runnableExamples:
     let a = "  vhellov   "
@@ -2786,7 +2814,7 @@ func strip*(s: string, leading = true, trailing = true,
   result = substr(s, first, last)
 
 func stripLineEnd*(s: var string) =
-  ## Returns `s` stripped from one of these suffixes:
+  ## Strips one of these suffixes from `s` in-place:
   ## `\r, \n, \r\n, \f, \v` (at most once instance).
   ## For example, can be useful in conjunction with `osproc.execCmdEx`.
   ## aka: `chomp`:idx:

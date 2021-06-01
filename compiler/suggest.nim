@@ -112,7 +112,7 @@ proc getTokenLenFromSource(conf: ConfigRef; ident: string; info: TLineInfo): int
     if ident[^1] == '=' and ident[0] in linter.Letters:
       if sourceIdent != "=":
         result = 0
-    elif sourceIdent.len > ident.len and sourceIdent[..ident.high] == ident:
+    elif sourceIdent.len > ident.len and sourceIdent[0..ident.high] == ident:
       result = ident.len
     elif sourceIdent != ident:
       result = 0
@@ -253,10 +253,17 @@ proc filterSymNoOpr(s: PSym; prefix: PNode; res: var PrefixMatch): bool {.inline
 proc fieldVisible*(c: PContext, f: PSym): bool {.inline.} =
   let fmoduleId = getModule(f).id
   result = sfExported in f.flags or fmoduleId == c.module.id
-  for module in c.friendModules:
-    if fmoduleId == module.id:
-      result = true
-      break
+
+  if not result:
+    for module in c.friendModules:
+      if fmoduleId == module.id: return true
+    if f.kind == skField:
+      var symObj = f.owner
+      if symObj.typ.kind in {tyRef, tyPtr}:
+        symObj = symObj.typ[0].sym
+      for scope in allScopes(c.currentScope):
+        for sym in scope.allowPrivateAccess:
+          if symObj.id == sym.id: return true
 
 proc getQuality(s: PSym): range[0..100] =
   result = 100

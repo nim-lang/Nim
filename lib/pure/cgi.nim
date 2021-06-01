@@ -11,7 +11,7 @@
 ##
 ## .. code-block:: Nim
 ##
-##    import strtabs, cgi
+##    import std/[strtabs, cgi]
 ##
 ##    # Fill the values when debugging:
 ##    when debug:
@@ -29,7 +29,7 @@
 ##    writeLine(stdout, "your password: " & myData["password"])
 ##    writeLine(stdout, "</body></html>")
 
-import std/[strutils, os, strtabs, cookies, uri]
+import strutils, os, strtabs, cookies, uri
 export uri.encodeUrl, uri.decodeUrl
 
 

@@ -6,26 +6,9 @@
 #    See the file "copying.txt", included in this
 #    distribution, for details about the copyright.
 #
-## **Note:** Import `std/sha1` to use this module.
-##
 ## [SHA-1 (Secure Hash Algorithm 1)](https://en.wikipedia.org/wiki/SHA-1)
 ## is a cryptographic hash function which takes an input and produces
 ## a 160-bit (20-byte) hash value known as a message digest.
-##
-## Basic usage
-## ===========
-##
-runnableExamples:
-  let accessName = secureHash("John Doe")
-  assert $accessName == "AE6E4D1209F17B460503904FAD297B31E9CF6362"
-
-## .. code-block::
-##   let
-##     a = secureHashFile("myFile.nim")
-##     b = parseSecureHash("10DFAEBF6BFDBC7939957068E2EFACEC4972933C")
-##
-##   if a == b:
-##     echo "Files match"
 ##
 ## See also
 ## ========
@@ -33,8 +16,18 @@ runnableExamples:
 ## * `hashes module<hashes.html>`_ for efficient computations of hash values for diverse Nim types
 ## * `md5 module<md5.html>`_ implements the MD5 checksum algorithm
 
-import std/strutils
-from std/endians import bigEndian32, bigEndian64
+runnableExamples:
+  let accessName = secureHash("John Doe")
+  assert $accessName == "AE6E4D1209F17B460503904FAD297B31E9CF6362"
+
+runnableExamples("-r:off"):
+  let
+    a = secureHashFile("myFile.nim")
+    b = parseSecureHash("10DFAEBF6BFDBC7939957068E2EFACEC4972933C")
+  assert a == b, "files don't match"
+
+import strutils
+from endians import bigEndian32, bigEndian64
 
 const Sha1DigestSize = 20
 
@@ -231,7 +224,7 @@ proc secureHashFile*(filename: string): SecureHash =
   var state = newSha1State()
   var buffer = newString(BufferLength)
   while true:
-    let length = readChars(f, buffer, 0, BufferLength)
+    let length = readChars(f, buffer)
     if length == 0:
       break
     buffer.setLen(length)

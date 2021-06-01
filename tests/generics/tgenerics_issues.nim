@@ -24,9 +24,9 @@ G:0,1:0.1
 G:0,1:0.1
 H:1:0.1
 0
-(foo: None[seq[Foo]], s: "")
-(foo: Some(@[(a: "world", bar: None[Bar])]), s: "hello,")
-@[(a: "hey", bar: None[Bar])]
+(foo: none(seq[Foo]), s: "")
+(foo: some(@[(a: "world", bar: none(Bar))]), s: "hello,")
+@[(a: "hey", bar: none(Bar))]
 '''
 joinable: false
 """

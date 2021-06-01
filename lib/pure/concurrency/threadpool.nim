@@ -14,7 +14,7 @@
 ## See also
 ## ========
 ## * `threads module <threads.html>`_ for basic thread support
-## * `channels module <channels.html>`_ for message passing support
+## * `channels module <channels_builtin.html>`_ for message passing support
 ## * `locks module <locks.html>`_ for locks and condition variables
 ## * `asyncdispatch module <asyncdispatch.html>`_ for asynchronous IO
 
@@ -52,17 +52,14 @@ proc signal(cv: var Semaphore) =
   release(cv.L)
   signal(cv.c)
 
-const CacheLineSize = 32 # true for most archs
+const CacheLineSize = 64 # true for most archs
 
 type
   Barrier {.compilerproc.} = object
     entered: int
     cv: Semaphore # Semaphore takes 3 words at least
-    when sizeof(int) < 8:
-      cacheAlign: array[CacheLineSize-4*sizeof(int), byte]
-    left: int
-    cacheAlign2: array[CacheLineSize-sizeof(int), byte]
-    interest: bool # whether the master is interested in the "all done" event
+    left {.align(CacheLineSize).}: int
+    interest {.align(CacheLineSize).} : bool # whether the master is interested in the "all done" event
 
 proc barrierEnter(b: ptr Barrier) {.compilerproc, inline.} =
   # due to the signaling between threads, it is ensured we are the only
@@ -451,14 +448,14 @@ proc preferSpawn*(): bool =
   ## <#spawnX.t>`_ instead.
   result = gSomeReady.counter > 0
 
-proc spawn*(call: sink typed): void {.magic: "Spawn".}
+proc spawn*(call: sink typed) {.magic: "Spawn".}
   ## Always spawns a new task, so that the `call` is never executed on
   ## the calling thread.
   ##
   ## `call` has to be a proc call `p(...)` where `p` is gcsafe and has a
   ## return type that is either `void` or compatible with `FlowVar[T]`.
 
-proc pinnedSpawn*(id: ThreadId; call: sink typed): void {.magic: "Spawn".}
+proc pinnedSpawn*(id: ThreadId; call: sink typed) {.magic: "Spawn".}
   ## Always spawns a new task on the worker thread with `id`, so that
   ## the `call` is **always** executed on the thread.
   ##

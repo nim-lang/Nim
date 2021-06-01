@@ -189,6 +189,9 @@ proc semGenericStmt(c: PContext, n: PNode,
   case n.kind
   of nkIdent, nkAccQuoted:
     result = lookup(c, n, flags, ctx)
+    if result != nil and result.kind == nkSym:
+      assert result.sym != nil
+      markUsed(c, n.info, result.sym)
   of nkDotExpr:
     #let luf = if withinMixin notin flags: {checkUndeclared} else: {}
     #var s = qualifiedLookUp(c, n, luf)
@@ -452,8 +455,6 @@ proc semGenericStmt(c: PContext, n: PNode,
     discard
   of nkFormalParams:
     checkMinSonsLen(n, 1, c.config)
-    if n[0].kind != nkEmpty:
-      n[0] = semGenericStmt(c, n[0], flags+{withinTypeDesc}, ctx)
     for i in 1..<n.len:
       var a = n[i]
       if (a.kind != nkIdentDefs): illFormedAst(a, c.config)
@@ -462,6 +463,10 @@ proc semGenericStmt(c: PContext, n: PNode,
       a[^1] = semGenericStmt(c, a[^1], flags, ctx)
       for j in 0..<a.len-2:
         addTempDecl(c, getIdentNode(c, a[j]), skParam)
+    # XXX: last change was moving this down here, search for "1.." to keep
+    #      going from this file onward
+    if n[0].kind != nkEmpty:
+      n[0] = semGenericStmt(c, n[0], flags+{withinTypeDesc}, ctx)
   of nkProcDef, nkMethodDef, nkConverterDef, nkMacroDef, nkTemplateDef,
      nkFuncDef, nkIteratorDef, nkLambdaKinds:
     checkSonsLen(n, bodyPos + 1, c.config)

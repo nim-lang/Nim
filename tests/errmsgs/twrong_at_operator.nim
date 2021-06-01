@@ -1,8 +1,7 @@
 discard """
 errormsg: "type mismatch: got <array[0..0, typedesc[int]]>"
-line: 22
 nimout: '''
-twrong_at_operator.nim(22, 30) Error: type mismatch: got <array[0..0, typedesc[int]]>
+twrong_at_operator.nim(21, 30) Error: type mismatch: got <array[0..0, typedesc[int]]>
 but expected one of:
 proc `@`[IDX, T](a: sink array[IDX, T]): seq[T]
   first type mismatch at position: 1

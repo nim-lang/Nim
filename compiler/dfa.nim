@@ -32,8 +32,6 @@
 import ast, types, intsets, lineinfos, renderer
 import std/private/asciitables
 
-from patterns import sameTrees
-
 type
   InstrKind* = enum
     goto, fork, def, use
@@ -457,6 +455,10 @@ proc genCase(c: var Con; n: PNode) =
   let isExhaustive = skipTypes(n[0].typ,
     abstractVarRange-{tyTypeDesc}).kind notin {tyFloat..tyFloat128, tyString}
 
+  # we generate endings as a set of chained gotos, this is a bit awkward but it
+  # ensures when recursively traversing the CFG for various analysis, we don't
+  # artificially extended the life of each branch (for the purposes of DFA)
+  # beyond the minimum amount.
   var endings: seq[TPosition] = @[]
   c.gen(n[0])
   for i in 1..<n.len:
@@ -464,13 +466,14 @@ proc genCase(c: var Con; n: PNode) =
     if it.len == 1 or (i == n.len-1 and isExhaustive):
       # treat the last branch as 'else' if this is an exhaustive case statement.
       c.gen(it.lastSon)
+      if endings.len != 0:
+        c.patch(endings[^1])
     else:
       forkT(it.lastSon):
         c.gen(it.lastSon)
+        if endings.len != 0:
+          c.patch(endings[^1])
         endings.add c.gotoI(it.lastSon)
-  for i in countdown(endings.high, 0):
-    let endPos = endings[i]
-    c.patch(endPos)
 
 proc genBlock(c: var Con; n: PNode) =
   withBlock(n[0].sym):
@@ -632,8 +635,10 @@ proc aliases*(obj, field: PNode): AliasKind =
     case currFieldPath.kind
     of nkSym:
       if currFieldPath.sym != currObjPath.sym: return no
-    of nkDotExpr, nkCheckedFieldExpr:
+    of nkDotExpr:
       if currFieldPath[1].sym != currObjPath[1].sym: return no
+    of nkCheckedFieldExpr:
+      if currFieldPath[0][1].sym != currObjPath[0][1].sym: return no
     of nkBracketExpr:
       if currFieldPath[1].kind in nkLiterals and currObjPath[1].kind in nkLiterals:
         if currFieldPath[1].intVal != currObjPath[1].intVal:
@@ -641,19 +646,6 @@ proc aliases*(obj, field: PNode): AliasKind =
       else:
         result = maybe
     else: assert false # unreachable
-
-type InstrTargetKind* = enum
-  None, Full, Partial
-
-proc instrTargets*(insloc, loc: PNode): InstrTargetKind =
-  case insloc.aliases(loc)
-  of yes:
-    Full    # x -> x; x -> x.f
-  of maybe:
-    Partial # We treat this like a partial write/read
-  elif loc.aliases(insloc) != no:
-    Partial # x.f -> x
-  else: None
 
 proc isAnalysableFieldAccess*(orig: PNode; owner: PSym): bool =
   var n = orig
@@ -704,9 +696,10 @@ proc skipTrivials(c: var Con, n: PNode): PNode =
 proc genUse(c: var Con; orig: PNode) =
   let n = c.skipTrivials(orig)
 
-  if n.kind == nkSym and n.sym.kind in InterestingSyms:
-    c.code.add Instr(n: orig, kind: use)
-  elif n.kind in nkCallKinds:
+  if n.kind == nkSym:
+    if n.sym.kind in InterestingSyms:
+      c.code.add Instr(n: orig, kind: use)
+  else:
     gen(c, n)
 
 proc genDef(c: var Con; orig: PNode) =

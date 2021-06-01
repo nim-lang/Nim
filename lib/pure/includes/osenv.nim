@@ -5,9 +5,10 @@ when not declared(os) and not declared(ospaths):
 
 when defined(nodejs):
   proc getEnv*(key: string, default = ""): string {.tags: [ReadEnvEffect].} =
-    var ret: cstring
+    var ret = default.cstring
     let key2 = key.cstring
-    {.emit: "`ret` = process.env[`key2`];".}
+    {.emit: "const value = process.env[`key2`];".}
+    {.emit: "if (value !== undefined) { `ret` = value };".}
     result = $ret
 
   proc existsEnv*(key: string): bool {.tags: [ReadEnvEffect].} =
@@ -49,8 +50,8 @@ else:
   proc c_unsetenv(env: cstring): cint {.
     importc: "unsetenv", header: "<stdlib.h>".}
 
-  # Environment handling cannot be put into RTL, because the ``envPairs``
-  # iterator depends on ``environment``.
+  # Environment handling cannot be put into RTL, because the `envPairs`
+  # iterator depends on `environment`.
 
   var
     envComputed {.threadvar.}: bool

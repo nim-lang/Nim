@@ -168,3 +168,10 @@ proc nimPrepareStrMutationImpl(s: var NimStringV2) =
 proc nimPrepareStrMutationV2(s: var NimStringV2) {.compilerRtl, inline.} =
   if s.p != nil and (s.p.cap and strlitFlag) == strlitFlag:
     nimPrepareStrMutationImpl(s)
+
+proc prepareMutation*(s: var string) {.inline.} =
+  # string literals are "copy on write", so you need to call
+  # `prepareMutation` before modifying the strings via `addr`.
+  {.cast(noSideEffect).}:
+    let s = unsafeAddr s
+    nimPrepareStrMutationV2(cast[ptr NimStringV2](s)[])

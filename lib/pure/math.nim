@@ -58,7 +58,7 @@ import std/private/since
 {.push debugger: off.} # the user does not want to trace a part
                        # of the standard library!
 
-import std/[bitops, fenv]
+import bitops, fenv
 
 when defined(c) or defined(cpp):
   proc c_isnan(x: float): bool {.importc: "isnan", header: "<math.h>".}
@@ -68,6 +68,17 @@ when defined(c) or defined(cpp):
   proc c_copysign(x, y: cdouble): cdouble {.importc: "copysign", header: "<math.h>".}
 
   proc c_signbit(x: SomeFloat): cint {.importc: "signbit", header: "<math.h>".}
+
+  func c_frexp*(x: cfloat, exponent: var cint): cfloat {.
+      importc: "frexpf", header: "<math.h>", deprecated: "Use `frexp` instead".}
+  func c_frexp*(x: cdouble, exponent: var cint): cdouble {.
+      importc: "frexp", header: "<math.h>", deprecated: "Use `frexp` instead".}
+
+  # don't export `c_frexp` in the future and remove `c_frexp2`.
+  func c_frexp2(x: cfloat, exponent: var cint): cfloat {.
+      importc: "frexpf", header: "<math.h>".}
+  func c_frexp2(x: cdouble, exponent: var cint): cdouble {.
+      importc: "frexp", header: "<math.h>".}
 
 func binom*(n, k: int): int =
   ## Computes the [binomial coefficient](https://en.wikipedia.org/wiki/Binomial_coefficient).
@@ -111,7 +122,7 @@ func fac*(n: int): int =
 
 {.push checks: off, line_dir: off, stack_trace: off.}
 
-when defined(Posix) and not defined(genode):
+when defined(posix) and not defined(genode):
   {.passl: "-lm".}
 
 const
@@ -164,11 +175,24 @@ when defined(js):
 
   proc toBitsImpl(x: float): array[2, uint32] =
     let buffer = newArrayBuffer(8)
-    let floatBuffer = newFloat64Array(buffer)
-    let uintBuffer = newUint32Array(buffer)
-    floatBuffer[0] = x
-    {.emit: "`result` = `uintBuffer`;".}
-    # result = cast[array[2, uint32]](uintBuffer)
+    let a = newFloat64Array(buffer)
+    let b = newUint32Array(buffer)
+    a[0] = x
+    {.emit: "`result` = `b`;".}
+    # result = cast[array[2, uint32]](b)
+
+  proc jsSetSign(x: float, sgn: bool): float =
+    let buffer = newArrayBuffer(8)
+    let a = newFloat64Array(buffer)
+    let b = newUint32Array(buffer)
+    a[0] = x
+    asm """
+    function updateBit(num, bitPos, bitVal) {
+      return (num & ~(1 << bitPos)) | (bitVal << bitPos);
+    }
+    `b`[1] = updateBit(`b`[1], 31, `sgn`);
+    `result` = `a`[0]
+    """
 
 proc signbit*(x: SomeFloat): bool {.inline, since: (1, 5, 1).} =
   ## Returns true if `x` is negative, false otherwise.
@@ -192,19 +216,21 @@ func copySign*[T: SomeFloat](x, y: T): T {.inline, since: (1, 5, 1).} =
     doAssert copySign(10.0, -1.0) == -10.0
     doAssert copySign(-Inf, -0.0) == -Inf
     doAssert copySign(NaN, 1.0).isNaN
+    doAssert copySign(1.0, copySign(NaN, -1.0)) == -1.0
 
   # TODO: use signbit for examples
-  template impl() =
-    if y > 0.0 or (y == 0.0 and 1.0 / y > 0.0):
-      result = abs(x)
-    elif y <= 0.0:
-      result = -abs(x)
-    else: # must be NaN
-      result = abs(x)
-
-  when defined(js): impl()
+  when defined(js):
+    let uintBuffer = toBitsImpl(y)
+    let sgn = (uintBuffer[1] shr 31) != 0
+    result = jsSetSign(x, sgn)
   else:
-    when nimvm: impl()
+    when nimvm: # not exact but we have a vmops for recent enough nim
+      if y > 0.0 or (y == 0.0 and 1.0 / y > 0.0):
+        result = abs(x)
+      elif y <= 0.0:
+        result = -abs(x)
+      else: # must be NaN
+        result = abs(x)
     else: result = c_copysign(x, y)
 
 func classify*(x: float): FloatClass =
@@ -915,27 +941,58 @@ func euclMod*[T: SomeNumber](x, y: T): T {.since: (1, 5, 1).} =
   if result < 0:
     result += abs(y)
 
+func frexp*[T: float32|float64](x: T): tuple[frac: T, exp: int] {.inline.} =
+  ## Splits `x` into a normalized fraction `frac` and an integral power of 2 `exp`,
+  ## such that `abs(frac) in 0.5..<1` and `x == frac * 2 ^ exp`, except for special
+  ## cases shown below.
+  runnableExamples:
+    doAssert frexp(8.0) == (0.5, 4)
+    doAssert frexp(-8.0) == (-0.5, 4)
+    doAssert frexp(0.0) == (0.0, 0)
+
+    # special cases:
+    when sizeof(int) == 8:
+      doAssert frexp(-0.0).frac.signbit # signbit preserved for +-0
+      doAssert frexp(Inf).frac == Inf # +- Inf preserved
+      doAssert frexp(NaN).frac.isNaN
+
+  when not defined(js):
+    var exp: cint
+    result.frac = c_frexp2(x, exp)
+    result.exp = exp
+  else:
+    if x == 0.0:
+      # reuse signbit implementation
+      let uintBuffer = toBitsImpl(x)
+      if (uintBuffer[1] shr 31) != 0:
+        # x is -0.0
+        result = (-0.0, 0)
+      else:
+        result = (0.0, 0)
+    elif x < 0.0:
+      result = frexp(-x)
+      result.frac = -result.frac
+    else:
+      var ex = trunc(log2(x))
+      result.exp = int(ex)
+      result.frac = x / pow(2.0, ex)
+      if abs(result.frac) >= 1:
+        inc(result.exp)
+        result.frac = result.frac / 2
+      if result.exp == 1024 and result.frac == 0.0:
+        result.frac = 0.99999999999999988898
+
+func frexp*[T: float32|float64](x: T, exponent: var int): T {.inline.} =
+  ## Overload of `frexp` that calls `(result, exponent) = frexp(x)`.
+  runnableExamples:
+    var x: int
+    doAssert frexp(5.0, x) == 0.625
+    doAssert x == 3
+
+  (result, exponent) = frexp(x)
+
+
 when not defined(js):
-  func c_frexp*(x: float32, exponent: var int32): float32 {.
-      importc: "frexp", header: "<math.h>".}
-  func c_frexp*(x: float64, exponent: var int32): float64 {.
-      importc: "frexp", header: "<math.h>".}
-  func frexp*[T, U](x: T, exponent: var U): T =
-    ## Split a number into mantissa and exponent.
-    ##
-    ## `frexp` calculates the mantissa `m` (a float greater than or equal to 0.5
-    ## and less than 1) and the integer value `n` such that `x` (the original
-    ## float value) equals `m * 2**n`. frexp stores `n` in `exponent` and returns
-    ## `m`.
-    runnableExamples:
-      var x: int
-      doAssert frexp(5.0, x) == 0.625
-      doAssert x == 3
-
-    var exp: int32
-    result = c_frexp(x, exp)
-    exponent = exp
-
   when windowsCC89:
     # taken from Go-lang Math.Log2
     const ln2 = 0.693147180559945309417232121458176568075500134360255254120680009
@@ -966,23 +1023,6 @@ when not defined(js):
         doAssert almostEqual(log2(1.0), 0.0)
         doAssert almostEqual(log2(0.0), -Inf)
         doAssert log2(-2.0).isNaN
-
-else:
-  func frexp*[T: float32|float64](x: T, exponent: var int): T =
-    if x == 0.0:
-      exponent = 0
-      result = 0.0
-    elif x < 0.0:
-      result = -frexp(-x, exponent)
-    else:
-      var ex = trunc(log2(x))
-      exponent = int(ex)
-      result = x / pow(2.0, ex)
-      if abs(result) >= 1:
-        inc(exponent)
-        result = result / 2
-      if exponent == 1024 and result == 0.0:
-        result = 0.99999999999999988898
 
 func splitDecimal*[T: float32|float64](x: T): tuple[intpart: T, floatpart: T] =
   ## Breaks `x` into an integer and a fractional part.
@@ -1150,6 +1190,18 @@ func lcm*[T](x, y: T): T =
     doAssert lcm(13, 39) == 39
 
   x div gcd(x, y) * y
+
+func clamp*[T](val: T, bounds: Slice[T]): T {.since: (1, 5), inline.} =
+  ## Like `system.clamp`, but takes a slice, so you can easily clamp within a range.
+  runnableExamples:
+    assert clamp(10, 1 .. 5) == 5
+    assert clamp(1, 1 .. 3) == 1
+    type A = enum a0, a1, a2, a3, a4, a5
+    assert a1.clamp(a2..a4) == a2
+    assert clamp((3, 0), (1, 0) .. (2, 9)) == (2, 9)
+    doAssertRaises(AssertionDefect): discard clamp(1, 3..2) # invalid bounds
+  assert bounds.a <= bounds.b, $(bounds.a, bounds.b)
+  clamp(val, bounds.a, bounds.b)
 
 func lcm*[T](x: openArray[T]): T {.since: (1, 1).} =
   ## Computes the least common multiple of the elements of `x`.

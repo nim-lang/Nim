@@ -82,8 +82,8 @@ proc main() =
       doAssert(stringNone.get("Correct") == "Correct")
 
     block stringify:
-      doAssert($(some("Correct")) == "Some(\"Correct\")")
-      doAssert($(stringNone) == "None[string]")
+      doAssert($(some("Correct")) == "some(\"Correct\")")
+      doAssert($(stringNone) == "none(string)")
 
     disableJsVm:
       block map_with_a_void_result:
@@ -155,7 +155,7 @@ proc main() =
         name: string
 
       let nobody = none(Named)
-      doAssert($nobody == "None[Named]")
+      doAssert($nobody == "none(Named)")
 
     # "$ on type with name()"
     block:
@@ -163,7 +163,7 @@ proc main() =
         myname: string
 
       let noperson = none(Person)
-      doAssert($noperson == "None[Person]")
+      doAssert($noperson == "none(Person)")
 
     # "Ref type with overloaded `==`"
     block:
@@ -190,7 +190,7 @@ proc main() =
       block:
         let x = none(cstring)
         doAssert x.isNone
-        doAssert $x == "None[cstring]"
+        doAssert $x == "none(cstring)"
 
 
 static: main()

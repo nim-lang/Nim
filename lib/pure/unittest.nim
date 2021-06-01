@@ -108,8 +108,7 @@
 import std/private/since
 import std/exitprocs
 
-import
-  macros, strutils, streams, times, sets, sequtils
+import macros, strutils, streams, times, sets, sequtils
 
 when declared(stdout):
   import os
@@ -219,7 +218,7 @@ proc resetOutputFormatters* {.since: (1, 1).} =
   formatters = @[]
 
 proc newConsoleOutputFormatter*(outputLevel: OutputLevel = outputLevelDefault,
-                                colorOutput = true): <//>ConsoleOutputFormatter =
+                                colorOutput = true): ConsoleOutputFormatter =
   ConsoleOutputFormatter(
     outputLevel: outputLevel,
     colorOutput: colorOutput
@@ -247,7 +246,7 @@ proc colorOutput(): bool =
       deprecateEnvVarHere()
       result = false
 
-proc defaultConsoleFormatter*(): <//>ConsoleOutputFormatter =
+proc defaultConsoleFormatter*(): ConsoleOutputFormatter =
   var colorOutput = colorOutput()
   var outputLevel = nimUnittestOutputLevel.parseEnum[:OutputLevel]
   when declared(stdout):
@@ -316,7 +315,7 @@ proc xmlEscape(s: string): string =
       else:
         result.add(c)
 
-proc newJUnitOutputFormatter*(stream: Stream): <//>JUnitOutputFormatter =
+proc newJUnitOutputFormatter*(stream: Stream): JUnitOutputFormatter =
   ## Creates a formatter that writes report to the specified stream in
   ## JUnit format.
   ## The ``stream`` is NOT closed automatically when the test are finished,
@@ -637,19 +636,17 @@ macro check*(conditions: untyped): untyped =
   ## Verify if a statement or a list of statements is true.
   ## A helpful error message and set checkpoints are printed out on
   ## failure (if ``outputLevel`` is not ``PRINT_NONE``).
-  ## Example:
-  ##
-  ## .. code-block:: nim
-  ##
-  ##  import strutils
-  ##
-  ##  check("AKB48".toLowerAscii() == "akb48")
-  ##
-  ##  let teams = {'A', 'K', 'B', '4', '8'}
-  ##
-  ##  check:
-  ##    "AKB48".toLowerAscii() == "akb48"
-  ##    'C' in teams
+  runnableExamples:
+    import std/strutils
+
+    check("AKB48".toLowerAscii() == "akb48")
+
+    let teams = {'A', 'K', 'B', '4', '8'}
+
+    check:
+      "AKB48".toLowerAscii() == "akb48"
+      'C' notin teams
+
   let checked = callsite()[1]
 
   template asgn(a: untyped, value: typed) =
@@ -686,7 +683,7 @@ macro check*(conditions: untyped): untyped =
             result.printOuts.add getAst(print(argStr, callVar))
           if exp[i].kind == nnkExprEqExpr:
             # ExprEqExpr
-            #   Ident !"v"
+            #   Ident "v"
             #   IntLit 2
             result.check[i] = exp[i][1]
           if exp[i].typeKind notin {ntyTypeDesc}:
@@ -741,22 +738,19 @@ macro expect*(exceptions: varargs[typed], body: untyped): untyped =
   ## Test if `body` raises an exception found in the passed `exceptions`.
   ## The test passes if the raised exception is part of the acceptable
   ## exceptions. Otherwise, it fails.
-  ## Example:
-  ##
-  ## .. code-block:: nim
-  ##
-  ##  import math, random
-  ##  proc defectiveRobot() =
-  ##    randomize()
-  ##    case rand(1..4)
-  ##    of 1: raise newException(OSError, "CANNOT COMPUTE!")
-  ##    of 2: discard parseInt("Hello World!")
-  ##    of 3: raise newException(IOError, "I can't do that Dave.")
-  ##    else: assert 2 + 2 == 5
-  ##
-  ##  expect IOError, OSError, ValueError, AssertionDefect:
-  ##    defectiveRobot()
-  let exp = callsite()
+  runnableExamples:
+    import std/[math, random, strutils]
+    proc defectiveRobot() =
+      randomize()
+      case rand(1..4)
+      of 1: raise newException(OSError, "CANNOT COMPUTE!")
+      of 2: discard parseInt("Hello World!")
+      of 3: raise newException(IOError, "I can't do that Dave.")
+      else: assert 2 + 2 == 5
+
+    expect IOError, OSError, ValueError, AssertionDefect:
+      defectiveRobot()
+
   template expectBody(errorTypes, lineInfoLit, body): NimNode {.dirty.} =
     try:
       body
@@ -768,13 +762,11 @@ macro expect*(exceptions: varargs[typed], body: untyped): untyped =
       checkpoint(lineInfoLit & ": Expect Failed, unexpected exception was thrown.")
       fail()
 
-  var body = exp[exp.len - 1]
-
   var errorTypes = newNimNode(nnkBracket)
-  for i in countup(1, exp.len - 2):
-    errorTypes.add(exp[i])
+  for exp in exceptions:
+    errorTypes.add(exp)
 
-  result = getAst(expectBody(errorTypes, exp.lineInfo, body))
+  result = getAst(expectBody(errorTypes, errorTypes.lineInfo, body))
 
 proc disableParamFiltering* =
   ## disables filtering tests with the command line params

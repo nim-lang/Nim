@@ -11,6 +11,8 @@
 
 # included from sem.nim
 
+from sugar import dup
+
 type
   ObjConstrContext = object
     typ: PType               # The constructed type
@@ -210,7 +212,7 @@ proc semConstructFields(c: PContext, n: PNode,
         localError(c.config, constrCtx.initExpr.info,
           "a case selecting discriminator '$1' with value '$2' " &
           "appears in the object construction, but the field(s) $3 " &
-          "are in conflict with this value.",
+          "are in conflict with this value." %
           [discriminator.sym.name.s, discriminatorVal.renderTree, fields])
 
       template valuesInConflictError(valsDiff) =
@@ -365,11 +367,10 @@ proc defaultConstructionError(c: PContext, t: PType, info: TLineInfo) =
     assert constrCtx.missingFields.len > 0
     localError(c.config, info,
       "The $1 type doesn't have a default value. The following fields must " &
-      "be initialized: $2.",
-      [typeToString(t), listSymbolNames(constrCtx.missingFields)])
+      "be initialized: $2." % [typeToString(t), listSymbolNames(constrCtx.missingFields)])
   elif objType.kind == tyDistinct:
     localError(c.config, info,
-      "The $1 distinct type doesn't have a default value.", [typeToString(t)])
+      "The $1 distinct type doesn't have a default value." % typeToString(t))
   else:
     assert false, "Must not enter here."
 
@@ -379,8 +380,7 @@ proc semObjConstr(c: PContext, n: PNode, flags: TExprFlags): PNode =
   for child in n: result.add child
 
   if t == nil:
-    localError(c.config, n.info, errGenerated, "object constructor needs an object type")
-    return
+    return localErrorNode(c, result, "object constructor needs an object type")
 
   t = skipTypes(t, {tyGenericInst, tyAlias, tySink, tyOwned})
   if t.kind == tyRef:
@@ -391,20 +391,22 @@ proc semObjConstr(c: PContext, n: PNode, flags: TExprFlags): PNode =
       # multiple times as long as they don't have closures.
       result.typ.flags.incl tfHasOwned
   if t.kind != tyObject:
-    localError(c.config, n.info, errGenerated, "object constructor needs an object type")
-    return
+    return localErrorNode(c, result,
+      "object constructor needs an object type".dup(addDeclaredLoc(c.config, t)))
 
   # Check if the object is fully initialized by recursively testing each
   # field (if this is a case object, initialized fields in two different
   # branches will be reported as an error):
   var constrCtx = initConstrContext(t, result)
   let initResult = semConstructTypeAux(c, constrCtx, flags)
+  var hasError = false # needed to split error detect/report for better msgs
 
   # It's possible that the object was not fully initialized while
   # specifying a .requiresInit. pragma:
   if constrCtx.missingFields.len > 0:
+    hasError = true
     localError(c.config, result.info,
-      "The $1 type requires the following fields to be initialized: $2.",
+      "The $1 type requires the following fields to be initialized: $2." %
       [t.sym.name.s, listSymbolNames(constrCtx.missingFields)])
 
   # Since we were traversing the object fields, it's possible that
@@ -415,6 +417,7 @@ proc semObjConstr(c: PContext, n: PNode, flags: TExprFlags): PNode =
     if nfSem notin field.flags:
       if field.kind != nkExprColonExpr:
         invalidObjConstr(c, field)
+        hasError = true
         continue
       let id = considerQuotedIdent(c, field[0])
       # This node was not processed. There are two possible reasons:
@@ -423,10 +426,16 @@ proc semObjConstr(c: PContext, n: PNode, flags: TExprFlags): PNode =
         let prevId = considerQuotedIdent(c, result[j][0])
         if prevId.id == id.id:
           localError(c.config, field.info, errFieldInitTwice % id.s)
-          return
+          hasError = true
+          break
       # 2) No such field exists in the constructed type
-      localError(c.config, field.info, errUndeclaredFieldX % id.s)
-      return
+      let msg = errUndeclaredField % id.s & " for type " & getProcHeader(c.config, t.sym)
+      localError(c.config, field.info, msg)
+      hasError = true
+      break
 
   if initResult == initFull:
     incl result.flags, nfAllFieldsSet
+  
+  # wrap in an error see #17437
+  if hasError: result = errorNode(c, result)

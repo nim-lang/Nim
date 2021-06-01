@@ -11,9 +11,12 @@ runnableExamples:
     z1: int8
   let a = (1.5'f32, (b: "b2", a: "a2"), 'x', @[Foo(t: true, z1: -3), nil], [{"name": "John"}.newStringTable])
   let j = a.toJson
-  doAssert j.jsonTo(typeof(a)).toJson == j
+  assert j.jsonTo(typeof(a)).toJson == j
+  assert $[NaN, Inf, -Inf, 0.0, -0.0, 1.0, 1e-2].toJson == """["nan","inf","-inf",0.0,-0.0,1.0,0.01]"""
+  assert 0.0.toJson.kind == JFloat
+  assert Inf.toJson.kind == JString
 
-import std/[json,strutils,tables,sets,strtabs,options]
+import json, strutils, tables, sets, strtabs, options
 
 #[
 Future directions:
@@ -27,10 +30,12 @@ add a way to customize serialization, for e.g.:
   objects.
 ]#
 
-import std/macros
+import macros
+from enumutils import symbolName
+from typetraits import OrdinalEnum
 
 type
-  Joptions* = object
+  Joptions* = object # xxx rename FromJsonOptions
     ## Options controlling the behavior of `fromJson`.
     allowExtraKeys*: bool
       ## If `true` Nim's object to which the JSON is parsed is not required to
@@ -39,6 +44,22 @@ type
       ## If `true` Nim's object to which JSON is parsed is allowed to have
       ## fields without corresponding JSON keys.
     # in future work: a key rename could be added
+  EnumMode* = enum
+    joptEnumOrd
+    joptEnumSymbol
+    joptEnumString
+  JsonNodeMode* = enum ## controls `toJson` for JsonNode types
+    joptJsonNodeAsRef ## returns the ref as is
+    joptJsonNodeAsCopy ## returns a deep copy of the JsonNode
+    joptJsonNodeAsObject ## treats JsonNode as a regular ref object
+  ToJsonOptions* = object
+    enumMode*: EnumMode
+    jsonNodeMode*: JsonNodeMode
+    # xxx charMode, etc
+
+proc initToJsonOptions*(): ToJsonOptions =
+  ## initializes `ToJsonOptions` with sane options.
+  ToJsonOptions(enumMode: joptEnumOrd, jsonNodeMode: joptJsonNodeAsRef)
 
 proc isNamedTuple(T: typedesc): bool {.magic: "TypeTrait".}
 proc distinctBase(T: typedesc): typedesc {.magic: "TypeTrait".}
@@ -106,7 +127,7 @@ proc hasField[T](obj: T, field: string): bool =
       return true
   return false
 
-macro accessField(obj: typed, name: static string): untyped = 
+macro accessField(obj: typed, name: static string): untyped =
   newDotExpr(obj, ident(name))
 
 template fromJsonFields(newObj, oldObj, json, discKeys, opt) =
@@ -146,7 +167,7 @@ template fromJsonFields(newObj, oldObj, json, discKeys, opt) =
       json.len == numMatched
     else:
       json.len == num and num == numMatched
-  
+
   checkJson ok, $(json.len, num, numMatched, $T, json)
 
 proc fromJson*[T](a: var T, b: JsonNode, opt = Joptions())
@@ -187,7 +208,8 @@ proc fromJson*[T](a: var T, b: JsonNode, opt = Joptions()) =
     of JInt: a = T(b.getBiggestInt())
     of JString: a = parseEnum[T](b.getStr())
     else: checkJson false, $($T, " ", b)
-  elif T is Ordinal: a = T(to(b, int))
+  elif T is uint|uint64: a = T(to(b, uint64))
+  elif T is Ordinal: a = cast[T](to(b, int))
   elif T is pointer: a = cast[pointer](to(b, int))
   elif T is distinct:
     when nimvm:
@@ -196,6 +218,11 @@ proc fromJson*[T](a: var T, b: JsonNode, opt = Joptions()) =
     else:
       a.distinctBase.fromJson(b)
   elif T is string|SomeNumber: a = to(b,T)
+  elif T is cstring:
+    case b.kind
+    of JNull: a = nil
+    of JString: a = b.str
+    else: checkJson false, $($T, " ", b)
   elif T is JsonNode: a = b
   elif T is ref | ptr:
     if b.kind == JNull: a = nil
@@ -208,6 +235,10 @@ proc fromJson*[T](a: var T, b: JsonNode, opt = Joptions()) =
     for ai in mitems(a):
       fromJson(ai, b[i], opt)
       i.inc
+  elif T is set:
+    type E = typeof(for ai in a: ai)
+    for val in b.getElems:
+      incl a, jsonTo(val, E)
   elif T is seq:
     a.setLen b.len
     for i, val in b.getElems:
@@ -248,39 +279,59 @@ proc jsonTo*(b: JsonNode, T: typedesc, opt = Joptions()): T =
   ## reverse of `toJson`
   fromJson(result, b, opt)
 
-proc toJson*[T](a: T): JsonNode =
+proc toJson*[T](a: T, opt = initToJsonOptions()): JsonNode =
   ## serializes `a` to json; uses `toJsonHook(a: T)` if it's in scope to
   ## customize serialization, see strtabs.toJsonHook for an example.
   when compiles(toJsonHook(a)): result = toJsonHook(a)
   elif T is object | tuple:
     when T is object or isNamedTuple(T):
       result = newJObject()
-      for k, v in a.fieldPairs: result[k] = toJson(v)
+      for k, v in a.fieldPairs: result[k] = toJson(v, opt)
     else:
       result = newJArray()
-      for v in a.fields: result.add toJson(v)
+      for v in a.fields: result.add toJson(v, opt)
   elif T is ref | ptr:
-    if system.`==`(a, nil): result = newJNull()
-    else: result = toJson(a[])
-  elif T is array | seq:
+    template impl =
+      if system.`==`(a, nil): result = newJNull()
+      else: result = toJson(a[], opt)
+    when T is JsonNode:
+      case opt.jsonNodeMode
+      of joptJsonNodeAsRef: result = a
+      of joptJsonNodeAsCopy: result = copy(a)
+      of joptJsonNodeAsObject: impl()
+    else: impl()
+  elif T is array | seq | set:
     result = newJArray()
-    for ai in a: result.add toJson(ai)
-  elif T is pointer: result = toJson(cast[int](a))
+    for ai in a: result.add toJson(ai, opt)
+  elif T is pointer: result = toJson(cast[int](a), opt)
     # edge case: `a == nil` could've also led to `newJNull()`, but this results
     # in simpler code for `toJson` and `fromJson`.
-  elif T is distinct: result = toJson(a.distinctBase)
+  elif T is distinct: result = toJson(a.distinctBase, opt)
   elif T is bool: result = %(a)
+  elif T is SomeInteger: result = %a
+  elif T is enum:
+    case opt.enumMode
+    of joptEnumOrd:
+      when T is Ordinal or not defined(nimLegacyJsonutilsHoleyEnum): %(a.ord)
+      else: toJson($a, opt)
+    of joptEnumSymbol:
+      when T is OrdinalEnum:
+        toJson(symbolName(a), opt)
+      else:
+        toJson($a, opt)
+    of joptEnumString: toJson($a, opt)
   elif T is Ordinal: result = %(a.ord)
+  elif T is cstring: (if a == nil: result = newJNull() else: result = % $a)
   else: result = %a
 
-proc fromJsonHook*[K, V](t: var (Table[K, V] | OrderedTable[K, V]),
+proc fromJsonHook*[K: string|cstring, V](t: var (Table[K, V] | OrderedTable[K, V]),
                          jsonNode: JsonNode) =
   ## Enables `fromJson` for `Table` and `OrderedTable` types.
-  ## 
+  ##
   ## See also:
   ## * `toJsonHook proc<#toJsonHook>`_
   runnableExamples:
-    import tables, json
+    import std/[tables, json]
     var foo: tuple[t: Table[string, int], ot: OrderedTable[string, int]]
     fromJson(foo, parseJson("""
       {"t":{"two":2,"one":1},"ot":{"one":1,"three":3}}"""))
@@ -294,29 +345,35 @@ proc fromJsonHook*[K, V](t: var (Table[K, V] | OrderedTable[K, V]),
   for k, v in jsonNode:
     t[k] = jsonTo(v, V)
 
-proc toJsonHook*[K, V](t: (Table[K, V] | OrderedTable[K, V])): JsonNode =
+proc toJsonHook*[K: string|cstring, V](t: (Table[K, V] | OrderedTable[K, V])): JsonNode =
   ## Enables `toJson` for `Table` and `OrderedTable` types.
   ##
   ## See also:
   ## * `fromJsonHook proc<#fromJsonHook,,JsonNode>`_
+  # pending PR #9217 use: toSeq(a) instead of `collect` in `runnableExamples`.
   runnableExamples:
-    import tables, json
+    import std/[tables, json, sugar]
     let foo = (
       t: [("two", 2)].toTable,
       ot: [("one", 1), ("three", 3)].toOrderedTable)
     assert $toJson(foo) == """{"t":{"two":2},"ot":{"one":1,"three":3}}"""
+    # if keys are not string|cstring, you can use this:
+    let a = {10: "foo", 11: "bar"}.newOrderedTable
+    let a2 = collect: (for k,v in a: (k,v))
+    assert $toJson(a2) == """[[10,"foo"],[11,"bar"]]"""
 
   result = newJObject()
   for k, v in pairs(t):
-    result[k] = toJson(v)
+    # not sure if $k has overhead for string
+    result[(when K is string: k else: $k)] = toJson(v)
 
 proc fromJsonHook*[A](s: var SomeSet[A], jsonNode: JsonNode) =
   ## Enables `fromJson` for `HashSet` and `OrderedSet` types.
-  ## 
+  ##
   ## See also:
   ## * `toJsonHook proc<#toJsonHook,SomeSet[A]>`_
   runnableExamples:
-    import sets, json
+    import std/[sets, json]
     var foo: tuple[hs: HashSet[string], os: OrderedSet[string]]
     fromJson(foo, parseJson("""
       {"hs": ["hash", "set"], "os": ["ordered", "set"]}"""))
@@ -336,7 +393,7 @@ proc toJsonHook*[A](s: SomeSet[A]): JsonNode =
   ## See also:
   ## * `fromJsonHook proc<#fromJsonHook,SomeSet[A],JsonNode>`_
   runnableExamples:
-    import sets, json
+    import std/[sets, json]
     let foo = (hs: ["hash"].toHashSet, os: ["ordered", "set"].toOrderedSet)
     assert $toJson(foo) == """{"hs":["hash"],"os":["ordered","set"]}"""
 
@@ -346,11 +403,11 @@ proc toJsonHook*[A](s: SomeSet[A]): JsonNode =
 
 proc fromJsonHook*[T](self: var Option[T], jsonNode: JsonNode) =
   ## Enables `fromJson` for `Option` types.
-  ## 
+  ##
   ## See also:
   ## * `toJsonHook proc<#toJsonHook,Option[T]>`_
   runnableExamples:
-    import options, json
+    import std/[options, json]
     var opt: Option[string]
     fromJsonHook(opt, parseJson("\"test\""))
     assert get(opt) == "test"
@@ -368,7 +425,7 @@ proc toJsonHook*[T](self: Option[T]): JsonNode =
   ## See also:
   ## * `fromJsonHook proc<#fromJsonHook,Option[T],JsonNode>`_
   runnableExamples:
-    import options, json
+    import std/[options, json]
     let optSome = some("test")
     assert $toJson(optSome) == "\"test\""
     let optNone = none[string]()
@@ -381,11 +438,11 @@ proc toJsonHook*[T](self: Option[T]): JsonNode =
 
 proc fromJsonHook*(a: var StringTableRef, b: JsonNode) =
   ## Enables `fromJson` for `StringTableRef` type.
-  ## 
+  ##
   ## See also:
   ## * `toJsonHook proc<#toJsonHook,StringTableRef>`_
   runnableExamples:
-    import strtabs, json
+    import std/[strtabs, json]
     var t = newStringTable(modeCaseSensitive)
     let jsonStr = """{"mode": 0, "table": {"name": "John", "surname": "Doe"}}"""
     fromJsonHook(t, parseJson(jsonStr))
@@ -399,11 +456,11 @@ proc fromJsonHook*(a: var StringTableRef, b: JsonNode) =
 
 proc toJsonHook*(a: StringTableRef): JsonNode =
   ## Enables `toJson` for `StringTableRef` type.
-  ## 
+  ##
   ## See also:
   ## * `fromJsonHook proc<#fromJsonHook,StringTableRef,JsonNode>`_
   runnableExamples:
-    import strtabs, json
+    import std/[strtabs, json]
     let t = newStringTable("name", "John", "surname", "Doe", modeCaseSensitive)
     let jsonStr = """{"mode": "modeCaseSensitive",
                       "table": {"name": "John", "surname": "Doe"}}"""

@@ -14,7 +14,7 @@ import std/private/miscdollars
 import strutils2
 
 type InstantiationInfo* = typeof(instantiationInfo())
-template instLoc(): InstantiationInfo = instantiationInfo(-2, fullPaths = true)
+template instLoc*(): InstantiationInfo = instantiationInfo(-2, fullPaths = true)
 
 template toStdOrrKind(stdOrr): untyped =
   if stdOrr == stdout: stdOrrStdout else: stdOrrStderr
@@ -115,6 +115,7 @@ proc fileInfoIdx*(conf: ConfigRef; filename: AbsoluteFile; isKnownFile: var bool
   else:
     isKnownFile = false
     result = conf.m.fileInfos.len.FileIndex
+    #echo "ID ", result.int, " ", canon2
     conf.m.fileInfos.add(newFileInfo(canon, if pseudoPath: RelativeFile filename
                                             else: relativeTo(canon, conf.projectPath)))
     conf.m.filenameToIndexTbl[canon2] = result
@@ -240,36 +241,30 @@ template toFullPath*(conf: ConfigRef; info: TLineInfo): string =
 template toFullPathConsiderDirty*(conf: ConfigRef; info: TLineInfo): string =
   string toFullPathConsiderDirty(conf, info.fileIndex)
 
-type FilenameOption* = enum
-  foAbs # absolute path, e.g.: /pathto/bar/foo.nim
-  foRelProject # relative to project path, e.g.: ../foo.nim
-  foMagicSauce # magic sauce, shortest of (foAbs, foRelProject)
-  foName # lastPathPart, e.g.: foo.nim
-  foStacktrace # if optExcessiveStackTrace: foAbs else: foName
-
 proc toFilenameOption*(conf: ConfigRef, fileIdx: FileIndex, opt: FilenameOption): string =
   case opt
   of foAbs: result = toFullPath(conf, fileIdx)
   of foRelProject: result = toProjPath(conf, fileIdx)
-  of foMagicSauce:
+  of foCanonical:
+    let absPath = toFullPath(conf, fileIdx)
+    result = canonicalImportAux(conf, absPath.AbsoluteFile)
+  of foName: result = toProjPath(conf, fileIdx).lastPathPart
+  of foLegacyRelProj:
     let
       absPath = toFullPath(conf, fileIdx)
       relPath = toProjPath(conf, fileIdx)
-    result = if (optListFullPaths in conf.globalOptions) or
-                (relPath.len > absPath.len) or
-                (relPath.count("..") > 2):
+    result = if (relPath.len > absPath.len) or (relPath.count("..") > 2):
                absPath
              else:
                relPath
-  of foName: result = toProjPath(conf, fileIdx).lastPathPart
   of foStacktrace:
     if optExcessiveStackTrace in conf.globalOptions:
       result = toFilenameOption(conf, fileIdx, foAbs)
     else:
       result = toFilenameOption(conf, fileIdx, foName)
 
-proc toMsgFilename*(conf: ConfigRef; info: FileIndex): string =
-  toFilenameOption(conf, info, foMagicSauce)
+proc toMsgFilename*(conf: ConfigRef; fileIdx: FileIndex): string =
+  toFilenameOption(conf, fileIdx, conf.filenameOption)
 
 template toMsgFilename*(conf: ConfigRef; info: TLineInfo): string =
   toMsgFilename(conf, info.fileIndex)
@@ -294,10 +289,15 @@ proc `??`* (conf: ConfigRef; info: TLineInfo, filename: string): bool =
   # only for debugging purposes
   result = filename in toFilename(conf, info)
 
+const
+  UnitSep = "\31"
+    # this needs care to avoid issues similar to https://github.com/nim-lang/Nim/issues/17853
+
 type
   MsgFlag* = enum  ## flags altering msgWriteln behavior
     msgStdout,     ## force writing to stdout, even stderr is default
     msgSkipHook    ## skip message hook even if it is present
+    msgNoUnitSep  ## the message is a complete "paragraph".
   MsgFlags* = set[MsgFlag]
 
 proc msgWriteln*(conf: ConfigRef; s: string, flags: MsgFlags = {}) =
@@ -309,17 +309,20 @@ proc msgWriteln*(conf: ConfigRef; s: string, flags: MsgFlags = {}) =
   ## This is used for 'nim dump' etc. where we don't have nimsuggest
   ## support.
   #if conf.cmd == cmdIdeTools and optCDebug notin gGlobalOptions: return
+  let sep = if msgNoUnitSep notin flags: UnitSep else: ""
   if not isNil(conf.writelnHook) and msgSkipHook notin flags:
-    conf.writelnHook(s)
+    conf.writelnHook(s & sep)
   elif optStdout in conf.globalOptions or msgStdout in flags:
     if eStdOut in conf.m.errorOutputs:
       flushDot(conf)
-      writeLine(stdout, s)
+      write stdout, s
+      writeLine(stdout, sep)
       flushFile(stdout)
   else:
     if eStdErr in conf.m.errorOutputs:
       flushDot(conf)
-      writeLine(stderr, s)
+      write stderr, s
+      writeLine(stderr, sep)
       # On Windows stderr is fully-buffered when piped, regardless of C std.
       when defined(windows):
         flushFile(stderr)
@@ -365,7 +368,7 @@ proc msgWrite(conf: ConfigRef; s: string) =
     flushFile(stdOrr)
     conf.lastMsgWasDot.incl stdOrr.toStdOrrKind() # subsequent writes need `flushDot`
 
-template styledMsgWriteln*(args: varargs[typed]) =
+template styledMsgWriteln(args: varargs[typed]) =
   if not isNil(conf.writelnHook):
     callIgnoringStyle(callWritelnHook, nil, args)
   elif optStdout in conf.globalOptions:
@@ -397,7 +400,8 @@ proc log*(s: string) =
     close(f)
 
 proc quit(conf: ConfigRef; msg: TMsgKind) {.gcsafe.} =
-  if defined(debug) or msg == errInternal or conf.hasHint(hintStackTrace):
+  if conf.isDefined("nimDebug"): quitOrRaise(conf, $msg)
+  elif defined(debug) or msg == errInternal or conf.hasHint(hintStackTrace):
     {.gcsafe.}:
       if stackTraceAvailable() and isNil(conf.writelnHook):
         writeStackTrace()
@@ -405,7 +409,7 @@ proc quit(conf: ConfigRef; msg: TMsgKind) {.gcsafe.} =
         styledMsgWriteln(fgRed, """
 No stack traceback available
 To create a stacktrace, rerun compilation with './koch temp $1 <file>', see $2 for details""" %
-          [conf.command, "intern.html#debugging-the-compiler".createDocLink])
+          [conf.command, "intern.html#debugging-the-compiler".createDocLink], UnitSep)
   quit 1
 
 proc handleError(conf: ConfigRef; msg: TMsgKind, eh: TErrorHandling, s: string) =
@@ -417,7 +421,9 @@ proc handleError(conf: ConfigRef; msg: TMsgKind, eh: TErrorHandling, s: string) 
     inc(conf.errorCounter)
     conf.exitcode = 1'i8
     if conf.errorCounter >= conf.errorMax:
-      quit(conf, msg)
+      # only really quit when we're not in the new 'nim check --def' mode:
+      if conf.ideCmd == ideNone:
+        quit(conf, msg)
     elif eh == doAbort and conf.cmd != cmdIdeTools:
       quit(conf, msg)
     elif eh == doRaise:
@@ -440,10 +446,11 @@ proc writeContext(conf: ConfigRef; lastinfo: TLineInfo) =
         conf.structuredErrorHook(conf, context.info, instantiationFrom,
                                  Severity.Hint)
       else:
-        let message = if context.detail == "":
-          instantiationFrom
-        else:
-          instantiationOfFrom.format(context.detail)
+        let message =
+          if context.detail == "":
+            instantiationFrom
+          else:
+            instantiationOfFrom.format(context.detail)
         styledMsgWriteln(styleBright, conf.toFileLineCol(context.info), " ", resetStyle, message)
     info = context.info
 
@@ -475,11 +482,12 @@ proc sourceLine*(conf: ConfigRef; i: TLineInfo): string =
 
   result = conf.m.fileInfos[i.fileIndex.int32].lines[i.line.int-1]
 
-proc writeSurroundingSrc(conf: ConfigRef; info: TLineInfo) =
-  const indent = "  "
-  msgWriteln(conf, indent & $sourceLine(conf, info))
-  if info.col >= 0:
-    msgWriteln(conf, indent & spaces(info.col) & '^')
+proc getSurroundingSrc(conf: ConfigRef; info: TLineInfo): string =
+  if conf.hasHint(hintSource) and info != unknownLineInfo:
+    const indent = "  "
+    result = "\n" & indent & $sourceLine(conf, info)
+    if info.col >= 0:
+      result.add "\n" & indent & spaces(info.col) & '^'
 
 proc formatMsg*(conf: ConfigRef; info: TLineInfo, msg: TMsgKind, arg: string): string =
   let title = case msg
@@ -538,17 +546,17 @@ proc liMessage*(conf: ConfigRef; info: TLineInfo, msg: TMsgKind, arg: string,
     if conf.structuredErrorHook != nil:
       conf.structuredErrorHook(conf, info, s & kindmsg, sev)
     if not ignoreMsgBecauseOfIdeTools(conf, msg):
-      if msg == hintProcessing:
+      if msg == hintProcessing and conf.hintProcessingDots:
         msgWrite(conf, ".")
       else:
-        styledMsgWriteln(styleBright, loc, resetStyle, color, title, resetStyle, s, KindColor, kindmsg)
-        if conf.hasHint(hintSource) and info != unknownLineInfo:
-          conf.writeSurroundingSrc(info)
+        styledMsgWriteln(styleBright, loc, resetStyle, color, title, resetStyle, s, KindColor, kindmsg,
+                         resetStyle, conf.getSurroundingSrc(info), UnitSep)
         if hintMsgOrigin in conf.mainPackageNotes:
+          # xxx needs a bit of refactoring to honor `conf.filenameOption`
           styledMsgWriteln(styleBright, toFileLineCol(info2), resetStyle,
             " compiler msg initiated here", KindColor,
             KindFormat % $hintMsgOrigin,
-            resetStyle)
+            resetStyle, UnitSep)
   handleError(conf, msg, eh, s)
 
 template rawMessage*(conf: ConfigRef; msg: TMsgKind, args: openArray[string]) =
@@ -584,11 +592,11 @@ template localError*(conf: ConfigRef; info: TLineInfo, msg: TMsgKind, arg = "") 
 template localError*(conf: ConfigRef; info: TLineInfo, arg: string) =
   liMessage(conf, info, errGenerated, arg, doNothing, instLoc())
 
-template localError*(conf: ConfigRef; info: TLineInfo, format: string, params: openArray[string]) =
-  liMessage(conf, info, errGenerated, format % params, doNothing, instLoc())
-
 template message*(conf: ConfigRef; info: TLineInfo, msg: TMsgKind, arg = "") =
   liMessage(conf, info, msg, arg, doNothing, instLoc())
+
+proc warningDeprecated*(conf: ConfigRef, info: TLineInfo = gCmdLineInfo, msg = "") {.inline.} =
+  message(conf, info, warnDeprecated, msg)
 
 proc internalErrorImpl(conf: ConfigRef; info: TLineInfo, errMsg: string, info2: InstantiationInfo) =
   if conf.cmd == cmdIdeTools and conf.structuredErrorHook.isNil: return
@@ -608,9 +616,9 @@ template internalAssert*(conf: ConfigRef, e: bool) =
     let arg = info2.toFileLineCol
     internalErrorImpl(conf, unknownLineInfo, arg, info2)
 
-template lintReport*(conf: ConfigRef; info: TLineInfo, beau, got: string) =
-  let m = "'$2' should be: '$1'" % [beau, got]
-  let msg = if optStyleError in conf.globalOptions: errGenerated else: hintName
+template lintReport*(conf: ConfigRef; info: TLineInfo, beau, got: string, forceHint = false, extraMsg = "") =
+  let m = "'$1' should be: '$2'$3" % [got, beau, extraMsg]
+  let msg = if optStyleError in conf.globalOptions and not forceHint: errGenerated else: hintName
   liMessage(conf, info, msg, m, doNothing, instLoc())
 
 proc quotedFilename*(conf: ConfigRef; i: TLineInfo): Rope =
@@ -622,8 +630,33 @@ proc quotedFilename*(conf: ConfigRef; i: TLineInfo): Rope =
     result = conf.m.fileInfos[i.fileIndex.int32].quotedName
 
 template listMsg(title, r) =
-  msgWriteln(conf, title)
-  for a in r: msgWriteln(conf, "  [$1] $2" % [if a in conf.notes: "x" else: " ", $a])
+  msgWriteln(conf, title, {msgNoUnitSep})
+  for a in r: msgWriteln(conf, "  [$1] $2" % [if a in conf.notes: "x" else: " ", $a], {msgNoUnitSep})
 
 proc listWarnings*(conf: ConfigRef) = listMsg("Warnings:", warnMin..warnMax)
 proc listHints*(conf: ConfigRef) = listMsg("Hints:", hintMin..hintMax)
+
+proc uniqueModuleName*(conf: ConfigRef; fid: FileIndex): string =
+  ## The unique module name is guaranteed to only contain {'A'..'Z', 'a'..'z', '0'..'9', '_'}
+  ## so that it is useful as a C identifier snippet.
+  let path = AbsoluteFile toFullPath(conf, fid)
+  let rel =
+    if path.string.startsWith(conf.libpath.string):
+      relativeTo(path, conf.libpath).string
+    else:
+      relativeTo(path, conf.projectPath).string
+  let trunc = if rel.endsWith(".nim"): rel.len - len(".nim") else: rel.len
+  result = newStringOfCap(trunc)
+  for i in 0..<trunc:
+    let c = rel[i]
+    case c
+    of 'a'..'z':
+      result.add c
+    of {os.DirSep, os.AltSep}:
+      result.add 'Z' # because it looks a bit like '/'
+    of '.':
+      result.add 'O' # a circle
+    else:
+      # We mangle upper letters and digits too so that there cannot
+      # be clashes with our special meanings of 'Z' and 'O'
+      result.addInt ord(c)

@@ -108,13 +108,14 @@ proc compileModule*(graph: ModuleGraph; fileIdx: FileIndex; flags: TSymFlags): P
       if sfSystemModule in flags:
         graph.systemModule = result
       partialInitModule(result, graph, fileIdx, filename)
-      for m in cachedModules:
-        replayStateChanges(graph.packed[m.int].module, graph)
-        replayGenericCacheInformation(graph, m.int)
+    for m in cachedModules:
+      registerModuleById(graph, m)
+      replayStateChanges(graph.packed[m.int].module, graph)
+      replayGenericCacheInformation(graph, m.int)
   elif graph.isDirty(result):
     result.flags.excl sfDirty
     # reset module fields:
-    initStrTable(result.semtab(graph))
+    initStrTables(graph, result)
     result.ast = nil
     processModuleAux()
     graph.markClientsDirty(fileIdx)

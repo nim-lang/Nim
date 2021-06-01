@@ -4,7 +4,9 @@ this can eventually be moved to std/os and `walkDirRec` can be implemented in te
 to avoid duplication
 ]##
 
-import std/[os,strutils]
+import os
+when defined(windows):
+  from strutils import replace
 
 type
   PathEntry* = object
@@ -50,5 +52,5 @@ proc nativeToUnixPath*(path: string): string =
 
 when isMainModule:
   import sugar
-  for a in walkDirRecFilter(".", follow = a=>a.path.lastPathPart notin ["nimcache", ".git", ".csources", "bin"]):
+  for a in walkDirRecFilter(".", follow = a=>a.path.lastPathPart notin ["nimcache", ".git", "csources_v1", "csources", "bin"]):
     echo a

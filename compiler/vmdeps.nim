@@ -257,7 +257,7 @@ proc mapTypeToAstX(cache: IdentCache; t: PType; info: TLineInfo;
         result.add t.n[1].copyTree
   of tyPointer: result = atomicType("pointer", mPointer)
   of tyString: result = atomicType("string", mString)
-  of tyCString: result = atomicType("cstring", mCstring)
+  of tyCstring: result = atomicType("cstring", mCstring)
   of tyInt: result = atomicType("int", mInt)
   of tyInt8: result = atomicType("int8", mInt8)
   of tyInt16: result = atomicType("int16", mInt16)
@@ -287,6 +287,7 @@ proc mapTypeToAstX(cache: IdentCache; t: PType; info: TLineInfo;
   of tyAnd: result = mapTypeToBracket("and", mAnd, t, info)
   of tyOr: result = mapTypeToBracket("or", mOr, t, info)
   of tyNot: result = mapTypeToBracket("not", mNot, t, info)
+  of tyIterable: result = mapTypeToBracket("iterable", mIterableType, t, info)
   of tyAnything: result = atomicType("anything", mNone)
   of tyInferred: assert false
   of tyStatic, tyFromExpr:
@@ -299,7 +300,9 @@ proc mapTypeToAstX(cache: IdentCache; t: PType; info: TLineInfo;
       if t.n != nil:
         result.add t.n.copyTree
   of tyOwned: result = mapTypeToBracket("owned", mBuiltinType, t, info)
-  of tyOptDeprecated: doAssert false
+  of tyConcept:
+    result = mapTypeToBracket("concept", mNone, t, info)
+    result.add t.n.copyTree
 
 proc opMapTypeToAst*(cache: IdentCache; t: PType; info: TLineInfo; idgen: IdGenerator): PNode =
   result = mapTypeToAstX(cache, t, info, idgen, inst=false, allowRecursionX=true)

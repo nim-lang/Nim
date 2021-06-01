@@ -24,7 +24,7 @@ import
   idents, lineinfos, cmdlinehelper,
   pathutils, modulegraphs
 
-from std/browsers import openDefaultBrowser
+from browsers import openDefaultBrowser
 from nodejs import findNodeJs
 
 when hasTinyCBackend:
@@ -95,9 +95,15 @@ proc handleCmdLine(cache: IdentCache; conf: ConfigRef) =
       var cmdPrefix = ""
       case conf.backend
       of backendC, backendCpp, backendObjc: discard
-      of backendJs: cmdPrefix = findNodeJs() & " "
+      of backendJs:
+        # D20210217T215950:here this flag is needed for node < v15.0.0, otherwise
+        # tasyncjs_fail` would fail, refs https://nodejs.org/api/cli.html#cli_unhandled_rejections_mode
+        cmdPrefix = findNodeJs() & " --unhandled-rejections=strict "
       else: doAssert false, $conf.backend
+      # No space before command otherwise on windows you'd get a cryptic:
+      # `The parameter is incorrect`
       execExternalProgram(conf, cmdPrefix & output.quoteShell & ' ' & conf.arguments)
+      # execExternalProgram(conf, cmdPrefix & ' ' & output.quoteShell & ' ' & conf.arguments)
     of cmdDocLike, cmdRst2html, cmdRst2tex: # bugfix(cmdRst2tex was missing)
       if conf.arguments.len > 0:
         # reserved for future use
@@ -110,7 +116,7 @@ proc handleCmdLine(cache: IdentCache; conf: ConfigRef) =
 when declared(GC_setMaxPause):
   GC_setMaxPause 2_000
 
-when compileOption("gc", "v2") or compileOption("gc", "refc"):
+when compileOption("gc", "refc"):
   # the new correct mark&sweet collector is too slow :-/
   GC_disableMarkAndSweep()
 

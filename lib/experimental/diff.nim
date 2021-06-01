@@ -10,27 +10,30 @@
 ## This module implements an algorithm to compute the
 ## `diff`:idx: between two sequences of lines.
 ##
-## A basic example of ``diffInt`` on 2 arrays of integers:
-##
-## .. code::nim
-##
-##   import experimental/diff
-##   echo diffInt([0, 1, 2, 3, 4, 5, 6, 7, 8], [-1, 1, 2, 3, 4, 5, 666, 7, 42])
-##
-## Another short example of ``diffText`` to diff strings:
-##
-## .. code::nim
-##
-##   import experimental/diff
-##   # 2 samples of text for testing (from "The Call of Cthulhu" by Lovecraft)
-##   let txt0 = """I have looked upon all the universe has to hold of horror,
-##   even skies of spring and flowers of summer must ever be poison to me."""
-##   let txt1 = """I have looked upon all your code has to hold of bugs,
-##   even skies of spring and flowers of summer must ever be poison to me."""
-##
-##   echo diffText(txt0, txt1)
-##
 ## - To learn more see `Diff on Wikipedia. <http://wikipedia.org/wiki/Diff>`_
+
+runnableExamples:
+  assert diffInt(
+    [0, 1, 2, 3, 4, 5, 6, 7, 8],
+    [-1, 1, 2, 3, 4, 5, 666, 7, 42]) ==
+    @[Item(startA: 0, startB: 0, deletedA: 1, insertedB: 1),
+      Item(startA: 6, startB: 6, deletedA: 1, insertedB: 1),
+      Item(startA: 8, startB: 8, deletedA: 1, insertedB: 1)]
+
+runnableExamples:
+  # 2 samples of text (from "The Call of Cthulhu" by Lovecraft)
+  let txt0 = """
+abc
+def ghi
+jkl2"""
+  let txt1 = """
+bacx
+abc
+def ghi
+jkl"""
+  assert diffText(txt0, txt1) ==
+    @[Item(startA: 0, startB: 0, deletedA: 0, insertedB: 1),
+      Item(startA: 2, startB: 3, deletedA: 1, insertedB: 1)]
 
 # code owner: Arne Döring
 #
@@ -59,7 +62,7 @@ type
   Smsrd = object
     x, y: int
 
-# template to avoid a seq copy. Required until ``sink`` parameters are ready.
+# template to avoid a seq copy. Required until `sink` parameters are ready.
 template newDiffData(initData: seq[int]; L: int): DiffData =
   DiffData(
     data: initData,
@@ -71,9 +74,9 @@ proc len(d: DiffData): int {.inline.} = d.data.len
 proc diffCodes(aText: string; h: var Table[string, int]): DiffData =
   ## This function converts all textlines of the text into unique numbers for every unique textline
   ## so further work can work only with simple numbers.
-  ## ``aText`` the input text
-  ## ``h`` This extern initialized hashtable is used for storing all ever used textlines.
-  ## ``trimSpace`` ignore leading and trailing space characters
+  ## `aText` the input text
+  ## `h` This extern initialized hashtable is used for storing all ever used textlines.
+  ## `trimSpace` ignore leading and trailing space characters
   ## Returns a array of integers.
   var lastUsedCode = h.len
   result.data = newSeq[int]()
@@ -108,14 +111,14 @@ proc optimize(data: var DiffData) =
 proc sms(dataA: var DiffData; lowerA, upperA: int; dataB: DiffData; lowerB, upperB: int;
          downVector, upVector: var openArray[int]): Smsrd =
   ## This is the algorithm to find the Shortest Middle Snake (sms).
-  ## ``dataA`` sequence A
-  ## ``lowerA`` lower bound of the actual range in dataA
-  ## ``upperA`` upper bound of the actual range in dataA (exclusive)
-  ## ``dataB`` sequence B
-  ## ``lowerB`` lower bound of the actual range in dataB
-  ## ``upperB`` upper bound of the actual range in dataB (exclusive)
-  ## ``downVector`` a vector for the (0,0) to (x,y) search. Passed as a parameter for speed reasons.
-  ## ``upVector`` a vector for the (u,v) to (N,M) search. Passed as a parameter for speed reasons.
+  ## `dataA` sequence A
+  ## `lowerA` lower bound of the actual range in dataA
+  ## `upperA` upper bound of the actual range in dataA (exclusive)
+  ## `dataB` sequence B
+  ## `lowerB` lower bound of the actual range in dataB
+  ## `upperB` upper bound of the actual range in dataB (exclusive)
+  ## `downVector` a vector for the (0,0) to (x,y) search. Passed as a parameter for speed reasons.
+  ## `upVector` a vector for the (u,v) to (N,M) search. Passed as a parameter for speed reasons.
   ## Returns a MiddleSnakeData record containing x,y and u,v.
 
   let max = dataA.len + dataB.len + 1
@@ -195,14 +198,14 @@ proc lcs(dataA: var DiffData; lowerA, upperA: int; dataB: var DiffData; lowerB, 
   ## algorithm.
   ## The published algorithm passes recursively parts of the A and B sequences.
   ## To avoid copying these arrays the lower and upper bounds are passed while the sequences stay constant.
-  ## ``dataA`` sequence A
-  ## ``lowerA`` lower bound of the actual range in dataA
-  ## ``upperA`` upper bound of the actual range in dataA (exclusive)
-  ## ``dataB`` sequence B
-  ## ``lowerB`` lower bound of the actual range in dataB
-  ## ``upperB`` upper bound of the actual range in dataB (exclusive)
-  ## ``downVector`` a vector for the (0,0) to (x,y) search. Passed as a parameter for speed reasons.
-  ## ``upVector`` a vector for the (u,v) to (N,M) search. Passed as a parameter for speed reasons.
+  ## `dataA` sequence A
+  ## `lowerA` lower bound of the actual range in dataA
+  ## `upperA` upper bound of the actual range in dataA (exclusive)
+  ## `dataB` sequence B
+  ## `lowerB` lower bound of the actual range in dataB
+  ## `upperB` upper bound of the actual range in dataB (exclusive)
+  ## `downVector` a vector for the (0,0) to (x,y) search. Passed as a parameter for speed reasons.
+  ## `upVector` a vector for the (u,v) to (N,M) search. Passed as a parameter for speed reasons.
 
   # make mutable copy:
   var lowerA = lowerA
@@ -275,9 +278,9 @@ proc createDiffs(dataA, dataB: DiffData): seq[Item] =
 proc diffInt*(arrayA, arrayB: openArray[int]): seq[Item] =
   ## Find the difference in 2 arrays of integers.
   ##
-  ## ``arrayA`` A-version of the numbers (usually the old one)
+  ## `arrayA` A-version of the numbers (usually the old one)
   ##
-  ## ``arrayB`` B-version of the numbers (usually the new one)
+  ## `arrayB` B-version of the numbers (usually the new one)
   ##
   ## Returns a sequence of Items that describe the differences.
 
@@ -288,9 +291,9 @@ proc diffInt*(arrayA, arrayB: openArray[int]): seq[Item] =
   var dataB = newDiffData(@arrayB, arrayB.len)
 
   let max = dataA.len + dataB.len + 1
-  ## vector for the (0,0) to (x,y) search
+  # vector for the (0,0) to (x,y) search
   var downVector = newSeq[int](2 * max + 2)
-  ## vector for the (u,v) to (N,M) search
+  # vector for the (u,v) to (N,M) search
   var upVector = newSeq[int](2 * max + 2)
 
   lcs(dataA, 0, dataA.len, dataB, 0, dataB.len, downVector, upVector)
@@ -304,12 +307,12 @@ proc diffText*(textA, textB: string): seq[Item] =
   ## textlines into a common hashtable so i can find duplicates in there, and generating a
   ## new number each time a new textline is inserted.
   ##
-  ## ``textA`` A-version of the text (usually the old one)
+  ## `textA` A-version of the text (usually the old one)
   ##
-  ## ``textB`` B-version of the text (usually the new one)
+  ## `textB` B-version of the text (usually the new one)
   ##
   ## Returns a seq of Items that describe the differences.
-
+  # See also `gitutils.diffStrings`.
   # prepare the input-text and convert to comparable numbers.
   var h = initTable[string, int]()  # TextA.len + TextB.len  <- probably wrong initial size
   # The A-Version of the data (original data) to be compared.
@@ -321,9 +324,9 @@ proc diffText*(textA, textB: string): seq[Item] =
   h.clear # free up hashtable memory (maybe)
 
   let max = dataA.len + dataB.len + 1
-  ## vector for the (0,0) to (x,y) search
+  # vector for the (0,0) to (x,y) search
   var downVector = newSeq[int](2 * max + 2)
-  ## vector for the (u,v) to (N,M) search
+  # vector for the (u,v) to (N,M) search
   var upVector = newSeq[int](2 * max + 2)
 
   lcs(dataA, 0, dataA.len, dataB, 0, dataB.len, downVector, upVector)

@@ -30,15 +30,13 @@ on:
 
 jobs:
   build:
-    if: |
-      !contains(format('{0} {1}', github.event.head_commit.message, github.event.pull_request.title), '[skip ci]')
     strategy:
       fail-fast: false
       matrix:
         target: [linux, windows, osx]
         include:
           - target: linux
-            os: ubuntu-18.04
+            os: ubuntu-20.04
           - target: windows
             os: windows-2019
           - target: osx
@@ -50,6 +48,8 @@ jobs:
     steps:
       - name: 'Checkout'
         uses: actions/checkout@v2
+        with:
+          fetch-depth: 2
 
       - name: 'Install build dependencies (macOS)'
         if: runner.os == 'macOS'
@@ -59,64 +59,33 @@ jobs:
         if: runner.os == 'Windows'
         shell: bash
         run: |
-          mkdir dist
-          curl -L https://nim-lang.org/download/mingw64.7z -o dist/mingw64.7z
-          curl -L https://nim-lang.org/download/dlls.zip -o dist/dlls.zip
-          7z x dist/mingw64.7z -odist
-          7z x dist/dlls.zip -obin
+          set -e
+          . ci/funs.sh
+          nimInternalInstallDepsWindows
           echo "${{ github.workspace }}/dist/mingw64/bin" >> "${GITHUB_PATH}"
 
       - name: 'Add build binaries to PATH'
         shell: bash
         run: echo "${{ github.workspace }}/bin" >> "${GITHUB_PATH}"
 
-      - name: 'Get current csources version'
-        id: csources-version
+      - name: 'System information'
         shell: bash
-        run: |
-          sha=$(git ls-remote https://github.com/nim-lang/csources master | cut -f 1)
-          echo "::set-output name=sha::$sha"
+        run: . ci/funs.sh && nimCiSystemInfo
 
-      - name: 'Get prebuilt csources from cache'
-        id: csources-cache
-        uses: actions/cache@v1
-        with:
-          path: bin
-          key: '${{ matrix.os }}-${{ steps.csources-version.outputs.sha }}'
-
-      - name: 'Checkout csources'
-        if: steps.csources-cache.outputs.cache-hit != 'true'
-        uses: actions/checkout@v2
-        with:
-          repository: nim-lang/csources
-          path: csources
-
-      - name: 'Build 1-stage compiler from csources'
+      - name: 'Build csourcesAny (posix)'
+        # this would work on windows and other CI use this on windows,
+        # but we ensure here that `ci/build_autogen.bat` keeps working on windows.
+        if: runner.os != 'Windows'
         shell: bash
-        run: |
-          ext=
-          [[ '${{ runner.os }}' == 'Windows' ]] && ext=.exe
-          if [[ ! -x bin/nim-csources$ext ]]; then
-            ncpu=
-            case '${{ runner.os }}' in
-            'Linux')
-              ncpu=$(nproc)
-              ;;
-            'macOS')
-              ncpu=$(sysctl -n hw.ncpu)
-              ;;
-            'Windows')
-              ncpu=$NUMBER_OF_PROCESSORS
-              ;;
-            esac
-            [[ -z "$ncpu" || $ncpu -le 0 ]] && ncpu=1
+        run: . ci/funs.sh && nimBuildCsourcesIfNeeded CC=gcc
+          # was previously using caching via `actions/cache@v1` but this wasn't
+          # used in other CI pipelines and it's unclear the added complexity
+          # was worth the saving; can be revisited if needed.
 
-            make -C csources -j $ncpu CC=gcc
-            cp bin/nim{,-csources}$ext
-          else
-            echo 'Cache hit, using prebuilt csources'
-            cp bin/nim{-csources,}$ext
-          fi
+      - name: 'Build csourcesAny (windows)'
+        if: runner.os == 'Windows'
+        shell: cmd
+        run: ci/build_autogen.bat
 
       - name: 'Build koch'
         shell: bash

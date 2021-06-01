@@ -45,7 +45,7 @@ Compiling the Nim compiler is quite straightforward if you follow these steps:
 First, the C source of an older version of the Nim compiler is needed to
 bootstrap the latest version because the Nim compiler itself is written in the
 Nim programming language. Those C sources are available within the
-[``nim-lang/csources``][csources-repo] repository.
+[``nim-lang/csources_v1``][csources-v1-repo] repository.
 
 Next, to build from source you will need:
 
@@ -83,10 +83,6 @@ Next, run the appropriate build shell script for your platform:
 
 * `build_all.sh` (Linux, Mac)
 * `build_all.bat` (Windows)
-
-Windows requires a number of other dependencies that you may need to install including
-PCRE and OpenSSL. Nim hosts a zip package containing known working versions of the
-required DLLs [here](https://nim-lang.org/download/dlls.zip).
 
 Finally, once you have finished the build steps (on Windows, Mac, or Linux) you
 should add the ``bin`` directory to your PATH.
@@ -221,7 +217,8 @@ Copyright © 2006-2021 Andreas Rumpf, all rights reserved.
 [nim-bitcoin]: https://blockchain.info/address/1BXfuKM2uvoD6mbx4g5xM3eQhLzkCK77tJ
 [nimble-repo]: https://github.com/nim-lang/nimble
 [nimsuggest-repo]: https://github.com/nim-lang/nimsuggest
-[csources-repo]: https://github.com/nim-lang/csources
+[csources-repo-deprecated]: https://github.com/nim-lang/csources
+[csources-v1-repo]: https://github.com/nim-lang/csources_v1
 [badge-nim-travisci]: https://img.shields.io/travis/nim-lang/Nim/devel.svg?style=flat-square
 [badge-nim-irc]: https://img.shields.io/badge/chat-on_irc-blue.svg?style=flat-square
 [badge-nim-discord]: https://img.shields.io/discord/371759389889003530?color=blue&label=discord&logo=discord&logoColor=gold&style=flat-square

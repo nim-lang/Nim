@@ -48,8 +48,8 @@ proc mapMem*(m: var MemFile, mode: FileMode = fmRead,
              mappedSize = -1, offset = 0, mapFlags = cint(-1)): pointer =
   ## returns a pointer to a mapped portion of MemFile `m`
   ##
-  ## ``mappedSize`` of ``-1`` maps to the whole file, and
-  ## ``offset`` must be multiples of the PAGE SIZE of your OS
+  ## `mappedSize` of `-1` maps to the whole file, and
+  ## `offset` must be multiples of the PAGE SIZE of your OS
   if mode == fmAppend:
     raise newEIO("The append mode is not supported.")
 
@@ -83,12 +83,12 @@ proc mapMem*(m: var MemFile, mode: FileMode = fmRead,
 
 
 proc unmapMem*(f: var MemFile, p: pointer, size: int) =
-  ## unmaps the memory region ``(p, <p+size)`` of the mapped file `f`.
+  ## unmaps the memory region `(p, <p+size)` of the mapped file `f`.
   ## All changes are written back to the file system, if `f` was opened
   ## with write access.
   ##
-  ## ``size`` must be of exactly the size that was requested
-  ## via ``mapMem``.
+  ## `size` must be of exactly the size that was requested
+  ## via `mapMem`.
   when defined(windows):
     if unmapViewOfFile(p) == 0: raiseOSError(osLastError())
   else:
@@ -98,21 +98,21 @@ proc unmapMem*(f: var MemFile, p: pointer, size: int) =
 proc open*(filename: string, mode: FileMode = fmRead,
            mappedSize = -1, offset = 0, newFileSize = -1,
            allowRemap = false, mapFlags = cint(-1)): MemFile =
-  ## opens a memory mapped file. If this fails, ``OSError`` is raised.
+  ## opens a memory mapped file. If this fails, `OSError` is raised.
   ##
-  ## ``newFileSize`` can only be set if the file does not exist and is opened
+  ## `newFileSize` can only be set if the file does not exist and is opened
   ## with write access (e.g., with fmReadWrite).
   ##
-  ##``mappedSize`` and ``offset``
+  ##`mappedSize` and `offset`
   ## can be used to map only a slice of the file.
   ##
-  ## ``offset`` must be multiples of the PAGE SIZE of your OS
+  ## `offset` must be multiples of the PAGE SIZE of your OS
   ## (usually 4K or 8K but is unique to your OS)
   ##
-  ## ``allowRemap`` only needs to be true if you want to call ``mapMem`` on
+  ## `allowRemap` only needs to be true if you want to call `mapMem` on
   ## the resulting MemFile; else file handles are not kept open.
   ##
-  ## ``mapFlags`` allows callers to override default choices for memory mapping
+  ## `mapFlags` allows callers to override default choices for memory mapping
   ## flags with a bitwise mask of a variety of likely platform-specific flags
   ## which may be ignored or even cause `open` to fail if misspecified.
   ##
@@ -301,9 +301,9 @@ proc flush*(f: var MemFile; attempts: Natural = 3) =
 
 when defined(posix) or defined(nimdoc):
   proc resize*(f: var MemFile, newFileSize: int) {.raises: [IOError, OSError].} =
-    ## resize and re-map the file underlying an ``allowRemap MemFile``.
+    ## resize and re-map the file underlying an `allowRemap MemFile`.
     ## **Note**: this assumes the entire file is mapped read-write at offset zero.
-    ## Also, the value of ``.mem`` will probably change.
+    ## Also, the value of `.mem` will probably change.
     ## **Note**: This is not (yet) available on Windows.
     when defined(posix):
       if f.handle == -1:
@@ -514,7 +514,7 @@ proc newMemMapFileStream*(filename: string, mode: FileMode = fmRead,
   ## creates a new stream from the file named `filename` with the mode `mode`.
   ## Raises ## `OSError` if the file cannot be opened. See the `system
   ## <system.html>`_ module for a list of available FileMode enums.
-  ## ``fileSize`` can only be set if the file does not exist and is opened
+  ## `fileSize` can only be set if the file does not exist and is opened
   ## with write access (e.g., with fmReadWrite).
   var mf: MemFile = open(filename, mode, newFileSize = fileSize)
   new(result)

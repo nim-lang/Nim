@@ -7,7 +7,7 @@
 #    distribution, for details about the copyright.
 #
 
-## The ``sets`` module implements an efficient `hash set`:idx: and
+## The `sets` module implements an efficient `hash set`:idx: and
 ## ordered hash set.
 ##
 ## Hash sets are different from the `built in set type
@@ -40,7 +40,7 @@
 ##
 ##
 ## Note: The data types declared here have *value semantics*: This means
-## that ``=`` performs a copy of the set.
+## that `=` performs a copy of the set.
 ##
 ## **See also:**
 ## * `intsets module <intsets.html>`_ for efficient int sets
@@ -51,9 +51,6 @@ import
   hashes, math
 
 {.pragma: myShallow.}
-when not defined(nimhygiene):
-  {.pragma: dirty.}
-
 # For "integer-like A" that are too big for intsets/bit-vectors to be practical,
 # it would be best to shrink hcode to the same size as the integer.  Larger
 # codes should never be needed, and this can pack more entries per cache-line.
@@ -116,7 +113,7 @@ proc initHashSet*[A](initialSize = defaultInitialSize): HashSet[A] =
   ## Wrapper around `init proc <#init,HashSet[A]>`_ for initialization of
   ## hash sets.
   ##
-  ## Returns an empty hash set you can assign directly in ``var`` blocks in a
+  ## Returns an empty hash set you can assign directly in `var` blocks in a
   ## single line.
   ##
   ## Starting from Nim v0.20, sets are initialized by default and it is
@@ -133,7 +130,7 @@ proc initHashSet*[A](initialSize = defaultInitialSize): HashSet[A] =
 
 proc `[]`*[A](s: var HashSet[A], key: A): var A =
   ## Returns the element that is actually stored in `s` which has the same
-  ## value as `key` or raises the ``KeyError`` exception.
+  ## value as `key` or raises the `KeyError` exception.
   ##
   ## This is useful when one overloaded `hash` and `==` but still needs
   ## reference semantics for sharing.
@@ -166,6 +163,27 @@ proc contains*[A](s: HashSet[A], key: A): bool =
   var hc: Hash
   var index = rawGet(s, key, hc)
   result = index >= 0
+
+proc len*[A](s: HashSet[A]): int =
+  ## Returns the number of elements in `s`.
+  ##
+  ## Due to an implementation detail you can call this proc on variables which
+  ## have not been initialized yet. The proc will return zero as the length
+  ## then.
+  runnableExamples:
+    var a: HashSet[string]
+    assert len(a) == 0
+    let s = toHashSet([3, 5, 7])
+    assert len(s) == 3
+
+  result = s.counter
+
+proc card*[A](s: HashSet[A]): int =
+  ## Alias for `len() <#len,HashSet[A]>`_.
+  ##
+  ## Card stands for the `cardinality
+  ## <http://en.wikipedia.org/wiki/Cardinality>`_ of a set.
+  result = s.counter
 
 proc incl*[A](s: var HashSet[A], key: A) =
   ## Includes an element `key` in `s`.
@@ -359,27 +377,6 @@ proc clear*[A](s: var HashSet[A]) =
   for i in 0 ..< s.data.len:
     s.data[i].hcode = 0
     s.data[i].key = default(typeof(s.data[i].key))
-
-proc len*[A](s: HashSet[A]): int =
-  ## Returns the number of elements in `s`.
-  ##
-  ## Due to an implementation detail you can call this proc on variables which
-  ## have not been initialized yet. The proc will return zero as the length
-  ## then.
-  runnableExamples:
-    var a: HashSet[string]
-    assert len(a) == 0
-    let s = toHashSet([3, 5, 7])
-    assert len(s) == 3
-
-  result = s.counter
-
-proc card*[A](s: HashSet[A]): int =
-  ## Alias for `len() <#len,HashSet[A]>`_.
-  ##
-  ## Card stands for the `cardinality
-  ## <http://en.wikipedia.org/wiki/Cardinality>`_ of a set.
-  result = s.counter
 
 
 proc union*[A](s1, s2: HashSet[A]): HashSet[A] =
@@ -655,7 +652,7 @@ proc initOrderedSet*[A](initialSize = defaultInitialSize): OrderedSet[A] =
   ## Wrapper around `init proc <#init,OrderedSet[A]>`_ for initialization of
   ## ordered hash sets.
   ##
-  ## Returns an empty ordered hash set you can assign directly in ``var`` blocks
+  ## Returns an empty ordered hash set you can assign directly in `var` blocks
   ## in a single line.
   ##
   ## Starting from Nim v0.20, sets are initialized by default and it is

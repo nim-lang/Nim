@@ -32,7 +32,7 @@ when defined(nimv2):
       else:
         dealloc(a.data)
 
-  proc `=`(a: var WideCStringObj; b: WideCStringObj) {.error.}
+  proc `=copy`(a: var WideCStringObj; b: WideCStringObj) {.error.}
 
   proc `=sink`(a: var WideCStringObj; b: WideCStringObj) =
     a.bytes = b.bytes
@@ -91,7 +91,7 @@ const
 template ones(n: untyped): untyped = ((1 shl n)-1)
 
 template fastRuneAt(s: cstring, i, L: int, result: untyped, doInc = true) =
-  ## Returns the unicode character ``s[i]`` in `result`. If ``doInc == true``
+  ## Returns the unicode character `s[i]` in `result`. If `doInc == true`
   ## `i` is incremented by the number of bytes that have been processed.
   bind ones
 

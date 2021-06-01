@@ -1,14 +1,12 @@
 discard """
-  output: '''
-set is empty
-'''
+  targets: "c cpp js"
 """
 
+import std/[sets, hashes]
 
-import sets, hashes
-
-from sequtils import toSeq
-from algorithm import sorted
+from std/sequtils import toSeq
+from std/algorithm import sorted
+from stdtest/testutils import whenVMorJs
 
 proc sortedPairs[T](t: T): auto = toSeq(t.pairs).sorted
 template sortedItems(t: untyped): untyped = sorted(toSeq(t))
@@ -22,10 +20,12 @@ block tsetpop:
     discard a.pop()
   doAssert len(a) == 0
 
+  var msg = ""
   try:
     echo a.pop()
   except KeyError as e:
-    echo e.msg
+    msg = e.msg
+  doAssert msg == "set is empty"
 
 
 
@@ -254,3 +254,33 @@ block: # test correctness after a number of inserts/deletes
 
   testDel(): (var t: HashSet[int])
   testDel(): (var t: OrderedSet[int])
+
+
+template main() =
+  # xxx move all tests inside this
+  block:
+    let a = {true, false}
+    doAssert $a == "{false, true}"
+    doAssert a.len == 2
+
+  block:
+    let a = {false .. true}
+    doAssert $a == "{false, true}"
+    doAssert a.len == 2
+
+  block:
+    let a = {false .. false}
+    doAssert $a == "{false}"
+    doAssert a.len == 1
+
+  block: # bug #16123
+    whenVMorJs: discard
+    do:
+      type CallType = proc() {.closure.}
+      var setA = initHashSet[CallType]()
+      let foo = proc() = discard
+      setA.incl(foo)
+      doAssert setA.contains(foo)
+
+static: main()
+main()

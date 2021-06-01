@@ -3,7 +3,7 @@ discard """
 """
 
 import std/strutils
-
+from stdtest/testutils import disableVm
 # xxx each instance of `disableVm` and `when not defined js:` should eventually be fixed
 
 template rejectParse(e) =
@@ -11,10 +11,6 @@ template rejectParse(e) =
     discard e
     raise newException(AssertionDefect, "This was supposed to fail: $#!" % astToStr(e))
   except ValueError: discard
-
-template disableVm(body) =
-  when nimvm: discard
-  else: body
 
 template main() =
   block: # strip
@@ -246,6 +242,34 @@ template main() =
     doAssert "/1/2/3".rfind('/') == 4
     doAssert "/1/2/3".rfind('/', last=1) == 0
     doAssert "/1/2/3".rfind('0') == -1
+
+    block:
+      const haystack: string = "ABCABABABABCAB"
+      doAssert haystack.len == 14
+      doAssert haystack.rfind("ABC") == 9
+      doAssert haystack.rfind("ABC", last=13) == 9
+      doAssert haystack.rfind("ABC", last=12) == 9
+      doAssert haystack.rfind("ABC", last=11) == 9
+      doAssert haystack.rfind("ABC", last=10) == 0
+
+      doAssert haystack.rfind("ABC", start=0) == 9
+      doAssert haystack.rfind("ABC", start=1) == 9
+      doAssert haystack.rfind("ABC", start=2) == 9
+      doAssert haystack.rfind("ABC", start=9) == 9
+      doAssert haystack.rfind("ABC", start=10) == -1
+      doAssert haystack.rfind("ABC", start=11) == -1
+      doAssert haystack.rfind("ABC", start=12) == -1
+
+      doAssert haystack.rfind("ABC", start=0, last=13) == 9
+      doAssert haystack.rfind("ABC", start=0, last=12) == 9
+      doAssert haystack.rfind("ABC", start=0, last=11) == 9
+      doAssert haystack.rfind("ABC", start=0, last=10) == 0
+      doAssert haystack.rfind("ABC", start=1, last=10) == -1
+
+    doAssert "".rfind("/") == -1
+    doAssert "/".rfind("/") == 0
+    doAssert "/".rfind("//") == -1
+    doAssert "///".rfind("//", start=3) == -1
 
   block: # trimZeros
     var x = "1200"

@@ -21,7 +21,7 @@ runnableExamples:
       foo: int
       bar: string
 
-  iterator items(x: Something): int =
+  iterator items(x: Something): Hash =
     yield hash(x.foo)
     yield hash(x.bar)
 
@@ -182,7 +182,7 @@ proc hashData*(data: pointer, size: int): Hash =
   var h: Hash = 0
   when defined(js):
     var p: cstring
-    asm """`p` = `Data`;"""
+    asm """`p` = `Data`"""
   else:
     var p = cast[cstring](data)
   var i = 0
@@ -192,32 +192,6 @@ proc hashData*(data: pointer, size: int): Hash =
     inc(i)
     dec(s)
   result = !$h
-
-when defined(js):
-  var objectID = 0
-
-proc hash*(x: pointer): Hash {.inline.} =
-  ## Efficient hashing of pointers.
-  when defined(js):
-    asm """
-      if (typeof `x` == "object") {
-        if ("_NimID" in `x`)
-          `result` = `x`["_NimID"];
-        else {
-          `result` = ++`objectID`;
-          `x`["_NimID"] = `result`;
-        }
-      }
-    """
-  else:
-    result = cast[Hash](cast[uint](x) shr 3) # skip the alignment
-
-proc hash*[T: proc](x: T): Hash {.inline.} =
-  ## Efficient hashing of proc vars. Closures are supported too.
-  when T is "closure":
-    result = hash(rawProc(x)) !& hash(rawEnv(x))
-  else:
-    result = hash(pointer(x))
 
 proc hashIdentity*[T: Ordinal|enum](x: T): Hash {.inline, since: (1, 3).} =
   ## The identity hash, i.e. `hashIdentity(x) = x`.
@@ -231,6 +205,57 @@ else:
   proc hash*[T: Ordinal|enum](x: T): Hash {.inline.} =
     ## Efficient hashing of integers.
     hashWangYi1(uint64(ord(x)))
+
+when defined(js):
+  var objectID = 0
+  proc getObjectId(x: pointer): int =
+    asm """
+      if (typeof `x` == "object") {
+        if ("_NimID" in `x`)
+          `result` = `x`["_NimID"];
+        else {
+          `result` = ++`objectID`;
+          `x`["_NimID"] = `result`;
+        }
+      }
+    """
+
+proc hash*(x: pointer): Hash {.inline.} =
+  ## Efficient `hash` overload.
+  when defined(js):
+    let y = getObjectId(x)
+  else:
+    let y = cast[int](x)
+  hash(y) # consistent with code expecting scrambled hashes depending on `nimIntHash1`.
+
+proc hash*[T](x: ptr[T]): Hash {.inline.} =
+  ## Efficient `hash` overload.
+  runnableExamples:
+    var a: array[10, uint8]
+    assert a[0].addr.hash != a[1].addr.hash
+    assert cast[pointer](a[0].addr).hash == a[0].addr.hash
+  hash(cast[pointer](x))
+
+when defined(nimEnableHashRef):
+  proc hash*[T](x: ref[T]): Hash {.inline.} =
+    ## Efficient `hash` overload.
+    runnableExamples:
+      type A = ref object
+        x: int
+      let a = A(x: 3)
+      let ha = a.hash
+      assert ha != A(x: 3).hash # A(x: 3) is a different ref object from `a`.
+      a.x = 4
+      assert ha == a.hash # the hash only depends on the address
+    runnableExamples:
+      # you can overload `hash` if you want to customize semantics
+      type A[T] = ref object
+        x, y: T
+      proc hash(a: A): Hash = hash(a.x)
+      assert A[int](x: 3, y: 4).hash == A[int](x: 3, y: 5).hash
+    # xxx pending bug #17733, merge as `proc hash*(pointer | ref | ptr): Hash`
+    # or `proc hash*[T: ref | ptr](x: T): Hash`
+    hash(cast[pointer](x))
 
 proc hash*(x: float): Hash {.inline.} =
   ## Efficient hashing of floats.
@@ -484,14 +509,44 @@ proc hashIgnoreCase*(sBuf: string, sPos, ePos: int): Hash =
     h = h !& ord(c)
   result = !$h
 
+proc hash*[T: tuple | object | proc](x: T): Hash {.inline.} =
+  ## Efficient `hash` overload.
+  runnableExamples:
+    # for `tuple|object`, `hash` must be defined for each component of `x`.
+    type Obj = object
+      x: int
+      y: string
+    type Obj2[T] = object
+      x: int
+      y: string
+    assert hash(Obj(x: 520, y: "Nim")) != hash(Obj(x: 520, y: "Nim2"))
+    # you can define custom hashes for objects (even if they're generic):
+    proc hash(a: Obj2): Hash = hash((a.x))
+    assert hash(Obj2[float](x: 520, y: "Nim")) == hash(Obj2[float](x: 520, y: "Nim2"))
+  runnableExamples:
+    # proc
+    proc fn1() = discard
+    const fn1b = fn1
+    assert hash(fn1b) == hash(fn1)
 
-proc hash*[T: tuple](x: T): Hash =
-  ## Efficient hashing of tuples.
-  ## There must be a `hash` proc defined for each of the field types.
-  for f in fields(x):
-    result = result !& hash(f)
-  result = !$result
+    # closure
+    proc outer =
+      var a = 0
+      proc fn2() = a.inc
+      assert fn2 is "closure"
+      let fn2b = fn2
+      assert hash(fn2b) == hash(fn2)
+      assert hash(fn2) != hash(fn1)
+    outer()
 
+  when T is "closure":
+    result = hash((rawProc(x), rawEnv(x)))
+  elif T is (proc):
+    result = hash(pointer(x))
+  else:
+    for f in fields(x):
+      result = result !& hash(f)
+    result = !$result
 
 proc hash*[A](x: openArray[A]): Hash =
   ## Efficient hashing of arrays and sequences.
