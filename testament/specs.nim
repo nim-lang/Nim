@@ -253,6 +253,7 @@ proc parseSpec*(filename: string): TSpec =
   var p: CfgParser
   open(p, ss, filename, 1)
   var flags: HashSet[string]
+  var nimoutFound = false
   while true:
     var e = next(p)
     case e.kind
@@ -309,6 +310,7 @@ proc parseSpec*(filename: string): TSpec =
         result.action = actionReject
       of "nimout":
         result.nimout = e.value
+        nimoutFound = true
       of "nimoutfull":
         result.nimoutFull = parseCfgBool(e.value)
       of "batchable":
@@ -400,6 +402,9 @@ proc parseSpec*(filename: string): TSpec =
 
   if skips.anyIt(it in result.file):
     result.err = reDisabled
+
+  if nimoutFound and result.nimout.len == 0 and not result.nimoutFull:
+    result.parseErrors.addLine "empty `nimout` is vacuously true, use `nimoutFull:true` if intentional"
 
   result.inCurrentBatch = isCurrentBatch(testamentData0, filename) or result.unbatchable
   if not result.inCurrentBatch:

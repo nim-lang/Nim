@@ -610,8 +610,6 @@ proc semTemplateDef(c: PContext, n: PNode): PNode =
        s.owner.name.s == "vm" and s.name.s == "stackTrace":
       incl(s.flags, sfCallsite)
 
-  s.ast = n
-
   styleCheckDef(c.config, s)
   onDef(n[namePos].info, s)
   # check parameter list:
@@ -664,6 +662,12 @@ proc semTemplateDef(c: PContext, n: PNode): PNode =
   semIdeForTemplateOrGeneric(c, n[bodyPos], ctx.cursorInBody)
   closeScope(c)
   popOwner(c)
+
+  # set the symbol AST after pragmas, at least. This stops pragma that have
+  # been pushed (implicit) to be explicitly added to the template definition
+  # and misapplied to the body. see #18113
+  s.ast = n
+
   if sfCustomPragma in s.flags:
     if n[bodyPos].kind != nkEmpty:
       localError(c.config, n[bodyPos].info, errImplOfXNotAllowed % s.name.s)

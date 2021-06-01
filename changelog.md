@@ -50,8 +50,9 @@
 - On POSIX systems, we now ignore `SIGPIPE` signals, use `-d:nimLegacySigpipeHandler`
   for previous behavior.
 
-- `hashes.hash` now supports `object` and `ref` (can be overloaded in user code).
-  For a transition period, use `-d:nimLegacyNoHashRef` to avoid defining `hash(ref)`.
+- `hashes.hash` can now support `object` and `ref` (can be overloaded in user code),
+  if `-d:nimEnableHashRef` is used.
+
 - `hashes.hash(proc|ptr|ref|pointer)` now calls `hash(int)` and honors `-d:nimIntHash1`,
   `hashes.hash(closure)` has also been improved.
 
@@ -68,10 +69,25 @@
   previous behavior for a transition time, see PR #17467.
 
 - `jsonutils` now serializes/deserializes holey enums as regular enums (via `ord`) instead of as strings.
-  Use `-d:nimLegacyJsonutilsHoleyEnum` for a transition period.
+  Use `-d:nimLegacyJsonutilsHoleyEnum` for a transition period. `toJson` now serializes `JsonNode`
+  as is via reference (without a deep copy) instead of treating `JsonNode` as a regular ref object,
+  this can be customized via `jsonNodeMode`.
+
+- `json` and `jsonutils` now serialize NaN, Inf, -Inf as strings, so that
+  `%[NaN, -Inf]` is the string `["nan","-inf"]` instead of `[nan,-inf]` which was invalid json.
+
+- `strformat` is now part of `include std/prelude`.
+
+- Deprecated `proc reversed*[T](a: openArray[T], first: Natural, last: int): seq[T]` in `std/algorithm`.
+
+- The configuration subsystem now allows for `-d:release` and `-d:danger` to work as expected.
+  The downside is that these defines now have custom logic that doesn't apply for
+  other defines.
+
 
 
 ## Standard library additions and changes
+
 - Added support for parenthesized expressions in `strformat`
 
 - Fixed buffer overflow bugs in `net`
@@ -87,7 +103,6 @@
   from `https://curl.se/ca/cacert.pem`. Besides
   the OpenSSL DLLs (e.g. libssl-1_1-x64.dll, libcrypto-1_1-x64.dll) you
   now also need to ship `cacert.pem` with your `.exe` file.
-
 
 - Make `{.requiresInit.}` pragma to work for `distinct` types.
 
@@ -116,9 +131,11 @@
 - `json.%`,`json.to`, `jsonutils.formJson`,`jsonutils.toJson` now work with `uint|uint64`
   instead of raising (as in 1.4) or giving wrong results (as in 1.2).
 
+- `jsonutils` now handles `cstring` (including as Table key), and `set`.
+
 - added `jsonutils.jsonTo` overload with `opt = Joptions()` param.
 
-- `jsonutils` now handles `cstring` (including as Table key), and `set`.
+- `jsonutils.toJson` now supports customization via `ToJsonOptions`.
 
 - Added an overload for the `collect` macro that inferes the container type based
   on the syntax of the last expression. Works with std seqs, tables and sets.
@@ -136,6 +153,7 @@
 - Added `std/enumutils` module. Added `genEnumCaseStmt` macro that generates case statement to parse string to enum.
   Added `items` for enums with holes.
   Added `symbolName` to return the enum symbol name ignoring the human readable name.
+  Added `symbolRank` to return the index in which an enum member is listed in an enum.
 
 - Added `typetraits.HoleyEnum` for enums with holes, `OrdinalEnum` for enums without holes.
 
@@ -159,9 +177,10 @@
 - `--gc:orc` is now 10% faster than previously for common workloads. If
   you have trouble with its changed behavior, compile with `-d:nimOldOrc`.
 
-
 - `os.FileInfo` (returned by `getFileInfo`) now contains `blockSize`,
   determining preferred I/O block size for this file object.
+
+- Added `os.getCacheDir()` to return platform specific cache directory.
 
 - Added a simpler to use `io.readChars` overload.
 
@@ -308,6 +327,9 @@
 
 - Added `copyWithin` [for `seq` and `array` for JavaScript targets](https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Array/copyWithin).
 
+- Fixed premature garbage collection in asyncdispatch, when a stack trace override is in place.
+
+- Added setCurrentException for JS backend.
 
 ## Language changes
 
@@ -353,6 +375,8 @@
 
 - `typeof(voidStmt)` now works and returns `void`.
 
+
+
 ## Compiler changes
 
 - Added `--declaredlocs` to show symbol declaration location in messages.
@@ -379,7 +403,8 @@
 - TLS: OSX now uses native TLS (`--tlsEmulation:off`), TLS now works with importcpp non-POD types,
   such types must use `.cppNonPod` and `--tlsEmulation:off`should be used.
 
-- Now array literals(JS backend) uses JS typed arrays when the corresponding js typed array exists, for example `[byte(1), 2, 3]` generates `new Uint8Array([1, 2, 3])`.
+- Now array literals(JS backend) uses JS typed arrays when the corresponding js typed array exists,
+  for example `[byte(1), 2, 3]` generates `new Uint8Array([1, 2, 3])`.
 
 - docgen: rst files can now use single backticks instead of double backticks and correctly render
   in both rst2html (as before) as well as common tools rendering rst directly (e.g. github), by
@@ -410,6 +435,8 @@
   enforces that every symbol is written as it was declared, not enforcing
   the official Nim style guide. To be enabled, this has to be combined either
   with `--styleCheck:error` or `--styleCheck:hint`.
+
+
 
 ## Tool changes
 

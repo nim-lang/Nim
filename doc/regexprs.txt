@@ -146,7 +146,7 @@ character          meaning
 After ``\x``, from zero to two hexadecimal digits are read (letters can be in
 upper or lower case). In UTF-8 mode, any number of hexadecimal digits may
 appear between ``\x{`` and ``}``, but the value of the character code must be
-less than 2**31 (that is, the maximum hexadecimal value is 7FFFFFFF). If
+less than 2^31 (that is, the maximum hexadecimal value is 7FFFFFFF). If
 characters other than hexadecimal digits appear between ``\x{`` and ``}``, or
 if there is no terminating ``}``, this form of escape is not recognized.
 Instead, the initial ``\x`` will be interpreted as a basic hexadecimal escape,

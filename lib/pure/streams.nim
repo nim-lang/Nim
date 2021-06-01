@@ -1252,7 +1252,7 @@ else: # after 1.3 or JS not defined
     var s = StringStream(s)
     s.data = ""
 
-  proc newStringStream*(s: string = ""): owned StringStream =
+  proc newStringStream*(s: sink string = ""): owned StringStream =
     ## Creates a new stream from the string `s`.
     ##
     ## See also:
