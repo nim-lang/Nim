@@ -1037,7 +1037,7 @@ proc toDecimal64*(ieeeSignificand: uint64; ieeeExponent: uint64): FloatingDecima
 ##  ToChars
 ## ==================================================================================================
 
-proc utoa2Digits*(buf: cstring; digits: uint32) {.inline.} =
+proc utoa2Digits*(buf: var openArray[char]; pos: int; digits: uint32) {.inline.} =
   const
     digits100: array[200, char] = ['0', '0', '0', '1', '0', '2', '0', '3', '0', '4', '0', '5',
       '0', '6', '0', '7', '0', '8', '0', '9', '1', '0', '1', '1', '1', '2', '1', '3', '1', '4',
@@ -1052,7 +1052,9 @@ proc utoa2Digits*(buf: cstring; digits: uint32) {.inline.} =
       '8', '7', '8', '8', '8', '9', '9', '0', '9', '1', '9', '2', '9', '3', '9', '4', '9', '5',
       '9', '6', '9', '7', '9', '8', '9', '9']
   dragonbox_Assert(digits <= 99)
-  copyMem(buf, unsafeAddr(digits100[2 * digits]), 2 * sizeof((char)))
+  buf[pos] = digits100[2 * digits]
+  buf[pos+1] = digits100[2 * digits + 1]
+  #copyMem(buf, unsafeAddr(digits100[2 * digits]), 2 * sizeof((char)))
 
 proc trailingZeros2Digits*(digits: uint32): int32 {.inline.} =
   const
@@ -1063,35 +1065,36 @@ proc trailingZeros2Digits*(digits: uint32): int32 {.inline.} =
   dragonbox_Assert(digits <= 99)
   return trailingZeros100[digits]
 
-template `+!`(x: cstring; offset: int): cstring = cast[cstring](cast[uint](x) + uint(offset))
+when false:
+  template `+!`(x: cstring; offset: int): cstring = cast[cstring](cast[uint](x) + uint(offset))
 
-template dec(x: cstring; offset=1) = x = cast[cstring](cast[uint](x) - uint(offset))
-template inc(x: cstring; offset=1) = x = cast[cstring](cast[uint](x) + uint(offset))
+  template dec(x: cstring; offset=1) = x = cast[cstring](cast[uint](x) - uint(offset))
+  template inc(x: cstring; offset=1) = x = cast[cstring](cast[uint](x) + uint(offset))
 
-proc memset(x: cstring; ch: char; L: int) {.importc, nodecl.}
-proc memmove(a, b: cstring; L: int) {.importc, nodecl.}
+  proc memset(x: cstring; ch: char; L: int) {.importc, nodecl.}
+  proc memmove(a, b: cstring; L: int) {.importc, nodecl.}
 
-proc utoa8DigitsSkipTrailingZeros*(buf: cstring; digits: uint32): int32 {.inline.} =
+proc utoa8DigitsSkipTrailingZeros*(buf: var openArray[char]; pos: int; digits: uint32): int32 {.inline.} =
   dragonbox_Assert(digits >= 1)
   dragonbox_Assert(digits <= 99999999'u32)
   let q: uint32 = digits div 10000
   let r: uint32 = digits mod 10000
   let qH: uint32 = q div 100
   let qL: uint32 = q mod 100
-  utoa2Digits(buf, qH)
-  utoa2Digits(buf +! 2, qL)
+  utoa2Digits(buf, pos, qH)
+  utoa2Digits(buf, pos + 2, qL)
   if r == 0:
     return trailingZeros2Digits(if qL == 0: qH else: qL) + (if qL == 0: 6 else: 4)
   else:
     let rH: uint32 = r div 100
     let rL: uint32 = r mod 100
-    utoa2Digits(buf +! 4, rH)
-    utoa2Digits(buf +! 6, rL)
+    utoa2Digits(buf, pos + 4, rH)
+    utoa2Digits(buf, pos + 6, rL)
     return trailingZeros2Digits(if rL == 0: rH else: rL) + (if rL == 0: 2 else: 0)
 
-proc printDecimalDigitsBackwards*(buf: cstring; output64: uint64): int32 {.inline.} =
+proc printDecimalDigitsBackwards*(buf: var openArray[char]; pos: int; output64: uint64): int32 {.inline.} =
+  var pos = pos
   var output64 = output64
-  var buf = buf
   var tz: int32 = 0
   ##  number of trailing zeros removed.
   var nd: int32 = 0
@@ -1101,9 +1104,9 @@ proc printDecimalDigitsBackwards*(buf: cstring; output64: uint64): int32 {.inlin
     let q: uint64 = output64 div 100000000'u64
     let r: uint32 = cast[uint32](output64 mod 100000000'u64)
     output64 = q
-    dec(buf, 8)
+    dec(pos, 8)
     if r != 0:
-      tz = utoa8DigitsSkipTrailingZeros(buf, r)
+      tz = utoa8DigitsSkipTrailingZeros(buf, pos, r)
       dragonbox_Assert(tz >= 0)
       dragonbox_Assert(tz <= 7)
     else:
@@ -1115,12 +1118,12 @@ proc printDecimalDigitsBackwards*(buf: cstring; output64: uint64): int32 {.inlin
     let q: uint32 = output div 10000
     let r: uint32 = output mod 10000
     output = q
-    dec(buf, 4)
+    dec(pos, 4)
     if r != 0:
       let rH: uint32 = r div 100
       let rL: uint32 = r mod 100
-      utoa2Digits(buf, rH)
-      utoa2Digits(buf +! 2, rL)
+      utoa2Digits(buf, pos, rH)
+      utoa2Digits(buf, pos + 2, rL)
       if tz == nd:
         inc(tz, trailingZeros2Digits(if rL == 0: rH else: rL) +
             (if rL == 0: 2 else: 0))
@@ -1128,15 +1131,15 @@ proc printDecimalDigitsBackwards*(buf: cstring; output64: uint64): int32 {.inlin
       if tz == nd:
         inc(tz, 4)
       else:
-        memset(buf, '0', 4)
+        for i in 0..3: buf[pos+i] = '0'
       ##  (actually not required...)
     inc(nd, 4)
   if output >= 100:
     let q: uint32 = output div 100
     let r: uint32 = output mod 100
     output = q
-    dec(buf, 2)
-    utoa2Digits(buf, r)
+    dec(pos, 2)
+    utoa2Digits(buf, pos, r)
     if tz == nd:
       inc(tz, trailingZeros2Digits(r))
     inc(nd, 2)
@@ -1144,8 +1147,8 @@ proc printDecimalDigitsBackwards*(buf: cstring; output64: uint64): int32 {.inlin
       let q2: uint32 = output div 100
       let r2: uint32 = output mod 100
       output = q2
-      dec(buf, 2)
-      utoa2Digits(buf, r2)
+      dec(pos, 2)
+      utoa2Digits(buf, pos, r2)
       if tz == nd:
         inc(tz, trailingZeros2Digits(r2))
       inc(nd, 2)
@@ -1153,16 +1156,16 @@ proc printDecimalDigitsBackwards*(buf: cstring; output64: uint64): int32 {.inlin
   dragonbox_Assert(output <= 99)
   if output >= 10:
     let q: uint32 = output
-    dec(buf, 2)
-    utoa2Digits(buf, q)
+    dec(pos, 2)
+    utoa2Digits(buf, pos, q)
     if tz == nd:
       inc(tz, trailingZeros2Digits(q))
   else:
     let q: uint32 = output
     dragonbox_Assert(q >= 1)
     dragonbox_Assert(q <= 9)
-    dec(buf, 1)
-    buf[0] = cast[char](ord('0') + q)
+    dec(pos)
+    buf[pos] = chr(ord('0') + q)
   return tz
 
 proc decimalLength*(v: uint64): int32 {.inline.} =
@@ -1205,13 +1208,13 @@ proc decimalLength*(v: uint64): int32 {.inline.} =
     return 2
   return 1
 
-proc formatDigits*(buffer: cstring; digits: uint64; decimalExponent: int32;
-                  forceTrailingDotZero: bool = false): cstring {.inline.} =
+proc formatDigits*(buffer: var openArray[char]; pos: int; digits: uint64; decimalExponent: int32;
+                  forceTrailingDotZero = false): int {.inline.} =
   const
     minFixedDecimalPoint: int32 = -6
   const
     maxFixedDecimalPoint: int32 = 17
-  var buffer = buffer
+  var pos = pos
   assert(minFixedDecimalPoint <= -1, "internal error")
   assert(maxFixedDecimalPoint >= 17, "internal error")
   dragonbox_Assert(digits >= 1)
@@ -1222,10 +1225,8 @@ proc formatDigits*(buffer: cstring; digits: uint64; decimalExponent: int32;
   let decimalPoint: int32 = numDigits + decimalExponent
   let useFixed: bool = minFixedDecimalPoint <= decimalPoint and
       decimalPoint <= maxFixedDecimalPoint
-  ##  Prepare the buffer.
-  ##  Avoid calling memset/memcpy with variable arguments below...
-  memset(buffer +! 0, '0', 16)
-  memset(buffer +! 16, '0', 16)
+  ## Prepare the buffer.
+  for i in 0..<32: buffer[pos+i] = '0'
   assert(minFixedDecimalPoint >= -30, "internal error")
   assert(maxFixedDecimalPoint <= 32, "internal error")
   var decimalDigitsPosition: int32
@@ -1240,94 +1241,101 @@ proc formatDigits*(buffer: cstring; digits: uint64; decimalExponent: int32;
   else:
     ##  dE+123 or d.igitsE+123
     decimalDigitsPosition = 1
-  var digitsEnd: cstring = buffer +! int(decimalDigitsPosition + numDigits)
-  let tz: int32 = printDecimalDigitsBackwards(digitsEnd, digits)
+  var digitsEnd = pos + int(decimalDigitsPosition + numDigits)
+  let tz: int32 = printDecimalDigitsBackwards(buffer, digitsEnd, digits)
   dec(digitsEnd, tz)
   dec(numDigits, tz)
   ##   decimal_exponent += tz; // => decimal_point unchanged.
   if useFixed:
     if decimalPoint <= 0:
       ##  0.[000]digits
-      buffer[1] = '.'
-      buffer = digitsEnd
+      buffer[pos+1] = '.'
+      pos = digitsEnd
     elif decimalPoint < numDigits:
       ##  dig.its
-      when defined(vcc) and not defined(clang):
+      when true: #defined(vcc) and not defined(clang):
         ##  VC does not inline the memmove call below. (Even if compiled with /arch:AVX2.)
         ##  However, memcpy will be inlined.
-        var tmp: array[16, uint8T]
-        var src: cstring = buffer + decimalPoint
-        var dst: cstring = src + 1
-        copyMem(tmp, src, 16)
-        copyMem(dst, tmp, 16)
+        var tmp: array[16, char]
+        for i in 0..<16: tmp[i] = buffer[i+pos+decimalPoint]
+        for i in 0..<16: buffer[i+pos+decimalPoint+1] = tmp[i]
       else:
         memmove(buffer +! (decimalPoint + 1), buffer +! decimalPoint, 16)
-      buffer[decimalPoint] = '.'
-      buffer = digitsEnd +! 1
+      buffer[pos+decimalPoint] = '.'
+      pos = digitsEnd + 1
     else:
       ##  digits[000]
-      inc(buffer, decimalPoint)
+      inc(pos, decimalPoint)
       if forceTrailingDotZero:
-        copyMem(buffer, cstring".0", 2)
-        inc(buffer, 2)
+        buffer[pos] = '.'
+        buffer[pos+1] = '0'
+        inc(pos, 2)
   else:
     ##  Copy the first digit one place to the left.
-    buffer[0] = buffer[1]
+    buffer[pos] = buffer[pos+1]
     if numDigits == 1:
       ##  dE+123
-      inc(buffer)
+      inc(pos)
     else:
       ##  d.igitsE+123
-      buffer[1] = '.'
-      buffer = digitsEnd
+      buffer[pos+1] = '.'
+      pos = digitsEnd
     let scientificExponent: int32 = decimalPoint - 1
     ##       SF_ASSERT(scientific_exponent != 0);
-    copyMem(buffer, if scientificExponent < 0: cstring"e-" else: cstring"e+", 2)
-    inc(buffer, 2)
+    buffer[pos] = 'e'
+    buffer[pos+1] = if scientificExponent < 0: '-' else: '+'
+    inc(pos, 2)
     let k: uint32 = cast[uint32](if scientificExponent < 0: -scientificExponent else: scientificExponent)
     if k < 10:
-      buffer[0] = cast[char](ord('0') + k)
-      inc(buffer)
+      buffer[pos] = chr(ord('0') + k)
+      inc(pos)
     elif k < 100:
-      utoa2Digits(buffer, k)
-      inc(buffer, 2)
+      utoa2Digits(buffer, pos, k)
+      inc(pos, 2)
     else:
       let q: uint32 = k div 100
       let r: uint32 = k mod 100
-      buffer[0] = cast[char](ord('0') + q)
-      inc(buffer)
-      utoa2Digits(buffer, r)
-      inc(buffer, 2)
-  return buffer
+      buffer[pos] = chr(ord('0') + q)
+      inc(pos)
+      utoa2Digits(buffer, pos, r)
+      inc(pos, 2)
+  return pos
 
-proc toChars*(buffer: cstring; value: float; forceTrailingDotZero: bool = false): cstring {.
+proc toChars*(buffer: var openArray[char]; v: float; forceTrailingDotZero = false): int {.
     inline.} =
-  var v = value
-  var buffer = buffer
-
+  var pos = 0
   let significand: uint64 = physicalSignificand(constructDouble(v))
   let exponent: uint64 = physicalExponent(constructDouble(v))
   if exponent != maxIeeeExponent:
     ##  Finite
-    buffer[0] = '-'
-    inc(buffer, signBit(constructDouble(v)))
+    buffer[pos] = '-'
+    inc(pos, signBit(constructDouble(v)))
     if exponent != 0 or significand != 0:
       ##  != 0
-      let dec: auto = toDecimal64(significand, exponent)
-      return formatDigits(buffer, dec.significand, dec.exponent,
+      let dec = toDecimal64(significand, exponent)
+      return formatDigits(buffer, pos, dec.significand, dec.exponent,
                          forceTrailingDotZero)
     else:
-      copyMem(buffer, cstring"0.0 ", 4)
-      inc(buffer, if forceTrailingDotZero: 3 else: 1)
-      return buffer
+      buffer[pos] = '0'
+      buffer[pos+1] = '.'
+      buffer[pos+2] = '0'
+      buffer[pos+3] = ' '
+      inc(pos, if forceTrailingDotZero: 3 else: 1)
+      return pos
   if significand == 0:
-    buffer[0] = '-'
-    inc(buffer, signBit(constructDouble(v)))
-    copyMem(buffer, cstring"inf ", 4)
-    return buffer +! 3
+    buffer[pos] = '-'
+    inc(pos, signBit(constructDouble(v)))
+    buffer[pos] = 'i'
+    buffer[pos+1] = 'n'
+    buffer[pos+2] = 'f'
+    buffer[pos+3] = ' '
+    return pos + 3
   else:
-    copyMem(buffer, cstring"nan ", 4)
-    return buffer +! 3
+    buffer[pos] = 'n'
+    buffer[pos+1] = 'a'
+    buffer[pos+2] = 'n'
+    buffer[pos+3] = ' '
+    return pos + 3
 
 when false:
   proc toString*(value: float): string =

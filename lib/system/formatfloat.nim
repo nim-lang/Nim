@@ -16,19 +16,7 @@ when not defined(nimLegacyAddFloat) and not defined(nimscript) and
     ##
     ## returns the amount of bytes written to `buf` not counting the
     ## terminating '\0' character.
-    let last = toChars(addr buf, value)
-    result = cast[int](last) - cast[int](addr(buf))
-    var hasDot = false
-    for i in 0..result-1:
-      if buf[i] in {'a'..'z', 'A'..'Z', '.'}:
-        hasDot = true
-    if not hasDot:
-      buf[result] = '.'
-      buf[result+1] = '0'
-      buf[result+2] = '\0'
-      inc result, 2
-    else:
-      buf[result] = '\0'
+    result = toChars(buf, value, forceTrailingDotZero=true)
 
 else:
   proc c_sprintf(buf, frmt: cstring): cint {.header: "<stdio.h>",
