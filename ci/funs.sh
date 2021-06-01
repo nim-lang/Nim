@@ -40,7 +40,7 @@ nimInternalInstallDepsWindows(){
 }
 
 nimInternalBuildKochAndRunCI(){
-  echo_run nim c koch
+  echo_run nim c -d:nimFirstBootIteration koch
   if ! echo_run ./koch runCI; then
     echo_run echo "runCI failed"
     echo_run nim r tools/ci_testresults.nim
