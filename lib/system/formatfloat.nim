@@ -8,7 +8,7 @@
 #
 
 when not defined(nimLegacyAddFloat) and not defined(nimscript) and
-    not defined(js) and not defined(nimFirstBootIteration):
+    not defined(js) and defined(nimHasDragonBox):
   import dragonbox
 
   proc writeFloatToBuffer*(buf: var array[65, char]; value: BiggestFloat): int =
