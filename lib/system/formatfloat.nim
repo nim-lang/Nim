@@ -17,6 +17,7 @@ when not defined(nimLegacyAddFloat) and not defined(nimscript) and
     ## returns the amount of bytes written to `buf` not counting the
     ## terminating '\0' character.
     result = toChars(buf, value, forceTrailingDotZero=true)
+    buf[result] = '\0'
 
 else:
   proc c_sprintf(buf, frmt: cstring): cint {.header: "<stdio.h>",
