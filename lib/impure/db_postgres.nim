@@ -96,7 +96,6 @@ type
                        ## converted to nil.
   InstantRow* = object ## a handle that can be
     res: PPGresult     ## used to get a row's
-    line: int          ## column text on demand
   SqlPrepared* = distinct string ## a identifier for the prepared queries
 
 proc dbError*(db: DbConn) {.noreturn.} =
@@ -184,6 +183,22 @@ proc setupQuery(db: DbConn, stmtName: SqlPrepared,
   deallocCStringArray(arr)
   if pqResultStatus(result) != PGRES_TUPLES_OK: dbError(db)
 
+proc setupSingeRowQuery(db: DbConn, query: SqlQuery,
+                        args: varargs[string]) =
+  if pqsendquery(db, dbFormat(query, args)) != 1:
+    dbError(db)
+  if pqSetSingleRowMode(db) != 1:
+    dbError(db)
+
+proc setupSingeRowQuery(db: DbConn, stmtName: SqlPrepared,
+                       args: varargs[string]) =
+  var arr = allocCStringArray(args)
+  if pqsendqueryprepared(db, stmtName.string, int32(args.len), arr, nil, nil, 0) != 1:
+    dbError(db)
+  if pqSetSingleRowMode(db) != 1:
+    dbError(db)
+  deallocCStringArray(arr)
+
 proc prepare*(db: DbConn; stmtName: string, query: SqlQuery;
               nParams: int): SqlPrepared =
   ## Creates a new `SqlPrepared` statement. Parameter substitution is done
@@ -208,44 +223,82 @@ iterator fastRows*(db: DbConn, query: SqlQuery,
   ## executes the query and iterates over the result dataset. This is very
   ## fast, but potentially dangerous: If the for-loop-body executes another
   ## query, the results can be undefined. For Postgres it is safe though.
-  var res = setupQuery(db, query, args)
-  var L = pqnfields(res)
-  var result = newRow(L)
-  for i in 0'i32..pqntuples(res)-1:
-    setRow(res, result, i, L)
+  setupSingeRowQuery(db, query, args)
+  var res: PPGresult = nil
+  while true:
+    res = pqgetresult(db)
+    if res == nil:
+      break
+    if pqresultStatus(res) == PGRES_TUPLES_OK:
+      pqclear(res)
+      continue
+    if pqresultStatus(res) != PGRES_SINGLE_TUPLE:
+      dbError(db)
+    var L = pqNfields(res)
+    var result = newRow(L)
+    setRow(res, result, 0, L)
     yield result
-  pqclear(res)
+    pqclear(res)
 
 iterator fastRows*(db: DbConn, stmtName: SqlPrepared,
                    args: varargs[string, `$`]): Row {.tags: [ReadDbEffect].} =
-  ## executes the prepared query and iterates over the result dataset.
-  var res = setupQuery(db, stmtName, args)
-  var L = pqNfields(res)
-  var result = newRow(L)
-  for i in 0'i32..pqNtuples(res)-1:
-    setRow(res, result, i, L)
+  ## executes the query and iterates over the result dataset. This is very
+  ## fast, but potentially dangerous: If the for-loop-body executes another
+  ## query, the results can be undefined. For Postgres it is safe though.
+  setupSingeRowQuery(db, stmtName, args)
+  var res: PPGresult = nil
+  while true:
+    res = pqgetresult(db)
+    if res == nil:
+      break
+    if pqresultStatus(res) == PGRES_TUPLES_OK:
+      pqclear(res)
+      continue
+    if pqresultStatus(res) != PGRES_SINGLE_TUPLE:
+      dbError(db)
+    var L = pqNfields(res)
+    var result = newRow(L)
+    setRow(res, result, 0, L)
     yield result
-  pqClear(res)
+    pqclear(res)
 
 iterator instantRows*(db: DbConn, query: SqlQuery,
                       args: varargs[string, `$`]): InstantRow
                       {.tags: [ReadDbEffect].} =
   ## same as fastRows but returns a handle that can be used to get column text
   ## on demand using []. Returned handle is valid only within iterator body.
-  var res = setupQuery(db, query, args)
-  for i in 0'i32..pqNtuples(res)-1:
-    yield InstantRow(res: res, line: i)
-  pqClear(res)
+  setupSingeRowQuery(db, query, args)
+  var res: PPGresult = nil
+  while true:
+    res = pqgetresult(db)
+    if res == nil:
+      break
+    if pqresultStatus(res) == PGRES_TUPLES_OK:
+      pqclear(res)
+      continue
+    if pqresultStatus(res) != PGRES_SINGLE_TUPLE:
+      dbError(db)
+    yield InstantRow(res: res)
+    pqclear(res)
 
 iterator instantRows*(db: DbConn, stmtName: SqlPrepared,
                       args: varargs[string, `$`]): InstantRow
                       {.tags: [ReadDbEffect].} =
   ## same as fastRows but returns a handle that can be used to get column text
   ## on demand using []. Returned handle is valid only within iterator body.
-  var res = setupQuery(db, stmtName, args)
-  for i in 0'i32..pqNtuples(res)-1:
-    yield InstantRow(res: res, line: i)
-  pqClear(res)
+  setupSingeRowQuery(db, stmtName, args)
+  var res: PPGresult = nil
+  while true:
+    res = pqgetresult(db)
+    if res == nil:
+      break
+    if pqresultStatus(res) == PGRES_TUPLES_OK:
+      pqclear(res)
+      continue
+    if pqresultStatus(res) != PGRES_SINGLE_TUPLE:
+      dbError(db)
+    yield InstantRow(res: res)
+    pqclear(res)
 
 proc getColumnType(res: PPGresult, col: int) : DbType =
   ## returns DbType for given column in the row
@@ -398,16 +451,16 @@ iterator instantRows*(db: DbConn; columns: var DbColumns; query: SqlQuery;
   var res = setupQuery(db, query, args)
   setColumnInfo(columns, res, pqnfields(res))
   for i in 0'i32..<pqntuples(res):
-    yield InstantRow(res: res, line: i)
+    yield InstantRow(res: res)
   pqClear(res)
 
 proc `[]`*(row: InstantRow; col: int): string {.inline.} =
   ## returns text for given column of the row
-  $pqgetvalue(row.res, int32(row.line), int32(col))
+  $pqgetvalue(row.res, int32(0), int32(col))
 
 proc unsafeColumnAt*(row: InstantRow, index: int): cstring {.inline.} =
   ## Return cstring of given column of the row
-  pqgetvalue(row.res, int32(row.line), int32(index))
+  pqgetvalue(row.res, int32(0), int32(index))
 
 proc len*(row: InstantRow): int {.inline.} =
   ## returns number of columns in the row
@@ -437,17 +490,29 @@ proc getAllRows*(db: DbConn, query: SqlQuery,
                  args: varargs[string, `$`]): seq[Row] {.
                  tags: [ReadDbEffect].} =
   ## executes the query and returns the whole result dataset.
-  result = @[]
-  for r in fastRows(db, query, args):
-    result.add(r)
+  var res = setupQuery(db, query, args)
+  let nrows = pqntuples(res)
+  let ncols = pqnfields(res)
+  result = newSeqOfCap[Row](nrows)
+  var row = newRow(ncols)
+  for i in 0'i32..nrows-1:
+    setRow(res, row, i, ncols)
+    result.add(row)
+  pqclear(res)
 
 proc getAllRows*(db: DbConn, stmtName: SqlPrepared,
                  args: varargs[string, `$`]): seq[Row] {.tags:
                  [ReadDbEffect].} =
   ## executes the prepared query and returns the whole result dataset.
-  result = @[]
-  for r in fastRows(db, stmtName, args):
-    result.add(r)
+  var res = setupQuery(db, stmtName, args)
+  let nrows = pqntuples(res)
+  let ncols = pqnfields(res)
+  result = newSeqOfCap[Row](nrows)
+  var row = newRow(ncols)
+  for i in 0'i32..nrows-1:
+    setRow(res, row, i, ncols)
+    result.add(row)
+  pqclear(res)
 
 iterator rows*(db: DbConn, query: SqlQuery,
                args: varargs[string, `$`]): Row {.tags: [ReadDbEffect].} =
