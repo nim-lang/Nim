@@ -1376,8 +1376,8 @@ proc semProcTypeNode(c: PContext, n, genericParams: PNode,
 
   if genericParams.isGenericParams:
     for n in genericParams:
-      #if {sfUsed, sfAnon} * n.sym.flags == {}:
-      #  result.flags.incl tfUnresolved
+      if {sfUsed, sfAnon} * n.sym.flags == {}:
+        result.flags.incl tfUnresolved
 
       if tfWildcard in n.sym.typ.flags:
         n.sym.transitionGenericParamToType()
