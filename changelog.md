@@ -329,7 +329,7 @@
 
 - Fixed premature garbage collection in asyncdispatch, when a stack trace override is in place.
 
-
+- Added setCurrentException for JS backend.
 
 ## Language changes
 
