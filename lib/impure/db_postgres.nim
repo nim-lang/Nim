@@ -238,7 +238,7 @@ iterator fastRows*(db: DbConn, query: SqlQuery,
     var result = newRow(L)
     setRow(res, result, 0, L)
     yield result
-    pqclear(res)
+  pqclear(res)
 
 iterator fastRows*(db: DbConn, stmtName: SqlPrepared,
                    args: varargs[string, `$`]): Row {.tags: [ReadDbEffect].} =
@@ -260,7 +260,7 @@ iterator fastRows*(db: DbConn, stmtName: SqlPrepared,
     var result = newRow(L)
     setRow(res, result, 0, L)
     yield result
-    pqclear(res)
+  pqclear(res)
 
 iterator instantRows*(db: DbConn, query: SqlQuery,
                       args: varargs[string, `$`]): InstantRow
@@ -279,7 +279,7 @@ iterator instantRows*(db: DbConn, query: SqlQuery,
     if pqresultStatus(res) != PGRES_SINGLE_TUPLE:
       dbError(db)
     yield InstantRow(res: res)
-    pqclear(res)
+  pqclear(res)
 
 iterator instantRows*(db: DbConn, stmtName: SqlPrepared,
                       args: varargs[string, `$`]): InstantRow
@@ -298,7 +298,7 @@ iterator instantRows*(db: DbConn, stmtName: SqlPrepared,
     if pqresultStatus(res) != PGRES_SINGLE_TUPLE:
       dbError(db)
     yield InstantRow(res: res)
-    pqclear(res)
+  pqclear(res)
 
 proc getColumnType(res: PPGresult, col: int) : DbType =
   ## returns DbType for given column in the row
@@ -435,7 +435,8 @@ proc getColumnType(res: PPGresult, col: int) : DbType =
   of 705:  return DbType(kind: DbTypeKind.dbUnknown, name: "unknown")
   else: return DbType(kind: DbTypeKind.dbUnknown, name: $oid) ## Query the system table pg_type to determine exactly which type is referenced.
 
-proc setColumnInfo(columns: var DbColumns; res: PPGresult; L: int32) =
+proc setColumnInfo(columns: var DbColumns; res: PPGresult) =
+  let L = pqnfields(res)
   setLen(columns, L)
   for i in 0'i32..<L:
     columns[i].name = $pqfname(res, i)
@@ -448,11 +449,23 @@ proc setColumnInfo(columns: var DbColumns; res: PPGresult; L: int32) =
 iterator instantRows*(db: DbConn; columns: var DbColumns; query: SqlQuery;
                       args: varargs[string, `$`]): InstantRow
                       {.tags: [ReadDbEffect].} =
-  var res = setupQuery(db, query, args)
-  setColumnInfo(columns, res, pqnfields(res))
-  for i in 0'i32..<pqntuples(res):
+  setupSingeRowQuery(db, query, args)
+  var res: PPGresult = nil
+  var colsObtained = false
+  while true:
+    res = pqgetresult(db)
+    if not colsObtained:
+      setColumnInfo(columns, res)
+      colsObtained = true
+    if res == nil:
+      break
+    if pqresultStatus(res) == PGRES_TUPLES_OK:
+      pqclear(res)
+      continue
+    if pqresultStatus(res) != PGRES_SINGLE_TUPLE:
+      dbError(db)
     yield InstantRow(res: res)
-  pqClear(res)
+  pqclear(res)
 
 proc `[]`*(row: InstantRow; col: int): string {.inline.} =
   ## returns text for given column of the row
@@ -491,12 +504,12 @@ proc getAllRows*(db: DbConn, query: SqlQuery,
                  tags: [ReadDbEffect].} =
   ## executes the query and returns the whole result dataset.
   var res = setupQuery(db, query, args)
-  let nrows = pqntuples(res)
-  let ncols = pqnfields(res)
-  result = newSeqOfCap[Row](nrows)
-  var row = newRow(ncols)
-  for i in 0'i32..nrows-1:
-    setRow(res, row, i, ncols)
+  let N = pqntuples(res)
+  let L = pqnfields(res)
+  result = newSeqOfCap[Row](N)
+  var row = newRow(L)
+  for i in 0'i32..N-1:
+    setRow(res, row, i, L)
     result.add(row)
   pqclear(res)
 
@@ -505,12 +518,12 @@ proc getAllRows*(db: DbConn, stmtName: SqlPrepared,
                  [ReadDbEffect].} =
   ## executes the prepared query and returns the whole result dataset.
   var res = setupQuery(db, stmtName, args)
-  let nrows = pqntuples(res)
-  let ncols = pqnfields(res)
-  result = newSeqOfCap[Row](nrows)
-  var row = newRow(ncols)
-  for i in 0'i32..nrows-1:
-    setRow(res, row, i, ncols)
+  let N = pqntuples(res)
+  let L = pqnfields(res)
+  result = newSeqOfCap[Row](N)
+  var row = newRow(L)
+  for i in 0'i32..N-1:
+    setRow(res, row, i, L)
     result.add(row)
   pqclear(res)
 
