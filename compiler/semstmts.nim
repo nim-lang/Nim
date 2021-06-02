@@ -385,6 +385,23 @@ proc hasEmpty(typ: PType): bool =
     for s in typ.sons:
       result = result or hasEmpty(s)
 
+proc hasUnresolvedParams(n: PNode; flags: TExprFlags): bool =
+  result = tfUnresolved in n.typ.flags
+  when false:
+    case n.kind
+    of nkSym:
+      result = isGenericRoutineStrict(n.sym)
+    of nkSymChoices:
+      for ch in n:
+        if hasUnresolvedParams(ch, flags):
+          return true
+      result = false
+    else:
+      result = false
+    if efOperand in flags:
+      if tfUnresolved notin n.typ.flags:
+        result = false
+
 proc makeDeref(n: PNode): PNode =
   var t = n.typ
   if t.kind in tyUserTypeClasses and t.isResolvedUserTypeClass:
@@ -517,7 +534,8 @@ proc semVarOrLet(c: PContext, n: PNode, symkind: TSymKind): PNode =
           typ = typ.lastSon
         if hasEmpty(typ):
           localError(c.config, def.info, errCannotInferTypeOfTheLiteral % typ.kind.toHumanStr)
-        elif typ.kind == tyProc and tfUnresolved in typ.flags:
+        elif typ.kind == tyProc and hasUnresolvedParams(def, {}):
+          # tfUnresolved in typ.flags:
           localError(c.config, def.info, errProcHasNoConcreteType % def.renderTree)
         when false:
           # XXX This typing rule is neither documented nor complete enough to

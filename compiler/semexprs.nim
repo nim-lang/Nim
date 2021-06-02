@@ -54,7 +54,8 @@ proc semOperand(c: PContext, n: PNode, flags: TExprFlags = {}): PNode =
   result = semExpr(c, n, flags + {efOperand})
   if result.typ != nil:
     # XXX tyGenericInst here?
-    if result.typ.kind == tyProc and tfUnresolved in result.typ.flags:
+    if result.typ.kind == tyProc and hasUnresolvedParams(result, {efOperand}):
+      #and tfUnresolved in result.typ.flags:
       localError(c.config, n.info, errProcHasNoConcreteType % n.renderTree)
     if result.typ.kind in {tyVar, tyLent}: result = newDeref(result)
   elif {efWantStmt, efAllowStmt} * flags != {}:
@@ -2649,6 +2650,23 @@ proc shouldBeBracketExpr(n: PNode): bool =
           n[0] = be
           return true
 
+proc asBracketExpr(c: PContext; n: PNode): PNode =
+  proc isGeneric(c: PContext; n: PNode): bool =
+    if n.kind in {nkIdent, nkAccQuoted}:
+      let s = qualifiedLookUp(c, n, {})
+      result = s != nil and isGenericRoutineStrict(s)
+
+  assert n.kind in nkCallKinds
+  if n.len > 1 and isGeneric(c, n[1]):
+    let b = n[0]
+    if b.kind in nkSymChoices:
+      for i in 0..<b.len:
+        if b[i].kind == nkSym and b[i].sym.magic == mArrGet:
+          result = newNodeI(nkBracketExpr, n.info)
+          for i in 1..<n.len: result.add(n[i])
+          return result
+  return nil
+
 proc hoistParamsUsedInDefault(c: PContext, call, letSection, defExpr: var PNode) =
   # This takes care of complicated signatures such as:
   # proc foo(a: int, b = a)
@@ -2820,8 +2838,14 @@ proc semExpr(c: PContext, n: PNode, flags: TExprFlags = {}): PNode =
       # the 'newSeq[T](x)' bug
       setGenericParams(c, n[0])
       result = semDirectOp(c, n, flags)
-    elif isSymChoice(n[0]) or nfDotField in n.flags:
+    elif nfDotField in n.flags:
       result = semDirectOp(c, n, flags)
+    elif isSymChoice(n[0]):
+      let b = asBracketExpr(c, n)
+      if b != nil:
+        result = semExpr(c, b, flags)
+      else:
+        result = semDirectOp(c, n, flags)
     else:
       result = semIndirectOp(c, n, flags)
 
