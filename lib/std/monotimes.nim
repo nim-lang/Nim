@@ -38,6 +38,9 @@ See also
 
 import times
 
+when defined(js) and defined(nodejs):
+  import std/jsbigints
+
 type
   MonoTime* = object ## Represents a monotonic timestamp.
     ticks: int64
@@ -52,14 +55,23 @@ when defined(macosx):
   proc mach_timebase_info(info: var MachTimebaseInfoData) {.importc,
     header: "<mach/mach_time.h>".}
 
-when defined(js):
+when defined(js) and defined(nodejs):
+  proc getJsTicks: BigInt =
+    ## Returns ticks in nanoseconds.
+    {.emit: """
+    let process = require('process');
+    `result` = process.hrtime.bigint();
+    """.}
+
+elif defined(js):
   proc getJsTicks: float =
     ## Returns ticks in the unit seconds.
     when defined(nodejs):
       {.emit: """
       let process = require('process');
-      let time = process.hrtime();
-      `result` = time[0] + time[1] / 1000000000;
+      `result` = process.hrtime.bigint();
+      // let time = process.hrtime.bigint();
+      //`result` = Number(time) / 1e9;
       """.}
     else:
       proc jsNow(): float {.importjs: "window.performance.now()".}
@@ -85,11 +97,14 @@ elif defined(windows):
 proc getMonoTime*(): MonoTime {.tags: [TimeEffect].} =
   ## Returns the current `MonoTime` timestamp.
   ##
-  ## When compiled with the JS backend and executed in a browser,
-  ## this proc calls `window.performance.now()`.
+  ## With `js` in browser, this calls `window.performance.now()`, with `-d:nodejs`
+  ## this calls `process.hrtime.bigint();`
+  ##
   ## See [MDN](https://developer.mozilla.org/en-US/docs/Web/API/Performance/now)
   ## for more information.
-  when defined(js):
+  when defined(js) and defined(nodejs):
+    result = MonoTime(ticks: getJsTicks())
+  elif defined(js):
     let ticks = getJsTicks()
     result = MonoTime(ticks: (ticks * 1_000_000_000).int64)
   elif defined(macosx):
