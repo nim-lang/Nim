@@ -625,7 +625,7 @@ when not defined(nimscript) and not defined(standalone):
     ##
     ## The resulting state is independent of the default RNG's state.
     ##
-    ## **Note:** In VM, requires `--experimental:vmops`
+    ## **Note:** Does not work for NimScript or the compile-time VM.
     ##
     ## See also:
     ## * `initRand proc<#initRand,int64>`_ that accepts a seed for a new Rand state
