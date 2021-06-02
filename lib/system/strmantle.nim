@@ -164,6 +164,19 @@ proc nimFloatToStr(f: float): string {.compilerproc.} =
   result = newStringOfCap(8)
   result.addFloat f
 
+when not defined(nimLegacyAddFloat) and not defined(nimscript) and
+    not defined(js) and defined(nimHasDragonBox):
+  import schubfach
+
+proc nimFloat32ToStr(f: float32): string {.compilerproc.} =
+  when declared(float32ToChars):
+    result = newString(65)
+    let L = float32ToChars(result, f, forceTrailingDotZero=true)
+    setLen(result, L)
+  else:
+    result = newStringOfCap(8)
+    result.addFloat f
+
 proc c_strtod(buf: cstring, endptr: ptr cstring): float64 {.
   importc: "strtod", header: "<stdlib.h>", noSideEffect.}
 
