@@ -2651,20 +2651,13 @@ proc shouldBeBracketExpr(n: PNode): bool =
           return true
 
 proc asBracketExpr(c: PContext; n: PNode): PNode =
-  when false:
-    proc looksLikeType(c: PContext; n: PNode): bool =
-      case n.kind
-      of nkType, nkTypeOfExpr: result = true
-      of nkSym:
-        result = n.sym.kind in {skType, skGenericParam}
-      of nkIdent, nkAccQuoted:
-        let s = qualifiedLookUp(c, n, {})
-        result = s != nil and s.kind in {skType, skGenericParam}
-      else:
-        result = n.typ != nil and n.typ.kind in {tyTypeDesc, tyGenericParam}
+  proc isGeneric(c: PContext; n: PNode): bool =
+    if n.kind in {nkIdent, nkAccQuoted}:
+      let s = qualifiedLookUp(c, n, {})
+      result = s != nil and isGenericRoutineStrict(s)
 
   assert n.kind in nkCallKinds
-  if n.len > 1 and hasUnresolvedParams(n[1], {}):
+  if n.len > 1 and isGeneric(c, n[1]):
     let b = n[0]
     if b.kind in nkSymChoices:
       for i in 0..<b.len:
