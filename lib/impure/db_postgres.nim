@@ -226,8 +226,7 @@ template fetchRows(db: DbConn): untyped =
       break
     let status = pqresultStatus(res)
     if status == PGRES_TUPLES_OK:
-      pqclear(res)
-      continue
+      discard
     elif status != PGRES_SINGLE_TUPLE:
       dbError(db)
     else:
@@ -261,8 +260,7 @@ template fetchinstantRows(db: DbConn): untyped =
       break
     let status = pqresultStatus(res)
     if status == PGRES_TUPLES_OK:
-      pqclear(res)
-      continue
+     discard
     elif status != PGRES_SINGLE_TUPLE:
       dbError(db)
     else:
@@ -445,13 +443,12 @@ iterator instantRows*(db: DbConn; columns: var DbColumns; query: SqlQuery;
       break
     let status = pqresultStatus(res)
     if status == PGRES_TUPLES_OK:
-      pqclear(res)
-      continue
+      discard
     elif status != PGRES_SINGLE_TUPLE:
       dbError(db)
     else:
       yield InstantRow(res: res)
-  pqclear(res)
+    pqclear(res)
 
 proc `[]`*(row: InstantRow; col: int): string {.inline.} =
   ## returns text for given column of the row
