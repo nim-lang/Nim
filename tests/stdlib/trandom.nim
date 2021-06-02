@@ -1,9 +1,12 @@
 discard """
   joinable: false # to avoid messing with global rand state
   targets: "c js"
+  matrix: "; -d:danger" # this matters because of the `#17898` test
 """
 
-import std/[random, math, os, stats, sets, tables]
+import std/[random, math, stats, sets, tables]
+when not defined(js):
+  import std/os
 
 randomize(233)
 
@@ -187,3 +190,29 @@ block: # bug #17467
     doAssert x > 1e-4, $(x, i)
       # This used to fail for each i in 0..<26844, i.e. the 1st produced value
       # was predictable and < 1e-4, skewing distributions.
+
+block: # bug #17898
+  let size = 1000
+  var vals = newSeq[Rand](size) 
+  for i in 0..<size:
+    vals[i] = initRand()
+    # this should do as little as possible besides calling initRand to
+    # ensure the test is meaningful
+  template isUnique[T](a: iterable[T]): bool =
+    # xxx move to std/algorithm
+    var s: HashSet[T]
+    var ret = true
+    for ai in a:
+      if ai in s:
+        ret = false
+        break
+      else:
+        s.incl ai
+    ret
+
+  doAssert isUnique(items(vals))
+
+  # unrelated to trandom but related to `isUnique`
+  iterator iota(n: int): int =
+    for i in 0..<n: yield i
+  doAssert isUnique(iota(100))

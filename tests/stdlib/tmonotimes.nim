@@ -22,8 +22,9 @@ template main =
     doAssert low(MonoTime) < t1
 
   block:
-    for i in 0..<1000000: # test should take ~ 1sec
-      # this would fail with getTime instead of getMonoTime, as expected
+    const n = when defined(js): 20000 else: 1000000 # keep test under ~ 1sec
+    for i in 0..<n:
+      # this could fail with getTime instead of getMonoTime, as expected
       let a = getMonoTime()
       let b = getMonoTime()
       doAssert b > a
