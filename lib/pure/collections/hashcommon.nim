@@ -34,8 +34,8 @@ proc slotsNeeded(count: Natural): int {.inline.} =
   result = nextPowerOfTwo(count * 3 div 2 + 4)
 
 proc rightSize*(count: Natural): int {.inline, deprecated: "Deprecated since 1.4.0".} =
-  ## It is not needed anymore
-  ## because picking the correct size is done internally.
+  ## It is not needed anymore because
+  ## picking the correct size is done internally.
   ##
   ## Returns the value of `initialSize` to support `count` items.
   ##
