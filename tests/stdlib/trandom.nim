@@ -1,6 +1,7 @@
 discard """
   joinable: false # to avoid messing with global rand state
   targets: "c js"
+  matrix: "; -d:danger" # this matters because of the `#17898` test
 """
 
 import std/[random, math, stats, sets, tables]
@@ -248,3 +249,29 @@ block: # bug #17670
     type UInt48 = range[0'u64..2'u64^48-1]
     let x = rand(UInt48)
     doAssert x is UInt48
+
+block: # bug #17898
+  let size = 1000
+  var vals = newSeq[Rand](size) 
+  for i in 0..<size:
+    vals[i] = initRand()
+    # this should do as little as possible besides calling initRand to
+    # ensure the test is meaningful
+  template isUnique[T](a: iterable[T]): bool =
+    # xxx move to std/algorithm
+    var s: HashSet[T]
+    var ret = true
+    for ai in a:
+      if ai in s:
+        ret = false
+        break
+      else:
+        s.incl ai
+    ret
+
+  doAssert isUnique(items(vals))
+
+  # unrelated to trandom but related to `isUnique`
+  iterator iota(n: int): int =
+    for i in 0..<n: yield i
+  doAssert isUnique(iota(100))

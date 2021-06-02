@@ -618,25 +618,20 @@ proc shuffle*[T](x: var openArray[T]) =
   shuffle(state, x)
 
 when not defined(nimscript) and not defined(standalone):
-  import times
+  import std/monotimes
 
   proc initRand(): Rand =
     ## Initializes a new Rand state with a seed based on the current time.
     ##
     ## The resulting state is independent of the default RNG's state.
     ##
-    ## **Note:** Does not work for NimScript or the compile-time VM.
+    ## **Note:** In VM, requires `--experimental:vmops`
     ##
     ## See also:
     ## * `initRand proc<#initRand,int64>`_ that accepts a seed for a new Rand state
     ## * `randomize proc<#randomize>`_ that initializes the default RNG using the current time
     ## * `randomize proc<#randomize,int64>`_ that accepts a seed for the default RNG
-    when defined(js):
-      let time = int64(times.epochTime() * 1000) and 0x7fff_ffff
-      result = initRand(time)
-    else:
-      let now = times.getTime()
-      result = initRand(convert(Seconds, Nanoseconds, now.toUnix) + now.nanosecond)
+    result = initRand(getMonoTime().ticks)
 
   since (1, 5, 1):
     export initRand
