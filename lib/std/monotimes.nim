@@ -38,12 +38,16 @@ See also
 
 import times
 
-when defined(js) and defined(nodejs):
+when defined(js):
   import std/jsbigints
+  type Tick = JsBigInt
+else:
+  type Tick = int64
 
 type
   MonoTime* = object ## Represents a monotonic timestamp.
-    ticks: int64
+    ticks: Tick
+
 
 when defined(macosx):
   type
@@ -56,7 +60,7 @@ when defined(macosx):
     header: "<mach/mach_time.h>".}
 
 when defined(js) and defined(nodejs):
-  proc getJsTicks: BigInt =
+  proc getJsTicks: Tick =
     ## Returns ticks in nanoseconds.
     {.emit: """
     let process = require('process');
@@ -64,26 +68,18 @@ when defined(js) and defined(nodejs):
     """.}
 
 elif defined(js):
-  proc getJsTicks: float =
-    ## Returns ticks in the unit seconds.
-    when defined(nodejs):
-      {.emit: """
-      let process = require('process');
-      `result` = process.hrtime.bigint();
-      // let time = process.hrtime.bigint();
-      //`result` = Number(time) / 1e9;
-      """.}
-    else:
-      proc jsNow(): float {.importjs: "window.performance.now()".}
-      result = jsNow() / 1000
+  proc jsNow(): Tick {.importjs: "window.performance.now()".}
+  proc getJsTicks: Tick =
+    ## Returns ticks in the unit nanoseconds, with up to 5us precision
+    result = JsBigInt(jsNow()) * 1_000_000'big
 
-  # Workaround for #6752.
-  {.push overflowChecks: off.}
-  proc `-`(a, b: int64): int64 =
-    system.`-`(a, b)
-  proc `+`(a, b: int64): int64 =
-    system.`+`(a, b)
-  {.pop.}
+  # # Workaround for #6752.
+  # {.push overflowChecks: off.}
+  # proc `-`(a, b: int64): int64 =
+  #   system.`-`(a, b)
+  # proc `+`(a, b: int64): int64 =
+  #   system.`+`(a, b)
+  # {.pop.}
 
 elif defined(posix) and not defined(osx):
   import posix
@@ -102,11 +98,8 @@ proc getMonoTime*(): MonoTime {.tags: [TimeEffect].} =
   ##
   ## See [MDN](https://developer.mozilla.org/en-US/docs/Web/API/Performance/now)
   ## for more information.
-  when defined(js) and defined(nodejs):
+  when defined(js):
     result = MonoTime(ticks: getJsTicks())
-  elif defined(js):
-    let ticks = getJsTicks()
-    result = MonoTime(ticks: (ticks * 1_000_000_000).int64)
   elif defined(macosx):
     let ticks = mach_absolute_time()
     var machAbsoluteTimeFreq: MachTimebaseInfoData
@@ -130,22 +123,22 @@ proc getMonoTime*(): MonoTime {.tags: [TimeEffect].} =
 proc ticks*(t: MonoTime): int64 =
   ## Returns the raw ticks value from a `MonoTime`. This value always uses
   ## nanosecond time resolution.
-  t.ticks
+  int64(t.ticks)
 
 proc `$`*(t: MonoTime): string =
   $t.ticks
 
 proc `-`*(a, b: MonoTime): Duration =
   ## Returns the difference between two `MonoTime` timestamps as a `Duration`.
-  initDuration(nanoseconds = (a.ticks - b.ticks))
+  initDuration(nanoseconds = int64(a.ticks - b.ticks))
 
 proc `+`*(a: MonoTime, b: Duration): MonoTime =
   ## Increases `a` by `b`.
-  MonoTime(ticks: a.ticks + b.inNanoseconds)
+  MonoTime(ticks: a.ticks + b.inNanoseconds.big)
 
 proc `-`*(a: MonoTime, b: Duration): MonoTime =
   ## Reduces `a` by `b`.
-  MonoTime(ticks: a.ticks - b.inNanoseconds)
+  MonoTime(ticks: a.ticks - b.inNanoseconds.big)
 
 proc `<`*(a, b: MonoTime): bool =
   ## Returns true if `a` happened before `b`.
