@@ -27,7 +27,10 @@ template main =
       # this could fail with getTime instead of getMonoTime, as expected
       let a = getMonoTime()
       let b = getMonoTime()
-      doAssert b > a
+      when defined(js) or defined(osx):
+        doAssert b > a # we have strict monotonicity
+      else:
+        doAssert b >= a # we only have monotonicity
 
 main()
 # static: main() # xxx support
