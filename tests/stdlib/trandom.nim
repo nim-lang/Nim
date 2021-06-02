@@ -187,21 +187,3 @@ block: # bug #17467
     doAssert x > 1e-4, $(x, i)
       # This used to fail for each i in 0..<26844, i.e. the 1st produced value
       # was predictable and < 1e-4, skewing distributions.
-
-when not defined(js) and not defined(macosx):
-  ## TODO improve `getTime` precision on MacOS
-  block: # bug #17898
-    let size = 1000
-    var vals = newSeq[Rand](size) 
-    for i in 0..<size: vals[i] = initRand() # only now, check for uniqueness
-    proc isUnique[T](a: openArray[T]): bool =
-      var s: HashSet[T]
-      for i in a:
-        if i notin s:
-          s.incl(i)
-        else:
-          result = false
-          return
-      result = true
-
-    doAssert isUnique(vals)
