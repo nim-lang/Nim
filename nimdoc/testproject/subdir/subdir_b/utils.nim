@@ -50,9 +50,9 @@ template bEnum*(): untyped =
     discard
 
 template fromUtilsGen*(): untyped =
-  ## this should be shown in utils.html
+  ## should be shown in utils.html only
   runnableExamples:
-    assert 3*2 == 6
+    discard "should be in utils.html only, not in module that calls fromUtilsGen"
   ## ditto
 
   iterator fromUtils1*(): int =
@@ -64,7 +64,11 @@ template fromUtilsGen*(): untyped =
 
   template fromUtils2*() =
     ## ok3
+    runnableExamples:
+      discard """should be shown as examples for fromUtils2
+       in module calling fromUtilsGen"""
 
   proc fromUtils3*() =
     ## came form utils but should be shown where `fromUtilsGen` is called
-    runnableExamples: discard 1
+    runnableExamples: discard """should be shown as examples for fromUtils3
+       in module calling fromUtilsGen"""
