@@ -191,11 +191,17 @@ block: # bug #17467
 when not defined(js) and not defined(macosx):
   ## TODO improve `getTime` precision on MacOS
   block: # bug #17898
-    var unique: HashSet[Rand]
+    let size = 1000
+    var vals = newSeq[Rand](size) 
+    for i in 0..<size: vals[i] = initRand() # only now, check for uniqueness
+    proc isUnique[T](a: openArray[T]): bool =
+      var s: HashSet[T]
+      for i in a:
+        if i notin s:
+          s.incl(i)
+        else:
+          result = false
+          return
+      result = true
 
-    let size = 10
-
-    for i in 0 ..< size:
-      unique.incl initRand()
-
-    doAssert unique.len == size
+    doAssert isUnique(vals)
