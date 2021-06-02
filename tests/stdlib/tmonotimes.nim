@@ -1,5 +1,6 @@
 discard """
   targets: "c js"
+  matrix: "; -d:danger" # for stricter tests
 """
 
 import std/[monotimes, times]
@@ -27,8 +28,8 @@ template main =
       # this could fail with getTime instead of getMonoTime, as expected
       let a = getMonoTime()
       let b = getMonoTime()
-      when not defined(js) and ((defined(linux) and int.sizeof == 8) or defined(windows)):
-        # xxx pending bug #18158
+      when defined(windows) and not defined(js):
+        # bug #18158
         doAssert b >= a
       else:
         doAssert b > a

@@ -17,7 +17,7 @@ meaning that that the following is guaranteed to work:
 runnableExamples:
   let a = getMonoTime()
   let b = getMonoTime()
-  when defined(windows) or defined(linux):
+  when defined(windows):
     assert a <= b # pending bug #18158
   else:
     assert a < b
@@ -105,7 +105,8 @@ proc getMonoTime*(): MonoTime {.tags: [TimeEffect].} =
       machAbsoluteTimeFreq.denom)
   elif defined(posix):
     var ts: Timespec
-    discard clock_gettime(CLOCK_MONOTONIC, ts)
+    discard clock_gettime(CLOCK_MONOTONIC_RAW, ts)
+      # `CLOCK_MONOTONIC` precision not high enough, causing non-strict monotonicity, refs bug #18158
     result = MonoTime(ticks: ts.tv_sec.int64 * 1_000_000_000 +
       ts.tv_nsec.int64)
   elif defined(windows):

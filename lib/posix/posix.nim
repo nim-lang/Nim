@@ -654,6 +654,9 @@ proc shm_open*(a1: cstring, a2: cint, a3: Mode): cint {.
   importc, header: "<sys/mman.h>".}
 proc shm_unlink*(a1: cstring): cint {.importc, header: "<sys/mman.h>".}
 
+var CLOCK_MONOTONIC_RAW* {.importc, header: "<time.h>".}: cint
+# xxx move here other similar declarations e.g. CLOCK_MONOTONIC
+
 proc asctime*(a1: var Tm): cstring{.importc, header: "<time.h>".}
 
 proc asctime_r*(a1: var Tm, a2: cstring): cstring {.importc, header: "<time.h>".}
