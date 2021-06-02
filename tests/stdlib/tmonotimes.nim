@@ -27,7 +27,11 @@ template main =
       # this could fail with getTime instead of getMonoTime, as expected
       let a = getMonoTime()
       let b = getMonoTime()
-      doAssert b > a
+      when not defined(js) and ((defined(linux) and int.sizeof == 8) or defined(windows)):
+        # xxx pending bug #18158
+        doAssert b >= a
+      else:
+        doAssert b > a
 
 main()
 # static: main() # xxx support
