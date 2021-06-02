@@ -131,9 +131,6 @@ type
     noGenSym: int
     inTemplateHeader: int
 
-template withBracketExpr(ctx, x, body: untyped) =
-  body
-
 proc getIdentNode(c: var TemplCtx, n: PNode): PNode =
   case n.kind
   of nkPostfix: result = getIdentNode(c, n[1])
@@ -491,9 +488,7 @@ proc semTemplBody(c: var TemplCtx, n: PNode): PNode =
     result = newNodeI(nkCall, n.info)
     result.add newIdentNode(getIdent(c.c.cache, "[]"), n.info)
     for i in 0..<n.len: result.add(n[i])
-    let n0 = semTemplBody(c, n[0])
-    withBracketExpr c, n0:
-      result = semTemplBodySons(c, result)
+    result = semTemplBodySons(c, result)
   of nkCurlyExpr:
     result = newNodeI(nkCall, n.info)
     result.add newIdentNode(getIdent(c.c.cache, "{}"), n.info)
@@ -512,8 +507,7 @@ proc semTemplBody(c: var TemplCtx, n: PNode): PNode =
       for i in 0..<a.len: result.add(a[i])
       result.add(b)
       let a0 = semTemplBody(c, a[0])
-      withBracketExpr c, a0:
-        result = semTemplBodySons(c, result)
+      result = semTemplBodySons(c, result)
     of nkCurlyExpr:
       result = newNodeI(nkCall, n.info)
       result.add newIdentNode(getIdent(c.c.cache, "{}="), n.info)
@@ -644,10 +638,10 @@ proc semTemplateDef(c: PContext, n: PNode): PNode =
     n[genericParamsPos] = n[miscPos][1]
     n[miscPos] = c.graph.emptyNode
   if allUntyped: incl(s.flags, sfAllUntyped)
-  
+
   if n[patternPos].kind != nkEmpty:
     n[patternPos] = semPattern(c, n[patternPos])
-  
+
   var ctx: TemplCtx
   ctx.toBind = initIntSet()
   ctx.toMixin = initIntSet()
