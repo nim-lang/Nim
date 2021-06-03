@@ -70,14 +70,17 @@ template withValue*[A, B](t: var SharedTable[A, B], key: A,
     table["b"] = "y"
     table["c"] = "z"
 
-    table.withValue("a", value) do:
+    table.withValue("a", value):
       assert value[] == "x"
 
-    table.withValue("b", value) do:
+    table.withValue("b", value):
       value[] = "modified"
 
-    table.withValue("b", value) do:
+    table.withValue("b", value):
       assert value[] == "modified"
+
+    table.withValue("nonexistent", value):
+      assert false # not called
   acquire(t.lock)
   try:
     var hc: Hash
@@ -102,10 +105,10 @@ template withValue*[A, B](t: var SharedTable[A, B], key: A,
     table["c"] = "z"
 
 
-    table.withValue("a", value) do:
+    table.withValue("a", value):
       value[] = "m"
 
-    table.withValue("d", value) do:
+    table.withValue("d", value):
       discard value
       doAssert false
     do: # if "d" notin table
