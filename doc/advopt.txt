@@ -41,6 +41,8 @@ Advanced options:
                             defaults to `abs` (absolute)
   --processing:dots|filenames|off
                             show files as they're being processed by nim compiler
+  --unitsep:on|off          use the ASCII unit separator (31) between error
+                            messages, useful for IDE-like tooling
   --declaredLocs:on|off     show declaration locations in messages
   --spellSuggest|:num       show at most `num >= 0` spelling suggestions on typos.
                             if `num` is not specified (or `auto`), return

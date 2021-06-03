@@ -283,6 +283,7 @@ type
     arcToExpand*: StringTableRef
     m*: MsgConfig
     filenameOption*: FilenameOption # how to render paths in compiler messages
+    unitSep*: string
     evalTemplateCounter*: int
     evalMacroCounter*: int
     exitcode*: int8
