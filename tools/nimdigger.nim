@@ -185,21 +185,18 @@ proc gitIsAncestorOf(dir: string, rev1, rev2: string): bool =
   gitCheck(dir)
   execShellCmd(fmt"git -C {dir.quoteShell} merge-base --is-ancestor {rev1} {rev2}") == 0
 
-proc isGitNimTag(tag: string): bool =
-  if not tag.startsWith "v":
-    return false
-  let ver = tag[1..^1].split(".")
-  return ver.len == 3
+import std/strscans
 
 proc parseNimGitTag(tag: string): (int, int, int) =
-  doAssert tag.isGitNimTag, tag
-  let ver = tag[1..^1].split(".")
-  template impl(i) =
-    # improve pending https://github.com/nim-lang/Nim/pull/18038
-    result[i] = ver[i].parseInt
-  impl 0
-  impl 1
-  impl 2
+  if not scanf(tag, "v$i.$i.$i$.", result[0], result[1], result[2]):
+    raise newException(ValueError, tag)
+
+proc isGitNimTag(tag: string): bool =
+  try:
+    discard parseNimGitTag(tag)
+    return true
+  except ValueError:
+    return false
 
 proc toNimCsourcesExe(binDir: string, name: string, rev: string): string =
   let rev2 = rev.replace(".", "_")
