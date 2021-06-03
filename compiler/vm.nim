@@ -524,7 +524,7 @@ proc rawExecute(c: PCtx, start: int, tos: PStackFrame): TFullReg =
   # Used to keep track of where the execution is resumed.
   var savedPC = -1
   var savedFrame: PStackFrame
-  when defined(gcArc):
+  when defined(gcArc) or defined(gcOrc):
     template updateRegsAlias = discard
     template regs: untyped = tos.slots
   else:
@@ -1513,8 +1513,8 @@ proc rawExecute(c: PCtx, start: int, tos: PStackFrame): TFullReg =
         # reference with the value `nil`, so `isNil` should be false!
         (node.kind == nkNilLit and nfIsRef notin node.flags) or
         (not node.typ.isNil and node.typ.kind == tyProc and
-          node.typ.callConv == ccClosure and node[0].kind == nkNilLit and
-          node[1].kind == nkNilLit))
+          node.typ.callConv == ccClosure and node.safeLen > 0 and
+          node[0].kind == nkNilLit and node[1].kind == nkNilLit))
     of opcNBindSym:
       # cannot use this simple check
       # if dynamicBindSym notin c.config.features:
@@ -2106,7 +2106,7 @@ proc rawExecute(c: PCtx, start: int, tos: PStackFrame): TFullReg =
 
 proc execute(c: PCtx, start: int): PNode =
   var tos = PStackFrame(prc: nil, comesFrom: 0, next: nil)
-  newSeq(tos.slots, c.prc.maxSlots)
+  newSeq(tos.slots, c.prc.regInfo.len)
   result = rawExecute(c, start, tos).regToNode
 
 proc execProc*(c: PCtx; sym: PSym; args: openArray[PNode]): PNode =
@@ -2203,8 +2203,8 @@ proc evalConstExprAux(module: PSym; idgen: IdGenerator;
   assert c.code[start].opcode != opcEof
   when debugEchoCode: c.echoCode start
   var tos = PStackFrame(prc: prc, comesFrom: 0, next: nil)
-  newSeq(tos.slots, c.prc.maxSlots)
-  #for i in 0..<c.prc.maxSlots: tos.slots[i] = newNode(nkEmpty)
+  newSeq(tos.slots, c.prc.regInfo.len)
+  #for i in 0..<c.prc.regInfo.len: tos.slots[i] = newNode(nkEmpty)
   result = rawExecute(c, start, tos).regToNode
   if result.info.col < 0: result.info = n.info
   c.mode = oldMode

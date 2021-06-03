@@ -1890,7 +1890,7 @@ func find*(s, sub: string, start: Natural = 0, last = 0): int {.rtl,
   ## See also:
   ## * `rfind func<#rfind,string,string,Natural>`_
   ## * `replace func<#replace,string,string,string>`_
-  if sub.len > s.len: return -1
+  if sub.len > s.len - start: return -1
   if sub.len == 1: return find(s, sub[0], start, last)
 
   template useSkipTable {.dirty.} =
@@ -1966,6 +1966,8 @@ func rfind*(s, sub: string, start: Natural = 0, last = -1): int {.rtl,
   ## See also:
   ## * `find func<#find,string,string,Natural,int>`_
   if sub.len == 0:
+    return -1
+  if sub.len > s.len - start:
     return -1
   let last = if last == -1: s.high else: last
   result = 0
@@ -2812,7 +2814,7 @@ func strip*(s: string, leading = true, trailing = true,
   result = substr(s, first, last)
 
 func stripLineEnd*(s: var string) =
-  ## Returns `s` stripped from one of these suffixes:
+  ## Strips one of these suffixes from `s` in-place:
   ## `\r, \n, \r\n, \f, \v` (at most once instance).
   ## For example, can be useful in conjunction with `osproc.execCmdEx`.
   ## aka: `chomp`:idx:

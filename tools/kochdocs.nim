@@ -284,22 +284,22 @@ proc buildDoc(nimArgs, destPath: string) =
 
 proc nim2pdf(src: string, dst: string, nimArgs: string) =
   # xxx expose as a `nim` command or in some other reusable way.
-  let outDir = "build" / "pdflatextmp" # xxx factor pending https://github.com/timotheecour/Nim/issues/616
+  let outDir = "build" / "xelatextmp" # xxx factor pending https://github.com/timotheecour/Nim/issues/616
   # note: this will generate temporary files in gitignored `outDir`: aux toc log out tex
   exec("$# rst2tex $# --outdir:$# $#" % [findNim().quoteShell(), nimArgs, outDir.quoteShell, src.quoteShell])
   let texFile = outDir / src.lastPathPart.changeFileExt("tex")
-  for i in 0..<2: # call LaTeX twice to get cross references right:
-    let pdflatexLog = outDir / "pdflatex.log"
+  for i in 0..<3: # call LaTeX three times to get cross references right:
+    let xelatexLog = outDir / "xelatex.log"
     # `>` should work on windows, if not, we can use `execCmdEx`
-    let cmd = "pdflatex -interaction=nonstopmode -output-directory=$# $# > $#" % [outDir.quoteShell, texFile.quoteShell, pdflatexLog.quoteShell]
-    exec(cmd) # on error, user can inspect `pdflatexLog`
+    let cmd = "xelatex -interaction=nonstopmode -output-directory=$# $# > $#" % [outDir.quoteShell, texFile.quoteShell, xelatexLog.quoteShell]
+    exec(cmd) # on error, user can inspect `xelatexLog`
   moveFile(texFile.changeFileExt("pdf"), dst)
 
 proc buildPdfDoc*(nimArgs, destPath: string) =
   var pdfList: seq[string]
   createDir(destPath)
-  if os.execShellCmd("pdflatex -version") != 0:
-    doAssert false, "pdflatex not found" # or, raise an exception
+  if os.execShellCmd("xelatex -version") != 0:
+    doAssert false, "xelatex not found" # or, raise an exception
   else:
     for src in items(rstPdfList):
       let dst = destPath / src.lastPathPart.changeFileExt("pdf")

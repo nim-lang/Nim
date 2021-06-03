@@ -60,6 +60,10 @@ type
   MetaEnum* = enum
     metaNone, metaTitle, metaSubtitle, metaAuthor, metaVersion
 
+  EscapeMode = enum  # in Latex text inside options [] and URLs is
+                     # escaped slightly differently than in normal text
+    emText, emOption, emUrl  # emText is currently used for code also
+
   RstGenerator* = object of RootObj
     target*: OutputTarget
     config*: StringTableRef
@@ -84,6 +88,7 @@ type
     id*: int               ## A counter useful for generating IDs.
     onTestSnippet*: proc (d: var RstGenerator; filename, cmd: string; status: int;
                           content: string)
+    escMode*: EscapeMode
 
   PDoc = var RstGenerator ## Alias to type less.
 
@@ -161,6 +166,7 @@ proc initRstGenerator*(g: var RstGenerator, target: OutputTarget,
   g.findFile = findFile
   g.currentSection = ""
   g.id = 0
+  g.escMode = emText
   let fileParts = filename.splitFile
   if fileParts.ext == ".nim":
     g.currentSection = "Module " & fileParts.name
@@ -179,7 +185,9 @@ proc writeIndexFile*(g: var RstGenerator, outfile: string) =
   ## If the index is empty the file won't be created.
   if g.theIndex.len > 0: writeFile(outfile, g.theIndex)
 
-proc addXmlChar(dest: var string, c: char) =
+proc addHtmlChar(dest: var string, c: char) =
+  # Escapes HTML characters. Note that single quote ' is not escaped as
+  # &apos; -- unlike XML (for standards pre HTML5 it was even forbidden).
   case c
   of '&': add(dest, "&amp;")
   of '<': add(dest, "&lt;")
@@ -187,35 +195,34 @@ proc addXmlChar(dest: var string, c: char) =
   of '\"': add(dest, "&quot;")
   else: add(dest, c)
 
-proc addRtfChar(dest: var string, c: char) =
+proc addTexChar(dest: var string, c: char, escMode: EscapeMode) =
+  ## Escapes 10 special Latex characters and sometimes ` and [, ].
+  ## TODO: @ is always a normal symbol (besides the header), am I wrong?
+  ## All escapes that need to work in text and code blocks (`emText` mode)
+  ## should start from \ (to be compatible with fancyvrb/fvextra).
   case c
-  of '{': add(dest, "\\{")
-  of '}': add(dest, "\\}")
-  of '\\': add(dest, "\\\\")
+  of '_', '$', '&', '#', '%': add(dest, "\\" & c)
+  # \~ and \^ have a special meaning unless they are followed by {}
+  of '~', '^': add(dest, "\\" & c & "{}")
+  # Latex loves to substitute ` to opening quote, even in texttt mode!
+  of '`': add(dest, "\\textasciigrave{}")
+  # add {} to avoid gobbling up space by \textbackslash
+  of '\\': add(dest, "\\textbackslash{}")
+  # Using { and } in URL in Latex: https://tex.stackexchange.com/a/469175
+  of '{':
+    add(dest, if escMode == emUrl: "\\%7B" else: "\\{")
+  of '}':
+    add(dest, if escMode == emUrl: "\\%7D" else: "\\}")
+  of ']':
+    # escape ] inside an optional argument in e.g. \section[static[T]]{..
+    add(dest, if escMode == emOption: "\\text{]}" else: "]")
   else: add(dest, c)
 
-proc addTexChar(dest: var string, c: char) =
-  case c
-  of '_': add(dest, "\\_")
-  of '{': add(dest, "\\symbol{123}")
-  of '}': add(dest, "\\symbol{125}")
-  of '[': add(dest, "\\symbol{91}")
-  of ']': add(dest, "\\symbol{93}")
-  of '\\': add(dest, "\\symbol{92}")
-  of '$': add(dest, "\\$")
-  of '&': add(dest, "\\&")
-  of '#': add(dest, "\\#")
-  of '%': add(dest, "\\%")
-  of '~': add(dest, "\\symbol{126}")
-  of '@': add(dest, "\\symbol{64}")
-  of '^': add(dest, "\\symbol{94}")
-  of '`': add(dest, "\\symbol{96}")
-  else: add(dest, c)
-
-proc escChar*(target: OutputTarget, dest: var string, c: char) {.inline.} =
+proc escChar*(target: OutputTarget, dest: var string,
+              c: char, escMode: EscapeMode) {.inline.} =
   case target
-  of outHtml:  addXmlChar(dest, c)
-  of outLatex: addTexChar(dest, c)
+  of outHtml:  addHtmlChar(dest, c)
+  of outLatex: addTexChar(dest, c, escMode)
 
 proc addSplitter(target: OutputTarget; dest: var string) {.inline.} =
   case target
@@ -234,7 +241,7 @@ proc nextSplitPoint*(s: string, start: int): int =
     inc(result)
   dec(result)                 # last valid index
 
-proc esc*(target: OutputTarget, s: string, splitAfter = -1): string =
+proc esc*(target: OutputTarget, s: string, splitAfter = -1, escMode = emText): string =
   ## Escapes the HTML.
   result = ""
   if splitAfter >= 0:
@@ -245,11 +252,11 @@ proc esc*(target: OutputTarget, s: string, splitAfter = -1): string =
       #if (splitter != " ") or (partLen + k - j + 1 > splitAfter):
       partLen = 0
       addSplitter(target, result)
-      for i in countup(j, k): escChar(target, result, s[i])
+      for i in countup(j, k): escChar(target, result, s[i], escMode)
       inc(partLen, k - j + 1)
       j = k + 1
   else:
-    for i in countup(0, len(s) - 1): escChar(target, result, s[i])
+    for i in countup(0, len(s) - 1): escChar(target, result, s[i], escMode)
 
 
 proc disp(target: OutputTarget, xml, tex: string): string =
@@ -765,6 +772,8 @@ proc renderHeadline(d: PDoc, n: PRstNode, result: var string) =
       sectionPrefix = rstnodeToRefname(n2) & "-"
       break
   var refname = sectionPrefix & rstnodeToRefname(n)
+  var tocName = esc(d.target, renderRstToText(n), escMode = emOption)
+    # for Latex: simple text without commands that may break TOC/hyperref
   if d.hasToc:
     var length = len(d.tocPart)
     setLen(d.tocPart, length + 1)
@@ -773,13 +782,14 @@ proc renderHeadline(d: PDoc, n: PRstNode, result: var string) =
     d.tocPart[length].header = tmp
 
     dispA(d.target, result, "\n<h$1><a class=\"toc-backref\"" &
-      "$2 href=\"#$5\">$3</a></h$1>", "\\rsth$4{$3}$2\n",
-      [$n.level, refname.idS, tmp, $chr(n.level - 1 + ord('A')), refname])
+      "$2 href=\"#$5\">$3</a></h$1>", "\\rsth$4[$6]{$3}$2\n",
+      [$n.level, refname.idS, tmp,
+       $chr(n.level - 1 + ord('A')), refname, tocName])
   else:
     dispA(d.target, result, "\n<h$1$2>$3</h$1>",
-                            "\\rsth$4{$3}$2\n", [
+                            "\\rsth$4[$5]{$3}$2\n", [
         $n.level, refname.idS, tmp,
-        $chr(n.level - 1 + ord('A'))])
+        $chr(n.level - 1 + ord('A')), tocName])
 
   # Generate index entry using spaces to indicate TOC level for the output HTML.
   assert n.level >= 0
@@ -807,9 +817,10 @@ proc renderOverline(d: PDoc, n: PRstNode, result: var string) =
     var tmp = ""
     for i in countup(0, len(n) - 1): renderRstToOut(d, n.sons[i], tmp)
     d.currentSection = tmp
+    var tocName = esc(d.target, renderRstToText(n), escMode=emOption)
     dispA(d.target, result, "<h$1$2><center>$3</center></h$1>",
-                   "\\rstov$4{$3}$2\n", [$n.level,
-        rstnodeToRefname(n).idS, tmp, $chr(n.level - 1 + ord('A'))])
+                   "\\rstov$4[$5]{$3}$2\n", [$n.level,
+        rstnodeToRefname(n).idS, tmp, $chr(n.level - 1 + ord('A')), tocName])
 
 
 proc renderTocEntry(d: PDoc, e: TocEntry, result: var string) =
@@ -875,7 +886,7 @@ proc renderImage(d: PDoc, n: PRstNode, result: var string) =
     htmlOut = "<img$3 src=\"$1\"$2/>"
 
   # support for `:target:` links for images:
-  var target = esc(d.target, getFieldValue(n, "target").strip())
+  var target = esc(d.target, getFieldValue(n, "target").strip(), escMode=emUrl)
   if target.len > 0:
     # `htmlOut` needs to be of the following format for link to work for images:
     # <a class="reference external" href="target"><img src=\"$1\"$2/></a>
@@ -987,6 +998,25 @@ proc buildLinesHtmlTable(d: PDoc; params: CodeBlockParams, code: string,
       "</td></tr></tbody></table>" & (
       d.config.getOrDefault"doc.listing_button" % id)
 
+proc renderCodeLang*(result: var string, lang: SourceLanguage, code: string,
+                     target: OutputTarget) =
+  var g: GeneralTokenizer
+  initGeneralTokenizer(g, code)
+  while true:
+    getNextToken(g, lang)
+    case g.kind
+    of gtEof: break
+    of gtNone, gtWhitespace:
+      add(result, substr(code, g.start, g.length + g.start - 1))
+    else:
+      dispA(target, result, "<span class=\"$2\">$1</span>", "\\span$2{$1}", [
+        esc(target, substr(code, g.start, g.length+g.start-1)),
+        tokenClassToStr[g.kind]])
+  deinitGeneralTokenizer(g)
+
+proc renderNimCode*(result: var string, code: string, target: OutputTarget) =
+  renderCodeLang(result, langNim, code, target)
+
 proc renderCode(d: PDoc, n: PRstNode, result: var string) =
   ## Renders a code (code block or inline code), appending it to `result`.
   ##
@@ -1017,30 +1047,18 @@ proc renderCode(d: PDoc, n: PRstNode, result: var string) =
       blockEnd = "</span></tt>"
   of outLatex:
     if n.kind == rnCodeBlock:
-      blockStart = "\n\n\\begin{rstpre}" & n.anchor.idS & "\n"
-      blockEnd = "\n\\end{rstpre}\n"
+      blockStart = "\n\n" & n.anchor.idS & "\\begin{rstpre}\n"
+      blockEnd = "\n\\end{rstpre}\n\n"
     else:  # rnInlineCode
-      blockStart = "\\texttt{"
+      blockStart = "\\rstcode{"
       blockEnd = "}"
   dispA(d.target, result, blockStart, blockStart, [])
   if params.lang == langNone:
     if len(params.langStr) > 0:
       d.msgHandler(d.filename, 1, 0, mwUnsupportedLanguage, params.langStr)
-    for letter in m.text: escChar(d.target, result, letter)
+    for letter in m.text: escChar(d.target, result, letter, emText)
   else:
-    var g: GeneralTokenizer
-    initGeneralTokenizer(g, m.text)
-    while true:
-      getNextToken(g, params.lang)
-      case g.kind
-      of gtEof: break
-      of gtNone, gtWhitespace:
-        add(result, substr(m.text, g.start, g.length + g.start - 1))
-      else:
-        dispA(d.target, result, "<span class=\"$2\">$1</span>", "\\span$2{$1}", [
-          esc(d.target, substr(m.text, g.start, g.length+g.start-1)),
-          tokenClassToStr[g.kind]])
-    deinitGeneralTokenizer(g)
+    renderCodeLang(result, params.lang, m.text, d.target)
   dispA(d.target, result, blockEnd, blockEnd)
 
 proc renderContainer(d: PDoc, n: PRstNode, result: var string) =
@@ -1053,9 +1071,8 @@ proc renderContainer(d: PDoc, n: PRstNode, result: var string) =
     dispA(d.target, result, "<div class=\"$1\">$2</div>", "$2", [arg, tmp])
 
 proc texColumns(n: PRstNode): string =
-  result = ""
   let nColumns = if n.sons.len > 0: len(n.sons[0]) else: 1
-  for i in countup(1, nColumns): add(result, "|X")
+  result = "L".repeat(nColumns)
 
 proc renderField(d: PDoc, n: PRstNode, result: var string) =
   var b = false
@@ -1142,10 +1159,29 @@ proc renderAdmonition(d: PDoc, n: PRstNode, result: var string) =
   renderAux(d, n,
       htmlHead & "<span$2 class=\"" & htmlCls & "-text\"><b>" & txt &
         ":</b></span>\n" & "$1</div>\n",
-      "\n\n\\begin{mdframed}[linecolor=" & texColor & "]$2\n" &
+      "\n\n\\begin{rstadmonition}[borderline west={0.2em}{0pt}{" &
+        texColor & "}]$2\n" &
         "{" & texSz & "\\color{" & texColor & "}{\\textbf{" & txt & ":}}} " &
-        "$1\n\\end{mdframed}\n",
+        "$1\n\\end{rstadmonition}\n",
       result)
+
+proc renderHyperlink(d: PDoc, text, link: PRstNode, result: var string, external: bool) =
+  var linkStr = ""
+  block:
+    let mode = d.escMode
+    d.escMode = emUrl
+    renderRstToOut(d, link, linkStr)
+    d.escMode = mode
+  var textStr = ""
+  renderRstToOut(d, text, textStr)
+  if external:
+    dispA(d.target, result,
+      "<a class=\"reference external\" href=\"$2\">$1</a>",
+      "\\href{$2}{$1}", [textStr, linkStr])
+  else:
+    dispA(d.target, result,
+      "<a class=\"reference internal\" href=\"#$2\">$1</a>",
+      "\\hyperlink{$2}{$1} (p.~\\pageref{$2})", [textStr, linkStr])
 
 proc renderRstToOut(d: PDoc, n: PRstNode, result: var string) =
   if n == nil: return
@@ -1153,8 +1189,8 @@ proc renderRstToOut(d: PDoc, n: PRstNode, result: var string) =
   of rnInner: renderAux(d, n, result)
   of rnHeadline, rnMarkdownHeadline: renderHeadline(d, n, result)
   of rnOverline: renderOverline(d, n, result)
-  of rnTransition: renderAux(d, n, "<hr$2 />\n", "\\hrule$2\n", result)
-  of rnParagraph: renderAux(d, n, "<p$2>$1</p>\n", "$2\n$1\n\n", result)
+  of rnTransition: renderAux(d, n, "<hr$2 />\n", "\n\n\\vspace{0.6em}\\hrule$2\n", result)
+  of rnParagraph: renderAux(d, n, "<p$2>$1</p>\n", "\n\n$2\n$1\n\n", result)
   of rnBulletList:
     renderAux(d, n, "<ul$2 class=\"simple\">$1</ul>\n",
                     "\\begin{itemize}\n$2\n$1\\end{itemize}\n", result)
@@ -1200,7 +1236,7 @@ proc renderRstToOut(d: PDoc, n: PRstNode, result: var string) =
     renderAux(d, n,
         "<div class=\"option-list-label\"><tt><span class=\"option\">" &
         "$1</span></tt></div>",
-        "\\item[$1]", result)
+        "\\item[\\rstcodeitem{\\spanoption{$1}}]", result)
   of rnDescription:
     renderAux(d, n, "<div class=\"option-list-description\">$1</div>",
         " $1\n", result)
@@ -1208,7 +1244,7 @@ proc renderRstToOut(d: PDoc, n: PRstNode, result: var string) =
     doAssert false, "renderRstToOut"
   of rnLiteralBlock:
     renderAux(d, n, "<pre$2>$1</pre>\n",
-                    "\\begin{rstpre}\n$2\n$1\n\\end{rstpre}\n", result)
+                    "\n\n\\begin{rstpre}\n$2\n$1\n\\end{rstpre}\n\n", result)
   of rnQuotedLiteralBlock:
     doAssert false, "renderRstToOut"
   of rnLineBlock:
@@ -1235,8 +1271,8 @@ proc renderRstToOut(d: PDoc, n: PRstNode, result: var string) =
   of rnTable, rnGridTable, rnMarkdownTable:
     renderAux(d, n,
       "<table$2 border=\"1\" class=\"docutils\">$1</table>",
-      "\\begin{table}\n$2\n\\begin{rsttab}{" &
-        texColumns(n) & "|}\n\\hline\n$1\\end{rsttab}\\end{table}", result)
+      "\n$2\n\\begin{rsttab}{" &
+        texColumns(n) & "}\n\\hline\n$1\\end{rsttab}", result)
   of rnTableRow:
     if len(n) >= 1:
       if d.target == outLatex:
@@ -1273,21 +1309,13 @@ proc renderRstToOut(d: PDoc, n: PRstNode, result: var string) =
       "\\item[\\textsuperscript{[$3]}]$2 $1\n",
       [body, n.anchor.idS, mark, n.anchor])
   of rnRef:
-    var tmp = ""
-    renderAux(d, n, tmp)
-    dispA(d.target, result,
-      "<a class=\"reference external\" href=\"#$2\">$1</a>",
-      "$1\\ref{$2}", [tmp, rstnodeToRefname(n)])
+    renderHyperlink(d, text=n.sons[0], link=n.sons[0], result, external=false)
   of rnStandaloneHyperlink:
-    renderAux(d, n,
-      "<a class=\"reference external\" href=\"$1\">$1</a>",
-      "\\href{$1}{$1}", result)
+    renderHyperlink(d, text=n.sons[0], link=n.sons[0], result, external=true)
   of rnInternalRef:
-    var tmp = ""
-    renderAux(d, n.sons[0], tmp)
-    dispA(d.target, result,
-      "<a class=\"reference internal\" href=\"#$2\">$1</a>",
-      "\\hyperlink{$2}{$1} (p.~\\pageref{$2})", [tmp, n.sons[1].text])
+    renderHyperlink(d, text=n.sons[0], link=n.sons[1], result, external=false)
+  of rnHyperlink:
+    renderHyperlink(d, text=n.sons[0], link=n.sons[1], result, external=true)
   of rnFootnoteRef:
     var tmp = "["
     renderAux(d, n.sons[0], tmp)
@@ -1297,14 +1325,6 @@ proc renderRstToOut(d: PDoc, n: PRstNode, result: var string) =
           "$1</a></strong></sup>",
       "\\textsuperscript{\\hyperlink{$2}{\\textbf{$1}}}",
       [tmp, n.sons[1].text])
-  of rnHyperlink:
-    var tmp0 = ""
-    var tmp1 = ""
-    renderRstToOut(d, n.sons[0], tmp0)
-    renderRstToOut(d, n.sons[1], tmp1)
-    dispA(d.target, result,
-      "<a class=\"reference external\" href=\"$2\">$1</a>",
-      "\\href{$2}{$1}", [tmp0, tmp1])
   of rnDirArg, rnRaw: renderAux(d, n, result)
   of rnRawHtml:
     if d.target != outLatex and not lastSon(n).isNil:
@@ -1332,7 +1352,7 @@ proc renderRstToOut(d: PDoc, n: PRstNode, result: var string) =
       dispA(d.target, result,
             "<tt class=\"docutils literal\"><span class=\"pre $2\">" &
               "$1</span></tt>",
-            "\\texttt{\\span$2{$1}}", [tmp0, class])
+            "\\rstcode{\\span$2{$1}}", [tmp0, class])
     else:  # rnUnknownRole, not necessarily code/monospace font
       dispA(d.target, result, "<span class=\"$2\">$1</span>", "\\span$2{$1}",
             [tmp0, class])
@@ -1349,7 +1369,7 @@ proc renderRstToOut(d: PDoc, n: PRstNode, result: var string) =
   of rnInlineLiteral, rnInterpretedText:
     renderAux(d, n,
       "<tt class=\"docutils literal\"><span class=\"pre\">$1</span></tt>",
-      "\\texttt{$1}", result)
+      "\\rstcode{$1}", result)
   of rnInlineTarget:
     var tmp = ""
     renderAux(d, n, tmp)
@@ -1358,7 +1378,7 @@ proc renderRstToOut(d: PDoc, n: PRstNode, result: var string) =
       "\\label{$2}\\hypertarget{$2}{$1}",
       [tmp, rstnodeToRefname(n)])
   of rnSmiley: renderSmiley(d, n, result)
-  of rnLeaf: result.add(esc(d.target, n.text))
+  of rnLeaf: result.add(esc(d.target, n.text, escMode=d.escMode))
   of rnContents: d.hasToc = true
   of rnDefaultRole: discard
   of rnTitle:

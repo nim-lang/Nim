@@ -86,8 +86,67 @@ iterator items*[T: HoleyEnum](E: typedesc[T]): T =
     assert B[float].toSeq == [B[float].b0, B[float].b1]
   for a in enumFullRange(E): yield a
 
-func symbolName*[T: OrdinalEnum](a: T): string =
+func span(T: typedesc[HoleyEnum]): int =
+  (T.high.ord - T.low.ord) + 1
+
+const invalidSlot = uint8.high
+
+proc genLookup[T: typedesc[HoleyEnum]](_: T): auto =
+  const n = span(T)
+  var ret: array[n, uint8]
+  var i = 0
+  assert n <= invalidSlot.int
+  for ai in mitems(ret): ai = invalidSlot
+  for ai in items(T):
+    ret[ai.ord - T.low.ord] = uint8(i)
+    inc(i)
+  return ret
+
+func symbolRankImpl[T](a: T): int {.inline.} =
+  const n = T.span
+  const thres = 255 # must be <= `invalidSlot`, but this should be tuned.
+  when n <= thres:
+    const lookup = genLookup(T)
+    let lookup2 {.global.} = lookup # xxx improve pending https://github.com/timotheecour/Nim/issues/553
+    #[
+    This could be optimized using a hash adapted to `T` (possible since it's known at CT)
+    to get better key distribution before indexing into the lookup table table.
+    ]#
+    {.noSideEffect.}: # because it's immutable
+      let ret = lookup2[ord(a) - T.low.ord]
+    if ret != invalidSlot: return ret.int
+  else:
+    var i = 0
+    # we could also generate a case statement as optimization
+    for ai in items(T):
+      if ai == a: return i
+      inc(i)
+  raise newException(IndexDefect, $ord(a) & " invalid for " & $T)
+
+template symbolRank*[T: enum](a: T): int =
+  ## Returns the index in which `a` is listed in `T`.
+  ##
+  ## The cost for a `HoleyEnum` is implementation defined, currently optimized
+  ## for small enums, otherwise is `O(T.enumLen)`.
+  runnableExamples:
+    type
+      A = enum a0 = -3, a1 = 10, a2, a3 = (20, "f3Alt") # HoleyEnum
+      B = enum b0, b1, b2 # OrdinalEnum
+      C = enum c0 = 10, c1, c2 # OrdinalEnum
+    assert a2.symbolRank == 2
+    assert b2.symbolRank == 2
+    assert c2.symbolRank == 2
+    assert c2.ord == 12
+    assert a2.ord == 11
+    var invalid = 7.A
+    doAssertRaises(IndexDefect): discard invalid.symbolRank
+  when T is Ordinal: ord(a) - T.low.ord.static
+  else: symbolRankImpl(a)
+
+func symbolName*[T: enum](a: T): string =
   ## Returns the symbol name of an enum.
+  ##
+  ## This uses `symbolRank`.
   runnableExamples:
     type B = enum
       b0 = (10, "kb0")
@@ -97,5 +156,7 @@ func symbolName*[T: OrdinalEnum](a: T): string =
     assert b.symbolName == "b0"
     assert $b == "kb0"
     static: assert B.high.symbolName == "b2"
+    type C = enum c0 = -3, c1 = 4, c2 = 20 # HoleyEnum
+    assert c1.symbolName == "c1"
   const names = enumNames(T)
-  names[a.ord - T.low.ord]
+  names[a.symbolRank]

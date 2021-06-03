@@ -109,9 +109,21 @@ proc free(s: Cell; desc: PNimTypeV2) {.inline.} =
 
   nimRawDispose(p, desc.align)
 
+template orcAssert(cond, msg) =
+  when logOrc:
+    if not cond:
+      cfprintf(cstderr, "[Bug!] %s\n", msg)
+      quit 1
+
+when logOrc:
+  proc strstr(s, sub: cstring): cstring {.header: "<string.h>", importc.}
+
 proc nimTraceRef(q: pointer; desc: PNimTypeV2; env: pointer) {.compilerRtl, inline.} =
   let p = cast[ptr pointer](q)
   if p[] != nil:
+
+    orcAssert strstr(desc.name, "TType") == nil, "following a TType but it's acyclic!"
+
     var j = cast[ptr GcEnv](env)
     j.traceStack.add(head p[], desc)
 
@@ -120,12 +132,6 @@ proc nimTraceRefDyn(q: pointer; env: pointer) {.compilerRtl, inline.} =
   if p[] != nil:
     var j = cast[ptr GcEnv](env)
     j.traceStack.add(head p[], cast[ptr PNimTypeV2](p[])[])
-
-template orcAssert(cond, msg) =
-  when logOrc:
-    if not cond:
-      cfprintf(cstderr, "[Bug!] %s\n", msg)
-      quit 1
 
 var
   roots {.threadvar.}: CellSeq
@@ -402,6 +408,8 @@ proc registerCycle(s: Cell; desc: PNimTypeV2) =
   when logOrc:
     writeCell("[added root]", s, desc)
 
+  orcAssert strstr(desc.name, "TType") == nil, "added a TType as a root!"
+
 proc GC_runOrc* =
   ## Forces a cycle collection pass.
   collectCycles()
@@ -436,10 +444,15 @@ proc GC_disableMarkAndSweep*() =
   ## For `--gc:orc` an alias for `GC_disableOrc`.
   GC_disableOrc()
 
+const
+  acyclicFlag = 1 # see also cggtypes.nim, proc genTypeInfoV2Impl
+
 when optimizedOrc:
-  template markedAsCyclic(s: Cell): bool = (s.rc and maybeCycle) != 0
+  template markedAsCyclic(s: Cell; desc: PNimTypeV2): bool =
+    (desc.flags and acyclicFlag) == 0 and (s.rc and maybeCycle) != 0
 else:
-  template markedAsCyclic(s: Cell): bool = true
+  template markedAsCyclic(s: Cell; desc: PNimTypeV2): bool =
+    (desc.flags and acyclicFlag) == 0
 
 proc rememberCycle(isDestroyAction: bool; s: Cell; desc: PNimTypeV2) {.noinline.} =
   if isDestroyAction:
@@ -448,7 +461,7 @@ proc rememberCycle(isDestroyAction: bool; s: Cell; desc: PNimTypeV2) {.noinline.
   else:
     # do not call 'rememberCycle' again unless this cell
     # got an 'incRef' event:
-    if s.rootIdx == 0 and markedAsCyclic(s):
+    if s.rootIdx == 0 and markedAsCyclic(s, desc):
       s.setColor colBlack
       registerCycle(s, desc)
 

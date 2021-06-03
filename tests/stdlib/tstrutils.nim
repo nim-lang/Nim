@@ -221,6 +221,69 @@ template main() =
     doAssert "0123456789ABCDEFGH".find({'A'..'C'}, 5, 10) == 10
     doAssert "0123456789ABCDEFGH".find({'A'..'C'}, 5, 9) == -1
 
+    block:
+      const haystack: string = "ABCABABABABCAB"
+      doAssert haystack.len == 14
+
+      # only last argument
+      doAssert haystack.find("ABC") == 0
+      doAssert haystack.find("ABC", last=13) == 0 # after the second ABC
+      doAssert haystack.find("ABC", last=5) == 0 # before the second ABC
+
+      # only start argument
+      doAssert haystack.find("ABC", start=0) == 0
+      doAssert haystack.find("ABC", start=1) == 9
+      doAssert haystack.find("ABC", start=9) == 9
+      doAssert haystack.find("ABC", start=10) == -1
+
+      # both start and last arguments
+      doAssert haystack.find("ABC", start=0, last=14) == 0
+      doAssert haystack.find("ABC", start=0, last=13) == 0
+      doAssert haystack.find("ABC", start=0, last=12) == 0
+      doAssert haystack.find("ABC", start=1, last=13) == 9
+      doAssert haystack.find("ABC", start=1, last=12) == 9
+      doAssert haystack.find("ABC", start=1, last=11) == 9
+      doAssert haystack.find("ABC", start=1, last=10) == -1
+
+    doAssert "".find("/") == -1
+    doAssert "/".find("/") == 0
+    doAssert "/".find("//") == -1
+    doAssert "///".find("//", start=3) == -1
+
+    # searching for empty string
+    doAssert "".find("") == 0
+    doAssert "abc".find("") == 0
+    doAssert "abc".find("", start=1) == 1
+    doAssert "abc".find("", start=2) == 2
+    doAssert "abc".find("", start=3) == 3
+    doAssert "abc".find("", start=4) == -1
+    doAssert "abc".find("", start=400) == -1
+    doAssert "abc".find("", start=1, last=3) == 1
+    doAssert "abc".find("", start=1, last=2) == 1
+    doAssert "abc".find("", start=1, last=1) == 1
+    doAssert "abc".find("", start=1, last=0) == 1
+    doAssert "abc".find("", start=1, last = -1) == 1
+
+    # when last <= start, searching for non-empty string
+    block:
+      let last: int = -1
+      doAssert "abcd".find("ab", start=0, last=last) == -1
+      doAssert "abcd".find("ab", start=1, last=last) == -1
+      doAssert "abcd".find("bc", start=1, last=last) == -1
+      doAssert "abcd".find("bc", start=2, last=last) == -1
+    block:
+      let last: int = 0
+      doAssert "abcd".find("ab", start=0, last=last) == 0
+      doAssert "abcd".find("ab", start=1, last=last) == -1
+      doAssert "abcd".find("bc", start=1, last=last) == 1
+      doAssert "abcd".find("bc", start=2, last=last) == -1
+    block:
+      let last: int = 1
+      doAssert "abcd".find("ab", start=0, last=last) == 0
+      doAssert "abcd".find("ab", start=1, last=last) == -1
+      doAssert "abcd".find("bc", start=1, last=last) == -1
+      doAssert "abcd".find("bc", start=2, last=last) == -1
+
   block: # rfind
     doAssert "0123456789ABCDEFGAH".rfind('A') == 17
     doAssert "0123456789ABCDEFGAH".rfind('A', last=13) == 10
@@ -242,6 +305,66 @@ template main() =
     doAssert "/1/2/3".rfind('/') == 4
     doAssert "/1/2/3".rfind('/', last=1) == 0
     doAssert "/1/2/3".rfind('0') == -1
+
+    block:
+      const haystack: string = "ABCABABABABCAB"
+      doAssert haystack.len == 14
+      doAssert haystack.rfind("ABC") == 9
+      doAssert haystack.rfind("ABC", last=13) == 9
+      doAssert haystack.rfind("ABC", last=12) == 9
+      doAssert haystack.rfind("ABC", last=11) == 9
+      doAssert haystack.rfind("ABC", last=10) == 0
+
+      doAssert haystack.rfind("ABC", start=0) == 9
+      doAssert haystack.rfind("ABC", start=1) == 9
+      doAssert haystack.rfind("ABC", start=9) == 9
+      doAssert haystack.rfind("ABC", start=10) == -1
+
+      doAssert haystack.rfind("ABC", start=0, last=13) == 9
+      doAssert haystack.rfind("ABC", start=0, last=12) == 9
+      doAssert haystack.rfind("ABC", start=0, last=11) == 9
+      doAssert haystack.rfind("ABC", start=0, last=10) == 0
+      doAssert haystack.rfind("ABC", start=1, last=10) == -1
+
+    doAssert "".rfind("/") == -1
+    doAssert "/".rfind("/") == 0
+    doAssert "/".rfind("//") == -1
+    doAssert "///".rfind("//", start=3) == -1
+
+    # searching for empty string
+    doAssert "".rfind("") == -1
+    doAssert "abc".rfind("") == -1
+    doAssert "abc".rfind("", start=1) == -1
+    doAssert "abc".rfind("", start=2) == -1
+    doAssert "abc".rfind("", start=3) == -1
+    doAssert "abc".rfind("", start=4) == -1
+    doAssert "abc".rfind("", start=400) == -1
+
+    doAssert "abc".rfind("", start=1, last=3) == -1
+    doAssert "abc".rfind("", start=1, last=2) == -1
+    doAssert "abc".rfind("", start=1, last=1) == -1
+    doAssert "abc".rfind("", start=1, last=0) == -1
+    doAssert "abc".rfind("", start=1, last = -1) == -1
+
+    # when last <= start, searching for non-empty string
+    block:
+      let last: int = -1
+      doAssert "abcd".rfind("ab", start=0, last=last) == 0
+      doAssert "abcd".rfind("ab", start=1, last=last) == -1
+      doAssert "abcd".rfind("bc", start=1, last=last) == 1
+      doAssert "abcd".rfind("bc", start=2, last=last) == -1
+    block:
+      let last: int = 0
+      doAssert "abcd".rfind("ab", start=0, last=last) == -1
+      doAssert "abcd".rfind("ab", start=1, last=last) == -1
+      doAssert "abcd".rfind("bc", start=1, last=last) == -1
+      doAssert "abcd".rfind("bc", start=2, last=last) == -1
+    block:
+      let last: int = 1
+      doAssert "abcd".rfind("ab", start=0, last=last) == 0
+      doAssert "abcd".rfind("ab", start=1, last=last) == -1
+      doAssert "abcd".rfind("bc", start=1, last=last) == -1
+      doAssert "abcd".rfind("bc", start=2, last=last) == -1
 
   block: # trimZeros
     var x = "1200"

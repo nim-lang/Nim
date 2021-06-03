@@ -46,6 +46,13 @@ type
     sinkArg
 
 const toDebug {.strdefine.} = ""
+when toDebug.len > 0:
+  var shouldDebug = false
+
+template dbg(body) =
+  when toDebug.len > 0:
+    if shouldDebug:
+      body
 
 proc hasDestructor(c: Con; t: PType): bool {.inline.} =
   result = ast.hasDestructor(t)
@@ -53,11 +60,6 @@ proc hasDestructor(c: Con; t: PType): bool {.inline.} =
     # for more effective debugging
     if not result and c.graph.config.selectedGC in {gcArc, gcOrc}:
       assert(not containsGarbageCollectedRef(t))
-
-template dbg(body) =
-  when toDebug.len > 0:
-    if c.owner.name.s == toDebug or toDebug == "always":
-      body
 
 proc getTemp(c: var Con; s: var Scope; typ: PType; info: TLineInfo): PNode =
   let sym = newSym(skTemp, getIdent(c.graph.cache, ":tmpD"), nextSymId c.idgen, c.owner, info)
@@ -75,106 +77,111 @@ import sets, hashes, tables
 
 proc hash(n: PNode): Hash = hash(cast[pointer](n))
 
-type AliasCache = Table[(PNode, PNode), AliasKind]
-proc aliasesCached(cache: var AliasCache, obj, field: PNode): AliasKind =
+proc aliasesCached(cache: var Table[(PNode, PNode), AliasKind], obj, field: PNode): AliasKind =
   let key = (obj, field)
   if not cache.hasKey(key):
     cache[key] = aliases(obj, field)
   cache[key]
 
-proc collectLastReads(cfg: ControlFlowGraph; cache: var AliasCache, lastReads, potLastReads: var IntSet; pc: var int, until: int) =
-  template aliasesCached(obj, field: PNode): untyped =
+type
+  State = ref object
+    lastReads: IntSet
+    potentialLastReads: IntSet
+    notLastReads: IntSet
+    alreadySeen: HashSet[PNode]
+
+proc preprocessCfg(cfg: var ControlFlowGraph) =
+  for i in 0..<cfg.len:
+    if cfg[i].kind in {goto, fork} and i + cfg[i].dest > cfg.len:
+      cfg[i].dest = cfg.len - i
+
+proc mergeStates(a: var State, b: sink State) =
+  # Inplace for performance:
+  #   lastReads = a.lastReads + b.lastReads
+  #   potentialLastReads = (a.potentialLastReads + b.potentialLastReads) - (a.notLastReads + b.notLastReads)
+  #   notLastReads = a.notLastReads + b.notLastReads
+  #   alreadySeen = a.alreadySeen + b.alreadySeen
+  # b is never nil
+  if a == nil:
+    a = b
+  else:
+    a.lastReads.incl b.lastReads
+    a.potentialLastReads.incl b.potentialLastReads
+    a.potentialLastReads.excl a.notLastReads
+    a.potentialLastReads.excl b.notLastReads
+    a.notLastReads.incl b.notLastReads
+    a.alreadySeen.incl b.alreadySeen
+
+proc computeLastReadsAndFirstWrites(cfg: ControlFlowGraph) =
+  var cache = initTable[(PNode, PNode), AliasKind]()
+  template aliasesCached(obj, field: PNode): AliasKind =
     aliasesCached(cache, obj, field)
-  while pc < until:
-    case cfg[pc].kind
-    of def:
-      let potLastReadsCopy = potLastReads
-      for r in potLastReadsCopy:
-        if cfg[pc].n.aliasesCached(cfg[r].n) == yes:
-          # the path leads to a redefinition of 's' --> sink 's'.
-          lastReads.incl r
-          potLastReads.excl r
-        elif cfg[r].n.aliasesCached(cfg[pc].n) != no:
-          # only partially writes to 's' --> can't sink 's', so this def reads 's'
-          # or maybe writes to 's' --> can't sink 's'
-          cfg[r].n.comment = '\n' & $pc
-          potLastReads.excl r
 
-      inc pc
-    of use:
-      let potLastReadsCopy = potLastReads
-      for r in potLastReadsCopy:
-        if cfg[pc].n.aliasesCached(cfg[r].n) != no or cfg[r].n.aliasesCached(cfg[pc].n) != no:
-          cfg[r].n.comment = '\n' & $pc
-          potLastReads.excl r
+  var cfg = cfg
+  preprocessCfg(cfg)
 
-      potLastReads.incl pc
+  var states = newSeq[State](cfg.len + 1)
+  states[0] = State()
 
-      inc pc
-    of goto:
-      pc += cfg[pc].dest
-    of fork:
-      var variantA = pc + 1
-      var variantB = pc + cfg[pc].dest
-      var potLastReadsA, potLastReadsB = potLastReads
-      var lastReadsA, lastReadsB: IntSet
-      while variantA != variantB and max(variantA, variantB) < cfg.len and min(variantA, variantB) < until:
-        if variantA < variantB:
-          collectLastReads(cfg, cache, lastReadsA, potLastReadsA, variantA, min(variantB, until))
-        else:
-          collectLastReads(cfg, cache, lastReadsB, potLastReadsB, variantB, min(variantA, until))
+  for pc in 0..<cfg.len:
+    template state: State = states[pc]
+    if state != nil:
+      case cfg[pc].kind
+      of def:
+        var potentialLastReadsCopy = state.potentialLastReads
+        for r in potentialLastReadsCopy:
+          if cfg[pc].n.aliasesCached(cfg[r].n) == yes:
+            # the path leads to a redefinition of 's' --> sink 's'.
+            state.lastReads.incl r
+            state.potentialLastReads.excl r
+          elif cfg[r].n.aliasesCached(cfg[pc].n) != no:
+            # only partially writes to 's' --> can't sink 's', so this def reads 's'
+            # or maybe writes to 's' --> can't sink 's'
+            cfg[r].n.comment = '\n' & $pc
+            state.potentialLastReads.excl r
+            state.notLastReads.incl r
 
-      # Add those last reads that were turned into last reads on both branches
-      lastReads.incl lastReadsA * lastReadsB
-      # Add those last reads that were turned into last reads on only one branch,
-      # but where the read operation itself also belongs to only that branch
-      lastReads.incl (lastReadsA + lastReadsB) - potLastReads
+        var alreadySeenThisNode = false
+        for s in state.alreadySeen:
+          if cfg[pc].n.aliasesCached(s) != no or s.aliasesCached(cfg[pc].n) != no:
+            alreadySeenThisNode = true; break
+        if alreadySeenThisNode: cfg[pc].n.flags.excl nfFirstWrite
+        else: cfg[pc].n.flags.incl nfFirstWrite
 
-      let oldPotLastReads = potLastReads
-      potLastReads = initIntSet()
+        state.alreadySeen.incl cfg[pc].n
 
-      potLastReads.incl potLastReadsA + potLastReadsB
+        mergeStates(states[pc + 1], move(states[pc]))
+      of use:
+        var potentialLastReadsCopy = state.potentialLastReads
+        for r in potentialLastReadsCopy:
+          if cfg[pc].n.aliasesCached(cfg[r].n) != no or cfg[r].n.aliasesCached(cfg[pc].n) != no:
+            cfg[r].n.comment = '\n' & $pc
+            state.potentialLastReads.excl r
+            state.notLastReads.incl r
 
-      # Remove potential last reads that were invalidated in a branch,
-      # but don't remove those which were turned into last reads on that branch
-      potLastReads.excl ((oldPotLastReads - potLastReadsA) - lastReadsA)
-      potLastReads.excl ((oldPotLastReads - potLastReadsB) - lastReadsB)
+        state.potentialLastReads.incl pc
 
-      pc = min(variantA, variantB)
+        state.alreadySeen.incl cfg[pc].n
 
-proc collectFirstWrites(cfg: ControlFlowGraph; alreadySeen: var HashSet[PNode]; pc: var int, until: int) =
-  while pc < until:
-    case cfg[pc].kind
-    of def:
-      var alreadySeenThisNode = false
-      for s in alreadySeen:
-        if cfg[pc].n.aliases(s) != no or s.aliases(cfg[pc].n) != no:
-          alreadySeenThisNode = true; break
-      if alreadySeenThisNode: cfg[pc].n.flags.excl nfFirstWrite
-      else: cfg[pc].n.flags.incl nfFirstWrite
+        mergeStates(states[pc + 1], move(states[pc]))
+      of goto:
+        mergeStates(states[pc + cfg[pc].dest], move(states[pc]))
+      of fork:
+        var copy = State()
+        copy[] = states[pc][]
+        mergeStates(states[pc + cfg[pc].dest], copy)
+        mergeStates(states[pc + 1], move(states[pc]))
 
-      alreadySeen.incl cfg[pc].n
-
-      inc pc
-    of use:
-      alreadySeen.incl cfg[pc].n
-
-      inc pc
-    of goto:
-      pc += cfg[pc].dest
-    of fork:
-      var variantA = pc + 1
-      var variantB = pc + cfg[pc].dest
-      var alreadySeenA, alreadySeenB = alreadySeen
-      while variantA != variantB and max(variantA, variantB) < cfg.len and min(variantA, variantB) < until:
-        if variantA < variantB:
-          collectFirstWrites(cfg, alreadySeenA, variantA, min(variantB, until))
-        else:
-          collectFirstWrites(cfg, alreadySeenB, variantB, min(variantA, until))
-
-      alreadySeen.incl alreadySeenA + alreadySeenB
-
-      pc = min(variantA, variantB)
+  let lastReads = (states[^1].lastReads + states[^1].potentialLastReads) - states[^1].notLastReads
+  var lastReadTable: Table[PNode, seq[int]]
+  for position, node in cfg:
+    if node.kind == use:
+      lastReadTable.mgetOrPut(node.n, @[]).add position
+  for node, positions in lastReadTable:
+    block checkIfAllPosLastRead:
+      for p in positions:
+        if p notin lastReads: break checkIfAllPosLastRead
+      node.flags.incl nfLastRead
 
 proc isLastRead(n: PNode; c: var Con): bool =
   let m = dfa.skipConvDfa(n)
@@ -1096,6 +1103,8 @@ proc injectDefaultCalls(n: PNode, c: var Con) =
       injectDefaultCalls(n[i], c)
 
 proc injectDestructorCalls*(g: ModuleGraph; idgen: IdGenerator; owner: PSym; n: PNode): PNode =
+  when toDebug.len > 0:
+    shouldDebug = toDebug == owner.name.s or toDebug == "always"
   if sfGeneratedOp in owner.flags or (owner.kind == skIterator and isInlineIterator(owner.typ)):
     return n
   var c = Con(owner: owner, graph: g, g: constructCfg(owner, n), idgen: idgen)
@@ -1107,26 +1116,7 @@ proc injectDestructorCalls*(g: ModuleGraph; idgen: IdGenerator; owner: PSym; n: 
   if optCursorInference in g.config.options:
     computeCursors(owner, n, g)
 
-  block:
-    var cache = initTable[(PNode, PNode), AliasKind]()
-    var lastReads, potLastReads: IntSet
-    var pc = 0
-    collectLastReads(c.g, cache, lastReads, potLastReads, pc, c.g.len)
-    lastReads.incl potLastReads
-    var lastReadTable: Table[PNode, seq[int]]
-    for position, node in c.g:
-      if node.kind == use:
-        lastReadTable.mgetOrPut(node.n, @[]).add position
-    for node, positions in lastReadTable:
-      var allPositionsLastRead = true
-      for p in positions:
-        if p notin lastReads: allPositionsLastRead = false; break
-      if allPositionsLastRead:
-        node.flags.incl nfLastRead
-
-    var alreadySeen: HashSet[PNode]
-    pc = 0
-    collectFirstWrites(c.g, alreadySeen, pc, c.g.len)
+  computeLastReadsAndFirstWrites(c.g)
 
   var scope: Scope
   let body = p(n, c, scope, normal)

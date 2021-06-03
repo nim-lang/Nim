@@ -464,6 +464,8 @@ const
   # consider renaming as `tyAbstractVarRange`
   abstractVarRange* = {tyGenericInst, tyRange, tyVar, tyDistinct, tyOrdinal,
                        tyTypeDesc, tyAlias, tyInferred, tySink, tyOwned}
+  abstractInst* = {tyGenericInst, tyDistinct, tyOrdinal, tyTypeDesc, tyAlias,
+                   tyInferred, tySink, tyOwned} # xxx what about tyStatic?
 
 type
   TTypeKinds* = set[TTypeKind]
@@ -740,7 +742,7 @@ proc hash*(x: ItemId): Hash =
 
 
 type
-  TIdObj* = object of RootObj
+  TIdObj* {.acyclic.} = object of RootObj
     itemId*: ItemId
   PIdObj* = ref TIdObj
 
@@ -839,7 +841,7 @@ type
 
   PInstantiation* = ref TInstantiation
 
-  TScope* = object
+  TScope* {.acyclic.} = object
     depthLevel*: int
     symbols*: TStrTable
     parent*: PScope
@@ -1171,6 +1173,7 @@ when defined(useNodeIds):
   var gNodeId: int
 
 proc newNode*(kind: TNodeKind): PNode =
+  ## new node with unknown line info, no type, and no children
   result = PNode(kind: kind, info: unknownLineInfo)
   when defined(useNodeIds):
     result.id = gNodeId
@@ -1180,6 +1183,7 @@ proc newNode*(kind: TNodeKind): PNode =
     inc gNodeId
 
 proc newNodeI*(kind: TNodeKind, info: TLineInfo): PNode =
+  ## new node with line info, no type, and no children
   result = PNode(kind: kind, info: info)
   when defined(useNodeIds):
     result.id = gNodeId
@@ -1189,6 +1193,7 @@ proc newNodeI*(kind: TNodeKind, info: TLineInfo): PNode =
     inc gNodeId
 
 proc newNodeI*(kind: TNodeKind, info: TLineInfo, children: int): PNode =
+  ## new node with line info, type, and children
   result = PNode(kind: kind, info: info)
   if children > 0:
     newSeq(result.sons, children)
@@ -1200,6 +1205,7 @@ proc newNodeI*(kind: TNodeKind, info: TLineInfo, children: int): PNode =
     inc gNodeId
 
 proc newNodeIT*(kind: TNodeKind, info: TLineInfo, typ: PType): PNode =
+  ## new node with line info, type, and no children
   result = newNode(kind)
   result.info = info
   result.typ = typ

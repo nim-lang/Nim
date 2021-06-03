@@ -21,6 +21,8 @@ const
   hasFFI* = defined(nimHasLibFFI)
   copyrightYear* = "2021"
 
+  nimEnableCovariance* = defined(nimEnableCovariance)
+
 type                          # please make sure we have under 32 options
                               # (improves code efficiency a lot!)
   TOption* = enum             # **keep binary compatible**
@@ -44,7 +46,7 @@ type                          # please make sure we have under 32 options
     optImportHidden
 
   TOptions* = set[TOption]
-  TGlobalOption* = enum       # **keep binary compatible**
+  TGlobalOption* = enum
     gloptNone, optForceFullMake,
     optWasNimscript,          # redundant with `cmdNimscript`, could be removed
     optListCmd, optCompileOnly, optNoLinking,
@@ -58,6 +60,7 @@ type                          # please make sure we have under 32 options
     optUseNimcache,           # save artifacts (including binary) in $nimcache
     optStyleHint,             # check that the names adhere to NEP-1
     optStyleError,            # enforce that the names adhere to NEP-1
+    optStyleUsages,           # only enforce consistent **usages** of the symbol
     optSkipSystemConfigFile,  # skip the system's cfg/nims config file
     optSkipProjConfigFile,    # skip the project's cfg/nims config file
     optSkipUserConfigFile,    # skip the users's cfg/nims config file
@@ -141,6 +144,7 @@ type
     cmdNimscript # evaluate nimscript
     cmdDoc0
     cmdDoc2
+    cmdDoc2tex
     cmdRst2html # convert a reStructuredText file to HTML
     cmdRst2tex # convert a reStructuredText file to TeX
     cmdJsondoc0
@@ -157,7 +161,8 @@ type
 
 const
   cmdBackends* = {cmdCompileToC, cmdCompileToCpp, cmdCompileToOC, cmdCompileToJS, cmdCrun}
-  cmdDocLike* = {cmdDoc0, cmdDoc2, cmdJsondoc0, cmdJsondoc, cmdCtags, cmdBuildindex}
+  cmdDocLike* = {cmdDoc0, cmdDoc2, cmdDoc2tex, cmdJsondoc0, cmdJsondoc,
+                 cmdCtags, cmdBuildindex}
 
 type
   TStringSeq* = seq[string]
@@ -265,7 +270,7 @@ type
     foName # lastPathPart, e.g.: foo.nim
     foStacktrace # if optExcessiveStackTrace: foAbs else: foName
 
-  ConfigRef* = ref object ## every global configuration
+  ConfigRef* {.acyclic.} = ref object ## every global configuration
                           ## fields marked with '*' are subject to
                           ## the incremental compilation mechanisms
                           ## (+) means "part of the dependency"
@@ -287,6 +292,7 @@ type
     implicitCmd*: bool # whether some flag triggered an implicit `command`
     selectedGC*: TGCMode       # the selected GC (+)
     exc*: ExceptionSystem
+    hintProcessingDots*: bool # true for dots, false for filenames
     verbosity*: int            # how verbose the compiler is
     numberOfProcessors*: int   # number of processors
     lastCmdTime*: float        # when caas is enabled, we measure each command
@@ -398,7 +404,7 @@ proc hasHint*(conf: ConfigRef, note: TNoteKind): bool =
     note in conf.mainPackageNotes
   else: note in conf.notes
 
-proc hasWarn*(conf: ConfigRef, note: TNoteKind): bool =
+proc hasWarn*(conf: ConfigRef, note: TNoteKind): bool {.inline.} =
   optWarns in conf.options and note in conf.notes
 
 proc hcrOn*(conf: ConfigRef): bool = return optHotCodeReloading in conf.globalOptions
@@ -458,20 +464,25 @@ proc isDefined*(conf: ConfigRef; symbol: string): bool
 when defined(nimDebugUtils):
   import debugutils
 
+proc initConfigRefCommon(conf: ConfigRef) =
+  conf.selectedGC = gcRefc
+  conf.verbosity = 1
+  conf.hintProcessingDots = true
+  conf.options = DefaultOptions
+  conf.globalOptions = DefaultGlobalOptions
+  conf.filenameOption = foAbs
+  conf.foreignPackageNotes = foreignPackageNotesDefault
+  conf.notes = NotesVerbosity[1]
+  conf.mainPackageNotes = NotesVerbosity[1]
+
 proc newConfigRef*(): ConfigRef =
   result = ConfigRef(
-    selectedGC: gcRefc,
     cCompiler: ccGcc,
-    verbosity: 1,
-    options: DefaultOptions,
-    globalOptions: DefaultGlobalOptions,
     macrosToExpand: newStringTable(modeStyleInsensitive),
     arcToExpand: newStringTable(modeStyleInsensitive),
     m: initMsgConfig(),
-    filenameOption: foAbs,
     cppDefines: initHashSet[string](),
-    headerFile: "", features: {}, legacyFeatures: {}, foreignPackageNotes: foreignPackageNotesDefault,
-    notes: NotesVerbosity[1], mainPackageNotes: NotesVerbosity[1],
+    headerFile: "", features: {}, legacyFeatures: {},
     configVars: newStringTable(modeStyleInsensitive),
     symbols: newStringTable(modeStyleInsensitive),
     packageCache: newPackageCache(),
@@ -513,6 +524,7 @@ proc newConfigRef*(): ConfigRef =
     vmProfileData: newProfileData(),
     spellSuggestMax: spellSuggestSecretSauce,
   )
+  initConfigRefCommon(result)
   setTargetFromSystem(result.target)
   # enable colors by default on terminals
   if terminal.isatty(stderr):
@@ -522,18 +534,11 @@ proc newConfigRef*(): ConfigRef =
 
 proc newPartialConfigRef*(): ConfigRef =
   ## create a new ConfigRef that is only good enough for error reporting.
-  # xxx FACTOR with `newConfigRef`
   when defined(nimDebugUtils):
     result = getConfigRef()
   else:
-    result = ConfigRef(
-      selectedGC: gcRefc,
-      verbosity: 1,
-      options: DefaultOptions,
-      globalOptions: DefaultGlobalOptions,
-      filenameOption: foAbs,
-      foreignPackageNotes: foreignPackageNotesDefault,
-      notes: NotesVerbosity[1], mainPackageNotes: NotesVerbosity[1])
+    result = ConfigRef()
+    initConfigRefCommon(result)
 
 proc cppDefine*(c: ConfigRef; define: string) =
   c.cppDefines.incl define
@@ -571,10 +576,8 @@ proc isDefined*(conf: ConfigRef; symbol: string): bool =
     of "sunos": result = conf.target.targetOS == osSolaris
     of "nintendoswitch":
       result = conf.target.targetOS == osNintendoSwitch
-    of "freertos":
+    of "freertos", "lwip":
       result = conf.target.targetOS == osFreeRTOS
-    of "lwip":
-      result = conf.target.targetOS in {osFreeRTOS}
     of "littleendian": result = CPU[conf.target.targetCPU].endian == platform.littleEndian
     of "bigendian": result = CPU[conf.target.targetCPU].endian == platform.bigEndian
     of "cpu8": result = CPU[conf.target.targetCPU].bit == 8
@@ -970,18 +973,3 @@ proc floatInt64Align*(conf: ConfigRef): int16 =
       # to 4bytes (except with -malign-double)
       return 4
   return 8
-
-proc setOutFile*(conf: ConfigRef) =
-  proc libNameTmpl(conf: ConfigRef): string {.inline.} =
-    result = if conf.target.targetOS == osWindows: "$1.lib" else: "lib$1.a"
-
-  if conf.outFile.isEmpty:
-    let base = conf.projectName
-    let targetName =
-      if optGenDynLib in conf.globalOptions:
-        platform.OS[conf.target.targetOS].dllFrmt % base
-      elif optGenStaticLib in conf.globalOptions:
-        libNameTmpl(conf) % base
-      else:
-        base & platform.OS[conf.target.targetOS].exeExt
-    conf.outFile = RelativeFile targetName

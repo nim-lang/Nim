@@ -3,6 +3,8 @@ mode = ScriptMode.Whatif
 
 exec "gcc -v"
 
+--define:release
+
 --forceBuild
 --path: "../friends"
 

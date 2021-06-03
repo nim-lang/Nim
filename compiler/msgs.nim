@@ -291,6 +291,7 @@ proc `??`* (conf: ConfigRef; info: TLineInfo, filename: string): bool =
 
 const
   UnitSep = "\31"
+    # this needs care to avoid issues similar to https://github.com/nim-lang/Nim/issues/17853
 
 type
   MsgFlag* = enum  ## flags altering msgWriteln behavior
@@ -545,7 +546,7 @@ proc liMessage*(conf: ConfigRef; info: TLineInfo, msg: TMsgKind, arg: string,
     if conf.structuredErrorHook != nil:
       conf.structuredErrorHook(conf, info, s & kindmsg, sev)
     if not ignoreMsgBecauseOfIdeTools(conf, msg):
-      if msg == hintProcessing:
+      if msg == hintProcessing and conf.hintProcessingDots:
         msgWrite(conf, ".")
       else:
         styledMsgWriteln(styleBright, loc, resetStyle, color, title, resetStyle, s, KindColor, kindmsg,
@@ -615,8 +616,8 @@ template internalAssert*(conf: ConfigRef, e: bool) =
     let arg = info2.toFileLineCol
     internalErrorImpl(conf, unknownLineInfo, arg, info2)
 
-template lintReport*(conf: ConfigRef; info: TLineInfo, beau, got: string, forceHint = false) =
-  let m = "'$1' should be: '$2'" % [got, beau]
+template lintReport*(conf: ConfigRef; info: TLineInfo, beau, got: string, forceHint = false, extraMsg = "") =
+  let m = "'$1' should be: '$2'$3" % [got, beau, extraMsg]
   let msg = if optStyleError in conf.globalOptions and not forceHint: errGenerated else: hintName
   liMessage(conf, info, msg, m, doNothing, instLoc())
 

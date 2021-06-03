@@ -10,7 +10,7 @@ import unittest, strutils, strtabs
 import std/private/miscdollars
 
 proc toHtml(input: string,
-            rstOptions: RstParseOptions = {roSupportMarkdown, roNimFile},
+            rstOptions: RstParseOptions = {roPreferMarkdown, roSupportMarkdown, roNimFile},
             error: ref string = nil,
             warnings: ref seq[string] = nil): string =
   ## If `error` is nil then no errors should be generated.
@@ -23,18 +23,20 @@ proc toHtml(input: string,
     toLocation(message, filename, line, col + ColRstOffset)
     message.add " $1: $2" % [$mc, a]
     if mc == mcError:
-      doAssert error != nil, "unexpected RST error '" & message & "'"
+      if error == nil:
+        raise newException(EParseError, "[unexpected error] " & message)
       error[] = message
       # we check only first error because subsequent ones may be meaningless
-      raise newException(EParseError, message)
+      raise newException(EParseError, "")
     else:
       doAssert warnings != nil, "unexpected RST warning '" & message & "'"
       warnings[].add message
   try:
     result = rstToHtml(input, rstOptions, defaultConfig(),
                        msgHandler=testMsgHandler)
-  except EParseError:
-    discard
+  except EParseError as e:
+    if e.msg != "":
+      result = e.msg
 
 # inline code tags (for parsing originated from highlite.nim)
 proc id(str: string): string = """<span class="Identifier">"""  & str & "</span>"
@@ -142,7 +144,7 @@ suite "YAML syntax highlighting":
 
   test "Directives: warnings":
     let input = dedent"""
-      .. non-existant-warning: Paragraph.
+      .. non-existent-warning: Paragraph.
 
       .. another.wrong:warning::: Paragraph.
       """
@@ -151,7 +153,7 @@ suite "YAML syntax highlighting":
     check output == ""
     doAssert warnings[].len == 2
     check "(1, 24) Warning: RST style:" in warnings[0]
-    check "double colon :: may be missing at end of 'non-existant-warning'" in warnings[0]
+    check "double colon :: may be missing at end of 'non-existent-warning'" in warnings[0]
     check "(3, 25) Warning: RST style:" in warnings[1]
     check "RST style: too many colons for a directive (should be ::)" in warnings[1]
 
@@ -257,7 +259,7 @@ A2     A3
 A4     A5
 ====   === """
     let output1 = rstToLatex(input1, {})
-    doAssert "{|X|X|}" in output1  # 2 columns
+    doAssert "{LL}" in output1  # 2 columns
     doAssert count(output1, "\\\\") == 4  # 4 rows
     for cell in ["H0", "H1", "A0", "A1", "A2", "A3", "A4", "A5"]:
       doAssert cell in output1
@@ -272,7 +274,7 @@ A0     A1   X
        Ax   Y
 ====   ===  = """
     let output2 = rstToLatex(input2, {})
-    doAssert "{|X|X|X|}" in output2  # 3 columns
+    doAssert "{LLL}" in output2  # 3 columns
     doAssert count(output2, "\\\\") == 2  # 2 rows
     for cell in ["H0", "H1", "H", "A0", "A1", "X", "Ax", "Y"]:
       doAssert cell in output2
@@ -849,7 +851,7 @@ Test1
     let output8 = input8.toHtml(warnings = warnings8)
     check(warnings8[].len == 1)
     check("input(6, 1) Warning: RST style: \n" &
-          "  not enough indentation on line 6" in warnings8[0])
+          "not enough indentation on line 6" in warnings8[0])
     doAssert output8 == "Paragraph.<ol class=\"upperalpha simple\">" &
         "<li>stringA</li>\n<li>stringB</li>\n</ol>\n<p>C. string1 string2 </p>\n"
 

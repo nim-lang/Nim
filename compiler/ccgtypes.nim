@@ -1018,7 +1018,7 @@ proc genTypeInfoAuxBase(m: BModule; typ, origType: PType;
   var flags = 0
   if not containsGarbageCollectedRef(typ): flags = flags or 1
   if not canFormAcycle(typ): flags = flags or 2
-  #else MessageOut("can contain a cycle: " & typeToString(typ))
+  #else echo("can contain a cycle: " & typeToString(typ))
   if flags != 0:
     m.s[cfsTypeInit3].addf("$1.flags = $2;$n", [nameHcr, rope(flags)])
   discard cgsym(m, "TNimType")
@@ -1301,6 +1301,10 @@ proc genHook(m: BModule; t: PType; info: TLineInfo; op: TTypeAttachedOp): Rope =
 
     genProc(m, theProc)
     result = theProc.loc.r
+
+    when false:
+      if not canFormAcycle(t) and op == attachedTrace:
+        echo "ayclic but has this =trace ", t, " ", theProc.ast
   else:
     when false:
       if op == attachedTrace and m.config.selectedGC == gcOrc and
@@ -1326,9 +1330,12 @@ proc genTypeInfoV2Impl(m: BModule, t, origType: PType, name: Rope; info: TLineIn
   let traceImpl = genHook(m, t, info, attachedTrace)
   let disposeImpl = genHook(m, t, info, attachedDispose)
 
-  addf(m.s[cfsTypeInit3], "$1.destructor = (void*)$2; $1.size = sizeof($3); $1.align = NIM_ALIGNOF($3); $1.name = $4;$n; $1.traceImpl = (void*)$5; $1.disposeImpl = (void*)$6;", [
+  var flags = 0
+  if not canFormAcycle(t): flags = flags or 1
+
+  addf(m.s[cfsTypeInit3], "$1.destructor = (void*)$2; $1.size = sizeof($3); $1.align = NIM_ALIGNOF($3); $1.name = $4;$n; $1.traceImpl = (void*)$5; $1.disposeImpl = (void*)$6; $1.flags = $7;", [
     name, destroyImpl, getTypeDesc(m, t), typeName,
-    traceImpl, disposeImpl])
+    traceImpl, disposeImpl, rope(flags)])
 
   if t.kind == tyObject and t.len > 0 and t[0] != nil and optEnableDeepCopy in m.config.globalOptions:
     discard genTypeInfoV1(m, t, info)

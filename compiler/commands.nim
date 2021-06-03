@@ -34,9 +34,6 @@ from ast import eqTypeFlags, tfGcSafe, tfNoSideEffect
 
 # but some have deps to imported modules. Yay.
 bootSwitch(usedTinyC, hasTinyCBackend, "-d:tinyc")
-bootSwitch(usedNativeStacktrace,
-  defined(nativeStackTrace) and nativeStackTraceSupported,
-  "-d:nativeStackTrace")
 bootSwitch(usedFFI, hasFFI, "-d:nimHasLibFFI")
 
 type
@@ -101,7 +98,7 @@ proc writeVersionInfo(conf: ConfigRef; pass: TCmdLinePass) =
       msgWriteln(conf, "git hash: " & gitHash, {msgStdout})
 
     msgWriteln(conf, "active boot switches:" & usedRelease & usedDanger &
-      usedTinyC & useLinenoise & usedNativeStacktrace &
+      usedTinyC & useLinenoise &
       usedFFI & usedBoehm & usedMarkAndSweep & usedGoGC & usedNoGC,
                {msgStdout})
     msgQuit(0)
@@ -153,7 +150,7 @@ template switchOn(arg: string): bool =
 proc processOnOffSwitch(conf: ConfigRef; op: TOptions, arg: string, pass: TCmdLinePass,
                         info: TLineInfo) =
   case arg.normalize
-  of "","on": conf.options.incl op
+  of "", "on": conf.options.incl op
   of "off": conf.options.excl op
   else: localError(conf, info, errOnOrOffExpectedButXFound % arg)
 
@@ -447,6 +444,7 @@ proc parseCommand*(command: string): Command =
   of "e": cmdNimscript
   of "doc0": cmdDoc0
   of "doc2", "doc": cmdDoc2
+  of "doc2tex": cmdDoc2tex
   of "rst2html": cmdRst2html
   of "rst2tex": cmdRst2tex
   of "jsondoc0": cmdJsondoc0
@@ -483,6 +481,19 @@ proc setCommandEarly*(conf: ConfigRef, command: string) =
     conf.foreignPackageNotes = {hintSuccessX}
   else:
     conf.foreignPackageNotes = foreignPackageNotesDefault
+
+proc specialDefine(conf: ConfigRef, key: string) =
+  # Keep this syncronized with the default config/nim.cfg!
+  if cmpIgnoreStyle(key, "nimQuirky") == 0:
+    conf.exc = excQuirky
+  elif cmpIgnoreStyle(key, "release") == 0 or cmpIgnoreStyle(key, "danger") == 0:
+    conf.options.excl {optStackTrace, optLineTrace, optLineDir, optOptimizeSize}
+    conf.globalOptions.excl {optExcessiveStackTrace, optCDebug}
+    conf.options.incl optOptimizeSpeed
+  if cmpIgnoreStyle(key, "danger") == 0 or cmpIgnoreStyle(key, "quick") == 0:
+    conf.options.excl {optObjCheck, optFieldCheck, optRangeCheck, optBoundsCheck,
+      optOverflowCheck, optAssert, optStackTrace, optLineTrace, optLineDir}
+    conf.globalOptions.excl {optCDebug}
 
 proc processSwitch*(switch, arg: string, pass: TCmdLinePass, info: TLineInfo;
                     conf: ConfigRef) =
@@ -550,12 +561,10 @@ proc processSwitch*(switch, arg: string, pass: TCmdLinePass, info: TLineInfo;
     expectArg(conf, switch, arg, pass, info)
     if {':', '='} in arg:
       splitSwitch(conf, arg, key, val, pass, info)
-      if cmpIgnoreStyle(key, "nimQuirky") == 0:
-        conf.exc = excQuirky
+      specialDefine(conf, key)
       defineSymbol(conf.symbols, key, val)
     else:
-      if cmpIgnoreStyle(arg, "nimQuirky") == 0:
-        conf.exc = excQuirky
+      specialDefine(conf, arg)
       defineSymbol(conf.symbols, arg)
   of "undef", "u":
     expectArg(conf, switch, arg, pass, info)
@@ -900,6 +909,16 @@ proc processSwitch*(switch, arg: string, pass: TCmdLinePass, info: TLineInfo;
     of "canonical": conf.filenameOption = foCanonical
     of "legacyrelproj": conf.filenameOption = foLegacyRelProj
     else: localError(conf, info, "expected: abs|canonical|legacyRelProj, got: $1" % arg)
+  of "processing":
+    incl(conf.notes, hintProcessing)
+    incl(conf.mainPackageNotes, hintProcessing)
+    case arg.normalize
+    of "dots": conf.hintProcessingDots = true
+    of "filenames": conf.hintProcessingDots = false
+    of "off":
+      excl(conf.notes, hintProcessing)
+      excl(conf.mainPackageNotes, hintProcessing)
+    else: localError(conf, info, "expected: dots|filenames|off, got: $1" % arg)
   of "listfullpaths":
     # xxx in future work, use `warningDeprecated`
     conf.filenameOption = if switchOn(arg): foAbs else: foCanonical
@@ -964,6 +983,7 @@ proc processSwitch*(switch, arg: string, pass: TCmdLinePass, info: TLineInfo;
     of "off": conf.globalOptions = conf.globalOptions - {optStyleHint, optStyleError}
     of "hint": conf.globalOptions = conf.globalOptions + {optStyleHint} - {optStyleError}
     of "error": conf.globalOptions = conf.globalOptions + {optStyleError}
+    of "usages": conf.globalOptions.incl optStyleUsages
     else: localError(conf, info, errOffHintsError % arg)
   of "showallmismatches":
     processOnOffSwitchG(conf, {optShowAllMismatches}, arg, pass, info)

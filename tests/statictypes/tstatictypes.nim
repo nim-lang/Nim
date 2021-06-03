@@ -1,7 +1,14 @@
 discard """
+nimoutFull: true
 nimout: '''
 staticAlialProc instantiated with 358
 staticAlialProc instantiated with 368
+0: Foo
+1: Bar
+0: Foo
+1: Bar
+0: Foo
+1: Bar
 0: Foo
 1: Bar
 '''
@@ -15,6 +22,7 @@ heyho
 Val1
 Val1
 '''
+matrix: "--hints:off"
 """
 
 import macros
@@ -247,9 +255,6 @@ echo t.foo, u.bar
 #------------------------------------------------------------------------------
 # issue #9679
 
-discard """
-  output: ''''''
-"""
 type
   Foo*[T] = object
     bar*: int

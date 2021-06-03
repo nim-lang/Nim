@@ -131,9 +131,6 @@ type
     noGenSym: int
     inTemplateHeader: int
 
-template withBracketExpr(ctx, x, body: untyped) =
-  body
-
 proc getIdentNode(c: var TemplCtx, n: PNode): PNode =
   case n.kind
   of nkPostfix: result = getIdentNode(c, n[1])
@@ -491,9 +488,7 @@ proc semTemplBody(c: var TemplCtx, n: PNode): PNode =
     result = newNodeI(nkCall, n.info)
     result.add newIdentNode(getIdent(c.c.cache, "[]"), n.info)
     for i in 0..<n.len: result.add(n[i])
-    let n0 = semTemplBody(c, n[0])
-    withBracketExpr c, n0:
-      result = semTemplBodySons(c, result)
+    result = semTemplBodySons(c, result)
   of nkCurlyExpr:
     result = newNodeI(nkCall, n.info)
     result.add newIdentNode(getIdent(c.c.cache, "{}"), n.info)
@@ -512,8 +507,7 @@ proc semTemplBody(c: var TemplCtx, n: PNode): PNode =
       for i in 0..<a.len: result.add(a[i])
       result.add(b)
       let a0 = semTemplBody(c, a[0])
-      withBracketExpr c, a0:
-        result = semTemplBodySons(c, result)
+      result = semTemplBodySons(c, result)
     of nkCurlyExpr:
       result = newNodeI(nkCall, n.info)
       result.add newIdentNode(getIdent(c.c.cache, "{}="), n.info)
@@ -610,8 +604,6 @@ proc semTemplateDef(c: PContext, n: PNode): PNode =
        s.owner.name.s == "vm" and s.name.s == "stackTrace":
       incl(s.flags, sfCallsite)
 
-  s.ast = n
-
   styleCheckDef(c.config, s)
   onDef(n[namePos].info, s)
   # check parameter list:
@@ -646,10 +638,10 @@ proc semTemplateDef(c: PContext, n: PNode): PNode =
     n[genericParamsPos] = n[miscPos][1]
     n[miscPos] = c.graph.emptyNode
   if allUntyped: incl(s.flags, sfAllUntyped)
-  
+
   if n[patternPos].kind != nkEmpty:
     n[patternPos] = semPattern(c, n[patternPos])
-  
+
   var ctx: TemplCtx
   ctx.toBind = initIntSet()
   ctx.toMixin = initIntSet()
@@ -664,6 +656,12 @@ proc semTemplateDef(c: PContext, n: PNode): PNode =
   semIdeForTemplateOrGeneric(c, n[bodyPos], ctx.cursorInBody)
   closeScope(c)
   popOwner(c)
+
+  # set the symbol AST after pragmas, at least. This stops pragma that have
+  # been pushed (implicit) to be explicitly added to the template definition
+  # and misapplied to the body. see #18113
+  s.ast = n
+
   if sfCustomPragma in s.flags:
     if n[bodyPos].kind != nkEmpty:
       localError(c.config, n[bodyPos].info, errImplOfXNotAllowed % s.name.s)

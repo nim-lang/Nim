@@ -53,17 +53,53 @@
 - On POSIX systems, we now ignore `SIGPIPE` signals, use `-d:nimLegacySigpipeHandler`
   for previous behavior.
 
-- `hashes.hash` now supports `object` and `ref` (can be overloaded in user code).
+- `hashes.hash` can now support `object` and `ref` (can be overloaded in user code),
+  if `-d:nimEnableHashRef` is used.
+
 - `hashes.hash(proc|ptr|ref|pointer)` now calls `hash(int)` and honors `-d:nimIntHash1`,
   `hashes.hash(closure)` has also been improved.
 
 - The unary slice `..b` was removed, use `0..b` instead or use `-d:nimLegacyUnarySlice`
   for a deprecation period.
 
+- Removed `.travis.yml`, `appveyor.yml.disabled`, `.github/workflows/ci.yml.disabled`.
+
+- Nim compiler now adds ASCII unit separator `\31` before a newline for every generated
+  message (potentially multiline), so tooling can tell when messages start and end.
+
+- `random.initRand(seed)` now produces non-skewed values for the 1st call to `rand()` after
+  initialization with a small (< 30000) seed. Use `-d:nimLegacyRandomInitRand` to restore
+  previous behavior for a transition time, see PR #17467.
+
+- `jsonutils` now serializes/deserializes holey enums as regular enums (via `ord`) instead of as strings.
+  Use `-d:nimLegacyJsonutilsHoleyEnum` for a transition period. `toJson` now serializes `JsonNode`
+  as is via reference (without a deep copy) instead of treating `JsonNode` as a regular ref object,
+  this can be customized via `jsonNodeMode`.
+
+- `json` and `jsonutils` now serialize NaN, Inf, -Inf as strings, so that
+  `%[NaN, -Inf]` is the string `["nan","-inf"]` instead of `[nan,-inf]` which was invalid json.
+
+- `system.addFloat` now uses the "Dragonbox" algorithm, which ensures correct roundtrips of floating point
+  numbers, that the minimum length representation of a floating point number is used and correct rounding.
+  Use `-d:nimLegacyAddFloat` for a transition period.
+
+- `strformat` is now part of `include std/prelude`.
+
+- Deprecated `proc reversed*[T](a: openArray[T], first: Natural, last: int): seq[T]` in `std/algorithm`.
+
+- The configuration subsystem now allows for `-d:release` and `-d:danger` to work as expected.
+  The downside is that these defines now have custom logic that doesn't apply for
+  other defines.
+
+
+
 ## Standard library additions and changes
+
 - Added support for parenthesized expressions in `strformat`
 
 - Fixed buffer overflow bugs in `net`
+
+- Exported `sslHandle` from `net` and `asyncnet`.
 
 - Added `sections` iterator in `parsecfg`.
 
@@ -74,7 +110,6 @@
   from `https://curl.se/ca/cacert.pem`. Besides
   the OpenSSL DLLs (e.g. libssl-1_1-x64.dll, libcrypto-1_1-x64.dll) you
   now also need to ship `cacert.pem` with your `.exe` file.
-
 
 - Make `{.requiresInit.}` pragma to work for `distinct` types.
 
@@ -100,22 +135,32 @@
 
 - Added `BackwardsIndex` overload for `JsonNode`.
 
-- added `jsonutils.jsonTo` overload with `opt = Joptions()` param.
-
 - `json.%`,`json.to`, `jsonutils.formJson`,`jsonutils.toJson` now work with `uint|uint64`
   instead of raising (as in 1.4) or giving wrong results (as in 1.2).
+
+- `jsonutils` now handles `cstring` (including as Table key), and `set`.
+
+- added `jsonutils.jsonTo` overload with `opt = Joptions()` param.
+
+- `jsonutils.toJson` now supports customization via `ToJsonOptions`.
 
 - Added an overload for the `collect` macro that inferes the container type based
   on the syntax of the last expression. Works with std seqs, tables and sets.
 
-- `jsonutils` now handles `cstring` (including as Table key).
-
 - Added `randState` template that exposes the default random number generator.
   Useful for library authors.
+
+- Added `random.initRand()` overload with no argument which uses the current time as a seed.
+
+- `random.initRand(seed)` now allows `seed == 0`.
+
+- Added `std/sysrand` module to get random numbers from a secure source
+  provided by the operating system.
 
 - Added `std/enumutils` module. Added `genEnumCaseStmt` macro that generates case statement to parse string to enum.
   Added `items` for enums with holes.
   Added `symbolName` to return the enum symbol name ignoring the human readable name.
+  Added `symbolRank` to return the index in which an enum member is listed in an enum.
 
 - Added `typetraits.HoleyEnum` for enums with holes, `OrdinalEnum` for enums without holes.
 
@@ -139,9 +184,10 @@
 - `--gc:orc` is now 10% faster than previously for common workloads. If
   you have trouble with its changed behavior, compile with `-d:nimOldOrc`.
 
-
 - `os.FileInfo` (returned by `getFileInfo`) now contains `blockSize`,
   determining preferred I/O block size for this file object.
+
+- Added `os.getCacheDir()` to return platform specific cache directory.
 
 - Added a simpler to use `io.readChars` overload.
 
@@ -199,9 +245,6 @@
 
 - Deprecated `any`. See https://github.com/nim-lang/RFCs/issues/281
 
-- Added `std/sysrand` module to get random numbers from a secure source
-  provided by the operating system.
-
 - Added optional `options` argument to `copyFile`, `copyFileToDir`, and
   `copyFileWithPermissions`. By default, on non-Windows OSes, symlinks are
   followed (copy files symlinks point to); on Windows, `options` argument is
@@ -218,8 +261,6 @@
 
 - Added `os.isAdmin` to tell whether the caller's process is a member of the
   Administrators local group (on Windows) or a root (on POSIX).
-
-- Added `random.initRand()` overload with no argument which uses the current time as a seed.
 
 - Added experimental `linenoise.readLineStatus` to get line and status (e.g. ctrl-D or ctrl-C).
 
@@ -291,6 +332,11 @@
 - Added `genasts.genAst` that avoids the problems inherent with `quote do` and can
   be used as a replacement.
 
+- Added `copyWithin` [for `seq` and `array` for JavaScript targets](https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Array/copyWithin).
+
+- Fixed premature garbage collection in asyncdispatch, when a stack trace override is in place.
+
+- Added setCurrentException for JS backend.
 
 ## Language changes
 
@@ -334,6 +380,10 @@
 - Added a new module `std/importutils`, and an API `privateAccess`, which allows access to private fields
   for an object type in the current scope.
 
+- `typeof(voidStmt)` now works and returns `void`.
+
+
+
 ## Compiler changes
 
 - Added `--declaredlocs` to show symbol declaration location in messages.
@@ -344,7 +394,9 @@
 
 - Added `--spellSuggest` to show spelling suggestions on typos.
 
-- Added `--filenames:abs|canonical|magic` which replaces --listFullPaths:on|off
+- Added `--filenames:abs|canonical|legacyRelProj` which replaces --listFullPaths:on|off
+
+- Added `--processing:dots|filenames|off` which customizes `hintProcessing`
 
 - Source+Edit links now appear on top of every docgen'd page when
   `nim doc --git.url:url ...` is given.
@@ -358,7 +410,8 @@
 - TLS: OSX now uses native TLS (`--tlsEmulation:off`), TLS now works with importcpp non-POD types,
   such types must use `.cppNonPod` and `--tlsEmulation:off`should be used.
 
-- Now array literals(JS backend) uses JS typed arrays when the corresponding js typed array exists, for example `[byte(1), 2, 3]` generates `new Uint8Array([1, 2, 3])`.
+- Now array literals(JS backend) uses JS typed arrays when the corresponding js typed array exists,
+  for example `[byte(1), 2, 3]` generates `new Uint8Array([1, 2, 3])`.
 
 - docgen: rst files can now use single backticks instead of double backticks and correctly render
   in both rst2html (as before) as well as common tools rendering rst directly (e.g. github), by
@@ -374,6 +427,22 @@
 
 - `--hint:CC` now goes to stderr (like all other hints) instead of stdout.
 
+- json build instructions are now generated in `$nimcache/outFileBasename.json`
+  instead of `$nimcache/projectName.json`. This allows avoiding recompiling a given project
+  compiled with different options if the output file differs.
+
+- `--usenimcache` (implied by `nim r main`) now generates an output file that includes a hash of
+  some of the compilation options, which allows caching generated binaries:
+  nim r main # recompiles
+  nim r -d:foo main # recompiles
+  nim r main # uses cached binary
+  nim r main arg1 arg2 # ditto (runtime arguments are irrelevant)
+
+- The style checking of the compiler now supports a `--styleCheck:usages` switch. This switch
+  enforces that every symbol is written as it was declared, not enforcing
+  the official Nim style guide. To be enabled, this has to be combined either
+  with `--styleCheck:error` or `--styleCheck:hint`.
+
 
 
 ## Tool changes
@@ -386,3 +455,6 @@
 
 - `fusion` is now un-bundled from nim, `./koch fusion` will
   install it via nimble at a fixed hash.
+
+- testament: added `nimoutFull: bool` spec to compare full output of compiler
+  instead of a subset.

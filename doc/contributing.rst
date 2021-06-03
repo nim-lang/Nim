@@ -155,7 +155,7 @@ To run a single test:
   ./koch test run tests/stdlib/tos.nim # can also provide relative path
 
 For reproducible tests (to reproduce an environment more similar to the one
-run by Continuous Integration on travis/appveyor), you may want to disable your
+run by Continuous Integration on github actions/azure pipelines), you may want to disable your
 local configuration (e.g. in ``~/.config/nim/nim.cfg``) which may affect some
 tests; this can also be achieved by using
 `export XDG_CONFIG_HOME=pathtoAlternateConfig`:cmd: before running `./koch`:cmd:
@@ -453,9 +453,9 @@ General commit rules
 1. Important, critical bugfixes that have a tiny chance of breaking
    somebody's code should be backported to the latest stable release
    branch (currently 1.4.x) and maybe also all the way back to the 1.0.x branch.
-   The commit message should contain the tag ``[backport]`` for "backport to all
-   stable releases" and the tag ``[backport:$VERSION]`` for backporting to the
-   given $VERSION.
+   The commit message should contain the tag ``[backport]`` for "backport to the latest
+   stable release" and the tag ``[backport:$VERSION]`` for backporting back to the
+   given $VERSION (and all newer releases).
 
 2. If you introduce changes which affect backward compatibility,
    make breaking changes, or have PR which is tagged as ``[feature]``,
@@ -517,7 +517,7 @@ Continuous Integration (CI)
    the CI pipeline and affects other PR's; if you don't need it (e.g. for WIP or
    documentation only changes), add ``[skip ci]`` to your commit message title.
    This convention is supported by our github actions pipelines and our azure pipeline
-   as well as our former other pipelines:
+   (using custom logic, which should complete in < 1mn) as well as our former other pipelines:
    `Appveyor <https://www.appveyor.com/docs/how-to/filtering-commits/#skip-directive-in-commit-message>`_
    and `Travis <https://docs.travis-ci.com/user/customizing-the-build/#skipping-a-build>`_.
 

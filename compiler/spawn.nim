@@ -334,7 +334,7 @@ proc wrapProcForSpawn*(g: ModuleGraph; idgen: IdGenerator; owner: PSym; spawnExp
     result = newNodeI(nkStmtList, n.info)
 
   if n.kind notin nkCallKinds:
-    localError(g.config, n.info, "'spawn' takes a call expression; got " & $n)
+    localError(g.config, n.info, "'spawn' takes a call expression; got: " & $n)
     return
   if optThreadAnalysis in g.config.globalOptions:
     if {tfThread, tfNoSideEffect} * n[0].typ.flags == {}:

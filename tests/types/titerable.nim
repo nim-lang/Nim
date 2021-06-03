@@ -119,11 +119,11 @@ template main() =
 
   block:
     # shows that iterable is more restrictive than untyped
-    reject fn8a(nonexistant)
-    accept fn7b(nonexistant)
-    reject fn7c(nonexistant)
-    reject fn7d(nonexistant)
-    reject fn7e(nonexistant)
+    reject fn8a(nonexistent)
+    accept fn7b(nonexistent)
+    reject fn7c(nonexistent)
+    reject fn7d(nonexistent)
+    reject fn7e(nonexistent)
 
   doAssert toSeq5(iota(3)) == expected1
   reject toSeq5(myiter(2))
