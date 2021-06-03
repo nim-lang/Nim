@@ -60,17 +60,27 @@ template withLock(t, x: untyped) =
 
 template withValue*[A, B](t: var SharedTable[A, B], key: A,
                           value, body: untyped) =
-  ## retrieves the value at `t[key]`.
+  ## Retrieves the value at `t[key]`.
   ## `value` can be modified in the scope of the `withValue` call.
-  ##
-  ## .. code-block:: nim
-  ##
-  ##   sharedTable.withValue(key, value) do:
-  ##     # block is executed only if `key` in `t`
-  ##     # value is threadsafe in block
-  ##     value.name = "username"
-  ##     value.uid = 1000
-  ##
+  runnableExamples:
+    var table: SharedTable[string, string]
+    init(table)
+
+    table["a"] = "x"
+    table["b"] = "y"
+    table["c"] = "z"
+
+    table.withValue("a", value):
+      assert value[] == "x"
+
+    table.withValue("b", value):
+      value[] = "modified"
+
+    table.withValue("b", value):
+      assert value[] == "modified"
+
+    table.withValue("nonexistent", value):
+      assert false # not called
   acquire(t.lock)
   try:
     var hc: Hash
@@ -84,20 +94,29 @@ template withValue*[A, B](t: var SharedTable[A, B], key: A,
 
 template withValue*[A, B](t: var SharedTable[A, B], key: A,
                           value, body1, body2: untyped) =
-  ## retrieves the value at `t[key]`.
+  ## Retrieves the value at `t[key]`.
   ## `value` can be modified in the scope of the `withValue` call.
-  ##
-  ## .. code-block:: nim
-  ##
-  ##   sharedTable.withValue(key, value) do:
-  ##     # block is executed only if `key` in `t`
-  ##     # value is threadsafe in block
-  ##     value.name = "username"
-  ##     value.uid = 1000
-  ##   do:
-  ##     # block is executed when `key` not in `t`
-  ##     raise newException(KeyError, "Key not found")
-  ##
+  runnableExamples:
+    var table: SharedTable[string, string]
+    init(table)
+
+    table["a"] = "x"
+    table["b"] = "y"
+    table["c"] = "z"
+
+
+    table.withValue("a", value):
+      value[] = "m"
+
+    table.withValue("d", value):
+      discard value
+      doAssert false
+    do: # if "d" notin table
+      table["d"] = "n"
+
+    assert table.mget("a") == "m"
+    assert table.mget("d") == "n"
+
   acquire(t.lock)
   try:
     var hc: Hash
@@ -112,7 +131,7 @@ template withValue*[A, B](t: var SharedTable[A, B], key: A,
     release(t.lock)
 
 proc mget*[A, B](t: var SharedTable[A, B], key: A): var B =
-  ## retrieves the value at `t[key]`. The value can be modified.
+  ## Retrieves the value at `t[key]`. The value can be modified.
   ## If `key` is not in `t`, the `KeyError` exception is raised.
   withLock t:
     var hc: Hash
@@ -126,7 +145,7 @@ proc mget*[A, B](t: var SharedTable[A, B], key: A): var B =
       raise newException(KeyError, "key not found")
 
 proc mgetOrPut*[A, B](t: var SharedTable[A, B], key: A, val: B): var B =
-  ## retrieves value at `t[key]` or puts `val` if not present, either way
+  ## Retrieves value at `t[key]` or puts `val` if not present, either way
   ## returning a value which can be modified. **Note**: This is inherently
   ## unsafe in the context of multi-threading since it returns a pointer
   ## to `B`.
@@ -134,7 +153,7 @@ proc mgetOrPut*[A, B](t: var SharedTable[A, B], key: A, val: B): var B =
     mgetOrPutImpl(enlarge)
 
 proc hasKeyOrPut*[A, B](t: var SharedTable[A, B], key: A, val: B): bool =
-  ## returns true if `key` is in the table, otherwise inserts `value`.
+  ## Returns true if `key` is in the table, otherwise inserts `value`.
   withLock t:
     hasKeyOrPutImpl(enlarge)
 
@@ -191,28 +210,28 @@ proc withKey*[A, B](t: var SharedTable[A, B], key: A,
         st_maybeRehashPutImpl(enlarge)
 
 proc `[]=`*[A, B](t: var SharedTable[A, B], key: A, val: B) =
-  ## puts a (key, value)-pair into `t`.
+  ## Puts a (key, value)-pair into `t`.
   withLock t:
     putImpl(enlarge)
 
 proc add*[A, B](t: var SharedTable[A, B], key: A, val: B) =
-  ## puts a new (key, value)-pair into `t` even if `t[key]` already exists.
+  ## Puts a new (key, value)-pair into `t` even if `t[key]` already exists.
   ## This can introduce duplicate keys into the table!
   withLock t:
     addImpl(enlarge)
 
 proc del*[A, B](t: var SharedTable[A, B], key: A) =
-  ## deletes `key` from hash table `t`.
+  ## Deletes `key` from hash table `t`.
   withLock t:
     delImpl(tabMakeEmpty, tabCellEmpty, tabCellHash)
 
 proc len*[A, B](t: var SharedTable[A, B]): int =
-  ## number of elements in `t`
+  ## Number of elements in `t`.
   withLock t:
     result = t.counter
 
 proc init*[A, B](t: var SharedTable[A, B], initialSize = 32) =
-  ## creates a new hash table that is empty.
+  ## Creates a new hash table that is empty.
   ##
   ## This proc must be called before any other usage of `t`.
   let initialSize = slotsNeeded(initialSize)
