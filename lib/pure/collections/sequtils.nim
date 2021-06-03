@@ -1014,12 +1014,11 @@ template applyIt*(varSeq, op: untyped) =
 
 
 template newSeqWith*(len: int, init: untyped): untyped =
-  ## Creates a new sequence of length `len`, calling `init` to initialize
+  ## Creates a new `seq` of length `len`, calling `init` to initialize
   ## each value of the sequence.
   ##
   ## Useful for creating "2D" sequences - sequences containing other sequences
   ## or to populate fields of the created sequence.
-  ##
   runnableExamples:
     ## Creates a sequence containing 5 bool sequences, each of length of 3.
     var seq2D = newSeqWith(5, newSeq[bool](3))
@@ -1029,12 +1028,13 @@ template newSeqWith*(len: int, init: untyped): untyped =
 
     ## Creates a sequence of 20 random numbers from 1 to 10
     import random
-    var seqRand = newSeqWith(20, rand(10))
+    var seqRand = newSeqWith(20, rand(1.0))
+    assert seqRand[0] != seqRand[1]
 
   var result = newSeq[typeof(init)](len)
   for i in 0 ..< len:
     result[i] = init
-  result
+  move(result) # refs bug #7295
 
 func mapLitsImpl(constructor: NimNode; op: NimNode; nested: bool;
                  filter = nnkLiterals): NimNode =
