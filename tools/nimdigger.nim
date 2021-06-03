@@ -12,7 +12,7 @@ care of details such as figuring out automatically the correct csources/csources
 build at any revision >= v0.12.0~157
 ```bash
 $ nim r tools/nimdigger.nim --compileNim --rev:v0.15.2~10
-$ $HOME/.nimdigger/cache/Nim/bin/nim -v
+$ $NIMDIGGER_CACHE/Nim/bin/nim -v
 Nim Compiler Version 0.15.2 (2021-05-28) [MacOSX: amd64] [...]
 ```
 
@@ -107,7 +107,7 @@ const
   csourcesRevs = "v0.9.4 v0.13.0 v0.15.2 v0.16.0 v0.17.0 v0.17.2 v0.18.0 v0.19.0 v0.20.0".split &
     "64e34778fa7e114b4afc753c7845dee250584167"
   csourcesV1Revs = "a8a5241f9475099c823cfe1a5e0ca4022ac201ff".split
-  NimDiggerEnv = "NIMDIGGER_HOME"
+  NimDiggerEnv = "NIMDIGGER_CACHE"
   ExeExt2 = when ExeExt.len > 0: "." & ExeExt else: ""
 
 var verbose = false
@@ -156,7 +156,7 @@ proc gitCleanDanger(dir: string, requireConfirmation = true) =
   This is needed to avoid `git bisect` aborting with this error: The following untracked working tree files would be overwritten by checkout.
   For example, this would happen in cases like this:
   ```
-  cd $HOME/.nimdigger/cache/Nim
+  cd $NIMDIGGER_CACHE/Nim
   git checkout abaa42fd8a239ea62ddb39f6f58c3180137d750c
   touch testament/testamenthtml.templ
   cd -
@@ -258,8 +258,8 @@ proc getCsourcesState(state: DiggerState): CsourcesState =
 proc main2(opt: DiggerOpt) =
   let state = DiggerState(nimDir: opt.nimDir, rev: opt.rev)
   if state.nimDir.len == 0:
-    let nimdiggerHome = getEnv(NimDiggerEnv, getHomeDir() / ".nimdigger")
-    state.nimDir = nimdiggerHome / "cache/Nim"
+    let nimdiggerCache = getEnv(NimDiggerEnv, getCacheDir("nimdigger"))
+    state.nimDir = nimdiggerCache / "Nim"
   if verbose: dbg state
   let nimDir = state.nimDir
   state.binDir = nimDir/"bin"
