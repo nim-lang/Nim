@@ -58,6 +58,10 @@ proc `$`*(x: float): string {.magic: "FloatToStr", noSideEffect.}
   ## The stringify operator for a float argument. Returns `x`
   ## converted to a decimal string.
 
+proc `$`*(x: float32): string {.magic: "FloatToStr", noSideEffect.}
+  ## The stringify operator for a float32 argument. Returns `x`
+  ## converted to a decimal string.
+
 proc `$`*(x: bool): string {.magic: "BoolToStr", noSideEffect.}
   ## The stringify operator for a boolean argument. Returns `x`
   ## converted to the string "false" or "true".
