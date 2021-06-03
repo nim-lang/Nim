@@ -1015,19 +1015,19 @@ template applyIt*(varSeq, op: untyped) =
 
 template newSeqWith*(len: int, init: untyped): untyped =
   ## Creates a new `seq` of length `len`, calling `init` to initialize
-  ## each value of the sequence.
+  ## each value of the seq.
   ##
-  ## Useful for creating "2D" sequences - sequences containing other sequences
-  ## or to populate fields of the created sequence.
+  ## Useful for creating "2D" seqs - seqs containing other seqs
+  ## or to populate fields of the created seq.
   runnableExamples:
-    ## Creates a sequence containing 5 bool sequences, each of length of 3.
+    ## Creates a seq containing 5 bool seqs, each of length of 3.
     var seq2D = newSeqWith(5, newSeq[bool](3))
     assert seq2D.len == 5
     assert seq2D[0].len == 3
     assert seq2D[4][2] == false
 
-    ## Creates a sequence of 20 random numbers from 1 to 10
-    import random
+    ## Creates a seq with random numbers
+    import std/random
     var seqRand = newSeqWith(20, rand(1.0))
     assert seqRand[0] != seqRand[1]
 
