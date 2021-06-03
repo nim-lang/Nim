@@ -39,19 +39,33 @@ var CLOCK_UPTIME_RAW* {.importc, header: "<time.h>".}: cint
 var CLOCK_UPTIME_RAW_APPROX* {.importc, header: "<time.h>".}: cint
 var CLOCK_PROCESS_CPUTIME_ID* {.importc, header: "<time.h>".}: cint
 
+when defined linux:
+  var CLOCK_REALTIME_COARSE* {.importc, header: "<time.h>".}: cint
+  var CLOCK_MONOTONIC_COARSE* {.importc, header: "<time.h>".}: cint
+  var CLOCK_BOOTTIME* {.importc, header: "<time.h>".}: cint
+
 template algoClock(clock): untyped = 
   var ts: Timespec
   discard clock_gettime(clock, ts)
   ts.tv_nsec.int64
 
-template algo1(dummy: int): untyped = algoClock(CLOCK_MONOTONIC_RAW) # works?
-template algo2(dummy: int): untyped =  algoClock(CLOCK_MONOTONIC)
-template algo3(dummy: int): untyped =  algoClock(CLOCK_REALTIME)
-template algo4(dummy: int): untyped =  algoClock(CLOCK_MONOTONIC_RAW_APPROX)
-template algo5(dummy: int): untyped =  algoClock(CLOCK_UPTIME_RAW) # works?
-template algo6(dummy: int): untyped =  algoClock(CLOCK_UPTIME_RAW_APPROX)
-template algo7(dummy: int): untyped =  algoClock(CLOCK_PROCESS_CPUTIME_ID)
-template algo8(dummy: int): untyped =  rdtsc() # works
+template algo_CLOCK_MONOTONIC_RAW(dummy: int): untyped = algoClock(CLOCK_MONOTONIC_RAW) # works on osx
+template algo_CLOCK_MONOTONIC(dummy: int): untyped =  algoClock(CLOCK_MONOTONIC)
+template algo_rdtsc(dummy: int): untyped =  rdtsc() # works on osx
+template algo_CLOCK_REALTIME(dummy: int): untyped =  algoClock(CLOCK_REALTIME)
+template algo_CLOCK_PROCESS_CPUTIME_ID(dummy: int): untyped =  algoClock(CLOCK_PROCESS_CPUTIME_ID)
+
+when defined linux:
+  # https://linux.die.net/man/2/clock_gettime
+  template algo_rdtsc(dummy: int): untyped =  rdtsc()
+
+  template algo_CLOCK_REALTIME_COARSE(dummy: int): untyped =  algoClock(CLOCK_REALTIME_COARSE)
+  template algo_CLOCK_MONOTONIC_COARSE(dummy: int): untyped =  algoClock(CLOCK_MONOTONIC_COARSE)
+  template algo_CLOCK_BOOTTIME(dummy: int): untyped =  algoClock(CLOCK_BOOTTIME)
+else:
+  template algo_CLOCK_UPTIME_RAW_APPROX(dummy: int): untyped =  algoClock(CLOCK_UPTIME_RAW_APPROX)
+  template algo_CLOCK_MONOTONIC_RAW_APPROX(dummy: int): untyped =  algoClock(CLOCK_MONOTONIC_RAW_APPROX)
+  template algo_CLOCK_UPTIME_RAW(dummy: int): untyped =  algoClock(CLOCK_UPTIME_RAW) # works on osx
 
 var msg = ""
 template mainImpl(algo) = 
@@ -74,14 +88,20 @@ template mainImpl(algo) =
   msg.add msgi & "\n"
 
 proc main =
-  mainImpl(algo1)
-  mainImpl(algo2)
-  mainImpl(algo3)
-  mainImpl(algo4)
-  mainImpl(algo5)
-  mainImpl(algo6)
-  mainImpl(algo7)
-  mainImpl(algo8)
+  mainImpl(algo_CLOCK_MONOTONIC_RAW)
+  mainImpl(algo_rdtsc)
+  mainImpl(algo_CLOCK_MONOTONIC)
+  mainImpl(algo_CLOCK_REALTIME)
+  mainImpl(algo_CLOCK_PROCESS_CPUTIME_ID)
+  when defined linux:
+    mainImpl(algo_CLOCK_REALTIME_COARSE)
+    mainImpl(algo_CLOCK_MONOTONIC_COARSE)
+    mainImpl(algo_CLOCK_BOOTTIME)
+  else:
+    mainImpl(algo_CLOCK_UPTIME_RAW)
+    mainImpl(algo_CLOCK_MONOTONIC_RAW_APPROX)
+    mainImpl(algo_CLOCK_UPTIME_RAW_APPROX)
+  echo "----------------"
   echo msg
 
 main()
