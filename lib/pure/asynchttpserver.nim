@@ -18,7 +18,7 @@ runnableExamples("-r:off"):
   # This example will create an HTTP server on an automatically chosen port.
   # It will respond to all requests with a `200 OK` response code and "Hello World"
   # as the response body.
-  import std/asyncdispatch
+  import std/asyncdispatch, asynchttpserver
   proc main {.async.} =
     var server = newAsyncHttpServer()
     proc cb(req: Request) {.async.} =
