@@ -2,8 +2,8 @@
  Testament
 ===========
 
+.. default-role:: code
 .. include:: rstcommon.rst
-.. default-role:: nim
 .. contents::
 
 Testament is an advanced automatic unittests runner for Nim tests, is used for the development of Nim itself,

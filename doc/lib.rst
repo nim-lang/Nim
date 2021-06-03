@@ -1,5 +1,3 @@
-.. default-role:: code
-
 ====================
 Nim Standard Library
 ====================
@@ -7,11 +5,13 @@ Nim Standard Library
 :Author: Andreas Rumpf
 :Version: |nimversion|
 
+.. default-role:: code
+.. include:: rstcommon.rst
 .. contents::
 
 Nim's library is divided into *pure libraries*, *impure libraries*, and *wrappers*.
 
-Pure libraries do not depend on any external `*.dll` or `lib*.so` binary
+Pure libraries do not depend on any external ``*.dll`` or ``lib*.so`` binary
 while impure libraries do. A wrapper is an impure library that is a very
 low-level interface to a C library.
 
@@ -39,11 +39,11 @@ Automatic imports
 
 * `threads <threads.html>`_
   Basic Nim thread support. **Note:** This is part of the system module. Do not
-  import it explicitly. Enabled with `--threads:on`.
+  import it explicitly. Enabled with `--threads:on`:option:.
 
 * `channels <channels_builtin.html>`_
   Nim message passing support for threads. **Note:** This is part of the
-  system module. Do not import it explicitly. Enabled with `--threads:on`.
+  system module. Do not import it explicitly. Enabled with `--threads:on`:option:.
 
 
 Core
@@ -366,7 +366,7 @@ Parsers
 
 * `parsecfg <parsecfg.html>`_
   The `parsecfg` module implements a high-performance configuration file
-  parser. The configuration file's syntax is similar to the Windows `.ini`
+  parser. The configuration file's syntax is similar to the Windows ``.ini``
   format, but much more powerful, as it is not a line based parser. String
   literals, raw string literals, and triple quote string literals are supported
   as in the Nim programming language.

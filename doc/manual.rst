@@ -572,7 +572,8 @@ In the following examples, `-1` is a single token:
 
   "abc";-1
 
-In the following examples, `-1` is parsed as two separate tokens (as `- 1`):
+In the following examples, `-1` is parsed as two separate tokens
+(as `-`:tok: `1`:tok:):
 
 .. code-block:: nim
 
@@ -2509,7 +2510,7 @@ of the argument.
    range.
 3. Generic match: `f` is a generic type and `a` matches, for
    instance `a` is `int` and `f` is a generic (constrained) parameter
-   type (like in `[T]` or `[T: int|char]`.
+   type (like in `[T]` or `[T: int|char]`).
 4. Subrange or subtype match: `a` is a `range[T]` and `T`
    matches `f` exactly. Or: `a` is a subtype of `f`.
 5. Integral conversion match: `a` is convertible to `f` and `f` and `a`
@@ -3840,7 +3841,7 @@ Type bound operators currently include:
 (some of which are still implementation defined and not yet documented).
 
 For more details on some of those procs, see
-`lifetimeminustracking-hooks <destructors.html#lifetimeminustracking-hooks>`_.
+`Lifetime-tracking hooks <destructors.html#lifetimeminustracking-hooks>`_.
 
 Nonoverloadable builtins
 ------------------------
@@ -5283,7 +5284,7 @@ instantiations cross multiple different modules:
 
 In module B has an `init` proc from module C in its scope that is not
 taken into account when `genericB` is instantiated which leads to the
-instantiation of `genericA`. The solution is to `forward`:idx these
+instantiation of `genericA`. The solution is to `forward`:idx: these
 symbols by a `bind` statement inside `genericB`.
 
 
@@ -7305,19 +7306,19 @@ Produces:
   supplied pattern to denote the concrete type parameters of the generic type.
   See the usage of the apostrophe operator in proc patterns for more details.
 
-.. code-block:: nim
+  .. code-block:: nim
 
-  type
-    VectorIterator {.importcpp: "std::vector<'0>::iterator".} [T] = object
+    type
+      VectorIterator {.importcpp: "std::vector<'0>::iterator".} [T] = object
 
-  var x: VectorIterator[cint]
+    var x: VectorIterator[cint]
 
 
-Produces:
+  Produces:
 
-.. code-block:: C
+  .. code-block:: C
 
-  std::vector<int>::iterator x;
+    std::vector<int>::iterator x;
 
 
 ImportJs pragma
@@ -7444,7 +7445,7 @@ compile-time define pragmas
 ---------------------------
 
 The pragmas listed here can be used to optionally accept values from
-the -d/--define option at compile time.
+the `-d/--define`:option: option at compile time.
 
 The implementation currently provides the following possible options (various
 others may be added later).
@@ -7461,7 +7462,7 @@ pragma             description
    const FooBar {.intdefine.}: int = 5
    echo FooBar
 
-::
+.. code:: cmd
    nim c -d:FooBar=42 foobar.nim
 
 In the above example, providing the `-d`:option: flag causes the symbol
@@ -7480,7 +7481,8 @@ pragma pragma
 -------------
 
 The `pragma` pragma can be used to declare user-defined pragmas. This is
-useful because Nim's templates and macros do not affect pragmas. User-defined pragmas are in a different module-wide scope than all other symbols.
+useful because Nim's templates and macros do not affect pragmas.
+User-defined pragmas are in a different module-wide scope than all other symbols.
 They cannot be imported from a module.
 
 Example:
@@ -7553,18 +7555,18 @@ More examples with custom pragmas:
 
 - Better serialization/deserialization control:
 
-.. code-block:: nim
-  type MyObj = object
-    a {.dontSerialize.}: int
-    b {.defaultDeserialize: 5.}: int
-    c {.serializationKey: "_c".}: string
+  .. code-block:: nim
+    type MyObj = object
+      a {.dontSerialize.}: int
+      b {.defaultDeserialize: 5.}: int
+      c {.serializationKey: "_c".}: string
 
 - Adopting type for gui inspector in a game engine:
 
-.. code-block:: nim
-  type MyComponent = object
-    position {.editable, animatable.}: Vector3
-    alpha {.editRange: [0.0..1.0], animatable.}: float32
+  .. code-block:: nim
+    type MyComponent = object
+      position {.editable, animatable.}: Vector3
+      alpha {.editRange: [0.0..1.0], animatable.}: float32
 
 
 Macro pragmas

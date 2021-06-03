@@ -2,8 +2,8 @@
   Embedded Stack Trace Profiler (ESTP) User Guide
 ===================================================
 
+.. default-role:: code
 .. include:: rstcommon.rst
-.. default-role:: Nim
 
 :Author: Andreas Rumpf
 :Version: |nimversion|
