@@ -130,13 +130,13 @@ proc runCmdOutput(cmd: string, dir = ""): string =
   result = outp
   stripLineEnd(result)
 
-macro ctor(obj: untyped, a: varargs[untyped]): untyped =
+macro construct(obj: untyped, a: varargs[untyped]): untyped =
   ## Generates an object constructor call from a list of fields.
   # xxx expose in std/sugar, factor with https://github.com/nim-lang/fusion/pull/32
   runnableExamples:
     type Foo = object
       a, b: int
-    doAssert Foo.ctor(a,b) == Foo(a: a, b: b)
+    doAssert Foo.construct(a,b) == Foo(a: a, b: b)
   result = nnkObjConstr.newTree(obj)
   for ai in a: result.add nnkExprColonExpr.newTree(ai, ai)
 
@@ -317,7 +317,7 @@ proc main(rev = "", nimDir = "", compileNim = false, fetch = false, oldnew = "",
     bisectCmd = args.quoteShellCommand
   else:
     doAssert args.len == 0
-  main2(DiggerOpt.ctor(rev, nimDir, compileNim, fetch, bisectCmd, oldnew, bisectBugfix))
+  main2(DiggerOpt.construct(rev, nimDir, compileNim, fetch, bisectCmd, oldnew, bisectBugfix))
 
 when isMainModule:
   import pkg/cligen
