@@ -538,8 +538,8 @@ proc runCI(cmd: string) =
   # https://github.com/nim-lang/Nim/pull/14291 (`getAppFilename` bugsfor older nim on openbsd).
   kochExecFold("Boot in release mode", "boot -d:release -d:nimStrictMode --lib:lib")
 
-  when false: # debugging: when you need to run only 1 test in CI, use something like this:
-    execFold("debugging test", "nim r tests/stdlib/tosproc.nim")
+  when true: # debugging: when you need to run only 1 test in CI, use something like this:
+    execFold("debugging test", "nim r -d:danger tests/stdlib/tmonotimes.nim")
     doAssert false, "debugging only"
 
   ## build nimble early on to enable remainder to depend on it if needed
