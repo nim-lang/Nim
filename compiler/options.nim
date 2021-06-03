@@ -308,7 +308,7 @@ type
                        ## should be run
     ideCmd*: IdeCmd
     oldNewlines*: bool
-    cCompiler*: TSystemCC
+    cCompiler*: TSystemCC # the used compiler
     modifiedyNotes*: TNoteKinds # notes that have been set/unset from either cmdline/configs
     cmdlineNotes*: TNoteKinds # notes that have been set/unset from cmdline
     foreignPackageNotes*: TNoteKinds
@@ -353,7 +353,7 @@ type
     docRoot*: string ## see nim --fullhelp for --docRoot
     docCmd*: string ## see nim --fullhelp for --docCmd
 
-     # the used compiler
+    configFiles*: seq[AbsoluteFile]     # config files (cfg,nims)
     cIncludes*: seq[AbsoluteDir]  # directories to search for included files
     cLibs*: seq[AbsoluteDir]      # directories to search for lib files
     cLinkedLibs*: seq[string]     # libraries to link

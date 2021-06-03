@@ -14,7 +14,7 @@
 
 import ropes, platform, condsyms, options, msgs, lineinfos, pathutils
 
-import os, strutils, osproc, std/sha1, streams, sequtils, times, strtabs, json
+import std/[os, strutils, osproc, sha1, streams, sequtils, times, strtabs, json, jsonutils, sugar]
 
 type
   TInfoCCProp* = enum         # properties of the C compiler:
@@ -942,195 +942,91 @@ proc jsonBuildInstructionsFile*(conf: ConfigRef): AbsoluteFile =
   # works out of the box with `hashMainCompilationParams`.
   result = getNimcacheDir(conf) / conf.outFile.changeFileExt("json")
 
+const cacheVersion = "D20210525T193831" # update when `BuildCache` spec changes
+type BuildCache = object
+  cacheVersion: string
+  outputFile: string
+  compile: seq[(string, string)]
+  link: seq[string]
+  linkcmd: string
+  extraCmds: seq[string]
+  configFiles: seq[string] # the hash shouldn't be needed
+  stdinInput: bool
+  projectIsCmd: bool
+  cmdInput: string
+  currentDir: string
+  cmdline: string
+  depfiles: seq[(string, string)]
+  nimexe: string
+
 proc writeJsonBuildInstructions*(conf: ConfigRef) =
-  # xxx use std/json instead, will result in simpler, more maintainable code.
-  template lit(x: string) = f.write x
-  template str(x: string) =
-    buf.setLen 0
-    escapeJson(x, buf)
-    f.write buf
-
-  proc cfiles(conf: ConfigRef; f: File; buf: var string; clist: CfileList, isExternal: bool) =
-    var comma = false
-    for i, it in clist:
-      if CfileFlag.Cached in it.flags: continue
-      let compileCmd = getCompileCFileCmd(conf, it)
-      if comma: lit ",\L" else: comma = true
-      lit "["
-      str it.cname.string
-      lit ", "
-      str compileCmd
-      lit "]"
-
-  proc linkfiles(conf: ConfigRef; f: File; buf, objfiles: var string; clist: CfileList;
-                 llist: seq[string]) =
-    var pastStart = false
-    template impl(path) =
-      let path2 = quoteShell(path)
-      objfiles.add(' ')
-      objfiles.add(path2)
-      if pastStart: lit ",\L"
-      str path2
-      pastStart = true
-    for it in llist:
-      let objfile = if noAbsolutePaths(conf): it.extractFilename else: it
-      impl(addFileExt(objfile, CC[conf.cCompiler].objExt))
-    for it in clist:
-      impl(it.obj)
-    lit "\L"
-
-  proc depfiles(conf: ConfigRef; f: File; buf: var string) =
-    var i = 0
-    for it in conf.m.fileInfos:
+  var linkFiles = collect(for it in conf.externalToLink:
+    var it = it
+    if conf.noAbsolutePaths: it = it.extractFilename
+    it.addFileExt(CC[conf.cCompiler].objExt))
+  for it in conf.toCompile: linkFiles.add it.obj.string
+  var bcache = BuildCache(
+    cacheVersion: cacheVersion,
+    outputFile: conf.absOutFile.string,
+    compile: collect(for i, it in conf.toCompile:
+      if CfileFlag.Cached notin it.flags: (it.cname.string, getCompileCFileCmd(conf, it))),
+    link: linkFiles,
+    linkcmd: getLinkCmd(conf, conf.absOutFile, linkFiles.quoteShellCommand),
+    extraCmds: getExtraCmds(conf, conf.absOutFile),
+    stdinInput: conf.projectIsStdin,
+    projectIsCmd: conf.projectIsCmd,
+    cmdInput: conf.cmdInput,
+    configFiles: conf.configFiles.mapIt(it.string),
+    currentDir: getCurrentDir())
+  if optRun in conf.globalOptions or isDefined(conf, "nimBetterRun"):
+    bcache.cmdline = conf.commandLine
+    bcache.depfiles = collect(for it in conf.m.fileInfos:
       let path = it.fullPath.string
       if isAbsolute(path): # TODO: else?
-        if i > 0: lit "],\L"
-        lit "["
-        str path
-        lit ", "
-        str $secureHashFile(path)
-        inc i
-    lit "]\L"
-
-
-  var buf = newStringOfCap(50)
-  let jsonFile = conf.jsonBuildInstructionsFile
-  conf.jsonBuildFile = jsonFile
-  let output = conf.absOutFile
-
-  var f: File
-  if open(f, jsonFile.string, fmWrite):
-    lit "{\L"
-    lit "\"outputFile\": "
-    str $output
-
-    lit ",\L\"compile\":[\L"
-    cfiles(conf, f, buf, conf.toCompile, false)
-    lit "],\L\"link\":[\L"
-    var objfiles = ""
-    # XXX add every file here that is to link
-    linkfiles(conf, f, buf, objfiles, conf.toCompile, conf.externalToLink)
-
-    lit "],\L\"linkcmd\": "
-    str getLinkCmd(conf, output, objfiles)
-
-    lit ",\L\"extraCmds\": "
-    lit $(%* getExtraCmds(conf, conf.absOutFile))
-
-    lit ",\L\"stdinInput\": "
-    lit $(%* conf.projectIsStdin)
-    lit ",\L\"projectIsCmd\": "
-    lit $(%* conf.projectIsCmd)
-    lit ",\L\"cmdInput\": "
-    lit $(%* conf.cmdInput)
-    lit ",\L\"currentDir\": "
-    lit $(%* getCurrentDir())
-
-    if optRun in conf.globalOptions or isDefined(conf, "nimBetterRun"):
-      lit ",\L\"cmdline\": "
-      str conf.commandLine
-      lit ",\L\"depfiles\":[\L"
-      depfiles(conf, f, buf)
-      lit "],\L\"nimexe\": \L"
-      str hashNimExe()
-      lit "\L"
-
-    lit "\L}\L"
-    close(f)
+        (path, $secureHashFile(path)))
+    bcache.nimexe = hashNimExe()
+  conf.jsonBuildFile = conf.jsonBuildInstructionsFile
+  conf.jsonBuildFile.string.writeFile(bcache.toJson.pretty)
 
 proc changeDetectedViaJsonBuildInstructions*(conf: ConfigRef; jsonFile: AbsoluteFile): bool =
-  if not fileExists(jsonFile): return true
-  if not fileExists(conf.absOutFile): return true
-  result = false
-  try:
-    let data = json.parseFile(jsonFile.string)
-    for key in "depfiles cmdline stdinInput currentDir".split:
-      if not data.hasKey(key): return true
-    if getCurrentDir() != data["currentDir"].getStr:
-      # fixes bug #16271
-      # Note that simply comparing `expandFilename(projectFile)` would
-      # not be sufficient in case other flags depend implicitly on `getCurrentDir`,
-      # and would require much more care. Simply re-compiling is safer for now.
-      # A better strategy for future work would be to cache (with an LRU cache)
-      # the N most recent unique build instructions, as done with `rdmd`,
-      # which is both robust and avoids recompilation when switching back and forth
-      # between projects, see https://github.com/timotheecour/Nim/issues/199
-      return true
-    let oldCmdLine = data["cmdline"].getStr
-    if conf.commandLine != oldCmdLine:
-      return true
-    if hashNimExe() != data["nimexe"].getStr:
-      return true
-    let stdinInput = data["stdinInput"].getBool
-    let projectIsCmd = data["projectIsCmd"].getBool
-    if conf.projectIsStdin or stdinInput:
-      # could optimize by returning false if stdin input was the same,
-      # but I'm not sure how to get full stding input
-      return true
-
-    if conf.projectIsCmd or projectIsCmd:
-      if not (conf.projectIsCmd and projectIsCmd): return true
-      if not data.hasKey("cmdInput"): return true
-      let cmdInput = data["cmdInput"].getStr
-      if cmdInput != conf.cmdInput: return true
-
-    let depfilesPairs = data["depfiles"]
-    doAssert depfilesPairs.kind == JArray
-    for p in depfilesPairs:
-      doAssert p.kind == JArray
-      # >= 2 for forwards compatibility with potential later .json files:
-      doAssert p.len >= 2
-      let depFilename = p[0].getStr
-      let oldHashValue = p[1].getStr
-      let newHashValue = $secureHashFile(depFilename)
-      if oldHashValue != newHashValue:
-        return true
+  if not fileExists(jsonFile) or not fileExists(conf.absOutFile): return true
+  var bcache: BuildCache
+  try: bcache.fromJson(jsonFile.string.parseFile)
   except IOError, OSError, ValueError:
-    echo "Warning: JSON processing failed: ", getCurrentExceptionMsg()
-    result = true
+    stderr.write "Warning: JSON processing failed for $#: $#\n" % [jsonFile.string, getCurrentExceptionMsg()]
+    return true
+  if bcache.currentDir != getCurrentDir() or # fixes bug #16271
+     bcache.configFiles != conf.configFiles.mapIt(it.string) or
+     bcache.cacheVersion != cacheVersion or bcache.outputFile != conf.absOutFile.string or
+     bcache.cmdline != conf.commandLine or bcache.nimexe != hashNimExe() or
+     bcache.projectIsCmd != conf.projectIsCmd or conf.cmdInput != bcache.cmdInput: return true
+  if bcache.stdinInput or conf.projectIsStdin: return true
+    # xxx optimize by returning false if stdin input was the same
+  for (file, hash) in bcache.depfiles:
+    if $secureHashFile(file) != hash: return true
 
 proc runJsonBuildInstructions*(conf: ConfigRef; jsonFile: AbsoluteFile) =
-  try:
-    let data = json.parseFile(jsonFile.string)
-    let output = data["outputFile"].getStr
-    createDir output.parentDir
-    let outputCurrent = $conf.absOutFile
-    if output != outputCurrent:
-      # previously, any specified output file would be silently ignored;
-      # simply copying won't work in some cases, for example with `extraCmds`,
-      # so we just make it an error, user should use same command for jsonscript
-      # as was used with --compileOnly.
-      globalError(conf, gCmdLineInfo, "jsonscript command outputFile '$1' must match '$2' which was specified during --compileOnly, see \"outputFile\" entry in '$3' " % [outputCurrent, output, jsonFile.string])
-
-    let toCompile = data["compile"]
-    doAssert toCompile.kind == JArray
-    var cmds: TStringSeq
-    var prettyCmds: TStringSeq
-    let prettyCb = proc (idx: int) = writePrettyCmdsStderr(prettyCmds[idx])
-    for c in toCompile:
-      doAssert c.kind == JArray
-      doAssert c.len >= 2
-
-      cmds.add(c[1].getStr)
-      prettyCmds.add displayProgressCC(conf, c[0].getStr, c[1].getStr)
-
-    execCmdsInParallel(conf, cmds, prettyCb)
-
-    let linkCmd = data["linkcmd"]
-    doAssert linkCmd.kind == JString
-    execLinkCmd(conf, linkCmd.getStr)
-    if data.hasKey("extraCmds"):
-      let extraCmds = data["extraCmds"]
-      doAssert extraCmds.kind == JArray
-      for cmd in extraCmds:
-        doAssert cmd.kind == JString, $cmd.kind
-        let cmd2 = cmd.getStr
-        execExternalProgram(conf, cmd2, hintExecuting)
-
+  var bcache: BuildCache
+  try: bcache.fromJson(jsonFile.string.parseFile)
   except:
     let e = getCurrentException()
-    conf.quitOrRaise "\ncaught exception:\n" & e.msg & "\nstacktrace:\n" & e.getStackTrace() &
-         "error evaluating JSON file: " & jsonFile.string
+    conf.quitOrRaise "\ncaught exception:\n$#\nstacktrace:\n$#error evaluating JSON file: $#" %
+      [e.msg, e.getStackTrace(), jsonFile.string]
+  let output = bcache.outputFile
+  createDir output.parentDir
+  let outputCurrent = $conf.absOutFile
+  if output != outputCurrent or bcache.cacheVersion != cacheVersion:
+    globalError(conf, gCmdLineInfo,
+      "jsonscript command outputFile '$1' must match '$2' which was specified during --compileOnly, see \"outputFile\" entry in '$3' " %
+      [outputCurrent, output, jsonFile.string])
+  var cmds, prettyCmds: TStringSeq
+  let prettyCb = proc (idx: int) = writePrettyCmdsStderr(prettyCmds[idx])
+  for (name, cmd) in bcache.compile:
+    cmds.add cmd
+    prettyCmds.add displayProgressCC(conf, name, cmd)
+  execCmdsInParallel(conf, cmds, prettyCb)
+  execLinkCmd(conf, bcache.linkcmd)
+  for cmd in bcache.extraCmds: execExternalProgram(conf, cmd, hintExecuting)
 
 proc genMappingFiles(conf: ConfigRef; list: CfileList): Rope =
   for it in list:
