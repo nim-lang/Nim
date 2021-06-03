@@ -539,7 +539,8 @@ proc runCI(cmd: string) =
   kochExecFold("Boot in release mode", "boot -d:release -d:nimStrictMode --lib:lib")
 
   when true: # debugging: when you need to run only 1 test in CI, use something like this:
-    execFold("debugging test", "nim r -d:danger tests/stdlib/tmonotimes.nim")
+    execFold("debugging test2", "nim r -b:cpp -d:danger tests/stdlib/tmonotimes2.nim")
+    execFold("debugging test1", "nim r -d:danger tests/stdlib/tmonotimes.nim")
     doAssert false, "debugging only"
 
   ## build nimble early on to enable remainder to depend on it if needed
