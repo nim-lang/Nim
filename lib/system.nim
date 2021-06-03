@@ -2144,7 +2144,7 @@ proc delete*[T](x: var seq[T], i: Natural) {.noSideEffect.} =
     doAssert s == @[1, 2, 4, 5]
 
     doAssertRaises(IndexDefect):
-        s.delete(4)
+      s.delete(4)
 
   if i > high(x):
     # xxx this should call `raiseIndexError2(i, high(x))` after some refactoring
