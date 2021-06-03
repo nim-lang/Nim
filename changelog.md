@@ -61,9 +61,6 @@
 
 - Removed `.travis.yml`, `appveyor.yml.disabled`, `.github/workflows/ci.yml.disabled`.
 
-- Nim compiler now adds ASCII unit separator `\31` before a newline for every generated
-  message (potentially multiline), so tooling can tell when messages start and end.
-
 - `random.initRand(seed)` now produces non-skewed values for the 1st call to `rand()` after
   initialization with a small (< 30000) seed. Use `-d:nimLegacyRandomInitRand` to restore
   previous behavior for a transition time, see PR #17467.
@@ -394,6 +391,9 @@
 - Added `--filenames:abs|canonical|legacyRelProj` which replaces --listFullPaths:on|off
 
 - Added `--processing:dots|filenames|off` which customizes `hintProcessing`
+
+- Added `--unitsep:on|off` to control whether to add ASCII unit separator `\31` before a newline
+ for every generated message (potentially multiline), so tooling can tell when messages start and end.
 
 - Source+Edit links now appear on top of every docgen'd page when
   `nim doc --git.url:url ...` is given.
