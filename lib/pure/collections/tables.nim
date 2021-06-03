@@ -594,17 +594,17 @@ template withValue*[A, B](t: var Table[A, B], key: A, value, body: untyped) =
     let u = User(name: "Hello", uid: 99)
     t[1] = u
 
-    t.withValue(1, value) do:
+    t.withValue(1, value):
       # block is executed only if `key` in `t`
       value.name = "Nim"
       value.uid = 1314
 
-    t.withValue(2, value) do:
+    t.withValue(2, value):
       value.name = "No"
       value.uid = 521
 
-    doAssert t[1].name == "Nim"
-    doAssert t[1].uid == 1314
+    assert t[1].name == "Nim"
+    assert t[1].uid == 1314
 
   mixin rawGet
   var hc: Hash
@@ -629,16 +629,22 @@ template withValue*[A, B](t: var Table[A, B], key: A,
     let u = User(name: "Hello", uid: 99)
     t[1] = u
 
-    t.withValue(1, value) do:
+    t.withValue(1, value):
       # block is executed only if `key` in `t`
       value.name = "Nim"
       value.uid = 1314
-    # do:
-    #   # block is executed when `key` not in `t`
-    #   raise newException(KeyError, "Key not found")
 
-    doAssert t[1].name == "Nim"
-    doAssert t[1].uid == 1314
+    t.withValue(521, value):
+      doAssert false
+    do:
+      # block is executed when `key` not in `t`
+      t[1314] = User(name: "exist", uid: 521)
+
+    assert t[1].name == "Nim"
+    assert t[1].uid == 1314
+    assert t[1314].name == "exist"
+    assert t[1314].uid == 521
+
   mixin rawGet
   var hc: Hash
   var index = rawGet(t, key, hc)
