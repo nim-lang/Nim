@@ -201,8 +201,6 @@ from highlite import SourceLanguage, getSourceLanguage
 
 type
   RstParseOption* = enum     ## options for the RST parser
-    roSkipPounds,             ## skip ``#`` at line beginning (documentation
-                              ## embedded in Nim comments)
     roSupportSmilies,         ## make the RST parser support smilies like ``:)``
     roSupportRawDirective,    ## support the ``raw`` directive (don't support
                               ## it for sandboxing)
@@ -307,7 +305,6 @@ type
     buf*: cstring
     bufpos*: int
     line*, col*, baseIndent*: int
-    skipPounds*: bool
     adornmentLine*: bool
     escapeNext*: bool
 
@@ -380,9 +377,6 @@ proc getIndentAux(L: var Lexer, start: int): int =
     else: inc pos
   elif L.buf[pos] == '\n':
     inc pos
-  if L.skipPounds:
-    if L.buf[pos] == '#': inc pos
-    if L.buf[pos] == '#': inc pos
   while true:
     case L.buf[pos]
     of ' ', '\v', '\f':
@@ -447,26 +441,13 @@ proc rawGetTok(L: var Lexer, tok: var Token) =
       inc L.col
   tok.col = max(tok.col - L.baseIndent, 0)
 
-proc getTokens(buffer: string, skipPounds: bool, tokens: var TokenSeq): int =
+proc getTokens(buffer: string, tokens: var TokenSeq): int =
   var L: Lexer
   var length = tokens.len
   L.buf = cstring(buffer)
   L.line = 0                  # skip UTF-8 BOM
   if L.buf[0] == '\xEF' and L.buf[1] == '\xBB' and L.buf[2] == '\xBF':
     inc L.bufpos, 3
-  L.skipPounds = skipPounds
-  if skipPounds:
-    if L.buf[L.bufpos] == '#':
-      inc L.bufpos
-      inc result
-    if L.buf[L.bufpos] == '#':
-      inc L.bufpos
-      inc result
-    L.baseIndent = 0
-    while L.buf[L.bufpos] == ' ':
-      inc L.bufpos
-      inc L.baseIndent
-      inc result
   while true:
     inc length
     setLen(tokens, length)
@@ -2123,7 +2104,7 @@ proc parseSimpleTable(p: var RstParser): PRstNode =
       q.col = cols[j]
       q.line = line - 1
       q.filename = p.filename
-      q.col += getTokens(row[j], false, q.tok)
+      q.col += getTokens(row[j], q.tok)
       b = newRstNode(rnTableDataCell)
       b.add(parseDoc(q))
       a.add(b)
@@ -2176,7 +2157,7 @@ proc parseMarkdownTable(p: var RstParser): PRstNode =
       q.col = p.col
       q.line = currentTok(p).line - 1
       q.filename = p.filename
-      q.col += getTokens(getColContents(p, row[j]), false, q.tok)
+      q.col += getTokens(getColContents(p, row[j]), q.tok)
       b.add(parseDoc(q))
       a.add(b)
     result.add(a)
@@ -2584,7 +2565,6 @@ proc dirInclude(p: var RstParser): PRstNode =
       q.filename = path
       q.col += getTokens(
         inputString[startPosition..endPosition].strip(),
-        false,
         q.tok)
       # workaround a GCC bug; more like the interior pointer bug?
       #if find(q.tok[high(q.tok)].symbol, "\0\x01\x02") > 0:
@@ -2948,7 +2928,7 @@ proc rstParse*(text, filename: string,
   initParser(p, newSharedState(options, findFile, msgHandler))
   p.filename = filename
   p.line = line
-  p.col = column + getTokens(text, roSkipPounds in options, p.tok)
+  p.col = column + getTokens(text, p.tok)
   let unresolved = parseDoc(p)
   countTitles(p, unresolved)
   orderFootnotes(p)
