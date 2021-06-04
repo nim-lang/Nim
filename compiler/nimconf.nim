@@ -240,13 +240,10 @@ proc getSystemConfigPath*(conf: ConfigRef; filename: RelativeFile): AbsoluteFile
 
 proc loadConfigs*(cfg: RelativeFile; cache: IdentCache; conf: ConfigRef; idgen: IdGenerator) =
   setDefaultLibpath(conf)
-
-  var configFiles = newSeq[AbsoluteFile]()
-
   template readConfigFile(path) =
     let configPath = path
     if readConfigFile(configPath, cache, conf):
-      configFiles.add(configPath)
+      conf.configFiles.add(configPath)
 
   template runNimScriptIfExists(path: AbsoluteFile, isMain = false) =
     let p = path # eval once
@@ -256,7 +253,7 @@ proc loadConfigs*(cfg: RelativeFile; cache: IdentCache; conf: ConfigRef; idgen: 
       elif conf.projectIsCmd: s = llStreamOpen(conf.cmdInput)
     if s == nil and fileExists(p): s = llStreamOpen(p, fmRead)
     if s != nil:
-      configFiles.add(p)
+      conf.configFiles.add(p)
       runNimScript(cache, p, idgen, freshDefines = false, conf, s)
 
   if optSkipSystemConfigFile notin conf.globalOptions:
@@ -295,12 +292,12 @@ proc loadConfigs*(cfg: RelativeFile; cache: IdentCache; conf: ConfigRef; idgen: 
   let scriptFile = conf.projectFull.changeFileExt("nims")
   let scriptIsProj = scriptFile == conf.projectFull
   template showHintConf =
-    for filename in configFiles:
+    for filename in conf.configFiles:
       # delayed to here so that `hintConf` is honored
       rawMessage(conf, hintConf, filename.string)
   if conf.cmd == cmdNimscript:
     showHintConf()
-    configFiles.setLen 0
+    conf.configFiles.setLen 0
   if conf.cmd != cmdIdeTools:
     if conf.cmd == cmdNimscript:
       runNimScriptIfExists(conf.projectFull, isMain = true)

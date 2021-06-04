@@ -20,7 +20,7 @@ import
 
 from uri import encodeUrl
 from std/private/globs import nativeToUnixPath
-
+from nodejs import findNodeJs
 
 const
   exportSection = skField
@@ -430,7 +430,9 @@ proc runAllExamples(d: PDoc) =
       "rdoccmd", group.rdoccmd,
       "docCmd", group.docCmd,
     ]
-    if os.execShellCmd(cmd) != 0:
+    if d.conf.backend == backendJs and findNodeJs() == "":
+      discard "ignore JS runnableExample"
+    elif os.execShellCmd(cmd) != 0:
       d.conf.quitOrRaise "[runnableExamples] failed: generated file: '$1' group: '$2' cmd: $3" % [outp.string, group[].prettyString, cmd]
     else:
       # keep generated source file `outp` to allow inspection.

@@ -289,10 +289,6 @@ proc `??`* (conf: ConfigRef; info: TLineInfo, filename: string): bool =
   # only for debugging purposes
   result = filename in toFilename(conf, info)
 
-const
-  UnitSep = "\31"
-    # this needs care to avoid issues similar to https://github.com/nim-lang/Nim/issues/17853
-
 type
   MsgFlag* = enum  ## flags altering msgWriteln behavior
     msgStdout,     ## force writing to stdout, even stderr is default
@@ -309,7 +305,7 @@ proc msgWriteln*(conf: ConfigRef; s: string, flags: MsgFlags = {}) =
   ## This is used for 'nim dump' etc. where we don't have nimsuggest
   ## support.
   #if conf.cmd == cmdIdeTools and optCDebug notin gGlobalOptions: return
-  let sep = if msgNoUnitSep notin flags: UnitSep else: ""
+  let sep = if msgNoUnitSep notin flags: conf.unitSep else: ""
   if not isNil(conf.writelnHook) and msgSkipHook notin flags:
     conf.writelnHook(s & sep)
   elif optStdout in conf.globalOptions or msgStdout in flags:
@@ -409,7 +405,7 @@ proc quit(conf: ConfigRef; msg: TMsgKind) {.gcsafe.} =
         styledMsgWriteln(fgRed, """
 No stack traceback available
 To create a stacktrace, rerun compilation with './koch temp $1 <file>', see $2 for details""" %
-          [conf.command, "intern.html#debugging-the-compiler".createDocLink], UnitSep)
+          [conf.command, "intern.html#debugging-the-compiler".createDocLink], conf.unitSep)
   quit 1
 
 proc handleError(conf: ConfigRef; msg: TMsgKind, eh: TErrorHandling, s: string) =
@@ -550,13 +546,13 @@ proc liMessage*(conf: ConfigRef; info: TLineInfo, msg: TMsgKind, arg: string,
         msgWrite(conf, ".")
       else:
         styledMsgWriteln(styleBright, loc, resetStyle, color, title, resetStyle, s, KindColor, kindmsg,
-                         resetStyle, conf.getSurroundingSrc(info), UnitSep)
+                         resetStyle, conf.getSurroundingSrc(info), conf.unitSep)
         if hintMsgOrigin in conf.mainPackageNotes:
           # xxx needs a bit of refactoring to honor `conf.filenameOption`
           styledMsgWriteln(styleBright, toFileLineCol(info2), resetStyle,
             " compiler msg initiated here", KindColor,
             KindFormat % $hintMsgOrigin,
-            resetStyle, UnitSep)
+            resetStyle, conf.unitSep)
   handleError(conf, msg, eh, s)
 
 template rawMessage*(conf: ConfigRef; msg: TMsgKind, args: openArray[string]) =

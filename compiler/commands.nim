@@ -919,6 +919,8 @@ proc processSwitch*(switch, arg: string, pass: TCmdLinePass, info: TLineInfo;
       excl(conf.notes, hintProcessing)
       excl(conf.mainPackageNotes, hintProcessing)
     else: localError(conf, info, "expected: dots|filenames|off, got: $1" % arg)
+  of "unitsep":
+    conf.unitSep = if switchOn(arg): "\31" else: ""
   of "listfullpaths":
     # xxx in future work, use `warningDeprecated`
     conf.filenameOption = if switchOn(arg): foAbs else: foCanonical

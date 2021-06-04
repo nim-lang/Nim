@@ -1,7 +1,7 @@
 discard """
   output: '''
-Error: cannot open 'a.nim'\31
-Error: cannot open 'b.nim'\31
+Error: cannot open 'a.nim'
+Error: cannot open 'b.nim'
 '''
   targets: "c"
 """
