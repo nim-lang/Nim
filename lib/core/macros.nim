@@ -877,9 +877,9 @@ proc eqIdent*(a: NimNode; b: NimNode): bool {.magic: "EqIdent", noSideEffect.}
   ## (`nnkPostfix`) or quoted with backticks (`nnkAccQuoted`),
   ## these nodes will be unwrapped.
 
-const collapseSymChoiceDefault = not defined(nimLegacyMacrosCollapseSymChoice)
+const collapseSymChoice = not defined(nimLegacyMacrosCollapseSymChoice)
 
-proc treeTraverse(n: NimNode; res: var string; level = 0; isLisp = false, indented = false, collapseSymChoice = collapseSymChoiceDefault) {.benign.} =
+proc treeTraverse(n: NimNode; res: var string; level = 0; isLisp = false, indented = false) {.benign.} =
   if level > 0:
     if indented:
       res.add("\n")
@@ -918,29 +918,29 @@ proc treeTraverse(n: NimNode; res: var string; level = 0; isLisp = false, indent
         res.add(" " & $n[0].strVal.newLit.repr)
       else:
         for j in 0 ..< n.len:
-          n[j].treeTraverse(res, level+1, isLisp, indented, collapseSymChoice)
+          n[j].treeTraverse(res, level+1, isLisp, indented)
   else:
     for j in 0 ..< n.len:
-      n[j].treeTraverse(res, level+1, isLisp, indented, collapseSymChoice)
+      n[j].treeTraverse(res, level+1, isLisp, indented)
 
   if isLisp:
     res.add(")")
 
-proc treeRepr*(n: NimNode, collapseSymChoice = collapseSymChoiceDefault): string {.benign.} =
+proc treeRepr*(n: NimNode): string {.benign.} =
   ## Convert the AST `n` to a human-readable tree-like string.
   ##
   ## See also `repr`, `lispRepr`, and `astGenRepr`.
   result = ""
-  n.treeTraverse(result, isLisp = false, indented = true, collapseSymChoice = collapseSymChoice)
+  n.treeTraverse(result, isLisp = false, indented = true)
 
-proc lispRepr*(n: NimNode; indented = false, collapseSymChoice = collapseSymChoiceDefault): string {.benign.} =
+proc lispRepr*(n: NimNode; indented = false): string {.benign.} =
   ## Convert the AST `n` to a human-readable lisp-like string.
   ##
   ## See also `repr`, `treeRepr`, and `astGenRepr`.
   result = ""
-  n.treeTraverse(result, isLisp = true, indented = indented, collapseSymChoice = collapseSymChoice)
+  n.treeTraverse(result, isLisp = true, indented = indented)
 
-proc astGenRepr*(n: NimNode, collapseSymChoice = collapseSymChoiceDefault): string {.benign.} =
+proc astGenRepr*(n: NimNode): string {.benign.} =
   ## Convert the AST `n` to the code required to generate that AST.
   ##
   ## See also `repr`, `treeRepr`, and `lispRepr`.
