@@ -1,7 +1,8 @@
-.. default-role:: code
-
 Strict not nil checking
 =========================
+
+.. default-role:: code
+.. include:: rstcommon.rst
 
 **Note:** This feature is experimental, you need to enable it with
 
@@ -10,7 +11,7 @@ Strict not nil checking
 
 or 
 
-.. code-block:: bash
+.. code-block:: cmd
   nim c --experimental:strictNotNil <program>
 
 In the second case it would check builtin and imported modules as well.
@@ -60,14 +61,16 @@ You can annotate a type where nil isn't a valid value with `not nil`.
 
 
 If a type can include `nil` as a valid value, dereferencing values of the type
-is checked by the compiler: if a value which might be nil is derefenced, this produces a warning by default, you can turn this into an error using the compiler options `--warningAsError:strictNotNil`
+is checked by the compiler: if a value which might be nil is derefenced, this
+produces a warning by default, you can turn this into an error using
+the compiler options `--warningAsError:strictNotNil`:option:.
 
 If a type is nilable, you should dereference its values only after a `isNil` or equivalent check.
 
 local turn on/off
 ---------------------
 
-You can still turn off nil checking on function/module level by using a `{.strictNotNil: off}.` pragma.
+You can still turn off nil checking on function/module level by using a `{.strictNotNil: off.}` pragma.
 Note: test that/TODO for code/manual.
 
 nilability state
@@ -75,11 +78,14 @@ nilability state
 
 Currently a nilable value can be `Safe`, `MaybeNil` or `Nil` : we use internally `Parent` and `Unreachable` but this is an implementation detail(a parent layer has the actual nilability).
 
-`Safe` means it shouldn't be nil at that point: e.g. after assignment to a non-nil value or `not a.isNil` check
-`MaybeNil` means it might be nil, but it might not be nil: e.g. an argument, a call argument or a value after an `if` and `else`.
-`Nil` means it should be nil at that point; e.g. after an assignment to `nil` or a `.isNil` check.
-
-`Unreachable` means it shouldn't be possible to access this in this branch: so we do generate a warning as well.
+- `Safe` means it shouldn't be nil at that point: e.g. after assignment to
+  a non-nil value or `not a.isNil` check
+- `MaybeNil` means it might be nil, but it might not be nil: e.g. an argument,
+  a call argument or a value after an `if` and `else`.
+- `Nil` means it should be nil at that point; e.g. after an assignment to
+  `nil` or a `.isNil` check.
+- `Unreachable` means it shouldn't be possible to access this in this branch:
+  so we do generate a warning as well.
 
 We show an error for each dereference (`[]`, `.field`, `[index]` `()` etc) which is of a tracked expression which is
 in `MaybeNil` or `Nil` state.

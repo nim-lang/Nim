@@ -5,8 +5,8 @@
 :Author: Andreas Rumpf
 :Version: |nimversion|
 
+.. default-role:: code
 .. include:: rstcommon.rst
-.. default-role:: Nim
 .. contents::
 
 
@@ -43,7 +43,7 @@ your code.
 Installation
 ============
 
-Run `koch drnim`:option:, the executable will afterwards be
+Run `koch drnim`:cmd:, the executable will afterwards be
 in ``$nim/bin/drnim``.
 
 

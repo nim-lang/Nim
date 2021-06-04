@@ -1,5 +1,3 @@
-.. default-role:: code
-
 =========================
 Nim Experimental Features
 =========================
@@ -7,6 +5,8 @@ Nim Experimental Features
 :Authors: Andreas Rumpf
 :Version: |nimversion|
 
+.. default-role:: code
+.. include:: rstcommon.rst
 .. contents::
 
 
@@ -15,7 +15,7 @@ About this document
 
 This document describes features of Nim that are to be considered experimental.
 Some of these are not covered by the `.experimental` pragma or
-`--experimental` switch because they are already behind a special syntax and
+`--experimental`:option: switch because they are already behind a special syntax and
 one may want to use Nim libraries using these features without using them
 oneself.
 
@@ -1109,7 +1109,7 @@ The `parameter constraint`:idx: expression can use the operators `|` (or),
 Predicate                Meaning
 ===================      =====================================================
 `atom`                   The matching node has no children.
-`lit`                    The matching node is a literal like "abc", 12.
+`lit`                    The matching node is a literal like `"abc"`, `12`.
 `sym`                    The matching node must be a symbol (a bound
                          identifier).
 `ident`                  The matching node must be an identifier (an unbound
@@ -1185,7 +1185,7 @@ constant folding, so the following does not work:
 
 The reason is that the compiler already transformed the 1 into "1" for
 the `echo` statement. However, a term rewriting macro should not change the
-semantics anyway. In fact they can be deactivated with the `--patterns:off`
+semantics anyway. In fact they can be deactivated with the `--patterns:off`:option:
 command line option or temporarily with the `patterns` pragma.
 
 
@@ -1779,7 +1779,7 @@ Noalias annotation
 ==================
 
 Since version 1.4 of the Nim compiler, there is a `.noalias` annotation for variables
-and parameters. It is mapped directly to C/C++'s `restrict` keyword and means that
+and parameters. It is mapped directly to C/C++'s `restrict`:c: keyword and means that
 the underlying pointer is pointing to a unique location in memory, no other aliases to
 this location exist. It is *unchecked* that this alias restriction is followed, if the
 restriction is violated, the backend optimizer is free to miscompile the code.
@@ -1832,8 +1832,8 @@ the `view types section <#view-types-algorithm>`_.
 View types
 ==========
 
-**Note**:  `--experimental:views` is more effective
-with `--experimental:strictFuncs`.
+**Note**:  `--experimental:views`:option: is more effective
+with `--experimental:strictFuncs`:option:.
 
 A view type is a type that is or contains one of the following types:
 
@@ -1981,8 +1981,8 @@ The scope of the view does not matter:
 
 The analysis requires as much precision about mutations as is reasonably obtainable,
 so it is more effective with the experimental `strict funcs <#strict-funcs>`_
-feature. In other words `--experimental:views` works better
-with `--experimental:strictFuncs`.
+feature. In other words `--experimental:views`:option: works better
+with `--experimental:strictFuncs`:option:.
 
 The analysis is currently control flow insensitive:
 

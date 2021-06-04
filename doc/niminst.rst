@@ -1,5 +1,3 @@
-.. default-role:: code
-
 =========================
   niminst User's manual
 =========================
@@ -7,6 +5,8 @@
 :Author: Andreas Rumpf
 :Version: |nimversion|
 
+.. default-role:: code
+.. include:: rstcommon.rst
 .. contents::
 
 Introduction
@@ -34,7 +34,7 @@ configuration file. Here's an example of how the syntax looks like:
 
 The value of a key-value pair can reference user-defined variables via
 the `$variable` notation: They can be defined in the command line with the
-`--var:name=value` switch. This is useful to not hard-coding the
+`--var:name=value`:option: switch. This is useful to not hard-coding the
 program's version number into the configuration file, for instance.
 
 It follows a description of each possible section and how it affects the
@@ -91,10 +91,10 @@ Documentation section
 
 The `documentation` section supports the `files` key.
 Listed files will be installed into the OS's native documentation directory
-(which might be `$appdir/doc`).
+(which might be ``$appdir/doc``).
 
 There is a `start` key which determines whether the Windows installer
-generates a link to e.g. the `index.html` of your documentation.
+generates a link to e.g. the ``index.html`` of your documentation.
 
 
 Other section
@@ -125,9 +125,9 @@ Other possible options are:
 ====================   =======================================================
 Key                    description
 ====================   =======================================================
-`BinPath`            paths to add to the Windows `%PATH%` environment
+`BinPath`              paths to add to the Windows `%PATH%` environment
                        variable. Example: ``BinPath: r"bin;dist\mingw\bin"``
-`InnoSetup`          boolean flag whether an Inno Setup installer should be
+`InnoSetup`            boolean flag whether an Inno Setup installer should be
                        generated for Windows. Example: `InnoSetup: "Yes"`
 ====================   =======================================================
 
@@ -137,7 +137,7 @@ UnixBin section
 
 The `UnixBin` section currently only supports the `files` key.
 Listed files will be installed into the OS's native bin directory
-(e.g. `/usr/local/bin`). The exact location depends on the
+(e.g. ``/usr/local/bin``). The exact location depends on the
 installation path the user specifies when running the `install.sh` script.
 
 
@@ -165,9 +165,9 @@ Possible options are:
 ====================   =======================================================
 Key                    description
 ====================   =======================================================
-`path`               Path to Inno Setup.
+`path`                 Path to Inno Setup.
                        Example: ``path = r"c:\inno setup 5\iscc.exe"``
-`flags`              Flags to pass to Inno Setup.
+`flags`                Flags to pass to Inno Setup.
                        Example: `flags = "/Q"`
 ====================   =======================================================
 
@@ -180,8 +180,8 @@ Possible options are:
 ====================   =======================================================
 Key                    description
 ====================   =======================================================
-`path`               Path to the C compiler.
-`flags`              Flags to pass to the C Compiler.
+`path`                 Path to the C compiler.
+`flags`                Flags to pass to the C Compiler.
                        Example: `flags = "-w"`
 ====================   =======================================================
 

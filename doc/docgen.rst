@@ -5,8 +5,8 @@
 :Author: Erik O'Leary
 :Version: |nimversion|
 
+.. default-role:: code
 .. include:: rstcommon.rst
-.. default-role:: Nim
 .. contents::
 
 
