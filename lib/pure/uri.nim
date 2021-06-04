@@ -36,7 +36,7 @@ runnableExamples:
   doAssert getDataUri("Nim", "text/plain") == "data:text/plain;charset=utf-8;base64,Tmlt"
 
 
-import strutils, parseutils, base64
+import strutils, parseutils, base64, tables
 import std/private/[since, decode_helpers]
 
 
@@ -536,3 +536,17 @@ proc getDataUri*(data, mime: string, encoding = "utf-8"): string {.since: (1, 3)
   runnableExamples: static: assert getDataUri("Nim", "text/plain") == "data:text/plain;charset=utf-8;base64,Tmlt"
   assert encoding.len > 0 and mime.len > 0 # Must *not* be URL-Safe, see RFC-2397
   result = "data:" & mime & ";charset=" & encoding & ";base64," & base64.encode(data)
+
+func parseQuery*(query: string): Table[string, seq[string]] =
+  ## Parses a query into key:value mappings. The value is a sequence of strings instead
+  ## of a string to allow the user to handle duplicate keys.
+  runnableExamples:
+    assert "f=foo".parseQuery() == {"f": @["foo"]}.toTable
+    assert "f=foo&b=bar".parseQuery() == {"f": @["foo"], "b": @["bar"]}.toTable
+    assert "key=hello&key=world".parseQuery() == {"key": @["hello", "world"]}.toTable
+  for s in query.split('&'):
+    if s == "": continue
+    let arr = s.split('=')
+    if not (arr[0] in result):
+      result[arr[0]] = @[]
+    result[arr[0]].add(arr[1])

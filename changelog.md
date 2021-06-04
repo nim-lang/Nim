@@ -335,6 +335,8 @@
 
 - Added setCurrentException for JS backend.
 
+- Added `uri.parseQuery` for parsing query strings from `uri.Uri.query`
+
 ## Language changes
 
 - `nimscript` now handles `except Exception as e`.
