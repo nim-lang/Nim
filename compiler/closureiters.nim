@@ -427,8 +427,7 @@ proc addExprAssgn(ctx: Ctx, output, input: PNode, sym: PSym) =
 
 proc convertExprBodyToAsgn(ctx: Ctx, exprBody: PNode, res: PSym): PNode =
   result = newNodeI(nkStmtList, exprBody.info)
-  if exprBody.typ != nil:
-    ctx.addExprAssgn(result, exprBody, res)
+  ctx.addExprAssgn(result, exprBody, res)
 
 proc newNotCall(g: ModuleGraph; e: PNode): PNode =
   result = newTree(nkCall, newSymNode(g.getSysMagic(e.info, "not", mNot), e.info), e)
@@ -564,10 +563,11 @@ proc lowerStmtListExprs(ctx: var Ctx, n: PNode, needsSplit: var bool): PNode =
           let branch = n[i]
           case branch.kind
           of nkExceptBranch:
-            if branch[0].kind == nkType:
-              branch[1] = ctx.convertExprBodyToAsgn(branch[1], tmp)
-            else:
-              branch[0] = ctx.convertExprBodyToAsgn(branch[0], tmp)
+            if branch.typ != nil:
+              if branch[0].kind == nkType:
+                branch[1] = ctx.convertExprBodyToAsgn(branch[1], tmp)
+              else:
+                branch[0] = ctx.convertExprBodyToAsgn(branch[0], tmp)
           of nkFinally:
             discard
           else:

@@ -364,6 +364,7 @@ proc genMarkCyclic(c: var Con; result, dest: PNode) =
 proc genCopyNoCheck(c: var Con; dest, ri: PNode): PNode =
   let t = dest.typ.skipTypes({tyGenericInst, tyAlias, tySink})
   result = c.genOp(t, attachedAsgn, dest, ri)
+  assert ri.typ != nil
 
 proc genCopy(c: var Con; dest, ri: PNode): PNode =
   let t = dest.typ
@@ -371,6 +372,7 @@ proc genCopy(c: var Con; dest, ri: PNode): PNode =
     # try to improve the error message here:
     c.checkForErrorPragma(t, ri, "=copy")
   result = c.genCopyNoCheck(dest, ri)
+  assert ri.typ != nil
 
 proc genDiscriminantAsgn(c: var Con; s: var Scope; n: PNode): PNode =
   # discriminator is ordinal value that doesn't need sink destroy
