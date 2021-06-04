@@ -108,10 +108,14 @@ template withValue*[A, B](t: var SharedTable[A, B], key: A,
     table.withValue("a", value):
       value[] = "m"
 
+    var flag = false
     table.withValue("d", value):
       discard value
       doAssert false
     do: # if "d" notin table
+      flag = true
+
+    if flag:
       table["d"] = "n"
 
     assert table.mget("a") == "m"
