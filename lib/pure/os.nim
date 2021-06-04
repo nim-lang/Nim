@@ -284,7 +284,7 @@ proc splitPath*(path: string): tuple[head, tail: string] {.
     result.head = ""
     result.tail = path
 
-proc absolutePrefix*(path: string): string {.since: (1, 3, 7).} =
+func absolutePrefix*(path: string): string {.since: (1, 5, 1).} =
   ## returns the root path component for absolute paths, empty for relative paths.
   ## See also `isAbsolute`.
   runnableExamples:
@@ -855,7 +855,7 @@ proc cmpPaths*(pathA, pathB: string): int {.
     else:
       result = cmpIgnoreCase(a, b)
 
-proc nativeToUnixPath*(path: string, keepDrive = false): string {.noSideEffect, since: (1, 3, 7).} =
+func nativeToUnixPath*(path: string, keepDrive = false): string {.since: (1, 5, 1).} =
   ## Converts a native path to a UNIX path; on windows, the drive is converted to
   ## `/`.
   ## See also `unixToNativePath`.
