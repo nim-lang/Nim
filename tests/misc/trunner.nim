@@ -13,7 +13,6 @@ import std/[strformat,os,osproc,unittest,compilesettings]
 from std/sequtils import toSeq,mapIt
 from std/algorithm import sorted
 import stdtest/[specialpaths, unittest_light]
-from std/private/globs import nativeToUnixPath
 from strutils import startsWith, strip, removePrefix
 from std/sugar import dup
 import "$lib/../compiler/nimpaths"
