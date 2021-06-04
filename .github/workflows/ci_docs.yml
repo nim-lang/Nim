@@ -44,6 +44,7 @@ jobs:
 
     name: ${{ matrix.target }}
     runs-on: ${{ matrix.os }}
+    timeout-minutes: 60 # refs bug #18178
 
     steps:
       - name: 'Checkout'
