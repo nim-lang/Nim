@@ -19,7 +19,6 @@ import
   pathutils, trees, tables, nimpaths, renderverbatim, osproc
 
 from uri import encodeUrl
-from std/private/globs import nativeToUnixPath
 from nodejs import findNodeJs
 
 const

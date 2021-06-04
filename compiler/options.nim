@@ -13,7 +13,7 @@ import
 
 from terminal import isatty
 from times import utc, fromUnix, local, getTime, format, DateTime
-from std/private/globs import nativeToUnixPath
+
 const
   hasTinyCBackend* = defined(tinyc)
   useEffectSystem* = true

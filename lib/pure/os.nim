@@ -289,10 +289,10 @@ func absolutePrefix*(path: string): string {.since: (1, 5, 1).} =
   ## See also `isAbsolute`.
   runnableExamples:
     when defined(posix):
-      doAssert absolutePrefix("//foo") == "//"
-      doAssert absolutePrefix("foo") == ""
+      assert absolutePrefix("//foo") == "//"
+      assert absolutePrefix("foo") == ""
     when defined(windows):
-      doAssert absolutePrefix(r"C:\\\bar") == r"C:\\\"
+      assert absolutePrefix(r"C:\\\bar") == r"C:\\\"
   var i = 0
   let len = len(path)
   when doslikeFileSystem:
@@ -861,7 +861,7 @@ func nativeToUnixPath*(path: string, keepDrive = false): string {.since: (1, 5, 
   ## See also `unixToNativePath`.
   runnableExamples:
     when defined(windows):
-      doAssert nativeToUnixPath(r"C:\foo\bar") == "/foo/bar"
+      assert nativeToUnixPath(r"C:\foo\bar") == "/foo/bar"
   when defined(posix):
     result = path
   else:

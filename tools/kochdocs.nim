@@ -1,7 +1,7 @@
 ## Part of 'koch' responsible for the documentation generation.
 
 import os, strutils, osproc, sets, pathnorm, pegs, sequtils
-from std/private/globs import nativeToUnixPath, walkDirRecFilter, PathEntry
+from std/private/globs import walkDirRecFilter, PathEntry
 import "../compiler/nimpaths"
 
 const
