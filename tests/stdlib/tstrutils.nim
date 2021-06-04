@@ -308,6 +308,22 @@ template main() =
       doAssert "abcd".find("bc", start=1, last=last) == -1
       doAssert "abcd".find("bc", start=2, last=last) == -1
 
+    # using openArray variant
+    block:
+      doAssert "abcde".toOpenArray(0, 4).find("") == 0
+      doAssert "abcde".toOpenArray(1, 4).find("") == 0
+      doAssert "abcde".toOpenArray(3, 4).find("") == 0
+      doAssert "abcde".toOpenArray(4, 4).find("") == 0
+
+      doAssert "abcde".toOpenArray(0, 4).find("c") == 2
+      doAssert "abcde".toOpenArray(1, 4).find("c") == 1
+      doAssert "abcde".toOpenArray(2, 4).find("c") == 0
+      doAssert "abcde".toOpenArray(3, 4).find("c") == -1
+
+      doAssert "abcde".toOpenArray(0, 4).find("cd") == 2
+      doAssert "abcde".toOpenArray(1, 4).find("cd") == 1
+      doAssert "abcde".toOpenArray(3, 4).find("cd") == -1
+
   block: # rfind
     doAssert "0123456789ABCDEFGAH".rfind('A') == 17
     doAssert "0123456789ABCDEFGAH".rfind('A', last=13) == 10
