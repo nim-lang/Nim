@@ -1903,7 +1903,8 @@ const mimes* = {
 func newMimetypes*(): MimeDB =
   ## Creates a new Mimetypes database. The database will contain the most
   ## common mimetypes.
-  result.mimes = mimes.newOrderedTable()
+  {.cast(noSideEffect).}:
+    result.mimes = mimes.newOrderedTable()
 
 func getMimetype*(mimedb: MimeDB, ext: string, default = "text/plain"): string =
   ## Gets mimetype which corresponds to `ext`. Returns `default` if `ext`
