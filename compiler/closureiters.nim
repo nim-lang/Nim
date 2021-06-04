@@ -414,8 +414,11 @@ proc exprToStmtList(n: PNode): tuple[s, res: PNode] =
 
 
 proc newEnvVarAsgn(ctx: Ctx, s: PSym, v: PNode): PNode =
-  result = newTree(nkFastAsgn, ctx.newEnvVarAccess(s), v)
-  result.info = v.info
+  if isEmptyType(v.typ):
+    result = v
+  else:
+    result = newTree(nkFastAsgn, ctx.newEnvVarAccess(s), v)
+    result.info = v.info
 
 proc addExprAssgn(ctx: Ctx, output, input: PNode, sym: PSym) =
   if input.kind == nkStmtListExpr:
@@ -563,11 +566,10 @@ proc lowerStmtListExprs(ctx: var Ctx, n: PNode, needsSplit: var bool): PNode =
           let branch = n[i]
           case branch.kind
           of nkExceptBranch:
-            if branch.typ != nil:
-              if branch[0].kind == nkType:
-                branch[1] = ctx.convertExprBodyToAsgn(branch[1], tmp)
-              else:
-                branch[0] = ctx.convertExprBodyToAsgn(branch[0], tmp)
+            if branch[0].kind == nkType:
+              branch[1] = ctx.convertExprBodyToAsgn(branch[1], tmp)
+            else:
+              branch[0] = ctx.convertExprBodyToAsgn(branch[0], tmp)
           of nkFinally:
             discard
           else:
