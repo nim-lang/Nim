@@ -1146,7 +1146,7 @@ when defined(boehmgc):
   elif defined(macosx):
     const boehmLib = "libgc.dylib"
   elif defined(openbsd):
-    const boehmLib = "libgc.so.4.0"
+    const boehmLib = "libgc.so.(4|5).0"
   elif defined(freebsd):
     const boehmLib = "libgc-threaded.so.1"
   else:
