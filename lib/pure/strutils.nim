@@ -116,7 +116,7 @@ const
     ## The set of all ASCII punctuation characters.
 
   AllChars* = {'\x00'..'\xFF'}
-    ## The set with all the possible characters.
+    ## The set of all characters.
     ##
     ## Not very useful by its own, you can use it to create *inverted* sets to
     ## make the `find func<#find,string,set[char],Natural,int>`_
