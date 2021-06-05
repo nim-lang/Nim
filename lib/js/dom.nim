@@ -1769,3 +1769,5 @@ since (1, 3):
     ## https://developer.mozilla.org/en-US/docs/Web/API/FileReader/readAsDataURL
   proc readAsText*(f: FileReader, b: Blob, encoding = cstring"UTF-8") {.importcpp: "#.readAsText(#, #)".}
     ## https://developer.mozilla.org/en-US/docs/Web/API/FileReader/readAsText
+  proc readAsText*(f: FileReader, b: File, encoding = cstring"UTF-8") {.importcpp: "#.readAsText(#, #)".}
+    ## https://developer.mozilla.org/en-US/docs/Web/API/FileReader/readAsText
