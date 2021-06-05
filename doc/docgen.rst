@@ -26,7 +26,7 @@ command               runs on...               input format   output format
 `nim doc`:cmd:        documentation comments   ``.nim``       ``.html`` HTML
 `nim doc2tex`:cmd:    ″                        ″              ``.tex`` LaTeX
 `nim jsondoc`:cmd:    ″                        ″              ``.json`` JSON
-`nim rst2html`:cmd:   standalone documents     ``.rst``       ``.html`` HTML
+`nim rst2html`:cmd:   standalone rst files     ``.rst``       ``.html`` HTML
 `nim rst2tex`:cmd:    ″                        ″              ``.tex`` LaTeX
 ===================   ======================   ============   ==============
 
