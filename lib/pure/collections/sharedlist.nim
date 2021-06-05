@@ -11,6 +11,10 @@
 ##
 ## Unstable API.
 
+
+when not compileOption("threads") and not defined(nimdoc):
+  {.error: "SharedList requires --threads:on option.".}
+
 {.push stackTrace: off.}
 
 import

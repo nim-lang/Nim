@@ -14,6 +14,10 @@
 ##
 ## Unstable API.
 
+
+when not compileOption("threads") and not defined(nimdoc):
+  {.error: "SharedTables requires --threads:on option.".}
+
 import
   hashes, math, locks
 
