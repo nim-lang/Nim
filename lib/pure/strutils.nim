@@ -2072,6 +2072,7 @@ func replace*(s: string, sub, by: char, maxOccurrence = -1): string {.rtl,
     else:
       result[i] = s[i]
 
+#[
 func replace*(s: string, subs: set[char], by: char, maxOccurrence = -1): string
     {.rtl, extern: "nsuReplaceSetChar".} =
   ## Replaces `maxOccurrence` occurrences of any characters in `subs` found
@@ -2093,6 +2094,7 @@ func replace*(s: string, subs: set[char], by: char, maxOccurrence = -1): string
       if occLeft > 0: occLeft -= 1
     else:
       result[i] = s[i]
+]#
 
 func replace*(s, sub: string, by = "", maxOccurrence = -1): string {.rtl,
     extern: "nsuReplaceStr".} =
