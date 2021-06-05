@@ -3,7 +3,6 @@ discard """
 """
 
 import std/nativesockets
-import stdtest/testutils
 
 block:
   let hostname = getHostname()
@@ -11,6 +10,7 @@ block:
   doAssert hostname.len > 0
 
 when defined(windows):
+  import stdtest/testutils
   assertAll:
     toInt(IPPROTO_IP) == 0
     toInt(IPPROTO_ICMP) == 1

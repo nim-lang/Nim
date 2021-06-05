@@ -12,7 +12,8 @@
 
 # TODO: Clean up the exports a bit and everything else in general.
 
-import os, options, strbasics
+import os, options
+import std/strbasics
 import std/private/since
 
 when hostOS == "solaris":
@@ -433,9 +434,9 @@ proc getHostByName*(name: string): Hostent {.tags: [ReadIOEffect].} =
     result.addrList = cstringArrayToSeq(s.h_addr_list)
   result.length = int(s.h_length)
 
-proc addCstring(result: var string, buf: array) =
+proc addCstring(result: var string, buf: var openArray[char]) =
   # xxx move to std/strbasics, it's a common pattern
-  add(result, toOpenArray(buf, 0, cast[cstring](buf[0].addr).len - 1)
+  add(result, toOpenArray(buf, 0, cast[cstring](buf[0].addr).len - 1))
 
 proc getHostname*(): string {.tags: [ReadIOEffect].} =
   ## Returns the local hostname (not the FQDN)
