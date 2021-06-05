@@ -2063,6 +2063,9 @@ func replace*(s: string, sub, by: char, maxOccurrence = -1): string {.rtl,
   ## * `find func<#find,string,char,Natural,int>`_
   ## * `replaceWord func<#replaceWord,string,string,string>`_
   ## * `multiReplace func<#multiReplace,string,varargs[]>`_
+  runnableExamples:
+    doAssert "valid variable name".replace(' ', '_') == "valid_variable_name"
+    doAssert "Faabar!".replace('a', 'o', 2) == "Foobar!"
   result = newString(s.len)
   var occLeft = maxOccurrence
   for i in 0..s.high:
@@ -2072,6 +2075,8 @@ func replace*(s: string, sub, by: char, maxOccurrence = -1): string {.rtl,
     else:
       result[i] = s[i]
 
+# Maybe implement something like this for all replace functions...?
+# So that they can for example replace all Whitespace characters
 #[
 func replace*(s: string, subs: set[char], by: char, maxOccurrence = -1): string
     {.rtl, extern: "nsuReplaceSetChar".} =
@@ -2108,6 +2113,9 @@ func replace*(s, sub: string, by = "", maxOccurrence = -1): string {.rtl,
   ##   single characters
   ## * `replaceWord func<#replaceWord,string,string,string>`_
   ## * `multiReplace func<#multiReplace,string,varargs[]>`_
+  runnableExamples:
+    doAssert "This is not {}, but can be used as {}".replace("{}", "fmt()") == "This is not fmt(), but can be used as fmt()"
+    doAssert "almost valid variable name".replace(" ", "_", 2) == "almost_valid_variable name"
   result = ""
   let subLen = sub.len
   if subLen == 0: result = s
@@ -2120,9 +2128,8 @@ func replace*(s, sub: string, by = "", maxOccurrence = -1): string {.rtl,
       occLeft = maxOccurrence
     while true:
       let j = find(s, subChar, i)
-      if j == -1: break
+      if j == -1 or occLeft == 0: break
       if occLeft > 0: dec occLeft
-      if occLeft == 0: break
 
       result.add substr(s, i, j - 1)
       result.add by
@@ -2137,9 +2144,8 @@ func replace*(s, sub: string, by = "", maxOccurrence = -1): string {.rtl,
       occLeft = maxOccurrence
     while true:
       let j = find(a, s, sub, i)
-      if j == -1: break
+      if j == -1 or occLeft == 0: break
       if occLeft > 0: dec occLeft
-      if occLeft == 0: break
       result.add substr(s, i, j - 1)
       result.add by
       i = j + subLen
@@ -2155,6 +2161,9 @@ func replaceWord*(s, sub: string, by = "", maxOccurrence = -1): string {.rtl,
   ## Each occurrence of `sub` has to be surrounded by word boundaries
   ## (comparable to `\b` in regular expressions), otherwise it is not
   ## replaced.
+  runnableExamples:
+    doAssert "This sentence makes no sense!".replaceWord("no", "some") == "This sentence makes some sense!"
+    doAssert "no, no, no, no, yes?".replaceWord("no", "yes", 3) == "yes, yes, yes, no, yes?"
   result = ""
   let subLen = sub.len
   if subLen == 0: result = s
@@ -2167,9 +2176,8 @@ func replaceWord*(s, sub: string, by = "", maxOccurrence = -1): string {.rtl,
       occLeft = maxOccurrence
     while true:
       var j = find(a, s, sub, i)
-      if j == -1: break
+      if j == -1 or occLeft == 0: break
       if occLeft > 0: dec occLeft
-      if occLeft == 0: break
       # check for word boundaries
       if (j == 0 or s[j-1] notin wordChars) and
          (j+sub.len >= s.len or s[j+sub.len] notin wordChars):
