@@ -15,8 +15,8 @@ import std/[
   
   # Collections:
   critbits, deques, heapqueue, intsets, lists, options, sets,
-  sharedlist, tables,
-  # fails: sharedtables
+  tables,
+  # fails: sharedlist, sharedtables
 
   # Strings:
   cstrutils, editdistance, wordwrap, parseutils, ropes,
