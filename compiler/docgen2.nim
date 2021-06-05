@@ -31,6 +31,7 @@ template closeImpl(body: untyped) {.dirty.} =
   let useWarning = sfMainModule notin g.module.flags
   let groupedToc = true
   if shouldProcess(g):
+    finishGenerateDoc(g.doc)
     body
     try:
       generateIndex(g.doc)

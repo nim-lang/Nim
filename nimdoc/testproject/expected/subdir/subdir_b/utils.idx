@@ -1,8 +1,3 @@
-This is now a header	subdir/subdir_b/utils.html#this-is-now-a-header	 This is now a header	
-Next header	subdir/subdir_b/utils.html#this-is-now-a-header-next-header	  Next header	
-And so on	subdir/subdir_b/utils.html#next-header-and-so-on	   And so on	
-More headers	subdir/subdir_b/utils.html#more-headers	 More headers	
-Up to level 6	subdir/subdir_b/utils.html#more-headers-up-to-level-6	      Up to level 6	
 enumValueA	subdir/subdir_b/utils.html#enumValueA	SomeType.enumValueA	
 enumValueB	subdir/subdir_b/utils.html#enumValueB	SomeType.enumValueB	
 enumValueC	subdir/subdir_b/utils.html#enumValueC	SomeType.enumValueC	
@@ -11,3 +6,8 @@ someType	subdir/subdir_b/utils.html#someType_2	utils: someType(): SomeType
 aEnum	subdir/subdir_b/utils.html#aEnum.t	utils: aEnum(): untyped	
 bEnum	subdir/subdir_b/utils.html#bEnum.t	utils: bEnum(): untyped	
 fromUtilsGen	subdir/subdir_b/utils.html#fromUtilsGen.t	utils: fromUtilsGen(): untyped	
+This is now a header	subdir/subdir_b/utils.html#this-is-now-a-header	 This is now a header	
+Next header	subdir/subdir_b/utils.html#this-is-now-a-header-next-header	  Next header	
+And so on	subdir/subdir_b/utils.html#next-header-and-so-on	   And so on	
+More headers	subdir/subdir_b/utils.html#more-headers	 More headers	
+Up to level 6	subdir/subdir_b/utils.html#more-headers-up-to-level-6	      Up to level 6	
