@@ -856,6 +856,29 @@ proc nestList*(op: NimNode; pack: NimNode; init: NimNode): NimNode =
   for i in countdown(pack.len - 1, 0):
     result = newCall(op, pack[i], result)
 
+proc eqIdent*(a: string; b: string): bool {.magic: "EqIdent", noSideEffect.}
+  ## Style insensitive comparison.
+
+proc eqIdent*(a: NimNode; b: string): bool {.magic: "EqIdent", noSideEffect.}
+  ## Style insensitive comparison.  `a` can be an identifier or a
+  ## symbol. `a` may be wrapped in an export marker
+  ## (`nnkPostfix`) or quoted with backticks (`nnkAccQuoted`),
+  ## these nodes will be unwrapped.
+
+proc eqIdent*(a: string; b: NimNode): bool {.magic: "EqIdent", noSideEffect.}
+  ## Style insensitive comparison.  `b` can be an identifier or a
+  ## symbol. `b` may be wrapped in an export marker
+  ## (`nnkPostfix`) or quoted with backticks (`nnkAccQuoted`),
+  ## these nodes will be unwrapped.
+
+proc eqIdent*(a: NimNode; b: NimNode): bool {.magic: "EqIdent", noSideEffect.}
+  ## Style insensitive comparison.  `a` and `b` can be an
+  ## identifier or a symbol. Both may be wrapped in an export marker
+  ## (`nnkPostfix`) or quoted with backticks (`nnkAccQuoted`),
+  ## these nodes will be unwrapped.
+
+const collapseSymChoice = not defined(nimLegacyMacrosCollapseSymChoice)
+
 proc treeTraverse(n: NimNode; res: var string; level = 0; isLisp = false, indented = false) {.benign.} =
   if level > 0:
     if indented:
@@ -883,8 +906,21 @@ proc treeTraverse(n: NimNode; res: var string; level = 0; isLisp = false, indent
     res.add(" " & $n.strVal.newLit.repr)
   of nnkNone:
     assert false
+  elif n.kind in {nnkOpenSymChoice, nnkClosedSymChoice} and collapseSymChoice:
+    res.add(" " & $n.len)
+    if n.len > 0:
+      var allSameSymName = true
+      for i in 0..<n.len:
+        if n[i].kind != nnkSym or not eqIdent(n[i], n[0]):
+          allSameSymName = false
+          break
+      if allSameSymName:
+        res.add(" " & $n[0].strVal.newLit.repr)
+      else:
+        for j in 0 ..< n.len:
+          n[j].treeTraverse(res, level+1, isLisp, indented)
   else:
-    for j in 0 .. n.len-1:
+    for j in 0 ..< n.len:
       n[j].treeTraverse(res, level+1, isLisp, indented)
 
   if isLisp:
@@ -932,6 +968,10 @@ proc astGenRepr*(n: NimNode): string {.benign.} =
     of nnkStrLit..nnkTripleStrLit, nnkCommentStmt, nnkIdent, nnkSym:
       res.add(n.strVal.newLit.repr)
     of nnkNone: assert false
+    elif n.kind in {nnkOpenSymChoice, nnkClosedSymChoice} and collapseSymChoice:
+      res.add(", # unrepresentable symbols: " & $n.len)
+      if n.len > 0:
+        res.add(" " & n[0].strVal.newLit.repr)
     else:
       res.add(".newTree(")
       for j in 0..<n.len:
@@ -1393,27 +1433,6 @@ proc unpackInfix*(node: NimNode): tuple[left: NimNode; op: string; right: NimNod
 proc copy*(node: NimNode): NimNode =
   ## An alias for `copyNimTree<#copyNimTree,NimNode>`_.
   return node.copyNimTree()
-
-proc eqIdent*(a: string; b: string): bool {.magic: "EqIdent", noSideEffect.}
-  ## Style insensitive comparison.
-
-proc eqIdent*(a: NimNode; b: string): bool {.magic: "EqIdent", noSideEffect.}
-  ## Style insensitive comparison.  `a` can be an identifier or a
-  ## symbol. `a` may be wrapped in an export marker
-  ## (`nnkPostfix`) or quoted with backticks (`nnkAccQuoted`),
-  ## these nodes will be unwrapped.
-
-proc eqIdent*(a: string; b: NimNode): bool {.magic: "EqIdent", noSideEffect.}
-  ## Style insensitive comparison.  `b` can be an identifier or a
-  ## symbol. `b` may be wrapped in an export marker
-  ## (`nnkPostfix`) or quoted with backticks (`nnkAccQuoted`),
-  ## these nodes will be unwrapped.
-
-proc eqIdent*(a: NimNode; b: NimNode): bool {.magic: "EqIdent", noSideEffect.}
-  ## Style insensitive comparison.  `a` and `b` can be an
-  ## identifier or a symbol. Both may be wrapped in an export marker
-  ## (`nnkPostfix`) or quoted with backticks (`nnkAccQuoted`),
-  ## these nodes will be unwrapped.
 
 proc expectIdent*(n: NimNode, name: string) {.since: (1,1).} =
   ## Check that `eqIdent(n,name)` holds true. If this is not the

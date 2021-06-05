@@ -81,6 +81,9 @@
 
 - Deprecated `proc reversed*[T](a: openArray[T], first: Natural, last: int): seq[T]` in `std/algorithm`.
 
+-  In `std/macros`, `treeRepr,lispRepr,astGenRepr` now represent SymChoice nodes in a collapsed way,
+   use `-d:nimLegacyMacrosCollapseSymChoice` to get previous behavior.
+
 - The configuration subsystem now allows for `-d:release` and `-d:danger` to work as expected.
   The downside is that these defines now have custom logic that doesn't apply for
   other defines.

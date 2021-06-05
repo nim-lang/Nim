@@ -1,3 +1,9 @@
+#[
+xxx macros tests need to be reorganized to makes sure each API is tested once
+See also:
+  tests/macros/tdumpast.nim for treeRepr + friends
+]#
+
 import std/macros
 
 block: # hasArgOfName
