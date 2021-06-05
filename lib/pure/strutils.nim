@@ -84,31 +84,42 @@ from std/private/strimpl import cmpIgnoreStyleImpl, cmpIgnoreCaseImpl, startsWit
 
 
 const
-  Whitespace* = {' ', '\t', '\v', '\r', '\l', '\f'}
+  Whitespace* = {' ', '\t', '\v', '\r', '\n', '\f'}
     ## All the characters that count as whitespace (space, tab, vertical tab,
     ## carriage return, new line, form feed).
 
   Letters* = {'A'..'Z', 'a'..'z'}
     ## The set of letters.
 
+  Vowels* = {'a', 'e', 'i', 'o', 'u', 'A', 'E', 'I', 'O', 'U'}
+    ## The set of vowels.
+  
+  Consonants* = Letters - Vowels
+    ## The set of consonants.
+
   Digits* = {'0'..'9'}
     ## The set of digits.
 
-  HexDigits* = {'0'..'9', 'A'..'F', 'a'..'f'}
+  HexDigits* = Digits + {'A'..'F', 'a'..'f'}
     ## The set of hexadecimal digits.
 
-  IdentChars* = {'a'..'z', 'A'..'Z', '0'..'9', '_'}
+  IdentChars* = Letters + Digits + {'_'}
     ## The set of characters an identifier can consist of.
 
-  IdentStartChars* = {'a'..'z', 'A'..'Z', '_'}
+  IdentStartChars* = Letters + {'_'}
     ## The set of characters an identifier can start with.
 
-  Newlines* = {'\13', '\10'}
+  Newlines* = {'\r', '\n'}
     ## The set of characters a newline terminator can start with (carriage
     ## return, line feed).
 
+  Punctuation* = {'!', ',', '.', ':', ';', '?'}
+    ## The set of all punctuation characters. ('!', ',', '.', ':', ';', '?')
+    ## Not to be confused with the set `Special`, which contains all
+    ## non-alphanumeric characters.
+
   AllChars* = {'\x00'..'\xFF'}
-    ## A set with all the possible characters.
+    ## The set with all the possible characters.
     ##
     ## Not very useful by its own, you can use it to create *inverted* sets to
     ## make the `find func<#find,string,set[char],Natural,int>`_
@@ -118,6 +129,10 @@ const
     ##   let invalid = AllChars - Digits
     ##   doAssert "01234".find(invalid) == -1
     ##   doAssert "01A34".find(invalid) == 2
+
+  Special* = AllChars - Letters - Digits
+  ## The set of all special characters.
+  ## This includes all non-alphanumeric characters.
 
 func isAlphaAscii*(c: char): bool {.rtl, extern: "nsuIsAlphaAsciiChar".} =
   ## Checks whether or not character `c` is alphabetical.
@@ -129,6 +144,24 @@ func isAlphaAscii*(c: char): bool {.rtl, extern: "nsuIsAlphaAsciiChar".} =
     doAssert isAlphaAscii('E') == true
     doAssert isAlphaAscii('8') == false
   return c in Letters
+
+func isVowelAscii*(c: char): bool {.rtl, extern: "nsuIsVowelAsciiChar".} =
+  ## Checks whether or not character `c` is vowel.
+  ##
+  ## This checks a-z, A-Z ASCII characters only.
+  runnableExamples:
+    doAssert isVowelAscii('a') == true
+    doAssert isVowelAscii('f') == false
+  return c in Vowels
+
+func isConsonantAscii*(c: char): bool {.rtl, extern: "nsuIsConsonantAsciiChar".} =
+  ## Checks whether or not character `c` is consonant.
+  ##
+  ## This checks a-z, A-Z ASCII characters only.
+  runnableExamples:
+    doAssert isConsonantAscii('a') == false
+    doAssert isConsonantAscii('f') == true
+  return c in Consonants
 
 func isAlphaNumeric*(c: char): bool {.rtl, extern: "nsuIsAlphaNumericChar".} =
   ## Checks whether or not `c` is alphanumeric.
@@ -185,6 +218,37 @@ func isUpperAscii*(c: char): bool {.rtl, extern: "nsuIsUpperAsciiChar".} =
     doAssert isUpperAscii('7') == false
   return c in {'A'..'Z'}
 
+func isPunctAscii*(c: char): bool {.rtl, extern: "nsuIsPuncAsciiChar".} =
+  ## Checks whether or not `c` is a punctuation character.
+  ## ('!', ',', '.', ':', ';', '?')
+  ##
+  ## This checks ASCII characters only.
+  ##
+  ## See also:
+  ## * `removePunctAscii func<#removePunctAscii,string>`_
+  runnableExamples:
+    doAssert isPunctAscii('a') == false
+    doAssert isPunctAscii('!') == true
+    doAssert isPunctAscii(';') == true
+  return c in Punctuation
+
+func isSpecialAscii*(c: char): bool {.rtl, extern: "nsuIsSpecialAscii".} =
+  ## Checks whether or not `c` is a special character.
+  ## 
+  ## This checks ASCII characters only.
+  ## 
+  ## See also:
+  ## * `removeSpecialAscii func<#removeSpecialAscii,string>`_
+  runnableExamples:
+    doAssert isSpecialAscii('a') == false
+    doAssert isSpecialAscii('!') == true
+    doAssert isSpecialAscii('\n') == true
+  return c in Special
+
+template toImpl(call) =
+  result = newString(len(s))
+  for i in 0..len(s) - 1:
+    result[i] = call(s[i])
 
 func toLowerAscii*(c: char): char {.rtl, extern: "nsuToLowerAsciiChar".} =
   ## Returns the lower case version of character `c`.
@@ -203,11 +267,6 @@ func toLowerAscii*(c: char): char {.rtl, extern: "nsuToLowerAsciiChar".} =
     result = char(uint8(c) xor 0b0010_0000'u8)
   else:
     result = c
-
-template toImpl(call) =
-  result = newString(len(s))
-  for i in 0..len(s) - 1:
-    result[i] = call(s[i])
 
 func toLowerAscii*(s: string): string {.rtl, extern: "nsuToLowerAsciiStr".} =
   ## Converts string `s` into lower case.
@@ -254,6 +313,33 @@ func toUpperAscii*(s: string): string {.rtl, extern: "nsuToUpperAsciiStr".} =
     doAssert toUpperAscii("FooBar!") == "FOOBAR!"
   toImpl toUpperAscii
 
+template removeCharacters(s, theSet): string =
+  let sLen = s.len
+  result = newStringOfCap(sLen)
+  for i in 0..sLen-1:
+    if not (s[i] notin theSet):
+      result[i] = s[i]
+
+func removePunctAscii*(s: string): string {.rtl, extern: "nsuRemovePunctAscii".} =
+  ## returns the a version of `s`, where all Punctuation characters are
+  ## removed. ('!', ',', '.', ':', ';', '?')
+  ## 
+  ## This works on ASCII characters only.
+  runnableExamples:
+    doAssert removePunctAscii("Hello, World!") == "Hello World"
+    doAssert removePunctAscii("No. More. Punctiation!") == "No More Puntuation"
+  removeCharacters(s, Punctiation)
+
+func removeSpecialAscii*(s: string): string {.rtl, extern: "nsuRemoveSpecialAscii".} =
+  ## returns the a version of `s`, where all Special characters are
+  ## removed. This means all non-alphanumeric characters.
+  ## 
+  ## This works on ASCII characters only.
+  runnableExamples:
+    doAssert removeSpecialAscii("*Nuzzles... uwu*") == "Nuzzles uwu"
+    doAssert removeSpecialAscii("{directories: ['source1', 'source2', 'build']}") = "directories source1 source2 build"
+  removeCharacters(s, Special)
+
 func capitalizeAscii*(s: string): string {.rtl, extern: "nsuCapitalizeAscii".} =
   ## Converts the first character of string `s` into upper case.
   ##
@@ -265,8 +351,10 @@ func capitalizeAscii*(s: string): string {.rtl, extern: "nsuCapitalizeAscii".} =
   runnableExamples:
     doAssert capitalizeAscii("foo") == "Foo"
     doAssert capitalizeAscii("-bar") == "-bar"
-  if s.len == 0: result = ""
-  else: result = toUpperAscii(s[0]) & substr(s, 1)
+  if s.len == 0:
+    result = ""
+  else:
+    result = toUpperAscii(s[0]) & substr(s, 1)
 
 func nimIdentNormalize*(s: string): string =
   ## Normalizes the string `s` as a Nim identifier.
