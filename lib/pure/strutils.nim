@@ -327,7 +327,7 @@ func removePunctAscii*(s: string): string {.rtl, extern: "nsuRemovePunctAscii".}
   ## This works on ASCII characters only.
   runnableExamples:
     doAssert removePunctAscii("Hello, World!") == "Hello World"
-    doAssert removePunctAscii("No. More. Punctiation!") == "No More Puntuation"
+    doAssert removePunctAscii("No. More. Punctiation!") == "No More Punctiation"
   removeCharacters(s, Punctiation)
 
 func removeSpecialAscii*(s: string): string {.rtl, extern: "nsuRemoveSpecialAscii".} =
@@ -336,7 +336,7 @@ func removeSpecialAscii*(s: string): string {.rtl, extern: "nsuRemoveSpecialAsci
   ## 
   ## This works on ASCII characters only.
   runnableExamples:
-    doAssert removeSpecialAscii("*Nuzzles... uwu*") == "Nuzzles uwu"
+    doAssert removeSpecialAscii("*nuzzle-wuzzles, uwu*") == "nuzzlewuzzles uwu"
     doAssert removeSpecialAscii("{directories: ['source1', 'source2', 'build']}") = "directories source1 source2 build"
   removeCharacters(s, Special)
 
