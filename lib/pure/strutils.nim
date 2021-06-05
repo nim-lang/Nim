@@ -313,13 +313,6 @@ func toUpperAscii*(s: string): string {.rtl, extern: "nsuToUpperAsciiStr".} =
     doAssert toUpperAscii("FooBar!") == "FOOBAR!"
   toImpl toUpperAscii
 
-template removeCharacters(s, theSet): string =
-  let sLen = s.len
-  result = newStringOfCap(sLen)
-  for i in 0..sLen-1:
-    if not (s[i] notin theSet):
-      result[i] = s[i]
-
 func removePunctAscii*(s: string): string {.rtl, extern: "nsuRemovePunctAscii".} =
   ## returns the a version of `s`, where all Punctuation characters are
   ## removed. ('!', ',', '.', ':', ';', '?')
@@ -327,8 +320,12 @@ func removePunctAscii*(s: string): string {.rtl, extern: "nsuRemovePunctAscii".}
   ## This works on ASCII characters only.
   runnableExamples:
     doAssert removePunctAscii("Hello, World!") == "Hello World"
-    doAssert removePunctAscii("No. More. Punctiation!") == "No More Punctiation"
-  removeCharacters(s, Punctiation)
+    doAssert removePunctAscii("No. More. Punctuation!") == "No More Punctuation"
+  let sLen = s.len
+  result = newStringOfCap(sLen)
+  for i in 0..sLen-1:
+    if not (s[i] notin Punctuation):
+      result[i] = s[i]
 
 func removeSpecialAscii*(s: string): string {.rtl, extern: "nsuRemoveSpecialAscii".} =
   ## returns the a version of `s`, where all Special characters are
@@ -338,7 +335,11 @@ func removeSpecialAscii*(s: string): string {.rtl, extern: "nsuRemoveSpecialAsci
   runnableExamples:
     doAssert removeSpecialAscii("*nuzzle-wuzzles, uwu*") == "nuzzlewuzzles uwu"
     doAssert removeSpecialAscii("{directories: ['source1', 'source2', 'build']}") = "directories source1 source2 build"
-  removeCharacters(s, Special)
+  let sLen = s.len
+  result = newStringOfCap(sLen)
+  for i in 0..sLen-1:
+    if not (s[i] notin Special):
+      result[i] = s[i]
 
 func capitalizeAscii*(s: string): string {.rtl, extern: "nsuCapitalizeAscii".} =
   ## Converts the first character of string `s` into upper case.
