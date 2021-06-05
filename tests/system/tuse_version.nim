@@ -1,5 +1,5 @@
 discard """
-  cmd: "nim c --useVersion:1.0 -r $file"
+  cmd: "nim c --useVersion:1.0 -r --threads:on $file"
   output: "1.0.100"
 """
 

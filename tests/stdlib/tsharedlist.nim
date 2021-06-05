@@ -1,4 +1,9 @@
-import sharedlist
+discard """
+  matrix: "--threads:on"
+"""
+
+
+import std/[sharedlist]
 
 var
   list: SharedList[int]
