@@ -128,7 +128,7 @@ macro initCaseObject(T: typedesc, fun: untyped): untyped =
         `fun`(`key2`, typedesc[`typ`])
       result.add newTree(nnkExprColonExpr, key, val)
 
-proc raiseJsonException(condStr: string, msg: string) =
+proc raiseJsonException(condStr: string, msg: string) {.noinline.} =
   # just pick 1 exception type for simplicity; other choices would be:
   # JsonError, JsonParser, JsonKindError
   raise newException(ValueError, condStr & " failed: " & msg)
