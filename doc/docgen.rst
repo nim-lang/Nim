@@ -24,10 +24,10 @@ exported symbols (`*`), including procedures, types, and variables.
 command               runs on...               input format   output format
 ===================   ======================   ============   ==============
 `nim doc`:cmd:        documentation comments   ``.nim``       ``.html`` HTML
-`nim doc2tex`:cmd:    \`                       \`             ``.tex`` LaTeX
-`nim jsondoc`:cmd:    \`                       \`             ``.json`` JSON
+`nim doc2tex`:cmd:    ″                        ″              ``.tex`` LaTeX
+`nim jsondoc`:cmd:    ″                        ″              ``.json`` JSON
 `nim rst2html`:cmd:   standalone documents     ``.rst``       ``.html`` HTML
-`nim rst2tex`:cmd:    \`                       \`             ``.tex`` LaTeX
+`nim rst2tex`:cmd:    ″                        ″              ``.tex`` LaTeX
 ===================   ======================   ============   ==============
 
 Quick start
@@ -123,7 +123,7 @@ The following examples will generate documentation for this sample
 .. code:: nim
    :file: docgen_sample.nim
 
-All the below commands save their output to ``htmldocs`` directory relatieve to
+All the below commands save their output to ``htmldocs`` directory relative to
 the directory of file;
 hence the output for this sample will be in ``doc/htmldocs``.
 
@@ -241,7 +241,8 @@ Project switch
 
 This will recursively generate documentation of all Nim modules imported
 into the input module that belong to the Nimble package that ``filename.nim``
-belongs to. The index files will also be generated.
+belongs to. The index files and the corresponding ``theindex.html`` will
+also be generated.
 
 
 Index switch
@@ -274,7 +275,8 @@ documented item in your source code pointing to the implementation of that
 item on a GitHub repository.
 You can click the link to see the implementation of the item.
 
-The `git.commit`:option: switch overrides the hardcoded `devel` branch in config/nimdoc.cfg.
+The `git.commit`:option: switch overrides the hardcoded `devel` branch in
+``config/nimdoc.cfg``.
 This is useful to link to a different branch e.g. `--git.commit:master`:option:,
 or to a tag e.g. `--git.commit:1.2.3`:option: or a commit.
 
