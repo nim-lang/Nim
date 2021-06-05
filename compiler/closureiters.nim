@@ -414,8 +414,11 @@ proc exprToStmtList(n: PNode): tuple[s, res: PNode] =
 
 
 proc newEnvVarAsgn(ctx: Ctx, s: PSym, v: PNode): PNode =
-  result = newTree(nkFastAsgn, ctx.newEnvVarAccess(s), v)
-  result.info = v.info
+  if isEmptyType(v.typ):
+    result = v
+  else:
+    result = newTree(nkFastAsgn, ctx.newEnvVarAccess(s), v)
+    result.info = v.info
 
 proc addExprAssgn(ctx: Ctx, output, input: PNode, sym: PSym) =
   if input.kind == nkStmtListExpr:
@@ -427,8 +430,7 @@ proc addExprAssgn(ctx: Ctx, output, input: PNode, sym: PSym) =
 
 proc convertExprBodyToAsgn(ctx: Ctx, exprBody: PNode, res: PSym): PNode =
   result = newNodeI(nkStmtList, exprBody.info)
-  if exprBody.typ != nil:
-    ctx.addExprAssgn(result, exprBody, res)
+  ctx.addExprAssgn(result, exprBody, res)
 
 proc newNotCall(g: ModuleGraph; e: PNode): PNode =
   result = newTree(nkCall, newSymNode(g.getSysMagic(e.info, "not", mNot), e.info), e)

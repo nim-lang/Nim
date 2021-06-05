@@ -1,8 +1,9 @@
-.. default-role:: code
-
 ===================================
       Hot code reloading
 ===================================
+
+.. default-role:: code
+.. include:: rstcommon.rst
 
 The `hotCodeReloading`:idx: option enables special compilation mode where
 changes in the code can be applied automatically to a running program.
@@ -22,7 +23,7 @@ during development resides.
 
 In this example, we use SDL2 to create a window and we reload the logic
 code when `F9` is pressed. The important lines are marked with `#***`.
-To install SDL2 you can use `nimble install sdl2`.
+To install SDL2 you can use `nimble install sdl2`:cmd:.
 
 
 .. code-block:: nim
@@ -98,34 +99,40 @@ To install SDL2 you can use `nimble install sdl2`.
   main()
 
 
-Compile this example via::
+Compile this example via:
 
+```cmd
   nim c --hotcodereloading:on mymain.nim
+```
 
 Now start the program and KEEP it running!
 
-::
-
+.. code:: cmd
   # Unix:
   mymain &
   # or Windows (click on the .exe)
   mymain.exe
   # edit
 
-For example, change the line::
+For example, change the line:
 
+```nim
   discard renderer.setDrawColor(255, 128, 128, 0)
+```
 
-into::
+into:
 
+```nim
   discard renderer.setDrawColor(255, 255, 128, 0)
+```
 
 (This will change the color of the rectangle.)
 
 Then recompile the project, but do not restart or quit the mymain.exe program!
-::
 
+```cmd
   nim c --hotcodereloading:on mymain.nim
+```
 
 Now give the `mymain` SDL window the focus, press F9, and watch the
 updated version of the program.
@@ -188,15 +195,15 @@ Native code targets
 ===================
 
 Native projects using the hot code reloading option will be implicitly
-compiled with the `-d:useNimRtl` option and they will depend on both
+compiled with the `-d:useNimRtl`:option: option and they will depend on both
 the `nimrtl` library and the `nimhcr` library which implements the
 hot code reloading run-time. Both libraries can be found in the `lib`
 folder of Nim and can be compiled into dynamic libraries to satisfy
 runtime demands of the example code above. An example of compiling
-`nimhcr.nim` and `nimrtl.nim` when the source dir of Nim is installed
+``nimhcr.nim`` and ``nimrtl.nim`` when the source dir of Nim is installed
 with choosenim follows.
 
-::
+.. code:: console
 
   # Unix/MacOS
   # Make sure you are in the directory containing your .nim files
