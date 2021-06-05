@@ -335,6 +335,8 @@
 
 - Added setCurrentException for JS backend.
 
+- Added `dom.scrollIntoView` proc with options
+
 ## Language changes
 
 - `nimscript` now handles `except Exception as e`.
