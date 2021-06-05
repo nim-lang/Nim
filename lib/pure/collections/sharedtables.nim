@@ -66,7 +66,7 @@ template withValue*[A, B](t: var SharedTable[A, B], key: A,
                           value, body: untyped) =
   ## Retrieves the value at `t[key]`.
   ## `value` can be modified in the scope of the `withValue` call.
-  runnableExamples:
+  runnableExamples("--threads:on"):
     var table: SharedTable[string, string]
     init(table)
 
@@ -100,7 +100,7 @@ template withValue*[A, B](t: var SharedTable[A, B], key: A,
                           value, body1, body2: untyped) =
   ## Retrieves the value at `t[key]`.
   ## `value` can be modified in the scope of the `withValue` call.
-  runnableExamples:
+  runnableExamples("--threads:on"):
     var table: SharedTable[string, string]
     init(table)
 
