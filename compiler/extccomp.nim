@@ -993,7 +993,7 @@ proc changeDetectedViaJsonBuildInstructions*(conf: ConfigRef; jsonFile: Absolute
   var bcache: BuildCache
   try: bcache.fromJson(jsonFile.string.parseFile)
   except IOError, OSError, ValueError:
-    stderr.write "Warning: JSON processing failed for $#: $#\n" % [jsonFile.string, getCurrentExceptionMsg()]
+    stderr.write "Warning: JSON processing failed for: $#\n" % jsonFile.string
     return true
   if bcache.currentDir != getCurrentDir() or # fixes bug #16271
      bcache.configFiles != conf.configFiles.mapIt(it.string) or
