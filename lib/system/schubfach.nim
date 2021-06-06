@@ -147,6 +147,7 @@ when defined(sizeof_Int128):
     return y1 or uint32(y0 > 1)
 
 elif defined(vcc) and defined(cpu64):
+  proc umul128(x, y: uint64, z: ptr uint64): uint64 {.importc: "_umul128", header: "<intrin.h>".}
   proc roundToOdd(g: uint64; cpHi: uint32): uint32 {.inline.} =
     var p1: uint64 = 0
     var p0: uint64 = umul128(g, cpHi, addr(p1))
