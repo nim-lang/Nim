@@ -122,7 +122,7 @@ const
 
   Punctuation* = {'!', '\"', '#', '$', '%', '&', '\'', '(', ')', '*', '+', ',', '-', '.', '/', ':', ';', '<', '=', '>', '?', '@', '[', '\\', ']', '^', '_', '`', '{', '|', '}', '~'}
     ## The set of all ASCII punctuation characters.
-    ## Is the same as `PrintableChars - Letters - Digits`
+    ## Is the same as `GraphicChars - Letters - Digits`
 
   AllChars* = {'\x00'..'\xFF'}
     ## The set of all characters.
