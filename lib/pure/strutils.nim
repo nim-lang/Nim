@@ -2050,11 +2050,11 @@ func contains*(s: string, chars: set[char]): bool =
   ## * `find func<#find,string,set[char],Natural,int>`_
   return find(s, chars) >= 0
 
-func replace*(s: string, sub, by: char, maxOccurrence = -1): string {.rtl,
+func replace*(s: string, sub, by: char, max = -1): string {.rtl,
     extern: "nsuReplaceChar".} =
-  ## Replaces `maxOccurrence` occurrences of the character `sub` in `s` with
+  ## Replaces `max` occurrences of the character `sub` in `s` with
   ## the character `by`.
-  ## If `maxOccurrence` is set to `-1`, it replaces all occurrences.
+  ## If `max` is set to `-1`, it replaces all occurrences.
   ##
   ## Optimized version of `replace <#replace,string,string,string>`_ for
   ## characters.
@@ -2064,10 +2064,10 @@ func replace*(s: string, sub, by: char, maxOccurrence = -1): string {.rtl,
   ## * `replaceWord func<#replaceWord,string,string,string>`_
   ## * `multiReplace func<#multiReplace,string,varargs[]>`_
   runnableExamples:
-    doAssert "valid variable name".replace(' ', '_') == "valid_variable_name"
-    doAssert "Faabar!".replace('a', 'o', 2) == "Foobar!"
+    assert "valid variable name".replace(' ', '_') == "valid_variable_name"
+    assert "Faabar!".replace('a', 'o', 2) == "Foobar!"
   result = newString(s.len)
-  var occLeft = maxOccurrence
+  var occLeft = max
   for i in 0..s.high:
     if occLeft != 0 and s[i] == sub:
       result[i] = by
@@ -2078,11 +2078,11 @@ func replace*(s: string, sub, by: char, maxOccurrence = -1): string {.rtl,
 # Maybe implement something like this for all replace functions...?
 # So that they can for example replace all Whitespace characters
 #[
-func replace*(s: string, subs: set[char], by: char, maxOccurrence = -1): string
+func replace*(s: string, subs: set[char], by: char, max = -1): string
     {.rtl, extern: "nsuReplaceSetChar".} =
-  ## Replaces `maxOccurrence` occurrences of any characters in `subs` found
+  ## Replaces `max` occurrences of any characters in `subs` found
   ## in `s` with the character `by`.
-  ## If `maxOccurrence` is set to `-1`, it replaces all occurrences.
+  ## If `max` is set to `-1`, it replaces all occurrences.
   ##
   ## Optimized version of `replace <#replace,string,char[string],string>`_ for
   ## characters.
@@ -2092,7 +2092,7 @@ func replace*(s: string, subs: set[char], by: char, maxOccurrence = -1): string
   ## * `replaceWord func<#replaceWord,string,string,string>`_
   ## * `multiReplace func<#multiReplace,string,varargs[]>`_
   result = newString(s.len)
-  var occLeft = maxOccurrence
+  var occLeft = max
   for i in 0..s.high:
     if occLeft != 0 and s[i] in subs:
       result[i] = by
@@ -2101,11 +2101,11 @@ func replace*(s: string, subs: set[char], by: char, maxOccurrence = -1): string
       result[i] = s[i]
 ]#
 
-func replace*(s, sub: string, by = "", maxOccurrence = -1): string {.rtl,
+func replace*(s, sub: string, by = "", max = -1): string {.rtl,
     extern: "nsuReplaceStr".} =
-  ## Replaces `maxOccurrence` occurrences of the string `sub` in `s` with the
+  ## Replaces `max` occurrences of the string `sub` in `s` with the
   ## string `by`.
-  ## If `maxOccurrence` is set to `-1`, it replaces all occurrences.
+  ## If `max` is set to `-1`, it replaces all occurrences.
   ##
   ## See also:
   ## * `find func<#find,string,string,Natural,int>`_
@@ -2114,8 +2114,8 @@ func replace*(s, sub: string, by = "", maxOccurrence = -1): string {.rtl,
   ## * `replaceWord func<#replaceWord,string,string,string>`_
   ## * `multiReplace func<#multiReplace,string,varargs[]>`_
   runnableExamples:
-    doAssert "This is not {}, but can be used as {}".replace("{}", "fmt()") == "This is not fmt(), but can be used as fmt()"
-    doAssert "almost valid variable name".replace(" ", "_", 2) == "almost_valid_variable name"
+    assert "FooBarBaz".replace("Foo", "Bar") == "BarBarBaz"
+    assert "BarBarBaz".replace("Bar", "Foo", 1) == "FooBarBaz"
   result = ""
   let subLen = sub.len
   if subLen == 0: result = s
@@ -2125,7 +2125,7 @@ func replace*(s, sub: string, by = "", maxOccurrence = -1): string {.rtl,
     # char-based search that doesn't need a skip table:
     var
       i = 0
-      occLeft = maxOccurrence
+      occLeft = max
     while true:
       let j = find(s, subChar, i)
       if j == -1 or occLeft == 0: break
@@ -2141,7 +2141,7 @@ func replace*(s, sub: string, by = "", maxOccurrence = -1): string {.rtl,
     initSkipTable(a, sub)
     var
       i = 0
-      occLeft = maxOccurrence
+      occLeft = max
     while true:
       let j = find(a, s, sub, i)
       if j == -1 or occLeft == 0: break
@@ -2152,18 +2152,18 @@ func replace*(s, sub: string, by = "", maxOccurrence = -1): string {.rtl,
     # copy the rest:
     result.add substr(s, i)
 
-func replaceWord*(s, sub: string, by = "", maxOccurrence = -1): string {.rtl,
+func replaceWord*(s, sub: string, by = "", max = -1): string {.rtl,
     extern: "nsuReplaceWord".} =
-  ## Replaces `maxOccurrence` occurrences of the string `sub` in `s` with the
+  ## Replaces `max` occurrences of the string `sub` in `s` with the
   ## string `by`.
-  ## If `maxOccurrence` is set to `-1`, it replaces all occurrences.
+  ## If `max` is set to `-1`, it replaces all occurrences.
   ##
   ## Each occurrence of `sub` has to be surrounded by word boundaries
   ## (comparable to `\b` in regular expressions), otherwise it is not
   ## replaced.
   runnableExamples:
-    doAssert "This sentence makes no sense!".replaceWord("no", "some") == "This sentence makes some sense!"
-    doAssert "no, no, no, no, yes?".replaceWord("no", "yes", 3) == "yes, yes, yes, no, yes?"
+    assert "Hello, Helloworld".replaceWord("Hello", "Hi") == "Hi, Helloworld"
+    assert "no, no, no, no, yes?".replaceWord("no", "yes", 3) == "yes, yes, yes, no, yes?"
   result = ""
   let subLen = sub.len
   if subLen == 0: result = s
@@ -2173,7 +2173,7 @@ func replaceWord*(s, sub: string, by = "", maxOccurrence = -1): string {.rtl,
     initSkipTable(a, sub)
     var
       i = 0
-      occLeft = maxOccurrence
+      occLeft = max
     while true:
       var j = find(a, s, sub, i)
       if j == -1 or occLeft == 0: break

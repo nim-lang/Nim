@@ -514,9 +514,13 @@ template main() =
     block:
       let c = ""
       let c2 = c.replace("\n", "\\n")
+    
+    doAssert "Hello World".replace("o", "", 1) == "Hell World"
+    doAssert "aaaa".replace('a', 'b', 2) == "bbaa"
 
   block: # replaceWord
     doAssert "-ld a-ldz -ld".replaceWord("-ld") == " a-ldz "
+    doAssert "-ld a-ldz -ld".replaceWord("-ld", "", 1) == " a-ldz -ld"
     doAssert "-lda-ldz -ld abc".replaceWord("-ld") == "-lda-ldz  abc"
     doAssert "-lda-ldz -ld abc".replaceWord("") == "-lda-ldz -ld abc"
 

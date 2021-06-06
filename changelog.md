@@ -337,6 +337,9 @@
 
 - Added `dom.scrollIntoView` proc with options
 
+- Added a `max` parameter to `strutils.replace`, this way it can be used to
+  only replace some occurrences.
+
 ## Language changes
 
 - `nimscript` now handles `except Exception as e`.
