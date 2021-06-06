@@ -40,6 +40,7 @@ template main() =
     for i in char.low .. char.high:
       doAssert (ispunct(i.cint) > 0) == (i in Punctuation)
 
+
   block: # strip
     doAssert strip("  ha  ") == "ha"
     doAssert strip("  foofoofoo  ") == "foofoofoo"

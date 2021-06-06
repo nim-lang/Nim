@@ -104,7 +104,7 @@ const
     ## The set of characters an identifier can start with.
 
   Newlines* = {'\r', '\n'}
-    ## The set of characters a newline terminator can consist of
+    ## The set of characters a newline terminator can consist of.
 
   ControlChars* = {'\0'..'\31', '\127'}
     ## The set of all ASCII control characters.
