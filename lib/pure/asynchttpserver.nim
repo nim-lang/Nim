@@ -281,11 +281,11 @@ proc processRequest(
   # connection will not be closed and will be kept in the connection pool.
 
   # Persistent connections
-  if (not request.disableKeepalive and
-     request.protocol == HttpVer11 and
+  if not request.disableKeepalive and
+     (request.protocol == HttpVer11 and
       cmpIgnoreCase(request.headers.getOrDefault("connection"), "close") != 0) or
      (request.protocol == HttpVer10 and
-      cmpIgnoreCase(request.headers.getOrDefault("connection"), "keep-alive") == 0):
+      cmpIgnoreCase(request.headers.getOrDefault("connection"), "keep-alive") == 0)):
     # In HTTP 1.1 we assume that connection is persistent. Unless connection
     # header states otherwise.
     # In HTTP 1.0 we assume that the connection should not be persistent.
