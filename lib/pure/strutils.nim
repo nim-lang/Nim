@@ -114,7 +114,7 @@ const
   GraphicChars* = {'!'..'~'}
     ## The set of all ASCII graphic characters, i.e. that occupy a printing
     ## position on a display and have a graphical representation.
-    ## (see also https://www.cplusplus.com/reference/cctype/isprint/)
+    ## (see also https://www.cplusplus.com/reference/cctype/isgraph/)
   
   PrintableChars* = GraphicChars + {' '}
     ## The set of all ASCII printable characters, i.e. that occupy a printing
