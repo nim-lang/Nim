@@ -2054,7 +2054,7 @@ func replace*(s: string, sub, by: char, max = -1): string {.rtl,
     extern: "nsuReplaceChar".} =
   ## Replaces `max` occurrences of the character `sub` in `s` with
   ## the character `by`.
-  ## If `max` is set to `-1`, it replaces all occurrences.
+  ## If `maxOccurrence == -1`, it replaces all occurrences.
   ##
   ## Optimized version of `replace <#replace,string,string,string>`_ for
   ## characters.
