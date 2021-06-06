@@ -65,6 +65,7 @@ type
     url*: Uri
     hostname*: string    ## The hostname of the client that made the request.
     body*: string
+    disableKeepalive: bool
 
   AsyncHttpServer* = ref object
     socket: AsyncSocket
@@ -280,7 +281,8 @@ proc processRequest(
   # connection will not be closed and will be kept in the connection pool.
 
   # Persistent connections
-  if (request.protocol == HttpVer11 and
+  if (not request.disableKeepalive and
+     request.protocol == HttpVer11 and
       cmpIgnoreCase(request.headers.getOrDefault("connection"), "close") != 0) or
      (request.protocol == HttpVer10 and
       cmpIgnoreCase(request.headers.getOrDefault("connection"), "keep-alive") == 0):
@@ -299,15 +301,18 @@ proc processClient(server: AsyncHttpServer, client: AsyncSocket, address: string
   var request = newFutureVar[Request]("asynchttpserver.processClient")
   request.mget().url = initUri()
   request.mget().headers = newHttpHeaders()
+  request.mget().disableKeepalive = false
   var lineFut = newFutureVar[string]("asynchttpserver.processClient")
   lineFut.mget() = newStringOfCap(80)
 
   let startTimeout = now()
   while not client.isClosed:
     let fds = activeDescriptors()
+    # Disables the keepalive if the active file descriptors exceeds the maxFDs value
+    # or if the maximum keepalive timeout is exceeded. 
     # The maxFDs should be replaced by the keepaliveConn?
     if (fds > server.maxFDs) or ((now() - startTimeout).inSeconds > server.keepaliveTimeout):
-      break # Connection timeout
+      request.mget().disableKeepalive = true
 
     let retry = await processRequest(
       server, request, client, address, lineFut, callback
@@ -315,6 +320,7 @@ proc processClient(server: AsyncHttpServer, client: AsyncSocket, address: string
     if not retry: break
 
   client.close() # Close the connection to not increase the number of open files. 
+
 
 const
   nimMaxDescriptorsFallback* {.intdefine.} = 16_000 ## fallback value for \
