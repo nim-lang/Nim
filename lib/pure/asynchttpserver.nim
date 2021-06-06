@@ -44,6 +44,7 @@
 
 import asyncnet, asyncdispatch, parseutils, uri, strutils
 import httpcore
+from times import DateTime, now, `-`, inSeconds
 
 export httpcore except parseHeader
 
@@ -289,6 +290,9 @@ proc processRequest(
     request.client.close()
     return false
 
+const
+  keepaliveTimeout* {.intdefine.} = 60 ### default value for keepaliveTimeout in seconds
+
 proc processClient(server: AsyncHttpServer, client: AsyncSocket, address: string,
                    callback: proc (request: Request):
                       Future[void] {.closure, gcsafe.}) {.async.} =
@@ -298,11 +302,19 @@ proc processClient(server: AsyncHttpServer, client: AsyncSocket, address: string
   var lineFut = newFutureVar[string]("asynchttpserver.processClient")
   lineFut.mget() = newStringOfCap(80)
 
+  let startTimeout = now()
   while not client.isClosed:
+    let fds = activeDescriptors()
+    # The maxFDs should be replaced by the keepaliveConn?
+    if (fds > server.maxFDs) or ((now() - startTimeout).inSeconds > keepaliveTimeout):
+      break # Connection timeout
+
     let retry = await processRequest(
       server, request, client, address, lineFut, callback
     )
     if not retry: break
+
+  client.close() # Close the connection to not increase the number of open files. 
 
 const
   nimMaxDescriptorsFallback* {.intdefine.} = 16_000 ## fallback value for \
@@ -339,6 +351,7 @@ proc acceptRequest*(server: AsyncHttpServer,
   var (address, client) = await server.socket.acceptAddr()
   asyncCheck processClient(server, client, address, callback)
 
+
 proc serve*(server: AsyncHttpServer, port: Port,
             callback: proc (request: Request): Future[void] {.closure, gcsafe.},
             address = "";
@@ -364,6 +377,7 @@ proc serve*(server: AsyncHttpServer, port: Port,
       poll()
     #echo(f.isNil)
     #echo(f.repr)
+
 
 proc close*(server: AsyncHttpServer) =
   ## Terminates the async http server instance.
