@@ -14,11 +14,21 @@ Introduction
 ============
 
 This document describes the `documentation generation tools`:idx: built into
-the `Nim compiler <nimc.html>`_, which can generate HTML and JSON output
-from input .nim files and projects, as well as HTML and LaTeX from input RST
+the `Nim compiler <nimc.html>`_, which can generate HTML, Latex and JSON output
+from input ``.nim`` files and projects, as well as HTML and LaTeX from input RST
 (reStructuredText) files. The output documentation will include the module
 dependencies (`import`), any top-level documentation comments (`##`), and
 exported symbols (`*`), including procedures, types, and variables.
+
+===================   ======================   ============   ==============
+command               runs on...               input format   output format
+===================   ======================   ============   ==============
+`nim doc`:cmd:        documentation comments   ``.nim``       ``.html`` HTML
+`nim doc2tex`:cmd:    ″                        ″              ``.tex`` LaTeX
+`nim jsondoc`:cmd:    ″                        ″              ``.json`` JSON
+`nim rst2html`:cmd:   standalone rst files     ``.rst``       ``.html`` HTML
+`nim rst2tex`:cmd:    ″                        ″              ``.tex`` LaTeX
+===================   ======================   ============   ==============
 
 Quick start
 -----------
@@ -53,7 +63,8 @@ Any comments which are preceded by a double-hash (`##`), are interpreted as
 documentation.  Comments are parsed as RST (see `reference
 <http://docutils.sourceforge.net/docs/user/rst/quickref.html>`_), providing
 Nim module authors the ability to easily generate richly formatted
-documentation with only their well-documented code.
+documentation with only their well-documented code!
+Basic Markdown syntax is also supported inside the doc comments.
 
 Example:
 
@@ -99,32 +110,22 @@ won't influence RST formatting.
       ##
       ## Paragraph.
 
-Nim file input
------------------
-
-The following examples will generate documentation for the below contrived
-*Nim* module, aptly named 'sample.nim'
-
-sample.nim:
-
-.. code-block:: nim
-  ## This module is a sample.
-
-  import std/strutils
-
-  proc helloWorld*(times: int) =
-    ## Takes an integer and outputs
-    ## as many "hello world!"s
-
-    for i in 0 .. times-1:
-      echo "hello world!"
-
-  helloWorld(5)
-
 
 Document Types
 ==============
 
+Example of Nim file input
+-------------------------
+
+The following examples will generate documentation for this sample
+*Nim* module, aptly named ``doc/docgen_sample.nim``:
+
+.. code:: nim
+   :file: docgen_sample.nim
+
+All the below commands save their output to ``htmldocs`` directory relative to
+the directory of file;
+hence the output for this sample will be in ``doc/htmldocs``.
 
 HTML
 ----
@@ -138,7 +139,7 @@ The `doc`:option: command:
 
 .. code:: cmd
 
-  nim doc sample
+  nim doc docgen_sample.nim
 
 Partial Output::
   ...
@@ -149,6 +150,27 @@ The full output can be seen here: `docgen_sample.html <docgen_sample.html>`_.
 It runs after semantic checking and includes pragmas attached implicitly by the
 compiler.
 
+LaTeX
+-----
+
+LaTeX files are intended to be converted to PDF, especially for offline
+reading or making hard copies. (LaTeX output is oftentimes better than
+HTML -> PDF conversion).
+
+The `doc2tex`:option: command:
+
+.. code:: cmd
+
+  nim doc2tex docgen_sample.nim
+  cd htmldocs
+  xelatex docgen_sample.tex
+  xelatex docgen_sample.tex
+  # It is usually necessary to run `xelatex` 2 times (or even 3 times for
+  # large documents) to get all labels generated.
+  # That depends on this warning in the end of `xelatex` output:
+  #   LaTeX Warning: Label(s) may have changed. Rerun to get cross-references right.
+
+The output is ``docgen_sample.pdf``.
 
 JSON
 ----
@@ -163,7 +185,7 @@ The `jsondoc`:option: command:
 
 .. code:: cmd
 
-  nim jsondoc sample
+  nim jsondoc docgen_sample.nim
 
 Output::
   {
@@ -189,7 +211,7 @@ The `jsondoc0`:option: command:
 
 .. code:: cmd
 
-  nim jsondoc0 sample
+  nim jsondoc0 docgen_sample.nim
 
 Output::
   [
@@ -204,7 +226,7 @@ Output::
     }
   ]
 
-Note that the `jsondoc`:option: command outputs it's JSON without pretty-printing it,
+Note that the `jsondoc`:option: command outputs its JSON without pretty-printing it,
 while `jsondoc0`:option: outputs pretty-printed JSON.
 
 Related Options
@@ -217,9 +239,10 @@ Project switch
 
   nim doc --project filename.nim
 
-This will recursively generate documentation of all nim modules imported
+This will recursively generate documentation of all Nim modules imported
 into the input module that belong to the Nimble package that ``filename.nim``
-belongs to.
+belongs to. The index files and the corresponding ``theindex.html`` will
+also be generated.
 
 
 Index switch
@@ -252,12 +275,13 @@ documented item in your source code pointing to the implementation of that
 item on a GitHub repository.
 You can click the link to see the implementation of the item.
 
-The `git.commit`:option: switch overrides the hardcoded `devel` branch in config/nimdoc.cfg.
+The `git.commit`:option: switch overrides the hardcoded `devel` branch in
+``config/nimdoc.cfg``.
 This is useful to link to a different branch e.g. `--git.commit:master`:option:,
 or to a tag e.g. `--git.commit:1.2.3`:option: or a commit.
 
 Source URLs are generated as ``href="${url}/tree/${commit}/${path}#L${line}"``
-by default and this compatible with GitHub but not with GitLab.
+by default and thus compatible with GitHub but not with GitLab.
 
 Similarly, `git.devel`:option: switch overrides the hardcoded `devel` branch
 for the `Edit` link which is also useful if you have a different working
@@ -282,9 +306,10 @@ Other Input Formats
 
 The *Nim compiler* also has support for RST (reStructuredText) files with
 the `rst2html`:option: and `rst2tex`:option: commands. Documents like this one are
-initially written in a dialect of RST which adds support for nim source code
+initially written in a dialect of RST which adds support for Nim source code
 highlighting with the ``.. code-block:: nim`` prefix. ``code-block`` also
-supports highlighting of C++ and some other c-like languages.
+supports highlighting of a few other languages supported by the
+`packages/docutils/highlite module <highlite.html>`_.
 
 Usage:
 
@@ -333,16 +358,16 @@ if they don't have any parameters. If there are parameters, they are
 represented by their types and will be comma-separated. To the plain symbol a
 suffix may be added depending on the type of the callable:
 
--------------   --------------
-Callable type   Suffix
--------------   --------------
-proc            *empty string*
-macro           ``.m``
-method          ``.e``
-iterator        ``.i``
-template        ``.t``
-converter       ``.c``
--------------   --------------
+==============   ==============
+Callable type    Suffix
+==============   ==============
+`proc`, `func`   *empty string*
+`macro`          ``.m``
+`method`         ``.e``
+`iterator`       ``.i``
+`template`       ``.t``
+`converter`      ``.c``
+==============   ==============
 
 The relationship of type to suffix is made by the proc `complexName` in the
 ``compiler/docgen.nim`` file. Here are some examples of complex names for
@@ -422,10 +447,12 @@ final index, and TOC entries found in ``.nim`` files are discarded.
 Additional resources
 ====================
 
-`Nim Compiler User Guide <nimc.html#compiler-usage-commandminusline-switches>`_
+* `Nim Compiler User Guide <nimc.html#compiler-usage-commandminusline-switches>`_
 
-`RST Quick Reference
-<http://docutils.sourceforge.net/docs/user/rst/quickref.html>`_
+* Documentation for `rst module <rst.html>`_ -- Nim RST/Markdown parser.
+
+* `RST Quick Reference
+  <http://docutils.sourceforge.net/docs/user/rst/quickref.html>`_
 
 The output for HTML and LaTeX comes from the ``config/nimdoc.cfg`` and
 ``config/nimdoc.tex.cfg`` configuration files. You can add and modify these
