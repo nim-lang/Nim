@@ -107,13 +107,18 @@ const
     ## The set of characters a newline terminator can consist of.
 
   ControlChars* = {'\0'..'\31', '\127'}
-    ## The set of all ASCII control characters.
+    ## The set of all ASCII control characters, i.e. that do not occupy
+    ## a printing position on a display.
+    ## (see also https://www.cplusplus.com/reference/cctype/iscntrl/)
 
   GraphicChars* = {'!'..'~'}
-    ## The set of all ASCII graphic characters.
+    ## The set of all ASCII graphic characters, i.e. that occupy a printing
+    ## position on a display and have a graphical representation.
+    ## (see also https://www.cplusplus.com/reference/cctype/isprint/)
   
   PrintableChars* = GraphicChars + {' '}
-    ## The set of all ASCII printable characters.
+    ## The set of all ASCII printable characters, i.e. that occupy a printing
+    ## position on a display. (see also https://www.cplusplus.com/reference/cctype/isprint/)
 
   Punctuation* = {'!', '\"', '#', '$', '%', '&', '\'', '(', ')', '*', '+', ',', '-', '.', '/', ':', ';', '<', '=', '>', '?', '@', '[', '\\', ']', '^', '_', '`', '{', '|', '}', '~'}
     ## The set of all ASCII punctuation characters.
