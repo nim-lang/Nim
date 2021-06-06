@@ -91,12 +91,6 @@ const
   Letters* = {'A'..'Z', 'a'..'z'}
     ## The set of letters.
 
-  Vowels* = {'a', 'e', 'i', 'o', 'u', 'A', 'E', 'I', 'O', 'U'}
-    ## The set of vowels.
-  
-  Consonants* = Letters - Vowels
-    ## The set of consonants.
-
   Digits* = {'0'..'9'}
     ## The set of digits.
 
@@ -112,10 +106,18 @@ const
   Newlines* = {'\r', '\n'}
     ## The set of characters a newline terminator can consist of
 
-  # same as {'!', '\"', '#', '$', '%', '&', '\'', '(', ')', '*', '+', ',', '-', '.', '/', ':', ';', '<', '=', '>', '?', '@', '[', '\\', ']', '^', '_', '`', '{', '|', '}', '~'}
-  # same as {'!'..'/', ':'..'@', '['..'`', '{'..'~'}
-  Punctuation* = {'!'..'~'} - Letters - Digits
+  ControlChars* = {'\0'..'\31', '\127'}
+    ## The set of all ASCII control characters.
+
+  GraphicChars* = {'!'..'~'}
+    ## The set of all ASCII graphic characters.
+  
+  PrintableChars* = GraphicChars + {' '}
+    ## The set of all ASCII printable characters.
+
+  Punctuation* = {'!', '\"', '#', '$', '%', '&', '\'', '(', ')', '*', '+', ',', '-', '.', '/', ':', ';', '<', '=', '>', '?', '@', '[', '\\', ']', '^', '_', '`', '{', '|', '}', '~'}
     ## The set of all ASCII punctuation characters.
+    ## Is the same as `PrintableChars - Letters - Digits`
 
   AllChars* = {'\x00'..'\xFF'}
     ## The set of all characters.

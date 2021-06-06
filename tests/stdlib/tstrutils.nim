@@ -13,6 +13,33 @@ template rejectParse(e) =
   except ValueError: discard
 
 template main() =
+  # Tests for the sets
+
+  block: # Whitespace
+    proc isspace(c: cint): cint {.importc, header: "<ctype.h>".}
+    for i in char.low .. char.high:
+      doAssert (isspace(i.cint) > 0) == (i in Whitespace)
+
+  block: # ControlChars
+    proc iscntrl(c: cint): cint {.importc, header: "<ctype.h>".}
+    for i in char.low .. char.high:
+      doAssert (iscntrl(i.cint) > 0) == (i in ControlChars)
+  
+  block: # GraphicChars
+    proc isgraph(c: cint): cint {.importc, header: "<ctype.h>".}
+    for i in char.low .. char.high:
+      doAssert (isgraph(i.cint) > 0) == (i in GraphicChars)
+  
+  block: # PrintableChars
+    proc isprint(c: cint): cint {.importc, header: "<ctype.h>".}
+    for i in char.low .. char.high:
+      doAssert (isprint(i.cint) > 0) == (i in PrintableChars)
+
+  block: # Punctuation
+    proc ispunct(c: cint): cint {.importc, header: "<ctype.h>".}
+    for i in char.low .. char.high:
+      doAssert (ispunct(i.cint) > 0) == (i in Punctuation)
+
   block: # strip
     doAssert strip("  ha  ") == "ha"
     doAssert strip("  foofoofoo  ") == "foofoofoo"
