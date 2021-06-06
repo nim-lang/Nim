@@ -72,11 +72,14 @@ type
     reusePort: bool
     maxBody: int ## The maximum content-length that will be read for the body.
     maxFDs: int
+    keepaliveTimeout: int ## The value for keepalive timeout in seconds and \
+      ## after which the connection will be closed.
 
 proc newAsyncHttpServer*(reuseAddr = true, reusePort = false,
-                         maxBody = 8388608): AsyncHttpServer =
+                         maxBody = 8388608, keepaliveTimeout = 3600): AsyncHttpServer =
   ## Creates a new ``AsyncHttpServer`` instance.
-  result = AsyncHttpServer(reuseAddr: reuseAddr, reusePort: reusePort, maxBody: maxBody)
+  result = AsyncHttpServer(reuseAddr: reuseAddr, reusePort: reusePort,
+    maxBody: maxBody, keepaliveTimeout: keepaliveTimeout)
 
 proc addHeaders(msg: var string, headers: HttpHeaders) =
   for k, v in headers:
@@ -290,9 +293,6 @@ proc processRequest(
     request.client.close()
     return false
 
-const
-  keepaliveTimeout* {.intdefine.} = 60 ### default value for keepaliveTimeout in seconds
-
 proc processClient(server: AsyncHttpServer, client: AsyncSocket, address: string,
                    callback: proc (request: Request):
                       Future[void] {.closure, gcsafe.}) {.async.} =
@@ -306,7 +306,7 @@ proc processClient(server: AsyncHttpServer, client: AsyncSocket, address: string
   while not client.isClosed:
     let fds = activeDescriptors()
     # The maxFDs should be replaced by the keepaliveConn?
-    if (fds > server.maxFDs) or ((now() - startTimeout).inSeconds > keepaliveTimeout):
+    if (fds > server.maxFDs) or ((now() - startTimeout).inSeconds > server.keepaliveTimeout):
       break # Connection timeout
 
     let retry = await processRequest(
