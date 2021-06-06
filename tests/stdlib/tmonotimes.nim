@@ -21,16 +21,10 @@ template main =
     doAssert t1 < high(MonoTime)
     doAssert low(MonoTime) < t1
 
-  block:
-    const n = when defined(js): 20000 else: 1000000 # keep test under ~ 1sec
-    for i in 0..<n:
-      # this could fail with getTime instead of getMonoTime, as expected
-      let a = getMonoTime()
-      let b = getMonoTime()
-      when defined(js) or defined(osx):
-        doAssert b > a # we have strict monotonicity
-      else:
-        doAssert b >= a # we only have monotonicity
+  block: # getMonoTime is non-decreasing
+    let a = getMonoTime()
+    let b = getMonoTime()
+    doAssert b >= a
 
 main()
 # static: main() # xxx support
