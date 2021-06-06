@@ -112,7 +112,9 @@ const
   Newlines* = {'\r', '\n'}
     ## The set of characters a newline terminator can consist of
 
-  Punctuation* = {'!'..'/'} - {'+', '$'} + {':', ';', '?', '@', '['..']', '_', '{', '}', '\161','\167','\171','\182','\183','\187','\191'}
+  # same as {'!', '\"', '#', '$', '%', '&', '\'', '(', ')', '*', '+', ',', '-', '.', '/', ':', ';', '<', '=', '>', '?', '@', '[', '\\', ']', '^', '_', '`', '{', '|', '}', '~'}
+  # same as {'!'..'/', ':'..'@', '['..'`', '{'..'~'}
+  Punctuation* = {'!'..'~'} - Letters - Digits
     ## The set of all ASCII punctuation characters.
 
   AllChars* = {'\x00'..'\xFF'}
@@ -193,11 +195,6 @@ func isUpperAscii*(c: char): bool {.rtl, extern: "nsuIsUpperAsciiChar".} =
     doAssert isUpperAscii('7') == false
   return c in {'A'..'Z'}
 
-template toImpl(call) =
-  result = newString(len(s))
-  for i in 0..len(s) - 1:
-    result[i] = call(s[i])
-
 func toLowerAscii*(c: char): char {.rtl, extern: "nsuToLowerAsciiChar".} =
   ## Returns the lower case version of character `c`.
   ##
@@ -215,6 +212,11 @@ func toLowerAscii*(c: char): char {.rtl, extern: "nsuToLowerAsciiChar".} =
     result = char(uint8(c) xor 0b0010_0000'u8)
   else:
     result = c
+
+template toImpl(call) =
+  result = newString(len(s))
+  for i in 0..len(s) - 1:
+    result[i] = call(s[i])
 
 func toLowerAscii*(s: string): string {.rtl, extern: "nsuToLowerAsciiStr".} =
   ## Converts string `s` into lower case.
