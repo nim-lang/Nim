@@ -2114,7 +2114,7 @@ func replace*(s, sub: string, by = "", max = -1): string {.rtl,
   ## * `replaceWord func<#replaceWord,string,string,string>`_
   ## * `multiReplace func<#multiReplace,string,varargs[]>`_
   runnableExamples:
-    assert "FooBarBaz".replace("Foo", "Bar") == "BarBarBaz"
+    assert "FooFooBaz".replace("Foo", "Bar") == "BarBarBaz"
     assert "BarBarBaz".replace("Bar", "Foo", 1) == "FooBarBaz"
   result = ""
   let subLen = sub.len
