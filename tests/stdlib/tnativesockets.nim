@@ -6,7 +6,6 @@ import std/nativesockets
 
 block:
   let hostname = getHostname()
-  echo hostname
   doAssert hostname.len > 0
 
 when defined(windows):

@@ -434,17 +434,17 @@ proc getHostByName*(name: string): Hostent {.tags: [ReadIOEffect].} =
     result.addrList = cstringArrayToSeq(s.h_addr_list)
   result.length = int(s.h_length)
 
-proc addCstring(result: var string, buf: var openArray[char]) =
-  # xxx move to std/strbasics, it's a common pattern
-  add(result, toOpenArray(buf, 0, cast[cstring](buf[0].addr).len - 1))
-
 proc getHostname*(): string {.tags: [ReadIOEffect].} =
   ## Returns the local hostname (not the FQDN)
   # https://tools.ietf.org/html/rfc1035#section-2.3.1
   # https://tools.ietf.org/html/rfc2181#section-11
   var buf {.noinit.}: array[256, char]
-  if gethostname(buf[0].addr, buf.len) != 0: raiseOSError(osLastError())
+  if gethostname(buf[0].addr, buf.len.cint) != 0: raiseOSError(osLastError())
   addCstring(result, buf)
+  if result.len == buf.len:
+    raise newException(OSError, "getHostname() returned name too long")
+    # osx seems buggy and doesn't error with `ENAMETOOLONG`,
+    # refs https://stackoverflow.com/q/67844865/1426932; this error should be rare.
 
 proc getSockDomain*(socket: SocketHandle): Domain =
   ## Returns the socket's domain (AF_INET or AF_INET6).

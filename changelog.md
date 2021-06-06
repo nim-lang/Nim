@@ -284,7 +284,7 @@
 
 - Added `std/strbasics` for high performance string operations.
   Added `strip`, `setSlice`, `add(a: var string, b: openArray[char])`.
-
+  Added `addCstring(result: var string, buf: openArray[char])`.
 
 - Added to `wrapnils` an option-like API via `??.`, `isSome`, `get`.
 

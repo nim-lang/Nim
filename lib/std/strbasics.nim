@@ -13,7 +13,7 @@
 
 const whitespaces = {' ', '\t', '\v', '\r', '\l', '\f'}
 
-proc add*(x: var string, y: openArray[char]) =
+func add*(x: var string, y: openArray[char]) =
   ## Concatenates `x` and `y` in place. `y` must not overlap with `x` to
   ## allow future `memcpy` optimizations.
   # Use `{.noalias.}` ?
@@ -26,6 +26,21 @@ proc add*(x: var string, y: openArray[char]) =
     x[n + i] = y[i]
     i.inc
   # xxx use `nimCopyMem(x[n].addr, y[0].addr, y.len)` after some refactoring
+
+proc strnlen(s: cstring, maxlen: csize_t): csize_t {.importc, header: "<string.h>".}
+
+func addCstring*(result: var string, buf: openArray[char]) =
+  ## Appends to `result` chars from `buf` up to (and excluding) the 1st ``\0``, if any.
+  runnableExamples:
+    var a = "foo"
+    a.addCstring(['a', 'b', '\0', 'd'])
+    assert a == "fooab"
+    a.addCstring "123"
+    a.add "45".cstring # for cstring, use `add` directly
+    assert a == "fooab12345"
+  if buf.len > 0:
+    let n = strnlen(cast[cstring](buf[0].unsafeAddr), buf.len.csize_t).int
+    add(result, toOpenArray(buf, 0, n - 1))
 
 func stripSlice(s: openArray[char], leading = true, trailing = true, chars: set[char] = whitespaces): Slice[int] =
   ## Returns the slice range of `s` which is stripped `chars`.
