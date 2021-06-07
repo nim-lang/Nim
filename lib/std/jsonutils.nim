@@ -128,14 +128,14 @@ macro initCaseObject(T: typedesc, fun: untyped): untyped =
         `fun`(`key2`, typedesc[`typ`])
       result.add newTree(nnkExprColonExpr, key, val)
 
-proc checkJsonImpl(cond: bool, condStr: string, msg = "") =
-  if not cond:
-    # just pick 1 exception type for simplicity; other choices would be:
-    # JsonError, JsonParser, JsonKindError
-    raise newException(ValueError, msg)
+proc raiseJsonException(condStr: string, msg: string) {.noinline.} =
+  # just pick 1 exception type for simplicity; other choices would be:
+  # JsonError, JsonParser, JsonKindError
+  raise newException(ValueError, condStr & " failed: " & msg)
 
 template checkJson(cond: untyped, msg = "") =
-  checkJsonImpl(cond, astToStr(cond), msg)
+  if not cond:
+    raiseJsonException(astToStr(cond), msg)
 
 proc hasField[T](obj: T, field: string): bool =
   for k, _ in fieldPairs(obj):

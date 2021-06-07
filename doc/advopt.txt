@@ -6,7 +6,8 @@ Advanced commands:
   //e                       run a Nimscript file
   //rst2html                convert a reStructuredText file to HTML
                             use `--docCmd:skip` to skip compiling snippets
-  //rst2tex                 convert a reStructuredText file to TeX
+  //rst2tex                 convert a reStructuredText file to LaTeX
+  //doc2tex                 extract the documentation to a LaTeX file
   //jsondoc                 extract the documentation to a json file
   //ctags                   create a tags file
   //buildIndex              build an index for the whole documentation

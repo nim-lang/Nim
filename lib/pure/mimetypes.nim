@@ -26,12 +26,12 @@ runnableExamples:
   doAssert m.getMimetype("fakext") == "text/fakelang"
   doAssert m.getMimetype("FaKeXT") == "text/fakelang"
 
-import strtabs
+import tables
 from strutils import startsWith, toLowerAscii, strip
 
 type
   MimeDB* = object
-    mimes: StringTableRef
+    mimes: OrderedTableRef[string, string]
 
 const mimes* = {
   "123": "application/vnd.lotus-1-2-3",
@@ -1903,7 +1903,8 @@ const mimes* = {
 func newMimetypes*(): MimeDB =
   ## Creates a new Mimetypes database. The database will contain the most
   ## common mimetypes.
-  result.mimes = mimes.newStringTable()
+  {.cast(noSideEffect).}:
+    result.mimes = mimes.newOrderedTable()
 
 func getMimetype*(mimedb: MimeDB, ext: string, default = "text/plain"): string =
   ## Gets mimetype which corresponds to `ext`. Returns `default` if `ext`

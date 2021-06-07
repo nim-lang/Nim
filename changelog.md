@@ -336,6 +336,7 @@
 - Added setCurrentException for JS backend.
 
 - Added `std/mutexes`.
+- Added `dom.scrollIntoView` proc with options
 
 ## Language changes
 
@@ -448,6 +449,13 @@
 
 
 ## Tool changes
+
+- Latex doc generation is revised: output `.tex` files should be compiled
+  by `xelatex` (not by `pdflatex` as before). Now default Latex settings
+  provide support for Unicode and do better job for avoiding margin overflows.
+
+- Implemented `doc2tex` compiler command which converts documentation in
+  `.nim` files to Latex.
 
 - The rst parser now supports markdown table syntax.
   Known limitations:
