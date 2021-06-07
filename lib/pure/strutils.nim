@@ -2174,6 +2174,7 @@ func replaceWord*(s, sub: string, by = "", max = -1): string {.rtl,
   result = ""
   let subLen = sub.len
   if subLen == 0: result = s
+  
   else:
     const wordChars = {'a'..'z', 'A'..'Z', '0'..'9', '_', '\128'..'\255'}
     var a {.noinit.}: SkipTable
