@@ -335,6 +335,8 @@
 
 - Added setCurrentException for JS backend.
 
+- Added `std/mutexes`.
+
 ## Language changes
 
 - `nimscript` now handles `except Exception as e`.
