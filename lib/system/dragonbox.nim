@@ -867,10 +867,11 @@ when defined(sizeof_Int128):
     return (hi, lo)
 
 elif defined(vcc) and defined(cpu64):
+  proc umul128(x, y: uint64, z: ptr uint64): uint64 {.importc: "_umul128", header: "<intrin.h>".}
   proc mul128*(x: uint64; y: uint64): uint64x2 {.inline.} =
     var hi: uint64 = 0
     var lo: uint64 = umul128(x, y, addr(hi))
-    return (hi, lo)
+    return uint64x2(hi: hi, lo: lo)
 
 else:
   proc lo32*(x: uint64): uint32 {.inline.} =
