@@ -2066,14 +2066,21 @@ func replace*(s: string, sub, by: char, max = -1): string {.rtl,
   runnableExamples:
     assert "valid variable name".replace(' ', '_') == "valid_variable_name"
     assert "Faabar!".replace('a', 'o', 2) == "Foobar!"
-  result = newString(s.len)
-  var occLeft = max
-  for i in 0..s.high:
-    if occLeft != 0 and s[i] == sub:
-      result[i] = by
-      if occLeft > 0: occLeft -= 1
+  result = newStringOfCap(s.len)
+  var
+    i = 0
+    occLeft = max
+  while i <= s.high:
+    if occLeft == 0: break
+    if s[i] == sub:
+      result.add by
+      if occLeft > 0: dec occLeft
     else:
-      result[i] = s[i]
+      result.add s[i]
+    inc i
+  if occLeft == 0:
+    # copy the rest:
+    result.add s.substr(i)
 
 # Maybe implement something like this for all replace functions...?
 # So that they can for example replace all Whitespace characters
@@ -2127,15 +2134,15 @@ func replace*(s, sub: string, by = "", max = -1): string {.rtl,
       i = 0
       occLeft = max
     while true:
-      let j = find(s, subChar, i)
+      let j = s.find(subChar, i)
       if j == -1 or occLeft == 0: break
       if occLeft > 0: dec occLeft
 
-      result.add substr(s, i, j - 1)
+      result.add s.substr(i, j - 1)
       result.add by
       i = j + subLen
     # copy the rest:
-    result.add substr(s, i)
+    result.add s.substr(i)
   else:
     var a {.noinit.}: SkipTable
     initSkipTable(a, sub)
@@ -2146,11 +2153,11 @@ func replace*(s, sub: string, by = "", max = -1): string {.rtl,
       let j = find(a, s, sub, i)
       if j == -1 or occLeft == 0: break
       if occLeft > 0: dec occLeft
-      result.add substr(s, i, j - 1)
+      result.add s.substr(i, j - 1)
       result.add by
       i = j + subLen
     # copy the rest:
-    result.add substr(s, i)
+    result.add s.substr(i)
 
 func replaceWord*(s, sub: string, by = "", max = -1): string {.rtl,
     extern: "nsuReplaceWord".} =
@@ -2163,7 +2170,7 @@ func replaceWord*(s, sub: string, by = "", max = -1): string {.rtl,
   ## replaced.
   runnableExamples:
     assert "Hello, Helloworld".replaceWord("Hello", "Hi") == "Hi, Helloworld"
-    assert "no, no, no, no, yes?".replaceWord("no", "yes", 3) == "yes, yes, yes, no, yes?"
+    assert "no, yes, nono, no, no?".replaceWord("no", "yes", 2) == "yes, yes, nono, yes, no?"
   result = ""
   let subLen = sub.len
   if subLen == 0: result = s
@@ -2177,18 +2184,18 @@ func replaceWord*(s, sub: string, by = "", max = -1): string {.rtl,
     while true:
       var j = find(a, s, sub, i)
       if j == -1 or occLeft == 0: break
-      if occLeft > 0: dec occLeft
       # check for word boundaries
       if (j == 0 or s[j-1] notin wordChars) and
          (j+sub.len >= s.len or s[j+sub.len] notin wordChars):
-        result.add substr(s, i, j - 1)
+        result.add s.substr(i, j - 1)
         result.add by
         i = j + subLen
+        if occLeft > 0: dec occLeft
       else:
-        result.add substr(s, i, j)
+        result.add s.substr(i, j)
         i = j + 1
     # copy the rest:
-    result.add substr(s, i)
+    result.add s.substr(i)
 
 func multiReplace*(s: string, replacements: varargs[(string, string)]): string =
   ## Same as replace, but specialized for doing multiple replacements in a single
