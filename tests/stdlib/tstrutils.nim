@@ -3,7 +3,7 @@ discard """
 """
 
 import std/strutils
-from stdtest/testutils import disableVm
+from stdtest/testutils import disableVm, whenVMorJs
 # xxx each instance of `disableVm` and `when not defined js:` should eventually be fixed
 
 template rejectParse(e) =
@@ -15,8 +15,8 @@ template rejectParse(e) =
 template main() =
   # Tests for the sets
   
-  when nimvm: discard
-  else:
+  whenVMorJs: discard
+  do:
     block: # Whitespace
       proc isspace(c: cint): cint {.importc, header: "<ctype.h>".}
       for i in char.low .. char.high:
