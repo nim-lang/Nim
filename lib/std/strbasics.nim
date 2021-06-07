@@ -38,9 +38,24 @@ func addCstring*(result: var string, buf: openArray[char]) =
     a.addCstring "123"
     a.add "45".cstring # for cstring, use `add` directly
     assert a == "fooab12345"
-  if buf.len > 0:
-    let n = strnlen(cast[cstring](buf[0].unsafeAddr), buf.len.csize_t).int
-    add(result, toOpenArray(buf, 0, n - 1))
+  template impl =
+    var n = buf.len
+    for i, ai in buf:
+      # we pre-compute `n` to enable a single re-allocation; an alternative
+      # would be to allow `cstringLen(buf)`.
+      if ai == '\0':
+        n = i
+        break
+    let old = result.len
+    result.setLen(old + n)
+    for i in 0..<n: result[old + i] = buf[i]
+  when nimvm: impl()
+  else:
+    when defined(js): impl()
+    else:
+      if buf.len > 0:
+        let n = strnlen(cast[cstring](buf[0].unsafeAddr), buf.len.csize_t).int
+        add(result, toOpenArray(buf, 0, n - 1))
 
 func stripSlice(s: openArray[char], leading = true, trailing = true, chars: set[char] = whitespaces): Slice[int] =
   ## Returns the slice range of `s` which is stripped `chars`.

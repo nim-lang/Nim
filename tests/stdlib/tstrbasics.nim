@@ -14,6 +14,20 @@ template strip2(input: string, args: varargs[untyped]): untyped =
   a
 
 proc main() =
+  block: # addCstring
+    var a = "foo"
+    a.addCstring(['a', 'b', '\0', 'd'])
+    doAssert a == "fooab"
+    a.addCstring "123"
+    doAssert a == "fooab123"
+    a.addCstring @[]
+    doAssert a == "fooab123"
+    a.addCstring "\0ab"
+    doAssert a == "fooab123"
+    var b = ""
+    b.addCstring "\0ab"
+    doAssert b == ""
+
   block: # strip
     block: # bug #17173
       var a = "  vhellov   "
