@@ -34,7 +34,6 @@ block: # bug #14794 (And test for presence of content-length header when using p
       doAssert(req.headers.hasKey("content-length"), "Content-Length header is not present.")
       killServer = true
       asyncCheck req.respond(Http200, "OK")
-      
 
     var server = newAsyncHttpServer()
     server.listen(Port(5556))
@@ -48,7 +47,6 @@ block: # bug #14794 (And test for presence of content-length header when using p
     let c = newAsyncHttpClient()
     var data = newMultipartData()
     data.add("file.txt", "This is intended to be an example text file.\r\nThis would be the second line.\r\n")
-
     let r = await c.postContent("http://127.0.0.1:5556", multipart = data)
     c.close()
 
