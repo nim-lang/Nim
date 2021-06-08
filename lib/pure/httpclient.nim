@@ -997,7 +997,7 @@ proc requestAux(client: HttpClient | AsyncHttpClient, url: Uri,
 
   await newConnection(client, url)
 
-  var newHeaders:HttpHeaders
+  var newHeaders: HttpHeaders
 
   var data: seq[string]
   if multipart != nil and multipart.content.len > 0:
