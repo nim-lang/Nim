@@ -36,9 +36,9 @@ type
 proc `==`*(x, y: TypeId): bool {.borrow.}
 proc `$`*(x: TypeId): string {.borrow.}
 
-proc getTypeIdImpl(t: typedesc): string {.magic: "TypeTrait", since: (1, 1).}
+proc getTypeIdImpl(t: typedesc): string {.magic: "TypeTrait", since: (1, 5, 1).}
 
-proc getTypeId*(t: typedesc): TypeId {.since: (1, 1).} =
+proc getTypeId*(t: typedesc): TypeId {.since: (1, 5, 1).} =
   ## Returns a unique id representing a type; the id is stable across
   ## recompilations of the same program, but may differ if the program source
   ## changes. In particular serializing it will be meaningless after source change
