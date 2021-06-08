@@ -1001,6 +1001,8 @@ proc requestAux(client: HttpClient | AsyncHttpClient, url: Uri,
 
   var data: seq[string]
   if multipart != nil and multipart.content.len > 0:
+    # `format` modifies `client.headers`, see 
+    # https://github.com/nim-lang/Nim/pull/18208#discussion_r647036979
     data = await client.format(multipart)
     newHeaders = client.headers.override(headers)
   else:
