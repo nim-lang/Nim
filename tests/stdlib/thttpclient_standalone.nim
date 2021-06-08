@@ -28,7 +28,7 @@ block: # bug #14794 (And test for presence of content-length header when using p
     proc cb(req: Request) {.async.} =
       doAssert(req.body.endsWith(httpNewLine), "Multipart body does not end with a newline.")
       # this next line is probably not required because asynchttpserver does not call
-      # the callback when there is no content-lenght header.  It instead errors with 
+      # the callback when there is no content-length header.  It instead errors with 
       # Error: unhandled exception: 411 Length Required
       # Added for good measure in case the server becomes more permissive.
       doAssert(req.headers.hasKey("content-length"), "Content-Length header is not present.")
