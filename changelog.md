@@ -346,6 +346,9 @@
 
 - Added `dom.setInterval`, `dom.clearInterval` overloads.
 
+- Added `std/reflection` module for compile time reflection, with `moduleSymbols`.
+
+
 ## Language changes
 
 - `nimscript` now handles `except Exception as e`.
