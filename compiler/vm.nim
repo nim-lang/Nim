@@ -1178,11 +1178,11 @@ proc rawExecute(c: PCtx, start: int, tos: PStackFrame): TFullReg =
           let enablePrivate = regs[rc].intVal.bool
           let node = newNode(nkBracket)
           for ai in allSyms(c.graph, sym, importHidden = enablePrivate):
-            let ai2 = newNode(nkSym)
-            ai2.sym = ai # TODO: copyTree?
-            node.sons.add ai2
+            let ni = newSymNode(ai)
+            ni.flags.incl nfIsRef
+            node.sons.add ni
+          node.flags.incl nfIsRef
           regs[ra].node = node
-          # TODO: do we need regs[ra].node.flags.incl nfIsRef or recSetFlagIsRef?
     of opcEcho:
       let rb = instr.regB
       template fn(s) = msgWriteln(c.config, s, {msgStdout, msgNoUnitSep})
