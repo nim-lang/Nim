@@ -284,8 +284,17 @@ proc isInstantiationOf*(instanceProcSym, genProcSym: NimNode): bool {.magic: "Sy
   ## returned by `bindSym`.
 
 when defined(nimHasModuleSymbols):
-  proc moduleSymbols*(module: NimNode): NimNode {.magic: "ModuleSymbols", noSideEffect.}
+  func moduleSymbols*(module: NimNode, enablePrivate = false): NimNode {.magic: "ModuleSymbols".} =
     ## returns ``module``'s public symbols as a (const) seq
+    runnableExamples("-d:foobar"):
+      macro callByName(module: typed, name: static string, args: varargs[untyped]): untyped =
+        result = newStmtList()
+        let s = moduleSymbols(module)
+        for si in s:
+          if si.strVal == name:
+            result.add quote do:
+              `si`(`args`)
+      doAssert callByName(system, "defined", foobar)
 
 proc getType*(n: NimNode): NimNode {.magic: "NGetType", noSideEffect.}
   ## With 'getType' you can access the node's `type`:idx:. A Nim type is

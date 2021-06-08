@@ -222,8 +222,7 @@ proc nextModuleIter*(mi: var ModuleIter; g: ModuleGraph): PSym =
   else:
     result = nextIdentIter(mi.ti, g.ifaces[mi.modIndex].interfSelect(mi.importHidden))
 
-iterator allSyms*(g: ModuleGraph; m: PSym): PSym =
-  let importHidden = optImportHidden in m.options
+iterator allSyms*(g: ModuleGraph; m: PSym, importHidden: bool): PSym =
   if isCachedModule(g, m):
     var rodIt: RodIter
     var r = initRodIterAllSyms(rodIt, g.config, g.cache, g.packed, FileIndex m.position, importHidden)
@@ -234,6 +233,10 @@ iterator allSyms*(g: ModuleGraph; m: PSym): PSym =
     for s in g.ifaces[m.position].interfSelect(importHidden).data:
       if s != nil:
         yield s
+
+iterator allSyms*(g: ModuleGraph; m: PSym): PSym =
+  let importHidden = optImportHidden in m.options
+  for ai in allSyms(g, m, importHidden): yield ai
 
 proc someSym*(g: ModuleGraph; m: PSym; name: PIdent): PSym =
   let importHidden = optImportHidden in m.options

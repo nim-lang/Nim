@@ -1166,7 +1166,7 @@ proc rawExecute(c: PCtx, start: int, tos: PStackFrame): TFullReg =
       else:
         stackTrace(c, tos, pc, "node is not a proc symbol")
     of opcModuleSymbols:
-      decodeB(rkNode)
+      decodeBC(rkNode)
       let a = regs[rb].node
       if a.kind != nkSym:
         stackTrace(c, tos, pc, "node.symKind is not a skModule")
@@ -1175,16 +1175,12 @@ proc rawExecute(c: PCtx, start: int, tos: PStackFrame): TFullReg =
         if sym.kind != skModule:
           stackTrace(c, tos, pc, "node.symKind is not a skModule")
         else:
+          let enablePrivate = regs[rc].intVal.bool
           let node = newNode(nkBracket)
-          let data = sym.tab.data
-          for i in 0..<data.len:
-            let ai = data[i]
-            if ai == nil:
-              continue
+          for ai in allSyms(c.graph, sym, importHidden = enablePrivate):
             let ai2 = newNode(nkSym)
             ai2.sym = ai # TODO: copyTree?
             node.sons.add ai2
-
           regs[ra].node = node
           # TODO: do we need regs[ra].node.flags.incl nfIsRef or recSetFlagIsRef?
     of opcEcho:
