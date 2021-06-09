@@ -183,6 +183,7 @@ proc potentialMutation(v: var Partitions; s: PSym; level: int; info: TLineInfo) 
                   if isConstParam(s):
                     {isMutated, isMutatedDirectly}
                   elif s.typ.kind == tyVar and level <= 1:
+                    # varParam[i] = v is different from varParam[i][] = v
                     {}
                   else:
                     {isMutated}
