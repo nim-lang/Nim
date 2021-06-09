@@ -66,7 +66,7 @@ pkg "fragments", "nim c -r fragments/dsl.nim"
 pkg "fusion"
 pkg "gara"
 pkg "glob"
-pkg "ggplotnim", "nim c -d:noCairo -r tests/tests.nim"
+pkg "ggplotnim", "nim c -d:noCairo -r tests/tests.nim", allowFailure = true # pending https://github.com/mratsim/Arraymancer/pull/508
 pkg "gittyup", "nimble test", "https://github.com/disruptek/gittyup", allowFailure = true
 pkg "gnuplot", "nim c gnuplot.nim"
 # pkg "gram", "nim c -r --gc:arc --define:danger tests/test.nim", "https://github.com/disruptek/gram"
@@ -113,7 +113,7 @@ pkg "nimx", "nim c --threads:on test/main.nim", allowFailure = true
 pkg "nitter", "nim c src/nitter.nim", "https://github.com/zedeus/nitter"
 pkg "norm", "nim c -r tests/sqlite/trows.nim"
 pkg "npeg", "nimble testarc"
-pkg "numericalnim", "nim c -r tests/test_integrate.nim"
+pkg "numericalnim", "nim c -r tests/test_integrate.nim",  allowFailure = true # pending https://github.com/mratsim/Arraymancer/pull/508
 pkg "optionsutils"
 pkg "ormin", "nim c -o:orminn ormin.nim"
 pkg "parsetoml"
@@ -135,7 +135,7 @@ pkg "sdl1", "nim c -r src/sdl.nim"
 pkg "sdl2_nim", "nim c -r sdl2/sdl.nim"
 pkg "sigv4", "nim c --gc:arc -r sigv4.nim", "https://github.com/disruptek/sigv4"
 pkg "snip", "nimble test", "https://github.com/genotrance/snip"
-pkg "stint", "nim r stint.nim"
+pkg "stint", "nim r stint.nim", allowFailure = true # pending https://github.com/status-im/nim-stint/pull/107
 pkg "strslice"
 pkg "strunicode", "nim c -r src/strunicode.nim"
 pkg "synthesis"
@@ -156,5 +156,5 @@ pkg "winim", allowFailure = true
 pkg "with"
 pkg "ws"
 pkg "yaml", "nim build"
-pkg "zero_functional", "nim c -r -d:nimNoLentIterators test.nim"
+pkg "zero_functional", "nim c -r -d:nimNoLentIterators test.nim", allowFailure = true # pending https://github.com/zero-functional/zero-functional/pull/70
 pkg "zippy"
