@@ -56,6 +56,8 @@ type
 
   CatchableError* = object of Exception ## \
     ## Abstract class for all exceptions that are catchable.
+  EnforceError* = object of Exception ## \
+    ## Default exception raised by `asserts.enforce`.
   IOError* = object of CatchableError ## \
     ## Raised if an IO error occurred.
   EOFError* = object of IOError ## \

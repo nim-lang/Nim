@@ -83,6 +83,7 @@ template doAssertRaises*(exception: typedesc, code: untyped) =
   const begin = "expected raising '" & astToStr(exception) & "', instead"
   const msgEnd = " by: " & astToStr(code)
   template raisedForeign = raiseAssert(begin & " raised foreign exception" & msgEnd)
+  mixin `$` # for `tests/test_nimscript.nims` (import assertions appears before dollars)
   when Exception is exception:
     try:
       if true:

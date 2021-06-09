@@ -11,8 +11,11 @@ import std/strutils
 block: ## checks AST isn't transformed as it used to
   let a = 1
   enforce a == 1, $a
+  var raised = false
   try:
     enforce a > 1, $a
-  except CatchableError as e:
-    assert e.msg.endsWith "tasserts.nim(15, 13) `a > 1` 1"
-  doAssertRaises(CatchableError): enforce a > 1, $a
+  except EnforceError as e:
+    raised = true
+    doAssert e.msg.endsWith "tasserts.nim(16, 13) `a > 1` 1"
+  doAssert raised
+  doAssertRaises(EnforceError): enforce a > 1, $a
