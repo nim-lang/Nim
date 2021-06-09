@@ -2405,10 +2405,9 @@ proc moveDir*(source, dest: string) {.tags: [ReadIOEffect, WriteIOEffect], noWei
   ## * `existsOrCreateDir proc <#existsOrCreateDir,string>`_
   ## * `createDir proc <#createDir,string>`_
   if not tryMoveFSObject(source, dest):
-    when not defined(windows):
-      # Fallback to copy & del
-      copyDir(source, dest)
-      removeDir(source)
+    # Fallback to copy & del
+    copyDir(source, dest)
+    removeDir(source)
 
 proc createSymlink*(src, dest: string) {.noWeirdTarget.} =
   ## Create a symbolic link at `dest` which points to the item specified
