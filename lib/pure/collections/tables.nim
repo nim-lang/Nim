@@ -415,7 +415,7 @@ proc getOrDefault*[A, B](t: Table[A, B], key: A): B =
 
   getOrDefaultImpl(t, key)
 
-proc getOrDefault*[A, B](t: Table[A, B], key: A, default: B): B =
+proc getOrDefault*[A, B](t: Table[A, B], key: A, default: sink B): B =
   ## Retrieves the value at `t[key]` if `key` is in `t`.
   ## Otherwise, `default` is returned.
   ##
@@ -946,7 +946,7 @@ proc getOrDefault*[A, B](t: TableRef[A, B], key: A): B =
 
   getOrDefault(t[], key)
 
-proc getOrDefault*[A, B](t: TableRef[A, B], key: A, default: B): B =
+proc getOrDefault*[A, B](t: TableRef[A, B], key: A, default: sink B): B =
   ## Retrieves the value at `t[key]` if `key` is in `t`.
   ## Otherwise, `default` is returned.
   ##
@@ -1449,7 +1449,7 @@ proc getOrDefault*[A, B](t: OrderedTable[A, B], key: A): B =
 
   getOrDefaultImpl(t, key)
 
-proc getOrDefault*[A, B](t: OrderedTable[A, B], key: A, default: B): B =
+proc getOrDefault*[A, B](t: OrderedTable[A, B], key: A, default: sink B): B =
   ## Retrieves the value at `t[key]` if `key` is in `t`.
   ## Otherwise, `default` is returned.
   ##
@@ -1935,7 +1935,7 @@ proc getOrDefault*[A, B](t: OrderedTableRef[A, B], key: A): B =
 
   getOrDefault(t[], key)
 
-proc getOrDefault*[A, B](t: OrderedTableRef[A, B], key: A, default: B): B =
+proc getOrDefault*[A, B](t: OrderedTableRef[A, B], key: A, default: sink B): B =
   ## Retrieves the value at `t[key]` if `key` is in `t`.
   ## Otherwise, `default` is returned.
   ##
