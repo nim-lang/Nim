@@ -2009,10 +2009,10 @@ proc removeFile*(file: string) {.rtl, extern: "nos$1", tags: [WriteDirEffect], n
   if not tryRemoveFile(file):
     raiseOSError(osLastError(), file)
 
-proc tryMoveFSObject(source, dest: string, isMoveDir: bool): bool {.noWeirdTarget.} =
-  ## Moves a file (or directory if `isMoveDir` is true) from `source` to `dest`.
+proc tryMoveFSObject(source, dest: string, isDir: bool): bool {.noWeirdTarget.} =
+  ## Moves a file (or directory if `isDir` is true) from `source` to `dest`.
   ##
-  ## Returns false in case of `EXDEV` error or `AccessDeniedError` on windows (if `isMoveDir` is true).
+  ## Returns false in case of `EXDEV` error or `AccessDeniedError` on windows (if `isDir` is true).
   ## In case of other errors `OSError` is raised.
   ## Returns true in case of success.
   when defined(windows):
@@ -2030,7 +2030,7 @@ proc tryMoveFSObject(source, dest: string, isMoveDir: bool): bool {.noWeirdTarge
     let isAccessDeniedError = 
       when defined(windows):
         const AccessDeniedError = OSErrorCode(5)
-        isMoveDir and err == AccessDeniedError
+        isDir and err == AccessDeniedError
       else:
         err == EXDEV.OSErrorCode
     if not isAccessDeniedError:
@@ -2055,7 +2055,7 @@ proc moveFile*(source, dest: string) {.rtl, extern: "nos$1",
   ## * `removeFile proc <#removeFile,string>`_
   ## * `tryRemoveFile proc <#tryRemoveFile,string>`_
 
-  if not tryMoveFSObject(source, dest, isMoveDir = false):
+  if not tryMoveFSObject(source, dest, isDir = false):
     when defined(windows):
       doAssert false
     else:
@@ -2621,7 +2621,7 @@ proc moveDir*(source, dest: string) {.tags: [ReadIOEffect, WriteIOEffect], noWei
   ## * `removeDir proc <#removeDir,string>`_
   ## * `existsOrCreateDir proc <#existsOrCreateDir,string>`_
   ## * `createDir proc <#createDir,string>`_
-  if not tryMoveFSObject(source, dest, isMoveDir = true):
+  if not tryMoveFSObject(source, dest, isDir = true):
     # Fallback to copy & del
     copyDir(source, dest)
     removeDir(source)
