@@ -12,6 +12,8 @@ discard """
 [Suite] RST inline markup
 
 [Suite] Basic Markdown markup
+
+[Suite] Nested markup
 '''
 """
 
@@ -594,7 +596,7 @@ suite "Basic Markdown markup":
     # FIXME: Below fails
     # check "__bold text__".toAst() == dedent"""
     #   rnStrongEmphasis
-    #     rnLeaf  'bold text'
+    #     rnLeaf  'bold'
     #     rnLeaf  ' '
     #     rnLeaf  'text'
     # """
@@ -609,7 +611,7 @@ suite "Basic Markdown markup":
     # FIXME: Below fails
     # check "_italic text_".toAst() == dedent"""
     #   rnEmphasis
-    #     rnLeaf  'italic text'
+    #     rnLeaf  'italic'
     #     rnLeaf  ' '
     #     rnLeaf  'text'
     # """
@@ -622,4 +624,74 @@ suite "Basic Markdown markup":
         [nil]
         rnLiteralBlock
           rnLeaf  'monospace text'
+    """
+
+# https://github.com/nim-lang/Nim/issues/9070
+suite "Nested markup":
+  test "bold in italic":
+    check "***bold** in italic*".toAst() == dedent"""
+      rnEmphasis
+        rnStrongEmphasis
+          rnLeaf  'bold'
+        rnLeaf  ' '
+        rnLeaf  'in'
+        rnLeaf  ' '
+        rnLeaf  'italic'
+    """
+
+  test "italic in bold":
+    check "***italic* in bold**".toAst() == dedent"""
+      rnStrongEmphasis
+        rnEmphasis
+          rnLeaf  'italic'
+        rnLeaf  ' '
+        rnLeaf  'in'
+        rnLeaf  ' '
+        rnLeaf  'bold'
+    """
+
+  test "monospace in italic":
+    check "*``monospace`` in italic*".toAst() == dedent"""
+      rnEmphasis
+        rnLiteralBlock
+          rnLeaf  'monospace'
+        rnLeaf  ' '
+        rnLeaf  'in'
+        rnLeaf  ' '
+        rnLeaf  'italic'
+    """
+
+  test "monospace in bold":
+    check "**``monospace`` in bold**".toAst() == dedent"""
+      rnStrongEmphasis
+        rnLiteralBlock
+          rnLeaf  'monospace'
+        rnLeaf  ' '
+        rnLeaf  'in'
+        rnLeaf  ' '
+        rnLeaf  'bold'
+    """
+
+  test "bold monospace in italics":
+    check "***``bold monospace``** in italics*".toAst() == dedent"""
+      rnEmphasis
+        rnStrongEmphasis
+          rnLiteralBlock
+            rnLeaf  'bold monospace'
+        rnLeaf  ' '
+        rnLeaf  'in'
+        rnLeaf  ' '
+        rnLeaf  'italics'
+    """
+
+  test "italicized monospace in bold":
+    check "***``italicized monospace``* in bold**".toAst() == dedent"""
+      rnStrongEmphasis
+        rnEmphasis
+          rnLiteralBlock
+            rnLeaf  'italicized monospace'
+        rnLeaf  ' '
+        rnLeaf  'in'
+        rnLeaf  ' '
+        rnLeaf  'bold'
     """
