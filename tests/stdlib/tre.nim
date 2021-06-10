@@ -99,10 +99,13 @@ proc testAll() =
       accum.add($x)
     doAssert(accum == @["a","b","c"])
 
-  block:
-    # bug #9306
+  block: # bug #9306
     doAssert replace("bar", re"^", "foo") == "foobar"
-    doAssert replace("foo", re"", "-") == "-foo"
     doAssert replace("foo", re"$", "bar") == "foobar"
+
+
+  block: # bug #9437
+    doAssert replace("foo", re"", "-") == "-f-o-o-"
+    doAssert replace("ooo", re"o", "-") == "---"
 
 testAll()
