@@ -1643,7 +1643,7 @@ proc takeImplicitAddr(c: PContext, n: PNode; isLent: bool): PNode =
 proc asgnToResultVar(c: PContext, n, le, ri: PNode) {.inline.} =
   if le.kind == nkHiddenDeref:
     var x = le[0]
-    if (x.typ.kind in {tyVar, tyLent} or classifyViewType(x.typ) != noView) and x.kind == nkSym and x.sym.kind == skResult:
+    if x.kind == nkSym and x.sym.kind == skResult and (x.typ.kind in {tyVar, tyLent} or classifyViewType(x.typ) != noView):
       n[0] = x # 'result[]' --> 'result'
       n[1] = takeImplicitAddr(c, ri, x.typ.kind == tyLent)
       x.typ.flags.incl tfVarIsPtr
