@@ -25,7 +25,6 @@ runnableExamples:
   assert (?.f2.x2.x2).x3 == nil  # this terminates ?. early
 
 from options import Option, isSome, get, option, unsafeGet, UnpackDefect
-export options.get, options.isSome, options.isNone
 
 template fakeDot*(a: Option, b): untyped =
   ## See top-level example.
@@ -90,6 +89,7 @@ macro `?.`*(a: untyped): auto =
 macro `??.`*(a: untyped): Option =
   ## Same as `?.` but returns an `Option`.
   runnableExamples:
+    import std/options
     type Foo = ref object
       x1: ref int
       x2: int
