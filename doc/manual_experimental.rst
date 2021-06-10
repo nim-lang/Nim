@@ -1953,7 +1953,7 @@ The *duration* of a borrow is the span of commands beginning from the assignment
 to the view and ending with the last usage of the view.
 
 For the duration of the borrow operation, no mutations to the borrowed locations
-may be performed except via the potentially view that borrowed from the
+may be performed except via the view that borrowed from the
 location. The borrowed location is said to be *sealed* during the borrow.
 
 .. code-block:: nim
