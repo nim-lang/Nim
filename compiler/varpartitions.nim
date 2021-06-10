@@ -519,13 +519,17 @@ const
 proc isConstSym(s: PSym): bool =
   result = s.kind in {skConst, skLet} or isConstParam(s)
 
+proc toString(n: PNode): string =
+  if n.kind == nkEmpty: result = "<empty>"
+  else: result = $n
+
 proc borrowFrom(c: var Partitions; dest: PSym; src: PNode) =
   const
     url = "see https://nim-lang.github.io/Nim/manual_experimental.html#view-types-algorithm-path-expressions for details"
 
   let s = pathExpr(src, c.owner)
   if s == nil:
-    localError(c.g.config, src.info, "cannot borrow from " & $src & ", it is not a path expression; " & url)
+    localError(c.g.config, src.info, "cannot borrow from " & src.toString & ", it is not a path expression; " & url)
   elif s.kind == nkSym:
     if dest.kind == skResult:
       if s.sym.kind != skParam or s.sym.position != 0:
