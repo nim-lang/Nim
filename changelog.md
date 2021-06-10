@@ -334,7 +334,7 @@
 
 - Added `dom.scrollIntoView` proc with options
 
-- add `std/asserts` containing `enforce`
+- add `std/exceptions` containing `enforce`
 
 ## Language changes
 

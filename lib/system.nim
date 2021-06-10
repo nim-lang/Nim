@@ -582,7 +582,7 @@ type
   RootRef* = ref RootObj ## Reference to `RootObj`.
 
 
-include "system/exceptions"
+include "system/exceptions_impl"
 
 when defined(js) or defined(nimdoc):
   type

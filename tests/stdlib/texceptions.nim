@@ -2,7 +2,7 @@
 see also tassert2
 ]#
 
-import std/asserts
+import std/exceptions
 import std/strutils
 
 
@@ -16,6 +16,6 @@ block: ## checks AST isn't transformed as it used to
     enforce a > 1, $a
   except EnforceError as e:
     raised = true
-    doAssert e.msg.endsWith "tasserts.nim(16, 13) `a > 1` 1"
+    doAssert e.msg.endsWith "texceptions.nim(16, 13) `a > 1` 1"
   doAssert raised
   doAssertRaises(EnforceError): enforce a > 1, $a

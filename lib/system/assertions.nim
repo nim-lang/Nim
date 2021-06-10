@@ -3,7 +3,7 @@
 ## **Note:** This module is reexported by `system` and thus does not need to be
 ## imported directly (with `system/assertions`).
 ##
-## See also: `std/asserts`
+## See also: `std/exceptions`
 
 when not declared(sysFatal):
   include "system/fatal"
