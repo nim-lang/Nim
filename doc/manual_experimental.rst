@@ -2065,7 +2065,7 @@ and `b` the location that is borrowed from.
 
 - The lifetime of `v` must not exceed `b`'s lifetime. Note: The lifetime of
   a parameter is the complete proc body.
-- If `v` is used for a mutation `b` must be a mutable location too.
+- If `v` is used for a mutation, `b` must be a mutable location too.
 - During `v`'s lifetime, `G(b)` can only be modified by `v` (and only if
   `v` is a mutable view).
 - If `v` is `result` then `b` has to be a location derived from the first
