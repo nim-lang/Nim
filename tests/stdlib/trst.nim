@@ -10,6 +10,8 @@ discard """
 [Suite] RST escaping
 
 [Suite] RST inline markup
+
+[Suite] Basic Markdown markup
 '''
 """
 
@@ -170,14 +172,14 @@ suite "RST indentation":
     let input1 = dedent"""
       .. code-block:: nim
           :test: "nim c $1"
-      
+
         template additive(typ: typedesc) =
           discard
       """
     let input2 = dedent"""
       .. code-block:: nim
         :test: "nim c $1"
-      
+
         template additive(typ: typedesc) =
           discard
       """
@@ -190,7 +192,7 @@ suite "RST indentation":
     let inputWrong = dedent"""
       .. code-block:: nim
        :test: "nim c $1"
-      
+
          template additive(typ: typedesc) =
            discard
       """
@@ -580,3 +582,44 @@ suite "RST inline markup":
           rnLeaf  ' '
           rnLeaf  'end'
         """)
+
+suite "Basic Markdown markup":
+  test "bold":
+    check "**bold text**".toAst() == dedent"""
+      rnStrongEmphasis
+        rnLeaf  'bold'
+        rnLeaf  ' '
+        rnLeaf  'text'
+    """
+    # FIXME: Below fails
+    # check "__bold text__".toAst() == dedent"""
+    #   rnStrongEmphasis
+    #     rnLeaf  'bold text'
+    #     rnLeaf  ' '
+    #     rnLeaf  'text'
+    # """
+
+  test "italic":
+    check "*italic text*".toAst() == dedent"""
+      rnEmphasis
+        rnLeaf  'italic'
+        rnLeaf  ' '
+        rnLeaf  'text'
+    """
+    # FIXME: Below fails
+    # check "_italic text_".toAst() == dedent"""
+    #   rnEmphasis
+    #     rnLeaf  'italic text'
+    #     rnLeaf  ' '
+    #     rnLeaf  'text'
+    # """
+
+  test "monospace":
+    check "`monospace text`".toAst() == dedent"""
+      rnInlineCode
+        rnDirArg
+          rnLeaf  'nim'
+        [nil]
+        rnLiteralBlock
+          rnLeaf  'monospace text'
+    """
