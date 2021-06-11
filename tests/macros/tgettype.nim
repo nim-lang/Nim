@@ -47,11 +47,16 @@ block:
     arity(U) == 2
 
   proc map1[T, R, U](a: T, fn: Callable1[R, T, U]): R =
-    let fn = cast[U](fn)
+    let fn = U(fn)
+      # `cast[U](fn)` would also work;
+      # this is currently needed otherwise, sigmatch errors with:
+      # Error: attempting to call routine: 'fn'
+      #  found 'fn' [param declared in tgettype.nim(53, 28)]
+      # this can be fixed in future work
     fn(a)
 
   proc map2[T, R, U](a: T, fn: Callable2[R, T, U]): R =
-    let fn = cast[U](fn)
+    let fn = U(fn)
     fn(a)
 
   proc fn1(a: int, a2 = 'x'): string = $(a, a2, "fn1")
