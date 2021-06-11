@@ -1,4 +1,4 @@
-when defined(nimHasLentIterators) and not defined(nimWorkaround14447):
+when defined(nimHasLentIterators) and not defined(nimNoLentIterators):
   template lent2(T): untyped = lent T
 else:
   template lent2(T): untyped = T
