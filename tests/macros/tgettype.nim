@@ -1,29 +1,74 @@
-discard """
-output: '''
-(ObjectTy (Empty) (Sym "Model") (RecList (Sym "name") (Sym "password")))
-(BracketExpr (Sym "typeDesc") (Sym "User"))
-'''
-"""
-import macros
+import std/macros
+import stdtest/testutils
 
-type
-  Model = object of RootObj
-  User = object of Model
-    name : string
-    password : string
+# getType
 
-macro testUser: string =
-  result = newLit(User.getType.lispRepr)
+block:
+  type
+    Model = object of RootObj
+    User = object of Model
+      name : string
+      password : string
 
-macro testGeneric(T: typedesc[Model]): string=
-  result = newLit(T.getType.lispRepr)
+  macro testUser: string =
+    result = newLit(User.getType.lispRepr)
 
-echo testUser
-echo User.testGeneric
+  macro testGeneric(T: typedesc[Model]): string=
+    result = newLit(T.getType.lispRepr)
 
-macro assertVoid(e: typed): untyped =
-  assert(getTypeInst(e).typeKind == ntyVoid)
+  doAssert testUser == """(ObjectTy (Empty) (Sym "Model") (RecList (Sym "name") (Sym "password")))"""
+  doAssert User.testGeneric == """(BracketExpr (Sym "typeDesc") (Sym "User"))"""
 
-proc voidProc() = discard
+  macro assertVoid(e: typed): untyped =
+    assert(getTypeInst(e).typeKind == ntyVoid)
 
-assertVoid voidProc()
+  proc voidProc() = discard
+
+  assertVoid voidProc()
+
+block:
+  # refs #18220; not an actual solution (yet) but at least shows what's currently
+  # possible
+
+  type Callable1[R, T, U] = concept fn
+    fn(default(T)) is R
+    fn is U
+
+  # note that typetraits.arity doesn't work
+  macro arity(a: typed): int =
+    # number of params
+    # this is not production code!
+    let a2 = a.getType[1] # this used to crash nim, with: `vmdeps.nim(292, 25) `false``
+    newLit a2.len - 1
+
+  type Callable2[R, T, U] = concept fn
+    fn(default(T)) is R
+    fn is U
+    arity(U) == 2
+
+  proc map1[T, R, U](a: T, fn: Callable1[R, T, U]): R =
+    let fn = cast[U](fn)
+    fn(a)
+
+  proc map2[T, R, U](a: T, fn: Callable2[R, T, U]): R =
+    let fn = cast[U](fn)
+    fn(a)
+
+  proc fn1(a: int, a2 = 'x'): string = $(a, a2, "fn1")
+  proc fn2(a: int, a2 = "zoo"): string = $(a, a2, "fn2")
+  proc fn3(a: int, a2 = "zoo2"): string = $(a, a2, "fn3")
+  proc fn4(a: int): string {.inline.} = $(a, "fn4")
+  proc fn5(a: int): string = $(a, "fn5")
+
+  assertAll:
+    1.map1(fn1) == """(1, 'x', "fn1")"""
+    1.map1(fn2) == """(1, "zoo", "fn2")"""
+    1.map1(fn3) == """(1, "zoo", "fn3")"""
+    1.map1(fn4) == """(1, "fn4")"""
+    1.map1(fn5) == """(1, "fn5")"""
+
+    not compiles(1.map2(fn1))
+    not compiles(1.map2(fn2))
+    not compiles(1.map2(fn3))
+    1.map2(fn4) == """(1, "fn4")"""
+    1.map2(fn5) == """(1, "fn5")"""
