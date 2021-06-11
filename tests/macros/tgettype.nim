@@ -66,12 +66,18 @@ block:
   proc fn5(a: int): string = $(a, "fn5")
 
   assertAll:
+    # Callable1
     1.map1(fn1) == """(1, 'x', "fn1")"""
     1.map1(fn2) == """(1, "zoo", "fn2")"""
     1.map1(fn3) == """(1, "zoo", "fn3")"""
+      # fn3's optional param is not honored, because fn3 and fn2 yield same
+      # generic instantiation; this is a caveat with this approach
+      # There are several possible ways to improve things in future work.
     1.map1(fn4) == """(1, "fn4")"""
     1.map1(fn5) == """(1, "fn5")"""
 
+    # Callable2; prevents passing procs with optional params to avoid above
+    # mentioned caveat, but more restrictive
     not compiles(1.map2(fn1))
     not compiles(1.map2(fn2))
     not compiles(1.map2(fn3))
