@@ -7,7 +7,7 @@ discard """
 # bug #13747 generic sandwich non-module scope symbols were ignored
 
 # keep these at module scope
-
+{.define(nimCompilerDebug).}
 when defined(t13747_case1):
   # every symbol suffixed by V1, represents -d:case2a1 from https://github.com/nim-lang/Nim/issues/13747#issuecomment-615992993
   proc byValImpl1V1(T: typedesc, valV1: int): auto =

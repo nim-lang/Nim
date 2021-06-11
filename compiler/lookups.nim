@@ -246,6 +246,10 @@ proc debugScopes*(c: PContext; limit=0, max = int.high) {.deprecated.} =
     inc i
 
 proc searchInScopesFilterBy*(c: PContext, s: PIdent, filter: TSymKinds): seq[PSym] =
+  # doAssert false
+  # dbg getStackTrace()
+  if isCompilerDebug():
+    dbg getStackTrace()
   result = @[]
   for scope in allScopes(c.currentScope):
     var ti: TIdentIter
