@@ -757,32 +757,28 @@ when true:
   template addInc =
     buf.add s[i]
     inc(i)
-  # Read integer part
-  while s[i] in {'0'..'9'}:
+  template eatUnderscores =
+    while s[i] == '_': inc(i)
+  while s[i] in {'0'..'9'}: # Read integer part
     buf.add s[i]
     inc(i)
-    while s[i] == '_': inc(i)
-  # Decimal?
-  if s[i] == '.':
+    eatUnderscores()
+  if s[i] == '.': # Decimal?
     addInc()
     while s[i] in {'0'..'9'}: # Read fractional part
       addInc()
-      while s[i] == '_': inc(i)
+      eatUnderscores()
   # Again, read integer and fractional part
   if buf.len == ord(sign): return 0
-  # Exponent?
-  if s[i] in {'e', 'E'}:
+  if s[i] in {'e', 'E'}: # Exponent?
     addInc()
     if s[i] == '+': inc(i)
-    elif s[i] == '-':
-      addInc()
-    if s[i] notin {'0'..'9'}:
-      return 0
+    elif s[i] == '-': addInc()
+    if s[i] notin {'0'..'9'}: return 0
     while s[i] in {'0'..'9'}:
       addInc()
-      while s[i] == '_': inc(i)
+      eatUnderscores()
   number = parseFloatNative(buf)
-  # Calculate Exponent
   result = i - start
 
 # Workaround for IE, IE up to version 11 lacks 'Math.trunc'. We produce
