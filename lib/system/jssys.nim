@@ -727,8 +727,7 @@ proc parseFloatNative(a: string): float =
 xxx how come code like this doesn't give IndexDefect ?
 let z = s[10000] == 'a'
 ]#
-when true:
- proc nimParseBiggestFloat(s: string, number: var BiggestFloat, start: int): int {.compilerproc.} =
+proc nimParseBiggestFloat(s: string, number: var BiggestFloat, start: int): int {.compilerproc.} =
   var sign: bool
   var i = start
   if s[i] == '+': inc(i)
