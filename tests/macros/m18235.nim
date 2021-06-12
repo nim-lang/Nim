@@ -17,3 +17,4 @@ macro unexport(n: typed): untyped =
   result[0] = n.name.strVal.ident
 
 proc foo*() {.unexport.} = discard
+proc bar() {.rename.} = discard
