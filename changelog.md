@@ -387,6 +387,9 @@
 
 - Added `--declaredlocs` to show symbol declaration location in messages.
 
+- You can now enable/disable VM tracing in a user code section via `{.define(nimVmTrace).}`
+  and `{.undef(nimVmTrace).}`.
+
 - Deprecated `TaintedString` and `--taintmode`.
 
 - Deprecated `--nilseqs` which is now a noop.
