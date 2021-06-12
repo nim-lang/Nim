@@ -1497,6 +1497,7 @@ proc semProcAnnotation(c: PContext, prc: PNode;
                        validPragmas: TSpecialWords): PNode =
   var n = prc[pragmasPos]
   if n == nil or n.kind == nkEmpty: return
+  c.openShadowScope()
   for i in 0..<n.len:
     let it = n[i]
     let key = if it.kind in nkPragmaCallKinds and it.len >= 1: it[0] else: it
@@ -1558,7 +1559,8 @@ proc semProcAnnotation(c: PContext, prc: PNode;
         result[pragmasPos].kind != nkEmpty:
       pragma(c, result[namePos].sym, result[pragmasPos], validPragmas)
 
-    return
+    break # don't return, we need to clean-up the shadowscope
+  c.mergeShadowScope()
 
 proc semInferredLambda(c: PContext, pt: TIdTable, n: PNode): PNode {.nosinks.} =
   ## used for resolving 'auto' in lambdas based on their callsite
@@ -1844,7 +1846,7 @@ proc semProcAux(c: PContext, n: PNode, kind: TSymKind,
 
   # before compiling the proc params & body, set as current the scope
   # where the proc was declared
-  let delcarationScope = c.currentScope
+  let declarationScope = c.currentScope
   pushOwner(c, s)
   openScope(c)
 
@@ -1889,7 +1891,7 @@ proc semProcAux(c: PContext, n: PNode, kind: TSymKind,
 
   var (proto, comesFromShadowScope) =
       if isAnon: (nil, false)
-      else: searchForProc(c, delcarationScope, s)
+      else: searchForProc(c, declarationScope, s)
   if proto == nil and sfForward in s.flags:
     ## In cases such as a macro generating a proc with a gensymmed name we
     ## know `searchForProc` will not find it and sfForward will be set. In
@@ -1916,9 +1918,9 @@ proc semProcAux(c: PContext, n: PNode, kind: TSymKind,
 
   if not hasProto and sfGenSym notin s.flags: #and not isAnon:
     if s.kind in OverloadableSyms:
-      addInterfaceOverloadableSymAt(c, delcarationScope, s)
+      addInterfaceOverloadableSymAt(c, declarationScope, s)
     else:
-      addInterfaceDeclAt(c, delcarationScope, s)
+      addInterfaceDeclAt(c, declarationScope, s)
 
   pragmaCallable(c, s, n, validPragmas)
   if not hasProto:

@@ -340,22 +340,35 @@ proc addOverloadableSymAt*(c: PContext; scope: PScope, fn: PSym) =
 proc addInterfaceDecl*(c: PContext, sym: PSym) =
   # it adds the symbol to the interface if appropriate
   addDecl(c, sym)
-  addInterfaceDeclAux(c, sym)
+  if not c.currentScope.isShadowScope:
+    # adding into a non-shadow scope, we need to handle exports, etc
+    addInterfaceDeclAux(c, sym)
 
 proc addInterfaceOverloadableSymAt*(c: PContext, scope: PScope, sym: PSym) =
   # it adds the symbol to the interface if appropriate
   addOverloadableSymAt(c, scope, sym)
-  addInterfaceDeclAux(c, sym)
+  if not scope.isShadowScope:
+    # adding into a non-shadow scope, we need to handle exports, etc
+    addInterfaceDeclAux(c, sym)
 
 proc openShadowScope*(c: PContext) =
+  ## opens a shadow scope, just like any other scope except the depth is the
+  ## same as the parent -- see `isShadowScope`.
   c.currentScope = PScope(parent: c.currentScope,
                           symbols: newStrTable(),
                           depthLevel: c.scopeDepth)
 
 proc closeShadowScope*(c: PContext) =
+  ## closes the shadow scope, but doesn't merge any of the symbols
   c.closeScope
 
 proc mergeShadowScope*(c: PContext) =
+  ## close the existing scope and merge in all defined symbols, this will also
+  ## trigger any export related code if this is into a non-shadow scope.
+  ##
+  ## Merges:
+  ## shadow -> shadow: add symbols to the parent but check for redefinitions etc
+  ## shadow -> non-shadow: the above, but also handle exports and all that 
   let shadowScope = c.currentScope
   c.rawCloseScope
   for sym in shadowScope.symbols:
