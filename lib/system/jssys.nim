@@ -717,8 +717,10 @@ const
   IdentChars = {'a'..'z', 'A'..'Z', '0'..'9', '_'}
 
 # XXX use JS's native way here
-proc nimParseBiggestFloat(s: string, number: var BiggestFloat, start = 0): int {.
-                          compilerproc.} =
+# proc nimParseBiggestFloatAux(s: openArray[char], number: var BiggestFloat): int =
+proc nimParseBiggestFloatAux(s: string, number: var BiggestFloat, start: int): int =
+  let start = 0
+  # debugEcho "D20210612T123043"
   var
     esign = 1.0
     sign = 1.0
@@ -786,6 +788,24 @@ proc nimParseBiggestFloat(s: string, number: var BiggestFloat, start = 0): int {
   number = number * sign
   result = i - start
 
+proc parseFloatNative(a: string): float =
+  let a2 = a.cstring
+  asm """
+  `result` = Number(`a2`);
+  """
+
+# proc toOpenArray*(x: string; first, last: int): openArray[char] {.magic: "Slice".}
+# proc toOpenArray*(x: string; first, last: int): openArray[char] {.magic: "Slice".}
+
+proc nimParseBiggestFloat(s: string, number: var BiggestFloat, start = 0): int {.
+                          compilerproc.} =
+  var ret = ""
+  # result = nimParseBiggestFloatAux(s.toOpenArray(start, s.high), number)
+  result = nimParseBiggestFloatAux(s, number, start)
+  for i in start..<start + result:
+    let si = s[i]
+    if si != '_': ret.add si
+  number = parseFloatNative(ret)
 
 # Workaround for IE, IE up to version 11 lacks 'Math.trunc'. We produce
 # 'Math.trunc' for Nim's ``div`` and ``mod`` operators:
