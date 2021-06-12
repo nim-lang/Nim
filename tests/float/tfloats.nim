@@ -54,6 +54,8 @@ template main =
   reject "e1"
   reject "infa"
   reject "infe1"
+  reject "_"
+  reject "1e"
 
   when false: # gray area; these numbers should probably be invalid
     reject "1_"

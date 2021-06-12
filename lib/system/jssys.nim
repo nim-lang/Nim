@@ -730,7 +730,6 @@ let z = s[10000] == 'a'
 when true:
  proc nimParseBiggestFloat(s: string, number: var BiggestFloat, start: int): int {.compilerproc.} =
   var sign: bool
-  var flags: int
   var i = start
   if s[i] == '+': inc(i)
   elif s[i] == '-':
@@ -760,7 +759,6 @@ when true:
     inc(i)
   # Read integer part
   while s[i] in {'0'..'9'}:
-    flags = flags or 1
     buf.add s[i]
     inc(i)
     while s[i] == '_': inc(i)
@@ -768,11 +766,10 @@ when true:
   if s[i] == '.':
     addInc()
     while s[i] in {'0'..'9'}: # Read fractional part
-      flags = flags or 2
       addInc()
       while s[i] == '_': inc(i)
   # Again, read integer and fractional part
-  if flags == 0: return 0
+  if buf.len == ord(sign): return 0
   # Exponent?
   if s[i] in {'e', 'E'}:
     addInc()
