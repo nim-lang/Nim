@@ -2878,3 +2878,23 @@ iterator mvalues*[A](t: CountTableRef[A]): var int =
     if t.data[h].val != 0:
       yield t.data[h].val
       assert(len(t) == L, "the length of the table changed while iterating over it")
+
+type SomeTable[A, B] = Table[A, B] | TableRef[A, B] | OrderedTable[A, B] | OrderedTableRef[A, B]
+  # in future work, refactor so that more procs can reuse this, and
+  # consider exporting `SomeTable`.
+
+proc getPtr*[A, B](t: SomeTable[A, B], key: A): ptr B =
+  ## Returns the address of the value stored at `key` if
+  ## it exists, or `nil`.
+  ##
+  ## This can be useful for performance reasons, but is unsafe to use
+  ## if table mutations occur before you use the address,
+  ## as with table iterators.
+  runnableExamples:
+    let t = {1: "foo", 2: "bar"}.toTable
+    assert t.getPtr(3) == nil
+    let a = t.getPtr(2)
+    assert a[] == "bar"
+    assert t.getPtr(2) == a
+      # same because we return by address, unlike `[]`
+  getPtrImpl(t, key)
