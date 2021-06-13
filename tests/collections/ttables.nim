@@ -472,5 +472,24 @@ proc main =
     let a3 = t[2]
     doAssert a2[0].unsafeAddr != a3[0].unsafeAddr
 
+  block: # getOrDefault
+    template test(toTableFn) =
+      block:
+        var witness = 0
+        proc getVal(): string =
+          witness.inc
+          "baz"
+        let t = toTableFn({1: "foo", 2: "bar"})
+        doAssert t.getOrDefault(1) == "foo"
+        doAssert t.getOrDefault(1, getVal()) == "foo"
+        doAssert witness == 0
+        doAssert t.getOrDefault(3) == ""
+        doAssert t.getOrDefault(3, getVal()) == "baz"
+        doAssert witness == 1
+    test(toTable)
+    test(toOrderedTable)
+    test(newTable)
+    test(newOrderedTable)
+
 static: main()
 main()

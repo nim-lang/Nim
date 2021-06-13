@@ -176,12 +176,6 @@ template insertImpl() = # for CountTable
   ctRawInsert(t, t.data, key, val)
   inc(t.counter)
 
-template getOrDefaultImpl(t, key): untyped =
-  mixin rawGet
-  var hc: Hash
-  var index = rawGet(t, key, hc)
-  if index >= 0: result = t.data[index].val
-
 template getPtrImpl(t, key): untyped =
   mixin rawGet
   var hc: Hash
@@ -191,8 +185,9 @@ template getPtrImpl(t, key): untyped =
 template getOrDefaultImpl(t, key, default: untyped): untyped =
   mixin rawGet
   var hc: Hash
-  var index = rawGet(t, key, hc)
-  result = if index >= 0: t.data[index].val else: default
+  let t2 = t.unsafeAddr # prevent double evaluation
+  var index = rawGet(t2[], key, hc)
+  if index >= 0: t2[].data[index].val else: default
 
 template dollarImpl(): untyped {.dirty.} =
   if t.len == 0:
@@ -213,4 +208,5 @@ template equalsImpl(s, t: typed) =
     for key, val in s:
       if not t.hasKey(key): return false
       if t.getOrDefault(key) != val: return false
+        # xxx why not t[key] since we already checked hasKey ?
     return true
