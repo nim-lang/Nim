@@ -11,7 +11,7 @@ targets: "c cpp js"
 matrix: "-d:nimEnableHashRef"
 """
 
-# xxx wrap in a template to test in VM, see https://github.com/timotheecour/Nim/issues/534#issuecomment-769565033
+# xxx move all blocks inside `main` to test in VM, see https://github.com/timotheecour/Nim/issues/534#issuecomment-769565033
 
 import hashes, sequtils, tables, algorithm
 
@@ -434,7 +434,6 @@ block: # https://github.com/nim-lang/Nim/issues/13496
   testDel(): (var t: CountTable[int])
   testDel(): (let t = newCountTable[int]())
 
-
 block testNonPowerOf2:
   var a = initTable[int, int](7)
   a[1] = 10
@@ -459,3 +458,19 @@ block: # Table[ref, int]
   t[a2] = 11
   doAssert t[a1] == 10
   doAssert t[a2] == 11
+
+proc main =
+  # xxx all blocks here
+  block: # getPtr
+    let t = {1: "foo", 2: "bar"}.toTable
+    doAssert t.getPtr(3) == nil
+    let a = t.getPtr(2)
+    doAssert a[] == "bar"
+    doAssert t.getPtr(2) == a
+    # with `[]`, you get a copy instead:
+    let a2 = t[2]
+    let a3 = t[2]
+    doAssert a2[0].unsafeAddr != a3[0].unsafeAddr
+
+static: main()
+main()

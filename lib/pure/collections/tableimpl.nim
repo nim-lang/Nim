@@ -182,6 +182,12 @@ template getOrDefaultImpl(t, key): untyped =
   var index = rawGet(t, key, hc)
   if index >= 0: result = t.data[index].val
 
+template getPtrImpl(t, key): untyped =
+  mixin rawGet
+  var hc: Hash
+  var index = rawGet(t, key, hc)
+  if index >= 0: result = t.data[index].val.unsafeAddr
+
 template getOrDefaultImpl(t, key, default: untyped): untyped =
   mixin rawGet
   var hc: Hash
