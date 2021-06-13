@@ -13,13 +13,14 @@ when not defined(nimcore):
   {.error: "nimcore MUST be defined for Nim's core tooling".}
 
 import
-  llstream, strutils, os, ast, lexer, syntaxes, options, msgs,
-  condsyms, times,
+  std/[strutils, os, times, tables, sha1, with, json],
+  llstream, ast, lexer, syntaxes, options, msgs,
+  condsyms,
   sem, idents, passes, extccomp,
-  cgen, json, nversion,
+  cgen, nversion,
   platform, nimconf, passaux, depends, vm,
   modules,
-  modulegraphs, tables, lineinfos, pathutils, vmprofiler, std/[sha1, with]
+  modulegraphs, lineinfos, pathutils, vmprofiler
 
 import ic / [cbackend, integrity, navigator]
 from ic / ic import rodViewer
@@ -392,9 +393,15 @@ proc mainCommand*(graph: ModuleGraph) =
       when declared(system.getMaxMem): formatSize(getMaxMem()) & " peakmem"
       else: formatSize(getTotalMem()) & " totmem"
     let loc = $conf.linesCompiled
-    let build = if isDefined(conf, "danger"): "Dangerous Release build"
-                elif isDefined(conf, "release"): "Release build"
-                else: "***SLOW, DEBUG BUILD***; -d:release makes code run faster."
+    var build = ""
+    if conf.cmd in cmdBackends:
+      build.add "gc: $#; " % $conf.selectedGC
+      if optThreads in conf.globalOptions: build.add "threads: on; "
+      build.add "opt: "
+      if optOptimizeSpeed in conf.options: build.add "speed"
+      elif optOptimizeSize in conf.options: build.add "size"
+      else: build.add "none DEBUG BUILD (`-d:release` is faster)"
+        # pending https://github.com/timotheecour/Nim/issues/752, point to optimization.html
     let sec = formatFloat(epochTime() - conf.lastCmdTime, ffDecimal, 3)
     let project = if conf.filenameOption == foAbs: $conf.projectFull else: $conf.projectName
       # xxx honor conf.filenameOption more accurately
@@ -411,14 +418,13 @@ proc mainCommand*(graph: ModuleGraph) =
     if optProfileVM in conf.globalOptions:
       echo conf.dump(conf.vmProfileData)
     rawMessage(conf, hintSuccessX, [
+      "build", build,
       "loc", loc,
       "sec", sec,
       "mem", mem,
       "project", project,
       "output", output,
       ])
-    if conf.cmd in cmdBackends:
-      rawMessage(conf, hintBuildMode, build)
 
   when PrintRopeCacheStats:
     echo "rope cache stats: "
