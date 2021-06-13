@@ -23,11 +23,13 @@ proc foooof*() {.unexport, eexport, unexport.} = discard
 proc barrab() {.eexport, unexport, eexport.} = discard
 
 macro eexportMulti(n: typed): untyped =
+  # use the call version of `eexport` macro for one or more decls
   result = copyNimTree(n)
   for i in 0..<result.len:
     result[i] = newCall(ident"eexport", result[i])
 
 macro unexportMulti(n: typed): untyped =
+  # use the call version of `unexport` macro for one or more decls
   result = copyNimTree(n)
   for i in 0..<result.len:
     result[i] = newCall(ident"unexport", result[i])
@@ -37,3 +39,4 @@ unexportMulti:
 
 eexportMulti:
   proc rab() = discard
+  proc baz*() = discard

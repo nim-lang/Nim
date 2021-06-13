@@ -7,7 +7,12 @@ doAssert not compiles(foo())
 doAssert(not declared(foooof))
 doAssert not compiles(foooof())
 
+doAssert(not declared(oof))
+doAssert not compiles(oof())
+
 # this should have been exported just fine
 
 bar()
 barrab()
+rab()
+baz()
