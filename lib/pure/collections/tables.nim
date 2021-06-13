@@ -2250,8 +2250,9 @@ proc rawGet[A](t: CountTable[A], key: A): int =
   result = -1 - h # < 0 => MISSING; insert idx = -1 - result
 
 template ctget(t, key, default: untyped): untyped =
-  var index = rawGet(t, key)
-  result = if index >= 0: t.data[index].val else: default
+  let t2 = t.unsafeAddr
+  var index = rawGet(t2[], key)
+  if index >= 0: t2[].data[index].val else: default
 
 proc inc*[A](t: var CountTable[A], key: A, val = 1)
 
