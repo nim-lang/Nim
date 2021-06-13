@@ -1497,7 +1497,6 @@ proc semProcAnnotation(c: PContext, prc: PNode;
                        validPragmas: TSpecialWords): PNode =
   var n = prc[pragmasPos]
   if n == nil or n.kind == nkEmpty: return
-  c.openShadowScope()
   for i in 0..<n.len:
     let it = n[i]
     let key = if it.kind in nkPragmaCallKinds and it.len >= 1: it[0] else: it
@@ -1559,8 +1558,7 @@ proc semProcAnnotation(c: PContext, prc: PNode;
         result[pragmasPos].kind != nkEmpty:
       pragma(c, result[namePos].sym, result[pragmasPos], validPragmas)
 
-    break # don't return, we need to clean-up the shadowscope
-  c.mergeShadowScope()
+    return
 
 proc semInferredLambda(c: PContext, pt: TIdTable, n: PNode): PNode {.nosinks.} =
   ## used for resolving 'auto' in lambdas based on their callsite
