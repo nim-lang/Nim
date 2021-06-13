@@ -4,7 +4,7 @@ import macros
 # processed by a type macro. Used by a test of a corresponding name of this
 # file.
 
-macro rename(n: typed): untyped =
+macro eexport(n: typed): untyped =
   result = copyNimTree(n)
   # turn exported nnkSym -> nnkPostfix(*, nnkIdent), forcing re-sem
   result[0] = nnkPostfix.newTree(ident"*").add:
@@ -17,4 +17,23 @@ macro unexport(n: typed): untyped =
   result[0] = n.name.strVal.ident
 
 proc foo*() {.unexport.} = discard
-proc bar() {.rename.} = discard
+proc bar() {.eexport.} = discard
+
+proc foooof*() {.unexport, eexport, unexport.} = discard
+proc barrab() {.eexport, unexport, eexport.} = discard
+
+macro eexportMulti(n: typed): untyped =
+  result = copyNimTree(n)
+  for i in 0..<result.len:
+    result[i] = newCall(ident"eexport", result[i])
+
+macro unexportMulti(n: typed): untyped =
+  result = copyNimTree(n)
+  for i in 0..<result.len:
+    result[i] = newCall(ident"unexport", result[i])
+
+unexportMulti:
+  proc oof*() = discard
+
+eexportMulti:
+  proc rab() = discard

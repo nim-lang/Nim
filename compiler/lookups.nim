@@ -325,7 +325,9 @@ proc addInterfaceDeclAux*(c: PContext, sym: PSym, forceExport = false) =
 
 proc addInterfaceDeclAt*(c: PContext, scope: PScope, sym: PSym) =
   addDeclAt(c, scope, sym)
-  addInterfaceDeclAux(c, sym)
+  if not scope.isShadowScope:
+    # adding into a non-shadow scope, we need to handle exports, etc
+    addInterfaceDeclAux(c, sym)
 
 proc addOverloadableSymAt*(c: PContext; scope: PScope, fn: PSym) =
   if fn.kind notin OverloadableSyms:
