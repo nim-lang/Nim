@@ -9,7 +9,7 @@
 
 # This include file implements the semantic checking for magics.
 # included from sem.nim
-
+import tables
 proc semAddrArg(c: PContext; n: PNode; isUnsafeAddr = false): PNode =
   let x = semExprWithType(c, n)
   if x.kind == nkSym:
@@ -580,5 +580,16 @@ proc magicsAfterOverloadResolution(c: PContext, n: PNode,
     result = n
   of mPrivateAccess:
     result = semPrivateAccess(c, n)
+  of mDeferImport:
+    let sl = semConstExpr(c, n[1])
+    if sl.kind notin nkStrKinds:
+      return localErrorNode(c, n, n[1].info, errStringLiteralExpected)
+    let path1 = sl.strVal
+    let path = pathSubs(c.config, path1, "D20210612T164641")
+    let file = findModule(c.config, path, toFullPath(c.config, sl.info))
+    let fileIdx = fileInfoIdx(c.config, file)
+    if fileIdx notin c.graph.deferImports:
+      c.graph.deferImports[fileIdx] = true
+    result = newNodeIT(nkEmpty, n.info, getSysType(c.graph, n.info, tyVoid))
   else:
     result = n

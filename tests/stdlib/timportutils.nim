@@ -1,6 +1,8 @@
 import std/importutils
 import stdtest/testutils
 import mimportutils
+import mimportutils3
+import mimportutils_cyclic1
 
 template main =
   block: # privateAccess
@@ -133,6 +135,25 @@ template main =
           defer: dealloc(a)
           privateAccess PtA
           a.ha1 == 0
+
+  block: # deferImport
+    disableVm:
+      proc mimportutils2_fn1(): int {.importc.}
+      proc mimportutils2_fn2(): int {.importc.}
+      deferImport "mimportutils2"
+      doAssert mimportutils2_fn1() == 1
+      doAssert mimportutils2_fn2() == 2
+      deferImport "mimportutils2" # calling again is ok
+      doAssert mimportutils2_fn2() == 3
+
+      block: # deferImport on a module already imported
+        proc mimportutils3_fn1(): int {.importc.}
+        doAssert mimportutils3_fn1() == 1
+        deferImport "mimportutils3"
+        doAssert mimportutils3_fn1() == 2
+
+      block: # example with cyclic imports
+        mimportutils_cyclic1_main()
 
 static: main()
 main()

@@ -42,3 +42,14 @@ proc privateAccess*(t: typedesc) {.magic: "PrivateAccess".} =
     # this also works with generics
     privateAccess(Goo)
     assert Goo[float](g0: 1).g0 == 1
+
+when defined(nimHasDeferImport):
+  proc deferImport*(path: string) {.magic: "DeferImport", compileTime.} =
+    ##[
+    This registers `path` as a module that should be imported after the main project
+    has been compiled. This helps dealing with cyclic dependencies in many cases.
+    ]##
+    runnableExamples:
+      deferImport "$lib/../tests/stdlib/mimportutils2.nim" # defines `mimportutils2_fn1`
+      proc mimportutils2_fn1(): int {.importc.}
+      assert mimportutils2_fn1() == 1
