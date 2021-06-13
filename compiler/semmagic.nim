@@ -581,12 +581,9 @@ proc magicsAfterOverloadResolution(c: PContext, n: PNode,
   of mPrivateAccess:
     result = semPrivateAccess(c, n)
   of mDeferImport:
-    let sl = semConstExpr(c, n[1])
-    if sl.kind notin nkStrKinds:
-      return localErrorNode(c, n, n[1].info, errStringLiteralExpected)
-    let path1 = sl.strVal
-    let path = pathSubs(c.config, path1, "D20210612T164641")
-    let file = findModule(c.config, path, toFullPath(c.config, sl.info))
+    let npath = semConstExpr(c, n[1])
+    let path = pathSubs(c.config, npath.strVal, config = "") # config doesn't seem relevant here
+    let file = findModule(c.config, path, toFullPath(c.config, npath.info))
     let fileIdx = fileInfoIdx(c.config, file)
     if fileIdx notin c.graph.deferImports:
       c.graph.deferImports[fileIdx] = true

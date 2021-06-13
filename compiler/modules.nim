@@ -188,7 +188,7 @@ proc compileProject*(graph: ModuleGraph; projectFileIdx = InvalidFileIdx) =
         break
     if not found: break # we're done
     graph.deferImports[fileIdx] = false
-    discard graph.compileModule(fileIdx,{})
+    discard graph.compileModule(fileIdx, {})
 
 proc makeModule*(graph: ModuleGraph; filename: AbsoluteFile): PSym =
   result = graph.newModule(fileInfoIdx(graph.config, filename))

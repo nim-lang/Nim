@@ -48,6 +48,8 @@ when defined(nimHasDeferImport):
     ##[
     This registers `path` as a module that should be imported after the main project
     has been compiled. This helps dealing with cyclic dependencies in many cases.
+
+    `path` is interpreted using the same rules as `import "someString"`.
     ]##
     runnableExamples:
       deferImport "$lib/../tests/stdlib/mimportutils2.nim" # defines `mimportutils2_fn1`

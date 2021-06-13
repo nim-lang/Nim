@@ -1,8 +1,6 @@
 import std/importutils
 import stdtest/testutils
-import mimportutils
-import mimportutils3
-import mimportutils_cyclic1
+import mimportutils, mimportutils3, mimportutils_cyclic1
 
 template main =
   block: # privateAccess
