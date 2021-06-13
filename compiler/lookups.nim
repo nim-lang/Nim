@@ -363,7 +363,7 @@ proc openShadowScope*(c: PContext) =
                           depthLevel: c.scopeDepth)
 
 proc closeShadowScope*(c: PContext) =
-  ## closes the shadow scope, but doesn't merge any of the symbols  
+  ## closes the shadow scope, but doesn't merge any of the symbols
   c.closeScope
 
 proc mergeShadowScope*(c: PContext) =
