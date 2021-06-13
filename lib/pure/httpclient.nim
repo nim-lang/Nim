@@ -135,11 +135,12 @@
 ##    var client = newHttpClient(sslContext=newContext(verifyMode=CVerifyPeer))
 ##
 ## There are three options for verify mode:
-## ``CVerifyNone``: certificates are not verified;
-## ``CVerifyPeer``: certificates are verified;
-## ``CVerifyPeerUseEnvVars``: certificates are verified and the optional
-## environment variables SSL_CERT_FILE and SSL_CERT_DIR are also used to
-## locate certificates
+##
+## * ``CVerifyNone``: certificates are not verified;
+## * ``CVerifyPeer``: certificates are verified;
+## * ``CVerifyPeerUseEnvVars``: certificates are verified and the optional
+##   environment variables SSL_CERT_FILE and SSL_CERT_DIR are also used to
+##   locate certificates
 ##
 ## See `newContext <net.html#newContext.string,string,string,string>`_ to tweak or disable certificate validation.
 ##
