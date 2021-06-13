@@ -332,7 +332,10 @@
 
 - Added setCurrentException for JS backend.
 
+- Added `tables.getPtr`.
+
 - Added `dom.scrollIntoView` proc with options
+
 
 ## Language changes
 
