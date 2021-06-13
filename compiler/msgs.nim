@@ -8,10 +8,9 @@
 #
 
 import
-  options, strutils, os, tables, ropes, terminal, macros,
-  lineinfos, pathutils
-import std/private/miscdollars
-import strutils2
+  std/[strutils, os, tables, terminal, macros, times],
+  std/private/miscdollars,
+  options, ropes, lineinfos, pathutils, strutils2
 
 type InstantiationInfo* = typeof(instantiationInfo())
 template instLoc*(): InstantiationInfo = instantiationInfo(-2, fullPaths = true)
@@ -656,3 +655,39 @@ proc uniqueModuleName*(conf: ConfigRef; fid: FileIndex): string =
       # We mangle upper letters and digits too so that there cannot
       # be clashes with our special meanings of 'Z' and 'O'
       result.addInt ord(c)
+
+proc genSuccessX*(conf: ConfigRef) =
+  let mem =
+    when declared(system.getMaxMem): formatSize(getMaxMem()) & " peakmem"
+    else: formatSize(getTotalMem()) & " totmem"
+  let loc = $conf.linesCompiled
+  var build = ""
+  if conf.cmd in cmdBackends:
+    build.add "gc: $#; " % $conf.selectedGC
+    if optThreads in conf.globalOptions: build.add "threads: on; "
+    build.add "opt: "
+    if optOptimizeSpeed in conf.options: build.add "speed"
+    elif optOptimizeSize in conf.options: build.add "size"
+    else: build.add "none DEBUG BUILD (`-d:release` is faster)"
+      # pending https://github.com/timotheecour/Nim/issues/752, point to optimization.html
+  let sec = formatFloat(epochTime() - conf.lastCmdTime, ffDecimal, 3)
+  let project = if conf.filenameOption == foAbs: $conf.projectFull else: $conf.projectName
+    # xxx honor conf.filenameOption more accurately
+  var output: string
+  if optCompileOnly in conf.globalOptions and conf.cmd != cmdJsonscript:
+    output = $conf.jsonBuildFile
+  elif conf.outFile.isEmpty and conf.cmd notin {cmdJsonscript} + cmdDocLike + cmdBackends:
+    # for some cmd we expect a valid absOutFile
+    output = "unknownOutput"
+  else:
+    output = $conf.absOutFile
+  if conf.filenameOption != foAbs: output = output.AbsoluteFile.extractFilename
+    # xxx honor filenameOption more accurately
+  rawMessage(conf, hintSuccessX, [
+    "build", build,
+    "loc", loc,
+    "sec", sec,
+    "mem", mem,
+    "project", project,
+    "output", output,
+    ])

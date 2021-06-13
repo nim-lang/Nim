@@ -388,43 +388,9 @@ proc mainCommand*(graph: ModuleGraph) =
     rawMessage(conf, errGenerated, "invalid command: " & conf.command)
 
   if conf.errorCounter == 0 and conf.cmd notin {cmdTcc, cmdDump, cmdNop}:
-    # D20210419T170230:here
-    let mem =
-      when declared(system.getMaxMem): formatSize(getMaxMem()) & " peakmem"
-      else: formatSize(getTotalMem()) & " totmem"
-    let loc = $conf.linesCompiled
-    var build = ""
-    if conf.cmd in cmdBackends:
-      build.add "gc: $#; " % $conf.selectedGC
-      if optThreads in conf.globalOptions: build.add "threads: on; "
-      build.add "opt: "
-      if optOptimizeSpeed in conf.options: build.add "speed"
-      elif optOptimizeSize in conf.options: build.add "size"
-      else: build.add "none DEBUG BUILD (`-d:release` is faster)"
-        # pending https://github.com/timotheecour/Nim/issues/752, point to optimization.html
-    let sec = formatFloat(epochTime() - conf.lastCmdTime, ffDecimal, 3)
-    let project = if conf.filenameOption == foAbs: $conf.projectFull else: $conf.projectName
-      # xxx honor conf.filenameOption more accurately
-    var output: string
-    if optCompileOnly in conf.globalOptions and conf.cmd != cmdJsonscript:
-      output = $conf.jsonBuildFile
-    elif conf.outFile.isEmpty and conf.cmd notin {cmdJsonscript} + cmdDocLike + cmdBackends:
-      # for some cmd we expect a valid absOutFile
-      output = "unknownOutput"
-    else:
-      output = $conf.absOutFile
-    if conf.filenameOption != foAbs: output = output.AbsoluteFile.extractFilename
-      # xxx honor filenameOption more accurately
     if optProfileVM in conf.globalOptions:
       echo conf.dump(conf.vmProfileData)
-    rawMessage(conf, hintSuccessX, [
-      "build", build,
-      "loc", loc,
-      "sec", sec,
-      "mem", mem,
-      "project", project,
-      "output", output,
-      ])
+    genSuccessX(conf)
 
   when PrintRopeCacheStats:
     echo "rope cache stats: "
