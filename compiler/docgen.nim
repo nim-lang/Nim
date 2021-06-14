@@ -1064,7 +1064,7 @@ proc documentRaises*(cache: IdentCache; n: PNode) =
 
 proc generateDoc*(d: PDoc, n, orig: PNode, docFlags: DocFlags = kDefault) =
   ## Goes through nim nodes recursively and collects doc comments.
-  ## Main function for `doc`:option: (aka `doc2`:option:) command,
+  ## Main function for `doc`:option: command,
   ## which is implemented in ``docgen2.nim``.
   template genItemAux(skind) =
     genItem(d, n, n[namePos], skind, docFlags)
