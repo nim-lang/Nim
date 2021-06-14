@@ -41,7 +41,7 @@ type
                        ## is used for its HTML rendering.
     descRst: ItemPre     ## Description of the item (may contain runnable
                          ## examples).
-    substitutions: seq[string]    ## Variable names in ``doc.item``...
+    substitutions: seq[string]    ## Variable names in `doc.item`...
   ModSection = object  ## Section like Procs, Types, etc.
     secItems: seq[Item]  ## Pre-processed items.
     finalMarkup: string  ## The items, after RST pass 2 and rendering.
