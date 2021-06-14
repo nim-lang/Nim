@@ -293,29 +293,28 @@ proc wrongRedefinition*(c: PContext; info: TLineInfo, s: string;
       "redefinition of '$1'; previous declaration here: $2" %
       [s, c.config $ conflictsWith])
 
-proc addDecl*(c: PContext, sym: PSym, info: TLineInfo) =
-  let conflict = c.currentScope.addUniqueSym(sym)
+proc addDeclAt*(c: PContext; scope: PScope, sym: PSym, info: TLineInfo) =
+  let conflict = scope.addUniqueSym(sym)
   if conflict != nil:
     wrongRedefinition(c, info, sym.name.s, conflict.info)
 
+proc addDeclAt*(c: PContext; scope: PScope, sym: PSym) =
+  addDeclAt(c, scope, sym, sym.info)
+
+proc addDecl*(c: PContext, sym: PSym, info: TLineInfo) =
+  addDeclAt(c, c.currentScope, sym, info)
+
 proc addDecl*(c: PContext, sym: PSym) =
-  let conflict = strTableInclReportConflict(c.currentScope.symbols, sym, true)
-  if conflict != nil:
-    wrongRedefinition(c, sym.info, sym.name.s, conflict.info)
+  addDeclAt(c, c.currentScope, sym)
 
 proc addPrelimDecl*(c: PContext, sym: PSym) =
   discard c.currentScope.addUniqueSym(sym)
 
-proc addDeclAt*(c: PContext; scope: PScope, sym: PSym) =
-  let conflict = scope.addUniqueSym(sym)
-  if conflict != nil:
-    wrongRedefinition(c, sym.info, sym.name.s, conflict.info)
-
 from ic / ic import addHidden
 
-proc addInterfaceDeclAux*(c: PContext, sym: PSym, forceExport = false) =
+proc addInterfaceDeclAux(c: PContext, sym: PSym) =
   ## adds symbol to the module for either private or public access.
-  if sfExported in sym.flags or forceExport:
+  if sfExported in sym.flags:
     # add to interface:
     if c.module != nil: exportSym(c, sym)
     else: internalError(c.config, sym.info, "addInterfaceDeclAux")
@@ -331,6 +330,10 @@ proc addInterfaceDeclAt*(c: PContext, scope: PScope, sym: PSym) =
     # adding into a non-shadow scope, we need to handle exports, etc
     addInterfaceDeclAux(c, sym)
 
+proc addInterfaceDecl*(c: PContext, sym: PSym) =
+  ## adds a decl and the interface if appropriate
+  addInterfaceDeclAt(c, c.currentScope, sym)
+
 proc addOverloadableSymAt*(c: PContext; scope: PScope, fn: PSym) =
   ## adds an symbol to the given scope, will check for and raise errors if it's
   ## a redefinition as opposed to an overload.
@@ -343,16 +346,11 @@ proc addOverloadableSymAt*(c: PContext; scope: PScope, fn: PSym) =
   else:
     scope.addSym(fn)
 
-proc addInterfaceDecl*(c: PContext, sym: PSym) =
-  ## adds a decl and the interface if appropriate
-  addDecl(c, sym)
-  if not c.currentScope.isShadowScope:
-    addInterfaceDeclAux(c, sym)
-
 proc addInterfaceOverloadableSymAt*(c: PContext, scope: PScope, sym: PSym) =
   ## adds an overloadable symbol on the scope and the interface if appropriate
   addOverloadableSymAt(c, scope, sym)
   if not scope.isShadowScope:
+    # adding into a non-shadow scope, we need to handle exports, etc
     addInterfaceDeclAux(c, sym)
 
 proc openShadowScope*(c: PContext) =
