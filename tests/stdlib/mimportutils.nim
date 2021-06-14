@@ -13,5 +13,7 @@ type
     hd1: float
   PA* = ref A
   PtA* = ptr A
+  E*[T] = object
+    he1: int
 
 proc initB*(): B = B()

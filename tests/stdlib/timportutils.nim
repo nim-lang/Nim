@@ -38,6 +38,22 @@ template main =
 
     block:
       assertAll:
+        not compiles(E[int](he1: 1))
+        # type E1 = E[int]
+        privateAccess E[int]
+        # privateAccess E1
+        var e = E[int](he1: 1)
+        # var e = E1(e0: 1)
+        # var e = E1()
+        e.he1 == 1
+        e.he1 = 2
+        e.he1 == 2
+        e.he1 += 3
+        e.he1 == 5
+        var e2 = E[float](he1: 1)
+
+    block:
+      assertAll:
         privateAccess PA
         var pa = PA(a0: 1, ha1: 2)
         pa.ha1 == 2
