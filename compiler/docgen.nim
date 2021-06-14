@@ -210,7 +210,7 @@ proc newDocumentor*(filename: AbsoluteFile; cache: IdentCache; conf: ConfigRef,
   result.outDir = conf.outDir.string
   const options = {roSupportRawDirective, roSupportMarkdown,
                    roPreferMarkdown, roNimFile}
-  result.sharedState = newSharedStateRst(
+  result.sharedState = newRstSharedState(
       options, filename.string,
       docgenFindFile, compilerMsgHandler)
   initRstGenerator(result[], (if conf.isLatexCmd: outLatex else: outHtml),

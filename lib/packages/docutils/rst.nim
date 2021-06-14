@@ -578,7 +578,7 @@ proc whichRoleAux(sym: string): RstNodeKind =
   else:  # unknown role
     result = rnUnknownRole
 
-proc newSharedStateRst*(options: RstParseOptions,
+proc newRstSharedState*(options: RstParseOptions,
                         filename: string,
                         findFile: FindFileHandler,
                         msgHandler: MsgHandler): PRstSharedState =
@@ -2949,7 +2949,7 @@ proc rstParse*(text, filename: string,
                findFile: FindFileHandler = nil,
                msgHandler: MsgHandler = nil): PRstNode =
   ## Parses the whole `text`. The result is ready for `rstgen.renderRstToOut`.
-  var sharedState = newSharedStateRst(options, filename, findFile, msgHandler)
+  var sharedState = newRstSharedState(options, filename, findFile, msgHandler)
   let unresolved = rstParsePass1(text, filename, line, column,
                                  options, sharedState)
   preparePass2(sharedState, unresolved)
