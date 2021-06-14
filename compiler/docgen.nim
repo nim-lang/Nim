@@ -36,8 +36,8 @@ type
     of false:
       str: string
   ItemPre = seq[ItemFragment]  ## A pre-processed item.
-  Item = object        ## Any item in documentation, e.g. type or
-                       ## proc entry. Configuration variable ``doc.item``
+  Item = object        ## Any item in documentation, e.g. symbol
+                       ## entry. Configuration variable ``doc.item``
                        ## is used for its HTML rendering.
     descRst: ItemPre     ## Description of the item (may contain runnable
                          ## examples).
