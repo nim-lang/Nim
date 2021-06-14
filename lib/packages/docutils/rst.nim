@@ -842,7 +842,7 @@ proc addFootnoteSymAuto(p: var RstParser) =
   p.s.lineFootnoteSym.add curLine(p)
   p.s.footnotes.add((fnAutoSymbol, -1, -1, p.s.lineFootnoteSym.len, ""))
 
-proc orderFootnotes(s: var RstSharedState) =
+proc orderFootnotes(s: RstSharedState) =
   ## numerate auto-numbered footnotes taking into account that all
   ## manually numbered ones always have preference.
   ## Save the result back to s.footnotes.
