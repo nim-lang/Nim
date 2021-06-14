@@ -71,7 +71,7 @@ type
     jEntriesPre: seq[JsonItem] # pre-processed RST + JSON content
     jEntriesFinal: JsonNode    # final JSON after RST pass 2 and rendering
     types: TStrTable
-    sharedState: RstSharedState
+    sharedState: PRstSharedState
     isPureRst: bool
     conf*: ConfigRef
     cache*: IdentCache
@@ -182,7 +182,7 @@ template declareClosures =
 proc parseRst(text, filename: string,
               line, column: int,
               rstOptions: RstParseOptions;
-              conf: ConfigRef, sharedState: RstSharedState): PRstNode =
+              conf: ConfigRef, sharedState: PRstSharedState): PRstNode =
   declareClosures()
   result = rstParsePass1(text, filename, line, column, rstOptions,
                          sharedState)

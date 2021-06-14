@@ -489,7 +489,7 @@ type
     autoSymIdx: int     # order of occurence: fnAutoSymbol
     label: string       # valid for fnAutoNumberLabel
 
-  SharedState = object
+  RstSharedState = object
     options: RstParseOptions    # parsing options
     hLevels: LevelMap           # hierarchy of heading styles
     hTitleCnt: int              # =0 if no title, =1 if only main title,
@@ -511,11 +511,11 @@ type
     filename: string
     hasToc*: bool
 
-  RstSharedState* = ref SharedState
+  PRstSharedState* = ref RstSharedState
   RstParser = object of RootObj
     idx*: int
     tok*: TokenSeq
-    s*: RstSharedState
+    s*: PRstSharedState
     indentStack*: seq[int]
     line*, col*: int            ## initial line/column of whole text or
                                 ## documenation fragment that will be added
@@ -581,7 +581,7 @@ proc whichRoleAux(sym: string): RstNodeKind =
 proc newSharedStateRst*(options: RstParseOptions,
                         filename: string,
                         findFile: FindFileHandler,
-                        msgHandler: MsgHandler): RstSharedState =
+                        msgHandler: MsgHandler): PRstSharedState =
   new(result)
   result.currRole = defaultRole(options)
   result.currRoleKind = whichRoleAux(result.currRole)
@@ -603,7 +603,7 @@ proc rstMessage(p: RstParser, msgKind: MsgKind, arg: string) =
   p.s.msgHandler(p.s.filename, curLine(p),
                              p.col + currentTok(p).col, msgKind, arg)
 
-proc rstMessage(s: RstSharedState, msgKind: MsgKind, arg: string) =
+proc rstMessage(s: PRstSharedState, msgKind: MsgKind, arg: string) =
   ## Handle message `arg`. Its position can not be localized at the moment.
   s.msgHandler(s.filename, LineRstInit, ColRstInit, msgKind, arg)
 
@@ -686,7 +686,7 @@ proc popInd(p: var RstParser) =
 # whether it should continue its processing or not, and decided not to,
 # then this B.E. handler should step back (e.g. do `dec p.idx`).
 
-proc initParser(p: var RstParser, sharedState: RstSharedState) =
+proc initParser(p: var RstParser, sharedState: PRstSharedState) =
   p.indentStack = @[0]
   p.tok = @[]
   p.idx = 0
@@ -758,7 +758,7 @@ proc rstnodeToRefname(n: PRstNode): string =
   var b = false
   rstnodeToRefnameAux(n, result, b)
 
-proc findSub(s: RstSharedState, n: PRstNode): int =
+proc findSub(s: PRstSharedState, n: PRstNode): int =
   var key = addNodes(n)
   # the spec says: if no exact match, try one without case distinction:
   for i in countup(0, high(s.subs)):
@@ -787,7 +787,7 @@ proc setRef(p: var RstParser, key: string, value: PRstNode) =
       return
   p.s.refs.add(Substitution(key: key, value: value))
 
-proc findRef(s: RstSharedState, key: string): PRstNode =
+proc findRef(s: PRstSharedState, key: string): PRstNode =
   for i in countup(0, high(s.refs)):
     if key == s.refs[i].key:
       return s.refs[i].value
@@ -804,7 +804,7 @@ proc addAnchor(p: var RstParser, refn: string, reset: bool) =
   else:
     p.curAnchor = refn
 
-proc findMainAnchor(s: RstSharedState, refn: string): string =
+proc findMainAnchor(s: PRstSharedState, refn: string): string =
   for subst in s.anchors:
     if subst.mainAnchor == refn:  # no need to rename
       result = subst.mainAnchor
@@ -842,7 +842,7 @@ proc addFootnoteSymAuto(p: var RstParser) =
   p.s.lineFootnoteSym.add curLine(p)
   p.s.footnotes.add((fnAutoSymbol, -1, -1, p.s.lineFootnoteSym.len, ""))
 
-proc orderFootnotes(s: RstSharedState) =
+proc orderFootnotes(s: PRstSharedState) =
   ## numerate auto-numbered footnotes taking into account that all
   ## manually numbered ones always have preference.
   ## Save the result back to `s.footnotes`.
@@ -912,21 +912,21 @@ proc orderFootnotes(s: RstSharedState) =
 
   s.footnotes = result
 
-proc getFootnoteNum(s: RstSharedState, label: string): int =
+proc getFootnoteNum(s: PRstSharedState, label: string): int =
   ## get number from label. Must be called after `orderFootnotes`.
   result = -1
   for fnote in s.footnotes:
     if fnote.label == label:
       return fnote.number
 
-proc getFootnoteNum(s: RstSharedState, order: int): int =
+proc getFootnoteNum(s: PRstSharedState, order: int): int =
   ## get number from occurrence. Must be called after `orderFootnotes`.
   result = -1
   for fnote in s.footnotes:
     if fnote.autoNumIdx == order:
       return fnote.number
 
-proc getAutoSymbol(s: RstSharedState, order: int): string =
+proc getAutoSymbol(s: PRstSharedState, order: int): string =
   ## get symbol from occurrence of auto-symbol footnote.
   result = "???"
   for fnote in s.footnotes:
@@ -1769,7 +1769,7 @@ proc getLevel(p: var RstParser, c: char, hasOverline: bool): int =
                             line: curLine(p), hasPeers: false)
   result = p.s.hLevels.len - 1
 
-proc countTitles(s: RstSharedState, n: PRstNode) =
+proc countTitles(s: PRstSharedState, n: PRstNode) =
   ## Fill `s.hTitleCnt`
   if n == nil: return
   for node in n.sons:
@@ -2812,7 +2812,7 @@ proc parseDotDot(p: var RstParser): PRstNode =
 proc rstParsePass1*(fragment, filename: string,
                     line, column: int,
                     options: RstParseOptions,
-                    sharedState: RstSharedState): PRstNode =
+                    sharedState: PRstSharedState): PRstNode =
   ## Parses an RST `fragment`.
   ## The result should be further processed by
   ## `preparePass2` and `resolveSubs` (which is pass 2).
@@ -2823,12 +2823,12 @@ proc rstParsePass1*(fragment, filename: string,
   getTokens(fragment, p.tok)
   result = parseDoc(p)
 
-proc preparePass2*(s: RstSharedState, mainNode: PRstNode) =
+proc preparePass2*(s: PRstSharedState, mainNode: PRstNode) =
   ## Records titles in node `mainNode` and orders footnotes.
   countTitles(s, mainNode)
   orderFootnotes(s)
 
-proc resolveSubs*(s: RstSharedState, n: PRstNode): PRstNode =
+proc resolveSubs*(s: PRstSharedState, n: PRstNode): PRstNode =
   ## Makes pass 2 of RST parsing.
   ## Resolves substitutions and anchor aliases, groups footnotes.
   ## Takes input node `n` and returns the same node with recursive
