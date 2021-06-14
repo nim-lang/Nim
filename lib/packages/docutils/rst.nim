@@ -582,15 +582,15 @@ proc newSharedStateRst*(options: RstParseOptions,
                         filename: string,
                         findFile: FindFileHandler,
                         msgHandler: MsgHandler): PRstSharedState =
-  new(result)
-  result.currRole = defaultRole(options)
-  result.currRoleKind = whichRoleAux(result.currRole)
-  result.subs = @[]
-  result.refs = @[]
-  result.options = options
-  result.msgHandler = if not isNil(msgHandler): msgHandler else: defaultMsgHandler
-  result.filename = filename
-  result.findFile = if not isNil(findFile): findFile else: defaultFindFile
+  let r = defaultRole(options)
+  result = PRstSharedState(
+      currRole: r,
+      currRoleKind: whichRoleAux(r),
+      options: options,
+      msgHandler: if not isNil(msgHandler): msgHandler else: defaultMsgHandler,
+      filename: filename,
+      findFile: if not isNil(findFile): findFile else: defaultFindFile
+  )
 
 proc curLine(p: RstParser): int = p.line + currentTok(p).line
 
