@@ -33,14 +33,14 @@ type
     case isRst: bool
     of true:
       rst: PRstNode
-    of false:
+    of false:            ## contains ready markup e.g. from runnableExamples
       str: string
   ItemPre = seq[ItemFragment]  ## A pre-processed item.
   Item = object        ## Any item in documentation, e.g. symbol
                        ## entry. Configuration variable ``doc.item``
                        ## is used for its HTML rendering.
-    descRst: ItemPre     ## Description of the item (may contain runnable
-                         ## examples).
+    descRst: ItemPre     ## Description of the item (may contain
+                         ## runnableExamples).
     substitutions: seq[string]    ## Variable names in `doc.item`...
   ModSection = object  ## Section like Procs, Types, etc.
     secItems: seq[Item]  ## Pre-processed items.
@@ -1132,9 +1132,7 @@ proc finishGenerateDoc*(d: var PDoc) =
       case f.isRst:
       of true:
         var resolved = resolveSubs(d.sharedState, f.rst)
-        var str: string
-        renderRstToOut(d[], resolved, str)
-        result &= str
+        renderRstToOut(d[], resolved, result)
       of false: result &= f.str
   for k in TSymKind:
     for item in d.section[k].secItems:

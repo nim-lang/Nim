@@ -604,7 +604,8 @@ proc rstMessage(p: RstParser, msgKind: MsgKind, arg: string) =
                              p.col + currentTok(p).col, msgKind, arg)
 
 proc rstMessage(s: PRstSharedState, msgKind: MsgKind, arg: string) =
-  ## Handle message `arg`. Its position can not be localized at the moment.
+  ## Print warnings for footnotes/substitutions.
+  ## TODO: their line/column info is not known, to fix it.
   s.msgHandler(s.filename, LineRstInit, ColRstInit, msgKind, arg)
 
 proc rstMessage(p: RstParser, msgKind: MsgKind, arg: string, line, col: int) =
