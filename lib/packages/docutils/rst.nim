@@ -2823,7 +2823,7 @@ proc rstParsePass1*(fragment, filename: string,
   getTokens(fragment, p.tok)
   result = parseDoc(p)
 
-proc preparePass2*(s: var RstSharedState, mainNode: PRstNode) =
+proc preparePass2*(s: RstSharedState, mainNode: PRstNode) =
   ## Records titles in node `mainNode` and orders footnotes.
   countTitles(s, mainNode)
   orderFootnotes(s)
