@@ -39,18 +39,24 @@ template main =
     block:
       assertAll:
         not compiles(E[int](he1: 1))
-        # type E1 = E[int]
         privateAccess E[int]
-        # privateAccess E1
         var e = E[int](he1: 1)
-        # var e = E1(e0: 1)
-        # var e = E1()
         e.he1 == 1
         e.he1 = 2
         e.he1 == 2
         e.he1 += 3
         e.he1 == 5
+        # xxx caveat: this currently compiles but in future, we may want
+        # to make `privateAccess E[int]` only affect a specific instantiation;
+        # note that `privateAccess E` does work to cover all instantiations.
         var e2 = E[float](he1: 1)
+
+    block:
+      assertAll:
+        not compiles(E[int](he1: 1))
+        privateAccess E
+        var e = E[int](he1: 1)
+        e.he1 == 1
 
     block:
       assertAll:
