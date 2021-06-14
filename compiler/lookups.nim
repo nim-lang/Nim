@@ -298,13 +298,13 @@ proc addDeclAt*(c: PContext; scope: PScope, sym: PSym, info: TLineInfo) =
   if conflict != nil:
     wrongRedefinition(c, info, sym.name.s, conflict.info)
 
-proc addDeclAt*(c: PContext; scope: PScope, sym: PSym) =
+proc addDeclAt*(c: PContext; scope: PScope, sym: PSym) {.inline.} =
   addDeclAt(c, scope, sym, sym.info)
 
-proc addDecl*(c: PContext, sym: PSym, info: TLineInfo) =
+proc addDecl*(c: PContext, sym: PSym, info: TLineInfo) {.inline.} =
   addDeclAt(c, c.currentScope, sym, info)
 
-proc addDecl*(c: PContext, sym: PSym) =
+proc addDecl*(c: PContext, sym: PSym) {.inline.} =
   addDeclAt(c, c.currentScope, sym)
 
 proc addPrelimDecl*(c: PContext, sym: PSym) =
@@ -330,7 +330,7 @@ proc addInterfaceDeclAt*(c: PContext, scope: PScope, sym: PSym) =
     # adding into a non-shadow scope, we need to handle exports, etc
     addInterfaceDeclAux(c, sym)
 
-proc addInterfaceDecl*(c: PContext, sym: PSym) =
+proc addInterfaceDecl*(c: PContext, sym: PSym) {.inline.} =
   ## adds a decl and the interface if appropriate
   addInterfaceDeclAt(c, c.currentScope, sym)
 
