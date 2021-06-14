@@ -293,6 +293,8 @@ proc wrongRedefinition*(c: PContext; info: TLineInfo, s: string;
       "redefinition of '$1'; previous declaration here: $2" %
       [s, c.config $ conflictsWith])
 
+# xxx pending bootstrap >= 1.4, replace all those overloads with a single one:
+# proc addDecl*(c: PContext, sym: PSym, info = sym.info, scope = c.currentScope) {.inline.} =
 proc addDeclAt*(c: PContext; scope: PScope, sym: PSym, info: TLineInfo) =
   let conflict = scope.addUniqueSym(sym)
   if conflict != nil:
