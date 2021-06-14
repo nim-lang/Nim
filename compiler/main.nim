@@ -281,7 +281,7 @@ proc mainCommand*(graph: ModuleGraph) =
     else:
       rawMessage(conf, errGenerated, "'run' command not available; rebuild with -d:tinyc")
   of cmdDoc0: docLikeCmd commandDoc(cache, conf)
-  of cmdDoc2:  # the 'nim doc' command (aka doc2)
+  of cmdDoc:
     docLikeCmd():
       conf.setNoteDefaults(warnLockLevel, false) # issue #13218
       conf.setNoteDefaults(warnRedefinitionOfLabel, false) # issue #13218

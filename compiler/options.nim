@@ -143,8 +143,8 @@ type
     cmdIdeTools # ide tools (e.g. nimsuggest)
     cmdNimscript # evaluate nimscript
     cmdDoc0
-    cmdDoc2
-    cmdDoc2tex
+    cmdDoc      # convert .nim doc comments to HTML
+    cmdDoc2tex  # convert .nim doc comments to LaTeX
     cmdRst2html # convert a reStructuredText file to HTML
     cmdRst2tex # convert a reStructuredText file to TeX
     cmdJsondoc0
@@ -161,7 +161,7 @@ type
 
 const
   cmdBackends* = {cmdCompileToC, cmdCompileToCpp, cmdCompileToOC, cmdCompileToJS, cmdCrun}
-  cmdDocLike* = {cmdDoc0, cmdDoc2, cmdDoc2tex, cmdJsondoc0, cmdJsondoc,
+  cmdDocLike* = {cmdDoc0, cmdDoc, cmdDoc2tex, cmdJsondoc0, cmdJsondoc,
                  cmdCtags, cmdBuildindex}
 
 type
