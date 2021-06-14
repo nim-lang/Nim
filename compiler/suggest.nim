@@ -263,7 +263,7 @@ proc fieldVisible*(c: PContext, f: PSym): bool {.inline.} =
         symObj = symObj.typ[0].sym
       for scope in allScopes(c.currentScope):
         for sym in scope.allowPrivateAccess:
-          if symObj.id == sym.id: return true
+          if sym != nil and symObj.id == sym.id: return true
 
 proc getQuality(s: PSym): range[0..100] =
   result = 100
