@@ -845,7 +845,7 @@ proc addFootnoteSymAuto(p: var RstParser) =
 proc orderFootnotes(s: RstSharedState) =
   ## numerate auto-numbered footnotes taking into account that all
   ## manually numbered ones always have preference.
-  ## Save the result back to s.footnotes.
+  ## Save the result back to `s.footnotes`.
 
   # Report an error if found any mismatch in number of automatic footnotes
   proc listFootnotes(lines: seq[int]): string =
