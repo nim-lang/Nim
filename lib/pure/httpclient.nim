@@ -975,7 +975,7 @@ proc format(client: HttpClient | AsyncHttpClient,
     if entry.isFile:
       length += entry.fileSize + httpNewLine.len
 
-  result.add "--" & bound & "--"
+  result.add "--" & bound & "--" & httpNewLine
 
   for s in result: length += s.len
   client.headers["Content-Length"] = $length
@@ -1010,12 +1010,16 @@ proc requestAux(client: HttpClient | AsyncHttpClient, url: Uri,
 
   await newConnection(client, url)
 
-  let newHeaders = client.headers.override(headers)
+  var newHeaders: HttpHeaders
 
   var data: seq[string]
   if multipart != nil and multipart.content.len > 0:
+    # `format` modifies `client.headers`, see 
+    # https://github.com/nim-lang/Nim/pull/18208#discussion_r647036979
     data = await client.format(multipart)
+    newHeaders = client.headers.override(headers)
   else:
+    newHeaders = client.headers.override(headers)
     # Only change headers if they have not been specified already
     if not newHeaders.hasKey("Content-Length"):
       if body.len != 0:
