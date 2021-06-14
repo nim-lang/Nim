@@ -1769,7 +1769,7 @@ proc getLevel(p: var RstParser, c: char, hasOverline: bool): int =
                             line: curLine(p), hasPeers: false)
   result = p.s.hLevels.len - 1
 
-proc countTitles(s: var RstSharedState, n: PRstNode) =
+proc countTitles(s: RstSharedState, n: PRstNode) =
   ## Fill `s.hTitleCnt`
   if n == nil: return
   for node in n.sons:
