@@ -293,19 +293,10 @@ proc wrongRedefinition*(c: PContext; info: TLineInfo, s: string;
       "redefinition of '$1'; previous declaration here: $2" %
       [s, c.config $ conflictsWith])
 
-proc addDeclAt*(c: PContext; scope: PScope, sym: PSym, info: TLineInfo) =
+proc addDecl*(c: PContext, sym: PSym, info = sym.info, scope = c.currentScope) {.inline.} =
   let conflict = scope.addUniqueSym(sym)
   if conflict != nil:
     wrongRedefinition(c, info, sym.name.s, conflict.info)
-
-proc addDeclAt*(c: PContext; scope: PScope, sym: PSym) {.inline.} =
-  addDeclAt(c, scope, sym, sym.info)
-
-proc addDecl*(c: PContext, sym: PSym, info: TLineInfo) {.inline.} =
-  addDeclAt(c, c.currentScope, sym, info)
-
-proc addDecl*(c: PContext, sym: PSym) {.inline.} =
-  addDeclAt(c, c.currentScope, sym)
 
 proc addPrelimDecl*(c: PContext, sym: PSym) =
   discard c.currentScope.addUniqueSym(sym)
@@ -325,7 +316,7 @@ proc addInterfaceDeclAux(c: PContext, sym: PSym) =
 
 proc addInterfaceDeclAt*(c: PContext, scope: PScope, sym: PSym) =
   ## adds a symbol on the scope and the interface if appropriate
-  addDeclAt(c, scope, sym)
+  addDecl(c, sym, scope = scope)
   if not scope.isShadowScope:
     # adding into a non-shadow scope, we need to handle exports, etc
     addInterfaceDeclAux(c, sym)
