@@ -314,6 +314,7 @@ proc addDeclAt*(c: PContext; scope: PScope, sym: PSym) =
 from ic / ic import addHidden
 
 proc addInterfaceDeclAux*(c: PContext, sym: PSym, forceExport = false) =
+  ## adds symbol to the module for either private or public access.
   if sfExported in sym.flags or forceExport:
     # add to interface:
     if c.module != nil: exportSym(c, sym)
@@ -324,10 +325,15 @@ proc addInterfaceDeclAux*(c: PContext, sym: PSym, forceExport = false) =
       addHidden(c.encoder, c.packedRepr, sym)
 
 proc addInterfaceDeclAt*(c: PContext, scope: PScope, sym: PSym) =
+  ## adds a symbol on the scope and the interface if appropriate
   addDeclAt(c, scope, sym)
-  addInterfaceDeclAux(c, sym)
+  if not scope.isShadowScope:
+    # adding into a non-shadow scope, we need to handle exports, etc
+    addInterfaceDeclAux(c, sym)
 
 proc addOverloadableSymAt*(c: PContext; scope: PScope, fn: PSym) =
+  ## adds an symbol to the given scope, will check for and raise errors if it's
+  ## a redefinition as opposed to an overload.
   if fn.kind notin OverloadableSyms:
     internalError(c.config, fn.info, "addOverloadableSymAt")
     return
@@ -338,24 +344,35 @@ proc addOverloadableSymAt*(c: PContext; scope: PScope, fn: PSym) =
     scope.addSym(fn)
 
 proc addInterfaceDecl*(c: PContext, sym: PSym) =
-  # it adds the symbol to the interface if appropriate
+  ## adds a decl and the interface if appropriate
   addDecl(c, sym)
-  addInterfaceDeclAux(c, sym)
+  if not c.currentScope.isShadowScope:
+    addInterfaceDeclAux(c, sym)
 
 proc addInterfaceOverloadableSymAt*(c: PContext, scope: PScope, sym: PSym) =
-  # it adds the symbol to the interface if appropriate
+  ## adds an overloadable symbol on the scope and the interface if appropriate
   addOverloadableSymAt(c, scope, sym)
-  addInterfaceDeclAux(c, sym)
+  if not scope.isShadowScope:
+    addInterfaceDeclAux(c, sym)
 
 proc openShadowScope*(c: PContext) =
+  ## opens a shadow scope, just like any other scope except the depth is the
+  ## same as the parent -- see `isShadowScope`.
   c.currentScope = PScope(parent: c.currentScope,
                           symbols: newStrTable(),
                           depthLevel: c.scopeDepth)
 
 proc closeShadowScope*(c: PContext) =
+  ## closes the shadow scope, but doesn't merge any of the symbols
   c.closeScope
 
 proc mergeShadowScope*(c: PContext) =
+  ## close the existing scope and merge in all defined symbols, this will also
+  ## trigger any export related code if this is into a non-shadow scope.
+  ##
+  ## Merges:
+  ## shadow -> shadow: add symbols to the parent but check for redefinitions etc
+  ## shadow -> non-shadow: the above, but also handle exports and all that 
   let shadowScope = c.currentScope
   c.rawCloseScope
   for sym in shadowScope.symbols:
