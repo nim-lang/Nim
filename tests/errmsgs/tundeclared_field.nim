@@ -2,11 +2,11 @@ discard """
 cmd: '''nim check --hints:off $file'''
 action: reject
 nimout: '''
-tundeclared_field.nim(25, 13) Error: undeclared field: 'bad1' for type tundeclared_field.A [type declared in tundeclared_field.nim(22, 8)]
+tundeclared_field.nim(25, 12) Error: undeclared field: 'bad1' for type tundeclared_field.A [type declared in tundeclared_field.nim(22, 8)]
 tundeclared_field.nim(30, 17) Error: undeclared field: 'bad2' for type tundeclared_field.A [type declared in tundeclared_field.nim(28, 8)]
-tundeclared_field.nim(36, 5) Error: undeclared field: 'bad3' for type tundeclared_field.A [type declared in tundeclared_field.nim(33, 8)]
-tundeclared_field.nim(42, 13) Error: undeclared field: 'bad4' for type tundeclared_field.B [type declared in tundeclared_field.nim(39, 8)]
-tundeclared_field.nim(43, 10) Error: undeclared field: 'bad5' for type tundeclared_field.B [type declared in tundeclared_field.nim(39, 8)]
+tundeclared_field.nim(36, 4) Error: undeclared field: 'bad3' for type tundeclared_field.A [type declared in tundeclared_field.nim(33, 8)]
+tundeclared_field.nim(42, 12) Error: undeclared field: 'bad4' for type tundeclared_field.B [type declared in tundeclared_field.nim(39, 8)]
+tundeclared_field.nim(43, 4) Error: undeclared field: 'bad5' for type tundeclared_field.B [type declared in tundeclared_field.nim(39, 8)]
 tundeclared_field.nim(44, 23) Error: undeclared field: 'bad6' for type tundeclared_field.B [type declared in tundeclared_field.nim(39, 8)]
 tundeclared_field.nim(46, 19) Error: undeclared field: 'bad7' for type tundeclared_field.B [type declared in tundeclared_field.nim(39, 8)]
 tundeclared_field.nim(50, 13) Error: cannot instantiate Foo [type declared in tundeclared_field.nim(49, 8)]
