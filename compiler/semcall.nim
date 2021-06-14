@@ -414,8 +414,8 @@ proc resolveOverloads(c: PContext, n, orig: PNode,
         template impl() =
           # xxx adapt/use errorUndeclaredIdentifierHint(c, n, f.ident)
           localError(c.config, n.info, getMsgDiagnostic(c, flags, n, f))
-        if n[0].kind == nkIdent and n[0].ident.s == ".=" and n[2].kind == nkIdent:
-          let sym = n[1].typ.sym
+        if n[0].kind == nkIdent and (n[0].ident.s == ".=" or n[0].ident.s == ".") and n[2].kind == nkIdent:
+          let sym = n[1].typ.typSym
           if sym == nil:
             impl()
           else:
