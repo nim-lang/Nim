@@ -326,7 +326,6 @@ proc getMsgDiagnostic(c: PContext, flags: TExprFlags, n, f: PNode): string =
 
   let ident = considerQuotedIdent(c, f, n).s
   if {nfDotField, nfExplicitCall} * n.flags == {nfDotField}:
-    # let sym = n[1].typ.sym
     let sym = n[1].typ.typSym
     var typeHint = ""
     if sym == nil:
@@ -338,8 +337,8 @@ proc getMsgDiagnostic(c: PContext, flags: TExprFlags, n, f: PNode): string =
       discard
     else:
       typeHint = " for type " & getProcHeader(c.config, sym)
-    var old = if result.len > 0: " " & result else: ""
-    result = errUndeclaredField % ident & typeHint & old
+    let suffix = if result.len > 0: " " & result else: ""
+    result = errUndeclaredField % ident & typeHint & suffix
   else:
     if result.len == 0: result = errUndeclaredRoutine % ident
     else: result = errBadRoutine % [ident, result]
@@ -417,8 +416,6 @@ proc resolveOverloads(c: PContext, n, orig: PNode,
           # xxx adapt/use errorUndeclaredIdentifierHint(c, n, f.ident)
           localError(c.config, n.info, getMsgDiagnostic(c, flags, n, f))
         if n[0].kind == nkIdent and n[0].ident.s == ".=" and n[2].kind == nkIdent:
-        # if n[0].kind == nkIdent and (n[0].ident.s == ".=" or n[0].ident.s == ".") and n[2].kind == nkIdent:
-          # let sym = n[1].typ.typSym
           let sym = n[1].typ.sym
           if sym == nil:
             impl()
@@ -426,7 +423,6 @@ proc resolveOverloads(c: PContext, n, orig: PNode,
             let field = n[2].ident.s
             let msg = errUndeclaredField % field & " for type " & getProcHeader(c.config, sym)
             localError(c.config, orig[2].info, msg)
-            # impl()
         else:
           impl()
       return
