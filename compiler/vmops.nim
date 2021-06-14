@@ -136,6 +136,7 @@ when defined(nimHasInvariant):
     of ccompilerPath: result = conf.cCompilerPath
     of backend: result = $conf.backend
     of libPath: result = conf.libpath.string
+    of gc: result = $conf.selectedGC
 
   proc querySettingSeqImpl(conf: ConfigRef, switch: BiggestInt): seq[string] =
     template copySeq(field: untyped): untyped =
