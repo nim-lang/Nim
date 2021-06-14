@@ -923,7 +923,7 @@ proc genJsonItem(d: PDoc, n, nameNode: PNode, k: TSymKind): JsonItem =
   initTokRender(r, n, {renderNoBody, renderNoComments, renderDocComments})
   result.json = %{ "name": %name, "type": %($k), "line": %n.info.line.int,
                    "col": %n.info.col}
-  if comm.len > 0:
+  if comm != nil:
     result.rst = comm
     result.rstField = "description"
   if r.buf.len > 0:
