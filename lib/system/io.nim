@@ -191,7 +191,7 @@ proc readChars*(f: File, a: var openArray[char], start, len: Natural): int {.
   ##   const charsToRead = 262
   ##   var
   ##     f: File
-  ##     buffer = newString(bytesToRead)
+  ##     buffer = newString(charsToRead)
   ##
   ##   if f.open("/path/to/file.ext"):
   ##     try:
