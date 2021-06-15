@@ -11,7 +11,38 @@
 ## and basic mathematical operations on them.
 ##
 ## Complex numbers are currently generic over 64-bit or 32-bit floats.
-
+##
+## Here is an example that shows how to use this module:
+##
+## .. code-block:: nim
+##
+##   import Complex
+##   
+##   let
+##     a = complex64(1.0, 2.0)   # Initialize a to 1+2i
+##     b = complex64(3.0, -1.0)  # Initialize b to 3-i
+##   
+##   var
+##     c : Complex64
+##   
+##   c = a + b                 # Standard operations on complex numbers are supported
+##   
+##   echo "Re(c) = ", c.re
+##   echo "Im(c) = ", c.im
+##   # Output:
+##   # Re(c) = 4.0
+##   # Im(c) = 1.0
+##   
+##   # Many mathematical operations are defined on complex numbers
+##   echo pow(a, b)
+##   echo sin(a)
+##   echo exp(b)
+##   
+##   # Output:
+##   # (-27.43638199160605, 19.78931036501071)
+##   # (3.165778513216168, 1.959601041421606)
+##   # (10.85226191419796, -16.90139653515009)
+    
 runnableExamples:
   from std/math import almostEqual, sqrt
 
