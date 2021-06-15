@@ -631,12 +631,8 @@ proc strformatImpl(f: string; openChar, closeChar: char): NimNode =
         var x: NimNode
         try:
           x = parseExpr(subexpr)
-        except ValueError:
-          when declared(getCurrentExceptionMsg):
-            let msg = getCurrentExceptionMsg()
-            error("could not parse `" & subexpr & "`.\n" & msg, info)
-          else:
-            error("could not parse `" & subexpr & "`.\n", info)
+        except ValueError as e:
+          error("could not parse `" & subexpr & "`.\n" & e.msg, info)
         let formatSym = bindSym("formatValue", brOpen)
         var options = ""
         if f[i] == ':':
