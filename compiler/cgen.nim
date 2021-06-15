@@ -1092,6 +1092,8 @@ proc genProcAux(m: BModule, prc: PSym) =
     generatedProc.add(p.s(cpsInit))
     generatedProc.add(p.s(cpsStmts))
     if beforeRetNeeded in p.flags: generatedProc.add(~"\t}BeforeRet_: ;$n")
+    if {sfExportc, sfCompilerProc} * prc.flags == {sfExportc} and m.config.exc == excGoto:
+      p.module.appcg(generatedProc, "\t#nimTestErrorFlag();$n", [])
     if optStackTrace in prc.options: generatedProc.add(deinitFrame(p))
     generatedProc.add(returnStmt)
     generatedProc.add(~"}$N")
