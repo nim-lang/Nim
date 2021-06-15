@@ -186,6 +186,21 @@ proc readChars*(f: File, a: var openArray[char], start, len: Natural): int {.
   ## reads `len` bytes into the buffer `a` starting at `a[start]`. Returns
   ## the actual number of bytes that have been read which may be less than
   ## `len` (if not as many bytes are remaining), but not greater.
+  ##
+  ## .. code-block:: nim
+  ##   const charsToRead = 262
+  ##   var
+  ##     f: File
+  ##     buffer = newString(bytesToRead)
+  ##
+  ##   if f.open("/path/to/file.ext"):
+  ##     try:
+  ##       let i = f.readChars(buffer, 0, charsToRead)
+  ##       buffer.setLen(i)
+  ##     except OSError:
+  ##       echo "error reading file"
+  ##     finally:
+  ##       f.close()
   if (start + len) > len(a):
     raiseEIO("buffer overflow: (start+len) > length of openarray buffer")
   result = readBuffer(f, addr(a[start]), len)
