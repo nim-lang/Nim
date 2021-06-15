@@ -186,7 +186,6 @@ proc readChars*(f: File, a: var openArray[char], start, len: Natural): int {.
   ## reads `len` bytes into the buffer `a` starting at `a[start]`. Returns
   ## the actual number of bytes that have been read which may be less than
   ## `len` (if not as many bytes are remaining), but not greater.
-  ##
   runnableExamples("-r:off"):
     const charsToRead = 262
     var
