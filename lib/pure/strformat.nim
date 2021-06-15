@@ -573,15 +573,13 @@ template formatValue(result: var string; value: char; specifier: string) =
 template formatValue(result: var string; value: cstring; specifier: string) =
   result.add value
 
-proc strformatImpl(pattern: NimNode; openChar, closeChar: char): NimNode =
-  if pattern.kind notin {nnkStrLit..nnkTripleStrLit}:
-    error "string formatting (fmt(), &) only works with string literals", pattern
+proc strformatImpl(f: string; openChar, closeChar: char): NimNode =
+  let info = callsite()
   if openChar == ':' or closeChar == ':':
     error "openChar and closeChar must not be ':'"
-  let f = pattern.strVal
   var i = 0
   let res = genSym(nskVar, "fmtRes")
-  result = newNimNode(nnkStmtListExpr, lineInfoFrom = pattern)
+  result = newNimNode(nnkStmtListExpr, lineInfoFrom = info)
   # XXX: https://github.com/nim-lang/Nim/issues/8405
   # When compiling with -d:useNimRtl, certain procs such as `count` from the strutils
   # module are not accessible at compile-time:
@@ -636,9 +634,9 @@ proc strformatImpl(pattern: NimNode; openChar, closeChar: char): NimNode =
         except ValueError:
           when declared(getCurrentExceptionMsg):
             let msg = getCurrentExceptionMsg()
-            error("could not parse `" & subexpr & "`.\n" & msg, pattern)
+            error("could not parse `" & subexpr & "`.\n" & msg, info)
           else:
-            error("could not parse `" & subexpr & "`.\n", pattern)
+            error("could not parse `" & subexpr & "`.\n", info)
         let formatSym = bindSym("formatValue", brOpen)
         var options = ""
         if f[i] == ':':
@@ -667,13 +665,13 @@ proc strformatImpl(pattern: NimNode; openChar, closeChar: char): NimNode =
   when defined(debugFmtDsl):
     echo repr result
 
-macro `&`*(pattern: string): untyped = strformatImpl(pattern, '{', '}')
+macro `&`*(pattern: static string): untyped = strformatImpl(pattern, '{', '}')
   ## For a specification of the `&` macro, see the module level documentation.
 
-macro fmt*(pattern: string): untyped = strformatImpl(pattern, '{', '}')
+macro fmt*(pattern: static string): untyped = strformatImpl(pattern, '{', '}')
   ## An alias for `& <#&.m,string>`_.
 
-macro fmt*(pattern: string; openChar, closeChar: char): untyped =
+macro fmt*(pattern: static string; openChar, closeChar: char): untyped =
   ## The same as `fmt <#fmt.m,string>`_, but uses `openChar` instead of `'{'`
   ## and `closeChar` instead of `'}'`.
   runnableExamples:
@@ -681,5 +679,7 @@ macro fmt*(pattern: string; openChar, closeChar: char): untyped =
     assert "<testInt>".fmt('<', '>') == "123"
     assert """(()"foo" & "bar"())""".fmt(')', '(') == "(foobar)"
     assert """ ""{"123+123"}"" """.fmt('"', '"') == " \"{246}\" "
+    const s = "foo: {testInt}"
+    assert s.fmt == "foo: 123" # also works with const strings
 
   strformatImpl(pattern, openChar.intVal.char, closeChar.intVal.char)
