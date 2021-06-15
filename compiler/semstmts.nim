@@ -1890,11 +1890,14 @@ proc semProcAux(c: PContext, n: PNode, kind: TSymKind,
   var (proto, comesFromShadowScope) =
       if isAnon: (nil, false)
       else: searchForProc(c, declarationScope, s)
-  if proto == nil and sfForward in s.flags:
+  if proto == nil and {sfForward, sfGenSym} <= s.flags:
     ## In cases such as a macro generating a proc with a gensymmed name we
     ## know `searchForProc` will not find it and sfForward will be set. In
     ## such scenarios the sym is shared between forward declaration and we
     ## can treat the `s` as the proto.
+    ## To differentiate between that happening and a macro just returning a
+    ## forward declaration that has been typed before we check for sfGenSym
+    ## too. See tmacros_issues:"doubly-typed" forward decls
     proto = s
   let hasProto = proto != nil
 

@@ -499,3 +499,16 @@ block double_sem_for_procs:
     result = 10.0
 
   discard exp(5.0)
+
+
+# "doubly-typed" forward decls
+macro noop(x: typed) = x
+noop:
+  proc cally() = discard
+
+cally()
+
+noop:
+  proc barry()
+
+proc barry() = discard
