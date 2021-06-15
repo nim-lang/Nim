@@ -1,5 +1,5 @@
 discard """
-  matrix: "--hint:SuccessX:off --hint:Link:off --hint:Conf:off --hint:XDeclaredButNotUsed:on"
+  matrix: "--hint:SuccessX:off --hint:Link:off --hint:Conf:off --hint:CC:off --hint:XDeclaredButNotUsed:on"
   nimout: '''
 '''
 nimoutFull: true
