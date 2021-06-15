@@ -27,3 +27,11 @@ let s8 = 0
 var s9: int
 type s10 = object
 type s11 = type(1.2)
+
+# bug #18203
+import std/macros
+
+macro foo(x: typed) = newProc ident"bar"
+proc bar() {.foo.} = raise
+bar()
+
