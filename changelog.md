@@ -335,7 +335,6 @@
 
 - Added setCurrentException for JS backend.
 
-- Added `std/mutexes`.
 - Added `dom.scrollIntoView` proc with options
 
 ## Language changes
