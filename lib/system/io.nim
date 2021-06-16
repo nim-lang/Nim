@@ -181,7 +181,7 @@ proc readChars*(f: File, a: var openArray[char]): int {.tags: [ReadIOEffect], be
   runnableExamples:
     let f = open(currentSourcePath)
     var buf: array[10, char]
-    let n = f.readChars(f, buf)
+    let n = f.readChars(buf)
     assert n == buf.len # because current file has at least buf.len chars
     f.close()
   result = readBuffer(f, addr(a[0]), a.len)
