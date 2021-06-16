@@ -87,6 +87,10 @@ when false:
           result = findInNimbleDir(pkg, subdir, nimbleDir / "pkgs")
           if result.len > 0: return result
           when not defined(windows):
+            result = findInNimbleDir(pkg, subdir, "/usr/share/nimble/pkgs")
+            if result.len > 0: return result
+            result = findInNimbleDir(pkg, subdir, "/usr/local/share/nimble/pkgs")
+            if result.len > 0: return result
             result = findInNimbleDir(pkg, subdir, "/opt/nimble/pkgs")
             if result.len > 0: return result
 

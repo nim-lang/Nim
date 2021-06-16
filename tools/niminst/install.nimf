@@ -96,28 +96,35 @@ if [ $# -eq 1 ] ; then
 #end for
 
 #for f in items(c.cat[fcUnixBin]):
-  install -D -m 755 ?f.toUnix $bindir/?f.skipRoot.toUnix
+  cp ?f.toUnix $bindir/?f.skipRoot.toUnix
+  chmod 755 $bindir/?f.skipRoot.toUnix
 #end for
 #for f in items(c.cat[fcConfig]):
-  install -D -m 755 ?f.toUnix $configdir/?f.skipRoot.toUnix
+  cp ?f.toUnix $configdir/?f.skipRoot.toUnix
+  chmod 644 $configdir/?f.skipRoot.toUnix
 #end for
 #for f in items(c.cat[fcData]):
   if [ -f ?f.toUnix ]; then
-    install -D -m 644 ?f.toUnix $datadir/?f.skipRoot.toUnix
+    cp ?f.toUnix $datadir/?f.skipRoot.toUnix
+    chmod 644 $datadir/?f.skipRoot.toUnix
   fi
 #end for
 #for f in items(c.cat[fcDoc]):
   if [ -f ?f.toUnix ]; then
-    install -D -m 644 ?f.toUnix $docdir/?f.skipRoot.toUnix
+    cp ?f.toUnix $docdir/?f.skipRoot.toUnix
+    chmod 644 $docdir/?f.skipRoot.toUnix
   fi
 #end for
 #for f in items(c.cat[fcLib]):
-  install -D -m 644 ?f.toUnix $libdir/?f.skipRoot.toUnix
+  cp ?f.toUnix $libdir/?f.skipRoot.toUnix
+  chmod 644 $libdir/?f.skipRoot.toUnix
 #end for
 #for f in items(c.cat[fcNimble]):
-  install -D -m 644 ?f.toUnix $nimbleDir/?f.toUnix
+  cp ?f.toUnix $nimbleDir/?f.toUnix
+  chmod 644 $nimbleDir/?f.toUnix
 #end for
-install -D -m 644 ?{c.nimblePkgName}.nimble $nimbleDir/?{c.nimblePkgName}.nimble
+cp ?{c.nimblePkgName}.nimble $nimbleDir/?{c.nimblePkgName}.nimble
+chmod 644 $nimbleDir/?{c.nimblePkgName}.nimble
 
   echo "installation successful"
 else
