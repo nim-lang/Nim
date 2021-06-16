@@ -81,6 +81,7 @@ export toLower, toUpper
 include "system/inclrtl"
 import std/private/since
 from std/private/strimpl import cmpIgnoreStyleImpl, cmpIgnoreCaseImpl, startsWithImpl, endsWithImpl
+import std/strbasics
 
 
 const
@@ -2129,7 +2130,7 @@ func replace*(s, sub: string, by = "", max = -1): string {.rtl,
       let j = find(a, s, sub, i)
       if j == -1 or occLeft == 0: break
       if occLeft > 0: dec occLeft
-      result.add s.substr(i, j - 1)
+      result.add s.toOpenArray(i, j - 1)
       result.add by
       i = j + subLen
     # copy the rest:
