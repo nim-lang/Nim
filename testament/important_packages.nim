@@ -156,5 +156,5 @@ pkg "winim", allowFailure = true
 pkg "with"
 pkg "ws"
 pkg "yaml", "nim build"
-pkg "zero_functional", "nim c -r -d:nimWorkaround14447 test.nim"
+pkg "zero_functional", "nim c -r -d:nimNoLentIterators test.nim"
 pkg "zippy"

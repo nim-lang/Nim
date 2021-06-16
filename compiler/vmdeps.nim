@@ -289,7 +289,7 @@ proc mapTypeToAstX(cache: IdentCache; t: PType; info: TLineInfo;
   of tyNot: result = mapTypeToBracket("not", mNot, t, info)
   of tyIterable: result = mapTypeToBracket("iterable", mIterableType, t, info)
   of tyAnything: result = atomicType("anything", mNone)
-  of tyInferred: assert false
+  of tyInferred: result = mapTypeToAstX(cache, t.lastSon, info, idgen, inst, allowRecursion)
   of tyStatic, tyFromExpr:
     if inst:
       if t.n != nil: result = t.n.copyTree

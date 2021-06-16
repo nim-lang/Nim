@@ -285,9 +285,6 @@
 - Added `std/strbasics` for high performance string operations.
   Added `strip`, `setSlice`, `add(a: var string, b: openArray[char])`.
 
-
-- Added to `wrapnils` an option-like API via `??.`, `isSome`, `get`.
-
 - `std/options` changed `$some(3)` to `"some(3)"` instead of `"Some(3)"`
   and `$none(int)` to `"none(int)"` instead of `"None[int]"`.
 
@@ -451,6 +448,13 @@
 
 
 ## Tool changes
+
+- Latex doc generation is revised: output `.tex` files should be compiled
+  by `xelatex` (not by `pdflatex` as before). Now default Latex settings
+  provide support for Unicode and do better job for avoiding margin overflows.
+
+- Implemented `doc2tex` compiler command which converts documentation in
+  `.nim` files to Latex.
 
 - The rst parser now supports markdown table syntax.
   Known limitations:

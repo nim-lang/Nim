@@ -108,8 +108,7 @@ proc isSuccess(input: string): bool =
   # that may appear in user config (eg: `--filenames`).
   # Passing `XDG_CONFIG_HOME= testament args...` can be used to ignore user config
   # stored in XDG_CONFIG_HOME, refs https://wiki.archlinux.org/index.php/XDG_Base_Directory
-  input.startsWith("Hint: ") and
-    (input.endsWith("[SuccessX]") or input.endsWith("[BuildMode]"))
+  input.startsWith("Hint: ") and input.endsWith("[SuccessX]")
 
 proc getFileDir(filename: string): string =
   result = filename.splitFile().dir

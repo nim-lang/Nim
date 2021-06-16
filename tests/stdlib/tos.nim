@@ -261,6 +261,51 @@ block fileOperations:
 
     removeDir(dname)
 
+block: # moveFile
+  let tempDir = getTempDir() / "D20210609T151608"
+  createDir(tempDir)
+  defer: removeDir(tempDir)
+
+  writeFile(tempDir / "a.txt", "")
+  moveFile(tempDir / "a.txt", tempDir / "b.txt")
+  doAssert not fileExists(tempDir / "a.txt")
+  doAssert fileExists(tempDir / "b.txt")
+  removeFile(tempDir / "b.txt")
+
+  createDir(tempDir / "moveFile_test")
+  writeFile(tempDir / "moveFile_test/a.txt", "")
+  moveFile(tempDir / "moveFile_test/a.txt", tempDir / "moveFile_test/b.txt")
+  doAssert not fileExists(tempDir / "moveFile_test/a.txt")
+  doAssert fileExists(tempDir / "moveFile_test/b.txt")
+  removeDir(tempDir / "moveFile_test")
+
+  createDir(tempDir / "moveFile_test")
+  writeFile(tempDir / "a.txt", "")
+  moveFile(tempDir / "a.txt", tempDir / "moveFile_test/b.txt")
+  doAssert not fileExists(tempDir / "a.txt")
+  doAssert fileExists(tempDir / "moveFile_test/b.txt")
+  removeDir(tempDir / "moveFile_test")
+
+block: # moveDir
+  let tempDir = getTempDir() / "D20210609T161443"
+  createDir(tempDir)
+  defer: removeDir(tempDir)
+
+  createDir(tempDir / "moveDir_test")
+  moveDir(tempDir / "moveDir_test/", tempDir / "moveDir_test_dest")
+  doAssert not dirExists(tempDir / "moveDir_test")
+  doAssert dirExists(tempDir / "moveDir_test_dest")
+  removeDir(tempDir / "moveDir_test_dest")
+
+  createDir(tempDir / "moveDir_test")
+  writeFile(tempDir / "moveDir_test/a.txt", "")
+  moveDir(tempDir / "moveDir_test", tempDir / "moveDir_test_dest")
+  doAssert not dirExists(tempDir / "moveDir_test")
+  doAssert not fileExists(tempDir / "moveDir_test/a.txt")
+  doAssert dirExists(tempDir / "moveDir_test_dest")
+  doAssert fileExists(tempDir / "moveDir_test_dest/a.txt")
+  removeDir(tempDir / "moveDir_test_dest")
+
 import times
 block modificationTime:
   # Test get/set modification times

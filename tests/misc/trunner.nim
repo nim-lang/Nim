@@ -23,7 +23,7 @@ proc isDots(a: string): bool =
   a.startsWith(".") and a.strip(chars = {'.'}) == ""
 
 const
-  defaultHintsOff = "--hint:successx:off --hint:buildmode:off --hint:exec:off --hint:link:off --hint:cc:off --hint:conf:off --hint:processing:off --hint:QuitCalled:off"
+  defaultHintsOff = "--hint:successx:off --hint:exec:off --hint:link:off --hint:cc:off --hint:conf:off --hint:processing:off --hint:QuitCalled:off"
     # useful when you want to turn only some hints on, and some common ones off.
     # pending https://github.com/timotheecour/Nim/issues/453, simplify to: `--hints:off`
   nim = getCurrentCompilerExe()

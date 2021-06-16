@@ -2009,28 +2009,32 @@ proc removeFile*(file: string) {.rtl, extern: "nos$1", tags: [WriteDirEffect], n
   if not tryRemoveFile(file):
     raiseOSError(osLastError(), file)
 
-proc tryMoveFSObject(source, dest: string): bool {.noWeirdTarget.} =
-  ## Moves a file or directory from `source` to `dest`.
+proc tryMoveFSObject(source, dest: string, isDir: bool): bool {.noWeirdTarget.} =
+  ## Moves a file (or directory if `isDir` is true) from `source` to `dest`.
   ##
-  ## Returns false in case of `EXDEV` error.
+  ## Returns false in case of `EXDEV` error or `AccessDeniedError` on windows (if `isDir` is true).
   ## In case of other errors `OSError` is raised.
   ## Returns true in case of success.
   when defined(windows):
     when useWinUnicode:
       let s = newWideCString(source)
       let d = newWideCString(dest)
-      if moveFileExW(s, d, MOVEFILE_COPY_ALLOWED or MOVEFILE_REPLACE_EXISTING) == 0'i32: raiseOSError(osLastError(), $(source, dest))
+      result = moveFileExW(s, d, MOVEFILE_COPY_ALLOWED or MOVEFILE_REPLACE_EXISTING) != 0'i32
     else:
-      if moveFileExA(source, dest, MOVEFILE_COPY_ALLOWED or MOVEFILE_REPLACE_EXISTING) == 0'i32: raiseOSError(osLastError(), $(source, dest))
+      result = moveFileExA(source, dest, MOVEFILE_COPY_ALLOWED or MOVEFILE_REPLACE_EXISTING) != 0'i32
   else:
-    if c_rename(source, dest) != 0'i32:
-      let err = osLastError()
-      if err == EXDEV.OSErrorCode:
-        return false
+    result = c_rename(source, dest) == 0'i32
+
+  if not result:
+    let err = osLastError()
+    let isAccessDeniedError = 
+      when defined(windows):
+        const AccessDeniedError = OSErrorCode(5)
+        isDir and err == AccessDeniedError
       else:
-        # see whether `strerror(errno)` is redundant with what raiseOSError already shows
-        raiseOSError(err, $(source, dest, strerror(errno)))
-  return true
+        err == EXDEV.OSErrorCode
+    if not isAccessDeniedError:
+      raiseOSError(err, $(source, dest))
 
 proc moveFile*(source, dest: string) {.rtl, extern: "nos$1",
   tags: [ReadDirEffect, ReadIOEffect, WriteIOEffect], noWeirdTarget.} =
@@ -2051,8 +2055,10 @@ proc moveFile*(source, dest: string) {.rtl, extern: "nos$1",
   ## * `removeFile proc <#removeFile,string>`_
   ## * `tryRemoveFile proc <#tryRemoveFile,string>`_
 
-  if not tryMoveFSObject(source, dest):
-    when not defined(windows):
+  if not tryMoveFSObject(source, dest, isDir = false):
+    when defined(windows):
+      doAssert false
+    else:
       # Fallback to copy & del
       copyFile(source, dest, {cfSymlinkAsIs})
       try:
@@ -2060,6 +2066,7 @@ proc moveFile*(source, dest: string) {.rtl, extern: "nos$1",
       except:
         discard tryRemoveFile(dest)
         raise
+      
 
 proc exitStatusLikeShell*(status: cint): cint =
   ## Converts exit code from `c_system` into a shell exit code.
@@ -2614,11 +2621,10 @@ proc moveDir*(source, dest: string) {.tags: [ReadIOEffect, WriteIOEffect], noWei
   ## * `removeDir proc <#removeDir,string>`_
   ## * `existsOrCreateDir proc <#existsOrCreateDir,string>`_
   ## * `createDir proc <#createDir,string>`_
-  if not tryMoveFSObject(source, dest):
-    when not defined(windows):
-      # Fallback to copy & del
-      copyDir(source, dest)
-      removeDir(source)
+  if not tryMoveFSObject(source, dest, isDir = true):
+    # Fallback to copy & del
+    copyDir(source, dest)
+    removeDir(source)
 
 proc createHardlink*(src, dest: string) {.noWeirdTarget.} =
   ## Create a hard link at `dest` which points to the item specified

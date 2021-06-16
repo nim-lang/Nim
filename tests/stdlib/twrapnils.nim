@@ -1,4 +1,5 @@
 import std/wrapnils
+from std/options import get, isSome
 
 proc checkNotZero(x: float): float =
   doAssert x != 0
