@@ -575,6 +575,7 @@ template formatValue(result: var string; value: cstring; specifier: string) =
 
 proc strformatImpl(f: string; openChar, closeChar: char): NimNode =
   let info = callsite()
+  # pending https://github.com/nim-lang/RFCs/issues/387, use `callTree`
   if openChar == ':' or closeChar == ':':
     error "openChar and closeChar must not be ':'"
   var i = 0
@@ -661,26 +662,34 @@ proc strformatImpl(f: string; openChar, closeChar: char): NimNode =
   when defined(debugFmtDsl):
     echo repr result
 
-when defined(nimscript):
-  # pending bug #18275
-  macro `&`*(pattern: string): untyped = strformatImpl(pattern.strVal, '{', '}')
-    ## For a specification of the `&` macro, see the module level documentation.
-else:
-  macro `&`*(pattern: static string): untyped = strformatImpl(pattern, '{', '}')
-    ## For a specification of the `&` macro, see the module level documentation.
-
-macro fmt*(pattern: static string): untyped = strformatImpl(pattern, '{', '}')
-  ## An alias for `& <#&.m,string>`_.
-
-macro fmt*(pattern: static string; openChar, closeChar: char): untyped =
-  ## The same as `fmt <#fmt.m,string>`_, but uses `openChar` instead of `'{'`
-  ## and `closeChar` instead of `'}'`.
+macro fmt*(pattern: static string; openChar: static char = '{', closeChar: static char = '}'): string =
+  ## Interpolates `pattern` using symbols in scope.
   runnableExamples:
-    let testInt = 123
-    assert "<testInt>".fmt('<', '>') == "123"
-    assert """(()"foo" & "bar"())""".fmt(')', '(') == "(foobar)"
-    assert """ ""{"123+123"}"" """.fmt('"', '"') == " \"{246}\" "
-    const s = "foo: {testInt}"
-    assert s.fmt == "foo: 123" # also works with const strings
+    let x = 7
+    assert "var is {x * 2}".fmt == "var is 14"
+    assert "var is {{x}}".fmt == "var is {x}" # escape via doubling
+    const s = "foo: {x}"
+    assert s.fmt == "foo: 7" # also works with const strings
 
-  strformatImpl(pattern, openChar.intVal.char, closeChar.intVal.char)
+    assert fmt"\n" == r"\n" # raw string literal
+    assert "\n".fmt == "\n" # regular literal
+  runnableExamples:
+    # custom `openChar`, `closeChar`
+    let x = 7
+    assert "<x>".fmt('<', '>') == "7"
+    assert "<<<x>>>".fmt('<', '>') == "<7>"
+  strformatImpl(pattern, openChar, closeChar)
+
+macro `&`*(pattern: string{lit}): string =
+  ## `&pattern` is the same as `pattern.fmt`; prefer `fmt` since it's more
+  ## flexible and readable (`&` can be confused with binary append operator).
+  # pending bug #18275, bug #18278, use `pattern: static string`
+  # consider deprecating this, it's redundant with `fmt` and `fmt` is strictly
+  # more flexible, readable (no confusion with the binary `&`), self-documenting,
+  # not to mention #18275, bug #18278.
+  runnableExamples:
+    let x = 7
+    assert &"{x}\n" == "7\n" # regular string literal
+    assert &"{x}\n" == "7\n".fmt # `fmt` can be used instead
+    assert &"{x}\n" != fmt"7\n" # see `fmt` docs, this would use a raw string literal
+  strformatImpl(pattern.strVal, '{', '}')
