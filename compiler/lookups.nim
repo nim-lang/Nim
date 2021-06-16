@@ -364,7 +364,9 @@ proc openShadowScope*(c: PContext) =
 
 proc closeShadowScope*(c: PContext) =
   ## closes the shadow scope, but doesn't merge any of the symbols
-  c.closeScope
+  ## Does not check for unused symbols or missing forward decls since a macro
+  ## or template consumes this AST
+  rawCloseScope(c)
 
 proc mergeShadowScope*(c: PContext) =
   ## close the existing scope and merge in all defined symbols, this will also
