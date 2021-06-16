@@ -661,8 +661,13 @@ proc strformatImpl(f: string; openChar, closeChar: char): NimNode =
   when defined(debugFmtDsl):
     echo repr result
 
-macro `&`*(pattern: static string): untyped = strformatImpl(pattern, '{', '}')
-  ## For a specification of the `&` macro, see the module level documentation.
+when defined(nimscript):
+  # pending bug #18275
+  macro `&`*(pattern: string): untyped = strformatImpl(pattern.strVal, '{', '}')
+    ## For a specification of the `&` macro, see the module level documentation.
+else:
+  macro `&`*(pattern: static string): untyped = strformatImpl(pattern, '{', '}')
+    ## For a specification of the `&` macro, see the module level documentation.
 
 macro fmt*(pattern: static string): untyped = strformatImpl(pattern, '{', '}')
   ## An alias for `& <#&.m,string>`_.
