@@ -429,7 +429,7 @@ proc testNimblePackages(r: var TResults; cat: Category; packageFilter: string) =
       let buildPath = packagesDir / pkg.name
       template tryCommand(cmd: string, workingDir2 = buildPath, reFailed = reInstallFailed, maxRetries = 1): string =
         var outp: string
-        let ok = retryCall(maxRetry = maxRetries, backoffDuration = 1.0):
+        let ok = retryCall(maxRetry = maxRetries, backoffDuration = 10.0):
           var status: int
           (outp, status) = execCmdEx(cmd, workingDir = workingDir2)
           status == QuitSuccess
