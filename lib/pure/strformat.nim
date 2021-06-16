@@ -662,7 +662,7 @@ proc strformatImpl(f: string; openChar, closeChar: char): NimNode =
   when defined(debugFmtDsl):
     echo repr result
 
-macro fmt*(pattern: static string; openChar: static char = '{', closeChar: static char = '}'): string =
+macro fmt*(pattern: static string; openChar: static char, closeChar: static char): string =
   ## Interpolates `pattern` using symbols in scope.
   runnableExamples:
     let x = 7
@@ -672,13 +672,18 @@ macro fmt*(pattern: static string; openChar: static char = '{', closeChar: stati
     assert s.fmt == "foo: 7" # also works with const strings
 
     assert fmt"\n" == r"\n" # raw string literal
-    assert "\n".fmt == "\n" # regular literal
+    assert "\n".fmt == "\n" # regular literal (likewise with `fmt("\n")` or `fmt "\n"`)
   runnableExamples:
     # custom `openChar`, `closeChar`
     let x = 7
     assert "<x>".fmt('<', '>') == "7"
     assert "<<<x>>>".fmt('<', '>') == "<7>"
+    assert "`x`".fmt('`', '`') == "7"
   strformatImpl(pattern, openChar, closeChar)
+
+template fmt*(pattern: static string): untyped =
+  ## Alias for `fmt(pattern, '{', '}')`.
+  fmt(pattern, '{', '}')
 
 macro `&`*(pattern: string{lit}): string =
   ## `&pattern` is the same as `pattern.fmt`; prefer `fmt` since it's more
