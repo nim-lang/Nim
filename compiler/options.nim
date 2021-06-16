@@ -167,8 +167,17 @@ const
 type
   TStringSeq* = seq[string]
   TGCMode* = enum             # the selected GC
-    gcUnselected, gcNone, gcBoehm, gcRegions, gcArc, gcOrc,
-    gcMarkAndSweep, gcHooks, gcRefc, gcV2, gcGo
+    gcUnselected = "unselected"
+    gcNone = "none"
+    gcBoehm = "boehm"
+    gcRegions = "regions"
+    gcArc = "arc"
+    gcOrc = "orc"
+    gcMarkAndSweep = "markAndSweep"
+    gcHooks = "hooks"
+    gcRefc = "refc"
+    gcV2 = "v2"
+    gcGo = "go"
     # gcRefc and the GCs that follow it use a write barrier,
     # as far as usesWriteBarrier() is concerned
 

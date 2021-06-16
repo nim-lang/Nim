@@ -475,8 +475,8 @@ Not nil annotation
 **Note:** This is an experimental feature. It can be enabled with
 `{.experimental: "notnil"}`.
 
-All types for which `nil` is a valid value can be annotated with the `not
-nil` annotation to exclude `nil` as a valid value:
+All types for which `nil` is a valid value can be annotated with the
+`not nil` annotation to exclude `nil` as a valid value:
 
 .. code-block:: nim
   {.experimental: "notnil"}
@@ -1837,8 +1837,7 @@ with `--experimental:strictFuncs`:option:.
 
 A view type is a type that is or contains one of the following types:
 
-- `var T` (mutable view into `T`)
-- `lent T` (immutable view into `T`)
+- `lent T` (view into `T`)
 - `openArray[T]` (pair of (pointer to array of `T`, size))
 
 For example:
@@ -1846,10 +1845,9 @@ For example:
 .. code-block:: nim
 
   type
-    View1 = var int
-    View2 = openArray[byte]
-    View3 = lent string
-    View4 = Table[openArray[char], int]
+    View1 = openArray[byte]
+    View2 = lent string
+    View3 = Table[openArray[char], int]
 
 
 Exceptions to this rule are types constructed via `ptr` or `proc`.
@@ -1860,11 +1858,11 @@ For example, the following types are **not** view types:
   type
     NotView1 = proc (x: openArray[int])
     NotView2 = ptr openArray[char]
-    NotView3 = ptr array[4, var int]
+    NotView3 = ptr array[4, lent int]
 
 
-A *mutable* view type is a type that is or contains a `var T` type.
-An *immutable* view type is a view type that is not a mutable view type.
+The mutability aspect of a view type is not part of the type but part
+of the locations it's derived from. More on this later.
 
 A *view* is a symbol (a let, var, const, etc.) that has a view type.
 
@@ -1948,11 +1946,14 @@ details about how this is done for `var T`.
 A mutable view can borrow from a mutable location, an immutable view can borrow
 from both a mutable or an immutable location.
 
+If a view borrows from a mutable location, the view can be used to update the
+location. Otherwise it cannot be used for mutations.
+
 The *duration* of a borrow is the span of commands beginning from the assignment
 to the view and ending with the last usage of the view.
 
 For the duration of the borrow operation, no mutations to the borrowed locations
-may be performed except via the potentially mutable view that borrowed from the
+may be performed except via the view that borrowed from the
 location. The borrowed location is said to be *sealed* during the borrow.
 
 .. code-block:: nim
@@ -2064,11 +2065,7 @@ and `b` the location that is borrowed from.
 
 - The lifetime of `v` must not exceed `b`'s lifetime. Note: The lifetime of
   a parameter is the complete proc body.
-- If `v` is a mutable view and `v` is used to actually mutate the
-  borrowed location, then `b` has to be a mutable location.
-  Note: If it is not actually used for mutation, borrowing a mutable view from an
-  immutable location is allowed! This allows for many important idioms and will be
-  justified in an upcoming RFC.
+- If `v` is used for a mutation, `b` must be a mutable location too.
 - During `v`'s lifetime, `G(b)` can only be modified by `v` (and only if
   `v` is a mutable view).
 - If `v` is `result` then `b` has to be a location derived from the first

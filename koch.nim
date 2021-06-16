@@ -708,4 +708,5 @@ when isMainModule:
       of "branchdone": branchDone()
       else: showHelp(success = false)
       break
-    of cmdEnd: break
+    of cmdEnd:
+      showHelp(success = false)

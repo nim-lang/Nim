@@ -526,7 +526,7 @@ proc semVarOrLet(c: PContext, n: PNode, symkind: TSymKind): PNode =
         else:
           # BUGFIX: ``fitNode`` is needed here!
           # check type compatibility between def.typ and typ
-          def = fitNode(c, typ, def, def.info)
+          def = fitNodeForLocalVar(c, typ, def, def.info)
           #changeType(def.skipConv, typ, check=true)
       else:
         typ = def.typ.skipTypes({tyStatic, tySink}).skipIntLit(c.idgen)
@@ -1844,7 +1844,7 @@ proc semProcAux(c: PContext, n: PNode, kind: TSymKind,
 
   # before compiling the proc params & body, set as current the scope
   # where the proc was declared
-  let delcarationScope = c.currentScope
+  let declarationScope = c.currentScope
   pushOwner(c, s)
   openScope(c)
 
@@ -1889,12 +1889,17 @@ proc semProcAux(c: PContext, n: PNode, kind: TSymKind,
 
   var (proto, comesFromShadowScope) =
       if isAnon: (nil, false)
-      else: searchForProc(c, delcarationScope, s)
-  if proto == nil and sfForward in s.flags:
+      else: searchForProc(c, declarationScope, s)
+  if proto == nil and sfForward in s.flags and n[bodyPos].kind != nkEmpty:
     ## In cases such as a macro generating a proc with a gensymmed name we
     ## know `searchForProc` will not find it and sfForward will be set. In
     ## such scenarios the sym is shared between forward declaration and we
     ## can treat the `s` as the proto.
+    ## To differentiate between that happening and a macro just returning a
+    ## forward declaration that has been typed before we check if the body
+    ## is not empty. This has the sideeffect of allowing multiple forward
+    ## declarations if they share the same sym.
+    ## See the "doubly-typed forward decls" case in tmacros_issues.nim
     proto = s
   let hasProto = proto != nil
 
@@ -1916,9 +1921,9 @@ proc semProcAux(c: PContext, n: PNode, kind: TSymKind,
 
   if not hasProto and sfGenSym notin s.flags: #and not isAnon:
     if s.kind in OverloadableSyms:
-      addInterfaceOverloadableSymAt(c, delcarationScope, s)
+      addInterfaceOverloadableSymAt(c, declarationScope, s)
     else:
-      addInterfaceDeclAt(c, delcarationScope, s)
+      addInterfaceDeclAt(c, declarationScope, s)
 
   pragmaCallable(c, s, n, validPragmas)
   if not hasProto:
