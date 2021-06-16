@@ -2082,31 +2082,7 @@ func replace*(s: string, sub, by: char, max = -1): string {.rtl,
     # copy the rest:
     result.add s.substr(i)
 
-# Maybe implement something like this for all replace functions...?
-# So that they can for example replace all Whitespace characters
-#[
-func replace*(s: string, subs: set[char], by: char, max = -1): string
-    {.rtl, extern: "nsuReplaceSetChar".} =
-  ## Replaces `max` occurrences of any characters in `subs` found
-  ## in `s` with the character `by`.
-  ## If `max` is set to `-1`, it replaces all occurrences.
-  ##
-  ## Optimized version of `replace <#replace,string,char[string],string>`_ for
-  ## characters.
-  ##
-  ## See also:
-  ## * `find func<#find,string,char,Natural,int>`_
-  ## * `replaceWord func<#replaceWord,string,string,string>`_
-  ## * `multiReplace func<#multiReplace,string,varargs[]>`_
-  result = newString(s.len)
-  var occLeft = max
-  for i in 0..s.high:
-    if occLeft != 0 and s[i] in subs:
-      result[i] = by
-      if occLeft > 0: occLeft -= 1
-    else:
-      result[i] = s[i]
-]#
+# consider adding:  `func replace*(s: string, subs: set[char], by: char, max = -1): string`
 
 func replace*(s, sub: string, by = "", max = -1): string {.rtl,
     extern: "nsuReplaceStr".} =

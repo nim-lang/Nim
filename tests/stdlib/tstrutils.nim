@@ -515,6 +515,7 @@ template main() =
       let c = ""
       let c2 = c.replace("\n", "\\n")
     
+    doAssert "aaoaaao".replace("aa", "ii") == "iioiiao"
     doAssert "Hello World".replace("o", "", 1) == "Hell World"
     doAssert "Hello World".replace("l", "", 10) == "Heo Word"
     doAssert "aaaaaa".replace('a', 'b', 2) == "bbaaaa"
