@@ -19,17 +19,17 @@ if [ $# -eq 1 ] ; then
       bindir=/usr/bin
       configdir=/etc/?proj
       libdir=/usr/lib/?proj
-      docdir=/usr/share/?proj/doc
+      docdir=/usr/share/doc/?proj
       datadir=/usr/share/?proj/data
-      nimbleDir="/opt/nimble/pkgs/?c.nimblePkgName-?c.version"
+      nimbleDir="/usr/share/nimble/pkgs/?c.nimblePkgName-?c.version"
       ;;
     "/usr/local/bin")
       bindir=/usr/local/bin
       configdir=/etc/?proj
       libdir=/usr/local/lib/?proj
-      docdir=/usr/local/share/?proj/doc
+      docdir=/usr/local/share/doc/?proj
       datadir=/usr/local/share/?proj/data
-      nimbleDir="/opt/nimble/pkgs/?c.nimblePkgName-?c.version"
+      nimbleDir="/usr/share/nimble/pkgs/?c.nimblePkgName-?c.version"
       ;;
     "/opt")
       bindir="/opt/?proj/bin"
