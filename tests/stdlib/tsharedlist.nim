@@ -1,3 +1,7 @@
+discard """
+  matrix: "--threads:on"
+"""
+
 import std/sharedlist
 
 block:
