@@ -25,10 +25,10 @@ bootSwitch(usedMarkAndSweep, defined(gcmarkandsweep), "--gc:markAndSweep")
 bootSwitch(usedGoGC, defined(gogc), "--gc:go")
 bootSwitch(usedNoGC, defined(nogc), "--gc:none")
 
+import std/[setutils, os, strutils, parseutils, parseopt, sequtils, strtabs]
 import
-  os, msgs, options, nversion, condsyms, strutils, extccomp, platform,
-  wordrecg, parseutils, nimblecmd, parseopt, sequtils, lineinfos,
-  pathutils, strtabs, pathnorm
+  msgs, options, nversion, condsyms, extccomp, platform,
+  wordrecg, nimblecmd, lineinfos, pathutils, pathnorm
 
 from ast import eqTypeFlags, tfGcSafe, tfNoSideEffect
 
@@ -160,19 +160,12 @@ proc processSpecificNoteImpl(conf: ConfigRef, pass: TCmdLinePass, n: TNoteKind, 
   if n notin conf.cmdlineNotes or pass == passCmd1:
     if pass == passCmd1: incl(conf.cmdlineNotes, n)
     incl(conf.modifiedyNotes, n)
-    if isOn:
-      if noteAsError:
-        incl(conf.warningAsErrors, n) # xxx rename warningAsErrors to noteAsErrors
-      else:
-        incl(conf.notes, n)
-        incl(conf.mainPackageNotes, n)
+    if noteAsError:
+      conf.warningAsErrors[n] = isOn # xxx rename warningAsErrors to noteAsErrors
     else:
-      if noteAsError:
-        excl(conf.warningAsErrors, n)
-      else:
-        excl(conf.notes, n)
-        excl(conf.mainPackageNotes, n)
-        excl(conf.foreignPackageNotes, n)
+      conf.notes[n] = isOn
+      conf.mainPackageNotes[n] = isOn
+    if not isOn: excl(conf.foreignPackageNotes, n)
 
 proc processOnOffSwitchOrList(conf: ConfigRef; op: TOptions, arg: string, pass: TCmdLinePass,
                               info: TLineInfo): bool =
