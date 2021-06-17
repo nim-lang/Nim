@@ -88,6 +88,7 @@
   The downside is that these defines now have custom logic that doesn't apply for
   other defines.
 
+- Renamed `-d:nimCompilerStackraceHints` to `-d:nimCompilerStacktraceHints`.
 
 
 ## Standard library additions and changes

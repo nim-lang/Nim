@@ -35,7 +35,7 @@ import
 
 from modulegraphs import getBody
 
-when defined(nimCompilerStackraceHints):
+when defined(nimCompilerStacktraceHints):
   import std/stackframes
 
 const
@@ -2003,7 +2003,7 @@ proc procIsCallback(c: PCtx; s: PSym): bool =
     dec i
 
 proc gen(c: PCtx; n: PNode; dest: var TDest; flags: TGenFlags = {}) =
-  when defined(nimCompilerStackraceHints):
+  when defined(nimCompilerStacktraceHints):
     setFrameMsg c.config$n.info & " " & $n.kind & " " & $flags
   case n.kind
   of nkSym:
