@@ -233,7 +233,7 @@ sub/mmain.idx""", context
     check execCmdEx(cmd) == ("witness\n", 0)
 
   block: # config.nims, nim.cfg, hintConf, bug #16557
-    let cmd = fmt"{nim} r --hints:none --hint:conf tests/newconfig/bar/mfoo.nim"
+    let cmd = fmt"{nim} r --hint:all:off --hint:conf tests/newconfig/bar/mfoo.nim"
     let (outp, exitCode) = execCmdEx(cmd, options = {poStdErrToStdOut})
     doAssert exitCode == 0
     let dir = getCurrentDir()
@@ -265,7 +265,7 @@ tests/newconfig/bar/mfoo.nims""".splitLines
     check fmt"""{nim} r -b:js {opt} --eval:"echo defined(js)"""".execCmdEx == ("true\n", 0)
 
   block: # `hintProcessing` dots should not interfere with `static: echo` + friends
-    let cmd = fmt"""{nim} r --hints:none --hint:processing -f --eval:"static: echo 1+1""""
+    let cmd = fmt"""{nim} r --hint:all:off --hint:processing -f --eval:"static: echo 1+1""""
     let (outp, exitCode) = execCmdEx(cmd, options = {poStdErrToStdOut})
     template check3(cond) = doAssert cond, $(outp,)
     doAssert exitCode == 0
@@ -279,7 +279,7 @@ tests/newconfig/bar/mfoo.nims""".splitLines
       check3 "2" in outp
 
   block: # nim secret
-    let opt = "--hints:none --hint:processing"
+    let opt = "--hint:all:off --hint:processing"
     template check3(cond) = doAssert cond, $(outp,)
     for extra in ["", "--stdout"]:
       let cmd = fmt"""{nim} secret {opt} {extra}"""

@@ -113,7 +113,7 @@ proc addPrefix(switch: string): string =
 const
   errInvalidCmdLineOption = "invalid command line option: '$1'"
   errOnOrOffExpectedButXFound = "'on' or 'off' expected, but '$1' found"
-  errOnOffOrListExpectedButXFound = "expected 'on|off|all|none', but '$1' found"
+  errOnOffOrListExpectedButXFound = "'on', 'off' or 'list' expected, but '$1' found"
   errOffHintsError = "'off', 'hint' or 'error' expected, but '$1' found"
 
 proc invalidCmdLineOption(conf: ConfigRef; pass: TCmdLinePass, switch: string, info: TLineInfo) =
@@ -155,6 +155,8 @@ proc processOnOffSwitch(conf: ConfigRef; op: TOptions, arg: string, pass: TCmdLi
   else: localError(conf, info, errOnOrOffExpectedButXFound % arg)
 
 proc processSpecificNoteImpl(conf: ConfigRef, pass: TCmdLinePass, n: TNoteKind, isOn: bool, noteAsError: bool) =
+  # xxx in future work we should also allow users to have control over `foreignPackageNotes`
+  # so that they can enable hints|warnings|warningAsErrors for all the code they depend on.
   if n notin conf.cmdlineNotes or pass == passCmd1:
     if pass == passCmd1: incl(conf.cmdlineNotes, n)
     incl(conf.modifiedyNotes, n)
@@ -173,16 +175,11 @@ proc processSpecificNoteImpl(conf: ConfigRef, pass: TCmdLinePass, n: TNoteKind, 
         excl(conf.foreignPackageNotes, n)
 
 proc processOnOffSwitchOrList(conf: ConfigRef; op: TOptions, arg: string, pass: TCmdLinePass,
-                              info: TLineInfo, noteSet: set[TMsgKind]): bool =
-  # xxx in future work we should also allow users to have control over `foreignPackageNotes`
-  # so that they can enable hints|warnings|warningAsErrors for all the code they depend on.
+                              info: TLineInfo): bool =
   result = false
   case arg.normalize
   of "on": conf.options.incl op
   of "off": conf.options.excl op
-  of "all", "none":
-    let isOn = arg.normalize == "all"
-    for n in noteSet: processSpecificNoteImpl(conf, pass, n, isOn, noteAsError = false)
   of "list": result = true
   else: localError(conf, info, errOnOffOrListExpectedButXFound % arg)
 
@@ -205,7 +202,7 @@ proc processSpecificNote*(arg: string, state: TSpecialWord, pass: TCmdLinePass,
                          info: TLineInfo; orig: string; conf: ConfigRef) =
   var id = ""  # arg = key or [key] or key:val or [key]:val;  with val=on|off
   var i = 0
-  var n = hintMin
+  var notes: set[TMsgKind]
   var isBracket = false
   if i < arg.len and arg[i] == '[':
     isBracket = true
@@ -220,22 +217,25 @@ proc processSpecificNote*(arg: string, state: TSpecialWord, pass: TCmdLinePass,
   if i == arg.len: discard
   elif i < arg.len and (arg[i] in {':', '='}): inc(i)
   else: invalidCmdLineOption(conf, pass, orig, info)
-  # unfortunately, hintUser and warningUser clash
-  if state in {wHint, wHintAsError}:
-    let x = findStr(hintMin, hintMax, id, errUnknown)
-    if x != errUnknown: n = TNoteKind(x)
-    else: localError(conf, info, "unknown hint: " & id)
-  else:
-    let x = findStr(warnMin, warnMax, id, errUnknown)
-    if x != errUnknown: n = TNoteKind(x)
-    else: localError(conf, info, "unknown warning: " & id)
 
+  let isSomeHint = state in {wHint, wHintAsError}
+  template findNode(noteMin, noteMax, name) =
+    # unfortunately, hintUser and warningUser clash, otherwise implementation would simplify a bit
+    let x = findStr(noteMin, noteMax, id, errUnknown)
+    if x != errUnknown: notes = {TNoteKind(x)}
+    else: localError(conf, info, "unknown $#: $#" % [name, id])
+  case id.normalize
+  of "all": # other note groups would be easy to support via additional cases
+    notes = if isSomeHint: {hintMin..hintMax} else: {warnMin..warnMax}
+  elif isSomeHint: findNode(hintMin, hintMax, "hint")
+  else: findNode(warnMin, warnMax, "warning")
   var val = substr(arg, i).normalize
   if val == "": val = "on"
   if val notin ["on", "off"]:
     localError(conf, info, errOnOrOffExpectedButXFound % arg)
   else:
-    processSpecificNoteImpl(conf, pass, n, val == "on", noteAsError = state in {wWarningAsError, wHintAsError})
+    for n in notes:
+      processSpecificNoteImpl(conf, pass, n, val == "on", noteAsError = state in {wWarningAsError, wHintAsError})
 
 proc processCompile(conf: ConfigRef; filename: string) =
   var found = findFile(conf, filename)
@@ -653,13 +653,13 @@ proc processSwitch*(switch, arg: string, pass: TCmdLinePass, info: TLineInfo;
       of "v2": warningOptionNoop(arg)
       else: localError(conf, info, errNoneBoehmRefcExpectedButXFound % arg)
   of "warnings", "w":
-    if processOnOffSwitchOrList(conf, {optWarns}, arg, pass, info, {warnMin..warnMax}): listWarnings(conf)
+    if processOnOffSwitchOrList(conf, {optWarns}, arg, pass, info): listWarnings(conf)
   of "warning": processSpecificNote(arg, wWarning, pass, info, switch, conf)
   of "hint": processSpecificNote(arg, wHint, pass, info, switch, conf)
   of "warningaserror": processSpecificNote(arg, wWarningAsError, pass, info, switch, conf)
   of "hintaserror": processSpecificNote(arg, wHintAsError, pass, info, switch, conf)
   of "hints":
-    if processOnOffSwitchOrList(conf, {optHints}, arg, pass, info, {hintMin..hintMax}): listHints(conf)
+    if processOnOffSwitchOrList(conf, {optHints}, arg, pass, info): listHints(conf)
   of "threadanalysis":
     if conf.backend == backendJs: discard
     else: processOnOffSwitchG(conf, {optThreadAnalysis}, arg, pass, info)

@@ -48,17 +48,14 @@ Advanced options:
   --spellSuggest|:num       show at most `num >= 0` spelling suggestions on typos.
                             if `num` is not specified (or `auto`), return
                             an implementation defined set of suggestions.
-  --hints:on|off|all|none|list
-                            `on|off` enables or disables hints selected by previous
-                            flags (it acts as a gate), whereas `all|none` selects or
-                            deselects all hints. `list` reports which hints are selected.
+  --hints:on|off|list.      `on|off` enables or disables hints.
+                            `list` reports which hints are selected.
   --hint:X:on|off           turn specific hint X on|off. `hint:X` means `hint:X:on`,
-                            as with similar flags
-  -w:on|off|all|none|list, --warnings:...
-                            same as `--hints` but for warnings.
-  --warning:X:on|off        turn specific warning X on|off
-  --warningAsError:X:on|off turn specific warning X into an error on|off
+                            as with similar flags. `all` can be used for "all hints".
   --hintAsError:X:on|off    turn specific hint X into an error on|off
+  -w:on|off|all|none|list, --warnings:...
+  --warning:X:on|off
+  --warningAsError:X:on|off same as `--hints` but for warnings.
   --styleCheck:off|hint|error
                             produce hints or errors for Nim identifiers that
                             do not adhere to Nim's official style guide
