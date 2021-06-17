@@ -27,7 +27,10 @@ proc createDocLink*(urlSuffix: string): string =
 
 type
   TMsgKind* = enum
-    errUnknown, errInternal, errIllFormedAstX, errCannotOpenFile,
+    # fatal errors
+    errUnknown, errFatal, errInternal,
+    # non-fatal errors
+    errIllFormedAstX, errCannotOpenFile,
     errXExpected,
     errGridTableNotImplemented,
     errMarkdownIllformedTable,
@@ -38,7 +41,7 @@ type
     errProveInit, # deadcode
     errGenerated,
     errUser,
-
+    # warnings
     warnCannotOpenFile = "CannotOpenFile", warnOctalEscape = "OctalEscape",
     warnXIsNeverRead = "XIsNeverRead", warnXmightNotBeenInit = "XmightNotBeenInit",
     warnDeprecated = "Deprecated", warnConfigDeprecated = "ConfigDeprecated",
@@ -64,7 +67,7 @@ type
     warnCannotOpen = "CannotOpen",
     warnFileChanged = "FileChanged",
     warnUser = "User",
-
+    # hints
     hintSuccess = "Success", hintSuccessX = "SuccessX",
     hintCC = "CC",
     hintLineTooLong = "LineTooLong", hintXDeclaredButNotUsed = "XDeclaredButNotUsed",
@@ -83,6 +86,7 @@ type
 const
   MsgKindToStr*: array[TMsgKind, string] = [
     errUnknown: "unknown error",
+    errFatal: "fatal error: $1",
     errInternal: "internal error: $1",
     errIllFormedAstX: "illformed AST: $1",
     errCannotOpenFile: "cannot open '$1'",
@@ -180,8 +184,7 @@ const
   ]
 
 const
-  fatalMin* = errUnknown
-  fatalMax* = errInternal
+  fatalMsgs* = {errUnknown..errInternal}
   errMin* = errUnknown
   errMax* = errUser
   warnMin* = warnCannotOpenFile
