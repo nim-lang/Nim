@@ -53,9 +53,10 @@ Advanced options:
   --hint:X:on|off           turn specific hint X on|off. `hint:X` means `hint:X:on`,
                             as with similar flags. `all` can be used for "all hints".
   --hintAsError:X:on|off    turn specific hint X into an error on|off
-  -w:on|off|all|none|list, --warnings:...
-  --warning:X:on|off
-  --warningAsError:X:on|off same as `--hints` but for warnings.
+  -w:on|off|list, --warnings:on|off|list
+                            same as `--hints` but for warnings.
+  --warning:X:on|off        ditto
+  --warningAsError:X:on|off ditto
   --styleCheck:off|hint|error
                             produce hints or errors for Nim identifiers that
                             do not adhere to Nim's official style guide
