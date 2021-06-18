@@ -83,6 +83,12 @@ template main =
 
     block:
       assertAll:
+        # privateAccess H
+        privateAccess H[int]
+        var a = H[int](h5: 2)
+
+    block:
+      assertAll:
         privateAccess PA
         var pa = PA(a0: 1, ha1: 2)
         pa.ha1 == 2

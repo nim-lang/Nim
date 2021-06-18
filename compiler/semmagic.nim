@@ -467,6 +467,8 @@ proc semPrivateAccess(c: PContext, n: PNode): PNode =
     A2[T] = ref object f1: int
     A3 = ref object f2: int
     A4 = object f3: int
+
+  Unfortunately, `ast.toObject` would not work.
   ]#
   var foundPtrLike = false
   while true:

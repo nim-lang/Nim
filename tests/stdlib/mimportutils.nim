@@ -20,6 +20,10 @@ type
     h4: T2
   F*[T1, T2] = ref FSub[T1, T2]
   G*[T] = ref E[T]
-  PG*[T] = ptr G[T]
+  H3*[T] = object
+    h5: T
+  H2*[T] = H3[T]
+  H1*[T] = ref H2[T]
+  H*[T] = H1[T]
 
 proc initB*(): B = B()
