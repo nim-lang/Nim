@@ -989,11 +989,11 @@ Ordinal types have the following characteristics:
 - Ordinal types are countable and ordered. This property allows the operation
   of functions such as `inc`, `ord`, and `dec` on ordinal types to
   be defined.
-- Ordinal values have the smallest possible value, accessible with `low(type)`.
+- Ordinal types have a smallest possible value, accessible with `low(type)`.
   Trying to count further down than the smallest value produces a panic or
   a static error.
-- Ordinal values have the largest possible value, accessible with `high(type)`.
-  Trying to count further than the largest value produces a panic or
+- Ordinal types have a largest possible value, accessible with `high(type)`.
+  Trying to count further up than the largest value produces a panic or
   a static error.
 
 Integers, bool, characters, and enumeration types (and subranges of these
@@ -1097,7 +1097,7 @@ lowest and highest value of the type. For example:
   type
     Subrange = range[0..5]
     PositiveFloat = range[0.0..Inf]
-    PositiveInt = range[0..high(int)]
+    Positive* = range[1..high(int)] # as defined in `system`
 
 
 `Subrange` is a subrange of an integer which can only hold the values 0
