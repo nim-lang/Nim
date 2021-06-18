@@ -457,6 +457,32 @@ proc semOld(c: PContext; n: PNode): PNode =
     localError(c.config, n[1].info, n[1].sym.name.s & " does not belong to " & getCurrOwner(c).name.s)
   result = n
 
+proc semPrivateAccess(c: PContext, n: PNode): PNode =
+  var t = n[1].typ[0]
+  #[
+  find the underlying `object`, even in cases like these:
+  type
+    B[T] = object f0: int
+    A1[T] = ref B[T]
+    A2[T] = ref object f1: int
+    A3 = ref object f2: int
+    A4 = object f3: int
+  ]#
+  var foundPtrLike = false
+  while true:
+    case t.kind
+    of tyRef, tyPtr:
+      if foundPtrLike: break
+      foundPtrLike = true
+      t = t[0]
+    of tyGenericBody: t = t.lastSon
+    of tyGenericInst: t = t[0]
+    of tyGenericInvocation: t = t[0]
+    else: break
+  assert t.sym != nil, $t
+  c.currentScope.allowPrivateAccess.add t.sym
+  result = newNodeIT(nkEmpty, n.info, getSysType(c.graph, n.info, tyVoid))
+
 proc magicsAfterOverloadResolution(c: PContext, n: PNode,
                                    flags: TExprFlags): PNode =
   ## This is the preferred code point to implement magics.
@@ -574,29 +600,6 @@ proc magicsAfterOverloadResolution(c: PContext, n: PNode,
       n[0].sym.magic = mSubU
     result = n
   of mPrivateAccess:
-    var t = n[1].typ[0]
-    #[
-    find the underlying `object`, even in cases like these:
-    type
-      B[T] = object f0: int
-      A1[T] = ref B[T]
-      A2[T] = ref object f1: int
-      A3 = ref object f2: int
-      A4 = object f3: int
-    ]#
-    var foundPtrLike = false
-    while true:
-      case t.kind
-      of tyRef, tyPtr:
-        if foundPtrLike: break
-        foundPtrLike = true
-        t = t[0]
-      of tyGenericBody: t = t.lastSon
-      of tyGenericInst: t = t[0]
-      of tyGenericInvocation: t = t[0]
-      else: break
-    assert t.sym != nil, $t
-    c.currentScope.allowPrivateAccess.add t.sym
-    result = newNodeIT(nkEmpty, n.info, getSysType(c.graph, n.info, tyVoid))
+    result = semPrivateAccess(c, n)
   else:
     result = n
