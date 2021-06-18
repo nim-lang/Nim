@@ -60,6 +60,20 @@ template main =
 
     block:
       assertAll:
+        not compiles(F[int, int](h3: 1))
+        privateAccess F[int, int]
+        var e = F[int, int](h3: 1)
+        e.h3 == 1
+
+    block:
+      assertAll:
+        not compiles(F[int, int](h3: 1))
+        privateAccess F[int, int].default[].typeof
+        var e = F[int, int](h3: 1)
+        e.h3 == 1
+
+    block:
+      assertAll:
         privateAccess PA
         var pa = PA(a0: 1, ha1: 2)
         pa.ha1 == 2

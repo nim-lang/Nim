@@ -575,7 +575,26 @@ proc magicsAfterOverloadResolution(c: PContext, n: PNode,
     result = n
   of mPrivateAccess:
     var t = n[1].typ[0]
-    if t.kind in {tyRef, tyPtr, tyGenericInst}: t = t[0]
+    #[
+    find the underlying `object`, even in cases like these:
+    type
+      B[T] = object f0: int
+      A1[T] = ref B[T]
+      A2[T] = ref object f1: int
+      A3 = ref object f2: int
+      A4 = object f3: int
+    ]#
+    var foundPtrLike = false
+    while true:
+      case t.kind
+      of tyRef, tyPtr:
+        if foundPtrLike: break
+        foundPtrLike = true
+        t = t[0]
+      of tyGenericBody: t = t.lastSon
+      of tyGenericInst: t = t[0]
+      of tyGenericInvocation: t = t[0]
+      else: break
     assert t.sym != nil, $t
     c.currentScope.allowPrivateAccess.add t.sym
     result = newNodeIT(nkEmpty, n.info, getSysType(c.graph, n.info, tyVoid))
