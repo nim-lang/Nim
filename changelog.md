@@ -93,7 +93,9 @@
 
 ## Standard library additions and changes
 
-- Added support for parenthesized expressions in `strformat`
+- `strformat`:
+  added support for parenthesized expressions.
+  added support for const string's instead of just string literals
 
 - Fixed buffer overflow bugs in `net`
 
