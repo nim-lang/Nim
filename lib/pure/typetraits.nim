@@ -100,6 +100,16 @@ proc isNamedTuple*(T: typedesc): bool {.magic: "TypeTrait".} =
     doAssert not isNamedTuple((string, int))
     doAssert isNamedTuple(tuple[name: string, age: int])
 
+template refBase*[T](_: typedesc[ptr T | ref T]): typedesc =
+  ## Returns `T` for `ref T | ptr T`
+  runnableExamples:
+    assert (ref int).refBase is int
+    type A = ptr seq[float]
+    assert A.refBase is seq[float]
+    assert (ref A).refBase is A # not seq[float]
+    assert (var s = "abc"; s[0].addr).typeof.refBase is char
+  T
+
 proc distinctBase*(T: typedesc): typedesc {.magic: "TypeTrait".} =
   ## Returns the base type for distinct types, or the type itself otherwise.
   ##
@@ -166,16 +176,6 @@ since (1, 3, 5):
       doAssert elementType(myiter(3)) is int
 
     typeof(block: (for ai in a: ai))
-
-template deref*[T](_: typedesc[ptr T | ref T]): typedesc =
-  ## Returns `T` for `ref T | ptr T`
-  runnableExamples:
-    assert (ref int).deref is int
-    type A = ptr seq[float]
-    assert A.deref is seq[float]
-    assert (ref A).deref is A # not seq[float]
-    assert (var s = "abc"; s[0].addr).typeof.deref is char
-  T
 
 import macros
 
