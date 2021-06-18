@@ -684,8 +684,8 @@ template fmt*(pattern: static string): untyped =
   fmt(pattern, '{', '}')
 
 macro `&`*(pattern: string{lit}): string =
-  ## `&pattern` is the same as `pattern.fmt`; prefer `fmt` since it's more
-  ## flexible and readable (`&` can be confused with binary append operator).
+  ## `&pattern` is the same as `pattern.fmt`.
+  ## For a specification of the `&` macro, see the module level documentation.
   # pending bug #18275, bug #18278, use `pattern: static string`
   # consider deprecating this, it's redundant with `fmt` and `fmt` is strictly
   # more flexible, readable (no confusion with the binary `&`), self-documenting,
