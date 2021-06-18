@@ -26,4 +26,7 @@ type
   H1*[T] = ref H2[T]
   H*[T] = H1[T]
 
+type BAalias* = typeof(B.default)
+  # typeof is not a transparent abstraction, creates a `tyAlias`
+
 proc initB*(): B = B()

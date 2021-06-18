@@ -77,9 +77,8 @@ template main =
         var a = G[int]()
         var b = a.addr
         privateAccess b.type
-        not compiles(b.he1) # because of double pointer-like indirection
-        privateAccess b.type.default[].type
         discard b.he1
+        discard b[][].he1
 
     block:
       assertAll:
@@ -94,6 +93,13 @@ template main =
         pa.ha1 == 2
         pa.ha1 = 3
         pa.ha1 == 3
+
+    block:
+      assertAll:
+        var b = BAalias()
+        not compiles(b.hb1)
+        privateAccess BAalias
+        discard b.hb1
 
     block:
       assertAll:
