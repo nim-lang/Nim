@@ -107,10 +107,12 @@ macro assertAll*(body) =
   # remove this once these support VM, pending #10129 (closed but not yet fixed)
   result = newStmtList()
   for a in body:
-    result.add genAst(a) do:
+    result.add genAst(a, a2 = a.repr, info = lineInfo(a)) do:
       # D20210421T014713:here
       # xxx pending https://github.com/nim-lang/Nim/issues/12030,
       # `typeof` should introduce its own scope, so that this
       # is sufficient: `typeof(a)` instead of `typeof(block: a)`
       when typeof(block: a) is void: a
-      else: doAssert a
+      else:
+        if not a:
+          raise newException(AssertionDefect, info & " " & a2)
