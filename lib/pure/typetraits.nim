@@ -167,6 +167,16 @@ since (1, 3, 5):
 
     typeof(block: (for ai in a: ai))
 
+template deref*[T](_: typedesc[ptr T | ref T]): typedesc =
+  ## Returns `T` for `ref T | ptr T`
+  runnableExamples:
+    assert (ref int).deref is int
+    type A = ptr seq[float]
+    assert A.deref is seq[float]
+    assert (ref A).deref is A # not seq[float]
+    assert (var s = "abc"; s[0].addr).typeof.deref is char
+  T
+
 import macros
 
 macro enumLen*(T: typedesc[enum]): int =

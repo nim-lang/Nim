@@ -113,8 +113,12 @@
 
 - Make `{.requiresInit.}` pragma to work for `distinct` types.
 
-- Added a macros `enumLen` for returning the number of items in an enum to the
-  `typetraits.nim` module.
+- `typetraits`:
+  `distinctBase` now is identity instead of error for non distinct types.
+  Added `enumLen` to return the number of elements in an enum
+  Added `HoleyEnum` for enums with holes, `OrdinalEnum` for enums without holes.
+  Added `hasClosure`.
+  Added `deref` to return `T` for `ref T | ptr T`.
 
 - `prelude` now works with the JavaScript target.
   Added `sequtils` import to `prelude`.
@@ -161,8 +165,6 @@
   Added `items` for enums with holes.
   Added `symbolName` to return the enum symbol name ignoring the human readable name.
   Added `symbolRank` to return the index in which an enum member is listed in an enum.
-
-- Added `typetraits.HoleyEnum` for enums with holes, `OrdinalEnum` for enums without holes.
 
 - Removed deprecated `iup` module from stdlib, it has already moved to
   [nimble](https://github.com/nim-lang/iup).
@@ -293,7 +295,6 @@
 
 - Added `algorithm.merge`.
 
-
 - Added `std/jsfetch` module [Fetch](https://developer.mozilla.org/docs/Web/API/Fetch_API) wrapper for JavaScript target.
 
 - Added `std/jsheaders` module [Headers](https://developer.mozilla.org/en-US/docs/Web/API/Headers) wrapper for JavaScript target.
@@ -322,8 +323,6 @@
 
 - Added `hasDataBuffered` to `asyncnet`.
 
-- Added `hasClosure` to `std/typetraits`.
-
 - Added `std/tempfiles`.
 
 - Added `genasts.genAst` that avoids the problems inherent with `quote do` and can
@@ -344,8 +343,6 @@
 - The `cstring` doesn't support `[]=` operator in JS backend.
 
 - nil dereference is not allowed at compile time. `cast[ptr int](nil)[]` is rejected at compile time.
-
-- `typetraits.distinctBase` now is identity instead of error for non distinct types.
 
 - `os.copyFile` is now 2.5x faster on OSX, by using `copyfile` from `copyfile.h`;
   use `-d:nimLegacyCopyFile` for OSX < 10.5.
