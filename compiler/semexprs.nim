@@ -2716,6 +2716,13 @@ proc getNilType(c: PContext): PType =
 proc semExpr(c: PContext, n: PNode, flags: TExprFlags = {}): PNode =
   when defined(nimCompilerStacktraceHints):
     setFrameMsg c.config$n.info & " " & $n.kind
+  when false: # see `tdebugutils`
+    if isCompilerDebug():
+      echo (">", c.config$n.info, n, flags, n.kind)
+    defer:
+      if isCompilerDebug():
+        echo ("<", c.config$n.info, n, ?.result.typ)
+
   result = n
   if c.config.cmd == cmdIdeTools: suggestExpr(c, n)
   if nfSem in n.flags: return

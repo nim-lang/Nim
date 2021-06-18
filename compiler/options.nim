@@ -472,7 +472,10 @@ const foreignPackageNotesDefault* = {
 proc isDefined*(conf: ConfigRef; symbol: string): bool
 
 when defined(nimDebugUtils):
+  # this allows inserting debugging utilties in all modules that import `options`
+  # with a single switch, which is useful when debugging compiler.
   import debugutils
+  export debugutils
 
 proc initConfigRefCommon(conf: ConfigRef) =
   conf.selectedGC = gcRefc
