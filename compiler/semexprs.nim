@@ -10,7 +10,7 @@
 # this module does the semantic checking for expressions
 # included from sem.nim
 
-when defined(nimCompilerStackraceHints):
+when defined(nimCompilerStacktraceHints):
   import std/stackframes
 
 const
@@ -1643,7 +1643,7 @@ proc takeImplicitAddr(c: PContext, n: PNode; isLent: bool): PNode =
 proc asgnToResultVar(c: PContext, n, le, ri: PNode) {.inline.} =
   if le.kind == nkHiddenDeref:
     var x = le[0]
-    if (x.typ.kind in {tyVar, tyLent} or classifyViewType(x.typ) != noView) and x.kind == nkSym and x.sym.kind == skResult:
+    if x.kind == nkSym and x.sym.kind == skResult and (x.typ.kind in {tyVar, tyLent} or classifyViewType(x.typ) != noView):
       n[0] = x # 'result[]' --> 'result'
       n[1] = takeImplicitAddr(c, ri, x.typ.kind == tyLent)
       x.typ.flags.incl tfVarIsPtr
@@ -2714,8 +2714,15 @@ proc getNilType(c: PContext): PType =
     c.nilTypeCache = result
 
 proc semExpr(c: PContext, n: PNode, flags: TExprFlags = {}): PNode =
-  when defined(nimCompilerStackraceHints):
+  when defined(nimCompilerStacktraceHints):
     setFrameMsg c.config$n.info & " " & $n.kind
+  when false: # see `tdebugutils`
+    if isCompilerDebug():
+      echo (">", c.config$n.info, n, flags, n.kind)
+    defer:
+      if isCompilerDebug():
+        echo ("<", c.config$n.info, n, ?.result.typ)
+
   result = n
   if c.config.cmd == cmdIdeTools: suggestExpr(c, n)
   if nfSem in n.flags: return

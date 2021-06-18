@@ -997,7 +997,7 @@ when not defined(js):
     # taken from Go-lang Math.Log2
     const ln2 = 0.693147180559945309417232121458176568075500134360255254120680009
     template log2Impl[T](x: T): T =
-      var exp: int32
+      var exp: int
       var frac = frexp(x, exp)
       # Make sure exact powers of two give an exact answer.
       # Don't depend on Log(0.5)*(1/Ln2)+exp being exactly exp-1.

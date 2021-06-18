@@ -1238,6 +1238,8 @@ proc gsub(g: var TSrcGen, n: PNode, c: TContext, fromStmtList = false) =
     putWithSpace(g, tkBind, "bind")
     gsub(g, n, 0)
   of nkCheckedFieldExpr, nkHiddenAddr, nkHiddenDeref, nkStringToCString, nkCStringToString:
+    if renderIds in g.flags:
+      putWithSpace(g, tkAddr, $n.kind)
     gsub(g, n, 0)
   of nkLambda:
     putWithSpace(g, tkProc, "proc")

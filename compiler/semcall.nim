@@ -326,7 +326,7 @@ proc getMsgDiagnostic(c: PContext, flags: TExprFlags, n, f: PNode): string =
 
   let ident = considerQuotedIdent(c, f, n).s
   if {nfDotField, nfExplicitCall} * n.flags == {nfDotField}:
-    let sym = n[1].typ.sym
+    let sym = n[1].typ.typSym
     var typeHint = ""
     if sym == nil:
       # Perhaps we're in a `compiles(foo.bar)` expression, or
@@ -337,7 +337,8 @@ proc getMsgDiagnostic(c: PContext, flags: TExprFlags, n, f: PNode): string =
       discard
     else:
       typeHint = " for type " & getProcHeader(c.config, sym)
-    result = errUndeclaredField % ident & typeHint & " " & result
+    let suffix = if result.len > 0: " " & result else: ""
+    result = errUndeclaredField % ident & typeHint & suffix
   else:
     if result.len == 0: result = errUndeclaredRoutine % ident
     else: result = errBadRoutine % [ident, result]

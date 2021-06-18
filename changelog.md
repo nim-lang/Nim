@@ -88,6 +88,7 @@
   The downside is that these defines now have custom logic that doesn't apply for
   other defines.
 
+- Renamed `-d:nimCompilerStackraceHints` to `-d:nimCompilerStacktraceHints`.
 
 
 ## Standard library additions and changes
@@ -284,9 +285,6 @@
 
 - Added `std/strbasics` for high performance string operations.
   Added `strip`, `setSlice`, `add(a: var string, b: openArray[char])`.
-
-
-- Added to `wrapnils` an option-like API via `??.`, `isSome`, `get`.
 
 - `std/options` changed `$some(3)` to `"some(3)"` instead of `"Some(3)"`
   and `$none(int)` to `"none(int)"` instead of `"None[int]"`.

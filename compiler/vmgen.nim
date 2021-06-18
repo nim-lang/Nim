@@ -35,6 +35,9 @@ import
 
 from modulegraphs import getBody
 
+when defined(nimCompilerStacktraceHints):
+  import std/stackframes
+
 const
   debugEchoCode* = defined(nimVMDebug)
 
@@ -2000,6 +2003,8 @@ proc procIsCallback(c: PCtx; s: PSym): bool =
     dec i
 
 proc gen(c: PCtx; n: PNode; dest: var TDest; flags: TGenFlags = {}) =
+  when defined(nimCompilerStacktraceHints):
+    setFrameMsg c.config$n.info & " " & $n.kind & " " & $flags
   case n.kind
   of nkSym:
     let s = n.sym
