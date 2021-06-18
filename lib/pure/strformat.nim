@@ -574,13 +574,11 @@ template formatValue(result: var string; value: cstring; specifier: string) =
   result.add value
 
 proc strformatImpl(f: string; openChar, closeChar: char): NimNode =
-  let info = callsite()
-  # pending https://github.com/nim-lang/RFCs/issues/387, use `callTree`
   if openChar == ':' or closeChar == ':':
     error "openChar and closeChar must not be ':'"
   var i = 0
   let res = genSym(nskVar, "fmtRes")
-  result = newNimNode(nnkStmtListExpr, lineInfoFrom = info)
+  result = newNimNode(nnkStmtListExpr)
   # XXX: https://github.com/nim-lang/Nim/issues/8405
   # When compiling with -d:useNimRtl, certain procs such as `count` from the strutils
   # module are not accessible at compile-time:
@@ -633,7 +631,7 @@ proc strformatImpl(f: string; openChar, closeChar: char): NimNode =
         try:
           x = parseExpr(subexpr)
         except ValueError as e:
-          error("could not parse `" & subexpr & "`.\n" & e.msg, info)
+          error("could not parse `$#` in `$#`.\n$#" % [subexpr, f, e.msg])
         let formatSym = bindSym("formatValue", brOpen)
         var options = ""
         if f[i] == ':':
