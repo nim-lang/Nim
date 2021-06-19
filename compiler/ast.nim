@@ -1887,6 +1887,26 @@ proc toObject*(typ: PType): PType =
   if t.kind == tyRef: t.lastSon
   else: typ
 
+proc toObjectFromRefPtrGeneric*(typ: PType): PType =
+  #[
+  See also `toObject`.
+  Finds the underlying `object`, even in cases like these:
+  type
+    B[T] = object f0: int
+    A1[T] = ref B[T]
+    A2[T] = ref object f1: int
+    A3 = ref object f2: int
+    A4 = object f3: int
+  ]#
+  result = typ
+  while true:
+    case result.kind
+    of tyGenericBody: result = result.lastSon
+    of tyRef, tyPtr, tyGenericInst, tyGenericInvocation, tyAlias: result = result[0]
+      # automatic dereferencing is deep, refs #18298.
+    else: break
+  assert result.sym != nil
+
 proc isImportedException*(t: PType; conf: ConfigRef): bool =
   assert t != nil
 
