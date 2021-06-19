@@ -101,7 +101,7 @@ proc isNamedTuple*(T: typedesc): bool {.magic: "TypeTrait".} =
     doAssert isNamedTuple(tuple[name: string, age: int])
 
 template pointerBase*[T](_: typedesc[ptr T | ref T]): typedesc =
-  ## Returns `T` for `ref T | ptr T`
+  ## Returns `T` for `ref T | ptr T`.
   runnableExamples:
     assert (ref int).pointerBase is int
     type A = ptr seq[float]

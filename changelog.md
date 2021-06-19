@@ -115,7 +115,7 @@
 
 - `typetraits`:
   `distinctBase` now is identity instead of error for non distinct types.
-  Added `enumLen` to return the number of elements in an enum
+  Added `enumLen` to return the number of elements in an enum.
   Added `HoleyEnum` for enums with holes, `OrdinalEnum` for enums without holes.
   Added `hasClosure`.
   Added `pointerBase` to return `T` for `ref T | ptr T`.
