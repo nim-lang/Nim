@@ -1135,6 +1135,18 @@ Test1
     check "<pre class=\"line-nums\">55\n</pre>" in output
     check "<span class=\"Identifier\">x</span>" in output
 
+  test "Nim code-block indentation":
+    let input = dedent """
+      .. code-block:: nim
+        :number-lines: 55
+         let a = 1
+      """
+    var error = new string
+    let output = input.toHtml(error=error)
+    check(error[] == "input(1, 1) Error: invalid field: " &
+                     "extra arguments were given to number-lines: ' let a = 1'")
+    check "" == output
+
   test "RST admonitions":
     # check that all admonitions are implemented
     let input0 = dedent """
