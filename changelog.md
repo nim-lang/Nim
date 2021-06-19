@@ -118,7 +118,7 @@
   Added `enumLen` to return the number of elements in an enum
   Added `HoleyEnum` for enums with holes, `OrdinalEnum` for enums without holes.
   Added `hasClosure`.
-  Added `refBase` to return `T` for `ref T | ptr T`.
+  Added `pointerBase` to return `T` for `ref T | ptr T`.
 
 - `prelude` now works with the JavaScript target.
   Added `sequtils` import to `prelude`.

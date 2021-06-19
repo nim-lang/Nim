@@ -100,14 +100,14 @@ proc isNamedTuple*(T: typedesc): bool {.magic: "TypeTrait".} =
     doAssert not isNamedTuple((string, int))
     doAssert isNamedTuple(tuple[name: string, age: int])
 
-template refBase*[T](_: typedesc[ptr T | ref T]): typedesc =
+template pointerBase*[T](_: typedesc[ptr T | ref T]): typedesc =
   ## Returns `T` for `ref T | ptr T`
   runnableExamples:
-    assert (ref int).refBase is int
+    assert (ref int).pointerBase is int
     type A = ptr seq[float]
-    assert A.refBase is seq[float]
-    assert (ref A).refBase is A # not seq[float]
-    assert (var s = "abc"; s[0].addr).typeof.refBase is char
+    assert A.pointerBase is seq[float]
+    assert (ref A).pointerBase is A # not seq[float]
+    assert (var s = "abc"; s[0].addr).typeof.pointerBase is char
   T
 
 proc distinctBase*(T: typedesc): typedesc {.magic: "TypeTrait".} =
