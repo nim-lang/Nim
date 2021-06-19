@@ -69,6 +69,12 @@ proc rawImportSymbol(c: PContext, s, origin: PSym; importSet: var IntSet) =
   # This does not handle stubs, because otherwise loading on demand would be
   # pointless in practice. So importing stubs is fine here!
   # check if we have already a symbol of the same name:
+
+  # TODO: newSym
+  if not isTopLevel(c):
+    addDecl(c, s)
+    return
+
   when false:
     var check = someSymFromImportTable(c, s.name)
     if check != nil and check.id != s.id:
@@ -83,6 +89,8 @@ proc rawImportSymbol(c: PContext, s, origin: PSym; importSet: var IntSet) =
     strTableAdd(c.importTable.symbols, s)
   else:
     importSet.incl s.id
+
+
   if s.kind == skType:
     var etyp = s.typ
     if etyp.kind in {tyBool, tyEnum}:
