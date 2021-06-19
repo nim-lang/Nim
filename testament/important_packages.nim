@@ -82,7 +82,7 @@ pkg "karax", "nim c -r tests/tester.nim"
 pkg "kdtree", "nimble test -d:nimLegacyRandomInitRand", "https://github.com/jblindsay/kdtree"
 pkg "loopfusion"
 pkg "macroutils"
-pkg "manu", allowFailure=true # pending https://github.com/planetis-m/manu/issues/5
+pkg "manu"
 pkg "markdown"
 pkg "memo"
 pkg "msgpack4nim", "nim c -r tests/test_spec.nim"
