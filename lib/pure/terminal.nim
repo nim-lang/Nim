@@ -21,10 +21,11 @@
 ]##
 
 ## Procs like `styledWriteLine`, `styledEcho` etc. have a temporary effect on
-## the terminal. Style parameters only affect the text parameter right after them.
+## text parameters. Style parameters only affect the text parameter right after them.
+## After being called, these procs will reset the default style of the terminal.
 ## While `setBackGroundColor`, `setForeGroundColor` etc. have a lasting
 ## influence on the terminal, you can use `resetAttributes` to
-## reset the current style of the terminal.
+## reset the default style of the terminal.
 runnableExamples("-r:off"):
   stdout.styledWriteLine({styleBright, styleBlink, styleUnderscore}, "styled text ")
   stdout.styledWriteLine(fgRed, "red text ")
