@@ -72,7 +72,11 @@ proc rawImportSymbol(c: PContext, s, origin: PSym; importSet: var IntSet) =
 
   # TODO: newSym
   if not isTopLevel(c):
-    addDecl(c, s)
+    # TODO: OverloadableSyms ? let multiImport = s.kind notin ExportableSymKinds or s.kind in skProcKinds ?
+    if s.kind in skProcKinds:
+      addOverloadableSymAt(c, c.currentScope, s)
+    else:
+      addDecl(c, s)
     return
 
   when false:
