@@ -65,18 +65,37 @@ proc importPureEnumFields(c: PContext; s: PSym; etyp: PType) =
     if e != nil:
       importPureEnumField(c, e)
 
-proc rawImportSymbol(c: PContext, s, origin: PSym; importSet: var IntSet) =
+proc rawImportSymbol(c: PContext, s, origin: PSym; importSet: var IntSet, isPureEnumField = false) =
   # This does not handle stubs, because otherwise loading on demand would be
   # pointless in practice. So importing stubs is fine here!
   # check if we have already a symbol of the same name:
 
   # TODO: newSym
-  if not isTopLevel(c):
+  let isLocalImport = not isTopLevel(c)
+  if isLocalImport:
     # TODO: OverloadableSyms ? let multiImport = s.kind notin ExportableSymKinds or s.kind in skProcKinds ?
+    # if s.kind in skProcKinds:
+    dbg s, s.kind, s.flags
     if s.kind in skProcKinds:
       addOverloadableSymAt(c, c.currentScope, s)
+    elif s.kind == skEnumField and isPureEnumField:
+      c.currentScope.addSym(s)
     else:
       addDecl(c, s)
+
+      if s.kind == skType:
+        var etyp = s.typ
+        if etyp.kind in {tyBool, tyEnum}:
+          for j in 0..<etyp.n.len:
+            var e = etyp.n[j].sym
+            if e.kind != skEnumField:
+              internalError(c.config, s.info, "rawImportSymbol")
+              # BUGFIX: because of aliases for enums the symbol may already
+              # have been put into the symbol table
+              # BUGFIX: but only iff they are the same symbols!
+            if e != nil:
+              # dbg e, e.kind, e.flags
+              rawImportSymbol(c, e, origin, importSet, isPureEnumField = sfPure in s.flags)
     return
 
   when false:
