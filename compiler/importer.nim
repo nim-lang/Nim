@@ -72,6 +72,8 @@ proc rawImportSymbol(c: PContext, s, origin: PSym; importSet: var IntSet, isPure
 
   # TODO: newSym
   let isLocalImport = not isTopLevel(c)
+  if isCompilerDebug():
+    dbg isLocalImport, s, origin, isPureEnumField
   if isLocalImport:
     # TODO: OverloadableSyms ? let multiImport = s.kind notin ExportableSymKinds or s.kind in skProcKinds ?
     # if s.kind in skProcKinds:
@@ -155,6 +157,7 @@ proc splitPragmas(c: PContext, n: PNode): (PNode, seq[TSpecialWord]) =
 
 proc importSymbol(c: PContext, n: PNode, fromMod: PSym; importSet: var IntSet) =
   let (n, kws) = splitPragmas(c, n)
+  dbgIf n
   if kws.len > 0:
     globalError(c.config, n.info, "unexpected pragma")
 
@@ -371,6 +374,7 @@ proc evalImport*(c: PContext, n: PNode): PNode =
 
 proc evalFrom*(c: PContext, n: PNode): PNode =
   result = newNodeI(nkImportStmt, n.info)
+  dbgIf n
   checkMinSonsLen(n, 2, c.config)
   var m = myImportModule(c, n[0], result)
   if m != nil:
