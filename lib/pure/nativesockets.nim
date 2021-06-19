@@ -438,7 +438,7 @@ proc getHostname*(): string {.tags: [ReadIOEffect].} =
   ## Returns the local hostname (not the FQDN)
   # https://tools.ietf.org/html/rfc1035#section-2.3.1
   # https://tools.ietf.org/html/rfc2181#section-11
-  const size = 64
+  const size = 256
   result = newString(size)
   when useWinVersion:
     let success = winlean.gethostname(result, size)

@@ -1047,7 +1047,7 @@ proc singlePragma(c: PContext, sym: PSym, n: PNode, i: var int,
           let s = expectStrLit(c, it)
           recordPragma(c, it, "error", s)
           localError(c.config, it.info, errUser, s)
-      of wFatal: fatal(c.config, it.info, errUser, expectStrLit(c, it))
+      of wFatal: fatal(c.config, it.info, expectStrLit(c, it))
       of wDefine: processDefine(c, it)
       of wUndef: processUndef(c, it)
       of wCompile: processCompile(c, it)

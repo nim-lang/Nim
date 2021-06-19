@@ -8,10 +8,9 @@
 #
 
 import
-  options, strutils, os, tables, ropes, terminal, macros,
-  lineinfos, pathutils
-import std/private/miscdollars
-import strutils2
+  std/[strutils, os, tables, terminal, macros, times],
+  std/private/miscdollars,
+  options, ropes, lineinfos, pathutils, strutils2
 
 type InstantiationInfo* = typeof(instantiationInfo())
 template instLoc*(): InstantiationInfo = instantiationInfo(-2, fullPaths = true)
@@ -409,7 +408,7 @@ To create a stacktrace, rerun compilation with './koch temp $1 <file>', see $2 f
   quit 1
 
 proc handleError(conf: ConfigRef; msg: TMsgKind, eh: TErrorHandling, s: string) =
-  if msg >= fatalMin and msg <= fatalMax:
+  if msg in fatalMsgs:
     if conf.cmd == cmdIdeTools: log(s)
     quit(conf, msg)
   if msg >= errMin and msg <= errMax or
@@ -499,6 +498,12 @@ proc liMessage*(conf: ConfigRef; info: TLineInfo, msg: TMsgKind, arg: string,
     color: ForegroundColor
     ignoreMsg = false
     sev: Severity
+  let errorOutputsOld = conf.m.errorOutputs
+  if msg in fatalMsgs:
+    # don't gag, refs bug #7080, bug #18278; this can happen with `{.fatal.}`
+    # or inside a `tryConstExpr`.
+    conf.m.errorOutputs = {eStdOut, eStdErr}
+
   let kind = if msg in warnMin..hintMax and msg != hintUserRaw: $msg else: "" # xxx not sure why hintUserRaw is special
   case msg
   of errMin..errMax:
@@ -554,6 +559,9 @@ proc liMessage*(conf: ConfigRef; info: TLineInfo, msg: TMsgKind, arg: string,
             KindFormat % $hintMsgOrigin,
             resetStyle, conf.unitSep)
   handleError(conf, msg, eh, s)
+  if msg in fatalMsgs:
+    # most likely would have died here but just in case, we restore state
+    conf.m.errorOutputs = errorOutputsOld
 
 template rawMessage*(conf: ConfigRef; msg: TMsgKind, args: openArray[string]) =
   let arg = msgKindToString(msg) % args
@@ -562,9 +570,7 @@ template rawMessage*(conf: ConfigRef; msg: TMsgKind, args: openArray[string]) =
 template rawMessage*(conf: ConfigRef; msg: TMsgKind, arg: string) =
   liMessage(conf, unknownLineInfo, msg, arg, eh = doAbort, instLoc())
 
-template fatal*(conf: ConfigRef; info: TLineInfo, msg: TMsgKind, arg = "") =
-  # this fixes bug #7080 so that it is at least obvious 'fatal' was executed.
-  conf.m.errorOutputs = {eStdOut, eStdErr}
+template fatal*(conf: ConfigRef; info: TLineInfo, arg = "", msg = errFatal) =
   liMessage(conf, info, msg, arg, doAbort, instLoc())
 
 template globalAssert*(conf: ConfigRef; cond: untyped, info: TLineInfo = unknownLineInfo, arg = "") =
@@ -656,3 +662,39 @@ proc uniqueModuleName*(conf: ConfigRef; fid: FileIndex): string =
       # We mangle upper letters and digits too so that there cannot
       # be clashes with our special meanings of 'Z' and 'O'
       result.addInt ord(c)
+
+proc genSuccessX*(conf: ConfigRef) =
+  let mem =
+    when declared(system.getMaxMem): formatSize(getMaxMem()) & " peakmem"
+    else: formatSize(getTotalMem()) & " totmem"
+  let loc = $conf.linesCompiled
+  var build = ""
+  if conf.cmd in cmdBackends:
+    build.add "gc: $#; " % $conf.selectedGC
+    if optThreads in conf.globalOptions: build.add "threads: on; "
+    build.add "opt: "
+    if optOptimizeSpeed in conf.options: build.add "speed"
+    elif optOptimizeSize in conf.options: build.add "size"
+    else: build.add "none (DEBUG BUILD, `-d:release` generates faster code)"
+      # pending https://github.com/timotheecour/Nim/issues/752, point to optimization.html
+  let sec = formatFloat(epochTime() - conf.lastCmdTime, ffDecimal, 3)
+  let project = if conf.filenameOption == foAbs: $conf.projectFull else: $conf.projectName
+    # xxx honor conf.filenameOption more accurately
+  var output: string
+  if optCompileOnly in conf.globalOptions and conf.cmd != cmdJsonscript:
+    output = $conf.jsonBuildFile
+  elif conf.outFile.isEmpty and conf.cmd notin {cmdJsonscript} + cmdDocLike + cmdBackends:
+    # for some cmd we expect a valid absOutFile
+    output = "unknownOutput"
+  else:
+    output = $conf.absOutFile
+  if conf.filenameOption != foAbs: output = output.AbsoluteFile.extractFilename
+    # xxx honor filenameOption more accurately
+  rawMessage(conf, hintSuccessX, [
+    "build", build,
+    "loc", loc,
+    "sec", sec,
+    "mem", mem,
+    "project", project,
+    "output", output,
+    ])

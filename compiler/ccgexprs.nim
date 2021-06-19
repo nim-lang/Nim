@@ -9,7 +9,7 @@
 
 # included from cgen.nim
 
-when defined(nimCompilerStackraceHints):
+when defined(nimCompilerStacktraceHints):
   import std/stackframes
 
 proc getNullValueAuxT(p: BProc; orig, t: PType; obj, constOrNil: PNode,
@@ -2694,7 +2694,7 @@ proc genConstStmt(p: BProc, n: PNode) =
         genConstDefinition(m, p, sym)
 
 proc expr(p: BProc, n: PNode, d: var TLoc) =
-  when defined(nimCompilerStackraceHints):
+  when defined(nimCompilerStacktraceHints):
     setFrameMsg p.config$n.info & " " & $n.kind
   p.currLineInfo = n.info
 

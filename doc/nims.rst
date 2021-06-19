@@ -121,8 +121,8 @@ Here are few examples of using the `switch` proc:
 .. code-block:: nim
   # command-line: --opt:size
   switch("opt", "size")
-  # command-line: --define:foo or -d:foo
-  switch("define", "foo")
+  # command-line: --define:release or -d:release
+  switch("define", "release")
   # command-line: --forceBuild
   switch("forceBuild")
 
@@ -132,13 +132,13 @@ above example can be rewritten as:
 
 .. code-block:: nim
   --opt:size
-  --define:foo
+  --define:release
   --forceBuild
 
 **Note**: In general, the *define* switches can also be set in
-NimScripts using `switch` or `--`, as shown in above
-examples. Only the `release` define (`-d:release`:option:) cannot be set
-in NimScripts.
+NimScripts using `switch` or `--`, as shown in above examples. Few
+`define` switches such as `-d:strip`:option:, `-d:lto`:option: and
+`-d:lto_incremental`:option: cannot be set in NimScripts.
 
 
 NimScript as a build tool

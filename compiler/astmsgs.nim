@@ -2,6 +2,11 @@
 import std/strutils
 import options, ast, msgs
 
+proc typSym*(t: PType): PSym =
+  result = t.sym
+  if result == nil and t.kind == tyGenericInst: # this might need to be refined
+    result = t[0].sym
+
 proc addDeclaredLoc*(result: var string, conf: ConfigRef; sym: PSym) =
   result.add " [$1 declared in $2]" % [sym.kind.toHumanStr, toFileLineCol(conf, sym.info)]
 
@@ -13,7 +18,7 @@ proc addDeclaredLoc*(result: var string, conf: ConfigRef; typ: PType) =
   # xxx figure out how to resolve `tyGenericParam`, e.g. for
   # proc fn[T](a: T, b: T) = discard
   # fn(1.1, "a")
-  let typ = typ.skipTypes(abstractInst + {tyStatic} - {tyRange})
+  let typ = typ.skipTypes(abstractInst + {tyStatic, tyUserTypeClassInst} - {tyRange})
   result.add " [$1" % typ.kind.toHumanStr
   if typ.sym != nil:
     result.add " declared in " & toFileLineCol(conf, typ.sym.info)
