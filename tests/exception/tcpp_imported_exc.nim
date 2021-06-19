@@ -13,7 +13,6 @@ finally 2
 expected
 cpp exception caught
 '''
-disabled: "windows" # pending bug #18011
 """
 
 type
