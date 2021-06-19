@@ -380,24 +380,6 @@ pass multiple blocks to a macro:
     # code to undo it
 
 
-Experimental Pragmas
-====================
-
-InjectStmt pragma
------------------
-
-The `injectStmt` pragma can be used to inject a statement before every
-other statement in the current module. It is only supposed to be used for
-debugging and comes with limitations (e.g. doesn't work in VM):
-
-.. code-block:: nim
-  from system/ansi_c import c_printf
-  var count = 0
-  proc onInject() =
-    count.inc
-    c_printf("onInject: %d\n", cast[int](count))
-  {.injectStmt: onInject().}
-
 
 Special Operators
 =================

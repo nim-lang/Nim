@@ -1183,6 +1183,7 @@ proc singlePragma(c: PContext, sym: PSym, n: PNode, i: var int,
         if sym == nil: invalidPragma(c, it)
         else: magicsys.registerNimScriptSymbol(c.graph, sym)
       of wInjectStmt:
+        warningDeprecated(c.config, it.info, "'.injectStmt' pragma is deprecated")
         if it.kind notin nkPragmaCallKinds or it.len != 2:
           localError(c.config, it.info, "expression expected")
         else:
@@ -1194,10 +1195,10 @@ proc singlePragma(c: PContext, sym: PSym, n: PNode, i: var int,
       of wThis:
         if it.kind in nkPragmaCallKinds and it.len == 2:
           c.selfName = considerQuotedIdent(c, it[1])
-          message(c.config, n.info, warnDeprecated, "the '.this' pragma is deprecated")
+          message(c.config, n.info, warnDeprecated, "'.this' pragma is deprecated")
         elif it.kind == nkIdent or it.len == 1:
           c.selfName = getIdent(c.cache, "self")
-          message(c.config, n.info, warnDeprecated, "the '.this' pragma is deprecated")
+          message(c.config, n.info, warnDeprecated, "'.this' pragma is deprecated")
         else:
           localError(c.config, it.info, "'this' pragma is allowed to have zero or one arguments")
       of wNoRewrite:

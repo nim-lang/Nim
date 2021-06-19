@@ -19,7 +19,14 @@ onInject: 9
 '''
 """
 
-# test injectStmt
+# test {.injectStmt.}
+
+#[
+{.injectStmt.} pragma can be used to inject a statement before every
+other statement in the current module. It's now undocumented and may be removed
+in the future and replaced with something more general and without its limitations.
+e.g. (e.g. doesn't work in VM or js backends).
+]#
 
 from system/ansi_c import c_printf
 
