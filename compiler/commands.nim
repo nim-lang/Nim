@@ -205,8 +205,12 @@ proc processSpecificNote*(arg: string, state: TSpecialWord, pass: TCmdLinePass,
     if x != errUnknown: notes = {TNoteKind(x)}
     else: localError(conf, info, "unknown $#: $#" % [name, id])
   case id.normalize
-  of "all": # other note groups would be easy to support via additional cases
-    notes = if isSomeHint: {hintMin..hintMax} else: {warnMin..warnMax}
+  of "default": # other note groups would be easy to support via additional cases
+    notes =
+      if isSomeHint:
+        {hintMin..hintMax} * NotesVerbosity[conf.verbosity]
+      else:
+        {warnMin..warnMax} * NotesVerbosity[conf.verbosity]
   elif isSomeHint: findNote(hintMin, hintMax, "hint")
   else: findNote(warnMin, warnMax, "warning")
   var val = substr(arg, i).normalize
