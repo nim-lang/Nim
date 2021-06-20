@@ -164,6 +164,7 @@ template declareClosures =
     of meNewSectionExpected: k = errNewSectionExpected
     of meGeneralParseError: k = errGeneralParseError
     of meInvalidDirective: k = errInvalidDirectiveX
+    of meInvalidRstField: k = errInvalidRstField
     of meFootnoteMismatch: k = errFootnoteMismatch
     of mwRedefinitionOfLabel: k = warnRedefinitionOfLabel
     of mwUnknownSubstitution: k = warnUnknownSubstitutionX

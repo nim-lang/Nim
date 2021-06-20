@@ -37,6 +37,7 @@ type
     errGeneralParseError,
     errNewSectionExpected,
     errInvalidDirectiveX,
+    errInvalidRstField,
     errFootnoteMismatch,
     errProveInit, # deadcode
     errGenerated,
@@ -96,6 +97,7 @@ const
     errGeneralParseError: "general parse error",
     errNewSectionExpected: "new section expected $1",
     errInvalidDirectiveX: "invalid directive: '$1'",
+    errInvalidRstField: "invalid field: $1",
     errFootnoteMismatch: "number of footnotes and their references don't match: $1",
     errProveInit: "Cannot prove that '$1' is initialized.",  # deadcode
     errGenerated: "$1",
