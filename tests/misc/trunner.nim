@@ -23,9 +23,6 @@ proc isDots(a: string): bool =
   a.startsWith(".") and a.strip(chars = {'.'}) == ""
 
 const
-  defaultHintsOff = "--hint:successx:off --hint:exec:off --hint:link:off --hint:cc:off --hint:conf:off --hint:processing:off --hint:QuitCalled:off"
-    # useful when you want to turn only some hints on, and some common ones off.
-    # pending https://github.com/timotheecour/Nim/issues/453, simplify to: `--hints:off`
   nim = getCurrentCompilerExe()
   mode = querySetting(backend)
   nimcache = buildDir / "nimcacheTrunner"
@@ -236,7 +233,7 @@ sub/mmain.idx""", context
     check execCmdEx(cmd) == ("witness\n", 0)
 
   block: # config.nims, nim.cfg, hintConf, bug #16557
-    let cmd = fmt"{nim} r {defaultHintsOff} --hint:conf tests/newconfig/bar/mfoo.nim"
+    let cmd = fmt"{nim} r --hint:all:off --hint:conf tests/newconfig/bar/mfoo.nim"
     let (outp, exitCode) = execCmdEx(cmd, options = {poStdErrToStdOut})
     doAssert exitCode == 0
     let dir = getCurrentDir()
@@ -268,7 +265,7 @@ tests/newconfig/bar/mfoo.nims""".splitLines
     check fmt"""{nim} r -b:js {opt} --eval:"echo defined(js)"""".execCmdEx == ("true\n", 0)
 
   block: # `hintProcessing` dots should not interfere with `static: echo` + friends
-    let cmd = fmt"""{nim} r {defaultHintsOff} --hint:processing -f --eval:"static: echo 1+1""""
+    let cmd = fmt"""{nim} r --hint:all:off --hint:processing -f --eval:"static: echo 1+1""""
     let (outp, exitCode) = execCmdEx(cmd, options = {poStdErrToStdOut})
     template check3(cond) = doAssert cond, $(outp,)
     doAssert exitCode == 0
@@ -282,7 +279,7 @@ tests/newconfig/bar/mfoo.nims""".splitLines
       check3 "2" in outp
 
   block: # nim secret
-    let opt = fmt"{defaultHintsOff} --hint:processing"
+    let opt = "--hint:all:off --hint:processing"
     template check3(cond) = doAssert cond, $(outp,)
     for extra in ["", "--stdout"]:
       let cmd = fmt"""{nim} secret {opt} {extra}"""

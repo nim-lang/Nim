@@ -429,6 +429,10 @@
 
 - `--hint:CC` now goes to stderr (like all other hints) instead of stdout.
 
+- `--hint:all:on|off` is now supported to select or deselect all hints; it
+  differs from `--hints:on|off` which acts as a (reversible) gate.
+  Likewise with `--warning:all:on|off`.
+
 - json build instructions are now generated in `$nimcache/outFileBasename.json`
   instead of `$nimcache/projectName.json`. This allows avoiding recompiling a given project
   compiled with different options if the output file differs.
