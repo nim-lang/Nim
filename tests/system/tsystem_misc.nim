@@ -59,11 +59,6 @@ doAssert high(float) > low(float)
 doAssert high(float32) > low(float32)
 doAssert high(float64) > low(float64)
 
-# bug #6710
-var s = @[1]
-s.delete(0)
-
-
 proc foo(a: openArray[int]) =
   for x in a: echo x
 
