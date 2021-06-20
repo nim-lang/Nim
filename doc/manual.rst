@@ -1616,7 +1616,7 @@ heterogeneous storage types with few abstractions. The `()` syntax
 can be used to construct tuples. The order of the fields in the constructor
 must match the order of the tuple's definition. Different tuple-types are
 *equivalent* if they specify the same fields of the same type in the same
-order. The *names* of the fields also have to be identical.
+order. The *names* of the fields also have to be the same.
 
 The assignment operator for tuples copies each component.
 The default assignment operator for objects copies each component. Overloading
@@ -1627,15 +1627,16 @@ of the assignment operator is described `here
 
   type
     Person = tuple[name: string, age: int] # type representing a person:
-                                           # a person consists of a name
-                                           # and an age
-  var
-    person: Person
+                                           # it consists of a name and an age.
+  var person: Person
   person = (name: "Peter", age: 30)
-  echo person.name
+  assert person.name == "Peter"
   # the same, but less readable:
   person = ("Peter", 30)
-  echo person[0]
+  assert person[0] == "Peter"
+  assert Person is (string, int)
+  assert (string, int) is Person
+  assert Person isnot tuple[other: string, age: int] # `other` is a different identifier
 
 A tuple with one unnamed field can be constructed with the parentheses and a
 trailing comma:
