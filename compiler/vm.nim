@@ -13,9 +13,10 @@
 import ast except getstr
 
 import
-  strutils, msgs, vmdef, vmgen, nimsets, types, passes,
+  std/[wrapnils, strutils, tables],
+  msgs, vmdef, vmgen, nimsets, types, passes,
   parser, vmdeps, idents, trees, renderer, options, transf, parseutils,
-  vmmarshal, gorgeimpl, lineinfos, tables, btrees, macrocacheimpl,
+  vmmarshal, gorgeimpl, lineinfos, btrees, macrocacheimpl,
   modulegraphs, sighashes, int128, vmprofiler
 
 from semfold import leValueConv, ordinalValToString
@@ -1026,7 +1027,7 @@ proc rawExecute(c: PCtx, start: int, tos: PStackFrame): TFullReg =
         let nc = regs[rc].node
         if nb.kind != nc.kind: discard
         elif (nb == nc) or (nb.kind == nkNilLit): ret = true # intentional
-        elif (nb.kind in {nkSym, nkTupleConstr, nkClosure} and nb.typ.kind == tyProc) and sameConstant(nb, nc):
+        elif (nb.kind in {nkSym, nkTupleConstr, nkClosure} and ?.nb.typ.kind == tyProc) and sameConstant(nb, nc):
           ret = true
           # this also takes care of procvar's, represented as nkTupleConstr, e.g. (nil, nil)
         elif nb.kind == nkIntLit and nc.kind == nkIntLit and nb.intVal == nc.intVal: # TODO: nkPtrLit
