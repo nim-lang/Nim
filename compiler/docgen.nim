@@ -468,6 +468,10 @@ proc runAllExamples(d: PDoc) =
 
 proc quoted(a: string): string = result.addQuoted(a)
 
+proc toInstantiationInfo(conf: ConfigRef, info: TLineInfo): auto =
+  # xxx expose in compiler/lineinfos.nim
+  (conf.toMsgFilename(info), info.line.int, info.col.int + ColOffset)
+
 proc prepareExample(d: PDoc; n: PNode, topLevel: bool): tuple[rdoccmd: string, code: string] =
   ## returns `rdoccmd` and source code for this runnableExamples
   var rdoccmd = ""
@@ -489,7 +493,7 @@ proc prepareExample(d: PDoc; n: PNode, topLevel: bool): tuple[rdoccmd: string, c
   let outputDir = d.exampleOutputDir
   createDir(outputDir)
   inc d.exampleCounter
-  let outp = outputDir / RelativeFile(extractFilename(d.filename.changeFileExt"" & ("_examples$1.nim" % $d.exampleCounter)))
+  let outp = outputDir / RelativeFile("$#_examples_$#.nim" % [d.filename.extractFilename.changeFileExt"", $d.exampleCounter])
 
   if useRenderModule:
     var docComment = newTree(nkCommentStmt)
@@ -509,11 +513,12 @@ proc prepareExample(d: PDoc; n: PNode, topLevel: bool): tuple[rdoccmd: string, c
   else:
     let code2 = """
 #[
-$1
+$#
 ]#
-import $2
-$3
-""" % [comment, d.filename.quoted, code]
+import $#
+{.line: $#.}:
+$#
+""" % [comment, d.filename.quoted, $toInstantiationInfo(d.conf, n.info), code.indent(2)]
     writeFile(outp.string, code2)
 
   if rdoccmd notin d.exampleGroups:
