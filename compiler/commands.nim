@@ -208,9 +208,9 @@ proc processSpecificNote*(arg: string, state: TSpecialWord, pass: TCmdLinePass,
   of "default": # other note groups would be easy to support via additional cases
     notes =
       if isSomeHint:
-        {hintMin..hintMax} * NotesVerbosity[conf.verbosity]
+        {hintMin..hintMax} * NotesVerbosity[1]
       else:
-        {warnMin..warnMax} * NotesVerbosity[conf.verbosity]
+        {warnMin..warnMax} * NotesVerbosity[1]
   elif isSomeHint: findNote(hintMin, hintMax, "hint")
   else: findNote(warnMin, warnMax, "warning")
   var val = substr(arg, i).normalize
