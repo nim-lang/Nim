@@ -12,7 +12,7 @@
 
 
 import
-  std/[wrapnils, strutils, tables, parseutils],
+  std/[strutils, tables, parseutils],
   msgs, vmdef, vmgen, nimsets, types, passes,
   parser, vmdeps, idents, trees, renderer, options, transf,
   vmmarshal, gorgeimpl, lineinfos, btrees, macrocacheimpl,
