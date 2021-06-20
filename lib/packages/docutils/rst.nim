@@ -441,7 +441,7 @@ proc rawGetTok(L: var Lexer, tok: var Token) =
       inc L.col
   tok.col = max(tok.col - L.baseIndent, 0)
 
-proc getTokens(buffer: string, tokens: var TokenSeq): int =
+proc getTokens(buffer: string, tokens: var TokenSeq) =
   var L: Lexer
   var length = tokens.len
   L.buf = cstring(buffer)
@@ -489,7 +489,7 @@ type
     autoSymIdx: int     # order of occurence: fnAutoSymbol
     label: string       # valid for fnAutoNumberLabel
 
-  SharedState = object
+  RstSharedState = object
     options: RstParseOptions    # parsing options
     hLevels: LevelMap           # hierarchy of heading styles
     hTitleCnt: int              # =0 if no title, =1 if only main title,
@@ -498,8 +498,8 @@ type
     currRole: string            # current interpreted text role
     currRoleKind: RstNodeKind   # ... and its node kind
     subs: seq[Substitution]     # substitutions
-    refs: seq[Substitution]     # references
-    anchors: seq[AnchorSubst]   # internal target substitutions
+    refs*: seq[Substitution]    # references
+    anchors*: seq[AnchorSubst]  # internal target substitutions
     lineFootnoteNum: seq[int]     # footnote line, auto numbers .. [#]
     lineFootnoteNumRef: seq[int]  # footnote line, their reference [#]_
     lineFootnoteSym: seq[int]     # footnote line, auto symbols .. [*]
@@ -508,19 +508,19 @@ type
                                   # number, order of occurrence
     msgHandler: MsgHandler      # How to handle errors.
     findFile: FindFileHandler   # How to find files.
+    filename: string
+    hasToc*: bool
 
-  PSharedState = ref SharedState
+  PRstSharedState* = ref RstSharedState
   RstParser = object of RootObj
     idx*: int
     tok*: TokenSeq
-    s*: PSharedState
+    s*: PRstSharedState
     indentStack*: seq[int]
-    filename*: string
     line*, col*: int            ## initial line/column of whole text or
                                 ## documenation fragment that will be added
                                 ## in case of error/warning reporting to
                                 ## (relative) line/column of the token.
-    hasToc*: bool
     curAnchor*: string          # variable to track latest anchor in s.anchors
 
   EParseError* = object of ValueError
@@ -578,35 +578,42 @@ proc whichRoleAux(sym: string): RstNodeKind =
   else:  # unknown role
     result = rnUnknownRole
 
-proc newSharedState(options: RstParseOptions,
-                    findFile: FindFileHandler,
-                    msgHandler: MsgHandler): PSharedState =
-  new(result)
-  result.currRole = defaultRole(options)
-  result.currRoleKind = whichRoleAux(result.currRole)
-  result.subs = @[]
-  result.refs = @[]
-  result.options = options
-  result.msgHandler = if not isNil(msgHandler): msgHandler else: defaultMsgHandler
-  result.findFile = if not isNil(findFile): findFile else: defaultFindFile
+proc newRstSharedState*(options: RstParseOptions,
+                        filename: string,
+                        findFile: FindFileHandler,
+                        msgHandler: MsgHandler): PRstSharedState =
+  let r = defaultRole(options)
+  result = PRstSharedState(
+      currRole: r,
+      currRoleKind: whichRoleAux(r),
+      options: options,
+      msgHandler: if not isNil(msgHandler): msgHandler else: defaultMsgHandler,
+      filename: filename,
+      findFile: if not isNil(findFile): findFile else: defaultFindFile
+  )
 
 proc curLine(p: RstParser): int = p.line + currentTok(p).line
 
 proc findRelativeFile(p: RstParser; filename: string): string =
-  result = p.filename.splitFile.dir / filename
+  result = p.s.filename.splitFile.dir / filename
   if not fileExists(result):
     result = p.s.findFile(filename)
 
 proc rstMessage(p: RstParser, msgKind: MsgKind, arg: string) =
-  p.s.msgHandler(p.filename, curLine(p),
+  p.s.msgHandler(p.s.filename, curLine(p),
                              p.col + currentTok(p).col, msgKind, arg)
 
+proc rstMessage(s: PRstSharedState, msgKind: MsgKind, arg: string) =
+  ## Print warnings for footnotes/substitutions.
+  ## TODO: their line/column info is not known, to fix it.
+  s.msgHandler(s.filename, LineRstInit, ColRstInit, msgKind, arg)
+
 proc rstMessage(p: RstParser, msgKind: MsgKind, arg: string, line, col: int) =
-  p.s.msgHandler(p.filename, p.line + line,
+  p.s.msgHandler(p.s.filename, p.line + line,
                              p.col + col, msgKind, arg)
 
 proc rstMessage(p: RstParser, msgKind: MsgKind) =
-  p.s.msgHandler(p.filename, curLine(p),
+  p.s.msgHandler(p.s.filename, curLine(p),
                              p.col + currentTok(p).col, msgKind,
                              currentTok(p).symbol)
 
@@ -680,12 +687,10 @@ proc popInd(p: var RstParser) =
 # whether it should continue its processing or not, and decided not to,
 # then this B.E. handler should step back (e.g. do `dec p.idx`).
 
-proc initParser(p: var RstParser, sharedState: PSharedState) =
+proc initParser(p: var RstParser, sharedState: PRstSharedState) =
   p.indentStack = @[0]
   p.tok = @[]
   p.idx = 0
-  p.filename = ""
-  p.hasToc = false
   p.col = ColRstInit
   p.line = LineRstInit
   p.s = sharedState
@@ -754,14 +759,14 @@ proc rstnodeToRefname(n: PRstNode): string =
   var b = false
   rstnodeToRefnameAux(n, result, b)
 
-proc findSub(p: var RstParser, n: PRstNode): int =
+proc findSub(s: PRstSharedState, n: PRstNode): int =
   var key = addNodes(n)
   # the spec says: if no exact match, try one without case distinction:
-  for i in countup(0, high(p.s.subs)):
-    if key == p.s.subs[i].key:
+  for i in countup(0, high(s.subs)):
+    if key == s.subs[i].key:
       return i
-  for i in countup(0, high(p.s.subs)):
-    if cmpIgnoreStyle(key, p.s.subs[i].key) == 0:
+  for i in countup(0, high(s.subs)):
+    if cmpIgnoreStyle(key, s.subs[i].key) == 0:
       return i
   result = -1
 
@@ -783,10 +788,10 @@ proc setRef(p: var RstParser, key: string, value: PRstNode) =
       return
   p.s.refs.add(Substitution(key: key, value: value))
 
-proc findRef(p: var RstParser, key: string): PRstNode =
-  for i in countup(0, high(p.s.refs)):
-    if key == p.s.refs[i].key:
-      return p.s.refs[i].value
+proc findRef(s: PRstSharedState, key: string): PRstNode =
+  for i in countup(0, high(s.refs)):
+    if key == s.refs[i].key:
+      return s.refs[i].value
 
 proc addAnchor(p: var RstParser, refn: string, reset: bool) =
   ## add anchor `refn` to anchor aliases and update last anchor ``curAnchor``
@@ -800,8 +805,8 @@ proc addAnchor(p: var RstParser, refn: string, reset: bool) =
   else:
     p.curAnchor = refn
 
-proc findMainAnchor(p: RstParser, refn: string): string =
-  for subst in p.s.anchors:
+proc findMainAnchor(s: PRstSharedState, refn: string): string =
+  for subst in s.anchors:
     if subst.mainAnchor == refn:  # no need to rename
       result = subst.mainAnchor
       break
@@ -838,28 +843,28 @@ proc addFootnoteSymAuto(p: var RstParser) =
   p.s.lineFootnoteSym.add curLine(p)
   p.s.footnotes.add((fnAutoSymbol, -1, -1, p.s.lineFootnoteSym.len, ""))
 
-proc orderFootnotes(p: var RstParser) =
+proc orderFootnotes(s: PRstSharedState) =
   ## numerate auto-numbered footnotes taking into account that all
   ## manually numbered ones always have preference.
-  ## Save the result back to p.s.footnotes.
+  ## Save the result back to `s.footnotes`.
 
   # Report an error if found any mismatch in number of automatic footnotes
   proc listFootnotes(lines: seq[int]): string =
     result.add $lines.len & " (lines " & join(lines, ", ") & ")"
-  if p.s.lineFootnoteNum.len != p.s.lineFootnoteNumRef.len:
-    rstMessage(p, meFootnoteMismatch,
-      "$1 != $2" % [listFootnotes(p.s.lineFootnoteNum),
-                    listFootnotes(p.s.lineFootnoteNumRef)] &
+  if s.lineFootnoteNum.len != s.lineFootnoteNumRef.len:
+    rstMessage(s, meFootnoteMismatch,
+      "$1 != $2" % [listFootnotes(s.lineFootnoteNum),
+                    listFootnotes(s.lineFootnoteNumRef)] &
         " for auto-numbered footnotes")
-  if p.s.lineFootnoteSym.len != p.s.lineFootnoteSymRef.len:
-    rstMessage(p, meFootnoteMismatch,
-      "$1 != $2" % [listFootnotes(p.s.lineFootnoteSym),
-                    listFootnotes(p.s.lineFootnoteSymRef)] &
+  if s.lineFootnoteSym.len != s.lineFootnoteSymRef.len:
+    rstMessage(s, meFootnoteMismatch,
+      "$1 != $2" % [listFootnotes(s.lineFootnoteSym),
+                    listFootnotes(s.lineFootnoteSymRef)] &
         " for auto-symbol footnotes")
 
   var result: seq[FootnoteSubst]
   var manuallyN, autoN, autoSymbol: seq[FootnoteSubst]
-  for fs in p.s.footnotes:
+  for fs in s.footnotes:
     if fs.kind == fnManualNumber: manuallyN.add fs
     elif fs.kind in {fnAutoNumber, fnAutoNumberLabel}: autoN.add fs
     else: autoSymbol.add fs
@@ -906,26 +911,26 @@ proc orderFootnotes(p: var RstParser) =
     let label = footnoteAutoSymbols[symbolNum].repeat(nSymbols)
     result.add((fs.kind, -1, -1, fs.autoSymIdx, label))
 
-  p.s.footnotes = result
+  s.footnotes = result
 
-proc getFootnoteNum(p: var RstParser, label: string): int =
+proc getFootnoteNum(s: PRstSharedState, label: string): int =
   ## get number from label. Must be called after `orderFootnotes`.
   result = -1
-  for fnote in p.s.footnotes:
+  for fnote in s.footnotes:
     if fnote.label == label:
       return fnote.number
 
-proc getFootnoteNum(p: var RstParser, order: int): int =
+proc getFootnoteNum(s: PRstSharedState, order: int): int =
   ## get number from occurrence. Must be called after `orderFootnotes`.
   result = -1
-  for fnote in p.s.footnotes:
+  for fnote in s.footnotes:
     if fnote.autoNumIdx == order:
       return fnote.number
 
-proc getAutoSymbol(p: var RstParser, order: int): string =
+proc getAutoSymbol(s: PRstSharedState, order: int): string =
   ## get symbol from occurrence of auto-symbol footnote.
   result = "???"
-  for fnote in p.s.footnotes:
+  for fnote in s.footnotes:
     if fnote.autoSymIdx == order:
       return fnote.label
 
@@ -1765,17 +1770,18 @@ proc getLevel(p: var RstParser, c: char, hasOverline: bool): int =
                             line: curLine(p), hasPeers: false)
   result = p.s.hLevels.len - 1
 
-proc countTitles(p: var RstParser, n: PRstNode) =
-  ## Fill `p.s.hTitleCnt`
+proc countTitles(s: PRstSharedState, n: PRstNode) =
+  ## Fill `s.hTitleCnt`
+  if n == nil: return
   for node in n.sons:
     if node != nil:
       if node.kind notin {rnOverline, rnSubstitutionDef, rnDefaultRole}:
         break
       if node.kind == rnOverline:
-        if p.s.hLevels[p.s.hTitleCnt].hasPeers:
+        if s.hLevels[s.hTitleCnt].hasPeers:
           break
-        inc p.s.hTitleCnt
-        if p.s.hTitleCnt >= 2:
+        inc s.hTitleCnt
+        if s.hTitleCnt >= 2:
           break
 
 proc isAdornmentHeadline(p: RstParser, adornmentIdx: int): bool =
@@ -2103,8 +2109,7 @@ proc parseSimpleTable(p: var RstParser): PRstNode =
       initParser(q, p.s)
       q.col = cols[j]
       q.line = line - 1
-      q.filename = p.filename
-      q.col += getTokens(row[j], q.tok)
+      getTokens(row[j], q.tok)
       b = newRstNode(rnTableDataCell)
       b.add(parseDoc(q))
       a.add(b)
@@ -2156,8 +2161,7 @@ proc parseMarkdownTable(p: var RstParser): PRstNode =
       initParser(q, p.s)
       q.col = p.col
       q.line = currentTok(p).line - 1
-      q.filename = p.filename
-      q.col += getTokens(getColContents(p, row[j]), q.tok)
+      getTokens(getColContents(p, row[j]), q.tok)
       b.add(parseDoc(q))
       a.add(b)
     result.add(a)
@@ -2562,8 +2566,8 @@ proc dirInclude(p: var RstParser): PRstNode =
 
       var q: RstParser
       initParser(q, p.s)
-      q.filename = path
-      q.col += getTokens(
+      q.s.filename = path
+      getTokens(
         inputString[startPosition..endPosition].strip(),
         q.tok)
       # workaround a GCC bug; more like the interior pointer bug?
@@ -2806,7 +2810,27 @@ proc parseDotDot(p: var RstParser): PRstNode =
   else:
     result = parseComment(p)
 
-proc resolveSubs(p: var RstParser, n: PRstNode): PRstNode =
+proc rstParsePass1*(fragment, filename: string,
+                    line, column: int,
+                    options: RstParseOptions,
+                    sharedState: PRstSharedState): PRstNode =
+  ## Parses an RST `fragment`.
+  ## The result should be further processed by
+  ## `preparePass2` and `resolveSubs` (which is pass 2).
+  var p: RstParser
+  initParser(p, sharedState)
+  p.line = line
+  p.col = column
+  getTokens(fragment, p.tok)
+  result = parseDoc(p)
+
+proc preparePass2*(s: PRstSharedState, mainNode: PRstNode) =
+  ## Records titles in node `mainNode` and orders footnotes.
+  countTitles(s, mainNode)
+  orderFootnotes(s)
+
+proc resolveSubs*(s: PRstSharedState, n: PRstNode): PRstNode =
+  ## Makes pass 2 of RST parsing.
   ## Resolves substitutions and anchor aliases, groups footnotes.
   ## Takes input node `n` and returns the same node with recursive
   ## substitutions in `n.sons` to `result`.
@@ -2814,32 +2838,32 @@ proc resolveSubs(p: var RstParser, n: PRstNode): PRstNode =
   if n == nil: return
   case n.kind
   of rnSubstitutionReferences:
-    var x = findSub(p, n)
+    var x = findSub(s, n)
     if x >= 0:
-      result = p.s.subs[x].value
+      result = s.subs[x].value
     else:
       var key = addNodes(n)
       var e = getEnv(key)
       if e != "": result = newLeaf(e)
-      else: rstMessage(p, mwUnknownSubstitution, key)
+      else: rstMessage(s, mwUnknownSubstitution, key)
   of rnHeadline, rnOverline:
     # fix up section levels depending on presence of a title and subtitle
-    if p.s.hTitleCnt == 2:
+    if s.hTitleCnt == 2:
       if n.level == 1:    # it's the subtitle
         n.level = 0
       elif n.level >= 2:  # normal sections
         n.level -= 1
-    elif p.s.hTitleCnt == 0:
+    elif s.hTitleCnt == 0:
       n.level += 1
   of rnRef:
     let refn = rstnodeToRefname(n)
-    var y = findRef(p, refn)
+    var y = findRef(s, refn)
     if y != nil:
       result = newRstNode(rnHyperlink)
       let text = newRstNode(rnInner, n.sons)
       result.sons = @[text, y]
     else:
-      let s = findMainAnchor(p, refn)
+      let s = findMainAnchor(s, refn)
       if s != "":
         result = newRstNode(rnInternalRef)
         let text = newRstNode(rnInner, n.sons)
@@ -2853,16 +2877,16 @@ proc resolveSubs(p: var RstParser, n: PRstNode): PRstNode =
     of fnAutoNumberLabel, fnAutoNumber:
       if fnType == fnAutoNumberLabel:
         let labelR = rstnodeToRefname(n.sons[0])
-        num = getFootnoteNum(p, labelR)
+        num = getFootnoteNum(s, labelR)
       else:
-        num = getFootnoteNum(p, n.order)
+        num = getFootnoteNum(s, n.order)
       var nn = newRstNode(rnInner)
       nn.add newLeaf($num)
       result.sons[0] = nn
     of fnAutoSymbol:
-      let sym = getAutoSymbol(p, n.order)
+      let sym = getAutoSymbol(s, n.order)
       n.sons[0].sons[0].text = sym
-    n.sons[1] = resolveSubs(p, n.sons[1])
+    n.sons[1] = resolveSubs(s, n.sons[1])
   of rnFootnoteRef:
     var (fnType, num) = getFootnoteType(n.sons[0])
     template addLabel(number: int | string) =
@@ -2877,31 +2901,31 @@ proc resolveSubs(p: var RstParser, n: PRstNode): PRstNode =
       addLabel num
       refn.add $num
     of fnAutoNumber:
-      addLabel getFootnoteNum(p, n.order)
+      addLabel getFootnoteNum(s, n.order)
       refn.add $n.order
     of fnAutoNumberLabel:
-      addLabel getFootnoteNum(p, rstnodeToRefname(n))
+      addLabel getFootnoteNum(s, rstnodeToRefname(n))
       refn.add rstnodeToRefname(n)
     of fnAutoSymbol:
-      addLabel getAutoSymbol(p, n.order)
+      addLabel getAutoSymbol(s, n.order)
       refn.add $n.order
     of fnCitation:
       result.add n.sons[0]
       refn.add rstnodeToRefname(n)
-    let s = findMainAnchor(p, refn)
-    if s != "":
-      result.add newLeaf(s)     # add link
+    let anch = findMainAnchor(s, refn)
+    if anch != "":
+      result.add newLeaf(anch)     # add link
     else:
-      rstMessage(p, mwUnknownSubstitution, refn)
+      rstMessage(s, mwUnknownSubstitution, refn)
       result.add newLeaf(refn)  # add link
   of rnLeaf:
     discard
   of rnContents:
-    p.hasToc = true
+    s.hasToc = true
   else:
     var regroup = false
     for i in 0 ..< n.len:
-      n.sons[i] = resolveSubs(p, n.sons[i])
+      n.sons[i] = resolveSubs(s, n.sons[i])
       if n.sons[i] != nil and n.sons[i].kind == rnFootnote:
         regroup = true
     if regroup:  # group footnotes together into rnFootnoteGroup
@@ -2924,13 +2948,10 @@ proc rstParse*(text, filename: string,
                options: RstParseOptions,
                findFile: FindFileHandler = nil,
                msgHandler: MsgHandler = nil): PRstNode =
-  var p: RstParser
-  initParser(p, newSharedState(options, findFile, msgHandler))
-  p.filename = filename
-  p.line = line
-  p.col = column + getTokens(text, p.tok)
-  let unresolved = parseDoc(p)
-  countTitles(p, unresolved)
-  orderFootnotes(p)
-  result = resolveSubs(p, unresolved)
-  hasToc = p.hasToc
+  ## Parses the whole `text`. The result is ready for `rstgen.renderRstToOut`.
+  var sharedState = newRstSharedState(options, filename, findFile, msgHandler)
+  let unresolved = rstParsePass1(text, filename, line, column,
+                                 options, sharedState)
+  preparePass2(sharedState, unresolved)
+  result = resolveSubs(sharedState, unresolved)
+  hasToc = sharedState.hasToc

@@ -443,7 +443,7 @@ proc parseCommand*(command: string): Command =
   of "check": cmdCheck
   of "e": cmdNimscript
   of "doc0": cmdDoc0
-  of "doc2", "doc": cmdDoc2
+  of "doc2", "doc": cmdDoc
   of "doc2tex": cmdDoc2tex
   of "rst2html": cmdRst2html
   of "rst2tex": cmdRst2tex
