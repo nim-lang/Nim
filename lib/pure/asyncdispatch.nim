@@ -176,8 +176,6 @@ export Port, SocketFlag
 export asyncfutures except callSoon
 export asyncstreams
 
-#{.injectStmt: newGcInvariant().}
-
 # TODO: Check if yielded future is nil and throw a more meaningful exception
 
 type

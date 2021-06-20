@@ -7432,17 +7432,6 @@ work properly (in particular regarding constructor and destructor) for
   proc main()=
     var a {.threadvar.}: Foo
 
-InjectStmt pragma
------------------
-
-The `injectStmt` pragma can be used to inject a statement before every
-other statement in the current module. It is only supposed to be used for
-debugging:
-
-.. code-block:: nim
-  {.injectStmt: gcInvariants().}
-
-  # ... complex code here that produces crashes ...
 
 compile-time define pragmas
 ---------------------------
