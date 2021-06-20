@@ -217,6 +217,8 @@ proc processSpecificNote*(arg: string, state: TSpecialWord, pass: TCmdLinePass,
     localError(conf, info, errOnOrOffExpectedButXFound % arg)
   else:
     let isOn = val == "on"
+    if isOn and id.normalize == "all":
+      localError(conf, info, "only 'all:off' is supported")
     for n in notes:
       if n notin conf.cmdlineNotes or pass == passCmd1:
         if pass == passCmd1: incl(conf.cmdlineNotes, n)
