@@ -913,13 +913,13 @@ iterator lines*(filename: string): string {.tags: [ReadIOEffect].} =
   ## character(s) are removed from the iterated lines. Example:
   ##
   runnableExamples:
-     import std/strutils
-  
-     proc transformLetters(filename: string) =
-       var buffer = ""
-       for line in filename.lines:
-         buffer.add(line.replace("a", "0") & '\n')
-       writeFile(filename, buffer)
+    import std/strutils
+
+    proc transformLetters(filename: string) =
+      var buffer = ""
+      for line in filename.lines:
+        buffer.add(line.replace("a", "0") & '\n')
+      writeFile(filename, buffer)
   var f = open(filename, bufSize=8000)
   try:
     var res = newStringOfCap(80)
