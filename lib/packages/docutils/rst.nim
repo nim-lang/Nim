@@ -1256,7 +1256,7 @@ proc checkParen(token: Token, parensStack: var seq[char]): bool {.inline.} =
   ## we use it for RST also.
   result = false
   if token.kind == tkPunct:
-    let sym = token.symbol
+    let c = token.symbol[0]
     if sym[0] in {'(', '[', '{'}:  # push
       parensStack.add sym[0]
     elif sym[0] in {')', ']', '}'}:  # try pop
