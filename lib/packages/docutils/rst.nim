@@ -1257,15 +1257,15 @@ proc checkParen(token: Token, parensStack: var seq[char]): bool {.inline.} =
   result = false
   if token.kind == tkPunct:
     let c = token.symbol[0]
-    if sym[0] in {'(', '[', '{'}:  # push
-      parensStack.add sym[0]
-    elif sym[0] in {')', ']', '}'}:  # try pop
+    if c in {'(', '[', '{'}:  # push
+      parensStack.add c
+    elif c in {')', ']', '}'}:  # try pop
       if parensStack.len > 0:
         # a case like ([) inside a link is allowed and [ is discarded:
         for i in countdown(parensStack.len - 1, 0):
-          if (parensStack[i] == '(' and sym[0] == ')' or 
-              parensStack[i] == '[' and sym[0] == ']' or 
-              parensStack[i] == '{' and sym[0] == '}'):
+          if (parensStack[i] == '(' and c == ')' or 
+              parensStack[i] == '[' and c == ']' or 
+              parensStack[i] == '{' and c == '}'):
             parensStack.setLen i
             result = true
             break
