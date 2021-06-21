@@ -346,8 +346,7 @@ proc runeReverseOffset*(s: string, rev: Positive): (int, int) =
     a = rev.int
     o = 0
     x = 0
-  let
-    times = 2*rev.int-s.runeLen # transformed from rev.int - a < s.runeLen - rev.int
+  let times = 2*rev.int-s.runeLen # transformed from rev.int - a < s.runeLen - rev.int
   while o < s.len:
     let r = runeLenAt(s, o)
     o += r
