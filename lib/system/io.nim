@@ -933,11 +933,11 @@ iterator lines*(f: File): string {.tags: [ReadIOEffect].} =
   ## The trailing newline character(s) are removed from the iterated lines.
   ##
   runnableExamples:
-     proc countZeros(filename: File): tuple[lines, zeros: int] =
-       for line in filename.lines:
-         for letter in line:
-           if letter == '0':
-             result.zeros += 1
-         result.lines += 1
+    proc countZeros(filename: File): tuple[lines, zeros: int] =
+      for line in filename.lines:
+        for letter in line:
+          if letter == '0':
+            result.zeros += 1
+        result.lines += 1
   var res = newStringOfCap(80)
   while f.readLine(res): yield res
