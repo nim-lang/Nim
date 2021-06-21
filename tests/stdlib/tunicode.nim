@@ -1,4 +1,4 @@
-import unicode
+import std/unicode
 
 
 proc asRune(s: static[string]): Rune =
@@ -213,3 +213,10 @@ block differentSizes:
   doAssert swapCase("ⱥbCd") == "ȺBcD"
   doAssert swapCase("XyꟆaB") == "xYᶎAb"
   doAssert swapCase("aᵹcᲈd") == "AꝽCꙊD"
+
+block: # bug #17768
+  let s1 = "abcdef"
+  let s2 = "abcdéf"
+
+  doAssert s1.runeSubstr(0, -1) == "abcde"
+  doAssert s2.runeSubstr(0, -1) == "abcdé"
