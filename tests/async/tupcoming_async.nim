@@ -10,7 +10,7 @@ when defined(upcoming):
 
   proc delayedSet(ev: AsyncEvent, timeout: int): Future[void] {.async.} =
     await sleepAsync(timeout)
-    ev.setEvent()
+    ev.trigger()
 
   proc waitEvent(ev: AsyncEvent, closeEvent = false): Future[void] =
     var retFuture = newFuture[void]("waitEvent")
@@ -39,25 +39,25 @@ when defined(upcoming):
     let e = newAsyncEvent()
     addEvent(e) do (fd: AsyncFD) -> bool:
       assert(not unregistered)
-    e.setEvent()
+    e.trigger()
     e.unregister()
     unregistered = true
     poll()
 
   proc eventTest5298() =
-    # Event must raise `AssertionError` if event was unregistered twice.
+    # Event must raise `AssertionDefect` if event was unregistered twice.
     # Issue #5298.
     let e = newAsyncEvent()
     var eventReceived = false
     addEvent(e) do (fd: AsyncFD) -> bool:
       eventReceived = true
       return true
-    e.setEvent()
+    e.trigger()
     while not eventReceived:
       poll()
     try:
       e.unregister()
-    except AssertionError:
+    except AssertionDefect:
       discard
     e.close()
 
@@ -69,7 +69,7 @@ when defined(upcoming):
     addEvent(e) do (fd: AsyncFD) -> bool:
       e.unregister()
       e.close()
-    e.setEvent()
+    e.trigger()
     poll()
 
   when ioselSupportedPlatform or defined(windows):
@@ -98,7 +98,7 @@ when defined(upcoming):
         var process = startProcess("ping.exe", "",
                                    ["127.0.0.1", "-n", "2", "-w", "100"], nil,
                                    {poStdErrToStdOut, poUsePath, poInteractive,
-                                   poDemon})
+                                   poDaemon})
       else:
         var process = startProcess("sleep", "", ["1"], nil,
                                    {poStdErrToStdOut, poUsePath})

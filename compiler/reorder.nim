@@ -1,7 +1,7 @@
 
 import
-  intsets, ast, idents, algorithm, renderer, parser, os, strutils,
-  sequtils, msgs, modulegraphs, syntaxes, options, modulepaths, tables,
+  intsets, ast, idents, algorithm, renderer, strutils,
+  msgs, modulegraphs, syntaxes, options, modulepaths,
   lineinfos
 
 type
@@ -35,12 +35,9 @@ proc newDepN(id: int, pnode: PNode): DepN =
 
 proc accQuoted(cache: IdentCache; n: PNode): PIdent =
   var id = ""
-  for i in 0 ..< n.len:
-    let x = n[i]
-    case x.kind
-    of nkIdent: id.add(x.ident.s)
-    of nkSym: id.add(x.sym.name.s)
-    else: discard
+  for i in 0..<n.len:
+    let ident = n[i].getPIdent
+    if ident != nil: id.add(ident.s)
   result = getIdent(cache, id)
 
 proc addDecl(cache: IdentCache; n: PNode; declares: var IntSet) =
@@ -75,8 +72,8 @@ proc computeDeps(cache: IdentCache; n: PNode, declares, uses: var IntSet; topLev
   of nkLetSection, nkVarSection, nkUsingStmt:
     for a in n:
       if a.kind in {nkIdentDefs, nkVarTuple}:
-        for j in countup(0, a.len-3): decl(a[j])
-        for j in a.len-2..a.len-1: deps(a[j])
+        for j in 0..<a.len-2: decl(a[j])
+        for j in a.len-2..<a.len: deps(a[j])
   of nkConstSection, nkTypeSection:
     for a in n:
       if a.len >= 3:
@@ -95,48 +92,27 @@ proc computeDeps(cache: IdentCache; n: PNode, declares, uses: var IntSet; topLev
   of nkSym: uses.incl n.sym.name.id
   of nkAccQuoted: uses.incl accQuoted(cache, n).id
   of nkOpenSymChoice, nkClosedSymChoice:
-    uses.incl n.sons[0].sym.name.id
+    uses.incl n[0].sym.name.id
   of nkStmtList, nkStmtListExpr, nkWhenStmt, nkElifBranch, nkElse, nkStaticStmt:
-    for i in 0..<len(n): computeDeps(cache, n[i], declares, uses, topLevel)
+    for i in 0..<n.len: computeDeps(cache, n[i], declares, uses, topLevel)
   of nkPragma:
-    let a = n.sons[0]
-    if a.kind == nkExprColonExpr and a.sons[0].kind == nkIdent and
-       a.sons[0].ident.s == "pragma":
-        # user defined pragma
-        decl(a.sons[1])
+    let a = n[0]
+    if a.kind == nkExprColonExpr and a[0].kind == nkIdent and a[0].ident.s == "pragma":
+      # user defined pragma
+      decl(a[1])
     else:
-      for i in 0..<safeLen(n): deps(n[i])
+      for i in 0..<n.safeLen: deps(n[i])
+  of nkMixinStmt, nkBindStmt: discard
   else:
-    for i in 0..<safeLen(n): deps(n[i])
-
-proc cleanPath(s: string): string =
-  # Here paths may have the form A / B or "A/B"
-  result = ""
-  for c in s:
-    if c != ' ' and c != '\"':
-      result.add c
-
-proc joinPath(parts: seq[string]): string =
-  let nb = parts.len
-  assert nb > 0
-  if nb == 1:
-    return parts[0]
-  result = parts[0] / parts[1]
-  for i in 2..<parts.len:
-    result = result / parts[i]
-
-proc getIncludePath(n: PNode, modulePath: string): string =
-  let istr = n.renderTree.cleanPath
-  let (pdir, _) = modulePath.splitPath
-  let p = istr.split('/').joinPath.addFileExt("nim")
-  result = pdir / p
+    # XXX: for callables, this technically adds the return type dep before args
+    for i in 0..<n.safeLen: deps(n[i])
 
 proc hasIncludes(n:PNode): bool =
   for a in n:
     if a.kind == nkIncludeStmt:
       return true
 
-proc includeModule*(graph: ModuleGraph; s: PSym, fileIdx: FileIndex): PNode {.procvar.} =
+proc includeModule*(graph: ModuleGraph; s: PSym, fileIdx: FileIndex): PNode =
   result = syntaxes.parseFile(fileIdx, graph.cache, graph.config)
   graph.addDep(s, fileIdx)
   graph.addIncludeDep(FileIndex s.position, fileIdx)
@@ -150,11 +126,11 @@ proc expandIncludes(graph: ModuleGraph, module: PSym, n: PNode,
   for a in n:
     if a.kind == nkIncludeStmt:
       for i in 0..<a.len:
-        var f = checkModuleName(graph.config, a.sons[i])
-        if f != InvalidFileIDX:
+        var f = checkModuleName(graph.config, a[i])
+        if f != InvalidFileIdx:
           if containsOrIncl(includedFiles, f.int):
             localError(graph.config, a.info, "recursive dependency: '$1'" %
-              toFilename(graph.config, f))
+              toMsgFilename(graph.config, f))
           else:
             let nn = includeModule(graph, module, f)
             let nnn = expandIncludes(graph, module, nn, modulePath,
@@ -206,45 +182,45 @@ proc mergeSections(conf: ConfigRef; comps: seq[seq[DepN]], res: PNode) =
         # need to merge them
         var sn = newNode(kind)
         for dn in cs:
-          sn.add dn.pnode.sons[0]
+          sn.add dn.pnode[0]
         res.add sn
       else:
-          # Problematic circular dependency, we arrange the nodes into
-          # their original relative order and make sure to re-merge
-          # consecutive type and const sections
-          var wmsg = "Circular dependency detected. reorder pragma may not be able to" &
-            " reorder some nodes properely"
-          when defined(debugReorder):
-            wmsg &= ":\n"
-            for i in 0..<cs.len-1:
-                for j in i..<cs.len:
-                  for ci in 0..<cs[i].kids.len:
-                    if cs[i].kids[ci].id == cs[j].id:
-                      wmsg &= "line " & $cs[i].pnode.info.line &
-                        " depends on line " & $cs[j].pnode.info.line &
-                        ": " & cs[i].expls[ci] & "\n"
-            for j in 0..<cs.len-1:
-                for ci in 0..<cs[^1].kids.len:
-                  if cs[^1].kids[ci].id == cs[j].id:
-                    wmsg &= "line " & $cs[^1].pnode.info.line &
-                      " depends on line " & $cs[j].pnode.info.line &
-                      ": " & cs[^1].expls[ci] & "\n"
-          message(conf, cs[0].pnode.info, warnUser, wmsg)
+        # Problematic circular dependency, we arrange the nodes into
+        # their original relative order and make sure to re-merge
+        # consecutive type and const sections
+        var wmsg = "Circular dependency detected. `codeReordering` pragma may not be able to" &
+          " reorder some nodes properly"
+        when defined(debugReorder):
+          wmsg &= ":\n"
+          for i in 0..<cs.len-1:
+            for j in i..<cs.len:
+              for ci in 0..<cs[i].kids.len:
+                if cs[i].kids[ci].id == cs[j].id:
+                  wmsg &= "line " & $cs[i].pnode.info.line &
+                    " depends on line " & $cs[j].pnode.info.line &
+                    ": " & cs[i].expls[ci] & "\n"
+          for j in 0..<cs.len-1:
+            for ci in 0..<cs[^1].kids.len:
+              if cs[^1].kids[ci].id == cs[j].id:
+                wmsg &= "line " & $cs[^1].pnode.info.line &
+                  " depends on line " & $cs[j].pnode.info.line &
+                  ": " & cs[^1].expls[ci] & "\n"
+        message(conf, cs[0].pnode.info, warnUser, wmsg)
 
-          var i = 0
-          while i < cs.len:
-            if cs[i].pnode.kind in {nkTypeSection, nkConstSection}:
-              let ckind = cs[i].pnode.kind
-              var sn = newNode(ckind)
+        var i = 0
+        while i < cs.len:
+          if cs[i].pnode.kind in {nkTypeSection, nkConstSection}:
+            let ckind = cs[i].pnode.kind
+            var sn = newNode(ckind)
+            sn.add cs[i].pnode[0]
+            inc i
+            while i < cs.len and cs[i].pnode.kind == ckind:
               sn.add cs[i].pnode[0]
               inc i
-              while i < cs.len and cs[i].pnode.kind == ckind:
-                sn.add cs[i].pnode[0]
-                inc i
-              res.add sn
-            else:
-              res.add cs[i].pnode
-              inc i
+            res.add sn
+          else:
+            res.add cs[i].pnode
+            inc i
 
 proc hasImportStmt(n: PNode): bool =
   # Checks if the node is an import statement or
@@ -291,17 +267,17 @@ proc hasAccQuoted(n: PNode): bool =
     if hasAccQuoted(a):
       return true
 
-const extandedProcDefs = procDefs + {nkMacroDef,  nkTemplateDef}
+const extendedProcDefs = procDefs + {nkMacroDef, nkTemplateDef}
 
 proc hasAccQuotedDef(n: PNode): bool =
   # Checks if the node is a function, macro, template ...
   # with a quoted name or if it contains one
   case n.kind
-  of extandedProcDefs:
+  of extendedProcDefs:
     result = n[0].hasAccQuoted
   of nkStmtList, nkStmtListExpr, nkWhenStmt, nkElifBranch, nkElse, nkStaticStmt:
     for a in n:
-      if a.hasAccQuotedDef:
+      if hasAccQuotedDef(a):
         return true
   else:
     result = false
@@ -317,7 +293,7 @@ proc hasBody(n: PNode): bool =
   case n.kind
   of nkCommand, nkCall:
     result = true
-  of extandedProcDefs:
+  of extendedProcDefs:
     result = n[^1].kind == nkStmtList
   of nkStmtList, nkStmtListExpr, nkWhenStmt, nkElifBranch, nkElse, nkStaticStmt:
     for a in n:
@@ -340,7 +316,7 @@ proc buildGraph(n: PNode, deps: seq[(IntSet, IntSet)]): DepG =
   # Build a dependency graph
   result = newSeqOfCap[DepN](deps.len)
   for i in 0..<deps.len:
-    result.add newDepN(i, n.sons[i])
+    result.add newDepN(i, n[i])
   for i in 0..<deps.len:
     var ni = result[i]
     let uses = deps[i][1]
@@ -410,8 +386,7 @@ proc strongConnect(v: var DepN, idx: var int, s: var seq[DepN],
 proc getStrongComponents(g: var DepG): seq[seq[DepN]] =
   ## Tarjan's algorithm. Performs a topological sort
   ## and detects strongly connected components.
-  result = newSeq[seq[DepN]]()
-  var s = newSeq[DepN]()
+  var s: seq[DepN]
   var idx = 0
   for v in g.mitems:
     if v.idx < 0:
@@ -423,7 +398,7 @@ proc hasForbiddenPragma(n: PNode): bool =
   for a in n:
     if a.kind == nkPragma and a[0].kind == nkIdent and
         a[0].ident.s == "push":
-          return true
+      return true
 
 proc reorder*(graph: ModuleGraph, n: PNode, module: PSym): PNode =
   if n.hasForbiddenPragma:

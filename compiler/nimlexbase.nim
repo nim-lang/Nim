@@ -40,7 +40,8 @@ type
   TBaseLexer* = object of RootObj
     bufpos*: int
     buf*: cstring
-    bufLen*: int              # length of buffer in characters
+    bufStorage: string
+    bufLen: int
     stream*: PLLStream        # we read from this stream
     lineNumber*: int          # the current line number
                               # private data:
@@ -60,16 +61,12 @@ proc handleCR*(L: var TBaseLexer, pos: int): int
   # position to continue the scanning from. `pos` must be the position
   # of the CR.
 proc handleLF*(L: var TBaseLexer, pos: int): int
-  # Call this if you scanned over LF in the buffer; it returns the the
+  # Call this if you scanned over LF in the buffer; it returns the
   # position to continue the scanning from. `pos` must be the position
   # of the LF.
 # implementation
 
-const
-  chrSize = sizeof(char)
-
 proc closeBaseLexer(L: var TBaseLexer) =
-  dealloc(L.buf)
   llStreamClose(L.stream)
 
 proc fillBuffer(L: var TBaseLexer) =
@@ -84,10 +81,9 @@ proc fillBuffer(L: var TBaseLexer) =
   toCopy = L.bufLen - L.sentinel - 1
   assert(toCopy >= 0)
   if toCopy > 0:
-    moveMem(L.buf, addr(L.buf[L.sentinel + 1]), toCopy * chrSize)
+    moveMem(addr L.buf[0], addr L.buf[L.sentinel + 1], toCopy)
     # "moveMem" handles overlapping regions
-  charsRead = llStreamRead(L.stream, addr(L.buf[toCopy]),
-                           (L.sentinel + 1) * chrSize) div chrSize
+  charsRead = llStreamRead(L.stream, addr L.buf[toCopy], L.sentinel + 1)
   s = toCopy + charsRead
   if charsRead < L.sentinel + 1:
     L.buf[s] = EndOfFile      # set end marker
@@ -107,10 +103,11 @@ proc fillBuffer(L: var TBaseLexer) =
         # double the buffer's size and try again:
         oldBufLen = L.bufLen
         L.bufLen = L.bufLen * 2
-        L.buf = cast[cstring](realloc(L.buf, L.bufLen * chrSize))
+        L.bufStorage.setLen(L.bufLen)
+        L.buf = L.bufStorage
         assert(L.bufLen - oldBufLen == oldBufLen)
         charsRead = llStreamRead(L.stream, addr(L.buf[oldBufLen]),
-                                 oldBufLen * chrSize) div chrSize
+                                 oldBufLen)
         if charsRead < oldBufLen:
           L.buf[oldBufLen + charsRead] = EndOfFile
           L.sentinel = oldBufLen + charsRead
@@ -149,8 +146,9 @@ proc openBaseLexer(L: var TBaseLexer, inputstream: PLLStream, bufLen = 8192) =
   assert(bufLen > 0)
   L.bufpos = 0
   L.offsetBase = 0
+  L.bufStorage = newString(bufLen)
+  L.buf = L.bufStorage
   L.bufLen = bufLen
-  L.buf = cast[cstring](alloc(bufLen * chrSize))
   L.sentinel = bufLen - 1
   L.lineStart = 0
   L.lineNumber = 1            # lines start at 1
@@ -164,9 +162,9 @@ proc getColNumber(L: TBaseLexer, pos: int): int =
 proc getCurrentLine(L: TBaseLexer, marker: bool = true): string =
   result = ""
   var i = L.lineStart
-  while not (L.buf[i] in {CR, LF, EndOfFile}):
-    add(result, L.buf[i])
-    inc(i)
-  result.add("\n")
+  while L.buf[i] notin {CR, LF, EndOfFile}:
+    result.add L.buf[i]
+    inc i
+  result.add "\n"
   if marker:
-    result.add(spaces(getColNumber(L, L.bufpos)) & '^' & "\n")
+    result.add spaces(getColNumber(L, L.bufpos)) & '^' & "\n"

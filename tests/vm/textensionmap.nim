@@ -10,4 +10,4 @@ const EXTENSIONMAP = {
   "c": @["*.c", "*.h"],
 }.toTable()
 
-const EXTENSIONS = toSet(concat(toSeq(EXTENSIONMAP.values())))
+const EXTENSIONS = toHashSet(concat(toSeq(EXTENSIONMAP.values())))

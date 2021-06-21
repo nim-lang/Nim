@@ -101,7 +101,7 @@ proc createChangelog(pkgName, version, maintainer: string): string =
   addN("  * Initial release.")
   addN("")
   addN(" -- " & maintainer & "  " &
-       formatDateTime(getGMTime(getTime()), "+0000"))
+       formatDateTime(utc(getTime()), "+0000"))
 
 proc createRules(): string =
   ## Creates a nim application-agnostic rules file for building deb packages.

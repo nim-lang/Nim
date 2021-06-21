@@ -38,8 +38,8 @@ true
 """
 
 import
-  critbits, sets, strutils, tables, random, algorithm, re, ropes, segfaults,
-  lists, parsesql, streams, os, htmlgen, xmltree, strtabs
+  critbits, sets, strutils, tables, random, algorithm, re, ropes,
+  segfaults, lists, parsesql, streams, os, htmlgen, xmltree, strtabs
 
 
 block tcritbits:
@@ -60,15 +60,15 @@ block tcritbits:
 
 
 block testequivalence:
-  doAssert(toSet(@[1,2,3]) <= toSet(@[1,2,3,4]), "equivalent or subset")
-  doAssert(toSet(@[1,2,3]) <= toSet(@[1,2,3]), "equivalent or subset")
-  doAssert((not(toSet(@[1,2,3]) <= toSet(@[1,2]))), "equivalent or subset")
-  doAssert(toSet(@[1,2,3]) <= toSet(@[1,2,3,4]), "strict subset")
-  doAssert((not(toSet(@[1,2,3]) < toSet(@[1,2,3]))), "strict subset")
-  doAssert((not(toSet(@[1,2,3]) < toSet(@[1,2]))), "strict subset")
-  doAssert((not(toSet(@[1,2,3]) == toSet(@[1,2,3,4]))), "==")
-  doAssert(toSet(@[1,2,3]) == toSet(@[1,2,3]), "==")
-  doAssert((not(toSet(@[1,2,3]) == toSet(@[1,2]))), "==")
+  doAssert(toHashSet(@[1,2,3]) <= toHashSet(@[1,2,3,4]), "equivalent or subset")
+  doAssert(toHashSet(@[1,2,3]) <= toHashSet(@[1,2,3]), "equivalent or subset")
+  doAssert((not(toHashSet(@[1,2,3]) <= toHashSet(@[1,2]))), "equivalent or subset")
+  doAssert(toHashSet(@[1,2,3]) <= toHashSet(@[1,2,3,4]), "strict subset")
+  doAssert((not(toHashSet(@[1,2,3]) < toHashSet(@[1,2,3]))), "strict subset")
+  doAssert((not(toHashSet(@[1,2,3]) < toHashSet(@[1,2]))), "strict subset")
+  doAssert((not(toHashSet(@[1,2,3]) == toHashSet(@[1,2,3,4]))), "==")
+  doAssert(toHashSet(@[1,2,3]) == toHashSet(@[1,2,3]), "==")
+  doAssert((not(toHashSet(@[1,2,3]) == toHashSet(@[1,2]))), "==")
 
 
 
@@ -169,7 +169,7 @@ block tsegfaults:
         raise newException(ValueError, "not a crash")
       except ValueError:
         discard
-    except NilAccessError:
+    except NilAccessDefect:
       echo "caught a crash!"
   for i in 0..5:
     main()
@@ -212,7 +212,7 @@ block tsplit2:
   try:
     discard "hello".split("")
     echo "false"
-  except AssertionError:
+  except AssertionDefect:
     echo "true"
 
 

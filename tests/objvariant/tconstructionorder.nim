@@ -23,22 +23,22 @@ type
 # This will test that all the values are what we expect.
 proc assertTree(root: Node) =
   # check root of tree
-  assert root.kind == Operator
-  assert root.operator == '*'
+  doAssert root.kind == Operator
+  doAssert root.operator == '*'
 
   # check left subtree
-  assert root.left.value == 5
-  assert root.left.kind == Literal
+  doAssert root.left.value == 5
+  doAssert root.left.kind == Literal
 
   # check right subtree
-  assert root.right.kind == Operator
-  assert root.right.operator == '+'
+  doAssert root.right.kind == Operator
+  doAssert root.right.operator == '+'
 
-  assert root.right.left.value == 5
-  assert root.right.left.kind == Literal
+  doAssert root.right.left.value == 5
+  doAssert root.right.left.kind == Literal
 
-  assert root.right.right.value == 10
-  assert root.right.right.kind == Literal
+  doAssert root.right.right.value == 10
+  doAssert root.right.right.kind == Literal
 
 proc newLiteralNode(value: int): Node =
   result = Node(

@@ -19,7 +19,9 @@ discard """
 0
 1
 2
-70'''
+70
+0
+'''
 """
 
 when true:
@@ -96,7 +98,7 @@ proc unused =
 iterator lineIter2*(filename: string): string {.closure.} =
   var f = open(filename, bufSize=8000)
   defer: close(f)   # <-- commenting defer "solves" the problem
-  var res = TaintedString(newStringOfCap(80))
+  var res = newStringOfCap(80)
   while f.readLine(res): yield res
 
 proc unusedB =
@@ -139,3 +141,14 @@ iterator filesIt(path: string): auto {.closure.} =
     let prefix = path.splitPath[1]
     for f in files:
       yield prefix / f
+
+# bug #13815
+var love = iterator: int {.closure.} =
+  yield cast[type(
+    block:
+      var a = 0
+      yield a
+      a)](0)
+
+for i in love():
+  echo i

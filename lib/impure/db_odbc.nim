@@ -20,10 +20,10 @@
 ## `db_mysql <db_mysql.html>`_.
 ##
 ## Parameter substitution
-## ----------------------
+## ======================
 ##
-## All ``db_*`` modules support the same form of parameter substitution.
-## That is, using the ``?`` (question mark) to signify the place where a
+## All `db_*` modules support the same form of parameter substitution.
+## That is, using the `?` (question mark) to signify the place where a
 ## value should be placed. For example:
 ##
 ## .. code-block:: Nim
@@ -31,18 +31,18 @@
 ##
 ##
 ## Examples
-## --------
+## ========
 ##
 ## Opening a connection to a database
-## ==================================
+## ----------------------------------
 ##
 ## .. code-block:: Nim
-##     import db_odbc
+##     import std/db_odbc
 ##     var db = open("localhost", "user", "password", "dbname")
 ##     db.close()
 ##
 ## Creating a table
-## ================
+## ----------------
 ##
 ## .. code-block:: Nim
 ##      db.exec(sql"DROP TABLE IF EXISTS myTable")
@@ -51,18 +51,18 @@
 ##                       name varchar(50) not null)"""))
 ##
 ## Inserting data
-## ==============
+## --------------
 ##
 ## .. code-block:: Nim
 ##     db.exec(sql"INSERT INTO myTable (id, name) VALUES (0, ?)",
 ##             "Andreas")
 ##
 ## Large example
-## =============
+## -------------
 ##
 ## .. code-block:: Nim
 ##
-##  import db_odbc, math
+##  import std/[db_odbc, math]
 ##
 ##  var theDb = open("localhost", "nim", "nim", "test")
 ##
@@ -91,6 +91,8 @@
 import strutils, odbcsql
 import db_common
 export db_common
+
+import std/private/since
 
 type
   OdbcConnTyp = tuple[hDb: SqlHDBC, env: SqlHEnv, stmt: SqlHStmt]
@@ -166,7 +168,7 @@ proc dbError*(db: var DbConn) {.
     raise e
 
 proc sqlCheck(db: var DbConn, resVal: TSqlSmallInt) {.raises: [DbError]} =
-  ## Wrapper that raises [EDb] if ``resVal`` is neither SQL_SUCCESS or SQL_NO_DATA
+  ## Wrapper that raises [EDb] if `resVal` is neither SQL_SUCCESS or SQL_NO_DATA
   if resVal notIn [SQL_SUCCESS, SQL_NO_DATA]: dbError(db)
 
 proc sqlGetDBMS(db: var DbConn): string {.
@@ -193,7 +195,7 @@ proc dbQuote*(s: string): string {.noSideEffect.} =
 
 proc dbFormat(formatstr: SqlQuery, args: varargs[string]): string {.
                   noSideEffect.} =
-  ## Replace any ``?`` placeholders with `args`,
+  ## Replace any `?` placeholders with `args`,
   ## and quotes the arguments
   result = ""
   var a = 0
@@ -242,7 +244,7 @@ proc tryExec*(db: var DbConn, query: SqlQuery, args: varargs[string, `$`]): bool
   try:
     db.prepareFetchDirect(query, args)
     var
-      rCnt = -1
+      rCnt:TSqlLen = -1
     res = SQLRowCount(db.stmt, rCnt)
     properFreeResult(SQL_HANDLE_STMT, db.stmt)
     if res != SQL_SUCCESS: dbError(db)
@@ -272,12 +274,12 @@ iterator fastRows*(db: var DbConn, query: SqlQuery,
   ## if you require **ALL** the rows.
   ##
   ## Breaking the fastRows() iterator during a loop may cause a driver error
-  ## for subsequenct queries
+  ## for subsequent queries
   ##
   ## Rows are retrieved from the server at each iteration.
   var
     rowRes: Row
-    sz: TSqlInteger = 0
+    sz: TSqlLen = 0
     cCnt: TSqlSmallInt = 0
     res: TSqlSmallInt = 0
   res = db.prepareFetch(query, args)
@@ -291,8 +293,7 @@ iterator fastRows*(db: var DbConn, query: SqlQuery,
       for colId in 1..cCnt:
         buf[0] = '\0'
         db.sqlCheck(SQLGetData(db.stmt, colId.SqlUSmallInt, SQL_C_CHAR,
-                                 cast[cstring](buf.addr), 4095.TSqlSmallInt,
-                                 sz.addr))
+                                 cast[cstring](buf.addr), 4095, sz.addr))
         rowRes[colId-1] = $(addr buf)
       yield rowRes
       res = SQLFetch(db.stmt)
@@ -303,10 +304,10 @@ iterator instantRows*(db: var DbConn, query: SqlQuery,
                       args: varargs[string, `$`]): InstantRow
                 {.tags: [ReadDbEffect, WriteDbEffect].} =
   ## Same as fastRows but returns a handle that can be used to get column text
-  ## on demand using []. Returned handle is valid only within the interator body.
+  ## on demand using []. Returned handle is valid only within the iterator body.
   var
     rowRes: Row = @[]
-    sz: TSqlInteger = 0
+    sz: TSqlLen = 0
     cCnt: TSqlSmallInt = 0
     res: TSqlSmallInt = 0
   res = db.prepareFetch(query, args)
@@ -320,8 +321,7 @@ iterator instantRows*(db: var DbConn, query: SqlQuery,
       for colId in 1..cCnt:
         buf[0] = '\0'
         db.sqlCheck(SQLGetData(db.stmt, colId.SqlUSmallInt, SQL_C_CHAR,
-                                 cast[cstring](buf.addr), 4095.TSqlSmallInt,
-                                 sz.addr))
+                                 cast[cstring](buf.addr), 4095, sz.addr))
         rowRes[colId-1] = $(addr buf)
       yield (row: rowRes, len: cCnt.int)
       res = SQLFetch(db.stmt)
@@ -330,7 +330,11 @@ iterator instantRows*(db: var DbConn, query: SqlQuery,
 
 proc `[]`*(row: InstantRow, col: int): string {.inline.} =
   ## Returns text for given column of the row
-  row.row[col]
+  $row.row[col]
+
+proc unsafeColumnAt*(row: InstantRow, index: int): cstring {.inline.} =
+  ## Return cstring of given column of the row
+  row.row[index]
 
 proc len*(row: InstantRow): int {.inline.} =
   ## Returns number of columns in the row
@@ -343,7 +347,7 @@ proc getRow*(db: var DbConn, query: SqlQuery,
   ## will return a Row with empty strings for each column.
   var
     rowRes: Row
-    sz: TSqlInteger = 0
+    sz: TSqlLen = 0
     cCnt: TSqlSmallInt = 0
     res: TSqlSmallInt = 0
   res = db.prepareFetch(query, args)
@@ -356,8 +360,7 @@ proc getRow*(db: var DbConn, query: SqlQuery,
     for colId in 1..cCnt:
       buf[0] = '\0'
       db.sqlCheck(SQLGetData(db.stmt, colId.SqlUSmallInt, SQL_C_CHAR,
-                               cast[cstring](buf.addr), 4095.TSqlSmallInt,
-                               sz.addr))
+                               cast[cstring](buf.addr), 4095, sz.addr))
       rowRes[colId-1] = $(addr buf)
     res = SQLFetch(db.stmt)
     result = rowRes
@@ -371,7 +374,7 @@ proc getAllRows*(db: var DbConn, query: SqlQuery,
   var
     rows: seq[Row] = @[]
     rowRes: Row
-    sz: TSqlInteger = 0
+    sz: TSqlLen = 0
     cCnt: TSqlSmallInt = 0
     res: TSqlSmallInt = 0
   res = db.prepareFetch(query, args)
@@ -385,8 +388,7 @@ proc getAllRows*(db: var DbConn, query: SqlQuery,
       for colId in 1..cCnt:
         buf[0] = '\0'
         db.sqlCheck(SQLGetData(db.stmt, colId.SqlUSmallInt, SQL_C_CHAR,
-                                 cast[cstring](buf.addr), 4095.TSqlSmallInt,
-                                 sz.addr))
+                                 cast[cstring](buf.addr), 4095, sz.addr))
         rowRes[colId-1] = $(addr buf)
       rows.add(rowRes)
       res = SQLFetch(db.stmt)
@@ -447,6 +449,19 @@ proc insertId*(db: var DbConn, query: SqlQuery,
   result = tryInsertID(db, query, args)
   if result < 0: dbError(db)
 
+proc tryInsert*(db: var DbConn, query: SqlQuery,pkName: string,
+                args: varargs[string, `$`]): int64
+               {.tags: [ReadDbEffect, WriteDbEffect], raises: [], since: (1, 3).} =
+  ## same as tryInsertID
+  tryInsertID(db, query, args)
+
+proc insert*(db: var DbConn, query: SqlQuery, pkName: string,
+             args: varargs[string, `$`]): int64 
+            {.tags: [ReadDbEffect, WriteDbEffect], since: (1, 3).} =
+  ## same as insertId
+  result = tryInsert(db, query,pkName, args)
+  if result < 0: dbError(db)
+
 proc execAffectedRows*(db: var DbConn, query: SqlQuery,
                        args: varargs[string, `$`]): int64 {.
              tags: [ReadDbEffect, WriteDbEffect], raises: [DbError].} =
@@ -457,10 +472,10 @@ proc execAffectedRows*(db: var DbConn, query: SqlQuery,
   var q = dbFormat(query, args)
   db.sqlCheck(SQLPrepare(db.stmt, q.PSQLCHAR, q.len.TSqlSmallInt))
   rawExec(db, query, args)
-  var rCnt = -1
+  var rCnt:TSqlLen = -1
   db.sqlCheck(SQLRowCount(db.hDb, rCnt))
   properFreeResult(SQL_HANDLE_STMT, db.stmt)
-  result = rCnt
+  result = rCnt.int64
 
 proc close*(db: var DbConn) {.
       tags: [WriteDbEffect], raises: [].} =
@@ -483,9 +498,9 @@ proc open*(connection, user, password, database: string): DbConn {.
   ## Raises `EDb` if the connection could not be established.
   ##
   ## Currently the database parameter is ignored,
-  ## but included to match ``open()`` in the other db_xxxxx library modules.
+  ## but included to match `open()` in the other db_xxxxx library modules.
   var
-    val: TSqlInteger = SQL_OV_ODBC3
+    val = SQL_OV_ODBC3
     resLen = 0
   result = (hDb: nil, env: nil, stmt: nil)
   # allocate environment handle
@@ -493,7 +508,7 @@ proc open*(connection, user, password, database: string): DbConn {.
   if res != SQL_SUCCESS: dbError("Error: unable to initialise ODBC environment.")
   res = SQLSetEnvAttr(result.env,
                       SQL_ATTR_ODBC_VERSION.TSqlInteger,
-                      val, resLen.TSqlInteger)
+                      cast[SqlPointer](val), resLen.TSqlInteger)
   if res != SQL_SUCCESS: dbError("Error: unable to set ODBC driver version.")
   # allocate hDb handle
   res = SQLAllocHandle(SQL_HANDLE_DBC, result.env, result.hDb)

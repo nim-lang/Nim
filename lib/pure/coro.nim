@@ -6,6 +6,7 @@
 #    See the file "copying.txt", included in this
 #    distribution, for details about the copyright.
 #
+
 ## Nim coroutines implementation, supports several context switching methods:
 ## --------  ------------
 ## ucontext  available on unix and alike (default)
@@ -17,10 +18,14 @@
 ## -d:nimCoroutinesUcontext       Use ucontext backend.
 ## -d:nimCoroutinesSetjmp         Use setjmp backend.
 ## -d:nimCoroutinesSetjmpBundled  Use bundled setjmp implementation.
+##
+## Unstable API.
+
+import system/coro_detection
 
 when not nimCoroutines and not defined(nimdoc):
   when defined(noNimCoroutines):
-    {.error: "Coroutines can not be used with -d:noNimCoroutines"}
+    {.error: "Coroutines can not be used with -d:noNimCoroutines".}
   else:
     {.error: "Coroutines require -d:nimCoroutines".}
 
@@ -29,10 +34,15 @@ import lists
 include system/timers
 
 const defaultStackSize = 512 * 1024
+const useOrcArc = defined(gcArc) or defined(gcOrc)
+
+when useOrcArc:
+  proc nimGC_setStackBottom*(theStackBottom: pointer) = discard
 
 proc GC_addStack(bottom: pointer) {.cdecl, importc.}
 proc GC_removeStack(bottom: pointer) {.cdecl, importc.}
 proc GC_setActiveStack(bottom: pointer) {.cdecl, importc.}
+proc GC_getActiveStack() : pointer {.cdecl, importc.}
 
 const
   CORO_BACKEND_UCONTEXT = 0
@@ -45,7 +55,7 @@ when defined(windows):
     {.warning: "ucontext coroutine backend is not available on windows, defaulting to fibers.".}
   when defined(nimCoroutinesSetjmp):
     {.warning: "setjmp coroutine backend is not available on windows, defaulting to fibers.".}
-elif defined(haiku):
+elif defined(haiku) or defined(openbsd):
   const coroBackend = CORO_BACKEND_SETJMP
   when defined(nimCoroutinesUcontext):
     {.warning: "ucontext coroutine backend is not available on haiku, defaulting to setjmp".}
@@ -55,7 +65,7 @@ else:
   const coroBackend = CORO_BACKEND_UCONTEXT
 
 when coroBackend == CORO_BACKEND_FIBERS:
-  import windows.winlean
+  import windows/winlean
   type
     Context = pointer
 
@@ -72,13 +82,18 @@ elif coroBackend == CORO_BACKEND_UCONTEXT:
 
     Context = ucontext_t
 
-  proc getcontext(context: var ucontext_t): int32 {.importc, header: "<ucontext.h>".}
-  proc setcontext(context: var ucontext_t): int32 {.importc, header: "<ucontext.h>".}
-  proc swapcontext(fromCtx, toCtx: var ucontext_t): int32 {.importc, header: "<ucontext.h>".}
-  proc makecontext(context: var ucontext_t, fn: pointer, argc: int32) {.importc, header: "<ucontext.h>", varargs.}
+  proc getcontext(context: var ucontext_t): int32 {.importc,
+      header: "<ucontext.h>".}
+  proc setcontext(context: var ucontext_t): int32 {.importc,
+      header: "<ucontext.h>".}
+  proc swapcontext(fromCtx, toCtx: var ucontext_t): int32 {.importc,
+      header: "<ucontext.h>".}
+  proc makecontext(context: var ucontext_t, fn: pointer, argc: int32) {.importc,
+      header: "<ucontext.h>", varargs.}
 
 elif coroBackend == CORO_BACKEND_SETJMP:
-  proc coroExecWithStack*(fn: pointer, stack: pointer) {.noreturn, importc: "narch_$1", fastcall.}
+  proc coroExecWithStack*(fn: pointer, stack: pointer) {.noreturn,
+      importc: "narch_$1", fastcall.}
   when defined(amd64):
     {.compile: "../arch/x86/amd64.S".}
   elif defined(i386):
@@ -102,14 +117,14 @@ elif coroBackend == CORO_BACKEND_SETJMP:
       {.error: "Unsupported architecture.".}
 
     proc setjmp(ctx: var JmpBuf): int {.importc: "narch_$1".}
-    proc longjmp(ctx: JmpBuf, ret=1) {.importc: "narch_$1".}
+    proc longjmp(ctx: JmpBuf, ret = 1) {.importc: "narch_$1".}
   else:
     # Use setjmp/longjmp implementation provided by the system.
     type
       JmpBuf {.importc: "jmp_buf", header: "<setjmp.h>".} = object
 
     proc setjmp(ctx: var JmpBuf): int {.importc, header: "<setjmp.h>".}
-    proc longjmp(ctx: JmpBuf, ret=1) {.importc, header: "<setjmp.h>".}
+    proc longjmp(ctx: JmpBuf, ret = 1) {.importc, header: "<setjmp.h>".}
 
   type
     Context = JmpBuf
@@ -122,7 +137,7 @@ when defined(unix):
     const extra = " -D_XOPEN_SOURCE"
   else:
     const extra = ""
-  {.passC: "-U_FORTIFY_SOURCE -D_FORTIFY_SOURCE=0" & extra.}
+  {.passc: "-U_FORTIFY_SOURCE -D_FORTIFY_SOURCE=0" & extra.}
 
 const
   CORO_CREATED = 0
@@ -131,8 +146,8 @@ const
 
 type
   Stack {.pure.} = object
-    top: pointer      # Top of the stack. Pointer used for deallocating stack if we own it.
-    bottom: pointer   # Very bottom of the stack, acts as unique stack identifier.
+    top: pointer    # Top of the stack. Pointer used for deallocating stack if we own it.
+    bottom: pointer # Very bottom of the stack, acts as unique stack identifier.
     size: int
 
   Coroutine {.pure.} = object
@@ -150,7 +165,7 @@ type
     ## CoroutineRef holds a pointer to actual coroutine object. Public API always returns
     ## CoroutineRef instead of CoroutinePtr in order to allow holding a reference to coroutine
     ## object while it can be safely deallocated by coroutine scheduler loop. In this case
-    ## Coroutine.reference.coro is set to nil. Public API checks for for it being nil and
+    ## Coroutine.reference.coro is set to nil. Public API checks for it being nil and
     ## gracefully fails if it is nil.
     coro: CoroutinePtr
 
@@ -158,6 +173,7 @@ type
     coroutines: DoublyLinkedList[CoroutinePtr]
     current: DoublyLinkedNode[CoroutinePtr]
     loop: Coroutine
+    ncbottom: pointer # non coroutine stack botttom
 
 var ctx {.threadvar.}: CoroutineLoopContext
 
@@ -175,6 +191,8 @@ proc initialize() =
     ctx.coroutines = initDoublyLinkedList[CoroutinePtr]()
     ctx.loop = Coroutine()
     ctx.loop.state = CORO_EXECUTING
+    when not useOrcArc:
+      ctx.ncbottom = GC_getActiveStack()
     when coroBackend == CORO_BACKEND_FIBERS:
       ctx.loop.execContext = ConvertThreadToFiberEx(nil, FIBER_FLAG_FLOAT_SWITCH)
 
@@ -184,7 +202,9 @@ proc switchTo(current, to: CoroutinePtr) =
   ## Switches execution from `current` into `to` context.
   to.lastRun = getTicks()
   # Update position of current stack so gc invoked from another stack knows how much to scan.
-  GC_setActiveStack(current.stack.bottom)
+  when not useOrcArc:
+    GC_setActiveStack(current.stack.bottom)
+  nimGC_setStackBottom(current.stack.bottom)
   var frame = getFrameState()
   block:
     # Execution will switch to another fiber now. We do not need to update current stack
@@ -206,13 +226,16 @@ proc switchTo(current, to: CoroutinePtr) =
       {.error: "Invalid coroutine backend set.".}
   # Execution was just resumed. Restore frame information and set active stack.
   setFrameState(frame)
-  GC_setActiveStack(current.stack.bottom)
+  when not useOrcArc:
+    GC_setActiveStack(current.stack.bottom)
+  nimGC_setStackBottom(ctx.ncbottom)
 
-proc suspend*(sleepTime: float=0) =
-  ## Stops coroutine execution and resumes no sooner than after ``sleeptime`` seconds.
+proc suspend*(sleepTime: float = 0) =
+  ## Stops coroutine execution and resumes no sooner than after `sleeptime` seconds.
   ## Until then other coroutines are executed.
   var current = getCurrent()
   current.sleepTime = sleepTime
+  nimGC_setStackBottom(ctx.ncbottom)
   switchTo(current, addr(ctx.loop))
 
 proc runCurrentTask() =
@@ -222,24 +245,27 @@ proc runCurrentTask() =
   block:
     var current = getCurrent()
     current.stack.bottom = sp
+    nimGC_setStackBottom(current.stack.bottom)
     # Execution of new fiber just started. Since it was entered not through `switchTo` we
     # have to set active stack here as well. GC_removeStack() has to be called in main loop
     # because we still need stack available in final suspend(0) call from which we will not
     # return.
-    GC_addStack(sp)
-    # Activate current stack because we are executing in a new coroutine.
-    GC_setActiveStack(sp)
+    when not useOrcArc:
+      GC_addStack(sp)
+      # Activate current stack because we are executing in a new coroutine.
+      GC_setActiveStack(sp)
     current.state = CORO_EXECUTING
     try:
-      current.fn()                    # Start coroutine execution
+      current.fn() # Start coroutine execution
     except:
       echo "Unhandled exception in coroutine."
       writeStackTrace()
     current.state = CORO_FINISHED
-  suspend(0)                      # Exit coroutine without returning from coroExecWithStack()
+  nimGC_setStackBottom(ctx.ncbottom)
+  suspend(0) # Exit coroutine without returning from coroExecWithStack()
   doAssert false
 
-proc start*(c: proc(), stacksize: int=defaultStackSize): CoroutineRef {.discardable.} =
+proc start*(c: proc(), stacksize: int = defaultStackSize): CoroutineRef {.discardable.} =
   ## Schedule coroutine for execution. It does not run immediately.
   if ctx == nil:
     initialize()
@@ -248,8 +274,8 @@ proc start*(c: proc(), stacksize: int=defaultStackSize): CoroutineRef {.discarda
   when coroBackend == CORO_BACKEND_FIBERS:
     coro = cast[CoroutinePtr](alloc0(sizeof(Coroutine)))
     coro.execContext = CreateFiberEx(stacksize, stacksize,
-      FIBER_FLAG_FLOAT_SWITCH, (proc(p: pointer): void {.stdcall.} = runCurrentTask()), nil)
-    coro.stack.size = stacksize
+      FIBER_FLAG_FLOAT_SWITCH,
+      (proc(p: pointer) {.stdcall.} = runCurrentTask()), nil)
   else:
     coro = cast[CoroutinePtr](alloc0(sizeof(Coroutine) + stacksize))
     coro.stack.top = cast[pointer](cast[ByteAddress](coro) + sizeof(Coroutine))
@@ -268,9 +294,9 @@ proc start*(c: proc(), stacksize: int=defaultStackSize): CoroutineRef {.discarda
   return coro.reference
 
 proc run*() =
-  initialize()
   ## Starts main coroutine scheduler loop which exits when all coroutines exit.
   ## Calling this proc starts execution of first coroutine.
+  initialize()
   ctx.current = ctx.coroutines.head
   var minDelay: float = 0
   while ctx.current != nil:
@@ -294,7 +320,8 @@ proc run*() =
         next = ctx.current.next
       current.reference.coro = nil
       ctx.coroutines.remove(ctx.current)
-      GC_removeStack(current.stack.bottom)
+      when not useOrcArc:
+        GC_removeStack(current.stack.bottom)
       when coroBackend == CORO_BACKEND_FIBERS:
         DeleteFiber(current.execContext)
       else:
@@ -308,9 +335,9 @@ proc run*() =
       ctx.current = ctx.current.next
 
 proc alive*(c: CoroutineRef): bool = c.coro != nil and c.coro.state != CORO_FINISHED
-  ## Returns ``true`` if coroutine has not returned, ``false`` otherwise.
+  ## Returns `true` if coroutine has not returned, `false` otherwise.
 
-proc wait*(c: CoroutineRef, interval=0.01) =
-  ## Returns only after coroutine ``c`` has returned. ``interval`` is time in seconds how often.
+proc wait*(c: CoroutineRef, interval = 0.01) =
+  ## Returns only after coroutine `c` has returned. `interval` is time in seconds how often.
   while alive(c):
     suspend(interval)

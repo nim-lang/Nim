@@ -1,5 +1,5 @@
 discard """
-  disabled: true
+  output: "10"
 """
 
 # {. noforward: on .}

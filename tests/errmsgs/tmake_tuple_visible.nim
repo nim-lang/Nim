@@ -1,9 +1,6 @@
 discard """
-  errormsg: '''got <tuple of (type NimEdAppWindow, int)>'''
-  line: 22
-  nimout: '''got <tuple of (type NimEdAppWindow, int)>
-but expected one of:
-template xxx(tn: typedesc; i: int)'''
+  errormsg: '''Mixing types and values in tuples is not allowed.'''
+  line: 19
 """
 
 type

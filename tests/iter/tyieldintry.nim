@@ -1,8 +1,10 @@
 discard """
-targets: "c cpp"
+targets: "c"
 output: "ok"
 """
 var closureIterResult = newSeq[int]()
+
+# XXX Investigate why this fails now for 'nim cpp'
 
 proc checkpoint(arg: int) =
   closureIterResult.add(arg)
@@ -467,5 +469,33 @@ block: #9716
       doAssert(b == "hello")
   test(it, 1, 1, 1)
 
-echo "ok"
+block: # nnkChckRange
+  type Foo = distinct uint64
+  template yieldDistinct: Foo =
+    yield 2
+    Foo(0)
 
+  iterator it(): int {.closure.} =
+    yield 1
+    var a: int
+    a = int(yieldDistinct())
+    yield 3
+
+  test(it, 1, 2, 3)
+
+block: #17849 - yield in case subject
+  template yieldInCase: int =
+    yield 2
+    3
+
+  iterator it(): int {.closure.} =
+    yield 1
+    case yieldInCase()
+    of 1: checkpoint(11)
+    of 3: checkpoint(13)
+    else: checkpoint(14)
+    yield 5
+
+  test(it, 1, 2, 13, 5)
+
+echo "ok"

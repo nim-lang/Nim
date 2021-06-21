@@ -11,7 +11,7 @@ deallocating
 allocating
 deallocating
 '''
-  cmd: '''nim c --newruntime $file'''
+joinable: false
 """
 
 type
@@ -72,6 +72,7 @@ template `.=`*[T](s: SharedPtr[T]; field, value: untyped) =
 from macros import unpackVarargs
 
 template `.()`*[T](s: SharedPtr[T]; field: untyped, args: varargs[untyped]): untyped =
+  # xxx this isn't used, the test should be improved
   unpackVarargs(s.x.field, args)
 
 
@@ -125,7 +126,7 @@ proc `=`*[T](m: var MySeq[T], m2: MySeq[T]) =
     `=destroy`(m)
 
   m.len = m2.len
-  let bytes = m.len.int * sizeof(float) 
+  let bytes = m.len.int * sizeof(float)
   if bytes > 0:
     m.data = cast[ptr UncheckedArray[T]](allocShared(bytes))
     copyMem(m.data, m2.data, bytes)
@@ -147,3 +148,21 @@ proc newMySeq*[T](size: int, initial_value: T): MySeq[T] =
 
 let x = makeShared(newMySeq(10, 1.0))
 doAssert: x.get().len == 10
+
+
+
+#-------------------------------------------------------
+#bug #12882
+
+type
+  ValueObject = object
+    v: MySeq[int]
+    name: string
+
+  TopObject = object
+    internal: seq[ValueObject]
+
+var zz = new(TopObject)
+
+
+

@@ -12,15 +12,12 @@
 # id. This module is essential for the compiler's performance.
 
 import
-  hashes, strutils, wordrecg
+  hashes, wordrecg
 
 type
-  TIdObj* = object of RootObj
-    id*: int # unique id; use this for comparisons and not the pointers
-
-  PIdObj* = ref TIdObj
   PIdent* = ref TIdent
-  TIdent*{.acyclic.} = object of TIdObj
+  TIdent*{.acyclic.} = object
+    id*: int # unique id; use this for comparisons and not the pointers
     s*: string
     next*: PIdent             # for hash-table chaining
     h*: Hash                 # hash value of s
@@ -87,7 +84,7 @@ proc getIdent*(ic: IdentCache; identifier: cstring, length: int, h: Hash): PIden
   new(result)
   result.h = h
   result.s = newString(length)
-  for i in countup(0, length - 1): result.s[i] = identifier[i]
+  for i in 0..<length: result.s[i] = identifier[i]
   result.next = ic.buckets[idx]
   ic.buckets[idx] = result
   if id == 0:
@@ -97,11 +94,11 @@ proc getIdent*(ic: IdentCache; identifier: cstring, length: int, h: Hash): PIden
     result.id = id
 
 proc getIdent*(ic: IdentCache; identifier: string): PIdent =
-  result = getIdent(ic, cstring(identifier), len(identifier),
+  result = getIdent(ic, cstring(identifier), identifier.len,
                     hashIgnoreStyle(identifier))
 
 proc getIdent*(ic: IdentCache; identifier: string, h: Hash): PIdent =
-  result = getIdent(ic, cstring(identifier), len(identifier), h)
+  result = getIdent(ic, cstring(identifier), identifier.len, h)
 
 proc newIdentCache*(): IdentCache =
   result = IdentCache()
@@ -110,9 +107,14 @@ proc newIdentCache*(): IdentCache =
   result.idDelegator = result.getIdent":delegator"
   result.emptyIdent = result.getIdent("")
   # initialize the keywords:
-  for s in countup(succ(low(specialWords)), high(specialWords)):
-    result.getIdent(specialWords[s], hashIgnoreStyle(specialWords[s])).id = ord(s)
+  for s in succ(low(TSpecialWord))..high(TSpecialWord):
+    result.getIdent($s, hashIgnoreStyle($s)).id = ord(s)
 
 proc whichKeyword*(id: PIdent): TSpecialWord =
   if id.id < 0: result = wInvalid
   else: result = TSpecialWord(id.id)
+
+proc hash*(x: PIdent): Hash {.inline.} = x.h
+proc `==`*(a, b: PIdent): bool {.inline.} =
+  if a.isNil or b.isNil: result = system.`==`(a, b)
+  else: result = a.id == b.id

@@ -58,9 +58,9 @@ proc readPageCounts(filename: string, chunkSize = 1_000_000) =
     while chunkLen >= 0 and buffer[chunkLen - 1] notin NewLines:
       chunkLen.dec
 
-    responses.add(spawn parseChunk(buffer[0 .. <chunkLen]))
+    responses.add(spawn parseChunk(buffer[0 ..< chunkLen]))
     oldBufferLen = readSize - chunkLen
-    buffer[0 .. <oldBufferLen] = buffer[readSize - oldBufferLen .. ^1]
+    buffer[0 ..< oldBufferLen] = buffer[readSize - oldBufferLen .. ^1]
 
   var mostPopular = newStats()
   for resp in responses:

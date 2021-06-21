@@ -11,10 +11,11 @@
 ##
 ## Unless your application has very
 ## specific requirements and solely targets JavaScript, you should be using
-## the relevant functions in the ``math``, ``json``, and ``times`` stdlib
+## the relevant functions in the `math`, `json`, and `times` stdlib
 ## modules instead.
+import std/private/since
 
-when not defined(js) and not defined(Nimdoc):
+when not defined(js):
   {.error: "This module only works on the JavaScript platform".}
 
 type
@@ -104,3 +105,21 @@ proc setFullYear*(d: DateTime, year: int) {.importcpp.}
 #JSON library
 proc stringify*(l: JsonLib, s: JsRoot): cstring {.importcpp.}
 proc parse*(l: JsonLib, s: cstring): JsRoot {.importcpp.}
+
+
+since (1, 5):
+  func debugger*() {.importjs: "debugger@".}
+    ## https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Statements/debugger
+
+  func copyWithin*[T](self: openArray[T]; target: int): seq[T] {.importjs: "#.copyWithin(#)".}
+  func copyWithin*[T](self: openArray[T]; target, start: int): seq[T] {.importjs: "#.copyWithin(#, #)".}
+  func copyWithin*[T](self: openArray[T]; target, start, ends: int): seq[T] {.importjs: "#.copyWithin(#, #, #)".} =
+    ## https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Array/copyWithin
+    ## `copyWithin` uses shallow copy.
+    runnableExamples:
+      assert ['a', 'b', 'c', 'd', 'e'].copyWithin(0, 3, 4) == @['d', 'b', 'c', 'd', 'e']
+      assert ['a', 'b', 'c', 'd', 'e'].copyWithin(1, 3) == @['a', 'd', 'e', 'd', 'e']
+      assert [1, 2, 3, 4, 5].copyWithin(-2) == @[1, 2, 3, 1, 2]
+      assert [1, 2, 3, 4, 5].copyWithin(0, 3) == @[4, 5, 3, 4, 5]
+      assert [1, 2, 3, 4, 5].copyWithin(0, 3, 4) == @[4, 2, 3, 4, 5]
+      assert [1, 2, 3, 4, 5].copyWithin(-2, -3, -1) == @[1, 2, 3, 3, 4]

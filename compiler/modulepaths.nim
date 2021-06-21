@@ -8,7 +8,7 @@
 #
 
 import ast, renderer, strutils, msgs, options, idents, os, lineinfos,
-  pathutils, nimblecmd
+  pathutils
 
 when false:
   const
@@ -91,8 +91,7 @@ when false:
             if result.len > 0: return result
 
   proc scriptableImport(pkg, sub: string; info: TLineInfo): string =
-    result = resolveDollar(gProjectFull, info.toFullPath(), pkg, sub, info)
-    if result.isNil: result = ""
+    resolveDollar(gProjectFull, info.toFullPath(), pkg, sub, info)
 
   proc lookupPackage(pkg, subdir: PNode): string =
     let sub = if subdir != nil: renderTree(subdir, {renderNoComments}).replace(" ") else: ""
@@ -112,9 +111,7 @@ proc getModuleName*(conf: ConfigRef; n: PNode): string =
   case n.kind
   of nkStrLit, nkRStrLit, nkTripleStrLit:
     try:
-      result =
-        pathSubs(conf, n.strVal, toFullPath(conf, n.info).splitFile().dir)
-          .replace(" ")
+      result = pathSubs(conf, n.strVal, toFullPath(conf, n.info).splitFile().dir)
     except ValueError:
       localError(conf, n.info, "invalid path: " & n.strVal)
       result = n.strVal
@@ -140,7 +137,7 @@ proc getModuleName*(conf: ConfigRef; n: PNode): string =
       result.add modname
   of nkPrefix:
     when false:
-      if n.sons[0].kind == nkIdent and n.sons[0].ident.s == "$":
+      if n[0].kind == nkIdent and n[0].ident.s == "$":
         result = lookupPackage(n[1], nil)
       else:
         discard
@@ -150,7 +147,7 @@ proc getModuleName*(conf: ConfigRef; n: PNode): string =
     localError(conf, n.info, warnDeprecated, "using '.' instead of '/' in import paths is deprecated")
     result = renderTree(n, {renderNoComments}).replace(".", "/")
   of nkImportAs:
-    result = getModuleName(conf, n.sons[0])
+    result = getModuleName(conf, n[0])
   else:
     localError(conf, n.info, "invalid module name: '$1'" % n.renderTree)
     result = ""
@@ -163,6 +160,6 @@ proc checkModuleName*(conf: ConfigRef; n: PNode; doLocalError=true): FileIndex =
     if doLocalError:
       let m = if modulename.len > 0: modulename else: $n
       localError(conf, n.info, "cannot open file: " & m)
-    result = InvalidFileIDX
+    result = InvalidFileIdx
   else:
     result = fileInfoIdx(conf, fullPath)

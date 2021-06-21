@@ -1,9 +1,12 @@
-==============================================
+==========================================================
 Nim Enhancement Proposal #1 - Standard Library Style Guide
-==============================================
+==========================================================
+
 :Author: Clay Sweetser, Dominik Picheta
 :Version: |nimversion|
 
+.. default-role:: code
+.. include:: rstcommon.rst
 .. contents::
 
 
@@ -62,15 +65,6 @@ Spacing and Whitespace Conventions
 Naming Conventions
 ------------------
 
-Note: While the rules outlined below are the *current* naming conventions,
-these conventions have not always been in place. Previously, the naming
-conventions for identifiers followed the Pascal tradition of prefixes which
-indicated the base type of the identifier - PFoo for pointer and reference
-types, TFoo for value types, EFoo for exceptions, etc. Though this has since
-changed, there are many places in the standard library which still use this
-convention. Such style remains in place purely for legacy reasons, and will be
-changed in the future.
-
 - Type identifiers should be in PascalCase. All other identifiers should be in
   camelCase with the exception of constants which **may** use PascalCase but
   are not required to.
@@ -101,11 +95,13 @@ changed in the future.
         fd: int64
       HandleRef = ref Handle # Will be used less often
 
-- Exception and Error types should have the "Error" suffix.
+- Exception and Error types should have the "Error" or "Defect" suffix.
 
   .. code-block:: nim
     type
-      UnluckyError = object of Exception
+      ValueError = object of CatchableError
+      AssertionDefect = object of Defect
+      Foo = object of Exception # bad style, try to inherit CatchableError or Defect
 
 - Unless marked with the `{.pure.}` pragma, members of enums should have an
   identifying prefix, such as an abbreviation of the enum's name.
@@ -131,11 +127,11 @@ changed in the future.
 
 - In the age of HTTP, HTML, FTP, TCP, IP, UTF, WWW it is foolish to pretend
   these are somewhat special words requiring all uppercase. Instead treat them
-  as what they are: Real words. So it's ``parseUrl`` rather than
-  ``parseURL``, ``checkHttpHeader`` instead of ``checkHTTPHeader`` etc.
+  as what they are: Real words. So it's `parseUrl` rather than
+  `parseURL`, `checkHttpHeader` instead of `checkHTTPHeader` etc.
 
-- Operations like ``mitems`` or ``mpairs`` (or the now deprecated ``mget``)
-  that allow a *mutating view* into some data structure should start with an ``m``.
+- Operations like `mitems` or `mpairs` (or the now deprecated `mget`)
+  that allow a *mutating view* into some data structure should start with an `m`.
 - When both in-place mutation and 'returns transformed copy' are available the latter
   is a past participle of the former:
 
@@ -143,9 +139,11 @@ changed in the future.
   - sort and sorted
   - rotate and rotated
 
-- When the 'returns transformed copy' version already exists like ``strutils.replace``
-  an in-place version should get an ``-In`` suffix (``replaceIn`` for this example).
+- When the 'returns transformed copy' version already exists like `strutils.replace`
+  an in-place version should get an ``-In`` suffix (`replaceIn` for this example).
 
+
+- Use `subjectVerb`, not `verbSubject`, e.g.: `fileExists`, not `existsFile`.
 
 The stdlib API is designed to be **easy to use** and consistent. Ease of use is
 measured by the number of calls to achieve a concrete high level action. The
@@ -158,22 +156,26 @@ to keep the names short but meaningful.
 -------------------     ------------   --------------------------------------
 English word            To use         Notes
 -------------------     ------------   --------------------------------------
-initialize              initT          ``init`` is used to create a
-                                       value type ``T``
-new                     newP           ``new`` is used to create a
-                                       reference type ``P``
+initialize              initFoo        initializes a value type `Foo`
+new                     newFoo         initializes a reference type `Foo`
+                                       via `new` or a value type `Foo`
+                                       with reference semantics.
+this or self            self           for method like procs, e.g.:
+                                       `proc fun(self: Foo, a: int)`
+                                       rationale: `self` is more unique in English
+                                       than `this`, and `foo` would not be DRY.
 find                    find           should return the position where
                                        something was found; for a bool result
-                                       use ``contains``
-contains                contains       often short for ``find() >= 0``
-append                  add            use ``add`` instead of ``append``
+                                       use `contains`
+contains                contains       often short for `find() >= 0`
+append                  add            use `add` instead of `append`
 compare                 cmp            should return an int with the
-                                       ``< 0`` ``== 0`` or ``> 0`` semantics;
-                                       for a bool result use ``sameXYZ``
-put                     put, ``[]=``   consider overloading ``[]=`` for put
-get                     get, ``[]``    consider overloading ``[]`` for get;
-                                       consider to not use ``get`` as a
-                                       prefix: ``len`` instead of ``getLen``
+                                       `< 0` `== 0` or `> 0` semantics;
+                                       for a bool result use `sameXYZ`
+put                     put, `[]=`     consider overloading `[]=` for put
+get                     get, `[]`      consider overloading `[]` for get;
+                                       consider to not use `get` as a
+                                       prefix: `len` instead of `getLen`
 length                  len            also used for *number of elements*
 size                    size, len      size should refer to a byte size
 capacity                cap
@@ -224,22 +226,22 @@ indentation             indent
 Coding Conventions
 ------------------
 
-- The 'return' statement should ideally be used when its control-flow properties
-  are required. Use a procedure's implicit 'result' variable whenever possible.
+- The `return` statement should ideally be used when its control-flow properties
+  are required. Use a procedure's implicit `result` variable whenever possible.
   This improves readability.
 
   .. code-block:: nim
     proc repeat(text: string, x: int): string =
       result = ""
 
-      for i in 0 .. x:
+      for i in 0..x:
         result.add($i)
 
 - Use a proc when possible, only using the more powerful facilities of macros,
   templates, iterators, and converters when necessary.
 
-- Use the ``let`` statement (not the ``var`` statement) when declaring variables that
-  do not change within their scope. Using the ``let`` statement ensures that
+- Use the `let` statement (not the `var` statement) when declaring variables that
+  do not change within their scope. Using the `let` statement ensures that
   variables remain immutable, and gives those who read the code a better idea
   of the code's purpose.
 
@@ -263,7 +265,7 @@ Conventions for multi-line statements and expressions
       EventCallback = proc (timeReceived: Time, errorCode: int, event: Event,
                             output: var string)
 
-    proc lotsOfArguments(argOne: string, argTwo: int, argThree: float
+    proc lotsOfArguments(argOne: string, argTwo: int, argThree: float,
                          argFour: proc(), argFive: bool): int
                         {.heyLookALongPragma.} =
 
@@ -273,3 +275,39 @@ Conventions for multi-line statements and expressions
   .. code-block:: nim
     startProcess(nimExecutable, currentDirectory, compilerArguments
                  environment, processOptions)
+
+Miscellaneous
+-------------
+
+- Use `a..b` instead of `a .. b`, except when `b` contains an operator, for example `a .. -3`.
+  Likewise with `a..<b`, `a..^b` and other operators starting with `..`.
+
+- Use `std` prefix for standard library modules, namely use `std/os` for single module and
+  use `std/[os, sysrand, posix]` for multiple modules.
+
+- Prefer multiline triple quote literals to start with a newline; it's semantically identical
+  (it's a feature of triple quote literals) but clearer because it aligns with the next line:
+
+  use this:
+
+  .. code-block:: nim
+    let a = """
+    foo
+    bar
+    """
+
+  instead of:
+
+  .. code-block:: nim
+    let a = """foo
+    bar
+    """
+
+- A getter API for a private field `foo` should preferably be named `foo`, not `getFoo`.
+  A getter-like API should preferably be named `getFoo`, not `foo` if:
+    * the API has side effects
+    * or the cost is not `O(1)`
+  For in between cases, there is no clear guideline.
+
+- Likewise with a setter API, replacing `foo` with `foo=` and `getFoo` with `setFoo`
+  in the above text.

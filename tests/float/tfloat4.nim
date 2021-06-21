@@ -2,7 +2,7 @@ discard """
   output: "passed all tests."
 """
 
-import math, strutils
+import strutils
 
 proc c_sprintf(buf, fmt: cstring) {.importc:"sprintf", header: "<stdio.h>", varargs.}
 

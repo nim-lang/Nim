@@ -1,3 +1,7 @@
+discard """
+batchable: false
+"""
+
 #
 #
 #            Nim's Runtime Library
@@ -8,7 +12,7 @@
 #
 
 ## Main file to generate a DLL from the standard library.
-## The default Nimrtl does not only contain the ``system`` module, but these
+## The default Nimrtl does not only contain the `system` module, but these
 ## too:
 ##
 ## * parseutils
@@ -32,4 +36,4 @@ when not defined(createNimRtl):
 
 import
   parseutils, strutils, parseopt, parsecfg, strtabs, unicode, pegs, ropes,
-  os, osproc, times
+  os, osproc, times, cstrutils

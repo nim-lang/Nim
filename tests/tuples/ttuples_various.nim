@@ -81,6 +81,27 @@ block unpack_const:
   doAssert z == 6
 
 
+# bug #10724
+block unpack_const_named:
+  const (a, ) = (x: 1, )
+  doAssert a == 1
+
+  const (b, c) = (x: 2, y: 3)
+  doAssert b == 2
+  doAssert c == 3
+
+  const (d, e, f) = (x: 4, y: 5, z: 6)
+  doAssert d == 4
+  doAssert e == 5
+  doAssert f == 6
+
+block const_named:
+  const x = block:
+    (a: 1, b: 2, c: 3)
+  doAssert x.a == 1
+  doAssert x.b == 2
+  doAssert x.c == 3
+
 
 block tuple_subscript:
   proc`[]` (t: tuple, key: string): string =

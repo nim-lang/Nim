@@ -1,8 +1,8 @@
-import compiler/unittest_light
+import stdtest/unittest_light
 
 proc testAssertEquals() =
   assertEquals("foo", "foo")
-  doAssertRaises(AssertionError):
+  doAssertRaises(AssertionDefect):
     assertEquals("foo", "foo ")
 
 proc testMismatch() =

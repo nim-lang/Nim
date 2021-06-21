@@ -2,6 +2,8 @@
 # Every test file can have a #[!]# comment that is deleted from the input
 # before 'nimsuggest' is invoked to ensure this token doesn't make a
 # crucial difference for Nim's parser.
+# When debugging, to run a single test, use for e.g.:
+# `nim r nimsuggest/tester.nim nimsuggest/tests/tsug_accquote.nim`
 
 import os, osproc, strutils, streams, re, sexp, net
 
@@ -13,15 +15,17 @@ type
     disabled: bool
 
 const
-  curDir = when defined(windows): "" else: ""
   DummyEof = "!EOF!"
+  tpath = "nimsuggest/tests"
+  # we could also use `stdtest/specialpaths`
 
-template tpath(): untyped = getAppDir() / "tests"
+import std/compilesettings
 
 proc parseTest(filename: string; epcMode=false): Test =
   const cursorMarker = "#[!]#"
-  let nimsug = curDir & addFileExt("nimsuggest", ExeExt)
-  let libpath = findExe("nim").splitFile().dir /../ "lib"
+  let nimsug = "bin" / addFileExt("nimsuggest", ExeExt)
+  doAssert nimsug.fileExists, nimsug
+  const libpath = querySetting(libPath)
   result.filename = filename
   result.dest = getTempDir() / extractFilename(filename)
   result.cmd = nimsug & " --tester " & result.dest
@@ -61,7 +65,7 @@ proc parseTest(filename: string; epcMode=false): Test =
       elif x.startsWith(">"):
         # since 'markers' here are not complete yet, we do the $substitutions
         # afterwards
-        result.script.add((x.substr(1).replaceWord("$path", tpath()), ""))
+        result.script.add((x.substr(1).replaceWord("$path", tpath), ""))
       elif x.len > 0:
         # expected output line:
         let x = x % ["file", filename, "lib", libpath]
@@ -102,7 +106,7 @@ proc parseCmd(c: string): seq[string] =
 proc edit(tmpfile: string; x: seq[string]) =
   if x.len != 3 and x.len != 4:
     quit "!edit takes two or three arguments"
-  let f = if x.len >= 4: tpath() / x[3] else: tmpfile
+  let f = if x.len >= 4: tpath / x[3] else: tmpfile
   try:
     let content = readFile(f)
     let newcontent = content.replace(x[1], x[2])
@@ -119,12 +123,12 @@ proc exec(x: seq[string]) =
 
 proc copy(x: seq[string]) =
   if x.len != 3: quit "!copy takes two arguments"
-  let rel = tpath()
+  let rel = tpath
   copyFile(rel / x[1], rel / x[2])
 
 proc del(x: seq[string]) =
   if x.len != 2: quit "!del takes one argument"
-  removeFile(tpath() / x[1])
+  removeFile(tpath / x[1])
 
 proc runCmd(cmd, dest: string): bool =
   result = cmd[0] == '!'
@@ -140,7 +144,7 @@ proc runCmd(cmd, dest: string): bool =
   of "!del":
     del(x)
   else:
-    quit "unkown command: " & cmd
+    quit "unknown command: " & cmd
 
 proc smartCompare(pattern, x: string): bool =
   if pattern.contains('*'):
@@ -206,13 +210,13 @@ proc sexpToAnswer(s: SexpNode): string =
       result.add '\t'
       result.add file
       result.add '\t'
-      result.add line
+      result.addInt line
       result.add '\t'
-      result.add col
+      result.addInt col
       result.add '\t'
       result.add doc
       result.add '\t'
-      result.add a[8].getNum
+      result.addInt a[8].getNum
       if a.len >= 10:
         result.add '\t'
         result.add a[9].getStr
@@ -251,9 +255,8 @@ proc runEpcTest(filename: string): int =
   let cl = parseCmdLine(epccmd)
   var p = startProcess(command=cl[0], args=cl[1 .. ^1],
                        options={poStdErrToStdOut, poUsePath,
-                       poInteractive, poDemon})
+                       poInteractive, poDaemon})
   let outp = p.outputStream
-  let inp = p.inputStream
   var report = ""
   var socket = newSocket()
   try:
@@ -293,7 +296,7 @@ proc runTest(filename: string): int =
   let cl = parseCmdLine(s.cmd)
   var p = startProcess(command=cl[0], args=cl[1 .. ^1],
                        options={poStdErrToStdOut, poUsePath,
-                       poInteractive, poDemon})
+                       poInteractive, poDaemon})
   let outp = p.outputStream
   let inp = p.inputStream
   var report = ""
@@ -313,8 +316,12 @@ proc runTest(filename: string): int =
           answer.add '\L'
         doReport(filename, answer, resp, report)
   finally:
-    inp.writeLine("quit")
-    inp.flush()
+    try:
+      inp.writeLine("quit")
+      inp.flush()
+    except IOError, OSError:
+      # assume it's SIGPIPE, ie, the child already died
+      discard
     close(p)
   if report.len > 0:
     echo "==== STDIN ======================================"
@@ -329,8 +336,12 @@ proc main() =
     failures += runTest(xx)
     failures += runEpcTest(xx)
   else:
-    for x in walkFiles(getAppDir() / "tests/t*.nim"):
+    for x in walkFiles(tpath / "t*.nim"):
       echo "Test ", x
+      when defined(i386):
+        if x == "nimsuggest/tests/tmacro_highlight.nim":
+          echo "skipping" # workaround bug #17945
+          continue
       let xx = expandFilename x
       when not defined(windows):
         # XXX Windows IO redirection seems bonkers:

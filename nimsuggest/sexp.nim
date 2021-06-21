@@ -7,8 +7,12 @@
 #    distribution, for details about the copyright.
 #
 
+## **Note:** Import ``nimsuggest/sexp`` to use this module
+
 import
   hashes, strutils, lexbase, streams, unicode, macros
+
+import std/private/decode_helpers
 
 type
   SexpEventKind* = enum  ## enumeration of all events that may occur when parsing
@@ -111,20 +115,11 @@ proc errorMsgExpected*(my: SexpParser, e: string): string =
   ## other error messages
   result = "($1, $2) Error: $3" % [$getLine(my), $getColumn(my), e & " expected"]
 
-proc handleHexChar(c: char, x: var int): bool =
-  result = true # Success
-  case c
-  of '0'..'9': x = (x shl 4) or (ord(c) - ord('0'))
-  of 'a'..'f': x = (x shl 4) or (ord(c) - ord('a') + 10)
-  of 'A'..'F': x = (x shl 4) or (ord(c) - ord('A') + 10)
-  else: result = false # error
-
 proc parseString(my: var SexpParser): TTokKind =
   result = tkString
   var pos = my.bufpos + 1
-  var buf = my.buf
   while true:
-    case buf[pos]
+    case my.buf[pos]
     of '\0':
       my.err = errQuoteExpected
       result = tkError
@@ -133,9 +128,9 @@ proc parseString(my: var SexpParser): TTokKind =
       inc(pos)
       break
     of '\\':
-      case buf[pos+1]
+      case my.buf[pos+1]
       of '\\', '"', '\'', '/':
-        add(my.a, buf[pos+1])
+        add(my.a, my.buf[pos+1])
         inc(pos, 2)
       of 'b':
         add(my.a, '\b')
@@ -155,65 +150,61 @@ proc parseString(my: var SexpParser): TTokKind =
       of 'u':
         inc(pos, 2)
         var r: int
-        if handleHexChar(buf[pos], r): inc(pos)
-        if handleHexChar(buf[pos], r): inc(pos)
-        if handleHexChar(buf[pos], r): inc(pos)
-        if handleHexChar(buf[pos], r): inc(pos)
+        if handleHexChar(my.buf[pos], r): inc(pos)
+        if handleHexChar(my.buf[pos], r): inc(pos)
+        if handleHexChar(my.buf[pos], r): inc(pos)
+        if handleHexChar(my.buf[pos], r): inc(pos)
         add(my.a, toUTF8(Rune(r)))
       else:
         # don't bother with the error
-        add(my.a, buf[pos])
+        add(my.a, my.buf[pos])
         inc(pos)
     of '\c':
       pos = lexbase.handleCR(my, pos)
-      buf = my.buf
       add(my.a, '\c')
     of '\L':
       pos = lexbase.handleLF(my, pos)
-      buf = my.buf
       add(my.a, '\L')
     else:
-      add(my.a, buf[pos])
+      add(my.a, my.buf[pos])
       inc(pos)
   my.bufpos = pos # store back
 
 proc parseNumber(my: var SexpParser) =
   var pos = my.bufpos
-  var buf = my.buf
-  if buf[pos] == '-':
+  if my.buf[pos] == '-':
     add(my.a, '-')
     inc(pos)
-  if buf[pos] == '.':
+  if my.buf[pos] == '.':
     add(my.a, "0.")
     inc(pos)
   else:
-    while buf[pos] in Digits:
-      add(my.a, buf[pos])
+    while my.buf[pos] in Digits:
+      add(my.a, my.buf[pos])
       inc(pos)
-    if buf[pos] == '.':
+    if my.buf[pos] == '.':
       add(my.a, '.')
       inc(pos)
   # digits after the dot:
-  while buf[pos] in Digits:
-    add(my.a, buf[pos])
+  while my.buf[pos] in Digits:
+    add(my.a, my.buf[pos])
     inc(pos)
-  if buf[pos] in {'E', 'e'}:
-    add(my.a, buf[pos])
+  if my.buf[pos] in {'E', 'e'}:
+    add(my.a, my.buf[pos])
     inc(pos)
-    if buf[pos] in {'+', '-'}:
-      add(my.a, buf[pos])
+    if my.buf[pos] in {'+', '-'}:
+      add(my.a, my.buf[pos])
       inc(pos)
-    while buf[pos] in Digits:
-      add(my.a, buf[pos])
+    while my.buf[pos] in Digits:
+      add(my.a, my.buf[pos])
       inc(pos)
   my.bufpos = pos
 
 proc parseSymbol(my: var SexpParser) =
   var pos = my.bufpos
-  var buf = my.buf
-  if buf[pos] in IdentStartChars:
-    while buf[pos] in IdentChars:
-      add(my.a, buf[pos])
+  if my.buf[pos] in IdentStartChars:
+    while my.buf[pos] in IdentChars:
+      add(my.a, my.buf[pos])
       inc(pos)
   my.bufpos = pos
 
@@ -293,54 +284,39 @@ proc raiseParseErr*(p: SexpParser, msg: string) {.noinline, noreturn.} =
   ## raises an `ESexpParsingError` exception.
   raise newException(SexpParsingError, errorMsgExpected(p, msg))
 
-proc newSString*(s: string): SexpNode {.procvar.}=
+proc newSString*(s: string): SexpNode =
   ## Creates a new `SString SexpNode`.
-  new(result)
-  result.kind = SString
-  result.str = s
+  result = SexpNode(kind: SString, str: s)
 
 proc newSStringMove(s: string): SexpNode =
-  new(result)
-  result.kind = SString
+  result = SexpNode(kind: SString)
   shallowCopy(result.str, s)
 
-proc newSInt*(n: BiggestInt): SexpNode {.procvar.} =
+proc newSInt*(n: BiggestInt): SexpNode =
   ## Creates a new `SInt SexpNode`.
-  new(result)
-  result.kind = SInt
-  result.num  = n
+  result = SexpNode(kind: SInt, num: n)
 
-proc newSFloat*(n: float): SexpNode {.procvar.} =
+proc newSFloat*(n: float): SexpNode =
   ## Creates a new `SFloat SexpNode`.
-  new(result)
-  result.kind = SFloat
-  result.fnum  = n
+  result = SexpNode(kind: SFloat, fnum: n)
 
-proc newSNil*(): SexpNode {.procvar.} =
+proc newSNil*(): SexpNode =
   ## Creates a new `SNil SexpNode`.
-  new(result)
+  result = SexpNode(kind: SNil)
 
-proc newSCons*(car, cdr: SexpNode): SexpNode {.procvar.} =
+proc newSCons*(car, cdr: SexpNode): SexpNode =
   ## Creates a new `SCons SexpNode`
-  new(result)
-  result.kind = SCons
-  result.car = car
-  result.cdr = cdr
+  result = SexpNode(kind: SCons, car: car, cdr: cdr)
 
-proc newSList*(): SexpNode {.procvar.} =
+proc newSList*(): SexpNode =
   ## Creates a new `SList SexpNode`
-  new(result)
-  result.kind = SList
-  result.elems = @[]
+  result = SexpNode(kind: SList, elems: @[])
 
-proc newSSymbol*(s: string): SexpNode {.procvar.} =
-  new(result)
-  result.kind = SSymbol
-  result.symbol = s
+proc newSSymbol*(s: string): SexpNode =
+  result = SexpNode(kind: SSymbol, symbol: s)
 
 proc newSSymbolMove(s: string): SexpNode =
-  new(result)
-  result.kind = SSymbol
+  result = SexpNode(kind: SSymbol)
   shallowCopy(result.symbol, s)
 
 proc getStr*(n: SexpNode, default: string = ""): string =
@@ -389,43 +365,34 @@ proc getCons*(n: SexpNode, defaults: Cons = (newSNil(), newSNil())): Cons =
 
 proc sexp*(s: string): SexpNode =
   ## Generic constructor for SEXP data. Creates a new `SString SexpNode`.
-  new(result)
-  result.kind = SString
-  result.str = s
+  result = SexpNode(kind: SString, str: s)
 
 proc sexp*(n: BiggestInt): SexpNode =
   ## Generic constructor for SEXP data. Creates a new `SInt SexpNode`.
-  new(result)
-  result.kind = SInt
-  result.num  = n
+  result = SexpNode(kind: SInt, num: n)
 
 proc sexp*(n: float): SexpNode =
   ## Generic constructor for SEXP data. Creates a new `SFloat SexpNode`.
-  new(result)
-  result.kind = SFloat
-  result.fnum  = n
+  result = SexpNode(kind: SFloat, fnum: n)
 
 proc sexp*(b: bool): SexpNode =
   ## Generic constructor for SEXP data. Creates a new `SSymbol
   ## SexpNode` with value t or `SNil SexpNode`.
-  new(result)
   if b:
-    result.kind = SSymbol
-    result.symbol = "t"
+    result = SexpNode(kind: SSymbol, symbol: "t")
   else:
-    result.kind = SNil
+    result = SexpNode(kind: SNil)
 
 proc sexp*(elements: openArray[SexpNode]): SexpNode =
   ## Generic constructor for SEXP data. Creates a new `SList SexpNode`
-  new(result)
-  result.kind = SList
+  result = SexpNode(kind: SList)
   newSeq(result.elems, elements.len)
   for i, p in pairs(elements): result.elems[i] = p
 
 proc sexp*(s: SexpNode): SexpNode =
   result = s
 
-proc toSexp(x: NimNode): NimNode {.compiletime.} =
+proc toSexp(x: NimNode): NimNode {.compileTime.} =
   case x.kind
   of nnkBracket:
     result = newNimNode(nnkBracket)
@@ -561,10 +528,10 @@ proc toPretty(result: var string, node: SexpNode, indent = 2, ml = true,
     result.add(escapeJson(node.str))
   of SInt:
     if lstArr: result.indent(currIndent)
-    result.add(node.num)
+    result.addInt(node.num)
   of SFloat:
     if lstArr: result.indent(currIndent)
-    result.add(node.fnum)
+    result.addFloat(node.fnum)
   of SNil:
     if lstArr: result.indent(currIndent)
     result.add("nil")

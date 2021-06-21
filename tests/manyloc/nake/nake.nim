@@ -51,7 +51,7 @@ template withDir*(dir: string; body: untyped) =
   cd(curDir)
 
 when true:
-  if not existsFile("nakefile.nim"):
+  if not fileExists("nakefile.nim"):
     echo "No nakefile.nim found. Current working dir is ", getCurrentDir()
     quit 1
   var args = ""
@@ -60,7 +60,8 @@ when true:
     args.add " "
   quit(shell("nim", "c", "-r", "nakefile.nim", args))
 else:
-  addQuitProc(proc() {.noconv.} =
+  import std/exitprocs
+  addExitProc(proc() {.noconv.} =
     var
       task: string
       printTaskList: bool

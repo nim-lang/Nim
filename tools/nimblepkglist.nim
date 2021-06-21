@@ -1,3 +1,6 @@
+#[
+deadcode?
+]#
 import base64, strutils, json, htmlgen, dom, algorithm
 
 type

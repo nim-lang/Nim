@@ -9,7 +9,7 @@
 
 #  This module implements BSD kqueue().
 
-import posix, times, kqueue
+import posix, times, kqueue, nativesockets
 
 const
   # Maximum number of events that can be returned.
@@ -27,28 +27,28 @@ when defined(macosx) or defined(freebsd) or defined(dragonfly):
     const MAX_DESCRIPTORS_ID = 29 # KERN_MAXFILESPERPROC (MacOS)
   else:
     const MAX_DESCRIPTORS_ID = 27 # KERN_MAXFILESPERPROC (FreeBSD)
-  proc sysctl(name: ptr cint, namelen: cuint, oldp: pointer, oldplen: ptr csize,
-              newp: pointer, newplen: csize): cint
+  proc sysctl(name: ptr cint, namelen: cuint, oldp: pointer, oldplen: ptr csize_t,
+              newp: pointer, newplen: csize_t): cint
        {.importc: "sysctl",header: """#include <sys/types.h>
-                                      #include <sys/sysctl.h>"""}
+                                      #include <sys/sysctl.h>""".}
 elif defined(netbsd) or defined(openbsd):
   # OpenBSD and NetBSD don't have KERN_MAXFILESPERPROC, so we are using
   # KERN_MAXFILES, because KERN_MAXFILES is always bigger,
   # than KERN_MAXFILESPERPROC.
   const MAX_DESCRIPTORS_ID = 7 # KERN_MAXFILES
-  proc sysctl(name: ptr cint, namelen: cuint, oldp: pointer, oldplen: ptr csize,
-              newp: pointer, newplen: csize): cint
+  proc sysctl(name: ptr cint, namelen: cuint, oldp: pointer, oldplen: ptr csize_t,
+              newp: pointer, newplen: csize_t): cint
        {.importc: "sysctl",header: """#include <sys/param.h>
-                                      #include <sys/sysctl.h>"""}
+                                      #include <sys/sysctl.h>""".}
 
 when hasThreadSupport:
   type
     SelectorImpl[T] = object
-      kqFD : cint
-      maxFD : int
+      kqFD: cint
+      maxFD: int
       changes: ptr SharedArray[KEvent]
       fds: ptr SharedArray[SelectorKey[T]]
-      count: int
+      count*: int
       changesLock: Lock
       changesSize: int
       changesLength: int
@@ -57,11 +57,11 @@ when hasThreadSupport:
 else:
   type
     SelectorImpl[T] = object
-      kqFD : cint
-      maxFD : int
+      kqFD: cint
+      maxFD: int
       changes: seq[KEvent]
       fds: seq[SelectorKey[T]]
-      count: int
+      count*: int
       sock: cint
     Selector*[T] = ref SelectorImpl[T]
 
@@ -76,13 +76,13 @@ type
 
 proc getUnique[T](s: Selector[T]): int {.inline.} =
   # we create duplicated handles to get unique indexes for our `fds` array.
-  result = posix.fcntl(s.sock, F_DUPFD, s.sock)
+  result = posix.fcntl(s.sock, F_DUPFD_CLOEXEC, s.sock)
   if result == -1:
     raiseIOSelectorsError(osLastError())
 
-proc newSelector*[T](): Selector[T] =
+proc newSelector*[T](): owned(Selector[T]) =
   var maxFD = 0.cint
-  var size = csize(sizeof(cint))
+  var size = csize_t(sizeof(cint))
   var namearr = [1.cint, MAX_DESCRIPTORS_ID.cint]
   # Obtain maximum number of opened file descriptors for process
   if sysctl(addr(namearr[0]), 2, cast[pointer](addr maxFD), addr size,
@@ -96,8 +96,8 @@ proc newSelector*[T](): Selector[T] =
   # we allocating empty socket to duplicate it handle in future, to get unique
   # indexes for `fds` array. This is needed to properly identify
   # {Event.Timer, Event.Signal, Event.Process} events.
-  let usock = posix.socket(posix.AF_INET, posix.SOCK_STREAM,
-                             posix.IPPROTO_TCP).cint
+  let usock = createNativeSocket(posix.AF_INET, posix.SOCK_STREAM,
+                                 posix.IPPROTO_TCP).cint
   if usock == -1:
     let err = osLastError()
     discard posix.close(kqFD)
@@ -440,12 +440,14 @@ proc unregister*[T](s: Selector[T], ev: SelectEvent) =
   dec(s.count)
 
 proc selectInto*[T](s: Selector[T], timeout: int,
-                    results: var openarray[ReadyKey]): int =
+                    results: var openArray[ReadyKey]): int =
   var
     tv: Timespec
     resTable: array[MAX_KQUEUE_EVENTS, KEvent]
     ptv = addr tv
     maxres = MAX_KQUEUE_EVENTS
+
+  verifySelectParams(timeout)
 
   if timeout != -1:
     if timeout >= 1000:
@@ -500,7 +502,7 @@ proc selectInto*[T](s: Selector[T], timeout: int,
 
       if (kevent.flags and EV_ERROR) != 0:
         rkey.events = {Event.Error}
-        rkey.errorCode = kevent.data.OSErrorCode
+        rkey.errorCode = OSErrorCode(kevent.data)
 
       case kevent.filter:
       of EVFILT_READ:
@@ -576,7 +578,7 @@ proc selectInto*[T](s: Selector[T], timeout: int,
           # This assumes we are dealing with sockets.
           # TODO: For future-proofing it might be a good idea to give the
           #       user access to the raw `kevent`.
-          rkey.errorCode = ECONNRESET.OSErrorCode
+          rkey.errorCode = OSErrorCode(ECONNRESET)
         rkey.events.incl(Event.Error)
 
       results[k] = rkey
@@ -614,7 +616,7 @@ template withData*[T](s: Selector[T], fd: SocketHandle|int, value,
   let fdi = int(fd)
   s.checkFd(fdi)
   if fdi in s:
-    var value = addr(s.getData(fdi))
+    var value = addr(s.fds[fdi].data)
     body
 
 template withData*[T](s: Selector[T], fd: SocketHandle|int, value, body1,
@@ -623,7 +625,7 @@ template withData*[T](s: Selector[T], fd: SocketHandle|int, value, body1,
   let fdi = int(fd)
   s.checkFd(fdi)
   if fdi in s:
-    var value = addr(s.getData(fdi))
+    var value = addr(s.fds[fdi].data)
     body1
   else:
     body2

@@ -51,7 +51,7 @@ routes:
     redirect(uri("/" & @"target"))
 
   post "/login":
-    setCookie("username", @"username", getTime().getGMTime() + 2.hours)
+    setCookie("username", @"username", getTime().utc() + 2.hours)
     redirect("/")
 
   post "/createMessage":

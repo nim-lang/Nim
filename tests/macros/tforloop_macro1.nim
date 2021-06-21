@@ -12,7 +12,7 @@ discard """
 """
 
 import macros
-{.experimental: "forLoopMacros".}
+
 macro mymacro(): untyped =
   result = newLit([1, 2, 3])
 

@@ -22,10 +22,10 @@
 # - output slices need special logic (+)
 
 import
-  ast, astalgo, idents, lowerings, magicsys, guards, sempass2, msgs,
-  renderer, types, modulegraphs, options
+  ast, astalgo, idents, lowerings, magicsys, guards, msgs,
+  renderer, types, modulegraphs, options, spawn, lineinfos
 
-from trees import getMagic
+from trees import getMagic, isTrue, getRoot
 from strutils import `%`
 
 discard """
@@ -81,7 +81,7 @@ proc initAnalysisCtx(g: ModuleGraph): AnalysisCtx =
   result.slices = @[]
   result.args = @[]
   result.guards.s = @[]
-  result.guards.o = initOperators(g)
+  result.guards.g = g
   result.graph = g
 
 proc lookupSlot(c: AnalysisCtx; s: PSym): int =
@@ -92,10 +92,9 @@ proc lookupSlot(c: AnalysisCtx; s: PSym): int =
 proc getSlot(c: var AnalysisCtx; v: PSym): ptr MonotonicVar =
   let s = lookupSlot(c, v)
   if s >= 0: return addr(c.locals[s])
-  let L = c.locals.len
-  c.locals.setLen(L+1)
-  c.locals[L].v = v
-  return addr(c.locals[L])
+  c.locals.setLen(c.locals.len+1)
+  c.locals[^1].v = v
+  return addr(c.locals[^1])
 
 proc gatherArgs(c: var AnalysisCtx; n: PNode) =
   for i in 0..<n.safeLen:
@@ -123,21 +122,23 @@ proc checkLocal(c: AnalysisCtx; n: PNode) =
     if s >= 0 and c.locals[s].stride != nil:
       localError(c.graph.config, n.info, "invalid usage of counter after increment")
   else:
-    for i in 0 ..< n.safeLen: checkLocal(c, n.sons[i])
+    for i in 0..<n.safeLen: checkLocal(c, n[i])
 
 template `?`(x): untyped = x.renderTree
 
 proc checkLe(c: AnalysisCtx; a, b: PNode) =
   case proveLe(c.guards, a, b)
   of impUnknown:
-    localError(c.graph.config, a.info, "cannot prove: " & ?a & " <= " & ?b & " (bounds check)")
+    message(c.graph.config, a.info, warnStaticIndexCheck,
+      "cannot prove: " & ?a & " <= " & ?b)
   of impYes: discard
   of impNo:
-    localError(c.graph.config, a.info, "can prove: " & ?a & " > " & ?b & " (bounds check)")
+    message(c.graph.config, a.info, warnStaticIndexCheck,
+      "can prove: " & ?a & " > " & ?b)
 
 proc checkBounds(c: AnalysisCtx; arr, idx: PNode) =
   checkLe(c, lowBound(c.graph.config, arr), idx)
-  checkLe(c, idx, highBound(c.graph.config, arr, c.guards.o))
+  checkLe(c, idx, highBound(c.graph.config, arr, c.graph.operators))
 
 proc addLowerBoundAsFacts(c: var AnalysisCtx) =
   for v in c.locals:
@@ -146,8 +147,8 @@ proc addLowerBoundAsFacts(c: var AnalysisCtx) =
 
 proc addSlice(c: var AnalysisCtx; n: PNode; x, le, ri: PNode) =
   checkLocal(c, n)
-  let le = le.canon(c.guards.o)
-  let ri = ri.canon(c.guards.o)
+  let le = le.canon(c.graph.operators)
+  let ri = ri.canon(c.graph.operators)
   # perform static bounds checking here; and not later!
   let oldState = c.guards.s.len
   addLowerBoundAsFacts(c)
@@ -163,17 +164,17 @@ proc overlap(m: TModel; conf: ConfigRef; x,y,c,d: PNode) =
     case proveLe(m, x, d)
     of impNo: discard
     of impUnknown, impYes:
-      localError(conf, x.info,
+      message(conf, x.info, warnStaticIndexCheck,
         "cannot prove: $# > $#; required for ($#)..($#) disjoint from ($#)..($#)" %
             [?c, ?y, ?x, ?y, ?c, ?d])
   of impYes:
     case proveLe(m, x, d)
     of impUnknown:
-      localError(conf, x.info,
+      message(conf, x.info, warnStaticIndexCheck,
         "cannot prove: $# > $#; required for ($#)..($#) disjoint from ($#)..($#)" %
           [?x, ?d, ?x, ?y, ?c, ?d])
     of impYes:
-      localError(conf, x.info, "($#)..($#) not disjoint from ($#)..($#)" %
+      message(conf, x.info, warnStaticIndexCheck, "($#)..($#) not disjoint from ($#)..($#)" %
                 [?c, ?y, ?x, ?y, ?c, ?d])
     of impNo: discard
   of impNo: discard
@@ -184,19 +185,19 @@ proc stride(c: AnalysisCtx; n: PNode): BiggestInt =
     if s >= 0 and c.locals[s].stride != nil:
       result = c.locals[s].stride.intVal
   else:
-    for i in 0 ..< n.safeLen: result += stride(c, n.sons[i])
+    for i in 0..<n.safeLen: result += stride(c, n[i])
 
 proc subStride(c: AnalysisCtx; n: PNode): PNode =
   # substitute with stride:
   if isLocal(n):
     let s = c.lookupSlot(n.sym)
     if s >= 0 and c.locals[s].stride != nil:
-      result = buildAdd(n, c.locals[s].stride.intVal, c.guards.o)
+      result = buildAdd(n, c.locals[s].stride.intVal, c.graph.operators)
     else:
       result = n
   elif n.safeLen > 0:
     result = shallowCopy(n)
-    for i in 0 ..< n.len: result.sons[i] = subStride(c, n.sons[i])
+    for i in 0..<n.len: result[i] = subStride(c, n[i])
   else:
     result = n
 
@@ -216,8 +217,8 @@ proc checkSlicesAreDisjoint(c: var AnalysisCtx) =
   #
   # Or even worse:
   #   while true:
-  #     spawn f(a[i+1 .. i+3])
-  #     spawn f(a[i+4 .. i+5])
+  #     spawn f(a[i+1..i+3])
+  #     spawn f(a[i+4..i+5])
   #     inc i, 4
   # Prove that i*k*stride + 3 != i*k'*stride + 5
   # For the correct example this amounts to
@@ -226,15 +227,15 @@ proc checkSlicesAreDisjoint(c: var AnalysisCtx) =
   # For now, we don't try to prove things like that at all, even though it'd
   # be feasible for many useful examples. Instead we attach the slice to
   # a spawn and if the attached spawns differ, we bail out:
-  for i in 0 .. high(c.slices):
-    for j in i+1 .. high(c.slices):
+  for i in 0..high(c.slices):
+    for j in i+1..high(c.slices):
       let x = c.slices[i]
       let y = c.slices[j]
       if x.spawnId != y.spawnId and guards.sameTree(x.x, y.x):
         if not x.inLoop or not y.inLoop:
           # XXX strictly speaking, 'or' is not correct here and it needs to
           # be 'and'. However this prevents too many obviously correct programs
-          # like f(a[0..x]); for i in x+1 .. a.high: f(a[i])
+          # like f(a[0..x]); for i in x+1..a.high: f(a[i])
           overlap(c.guards, c.graph.config, x.a, x.b, y.a, y.b)
         elif (let k = simpleSlice(x.a, x.b); let m = simpleSlice(y.a, y.b);
               k >= 0 and m >= 0):
@@ -255,14 +256,12 @@ proc checkSlicesAreDisjoint(c: var AnalysisCtx) =
 proc analyse(c: var AnalysisCtx; n: PNode)
 
 proc analyseSons(c: var AnalysisCtx; n: PNode) =
-  for i in 0 ..< safeLen(n): analyse(c, n[i])
+  for i in 0..<n.safeLen: analyse(c, n[i])
 
 proc min(a, b: PNode): PNode =
   if a.isNil: result = b
   elif a.intVal < b.intVal: result = a
   else: result = b
-
-proc fromSystem(op: PSym): bool = sfSystemModule in getModule(op).flags
 
 template pushSpawnId(c, body) {.dirty.} =
   inc c.spawns
@@ -295,31 +294,31 @@ proc analyseCall(c: var AnalysisCtx; n: PNode; op: PSym) =
     analyseSons(c, n)
 
 proc analyseCase(c: var AnalysisCtx; n: PNode) =
-  analyse(c, n.sons[0])
+  analyse(c, n[0])
   let oldFacts = c.guards.s.len
   for i in 1..<n.len:
-    let branch = n.sons[i]
+    let branch = n[i]
     setLen(c.guards.s, oldFacts)
     addCaseBranchFacts(c.guards, n, i)
-    for i in 0 ..< branch.len:
-      analyse(c, branch.sons[i])
+    for i in 0..<branch.len:
+      analyse(c, branch[i])
   setLen(c.guards.s, oldFacts)
 
 proc analyseIf(c: var AnalysisCtx; n: PNode) =
-  analyse(c, n.sons[0].sons[0])
+  analyse(c, n[0][0])
   let oldFacts = c.guards.s.len
-  addFact(c.guards, canon(n.sons[0].sons[0], c.guards.o))
+  addFact(c.guards, canon(n[0][0], c.graph.operators))
 
-  analyse(c, n.sons[0].sons[1])
+  analyse(c, n[0][1])
   for i in 1..<n.len:
-    let branch = n.sons[i]
+    let branch = n[i]
     setLen(c.guards.s, oldFacts)
     for j in 0..i-1:
-      addFactNeg(c.guards, canon(n.sons[j].sons[0], c.guards.o))
+      addFactNeg(c.guards, canon(n[j][0], c.graph.operators))
     if branch.len > 1:
-      addFact(c.guards, canon(branch.sons[0], c.guards.o))
-    for i in 0 ..< branch.len:
-      analyse(c, branch.sons[i])
+      addFact(c.guards, canon(branch[0], c.graph.operators))
+    for i in 0..<branch.len:
+      analyse(c, branch[i])
   setLen(c.guards.s, oldFacts)
 
 proc analyse(c: var AnalysisCtx; n: PNode) =
@@ -352,7 +351,7 @@ proc analyse(c: var AnalysisCtx; n: PNode) =
     if n[0].typ != nil and skipTypes(n[0].typ, abstractVar).kind != tyTuple:
       c.addSlice(n, n[0], n[1], n[1])
     analyseSons(c, n)
-  of nkReturnStmt, nkRaiseStmt, nkTryStmt:
+  of nkReturnStmt, nkRaiseStmt, nkTryStmt, nkHiddenTryStmt:
     localError(c.graph.config, n.info, "invalid control flow for 'parallel'")
     # 'break' that leaves the 'parallel' section is not valid either
     # or maybe we should generate a 'try' XXX
@@ -365,7 +364,7 @@ proc analyse(c: var AnalysisCtx; n: PNode) =
           gatherArgs(c, value[1])
           analyseSons(c, value[1])
       if value.kind != nkEmpty:
-        for j in 0 .. it.len-3:
+        for j in 0..<it.len-2:
           if it[j].isLocal:
             let slot = c.getSlot(it[j].sym)
             if slot.lower.isNil: slot.lower = value
@@ -374,35 +373,36 @@ proc analyse(c: var AnalysisCtx; n: PNode) =
   of nkCaseStmt: analyseCase(c, n)
   of nkWhen, nkIfStmt, nkIfExpr: analyseIf(c, n)
   of nkWhileStmt:
-    analyse(c, n.sons[0])
+    analyse(c, n[0])
     # 'while true' loop?
     inc c.inLoop
-    if isTrue(n.sons[0]):
-      analyseSons(c, n.sons[1])
+    if isTrue(n[0]):
+      analyseSons(c, n[1])
     else:
       # loop may never execute:
       let oldState = c.locals.len
       let oldFacts = c.guards.s.len
-      addFact(c.guards, canon(n.sons[0], c.guards.o))
-      analyse(c, n.sons[1])
+      addFact(c.guards, canon(n[0], c.graph.operators))
+      analyse(c, n[1])
       setLen(c.locals, oldState)
       setLen(c.guards.s, oldFacts)
       # we know after the loop the negation holds:
-      if not hasSubnodeWith(n.sons[1], nkBreakStmt):
-        addFactNeg(c.guards, canon(n.sons[0], c.guards.o))
+      if not hasSubnodeWith(n[1], nkBreakStmt):
+        addFactNeg(c.guards, canon(n[0], c.graph.operators))
     dec c.inLoop
   of nkTypeSection, nkProcDef, nkConverterDef, nkMethodDef, nkIteratorDef,
-      nkMacroDef, nkTemplateDef, nkConstSection, nkPragma, nkFuncDef:
+      nkMacroDef, nkTemplateDef, nkConstSection, nkPragma, nkFuncDef,
+      nkMixinStmt, nkBindStmt, nkExportStmt:
     discard
   else:
     analyseSons(c, n)
 
-proc transformSlices(g: ModuleGraph; n: PNode): PNode =
+proc transformSlices(g: ModuleGraph; idgen: IdGenerator; n: PNode): PNode =
   if n.kind in nkCallKinds and n[0].kind == nkSym:
     let op = n[0].sym
     if op.name.s == "[]" and op.fromSystem:
       result = copyNode(n)
-      let opSlice = newSymNode(createMagic(g, "slice", mSlice))
+      let opSlice = newSymNode(createMagic(g, idgen, "slice", mSlice))
       opSlice.typ = getSysType(g, n.info, tyInt)
       result.add opSlice
       result.add n[1]
@@ -412,18 +412,18 @@ proc transformSlices(g: ModuleGraph; n: PNode): PNode =
       return result
   if n.safeLen > 0:
     result = shallowCopy(n)
-    for i in 0 ..< n.len:
-      result.sons[i] = transformSlices(g, n.sons[i])
+    for i in 0..<n.len:
+      result[i] = transformSlices(g, idgen, n[i])
   else:
     result = n
 
-proc transformSpawn(g: ModuleGraph; owner: PSym; n, barrier: PNode): PNode
-proc transformSpawnSons(g: ModuleGraph; owner: PSym; n, barrier: PNode): PNode =
+proc transformSpawn(g: ModuleGraph; idgen: IdGenerator; owner: PSym; n, barrier: PNode): PNode
+proc transformSpawnSons(g: ModuleGraph; idgen: IdGenerator; owner: PSym; n, barrier: PNode): PNode =
   result = shallowCopy(n)
-  for i in 0 ..< n.len:
-    result.sons[i] = transformSpawn(g, owner, n.sons[i], barrier)
+  for i in 0..<n.len:
+    result[i] = transformSpawn(g, idgen, owner, n[i], barrier)
 
-proc transformSpawn(g: ModuleGraph; owner: PSym; n, barrier: PNode): PNode =
+proc transformSpawn(g: ModuleGraph; idgen: IdGenerator; owner: PSym; n, barrier: PNode): PNode =
   case n.kind
   of nkVarSection, nkLetSection:
     result = nil
@@ -431,41 +431,41 @@ proc transformSpawn(g: ModuleGraph; owner: PSym; n, barrier: PNode): PNode =
       let b = it.lastSon
       if getMagic(b) == mSpawn:
         if it.len != 3: localError(g.config, it.info, "invalid context for 'spawn'")
-        let m = transformSlices(g, b)
+        let m = transformSlices(g, idgen, b)
         if result.isNil:
           result = newNodeI(nkStmtList, n.info)
           result.add n
-        let t = b[1][0].typ.sons[0]
+        let t = b[1][0].typ[0]
         if spawnResult(t, true) == srByVar:
-          result.add wrapProcForSpawn(g, owner, m, b.typ, barrier, it[0])
-          it.sons[it.len-1] = newNodeI(nkEmpty, it.info)
+          result.add wrapProcForSpawn(g, idgen, owner, m, b.typ, barrier, it[0])
+          it[^1] = newNodeI(nkEmpty, it.info)
         else:
-          it.sons[it.len-1] = wrapProcForSpawn(g, owner, m, b.typ, barrier, nil)
+          it[^1] = wrapProcForSpawn(g, idgen, owner, m, b.typ, barrier, nil)
     if result.isNil: result = n
   of nkAsgn, nkFastAsgn:
     let b = n[1]
-    if getMagic(b) == mSpawn and (let t = b[1][0].typ.sons[0];
+    if getMagic(b) == mSpawn and (let t = b[1][0].typ[0];
         spawnResult(t, true) == srByVar):
-      let m = transformSlices(g, b)
-      return wrapProcForSpawn(g, owner, m, b.typ, barrier, n[0])
-    result = transformSpawnSons(g, owner, n, barrier)
+      let m = transformSlices(g, idgen, b)
+      return wrapProcForSpawn(g, idgen, owner, m, b.typ, barrier, n[0])
+    result = transformSpawnSons(g, idgen, owner, n, barrier)
   of nkCallKinds:
     if getMagic(n) == mSpawn:
-      result = transformSlices(g, n)
-      return wrapProcForSpawn(g, owner, result, n.typ, barrier, nil)
-    result = transformSpawnSons(g, owner, n, barrier)
+      result = transformSlices(g, idgen, n)
+      return wrapProcForSpawn(g, idgen, owner, result, n.typ, barrier, nil)
+    result = transformSpawnSons(g, idgen, owner, n, barrier)
   elif n.safeLen > 0:
-    result = transformSpawnSons(g, owner, n, barrier)
+    result = transformSpawnSons(g, idgen, owner, n, barrier)
   else:
     result = n
 
 proc checkArgs(a: var AnalysisCtx; n: PNode) =
-  discard "too implement"
+  discard "to implement"
 
 proc generateAliasChecks(a: AnalysisCtx; result: PNode) =
-  discard "too implement"
+  discard "to implement"
 
-proc liftParallel*(g: ModuleGraph; owner: PSym; n: PNode): PNode =
+proc liftParallel*(g: ModuleGraph; idgen: IdGenerator; owner: PSym; n: PNode): PNode =
   # this needs to be called after the 'for' loop elimination
 
   # first pass:
@@ -483,16 +483,16 @@ proc liftParallel*(g: ModuleGraph; owner: PSym; n: PNode): PNode =
   checkArgs(a, body)
 
   var varSection = newNodeI(nkVarSection, n.info)
-  var temp = newSym(skTemp, getIdent(g.cache, "barrier"), owner, n.info)
+  var temp = newSym(skTemp, getIdent(g.cache, "barrier"), nextSymId idgen, owner, n.info)
   temp.typ = magicsys.getCompilerProc(g, "Barrier").typ
   incl(temp.flags, sfFromGeneric)
   let tempNode = newSymNode(temp)
   varSection.addVar tempNode
 
-  let barrier = genAddrOf(tempNode)
+  let barrier = genAddrOf(tempNode, idgen)
   result = newNodeI(nkStmtList, n.info)
   generateAliasChecks(a, result)
   result.add varSection
   result.add callCodegenProc(g, "openBarrier", barrier.info, barrier)
-  result.add transformSpawn(g, owner, body, barrier)
+  result.add transformSpawn(g, idgen, owner, body, barrier)
   result.add callCodegenProc(g, "closeBarrier", barrier.info, barrier)

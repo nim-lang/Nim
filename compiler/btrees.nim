@@ -16,7 +16,7 @@ const
   Mhalf = M div 2
 
 type
-  Node[Key, Val] = ref object
+  Node[Key, Val] {.acyclic.} = ref object
     entries: int
     keys: array[M, Key]
     case isInternal: bool
@@ -37,34 +37,34 @@ template eq(a, b): bool = cmp(a, b) == 0
 proc getOrDefault*[Key, Val](b: BTree[Key, Val], key: Key): Val =
   var x = b.root
   while x.isInternal:
-    for j in 0 ..< x.entries:
+    for j in 0..<x.entries:
       if j+1 == x.entries or less(key, x.keys[j+1]):
         x = x.links[j]
         break
   assert(not x.isInternal)
-  for j in 0 ..< x.entries:
+  for j in 0..<x.entries:
     if eq(key, x.keys[j]): return x.vals[j]
 
 proc contains*[Key, Val](b: BTree[Key, Val], key: Key): bool =
   var x = b.root
   while x.isInternal:
-    for j in 0 ..< x.entries:
+    for j in 0..<x.entries:
       if j+1 == x.entries or less(key, x.keys[j+1]):
         x = x.links[j]
         break
   assert(not x.isInternal)
-  for j in 0 ..< x.entries:
+  for j in 0..<x.entries:
     if eq(key, x.keys[j]): return true
   return false
 
 proc copyHalf[Key, Val](h, result: Node[Key, Val]) =
-  for j in 0 ..< Mhalf:
+  for j in 0..<Mhalf:
     result.keys[j] = h.keys[Mhalf + j]
   if h.isInternal:
-    for j in 0 ..< Mhalf:
+    for j in 0..<Mhalf:
       result.links[j] = h.links[Mhalf + j]
   else:
-    for j in 0 ..< Mhalf:
+    for j in 0..<Mhalf:
       shallowCopy(result.vals[j], h.vals[Mhalf + j])
 
 proc split[Key, Val](h: Node[Key, Val]): Node[Key, Val] =
@@ -79,6 +79,9 @@ proc insert[Key, Val](h: Node[Key, Val], key: Key, val: Val): Node[Key, Val] =
   var j = 0
   if not h.isInternal:
     while j < h.entries:
+      if eq(key, h.keys[j]):
+        h.vals[j] = val
+        return
       if less(key, h.keys[j]): break
       inc j
     for i in countdown(h.entries, j+1):
@@ -132,8 +135,7 @@ proc `$`[Key, Val](b: BTree[Key, Val]): string =
   result = ""
   toString(b.root, "", result)
 
-proc hasNext*[Key, Val](b: BTree[Key, Val]; index: int): bool =
-  result = index < b.entries
+proc hasNext*[Key, Val](b: BTree[Key, Val]; index: int): bool = index < b.entries
 
 proc countSubTree[Key, Val](it: Node[Key, Val]): int =
   if it.isInternal:
@@ -166,68 +168,3 @@ iterator pairs*[Key, Val](b: BTree[Key, Val]): (Key, Val) =
     yield (k, v)
 
 proc len*[Key, Val](b: BTree[Key, Val]): int {.inline.} = b.entries
-
-when isMainModule:
-
-  import random, tables
-
-  proc main =
-    var st = initBTree[string, string]()
-    st.add("www.cs.princeton.edu", "abc")
-    st.add("www.princeton.edu",    "128.112.128.15")
-    st.add("www.yale.edu",         "130.132.143.21")
-    st.add("www.simpsons.com",     "209.052.165.60")
-    st.add("www.apple.com",        "17.112.152.32")
-    st.add("www.amazon.com",       "207.171.182.16")
-    st.add("www.ebay.com",         "66.135.192.87")
-    st.add("www.cnn.com",          "64.236.16.20")
-    st.add("www.google.com",       "216.239.41.99")
-    st.add("www.nytimes.com",      "199.239.136.200")
-    st.add("www.microsoft.com",    "207.126.99.140")
-    st.add("www.dell.com",         "143.166.224.230")
-    st.add("www.slashdot.org",     "66.35.250.151")
-    st.add("www.espn.com",         "199.181.135.201")
-    st.add("www.weather.com",      "63.111.66.11")
-    st.add("www.yahoo.com",        "216.109.118.65")
-
-    assert st.getOrDefault("www.cs.princeton.edu") == "abc"
-    assert st.getOrDefault("www.harvardsucks.com") == nil
-
-    assert st.getOrDefault("www.simpsons.com") == "209.052.165.60"
-    assert st.getOrDefault("www.apple.com") == "17.112.152.32"
-    assert st.getOrDefault("www.ebay.com") == "66.135.192.87"
-    assert st.getOrDefault("www.dell.com") == "143.166.224.230"
-    assert(st.entries == 16)
-
-    for k, v in st:
-      echo k, ": ", v
-
-    when false:
-      var b2 = initBTree[string, string]()
-      const iters = 10_000
-      for i in 1..iters:
-        b2.add($i, $(iters - i))
-      for i in 1..iters:
-        let x = b2.getOrDefault($i)
-        if x != $(iters - i):
-          echo "got ", x, ", but expected ", iters - i
-      echo b2.entries
-
-    when true:
-      var b2 = initBTree[int, string]()
-      var t2 = initTable[int, string]()
-      const iters = 100_000
-      for i in 1..iters:
-        let x = rand(high(int))
-        if not t2.hasKey(x):
-          doAssert b2.getOrDefault(x).len == 0, " what, tree has this element " & $x
-          t2[x] = $x
-          b2.add(x, $x)
-
-      doAssert b2.entries == t2.len
-      echo "unique entries ", b2.entries
-      for k, v in t2:
-        doAssert $k == v
-        doAssert b2.getOrDefault(k) == $k
-
-  main()

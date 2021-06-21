@@ -11,7 +11,7 @@
 
 {.push stackTrace: off.}
 
-when defined(Windows):
+when defined(windows):
   type
     Handle = int
 
@@ -24,7 +24,8 @@ when defined(Windows):
       LockSemaphore: int
       SpinCount: int
 
-    SysCond = Handle
+    SysCond {.importc: "RTL_CONDITION_VARIABLE", header: "<windows.h>".} = object
+      thePtr {.importc: "ptr".} : Handle
 
   proc initSysLock(L: var SysLock) {.importc: "InitializeCriticalSection",
                                      header: "<windows.h>".}
@@ -48,30 +49,29 @@ when defined(Windows):
   proc deinitSys(L: var SysLock) {.importc: "DeleteCriticalSection",
                                    header: "<windows.h>".}
 
-  proc createEvent(lpEventAttributes: pointer,
-                   bManualReset, bInitialState: int32,
-                   lpName: cstring): SysCond {.stdcall, noSideEffect,
-    dynlib: "kernel32", importc: "CreateEventA".}
+  proc initializeConditionVariable(
+    conditionVariable: var SysCond
+  ) {.stdcall, noSideEffect, dynlib: "kernel32", importc: "InitializeConditionVariable".}
 
-  proc closeHandle(hObject: Handle) {.stdcall, noSideEffect,
-    dynlib: "kernel32", importc: "CloseHandle".}
-  proc waitForSingleObject(hHandle: Handle, dwMilliseconds: int32): int32 {.
-    stdcall, dynlib: "kernel32", importc: "WaitForSingleObject", noSideEffect.}
+  proc sleepConditionVariableCS(
+    conditionVariable: var SysCond,
+    PCRITICAL_SECTION: var SysLock,
+    dwMilliseconds: int
+  ): int32 {.stdcall, noSideEffect, dynlib: "kernel32", importc: "SleepConditionVariableCS".}
 
-  proc signalSysCond(hEvent: SysCond) {.stdcall, noSideEffect,
-    dynlib: "kernel32", importc: "SetEvent".}
+
+  proc signalSysCond(hEvent: var SysCond) {.stdcall, noSideEffect,
+    dynlib: "kernel32", importc: "WakeConditionVariable".}
+
+  proc broadcastSysCond(hEvent: var SysCond) {.stdcall, noSideEffect,
+    dynlib: "kernel32", importc: "WakeAllConditionVariable".}
 
   proc initSysCond(cond: var SysCond) {.inline.} =
-    cond = createEvent(nil, 0'i32, 0'i32, nil)
+    initializeConditionVariable(cond)
   proc deinitSysCond(cond: var SysCond) {.inline.} =
-    closeHandle(cond)
+    discard
   proc waitSysCond(cond: var SysCond, lock: var SysLock) =
-    releaseSys(lock)
-    discard waitForSingleObject(cond, -1'i32)
-    acquireSys(lock)
-
-  proc waitSysCondWindows(cond: var SysCond) =
-    discard waitForSingleObject(cond, -1'i32)
+    discard sleepConditionVariableCS(cond, lock, -1'i32)
 
 elif defined(genode):
   const
@@ -93,6 +93,8 @@ elif defined(genode):
   proc waitSysCond(cond: var SysCond, lock: var SysLock) {.
     noSideEffect, importcpp.}
   proc signalSysCond(cond: var SysCond) {.
+    noSideEffect, importcpp.}
+  proc broadcastSysCond(cond: var SysCond) {.
     noSideEffect, importcpp.}
 
 else:
@@ -145,13 +147,13 @@ else:
       SysCond = ptr SysCondObj
 
     when not declared(c_malloc):
-      proc c_malloc(size: csize): pointer {.
+      proc c_malloc(size: csize_t): pointer {.
         importc: "malloc", header: "<stdlib.h>".}
       proc c_free(p: pointer) {.
         importc: "free", header: "<stdlib.h>".}
 
     proc initSysLock(L: var SysLock, attr: ptr SysLockAttr = nil) =
-      L = cast[SysLock](c_malloc(sizeof(SysLockObj)))
+      L = cast[SysLock](c_malloc(csize_t(sizeof(SysLockObj))))
       initSysLockAux(L[], attr)
 
     proc deinitSys(L: var SysLock) =
@@ -181,8 +183,8 @@ else:
       releaseSysAux(L)
 
   when insideRLocksModule:
-    proc SysLockType_Reentrant: SysLockType =
-      {.emit: "`result` = PTHREAD_MUTEX_RECURSIVE;".}
+    let SysLockType_Reentrant {.importc: "PTHREAD_MUTEX_RECURSIVE",
+      header: "<pthread.h>".}: SysLockType
     proc initSysLockAttr(a: var SysLockAttr) {.
       importc: "pthread_mutexattr_init", header: "<pthread.h>", noSideEffect.}
     proc setSysLockType(a: var SysLockAttr, t: SysLockType) {.
@@ -194,14 +196,16 @@ else:
     proc deinitSysCondAux(cond: var SysCondObj) {.noSideEffect,
       importc: "pthread_cond_destroy", header: "<pthread.h>".}
 
-    proc waitSysCondAux(cond: var SysCondObj, lock: var SysLockObj) {.
+    proc waitSysCondAux(cond: var SysCondObj, lock: var SysLockObj): cint {.
       importc: "pthread_cond_wait", header: "<pthread.h>", noSideEffect.}
     proc signalSysCondAux(cond: var SysCondObj) {.
       importc: "pthread_cond_signal", header: "<pthread.h>", noSideEffect.}
+    proc broadcastSysCondAux(cond: var SysCondObj) {.
+      importc: "pthread_cond_broadcast", header: "<pthread.h>", noSideEffect.}
 
     when defined(ios):
       proc initSysCond(cond: var SysCond, cond_attr: ptr SysCondAttr = nil) =
-        cond = cast[SysCond](c_malloc(sizeof(SysCondObj)))
+        cond = cast[SysCond](c_malloc(csize_t(sizeof(SysCondObj))))
         initSysCondAux(cond[], cond_attr)
 
       proc deinitSysCond(cond: var SysCond) =
@@ -209,9 +213,11 @@ else:
         c_free(cond)
 
       template waitSysCond(cond: var SysCond, lock: var SysLock) =
-        waitSysCondAux(cond[], lock[])
+        discard waitSysCondAux(cond[], lock[])
       template signalSysCond(cond: var SysCond) =
         signalSysCondAux(cond[])
+      template broadcastSysCond(cond: var SysCond) =
+        broadcastSysCondAux(cond[])
     else:
       template initSysCond(cond: var SysCond, cond_attr: ptr SysCondAttr = nil) =
         initSysCondAux(cond, cond_attr)
@@ -219,8 +225,10 @@ else:
         deinitSysCondAux(cond)
 
       template waitSysCond(cond: var SysCond, lock: var SysLock) =
-        waitSysCondAux(cond, lock)
+        discard waitSysCondAux(cond, lock)
       template signalSysCond(cond: var SysCond) =
         signalSysCondAux(cond)
+      template broadcastSysCond(cond: var SysCond) =
+        broadcastSysCondAux(cond)
 
 {.pop.}

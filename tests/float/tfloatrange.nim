@@ -1,5 +1,6 @@
 discard """
   cmd: "nim c -d:release --rangeChecks:on $file"
+  disabled: "windows"
   output: '''StrictPositiveRange
 float
 range fail expected
@@ -33,11 +34,11 @@ try:
   myoverload(StrictPositive(z))
 except:
   echo "range fail expected"
-  
-  
+
+
 proc strictOnlyProc(x: StrictPositive): bool =
   if x > 1.0: true else: false
-  
+
 let x2 = 5.0.Positive
 doAssert(strictOnlyProc(x2))
 
@@ -46,4 +47,4 @@ try:
   discard strictOnlyProc(x4)
 except:
   echo "range fail expected"
-  
+

@@ -1,6 +1,6 @@
 discard """
   errormsg: '''
-type mismatch: got <static[proc (a0: int): string{.noSideEffect, gcsafe, locks: 0.}](bar)>
+type mismatch: got <proc (a0: int): string{.noSideEffect, gcsafe, locks: 0.}>
 '''
   line: 13
 """

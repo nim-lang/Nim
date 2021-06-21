@@ -1,7 +1,9 @@
 discard """
   targets: "cpp"
-  output: '''6.0
+  output: '''
+6.0
 0'''
+disabled: "windows" # pending bug #18011
 """
 
 # bug #4730
@@ -27,9 +29,9 @@ main()
 #bug #6837
 type StdString {.importCpp: "std::string", header: "<string>", byref.} = object
 proc initString(): StdString {.constructor, importCpp: "std::string(@)", header: "<string>".}
-proc size(this: var StdString): csize {.importCpp: "size", header: "<string>".}
+proc size(this: var StdString): csize_t {.importCpp: "size", header: "<string>".}
 
-proc f(): csize =
+proc f(): csize_t =
   var myString: StdString = initString()
   return myString.size()
 

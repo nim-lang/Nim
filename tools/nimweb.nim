@@ -53,7 +53,7 @@ proc initConfigData(c: var TConfigData) =
   c.webdoc = @[]
   c.pdf = @[]
   c.infile = ""
-  c.nimArgs = "--hint[Conf]:off --hint[Path]:off --hint[Processing]:off -d:boot "
+  c.nimArgs = "--hint:Conf:off --hint:Path:off --hint:Processing:off -d:boot "
   c.gitURL = "https://github.com/nim-lang/Nim"
   c.docHTMLOutput = "doc/html"
   c.webUploadOutput = "web/upload"
@@ -199,9 +199,9 @@ proc walkDirRecursively(s: var seq[string], root, ext: string) =
 
 proc addFiles(s: var seq[string], dir, ext: string, patterns: seq[string]) =
   for p in items(patterns):
-    if existsFile(dir / addFileExt(p, ext)):
+    if fileExists(dir / addFileExt(p, ext)):
       s.add(dir / addFileExt(p, ext))
-    if existsDir(dir / p):
+    if dirExists(dir / p):
       walkDirRecursively(s, dir / p, ext)
 
 proc parseIniFile(c: var TConfigData) =
@@ -273,9 +273,9 @@ proc findNim(c: TConfigData): string =
   if c.nimCompiler.len > 0: return c.nimCompiler
   var nim = "nim".exe
   result = "bin" / nim
-  if existsFile(result): return
+  if fileExists(result): return
   for dir in split(getEnv("PATH"), PathSep):
-    if existsFile(dir / nim): return dir / nim
+    if fileExists(dir / nim): return dir / nim
   # assume there is a symlink to the exe or something:
   return nim
 
@@ -326,7 +326,7 @@ proc buildDoc(c: var TConfigData, destPath: string) =
       destPath / changeFileExt(splitFile(d).name, "html"), d]
     i.inc
   for d in items(c.srcdoc2):
-    commands[i] = findNim(c) & " doc2 $# --git.url:$# -o:$# --index:on $#" %
+    commands[i] = findNim(c) & " doc $# --git.url:$# -o:$# --index:on $#" %
       [c.nimArgs, c.gitURL,
       destPath / changeFileExt(splitFile(d).name, "html"), d]
     i.inc
@@ -351,7 +351,7 @@ proc buildPdfDoc(c: var TConfigData, destPath: string) =
       removeFile(dest)
       moveFile(dest=dest, source=pdf)
       removeFile(changeFileExt(pdf, "aux"))
-      if existsFile(changeFileExt(pdf, "toc")):
+      if fileExists(changeFileExt(pdf, "toc")):
         removeFile(changeFileExt(pdf, "toc"))
       removeFile(changeFileExt(pdf, "log"))
       removeFile(changeFileExt(pdf, "out"))
@@ -361,7 +361,7 @@ proc buildAddDoc(c: var TConfigData, destPath: string) =
   # build additional documentation (without the index):
   var commands = newSeq[string](c.webdoc.len)
   for i, doc in pairs(c.webdoc):
-    commands[i] = findNim(c) & " doc2 $# --git.url:$# -o:$# $#" %
+    commands[i] = findNim(c) & " doc $# --git.url:$# -o:$# $#" %
       [c.nimArgs, c.gitURL,
       destPath / changeFileExt(splitFile(doc).name, "html"), doc]
   mexec(commands, c.numProcessors)
@@ -421,7 +421,7 @@ proc generateRss(outputFilename: string, news: seq[TRssItem]) =
   output.write(link(href = rssNewsUrl))
   output.write(id(rssNewsUrl))
 
-  let now = getGMTime(getTime())
+  let now = utc(getTime())
   output.write(updatedDate($now.year, $(int(now.month) + 1), $now.monthday))
 
   for rss in news:
@@ -483,7 +483,7 @@ proc buildPage(c: var TConfigData, file, title, rss: string, assetDir = "") =
     quit("[Error] cannot open: " & temp)
   var f: File
   var outfile = c.webUploadOutput / "$#.html" % file
-  if not existsDir(outfile.splitFile.dir):
+  if not dirExists(outfile.splitFile.dir):
     createDir(outfile.splitFile.dir)
   if open(f, outfile, fmWrite):
     writeLine(f, generateHTMLPage(c, file, title, content, rss, assetDir))
@@ -537,7 +537,7 @@ proc json2(c: var TConfigData) =
   var i = 0
   for d in items(c.srcdoc2):
     createDir(destPath / splitFile(d).dir)
-    commands[i] = findNim(c) & " jsondoc2 $# --git.url:$# -o:$# --index:on $#" %
+    commands[i] = findNim(c) & " jsondoc $# --git.url:$# -o:$# --index:on $#" %
       [c.nimArgs, c.gitURL,
       destPath / changeFileExt(d, "json"), d]
     i.inc

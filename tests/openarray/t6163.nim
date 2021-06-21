@@ -5,7 +5,7 @@ discard """
 '''
 """
 
-from future import `->`, `=>`
+from sugar import `->`, `=>`
 from math import `^`, sum
 from sequtils import filter, map, toSeq
 

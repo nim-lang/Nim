@@ -14,6 +14,6 @@ s.add x
 s.add s[s.high]
 
 s.add s[s.len-1]
-s.add s[s.xlen-1]
+s.add s[s.len-1]
 
 echo s # @[5, 5, 0]

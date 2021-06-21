@@ -5,6 +5,7 @@ TEMP=C:\Programs\xyz\bin
 8 5 0 0
 pre test a:test b:1 c:2 haha:3
 assignment test a:test b:1 c:2 haha:3
+abc123
 '''
 """
 
@@ -92,9 +93,9 @@ block tgenericassign:
   var ret: seq[tuple[name: string, a: TAny]] = @[]
   for i in 0 .. 8000:
     var tup = ($name, newAny(nil, nil))
-    assert(tup[0] == "example")
+    doAssert(tup[0] == "example")
     ret.add(tup)
-    assert(ret[ret.len()-1][0] == "example")
+    doAssert(ret[ret.len()-1][0] == "example")
 
 
 
@@ -177,7 +178,7 @@ when false:
   proc `=`[T](d: var GenericT[T]; src: GenericT[T]) =
     shallowCopy(d.a, src.a)
     shallowCopy(d.b, src.b)
-    echo "GenericT[T] '=' ", type(T).name
+    echo "GenericT[T] '=' ", typeof(T).name
 
   var ag: GenericT[int]
   var bg: GenericT[int]
@@ -207,3 +208,11 @@ when false:
     var
       a, b: Foo
     a = b
+
+block tgeneric_assign_varargs:
+  template fatal(msgs: varargs[string]) =
+    for msg in msgs:
+      stdout.write(msg)
+    stdout.write('\n')
+
+  fatal "abc", "123"

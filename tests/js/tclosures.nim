@@ -2,7 +2,7 @@ discard """
   action: run
 """
 
-import math, random, strutils
+import random, strutils
 const consolePrefix = "jsCallbacks"
 
 asm """
@@ -22,7 +22,7 @@ asm """
     function print (text) { console.log (text); }
 """
 
-proc consoleprint (str:cstring): void {.importc: "print", noDecl.}
+proc consoleprint (str:cstring): void {.importc: "print", nodecl.}
 proc print* (a: varargs[string, `$`]) = consoleprint "$1: $2" % [consolePrefix, join(a, " ")]
 
 type CallbackProc {.importc.} = proc () : cstring
@@ -33,8 +33,8 @@ proc runCallbacks ():cstring {.importc.}
 proc `*` (s:string, n:Natural) : string = s.repeat(n)
 
 proc outer (i:Natural) : (string, int) =
-    let c = $char(random(93) + 33)
-    let n = random(40)
+    let c = $char(rand(93) + 33)
+    let n = rand(40)
     let s = c * n
     proc inner(): cstring = ("[$1]" % $n) & s & " <--"
     regCallback(inner)

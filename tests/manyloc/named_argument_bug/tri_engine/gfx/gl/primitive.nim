@@ -61,7 +61,7 @@ proc newPrimitive*(verts: var seq[TVert],
                    color=white(),
                    z: TZ_range=0): PPrimitive =
   var indices = newSeq[GLushort](verts.len)
-  for i in 0 .. <verts.len:
+  for i in 0 ..< verts.len:
     indices[i] = i.GLushort
 
   new(result)
@@ -108,7 +108,7 @@ proc updVerts*(o: PPrimitive, start, `end`: int, f: proc(i: int, vert: var TVert
                    cast[GLvoid](cast[int](o.verts[0].addr) + byteOffset))
 
 proc updAllVerts(o: PPrimitive, f: proc(i: int, vert: var TVert)) =
-  for i in 0 .. <o.verts.len:
+  for i in 0 ..< o.verts.len:
     f(i, o.verts[i])
 
   ?glBindBuffer(GLarrayBuffer, o.arrBufId)
@@ -132,7 +132,7 @@ proc newVertCircle*(circle: TCircle, nSegs: Natural=0): seq[TVert] =
 
   result = newSeq[TVert](nSegs)
   #result[0] = newVert(circle.p, newV2xy(0.5))
-  for i in 1 .. <nSegs:
+  for i in 1 ..< nSegs:
     let pos = newV2(x + circle.p.x, y + circle.p.y)
     let texCoord = pos * newV2xy(1.0 / circle.r)
 

@@ -8,7 +8,7 @@ discard """
 90.0
 120.0
 8 8'''
-  cmd: '''nim c --newruntime $file'''
+joinable: false
 """
 
 import typetraits
@@ -22,6 +22,7 @@ var
 
 proc `=destroy`*[T](x: var opt[T]) =
   if x.data != nil:
+    mixin `=destroy`
     when not supportsCopyMem(T):
       `=destroy`(x.data[])
     dealloc(x.data)

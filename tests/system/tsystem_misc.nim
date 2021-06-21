@@ -59,11 +59,6 @@ doAssert high(float) > low(float)
 doAssert high(float32) > low(float32)
 doAssert high(float64) > low(float64)
 
-# bug #6710
-var s = @[1]
-s.delete(0)
-
-
 proc foo(a: openArray[int]) =
   for x in a: echo x
 
@@ -81,13 +76,13 @@ foo(toOpenArray(seqq, 1, 3))
 # empty openArray issue #7904
 foo(toOpenArray(seqq, 0, -1))
 foo(toOpenArray(seqq, 1, 0))
-doAssertRaises(IndexError):
+doAssertRaises(IndexDefect):
   foo(toOpenArray(seqq, 0, -2))
 
 foo(toOpenArray(arr, 9, 8))
 foo(toOpenArray(arr, 0, -1))
 foo(toOpenArray(arr, 1, 0))
-doAssertRaises(IndexError):
+doAssertRaises(IndexDefect):
   foo(toOpenArray(arr, 10, 8))
 
 # test openArray of openArray
@@ -106,11 +101,11 @@ var arrNeg: array[-3 .. -1, int] = [1, 2, 3]
 foo(toOpenArray(arrNeg, -3, -1))
 foo(toOpenArray(arrNeg, 0, -1))
 foo(toOpenArray(arrNeg, -3, -4))
-doAssertRaises(IndexError):
+doAssertRaises(IndexDefect):
   foo(toOpenArray(arrNeg, -4, -1))
-doAssertRaises(IndexError):
+doAssertRaises(IndexDefect):
   foo(toOpenArray(arrNeg, -1, 0))
-doAssertRaises(IndexError):
+doAssertRaises(IndexDefect):
   foo(toOpenArray(arrNeg, -1, -3))
 doAssertRaises(Exception):
   raise newException(Exception, "foo")
@@ -118,9 +113,9 @@ doAssertRaises(Exception):
 block:
   var didThrow = false
   try:
-    doAssertRaises(IndexError): # should fail since it's wrong exception
-      raise newException(FieldError, "foo")
-  except AssertionError:
+    doAssertRaises(IndexDefect): # should fail since it's wrong exception
+      raise newException(FieldDefect, "foo")
+  except AssertionDefect:
     # ok, throwing was correct behavior
     didThrow = true
   doAssert didThrow
@@ -159,3 +154,61 @@ block: # `$`*[T: tuple|object](x: T)
     x2:float
   doAssert $Foo(x:2) == "(x: 2, x2: 0.0)"
   doAssert $() == "()"
+
+# this is a call indirection to prevent `toInt` to be resolved at compile time.
+proc testToInt(arg: float64, a: int, b: BiggestInt) =
+  doAssert toInt(arg) == a
+  doAssert toBiggestInt(arg) == b
+
+testToInt(0.45, 0, 0)    # should round towards 0
+testToInt(-0.45, 0, 0)   # should round towards 0
+testToInt(0.5, 1, 1)     # should round away from 0
+testToInt(-0.5, -1, -1)  # should round away from 0
+testToInt(13.37, 13, 13)    # should round towards 0
+testToInt(-13.37, -13, -13) # should round towards 0
+testToInt(7.8, 8, 8)     # should round away from 0
+testToInt(-7.8, -8, -8)  # should round away from 0
+
+# test min/max for correct NaN handling
+
+proc testMinMax(a,b: float32) =
+  doAssert max(float32(a),float32(b)) == 0'f32
+  doAssert min(float32(a),float32(b)) == 0'f32
+  doAssert max(float64(a),float64(b)) == 0'f64
+  doAssert min(float64(a),float64(b)) == 0'f64
+
+testMinMax(0.0, NaN)
+testMinMax(NaN, 0.0)
+
+
+block:
+  type Foo = enum
+    k1, k2
+  var
+    a = {k1}
+    b = {k1,k2}
+  doAssert a < b
+
+
+block: # Ordinal
+  doAssert int is Ordinal
+  doAssert uint is Ordinal
+  doAssert int64 is Ordinal
+  doAssert uint64 is Ordinal
+  doAssert char is Ordinal
+  type Foo = enum k1, k2
+  doAssert Foo is Ordinal
+  doAssert Foo is SomeOrdinal
+  doAssert enum is SomeOrdinal
+
+  # these fail:
+  # doAssert enum is Ordinal # fails
+  # doAssert Ordinal is SomeOrdinal
+  # doAssert SomeOrdinal is Ordinal
+
+block:
+  proc p() = discard
+
+  doAssert not compiles(echo p.rawProc.repr)
+  doAssert not compiles(echo p.rawEnv.repr)
+  doAssert not compiles(echo p.finished)

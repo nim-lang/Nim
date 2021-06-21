@@ -38,7 +38,7 @@ In addition, all command line options of Nim are supported.
 proc mainCommand =
   registerPass verbosePass
   registerPass semPass
-  conf.cmd = cmdPretty
+  conf.setCmd cmdNimfix
   searchPaths.add options.libpath
   if gProjectFull.len != 0:
     # current path is always looked first for modules
@@ -98,12 +98,12 @@ proc handleCmdLine(config: ConfigRef) =
       gProjectPath = getCurrentDir()
     loadConfigs(DefaultConfig, config) # load all config files
     # now process command line arguments again, because some options in the
-    # command line can overwite the config file's settings
+    # command line can overwrite the config file's settings
     extccomp.initVars()
     processCmdLine(passCmd2, "", config)
     mainCommand()
 
-when compileOption("gc", "v2") or compileOption("gc", "refc"):
+when compileOption("gc", "refc"):
   GC_disableMarkAndSweep()
 
 condsyms.initDefines()

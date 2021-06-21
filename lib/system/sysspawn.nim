@@ -20,34 +20,28 @@ when not declared(NimString):
 type
   CondVar = object
     c: SysCond
-    when defined(posix):
-      stupidLock: SysLock
-      counter: int
+    stupidLock: SysLock
+    counter: int
 
 proc createCondVar(): CondVar =
   initSysCond(result.c)
-  when defined(posix):
-    initSysLock(result.stupidLock)
-    #acquireSys(result.stupidLock)
+  initSysLock(result.stupidLock)
+  #acquireSys(result.stupidLock)
 
 proc destroyCondVar(c: var CondVar) {.inline.} =
   deinitSysCond(c.c)
 
 proc await(cv: var CondVar) =
-  when defined(posix):
-    acquireSys(cv.stupidLock)
-    while cv.counter <= 0:
-      waitSysCond(cv.c, cv.stupidLock)
-    dec cv.counter
-    releaseSys(cv.stupidLock)
-  else:
-    waitSysCondWindows(cv.c)
+  acquireSys(cv.stupidLock)
+  while cv.counter <= 0:
+    waitSysCond(cv.c, cv.stupidLock)
+  dec cv.counter
+  releaseSys(cv.stupidLock)
 
 proc signal(cv: var CondVar) =
-  when defined(posix):
-    acquireSys(cv.stupidLock)
-    inc cv.counter
-    releaseSys(cv.stupidLock)
+  acquireSys(cv.stupidLock)
+  inc cv.counter
+  releaseSys(cv.stupidLock)
   signalSysCond(cv.c)
 
 type
@@ -57,8 +51,7 @@ type
 
 proc createFastCondVar(): FastCondVar =
   initSysCond(result.slow.c)
-  when defined(posix):
-    initSysLock(result.slow.stupidLock)
+  initSysLock(result.slow.stupidLock)
     #acquireSys(result.slow.stupidLock)
   result.event = false
   result.slowPath = false
@@ -80,22 +73,22 @@ proc signal(cv: var FastCondVar) =
   signal(cv.slow)
 
 type
-  Barrier* {.compilerProc.} = object
+  Barrier* {.compilerproc.} = object
     counter: int
     cv: CondVar
 
-proc barrierEnter*(b: ptr Barrier) {.compilerProc.} =
+proc barrierEnter*(b: ptr Barrier) {.compilerproc.} =
   atomicInc b.counter
 
-proc barrierLeave*(b: ptr Barrier) {.compilerProc.} =
+proc barrierLeave*(b: ptr Barrier) {.compilerproc.} =
   atomicDec b.counter
   if b.counter <= 0: signal(b.cv)
 
-proc openBarrier*(b: ptr Barrier) {.compilerProc.} =
+proc openBarrier*(b: ptr Barrier) {.compilerproc.} =
   b.counter = 0
   b.cv = createCondVar()
 
-proc closeBarrier*(b: ptr Barrier) {.compilerProc.} =
+proc closeBarrier*(b: ptr Barrier) {.compilerproc.} =
   await(b.cv)
   destroyCondVar(b.cv)
 
@@ -113,7 +106,7 @@ type
     data: pointer
     ready: bool # put it here for correct alignment!
 
-proc nimArgsPassingDone(p: pointer) {.compilerProc.} =
+proc nimArgsPassingDone(p: pointer) {.compilerproc.} =
   let w = cast[ptr Worker](p)
   signal(w.taskStarted)
 
@@ -167,7 +160,7 @@ template spawnX*(call: typed) =
   if preferSpawn(): spawn call
   else: call
 
-proc nimSpawn(fn: WorkerProc; data: pointer) {.compilerProc.} =
+proc nimSpawn(fn: WorkerProc; data: pointer) {.compilerproc.} =
   # implementation of 'spawn' that is used by the code generator.
   while true:
     for i in 0.. high(workers):

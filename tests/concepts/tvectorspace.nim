@@ -1,3 +1,7 @@
+discard """
+  joinable: false
+"""
+
 type VectorSpace[K] = concept x, y
   x + y is type(x)
   zero(type(x)) is type(x)

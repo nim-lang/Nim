@@ -32,7 +32,7 @@ proc foo(): seq[NimNode] {.compiletime.} =
   result.add test()
   result.add parseExpr("echo(5+56)")
 
-macro bar(): typed =
+macro bar() =
   result = newNimNode(nnkStmtList)
   let x = foo()
   for xx in x:

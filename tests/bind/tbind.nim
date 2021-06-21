@@ -4,6 +4,7 @@ output: '''
 1
 1
 1
+5
 '''
 """
 
@@ -65,3 +66,13 @@ block tmixin:
 
   Foo(a)
   Foo(b)
+
+# issue #11811
+proc p(a : int) =
+  echo a
+
+proc printVar*[T:int|float|string](a : T) =
+  bind p
+  p(a)
+
+printVar(5)

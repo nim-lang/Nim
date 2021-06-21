@@ -39,6 +39,12 @@ proc test_arrayboundscheck() =
         echo "month out of bounds: ", idx
     except:
       echo "idx out of bounds: ", i
+  
+  # #13966
+  var negativeIndexed: array[-2..2, int] = [0, 1, 2, 3, 4]
+  negativeIndexed[-1] = 2
+  negativeIndexed[1] = 2
+  doAssert negativeIndexed == [0, 2, 2, 2, 4]
 
 test_arrayboundscheck()
 {.pop.}

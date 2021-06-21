@@ -1,6 +1,9 @@
 discard """
-  target: "c"
+  targets: "c"
+disabled: true
 """
+
+# Timers are always flakey on the testing servers.
 
 import coro
 include system/timers

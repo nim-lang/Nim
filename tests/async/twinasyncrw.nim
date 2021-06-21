@@ -1,9 +1,6 @@
-discard """
-  output: "5000"
-"""
 when defined(windows):
   import asyncdispatch, nativesockets, net, strutils, os, winlean
-
+  from stdtest/netutils import bindAvailablePort
   var msgCount = 0
 
   const
@@ -203,12 +200,12 @@ when defined(windows):
       add(result, c)
 
   proc sendMessages(client: AsyncFD) {.async.} =
-    for i in 0 .. <messagesToSend:
+    for i in 0 ..< messagesToSend:
       await winSend(client, "Message " & $i & "\c\L")
 
   proc launchSwarm(port: Port) {.async.} =
-    for i in 0 .. <swarmSize:
-      var sock = newNativeSocket()
+    for i in 0 ..< swarmSize:
+      var sock = createNativeSocket()
       setBlocking(sock, false)
 
       await winConnect(AsyncFD(sock), "localhost", port)
@@ -228,29 +225,19 @@ when defined(windows):
         else:
           doAssert false
 
-  proc createServer(port: Port) {.async.} =
-    var server = newNativeSocket()
-    setBlocking(server, false)
-    block:
-      var name = Sockaddr_in()
-      name.sin_family = toInt(Domain.AF_INET).uint16
-      name.sin_port = htons(uint16(port))
-      name.sin_addr.s_addr = htonl(INADDR_ANY)
-      if bindAddr(server, cast[ptr SockAddr](addr(name)),
-                  sizeof(name).Socklen) < 0'i32:
-        raiseOSError(osLastError())
-
+  proc createServer(server: SocketHandle) {.async.} =
     discard server.listen()
     while true:
       asyncCheck readMessages(await winAccept(AsyncFD(server)))
 
-  asyncCheck createServer(Port(10335))
-  asyncCheck launchSwarm(Port(10335))
+  var server = createNativeSocket()
+  setBlocking(server, false)
+  let port = bindAvailablePort(server)
+  asyncCheck createServer(server)
+  asyncCheck launchSwarm(port)
   while true:
     poll()
     if clientCount == swarmSize: break
 
   assert msgCount == swarmSize * messagesToSend
-  echo msgCount
-else:
-  echo(5000)
+  doAssert msgCount == 5000

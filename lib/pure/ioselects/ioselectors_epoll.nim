@@ -55,7 +55,7 @@ when hasThreadSupport:
       maxFD: int
       numFD: int
       fds: ptr SharedArray[SelectorKey[T]]
-      count: int
+      count*: int
     Selector*[T] = ptr SelectorImpl[T]
 else:
   type
@@ -64,7 +64,7 @@ else:
       maxFD: int
       numFD: int
       fds: seq[SelectorKey[T]]
-      count: int
+      count*: int
     Selector*[T] = ref SelectorImpl[T]
 type
   SelectEventImpl = object
@@ -75,15 +75,15 @@ proc newSelector*[T](): Selector[T] =
   # Retrieve the maximum fd count (for current OS) via getrlimit()
   var a = RLimit()
   if getrlimit(posix.RLIMIT_NOFILE, a) != 0:
-    raiseOsError(osLastError())
+    raiseOSError(osLastError())
   var maxFD = int(a.rlim_max)
   doAssert(maxFD > 0)
   # Start with a reasonable size, checkFd() will grow this on demand
   const numFD = 1024
 
-  var epollFD = epoll_create(MAX_EPOLL_EVENTS)
+  var epollFD = epoll_create1(O_CLOEXEC)
   if epollFD < 0:
-    raiseOsError(osLastError())
+    raiseOSError(osLastError())
 
   when hasThreadSupport:
     result = cast[Selector[T]](allocShared0(sizeof(SelectorImpl[T])))
@@ -110,10 +110,9 @@ proc close*[T](s: Selector[T]) =
     raiseIOSelectorsError(osLastError())
 
 proc newSelectEvent*(): SelectEvent =
-  let fdci = eventfd(0, 0)
+  let fdci = eventfd(0, O_CLOEXEC or O_NONBLOCK)
   if fdci == -1:
     raiseIOSelectorsError(osLastError())
-  setNonBlocking(fdci)
   result = cast[SelectEvent](allocShared0(sizeof(SelectEventImpl)))
   result.efd = fdci
 
@@ -197,7 +196,7 @@ proc unregister*[T](s: Selector[T], fd: int|SocketHandle) =
            "Descriptor $# is not registered in the selector!" % $fdi)
   if pkey.events != {}:
     when not defined(android):
-      if pkey.events * {Event.Read, Event.Write} != {}:
+      if Event.Read in pkey.events or Event.Write in pkey.events or Event.User in pkey.events:
         var epv = EpollEvent()
         # TODO: Refactor all these EPOLL_CTL_DEL + dec(s.count) into a proc.
         if epoll_ctl(s.epollFD, EPOLL_CTL_DEL, fdi.cint, addr epv) != 0:
@@ -237,7 +236,7 @@ proc unregister*[T](s: Selector[T], fd: int|SocketHandle) =
         if posix.close(cint(fdi)) != 0:
           raiseIOSelectorsError(osLastError())
     else:
-      if pkey.events * {Event.Read, Event.Write} != {}:
+      if Event.Read in pkey.events or Event.Write in pkey.events or Event.User in pkey.events:
         var epv = EpollEvent()
         if epoll_ctl(s.epollFD, EPOLL_CTL_DEL, fdi.cint, addr epv) != 0:
           raiseIOSelectorsError(osLastError())
@@ -267,12 +266,11 @@ proc unregister*[T](s: Selector[T], ev: SelectEvent) =
 proc registerTimer*[T](s: Selector[T], timeout: int, oneshot: bool,
                        data: T): int {.discardable.} =
   var
-    new_ts: Itimerspec
-    old_ts: Itimerspec
-  let fdi = timerfd_create(CLOCK_MONOTONIC, 0).int
+    newTs: Itimerspec
+    oldTs: Itimerspec
+  let fdi = timerfd_create(CLOCK_MONOTONIC, O_CLOEXEC or O_NONBLOCK).int
   if fdi == -1:
     raiseIOSelectorsError(osLastError())
-  setNonBlocking(fdi.cint)
 
   s.checkFd(fdi)
   doAssert(s.fds[fdi].ident == InvalidIdent)
@@ -282,19 +280,19 @@ proc registerTimer*[T](s: Selector[T], timeout: int, oneshot: bool,
   epv.data.u64 = fdi.uint
 
   if oneshot:
-    new_ts.it_interval.tv_sec = posix.Time(0)
-    new_ts.it_interval.tv_nsec = 0
-    new_ts.it_value.tv_sec = posix.Time(timeout div 1_000)
-    new_ts.it_value.tv_nsec = (timeout %% 1_000) * 1_000_000
+    newTs.it_interval.tv_sec = posix.Time(0)
+    newTs.it_interval.tv_nsec = 0
+    newTs.it_value.tv_sec = posix.Time(timeout div 1_000)
+    newTs.it_value.tv_nsec = (timeout %% 1_000) * 1_000_000
     incl(events, Event.Oneshot)
     epv.events = epv.events or EPOLLONESHOT
   else:
-    new_ts.it_interval.tv_sec = posix.Time(timeout div 1000)
-    new_ts.it_interval.tv_nsec = (timeout %% 1_000) * 1_000_000
-    new_ts.it_value.tv_sec = new_ts.it_interval.tv_sec
-    new_ts.it_value.tv_nsec = new_ts.it_interval.tv_nsec
+    newTs.it_interval.tv_sec = posix.Time(timeout div 1000)
+    newTs.it_interval.tv_nsec = (timeout %% 1_000) * 1_000_000
+    newTs.it_value.tv_sec = newTs.it_interval.tv_sec
+    newTs.it_value.tv_nsec = newTs.it_interval.tv_nsec
 
-  if timerfd_settime(fdi.cint, cint(0), new_ts, old_ts) != 0:
+  if timerfd_settime(fdi.cint, cint(0), newTs, oldTs) != 0:
     raiseIOSelectorsError(osLastError())
   if epoll_ctl(s.epollFD, EPOLL_CTL_ADD, fdi.cint, addr epv) != 0:
     raiseIOSelectorsError(osLastError())
@@ -314,10 +312,9 @@ when not defined(android):
     discard sigaddset(nmask, cint(signal))
     blockSignals(nmask, omask)
 
-    let fdi = signalfd(-1, nmask, 0).int
+    let fdi = signalfd(-1, nmask, O_CLOEXEC or O_NONBLOCK).int
     if fdi == -1:
       raiseIOSelectorsError(osLastError())
-    setNonBlocking(fdi.cint)
 
     s.checkFd(fdi)
     doAssert(s.fds[fdi].ident == InvalidIdent)
@@ -341,10 +338,9 @@ when not defined(android):
     discard sigaddset(nmask, posix.SIGCHLD)
     blockSignals(nmask, omask)
 
-    let fdi = signalfd(-1, nmask, 0).int
+    let fdi = signalfd(-1, nmask, O_CLOEXEC or O_NONBLOCK).int
     if fdi == -1:
       raiseIOSelectorsError(osLastError())
-    setNonBlocking(fdi.cint)
 
     s.checkFd(fdi)
     doAssert(s.fds[fdi].ident == InvalidIdent)
@@ -369,7 +365,7 @@ proc registerEvent*[T](s: Selector[T], ev: SelectEvent, data: T) =
   inc(s.count)
 
 proc selectInto*[T](s: Selector[T], timeout: int,
-                    results: var openarray[ReadyKey]): int =
+                    results: var openArray[ReadyKey]): int =
   var
     resTable: array[MAX_EPOLL_EVENTS, EpollEvent]
     maxres = MAX_EPOLL_EVENTS
@@ -377,6 +373,8 @@ proc selectInto*[T](s: Selector[T], timeout: int,
 
   if maxres > len(results):
     maxres = len(results)
+
+  verifySelectParams(timeout)
 
   let count = epoll_wait(s.epollFD, addr(resTable[0]), maxres.cint,
                          timeout.cint)
@@ -516,7 +514,7 @@ template withData*[T](s: Selector[T], fd: SocketHandle|int, value,
   let fdi = int(fd)
   s.checkFd(fdi)
   if fdi in s:
-    var value = addr(s.getData(fdi))
+    var value = addr(s.fds[fdi].data)
     body
 
 template withData*[T](s: Selector[T], fd: SocketHandle|int, value, body1,
@@ -525,7 +523,7 @@ template withData*[T](s: Selector[T], fd: SocketHandle|int, value, body1,
   let fdi = int(fd)
   s.checkFd(fdi)
   if fdi in s:
-    var value = addr(s.getData(fdi))
+    var value = addr(s.fds[fdi].data)
     body1
   else:
     body2

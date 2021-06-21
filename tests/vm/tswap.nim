@@ -3,7 +3,9 @@ nimout: '''
 x.data = @[10]
 y = @[11]
 x.data = @[11]
-y = @[10]'''
+y = @[10]
+@[3, 2, 1]
+'''
 """
 
 # bug #2946
@@ -22,3 +24,11 @@ proc testSwap(): int {.compiletime.} =
   result = 99
 
 const something = testSwap()
+
+# bug #15463
+block:
+  static:
+    var s = @[1, 2, 3]
+    swap(s[0], s[2])
+
+    echo s

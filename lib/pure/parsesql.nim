@@ -7,21 +7,23 @@
 #    distribution, for details about the copyright.
 #
 
-## The ``parsesql`` module implements a high performance SQL file
+## The `parsesql` module implements a high performance SQL file
 ## parser. It parses PostgreSQL syntax and the SQL ANSI standard.
+##
+## Unstable API.
 
-import
-  strutils, lexbase
+import strutils, lexbase
+import std/private/decode_helpers
 
 # ------------------- scanner -------------------------------------------------
 
 type
-  TokKind = enum       ## enumeration of all SQL tokens
-    tkInvalid,          ## invalid token
-    tkEof,              ## end of file reached
-    tkIdentifier,       ## abc
-    tkQuotedIdentifier, ## "abc"
-    tkStringConstant,   ## 'abc'
+  TokKind = enum            ## enumeration of all SQL tokens
+    tkInvalid,              ## invalid token
+    tkEof,                  ## end of file reached
+    tkIdentifier,           ## abc
+    tkQuotedIdentifier,     ## "abc"
+    tkStringConstant,       ## 'abc'
     tkEscapeConstant,       ## e'abc'
     tkDollarQuotedConstant, ## $tag$abc$tag$
     tkBitStringConstant,    ## B'00011'
@@ -38,9 +40,9 @@ type
     tkBracketRi,            ## ']'
     tkDot                   ## '.'
 
-  Token = object  # a token
-    kind: TokKind           # the type of the token
-    literal: string          # the parsed (string) literal
+  Token = object    # a token
+    kind: TokKind   # the type of the token
+    literal: string # the parsed (string) literal
 
   SqlLexer* = object of BaseLexer ## the parser object.
     filename: string
@@ -69,20 +71,6 @@ proc getColumn(L: SqlLexer): int =
 
 proc getLine(L: SqlLexer): int =
   result = L.lineNumber
-
-proc handleHexChar(c: var SqlLexer, xi: var int) =
-  case c.buf[c.bufpos]
-  of '0'..'9':
-    xi = (xi shl 4) or (ord(c.buf[c.bufpos]) - ord('0'))
-    inc(c.bufpos)
-  of 'a'..'f':
-    xi = (xi shl 4) or (ord(c.buf[c.bufpos]) - ord('a') + 10)
-    inc(c.bufpos)
-  of 'A'..'F':
-    xi = (xi shl 4) or (ord(c.buf[c.bufpos]) - ord('A') + 10)
-    inc(c.bufpos)
-  else:
-    discard
 
 proc handleOctChar(c: var SqlLexer, xi: var int) =
   if c.buf[c.bufpos] in {'0'..'7'}:
@@ -128,8 +116,10 @@ proc getEscapedChar(c: var SqlLexer, tok: var Token) =
   of 'x', 'X':
     inc(c.bufpos)
     var xi = 0
-    handleHexChar(c, xi)
-    handleHexChar(c, xi)
+    if handleHexChar(c.buf[c.bufpos], xi):
+      inc(c.bufpos)
+      if handleHexChar(c.buf[c.bufpos], xi):
+        inc(c.bufpos)
     add(tok.literal, chr(xi))
   of '0'..'7':
     var xi = 0
@@ -148,35 +138,33 @@ proc handleCRLF(c: var SqlLexer, pos: int): int =
 
 proc skip(c: var SqlLexer) =
   var pos = c.bufpos
-  var buf = c.buf
   var nested = 0
   while true:
-    case buf[pos]
+    case c.buf[pos]
     of ' ', '\t':
       inc(pos)
     of '-':
-      if buf[pos+1] == '-':
-        while not (buf[pos] in {'\c', '\L', lexbase.EndOfFile}): inc(pos)
+      if c.buf[pos+1] == '-':
+        while not (c.buf[pos] in {'\c', '\L', lexbase.EndOfFile}): inc(pos)
       else:
         break
     of '/':
-      if buf[pos+1] == '*':
-        inc(pos,2)
+      if c.buf[pos+1] == '*':
+        inc(pos, 2)
         while true:
-          case buf[pos]
+          case c.buf[pos]
           of '\0': break
           of '\c', '\L':
             pos = handleCRLF(c, pos)
-            buf = c.buf
           of '*':
-            if buf[pos+1] == '/':
+            if c.buf[pos+1] == '/':
               inc(pos, 2)
               if nested <= 0: break
               dec(nested)
             else:
               inc(pos)
           of '/':
-            if buf[pos+1] == '*':
+            if c.buf[pos+1] == '*':
               inc(pos, 2)
               inc(nested)
             else:
@@ -185,21 +173,19 @@ proc skip(c: var SqlLexer) =
       else: break
     of '\c', '\L':
       pos = handleCRLF(c, pos)
-      buf = c.buf
     else:
-      break                   # EndOfFile also leaves the loop
+      break # EndOfFile also leaves the loop
   c.bufpos = pos
 
 proc getString(c: var SqlLexer, tok: var Token, kind: TokKind) =
   var pos = c.bufpos + 1
-  var buf = c.buf
   tok.kind = kind
   block parseLoop:
     while true:
       while true:
-        var ch = buf[pos]
+        var ch = c.buf[pos]
         if ch == '\'':
-          if buf[pos+1] == '\'':
+          if c.buf[pos+1] == '\'':
             inc(pos, 2)
             add(tok.literal, '\'')
           else:
@@ -221,30 +207,27 @@ proc getString(c: var SqlLexer, tok: var Token, kind: TokKind) =
       if c.lineNumber > line:
         # a new line whitespace has been parsed, so we check if the string
         # continues after the whitespace:
-        buf = c.buf # may have been reallocated
         pos = c.bufpos
-        if buf[pos] == '\'': inc(pos)
+        if c.buf[pos] == '\'': inc(pos)
         else: break parseLoop
       else: break parseLoop
   c.bufpos = pos
 
 proc getDollarString(c: var SqlLexer, tok: var Token) =
   var pos = c.bufpos + 1
-  var buf = c.buf
   tok.kind = tkDollarQuotedConstant
   var tag = "$"
-  while buf[pos] in IdentChars:
-    add(tag, buf[pos])
+  while c.buf[pos] in IdentChars:
+    add(tag, c.buf[pos])
     inc(pos)
-  if buf[pos] == '$': inc(pos)
+  if c.buf[pos] == '$': inc(pos)
   else:
     tok.kind = tkInvalid
     return
   while true:
-    case buf[pos]
+    case c.buf[pos]
     of '\c', '\L':
       pos = handleCRLF(c, pos)
-      buf = c.buf
       add(tok.literal, "\L")
     of '\0':
       tok.kind = tkInvalid
@@ -252,37 +235,36 @@ proc getDollarString(c: var SqlLexer, tok: var Token) =
     of '$':
       inc(pos)
       var tag2 = "$"
-      while buf[pos] in IdentChars:
-        add(tag2, buf[pos])
+      while c.buf[pos] in IdentChars:
+        add(tag2, c.buf[pos])
         inc(pos)
-      if buf[pos] == '$': inc(pos)
+      if c.buf[pos] == '$': inc(pos)
       if tag2 == tag: break
       add(tok.literal, tag2)
       add(tok.literal, '$')
     else:
-      add(tok.literal, buf[pos])
+      add(tok.literal, c.buf[pos])
       inc(pos)
   c.bufpos = pos
 
 proc getSymbol(c: var SqlLexer, tok: var Token) =
   var pos = c.bufpos
-  var buf = c.buf
   while true:
-    add(tok.literal, buf[pos])
+    add(tok.literal, c.buf[pos])
     inc(pos)
-    if buf[pos] notin {'a'..'z','A'..'Z','0'..'9','_','$', '\128'..'\255'}:
+    if c.buf[pos] notin {'a'..'z', 'A'..'Z', '0'..'9', '_', '$',
+        '\128'..'\255'}:
       break
   c.bufpos = pos
   tok.kind = tkIdentifier
 
-proc getQuotedIdentifier(c: var SqlLexer, tok: var Token, quote='\"') =
+proc getQuotedIdentifier(c: var SqlLexer, tok: var Token, quote = '\"') =
   var pos = c.bufpos + 1
-  var buf = c.buf
   tok.kind = tkQuotedIdentifier
   while true:
-    var ch = buf[pos]
+    var ch = c.buf[pos]
     if ch == quote:
-      if buf[pos+1] == quote:
+      if c.buf[pos+1] == quote:
         inc(pos, 2)
         add(tok.literal, quote)
       else:
@@ -298,11 +280,10 @@ proc getQuotedIdentifier(c: var SqlLexer, tok: var Token, quote='\"') =
 
 proc getBitHexString(c: var SqlLexer, tok: var Token, validChars: set[char]) =
   var pos = c.bufpos + 1
-  var buf = c.buf
   block parseLoop:
     while true:
       while true:
-        var ch = buf[pos]
+        var ch = c.buf[pos]
         if ch in validChars:
           add(tok.literal, ch)
           inc(pos)
@@ -318,9 +299,8 @@ proc getBitHexString(c: var SqlLexer, tok: var Token, validChars: set[char]) =
       if c.lineNumber > line:
         # a new line whitespace has been parsed, so we check if the string
         # continues after the whitespace:
-        buf = c.buf # may have been reallocated
         pos = c.bufpos
-        if buf[pos] == '\'': inc(pos)
+        if c.buf[pos] == '\'': inc(pos)
         else: break parseLoop
       else: break parseLoop
   c.bufpos = pos
@@ -328,29 +308,28 @@ proc getBitHexString(c: var SqlLexer, tok: var Token, validChars: set[char]) =
 proc getNumeric(c: var SqlLexer, tok: var Token) =
   tok.kind = tkInteger
   var pos = c.bufpos
-  var buf = c.buf
-  while buf[pos] in Digits:
-    add(tok.literal, buf[pos])
+  while c.buf[pos] in Digits:
+    add(tok.literal, c.buf[pos])
     inc(pos)
-  if buf[pos] == '.':
+  if c.buf[pos] == '.':
     tok.kind = tkNumeric
-    add(tok.literal, buf[pos])
+    add(tok.literal, c.buf[pos])
     inc(pos)
-    while buf[pos] in Digits:
-      add(tok.literal, buf[pos])
+    while c.buf[pos] in Digits:
+      add(tok.literal, c.buf[pos])
       inc(pos)
-  if buf[pos] in {'E', 'e'}:
+  if c.buf[pos] in {'E', 'e'}:
     tok.kind = tkNumeric
-    add(tok.literal, buf[pos])
+    add(tok.literal, c.buf[pos])
     inc(pos)
-    if buf[pos] == '+':
+    if c.buf[pos] == '+':
       inc(pos)
-    elif buf[pos] == '-':
-      add(tok.literal, buf[pos])
+    elif c.buf[pos] == '-':
+      add(tok.literal, c.buf[pos])
       inc(pos)
-    if buf[pos] in Digits:
-      while buf[pos] in Digits:
-        add(tok.literal, buf[pos])
+    if c.buf[pos] in Digits:
+      while c.buf[pos] in Digits:
+        add(tok.literal, c.buf[pos])
         inc(pos)
     else:
       tok.kind = tkInvalid
@@ -361,24 +340,23 @@ proc getOperator(c: var SqlLexer, tok: var Token) =
                      '^', '&', '|', '`', '?'}
   tok.kind = tkOperator
   var pos = c.bufpos
-  var buf = c.buf
   var trailingPlusMinus = false
   while true:
-    case buf[pos]
+    case c.buf[pos]
     of '-':
-      if buf[pos] == '-': break
-      if not trailingPlusMinus and buf[pos+1] notin operators and
+      if c.buf[pos] == '-': break
+      if not trailingPlusMinus and c.buf[pos+1] notin operators and
            tok.literal.len > 0: break
     of '/':
-      if buf[pos] == '*': break
+      if c.buf[pos] == '*': break
     of '~', '!', '@', '#', '%', '^', '&', '|', '`', '?':
       trailingPlusMinus = true
     of '+':
-      if not trailingPlusMinus and buf[pos+1] notin operators and
+      if not trailingPlusMinus and c.buf[pos+1] notin operators and
            tok.literal.len > 0: break
     of '*', '<', '>', '=': discard
     else: break
-    add(tok.literal, buf[pos])
+    add(tok.literal, c.buf[pos])
     inc(pos)
   c.bufpos = pos
 
@@ -414,7 +392,7 @@ proc getTok(c: var SqlLexer, tok: var Token) =
   of 'x', 'X':
     if c.buf[c.bufpos + 1] == '\'':
       tok.kind = tkHexStringConstant
-      getBitHexString(c, tok, {'a'..'f','A'..'F','0'..'9'})
+      getBitHexString(c, tok, {'a'..'f', 'A'..'F', '0'..'9'})
     else:
       getSymbol(c, tok)
   of '$': getDollarString(c, tok)
@@ -515,7 +493,7 @@ type
     nkConstraint,
     nkUnique,
     nkIdentity,
-    nkColumnDef,        ## name, datatype, constraints
+    nkColumnDef,      ## name, datatype, constraints
     nkInsert,
     nkUpdate,
     nkDelete,
@@ -554,30 +532,34 @@ const
 
 type
   SqlParseError* = object of ValueError ## Invalid SQL encountered
-  SqlNode* = ref SqlNodeObj        ## an SQL abstract syntax tree node
-  SqlNodeObj* = object              ## an SQL abstract syntax tree node
-    case kind*: SqlNodeKind      ## kind of syntax tree
+  SqlNode* = ref SqlNodeObj ## an SQL abstract syntax tree node
+  SqlNodeObj* = object      ## an SQL abstract syntax tree node
+    case kind*: SqlNodeKind ## kind of syntax tree
     of LiteralNodes:
-      strVal*: string             ## AST leaf: the identifier, numeric literal
-                                  ## string literal, etc.
+      strVal*: string       ## AST leaf: the identifier, numeric literal
+                            ## string literal, etc.
     else:
-      sons*: seq[SqlNode]        ## the node's children
+      sons*: seq[SqlNode]   ## the node's children
 
   SqlParser* = object of SqlLexer ## SQL parser object
     tok: Token
 
 proc newNode*(k: SqlNodeKind): SqlNode =
-  new(result)
-  result.kind = k
+  when defined(js): # bug #14117
+    case k
+    of LiteralNodes:
+      result = SqlNode(kind: k, strVal: "")
+    else:
+      result = SqlNode(kind: k, sons: @[])
+  else:
+    result = SqlNode(kind: k)
 
 proc newNode*(k: SqlNodeKind, s: string): SqlNode =
-  new(result)
-  result.kind = k
+  result = SqlNode(kind: k)
   result.strVal = s
 
 proc newNode*(k: SqlNodeKind, sons: seq[SqlNode]): SqlNode =
-  new(result)
-  result.kind = k
+  result = SqlNode(kind: k)
   result.sons = sons
 
 proc len*(n: SqlNode): int =
@@ -685,8 +667,8 @@ proc getPrecedence(p: SqlParser): int =
   else:
     result = - 1
 
-proc parseExpr(p: var SqlParser): SqlNode
-proc parseSelect(p: var SqlParser): SqlNode
+proc parseExpr(p: var SqlParser): SqlNode {.gcsafe.}
+proc parseSelect(p: var SqlParser): SqlNode {.gcsafe.}
 
 proc identOrLiteral(p: var SqlParser): SqlNode =
   case p.tok.kind
@@ -725,10 +707,11 @@ proc identOrLiteral(p: var SqlParser): SqlNode =
       getTok(p)
     else:
       sqlError(p, "expression expected")
-      getTok(p) # we must consume a token here to prevend endless loops!
+      getTok(p) # we must consume a token here to prevent endless loops!
 
 proc primary(p: var SqlParser): SqlNode =
-  if (p.tok.kind == tkOperator and (p.tok.literal == "+" or p.tok.literal == "-")) or isKeyw(p, "not"):
+  if (p.tok.kind == tkOperator and (p.tok.literal == "+" or p.tok.literal ==
+      "-")) or isKeyw(p, "not"):
     result = newNode(nkPrefix)
     result.add(newNode(nkIdent, p.tok.literal))
     getTok(p)
@@ -1196,9 +1179,12 @@ type
 proc add(s: var SqlWriter, thing: char) =
   s.buffer.add(thing)
 
-proc add(s: var SqlWriter, thing: string) =
+proc prepareAdd(s: var SqlWriter) {.inline.} =
   if s.buffer.len > 0 and s.buffer[^1] notin {' ', '\L', '(', '.'}:
     s.buffer.add(" ")
+
+proc add(s: var SqlWriter, thing: string) =
+  s.prepareAdd
   s.buffer.add(thing)
 
 proc addKeyw(s: var SqlWriter, thing: string) =
@@ -1213,7 +1199,7 @@ proc addIden(s: var SqlWriter, thing: string) =
     iden = '"' & iden & '"'
   s.add(iden)
 
-proc ra(n: SqlNode, s: var SqlWriter)
+proc ra(n: SqlNode, s: var SqlWriter) {.gcsafe.}
 
 proc rs(n: SqlNode, s: var SqlWriter, prefix = "(", suffix = ")", sep = ", ") =
   if n.len > 0:
@@ -1240,6 +1226,17 @@ proc addMulti(s: var SqlWriter, n: SqlNode, sep = ',', prefix, suffix: char) =
 proc quoted(s: string): string =
   "\"" & replace(s, "\"", "\"\"") & "\""
 
+func escape(result: var string; s: string) =
+  result.add('\'')
+  for c in items(s):
+    case c
+    of '\0'..'\31':
+      result.add("\\x")
+      result.add(toHex(ord(c), 2))
+    of '\'': result.add("''")
+    else: result.add(c)
+  result.add('\'')
+
 proc ra(n: SqlNode, s: var SqlWriter) =
   if n == nil: return
   case n.kind
@@ -1252,7 +1249,8 @@ proc ra(n: SqlNode, s: var SqlWriter) =
   of nkQuotedIdent:
     s.add(quoted(n.strVal))
   of nkStringLit:
-    s.add(escape(n.strVal, "'", "'"))
+    s.prepareAdd
+    s.buffer.escape(n.strVal)
   of nkBitStringLit:
     s.add("b'" & n.strVal & "'")
   of nkHexStringLit:
@@ -1453,7 +1451,7 @@ proc ra(n: SqlNode, s: var SqlWriter) =
     s.addKeyw("enum")
     rs(n, s)
 
-proc renderSQL*(n: SqlNode, upperCase=false): string =
+proc renderSQL*(n: SqlNode, upperCase = false): string =
   ## Converts an SQL abstract syntax tree to its string representation.
   var s: SqlWriter
   s.buffer = ""
@@ -1481,34 +1479,33 @@ proc treeRepr*(s: SqlNode): string =
   result = newStringOfCap(128)
   treeReprAux(s, 0, result)
 
-when not defined(js):
-  import streams
+import streams
 
-  proc open(L: var SqlLexer, input: Stream, filename: string) =
-    lexbase.open(L, input)
-    L.filename = filename
+proc open(L: var SqlLexer, input: Stream, filename: string) =
+  lexbase.open(L, input)
+  L.filename = filename
 
-  proc open(p: var SqlParser, input: Stream, filename: string) =
-    ## opens the parser `p` and assigns the input stream `input` to it.
-    ## `filename` is only used for error messages.
-    open(SqlLexer(p), input, filename)
-    p.tok.kind = tkInvalid
-    p.tok.literal = ""
-    getTok(p)
+proc open(p: var SqlParser, input: Stream, filename: string) =
+  ## opens the parser `p` and assigns the input stream `input` to it.
+  ## `filename` is only used for error messages.
+  open(SqlLexer(p), input, filename)
+  p.tok.kind = tkInvalid
+  p.tok.literal = ""
+  getTok(p)
 
-  proc parseSQL*(input: Stream, filename: string): SqlNode =
-    ## parses the SQL from `input` into an AST and returns the AST.
-    ## `filename` is only used for error messages.
-    ## Syntax errors raise an `SqlParseError` exception.
-    var p: SqlParser
-    open(p, input, filename)
-    try:
-      result = parse(p)
-    finally:
-      close(p)
+proc parseSQL*(input: Stream, filename: string): SqlNode =
+  ## parses the SQL from `input` into an AST and returns the AST.
+  ## `filename` is only used for error messages.
+  ## Syntax errors raise an `SqlParseError` exception.
+  var p: SqlParser
+  open(p, input, filename)
+  try:
+    result = parse(p)
+  finally:
+    close(p)
 
-  proc parseSQL*(input: string, filename=""): SqlNode =
-    ## parses the SQL from `input` into an AST and returns the AST.
-    ## `filename` is only used for error messages.
-    ## Syntax errors raise an `SqlParseError` exception.
-    parseSQL(newStringStream(input), "")
+proc parseSQL*(input: string, filename = ""): SqlNode =
+  ## parses the SQL from `input` into an AST and returns the AST.
+  ## `filename` is only used for error messages.
+  ## Syntax errors raise an `SqlParseError` exception.
+  parseSQL(newStringStream(input), "")

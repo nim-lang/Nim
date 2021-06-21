@@ -9,6 +9,31 @@
 
 ## This module implements an algorithm to compute the
 ## `diff`:idx: between two sequences of lines.
+##
+## - To learn more see `Diff on Wikipedia. <http://wikipedia.org/wiki/Diff>`_
+
+runnableExamples:
+  assert diffInt(
+    [0, 1, 2, 3, 4, 5, 6, 7, 8],
+    [-1, 1, 2, 3, 4, 5, 666, 7, 42]) ==
+    @[Item(startA: 0, startB: 0, deletedA: 1, insertedB: 1),
+      Item(startA: 6, startB: 6, deletedA: 1, insertedB: 1),
+      Item(startA: 8, startB: 8, deletedA: 1, insertedB: 1)]
+
+runnableExamples:
+  # 2 samples of text (from "The Call of Cthulhu" by Lovecraft)
+  let txt0 = """
+abc
+def ghi
+jkl2"""
+  let txt1 = """
+bacx
+abc
+def ghi
+jkl"""
+  assert diffText(txt0, txt1) ==
+    @[Item(startA: 0, startB: 0, deletedA: 0, insertedB: 1),
+      Item(startA: 2, startB: 3, deletedA: 1, insertedB: 1)]
 
 # code owner: Arne Döring
 #
@@ -37,7 +62,7 @@ type
   Smsrd = object
     x, y: int
 
-# template to avoid a seq copy. Required until ``sink`` parameters are ready.
+# template to avoid a seq copy. Required until `sink` parameters are ready.
 template newDiffData(initData: seq[int]; L: int): DiffData =
   DiffData(
     data: initData,
@@ -49,9 +74,9 @@ proc len(d: DiffData): int {.inline.} = d.data.len
 proc diffCodes(aText: string; h: var Table[string, int]): DiffData =
   ## This function converts all textlines of the text into unique numbers for every unique textline
   ## so further work can work only with simple numbers.
-  ## ``aText`` the input text
-  ## ``h`` This extern initialized hashtable is used for storing all ever used textlines.
-  ## ``trimSpace`` ignore leading and trailing space characters
+  ## `aText` the input text
+  ## `h` This extern initialized hashtable is used for storing all ever used textlines.
+  ## `trimSpace` ignore leading and trailing space characters
   ## Returns a array of integers.
   var lastUsedCode = h.len
   result.data = newSeq[int]()
@@ -86,14 +111,14 @@ proc optimize(data: var DiffData) =
 proc sms(dataA: var DiffData; lowerA, upperA: int; dataB: DiffData; lowerB, upperB: int;
          downVector, upVector: var openArray[int]): Smsrd =
   ## This is the algorithm to find the Shortest Middle Snake (sms).
-  ## ``dataA`` sequence A
-  ## ``lowerA`` lower bound of the actual range in dataA
-  ## ``upperA`` upper bound of the actual range in dataA (exclusive)
-  ## ``dataB`` sequence B
-  ## ``lowerB`` lower bound of the actual range in dataB
-  ## ``upperB`` upper bound of the actual range in dataB (exclusive)
-  ## ``downVector`` a vector for the (0,0) to (x,y) search. Passed as a parameter for speed reasons.
-  ## ``upVector`` a vector for the (u,v) to (N,M) search. Passed as a parameter for speed reasons.
+  ## `dataA` sequence A
+  ## `lowerA` lower bound of the actual range in dataA
+  ## `upperA` upper bound of the actual range in dataA (exclusive)
+  ## `dataB` sequence B
+  ## `lowerB` lower bound of the actual range in dataB
+  ## `upperB` upper bound of the actual range in dataB (exclusive)
+  ## `downVector` a vector for the (0,0) to (x,y) search. Passed as a parameter for speed reasons.
+  ## `upVector` a vector for the (u,v) to (N,M) search. Passed as a parameter for speed reasons.
   ## Returns a MiddleSnakeData record containing x,y and u,v.
 
   let max = dataA.len + dataB.len + 1
@@ -116,7 +141,7 @@ proc sms(dataA: var DiffData; lowerA, upperA: int; dataB: DiffData; lowerB, uppe
 
   for D in 0 .. maxD:
     # Extend the forward path.
-    for k in countUp(downK - D, downK + D, 2):
+    for k in countup(downK - D, downK + D, 2):
       # find the only or better starting point
       var x: int
       if k == downK - D:
@@ -142,7 +167,7 @@ proc sms(dataA: var DiffData; lowerA, upperA: int; dataB: DiffData; lowerB, uppe
                        y: downVector[downOffset + k] - k)
 
     # Extend the reverse path.
-    for k in countUp(upK - D, upK + D, 2):
+    for k in countup(upK - D, upK + D, 2):
       # find the only or better starting point
       var x: int
       if k == upK + D:
@@ -173,14 +198,14 @@ proc lcs(dataA: var DiffData; lowerA, upperA: int; dataB: var DiffData; lowerB, 
   ## algorithm.
   ## The published algorithm passes recursively parts of the A and B sequences.
   ## To avoid copying these arrays the lower and upper bounds are passed while the sequences stay constant.
-  ## ``dataA`` sequence A
-  ## ``lowerA`` lower bound of the actual range in dataA
-  ## ``upperA`` upper bound of the actual range in dataA (exclusive)
-  ## ``dataB`` sequence B
-  ## ``lowerB`` lower bound of the actual range in dataB
-  ## ``upperB`` upper bound of the actual range in dataB (exclusive)
-  ## ``downVector`` a vector for the (0,0) to (x,y) search. Passed as a parameter for speed reasons.
-  ## ``upVector`` a vector for the (u,v) to (N,M) search. Passed as a parameter for speed reasons.
+  ## `dataA` sequence A
+  ## `lowerA` lower bound of the actual range in dataA
+  ## `upperA` upper bound of the actual range in dataA (exclusive)
+  ## `dataB` sequence B
+  ## `lowerB` lower bound of the actual range in dataB
+  ## `upperB` upper bound of the actual range in dataB (exclusive)
+  ## `downVector` a vector for the (0,0) to (x,y) search. Passed as a parameter for speed reasons.
+  ## `upVector` a vector for the (u,v) to (N,M) search. Passed as a parameter for speed reasons.
 
   # make mutable copy:
   var lowerA = lowerA
@@ -211,7 +236,7 @@ proc lcs(dataA: var DiffData; lowerA, upperA: int; dataB: var DiffData; lowerB, 
       inc lowerA
 
   else:
-    # Find the middle snakea and length of an optimal path for A and B
+    # Find the middle snake and length of an optimal path for A and B
     let smsrd = sms(dataA, lowerA, upperA, dataB, lowerB, upperB, downVector, upVector)
     # Debug.Write(2, "MiddleSnakeData", String.Format("{0},{1}", smsrd.x, smsrd.y))
 
@@ -253,11 +278,11 @@ proc createDiffs(dataA, dataB: DiffData): seq[Item] =
 proc diffInt*(arrayA, arrayB: openArray[int]): seq[Item] =
   ## Find the difference in 2 arrays of integers.
   ##
-  ## ``arrayA`` A-version of the numbers (usualy the old one)
+  ## `arrayA` A-version of the numbers (usually the old one)
   ##
-  ## ``arrayB`` B-version of the numbers (usualy the new one)
+  ## `arrayB` B-version of the numbers (usually the new one)
   ##
-  ## Returns a array of Items that describe the differences.
+  ## Returns a sequence of Items that describe the differences.
 
   # The A-Version of the data (original data) to be compared.
   var dataA = newDiffData(@arrayA, arrayA.len)
@@ -266,9 +291,9 @@ proc diffInt*(arrayA, arrayB: openArray[int]): seq[Item] =
   var dataB = newDiffData(@arrayB, arrayB.len)
 
   let max = dataA.len + dataB.len + 1
-  ## vector for the (0,0) to (x,y) search
+  # vector for the (0,0) to (x,y) search
   var downVector = newSeq[int](2 * max + 2)
-  ## vector for the (u,v) to (N,M) search
+  # vector for the (u,v) to (N,M) search
   var upVector = newSeq[int](2 * max + 2)
 
   lcs(dataA, 0, dataA.len, dataB, 0, dataB.len, downVector, upVector)
@@ -279,15 +304,15 @@ proc diffText*(textA, textB: string): seq[Item] =
   ##
   ## The algorithm itself is comparing 2 arrays of numbers so when comparing 2 text documents
   ## each line is converted into a (hash) number. This hash-value is computed by storing all
-  ## textlines into a common hashtable so i can find dublicates in there, and generating a
+  ## textlines into a common hashtable so i can find duplicates in there, and generating a
   ## new number each time a new textline is inserted.
   ##
-  ## ``textA`` A-version of the text (usually the old one)
+  ## `textA` A-version of the text (usually the old one)
   ##
-  ## ``textB`` B-version of the text (usually the new one)
+  ## `textB` B-version of the text (usually the new one)
   ##
   ## Returns a seq of Items that describe the differences.
-
+  # See also `gitutils.diffStrings`.
   # prepare the input-text and convert to comparable numbers.
   var h = initTable[string, int]()  # TextA.len + TextB.len  <- probably wrong initial size
   # The A-Version of the data (original data) to be compared.
@@ -299,9 +324,9 @@ proc diffText*(textA, textB: string): seq[Item] =
   h.clear # free up hashtable memory (maybe)
 
   let max = dataA.len + dataB.len + 1
-  ## vector for the (0,0) to (x,y) search
+  # vector for the (0,0) to (x,y) search
   var downVector = newSeq[int](2 * max + 2)
-  ## vector for the (u,v) to (N,M) search
+  # vector for the (u,v) to (N,M) search
   var upVector = newSeq[int](2 * max + 2)
 
   lcs(dataA, 0, dataA.len, dataB, 0, dataB.len, downVector, upVector)
@@ -309,83 +334,3 @@ proc diffText*(textA, textB: string): seq[Item] =
   optimize(dataA)
   optimize(dataB)
   result = createDiffs(dataA, dataB)
-
-when isMainModule:
-
-  proc testHelper(f: seq[Item]): string =
-    for it in f:
-      result.add(
-        $it.deletedA & "." & $it.insertedB & "." & $it.startA & "." & $it.startB & "*"
-      )
-
-  proc main() =
-    var a, b: string
-
-    stdout.writeLine("Diff Self Test...")
-
-    # test all changes
-    a = "a,b,c,d,e,f,g,h,i,j,k,l".replace(',', '\n')
-    b = "0,1,2,3,4,5,6,7,8,9".replace(',', '\n')
-    assert(testHelper(diffText(a, b)) ==
-      "12.10.0.0*",
-      "all-changes test failed.")
-    stdout.writeLine("all-changes test passed.")
-    # test all same
-    a = "a,b,c,d,e,f,g,h,i,j,k,l".replace(',', '\n')
-    b = a
-    assert(testHelper(diffText(a, b)) ==
-      "",
-      "all-same test failed.")
-    stdout.writeLine("all-same test passed.")
-
-    # test snake
-    a = "a,b,c,d,e,f".replace(',', '\n')
-    b = "b,c,d,e,f,x".replace(',', '\n')
-    assert(testHelper(diffText(a, b)) ==
-      "1.0.0.0*0.1.6.5*",
-      "snake test failed.")
-    stdout.writeLine("snake test passed.")
-
-    # 2002.09.20 - repro
-    a = "c1,a,c2,b,c,d,e,g,h,i,j,c3,k,l".replace(',', '\n')
-    b = "C1,a,C2,b,c,d,e,I1,e,g,h,i,j,C3,k,I2,l".replace(',', '\n')
-    assert(testHelper(diffText(a, b)) ==
-      "1.1.0.0*1.1.2.2*0.2.7.7*1.1.11.13*0.1.13.15*",
-      "repro20020920 test failed.")
-    stdout.writeLine("repro20020920 test passed.")
-
-    # 2003.02.07 - repro
-    a = "F".replace(',', '\n')
-    b = "0,F,1,2,3,4,5,6,7".replace(',', '\n')
-    assert(testHelper(diffText(a, b)) ==
-      "0.1.0.0*0.7.1.2*",
-      "repro20030207 test failed.")
-    stdout.writeLine("repro20030207 test passed.")
-
-    # Muegel - repro
-    a = "HELLO\nWORLD"
-    b = "\n\nhello\n\n\n\nworld\n"
-    assert(testHelper(diffText(a, b)) ==
-      "2.8.0.0*",
-      "repro20030409 test failed.")
-    stdout.writeLine("repro20030409 test passed.")
-
-    # test some differences
-    a = "a,b,-,c,d,e,f,f".replace(',', '\n')
-    b = "a,b,x,c,e,f".replace(',', '\n')
-    assert(testHelper(diffText(a, b)) ==
-      "1.1.2.2*1.0.4.4*1.0.7.6*",
-      "some-changes test failed.")
-    stdout.writeLine("some-changes test passed.")
-
-    # test one change within long chain of repeats
-    a = "a,a,a,a,a,a,a,a,a,a".replace(',', '\n')
-    b = "a,a,a,a,-,a,a,a,a,a".replace(',', '\n')
-    assert(testHelper(diffText(a, b)) ==
-      "0.1.4.4*1.0.9.10*",
-      "long chain of repeats test failed.")
-
-    stdout.writeLine("End.")
-    stdout.flushFile
-
-  main()

@@ -2,6 +2,9 @@
 Packaging Nim
 =============
 
+This page provide hints on distributing Nim using OS packages.
+
+See `distros <distros.html>`_ for tools to detect Linux distribution at runtime.
 
 Supported architectures
 -----------------------
@@ -42,7 +45,7 @@ The Debian package ships bash and ksh completion and manpages that can be reused
 
 Hints on the build process:
 
-::
+.. code:: cmd
 
    # build from C sources and then using koch
    ./build.sh --os $os_type --cpu $cpu_arch

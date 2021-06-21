@@ -1,2 +1,6 @@
+discard """
+output: "\n"
+"""
+
 echo()
 

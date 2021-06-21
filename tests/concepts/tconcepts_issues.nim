@@ -28,6 +28,7 @@ true
 -1
 Meow
 '''
+joinable: false
 """
 
 import macros, typetraits, os, posix
@@ -396,7 +397,7 @@ block misc_issues:
   echo p2.x is float and p2.y is float # true
 
   # https://github.com/nim-lang/Nim/issues/2018
-  type ProtocolFollower = concept
+  type ProtocolFollower = concept c
     true # not a particularly involved protocol
 
   type ImplementorA = object
@@ -462,5 +463,40 @@ block misc_issues:
 
   proc sayHello(c: Thing) = echo(c.hello)
 
-  var a: Thing = Cat()
+  # used to be 'var a: Thing = Cat()' but that's not valid Nim code
+  # anyway and will be an error soon.
+  var a: Cat = Cat()
   a.sayHello()
+
+
+# bug #16897
+
+type
+  Fp[N: static int, T] = object
+    big: array[N, T]
+
+type
+  QuadraticExt* = concept x
+    ## Quadratic Extension concept (like complex)
+    type BaseField = auto
+    x.c0 is BaseField
+    x.c1 is BaseField
+var address = pointer(nil)
+proc prod(r: var QuadraticExt, b: QuadraticExt) =
+  if address == nil:
+    address = unsafeAddr b
+    prod(r, b)
+  else:
+    assert address == unsafeAddr b
+
+type
+  Fp2[N: static int, T] {.byref.} = object
+    c0, c1: Fp[N, T]
+
+# This should be passed by reference,
+# but concepts do not respect the 24 bytes rule
+# or `byref` pragma.
+var r, b: Fp2[6, uint64]
+
+prod(r, b)
+

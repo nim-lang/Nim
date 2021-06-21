@@ -8,11 +8,15 @@
 #
 
 ## Profiling support for Nim. This is an embedded profiler that requires
-## ``--profiler:on``. You only need to import this module to get a profiling
-## report at program exit.
+## `--profiler:on`. You only need to import this module to get a profiling
+## report at program exit. See `Embedded Stack Trace Profiler <estp.html>`_
+## for usage.
 
 when not defined(profiler) and not defined(memProfiler):
   {.error: "Profiling support is turned off! Enable profiling by passing `--profiler:on --stackTrace:on` to the compiler (see the Nim Compiler User Guide for more options).".}
+
+when defined(nimHasUsed):
+  {.used.}
 
 # We don't want to profile the profiling code ...
 {.push profiler: off.}
@@ -178,7 +182,7 @@ proc writeProfile() {.noconv.} =
 
     var perProc = initCountTable[string]()
     for i in 0..entries-1:
-      var dups = initSet[string]()
+      var dups = initHashSet[string]()
       for ii in 0..high(StackTrace.lines):
         let procname = profileData[i].st[ii]
         if isNil(procname): break
@@ -198,7 +202,8 @@ proc writeProfile() {.noconv.} =
           let procname = profileData[i].st[ii]
           let filename = profileData[i].st.files[ii]
           if isNil(procname): break
-          writeLine(f, "  ", $filename & ": " & $procname, " ", perProc[$procname] // totalCalls)
+          writeLine(f, "  ", $filename & ": " & $procname, " ",
+                    perProc[$procname] // totalCalls)
     close(f)
     echo "... done"
   else:
@@ -218,8 +223,9 @@ proc enableProfiling*() =
       system.profilingRequestedHook = requestedHook
 
 when declared(system.StackTrace):
+  import std/exitprocs
   system.profilingRequestedHook = requestedHook
   system.profilerHook = hook
-  addQuitProc(writeProfile)
+  addExitProc(writeProfile)
 
 {.pop.}

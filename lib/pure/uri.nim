@@ -11,34 +11,35 @@
 ##
 ## A Uniform Resource Identifier (URI) provides a simple and extensible
 ## means for identifying a resource. A URI can be further classified
-## as a locator, a name, or both. The term “Uniform Resource Locator”
+## as a locator, a name, or both. The term "Uniform Resource Locator"
 ## (URL) refers to the subset of URIs.
 ##
-## Basic usage
-## ===========
-##
-## Combine URIs
-## -------------
-## .. code-block::
-##    import uri
-##    let host = parseUri("https://nim-lang.org")
-##    let blog = "/blog.html"
-##    let bloguri = host / blog
-##    assert $host == "https://nim-lang.org"
-##    assert $bloguri == "https://nim-lang.org/blog.html"
-##
-## Access URI item
-## ---------------
-## .. code-block::
-##    import uri
-##    let res = parseUri("sftp://127.0.0.1:4343")
-##    if isAbsolute(res):
-##      echo "Connect to port: " & res.port
-##      # --> Connect to port: 4343
-##    else:
-##      echo "Wrong format"
+## # Basic usage
 
-import strutils, parseutils
+
+## ## Combine URIs
+runnableExamples:
+  let host = parseUri("https://nim-lang.org")
+  assert $host == "https://nim-lang.org"
+  assert $(host / "/blog.html") == "https://nim-lang.org/blog.html"
+  assert $(host / "blog2.html") == "https://nim-lang.org/blog2.html"
+
+## ## Access URI item
+runnableExamples:
+  let res = parseUri("sftp://127.0.0.1:4343")
+  assert isAbsolute(res)
+  assert res.port == "4343"
+
+## ## Data URI Base64
+runnableExamples:
+  doAssert getDataUri("Hello World", "text/plain") == "data:text/plain;charset=utf-8;base64,SGVsbG8gV29ybGQ="
+  doAssert getDataUri("Nim", "text/plain") == "data:text/plain;charset=utf-8;base64,Tmlt"
+
+
+import strutils, parseutils, base64
+import std/private/[since, decode_helpers]
+
+
 type
   Url* = distinct string
 
@@ -46,21 +47,29 @@ type
     scheme*, username*, password*: string
     hostname*, port*, path*, query*, anchor*: string
     opaque*: bool
+    isIpv6: bool # not expose it for compatibility.
 
-proc encodeUrl*(s: string, usePlus=true): string =
+  UriParseError* = object of ValueError
+
+
+proc uriParseError*(msg: string) {.noreturn.} =
+  ## Raises a `UriParseError` exception with message `msg`.
+  raise newException(UriParseError, msg)
+
+func encodeUrl*(s: string, usePlus = true): string =
   ## Encodes a URL according to RFC3986.
   ##
   ## This means that characters in the set
-  ## ``{'a'..'z', 'A'..'Z', '0'..'9', '-', '.', '_', '~'}`` are
+  ## `{'a'..'z', 'A'..'Z', '0'..'9', '-', '.', '_', '~'}` are
   ## carried over to the result.
-  ## All other characters are encoded as ``%xx`` where ``xx``
+  ## All other characters are encoded as `%xx` where `xx`
   ## denotes its hexadecimal value.
   ##
-  ## As a special rule, when the value of ``usePlus`` is true,
-  ## spaces are encoded as ``+`` instead of ``%20``.
+  ## As a special rule, when the value of `usePlus` is true,
+  ## spaces are encoded as `+` instead of `%20`.
   ##
   ## **See also:**
-  ## * `decodeUrl proc<#decodeUrl,string>`_
+  ## * `decodeUrl func<#decodeUrl,string>`_
   runnableExamples:
     assert encodeUrl("https://nim-lang.org") == "https%3A%2F%2Fnim-lang.org"
     assert encodeUrl("https://nim-lang.org/this is a test") == "https%3A%2F%2Fnim-lang.org%2Fthis+is+a+test"
@@ -76,28 +85,25 @@ proc encodeUrl*(s: string, usePlus=true): string =
       add(result, '%')
       add(result, toHex(ord(c), 2))
 
-proc decodeUrl*(s: string, decodePlus=true): string =
+func decodeUrl*(s: string, decodePlus = true): string =
   ## Decodes a URL according to RFC3986.
   ##
-  ## This means that any ``%xx`` (where ``xx`` denotes a hexadecimal
-  ## value) are converted to the character with ordinal number ``xx``,
+  ## This means that any `%xx` (where `xx` denotes a hexadecimal
+  ## value) are converted to the character with ordinal number `xx`,
   ## and every other character is carried over.
+  ## If `xx` is not a valid hexadecimal value, it is left intact.
   ##
-  ## As a special rule, when the value of ``decodePlus`` is true, ``+``
+  ## As a special rule, when the value of `decodePlus` is true, `+`
   ## characters are converted to a space.
   ##
   ## **See also:**
-  ## * `encodeUrl proc<#encodeUrl,string>`_
+  ## * `encodeUrl func<#encodeUrl,string>`_
   runnableExamples:
     assert decodeUrl("https%3A%2F%2Fnim-lang.org") == "https://nim-lang.org"
     assert decodeUrl("https%3A%2F%2Fnim-lang.org%2Fthis+is+a+test") == "https://nim-lang.org/this is a test"
-    assert decodeUrl("https%3A%2F%2Fnim-lang.org%2Fthis%20is%20a%20test", false) == "https://nim-lang.org/this is a test"
-  proc handleHexChar(c: char, x: var int) {.inline.} =
-    case c
-    of '0'..'9': x = (x shl 4) or (ord(c) - ord('0'))
-    of 'a'..'f': x = (x shl 4) or (ord(c) - ord('a') + 10)
-    of 'A'..'F': x = (x shl 4) or (ord(c) - ord('A') + 10)
-    else: assert(false)
+    assert decodeUrl("https%3A%2F%2Fnim-lang.org%2Fthis%20is%20a%20test",
+        false) == "https://nim-lang.org/this is a test"
+    assert decodeUrl("abc%xyz") == "abc%xyz"
 
   result = newString(s.len)
   var i = 0
@@ -105,11 +111,7 @@ proc decodeUrl*(s: string, decodePlus=true): string =
   while i < s.len:
     case s[i]
     of '%':
-      var x = 0
-      handleHexChar(s[i+1], x)
-      handleHexChar(s[i+2], x)
-      inc(i, 2)
-      result[j] = chr(x)
+      result[j] = decodePercent(s, i)
     of '+':
       if decodePlus:
         result[j] = ' '
@@ -120,7 +122,79 @@ proc decodeUrl*(s: string, decodePlus=true): string =
     inc(j)
   setLen(result, j)
 
-proc parseAuthority(authority: string, result: var Uri) =
+func encodeQuery*(query: openArray[(string, string)], usePlus = true,
+    omitEq = true): string =
+  ## Encodes a set of (key, value) parameters into a URL query string.
+  ##
+  ## Every (key, value) pair is URL-encoded and written as `key=value`. If the
+  ## value is an empty string then the `=` is omitted, unless `omitEq` is
+  ## false.
+  ## The pairs are joined together by a `&` character.
+  ##
+  ## The `usePlus` parameter is passed down to the `encodeUrl` function that
+  ## is used for the URL encoding of the string values.
+  ##
+  ## **See also:**
+  ## * `encodeUrl func<#encodeUrl,string>`_
+  runnableExamples:
+    assert encodeQuery({: }) == ""
+    assert encodeQuery({"a": "1", "b": "2"}) == "a=1&b=2"
+    assert encodeQuery({"a": "1", "b": ""}) == "a=1&b"
+  for elem in query:
+    # Encode the `key = value` pairs and separate them with a '&'
+    if result.len > 0: result.add('&')
+    let (key, val) = elem
+    result.add(encodeUrl(key, usePlus))
+    # Omit the '=' if the value string is empty
+    if not omitEq or val.len > 0:
+      result.add('=')
+      result.add(encodeUrl(val, usePlus))
+
+iterator decodeQuery*(data: string): tuple[key, value: string] =
+  ## Reads and decodes query string `data` and yields the `(key, value)` pairs
+  ## the data consists of. If compiled with `-d:nimLegacyParseQueryStrict`, an
+  ## error is raised when there is an unencoded `=` character in a decoded
+  ## value, which was the behavior in Nim < 1.5.1
+  runnableExamples:
+    import std/sequtils
+    assert toSeq(decodeQuery("foo=1&bar=2=3")) == @[("foo", "1"), ("bar", "2=3")]
+    assert toSeq(decodeQuery("&a&=b&=&&")) == @[("", ""), ("a", ""), ("", "b"), ("", ""), ("", "")]
+
+  proc parseData(data: string, i: int, field: var string, sep: char): int =
+    result = i
+    while result < data.len:
+      let c = data[result]
+      case c
+      of '%': add(field, decodePercent(data, result))
+      of '+': add(field, ' ')
+      of '&': break
+      else:
+        if c == sep: break
+        else: add(field, data[result])
+      inc(result)
+
+  var i = 0
+  var name = ""
+  var value = ""
+  # decode everything in one pass:
+  while i < data.len:
+    setLen(name, 0) # reuse memory
+    i = parseData(data, i, name, '=')
+    setLen(value, 0) # reuse memory
+    if i < data.len and data[i] == '=':
+      inc(i) # skip '='
+      when defined(nimLegacyParseQueryStrict):
+        i = parseData(data, i, value, '=')
+      else:
+        i = parseData(data, i, value, '&')
+    yield (name, value)
+    if i < data.len:
+      when defined(nimLegacyParseQueryStrict):
+        if data[i] != '&':
+          uriParseError("'&' expected at index '$#' for '$#'" % [$i, data])
+      inc(i)
+
+func parseAuthority(authority: string, result: var Uri) =
   var i = 0
   var inPort = false
   var inIPv6 = false
@@ -139,6 +213,7 @@ proc parseAuthority(authority: string, result: var Uri) =
         inPort = true
     of '[':
       inIPv6 = true
+      result.isIpv6 = true
     of ']':
       inIPv6 = false
     else:
@@ -148,8 +223,7 @@ proc parseAuthority(authority: string, result: var Uri) =
         result.hostname.add(authority[i])
     i.inc
 
-proc parsePath(uri: string, i: var int, result: var Uri) =
-
+func parsePath(uri: string, i: var int, result: var Uri) =
   i.inc parseUntil(uri, result.path, {'?', '#'}, i)
 
   # The 'mailto' scheme's PATH actually contains the hostname/username
@@ -165,31 +239,34 @@ proc parsePath(uri: string, i: var int, result: var Uri) =
     i.inc # Skip '#'
     i.inc parseUntil(uri, result.anchor, {}, i)
 
-proc initUri*(): Uri =
-  ## Initializes a URI with ``scheme``, ``username``, ``password``,
-  ## ``hostname``, ``port``, ``path``, ``query`` and ``anchor``.
+func initUri*(isIpv6 = false): Uri =
+  ## Initializes a URI with `scheme`, `username`, `password`,
+  ## `hostname`, `port`, `path`, `query`, `anchor` and `isIpv6`.
   ##
   ## **See also:**
   ## * `Uri type <#Uri>`_ for available fields in the URI type
   runnableExamples:
-    var uri: Uri
-    assert initUri() == uri
+    var uri2 = initUri(isIpv6 = true)
+    uri2.scheme = "tcp"
+    uri2.hostname = "2001:0db8:85a3:0000:0000:8a2e:0370:7334"
+    uri2.port = "8080"
+    assert $uri2 == "tcp://[2001:0db8:85a3:0000:0000:8a2e:0370:7334]:8080"
   result = Uri(scheme: "", username: "", password: "", hostname: "", port: "",
-                path: "", query: "", anchor: "")
+                path: "", query: "", anchor: "", isIpv6: isIpv6)
 
-proc resetUri(uri: var Uri) =
+func resetUri(uri: var Uri) =
   for f in uri.fields:
     when f is string:
       f.setLen(0)
     else:
       f = false
 
-proc parseUri*(uri: string, result: var Uri) =
+func parseUri*(uri: string, result: var Uri) =
   ## Parses a URI. The `result` variable will be cleared before.
   ##
   ## **See also:**
   ## * `Uri type <#Uri>`_ for available fields in the URI type
-  ## * `initUri proc <#initUri>`_ for initializing a URI
+  ## * `initUri func <#initUri>`_ for initializing a URI
   runnableExamples:
     var res = initUri()
     parseUri("https://nim-lang.org/docs/manual.html", res)
@@ -201,9 +278,9 @@ proc parseUri*(uri: string, result: var Uri) =
   var i = 0
 
   # Check if this is a reference URI (relative URI)
-  let doubleSlash = uri.len > 1 and uri[1] == '/'
+  let doubleSlash = uri.len > 1 and uri[0] == '/' and uri[1] == '/'
   if i < uri.len and uri[i] == '/':
-    # Make sure ``uri`` doesn't begin with '//'.
+    # Make sure `uri` doesn't begin with '//'.
     if not doubleSlash:
       parsePath(uri, i, result)
       return
@@ -232,7 +309,7 @@ proc parseUri*(uri: string, result: var Uri) =
   # Path
   parsePath(uri, i, result)
 
-proc parseUri*(uri: string): Uri =
+func parseUri*(uri: string): Uri =
   ## Parses a URI and returns it.
   ##
   ## **See also:**
@@ -245,10 +322,18 @@ proc parseUri*(uri: string): Uri =
   result = initUri()
   parseUri(uri, result)
 
-proc removeDotSegments(path: string): string =
+func removeDotSegments(path: string): string =
+  ## Collapses `..` and `.` in `path` in a similar way as done in `os.normalizedPath`
+  ## Caution: this is buggy.
+  runnableExamples:
+    assert removeDotSegments("a1/a2/../a3/a4/a5/./a6/a7/.//./") == "a1/a3/a4/a5/a6/a7/"
+    assert removeDotSegments("http://www.ai.") == "http://www.ai."
+  # xxx adapt or reuse `pathnorm.normalizePath(path, '/')` to make this more reliable, but
+  # taking into account url specificities such as not collapsing leading `//` in scheme
+  # `https://`. see `turi` for failing tests.
   if path.len == 0: return ""
   var collection: seq[string] = @[]
-  let endsWithSlash = path[path.len-1] == '/'
+  let endsWithSlash = path.endsWith '/'
   var i = 0
   var currentSegment = ""
   while i < path.len:
@@ -262,7 +347,7 @@ proc removeDotSegments(path: string): string =
           discard collection.pop()
           i.inc 3
           continue
-      elif path[i+1] == '/':
+      elif i + 1 < path.len and path[i+1] == '/':
         i.inc 2
         continue
       currentSegment.add path[i]
@@ -275,7 +360,7 @@ proc removeDotSegments(path: string): string =
   result = collection.join("/")
   if endsWithSlash: result.add '/'
 
-proc merge(base, reference: Uri): string =
+func merge(base, reference: Uri): string =
   # http://tools.ietf.org/html/rfc3986#section-5.2.3
   if base.hostname != "" and base.path == "":
     '/' & reference.path
@@ -286,7 +371,7 @@ proc merge(base, reference: Uri): string =
     else:
       base.path[0 .. lastSegment] & reference.path
 
-proc combine*(base: Uri, reference: Uri): Uri =
+func combine*(base: Uri, reference: Uri): Uri =
   ## Combines a base URI with a reference URI.
   ##
   ## This uses the algorithm specified in
@@ -296,7 +381,7 @@ proc combine*(base: Uri, reference: Uri): Uri =
   ## URIs path affect the resulting URI.
   ##
   ## **See also:**
-  ## * `/ proc <#/,Uri,string>`_ for building URIs
+  ## * `/ func <#/,Uri,string>`_ for building URIs
   runnableExamples:
     let foo = combine(parseUri("https://nim-lang.org/foo/bar"), parseUri("/baz"))
     assert foo.path == "/baz"
@@ -337,37 +422,36 @@ proc combine*(base: Uri, reference: Uri): Uri =
     result.scheme = base.scheme
   result.anchor = reference.anchor
 
-proc combine*(uris: varargs[Uri]): Uri =
+func combine*(uris: varargs[Uri]): Uri =
   ## Combines multiple URIs together.
   ##
   ## **See also:**
-  ## * `/ proc <#/,Uri,string>`_ for building URIs
+  ## * `/ func <#/,Uri,string>`_ for building URIs
   runnableExamples:
-    let foo = combine(parseUri("https://nim-lang.org/blog.html"), parseUri("/install.html"))
+    let foo = combine(parseUri("https://nim-lang.org/"), parseUri("docs/"),
+        parseUri("manual.html"))
     assert foo.hostname == "nim-lang.org"
-    assert foo.path == "/install.html"
+    assert foo.path == "/docs/manual.html"
   result = uris[0]
   for i in 1 ..< uris.len:
     result = combine(result, uris[i])
 
-proc isAbsolute*(uri: Uri): bool =
+func isAbsolute*(uri: Uri): bool =
   ## Returns true if URI is absolute, false otherwise.
   runnableExamples:
-    let foo = parseUri("https://nim-lang.org")
-    assert isAbsolute(foo) == true
-    let bar = parseUri("nim-lang")
-    assert isAbsolute(bar) == false
+    assert parseUri("https://nim-lang.org").isAbsolute
+    assert not parseUri("nim-lang").isAbsolute
   return uri.scheme != "" and (uri.hostname != "" or uri.path != "")
 
-proc `/`*(x: Uri, path: string): Uri =
+func `/`*(x: Uri, path: string): Uri =
   ## Concatenates the path specified to the specified URIs path.
   ##
-  ## Contrary to the `combine proc <#combine,Uri,Uri>`_ you do not have to worry about
+  ## Contrary to the `combine func <#combine,Uri,Uri>`_ you do not have to worry about
   ## the slashes at the beginning and end of the path and URIs path
   ## respectively.
   ##
   ## **See also:**
-  ## * `combine proc <#combine,Uri,Uri>`_
+  ## * `combine func <#combine,Uri,Uri>`_
   runnableExamples:
     let foo = parseUri("https://nim-lang.org/foo/bar") / "/baz"
     assert foo.path == "/foo/bar/baz"
@@ -393,11 +477,18 @@ proc `/`*(x: Uri, path: string): Uri =
       result.path.add '/'
     result.path.add(path)
 
-proc `$`*(u: Uri): string =
+func `?`*(u: Uri, query: openArray[(string, string)]): Uri =
+  ## Concatenates the query parameters to the specified URI object.
+  runnableExamples:
+    let foo = parseUri("https://example.com") / "foo" ? {"bar": "qux"}
+    assert $foo == "https://example.com/foo?bar=qux"
+  result = u
+  result.query = encodeQuery(query)
+
+func `$`*(u: Uri): string =
   ## Returns the string representation of the specified URI object.
   runnableExamples:
-    let foo = parseUri("https://nim-lang.org")
-    assert $foo == "https://nim-lang.org"
+    assert $parseUri("https://nim-lang.org") == "https://nim-lang.org"
   result = ""
   if u.scheme.len > 0:
     result.add(u.scheme)
@@ -411,10 +502,16 @@ proc `$`*(u: Uri): string =
       result.add(":")
       result.add(u.password)
     result.add("@")
-  if u.hostname.endswith('/'):
-    result.add(u.hostname[0..^2])
+  if u.hostname.endsWith('/'):
+    if u.isIpv6:
+      result.add("[" & u.hostname[0 .. ^2] & "]")
+    else:
+      result.add(u.hostname[0 .. ^2])
   else:
-    result.add(u.hostname)
+    if u.isIpv6:
+      result.add("[" & u.hostname & "]")
+    else:
+      result.add(u.hostname)
   if u.port.len > 0:
     result.add(":")
     result.add(u.port)
@@ -429,252 +526,13 @@ proc `$`*(u: Uri): string =
     result.add("#")
     result.add(u.anchor)
 
-when isMainModule:
-  block:
-    const test1 = "abc\L+def xyz"
-    doAssert encodeUrl(test1) == "abc%0A%2Bdef+xyz"
-    doAssert decodeUrl(encodeUrl(test1)) == test1
-    doAssert encodeUrl(test1, false) == "abc%0A%2Bdef%20xyz"
-    doAssert decodeUrl(encodeUrl(test1, false), false) == test1
-    doAssert decodeUrl(encodeUrl(test1)) == test1
-
-  block:
-    let str = "http://localhost"
-    let test = parseUri(str)
-    doAssert test.path == ""
-
-  block:
-    let str = "http://localhost/"
-    let test = parseUri(str)
-    doAssert test.path == "/"
-
-  block:
-    let str = "http://localhost:8080/test"
-    let test = parseUri(str)
-    doAssert test.scheme == "http"
-    doAssert test.port == "8080"
-    doAssert test.path == "/test"
-    doAssert test.hostname == "localhost"
-    doAssert($test == str)
-
-  block:
-    let str = "foo://username:password@example.com:8042/over/there" &
-              "/index.dtb?type=animal&name=narwhal#nose"
-    let test = parseUri(str)
-    doAssert test.scheme == "foo"
-    doAssert test.username == "username"
-    doAssert test.password == "password"
-    doAssert test.hostname == "example.com"
-    doAssert test.port == "8042"
-    doAssert test.path == "/over/there/index.dtb"
-    doAssert test.query == "type=animal&name=narwhal"
-    doAssert test.anchor == "nose"
-    doAssert($test == str)
-
-  block:
-    # IPv6 address
-    let str = "foo://[::1]:1234/bar?baz=true&qux#quux"
-    let uri = parseUri(str)
-    doAssert uri.scheme == "foo"
-    doAssert uri.hostname == "::1"
-    doAssert uri.port == "1234"
-    doAssert uri.path == "/bar"
-    doAssert uri.query == "baz=true&qux"
-    doAssert uri.anchor == "quux"
-
-  block:
-    let str = "urn:example:animal:ferret:nose"
-    let test = parseUri(str)
-    doAssert test.scheme == "urn"
-    doAssert test.path == "example:animal:ferret:nose"
-    doAssert($test == str)
-
-  block:
-    let str = "mailto:username@example.com?subject=Topic"
-    let test = parseUri(str)
-    doAssert test.scheme == "mailto"
-    doAssert test.username == "username"
-    doAssert test.hostname == "example.com"
-    doAssert test.query == "subject=Topic"
-    doAssert($test == str)
-
-  block:
-    let str = "magnet:?xt=urn:sha1:72hsga62ba515sbd62&dn=foobar"
-    let test = parseUri(str)
-    doAssert test.scheme == "magnet"
-    doAssert test.query == "xt=urn:sha1:72hsga62ba515sbd62&dn=foobar"
-    doAssert($test == str)
-
-  block:
-    let str = "/test/foo/bar?q=2#asdf"
-    let test = parseUri(str)
-    doAssert test.scheme == ""
-    doAssert test.path == "/test/foo/bar"
-    doAssert test.query == "q=2"
-    doAssert test.anchor == "asdf"
-    doAssert($test == str)
-
-  block:
-    let str = "test/no/slash"
-    let test = parseUri(str)
-    doAssert test.path == "test/no/slash"
-    doAssert($test == str)
-
-  block:
-    let str = "//git@github.com:dom96/packages"
-    let test = parseUri(str)
-    doAssert test.scheme == ""
-    doAssert test.username == "git"
-    doAssert test.hostname == "github.com"
-    doAssert test.port == "dom96"
-    doAssert test.path == "/packages"
-
-  block:
-    let str = "file:///foo/bar/baz.txt"
-    let test = parseUri(str)
-    doAssert test.scheme == "file"
-    doAssert test.username == ""
-    doAssert test.hostname == ""
-    doAssert test.port == ""
-    doAssert test.path == "/foo/bar/baz.txt"
-
-  # Remove dot segments tests
-  block:
-    doAssert removeDotSegments("/foo/bar/baz") == "/foo/bar/baz"
-
-  # Combine tests
-  block:
-    let concat = combine(parseUri("http://google.com/foo/bar/"), parseUri("baz"))
-    doAssert concat.path == "/foo/bar/baz"
-    doAssert concat.hostname == "google.com"
-    doAssert concat.scheme == "http"
-
-  block:
-    let concat = combine(parseUri("http://google.com/foo"), parseUri("/baz"))
-    doAssert concat.path == "/baz"
-    doAssert concat.hostname == "google.com"
-    doAssert concat.scheme == "http"
-
-  block:
-    let concat = combine(parseUri("http://google.com/foo/test"), parseUri("bar"))
-    doAssert concat.path == "/foo/bar"
-
-  block:
-    let concat = combine(parseUri("http://google.com/foo/test"), parseUri("/bar"))
-    doAssert concat.path == "/bar"
-
-  block:
-    let concat = combine(parseUri("http://google.com/foo/test"), parseUri("bar"))
-    doAssert concat.path == "/foo/bar"
-
-  block:
-    let concat = combine(parseUri("http://google.com/foo/test/"), parseUri("bar"))
-    doAssert concat.path == "/foo/test/bar"
-
-  block:
-    let concat = combine(parseUri("http://google.com/foo/test/"), parseUri("bar/"))
-    doAssert concat.path == "/foo/test/bar/"
-
-  block:
-    let concat = combine(parseUri("http://google.com/foo/test/"), parseUri("bar/"),
-                         parseUri("baz"))
-    doAssert concat.path == "/foo/test/bar/baz"
-
-  # `/` tests
-  block:
-    let test = parseUri("http://example.com/foo") / "bar/asd"
-    doAssert test.path == "/foo/bar/asd"
-
-  block:
-    let test = parseUri("http://example.com/foo/") / "/bar/asd"
-    doAssert test.path == "/foo/bar/asd"
-
-  # removeDotSegments tests
-  block:
-    # empty test
-    doAssert removeDotSegments("") == ""
-
-  # bug #3207
-  block:
-    doAssert parseUri("http://qq/1").combine(parseUri("https://qqq")).`$` == "https://qqq"
-
-  # bug #4959
-  block:
-    let foo = parseUri("http://example.com") / "/baz"
-    doAssert foo.path == "/baz"
-
-  # bug found on stream 13/10/17
-  block:
-    let foo = parseUri("http://localhost:9515") / "status"
-    doAssert $foo == "http://localhost:9515/status"
-
-  # bug #6649 #6652
-  block:
-    var foo = parseUri("http://example.com")
-    foo.hostname = "example.com"
-    foo.path = "baz"
-    doAssert $foo == "http://example.com/baz"
-
-    foo.hostname = "example.com/"
-    foo.path = "baz"
-    doAssert $foo == "http://example.com/baz"
-
-    foo.hostname = "example.com"
-    foo.path = "/baz"
-    doAssert $foo == "http://example.com/baz"
-
-    foo.hostname = "example.com/"
-    foo.path = "/baz"
-    doAssert $foo == "http://example.com/baz"
-
-    foo.hostname = "example.com/"
-    foo.port = "8000"
-    foo.path = "baz"
-    doAssert $foo == "http://example.com:8000/baz"
-
-    foo = parseUri("file:/dir/file")
-    foo.path = "relative"
-    doAssert $foo == "file:relative"
-
-  # isAbsolute tests
-  block:
-    doAssert "www.google.com".parseUri().isAbsolute() == false
-    doAssert "http://www.google.com".parseUri().isAbsolute() == true
-    doAssert "file:/dir/file".parseUri().isAbsolute() == true
-    doAssert "file://localhost/dir/file".parseUri().isAbsolute() == true
-    doAssert "urn:ISSN:1535-3613".parseUri().isAbsolute() == true
-
-    # path-relative URL *relative
-    doAssert "about".parseUri().isAbsolute == false
-    doAssert "about/staff.html".parseUri().isAbsolute == false
-    doAssert "about/staff.html?".parseUri().isAbsolute == false
-    doAssert "about/staff.html?parameters".parseUri().isAbsolute == false
-
-    # absolute-path-relative URL *relative
-    doAssert "/".parseUri().isAbsolute == false
-    doAssert "/about".parseUri().isAbsolute == false
-    doAssert "/about/staff.html".parseUri().isAbsolute == false
-    doAssert "/about/staff.html?".parseUri().isAbsolute == false
-    doAssert "/about/staff.html?parameters".parseUri().isAbsolute == false
-
-    # scheme-relative URL *relative
-    doAssert "//username:password@example.com:8888".parseUri().isAbsolute == false
-    doAssert "//username@example.com".parseUri().isAbsolute == false
-    doAssert "//example.com".parseUri().isAbsolute == false
-    doAssert "//example.com/".parseUri().isAbsolute == false
-    doAssert "//example.com/about".parseUri().isAbsolute == false
-    doAssert "//example.com/about/staff.html".parseUri().isAbsolute == false
-    doAssert "//example.com/about/staff.html?".parseUri().isAbsolute == false
-    doAssert "//example.com/about/staff.html?parameters".parseUri().isAbsolute == false
-
-    # absolute URL *absolute
-    doAssert "https://username:password@example.com:8888".parseUri().isAbsolute == true
-    doAssert "https://username@example.com".parseUri().isAbsolute == true
-    doAssert "https://example.com".parseUri().isAbsolute == true
-    doAssert "https://example.com/".parseUri().isAbsolute == true
-    doAssert "https://example.com/about".parseUri().isAbsolute == true
-    doAssert "https://example.com/about/staff.html".parseUri().isAbsolute == true
-    doAssert "https://example.com/about/staff.html?".parseUri().isAbsolute == true
-    doAssert "https://example.com/about/staff.html?parameters".parseUri().isAbsolute == true
-
-  echo("All good!")
+proc getDataUri*(data, mime: string, encoding = "utf-8"): string {.since: (1, 3).} =
+  ## Convenience proc for `base64.encode` returns a standard Base64 Data URI (RFC-2397)
+  ##
+  ## **See also:**
+  ## * `mimetypes <mimetypes.html>`_ for `mime` argument
+  ## * https://tools.ietf.org/html/rfc2397
+  ## * https://en.wikipedia.org/wiki/Data_URI_scheme
+  runnableExamples: static: assert getDataUri("Nim", "text/plain") == "data:text/plain;charset=utf-8;base64,Tmlt"
+  assert encoding.len > 0 and mime.len > 0 # Must *not* be URL-Safe, see RFC-2397
+  result = "data:" & mime & ";charset=" & encoding & ";base64," & base64.encode(data)

@@ -1,10 +1,11 @@
 discard """
-  errmsg: "type mismatch: got <int>"
-  line: 15
-  nimout: '''type mismatch: got <int>
+  errormsg: "type mismatch: got <int>"
+  nimout: '''tprevent_forloopvar_mutations.nim(16, 7) Error: type mismatch: got <int>
 but expected one of:
-proc inc[T: Ordinal | uint | uint64](x: var T; y = 1)
-  for a 'var' type a variable needs to be passed, but 'i' is immutable
+proc inc[T: Ordinal](x: var T; y = 1)
+  first type mismatch at position: 1
+  required type for x: var T: Ordinal
+  but expression 'i' is immutable, not 'var'
 
 expression: inc i
 '''

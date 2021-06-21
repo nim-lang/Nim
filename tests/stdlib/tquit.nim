@@ -5,9 +5,11 @@ just exiting...
 joinable: false
 """
 
-# Test the new beforeQuit variable:
+# Test `addQuitProc` (now deprecated by `addExitProc`)
 
 proc myExit() {.noconv.} =
   write(stdout, "just exiting...\n")
 
+{.push warning[deprecated]: off.}
 addQuitProc(myExit)
+{.pop.}

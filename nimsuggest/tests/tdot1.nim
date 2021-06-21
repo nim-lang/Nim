@@ -1,5 +1,5 @@
 discard """
-$nimsuggest --tester $file
+$nimsuggest --tester --maxresults:3 $file
 >sug $1
 sug;;skField;;x;;int;;$file;;11;;4;;"";;100;;None
 sug;;skField;;y;;int;;$file;;11;;7;;"";;100;;None

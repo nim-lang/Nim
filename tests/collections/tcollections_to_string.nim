@@ -19,15 +19,18 @@ doAssert $(@["1", "2", "3"]) == """@["1", "2", "3"]"""
 doAssert $(@['1', '2', '3']) == """@['1', '2', '3']"""
 
 # Tests for sets
-doAssert $(toSet([1])) == "{1}"
-doAssert $(toSet(["1"])) == """{"1"}"""
-doAssert $(toSet(['1'])) == """{'1'}"""
+doAssert $(toHashSet([1])) == "{1}"
+doAssert $(toHashSet(["1"])) == """{"1"}"""
+doAssert $(toHashSet(['1'])) == """{'1'}"""
 doAssert $(toOrderedSet([1, 2, 3])) == "{1, 2, 3}"
 doAssert $(toOrderedSet(["1", "2", "3"])) == """{"1", "2", "3"}"""
 doAssert $(toOrderedSet(['1', '2', '3'])) == """{'1', '2', '3'}"""
 
 # Tests for tables
-doAssert $({1: "1", 2: "2"}.toTable) == """{1: "1", 2: "2"}"""
+when defined(nimIntHash1):
+  doAssert $({1: "1", 2: "2"}.toTable) == """{1: "1", 2: "2"}"""
+else:
+  doAssert $({1: "1", 2: "2"}.toTable) == """{2: "2", 1: "1"}"""
 doAssert $({"1": 1, "2": 2}.toTable) == """{"1": 1, "2": 2}"""
 
 # Tests for deques

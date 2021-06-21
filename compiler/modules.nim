@@ -10,95 +10,132 @@
 ## Implements the module handling, including the caching of modules.
 
 import
-  ast, astalgo, magicsys, std / sha1, msgs, cgendata, sigmatch, options,
-  idents, os, lexer, idgen, passes, syntaxes, llstream, modulegraphs, rod,
-  lineinfos, pathutils
+  ast, astalgo, magicsys, msgs, options,
+  idents, lexer, passes, syntaxes, llstream, modulegraphs,
+  lineinfos, pathutils, tables
+
+import ic / replayer
 
 proc resetSystemArtifacts*(g: ModuleGraph) =
   magicsys.resetSysTypes(g)
 
-proc partialInitModule(result: PSym; graph: ModuleGraph; fileIdx: FileIndex; filename: string) =
+template getModuleIdent(graph: ModuleGraph, filename: AbsoluteFile): PIdent =
+  getIdent(graph.cache, splitFile(filename).name)
+
+template packageId(): untyped {.dirty.} = ItemId(module: PackageModuleId, item: int32(fileIdx))
+
+proc getPackage(graph: ModuleGraph; fileIdx: FileIndex): PSym =
+  ## returns package symbol (skPackage) for yet to be defined module for fileIdx
+  let filename = AbsoluteFile toFullPath(graph.config, fileIdx)
+  let name = getModuleIdent(graph, filename)
+  let info = newLineInfo(fileIdx, 1, 1)
   let
-    pck = getPackageName(graph.config, filename)
+    pck = getPackageName(graph.config, filename.string)
     pck2 = if pck.len > 0: pck else: "unknown"
     pack = getIdent(graph.cache, pck2)
-  var packSym = graph.packageSyms.strTableGet(pack)
-  if packSym == nil:
-    packSym = newSym(skPackage, getIdent(graph.cache, pck2), nil, result.info)
-    initStrTable(packSym.tab)
-    graph.packageSyms.strTableAdd(packSym)
+  result = graph.packageSyms.strTableGet(pack)
+  if result == nil:
+    result = newSym(skPackage, getIdent(graph.cache, pck2), packageId(), nil, info)
+    #initStrTable(packSym.tab)
+    graph.packageSyms.strTableAdd(result)
+  else:
+    let modules = graph.modulesPerPackage.getOrDefault(result.itemId)
+    let existing = if modules.data.len > 0: strTableGet(modules, name) else: nil
+    if existing != nil and existing.info.fileIndex != info.fileIndex:
+      when false:
+        # we used to produce an error:
+        localError(graph.config, info,
+          "module names need to be unique per Nimble package; module clashes with " &
+            toFullPath(graph.config, existing.info.fileIndex))
+      else:
+        # but starting with version 0.20 we now produce a fake Nimble package instead
+        # to resolve the conflicts:
+        let pck3 = fakePackageName(graph.config, filename)
+        # this makes the new `result`'s owner be the original `result`
+        result = newSym(skPackage, getIdent(graph.cache, pck3), packageId(), result, info)
+        #initStrTable(packSym.tab)
+        graph.packageSyms.strTableAdd(result)
+
+proc partialInitModule(result: PSym; graph: ModuleGraph; fileIdx: FileIndex; filename: AbsoluteFile) =
+  let packSym = getPackage(graph, fileIdx)
   result.owner = packSym
   result.position = int fileIdx
 
-  if int(fileIdx) >= graph.modules.len:
-    setLen(graph.modules, int(fileIdx) + 1)
-  graph.modules[result.position] = result
+  #initStrTable(result.tab(graph))
+  when false:
+    strTableAdd(result.tab, result) # a module knows itself
+    # This is now implemented via
+    #   c.moduleScope.addSym(module) # a module knows itself
+    # in sem.nim, around line 527
 
-  incl(result.flags, sfUsed)
-  initStrTable(result.tab)
-  strTableAdd(result.tab, result) # a module knows itself
-  let existing = strTableGet(packSym.tab, result.name)
-  if existing != nil and existing.info.fileIndex != result.info.fileIndex:
-    localError(graph.config, result.info,
-      "module names need to be unique per Nimble package; module clashes with " &
-        toFullPath(graph.config, existing.info.fileIndex))
-  # strTableIncl() for error corrections:
-  discard strTableIncl(packSym.tab, result)
+  if graph.modulesPerPackage.getOrDefault(packSym.itemId).data.len == 0:
+    graph.modulesPerPackage[packSym.itemId] = newStrTable()
+  graph.modulesPerPackage[packSym.itemId].strTableAdd(result)
 
 proc newModule(graph: ModuleGraph; fileIdx: FileIndex): PSym =
+  let filename = AbsoluteFile toFullPath(graph.config, fileIdx)
   # We cannot call ``newSym`` here, because we have to circumvent the ID
   # mechanism, which we do in order to assign each module a persistent ID.
-  new(result)
-  result.id = -1             # for better error checking
-  result.kind = skModule
-  let filename = toFullPath(graph.config, fileIdx)
-  result.name = getIdent(graph.cache, splitFile(filename).name)
+  result = PSym(kind: skModule, itemId: ItemId(module: int32(fileIdx), item: 0'i32),
+                name: getModuleIdent(graph, filename),
+                info: newLineInfo(fileIdx, 1, 1))
   if not isNimIdentifier(result.name.s):
     rawMessage(graph.config, errGenerated, "invalid module name: " & result.name.s)
-  result.info = newLineInfo(fileIdx, 1, 1)
   partialInitModule(result, graph, fileIdx, filename)
+  graph.registerModule(result)
 
 proc compileModule*(graph: ModuleGraph; fileIdx: FileIndex; flags: TSymFlags): PSym =
+  var flags = flags
+  if fileIdx == graph.config.projectMainIdx2: flags.incl sfMainModule
   result = graph.getModule(fileIdx)
+
+  template processModuleAux =
+    var s: PLLStream
+    if sfMainModule in flags:
+      if graph.config.projectIsStdin: s = stdin.llStreamOpen
+      elif graph.config.projectIsCmd: s = llStreamOpen(graph.config.cmdInput)
+    discard processModule(graph, result, idGeneratorFromModule(result), s)
   if result == nil:
-    let filename = toFullPath(graph.config, fileIdx)
-    let (r, id) = loadModuleSym(graph, fileIdx, AbsoluteFile filename)
-    result = r
+    var cachedModules: seq[FileIndex]
+    result = moduleFromRodFile(graph, fileIdx, cachedModules)
+    let filename = AbsoluteFile toFullPath(graph.config, fileIdx)
     if result == nil:
       result = newModule(graph, fileIdx)
-      result.flags = result.flags + flags
-      if sfMainModule in result.flags:
-        graph.config.mainPackageId = result.owner.id
-      result.id = id
+      result.flags.incl flags
       registerModule(graph, result)
+      processModuleAux()
     else:
+      if sfSystemModule in flags:
+        graph.systemModule = result
       partialInitModule(result, graph, fileIdx, filename)
-      result.id = id
-      assert result.id < 0
-    discard processModule(graph, result,
-      if sfMainModule in flags and graph.config.projectIsStdin: stdin.llStreamOpen else: nil)
+    for m in cachedModules:
+      registerModuleById(graph, m)
+      replayStateChanges(graph.packed[m.int].module, graph)
+      replayGenericCacheInformation(graph, m.int)
   elif graph.isDirty(result):
     result.flags.excl sfDirty
     # reset module fields:
-    initStrTable(result.tab)
+    initStrTables(graph, result)
     result.ast = nil
-    discard processModule(graph, result,
-      if sfMainModule in flags and graph.config.projectIsStdin: stdin.llStreamOpen else: nil)
+    processModuleAux()
     graph.markClientsDirty(fileIdx)
 
-proc importModule*(graph: ModuleGraph; s: PSym, fileIdx: FileIndex): PSym {.procvar.} =
+proc importModule*(graph: ModuleGraph; s: PSym, fileIdx: FileIndex): PSym =
   # this is called by the semantic checking phase
   assert graph.config != nil
   result = compileModule(graph, fileIdx, {})
   graph.addDep(s, fileIdx)
+  # keep track of import relationships
+  if graph.config.hcrOn:
+    graph.importDeps.mgetOrPut(FileIndex(s.position), @[]).add(fileIdx)
   #if sfSystemModule in result.flags:
   #  localError(result.info, errAttemptToRedefine, result.name.s)
   # restore the notes for outer module:
   graph.config.notes =
-    if s.owner.id == graph.config.mainPackageId: graph.config.mainPackageNotes
+    if s.getnimblePkgId == graph.config.mainPackageId or isDefined(graph.config, "booting"): graph.config.mainPackageNotes
     else: graph.config.foreignPackageNotes
 
-proc includeModule*(graph: ModuleGraph; s: PSym, fileIdx: FileIndex): PNode {.procvar.} =
+proc includeModule*(graph: ModuleGraph; s: PSym, fileIdx: FileIndex): PNode =
   result = syntaxes.parseFile(fileIdx, graph.cache, graph.config)
   graph.addDep(s, fileIdx)
   graph.addIncludeDep(s.position.FileIndex, fileIdx)
@@ -116,17 +153,23 @@ proc compileSystemModule*(graph: ModuleGraph) =
 
 proc wantMainModule*(conf: ConfigRef) =
   if conf.projectFull.isEmpty:
-    fatal(conf, newLineInfo(conf, AbsoluteFile"command line", 1, 1), errGenerated,
-        "command expects a filename")
+    fatal(conf, gCmdLineInfo, "command expects a filename")
   conf.projectMainIdx = fileInfoIdx(conf, addFileExt(conf.projectFull, NimExt))
 
-proc compileProject*(graph: ModuleGraph; projectFileIdx = InvalidFileIDX) =
+proc compileProject*(graph: ModuleGraph; projectFileIdx = InvalidFileIdx) =
   connectCallbacks(graph)
   let conf = graph.config
   wantMainModule(conf)
+  configComplete(graph)
+
   let systemFileIdx = fileInfoIdx(conf, conf.libpath / RelativeFile"system.nim")
-  let projectFile = if projectFileIdx == InvalidFileIDX: conf.projectMainIdx else: projectFileIdx
+  let projectFile = if projectFileIdx == InvalidFileIdx: conf.projectMainIdx else: projectFileIdx
+  conf.projectMainIdx2 = projectFile
+
+  let packSym = getPackage(graph, projectFile)
+  graph.config.mainPackageId = packSym.getnimblePkgId
   graph.importStack.add projectFile
+
   if projectFile == systemFileIdx:
     discard graph.compileModule(projectFile, {sfMainModule, sfSystemModule})
   else:
@@ -135,7 +178,6 @@ proc compileProject*(graph: ModuleGraph; projectFileIdx = InvalidFileIDX) =
 
 proc makeModule*(graph: ModuleGraph; filename: AbsoluteFile): PSym =
   result = graph.newModule(fileInfoIdx(graph.config, filename))
-  result.id = getID()
   registerModule(graph, result)
 
 proc makeModule*(graph: ModuleGraph; filename: string): PSym =

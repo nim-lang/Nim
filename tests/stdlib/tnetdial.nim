@@ -2,7 +2,6 @@ discard """
   cmd: "nim c --threads:on $file"
   exitcode: 0
   output: "OK"
-  disabled: "travis"
 """
 
 import os, net, nativesockets, asyncdispatch
@@ -12,7 +11,7 @@ import os, net, nativesockets, asyncdispatch
 const port = Port(28431)
 
 proc initIPv6Server(hostname: string, port: Port): AsyncFD =
-  let fd = newNativeSocket(AF_INET6)
+  let fd = createNativeSocket(AF_INET6)
   setSockOptInt(fd, SOL_SOCKET, SO_REUSEADDR, 1)
   var aiList = getAddrInfo(hostname, port, AF_INET6)
   if bindAddr(fd, aiList.ai_addr, aiList.ai_addrlen.Socklen) < 0'i32:
@@ -39,10 +38,10 @@ proc testThread() {.thread.} =
   fd.close()
 
 proc test() =
+  let serverFd = initIPv6Server("::1", port)
   var t: Thread[void]
   createThread(t, testThread)
 
-  let serverFd = initIPv6Server("::1", port)
   var done = false
 
   serverFd.accept().callback = proc(fut: Future[AsyncFD]) =
@@ -58,4 +57,5 @@ proc test() =
 
   joinThread(t)
 
+# this would cause #13132 `for i in 0..<10000: test()`
 test()

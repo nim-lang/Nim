@@ -1,9 +1,11 @@
 discard """
 disabled: "windows"
+disabled: "openbsd"
 joinable: false
+disabled: 32bit
 """
-
-# appveyor is "out of memory"
+# no point to test this on system with smaller address space
+# was: appveyor is "out of memory"
 
 const
   nmax = 2*1024*1024*1024

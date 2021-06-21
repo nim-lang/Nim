@@ -19,11 +19,6 @@
 when not defined(nimNewShared):
   {.pragma: gcsafe.}
 
-when not defined(nimImmediateDeprecated):
-  {.pragma: oldimmediate, immediate.}
-else:
-  {.pragma: oldimmediate.}
-
 when defined(createNimRtl):
   when defined(useNimRtl):
     {.error: "Cannot create and use nimrtl at the same time!".}
@@ -49,15 +44,7 @@ else:
   {.pragma: inl, inline.}
   {.pragma: compilerRtl, compilerproc.}
 
-when not defined(nimsuperops):
-  {.pragma: operator.}
+{.pragma: benign, gcsafe, locks: 0.}
 
-when defined(nimlocks):
-  {.pragma: benign, gcsafe, locks: 0.}
-else:
-  {.pragma: benign, gcsafe.}
-
-when defined(nimTableGet):
-  {.pragma: deprecatedGet, deprecated.}
-else:
-  {.pragma: deprecatedGet.}
+when defined(nimHasSinkInference):
+  {.push sinkInference: on.}

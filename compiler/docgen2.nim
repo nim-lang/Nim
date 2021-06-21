@@ -11,8 +11,7 @@
 # semantic checking.
 
 import
-  os, options, ast, astalgo, msgs, ropes, idents, passes, docgen, lineinfos,
-  pathutils
+  options, ast, msgs, passes, docgen, lineinfos, pathutils
 
 from modulegraphs import ModuleGraph, PPassContext
 
@@ -20,17 +19,19 @@ type
   TGen = object of PPassContext
     doc: PDoc
     module: PSym
+    config: ConfigRef
   PGen = ref TGen
 
-template shouldProcess(g): bool =
-  (g.module.owner.id == g.doc.conf.mainPackageId and optWholeProject in g.doc.conf.globalOptions) or
-      sfMainModule in g.module.flags
+proc shouldProcess(g: PGen): bool =
+  (optWholeProject in g.doc.conf.globalOptions and g.module.getnimblePkgId == g.doc.conf.mainPackageId) or
+      sfMainModule in g.module.flags or g.config.projectMainIdx == g.module.info.fileIndex
 
 template closeImpl(body: untyped) {.dirty.} =
   var g = PGen(p)
   let useWarning = sfMainModule notin g.module.flags
-  #echo g.module.name.s, " ", g.module.owner.id, " ", gMainPackageId
+  let groupedToc = true
   if shouldProcess(g):
+    finishGenerateDoc(g.doc)
     body
     try:
       generateIndex(g.doc)
@@ -39,7 +40,7 @@ template closeImpl(body: untyped) {.dirty.} =
 
 proc close(graph: ModuleGraph; p: PPassContext, n: PNode): PNode =
   closeImpl:
-    writeOutput(g.doc, useWarning)
+    writeOutput(g.doc, useWarning, groupedToc)
 
 proc closeJson(graph: ModuleGraph; p: PPassContext, n: PNode): PNode =
   closeImpl:
@@ -61,19 +62,25 @@ template myOpenImpl(ext: untyped) {.dirty.} =
   var g: PGen
   new(g)
   g.module = module
+  g.config = graph.config
   var d = newDocumentor(AbsoluteFile toFullPath(graph.config, FileIndex module.position),
-      graph.cache, graph.config, ext)
+      graph.cache, graph.config, ext, module)
   d.hasToc = true
   g.doc = d
   result = g
 
-proc myOpen(graph: ModuleGraph; module: PSym): PPassContext =
+proc myOpen(graph: ModuleGraph; module: PSym; idgen: IdGenerator): PPassContext =
   myOpenImpl(HtmlExt)
 
-proc myOpenJson(graph: ModuleGraph; module: PSym): PPassContext =
+proc myOpenTex(graph: ModuleGraph; module: PSym; idgen: IdGenerator): PPassContext =
+  myOpenImpl(TexExt)
+
+proc myOpenJson(graph: ModuleGraph; module: PSym; idgen: IdGenerator): PPassContext =
   myOpenImpl(JsonExt)
 
 const docgen2Pass* = makePass(open = myOpen, process = processNode, close = close)
+const docgen2TexPass* = makePass(open = myOpenTex, process = processNode,
+                                 close = close)
 const docgen2JsonPass* = makePass(open = myOpenJson, process = processNodeJson,
                                   close = closeJson)
 

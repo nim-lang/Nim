@@ -47,7 +47,7 @@ proc filter[T](a: openarray[T], predicate: proc (x: T): bool): seq[T] =
 
 proc map[T, S](a: openarray[T], fn: proc (x: T): S): seq[S] =
   newSeq(result, a.len)
-  for i in 0 .. <a.len: result[i] = fn(a[i])
+  for i in 0 ..< a.len: result[i] = fn(a[i])
 
 
 type

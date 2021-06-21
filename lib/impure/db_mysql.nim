@@ -14,10 +14,10 @@
 ## `db_postgres <db_postgres.html>`_.
 ##
 ## Parameter substitution
-## ----------------------
+## ======================
 ##
-## All ``db_*`` modules support the same form of parameter substitution.
-## That is, using the ``?`` (question mark) to signify the place where a
+## All `db_*` modules support the same form of parameter substitution.
+## That is, using the `?` (question mark) to signify the place where a
 ## value should be placed. For example:
 ##
 ## .. code-block:: Nim
@@ -25,18 +25,18 @@
 ##
 ##
 ## Examples
-## --------
+## ========
 ##
 ## Opening a connection to a database
-## ==================================
+## ----------------------------------
 ##
 ## .. code-block:: Nim
-##     import db_mysql
+##     import std/db_mysql
 ##     let db = open("localhost", "user", "password", "dbname")
 ##     db.close()
 ##
 ## Creating a table
-## ================
+## ----------------
 ##
 ## .. code-block:: Nim
 ##      db.exec(sql"DROP TABLE IF EXISTS myTable")
@@ -45,18 +45,18 @@
 ##                       name varchar(50) not null)"""))
 ##
 ## Inserting data
-## ==============
+## --------------
 ##
 ## .. code-block:: Nim
 ##     db.exec(sql"INSERT INTO myTable (id, name) VALUES (0, ?)",
 ##             "Dominik")
 ##
 ## Larger example
-## ==============
+## --------------
 ##
 ## .. code-block:: Nim
 ##
-##  import db_mysql, math
+##  import std/[db_mysql, math]
 ##
 ##  let theDb = open("localhost", "nim", "nim", "test")
 ##
@@ -88,6 +88,8 @@ import strutils, mysql
 import db_common
 export db_common
 
+import std/private/since
+
 type
   DbConn* = distinct PMySQL ## encapsulates a database connection
   Row* = seq[string]   ## a row of a dataset. NULL database values will be
@@ -116,10 +118,22 @@ when false:
 
 proc dbQuote*(s: string): string =
   ## DB quotes the string.
-  result = "'"
+  result = newStringOfCap(s.len + 2)
+  result.add "'"
   for c in items(s):
-    if c == '\'': add(result, "''")
-    else: add(result, c)
+    # see https://cheatsheetseries.owasp.org/cheatsheets/SQL_Injection_Prevention_Cheat_Sheet.html#mysql-escaping
+    case c
+    of '\0': result.add "\\0"
+    of '\b': result.add "\\b"
+    of '\t': result.add "\\t"
+    of '\l': result.add "\\n"
+    of '\r': result.add "\\r"
+    of '\x1a': result.add "\\Z"
+    of '"': result.add "\\\""
+    of '\'': result.add "\\'"
+    of '\\': result.add "\\\\"
+    of '_': result.add "\\_"
+    else: result.add c
   add(result, '\'')
 
 proc dbFormat(formatstr: SqlQuery, args: varargs[string]): string =
@@ -165,7 +179,7 @@ iterator fastRows*(db: DbConn, query: SqlQuery,
   ## if you require **ALL** the rows.
   ##
   ## Breaking the fastRows() iterator during a loop will cause the next
-  ## database query to raise an [EDb] exception ``Commands out of sync``.
+  ## database query to raise an [EDb] exception `Commands out of sync`.
   rawExec(db, query, args)
   var sqlres = mysql.useResult(PMySQL db)
   if sqlres != nil:
@@ -201,7 +215,7 @@ iterator instantRows*(db: DbConn, query: SqlQuery,
     properFreeResult(sqlres, row)
 
 proc setTypeName(t: var DbType; f: PFIELD) =
-  shallowCopy(t.name, $f.name)
+  t.name = $f.name
   t.maxReprLen = Natural(f.max_length)
   if (NOT_NULL_FLAG and f.flags) != 0: t.notNull = true
   case f.ftype
@@ -286,6 +300,10 @@ proc `[]`*(row: InstantRow, col: int): string {.inline.} =
   ## Returns text for given column of the row.
   $row.row[col]
 
+proc unsafeColumnAt*(row: InstantRow, index: int): cstring {.inline.} =
+  ## Return cstring of given column of the row
+  row.row[index]
+
 proc len*(row: InstantRow): int {.inline.} =
   ## Returns number of columns in the row.
   row.len
@@ -353,6 +371,19 @@ proc insertId*(db: DbConn, query: SqlQuery,
   ## executes the query (typically "INSERT") and returns the
   ## generated ID for the row.
   result = tryInsertID(db, query, args)
+  if result < 0: dbError(db)
+
+proc tryInsert*(db: DbConn, query: SqlQuery, pkName: string,
+                args: varargs[string, `$`]): int64
+               {.tags: [WriteDbEffect], raises: [], since: (1, 3).} =
+  ## same as tryInsertID
+  tryInsertID(db, query, args)
+
+proc insert*(db: DbConn, query: SqlQuery, pkName: string,
+             args: varargs[string, `$`]): int64
+            {.tags: [WriteDbEffect], since: (1, 3).} =
+  ## same as insertId
+  result = tryInsert(db, query,pkName, args)
   if result < 0: dbError(db)
 
 proc execAffectedRows*(db: DbConn, query: SqlQuery,

@@ -13,167 +13,168 @@
 import unicode
 
 proc editDistance*(a, b: string): int {.noSideEffect.} =
-  ## Returns the unicode-rune edit distance between ``a`` and ``b``.
+  ## Returns the **unicode-rune** edit distance between `a` and `b`.
   ##
   ## This uses the `Levenshtein`:idx: distance algorithm with only a linear
   ## memory overhead.
+  runnableExamples: static: doAssert editdistance("Kitten", "Bitten") == 1
   if len(a) > len(b):
-    # make ``b`` the longer string
+    # make `b` the longer string
     return editDistance(b, a)
   # strip common prefix
   var
-    i_start = 0 ## The character starting index of the first rune in both strings ``a`` and ``b``
-    i_next_a = 0
-    i_next_b = 0
-    rune_a, rune_b: Rune
-    len_runes_a = 0 ## The number of relevant runes in string ``a``.
-    len_runes_b = 0 ## The number of relevant runes in string ``b``.
+    iStart = 0 ## The character starting index of the first rune in both strings `a` and `b`
+    iNextA = 0
+    iNextB = 0
+    runeA, runeB: Rune
+    lenRunesA = 0 ## The number of relevant runes in string `a`.
+    lenRunesB = 0 ## The number of relevant runes in string `b`.
   block commonPrefix:
-    # ``a`` is the shorter string
-    while i_start < len(a):
-      i_next_a = i_start
-      a.fastRuneAt(i_next_a, rune_a, doInc = true)
-      i_next_b = i_start
-      b.fastRuneAt(i_next_b, rune_b, doInc = true)
-      if rune_a != rune_b:
-        inc(len_runes_a)
-        inc(len_runes_b)
+    # `a` is the shorter string
+    while iStart < len(a):
+      iNextA = iStart
+      a.fastRuneAt(iNextA, runeA, doInc = true)
+      iNextB = iStart
+      b.fastRuneAt(iNextB, runeB, doInc = true)
+      if runeA != runeB:
+        inc(lenRunesA)
+        inc(lenRunesB)
         break
-      i_start = i_next_a
+      iStart = iNextA
   var
     # we know that we are either at the start of the strings
-    # or that the current value of rune_a is not equal to rune_b
-    # => start search for common suffix after the current rune (``i_next_*``)
-    i_end_a = i_next_a ## The exclusive upper index bound of string ``a``.
-    i_end_b = i_next_b ## The exclusive upper index bound of string ``b``.
-    i_current_a = i_next_a
-    i_current_b = i_next_b
+    # or that the current value of runeA is not equal to runeB
+    # => start search for common suffix after the current rune (`i_next_*`)
+    iEndA = iNextA ## The exclusive upper index bound of string `a`.
+    iEndB = iNextB ## The exclusive upper index bound of string `b`.
+    iCurrentA = iNextA
+    iCurrentB = iNextB
   block commonSuffix:
     var
-      add_runes_a = 0
-      add_runes_b = 0
-    while i_current_a < len(a) and i_current_b < len(b):
-      i_next_a = i_current_a
-      a.fastRuneAt(i_next_a, rune_a)
-      i_next_b = i_current_b
-      b.fastRuneAt(i_next_b, rune_b)
-      inc(add_runes_a)
-      inc(add_runes_b)
-      if rune_a != rune_b:
-        i_end_a = i_next_a
-        i_end_b = i_next_b
-        inc(len_runes_a, add_runes_a)
-        inc(len_runes_b, add_runes_b)
-        add_runes_a = 0
-        add_runes_b = 0
-      i_current_a = i_next_a
-      i_current_b = i_next_b
-    if i_current_a >= len(a): # ``a`` exhausted
-      if i_current_b < len(b): # ``b`` not exhausted
-        i_end_a = i_current_a
-        i_end_b = i_current_b
-        inc(len_runes_a, add_runes_a)
-        inc(len_runes_b, add_runes_b)
+      addRunesA = 0
+      addRunesB = 0
+    while iCurrentA < len(a) and iCurrentB < len(b):
+      iNextA = iCurrentA
+      a.fastRuneAt(iNextA, runeA)
+      iNextB = iCurrentB
+      b.fastRuneAt(iNextB, runeB)
+      inc(addRunesA)
+      inc(addRunesB)
+      if runeA != runeB:
+        iEndA = iNextA
+        iEndB = iNextB
+        inc(lenRunesA, addRunesA)
+        inc(lenRunesB, addRunesB)
+        addRunesA = 0
+        addRunesB = 0
+      iCurrentA = iNextA
+      iCurrentB = iNextB
+    if iCurrentA >= len(a): # `a` exhausted
+      if iCurrentB < len(b): # `b` not exhausted
+        iEndA = iCurrentA
+        iEndB = iCurrentB
+        inc(lenRunesA, addRunesA)
+        inc(lenRunesB, addRunesB)
         while true:
-          b.fastRuneAt(i_end_b, rune_b)
-          inc(len_runes_b)
-          if i_end_b >= len(b): break
-    elif i_current_b >= len(b): # ``b`` exhausted and ``a`` not exhausted
-      i_end_a = i_current_a
-      i_end_b = i_current_b
-      inc(len_runes_a, add_runes_a)
-      inc(len_runes_b, add_runes_b)
+          b.fastRuneAt(iEndB, runeB)
+          inc(lenRunesB)
+          if iEndB >= len(b): break
+    elif iCurrentB >= len(b): # `b` exhausted and `a` not exhausted
+      iEndA = iCurrentA
+      iEndB = iCurrentB
+      inc(lenRunesA, addRunesA)
+      inc(lenRunesB, addRunesB)
       while true:
-        a.fastRuneAt(i_end_a, rune_a)
-        inc(len_runes_a)
-        if i_end_a >= len(a): break
+        a.fastRuneAt(iEndA, runeA)
+        inc(lenRunesA)
+        if iEndA >= len(a): break
   block specialCases:
     # trivial cases:
-    if len_runes_a == 0: return len_runes_b
-    if len_runes_b == 0: return len_runes_a
+    if lenRunesA == 0: return lenRunesB
+    if lenRunesB == 0: return lenRunesA
     # another special case:
-    if len_runes_a == 1:
-      a.fastRuneAt(i_start, rune_a, doInc = false)
-      var i_current_b = i_start
-      while i_current_b < i_end_b:
-        b.fastRuneAt(i_current_b, rune_b, doInc = true)
-        if rune_a == rune_b: return len_runes_b - 1
-      return len_runes_b
+    if lenRunesA == 1:
+      a.fastRuneAt(iStart, runeA, doInc = false)
+      var iCurrentB = iStart
+      while iCurrentB < iEndB:
+        b.fastRuneAt(iCurrentB, runeB, doInc = true)
+        if runeA == runeB: return lenRunesB - 1
+      return lenRunesB
   # common case:
   var
-    len1 = len_runes_a + 1
-    len2 = len_runes_b + 1
+    len1 = lenRunesA + 1
+    len2 = lenRunesB + 1
     row: seq[int]
-  let half = len_runes_a div 2
+  let half = lenRunesA div 2
   newSeq(row, len2)
-  var e = i_start + len2 - 1 # end marker
+  var e = iStart + len2 - 1 # end marker
   # initialize first row:
   for i in 1 .. (len2 - half - 1): row[i] = i
   row[0] = len1 - half - 1
-  i_current_a = i_start
+  iCurrentA = iStart
   var
-    char2p_i = -1
-    char2p_prev: int
+    char2pI = -1
+    char2pPrev: int
   for i in 1 .. (len1 - 1):
-    i_next_a = i_current_a
-    a.fastRuneAt(i_next_a, rune_a)
+    iNextA = iCurrentA
+    a.fastRuneAt(iNextA, runeA)
     var
       char2p: int
-      D, x: int
+      diff, x: int
       p: int
     if i >= (len1 - half):
       # skip the upper triangle:
       let offset = i + half - len1
-      if char2p_i == i:
-        b.fastRuneAt(char2p_prev, rune_b)
-        char2p = char2p_prev
-        char2p_i = i + 1
+      if char2pI == i:
+        b.fastRuneAt(char2pPrev, runeB)
+        char2p = char2pPrev
+        char2pI = i + 1
       else:
-        char2p = i_start
+        char2p = iStart
         for j in 0 ..< offset:
-          rune_b = b.runeAt(char2p)
-          inc(char2p, rune_b.size)
-        char2p_i = i + 1
-        char2p_prev = char2p
+          runeB = b.runeAt(char2p)
+          inc(char2p, runeB.size)
+        char2pI = i + 1
+        char2pPrev = char2p
       p = offset
-      rune_b = b.runeAt(char2p)
-      var c3 = row[p] + (if rune_a != rune_b: 1 else: 0)
-      inc(char2p, rune_b.size)
+      runeB = b.runeAt(char2p)
+      var c3 = row[p] + (if runeA != runeB: 1 else: 0)
+      inc(char2p, runeB.size)
       inc(p)
       x = row[p] + 1
-      D = x
+      diff = x
       if x > c3: x = c3
       row[p] = x
       inc(p)
     else:
       p = 1
-      char2p = i_start
-      D = i
+      char2p = iStart
+      diff = i
       x = i
     if i <= (half + 1):
       # skip the lower triangle:
       e = len2 + i - half - 2
     # main:
     while p <= e:
-      dec(D)
-      rune_b = b.runeAt(char2p)
-      var c3 = D + (if rune_a != rune_b: 1 else: 0)
-      inc(char2p, rune_b.size)
+      dec(diff)
+      runeB = b.runeAt(char2p)
+      var c3 = diff + (if runeA != runeB: 1 else: 0)
+      inc(char2p, runeB.size)
       inc(x)
       if x > c3: x = c3
-      D = row[p] + 1
-      if x > D: x = D
+      diff = row[p] + 1
+      if x > diff: x = diff
       row[p] = x
       inc(p)
     # lower triangle sentinel:
     if i <= half:
-      dec(D)
-      rune_b = b.runeAt(char2p)
-      var c3 = D + (if rune_a != rune_b: 1 else: 0)
+      dec(diff)
+      runeB = b.runeAt(char2p)
+      var c3 = diff + (if runeA != runeB: 1 else: 0)
       inc(x)
       if x > c3: x = c3
       row[p] = x
-    i_current_a = i_next_a
+    iCurrentA = iNextA
   result = row[e]
 
 proc editDistanceAscii*(a, b: string): int {.noSideEffect.} =
@@ -181,6 +182,7 @@ proc editDistanceAscii*(a, b: string): int {.noSideEffect.} =
   ##
   ## This uses the `Levenshtein`:idx: distance algorithm with only a linear
   ## memory overhead.
+  runnableExamples: static: doAssert editDistanceAscii("Kitten", "Bitten") == 1
   var len1 = a.len
   var len2 = b.len
   if len1 > len2:
@@ -210,7 +212,7 @@ proc editDistanceAscii*(a, b: string): int {.noSideEffect.} =
   inc(len1)
   inc(len2)
   var half = len1 shr 1
-  # initalize first row:
+  # initialize first row:
   #var row = cast[ptr array[0..high(int) div 8, int]](alloc(len2*sizeof(int)))
   var row: seq[int]
   newSeq(row, len2)
@@ -220,7 +222,7 @@ proc editDistanceAscii*(a, b: string): int {.noSideEffect.} =
   for i in 1 .. len1 - 1:
     var char1 = a[i + s - 1]
     var char2p: int
-    var D, x: int
+    var diff, x: int
     var p: int
     if i >= len1 - half:
       # skip the upper triangle:
@@ -231,65 +233,34 @@ proc editDistanceAscii*(a, b: string): int {.noSideEffect.} =
       inc(p)
       inc(char2p)
       x = row[p] + 1
-      D = x
+      diff = x
       if x > c3: x = c3
       row[p] = x
       inc(p)
     else:
       p = 1
       char2p = 0
-      D = i
+      diff = i
       x = i
     if i <= half + 1:
       # skip the lower triangle:
       e = len2 + i - half - 2
     # main:
     while p <= e:
-      dec(D)
-      var c3 = D + ord(char1 != b[char2p + s])
+      dec(diff)
+      var c3 = diff + ord(char1 != b[char2p + s])
       inc(char2p)
       inc(x)
       if x > c3: x = c3
-      D = row[p] + 1
-      if x > D: x = D
+      diff = row[p] + 1
+      if x > diff: x = diff
       row[p] = x
       inc(p)
     # lower triangle sentinel:
     if i <= half:
-      dec(D)
-      var c3 = D + ord(char1 != b[char2p + s])
+      dec(diff)
+      var c3 = diff + ord(char1 != b[char2p + s])
       inc(x)
       if x > c3: x = c3
       row[p] = x
   result = row[e]
-
-
-when isMainModule:
-  doAssert editDistance("", "") == 0
-  doAssert editDistance("kitten", "sitting") == 3 # from Wikipedia
-  doAssert editDistance("flaw", "lawn") == 2 # from Wikipedia
-
-  doAssert editDistance("привет", "превет") == 1
-  doAssert editDistance("Åge", "Age") == 1
-  # editDistance, one string is longer in bytes, but shorter in rune length
-  # first string: 4 bytes, second: 6 bytes, but only 3 runes
-  doAssert editDistance("aaaa", "×××") == 4
-
-  block veryLongStringEditDistanceTest:
-    const cap = 256
-    var
-      s1 = newStringOfCap(cap)
-      s2 = newStringOfCap(cap)
-    while len(s1) < cap:
-      s1.add 'a'
-    while len(s2) < cap:
-      s2.add 'b'
-    doAssert editDistance(s1, s2) == cap
-
-  block combiningCodePointsEditDistanceTest:
-    const s = "A\xCC\x8Age"
-    doAssert editDistance(s, "Age") == 1
-
-  doAssert editDistanceAscii("", "") == 0
-  doAssert editDistanceAscii("kitten", "sitting") == 3 # from Wikipedia
-  doAssert editDistanceAscii("flaw", "lawn") == 2 # from Wikipedia

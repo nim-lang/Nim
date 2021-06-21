@@ -8,34 +8,25 @@
 #
 # The generic ``repr`` procedure for the javascript backend.
 
-proc reprInt(x: int64): string {.compilerproc.} = return $x
-proc reprFloat(x: float): string {.compilerproc.} =
-  # Js toString doesn't differentiate between 1.0 and 1,
-  # but we do.
-  if $x == $(x.int): $x & ".0"
-  else: $x
+proc reprInt(x: int64): string {.compilerproc.} = $x
+proc reprFloat(x: float): string {.compilerproc.} = $x
 
 proc reprPointer(p: pointer): string {.compilerproc.} =
   # Do we need to generate the full 8bytes ? In js a pointer is an int anyway
   var tmp: int
-  {. emit: """
-    if (`p`_Idx == null) {
-      `tmp` = 0;
-    } else {
-      `tmp` = `p`_Idx;
-    }
-  """ .}
+  {.emit: "`tmp` = `p`_Idx || 0;".}
   result = $tmp
 
 proc reprBool(x: bool): string {.compilerRtl.} =
   if x: result = "true"
   else: result = "false"
 
-proc isUndefined[T](x: T): bool {.inline.} = {.emit: "`result` = `x` === undefined;"}
-
 proc reprEnum(e: int, typ: PNimType): string {.compilerRtl.} =
-  if not typ.node.sons[e].isUndefined:
-    result = makeNimstrLit(typ.node.sons[e].name)
+  var tmp: bool
+  let item = typ.node.sons[e]
+  {.emit: "`tmp` = `item` !== undefined".}
+  if tmp:
+    result = makeNimstrLit(item.name)
   else:
     result = $e & " (invalid data!)"
 
@@ -44,11 +35,11 @@ proc reprChar(x: char): string {.compilerRtl.} =
   case x
   of '"': add(result, "\\\"")
   of '\\': add(result, "\\\\")
-  of '\127'..'\255', '\0'..'\31': add( result, "\\" & reprInt(ord(x)) )
+  of '\127'..'\255', '\0'..'\31': add(result, "\\" & reprInt(ord(x)))
   else: add(result, x)
   add(result, "\'")
 
-proc reprStrAux(result: var string, s: cstring, len: int) =
+proc reprStrAux(result: var string, s: cstring | string, len: int) =
   add(result, "\"")
   for i in 0 .. len-1:
     let c = s[i]
@@ -63,17 +54,7 @@ proc reprStrAux(result: var string, s: cstring, len: int) =
   add(result, "\"")
 
 proc reprStr(s: string): string {.compilerRtl.} =
-  result = ""
-  var sIsNil = false
-  asm """`sIsNil` = `s` === null"""
-  if sIsNil: # cast[pointer](s).isNil:
-    # Handle nil strings here because they don't have a length field in js
-    # TODO: check for null/undefined before generating call to length in js?
-    # Also: c backend repr of a nil string is <pointer>"", but repr of an
-    # array of string that is not initialized is [nil, nil, ...] ??
-    add(result, "nil")
-  else:
-    reprStrAux(result, s, s.len)
+  reprStrAux(result, s, s.len)
 
 proc addSetElem(result: var string, elem: int, typ: PNimType) =
   # Dispatch each set element to the correct repr<Type> proc
@@ -114,7 +95,6 @@ proc reprSetAux(result: var string, s: int, typ: PNimType) =
   add(result, "}")
 
 proc reprSet(e: int, typ: PNimType): string {.compilerRtl.} =
-  result = ""
   reprSetAux(result, e, typ)
 
 type
@@ -130,20 +110,6 @@ proc reprAux(result: var string, p: pointer, typ: PNimType, cl: var ReprClosure)
 
 proc reprArray(a: pointer, typ: PNimType,
               cl: var ReprClosure): string {.compilerRtl.} =
-  var isNilArrayOrSeq: bool
-  # isnil is not enough here as it would try to deref `a` without knowing what's inside
-  {. emit: """
-    if (`a` == null) {
-      `isNilArrayOrSeq` = true;
-    } else if (`a`[0] == null) {
-      `isNilArrayOrSeq` = true;
-    } else {
-      `isNilArrayOrSeq` = false;
-    };
-    """ .}
-  if typ.kind == tySequence and isNilArrayOrSeq:
-    return "nil"
-
   # We prepend @ to seq, the C backend prepends the pointer to the seq.
   result = if typ.kind == tySequence: "@[" else: "["
   var len: int = 0
@@ -163,15 +129,15 @@ proc reprArray(a: pointer, typ: PNimType,
 
   add(result, "]")
 
-proc isPointedToNil(p: pointer): bool {.inline.}=
+proc isPointedToNil(p: pointer): bool =
   {. emit: "if (`p` === null) {`result` = true};\n" .}
 
 proc reprRef(result: var string, p: pointer, typ: PNimType,
           cl: var ReprClosure) =
   if p.isPointedToNil:
-    add(result , "nil")
+    add(result, "nil")
     return
-  add( result, "ref " & reprPointer(p) )
+  add(result, "ref " & reprPointer(p))
   add(result, " --> ")
   if typ.base.kind != tyArray:
     {. emit: """
@@ -184,8 +150,8 @@ proc reprRef(result: var string, p: pointer, typ: PNimType,
 proc reprRecordAux(result: var string, o: pointer, typ: PNimType, cl: var ReprClosure) =
   add(result, "[")
 
-  var first: bool = true
-  var val: pointer = o
+  var first = true
+  var val = o
   if typ.node.len == 0:
     # if the object has only one field, len is 0  and sons is nil, the field is in node
     let key: cstring = typ.node.name
@@ -205,11 +171,10 @@ proc reprRecordAux(result: var string, o: pointer, typ: PNimType, cl: var ReprCl
   add(result, "]")
 
 proc reprRecord(o: pointer, typ: PNimType, cl: var ReprClosure): string {.compilerRtl.} =
-  result = ""
-  reprRecordAux(result, o, typ,cl)
+  reprRecordAux(result, o, typ, cl)
 
 
-proc reprJSONStringify(p: int): string {.compilerRtl.} =
+proc reprJsonStringify(p: int): string {.compilerRtl.} =
   # As a last resort, use stringify
   # We use this for tyOpenArray, tyVarargs while genTypeInfo is not implemented
   var tmp: cstring
@@ -224,18 +189,18 @@ proc reprAux(result: var string, p: pointer, typ: PNimType,
   dec(cl.recDepth)
   case typ.kind
   of tyInt..tyInt64, tyUInt..tyUInt64:
-    add( result, reprInt(cast[int](p)) )
+    add(result, reprInt(cast[int](p)))
   of tyChar:
-    add( result, reprChar(cast[char](p)) )
+    add(result, reprChar(cast[char](p)))
   of tyBool:
-    add( result, reprBool(cast[bool](p)) )
+    add(result, reprBool(cast[bool](p)))
   of tyFloat..tyFloat128:
-    add( result, reprFloat(cast[float](p)) )
+    add(result, reprFloat(cast[float](p)))
   of tyString:
     var fp: int
     {. emit: "`fp` = `p`;\n" .}
-    add( result, reprStr(cast[string](p)) )
-  of tyCString:
+    add(result, reprStr(cast[string](p)))
+  of tyCstring:
     var fp: cstring
     {. emit: "`fp` = `p`;\n" .}
     if fp.isNil:
@@ -265,12 +230,12 @@ proc reprAux(result: var string, p: pointer, typ: PNimType,
     else:
       add(result, reprPointer(p))
   else:
-    add( result, "(invalid data!)" & reprJsonStringify(cast[int](p)) )
+    add(result, "(invalid data!)" & reprJsonStringify(cast[int](p)))
   inc(cl.recDepth)
 
 proc reprAny(p: pointer, typ: PNimType): string {.compilerRtl.} =
   var cl: ReprClosure
   initReprClosure(cl)
-  result = ""
   reprAux(result, p, typ, cl)
-  add(result, "\n")
+  when defined(nimLegacyReprWithNewline): # see PR #16034
+    add result, "\n"

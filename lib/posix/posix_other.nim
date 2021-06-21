@@ -7,20 +7,26 @@
 #    distribution, for details about the copyright.
 #
 
-{.deadCodeElim: on.}  # dce option deprecated
+when defined(nimHasStyleChecks):
+  {.push styleChecks: off.}
 
-const
-  hasSpawnH = true # should exist for every Posix system nowadays
-  hasAioH = defined(linux)
+when defined(freertos):
+  const
+    hasSpawnH = false # should exist for every Posix system nowadays
+    hasAioH = false
+else:
+  const
+    hasSpawnH = true # should exist for every Posix system nowadays
+    hasAioH = defined(linux)
 
 when defined(linux) and not defined(android):
   # On Linux:
   # timer_{create,delete,settime,gettime},
   # clock_{getcpuclockid, getres, gettime, nanosleep, settime} lives in librt
-  {.passL: "-lrt".}
+  {.passl: "-lrt".}
 when defined(solaris):
   # On Solaris hstrerror lives in libresolv
-  {.passL: "-lresolv".}
+  {.passl: "-lresolv".}
 
 type
   DIR* {.importc: "DIR", header: "<dirent.h>",
@@ -31,7 +37,12 @@ type
   SocketHandle* = distinct cint # The type used to represent socket descriptors
 
 type
-  Time* {.importc: "time_t", header: "<time.h>".} = distinct clong
+  Time* {.importc: "time_t", header: "<time.h>".} = distinct (
+    when defined(nimUse64BitCTime):
+      int64
+    else:
+      clong
+  )
 
   Timespec* {.importc: "struct timespec",
                header: "<time.h>", final, pure.} = object ## struct timespec
@@ -53,7 +64,7 @@ type
       d_type*: int8 ## Type of file; not supported by all filesystem types.
                     ## (not POSIX)
       when defined(linux) or defined(openbsd):
-        d_off*: Off  ## Not an offset. Value that ``telldir()`` would return.
+        d_off*: Off  ## Not an offset. Value that `telldir()` would return.
     elif defined(haiku):
       d_pino*: Ino ## Parent inode (only for queries) (not POSIX)
       d_reclen*: cushort ## Length of this record. (not POSIX)
@@ -146,7 +157,13 @@ type
   Id* {.importc: "id_t", header: "<sys/types.h>".} = int
   Ino* {.importc: "ino_t", header: "<sys/types.h>".} = int
   Key* {.importc: "key_t", header: "<sys/types.h>".} = int
-  Mode* {.importc: "mode_t", header: "<sys/types.h>".} = cint
+  Mode* {.importc: "mode_t", header: "<sys/types.h>".} = (
+    when defined(android) or defined(macos) or defined(macosx) or
+        (defined(bsd) and not defined(openbsd) and not defined(netbsd)):
+      uint16
+    else:
+      uint32
+  )
   Nlink* {.importc: "nlink_t", header: "<sys/types.h>".} = int
   Off* {.importc: "off_t", header: "<sys/types.h>".} = int64
   Pid* {.importc: "pid_t", header: "<sys/types.h>".} = int32
@@ -281,7 +298,7 @@ type
     sigev_signo*: cint            ## Signal number.
     sigev_value*: SigVal          ## Signal value.
     sigev_notify_function*: proc (x: SigVal) {.noconv.} ## Notification func.
-    sigev_notify_attributes*: ptr PthreadAttr ## Notification attributes.
+    sigev_notify_attributes*: ptr Pthread_attr ## Notification attributes.
 
   SigVal* {.importc: "union sigval",
              header: "<signal.h>", final, pure.} = object ## struct sigval
@@ -382,24 +399,58 @@ else:
   const Sockaddr_un_path_length* = 92
 
 type
-  Socklen* {.importc: "socklen_t", header: "<sys/socket.h>".} = cuint
+  SockLen* {.importc: "socklen_t", header: "<sys/socket.h>".} = cuint
   TSa_Family* {.importc: "sa_family_t", header: "<sys/socket.h>".} = cushort
 
-  SockAddr* {.importc: "struct sockaddr", header: "<sys/socket.h>",
-              pure, final.} = object ## struct sockaddr
-    sa_family*: TSa_Family         ## Address family.
-    sa_data*: array[0..255, char] ## Socket address (variable-length data).
+when defined(lwip):
+  type
+    SockAddr* {.importc: "struct sockaddr", header: "<sys/socket.h>",
+                pure, final.} = object ## struct sockaddr
+      sa_len*: uint8         ## Address family.
+      sa_family*: TSa_Family         ## Address family.
+      sa_data*: array[0..255, char] ## Socket address (variable-length data).
+else:
+  type
+    SockAddr* {.importc: "struct sockaddr", header: "<sys/socket.h>",
+                pure, final.} = object ## struct sockaddr
+      sa_family*: TSa_Family         ## Address family.
+      sa_data*: array[0..255, char] ## Socket address (variable-length data).
 
+type
   Sockaddr_un* {.importc: "struct sockaddr_un", header: "<sys/un.h>",
               pure, final.} = object ## struct sockaddr_un
     sun_family*: TSa_Family         ## Address family.
     sun_path*: array[0..Sockaddr_un_path_length-1, char] ## Socket path
 
-  Sockaddr_storage* {.importc: "struct sockaddr_storage",
-                       header: "<sys/socket.h>",
-                       pure, final.} = object ## struct sockaddr_storage
-    ss_family*: TSa_Family ## Address family.
 
+when defined(lwip):
+  when not defined(lwip6):
+    type
+      Sockaddr_storage* {.importc: "struct sockaddr_storage",
+                          header: "<sys/socket.h>",
+                          pure, final.} = object ## struct sockaddr_storage
+        s2_len*: uint8 ## Address family.
+        ss_family*: TSa_Family ## Address family.
+        s2_data1*: array[2, char] ## Address family.
+        s2_data2*: array[3, uint32] ## Address family.
+  else:
+    type
+      Sockaddr_storage* {.importc: "struct sockaddr_storage",
+                          header: "<sys/socket.h>",
+                          pure, final.} = object ## struct sockaddr_storage
+        s2_len*: uint8 ## Address family.
+        ss_family*: TSa_Family ## Address family.
+        s2_data1*: array[2, char] ## Address family.
+        s2_data2*: array[3, uint32] ## Address family.
+        s2_data3*: array[3, uint32] ## Address family.
+else:
+  type
+    Sockaddr_storage* {.importc: "struct sockaddr_storage",
+                        header: "<sys/socket.h>",
+                        pure, final.} = object ## struct sockaddr_storage
+      ss_family*: TSa_Family ## Address family.
+
+type
   Tif_nameindex* {.importc: "struct if_nameindex", final,
                    pure, header: "<net/if.h>".} = object ## struct if_nameindex
     if_index*: cint   ## Numeric index of the interface.
@@ -409,22 +460,22 @@ type
   IOVec* {.importc: "struct iovec", pure, final,
             header: "<sys/uio.h>".} = object ## struct iovec
     iov_base*: pointer ## Base address of a memory region for input or output.
-    iov_len*: int    ## The size of the memory pointed to by iov_base.
+    iov_len*: csize_t    ## The size of the memory pointed to by iov_base.
 
   Tmsghdr* {.importc: "struct msghdr", pure, final,
              header: "<sys/socket.h>".} = object  ## struct msghdr
     msg_name*: pointer  ## Optional address.
-    msg_namelen*: Socklen  ## Size of address.
+    msg_namelen*: SockLen  ## Size of address.
     msg_iov*: ptr IOVec    ## Scatter/gather array.
     msg_iovlen*: cint   ## Members in msg_iov.
     msg_control*: pointer  ## Ancillary data; see below.
-    msg_controllen*: Socklen ## Ancillary data buffer len.
+    msg_controllen*: SockLen ## Ancillary data buffer len.
     msg_flags*: cint ## Flags on received message.
 
 
   Tcmsghdr* {.importc: "struct cmsghdr", pure, final,
               header: "<sys/socket.h>".} = object ## struct cmsghdr
-    cmsg_len*: Socklen ## Data byte count, including the cmsghdr.
+    cmsg_len*: SockLen ## Data byte count, including the cmsghdr.
     cmsg_level*: cint   ## Originating protocol.
     cmsg_type*: cint    ## Protocol-specific type.
 
@@ -513,18 +564,20 @@ type
     ai_family*: cint        ## Address family of socket.
     ai_socktype*: cint      ## Socket type.
     ai_protocol*: cint      ## Protocol of socket.
-    ai_addrlen*: Socklen   ## Length of socket address.
+    ai_addrlen*: SockLen   ## Length of socket address.
     ai_addr*: ptr SockAddr ## Socket address of socket.
     ai_canonname*: cstring  ## Canonical name of service location.
     ai_next*: ptr AddrInfo ## Pointer to next in list.
 
-  TPollfd* {.importc: "struct pollfd", pure, final,
-             header: "<poll.h>".} = object ## struct pollfd
-    fd*: cint        ## The following descriptor being polled.
-    events*: cshort  ## The input event flags (see below).
-    revents*: cshort ## The output event flags (see below).
+when not defined(lwip):
+  type
+    TPollfd* {.importc: "struct pollfd", pure, final,
+              header: "<poll.h>".} = object ## struct pollfd
+      fd*: cint        ## The following descriptor being polled.
+      events*: cshort  ## The input event flags (see below).
+      revents*: cshort ## The output event flags (see below).
 
-  Tnfds* {.importc: "nfds_t", header: "<poll.h>".} = cint
+    Tnfds* {.importc: "nfds_t", header: "<poll.h>".} = cint
 
 var
   errno* {.importc, header: "<errno.h>".}: cint ## error variable
@@ -533,7 +586,10 @@ var
   timezone* {.importc, header: "<time.h>".}: int
 
 # Regenerate using detect.nim!
-include posix_other_consts
+when defined(lwip):
+  include posix_freertos_consts
+else:
+  include posix_other_consts
 
 when defined(linux):
   var
@@ -546,7 +602,7 @@ else:
 when defined(linux) or defined(nimdoc):
   when defined(alpha) or defined(mips) or defined(mipsel) or
       defined(mips64) or defined(mips64el) or defined(parisc) or
-      defined(sparc) or defined(nimdoc):
+      defined(sparc) or defined(sparc64) or defined(nimdoc):
     const SO_REUSEPORT* = cint(0x0200)
       ## Multiple binding: load balancing on incoming TCP connections
       ## or UDP packets. (Requires Linux kernel > 3.9)
@@ -555,17 +611,24 @@ when defined(linux) or defined(nimdoc):
 else:
   var SO_REUSEPORT* {.importc, header: "<sys/socket.h>".}: cint
 
+when defined(linux) or defined(bsd):
+  var SOCK_CLOEXEC* {.importc, header: "<sys/socket.h>".}: cint
+
 when defined(macosx):
-  # We can't use the NOSIGNAL flag in the ``send`` function, it has no effect
+  # We can't use the NOSIGNAL flag in the `send` function, it has no effect
   # Instead we should use SO_NOSIGPIPE in setsockopt
   const
     MSG_NOSIGNAL* = 0'i32
   var
     SO_NOSIGPIPE* {.importc, header: "<sys/socket.h>".}: cint
 elif defined(solaris):
-  # Solaris dont have MSG_NOSIGNAL
+  # Solaris doesn't have MSG_NOSIGNAL
   const
     MSG_NOSIGNAL* = 0'i32
+elif defined(freertos) or defined(lwip):
+  # LwIP/FreeRTOS doesn't have MSG_NOSIGNAL
+  const
+    MSG_NOSIGNAL* = 0x20'i32
 else:
   var
     MSG_NOSIGNAL* {.importc, header: "<sys/socket.h>".}: cint
@@ -590,11 +653,11 @@ when hasSpawnH:
 
 # <sys/wait.h>
 proc WEXITSTATUS*(s: cint): cint {.importc, header: "<sys/wait.h>".}
-  ## Exit code, iff WIFEXITED(s)
+  ## Exit code, if WIFEXITED(s)
 proc WTERMSIG*(s: cint): cint {.importc, header: "<sys/wait.h>".}
-  ## Termination signal, iff WIFSIGNALED(s)
+  ## Termination signal, if WIFSIGNALED(s)
 proc WSTOPSIG*(s: cint): cint {.importc, header: "<sys/wait.h>".}
-  ## Stop signal, iff WIFSTOPPED(s)
+  ## Stop signal, if WIFSTOPPED(s)
 proc WIFEXITED*(s: cint): bool {.importc, header: "<sys/wait.h>".}
   ## True if child exited normally.
 proc WIFSIGNALED*(s: cint): bool {.importc, header: "<sys/wait.h>".}
@@ -603,3 +666,6 @@ proc WIFSTOPPED*(s: cint): bool {.importc, header: "<sys/wait.h>".}
   ## True if child is currently stopped.
 proc WIFCONTINUED*(s: cint): bool {.importc, header: "<sys/wait.h>".}
   ## True if child has been continued.
+
+when defined(nimHasStyleChecks):
+  {.pop.}

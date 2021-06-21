@@ -1,5 +1,5 @@
 discard """
-  errormsg: "invalid type: 'openarray[int]' for result"
+  errormsg: "invalid type: 'openArray[int]' for result"
   line: 6
 """
 

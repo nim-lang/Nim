@@ -8,28 +8,28 @@
 #
 
 ## This module implements a json parser. It is used
-## and exported by the ``json`` standard library
+## and exported by the `json` standard library
 ## module, but can also be used in its own right.
 
-import
-  strutils, lexbase, streams, unicode
+import strutils, lexbase, streams, unicode
+import std/private/decode_helpers
 
 type
-  JsonEventKind* = enum  ## enumeration of all events that may occur when parsing
-    jsonError,           ## an error occurred during parsing
-    jsonEof,             ## end of file reached
-    jsonString,          ## a string literal
-    jsonInt,             ## an integer literal
-    jsonFloat,           ## a float literal
-    jsonTrue,            ## the value ``true``
-    jsonFalse,           ## the value ``false``
-    jsonNull,            ## the value ``null``
-    jsonObjectStart,     ## start of an object: the ``{`` token
-    jsonObjectEnd,       ## end of an object: the ``}`` token
-    jsonArrayStart,      ## start of an array: the ``[`` token
-    jsonArrayEnd         ## start of an array: the ``]`` token
+  JsonEventKind* = enum ## enumeration of all events that may occur when parsing
+    jsonError,          ## an error occurred during parsing
+    jsonEof,            ## end of file reached
+    jsonString,         ## a string literal
+    jsonInt,            ## an integer literal
+    jsonFloat,          ## a float literal
+    jsonTrue,           ## the value `true`
+    jsonFalse,          ## the value `false`
+    jsonNull,           ## the value `null`
+    jsonObjectStart,    ## start of an object: the `{` token
+    jsonObjectEnd,      ## end of an object: the `}` token
+    jsonArrayStart,     ## start of an array: the `[` token
+    jsonArrayEnd        ## end of an array: the `]` token
 
-  TokKind* = enum         # must be synchronized with TJsonEventKind!
+  TokKind* = enum # must be synchronized with TJsonEventKind!
     tkError,
     tkEof,
     tkString,
@@ -45,18 +45,18 @@ type
     tkColon,
     tkComma
 
-  JsonError* = enum        ## enumeration that lists all errors that can occur
-    errNone,               ## no error
-    errInvalidToken,       ## invalid token
-    errStringExpected,     ## string expected
-    errColonExpected,      ## ``:`` expected
-    errCommaExpected,      ## ``,`` expected
-    errBracketRiExpected,  ## ``]`` expected
-    errCurlyRiExpected,    ## ``}`` expected
-    errQuoteExpected,      ## ``"`` or ``'`` expected
-    errEOC_Expected,       ## ``*/`` expected
-    errEofExpected,        ## EOF expected
-    errExprExpected        ## expr expected
+  JsonError* = enum       ## enumeration that lists all errors that can occur
+    errNone,              ## no error
+    errInvalidToken,      ## invalid token
+    errStringExpected,    ## string expected
+    errColonExpected,     ## `:` expected
+    errCommaExpected,     ## `,` expected
+    errBracketRiExpected, ## `]` expected
+    errCurlyRiExpected,   ## `}` expected
+    errQuoteExpected,     ## `"` or `'` expected
+    errEOC_Expected,      ## `*/` expected
+    errEofExpected,       ## EOF expected
+    errExprExpected       ## expr expected
 
   ParserState = enum
     stateEof, stateStart, stateObject, stateArray, stateExpectArrayComma,
@@ -71,7 +71,7 @@ type
     filename: string
     rawStringLiterals: bool
 
-  JsonKindError* = object of ValueError ## raised by the ``to`` macro if the
+  JsonKindError* = object of ValueError ## raised by the `to` macro if the
                                         ## JSON kind is incorrect.
   JsonParsingError* = object of ValueError ## is raised for a JSON error
 
@@ -105,7 +105,7 @@ proc open*(my: var JsonParser, input: Stream, filename: string;
            rawStringLiterals = false) =
   ## initializes the parser with an input stream. `Filename` is only used
   ## for nice error messages. If `rawStringLiterals` is true, string literals
-  ## are kepts with their surrounding quotes and escape sequences in them are
+  ## are kept with their surrounding quotes and escape sequences in them are
   ## left untouched too.
   lexbase.open(my, input)
   my.filename = filename
@@ -119,18 +119,18 @@ proc close*(my: var JsonParser) {.inline.} =
   lexbase.close(my)
 
 proc str*(my: JsonParser): string {.inline.} =
-  ## returns the character data for the events: ``jsonInt``, ``jsonFloat``,
-  ## ``jsonString``
+  ## returns the character data for the events: `jsonInt`, `jsonFloat`,
+  ## `jsonString`
   assert(my.kind in {jsonInt, jsonFloat, jsonString})
   return my.a
 
 proc getInt*(my: JsonParser): BiggestInt {.inline.} =
-  ## returns the number for the event: ``jsonInt``
+  ## returns the number for the event: `jsonInt`
   assert(my.kind == jsonInt)
   return parseBiggestInt(my.a)
 
 proc getFloat*(my: JsonParser): float {.inline.} =
-  ## returns the number for the event: ``jsonFloat``
+  ## returns the number for the event: `jsonFloat`
   assert(my.kind == jsonFloat)
   return parseFloat(my.a)
 
@@ -151,7 +151,7 @@ proc getFilename*(my: JsonParser): string {.inline.} =
   result = my.filename
 
 proc errorMsg*(my: JsonParser): string =
-  ## returns a helpful error message for the event ``jsonError``
+  ## returns a helpful error message for the event `jsonError`
   assert(my.kind == jsonError)
   result = "$1($2, $3) Error: $4" % [
     my.filename, $getLine(my), $getColumn(my), errorMessages[my.err]]
@@ -162,18 +162,11 @@ proc errorMsgExpected*(my: JsonParser, e: string): string =
   result = "$1($2, $3) Error: $4" % [
     my.filename, $getLine(my), $getColumn(my), e & " expected"]
 
-proc handleHexChar(c: char, x: var int): bool =
-  result = true # Success
-  case c
-  of '0'..'9': x = (x shl 4) or (ord(c) - ord('0'))
-  of 'a'..'f': x = (x shl 4) or (ord(c) - ord('a') + 10)
-  of 'A'..'F': x = (x shl 4) or (ord(c) - ord('A') + 10)
-  else: result = false # error
-
 proc parseEscapedUTF16*(buf: cstring, pos: var int): int =
   result = 0
   #UTF-16 escape is always 4 bytes.
   for _ in 0..3:
+    # if char in '0' .. '9', 'a' .. 'f', 'A' .. 'F'
     if handleHexChar(buf[pos], result):
       inc(pos)
     else:
@@ -182,11 +175,10 @@ proc parseEscapedUTF16*(buf: cstring, pos: var int): int =
 proc parseString(my: var JsonParser): TokKind =
   result = tkString
   var pos = my.bufpos + 1
-  var buf = my.buf
   if my.rawStringLiterals:
     add(my.a, '"')
   while true:
-    case buf[pos]
+    case my.buf[pos]
     of '\0':
       my.err = errQuoteExpected
       result = tkError
@@ -199,9 +191,9 @@ proc parseString(my: var JsonParser): TokKind =
     of '\\':
       if my.rawStringLiterals:
         add(my.a, '\\')
-      case buf[pos+1]
+      case my.buf[pos+1]
       of '\\', '"', '\'', '/':
-        add(my.a, buf[pos+1])
+        add(my.a, my.buf[pos+1])
         inc(pos, 2)
       of 'b':
         add(my.a, '\b')
@@ -218,22 +210,25 @@ proc parseString(my: var JsonParser): TokKind =
       of 't':
         add(my.a, '\t')
         inc(pos, 2)
+      of 'v':
+        add(my.a, '\v')
+        inc(pos, 2)
       of 'u':
         if my.rawStringLiterals:
           add(my.a, 'u')
         inc(pos, 2)
         var pos2 = pos
-        var r = parseEscapedUTF16(buf, pos)
+        var r = parseEscapedUTF16(my.buf, pos)
         if r < 0:
           my.err = errInvalidToken
           break
         # Deal with surrogates
         if (r and 0xfc00) == 0xd800:
-          if buf[pos] != '\\' or buf[pos+1] != 'u':
+          if my.buf[pos] != '\\' or my.buf[pos+1] != 'u':
             my.err = errInvalidToken
             break
           inc(pos, 2)
-          var s = parseEscapedUTF16(buf, pos)
+          var s = parseEscapedUTF16(my.buf, pos)
           if (s and 0xfc00) == 0xdc00 and s > 0:
             r = 0x10000 + (((r - 0xd800) shl 10) or (s - 0xdc00))
           else:
@@ -242,8 +237,8 @@ proc parseString(my: var JsonParser): TokKind =
         if my.rawStringLiterals:
           let length = pos - pos2
           for i in 1 .. length:
-            if buf[pos2] in {'0'..'9', 'A'..'F', 'a'..'f'}:
-              add(my.a, buf[pos2])
+            if my.buf[pos2] in {'0'..'9', 'A'..'F', 'a'..'f'}:
+              add(my.a, my.buf[pos2])
               inc pos2
             else:
               break
@@ -251,61 +246,54 @@ proc parseString(my: var JsonParser): TokKind =
           add(my.a, toUTF8(Rune(r)))
       else:
         # don't bother with the error
-        add(my.a, buf[pos])
+        add(my.a, my.buf[pos])
         inc(pos)
     of '\c':
       pos = lexbase.handleCR(my, pos)
-      buf = my.buf
       add(my.a, '\c')
     of '\L':
       pos = lexbase.handleLF(my, pos)
-      buf = my.buf
       add(my.a, '\L')
     else:
-      add(my.a, buf[pos])
+      add(my.a, my.buf[pos])
       inc(pos)
   my.bufpos = pos # store back
 
 proc skip(my: var JsonParser) =
   var pos = my.bufpos
-  var buf = my.buf
   while true:
-    case buf[pos]
+    case my.buf[pos]
     of '/':
-      if buf[pos+1] == '/':
+      if my.buf[pos+1] == '/':
         # skip line comment:
         inc(pos, 2)
         while true:
-          case buf[pos]
+          case my.buf[pos]
           of '\0':
             break
           of '\c':
             pos = lexbase.handleCR(my, pos)
-            buf = my.buf
             break
           of '\L':
             pos = lexbase.handleLF(my, pos)
-            buf = my.buf
             break
           else:
             inc(pos)
-      elif buf[pos+1] == '*':
+      elif my.buf[pos+1] == '*':
         # skip long comment:
         inc(pos, 2)
         while true:
-          case buf[pos]
+          case my.buf[pos]
           of '\0':
             my.err = errEOC_Expected
             break
           of '\c':
             pos = lexbase.handleCR(my, pos)
-            buf = my.buf
           of '\L':
             pos = lexbase.handleLF(my, pos)
-            buf = my.buf
           of '*':
             inc(pos)
-            if buf[pos] == '/':
+            if my.buf[pos] == '/':
               inc(pos)
               break
           else:
@@ -316,51 +304,47 @@ proc skip(my: var JsonParser) =
       inc(pos)
     of '\c':
       pos = lexbase.handleCR(my, pos)
-      buf = my.buf
     of '\L':
       pos = lexbase.handleLF(my, pos)
-      buf = my.buf
     else:
       break
   my.bufpos = pos
 
 proc parseNumber(my: var JsonParser) =
   var pos = my.bufpos
-  var buf = my.buf
-  if buf[pos] == '-':
+  if my.buf[pos] == '-':
     add(my.a, '-')
     inc(pos)
-  if buf[pos] == '.':
+  if my.buf[pos] == '.':
     add(my.a, "0.")
     inc(pos)
   else:
-    while buf[pos] in Digits:
-      add(my.a, buf[pos])
+    while my.buf[pos] in Digits:
+      add(my.a, my.buf[pos])
       inc(pos)
-    if buf[pos] == '.':
+    if my.buf[pos] == '.':
       add(my.a, '.')
       inc(pos)
   # digits after the dot:
-  while buf[pos] in Digits:
-    add(my.a, buf[pos])
+  while my.buf[pos] in Digits:
+    add(my.a, my.buf[pos])
     inc(pos)
-  if buf[pos] in {'E', 'e'}:
-    add(my.a, buf[pos])
+  if my.buf[pos] in {'E', 'e'}:
+    add(my.a, my.buf[pos])
     inc(pos)
-    if buf[pos] in {'+', '-'}:
-      add(my.a, buf[pos])
+    if my.buf[pos] in {'+', '-'}:
+      add(my.a, my.buf[pos])
       inc(pos)
-    while buf[pos] in Digits:
-      add(my.a, buf[pos])
+    while my.buf[pos] in Digits:
+      add(my.a, my.buf[pos])
       inc(pos)
   my.bufpos = pos
 
 proc parseName(my: var JsonParser) =
   var pos = my.bufpos
-  var buf = my.buf
-  if buf[pos] in IdentStartChars:
-    while buf[pos] in IdentChars:
-      add(my.a, buf[pos])
+  if my.buf[pos] in IdentStartChars:
+    while my.buf[pos] in IdentChars:
+      add(my.a, my.buf[pos])
       inc(pos)
   my.bufpos = pos
 

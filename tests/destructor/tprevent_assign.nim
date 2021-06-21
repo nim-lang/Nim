@@ -1,5 +1,5 @@
 discard """
-  errormsg: "'=' is not available for type <Foo>; requires a copy because it's not the last read of 'otherTree'"
+  errormsg: "'=copy' is not available for type <Foo>; requires a copy because it's not the last read of 'otherTree'"
   line: 29
 """
 

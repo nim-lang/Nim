@@ -1,7 +1,5 @@
 discard """
-disabled: "travis"
-disabled: "appveyor"
-joinable: false
+disabled: true
 """
 
 # CI integration servers are out of memory for this test

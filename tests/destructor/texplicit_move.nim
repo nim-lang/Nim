@@ -6,6 +6,7 @@ discard """
 10
 destroyed!
 '''
+joinable: false
 """
 
 type

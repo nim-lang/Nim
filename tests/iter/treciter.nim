@@ -1,5 +1,5 @@
 discard """
-  errormsg: "recursive dependency: \'myrec\'"
+  errormsg: "recursion is not supported in iterators: 'myrec'"
   file: "treciter.nim"
   line: 9
 """

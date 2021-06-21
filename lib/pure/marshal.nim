@@ -7,36 +7,52 @@
 #    distribution, for details about the copyright.
 #
 
-## This module contains procs for `serialization`:idx: and `deseralization`:idx:
+## This module contains procs for `serialization`:idx: and `deserialization`:idx:
 ## of arbitrary Nim data structures. The serialization format uses `JSON`:idx:.
-## Warning: The serialization format could change in future!
 ##
-## **Restriction**: For objects their type is **not** serialized. This means
+## **Restriction:** For objects, their type is **not** serialized. This means
 ## essentially that it does not work if the object has some other runtime
-## type than its compiletime type:
+## type than its compiletime type.
 ##
-## .. code-block:: nim
 ##
-##   type
-##     A = object of RootObj
-##     B = object of A
-##       f: int
+## Basic usage
+## ===========
 ##
-##   var
-##     a: ref A
-##     b: ref B
-##
-##   new(b)
-##   a = b
-##   echo($$a[]) # produces "{}", not "{f: 0}"
-##
-##   # unmarshal
-##   let c = to[B]("""{"f": 2}""")
-##
-##   # marshal
-##   let s = $$c
+runnableExamples:
+  type
+    A = object of RootObj
+    B = object of A
+      f: int
 
-## **Note**: The ``to`` and ``$$`` operations are available at compile-time!
+  let a: ref A = new(B)
+  assert $$a[] == "{}" # not "{f: 0}"
+
+  # unmarshal
+  let c = to[B]("""{"f": 2}""")
+  assert typeof(c) is B
+  assert c.f == 2
+
+  # marshal
+  assert $$c == """{"f": 2}"""
+
+## **Note:** The `to` and `$$` operations are available at compile-time!
+##
+##
+## See also
+## ========
+## * `streams module <streams.html>`_
+## * `json module <json.html>`_
+
+const unsupportedPlatform =
+  when defined(js): "javascript"
+  elif defined(nimscript): "nimscript"
+  else: ""
+
+when unsupportedPlatform != "":
+  {.error: "marshal module is not supported in " & unsupportedPlatform & """.
+Please use alternative packages for serialization.
+It is possible to reimplement this module using generics and type traits.
+Please contribute a new implementation.""".}
 
 import streams, typeinfo, json, intsets, tables, unicode
 
@@ -254,21 +270,49 @@ proc loadAny(s: Stream, a: Any, t: var Table[BiggestInt, pointer]) =
   close(p)
 
 proc load*[T](s: Stream, data: var T) =
-  ## loads `data` from the stream `s`. Raises `IOError` in case of an error.
+  ## Loads `data` from the stream `s`. Raises `IOError` in case of an error.
+  runnableExamples:
+    import std/streams
+
+    var s = newStringStream("[1, 3, 5]")
+    var a: array[3, int]
+    load(s, a)
+    assert a == [1, 3, 5]
+
   var tab = initTable[BiggestInt, pointer]()
   loadAny(s, toAny(data), tab)
 
 proc store*[T](s: Stream, data: T) =
-  ## stores `data` into the stream `s`. Raises `IOError` in case of an error.
+  ## Stores `data` into the stream `s`. Raises `IOError` in case of an error.
+  runnableExamples:
+    import std/streams
+
+    var s = newStringStream("")
+    var a = [1, 3, 5]
+    store(s, a)
+    s.setPosition(0)
+    assert s.readAll() == "[1, 3, 5]"
+
   var stored = initIntSet()
   var d: T
   shallowCopy(d, data)
   storeAny(s, toAny(d), stored)
 
 proc `$$`*[T](x: T): string =
-  ## returns a string representation of `x`.
+  ## Returns a string representation of `x` (serialization, marshalling).
   ##
-  ## Note: to serialize `x` to JSON use $(%x) from the ``json`` module
+  ## **Note:** to serialize `x` to JSON use `%x` from the `json` module
+  ## or `jsonutils.toJson(x)`.
+  runnableExamples:
+    type
+      Foo = object
+        id: int
+        bar: string
+    let x = Foo(id: 1, bar: "baz")
+    ## serialize:
+    let y = $$x
+    assert y == """{"id": 1, "bar": "baz"}"""
+
   var stored = initIntSet()
   var d: T
   shallowCopy(d, x)
@@ -277,92 +321,19 @@ proc `$$`*[T](x: T): string =
   result = s.data
 
 proc to*[T](data: string): T =
-  ## reads data and transforms it to a ``T``.
+  ## Reads data and transforms it to a type `T` (deserialization, unmarshalling).
   runnableExamples:
     type
       Foo = object
         id: int
         bar: string
-
-    let x = Foo(id: 1, bar: "baz")
-    # serialize
-    let y = ($$x)
-    # deserialize back to type 'Foo':
+    let y = """{"id": 1, "bar": "baz"}"""
+    assert typeof(y) is string
+    ## deserialize to type 'Foo':
     let z = y.to[:Foo]
+    assert typeof(z) is Foo
+    assert z.id == 1
+    assert z.bar == "baz"
+
   var tab = initTable[BiggestInt, pointer]()
   loadAny(newStringStream(data), toAny(result), tab)
-
-when not defined(testing) and isMainModule:
-  template testit(x: untyped) = echo($$to[type(x)]($$x))
-
-  var x: array[0..4, array[0..4, string]] = [
-    ["test", "1", "2", "3", "4"], ["test", "1", "2", "3", "4"],
-    ["test", "1", "2", "3", "4"], ["test", "1", "2", "3", "4"],
-    ["test", "1", "2", "3", "4"]]
-  testit(x)
-  var test2: tuple[name: string, s: uint] = ("tuple test", 56u)
-  testit(test2)
-
-  type
-    TE = enum
-      blah, blah2
-
-    TestObj = object
-      test, asd: int
-      case test2: TE
-      of blah:
-        help: string
-      else:
-        nil
-
-    PNode = ref Node
-    Node = object
-      next, prev: PNode
-      data: string
-
-  proc buildList(): PNode =
-    new(result)
-    new(result.next)
-    new(result.prev)
-    result.data = "middle"
-    result.next.data = "next"
-    result.prev.data = "prev"
-    result.next.next = result.prev
-    result.next.prev = result
-    result.prev.next = result
-    result.prev.prev = result.next
-
-  var test3: TestObj
-  test3.test = 42
-  test3.test2 = blah
-  testit(test3)
-
-  var test4: ref tuple[a, b: string]
-  new(test4)
-  test4.a = "ref string test: A"
-  test4.b = "ref string test: B"
-  testit(test4)
-
-  var test5 = @[(0,1),(2,3),(4,5)]
-  testit(test5)
-
-  var test6: set[char] = {'A'..'Z', '_'}
-  testit(test6)
-
-  var test7 = buildList()
-  echo($$test7)
-  testit(test7)
-
-  type
-    A {.inheritable.} = object
-    B = object of A
-      f: int
-
-  var
-    a: ref A
-    b: ref B
-  new(b)
-  a = b
-  echo($$a[]) # produces "{}", not "{f: 0}"
-
-

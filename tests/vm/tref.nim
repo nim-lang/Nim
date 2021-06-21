@@ -60,3 +60,12 @@ static: # bug #8402
   type R = ref object
   var empty: R
   let otherEmpty = empty
+
+block:
+  # fix https://github.com/timotheecour/Nim/issues/88
+  template fun() =
+    var s = @[10,11,12]
+    var a = s[0].addr
+    a[] += 100 # was giving SIGSEGV
+    doAssert a[] == 110
+  static: fun()

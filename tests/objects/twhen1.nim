@@ -49,3 +49,9 @@ block:
 
 block:
   var x: Foo4[0]
+
+type
+  MyObject = object
+    x: int
+    when (NimMajor, NimMinor) >= (1, 1):
+      y: int

@@ -9,92 +9,67 @@
 
 ## This module contains code for reading from `stdin`:idx:. On UNIX the
 ## linenoise library is wrapped and set up to provide default key bindings
-## (e.g. you can navigate with the arrow keys). On Windows ``system.readLine``
+## (e.g. you can navigate with the arrow keys). On Windows `system.readLine`
 ## is used. This suffices because Windows' console already provides the
 ## wanted functionality.
 
-{.deadCodeElim: on.}  # dce option deprecated
+runnableExamples("-r:off"):
+  echo readLineFromStdin("Is Nim awesome? (Y/n): ")
+  var line: string
+  while true:
+    let ok = readLineFromStdin("How are you? ", line)
+    if not ok: break # ctrl-C or ctrl-D will cause a break
+    if line.len > 0: echo line
+  echo "exiting"
 
-when defined(Windows):
-  proc readLineFromStdin*(prompt: string): TaintedString {.
+when defined(windows):
+  proc readLineFromStdin*(prompt: string): string {.
                           tags: [ReadIOEffect, WriteIOEffect].} =
     ## Reads a line from stdin.
     stdout.write(prompt)
     result = readLine(stdin)
 
-  proc readLineFromStdin*(prompt: string, line: var TaintedString): bool {.
+  proc readLineFromStdin*(prompt: string, line: var string): bool {.
                           tags: [ReadIOEffect, WriteIOEffect].} =
     ## Reads a `line` from stdin. `line` must not be
-    ## ``nil``! May throw an IO exception.
-    ## A line of text may be delimited by ``CR``, ``LF`` or
-    ## ``CRLF``. The newline character(s) are not part of the returned string.
-    ## Returns ``false`` if the end of the file has been reached, ``true``
-    ## otherwise. If ``false`` is returned `line` contains no new data.
+    ## `nil`! May throw an IO exception.
+    ## A line of text may be delimited by `CR`, `LF` or
+    ## `CRLF`. The newline character(s) are not part of the returned string.
+    ## Returns `false` if the end of the file has been reached, `true`
+    ## otherwise. If `false` is returned `line` contains no new data.
     stdout.write(prompt)
     result = readLine(stdin, line)
 
-  import winlean
+elif defined(genode):
+  proc readLineFromStdin*(prompt: string): string {.
+                          tags: [ReadIOEffect, WriteIOEffect].} =
+    stdin.readLine()
 
-  const
-    VK_SHIFT* = 16
-    VK_CONTROL* = 17
-    VK_MENU* = 18
-    KEY_EVENT* = 1
-
-  type
-    KEY_EVENT_RECORD = object
-      bKeyDown: WinBool
-      wRepeatCount: uint16
-      wVirtualKeyCode: uint16
-      wVirtualScanCode: uint16
-      unicodeChar: uint16
-      dwControlKeyState: uint32
-    INPUT_RECORD = object
-      eventType*: int16
-      reserved*: int16
-      event*: KEY_EVENT_RECORD
-      safetyBuffer: array[0..5, DWORD]
-
-  proc readConsoleInputW*(hConsoleInput: HANDLE, lpBuffer: var INPUTRECORD,
-                          nLength: uint32,
-                          lpNumberOfEventsRead: var uint32): WINBOOL{.
-      stdcall, dynlib: "kernel32", importc: "ReadConsoleInputW".}
-
-  proc getch(): uint16 =
-    let hStdin = getStdHandle(STD_INPUT_HANDLE)
-    var
-      irInputRecord: INPUT_RECORD
-      dwEventsRead: uint32
-
-    while readConsoleInputW(hStdin, irInputRecord, 1, dwEventsRead) != 0:
-      if irInputRecord.eventType == KEY_EVENT and
-          irInputRecord.event.wVirtualKeyCode notin {VK_SHIFT, VK_MENU, VK_CONTROL}:
-         result = irInputRecord.event.unicodeChar
-         discard readConsoleInputW(hStdin, irInputRecord, 1, dwEventsRead)
-         return result
+  proc readLineFromStdin*(prompt: string, line: var string): bool {.
+                          tags: [ReadIOEffect, WriteIOEffect].} =
+    stdin.readLine(line)
 
 else:
-  import linenoise, termios
+  import linenoise
 
-  proc readLineFromStdin*(prompt: string): TaintedString {.
+  proc readLineFromStdin*(prompt: string): string {.
                           tags: [ReadIOEffect, WriteIOEffect].} =
     var buffer = linenoise.readLine(prompt)
     if isNil(buffer):
       raise newException(IOError, "Linenoise returned nil")
-    result = TaintedString($buffer)
-    if result.string.len > 0:
+    result = $buffer
+    if result.len > 0:
       historyAdd(buffer)
     linenoise.free(buffer)
 
-  proc readLineFromStdin*(prompt: string, line: var TaintedString): bool {.
+  proc readLineFromStdin*(prompt: string, line: var string): bool {.
                           tags: [ReadIOEffect, WriteIOEffect].} =
     var buffer = linenoise.readLine(prompt)
     if isNil(buffer):
-      line.string.setLen(0)
+      line.setLen(0)
       return false
-    line = TaintedString($buffer)
-    if line.string.len > 0:
+    line = $buffer
+    if line.len > 0:
       historyAdd(buffer)
     linenoise.free(buffer)
     result = true
-

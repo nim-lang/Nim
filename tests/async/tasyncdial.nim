@@ -3,17 +3,16 @@ discard """
 OK AF_INET
 OK AF_INET6
 '''
-  disabled: "travis"
 """
 
 import
   nativesockets, os, asyncdispatch
 
 proc setupServerSocket(hostname: string, port: Port, domain: Domain): AsyncFD =
-  ## Creates a socket, binds it to the specified address, and starts listening for connecitons.
+  ## Creates a socket, binds it to the specified address, and starts listening for connections.
   ## Registers the descriptor with the dispatcher of the current thread
   ## Raises OSError in case of an error.
-  let fd = newNativeSocket(domain)
+  let fd = createNativeSocket(domain)
   setSockOptInt(fd, SOL_SOCKET, SO_REUSEADDR, 1)
   var aiList = getAddrInfo(hostname, port, domain)
   if bindAddr(fd, aiList.ai_addr, aiList.ai_addrlen.Socklen) < 0'i32:

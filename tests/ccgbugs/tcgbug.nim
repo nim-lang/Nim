@@ -2,6 +2,7 @@ discard """
 output: '''
 success
 M1 M2
+ok
 '''
 """
 
@@ -39,7 +40,8 @@ type
 var k = PFuture[void]()
 
 
-##bug #9297
+##bug #9297 and #13281
+
 import strutils
 
 type
@@ -58,8 +60,16 @@ type
       of M2: b:float
       of M3: c:cstring
 
+  Helper* {.exportc: "PublicHelper".} = object
+    case isKind: bool
+      of true:
+        formatted: string
+      of false:
+        parsed1: string
+        parsed2: string
+
 proc newMyObject(kind: MyKind, val: string): MyObject =
-  result.kind = kind
+  result = MyObject(kind: kind)
 
   case kind
     of M1: result.a = parseInt(val)
@@ -67,8 +77,7 @@ proc newMyObject(kind: MyKind, val: string): MyObject =
     of M3: result.c = val
 
 proc newMyObjectRef(kind: MyKind, val: string): MyObjectRef =
-  new(result)
-  result.kind = kind
+  result = MyObjectRef(kind: kind)
   case kind
     of M1: result.a = parseInt(val)
     of M2: result.b = parseFloat(val)
@@ -76,3 +85,9 @@ proc newMyObjectRef(kind: MyKind, val: string): MyObjectRef =
 
 
 echo newMyObject(M1, "2").kind, " ", newMyObjectRef(M2, "3").kind
+
+
+proc test(c: Helper): string =
+  c.formatted
+
+echo test(Helper(isKind: true, formatted: "ok"))

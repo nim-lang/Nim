@@ -7,51 +7,9 @@
 #    distribution, for details about the copyright.
 #
 
-# An ``include`` file for the different table implementations.
+# An `include` file for the different table implementations.
 
-# hcode for real keys cannot be zero.  hcode==0 signifies an empty slot.  These
-# two procs retain clarity of that encoding without the space cost of an enum.
-proc isEmpty(hcode: Hash): bool {.inline.} =
-  result = hcode == 0
-
-proc isFilled(hcode: Hash): bool {.inline.} =
-  result = hcode != 0
-
-const
-  growthFactor = 2
-
-proc mustRehash(length, counter: int): bool {.inline.} =
-  assert(length > counter)
-  result = (length * 2 < counter * 3) or (length - counter < 4)
-
-proc nextTry(h, maxHash: Hash): Hash {.inline.} =
-  result = (h + 1) and maxHash
-
-template rawGetKnownHCImpl() {.dirty.} =
-  var h: Hash = hc and maxHash(t)   # start with real hash value
-  while isFilled(t.data[h].hcode):
-    # Compare hc THEN key with boolean short circuit. This makes the common case
-    # zero ==key's for missing (e.g.inserts) and exactly one ==key for present.
-    # It does slow down succeeding lookups by one extra Hash cmp&and..usually
-    # just a few clock cycles, generally worth it for any non-integer-like A.
-    if t.data[h].hcode == hc and t.data[h].key == key:
-      return h
-    h = nextTry(h, maxHash(t))
-  result = -1 - h                   # < 0 => MISSING; insert idx = -1 - result
-
-template genHashImpl(key, hc: typed) =
-  hc = hash(key)
-  if hc == 0:       # This almost never taken branch should be very predictable.
-    hc = 314159265  # Value doesn't matter; Any non-zero favorite is fine.
-
-template genHash(key: typed): Hash =
-  var res: Hash
-  genHashImpl(key, res)
-  res
-
-template rawGetImpl() {.dirty.} =
-  genHashImpl(key, hc)
-  rawGetKnownHCImpl()
+include hashcommon
 
 template rawGetDeepImpl() {.dirty.} =   # Search algo for unconditional add
   genHashImpl(key, hc)
@@ -65,28 +23,29 @@ template rawInsertImpl() {.dirty.} =
   data[h].val = val
   data[h].hcode = hc
 
-proc rawGetKnownHC[X, A](t: X, key: A, hc: Hash): int {.inline.} =
-  rawGetKnownHCImpl()
-
 proc rawGetDeep[X, A](t: X, key: A, hc: var Hash): int {.inline.} =
   rawGetDeepImpl()
 
-proc rawGet[X, A](t: X, key: A, hc: var Hash): int {.inline.} =
-  rawGetImpl()
-
 proc rawInsert[X, A, B](t: var X, data: var KeyValuePairSeq[A, B],
-                     key: A, val: B, hc: Hash, h: Hash) =
+                     key: A, val: sink B, hc: Hash, h: Hash) =
   rawInsertImpl()
 
+template checkIfInitialized() =
+  when compiles(defaultInitialSize):
+    if t.dataLen == 0:
+      initImpl(t, defaultInitialSize)
+
 template addImpl(enlarge) {.dirty.} =
-  if mustRehash(t.dataLen, t.counter): enlarge(t)
+  checkIfInitialized()
+  if mustRehash(t): enlarge(t)
   var hc: Hash
   var j = rawGetDeep(t, key, hc)
   rawInsert(t, t.data, key, val, hc, j)
   inc(t.counter)
 
 template maybeRehashPutImpl(enlarge) {.dirty.} =
-  if mustRehash(t.dataLen, t.counter):
+  checkIfInitialized()
+  if mustRehash(t):
     enlarge(t)
     index = rawGetKnownHC(t, key, hc)
   index = -1 - index                  # important to transform for mgetOrPutImpl
@@ -94,12 +53,14 @@ template maybeRehashPutImpl(enlarge) {.dirty.} =
   inc(t.counter)
 
 template putImpl(enlarge) {.dirty.} =
+  checkIfInitialized()
   var hc: Hash
   var index = rawGet(t, key, hc)
   if index >= 0: t.data[index].val = val
   else: maybeRehashPutImpl(enlarge)
 
 template mgetOrPutImpl(enlarge) {.dirty.} =
+  checkIfInitialized()
   var hc: Hash
   var index = rawGet(t, key, hc)
   if index < 0:
@@ -109,6 +70,7 @@ template mgetOrPutImpl(enlarge) {.dirty.} =
   result = t.data[index].val
 
 template hasKeyOrPutImpl(enlarge) {.dirty.} =
+  checkIfInitialized()
   var hc: Hash
   var index = rawGet(t, key, hc)
   if index < 0:
@@ -116,42 +78,133 @@ template hasKeyOrPutImpl(enlarge) {.dirty.} =
     maybeRehashPutImpl(enlarge)
   else: result = true
 
-template default[T](t: typedesc[T]): T =
-  var v: T
-  v
+# delImplIdx is KnuthV3 Algo6.4R adapted to i=i+1 (from i=i-1) which has come to
+# be called "back shift delete".  It shifts elements in the collision cluster of
+# a victim backward to make things as-if the victim were never inserted in the
+# first place.  This is desirable to keep things "ageless" after many deletes.
+# It is trickier than you might guess since initial probe (aka "home") locations
+# of keys in a cluster may collide and since table addresses wrap around.
+#
+# A before-after diagram might look like ('.' means empty):
+#   slot:   0   1   2   3   4   5   6   7
+# before(1)
+#   hash1:  6   7   .   3   .   5   5   6  ; Really hash() and msk
+#   data1:  E   F   .   A   .   B   C   D  ; About to delete C @index 6
+# after(2)
+#   hash2:  7   .   .   3   .   5   6   6  ; Really hash() and msk
+#   data2:  F   .   .   A   .   B   D   E  ; After deletion of C
+#
+# This lowers total search depth over the whole table from 1+1+2+2+2+2=10 to 7.
+# Had the victim been B@5, C would need back shifting to slot 5.  Total depth is
+# always lowered by at least 1, e.g. victim A@3.  This is all quite fast when
+# empty slots are frequent (also needed to keep insert/miss searches fast) and
+# hash() is either fast or avoided (via `.hcode`).  It need not compare keys.
+#
+# delImplIdx realizes the above transformation, but only works for dense Linear
+# Probing, nextTry(h)=h+1.  This is not an important limitation since that's the
+# fastest sequence on any CPU made since the 1980s. { Performance analysis often
+# overweights "key cmp" neglecting cache behavior, giving bad ideas how big/slow
+# tables behave (when perf matters most!).  Comparing hcode first means usually
+# only 1 key cmp is needed for *any* seq.  Timing only predictable activity,
+# small tables, and/or integer keys often perpetuates such bad ideas. }
 
-template delImplIdx(t, i) =
+template delImplIdx(t, i, makeEmpty, cellEmpty, cellHash) =
   let msk = maxHash(t)
   if i >= 0:
     dec(t.counter)
     block outer:
       while true:         # KnuthV3 Algo6.4R adapted for i=i+1 instead of i=i-1
-        var j = i         # The correctness of this depends on (h+1) in nextTry,
+        var j = i         # The correctness of this depends on (h+1) in nextTry
         var r = j         # though may be adaptable to other simple sequences.
-        t.data[i].hcode = 0              # mark current EMPTY
-        t.data[i].key = default(type(t.data[i].key))
-        t.data[i].val = default(type(t.data[i].val))
+        makeEmpty(i)                     # mark current EMPTY
+        t.data[i].key = default(typeof(t.data[i].key))
+        t.data[i].val = default(typeof(t.data[i].val))
         while true:
           i = (i + 1) and msk            # increment mod table size
-          if isEmpty(t.data[i].hcode):   # end of collision cluster; So all done
+          if cellEmpty(i):               # end of collision cluster; So all done
             break outer
-          r = t.data[i].hcode and msk    # "home" location of key@i
+          r = cellHash(i) and msk        # initial probe index for key@slot i
           if not ((i >= r and r > j) or (r > j and j > i) or (j > i and i >= r)):
             break
         when defined(js):
           t.data[j] = t.data[i]
         else:
-          shallowCopy(t.data[j], t.data[i]) # data[j] will be marked EMPTY next loop
+          t.data[j] = move(t.data[i]) # data[j] will be marked EMPTY next loop
 
-template delImpl() {.dirty.} =
+template delImpl(makeEmpty, cellEmpty, cellHash) {.dirty.} =
   var hc: Hash
   var i = rawGet(t, key, hc)
-  delImplIdx(t, i)
+  delImplIdx(t, i, makeEmpty, cellEmpty, cellHash)
+
+template delImplNoHCode(makeEmpty, cellEmpty, cellHash) {.dirty.} =
+  if t.dataLen > 0:
+    var i: Hash = hash(key) and maxHash(t)
+    while not cellEmpty(i):
+      if t.data[i].key == key:
+        delImplIdx(t, i, makeEmpty, cellEmpty, cellHash)
+        break
+      i = nextTry(i, maxHash(t))
 
 template clearImpl() {.dirty.} =
-  for i in 0 ..< t.data.len:
+  for i in 0 ..< t.dataLen:
     when compiles(t.data[i].hcode): # CountTable records don't contain a hcode
       t.data[i].hcode = 0
-    t.data[i].key = default(type(t.data[i].key))
-    t.data[i].val = default(type(t.data[i].val))
+    t.data[i].key = default(typeof(t.data[i].key))
+    t.data[i].val = default(typeof(t.data[i].val))
   t.counter = 0
+
+template ctAnd(a, b): bool =
+  when a:
+    when b: true
+    else: false
+  else: false
+
+template initImpl(result: typed, size: int) =
+  let correctSize = slotsNeeded(size)
+  when ctAnd(declared(SharedTable), typeof(result) is SharedTable):
+    init(result, correctSize)
+  else:
+    result.counter = 0
+    newSeq(result.data, correctSize)
+    when compiles(result.first):
+      result.first = -1
+      result.last = -1
+
+template insertImpl() = # for CountTable
+  if t.dataLen == 0: initImpl(t, defaultInitialSize)
+  if mustRehash(t): enlarge(t)
+  ctRawInsert(t, t.data, key, val)
+  inc(t.counter)
+
+template getOrDefaultImpl(t, key): untyped =
+  mixin rawGet
+  var hc: Hash
+  var index = rawGet(t, key, hc)
+  if index >= 0: result = t.data[index].val
+
+template getOrDefaultImpl(t, key, default: untyped): untyped =
+  mixin rawGet
+  var hc: Hash
+  var index = rawGet(t, key, hc)
+  result = if index >= 0: t.data[index].val else: default
+
+template dollarImpl(): untyped {.dirty.} =
+  if t.len == 0:
+    result = "{:}"
+  else:
+    result = "{"
+    for key, val in pairs(t):
+      if result.len > 1: result.add(", ")
+      result.addQuoted(key)
+      result.add(": ")
+      result.addQuoted(val)
+    result.add("}")
+
+template equalsImpl(s, t: typed) =
+  if s.counter == t.counter:
+    # different insertion orders mean different 'data' seqs, so we have
+    # to use the slow route here:
+    for key, val in s:
+      if not t.hasKey(key): return false
+      if t.getOrDefault(key) != val: return false
+    return true

@@ -70,7 +70,7 @@ proc addEntry(entry: LogEntry) =
     if interesting:
       gLog.disabled = true
       cprintf("interesting %s:%ld %s\n", entry.file, entry.line, entry.op)
-      let x = cast[proc() {.nimcall, tags: [], gcsafe, locks: 0.}](writeStackTrace)
+      let x = cast[proc() {.nimcall, tags: [], gcsafe, locks: 0, raises: [].}](writeStackTrace)
       x()
       quit 1
       #if gLog.count > high(gLog.data):
@@ -80,7 +80,7 @@ proc addEntry(entry: LogEntry) =
       #inc gLog.count
       #gLog.disabled = false
 
-proc memTrackerWrite(address: pointer; size: int; file: cstring; line: int) {.compilerProc.} =
+proc memTrackerWrite(address: pointer; size: int; file: cstring; line: int) {.compilerproc.} =
   addEntry LogEntry(op: "write", address: address,
       size: size, file: file, line: line, thread: myThreadId())
 
@@ -100,6 +100,7 @@ proc logPendingOps() {.noconv.} =
   gLogger(gLog)
   gLog.count = 0
 
-addQuitProc logPendingOps
+import std/exitprocs
+addExitProc logPendingOps
 
 {.pop.}

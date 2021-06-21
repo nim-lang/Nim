@@ -446,7 +446,7 @@ ingameClient.registerHandler(KeyF12, down, proc() = toggleSpec())
 ingameClient.registerHandler(KeyF11, down, toggleShipSelect)
 ingameClient.registerHandler(MouseLeft, down, handleLClick)
 when defined(recordMode):
-  if not existsDir("data/snapshots"):
+  if not dirExists("data/snapshots"):
     createDir("data/snapshots")
   ingameClient.registerHandler(keynum9, down, proc() =
     if not isRecording: startRecording()
@@ -486,7 +486,7 @@ when defined(DebugKeys):
       activeVehicle.body.setPos mouseToSpace())
   ingameClient.registerHandler(KeyY, down, proc() =
     const looloo = ["Asteroid1", "Asteroid2"]
-    addObject(looloo[random(looloo.len)]))
+    addObject(looloo[rand(looloo.len)]))
   ingameClient.registerHandler(KeyO, down, proc() =
     if objects.len == 0:
       echo "Objects is empty"

@@ -2,8 +2,11 @@
 API naming design
 =================
 
+.. default-role:: code
+.. include:: rstcommon.rst
+
 The API is designed to be **easy to use** and consistent. Ease of use is
-measured by the number of calls to achieve a concrete high level action.
+measured by the number of calls to achieve a concrete high-level action.
 
 
 Naming scheme
@@ -18,22 +21,22 @@ been renamed to fit this scheme. The ultimate goal is that the programmer can
 -------------------     ------------   --------------------------------------
 English word            To use         Notes
 -------------------     ------------   --------------------------------------
-initialize              initT          ``init`` is used to create a
-                                       value type ``T``
-new                     newP           ``new`` is used to create a
-                                       reference type ``P``
+initialize              initT          `init` is used to create a
+                                       value type `T`
+new                     newP           `new` is used to create a
+                                       reference type `P`
 find                    find           should return the position where
                                        something was found; for a bool result
-                                       use ``contains``
-contains                contains       often short for ``find() >= 0``
-append                  add            use ``add`` instead of ``append``
+                                       use `contains`
+contains                contains       often short for `find() >= 0`
+append                  add            use `add` instead of `append`
 compare                 cmp            should return an int with the
-                                       ``< 0`` ``== 0`` or ``> 0`` semantics;
-                                       for a bool result use ``sameXYZ``
-put                     put, ``[]=``   consider overloading ``[]=`` for put
-get                     get, ``[]``    consider overloading ``[]`` for get;
-                                       consider to not use ``get`` as a
-                                       prefix: ``len`` instead of ``getLen``
+                                       `< 0` `== 0` or `> 0` semantics;
+                                       for a bool result use `sameXYZ`
+put                     put, `[]=`     consider overloading `[]=` for put
+get                     get, `[]`      consider overloading `[]` for get;
+                                       consider to not use `get` as a
+                                       prefix: `len` instead of `getLen`
 length                  len            also used for *number of elements*
 size                    size, len      size should refer to a byte size
 capacity                cap
@@ -44,6 +47,7 @@ delete                  delete, del    del is supposed to be faster than
                                        delete, because it does not keep
                                        the order; delete keeps the order
 remove                  delete, del    inconsistent right now
+remove-and-return       pop            `Table`/`TableRef` alias to `take`
 include                 incl
 exclude                 excl
 command                 cmd

@@ -19,10 +19,13 @@ when defined(i386) and defined(windows) and defined(vcc):
   {.link: "../icons/nim-i386-windows-vcc.res".}
 
 import
-  commands, lexer, condsyms, options, msgs, nversion, nimconf, ropes,
-  extccomp, strutils, os, osproc, platform, main, parseopt,
-  nodejs, scriptconfig, idents, modulegraphs, lineinfos, cmdlinehelper,
-  pathutils
+  commands, options, msgs,
+  extccomp, strutils, os, main, parseopt,
+  idents, lineinfos, cmdlinehelper,
+  pathutils, modulegraphs
+
+from browsers import openDefaultBrowser
+from nodejs import findNodeJs
 
 when hasTinyCBackend:
   import tccgen
@@ -31,76 +34,89 @@ when defined(profiler) or defined(memProfiler):
   {.hint: "Profiling support is turned on!".}
   import nimprof
 
-proc prependCurDir(f: AbsoluteFile): AbsoluteFile =
-  when defined(unix):
-    if os.isAbsolute(f.string): result = f
-    else: result = AbsoluteFile("./" & f.string)
-  else:
-    result = f
-
 proc processCmdLine(pass: TCmdLinePass, cmd: string; config: ConfigRef) =
   var p = parseopt.initOptParser(cmd)
   var argsCount = 0
+
+  config.commandLine.setLen 0
+    # bugfix: otherwise, config.commandLine ends up duplicated
+
   while true:
     parseopt.next(p)
     case p.kind
     of cmdEnd: break
-    of cmdLongoption, cmdShortOption:
-      if p.key == " ":
+    of cmdLongOption, cmdShortOption:
+      config.commandLine.add " "
+      config.commandLine.addCmdPrefix p.kind
+      config.commandLine.add p.key.quoteShell # quoteShell to be future proof
+      if p.val.len > 0:
+        config.commandLine.add ':'
+        config.commandLine.add p.val.quoteShell
+
+      if p.key == "": # `-` was passed to indicate main project is stdin
         p.key = "-"
         if processArgument(pass, p, argsCount, config): break
       else:
         processSwitch(pass, p, config)
     of cmdArgument:
+      config.commandLine.add " "
+      config.commandLine.add p.key.quoteShell
       if processArgument(pass, p, argsCount, config): break
   if pass == passCmd2:
     if {optRun, optWasNimscript} * config.globalOptions == {} and
-        config.arguments.len > 0 and config.command.normalize notin ["run", "e"]:
+        config.arguments.len > 0 and config.cmd notin {cmdTcc, cmdNimscript, cmdCrun}:
       rawMessage(config, errGenerated, errArgsNeedRunOption)
 
 proc handleCmdLine(cache: IdentCache; conf: ConfigRef) =
   let self = NimProg(
     supportsStdinFile: true,
-    processCmdLine: processCmdLine,
-    mainCommand: mainCommand
+    processCmdLine: processCmdLine
   )
   self.initDefinesProg(conf, "nim_compiler")
   if paramCount() == 0:
-    writeCommandLineUsage(conf, conf.helpWritten)
+    writeCommandLineUsage(conf)
     return
 
   self.processCmdLineAndProjectPath(conf)
-  if not self.loadConfigsAndRunMainCommand(cache, conf): return
-  if optHints in conf.options and hintGCStats in conf.notes: echo(GC_getStatistics())
+  var graph = newModuleGraph(cache, conf)
+  if not self.loadConfigsAndProcessCmdLine(cache, conf, graph):
+    return
+  mainCommand(graph)
+  if conf.hasHint(hintGCStats): echo(GC_getStatistics())
   #echo(GC_getStatistics())
   if conf.errorCounter != 0: return
   when hasTinyCBackend:
-    if conf.cmd == cmdRun:
-      tccgen.run(conf.arguments)
+    if conf.cmd == cmdTcc:
+      tccgen.run(conf, conf.arguments)
   if optRun in conf.globalOptions:
-    if conf.cmd == cmdCompileToJS:
-      var ex: string
-      if not conf.outFile.isEmpty:
-        ex = conf.outFile.prependCurDir.quoteShell
-      else:
-        ex = quoteShell(
-          completeCFilePath(conf, changeFileExt(conf.projectFull, "js").prependCurDir))
-      execExternalProgram(conf, findNodeJs() & " " & ex & ' ' & conf.arguments)
+    let output = conf.absOutFile
+    case conf.cmd
+    of cmdBackends, cmdTcc:
+      var cmdPrefix = ""
+      case conf.backend
+      of backendC, backendCpp, backendObjc: discard
+      of backendJs:
+        # D20210217T215950:here this flag is needed for node < v15.0.0, otherwise
+        # tasyncjs_fail` would fail, refs https://nodejs.org/api/cli.html#cli_unhandled_rejections_mode
+        cmdPrefix = findNodeJs() & " --unhandled-rejections=strict "
+      else: doAssert false, $conf.backend
+      # No space before command otherwise on windows you'd get a cryptic:
+      # `The parameter is incorrect`
+      execExternalProgram(conf, cmdPrefix & output.quoteShell & ' ' & conf.arguments)
+      # execExternalProgram(conf, cmdPrefix & ' ' & output.quoteShell & ' ' & conf.arguments)
+    of cmdDocLike, cmdRst2html, cmdRst2tex: # bugfix(cmdRst2tex was missing)
+      if conf.arguments.len > 0:
+        # reserved for future use
+        rawMessage(conf, errGenerated, "'$1 cannot handle arguments" % [$conf.cmd])
+      openDefaultBrowser($output)
     else:
-      var binPath: AbsoluteFile
-      if not conf.outFile.isEmpty:
-        # If the user specified an outFile path, use that directly.
-        binPath = conf.outFile.prependCurDir
-      else:
-        # Figure out ourselves a valid binary name.
-        binPath = changeFileExt(conf.projectFull, ExeExt).prependCurDir
-      var ex = quoteShell(binPath)
-      execExternalProgram(conf, ex & ' ' & conf.arguments)
+      # support as needed
+      rawMessage(conf, errGenerated, "'$1 cannot handle --run" % [$conf.cmd])
 
 when declared(GC_setMaxPause):
   GC_setMaxPause 2_000
 
-when compileOption("gc", "v2") or compileOption("gc", "refc"):
+when compileOption("gc", "refc"):
   # the new correct mark&sweet collector is too slow :-/
   GC_disableMarkAndSweep()
 

@@ -1,7 +1,5 @@
-discard """
-  output: "OK"
-"""
-
+import macros
+from stdtest/testutils import disableVM
 type
   Dollar = distinct int
   XCoord = distinct int32
@@ -12,6 +10,12 @@ proc `==`(x, y: Dollar): bool {.borrow.}
 proc `==`(x, y: XCoord): bool {.borrow.}
 
 proc dummy[T](x: T): T = x
+
+template roundTrip(a, T) =
+  let a2 = a # sideeffect safe
+  let b = cast[T](a2)
+  let c = cast[type(a2)](b)
+  doAssert c == a2
 
 proc test() =
   let U8 = 0b1011_0010'u8
@@ -100,18 +104,146 @@ proc test() =
     doAssert(cast[int](digit) == raw)
     doAssert(cast[Digit](raw) == digit)
 
-  when defined nimvm:
-    doAssert(not compiles(cast[float](I64A)))
-    doAssert(not compiles(cast[float32](I64A)))
+  block:
+    roundTrip(I64A, float)
+    roundTrip(I8, uint16)
+    roundTrip(I8, uint32)
+    roundTrip(I8, uint64)
+    doAssert cast[uint16](I8) == 65458'u16
+    doAssert cast[uint32](I8) == 4294967218'u32
+    doAssert cast[uint64](I8) == 18446744073709551538'u64
+    doAssert cast[uint32](I64A) == 2571663889'u32
+    doAssert cast[uint16](I64A) == 31249
+    doAssert cast[char](I64A).ord == 17
+    doAssert compiles(cast[float32](I64A))
 
-    doAssert(not compiles(cast[char](I64A)))
-    doAssert(not compiles(cast[uint16](I64A)))
-    doAssert(not compiles(cast[uint32](I64A)))
+  disableVM: # xxx Error: VM does not support 'cast' from tyInt64 to tyFloat32
+    doAssert cast[uint32](cast[float32](I64A)) == 2571663889'u32
 
-    doAssert(not compiles(cast[uint16](I8)))
-    doAssert(not compiles(cast[uint32](I8)))
-    doAssert(not compiles(cast[uint64](I8)))
+const prerecordedResults = [
+  # cast to char
+  "\0", "\255",
+  "\0", "\255",
+  "\0", "\255",
+  "\0", "\255",
+  "\0", "\255",
+  "\128", "\127",
+  "\0", "\255",
+  "\0", "\255",
+  "\0", "\255",
+  # cast to uint8
+  "0", "255",
+  "0", "255",
+  "0", "255",
+  "0", "255",
+  "0", "255",
+  "128", "127",
+  "0", "255",
+  "0", "255",
+  "0", "255",
+  # cast to uint16
+  "0", "255",
+  "0", "255",
+  "0", "65535",
+  "0", "65535",
+  "0", "65535",
+  "65408", "127",
+  "32768", "32767",
+  "0", "65535",
+  "0", "65535",
+  # cast to uint32
+  "0", "255",
+  "0", "255",
+  "0", "65535",
+  "0", "4294967295",
+  "0", "4294967295",
+  "4294967168", "127",
+  "4294934528", "32767",
+  "2147483648", "2147483647",
+  "0", "4294967295",
+  # cast to uint64
+  "0", "255",
+  "0", "255",
+  "0", "65535",
+  "0", "4294967295",
+  "0", "18446744073709551615",
+  "18446744073709551488", "127",
+  "18446744073709518848", "32767",
+  "18446744071562067968", "2147483647",
+  "9223372036854775808", "9223372036854775807",
+  # cast to int8
+  "0", "-1",
+  "0", "-1",
+  "0", "-1",
+  "0", "-1",
+  "0", "-1",
+  "-128", "127",
+  "0", "-1",
+  "0", "-1",
+  "0", "-1",
+  # cast to int16
+  "0", "255",
+  "0", "255",
+  "0", "-1",
+  "0", "-1",
+  "0", "-1",
+  "-128", "127",
+  "-32768", "32767",
+  "0", "-1",
+  "0", "-1",
+  # cast to int32
+  "0", "255",
+  "0", "255",
+  "0", "65535",
+  "0", "-1",
+  "0", "-1",
+  "-128", "127",
+  "-32768", "32767",
+  "-2147483648", "2147483647",
+  "0", "-1",
+  # cast to int64
+  "0", "255",
+  "0", "255",
+  "0", "65535",
+  "0", "4294967295",
+  "0", "-1",
+  "-128", "127",
+  "-32768", "32767",
+  "-2147483648", "2147483647",
+  "-9223372036854775808", "9223372036854775807",
+]
 
+proc free_integer_casting() =
+  # cast from every integer type to every type and ensure same
+  # behavior in vm and execution time.
+  macro bar(arg: untyped) =
+    result = newStmtList()
+    var i = 0
+    for it1 in arg:
+      let typA = it1[0]
+      for it2 in arg:
+        let lowB = it2[1]
+        let highB = it2[2]
+        let castExpr1 = nnkCast.newTree(typA, lowB)
+        let castExpr2 = nnkCast.newTree(typA, highB)
+        let lit1 = newLit(prerecordedResults[i*2])
+        let lit2 = newLit(prerecordedResults[i*2+1])
+        result.add quote do:
+          doAssert($(`castExpr1`) == `lit1`)
+          doAssert($(`castExpr2`) == `lit2`)
+        i += 1
+
+  bar([
+    (char, '\0', '\255'),
+    (uint8, 0'u8, 0xff'u8),
+    (uint16, 0'u16, 0xffff'u16),
+    (uint32, 0'u32, 0xffffffff'u32),
+    (uint64, 0'u64, 0xffffffffffffffff'u64),
+    (int8,  0x80'i8, 0x7f'i8),
+    (int16, 0x8000'i16, 0x7fff'i16),
+    (int32, 0x80000000'i32, 0x7fffffff'i32),
+    (int64, 0x8000000000000000'i64, 0x7fffffffffffffff'i64)
+  ])
 
 proc test_float_cast =
 
@@ -155,12 +287,23 @@ proc test_float32_cast =
   let xf = cast[float32](xx)
   doAssert(xf == 16.0'f32, $xf)
 
-test()
-test_float_cast()
-test_float32_cast()
-static:
+proc test_float32_castB() =
+  let a: float32 = -123.125
+  let b = cast[int32](a)
+  let c = cast[uint32](a)
+  doAssert b == -1024049152
+  doAssert cast[uint64](b) == 18446744072685502464'u64
+  doAssert c == 3270918144'u32
+  # ensure the unused bits in the internal representation don't have
+  # any surprising content.
+  doAssert cast[uint64](c) == 3270918144'u64
+
+template main() =
   test()
   test_float_cast()
   test_float32_cast()
+  free_integer_casting()
+  test_float32_castB()
 
-echo "OK"
+static: main()
+main()

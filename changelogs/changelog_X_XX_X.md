@@ -1,27 +1,23 @@
-## v0.XX.0 - XX/XX/2018
+# v1.xx.x - yyyy-mm-dd
 
-### Changes affecting backwards compatibility
+This is an example file.
+The changes should go to changelog.md!
 
-- Example item: ``Foo`` changed to ``Bar``.
+## Changes affecting backward compatibility
 
-#### Breaking changes in the standard library
+- `foo` now behaves differently, use `-d:nimLegacyFoo` for previous behavior.
 
+## Standard library additions and changes
 
-#### Breaking changes in the compiler
+- Added `example.exampleProc`.
 
-### Library additions
+- Changed `example.foo` to take additional `bar` parameter.
 
-### Library changes
-
-
-### Language additions
-
-
-### Language changes
+## Language changes
 
 
-### Tool changes
+## Compiler changes
 
-### Compiler changes
 
-### Bugfixes
+## Tool changes
+

@@ -1,5 +1,5 @@
 discard """
-  target: cpp
+  targets: "cpp"
   action: run
   exitcode: 0
 """

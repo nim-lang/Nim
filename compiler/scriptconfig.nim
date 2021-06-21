@@ -11,9 +11,10 @@
 ## language.
 
 import
-  ast, modules, idents, passes, passaux, condsyms,
-  options, nimconf, sem, semdata, llstream, vm, vmdef, commands, msgs,
-  os, times, osproc, wordrecg, strtabs, modulegraphs, lineinfos, pathutils
+  ast, modules, idents, passes, condsyms,
+  options, sem, llstream, vm, vmdef, commands,
+  os, times, osproc, wordrecg, strtabs, modulegraphs,
+  pathutils
 
 # we support 'cmpIgnoreStyle' natively for efficiency:
 from strutils import cmpIgnoreStyle, contains
@@ -26,9 +27,9 @@ proc listDirs(a: VmArgs, filter: set[PathComponent]) =
   setResult(a, result)
 
 proc setupVM*(module: PSym; cache: IdentCache; scriptName: string;
-              graph: ModuleGraph): PEvalContext =
+              graph: ModuleGraph; idgen: IdGenerator): PEvalContext =
   # For Nimble we need to export 'setupVM'.
-  result = newCtx(module, cache, graph)
+  result = newCtx(module, cache, graph, idgen)
   result.mode = emRepl
   registerAdditionalOps(result)
   let conf = graph.config
@@ -56,14 +57,20 @@ proc setupVM*(module: PSym; cache: IdentCache; scriptName: string;
 
   # Idea: Treat link to file as a file, but ignore link to directory to prevent
   # endless recursions out of the box.
-  cbos listFiles:
+  cbos listFilesImpl:
     listDirs(a, {pcFile, pcLinkToFile})
-  cbos listDirs:
+  cbos listDirsImpl:
     listDirs(a, {pcDir})
   cbos removeDir:
-    os.removeDir getString(a, 0)
+    if defined(nimsuggest) or graph.config.cmd == cmdCheck:
+      discard
+    else:
+      os.removeDir(getString(a, 0), getBool(a, 1))
   cbos removeFile:
-    os.removeFile getString(a, 0)
+    if defined(nimsuggest) or graph.config.cmd == cmdCheck:
+      discard
+    else:
+      os.removeFile getString(a, 0)
   cbos createDir:
     os.createDir getString(a, 0)
 
@@ -75,20 +82,35 @@ proc setupVM*(module: PSym; cache: IdentCache; scriptName: string;
   cbos getCurrentDir:
     setResult(a, os.getCurrentDir())
   cbos moveFile:
-    os.moveFile(getString(a, 0), getString(a, 1))
+    if defined(nimsuggest) or graph.config.cmd == cmdCheck:
+      discard
+    else:
+      os.moveFile(getString(a, 0), getString(a, 1))
   cbos moveDir:
-    os.moveDir(getString(a, 0), getString(a, 1))
+    if defined(nimsuggest) or graph.config.cmd == cmdCheck:
+      discard
+    else:
+      os.moveDir(getString(a, 0), getString(a, 1))
   cbos copyFile:
-    os.copyFile(getString(a, 0), getString(a, 1))
+    if defined(nimsuggest) or graph.config.cmd == cmdCheck:
+      discard
+    else:
+      os.copyFile(getString(a, 0), getString(a, 1))
   cbos copyDir:
-    os.copyDir(getString(a, 0), getString(a, 1))
+    if defined(nimsuggest) or graph.config.cmd == cmdCheck:
+      discard
+    else:
+      os.copyDir(getString(a, 0), getString(a, 1))
   cbos getLastModificationTime:
     setResult(a, getLastModificationTime(getString(a, 0)).toUnix)
   cbos findExe:
     setResult(a, os.findExe(getString(a, 0)))
 
   cbos rawExec:
-    setResult(a, osproc.execCmd getString(a, 0))
+    if defined(nimsuggest) or graph.config.cmd == cmdCheck:
+      discard
+    else:
+      setResult(a, osproc.execCmd getString(a, 0))
 
   cbconf getEnv:
     setResult(a, os.getEnv(a.getString 0, a.getString 1))
@@ -96,6 +118,8 @@ proc setupVM*(module: PSym; cache: IdentCache; scriptName: string;
     setResult(a, os.existsEnv(a.getString 0))
   cbconf putEnv:
     os.putEnv(a.getString 0, a.getString 1)
+  cbconf delEnv:
+    os.delEnv(a.getString 0)
   cbconf dirExists:
     setResult(a, os.dirExists(a.getString 0))
   cbconf fileExists:
@@ -126,7 +150,8 @@ proc setupVM*(module: PSym; cache: IdentCache; scriptName: string;
   cbconf cmpIgnoreCase:
     setResult(a, strutils.cmpIgnoreCase(a.getString 0, a.getString 1))
   cbconf setCommand:
-    conf.command = a.getString 0
+    conf.setCommandEarly(a.getString 0)
+    # xxx move remaining logic to commands.nim or other
     let arg = a.getString 1
     incl(conf.globalOptions, optWasNimscript)
     if arg.len > 0:
@@ -161,15 +186,21 @@ proc setupVM*(module: PSym; cache: IdentCache; scriptName: string;
   cbconf cppDefine:
     options.cppDefine(conf, a.getString(0))
   cbexc stdinReadLine, EOFError:
-    setResult(a, "")
-    setResult(a, stdin.readLine())
+    if defined(nimsuggest) or graph.config.cmd == cmdCheck:
+      discard
+    else:
+      setResult(a, "")
+      setResult(a, stdin.readLine())
   cbexc stdinReadAll, EOFError:
-    setResult(a, "")
-    setResult(a, stdin.readAll())
+    if defined(nimsuggest) or graph.config.cmd == cmdCheck:
+      discard
+    else:
+      setResult(a, "")
+      setResult(a, stdin.readAll())
 
 proc runNimScript*(cache: IdentCache; scriptName: AbsoluteFile;
-                   freshDefines=true; conf: ConfigRef) =
-  rawMessage(conf, hintConf, scriptName.string)
+                   idgen: IdGenerator;
+                   freshDefines=true; conf: ConfigRef, stream: PLLStream) =
   let oldSymbolFiles = conf.symbolFiles
   conf.symbolFiles = disabledSf
 
@@ -184,12 +215,30 @@ proc runNimScript*(cache: IdentCache; scriptName: AbsoluteFile;
 
   conf.searchPaths.add(conf.libpath)
 
+  let oldGlobalOptions = conf.globalOptions
+  let oldSelectedGC = conf.selectedGC
+  undefSymbol(conf.symbols, "nimv2")
+  conf.globalOptions.excl {optTinyRtti, optOwnedRefs, optSeqDestructors}
+  conf.selectedGC = gcUnselected
+
   var m = graph.makeModule(scriptName)
   incl(m.flags, sfMainModule)
-  graph.vm = setupVM(m, cache, scriptName.string, graph)
+  var vm = setupVM(m, cache, scriptName.string, graph, idgen)
+  graph.vm = vm
 
-  graph.compileSystemModule() # TODO: see why this unsets hintConf in conf.notes
-  discard graph.processModule(m, llStreamOpen(scriptName, fmRead))
+  graph.compileSystemModule()
+  discard graph.processModule(m, vm.idgen, stream)
+
+  # watch out, "newruntime" can be set within NimScript itself and then we need
+  # to remember this:
+  if conf.selectedGC == gcUnselected:
+    conf.selectedGC = oldSelectedGC
+  if optOwnedRefs in oldGlobalOptions:
+    conf.globalOptions.incl {optTinyRtti, optOwnedRefs, optSeqDestructors}
+    defineSymbol(conf.symbols, "nimv2")
+  if conf.selectedGC in {gcArc, gcOrc}:
+    conf.globalOptions.incl {optTinyRtti, optSeqDestructors}
+    defineSymbol(conf.symbols, "nimv2")
 
   # ensure we load 'system.nim' again for the real non-config stuff!
   resetSystemArtifacts(graph)

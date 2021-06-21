@@ -36,7 +36,7 @@ type
                    # local
     waMarkPrecise  # fast precise marking
 
-  Finalizer {.compilerproc.} = proc (self: pointer) {.nimcall, benign.}
+  Finalizer {.compilerproc.} = proc (self: pointer) {.nimcall, benign, raises: [].}
     # A ref type can have a finalizer that is called before the object's
     # storage is freed.
 
@@ -88,7 +88,8 @@ when not defined(useNimRtl):
 template gcAssert(cond: bool, msg: string) =
   when defined(useGcAssert):
     if not cond:
-      echo "[GCASSERT] ", msg
+      cstderr.rawWrite "[GCASSERT] "
+      cstderr.rawWrite msg
       quit 1
 
 proc cellToUsr(cell: PCell): pointer {.inline.} =
@@ -99,14 +100,11 @@ proc usrToCell(usr: pointer): PCell {.inline.} =
   # convert pointer to userdata to object (=pointer to refcount)
   result = cast[PCell](cast[ByteAddress](usr)-%ByteAddress(sizeof(Cell)))
 
-proc canbeCycleRoot(c: PCell): bool {.inline.} =
-  result = ntfAcyclic notin c.typ.flags
-
 proc extGetCellType(c: pointer): PNimType {.compilerproc.} =
   # used for code generation concerning debugging
   result = usrToCell(c).typ
 
-proc unsureAsgnRef(dest: PPointer, src: pointer) {.inline.} =
+proc unsureAsgnRef(dest: PPointer, src: pointer) {.inline, compilerproc.} =
   dest[] = src
 
 proc internRefcount(p: pointer): int {.exportc: "getRefcount".} =
@@ -117,10 +115,10 @@ when BitsPerPage mod (sizeof(int)*8) != 0:
   {.error: "(BitsPerPage mod BitsPerUnit) should be zero!".}
 
 # forward declarations:
-proc collectCT(gch: var GcHeap; size: int) {.benign.}
-proc forAllChildren(cell: PCell, op: WalkOp) {.benign.}
-proc doOperation(p: pointer, op: WalkOp) {.benign.}
-proc forAllChildrenAux(dest: pointer, mt: PNimType, op: WalkOp) {.benign.}
+proc collectCT(gch: var GcHeap; size: int) {.benign, raises: [].}
+proc forAllChildren(cell: PCell, op: WalkOp) {.benign, raises: [].}
+proc doOperation(p: pointer, op: WalkOp) {.benign, raises: [].}
+proc forAllChildrenAux(dest: pointer, mt: PNimType, op: WalkOp) {.benign, raises: [].}
 # we need the prototype here for debugging purposes
 
 when defined(nimGcRefLeak):
@@ -164,7 +162,7 @@ when defined(nimGcRefLeak):
 
   var ax: array[10_000, GcStackTrace]
 
-proc nimGCref(p: pointer) {.compilerProc.} =
+proc nimGCref(p: pointer) {.compilerproc.} =
   # we keep it from being collected by pretending it's not even allocated:
   when false:
     when withBitvectors: excl(gch.allocated, usrToCell(p))
@@ -173,7 +171,7 @@ proc nimGCref(p: pointer) {.compilerProc.} =
     captureStackTrace(framePtr, ax[gch.additionalRoots.len])
   add(gch.additionalRoots, usrToCell(p))
 
-proc nimGCunref(p: pointer) {.compilerProc.} =
+proc nimGCunref(p: pointer) {.compilerproc.} =
   let cell = usrToCell(p)
   var L = gch.additionalRoots.len-1
   var i = L
@@ -235,7 +233,7 @@ proc forAllChildrenAux(dest: pointer, mt: PNimType, op: WalkOp) =
   if dest == nil: return # nothing to do
   if ntfNoRefs notin mt.flags:
     case mt.kind
-    of tyRef, tyOptAsRef, tyString, tySequence: # leaf:
+    of tyRef, tyString, tySequence: # leaf:
       doOperation(cast[PPointer](d)[], op)
     of tyObject, tyTuple:
       forAllSlotsAux(dest, mt.node, op)
@@ -247,28 +245,27 @@ proc forAllChildrenAux(dest: pointer, mt: PNimType, op: WalkOp) =
 proc forAllChildren(cell: PCell, op: WalkOp) =
   gcAssert(cell != nil, "forAllChildren: 1")
   gcAssert(cell.typ != nil, "forAllChildren: 2")
-  gcAssert cell.typ.kind in {tyRef, tyOptAsRef, tySequence, tyString}, "forAllChildren: 3"
+  gcAssert cell.typ.kind in {tyRef, tySequence, tyString}, "forAllChildren: 3"
   let marker = cell.typ.marker
   if marker != nil:
     marker(cellToUsr(cell), op.int)
   else:
     case cell.typ.kind
-    of tyRef, tyOptAsRef: # common case
+    of tyRef: # common case
       forAllChildrenAux(cellToUsr(cell), cell.typ.base, op)
     of tySequence:
-      when not defined(gcDestructors):
+      when not defined(nimSeqsV2):
         var d = cast[ByteAddress](cellToUsr(cell))
         var s = cast[PGenericSeq](d)
         if s != nil:
           for i in 0..s.len-1:
-            forAllChildrenAux(cast[pointer](d +% i *% cell.typ.base.size +%
-              GenericSeqSize), cell.typ.base, op)
+            forAllChildrenAux(cast[pointer](d +% align(GenericSeqSize, cell.typ.base.align) +% i *% cell.typ.base.size), cell.typ.base, op)
     else: discard
 
 proc rawNewObj(typ: PNimType, size: int, gch: var GcHeap): pointer =
   # generates a new object and sets its reference counter to 0
   incTypeSize typ, size
-  gcAssert(typ.kind in {tyRef, tyOptAsRef, tyString, tySequence}, "newObj: 1")
+  gcAssert(typ.kind in {tyRef, tyString, tySequence}, "newObj: 1")
   collectCT(gch, size + sizeof(Cell))
   var res = cast[PCell](rawAlloc(gch.region, size + sizeof(Cell)))
   gcAssert((cast[ByteAddress](res) and (MemAlign-1)) == 0, "newObj: 2")
@@ -306,21 +303,23 @@ proc newObjRC1(typ: PNimType, size: int): pointer {.compilerRtl.} =
   zeroMem(result, size)
   when defined(memProfiler): nimProfile(size)
 
-when not defined(gcDestructors):
+when not defined(nimSeqsV2):
+  {.push overflowChecks: on.}
   proc newSeq(typ: PNimType, len: int): pointer {.compilerRtl.} =
     # `newObj` already uses locks, so no need for them here.
-    let size = addInt(mulInt(len, typ.base.size), GenericSeqSize)
+    let size = align(GenericSeqSize, typ.base.align) + len * typ.base.size
     result = newObj(typ, size)
     cast[PGenericSeq](result).len = len
     cast[PGenericSeq](result).reserved = len
     when defined(memProfiler): nimProfile(size)
 
   proc newSeqRC1(typ: PNimType, len: int): pointer {.compilerRtl.} =
-    let size = addInt(mulInt(len, typ.base.size), GenericSeqSize)
+    let size = align(GenericSeqSize, typ.base.align) + len * typ.base.size
     result = newObj(typ, size)
     cast[PGenericSeq](result).len = len
     cast[PGenericSeq](result).reserved = len
     when defined(memProfiler): nimProfile(size)
+  {.pop.}
 
   proc growObj(old: pointer, newsize: int, gch: var GcHeap): pointer =
     collectCT(gch, newsize + sizeof(Cell))
@@ -329,11 +328,13 @@ when not defined(gcDestructors):
     gcAssert(ol.typ.kind in {tyString, tySequence}, "growObj: 2")
 
     var res = cast[PCell](rawAlloc(gch.region, newsize + sizeof(Cell)))
-    var elemSize = 1
-    if ol.typ.kind != tyString: elemSize = ol.typ.base.size
+    var elemSize, elemAlign = 1
+    if ol.typ.kind != tyString:
+      elemSize = ol.typ.base.size
+      elemAlign = ol.typ.base.align
     incTypeSize ol.typ, newsize
 
-    var oldsize = cast[PGenericSeq](old).len*elemSize + GenericSeqSize
+    var oldsize = align(GenericSeqSize, elemAlign) + cast[PGenericSeq](old).len*elemSize
     copyMem(res, ol, oldsize + sizeof(Cell))
     zeroMem(cast[pointer](cast[ByteAddress](res)+% oldsize +% sizeof(Cell)),
             newsize-oldsize)
@@ -374,14 +375,14 @@ proc mark(gch: var GcHeap, c: PCell) =
                   c, c.typ.name)
         inc gch.indentation, 2
 
-    c.refCount = rcBlack
+    c.refcount = rcBlack
     gcAssert gch.tempStack.len == 0, "stack not empty!"
     forAllChildren(c, waMarkPrecise)
     while gch.tempStack.len > 0:
       dec gch.tempStack.len
       var d = gch.tempStack.d[gch.tempStack.len]
       if d.refcount == rcWhite:
-        d.refCount = rcBlack
+        d.refcount = rcBlack
         forAllChildren(d, waMarkPrecise)
 
     when defined(nimTracing):
@@ -428,6 +429,7 @@ proc sweep(gch: var GcHeap) =
         else: freeCyclicCell(gch, c)
 
 when false:
+  # meant to be used with the now-deprected `.injectStmt`: {.injectStmt: newGcInvariant().}
   proc newGcInvariant*() =
     for x in allObjects(gch.region):
       if isCell(x):
@@ -454,11 +456,10 @@ proc markGlobals(gch: var GcHeap) =
 
 proc gcMark(gch: var GcHeap, p: pointer) {.inline.} =
   # the addresses are not as cells on the stack, so turn them to cells:
-  var cell = usrToCell(p)
-  var c = cast[ByteAddress](cell)
+  var c = cast[ByteAddress](p)
   if c >% PageSize:
     # fast check: does it look like a cell?
-    var objStart = cast[PCell](interiorAllocatedPtr(gch.region, cell))
+    var objStart = cast[PCell](interiorAllocatedPtr(gch.region, p))
     if objStart != nil:
       mark(gch, objStart)
 
@@ -494,9 +495,10 @@ when not defined(useNimRtl):
   proc GC_disable() =
     inc(gch.recGcLock)
   proc GC_enable() =
-    if gch.recGcLock <= 0:
-      raise newException(AssertionError,
-          "API usage error: GC_enable called but GC is already enabled")
+    when defined(nimDoesntTrackDefects):
+      if gch.recGcLock <= 0:
+        raise newException(AssertionDefect,
+            "API usage error: GC_enable called but GC is already enabled")
     dec(gch.recGcLock)
 
   proc GC_setStrategy(strategy: GC_Strategy) = discard
@@ -505,7 +507,7 @@ when not defined(useNimRtl):
     gch.cycleThreshold = InitialThreshold
 
   proc GC_disableMarkAndSweep() =
-    gch.cycleThreshold = high(gch.cycleThreshold)-1
+    gch.cycleThreshold = high(typeof(gch.cycleThreshold))-1
     # set to the max value to suppress the cycle detector
 
   when defined(nimTracing):
@@ -513,7 +515,7 @@ when not defined(useNimRtl):
       gch.tracing = true
 
   proc GC_fullCollect() =
-    var oldThreshold = gch.cycleThreshold
+    let oldThreshold = gch.cycleThreshold
     gch.cycleThreshold = 0 # forces cycle collection
     collectCT(gch, 0)
     gch.cycleThreshold = oldThreshold

@@ -19,25 +19,41 @@ const
 
 proc nimLoadLibraryError(path: string) =
   # carefully written to avoid memory allocation:
-  stderr.rawWrite("could not load: ")
-  stderr.rawWrite(path)
-  stderr.rawWrite("\n")
+  const prefix = "could not load: "
+  cstderr.rawWrite(prefix)
+  cstderr.rawWrite(path)
   when not defined(nimDebugDlOpen) and not defined(windows):
-    stderr.rawWrite("compile with -d:nimDebugDlOpen for more information\n")
-  when defined(windows) and defined(guiapp):
-    # Because console output is not shown in GUI apps, display error as message box:
-    const prefix = "could not load: "
-    var msg: array[1000, char]
-    copyMem(msg[0].addr, prefix.cstring, prefix.len)
-    copyMem(msg[prefix.len].addr, path.cstring, min(path.len + 1, 1000 - prefix.len))
-    discard MessageBoxA(0, msg[0].addr, nil, 0)
+    cstderr.rawWrite("\n(compile with -d:nimDebugDlOpen for more information)")
+  when defined(windows):
+    const badExe = "\n(bad format; library may be wrong architecture)"
+    let loadError = GetLastError()
+    if loadError == ERROR_BAD_EXE_FORMAT:
+      cstderr.rawWrite(badExe)
+    when defined(guiapp):
+      # Because console output is not shown in GUI apps, display the error as a
+      # message box instead:
+      var
+        msg: array[1000, char]
+        msgLeft = msg.len - 1 # leave (at least) one for nullchar
+        msgIdx = 0
+      copyMem(msg[msgIdx].addr, prefix.cstring, prefix.len)
+      msgLeft -= prefix.len
+      msgIdx += prefix.len
+      let pathLen = min(path.len, msgLeft)
+      copyMem(msg[msgIdx].addr, path.cstring, pathLen)
+      msgLeft -= pathLen
+      msgIdx += pathLen
+      if loadError == ERROR_BAD_EXE_FORMAT and msgLeft >= badExe.len:
+        copyMem(msg[msgIdx].addr, badExe.cstring, badExe.len)
+      discard MessageBoxA(nil, msg[0].addr, nil, 0)
+  cstderr.rawWrite("\n")
   quit(1)
 
-proc procAddrError(name: cstring) {.noinline.} =
+proc procAddrError(name: cstring) {.compilerproc, nonReloadable, hcrInline.} =
   # carefully written to avoid memory allocation:
-  stderr.rawWrite("could not import: ")
-  stderr.rawWrite(name)
-  stderr.rawWrite("\n")
+  cstderr.rawWrite("could not import: ")
+  cstderr.rawWrite(name)
+  cstderr.rawWrite("\n")
   quit(1)
 
 # this code was inspired from Lua's source code:
@@ -75,12 +91,15 @@ when defined(posix):
     dlclose(lib)
 
   proc nimLoadLibrary(path: string): LibHandle =
-    result = dlopen(path, RTLD_NOW)
+    let flags =
+      when defined(globalSymbols): RTLD_NOW or RTLD_GLOBAL
+      else: RTLD_NOW
+    result = dlopen(path, flags)
     when defined(nimDebugDlOpen):
       let error = dlerror()
       if error != nil:
-        stderr.rawWrite(error)
-        stderr.rawWrite("\n")
+        cstderr.rawWrite(error)
+        cstderr.rawWrite("\n")
 
   proc nimGetProcAddr(lib: LibHandle, name: cstring): ProcAddr =
     result = dlsym(lib, name)
@@ -118,11 +137,11 @@ elif defined(windows) or defined(dos):
   proc nimGetProcAddr(lib: LibHandle, name: cstring): ProcAddr =
     result = getProcAddress(cast[THINSTANCE](lib), name)
     if result != nil: return
-    const decorated_length = 250
-    var decorated: array[decorated_length, char]
+    const decoratedLength = 250
+    var decorated: array[decoratedLength, char]
     decorated[0] = '_'
     var m = 1
-    while m < (decorated_length - 5):
+    while m < (decoratedLength - 5):
       if name[m - 1] == '\x00': break
       decorated[m] = name[m - 1]
       inc(m)
@@ -142,40 +161,37 @@ elif defined(windows) or defined(dos):
         dec(m)
         k = k div 10
         if k == 0: break
-      when defined(nimNoArrayToCstringConversion):
-        result = getProcAddress(cast[THINSTANCE](lib), addr decorated)
-      else:
-        result = getProcAddress(cast[THINSTANCE](lib), decorated)
+      result = getProcAddress(cast[THINSTANCE](lib), addr decorated)
       if result != nil: return
     procAddrError(name)
 
 elif defined(genode):
 
-  proc nimUnloadLibrary(lib: LibHandle) {.
-    error: "nimUnloadLibrary not implemented".}
-
-  proc nimLoadLibrary(path: string): LibHandle {.
-    error: "nimLoadLibrary not implemented".}
-
-  proc nimGetProcAddr(lib: LibHandle, name: cstring): ProcAddr {.
-    error: "nimGetProcAddr not implemented".}
-
-elif defined(nintendoswitch):
   proc nimUnloadLibrary(lib: LibHandle) =
-    stderr.rawWrite("nimUnLoadLibrary not implemented")
-    stderr.rawWrite("\n")
+    raiseAssert("nimUnloadLibrary not implemented")
+
+  proc nimLoadLibrary(path: string): LibHandle =
+    raiseAssert("nimLoadLibrary not implemented")
+
+  proc nimGetProcAddr(lib: LibHandle, name: cstring): ProcAddr =
+    raiseAssert("nimGetProcAddr not implemented")
+
+elif defined(nintendoswitch) or defined(freertos):
+  proc nimUnloadLibrary(lib: LibHandle) =
+    cstderr.rawWrite("nimUnLoadLibrary not implemented")
+    cstderr.rawWrite("\n")
     quit(1)
 
   proc nimLoadLibrary(path: string): LibHandle =
-    stderr.rawWrite("nimLoadLibrary not implemented")
-    stderr.rawWrite("\n")
+    cstderr.rawWrite("nimLoadLibrary not implemented")
+    cstderr.rawWrite("\n")
     quit(1)
 
 
   proc nimGetProcAddr(lib: LibHandle, name: cstring): ProcAddr =
-    stderr.rawWrite("nimGetProAddr not implemented")
-    stderr.rawWrite(name)
-    stderr.rawWrite("\n")
+    cstderr.rawWrite("nimGetProAddr not implemented")
+    cstderr.rawWrite(name)
+    cstderr.rawWrite("\n")
     quit(1)
 
 else:

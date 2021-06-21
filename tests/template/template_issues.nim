@@ -5,6 +5,14 @@ output: '''
 0
 a
 hi
+Hello, World!
+(e: 42)
+hey
+foo
+foo
+foo
+false
+true
 '''
 """
 
@@ -207,3 +215,84 @@ block t4097:
 
   doAssert idFor(int8) == 2
   doAssert idFor(int16) == 3
+
+
+
+block t5235:
+  template outer(body: untyped) =
+    template test(val: string) =
+      const SomeConst: string = val
+      echo SomeConst
+    body
+
+  outer:
+    test("Hello, World!")
+
+
+# bug #11941
+type X = object
+  e: int
+
+proc works(T: type X, v: auto): T = T(e: v)
+template fails(T: type X, v: auto): T = T(e: v)
+
+var
+  w = X.works(42)
+  x = X.fails(42)
+
+echo x
+
+import mtempl5
+
+
+proc foo(): auto =
+  trap "foo":
+    echo "hey"
+
+discard foo()
+
+
+# bug #4722
+type
+  IteratorF*[In] = iterator() : In {.closure.}
+
+template foof(In: untyped) : untyped =
+  proc ggg*(arg: IteratorF[In]) =
+    for i in arg():
+      echo "foo"
+
+
+iterator hello() : int {.closure.} =
+  for i in 1 .. 3:
+    yield i
+
+foof(int)
+ggg(hello)
+
+
+# bug #2586
+var z = 10'u8
+echo z < 9 # Works
+echo z > 9 # Error: type mismatch
+
+
+# bug #5993
+template foo(p: proc) =
+  var bla = 5
+  p(bla)
+
+foo() do(t: var int):
+  discard
+  t = 5
+
+proc bar(t: var int) =
+  t = 5
+
+foo(bar)
+
+block: # bug #12595
+  template test() =
+    let i = 42
+    discard {i: ""}
+
+  test()
