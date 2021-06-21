@@ -517,7 +517,6 @@ template maybeHandlePtr(node2: PNode, reg: TFullReg, isAssign2: bool): bool =
 
 when not defined(nimHasSinkInference):
   {.pragma: nosinks.}
-import strtabs
 
 proc rawExecute(c: PCtx, start: int, tos: PStackFrame): TFullReg =
   var pc = start
@@ -525,8 +524,6 @@ proc rawExecute(c: PCtx, start: int, tos: PStackFrame): TFullReg =
   # Used to keep track of where the execution is resumed.
   var savedPC = -1
   var savedFrame: PStackFrame
-  var nimVmTrace = false
-  var symbolsCacheId = c.config.symbolsCacheId - 1 # forces a check
   when defined(gcArc) or defined(gcOrc):
     template updateRegsAlias = discard
     template regs: untyped = tos.slots
@@ -536,7 +533,6 @@ proc rawExecute(c: PCtx, start: int, tos: PStackFrame): TFullReg =
     var regs: seq[TFullReg] # alias to tos.slots for performance
     updateRegsAlias
   #echo "NEW RUN ------------------------"
-
   while true:
     #{.computedGoto.}
     let instr = c.code[pc]
@@ -551,7 +547,7 @@ proc rawExecute(c: PCtx, start: int, tos: PStackFrame): TFullReg =
         "pc", $pc, "opcode", alignLeft($c.code[pc].opcode, 15),
         "ra", regDescr("ra", ra), "rb", regDescr("rb", instr.regB),
         "rc", regDescr("rc", instr.regC)]
-    if hasKeyCached(c.config, "nimVmTrace", symbolsCacheId, nimVmTrace):
+    if c.config.isVmTrace:
       # unlike nimVMDebug, this doesn't require re-compiling nim and is controlled by user code
       let info = c.debug[pc]
       # other useful variables: c.loopIterations

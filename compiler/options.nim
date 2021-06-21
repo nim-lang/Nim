@@ -330,14 +330,11 @@ type
     warnCounter*: int
     errorMax*: int
     maxLoopIterationsVM*: int ## VM: max iterations of all loops
+    isVmTrace*: bool
     configVars*: StringTableRef
     symbols*: StringTableRef ## We need to use a StringTableRef here as defined
                              ## symbols are always guaranteed to be style
                              ## insensitive. Otherwise hell would break lose.
-    symbolsCacheId*: int
-      ## allows skipping checks involving `symbols` {.define.}, {.undef.} in
-      ## performance sensitive code; in future work, this could be moved to `StringTableObj`
-      ## as it's a generally useful feature.
     packageCache*: StringTableRef
     nimblePaths*: seq[AbsoluteDir]
     searchPaths*: seq[AbsoluteDir]
@@ -388,15 +385,6 @@ type
                                 severity: Severity) {.closure, gcsafe.}
     cppCustomNamespace*: string
     vmProfileData*: ProfileData
-
-proc hasKeyCached*(config: ConfigRef, key: string, symbolsCacheId: var int, val: var bool): bool =
-  ## checks whether `key in config.symbols` in a lazy way, so that if `symbols`
-  ## was not modified since last check, the result is computed with a single int comparison.
-  if symbolsCacheId != config.symbolsCacheId:
-    # we avoid the more expensive check `c.config.symbols.hasKey(key)`
-    symbolsCacheId = config.symbolsCacheId
-    val = config.symbols.hasKey(key)
-  val
 
 proc assignIfDefault*[T](result: var T, val: T, def = default(T)) =
   ## if `result` was already assigned to a value (that wasn't `def`), this is a noop.
