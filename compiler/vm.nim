@@ -10,14 +10,15 @@
 ## This file implements the new evaluation engine for Nim code.
 ## An instruction is 1-3 int32s in memory, it is a register based VM.
 
-import ast except getstr
 
 import
-  strutils, msgs, vmdef, vmgen, nimsets, types, passes,
-  parser, vmdeps, idents, trees, renderer, options, transf, parseutils,
-  vmmarshal, gorgeimpl, lineinfos, tables, btrees, macrocacheimpl,
+  std/[strutils, tables, parseutils],
+  msgs, vmdef, vmgen, nimsets, types, passes,
+  parser, vmdeps, idents, trees, renderer, options, transf,
+  vmmarshal, gorgeimpl, lineinfos, btrees, macrocacheimpl,
   modulegraphs, sighashes, int128, vmprofiler
 
+import ast except getstr
 from semfold import leValueConv, ordinalValToString
 from evaltempl import evalTemplate
 from magicsys import getSysType
@@ -1026,7 +1027,7 @@ proc rawExecute(c: PCtx, start: int, tos: PStackFrame): TFullReg =
         let nc = regs[rc].node
         if nb.kind != nc.kind: discard
         elif (nb == nc) or (nb.kind == nkNilLit): ret = true # intentional
-        elif (nb.kind in {nkSym, nkTupleConstr, nkClosure} and nb.typ.kind == tyProc) and sameConstant(nb, nc):
+        elif nb.kind in {nkSym, nkTupleConstr, nkClosure} and nb.typ != nil and nb.typ.kind == tyProc and sameConstant(nb, nc):
           ret = true
           # this also takes care of procvar's, represented as nkTupleConstr, e.g. (nil, nil)
         elif nb.kind == nkIntLit and nc.kind == nkIntLit and nb.intVal == nc.intVal: # TODO: nkPtrLit
