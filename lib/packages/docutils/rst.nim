@@ -1246,15 +1246,44 @@ proc isUrl(p: RstParser, i: int): bool =
     p.tok[i+3].kind == tkWord and
     p.tok[i].symbol in ["http", "https", "ftp", "telnet", "file"]
 
+proc checkParen(token: Token, parensStack: var seq[char]): bool {.inline.} =
+  ## Returns `true` iff `token` is a closing parenthesis for some
+  ## previous opening parenthesis saved in `parensStack`.
+  ## This is according Markdown balanced parentheses rule
+  ## (https://spec.commonmark.org/0.29/#link-destination)
+  ## to allow links like
+  ## https://en.wikipedia.org/wiki/APL_(programming_language),
+  ## we use it for RST also.
+  result = false
+  if token.kind == tkPunct:
+    let sym = token.symbol
+    if sym[0] in {'(', '[', '{'}:  # push
+      parensStack.add sym[0]
+    elif sym[0] in {')', ']', '}'}:  # try pop
+      if parensStack.len > 0:
+        # a case like ([) inside a link is allowed and [ is discarded:
+        for i in countdown(parensStack.len - 1, 0):
+          if (parensStack[i] == '(' and sym[0] == ')' or 
+              parensStack[i] == '[' and sym[0] == ']' or 
+              parensStack[i] == '{' and sym[0] == '}'):
+            parensStack.setLen i
+            result = true
+            break
+
 proc parseUrl(p: var RstParser): PRstNode =
   ## https://docutils.sourceforge.io/docs/ref/rst/restructuredtext.html#standalone-hyperlinks
   result = newRstNode(rnStandaloneHyperlink)
   var lastIdx = p.idx
+  var closedParenIdx = p.idx - 1  # for balanced parens rule
+  var parensStack: seq[char]
   while p.tok[lastIdx].kind in {tkWord, tkPunct, tkOther}:
+    let isClosing = checkParen(p.tok[lastIdx], parensStack)
+    if isClosing:
+      closedParenIdx = lastIdx
     inc lastIdx
   dec lastIdx
   # standalone URL can not end with punctuation in RST
-  while lastIdx >= p.idx and p.tok[lastIdx].kind == tkPunct and
+  while lastIdx > closedParenIdx and p.tok[lastIdx].kind == tkPunct and
       p.tok[lastIdx].symbol != "/":
     dec lastIdx
   var s = ""
@@ -1393,11 +1422,15 @@ proc parseMarkdownLink(p: var RstParser; father: PRstNode): bool =
   var desc, link = ""
   var i = p.idx
 
+  var parensStack: seq[char]
   template parse(endToken, dest) =
+    parensStack.setLen 0
     inc i # skip begin token
     while true:
       if p.tok[i].kind in {tkEof, tkIndent}: return false
-      if p.tok[i].symbol == endToken: break
+      let isClosing = checkParen(p.tok[i], parensStack)
+      if p.tok[i].symbol == endToken and not isClosing:
+        break
       dest.add p.tok[i].symbol
       inc i
     inc i # skip end token

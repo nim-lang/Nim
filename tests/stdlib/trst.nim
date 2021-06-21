@@ -580,3 +580,44 @@ suite "RST inline markup":
           rnLeaf  ' '
           rnLeaf  'end'
         """)
+
+  test "URL with balanced parentheses (Markdown rule)":
+    # 2 balanced parens, 1 unbalanced:
+    check(dedent"""
+        https://en.wikipedia.org/wiki/APL_((programming_language)))""".toAst ==
+      dedent"""
+        rnInner
+          rnStandaloneHyperlink
+            rnLeaf  'https://en.wikipedia.org/wiki/APL_((programming_language))'
+          rnLeaf  ')'
+      """)
+
+    # the same for Markdown-style link:
+    check(dedent"""
+        [foo [bar]](https://en.wikipedia.org/wiki/APL_((programming_language))))""".toAst ==
+      dedent"""
+        rnInner
+          rnHyperlink
+            rnLeaf  'foo [bar]'
+            rnLeaf  'https://en.wikipedia.org/wiki/APL_((programming_language))'
+          rnLeaf  ')'
+      """)
+
+    # unbalanced (here behavior is more RST-like actually):
+    check(dedent"""
+        https://en.wikipedia.org/wiki/APL_(programming_language(""".toAst ==
+      dedent"""
+        rnInner
+          rnStandaloneHyperlink
+            rnLeaf  'https://en.wikipedia.org/wiki/APL_(programming_language'
+          rnLeaf  '('
+      """)
+
+    # unbalanced [, but still acceptable:
+    check(dedent"""
+        [my {link example](http://example.com/bracket_(symbol_[))""".toAst ==
+      dedent"""
+        rnHyperlink
+          rnLeaf  'my {link example'
+          rnLeaf  'http://example.com/bracket_(symbol_[)'
+      """)
