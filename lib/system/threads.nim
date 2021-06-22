@@ -40,7 +40,7 @@ runnableExamples("--threads:on"):
 
   deinitLock(L)
 
-when not declared(ThisIsSystem):
+when not declared(ThisIsSystem) and not defined(nimdoc):
   {.error: "You must not import this module explicitly".}
 
 const
