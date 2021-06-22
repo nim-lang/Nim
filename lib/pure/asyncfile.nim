@@ -8,19 +8,18 @@
 #
 
 ## This module implements asynchronous file reading and writing.
-##
-## .. code-block:: Nim
-##    import std/[asyncfile, asyncdispatch, os]
-##
-##    proc main() {.async.} =
-##      var file = openAsync(getTempDir() / "foobar.txt", fmReadWrite)
-##      await file.write("test")
-##      file.setFilePos(0)
-##      let data = await file.readAll()
-##      doAssert data == "test"
-##      file.close()
-##
-##    waitFor main()
+runnableExamples("-r:off"):
+  import std/[asyncdispatch, os]
+
+  proc main() {.async.} =
+    var file = openAsync(getTempDir() / "foobar.txt", fmReadWrite)
+    await file.write("test")
+    file.setFilePos(0)
+    let data = await file.readAll()
+    doAssert data == "test"
+    file.close()
+
+  waitFor main()
 
 import asyncdispatch, os
 

@@ -45,12 +45,12 @@ proc hashString(s: string): int {.compilerproc.} =
 
 proc addInt*(result: var string; x: int64) =
   ## Converts integer to its string representation and appends it to `result`.
-  ##
-  ## .. code-block:: Nim
-  ##   var
-  ##     a = "123"
-  ##     b = 45
-  ##   a.addInt(b) # a <- "12345"
+  runnableExamples:
+    var
+      a = "123"
+      b = 45
+    a.addInt(b) 
+    assert a == "12345"
   let base = result.len
   var length: int
   var num: uint64
@@ -84,12 +84,12 @@ import formatfloat
 
 proc addFloat*(result: var string; x: float) =
   ## Converts float to its string representation and appends it to `result`.
-  ##
-  ## .. code-block:: Nim
-  ##   var
-  ##     a = "123"
-  ##     b = 45.67
-  ##   a.addFloat(b) # a <- "12345.67"
+  runnableExamples:
+    var
+      a = "123"
+      b = 45.67
+    a.addFloat(b) 
+    assert a == "12345.67"
   when nimvm:
     result.add $x
   else:
