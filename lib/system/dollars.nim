@@ -7,15 +7,8 @@ proc `$`*(x: int): string {.magic: "IntToStr", noSideEffect.}
   ## spelling `toString`:idx:.
 
 template dollarImpl(x: uint | uint64, result: var string) =
-  type destTyp = typeof(x)
-  if x == 0:
-    return "0"
-  elif x == 1:
-    return "1"
-
   let length = digits10(x)
   setLen(result, length)
-
   numToString(result, x, length)
 
 when defined(js):
