@@ -21,7 +21,7 @@ const
 #       res.add "0" & $i
 #     else:
 #       res.add $i
-#   doAssert res == digitsTable
+#   doAssert res == digits100
 
 func digits10*(num: uint64): int {.noinline.} =
   if num < 10'u64:
@@ -60,8 +60,8 @@ template numToString*(result: var string, origin: uint64, length: int) =
     let originNum = num
     num = num div nbatch
     let index = (originNum - num * nbatch) shl 1
-    result[next] = digitsTable[index + 1]
-    result[next - 1] = digitsTable[index]
+    result[next] = digits100[index + 1]
+    result[next - 1] = digits100[index]
     dec(next, 2)
 
   # process last 1-2 digits
@@ -69,5 +69,5 @@ template numToString*(result: var string, origin: uint64, length: int) =
     result[next] = chr(ord('0') + num)
   else:
     let index = num * 2
-    result[next] = digitsTable[index + 1]
-    result[next - 1] = digitsTable[index]
+    result[next] = digits100[index + 1]
+    result[next - 1] = digits100[index]
