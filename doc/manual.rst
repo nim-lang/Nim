@@ -4462,10 +4462,8 @@ Example:
       echo "sum: " & $(parseInt(a) + parseInt(b))
     except OverflowDefect:
       echo "overflow!"
-    except ValueError:
-      echo "could not convert string to integer"
-    except IOError:
-      echo "IO error!"
+    except ValueError, IOError:
+      echo "catch multiple exceptions!"
     except:
       echo "Unknown exception!"
     finally:
