@@ -11,7 +11,6 @@
 
 import std/private/digitsutils
 
-
 proc cmpStrings(a, b: string): int {.inline, compilerproc.} =
   let alen = a.len
   let blen = b.len

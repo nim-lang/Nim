@@ -38,33 +38,38 @@ proc trailingZeros2Digits*(digits: uint32): int32 {.inline.} =
   assert(digits <= 99)
   return trailingZeros100[digits]
 
-func digits10*(num: uint64): int {.noinline.} =
-  if num < 10'u64:
-    result = 1
-  elif num < 100'u64:
-    result = 2
-  elif num < 1_000'u64:
-    result = 3
-  elif num < 10_000'u64:
-    result = 4
-  elif num < 100_000'u64:
-    result = 5
-  elif num < 1_000_000'u64:
-    result = 6
-  elif num < 10_000_000'u64:
-    result = 7
-  elif num < 100_000_000'u64:
-    result = 8
-  elif num < 1_000_000_000'u64:
-    result = 9
-  elif num < 10_000_000_000'u64:
-    result = 10
-  elif num < 100_000_000_000'u64:
-    result = 11
-  elif num < 1_000_000_000_000'u64:
-    result = 12
-  else:
-    result = 12 + digits10(num div 1_000_000_000_000'u64)
+func digits10(x: uint64): int {.inline.} =
+  if x >= 10000000000'u64: # 1..10, 11..20
+    if x >= 1000000000000000'u64: # 11..15, 16..20
+      if x >= 100000000000000000'u64: # 16..17, 18..20
+        if x >= 1000000000000000000'u64: # 18, 19..20
+          if x >= 10000000000000000000'u64: 20 # 19, 20
+          else: 19
+        else: 18
+      elif x >= 10000000000000000'u64: 17 # 16, 17
+      else: 16
+    elif x >= 1000000000000'u64: # 11..12, 13..15
+      if x >= 10000000000000'u64: # 13, 14..15
+        if x >=  100000000000000'u64: 15 # 14, 15
+        else: 14
+      else: 13
+    elif x >=  100000000000'u64: 12 # 11, 12
+    else: 11
+  elif x >= 100000'u64: # 1..5, 6..10
+    if x >= 10000000'u64: # 6..7, 8..10
+      if x >= 100000000'u64: # 8, 9..10
+        if x >=  1000000000'u64: 10 # 9, 10
+        else: 9
+      else: 8
+    elif x >= 1000000'u64: 7 # 6, 7
+    else: 6
+  elif x >= 100'u64: # 1..2, 3..5
+    if x >= 1000'u64: # 3, 4..5
+      if x >=  10000'u64: 5 # 4, 5
+      else: 4
+    else: 3
+  elif x >= 10: 2 # 1, 2
+  else: 1
 
 template numToString*(result: var string, origin: uint64, length: int) =
   var num = origin
