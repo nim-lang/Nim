@@ -4,11 +4,16 @@ benchmark for digits10
 on OSX, `nim r -d:danger tests/benchmarks/tdigits10.nim` prints:
 ("digits10v1", 1718245139, 0.567017)
 ("digits10", 1718245139, 0.16170099999999998)
+
+without {.noinline.} in digits10v1:
+("digits10v1", 1718245139, 0.43684399999999995)
+("digits10", 1718245139, 0.15965100000000004)
 ]#
 
 from system {.all.} import digits10
 
-func digits10v1(num: uint64): int {.noinline.} =
+func digits10v1(num: uint64): int {.noinline.} = # a bit 
+# func digits10v1(num: uint64): int =
   if num < 10'u64:
     result = 1
   elif num < 100'u64:
