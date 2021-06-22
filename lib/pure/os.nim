@@ -2285,7 +2285,7 @@ iterator walkDir*(dir: string; relative = false, checkDir = false):
   else:
     when defined(nimscript): discard # taken care of by nimvm but this branch is needed
     elif defined(js):
-      {.error: "walkDir is not implemented for JS backend".}
+      doAssert false, "walkDir is not implemented for JS backend"
     elif defined(windows):
       var f: WIN32_FIND_DATA
       var h = findFirstFile(dir / "*", f)
