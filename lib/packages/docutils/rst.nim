@@ -1260,15 +1260,14 @@ proc checkParen(token: Token, parensStack: var seq[char]): bool {.inline.} =
     if c in {'(', '[', '{'}:  # push
       parensStack.add c
     elif c in {')', ']', '}'}:  # try pop
-      if parensStack.len > 0:
-        # a case like ([) inside a link is allowed and [ is discarded:
-        for i in countdown(parensStack.len - 1, 0):
-          if (parensStack[i] == '(' and c == ')' or 
-              parensStack[i] == '[' and c == ']' or 
-              parensStack[i] == '{' and c == '}'):
-            parensStack.setLen i
-            result = true
-            break
+      # a case like ([) inside a link is allowed and [ is also `pop`ed:
+      for i in countdown(parensStack.len - 1, 0):
+        if (parensStack[i] == '(' and c == ')' or
+            parensStack[i] == '[' and c == ']' or
+            parensStack[i] == '{' and c == '}'):
+          parensStack.setLen i
+          result = true
+          break
 
 proc parseUrl(p: var RstParser): PRstNode =
   ## https://docutils.sourceforge.io/docs/ref/rst/restructuredtext.html#standalone-hyperlinks
