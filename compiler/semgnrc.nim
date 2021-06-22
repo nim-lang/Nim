@@ -507,7 +507,7 @@ proc semGenericStmt(c: PContext, n: PNode,
     ]#
     for i in 0..<n.len:
       if n[i].kind == nkExprColonExpr:
-        if n[i][0].kind == nkIdent and getIdent(c.cache, "pragma") == n[i][0].ident:
+        if n[i][0].kind == nkIdent and getIdent(c.cache, $wPragma) == n[i][0].ident:
           # handles: `{.pragma: myprag, inline.}`, where `myprag` shouldn't be passed through `semGenericStmt`
           discard
         else:
@@ -522,25 +522,17 @@ proc semGenericStmt(c: PContext, n: PNode,
   when defined(nimsuggest):
     if withinTypeDesc in flags: dec c.inTypeContext
 
-proc semGenericStmt(c: PContext, n: PNode): PNode =
+proc semGenericStmtImpl(c: PContext, n: PNode, flags: TSemGenericFlags): PNode {.inline.} =
   var ctx: GenericCtx
   ctx.toMixin = initIntSet()
   ctx.toBind = initIntSet()
-  result = semGenericStmt(c, n, {}, ctx)
+  result = semGenericStmt(c, n, flags, ctx)
   semIdeForTemplateOrGeneric(c, result, ctx.cursorInBody)
+
+proc semGenericStmt(c: PContext, n: PNode): PNode = semGenericStmtImpl(c, n, {})
 
 proc semGenericStmtInTypeSection(c: PContext, n: PNode): PNode =
-  # PRTEMP
-  var ctx: GenericCtx
-  ctx.toMixin = initIntSet()
-  ctx.toBind = initIntSet()
-  result = semGenericStmt(c, n, {}, ctx)
-  semIdeForTemplateOrGeneric(c, result, ctx.cursorInBody)
+  # xxx consider merging with `semGenericStmt`
+  result = semGenericStmt(c, n)
 
-proc semConceptBody(c: PContext, n: PNode): PNode =
-  var ctx: GenericCtx
-  ctx.toMixin = initIntSet()
-  ctx.toBind = initIntSet()
-  result = semGenericStmt(c, n, {withinConcept}, ctx)
-  semIdeForTemplateOrGeneric(c, result, ctx.cursorInBody)
-
+proc semConceptBody(c: PContext, n: PNode): PNode = semGenericStmtImpl(c, n, {withinConcept})

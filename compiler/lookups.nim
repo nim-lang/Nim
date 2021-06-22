@@ -221,12 +221,9 @@ proc searchInScopes*(c: PContext, s: PIdent; ambiguous: var bool): PSym =
       if c.inGenericInst > 0 and not foundMixin:
         var parent = result.owner
         while true:
-          if parent == c.genericInstStack[^1]:
-            break
-          if parent != nil:
-            parent = parent.owner
-          else:
-            return nil
+          if parent == c.genericInstStack[^1]: break
+          if parent != nil: parent = parent.owner
+          else: return nil
       return result
   if c.inGenericInst > 0 and not foundMixin: return nil
   result = someSymFromImportTable(c, s, ambiguous)
@@ -246,10 +243,6 @@ proc debugScopes*(c: PContext; limit=0, max = int.high) {.deprecated.} =
     inc i
 
 proc searchInScopesFilterBy*(c: PContext, s: PIdent, filter: TSymKinds): seq[PSym] =
-  # doAssert false
-  # dbg getStackTrace()
-  # if isCompilerDebug():
-  #   dbg getStackTrace()
   result = @[]
   for scope in allScopes(c.currentScope):
     var ti: TIdentIter
@@ -257,6 +250,8 @@ proc searchInScopesFilterBy*(c: PContext, s: PIdent, filter: TSymKinds): seq[PSy
     while candidate != nil:
       if candidate.kind in filter:
         if result.len == 0:
+          # xxx check whether we need similar logic as in `searchInScopes`
+          # (`inGenericInst` etc)
           result.add candidate
       candidate = nextIdentIter(ti, scope.symbols)
 
@@ -585,7 +580,6 @@ proc qualifiedLookUp*(c: PContext, n: PNode, flags: set[TLookupFlag]): PSym =
     if checkModule in flags:
       result = searchInScopes(c, ident, amb).skipAlias(n, c.config)
     else:
-      # PRTEMP : also handle searchInScopesFilterBy
       let candidates = searchInScopesFilterBy(c, ident, allExceptModule) #.skipAlias(n, c.config)
       if candidates.len > 0:
         result = candidates[0]
@@ -601,10 +595,6 @@ proc qualifiedLookUp*(c: PContext, n: PNode, flags: set[TLookupFlag]): PSym =
           errorUseQualifier(c, n.info, candidates)
 
     if result == nil and checkUndeclared in flags:
-      when defined(nimDebugUtils):
-        dbgIf c.genericInstStack.len, c.genericInstStack
-        if isCompilerDebug(): # PRTEMP
-          debugScopes2()
       result = errorUndeclaredIdentifierHint(c, n, ident)
     elif checkAmbiguity in flags and result != nil and amb:
       result = errorUseQualifier(c, n.info, result, amb)
