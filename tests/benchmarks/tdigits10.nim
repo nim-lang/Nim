@@ -14,7 +14,7 @@ without {.noinline.} in digits10v1:
 ("digits10", 1718245139, 0.15965100000000004)
 ]#
 
-from system {.all.} import digits10
+from std/private/digitsutils import digits10
 
 func digits10v1(num: uint64): int {.noinline.} =
 # func digits10v1(num: uint64): int = # a bit faster without {.noinline.}

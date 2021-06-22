@@ -38,7 +38,7 @@ proc trailingZeros2Digits*(digits: uint32): int32 {.inline.} =
   assert(digits <= 99)
   return trailingZeros100[digits]
 
-func digits10(x: uint64): int {.inline.} =
+func digits10*(x: uint64): int {.inline.} =
   if x >= 10_000_000_000'u64: # 1..10, 11..20
     if x >= 1_000_000_000_000_000'u64: # 11..15, 16..20
       if x >= 100_000_000_000_000_000'u64: # 16..17, 18..20

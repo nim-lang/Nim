@@ -1146,8 +1146,6 @@ proc printDecimalDigitsBackwards*(buf: var openArray[char]; pos: int; output64: 
   return tz
 
 proc decimalLength*(v: uint64): int32 {.inline.} =
-  defer: debugEcho result, " ", v
-# proc decimalLengthImpl*(v: uint64): int32 {.inline.} =
   dragonbox_Assert(v >= 1)
   dragonbox_Assert(v <= 99999999999999999'u64)
   if cast[uint32](v shr 32) != 0:

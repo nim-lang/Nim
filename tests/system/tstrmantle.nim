@@ -1,5 +1,3 @@
-from system {.all.} import digits10
-
 var res = newStringOfCap(24)
 
 for i in 0 .. 9:
@@ -46,19 +44,3 @@ doAssert res == "127"
 res.setLen(0)
 res.addInt low(int8)
 doAssert res == "-128"
-
-block: # digits10
-  var x = 1'u64
-  var num = 1
-  while true:
-    # echo (x, num)
-    doAssert digits10(x) == num
-    doAssert digits10(x+1) == num
-    if x > 1:
-      doAssert digits10(x-1) == num - 1
-    num += 1
-    let xOld = x
-    x *= 10
-    if x < xOld:
-      # wrap-around
-      break
