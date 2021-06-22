@@ -9,28 +9,8 @@
 
 # Compilerprocs for strings that do not depend on the string implementation.
 
-import digitsutils
+import std/private/digitsutils
 
-template numToString(result: var string, origin: uint64, length: int) =
-  var num = origin
-  var next = length - 1
-  const nbatch = 100
-
-  while num >= nbatch:
-    let originNum = num
-    num = num div nbatch
-    let index = (originNum - num * nbatch) shl 1
-    result[next] = digitsTable[index + 1]
-    result[next - 1] = digitsTable[index]
-    dec(next, 2)
-
-  # process last 1-2 digits
-  if num < 10:
-    result[next] = chr(ord('0') + num)
-  else:
-    let index = num * 2
-    result[next] = digitsTable[index + 1]
-    result[next - 1] = digitsTable[index]
 
 proc cmpStrings(a, b: string): int {.inline, compilerproc.} =
   let alen = a.len
