@@ -1,10 +1,10 @@
 const
-  trailingZeros100*: array[100, int8] = [2'i8, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0,
+  trailingZeros100: array[100, int8] = [2'i8, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0,
     1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0,
     0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 0, 0, 0,
     0, 0, 0, 0, 0, 0]
 
-  digits100*: array[200, char] = ['0', '0', '0', '1', '0', '2', '0', '3', '0', '4', '0', '5',
+  digits100: array[200, char] = ['0', '0', '0', '1', '0', '2', '0', '3', '0', '4', '0', '5',
     '0', '6', '0', '7', '0', '8', '0', '9', '1', '0', '1', '1', '1', '2', '1', '3', '1', '4',
     '1', '5', '1', '6', '1', '7', '1', '8', '1', '9', '2', '0', '2', '1', '2', '2', '2', '3',
     '2', '4', '2', '5', '2', '6', '2', '7', '2', '8', '2', '9', '3', '0', '3', '1', '3', '2',
@@ -27,6 +27,16 @@ const
 #     else:
 #       res.add $i
 #   doAssert res == digits100
+
+proc utoa2Digits*(buf: var openArray[char]; pos: int; digits: uint32) {.inline.} =
+  assert(digits <= 99)
+  buf[pos] = digits100[2 * digits]
+  buf[pos+1] = digits100[2 * digits + 1]
+  #copyMem(buf, unsafeAddr(digits100[2 * digits]), 2 * sizeof((char)))
+
+proc trailingZeros2Digits*(digits: uint32): int32 {.inline.} =
+  assert(digits <= 99)
+  return trailingZeros100[digits]
 
 func digits10*(num: uint64): int {.noinline.} =
   if num < 10'u64:

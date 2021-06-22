@@ -236,15 +236,6 @@ proc toDecimal32(ieeeSignificand: uint32; ieeeExponent: uint32): FloatingDecimal
 ##  ToChars
 ## ==================================================================================================
 
-proc utoa2Digits(buf: var openArray[char]; pos: int; digits: uint32) {.inline.} =
-  sf_Assert(digits <= 99)
-  buf[pos] = digits100[2 * digits]
-  buf[pos+1] = digits100[2 * digits + 1]
-
-proc trailingZeros2Digits(digits: uint32): int32 {.inline.} =
-  sf_Assert(digits <= 99)
-  return trailingZeros100[digits]
-
 proc printDecimalDigitsBackwards(buf: var openArray[char]; pos: int; output: uint32): int32 {.inline.} =
   var output = output
   var pos = pos

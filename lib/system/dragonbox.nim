@@ -1042,16 +1042,6 @@ proc toDecimal64*(ieeeSignificand: uint64; ieeeExponent: uint64): FloatingDecima
 ##  ToChars
 ## ==================================================================================================
 
-proc utoa2Digits*(buf: var openArray[char]; pos: int; digits: uint32) {.inline.} =
-  dragonbox_Assert(digits <= 99)
-  buf[pos] = digits100[2 * digits]
-  buf[pos+1] = digits100[2 * digits + 1]
-  #copyMem(buf, unsafeAddr(digits100[2 * digits]), 2 * sizeof((char)))
-
-proc trailingZeros2Digits*(digits: uint32): int32 {.inline.} =
-  dragonbox_Assert(digits <= 99)
-  return trailingZeros100[digits]
-
 when false:
   template `+!`(x: cstring; offset: int): cstring = cast[cstring](cast[uint](x) + uint(offset))
 
