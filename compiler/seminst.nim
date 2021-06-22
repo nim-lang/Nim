@@ -175,10 +175,46 @@ proc sideEffectsCheck(c: PContext, s: PSym) =
         {sfNoSideEffect, sfSideEffect}:
       localError(s.info, errXhasSideEffects, s.name.s)
 
+proc instGenericContainerImpl(cl: var TReplTypeVars, info: TLineInfo, header: PType, isReplaceVars: bool): PType =
+  let c = cl.c
+  internalAssert c.config, header.kind == tyGenericInvocation
+  # We must add all generic params in scope, because the generic body
+  # may include tyFromExpr nodes depending on these generic params.
+  # XXX: This looks quite similar to the code in matchUserTypeClass,
+  # perhaps the code can be extracted in a shared function.
+  openScope(c)
+
+  cl.c.genericInstStack.add header.sym
+
+  let genericTyp = header.base
+  for i in 0..<genericTyp.len - 1:
+    let genParam = genericTyp[i]
+    var param: PSym
+
+    template paramSym(kind): untyped =
+      newSym(kind, genParam.sym.name, nextSymId c.idgen, genericTyp.sym, genParam.sym.info)
+
+    if genParam.kind == tyStatic:
+      param = paramSym skConst
+      param.ast = header[i+1].n
+      param.typ = header[i+1]
+    else:
+      param = paramSym skType
+      param.typ = makeTypeDesc(c, header[i+1])
+    if isReplaceVars:
+      param.typ = replaceTypeVarsT(cl, param.typ) # checkme
+
+    # this scope was not created by the user,
+    # unused params shouldn't be reported.
+    param.flags.incl sfUsed
+    addDecl(c, param)
+
+  result = replaceTypeVarsT(cl, header)
+  discard cl.c.genericInstStack.pop
+  closeScope(c)
+
 proc instGenericContainer(c: PContext, info: TLineInfo, header: PType,
                           allowMetaTypes = false): PType =
-  internalAssert c.config, header.kind == tyGenericInvocation
-
   var
     cl: TReplTypeVars
 
@@ -190,86 +226,7 @@ proc instGenericContainer(c: PContext, info: TLineInfo, header: PType,
   cl.info = info
   cl.c = c
   cl.allowMetaTypes = allowMetaTypes
-
-  # We must add all generic params in scope, because the generic body
-  # may include tyFromExpr nodes depending on these generic params.
-  # XXX: This looks quite similar to the code in matchUserTypeClass,
-  # perhaps the code can be extracted in a shared function.
-  openScope(c)
-  cl.c.genericInstStack.add header.sym
-
-  let genericTyp = header.base
-  for i in 0..<genericTyp.len - 1:
-    let genParam = genericTyp[i]
-    var param: PSym
-
-    template paramSym(kind): untyped =
-      newSym(kind, genParam.sym.name, nextSymId c.idgen, genericTyp.sym, genParam.sym.info)
-
-    if genParam.kind == tyStatic:
-      param = paramSym skConst
-      param.ast = header[i+1].n
-      param.typ = header[i+1]
-    else:
-      param = paramSym skType
-      param.typ = makeTypeDesc(c, header[i+1])
-
-    # this scope was not created by the user,
-    # unused params shouldn't be reported.
-    param.flags.incl sfUsed
-    addDecl(c, param)
-
-  result = replaceTypeVarsT(cl, header)
-  discard cl.c.genericInstStack.pop
-  closeScope(c)
-
-proc instGenericContainer2(cl: var TReplTypeVars, info: TLineInfo, header: PType): PType =
-  let c = cl.c
-  internalAssert c.config, header.kind == tyGenericInvocation
-  # initIdTable(cl.symMap)
-  # initIdTable(cl.localCache)
-  # cl.typeMap = LayeredIdTable()
-  # initIdTable(cl.typeMap.topLayer)
-
-  # cl.info = info
-  # cl.c = c
-  # cl.allowMetaTypes = allowMetaTypes
-
-  # We must add all generic params in scope, because the generic body
-  # may include tyFromExpr nodes depending on these generic params.
-  # XXX: This looks quite similar to the code in matchUserTypeClass,
-  # perhaps the code can be extracted in a shared function.
-  openScope(c)
-
-  cl.c.genericInstStack.add header.sym
-
-  let genericTyp = header.base
-  for i in 0..<genericTyp.len - 1:
-    let genParam = genericTyp[i]
-    var param: PSym
-
-    template paramSym(kind): untyped =
-      newSym(kind, genParam.sym.name, nextSymId c.idgen, genericTyp.sym, genParam.sym.info)
-
-    if genParam.kind == tyStatic:
-      param = paramSym skConst
-      param.ast = header[i+1].n
-      param.typ = header[i+1]
-    else:
-      param = paramSym skType
-      param.typ = makeTypeDesc(c, header[i+1])
-    param.typ = replaceTypeVarsT(cl, param.typ) # PRTEMP
-
-    # this scope was not created by the user,
-    # unused params shouldn't be reported.
-    param.flags.incl sfUsed
-    addDecl(c, param)
-
-  result = replaceTypeVarsT(cl, header)
-
-  discard cl.c.genericInstStack.pop
-
-  closeScope(c)
+  instGenericContainerImpl(cl, info, header, isReplaceVars = false)
 
 proc referencesAnotherParam(n: PNode, p: PSym): bool =
   if n.kind == nkSym:
@@ -362,8 +319,7 @@ proc instantiateProcType(c: PContext, pt: TIdTable,
   cl.isReturnType = true
 
   if result[0] != nil and result[0].kind == tyGenericInvocation: # PRTEMP
-    # result[0] = instGenericContainer(c, info, result[0], allowMetaTypes = false)
-    result[0] = instGenericContainer2(cl, info, result[0])
+    result[0] = instGenericContainerImpl(cl, info, result[0], isReplaceVars = true)
   else:
     result[0] = replaceTypeVarsT(cl, result[0])
   # proc semGeneric(c: PContext, n: PNode, s: PSym, prev: PType): PType =
