@@ -1,3 +1,7 @@
+discard """
+  action: compile
+"""
+
 #[
 benchmark for digits10
 
@@ -12,8 +16,8 @@ without {.noinline.} in digits10v1:
 
 from system {.all.} import digits10
 
-func digits10v1(num: uint64): int {.noinline.} = # a bit 
-# func digits10v1(num: uint64): int =
+func digits10v1(num: uint64): int {.noinline.} =
+# func digits10v1(num: uint64): int = # a bit faster without {.noinline.}
   if num < 10'u64:
     result = 1
   elif num < 100'u64:
