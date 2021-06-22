@@ -678,7 +678,7 @@ proc matchUserTypeClass*(m: var TCandidate; ff, a: PType): PType =
   let genericInstStackLenOld = c.genericInstStack.len
   c.genericInstStack.add typeClass.sym
 
-  # PRTEMP similar to D20210521T170223
+  # similar to `fixupInstantiatedSymbols`
   pushOwner(c, typeClass.sym)
   # pushInfoContext(c.config, oldPrc.info)
 

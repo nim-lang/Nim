@@ -640,12 +640,14 @@ proc myProcess(context: PPassContext, n: PNode): PNode {.nosinks.} =
     result = semStmtAndGenerateGenerics(c, n)
   else:
     let oldContextLen = msgs.getInfoContextLen(c.config)
-    let oldInGenericInst = c.inGenericInst # PRTEMP: genericInstStack ?
+    let oldInGenericInst = c.inGenericInst
+    let oldgenericInstStackLen = c.genericInstStack.len
     try:
       result = semStmtAndGenerateGenerics(c, n)
     except ERecoverableError, ESuggestDone:
       recoverContext(c)
       c.inGenericInst = oldInGenericInst
+      c.genericInstStack.setLen oldgenericInstStackLen
       msgs.setInfoContextLen(c.config, oldContextLen)
       if getCurrentException() of ESuggestDone:
         c.suggestionsMade = true

@@ -156,7 +156,6 @@ proc fixupInstantiatedSymbols(c: PContext, s: PSym) =
   for i in 0..<c.generics.len:
     if c.generics[i].genericSym.id == s.id:
       var oldPrc = c.generics[i].inst.sym
-      # D20210521T170223:here
       pushProcCon(c, oldPrc)
       pushOwner(c, oldPrc)
       pushInfoContext(c.config, oldPrc.info)
@@ -318,7 +317,7 @@ proc instantiateProcType(c: PContext, pt: TIdTable,
   resetIdTable(cl.localCache)
   cl.isReturnType = true
 
-  if result[0] != nil and result[0].kind == tyGenericInvocation: # PRTEMP
+  if result[0] != nil and result[0].kind == tyGenericInvocation:
     result[0] = instGenericContainerImpl(cl, info, result[0], isReplaceVars = true)
   else:
     result[0] = replaceTypeVarsT(cl, result[0])

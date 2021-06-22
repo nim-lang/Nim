@@ -1,13 +1,12 @@
 discard """
   joinable: false
-  matrix: "-d:t13747_case1 -d:t13747_case2 -d:t13747_case3 -d:t13747_case4 -d:t13747_case5 -d:t13747_case6 -d:t13747_case7 -d:t13747_case8 -d:t13747_case9"
+  matrix: "-d:t13747_case1 -d:t13747_case2 -d:t13747_case3 -d:t13747_case4 -d:t13747_case5 -d:t13747_case6 -d:t13747_case7 -d:t13747_case8 -d:t13747_case9 -d:t13747_case10 -d:t13747_case11"
   # this allows testing each one individually; each of those (except t13747_case1, t13747_case7, t13747_case8) were failing
 """
 
 # bug #13747 generic sandwich non-module scope symbols were ignored
 
 # keep these at module scope
-{.define(nimCompilerDebug).}
 when defined(t13747_case1):
   # every symbol suffixed by V1, represents -d:case2a1 from https://github.com/nim-lang/Nim/issues/13747#issuecomment-615992993
   proc byValImpl1V1(T: typedesc, valV1: int): auto =
@@ -146,10 +145,45 @@ when defined t13747_case8: # bug #2752
 
 # tests that need an stdlib import come after
 
-when defined(t13747_case9): # bug #13970
+when defined t13747_case9: # bug #13970
   # (also reported in https://github.com/nim-lang/Nim/issues/13747#issuecomment-612905795)
   import algorithm
   block:
     var a = @[(1, @['a']), (4, @['d']), (3, @['c']), (2, @['b'])]
     proc `<`(x, y: (int, seq[char])): bool = x[0] < y[0]
     sort(a) # was CT error
+
+when defined t13747_case10:
+  # example with a pragma: make sure `off` is resolved here
+  proc fn1[T](a: T) =
+    {.warning[resultshadowed]: off.}: discard
+  fn1(1)
+
+when defined t13747_case11:
+  # BUG D20210621T173756:here: this test was failing with `Error: type mismatch`
+  proc fn2[T](a: T) =
+    {.warning[resultshadowed]: off.}:
+      discard
+  const off = "asdf"
+  fn1(1)
+
+when defined t13747_case12:
+  # more pragmas
+  proc fn3[T](a: T) =
+    mixin off2
+    mixin resultshadowed2
+    {.define(t13747_case12_sub).}
+    {.noSideEffect.}: discard
+    {.noSideEffect2.}: discard
+    {.warning[resultshadowed]: off2.}: discard
+    {.push warning[resultshadowed]: off2.}
+    {.push, warning[resultshadowed]: off.}
+    {.pop.}
+    {.push warnings: off.}
+    {.push warning[GcMem]: off, warning[Uninit]: off.}
+  block:
+    doAssert not compiles(fn1(1))
+    const off2 = off
+    {.pragma: noSideEffect2, noSideEffect.}
+    doAssert compiles(fn1(1))
+    fn1(1)

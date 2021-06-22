@@ -491,20 +491,7 @@ proc semGenericStmt(c: PContext, n: PNode,
     n[bodyPos] = semGenericStmtScope(c, body, flags, ctx)
     closeScope(c)
   of nkPragma, nkPragmaExpr:
-    #[
-    # TODO: nkPragmaBlock ?
-    D20210521T115234 PRTEMP
-    {.define(foo).}
-    {.noSideEffect.}
-    {.warning[resultshadowed]: zook.}: discard
-    {.pushwarning[resultshadowed]: zook.}
-    {.push, warning[resultshadowed]: off.}
-    {.pop.}
-    {.push warnings: off.}
-    {.push warning[GcMem]: off, warning[Uninit]: off.}
-  
-    PRTEMP: FACTOR with D20210521T130909
-    ]#
+    # similar to treatment in `semTemplBody`
     for i in 0..<n.len:
       if n[i].kind == nkExprColonExpr:
         if n[i][0].kind == nkIdent and getIdent(c.cache, $wPragma) == n[i][0].ident:
