@@ -293,6 +293,9 @@ block:
 
     doAssert "test1".match(peg"""{@}$""")
     doAssert "test2".match(peg"""{(!$ .)*} $""")
+
+    doAssert "abbb".match(peg"{a} {b} $2 $-1")
+
   pegsTest()
   static:
     pegsTest()

@@ -83,7 +83,7 @@ type
     of pkChar, pkGreedyRepChar: ch: char
     of pkCharChoice, pkGreedyRepSet: charChoice: ref set[char]
     of pkNonTerminal: nt: NonTerminal
-    of pkBackRef..pkBackRefIgnoreStyle: index: range[0..MaxSubpatterns]
+    of pkBackRef..pkBackRefIgnoreStyle: index: range[-MaxSubpatterns..MaxSubpatterns-1]
     else: sons: seq[Peg]
   NonTerminal* = ref NonTerminalObj
 
@@ -106,7 +106,7 @@ proc nt*(p: Peg): NonTerminal = p.nt
   ## Returns the *NonTerminal* object of a given *Peg* variant object
   ## where present.
 
-proc index*(p: Peg): range[0..MaxSubpatterns] = p.index
+proc index*(p: Peg): range[-MaxSubpatterns..MaxSubpatterns-1] = p.index
   ## Returns the back-reference index of a captured sub-pattern in the
   ## *Captures* object for a given *Peg* variant object where present.
 
@@ -308,23 +308,26 @@ proc capture*(a: Peg): Peg {.noSideEffect, rtl, extern: "npegsCapture".} =
   ## constructs a capture with the PEG `a`
   result = Peg(kind: pkCapture, sons: @[a])
 
-proc backref*(index: range[1..MaxSubpatterns]): Peg {.
+proc backref*(index: range[1..MaxSubpatterns], reverse: bool = false): Peg {.
   noSideEffect, rtl, extern: "npegs$1".} =
   ## constructs a back reference of the given `index`. `index` starts counting
-  ## from 1.
-  result = Peg(kind: pkBackRef, index: index-1)
+  ## from 1. `reverse` specifies wether indexing starts from the end of the
+  ## capture list.
+  result = Peg(kind: pkBackRef, index: (if reverse: -index else: index - 1))
 
-proc backrefIgnoreCase*(index: range[1..MaxSubpatterns]): Peg {.
+proc backrefIgnoreCase*(index: range[1..MaxSubpatterns], reverse: bool = false): Peg {.
   noSideEffect, rtl, extern: "npegs$1".} =
   ## constructs a back reference of the given `index`. `index` starts counting
-  ## from 1. Ignores case for matching.
-  result = Peg(kind: pkBackRefIgnoreCase, index: index-1)
+  ## from 1. `reverse` specifies wether indexing starts from the end of the
+  ## capture list. Ignores case for matching.
+  result = Peg(kind: pkBackRefIgnoreCase, index: (if reverse: -index else: index - 1))
 
-proc backrefIgnoreStyle*(index: range[1..MaxSubpatterns]): Peg {.
+proc backrefIgnoreStyle*(index: range[1..MaxSubpatterns], reverse: bool = false): Peg {.
   noSideEffect, rtl, extern: "npegs$1".} =
   ## constructs a back reference of the given `index`. `index` starts counting
-  ## from 1. Ignores style for matching.
-  result = Peg(kind: pkBackRefIgnoreStyle, index: index-1)
+  ## from 1. `reverse` specifies wether indexing starts from the end of the
+  ## capture list. Ignores style for matching.
+  result = Peg(kind: pkBackRefIgnoreStyle, index: (if reverse: -index else: index - 1))
 
 proc spaceCost(n: Peg): int =
   case n.kind
@@ -561,8 +564,10 @@ template matchOrParse(mopProc: untyped) =
       # Parse handler code must run in an *of* clause of its own for each
       # *PegKind*, so we encapsulate the identical clause body for
       # *pkBackRef..pkBackRefIgnoreStyle* here.
-      if p.index >= c.ml: return -1
-      var (a, b) = c.matches[p.index]
+      var index = p.index
+      if index < 0: index += c.ml
+      if index < 0 or index >= c.ml: return -1
+      var (a, b) = c.matches[index]
       var n: Peg
       case p.kind
       of pkBackRef:
@@ -1564,13 +1569,21 @@ proc getString(c: var PegLexer, tok: var Token) =
 
 proc getDollar(c: var PegLexer, tok: var Token) =
   var pos = c.bufpos + 1
+  var neg = false
+  if pos < c.buf.len and c.buf[pos] == '-':
+    neg = true
+    inc(pos)
   if pos < c.buf.len and c.buf[pos] in {'0'..'9'}:
     tok.kind = tkBackref
     tok.index = 0
     while pos < c.buf.len and c.buf[pos] in {'0'..'9'}:
       tok.index = tok.index * 10 + ord(c.buf[pos]) - ord('0')
       inc(pos)
+    if neg:
+      tok.index = -tok.index
   else:
+    if neg:
+      dec(pos)
     tok.kind = tkDollar
   c.bufpos = pos
 
@@ -1819,10 +1832,13 @@ proc modifiedTerm(s: string, m: Modifier): Peg =
   of modIgnoreStyle: result = termIgnoreStyle(s)
 
 proc modifiedBackref(s: int, m: Modifier): Peg =
+  var
+    reverse = s < 0
+    index = if reverse: -s else: s
   case m
-  of modNone, modVerbatim: result = backref(s)
-  of modIgnoreCase: result = backrefIgnoreCase(s)
-  of modIgnoreStyle: result = backrefIgnoreStyle(s)
+  of modNone, modVerbatim: result = backref(index, reverse)
+  of modIgnoreCase: result = backrefIgnoreCase(index, reverse)
+  of modIgnoreStyle: result = backrefIgnoreStyle(index, reverse)
 
 proc builtin(p: var PegParser): Peg =
   # do not use "y", "skip" or "i" as these would be ambiguous
@@ -1915,11 +1931,11 @@ proc primary(p: var PegParser): Peg =
     result = startAnchor()
     getTok(p)
   of tkBackref:
+    if abs(p.tok.index) > p.captures or p.tok.index == 0:
+      pegError(p, "invalid back reference index: " & $p.tok.index)
     var m = p.tok.modifier
     if m == modNone: m = p.modifier
     result = modifiedBackref(p.tok.index, m).token(p)
-    if p.tok.index < 0 or p.tok.index > p.captures:
-      pegError(p, "invalid back reference index: " & $p.tok.index)
     getTok(p)
   else:
     pegError(p, "expression expected, but found: " & p.tok.literal)
