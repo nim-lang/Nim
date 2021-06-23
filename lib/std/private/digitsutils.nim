@@ -38,120 +38,73 @@ proc trailingZeros2Digits*(digits: uint32): int32 {.inline.} =
   assert(digits <= 99)
   return trailingZeros100[digits]
 
+proc firstPow10(n: int): uint64 {.compileTime.} =
+  case n
+  of 1: 1'u64
+  of 2: 10'u64
+  of 3: 100'u64
+  of 4: 1000'u64
+  of 5: 10000'u64
+  of 6: 100000'u64
+  of 7: 1000000'u64
+  of 8: 10000000'u64
+  of 9: 100000000'u64
+  of 10: 1000000000'u64
+  of 11: 10000000000'u64
+  of 12: 100000000000'u64
+  of 13: 1000000000000'u64
+  of 14: 10000000000000'u64
+  of 15: 100000000000000'u64
+  of 16: 1000000000000000'u64
+  of 17: 10000000000000000'u64
+  of 18: 100000000000000000'u64
+  of 19: 1000000000000000000'u64
+  of 20: 10000000000000000000'u64
+  else:
+    doAssert false
+    0'u64
+
 func digits10*(x: uint64): int {.inline.} =
-  if x >= 10_000_000_000'u64: # 1..10, 11..20
-    if x >= 1_000_000_000_000_000'u64: # 11..15, 16..20
-      if x >= 100_000_000_000_000_000'u64: # 16..17, 18..20
-        if x >= 1_000_000_000_000_000_000'u64: # 18, 19..20
-          if x >= 10_000_000_000_000_000_000'u64: 20 # 19, 20
+  if x >= firstPow10(11): # 1..10, 11..20
+    if x >= firstPow10(16): # 11..15, 16..20
+      if x >= firstPow10(18): # 16..17, 18..20
+        if x >= firstPow10(19): # 18, 19..20
+          if x >= firstPow10(20): 20 # 19, 20
           else: 19
         else: 18
-      elif x >= 10_000_000_000_000_000'u64: 17 # 16, 17
+      elif x >= firstPow10(17): 17 # 16, 17
       else: 16
-    elif x >= 1_000_000_000_000'u64: # 11..12, 13..15
-      if x >= 10_000_000_000_000'u64: # 13, 14..15
-        if x >= 100_000_000_000_000'u64: 15 # 14, 15
+    elif x >= firstPow10(13): # 11..12, 13..15
+      if x >= firstPow10(14): # 13, 14..15
+        if x >= firstPow10(15): 15 # 14, 15
         else: 14
       else: 13
-    elif x >= 100_000_000_000'u64: 12 # 11, 12
+    elif x >= firstPow10(12): 12 # 11, 12
     else: 11
-  elif x >= 100_000'u64: # 1..5, 6..10
-    if x >= 10_000_000'u64: # 6..7, 8..10
-      if x >= 100_000_000'u64: # 8, 9..10
-        if x >= 1_000_000_000'u64: 10 # 9, 10
+  elif x >= firstPow10(6): # 1..5, 6..10
+    if x >= firstPow10(8): # 6..7, 8..10
+      if x >= firstPow10(9): # 8, 9..10
+        if x >= firstPow10(10): 10 # 9, 10
         else: 9
       else: 8
-    elif x >= 1_000_000'u64: 7 # 6, 7
+    elif x >= firstPow10(7): 7 # 6, 7
     else: 6
-  elif x >= 100'u64: # 1..2, 3..5
-    if x >= 1_000'u64: # 3, 4..5
-      if x >= 10_000'u64: 5 # 4, 5
+  elif x >= firstPow10(3): # 1..2, 3..5
+    if x >= firstPow10(4): # 3, 4..5
+      if x >= firstPow10(5): 5 # 4, 5
       else: 4
     else: 3
-  elif x >= 10: 2 # 1, 2
+  elif x >= firstPow10(2): 2 # 1, 2
   else: 1
 
-template numToString*(result: var string, origin: uint64, length: int) =
-  var num = origin
-  var next = length - 1
-  const nbatch = 100
-
-  while num >= nbatch:
-    let originNum = num
-    num = num div nbatch
-    let index = (originNum - num * nbatch) shl 1
-    result[next] = digits100[index + 1]
-    result[next - 1] = digits100[index]
-    dec(next, 2)
-
-  # process last 1-2 digits
-  if num < 10:
-    result[next] = chr(ord('0') + num)
-  else:
-    let index = num * 2
-    result[next] = digits100[index + 1]
-    result[next - 1] = digits100[index]
-
-template numToString2_bak1*(result: var string, origin: uint64, length: int) =
-  var x = origin
-  var i = result.len - 1
-  while true:
-    let xi = (x mod 100) shl 1
-    x = x div 100
-    result[i] = digits100[xi + 1]
-    if x != 0 or xi >= 20:
-      result[i-1] = digits100[xi]
-    if x == 0: break
-    i -= 2
-
-template numToString2_bak2*(result: var string, origin: uint64, length: int) =
-  var x = origin
-  var i = result.len - 1
-  while true:
-    let x2 = x div 100
-    let xi = (x - x2 * 100) shl 1
-    result[i] = digits100[xi + 1]
-    if x2 != 0 or xi >= 20:
-      result[i-1] = digits100[xi]
-    if x < 100: break
-    else: x = x2
-    i -= 2
-
-template numToString2_bak3*(result: var string, origin: uint64, length: int) =
-  var x = origin
-  var i = result.len - 1
-  while true:
-    if x < 10:
-      result[i] = chr(ord('0') + x)
-      break
-    else:
-      let x2 = x div 100
-      let xi = (x - x2 * 100) shl 1
-      result[i] = digits100[xi + 1]
-      result[i-1] = digits100[xi]
-      if x2 == 0: break
-      x = x2
-      i -= 2
-
-proc numToString2_bak4*(result: var string, origin: uint64, length: int) {.inline.} =
-  var x = origin
-  var i = result.len - 2
-  while i >= 0:
-    let x2 = x div 100
-    let xi = (x - x2 * 100) shl 1
-    cast[ptr uint16](result[i].unsafeAddr)[] = cast[ptr uint16](digits100[xi].unsafeAddr)[]
-    i = i - 2
-    x = x2
-  if i == -1:
-    result[0] = chr(ord('0') + x)
-
-proc numToString2*(result: var string, origin: uint64, length: int) {.inline.} =
+proc numToString*(result: var string, origin: uint64, length: int) {.inline.} =
   var x = origin
   var i = result.len - 2
   while i >= 0:
     let xi = (x mod 100) shl 1
     x = x div 100
+    # copies 2 chars at a time
     cast[ptr uint16](result[i].unsafeAddr)[] = cast[ptr uint16](digits100[xi].unsafeAddr)[]
     i = i - 2
-  if i == -1:
+  if i == -1: # copy last digit if odd number
     result[0] = chr(ord('0') + x)
