@@ -1718,7 +1718,7 @@ proc getTok(c: var PegLexer, tok: var Token) =
       return
     if c.buf[c.bufpos] in {'\'', '"'} or
         c.buf[c.bufpos] == '$' and c.bufpos+1 < c.buf.len and
-        c.buf[c.bufpos+1] in {'0'..'9'}:
+        c.buf[c.bufpos+1] in {'-', '0'..'9'}:
       case tok.literal
       of "i": tok.modifier = modIgnoreCase
       of "y": tok.modifier = modIgnoreStyle

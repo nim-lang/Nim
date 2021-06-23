@@ -295,6 +295,7 @@ block:
     doAssert "test2".match(peg"""{(!$ .)*} $""")
 
     doAssert "abbb".match(peg"{a} {b} $2 $-1")
+    doAssert "abBA".match(peg"{a} {b} i$2 i$-2")
 
   pegsTest()
   static:
