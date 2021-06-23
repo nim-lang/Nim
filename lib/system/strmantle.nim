@@ -67,7 +67,8 @@ proc addInt*(result: var string; x: int64) =
     num = uint64(x)
     length = digits10(num)
     setLen(result, base + length)
-  numToString(toOpenArray(result, result.len - length, result.len - 1), num)
+  # numToString(toOpenArray(result, result.len - length, result.len - 1), num)
+  numToString(result, num, result.len - length)
 
 proc nimIntToStr(x: int): string {.compilerRtl.} =
   result = newStringOfCap(sizeof(x)*4)
