@@ -881,10 +881,6 @@ since((1, 1)):
   export toUnixFloat
 
 
-when defined(windows): # TODO move to winlean
-  proc getSystemTimePreciseAsFileTime(lpSystemTimeAsFileTime: var FILETIME) {.
-    importc: "GetSystemTimePreciseAsFileTime", dynlib: "kernel32", stdcall, sideEffect.}
-
 proc fromWinTime*(win: int64): Time =
   ## Convert a Windows file time (100-nanosecond intervals since
   ## `1601-01-01T00:00:00Z`) to a `Time`.
