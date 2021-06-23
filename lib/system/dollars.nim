@@ -7,9 +7,8 @@ proc `$`*(x: int): string {.magic: "IntToStr", noSideEffect.}
   ## spelling `toString`:idx:.
 
 template dollarImpl(x: uint | uint64, result: var string) =
-  let length = digits10(x)
-  setLen(result, length)
-  numToString(result, x, length)
+  setLen(result, digits10(x))
+  numToString(result, x)
 
 when defined(js):
   import std/private/since

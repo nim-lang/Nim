@@ -39,32 +39,11 @@ proc trailingZeros2Digits*(digits: uint32): int32 {.inline.} =
   return trailingZeros100[digits]
 
 proc firstPow10(n: int): uint64 {.compileTime.} =
-  case n
-  of 1: 1'u64
-  of 2: 10'u64
-  of 3: 100'u64
-  of 4: 1000'u64
-  of 5: 10000'u64
-  of 6: 100000'u64
-  of 7: 1000000'u64
-  of 8: 10000000'u64
-  of 9: 100000000'u64
-  of 10: 1000000000'u64
-  of 11: 10000000000'u64
-  of 12: 100000000000'u64
-  of 13: 1000000000000'u64
-  of 14: 10000000000000'u64
-  of 15: 100000000000000'u64
-  of 16: 1000000000000000'u64
-  of 17: 10000000000000000'u64
-  of 18: 100000000000000000'u64
-  of 19: 1000000000000000000'u64
-  of 20: 10000000000000000000'u64
-  else:
-    doAssert false
-    0'u64
+  result = 1
+  for i in 1..<n: result *= 10
 
 func digits10*(x: uint64): int {.inline.} =
+  ## Returns number of digits of `$x`
   if x >= firstPow10(11): # 1..10, 11..20
     if x >= firstPow10(16): # 11..15, 16..20
       if x >= firstPow10(18): # 16..17, 18..20
@@ -97,14 +76,35 @@ func digits10*(x: uint64): int {.inline.} =
   elif x >= firstPow10(2): 2 # 1, 2
   else: 1
 
-proc numToString*(result: var string, origin: uint64, length: int) {.inline.} =
-  var x = origin
+func digits10*(x: uint32): int {.inline.} =
+  ## Returns number of digits of `$x`
+  if x >= firstPow10(6): # 1..5, 6..10
+    if x >= firstPow10(8): # 6..7, 8..10
+      if x >= firstPow10(9): # 8, 9..10
+        if x >= firstPow10(10): 10 # 9, 10
+        else: 9
+      else: 8
+    elif x >= firstPow10(7): 7 # 6, 7
+    else: 6
+  elif x >= firstPow10(3): # 1..2, 3..5
+    if x >= firstPow10(4): # 3, 4..5
+      if x >= firstPow10(5): 5 # 4, 5
+      else: 4
+    else: 3
+  elif x >= firstPow10(2): 2 # 1, 2
+  else: 1
+
+proc numToString*(result: var openArray[char], num: uint64) {.inline.} =
+  var x = num
   var i = result.len - 2
   while i >= 0:
     let xi = (x mod 100) shl 1
     x = x div 100
-    # copies 2 chars at a time
-    cast[ptr uint16](result[i].unsafeAddr)[] = cast[ptr uint16](digits100[xi].unsafeAddr)[]
+    when defined(nimHasDragonBox): # pending bootstrap >= 1.4.0, nimHasDragonBox isn't relevant
+      cast[ptr uint16](result[i].addr)[] = cast[ptr uint16](digits100[xi].unsafeAddr)[]
+    else:
+      result[i] = digits100[xi]
+      result[i+1] = digits100[xi+1]
     i = i - 2
-  if i == -1: # copy last digit if odd number
+  if i == - 1:
     result[0] = chr(ord('0') + x)

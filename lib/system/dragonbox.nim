@@ -1145,46 +1145,6 @@ proc printDecimalDigitsBackwards*(buf: var openArray[char]; pos: int; output64: 
     buf[pos] = chr(ord('0') + q)
   return tz
 
-proc decimalLength*(v: uint64): int32 {.inline.} =
-  dragonbox_Assert(v >= 1)
-  dragonbox_Assert(v <= 99999999999999999'u64)
-  if cast[uint32](v shr 32) != 0:
-    if v >= 10000000000000000'u64:
-      return 17
-    if v >= 1000000000000000'u64:
-      return 16
-    if v >= 100000000000000'u64:
-      return 15
-    if v >= 10000000000000'u64:
-      return 14
-    if v >= 1000000000000'u64:
-      return 13
-    if v >= 100000000000'u64:
-      return 12
-    if v >= 10000000000'u64:
-      return 11
-    return 10
-  let v32: uint32 = cast[uint32](v)
-  if v32 >= 1000000000'u:
-    return 10
-  if v32 >= 100000000'u:
-    return 9
-  if v32 >= 10000000'u:
-    return 8
-  if v32 >= 1000000'u:
-    return 7
-  if v32 >= 100000'u:
-    return 6
-  if v32 >= 10000'u:
-    return 5
-  if v32 >= 1000'u:
-    return 4
-  if v32 >= 100'u:
-    return 3
-  if v32 >= 10'u:
-    return 2
-  return 1
-
 proc formatDigits*(buffer: var openArray[char]; pos: int; digits: uint64; decimalExponent: int32;
                   forceTrailingDotZero = false): int {.inline.} =
   const
@@ -1198,7 +1158,7 @@ proc formatDigits*(buffer: var openArray[char]; pos: int; digits: uint64; decima
   dragonbox_Assert(digits <= 99999999999999999'u64)
   dragonbox_Assert(decimalExponent >= -999)
   dragonbox_Assert(decimalExponent <= 999)
-  var numDigits: int32 = decimalLength(digits)
+  var numDigits: int32 = cast[int32](digits10(digits))
   let decimalPoint: int32 = numDigits + decimalExponent
   let useFixed: bool = minFixedDecimalPoint <= decimalPoint and
       decimalPoint <= maxFixedDecimalPoint

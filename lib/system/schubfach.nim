@@ -292,27 +292,6 @@ proc printDecimalDigitsBackwards(buf: var openArray[char]; pos: int; output: uin
     buf[pos] = chr(uint32('0') + q)
   return tz
 
-proc decimalLength(v: uint32): int32 {.inline.} =
-  sf_Assert(v >= 1)
-  sf_Assert(v <= 999999999'u)
-  if v >= 100000000'u:
-    return 9
-  if v >= 10000000'u:
-    return 8
-  if v >= 1000000'u:
-    return 7
-  if v >= 100000'u:
-    return 6
-  if v >= 10000'u:
-    return 5
-  if v >= 1000'u:
-    return 4
-  if v >= 100'u:
-    return 3
-  if v >= 10'u:
-    return 2
-  return 1
-
 proc formatDigits(buffer: var openArray[char]; pos: int; digits: uint32; decimalExponent: int32;
                   forceTrailingDotZero: bool = false): int {.inline.} =
   const
@@ -325,7 +304,7 @@ proc formatDigits(buffer: var openArray[char]; pos: int; digits: uint32; decimal
   sf_Assert(digits <= 999999999'u)
   sf_Assert(decimalExponent >= -99)
   sf_Assert(decimalExponent <= 99)
-  var numDigits: int32 = decimalLength(digits)
+  var numDigits: int32 = cast[int32](digits10(digits))
   let decimalPoint: int32 = numDigits + decimalExponent
   let useFixed: bool = minFixedDecimalPoint <= decimalPoint and
       decimalPoint <= maxFixedDecimalPoint

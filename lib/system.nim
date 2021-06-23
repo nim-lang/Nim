@@ -581,6 +581,31 @@ type
            ## However, objects that have no ancestor are also allowed.
   RootRef* = ref RootObj ## Reference to `RootObj`.
 
+when not defined(js):
+  proc toOpenArray*[T](x: ptr UncheckedArray[T]; first, last: int): openArray[T] {.
+    magic: "Slice".}
+  when defined(nimToOpenArrayCString):
+    proc toOpenArray*(x: cstring; first, last: int): openArray[char] {.
+      magic: "Slice".}
+    proc toOpenArrayByte*(x: cstring; first, last: int): openArray[byte] {.
+      magic: "Slice".}
+
+proc toOpenArray*[T](x: seq[T]; first, last: int): openArray[T] {.
+  magic: "Slice".}
+proc toOpenArray*[T](x: openArray[T]; first, last: int): openArray[T] {.
+  magic: "Slice".}
+proc toOpenArray*[I, T](x: array[I, T]; first, last: I): openArray[T] {.
+  magic: "Slice".}
+proc toOpenArray*(x: string; first, last: int): openArray[char] {.
+  magic: "Slice".}
+
+proc toOpenArrayByte*(x: string; first, last: int): openArray[byte] {.
+  magic: "Slice".}
+proc toOpenArrayByte*(x: openArray[char]; first, last: int): openArray[byte] {.
+  magic: "Slice".}
+proc toOpenArrayByte*(x: seq[char]; first, last: int): openArray[byte] {.
+  magic: "Slice".}
+
 
 include "system/exceptions"
 
@@ -3069,31 +3094,6 @@ proc substr*(s: string, first = 0): string =
 
 when defined(nimconfig):
   include "system/nimscript"
-
-when not defined(js):
-  proc toOpenArray*[T](x: ptr UncheckedArray[T]; first, last: int): openArray[T] {.
-    magic: "Slice".}
-  when defined(nimToOpenArrayCString):
-    proc toOpenArray*(x: cstring; first, last: int): openArray[char] {.
-      magic: "Slice".}
-    proc toOpenArrayByte*(x: cstring; first, last: int): openArray[byte] {.
-      magic: "Slice".}
-
-proc toOpenArray*[T](x: seq[T]; first, last: int): openArray[T] {.
-  magic: "Slice".}
-proc toOpenArray*[T](x: openArray[T]; first, last: int): openArray[T] {.
-  magic: "Slice".}
-proc toOpenArray*[I, T](x: array[I, T]; first, last: I): openArray[T] {.
-  magic: "Slice".}
-proc toOpenArray*(x: string; first, last: int): openArray[char] {.
-  magic: "Slice".}
-
-proc toOpenArrayByte*(x: string; first, last: int): openArray[byte] {.
-  magic: "Slice".}
-proc toOpenArrayByte*(x: openArray[char]; first, last: int): openArray[byte] {.
-  magic: "Slice".}
-proc toOpenArrayByte*(x: seq[char]; first, last: int): openArray[byte] {.
-  magic: "Slice".}
 
 type
   ForLoopStmt* {.compilerproc.} = object ## \
