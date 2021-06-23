@@ -91,3 +91,67 @@ template numToString*(result: var string, origin: uint64, length: int) =
     let index = num * 2
     result[next] = digits100[index + 1]
     result[next - 1] = digits100[index]
+
+template numToString2_bak1*(result: var string, origin: uint64, length: int) =
+  var x = origin
+  var i = result.len - 1
+  while true:
+    let xi = (x mod 100) shl 1
+    x = x div 100
+    result[i] = digits100[xi + 1]
+    if x != 0 or xi >= 20:
+      result[i-1] = digits100[xi]
+    if x == 0: break
+    i -= 2
+
+template numToString2_bak2*(result: var string, origin: uint64, length: int) =
+  var x = origin
+  var i = result.len - 1
+  while true:
+    let x2 = x div 100
+    let xi = (x - x2 * 100) shl 1
+    result[i] = digits100[xi + 1]
+    if x2 != 0 or xi >= 20:
+      result[i-1] = digits100[xi]
+    if x < 100: break
+    else: x = x2
+    i -= 2
+
+template numToString2_bak3*(result: var string, origin: uint64, length: int) =
+  var x = origin
+  var i = result.len - 1
+  while true:
+    if x < 10:
+      result[i] = chr(ord('0') + x)
+      break
+    else:
+      let x2 = x div 100
+      let xi = (x - x2 * 100) shl 1
+      result[i] = digits100[xi + 1]
+      result[i-1] = digits100[xi]
+      if x2 == 0: break
+      x = x2
+      i -= 2
+
+proc numToString2_bak4*(result: var string, origin: uint64, length: int) {.inline.} =
+  var x = origin
+  var i = result.len - 2
+  while i >= 0:
+    let x2 = x div 100
+    let xi = (x - x2 * 100) shl 1
+    cast[ptr uint16](result[i].unsafeAddr)[] = cast[ptr uint16](digits100[xi].unsafeAddr)[]
+    i = i - 2
+    x = x2
+  if i == -1:
+    result[0] = chr(ord('0') + x)
+
+proc numToString2*(result: var string, origin: uint64, length: int) {.inline.} =
+  var x = origin
+  var i = result.len - 2
+  while i >= 0:
+    let xi = (x mod 100) shl 1
+    x = x div 100
+    cast[ptr uint16](result[i].unsafeAddr)[] = cast[ptr uint16](digits100[xi].unsafeAddr)[]
+    i = i - 2
+  if i == -1:
+    result[0] = chr(ord('0') + x)
