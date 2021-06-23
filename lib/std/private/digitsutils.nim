@@ -94,33 +94,21 @@ func digits10*(x: uint32): int {.inline.} =
   elif x >= firstPow10(2): 2 # 1, 2
   else: 1
 
-# proc numToString*(result: var openArray[char], num: uint64) {.inline.} =
-#   var x = num
-#   var i = result.len - 2
-#   while i >= 0:
-#     let xi = (x mod 100) shl 1
-#     x = x div 100
-#     when defined(nimHasDragonBox): # pending bootstrap >= 1.4.0, nimHasDragonBox isn't relevant
-#       cast[ptr uint16](result[i].addr)[] = cast[ptr uint16](digits100[xi].unsafeAddr)[]
-#     else:
-#       result[i] = digits100[xi]
-#       result[i+1] = digits100[xi+1]
-#     i = i - 2
-#   if i == - 1:
-#     result[0] = chr(ord('0') + x)
-
-proc numToString*(result: var string, num: uint64, start: int) {.inline.} =
+proc addIntImpl*(result: var string, num: uint64, start: int) {.inline.} =
   # pending bug #15952, use `(result: var openArray[char], num: uint64)`
   var x = num
   var i = result.len - 2
   while i >= start:
     let xi = (x mod 100) shl 1
     x = x div 100
-    when defined(nimHasDragonBox): # pending bootstrap >= 1.4.0, nimHasDragonBox isn't relevant
-      cast[ptr uint16](result[i].addr)[] = cast[ptr uint16](digits100[xi].unsafeAddr)[]
-    else:
+    template fallback =
       result[i] = digits100[xi]
       result[i+1] = digits100[xi+1]
+    when nimvm: fallback()
+    else:
+      when defined(nimHasDragonBox): # pending bootstrap >= 1.4.0, nimHasDragonBox isn't relevant
+        cast[ptr uint16](result[i].addr)[] = cast[ptr uint16](digits100[xi].unsafeAddr)[] # faster
+      else: fallback()
     i = i - 2
   if i == start - 1:
     result[start] = chr(ord('0') + x)
