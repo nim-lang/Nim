@@ -8,11 +8,10 @@
 #
 
 # This module implements lookup helpers.
-
+import std/[algorithm, strutils]
 import
   intsets, ast, astalgo, idents, semdata, types, msgs, options,
-  renderer, nimfix/prettybase, lineinfos, strutils,
-  modulegraphs, astmsgs
+  renderer, nimfix/prettybase, lineinfos, modulegraphs, astmsgs
 
 proc ensureNoMissingOrUnusedSymbols(c: PContext; scope: PScope)
 
@@ -268,6 +267,7 @@ proc ensureNoMissingOrUnusedSymbols(c: PContext; scope: PScope) =
   var it: TTabIter
   var s = initTabIter(it, scope.symbols)
   var missingImpls = 0
+  var unusedSyms: seq[tuple[sym: PSym, key: string]]
   while s != nil:
     if sfForward in s.flags and s.kind notin {skType, skModule}:
       # too many 'implementation of X' errors are annoying
@@ -282,8 +282,10 @@ proc ensureNoMissingOrUnusedSymbols(c: PContext; scope: PScope) =
         # maybe they can be made skGenericParam as well.
         if s.typ != nil and tfImplicitTypeParam notin s.typ.flags and
            s.typ.kind != tyGenericParam:
-          message(c.config, s.info, hintXDeclaredButNotUsed, s.name.s)
+          unusedSyms.add (s, toFileLineCol(c.config, s.info))
     s = nextIter(it, scope.symbols)
+  for (s, _) in sortedByIt(unusedSyms, it.key):
+    message(c.config, s.info, hintXDeclaredButNotUsed, s.name.s)
 
 proc wrongRedefinition*(c: PContext; info: TLineInfo, s: string;
                         conflictsWith: TLineInfo) =
