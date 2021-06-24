@@ -32,7 +32,7 @@ proc printKeyCodes*() {.importc: "linenoisePrintKeyCodes".}
 
 proc free*(s: cstring) {.importc: "free", header: "<stdlib.h>".}
 
-when defined nimExperimentalLinenoiseExtra:
+when defined(nimExperimentalLinenoiseExtra) and not defined(windows):
   # C interface
   type LinenoiseStatus = enum
     linenoiseStatus_ctrl_unknown
