@@ -308,7 +308,7 @@ proc boot(args: string) =
     var nimi = i.thVersion
     if i == 0:
       nimi = nimStart
-      extraOption.add " --skipUserCfg --skipParentCfg"
+      extraOption.add " --skipUserCfg --skipParentCfg -d:nimKochBootstrap"
         # The configs are skipped for bootstrap
         # (1st iteration) to prevent newer flags from breaking bootstrap phase.
       let ret = execCmdEx(nimStart & " --version")
