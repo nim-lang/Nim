@@ -359,7 +359,7 @@ type
   Timezone* = ref object ## \
       ## Timezone interface for supporting `DateTime <#DateTime>`_\s of arbitrary
       ## timezones. The `times` module only supplies implementations for the
-      ## systems local time and UTC.
+      ## system's local time and UTC.
     zonedTimeFromTimeImpl: proc (x: Time): ZonedTime
         {.tags: [], raises: [], benign.}
     zonedTimeFromAdjTimeImpl: proc (x: Time): ZonedTime
@@ -1145,7 +1145,7 @@ proc name*(zone: Timezone): string =
   ## If the timezone doesn't exist in the tz database, or if the timezone
   ## name is unknown, then any string that describes the timezone
   ## unambiguously might be used. For example, the string "LOCAL" is used
-  ## for the systems local timezone.
+  ## for the system's local timezone.
   ##
   ## See also: https://en.wikipedia.org/wiki/Tz_database
   zone.name
