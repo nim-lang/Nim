@@ -8,7 +8,7 @@ const
   gaCode* = " --doc.googleAnalytics:UA-48159761-1"
   # errormax: subsequent errors are probably consequences of 1st one; a simple
   # bug could cause unlimited number of errors otherwise, hard to debug in CI.
-  docDefines = "-d:nimExperimentalAsyncjsThen -d:nimExperimentalJsfetch -d:nimExperimentalLinenoiseExtra"
+  docDefines = "-d:nimExperimentalAsyncjsThen -d:nimExperimentalJsfetch -d:nimExperimentalLinenoiseExtra -d:nimExperimentalDeferImport"
   nimArgs = "--errormax:3 --hint:Conf:off --hint:Path:off --hint:Processing:off --hint:XDeclaredButNotUsed:off --warning:UnusedImport:off -d:boot --putenv:nimversion=$# $#" % [system.NimVersion, docDefines]
   gitUrl = "https://github.com/nim-lang/Nim"
   docHtmlOutput = "doc/html"

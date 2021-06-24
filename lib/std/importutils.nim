@@ -43,7 +43,7 @@ proc privateAccess*(t: typedesc) {.magic: "PrivateAccess".} =
     privateAccess(Goo)
     assert Goo[float](g0: 1).g0 == 1
 
-when defined(nimHasDeferImport):
+when defined(nimHasDeferImport) and defined(nimExperimentalDeferImport):
   proc deferImport*(path: string) {.magic: "DeferImport", compileTime.} =
     ##[
     This registers `path` as a module that should be imported after the main project
@@ -51,7 +51,7 @@ when defined(nimHasDeferImport):
 
     `path` is interpreted using the same rules as `import "someString"`.
     ]##
-    runnableExamples:
+    runnableExamples("-d:nimExperimentalDeferImport"):
       deferImport "$lib/../tests/stdlib/mimportutils2.nim" # defines `mimportutils2_fn1`
       proc mimportutils2_fn1(): int {.importc.}
       assert mimportutils2_fn1() == 1
