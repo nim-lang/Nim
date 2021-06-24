@@ -8,22 +8,20 @@
 #
 
 import std/[os, strutils, parseopt]
-when defined(windows):
-  const dir = when defined(nimKochBootstrap):
-    # remove workaround pending bootstrap >= 1.5.1
-    # refs https://github.com/nim-lang/Nim/issues/18334#issuecomment-867114536
-    currentSourcePath.parentDir.quoteShell & "\\"
-  else: ""
+when defined(windows) and not defined(nimKochBootstrap):
+  # remove workaround pending bootstrap >= 1.5.1
+  # refs https://github.com/nim-lang/Nim/issues/18334#issuecomment-867114536
+  # alternative would be to prepend `currentSourcePath.parentDir.quoteShell`
   when defined(gcc):
     when defined(x86):
-      {.link: dir & "../icons/nim.res".}
+      {.link: "../icons/nim.res".}
     else:
-      {.link: dir & "../icons/nim_icon.o".}
+      {.link: "../icons/nim_icon.o".}
 
   when defined(amd64) and defined(vcc):
-    {.link: dir & "../icons/nim-amd64-windows-vcc.res".}
+    {.link: "../icons/nim-amd64-windows-vcc.res".}
   when defined(i386) and defined(vcc):
-    {.link: dir & "../icons/nim-i386-windows-vcc.res".}
+    {.link: "../icons/nim-i386-windows-vcc.res".}
 
 import
   commands, options, msgs, extccomp, main, idents, lineinfos, cmdlinehelper,
