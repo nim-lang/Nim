@@ -51,6 +51,7 @@ type
   SubgraphFlag = enum
     isMutated, # graph might be mutated
     isMutatedDirectly, # graph is mutated directly by a non-var parameter.
+    isMutatedByVarParam, # graph is mutated by a var parameter.
     connectsConstParam # graph is connected to a non-var parameter.
 
   VarFlag = enum
@@ -184,7 +185,7 @@ proc potentialMutation(v: var Partitions; s: PSym; level: int; info: TLineInfo) 
                     {isMutated, isMutatedDirectly}
                   elif s.typ.kind == tyVar and level <= 1:
                     # varParam[i] = v is different from varParam[i][] = v
-                    {}
+                    {isMutatedByVarParam}
                   else:
                     {isMutated}
                 else:
@@ -878,7 +879,7 @@ proc computeGraphPartitions*(s: PSym; n: PNode; g: ModuleGraph; goals: set[Goal]
 
 proc dangerousMutation(g: MutationInfo; v: VarIndex): bool =
   #echo "range ", v.aliveStart, " .. ", v.aliveEnd, " ", v.sym
-  if isMutated in g.flags:
+  if {isMutated, isMutatedByVarParam} * g.flags != {}:
     for m in g.mutations:
       #echo "mutation ", m
       if m in v.aliveStart..v.aliveEnd:
@@ -941,4 +942,5 @@ proc computeCursors*(s: PSym; n: PNode; g: ModuleGraph) =
         discard "cannot cursor into a graph that is mutated"
       else:
         v.sym.flags.incl sfCursor
-        #echo "this is now a cursor ", v.sym, " ", par.s[rid].flags, " ", g.config $ v.sym.info
+        when false:
+          echo "this is now a cursor ", v.sym, " ", par.s[rid].flags, " ", g.config $ v.sym.info
