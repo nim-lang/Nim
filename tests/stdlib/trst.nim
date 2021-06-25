@@ -83,6 +83,53 @@ suite "RST parsing":
               rnLeaf  'set'
         """)
 
+  test "items of 1 option list can be separated by blank lines":
+    check(dedent"""
+        -a  desc1
+
+        -b  desc2
+        """.toAst ==
+      dedent"""
+        rnOptionList
+          rnOptionListItem  order=1
+            rnOptionGroup
+              rnLeaf  '-'
+              rnLeaf  'a'
+            rnDescription
+              rnLeaf  'desc1'
+          rnOptionListItem  order=2
+            rnOptionGroup
+              rnLeaf  '-'
+              rnLeaf  'b'
+            rnDescription
+              rnLeaf  'desc2'
+      """)
+
+  test "option list has priority over definition list":
+    check(dedent"""
+        defName
+            defBody
+
+        -b  desc2
+        """.toAst ==
+      dedent"""
+        rnInner
+          rnDefList
+            rnDefItem
+              rnDefName
+                rnLeaf  'defName'
+              rnDefBody
+                rnInner
+                  rnLeaf  'defBody'
+          rnOptionList
+            rnOptionListItem  order=1
+              rnOptionGroup
+                rnLeaf  '-'
+                rnLeaf  'b'
+              rnDescription
+                rnLeaf  'desc2'
+      """)
+
   test "RST comment":
     check(dedent"""
         .. comment1

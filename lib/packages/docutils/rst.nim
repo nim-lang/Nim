@@ -2245,7 +2245,7 @@ proc parseOptionList(p: var RstParser): PRstNode =
         popInd(p)
       else:
         parseLine(p, b)
-      if currentTok(p).kind == tkIndent: inc p.idx
+      while currentTok(p).kind == tkIndent: inc p.idx
       c.add(a)
       c.add(b)
       c.order = order; inc order
@@ -2262,6 +2262,8 @@ proc parseDefinitionList(p: var RstParser): PRstNode =
     var col = currentTok(p).col
     result = newRstNodeA(p, rnDefList)
     while true:
+      if isOptionList(p):
+        break  # option list has priority over def.list
       j = p.idx
       var a = newRstNode(rnDefName)
       parseLine(p, a)
