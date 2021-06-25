@@ -39,7 +39,7 @@ proc trailingZeros2Digits*(digits: uint32): int32 {.inline.} =
   return trailingZeros100[digits]
 
 func addIntImpl*(result: var string, origin: uint64) =
-  var tmp: array[24, char]
+  var tmp {.noInit.}: array[24, char]
   var num = origin
   var next = tmp.len - 1
   const nbatch = 100
