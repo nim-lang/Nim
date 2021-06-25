@@ -1,3 +1,5 @@
+import system/memory
+
 const
   trailingZeros100: array[100, int8] = [2'i8, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0,
     1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0,
@@ -94,21 +96,28 @@ func digits10*(x: uint32): int {.inline.} =
   elif x >= firstPow10(2): 2 # 1, 2
   else: 1
 
-proc addIntImpl*(result: var string, num: uint64, start: int) {.inline.} =
-  # pending bug #15952, use `(result: var openArray[char], num: uint64)`
+template addIntImpl2[T](ret: T, num: uint64, length: int, start: int) =
+  var i = length - 2
   var x = num
-  var i = result.len - 2
-  while i >= start:
+  while i >= 0:
     let xi = (x mod 100) shl 1
     x = x div 100
     template fallback =
-      result[i] = digits100[xi]
-      result[i+1] = digits100[xi+1]
+      ret[i + start] = digits100[xi]
+      ret[i+1 + start] = digits100[xi+1]
     when nimvm: fallback()
     else:
-      when defined(nimHasDragonBox): # pending bootstrap >= 1.4.0, nimHasDragonBox isn't relevant
-        cast[ptr uint16](result[i].addr)[] = cast[ptr uint16](digits100[xi].unsafeAddr)[] # faster
-      else: fallback()
+      when defined(nimHasDragonBox): # pending bootstrap >= 1.4.0
+        nimCopyMem ret[i + start].addr, digits100[xi].unsafeAddr, 2
+      else:
+        fallback()
     i = i - 2
-  if i == start - 1:
-    result[start] = chr(ord('0') + x)
+  if i == - 1: ret[start] = chr(ord('0') + x)
+
+template addIntImpl*(ret: var string, num: uint64, length: int, start: int) =
+  # pending bug #15952, use instead `addIntImpl(result: var openArray[char], num: uint64)`
+  when nimvm:
+    addIntImpl2(ret, num, length, start)
+  else:
+    let ret2 = cast[ptr UncheckedArray[char]](result[result.len - length].addr)
+    addIntImpl2(ret2, num, length, 0)
