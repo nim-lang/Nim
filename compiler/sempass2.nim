@@ -909,14 +909,13 @@ proc trackInnerProc(tracked: PEffects, n: PNode) =
       tracked.escapingParams.incl s.id
   of nkNone..pred(nkSym), succ(nkSym)..nkNilLit:
     discard
-  of nkProcDef, nkConverterDef, nkMethodDef, nkIteratorDef, nkLambda, nkFuncDef:
+  of nkProcDef, nkConverterDef, nkMethodDef, nkIteratorDef, nkLambda, nkFuncDef, nkDo:
     if n[0].kind == nkSym and n[0].sym.ast != nil:
       trackInnerProc(tracked, getBody(tracked.graph, n[0].sym))
-  of nkTypeSection, nkMacroDef, nkTemplateDef, nkDo, nkError,
+  of nkTypeSection, nkMacroDef, nkTemplateDef, nkError,
      nkConstSection, nkConstDef, nkIncludeStmt, nkImportStmt,
      nkExportStmt, nkPragma, nkCommentStmt, nkBreakState,
      nkTypeOfExpr, nkMixinStmt, nkBindStmt:
-    # XXX see what 'nkDo' means
     discard
   else:
     for ch in n: trackInnerProc(tracked, ch)
@@ -1116,11 +1115,10 @@ proc track(tracked: PEffects, n: PNode) =
     track(tracked, n.lastSon)
     unapplyBlockContext(tracked, bc)
 
-  of nkProcDef, nkConverterDef, nkMethodDef, nkIteratorDef, nkLambda, nkFuncDef:
+  of nkProcDef, nkConverterDef, nkMethodDef, nkIteratorDef, nkLambda, nkFuncDef, nkDo:
     if n[0].kind == nkSym and n[0].sym.ast != nil:
       trackInnerProc(tracked, getBody(tracked.graph, n[0].sym))
-  of nkTypeSection, nkMacroDef, nkTemplateDef, nkDo:
-    # XXX see what 'nkDo' means
+  of nkTypeSection, nkMacroDef, nkTemplateDef:
     discard
   of nkCast:
     if n.len == 2:
@@ -1283,15 +1281,6 @@ proc hasRealBody(s: PSym): bool =
   ## which is not a real implementation, refs #14314
   result = {sfForward, sfImportc} * s.flags == {}
 
-proc maybeWrappedInClosure(tracked: PEffects; t: PType): bool {.inline.} =
-  ## The spec does say when to produce destructors. However, the spec
-  ## was written in mind with the idea that "lambda lifting" already
-  ## happened. Not true in our implementation, so we need to workaround
-  ## here:
-  result = tracked.isInnerProc and
-    sfSystemModule notin tracked.c.module.flags and
-    tfCheckedForDestructor notin t.flags and containsGarbageCollectedRef(t)
-
 proc trackProc*(c: PContext; s: PSym, body: PNode) =
   let g = c.graph
   var effects = s.typ.n[0]
@@ -1311,7 +1300,7 @@ proc trackProc*(c: PContext; s: PSym, body: PNode) =
       let typ = param.typ
       if isSinkTypeForParam(typ) or
           (t.config.selectedGC in {gcArc, gcOrc} and
-            (isClosure(typ.skipTypes(abstractInst)) or maybeWrappedInClosure(t, typ)) or param.id in t.escapingParams):
+            (isClosure(typ.skipTypes(abstractInst)) or param.id in t.escapingParams)):
         createTypeBoundOps(t, typ, param.info)
       when false:
         if typ.kind == tyOut and param.id notin t.init:
