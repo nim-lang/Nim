@@ -582,6 +582,10 @@ proc runCI(cmd: string) =
     when defined(posix):
       execFold("Run nimsuggest tests", "nim r nimsuggest/tester")
 
+  when not defined(bsd):
+    # the BSDs are overwhelmed already, so only run this test on the other machines:
+    kochExecFold("Boot Nim ORC", "boot -d:release --gc:orc --lib:lib")
+
 proc testUnixInstall(cmdLineRest: string) =
   csource("-d:danger" & cmdLineRest)
   xz(false, cmdLineRest)
