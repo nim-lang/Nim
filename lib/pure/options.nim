@@ -92,7 +92,7 @@ type
   UnpackDefect* = object of Defect
   UnpackError* {.deprecated: "See corresponding Defect".} = UnpackDefect
 
-proc option*[T](val: T): Option[T] {.inline.} =
+proc option*[T](val: sink T): Option[T] {.inline.} =
   ## Can be used to convert a pointer type (`ptr`, `pointer`, `ref` or `proc`) to an option type.
   ## It converts `nil` to `none(T)`. When `T` is no pointer type, this is equivalent to `some(val)`.
   ##
@@ -112,7 +112,7 @@ proc option*[T](val: T): Option[T] {.inline.} =
   when T isnot SomePointer:
     result.has = true
 
-proc some*[T](val: T): Option[T] {.inline.} =
+proc some*[T](val: sink T): Option[T] {.inline.} =
   ## Returns an `Option` that has the value `val`.
   ##
   ## **See also:**
