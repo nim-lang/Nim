@@ -188,6 +188,19 @@ template getOrDefaultImpl(t, key, default: untyped): untyped =
   var index = rawGet(t, key, hc)
   result = if index >= 0: t.data[index].val else: default
 
+template getOptImpl(t, key): untyped =
+  mixin rawGet
+  var hc: Hash
+  var index = rawGet(t, key, hc)
+  if index >= 0: result = some(t.data[index].val)
+
+template getPtrImpl(t, key): untyped =
+  mixin rawGet
+  var hc: Hash
+  var index = rawGet(t, key, hc)
+  if index >= 0: result = t.data[index].val.addr
+  else: result = nil
+
 template dollarImpl(): untyped {.dirty.} =
   if t.len == 0:
     result = "{:}"
