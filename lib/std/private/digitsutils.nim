@@ -71,6 +71,6 @@ func addIntImpl*(result: var string, origin: uint64) =
       for i in 0..<length:
         result[n+i] = tmp[next+i]
     else:
-      {.cast(noSideEffect).}:
+      {.noSideEffect.}:
         copyMem result[n].addr, tmp[next].addr, length
 
