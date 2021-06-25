@@ -51,23 +51,19 @@ proc addInt*(result: var string; x: int64) =
   ##     a = "123"
   ##     b = 45
   ##   a.addInt(b) # a <- "12345"
-  let base = result.len
-  var length: int
-  var num: uint64
-
+  var base = result.len
+  var num {.noinit.}: uint64
   if x < 0:
-    if x == low(int64):
-      num = uint64(x)
-    else:
-      num = uint64(-x)
-    length = digits10(num)
-    setLen(result, base + 1 + length)
-    result[base] = '-'
+    # computes `-x` without branching, taking care of `uint64.low`
+    num = (not cast[uint64](x)) + 1'u64
+    base.inc
   else:
     num = uint64(x)
-    length = digits10(num)
-    setLen(result, base + length)
-  addIntImpl(result, num, length, result.len - length)
+  let length = digits10(num)
+  setLen(result, base + length)
+  if x < 0:
+    result[base - 1] = '-'
+  addIntImpl(result, num, length, base)
 
 proc nimIntToStr(x: int): string {.compilerRtl.} =
   result = newStringOfCap(sizeof(x)*4)

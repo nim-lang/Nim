@@ -1,4 +1,4 @@
-import system/memory
+proc c_memcpy(a, b: pointer, size: csize_t): pointer {.importc: "memcpy", header: "<string.h>", discardable.}
 
 const
   trailingZeros100: array[100, int8] = [2'i8, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0,
@@ -34,6 +34,7 @@ proc utoa2Digits*(buf: var openArray[char]; pos: int; digits: uint32) {.inline.}
   assert(digits <= 99)
   buf[pos] = digits100[2 * digits]
   buf[pos+1] = digits100[2 * digits + 1]
+  # xxx use `c_memcpy`; likewise in dragonbox, after measuring performance.
   #copyMem(buf, unsafeAddr(digits100[2 * digits]), 2 * sizeof((char)))
 
 proc trailingZeros2Digits*(digits: uint32): int32 {.inline.} =
@@ -108,7 +109,7 @@ template addIntImpl2[T](ret: T, num: uint64, length: int, start: int) =
     when nimvm: fallback()
     else:
       when defined(nimHasDragonBox): # pending bootstrap >= 1.4.0
-        nimCopyMem ret[i + start].addr, digits100[xi].unsafeAddr, 2
+        c_memcpy ret[i + start].addr, digits100[xi].unsafeAddr, 2
       else:
         fallback()
     i = i - 2
