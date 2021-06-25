@@ -95,7 +95,7 @@ proc floorLog2Pow10(e: int32): int32 {.inline.} =
   sf_Assert(e <= 1233)
   return floorDivPow2(e * 1741647, 19)
 
-proc computePow10Single(k: int32): uint64 {.inline.} =
+proc computePow10Single(k: int32): uint64 =
   ##  There are unique beta and r such that 10^k = beta 2^r and
   ##  2^63 <= beta < 2^64, namely r = floor(log_2 10^k) - 63 and
   ##  beta = 2^-r 10^k.
@@ -103,6 +103,7 @@ proc computePow10Single(k: int32): uint64 {.inline.} =
   ##  value being a pretty good overestimate for 10^k.
   ##  NB: Since for all the required exponents k, we have g < 2^64,
   ##      all constants can be stored in 128-bit integers.
+  # `{.inline.}` caused issues with IC
   const
     kMin: int32 = -31
     kMax: int32 = 45
