@@ -304,7 +304,7 @@ proc endAnchor*: Peg {.inline.} =
   ## constructs the PEG ``$`` which matches the end of the input.
   result = !any()
 
-proc capture*(a: Peg): Peg {.noSideEffect, rtl, extern: "npegsCapture".} =
+proc capture*(a: Peg = Peg(kind: pkEmpty)): Peg {.noSideEffect, rtl, extern: "npegsCapture".} =
   ## constructs a capture with the PEG `a`
   result = Peg(kind: pkCapture, sons: @[a])
 
@@ -334,7 +334,7 @@ proc spaceCost(n: Peg): int =
   of pkEmpty: discard
   of pkTerminal, pkTerminalIgnoreCase, pkTerminalIgnoreStyle, pkChar,
      pkGreedyRepChar, pkCharChoice, pkGreedyRepSet,
-     pkAny..pkWhitespace, pkGreedyAny:
+     pkAny..pkWhitespace, pkGreedyAny, pkBackRef..pkBackRefIgnoreStyle:
     result = 1
   of pkNonTerminal:
     # we cannot inline a rule with a non-terminal
@@ -827,15 +827,21 @@ template matchOrParse(mopProc: untyped) =
       leave(pkNotPredicate, s, p, start, result)
     of pkCapture:
       enter(pkCapture, s, p, start)
-      var idx = c.ml # reserve a slot for the subpattern
-      inc(c.ml)
-      result = mopProc(s, p.sons[0], start, c)
-      if result >= 0:
-        if idx < MaxSubpatterns:
-          c.matches[idx] = (start, start+result-1)
-        #else: silently ignore the capture
+      if p.sons.len == 0 or p.sons[0].kind == pkEmpty:
+        # empty capture removes last match
+        dec(c.ml)
+        c.matches[c.ml] = (0, 0)
+        result = 0 # match of length 0
       else:
-        c.ml = idx
+        var idx = c.ml # reserve a slot for the subpattern
+        inc(c.ml)
+        result = mopProc(s, p.sons[0], start, c)
+        if result >= 0:
+          if idx < MaxSubpatterns:
+            c.matches[idx] = (start, start+result-1)
+          #else: silently ignore the capture
+        else:
+          c.ml = idx
       leave(pkCapture, s, p, start, result)
     of pkBackRef:
       enter(pkBackRef, s, p, start)
@@ -1400,6 +1406,7 @@ type
     tkCurlyLe,    ## '{'
     tkCurlyRi,    ## '}'
     tkCurlyAt,    ## '{@}'
+    tkEmptyCurl,  ## '{}'
     tkArrow,      ## '<-'
     tkBar,        ## '/'
     tkStar,       ## '*'
@@ -1432,7 +1439,7 @@ type
 const
   tokKindToStr: array[TokKind, string] = [
     "invalid", "[EOF]", ".", "_", "identifier", "string literal",
-    "character set", "(", ")", "{", "}", "{@}",
+    "character set", "(", ")", "{", "}", "{@}", "{}",
     "<-", "/", "*", "+", "&", "!", "?",
     "@", "built-in", "escaped", "$", "$", "^"
   ]
@@ -1683,6 +1690,10 @@ proc getTok(c: var PegLexer, tok: var Token) =
       tok.kind = tkCurlyAt
       inc(c.bufpos, 2)
       add(tok.literal, "{@}")
+    elif c.buf[c.bufpos] == '}' and c.bufpos < c.buf.len:
+      tok.kind = tkEmptyCurl
+      inc(c.bufpos)
+      add(tok.literal, "{}")
     else:
       tok.kind = tkCurlyLe
       add(tok.literal, '{')
@@ -1912,6 +1923,9 @@ proc primary(p: var PegParser): Peg =
     result = capture(parseExpr(p)).token(p)
     eat(p, tkCurlyRi)
     inc(p.captures)
+  of tkEmptyCurl:
+    getTok(p)
+    result = capture()
   of tkAny:
     result = any().token(p)
     getTok(p)
@@ -1959,7 +1973,7 @@ proc seqExpr(p: var PegParser): Peg =
     case p.tok.kind
     of tkAmp, tkNot, tkAt, tkStringLit, tkCharSet, tkParLe, tkCurlyLe,
        tkAny, tkAnyRune, tkBuiltin, tkEscaped, tkDollar, tkBackref,
-       tkHat, tkCurlyAt:
+       tkHat, tkCurlyAt, tkEmptyCurl:
       result = sequence(result, primary(p))
     of tkIdentifier:
       if not arrowIsNextTok(p):

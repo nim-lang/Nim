@@ -297,6 +297,28 @@ block:
     doAssert "abbb".match(peg"{a} {b} $2 $-1")
     doAssert "abBA".match(peg"{a} {b} i$2 i$-2")
 
+    doAssert "abba".match(peg"{a} {b} $-1 {} $-1")
+    block:
+      let prog = peg"""
+prog <- (PUSH_INDENT topLvlStmt)* (INDENT topLvlStmt)* $
+topLvlStmt <- call / block / nop
+call <- 'call(' (param (',' param)*)? ')' EOS
+block <- 'block:' \n stmt+ POP_INDENT
+nop <- EOS
+stmt <- (INDENT_PLUS (call / nop)) / ((PUSH_INDENT_PLUS) block)
+EOS <- \n / $
+param <- \w+
+PUSH_INDENT <- {' '*}
+INDENT <- $-1
+POP_INDENT <- {}
+INDENT_PLUS <- $-1 ' '+
+PUSH_INDENT_PLUS <- {INDENT_PLUS}
+"""
+      doAssert """
+call(Hi)
+call(Hi,Ho)
+""" =~ prog
+
   pegsTest()
   static:
     pegsTest()
