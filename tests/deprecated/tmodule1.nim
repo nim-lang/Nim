@@ -2,7 +2,7 @@ discard """
   matrix: "--hint:all:off"
   nimoutFull: true
   nimout: '''
-tmodule1.nim(21, 8) Warning: importme is deprecated [Deprecated]
+tmodule1.nim(21, 8) Warning: goodbye; importme is deprecated [Deprecated]
 tmodule1.nim(24, 10) Warning: Ty is deprecated [Deprecated]
 tmodule1.nim(27, 10) Warning: hello; Ty1 is deprecated [Deprecated]
 tmodule1.nim(30, 8) Warning: aVar is deprecated [Deprecated]
@@ -11,10 +11,10 @@ tmodule1.nim(33, 3) Warning: hello; aProc1 is deprecated [Deprecated]
 '''
 """
 
-# regression: getting:
-# tmodule1.nim(21, 8) Warning: importme is deprecated [Deprecated]
-# instead of:
-# tmodule1.nim(21, 8) Warning: goodbye; importme is deprecated [Deprecated]
+
+
+
+
 
 
 # line 20
