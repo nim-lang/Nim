@@ -225,6 +225,8 @@ proc importForwarded(c: PContext, n: PNode, exceptSet: IntSet; fromMod: PSym; im
 
 proc importModuleAs(c: PContext; n: PNode, realModule: PSym, importHidden: bool): PSym =
   result = realModule
+  if result == c.module:
+    localError(c.config, n.info, "module '$1' cannot import itself" % result.name.s)
   template createModuleAliasImpl(ident): untyped =
     createModuleAlias(realModule, nextSymId c.idgen, ident, n.info, c.config.options)
   if n.kind != nkImportAs: discard
@@ -284,8 +286,6 @@ proc myImportModule(c: PContext, n: var PNode, importStmtResult: PNode): PSym =
     c.graph.importStack.setLen(L)
     # we cannot perform this check reliably because of
     # test: modules/import_in_config) # xxx is that still true?
-    if result == c.module:
-      localError(c.config, n.info, "module '$1' cannot import itself" % c.module.name.s)
     if sfDeprecated in result.flags:
       if result.constraint != nil:
         message(c.config, n.info, warnDeprecated, result.constraint.strVal & "; " & result.name.s & " is deprecated")
