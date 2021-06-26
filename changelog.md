@@ -382,6 +382,7 @@
 - `typeof(voidStmt)` now works and returns `void`.
 
 
+
 ## Compiler changes
 
 - Added `--declaredlocs` to show symbol declaration location in messages.
