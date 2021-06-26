@@ -284,15 +284,13 @@ proc myImportModule(c: PContext, n: var PNode, importStmtResult: PNode): PSym =
     c.graph.importStack.setLen(L)
     # we cannot perform this check reliably because of
     # test: modules/import_in_config) # xxx is that still true?
-    # let realModule = result.resolveModuleAlias
-    let realModule = result
-    if realModule == c.module:
+    if result == c.module:
       localError(c.config, n.info, "module '$1' cannot import itself" % c.module.name.s)
-    if sfDeprecated in realModule.flags:
-      if realModule.constraint != nil:
-        message(c.config, n.info, warnDeprecated, realModule.constraint.strVal & "; " & realModule.name.s & " is deprecated")
+    if sfDeprecated in result.flags:
+      if result.constraint != nil:
+        message(c.config, n.info, warnDeprecated, result.constraint.strVal & "; " & result.name.s & " is deprecated")
       else:
-        message(c.config, n.info, warnDeprecated, realModule.name.s & " is deprecated")
+        message(c.config, n.info, warnDeprecated, result.name.s & " is deprecated")
     suggestSym(c.graph, n.info, result, c.graph.usageSym, false)
     importStmtResult.add newSymNode(result, n.info)
     #newStrNode(toFullPath(c.config, f), n.info)
@@ -306,7 +304,6 @@ proc impMod(c: PContext; it: PNode; importStmtResult: PNode) =
     importAllSymbols(c, m)
     #importForwarded(c, m.ast, emptySet, m)
     for s in allSyms(c.graph, m): # fixes bug #17510, for re-exported symbols
-      # if s.owner != m.resolveModuleAlias:
       if s.owner != m:
         c.exportIndirections.incl((m.id, s.id))
 

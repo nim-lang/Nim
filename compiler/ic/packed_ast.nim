@@ -67,7 +67,6 @@ type
     when hasFFI:
       cname*: LitId
     constraint*: NodeId
-    realModule*: PackedItemId
 
   PackedType* = object
     kind*: TTypeKind
