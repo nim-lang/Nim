@@ -16,7 +16,7 @@ import
   packages/docutils/rst, packages/docutils/rstgen,
   json, xmltree, trees, types,
   typesrenderer, astalgo, lineinfos, intsets,
-  pathutils, trees, tables, nimpaths, renderverbatim, osproc
+  pathutils, tables, nimpaths, renderverbatim, osproc
 
 from uri import encodeUrl
 from std/private/globs import nativeToUnixPath
