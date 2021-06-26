@@ -157,9 +157,7 @@ type
     inTypeContext*, inConceptDecl*: int
     unusedImports*: seq[(PSym, TLineInfo)]
     exportIndirections*: HashSet[(int, int)] # rename this; e.g.: from a import b
-    # importModuleMap*: Table[PSym, PSym] # cf my hash(ref) PR
-    importModuleMap*: Table[int, int]
-    # exportIndirections2*: HashSet[(int, int)] # PRTEMP
+    importModuleMap*: Table[int, int] # xxx `Table[PSym, PSym]` pending -d:nimEnableHashRef
     lastTLineInfo*: TLineInfo
 
 template config*(c: PContext): ConfigRef = c.graph.config

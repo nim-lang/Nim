@@ -568,12 +568,10 @@ proc markOwnerModuleAsUsed(c: PContext; s: PSym) =
   var module = s
   while module != nil and module.kind != skModule:
     module = module.owner
-  # dbgIf s, c.module, module
   if module != nil and module != c.module:
     var i = 0
     while i <= high(c.unusedImports):
       let candidate = c.unusedImports[i][0]
-      # origModule
       # dbgIf candidate, c.exportIndirections.len, c.unusedImports, candidate.id, c.exportIndirections
       if candidate == module or c.importModuleMap.getOrDefault(candidate.id, int.low) == module.id or c.exportIndirections.contains((candidate.id, s.id)):
         # mark it as used:

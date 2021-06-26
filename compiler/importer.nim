@@ -239,8 +239,6 @@ proc importModuleAs(c: PContext; n: PNode, realModule: PSym, importHidden: bool)
   if importHidden:
     result.options.incl optImportHidden
   c.unusedImports.add((result, n.info))
-  # c.importModuleMap.incl((m.id, s.id))
-  # c.importModuleMap[result] = realModule
   c.importModuleMap[result.id] = realModule.id
 
 proc transformImportAs(c: PContext; n: PNode): tuple[node: PNode, importHidden: bool] =
@@ -348,12 +346,6 @@ proc evalFrom*(c: PContext, n: PNode): PNode =
       if n[i].kind != nkNilLit:
         importSymbol(c, n[i], m, im.imported)
     c.addImport im
-
-    # # PRTEMP
-    # c.exportIndirections2.incl((m.id, s.id))
-    # for s in allSyms(c.graph, m):
-    #   if s.owner != m:
-    #     c.exportIndirections2.incl((m.id, s.id))
 
 proc evalImportExcept*(c: PContext, n: PNode): PNode =
   result = newNodeI(nkImportStmt, n.info)
