@@ -239,7 +239,7 @@ proc importModuleAs(c: PContext; n: PNode, realModule: PSym, importHidden: bool)
   if importHidden:
     result.options.incl optImportHidden
   c.unusedImports.add((result, n.info))
-  c.importModuleMap[result.id] = realModule.id
+  # c.importModuleMap[result.id] = realModule.id
 
 proc transformImportAs(c: PContext; n: PNode): tuple[node: PNode, importHidden: bool] =
   var ret: typeof(result)
@@ -297,6 +297,11 @@ proc myImportModule(c: PContext, n: var PNode, importStmtResult: PNode): PSym =
     importStmtResult.add newSymNode(result, n.info)
     #newStrNode(toFullPath(c.config, f), n.info)
 
+proc afterImport(c: PContext, m: PSym) =
+  for s in allSyms(c.graph, m): # fixes bug #17510, for re-exported symbols
+    if s.owner != m:
+      c.exportIndirections.incl((m.id, s.id))
+
 proc impMod(c: PContext; it: PNode; importStmtResult: PNode) =
   var it = it
   let m = myImportModule(c, it, importStmtResult)
@@ -305,9 +310,10 @@ proc impMod(c: PContext; it: PNode; importStmtResult: PNode) =
     addDecl(c, m, it.info) # add symbol to symbol table of module
     importAllSymbols(c, m)
     #importForwarded(c, m.ast, emptySet, m)
-    for s in allSyms(c.graph, m): # fixes bug #17510, for re-exported symbols
-      if s.owner != m:
-        c.exportIndirections.incl((m.id, s.id))
+    # for s in allSyms(c.graph, m): # fixes bug #17510, for re-exported symbols
+    #   if s.owner != m:
+    #     c.exportIndirections.incl((m.id, s.id))
+    afterImport(c, m)
 
 proc evalImport*(c: PContext, n: PNode): PNode =
   result = newNodeI(nkImportStmt, n.info)
@@ -346,6 +352,7 @@ proc evalFrom*(c: PContext, n: PNode): PNode =
       if n[i].kind != nkNilLit:
         importSymbol(c, n[i], m, im.imported)
     c.addImport im
+    afterImport(c, m)
 
 proc evalImportExcept*(c: PContext, n: PNode): PNode =
   result = newNodeI(nkImportStmt, n.info)
@@ -356,3 +363,4 @@ proc evalImportExcept*(c: PContext, n: PNode): PNode =
     addDecl(c, m, n.info)               # add symbol to symbol table of module
     importAllSymbolsExcept(c, m, readExceptSet(c, n))
     #importForwarded(c, m.ast, exceptSet, m)
+    afterImport(c, m)
