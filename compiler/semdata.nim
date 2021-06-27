@@ -156,9 +156,8 @@ type
     features*: set[Feature]
     inTypeContext*, inConceptDecl*: int
     unusedImports*: seq[(PSym, TLineInfo)]
-    exportIndirections*: HashSet[(int, int)] # rename this; e.g.: from a import b
-    # exportIndirectionsModules*: HashSet[(int, int)]
-    importModuleMap*: Table[int, int] # xxx `Table[PSym, PSym]` pending -d:nimEnableHashRef
+    exportIndirections*: HashSet[(int, int)] # (module.id, symbol.id)
+    importModuleMap*: Table[int, int] # (module.id, module.id)
     lastTLineInfo*: TLineInfo
 
 template config*(c: PContext): ConfigRef = c.graph.config

@@ -239,7 +239,6 @@ proc importModuleAs(c: PContext; n: PNode, realModule: PSym, importHidden: bool)
   if importHidden:
     result.options.incl optImportHidden
   c.unusedImports.add((result, n.info))
-  # c.exportIndirectionsModules.incl((result.id, realModule.id))
   c.importModuleMap[result.id] = realModule.id
 
 proc transformImportAs(c: PContext; n: PNode): tuple[node: PNode, importHidden: bool] =
@@ -299,9 +298,9 @@ proc myImportModule(c: PContext, n: var PNode, importStmtResult: PNode): PSym =
     #newStrNode(toFullPath(c.config, f), n.info)
 
 proc afterImport(c: PContext, m: PSym) =
+  # fixes bug #17510, for re-exported symbols
   let realModuleId = c.importModuleMap[m.id]
-  for s in allSyms(c.graph, m): # fixes bug #17510, for re-exported symbols
-    # if s.owner != m:
+  for s in allSyms(c.graph, m):
     if s.owner.id != realModuleId:
       c.exportIndirections.incl((m.id, s.id))
 
