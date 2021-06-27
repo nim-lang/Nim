@@ -310,9 +310,6 @@ proc impMod(c: PContext; it: PNode; importStmtResult: PNode) =
     addDecl(c, m, it.info) # add symbol to symbol table of module
     importAllSymbols(c, m)
     #importForwarded(c, m.ast, emptySet, m)
-    # for s in allSyms(c.graph, m): # fixes bug #17510, for re-exported symbols
-    #   if s.owner != m:
-    #     c.exportIndirections.incl((m.id, s.id))
     afterImport(c, m)
 
 proc evalImport*(c: PContext, n: PNode): PNode =
