@@ -354,3 +354,24 @@ running: v2
 
 else:
   discard # only during debugging, tests added here will run with `-d:nimTestsTrunnerDebugging` enabled
+
+  block: # UnusedImport
+    proc fn(opt: string, expected: string) =
+      let output = runNimCmdChk("pragmas/mused3.nim", fmt"--hint:all:off --warning:all:off --warning:UnusedImport {opt}")
+      doAssert output == expected, opt & "\noutput:\n" & output & "expected:\n" & expected
+    fn("-d:case1"): """
+mused3.nim(13, 8) Warning: imported and not used: 'mused3b' [UnusedImport]
+"""
+    fn("-d:case2"): ""
+    fn("-d:case3"): ""
+    fn("-d:case4"): ""
+    fn("-d:case5"): ""
+    fn("-d:case6"): ""
+    fn("-d:case7"): ""
+    fn("-d:case8"): ""
+    fn("-d:case9"): ""
+    fn("-d:case10"): ""
+    when false:
+      fn("-d:case11"): """
+  Warning: imported and not used: 'm2' [UnusedImport]
+  """
