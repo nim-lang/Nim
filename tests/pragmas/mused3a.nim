@@ -36,3 +36,6 @@ when defined case10:
 
 when defined case11:
   proc fn1*() = discard
+
+when defined case12:
+  proc fn1*() = discard

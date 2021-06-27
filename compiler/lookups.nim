@@ -300,11 +300,15 @@ proc wrongRedefinition*(c: PContext; info: TLineInfo, s: string;
 proc addDeclAt*(c: PContext; scope: PScope, sym: PSym, info: TLineInfo) =
   let conflict = scope.addUniqueSym(sym, onConflictKeepOld = true)
   if conflict != nil:
-    var note = errGenerated
     if sym.kind == skModule and conflict.kind == skModule and sym.owner == conflict.owner:
-      # import foo; import foo
-      note = hintDuplicateModuleImport
-    wrongRedefinition(c, info, sym.name.s, conflict.info, note)
+      # e.g.: import foo; import foo
+      # xxx we could refine this by issuing a different hint for the case
+      # where a duplicate import happens inside an include.
+      localError(c.config, info, hintDuplicateModuleImport,
+        "duplicate import of '$1'; previous import here: $2" %
+        [sym.name.s, c.config $ conflict.info])
+    else:
+      wrongRedefinition(c, info, sym.name.s, conflict.info, errGenerated)
 
 proc addDeclAt*(c: PContext; scope: PScope, sym: PSym) {.inline.} =
   addDeclAt(c, scope, sym, sym.info)

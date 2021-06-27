@@ -69,3 +69,8 @@ when false:
     from mused3a as m1 import nil
     from mused3a as m2 import nil
     m1.fn1()
+
+when defined case12:
+  import mused3a
+  import mused3a
+  fn1()
