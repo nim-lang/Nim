@@ -298,26 +298,28 @@ block:
     doAssert "abBA".match(peg"{a} {b} i$2 i$-2")
 
     doAssert "abba".match(peg"{a} {b} $-1 {} $-1")
+
     block:
-      let prog = peg"""
-prog <- (PUSH_INDENT topLvlStmt)* (INDENT topLvlStmt)* $
-topLvlStmt <- call / block / nop
-call <- 'call(' (param (',' param)*)? ')' EOS
-block <- 'block:' \n stmt+ POP_INDENT
-nop <- EOS
-stmt <- (INDENT_PLUS (call / nop)) / ((PUSH_INDENT_PLUS) block)
-EOS <- \n / $
-param <- \w+
-PUSH_INDENT <- {' '*}
-INDENT <- $-1
-POP_INDENT <- {}
-INDENT_PLUS <- $-1 ' '+
-PUSH_INDENT_PLUS <- {INDENT_PLUS}
+      let grammar = peg"""
+program <- {''} stmt* $
+stmt <- call / block
+call <- 'call()' EOL
+EOL <- \n / $
+block <- 'block:' \n indBody
+indBody <- {$-1 ' '+} stmt ($-1 stmt)* {}
 """
-      doAssert """
-call(Hi)
-call(Hi,Ho)
-""" =~ prog
+      let program = """
+call()
+block:
+  block:
+    call()
+    call()
+  call()
+call()
+"""
+      var c: Captures
+      doAssert program.len == program.rawMatch(grammar, 0, c)
+      doAssert c.ml == 1
 
   pegsTest()
   static:

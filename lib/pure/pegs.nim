@@ -565,7 +565,7 @@ template matchOrParse(mopProc: untyped) =
       # *PegKind*, so we encapsulate the identical clause body for
       # *pkBackRef..pkBackRefIgnoreStyle* here.
       var index = p.index
-      if index < 0: index += c.ml
+      if index < 0: index.inc(c.ml)
       if index < 0 or index >= c.ml: return -1
       var (a, b) = c.matches[index]
       var n: Peg
@@ -834,14 +834,12 @@ template matchOrParse(mopProc: untyped) =
         result = 0 # match of length 0
       else:
         var idx = c.ml # reserve a slot for the subpattern
-        inc(c.ml)
         result = mopProc(s, p.sons[0], start, c)
         if result >= 0:
+          inc(c.ml)
           if idx < MaxSubpatterns:
             c.matches[idx] = (start, start+result-1)
           #else: silently ignore the capture
-        else:
-          c.ml = idx
       leave(pkCapture, s, p, start, result)
     of pkBackRef:
       enter(pkBackRef, s, p, start)
@@ -1924,8 +1922,8 @@ proc primary(p: var PegParser): Peg =
     eat(p, tkCurlyRi)
     inc(p.captures)
   of tkEmptyCurl:
-    getTok(p)
     result = capture()
+    getTok(p)
   of tkAny:
     result = any().token(p)
     getTok(p)
