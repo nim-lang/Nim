@@ -157,6 +157,7 @@ type
     inTypeContext*, inConceptDecl*: int
     unusedImports*: seq[(PSym, TLineInfo)]
     exportIndirections*: HashSet[(int, int)] # rename this; e.g.: from a import b
+    # exportIndirectionsModules*: HashSet[(int, int)]
     importModuleMap*: Table[int, int] # xxx `Table[PSym, PSym]` pending -d:nimEnableHashRef
     lastTLineInfo*: TLineInfo
 

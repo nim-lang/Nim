@@ -574,6 +574,7 @@ proc markOwnerModuleAsUsed(c: PContext; s: PSym) =
       let candidate = c.unusedImports[i][0]
       # dbgIf candidate, c.exportIndirections.len, c.unusedImports, candidate.id, c.exportIndirections
       if candidate == module or c.importModuleMap.getOrDefault(candidate.id, int.low) == module.id or c.exportIndirections.contains((candidate.id, s.id)):
+      # if candidate == module or c.exportIndirectionsModules.contains((candidate.id, module.id)) or c.exportIndirections.contains((candidate.id, s.id)):
         # mark it as used:
         c.unusedImports.del(i)
       else:
