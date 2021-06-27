@@ -303,7 +303,7 @@ proc addDeclAt*(c: PContext; scope: PScope, sym: PSym, info: TLineInfo) =
     var note = errGenerated
     if sym.kind == skModule and conflict.kind == skModule and sym.owner == conflict.owner:
       # import foo; import foo
-      note = warnDuplicateModuleImport
+      note = hintDuplicateModuleImport
     wrongRedefinition(c, info, sym.name.s, conflict.info, note)
 
 proc addDeclAt*(c: PContext; scope: PScope, sym: PSym) {.inline.} =
