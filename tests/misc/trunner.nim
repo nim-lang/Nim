@@ -31,7 +31,7 @@ const
 proc runNimCmd(file, options = "", rtarg = ""): auto =
   let fileabs = testsDir / file.unixToNativePath
   # doAssert fileabs.fileExists, fileabs # disabled because this allows passing `nim r --eval:code fakefile`
-  let cmd = fmt"{nim} {mode} {options} --hints:off {fileabs} {rtarg}"
+  let cmd = fmt"{nim} {mode} --hint:all:off {options} {fileabs} {rtarg}"
   result = execCmdEx(cmd)
   when false: # for debugging
     echo cmd
@@ -351,6 +351,30 @@ running: v2
     let (outp2, status2) = execCmdEx(nimcache2 / input, options = {poStdErrToStdOut})
     doAssert outp2 == "12345\n", outp2
     doAssert status2 == 0
+
+  block: # UnusedImport
+    proc fn(opt: string, expected: string) =
+      let output = runNimCmdChk("pragmas/mused3.nim", fmt"--warning:all:off --warning:UnusedImport --hint:DuplicateModuleImport {opt}")
+      doAssert output == expected, opt & "\noutput:\n" & output & "expected:\n" & expected
+    fn("-d:case1"): """
+mused3.nim(13, 8) Warning: imported and not used: 'mused3b' [UnusedImport]
+"""
+    fn("-d:case2"): ""
+    fn("-d:case3"): ""
+    fn("-d:case4"): ""
+    fn("-d:case5"): ""
+    fn("-d:case6"): ""
+    fn("-d:case7"): ""
+    fn("-d:case8"): ""
+    fn("-d:case9"): ""
+    fn("-d:case10"): ""
+    when false:
+      fn("-d:case11"): """
+  Warning: imported and not used: 'm2' [UnusedImport]
+  """
+    fn("-d:case12"): """
+mused3.nim(75, 10) Hint: duplicate import of 'mused3a'; previous import here: mused3.nim(74, 10) [DuplicateModuleImport]
+"""
 
 else:
   discard # only during debugging, tests added here will run with `-d:nimTestsTrunnerDebugging` enabled

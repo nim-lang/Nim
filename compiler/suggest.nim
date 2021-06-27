@@ -32,7 +32,7 @@
 
 # included from sigmatch.nim
 
-import algorithm, sets, prefixmatches, lineinfos, parseutils, linter
+import algorithm, sets, prefixmatches, lineinfos, parseutils, linter, tables
 from wordrecg import wDeprecated, wError, wAddr, wYield
 
 when defined(nimsuggest):
@@ -572,7 +572,8 @@ proc markOwnerModuleAsUsed(c: PContext; s: PSym) =
     var i = 0
     while i <= high(c.unusedImports):
       let candidate = c.unusedImports[i][0]
-      if candidate == module or c.exportIndirections.contains((candidate.id, s.id)):
+      if candidate == module or c.importModuleMap.getOrDefault(candidate.id, int.low) == module.id or
+        c.exportIndirections.contains((candidate.id, s.id)):
         # mark it as used:
         c.unusedImports.del(i)
       else:

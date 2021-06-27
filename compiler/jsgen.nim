@@ -37,8 +37,6 @@ import
 
 import json, sets, math, tables, intsets, strutils
 
-from modulegraphs import ModuleGraph, PPassContext
-
 type
   TJSGen = object of PPassContext
     module: PSym
