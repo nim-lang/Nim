@@ -928,6 +928,9 @@ proc getProcessTimes*(hProcess: Handle; lpCreationTime, lpExitTime,
   lpKernelTime, lpUserTime: var FILETIME): WINBOOL {.stdcall,
   dynlib: "kernel32", importc: "GetProcessTimes".}
 
+proc getSystemTimePreciseAsFileTime*(lpSystemTimeAsFileTime: var FILETIME) {.
+  importc: "GetSystemTimePreciseAsFileTime", dynlib: "kernel32", stdcall, sideEffect.}
+
 type inet_ntop_proc = proc(family: cint, paddr: pointer, pStringBuffer: cstring,
                       stringBufSize: int32): cstring {.gcsafe, stdcall, tags: [].}
 

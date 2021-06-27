@@ -1,27 +1,15 @@
+import std/private/digitsutils
+
+
 proc `$`*(x: int): string {.magic: "IntToStr", noSideEffect.}
   ## The stringify operator for an integer argument. Returns `x`
   ## converted to a decimal string. `$` is Nim's general way of
   ## spelling `toString`:idx:.
 
 template dollarImpl(x: uint | uint64, result: var string) =
-  type destTyp = typeof(x)
-  if x == 0:
-    result = "0"
-  else:
-    result = newString(60)
-    var i = 0
-    var n = x
-    while n != 0:
-      let nn = n div destTyp(10)
-      result[i] = char(n - destTyp(10) * nn + ord('0'))
-      inc i
-      n = nn
-    result.setLen i
-
-    let half = i div 2
-    # Reverse
-    for t in 0 .. half-1: swap(result[t], result[i-t-1])
-
+  let length = digits10(x)
+  setLen(result, length)
+  numToString(result, x, length)
 
 when defined(js):
   import std/private/since

@@ -8,11 +8,10 @@
 #
 
 # This module implements lookup helpers.
-
+import std/[algorithm, strutils]
 import
   intsets, ast, astalgo, idents, semdata, types, msgs, options,
-  renderer, nimfix/prettybase, lineinfos, strutils,
-  modulegraphs, astmsgs
+  renderer, nimfix/prettybase, lineinfos, modulegraphs, astmsgs
 
 proc ensureNoMissingOrUnusedSymbols(c: PContext; scope: PScope)
 
@@ -59,8 +58,8 @@ proc considerQuotedIdent*(c: PContext; n: PNode, origin: PNode = nil): PIdent =
 template addSym*(scope: PScope, s: PSym) =
   strTableAdd(scope.symbols, s)
 
-proc addUniqueSym*(scope: PScope, s: PSym): PSym =
-  result = strTableInclReportConflict(scope.symbols, s)
+proc addUniqueSym*(scope: PScope, s: PSym, onConflictKeepOld: bool): PSym =
+  result = strTableInclReportConflict(scope.symbols, s, onConflictKeepOld)
 
 proc openScope*(c: PContext): PScope {.discardable.} =
   result = PScope(parent: c.currentScope,
@@ -268,6 +267,7 @@ proc ensureNoMissingOrUnusedSymbols(c: PContext; scope: PScope) =
   var it: TTabIter
   var s = initTabIter(it, scope.symbols)
   var missingImpls = 0
+  var unusedSyms: seq[tuple[sym: PSym, key: string]]
   while s != nil:
     if sfForward in s.flags and s.kind notin {skType, skModule}:
       # too many 'implementation of X' errors are annoying
@@ -282,23 +282,29 @@ proc ensureNoMissingOrUnusedSymbols(c: PContext; scope: PScope) =
         # maybe they can be made skGenericParam as well.
         if s.typ != nil and tfImplicitTypeParam notin s.typ.flags and
            s.typ.kind != tyGenericParam:
-          message(c.config, s.info, hintXDeclaredButNotUsed, s.name.s)
+          unusedSyms.add (s, toFileLineCol(c.config, s.info))
     s = nextIter(it, scope.symbols)
+  for (s, _) in sortedByIt(unusedSyms, it.key):
+    message(c.config, s.info, hintXDeclaredButNotUsed, s.name.s)
 
 proc wrongRedefinition*(c: PContext; info: TLineInfo, s: string;
-                        conflictsWith: TLineInfo) =
+                        conflictsWith: TLineInfo, note = errGenerated) =
   ## Emit a redefinition error if in non-interactive mode
   if c.config.cmd != cmdInteractive:
-    localError(c.config, info,
+    localError(c.config, info, note,
       "redefinition of '$1'; previous declaration here: $2" %
       [s, c.config $ conflictsWith])
 
 # xxx pending bootstrap >= 1.4, replace all those overloads with a single one:
 # proc addDecl*(c: PContext, sym: PSym, info = sym.info, scope = c.currentScope) {.inline.} =
 proc addDeclAt*(c: PContext; scope: PScope, sym: PSym, info: TLineInfo) =
-  let conflict = scope.addUniqueSym(sym)
+  let conflict = scope.addUniqueSym(sym, onConflictKeepOld = true)
   if conflict != nil:
-    wrongRedefinition(c, info, sym.name.s, conflict.info)
+    var note = errGenerated
+    if sym.kind == skModule and conflict.kind == skModule and sym.owner == conflict.owner:
+      # import foo; import foo
+      note = warnDuplicateModuleImport
+    wrongRedefinition(c, info, sym.name.s, conflict.info, note)
 
 proc addDeclAt*(c: PContext; scope: PScope, sym: PSym) {.inline.} =
   addDeclAt(c, scope, sym, sym.info)
@@ -310,7 +316,7 @@ proc addDecl*(c: PContext, sym: PSym) {.inline.} =
   addDeclAt(c, c.currentScope, sym)
 
 proc addPrelimDecl*(c: PContext, sym: PSym) =
-  discard c.currentScope.addUniqueSym(sym)
+  discard c.currentScope.addUniqueSym(sym, onConflictKeepOld = false)
 
 from ic / ic import addHidden
 

@@ -308,7 +308,7 @@ proc boot(args: string) =
     var nimi = i.thVersion
     if i == 0:
       nimi = nimStart
-      extraOption.add " --skipUserCfg --skipParentCfg"
+      extraOption.add " --skipUserCfg --skipParentCfg -d:nimKochBootstrap"
         # The configs are skipped for bootstrap
         # (1st iteration) to prevent newer flags from breaking bootstrap phase.
       let ret = execCmdEx(nimStart & " --version")
@@ -581,6 +581,11 @@ proc runCI(cmd: string) =
     execFold("Run nimpretty tests", "nim r nimpretty/tester.nim")
     when defined(posix):
       execFold("Run nimsuggest tests", "nim r nimsuggest/tester")
+
+  when not defined(bsd):
+    if not doUseCpp:
+      # the BSDs are overwhelmed already, so only run this test on the other machines:
+      kochExecFold("Boot Nim ORC", "boot -d:release --gc:orc --lib:lib")
 
 proc testUnixInstall(cmdLineRest: string) =
   csource("-d:danger" & cmdLineRest)

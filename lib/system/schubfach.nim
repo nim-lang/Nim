@@ -10,6 +10,9 @@
 ##      https://drive.google.com/open?id=1luHhyQF9zKlM8yJ1nebU0OgVYhfC6CBN
 ## --------------------------------------------------------------------------------------------------
 
+import std/private/digitsutils
+
+
 template sf_Assert(x: untyped): untyped =
   assert(x)
 
@@ -92,6 +95,36 @@ proc floorLog2Pow10(e: int32): int32 {.inline.} =
   sf_Assert(e <= 1233)
   return floorDivPow2(e * 1741647, 19)
 
+const
+  kMin: int32 = -31
+  kMax: int32 = 45
+  g: array[kMax - kMin + 1, uint64] = [0x81CEB32C4B43FCF5'u64, 0xA2425FF75E14FC32'u64,
+    0xCAD2F7F5359A3B3F'u64, 0xFD87B5F28300CA0E'u64, 0x9E74D1B791E07E49'u64,
+    0xC612062576589DDB'u64, 0xF79687AED3EEC552'u64, 0x9ABE14CD44753B53'u64,
+    0xC16D9A0095928A28'u64, 0xF1C90080BAF72CB2'u64, 0x971DA05074DA7BEF'u64,
+    0xBCE5086492111AEB'u64, 0xEC1E4A7DB69561A6'u64, 0x9392EE8E921D5D08'u64,
+    0xB877AA3236A4B44A'u64, 0xE69594BEC44DE15C'u64, 0x901D7CF73AB0ACDA'u64,
+    0xB424DC35095CD810'u64, 0xE12E13424BB40E14'u64, 0x8CBCCC096F5088CC'u64,
+    0xAFEBFF0BCB24AAFF'u64, 0xDBE6FECEBDEDD5BF'u64, 0x89705F4136B4A598'u64,
+    0xABCC77118461CEFD'u64, 0xD6BF94D5E57A42BD'u64, 0x8637BD05AF6C69B6'u64,
+    0xA7C5AC471B478424'u64, 0xD1B71758E219652C'u64, 0x83126E978D4FDF3C'u64,
+    0xA3D70A3D70A3D70B'u64, 0xCCCCCCCCCCCCCCCD'u64, 0x8000000000000000'u64,
+    0xA000000000000000'u64, 0xC800000000000000'u64, 0xFA00000000000000'u64,
+    0x9C40000000000000'u64, 0xC350000000000000'u64, 0xF424000000000000'u64,
+    0x9896800000000000'u64, 0xBEBC200000000000'u64, 0xEE6B280000000000'u64,
+    0x9502F90000000000'u64, 0xBA43B74000000000'u64, 0xE8D4A51000000000'u64,
+    0x9184E72A00000000'u64, 0xB5E620F480000000'u64, 0xE35FA931A0000000'u64,
+    0x8E1BC9BF04000000'u64, 0xB1A2BC2EC5000000'u64, 0xDE0B6B3A76400000'u64,
+    0x8AC7230489E80000'u64, 0xAD78EBC5AC620000'u64, 0xD8D726B7177A8000'u64,
+    0x878678326EAC9000'u64, 0xA968163F0A57B400'u64, 0xD3C21BCECCEDA100'u64,
+    0x84595161401484A0'u64, 0xA56FA5B99019A5C8'u64, 0xCECB8F27F4200F3A'u64,
+    0x813F3978F8940985'u64, 0xA18F07D736B90BE6'u64, 0xC9F2C9CD04674EDF'u64,
+    0xFC6F7C4045812297'u64, 0x9DC5ADA82B70B59E'u64, 0xC5371912364CE306'u64,
+    0xF684DF56C3E01BC7'u64, 0x9A130B963A6C115D'u64, 0xC097CE7BC90715B4'u64,
+    0xF0BDC21ABB48DB21'u64, 0x96769950B50D88F5'u64, 0xBC143FA4E250EB32'u64,
+    0xEB194F8E1AE525FE'u64, 0x92EFD1B8D0CF37BF'u64, 0xB7ABC627050305AE'u64,
+    0xE596B7B0C643C71A'u64, 0x8F7E32CE7BEA5C70'u64, 0xB35DBF821AE4F38C'u64]
+
 proc computePow10Single(k: int32): uint64 {.inline.} =
   ##  There are unique beta and r such that 10^k = beta 2^r and
   ##  2^63 <= beta < 2^64, namely r = floor(log_2 10^k) - 63 and
@@ -100,35 +133,6 @@ proc computePow10Single(k: int32): uint64 {.inline.} =
   ##  value being a pretty good overestimate for 10^k.
   ##  NB: Since for all the required exponents k, we have g < 2^64,
   ##      all constants can be stored in 128-bit integers.
-  const
-    kMin: int32 = -31
-    kMax: int32 = 45
-    g: array[kMax - kMin + 1, uint64] = [0x81CEB32C4B43FCF5'u64, 0xA2425FF75E14FC32'u64,
-      0xCAD2F7F5359A3B3F'u64, 0xFD87B5F28300CA0E'u64, 0x9E74D1B791E07E49'u64,
-      0xC612062576589DDB'u64, 0xF79687AED3EEC552'u64, 0x9ABE14CD44753B53'u64,
-      0xC16D9A0095928A28'u64, 0xF1C90080BAF72CB2'u64, 0x971DA05074DA7BEF'u64,
-      0xBCE5086492111AEB'u64, 0xEC1E4A7DB69561A6'u64, 0x9392EE8E921D5D08'u64,
-      0xB877AA3236A4B44A'u64, 0xE69594BEC44DE15C'u64, 0x901D7CF73AB0ACDA'u64,
-      0xB424DC35095CD810'u64, 0xE12E13424BB40E14'u64, 0x8CBCCC096F5088CC'u64,
-      0xAFEBFF0BCB24AAFF'u64, 0xDBE6FECEBDEDD5BF'u64, 0x89705F4136B4A598'u64,
-      0xABCC77118461CEFD'u64, 0xD6BF94D5E57A42BD'u64, 0x8637BD05AF6C69B6'u64,
-      0xA7C5AC471B478424'u64, 0xD1B71758E219652C'u64, 0x83126E978D4FDF3C'u64,
-      0xA3D70A3D70A3D70B'u64, 0xCCCCCCCCCCCCCCCD'u64, 0x8000000000000000'u64,
-      0xA000000000000000'u64, 0xC800000000000000'u64, 0xFA00000000000000'u64,
-      0x9C40000000000000'u64, 0xC350000000000000'u64, 0xF424000000000000'u64,
-      0x9896800000000000'u64, 0xBEBC200000000000'u64, 0xEE6B280000000000'u64,
-      0x9502F90000000000'u64, 0xBA43B74000000000'u64, 0xE8D4A51000000000'u64,
-      0x9184E72A00000000'u64, 0xB5E620F480000000'u64, 0xE35FA931A0000000'u64,
-      0x8E1BC9BF04000000'u64, 0xB1A2BC2EC5000000'u64, 0xDE0B6B3A76400000'u64,
-      0x8AC7230489E80000'u64, 0xAD78EBC5AC620000'u64, 0xD8D726B7177A8000'u64,
-      0x878678326EAC9000'u64, 0xA968163F0A57B400'u64, 0xD3C21BCECCEDA100'u64,
-      0x84595161401484A0'u64, 0xA56FA5B99019A5C8'u64, 0xCECB8F27F4200F3A'u64,
-      0x813F3978F8940985'u64, 0xA18F07D736B90BE6'u64, 0xC9F2C9CD04674EDF'u64,
-      0xFC6F7C4045812297'u64, 0x9DC5ADA82B70B59E'u64, 0xC5371912364CE306'u64,
-      0xF684DF56C3E01BC7'u64, 0x9A130B963A6C115D'u64, 0xC097CE7BC90715B4'u64,
-      0xF0BDC21ABB48DB21'u64, 0x96769950B50D88F5'u64, 0xBC143FA4E250EB32'u64,
-      0xEB194F8E1AE525FE'u64, 0x92EFD1B8D0CF37BF'u64, 0xB7ABC627050305AE'u64,
-      0xE596B7B0C643C71A'u64, 0x8F7E32CE7BEA5C70'u64, 0xB35DBF821AE4F38C'u64]
   sf_Assert(k >= kMin)
   sf_Assert(k <= kMax)
   return g[k - kMin]
@@ -232,33 +236,6 @@ proc toDecimal32(ieeeSignificand: uint32; ieeeExponent: uint32): FloatingDecimal
 ## ==================================================================================================
 ##  ToChars
 ## ==================================================================================================
-
-proc utoa2Digits(buf: var openArray[char]; pos: int; digits: uint32) {.inline.} =
-  const
-    digits100: array[200, char] = ['0', '0', '0', '1', '0', '2', '0', '3', '0', '4', '0', '5',
-      '0', '6', '0', '7', '0', '8', '0', '9', '1', '0', '1', '1', '1', '2', '1', '3', '1', '4',
-      '1', '5', '1', '6', '1', '7', '1', '8', '1', '9', '2', '0', '2', '1', '2', '2', '2', '3',
-      '2', '4', '2', '5', '2', '6', '2', '7', '2', '8', '2', '9', '3', '0', '3', '1', '3', '2',
-      '3', '3', '3', '4', '3', '5', '3', '6', '3', '7', '3', '8', '3', '9', '4', '0', '4', '1',
-      '4', '2', '4', '3', '4', '4', '4', '5', '4', '6', '4', '7', '4', '8', '4', '9', '5', '0',
-      '5', '1', '5', '2', '5', '3', '5', '4', '5', '5', '5', '6', '5', '7', '5', '8', '5', '9',
-      '6', '0', '6', '1', '6', '2', '6', '3', '6', '4', '6', '5', '6', '6', '6', '7', '6', '8',
-      '6', '9', '7', '0', '7', '1', '7', '2', '7', '3', '7', '4', '7', '5', '7', '6', '7', '7',
-      '7', '8', '7', '9', '8', '0', '8', '1', '8', '2', '8', '3', '8', '4', '8', '5', '8', '6',
-      '8', '7', '8', '8', '8', '9', '9', '0', '9', '1', '9', '2', '9', '3', '9', '4', '9', '5',
-      '9', '6', '9', '7', '9', '8', '9', '9']
-  sf_Assert(digits <= 99)
-  buf[pos] = digits100[2 * digits]
-  buf[pos+1] = digits100[2 * digits + 1]
-
-proc trailingZeros2Digits(digits: uint32): int32 {.inline.} =
-  const
-    trailingZeros100: array[100, int8] = [2'i8, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0,
-      1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0,
-      0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 0, 0, 0,
-      0, 0, 0, 0, 0, 0]
-  sf_Assert(digits <= 99)
-  return trailingZeros100[digits]
 
 proc printDecimalDigitsBackwards(buf: var openArray[char]; pos: int; output: uint32): int32 {.inline.} =
   var output = output

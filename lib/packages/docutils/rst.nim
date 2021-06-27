@@ -1246,15 +1246,43 @@ proc isUrl(p: RstParser, i: int): bool =
     p.tok[i+3].kind == tkWord and
     p.tok[i].symbol in ["http", "https", "ftp", "telnet", "file"]
 
+proc checkParen(token: Token, parensStack: var seq[char]): bool {.inline.} =
+  ## Returns `true` iff `token` is a closing parenthesis for some
+  ## previous opening parenthesis saved in `parensStack`.
+  ## This is according Markdown balanced parentheses rule
+  ## (https://spec.commonmark.org/0.29/#link-destination)
+  ## to allow links like
+  ## https://en.wikipedia.org/wiki/APL_(programming_language),
+  ## we use it for RST also.
+  result = false
+  if token.kind == tkPunct:
+    let c = token.symbol[0]
+    if c in {'(', '[', '{'}:  # push
+      parensStack.add c
+    elif c in {')', ']', '}'}:  # try pop
+      # a case like ([) inside a link is allowed and [ is also `pop`ed:
+      for i in countdown(parensStack.len - 1, 0):
+        if (parensStack[i] == '(' and c == ')' or
+            parensStack[i] == '[' and c == ']' or
+            parensStack[i] == '{' and c == '}'):
+          parensStack.setLen i
+          result = true
+          break
+
 proc parseUrl(p: var RstParser): PRstNode =
   ## https://docutils.sourceforge.io/docs/ref/rst/restructuredtext.html#standalone-hyperlinks
   result = newRstNode(rnStandaloneHyperlink)
   var lastIdx = p.idx
+  var closedParenIdx = p.idx - 1  # for balanced parens rule
+  var parensStack: seq[char]
   while p.tok[lastIdx].kind in {tkWord, tkPunct, tkOther}:
+    let isClosing = checkParen(p.tok[lastIdx], parensStack)
+    if isClosing:
+      closedParenIdx = lastIdx
     inc lastIdx
   dec lastIdx
   # standalone URL can not end with punctuation in RST
-  while lastIdx >= p.idx and p.tok[lastIdx].kind == tkPunct and
+  while lastIdx > closedParenIdx and p.tok[lastIdx].kind == tkPunct and
       p.tok[lastIdx].symbol != "/":
     dec lastIdx
   var s = ""
@@ -1393,11 +1421,15 @@ proc parseMarkdownLink(p: var RstParser; father: PRstNode): bool =
   var desc, link = ""
   var i = p.idx
 
+  var parensStack: seq[char]
   template parse(endToken, dest) =
+    parensStack.setLen 0
     inc i # skip begin token
     while true:
       if p.tok[i].kind in {tkEof, tkIndent}: return false
-      if p.tok[i].symbol == endToken: break
+      let isClosing = checkParen(p.tok[i], parensStack)
+      if p.tok[i].symbol == endToken and not isClosing:
+        break
       dest.add p.tok[i].symbol
       inc i
     inc i # skip end token
@@ -1583,24 +1615,16 @@ proc getDirective(p: var RstParser): string =
             "too many colons for a directive (should be ::)",
             p.tok[afterIdx].line, p.tok[afterIdx].col)
 
-proc parseComment(p: var RstParser): PRstNode =
-  case currentTok(p).kind
-  of tkIndent, tkEof:
-    if currentTok(p).kind != tkEof and nextTok(p).kind == tkIndent:
-      inc p.idx              # empty comment
-    else:
-      var indent = currentTok(p).ival
-      while true:
-        case currentTok(p).kind
-        of tkEof:
-          break
-        of tkIndent:
-          if currentTok(p).ival < indent: break
-        else:
-          discard
-        inc p.idx
+proc parseComment(p: var RstParser, col: int): PRstNode =
+  if currentTok(p).kind != tkEof and nextTok(p).kind == tkIndent:
+    inc p.idx              # empty comment
   else:
-    while currentTok(p).kind notin {tkIndent, tkEof}: inc p.idx
+    while currentTok(p).kind != tkEof:
+      if currentTok(p).kind == tkIndent and currentTok(p).ival > col or
+         currentTok(p).kind != tkIndent and currentTok(p).col > col:
+        inc p.idx
+      else:
+        break
   result = nil
 
 proc parseLine(p: var RstParser, father: PRstNode) =
@@ -2221,7 +2245,7 @@ proc parseOptionList(p: var RstParser): PRstNode =
         popInd(p)
       else:
         parseLine(p, b)
-      if currentTok(p).kind == tkIndent: inc p.idx
+      while currentTok(p).kind == tkIndent: inc p.idx
       c.add(a)
       c.add(b)
       c.order = order; inc order
@@ -2238,6 +2262,8 @@ proc parseDefinitionList(p: var RstParser): PRstNode =
     var col = currentTok(p).col
     result = newRstNodeA(p, rnDefList)
     while true:
+      if isOptionList(p):
+        break  # option list has priority over def.list
       j = p.idx
       var a = newRstNode(rnDefName)
       parseLine(p, a)
@@ -2809,7 +2835,7 @@ proc parseDotDot(p: var RstParser): PRstNode =
       (n = parseFootnote(p); n != nil):
     result = n
   else:
-    result = parseComment(p)
+    result = parseComment(p, col)
 
 proc rstParsePass1*(fragment, filename: string,
                     line, column: int,

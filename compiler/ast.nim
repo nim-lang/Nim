@@ -229,7 +229,7 @@ type
   TNodeKinds* = set[TNodeKind]
 
 type
-  TSymFlag* = enum    # 46 flags!
+  TSymFlag* = enum    # 47 flags!
     sfUsed,           # read access of sym (for warnings) or simply used
     sfExported,       # symbol is exported from module
     sfFromGeneric,    # symbol is instantiation of a generic; this is needed

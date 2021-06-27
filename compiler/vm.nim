@@ -548,9 +548,12 @@ proc rawExecute(c: PCtx, start: int, tos: PStackFrame): TFullReg =
         "pc", $pc, "opcode", alignLeft($c.code[pc].opcode, 15),
         "ra", regDescr("ra", ra), "rb", regDescr("rb", instr.regB),
         "rc", regDescr("rc", instr.regC)]
-
+    if c.config.isVmTrace:
+      # unlike nimVMDebug, this doesn't require re-compiling nim and is controlled by user code
+      let info = c.debug[pc]
+      # other useful variables: c.loopIterations
+      echo "$# [$#] $#" % [c.config$info, $instr.opcode, c.config.sourceLine(info)]
     c.profiler.enter(c, tos)
-
     case instr.opcode
     of opcEof: return regs[ra]
     of opcRet:
