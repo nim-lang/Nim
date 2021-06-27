@@ -16,7 +16,7 @@ the latest release, check out [Nim's website][nim-site] or [bleeding edge docs](
 [![Follow @nim_lang on Twitter][badge-nim-twitter]][nim-twitter]
 
 * The [forum][nim-forum] - the best place to ask questions and to discuss Nim.
-* [#nim IRC Channel (Freenode)][nim-irc] - a place to discuss Nim in real-time.
+* [#nim IRC Channel (Libera Chat)][nim-irc] - a place to discuss Nim in real-time.
   Also where most development decisions get made.
 * [Discord][nim-discord] - an additional place to discuss Nim in real-time. Most
   channels there are bridged to IRC.
@@ -206,7 +206,7 @@ Copyright © 2006-2021 Andreas Rumpf, all rights reserved.
 [nim-forum]: https://forum.nim-lang.org
 [nim-issues]: https://github.com/nim-lang/Nim/issues
 [nim-issues-easy]: https://github.com/nim-lang/Nim/labels/Easy
-[nim-irc]: https://webchat.freenode.net/?channels=nim
+[nim-irc]: https://web.libera.chat/#nim
 [nim-twitter]: https://twitter.com/nim_lang
 [nim-stackoverflow]: https://stackoverflow.com/questions/tagged/nim-lang
 [nim-stackoverflow-newest]: https://stackoverflow.com/questions/tagged/nim-lang?sort=newest&pageSize=15
