@@ -287,13 +287,12 @@ proc ensureNoMissingOrUnusedSymbols(c: PContext; scope: PScope) =
   for (s, _) in sortedByIt(unusedSyms, it.key):
     message(c.config, s.info, hintXDeclaredButNotUsed, s.name.s)
 
-proc wrongRedefinition*(c: PContext; info: TLineInfo, s: string;
-                        conflictsWith: TLineInfo, note = errGenerated) =
+proc wrongRedefinition*(c: PContext; info: TLineInfo, s: string, conflictsWith: TLineInfo) =
   ## Emit a redefinition error if in non-interactive mode
-  if c.config.cmd != cmdInteractive:
-    localError(c.config, info, note,
-      "redefinition of '$1'; previous declaration here: $2" %
-      [s, c.config $ conflictsWith])
+  let note = if c.config.cmd == cmdInteractive: warnUser else: errGenerated
+    # xxx consider creating a dedicated warning instead of `warnUser`
+  localError(c.config, info, note,
+    "redefinition of '$1'; previous declaration here: $2" % [s, c.config $ conflictsWith])
 
 # xxx pending bootstrap >= 1.4, replace all those overloads with a single one:
 # proc addDecl*(c: PContext, sym: PSym, info = sym.info, scope = c.currentScope) {.inline.} =
@@ -308,7 +307,7 @@ proc addDeclAt*(c: PContext; scope: PScope, sym: PSym, info: TLineInfo) =
         "duplicate import of '$1'; previous import here: $2" %
         [sym.name.s, c.config $ conflict.info])
     else:
-      wrongRedefinition(c, info, sym.name.s, conflict.info, errGenerated)
+      wrongRedefinition(c, info, sym.name.s, conflict.info)
 
 proc addDeclAt*(c: PContext; scope: PScope, sym: PSym) {.inline.} =
   addDeclAt(c, scope, sym, sym.info)
