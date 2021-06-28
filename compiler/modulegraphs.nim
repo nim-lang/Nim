@@ -582,3 +582,13 @@ proc moduleFromRodFile*(g: ModuleGraph; fileIdx: FileIndex;
 
 proc configComplete*(g: ModuleGraph) =
   rememberStartupConfig(g.startupPackedConfig, g.config)
+
+from std/strutils import repeat, `%`
+
+proc onProcessing*(graph: ModuleGraph, fileIdx: FileIndex, moduleStatus: string, fromModule: PSym, ) =
+  let conf = graph.config
+  let path = toFilenameOption(conf, fileIdx, conf.filenameOption)
+  let indent = ">".repeat(graph.importStack.len)
+  let fromModule2 = if fromModule != nil: $fromModule.name.s else: "(toplevel)"
+  let mode = if conf.isDefined("nimscript"): "(nims) " else: ""
+  rawMessage(conf, hintProcessing, "$#$# $#: $#: $#" % [mode, indent, fromModule2, moduleStatus, path])
