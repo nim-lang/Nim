@@ -21,14 +21,15 @@ import core {.all.} # std/times/core
 include "system/inclrtl"
 
 type
-  Duration* = object ## Represents a fixed duration of time, meaning a duration
-                     ## that has constant length independent of the context.
-                     ##
-                     ## To create a new `Duration`, use `initDuration
-                     ## <#initDuration,int64,int64,int64,int64,int64,int64,int64,int64>`_.
-                     ## Instead of trying to access the private attributes, use
-                     ## `inSeconds <#inSeconds,Duration>`_ for converting to seconds and
-                     ## `inNanoseconds <#inNanoseconds,Duration>`_ for converting to nanoseconds.
+  Duration* = object
+    ## Represents a fixed duration of time, meaning a duration
+    ## that has constant length independent of the context.
+    ##
+    ## To create a new `Duration`, use `initDuration
+    ## <#initDuration,int64,int64,int64,int64,int64,int64,int64,int64>`_.
+    ## Instead of trying to access the private attributes, use
+    ## `inSeconds <#inSeconds,Duration>`_ for converting to seconds and
+    ## `inNanoseconds <#inNanoseconds,Duration>`_ for converting to nanoseconds.
     seconds: int64
     nanosecond: NanosecondRange
 
