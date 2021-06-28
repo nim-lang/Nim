@@ -185,7 +185,7 @@ proc processModule*(graph: ModuleGraph; module: PSym; idgen: IdGenerator;
         #echo "----- single\n", n
         if not processTopLevelStmt(graph, n, a): break
     closeParser(p)
-    if s.kind != llsStdIn: break
+    if s.kind != llsStdIn or s.closed: break
   closePasses(graph, a)
   if graph.config.backend notin {backendC, backendCpp, backendObjc}:
     # We only write rod files here if no C-like backend is active.

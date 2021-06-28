@@ -28,6 +28,7 @@ type
     llsStdIn                  # stream encapsulates stdin
   TLLStream* = object of RootObj
     kind*: TLLStreamKind # accessible for low-level access (lexbase uses this)
+    closed*: bool # only used for llsStdIn at the moment; we could use a case object module refactorings
     f*: File
     s*: string
     rd*, wr*: int             # for string streams
@@ -117,7 +118,6 @@ proc llReadFromStdin(s: PLLStream, buf: pointer, bufLen: int): int =
     let prompt = if s.s.len == 0: ">>> " else: "... "
     var ret: ReadLineResult
     readLineFromStdin(prompt, ret)
-    echo ret
     case ret.status
     of lnCtrlUnkown:
       let line = ret.line
@@ -127,10 +127,9 @@ proc llReadFromStdin(s: PLLStream, buf: pointer, bufLen: int): int =
       if not continueLine(line, (triples and 1) == 1): break
     of lnCtrlC: continue
     of lnCtrlD:
-      # xxx we could quit more graciously by setting a closed field to true,
-      # to let other epilogue procs complete.
-      # break
-      quit(0)
+      s.closed = true
+        # better than `quit()` which prevents using in a library or epilogue to complete
+      break
   inc(s.lineOffset)
   result = min(bufLen, s.s.len - s.rd)
   if result > 0:
