@@ -294,10 +294,10 @@ block:
     doAssert "test1".match(peg"""{@}$""")
     doAssert "test2".match(peg"""{(!$ .)*} $""")
 
-    doAssert "abbb".match(peg"{a} {b} $2 $-1")
-    doAssert "abBA".match(peg"{a} {b} i$2 i$-2")
+    doAssert "abbb".match(peg"{a} {b} $2 $^1")
+    doAssert "abBA".match(peg"{a} {b} i$2 i$^2")
 
-    doAssert "abba".match(peg"{a} {b} $-1 {} $-1")
+    doAssert "abba".match(peg"{a} {b} $^1 {} $^1")
 
     block:
       let grammar = peg"""
@@ -306,7 +306,7 @@ stmt <- call / block
 call <- 'call()' EOL
 EOL <- \n / $
 block <- 'block:' \n indBody
-indBody <- {$-1 ' '+} stmt ($-1 stmt)* {}
+indBody <- {$^1 ' '+} stmt ($^1 stmt)* {}
 """
       let program = """
 call()
