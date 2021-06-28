@@ -5,25 +5,42 @@ discard """
 import asynchttpserver, httpclient, asyncdispatch, strutils
 
 block: # bug #16436
-  proc startServer() {.async.} =
+  proc startServer(): AsyncHttpServer =
+    result = newAsyncHttpServer()
+    result.listen(Port(0))
+
+  proc runServer(server: AsyncHttpServer) {.async.} =
+    var killServer = false
+
     proc cb(req: Request) {.async.} =
       let headers = { "Content-length": "15"} # Provide invalid content-length
+      killServer = true
       await req.respond(Http200, "Hello World", headers.newHttpHeaders())
 
-    var server = newAsyncHttpServer()
-    await server.serve(Port(5555), cb)
+    while not killServer:
+      if server.shouldAcceptRequest():
+        await server.acceptRequest(cb)
+      else:
+        poll()
 
-  proc runClient() {.async.} =
+  proc runClient(port: Port) {.async.} =
     let c = newAsyncHttpClient(headers = {"Connection": "close"}.newHttpHeaders)
-    let r = await c.getContent("http://127.0.0.1:5555")
+    discard await c.getContent("http://127.0.0.1:" & $(uint16)port)
     doAssert false, "should fail earlier"
 
-  asyncCheck startServer()
+  #var port = asyncCheck startServer()
+  var server = startServer()
+  asyncCheck runServer(server)
+  var port = server.getPort()
   doAssertRaises(ProtocolError):
-    waitFor runClient()
+    waitFor runClient(port)
 
 block: # bug #14794 (And test for presence of content-length header when using postContent)
-  proc startServer() {.async.} =
+  proc startServer():AsyncHttpServer =
+    result = newAsyncHttpServer()
+    result.listen(Port(0))
+
+  proc runServer(server: AsyncHttpServer) {.async.} =
     var killServer = false
     proc cb(req: Request) {.async.} =
       doAssert(req.body.endsWith(httpNewLine), "Multipart body does not end with a newline.")
@@ -35,20 +52,20 @@ block: # bug #14794 (And test for presence of content-length header when using p
       killServer = true
       asyncCheck req.respond(Http200, "OK")
 
-    var server = newAsyncHttpServer()
-    server.listen(Port(5556))
     while not killServer:
       if server.shouldAcceptRequest():
         await server.acceptRequest(cb)
       else:
         poll()
 
-  proc runClient() {.async.} =
+  proc runClient(port: Port) {.async.} =
     let c = newAsyncHttpClient()
     var data = newMultipartData()
     data.add("file.txt", "This is intended to be an example text file.\r\nThis would be the second line.\r\n")
-    let r = await c.postContent("http://127.0.0.1:5556", multipart = data)
+    discard await c.postContent("http://127.0.0.1:" & $(uint16)port, multipart = data)
     c.close()
 
-  asyncCheck startServer()
-  waitFor runClient()
+  var server = startServer()
+  var port = server.getPort()
+  asyncCheck runServer(server)
+  waitFor runClient(port)
