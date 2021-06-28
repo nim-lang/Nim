@@ -32,7 +32,18 @@ proc printKeyCodes*() {.importc: "linenoisePrintKeyCodes".}
 
 proc free*(s: cstring) {.importc: "free", header: "<stdlib.h>".}
 
-when defined(nimExperimentalLinenoiseExtra) and not defined(windows):
+# stable nim interface
+type Status* = enum
+  lnCtrlUnkown
+  lnCtrlC
+  lnCtrlD
+
+type ReadLineResult* = object
+  line*: string
+  status*: Status
+
+# when defined(nimExperimentalLinenoiseExtra) and not defined(windows):
+when not defined(windows):
   # C interface
   type LinenoiseStatus = enum
     linenoiseStatus_ctrl_unknown
@@ -43,16 +54,6 @@ when defined(nimExperimentalLinenoiseExtra) and not defined(windows):
     status: LinenoiseStatus
 
   proc linenoiseExtra(prompt: cstring, data: ptr LinenoiseData): cstring {.importc.}
-
-  # stable nim interface
-  type Status* = enum
-    lnCtrlUnkown
-    lnCtrlC
-    lnCtrlD
-
-  type ReadLineResult* = object
-    line*: string
-    status*: Status
 
   proc readLineStatus*(prompt: string, result: var ReadLineResult) =
     ## line editing API that allows returning the line entered and an indicator

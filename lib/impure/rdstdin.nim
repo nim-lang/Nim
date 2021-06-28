@@ -67,3 +67,9 @@ else:
   proc readLineFromStdin*(prompt: string): string {.inline.} =
     if not readLineFromStdin(prompt, result):
       raise newException(IOError, "Linenoise returned nil")
+
+  proc readLineFromStdin*(prompt: string, result: var ReadLineResult)
+    {.tags: [ReadIOEffect, WriteIOEffect].} =
+    readLineStatus(prompt, result)
+
+  export ReadLineResult, Status

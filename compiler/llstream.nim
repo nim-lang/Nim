@@ -113,11 +113,24 @@ proc llReadFromStdin(s: PLLStream, buf: pointer, bufLen: int): int =
   s.rd = 0
   var line = newStringOfCap(120)
   var triples = 0
-  while readLineFromStdin(if s.s.len == 0: ">>> " else: "... ", line):
-    s.s.add(line)
-    s.s.add("\n")
-    inc triples, countTriples(line)
-    if not continueLine(line, (triples and 1) == 1): break
+  while true:
+    let prompt = if s.s.len == 0: ">>> " else: "... "
+    var ret: ReadLineResult
+    readLineFromStdin(prompt, ret)
+    echo ret
+    case ret.status
+    of lnCtrlUnkown:
+      let line = ret.line
+      s.s.add(line)
+      s.s.add("\n")
+      inc triples, countTriples(line)
+      if not continueLine(line, (triples and 1) == 1): break
+    of lnCtrlC: continue
+    of lnCtrlD:
+      # xxx we could quit more graciously by setting a closed field to true,
+      # to let other epilogue procs complete.
+      # break
+      quit(0)
   inc(s.lineOffset)
   result = min(bufLen, s.s.len - s.rd)
   if result > 0:
