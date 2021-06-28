@@ -113,7 +113,7 @@ proc `$`*[T: tuple|object](x: T): string =
   ##   $() == "()"
   result = "("
   const isNamed = T is object or isNamedTuple(T)
-  var count = 0
+  var count {.used.} = 0
   for name, value in fieldPairs(x):
     if count > 0: result.add(", ")
     when isNamed:
