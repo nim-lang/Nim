@@ -51,8 +51,6 @@ proc addInt*(result: var string; x: int64) =
   ##     a = "123"
   ##     b = 45
   ##   a.addInt(b) # a <- "12345"
-  let base = result.len
-  var length: int
   var num: uint64
 
   if x < 0:
@@ -60,14 +58,12 @@ proc addInt*(result: var string; x: int64) =
       num = uint64(x)
     else:
       num = uint64(-x)
-    length = base + digits10(num) + 1
-    setLen(result, length)
+    let base = result.len
+    setLen(result, base + 1)
     result[base] = '-'
   else:
     num = uint64(x)
-    length = base + digits10(num)
-    setLen(result, length)
-  numToString(result, num, length)
+  addIntImpl(result, num)
 
 proc nimIntToStr(x: int): string {.compilerRtl.} =
   result = newStringOfCap(sizeof(x)*4)

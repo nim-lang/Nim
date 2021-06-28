@@ -38,51 +38,39 @@ proc trailingZeros2Digits*(digits: uint32): int32 {.inline.} =
   assert(digits <= 99)
   return trailingZeros100[digits]
 
-func digits10*(num: uint64): int {.noinline.} =
-  if num < 10'u64:
-    result = 1
-  elif num < 100'u64:
-    result = 2
-  elif num < 1_000'u64:
-    result = 3
-  elif num < 10_000'u64:
-    result = 4
-  elif num < 100_000'u64:
-    result = 5
-  elif num < 1_000_000'u64:
-    result = 6
-  elif num < 10_000_000'u64:
-    result = 7
-  elif num < 100_000_000'u64:
-    result = 8
-  elif num < 1_000_000_000'u64:
-    result = 9
-  elif num < 10_000_000_000'u64:
-    result = 10
-  elif num < 100_000_000_000'u64:
-    result = 11
-  elif num < 1_000_000_000_000'u64:
-    result = 12
-  else:
-    result = 12 + digits10(num div 1_000_000_000_000'u64)
-
-template numToString*(result: var string, origin: uint64, length: int) =
+func addIntImpl*(result: var string, origin: uint64) =
+  var tmp {.noinit.}: array[24, char]
   var num = origin
-  var next = length - 1
+  var next = tmp.len - 1
   const nbatch = 100
 
   while num >= nbatch:
     let originNum = num
     num = num div nbatch
     let index = (originNum - num * nbatch) shl 1
-    result[next] = digits100[index + 1]
-    result[next - 1] = digits100[index]
+    tmp[next] = digits100[index + 1]
+    tmp[next - 1] = digits100[index]
     dec(next, 2)
 
   # process last 1-2 digits
   if num < 10:
-    result[next] = chr(ord('0') + num)
+    tmp[next] = chr(ord('0') + num)
   else:
     let index = num * 2
-    result[next] = digits100[index + 1]
-    result[next - 1] = digits100[index]
+    tmp[next] = digits100[index + 1]
+    tmp[next - 1] = digits100[index]
+    dec next
+  let n = result.len
+  let length = tmp.len - next
+  result.setLen n + length
+  when nimvm:
+    for i in 0..<length:
+      result[n+i] = tmp[next+i]
+  else:
+    when defined(js) or defined(nimscript):
+      for i in 0..<length:
+        result[n+i] = tmp[next+i]
+    else:
+      {.noSideEffect.}:
+        copyMem result[n].addr, tmp[next].addr, length
+
