@@ -193,6 +193,8 @@
 
   See also
   ========
+  * `times/core module <core.html>`_
+  * `times/durations module <durations.html>`_
   * `monotimes module <monotimes.html>`_
 ]##
 

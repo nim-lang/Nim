@@ -168,6 +168,8 @@ proc toParts*(dur: Duration): DurationParts =
   ##
   ## This procedure is useful for converting `Duration` values to strings.
   runnableExamples:
+    import std/times/core
+
     var dp = toParts(initDuration(weeks = 2, days = 1))
     doAssert dp[Days] == 1
     doAssert dp[Weeks] == 2

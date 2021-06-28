@@ -7,7 +7,7 @@
 #    distribution, for details about the copyright.
 #
 
-## The `std/times/core` module contains some core definitionss for dealing with time.
+## The `std/times/core` module contains some core definitions for dealing with time.
 ## It is reexported by the `std/times` module.
 
 import std/strutils
