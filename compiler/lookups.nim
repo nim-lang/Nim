@@ -58,8 +58,8 @@ proc considerQuotedIdent*(c: PContext; n: PNode, origin: PNode = nil): PIdent =
 template addSym*(scope: PScope, s: PSym) =
   strTableAdd(scope.symbols, s)
 
-proc addUniqueSym*(scope: PScope, s: PSym, onConflictKeepOld: bool): PSym =
-  result = strTableInclReportConflict(scope.symbols, s, onConflictKeepOld)
+proc addUniqueSym*(scope: PScope, s: PSym): PSym =
+  result = strTableInclReportConflict(scope.symbols, s)
 
 proc openScope*(c: PContext): PScope {.discardable.} =
   result = PScope(parent: c.currentScope,
@@ -298,7 +298,7 @@ proc wrongRedefinition*(c: PContext; info: TLineInfo, s: string;
 # xxx pending bootstrap >= 1.4, replace all those overloads with a single one:
 # proc addDecl*(c: PContext, sym: PSym, info = sym.info, scope = c.currentScope) {.inline.} =
 proc addDeclAt*(c: PContext; scope: PScope, sym: PSym, info: TLineInfo) =
-  let conflict = scope.addUniqueSym(sym, onConflictKeepOld = true)
+  let conflict = scope.addUniqueSym(sym)
   if conflict != nil:
     if sym.kind == skModule and conflict.kind == skModule and sym.owner == conflict.owner:
       # e.g.: import foo; import foo
@@ -320,7 +320,7 @@ proc addDecl*(c: PContext, sym: PSym) {.inline.} =
   addDeclAt(c, c.currentScope, sym)
 
 proc addPrelimDecl*(c: PContext, sym: PSym) =
-  discard c.currentScope.addUniqueSym(sym, onConflictKeepOld = false)
+  discard c.currentScope.addUniqueSym(sym)
 
 from ic / ic import addHidden
 
