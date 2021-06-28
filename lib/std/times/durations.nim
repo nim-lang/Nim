@@ -16,8 +16,7 @@
 ##
 ## Arithmetic with a `Duration` is very fast, since it only involves basic arithmetic.
 
-import strutils
-import core # std/times/core
+import core {.all.} # std/times/core
 
 include "system/inclrtl"
 
