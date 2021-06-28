@@ -295,8 +295,7 @@ proc mainCommand*(graph: ModuleGraph) =
         commandBuildIndex(conf, $conf.outDir)
   of cmdRst2html:
     # XXX: why are warnings disabled by default for rst2html and rst2tex?
-    for warn in [warnUnknownSubstitutionX, warnLanguageXNotSupported,
-                 warnFieldXNotSupported, warnRstStyle]:
+    for warn in rstWarnings:
       conf.setNoteDefaults(warn, true)
     conf.setNoteDefaults(warnRedefinitionOfLabel, false) # similar to issue #13218
     when defined(leanCompiler):
@@ -305,9 +304,7 @@ proc mainCommand*(graph: ModuleGraph) =
       loadConfigs(DocConfig, cache, conf, graph.idgen)
       commandRst2Html(cache, conf)
   of cmdRst2tex, cmdDoc2tex:
-    for warn in [warnRedefinitionOfLabel, warnUnknownSubstitutionX,
-                 warnLanguageXNotSupported,
-                 warnFieldXNotSupported, warnRstStyle]:
+    for warn in rstWarnings:
       conf.setNoteDefaults(warn, true)
     when defined(leanCompiler):
       conf.quitOrRaise "compiler wasn't built with documentation generator"

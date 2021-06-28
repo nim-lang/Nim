@@ -48,6 +48,7 @@ type
     warnDeprecated = "Deprecated", warnConfigDeprecated = "ConfigDeprecated",
     warnSmallLshouldNotBeUsed = "SmallLshouldNotBeUsed", warnUnknownMagic = "UnknownMagic",
     warnRedefinitionOfLabel = "RedefinitionOfLabel", warnUnknownSubstitutionX = "UnknownSubstitutionX",
+    warnBrokenLink = "BrokenLink",
     warnLanguageXNotSupported = "LanguageXNotSupported",
     warnFieldXNotSupported = "FieldXNotSupported",
     warnRstStyle = "warnRstStyle", warnCommentXIgnored = "CommentXIgnored",
@@ -113,6 +114,7 @@ const
     warnUnknownMagic: "unknown magic '$1' might crash the compiler",
     warnRedefinitionOfLabel: "redefinition of label '$1'",
     warnUnknownSubstitutionX: "unknown substitution '$1'",
+    warnBrokenLink: "broken link '$1'",
     warnLanguageXNotSupported: "language '$1' not supported",
     warnFieldXNotSupported: "field '$1' not supported",
     warnRstStyle: "RST style: $1",
@@ -196,6 +198,9 @@ const
   warnMax* = pred(hintSuccess)
   hintMin* = hintSuccess
   hintMax* = high(TMsgKind)
+  rstWarnings* = {warnRedefinitionOfLabel, warnUnknownSubstitutionX,
+                  warnBrokenLink, warnLanguageXNotSupported,
+                  warnFieldXNotSupported, warnRstStyle}
 
 type
   TNoteKind* = range[warnMin..hintMax] # "notes" are warnings or hints

@@ -168,6 +168,7 @@ template declareClosures =
     of meFootnoteMismatch: k = errFootnoteMismatch
     of mwRedefinitionOfLabel: k = warnRedefinitionOfLabel
     of mwUnknownSubstitution: k = warnUnknownSubstitutionX
+    of mwBrokenLink: k = warnBrokenLink
     of mwUnsupportedLanguage: k = warnLanguageXNotSupported
     of mwUnsupportedField: k = warnFieldXNotSupported
     of mwRstStyle: k = warnRstStyle

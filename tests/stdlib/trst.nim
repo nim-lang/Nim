@@ -5,6 +5,8 @@ discard """
 
 [Suite] RST indentation
 
+[Suite] Warnings
+
 [Suite] RST include directive
 
 [Suite] RST escaping
@@ -355,6 +357,30 @@ suite "RST indentation":
     check input3.toAst == ast
     # "template..." should be parsed as a definition list attached to ":test:":
     check inputWrong.toAst != ast
+
+suite "Warnings":
+  test "warnings for broken footnotes/links/substitutions":
+    let input = dedent"""
+      firstParagraph
+
+      footnoteRef [som]_
+
+      link `a broken Link`_
+
+      substitution |undefined subst|
+
+      link short.link_
+
+      lastParagraph
+      """
+    var warnings = new seq[string]
+    let output = input.toAst(warnings=warnings)
+    check(warnings[] == @[
+        "input(3, 14) Warning: broken link 'citation-som'",
+        "input(5, 7) Warning: broken link 'a-broken-link'",
+        "input(7, 15) Warning: unknown substitution 'undefined subst'",
+        "input(9, 6) Warning: broken link 'shortdotlink'"
+        ])
 
 suite "RST include directive":
   test "Include whole":

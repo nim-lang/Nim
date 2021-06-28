@@ -1034,9 +1034,7 @@ Test1
       """
     var warnings8 = new seq[string]
     let output8 = input8.toHtml(warnings=warnings8)
-    # TODO: the line 1 is arbitrary because reference lines are not preserved
-    check(warnings8[] == @["input(1, 1) Warning: unknown substitution " &
-            "\'citation-som\'"])
+    check(warnings8[] == @["input(3, 7) Warning: broken link 'citation-som'"])
 
     # check that footnote group does not break parsing of other directives:
     let input9 = dedent """
@@ -1144,9 +1142,32 @@ Test1
       """
     var error = new string
     let output = input.toHtml(error=error)
-    check(error[] == "input(1, 1) Error: invalid field: " &
+    check(error[] == "input(2, 3) Error: invalid field: " &
                      "extra arguments were given to number-lines: ' let a = 1'")
     check "" == output
+
+  test "code-block warning":
+    let input = dedent """
+      .. code:: Nim
+         :unsupportedField: anything
+
+      .. code:: unsupportedLang
+
+         anything
+
+      ```anotherLang
+      someCode
+      ```
+      """
+    let warnings = new seq[string]
+    let output = input.toHtml(warnings=warnings)
+    check(warnings[] == @[
+        "input(2, 4) Warning: field 'unsupportedField' not supported",
+        "input(4, 11) Warning: language 'unsupportedLang' not supported",
+        "input(8, 4) Warning: language 'anotherLang' not supported"
+        ])
+    check(output == "<pre class = \"listing\">\nanything</pre>" &
+                    "<p><pre class = \"listing\">\nsomeCode\n</pre> </p>\n")
 
   test "RST admonitions":
     # check that all admonitions are implemented

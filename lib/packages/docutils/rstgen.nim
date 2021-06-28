@@ -908,9 +908,8 @@ proc renderSmiley(d: PDoc, n: PRstNode, result: var string) =
     [d.config.getOrDefault"doc.smiley_format" % n.text])
 
 proc getField1Int(d: PDoc, n: PRstNode, fieldName: string): int =
-  # TODO: proper column/line info
   template err(msg: string) =
-    d.msgHandler(d.filename, 1, 0, meInvalidRstField, msg)
+    d.msgHandler(n.loc.filename, n.loc.line, n.loc.col, meInvalidRstField, msg)
   let value = n.getFieldValue
   var number: int
   let nChars = parseInt(value, number)
@@ -958,7 +957,8 @@ proc parseCodeBlockField(d: PDoc, n: PRstNode, params: var CodeBlockParams) =
     params.langStr = n.getFieldValue.strip
     params.lang = params.langStr.getSourceLanguage
   else:
-    d.msgHandler(d.filename, 1, 0, mwUnsupportedField, n.getArgument)
+    d.msgHandler(n.loc.filename, n.loc.line, n.loc.col,
+                 mwUnsupportedField, n.getArgument)
 
 proc parseCodeBlockParams(d: PDoc, n: PRstNode): CodeBlockParams =
   ## Iterates over all code block fields and returns processed params.
@@ -1069,7 +1069,8 @@ proc renderCode(d: PDoc, n: PRstNode, result: var string) =
   dispA(d.target, result, blockStart, blockStart, [])
   if params.lang == langNone:
     if len(params.langStr) > 0:
-      d.msgHandler(d.filename, 1, 0, mwUnsupportedLanguage, params.langStr)
+      d.msgHandler(n.loc.filename, n.loc.line, n.loc.col,
+                   mwUnsupportedLanguage, params.langStr)
     for letter in m.text: escChar(d.target, result, letter, emText)
   else:
     renderCodeLang(result, params.lang, m.text, d.target)

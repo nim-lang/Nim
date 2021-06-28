@@ -77,6 +77,11 @@ type
 
   PRstNode* = ref RstNode    ## an RST node
   RstNodeSeq* = seq[PRstNode]
+  PRstLocation* = ref object ## location inside a file
+    filename*: string
+    line*: int
+    col*: int
+    order*: int                ## only for `rnFootnoteRef`
   RstNode* {.acyclic, final.} = object ## AST node (result of RST parsing)
     case kind*: RstNodeKind ## the node's kind
     of rnLeaf, rnSmiley:
@@ -92,9 +97,13 @@ type
       level*: int             ## level of headings starting from 1 (main
                               ## chapter) to larger ones (minor sub-sections)
                               ## level=0 means it's document title or subtitle
-    of rnFootnote, rnCitation, rnFootnoteRef, rnOptionListItem:
+    of rnFootnote, rnCitation, rnOptionListItem:
       order*: int             ## footnote order (for auto-symbol footnotes and
                               ## auto-numbered ones without a label)
+    of rnRef, rnSubstitutionReferences, rnFootnoteRef,
+        rnInterpretedText, rnField, rnInlineCode, rnCodeBlock:
+      loc*: PRstLocation      ## To have line/column info for warnings at
+                              ## nodes that are post-processed after parsing
     else:
       discard
     anchor*: string           ## anchor, internal link target
@@ -105,8 +114,9 @@ proc len*(n: PRstNode): int =
   result = len(n.sons)
 
 proc newRstNode*(kind: RstNodeKind, sons: seq[PRstNode] = @[],
-                 anchor = ""): PRstNode =
+                 anchor = "", loc: PRstLocation = nil): PRstNode =
   result = PRstNode(kind: kind, sons: sons)
+  if loc != nil: result.loc = loc
 
 proc newRstNode*(kind: RstNodeKind, s: string): PRstNode {.deprecated.} =
   assert kind in {rnLeaf, rnSmiley}
@@ -388,8 +398,10 @@ proc renderRstToStr*(node: PRstNode, indent=0): string =
     result.add "  adType=" & node.adType
   of rnHeadline, rnOverline, rnMarkdownHeadline:
     result.add "  level=" & $node.level
-  of rnFootnote, rnCitation, rnFootnoteRef, rnOptionListItem:
+  of rnFootnote, rnCitation, rnOptionListItem:
     result.add (if node.order == 0:   "" else: "  order=" & $node.order)
+  of rnFootnoteRef:
+    result.add (if node.loc.order == 0:   "" else: "  order=" & $node.loc.order)
   else:
     discard
   result.add (if node.anchor == "": "" else: "  anchor='" & node.anchor & "'")

@@ -229,6 +229,7 @@ type
     meFootnoteMismatch = "mismatch in number of footnotes and their refs: $1",
     mwRedefinitionOfLabel = "redefinition of label '$1'",
     mwUnknownSubstitution = "unknown substitution '$1'",
+    mwBrokenLink = "broken link '$1'",
     mwUnsupportedLanguage = "language '$1' not supported",
     mwUnsupportedField = "field '$1' not supported",
     mwRstStyle = "RST style: $1"
@@ -605,9 +606,12 @@ proc rstMessage(p: RstParser, msgKind: MsgKind, arg: string) =
                              p.col + currentTok(p).col, msgKind, arg)
 
 proc rstMessage(s: PRstSharedState, msgKind: MsgKind, arg: string) =
-  ## Print warnings for footnotes/substitutions.
-  ## TODO: their line/column info is not known, to fix it.
   s.msgHandler(s.filename, LineRstInit, ColRstInit, msgKind, arg)
+
+proc rstMessage(s: PRstSharedState, loc: PRstLocation,
+                msgKind: MsgKind, arg: string) =
+  ## Print warnings for footnotes/substitutions/references.
+  s.msgHandler(loc.filename, loc.line, loc.col, msgKind, arg)
 
 proc rstMessage(p: RstParser, msgKind: MsgKind, arg: string, line, col: int) =
   p.s.msgHandler(p.s.filename, p.line + line,
@@ -935,9 +939,10 @@ proc getAutoSymbol(s: PRstSharedState, order: int): string =
     if fnote.autoSymIdx == order:
       return fnote.label
 
-proc newRstNodeA(p: var RstParser, kind: RstNodeKind): PRstNode =
+proc newRstNodeA(p: var RstParser, kind: RstNodeKind,
+                 loc: PRstLocation = nil): PRstNode =
   ## create node and consume the current anchor
-  result = newRstNode(kind)
+  result = newRstNode(kind, loc=loc)
   if p.curAnchor != "":
     result.anchor = p.curAnchor
     p.curAnchor = ""
@@ -1155,9 +1160,15 @@ proc whichRole(p: RstParser, sym: string): RstNodeKind =
   if result == rnUnknownRole:
     rstMessage(p, mwUnsupportedLanguage, sym)
 
+proc newLocation(p: RstParser, i = p.idx): PRstLocation =
+  PRstLocation(
+    col: p.col + p.tok[i].col,
+    line: p.line + p.tok[i].line,
+    filename: p.s.filename)
+
 proc toInlineCode(n: PRstNode, language: string): PRstNode =
   ## Creates rnInlineCode and attaches `n` contents as code (in 3rd son).
-  result = newRstNode(rnInlineCode)
+  result = newRstNode(rnInlineCode, loc=n.loc)
   let args = newRstNode(rnDirArg)
   var lang = language
   if language == "cpp": lang = "c++"
@@ -1179,6 +1190,7 @@ proc toOtherRole(n: PRstNode, kind: RstNodeKind, roleName: string): PRstNode =
   result = newRstNode(kind, newSons)
 
 proc parsePostfix(p: var RstParser, n: PRstNode): PRstNode =
+  ## Finalizes node `n` that was tentatively determined as interpreted text.
   var newKind = n.kind
   var newSons = n.sons
 
@@ -1207,12 +1219,10 @@ proc parsePostfix(p: var RstParser, n: PRstNode): PRstNode =
         newKind = rnHyperlink
         newSons = @[a, b]
         setRef(p, rstnodeToRefname(a), b)
-    elif n.kind == rnInterpretedText:
+      result = newRstNode(newKind, newSons)
+    else:  # some link that will be resolved in `resolveSubs`
       newKind = rnRef
-    else:
-      newKind = rnRef
-      newSons = @[n]
-    result = newRstNode(newKind, newSons)
+      result = newRstNode(newKind, newSons, loc=n.loc)
   elif match(p, p.idx, ":w:"):
     # a role:
     let (roleName, lastIdx) = getRefname(p, p.idx+1)
@@ -1300,20 +1310,19 @@ proc parseWordOrRef(p: var RstParser, father: PRstNode) =
   else:
     # check for reference (probably, long one like some.ref.with.dots_ )
     var saveIdx = p.idx
-    var isRef = false
+    var reference: PRstNode = nil
     inc p.idx
     while currentTok(p).kind in {tkWord, tkPunct}:
       if currentTok(p).kind == tkPunct:
         if isInlineMarkupEnd(p, "_", exact=true):
-          isRef = true
+          reference = newRstNode(rnRef, loc=newLocation(p, saveIdx))
           break
         if not validRefnamePunct(currentTok(p).symbol):
           break
       inc p.idx
-    if isRef:
-      let r = newRstNode(rnRef)
-      for i in saveIdx..p.idx-1: r.add newLeaf(p.tok[i].symbol)
-      father.add r
+    if reference != nil:
+      for i in saveIdx..p.idx-1: reference.add newLeaf(p.tok[i].symbol)
+      father.add reference
       inc p.idx  # skip final _
     else:  # 1 normal word
       father.add newLeaf(p.tok[saveIdx].symbol)
@@ -1387,6 +1396,7 @@ proc parseUntil(p: var RstParser, father: PRstNode, postfix: string,
     else: rstMessage(p, meExpected, postfix, line, col)
 
 proc parseMarkdownCodeblock(p: var RstParser): PRstNode =
+  result = newRstNodeA(p, rnCodeBlock, loc=newLocation(p))
   var args = newRstNode(rnDirArg)
   if currentTok(p).kind == tkWord:
     args.add(newLeaf(p))
@@ -1411,7 +1421,6 @@ proc parseMarkdownCodeblock(p: var RstParser): PRstNode =
       inc p.idx
   var lb = newRstNode(rnLiteralBlock)
   lb.add(n)
-  result = newRstNodeA(p, rnCodeBlock)
   result.add(args)
   result.add(PRstNode(nil))
   result.add(lb)
@@ -1495,6 +1504,7 @@ proc parseFootnoteName(p: var RstParser, reference: bool): PRstNode =
 
 proc parseInline(p: var RstParser, father: PRstNode) =
   var n: PRstNode  # to be used in `if` condition
+  let saveIdx = p.idx
   case currentTok(p).kind
   of tkPunct:
     if isInlineMarkupStart(p, "***"):
@@ -1537,12 +1547,12 @@ proc parseInline(p: var RstParser, father: PRstNode) =
         n = n.toOtherRole(k, roleName)
       father.add(n)
     elif isInlineMarkupStart(p, "`"):
-      var n = newRstNode(rnInterpretedText)
+      var n = newRstNode(rnInterpretedText, loc=newLocation(p, p.idx+1))
       parseUntil(p, n, "`", false) # bug #17260
       n = parsePostfix(p, n)
       father.add(n)
     elif isInlineMarkupStart(p, "|"):
-      var n = newRstNode(rnSubstitutionReferences)
+      var n = newRstNode(rnSubstitutionReferences, loc=newLocation(p, p.idx+1))
       parseUntil(p, n, "|", false)
       father.add(n)
     elif roSupportMarkdown in p.s.options and
@@ -1551,16 +1561,16 @@ proc parseInline(p: var RstParser, father: PRstNode) =
       discard "parseMarkdownLink already processed it"
     elif isInlineMarkupStart(p, "[") and nextTok(p).symbol != "[" and
          (n = parseFootnoteName(p, reference=true); n != nil):
-      var nn = newRstNode(rnFootnoteRef)
+      var nn = newRstNode(rnFootnoteRef, loc=newLocation(p, saveIdx+1))
       nn.add n
       let (fnType, _) = getFootnoteType(n)
       case fnType
       of fnAutoSymbol:
         p.s.lineFootnoteSymRef.add curLine(p)
-        nn.order = p.s.lineFootnoteSymRef.len
+        nn.loc.order = p.s.lineFootnoteSymRef.len
       of fnAutoNumber:
         p.s.lineFootnoteNumRef.add curLine(p)
-        nn.order = p.s.lineFootnoteNumRef.len
+        nn.loc.order = p.s.lineFootnoteNumRef.len
       else: discard
       father.add(nn)
     else:
@@ -1693,7 +1703,7 @@ proc parseField(p: var RstParser): PRstNode =
   ## Returns a parsed rnField node.
   ##
   ## rnField nodes have two children nodes, a rnFieldName and a rnFieldBody.
-  result = newRstNode(rnField)
+  result = newRstNode(rnField, loc=newLocation(p))
   var col = currentTok(p).col
   var fieldname = newRstNode(rnFieldName)
   parseUntil(p, fieldname, ":", false)
@@ -2469,6 +2479,7 @@ proc parseDirective(p: var RstParser, k: RstNodeKind, flags: DirFlags): PRstNode
   ## Both rnDirArg and rnFieldList children nodes might be nil, so you need to
   ## check them before accessing.
   result = newRstNodeA(p, k)
+  if k == rnCodeBlock: result.loc = newLocation(p)
   var args: PRstNode = nil
   var options: PRstNode = nil
   if hasArg in flags:
@@ -2634,7 +2645,7 @@ proc dirCodeBlock(p: var RstParser, nimExtension = false): PRstNode =
     if result.sons[1].isNil: result.sons[1] = newRstNode(rnFieldList)
     assert result.sons[1].kind == rnFieldList
     # Hook the extra field and specify the Nim language as value.
-    var extraNode = newRstNode(rnField)
+    var extraNode = newRstNode(rnField, loc=newLocation(p))
     extraNode.add(newRstNode(rnFieldName))
     extraNode.add(newRstNode(rnFieldBody))
     extraNode.sons[0].add newLeaf("default-language")
@@ -2872,7 +2883,7 @@ proc resolveSubs*(s: PRstSharedState, n: PRstNode): PRstNode =
       var key = addNodes(n)
       var e = getEnv(key)
       if e != "": result = newLeaf(e)
-      else: rstMessage(s, mwUnknownSubstitution, key)
+      else: rstMessage(s, n.loc, mwUnknownSubstitution, key)
   of rnHeadline, rnOverline:
     # fix up section levels depending on presence of a title and subtitle
     if s.hTitleCnt == 2:
@@ -2890,12 +2901,14 @@ proc resolveSubs*(s: PRstSharedState, n: PRstNode): PRstNode =
       let text = newRstNode(rnInner, n.sons)
       result.sons = @[text, y]
     else:
-      let s = findMainAnchor(s, refn)
-      if s != "":
+      let anchor = findMainAnchor(s, refn)
+      if anchor != "":
         result = newRstNode(rnInternalRef)
         let text = newRstNode(rnInner, n.sons)
-        result.sons = @[text,        # visible text of reference
-                        newLeaf(s)]  # link itself
+        result.sons = @[text,             # visible text of reference
+                        newLeaf(anchor)]  # link itself
+      else:
+        rstMessage(s, n.loc, mwBrokenLink, refn)
   of rnFootnote:
     var (fnType, num) = getFootnoteType(n.sons[0])
     case fnType
@@ -2922,20 +2935,20 @@ proc resolveSubs*(s: PRstSharedState, n: PRstNode): PRstNode =
       result.add(nn)
     var refn = fnType.prefix
     # create new rnFootnoteRef, add final label, and finalize target refn:
-    result = newRstNode(rnFootnoteRef)
+    result = newRstNode(rnFootnoteRef, loc=n.loc)
     case fnType
     of fnManualNumber:
       addLabel num
       refn.add $num
     of fnAutoNumber:
-      addLabel getFootnoteNum(s, n.order)
-      refn.add $n.order
+      addLabel getFootnoteNum(s, n.loc.order)
+      refn.add $n.loc.order
     of fnAutoNumberLabel:
       addLabel getFootnoteNum(s, rstnodeToRefname(n))
       refn.add rstnodeToRefname(n)
     of fnAutoSymbol:
-      addLabel getAutoSymbol(s, n.order)
-      refn.add $n.order
+      addLabel getAutoSymbol(s, n.loc.order)
+      refn.add $n.loc.order
     of fnCitation:
       result.add n.sons[0]
       refn.add rstnodeToRefname(n)
@@ -2943,7 +2956,7 @@ proc resolveSubs*(s: PRstSharedState, n: PRstNode): PRstNode =
     if anch != "":
       result.add newLeaf(anch)     # add link
     else:
-      rstMessage(s, mwUnknownSubstitution, refn)
+      rstMessage(s, n.loc, mwBrokenLink, refn)
       result.add newLeaf(refn)  # add link
   of rnLeaf:
     discard
