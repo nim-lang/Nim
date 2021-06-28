@@ -52,16 +52,6 @@ elif defined(genode):
 else:
   import linenoise
 
-  proc readLineFromStdin*(prompt: string): string {.
-                          tags: [ReadIOEffect, WriteIOEffect].} =
-    var buffer = linenoise.readLine(prompt)
-    if isNil(buffer):
-      raise newException(IOError, "Linenoise returned nil")
-    result = $buffer
-    if result.len > 0:
-      historyAdd(buffer)
-    linenoise.free(buffer)
-
   proc readLineFromStdin*(prompt: string, line: var string): bool {.
                           tags: [ReadIOEffect, WriteIOEffect].} =
     var buffer = linenoise.readLine(prompt)
@@ -73,3 +63,7 @@ else:
       historyAdd(buffer)
     linenoise.free(buffer)
     result = true
+
+  proc readLineFromStdin*(prompt: string): string {.inline.} =
+    if not readLineFromStdin(prompt, result):
+      raise newException(IOError, "Linenoise returned nil")
