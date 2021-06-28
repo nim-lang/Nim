@@ -98,8 +98,9 @@ proc nimCompile*(input: string, outputDir = "bin", mode = "c", options = "") =
   let cmd = findNim().quoteShell() & " " & mode & " -o:" & output & " " & options & " " & input
   exec cmd
 
-proc nimCompileFold*(desc, input: string, outputDir = "bin", mode = "c", options = "") =
-  let output = outputDir / input.splitFile.name.exe
+proc nimCompileFold*(desc, input: string, outputDir = "bin", mode = "c", options = "", outputName = "") =
+  let outputName2 = if outputName.len == 0: input.splitFile.name.exe else: outputName.exe
+  let output = outputDir / outputName2
   let cmd = findNim().quoteShell() & " " & mode & " -o:" & output & " " & options & " " & input
   execFold(desc, cmd)
 
