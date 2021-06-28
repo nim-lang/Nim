@@ -1160,11 +1160,14 @@ proc whichRole(p: RstParser, sym: string): RstNodeKind =
   if result == rnUnknownRole:
     rstMessage(p, mwUnsupportedLanguage, sym)
 
-proc newLocation(p: RstParser, i = p.idx): PRstLocation =
+proc newLocation(p: RstParser, i: int): PRstLocation =
   PRstLocation(
     col: p.col + p.tok[i].col,
     line: p.line + p.tok[i].line,
     filename: p.s.filename)
+
+proc newLocation(p: RstParser): PRstLocation =
+  newLocation(p, p.idx)
 
 proc toInlineCode(n: PRstNode, language: string): PRstNode =
   ## Creates rnInlineCode and attaches `n` contents as code (in 3rd son).
