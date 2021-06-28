@@ -1471,6 +1471,31 @@ proc skipHiddenSubConv*(n: PNode; g: ModuleGraph; idgen: IdGenerator): PNode =
   else:
     result = n
 
+proc callConvMismatch(formal, actual: PType): string =
+  assert formal.kind == tyProc and actual.kind == tyProc
+  if formal.callConv != actual.callConv:
+    let 
+      got = $(actual.callConv)
+      expected = $(formal.callConv)
+    result = "\nCalling convention mismatch got '{.$1.}' but expected '{.$2.}'." % [got, expected]
+
+proc pragmaMismatch(formal, actual: PType): string =
+  assert formal.kind == tyProc and actual.kind == tyProc
+  var
+    got = ""
+    expected = ""
+  if tfNoSideEffect in formal.flags and tfNoSideEffect notin actual.flags:
+    expected.add "noSideEffect, "
+  if tfThread in formal.flags and tfThread notin actual.flags:
+    expected.add "gcsafe, "
+  if formal.lockLevel.ord != UnspecifiedLockLevel.ord:
+    got.add("locks: " &  $actual.lockLevel & ", ")
+    expected.add("locks: " &  $formal.lockLevel & ", ")
+  if got.len > 0 or expected.len > 0:
+    got.setLen(max(0, got.len - 2)) # Remove ", "
+    expected.setLen(max(0, expected.len - 2)) # Remove ", "
+    result = "\nPragma mismatch got '{.$1.}', but expected '{.$2.}'." % [got, expected]
+
 proc typeMismatch*(conf: ConfigRef; info: TLineInfo, formal, actual: PType, n: PNode) =
   if formal.kind != tyError and actual.kind != tyError:
     let actualStr = typeToString(actual)
@@ -1491,6 +1516,8 @@ proc typeMismatch*(conf: ConfigRef; info: TLineInfo, formal, actual: PType, n: P
     if verbose: msg.addDeclaredLoc(conf, formal)
 
     if formal.kind == tyProc and actual.kind == tyProc:
+      msg.add callConvMismatch(formal, actual)
+      msg.add pragmaMismatch(formal, actual)
       case compatibleEffects(formal, actual)
       of efCompat: discard
       of efRaisesDiffer:
@@ -1503,6 +1530,7 @@ proc typeMismatch*(conf: ConfigRef; info: TLineInfo, formal, actual: PType, n: P
         msg.add "\n.tag effect is 'any tag allowed'"
       of efLockLevelsDiffer:
         msg.add "\nlock levels differ"
+
     if formal.kind == tyEnum and actual.kind == tyEnum:
       msg.add "\nmaybe use `-d:nimLegacyConvEnumEnum` for a transition period"
     localError(conf, info, msg)
