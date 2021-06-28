@@ -14,30 +14,6 @@ import std/strutils
 
 include "system/inclrtl"
 
-when defined(js):
-  import jscore
-
-  # This is really bad, but overflow checks are broken badly for
-  # ints on the JS backend. See #6752.
-  {.push overflowChecks: off.}
-  proc `*`(a, b: int64): int64 =
-    system.`*`(a, b)
-  proc `*`(a, b: int): int =
-    system.`*`(a, b)
-  proc `+`(a, b: int64): int64 =
-    system.`+`(a, b)
-  proc `+`(a, b: int): int =
-    system.`+`(a, b)
-  proc `-`(a, b: int64): int64 =
-    system.`-`(a, b)
-  proc `-`(a, b: int): int =
-    system.`-`(a, b)
-  proc inc(a: var int, b: int) =
-    system.inc(a, b)
-  proc inc(a: var int64, b: int) =
-    system.inc(a, b)
-  {.pop.}
-
 type
   Month* = enum
     ## Represents a month. Note that the enum starts at `1`,

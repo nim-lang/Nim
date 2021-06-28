@@ -207,7 +207,10 @@ import ../std/times/durations {.all.}
 export core, durations
 privateAccess(Duration)
 
-when defined(posix):
+when defined(js):
+  import jscore
+
+elif defined(posix):
   import posix
 
   type CTime = posix.Time
