@@ -1473,7 +1473,7 @@ proc skipHiddenSubConv*(n: PNode; g: ModuleGraph; idgen: IdGenerator): PNode =
 
 proc callConvMismatch(formal, actual: PType): string =
   assert formal.kind == tyProc and actual.kind == tyProc
-  if formal.callConv != actual.callConv:
+  if formal.callConv != actual.callConv and tfExplicitCallConv in formal.flags:
     let 
       got = $(actual.callConv)
       expected = $(formal.callConv)
@@ -1488,7 +1488,8 @@ proc pragmaMismatch(formal, actual: PType): string =
     expected.add "noSideEffect, "
   if tfThread in formal.flags and tfThread notin actual.flags:
     expected.add "gcsafe, "
-  if formal.lockLevel.ord != UnspecifiedLockLevel.ord:
+  if formal.lockLevel.ord != UnspecifiedLockLevel.ord and 
+     actual.lockLevel.ord != UnspecifiedLockLevel.ord:
     got.add("locks: " &  $actual.lockLevel & ", ")
     expected.add("locks: " &  $formal.lockLevel & ", ")
   if got.len > 0 or expected.len > 0:
