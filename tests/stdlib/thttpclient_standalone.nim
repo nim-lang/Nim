@@ -28,10 +28,9 @@ block: # bug #16436
     discard await c.getContent("http://127.0.0.1:" & $uint16(port))
     doAssert false, "should fail earlier"
 
-  #var port = asyncCheck startServer()
-  var server = startServer()
+  let server = startServer()
   asyncCheck runServer(server)
-  var port = server.getPort()
+  let port = server.getPort()
   doAssertRaises(ProtocolError):
     waitFor runClient(port)
 
@@ -60,12 +59,12 @@ block: # bug #14794 (And test for presence of content-length header when using p
 
   proc runClient(port: Port) {.async.} =
     let c = newAsyncHttpClient()
-    var data = newMultipartData()
+    let data = newMultipartData()
     data.add("file.txt", "This is intended to be an example text file.\r\nThis would be the second line.\r\n")
     discard await c.postContent("http://127.0.0.1:" & $uint16(port), multipart = data)
     c.close()
 
-  var server = startServer()
-  var port = server.getPort()
+  let server = startServer()
+  let port = server.getPort()
   asyncCheck runServer(server)
   waitFor runClient(port)
