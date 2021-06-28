@@ -25,7 +25,7 @@ block: # bug #16436
 
   proc runClient(port: Port) {.async.} =
     let c = newAsyncHttpClient(headers = {"Connection": "close"}.newHttpHeaders)
-    discard await c.getContent("http://127.0.0.1:" & $(uint16)port)
+    discard await c.getContent("http://127.0.0.1:" & $uint16(port))
     doAssert false, "should fail earlier"
 
   #var port = asyncCheck startServer()
@@ -62,7 +62,7 @@ block: # bug #14794 (And test for presence of content-length header when using p
     let c = newAsyncHttpClient()
     var data = newMultipartData()
     data.add("file.txt", "This is intended to be an example text file.\r\nThis would be the second line.\r\n")
-    discard await c.postContent("http://127.0.0.1:" & $(uint16)port, multipart = data)
+    discard await c.postContent("http://127.0.0.1:" & $uint16(port), multipart = data)
     c.close()
 
   var server = startServer()
