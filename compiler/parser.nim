@@ -537,13 +537,16 @@ proc parseGStrLit(p: var Parser, a: PNode): PNode =
 
 proc complexOrSimpleStmt(p: var Parser): PNode
 proc simpleExpr(p: var Parser, mode = pmNormal): PNode
-proc parseIfExpr(p: var Parser, kind: TNodeKind): PNode
+proc parseIfOrWhenExpr(p: var Parser, kind: TNodeKind): PNode
 
 proc semiStmtList(p: var Parser, result: PNode) =
   inc p.inSemiStmtList
   withInd(p):
     # Be lenient with the first stmt/expr
-    let a = if p.tok.tokType == tkIf: parseIfExpr(p, nkIfStmt) else: complexOrSimpleStmt(p)
+    let a = case p.tok.tokType
+            of tkIf: parseIfOrWhenExpr(p, nkIfStmt)
+            of tkWhen: parseIfOrWhenExpr(p, nkWhenStmt)
+            else: complexOrSimpleStmt(p)
     result.add a
 
     while p.tok.tokType != tkEof:
@@ -1203,13 +1206,13 @@ proc parseExpr(p: var Parser): PNode =
       result = parseBlock(p)
   of tkIf:
     nimprettyDontTouch:
-      result = parseIfExpr(p, nkIfExpr)
+      result = parseIfOrWhenExpr(p, nkIfExpr)
   of tkFor:
     nimprettyDontTouch:
       result = parseFor(p)
   of tkWhen:
     nimprettyDontTouch:
-      result = parseIfExpr(p, nkWhenExpr)
+      result = parseIfOrWhenExpr(p, nkWhenExpr)
   of tkCase:
     # Currently we think nimpretty is good enough with case expressions,
     # so it is allowed to touch them:
@@ -1559,7 +1562,7 @@ proc parseIfOrWhen(p: var Parser, kind: TNodeKind): PNode =
     branch.add(parseStmt(p))
     result.add(branch)
 
-proc parseIfExpr(p: var Parser, kind: TNodeKind): PNode =
+proc parseIfOrWhenExpr(p: var Parser, kind: TNodeKind): PNode =
   #| condExpr = expr colcom expr optInd
   #|         ('elif' expr colcom expr optInd)*
   #|          'else' colcom expr
