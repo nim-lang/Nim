@@ -68,8 +68,23 @@ else:
     if not readLineFromStdin(prompt, result):
       raise newException(IOError, "Linenoise returned nil")
 
-  proc readLineFromStdin*(prompt: string, result: var ReadLineResult)
-    {.tags: [ReadIOEffect, WriteIOEffect].} =
-    readLineStatus(prompt, result)
+type ReadLine* = object
+  # Opaque object to allow changing implementation
+  prompt: string
+  line: string
+
+proc initReadLine*(prompt: string): ReadLine = ReadLine(prompt: prompt)
+
+proc readLineFromStdin*(data: var ReadLine) {.tags: [ReadIOEffect, WriteIOEffect].} =
+  readLineStatus(data.prompt, result)
+  var buffer = linenoise.readLine(prompt)
+  if isNil(buffer):
+    line.setLen(0)
+    return false
+  line = $buffer
+  if line.len > 0:
+    historyAdd(buffer)
+  linenoise.free(buffer)
+  result = true
 
   export ReadLineResult, Status
