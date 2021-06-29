@@ -7,6 +7,9 @@ from stdtest/testutils import disableVm
 import macros
 # xxx each instance of `disableVm` and `when not defined js:` should eventually be fixed
 
+template disableJsAndI386(body: untyped) =
+  when not defined(js) and not defined(i386):
+    body
 
 macro fnTest(base: string, fn: proc (x: string): int, expected: int64, raises: static bool): untyped =
   var prefix: string
@@ -859,24 +862,39 @@ bar
     doAssert s.endsWith('a') == false
     doAssert s.endsWith('\0') == false
 
-  when not defined(js) and not defined(i386):
+
+  block:
+    hexTest("000000000000000000000000000000000000000000000000", 0)
+    hexTest("000000000000000000000000000000000000000000000001", 1)
+    hexTest("0", 0)
+    hexTest("1", 1)
+    hexTest("0_0_0_F", 15)
+    hexTest("00000000000000F", 15)
+    hexTest("0000000000000000000000000F", 15)
+    hexTest("00_0000_0000_0000_0000_0000_000F", 15)
+    doAssert parseHexInt("#000000000000000000000000000000000000000000000000") == 0
+    doAssert parseHexInt("#FFFF") == 65535
+
+    octTest("000000000000000000000000000000000000000000000000", 0)
+    octTest("000000000000000000000000000000000000000000000001", 1)
+    octTest("0", 0)
+    octTest("1", 1)
+
+    binTest("000000000000000000000000000000000000000000000000", 0)
+    binTest("000000000000000000000000000000000000000000000001", 1)
+    binTest("0", 0)
+    binTest("1", 1)
+    binTest("11_0101", 53)
+    binTest("111", 7)
+
+  disableJsAndI386:
     block:
       block: # hex
-        hexTest("000000000000000000000000000000000000000000000000", 0)
-        hexTest("000000000000000000000000000000000000000000000001", 1)
-        hexTest("0", 0)
-        hexTest("1", 1)
-        doAssert parseHexInt("#000000000000000000000000000000000000000000000000") == 0
-        doAssert parseHexInt("#FFFF") == 65535
         hexTest("1000000000000000", 1152921504606846976)
         hexTest("2000000000000000", 2305843009213693952)
         hexTest("FFFFFFFFFFFFFFF0", -16)
         hexTest("FFFFFFFFFFFFFFFF", -1)
         hexTest("FFFFFFFFFFFFFFF", 1152921504606846975)
-        hexTest("0_0_0_F", 15)
-        hexTest("00000000000000F", 15)
-        hexTest("0000000000000000000000000F", 15)
-        hexTest("00_0000_0000_0000_0000_0000_000F", 15)
         hexTest("AA_BB_CC_DD", 2864434397)
 
 
@@ -888,10 +906,6 @@ bar
         hexRaiseTest("00_1000_0000_0000_0000_0000_000F")
 
       block: # oct
-        octTest("000000000000000000000000000000000000000000000000", 0)
-        octTest("000000000000000000000000000000000000000000000001", 1)
-        octTest("0", 0)
-        octTest("1", 1)
         octTest("1777777777777777777777", -1)
         octTest("177777777777777777777", 2305843009213693951)
         octTest("0_77777777777777777777", 1152921504606846975)
@@ -914,12 +928,6 @@ bar
         octRaiseTest("00_1000_0000_0000_0000_0000_0007")
 
       block: # bin
-        binTest("000000000000000000000000000000000000000000000000", 0)
-        binTest("000000000000000000000000000000000000000000000001", 1)
-        binTest("0", 0)
-        binTest("1", 1)
-        binTest("11_0101", 53)
-        binTest("111", 7)
         binTest(repeat("11111111", 8), -1)
         binTest("00" & repeat("11111111", 8), -1)
         binTest("0111_1111" & repeat("11111111", 7), 9223372036854775807)
