@@ -22,7 +22,7 @@ block: # bug #16436
     doAssert false, "should fail earlier"
 
   let server = startServer()
-  asyncCheck runServer(server)
+  asyncCheck processRequest(server)
   let port = server.getPort()
   doAssertRaises(ProtocolError):
     waitFor runClient(port)
