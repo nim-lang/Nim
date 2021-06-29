@@ -1341,8 +1341,13 @@ proc typeRel(c: var TCandidate, f, aOrig: PType,
         result = isSubtype
       else:
         result = typeRel(c, f[0], a[0], flags)
-        if result <= isConvertible:
-          result = isNone     # BUGFIX!
+        if result < isGeneric:
+          if result <= isConvertible:
+            result = isNone
+          elif tfIsConstructor notin a.flags:
+            # set constructors are a bit special...
+            result = isNone
+
   of tyPtr, tyRef:
     skipOwned(a)
     if a.kind == f.kind:
