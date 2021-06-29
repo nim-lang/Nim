@@ -887,6 +887,44 @@ bar
     binTest("11_0101", 53)
     binTest("111", 7)
 
+  block:
+    let s = "0x_1235_8df6"
+    doAssert fromHex[int](s) == 305499638
+    doAssertRaises(ValueError):
+      echo fromHex[int8](s)
+    doAssertRaises(ValueError):
+      echo fromHex[int8](s)
+    doAssertRaises(ValueError):
+      echo fromHex[uint8](s)
+    doAssertRaises(ValueError):
+      echo s.fromHex[:int16]
+
+  block:
+    let s = "0o_123_456_777"
+    doAssert fromOct[int](s) == 21913087
+    doAssertRaises(ValueError):
+      echo fromOct[int8](s)
+    doAssertRaises(ValueError):
+      echo fromOct[int8](s)
+    doAssertRaises(ValueError):
+      echo fromOct[uint8](s)
+    doAssertRaises(ValueError):
+      echo s.fromOct[:int16]
+    doAssert s.fromOct[:uint64] == 21913087'u64
+
+  block:
+    let s = "0b_0100_1000_1000_1000_1110_1110_1001_1001"
+    doAssert fromBin[int](s) == 1216933529
+    doAssertRaises(ValueError):
+      echo fromBin[int8](s)
+    doAssertRaises(ValueError):
+      echo fromBin[int8](s)
+    doAssertRaises(ValueError):
+      echo fromBin[uint8](s)
+    doAssertRaises(ValueError):
+      echo s.fromBin[:int16]
+    doAssert s.fromBin[:uint64] == 1216933529'u64
+
   disableJsAndI386:
     block:
       block: # hex

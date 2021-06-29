@@ -989,10 +989,6 @@ func fromBin*[T: SomeInteger](s: string): T =
   runnableExamples:
     let s = "0b_0100_1000_1000_1000_1110_1110_1001_1001"
     doAssert fromBin[int](s) == 1216933529
-    # doAssert fromBin[int8](s) == 0b1001_1001'i8
-    # doAssert fromBin[int8](s) == -103'i8
-    # doAssert fromBin[uint8](s) == 153
-    # doAssert s.fromBin[:int16] == 0b1110_1110_1001_1001'i16
     doAssert s.fromBin[:uint64] == 1216933529'u64
 
   let p = parseutils.parseBin(s, result)
@@ -1012,10 +1008,6 @@ func fromOct*[T: SomeInteger](s: string): T =
   runnableExamples:
     let s = "0o_123_456_777"
     doAssert fromOct[int](s) == 21913087
-    # doAssert fromOct[int8](s) == 0o377'i8
-    # doAssert fromOct[int8](s) == -1'i8
-    # doAssert fromOct[uint8](s) == 255'u8
-    # doAssert s.fromOct[:int16] == 24063'i16
     doAssert s.fromOct[:uint64] == 21913087'u64
 
   let p = parseutils.parseOct(s, result)
@@ -1035,10 +1027,6 @@ func fromHex*[T: SomeInteger](s: string): T =
   runnableExamples:
     let s = "0x_1235_8df6"
     doAssert fromHex[int](s) == 305499638
-    # doAssert fromHex[int8](s) == 0xf6'i8
-    # doAssert fromHex[int8](s) == -10'i8
-    # doAssert fromHex[uint8](s) == 246'u8
-    # doAssert s.fromHex[:int16] == -29194'i16
     doAssert s.fromHex[:uint64] == 305499638'u64
 
   let p = parseutils.parseHex(s, result)

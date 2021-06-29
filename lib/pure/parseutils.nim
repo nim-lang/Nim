@@ -77,14 +77,6 @@ proc parseBin*[T: SomeInteger](s: string, number: var T, start = 0,
     doAssert parseBin("0100_1110_0110_1001_1110_1101", num) == 29
     doAssert num == 5138925
     doAssert parseBin("3", num) == 0
-    # var num8: int8
-    # doAssert parseBin("0b_0100_1110_0110_1001_1110_1101", num8) == 32
-    # doAssert num8 == 0b1110_1101'i8
-    # doAssert parseBin("0b_0100_1110_0110_1001_1110_1101", num8, 3, 9) == 9
-    # doAssert num8 == 0b0100_1110'i8
-    # var num8u: uint8
-    # doAssert parseBin("0b_0100_1110_0110_1001_1110_1101", num8u) == 32
-    # doAssert num8u == 237
     var num64: int64
     doAssert parseBin("0100111001101001111011010100111001101001", num64) == 40
     doAssert num64 == 336784608873
@@ -134,14 +126,6 @@ proc parseOct*[T: SomeInteger](s: string, number: var T, start = 0,
     doAssert parseOct("0o23464755", num) == 10
     doAssert num == 5138925
     doAssert parseOct("8", num) == 0
-    # var num8: int8
-    # doAssert parseOct("0o_1464_755", num8) == 11
-    # doAssert num8 == -19
-    # doAssert parseOct("0o_1464_755", num8, 3, 3) == 3
-    # doAssert num8 == 102
-    # var num8u: uint8
-    # doAssert parseOct("1464755", num8u) == 7
-    # doAssert num8u == 237
     var num64: int64
     doAssert parseOct("2346475523464755", num64) == 16
     doAssert num64 == 86216859871725
@@ -203,14 +187,6 @@ proc parseHex*[T: SomeInteger](s: string, number: var T, start = 0,
     doAssert num == 5138925
     doAssert parseHex("X", num) == 0
     doAssert parseHex("#ABC", num) == 4
-    # var num8: int8
-    # doAssert parseHex("0x_4E_69_ED", num8) == 11
-    # doAssert num8 == 0xED'i8
-    # doAssert parseHex("0x_4E_69_ED", num8, 3, 2) == 2
-    # doAssert num8 == 0x4E'i8
-    # var num8u: uint8
-    # doAssert parseHex("0x_4E_69_ED", num8u) == 11
-    # doAssert num8u == 237
     var num64: int64
     doAssert parseHex("4E69ED4E69ED", num64) == 12
     doAssert num64 == 86216859871725

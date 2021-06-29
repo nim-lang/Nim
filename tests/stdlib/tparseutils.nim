@@ -45,3 +45,34 @@ doAssert value == 1_000_000
 var i64Value: int64
 discard parseBiggestInt("9223372036854775807", i64Value)
 doAssert i64Value == 9223372036854775807
+
+
+block:
+  var num8: int8
+  doAssert parseOct("0o_1464_755", num8) == 0
+  doAssert num8 == 0
+  doAssert parseOct("0o_1464_755", num8, 3, 3) == 3
+  doAssert num8 == 102
+  var num8u: uint8
+  doAssert parseOct("1464755", num8u) == 0
+  doAssert num8u == 0
+
+block:
+  var num8: int8
+  doAssert parseBin("0b_0100_1110_0110_1001_1110_1101", num8) == 0
+  doAssert num8 == 0'i8
+  doAssert parseBin("0b_0100_1110_0110_1001_1110_1101", num8, 3, 9) == 9
+  doAssert num8 == 0b0100_1110'i8
+  var num8u: uint8
+  doAssert parseBin("0b_0100_1110_0110_1001_1110_1101", num8u) == 0
+  doAssert num8u == 0
+
+block:
+  var num8: int8
+  doAssert parseHex("0x_4E_69_ED", num8) == 0
+  doAssert num8 == 0'i8
+  doAssert parseHex("0x_4E_69_ED", num8, 3, 2) == 2
+  doAssert num8 == 0x4E'i8
+  var num8u: uint8
+  doAssert parseHex("0x_4E_69_ED", num8u) == 0
+  doAssert num8u == 0'u8
