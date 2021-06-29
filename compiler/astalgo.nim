@@ -222,9 +222,9 @@ proc getNamedParamFromList*(list: PNode, ident: PIdent): PSym =
   ## gensym'ed and then they have '\`<number>' suffix that we need to
   ## ignore, see compiler / evaltempl.nim, snippet:
   ##
-  ##..code-block:: nim
+  ## .. code-block:: nim
   ##
-  ##    result.add newIdentNode(getIdent(c.ic, x.name.s & "\`gensym" & $x.id),
+  ##   result.add newIdentNode(getIdent(c.ic, x.name.s & "\`gensym" & $x.id),
   ##            if c.instLines: actual.info else: templ.info)
   for i in 1..<list.len:
     let it = list[i].sym
@@ -759,9 +759,9 @@ proc strTableAdd*(t: var TStrTable, n: PSym) =
 
 proc strTableInclReportConflict*(t: var TStrTable, n: PSym;
                                  onConflictKeepOld = false): PSym =
-  # returns true if n is already in the string table:
-  # It is essential that `n` is written nevertheless!
-  # This way the newest redefinition is picked by the semantic analyses!
+  # if `t` has a conflicting symbol (same identifier as `n`), return it
+  # otherwise return `nil`. Incl `n` to `t` unless `onConflictKeepOld = true`
+  # and a conflict was found.
   assert n.name != nil
   var h: Hash = n.name.h and high(t.data)
   var replaceSlot = -1
@@ -777,9 +777,10 @@ proc strTableInclReportConflict*(t: var TStrTable, n: PSym;
       replaceSlot = h
     h = nextTry(h, high(t.data))
   if replaceSlot >= 0:
+    result = t.data[replaceSlot] # found it
     if not onConflictKeepOld:
       t.data[replaceSlot] = n # overwrite it with newer definition!
-    return t.data[replaceSlot] # found it
+    return result # but return the old one
   elif mustRehash(t.data.len, t.counter):
     strTableEnlarge(t)
     strTableRawInsert(t.data, n)

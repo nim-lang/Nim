@@ -9,11 +9,6 @@
 
 ## :Author: Zahary Karadjov
 ##
-## **Note**: Instead of ``unittest.nim``, please consider to use
-## the ``testament`` tool which offers process isolation for your tests.
-## Also ``when isMainModule: doAssert conditionHere`` is usually a
-## much simpler solution for testing purposes.
-##
 ## This module implements boilerplate to make unit testing easy.
 ##
 ## The test status and name is printed after any output or traceback.
@@ -22,8 +17,17 @@
 ## parent test as failed. Setup and teardown are inherited. Setup can be
 ## overridden locally.
 ##
-## Compiled test files as well as ``nim c -r <testfile.nim>``
+## Compiled test files as well as `nim c -r <testfile.nim>`
 ## exit with 0 for success (no failed tests) or 1 for failure.
+##
+## Testament
+## =========
+##
+## Instead of `unittest`, please consider using
+## `the Testament tool <testament.html>`_ which offers process isolation for your tests.
+##
+## Alternatively using `when isMainModule: doAssert conditionHere` is usually a
+## much simpler solution for testing purposes.
 ##
 ## Running a single test
 ## =====================
@@ -39,7 +43,7 @@
 ## Running a single test suite
 ## ===========================
 ##
-## Specify the suite name delimited by ``"::"``.
+## Specify the suite name delimited by `"::"`.
 ##
 ## .. code::
 ##
@@ -50,7 +54,7 @@
 ##
 ## A single ``"*"`` can be used for globbing.
 ##
-## Delimit the end of a suite name with ``"::"``.
+## Delimit the end of a suite name with `"::"`.
 ##
 ## Tests matching **any** of the arguments are executed.
 ##
@@ -92,7 +96,7 @@
 ##         discard v[4]
 ##
 ##     echo "suite teardown: run once after the tests"
-## 
+##
 ## Limitations/Bugs
 ## ================
 ## Since `check` will rewrite some expressions for supporting checkpoints
@@ -104,8 +108,7 @@
 import std/private/since
 import std/exitprocs
 
-import
-  macros, strutils, streams, times, sets, sequtils
+import macros, strutils, streams, times, sets, sequtils
 
 when declared(stdout):
   import os
@@ -139,21 +142,19 @@ type
   ConsoleOutputFormatter* = ref object of OutputFormatter
     colorOutput: bool
       ## Have test results printed in color.
-      ## Default is true for the non-js target,
-      ## for which ``stdout`` is a tty.
-      ## Setting the environment variable
-      ## ``NIMTEST_COLOR`` to ``always`` or
-      ## ``never`` changes the default for the
-      ## non-js target to true or false respectively.
-      ## The deprecated environment variable
-      ## ``NIMTEST_NO_COLOR``, when set,
-      ## changes the default to true, if
-      ## ``NIMTEST_COLOR`` is undefined.
+      ## Default is `auto` depending on `isatty(stdout)`, or override it with
+      ## `-d:nimUnittestColor:auto|on|off`.
+      ##
+      ## Deprecated: Setting the environment variable `NIMTEST_COLOR` to `always`
+      ## or `never` changes the default for the non-js target to true or false respectively.
+      ## Deprecated: the environment variable `NIMTEST_NO_COLOR`, when set, changes the
+      ## default to true, if `NIMTEST_COLOR` is undefined.
     outputLevel: OutputLevel
       ## Set the verbosity of test results.
-      ## Default is ``PRINT_ALL``, unless
-      ## the ``NIMTEST_OUTPUT_LVL`` environment
-      ## variable is set for the non-js target.
+      ## Default is `PRINT_ALL`, or override with:
+      ## `-d:nimUnittestOutputLevel:PRINT_ALL|PRINT_FAILURES|PRINT_NONE`.
+      ##
+      ## Deprecated: the `NIMTEST_OUTPUT_LVL` environment variable is set for the non-js target.
     isInSuite: bool
     isInTest: bool
 
@@ -166,17 +167,31 @@ type
 var
   abortOnError* {.threadvar.}: bool ## Set to true in order to quit
                                     ## immediately on fail. Default is false,
-                                    ## unless the ``NIMTEST_ABORT_ON_ERROR``
-                                    ## environment variable is set for
-                                    ## the non-js target.
+                                    ## or override with `-d:nimUnittestAbortOnError:on|off`.
+                                    ##
+                                    ## Deprecated: can also override depending on whether
+                                    ## `NIMTEST_ABORT_ON_ERROR` environment variable is set.
 
   checkpoints {.threadvar.}: seq[string]
   formatters {.threadvar.}: seq[OutputFormatter]
   testsFilters {.threadvar.}: HashSet[string]
   disabledParamFiltering {.threadvar.}: bool
 
+const
+  outputLevelDefault = PRINT_ALL
+  nimUnittestOutputLevel {.strdefine.} = $outputLevelDefault
+  nimUnittestColor {.strdefine.} = "auto" ## auto|on|off
+  nimUnittestAbortOnError {.booldefine.} = false
+
+template deprecateEnvVarHere() =
+  # xxx issue a runtime warning to deprecate this envvar.
+  discard
+
+abortOnError = nimUnittestAbortOnError
 when declared(stdout):
-  abortOnError = existsEnv("NIMTEST_ABORT_ON_ERROR")
+  if existsEnv("NIMTEST_ABORT_ON_ERROR"):
+    deprecateEnvVarHere()
+    abortOnError = true
 
 method suiteStarted*(formatter: OutputFormatter, suiteName: string) {.base, gcsafe.} =
   discard
@@ -202,36 +217,44 @@ proc delOutputFormatter*(formatter: OutputFormatter) =
 proc resetOutputFormatters* {.since: (1, 1).} =
   formatters = @[]
 
-proc newConsoleOutputFormatter*(outputLevel: OutputLevel = OutputLevel.PRINT_ALL,
-                                colorOutput = true): <//>ConsoleOutputFormatter =
+proc newConsoleOutputFormatter*(outputLevel: OutputLevel = outputLevelDefault,
+                                colorOutput = true): ConsoleOutputFormatter =
   ConsoleOutputFormatter(
     outputLevel: outputLevel,
     colorOutput: colorOutput
   )
 
-proc defaultConsoleFormatter*(): <//>ConsoleOutputFormatter =
+proc colorOutput(): bool =
+  let color = nimUnittestColor
+  case color
+  of "auto":
+    when declared(stdout): result = isatty(stdout)
+    else: result = false
+  of "on": result = true
+  of "off": result = false
+  else: doAssert false, $color
+
   when declared(stdout):
-    # Reading settings
-    # On a terminal this branch is executed
-    var envOutLvl = os.getEnv("NIMTEST_OUTPUT_LVL").string
-    var colorOutput = isatty(stdout)
     if existsEnv("NIMTEST_COLOR"):
+      deprecateEnvVarHere()
       let colorEnv = getEnv("NIMTEST_COLOR")
       if colorEnv == "never":
-        colorOutput = false
+        result = false
       elif colorEnv == "always":
-        colorOutput = true
+        result = true
     elif existsEnv("NIMTEST_NO_COLOR"):
-      colorOutput = false
-    var outputLevel = OutputLevel.PRINT_ALL
-    if envOutLvl.len > 0:
-      for opt in countup(low(OutputLevel), high(OutputLevel)):
-        if $opt == envOutLvl:
-          outputLevel = opt
-          break
-    result = newConsoleOutputFormatter(outputLevel, colorOutput)
-  else:
-    result = newConsoleOutputFormatter()
+      deprecateEnvVarHere()
+      result = false
+
+proc defaultConsoleFormatter*(): ConsoleOutputFormatter =
+  var colorOutput = colorOutput()
+  var outputLevel = nimUnittestOutputLevel.parseEnum[:OutputLevel]
+  when declared(stdout):
+    const a = "NIMTEST_OUTPUT_LVL"
+    if existsEnv(a):
+      # xxx issue a warning to deprecate this envvar.
+      outputLevel = getEnv(a).parseEnum[:OutputLevel]
+  result = newConsoleOutputFormatter(outputLevel, colorOutput)
 
 method suiteStarted*(formatter: ConsoleOutputFormatter, suiteName: string) =
   template rawPrint() = echo("\n[Suite] ", suiteName)
@@ -292,7 +315,7 @@ proc xmlEscape(s: string): string =
       else:
         result.add(c)
 
-proc newJUnitOutputFormatter*(stream: Stream): <//>JUnitOutputFormatter =
+proc newJUnitOutputFormatter*(stream: Stream): JUnitOutputFormatter =
   ## Creates a formatter that writes report to the specified stream in
   ## JUnit format.
   ## The ``stream`` is NOT closed automatically when the test are finished,
@@ -491,7 +514,9 @@ template suite*(name, body) {.dirty.} =
     finally:
       suiteEnded()
 
-template exceptionTypeName(e: typed): string = $e.name
+proc exceptionTypeName(e: ref Exception): string {.inline.} =
+  if e == nil: "<foreign exception>"
+  else: $e.name
 
 template test*(name, body) {.dirty.} =
   ## Define a single test case identified by `name`.
@@ -528,8 +553,11 @@ template test*(name, body) {.dirty.} =
       let e = getCurrentException()
       let eTypeDesc = "[" & exceptionTypeName(e) & "]"
       checkpoint("Unhandled exception: " & getCurrentExceptionMsg() & " " & eTypeDesc)
-      var stackTrace {.inject.} = e.getStackTrace()
-      fail()
+      if e == nil: # foreign
+        fail()
+      else:
+        var stackTrace {.inject.} = e.getStackTrace()
+        fail()
 
     finally:
       if testStatusIMPL == TestStatus.FAILED:
@@ -608,19 +636,17 @@ macro check*(conditions: untyped): untyped =
   ## Verify if a statement or a list of statements is true.
   ## A helpful error message and set checkpoints are printed out on
   ## failure (if ``outputLevel`` is not ``PRINT_NONE``).
-  ## Example:
-  ##
-  ## .. code-block:: nim
-  ##
-  ##  import strutils
-  ##
-  ##  check("AKB48".toLowerAscii() == "akb48")
-  ##
-  ##  let teams = {'A', 'K', 'B', '4', '8'}
-  ##
-  ##  check:
-  ##    "AKB48".toLowerAscii() == "akb48"
-  ##    'C' in teams
+  runnableExamples:
+    import std/strutils
+
+    check("AKB48".toLowerAscii() == "akb48")
+
+    let teams = {'A', 'K', 'B', '4', '8'}
+
+    check:
+      "AKB48".toLowerAscii() == "akb48"
+      'C' notin teams
+
   let checked = callsite()[1]
 
   template asgn(a: untyped, value: typed) =
@@ -649,14 +675,15 @@ macro check*(conditions: untyped): untyped =
           let paramAst = exp[i]
           if exp[i].kind == nnkIdent:
             result.printOuts.add getAst(print(argStr, paramAst))
-          if exp[i].kind in nnkCallKinds + {nnkDotExpr, nnkBracketExpr, nnkPar}:
+          if exp[i].kind in nnkCallKinds + {nnkDotExpr, nnkBracketExpr, nnkPar} and
+                  (exp[i].typeKind notin {ntyTypeDesc} or $exp[0] notin ["is", "isnot"]):
             let callVar = newIdentNode(":c" & $counter)
             result.assigns.add getAst(asgn(callVar, paramAst))
             result.check[i] = callVar
             result.printOuts.add getAst(print(argStr, callVar))
           if exp[i].kind == nnkExprEqExpr:
             # ExprEqExpr
-            #   Ident !"v"
+            #   Ident "v"
             #   IntLit 2
             result.check[i] = exp[i][1]
           if exp[i].typeKind notin {ntyTypeDesc}:
@@ -711,22 +738,19 @@ macro expect*(exceptions: varargs[typed], body: untyped): untyped =
   ## Test if `body` raises an exception found in the passed `exceptions`.
   ## The test passes if the raised exception is part of the acceptable
   ## exceptions. Otherwise, it fails.
-  ## Example:
-  ##
-  ## .. code-block:: nim
-  ##
-  ##  import math, random
-  ##  proc defectiveRobot() =
-  ##    randomize()
-  ##    case rand(1..4)
-  ##    of 1: raise newException(OSError, "CANNOT COMPUTE!")
-  ##    of 2: discard parseInt("Hello World!")
-  ##    of 3: raise newException(IOError, "I can't do that Dave.")
-  ##    else: assert 2 + 2 == 5
-  ##
-  ##  expect IOError, OSError, ValueError, AssertionDefect:
-  ##    defectiveRobot()
-  let exp = callsite()
+  runnableExamples:
+    import std/[math, random, strutils]
+    proc defectiveRobot() =
+      randomize()
+      case rand(1..4)
+      of 1: raise newException(OSError, "CANNOT COMPUTE!")
+      of 2: discard parseInt("Hello World!")
+      of 3: raise newException(IOError, "I can't do that Dave.")
+      else: assert 2 + 2 == 5
+
+    expect IOError, OSError, ValueError, AssertionDefect:
+      defectiveRobot()
+
   template expectBody(errorTypes, lineInfoLit, body): NimNode {.dirty.} =
     try:
       body
@@ -738,13 +762,11 @@ macro expect*(exceptions: varargs[typed], body: untyped): untyped =
       checkpoint(lineInfoLit & ": Expect Failed, unexpected exception was thrown.")
       fail()
 
-  var body = exp[exp.len - 1]
-
   var errorTypes = newNimNode(nnkBracket)
-  for i in countup(1, exp.len - 2):
-    errorTypes.add(exp[i])
+  for exp in exceptions:
+    errorTypes.add(exp)
 
-  result = getAst(expectBody(errorTypes, exp.lineInfo, body))
+  result = getAst(expectBody(errorTypes, errorTypes.lineInfo, body))
 
 proc disableParamFiltering* =
   ## disables filtering tests with the command line params

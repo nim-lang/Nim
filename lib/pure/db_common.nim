@@ -7,7 +7,7 @@
 #    distribution, for details about the copyright.
 #
 
-## Common datatypes and definitions for all ``db_*.nim`` (
+## Common datatypes and definitions for all `db_*.nim` (
 ## `db_mysql <db_mysql.html>`_, `db_postgres <db_postgres.html>`_,
 ## and `db_sqlite <db_sqlite.html>`_) modules.
 
@@ -86,7 +86,7 @@ type
 template sql*(query: string): SqlQuery =
   ## constructs a SqlQuery from the string `query`. This is supposed to be
   ## used as a raw-string-literal modifier:
-  ## ``sql"update user set counter = counter + 1"``
+  ## `sql"update user set counter = counter + 1"`
   ##
   ## If assertions are turned off, it does nothing. If assertions are turned
   ## on, later versions will check the string for valid syntax.

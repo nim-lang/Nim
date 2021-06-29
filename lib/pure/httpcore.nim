@@ -7,11 +7,11 @@
 #    distribution, for details about the copyright.
 #
 
-## Contains functionality shared between the ``httpclient`` and
-## ``asynchttpserver`` modules.
+## Contains functionality shared between the `httpclient` and
+## `asynchttpserver` modules.
 ##
 ## Unstable API.
-
+import std/private/since
 import tables, strutils, parseutils
 
 type
@@ -29,29 +29,33 @@ type
     HttpVer11,
     HttpVer10
 
-  HttpMethod* = enum ## the requested HttpMethod
-    HttpHead,        ## Asks for the response identical to the one that would
-                     ## correspond to a GET request, but without the response
-                     ## body.
-    HttpGet,         ## Retrieves the specified resource.
-    HttpPost,        ## Submits data to be processed to the identified
-                     ## resource. The data is included in the body of the
-                     ## request.
-    HttpPut,         ## Uploads a representation of the specified resource.
-    HttpDelete,      ## Deletes the specified resource.
-    HttpTrace,       ## Echoes back the received request, so that a client
-                     ## can see what intermediate servers are adding or
-                     ## changing in the request.
-    HttpOptions,     ## Returns the HTTP methods that the server supports
-                     ## for specified address.
-    HttpConnect,     ## Converts the request connection to a transparent
-                     ## TCP/IP tunnel, usually used for proxies.
-    HttpPatch        ## Applies partial modifications to a resource.
+  HttpMethod* = enum         ## the requested HttpMethod
+    HttpHead = "HEAD"        ## Asks for the response identical to the one that
+                             ## would correspond to a GET request, but without
+                             ## the response body.
+    HttpGet = "GET"          ## Retrieves the specified resource.
+    HttpPost = "POST"        ## Submits data to be processed to the identified
+                             ## resource. The data is included in the body of
+                             ## the request.
+    HttpPut = "PUT"          ## Uploads a representation of the specified
+                             ## resource.
+    HttpDelete = "DELETE"    ## Deletes the specified resource.
+    HttpTrace = "TRACE"      ## Echoes back the received request, so that a
+                             ## client
+                             ## can see what intermediate servers are adding or
+                             ## changing in the request.
+    HttpOptions = "OPTIONS"  ## Returns the HTTP methods that the server
+                             ## supports for specified address.
+    HttpConnect = "CONNECT"  ## Converts the request connection to a transparent
+                             ## TCP/IP tunnel, usually used for proxies.
+    HttpPatch = "PATCH"      ## Applies partial modifications to a resource.
 
 
 const
   Http100* = HttpCode(100)
   Http101* = HttpCode(101)
+  Http102* = HttpCode(102)  ## https://tools.ietf.org/html/rfc2518.html WebDAV
+  Http103* = HttpCode(103)  ## https://tools.ietf.org/html/rfc8297.html Early hints
   Http200* = HttpCode(200)
   Http201* = HttpCode(201)
   Http202* = HttpCode(202)
@@ -59,6 +63,9 @@ const
   Http204* = HttpCode(204)
   Http205* = HttpCode(205)
   Http206* = HttpCode(206)
+  Http207* = HttpCode(207)  ## https://tools.ietf.org/html/rfc4918.html WebDAV
+  Http208* = HttpCode(208)  ## https://tools.ietf.org/html/rfc5842.html WebDAV, Section 7.1
+  Http226* = HttpCode(226)  ## https://tools.ietf.org/html/rfc3229.html Delta encoding, Section 10.4.1
   Http300* = HttpCode(300)
   Http301* = HttpCode(301)
   Http302* = HttpCode(302)
@@ -69,6 +76,7 @@ const
   Http308* = HttpCode(308)
   Http400* = HttpCode(400)
   Http401* = HttpCode(401)
+  Http402* = HttpCode(402)  ## https://tools.ietf.org/html/rfc7231.html Payment required, Section 6.5.2
   Http403* = HttpCode(403)
   Http404* = HttpCode(404)
   Http405* = HttpCode(405)
@@ -87,6 +95,9 @@ const
   Http418* = HttpCode(418)
   Http421* = HttpCode(421)
   Http422* = HttpCode(422)
+  Http423* = HttpCode(423)  ## https://tools.ietf.org/html/rfc4918.html WebDAV, Section 11.3
+  Http424* = HttpCode(424)  ## https://tools.ietf.org/html/rfc4918.html WebDAV, Section 11.3
+  Http425* = HttpCode(425)  ## https://tools.ietf.org/html/rfc8470.html Early data
   Http426* = HttpCode(426)
   Http428* = HttpCode(428)
   Http429* = HttpCode(429)
@@ -98,6 +109,12 @@ const
   Http503* = HttpCode(503)
   Http504* = HttpCode(504)
   Http505* = HttpCode(505)
+  Http506* = HttpCode(506)  ## https://tools.ietf.org/html/rfc2295.html Content negotiation, Section 8.1
+  Http507* = HttpCode(507)  ## https://tools.ietf.org/html/rfc4918.html WebDAV, Section 11.5
+  Http508* = HttpCode(508)  ## https://tools.ietf.org/html/rfc5842.html WebDAV, Section 7.2
+  Http510* = HttpCode(510)  ## https://tools.ietf.org/html/rfc2774.html Extension framework, Section 7
+  Http511* = HttpCode(511)  ## https://tools.ietf.org/html/rfc6585.html Additional status code, Section 6
+
 
 const httpNewLine* = "\c\L"
 const headerLimit* = 10_000
@@ -113,7 +130,7 @@ func toCaseInsensitive(headers: HttpHeaders, s: string): string {.inline.} =
   return if headers.isTitleCase: toTitleCase(s) else: toLowerAscii(s)
 
 func newHttpHeaders*(titleCase=false): HttpHeaders =
-  ## Returns a new ``HttpHeaders`` object. if ``titleCase`` is set to true,
+  ## Returns a new `HttpHeaders` object. if `titleCase` is set to true,
   ## headers are passed to the server in title case (e.g. "Content-Length")
   new result
   result.table = newTable[string, seq[string]]()
@@ -121,7 +138,7 @@ func newHttpHeaders*(titleCase=false): HttpHeaders =
 
 func newHttpHeaders*(keyValuePairs:
     openArray[tuple[key: string, val: string]], titleCase=false): HttpHeaders =
-  ## Returns a new ``HttpHeaders`` object from an array. if ``titleCase`` is set to true,
+  ## Returns a new `HttpHeaders` object from an array. if `titleCase` is set to true,
   ## headers are passed to the server in title case (e.g. "Content-Length")
   new result
   result.table = newTable[string, seq[string]]()
@@ -135,7 +152,6 @@ func newHttpHeaders*(keyValuePairs:
       else:
         result.table[key] = @[pair.val]
 
-
 func `$`*(headers: HttpHeaders): string {.inline.} =
   $headers.table
 
@@ -143,13 +159,13 @@ proc clear*(headers: HttpHeaders) {.inline.} =
   headers.table.clear()
 
 func `[]`*(headers: HttpHeaders, key: string): HttpHeaderValues =
-  ## Returns the values associated with the given ``key``. If the returned
-  ## values are passed to a procedure expecting a ``string``, the first
+  ## Returns the values associated with the given `key`. If the returned
+  ## values are passed to a procedure expecting a `string`, the first
   ## value is automatically picked. If there are
   ## no values associated with the key, an exception is raised.
   ##
-  ## To access multiple values of a key, use the overloaded ``[]`` below or
-  ## to get all of them access the ``table`` field directly.
+  ## To access multiple values of a key, use the overloaded `[]` below or
+  ## to get all of them access the `table` field directly.
   {.cast(noSideEffect).}:
     return headers.table[headers.toCaseInsensitive(key)].HttpHeaderValues
 
@@ -157,21 +173,21 @@ converter toString*(values: HttpHeaderValues): string =
   return seq[string](values)[0]
 
 func `[]`*(headers: HttpHeaders, key: string, i: int): string =
-  ## Returns the ``i``'th value associated with the given key. If there are
-  ## no values associated with the key or the ``i``'th value doesn't exist,
+  ## Returns the `i`'th value associated with the given key. If there are
+  ## no values associated with the key or the `i`'th value doesn't exist,
   ## an exception is raised.
   {.cast(noSideEffect).}:
     return headers.table[headers.toCaseInsensitive(key)][i]
 
 proc `[]=`*(headers: HttpHeaders, key, value: string) =
-  ## Sets the header entries associated with ``key`` to the specified value.
+  ## Sets the header entries associated with `key` to the specified value.
   ## Replaces any existing values.
   headers.table[headers.toCaseInsensitive(key)] = @[value]
 
 proc `[]=`*(headers: HttpHeaders, key: string, value: seq[string]) =
-  ## Sets the header entries associated with ``key`` to the specified list of
-  ## values. Replaces any existing values. If ``value`` is empty,
-  ## deletes the header entries associated with ``key``.
+  ## Sets the header entries associated with `key` to the specified list of
+  ## values. Replaces any existing values. If `value` is empty,
+  ## deletes the header entries associated with `key`.
   if value.len > 0:
     headers.table[headers.toCaseInsensitive(key)] = value
   else:
@@ -186,7 +202,7 @@ proc add*(headers: HttpHeaders, key, value: string) =
     headers.table[headers.toCaseInsensitive(key)].add(value)
 
 proc del*(headers: HttpHeaders, key: string) =
-  ## Deletes the header entries associated with ``key``
+  ## Deletes the header entries associated with `key`
   headers.table.del(headers.toCaseInsensitive(key))
 
 iterator pairs*(headers: HttpHeaders): tuple[key, value: string] =
@@ -196,7 +212,7 @@ iterator pairs*(headers: HttpHeaders): tuple[key, value: string] =
       yield (k, value)
 
 func contains*(values: HttpHeaderValues, value: string): bool =
-  ## Determines if ``value`` is one of the values inside ``values``. Comparison
+  ## Determines if `value` is one of the values inside `values`. Comparison
   ## is performed without case sensitivity.
   for val in seq[string](values):
     if val.toLowerAscii == value.toLowerAscii: return true
@@ -206,8 +222,8 @@ func hasKey*(headers: HttpHeaders, key: string): bool =
 
 func getOrDefault*(headers: HttpHeaders, key: string,
     default = @[""].HttpHeaderValues): HttpHeaderValues =
-  ## Returns the values associated with the given ``key``. If there are no
-  ## values associated with the key, then ``default`` is returned.
+  ## Returns the values associated with the given `key`. If there are no
+  ## values associated with the key, then `default` is returned.
   if headers.hasKey(key):
     return headers[key]
   else:
@@ -229,7 +245,7 @@ func parseList(line: string, list: var seq[string], start: int): int =
 func parseHeader*(line: string): tuple[key: string, value: seq[string]] =
   ## Parses a single raw header HTTP line into key value pairs.
   ##
-  ## Used by ``asynchttpserver`` and ``httpclient`` internally and should not
+  ## Used by `asynchttpserver` and `httpclient` internally and should not
   ## be used by you.
   result.value = @[]
   var i = 0
@@ -261,12 +277,14 @@ func contains*(methods: set[HttpMethod], x: string): bool =
   return parseEnum[HttpMethod](x) in methods
 
 func `$`*(code: HttpCode): string =
-  ## Converts the specified ``HttpCode`` into a HTTP status.
+  ## Converts the specified `HttpCode` into a HTTP status.
   runnableExamples:
     doAssert($Http404 == "404 Not Found")
   case code.int
   of 100: "100 Continue"
   of 101: "101 Switching Protocols"
+  of 102: "102 Processing"
+  of 103: "103 Early Hints"
   of 200: "200 OK"
   of 201: "201 Created"
   of 202: "202 Accepted"
@@ -274,6 +292,9 @@ func `$`*(code: HttpCode): string =
   of 204: "204 No Content"
   of 205: "205 Reset Content"
   of 206: "206 Partial Content"
+  of 207: "207 Multi-Status"
+  of 208: "208 Already Reported"
+  of 226: "226 IM Used"
   of 300: "300 Multiple Choices"
   of 301: "301 Moved Permanently"
   of 302: "302 Found"
@@ -284,6 +305,7 @@ func `$`*(code: HttpCode): string =
   of 308: "308 Permanent Redirect"
   of 400: "400 Bad Request"
   of 401: "401 Unauthorized"
+  of 402: "402 Payment Required"
   of 403: "403 Forbidden"
   of 404: "404 Not Found"
   of 405: "405 Method Not Allowed"
@@ -302,6 +324,9 @@ func `$`*(code: HttpCode): string =
   of 418: "418 I'm a teapot"
   of 421: "421 Misdirected Request"
   of 422: "422 Unprocessable Entity"
+  of 423: "423 Locked"
+  of 424: "424 Failed Dependency"
+  of 425: "425 Too Early"
   of 426: "426 Upgrade Required"
   of 428: "428 Precondition Required"
   of 429: "429 Too Many Requests"
@@ -313,6 +338,11 @@ func `$`*(code: HttpCode): string =
   of 503: "503 Service Unavailable"
   of 504: "504 Gateway Timeout"
   of 505: "505 HTTP Version Not Supported"
+  of 506: "506 Variant Also Negotiates"
+  of 507: "507 Insufficient Storage"
+  of 508: "508 Loop Detected"
+  of 510: "510 Not Extended"
+  of 511: "511 Network Authentication Required"
   else: $(int(code))
 
 func `==`*(a, b: HttpCode): bool {.borrow.}
@@ -323,50 +353,29 @@ proc `==`*(rawCode: string, code: HttpCode): bool
   ##
   ## **Note**: According to HTTP/1.1 specification, the reason phrase is
   ##           optional and should be ignored by the client, making this
-  ##           proc only suitable for comparing the ``HttpCode`` against the
+  ##           proc only suitable for comparing the `HttpCode` against the
   ##           string form of itself.
   return cmpIgnoreCase(rawCode, $code) == 0
 
+func is1xx*(code: HttpCode): bool {.inline, since: (1, 5).} =
+  ## Determines whether `code` is a 1xx HTTP status code.
+  runnableExamples:
+    doAssert is1xx(HttpCode(103))
+
+  code.int in {100 .. 199}
+
 func is2xx*(code: HttpCode): bool {.inline.} =
-  ## Determines whether ``code`` is a 2xx HTTP status code.
+  ## Determines whether `code` is a 2xx HTTP status code.
   code.int in {200 .. 299}
 
 func is3xx*(code: HttpCode): bool {.inline.} =
-  ## Determines whether ``code`` is a 3xx HTTP status code.
+  ## Determines whether `code` is a 3xx HTTP status code.
   code.int in {300 .. 399}
 
 func is4xx*(code: HttpCode): bool {.inline.} =
-  ## Determines whether ``code`` is a 4xx HTTP status code.
+  ## Determines whether `code` is a 4xx HTTP status code.
   code.int in {400 .. 499}
 
 func is5xx*(code: HttpCode): bool {.inline.} =
-  ## Determines whether ``code`` is a 5xx HTTP status code.
+  ## Determines whether `code` is a 5xx HTTP status code.
   code.int in {500 .. 599}
-
-func `$`*(httpMethod: HttpMethod): string =
-  return (system.`$`(httpMethod))[4 .. ^1].toUpperAscii()
-
-when isMainModule:
-  var test = newHttpHeaders()
-  test["Connection"] = @["Upgrade", "Close"]
-  doAssert test["Connection", 0] == "Upgrade"
-  doAssert test["Connection", 1] == "Close"
-  test.add("Connection", "Test")
-  doAssert test["Connection", 2] == "Test"
-  doAssert "upgrade" in test["Connection"]
-
-  # Bug #5344.
-  doAssert parseHeader("foobar: ") == ("foobar", @[""])
-  let (key, value) = parseHeader("foobar: ")
-  test = newHttpHeaders()
-  test[key] = value
-  doAssert test["foobar"] == ""
-
-  doAssert parseHeader("foobar:") == ("foobar", @[""])
-
-  block: # test title case
-    var testTitleCase = newHttpHeaders(titleCase=true)
-    testTitleCase.add("content-length", "1")
-    doAssert testTitleCase.hasKey("Content-Length")
-    for key, val in testTitleCase:
-        doAssert key == "Content-Length"

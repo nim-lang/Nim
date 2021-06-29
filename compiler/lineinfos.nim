@@ -27,24 +27,31 @@ proc createDocLink*(urlSuffix: string): string =
 
 type
   TMsgKind* = enum
-    errUnknown, errInternal, errIllFormedAstX, errCannotOpenFile,
+    # fatal errors
+    errUnknown, errFatal, errInternal,
+    # non-fatal errors
+    errIllFormedAstX, errCannotOpenFile,
     errXExpected,
     errGridTableNotImplemented,
     errMarkdownIllformedTable,
     errGeneralParseError,
     errNewSectionExpected,
     errInvalidDirectiveX,
+    errInvalidRstField,
+    errFootnoteMismatch,
     errProveInit, # deadcode
     errGenerated,
     errUser,
-
+    # warnings
     warnCannotOpenFile = "CannotOpenFile", warnOctalEscape = "OctalEscape",
     warnXIsNeverRead = "XIsNeverRead", warnXmightNotBeenInit = "XmightNotBeenInit",
     warnDeprecated = "Deprecated", warnConfigDeprecated = "ConfigDeprecated",
     warnSmallLshouldNotBeUsed = "SmallLshouldNotBeUsed", warnUnknownMagic = "UnknownMagic",
     warnRedefinitionOfLabel = "RedefinitionOfLabel", warnUnknownSubstitutionX = "UnknownSubstitutionX",
-    warnLanguageXNotSupported = "LanguageXNotSupported", warnFieldXNotSupported = "FieldXNotSupported",
-    warnCommentXIgnored = "CommentXIgnored", warnTypelessParam = "TypelessParam",
+    warnLanguageXNotSupported = "LanguageXNotSupported",
+    warnFieldXNotSupported = "FieldXNotSupported",
+    warnRstStyle = "warnRstStyle", warnCommentXIgnored = "CommentXIgnored",
+    warnTypelessParam = "TypelessParam",
     warnUseBase = "UseBase", warnWriteToForeignHeap = "WriteToForeignHeap",
     warnUnsafeCode = "UnsafeCode", warnUnusedImportX = "UnusedImport",
     warnInheritFromException = "InheritFromException", warnEachIdentIsTuple = "EachIdentIsTuple",
@@ -56,10 +63,16 @@ type
     warnLockLevel = "LockLevel", warnResultShadowed = "ResultShadowed",
     warnInconsistentSpacing = "Spacing",  warnCaseTransition = "CaseTransition",
     warnCycleCreated = "CycleCreated", warnObservableStores = "ObservableStores",
+    warnStrictNotNil = "StrictNotNil",
+    warnResultUsed = "ResultUsed",
+    warnCannotOpen = "CannotOpen",
+    warnFileChanged = "FileChanged",
     warnUser = "User",
-
-    hintSuccess = "Success", hintSuccessX = "SuccessX", hintCC = "CC",
-    hintLineTooLong = "LineTooLong", hintXDeclaredButNotUsed = "XDeclaredButNotUsed",
+    # hints
+    hintSuccess = "Success", hintSuccessX = "SuccessX",
+    hintCC = "CC",
+    hintLineTooLong = "LineTooLong",
+    hintXDeclaredButNotUsed = "XDeclaredButNotUsed", hintDuplicateModuleImport = "DuplicateModuleImport",
     hintXCannotRaiseY = "XCannotRaiseY", hintConvToBaseNotNeeded = "ConvToBaseNotNeeded",
     hintConvFromXtoItselfNotNeeded = "ConvFromXtoItselfNotNeeded", hintExprAlwaysX = "ExprAlwaysX",
     hintQuitCalled = "QuitCalled", hintProcessing = "Processing", hintCodeBegin = "CodeBegin",
@@ -75,6 +88,7 @@ type
 const
   MsgKindToStr*: array[TMsgKind, string] = [
     errUnknown: "unknown error",
+    errFatal: "fatal error: $1",
     errInternal: "internal error: $1",
     errIllFormedAstX: "illformed AST: $1",
     errCannotOpenFile: "cannot open '$1'",
@@ -82,8 +96,10 @@ const
     errGridTableNotImplemented: "grid table is not implemented",
     errMarkdownIllformedTable: "illformed delimiter row of a markdown table",
     errGeneralParseError: "general parse error",
-    errNewSectionExpected: "new section expected",
+    errNewSectionExpected: "new section expected $1",
     errInvalidDirectiveX: "invalid directive: '$1'",
+    errInvalidRstField: "invalid field: $1",
+    errFootnoteMismatch: "number of footnotes and their references don't match: $1",
     errProveInit: "Cannot prove that '$1' is initialized.",  # deadcode
     errGenerated: "$1",
     errUser: "$1",
@@ -99,8 +115,9 @@ const
     warnUnknownSubstitutionX: "unknown substitution '$1'",
     warnLanguageXNotSupported: "language '$1' not supported",
     warnFieldXNotSupported: "field '$1' not supported",
+    warnRstStyle: "RST style: $1",
     warnCommentXIgnored: "comment '$1' ignored",
-    warnTypelessParam: "'$1' has no type. Typeless parameters are deprecated; only allowed for 'template'",
+    warnTypelessParam: "", # deadcode
     warnUseBase: "use {.base.} for base methods; baseless methods are deprecated",
     warnWriteToForeignHeap: "write to foreign heap",
     warnUnsafeCode: "unsafe code: '$1'",
@@ -128,13 +145,18 @@ const
     warnCaseTransition: "Potential object case transition, instantiate new object instead",
     warnCycleCreated: "$1",
     warnObservableStores: "observable stores to '$1'",
+    warnStrictNotNil: "$1",
+    warnResultUsed: "used 'result' variable",
+    warnCannotOpen: "cannot open: $1",
+    warnFileChanged: "file changed: $1",
     warnUser: "$1",
     hintSuccess: "operation successful: $#",
     # keep in sync with `testament.isSuccess`
-    hintSuccessX: "${loc} lines; ${sec}s; $mem; $build build; proj: $project; out: $output",
+    hintSuccessX: "$build\n$loc lines; ${sec}s; $mem; proj: $project; out: $output",
     hintCC: "CC: $1",
     hintLineTooLong: "line too long",
     hintXDeclaredButNotUsed: "'$1' is declared but not used",
+    hintDuplicateModuleImport: "$1",
     hintXCannotRaiseY: "$1",
     hintConvToBaseNotNeeded: "conversion to base object is not needed",
     hintConvFromXtoItselfNotNeeded: "conversion from $1 to itself is pointless",
@@ -166,8 +188,7 @@ const
   ]
 
 const
-  fatalMin* = errUnknown
-  fatalMax* = errInternal
+  fatalMsgs* = {errUnknown..errInternal}
   errMin* = errUnknown
   errMax* = errUser
   warnMin* = warnCannotOpenFile
@@ -180,11 +201,11 @@ type
   TNoteKinds* = set[TNoteKind]
 
 proc computeNotesVerbosity(): array[0..3, TNoteKinds] =
-  result[3] = {low(TNoteKind)..high(TNoteKind)} - {warnObservableStores}
+  result[3] = {low(TNoteKind)..high(TNoteKind)} - {warnObservableStores, warnResultUsed}
   result[2] = result[3] - {hintStackTrace, warnUninit, hintExtendedContext, hintDeclaredLoc}
   result[1] = result[2] - {warnProveField, warnProveIndex,
     warnGcUnsafe, hintPath, hintDependency, hintCodeBegin, hintCodeEnd,
-    hintSource, hintGlobalVar, hintGCStats, hintMsgOrigin}
+    hintSource, hintGlobalVar, hintGCStats, hintMsgOrigin, hintPerformance}
   result[0] = result[1] - {hintSuccessX, hintSuccess, hintConf,
     hintProcessing, hintPattern, hintExecuting, hintLinking, hintCC}
 
@@ -278,3 +299,4 @@ proc initMsgConfig*(): MsgConfig =
   result.filenameToIndexTbl = initTable[string, FileIndex]()
   result.fileInfos = @[]
   result.errorOutputs = {eStdOut, eStdErr}
+  result.filenameToIndexTbl["???"] = FileIndex(-1)

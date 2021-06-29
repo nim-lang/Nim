@@ -11,6 +11,9 @@ Obj(member: ref @["hello"])
 ref (member: ref @["hello"])
 '''
 """
+
+# xxx consider merging with `tests/stdlib/trepr.nim` to increase overall test coverage
+
 import tables
 
 type
@@ -68,3 +71,19 @@ proc p2 =
 
 discard repr p2
 
+
+#####################################################################
+# bug #15043
+
+import macros
+
+macro extract(): untyped =
+  result = newStmtList()
+  var x: seq[tuple[node: NimNode]]
+
+  proc test(n: NimNode) {.closure.} =
+    x.add (node: n)
+  
+  test(parseExpr("discard"))
+  
+extract()

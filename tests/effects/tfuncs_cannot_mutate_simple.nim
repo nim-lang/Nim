@@ -1,8 +1,7 @@
 discard """
   errormsg: "'edit' can have side effects"
   nimout: '''an object reachable from 'x' is potentially mutated
-tfuncs_cannot_mutate_simple.nim(17, 4) the mutation is here'''
-  line: 16
+tfuncs_cannot_mutate_simple.nim(16, 4) the mutation is here'''
 """
 
 {.experimental: "strictFuncs".}

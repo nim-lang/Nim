@@ -53,7 +53,7 @@ proc initConfigData(c: var TConfigData) =
   c.webdoc = @[]
   c.pdf = @[]
   c.infile = ""
-  c.nimArgs = "--hint[Conf]:off --hint[Path]:off --hint[Processing]:off -d:boot "
+  c.nimArgs = "--hint:Conf:off --hint:Path:off --hint:Processing:off -d:boot "
   c.gitURL = "https://github.com/nim-lang/Nim"
   c.docHTMLOutput = "doc/html"
   c.webUploadOutput = "web/upload"
@@ -326,7 +326,7 @@ proc buildDoc(c: var TConfigData, destPath: string) =
       destPath / changeFileExt(splitFile(d).name, "html"), d]
     i.inc
   for d in items(c.srcdoc2):
-    commands[i] = findNim(c) & " doc2 $# --git.url:$# -o:$# --index:on $#" %
+    commands[i] = findNim(c) & " doc $# --git.url:$# -o:$# --index:on $#" %
       [c.nimArgs, c.gitURL,
       destPath / changeFileExt(splitFile(d).name, "html"), d]
     i.inc
@@ -361,7 +361,7 @@ proc buildAddDoc(c: var TConfigData, destPath: string) =
   # build additional documentation (without the index):
   var commands = newSeq[string](c.webdoc.len)
   for i, doc in pairs(c.webdoc):
-    commands[i] = findNim(c) & " doc2 $# --git.url:$# -o:$# $#" %
+    commands[i] = findNim(c) & " doc $# --git.url:$# -o:$# $#" %
       [c.nimArgs, c.gitURL,
       destPath / changeFileExt(splitFile(doc).name, "html"), doc]
   mexec(commands, c.numProcessors)
@@ -537,7 +537,7 @@ proc json2(c: var TConfigData) =
   var i = 0
   for d in items(c.srcdoc2):
     createDir(destPath / splitFile(d).dir)
-    commands[i] = findNim(c) & " jsondoc2 $# --git.url:$# -o:$# --index:on $#" %
+    commands[i] = findNim(c) & " jsondoc $# --git.url:$# -o:$# --index:on $#" %
       [c.nimArgs, c.gitURL,
       destPath / changeFileExt(d, "json"), d]
     i.inc

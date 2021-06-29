@@ -1,10 +1,10 @@
 discard """
-  errormsg: "invalid type: 'type Table' for const"
+  errormsg: "invalid type: 'typedesc[Table]' for const"
   file: "typedescs2.nim"
   line: 16
 """
 
-# issue #9961
+# bug #9961
 
 import typetraits
 import tables

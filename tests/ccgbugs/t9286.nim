@@ -7,7 +7,7 @@ type Foo  = ref object
   i:      int
 
 proc next(foo: Foo): Option[Foo] =
-  try:    assert(foo.i == 0)
+  try:    doAssert(foo.i == 0)
   except: return      # 2º: none
   return some(foo)    # 1º: some
 
@@ -17,6 +17,6 @@ proc test =
   while isSome(opt) and foo.i < 10:
     inc(foo.i)
     opt = next(foo)   # 2º None
-  assert foo.i == 1, $foo.i
+  doAssert foo.i == 1, $foo.i
 
 test()

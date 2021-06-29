@@ -64,7 +64,7 @@ proc canAlias(arg, ret: PType; marker: var IntSet): bool =
   else:
     result = false
 
-proc isValueOnlyType(t: PType): bool = 
+proc isValueOnlyType(t: PType): bool =
   # t doesn't contain pointers and references
   proc wrap(t: PType): bool {.nimcall.} = t.kind in {tyRef, tyPtr, tyVar, tyLent}
   result = not types.searchTypeFor(t, wrap)
@@ -85,7 +85,10 @@ proc checkIsolate*(n: PNode): bool =
     of nkCharLit..nkNilLit:
       result = true
     of nkCallKinds:
-      if n[0].typ.flags * {tfGcSafe, tfNoSideEffect} == {}:
+      # XXX: as long as we don't update the analysis while examining arguments
+      #      we can do an early check of the return type, otherwise this is a
+      #      bug and needs to be moved below
+      if tfNoSideEffect notin n[0].typ.flags:
         return false
       for i in 1..<n.len:
         if checkIsolate(n[i]):
@@ -100,7 +103,12 @@ proc checkIsolate*(n: PNode): bool =
       for it in n:
         result = checkIsolate(it.lastSon)
         if not result: break
-    of nkCaseStmt, nkObjConstr:
+    of nkCaseStmt:
+      for i in 1..<n.len:
+        result = checkIsolate(n[i].lastSon)
+        if not result: break
+    of nkObjConstr:
+      result = true
       for i in 1..<n.len:
         result = checkIsolate(n[i].lastSon)
         if not result: break
@@ -123,4 +131,3 @@ proc checkIsolate*(n: PNode): bool =
   else:
     # no ref, no cry:
     result = true
-

@@ -10,9 +10,10 @@
 #
 
 const
-  NimbleStableCommit = "8f7af860c5ce9634af880a7081c6435e1f2a5148" # master
-  FusionStableCommit = "319aac4d43b04113831b529f8003e82f4af6a4a5"
-
+  NimbleStableCommit = "d13f3b8ce288b4dc8c34c219a4e050aaeaf43fc9" # master
+  # examples of possible values: #head, #ea82b54, 1.2.3
+  FusionStableHash = "#372ee4313827ef9f2ea388840f7d6b46c2b1b014"
+  HeadHash = "#head"
 when not defined(windows):
   const
     Z3StableCommit = "65de3f748a6812eecd7db7c478d5fc54424d368b" # the version of Z3 that DrNim uses
@@ -66,7 +67,8 @@ Possible Commands:
                            e.g. nimble)
                            doesn't require network connectivity
   nimble                   builds the Nimble tool
-  fusion                   clone fusion into the working tree
+  fusion                   installs fusion via Nimble
+
 Boot options:
   -d:release               produce a release version of the compiler
   -d:nimUseLinenoise       use the linenoise library for interactive mode
@@ -87,7 +89,6 @@ Commands for core developers:
   tests [options]          run the testsuite (run a subset of tests by
                            specifying a category, e.g. `tests cat async`)
   temp options             creates a temporary compiler for testing
-  pushcsource              push generated C sources to its repo
 Web options:
   --googleAnalytics:UA-... add the given google analytics code to the docs. To
                            build the official docs, use UA-48159761-1
@@ -153,10 +154,16 @@ proc bundleNimbleExe(latest: bool, args: string) =
 
 proc bundleNimsuggest(args: string) =
   nimCompileFold("Compile nimsuggest", "nimsuggest/nimsuggest.nim",
-                 options = "-d:release -d:danger " & args)
+                 options = "-d:danger " & args)
 
 proc buildVccTool(args: string) =
-  nimCompileFold("Compile Vcc", "tools/vccexe/vccexe.nim ", options = args)
+  let input = "tools/vccexe/vccexe.nim"
+  if contains(args, "--cc:vcc"):
+    nimCompileFold("Compile Vcc", input, "build", options = args)
+    let fileName = input.splitFile.name
+    moveFile(exe("build" / fileName), exe("bin" / fileName))
+  else:
+    nimCompileFold("Compile Vcc", input, options = args)
 
 proc bundleNimpretty(args: string) =
   nimCompileFold("Compile nimpretty", "nimpretty/nimpretty.nim",
@@ -174,14 +181,7 @@ proc bundleWinTools(args: string) =
     nimCompile(r"tools\downloader.nim",
                options = r"--cc:vcc --app:gui -d:ssl --noNimblePath --path:..\ui " & args)
 
-proc bundleFusion(latest: bool) =
-  let commit = if latest: "HEAD" else: FusionStableCommit
-  cloneDependency(distDir, "https://github.com/nim-lang/fusion.git", commit,
-                  allowBundled = true)
-  copyDir(distDir / "fusion" / "src" / "fusion", "lib" / "fusion")
-
 proc zip(latest: bool; args: string) =
-  bundleFusion(latest)
   bundleNimbleExe(latest, args)
   bundleNimsuggest(args)
   bundleNimpretty(args)
@@ -215,13 +215,16 @@ proc buildTools(args: string = "") =
                  options = "-d:release " & args)
   when defined(windows): buildVccTool(args)
   bundleNimpretty(args)
-  nimCompileFold("Compile nimfind", "tools/nimfind.nim",
-                 options = "-d:release " & args)
-  nimCompileFold("Compile testament", "testament/testament.nim",
-                 options = "-d:release " & args)
+  nimCompileFold("Compile testament", "testament/testament.nim", options = "-d:release" & args)
+
+  # pre-packages a debug version of nim which can help in many cases investigate issuses
+  # withouth having to rebuild compiler.
+  # `-d:nimDebugUtils` only makes sense when temporarily editing/debugging compiler
+  # `-d:debug` should be changed to a flag that doesn't require re-compiling nim
+  # `--opt:speed` is a sensible default even for a debug build, it doesn't affect nim stacktraces
+  nimCompileFold("Compile nim_dbg", "compiler/nim.nim", options = "--opt:speed --stacktrace -d:debug --stacktraceMsgs -d:nimCompilerStacktraceHints" & args, outputName = "nim_dbg")
 
 proc nsis(latest: bool; args: string) =
-  bundleFusion(latest)
   bundleNimbleExe(latest, args)
   bundleNimsuggest(args)
   bundleWinTools(args)
@@ -266,7 +269,7 @@ proc findStartNim: string =
   # If these fail, we try to build nim with the "build.(sh|bat)" script.
   let (nim, ok) = findNimImpl()
   if ok: return nim
-  when defined(Posix):
+  when defined(posix):
     const buildScript = "build.sh"
     if fileExists(buildScript):
       if tryExec("./" & buildScript): return "bin" / nim
@@ -284,6 +287,13 @@ proc thVersion(i: int): string =
 template doUseCpp(): bool = getEnv("NIM_COMPILE_TO_CPP", "false") == "true"
 
 proc boot(args: string) =
+  ## bootstrapping is a process that involves 3 steps:
+  ## 1. use csourcesAny to produce nim1.exe. This nim1.exe is buggy but
+  ## rock solid for building a Nim compiler. It shouldn't be used for anything else.
+  ## 2. use nim1.exe to produce nim2.exe. nim2.exe is the one you really need.
+  ## 3. We use nim2.exe to build nim3.exe. nim3.exe is equal to nim2.exe except for timestamps.
+  ## This step ensures a minimum amount of quality. We know that nim2.exe can be used
+  ## for Nim compiler development.
   var output = "compiler" / "nim".exe
   var finalDest = "bin" / "nim".exe
   # default to use the 'c' command:
@@ -304,19 +314,14 @@ proc boot(args: string) =
     var nimi = i.thVersion
     if i == 0:
       nimi = nimStart
-      extraOption.add " --skipUserCfg --skipParentCfg"
+      extraOption.add " --skipUserCfg --skipParentCfg -d:nimKochBootstrap"
         # The configs are skipped for bootstrap
         # (1st iteration) to prevent newer flags from breaking bootstrap phase.
       let ret = execCmdEx(nimStart & " --version")
       doAssert ret.exitCode == 0
       let version = ret.output.splitLines[0]
-      # remove these when csources get updated
-      template addLib() =
+      if version.startsWith "Nim Compiler Version 0.20.0":
         extraOption.add " --lib:lib" # see https://github.com/nim-lang/Nim/pull/14291
-      if version.startsWith "Nim Compiler Version 0.19.0":
-        extraOption.add " -d:nimBoostrapCsources0_19_0"
-        addLib()
-      elif version.startsWith "Nim Compiler Version 0.20.0": addLib()
 
     # in order to use less memory, we split the build into two steps:
     # --compileOnly produces a $project.json file and does not run GCC/Clang.
@@ -451,14 +456,14 @@ proc temp(args: string) =
       inc i
 
   let d = getAppDir()
-  var output = d / "compiler" / "nim".exe
-  var finalDest = d / "bin" / "nim_temp".exe
+  let output = d / "compiler" / "nim".exe
+  let finalDest = d / "bin" / "nim_temp".exe
   # 125 is the magic number to tell git bisect to skip the current commit.
   var (bootArgs, programArgs) = splitArgs(args)
   if "doc" notin programArgs and
       "threads" notin programArgs and
       "js" notin programArgs and "rst2html" notin programArgs:
-    bootArgs.add " -d:leanCompiler"
+    bootArgs = " -d:leanCompiler" & bootArgs
   let nimexec = findNim().quoteShell()
   exec(nimexec & " c -d:debug --debugger:native -d:nimBetterRun " & bootArgs & " " & (d / "compiler" / "nim"), 125)
   copyExe(output, finalDest)
@@ -475,6 +480,22 @@ proc xtemp(cmd: string) =
     exec(cmd)
   finally:
     copyExe(d / "bin" / "nim_backup".exe, d / "bin" / "nim".exe)
+
+proc icTest(args: string) =
+  temp("")
+  let inp = os.parseCmdLine(args)[0]
+  let content = readFile(inp)
+  let nimExe = getAppDir() / "bin" / "nim_temp".exe
+  var i = 0
+  for fragment in content.split("#!EDIT!#"):
+    let file = inp.replace(".nim", "_temp.nim")
+    writeFile(file, fragment)
+    var cmd = nimExe & " cpp --ic:on -d:nimIcIntegrityChecks --listcmd "
+    if i == 0:
+      cmd.add "-f "
+    cmd.add quoteShell(file)
+    exec(cmd)
+    inc i
 
 proc buildDrNim(args: string) =
   if not dirExists("dist/nimz3"):
@@ -519,68 +540,58 @@ proc runCI(cmd: string) =
   echo "runCI: ", cmd
   echo hostInfo()
   # boot without -d:nimHasLibFFI to make sure this still works
-  kochExecFold("Boot in release mode", "boot -d:release")
+  # `--lib:lib` is needed for bootstrap on openbsd, for reasons described in
+  # https://github.com/nim-lang/Nim/pull/14291 (`getAppFilename` bugsfor older nim on openbsd).
+  kochExecFold("Boot in release mode", "boot -d:release -d:nimStrictMode --lib:lib")
+
+  when false: # debugging: when you need to run only 1 test in CI, use something like this:
+    execFold("debugging test", "nim r tests/stdlib/tosproc.nim")
+    doAssert false, "debugging only"
 
   ## build nimble early on to enable remainder to depend on it if needed
   kochExecFold("Build Nimble", "nimble")
 
+  let batchParam = "--batch:$1" % "NIM_TESTAMENT_BATCH".getEnv("_")
   if getEnv("NIM_TEST_PACKAGES", "0") == "1":
-    execFold("Test selected Nimble packages (1)", "nim c -r testament/testament cat nimble-packages-1")
-  elif getEnv("NIM_TEST_PACKAGES", "0") == "2":
-    execFold("Test selected Nimble packages (2)", "nim c -r testament/testament cat nimble-packages-2")
+    execFold("Test selected Nimble packages", "nim r testament/testament $# pcat nimble-packages" % batchParam)
   else:
     buildTools()
+
+    for a in "zip opengl sdl1 jester@#head".split:
+      let buildDeps = "build"/"deps" # xxx factor pending https://github.com/timotheecour/Nim/issues/616
+      # if this gives `Additional info: "build/deps" [OSError]`, make sure nimble is >= v0.12.0,
+      # otherwise `absolutePath` is needed, refs https://github.com/nim-lang/nimble/issues/901
+      execFold("", "nimble install -y --nimbleDir:$# $#" % [buildDeps.quoteShell, a])
 
     ## run tests
     execFold("Test nimscript", "nim e tests/test_nimscript.nims")
     when defined(windows):
-      # note: will be over-written below
-      execFold("Compile tester", "nim c -d:nimCoroutines --os:genode -d:posix --compileOnly testament/testament")
+      execFold("Compile tester", "nim c --usenimcache -d:nimCoroutines --os:genode -d:posix --compileOnly testament/testament")
 
     # main bottleneck here
-    # xxx: even though this is the main bottlneck, we could use same code to batch the other tests
-    #[
-    BUG: with initOptParser, `--batch:'' all` interprets `all` as the argument of --batch
-    ]#
-    execFold("Run tester", "nim c -r -d:nimCoroutines testament/testament --pedantic --batch:$1 all -d:nimCoroutines" % ["NIM_TESTAMENT_BATCH".getEnv("_")])
+    # xxx: even though this is the main bottleneck, we could speedup the rest via batching with `--batch`.
+    # BUG: with initOptParser, `--batch:'' all` interprets `all` as the argument of --batch, pending bug #14343
+    execFold("Run tester", "nim c -r --putenv:NIM_TESTAMENT_REMOTE_NETWORKING:1 -d:nimStrictMode testament/testament $# all -d:nimCoroutines" % batchParam)
 
-    block CT_FFI:
+    block: # nimHasLibFFI:
       when defined(posix): # windows can be handled in future PR's
         execFold("nimble install -y libffi", "nimble install -y libffi")
-        const nimFFI = "./bin/nim.ctffi"
+        const nimFFI = "bin/nim.ctffi"
         # no need to bootstrap with koch boot (would be slower)
         let backend = if doUseCpp(): "cpp" else: "c"
         execFold("build with -d:nimHasLibFFI", "nim $1 -d:release -d:nimHasLibFFI -o:$2 compiler/nim.nim" % [backend, nimFFI])
         execFold("test with -d:nimHasLibFFI", "$1 $2 -r testament/testament --nim:$1 r tests/misc/trunner.nim -d:nimTrunnerFfi" % [nimFFI, backend])
 
-    execFold("Run nimdoc tests", "nim c -r nimdoc/tester")
-    execFold("Run rst2html tests", "nim c -r nimdoc/rsttester")
-    execFold("Run nimpretty tests", "nim c -r nimpretty/tester.nim")
+    execFold("Run nimdoc tests", "nim r nimdoc/tester")
+    execFold("Run rst2html tests", "nim r nimdoc/rsttester")
+    execFold("Run nimpretty tests", "nim r nimpretty/tester.nim")
     when defined(posix):
-      execFold("Run nimsuggest tests", "nim c -r nimsuggest/tester")
+      execFold("Run nimsuggest tests", "nim r nimsuggest/tester")
 
-proc pushCsources() =
-  if not dirExists("../csources/.git"):
-    quit "[Error] no csources git repository found"
-  csource("-d:danger")
-  let cwd = getCurrentDir()
-  try:
-    copyDir("build/c_code", "../csources/c_code")
-    copyFile("build/build.sh", "../csources/build.sh")
-    copyFile("build/build.bat", "../csources/build.bat")
-    copyFile("build/build64.bat", "../csources/build64.bat")
-    copyFile("build/makefile", "../csources/makefile")
-
-    setCurrentDir("../csources")
-    for kind, path in walkDir("c_code"):
-      if kind == pcDir:
-        exec("git add " & path / "*.c")
-    exec("git commit -am \"updated csources to version " & NimVersion & "\"")
-    exec("git push origin master")
-    exec("git tag -am \"Version $1\" v$1" % NimVersion)
-    exec("git push origin v$1" % NimVersion)
-  finally:
-    setCurrentDir(cwd)
+  when not defined(bsd):
+    if not doUseCpp:
+      # the BSDs are overwhelmed already, so only run this test on the other machines:
+      kochExecFold("Boot Nim ORC", "boot -d:release --gc:orc --lib:lib")
 
 proc testUnixInstall(cmdLineRest: string) =
   csource("-d:danger" & cmdLineRest)
@@ -606,7 +617,7 @@ proc testUnixInstall(cmdLineRest: string) =
       execCleanPath("./koch tools")
       # check the tests work:
       putEnv("NIM_EXE_NOT_IN_PATH", "NOT_IN_PATH")
-      execCleanPath("./koch tests --nim:./bin/nim cat megatest", destDir / "bin")
+      execCleanPath("./koch tests --nim:bin/nim cat megatest", destDir / "bin")
     else:
       echo "Version check: failure"
   finally:
@@ -634,9 +645,16 @@ proc valgrind(cmd: string) =
   let supp = getAppDir() / "tools" / "nimgrind.supp"
   exec("valgrind --suppressions=" & supp & valcmd)
 
-proc showHelp() =
+proc showHelp(success: bool) =
   quit(HelpText % [VersionAsString & spaces(44-len(VersionAsString)),
-                   CompileDate, CompileTime], QuitSuccess)
+                   CompileDate, CompileTime], if success: QuitSuccess else: QuitFailure)
+
+proc branchDone() =
+  let thisBranch = execProcess("git symbolic-ref --short HEAD").strip()
+  if thisBranch != "devel" and thisBranch != "":
+    exec("git checkout devel")
+    exec("git branch -D " & thisBranch)
+    exec("git pull --rebase")
 
 when isMainModule:
   var op = initOptParser()
@@ -649,6 +667,7 @@ when isMainModule:
     case op.kind
     of cmdLongOption, cmdShortOption:
       case normalize(op.key)
+      of "help", "h": showHelp(success = true)
       of "latest": latest = true
       of "stable": latest = false
       of "nim": nimExe = op.val.absolutePath # absolute so still works with changeDir
@@ -656,7 +675,7 @@ when isMainModule:
         localDocsOnly = true
         if op.val.len > 0:
           localDocsOut = op.val.absolutePath
-      else: showHelp()
+      else: showHelp(success = false)
     of cmdArgument:
       case normalize(op.key)
       of "boot": boot(op.cmdLineRest)
@@ -688,12 +707,17 @@ when isMainModule:
       of "tools":
         buildTools(op.cmdLineRest)
         bundleNimbleExe(latest, op.cmdLineRest)
-        bundleFusion(latest)
-      of "pushcsource", "pushcsources": pushCsources()
+      of "pushcsource":
+        quit "use this instead: https://github.com/nim-lang/csources_v1/blob/master/push_c_code.nim"
       of "valgrind": valgrind(op.cmdLineRest)
       of "c2nim": bundleC2nim(op.cmdLineRest)
       of "drnim": buildDrNim(op.cmdLineRest)
-      of "fusion": bundleFusion(latest)
-      else: showHelp()
+      of "fusion":
+        let suffix = if latest: HeadHash else: FusionStableHash
+        exec("nimble install -y fusion@$#" % suffix)
+      of "ic": icTest(op.cmdLineRest)
+      of "branchdone": branchDone()
+      else: showHelp(success = false)
       break
-    of cmdEnd: break
+    of cmdEnd:
+      showHelp(success = false)

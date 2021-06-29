@@ -178,7 +178,7 @@ proc genOpenArraySlice(p: BProc; q: PNode; formalType, destType: PType): (Rope, 
     else:
       result = ("($3*)($1)+($2)" % [rdLoc(a), rdLoc(b), dest],
                 lengthExpr)
-  of tyUncheckedArray, tyCString:
+  of tyUncheckedArray, tyCstring:
     result = ("($3*)($1)+($2)" % [rdLoc(a), rdLoc(b), dest],
               lengthExpr)
   of tyString, tySequence:
@@ -249,13 +249,19 @@ proc openArrayLoc(p: BProc, formalType: PType, n: PNode): Rope =
     else: internalError(p.config, "openArrayLoc: " & typeToString(a.t))
 
 proc withTmpIfNeeded(p: BProc, a: TLoc, needsTmp: bool): TLoc =
-  if needsTmp and a.lode.typ != nil:
-    var tmp: TLoc
-    getTemp(p, a.lode.typ, tmp, needsInit=false)
-    genAssignment(p, tmp, a, {})
-    tmp
+  # Bug https://github.com/status-im/nimbus-eth2/issues/1549
+  # Aliasing is preferred over stack overflows.
+  # Also don't regress for non ARC-builds, too risky.
+  if needsTmp and a.lode.typ != nil and p.config.selectedGC in {gcArc, gcOrc} and
+      getSize(p.config, a.lode.typ) < 1024:
+    getTemp(p, a.lode.typ, result, needsInit=false)
+    genAssignment(p, result, a, {})
   else:
-    a
+    result = a
+
+proc literalsNeedsTmp(p: BProc, a: TLoc): TLoc =
+  getTemp(p, a.lode.typ, result, needsInit=false)
+  genAssignment(p, result, a, {})
 
 proc genArgStringToCString(p: BProc, n: PNode, needsTmp: bool): Rope {.inline.} =
   var a: TLoc
@@ -271,7 +277,10 @@ proc genArg(p: BProc, n: PNode, param: PSym; call: PNode, needsTmp = false): Rop
     result = openArrayLoc(p, param.typ, n)
   elif ccgIntroducedPtr(p.config, param, call[0].typ[0]):
     initLocExpr(p, n, a)
-    result = addrLoc(p.config, withTmpIfNeeded(p, a, needsTmp))
+    if n.kind in {nkCharLit..nkNilLit}:
+      result = addrLoc(p.config, literalsNeedsTmp(p, a))
+    else:
+      result = addrLoc(p.config, withTmpIfNeeded(p, a, needsTmp))
   elif p.module.compileToCpp and param.typ.kind in {tyVar} and
       n.kind == nkHiddenAddr:
     initLocExprSingleUse(p, n[0], a)
@@ -287,6 +296,7 @@ proc genArg(p: BProc, n: PNode, param: PSym; call: PNode, needsTmp = false): Rop
   else:
     initLocExprSingleUse(p, n, a)
     result = rdLoc(withTmpIfNeeded(p, a, needsTmp))
+  #assert result != nil
 
 proc genArgNoParam(p: BProc, n: PNode, needsTmp = false): Rope =
   var a: TLoc
@@ -296,11 +306,11 @@ proc genArgNoParam(p: BProc, n: PNode, needsTmp = false): Rope =
     initLocExprSingleUse(p, n, a)
     result = rdLoc(withTmpIfNeeded(p, a, needsTmp))
 
-from dfa import instrTargets, InstrTargetKind
+from dfa import aliases, AliasKind
 
 proc potentialAlias(n: PNode, potentialWrites: seq[PNode]): bool =
   for p in potentialWrites:
-    if instrTargets(p, n) != None:
+    if p.aliases(n) != no or n.aliases(p) != no:
       return true
 
 proc skipTrivialIndirections(n: PNode): PNode =

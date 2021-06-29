@@ -16,6 +16,7 @@ discard """
 2,2
 1,2
 '''
+  cmd: "nim c --gc:orc $file"
 """
 
 template test =

@@ -1,5 +1,6 @@
 discard """
   output: '''
+
 BEFORE
 FINALLY
 

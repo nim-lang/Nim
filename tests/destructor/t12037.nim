@@ -1,5 +1,5 @@
 discard """
-  cmd: '''nim c --newruntime $file'''
+  cmd: '''nim c --gc:arc $file'''
   output: '''
 showing original type, length, and contents seq[int] 1 @[42]
 copy length and contents 1 @[42]

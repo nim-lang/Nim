@@ -69,6 +69,9 @@ proc getCurrentExceptionMsg*(): string =
         return $msg
   return ""
 
+proc setCurrentException*(exc: ref Exception) =
+  lastJSError = cast[PJSError](exc)
+
 proc auxWriteStackTrace(f: PCallFrame): string =
   type
     TempFrame = tuple[procname: cstring, line: int, filename: cstring]
@@ -104,6 +107,11 @@ proc rawWriteStackTrace(): string =
     result = "Traceback (most recent call last)\n" & auxWriteStackTrace(framePtr)
   else:
     result = "No stack traceback available\n"
+
+proc writeStackTrace() =
+  var trace = rawWriteStackTrace()
+  trace.setLen(trace.len - 1)
+  echo trace
 
 proc getStackTrace*(): string = rawWriteStackTrace()
 proc getStackTrace*(e: ref Exception): string = e.trace
@@ -184,9 +192,8 @@ proc setConstr() {.varargs, asmNoStackFrame, compilerproc.} =
 
 proc makeNimstrLit(c: cstring): string {.asmNoStackFrame, compilerproc.} =
   {.emit: """
-  var ln = `c`.length;
-  var result = new Array(ln);
-  for (var i = 0; i < ln; ++i) {
+  var result = [];
+  for (var i = 0; i < `c`.length; ++i) {
     result[i] = `c`.charCodeAt(i);
   }
   return result;
@@ -336,7 +343,12 @@ proc cmpStrings(a, b: string): int {.asmNoStackFrame, compilerproc.} =
   """
 
 proc cmp(x, y: string): int =
-  return cmpStrings(x, y)
+  when nimvm:
+    if x == y: result = 0
+    elif x < y: result = -1
+    else: result = 1
+  else:
+    result = cmpStrings(x, y)
 
 proc eqStrings(a, b: string): bool {.asmNoStackFrame, compilerproc.} =
   asm """
@@ -486,11 +498,13 @@ proc negInt64(a: int64): int64 {.compilerproc.} =
 
 proc nimFloatToString(a: float): cstring {.compilerproc.} =
   ## ensures the result doesn't print like an integer, i.e. return 2.0, not 2
+  # print `-0.0` properly
   asm """
     function nimOnlyDigitsOrMinus(n) {
       return n.toString().match(/^-?\d+$/);
     }
-    if (Number.isSafeInteger(`a`)) `result` =  `a`+".0"
+    if (Number.isSafeInteger(`a`))
+      `result` = `a` === 0 && 1 / `a` < 0 ? "-0.0" : `a`+".0"
     else {
       `result` = `a`+""
       if(nimOnlyDigitsOrMinus(`result`)){
@@ -634,7 +648,7 @@ proc genericReset(x: JSRef, ti: PNimType): JSRef {.compilerproc.} =
       asm "`result` = {m_type: `ti`};"
     else:
       asm "`result` = {};"
-  of tySequence, tyOpenArray:
+  of tySequence, tyOpenArray, tyString:
     asm """
       `result` = [];
     """
@@ -702,19 +716,23 @@ proc tenToThePowerOf(b: int): BiggestFloat =
 const
   IdentChars = {'a'..'z', 'A'..'Z', '0'..'9', '_'}
 
-# XXX use JS's native way here
-proc nimParseBiggestFloat(s: string, number: var BiggestFloat, start = 0): int {.
-                          compilerproc.} =
-  var
-    esign = 1.0
-    sign = 1.0
-    i = start
-    exponent: int
-    flags: int
-  number = 0.0
+
+proc parseFloatNative(a: string): float =
+  let a2 = a.cstring
+  asm """
+  `result` = Number(`a2`);
+  """
+
+#[
+xxx how come code like this doesn't give IndexDefect ?
+let z = s[10000] == 'a'
+]#
+proc nimParseBiggestFloat(s: string, number: var BiggestFloat, start: int): int {.compilerproc.} =
+  var sign: bool
+  var i = start
   if s[i] == '+': inc(i)
   elif s[i] == '-':
-    sign = -1.0
+    sign = true
     inc(i)
   if s[i] == 'N' or s[i] == 'n':
     if s[i+1] == 'A' or s[i+1] == 'a':
@@ -727,51 +745,40 @@ proc nimParseBiggestFloat(s: string, number: var BiggestFloat, start = 0): int {
     if s[i+1] == 'N' or s[i+1] == 'n':
       if s[i+2] == 'F' or s[i+2] == 'f':
         if s[i+3] notin IdentChars:
-          number = Inf*sign
+          number = if sign: -Inf else: Inf
           return i+3 - start
     return 0
-  while s[i] in {'0'..'9'}:
-    # Read integer part
-    flags = flags or 1
-    number = number * 10.0 + toFloat(ord(s[i]) - ord('0'))
-    inc(i)
-    while s[i] == '_': inc(i)
-  # Decimal?
-  if s[i] == '.':
-    var hd = 1.0
-    inc(i)
-    while s[i] in {'0'..'9'}:
-      # Read fractional part
-      flags = flags or 2
-      number = number * 10.0 + toFloat(ord(s[i]) - ord('0'))
-      hd = hd * 10.0
-      inc(i)
-      while s[i] == '_': inc(i)
-    number = number / hd # this complicated way preserves precision
-  # Again, read integer and fractional part
-  if flags == 0: return 0
-  # Exponent?
-  if s[i] in {'e', 'E'}:
-    inc(i)
-    if s[i] == '+':
-      inc(i)
-    elif s[i] == '-':
-      esign = -1.0
-      inc(i)
-    if s[i] notin {'0'..'9'}:
-      return 0
-    while s[i] in {'0'..'9'}:
-      exponent = exponent * 10 + ord(s[i]) - ord('0')
-      inc(i)
-      while s[i] == '_': inc(i)
-  # Calculate Exponent
-  let hd = tenToThePowerOf(exponent)
-  if esign > 0.0: number = number * hd
-  else:           number = number / hd
-  # evaluate sign
-  number = number * sign
-  result = i - start
 
+  var buf: string
+    # we could also use an `array[char, N]` buffer to avoid reallocs, or
+    # use a 2-pass algorithm that first computes the length.
+  if sign: buf.add '-'
+  template addInc =
+    buf.add s[i]
+    inc(i)
+  template eatUnderscores =
+    while s[i] == '_': inc(i)
+  while s[i] in {'0'..'9'}: # Read integer part
+    buf.add s[i]
+    inc(i)
+    eatUnderscores()
+  if s[i] == '.': # Decimal?
+    addInc()
+    while s[i] in {'0'..'9'}: # Read fractional part
+      addInc()
+      eatUnderscores()
+  # Again, read integer and fractional part
+  if buf.len == ord(sign): return 0
+  if s[i] in {'e', 'E'}: # Exponent?
+    addInc()
+    if s[i] == '+': inc(i)
+    elif s[i] == '-': addInc()
+    if s[i] notin {'0'..'9'}: return 0
+    while s[i] in {'0'..'9'}:
+      addInc()
+      eatUnderscores()
+  number = parseFloatNative(buf)
+  result = i - start
 
 # Workaround for IE, IE up to version 11 lacks 'Math.trunc'. We produce
 # 'Math.trunc' for Nim's ``div`` and ``mod`` operators:

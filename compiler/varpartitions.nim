@@ -28,7 +28,7 @@
 ## See https://nim-lang.github.io/Nim/manual_experimental.html#view-types-algorithm
 ## for a high-level description of how borrow checking works.
 
-import ast, types, lineinfos, options, msgs, renderer, typeallowed
+import ast, types, lineinfos, options, msgs, renderer, typeallowed, modulegraphs
 from trees import getMagic, isNoSideEffectPragma, stupidStmtListExpr
 from isolation_check import canAlias
 
@@ -51,12 +51,14 @@ type
   SubgraphFlag = enum
     isMutated, # graph might be mutated
     isMutatedDirectly, # graph is mutated directly by a non-var parameter.
+    isMutatedByVarParam, # graph is mutated by a var parameter.
     connectsConstParam # graph is connected to a non-var parameter.
 
   VarFlag = enum
     ownsData,
     preventCursor,
     isReassigned,
+    isConditionallyReassigned,
     viewDoesMutate,
     viewBorrowsFromConst
 
@@ -98,8 +100,9 @@ type
     goals: set[Goal]
     unanalysableMutation: bool
     inAsgnSource, inConstructor, inNoSideEffectSection: int
+    inConditional, inLoop: int
     owner: PSym
-    config: ConfigRef
+    g: ModuleGraph
 
 proc mutationAfterConnection(g: MutationInfo): bool {.inline.} =
   #echo g.maxMutation.int, " ", g.minConnection.int, " ", g.param
@@ -173,12 +176,18 @@ proc root(v: var Partitions; start: int): int =
       v.s[it].con = Connection(kind: dependsOn, parent: result)
       it = next
 
-proc potentialMutation(v: var Partitions; s: PSym; info: TLineInfo) =
+proc potentialMutation(v: var Partitions; s: PSym; level: int; info: TLineInfo) =
   let id = variableId(v, s)
   if id >= 0:
     let r = root(v, id)
-    let flags = if s.kind == skParam and isConstParam(s):
-                  {isMutated, isMutatedDirectly}
+    let flags = if s.kind == skParam:
+                  if isConstParam(s):
+                    {isMutated, isMutatedDirectly}
+                  elif s.typ.kind == tyVar and level <= 1:
+                    # varParam[i] = v is different from varParam[i][] = v
+                    {isMutatedByVarParam}
+                  else:
+                    {isMutated}
                 else:
                   {isMutated}
 
@@ -337,36 +346,44 @@ proc pathExpr(node: PNode; owner: PSym): PNode =
   if result == nil and borrowFromConstExpr(n):
     result = n
 
-proc allRoots(n: PNode; result: var seq[PSym]; followDotExpr = true) =
+const
+  RootEscapes = 1000 # in 'p(r)' we don't know what p does to our poor root.
+                     # so we assume a high level of indirections
+
+proc allRoots(n: PNode; result: var seq[(PSym, int)]; level: int) =
   case n.kind
   of nkSym:
     if n.sym.kind in {skParam, skVar, skTemp, skLet, skResult, skForVar}:
-      result.add(n.sym)
+      result.add((n.sym, level))
 
-  of nkDotExpr, nkDerefExpr, nkBracketExpr, nkHiddenDeref,
-      nkCheckedFieldExpr, nkAddr, nkHiddenAddr:
-    if followDotExpr:
-      allRoots(n[0], result, followDotExpr)
+  of nkDerefExpr, nkHiddenDeref:
+    allRoots(n[0], result, level+1)
+  of nkBracketExpr, nkDotExpr, nkCheckedFieldExpr, nkAddr, nkHiddenAddr:
+    allRoots(n[0], result, level)
 
   of nkExprEqExpr, nkExprColonExpr, nkHiddenStdConv, nkHiddenSubConv, nkConv,
       nkStmtList, nkStmtListExpr, nkBlockStmt, nkBlockExpr, nkCast,
       nkObjUpConv, nkObjDownConv:
     if n.len > 0:
-      allRoots(n.lastSon, result, followDotExpr)
+      allRoots(n.lastSon, result, level)
   of nkCaseStmt, nkObjConstr:
     for i in 1..<n.len:
-      allRoots(n[i].lastSon, result, followDotExpr)
+      allRoots(n[i].lastSon, result, level)
   of nkIfStmt, nkIfExpr:
     for i in 0..<n.len:
-      allRoots(n[i].lastSon, result, followDotExpr)
+      allRoots(n[i].lastSon, result, level)
   of nkBracket, nkTupleConstr, nkPar:
     for i in 0..<n.len:
-      allRoots(n[i], result, followDotExpr)
+      allRoots(n[i], result, level-1)
 
   of nkCallKinds:
     if n.typ != nil and n.typ.kind in {tyVar, tyLent}:
       if n.len > 1:
-        allRoots(n[1], result, followDotExpr)
+        # XXX We really need the unwritten RFC here and distinguish between
+        #   proc `[]`(x: var Container): var T # resizes the container
+        # and
+        #   proc `[]`(x: Container): var T # only allows for slot mutation
+        allRoots(n[1], result, RootEscapes)
     else:
       let m = getMagic(n)
       case m
@@ -385,12 +402,12 @@ proc allRoots(n: PNode; result: var seq[PSym]; followDotExpr = true) =
             let paramType = typ.n[i].typ
             if not paramType.isCompileTimeOnly and not typ.sons[0].isEmptyType and
                 canAlias(paramType, typ.sons[0]):
-              allRoots(it, result, followDotExpr)
+              allRoots(it, result, RootEscapes)
           else:
-            allRoots(it, result, followDotExpr)
+            allRoots(it, result, RootEscapes)
 
       of mSlice:
-        allRoots(n[1], result, followDotExpr)
+        allRoots(n[1], result, level+1)
       else:
         discard "harmless operation"
   else:
@@ -399,7 +416,6 @@ proc allRoots(n: PNode; result: var seq[PSym]; followDotExpr = true) =
 proc destMightOwn(c: var Partitions; dest: var VarIndex; n: PNode) =
   ## Analyse if 'n' is an expression that owns the data, if so mark 'dest'
   ## with 'ownsData'.
-  if n.typ == nil: return
   case n.kind
   of nkEmpty, nkCharLit..nkNilLit:
     # primitive literals including the empty are harmless:
@@ -458,30 +474,31 @@ proc destMightOwn(c: var Partitions; dest: var VarIndex; n: PNode) =
     destMightOwn(c, dest, n[0])
 
   of nkCallKinds:
-    if hasDestructor(n.typ):
-      # calls do construct, what we construct must be destroyed,
-      # so dest cannot be a cursor:
-      dest.flags.incl ownsData
-    elif n.typ.kind in {tyLent, tyVar}:
-      # we know the result is derived from the first argument:
-      var roots: seq[PSym]
-      allRoots(n[1], roots)
-      for r in roots:
-        connect(c, dest.sym, r, n[1].info)
+    if n.typ != nil:
+      if hasDestructor(n.typ):
+        # calls do construct, what we construct must be destroyed,
+        # so dest cannot be a cursor:
+        dest.flags.incl ownsData
+      elif n.typ.kind in {tyLent, tyVar}:
+        # we know the result is derived from the first argument:
+        var roots: seq[(PSym, int)]
+        allRoots(n[1], roots, RootEscapes)
+        for r in roots:
+          connect(c, dest.sym, r[0], n[1].info)
 
-    else:
-      let magic = if n[0].kind == nkSym: n[0].sym.magic else: mNone
-      # this list is subtle, we try to answer the question if after 'dest = f(src)'
-      # there is a connection betwen 'src' and 'dest' so that mutations to 'src'
-      # also reflect 'dest':
-      if magic in {mNone, mMove, mSlice, mAppendStrCh, mAppendStrStr, mAppendSeqElem, mArrToSeq}:
-        for i in 1..<n.len:
-          # we always have to assume a 'select(...)' like mechanism.
-          # But at least we do filter out simple POD types from the
-          # list of dependencies via the 'hasDestructor' check for
-          # the root's symbol.
-          if hasDestructor(n[i].typ.skipTypes({tyVar, tySink, tyLent, tyGenericInst, tyAlias})):
-            destMightOwn(c, dest, n[i])
+      else:
+        let magic = if n[0].kind == nkSym: n[0].sym.magic else: mNone
+        # this list is subtle, we try to answer the question if after 'dest = f(src)'
+        # there is a connection betwen 'src' and 'dest' so that mutations to 'src'
+        # also reflect 'dest':
+        if magic in {mNone, mMove, mSlice, mAppendStrCh, mAppendStrStr, mAppendSeqElem, mArrToSeq}:
+          for i in 1..<n.len:
+            # we always have to assume a 'select(...)' like mechanism.
+            # But at least we do filter out simple POD types from the
+            # list of dependencies via the 'hasDestructor' check for
+            # the root's symbol.
+            if hasDestructor(n[i].typ.skipTypes({tyVar, tySink, tyLent, tyGenericInst, tyAlias})):
+              destMightOwn(c, dest, n[i])
 
   else:
     # something we cannot handle:
@@ -503,17 +520,21 @@ const
 proc isConstSym(s: PSym): bool =
   result = s.kind in {skConst, skLet} or isConstParam(s)
 
+proc toString(n: PNode): string =
+  if n.kind == nkEmpty: result = "<empty>"
+  else: result = $n
+
 proc borrowFrom(c: var Partitions; dest: PSym; src: PNode) =
   const
     url = "see https://nim-lang.github.io/Nim/manual_experimental.html#view-types-algorithm-path-expressions for details"
 
   let s = pathExpr(src, c.owner)
   if s == nil:
-    localError(c.config, src.info, "cannot borrow from " & $src & ", it is not a path expression; " & url)
+    localError(c.g.config, src.info, "cannot borrow from " & src.toString & ", it is not a path expression; " & url)
   elif s.kind == nkSym:
     if dest.kind == skResult:
       if s.sym.kind != skParam or s.sym.position != 0:
-        localError(c.config, src.info, "'result' must borrow from the first parameter")
+        localError(c.g.config, src.info, "'result' must borrow from the first parameter")
 
     let vid = variableId(c, dest)
     if vid >= 0:
@@ -539,13 +560,13 @@ proc borrowingCall(c: var Partitions; destType: PType; n: PNode; i: int) =
     when false:
       let isView = directViewType(destType) == immutableView
       if n[0].kind == nkSym and n[0].sym.name.s == "[]=":
-        localError(c.config, n[i].info, "attempt to mutate an immutable view")
+        localError(c.g.config, n[i].info, "attempt to mutate an immutable view")
 
     for j in i+1..<n.len:
       if getMagic(n[j]) == mSlice:
         borrowFrom(c, v.sym, n[j])
   else:
-    localError(c.config, n[i].info, "cannot determine the target of the borrow")
+    localError(c.g.config, n[i].info, "cannot determine the target of the borrow")
 
 proc borrowingAsgn(c: var Partitions; dest, src: PNode) =
   proc mutableParameter(n: PNode): bool {.inline.} =
@@ -556,7 +577,7 @@ proc borrowingAsgn(c: var Partitions; dest, src: PNode) =
       borrowFrom(c, dest.sym, src)
   elif dest.kind in {nkHiddenDeref, nkDerefExpr, nkBracketExpr}:
     case directViewType(dest[0].typ)
-    of mutableView:
+    of mutableView, immutableView:
       # we do not borrow, but we use the view to mutate the borrowed
       # location:
       let viewOrigin = pathExpr(dest, c.owner)
@@ -564,12 +585,13 @@ proc borrowingAsgn(c: var Partitions; dest, src: PNode) =
         let vid = variableId(c, viewOrigin.sym)
         if vid >= 0:
           c.s[vid].flags.incl viewDoesMutate
-    of immutableView:
+    #[of immutableView:
       if dest.kind == nkBracketExpr and dest[0].kind == nkHiddenDeref and
           mutableParameter(dest[0][0]):
         discard "remains a mutable location anyhow"
       else:
-        localError(c.config, dest.info, "attempt to mutate a borrowed location from an immutable view")
+        localError(c.g.config, dest.info, "attempt to mutate a borrowed location from an immutable view")
+        ]#
     of noView: discard "nothing to do"
 
 proc containsPointer(t: PType): bool =
@@ -580,30 +602,31 @@ proc deps(c: var Partitions; dest, src: PNode) =
   if borrowChecking in c.goals:
     borrowingAsgn(c, dest, src)
 
-  var targets, sources: seq[PSym]
-  allRoots(dest, targets)
-  allRoots(src, sources)
+  var targets, sources: seq[(PSym, int)]
+  allRoots(dest, targets, 0)
+  allRoots(src, sources, 0)
 
   let destIsComplex = containsPointer(dest.typ)
 
   for t in targets:
     if dest.kind != nkSym and c.inNoSideEffectSection == 0:
-      potentialMutation(c, t, dest.info)
+      potentialMutation(c, t[0], t[1], dest.info)
 
     if destIsComplex:
       for s in sources:
-        connect(c, t, s, dest.info)
+        connect(c, t[0], s[0], dest.info)
 
-  if cursorInference in c.goals and src.kind != nkEmpty:    
+  if cursorInference in c.goals and src.kind != nkEmpty:
     let d = pathExpr(dest, c.owner)
     if d != nil and d.kind == nkSym:
       let vid = variableId(c, d.sym)
       if vid >= 0:
         destMightOwn(c, c.s[vid], src)
-        for s in sources:
+        for source in sources:
+          let s = source[0]
           if s == d.sym:
             discard "assignments like: it = it.next are fine"
-          elif {sfGlobal, sfThread} * s.flags != {} or hasDisabledAsgn(s.typ):
+          elif {sfGlobal, sfThread} * s.flags != {} or hasDisabledAsgn(c.g, s.typ):
             # do not borrow from a global variable or from something with a
             # disabled assignment operator.
             c.s[vid].flags.incl preventCursor
@@ -629,15 +652,16 @@ const
     nkTypeSection, nkProcDef, nkConverterDef,
     nkMethodDef, nkIteratorDef, nkMacroDef, nkTemplateDef, nkLambda, nkDo,
     nkFuncDef, nkConstSection, nkConstDef, nkIncludeStmt, nkImportStmt,
-    nkExportStmt, nkPragma, nkCommentStmt, nkBreakState, nkTypeOfExpr}
+    nkExportStmt, nkPragma, nkCommentStmt, nkBreakState,
+    nkTypeOfExpr, nkMixinStmt, nkBindStmt}
 
 proc potentialMutationViaArg(c: var Partitions; n: PNode; callee: PType) =
   if constParameters in c.goals and tfNoSideEffect in callee.flags:
     discard "we know there are no hidden mutations through an immutable parameter"
   elif c.inNoSideEffectSection == 0 and containsPointer(n.typ):
-    var roots: seq[PSym]
-    allRoots(n, roots)
-    for r in roots: potentialMutation(c, r, n.info)
+    var roots: seq[(PSym, int)]
+    allRoots(n, roots, RootEscapes)
+    for r in roots: potentialMutation(c, r[0], r[1], n.info)
 
 proc traverse(c: var Partitions; n: PNode) =
   inc c.abstractTime
@@ -679,12 +703,12 @@ proc traverse(c: var Partitions; n: PNode) =
       if i < L:
         let paramType = parameters[i].skipTypes({tyGenericInst, tyAlias})
         if not paramType.isCompileTimeOnly and paramType.kind in {tyVar, tySink, tyOwned}:
-          var roots: seq[PSym]
-          allRoots(it, roots)
+          var roots: seq[(PSym, int)]
+          allRoots(it, roots, RootEscapes)
           if paramType.kind == tyVar:
             if c.inNoSideEffectSection == 0:
-              for r in roots: potentialMutation(c, r, it.info)
-            for r in roots: noCursor(c, r)
+              for r in roots: potentialMutation(c, r[0], r[1], it.info)
+            for r in roots: noCursor(c, r[0])
 
             if borrowChecking in c.goals:
               # a call like 'result.add toOpenArray()' can also be a borrow
@@ -692,7 +716,7 @@ proc traverse(c: var Partitions; n: PNode) =
               # 'paramType[0]' is still a view type, this is not a typo!
               if directViewType(paramType[0]) == noView and classifyViewType(paramType[0]) != noView:
                 borrowingCall(c, paramType[0], n, i)
-        elif borrowChecking in c.goals and m == mNone:
+        elif m == mNone:
           potentialMutationViaArg(c, n[i], parameters)
 
   of nkAddr, nkHiddenAddr:
@@ -700,10 +724,10 @@ proc traverse(c: var Partitions; n: PNode) =
     when false:
       # XXX investigate if this is required, it doesn't look
       # like it is!
-      var roots: seq[PSym]
-      allRoots(n[0], roots)
+      var roots: seq[(PSym, int)]
+      allRoots(n[0], roots, RootEscapes)
       for r in roots:
-        potentialMutation(c, r, it.info)
+        potentialMutation(c, r[0], r[1], it.info)
 
   of nkTupleConstr, nkBracket:
     for child in n: traverse(c, child)
@@ -748,6 +772,13 @@ proc traverse(c: var Partitions; n: PNode) =
   else:
     for child in n: traverse(c, child)
 
+proc markAsReassigned(c: var Partitions; vid: int) {.inline.} =
+  c.s[vid].flags.incl isReassigned
+  if c.inConditional > 0 and c.inLoop > 0:
+    # bug #17033: live ranges with loops and conditionals are too
+    # complex for our current analysis, so we prevent the cursorfication.
+    c.s[vid].flags.incl isConditionallyReassigned
+
 proc computeLiveRanges(c: var Partitions; n: PNode) =
   # first pass: Compute live ranges for locals.
   # **Watch out!** We must traverse the tree like 'traverse' does
@@ -777,7 +808,7 @@ proc computeLiveRanges(c: var Partitions; n: PNode) =
         if n[1].kind == nkSym and (c.s[vid].reassignedTo == 0 or c.s[vid].reassignedTo == n[1].sym.id):
           c.s[vid].reassignedTo = n[1].sym.id
         else:
-          c.s[vid].flags.incl isReassigned
+          markAsReassigned(c, vid)
 
   of nkSym:
     dec c.abstractTime
@@ -804,7 +835,7 @@ proc computeLiveRanges(c: var Partitions; n: PNode) =
         if not paramType.isCompileTimeOnly and paramType.kind == tyVar:
           let vid = variableId(c, it.sym)
           if vid >= 0:
-            c.s[vid].flags.incl isReassigned
+            markAsReassigned(c, vid)
 
   of nkAddr, nkHiddenAddr:
     computeLiveRanges(c, n[0])
@@ -822,12 +853,18 @@ proc computeLiveRanges(c: var Partitions; n: PNode) =
     #   while cond:
     #     mutate(graph)
     #     connect(graph, cursorVar)
+    inc c.inLoop
     for child in n: computeLiveRanges(c, child)
+    inc c.inLoop
+  of nkElifBranch, nkElifExpr, nkElse, nkOfBranch:
+    inc c.inConditional
+    for child in n: computeLiveRanges(c, child)
+    dec c.inConditional
   else:
     for child in n: computeLiveRanges(c, child)
 
-proc computeGraphPartitions*(s: PSym; n: PNode; config: ConfigRef; goals: set[Goal]): Partitions =
-  result = Partitions(owner: s, config: config, goals: goals)
+proc computeGraphPartitions*(s: PSym; n: PNode; g: ModuleGraph; goals: set[Goal]): Partitions =
+  result = Partitions(owner: s, g: g, goals: goals)
   if s.kind notin {skModule, skMacro}:
     let params = s.typ.n
     for i in 1..<params.len:
@@ -842,7 +879,7 @@ proc computeGraphPartitions*(s: PSym; n: PNode; config: ConfigRef; goals: set[Go
 
 proc dangerousMutation(g: MutationInfo; v: VarIndex): bool =
   #echo "range ", v.aliveStart, " .. ", v.aliveEnd, " ", v.sym
-  if isMutated in g.flags:
+  if {isMutated, isMutatedByVarParam} * g.flags != {}:
     for m in g.mutations:
       #echo "mutation ", m
       if m in v.aliveStart..v.aliveEnd:
@@ -892,11 +929,12 @@ proc checkBorrowedLocations*(par: var Partitions; body: PNode; config: ConfigRef
       #if par.s[rid].con.kind == isRootOf and dangerousMutation(par.graphs[par.s[rid].con.graphIndex], par.s[i]):
       #  cannotBorrow(config, s, par.graphs[par.s[rid].con.graphIndex])
 
-proc computeCursors*(s: PSym; n: PNode; config: ConfigRef) =
-  var par = computeGraphPartitions(s, n, config, {cursorInference})
+proc computeCursors*(s: PSym; n: PNode; g: ModuleGraph) =
+  var par = computeGraphPartitions(s, n, g, {cursorInference})
   for i in 0 ..< par.s.len:
     let v = addr(par.s[i])
-    if v.flags * {ownsData, preventCursor} == {} and v.sym.kind notin {skParam, skResult} and
+    if v.flags * {ownsData, preventCursor, isConditionallyReassigned} == {} and
+        v.sym.kind notin {skParam, skResult} and
         v.sym.flags * {sfThread, sfGlobal} == {} and hasDestructor(v.sym.typ) and
         v.sym.typ.skipTypes({tyGenericInst, tyAlias}).kind != tyOwned:
       let rid = root(par, i)
@@ -904,4 +942,5 @@ proc computeCursors*(s: PSym; n: PNode; config: ConfigRef) =
         discard "cannot cursor into a graph that is mutated"
       else:
         v.sym.flags.incl sfCursor
-        #echo "this is now a cursor ", v.sym, " ", par.s[rid].flags, " ", config $ v.sym.info
+        when false:
+          echo "this is now a cursor ", v.sym, " ", par.s[rid].flags, " ", g.config $ v.sym.info

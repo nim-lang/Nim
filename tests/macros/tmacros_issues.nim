@@ -64,7 +64,7 @@ block t7723:
 
 block t8706:
   macro varargsLen(args:varargs[untyped]): untyped =
-    doAssert args.kind == nnkArglist
+    doAssert args.kind == nnkArgList
     doAssert args.len == 0
     result = newLit(args.len)
 
@@ -482,6 +482,26 @@ func expMin: float
 func expMin: float {.aadMin.} = 1
 
 echo expMin()
+
+
+# doubly-typed forward decls
+macro noop(x: typed) = x
+noop:
+  proc cally() = discard
+
+cally()
+
+noop:
+  proc barry()
+
+proc barry() = discard
+
+# some more:
+proc barry2() {.noop.}
+proc barry2() = discard
+
+proc barry3() {.noop.}
+proc barry3() {.noop.} = discard
 
 
 # issue #15389

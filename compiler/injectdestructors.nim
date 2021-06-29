@@ -15,14 +15,23 @@
 
 import
   intsets, strtabs, ast, astalgo, msgs, renderer, magicsys, types, idents,
-  strutils, options, dfa, lowerings, tables, modulegraphs, msgs,
+  strutils, options, dfa, lowerings, tables, modulegraphs,
   lineinfos, parampatterns, sighashes, liftdestructors, optimizer,
   varpartitions
 
 from trees import exprStructuralEquivalent, getRoot
 
 type
-  Scope = object  # well we do scope-based memory management. \
+  Con = object
+    owner: PSym
+    g: ControlFlowGraph
+    graph: ModuleGraph
+    inLoop, inSpawn, inLoopCond: int
+    uninit: IntSet # set of uninit'ed vars
+    uninitComputed: bool
+    idgen: IdGenerator
+
+  Scope = object # we do scope-based memory management.
     # a scope is comparable to an nkStmtListExpr like
     # (try: statements; dest = y(); finally: destructors(); dest)
     vars: seq[PSym]
@@ -31,23 +40,19 @@ type
     needsTry: bool
     parent: ptr Scope
 
-type
-  Con = object
-    owner: PSym
-    g: ControlFlowGraph
-    graph: ModuleGraph
-    otherRead: PNode
-    inLoop, inSpawn: int
-    uninit: IntSet # set of uninit'ed vars
-    uninitComputed: bool
-    idgen: IdGenerator
-
   ProcessMode = enum
     normal
     consumed
     sinkArg
 
 const toDebug {.strdefine.} = ""
+when toDebug.len > 0:
+  var shouldDebug = false
+
+template dbg(body) =
+  when toDebug.len > 0:
+    if shouldDebug:
+      body
 
 proc hasDestructor(c: Con; t: PType): bool {.inline.} =
   result = ast.hasDestructor(t)
@@ -56,13 +61,8 @@ proc hasDestructor(c: Con; t: PType): bool {.inline.} =
     if not result and c.graph.config.selectedGC in {gcArc, gcOrc}:
       assert(not containsGarbageCollectedRef(t))
 
-template dbg(body) =
-  when toDebug.len > 0:
-    if c.owner.name.s == toDebug or toDebug == "always":
-      body
-
 proc getTemp(c: var Con; s: var Scope; typ: PType; info: TLineInfo): PNode =
-  let sym = newSym(skTemp, getIdent(c.graph.cache, ":tmpD"), nextId c.idgen, c.owner, info)
+  let sym = newSym(skTemp, getIdent(c.graph.cache, ":tmpD"), nextSymId c.idgen, c.owner, info)
   sym.typ = typ
   s.vars.add(sym)
   result = newSymNode(sym)
@@ -73,123 +73,123 @@ proc nestedScope(parent: var Scope): Scope =
 proc p(n: PNode; c: var Con; s: var Scope; mode: ProcessMode): PNode
 proc moveOrCopy(dest, ri: PNode; c: var Con; s: var Scope; isDecl = false): PNode
 
-proc isLastRead(location: PNode; cfg: ControlFlowGraph; otherRead: var PNode; pc, until: int): int =
-  var pc = pc
-  while pc < cfg.len and pc < until:
-    case cfg[pc].kind
-    of def:
-      if instrTargets(cfg[pc].n, location) == Full:
-        # the path leads to a redefinition of 's' --> abandon it.
-        return high(int)
-      elif instrTargets(cfg[pc].n, location) == Partial:
-        # only partially writes to 's' --> can't sink 's', so this def reads 's'
-        otherRead = cfg[pc].n
-        return -1
-      inc pc
-    of use:
-      if instrTargets(cfg[pc].n, location) != None:
-        otherRead = cfg[pc].n
-        return -1
-      inc pc
-    of goto:
-      pc += cfg[pc].dest
-    of fork:
-      # every branch must lead to the last read of the location:
-      var variantA = pc + 1
-      var variantB = pc + cfg[pc].dest
-      while variantA != variantB:
-        if min(variantA, variantB) < 0: return -1
-        if max(variantA, variantB) >= cfg.len or min(variantA, variantB) >= until:
-          break
-        if variantA < variantB:
-          variantA = isLastRead(location, cfg, otherRead, variantA, min(variantB, until))
-        else:
-          variantB = isLastRead(location, cfg, otherRead, variantB, min(variantA, until))
-      pc = min(variantA, variantB)
-  return pc
+import sets, hashes
 
-proc isCursor(n: PNode; c: Con): bool =
-  case n.kind
-  of nkSym:
-    sfCursor in n.sym.flags
-  of nkDotExpr:
-    isCursor(n[1], c)
-  of nkCheckedFieldExpr:
-    isCursor(n[0], c)
+proc hash(n: PNode): Hash = hash(cast[pointer](n))
+
+proc aliasesCached(cache: var Table[(PNode, PNode), AliasKind], obj, field: PNode): AliasKind =
+  let key = (obj, field)
+  if not cache.hasKey(key):
+    cache[key] = aliases(obj, field)
+  cache[key]
+
+type
+  State = ref object
+    lastReads: IntSet
+    potentialLastReads: IntSet
+    notLastReads: IntSet
+    alreadySeen: HashSet[PNode]
+
+proc preprocessCfg(cfg: var ControlFlowGraph) =
+  for i in 0..<cfg.len:
+    if cfg[i].kind in {goto, fork} and i + cfg[i].dest > cfg.len:
+      cfg[i].dest = cfg.len - i
+
+proc mergeStates(a: var State, b: sink State) =
+  # Inplace for performance:
+  #   lastReads = a.lastReads + b.lastReads
+  #   potentialLastReads = (a.potentialLastReads + b.potentialLastReads) - (a.notLastReads + b.notLastReads)
+  #   notLastReads = a.notLastReads + b.notLastReads
+  #   alreadySeen = a.alreadySeen + b.alreadySeen
+  # b is never nil
+  if a == nil:
+    a = b
   else:
-    false
+    a.lastReads.incl b.lastReads
+    a.potentialLastReads.incl b.potentialLastReads
+    a.potentialLastReads.excl a.notLastReads
+    a.potentialLastReads.excl b.notLastReads
+    a.notLastReads.incl b.notLastReads
+    a.alreadySeen.incl b.alreadySeen
+
+proc computeLastReadsAndFirstWrites(cfg: ControlFlowGraph) =
+  var cache = initTable[(PNode, PNode), AliasKind]()
+  template aliasesCached(obj, field: PNode): AliasKind =
+    aliasesCached(cache, obj, field)
+
+  var cfg = cfg
+  preprocessCfg(cfg)
+
+  var states = newSeq[State](cfg.len + 1)
+  states[0] = State()
+
+  for pc in 0..<cfg.len:
+    template state: State = states[pc]
+    if state != nil:
+      case cfg[pc].kind
+      of def:
+        var potentialLastReadsCopy = state.potentialLastReads
+        for r in potentialLastReadsCopy:
+          if cfg[pc].n.aliasesCached(cfg[r].n) == yes:
+            # the path leads to a redefinition of 's' --> sink 's'.
+            state.lastReads.incl r
+            state.potentialLastReads.excl r
+          elif cfg[r].n.aliasesCached(cfg[pc].n) != no:
+            # only partially writes to 's' --> can't sink 's', so this def reads 's'
+            # or maybe writes to 's' --> can't sink 's'
+            cfg[r].n.comment = '\n' & $pc
+            state.potentialLastReads.excl r
+            state.notLastReads.incl r
+
+        var alreadySeenThisNode = false
+        for s in state.alreadySeen:
+          if cfg[pc].n.aliasesCached(s) != no or s.aliasesCached(cfg[pc].n) != no:
+            alreadySeenThisNode = true; break
+        if alreadySeenThisNode: cfg[pc].n.flags.excl nfFirstWrite
+        else: cfg[pc].n.flags.incl nfFirstWrite
+
+        state.alreadySeen.incl cfg[pc].n
+
+        mergeStates(states[pc + 1], move(states[pc]))
+      of use:
+        var potentialLastReadsCopy = state.potentialLastReads
+        for r in potentialLastReadsCopy:
+          if cfg[pc].n.aliasesCached(cfg[r].n) != no or cfg[r].n.aliasesCached(cfg[pc].n) != no:
+            cfg[r].n.comment = '\n' & $pc
+            state.potentialLastReads.excl r
+            state.notLastReads.incl r
+
+        state.potentialLastReads.incl pc
+
+        state.alreadySeen.incl cfg[pc].n
+
+        mergeStates(states[pc + 1], move(states[pc]))
+      of goto:
+        mergeStates(states[pc + cfg[pc].dest], move(states[pc]))
+      of fork:
+        var copy = State()
+        copy[] = states[pc][]
+        mergeStates(states[pc + cfg[pc].dest], copy)
+        mergeStates(states[pc + 1], move(states[pc]))
+
+  let lastReads = (states[^1].lastReads + states[^1].potentialLastReads) - states[^1].notLastReads
+  var lastReadTable: Table[PNode, seq[int]]
+  for position, node in cfg:
+    if node.kind == use:
+      lastReadTable.mgetOrPut(node.n, @[]).add position
+  for node, positions in lastReadTable:
+    block checkIfAllPosLastRead:
+      for p in positions:
+        if p notin lastReads: break checkIfAllPosLastRead
+      node.flags.incl nfLastRead
 
 proc isLastRead(n: PNode; c: var Con): bool =
-  # first we need to search for the instruction that belongs to 'n':
-  var instr = -1
   let m = dfa.skipConvDfa(n)
-  if m.kind == nkSym and sfSingleUsedTemp in m.sym.flags: return true
-
-  for i in 0..<c.g.len:
-    # This comparison is correct and MUST not be ``instrTargets``:
-    if c.g[i].kind == use and c.g[i].n == m:
-      if instr < 0:
-        instr = i
-        break
-
-  dbg: echo "starting point for ", n, " is ", instr, " ", n.kind
-
-  if instr < 0: return false
-  # we go through all paths beginning from 'instr+1' and need to
-  # ensure that we don't find another 'use X' instruction.
-  if instr+1 >= c.g.len: return true
-
-  c.otherRead = nil
-  result = isLastRead(n, c.g, c.otherRead, instr+1, int.high) >= 0
-  dbg: echo "ugh ", c.otherRead.isNil, " ", result
-
-proc isFirstWrite(location: PNode; cfg: ControlFlowGraph; pc, until: int): int =
-  var pc = pc
-  while pc < until:
-    case cfg[pc].kind
-    of def:
-      if instrTargets(cfg[pc].n, location) != None:
-        # a definition of 's' before ours makes ours not the first write
-        return -1
-      inc pc
-    of use:
-      if instrTargets(cfg[pc].n, location) != None:
-        return -1
-      inc pc
-    of goto:
-      pc += cfg[pc].dest
-    of fork:
-      # every branch must not contain a def/use of our location:
-      var variantA = pc + 1
-      var variantB = pc + cfg[pc].dest
-      while variantA != variantB:
-        if min(variantA, variantB) < 0: return -1
-        if max(variantA, variantB) > until:
-          break
-        if variantA < variantB:
-          variantA = isFirstWrite(location, cfg, variantA, min(variantB, until))
-        else:
-          variantB = isFirstWrite(location, cfg, variantB, min(variantA, until))
-      pc = min(variantA, variantB)
-  return pc
+  (m.kind == nkSym and sfSingleUsedTemp in m.sym.flags) or nfLastRead in m.flags
 
 proc isFirstWrite(n: PNode; c: var Con): bool =
-  # first we need to search for the instruction that belongs to 'n':
-  var instr = -1
   let m = dfa.skipConvDfa(n)
-
-  for i in countdown(c.g.len-1, 0): # We search backwards here to treat loops correctly
-    if c.g[i].kind == def and c.g[i].n == m:
-      if instr < 0:
-        instr = i
-        break
-
-  if instr < 0: return false
-  # we go through all paths going to 'instr' and need to
-  # ensure that we don't find another 'def/use X' instruction.
-  if instr == 0: return true
-
-  result = isFirstWrite(n, c.g, 0, instr) >= 0
+  nfFirstWrite in m.flags
 
 proc initialized(code: ControlFlowGraph; pc: int,
                  init, uninit: var IntSet; until: int): int =
@@ -229,6 +229,17 @@ proc initialized(code: ControlFlowGraph; pc: int,
       inc pc
   return pc
 
+proc isCursor(n: PNode): bool =
+  case n.kind
+  of nkSym:
+    sfCursor in n.sym.flags
+  of nkDotExpr:
+    isCursor(n[1])
+  of nkCheckedFieldExpr:
+    isCursor(n[0])
+  else:
+    false
+
 template isUnpackedTuple(n: PNode): bool =
   ## we move out all elements of unpacked tuples,
   ## hence unpacked tuples themselves don't need to be destroyed
@@ -240,9 +251,9 @@ proc checkForErrorPragma(c: Con; t: PType; ri: PNode; opname: string) =
     m.add "; requires a copy because it's not the last read of '"
     m.add renderTree(ri)
     m.add '\''
-    if c.otherRead != nil:
+    if ri.comment.startsWith('\n'):
       m.add "; another read is done here: "
-      m.add c.graph.config $ c.otherRead.info
+      m.add c.graph.config $ c.g[parseInt(ri.comment[1..^1])].n.info
     elif ri.kind == nkSym and ri.sym.kind == skParam and not isSinkType(ri.sym.typ):
       m.add "; try to make "
       m.add renderTree(ri)
@@ -252,7 +263,7 @@ proc checkForErrorPragma(c: Con; t: PType; ri: PNode; opname: string) =
   localError(c.graph.config, ri.info, errGenerated, m)
 
 proc makePtrType(c: var Con, baseType: PType): PType =
-  result = newType(tyPtr, nextId c.idgen, c.owner)
+  result = newType(tyPtr, nextTypeId c.idgen, c.owner)
   addSonSkipIntLit(result, baseType, c.idgen)
 
 proc genOp(c: var Con; op: PSym; dest: PNode): PNode =
@@ -261,18 +272,18 @@ proc genOp(c: var Con; op: PSym; dest: PNode): PNode =
   result = newTree(nkCall, newSymNode(op), addrExp)
 
 proc genOp(c: var Con; t: PType; kind: TTypeAttachedOp; dest, ri: PNode): PNode =
-  var op = t.attachedOps[kind]
-  if op == nil or op.ast[genericParamsPos].kind != nkEmpty:
+  var op = getAttachedOp(c.graph, t, kind)
+  if op == nil or op.ast.isGenericRoutine:
     # give up and find the canonical type instead:
     let h = sighashes.hashType(t, {CoType, CoConsiderOwned, CoDistinct})
     let canon = c.graph.canonTypes.getOrDefault(h)
     if canon != nil:
-      op = canon.attachedOps[kind]
+      op = getAttachedOp(c.graph, canon, kind)
   if op == nil:
     #echo dest.typ.id
     globalError(c.graph.config, dest.info, "internal error: '" & AttachedOpToStr[kind] &
       "' operator not found for type " & typeToString(t))
-  elif op.ast[genericParamsPos].kind != nkEmpty:
+  elif op.ast.isGenericRoutine:
     globalError(c.graph.config, dest.info, "internal error: '" & AttachedOpToStr[kind] &
       "' operator is generic")
   dbg:
@@ -288,22 +299,22 @@ proc genDestroy(c: var Con; dest: PNode): PNode =
 proc canBeMoved(c: Con; t: PType): bool {.inline.} =
   let t = t.skipTypes({tyGenericInst, tyAlias, tySink})
   if optOwnedRefs in c.graph.config.globalOptions:
-    result = t.kind != tyRef and t.attachedOps[attachedSink] != nil
+    result = t.kind != tyRef and getAttachedOp(c.graph, t, attachedSink) != nil
   else:
-    result = t.attachedOps[attachedSink] != nil
+    result = getAttachedOp(c.graph, t, attachedSink) != nil
 
 proc isNoInit(dest: PNode): bool {.inline.} =
   result = dest.kind == nkSym and sfNoInit in dest.sym.flags
 
 proc genSink(c: var Con; dest, ri: PNode, isDecl = false): PNode =
-  if isUnpackedTuple(dest) or isDecl or
-      (isAnalysableFieldAccess(dest, c.owner) and isFirstWrite(dest, c)) or
+  if (c.inLoopCond == 0 and (isUnpackedTuple(dest) or isDecl or
+      (isAnalysableFieldAccess(dest, c.owner) and isFirstWrite(dest, c)))) or
       isNoInit(dest):
     # optimize sink call into a bitwise memcopy
     result = newTree(nkFastAsgn, dest, ri)
   else:
     let t = dest.typ.skipTypes({tyGenericInst, tyAlias, tySink})
-    if t.attachedOps[attachedSink] != nil:
+    if getAttachedOp(c.graph, t, attachedSink) != nil:
       result = c.genOp(t, attachedSink, dest, ri)
       result.add ri
     else:
@@ -344,21 +355,22 @@ proc genMarkCyclic(c: var Con; result, dest: PNode) =
       if t.kind == tyRef:
         result.add callCodegenProc(c.graph, "nimMarkCyclic", dest.info, dest)
       else:
-        let xenv = genBuiltin(c.graph, mAccessEnv, "accessEnv", dest)
+        let xenv = genBuiltin(c.graph, c.idgen, mAccessEnv, "accessEnv", dest)
         xenv.typ = getSysType(c.graph, dest.info, tyPointer)
         result.add callCodegenProc(c.graph, "nimMarkCyclic", dest.info, xenv)
 
 proc genCopyNoCheck(c: var Con; dest, ri: PNode): PNode =
   let t = dest.typ.skipTypes({tyGenericInst, tyAlias, tySink})
   result = c.genOp(t, attachedAsgn, dest, ri)
+  assert ri.typ != nil
 
 proc genCopy(c: var Con; dest, ri: PNode): PNode =
   let t = dest.typ
   if tfHasOwned in t.flags and ri.kind != nkNilLit:
     # try to improve the error message here:
-    if c.otherRead == nil: discard isLastRead(ri, c)
     c.checkForErrorPragma(t, ri, "=copy")
   result = c.genCopyNoCheck(dest, ri)
+  assert ri.typ != nil
 
 proc genDiscriminantAsgn(c: var Con; s: var Scope; n: PNode): PNode =
   # discriminator is ordinal value that doesn't need sink destroy
@@ -376,8 +388,8 @@ proc genDiscriminantAsgn(c: var Con; s: var Scope; n: PNode): PNode =
   let objType = leDotExpr[0].typ
 
   if hasDestructor(c, objType):
-    if objType.attachedOps[attachedDestructor] != nil and
-        sfOverriden in objType.attachedOps[attachedDestructor].flags:
+    if getAttachedOp(c.graph, objType, attachedDestructor) != nil and
+        sfOverriden in getAttachedOp(c.graph, objType, attachedDestructor).flags:
       localError(c.graph.config, n.info, errGenerated, """Assignment to discriminant for objects with user defined destructor is not supported, object must have default destructor.
 It is best to factor out piece of object that needs custom destructor into separate object or not use discriminator assignment""")
       result.add newTree(nkFastAsgn, le, tmp)
@@ -390,21 +402,21 @@ It is best to factor out piece of object that needs custom destructor into separ
     cond.add le
     cond.add tmp
     let notExpr = newNodeIT(nkPrefix, n.info, getSysType(c.graph, unknownLineInfo, tyBool))
-    notExpr.add newSymNode(createMagic(c.graph, "not", mNot))
+    notExpr.add newSymNode(createMagic(c.graph, c.idgen, "not", mNot))
     notExpr.add cond
     result.add newTree(nkIfStmt, newTree(nkElifBranch, notExpr, c.genOp(branchDestructor, le)))
   result.add newTree(nkFastAsgn, le, tmp)
 
 proc genWasMoved(c: var Con, n: PNode): PNode =
   result = newNodeI(nkCall, n.info)
-  result.add(newSymNode(createMagic(c.graph, "wasMoved", mWasMoved)))
+  result.add(newSymNode(createMagic(c.graph, c.idgen, "wasMoved", mWasMoved)))
   result.add copyTree(n) #mWasMoved does not take the address
   #if n.kind != nkSym:
   #  message(c.graph.config, n.info, warnUser, "wasMoved(" & $n & ")")
 
 proc genDefaultCall(t: PType; c: Con; info: TLineInfo): PNode =
   result = newNodeI(nkCall, info)
-  result.add(newSymNode(createMagic(c.graph, "default", mDefault)))
+  result.add(newSymNode(createMagic(c.graph, c.idgen, "default", mDefault)))
   result.typ = t
 
 proc destructiveMoveVar(n: PNode; c: var Con; s: var Scope): PNode =
@@ -415,7 +427,7 @@ proc destructiveMoveVar(n: PNode; c: var Con; s: var Scope): PNode =
   else:
     result = newNodeIT(nkStmtListExpr, n.info, n.typ)
 
-    var temp = newSym(skLet, getIdent(c.graph.cache, "blitTmp"), nextId c.idgen, c.owner, n.info)
+    var temp = newSym(skLet, getIdent(c.graph.cache, "blitTmp"), nextSymId c.idgen, c.owner, n.info)
     temp.typ = n.typ
     var v = newNodeI(nkLetSection, n.info)
     let tempAsNode = newSymNode(temp)
@@ -523,23 +535,19 @@ proc cycleCheck(n: PNode; c: var Con) =
       message(c.graph.config, n.info, warnCycleCreated, msg)
       break
 
-proc pVarTopLevel(v: PNode; c: var Con; s: var Scope; ri, res: PNode) =
+proc pVarTopLevel(v: PNode; c: var Con; s: var Scope; res: PNode) =
   # move the variable declaration to the top of the frame:
   s.vars.add v.sym
   if isUnpackedTuple(v):
     if c.inLoop > 0:
       # unpacked tuple needs reset at every loop iteration
       res.add newTree(nkFastAsgn, v, genDefaultCall(v.typ, c, v.info))
-  elif sfThread notin v.sym.flags:
+  elif sfThread notin v.sym.flags and sfCursor notin v.sym.flags:
     # do not destroy thread vars for now at all for consistency.
     if sfGlobal in v.sym.flags and s.parent == nil: #XXX: Rethink this logic (see tarcmisc.test2)
       c.graph.globalDestructors.add c.genDestroy(v)
     else:
       s.final.add c.genDestroy(v)
-  if ri.kind == nkEmpty and c.inLoop > 0:
-    res.add moveOrCopy(v, genDefaultCall(v.typ, c, v.info), c, s, isDecl = true)
-  elif ri.kind != nkEmpty:
-    res.add moveOrCopy(v, ri, c, s, isDecl = true)
 
 proc processScope(c: var Con; s: var Scope; ret: PNode): PNode =
   result = newNodeI(nkStmtList, ret.info)
@@ -572,6 +580,7 @@ template processScopeExpr(c: var Con; s: var Scope; ret: PNode, processCall: unt
   let tmp = c.getTemp(s.parent[], ret.typ, ret.info)
   tmp.sym.flags.incl sfSingleUsedTemp
   let cpy = if hasDestructor(c, ret.typ):
+              s.parent[].final.add c.genDestroy(tmp)
               moveOrCopy(tmp, ret, c, s, isDecl = true)
             else:
               newTree(nkFastAsgn, tmp, p(ret, c, s, normal))
@@ -629,8 +638,10 @@ template handleNestedTempl(n, processCall: untyped, willProduceStmt = false) =
 
   of nkWhileStmt:
     inc c.inLoop
+    inc c.inLoopCond
     result = copyNode(n)
     result.add p(n[0], c, s, normal)
+    dec c.inLoopCond
     var bodyScope = nestedScope(s)
     let bodyResult = p(n[1], c, bodyScope, normal)
     result.add processScope(c, bodyScope, bodyResult)
@@ -737,7 +748,7 @@ proc p(n: PNode; c: var Con; s: var Scope; mode: ProcessMode): PNode =
          nkCallKinds + nkLiterals:
       result = p(n, c, s, consumed)
     elif ((n.kind == nkSym and isSinkParam(n.sym)) or isAnalysableFieldAccess(n, c.owner)) and
-        isLastRead(n, c) and not (n.kind == nkSym and isCursor(n, c)):
+        isLastRead(n, c) and not (n.kind == nkSym and isCursor(n)):
       # Sinked params can be consumed only once. We need to reset the memory
       # to disable the destructor which we have not elided
       result = destructiveMoveVar(n, c, s)
@@ -843,17 +854,16 @@ proc p(n: PNode; c: var Con; s: var Scope; mode: ProcessMode): PNode =
         if it.kind == nkVarTuple and hasDestructor(c, ri.typ):
           let x = lowerTupleUnpacking(c.graph, it, c.idgen, c.owner)
           result.add p(x, c, s, consumed)
-        elif it.kind == nkIdentDefs and hasDestructor(c, it[0].typ) and not isCursor(it[0], c):
+        elif it.kind == nkIdentDefs and hasDestructor(c, it[0].typ):
           for j in 0..<it.len-2:
             let v = it[j]
             if v.kind == nkSym:
               if sfCompileTime in v.sym.flags: continue
-              pVarTopLevel(v, c, s, ri, result)
-            else:
-              if ri.kind == nkEmpty and c.inLoop > 0:
-                ri = genDefaultCall(v.typ, c, v.info)
-              if ri.kind != nkEmpty:
-                result.add moveOrCopy(v, ri, c, s, isDecl = false)
+              pVarTopLevel(v, c, s, result)
+            if ri.kind != nkEmpty:
+              result.add moveOrCopy(v, ri, c, s, isDecl = v.kind == nkSym)
+            elif ri.kind == nkEmpty and c.inLoop > 0:
+              result.add moveOrCopy(v, genDefaultCall(v.typ, c, v.info), c, s, isDecl = v.kind == nkSym)
         else: # keep the var but transform 'ri':
           var v = copyNode(n)
           var itCopy = copyNode(it)
@@ -863,8 +873,7 @@ proc p(n: PNode; c: var Con; s: var Scope; mode: ProcessMode): PNode =
           v.add itCopy
           result.add v
     of nkAsgn, nkFastAsgn:
-      if hasDestructor(c, n[0].typ) and n[1].kind notin {nkProcDef, nkDo, nkLambda} and
-          not isCursor(n[0], c):
+      if hasDestructor(c, n[0].typ) and n[1].kind notin {nkProcDef, nkDo, nkLambda}:
         if n[0].kind in {nkDotExpr, nkCheckedFieldExpr}:
           cycleCheck(n, c)
         assert n[1].kind notin {nkAsgn, nkFastAsgn}
@@ -883,7 +892,8 @@ proc p(n: PNode; c: var Con; s: var Scope; mode: ProcessMode): PNode =
     of nkNone..nkNilLit, nkTypeSection, nkProcDef, nkConverterDef,
        nkMethodDef, nkIteratorDef, nkMacroDef, nkTemplateDef, nkLambda, nkDo,
        nkFuncDef, nkConstSection, nkConstDef, nkIncludeStmt, nkImportStmt,
-       nkExportStmt, nkPragma, nkCommentStmt, nkBreakState, nkTypeOfExpr:
+       nkExportStmt, nkPragma, nkCommentStmt, nkBreakState,
+       nkTypeOfExpr, nkMixinStmt, nkBindStmt:
       result = n
 
     of nkStringToCString, nkCStringToString, nkChckRangeF, nkChckRange64, nkChckRange, nkPragmaBlock:
@@ -966,68 +976,105 @@ proc p(n: PNode; c: var Con; s: var Scope; mode: ProcessMode): PNode =
     else:
       internalError(c.graph.config, n.info, "cannot inject destructors to node kind: " & $n.kind)
 
-proc moveOrCopy(dest, ri: PNode; c: var Con; s: var Scope, isDecl = false): PNode =
-  case ri.kind
-  of nkCallKinds:
-    result = c.genSink(dest, p(ri, c, s, consumed), isDecl)
-  of nkBracketExpr:
-    if isUnpackedTuple(ri[0]):
-      # unpacking of tuple: take over the elements
-      result = c.genSink(dest, p(ri, c, s, consumed), isDecl)
-    elif isAnalysableFieldAccess(ri, c.owner) and isLastRead(ri, c) and
-        not aliases(dest, ri):
-      # Rule 3: `=sink`(x, z); wasMoved(z)
-      var snk = c.genSink(dest, ri, isDecl)
-      result = newTree(nkStmtList, snk, c.genWasMoved(ri))
-    else:
-      result = c.genCopy(dest, ri)
-      result.add p(ri, c, s, consumed)
-      c.finishCopy(result, dest, isFromSink = false)
-  of nkBracket:
-    # array constructor
-    if ri.len > 0 and isDangerousSeq(ri.typ):
-      result = c.genCopy(dest, ri)
-      result.add p(ri, c, s, consumed)
-      c.finishCopy(result, dest, isFromSink = false)
-    else:
-      result = c.genSink(dest, p(ri, c, s, consumed), isDecl)
-  of nkObjConstr, nkTupleConstr, nkClosure, nkCharLit..nkNilLit:
-    result = c.genSink(dest, p(ri, c, s, consumed), isDecl)
-  of nkSym:
-    if dest.kind == nkSym and dest.sym == ri.sym:
-      # rule (self-assignment-removal):
-      result = newNodeI(nkEmpty, dest.info)
-    elif isSinkParam(ri.sym) and isLastRead(ri, c):
-      # Rule 3: `=sink`(x, z); wasMoved(z)
-      let snk = c.genSink(dest, ri, isDecl)
-      result = newTree(nkStmtList, snk, c.genWasMoved(ri))
-    elif ri.sym.kind != skParam and ri.sym.owner == c.owner and
-        isLastRead(ri, c) and canBeMoved(c, dest.typ) and not isCursor(ri, c):
-      # Rule 3: `=sink`(x, z); wasMoved(z)
-      let snk = c.genSink(dest, ri, isDecl)
-      result = newTree(nkStmtList, snk, c.genWasMoved(ri))
-    else:
-      result = c.genCopy(dest, ri)
-      result.add p(ri, c, s, consumed)
-      c.finishCopy(result, dest, isFromSink = false)
-  of nkHiddenSubConv, nkHiddenStdConv, nkConv, nkObjDownConv, nkObjUpConv:
-    result = c.genSink(dest, p(ri, c, s, sinkArg), isDecl)
-  of nkStmtListExpr, nkBlockExpr, nkIfExpr, nkCaseStmt, nkTryStmt:
-    template process(child, s): untyped = moveOrCopy(dest, child, c, s, isDecl)
-    # We know the result will be a stmt so we use that fact to optimize
-    handleNestedTempl(ri, process, willProduceStmt = true)
-  of nkRaiseStmt:
-    result = pRaiseStmt(ri, c, s)
+proc sameLocation*(a, b: PNode): bool =
+  proc sameConstant(a, b: PNode): bool =
+    a.kind in nkLiterals and a.intVal == b.intVal
+
+  const nkEndPoint = {nkSym, nkDotExpr, nkCheckedFieldExpr, nkBracketExpr}
+  if a.kind in nkEndPoint and b.kind in nkEndPoint:
+    if a.kind == b.kind:
+      case a.kind
+      of nkSym: a.sym == b.sym
+      of nkDotExpr, nkCheckedFieldExpr: sameLocation(a[0], b[0]) and sameLocation(a[1], b[1])
+      of nkBracketExpr: sameLocation(a[0], b[0]) and sameConstant(a[1], b[1])
+      else: false
+    else: false
   else:
-    if isAnalysableFieldAccess(ri, c.owner) and isLastRead(ri, c) and
-        canBeMoved(c, dest.typ):
-      # Rule 3: `=sink`(x, z); wasMoved(z)
-      let snk = c.genSink(dest, ri, isDecl)
-      result = newTree(nkStmtList, snk, c.genWasMoved(ri))
+    case a.kind
+    of nkSym, nkDotExpr, nkCheckedFieldExpr, nkBracketExpr:
+      # Reached an endpoint, flip to recurse the other side.
+      sameLocation(b, a)
+    of nkAddr, nkHiddenAddr, nkDerefExpr, nkHiddenDeref:
+      # We don't need to check addr/deref levels or differentiate between the two,
+      # since pointers don't have hooks :) (e.g: var p: ptr pointer; p[] = addr p)
+      sameLocation(a[0], b)
+    of nkObjDownConv, nkObjUpConv: sameLocation(a[0], b)
+    of nkHiddenStdConv, nkHiddenSubConv: sameLocation(a[1], b)
+    else: false
+
+proc moveOrCopy(dest, ri: PNode; c: var Con; s: var Scope, isDecl = false): PNode =
+  if sameLocation(dest, ri):
+    # rule (self-assignment-removal):
+    result = newNodeI(nkEmpty, dest.info)
+  elif isCursor(dest):
+    case ri.kind:
+    of nkStmtListExpr, nkBlockExpr, nkIfExpr, nkCaseStmt, nkTryStmt:
+      template process(child, s): untyped = moveOrCopy(dest, child, c, s, isDecl)
+      # We know the result will be a stmt so we use that fact to optimize
+      handleNestedTempl(ri, process, willProduceStmt = true)
     else:
-      result = c.genCopy(dest, ri)
-      result.add p(ri, c, s, consumed)
-      c.finishCopy(result, dest, isFromSink = false)
+      result = newTree(nkFastAsgn, dest, p(ri, c, s, normal))
+  else:
+    case ri.kind
+    of nkCallKinds:
+      result = c.genSink(dest, p(ri, c, s, consumed), isDecl)
+    of nkBracketExpr:
+      if isUnpackedTuple(ri[0]):
+        # unpacking of tuple: take over the elements
+        result = c.genSink(dest, p(ri, c, s, consumed), isDecl)
+      elif isAnalysableFieldAccess(ri, c.owner) and isLastRead(ri, c):
+        if aliases(dest, ri) == no:
+          # Rule 3: `=sink`(x, z); wasMoved(z)
+          var snk = c.genSink(dest, ri, isDecl)
+          result = newTree(nkStmtList, snk, c.genWasMoved(ri))
+        else:
+          result = c.genSink(dest, destructiveMoveVar(ri, c, s), isDecl)
+      else:
+        result = c.genCopy(dest, ri)
+        result.add p(ri, c, s, consumed)
+        c.finishCopy(result, dest, isFromSink = false)
+    of nkBracket:
+      # array constructor
+      if ri.len > 0 and isDangerousSeq(ri.typ):
+        result = c.genCopy(dest, ri)
+        result.add p(ri, c, s, consumed)
+        c.finishCopy(result, dest, isFromSink = false)
+      else:
+        result = c.genSink(dest, p(ri, c, s, consumed), isDecl)
+    of nkObjConstr, nkTupleConstr, nkClosure, nkCharLit..nkNilLit:
+      result = c.genSink(dest, p(ri, c, s, consumed), isDecl)
+    of nkSym:
+      if isSinkParam(ri.sym) and isLastRead(ri, c):
+        # Rule 3: `=sink`(x, z); wasMoved(z)
+        let snk = c.genSink(dest, ri, isDecl)
+        result = newTree(nkStmtList, snk, c.genWasMoved(ri))
+      elif ri.sym.kind != skParam and ri.sym.owner == c.owner and
+          isLastRead(ri, c) and canBeMoved(c, dest.typ) and not isCursor(ri):
+        # Rule 3: `=sink`(x, z); wasMoved(z)
+        let snk = c.genSink(dest, ri, isDecl)
+        result = newTree(nkStmtList, snk, c.genWasMoved(ri))
+      else:
+        result = c.genCopy(dest, ri)
+        result.add p(ri, c, s, consumed)
+        c.finishCopy(result, dest, isFromSink = false)
+    of nkHiddenSubConv, nkHiddenStdConv, nkConv, nkObjDownConv, nkObjUpConv:
+      result = c.genSink(dest, p(ri, c, s, sinkArg), isDecl)
+    of nkStmtListExpr, nkBlockExpr, nkIfExpr, nkCaseStmt, nkTryStmt:
+      template process(child, s): untyped = moveOrCopy(dest, child, c, s, isDecl)
+      # We know the result will be a stmt so we use that fact to optimize
+      handleNestedTempl(ri, process, willProduceStmt = true)
+    of nkRaiseStmt:
+      result = pRaiseStmt(ri, c, s)
+    else:
+      if isAnalysableFieldAccess(ri, c.owner) and isLastRead(ri, c) and
+          canBeMoved(c, dest.typ):
+        # Rule 3: `=sink`(x, z); wasMoved(z)
+        let snk = c.genSink(dest, ri, isDecl)
+        result = newTree(nkStmtList, snk, c.genWasMoved(ri))
+      else:
+        result = c.genCopy(dest, ri)
+        result.add p(ri, c, s, consumed)
+        c.finishCopy(result, dest, isFromSink = false)
 
 proc computeUninit(c: var Con) =
   if not c.uninitComputed:
@@ -1056,6 +1103,8 @@ proc injectDefaultCalls(n: PNode, c: var Con) =
       injectDefaultCalls(n[i], c)
 
 proc injectDestructorCalls*(g: ModuleGraph; idgen: IdGenerator; owner: PSym; n: PNode): PNode =
+  when toDebug.len > 0:
+    shouldDebug = toDebug == owner.name.s or toDebug == "always"
   if sfGeneratedOp in owner.flags or (owner.kind == skIterator and isInlineIterator(owner.typ)):
     return n
   var c = Con(owner: owner, graph: g, g: constructCfg(owner, n), idgen: idgen)
@@ -1065,7 +1114,9 @@ proc injectDestructorCalls*(g: ModuleGraph; idgen: IdGenerator; owner: PSym; n: 
     echo n
 
   if optCursorInference in g.config.options:
-    computeCursors(owner, n, g.config)
+    computeCursors(owner, n, g)
+
+  computeLastReadsAndFirstWrites(c.g)
 
   var scope: Scope
   let body = p(n, c, scope, normal)

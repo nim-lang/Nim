@@ -48,8 +48,8 @@ block tableTest1:
   t[(1,1)] = "11"
   for x in 0..1:
     for y in 0..1:
-      assert t[(x,y)] == $x & $y
-  assert t.sortedPairs == @[((x: 0, y: 0), "00"), ((x: 0, y: 1), "01"), ((x: 1, y: 0), "10"), ((x: 1, y: 1), "11")]
+      doAssert t[(x,y)] == $x & $y
+  doAssert t.sortedPairs == @[((x: 0, y: 0), "00"), ((x: 0, y: 1), "01"), ((x: 1, y: 0), "10"), ((x: 1, y: 1), "11")]
 
 block tableTest2:
   var t = initTable[string, float]()
@@ -61,74 +61,74 @@ block tableTest2:
   t["012"] = 67.9
   t["123"] = 1.5 # test overwriting
 
-  assert t["123"] == 1.5
+  doAssert t["123"] == 1.5
   try:
     echo t["111"] # deleted
   except KeyError:
     discard
-  assert(not hasKey(t, "111"))
+  doAssert(not hasKey(t, "111"))
 
-  assert "123" in t
-  assert("111" notin t)
+  doAssert "123" in t
+  doAssert("111" notin t)
 
   for key, val in items(data): t[key] = val.toFloat
-  for key, val in items(data): assert t[key] == val.toFloat
+  for key, val in items(data): doAssert t[key] == val.toFloat
 
-  assert(not t.hasKeyOrPut("456", 4.0))     # test absent key
-  assert t.hasKeyOrPut("012", 3.0)          # test present key
+  doAssert(not t.hasKeyOrPut("456", 4.0))     # test absent key
+  doAssert t.hasKeyOrPut("012", 3.0)          # test present key
   var x = t.mgetOrPut("111", 1.5)           # test absent key
   x = x * 2
-  assert x == 3.0
+  doAssert x == 3.0
   x = t.mgetOrPut("test", 1.5)              # test present key
   x = x * 2
-  assert x == 2 * 1.2345
+  doAssert x == 2 * 1.2345
 
 block orderedTableTest1:
   var t = initOrderedTable[string, int](2)
   for key, val in items(data): t[key] = val
-  for key, val in items(data): assert t[key] == val
+  for key, val in items(data): doAssert t[key] == val
   var i = 0
   # `pairs` needs to yield in insertion order:
   for key, val in pairs(t):
-    assert key == data[i][0]
-    assert val == data[i][1]
+    doAssert key == data[i][0]
+    doAssert val == data[i][1]
     inc(i)
 
   for key, val in mpairs(t): val = 99
-  for val in mvalues(t): assert val == 99
+  for val in mvalues(t): doAssert val == 99
 
 block orderedTableTest2:
   var
     s = initOrderedTable[string, int]()
     t = initOrderedTable[string, int]()
-  assert s == t
+  doAssert s == t
   for key, val in items(data): t[key] = val
-  assert s != t
+  doAssert s != t
   for key, val in items(sorteddata): s[key] = val
-  assert s != t
+  doAssert s != t
   t.clear()
-  assert s != t
+  doAssert s != t
   for key, val in items(sorteddata): t[key] = val
-  assert s == t
+  doAssert s == t
 
 block countTableTest1:
   var s = data.toTable
   var t = initCountTable[string]()
 
   for k in s.keys: t.inc(k)
-  for k in t.keys: assert t[k] == 1
+  for k in t.keys: doAssert t[k] == 1
   t.inc("90", 3)
   t.inc("12", 2)
   t.inc("34", 1)
-  assert t.largest()[0] == "90"
+  doAssert t.largest()[0] == "90"
 
   t.sort()
   var i = 0
   for k, v in t.pairs:
     case i
-    of 0: assert k == "90" and v == 4
-    of 1: assert k == "12" and v == 3
-    of 2: assert k == "34" and v == 2
+    of 0: doAssert k == "90" and v == 4
+    of 1: doAssert k == "12" and v == 3
+    of 2: doAssert k == "34" and v == 2
     else: break
     inc i
 
@@ -136,19 +136,19 @@ block countTableTest2:
   var
     s = initCountTable[int]()
     t = initCountTable[int]()
-  assert s == t
+  doAssert s == t
   s.inc(1)
-  assert s != t
+  doAssert s != t
   t.inc(2)
-  assert s != t
+  doAssert s != t
   t.inc(1)
-  assert s != t
+  doAssert s != t
   s.inc(2)
-  assert s == t
+  doAssert s == t
   s.inc(1)
-  assert s != t
+  doAssert s != t
   t.inc(1)
-  assert s == t
+  doAssert s == t
 
 block mpairsTableTest1:
   var t = initTable[string, int]()
@@ -162,9 +162,9 @@ block mpairsTableTest1:
 
   for k, v in t.pairs:
     if k == "a" or k == "c":
-      assert v == 9
+      doAssert v == 9
     else:
-      assert v != 1 and v != 3
+      doAssert v != 1 and v != 3
 
 block SyntaxTest:
   var x = toTable[int, string]({:})
@@ -174,10 +174,10 @@ block zeroHashKeysTest:
     let initialLen = t.len
     var testTable = t
     testTable[nullHashKey] = value
-    assert testTable[nullHashKey] == value
-    assert testTable.len == initialLen + 1
+    doAssert testTable[nullHashKey] == value
+    doAssert testTable.len == initialLen + 1
     testTable.del(nullHashKey)
-    assert testTable.len == initialLen
+    doAssert testTable.len == initialLen
 
   # with empty table
   doZeroHashValueTest(toTable[int,int]({:}), 0, 42)
@@ -194,46 +194,46 @@ block zeroHashKeysTest:
 
 block clearTableTest:
   var t = data.toTable
-  assert t.len() != 0
+  doAssert t.len() != 0
   t.clear()
-  assert t.len() == 0
+  doAssert t.len() == 0
 
 block clearOrderedTableTest:
   var t = data.toOrderedTable
-  assert t.len() != 0
+  doAssert t.len() != 0
   t.clear()
-  assert t.len() == 0
+  doAssert t.len() == 0
 
 block clearCountTableTest:
   var t = initCountTable[string]()
   t.inc("90", 3)
   t.inc("12", 2)
   t.inc("34", 1)
-  assert t.len() != 0
+  doAssert t.len() != 0
   t.clear()
-  assert t.len() == 0
+  doAssert t.len() == 0
 
 block withKeyTest:
   var t: SharedTable[int, int]
   t.init()
   t.withKey(1) do (k: int, v: var int, pairExists: var bool):
-    assert(v == 0)
+    doAssert(v == 0)
     pairExists = true
     v = 42
-  assert(t.mget(1) == 42)
+  doAssert(t.mget(1) == 42)
   t.withKey(1) do (k: int, v: var int, pairExists: var bool):
-    assert(v == 42)
+    doAssert(v == 42)
     pairExists = false
   try:
     discard t.mget(1)
-    assert(false, "KeyError expected")
+    doAssert(false, "KeyError expected")
   except KeyError:
     discard
   t.withKey(2) do (k: int, v: var int, pairExists: var bool):
     pairExists = false
   try:
     discard t.mget(2)
-    assert(false, "KeyError expected")
+    doAssert(false, "KeyError expected")
   except KeyError:
     discard
 
@@ -242,20 +242,20 @@ block takeTest:
   t["key"] = 123
 
   var val = 0
-  assert(t.take("key", val))
-  assert(val == 123)
+  doAssert(t.take("key", val))
+  doAssert(val == 123)
 
   val = -1
-  assert(not t.take("key", val))
-  assert(val == -1)
+  doAssert(not t.take("key", val))
+  doAssert(val == -1)
 
-  assert(not t.take("otherkey", val))
-  assert(val == -1)
+  doAssert(not t.take("otherkey", val))
+  doAssert(val == -1)
 
 proc orderedTableSortTest() =
   var t = initOrderedTable[string, int](2)
   for key, val in items(data): t[key] = val
-  for key, val in items(data): assert t[key] == val
+  for key, val in items(data): doAssert t[key] == val
   t.sort(proc (x, y: tuple[key: string, val: int]): int = cmp(x.key, y.key))
   var i = 0
   # `pairs` needs to yield in sorted order:

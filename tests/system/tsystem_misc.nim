@@ -59,11 +59,6 @@ doAssert high(float) > low(float)
 doAssert high(float32) > low(float32)
 doAssert high(float64) > low(float64)
 
-# bug #6710
-var s = @[1]
-s.delete(0)
-
-
 proc foo(a: openArray[int]) =
   for x in a: echo x
 
@@ -210,3 +205,10 @@ block: # Ordinal
   # doAssert enum is Ordinal # fails
   # doAssert Ordinal is SomeOrdinal
   # doAssert SomeOrdinal is Ordinal
+
+block:
+  proc p() = discard
+
+  doAssert not compiles(echo p.rawProc.repr)
+  doAssert not compiles(echo p.rawEnv.repr)
+  doAssert not compiles(echo p.finished)

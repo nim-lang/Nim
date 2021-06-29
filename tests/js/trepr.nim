@@ -1,6 +1,4 @@
-discard """
-  action: run
-"""
+# xxx consider merging with `tests/stdlib/trepr.nim` to increase overall test coverage
 
 block ints:
   let
@@ -137,15 +135,13 @@ block tuples:
   when defined js:
     doAssert(repr(ot) == """
 [Field0 = true,
-Field1 = 120]
-""")
+Field1 = 120]""")
     doAssert(repr(t) == """
 [Field0 = 42,
 Field1 = 12.34,
 Field2 = "tuple",
 Field3 = [Field0 = true,
-Field1 = 120]]
-""")
+Field1 = 120]]""")
 
 block objects:
   type
@@ -162,14 +158,12 @@ block objects:
 
   doAssert(repr(oo) == """
 [a = true,
-b = 120]
-""")
+b = 120]""")
   doAssert(repr(o) == """
 [a = 42,
 b = 12.34,
 c = [a = true,
-b = 120]]
-""")
+b = 120]]""")
 
 block arrays:
   type
@@ -183,15 +177,14 @@ block arrays:
     c = [o, o, o]
     d = ["hi", "array", "!"]
 
-  doAssert(repr(a) == "[0.0, 1.0, 2.0]\n")
-  doAssert(repr(b) == "[[0.0, 1.0, 2.0], [0.0, 1.0, 2.0], [0.0, 1.0, 2.0]]\n")
+  doAssert(repr(a) == "[0.0, 1.0, 2.0]")
+  doAssert(repr(b) == "[[0.0, 1.0, 2.0], [0.0, 1.0, 2.0], [0.0, 1.0, 2.0]]")
   doAssert(repr(c) == """
 [[x = 42,
 y = [0.0, 1.0, 2.0]], [x = 42,
 y = [0.0, 1.0, 2.0]], [x = 42,
-y = [0.0, 1.0, 2.0]]]
-""")
-  doAssert(repr(d) == "[\"hi\", \"array\", \"!\"]\n")
+y = [0.0, 1.0, 2.0]]]""")
+  doAssert(repr(d) == "[\"hi\", \"array\", \"!\"]")
 
 block seqs:
   type
@@ -205,15 +198,14 @@ block seqs:
     c = @[o, o, o]
     d = @["hi", "array", "!"]
 
-  doAssert(repr(a) == "@[0.0, 1.0, 2.0]\n")
-  doAssert(repr(b) == "@[@[0.0, 1.0, 2.0], @[0.0, 1.0, 2.0], @[0.0, 1.0, 2.0]]\n")
+  doAssert(repr(a) == "@[0.0, 1.0, 2.0]")
+  doAssert(repr(b) == "@[@[0.0, 1.0, 2.0], @[0.0, 1.0, 2.0], @[0.0, 1.0, 2.0]]")
   doAssert(repr(c) == """
 @[[x = 42,
 y = @[0.0, 1.0, 2.0]], [x = 42,
 y = @[0.0, 1.0, 2.0]], [x = 42,
-y = @[0.0, 1.0, 2.0]]]
-""")
-  doAssert(repr(d) == "@[\"hi\", \"array\", \"!\"]\n")
+y = @[0.0, 1.0, 2.0]]]""")
+  doAssert(repr(d) == "@[\"hi\", \"array\", \"!\"]")
 
 block ptrs:
   type
@@ -226,13 +218,12 @@ block ptrs:
     c = addr a[2]
     d = AObj()
 
-  doAssert(repr(a) == "[12.0, 13.0, 14.0]\n")
-  doAssert(repr(b) == "ref 0 --> 12.0\n")
-  doAssert(repr(c) == "ref 2 --> 14.0\n")
+  doAssert(repr(a) == "[12.0, 13.0, 14.0]")
+  doAssert(repr(b) == "ref 0 --> 12.0")
+  doAssert(repr(c) == "ref 2 --> 14.0")
   doAssert(repr(d) == """
 [x = nil,
-y = 0]
-""")
+y = 0]""")
 
 block ptrs:
   type
@@ -248,8 +239,7 @@ block ptrs:
 [x = ref 0 --> [[x = nil,
 y = 0], [x = nil,
 y = 0]],
-y = 0]
-""")
+y = 0]""")
 
 block procs:
   proc test(): int =
@@ -258,9 +248,9 @@ block procs:
     ptest = test
     nilproc: proc(): int
 
-  doAssert(repr(test) == "0\n")
-  doAssert(repr(ptest) == "0\n")
-  doAssert(repr(nilproc) == "nil\n")
+  doAssert(repr(test) == "0")
+  doAssert(repr(ptest) == "0")
+  doAssert(repr(nilproc) == "nil")
 
 block bunch:
   type
@@ -322,8 +312,7 @@ o = [Field0 = [a = "",
 b = @[]],
 Field1 = ""],
 p = nil,
-q = nil]
-""")
+q = nil]""")
   doAssert(repr(cc) == """
 [a = 12,
 b = 1,
@@ -346,8 +335,7 @@ o = [Field0 = [a = "inner",
 b = @['o', 'b', 'j']],
 Field1 = "tuple!"],
 p = 0,
-q = "cstringtest"]
-""")
+q = "cstringtest"]""")
 
 block another:
   type
@@ -358,9 +346,9 @@ block another:
     Size3 = enum
       s3e=0, s3f=2000000000
 
-  doAssert(repr([s1a, s1b]) == "[s1a, s1b]\n")
-  doAssert(repr([s2c, s2d]) == "[s2c, s2d]\n")
-  doAssert(repr([s3e, s3f]) == "[s3e, s3f]\n")
+  doAssert(repr([s1a, s1b]) == "[s1a, s1b]")
+  doAssert(repr([s2c, s2d]) == "[s2c, s2d]")
+  doAssert(repr([s3e, s3f]) == "[s3e, s3f]")
 
 block another2:
 
@@ -395,15 +383,13 @@ block another2:
 y = 13,
 z = 45,
 s = ["abc", "xyz"],
-e = en6]
-""")
+e = en6]""")
   doAssert(repr(q) == """
 ref 0 --> [x = 0,
 y = 13,
 z = 45,
 s = ["abc", "xyz"],
-e = en6]
-""")
+e = en6]""")
   doAssert(repr(s) == """
 @[ref 0 --> [x = 0,
 y = 13,
@@ -421,8 +407,7 @@ e = en6], ref 3 --> [x = 0,
 y = 13,
 z = 45,
 s = ["abc", "xyz"],
-e = en6]]
-""")
+e = en6]]""")
   doAssert(repr(en4) == "en4")
 
   doAssert(repr({'a'..'p'}) == "{'a', 'b', 'c', 'd', 'e', 'f', 'g', 'h', 'i', 'j', 'k', 'l', 'm', 'n', 'o', 'p'}")

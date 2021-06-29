@@ -20,7 +20,7 @@ when not defined(windows):
       # the test fails.
     var rc1 = selector.select(t)
     var rc2 = selector.select(t)
-    assert len(rc1) <= 1 and len(rc2) <= 1
+    doAssert len(rc1) <= 1 and len(rc2) <= 1
     data.s1 += ord(len(rc1) == 1)
     data.s2 += ord(len(rc2) == 1)
     selector.unregister(timer)
@@ -32,9 +32,9 @@ when not defined(windows):
       # this can't be too large as it'll actually wait that long:
       # timer_notification_test.n * t2
     var rc5 = selector.select(t2)
-    assert len(rc4) + len(rc5) <= 1
+    doAssert len(rc4) + len(rc5) <= 1
     data.s3 += ord(len(rc4) + len(rc5) == 1)
-    assert(selector.isEmpty())
+    doAssert(selector.isEmpty())
     selector.close()
 
   proc timerNotificationTest() =

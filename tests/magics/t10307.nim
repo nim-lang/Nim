@@ -4,7 +4,8 @@ discard """
 res: yes
 yes
 running someProc(false)
-res:
+res: 
+
 '''
 """
 

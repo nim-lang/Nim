@@ -97,22 +97,10 @@ block:
     doAssert a2 == 10
 
   block:
-    when not defined(cpp): # pending bug #15958
-      let a = [11,12]
-      doAssert byLent(a) == [11,12]
+    let a = [11,12]
+    doAssert byLent(a) == [11,12] # bug #15958
     let a2 = (11,)
     doAssert byLent(a2) == (11,)
-
-  block:
-    when (defined(c) or defined(cpp)) and defined(release):
-      discard # probably not a bug since optimizer is free to pass by value, and `unsafeAddr` is used
-    else:
-      var a = @[12]
-      doAssert byPtr(a)[] == @[12]
-      let a2 = [13]
-      doAssert byPtr(a2)[] == [13]
-      let a3 = 14
-      doAssert byPtr(a3)[] == 14
 
   block:
     proc byLent2[T](a: seq[T]): lent T = a[1]
@@ -135,3 +123,149 @@ block:
   block: # pending bug #15959
     when false:
       proc byLent2[T](a: T): lent type(a[0]) = a[0]
+
+proc test14420() = # bug #14420
+  # s/proc/template/ would hit bug #16005
+  block:
+    type Foo = object
+      x: float
+
+    proc fn(a: var Foo): var float =
+      ## WAS: discard <- turn this into a comment (or a `discard`) and error disappears
+      # result = a.x # this works
+      a.x #  WAS: Error: limited VM support for 'addr'
+
+    proc fn2(a: var Foo): var float =
+      result = a.x # this works
+      a.x #  WAS: Error: limited VM support for 'addr'
+
+    var a = Foo()
+    discard fn(a)
+    discard fn2(a)
+
+  block:
+    proc byLent2[T](a: T): lent T =
+      runnableExamples: discard
+      a
+    proc byLent3[T](a: T): lent T =
+      runnableExamples: discard
+      result = a
+    var a = 10
+    let x3 = byLent3(a) # works
+    let x2 = byLent2(a) # WAS: Error: internal error: genAddr: nkStmtListExpr
+
+  block:
+    type MyOption[T] = object
+      case has: bool
+      of true:
+        value: T
+      of false:
+        discard
+    func some[T](val: T): MyOption[T] =
+      result = MyOption[T](has: true, value: val)
+    func get[T](opt: MyOption[T]): lent T =
+      doAssert opt.has
+      # result = opt.value # this was ok
+      opt.value # this had the bug
+    let x = some(10)
+    doAssert x.get() == 10
+
+template test14339() = # bug #14339
+  block:
+    type
+      Node = ref object
+        val: int
+    proc bar(c: Node): var int =
+      var n = c # was: Error: limited VM support for 'addr'
+      c.val
+    var a = Node()
+    discard a.bar()
+  block:
+    type
+      Node = ref object
+        val: int
+    proc bar(c: Node): var int =
+      var n = c
+      doAssert n.val == n[].val
+      n.val
+    var a = Node(val: 3)
+    a.bar() = 5
+    when nimvm:
+      doAssert a.val == 5
+    else:
+      when not defined(js): # pending bug #16003
+        doAssert a.val == 5
+
+template testStatic15464() = # bug #15464
+  proc access(s: var seq[char], i: int): var char = s[i]
+  proc access(s: var string, i: int): var char = s[i]
+  static:
+    var s = @['a', 'b', 'c']
+    access(s, 2) = 'C'
+    doAssert access(s, 2) == 'C'
+  static:
+    var s = "abc"
+    access(s, 2) = 'C'
+    doAssert access(s, 2) == 'C'
+
+proc test15464() = # bug #15464 (v2)
+  proc access(s: var seq[char], i: int): var char = s[i]
+  proc access(s: var string, i: int): var char = s[i]
+  block:
+    var s = @['a', 'b', 'c']
+    access(s, 2) = 'C'
+    doAssert access(s, 2) == 'C'
+  block:
+    var s = "abc"
+    access(s, 2) = 'C'
+    doAssert access(s, 2) == 'C'
+
+block: # bug #15939
+  block:
+    const foo = "foo"
+    proc proc1(s: var string) =
+      if s[^1] notin {'a'..'z'}:
+        s = ""
+    proc proc2(f: string): string =
+      result = f
+      proc1(result)
+    const bar = proc2(foo)
+    doAssert bar == "foo"
+
+proc test15939() = # bug #15939 (v2)
+  template fn(a) =
+    let pa = a[0].addr
+    doAssert pa != nil
+    doAssert pa[] == 'a'
+    pa[] = 'x'
+    doAssert pa[] == 'x'
+    doAssert a == "xbc"
+    when not defined js: # otherwise overflows
+      let pa2 = cast[ptr char](cast[int](pa) + 1)
+      doAssert pa2[] == 'b'
+      pa2[] = 'B'
+      doAssert a == "xBc"
+
+  # mystring[ind].addr
+  var a = "abc"
+  fn(a)
+
+  # mycstring[ind].addr
+  template cstringTest =
+    var a2 = "abc"
+    var b2 = a2.cstring
+    fn(b2)
+  when nimvm: cstringTest()
+  else: # can't take address of cstring element in js
+    when not defined(js): cstringTest()
+
+template main =
+  # xxx wrap all other tests here like that so they're also tested in VM
+  test14420()
+  test14339()
+  test15464()
+  test15939()
+
+testStatic15464()
+static: main()
+main()

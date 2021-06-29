@@ -46,7 +46,7 @@ import std/[
 
   # Parsers:
   htmlparser, json, lexbase, parsecfg, parsecsv, parsesql, parsexml,
-  # fails: parseopt
+  parseopt,
 
   # XML processing:
   xmltree, xmlparser,

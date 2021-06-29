@@ -61,7 +61,7 @@ proc handleCR*(L: var TBaseLexer, pos: int): int
   # position to continue the scanning from. `pos` must be the position
   # of the CR.
 proc handleLF*(L: var TBaseLexer, pos: int): int
-  # Call this if you scanned over LF in the buffer; it returns the the
+  # Call this if you scanned over LF in the buffer; it returns the
   # position to continue the scanning from. `pos` must be the position
   # of the LF.
 # implementation

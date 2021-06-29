@@ -1,0 +1,114 @@
+
+Usage:
+
+* To search::
+    nimgrep [options] PATTERN [(FILE/DIRECTORY)*/-]
+* To replace::
+    nimgrep [options] PATTERN --replace REPLACEMENT (FILE/DIRECTORY)*/-
+* To list file names::
+    nimgrep [options] --filenames [PATTERN] [(FILE/DIRECTORY)*]
+
+Positional arguments, from left to right:
+1) PATTERN is either Regex (default) or Peg if `--peg` is specified.
+   PATTERN and REPLACEMENT should be skipped when `--stdin` is specified.
+2) REPLACEMENT supports `$1`, `$#` notations for captured groups in PATTERN.
+
+   .. DANGER:: `--replace` mode **DOES NOT** ask confirmation
+      unless `--confirm` is specified!
+
+3) Final arguments are a list of paths (FILE/DIRECTORY) or a standalone
+   minus `-` or not specified (empty):
+
+   * empty, current directory `.` is assumed (not with `--replace`)
+
+     .. Note:: so when no FILE/DIRECTORY/`-` is specified nimgrep
+       does **not** read the pipe, but searches files in the current
+       dir instead!
+   * `-`, read buffer once from stdin: pipe or terminal input;
+     in `--replace` mode the result is directed to stdout;
+     it's not compatible with `--stdin`, `--filenames`, or `--confirm`
+
+
+   For any given DIRECTORY nimgrep searches only its immediate files without
+   traversing sub-directories unless `--recursive` is specified.
+
+In replacement mode we require all 3 positional arguments to avoid damaging.
+
+Options:
+* Mode of operation:
+  --find, -f          find the PATTERN (default)
+  --replace, -!       replace the PATTERN to REPLACEMENT, rewriting the files
+  --confirm           confirm each occurrence/replacement; there is a chance
+                      to abort any time without touching the file
+  --filenames         just list filenames. Provide a PATTERN to find it in
+                      the filenames (not in the contents of a file) or run
+                      with empty pattern to just list all files::
+                        nimgrep --filenames               # In current dir
+                        nimgrep --filenames "" DIRECTORY
+                          # Note empty pattern "", lists all files in DIRECTORY
+
+* Interprete patterns:
+  --peg               PATTERN and PAT are Peg
+  --re                PATTERN and PAT are regular expressions (default)
+  --rex, -x           use the "extended" syntax for the regular expression
+                      so that whitespace is not significant
+  --word, -w          matches should have word boundaries (buggy for pegs!)
+  --ignoreCase, -i    be case insensitive in PATTERN and PAT
+  --ignoreStyle, -y   be style insensitive in PATTERN and PAT
+  .. Note:: PATERN and patterns PAT (see below in other options) are all either
+     Regex or Peg simultaneously and options `--rex`, `--word`, `--ignoreCase`,
+     and `--ignoreStyle` are applied to all of them.
+
+* File system walk:
+  --recursive, -r      process directories recursively
+  --follow             follow all symlinks when processing recursively
+  --ext:EX1|EX2|...    only search the files with the given extension(s),
+                       empty one ("--ext") means files with missing extension
+  --noExt:EX1|...      exclude files having given extension(s), use empty one to
+                       skip files with no extension (like some binary files are)
+  --includeFile:PAT    search only files whose names contain pattern PAT
+  --excludeFile:PAT    skip files whose names contain pattern PAT
+  --includeDir:PAT     search only files with their whole directory path
+                       containing PAT
+  --excludeDir:PAT     skip directories whose name (not path)
+                       contain pattern PAT
+  --if,--ef,--id,--ed  abbreviations of the 4 options above
+  --sortTime, -s[:asc|desc]
+                       order files by the last modification time (default: off):
+                       ascending (recent files go last) or descending
+
+* Filter file content:
+  --match:PAT         select files containing a (not displayed) match of PAT
+  --noMatch:PAT       select files not containing any match of PAT
+  --bin:on|off|only   process binary files? (detected by \0 in first 1K bytes)
+                      (default: on - binary and text files treated the same way)
+  --text, -t          process only text files, the same as `--bin:off`
+
+* Represent results:
+  --nocolor           output will be given without any colors
+  --color[:on]        force color even if output is redirected (default: auto)
+  --colorTheme:THEME  select color THEME from `simple` (default),
+                      `bnw` (black and white), `ack`, or `gnu` (GNU grep)
+  --count             only print counts of matches for files that matched
+  --context:N, -c:N   print N lines of leading context before every match and
+                      N lines of trailing context after it (default N: 0)
+  --afterContext:N, -a:N
+                      print N lines of trailing context after every match
+  --beforeContext:N, -b:N
+                      print N lines of leading context before every match
+  --group, -g         group matches by file
+  --newLine, -l       display every matching line starting from a new line
+  --cols[:N]          limit max displayed columns/width of output lines from
+                      files by N characters, cropping overflows (default: off)
+  --cols:auto, -%     calculate columns from terminal width for every line
+  --onlyAscii, -@     display only printable ASCII Latin characters 0x20-0x7E
+                      substitutions: 0 -> ^@, 1 -> ^A, ... 0x1F -> ^_,
+                                     0x7F -> '7F, ..., 0xFF -> 'FF
+
+* Miscellaneous:
+  --threads:N, -j:N   speed up search by N additional workers (default: 0, off)
+  --stdin             read PATTERN from stdin (to avoid the shell's confusing
+                      quoting rules) and, if `--replace` given, REPLACEMENT
+  --verbose           be verbose: list every processed file
+  --help, -h          shows this help
+  --version, -v       shows the version

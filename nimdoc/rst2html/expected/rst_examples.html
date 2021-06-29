@@ -34,7 +34,6 @@ function main() {
     }
   }
 
-  const toggleSwitch = document.querySelector('.theme-switch input[type="checkbox"]');
   function switchTheme(e) {
       if (e.target.checked) {
           document.documentElement.setAttribute('data-theme', 'dark');
@@ -45,21 +44,29 @@ function main() {
       }
   }
 
-  toggleSwitch.addEventListener('change', switchTheme, false);
+  const toggleSwitch = document.querySelector('.theme-switch input[type="checkbox"]');
+  if (toggleSwitch !== null) {
+    toggleSwitch.addEventListener('change', switchTheme, false);
+  }
 
-  const currentTheme = localStorage.getItem('theme') ? localStorage.getItem('theme') : null;
+  var currentTheme = localStorage.getItem('theme');
+  if (!currentTheme && window.matchMedia('(prefers-color-scheme: dark)').matches) {
+    currentTheme = 'dark';
+  }
   if (currentTheme) {
     document.documentElement.setAttribute('data-theme', currentTheme);
 
-    if (currentTheme === 'dark') {
+    if (currentTheme === 'dark' && toggleSwitch !== null) {
       toggleSwitch.checked = true;
     }
   }
 }
+
+window.addEventListener('DOMContentLoaded', main);
 </script>
 
 </head>
-<body onload="main()">
+<body>
 <div class="document" id="documentId">
   <div class="container">
     <h1 class="title">Not a Nim Manual</h1>
@@ -117,8 +124,8 @@ function main() {
   <div class="nine columns" id="content">
   <div id="tocRoot"></div>
   
-  <p class="module-desc"><table class="docinfo" frame="void" rules="none"><col class="docinfo-name" /><col class="docinfo-content" /><tbody valign="top"><tr><th class="docinfo-name">Authors:</th><td> Andreas Rumpf, Zahary Karadjov</td></tr>
-<tr><th class="docinfo-name">Version:</th><td> |nimversion|</td></tr>
+  <p class="module-desc"><table class="docinfo" frame="void" rules="none"><col class="docinfo-name" /><col class="docinfo-content" /><tbody valign="top"><tr><th class="docinfo-name">Authors:</th><td>Andreas Rumpf, Zahary Karadjov</td></tr>
+<tr><th class="docinfo-name">Version:</th><td>|nimversion|</td></tr>
 </tbody></table><blockquote><p>&quot;Complexity&quot; seems to be a lot like &quot;energy&quot;: you can transfer it from the end-user to one/some of the other players, but the total amount seems to remain pretty much constant for a given task. -- Ran</p></blockquote>
 
 <h1><a class="toc-backref" id="about-this-document" href="#about-this-document">About this document</a></h1><p><strong>Note</strong>: This document is a draft! Several of Nim's features may need more precise wording. This manual is constantly evolving into a proper specification.</p>
@@ -211,9 +218,9 @@ stmt = IND{&gt;} stmt ^+ IND{=} DED  # list of statements
 </dl>
 <p>Let <tt class="docutils literal"><span class="pre">T</span></tt>'s be <tt class="docutils literal"><span class="pre">p</span></tt>'s return type. NRVO applies for <tt class="docutils literal"><span class="pre">T</span></tt> if <tt class="docutils literal"><span class="pre">sizeof(T) &gt;= N</span></tt> (where <tt class="docutils literal"><span class="pre">N</span></tt> is implementation dependent), in other words, it applies for &quot;big&quot; structures.</p>
 <p>Apart from built-in operations like array indexing, memory allocation, etc. the <tt class="docutils literal"><span class="pre">raise</span></tt> statement is the only way to raise an exception.</p>
-<p><tt class="docutils literal"><span class="pre">typedesc</span></tt> used as a parameter type also introduces an implicit generic. <tt class="docutils literal"><span class="pre">typedesc</span></tt> has its own set of rules:</p>
+<p><tt class="docutils literal"><span class="pre"><span class="Identifier">typedesc</span></span></tt> used as a parameter type also introduces an implicit generic. <tt class="docutils literal"><span class="pre"><span class="Identifier">typedesc</span></span></tt> has its own set of rules:</p>
 <p>The <tt class="docutils literal"><span class="pre">!=</span></tt>, <tt class="docutils literal"><span class="pre">&gt;</span></tt>, <tt class="docutils literal"><span class="pre">&gt;=</span></tt>, <tt class="docutils literal"><span class="pre">in</span></tt>, <tt class="docutils literal"><span class="pre">notin</span></tt>, <tt class="docutils literal"><span class="pre">isnot</span></tt> operators are in fact templates:</p>
-<p><tt class="docutils literal"><span class="pre">a &gt; b</span></tt> is transformed into <tt class="docutils literal"><span class="pre">b &lt; a</span></tt>.<br /><tt class="docutils literal"><span class="pre">a in b</span></tt> is transformed into <tt class="docutils literal"><span class="pre">contains(b, a)</span></tt>.<br /><tt class="docutils literal"><span class="pre">notin</span></tt> and <tt class="docutils literal"><span class="pre">isnot</span></tt> have the obvious meanings.<br /></p><p>A template where every parameter is <tt class="docutils literal"><span class="pre">untyped</span></tt> is called an <span id="immediate_1">immediate</span> template. For historical reasons templates can be explicitly annotated with an <tt class="docutils literal"><span class="pre">immediate</span></tt> pragma and then these templates do not take part in overloading resolution and the parameters' types are <em>ignored</em> by the compiler. Explicit immediate templates are now deprecated.</p>
+<p><tt class="docutils literal"><span class="pre">a &gt; b</span></tt> is transformed into <tt class="docutils literal"><span class="pre">b &lt; a</span></tt>.<br/><tt class="docutils literal"><span class="pre">a in b</span></tt> is transformed into <tt class="docutils literal"><span class="pre">contains(b, a)</span></tt>.<br/><tt class="docutils literal"><span class="pre">notin</span></tt> and <tt class="docutils literal"><span class="pre">isnot</span></tt> have the obvious meanings.<br/></p><p>A template where every parameter is <tt class="docutils literal"><span class="pre">untyped</span></tt> is called an <span id="immediate_1">immediate</span> template. For historical reasons templates can be explicitly annotated with an <tt class="docutils literal"><span class="pre">immediate</span></tt> pragma and then these templates do not take part in overloading resolution and the parameters' types are <em>ignored</em> by the compiler. Explicit immediate templates are now deprecated.</p>
 
 <h2><a class="toc-backref" id="constants-and-constant-expressions-symbol-lookup-in-generics" href="#constants-and-constant-expressions-symbol-lookup-in-generics">Symbol lookup in generics</a></h2>
 <h3><a class="toc-backref" id="symbol-lookup-in-generics-open-and-closed-symbols" href="#symbol-lookup-in-generics-open-and-closed-symbols">Open and Closed symbols</a></h3><p>The symbol binding rules in generics are slightly subtle: There are &quot;open&quot; and &quot;closed&quot; symbols. A &quot;closed&quot; symbol cannot be re-bound in the instantiation context, an &quot;open&quot; symbol can. Per default overloaded symbols are open and every other symbol is closed.</p>
@@ -272,15 +279,17 @@ stmt = IND{&gt;} stmt ^+ IND{=} DED  # list of statements
 <li>An input parameter should not be aliased with a global or thread local variable updated by the called proc.</li>
 </ol>
 <p>One problem with rules 3 and 4 is that they affect specific global or thread local variables, but Nim's effect tracking only tracks &quot;uses no global variable&quot; via <tt class="docutils literal"><span class="pre">.noSideEffect</span></tt>. The rules 3 and 4 can also be approximated by a different rule:</p>
-<ol class="simple"><li>A global or thread local variable (or a location derived from such a location) can only passed to a parameter of a <tt class="docutils literal"><span class="pre">.noSideEffect</span></tt> proc.</li>
+<ol class="simple" start="5"><li>A global or thread local variable (or a location derived from such a location) can only passed to a parameter of a <tt class="docutils literal"><span class="pre">.noSideEffect</span></tt> proc.</li>
 </ol>
 <p>These two procs are the two modus operandi of the real-time garbage collector:</p>
-<p>(1) GC_SetMaxPause Mode</p>
-<blockquote><p>You can call <tt class="docutils literal"><span class="pre">GC_SetMaxPause</span></tt> at program startup and then each triggered garbage collector run tries to not take longer than <tt class="docutils literal"><span class="pre">maxPause</span></tt> time. However, it is possible (and common) that the work is nevertheless not evenly distributed as each call to <tt class="docutils literal"><span class="pre">new</span></tt> can trigger the garbage collector and thus take  <tt class="docutils literal"><span class="pre">maxPause</span></tt> time.</p></blockquote>
-<p>(2) GC_step Mode</p>
-<blockquote><p><p>This allows the garbage collector to perform some work for up to <tt class="docutils literal"><span class="pre">us</span></tt> time. This is useful to call in the main loop to ensure the garbage collector can do its work. To bind all garbage collector activity to a <tt class="docutils literal"><span class="pre">GC_step</span></tt> call, deactivate the garbage collector with <tt class="docutils literal"><span class="pre">GC_disable</span></tt> at program startup. If <tt class="docutils literal"><span class="pre">strongAdvice</span></tt> is set to <tt class="docutils literal"><span class="pre">true</span></tt>, then the garbage collector will be forced to perform the collection cycle. Otherwise, the garbage collector may decide not to do anything, if there is not much garbage to collect. You may also specify the current stack size via <tt class="docutils literal"><span class="pre">stackSize</span></tt> parameter. It can improve performance when you know that there are no unique Nim references below a certain point on the stack. Make sure the size you specify is greater than the potential worst-case size.</p>
+<ol class="simple"><li><p>GC_SetMaxPause Mode</p>
+<p>You can call <tt class="docutils literal"><span class="pre">GC_SetMaxPause</span></tt> at program startup and then each triggered garbage collector run tries to not take longer than <tt class="docutils literal"><span class="pre">maxPause</span></tt> time. However, it is possible (and common) that the work is nevertheless not evenly distributed as each call to <tt class="docutils literal"><span class="pre">new</span></tt> can trigger the garbage collector and thus take  <tt class="docutils literal"><span class="pre">maxPause</span></tt> time.</p>
+</li>
+<li><p>GC_step Mode</p>
+<p>This allows the garbage collector to perform some work for up to <tt class="docutils literal"><span class="pre">us</span></tt> time. This is useful to call in the main loop to ensure the garbage collector can do its work. To bind all garbage collector activity to a <tt class="docutils literal"><span class="pre">GC_step</span></tt> call, deactivate the garbage collector with <tt class="docutils literal"><span class="pre">GC_disable</span></tt> at program startup. If <tt class="docutils literal"><span class="pre">strongAdvice</span></tt> is set to <tt class="docutils literal"><span class="pre">true</span></tt>, then the garbage collector will be forced to perform the collection cycle. Otherwise, the garbage collector may decide not to do anything, if there is not much garbage to collect. You may also specify the current stack size via <tt class="docutils literal"><span class="pre">stackSize</span></tt> parameter. It can improve performance when you know that there are no unique Nim references below a certain point on the stack. Make sure the size you specify is greater than the potential worst-case size.</p>
 <p>It can improve performance when you know that there are no unique Nim references below a certain point on the stack. Make sure the size you specify is greater than the potential worst-case size.</p>
-</p></blockquote>
+</li>
+</ol>
 <p>These procs provide a &quot;best effort&quot; real-time guarantee; in particular the cycle collector is not aware of deadlines. Deactivate it to get more predictable real-time behaviour. Tests show that a 1ms max pause time will be met in almost all cases on modern CPUs (with the cycle collector disabled).</p>
 
 <h2><a class="toc-backref" id="code-reordering-time-measurement-with-garbage-collectors" href="#code-reordering-time-measurement-with-garbage-collectors">Time measurement with garbage collectors</a></h2><p>The garbage collectors' way of measuring time uses (see <tt class="docutils literal"><span class="pre">lib/system/timers.nim</span></tt> for the implementation):</p>
@@ -293,10 +302,10 @@ stmt = IND{&gt;} stmt ^+ IND{=} DED  # list of statements
 <h1><a class="toc-backref" id="introduction" href="#introduction">Introduction</a></h1><blockquote><p>
 "Der Mensch ist doch ein Augentier -- sch&ouml;ne Dinge w&uuml;nsch ich mir."
 </p></blockquote><p>This document is a tutorial for the programming language <em>Nim</em>. This tutorial assumes that you are familiar with basic programming concepts like variables, types, or statements but is kept very basic. The <a class="reference external" href="manual.html">manual</a> contains many more examples of the advanced language features. All code examples in this tutorial, as well as the ones found in the rest of Nim's documentation, follow the <a class="reference external" href="nep1.html">Nim style guide</a>.</p>
-<p>However, this does not work. The problem is that the procedure should not only <tt class="docutils literal"><span class="pre">return</span></tt>, but return and <strong>continue</strong> after an iteration has finished. This <em>return and continue</em> is called a <tt class="docutils literal"><span class="pre">yield</span></tt> statement. Now the only thing left to do is to replace the <tt class="docutils literal"><span class="pre">proc</span></tt> keyword by <tt class="docutils literal"><span class="pre">iterator</span></tt> and here it is - our first iterator:</p>
+<p>However, this does not work. The problem is that the procedure should not only <tt class="docutils literal"><span class="pre">return</span></tt>, but return and <strong>continue</strong> after an iteration has finished. This <em>return and continue</em> is called a <tt class="docutils literal"><span class="pre"><span class="Keyword">yield</span></span></tt> statement. Now the only thing left to do is to replace the <tt class="docutils literal"><span class="pre">proc</span></tt> keyword by <tt class="docutils literal"><span class="pre">iterator</span></tt> and here it is - our first iterator:</p>
 <table border="1" class="docutils"><tr><th>A1 header</th><th>A2 | not fooled</th></tr>
 <tr><td>C1</td><td>C2 <strong>bold</strong></td></tr>
-<tr><td>D1 <tt class="docutils literal"><span class="pre">code |</span></tt></td><td>D2</td></tr>
+<tr><td>D1 <tt class="docutils literal"><span class="pre"><span class="Identifier">code</span> <span class="Operator">\|</span></span></tt></td><td>D2</td></tr>
 <tr><td>E1 | text</td><td></td></tr>
 <tr><td></td><td>F2 without pipe</td></tr>
 </table><p>not in table </p>

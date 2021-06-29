@@ -13,24 +13,24 @@
 import unicode
 
 proc editDistance*(a, b: string): int {.noSideEffect.} =
-  ## Returns the **unicode-rune** edit distance between ``a`` and ``b``.
+  ## Returns the **unicode-rune** edit distance between `a` and `b`.
   ##
   ## This uses the `Levenshtein`:idx: distance algorithm with only a linear
   ## memory overhead.
   runnableExamples: static: doAssert editdistance("Kitten", "Bitten") == 1
   if len(a) > len(b):
-    # make ``b`` the longer string
+    # make `b` the longer string
     return editDistance(b, a)
   # strip common prefix
   var
-    iStart = 0 ## The character starting index of the first rune in both strings ``a`` and ``b``
+    iStart = 0 ## The character starting index of the first rune in both strings `a` and `b`
     iNextA = 0
     iNextB = 0
     runeA, runeB: Rune
-    lenRunesA = 0 ## The number of relevant runes in string ``a``.
-    lenRunesB = 0 ## The number of relevant runes in string ``b``.
+    lenRunesA = 0 ## The number of relevant runes in string `a`.
+    lenRunesB = 0 ## The number of relevant runes in string `b`.
   block commonPrefix:
-    # ``a`` is the shorter string
+    # `a` is the shorter string
     while iStart < len(a):
       iNextA = iStart
       a.fastRuneAt(iNextA, runeA, doInc = true)
@@ -44,9 +44,9 @@ proc editDistance*(a, b: string): int {.noSideEffect.} =
   var
     # we know that we are either at the start of the strings
     # or that the current value of runeA is not equal to runeB
-    # => start search for common suffix after the current rune (``i_next_*``)
-    iEndA = iNextA ## The exclusive upper index bound of string ``a``.
-    iEndB = iNextB ## The exclusive upper index bound of string ``b``.
+    # => start search for common suffix after the current rune (`i_next_*`)
+    iEndA = iNextA ## The exclusive upper index bound of string `a`.
+    iEndB = iNextB ## The exclusive upper index bound of string `b`.
     iCurrentA = iNextA
     iCurrentB = iNextB
   block commonSuffix:
@@ -69,8 +69,8 @@ proc editDistance*(a, b: string): int {.noSideEffect.} =
         addRunesB = 0
       iCurrentA = iNextA
       iCurrentB = iNextB
-    if iCurrentA >= len(a): # ``a`` exhausted
-      if iCurrentB < len(b): # ``b`` not exhausted
+    if iCurrentA >= len(a): # `a` exhausted
+      if iCurrentB < len(b): # `b` not exhausted
         iEndA = iCurrentA
         iEndB = iCurrentB
         inc(lenRunesA, addRunesA)
@@ -79,7 +79,7 @@ proc editDistance*(a, b: string): int {.noSideEffect.} =
           b.fastRuneAt(iEndB, runeB)
           inc(lenRunesB)
           if iEndB >= len(b): break
-    elif iCurrentB >= len(b): # ``b`` exhausted and ``a`` not exhausted
+    elif iCurrentB >= len(b): # `b` exhausted and `a` not exhausted
       iEndA = iCurrentA
       iEndB = iCurrentB
       inc(lenRunesA, addRunesA)
@@ -264,44 +264,3 @@ proc editDistanceAscii*(a, b: string): int {.noSideEffect.} =
       if x > c3: x = c3
       row[p] = x
   result = row[e]
-
-
-when isMainModule:
-  doAssert editDistance("", "") == 0
-  doAssert editDistance("kitten", "sitting") == 3 # from Wikipedia
-  doAssert editDistance("flaw", "lawn") == 2 # from Wikipedia
-
-  doAssert editDistance("привет", "превет") == 1
-  doAssert editDistance("Åge", "Age") == 1
-  # editDistance, one string is longer in bytes, but shorter in rune length
-  # first string: 4 bytes, second: 6 bytes, but only 3 runes
-  doAssert editDistance("aaaa", "×××") == 4
-
-  block veryLongStringEditDistanceTest:
-    const cap = 256
-    var
-      s1 = newStringOfCap(cap)
-      s2 = newStringOfCap(cap)
-    while len(s1) < cap:
-      s1.add 'a'
-    while len(s2) < cap:
-      s2.add 'b'
-    doAssert editDistance(s1, s2) == cap
-
-  block combiningCodePointsEditDistanceTest:
-    const s = "A\xCC\x8Age"
-    doAssert editDistance(s, "Age") == 1
-
-  doAssert editDistanceAscii("", "") == 0
-  doAssert editDistanceAscii("kitten", "sitting") == 3 # from Wikipedia
-  doAssert editDistanceAscii("flaw", "lawn") == 2 # from Wikipedia
-
-
-  assert(editDistance("prefix__hallo_suffix", "prefix__hallo_suffix") == 0)
-  assert(editDistance("prefix__hallo_suffix", "prefix__hallo_suffi1") == 1)
-  assert(editDistance("prefix__hallo_suffix", "prefix__HALLO_suffix") == 5)
-  assert(editDistance("prefix__hallo_suffix", "prefix__ha_suffix") == 3)
-  assert(editDistance("prefix__hallo_suffix", "prefix") == 14)
-  assert(editDistance("prefix__hallo_suffix", "suffix") == 14)
-  assert(editDistance("prefix__hallo_suffix", "prefix__hao_suffix") == 2)
-  assert(editDistance("main", "malign") == 2)

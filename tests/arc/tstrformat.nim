@@ -1,5 +1,7 @@
 discard """
-  output: '''verstuff'''
+  output: '''
+verstuff
+'''
   cmd: "nim c --gc:arc $file"
 """
 

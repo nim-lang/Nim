@@ -22,7 +22,7 @@ proc resultVar2: string =
   result.add("returned")
 
 doAssert implicit() == "I will be returned"
-doAssert discarded() == nil
+doAssert discarded().len == 0
 doAssert explicit() == "I will be returned"
 doAssert resultVar() == "I will be returned"
 doAssert resultVar2() == "I will be returned"

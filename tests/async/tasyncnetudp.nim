@@ -84,7 +84,7 @@ while true:
   if recvCount == swarmSize * messagesToSend:
     break
 
-assert msgCount == swarmSize * messagesToSend
-assert sendports == recvports
+doAssert msgCount == swarmSize * messagesToSend
+doAssert sendports == recvports
 
 echo msgCount

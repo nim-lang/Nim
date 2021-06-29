@@ -25,4 +25,4 @@ block t4952:
   static:
     let tree = newTree(nnkExprColonExpr)
     let t = (n: tree)
-    assert: t.n.kind == tree.kind
+    doAssert: t.n.kind == tree.kind

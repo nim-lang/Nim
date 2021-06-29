@@ -8,7 +8,7 @@
 #
 
 ## This module allows querying the compiler about
-## diverse configuration settings.
+## diverse configuration settings. See also `compileOption`.
 
 # Note: Only add new enum values at the end to ensure binary compatibility with
 # other Nim compiler versions!
@@ -31,6 +31,8 @@ type
     ccompilerPath     ## the path to the C/C++ compiler
     backend           ## the backend (eg: c|cpp|objc|js); both `nim doc --backend:js`
                       ## and `nim js` would imply backend=js
+    libPath           ## the absolute path to the stdlib library, i.e. nim's `--lib`, since 1.5.1
+    gc                ## gc selected
 
   MultipleValueSetting* {.pure.} = enum ## \
                       ## settings resulting in a seq of string values
@@ -42,15 +44,22 @@ type
     clibs             ## libraries passed to the C/C++ compiler
 
 proc querySetting*(setting: SingleValueSetting): string {.
-  compileTime, noSideEffect.} = discard
-  ## Can be used to get a string compile-time option. Example:
+  compileTime, noSideEffect.} =
+  ## Can be used to get a string compile-time option.
   ##
-  ## .. code-block:: Nim
-  ##   const nimcache = querySetting(SingleValueSetting.nimcacheDir)
+  ## See also:
+  ## * `compileOption <system.html#compileOption,string>`_ for `on|off` options
+  ## * `compileOption <system.html#compileOption,string,string>`_ for enum options
+  ##
+  runnableExamples:
+    const nimcache = querySetting(SingleValueSetting.nimcacheDir)
 
 proc querySettingSeq*(setting: MultipleValueSetting): seq[string] {.
-  compileTime, noSideEffect.} = discard
-  ## Can be used to get a multi-string compile-time option. Example:
+  compileTime, noSideEffect.} =
+  ## Can be used to get a multi-string compile-time option.
   ##
-  ## .. code-block:: Nim
-  ##   const nimblePaths = compileSettingSeq(MultipleValueSetting.nimblePaths)
+  ## See also:
+  ## * `compileOption <system.html#compileOption,string>`_ for `on|off` options
+  ## * `compileOption <system.html#compileOption,string,string>`_ for enum options
+  runnableExamples:
+    const nimblePaths = querySettingSeq(MultipleValueSetting.nimblePaths)

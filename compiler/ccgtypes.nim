@@ -36,19 +36,17 @@ proc mangleField(m: BModule; name: PIdent): string =
   if isKeyword(name):
     result.add "_0"
 
-when false:
-  proc hashOwner(s: PSym): SigHash =
-    var m = s
-    while m.kind != skModule: m = m.owner
-    let p = m.owner
-    assert p.kind == skPackage
-    result = gDebugInfo.register(p.name.s, m.name.s)
-
 proc mangleName(m: BModule; s: PSym): Rope =
   result = s.loc.r
   if result == nil:
     result = s.name.s.mangle.rope
-    result.add(idOrSig(s, m.module.name.s.mangle, m.sigConflicts))
+    result.add "_"
+    result.add m.g.graph.ifaces[s.itemId.module].uniqueName
+    result.add "_"
+    result.add rope s.itemId.item
+    if m.hcrOn:
+      result.add "_"
+      result.add(idOrSig(s, m.module.name.s.mangle, m.sigConflicts))
     s.loc.r = result
     writeMangledName(m.ndi, s, m.config)
 
@@ -191,13 +189,13 @@ proc mapType(conf: ConfigRef; typ: PType; kind: TSymKind): TCTypeKind =
   of tySequence: result = ctNimSeq
   of tyProc: result = if typ.callConv != ccClosure: ctProc else: ctStruct
   of tyString: result = ctNimStr
-  of tyCString: result = ctCString
+  of tyCstring: result = ctCString
   of tyInt..tyUInt64:
     result = TCTypeKind(ord(typ.kind) - ord(tyInt) + ord(ctInt))
   of tyStatic:
     if typ.n != nil: result = mapType(conf, lastSon typ, kind)
-    else: doAssert(false, "mapType")
-  else: doAssert(false, "mapType")
+    else: doAssert(false, "mapType: " & $typ.kind)
+  else: doAssert(false, "mapType: " & $typ.kind)
 
 proc mapReturnType(conf: ConfigRef; typ: PType): TCTypeKind =
   #if skipTypes(typ, typedescInst).kind == tyArray: result = ctPtr
@@ -258,31 +256,8 @@ proc addAbiCheck(m: BModule, t: PType, name: Rope) =
     m.s[cfsTypeInfo].addf("NIM_STATIC_ASSERT(sizeof($1) == $2, $3);$n", [name, rope(size), msg2.rope])
     # see `testCodegenABICheck` for example error message it generates
 
-proc ccgIntroducedPtr(conf: ConfigRef; s: PSym, retType: PType): bool =
-  var pt = skipTypes(s.typ, typedescInst)
-  assert skResult != s.kind
-
-  if tfByRef in pt.flags: return true
-  elif tfByCopy in pt.flags: return false
-  case pt.kind
-  of tyObject:
-    if s.typ.sym != nil and sfForward in s.typ.sym.flags:
-      # forwarded objects are *always* passed by pointers for consistency!
-      result = true
-    elif (optByRef in s.options) or (getSize(conf, pt) > conf.target.floatSize * 3):
-      result = true           # requested anyway
-    elif (tfFinal in pt.flags) and (pt[0] == nil):
-      result = false          # no need, because no subtyping possible
-    else:
-      result = true           # ordinary objects are always passed by reference,
-                              # otherwise casting doesn't work
-  of tyTuple:
-    result = (getSize(conf, pt) > conf.target.floatSize*3) or (optByRef in s.options)
-  else:
-    result = false
-  # first parameter and return type is 'lent T'? --> use pass by pointer
-  if s.position == 0 and retType != nil and retType.kind == tyLent:
-    result = pt.kind != tyVar
+from ccgutils import ccgIntroducedPtr
+export ccgIntroducedPtr
 
 proc fillResult(conf: ConfigRef; param: PNode) =
   fillLoc(param.sym.loc, locParam, param, ~"Result",
@@ -317,7 +292,7 @@ proc getSimpleTypeDesc(m: BModule, typ: PType): Rope =
     else:
       discard cgsym(m, "NimStringDesc")
       result = typeNameOrLiteral(m, typ, "NimStringDesc*")
-  of tyCString: result = typeNameOrLiteral(m, typ, "NCSTRING")
+  of tyCstring: result = typeNameOrLiteral(m, typ, "NCSTRING")
   of tyBool: result = typeNameOrLiteral(m, typ, "NIM_BOOL")
   of tyChar: result = typeNameOrLiteral(m, typ, "NIM_CHAR")
   of tyNil: result = typeNameOrLiteral(m, typ, "void*")
@@ -478,7 +453,7 @@ proc genProcParams(m: BModule, t: PType, rettype, params: var Rope,
       params.add(~"NIM_NOALIAS ")
     params.add(param.loc.r)
     # declare the len field for open arrays:
-    var arr = param.typ
+    var arr = param.typ.skipTypes({tyGenericInst})
     if arr.kind in {tyVar, tyLent, tySink}: arr = arr.lastSon
     var j = 0
     while arr.kind in {tyOpenArray, tyVarargs}:
@@ -1043,7 +1018,7 @@ proc genTypeInfoAuxBase(m: BModule; typ, origType: PType;
   var flags = 0
   if not containsGarbageCollectedRef(typ): flags = flags or 1
   if not canFormAcycle(typ): flags = flags or 2
-  #else MessageOut("can contain a cycle: " & typeToString(typ))
+  #else echo("can contain a cycle: " & typeToString(typ))
   if flags != 0:
     m.s[cfsTypeInit3].addf("$1.flags = $2;$n", [nameHcr, rope(flags)])
   discard cgsym(m, "TNimType")
@@ -1266,9 +1241,9 @@ proc genArrayInfo(m: BModule, typ: PType, name: Rope; info: TLineInfo) =
 
 proc fakeClosureType(m: BModule; owner: PSym): PType =
   # we generate the same RTTI as for a tuple[pointer, ref tuple[]]
-  result = newType(tyTuple, nextId m.idgen, owner)
-  result.rawAddSon(newType(tyPointer, nextId m.idgen, owner))
-  var r = newType(tyRef, nextId m.idgen, owner)
+  result = newType(tyTuple, nextTypeId m.idgen, owner)
+  result.rawAddSon(newType(tyPointer, nextTypeId m.idgen, owner))
+  var r = newType(tyRef, nextTypeId m.idgen, owner)
   let obj = createObj(m.g.graph, m.idgen, owner, owner.info, final=false)
   r.rawAddSon(obj)
   result.rawAddSon(r)
@@ -1280,12 +1255,12 @@ proc genDeepCopyProc(m: BModule; s: PSym; result: Rope) =
   m.s[cfsTypeInit3].addf("$1.deepcopy =(void* (N_RAW_NIMCALL*)(void*))$2;$n",
      [result, s.loc.r])
 
-proc declareNimType(m: BModule, name: string; str: Rope, ownerModule: PSym) =
+proc declareNimType(m: BModule, name: string; str: Rope, module: int) =
   let nr = rope(name)
   if m.hcrOn:
     m.s[cfsData].addf("static $2* $1;$n", [str, nr])
     m.s[cfsTypeInit1].addf("\t$1 = ($3*)hcrGetGlobal($2, \"$1\");$n",
-          [str, getModuleDllPath(m, ownerModule), nr])
+          [str, getModuleDllPath(m, module), nr])
   else:
     m.s[cfsData].addf("extern $2 $1;$n", [str, nr])
 
@@ -1312,11 +1287,11 @@ proc genTypeInfo2Name(m: BModule; t: PType): Rope =
     it = it[0]
   result = makeCString(res)
 
-proc isTrivialProc(s: PSym): bool {.inline.} = s.ast[bodyPos].len == 0
+proc isTrivialProc(g: ModuleGraph; s: PSym): bool {.inline.} = getBody(g, s).len == 0
 
 proc genHook(m: BModule; t: PType; info: TLineInfo; op: TTypeAttachedOp): Rope =
-  let theProc = t.attachedOps[op]
-  if theProc != nil and not isTrivialProc(theProc):
+  let theProc = getAttachedOp(m.g.graph, t, op)
+  if theProc != nil and not isTrivialProc(m.g.graph, theProc):
     # the prototype of a destructor is ``=destroy(x: var T)`` and that of a
     # finalizer is: ``proc (x: ref T) {.nimcall.}``. We need to check the calling
     # convention at least:
@@ -1326,6 +1301,10 @@ proc genHook(m: BModule; t: PType; info: TLineInfo; op: TTypeAttachedOp): Rope =
 
     genProc(m, theProc)
     result = theProc.loc.r
+
+    when false:
+      if not canFormAcycle(t) and op == attachedTrace:
+        echo "ayclic but has this =trace ", t, " ", theProc.ast
   else:
     when false:
       if op == attachedTrace and m.config.selectedGC == gcOrc and
@@ -1337,7 +1316,7 @@ proc genHook(m: BModule; t: PType; info: TLineInfo; op: TTypeAttachedOp): Rope =
 
 proc genTypeInfoV2Impl(m: BModule, t, origType: PType, name: Rope; info: TLineInfo) =
   var typeName: Rope
-  if t.kind == tyObject:
+  if t.kind in {tyObject, tyDistinct}:
     if incompleteType(t):
       localError(m.config, info, "request for RTTI generation for incomplete object: " &
                  typeToString(t))
@@ -1351,16 +1330,20 @@ proc genTypeInfoV2Impl(m: BModule, t, origType: PType, name: Rope; info: TLineIn
   let traceImpl = genHook(m, t, info, attachedTrace)
   let disposeImpl = genHook(m, t, info, attachedDispose)
 
-  addf(m.s[cfsTypeInit3], "$1.destructor = (void*)$2; $1.size = sizeof($3); $1.align = NIM_ALIGNOF($3); $1.name = $4;$n; $1.traceImpl = (void*)$5; $1.disposeImpl = (void*)$6;", [
+  var flags = 0
+  if not canFormAcycle(t): flags = flags or 1
+
+  addf(m.s[cfsTypeInit3], "$1.destructor = (void*)$2; $1.size = sizeof($3); $1.align = NIM_ALIGNOF($3); $1.name = $4;$n; $1.traceImpl = (void*)$5; $1.disposeImpl = (void*)$6; $1.flags = $7;", [
     name, destroyImpl, getTypeDesc(m, t), typeName,
-    traceImpl, disposeImpl])
+    traceImpl, disposeImpl, rope(flags)])
 
   if t.kind == tyObject and t.len > 0 and t[0] != nil and optEnableDeepCopy in m.config.globalOptions:
     discard genTypeInfoV1(m, t, info)
 
 proc genTypeInfoV2(m: BModule, t: PType; info: TLineInfo): Rope =
   let origType = t
-  var t = skipTypes(origType, irrelevantForBackend + tyUserTypeClasses)
+  # distinct types can have their own destructors
+  var t = skipTypes(origType, irrelevantForBackend + tyUserTypeClasses - {tyDistinct})
 
   let prefixTI = if m.hcrOn: "(" else: "(&"
 
@@ -1380,11 +1363,10 @@ proc genTypeInfoV2(m: BModule, t: PType; info: TLineInfo): Rope =
   result = "NTIv2$1_" % [rope($sig)]
   m.typeInfoMarkerV2[sig] = result
 
-  let owner = t.skipTypes(typedescPtrs).owner.getModule
-  if owner != m.module:
+  let owner = t.skipTypes(typedescPtrs).itemId.module
+  if owner != m.module.position and moduleOpenForCodegen(m.g.graph, FileIndex owner):
     # make sure the type info is created in the owner module
-    assert m.g.modules[owner.position] != nil
-    discard genTypeInfoV2(m.g.modules[owner.position], origType, info)
+    discard genTypeInfoV2(m.g.modules[owner], origType, info)
     # reference the type info as extern here
     discard cgsym(m, "TNimTypeV2")
     declareNimType(m, "TNimTypeV2", result, owner)
@@ -1395,13 +1377,40 @@ proc genTypeInfoV2(m: BModule, t: PType; info: TLineInfo): Rope =
   result = prefixTI.rope & result & ")".rope
 
 proc openArrayToTuple(m: BModule; t: PType): PType =
-  result = newType(tyTuple, nextId m.idgen, t.owner)
-  let p = newType(tyPtr, nextId m.idgen, t.owner)
-  let a = newType(tyUncheckedArray, nextId m.idgen, t.owner)
+  result = newType(tyTuple, nextTypeId m.idgen, t.owner)
+  let p = newType(tyPtr, nextTypeId m.idgen, t.owner)
+  let a = newType(tyUncheckedArray, nextTypeId m.idgen, t.owner)
   a.add t.lastSon
   p.add a
   result.add p
   result.add getSysType(m.g.graph, t.owner.info, tyInt)
+
+proc typeToC(t: PType): string =
+  ## Just for more readable names, the result doesn't have
+  ## to be unique.
+  let s = typeToString(t)
+  result = newStringOfCap(s.len)
+  for i in 0..<s.len:
+    let c = s[i]
+    case c
+    of 'a'..'z':
+      result.add c
+    of 'A'..'Z':
+      result.add toLowerAscii(c)
+    of ' ':
+      discard
+    of ',':
+      result.add '_'
+    of '.':
+      result.add 'O'
+    of '[', '(', '{':
+      result.add 'L'
+    of ']', ')', '}':
+      result.add 'T'
+    else:
+      # We mangle upper letters and digits too so that there cannot
+      # be clashes with our special meanings
+      result.addInt ord(c)
 
 proc genTypeInfoV1(m: BModule, t: PType; info: TLineInfo): Rope =
   let origType = t
@@ -1423,25 +1432,34 @@ proc genTypeInfoV1(m: BModule, t: PType; info: TLineInfo): Rope =
     m.typeInfoMarker[sig] = marker.str
     return prefixTI.rope & marker.str & ")".rope
 
-  result = "NTI$1_" % [rope($sig)]
+  result = "NTI$1$2_" % [rope(typeToC(t)), rope($sig)]
   m.typeInfoMarker[sig] = result
 
-  let owner = t.skipTypes(typedescPtrs).owner.getModule
-  if owner != m.module:
+  let old = m.g.graph.emittedTypeInfo.getOrDefault($result)
+  if old != FileIndex(0):
+    discard cgsym(m, "TNimType")
+    discard cgsym(m, "TNimNode")
+    declareNimType(m, "TNimType", result, old.int)
+    return prefixTI.rope & result & ")".rope
+
+  var owner = t.skipTypes(typedescPtrs).itemId.module
+  if owner != m.module.position and moduleOpenForCodegen(m.g.graph, FileIndex owner):
     # make sure the type info is created in the owner module
-    assert m.g.modules[owner.position] != nil
-    discard genTypeInfoV1(m.g.modules[owner.position], origType, info)
+    discard genTypeInfoV1(m.g.modules[owner], origType, info)
     # reference the type info as extern here
     discard cgsym(m, "TNimType")
     discard cgsym(m, "TNimNode")
     declareNimType(m, "TNimType", result, owner)
     return prefixTI.rope & result & ")".rope
+  else:
+    owner = m.module.position.int32
 
   m.g.typeInfoMarker[sig] = (str: result, owner: owner)
+  rememberEmittedTypeInfo(m.g.graph, FileIndex(owner), $result)
 
   case t.kind
   of tyEmpty, tyVoid: result = rope"0"
-  of tyPointer, tyBool, tyChar, tyCString, tyString, tyInt..tyUInt64, tyVar, tyLent:
+  of tyPointer, tyBool, tyChar, tyCstring, tyString, tyInt..tyUInt64, tyVar, tyLent:
     genTypeInfoAuxBase(m, t, t, result, rope"0", info)
   of tyStatic:
     if t.n != nil: result = genTypeInfoV1(m, lastSon t, info)
@@ -1482,10 +1500,11 @@ proc genTypeInfoV1(m: BModule, t: PType; info: TLineInfo): Rope =
     genTupleInfo(m, x, origType, result, info)
   else: internalError(m.config, "genTypeInfoV1(" & $t.kind & ')')
 
-  if t.attachedOps[attachedDeepCopy] != nil:
-    genDeepCopyProc(m, t.attachedOps[attachedDeepCopy], result)
-  elif origType.attachedOps[attachedDeepCopy] != nil:
-    genDeepCopyProc(m, origType.attachedOps[attachedDeepCopy], result)
+  var op = getAttachedOp(m.g.graph, t, attachedDeepCopy)
+  if op == nil:
+    op = getAttachedOp(m.g.graph, origType, attachedDeepCopy)
+  if op != nil:
+    genDeepCopyProc(m, op, result)
 
   if optTinyRtti in m.config.globalOptions and t.kind == tyObject and sfImportc notin t.sym.flags:
     let v2info = genTypeInfoV2(m, origType, info)

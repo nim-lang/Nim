@@ -26,3 +26,13 @@ type
 
 var troz: fooObj[string]
 echo bazObj[string](troz).x
+
+
+# bug #14880
+type step = object
+  exec: proc ()
+
+const pipeline = @[step()]
+
+let crash = pipeline[0]
+

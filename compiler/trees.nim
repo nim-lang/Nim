@@ -211,6 +211,6 @@ proc stupidStmtListExpr*(n: PNode): bool =
 proc dontInlineConstant*(orig, cnst: PNode): bool {.inline.} =
   # symbols that expand to a complex constant (array, etc.) should not be
   # inlined, unless it's the empty array:
-  result = orig.kind == nkSym and
+  result = orig.kind != cnst.kind and
            cnst.kind in {nkCurly, nkPar, nkTupleConstr, nkBracket, nkObjConstr} and
            cnst.len > ord(cnst.kind == nkObjConstr)

@@ -36,7 +36,7 @@ type
                    # local
     waMarkPrecise  # fast precise marking
 
-  Finalizer {.compilerproc.} = proc (self: pointer) {.nimcall, benign.}
+  Finalizer {.compilerproc.} = proc (self: pointer) {.nimcall, benign, raises: [].}
     # A ref type can have a finalizer that is called before the object's
     # storage is freed.
 
@@ -115,10 +115,10 @@ when BitsPerPage mod (sizeof(int)*8) != 0:
   {.error: "(BitsPerPage mod BitsPerUnit) should be zero!".}
 
 # forward declarations:
-proc collectCT(gch: var GcHeap; size: int) {.benign.}
-proc forAllChildren(cell: PCell, op: WalkOp) {.benign.}
-proc doOperation(p: pointer, op: WalkOp) {.benign.}
-proc forAllChildrenAux(dest: pointer, mt: PNimType, op: WalkOp) {.benign.}
+proc collectCT(gch: var GcHeap; size: int) {.benign, raises: [].}
+proc forAllChildren(cell: PCell, op: WalkOp) {.benign, raises: [].}
+proc doOperation(p: pointer, op: WalkOp) {.benign, raises: [].}
+proc forAllChildrenAux(dest: pointer, mt: PNimType, op: WalkOp) {.benign, raises: [].}
 # we need the prototype here for debugging purposes
 
 when defined(nimGcRefLeak):
@@ -429,6 +429,7 @@ proc sweep(gch: var GcHeap) =
         else: freeCyclicCell(gch, c)
 
 when false:
+  # meant to be used with the now-deprected `.injectStmt`: {.injectStmt: newGcInvariant().}
   proc newGcInvariant*() =
     for x in allObjects(gch.region):
       if isCell(x):
@@ -455,11 +456,10 @@ proc markGlobals(gch: var GcHeap) =
 
 proc gcMark(gch: var GcHeap, p: pointer) {.inline.} =
   # the addresses are not as cells on the stack, so turn them to cells:
-  var cell = usrToCell(p)
-  var c = cast[ByteAddress](cell)
+  var c = cast[ByteAddress](p)
   if c >% PageSize:
     # fast check: does it look like a cell?
-    var objStart = cast[PCell](interiorAllocatedPtr(gch.region, cell))
+    var objStart = cast[PCell](interiorAllocatedPtr(gch.region, p))
     if objStart != nil:
       mark(gch, objStart)
 

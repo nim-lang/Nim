@@ -483,5 +483,19 @@ block: # nnkChckRange
 
   test(it, 1, 2, 3)
 
-echo "ok"
+block: #17849 - yield in case subject
+  template yieldInCase: int =
+    yield 2
+    3
 
+  iterator it(): int {.closure.} =
+    yield 1
+    case yieldInCase()
+    of 1: checkpoint(11)
+    of 3: checkpoint(13)
+    else: checkpoint(14)
+    yield 5
+
+  test(it, 1, 2, 13, 5)
+
+echo "ok"

@@ -11,26 +11,24 @@ proc mismatch*[T](lhs: T, rhs: T): string =
 
   proc quoted(s: string): string = result.addQuoted s
 
-  result.add "\n"
+  result.add '\n'
   result.add "lhs:{" & replaceInvisible(
       $lhs) & "}\nrhs:{" & replaceInvisible($rhs) & "}\n"
   when compiles(lhs.len):
     if lhs.len != rhs.len:
-      result.add "lhs.len: " & $lhs.len & " rhs.len: " & $rhs.len & "\n"
+      result.add "lhs.len: " & $lhs.len & " rhs.len: " & $rhs.len & '\n'
     when compiles(lhs[0]):
       var i = 0
       while i < lhs.len and i < rhs.len:
         if lhs[i] != rhs[i]: break
         i.inc
-      result.add "first mismatch index: " & $i & "\n"
+      result.add "first mismatch index: " & $i & '\n'
       if i < lhs.len and i < rhs.len:
         result.add "lhs[i]: {" & quoted($lhs[i]) & "}\nrhs[i]: {" & quoted(
             $rhs[i]) & "}\n"
       result.add "lhs[0..<i]:{" & replaceInvisible($lhs[
-          0..<i]) & "}"
+          0..<i]) & '}'
 
 proc assertEquals*[T](lhs: T, rhs: T, msg = "") =
-  when false: # can be useful for debugging to see all that's fed to this.
-    echo "----" & $lhs
-  if lhs!=rhs:
-    doAssert false, mismatch(lhs, rhs) & "\n" & msg
+  if lhs != rhs:
+    doAssert false, mismatch(lhs, rhs) & '\n' & msg

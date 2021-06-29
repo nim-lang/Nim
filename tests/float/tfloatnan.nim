@@ -15,7 +15,7 @@ echo "Nim: ", f32, " (float)"
 let f64: float64 = NaN
 echo "Nim: ", f64, " (double)"
 
-block: # issue #10305
+block: # bug #10305
   # with `-O3 -ffast-math`, generated C/C++ code is not nan compliant
   # user can pass `--passC:-ffast-math` if he doesn't care.
   proc fun() =
@@ -42,3 +42,16 @@ block: # issue #10305
   fun()
   fun2(0)
 
+template main() =
+  # xxx move all tests under here
+  block: # bug #16469
+    let a1 = 0.0
+    let a2 = -0.0
+    let a3 = 1.0 / a1
+    let a4 = 1.0 / a2
+    doAssert a3 == Inf
+    doAssert a4 == -Inf
+    doAssert $(a1, a2, a3, a4) == "(0.0, -0.0, inf, -inf)"
+
+static: main()
+main()

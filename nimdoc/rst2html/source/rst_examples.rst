@@ -1,9 +1,13 @@
-==========
+================
 Not a Nim Manual
-==========
+================
 
 :Authors: Andreas Rumpf, Zahary Karadjov
 :Version: |nimversion|
+
+.. role:: nim(code)
+   :language: nim
+.. default-role:: nim
 
 .. contents::
 

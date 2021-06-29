@@ -12,8 +12,6 @@
 # All symbols are prefixed with 'c_' to avoid ambiguities
 
 {.push hints:off, stack_trace: off, profiler: off.}
-when not defined(nimHasHotCodeReloading):
-  {.pragma: nonReloadable.}
 
 proc c_memchr*(s: pointer, c: cint, n: csize_t): pointer {.
   importc: "memchr", header: "<string.h>".}
@@ -42,6 +40,7 @@ else:
     C_JmpBuf* {.importc: "jmp_buf", header: "<setjmp.h>".} = object
 
 
+type CSighandlerT = proc (a: cint) {.noconv.}
 when defined(windows):
   const
     SIGABRT* = cint(22)
@@ -50,6 +49,7 @@ when defined(windows):
     SIGINT* = cint(2)
     SIGSEGV* = cint(11)
     SIGTERM = cint(15)
+    SIG_DFL* = cast[CSighandlerT](0)
 elif defined(macosx) or defined(linux) or defined(freebsd) or
      defined(openbsd) or defined(netbsd) or defined(solaris) or
      defined(dragonfly) or defined(nintendoswitch) or defined(genode) or
@@ -62,6 +62,7 @@ elif defined(macosx) or defined(linux) or defined(freebsd) or
     SIGSEGV* = cint(11)
     SIGTERM* = cint(15)
     SIGPIPE* = cint(13)
+    SIG_DFL* = cast[CSighandlerT](0)
 elif defined(haiku):
   const
     SIGABRT* = cint(6)
@@ -71,8 +72,9 @@ elif defined(haiku):
     SIGSEGV* = cint(11)
     SIGTERM* = cint(15)
     SIGPIPE* = cint(7)
+    SIG_DFL* = cast[CSighandlerT](0)
 else:
-  when NoFakeVars:
+  when defined(nimscript):
     {.error: "SIGABRT not ported to your platform".}
   else:
     var
@@ -81,6 +83,7 @@ else:
       SIGABRT* {.importc: "SIGABRT", nodecl.}: cint
       SIGFPE* {.importc: "SIGFPE", nodecl.}: cint
       SIGILL* {.importc: "SIGILL", nodecl.}: cint
+      SIG_DFL* {.importc: "SIG_DFL", nodecl.}: CSighandlerT
     when defined(macosx) or defined(linux):
       var SIGPIPE* {.importc: "SIGPIPE", nodecl.}: cint
 
@@ -107,9 +110,9 @@ else:
   proc c_setjmp*(jmpb: C_JmpBuf): cint {.
     header: "<setjmp.h>", importc: "setjmp".}
 
-type CSighandlerT = proc (a: cint) {.noconv.}
-proc c_signal*(sign: cint, handler: proc (a: cint) {.noconv.}): CSighandlerT {.
+proc c_signal*(sign: cint, handler: CSighandlerT): CSighandlerT {.
   importc: "signal", header: "<signal.h>", discardable.}
+proc c_raise*(sign: cint): cint {.importc: "raise", header: "<signal.h>".}
 
 type
   CFile {.importc: "FILE", header: "<stdio.h>",
@@ -153,6 +156,11 @@ proc c_fwrite*(buf: pointer, size, n: csize_t, f: CFilePtr): cint {.
 
 proc c_fflush(f: CFilePtr): cint {.
   importc: "fflush", header: "<stdio.h>".}
+
+proc rawWriteString*(f: CFilePtr, s: cstring, length: int) {.compilerproc, nonReloadable, inline.} =
+  # we cannot throw an exception here!
+  discard c_fwrite(s, 1, cast[csize_t](length), f)
+  discard c_fflush(f)
 
 proc rawWrite*(f: CFilePtr, s: cstring) {.compilerproc, nonReloadable, inline.} =
   # we cannot throw an exception here!

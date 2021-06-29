@@ -13,7 +13,6 @@ type
   CommitId = distinct string
 
 proc `$`*(id: MachineId): string {.borrow.}
-#proc `$`(id: CommitId): string {.borrow.} # not used
 
 var
   thisMachine: MachineId
@@ -21,10 +20,10 @@ var
   thisBranch: string
 
 proc getMachine*(): MachineId =
-  var name = execProcess("hostname").string.strip
+  var name = execProcess("hostname").strip
   if name.len == 0:
-    name = when defined(posix): getEnv("HOSTNAME").string
-           else: getEnv("COMPUTERNAME").string
+    name = when defined(posix): getEnv("HOSTNAME")
+           else: getEnv("COMPUTERNAME")
   if name.len == 0:
     quit "cannot determine the machine name"
 
@@ -32,8 +31,8 @@ proc getMachine*(): MachineId =
 
 proc getCommit(): CommitId =
   const commLen = "commit ".len
-  let hash = execProcess("git log -n 1").string.strip[commLen..commLen+10]
-  thisBranch = execProcess("git symbolic-ref --short HEAD").string.strip
+  let hash = execProcess("git log -n 1").strip[commLen..commLen+10]
+  thisBranch = execProcess("git symbolic-ref --short HEAD").strip
   if hash.len == 0 or thisBranch.len == 0: quit "cannot determine git HEAD"
   result = CommitId(hash)
 

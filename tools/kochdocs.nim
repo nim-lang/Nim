@@ -1,6 +1,6 @@
 ## Part of 'koch' responsible for the documentation generation.
 
-import os, strutils, osproc, sets, pathnorm, pegs
+import os, strutils, osproc, sets, pathnorm, pegs, sequtils
 from std/private/globs import nativeToUnixPath, walkDirRecFilter, PathEntry
 import "../compiler/nimpaths"
 
@@ -8,14 +8,18 @@ const
   gaCode* = " --doc.googleAnalytics:UA-48159761-1"
   # errormax: subsequent errors are probably consequences of 1st one; a simple
   # bug could cause unlimited number of errors otherwise, hard to debug in CI.
-  nimArgs = "--errormax:3 --hint:Conf:off --hint:Path:off --hint:Processing:off --hint:XDeclaredButNotUsed:off --warning:UnusedImport:off -d:boot --putenv:nimversion=$#" % system.NimVersion
+  docDefines = "-d:nimExperimentalAsyncjsThen -d:nimExperimentalJsfetch -d:nimExperimentalLinenoiseExtra"
+  nimArgs = "--errormax:3 --hint:Conf:off --hint:Path:off --hint:Processing:off --hint:XDeclaredButNotUsed:off --warning:UnusedImport:off -d:boot --putenv:nimversion=$# $#" % [system.NimVersion, docDefines]
   gitUrl = "https://github.com/nim-lang/Nim"
   docHtmlOutput = "doc/html"
   webUploadOutput = "web/upload"
 
 var nimExe*: string
+const allowList = ["jsbigints.nim", "jsheaders.nim", "jsformdata.nim", "jsfetch.nim", "jsutils.nim"]
 
-template isJsOnly(file: string): bool = file.isRelativeTo("lib/js")
+template isJsOnly(file: string): bool =
+  file.isRelativeTo("lib/js") or
+  file.extractFilename in allowList
 
 proc exe*(f: string): string =
   result = addFileExt(f, ExeExt)
@@ -68,6 +72,7 @@ template inFold*(desc, body) =
 proc execFold*(desc, cmd: string, errorcode: int = QuitFailure, additionalPath = "") =
   ## Execute shell command. Add log folding for various CI services.
   # https://github.com/travis-ci/travis-ci/issues/2285#issuecomment-42724719
+  let desc = if desc.len == 0: cmd else: desc
   inFold(desc):
     exec(cmd, errorcode, additionalPath)
 
@@ -93,8 +98,9 @@ proc nimCompile*(input: string, outputDir = "bin", mode = "c", options = "") =
   let cmd = findNim().quoteShell() & " " & mode & " -o:" & output & " " & options & " " & input
   exec cmd
 
-proc nimCompileFold*(desc, input: string, outputDir = "bin", mode = "c", options = "") =
-  let output = outputDir / input.splitFile.name.exe
+proc nimCompileFold*(desc, input: string, outputDir = "bin", mode = "c", options = "", outputName = "") =
+  let outputName2 = if outputName.len == 0: input.splitFile.name.exe else: outputName.exe
+  let output = outputDir / outputName2
   let cmd = findNim().quoteShell() & " " & mode & " -o:" & output & " " & options & " " & input
   execFold(desc, cmd)
 
@@ -109,20 +115,20 @@ proc getRst2html(): seq[string] =
   doAssert "doc/manual/var_t_return.rst".unixToNativePath in result # sanity check
 
 const
-  pdf = """
-doc/manual.rst
-doc/lib.rst
-doc/tut1.rst
-doc/tut2.rst
-doc/tut3.rst
-doc/nimc.rst
-doc/niminst.rst
-doc/gc.rst
-""".splitWhitespace()
+  rstPdfList = """
+manual.rst
+lib.rst
+tut1.rst
+tut2.rst
+tut3.rst
+nimc.rst
+niminst.rst
+gc.rst
+""".splitWhitespace().mapIt("doc" / it)
 
   doc0 = """
 lib/system/threads.nim
-lib/system/channels.nim
+lib/system/channels_builtin.nim
 """.splitWhitespace() # ran by `nim doc0` instead of `nim doc`
 
   withoutIndex = """
@@ -136,12 +142,10 @@ lib/wrappers/openssl.nim
 lib/posix/posix.nim
 lib/posix/linux.nim
 lib/posix/termios.nim
-lib/js/jscore.nim
 """.splitWhitespace()
 
   # some of these are include files so shouldn't be docgen'd
   ignoredModules = """
-lib/prelude.nim
 lib/pure/future.nim
 lib/pure/collections/hashcommon.nim
 lib/pure/collections/tableimpl.nim
@@ -186,7 +190,9 @@ lib/system/widestrs.nim
 """.splitWhitespace()
 
   proc follow(a: PathEntry): bool =
-    a.path.lastPathPart notin ["nimcache", "htmldocs", "includes", "deprecated", "genode"]
+    result = a.path.lastPathPart notin ["nimcache", htmldocsDirname,
+                                        "includes", "deprecated", "genode"] and
+      not a.path.isRelativeTo("lib/fusion") # fusion was un-bundled but we need to keep this in case user has it installed
   for entry in walkDirRecFilter("lib", follow = follow):
     let a = entry.path
     if entry.kind != pcFile or a.splitFile.ext != ".nim" or
@@ -265,7 +271,7 @@ proc buildDoc(nimArgs, destPath: string) =
       [extra, nimArgs2, gitUrl, destPath, d]
     i.inc
   for d in items(withoutIndex):
-    commands[i] = nim & " doc2 $# --git.url:$# -o:$# $#" %
+    commands[i] = nim & " doc $# --git.url:$# -o:$# $#" %
       [nimArgs, gitUrl,
       destPath / changeFileExt(splitFile(d).name, "html"), d]
     i.inc
@@ -278,36 +284,35 @@ proc buildDoc(nimArgs, destPath: string) =
     # locally after calling `./koch docs`. The clean fix would be for `idx` files
     # to be transient with `--project` (eg all in memory).
 
+proc nim2pdf(src: string, dst: string, nimArgs: string) =
+  # xxx expose as a `nim` command or in some other reusable way.
+  let outDir = "build" / "xelatextmp" # xxx factor pending https://github.com/timotheecour/Nim/issues/616
+  # note: this will generate temporary files in gitignored `outDir`: aux toc log out tex
+  exec("$# rst2tex $# --outdir:$# $#" % [findNim().quoteShell(), nimArgs, outDir.quoteShell, src.quoteShell])
+  let texFile = outDir / src.lastPathPart.changeFileExt("tex")
+  for i in 0..<3: # call LaTeX three times to get cross references right:
+    let xelatexLog = outDir / "xelatex.log"
+    # `>` should work on windows, if not, we can use `execCmdEx`
+    let cmd = "xelatex -interaction=nonstopmode -output-directory=$# $# > $#" % [outDir.quoteShell, texFile.quoteShell, xelatexLog.quoteShell]
+    exec(cmd) # on error, user can inspect `xelatexLog`
+  moveFile(texFile.changeFileExt("pdf"), dst)
+
 proc buildPdfDoc*(nimArgs, destPath: string) =
+  var pdfList: seq[string]
   createDir(destPath)
-  if os.execShellCmd("pdflatex -version") != 0:
-    echo "pdflatex not found; no PDF documentation generated"
+  if os.execShellCmd("xelatex -version") != 0:
+    doAssert false, "xelatex not found" # or, raise an exception
   else:
-    const pdflatexcmd = "pdflatex -interaction=nonstopmode "
-    for d in items(pdf):
-      exec(findNim().quoteShell() & " rst2tex $# $#" % [nimArgs, d])
-      let tex = splitFile(d).name & ".tex"
-      removeFile("doc" / tex)
-      moveFile(tex, "doc" / tex)
-      # call LaTeX twice to get cross references right:
-      exec(pdflatexcmd & changeFileExt(d, "tex"))
-      exec(pdflatexcmd & changeFileExt(d, "tex"))
-      # delete all the crappy temporary files:
-      let pdf = splitFile(d).name & ".pdf"
-      let dest = destPath / pdf
-      removeFile(dest)
-      moveFile(dest=dest, source=pdf)
-      removeFile(changeFileExt(pdf, "aux"))
-      if fileExists(changeFileExt(pdf, "toc")):
-        removeFile(changeFileExt(pdf, "toc"))
-      removeFile(changeFileExt(pdf, "log"))
-      removeFile(changeFileExt(pdf, "out"))
-      removeFile(changeFileExt(d, "tex"))
+    for src in items(rstPdfList):
+      let dst = destPath / src.lastPathPart.changeFileExt("pdf")
+      pdfList.add dst
+      nim2pdf(src, dst, nimArgs)
+  echo "\nOutput PDF files: \n  ", pdfList.join(" ") # because `nim2pdf` is a bit verbose
 
 proc buildJS(): string =
   let nim = findNim()
-  exec(nim.quoteShell() & " js -d:release --out:$1 tools/nimblepkglist.nim" %
-      [webUploadOutput / "nimblepkglist.js"])
+  exec("$# js -d:release --out:$# tools/nimblepkglist.nim" %
+      [nim.quoteShell(), webUploadOutput / "nimblepkglist.js"])
       # xxx deadcode? and why is it only for webUploadOutput, not for local docs?
   result = getDocHacksJs(nimr = getCurrentDir(), nim)
 

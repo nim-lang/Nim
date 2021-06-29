@@ -5,13 +5,15 @@
 :Author: Unknown
 :Version: |nimversion|
 
+.. default-role:: code
+.. include:: rstcommon.rst
 .. contents::
 
 
 Nim differs from many other compilers in that it is really fast,
 and being so fast makes it suited to provide external queries for
 text editors about the source code being written. Through the
-``nimsuggest`` tool, any IDE
+`nimsuggest`:cmd: tool, any IDE
 can query a ``.nim`` source file and obtain useful information like
 definition of symbols or suggestions for completion.
 
@@ -25,31 +27,37 @@ already available.
 Installation
 ============
 
-Nimsuggest is part of Nim's core. Build it via::
+Nimsuggest is part of Nim's core. Build it via:
 
+.. code:: cmd
   koch nimsuggest
 
 
 Nimsuggest invocation
 =====================
 
-Run it via ``nimsuggest --stdin --debug myproject.nim``. Nimsuggest is a
-server that takes queries that are related to ``myproject``. There is some
+Run it via `nimsuggest --stdin --debug myproject.nim`:cmd:. Nimsuggest is a
+server that takes queries that are related to `myproject`. There is some
 support so that you can throw random ``.nim`` files which are not part
-of ``myproject`` at Nimsuggest too, but usually the query refer to modules/files
-that are part of ``myproject``.
+of `myproject` at Nimsuggest too, but usually the query refer to modules/files
+that are part of `myproject`.
 
-``--stdin`` means that Nimsuggest reads the query from ``stdin``. This is great
+`--stdin`:option: means that Nimsuggest reads the query from `stdin`. This is great
 for testing things out and playing with it but for an editor communication
 via sockets is more reasonable so that is the default. It listens to port 6000
 by default.
+
+Nimsuggest is basically a frontend for the nim compiler so `--path`:option: flags and
+`config files <https://nim-lang.org/docs/nimc.html#compiler-usage-configuration-files>`_
+can be used to specify additional dependencies like 
+`nimsuggest --stdin --debug --path:"dependencies" myproject.nim`:cmd:.
 
 
 Specifying the location of the query
 ------------------------------------
 
 Nimsuggest then waits for queries to process. A query consists of a
-cryptic 3 letter "command" ``def`` or ``con`` or ``sug`` or ``use`` followed by
+cryptic 3 letter "command" `def` or `con` or `sug` or `use` followed by
 a location. A query location consists of:
 
 
@@ -59,7 +67,7 @@ a location. A query location consists of:
 ``dirtyfile.nim``
     This is optional.
 
-    The ``file`` parameter is enough for static analysis, but IDEs
+    The `file` parameter is enough for static analysis, but IDEs
     tend to have *unsaved buffers* where the user may still be in
     the middle of typing a line. In such situations the IDE can
     save the current contents to a temporary file and then use the
@@ -79,7 +87,7 @@ a location. A query location consists of:
 Definitions
 -----------
 
-The ``def`` Nimsuggest command performs a query about the definition
+The `def` Nimsuggest command performs a query about the definition
 of a specific symbol. If available, Nimsuggest will answer with the
 type, source file, line/column information and other accessory data
 if available like a docstring. With this information an IDE can
@@ -100,7 +108,7 @@ can't find any valid symbol matching the position of the query.
 Suggestions
 -----------
 
-The ``sug`` Nimsuggest command performs a query about possible
+The `sug` Nimsuggest command performs a query about possible
 completion symbols at some point in the file.
 
 The typical usage scenario for this option is to call it after the
@@ -113,7 +121,7 @@ Nimsuggest will try to return the suggestions sorted first by scope
 Invocation context
 ------------------
 
-The ``con`` Nimsuggest command is very similar to the suggestions
+The `con` Nimsuggest command is very similar to the suggestions
 command, but instead of being used after the user has typed a dot
 character, this one is meant to be used after the user has typed
 an opening brace to start typing parameters.
@@ -122,7 +130,7 @@ an opening brace to start typing parameters.
 Symbol usages
 -------------
 
-The ``use`` Nimsuggest command lists all usages of the symbol at
+The `use` Nimsuggest command lists all usages of the symbol at
 a position. IDEs can use this to find all the places in the file
 where the symbol is used and offer the user to rename it in all
 places at the same time.
@@ -140,15 +148,15 @@ Nimsuggest output is always returned on single lines separated by
 tab characters (``\t``). The values of each column are:
 
 1. Three characters indicating the type of returned answer (e.g.
-   ``def`` for definition, ``sug`` for suggestion, etc).
-2. Type of the symbol. This can be ``skProc``, ``skLet``, and just
+   `def` for definition, `sug` for suggestion, etc).
+2. Type of the symbol. This can be `skProc`, `skLet`, and just
    about any of the enums defined in the module ``compiler/ast.nim``.
 3. Fully qualified path of the symbol. If you are querying a symbol
    defined in the ``proj.nim`` file, this would have the form
-   ``proj.symbolName``.
+   `proj.symbolName`.
 4. Type/signature. For variables and enums this will contain the
    type of the symbol, for procs, methods and templates this will
-   contain the full unique signature (e.g. ``proc (File)``).
+   contain the full unique signature (e.g. `proc (File)`).
 5. Full path to the file containing the symbol.
 6. Line where the symbol is located in the file. Lines start to
    count at **1**.

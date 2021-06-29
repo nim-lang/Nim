@@ -62,7 +62,7 @@ proc doCaasCommand(session: var NimSession, command: string): string =
   result = ""
 
   while true:
-    var line = TaintedString("")
+    var line = ""
     if session.nim.outputStream.readLine(line):
       if line.string == "": break
       result.add(line.string & "\n")
@@ -78,7 +78,7 @@ proc doProcCommand(session: var NimSession, command: string): string =
   var
     process = startProcess(NimBin, args = session.replaceVars(command).split)
     stream = outputStream(process)
-    line = TaintedString("")
+    line = ""
 
   result = ""
   while stream.readLine(line):
@@ -113,12 +113,12 @@ proc doScenario(script: string, output: Stream, mode: TRunMode, verbose: bool): 
   result = true
 
   var f = open(script)
-  var project = TaintedString("")
+  var project = ""
 
   if f.readLine(project):
     var
       s = startNimSession(script.parentDir / project.string, script, mode)
-      tline = TaintedString("")
+      tline = ""
       ln = 1
 
     while f.readLine(tline):
@@ -175,7 +175,7 @@ when isMainModule:
     verbose = false
 
   for i in 0..paramCount() - 1:
-    let param = string(paramStr(i + 1))
+    let param = paramStr(i + 1)
     case param
     of "verbose": verbose = true
     else: filter = param

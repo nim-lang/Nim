@@ -17,10 +17,10 @@ const
   debugGC = false # we wish to debug the GC...
   logGC = false
   traceGC = false # extensive debugging
-  alwaysCycleGC = defined(smokeCycles)
-  alwaysGC = defined(fulldebug) # collect after every memory
+  alwaysCycleGC = defined(nimSmokeCycles)
+  alwaysGC = defined(nimFulldebug) # collect after every memory
                                 # allocation (for debugging)
-  leakDetector = defined(leakDetector)
+  leakDetector = defined(nimLeakDetector)
   overwriteFree = defined(nimBurnFree) # overwrite memory with 0xFF before free
   trackAllocationSource = leakDetector
 
@@ -30,7 +30,7 @@ const
   coalescRight = true
   coalescLeft = true
   logAlloc = false
-  useCellIds = defined(corruption)
+  useCellIds = defined(nimCorruption)
 
 type
   PPointer = ptr pointer
@@ -57,6 +57,16 @@ elif defined(gogc):
 elif (defined(nogc) or defined(gcDestructors)) and defined(useMalloc):
   include system / mm / malloc
 
+  when defined(nogc):
+    proc GC_getStatistics(): string = ""
+    proc newObj(typ: PNimType, size: int): pointer {.compilerproc.} =
+      result = alloc0(size)
+
+    proc newSeq(typ: PNimType, len: int): pointer {.compilerproc.} =
+      result = newObj(typ, align(GenericSeqSize, typ.align) + len * typ.base.size)
+      cast[PGenericSeq](result).len = len
+      cast[PGenericSeq](result).reserved = len
+
 elif defined(nogc):
   include system / mm / none
 
@@ -68,9 +78,7 @@ else:
       include "system/cellsets"
     when not leakDetector and not useCellIds and not defined(nimV2):
       sysAssert(sizeof(Cell) == sizeof(FreeCell), "sizeof FreeCell")
-  when compileOption("gc", "v2"):
-    include "system/gc2"
-  elif defined(gcRegions):
+  when defined(gcRegions):
     # XXX due to bootstrapping reasons, we cannot use  compileOption("gc", "stack") here
     include "system/gc_regions"
   elif defined(nimV2) or usesDestructors:

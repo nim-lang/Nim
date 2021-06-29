@@ -1,5 +1,5 @@
 discard """
-  cmd: '''nim c --newruntime $file'''
+  cmd: '''nim c --gc:arc $file'''
   output: '''no crash'''
 """
 

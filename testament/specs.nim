@@ -8,7 +8,7 @@
 #
 
 import sequtils, parseutils, strutils, os, streams, parsecfg,
-  tables, hashes
+  tables, hashes, sets
 
 type TestamentData* = ref object
   # better to group globals under 1 object; could group the other ones here too
@@ -34,33 +34,33 @@ type
 
   TOutputCheck* = enum
     ocIgnore = "ignore"
-    ocEqual  = "equal"
+    ocEqual = "equal"
     ocSubstr = "substr"
 
   TResultEnum* = enum
-    reNimcCrash,     # nim compiler seems to have crashed
-    reMsgsDiffer,       # error messages differ
-    reFilesDiffer,      # expected and given filenames differ
-    reLinesDiffer,      # expected and given line numbers differ
+    reNimcCrash,       # nim compiler seems to have crashed
+    reMsgsDiffer,      # error messages differ
+    reFilesDiffer,     # expected and given filenames differ
+    reLinesDiffer,     # expected and given line numbers differ
     reOutputsDiffer,
-    reExitcodesDiffer,  # exit codes of program or of valgrind differ
+    reExitcodesDiffer, # exit codes of program or of valgrind differ
     reTimeout,
     reInvalidPeg,
     reCodegenFailure,
     reCodeNotFound,
     reExeNotFound,
-    reInstallFailed     # package installation failed
-    reBuildFailed       # package building failed
-    reDisabled,         # test is disabled
-    reJoined,           # test is disabled because it was joined into the megatest
-    reSuccess           # test was successful
-    reInvalidSpec       # test had problems to parse the spec
+    reInstallFailed    # package installation failed
+    reBuildFailed      # package building failed
+    reDisabled,        # test is disabled
+    reJoined,          # test is disabled because it was joined into the megatest
+    reSuccess          # test was successful
+    reInvalidSpec      # test had problems to parse the spec
 
   TTarget* = enum
-    targetC = "C"
-    targetCpp = "C++"
-    targetObjC = "ObjC"
-    targetJS = "JS"
+    targetC = "c"
+    targetCpp = "cpp"
+    targetObjC = "objc"
+    targetJS = "js"
 
   InlineError* = object
     kind*: string
@@ -69,8 +69,9 @@ type
 
   ValgrindSpec* = enum
     disabled, enabled, leaking
-  
+
   TSpec* = object
+    # xxx make sure `isJoinableSpec` takes into account each field here.
     action*: TTestAction
     file*, cmd*: string
     input*: string
@@ -78,18 +79,17 @@ type
     sortoutput*: bool
     output*: string
     line*, column*: int
-    tfile*: string
-    tline*, tcolumn*: int
     exitCode*: int
     msg*: string
-    ccodeCheck*: string
+    ccodeCheck*: seq[string]
     maxCodeSize*: int
     err*: TResultEnum
     inCurrentBatch*: bool
     targets*: set[TTarget]
     matrix*: seq[string]
     nimout*: string
-    parseErrors*: string # when the spec definition is invalid, this is not empty.
+    nimoutFull*: bool # whether nimout is all compiler output or a subset
+    parseErrors*: string            # when the spec definition is invalid, this is not empty.
     unjoinable*: bool
     unbatchable*: bool
       # whether this test can be batchable via `NIM_TESTAMENT_BATCH`; only very
@@ -97,12 +97,13 @@ type
       # by making the dependencies explicit
     useValgrind*: ValgrindSpec
     timeout*: float # in seconds, fractions possible,
-                    # but don't rely on much precision
+                      # but don't rely on much precision
     inlineErrors*: seq[InlineError] # line information to error message
+    debugInfo*: string # debug info to give more context
 
 proc getCmd*(s: TSpec): string =
   if s.cmd.len == 0:
-    result = compilerPrefix & " $target --hints:on -d:testing --nimblePath:tests/deps $options $file"
+    result = compilerPrefix & " $target --hints:on -d:testing --clearNimblePath --nimblePath:build/deps/pkgs $options $file"
   else:
     result = s.cmd
 
@@ -179,7 +180,8 @@ proc extractErrorMsg(s: string; i: int; line: var int; col: var int; spec: var T
 proc extractSpec(filename: string; spec: var TSpec): string =
   const
     tripleQuote = "\"\"\""
-  var s = readFile(filename).string
+    specStart = "discard " & tripleQuote
+  var s = readFile(filename)
 
   var i = 0
   var a = -1
@@ -187,29 +189,35 @@ proc extractSpec(filename: string; spec: var TSpec): string =
   var line = 1
   var col = 1
   while i < s.len:
-    if s.continuesWith(tripleQuote, i):
-      if a < 0: a = i
-      elif b < 0: b = i
-      inc i, 2
-      inc col
+    if (i == 0 or s[i-1] != ' ') and s.continuesWith(specStart, i):
+      # `s[i-1] == '\n'` would not work because of `tests/stdlib/tbase64.nim` which contains BOM (https://en.wikipedia.org/wiki/Byte_order_mark)
+      const lineMax = 10
+      if a != -1:
+        raise newException(ValueError, "testament spec violation: duplicate `specStart` found: " & $(filename, a, b, line))
+      elif line > lineMax:
+        # not overly restrictive, but prevents mistaking some `specStart` as spec if deeep inside a test file
+        raise newException(ValueError, "testament spec violation: `specStart` should be before line $1, or be indented; info: $2" % [$lineMax, $(filename, a, b, line)])
+      i += specStart.len
+      a = i
+    elif a > -1 and b == -1 and s.continuesWith(tripleQuote, i):
+      b = i
+      i += tripleQuote.len
     elif s[i] == '\n':
       inc line
+      inc i
       col = 1
     elif s.continuesWith(inlineErrorMarker, i):
       i = extractErrorMsg(s, i, line, col, spec)
     else:
       inc col
-    inc i
+      inc i
 
-  # look for """ only in the first section
-  if a >= 0 and b > a and a < 40:
-    result = s.substr(a+3, b-1).replace("'''", tripleQuote)
+  if a >= 0 and b > a:
+    result = s.substr(a, b-1).multiReplace({"'''": tripleQuote, "\\31": "\31"})
+  elif a >= 0:
+    raise newException(ValueError, "testament spec violation: `specStart` found but not trailing `tripleQuote`: $1" % $(filename, a, b, line))
   else:
-    #echo "warning: file does not contain spec: " & filename
     result = ""
-
-when not defined(nimhygiene):
-  {.pragma: inject.}
 
 proc parseTargets*(value: string): set[TTarget] =
   for v in value.normalize.splitWhitespace:
@@ -218,13 +226,13 @@ proc parseTargets*(value: string): set[TTarget] =
     of "cpp", "c++": result.incl(targetCpp)
     of "objc": result.incl(targetObjC)
     of "js": result.incl(targetJS)
-    else: echo "target ignored: " & v
+    else: raise newException(ValueError, "invalid target: '$#'" % v)
 
 proc addLine*(self: var string; a: string) =
   self.add a
   self.add "\n"
 
-proc addLine*(self: var string; a,b: string) =
+proc addLine*(self: var string; a, b: string) =
   self.add a
   self.add b
   self.add "\n"
@@ -232,7 +240,7 @@ proc addLine*(self: var string; a,b: string) =
 proc initSpec*(filename: string): TSpec =
   result.file = filename
 
-proc isCurrentBatch(testamentData: TestamentData, filename: string): bool =
+proc isCurrentBatch*(testamentData: TestamentData; filename: string): bool =
   if testamentData.testamentNumBatch != 0:
     hash(filename) mod testamentData.testamentNumBatch == testamentData.testamentBatch
   else:
@@ -244,11 +252,20 @@ proc parseSpec*(filename: string): TSpec =
   var ss = newStringStream(specStr)
   var p: CfgParser
   open(p, ss, filename, 1)
+  var flags: HashSet[string]
+  var nimoutFound = false
   while true:
     var e = next(p)
     case e.kind
     of cfgKeyValuePair:
-      case normalize(e.key)
+      let key = e.key.normalize
+      const whiteListMulti = ["disabled", "ccodecheck"]
+        ## list of flags that are correctly handled when passed multiple times
+        ## (instead of being overwritten)
+      if key notin whiteListMulti:
+        doAssert key notin flags, $(key, filename)
+      flags.incl key
+      case key
       of "action":
         case e.value.normalize
         of "compile":
@@ -271,16 +288,10 @@ proc parseSpec*(filename: string): TSpec =
         if result.msg.len == 0 and result.nimout.len == 0:
           result.parseErrors.addLine "errormsg or msg needs to be specified before column"
         discard parseInt(e.value, result.column)
-      of "tfile":
-        result.tfile = e.value
-      of "tline":
-        discard parseInt(e.value, result.tline)
-      of "tcolumn":
-        discard parseInt(e.value, result.tcolumn)
       of "output":
         if result.outputCheck != ocSubstr:
           result.outputCheck = ocEqual
-        result.output = strip(e.value)
+        result.output = e.value
       of "input":
         result.input = e.value
       of "outputsub":
@@ -288,21 +299,20 @@ proc parseSpec*(filename: string): TSpec =
         result.output = strip(e.value)
       of "sortoutput":
         try:
-          result.sortoutput  = parseCfgBool(e.value)
+          result.sortoutput = parseCfgBool(e.value)
         except:
           result.parseErrors.addLine getCurrentExceptionMsg()
       of "exitcode":
         discard parseInt(e.value, result.exitCode)
         result.action = actionRun
-      of "msg":
-        result.msg = e.value
-        if result.action != actionRun:
-          result.action = actionCompile
-      of "errormsg", "errmsg":
+      of "errormsg":
         result.msg = e.value
         result.action = actionReject
       of "nimout":
         result.nimout = e.value
+        nimoutFound = true
+      of "nimoutfull":
+        result.nimoutFull = parseCfgBool(e.value)
       of "batchable":
         result.unbatchable = not parseCfgBool(e.value)
       of "joinable":
@@ -328,15 +338,15 @@ proc parseSpec*(filename: string): TSpec =
           when defined(linux): result.err = reDisabled
         of "bsd":
           when defined(bsd): result.err = reDisabled
-        of "macosx":
-          when defined(macosx): result.err = reDisabled
+        of "osx", "macosx": # xxx remove `macosx` alias?
+          when defined(osx): result.err = reDisabled
         of "unix":
           when defined(unix): result.err = reDisabled
         of "posix":
           when defined(posix): result.err = reDisabled
-        of "travis":
+        of "travis": # deprecated
           if isTravis: result.err = reDisabled
-        of "appveyor":
+        of "appveyor": # deprecated
           if isAppVeyor: result.err = reDisabled
         of "azure":
           if isAzure: result.err = reDisabled
@@ -361,7 +371,7 @@ proc parseSpec*(filename: string): TSpec =
         else:
           result.cmd = e.value
       of "ccodecheck":
-        result.ccodeCheck = e.value
+        result.ccodeCheck.add e.value
       of "maxcodesize":
         discard parseInt(e.value, result.maxCodeSize)
       of "timeout":
@@ -369,19 +379,11 @@ proc parseSpec*(filename: string): TSpec =
           result.timeout = parseFloat(e.value)
         except ValueError:
           result.parseErrors.addLine "cannot interpret as a float: ", e.value
-      of "target", "targets":
-        for v in e.value.normalize.splitWhitespace:
-          case v
-          of "c":
-            result.targets.incl(targetC)
-          of "cpp", "c++":
-            result.targets.incl(targetCpp)
-          of "objc":
-            result.targets.incl(targetObjC)
-          of "js":
-            result.targets.incl(targetJS)
-          else:
-            result.parseErrors.addLine "cannot interpret as a target: ", e.value
+      of "targets", "target":
+        try:
+          result.targets.incl parseTargets(e.value)
+        except ValueError as e:
+          result.parseErrors.addLine e.msg
       of "matrix":
         for v in e.value.split(';'):
           result.matrix.add(v.strip)
@@ -400,6 +402,9 @@ proc parseSpec*(filename: string): TSpec =
 
   if skips.anyIt(it in result.file):
     result.err = reDisabled
+
+  if nimoutFound and result.nimout.len == 0 and not result.nimoutFull:
+    result.parseErrors.addLine "empty `nimout` is vacuously true, use `nimoutFull:true` if intentional"
 
   result.inCurrentBatch = isCurrentBatch(testamentData0, filename) or result.unbatchable
   if not result.inCurrentBatch:

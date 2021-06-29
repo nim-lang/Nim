@@ -9,6 +9,9 @@
 
 # Compilerprocs for strings that do not depend on the string implementation.
 
+import std/private/digitsutils
+
+
 proc cmpStrings(a, b: string): int {.inline, compilerproc.} =
   let alen = a.len
   let blen = b.len
@@ -48,23 +51,19 @@ proc addInt*(result: var string; x: int64) =
   ##     a = "123"
   ##     b = 45
   ##   a.addInt(b) # a <- "12345"
-  let base = result.len
-  setLen(result, base + sizeof(x)*4)
-  var i = 0
-  var y = x
-  while true:
-    var d = y div 10
-    result[base+i] = chr(abs(int(y - d*10)) + ord('0'))
-    inc(i)
-    y = d
-    if y == 0: break
+  var num: uint64
+
   if x < 0:
-    result[base+i] = '-'
-    inc(i)
-  setLen(result, base+i)
-  # mirror the string:
-  for j in 0..i div 2 - 1:
-    swap(result[base+j], result[base+i-j-1])
+    if x == low(int64):
+      num = uint64(x)
+    else:
+      num = uint64(-x)
+    let base = result.len
+    setLen(result, base + 1)
+    result[base] = '-'
+  else:
+    num = uint64(x)
+  addIntImpl(result, num)
 
 proc nimIntToStr(x: int): string {.compilerRtl.} =
   result = newStringOfCap(sizeof(x)*4)
@@ -97,6 +96,19 @@ proc addFloat*(result: var string; x: float) =
 proc nimFloatToStr(f: float): string {.compilerproc.} =
   result = newStringOfCap(8)
   result.addFloat f
+
+when not defined(nimLegacyAddFloat) and not defined(nimscript) and
+    not defined(js) and defined(nimHasDragonBox):
+  import schubfach
+
+proc nimFloat32ToStr(f: float32): string {.compilerproc.} =
+  when declared(float32ToChars):
+    result = newString(65)
+    let L = float32ToChars(result, f, forceTrailingDotZero=true)
+    setLen(result, L)
+  else:
+    result = newStringOfCap(8)
+    result.addFloat f
 
 proc c_strtod(buf: cstring, endptr: ptr cstring): float64 {.
   importc: "strtod", header: "<stdlib.h>", noSideEffect.}
@@ -263,11 +275,7 @@ proc nimParseBiggestFloat(s: string, number: var BiggestFloat,
   t[ti-2] = ('0'.ord + absExponent mod 10).char
   absExponent = absExponent div 10
   t[ti-3] = ('0'.ord + absExponent mod 10).char
-
-  when defined(nimNoArrayToCstringConversion):
-    number = c_strtod(addr t, nil)
-  else:
-    number = c_strtod(t, nil)
+  number = c_strtod(addr t, nil)
 
 when defined(nimHasInvariant):
   {.pop.} # staticBoundChecks

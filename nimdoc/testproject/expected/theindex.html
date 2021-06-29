@@ -34,7 +34,6 @@ function main() {
     }
   }
 
-  const toggleSwitch = document.querySelector('.theme-switch input[type="checkbox"]');
   function switchTheme(e) {
       if (e.target.checked) {
           document.documentElement.setAttribute('data-theme', 'dark');
@@ -45,21 +44,29 @@ function main() {
       }
   }
 
-  toggleSwitch.addEventListener('change', switchTheme, false);
+  const toggleSwitch = document.querySelector('.theme-switch input[type="checkbox"]');
+  if (toggleSwitch !== null) {
+    toggleSwitch.addEventListener('change', switchTheme, false);
+  }
 
-  const currentTheme = localStorage.getItem('theme') ? localStorage.getItem('theme') : null;
+  var currentTheme = localStorage.getItem('theme');
+  if (!currentTheme && window.matchMedia('(prefers-color-scheme: dark)').matches) {
+    currentTheme = 'dark';
+  }
   if (currentTheme) {
     document.documentElement.setAttribute('data-theme', currentTheme);
 
-    if (currentTheme === 'dark') {
+    if (currentTheme === 'dark' && toggleSwitch !== null) {
       toggleSwitch.checked = true;
     }
   }
 }
+
+window.addEventListener('DOMContentLoaded', main);
 </script>
 
 </head>
-<body onload="main()">
+<body>
 <div class="document" id="documentId">
   <div class="container">
     <h1 class="title">Index</h1>
@@ -75,6 +82,10 @@ function main() {
 <dt><a name="aEnum" href="#aEnum"><span>aEnum:</span></a></dt><dd><ul class="simple">
 <li><a class="reference external"
           data-doc-search-tag="utils: aEnum(): untyped" href="subdir/subdir_b/utils.html#aEnum.t">utils: aEnum(): untyped</a></li>
+          </ul></dd>
+<dt><a name="anything" href="#anything"><span>anything:</span></a></dt><dd><ul class="simple">
+<li><a class="reference external"
+          data-doc-search-tag="testproject: anything()" href="testproject.html#anything">testproject: anything()</a></li>
           </ul></dd>
 <dt><a name="asyncFun1" href="#asyncFun1"><span>asyncFun1:</span></a></dt><dd><ul class="simple">
 <li><a class="reference external"
@@ -136,9 +147,9 @@ function main() {
 <li><a class="reference external"
           data-doc-search-tag="Shapes.Circle" href="testproject.html#Circle">Shapes.Circle</a></li>
           </ul></dd>
-<dt><a name="c_nonexistant" href="#c_nonexistant"><span>c_nonexistant:</span></a></dt><dd><ul class="simple">
+<dt><a name="c_nonexistent" href="#c_nonexistent"><span>c_nonexistent:</span></a></dt><dd><ul class="simple">
 <li><a class="reference external"
-          data-doc-search-tag="testproject: c_nonexistant(frmt: cstring): cint" href="testproject.html#c_nonexistant%2Ccstring">testproject: c_nonexistant(frmt: cstring): cint</a></li>
+          data-doc-search-tag="testproject: c_nonexistent(frmt: cstring): cint" href="testproject.html#c_nonexistent%2Ccstring">testproject: c_nonexistent(frmt: cstring): cint</a></li>
           </ul></dd>
 <dt><a name="c_printf" href="#c_printf"><span>c_printf:</span></a></dt><dd><ul class="simple">
 <li><a class="reference external"
@@ -243,6 +254,10 @@ function main() {
 <dt><a name="someType" href="#someType"><span>someType:</span></a></dt><dd><ul class="simple">
 <li><a class="reference external"
           data-doc-search-tag="utils: someType(): SomeType" href="subdir/subdir_b/utils.html#someType_2">utils: someType(): SomeType</a></li>
+          </ul></dd>
+<dt><a name="someVariable" href="#someVariable"><span>someVariable:</span></a></dt><dd><ul class="simple">
+<li><a class="reference external"
+          data-doc-search-tag="testproject: someVariable" href="testproject.html#someVariable">testproject: someVariable</a></li>
           </ul></dd>
 <dt><a name="testNimDocTrailingExample" href="#testNimDocTrailingExample"><span>testNimDocTrailingExample:</span></a></dt><dd><ul class="simple">
 <li><a class="reference external"

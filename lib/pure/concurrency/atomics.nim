@@ -11,7 +11,45 @@
 ##
 ## Unstable API.
 
-import macros
+runnableExamples:
+  # Atomic
+  var loc: Atomic[int]
+  loc.store(4)
+  assert loc.load == 4
+  loc.store(2)
+  assert loc.load(moRelaxed) == 2
+  loc.store(9)
+  assert loc.load(moAcquire) == 9
+  loc.store(0, moRelease)
+  assert loc.load == 0
+
+  assert loc.exchange(7) == 0
+  assert loc.load == 7
+
+  var expected = 7
+  assert loc.compareExchange(expected, 5, moRelaxed, moRelaxed)
+  assert expected == 7
+  assert loc.load == 5
+
+  assert not loc.compareExchange(expected, 12, moRelaxed, moRelaxed)
+  assert expected == 5
+  assert loc.load == 5
+
+  assert loc.fetchAdd(1) == 5
+  assert loc.fetchAdd(2) == 6
+  assert loc.fetchSub(3) == 8
+
+  loc.atomicInc(1)
+  assert loc.load == 6
+
+  # AtomicFlag
+  var flag: AtomicFlag
+
+  assert not flag.testAndSet
+  assert flag.testAndSet
+  flag.clear(moRelaxed)
+  assert not flag.testAndSet
+
 
 when defined(cpp) or defined(nimdoc):
   # For the C++ backend, types and operations map directly to C++11 atomics.
@@ -298,7 +336,7 @@ else:
     {.pop.}
 
     proc load*[T: Trivial](location: var Atomic[T]; order: MemoryOrder = moSequentiallyConsistent): T {.inline.} =
-      cast[T](atomic_load_explicit[nonAtomicType(T), type(location.value)](addr(location.value), order))
+      cast[T](atomic_load_explicit[nonAtomicType(T), typeof(location.value)](addr(location.value), order))
     proc store*[T: Trivial](location: var Atomic[T]; desired: T; order: MemoryOrder = moSequentiallyConsistent) {.inline.} =
       atomic_store_explicit(addr(location.value), cast[nonAtomicType(T)](desired), order)
     proc exchange*[T: Trivial](location: var Atomic[T]; desired: T; order: MemoryOrder = moSequentiallyConsistent): T {.inline.} =

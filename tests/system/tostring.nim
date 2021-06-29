@@ -1,7 +1,3 @@
-discard """
-  output: "DONE: tostring.nim"
-"""
-
 doAssert "@[23, 45]" == $(@[23, 45])
 doAssert "[32, 45]" == $([32, 45])
 doAssert """@["", "foo", "bar"]""" == $(@["", "foo", "bar"])
@@ -108,7 +104,7 @@ bar(nilstring)
 static:
   stringCompare()
 
-# bug 8847
+# issue #8847
 var a2: cstring = "fo\"o2"
 
 block:
@@ -116,5 +112,14 @@ block:
   s.addQuoted a2
   doAssert s == "\"fo\\\"o2\""
 
-
-echo "DONE: tostring.nim"
+# issue #16650
+template fn() =
+  doAssert len(cstring"ab\0c") == 5
+  doAssert len(cstring("ab\0c")) == 2
+  when nimvm:
+    discard
+  else:
+    let c = cstring("ab\0c")
+    doAssert len(c) == 2
+fn()
+static: fn()

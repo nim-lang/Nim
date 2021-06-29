@@ -1,5 +1,5 @@
 discard """
-  errmsg: "unhandled exception:"
+  errormsg: "unhandled exception:"
   file: "system/fatal.nim"
   nimout: '''
 stack trace: (most recent call last)

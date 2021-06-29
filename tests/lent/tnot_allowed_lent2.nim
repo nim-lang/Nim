@@ -1,5 +1,5 @@
 discard """
-  errmsg: "'x' cannot be assigned to"
+  errormsg: "'x' cannot be assigned to"
   line: 10
 """
 

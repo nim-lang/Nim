@@ -1,5 +1,5 @@
 discard """
-  errmsg: "Cannot make async proc discardable. Futures have to be checked with `asyncCheck` instead of discarded"
+  errormsg: "Cannot make async proc discardable. Futures have to be checked with `asyncCheck` instead of discarded"
 """
 
 import async

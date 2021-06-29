@@ -1,8 +1,35 @@
+discard """
+  targets: "c cpp js"
+"""
+
+
 #[
 Note: Macro tests are in tests/stdlib/tjsonmacro.nim
 ]#
 
-import std/[json,parsejson,strutils,streams]
+import std/[json,parsejson,strutils]
+from std/math import isNaN
+when not defined(js):
+  import std/streams
+import stdtest/testutils
+from std/fenv import epsilon
+
+proc testRoundtrip[T](t: T, expected: string) =
+  # checks that `T => json => T2 => json2` is such that json2 = json
+  let j = %t
+  doAssert $j == expected, $j
+  doAssert %(j.to(T)) == j
+
+proc testRoundtripVal[T](t: T, expected: string) =
+  # similar to testRoundtrip, but also checks that the `T => json => T2` is such that `T2 == T`
+  # note that this isn't always possible, e.g. for pointer-like types or nans
+  let j = %t
+  doAssert $j == expected, $j
+  let j2 = ($j).parseJson
+  doAssert $j2 == expected, $(j2, t)
+  let t2 = j2.to(T)
+  doAssert t2 == t
+  doAssert $(%* t2) == expected # sanity check, because -0.0 = 0.0 but their json representation differs
 
 let testJson = parseJson"""{ "a": [1, 2, 3, 4], "b": "asd", "c": "\ud83c\udf83", "d": "\u00E6"}"""
 # nil passthrough
@@ -234,4 +261,87 @@ doAssert isRefSkipDistinct(MyDistinct)
 doAssert isRefSkipDistinct(MyOtherDistinct)
 
 let x = parseJson("9999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999")
+
 doAssert x.kind == JString
+
+block: # bug #15835
+  type
+    Foo = object
+      ii*: int
+      data*: JsonNode
+
+  block:
+    const jt = """{"ii": 123, "data": ["some", "data"]}"""
+    let js = parseJson(jt)
+    discard js.to(Foo)
+
+  block:
+    const jt = """{"ii": 123}"""
+    let js = parseJson(jt)
+    doAssertRaises(KeyError):
+      echo js.to(Foo)
+
+type
+  ContentNodeKind* = enum
+    P,
+    Br,
+    Text,
+  ContentNode* = object
+    case kind*: ContentNodeKind
+    of P: pChildren*: seq[ContentNode]
+    of Br: nil
+    of Text: textStr*: string
+
+let mynode = ContentNode(kind: P, pChildren: @[
+  ContentNode(kind: Text, textStr: "mychild"),
+  ContentNode(kind: Br)
+])
+
+doAssert $mynode == """(kind: P, pChildren: @[(kind: Text, textStr: "mychild"), (kind: Br)])"""
+
+let jsonNode = %*mynode
+doAssert $jsonNode == """{"kind":"P","pChildren":[{"kind":"Text","textStr":"mychild"},{"kind":"Br"}]}"""
+doAssert $jsonNode.to(ContentNode) == """(kind: P, pChildren: @[(kind: Text, textStr: "mychild"), (kind: Br)])"""
+
+block: # bug #17383
+  testRoundtrip(int32.high): "2147483647"
+  testRoundtrip(uint32.high): "4294967295"
+  when int.sizeof == 4:
+    testRoundtrip(int.high): "2147483647"
+    testRoundtrip(uint.high): "4294967295"
+  else:
+    testRoundtrip(int.high): "9223372036854775807"
+    testRoundtrip(uint.high): "18446744073709551615"
+  when not defined(js):
+    testRoundtrip(int64.high): "9223372036854775807"
+    testRoundtrip(uint64.high): "18446744073709551615"
+
+block: # bug #18007
+  testRoundtrip([NaN, Inf, -Inf, 0.0, -0.0, 1.0]): """["nan","inf","-inf",0.0,-0.0,1.0]"""
+  # pending https://github.com/nim-lang/Nim/issues/18025 use:
+  # testRoundtrip([float32(NaN), Inf, -Inf, 0.0, -0.0, 1.0])
+  let inf = float32(Inf)
+  testRoundtrip([float32(NaN), inf, -inf, 0.0, -0.0, 1.0]): """["nan","inf","-inf",0.0,-0.0,1.0]"""
+  when not defined(js): # because of Infinity vs inf
+    testRoundtripVal([inf, -inf, 0.0, -0.0, 1.0]): """["inf","-inf",0.0,-0.0,1.0]"""
+  let a = parseJson($(%NaN)).to(float)
+  doAssert a.isNaN
+
+  whenRuntimeJs: discard # refs bug #18009
+  do:
+    testRoundtripVal(0.0): "0.0"
+    testRoundtripVal(-0.0): "-0.0"
+
+block: # bug #15397, bug #13196
+  testRoundtripVal(1.0 + epsilon(float64)): "1.0000000000000002"
+  testRoundtripVal(0.12345678901234567890123456789): "0.12345678901234568"
+
+block:
+  let a = "18446744073709551615"
+  let b = a.parseJson
+  doAssert b.kind == JString
+  let c = $b
+  when defined(js):
+    doAssert c == "18446744073709552000"
+  else:
+    doAssert c == "18446744073709551615"

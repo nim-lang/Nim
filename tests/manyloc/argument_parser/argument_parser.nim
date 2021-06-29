@@ -225,7 +225,7 @@ template raise_or_quit(exception, message: untyped) =
 
 template run_custom_proc(parsed_parameter: Tparsed_parameter,
     custom_validator: Tparameter_callback,
-    parameter: TaintedString) =
+    parameter: string) =
   ## Runs the custom validator if it is not nil.
   ##
   ## Pass in the string of the parameter triggering the call. If the
@@ -318,7 +318,7 @@ proc echo_help*(expected: seq[Tparameter_specification] = @[],
 
 
 proc parse*(expected: seq[Tparameter_specification] = @[],
-    type_of_positional_parameters = PK_STRING, args: seq[TaintedString] = @[],
+    type_of_positional_parameters = PK_STRING, args: seq[string] = @[],
     bad_prefixes = @["-", "--"], end_of_options = "--",
     quit_on_failure = true): Tcommandline_results =
   ## Parses parameters and returns results.

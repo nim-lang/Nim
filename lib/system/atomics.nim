@@ -125,8 +125,8 @@ when someGcc and hasThreadSupport:
   proc atomicTestAndSet*(p: pointer, mem: AtomMemModel): bool {.
     importc: "__atomic_test_and_set", nodecl.}
     ## This built-in function performs an atomic test-and-set operation on the byte at p.
-    ## The byte is set to some implementation defined nonzero “set” value and the return
-    ## value is true if and only if the previous contents were “set”.
+    ## The byte is set to some implementation defined nonzero "set" value and the return
+    ## value is true if and only if the previous contents were "set".
     ## All memory models are valid.
 
   proc atomicClear*(p: pointer, mem: AtomMemModel) {.
