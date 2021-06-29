@@ -9,7 +9,7 @@ block: # bug #16436
     result = newAsyncHttpServer()
     result.listen(Port(0))
 
-  proc runServer(server: AsyncHttpServer) {.async.} =
+  proc processRequest(server: AsyncHttpServer) {.async.} =
     proc cb(req: Request) {.async.} =
       let headers = { "Content-length": "15"} # Provide invalid content-length
       await req.respond(Http200, "Hello World", headers.newHttpHeaders())
