@@ -499,7 +499,7 @@ type
     nfFirstWrite# this node is a first write
 
   TNodeFlags* = set[TNodeFlag]
-  TTypeFlag* = enum   # keep below 32 for efficiency reasons (now: ~40)
+  TTypeFlag* = enum   # keep below 32 for efficiency reasons (now: 43)
     tfVarargs,        # procedure has C styled varargs
                       # tyArray type represeting a varargs list
     tfNoSideEffect,   # procedure type does not allow side effects
@@ -566,6 +566,7 @@ type
       # (for importc types); type is fully specified, allowing to compute
       # sizeof, alignof, offsetof at CT
     tfExplicitCallConv
+    tfIsConstructor
 
   TTypeFlags* = set[TTypeFlag]
 
