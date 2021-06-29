@@ -1574,13 +1574,13 @@ proc typeMismatch*(conf: ConfigRef; info: TLineInfo, formal, actual: PType, n: P
     var msg = "type mismatch:"
     if verbose: msg.add "\n"
     if conf.isDefined("nimLegacyTypeMismatch"):
-      msg.add  " got <$1>" % actualStr
+      msg.add  " obtained <$1>" % actualStr
     else:
-      msg.add  " got '$1' for '$2'" % [actualStr, n.renderTree]
+      msg.add  " obtained '$1' for '$2'" % [actualStr, n.renderTree]
     if verbose:
       msg.addDeclaredLoc(conf, actual)
       msg.add "\n"
-    msg.add " but expected '$1'" % x
+    msg.add " expected '$1'" % x
     if verbose: msg.addDeclaredLoc(conf, formal)
 
     if formal.kind == tyProc and actual.kind == tyProc:
