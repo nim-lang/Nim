@@ -1477,7 +1477,7 @@ proc callConvMismatch(formal, actual: PType): string =
     let 
       got = $(actual.callConv)
       expected = $(formal.callConv)
-    result = "\nCalling convention mismatch got '{.$1.}' but expected '{.$2.}'." % [got, expected]
+    result = "\nCalling convention: mismatch got '{.$1.}', but expected '{.$2.}'." % [got, expected]
 
 proc pragmaMismatch(formal, actual: PType): string =
   assert formal.kind == tyProc and actual.kind == tyProc
@@ -1495,7 +1495,7 @@ proc pragmaMismatch(formal, actual: PType): string =
   if got.len > 0 or expected.len > 0:
     got.setLen(max(0, got.len - 2)) # Remove ", "
     expected.setLen(max(0, expected.len - 2)) # Remove ", "
-    result = "\nPragma mismatch got '{.$1.}', but expected '{.$2.}'." % [got, expected]
+    result = "\nPragma mismatch: got '{.$1.}', but expected '{.$2.}'." % [got, expected]
 
 proc typeMismatch*(conf: ConfigRef; info: TLineInfo, formal, actual: PType, n: PNode) =
   if formal.kind != tyError and actual.kind != tyError:
