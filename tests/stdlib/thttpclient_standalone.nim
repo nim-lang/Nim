@@ -28,7 +28,7 @@ block: # bug #16436
     waitFor runClient(port)
 
 block: # bug #14794 (And test for presence of content-length header when using postContent)
-  proc startServer():AsyncHttpServer =
+  proc startServer(): AsyncHttpServer =
     result = newAsyncHttpServer()
     result.listen(Port(0))
 
