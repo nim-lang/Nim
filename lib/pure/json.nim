@@ -333,7 +333,16 @@ proc `%`*(n: BiggestInt): JsonNode =
 
 proc `%`*(n: float): JsonNode =
   ## Generic constructor for JSON data. Creates a new `JFloat JsonNode`.
-  result = JsonNode(kind: JFloat, fnum: n)
+  runnableExamples:
+    assert $(%[NaN, Inf, -Inf, 0.0, -0.0, 1.0, 1e-2]) == """["nan","inf","-inf",0.0,-0.0,1.0,0.01]"""
+    assert (%NaN).kind == JString
+    assert (%0.0).kind == JFloat
+  # for those special cases, we could also have used `newJRawNumber` but then
+  # it would've been inconsisten with the case of `parseJson` vs `%` for representing them.
+  if n != n: newJString("nan")
+  elif n == Inf: newJString("inf")
+  elif n == -Inf: newJString("-inf")
+  else: JsonNode(kind: JFloat, fnum: n)
 
 proc `%`*(b: bool): JsonNode =
   ## Generic constructor for JSON data. Creates a new `JBool JsonNode`.
@@ -662,6 +671,47 @@ proc escapeJson*(s: string): string =
   result = newStringOfCap(s.len + s.len shr 3)
   escapeJson(s, result)
 
+proc toUgly*(result: var string, node: JsonNode) =
+  ## Converts `node` to its JSON Representation, without
+  ## regard for human readability. Meant to improve `$` string
+  ## conversion performance.
+  ##
+  ## JSON representation is stored in the passed `result`
+  ##
+  ## This provides higher efficiency than the `pretty` procedure as it
+  ## does **not** attempt to format the resulting JSON to make it human readable.
+  var comma = false
+  case node.kind:
+  of JArray:
+    result.add "["
+    for child in node.elems:
+      if comma: result.add ","
+      else: comma = true
+      result.toUgly child
+    result.add "]"
+  of JObject:
+    result.add "{"
+    for key, value in pairs(node.fields):
+      if comma: result.add ","
+      else: comma = true
+      key.escapeJson(result)
+      result.add ":"
+      result.toUgly value
+    result.add "}"
+  of JString:
+    if node.isUnquoted:
+      result.add node.str
+    else:
+      escapeJson(node.str, result)
+  of JInt:
+    result.addInt(node.num)
+  of JFloat:
+    result.addFloat(node.fnum)
+  of JBool:
+    result.add(if node.bval: "true" else: "false")
+  of JNull:
+    result.add "null"
+
 proc toPretty(result: var string, node: JsonNode, indent = 2, ml = true,
               lstArr = false, currIndent = 0) =
   case node.kind
@@ -689,10 +739,7 @@ proc toPretty(result: var string, node: JsonNode, indent = 2, ml = true,
       result.add("{}")
   of JString:
     if lstArr: result.indent(currIndent)
-    if node.isUnquoted:
-      result.add node.str
-    else:
-      escapeJson(node.str, result)
+    toUgly(result, node)
   of JInt:
     if lstArr: result.indent(currIndent)
     result.addInt(node.num)
@@ -742,47 +789,6 @@ proc pretty*(node: JsonNode, indent = 2): string =
 }"""
   result = ""
   toPretty(result, node, indent)
-
-proc toUgly*(result: var string, node: JsonNode) =
-  ## Converts `node` to its JSON Representation, without
-  ## regard for human readability. Meant to improve `$` string
-  ## conversion performance.
-  ##
-  ## JSON representation is stored in the passed `result`
-  ##
-  ## This provides higher efficiency than the `pretty` procedure as it
-  ## does **not** attempt to format the resulting JSON to make it human readable.
-  var comma = false
-  case node.kind:
-  of JArray:
-    result.add "["
-    for child in node.elems:
-      if comma: result.add ","
-      else: comma = true
-      result.toUgly child
-    result.add "]"
-  of JObject:
-    result.add "{"
-    for key, value in pairs(node.fields):
-      if comma: result.add ","
-      else: comma = true
-      key.escapeJson(result)
-      result.add ":"
-      result.toUgly value
-    result.add "}"
-  of JString:
-    if node.isUnquoted:
-      result.add node.str
-    else:
-      node.str.escapeJson(result)
-  of JInt:
-    result.addInt(node.num)
-  of JFloat:
-    result.addFloat(node.fnum)
-  of JBool:
-    result.add(if node.bval: "true" else: "false")
-  of JNull:
-    result.add "null"
 
 proc `$`*(node: JsonNode): string =
   ## Converts `node` to its JSON Representation on one line.
@@ -932,7 +938,7 @@ when defined(js):
     of "[object Array]": return JArray
     of "[object Object]": return JObject
     of "[object Number]":
-      if isInteger(x):
+      if isInteger(x) and 1.0 / cast[float](x) != -Inf: # preserve -0.0 as float
         if isSafeInteger(x):
           return JInt
         else:
@@ -1087,11 +1093,26 @@ when defined(nimFixedForwardGeneric):
       dst = cast[T](jsonNode.num)
 
   proc initFromJson[T: SomeFloat](dst: var T; jsonNode: JsonNode; jsonPath: var string) =
-    verifyJsonKind(jsonNode, {JInt, JFloat}, jsonPath)
-    if jsonNode.kind == JFloat:
-      dst = T(jsonNode.fnum)
+    if jsonNode.kind == JString:
+      case jsonNode.str
+      of "nan":
+        let b = NaN
+        dst = T(b)
+        # dst = NaN # would fail some tests because range conversions would cause CT error
+        # in some cases; but this is not a hot-spot inside this branch and backend can optimize this.
+      of "inf":
+        let b = Inf
+        dst = T(b)
+      of "-inf":
+        let b = -Inf
+        dst = T(b)
+      else: raise newException(JsonKindError, "expected 'nan|inf|-inf', got " & jsonNode.str)
     else:
-      dst = T(jsonNode.num)
+      verifyJsonKind(jsonNode, {JInt, JFloat}, jsonPath)
+      if jsonNode.kind == JFloat:
+        dst = T(jsonNode.fnum)
+      else:
+        dst = T(jsonNode.num)
 
   proc initFromJson[T: enum](dst: var T; jsonNode: JsonNode; jsonPath: var string) =
     verifyJsonKind(jsonNode, {JString}, jsonPath)

@@ -6,7 +6,7 @@
 echo_run () {
   # echo's a command before running it, which helps understanding logs
   echo ""
-  echo "$@"
+  echo "cmd: $@" # in azure we could also use this: echo '##[section]"$@"'
   "$@"
 }
 
@@ -31,10 +31,25 @@ nimIsCiSkip(){
   fi
 }
 
+nimInternalInstallDepsWindows(){
+  echo_run mkdir dist
+  echo_run curl -L https://nim-lang.org/download/mingw64.7z -o dist/mingw64.7z
+  echo_run curl -L https://nim-lang.org/download/dlls.zip -o dist/dlls.zip
+  echo_run 7z x dist/mingw64.7z -odist
+  echo_run 7z x dist/dlls.zip -obin
+}
+
+nimInternalBuildKochAndRunCI(){
+  echo_run nim c koch
+  if ! echo_run ./koch runCI; then
+    echo_run echo "runCI failed"
+    echo_run nim r tools/ci_testresults.nim
+    return 1
+  fi
+}
+
 nimDefineVars(){
-  nim_csourcesDir=csources_v1 # where we clone
-  nim_csourcesUrl=https://github.com/nim-lang/csources_v1.git
-  nim_csourcesHash=a8a5241f9475099c823cfe1a5e0ca4022ac201ff
+  . config/build_config.txt
   nim_csources=bin/nim_csources_$nim_csourcesHash
 }
 
@@ -57,6 +72,8 @@ _nimBuildCsourcesIfNeeded(){
     makeX=gmake
   elif [ "$unamestr" = 'OpenBSD' ]; then
     makeX=gmake
+  elif [ "$unamestr" = 'NetBSD' ]; then
+    makeX=gmake
   else
     makeX=make
   fi
@@ -67,6 +84,19 @@ _nimBuildCsourcesIfNeeded(){
   # keep $nim_csources in case needed to investigate bootstrap issues
   # without having to rebuild
   echo_run cp bin/nim $nim_csources
+}
+
+nimCiSystemInfo(){
+  nimDefineVars
+  echo_run eval echo '$'nim_csources
+  echo_run pwd
+  echo_run date
+  echo_run uname -a
+  echo_run git log --no-merges -1 --pretty=oneline
+  echo_run eval echo '$'PATH
+  echo_run gcc -v
+  echo_run node -v
+  echo_run make -v
 }
 
 nimCsourcesHash(){
@@ -88,13 +118,17 @@ nimBuildCsourcesIfNeeded(){
       if test -d "$nim_csourcesDir"; then
         echo "$nim_csourcesDir exists."
       else
-        # depth 1: adjust as needed in case useful for `git bisect`
+        # Note: using git tags would allow fetching just what's needed, unlike git hashes, e.g.
+        # via `git clone -q --depth 1 --branch $tag $nim_csourcesUrl`.
         echo_run git clone -q --depth 1 $nim_csourcesUrl "$nim_csourcesDir"
         echo_run git -C "$nim_csourcesDir" checkout $nim_csourcesHash
+        # if needed we could also add: `git reset --hard $nim_csourcesHash`
       fi
       _nimBuildCsourcesIfNeeded "$@"
     fi
 
+    echo_run rm -f bin/nim
+      # fixes bug #17913, but it's unclear why it's needed, maybe specific to MacOS Big Sur 11.3 on M1 arch?
     echo_run cp $nim_csources bin/nim
     echo_run $nim_csources -v
   )

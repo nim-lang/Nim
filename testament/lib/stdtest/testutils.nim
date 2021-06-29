@@ -29,11 +29,17 @@ template flakyAssert*(cond: untyped, msg = "", notifySuccess = true) =
 when not defined(js):
   import std/strutils
 
-  proc greedyOrderedSubsetLines*(lhs, rhs: string): bool =
+  proc greedyOrderedSubsetLines*(lhs, rhs: string, allowPrefixMatch = false): bool =
     ## Returns true if each stripped line in `lhs` appears in rhs, using a greedy matching.
+    # xxx improve error reporting by showing the last matched pair
     iterator splitLinesClosure(): string {.closure.} =
       for line in splitLines(rhs.strip):
         yield line
+    template isMatch(lhsi, rhsi): bool =
+      if allowPrefixMatch:
+        startsWith(rhsi, lhsi):
+      else:
+        lhsi == rhsi
 
     var rhsIter = splitLinesClosure
     var currentLine = strip(rhsIter())
@@ -41,7 +47,7 @@ when not defined(js):
     for line in lhs.strip.splitLines:
       let line = line.strip
       if line.len != 0:
-        while line != currentLine:
+        while not isMatch(line, currentLine):
           currentLine = strip(rhsIter())
           if rhsIter.finished:
             return false
@@ -101,10 +107,12 @@ macro assertAll*(body) =
   # remove this once these support VM, pending #10129 (closed but not yet fixed)
   result = newStmtList()
   for a in body:
-    result.add genAst(a) do:
+    result.add genAst(a, a2 = a.repr, info = lineInfo(a)) do:
       # D20210421T014713:here
       # xxx pending https://github.com/nim-lang/Nim/issues/12030,
       # `typeof` should introduce its own scope, so that this
       # is sufficient: `typeof(a)` instead of `typeof(block: a)`
       when typeof(block: a) is void: a
-      else: doAssert a
+      else:
+        if not a:
+          raise newException(AssertionDefect, info & " " & a2)

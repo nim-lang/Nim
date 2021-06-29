@@ -29,15 +29,13 @@ type
 
   POptionEntry* = ref TOptionEntry
   PProcCon* = ref TProcCon
-  TProcCon* = object          # procedure context; also used for top-level
-                              # statements
+  TProcCon* {.acyclic.} = object # procedure context; also used for top-level
+                                 # statements
     owner*: PSym              # the symbol this context belongs to
     resultSym*: PSym          # the result symbol (if we are in a proc)
     selfSym*: PSym            # the 'self' symbol (if available)
     nestedLoopCounter*: int   # whether we are in a loop or not
     nestedBlockCounter*: int  # whether we are in a block or not
-    inTryStmt*: int           # whether we are in a try statement; works also
-                              # in standalone ``except`` and ``finally``
     next*: PProcCon           # used for stacking procedure contexts
     mappingExists*: bool
     mapping*: TIdTable
@@ -158,7 +156,8 @@ type
     features*: set[Feature]
     inTypeContext*, inConceptDecl*: int
     unusedImports*: seq[(PSym, TLineInfo)]
-    exportIndirections*: HashSet[(int, int)]
+    exportIndirections*: HashSet[(int, int)] # (module.id, symbol.id)
+    importModuleMap*: Table[int, int] # (module.id, module.id)
     lastTLineInfo*: TLineInfo
 
 template config*(c: PContext): ConfigRef = c.graph.config

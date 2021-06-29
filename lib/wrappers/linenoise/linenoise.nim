@@ -32,17 +32,17 @@ proc printKeyCodes*() {.importc: "linenoisePrintKeyCodes".}
 
 proc free*(s: cstring) {.importc: "free", header: "<stdlib.h>".}
 
-when defined nimExperimentalLinenoiseExtra:
+when defined(nimExperimentalLinenoiseExtra) and not defined(windows):
   # C interface
-  type linenoiseStatus = enum
+  type LinenoiseStatus = enum
     linenoiseStatus_ctrl_unknown
     linenoiseStatus_ctrl_C
     linenoiseStatus_ctrl_D
 
-  type linenoiseData* = object
-    status: linenoiseStatus
+  type LinenoiseData* = object
+    status: LinenoiseStatus
 
-  proc linenoiseExtra(prompt: cstring, data: ptr linenoiseData): cstring {.importc.}
+  proc linenoiseExtra(prompt: cstring, data: ptr LinenoiseData): cstring {.importc.}
 
   # stable nim interface
   type Status* = enum
@@ -65,7 +65,7 @@ when defined nimExperimentalLinenoiseExtra:
         if ret.line.len > 0: echo ret.line
         if ret.status == lnCtrlD: break
       echo "exiting"
-    var data: linenoiseData
+    var data: LinenoiseData
     let buf = linenoiseExtra(prompt, data.addr)
     result.line = $buf
     free(buf)

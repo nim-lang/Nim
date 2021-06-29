@@ -189,6 +189,9 @@ proc semGenericStmt(c: PContext, n: PNode,
   case n.kind
   of nkIdent, nkAccQuoted:
     result = lookup(c, n, flags, ctx)
+    if result != nil and result.kind == nkSym:
+      assert result.sym != nil
+      markUsed(c, n.info, result.sym)
   of nkDotExpr:
     #let luf = if withinMixin notin flags: {checkUndeclared} else: {}
     #var s = qualifiedLookUp(c, n, luf)
@@ -300,8 +303,7 @@ proc semGenericStmt(c: PContext, n: PNode,
     result = newNodeI(nkCall, n.info)
     result.add newIdentNode(getIdent(c.cache, "[]"), n.info)
     for i in 0..<n.len: result.add(n[i])
-    withBracketExpr ctx, n[0]:
-      result = semGenericStmt(c, result, flags, ctx)
+    result = semGenericStmt(c, result, flags, ctx)
   of nkAsgn, nkFastAsgn:
     checkSonsLen(n, 2, c.config)
     let a = n[0]
@@ -320,8 +322,7 @@ proc semGenericStmt(c: PContext, n: PNode,
       result.add newIdentNode(getIdent(c.cache, "[]="), n.info)
       for i in 0..<a.len: result.add(a[i])
       result.add(b)
-      withBracketExpr ctx, a[0]:
-        result = semGenericStmt(c, result, flags, ctx)
+      result = semGenericStmt(c, result, flags, ctx)
     else:
       for i in 0..<n.len:
         result[i] = semGenericStmt(c, n[i], flags, ctx)

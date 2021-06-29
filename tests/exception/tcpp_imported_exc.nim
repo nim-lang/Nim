@@ -1,6 +1,7 @@
 discard """
 targets: "cpp"
-output: '''caught as std::exception
+output: '''
+caught as std::exception
 expected
 finally1
 finally2
@@ -12,6 +13,7 @@ finally 2
 expected
 cpp exception caught
 '''
+disabled: "windows" # pending bug #18011
 """
 
 type

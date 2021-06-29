@@ -27,6 +27,7 @@ finalizer
 aaaaa
 hello
 ok
+true
 closed
 destroying variable: 20
 destroying variable: 10
@@ -422,3 +423,13 @@ proc test3 =
 
 static: test3() # was buggy
 test3()
+
+# bug #17712
+proc t17712 =
+  var ppv = new int
+  discard @[ppv]
+  var el: ref int
+  el = [ppv][0]
+  echo el != nil
+
+t17712()

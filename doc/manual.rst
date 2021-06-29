@@ -127,9 +127,9 @@ compiler may instead choose to allow the program to die with a fatal error.
     echo "invalid index"
 
 The current implementation allows to switch between these different behaviors
-via ``--panics:on|off``. When panics are turned on, the program dies with a
+via `--panics:on|off`:option:. When panics are turned on, the program dies with a
 panic, if they are turned off the runtime errors are turned into
-exceptions. The benefit of ``--panics:on`` is that it produces smaller binary
+exceptions. The benefit of `--panics:on`:option: is that it produces smaller binary
 code and the compiler has more freedom to optimize the code.
 
 An `unchecked runtime error`:idx: is an error that is not guaranteed to be
@@ -363,7 +363,7 @@ contain the following `escape sequences`:idx:\ :
   ``\\``                   `backslash`:idx:
   ``\"``                   `quotation mark`:idx:
   ``\'``                   `apostrophe`:idx:
-  ``\\`` '0'..'9'+         `character with decimal value d`:idx:;
+  ``\`` '0'..'9'+         `character with decimal value d`:idx:;
                            all decimal digits directly
                            following are used for the character
   ``\a``                   `alert`:idx:
@@ -459,7 +459,7 @@ Character literals are enclosed in single quotes `''` and can contain the
 same escape sequences as strings - with one exception: the platform
 dependent `newline`:idx: (``\p``)
 is not allowed as it may be wider than one character (it can be the pair
-CR/LF).  Here are the valid `escape sequences`:idx: for character
+CR/LF). Here are the valid `escape sequences`:idx: for character
 literals:
 
 ==================         ===================================================
@@ -473,7 +473,7 @@ literals:
   ``\\``                   `backslash`:idx:
   ``\"``                   `quotation mark`:idx:
   ``\'``                   `apostrophe`:idx:
-  ``\\`` '0'..'9'+         `character with decimal value d`:idx:;
+  ``\`` '0'..'9'+          `character with decimal value d`:idx:;
                            all decimal digits directly
                            following are used for the character
   ``\a``                   `alert`:idx:
@@ -572,7 +572,8 @@ In the following examples, `-1` is a single token:
 
   "abc";-1
 
-In the following examples, `-1` is parsed as two separate tokens (as `- 1`):
+In the following examples, `-1` is parsed as two separate tokens
+(as `-`:tok: `1`:tok:):
 
 .. code-block:: nim
 
@@ -678,7 +679,7 @@ defined here.)
 These keywords are also operators:
 `and or not xor shl shr div mod in notin is isnot of as from`.
 
-`.`:tok: `=`:tok:, `:`:tok:, `::`:tok: are not available as general operators; they
+`.`:tok:, `=`:tok:, `:`:tok:, `::`:tok: are not available as general operators; they
 are used for other notational purposes.
 
 `*:` is as a special case treated as the two tokens `*`:tok: and `:`:tok:
@@ -697,7 +698,7 @@ The following strings denote other tokens::
 
 
 The `slice`:idx: operator `..`:tok: takes precedence over other tokens that
-contain a dot: `{..}`:tok: are the three tokens `{`:tok:, `..`:tok:, `}`:tok:
+contain a dot: `{..}` are the three tokens `{`:tok:, `..`:tok:, `}`:tok:
 and not the two tokens `{.`:tok:, `.}`:tok:.
 
 
@@ -988,10 +989,12 @@ Ordinal types have the following characteristics:
 - Ordinal types are countable and ordered. This property allows the operation
   of functions such as `inc`, `ord`, and `dec` on ordinal types to
   be defined.
-- Ordinal values have the smallest possible value. Trying to count further
-  down than the smallest value produces a panic or a static error.
-- Ordinal values have the largest possible value. Trying to count further
-  than the largest value produces a panic or a static error.
+- Ordinal types have a smallest possible value, accessible with `low(type)`.
+  Trying to count further down than the smallest value produces a panic or
+  a static error.
+- Ordinal types have a largest possible value, accessible with `high(type)`.
+  Trying to count further up than the largest value produces a panic or
+  a static error.
 
 Integers, bool, characters, and enumeration types (and subranges of these
 types) belong to ordinal types.
@@ -1094,6 +1097,7 @@ lowest and highest value of the type. For example:
   type
     Subrange = range[0..5]
     PositiveFloat = range[0.0..Inf]
+    Positive* = range[1..high(int)] # as defined in `system`
 
 
 `Subrange` is a subrange of an integer which can only hold the values 0
@@ -1460,7 +1464,7 @@ The notation `x[i]` can be used to access the i-th element of `x`.
 
 Arrays are always bounds checked (statically or at runtime). These
 checks can be disabled via pragmas or invoking the compiler with the
-``--boundChecks:off`` command-line switch.
+`--boundChecks:off`:option: command-line switch.
 
 An array constructor can have explicit indexes for readability:
 
@@ -1612,7 +1616,7 @@ heterogeneous storage types with few abstractions. The `()` syntax
 can be used to construct tuples. The order of the fields in the constructor
 must match the order of the tuple's definition. Different tuple-types are
 *equivalent* if they specify the same fields of the same type in the same
-order. The *names* of the fields also have to be identical.
+order. The *names* of the fields also have to be the same.
 
 The assignment operator for tuples copies each component.
 The default assignment operator for objects copies each component. Overloading
@@ -1623,15 +1627,16 @@ of the assignment operator is described `here
 
   type
     Person = tuple[name: string, age: int] # type representing a person:
-                                           # a person consists of a name
-                                           # and an age
-  var
-    person: Person
+                                           # it consists of a name and an age.
+  var person: Person
   person = (name: "Peter", age: 30)
-  echo person.name
+  assert person.name == "Peter"
   # the same, but less readable:
   person = ("Peter", 30)
-  echo person[0]
+  assert person[0] == "Peter"
+  assert Person is (string, int)
+  assert (string, int) is Person
+  assert Person isnot tuple[other: string, age: int] # `other` is a different identifier
 
 A tuple with one unnamed field can be constructed with the parentheses and a
 trailing comma:
@@ -1843,7 +1848,7 @@ untraced references are *unsafe*. However, for certain low-level operations
 (accessing the hardware) untraced references are unavoidable.
 
 Traced references are declared with the **ref** keyword, untraced references
-are declared with the **ptr** keyword.  In general, a `ptr T` is implicitly
+are declared with the **ptr** keyword. In general, a `ptr T` is implicitly
 convertible to the `pointer` type.
 
 An empty subscript `[]` notation can be used to de-refer a reference,
@@ -2255,7 +2260,7 @@ conversions from `string` to `SQL` are allowed:
 
   db.query("SELECT FROM users WHERE name = '$1'".SQL % [username])
 
-Now we have compile-time checking against SQL injection attacks.  Since
+Now we have compile-time checking against SQL injection attacks. Since
 `"".SQL` is transformed to `SQL("")` no new syntax is needed for nice
 looking `SQL` string literals. The hypothetical `SQL` type actually
 exists in the library as the `SqlQuery type <db_common.html#SqlQuery>`_ of
@@ -2509,7 +2514,7 @@ of the argument.
    range.
 3. Generic match: `f` is a generic type and `a` matches, for
    instance `a` is `int` and `f` is a generic (constrained) parameter
-   type (like in `[T]` or `[T: int|char]`.
+   type (like in `[T]` or `[T: int|char]`).
 4. Subrange or subtype match: `a` is a `range[T]` and `T`
    matches `f` exactly. Or: `a` is a subtype of `f`.
 5. Integral conversion match: `a` is convertible to `f` and `f` and `a`
@@ -2981,11 +2986,13 @@ Example:
 
 .. code-block:: nim
 
-  case readline(stdin)
+  let line = readline(stdin)
+  case line
   of "delete-everything", "restart-computer":
     echo "permission denied"
   of "go-for-a-walk":     echo "please yourself"
-  else:                   echo "unknown command"
+  elif line.len == 0:     echo "empty" # optional, must come after `of` branches
+  else:                   echo "unknown command" # ditto
 
   # indentation of the branches is also allowed; and so is an optional colon
   # after the selecting expression:
@@ -2996,19 +3003,23 @@ Example:
     else:                   echo "unknown command"
 
 
-The `case` statement is similar to the if statement, but it represents
+The `case` statement is similar to the `if` statement, but it represents
 a multi-branch selection. The expression after the keyword `case` is
 evaluated and if its value is in a *slicelist* the corresponding statements
 (after the `of` keyword) are executed. If the value is not in any
-given *slicelist* the `else` part is executed. If there is no `else`
-part and not all possible values that `expr` can hold occur in a
-*slicelist*, a static error occurs. This holds only for expressions of
-ordinal types. "All possible values" of `expr` are determined by `expr`'s
-type. To suppress the static error an `else` part with an
-empty `discard` statement should be used.
+given *slicelist*, trailing `elif` and `else` parts are executed using same
+semantics as for `if` statement, and `elif` is handled just like `else: if`.
+If there are no `else` or `elif` parts and not
+all possible values that `expr` can hold occur in a *slicelist*, a static error occurs.
+This holds only for expressions of ordinal types.
+"All possible values" of `expr` are determined by `expr`'s type.
+To suppress the static error an `else: discard` should be used.
 
 For non-ordinal types, it is not possible to list every possible value and so
 these always require an `else` part.
+An exception to this rule is for the `string` type, which currently doesn't
+require a trailing `else` or `elif` branch; it's unspecified whether this will
+keep working in future versions.
 
 Because case statements are checked for exhaustiveness during semantic analysis,
 the value in every `of` branch must be a constant expression.
@@ -3054,15 +3065,15 @@ won't work:
   var foo = Foo(x: @[])
   foo.get_x().add("asd")
 
-This can be fixed by explicitly using `return`:
+This can be fixed by explicitly using `result` or `return`:
 
 .. code-block:: nim
   proc get_x(x: Foo): var seq[string] =
     case true
     of true:
-      return x.x
+      result = x.x
     else:
-      return x.x
+      result = x.x
 
 
 When statement
@@ -3834,7 +3845,7 @@ Type bound operators currently include:
 (some of which are still implementation defined and not yet documented).
 
 For more details on some of those procs, see
-`lifetimeminustracking-hooks <destructors.html#lifetimeminustracking-hooks>`_.
+`Lifetime-tracking hooks <destructors.html#lifetimeminustracking-hooks>`_.
 
 Nonoverloadable builtins
 ------------------------
@@ -4093,7 +4104,7 @@ Multi-methods
 --------------
 
 **Note:** Starting from Nim 0.20, to use multi-methods one must explicitly pass
-``--multimethods:on`` when compiling.
+`--multimethods:on`:option: when compiling.
 
 In a multi-method, all parameters that have an object type are used for the
 dispatching:
@@ -4252,7 +4263,7 @@ Closure iterators and inline iterators have some restrictions:
 5. Closure iterators are not supported by the JS backend.
 
 (*) Closure iterators can be co-recursive with a factory proc which results
-in similar syntax to a recursive iterator.  More details follow.
+in similar syntax to a recursive iterator. More details follow.
 
 Iterators that are neither marked `{.closure.}` nor `{.inline.}` explicitly
 default to being inline, but this may change in future versions of the
@@ -4366,12 +4377,12 @@ The call can be made more like an inline iterator with a for loop macro:
     echo f
 
 Because of full backend function call aparatus involvment, closure iterator
-invocation is typically higher cost than inline iterators.  Adornment by
+invocation is typically higher cost than inline iterators. Adornment by
 a macro wrapper at the call site like this is a possibly useful reminder.
 
-The factory `proc`, as an ordinary procedure, can be recursive.  The
+The factory `proc`, as an ordinary procedure, can be recursive. The
 above macro allows such recursion to look much like a recursive iterator
-would.  For example:
+would. For example:
 
 .. code-block:: nim
   proc recCountDown(n: int): iterator(): int =
@@ -4451,10 +4462,8 @@ Example:
       echo "sum: " & $(parseInt(a) + parseInt(b))
     except OverflowDefect:
       echo "overflow!"
-    except ValueError:
-      echo "could not convert string to integer"
-    except IOError:
-      echo "IO error!"
+    except ValueError, IOError:
+      echo "catch multiple exceptions!"
     except:
       echo "Unknown exception!"
     finally:
@@ -4805,7 +4814,7 @@ And so is:
 
 
 The reason for this is that `DivByZeroDefect` inherits from `Defect` and
-with ``--panics:on`` Defects become unrecoverable errors.
+with `--panics:on`:option: Defects become unrecoverable errors.
 (Since version 1.4 of the language.)
 
 
@@ -5277,7 +5286,7 @@ instantiations cross multiple different modules:
 
 In module B has an `init` proc from module C in its scope that is not
 taken into account when `genericB` is instantiated which leads to the
-instantiation of `genericA`. The solution is to `forward`:idx these
+instantiation of `genericA`. The solution is to `forward`:idx: these
 symbols by a `bind` statement inside `genericB`.
 
 
@@ -5604,7 +5613,7 @@ However, this means that the method call syntax is not available for
 
 
 **Note**: The Nim compiler prior to version 1 was more lenient about this
-requirement. Use the ``--useVersion:0.19`` switch for a transition period.
+requirement. Use the `--useVersion:0.19`:option: switch for a transition period.
 
 
 
@@ -6960,7 +6969,7 @@ with the project:
   {.compile: "myfile.cpp".}
 
 **Note**: Nim computes a SHA1 checksum and only recompiles the file if it
-has changed. One can use the ``-f`` command-line option to force
+has changed. One can use the `-f`:option: command-line option to force
 the recompilation of the file.
 
 Since 1.4 the `compile` pragma is also available with this syntax:
@@ -6983,7 +6992,7 @@ The `link` pragma can be used to link an additional file with the project:
 PassC pragma
 ------------
 The `passc` pragma can be used to pass additional parameters to the C
-compiler like one would using the command-line switch ``--passc``:
+compiler like one would using the command-line switch `--passc`:option:\:
 
 .. code-block:: Nim
   {.passc: "-Wall -Werror".}
@@ -7011,7 +7020,7 @@ the pragma resides in:
 PassL pragma
 ------------
 The `passL` pragma can be used to pass additional parameters to the linker
-like one would be using the command-line switch ``--passL``:
+like one would be using the command-line switch `--passL`:option:\:
 
 .. code-block:: Nim
   {.passL: "-lSDLmain -lSDL".}
@@ -7047,8 +7056,8 @@ Example:
 
   embedsC()
 
-`nimbase.h` defines `NIM_EXTERNC` C macro that can be used for
-`extern "C"`:cpp: code to work with both `nim c` and `nim cpp`, e.g.:
+``nimbase.h`` defines `NIM_EXTERNC`:c: C macro that can be used for
+`extern "C"`:cpp: code to work with both `nim c`:cmd: and `nim cpp`:cmd:, e.g.:
 
 .. code-block:: Nim
   proc foobar() {.importc:"$1".}
@@ -7094,7 +7103,7 @@ Similar to the `importc pragma for C
 <#foreign-function-interface-importc-pragma>`_, the
 `importcpp` pragma can be used to import `C++`:idx: methods or C++ symbols
 in general. The generated code then uses the C++ method calling
-syntax: `obj->method(arg)`:cpp:.  In combination with the `header` and `emit`
+syntax: `obj->method(arg)`:cpp:. In combination with the `header` and `emit`
 pragmas this allows *sloppy* interfacing with libraries written in C++:
 
 .. code-block:: Nim
@@ -7124,7 +7133,7 @@ pragmas this allows *sloppy* interfacing with libraries written in C++:
   proc run(device: IrrlichtDevice): bool {.
     header: irr, importcpp: "#.run(@)".}
 
-The compiler needs to be told to generate C++ (command ``cpp``) for
+The compiler needs to be told to generate C++ (command `cpp`:option:) for
 this to work. The conditional symbol `cpp` is defined when the compiler
 emits C++ code.
 
@@ -7299,19 +7308,19 @@ Produces:
   supplied pattern to denote the concrete type parameters of the generic type.
   See the usage of the apostrophe operator in proc patterns for more details.
 
-.. code-block:: nim
+  .. code-block:: nim
 
-  type
-    VectorIterator {.importcpp: "std::vector<'0>::iterator".} [T] = object
+    type
+      VectorIterator {.importcpp: "std::vector<'0>::iterator".} [T] = object
 
-  var x: VectorIterator[cint]
+    var x: VectorIterator[cint]
 
 
-Produces:
+  Produces:
 
-.. code-block:: C
+  .. code-block:: C
 
-  std::vector<int>::iterator x;
+    std::vector<int>::iterator x;
 
 
 ImportJs pragma
@@ -7327,7 +7336,7 @@ ImportObjC pragma
 -----------------
 Similar to the `importc pragma for C
 <#foreign-function-interface-importc-pragma>`_, the `importobjc` pragma can
-be used to import `Objective C`:idx: methods.  The generated code then uses the
+be used to import `Objective C`:idx: methods. The generated code then uses the
 Objective C method calling syntax: ``[obj method param1: arg]``.
 In addition with the `header` and `emit` pragmas this
 allows *sloppy* interfacing with libraries written in Objective C:
@@ -7368,7 +7377,7 @@ allows *sloppy* interfacing with libraries written in Objective C:
   g.greet(12, 34)
   g.free()
 
-The compiler needs to be told to generate Objective C (command ``objc``) for
+The compiler needs to be told to generate Objective C (command `objc`:option:) for
 this to work. The conditional symbol ``objc`` is defined when the compiler
 emits Objective C code.
 
@@ -7414,7 +7423,7 @@ will generate this code:
 
 The `.cppNonPod` pragma should be used for non-POD `importcpp` types so that they
 work properly (in particular regarding constructor and destructor) for
-`.threadvar` variables. This requires ``--tlsEmulation:off``.
+`.threadvar` variables. This requires `--tlsEmulation:off`:option:.
 
 .. code-block:: nim
   type Foo {.cppNonPod, importcpp, header: "funs.h".} = object
@@ -7422,23 +7431,12 @@ work properly (in particular regarding constructor and destructor) for
   proc main()=
     var a {.threadvar.}: Foo
 
-InjectStmt pragma
------------------
-
-The `injectStmt` pragma can be used to inject a statement before every
-other statement in the current module. It is only supposed to be used for
-debugging:
-
-.. code-block:: nim
-  {.injectStmt: gcInvariants().}
-
-  # ... complex code here that produces crashes ...
 
 compile-time define pragmas
 ---------------------------
 
 The pragmas listed here can be used to optionally accept values from
-the -d/--define option at compile time.
+the `-d/--define`:option: option at compile time.
 
 The implementation currently provides the following possible options (various
 others may be added later).
@@ -7455,15 +7453,16 @@ pragma             description
    const FooBar {.intdefine.}: int = 5
    echo FooBar
 
-::
+.. code:: cmd
    nim c -d:FooBar=42 foobar.nim
 
-In the above example, providing the ``-d`` flag causes the symbol
+In the above example, providing the `-d`:option: flag causes the symbol
 `FooBar` to be overwritten at compile-time, printing out 42. If the
-``-d:FooBar=42`` were to be omitted, the default value of 5 would be
+`-d:FooBar=42`:option: were to be omitted, the default value of 5 would be
 used. To see if a value was provided, `defined(FooBar)` can be used.
 
-The syntax ``-d:flag`` is actually just a shortcut for ``-d:flag=true``.
+The syntax `-d:flag`:option: is actually just a shortcut for
+`-d:flag=true`:option:.
 
 User-defined pragmas
 ====================
@@ -7473,7 +7472,8 @@ pragma pragma
 -------------
 
 The `pragma` pragma can be used to declare user-defined pragmas. This is
-useful because Nim's templates and macros do not affect pragmas. User-defined pragmas are in a different module-wide scope than all other symbols.
+useful because Nim's templates and macros do not affect pragmas.
+User-defined pragmas are in a different module-wide scope than all other symbols.
 They cannot be imported from a module.
 
 Example:
@@ -7546,18 +7546,18 @@ More examples with custom pragmas:
 
 - Better serialization/deserialization control:
 
-.. code-block:: nim
-  type MyObj = object
-    a {.dontSerialize.}: int
-    b {.defaultDeserialize: 5.}: int
-    c {.serializationKey: "_c".}: string
+  .. code-block:: nim
+    type MyObj = object
+      a {.dontSerialize.}: int
+      b {.defaultDeserialize: 5.}: int
+      c {.serializationKey: "_c".}: string
 
 - Adopting type for gui inspector in a game engine:
 
-.. code-block:: nim
-  type MyComponent = object
-    position {.editable, animatable.}: Vector3
-    alpha {.editRange: [0.0..1.0], animatable.}: float32
+  .. code-block:: nim
+    type MyComponent = object
+      position {.editable, animatable.}: Vector3
+      alpha {.editRange: [0.0..1.0], animatable.}: float32
 
 
 Macro pragmas
@@ -7655,7 +7655,7 @@ Exportc pragma
 --------------
 The `exportc` pragma provides a means to export a type, a variable, or a
 procedure to C. Enums and constants can't be exported. The optional argument
-is a string containing the C identifier.  If the argument is missing, the C
+is a string containing the C identifier. If the argument is missing, the C
 name is the Nim identifier *exactly as spelled*:
 
 .. code-block:: Nim
@@ -7800,7 +7800,7 @@ strings, because they are precompiled.
 because of order of initialization problems.
 
 **Note**: A `dynlib` import can be overridden with
-the ``--dynlibOverride:name`` command-line option. The
+the `--dynlibOverride:name`:option: command-line option. The
 `Compiler User Guide <nimc.html>`_ contains further information.
 
 
@@ -7815,16 +7815,16 @@ conjunction with the `exportc` pragma:
   proc exportme(): int {.cdecl, exportc, dynlib.}
 
 This is only useful if the program is compiled as a dynamic library via the
-``--app:lib`` command-line option.
+`--app:lib`:option: command-line option.
 
 
 
 Threads
 =======
 
-To enable thread support the ``--threads:on`` command-line switch needs to
+To enable thread support the `--threads:on`:option: command-line switch needs to
 be used. The system_ module then contains several threading primitives.
-See the `threads <threads.html>`_ and `channels <channels.html>`_ modules
+See the `threads <threads.html>`_ and `channels <channels_builtin.html>`_ modules
 for the low-level thread API. There are also high-level parallelism constructs
 available. See `spawn <manual_experimental.html#parallel-amp-spawn>`_ for
 further details.
@@ -7864,7 +7864,7 @@ any of its parameters contain a `ref` or `closure` type. This enforces
 the *no heap sharing restriction*.
 
 Routines that are imported from C are always assumed to be `gcsafe`.
-To disable the GC-safety checking the ``--threadAnalysis:off`` command-line
+To disable the GC-safety checking the `--threadAnalysis:off`:option: command-line
 switch can be used. This is a temporary workaround to ease the porting effort
 from old code to the new threading model.
 

@@ -17,6 +17,9 @@ Attempting to declare a set with a larger type will result in an error:
 
   var s: set[int64] # Error: set is too large
 
+**Note:** Nim also offers `hash sets <sets.html>`_ (which you need to import
+with `import sets`), which have no such restrictions.
+
 Sets can be constructed via the set constructor: `{}` is the empty set. The
 empty set is type compatible with any concrete set type. The constructor
 can also be used to include elements (and ranges of elements):

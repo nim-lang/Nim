@@ -6,9 +6,13 @@ switch("path", "$lib/../testament/lib")
 ## prevent common user config settings to interfere with testament expectations
 ## Indifidual tests can override this if needed to test for these options.
 switch("colors", "off")
-switch("filenames", "legacyRelProj")
+
 switch("excessiveStackTrace", "off")
-switch("spellSuggest", "0")
+
+when (NimMajor, NimMinor, NimPatch) >= (1,5,1):
+  # to make it easier to test against older nim versions, (best effort only)
+  switch("filenames", "legacyRelProj")
+  switch("spellSuggest", "0")
 
 # for std/unittest
 switch("define", "nimUnittestOutputLevel:PRINT_FAILURES")
@@ -26,4 +30,7 @@ hint("Processing", off)
 # switch("hint", "ConvFromXtoItselfNotNeeded")
 
 # experimental API's are enabled in testament, refs https://github.com/timotheecour/Nim/issues/575
+# sync with `kochdocs.docDefines` or refactor.
 switch("define", "nimExperimentalAsyncjsThen")
+switch("define", "nimExperimentalJsfetch")
+switch("define", "nimExperimentalLinenoiseExtra")

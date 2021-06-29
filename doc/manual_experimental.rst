@@ -1,5 +1,3 @@
-.. default-role:: code
-
 =========================
 Nim Experimental Features
 =========================
@@ -7,6 +5,8 @@ Nim Experimental Features
 :Authors: Andreas Rumpf
 :Version: |nimversion|
 
+.. default-role:: code
+.. include:: rstcommon.rst
 .. contents::
 
 
@@ -15,7 +15,7 @@ About this document
 
 This document describes features of Nim that are to be considered experimental.
 Some of these are not covered by the `.experimental` pragma or
-`--experimental` switch because they are already behind a special syntax and
+`--experimental`:option: switch because they are already behind a special syntax and
 one may want to use Nim libraries using these features without using them
 oneself.
 
@@ -380,6 +380,7 @@ pass multiple blocks to a macro:
     # code to undo it
 
 
+
 Special Operators
 =================
 
@@ -475,8 +476,8 @@ Not nil annotation
 **Note:** This is an experimental feature. It can be enabled with
 `{.experimental: "notnil"}`.
 
-All types for which `nil` is a valid value can be annotated with the `not
-nil` annotation to exclude `nil` as a valid value:
+All types for which `nil` is a valid value can be annotated with the
+`not nil` annotation to exclude `nil` as a valid value:
 
 .. code-block:: nim
   {.experimental: "notnil"}
@@ -1109,7 +1110,7 @@ The `parameter constraint`:idx: expression can use the operators `|` (or),
 Predicate                Meaning
 ===================      =====================================================
 `atom`                   The matching node has no children.
-`lit`                    The matching node is a literal like "abc", 12.
+`lit`                    The matching node is a literal like `"abc"`, `12`.
 `sym`                    The matching node must be a symbol (a bound
                          identifier).
 `ident`                  The matching node must be an identifier (an unbound
@@ -1185,7 +1186,7 @@ constant folding, so the following does not work:
 
 The reason is that the compiler already transformed the 1 into "1" for
 the `echo` statement. However, a term rewriting macro should not change the
-semantics anyway. In fact they can be deactivated with the `--patterns:off`
+semantics anyway. In fact they can be deactivated with the `--patterns:off`:option:
 command line option or temporarily with the `patterns` pragma.
 
 
@@ -1779,7 +1780,7 @@ Noalias annotation
 ==================
 
 Since version 1.4 of the Nim compiler, there is a `.noalias` annotation for variables
-and parameters. It is mapped directly to C/C++'s `restrict` keyword and means that
+and parameters. It is mapped directly to C/C++'s `restrict`:c: keyword and means that
 the underlying pointer is pointing to a unique location in memory, no other aliases to
 this location exist. It is *unchecked* that this alias restriction is followed, if the
 restriction is violated, the backend optimizer is free to miscompile the code.
@@ -1832,13 +1833,12 @@ the `view types section <#view-types-algorithm>`_.
 View types
 ==========
 
-**Note**:  `--experimental:views` is more effective
-with `--experimental:strictFuncs`.
+**Note**:  `--experimental:views`:option: is more effective
+with `--experimental:strictFuncs`:option:.
 
 A view type is a type that is or contains one of the following types:
 
-- `var T` (mutable view into `T`)
-- `lent T` (immutable view into `T`)
+- `lent T` (view into `T`)
 - `openArray[T]` (pair of (pointer to array of `T`, size))
 
 For example:
@@ -1846,10 +1846,9 @@ For example:
 .. code-block:: nim
 
   type
-    View1 = var int
-    View2 = openArray[byte]
-    View3 = lent string
-    View4 = Table[openArray[char], int]
+    View1 = openArray[byte]
+    View2 = lent string
+    View3 = Table[openArray[char], int]
 
 
 Exceptions to this rule are types constructed via `ptr` or `proc`.
@@ -1860,11 +1859,11 @@ For example, the following types are **not** view types:
   type
     NotView1 = proc (x: openArray[int])
     NotView2 = ptr openArray[char]
-    NotView3 = ptr array[4, var int]
+    NotView3 = ptr array[4, lent int]
 
 
-A *mutable* view type is a type that is or contains a `var T` type.
-An *immutable* view type is a view type that is not a mutable view type.
+The mutability aspect of a view type is not part of the type but part
+of the locations it's derived from. More on this later.
 
 A *view* is a symbol (a let, var, const, etc.) that has a view type.
 
@@ -1948,11 +1947,14 @@ details about how this is done for `var T`.
 A mutable view can borrow from a mutable location, an immutable view can borrow
 from both a mutable or an immutable location.
 
+If a view borrows from a mutable location, the view can be used to update the
+location. Otherwise it cannot be used for mutations.
+
 The *duration* of a borrow is the span of commands beginning from the assignment
 to the view and ending with the last usage of the view.
 
 For the duration of the borrow operation, no mutations to the borrowed locations
-may be performed except via the potentially mutable view that borrowed from the
+may be performed except via the view that borrowed from the
 location. The borrowed location is said to be *sealed* during the borrow.
 
 .. code-block:: nim
@@ -1981,8 +1983,8 @@ The scope of the view does not matter:
 
 The analysis requires as much precision about mutations as is reasonably obtainable,
 so it is more effective with the experimental `strict funcs <#strict-funcs>`_
-feature. In other words `--experimental:views` works better
-with `--experimental:strictFuncs`.
+feature. In other words `--experimental:views`:option: works better
+with `--experimental:strictFuncs`:option:.
 
 The analysis is currently control flow insensitive:
 
@@ -2064,11 +2066,7 @@ and `b` the location that is borrowed from.
 
 - The lifetime of `v` must not exceed `b`'s lifetime. Note: The lifetime of
   a parameter is the complete proc body.
-- If `v` is a mutable view and `v` is used to actually mutate the
-  borrowed location, then `b` has to be a mutable location.
-  Note: If it is not actually used for mutation, borrowing a mutable view from an
-  immutable location is allowed! This allows for many important idioms and will be
-  justified in an upcoming RFC.
+- If `v` is used for a mutation, `b` must be a mutable location too.
 - During `v`'s lifetime, `G(b)` can only be modified by `v` (and only if
   `v` is a mutable view).
 - If `v` is `result` then `b` has to be a location derived from the first

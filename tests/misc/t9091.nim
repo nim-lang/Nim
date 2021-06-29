@@ -1,10 +1,5 @@
-discard """
-  targets:  "c"
-  output:   "test AObj"
-  action:   "compile"
-  exitcode: 0
-  timeout:  60.0
-"""
+# bug #9091
+
 import streams
 
 block:
@@ -18,6 +13,8 @@ block:
   let mi = new Mine
 
   str.write(mi)
+  str.setPosition 0
+  doAssert str.readAll == "sure"
 
 block:
   type
@@ -27,10 +24,10 @@ block:
   proc foo(a: int): string = ""
 
   proc test(args: varargs[string, foo]) =
-    echo "varargs"
+    doAssert false
 
   proc test(a: AObj) =
-    echo "test AObj"
+    discard
 
   let x = AObj()
   test(x)

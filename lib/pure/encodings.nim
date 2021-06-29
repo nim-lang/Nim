@@ -282,8 +282,10 @@ else:
 
   var errno {.importc, header: "<errno.h>".}: cint
 
-  when defined(freebsd) or defined(netbsd):
+  when defined(bsd):
     {.pragma: importIconv, cdecl, header: "<iconv.h>".}
+    when defined(openbsd):
+      {.passL: "-liconv".}
   else:
     {.pragma: importIconv, cdecl, dynlib: iconvDll.}
 
@@ -474,75 +476,3 @@ proc convert*(s: string, destEncoding = "UTF-8",
     result = convert(c, s)
   finally:
     close(c)
-
-when not defined(testing) and isMainModule:
-  let
-    orig = "öäüß"
-    cp1252 = convert(orig, "CP1252", "UTF-8")
-    ibm850 = convert(cp1252, "ibm850", "CP1252")
-    current = getCurrentEncoding()
-  echo "Original string from source code: ", orig
-  echo "Forced ibm850 encoding: ", ibm850
-  echo "Current encoding: ", current
-  echo "From ibm850 to current: ", convert(ibm850, current, "ibm850")
-
-when not defined(testing) and isMainModule and defined(windows):
-  block should_throw_on_unsupported_conversions:
-    let original = "some string"
-
-    doAssertRaises(EncodingError):
-      discard convert(original, "utf-8", "utf-32")
-
-    doAssertRaises(EncodingError):
-      discard convert(original, "utf-8", "unicodeFFFE")
-
-    doAssertRaises(EncodingError):
-      discard convert(original, "utf-8", "utf-32BE")
-
-    doAssertRaises(EncodingError):
-      discard convert(original, "unicodeFFFE", "utf-8")
-
-    doAssertRaises(EncodingError):
-      discard convert(original, "utf-32", "utf-8")
-
-    doAssertRaises(EncodingError):
-      discard convert(original, "utf-32BE", "utf-8")
-
-  block should_convert_from_utf16_to_utf8:
-    let original = "\x42\x04\x35\x04\x41\x04\x42\x04" # utf-16 little endian test string "тест"
-    let result = convert(original, "utf-8", "utf-16")
-    doAssert(result == "\xd1\x82\xd0\xb5\xd1\x81\xd1\x82")
-
-  block should_convert_from_utf16_to_win1251:
-    let original = "\x42\x04\x35\x04\x41\x04\x42\x04" # utf-16 little endian test string "тест"
-    let result = convert(original, "windows-1251", "utf-16")
-    doAssert(result == "\xf2\xe5\xf1\xf2")
-
-  block should_convert_from_win1251_to_koi8r:
-    let original = "\xf2\xe5\xf1\xf2" # win1251 test string "тест"
-    let result = convert(original, "koi8-r", "windows-1251")
-    doAssert(result == "\xd4\xc5\xd3\xd4")
-
-  block should_convert_from_koi8r_to_win1251:
-    let original = "\xd4\xc5\xd3\xd4" # koi8r test string "тест"
-    let result = convert(original, "windows-1251", "koi8-r")
-    doAssert(result == "\xf2\xe5\xf1\xf2")
-
-  block should_convert_from_utf8_to_win1251:
-    let original = "\xd1\x82\xd0\xb5\xd1\x81\xd1\x82" # utf-8 test string "тест"
-    let result = convert(original, "windows-1251", "utf-8")
-    doAssert(result == "\xf2\xe5\xf1\xf2")
-
-  block should_convert_from_utf8_to_utf16:
-    let original = "\xd1\x82\xd0\xb5\xd1\x81\xd1\x82" # utf-8 test string "тест"
-    let result = convert(original, "utf-16", "utf-8")
-    doAssert(result == "\x42\x04\x35\x04\x41\x04\x42\x04")
-
-  block should_handle_empty_string_for_any_conversion:
-    let original = ""
-    var result = convert(original, "utf-16", "utf-8")
-    doAssert(result == "")
-    result = convert(original, "utf-8", "utf-16")
-    doAssert(result == "")
-    result = convert(original, "windows-1251", "koi8-r")
-    doAssert(result == "")

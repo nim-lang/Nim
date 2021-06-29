@@ -9,7 +9,7 @@
 
 # included from cgen.nim
 
-when defined(nimCompilerStackraceHints):
+when defined(nimCompilerStacktraceHints):
   import std/stackframes
 
 proc getNullValueAuxT(p: BProc; orig, t: PType; obj, constOrNil: PNode,
@@ -2300,7 +2300,11 @@ proc genMagicExpr(p: BProc, e: PNode, d: var TLoc, op: TMagic) =
   of mInt64ToStr: genDollar(p, e, d, "#nimInt64ToStr($1)")
   of mBoolToStr: genDollar(p, e, d, "#nimBoolToStr($1)")
   of mCharToStr: genDollar(p, e, d, "#nimCharToStr($1)")
-  of mFloatToStr: genDollar(p, e, d, "#nimFloatToStr($1)")
+  of mFloatToStr:
+    if e[1].typ.skipTypes(abstractInst).kind == tyFloat32:
+      genDollar(p, e, d, "#nimFloat32ToStr($1)")
+    else:
+      genDollar(p, e, d, "#nimFloatToStr($1)")
   of mCStrToStr: genDollar(p, e, d, "#cstrToNimstr($1)")
   of mStrToStr, mUnown: expr(p, e[1], d)
   of mIsolate: genCall(p, e, d)
@@ -2319,7 +2323,12 @@ proc genMagicExpr(p: BProc, e: PNode, d: var TLoc, op: TMagic) =
       gcUsage(p.config, e)
     else:
       genNewFinalize(p, e)
-  of mNewSeq: genNewSeq(p, e)
+  of mNewSeq:
+    if optSeqDestructors in p.config.globalOptions:
+      e[1] = makeAddr(e[1], p.module.idgen)
+      genCall(p, e, d)
+    else:
+      genNewSeq(p, e)
   of mNewSeqOfCap: genNewSeqOfCap(p, e, d)
   of mSizeOf:
     let t = e[1].typ.skipTypes({tyTypeDesc})
@@ -2640,7 +2649,9 @@ proc genConstSetup(p: BProc; sym: PSym): bool =
   result = lfNoDecl notin sym.loc.flags
 
 proc genConstHeader(m, q: BModule; p: BProc, sym: PSym) =
-  assert(sym.loc.r != nil)
+  if sym.loc.r == nil:
+    if not genConstSetup(p, sym): return
+  assert(sym.loc.r != nil, $sym.name.s & $sym.itemId)
   if m.hcrOn:
     m.s[cfsVars].addf("static $1* $2;$n", [getTypeDesc(m, sym.loc.t, skVar), sym.loc.r]);
     m.initProc.procSec(cpsLocals).addf(
@@ -2683,7 +2694,7 @@ proc genConstStmt(p: BProc, n: PNode) =
         genConstDefinition(m, p, sym)
 
 proc expr(p: BProc, n: PNode, d: var TLoc) =
-  when defined(nimCompilerStackraceHints):
+  when defined(nimCompilerStacktraceHints):
     setFrameMsg p.config$n.info & " " & $n.kind
   p.currLineInfo = n.info
 

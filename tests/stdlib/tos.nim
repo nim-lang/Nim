@@ -38,7 +38,7 @@ block fileOperations:
   doAssert dirExists(dname)
 
   block: # copyFile, copyFileToDir
-    doAssertRaises(OSError): copyFile(dname/"nonexistant.txt", dname/"nonexistant.txt")
+    doAssertRaises(OSError): copyFile(dname/"nonexistent.txt", dname/"nonexistent.txt")
     let fname = "D20201009T112235"
     let fname2 = "D20201009T112235.2"
     let str = "foo1\0foo2\nfoo3\0"
@@ -164,7 +164,7 @@ block fileOperations:
     const subDir2 = dname/"sub2"
     const brokenSymlinkName = "D20210101T191320_BROKEN_SYMLINK"
     const brokenSymlink = dname/brokenSymlinkName
-    const brokenSymlinkSrc = "D20210101T191320_nonexistant"
+    const brokenSymlinkSrc = "D20210101T191320_nonexistent"
     const brokenSymlinkCopy = brokenSymlink & "_COPY"
     const brokenSymlinkInSubDir = subDir/brokenSymlinkName
     const brokenSymlinkInSubDir2 = subDir2/brokenSymlinkName
@@ -261,6 +261,51 @@ block fileOperations:
 
     removeDir(dname)
 
+block: # moveFile
+  let tempDir = getTempDir() / "D20210609T151608"
+  createDir(tempDir)
+  defer: removeDir(tempDir)
+
+  writeFile(tempDir / "a.txt", "")
+  moveFile(tempDir / "a.txt", tempDir / "b.txt")
+  doAssert not fileExists(tempDir / "a.txt")
+  doAssert fileExists(tempDir / "b.txt")
+  removeFile(tempDir / "b.txt")
+
+  createDir(tempDir / "moveFile_test")
+  writeFile(tempDir / "moveFile_test/a.txt", "")
+  moveFile(tempDir / "moveFile_test/a.txt", tempDir / "moveFile_test/b.txt")
+  doAssert not fileExists(tempDir / "moveFile_test/a.txt")
+  doAssert fileExists(tempDir / "moveFile_test/b.txt")
+  removeDir(tempDir / "moveFile_test")
+
+  createDir(tempDir / "moveFile_test")
+  writeFile(tempDir / "a.txt", "")
+  moveFile(tempDir / "a.txt", tempDir / "moveFile_test/b.txt")
+  doAssert not fileExists(tempDir / "a.txt")
+  doAssert fileExists(tempDir / "moveFile_test/b.txt")
+  removeDir(tempDir / "moveFile_test")
+
+block: # moveDir
+  let tempDir = getTempDir() / "D20210609T161443"
+  createDir(tempDir)
+  defer: removeDir(tempDir)
+
+  createDir(tempDir / "moveDir_test")
+  moveDir(tempDir / "moveDir_test/", tempDir / "moveDir_test_dest")
+  doAssert not dirExists(tempDir / "moveDir_test")
+  doAssert dirExists(tempDir / "moveDir_test_dest")
+  removeDir(tempDir / "moveDir_test_dest")
+
+  createDir(tempDir / "moveDir_test")
+  writeFile(tempDir / "moveDir_test/a.txt", "")
+  moveDir(tempDir / "moveDir_test", tempDir / "moveDir_test_dest")
+  doAssert not dirExists(tempDir / "moveDir_test")
+  doAssert not fileExists(tempDir / "moveDir_test/a.txt")
+  doAssert dirExists(tempDir / "moveDir_test_dest")
+  doAssert fileExists(tempDir / "moveDir_test_dest/a.txt")
+  removeDir(tempDir / "moveDir_test_dest")
+
 import times
 block modificationTime:
   # Test get/set modification times
@@ -296,9 +341,9 @@ block walkDirRec:
 
 block: # walkDir
   doAssertRaises(OSError):
-    for a in walkDir("nonexistant", checkDir = true): discard
+    for a in walkDir("nonexistent", checkDir = true): discard
   doAssertRaises(OSError):
-    for p in walkDirRec("nonexistant", checkDir = true): discard
+    for p in walkDirRec("nonexistent", checkDir = true): discard
 
   when not defined(windows):
     block walkDirRelative:
@@ -555,6 +600,9 @@ block getTempDir:
         putEnv("TMPDIR", origTmpDir)
       else:
         doAssert getTempDir() == "/tmp"
+
+block: # getCacheDir
+  doAssert getCacheDir().dirExists
 
 block osenv:
   block delEnv:

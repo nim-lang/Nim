@@ -429,6 +429,7 @@ proc sweep(gch: var GcHeap) =
         else: freeCyclicCell(gch, c)
 
 when false:
+  # meant to be used with the now-deprected `.injectStmt`: {.injectStmt: newGcInvariant().}
   proc newGcInvariant*() =
     for x in allObjects(gch.region):
       if isCell(x):

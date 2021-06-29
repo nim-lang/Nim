@@ -10,7 +10,7 @@
 # this module does the semantic checking for expressions
 # included from sem.nim
 
-when defined(nimCompilerStackraceHints):
+when defined(nimCompilerStacktraceHints):
   import std/stackframes
 
 const
@@ -54,7 +54,8 @@ proc semOperand(c: PContext, n: PNode, flags: TExprFlags = {}): PNode =
   result = semExpr(c, n, flags + {efOperand})
   if result.typ != nil:
     # XXX tyGenericInst here?
-    if result.typ.kind == tyProc and tfUnresolved in result.typ.flags:
+    if result.typ.kind == tyProc and hasUnresolvedParams(result, {efOperand}):
+      #and tfUnresolved in result.typ.flags:
       localError(c.config, n.info, errProcHasNoConcreteType % n.renderTree)
     if result.typ.kind in {tyVar, tyLent}: result = newDeref(result)
   elif {efWantStmt, efAllowStmt} * flags != {}:
@@ -1246,6 +1247,9 @@ proc semSym(c: PContext, n: PNode, sym: PSym, flags: TExprFlags): PNode =
     # not sure the symbol really ends up being used:
     # var len = 0 # but won't be called
     # genericThatUsesLen(x) # marked as taking a closure?
+    if hasWarn(c.config, warnResultUsed):
+      message(c.config, n.info, warnResultUsed)
+
   of skGenericParam:
     onUse(n.info, s)
     if s.typ.kind == tyStatic:
@@ -1639,7 +1643,7 @@ proc takeImplicitAddr(c: PContext, n: PNode; isLent: bool): PNode =
 proc asgnToResultVar(c: PContext, n, le, ri: PNode) {.inline.} =
   if le.kind == nkHiddenDeref:
     var x = le[0]
-    if (x.typ.kind in {tyVar, tyLent} or classifyViewType(x.typ) != noView) and x.kind == nkSym and x.sym.kind == skResult:
+    if x.kind == nkSym and x.sym.kind == skResult and (x.typ.kind in {tyVar, tyLent} or classifyViewType(x.typ) != noView):
       n[0] = x # 'result[]' --> 'result'
       n[1] = takeImplicitAddr(c, ri, x.typ.kind == tyLent)
       x.typ.flags.incl tfVarIsPtr
@@ -2646,6 +2650,23 @@ proc shouldBeBracketExpr(n: PNode): bool =
           n[0] = be
           return true
 
+proc asBracketExpr(c: PContext; n: PNode): PNode =
+  proc isGeneric(c: PContext; n: PNode): bool =
+    if n.kind in {nkIdent, nkAccQuoted}:
+      let s = qualifiedLookUp(c, n, {})
+      result = s != nil and isGenericRoutineStrict(s)
+
+  assert n.kind in nkCallKinds
+  if n.len > 1 and isGeneric(c, n[1]):
+    let b = n[0]
+    if b.kind in nkSymChoices:
+      for i in 0..<b.len:
+        if b[i].kind == nkSym and b[i].sym.magic == mArrGet:
+          result = newNodeI(nkBracketExpr, n.info)
+          for i in 1..<n.len: result.add(n[i])
+          return result
+  return nil
+
 proc hoistParamsUsedInDefault(c: PContext, call, letSection, defExpr: var PNode) =
   # This takes care of complicated signatures such as:
   # proc foo(a: int, b = a)
@@ -2693,8 +2714,15 @@ proc getNilType(c: PContext): PType =
     c.nilTypeCache = result
 
 proc semExpr(c: PContext, n: PNode, flags: TExprFlags = {}): PNode =
-  when defined(nimCompilerStackraceHints):
+  when defined(nimCompilerStacktraceHints):
     setFrameMsg c.config$n.info & " " & $n.kind
+  when false: # see `tdebugutils`
+    if isCompilerDebug():
+      echo (">", c.config$n.info, n, flags, n.kind)
+    defer:
+      if isCompilerDebug():
+        echo ("<", c.config$n.info, n, ?.result.typ)
+
   result = n
   if c.config.cmd == cmdIdeTools: suggestExpr(c, n)
   if nfSem in n.flags: return
@@ -2817,8 +2845,14 @@ proc semExpr(c: PContext, n: PNode, flags: TExprFlags = {}): PNode =
       # the 'newSeq[T](x)' bug
       setGenericParams(c, n[0])
       result = semDirectOp(c, n, flags)
-    elif isSymChoice(n[0]) or nfDotField in n.flags:
+    elif nfDotField in n.flags:
       result = semDirectOp(c, n, flags)
+    elif isSymChoice(n[0]):
+      let b = asBracketExpr(c, n)
+      if b != nil:
+        result = semExpr(c, b, flags)
+      else:
+        result = semDirectOp(c, n, flags)
     else:
       result = semIndirectOp(c, n, flags)
 

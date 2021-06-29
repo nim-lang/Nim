@@ -3,35 +3,6 @@
 ## **Note:** This module is reexported by `system` and thus does not need to be
 ## imported directly (with `system/assertions`).
 
-runnableExamples:
-  # assert
-  assert 1 == 1
-
-  # onFailedAssert
-  block:
-    type MyError = object of CatchableError
-      lineinfo: tuple[filename: string, line: int, column: int]
-
-    # block-wide policy to change the failed assert
-    # exception type in order to include a lineinfo
-    onFailedAssert(msg):
-      var e = new(MyError)
-      e.msg = msg
-      e.lineinfo = instantiationInfo(-2)
-      raise e
-
-  # doAssert
-  doAssert 1 == 1 # generates code even when built with `-d:danger` or `--assertions:off`
-
-  # doAssertRaises
-  doAssertRaises(ValueError):
-    raise newException(ValueError, "Hello World")
-
-runnableExamples("--assertions:off"):
-  assert 1 == 2 # no code generated
-
-# xxx pending bug #16993: move runnableExamples to respective templates
-
 when not declared(sysFatal):
   include "system/fatal"
 
@@ -86,21 +57,39 @@ template assert*(cond: untyped, msg = "") =
   ##
   ## No code will be generated for `assert` when passing `-d:danger` (implied by `--assertions:off`).
   ## See `command line switches <nimc.html#compiler-usage-commandminusline-switches>`_.
+  runnableExamples: assert 1 == 1
+  runnableExamples("--assertions:off"):
+    assert 1 == 2 # no code generated, no failure here
+  runnableExamples("-d:danger"): assert 1 == 2 # ditto
   assertImpl(cond, msg, astToStr(cond), compileOption("assertions"))
 
 template doAssert*(cond: untyped, msg = "") =
   ## Similar to `assert <#assert.t,untyped,string>`_ but is always turned on regardless of `--assertions`.
+  runnableExamples:
+    doAssert 1 == 1 # generates code even when built with `-d:danger` or `--assertions:off`
   assertImpl(cond, msg, astToStr(cond), true)
 
 template onFailedAssert*(msg, code: untyped): untyped {.dirty.} =
   ## Sets an assertion failure handler that will intercept any assert
   ## statements following `onFailedAssert` in the current scope.
+  runnableExamples:
+    type MyError = object of CatchableError
+      lineinfo: tuple[filename: string, line: int, column: int]
+    # block-wide policy to change the failed assert exception type in order to
+    # include a lineinfo
+    onFailedAssert(msg):
+      raise (ref MyError)(msg: msg, lineinfo: instantiationInfo(-2))
+    doAssertRaises(MyError): doAssert false
   template failedAssertImpl(msgIMPL: string): untyped {.dirty.} =
     let msg = msgIMPL
     code
 
 template doAssertRaises*(exception: typedesc, code: untyped) =
   ## Raises `AssertionDefect` if specified `code` does not raise `exception`.
+  runnableExamples:
+    doAssertRaises(ValueError): raise newException(ValueError, "Hello World")
+    doAssertRaises(CatchableError): raise newException(ValueError, "Hello World")
+    doAssertRaises(AssertionDefect): doAssert false
   var wrong = false
   const begin = "expected raising '" & astToStr(exception) & "', instead"
   const msgEnd = " by: " & astToStr(code)

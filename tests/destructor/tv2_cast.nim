@@ -1,9 +1,77 @@
 discard """
-  cmd: '''nim c --gc:arc $file'''
   output: '''@[1]
 @[116, 101, 115, 116]
 @[1953719668, 875770417]'''
+  cmd: '''nim c --gc:arc --expandArc:main --expandArc:main1 --expandArc:main2 --expandArc:main3 --hints:off --assertions:off $file'''
+  nimout: '''--expandArc: main
+
+var
+  data
+  :tmpD
+`=copy`(data, cast[string](encode(cast[seq[byte]](
+  :tmpD = newString(100)
+  :tmpD))))
+`=destroy`(:tmpD)
+`=destroy`(data)
+-- end of expandArc ------------------------
+--expandArc: main1
+
+var
+  s
+  data
+s = newString(100)
+`=copy`(data, cast[string](encode(toOpenArrayByte(s, 0, len(s) - 1))))
+`=destroy`(data)
+`=destroy`(s)
+-- end of expandArc ------------------------
+--expandArc: main2
+
+var
+  s
+  data
+s = newSeq(100)
+`=copy`(data, cast[string](encode(s)))
+`=destroy`(data)
+`=destroy_1`(s)
+-- end of expandArc ------------------------
+--expandArc: main3
+
+var
+  data
+  :tmpD
+`=copy`(data, cast[string](encode do:
+  :tmpD = newSeq(100)
+  :tmpD))
+`=destroy`(:tmpD)
+`=destroy_1`(data)
+-- end of expandArc ------------------------'''
 """
+
+func encode*(src: openArray[byte]): seq[byte] =
+  result = newSeq[byte](src.len)
+
+template compress*(src: string): string =
+  cast[string](encode(cast[seq[byte]](src)))
+
+proc main =
+  let data = compress(newString(100))
+main()
+
+proc main1 =
+  var
+    s = newString(100)
+  let data = cast[string](encode(s.toOpenArrayByte(0, s.len-1)))
+main1()
+
+proc main2 =
+  var
+    s = newSeq[byte](100)
+  let data = cast[string](encode(s))
+main2()
+
+proc main3 =
+  let data = cast[string](encode(newSeq[byte](100)))
+main3()
 
 # bug #11018
 discard cast[seq[uint8]](@[1])

@@ -256,6 +256,17 @@ block:
   doAssert f == @[]
 
 
+block: # bug #18310
+  macro t() : untyped =
+    let
+      x = nnkTupleConstr.newTree(newLit(1))
+      y = nnkTupleConstr.newTree(newLit(2))
+    doAssert not (x == y) # not using != intentionally
+    doAssert not(cast[int](x) == cast[int](y))
+    doAssert not(system.`==`(x, y))
+    doAssert system.`==`(x, x)
+  t()
+
 block: # bug #10815
   type
     Opcode = enum

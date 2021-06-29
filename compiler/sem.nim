@@ -17,7 +17,7 @@ import
   intsets, transf, vmdef, vm, aliases, cgmeth, lambdalifting,
   evaltempl, patterns, parampatterns, sempass2, linter, semmacrosanity,
   lowerings, plugins/active, lineinfos, strtabs, int128,
-  isolation_check, typeallowed, modulegraphs, enumtostr, concepts
+  isolation_check, typeallowed, modulegraphs, enumtostr, concepts, astmsgs
 
 when defined(nimfix):
   import nimfix/prettybase
@@ -99,6 +99,15 @@ proc fitNode(c: PContext, formal: PType, arg: PNode; info: TLineInfo): PNode =
       result.typ = formal
     else:
       result = fitNodePostMatch(c, formal, result)
+
+proc fitNodeForLocalVar(c: PContext, formal: PType, arg: PNode; info: TLineInfo): PNode =
+  let a = fitNode(c, formal, arg, info)
+  if formal.kind in {tyVar, tyLent}:
+    #classifyViewType(formal) != noView:
+    result = newNodeIT(nkHiddenAddr, a.info, formal)
+    result.add a
+  else:
+   result = a
 
 proc inferWithMetatype(c: PContext, formal: PType,
                        arg: PNode, coerceDistincts = false): PNode

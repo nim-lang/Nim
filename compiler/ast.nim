@@ -229,7 +229,7 @@ type
   TNodeKinds* = set[TNodeKind]
 
 type
-  TSymFlag* = enum    # 46 flags!
+  TSymFlag* = enum    # 47 flags!
     sfUsed,           # read access of sym (for warnings) or simply used
     sfExported,       # symbol is exported from module
     sfFromGeneric,    # symbol is instantiation of a generic; this is needed
@@ -464,6 +464,8 @@ const
   # consider renaming as `tyAbstractVarRange`
   abstractVarRange* = {tyGenericInst, tyRange, tyVar, tyDistinct, tyOrdinal,
                        tyTypeDesc, tyAlias, tyInferred, tySink, tyOwned}
+  abstractInst* = {tyGenericInst, tyDistinct, tyOrdinal, tyTypeDesc, tyAlias,
+                   tyInferred, tySink, tyOwned} # xxx what about tyStatic?
 
 type
   TTypeKinds* = set[TTypeKind]
@@ -740,7 +742,7 @@ proc hash*(x: ItemId): Hash =
 
 
 type
-  TIdObj* = object of RootObj
+  TIdObj* {.acyclic.} = object of RootObj
     itemId*: ItemId
   PIdObj* = ref TIdObj
 
@@ -839,7 +841,7 @@ type
 
   PInstantiation* = ref TInstantiation
 
-  TScope* = object
+  TScope* {.acyclic.} = object
     depthLevel*: int
     symbols*: TStrTable
     parent*: PScope
@@ -1884,6 +1886,26 @@ proc toObject*(typ: PType): PType =
   let t = typ.skipTypes({tyAlias, tyGenericInst})
   if t.kind == tyRef: t.lastSon
   else: typ
+
+proc toObjectFromRefPtrGeneric*(typ: PType): PType =
+  #[
+  See also `toObject`.
+  Finds the underlying `object`, even in cases like these:
+  type
+    B[T] = object f0: int
+    A1[T] = ref B[T]
+    A2[T] = ref object f1: int
+    A3 = ref object f2: int
+    A4 = object f3: int
+  ]#
+  result = typ
+  while true:
+    case result.kind
+    of tyGenericBody: result = result.lastSon
+    of tyRef, tyPtr, tyGenericInst, tyGenericInvocation, tyAlias: result = result[0]
+      # automatic dereferencing is deep, refs #18298.
+    else: break
+  assert result.sym != nil
 
 proc isImportedException*(t: PType; conf: ConfigRef): bool =
   assert t != nil

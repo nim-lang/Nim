@@ -21,6 +21,8 @@ const
   hasFFI* = defined(nimHasLibFFI)
   copyrightYear* = "2021"
 
+  nimEnableCovariance* = defined(nimEnableCovariance)
+
 type                          # please make sure we have under 32 options
                               # (improves code efficiency a lot!)
   TOption* = enum             # **keep binary compatible**
@@ -44,7 +46,7 @@ type                          # please make sure we have under 32 options
     optImportHidden
 
   TOptions* = set[TOption]
-  TGlobalOption* = enum       # **keep binary compatible**
+  TGlobalOption* = enum
     gloptNone, optForceFullMake,
     optWasNimscript,          # redundant with `cmdNimscript`, could be removed
     optListCmd, optCompileOnly, optNoLinking,
@@ -58,6 +60,7 @@ type                          # please make sure we have under 32 options
     optUseNimcache,           # save artifacts (including binary) in $nimcache
     optStyleHint,             # check that the names adhere to NEP-1
     optStyleError,            # enforce that the names adhere to NEP-1
+    optStyleUsages,           # only enforce consistent **usages** of the symbol
     optSkipSystemConfigFile,  # skip the system's cfg/nims config file
     optSkipProjConfigFile,    # skip the project's cfg/nims config file
     optSkipUserConfigFile,    # skip the users's cfg/nims config file
@@ -140,7 +143,8 @@ type
     cmdIdeTools # ide tools (e.g. nimsuggest)
     cmdNimscript # evaluate nimscript
     cmdDoc0
-    cmdDoc2
+    cmdDoc      # convert .nim doc comments to HTML
+    cmdDoc2tex  # convert .nim doc comments to LaTeX
     cmdRst2html # convert a reStructuredText file to HTML
     cmdRst2tex # convert a reStructuredText file to TeX
     cmdJsondoc0
@@ -157,13 +161,23 @@ type
 
 const
   cmdBackends* = {cmdCompileToC, cmdCompileToCpp, cmdCompileToOC, cmdCompileToJS, cmdCrun}
-  cmdDocLike* = {cmdDoc0, cmdDoc2, cmdJsondoc0, cmdJsondoc, cmdCtags, cmdBuildindex}
+  cmdDocLike* = {cmdDoc0, cmdDoc, cmdDoc2tex, cmdJsondoc0, cmdJsondoc,
+                 cmdCtags, cmdBuildindex}
 
 type
   TStringSeq* = seq[string]
   TGCMode* = enum             # the selected GC
-    gcUnselected, gcNone, gcBoehm, gcRegions, gcArc, gcOrc,
-    gcMarkAndSweep, gcHooks, gcRefc, gcV2, gcGo
+    gcUnselected = "unselected"
+    gcNone = "none"
+    gcBoehm = "boehm"
+    gcRegions = "regions"
+    gcArc = "arc"
+    gcOrc = "orc"
+    gcMarkAndSweep = "markAndSweep"
+    gcHooks = "hooks"
+    gcRefc = "refc"
+    gcV2 = "v2"
+    gcGo = "go"
     # gcRefc and the GCs that follow it use a write barrier,
     # as far as usesWriteBarrier() is concerned
 
@@ -265,7 +279,7 @@ type
     foName # lastPathPart, e.g.: foo.nim
     foStacktrace # if optExcessiveStackTrace: foAbs else: foName
 
-  ConfigRef* = ref object ## every global configuration
+  ConfigRef* {.acyclic.} = ref object ## every global configuration
                           ## fields marked with '*' are subject to
                           ## the incremental compilation mechanisms
                           ## (+) means "part of the dependency"
@@ -278,6 +292,7 @@ type
     arcToExpand*: StringTableRef
     m*: MsgConfig
     filenameOption*: FilenameOption # how to render paths in compiler messages
+    unitSep*: string
     evalTemplateCounter*: int
     evalMacroCounter*: int
     exitcode*: int8
@@ -302,7 +317,7 @@ type
                        ## should be run
     ideCmd*: IdeCmd
     oldNewlines*: bool
-    cCompiler*: TSystemCC
+    cCompiler*: TSystemCC # the used compiler
     modifiedyNotes*: TNoteKinds # notes that have been set/unset from either cmdline/configs
     cmdlineNotes*: TNoteKinds # notes that have been set/unset from cmdline
     foreignPackageNotes*: TNoteKinds
@@ -315,6 +330,7 @@ type
     warnCounter*: int
     errorMax*: int
     maxLoopIterationsVM*: int ## VM: max iterations of all loops
+    isVmTrace*: bool
     configVars*: StringTableRef
     symbols*: StringTableRef ## We need to use a StringTableRef here as defined
                              ## symbols are always guaranteed to be style
@@ -347,7 +363,7 @@ type
     docRoot*: string ## see nim --fullhelp for --docRoot
     docCmd*: string ## see nim --fullhelp for --docCmd
 
-     # the used compiler
+    configFiles*: seq[AbsoluteFile]     # config files (cfg,nims)
     cIncludes*: seq[AbsoluteDir]  # directories to search for included files
     cLibs*: seq[AbsoluteDir]      # directories to search for lib files
     cLinkedLibs*: seq[string]     # libraries to link
@@ -399,7 +415,7 @@ proc hasHint*(conf: ConfigRef, note: TNoteKind): bool =
     note in conf.mainPackageNotes
   else: note in conf.notes
 
-proc hasWarn*(conf: ConfigRef, note: TNoteKind): bool =
+proc hasWarn*(conf: ConfigRef, note: TNoteKind): bool {.inline.} =
   optWarns in conf.options and note in conf.notes
 
 proc hcrOn*(conf: ConfigRef): bool = return optHotCodeReloading in conf.globalOptions
@@ -457,7 +473,10 @@ const foreignPackageNotesDefault* = {
 proc isDefined*(conf: ConfigRef; symbol: string): bool
 
 when defined(nimDebugUtils):
+  # this allows inserting debugging utilties in all modules that import `options`
+  # with a single switch, which is useful when debugging compiler.
   import debugutils
+  export debugutils
 
 proc initConfigRefCommon(conf: ConfigRef) =
   conf.selectedGC = gcRefc
@@ -571,10 +590,8 @@ proc isDefined*(conf: ConfigRef; symbol: string): bool =
     of "sunos": result = conf.target.targetOS == osSolaris
     of "nintendoswitch":
       result = conf.target.targetOS == osNintendoSwitch
-    of "freertos":
+    of "freertos", "lwip":
       result = conf.target.targetOS == osFreeRTOS
-    of "lwip":
-      result = conf.target.targetOS in {osFreeRTOS}
     of "littleendian": result = CPU[conf.target.targetCPU].endian == platform.littleEndian
     of "bigendian": result = CPU[conf.target.targetCPU].endian == platform.bigEndian
     of "cpu8": result = CPU[conf.target.targetCPU].bit == 8

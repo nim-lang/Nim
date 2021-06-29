@@ -138,15 +138,13 @@ proc semEnum(c: PContext, n: PNode, prev: PType): PType =
       identToReplace[] = symNode
     if e.position == 0: hasNull = true
     if result.sym != nil and sfExported in result.sym.flags:
-      incl(e.flags, {sfUsed, sfExported})
-    if result.sym != nil and not isPure:
-      addInterfaceDeclAux(c, e, forceExport = sfExported in result.sym.flags)
+      e.flags.incl {sfUsed, sfExported}
 
     result.n.add symNode
     styleCheckDef(c.config, e)
     onDef(e.info, e)
     if sfGenSym notin e.flags:
-      if not isPure: addDecl(c, e)
+      if not isPure: addInterfaceDecl(c, e)
       else: declarePureEnumField(c, e)
     if isPure and (let conflict = strTableInclReportConflict(symbols, e); conflict != nil):
       wrongRedefinition(c, e.info, e.name.s, conflict.info)
@@ -256,8 +254,8 @@ proc semRangeAux(c: PContext, n: PNode, prev: PType): PType =
     else:
       result.n.add semConstExpr(c, range[i])
 
-  if (result.n[0].kind in {nkFloatLit..nkFloat64Lit} and classify(result.n[0].floatVal) == fcNan) or
-      (result.n[1].kind in {nkFloatLit..nkFloat64Lit} and classify(result.n[1].floatVal) == fcNan):
+  if (result.n[0].kind in {nkFloatLit..nkFloat64Lit} and result.n[0].floatVal.isNaN) or
+      (result.n[1].kind in {nkFloatLit..nkFloat64Lit} and result.n[1].floatVal.isNaN):
     localError(c.config, n.info, "NaN is not a valid start or end for a range")
 
   if weakLeValue(result.n[0], result.n[1]) == impNo:
@@ -854,7 +852,7 @@ proc addInheritedFields(c: PContext, check: var IntSet, pos: var int,
     addInheritedFields(c, check, pos, obj[0].skipGenericInvocation)
   addInheritedFieldsAux(c, check, pos, obj.n)
 
-proc semObjectNode(c: PContext, n: PNode, prev: PType; isInheritable: bool): PType =
+proc semObjectNode(c: PContext, n: PNode, prev: PType; flags: TTypeFlags): PType =
   if n.len == 0:
     return newConstraint(c, tyObject)
   var check = initIntSet()
@@ -890,8 +888,9 @@ proc semObjectNode(c: PContext, n: PNode, prev: PType; isInheritable: bool): PTy
   if n.kind != nkObjectTy: internalError(c.config, n.info, "semObjectNode")
   result = newOrPrevType(tyObject, prev, c)
   rawAddSon(result, realBase)
-  if realBase == nil and isInheritable:
+  if realBase == nil and tfInheritable in flags:
     result.flags.incl tfInheritable
+  if tfAcyclic in flags: result.flags.incl tfAcyclic
   if result.n.isNil:
     result.n = newNodeI(nkRecList, n.info)
   else:
@@ -916,8 +915,8 @@ proc semAnyRef(c: PContext; n: PNode; kind: TTypeKind; prev: PType): PType =
     let n = if n[0].kind == nkBracket: n[0] else: n
     checkMinSonsLen(n, 1, c.config)
     let body = n.lastSon
-    var t = if prev != nil and body.kind == nkObjectTy and tfInheritable in prev.flags:
-              semObjectNode(c, body, nil, isInheritable=true)
+    var t = if prev != nil and body.kind == nkObjectTy:
+              semObjectNode(c, body, nil, prev.flags)
             else:
               semTypeNode(c, body, nil)
     if t.kind == tyTypeDesc and tfUnresolved notin t.flags:
@@ -1296,7 +1295,7 @@ proc semProcTypeNode(c: PContext, n, genericParams: PNode,
         let param = strTableGet(c.signatures, arg.name)
         if param != nil: typ = param.typ
         else:
-          localError(c.config, a.info, "typeless parameters are obsolete")
+          localError(c.config, a.info, "parameter '$1' requires a type" % arg.name.s)
           typ = errorType(c)
       let lifted = liftParamType(c, kind, genericParams, typ,
                                  arg.name.s, arg.info)
@@ -1957,7 +1956,7 @@ proc semTypeNode(c: PContext, n: PNode, prev: PType): PType =
           localError(c.config, n.info, "type expected, but got symbol '$1' of kind '$2'" %
             [s.name.s, s.kind.toHumanStr])
       result = newOrPrevType(tyError, prev, c)
-  of nkObjectTy: result = semObjectNode(c, n, prev, isInheritable=false)
+  of nkObjectTy: result = semObjectNode(c, n, prev, {})
   of nkTupleTy: result = semTuple(c, n, prev)
   of nkTupleClassTy: result = newConstraint(c, tyTuple)
   of nkTypeClassTy: result = semTypeClass(c, n, prev)

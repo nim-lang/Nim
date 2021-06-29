@@ -9,24 +9,24 @@
 
 # Unfortunately this cannot be a module yet:
 #import vmdeps, vm
-from math import sqrt, ln, log10, log2, exp, round, arccos, arcsin,
+from std/math import sqrt, ln, log10, log2, exp, round, arccos, arcsin,
   arctan, arctan2, cos, cosh, hypot, sinh, sin, tan, tanh, pow, trunc,
   floor, ceil, `mod`, cbrt, arcsinh, arccosh, arctanh, erf, erfc, gamma,
   lgamma
 
 when declared(math.copySign):
-  from math import copySign
+  from std/math import copySign
 
 when declared(math.signbit):
-  from math import signbit
+  from std/math import signbit
 
-from os import getEnv, existsEnv, dirExists, fileExists, putEnv, walkDir,
+from std/os import getEnv, existsEnv, dirExists, fileExists, putEnv, walkDir,
                    getAppFilename, raiseOSError, osLastError
 
-from md5 import getMD5
-from times import cpuTime
-from hashes import hash
-from osproc import nil
+from std/md5 import getMD5
+from std/times import cpuTime
+from std/hashes import hash
+from std/osproc import nil
 
 from sighashes import symBodyDigest
 
@@ -136,6 +136,7 @@ when defined(nimHasInvariant):
     of ccompilerPath: result = conf.cCompilerPath
     of backend: result = $conf.backend
     of libPath: result = conf.libpath.string
+    of gc: result = $conf.selectedGC
 
   proc querySettingSeqImpl(conf: ConfigRef, switch: BiggestInt): seq[string] =
     template copySeq(field: untyped): untyped =
@@ -247,6 +248,9 @@ proc registerAdditionalOps*(c: PCtx) =
       stackTrace(c, PStackFrame(prc: c.prc.sym, comesFrom: 0, next: nil), c.exceptionInstr,
                   "isExported() requires a symbol. '" & $n & "' is of kind '" & $n.kind & "'", n.info)
     setResult(a, sfExported in n.sym.flags)
+
+  registerCallback c, "stdlib.vmutils.vmTrace", proc (a: VmArgs) =
+    c.config.isVmTrace = getBool(a, 0)
 
   proc hashVmImpl(a: VmArgs) =
     var res = hashes.hash(a.getString(0), a.getInt(1).int, a.getInt(2).int)

@@ -198,7 +198,6 @@ proc semTry(c: PContext, n: PNode; flags: TExprFlags): PNode =
     isImported
 
   result = n
-  inc c.p.inTryStmt
   checkMinSonsLen(n, 2, c.config)
 
   var typ = commonTypeBegin
@@ -265,7 +264,6 @@ proc semTry(c: PContext, n: PNode; flags: TExprFlags): PNode =
     else: dec last
     closeScope(c)
 
-  dec c.p.inTryStmt
   if isEmptyType(typ) or typ.kind in {tyNil, tyUntyped}:
     discardCheck(c, n[0], flags)
     for i in 1..<n.len: discardCheck(c, n[i].lastSon, flags)
@@ -386,6 +384,23 @@ proc hasEmpty(typ: PType): bool =
   elif typ.kind == tyTuple:
     for s in typ.sons:
       result = result or hasEmpty(s)
+
+proc hasUnresolvedParams(n: PNode; flags: TExprFlags): bool =
+  result = tfUnresolved in n.typ.flags
+  when false:
+    case n.kind
+    of nkSym:
+      result = isGenericRoutineStrict(n.sym)
+    of nkSymChoices:
+      for ch in n:
+        if hasUnresolvedParams(ch, flags):
+          return true
+      result = false
+    else:
+      result = false
+    if efOperand in flags:
+      if tfUnresolved notin n.typ.flags:
+        result = false
 
 proc makeDeref(n: PNode): PNode =
   var t = n.typ
@@ -511,7 +526,7 @@ proc semVarOrLet(c: PContext, n: PNode, symkind: TSymKind): PNode =
         else:
           # BUGFIX: ``fitNode`` is needed here!
           # check type compatibility between def.typ and typ
-          def = fitNode(c, typ, def, def.info)
+          def = fitNodeForLocalVar(c, typ, def, def.info)
           #changeType(def.skipConv, typ, check=true)
       else:
         typ = def.typ.skipTypes({tyStatic, tySink}).skipIntLit(c.idgen)
@@ -519,7 +534,8 @@ proc semVarOrLet(c: PContext, n: PNode, symkind: TSymKind): PNode =
           typ = typ.lastSon
         if hasEmpty(typ):
           localError(c.config, def.info, errCannotInferTypeOfTheLiteral % typ.kind.toHumanStr)
-        elif typ.kind == tyProc and tfUnresolved in typ.flags:
+        elif typ.kind == tyProc and hasUnresolvedParams(def, {}):
+          # tfUnresolved in typ.flags:
           localError(c.config, def.info, errProcHasNoConcreteType % def.renderTree)
         when false:
           # XXX This typing rule is neither documented nor complete enough to
@@ -1441,16 +1457,33 @@ proc semBorrow(c: PContext, n: PNode, s: PSym) =
   else:
     localError(c.config, n.info, errNoSymbolToBorrowFromFound)
 
+proc swapResult(n: PNode, sRes: PSym, dNode: PNode) =
+  ## Swap nodes that are (skResult) symbols to d(estination)Node.
+  for i in 0..<n.safeLen:
+    if n[i].kind == nkSym and n[i].sym == sRes:
+        n[i] = dNode
+    swapResult(n[i], sRes, dNode)
+
 proc addResult(c: PContext, n: PNode, t: PType, owner: TSymKind) =
+  template genResSym(s) =
+    var s = newSym(skResult, getIdent(c.cache, "result"), nextSymId c.idgen,
+                   getCurrOwner(c), n.info)
+    s.typ = t
+    incl(s.flags, sfUsed)
+
   if owner == skMacro or t != nil:
     if n.len > resultPos and n[resultPos] != nil:
-      if n[resultPos].sym.kind != skResult or n[resultPos].sym.owner != getCurrOwner(c):
+      if n[resultPos].sym.kind != skResult:
         localError(c.config, n.info, "incorrect result proc symbol")
+      if n[resultPos].sym.owner != getCurrOwner(c):
+        # re-write result with new ownership, and re-write the proc accordingly
+        let sResSym = n[resultPos].sym
+        genResSym(s)
+        n[resultPos] = newSymNode(s)
+        swapResult(n, sResSym, n[resultPos])
       c.p.resultSym = n[resultPos].sym
     else:
-      var s = newSym(skResult, getIdent(c.cache, "result"), nextSymId c.idgen, getCurrOwner(c), n.info)
-      s.typ = t
-      incl(s.flags, sfUsed)
+      genResSym(s)
       c.p.resultSym = s
       n.add newSymNode(c.p.resultSym)
     addParamOrResult(c, c.p.resultSym, owner)
@@ -1811,7 +1844,7 @@ proc semProcAux(c: PContext, n: PNode, kind: TSymKind,
 
   # before compiling the proc params & body, set as current the scope
   # where the proc was declared
-  let delcarationScope = c.currentScope
+  let declarationScope = c.currentScope
   pushOwner(c, s)
   openScope(c)
 
@@ -1856,12 +1889,17 @@ proc semProcAux(c: PContext, n: PNode, kind: TSymKind,
 
   var (proto, comesFromShadowScope) =
       if isAnon: (nil, false)
-      else: searchForProc(c, delcarationScope, s)
-  if proto == nil and sfForward in s.flags:
+      else: searchForProc(c, declarationScope, s)
+  if proto == nil and sfForward in s.flags and n[bodyPos].kind != nkEmpty:
     ## In cases such as a macro generating a proc with a gensymmed name we
     ## know `searchForProc` will not find it and sfForward will be set. In
     ## such scenarios the sym is shared between forward declaration and we
     ## can treat the `s` as the proto.
+    ## To differentiate between that happening and a macro just returning a
+    ## forward declaration that has been typed before we check if the body
+    ## is not empty. This has the sideeffect of allowing multiple forward
+    ## declarations if they share the same sym.
+    ## See the "doubly-typed forward decls" case in tmacros_issues.nim
     proto = s
   let hasProto = proto != nil
 
@@ -1883,9 +1921,9 @@ proc semProcAux(c: PContext, n: PNode, kind: TSymKind,
 
   if not hasProto and sfGenSym notin s.flags: #and not isAnon:
     if s.kind in OverloadableSyms:
-      addInterfaceOverloadableSymAt(c, delcarationScope, s)
+      addInterfaceOverloadableSymAt(c, declarationScope, s)
     else:
-      addInterfaceDeclAt(c, delcarationScope, s)
+      addInterfaceDeclAt(c, declarationScope, s)
 
   pragmaCallable(c, s, n, validPragmas)
   if not hasProto:

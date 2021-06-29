@@ -7,21 +7,24 @@
 #    distribution, for details about the copyright.
 #
 
-when defined(gcc) and defined(windows):
-  when defined(x86):
-    {.link: "../icons/nim.res".}
-  else:
-    {.link: "../icons/nim_icon.o".}
+import std/[os, strutils, parseopt]
+when defined(windows) and not defined(nimKochBootstrap):
+  # remove workaround pending bootstrap >= 1.5.1
+  # refs https://github.com/nim-lang/Nim/issues/18334#issuecomment-867114536
+  # alternative would be to prepend `currentSourcePath.parentDir.quoteShell`
+  when defined(gcc):
+    when defined(x86):
+      {.link: "../icons/nim.res".}
+    else:
+      {.link: "../icons/nim_icon.o".}
 
-when defined(amd64) and defined(windows) and defined(vcc):
-  {.link: "../icons/nim-amd64-windows-vcc.res".}
-when defined(i386) and defined(windows) and defined(vcc):
-  {.link: "../icons/nim-i386-windows-vcc.res".}
+  when defined(amd64) and defined(vcc):
+    {.link: "../icons/nim-amd64-windows-vcc.res".}
+  when defined(i386) and defined(vcc):
+    {.link: "../icons/nim-i386-windows-vcc.res".}
 
 import
-  commands, options, msgs,
-  extccomp, strutils, os, main, parseopt,
-  idents, lineinfos, cmdlinehelper,
+  commands, options, msgs, extccomp, main, idents, lineinfos, cmdlinehelper,
   pathutils, modulegraphs
 
 from browsers import openDefaultBrowser

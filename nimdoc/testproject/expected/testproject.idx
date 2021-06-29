@@ -35,7 +35,7 @@ z17	testproject.html#z17	testproject: z17()
 p1	testproject.html#p1	testproject: p1()	
 addfBug14485	testproject.html#addfBug14485	testproject: addfBug14485()	
 c_printf	testproject.html#c_printf,cstring	testproject: c_printf(frmt: cstring): cint	
-c_nonexistant	testproject.html#c_nonexistant,cstring	testproject: c_nonexistant(frmt: cstring): cint	
+c_nonexistent	testproject.html#c_nonexistent,cstring	testproject: c_nonexistent(frmt: cstring): cint	
 low	testproject.html#low,T	testproject: low[T: Ordinal | enum | range](x: T): T	
 low2	testproject.html#low2,T	testproject: low2[T: Ordinal | enum | range](x: T): T	
 tripleStrLitTest	testproject.html#tripleStrLitTest	testproject: tripleStrLitTest()	
