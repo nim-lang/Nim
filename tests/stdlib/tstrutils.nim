@@ -7,13 +7,13 @@ from stdtest/testutils import disableVm
 import macros
 # xxx each instance of `disableVm` and `when not defined js:` should eventually be fixed
 
-when not defined(i386): # there seems to be a bug regarding i386 and macros
+when not defined(i386): # Todo there seems to be a bug regarding i386 and macros
   template fnTest(base: string, fn: proc (x: string): int, expected: int64, raises: static bool) =
     when not raises:
       doAssert fn(base) == expected
     else:
       doAssertRaises(ValueError):
-        echo `fn`(`base`)
+        echo fn(base)
 else:
   macro fnTest(base: string, fn: proc (x: string): int, expected: int64, raises: static bool): untyped =
     var prefix: string
