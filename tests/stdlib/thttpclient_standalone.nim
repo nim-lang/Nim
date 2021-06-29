@@ -18,7 +18,7 @@ block: # bug #16436
 
   proc runClient(port: Port) {.async.} =
     let c = newAsyncHttpClient(headers = {"Connection": "close"}.newHttpHeaders)
-    discard await c.getContent("http://127.0.0.1:" & $uint16(port))
+    discard await c.getContent("http://127.0.0.1:" & $port)
     doAssert false, "should fail earlier"
 
   let server = startServer()
