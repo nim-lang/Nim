@@ -1471,15 +1471,20 @@ proc skipHiddenSubConv*(n: PNode; g: ModuleGraph; idgen: IdGenerator): PNode =
   else:
     result = n
 
-proc callConvMismatch(formal, actual: PType): string =
+proc callConvMismatch*(formal, actual: PType, indented = false): string =
   assert formal.kind == tyProc and actual.kind == tyProc
-  if formal.callConv != actual.callConv and tfExplicitCallConv in formal.flags:
-    let 
+  if formal.callConv != actual.callConv or ccNimCall == formal.callConv and tfExplicitCallConv in formal.flags:
+    let
       got = $(actual.callConv)
       expected = $(formal.callConv)
-    result = "\nCalling convention: mismatch got '{.$1.}', but expected '{.$2.}'." % [got, expected]
+    result =
+      if indented:
+        "\n  Calling convention: mismatch got '{.$1.}', but expected '{.$2.}'." % [got, expected]
+      else:
+        "\nCalling convention: mismatch got '{.$1.}', but expected '{.$2.}'." % [got, expected]
 
-proc pragmaMismatch(formal, actual: PType): string =
+
+proc pragmaMismatch*(formal, actual: PType, indented = false): string =
   assert formal.kind == tyProc and actual.kind == tyProc
   var
     got = ""
@@ -1488,14 +1493,18 @@ proc pragmaMismatch(formal, actual: PType): string =
     expected.add "noSideEffect, "
   if tfThread in formal.flags and tfThread notin actual.flags:
     expected.add "gcsafe, "
-  if formal.lockLevel.ord != UnspecifiedLockLevel.ord and 
+  if formal.lockLevel.ord != UnspecifiedLockLevel.ord and
      actual.lockLevel.ord != UnspecifiedLockLevel.ord:
-    got.add("locks: " &  $actual.lockLevel & ", ")
-    expected.add("locks: " &  $formal.lockLevel & ", ")
+    got.add("locks: " & $actual.lockLevel & ", ")
+    expected.add("locks: " & $formal.lockLevel & ", ")
   if got.len > 0 or expected.len > 0:
     got.setLen(max(0, got.len - 2)) # Remove ", "
     expected.setLen(max(0, expected.len - 2)) # Remove ", "
-    result = "\nPragma mismatch: got '{.$1.}', but expected '{.$2.}'." % [got, expected]
+    result =
+      if indented:
+        "\n  Pragma mismatch: got '{.$1.}', but expected '{.$2.}'." % [got, expected]
+      else:
+        "\nPragma mismatch: got '{.$1.}', but expected '{.$2.}'." % [got, expected]
 
 proc typeMismatch*(conf: ConfigRef; info: TLineInfo, formal, actual: PType, n: PNode) =
   if formal.kind != tyError and actual.kind != tyError:
