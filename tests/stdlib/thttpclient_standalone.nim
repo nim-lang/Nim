@@ -10,18 +10,11 @@ block: # bug #16436
     result.listen(Port(0))
 
   proc runServer(server: AsyncHttpServer) {.async.} =
-    var killServer = false
-
     proc cb(req: Request) {.async.} =
       let headers = { "Content-length": "15"} # Provide invalid content-length
-      killServer = true
       await req.respond(Http200, "Hello World", headers.newHttpHeaders())
 
-    while not killServer:
-      if server.shouldAcceptRequest():
-        await server.acceptRequest(cb)
-      else:
-        poll()
+    await server.acceptRequest(cb)
 
   proc runClient(port: Port) {.async.} =
     let c = newAsyncHttpClient(headers = {"Connection": "close"}.newHttpHeaders)
@@ -40,7 +33,6 @@ block: # bug #14794 (And test for presence of content-length header when using p
     result.listen(Port(0))
 
   proc runServer(server: AsyncHttpServer) {.async.} =
-    var killServer = false
     proc cb(req: Request) {.async.} =
       doAssert(req.body.endsWith(httpNewLine), "Multipart body does not end with a newline.")
       # this next line is probably not required because asynchttpserver does not call
@@ -48,14 +40,9 @@ block: # bug #14794 (And test for presence of content-length header when using p
       # Error: unhandled exception: 411 Length Required
       # Added for good measure in case the server becomes more permissive.
       doAssert(req.headers.hasKey("content-length"), "Content-Length header is not present.")
-      killServer = true
       asyncCheck req.respond(Http200, "OK")
 
-    while not killServer:
-      if server.shouldAcceptRequest():
-        await server.acceptRequest(cb)
-      else:
-        poll()
+    await server.acceptRequest(cb)
 
   proc runClient(port: Port) {.async.} =
     let c = newAsyncHttpClient()
