@@ -10,6 +10,10 @@ var value = 0
 discard parseHex("0x38", value)
 doAssert value == 56
 
+var wrong = 0
+discard parseHex("0x10ffff_ffff_ffff_ffff", wrong)
+doAssert wrong == 0
+
 value = -1
 doAssert(parseSaturatedNatural("848", value) == 3)
 doAssert value == 848

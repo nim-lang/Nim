@@ -71,8 +71,7 @@ proc parseBin*[T: SomeInteger](s: string, number: var T, start = 0,
   ## are parsed starting from the ``start`` position.
   ##
   ## It does not check for overflow. If the value represented by the string is
-  ## too big to fit into ``number``, only the value of last fitting characters
-  ## will be stored in ``number`` without producing an error.
+  ## too big to fit into ``number``, 0 will be return indicting an error.
   runnableExamples:
     var num: int
     doAssert parseBin("0100_1110_0110_1001_1110_1101", num) == 29
@@ -94,15 +93,26 @@ proc parseBin*[T: SomeInteger](s: string, number: var T, start = 0,
   var foundDigit = false
   let last = min(s.len, if maxLen == 0: s.len else: i + maxLen)
   if i + 1 < last and s[i] == '0' and (s[i+1] in {'b', 'B'}): inc(i, 2)
+
+  while i < last:
+    case s[i]
+    of '_': discard
+    of '0':
+      foundDigit = true
+    else: break
+    inc i
+
+  var count = 0
   while i < last:
     case s[i]
     of '_': discard
     of '0'..'1':
       output = output shl 1 or T(ord(s[i]) - ord('0'))
       foundDigit = true
+      inc count
     else: break
     inc(i)
-  if foundDigit:
+  if foundDigit and count <= 64:
     number = output
     result = i - start
 
@@ -118,8 +128,7 @@ proc parseOct*[T: SomeInteger](s: string, number: var T, start = 0,
   ## are parsed starting from the ``start`` position.
   ##
   ## It does not check for overflow. If the value represented by the string is
-  ## too big to fit into ``number``, only the value of last fitting characters
-  ## will be stored in ``number`` without producing an error.
+  ## too big to fit into ``number``, 0 will be return indicting an error.
   runnableExamples:
     var num: int
     doAssert parseOct("0o23464755", num) == 10
@@ -141,15 +150,31 @@ proc parseOct*[T: SomeInteger](s: string, number: var T, start = 0,
   var foundDigit = false
   let last = min(s.len, if maxLen == 0: s.len else: i + maxLen)
   if i + 1 < last and s[i] == '0' and (s[i+1] in {'o', 'O'}): inc(i, 2)
+
+  while i < last:
+    case s[i]
+    of '_': discard
+    of '0':
+      foundDigit = true
+    of '1':
+      output = output shl 3 or T(ord(s[i]) - ord('0'))
+      foundDigit = true
+      inc i
+      break
+    else: break
+    inc i
+
+  var count = 0
   while i < last:
     case s[i]
     of '_': discard
     of '0'..'7':
       output = output shl 3 or T(ord(s[i]) - ord('0'))
       foundDigit = true
+      inc count
     else: break
     inc(i)
-  if foundDigit:
+  if foundDigit and count <= 21:
     number = output
     result = i - start
 
@@ -165,8 +190,7 @@ proc parseHex*[T: SomeInteger](s: string, number: var T, start = 0,
   ## are parsed starting from the ``start`` position.
   ##
   ## It does not check for overflow. If the value represented by the string is
-  ## too big to fit into ``number``, only the value of last fitting characters
-  ## will be stored in ``number`` without producing an error.
+  ## too big to fit into ``number``, 0 will be return indicting an error.
   runnableExamples:
     var num: int
     doAssert parseHex("4E_69_ED", num) == 8
@@ -190,21 +214,35 @@ proc parseHex*[T: SomeInteger](s: string, number: var T, start = 0,
   let last = min(s.len, if maxLen == 0: s.len else: i + maxLen)
   if i + 1 < last and s[i] == '0' and (s[i+1] in {'x', 'X'}): inc(i, 2)
   elif i < last and s[i] == '#': inc(i)
+
+  # ignore the preceding characters such as '0', '_'
+  while i < last:
+    case s[i]
+    of '_': discard
+    of '0':
+      foundDigit = true
+    else: break
+    inc i
+
+  var count = 0 # the total length of the hexadecimal
   while i < last:
     case s[i]
     of '_': discard
     of '0'..'9':
       output = output shl 4 or T(ord(s[i]) - ord('0'))
       foundDigit = true
+      inc count
     of 'a'..'f':
       output = output shl 4 or T(ord(s[i]) - ord('a') + 10)
       foundDigit = true
+      inc count
     of 'A'..'F':
       output = output shl 4 or T(ord(s[i]) - ord('A') + 10)
       foundDigit = true
+      inc count
     else: break
     inc(i)
-  if foundDigit:
+  if foundDigit and count <= 16:
     number = output
     result = i - start
 

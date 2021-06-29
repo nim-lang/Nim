@@ -4,7 +4,49 @@ discard """
 
 import std/strutils
 from stdtest/testutils import disableVm
+import macros
 # xxx each instance of `disableVm` and `when not defined js:` should eventually be fixed
+
+
+macro fnTest(base: string, fn: proc (x: string): int, expected: int64, raises: static bool): untyped =
+  var prefix: string
+  case fn.strVal
+  of "parseHexInt":
+    prefix = "0x"
+  of "parseOctInt":
+    prefix = "0o"
+  of "parseBinInt":
+    prefix = "0b"
+  else: doAssert false
+
+  if not `raises`:
+    result = quote do:
+      doAssert `fn`(`base`) == `expected`
+      doAssert `fn`(`prefix` & `base`) == `expected`
+  else:
+    result = quote do:
+      doAssertRaises(ValueError):
+        echo `fn`(`base`)
+      doAssertRaises(ValueError):
+        echo `fn`(`prefix` & `base`)
+
+template hexTest(base: string, expected: int64) =
+  fnTest(base, parseHexInt, expected, false)
+
+template octTest(base: string, expected: int64) =
+  fnTest(base, parseOctInt, expected, false)
+
+template binTest(base: string, expected: int64) =
+  fnTest(base, parseBinInt, expected, false)
+
+template hexRaiseTest(base: string) =
+  fnTest(base, parseHexInt, -1, true)
+
+template octRaiseTest(base: string) =
+  fnTest(base, parseOctInt, -1, true)
+
+template binRaiseTest(base: string) =
+  fnTest(base, parseBinInt, -1, true)
 
 template rejectParse(e) =
   try:
@@ -221,6 +263,69 @@ template main() =
     doAssert "0123456789ABCDEFGH".find({'A'..'C'}, 5, 10) == 10
     doAssert "0123456789ABCDEFGH".find({'A'..'C'}, 5, 9) == -1
 
+    block:
+      const haystack: string = "ABCABABABABCAB"
+      doAssert haystack.len == 14
+
+      # only last argument
+      doAssert haystack.find("ABC") == 0
+      doAssert haystack.find("ABC", last=13) == 0 # after the second ABC
+      doAssert haystack.find("ABC", last=5) == 0 # before the second ABC
+
+      # only start argument
+      doAssert haystack.find("ABC", start=0) == 0
+      doAssert haystack.find("ABC", start=1) == 9
+      doAssert haystack.find("ABC", start=9) == 9
+      doAssert haystack.find("ABC", start=10) == -1
+
+      # both start and last arguments
+      doAssert haystack.find("ABC", start=0, last=14) == 0
+      doAssert haystack.find("ABC", start=0, last=13) == 0
+      doAssert haystack.find("ABC", start=0, last=12) == 0
+      doAssert haystack.find("ABC", start=1, last=13) == 9
+      doAssert haystack.find("ABC", start=1, last=12) == 9
+      doAssert haystack.find("ABC", start=1, last=11) == 9
+      doAssert haystack.find("ABC", start=1, last=10) == -1
+
+    doAssert "".find("/") == -1
+    doAssert "/".find("/") == 0
+    doAssert "/".find("//") == -1
+    doAssert "///".find("//", start=3) == -1
+
+    # searching for empty string
+    doAssert "".find("") == 0
+    doAssert "abc".find("") == 0
+    doAssert "abc".find("", start=1) == 1
+    doAssert "abc".find("", start=2) == 2
+    doAssert "abc".find("", start=3) == 3
+    doAssert "abc".find("", start=4) == -1
+    doAssert "abc".find("", start=400) == -1
+    doAssert "abc".find("", start=1, last=3) == 1
+    doAssert "abc".find("", start=1, last=2) == 1
+    doAssert "abc".find("", start=1, last=1) == 1
+    doAssert "abc".find("", start=1, last=0) == 1
+    doAssert "abc".find("", start=1, last = -1) == 1
+
+    # when last <= start, searching for non-empty string
+    block:
+      let last: int = -1
+      doAssert "abcd".find("ab", start=0, last=last) == -1
+      doAssert "abcd".find("ab", start=1, last=last) == -1
+      doAssert "abcd".find("bc", start=1, last=last) == -1
+      doAssert "abcd".find("bc", start=2, last=last) == -1
+    block:
+      let last: int = 0
+      doAssert "abcd".find("ab", start=0, last=last) == 0
+      doAssert "abcd".find("ab", start=1, last=last) == -1
+      doAssert "abcd".find("bc", start=1, last=last) == 1
+      doAssert "abcd".find("bc", start=2, last=last) == -1
+    block:
+      let last: int = 1
+      doAssert "abcd".find("ab", start=0, last=last) == 0
+      doAssert "abcd".find("ab", start=1, last=last) == -1
+      doAssert "abcd".find("bc", start=1, last=last) == -1
+      doAssert "abcd".find("bc", start=2, last=last) == -1
+
   block: # rfind
     doAssert "0123456789ABCDEFGAH".rfind('A') == 17
     doAssert "0123456789ABCDEFGAH".rfind('A', last=13) == 10
@@ -242,6 +347,66 @@ template main() =
     doAssert "/1/2/3".rfind('/') == 4
     doAssert "/1/2/3".rfind('/', last=1) == 0
     doAssert "/1/2/3".rfind('0') == -1
+
+    block:
+      const haystack: string = "ABCABABABABCAB"
+      doAssert haystack.len == 14
+      doAssert haystack.rfind("ABC") == 9
+      doAssert haystack.rfind("ABC", last=13) == 9
+      doAssert haystack.rfind("ABC", last=12) == 9
+      doAssert haystack.rfind("ABC", last=11) == 9
+      doAssert haystack.rfind("ABC", last=10) == 0
+
+      doAssert haystack.rfind("ABC", start=0) == 9
+      doAssert haystack.rfind("ABC", start=1) == 9
+      doAssert haystack.rfind("ABC", start=9) == 9
+      doAssert haystack.rfind("ABC", start=10) == -1
+
+      doAssert haystack.rfind("ABC", start=0, last=13) == 9
+      doAssert haystack.rfind("ABC", start=0, last=12) == 9
+      doAssert haystack.rfind("ABC", start=0, last=11) == 9
+      doAssert haystack.rfind("ABC", start=0, last=10) == 0
+      doAssert haystack.rfind("ABC", start=1, last=10) == -1
+
+    doAssert "".rfind("/") == -1
+    doAssert "/".rfind("/") == 0
+    doAssert "/".rfind("//") == -1
+    doAssert "///".rfind("//", start=3) == -1
+
+    # searching for empty string
+    doAssert "".rfind("") == -1
+    doAssert "abc".rfind("") == -1
+    doAssert "abc".rfind("", start=1) == -1
+    doAssert "abc".rfind("", start=2) == -1
+    doAssert "abc".rfind("", start=3) == -1
+    doAssert "abc".rfind("", start=4) == -1
+    doAssert "abc".rfind("", start=400) == -1
+
+    doAssert "abc".rfind("", start=1, last=3) == -1
+    doAssert "abc".rfind("", start=1, last=2) == -1
+    doAssert "abc".rfind("", start=1, last=1) == -1
+    doAssert "abc".rfind("", start=1, last=0) == -1
+    doAssert "abc".rfind("", start=1, last = -1) == -1
+
+    # when last <= start, searching for non-empty string
+    block:
+      let last: int = -1
+      doAssert "abcd".rfind("ab", start=0, last=last) == 0
+      doAssert "abcd".rfind("ab", start=1, last=last) == -1
+      doAssert "abcd".rfind("bc", start=1, last=last) == 1
+      doAssert "abcd".rfind("bc", start=2, last=last) == -1
+    block:
+      let last: int = 0
+      doAssert "abcd".rfind("ab", start=0, last=last) == -1
+      doAssert "abcd".rfind("ab", start=1, last=last) == -1
+      doAssert "abcd".rfind("bc", start=1, last=last) == -1
+      doAssert "abcd".rfind("bc", start=2, last=last) == -1
+    block:
+      let last: int = 1
+      doAssert "abcd".rfind("ab", start=0, last=last) == 0
+      doAssert "abcd".rfind("ab", start=1, last=last) == -1
+      doAssert "abcd".rfind("bc", start=1, last=last) == -1
+      doAssert "abcd".rfind("bc", start=2, last=last) == -1
 
   block: # trimZeros
     var x = "1200"
@@ -693,6 +858,76 @@ bar
     doAssert s.endsWith('f')
     doAssert s.endsWith('a') == false
     doAssert s.endsWith('\0') == false
+
+  when not defined(js):
+    block:
+      block: # hex
+        hexTest("000000000000000000000000000000000000000000000000", 0)
+        hexTest("000000000000000000000000000000000000000000000001", 1)
+        hexTest("0", 0)
+        hexTest("1", 1)
+        doAssert parseHexInt("#000000000000000000000000000000000000000000000000") == 0
+        doAssert parseHexInt("#FFFF") == 65535
+        hexTest("1000000000000000", 1152921504606846976)
+        hexTest("2000000000000000", 2305843009213693952)
+        hexTest("FFFFFFFFFFFFFFF0", -16)
+        hexTest("FFFFFFFFFFFFFFFF", -1)
+        hexTest("FFFFFFFFFFFFFFF", 1152921504606846975)
+        hexTest("0_0_0_F", 15)
+        hexTest("00000000000000F", 15)
+        hexTest("0000000000000000000000000F", 15)
+        hexTest("00_0000_0000_0000_0000_0000_000F", 15)
+        hexTest("AA_BB_CC_DD", 2864434397)
+
+
+        hexRaiseTest("FF00FFFFFFFFFFFFFFFFFF")
+        hexRaiseTest("FF00FFFFFFFFFFFFFFFFFF")
+        hexRaiseTest("10000FFFFFFFFFFFFFFFFFF")
+        hexRaiseTest("10000000000000000000000")
+        hexRaiseTest("1_0000_0000_0000_0000")
+        hexRaiseTest("00_1000_0000_0000_0000_0000_000F")
+
+      block: # oct
+        octTest("000000000000000000000000000000000000000000000000", 0)
+        octTest("000000000000000000000000000000000000000000000001", 1)
+        octTest("0", 0)
+        octTest("1", 1)
+        octTest("1777777777777777777777", -1)
+        octTest("177777777777777777777", 2305843009213693951)
+        octTest("0_77777777777777777777", 1152921504606846975)
+        octTest("00_77777777777777777777", 1152921504606846975)
+
+        octTest("0_177777777777777777777", 2305843009213693951)
+        octTest("0000_177777777777777777777", 2305843009213693951)
+        octTest("0777777777777777777777", 9223372036854775807)
+        octTest("00777777777777777777777", 9223372036854775807)
+        octTest("00___77_77777_777777_777_77777", 9223372036854775807)
+
+        octRaiseTest("2777777777777777777777")
+        octRaiseTest("10000777777777777777777777")
+        octRaiseTest("20000777777777777777777777")
+        octRaiseTest("70000777777777777777777777")
+        octRaiseTest("0000002777777777777777777777")
+        octRaiseTest("10_777777777777777777777")
+        octRaiseTest("100_0777777777777777777777")
+        octRaiseTest("000_000_277_777_7777777777777777")
+        octRaiseTest("00_1000_0000_0000_0000_0000_0007")
+
+      block: # bin
+        binTest("000000000000000000000000000000000000000000000000", 0)
+        binTest("000000000000000000000000000000000000000000000001", 1)
+        binTest("0", 0)
+        binTest("1", 1)
+        binTest("11_0101", 53)
+        binTest("111", 7)
+        binTest(repeat("11111111", 8), -1)
+        binTest("00" & repeat("11111111", 8), -1)
+        binTest("0111_1111" & repeat("11111111", 7), 9223372036854775807)
+        binTest(repeat("0001", 16), 1229782938247303441)
+
+        binRaiseTest(repeat("0001", 17))
+        binRaiseTest("1" & repeat("0000_0000", 8))
+
 
 static: main()
 main()
