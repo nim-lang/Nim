@@ -1,5 +1,5 @@
 discard """
-  errormsg: "type mismatch: got <ptr Hard[system.string]> but expected 'Book[system.string]'"
+  errormsg: "type mismatch: obtained <ptr Hard[system.string]> expected 'Book[system.string]'"
   file: "tarraycons_ptr_generic2.nim"
   line: 17
 """
