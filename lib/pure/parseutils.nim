@@ -156,15 +156,6 @@ proc parseOct*[T: SomeInteger](s: string, number: var T, start = 0,
   else:
     const numRange = {'1'}
 
-  when sizeof(T) == 1:
-    const numCount = 2
-  elif sizeof(T) == 2:
-    const numCount = 5
-  elif sizeof(T) == 4:
-    const numCount = 10
-  elif sizeof(T) == 8:
-    const numCount = 21
-  else: doAssert false
 
   while i < last:
     case s[i]
@@ -189,7 +180,7 @@ proc parseOct*[T: SomeInteger](s: string, number: var T, start = 0,
       inc count
     else: break
     inc(i)
-  if foundDigit and count <= numCount:
+  if foundDigit and count <= sizeof(T) * 8 div 3:
     number = output
     result = i - start
 
