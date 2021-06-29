@@ -469,6 +469,9 @@ proc newProfileData(): ProfileData =
 
 const foreignPackageNotesDefault* = {
   hintProcessing, warnUnknownMagic, hintQuitCalled, hintExecuting, hintUser, warnUser}
+  # consider adding notes like `warnRedefinitionRepl` otherwise it won't work in `nim secret`
+  # even with `nim --warning:redefinitionRepl:on secret` (probably a bug); it does
+  # work with `{.warning[redefinitionRepl]:on.}` inside nim secret sesssion though.
 
 proc isDefined*(conf: ConfigRef; symbol: string): bool
 

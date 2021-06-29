@@ -289,8 +289,7 @@ proc ensureNoMissingOrUnusedSymbols(c: PContext; scope: PScope) =
 
 proc wrongRedefinition*(c: PContext; info: TLineInfo, s: string, conflictsWith: TLineInfo) =
   ## Emit a redefinition error if in non-interactive mode
-  let note = if c.config.cmd == cmdInteractive: warnUser else: errGenerated
-    # xxx consider creating a dedicated warning instead of `warnUser`
+  let note = if c.config.cmd == cmdInteractive: warnRedefinitionRepl else: errGenerated
   localError(c.config, info, note,
     "redefinition of '$1'; previous declaration here: $2" % [s, c.config $ conflictsWith])
 
