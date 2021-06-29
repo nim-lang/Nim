@@ -231,11 +231,10 @@ proc presentFailedCandidates(c: PContext, n: PNode, errors: CandidateErrors):
       of kMissingParam: candidates.add("\n  missing parameter: " & nameParam)
       of kTypeMismatch, kVarNeeded:
         doAssert nArg != nil
-        var wanted = err.firstMismatch.formal.typ
+        let wanted = err.firstMismatch.formal.typ
         doAssert err.firstMismatch.formal != nil
         candidates.add("\n  required type for " & nameParam &  ": ")
-        candidates.add typeToString(wanted)
-        candidates.addDeclaredLocMaybe(c.config, wanted)
+        candidates.addTypeDeclVerboseMaybe(c.config, wanted)
         candidates.add "\n  but expression '"
         if err.firstMismatch.kind == kVarNeeded:
           candidates.add renderNotLValue(nArg)
@@ -243,9 +242,8 @@ proc presentFailedCandidates(c: PContext, n: PNode, errors: CandidateErrors):
         else:
           candidates.add renderTree(nArg)
           candidates.add "' is of type: "
-          var got = nArg.typ
-          candidates.add typeToString(got)
-          candidates.addDeclaredLocMaybe(c.config, got)
+          let got = nArg.typ
+          candidates.addTypeDeclVerboseMaybe(c.config, got)
           doAssert wanted != nil
           if got != nil:
             if got.kind == tyProc and wanted.kind == tyProc:
@@ -274,7 +272,7 @@ proc presentFailedCandidates(c: PContext, n: PNode, errors: CandidateErrors):
 
 const
   errTypeMismatch = "type mismatch: got <"
-  errButExpected = "but expected one of: "
+  errButExpected = "but expected one of:"
   errUndeclaredField = "undeclared field: '$1'"
   errUndeclaredRoutine = "attempting to call undeclared routine: '$1'"
   errBadRoutine = "attempting to call routine: '$1'$2"

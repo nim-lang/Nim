@@ -11,7 +11,7 @@
 
 import
   intsets, ast, astalgo, trees, msgs, strutils, platform, renderer, options,
-  lineinfos, int128, modulegraphs, astmsgs
+  lineinfos, int128, modulegraphs
 
 type
   TPreferedDesc* = enum
@@ -50,6 +50,9 @@ type
     pcmDifferentCallConv
 
 proc typeToString*(typ: PType; prefer: TPreferedDesc = preferName): string
+
+import astmsgs
+
 template `$`*(typ: PType): string = typeToString(typ)
 
 proc base*(t: PType): PType =

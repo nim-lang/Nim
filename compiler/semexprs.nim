@@ -988,7 +988,7 @@ proc semIndirectOp(c: PContext, n: PNode, flags: TExprFlags): PNode =
             break
         if not hasErrorType:
           let typ = n[0].typ
-          msg.add(">\nbut expected one of: \n" &
+          msg.add(">\nbut expected one of:\n" &
               typeToString(typ))
           # prefer notin preferToResolveSymbols
           # t.sym != nil
