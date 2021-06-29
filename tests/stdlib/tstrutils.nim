@@ -7,35 +7,28 @@ from stdtest/testutils import disableVm
 import macros
 # xxx each instance of `disableVm` and `when not defined js:` should eventually be fixed
 
-when defined(i386): # Todo there seems to be a bug regarding i386 and macros
-  template fnTest(base: string, fn: proc (x: string): int, expected: int64, raises: static bool) =
-    when not raises:
-      doAssert fn(base) == expected
-    else:
-      doAssertRaises(ValueError):
-        echo fn(base)
-else:
-  macro fnTest(base: string, fn: proc (x: string): int, expected: int64, raises: static bool): untyped =
-    var prefix: string
-    case fn.strVal
-    of "parseHexInt":
-      prefix = "0x"
-    of "parseOctInt":
-      prefix = "0o"
-    of "parseBinInt":
-      prefix = "0b"
-    else: doAssert false
 
-    if not `raises`:
-      result = quote do:
-        doAssert `fn`(`base`) == `expected`
-        doAssert `fn`(`prefix` & `base`) == `expected`
-    else:
-      result = quote do:
-        doAssertRaises(ValueError):
-          echo `fn`(`base`)
-        doAssertRaises(ValueError):
-          echo `fn`(`prefix` & `base`)
+macro fnTest(base: string, fn: proc (x: string): int, expected: int64, raises: static bool): untyped =
+  var prefix: string
+  case fn.strVal
+  of "parseHexInt":
+    prefix = "0x"
+  of "parseOctInt":
+    prefix = "0o"
+  of "parseBinInt":
+    prefix = "0b"
+  else: doAssert false
+
+  if not `raises`:
+    result = quote do:
+      doAssert `fn`(`base`) == `expected`
+      doAssert `fn`(`prefix` & `base`) == `expected`
+  else:
+    result = quote do:
+      doAssertRaises(ValueError):
+        echo `fn`(`base`)
+      doAssertRaises(ValueError):
+        echo `fn`(`prefix` & `base`)
 
 template hexTest(base: string, expected: int64) =
   fnTest(base, parseHexInt, expected, false)
@@ -866,7 +859,7 @@ bar
     doAssert s.endsWith('a') == false
     doAssert s.endsWith('\0') == false
 
-  when not defined(js):
+  when not defined(js) and not defined(i386):
     block:
       block: # hex
         hexTest("000000000000000000000000000000000000000000000000", 0)
