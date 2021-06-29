@@ -1473,7 +1473,9 @@ proc skipHiddenSubConv*(n: PNode; g: ModuleGraph; idgen: IdGenerator): PNode =
 
 proc callConvMismatch*(formal, actual: PType, indented = false): string =
   assert formal.kind == tyProc and actual.kind == tyProc
-  if formal.callConv != actual.callConv or ccNimCall == formal.callConv and tfExplicitCallConv in formal.flags:
+  let ambigNimProc = formal.callConv in {ccNimCall, ccClosure} and tfExplicitCallConv notin formal.flags
+  if (ambigNimProc and actual.callConv notin {ccNimCall, ccClosure}) or
+      (not ambigNimProc and formal.callConv != actual.callConv):
     let
       got = $(actual.callConv)
       expected = $(formal.callConv)

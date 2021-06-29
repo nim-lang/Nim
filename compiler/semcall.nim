@@ -247,12 +247,14 @@ proc presentFailedCandidates(c: PContext, n: PNode, errors: CandidateErrors):
           candidates.add typeToString(got)
           candidates.addDeclaredLocMaybe(c.config, got)
           doAssert wanted != nil
-          if got != nil: effectProblem(wanted, got, candidates, c)
-          if got.kind == tyProc and wanted.kind == tyProc:
-            # These are proc mismatches so,
-            # add the extra explict detail of the mismatch
-            candidates.add callConvMismatch(wanted, got)
-            candidates.add pragmaMismatch(wanted, got)
+          if got != nil:
+            if got.kind == tyProc and wanted.kind == tyProc:
+              # These are proc mismatches so,
+              # add the extra explict detail of the mismatch
+              candidates.add callConvMismatch(wanted, got)
+              candidates.add pragmaMismatch(wanted, got)
+            effectProblem(wanted, got, candidates, c)
+          
       of kUnknown: discard "do not break 'nim check'"
       candidates.add "\n"
       if err.firstMismatch.arg == 1 and nArg.kind == nkTupleConstr and
