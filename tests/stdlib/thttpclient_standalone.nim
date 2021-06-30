@@ -2,7 +2,7 @@ discard """
   cmd: "nim c --threads:on $file"
 """
 
-import asynchttpserver, httpclient, asyncdispatch, strutils
+import asynchttpserver, httpclient, asyncdispatch, strutils, net
 
 block: # bug #16436
   proc startServer(): AsyncHttpServer =
