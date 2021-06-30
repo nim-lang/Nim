@@ -1,16 +1,30 @@
+discard """
+  targets: "c cpp js"
+"""
+
 # Test builtin sets
 
 template main =
-  var s1: set[char] = {'a', 'b'}
-  var s2: set['a'..'z'] = {'a', 'c'}
-  s2 = s2 + s1
-  echo s2
+  block:
+    var s1: set[char] = {'a', 'b'}
+    var s2: set['a'..'z'] = {'a', 'c'}
+    doAssert not compiles(s1 + s2)
+    doAssert not compiles(s2 + s1)
+    doAssert not compiles(s1 == s2)
+    doAssert not compiles(s2 == s1)
+    doAssert s1 + s1 == s1
+    doAssert s2 + s2 == s2
+    doAssert s1 + s1 == {'a', 'b'}
+    when false:
+      # xxx this fails in c, js, vm and gives cgen error in cpp
+      # it should either give CT error or succeed (special casing literal)
+      doAssert s2 == {'a', 'b'}
 
 static: main()
 main()
 
 
-# xxx these tests are not very good, this should be revisited.
+# xxx the tests below should be improved and merged inside `main`.
 
 when defined nimTestsTsetsGenerate:
   # to generate enums for this test
