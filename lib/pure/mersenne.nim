@@ -57,94 +57,22 @@ proc getSeq*(m: var MersenneTwister, len: int): seq[int] =
   ## Returns seq of pseudorandom ints len long.
   for i in 1..len:
     result.add(int(getNum(m)))
-  ## Might be useful at some point to someone.
 
-
-proc sample*(q: var MersenneTwister, arr: seq[int]): int =
-  ## Takes random sample of an seq[int].
+proc sample*[T](q: var MersenneTwister, arr: seq[T]): T =
+  ## Takes random sample of an seq[T].
   var correspondingValues: seq[uint32]
   var maxVal: uint32 = uint32(4294967295)
   let maxValDivLenArr: uint32 = uint32(float32(maxVal) / float32(len(arr)))
   for i in arr:
     correspondingValues.add(maxVal)
     maxVal = maxVal - maxValDivLenArr
-  let randNum =uint32(getNum(q))
+  let randNum = uint32(getNum(q))
   var largenumrindex: uint32 = 0
   var smallernumindex: uint32 = 1
   while largenumrindex < uint32(len(correspondingValues))  and smallernumindex < uint32(len(correspondingValues)):
    if randNum < correspondingValues[largenumrindex] and randNum > correspondingValues[smallernumindex]:
-    result = arr[largenumrindex]
-    break
+    return arr[largenumrindex]
    elif randNum < correspondingValues[correspondingValues.high]:
-     result = arr[correspondingValues.high]
-     break
-   largenumrindex = largenumrindex + 1
-   smallernumindex = smallernumindex + 1
-
-
-proc sample*(q: var MersenneTwister, arr: seq[char]): char =
-  ## Takes random sample of an seq[char].
-  var correspondingValues: seq[uint32]
-  var maxVal: uint32 = uint32(4294967295)
-  let maxValDivLenArr: uint32 = uint32(float32(maxVal) / float32(len(arr)))
-  for i in arr:
-    correspondingValues.add(maxVal)
-    maxVal = maxVal - maxValDivLenArr
-  let randNum =uint32(getNum(q))
-  var largenumrindex: uint32 = 0
-  var smallernumindex: uint32 = 1
-  while largenumrindex < uint32(len(correspondingValues))  and smallernumindex < uint32(len(correspondingValues)):
-   if randNum < correspondingValues[largenumrindex] and randNum > correspondingValues[smallernumindex]:
-    result = arr[largenumrindex]
-    break
-   elif randNum < correspondingValues[correspondingValues.high]:
-     result = arr[correspondingValues.high]
-     break
-   largenumrindex = largenumrindex + 1
-   smallernumindex = smallernumindex + 1
-
-proc sample*(q: var MersenneTwister, arr: seq[string]): string =
-  ## Takes random sample of an seq[string].
-  var correspondingValues: seq[uint32]
-  var maxVal: uint32 = uint32(4294967295)
-  let maxValDivLenArr: uint32 = uint32(float32(maxVal) / float32(len(arr)))
-  for i in arr:
-    correspondingValues.add(maxVal)
-    maxVal = maxVal - maxValDivLenArr
-  let randNum =uint32(getNum(q))
-  var largenumrindex: uint32 = 0
-  var smallernumindex: uint32 = 1
-  while largenumrindex < uint32(len(correspondingValues))  and smallernumindex < uint32(len(correspondingValues)):
-   if randNum < correspondingValues[largenumrindex] and randNum > correspondingValues[smallernumindex]:
-    result = arr[largenumrindex]
-    break
-   elif randNum < correspondingValues[correspondingValues.high]:
-     result = arr[correspondingValues.high]
-     break
-   largenumrindex = largenumrindex + 1
-   smallernumindex = smallernumindex + 1
-
-
-
-
-proc sample*(q: var MersenneTwister, arr: seq[float]): float =
-  ## Takes random sample of an seq[float].
-
-  var correspondingValues: seq[uint32]
-  var maxVal: uint32 = uint32(4294967295)
-  let maxValDivLenArr: uint32 = uint32(float32(maxVal) / float32(len(arr)))
-  for i in arr:
-    correspondingValues.add(maxVal)
-    maxVal = maxVal - maxValDivLenArr
-  let randNum =uint32(getNum(q))
-  var largenumrindex: uint32 = 0
-  var smallernumindex: uint32 = 1
-  while largenumrindex < uint32(len(correspondingValues))  and smallernumindex < uint32(len(correspondingValues)):
-   if randNum < correspondingValues[largenumrindex] and randNum > correspondingValues[smallernumindex]:
-    result = arr[largenumrindex]
-    break
-   elif randNum < correspondingValues[correspondingValues.high]:
-     result = arr[correspondingValues.high]
-     break
+     return arr[correspondingValues.high]
    largenumrindex = largenumrindex + 1
    smallernumindex = smallernumindex + 1
