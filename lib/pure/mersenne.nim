@@ -62,21 +62,21 @@ proc getSeq*(m: var MersenneTwister, len: int): seq[int] =
 
 proc sample*(q: var MersenneTwister, arr: seq[int]): int =
   ## Takes random sample of an seq[int].
-  var correspondingvalues: seq[uint32]
+  var correspondingValues: seq[uint32]
   var maxVal: uint32 = uint32(4294967295)
-  let maxValdivlenarr: uint32 = uint32(float32(maxVal) / float32(len(arr)))
+  let maxValDivLenArr: uint32 = uint32(float32(maxVal) / float32(len(arr)))
   for i in arr:
-    correspondingvalues.add(maxVal)
-    maxVal = maxVal - maxValdivlenarr
-  let num = uint32(getNum(q))
+    correspondingValues.add(maxVal)
+    maxVal = maxVal - maxValDivLenArr
+  let randNum =uint32(getNum(q))
   var largenumrindex: uint32 = 0
   var smallernumindex: uint32 = 1
-  while largenumrindex < uint32(len(correspondingvalues))  and smallernumindex < uint32(len(correspondingvalues)):
-   if num < correspondingvalues[largenumrindex] and num > correspondingvalues[smallernumindex]:
+  while largenumrindex < uint32(len(correspondingValues))  and smallernumindex < uint32(len(correspondingValues)):
+   if randNum < correspondingValues[largenumrindex] and randNum > correspondingValues[smallernumindex]:
     result = arr[largenumrindex]
     break
-   elif num < correspondingvalues[correspondingvalues.high]:
-     result = arr[correspondingvalues.high]
+   elif randNum < correspondingValues[correspondingValues.high]:
+     result = arr[correspondingValues.high]
      break
    largenumrindex = largenumrindex + 1
    smallernumindex = smallernumindex + 1
@@ -84,42 +84,42 @@ proc sample*(q: var MersenneTwister, arr: seq[int]): int =
 
 proc sample*(q: var MersenneTwister, arr: seq[char]): char =
   ## Takes random sample of an seq[char].
-  var correspondingvalues: seq[uint32]
+  var correspondingValues: seq[uint32]
   var maxVal: uint32 = uint32(4294967295)
-  let maxValdivlenarr: uint32 = uint32(float32(maxVal) / float32(len(arr)))
+  let maxValDivLenArr: uint32 = uint32(float32(maxVal) / float32(len(arr)))
   for i in arr:
-    correspondingvalues.add(maxVal)
-    maxVal = maxVal - maxValdivlenarr
-  let num = uint32(getNum(q))
+    correspondingValues.add(maxVal)
+    maxVal = maxVal - maxValDivLenArr
+  let randNum =uint32(getNum(q))
   var largenumrindex: uint32 = 0
   var smallernumindex: uint32 = 1
-  while largenumrindex < uint32(len(correspondingvalues))  and smallernumindex < uint32(len(correspondingvalues)):
-   if num < correspondingvalues[largenumrindex] and num > correspondingvalues[smallernumindex]:
+  while largenumrindex < uint32(len(correspondingValues))  and smallernumindex < uint32(len(correspondingValues)):
+   if randNum < correspondingValues[largenumrindex] and randNum > correspondingValues[smallernumindex]:
     result = arr[largenumrindex]
     break
-   elif num < correspondingvalues[correspondingvalues.high]:
-     result = arr[correspondingvalues.high]
+   elif randNum < correspondingValues[correspondingValues.high]:
+     result = arr[correspondingValues.high]
      break
    largenumrindex = largenumrindex + 1
    smallernumindex = smallernumindex + 1
 
 proc sample*(q: var MersenneTwister, arr: seq[string]): string =
   ## Takes random sample of an seq[string].
-  var correspondingvalues: seq[uint32]
+  var correspondingValues: seq[uint32]
   var maxVal: uint32 = uint32(4294967295)
-  let maxValdivlenarr: uint32 = uint32(float32(maxVal) / float32(len(arr)))
+  let maxValDivLenArr: uint32 = uint32(float32(maxVal) / float32(len(arr)))
   for i in arr:
-    correspondingvalues.add(maxVal)
-    maxVal = maxVal - maxValdivlenarr
-  let num = uint32(getNum(q))
+    correspondingValues.add(maxVal)
+    maxVal = maxVal - maxValDivLenArr
+  let randNum =uint32(getNum(q))
   var largenumrindex: uint32 = 0
   var smallernumindex: uint32 = 1
-  while largenumrindex < uint32(len(correspondingvalues))  and smallernumindex < uint32(len(correspondingvalues)):
-   if num < correspondingvalues[largenumrindex] and num > correspondingvalues[smallernumindex]:
+  while largenumrindex < uint32(len(correspondingValues))  and smallernumindex < uint32(len(correspondingValues)):
+   if randNum < correspondingValues[largenumrindex] and randNum > correspondingValues[smallernumindex]:
     result = arr[largenumrindex]
     break
-   elif num < correspondingvalues[correspondingvalues.high]:
-     result = arr[correspondingvalues.high]
+   elif randNum < correspondingValues[correspondingValues.high]:
+     result = arr[correspondingValues.high]
      break
    largenumrindex = largenumrindex + 1
    smallernumindex = smallernumindex + 1
@@ -130,21 +130,21 @@ proc sample*(q: var MersenneTwister, arr: seq[string]): string =
 proc sample*(q: var MersenneTwister, arr: seq[float]): float =
   ## Takes random sample of an seq[float].
 
-  var correspondingvalues: seq[uint32]
+  var correspondingValues: seq[uint32]
   var maxVal: uint32 = uint32(4294967295)
-  let maxValdivlenarr: uint32 = uint32(float32(maxVal) / float32(len(arr)))
+  let maxValDivLenArr: uint32 = uint32(float32(maxVal) / float32(len(arr)))
   for i in arr:
-    correspondingvalues.add(maxVal)
-    maxVal = maxVal - maxValdivlenarr
-  let num = uint32(getNum(q))
+    correspondingValues.add(maxVal)
+    maxVal = maxVal - maxValDivLenArr
+  let randNum =uint32(getNum(q))
   var largenumrindex: uint32 = 0
   var smallernumindex: uint32 = 1
-  while largenumrindex < uint32(len(correspondingvalues))  and smallernumindex < uint32(len(correspondingvalues)):
-   if num < correspondingvalues[largenumrindex] and num > correspondingvalues[smallernumindex]:
+  while largenumrindex < uint32(len(correspondingValues))  and smallernumindex < uint32(len(correspondingValues)):
+   if randNum < correspondingValues[largenumrindex] and randNum > correspondingValues[smallernumindex]:
     result = arr[largenumrindex]
     break
-   elif num < correspondingvalues[correspondingvalues.high]:
-     result = arr[correspondingvalues.high]
+   elif randNum < correspondingValues[correspondingValues.high]:
+     result = arr[correspondingValues.high]
      break
    largenumrindex = largenumrindex + 1
    smallernumindex = smallernumindex + 1
