@@ -208,7 +208,8 @@
   returning a tuple which can be unpacked for easier usage of `scanf`.
 
 - Added `setutils.toSet` that can take any iterable and convert it to a built-in `set`,
-  if the iterable yields a built-in settable type.
+  if the iterable yields a built-in settable type; it also allows specifying set type
+  to convert between set types.
 
 - Added `setutils.fullSet` which returns a full built-in `set` for a valid type.
 
