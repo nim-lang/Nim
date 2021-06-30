@@ -215,14 +215,14 @@ proc buildTools(args: string = "") =
                  options = "-d:release " & args)
   when defined(windows): buildVccTool(args)
   bundleNimpretty(args)
-  nimCompileFold("Compile testament", "testament/testament.nim", options = "-d:release" & args)
+  nimCompileFold("Compile testament", "testament/testament.nim", options = "-d:release " & args)
 
   # pre-packages a debug version of nim which can help in many cases investigate issuses
   # withouth having to rebuild compiler.
   # `-d:nimDebugUtils` only makes sense when temporarily editing/debugging compiler
   # `-d:debug` should be changed to a flag that doesn't require re-compiling nim
   # `--opt:speed` is a sensible default even for a debug build, it doesn't affect nim stacktraces
-  nimCompileFold("Compile nim_dbg", "compiler/nim.nim", options = "--opt:speed --stacktrace -d:debug --stacktraceMsgs -d:nimCompilerStacktraceHints" & args, outputName = "nim_dbg")
+  nimCompileFold("Compile nim_dbg", "compiler/nim.nim", options = "--opt:speed --stacktrace -d:debug --stacktraceMsgs -d:nimCompilerStacktraceHints " & args, outputName = "nim_dbg")
 
 proc nsis(latest: bool; args: string) =
   bundleNimbleExe(latest, args)
