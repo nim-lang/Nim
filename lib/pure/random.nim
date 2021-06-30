@@ -464,7 +464,7 @@ proc sample*[T, U](r: var Rand; a: openArray[T]; cdf: openArray[U]): T =
   let u = r.rand(float(cdf[^1]))
   a[cdf.upperBound(U(u))]
 
-proc sample*[T, U](a: openArray[T]; cdf: openArray[U]): lent T =
+proc sample*[T, U](a: openArray[T]; cdf: openArray[U]): T =
   ## Returns an element from `a` using a cumulative distribution function
   ## (CDF).
   ##
