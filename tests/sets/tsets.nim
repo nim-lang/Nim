@@ -1,5 +1,15 @@
 # Test builtin sets
 
+template main =
+  var s1: set[char] = {'a', 'b'}
+  var s2: set['a'..'z'] = {'a', 'c'}
+  s2 = s2 + s1
+  echo s2
+
+static: main()
+main()
+
+
 # xxx these tests are not very good, this should be revisited.
 
 when defined nimTestsTsetsGenerate:
