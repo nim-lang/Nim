@@ -87,7 +87,11 @@ type
   UnpackDefect* = object of Defect
   UnpackError* {.deprecated: "See corresponding Defect".} = UnpackDefect
 
-type MaybeOption[T](_: typedesc[T]) =
+template maybeOption*[T](_: typedesc[T]): untyped =
+  ## Return `T` if T is `ref | ptr | pointer | proc`, else `Option[T]`
+  runnableExamples:
+    assert maybeOption(ref int) is ref int
+    assert maybeOption(int) is Option[int]
   when T is SomePointer: T
   else: Option[T]
 
@@ -104,7 +108,7 @@ proc option*[T](val: sink T): Option[T] {.inline.} =
         a: int
         b: string
 
-    assert option[Foo](nil).isNone
+    assert option[Foo](nil).isSome
     assert option(42).isSome
 
   result.val = val
