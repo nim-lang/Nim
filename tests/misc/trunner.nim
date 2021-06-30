@@ -6,6 +6,8 @@ discard """
 ## tests that don't quite fit the mold and are easier to handle via `execCmdEx`
 ## A few others could be added to here to simplify code.
 ## Note: this test is a bit slow but tests a lot of things; please don't disable.
+## Note: if needed, we could use `matrix: "-d:case1; -d:case2"` to split this
+## into several independent tests while retaining the common test helpers.
 
 import std/[strformat,os,osproc,unittest,compilesettings]
 from std/sequtils import toSeq,mapIt
@@ -31,15 +33,22 @@ const
 
 proc runNimCmd(file, options = "", rtarg = ""): auto =
   let fileabs = testsDir / file.unixToNativePath
-  doAssert fileabs.fileExists, fileabs
+  # doAssert fileabs.fileExists, fileabs # disabled because this allows passing `nim r --eval:code fakefile`
   let cmd = fmt"{nim} {mode} {options} --hints:off {fileabs} {rtarg}"
   result = execCmdEx(cmd)
-  when false:  echo result[0] & "\n" & result[1] # for debugging
+  when false: # for debugging
+    echo cmd
+    echo result[0] & "\n" & $result[1]
 
 proc runNimCmdChk(file, options = "", rtarg = ""): string =
   let (ret, status) = runNimCmd(file, options, rtarg = rtarg)
   doAssert status == 0, $(file, options) & "\n" & ret
   ret
+
+proc genShellCmd(filename: string): string =
+  let filename = filename.quoteShell
+  when defined(windows): "cmd /c " & filename # or "cmd /c " ?
+  else: "sh " & filename
 
 when defined(nimTrunnerFfi):
   block: # mevalffi
@@ -69,7 +78,9 @@ foo:0.03:asdf:103:105
 ret=[s1:foobar s2:foobar age:25 pi:3.14]
 """, output
 
-else: # don't run twice the same test
+elif not defined(nimTestsTrunnerDebugging):
+  # don't run twice the same test with `nimTrunnerFfi`
+  # use `-d:nimTestsTrunnerDebugging` for debugging convenience when you want to just run 1 test
   import std/strutils
   import std/json
   template check2(msg) = doAssert msg in output, output
@@ -328,3 +339,21 @@ running: v2
     doAssert "D20210428T161003" in j["defined_symbols"].to(seq[string])
     doAssert j["version"].to(string) == NimVersion
     doAssert j["nimExe"].to(string) == getCurrentCompilerExe()
+
+  block: # genscript
+    const nimcache2 = buildDir / "D20210524T212851"
+    removeDir(nimcache2)
+    let input = "tgenscript_fakefile" # no need for a real file, --eval is good enough
+    let output = runNimCmdChk(input, fmt"""--genscript --nimcache:{nimcache2.quoteShell} --eval:"echo(12345)" """)
+    doAssert output.len == 0, output
+    let ext = when defined(windows): ".bat" else: ".sh"
+    let filename = fmt"compile_{input}{ext}" # synchronize with `generateScript`
+    doAssert fileExists(nimcache2/filename), nimcache2/filename
+    let (outp, status) = execCmdEx(genShellCmd(filename), options = {poStdErrToStdOut}, workingDir = nimcache2)
+    doAssert status == 0, outp
+    let (outp2, status2) = execCmdEx(nimcache2 / input, options = {poStdErrToStdOut})
+    doAssert outp2 == "12345\n", outp2
+    doAssert status2 == 0
+
+else:
+  discard # only during debugging, tests added here will run with `-d:nimTestsTrunnerDebugging` enabled

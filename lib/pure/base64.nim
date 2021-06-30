@@ -132,7 +132,7 @@ template encodeInternal(s, alphabet: typed): untyped =
   result.setLen(outputIndex)
 
 template encodeImpl() {.dirty.} =
-  when nimVM:
+  when nimvm:
     block:
       let lookupTableVM = if safe: cb64safeVM else: cb64VM
       encodeInternal(s, lookupTableVM)

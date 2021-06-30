@@ -23,13 +23,11 @@ const
     "debugger",
     "dll",
     "examples",
-    "flags",
     "gc",
     "io",
     "js",
     "ic",
     "lib",
-    "longgc",
     "manyloc",
     "nimble-packages",
     "niminaction",
@@ -40,33 +38,12 @@ const
     "coroutines",
     "osproc",
     "shouldfail",
-    "dir with space",
     "destructor"
   ]
 
 proc isTestFile*(file: string): bool =
   let (_, name, ext) = splitFile(file)
   result = ext == ".nim" and name.startsWith("t")
-
-# --------------------- flags tests -------------------------------------------
-
-proc flagTests(r: var TResults, cat: Category, options: string) =
-  # --genscript
-  const filename = testsDir/"flags"/"tgenscript"
-  const genopts = " --genscript"
-  let nimcache = nimcacheDir(filename, genopts, targetC)
-  testSpec r, makeTest(filename, genopts, cat)
-
-  when defined(windows):
-    testExec r, makeTest(filename, " cmd /c cd " & nimcache &
-                         " && compile_tgenscript.bat", cat)
-
-  elif defined(posix):
-    testExec r, makeTest(filename, " sh -c \"cd " & nimcache &
-                         " && sh compile_tgenscript.sh\"", cat)
-
-  # Run
-  testExec r, makeTest(filename, " " & nimcache / "tgenscript", cat)
 
 # --------------------- DLL generation tests ----------------------------------
 
@@ -108,8 +85,9 @@ proc runBasicDLLTest(c, r: var TResults, cat: Category, options: string) =
     var hcri = makeTest("tests/dll/nimhcr_integration.nim",
                                    options & " --forceBuild --hotCodeReloading:on" & rpath, cat)
     let nimcache = nimcacheDir(hcri.name, hcri.options, getTestSpecTarget())
-    hcri.args = prepareTestArgs(hcri.spec.getCmd, hcri.name,
+    let cmd = prepareTestCmd(hcri.spec.getCmd, hcri.name,
                                 hcri.options, nimcache, getTestSpecTarget())
+    hcri.testArgs = cmd.parseCmdLine
     testSpec r, hcri
 
 proc dllTests(r: var TResults, cat: Category, options: string) =
@@ -176,19 +154,6 @@ proc gcTests(r: var TResults, cat: Category, options: string) =
   test "cyclecollector"
   testWithoutBoehm "trace_globals"
 
-proc longGCTests(r: var TResults, cat: Category, options: string) =
-  when defined(windows):
-    let cOptions = "-ldl -DWIN"
-  else:
-    let cOptions = "-ldl"
-
-  var c = initResults()
-  # According to ioTests, this should compile the file
-  testSpec c, makeTest("tests/realtimeGC/shared", options, cat)
-  #        ^- why is this not appended to r? Should this be discarded?
-  testC r, makeTest("tests/realtimeGC/cmain", cOptions, cat), actionRun
-  testSpec r, makeTest("tests/realtimeGC/nmain", options & "--threads: on", cat)
-
 # ------------------------- threading tests -----------------------------------
 
 proc threadTests(r: var TResults, cat: Category, options: string) =
@@ -206,6 +171,11 @@ proc ioTests(r: var TResults, cat: Category, options: string) =
   # dummy compile result:
   var c = initResults()
   testSpec c, makeTest("tests/system/helpers/readall_echo", options, cat)
+  #        ^- why is this not appended to r? Should this be discarded?
+  # EDIT: this should be replaced by something like in D20210524T180826,
+  # likewise in similar instances where `testSpec c` is used, or more generally
+  # when a test depends on another test, as it makes tests non-independent,
+  # creating complications for batching and megatest logic.
   testSpec r, makeTest("tests/system/tio", options, cat)
 
 # ------------------------- async tests ---------------------------------------
@@ -424,11 +394,12 @@ proc listPackages(packageFilter: string): seq[NimblePackage] =
     # at least should be a regex; a substring match makes no sense.
     result = pkgs.filterIt(packageFilter in it.name)
   else:
-    let pkgs1 = pkgs.filterIt(it.allowFailure)
-    let pkgs2 = pkgs.filterIt(not it.allowFailure)
     if testamentData0.batchArg == "allowed_failures":
-      result = pkgs1
+      result = pkgs.filterIt(it.allowFailure)
+    elif testamentData0.testamentNumBatch == 0:
+      result = pkgs
     else:
+      let pkgs2 = pkgs.filterIt(not it.allowFailure)
       for i in 0..<pkgs2.len:
         if i mod testamentData0.testamentNumBatch == testamentData0.testamentBatch:
           result.add pkgs2[i]
@@ -501,11 +472,11 @@ proc testNimblePackages(r: var TResults; cat: Category; packageFilter: string) =
 proc icTests(r: var TResults; testsDir: string, cat: Category, options: string;
              isNavigatorTest: bool) =
   const
-    tooltests = ["compiler/nim.nim", "tools/nimgrep.nim"]
+    tooltests = ["compiler/nim.nim"]
     writeOnly = " --incremental:writeonly "
     readOnly = " --incremental:readonly "
     incrementalOn = " --incremental:on -d:nimIcIntegrityChecks "
-    navTestConfig = " --ic:on -d:nimIcNavigatorTests --hint[Conf]:off --warnings:off "
+    navTestConfig = " --ic:on -d:nimIcNavigatorTests --hint:Conf:off --warnings:off "
 
   template test(x: untyped) =
     testSpecWithNimcache(r, makeRawTest(file, x & options, cat), nimcache)
@@ -516,6 +487,24 @@ proc icTests(r: var TResults; testsDir: string, cat: Category, options: string;
       test.spec.action = actionCompile
     test.spec.targets = {getTestSpecTarget()}
     testSpecWithNimcache(r, test, nimcache)
+
+  template checkTest() =
+    var test = makeRawTest(file, options, cat)
+    test.spec.cmd = compilerPrefix & " check --hint:Conf:off --warnings:off --ic:on $options " & file
+    testSpecWithNimcache(r, test, nimcache)
+
+  if not isNavigatorTest:
+    for file in tooltests:
+      let nimcache = nimcacheDir(file, options, getTestSpecTarget())
+      removeDir(nimcache)
+
+      let oldPassed = r.passed
+      checkTest()
+
+      if r.passed == oldPassed+1:
+        checkTest()
+        if r.passed == oldPassed+2:
+          checkTest()
 
   const tempExt = "_temp.nim"
   for it in walkDirRec(testsDir):
@@ -530,19 +519,6 @@ proc icTests(r: var TResults; testsDir: string, cat: Category, options: string;
         let oldPassed = r.passed
         editedTest(if isNavigatorTest: navTestConfig else: incrementalOn)
         if r.passed != oldPassed+1: break
-
-  if not isNavigatorTest and false:
-    for file in tooltests:
-      let nimcache = nimcacheDir(file, options, getTestSpecTarget())
-      removeDir(nimcache)
-
-      let oldPassed = r.passed
-      test writeOnly
-
-      if r.passed == oldPassed+1:
-        test readOnly
-        if r.passed == oldPassed+2:
-          test readOnly
 
 # ----------------------------------------------------------------------------
 
@@ -600,12 +576,19 @@ proc runJoinedTest(r: var TResults, cat: Category, testsDir: string, options: st
   ]#
   var specs: seq[TSpec] = @[]
   for kind, dir in walkDir(testsDir):
-    assert testsDir.startsWith(testsDir)
+    assert dir.startsWith(testsDir)
     let cat = dir[testsDir.len .. ^1]
     if kind == pcDir and cat notin specialCategories:
       for file in walkDirRec(testsDir / cat):
         if isTestFile(file):
-          let spec = parseSpec(file)
+          var spec: TSpec
+          try:
+            spec = parseSpec(file)
+          except ValueError:
+            # e.g. for `tests/navigator/tincludefile.nim` which have multiple
+            # specs; this will be handled elsewhere
+            echo "parseSpec failed for: '$1', assuming this will be handled outside of megatest" % file
+            continue
           if isJoinableSpec(spec):
             specs.add spec
 
@@ -692,12 +675,8 @@ proc processCategory(r: var TResults, cat: Category,
         jsTests(r, cat, options)
     of "dll":
       dllTests(r, cat, options)
-    of "flags":
-      flagTests(r, cat, options)
     of "gc":
       gcTests(r, cat, options)
-    of "longgc":
-      longGCTests(r, cat, options)
     of "debugger":
       debuggerTests(r, cat, options)
     of "manyloc":

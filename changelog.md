@@ -63,6 +63,22 @@
 - Nim compiler now adds ASCII unit separator `\31` before a newline for every generated
   message (potentially multiline), so tooling can tell when messages start and end.
 
+- `random.initRand(seed)` now produces non-skewed values for the 1st call to `rand()` after
+  initialization with a small (< 30000) seed. Use `-d:nimLegacyRandomInitRand` to restore
+  previous behavior for a transition time, see PR #17467.
+
+- `jsonutils` now serializes/deserializes holey enums as regular enums (via `ord`) instead of as strings.
+  Use `-d:nimLegacyJsonutilsHoleyEnum` for a transition period.
+
+- `json` and `jsonutils` now serialize NaN, Inf, -Inf as strings, so that
+  `%[NaN, -Inf]` is the string `["nan","-inf"]` instead of `[nan,-inf]` which was invalid json.
+
+- `strformat` is now part of `include std/prelude`.
+
+- The configuration subsystem now allows for `-d:release` and `-d:danger` to work as expected.
+  The downside is that these defines now have custom logic that doesn't apply for
+  other defines.
+
 
 ## Standard library additions and changes
 - Added support for parenthesized expressions in `strformat`
@@ -106,22 +122,32 @@
 
 - Added `BackwardsIndex` overload for `JsonNode`.
 
-- added `jsonutils.jsonTo` overload with `opt = Joptions()` param.
-
 - `json.%`,`json.to`, `jsonutils.formJson`,`jsonutils.toJson` now work with `uint|uint64`
   instead of raising (as in 1.4) or giving wrong results (as in 1.2).
+
+- `jsonutils` now handles `cstring` (including as Table key), and `set`.
+
+- added `jsonutils.jsonTo` overload with `opt = Joptions()` param.
+
+- `jsonutils.toJson` now supports customization via `ToJsonOptions`.
 
 - Added an overload for the `collect` macro that inferes the container type based
   on the syntax of the last expression. Works with std seqs, tables and sets.
 
-- `jsonutils` now handles `cstring` (including as Table key).
-
 - Added `randState` template that exposes the default random number generator.
   Useful for library authors.
+
+- Added `random.initRand()` overload with no argument which uses the current time as a seed.
+
+- `random.initRand(seed)` now allows `seed == 0`.
+
+- Added `std/sysrand` module to get random numbers from a secure source
+  provided by the operating system.
 
 - Added `std/enumutils` module. Added `genEnumCaseStmt` macro that generates case statement to parse string to enum.
   Added `items` for enums with holes.
   Added `symbolName` to return the enum symbol name ignoring the human readable name.
+  Added `symbolRank` to return the index in which an enum member is listed in an enum.
 
 - Added `typetraits.HoleyEnum` for enums with holes, `OrdinalEnum` for enums without holes.
 
@@ -205,9 +231,6 @@
 
 - Deprecated `any`. See https://github.com/nim-lang/RFCs/issues/281
 
-- Added `std/sysrand` module to get random numbers from a secure source
-  provided by the operating system.
-
 - Added optional `options` argument to `copyFile`, `copyFileToDir`, and
   `copyFileWithPermissions`. By default, on non-Windows OSes, symlinks are
   followed (copy files symlinks point to); on Windows, `options` argument is
@@ -224,8 +247,6 @@
 
 - Added `os.isAdmin` to tell whether the caller's process is a member of the
   Administrators local group (on Windows) or a root (on POSIX).
-
-- Added `random.initRand()` overload with no argument which uses the current time as a seed.
 
 - Added experimental `linenoise.readLineStatus` to get line and status (e.g. ctrl-D or ctrl-C).
 
@@ -299,6 +320,7 @@
 
 - Added `copyWithin` [for `seq` and `array` for JavaScript targets](https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Array/copyWithin).
 
+- Fixed premature garbage collection in asyncdispatch, when a stack trace override is in place.
 
 ## Language changes
 

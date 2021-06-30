@@ -20,10 +20,10 @@ jobs:
         with:
           fetch-depth: 2
 
-      - name: 'Install node.js 12.x'
+      - name: 'Install node.js 16.x'
         uses: actions/setup-node@v2
         with:
-          node-version: '12.x'
+          node-version: '16.x'
 
       - name: 'Install dependencies (Linux amd64)'
         if: runner.os == 'Linux' && matrix.cpu == 'amd64'
@@ -40,29 +40,23 @@ jobs:
         if: runner.os == 'Windows'
         shell: bash
         run: |
-          mkdir dist
-          curl -L https://nim-lang.org/download/mingw64.7z -o dist/mingw64.7z
-          curl -L https://nim-lang.org/download/dlls.zip -o dist/dlls.zip
-          7z x dist/mingw64.7z -odist
-          7z x dist/dlls.zip -obin
-          echo "${{ github.workspace }}/dist/mingw64/bin" >> "${GITHUB_PATH}"
+          set -e
+          . ci/funs.sh
+          nimInternalInstallDepsWindows
+          echo_run echo "${{ github.workspace }}/dist/mingw64/bin" >> "${GITHUB_PATH}"
 
       - name: 'Add build binaries to PATH'
         shell: bash
         run: echo "${{ github.workspace }}/bin" >> "${GITHUB_PATH}"
 
+      - name: 'System information'
+        shell: bash
+        run: . ci/funs.sh && nimCiSystemInfo
+
       - name: 'Build csourcesAny'
         shell: bash
         run: . ci/funs.sh && nimBuildCsourcesIfNeeded CC=gcc ucpu='${{ matrix.cpu }}'
 
-      - name: 'Build koch'
+      - name: 'koch, Run CI'
         shell: bash
-        run: nim c koch
-      - name: 'Run CI'
-        shell: bash
-        run: ./koch runCI
-
-      - name: 'Show failed tests'
-        if: failure()
-        shell: bash
-        run: nim c -r tools/ci_testresults.nim
+        run: . ci/funs.sh && nimInternalBuildKochAndRunCI

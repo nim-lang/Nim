@@ -467,7 +467,7 @@ proc genCase(c: var Con; n: PNode) =
       # treat the last branch as 'else' if this is an exhaustive case statement.
       c.gen(it.lastSon)
       if endings.len != 0:
-          c.patch(endings[^1])
+        c.patch(endings[^1])
     else:
       forkT(it.lastSon):
         c.gen(it.lastSon)

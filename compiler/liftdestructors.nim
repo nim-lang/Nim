@@ -480,13 +480,17 @@ proc setLenSeqCall(c: var TLiftCtx; t: PType; x, y: PNode): PNode =
   result = newTree(nkCall, newSymNode(op, x.info), x, lenCall)
 
 proc forallElements(c: var TLiftCtx; t: PType; body, x, y: PNode) =
+  let counterIdx = body.len
   let i = declareCounter(c, body, toInt64(firstOrd(c.g.config, t)))
   let whileLoop = genWhileLoop(c, i, x)
   let elemType = t.lastSon
   let b = if c.kind == attachedTrace: y else: y.at(i, elemType)
   fillBody(c, elemType, whileLoop[1], x.at(i, elemType), b)
-  addIncStmt(c, whileLoop[1], i)
-  body.add whileLoop
+  if whileLoop[1].len > 0:
+    addIncStmt(c, whileLoop[1], i)
+    body.add whileLoop
+  else:
+    body.sons.setLen counterIdx
 
 proc fillSeqOp(c: var TLiftCtx; t: PType; body, x, y: PNode) =
   case c.kind
@@ -509,8 +513,9 @@ proc fillSeqOp(c: var TLiftCtx; t: PType; body, x, y: PNode) =
     forallElements(c, t, body, x, y)
     body.add genBuiltin(c, mDestroy, "destroy", x)
   of attachedTrace:
-    # follow all elements:
-    forallElements(c, t, body, x, y)
+    if canFormAcycle(t.elemType):
+      # follow all elements:
+      forallElements(c, t, body, x, y)
   of attachedDispose:
     forallElements(c, t, body, x, y)
     body.add genBuiltin(c, mDestroy, "destroy", x)
@@ -546,10 +551,11 @@ proc useSeqOrStrOp(c: var TLiftCtx; t: PType; body, x, y: PNode) =
     doAssert t.destructor != nil
     body.add destructorCall(c, t.destructor, x)
   of attachedTrace:
-    let op = getAttachedOp(c.g, t, c.kind)
-    if op == nil:
-      return # protect from recursion
-    body.add newHookCall(c, op, x, y)
+    if t.kind != tyString and canFormAcycle(t.elemType):
+      let op = getAttachedOp(c.g, t, c.kind)
+      if op == nil:
+        return # protect from recursion
+      body.add newHookCall(c, op, x, y)
   of attachedDispose:
     let op = getAttachedOp(c.g, t, c.kind)
     if op == nil:
@@ -652,16 +658,20 @@ proc atomicRefOp(c: var TLiftCtx; t: PType; body, x, y: PNode) =
     body.add genIf(c, cond, actions)
   of attachedDeepCopy: assert(false, "cannot happen")
   of attachedTrace:
-    if isFinal(elemType):
-      let typInfo = genBuiltin(c, mGetTypeInfoV2, "getTypeInfoV2", newNodeIT(nkType, x.info, elemType))
-      typInfo.typ = getSysType(c.g, c.info, tyPointer)
-      body.add callCodegenProc(c.g, "nimTraceRef", c.info, genAddrOf(x, c.idgen), typInfo, y)
-    else:
-      # If the ref is polymorphic we have to account for this
-      body.add callCodegenProc(c.g, "nimTraceRefDyn", c.info, genAddrOf(x, c.idgen), y)
+    if isCyclic:
+      if isFinal(elemType):
+        let typInfo = genBuiltin(c, mGetTypeInfoV2, "getTypeInfoV2", newNodeIT(nkType, x.info, elemType))
+        typInfo.typ = getSysType(c.g, c.info, tyPointer)
+        body.add callCodegenProc(c.g, "nimTraceRef", c.info, genAddrOf(x, c.idgen), typInfo, y)
+      else:
+        # If the ref is polymorphic we have to account for this
+        body.add callCodegenProc(c.g, "nimTraceRefDyn", c.info, genAddrOf(x, c.idgen), y)
+      #echo "can follow ", elemType, " static ", isFinal(elemType)
   of attachedDispose:
     # this is crucial! dispose is like =destroy but we don't follow refs
     # as that is dealt within the cycle collector.
+    if not isCyclic:
+      body.add genIf(c, cond, actions)
     when false:
       let cond = copyTree(x)
       cond.typ = getSysType(c.g, x.info, tyBool)

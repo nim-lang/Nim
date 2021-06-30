@@ -634,9 +634,9 @@ proc valgrind(cmd: string) =
   let supp = getAppDir() / "tools" / "nimgrind.supp"
   exec("valgrind --suppressions=" & supp & valcmd)
 
-proc showHelp() =
+proc showHelp(success: bool) =
   quit(HelpText % [VersionAsString & spaces(44-len(VersionAsString)),
-                   CompileDate, CompileTime], QuitSuccess)
+                   CompileDate, CompileTime], if success: QuitSuccess else: QuitFailure)
 
 proc branchDone() =
   let thisBranch = execProcess("git symbolic-ref --short HEAD").strip()
@@ -656,6 +656,7 @@ when isMainModule:
     case op.kind
     of cmdLongOption, cmdShortOption:
       case normalize(op.key)
+      of "help", "h": showHelp(success = true)
       of "latest": latest = true
       of "stable": latest = false
       of "nim": nimExe = op.val.absolutePath # absolute so still works with changeDir
@@ -663,7 +664,7 @@ when isMainModule:
         localDocsOnly = true
         if op.val.len > 0:
           localDocsOut = op.val.absolutePath
-      else: showHelp()
+      else: showHelp(success = false)
     of cmdArgument:
       case normalize(op.key)
       of "boot": boot(op.cmdLineRest)
@@ -705,6 +706,6 @@ when isMainModule:
         exec("nimble install -y fusion@$#" % suffix)
       of "ic": icTest(op.cmdLineRest)
       of "branchdone": branchDone()
-      else: showHelp()
+      else: showHelp(success = false)
       break
     of cmdEnd: break

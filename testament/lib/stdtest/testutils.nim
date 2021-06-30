@@ -29,11 +29,17 @@ template flakyAssert*(cond: untyped, msg = "", notifySuccess = true) =
 when not defined(js):
   import std/strutils
 
-  proc greedyOrderedSubsetLines*(lhs, rhs: string): bool =
+  proc greedyOrderedSubsetLines*(lhs, rhs: string, allowPrefixMatch = false): bool =
     ## Returns true if each stripped line in `lhs` appears in rhs, using a greedy matching.
+    # xxx improve error reporting by showing the last matched pair
     iterator splitLinesClosure(): string {.closure.} =
       for line in splitLines(rhs.strip):
         yield line
+    template isMatch(lhsi, rhsi): bool =
+      if allowPrefixMatch:
+        startsWith(rhsi, lhsi):
+      else:
+        lhsi == rhsi
 
     var rhsIter = splitLinesClosure
     var currentLine = strip(rhsIter())
@@ -41,7 +47,7 @@ when not defined(js):
     for line in lhs.strip.splitLines:
       let line = line.strip
       if line.len != 0:
-        while line != currentLine:
+        while not isMatch(line, currentLine):
           currentLine = strip(rhsIter())
           if rhsIter.finished:
             return false

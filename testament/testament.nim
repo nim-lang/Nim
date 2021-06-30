@@ -85,7 +85,7 @@ type
     name: string
     cat: Category
     options: string
-    args: seq[string]
+    testArgs: seq[string]
     spec: TSpec
     startTime: float
     debugInfo: string
@@ -154,26 +154,26 @@ proc nimcacheDir(filename, options: string, target: TTarget): string =
   let hashInput = options & $target
   result = "nimcache" / (filename & '_' & hashInput.getMD5)
 
-proc prepareTestArgs(cmdTemplate, filename, options, nimcache: string,
-                     target: TTarget, extraOptions = ""): seq[string] =
+proc prepareTestCmd(cmdTemplate, filename, options, nimcache: string,
+                     target: TTarget, extraOptions = ""): string =
   var options = target.defaultOptions & ' ' & options
-  # improve pending https://github.com/nim-lang/Nim/issues/14343
-  if nimcache.len > 0: options.add ' ' & ("--nimCache:" & nimcache).quoteShell
+  if nimcache.len > 0: options.add(" --nimCache:$#" % nimcache.quoteShell)
   options.add ' ' & extraOptions
-  result = parseCmdLine(cmdTemplate % ["target", targetToCmd[target],
+  # we avoid using `parseCmdLine` which is buggy, refs bug #14343
+  result = cmdTemplate % ["target", targetToCmd[target],
                       "options", options, "file", filename.quoteShell,
-                      "filedir", filename.getFileDir(), "nim", compilerPrefix])
+                      "filedir", filename.getFileDir(), "nim", compilerPrefix]
 
 proc callNimCompiler(cmdTemplate, filename, options, nimcache: string,
                      target: TTarget, extraOptions = ""): TSpec =
-  let c = prepareTestArgs(cmdTemplate, filename, options, nimcache, target,
+  result.cmd = prepareTestCmd(cmdTemplate, filename, options, nimcache, target,
                           extraOptions)
-  result.cmd = quoteShellCommand(c)
-  verboseCmd(c.quoteShellCommand)
-  var p = startProcess(command = c[0], args = c[1 .. ^1],
-                       options = {poStdErrToStdOut, poUsePath})
+  verboseCmd(result.cmd)
+  var p = startProcess(command = result.cmd,
+                       options = {poStdErrToStdOut, poUsePath, poEvalCommand})
   let outp = p.outputStream
-  var suc = ""
+  var foundSuccessMsg = false
+  var foundErrorMsg = false
   var err = ""
   var x = newStringOfCap(120)
   result.nimout = ""
@@ -182,10 +182,11 @@ proc callNimCompiler(cmdTemplate, filename, options, nimcache: string,
       trimUnitSep x
       result.nimout.add(x & '\n')
       if x =~ pegOfInterest:
-        # `err` should contain the last error/warning message
+        # `err` should contain the last error message
         err = x
+        foundErrorMsg = true
       elif x.isSuccess:
-        suc = x
+        foundSuccessMsg = true
     elif not running(p):
       break
   close(p)
@@ -194,7 +195,23 @@ proc callNimCompiler(cmdTemplate, filename, options, nimcache: string,
   result.output = ""
   result.line = 0
   result.column = 0
+
   result.err = reNimcCrash
+  let exitCode = p.peekExitCode
+  case exitCode
+  of 0:
+    if foundErrorMsg:
+      result.debugInfo.add " compiler exit code was 0 but some Error's were found."
+    else:
+      result.err = reSuccess
+  of 1:
+    if not foundErrorMsg:
+      result.debugInfo.add " compiler exit code was 1 but no Error's were found."
+    if foundSuccessMsg:
+      result.debugInfo.add " compiler exit code was 1 but no `isSuccess` was true."
+  else:
+    result.debugInfo.add " expected compiler exit code 0 or 1, got $1." % $exitCode
+
   if err =~ pegLineError:
     result.file = extractFilename(matches[0])
     result.line = parseInt(matches[1])
@@ -202,30 +219,7 @@ proc callNimCompiler(cmdTemplate, filename, options, nimcache: string,
     result.msg = matches[3]
   elif err =~ pegOtherError:
     result.msg = matches[0]
-  elif suc.isSuccess:
-    result.err = reSuccess
   trimUnitSep result.msg
-
-proc callCCompiler(cmdTemplate, filename, options: string,
-                  target: TTarget): TSpec =
-  let c = prepareTestArgs(cmdTemplate, filename, options, nimcache = "", target)
-  var p = startProcess(command = "gcc", args = c[5 .. ^1],
-                       options = {poStdErrToStdOut, poUsePath})
-  let outp = p.outputStream
-  var x = newStringOfCap(120)
-  result.nimout = ""
-  result.msg = ""
-  result.file = ""
-  result.output = ""
-  result.line = -1
-  while true:
-    if outp.readLine(x):
-      result.nimout.add(x & '\n')
-    elif not running(p):
-      break
-  close(p)
-  if p.peekExitCode == 0:
-    result.err = reSuccess
 
 proc initResults: TResults =
   result.total = 0
@@ -265,7 +259,9 @@ Tests skipped: $4 / $1 <br />
 """ % [$x.total, $x.passed, $x.failedButAllowed, $x.skipped]
 
 proc addResult(r: var TResults, test: TTest, target: TTarget,
-               expected, given: string, successOrig: TResultEnum, allowFailure = false) =
+               expected, given: string, successOrig: TResultEnum, allowFailure = false, givenSpec: ptr TSpec = nil) =
+  # instead of `ptr TSpec` we could also use `Option[TSpec]`; passing `givenSpec` makes it easier to get what we need
+  # instead of having to pass individual fields, or abusing existing ones like expected vs given.
   # test.name is easier to find than test.name.extractFilename
   # A bit hacky but simple and works with tests/testament/tshould_not_work.nim
   var name = test.name.replace(DirSep, '/')
@@ -288,18 +284,22 @@ proc addResult(r: var TResults, test: TTest, target: TTarget,
                             expected = expected,
                             given = given)
   r.data.addf("$#\t$#\t$#\t$#", name, expected, given, $success)
+  template dispNonSkipped(color, outcome) =
+    maybeStyledEcho color, outcome, fgCyan, test.debugInfo, alignLeft(name, 60), fgBlue, " (", durationStr, " sec)"
   template disp(msg) =
     maybeStyledEcho styleDim, fgYellow, msg & ' ', styleBright, fgCyan, name
   if success == reSuccess:
-    maybeStyledEcho fgGreen, "PASS: ", fgCyan, test.debugInfo, alignLeft(name, 60), fgBlue, " (", durationStr, " sec)"
+    dispNonSkipped(fgGreen, "PASS: ")
   elif success == reDisabled:
     if test.spec.inCurrentBatch: disp("SKIP:")
     else: disp("NOTINBATCH:")
   elif success == reJoined: disp("JOINED:")
   else:
-    maybeStyledEcho styleBright, fgRed, failString, fgCyan, name
+    dispNonSkipped(fgRed, failString)
     maybeStyledEcho styleBright, fgCyan, "Test \"", test.name, "\"", " in category \"", test.cat.string, "\""
     maybeStyledEcho styleBright, fgRed, "Failure: ", $success
+    if givenSpec != nil and givenSpec.debugInfo.len > 0:
+      echo "debugInfo: " & givenSpec.debugInfo
     if success in {reBuildFailed, reNimcCrash, reInstallFailed}:
       # expected is empty, no reason to print it.
       echo given
@@ -476,16 +476,18 @@ proc equalModuloLastNewline(a, b: string): bool =
 proc testSpecHelper(r: var TResults, test: var TTest, expected: TSpec,
                     target: TTarget, nimcache: string, extraOptions = "") =
   test.startTime = epochTime()
+  template callNimCompilerImpl(): untyped =
+    # xxx this used to also pass: `--stdout --hint:Path:off`, but was done inconsistently
+    # with other branches
+    callNimCompiler(expected.getCmd, test.name, test.options, nimcache, target, extraOptions)
   case expected.action
   of actionCompile:
-    var given = callNimCompiler(expected.getCmd, test.name, test.options, nimcache, target,
-          extraOptions = " --stdout --hint[Path]:off --hint[Processing]:off")
+    var given = callNimCompilerImpl()
     compilerOutputTests(test, target, given, expected, r)
   of actionRun:
-    var given = callNimCompiler(expected.getCmd, test.name, test.options,
-                             nimcache, target, extraOptions)
+    var given = callNimCompilerImpl()
     if given.err != reSuccess:
-      r.addResult(test, target, "", "$ " & given.cmd & '\n' & given.nimout, given.err)
+      r.addResult(test, target, "", "$ " & given.cmd & '\n' & given.nimout, given.err, givenSpec = given.addr)
     else:
       let isJsTarget = target == targetJS
       var exeFile = changeFileExt(test.name, if isJsTarget: "js" else: ExeExt)
@@ -499,7 +501,7 @@ proc testSpecHelper(r: var TResults, test: var TTest, expected: TSpec,
                       reExeNotFound)
         else:
           var exeCmd: string
-          var args = test.args
+          var args = test.testArgs
           if isJsTarget:
             exeCmd = nodejs
             # see D20210217T215950
@@ -536,8 +538,7 @@ proc testSpecHelper(r: var TResults, test: var TTest, expected: TSpec,
           else:
             compilerOutputTests(test, target, given, expected, r)
   of actionReject:
-    var given = callNimCompiler(expected.getCmd, test.name, test.options,
-                              nimcache, target)
+    let given = callNimCompilerImpl()
     cmpMsgs(r, expected, given, test, target)
 
 proc targetHelper(r: var TResults, test: TTest, expected: TSpec, extraOptions = "") =
@@ -580,38 +581,6 @@ proc testSpecWithNimcache(r: var TResults, test: TTest; nimcache: string) {.used
     var testClone = test
     testSpecHelper(r, testClone, test.spec, target, nimcache)
 
-proc testC(r: var TResults, test: TTest, action: TTestAction) =
-  # runs C code. Doesn't support any specs, just goes by exit code.
-  if not checkDisabled(r, test): return
-
-  let tname = test.name.addFileExt(".c")
-  inc(r.total)
-  maybeStyledEcho "Processing ", fgCyan, extractFilename(tname)
-  var given = callCCompiler(getCmd(TSpec()), test.name & ".c", test.options, targetC)
-  if given.err != reSuccess:
-    r.addResult(test, targetC, "", given.msg, given.err)
-  elif action == actionRun:
-    let exeFile = changeFileExt(test.name, ExeExt)
-    var (_, exitCode) = execCmdEx(exeFile, options = {poStdErrToStdOut, poUsePath})
-    if exitCode != 0: given.err = reExitcodesDiffer
-  if given.err == reSuccess: inc(r.passed)
-
-proc testExec(r: var TResults, test: TTest) =
-  # runs executable or script, just goes by exit code
-  if not checkDisabled(r, test): return
-
-  inc(r.total)
-  let (outp, errC) = execCmdEx(test.options.strip())
-  var given: TSpec
-  if errC == 0:
-    given.err = reSuccess
-  else:
-    given.err = reExitcodesDiffer
-    given.msg = outp
-
-  if given.err == reSuccess: inc(r.passed)
-  r.addResult(test, targetC, "", given.msg, given.err)
-
 proc makeTest(test, options: string, cat: Category): TTest =
   result.cat = cat
   result.name = test
@@ -624,9 +593,9 @@ proc makeRawTest(test, options: string, cat: Category): TTest {.used.} =
   result.name = test
   result.options = options
   result.spec = initSpec(addFileExt(test, ".nim"))
-  result.startTime = epochTime()
   result.spec.action = actionCompile
   result.spec.targets = {getTestSpecTarget()}
+  result.startTime = epochTime()
 
 # TODO: fix these files
 const disabledFilesDefault = @[

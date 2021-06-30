@@ -9,9 +9,10 @@
 
 ## This module implements the style checker.
 
-import strutils
+import std/strutils
+from std/sugar import dup
 
-import options, ast, msgs, idents, lineinfos, wordrecg
+import options, ast, msgs, idents, lineinfos, wordrecg, astmsgs
 
 const
   Letters* = {'a'..'z', 'A'..'Z', '0'..'9', '\x80'..'\xFF', '_'}
@@ -129,7 +130,7 @@ proc styleCheckUse*(conf: ConfigRef; info: TLineInfo; s: PSym) =
   if badName.len > 0:
     # special rules for historical reasons
     let forceHint = badName == "nnkArgList" and newName == "nnkArglist" or badName == "nnkArglist" and newName == "nnkArgList"
-    lintReport(conf, info, newName, badName, forceHint = forceHint)
+    lintReport(conf, info, newName, badName, forceHint = forceHint, extraMsg = "".dup(addDeclaredLoc(conf, s)))
 
 proc checkPragmaUse*(conf: ConfigRef; info: TLineInfo; w: TSpecialWord; pragmaName: string) =
   let wanted = $w

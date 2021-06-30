@@ -1,8 +1,10 @@
 discard """
-  cmd: "nim c --styleCheck:error --styleCheck:usages $file"
-  errormsg: "'BAD_STYLE' should be: 'BADSTYLE'"
-  line: 20
+  action: reject
+  nimout: '''tusages.nim(22, 5) Error: 'BAD_STYLE' should be: 'BADSTYLE' [proc declared in tusages.nim(11, 6)]'''
+  matrix: "--styleCheck:error --styleCheck:usages"
 """
+
+
 
 import strutils
 
@@ -20,4 +22,3 @@ proc toSnakeCase(s: string): string =
     BAD_STYLE(s[i])
 
 echo toSnakeCase("fooBarBaz Yes")
-
