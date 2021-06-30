@@ -61,8 +61,8 @@
 ## callback on this future which will be called once the future completes.
 ## All the callback does is write the data stored in the future to `stdout`.
 ## The `read` function is used for this and it checks whether the future
-## completes with an error for you (if it did it will simply raise the
-## error), if there is no error however it returns the value of the future.
+## completes with an error for you (if it did, it will simply raise the
+## error), if there is no error, however, it returns the value of the future.
 ##
 ## Asynchronous procedures
 ## =======================
