@@ -395,7 +395,7 @@ proc sample*[T](s: set[T]): T =
 
   sample(state, s)
 
-proc sample*[T](r: var Rand; a: openArray[T]): lent T =
+proc sample*[T](r: var Rand; a: openArray[T]): T =
   ## Returns a random element from `a` using the given state.
   ##
   ## **See also:**
@@ -430,7 +430,7 @@ proc sample*[T](a: openArray[T]): lent T =
 
   result = a[rand(a.low..a.high)]
 
-proc sample*[T, U](r: var Rand; a: openArray[T]; cdf: openArray[U]): lent T =
+proc sample*[T, U](r: var Rand; a: openArray[T]; cdf: openArray[U]): T =
   ## Returns an element from `a` using a cumulative distribution function
   ## (CDF) and the given state.
   ##
