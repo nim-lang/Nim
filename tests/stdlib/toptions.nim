@@ -138,7 +138,7 @@ proc main() =
       doAssert(option(intref).isSome)
 
       let tmp = option(intref)
-      doAssert(sizeof(tmp) == sizeof(ptr int))
+      doAssert(sizeof(tmp) > sizeof(ptr int))
 
       var prc = proc (x: int): int = x + 1
       doAssert(option(prc).isSome)

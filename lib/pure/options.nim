@@ -105,14 +105,16 @@ proc option*[T](val: sink T): Option[T] {.inline.} =
   runnableExamples:
     type
       Foo = ref object
-        a: int
-        b: string
-
-    assert option[Foo](nil).isSome
+    assert option[Foo](nil).isNone
+    assert option(Foo(nil)).isNone
+    assert some(Foo(nil)).isSome
     assert option(42).isSome
-
-  result.val = val
-  result.has = true
+  when T is SomePointer:
+    result.val = val
+    result.has = val != nil
+  else:
+    result.val = val
+    result.has = true
 
 proc some*[T](val: sink T): Option[T] {.inline.} =
   ## Returns an `Option` that has the value `val`.
@@ -123,9 +125,13 @@ proc some*[T](val: sink T): Option[T] {.inline.} =
   ## * `isSome proc <#isSome,Option[T]>`_
   runnableExamples:
     let a = some("abc")
-
     assert a.isSome
     assert a.get == "abc"
+
+    let b: ref int = nil
+    assert some(b).isSome
+    assert option(b).isNone
+
   result.has = true
   result.val = val
 
