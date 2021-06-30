@@ -913,7 +913,7 @@ proc getTime*(): Time {.tags: [TimeEffect], benign.} =
     result = initTime(ts.tv_sec.int64, ts.tv_nsec.int)
   elif defined(windows):
     var f {.noinit.}: FILETIME
-    getSystemTimePreciseAsFileTime(f)
+    getSystemTimeAsFileTime(f)
     result = fromWinTime(rdFileTime(f))
 
 proc `-`*(a, b: Time): Duration {.operator, extern: "ntDiffTime".} =
@@ -2596,7 +2596,7 @@ proc epochTime*(): float {.tags: [TimeEffect].} =
       toBiggestFloat(ts.tv_nsec.int64) / 1_000_000_000
   elif defined(windows):
     var f {.noinit.}: winlean.FILETIME
-    getSystemTimePreciseAsFileTime(f)
+    getSystemTimeAsFileTime(f)
     var i64 = rdFileTime(f) - epochDiff
     var secs = i64 div rateDiff
     var subsecs = i64 mod rateDiff
