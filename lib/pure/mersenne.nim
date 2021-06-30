@@ -54,14 +54,14 @@ proc getNum*(m: var MersenneTwister): uint32 =
   result = result xor (result shr 18'u32)
 
 proc getSeq*(m: var MersenneTwister, len: int): seq[int] =
-  ## returns seq of pseudorandom ints len long.
+  ## Returns seq of pseudorandom ints len long.
   for i in 1..len:
     result.add(int(getNum(m)))
   ## Might be useful at some point to someone.
 
 
 proc sample*(q: var MersenneTwister, arr: seq[int]): int =
-  ## take random sample of an seq[int].
+  ## Takes random sample of an seq[int].
   var correspondingvalues: seq[uint32]
   var maxVal: uint32 = uint32(4294967295)
   let maxValdivlenarr: uint32 = uint32(float32(maxVal) / float32(len(arr)))
@@ -83,7 +83,7 @@ proc sample*(q: var MersenneTwister, arr: seq[int]): int =
 
 
 proc sample*(q: var MersenneTwister, arr: seq[char]): char =
-  ## take random sample of an seq[char].
+  ## Takes random sample of an seq[char].
   var correspondingvalues: seq[uint32]
   var maxVal: uint32 = uint32(4294967295)
   let maxValdivlenarr: uint32 = uint32(float32(maxVal) / float32(len(arr)))
@@ -104,7 +104,7 @@ proc sample*(q: var MersenneTwister, arr: seq[char]): char =
    smallernumindex = smallernumindex + 1
 
 proc sample*(q: var MersenneTwister, arr: seq[string]): string =
-  ## take random sample of an seq[string].
+  ## Takes random sample of an seq[string].
   var correspondingvalues: seq[uint32]
   var maxVal: uint32 = uint32(4294967295)
   let maxValdivlenarr: uint32 = uint32(float32(maxVal) / float32(len(arr)))
@@ -128,7 +128,7 @@ proc sample*(q: var MersenneTwister, arr: seq[string]): string =
 
 
 proc sample*(q: var MersenneTwister, arr: seq[float]): float =
-  ## take random sample of an seq[float].
+  ## Takes random sample of an seq[float]. 
 
   var correspondingvalues: seq[uint32]
   var maxVal: uint32 = uint32(4294967295)
