@@ -1,6 +1,7 @@
 discard """
-cmd: "nim doc --doccmd:-d:testFooExternal --hints:off $file"
+cmd: "nim doc --doccmd:--hints:off --hints:off $file"
 action: "compile"
+nimoutFull: true
 nimout: '''
 foo1
 foo2
@@ -8,11 +9,22 @@ foo3
 foo5
 foo6
 foo7
+in examplesInTemplate1
+doc in outer
+doc in inner1
+doc in inner2
 foo8
 foo9
 '''
 joinable: false
 """
+
+#[
+pending bug #18077, use instead:
+cmd: "nim doc --doccmd:'-d:testFooExternal --hints:off' --hints:off $file"
+and merge trunnableexamples2 back here
+]#
+{.define(testFooExternal).}
 
 proc fun*() =
   runnableExamples:
@@ -109,6 +121,47 @@ when true: # runnableExamples with rdoccmd
     # passing seq (to run with multiple compilation options)
     runnableExamples(@["-b:cpp", "-b:js"]): discard
 
+when true: # bug #16993
+  template examplesInTemplate1*(cond: untyped) =
+    ## in examplesInTemplate1
+    runnableExamples:
+      echo "in examplesInTemplate1"
+    discard
+  examplesInTemplate1 true
+  examplesInTemplate1 true
+  examplesInTemplate1 true
+
+when true: # bug #18054
+  template outer*(body: untyped) =
+    ## outer template doc string.
+    runnableExamples:
+      echo "doc in outer"
+    ##
+    template inner1*() =
+      ## inner1 template doc string.
+      runnableExamples:
+        echo "doc in inner1"
+      ##
+
+    template inner2*() =
+      ## inner2 template doc string.
+      runnableExamples:
+        echo "doc in inner2"
+    body
+  outer:
+    inner1()
+    inner2()
+
+when true: # bug #17835
+  template anyItFake*(s, pred: untyped): bool =
+    ## Foo
+    runnableExamples: discard
+    true
+
+  proc anyItFakeMain*(n: seq[int]): bool =
+    result = anyItFake(n, it == 0)
+      # this was giving: Error: runnableExamples must appear before the first non-comment statement
+
 runnableExamples:
   block: # bug #17279
     when int.sizeof == 8:
@@ -118,7 +171,7 @@ runnableExamples:
   # bug #13491
   block:
     proc fun(): int = doAssert false
-    doAssertRaises(AssertionError, (discard fun()))
+    doAssertRaises(AssertionDefect, (discard fun()))
 
   block:
     template foo(body) = discard

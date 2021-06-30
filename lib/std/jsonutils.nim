@@ -34,6 +34,23 @@ import macros
 from enumutils import symbolName
 from typetraits import OrdinalEnum
 
+when not defined(nimFixedForwardGeneric):
+  # xxx remove pending csources_v1 update >= 1.2.0
+  proc to[T](node: JsonNode, t: typedesc[T]): T =
+    when T is string: node.getStr
+    elif T is bool: node.getBool
+    else: static: doAssert false, $T # support as needed (only needed during bootstrap)
+  proc isNamedTuple(T: typedesc): bool = # old implementation
+    when T isnot tuple: result = false
+    else:
+      var t: T
+      for name, _ in t.fieldPairs:
+        when name == "Field0": return compiles(t.Field0)
+        else: return true
+      return false
+else:
+  proc isNamedTuple(T: typedesc): bool {.magic: "TypeTrait".}
+
 type
   Joptions* = object # xxx rename FromJsonOptions
     ## Options controlling the behavior of `fromJson`.
@@ -48,15 +65,19 @@ type
     joptEnumOrd
     joptEnumSymbol
     joptEnumString
+  JsonNodeMode* = enum ## controls `toJson` for JsonNode types
+    joptJsonNodeAsRef ## returns the ref as is
+    joptJsonNodeAsCopy ## returns a deep copy of the JsonNode
+    joptJsonNodeAsObject ## treats JsonNode as a regular ref object
   ToJsonOptions* = object
     enumMode*: EnumMode
-    # xxx charMode
+    jsonNodeMode*: JsonNodeMode
+    # xxx charMode, etc
 
 proc initToJsonOptions*(): ToJsonOptions =
   ## initializes `ToJsonOptions` with sane options.
-  ToJsonOptions(enumMode: joptEnumOrd)
+  ToJsonOptions(enumMode: joptEnumOrd, jsonNodeMode: joptJsonNodeAsRef)
 
-proc isNamedTuple(T: typedesc): bool {.magic: "TypeTrait".}
 proc distinctBase(T: typedesc): typedesc {.magic: "TypeTrait".}
 template distinctBase[T](a: T): untyped = distinctBase(typeof(a))(a)
 
@@ -107,14 +128,14 @@ macro initCaseObject(T: typedesc, fun: untyped): untyped =
         `fun`(`key2`, typedesc[`typ`])
       result.add newTree(nnkExprColonExpr, key, val)
 
-proc checkJsonImpl(cond: bool, condStr: string, msg = "") =
-  if not cond:
-    # just pick 1 exception type for simplicity; other choices would be:
-    # JsonError, JsonParser, JsonKindError
-    raise newException(ValueError, msg)
+proc raiseJsonException(condStr: string, msg: string) {.noinline.} =
+  # just pick 1 exception type for simplicity; other choices would be:
+  # JsonError, JsonParser, JsonKindError
+  raise newException(ValueError, condStr & " failed: " & msg)
 
 template checkJson(cond: untyped, msg = "") =
-  checkJsonImpl(cond, astToStr(cond), msg)
+  if not cond:
+    raiseJsonException(astToStr(cond), msg)
 
 proc hasField[T](obj: T, field: string): bool =
   for k, _ in fieldPairs(obj):
@@ -286,8 +307,15 @@ proc toJson*[T](a: T, opt = initToJsonOptions()): JsonNode =
       result = newJArray()
       for v in a.fields: result.add toJson(v, opt)
   elif T is ref | ptr:
-    if system.`==`(a, nil): result = newJNull()
-    else: result = toJson(a[], opt)
+    template impl =
+      if system.`==`(a, nil): result = newJNull()
+      else: result = toJson(a[], opt)
+    when T is JsonNode:
+      case opt.jsonNodeMode
+      of joptJsonNodeAsRef: result = a
+      of joptJsonNodeAsCopy: result = copy(a)
+      of joptJsonNodeAsObject: impl()
+    else: impl()
   elif T is array | seq | set:
     result = newJArray()
     for ai in a: result.add toJson(ai, opt)

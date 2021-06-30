@@ -363,7 +363,7 @@ contain the following `escape sequences`:idx:\ :
   ``\\``                   `backslash`:idx:
   ``\"``                   `quotation mark`:idx:
   ``\'``                   `apostrophe`:idx:
-  ``\\`` '0'..'9'+         `character with decimal value d`:idx:;
+  ``\`` '0'..'9'+         `character with decimal value d`:idx:;
                            all decimal digits directly
                            following are used for the character
   ``\a``                   `alert`:idx:
@@ -473,7 +473,7 @@ literals:
   ``\\``                   `backslash`:idx:
   ``\"``                   `quotation mark`:idx:
   ``\'``                   `apostrophe`:idx:
-  ``\\`` '0'..'9'+         `character with decimal value d`:idx:;
+  ``\`` '0'..'9'+          `character with decimal value d`:idx:;
                            all decimal digits directly
                            following are used for the character
   ``\a``                   `alert`:idx:
@@ -572,7 +572,8 @@ In the following examples, `-1` is a single token:
 
   "abc";-1
 
-In the following examples, `-1` is parsed as two separate tokens (as `- 1`):
+In the following examples, `-1` is parsed as two separate tokens
+(as `-`:tok: `1`:tok:):
 
 .. code-block:: nim
 
@@ -988,10 +989,12 @@ Ordinal types have the following characteristics:
 - Ordinal types are countable and ordered. This property allows the operation
   of functions such as `inc`, `ord`, and `dec` on ordinal types to
   be defined.
-- Ordinal values have the smallest possible value. Trying to count further
-  down than the smallest value produces a panic or a static error.
-- Ordinal values have the largest possible value. Trying to count further
-  than the largest value produces a panic or a static error.
+- Ordinal types have a smallest possible value, accessible with `low(type)`.
+  Trying to count further down than the smallest value produces a panic or
+  a static error.
+- Ordinal types have a largest possible value, accessible with `high(type)`.
+  Trying to count further up than the largest value produces a panic or
+  a static error.
 
 Integers, bool, characters, and enumeration types (and subranges of these
 types) belong to ordinal types.
@@ -1094,6 +1097,7 @@ lowest and highest value of the type. For example:
   type
     Subrange = range[0..5]
     PositiveFloat = range[0.0..Inf]
+    Positive* = range[1..high(int)] # as defined in `system`
 
 
 `Subrange` is a subrange of an integer which can only hold the values 0
@@ -1612,7 +1616,7 @@ heterogeneous storage types with few abstractions. The `()` syntax
 can be used to construct tuples. The order of the fields in the constructor
 must match the order of the tuple's definition. Different tuple-types are
 *equivalent* if they specify the same fields of the same type in the same
-order. The *names* of the fields also have to be identical.
+order. The *names* of the fields also have to be the same.
 
 The assignment operator for tuples copies each component.
 The default assignment operator for objects copies each component. Overloading
@@ -1623,15 +1627,16 @@ of the assignment operator is described `here
 
   type
     Person = tuple[name: string, age: int] # type representing a person:
-                                           # a person consists of a name
-                                           # and an age
-  var
-    person: Person
+                                           # it consists of a name and an age.
+  var person: Person
   person = (name: "Peter", age: 30)
-  echo person.name
+  assert person.name == "Peter"
   # the same, but less readable:
   person = ("Peter", 30)
-  echo person[0]
+  assert person[0] == "Peter"
+  assert Person is (string, int)
+  assert (string, int) is Person
+  assert Person isnot tuple[other: string, age: int] # `other` is a different identifier
 
 A tuple with one unnamed field can be constructed with the parentheses and a
 trailing comma:
@@ -2509,7 +2514,7 @@ of the argument.
    range.
 3. Generic match: `f` is a generic type and `a` matches, for
    instance `a` is `int` and `f` is a generic (constrained) parameter
-   type (like in `[T]` or `[T: int|char]`.
+   type (like in `[T]` or `[T: int|char]`).
 4. Subrange or subtype match: `a` is a `range[T]` and `T`
    matches `f` exactly. Or: `a` is a subtype of `f`.
 5. Integral conversion match: `a` is convertible to `f` and `f` and `a`
@@ -2981,11 +2986,13 @@ Example:
 
 .. code-block:: nim
 
-  case readline(stdin)
+  let line = readline(stdin)
+  case line
   of "delete-everything", "restart-computer":
     echo "permission denied"
   of "go-for-a-walk":     echo "please yourself"
-  else:                   echo "unknown command"
+  elif line.len == 0:     echo "empty" # optional, must come after `of` branches
+  else:                   echo "unknown command" # ditto
 
   # indentation of the branches is also allowed; and so is an optional colon
   # after the selecting expression:
@@ -2996,19 +3003,23 @@ Example:
     else:                   echo "unknown command"
 
 
-The `case` statement is similar to the if statement, but it represents
+The `case` statement is similar to the `if` statement, but it represents
 a multi-branch selection. The expression after the keyword `case` is
 evaluated and if its value is in a *slicelist* the corresponding statements
 (after the `of` keyword) are executed. If the value is not in any
-given *slicelist* the `else` part is executed. If there is no `else`
-part and not all possible values that `expr` can hold occur in a
-*slicelist*, a static error occurs. This holds only for expressions of
-ordinal types. "All possible values" of `expr` are determined by `expr`'s
-type. To suppress the static error an `else` part with an
-empty `discard` statement should be used.
+given *slicelist*, trailing `elif` and `else` parts are executed using same
+semantics as for `if` statement, and `elif` is handled just like `else: if`.
+If there are no `else` or `elif` parts and not
+all possible values that `expr` can hold occur in a *slicelist*, a static error occurs.
+This holds only for expressions of ordinal types.
+"All possible values" of `expr` are determined by `expr`'s type.
+To suppress the static error an `else: discard` should be used.
 
 For non-ordinal types, it is not possible to list every possible value and so
 these always require an `else` part.
+An exception to this rule is for the `string` type, which currently doesn't
+require a trailing `else` or `elif` branch; it's unspecified whether this will
+keep working in future versions.
 
 Because case statements are checked for exhaustiveness during semantic analysis,
 the value in every `of` branch must be a constant expression.
@@ -3054,15 +3065,15 @@ won't work:
   var foo = Foo(x: @[])
   foo.get_x().add("asd")
 
-This can be fixed by explicitly using `return`:
+This can be fixed by explicitly using `result` or `return`:
 
 .. code-block:: nim
   proc get_x(x: Foo): var seq[string] =
     case true
     of true:
-      return x.x
+      result = x.x
     else:
-      return x.x
+      result = x.x
 
 
 When statement
@@ -3834,7 +3845,7 @@ Type bound operators currently include:
 (some of which are still implementation defined and not yet documented).
 
 For more details on some of those procs, see
-`lifetimeminustracking-hooks <destructors.html#lifetimeminustracking-hooks>`_.
+`Lifetime-tracking hooks <destructors.html#lifetimeminustracking-hooks>`_.
 
 Nonoverloadable builtins
 ------------------------
@@ -4451,10 +4462,8 @@ Example:
       echo "sum: " & $(parseInt(a) + parseInt(b))
     except OverflowDefect:
       echo "overflow!"
-    except ValueError:
-      echo "could not convert string to integer"
-    except IOError:
-      echo "IO error!"
+    except ValueError, IOError:
+      echo "catch multiple exceptions!"
     except:
       echo "Unknown exception!"
     finally:
@@ -5277,7 +5286,7 @@ instantiations cross multiple different modules:
 
 In module B has an `init` proc from module C in its scope that is not
 taken into account when `genericB` is instantiated which leads to the
-instantiation of `genericA`. The solution is to `forward`:idx these
+instantiation of `genericA`. The solution is to `forward`:idx: these
 symbols by a `bind` statement inside `genericB`.
 
 
@@ -7299,19 +7308,19 @@ Produces:
   supplied pattern to denote the concrete type parameters of the generic type.
   See the usage of the apostrophe operator in proc patterns for more details.
 
-.. code-block:: nim
+  .. code-block:: nim
 
-  type
-    VectorIterator {.importcpp: "std::vector<'0>::iterator".} [T] = object
+    type
+      VectorIterator {.importcpp: "std::vector<'0>::iterator".} [T] = object
 
-  var x: VectorIterator[cint]
+    var x: VectorIterator[cint]
 
 
-Produces:
+  Produces:
 
-.. code-block:: C
+  .. code-block:: C
 
-  std::vector<int>::iterator x;
+    std::vector<int>::iterator x;
 
 
 ImportJs pragma
@@ -7422,23 +7431,12 @@ work properly (in particular regarding constructor and destructor) for
   proc main()=
     var a {.threadvar.}: Foo
 
-InjectStmt pragma
------------------
-
-The `injectStmt` pragma can be used to inject a statement before every
-other statement in the current module. It is only supposed to be used for
-debugging:
-
-.. code-block:: nim
-  {.injectStmt: gcInvariants().}
-
-  # ... complex code here that produces crashes ...
 
 compile-time define pragmas
 ---------------------------
 
 The pragmas listed here can be used to optionally accept values from
-the -d/--define option at compile time.
+the `-d/--define`:option: option at compile time.
 
 The implementation currently provides the following possible options (various
 others may be added later).
@@ -7455,7 +7453,7 @@ pragma             description
    const FooBar {.intdefine.}: int = 5
    echo FooBar
 
-::
+.. code:: cmd
    nim c -d:FooBar=42 foobar.nim
 
 In the above example, providing the `-d`:option: flag causes the symbol
@@ -7474,7 +7472,8 @@ pragma pragma
 -------------
 
 The `pragma` pragma can be used to declare user-defined pragmas. This is
-useful because Nim's templates and macros do not affect pragmas. User-defined pragmas are in a different module-wide scope than all other symbols.
+useful because Nim's templates and macros do not affect pragmas.
+User-defined pragmas are in a different module-wide scope than all other symbols.
 They cannot be imported from a module.
 
 Example:
@@ -7547,18 +7546,18 @@ More examples with custom pragmas:
 
 - Better serialization/deserialization control:
 
-.. code-block:: nim
-  type MyObj = object
-    a {.dontSerialize.}: int
-    b {.defaultDeserialize: 5.}: int
-    c {.serializationKey: "_c".}: string
+  .. code-block:: nim
+    type MyObj = object
+      a {.dontSerialize.}: int
+      b {.defaultDeserialize: 5.}: int
+      c {.serializationKey: "_c".}: string
 
 - Adopting type for gui inspector in a game engine:
 
-.. code-block:: nim
-  type MyComponent = object
-    position {.editable, animatable.}: Vector3
-    alpha {.editRange: [0.0..1.0], animatable.}: float32
+  .. code-block:: nim
+    type MyComponent = object
+      position {.editable, animatable.}: Vector3
+      alpha {.editRange: [0.0..1.0], animatable.}: float32
 
 
 Macro pragmas
@@ -7825,7 +7824,7 @@ Threads
 
 To enable thread support the `--threads:on`:option: command-line switch needs to
 be used. The system_ module then contains several threading primitives.
-See the `threads <threads.html>`_ and `channels <channels.html>`_ modules
+See the `threads <threads.html>`_ and `channels <channels_builtin.html>`_ modules
 for the low-level thread API. There are also high-level parallelism constructs
 available. See `spawn <manual_experimental.html#parallel-amp-spawn>`_ for
 further details.

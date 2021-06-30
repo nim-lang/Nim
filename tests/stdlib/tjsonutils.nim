@@ -5,6 +5,7 @@ discard """
 import std/jsonutils
 import std/json
 from std/math import isNaN, signbit
+from std/fenv import epsilon
 from stdtest/testutils import whenRuntimeJs
 
 proc testRoundtrip[T](t: T, expected: string) =
@@ -91,6 +92,28 @@ template fn() =
     doAssert b2.ord == 1 # explains the `1`
     testRoundtrip(a): """[1,2,3]"""
 
+  block: # JsonNode
+    let a = ((1, 2.5, "abc").toJson, (3, 4.5, "foo"))
+    testRoundtripVal(a): """[[1,2.5,"abc"],[3,4.5,"foo"]]"""
+
+    block:
+      template toInt(a): untyped = cast[int](a)
+
+      let a = 3.toJson
+      let b = (a, a)
+
+      let c1 = b.toJson
+      doAssert c1[0].toInt == a.toInt
+      doAssert c1[1].toInt == a.toInt
+
+      let c2 = b.toJson(ToJsonOptions(jsonNodeMode: joptJsonNodeAsCopy))
+      doAssert c2[0].toInt != a.toInt
+      doAssert c2[1].toInt != c2[0].toInt
+      doAssert c2[1] == c2[0]
+
+      let c3 = b.toJson(ToJsonOptions(jsonNodeMode: joptJsonNodeAsObject))
+      doAssert $c3 == """[{"isUnquoted":false,"kind":2,"num":3},{"isUnquoted":false,"kind":2,"num":3}]"""
+
   block: # ToJsonOptions
     let a = (me1, me2)
     doAssert $a.toJson() == "[1,2]"
@@ -137,6 +160,16 @@ template fn() =
     doAssert not b[1].signbit
     doAssert b[2].signbit
     doAssert not b[3].signbit
+
+  block: # bug #15397, bug #13196
+    let a = 0.1
+    let x = 0.12345678901234567890123456789
+    let b = (a + 0.2, 0.3, x)
+    testRoundtripVal(b): "[0.30000000000000004,0.3,0.12345678901234568]"
+
+    testRoundtripVal(0.12345678901234567890123456789): "0.12345678901234568"
+    testRoundtripVal(epsilon(float64)): "2.220446049250313e-16"
+    testRoundtripVal(1.0 + epsilon(float64)): "1.0000000000000002"
 
   block: # case object
     type Foo = object

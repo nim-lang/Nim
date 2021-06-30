@@ -912,14 +912,14 @@ iterator lines*(filename: string): string {.tags: [ReadIOEffect].} =
   ## If the file does not exist `IOError` is raised. The trailing newline
   ## character(s) are removed from the iterated lines. Example:
   ##
-  ## .. code-block:: nim
-  ##   import std/strutils
-  ##
-  ##   proc transformLetters(filename: string) =
-  ##     var buffer = ""
-  ##     for line in filename.lines:
-  ##       buffer.add(line.replace("a", "0") & '\n')
-  ##     writeFile(filename, buffer)
+  runnableExamples:
+    import std/strutils
+
+    proc transformLetters(filename: string) =
+      var buffer = ""
+      for line in filename.lines:
+        buffer.add(line.replace("a", "0") & '\n')
+      writeFile(filename, buffer)
   var f = open(filename, bufSize=8000)
   try:
     var res = newStringOfCap(80)
@@ -931,14 +931,13 @@ iterator lines*(f: File): string {.tags: [ReadIOEffect].} =
   ## Iterate over any line in the file `f`.
   ##
   ## The trailing newline character(s) are removed from the iterated lines.
-  ## Example:
   ##
-  ## .. code-block:: nim
-  ##   proc countZeros(filename: File): tuple[lines, zeros: int] =
-  ##     for line in filename.lines:
-  ##       for letter in line:
-  ##         if letter == '0':
-  ##           result.zeros += 1
-  ##       result.lines += 1
+  runnableExamples:
+    proc countZeros(filename: File): tuple[lines, zeros: int] =
+      for line in filename.lines:
+        for letter in line:
+          if letter == '0':
+            result.zeros += 1
+        result.lines += 1
   var res = newStringOfCap(80)
   while f.readLine(res): yield res

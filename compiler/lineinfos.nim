@@ -27,18 +27,22 @@ proc createDocLink*(urlSuffix: string): string =
 
 type
   TMsgKind* = enum
-    errUnknown, errInternal, errIllFormedAstX, errCannotOpenFile,
+    # fatal errors
+    errUnknown, errFatal, errInternal,
+    # non-fatal errors
+    errIllFormedAstX, errCannotOpenFile,
     errXExpected,
     errGridTableNotImplemented,
     errMarkdownIllformedTable,
     errGeneralParseError,
     errNewSectionExpected,
     errInvalidDirectiveX,
+    errInvalidRstField,
     errFootnoteMismatch,
     errProveInit, # deadcode
     errGenerated,
     errUser,
-
+    # warnings
     warnCannotOpenFile = "CannotOpenFile", warnOctalEscape = "OctalEscape",
     warnXIsNeverRead = "XIsNeverRead", warnXmightNotBeenInit = "XmightNotBeenInit",
     warnDeprecated = "Deprecated", warnConfigDeprecated = "ConfigDeprecated",
@@ -64,13 +68,14 @@ type
     warnCannotOpen = "CannotOpen",
     warnFileChanged = "FileChanged",
     warnUser = "User",
-
-    hintSuccess = "Success", hintSuccessX = "SuccessX", hintBuildMode = "BuildMode",
+    # hints
+    hintSuccess = "Success", hintSuccessX = "SuccessX",
     hintCC = "CC",
-    hintLineTooLong = "LineTooLong", hintXDeclaredButNotUsed = "XDeclaredButNotUsed",
+    hintLineTooLong = "LineTooLong",
+    hintXDeclaredButNotUsed = "XDeclaredButNotUsed", hintDuplicateModuleImport = "DuplicateModuleImport",
     hintXCannotRaiseY = "XCannotRaiseY", hintConvToBaseNotNeeded = "ConvToBaseNotNeeded",
     hintConvFromXtoItselfNotNeeded = "ConvFromXtoItselfNotNeeded", hintExprAlwaysX = "ExprAlwaysX",
-    hintQuitCalled = "QuitCalled", hintProcessing = "Processing", hintCodeBegin = "CodeBegin",
+    hintQuitCalled = "QuitCalled", hintProcessing = "Processing", hintProcessingStmt = "ProcessingStmt", hintCodeBegin = "CodeBegin",
     hintCodeEnd = "CodeEnd", hintConf = "Conf", hintPath = "Path",
     hintConditionAlwaysTrue = "CondTrue", hintConditionAlwaysFalse = "CondFalse", hintName = "Name",
     hintPattern = "Pattern", hintExecuting = "Exec", hintLinking = "Link", hintDependency = "Dependency",
@@ -83,6 +88,7 @@ type
 const
   MsgKindToStr*: array[TMsgKind, string] = [
     errUnknown: "unknown error",
+    errFatal: "fatal error: $1",
     errInternal: "internal error: $1",
     errIllFormedAstX: "illformed AST: $1",
     errCannotOpenFile: "cannot open '$1'",
@@ -92,6 +98,7 @@ const
     errGeneralParseError: "general parse error",
     errNewSectionExpected: "new section expected $1",
     errInvalidDirectiveX: "invalid directive: '$1'",
+    errInvalidRstField: "invalid field: $1",
     errFootnoteMismatch: "number of footnotes and their references don't match: $1",
     errProveInit: "Cannot prove that '$1' is initialized.",  # deadcode
     errGenerated: "$1",
@@ -145,17 +152,18 @@ const
     warnUser: "$1",
     hintSuccess: "operation successful: $#",
     # keep in sync with `testament.isSuccess`
-    hintSuccessX: "$loc lines; ${sec}s; $mem; proj: $project; out: $output",
-    hintBuildMode: "$1",
+    hintSuccessX: "$build\n$loc lines; ${sec}s; $mem; proj: $project; out: $output",
     hintCC: "CC: $1",
     hintLineTooLong: "line too long",
     hintXDeclaredButNotUsed: "'$1' is declared but not used",
+    hintDuplicateModuleImport: "$1",
     hintXCannotRaiseY: "$1",
     hintConvToBaseNotNeeded: "conversion to base object is not needed",
     hintConvFromXtoItselfNotNeeded: "conversion from $1 to itself is pointless",
     hintExprAlwaysX: "expression evaluates always to '$1'",
     hintQuitCalled: "quit() called",
     hintProcessing: "$1",
+    hintProcessingStmt: "$1",
     hintCodeBegin: "generated code listing:",
     hintCodeEnd: "end of listing",
     hintConf: "used config file '$1'",
@@ -181,8 +189,7 @@ const
   ]
 
 const
-  fatalMin* = errUnknown
-  fatalMax* = errInternal
+  fatalMsgs* = {errUnknown..errInternal}
   errMin* = errUnknown
   errMax* = errUser
   warnMin* = warnCannotOpenFile
@@ -196,11 +203,11 @@ type
 
 proc computeNotesVerbosity(): array[0..3, TNoteKinds] =
   result[3] = {low(TNoteKind)..high(TNoteKind)} - {warnObservableStores, warnResultUsed}
-  result[2] = result[3] - {hintStackTrace, warnUninit, hintExtendedContext, hintDeclaredLoc}
+  result[2] = result[3] - {hintStackTrace, warnUninit, hintExtendedContext, hintDeclaredLoc, hintProcessingStmt}
   result[1] = result[2] - {warnProveField, warnProveIndex,
     warnGcUnsafe, hintPath, hintDependency, hintCodeBegin, hintCodeEnd,
     hintSource, hintGlobalVar, hintGCStats, hintMsgOrigin, hintPerformance}
-  result[0] = result[1] - {hintSuccessX, hintBuildMode, hintSuccess, hintConf,
+  result[0] = result[1] - {hintSuccessX, hintSuccess, hintConf,
     hintProcessing, hintPattern, hintExecuting, hintLinking, hintCC}
 
 const

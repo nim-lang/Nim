@@ -10,7 +10,7 @@
 ## implements some little helper passes
 
 import
-  ast, passes, idents, msgs, options, lineinfos
+  ast, passes, msgs, options, lineinfos
 
 from modulegraphs import ModuleGraph, PPassContext
 
@@ -19,18 +19,13 @@ type
     config: ConfigRef
 
 proc verboseOpen(graph: ModuleGraph; s: PSym; idgen: IdGenerator): PPassContext =
-  let conf = graph.config
-  result = VerboseRef(config: conf, idgen: idgen)
-  let path = toFilenameOption(conf, s.position.FileIndex, conf.filenameOption)
-  rawMessage(conf, hintProcessing, path)
+  # xxx consider either removing this or keeping for documentation for how to add a pass
+  result = VerboseRef(config: graph.config, idgen: idgen)
 
 proc verboseProcess(context: PPassContext, n: PNode): PNode =
+  # called from `process` in `processTopLevelStmt`.
   result = n
   let v = VerboseRef(context)
-  if v.config.verbosity == 3:
-    # system.nim deactivates all hints, for verbosity:3 we want the processing
-    # messages nonetheless, so we activate them again (but honor cmdlineNotes)
-    v.config.setNote(hintProcessing)
-    message(v.config, n.info, hintProcessing, $v.idgen[])
+  message(v.config, n.info, hintProcessingStmt, $v.idgen[])
 
 const verbosePass* = makePass(open = verboseOpen, process = verboseProcess)

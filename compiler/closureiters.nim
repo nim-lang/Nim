@@ -414,8 +414,11 @@ proc exprToStmtList(n: PNode): tuple[s, res: PNode] =
 
 
 proc newEnvVarAsgn(ctx: Ctx, s: PSym, v: PNode): PNode =
-  result = newTree(nkFastAsgn, ctx.newEnvVarAccess(s), v)
-  result.info = v.info
+  if isEmptyType(v.typ):
+    result = v
+  else:
+    result = newTree(nkFastAsgn, ctx.newEnvVarAccess(s), v)
+    result.info = v.info
 
 proc addExprAssgn(ctx: Ctx, output, input: PNode, sym: PSym) =
   if input.kind == nkStmtListExpr:
@@ -427,8 +430,7 @@ proc addExprAssgn(ctx: Ctx, output, input: PNode, sym: PSym) =
 
 proc convertExprBodyToAsgn(ctx: Ctx, exprBody: PNode, res: PSym): PNode =
   result = newNodeI(nkStmtList, exprBody.info)
-  if exprBody.typ != nil:
-    ctx.addExprAssgn(result, exprBody, res)
+  ctx.addExprAssgn(result, exprBody, res)
 
 proc newNotCall(g: ModuleGraph; e: PNode): PNode =
   result = newTree(nkCall, newSymNode(g.getSysMagic(e.info, "not", mNot), e.info), e)
@@ -606,6 +608,12 @@ proc lowerStmtListExprs(ctx: var Ctx, n: PNode, needsSplit: var bool): PNode =
             internalError(ctx.g.config, "lowerStmtListExpr(nkCaseStmt): " & $branch.kind)
         result.add(n)
         result.add(ctx.newEnvVarAccess(tmp))
+      elif n[0].kind == nkStmtListExpr:
+        result = newNodeI(nkStmtList, n.info)
+        let (st, ex) = exprToStmtList(n[0])
+        result.add(st)
+        n[0] = ex
+        result.add(n)
 
   of nkCallKinds, nkChckRange, nkChckRangeF, nkChckRange64:
     var ns = false

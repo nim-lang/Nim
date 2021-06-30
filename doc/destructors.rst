@@ -5,8 +5,8 @@ Nim Destructors and Move Semantics
 :Authors: Andreas Rumpf
 :Version: |nimversion|
 
+.. default-role:: code
 .. include:: rstcommon.rst
-.. default-role:: nim
 .. contents::
 
 

@@ -128,22 +128,21 @@ block tnamedfields:
   doAssert $x == "abc", $x
 
 
-block toptions:
+block tfakeOptions:
   type
-    # please make sure we have under 32 options (improves code efficiency!)
-    TOption = enum
-      optNone, optForceFullMake, optBoehmGC, optRefcGC, optRangeCheck,
-      optBoundsCheck, optOverflowCheck, optNilCheck, optAssert, optLineDir,
-      optWarns, optHints, optListCmd, optCompileOnly,
-      optSafeCode,             # only allow safe code
-      optStyleCheck, optOptimizeSpeed, optOptimizeSize, optGenDynLib,
-      optGenGuiApp, optStackTrace
+    TFakeOption = enum
+      fakeNone, fakeForceFullMake, fakeBoehmGC, fakeRefcGC, fakeRangeCheck,
+      fakeBoundsCheck, fakeOverflowCheck, fakeNilCheck, fakeAssert, fakeLineDir,
+      fakeWarns, fakeHints, fakeListCmd, fakeCompileOnly,
+      fakeSafeCode,             # only allow safe code
+      fakeStyleCheck, fakeOptimizeSpeed, fakeOptimizeSize, fakeGenDynLib,
+      fakeGenGuiApp, fakeStackTrace
 
-    TOptionset = set[TOption]
+    TFakeOptionset = set[TFakeOption]
 
   var
-    gOptions: TOptionset = {optRefcGC, optRangeCheck, optBoundsCheck,
-      optOverflowCheck, optAssert, optWarns, optHints, optLineDir, optStackTrace}
+    gFakeOptions: TFakeOptionset = {fakeRefcGC, fakeRangeCheck, fakeBoundsCheck,
+      fakeOverflowCheck, fakeAssert, fakeWarns, fakeHints, fakeLineDir, fakeStackTrace}
     compilerArgs: int
     gExitcode: int8
 

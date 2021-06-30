@@ -13,13 +13,14 @@ when not defined(nimcore):
   {.error: "nimcore MUST be defined for Nim's core tooling".}
 
 import
-  llstream, strutils, os, ast, lexer, syntaxes, options, msgs,
-  condsyms, times,
+  std/[strutils, os, times, tables, sha1, with, json],
+  llstream, ast, lexer, syntaxes, options, msgs,
+  condsyms,
   sem, idents, passes, extccomp,
-  cgen, json, nversion,
+  cgen, nversion,
   platform, nimconf, passaux, depends, vm,
   modules,
-  modulegraphs, tables, lineinfos, pathutils, vmprofiler, std/[sha1, with]
+  modulegraphs, lineinfos, pathutils, vmprofiler
 
 import ic / [cbackend, integrity, navigator]
 from ic / ic import rodViewer
@@ -281,7 +282,7 @@ proc mainCommand*(graph: ModuleGraph) =
     else:
       rawMessage(conf, errGenerated, "'run' command not available; rebuild with -d:tinyc")
   of cmdDoc0: docLikeCmd commandDoc(cache, conf)
-  of cmdDoc2:
+  of cmdDoc:
     docLikeCmd():
       conf.setNoteDefaults(warnLockLevel, false) # issue #13218
       conf.setNoteDefaults(warnRedefinitionOfLabel, false) # issue #13218
@@ -387,38 +388,9 @@ proc mainCommand*(graph: ModuleGraph) =
     rawMessage(conf, errGenerated, "invalid command: " & conf.command)
 
   if conf.errorCounter == 0 and conf.cmd notin {cmdTcc, cmdDump, cmdNop}:
-    # D20210419T170230:here
-    let mem =
-      when declared(system.getMaxMem): formatSize(getMaxMem()) & " peakmem"
-      else: formatSize(getTotalMem()) & " totmem"
-    let loc = $conf.linesCompiled
-    let build = if isDefined(conf, "danger"): "Dangerous Release build"
-                elif isDefined(conf, "release"): "Release build"
-                else: "***SLOW, DEBUG BUILD***; -d:release makes code run faster."
-    let sec = formatFloat(epochTime() - conf.lastCmdTime, ffDecimal, 3)
-    let project = if conf.filenameOption == foAbs: $conf.projectFull else: $conf.projectName
-      # xxx honor conf.filenameOption more accurately
-    var output: string
-    if optCompileOnly in conf.globalOptions and conf.cmd != cmdJsonscript:
-      output = $conf.jsonBuildFile
-    elif conf.outFile.isEmpty and conf.cmd notin {cmdJsonscript} + cmdDocLike + cmdBackends:
-      # for some cmd we expect a valid absOutFile
-      output = "unknownOutput"
-    else:
-      output = $conf.absOutFile
-    if conf.filenameOption != foAbs: output = output.AbsoluteFile.extractFilename
-      # xxx honor filenameOption more accurately
     if optProfileVM in conf.globalOptions:
       echo conf.dump(conf.vmProfileData)
-    rawMessage(conf, hintSuccessX, [
-      "loc", loc,
-      "sec", sec,
-      "mem", mem,
-      "project", project,
-      "output", output,
-      ])
-    if conf.cmd in cmdBackends:
-      rawMessage(conf, hintBuildMode, build)
+    genSuccessX(conf)
 
   when PrintRopeCacheStats:
     echo "rope cache stats: "

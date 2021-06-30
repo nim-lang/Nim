@@ -1317,6 +1317,11 @@ type
     ready*: FontFaceSetReady
     onloadingdone*: proc(event: Event)
 
+  ScrollIntoViewOptions* = object
+    behavior*: cstring
+    `block`*: cstring
+    inline*: cstring
+
 since (1, 3):
   type
     DomParser* = ref object
@@ -1538,6 +1543,7 @@ proc removeAttribute*(n: Node, attr: cstring)
 proc removeAttributeNode*(n, attr: Node)
 proc replaceData*(n: Node, start, len: int, text: cstring)
 proc scrollIntoView*(n: Node)
+proc scrollIntoView*(n: Node, options: ScrollIntoViewOptions)
 proc setAttribute*(n: Node, name, value: cstring)
 proc setAttributeNode*(n: Node, attr: Node)
 proc querySelector*(n: Node, selectors: cstring): Element
@@ -1761,5 +1767,5 @@ since (1, 3):
     ## https://developer.mozilla.org/en-US/docs/Web/API/FileReader/readAsBinaryString
   proc readAsDataURL*(f: FileReader, b: Blob) {.importcpp: "#.readAsDataURL(#)".}
     ## https://developer.mozilla.org/en-US/docs/Web/API/FileReader/readAsDataURL
-  proc readAsText*(f: FileReader, b: Blob, encoding = cstring"UTF-8") {.importcpp: "#.readAsText(#, #)".}
+  proc readAsText*(f: FileReader, b: Blob|File, encoding = cstring"UTF-8") {.importcpp: "#.readAsText(#, #)".}
     ## https://developer.mozilla.org/en-US/docs/Web/API/FileReader/readAsText

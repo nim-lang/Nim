@@ -47,9 +47,11 @@ full documentation of Perl's regular expressions.
 Because the backslash ``\`` is a meta character both in the Nim
 programming language and in regular expressions, it is strongly
 recommended that one uses the *raw* strings of Nim, so that
-backslashes are interpreted by the regular expression engine::
+backslashes are interpreted by the regular expression engine:
 
+```nim
   r"\S"  # matches any character that is not whitespace
+```
 
 A regular expression is a pattern that is matched against a subject string
 from left to right. Most characters stand for themselves in a pattern, and

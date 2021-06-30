@@ -15,7 +15,7 @@
 
 import
   intsets, strtabs, ast, astalgo, msgs, renderer, magicsys, types, idents,
-  strutils, options, dfa, lowerings, tables, modulegraphs, msgs,
+  strutils, options, dfa, lowerings, tables, modulegraphs,
   lineinfos, parampatterns, sighashes, liftdestructors, optimizer,
   varpartitions
 
@@ -73,7 +73,7 @@ proc nestedScope(parent: var Scope): Scope =
 proc p(n: PNode; c: var Con; s: var Scope; mode: ProcessMode): PNode
 proc moveOrCopy(dest, ri: PNode; c: var Con; s: var Scope; isDecl = false): PNode
 
-import sets, hashes, tables
+import sets, hashes
 
 proc hash(n: PNode): Hash = hash(cast[pointer](n))
 
@@ -245,8 +245,6 @@ template isUnpackedTuple(n: PNode): bool =
   ## hence unpacked tuples themselves don't need to be destroyed
   (n.kind == nkSym and n.sym.kind == skTemp and n.sym.typ.kind == tyTuple)
 
-from strutils import parseInt
-
 proc checkForErrorPragma(c: Con; t: PType; ri: PNode; opname: string) =
   var m = "'" & opname & "' is not available for type <" & typeToString(t) & ">"
   if (opname == "=" or opname == "=copy") and ri != nil:
@@ -364,6 +362,7 @@ proc genMarkCyclic(c: var Con; result, dest: PNode) =
 proc genCopyNoCheck(c: var Con; dest, ri: PNode): PNode =
   let t = dest.typ.skipTypes({tyGenericInst, tyAlias, tySink})
   result = c.genOp(t, attachedAsgn, dest, ri)
+  assert ri.typ != nil
 
 proc genCopy(c: var Con; dest, ri: PNode): PNode =
   let t = dest.typ
@@ -371,6 +370,7 @@ proc genCopy(c: var Con; dest, ri: PNode): PNode =
     # try to improve the error message here:
     c.checkForErrorPragma(t, ri, "=copy")
   result = c.genCopyNoCheck(dest, ri)
+  assert ri.typ != nil
 
 proc genDiscriminantAsgn(c: var Con; s: var Scope; n: PNode): PNode =
   # discriminator is ordinal value that doesn't need sink destroy

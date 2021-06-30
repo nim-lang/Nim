@@ -236,7 +236,7 @@ proc hash*[T](x: ptr[T]): Hash {.inline.} =
     assert cast[pointer](a[0].addr).hash == a[0].addr.hash
   hash(cast[pointer](x))
 
-when not defined(nimLegacyNoHashRef):
+when defined(nimEnableHashRef):
   proc hash*[T](x: ref[T]): Hash {.inline.} =
     ## Efficient `hash` overload.
     runnableExamples:
@@ -509,7 +509,7 @@ proc hashIgnoreCase*(sBuf: string, sPos, ePos: int): Hash =
     h = h !& ord(c)
   result = !$h
 
-proc hash*[T: tuple | object | proc](x: T): Hash {.inline.} =
+proc hash*[T: tuple | object | proc](x: T): Hash =
   ## Efficient `hash` overload.
   runnableExamples:
     # for `tuple|object`, `hash` must be defined for each component of `x`.

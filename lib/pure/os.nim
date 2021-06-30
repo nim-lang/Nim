@@ -320,17 +320,17 @@ else:
   template `!=?`(a, b: char): bool = toLowerAscii(a) != toLowerAscii(b)
 
 when doslikeFileSystem:
-  proc isAbsFromCurrentDrive(path: string): bool {.noSideEffect, raises: []} =
+  proc isAbsFromCurrentDrive(path: string): bool {.noSideEffect, raises: [].} =
     ## An absolute path from the root of the current drive (e.g. "\foo")
     path.len > 0 and
     (path[0] == AltSep or
      (path[0] == DirSep and
       (path.len == 1 or path[1] notin {DirSep, AltSep, ':'})))
 
-  proc isUNCPrefix(path: string): bool {.noSideEffect, raises: []} =
+  proc isUNCPrefix(path: string): bool {.noSideEffect, raises: [].} =
     path[0] == DirSep and path[1] == DirSep
 
-  proc sameRoot(path1, path2: string): bool {.noSideEffect, raises: []} =
+  proc sameRoot(path1, path2: string): bool {.noSideEffect, raises: [].} =
     ## Return true if path1 and path2 have a same root.
     ##
     ## Detail of windows path formats:
@@ -922,9 +922,7 @@ proc getConfigDir*(): string {.rtl, extern: "nos$1",
   ## See also:
   ## * `getHomeDir proc <#getHomeDir>`_
   ## * `getTempDir proc <#getTempDir>`_
-  ## * `expandTilde proc <#expandTilde,string>`_
-  ## * `getCurrentDir proc <#getCurrentDir>`_
-  ## * `setCurrentDir proc <#setCurrentDir,string>`_
+  ## * `getCacheDir proc <#getCacheDir>`_
   runnableExamples:
     from std/strutils import endsWith
     # See `getHomeDir` for behavior regarding trailing DirSep.
@@ -934,6 +932,42 @@ proc getConfigDir*(): string {.rtl, extern: "nos$1",
   else:
     result = getEnv("XDG_CONFIG_HOME", getEnv("HOME") / ".config")
   result.normalizePathEnd(trailingSep = defined(nimLegacyHomeDir))
+
+proc getCacheDir*(): string =
+  ## Returns the cache directory of the current user for applications.
+  ##
+  ## This makes use of the following environment variables:
+  ##
+  ## * On Windows: `getEnv("LOCALAPPDATA")`
+  ##
+  ## * On macOS: `getEnv("XDG_CACHE_HOME", getEnv("HOME") / "Library/Caches")`
+  ##
+  ## * On other platforms: `getEnv("XDG_CACHE_HOME", getEnv("HOME") / ".cache")`
+  ##
+  ## **See also:**
+  ## * `getHomeDir proc <#getHomeDir>`_
+  ## * `getTempDir proc <#getTempDir>`_
+  ## * `getConfigDir proc <#getConfigDir>`_
+  # follows https://crates.io/crates/platform-dirs
+  when defined(windows):
+    result = getEnv("LOCALAPPDATA")
+  elif defined(osx):
+    result = getEnv("XDG_CACHE_HOME", getEnv("HOME") / "Library/Caches")
+  else:
+    result = getEnv("XDG_CACHE_HOME", getEnv("HOME") / ".cache")
+  result.normalizePathEnd(false)
+
+proc getCacheDir*(app: string): string =
+  ## Returns the cache directory for an application `app`.
+  ##
+  ## * On windows, this uses: `getCacheDir() / app / "cache"`
+  ##
+  ## * On other platforms, this uses: `getCacheDir() / app`
+  when defined(windows):
+    getCacheDir() / app / "cache"
+  else:
+    getCacheDir() / app
+
 
 when defined(windows):
   type DWORD = uint32
@@ -972,9 +1006,7 @@ proc getTempDir*(): string {.rtl, extern: "nos$1",
   ## See also:
   ## * `getHomeDir proc <#getHomeDir>`_
   ## * `getConfigDir proc <#getConfigDir>`_
-  ## * `expandTilde proc <#expandTilde,string>`_
-  ## * `getCurrentDir proc <#getCurrentDir>`_
-  ## * `setCurrentDir proc <#setCurrentDir,string>`_
+  ## * `getCacheDir proc <#getCacheDir>`_
   runnableExamples:
     from std/strutils import endsWith
     # See `getHomeDir` for behavior regarding trailing DirSep.
@@ -1006,7 +1038,7 @@ proc expandTilde*(path: string): string {.
   ## Expands ``~`` or a path starting with ``~/`` to a full path, replacing
   ## ``~`` with `getHomeDir() <#getHomeDir>`_ (otherwise returns ``path`` unmodified).
   ##
-  ## Windows: this is still supported despite Windows platform not having this
+  ## Windows: this is still supported despite the Windows platform not having this
   ## convention; also, both ``~/`` and ``~\`` are handled.
   ##
   ## .. warning:: `~bob` and `~bob/` are not yet handled correctly.
@@ -1069,18 +1101,14 @@ proc quoteShellWindows*(s: string): string {.noSideEffect, rtl, extern: "nosp$1"
 
 proc quoteShellPosix*(s: string): string {.noSideEffect, rtl, extern: "nosp$1".} =
   ## Quote ``s``, so it can be safely passed to POSIX shell.
-  ## Based on Python's `pipes.quote`.
   const safeUnixChars = {'%', '+', '-', '.', '/', '_', ':', '=', '@',
                          '0'..'9', 'A'..'Z', 'a'..'z'}
   if s.len == 0:
-    return "''"
-
-  let safe = s.allCharsInSet(safeUnixChars)
-
-  if safe:
-    return s
+    result = "''"
+  elif s.allCharsInSet(safeUnixChars):
+    result = s
   else:
-    return "'" & s.replace("'", "'\"'\"'") & "'"
+    result = "'" & s.replace("'", "'\"'\"'") & "'"
 
 when defined(windows) or defined(posix) or defined(nintendoswitch):
   proc quoteShell*(s: string): string {.noSideEffect, rtl, extern: "nosp$1".} =
@@ -1090,9 +1118,9 @@ when defined(windows) or defined(posix) or defined(nintendoswitch):
     ## <#quoteShellWindows,string>`_. Otherwise, calls `quoteShellPosix proc
     ## <#quoteShellPosix,string>`_.
     when defined(windows):
-      return quoteShellWindows(s)
+      result = quoteShellWindows(s)
     else:
-      return quoteShellPosix(s)
+      result = quoteShellPosix(s)
 
   proc quoteShellCommand*(args: openArray[string]): string =
     ## Concatenates and quotes shell arguments `args`.
@@ -1185,7 +1213,7 @@ proc dirExists*(dir: string): bool {.rtl, extern: "nos$1", tags: [ReadDirEffect]
       result = (a and FILE_ATTRIBUTE_DIRECTORY) != 0'i32
   else:
     var res: Stat
-    return stat(dir, res) >= 0'i32 and S_ISDIR(res.st_mode)
+    result = stat(dir, res) >= 0'i32 and S_ISDIR(res.st_mode)
 
 proc symlinkExists*(link: string): bool {.rtl, extern: "nos$1",
                                           tags: [ReadDirEffect],
@@ -1207,7 +1235,7 @@ proc symlinkExists*(link: string): bool {.rtl, extern: "nos$1",
       result = (a and FILE_ATTRIBUTE_REPARSE_POINT) != 0'i32
   else:
     var res: Stat
-    return lstat(link, res) >= 0'i32 and S_ISLNK(res.st_mode)
+    result = lstat(link, res) >= 0'i32 and S_ISLNK(res.st_mode)
 
 
 when not defined(windows):
@@ -1720,17 +1748,18 @@ proc isAdmin*: bool {.noWeirdTarget.} =
                                               addr administratorsGroup)):
       raiseOSError(osLastError(), "could not get SID for Administrators group")
 
-    defer:
+    try:
+      var b: WINBOOL
+      if not isSuccess(checkTokenMembership(0, administratorsGroup, addr b)):
+        raiseOSError(osLastError(), "could not check access token membership")
+
+      result = isSuccess(b)
+    finally:
       if freeSid(administratorsGroup) != nil:
         raiseOSError(osLastError(), "failed to free SID for Administrators group")
 
-    var b: WINBOOL
-    if not isSuccess(checkTokenMembership(0, administratorsGroup, addr b)):
-      raiseOSError(osLastError(), "could not check access token membership")
-
-    return isSuccess(b)
   else:
-    return geteuid() == 0
+    result = geteuid() == 0
 
 proc createSymlink*(src, dest: string) {.noWeirdTarget.} =
   ## Create a symbolic link at `dest` which points to the item specified
@@ -1796,10 +1825,11 @@ when hasCCopyfile:
     COPYFILE_XATTR {.nodecl.}: copyfile_flags_t
   {.pop.}
 
-type CopyFlag* = enum   ## Copy options.
-  cfSymlinkAsIs,    ## Copy symlinks as symlinks
-  cfSymlinkFollow,  ## Copy the files symlinks point to
-  cfSymlinkIgnore   ## Ignore symlinks
+type
+  CopyFlag* = enum    ## Copy options.
+    cfSymlinkAsIs,    ## Copy symlinks as symlinks
+    cfSymlinkFollow,  ## Copy the files symlinks point to
+    cfSymlinkIgnore   ## Ignore symlinks
 
 const copyFlagSymlink = {cfSymlinkAsIs, cfSymlinkFollow, cfSymlinkIgnore}
 
@@ -1977,28 +2007,32 @@ proc removeFile*(file: string) {.rtl, extern: "nos$1", tags: [WriteDirEffect], n
   if not tryRemoveFile(file):
     raiseOSError(osLastError(), file)
 
-proc tryMoveFSObject(source, dest: string): bool {.noWeirdTarget.} =
-  ## Moves a file or directory from `source` to `dest`.
+proc tryMoveFSObject(source, dest: string, isDir: bool): bool {.noWeirdTarget.} =
+  ## Moves a file (or directory if `isDir` is true) from `source` to `dest`.
   ##
-  ## Returns false in case of `EXDEV` error.
+  ## Returns false in case of `EXDEV` error or `AccessDeniedError` on windows (if `isDir` is true).
   ## In case of other errors `OSError` is raised.
   ## Returns true in case of success.
   when defined(windows):
     when useWinUnicode:
       let s = newWideCString(source)
       let d = newWideCString(dest)
-      if moveFileExW(s, d, MOVEFILE_COPY_ALLOWED or MOVEFILE_REPLACE_EXISTING) == 0'i32: raiseOSError(osLastError(), $(source, dest))
+      result = moveFileExW(s, d, MOVEFILE_COPY_ALLOWED or MOVEFILE_REPLACE_EXISTING) != 0'i32
     else:
-      if moveFileExA(source, dest, MOVEFILE_COPY_ALLOWED or MOVEFILE_REPLACE_EXISTING) == 0'i32: raiseOSError(osLastError(), $(source, dest))
+      result = moveFileExA(source, dest, MOVEFILE_COPY_ALLOWED or MOVEFILE_REPLACE_EXISTING) != 0'i32
   else:
-    if c_rename(source, dest) != 0'i32:
-      let err = osLastError()
-      if err == EXDEV.OSErrorCode:
-        return false
+    result = c_rename(source, dest) == 0'i32
+
+  if not result:
+    let err = osLastError()
+    let isAccessDeniedError =
+      when defined(windows):
+        const AccessDeniedError = OSErrorCode(5)
+        isDir and err == AccessDeniedError
       else:
-        # see whether `strerror(errno)` is redundant with what raiseOSError already shows
-        raiseOSError(err, $(source, dest, strerror(errno)))
-  return true
+        err == EXDEV.OSErrorCode
+    if not isAccessDeniedError:
+      raiseOSError(err, $(source, dest))
 
 proc moveFile*(source, dest: string) {.rtl, extern: "nos$1",
   tags: [ReadDirEffect, ReadIOEffect, WriteIOEffect], noWeirdTarget.} =
@@ -2019,8 +2053,10 @@ proc moveFile*(source, dest: string) {.rtl, extern: "nos$1",
   ## * `removeFile proc <#removeFile,string>`_
   ## * `tryRemoveFile proc <#tryRemoveFile,string>`_
 
-  if not tryMoveFSObject(source, dest):
-    when not defined(windows):
+  if not tryMoveFSObject(source, dest, isDir = false):
+    when defined(windows):
+      doAssert false
+    else:
       # Fallback to copy & del
       copyFile(source, dest, {cfSymlinkAsIs})
       try:
@@ -2028,6 +2064,7 @@ proc moveFile*(source, dest: string) {.rtl, extern: "nos$1",
       except:
         discard tryRemoveFile(dest)
         raise
+
 
 proc exitStatusLikeShell*(status: cint): cint =
   ## Converts exit code from `c_system` into a shell exit code.
@@ -2582,11 +2619,10 @@ proc moveDir*(source, dest: string) {.tags: [ReadIOEffect, WriteIOEffect], noWei
   ## * `removeDir proc <#removeDir,string>`_
   ## * `existsOrCreateDir proc <#existsOrCreateDir,string>`_
   ## * `createDir proc <#createDir,string>`_
-  if not tryMoveFSObject(source, dest):
-    when not defined(windows):
-      # Fallback to copy & del
-      copyDir(source, dest)
-      removeDir(source)
+  if not tryMoveFSObject(source, dest, isDir = true):
+    # Fallback to copy & del
+    copyDir(source, dest)
+    removeDir(source)
 
 proc createHardlink*(src, dest: string) {.noWeirdTarget.} =
   ## Create a hard link at `dest` which points to the item specified

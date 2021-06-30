@@ -11,6 +11,7 @@ jobs:
         batch: ["allowed_failures", "0_3", "1_3", "2_3"] # list of `index_num`
     name: '${{ matrix.os }} (batch: ${{ matrix.batch }})'
     runs-on: ${{ matrix.os }}
+    timeout-minutes: 60 # refs bug #18178
     env:
       NIM_TEST_PACKAGES: "1"
       NIM_TESTAMENT_BATCH: ${{ matrix.batch }}

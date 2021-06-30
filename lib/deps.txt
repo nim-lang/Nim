@@ -1,0 +1,14 @@
+# Dragonbox.nim and Schubfach.nim
+
+"Dragonbox" is Nim's "float64 to string" algorithm.
+"Schubfach" is Nim's "float32 to string" algorithm. These are based on
+
+https://github.com/abolz/Drachennest/blob/master/src/dragonbox.cc
+https://github.com/abolz/Drachennest/blob/master/src/schubfach_32.cc
+
+commit e6714a39ad331b4489d0b6aaf3968635bff4eb5e
+
+The `.cc` files were translated by c2nim via `--cpp --keepBodies --nep1`
+and then modified to remove the unsafe code.
+
+We used c2nim as of commit f0469c909d9e2e28d59687e394bf5ac862f561b6.

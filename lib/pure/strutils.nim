@@ -72,7 +72,7 @@ runnableExamples:
 
 import parseutils
 from math import pow, floor, log10
-from algorithm import reverse
+from algorithm import fill, reverse
 import std/enumutils
 
 from unicode import toLower, toUpper
@@ -1779,17 +1779,7 @@ func initSkipTable*(a: var SkipTable, sub: string) {.rtl,
     extern: "nsuInitSkipTable".} =
   ## Preprocess table `a` for `sub`.
   let m = len(sub)
-  var i = 0
-  while i <= 0xff-7:
-    a[chr(i + 0)] = m
-    a[chr(i + 1)] = m
-    a[chr(i + 2)] = m
-    a[chr(i + 3)] = m
-    a[chr(i + 4)] = m
-    a[chr(i + 5)] = m
-    a[chr(i + 6)] = m
-    a[chr(i + 7)] = m
-    i += 8
+  fill(a, m)
 
   for i in 0 ..< m - 1:
     a[sub[i]] = m - 1 - i
@@ -1890,7 +1880,7 @@ func find*(s, sub: string, start: Natural = 0, last = 0): int {.rtl,
   ## See also:
   ## * `rfind func<#rfind,string,string,Natural>`_
   ## * `replace func<#replace,string,string,string>`_
-  if sub.len > s.len: return -1
+  if sub.len > s.len - start: return -1
   if sub.len == 1: return find(s, sub[0], start, last)
 
   template useSkipTable {.dirty.} =
@@ -1966,6 +1956,8 @@ func rfind*(s, sub: string, start: Natural = 0, last = -1): int {.rtl,
   ## See also:
   ## * `find func<#find,string,string,Natural,int>`_
   if sub.len == 0:
+    return -1
+  if sub.len > s.len - start:
     return -1
   let last = if last == -1: s.high else: last
   result = 0

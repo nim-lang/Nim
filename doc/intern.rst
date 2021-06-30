@@ -6,8 +6,8 @@
 :Author: Andreas Rumpf
 :Version: |nimversion|
 
+.. default-role:: code
 .. include:: rstcommon.rst
-.. default-role:: Nim
 .. contents::
 
   "Abstraction is layering ignorance on top of reality." -- Richard Gabriel

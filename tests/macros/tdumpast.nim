@@ -2,34 +2,69 @@
 
 import macros
 
-template plus(a, b: untyped): untyped {.dirty} =
-  a + b
+block:
+  template plus(a, b: untyped): untyped {.dirty} =
+    a + b
 
-macro call(e: untyped): untyped =
-  result = newCall("foo", newStrLitNode("bar"))
+  macro call(e: untyped): untyped =
+    result = newCall("foo", newStrLitNode("bar"))
 
-macro dumpAST(n: untyped): untyped =
-  # dump AST as a side-effect and return the inner node
-  let n = callsite()
-  echo n.lispRepr
-  echo n.treeRepr
+  macro dumpAST(n: untyped): string =
+    var msg = ""
+    msg.add "lispRepr:\n" & n.lispRepr & "\n"
+    msg.add "treeRepr:\n" & n.treeRepr & "\n"
 
-  var plusAst = getAst(plus(1, 2))
-  echo plusAst.lispRepr
+    var plusAst = getAst(plus(1, 2))
+    msg.add "lispRepr:\n" & n.lispRepr & "\n"
 
-  var callAst = getAst(call(4))
-  echo callAst.lispRepr
+    var callAst = getAst(call(4))
+    msg.add "callAst.lispRepr:\n" & callAst.lispRepr & "\n"
 
-  var e = parseExpr("foo(bar + baz)")
-  echo e.lispRepr
+    var e = parseExpr("foo(bar + baz)")
+    msg.add "e.lispRepr:\n" & e.lispRepr & "\n"
+    result = msg.newLit
 
-  result = n[1]
+  let a = dumpAST:
+    proc add(x, y: int): int =
+      return x + y
+    const foo = 3
 
-dumpAST:
-  proc add(x, y: int): int =
-    return x + y
-
-  proc sub(x, y: int): int = return x - y
+  doAssert a == """
+lispRepr:
+(StmtList (ProcDef (Ident "add") (Empty) (Empty) (FormalParams (Ident "int") (IdentDefs (Ident "x") (Ident "y") (Ident "int") (Empty))) (Empty) (Empty) (StmtList (ReturnStmt (Infix (Ident "+") (Ident "x") (Ident "y"))))) (ConstSection (ConstDef (Ident "foo") (Empty) (IntLit 3))))
+treeRepr:
+StmtList
+  ProcDef
+    Ident "add"
+    Empty
+    Empty
+    FormalParams
+      Ident "int"
+      IdentDefs
+        Ident "x"
+        Ident "y"
+        Ident "int"
+        Empty
+    Empty
+    Empty
+    StmtList
+      ReturnStmt
+        Infix
+          Ident "+"
+          Ident "x"
+          Ident "y"
+  ConstSection
+    ConstDef
+      Ident "foo"
+      Empty
+      IntLit 3
+lispRepr:
+(StmtList (ProcDef (Ident "add") (Empty) (Empty) (FormalParams (Ident "int") (IdentDefs (Ident "x") (Ident "y") (Ident "int") (Empty))) (Empty) (Empty) (StmtList (ReturnStmt (Infix (Ident "+") (Ident "x") (Ident "y"))))) (ConstSection (ConstDef (Ident "foo") (Empty) (IntLit 3))))
+callAst.lispRepr:
+(Call (Ident "foo") (StrLit "bar"))
+e.lispRepr:
+(Call (Ident "foo") (Infix (Ident "+") (Ident "bar") (Ident "baz")))
+"""
 
 macro fun() =
   let n = quote do:
@@ -79,3 +114,48 @@ block: # repr
   doAssert repr2((1, 2, 3.0)) == "(1, 2, 3.0)"
   doAssert repr2((1)) == "(1)"
   doAssert repr2((1+2)) == "(1 + 2)"
+
+block: # treeRepr
+  macro treeRepr2(a: untyped): string = newLit a.treeRepr
+  macro treeRepr3(a: typed): string = newLit a.treeRepr
+
+  doAssert treeRepr2(1+1 == 2) == """
+Infix
+  Ident "=="
+  Infix
+    Ident "+"
+    IntLit 1
+    IntLit 1
+  IntLit 2"""
+
+  proc baz() = discard
+  proc baz(a: int) = discard
+  proc baz(a: float) = discard
+
+  doAssert treeRepr3(baz()) == """
+Call
+  Sym "baz""""
+
+  let a = treeRepr3(block:
+    proc bar(a: auto) = baz())
+  doAssert a == """
+BlockStmt
+  Empty
+  ProcDef
+    Sym "bar"
+    Empty
+    GenericParams
+      Sym "a:type"
+    FormalParams
+      Empty
+      IdentDefs
+        Sym "a"
+        Sym "auto"
+        Empty
+    Empty
+    Bracket
+      Empty
+      Empty
+    StmtList
+      Call
+        OpenSymChoice 3 "baz""""

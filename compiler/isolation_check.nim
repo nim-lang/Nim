@@ -64,7 +64,7 @@ proc canAlias(arg, ret: PType; marker: var IntSet): bool =
   else:
     result = false
 
-proc isValueOnlyType(t: PType): bool = 
+proc isValueOnlyType(t: PType): bool =
   # t doesn't contain pointers and references
   proc wrap(t: PType): bool {.nimcall.} = t.kind in {tyRef, tyPtr, tyVar, tyLent}
   result = not types.searchTypeFor(t, wrap)
@@ -88,7 +88,7 @@ proc checkIsolate*(n: PNode): bool =
       # XXX: as long as we don't update the analysis while examining arguments
       #      we can do an early check of the return type, otherwise this is a
       #      bug and needs to be moved below
-      if n[0].typ.flags * {tfGcSafe, tfNoSideEffect} == {}:
+      if tfNoSideEffect notin n[0].typ.flags:
         return false
       for i in 1..<n.len:
         if checkIsolate(n[i]):

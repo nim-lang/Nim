@@ -28,6 +28,9 @@
 - `math.round` now is rounded "away from zero" in JS backend which is consistent
   with other backends. See #9125. Use `-d:nimLegacyJsRound` for previous behavior.
 
+- Instead of deleting the element at the last index,
+  `system.delete()` now raises `IndexDefect` when given index is out of bounds.
+
 - Changed the behavior of `uri.decodeQuery` when there are unencoded `=`
   characters in the decoded values. Prior versions would raise an error. This is
   no longer the case to comply with the HTML spec and other languages
@@ -50,8 +53,9 @@
 - On POSIX systems, we now ignore `SIGPIPE` signals, use `-d:nimLegacySigpipeHandler`
   for previous behavior.
 
-- `hashes.hash` now supports `object` and `ref` (can be overloaded in user code).
-  For a transition period, use `-d:nimLegacyNoHashRef` to avoid defining `hash(ref)`.
+- `hashes.hash` can now support `object` and `ref` (can be overloaded in user code),
+  if `-d:nimEnableHashRef` is used.
+
 - `hashes.hash(proc|ptr|ref|pointer)` now calls `hash(int)` and honors `-d:nimIntHash1`,
   `hashes.hash(closure)` has also been improved.
 
@@ -60,28 +64,41 @@
 
 - Removed `.travis.yml`, `appveyor.yml.disabled`, `.github/workflows/ci.yml.disabled`.
 
-- Nim compiler now adds ASCII unit separator `\31` before a newline for every generated
-  message (potentially multiline), so tooling can tell when messages start and end.
-
 - `random.initRand(seed)` now produces non-skewed values for the 1st call to `rand()` after
   initialization with a small (< 30000) seed. Use `-d:nimLegacyRandomInitRand` to restore
   previous behavior for a transition time, see PR #17467.
 
 - `jsonutils` now serializes/deserializes holey enums as regular enums (via `ord`) instead of as strings.
-  Use `-d:nimLegacyJsonutilsHoleyEnum` for a transition period.
+  Use `-d:nimLegacyJsonutilsHoleyEnum` for a transition period. `toJson` now serializes `JsonNode`
+  as is via reference (without a deep copy) instead of treating `JsonNode` as a regular ref object,
+  this can be customized via `jsonNodeMode`.
 
 - `json` and `jsonutils` now serialize NaN, Inf, -Inf as strings, so that
   `%[NaN, -Inf]` is the string `["nan","-inf"]` instead of `[nan,-inf]` which was invalid json.
 
+- `system.addFloat` now uses the "Dragonbox" algorithm, which ensures correct roundtrips of floating point
+  numbers, that the minimum length representation of a floating point number is used and correct rounding.
+  Use `-d:nimLegacyAddFloat` for a transition period.
+
 - `strformat` is now part of `include std/prelude`.
+
+- Deprecated `proc reversed*[T](a: openArray[T], first: Natural, last: int): seq[T]` in `std/algorithm`.
+
+-  In `std/macros`, `treeRepr,lispRepr,astGenRepr` now represent SymChoice nodes in a collapsed way,
+   use `-d:nimLegacyMacrosCollapseSymChoice` to get previous behavior.
 
 - The configuration subsystem now allows for `-d:release` and `-d:danger` to work as expected.
   The downside is that these defines now have custom logic that doesn't apply for
   other defines.
 
+- Renamed `-d:nimCompilerStackraceHints` to `-d:nimCompilerStacktraceHints`.
+
 
 ## Standard library additions and changes
-- Added support for parenthesized expressions in `strformat`
+
+- `strformat`:
+  added support for parenthesized expressions.
+  added support for const string's instead of just string literals
 
 - Fixed buffer overflow bugs in `net`
 
@@ -97,11 +114,14 @@
   the OpenSSL DLLs (e.g. libssl-1_1-x64.dll, libcrypto-1_1-x64.dll) you
   now also need to ship `cacert.pem` with your `.exe` file.
 
-
 - Make `{.requiresInit.}` pragma to work for `distinct` types.
 
-- Added a macros `enumLen` for returning the number of items in an enum to the
-  `typetraits.nim` module.
+- `typetraits`:
+  `distinctBase` now is identity instead of error for non distinct types.
+  Added `enumLen` to return the number of elements in an enum.
+  Added `HoleyEnum` for enums with holes, `OrdinalEnum` for enums without holes.
+  Added `hasClosure`.
+  Added `pointerBase` to return `T` for `ref T | ptr T`.
 
 - `prelude` now works with the JavaScript target.
   Added `sequtils` import to `prelude`.
@@ -149,8 +169,6 @@
   Added `symbolName` to return the enum symbol name ignoring the human readable name.
   Added `symbolRank` to return the index in which an enum member is listed in an enum.
 
-- Added `typetraits.HoleyEnum` for enums with holes, `OrdinalEnum` for enums without holes.
-
 - Removed deprecated `iup` module from stdlib, it has already moved to
   [nimble](https://github.com/nim-lang/iup).
 
@@ -171,9 +189,10 @@
 - `--gc:orc` is now 10% faster than previously for common workloads. If
   you have trouble with its changed behavior, compile with `-d:nimOldOrc`.
 
-
 - `os.FileInfo` (returned by `getFileInfo`) now contains `blockSize`,
   determining preferred I/O block size for this file object.
+
+- Added `os.getCacheDir()` to return platform specific cache directory.
 
 - Added a simpler to use `io.readChars` overload.
 
@@ -274,14 +293,10 @@
 - Added `std/strbasics` for high performance string operations.
   Added `strip`, `setSlice`, `add(a: var string, b: openArray[char])`.
 
-
-- Added to `wrapnils` an option-like API via `??.`, `isSome`, `get`.
-
 - `std/options` changed `$some(3)` to `"some(3)"` instead of `"Some(3)"`
   and `$none(int)` to `"none(int)"` instead of `"None[int]"`.
 
 - Added `algorithm.merge`.
-
 
 - Added `std/jsfetch` module [Fetch](https://developer.mozilla.org/docs/Web/API/Fetch_API) wrapper for JavaScript target.
 
@@ -311,8 +326,6 @@
 
 - Added `hasDataBuffered` to `asyncnet`.
 
-- Added `hasClosure` to `std/typetraits`.
-
 - Added `std/tempfiles`.
 
 - Added `genasts.genAst` that avoids the problems inherent with `quote do` and can
@@ -322,6 +335,10 @@
 
 - Fixed premature garbage collection in asyncdispatch, when a stack trace override is in place.
 
+- Added setCurrentException for JS backend.
+
+- Added `dom.scrollIntoView` proc with options
+
 ## Language changes
 
 - `nimscript` now handles `except Exception as e`.
@@ -329,8 +346,6 @@
 - The `cstring` doesn't support `[]=` operator in JS backend.
 
 - nil dereference is not allowed at compile time. `cast[ptr int](nil)[]` is rejected at compile time.
-
-- `typetraits.distinctBase` now is identity instead of error for non distinct types.
 
 - `os.copyFile` is now 2.5x faster on OSX, by using `copyfile` from `copyfile.h`;
   use `-d:nimLegacyCopyFile` for OSX < 10.5.
@@ -366,9 +381,13 @@
 
 - `typeof(voidStmt)` now works and returns `void`.
 
+
+
 ## Compiler changes
 
 - Added `--declaredlocs` to show symbol declaration location in messages.
+
+- You can now enable/disable VM tracing in user code via `vmutils.vmTrace`.
 
 - Deprecated `TaintedString` and `--taintmode`.
 
@@ -379,6 +398,9 @@
 - Added `--filenames:abs|canonical|legacyRelProj` which replaces --listFullPaths:on|off
 
 - Added `--processing:dots|filenames|off` which customizes `hintProcessing`
+
+- Added `--unitsep:on|off` to control whether to add ASCII unit separator `\31` before a newline
+ for every generated message (potentially multiline), so tooling can tell when messages start and end.
 
 - Source+Edit links now appear on top of every docgen'd page when
   `nim doc --git.url:url ...` is given.
@@ -392,7 +414,8 @@
 - TLS: OSX now uses native TLS (`--tlsEmulation:off`), TLS now works with importcpp non-POD types,
   such types must use `.cppNonPod` and `--tlsEmulation:off`should be used.
 
-- Now array literals(JS backend) uses JS typed arrays when the corresponding js typed array exists, for example `[byte(1), 2, 3]` generates `new Uint8Array([1, 2, 3])`.
+- Now array literals(JS backend) uses JS typed arrays when the corresponding js typed array exists,
+  for example `[byte(1), 2, 3]` generates `new Uint8Array([1, 2, 3])`.
 
 - docgen: rst files can now use single backticks instead of double backticks and correctly render
   in both rst2html (as before) as well as common tools rendering rst directly (e.g. github), by
@@ -407,6 +430,10 @@
 - Added `unsafeIsolate` and `extract` to `std/isolation`.
 
 - `--hint:CC` now goes to stderr (like all other hints) instead of stdout.
+
+- `--hint:all:on|off` is now supported to select or deselect all hints; it
+  differs from `--hints:on|off` which acts as a (reversible) gate.
+  Likewise with `--warning:all:on|off`.
 
 - json build instructions are now generated in `$nimcache/outFileBasename.json`
   instead of `$nimcache/projectName.json`. This allows avoiding recompiling a given project
@@ -424,7 +451,16 @@
   the official Nim style guide. To be enabled, this has to be combined either
   with `--styleCheck:error` or `--styleCheck:hint`.
 
+
+
 ## Tool changes
+
+- Latex doc generation is revised: output `.tex` files should be compiled
+  by `xelatex` (not by `pdflatex` as before). Now default Latex settings
+  provide support for Unicode and do better job for avoiding margin overflows.
+
+- Implemented `doc2tex` compiler command which converts documentation in
+  `.nim` files to Latex.
 
 - The rst parser now supports markdown table syntax.
   Known limitations:

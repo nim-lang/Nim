@@ -138,15 +138,13 @@ proc semEnum(c: PContext, n: PNode, prev: PType): PType =
       identToReplace[] = symNode
     if e.position == 0: hasNull = true
     if result.sym != nil and sfExported in result.sym.flags:
-      incl(e.flags, {sfUsed, sfExported})
-    if result.sym != nil and not isPure:
-      addInterfaceDeclAux(c, e, forceExport = sfExported in result.sym.flags)
+      e.flags.incl {sfUsed, sfExported}
 
     result.n.add symNode
     styleCheckDef(c.config, e)
     onDef(e.info, e)
     if sfGenSym notin e.flags:
-      if not isPure: addDecl(c, e)
+      if not isPure: addInterfaceDecl(c, e)
       else: declarePureEnumField(c, e)
     if isPure and (let conflict = strTableInclReportConflict(symbols, e); conflict != nil):
       wrongRedefinition(c, e.info, e.name.s, conflict.info)
@@ -1297,7 +1295,7 @@ proc semProcTypeNode(c: PContext, n, genericParams: PNode,
         let param = strTableGet(c.signatures, arg.name)
         if param != nil: typ = param.typ
         else:
-          localError(c.config, a.info, "parameter '$1' requires a type" % param.name.s)
+          localError(c.config, a.info, "parameter '$1' requires a type" % arg.name.s)
           typ = errorType(c)
       let lifted = liftParamType(c, kind, genericParams, typ,
                                  arg.name.s, arg.info)

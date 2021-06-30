@@ -79,7 +79,7 @@ to introduce new object roots apart from `system.RootObj`. (This is used
 in the GTK wrapper for instance.)
 
 Ref objects should be used whenever inheritance is used. It isn't strictly
-necessary, but with non-ref objects assignments such as `let person: Person =
+necessary, but with non-ref objects, assignments such as `let person: Person =
 Student(id: 123)` will truncate subclass fields.
 
 **Note**: Composition (*has-a* relation) is often preferable to inheritance

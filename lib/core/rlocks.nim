@@ -11,7 +11,10 @@
 
 
 when not compileOption("threads") and not defined(nimdoc):
-  {.error: "Rlocks requires --threads:on option.".}
+  when false:
+    # make rlocks modlue consistent with locks module,
+    # so they can replace each other seamlessly.
+    {.error: "Rlocks requires --threads:on option.".}
 
 const insideRLocksModule = true
 include "system/syslocks"

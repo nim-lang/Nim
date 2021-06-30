@@ -1,27 +1,13 @@
+import std/private/digitsutils
+
+
 proc `$`*(x: int): string {.magic: "IntToStr", noSideEffect.}
   ## The stringify operator for an integer argument. Returns `x`
   ## converted to a decimal string. `$` is Nim's general way of
   ## spelling `toString`:idx:.
 
 template dollarImpl(x: uint | uint64, result: var string) =
-  type destTyp = typeof(x)
-  if x == 0:
-    result = "0"
-  else:
-    result = newString(60)
-    var i = 0
-    var n = x
-    while n != 0:
-      let nn = n div destTyp(10)
-      result[i] = char(n - destTyp(10) * nn + ord('0'))
-      inc i
-      n = nn
-    result.setLen i
-
-    let half = i div 2
-    # Reverse
-    for t in 0 .. half-1: swap(result[t], result[i-t-1])
-
+  addIntImpl(result, x)
 
 when defined(js):
   import std/private/since
@@ -56,6 +42,10 @@ proc `$`*(x: int64): string {.magic: "Int64ToStr", noSideEffect.}
 
 proc `$`*(x: float): string {.magic: "FloatToStr", noSideEffect.}
   ## The stringify operator for a float argument. Returns `x`
+  ## converted to a decimal string.
+
+proc `$`*(x: float32): string {.magic: "FloatToStr", noSideEffect.}
+  ## The stringify operator for a float32 argument. Returns `x`
   ## converted to a decimal string.
 
 proc `$`*(x: bool): string {.magic: "BoolToStr", noSideEffect.}
@@ -123,7 +113,7 @@ proc `$`*[T: tuple|object](x: T): string =
   ##   $() == "()"
   result = "("
   const isNamed = T is object or isNamedTuple(T)
-  var count = 0
+  var count {.used.} = 0
   for name, value in fieldPairs(x):
     if count > 0: result.add(", ")
     when isNamed:
