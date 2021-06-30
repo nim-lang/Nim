@@ -14,14 +14,14 @@
 ## * `std/packedsets <packedsets.html>`_
 ## * `std/sets <sets.html>`_
 
-import macros
+import typetraits, macros
 
 #[
   type SetElement* = char|byte|bool|int16|uint16|enum|uint8|int8
     ## The allowed types of a built-in set.
 ]#
 
-template toSet*[T](iter: iterable[T]): set[T] =
+template toSet*(iter: untyped): untyped =
   ## Returns a built-in set from the elements of the iterable `iter`.
   runnableExamples:
     assert "helloWorld".toSet == {'W', 'd', 'e', 'h', 'l', 'o', 'r'}
@@ -30,20 +30,12 @@ template toSet*[T](iter: iterable[T]): set[T] =
     assert toSet(@[1321i16, 321, 90]) == {90i16, 321, 1321}
     assert toSet([false]) == {false}
     assert toSet(0u8..10) == {0u8..10}
-  var result: set[T]
+
+  var result: set[elementType(iter)]
   for x in iter:
     incl(result, x)
   result
 
-template toSet*[T](iter: openArray[T]): set[T] = toSet(items(iter))
-
-template toSet2*[T, T2](iter: iterable[T], _: typedesc[T2]): set[T2] =
-  var result: set[T2]
-  for x in iter:
-    incl(result, x)
-  result
-
-# template toSet3*[T, T2](iter: iterable[T], _: typedesc[T2]): T2 =
 template toSet3*[T2](iter: untyped, _: typedesc[T2]): T2 =
   var result: T2
   for x in iter:
