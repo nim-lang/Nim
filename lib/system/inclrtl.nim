@@ -30,17 +30,16 @@ when defined(createNimRtl):
   {.pragma: inl.}
   {.pragma: compilerRtl, compilerproc, exportc: "nimrtl_$1", dynlib.}
 elif defined(useNimRtl):
-  when not declared(nimrtlInclrtl):
-    # `when` needed because otherwise this could give `ambiguous identifier:` errors.
-    # xxx we should instead improve pragmas so that symbol binding happens,
-    # as well as allow a way to export pragamas, to avoid inclrtl being an include.
-    const nimrtlInclrtl* =
-      when defined(windows): "nimrtl.dll"
-      elif defined(macosx): "libnimrtl.dylib"
-      else: "libnimrtl.so"
-  {.pragma: rtl, importc: "nimrtl_$1", dynlib: nimrtlInclrtl, gcsafe.}
+  #[
+  `{.rtl.}` should only be used for non-generic procs.
+  ]#
+  const nimrtl* =
+    when defined(windows): "nimrtl.dll"
+    elif defined(macosx): "libnimrtl.dylib"
+    else: "libnimrtl.so"
+  {.pragma: rtl, importc: "nimrtl_$1", dynlib: nimrtl, gcsafe.}
   {.pragma: inl.}
-  {.pragma: compilerRtl, compilerproc, importc: "nimrtl_$1", dynlib: nimrtlInclrtl.}
+  {.pragma: compilerRtl, compilerproc, importc: "nimrtl_$1", dynlib: nimrtl.}
 else:
   {.pragma: rtl, gcsafe.}
   {.pragma: inl, inline.}
