@@ -53,26 +53,26 @@ proc getNum*(m: var MersenneTwister): uint32 =
   result = result xor ((result shl 15'u32) and 0xefc60000'u32)
   result = result xor (result shr 18'u32)
 
-proc getSeq*(m: var MersenneTwister, len: int): seq[int] =
+proc getSeq*(mt: var MersenneTwister, len: int): seq[int] =
   ## Returns seq of pseudorandom ints len long.
   for i in 1..len:
-    result.add(int(getNum(m)))
+    result.add(int(getNum(mt)))
 
-proc sample*[T](q: var MersenneTwister, arr: seq[T]): T =
-  ## Takes random sample of an seq[T].
+proc sample*[T](mt: var MersenneTwister, arr: seq[T]): T =
+  ## Takes random sample of an seq[int].
   var correspondingValues: seq[uint32]
   var maxVal: uint32 = uint32(4294967295)
   let maxValDivLenArr: uint32 = uint32(float32(maxVal) / float32(len(arr)))
   for i in arr:
     correspondingValues.add(maxVal)
     maxVal = maxVal - maxValDivLenArr
-  let randNum = uint32(getNum(q))
-  var largenumrindex: uint32 = 0
-  var smallernumindex: uint32 = 1
-  while largenumrindex < uint32(len(correspondingValues))  and smallernumindex < uint32(len(correspondingValues)):
-   if randNum < correspondingValues[largenumrindex] and randNum > correspondingValues[smallernumindex]:
-    return arr[largenumrindex]
+  let randNum = uint32(getNum(mt))
+  var largerNumIndex: uint32 = 0
+  var smallerNumIndex: uint32 = 1
+  while largerNumIndex < uint32(len(correspondingValues))  and smallerNumIndex < uint32(len(correspondingValues)):
+   if randNum < correspondingValues[largerNumIndex] and randNum > correspondingValues[smallerNumIndex]:
+    return arr[largerNumIndex]
    elif randNum < correspondingValues[correspondingValues.high]:
      return arr[correspondingValues.high]
-   largenumrindex = largenumrindex + 1
-   smallernumindex = smallernumindex + 1
+   largerNumIndex = largerNumIndex + 1
+   smallerNumIndex = smallerNumIndex + 1
