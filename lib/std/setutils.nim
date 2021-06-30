@@ -43,6 +43,13 @@ template toSet2*[T, T2](iter: iterable[T], _: typedesc[T2]): set[T2] =
     incl(result, x)
   result
 
+# template toSet3*[T, T2](iter: iterable[T], _: typedesc[T2]): T2 =
+template toSet3*[T2](iter: untyped, _: typedesc[T2]): T2 =
+  var result: T2
+  for x in iter:
+    incl(result, x)
+  result
+
 macro enumElementsAsSet(enm: typed): untyped = result = newNimNode(nnkCurly).add(enm.getType[1][1..^1])
 
 # func fullSet*(T: typedesc): set[T] {.inline.} = # xxx would give: Error: ordinal type expected
