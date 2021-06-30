@@ -339,6 +339,9 @@
 
 - Added `dom.scrollIntoView` proc with options
 
+- Add `jsintl` module, [Internationalization API for JavaScript targets](https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Intl).
+
+
 ## Language changes
 
 - `nimscript` now handles `except Exception as e`.
