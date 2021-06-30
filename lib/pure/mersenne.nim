@@ -128,7 +128,7 @@ proc sample*(q: var MersenneTwister, arr: seq[string]): string =
 
 
 proc sample*(q: var MersenneTwister, arr: seq[float]): float =
-  ## Takes random sample of an seq[float]. 
+  ## Takes random sample of an seq[float].
 
   var correspondingvalues: seq[uint32]
   var maxVal: uint32 = uint32(4294967295)
