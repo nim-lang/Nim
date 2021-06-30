@@ -30,7 +30,8 @@ template toSet*[T: set](iter: untyped, _: typedesc[T]): T =
     s1 = s1 + s2.toSet(typeof(s1))
     var s3: set['a'..'z'] = {'a', 'b', 'c'}
     assert s1 == s3
-  # xxx `s1 == {'a', 'b', 'c'}` fails in above example; it should either succeed or give CT error
+  # xxx `s1 == {'a', 'b', 'c'}` fails in above example;
+  # it should either succeed or give CT error, refs bug #18396
   var result: T
   for x in iter:
     incl(result, x)

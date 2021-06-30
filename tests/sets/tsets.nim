@@ -16,9 +16,9 @@ template main =
     doAssert s2 + s2 == s2
     doAssert s1 + s1 == {'a', 'b'}
     when false:
-      # xxx this fails in c, js, vm and gives cgen error in cpp
-      # it should either give CT error or succeed (special casing literal)
-      doAssert s2 == {'a', 'b'}
+      # xxx this fails in c, , succeeds in vm,js, and gives cgen error in cpp.
+      # refs bug #18396
+      doAssert s2 == {'a', 'c'}
 
 static: main()
 main()
