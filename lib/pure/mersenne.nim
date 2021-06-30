@@ -59,7 +59,7 @@ proc getSeq*(mt: var MersenneTwister, len: int): seq[int] =
     result.add(int(getNum(mt)))
 
 proc sample*[T](mt: var MersenneTwister, arr: seq[T]): T =
-  ## Takes random sample of an seq[int].
+  ## Takes random sample of an seq[T].
   var correspondingValues: seq[uint32]
   var maxVal: uint32 = uint32(4294967295)
   let maxValDivLenArr: uint32 = uint32(float32(maxVal) / float32(len(arr)))
