@@ -359,7 +359,7 @@ proc formatDigits(buffer: var openArray[char]; pos: int; digits: uint32; decimal
       pos = digitsEnd
     elif decimalPoint < numDigits:
       ##  dig.its
-      for i in 0..<8:
+      for i in countdown(7, 0):
         buffer[i + decimalPoint + 1] = buffer[i + decimalPoint]
       buffer[pos+decimalPoint] = '.'
       pos = digitsEnd + 1
