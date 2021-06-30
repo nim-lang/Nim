@@ -1471,7 +1471,7 @@ proc skipHiddenSubConv*(n: PNode; g: ModuleGraph; idgen: IdGenerator): PNode =
   else:
     result = n
 
-proc callConvMismatch*(formal, actual: PType, indented = false): string =
+proc addCallConvMismatch*(message: var string, formal, actual: PType, indented = false) =
   assert formal.kind == tyProc and actual.kind == tyProc
   let ambigNimProc = formal.callConv in {ccNimCall, ccClosure} and tfExplicitCallConv notin formal.flags
   if (ambigNimProc and actual.callConv notin {ccNimCall, ccClosure}) or
@@ -1479,10 +1479,10 @@ proc callConvMismatch*(formal, actual: PType, indented = false): string =
     let
       got = $(actual.callConv)
       expected = $(formal.callConv)
-    result = "\n  Calling convention: mismatch got '{.$1.}', but expected '{.$2.}'." % [got, expected]
+    message.add "\n  Calling convention: mismatch got '{.$1.}', but expected '{.$2.}'." % [got, expected]
 
 
-proc pragmaMismatch*(formal, actual: PType): string =
+proc addPragmaMismatch*(message: var string, formal, actual: PType) =
   assert formal.kind == tyProc and actual.kind == tyProc
   var
     got = ""
@@ -1498,7 +1498,7 @@ proc pragmaMismatch*(formal, actual: PType): string =
   if got.len > 0 or expected.len > 0:
     got.setLen(max(0, got.len - 2)) # Remove ", "
     expected.setLen(max(0, expected.len - 2)) # Remove ", "
-    result = "\n  Pragma mismatch: got '{.$1.}', but expected '{.$2.}'." % [got, expected]
+    message.add "\n  Pragma mismatch: got '{.$1.}', but expected '{.$2.}'." % [got, expected]
 
 proc typeMismatch*(conf: ConfigRef; info: TLineInfo, formal, actual: PType, n: PNode) =
   if formal.kind != tyError and actual.kind != tyError:
@@ -1520,8 +1520,8 @@ proc typeMismatch*(conf: ConfigRef; info: TLineInfo, formal, actual: PType, n: P
     if verbose: msg.addDeclaredLoc(conf, formal)
 
     if formal.kind == tyProc and actual.kind == tyProc:
-      msg.add callConvMismatch(formal, actual)
-      msg.add pragmaMismatch(formal, actual)
+      msg.addCallConvMismatch(formal, actual)
+      msg.addPragmaMismatch(formal, actual)
       case compatibleEffects(formal, actual)
       of efCompat: discard
       of efRaisesDiffer:

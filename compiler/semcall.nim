@@ -251,10 +251,10 @@ proc presentFailedCandidates(c: PContext, n: PNode, errors: CandidateErrors):
             if got.kind == tyProc and wanted.kind == tyProc:
               # These are proc mismatches so,
               # add the extra explict detail of the mismatch
-              candidates.add callConvMismatch(wanted, got)
-              candidates.add pragmaMismatch(wanted, got)
+              candidates.addCallConvMismatch(wanted, got)
+              candidates.addPragmaMismatch(wanted, got)
             effectProblem(wanted, got, candidates, c)
-          
+
       of kUnknown: discard "do not break 'nim check'"
       candidates.add "\n"
       if err.firstMismatch.arg == 1 and nArg.kind == nkTupleConstr and
