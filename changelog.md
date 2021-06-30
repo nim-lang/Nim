@@ -93,6 +93,8 @@
 
 - Renamed `-d:nimCompilerStackraceHints` to `-d:nimCompilerStacktraceHints`.
 
+- `std/options` now doesn't special case pointers, and `some(nil).isSome` is now true.
+
 
 ## Standard library additions and changes
 
