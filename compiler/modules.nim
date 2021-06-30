@@ -84,12 +84,13 @@ proc newModule(graph: ModuleGraph; fileIdx: FileIndex): PSym =
   partialInitModule(result, graph, fileIdx, filename)
   graph.registerModule(result)
 
-proc compileModule*(graph: ModuleGraph; fileIdx: FileIndex; flags: TSymFlags): PSym =
+proc compileModule*(graph: ModuleGraph; fileIdx: FileIndex; flags: TSymFlags, fromModule: PSym = nil): PSym =
   var flags = flags
   if fileIdx == graph.config.projectMainIdx2: flags.incl sfMainModule
   result = graph.getModule(fileIdx)
 
-  template processModuleAux =
+  template processModuleAux(moduleStatus) =
+    onProcessing(graph, fileIdx, moduleStatus, fromModule = fromModule)
     var s: PLLStream
     if sfMainModule in flags:
       if graph.config.projectIsStdin: s = stdin.llStreamOpen
@@ -103,7 +104,7 @@ proc compileModule*(graph: ModuleGraph; fileIdx: FileIndex; flags: TSymFlags): P
       result = newModule(graph, fileIdx)
       result.flags.incl flags
       registerModule(graph, result)
-      processModuleAux()
+      processModuleAux("import")
     else:
       if sfSystemModule in flags:
         graph.systemModule = result
@@ -117,13 +118,13 @@ proc compileModule*(graph: ModuleGraph; fileIdx: FileIndex; flags: TSymFlags): P
     # reset module fields:
     initStrTables(graph, result)
     result.ast = nil
-    processModuleAux()
+    processModuleAux("import(dirty)")
     graph.markClientsDirty(fileIdx)
 
 proc importModule*(graph: ModuleGraph; s: PSym, fileIdx: FileIndex): PSym =
   # this is called by the semantic checking phase
   assert graph.config != nil
-  result = compileModule(graph, fileIdx, {})
+  result = compileModule(graph, fileIdx, {}, s)
   graph.addDep(s, fileIdx)
   # keep track of import relationships
   if graph.config.hcrOn:
