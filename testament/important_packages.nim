@@ -135,7 +135,7 @@ pkg "sdl1", "nim c -r src/sdl.nim"
 pkg "sdl2_nim", "nim c -r sdl2/sdl.nim"
 pkg "sigv4", "nim c --gc:arc -r sigv4.nim", "https://github.com/disruptek/sigv4"
 pkg "snip", "nimble test", "https://github.com/genotrance/snip"
-pkg "stint", "nim r stint.nim", allowFailure = true # pending https://github.com/status-im/nim-stint/pull/107
+pkg "stint", "nim r stint.nim"
 pkg "strslice"
 pkg "strunicode", "nim c -r src/strunicode.nim"
 pkg "synthesis"
