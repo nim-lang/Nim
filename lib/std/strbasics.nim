@@ -10,15 +10,8 @@
 ## This module provides some high performance string operations.
 ##
 ## Experimental API, subject to change.
-import std/private/parseimpl
-
 
 const whitespaces = {' ', '\t', '\v', '\r', '\l', '\f'}
-
-type
-  NumericalBase* = enum
-    base2, base8, base16
-
 
 proc add*(x: var string, y: openArray[char]) =
   ## Concatenates `x` and `y` in place. `y` must not overlap with `x` to
@@ -120,42 +113,3 @@ func strip*(a: var string, leading = true, trailing = true, chars: set[char] = w
     assert c == "X"
 
   setSlice(a, stripSlice(a, leading, trailing, chars))
-
-func parseBin*[T: SomeInteger](s: openArray[char], typ: typedesc[T]): T =
-  ## Parses a binary integer value contained in `s`.
-  ##
-  ## If `s` is not a valid binary integer, `ValueError` is raised. `s` can have
-  ## one of the following optional prefixes: `0b`, `0B`. Underscores within
-  ## `s` are ignored.
-  result = T(0)
-  let L = parseimpl.parseBinImpl(s, result, 0)
-  if L != s.len or L == 0:
-    var msg = ""
-    msg.add s
-    raise newException(ValueError, "invalid binary integer: " & msg)
-
-func parseOct*[T: SomeInteger](s: openArray[char], typ: typedesc[T]): T =
-  ## Parses an octal integer value contained in `s`.
-  ##
-  ## If `s` is not a valid oct integer, `ValueError` is raised. `s` can have one
-  ## of the following optional prefixes: `0o`, `0O`.  Underscores within
-  ## `s` are ignored.
-  result = T(0)
-  let L = parseimpl.parseOctImpl(s, result, 0)
-  if L != s.len or L == 0:
-    var msg = ""
-    msg.add s
-    raise newException(ValueError, "invalid oct integer: " & msg)
-
-func parseHex*[T: SomeInteger](s: openArray[char], typ: typedesc[T]): T =
-  ## Parses a hexadecimal integer value contained in `s`.
-  ##
-  ## If `s` is not a valid hex integer, `ValueError` is raised. `s` can have one
-  ## of the following optional prefixes: `0x`, `0X`, `#`.  Underscores
-  ## within `s` are ignored.
-  result = T(0)
-  let L = parseimpl.parseHexImpl(s, result, 0)
-  if L != s.len or L == 0:
-    var msg = ""
-    msg.add s
-    raise newException(ValueError, "invalid hex integer: " & msg)
