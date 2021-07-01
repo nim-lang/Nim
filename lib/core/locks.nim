@@ -78,7 +78,7 @@ proc broadcast*(cond: var Cond) {.inline.} =
   ## specified condition variable `cond`.
   broadcastSysCond(cond)
 
-template withLock*(a: Lock, body: untyped) =
+template withLock*(a: Lock, body: untyped): untyped =
   ## Acquires the given lock, executes the statements in body and
   ## releases the lock after the statements finish executing.
   acquire(a)
