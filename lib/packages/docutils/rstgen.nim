@@ -907,6 +907,25 @@ proc renderSmiley(d: PDoc, n: PRstNode, result: var string) =
     "\\includegraphics{$1}",
     [d.config.getOrDefault"doc.smiley_format" % n.text])
 
+proc getField1Int(d: PDoc, n: PRstNode, fieldName: string): int =
+  # TODO: proper column/line info
+  template err(msg: string) =
+    d.msgHandler(d.filename, 1, 0, meInvalidRstField, msg)
+  let value = n.getFieldValue
+  var number: int
+  let nChars = parseInt(value, number)
+  if nChars == 0:
+    if value.len == 0:
+      err("field $1 requires an argument" % [fieldName])
+    else:
+      err("field $1 requires an integer, but '$2' was given" %
+          [fieldName, value])
+  elif nChars < value.len:
+    err("extra arguments were given to $1: '$2'" %
+        [fieldName, value[nChars..^1]])
+  else:
+    result = number
+
 proc parseCodeBlockField(d: PDoc, n: PRstNode, params: var CodeBlockParams) =
   ## Parses useful fields which can appear before a code block.
   ##
@@ -916,9 +935,7 @@ proc parseCodeBlockField(d: PDoc, n: PRstNode, params: var CodeBlockParams) =
   of "number-lines":
     params.numberLines = true
     # See if the field has a parameter specifying a different line than 1.
-    var number: int
-    if parseInt(n.getFieldValue, number) > 0:
-      params.startLine = number
+    params.startLine = getField1Int(d, n, "number-lines")
   of "file", "filename":
     # The ``file`` option is a Nim extension to the official spec, it acts
     # like it would for other directives like ``raw`` or ``cvs-table``. This
@@ -936,9 +953,7 @@ proc parseCodeBlockField(d: PDoc, n: PRstNode, params: var CodeBlockParams) =
       # consider whether `$docCmd` should be appended here too
       params.testCmd = unescape(params.testCmd)
   of "status", "exitcode":
-    var status: int
-    if parseInt(n.getFieldValue, status) > 0:
-      params.status = status
+    params.status = getField1Int(d, n, n.getArgument)
   of "default-language":
     params.langStr = n.getFieldValue.strip
     params.lang = params.langStr.getSourceLanguage
@@ -954,7 +969,6 @@ proc parseCodeBlockParams(d: PDoc, n: PRstNode): CodeBlockParams =
   if n.isNil:
     return
   assert n.kind in {rnCodeBlock, rnInlineCode}
-  assert(not n.sons[2].isNil)
 
   # Parse the field list for rendering parameters if there are any.
   if not n.sons[1].isNil:
@@ -1028,8 +1042,8 @@ proc renderCode(d: PDoc, n: PRstNode, result: var string) =
   ## option to differentiate between a plain code block and Nim's code block
   ## extension.
   assert n.kind in {rnCodeBlock, rnInlineCode}
-  if n.sons[2] == nil: return
   var params = d.parseCodeBlockParams(n)
+  if n.sons[2] == nil: return
   var m = n.sons[2].sons[0]
   assert m.kind == rnLeaf
 

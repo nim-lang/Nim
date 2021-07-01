@@ -320,17 +320,17 @@ else:
   template `!=?`(a, b: char): bool = toLowerAscii(a) != toLowerAscii(b)
 
 when doslikeFileSystem:
-  proc isAbsFromCurrentDrive(path: string): bool {.noSideEffect, raises: []} =
+  proc isAbsFromCurrentDrive(path: string): bool {.noSideEffect, raises: [].} =
     ## An absolute path from the root of the current drive (e.g. "\foo")
     path.len > 0 and
     (path[0] == AltSep or
      (path[0] == DirSep and
       (path.len == 1 or path[1] notin {DirSep, AltSep, ':'})))
 
-  proc isUNCPrefix(path: string): bool {.noSideEffect, raises: []} =
+  proc isUNCPrefix(path: string): bool {.noSideEffect, raises: [].} =
     path[0] == DirSep and path[1] == DirSep
 
-  proc sameRoot(path1, path2: string): bool {.noSideEffect, raises: []} =
+  proc sameRoot(path1, path2: string): bool {.noSideEffect, raises: [].} =
     ## Return true if path1 and path2 have a same root.
     ##
     ## Detail of windows path formats:
@@ -935,7 +935,7 @@ proc getConfigDir*(): string {.rtl, extern: "nos$1",
 
 proc getCacheDir*(): string =
   ## Returns the cache directory of the current user for applications.
-  ## 
+  ##
   ## This makes use of the following environment variables:
   ##
   ## * On Windows: `getEnv("LOCALAPPDATA")`
@@ -1038,7 +1038,7 @@ proc expandTilde*(path: string): string {.
   ## Expands ``~`` or a path starting with ``~/`` to a full path, replacing
   ## ``~`` with `getHomeDir() <#getHomeDir>`_ (otherwise returns ``path`` unmodified).
   ##
-  ## Windows: this is still supported despite Windows platform not having this
+  ## Windows: this is still supported despite the Windows platform not having this
   ## convention; also, both ``~/`` and ``~\`` are handled.
   ##
   ## .. warning:: `~bob` and `~bob/` are not yet handled correctly.
@@ -1101,18 +1101,14 @@ proc quoteShellWindows*(s: string): string {.noSideEffect, rtl, extern: "nosp$1"
 
 proc quoteShellPosix*(s: string): string {.noSideEffect, rtl, extern: "nosp$1".} =
   ## Quote ``s``, so it can be safely passed to POSIX shell.
-  ## Based on Python's `pipes.quote`.
   const safeUnixChars = {'%', '+', '-', '.', '/', '_', ':', '=', '@',
                          '0'..'9', 'A'..'Z', 'a'..'z'}
   if s.len == 0:
-    return "''"
-
-  let safe = s.allCharsInSet(safeUnixChars)
-
-  if safe:
-    return s
+    result = "''"
+  elif s.allCharsInSet(safeUnixChars):
+    result = s
   else:
-    return "'" & s.replace("'", "'\"'\"'") & "'"
+    result = "'" & s.replace("'", "'\"'\"'") & "'"
 
 when defined(windows) or defined(posix) or defined(nintendoswitch):
   proc quoteShell*(s: string): string {.noSideEffect, rtl, extern: "nosp$1".} =
@@ -1122,9 +1118,9 @@ when defined(windows) or defined(posix) or defined(nintendoswitch):
     ## <#quoteShellWindows,string>`_. Otherwise, calls `quoteShellPosix proc
     ## <#quoteShellPosix,string>`_.
     when defined(windows):
-      return quoteShellWindows(s)
+      result = quoteShellWindows(s)
     else:
-      return quoteShellPosix(s)
+      result = quoteShellPosix(s)
 
   proc quoteShellCommand*(args: openArray[string]): string =
     ## Concatenates and quotes shell arguments `args`.
@@ -1217,7 +1213,7 @@ proc dirExists*(dir: string): bool {.rtl, extern: "nos$1", tags: [ReadDirEffect]
       result = (a and FILE_ATTRIBUTE_DIRECTORY) != 0'i32
   else:
     var res: Stat
-    return stat(dir, res) >= 0'i32 and S_ISDIR(res.st_mode)
+    result = stat(dir, res) >= 0'i32 and S_ISDIR(res.st_mode)
 
 proc symlinkExists*(link: string): bool {.rtl, extern: "nos$1",
                                           tags: [ReadDirEffect],
@@ -1239,7 +1235,7 @@ proc symlinkExists*(link: string): bool {.rtl, extern: "nos$1",
       result = (a and FILE_ATTRIBUTE_REPARSE_POINT) != 0'i32
   else:
     var res: Stat
-    return lstat(link, res) >= 0'i32 and S_ISLNK(res.st_mode)
+    result = lstat(link, res) >= 0'i32 and S_ISLNK(res.st_mode)
 
 
 when not defined(windows):
@@ -1752,17 +1748,18 @@ proc isAdmin*: bool {.noWeirdTarget.} =
                                               addr administratorsGroup)):
       raiseOSError(osLastError(), "could not get SID for Administrators group")
 
-    defer:
+    try:
+      var b: WINBOOL
+      if not isSuccess(checkTokenMembership(0, administratorsGroup, addr b)):
+        raiseOSError(osLastError(), "could not check access token membership")
+
+      result = isSuccess(b)
+    finally:
       if freeSid(administratorsGroup) != nil:
         raiseOSError(osLastError(), "failed to free SID for Administrators group")
 
-    var b: WINBOOL
-    if not isSuccess(checkTokenMembership(0, administratorsGroup, addr b)):
-      raiseOSError(osLastError(), "could not check access token membership")
-
-    return isSuccess(b)
   else:
-    return geteuid() == 0
+    result = geteuid() == 0
 
 proc createSymlink*(src, dest: string) {.noWeirdTarget.} =
   ## Create a symbolic link at `dest` which points to the item specified
@@ -1828,10 +1825,11 @@ when hasCCopyfile:
     COPYFILE_XATTR {.nodecl.}: copyfile_flags_t
   {.pop.}
 
-type CopyFlag* = enum   ## Copy options.
-  cfSymlinkAsIs,    ## Copy symlinks as symlinks
-  cfSymlinkFollow,  ## Copy the files symlinks point to
-  cfSymlinkIgnore   ## Ignore symlinks
+type
+  CopyFlag* = enum    ## Copy options.
+    cfSymlinkAsIs,    ## Copy symlinks as symlinks
+    cfSymlinkFollow,  ## Copy the files symlinks point to
+    cfSymlinkIgnore   ## Ignore symlinks
 
 const copyFlagSymlink = {cfSymlinkAsIs, cfSymlinkFollow, cfSymlinkIgnore}
 
@@ -2027,7 +2025,7 @@ proc tryMoveFSObject(source, dest: string, isDir: bool): bool {.noWeirdTarget.} 
 
   if not result:
     let err = osLastError()
-    let isAccessDeniedError = 
+    let isAccessDeniedError =
       when defined(windows):
         const AccessDeniedError = OSErrorCode(5)
         isDir and err == AccessDeniedError
@@ -2066,7 +2064,7 @@ proc moveFile*(source, dest: string) {.rtl, extern: "nos$1",
       except:
         discard tryRemoveFile(dest)
         raise
-      
+
 
 proc exitStatusLikeShell*(status: cint): cint =
   ## Converts exit code from `c_system` into a shell exit code.

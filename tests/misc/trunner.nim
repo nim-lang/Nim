@@ -23,9 +23,6 @@ proc isDots(a: string): bool =
   a.startsWith(".") and a.strip(chars = {'.'}) == ""
 
 const
-  defaultHintsOff = "--hint:successx:off --hint:exec:off --hint:link:off --hint:cc:off --hint:conf:off --hint:processing:off --hint:QuitCalled:off"
-    # useful when you want to turn only some hints on, and some common ones off.
-    # pending https://github.com/timotheecour/Nim/issues/453, simplify to: `--hints:off`
   nim = getCurrentCompilerExe()
   mode = querySetting(backend)
   nimcache = buildDir / "nimcacheTrunner"
@@ -34,7 +31,7 @@ const
 proc runNimCmd(file, options = "", rtarg = ""): auto =
   let fileabs = testsDir / file.unixToNativePath
   # doAssert fileabs.fileExists, fileabs # disabled because this allows passing `nim r --eval:code fakefile`
-  let cmd = fmt"{nim} {mode} {options} --hints:off {fileabs} {rtarg}"
+  let cmd = fmt"{nim} {mode} --hint:all:off {options} {fileabs} {rtarg}"
   result = execCmdEx(cmd)
   when false: # for debugging
     echo cmd
@@ -236,7 +233,7 @@ sub/mmain.idx""", context
     check execCmdEx(cmd) == ("witness\n", 0)
 
   block: # config.nims, nim.cfg, hintConf, bug #16557
-    let cmd = fmt"{nim} r {defaultHintsOff} --hint:conf tests/newconfig/bar/mfoo.nim"
+    let cmd = fmt"{nim} r --hint:all:off --hint:conf tests/newconfig/bar/mfoo.nim"
     let (outp, exitCode) = execCmdEx(cmd, options = {poStdErrToStdOut})
     doAssert exitCode == 0
     let dir = getCurrentDir()
@@ -268,7 +265,7 @@ tests/newconfig/bar/mfoo.nims""".splitLines
     check fmt"""{nim} r -b:js {opt} --eval:"echo defined(js)"""".execCmdEx == ("true\n", 0)
 
   block: # `hintProcessing` dots should not interfere with `static: echo` + friends
-    let cmd = fmt"""{nim} r {defaultHintsOff} --hint:processing -f --eval:"static: echo 1+1""""
+    let cmd = fmt"""{nim} r --hint:all:off --hint:processing -f --eval:"static: echo 1+1""""
     let (outp, exitCode) = execCmdEx(cmd, options = {poStdErrToStdOut})
     template check3(cond) = doAssert cond, $(outp,)
     doAssert exitCode == 0
@@ -282,7 +279,7 @@ tests/newconfig/bar/mfoo.nims""".splitLines
       check3 "2" in outp
 
   block: # nim secret
-    let opt = fmt"{defaultHintsOff} --hint:processing"
+    let opt = "--hint:all:off --hint:processing"
     template check3(cond) = doAssert cond, $(outp,)
     for extra in ["", "--stdout"]:
       let cmd = fmt"""{nim} secret {opt} {extra}"""
@@ -354,6 +351,30 @@ running: v2
     let (outp2, status2) = execCmdEx(nimcache2 / input, options = {poStdErrToStdOut})
     doAssert outp2 == "12345\n", outp2
     doAssert status2 == 0
+
+  block: # UnusedImport
+    proc fn(opt: string, expected: string) =
+      let output = runNimCmdChk("pragmas/mused3.nim", fmt"--warning:all:off --warning:UnusedImport --hint:DuplicateModuleImport {opt}")
+      doAssert output == expected, opt & "\noutput:\n" & output & "expected:\n" & expected
+    fn("-d:case1"): """
+mused3.nim(13, 8) Warning: imported and not used: 'mused3b' [UnusedImport]
+"""
+    fn("-d:case2"): ""
+    fn("-d:case3"): ""
+    fn("-d:case4"): ""
+    fn("-d:case5"): ""
+    fn("-d:case6"): ""
+    fn("-d:case7"): ""
+    fn("-d:case8"): ""
+    fn("-d:case9"): ""
+    fn("-d:case10"): ""
+    when false:
+      fn("-d:case11"): """
+  Warning: imported and not used: 'm2' [UnusedImport]
+  """
+    fn("-d:case12"): """
+mused3.nim(75, 10) Hint: duplicate import of 'mused3a'; previous import here: mused3.nim(74, 10) [DuplicateModuleImport]
+"""
 
 else:
   discard # only during debugging, tests added here will run with `-d:nimTestsTrunnerDebugging` enabled

@@ -143,8 +143,8 @@ type
     cmdIdeTools # ide tools (e.g. nimsuggest)
     cmdNimscript # evaluate nimscript
     cmdDoc0
-    cmdDoc2
-    cmdDoc2tex
+    cmdDoc      # convert .nim doc comments to HTML
+    cmdDoc2tex  # convert .nim doc comments to LaTeX
     cmdRst2html # convert a reStructuredText file to HTML
     cmdRst2tex # convert a reStructuredText file to TeX
     cmdJsondoc0
@@ -161,7 +161,7 @@ type
 
 const
   cmdBackends* = {cmdCompileToC, cmdCompileToCpp, cmdCompileToOC, cmdCompileToJS, cmdCrun}
-  cmdDocLike* = {cmdDoc0, cmdDoc2, cmdDoc2tex, cmdJsondoc0, cmdJsondoc,
+  cmdDocLike* = {cmdDoc0, cmdDoc, cmdDoc2tex, cmdJsondoc0, cmdJsondoc,
                  cmdCtags, cmdBuildindex}
 
 type
@@ -330,6 +330,7 @@ type
     warnCounter*: int
     errorMax*: int
     maxLoopIterationsVM*: int ## VM: max iterations of all loops
+    isVmTrace*: bool
     configVars*: StringTableRef
     symbols*: StringTableRef ## We need to use a StringTableRef here as defined
                              ## symbols are always guaranteed to be style
@@ -472,7 +473,10 @@ const foreignPackageNotesDefault* = {
 proc isDefined*(conf: ConfigRef; symbol: string): bool
 
 when defined(nimDebugUtils):
+  # this allows inserting debugging utilties in all modules that import `options`
+  # with a single switch, which is useful when debugging compiler.
   import debugutils
+  export debugutils
 
 proc initConfigRefCommon(conf: ConfigRef) =
   conf.selectedGC = gcRefc

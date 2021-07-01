@@ -135,9 +135,8 @@ proc pushCurrentException(e: sink(ref Exception)) {.compilerRtl, inl.} =
   #showErrorMessage2 "A"
 
 proc popCurrentException {.compilerRtl, inl.} =
-  if currException != nil:
-    currException = currException.up
-    #showErrorMessage2 "B"
+  currException = currException.up
+  #showErrorMessage2 "B"
 
 proc popCurrentExceptionEx(id: uint) {.compilerRtl.} =
   discard "only for bootstrapping compatbility"

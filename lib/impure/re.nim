@@ -141,6 +141,10 @@ proc matchOrFind(buf: cstring, pattern: Regex, matches: var openArray[string],
     else: matches[i-1] = ""
   return rawMatches[1] - rawMatches[0]
 
+const MaxReBufSize* = high(cint)
+  ## Maximum PCRE (API 1) buffer start/size equal to `high(cint)`, which even
+  ## for 64-bit systems can be either 2`31`:sup:-1 or 2`63`:sup:-1.
+
 proc findBounds*(buf: cstring, pattern: Regex, matches: var openArray[string],
                  start = 0, bufSize: int): tuple[first, last: int] =
   ## returns the starting position and end position of `pattern` in `buf`
@@ -167,7 +171,8 @@ proc findBounds*(s: string, pattern: Regex, matches: var openArray[string],
   ## and the captured substrings in the array `matches`.
   ## If it does not match, nothing
   ## is written into `matches` and `(-1,0)` is returned.
-  result = findBounds(cstring(s), pattern, matches, start, s.len)
+  result = findBounds(cstring(s), pattern, matches,
+      min(start, MaxReBufSize), min(s.len, MaxReBufSize))
 
 proc findBounds*(buf: cstring, pattern: Regex,
                  matches: var openArray[tuple[first, last: int]],
@@ -197,7 +202,8 @@ proc findBounds*(s: string, pattern: Regex,
   ## and the captured substrings in the array `matches`.
   ## If it does not match, nothing is written into `matches` and
   ## `(-1,0)` is returned.
-  result = findBounds(cstring(s), pattern, matches, start, s.len)
+  result = findBounds(cstring(s), pattern, matches,
+      min(start, MaxReBufSize), min(s.len, MaxReBufSize))
 
 proc findBoundsImpl(buf: cstring, pattern: Regex,
                     start = 0, bufSize = 0, flags = 0): tuple[first, last: int] =
@@ -232,7 +238,8 @@ proc findBounds*(s: string, pattern: Regex,
   ## Note: there is a speed improvement if the matches do not need to be captured.
   runnableExamples:
     assert findBounds("01234abc89", re"abc") == (5,7)
-  result = findBounds(cstring(s), pattern, start, s.len)
+  result = findBounds(cstring(s), pattern,
+      min(start, MaxReBufSize), min(s.len, MaxReBufSize))
 
 proc matchOrFind(buf: cstring, pattern: Regex, start, bufSize: int, flags: cint): cint =
   var

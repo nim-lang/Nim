@@ -25,10 +25,10 @@ bootSwitch(usedMarkAndSweep, defined(gcmarkandsweep), "--gc:markAndSweep")
 bootSwitch(usedGoGC, defined(gogc), "--gc:go")
 bootSwitch(usedNoGC, defined(nogc), "--gc:none")
 
+import std/[setutils, os, strutils, parseutils, parseopt, sequtils, strtabs]
 import
-  os, msgs, options, nversion, condsyms, strutils, extccomp, platform,
-  wordrecg, parseutils, nimblecmd, parseopt, sequtils, lineinfos,
-  pathutils, strtabs, pathnorm
+  msgs, options, nversion, condsyms, extccomp, platform,
+  wordrecg, nimblecmd, lineinfos, pathutils, pathnorm
 
 from ast import eqTypeFlags, tfGcSafe, tfNoSideEffect
 
@@ -182,7 +182,7 @@ proc processSpecificNote*(arg: string, state: TSpecialWord, pass: TCmdLinePass,
                          info: TLineInfo; orig: string; conf: ConfigRef) =
   var id = ""  # arg = key or [key] or key:val or [key]:val;  with val=on|off
   var i = 0
-  var n = hintMin
+  var notes: set[TMsgKind]
   var isBracket = false
   if i < arg.len and arg[i] == '[':
     isBracket = true
@@ -197,37 +197,38 @@ proc processSpecificNote*(arg: string, state: TSpecialWord, pass: TCmdLinePass,
   if i == arg.len: discard
   elif i < arg.len and (arg[i] in {':', '='}): inc(i)
   else: invalidCmdLineOption(conf, pass, orig, info)
-  # unfortunately, hintUser and warningUser clash
-  if state in {wHint, wHintAsError}:
-    let x = findStr(hintMin, hintMax, id, errUnknown)
-    if x != errUnknown: n = TNoteKind(x)
-    else: localError(conf, info, "unknown hint: " & id)
-  else:
-    let x = findStr(warnMin, warnMax, id, errUnknown)
-    if x != errUnknown: n = TNoteKind(x)
-    else: localError(conf, info, "unknown warning: " & id)
 
+  let isSomeHint = state in {wHint, wHintAsError}
+  template findNote(noteMin, noteMax, name) =
+    # unfortunately, hintUser and warningUser clash, otherwise implementation would simplify a bit
+    let x = findStr(noteMin, noteMax, id, errUnknown)
+    if x != errUnknown: notes = {TNoteKind(x)}
+    else: localError(conf, info, "unknown $#: $#" % [name, id])
+  case id.normalize
+  of "all": # other note groups would be easy to support via additional cases
+    notes = if isSomeHint: {hintMin..hintMax} else: {warnMin..warnMax}
+  elif isSomeHint: findNote(hintMin, hintMax, "hint")
+  else: findNote(warnMin, warnMax, "warning")
   var val = substr(arg, i).normalize
   if val == "": val = "on"
   if val notin ["on", "off"]:
+    # xxx in future work we should also allow users to have control over `foreignPackageNotes`
+    # so that they can enable `hints|warnings|warningAsErrors` for all the code they depend on.
     localError(conf, info, errOnOrOffExpectedButXFound % arg)
-  elif n notin conf.cmdlineNotes or pass == passCmd1:
-    if pass == passCmd1: incl(conf.cmdlineNotes, n)
-    incl(conf.modifiedyNotes, n)
-    case val
-    of "on":
-      if state in {wWarningAsError, wHintAsError}:
-        incl(conf.warningAsErrors, n) # xxx rename warningAsErrors to noteAsErrors
-      else:
-        incl(conf.notes, n)
-        incl(conf.mainPackageNotes, n)
-    of "off":
-      if state in {wWarningAsError, wHintAsError}:
-        excl(conf.warningAsErrors, n)
-      else:
-        excl(conf.notes, n)
-        excl(conf.mainPackageNotes, n)
-        excl(conf.foreignPackageNotes, n)
+  else:
+    let isOn = val == "on"
+    if isOn and id.normalize == "all":
+      localError(conf, info, "only 'all:off' is supported")
+    for n in notes:
+      if n notin conf.cmdlineNotes or pass == passCmd1:
+        if pass == passCmd1: incl(conf.cmdlineNotes, n)
+        incl(conf.modifiedyNotes, n)
+        if state in {wWarningAsError, wHintAsError}:
+          conf.warningAsErrors[n] = isOn # xxx rename warningAsErrors to noteAsErrors
+        else:
+          conf.notes[n] = isOn
+          conf.mainPackageNotes[n] = isOn
+        if not isOn: excl(conf.foreignPackageNotes, n)
 
 proc processCompile(conf: ConfigRef; filename: string) =
   var found = findFile(conf, filename)
@@ -443,7 +444,7 @@ proc parseCommand*(command: string): Command =
   of "check": cmdCheck
   of "e": cmdNimscript
   of "doc0": cmdDoc0
-  of "doc2", "doc": cmdDoc2
+  of "doc2", "doc": cmdDoc
   of "doc2tex": cmdDoc2tex
   of "rst2html": cmdRst2html
   of "rst2tex": cmdRst2tex

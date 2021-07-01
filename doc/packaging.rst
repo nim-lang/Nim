@@ -48,14 +48,15 @@ Hints on the build process:
 .. code:: cmd
 
    # build from C sources and then using koch
-   ./build.sh --os $os_type --cpu $cpu_arch
-   ./bin/nim c koch
+   make -j   # supports parallel build
+   # alternatively: ./build.sh --os $os_type --cpu $cpu_arch
+   ./bin/nim c -d:release koch
    ./koch boot -d:release
 
    # optionally generate docs into doc/html
    ./koch docs
 
-   ./koch tools -d:release
+   ./koch tools
 
    # extract files to be really installed
    ./install.sh <tempdir>

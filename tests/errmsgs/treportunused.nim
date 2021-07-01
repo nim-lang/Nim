@@ -1,16 +1,20 @@
 discard """
+  matrix: "--hint:all:off --hint:XDeclaredButNotUsed"
+  nimoutFull: true
   nimout: '''
-treportunused.nim(19, 10) Hint: 's1' is declared but not used [XDeclaredButNotUsed]
-treportunused.nim(26, 5) Hint: 's8' is declared but not used [XDeclaredButNotUsed]
-treportunused.nim(22, 6) Hint: 's4' is declared but not used [XDeclaredButNotUsed]
-treportunused.nim(25, 7) Hint: 's7' is declared but not used [XDeclaredButNotUsed]
-treportunused.nim(24, 7) Hint: 's6' is declared but not used [XDeclaredButNotUsed]
-treportunused.nim(23, 6) Hint: 's5' is declared but not used [XDeclaredButNotUsed]
-treportunused.nim(20, 10) Hint: 's2' is declared but not used [XDeclaredButNotUsed]
-treportunused.nim(29, 6) Hint: 's11' is declared but not used [XDeclaredButNotUsed]
-treportunused.nim(27, 5) Hint: 's9' is declared but not used [XDeclaredButNotUsed]
-treportunused.nim(21, 10) Hint: 's3' is declared but not used [XDeclaredButNotUsed]
-treportunused.nim(28, 6) Hint: 's10' is declared but not used [XDeclaredButNotUsed]
+treportunused.nim(23, 10) Hint: 's1' is declared but not used [XDeclaredButNotUsed]
+treportunused.nim(24, 10) Hint: 's2' is declared but not used [XDeclaredButNotUsed]
+treportunused.nim(25, 10) Hint: 's3' is declared but not used [XDeclaredButNotUsed]
+treportunused.nim(26, 6) Hint: 's4' is declared but not used [XDeclaredButNotUsed]
+treportunused.nim(27, 6) Hint: 's5' is declared but not used [XDeclaredButNotUsed]
+treportunused.nim(28, 7) Hint: 's6' is declared but not used [XDeclaredButNotUsed]
+treportunused.nim(29, 7) Hint: 's7' is declared but not used [XDeclaredButNotUsed]
+treportunused.nim(30, 5) Hint: 's8' is declared but not used [XDeclaredButNotUsed]
+treportunused.nim(31, 5) Hint: 's9' is declared but not used [XDeclaredButNotUsed]
+treportunused.nim(32, 6) Hint: 's10' is declared but not used [XDeclaredButNotUsed]
+treportunused.nim(33, 6) Hint: 's11' is declared but not used [XDeclaredButNotUsed]
+treportunused.nim(37, 3) Hint: 'v0.99' is declared but not used [XDeclaredButNotUsed]
+treportunused.nim(38, 3) Hint: 'v0.99.99' is declared but not used [XDeclaredButNotUsed]
 '''
 action: compile
 """
@@ -27,3 +31,8 @@ let s8 = 0
 var s9: int
 type s10 = object
 type s11 = type(1.2)
+
+# https://github.com/nim-lang/Nim/issues/14407
+let
+  `v0.99` = "0.99"
+  `v0.99.99` = "0.99.99"

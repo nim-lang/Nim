@@ -16,7 +16,7 @@ import
   packages/docutils/rst, packages/docutils/rstgen,
   json, xmltree, trees, types,
   typesrenderer, astalgo, lineinfos, intsets,
-  pathutils, trees, tables, nimpaths, renderverbatim, osproc
+  pathutils, tables, nimpaths, renderverbatim, osproc
 
 from uri import encodeUrl
 from std/private/globs import nativeToUnixPath
@@ -28,6 +28,24 @@ const
   DocColOffset = "## ".len  # assuming that a space was added after ##
 
 type
+  ItemFragment = object  ## A fragment from each item will be eventually
+                         ## constructed by converting `rst` fields to strings.
+    case isRst: bool
+    of true:
+      rst: PRstNode
+    of false:            ## contains ready markup e.g. from runnableExamples
+      str: string
+  ItemPre = seq[ItemFragment]  ## A pre-processed item.
+  Item = object        ## Any item in documentation, e.g. symbol
+                       ## entry. Configuration variable ``doc.item``
+                       ## is used for its HTML rendering.
+    descRst: ItemPre     ## Description of the item (may contain
+                         ## runnableExamples).
+    substitutions: seq[string]    ## Variable names in `doc.item`...
+  ModSection = object  ## Section like Procs, Types, etc.
+    secItems: seq[Item]  ## Pre-processed items.
+    finalMarkup: string  ## The items, after RST pass 2 and rendering.
+  ModSections = array[TSymKind, ModSection]
   TSections = array[TSymKind, string]
   ExampleGroup = ref object
     ## a group of runnableExamples with same rdoccmd
@@ -35,17 +53,25 @@ type
     docCmd: string ## from user config, e.g. --doccmd:-d:foo
     code: string ## contains imports; each import contains `body`
     index: int ## group index
+  JsonItem = object  # pre-processed item: `rst` should be finalized
+    json: JsonNode
+    rst: PRstNode
+    rstField: string
   TDocumentor = object of rstgen.RstGenerator
-    modDesc: string       # module description
+    modDescPre: ItemPre   # module description, not finalized
+    modDescFinal: string  # module description, after RST pass 2 and rendering
     module: PSym
     modDeprecationMsg: string
-    toc, toc2, section: TSections
+    section: ModSections     # entries of ``.nim`` file (for `proc`s, etc)
+    toc, toc2: TSections     # toc2 - grouped TOC
     tocTable: array[TSymKind, Table[string, string]]
     indexValFilename: string
     analytics: string  # Google Analytics javascript, "" if doesn't exist
     seenSymbols: StringTableRef # avoids duplicate symbol generation for HTML.
-    jArray: JsonNode
+    jEntriesPre: seq[JsonItem] # pre-processed RST + JSON content
+    jEntriesFinal: JsonNode    # final JSON after RST pass 2 and rendering
     types: TStrTable
+    sharedState: PRstSharedState
     isPureRst: bool
     conf*: ConfigRef
     cache*: IdentCache
@@ -57,6 +83,9 @@ type
     wroteSupportFiles*: bool
 
   PDoc* = ref TDocumentor ## Alias to type less.
+
+proc add(dest: var ItemPre, rst: PRstNode) = dest.add ItemFragment(isRst: true, rst: rst)
+proc add(dest: var ItemPre, str: string) = dest.add ItemFragment(isRst: false, str: str)
 
 proc prettyString(a: object): string =
   # xxx pending std/prettyprint refs https://github.com/nim-lang/RFCs/issues/203#issuecomment-602534906
@@ -135,6 +164,7 @@ template declareClosures =
     of meNewSectionExpected: k = errNewSectionExpected
     of meGeneralParseError: k = errGeneralParseError
     of meInvalidDirective: k = errInvalidDirectiveX
+    of meInvalidRstField: k = errInvalidRstField
     of meFootnoteMismatch: k = errFootnoteMismatch
     of mwRedefinitionOfLabel: k = warnRedefinitionOfLabel
     of mwUnknownSubstitution: k = warnUnknownSubstitutionX
@@ -151,12 +181,12 @@ template declareClosures =
       if not fileExists(result): result = ""
 
 proc parseRst(text, filename: string,
-              line, column: int, hasToc: var bool,
+              line, column: int,
               rstOptions: RstParseOptions;
-              conf: ConfigRef): PRstNode =
+              conf: ConfigRef, sharedState: PRstSharedState): PRstNode =
   declareClosures()
-  result = rstParse(text, filename, line, column, hasToc, rstOptions,
-                    docgenFindFile, compilerMsgHandler)
+  result = rstParsePass1(text, filename, line, column, rstOptions,
+                         sharedState)
 
 proc getOutFile2(conf: ConfigRef; filename: RelativeFile,
                  ext: string, guessTarget: bool): AbsoluteFile =
@@ -179,10 +209,13 @@ proc newDocumentor*(filename: AbsoluteFile; cache: IdentCache; conf: ConfigRef,
   result.conf = conf
   result.cache = cache
   result.outDir = conf.outDir.string
+  const options = {roSupportRawDirective, roSupportMarkdown,
+                   roPreferMarkdown, roNimFile}
+  result.sharedState = newRstSharedState(
+      options, filename.string,
+      docgenFindFile, compilerMsgHandler)
   initRstGenerator(result[], (if conf.isLatexCmd: outLatex else: outHtml),
-                   conf.configVars, filename.string,
-                   {roSupportRawDirective, roSupportMarkdown,
-                    roPreferMarkdown, roNimFile},
+                   conf.configVars, filename.string, options,
                    docgenFindFile, compilerMsgHandler)
 
   if conf.configVars.hasKey("doc.googleAnalytics"):
@@ -203,7 +236,7 @@ proc newDocumentor*(filename: AbsoluteFile; cache: IdentCache; conf: ConfigRef,
 
   result.seenSymbols = newStringTable(modeCaseInsensitive)
   result.id = 100
-  result.jArray = newJArray()
+  result.jEntriesFinal = newJArray()
   initStrTable result.types
   result.onTestSnippet =
     proc (gen: var RstGenerator; filename, cmd: string; status: int; content: string) =
@@ -261,37 +294,31 @@ proc getVarIdx(varnames: openArray[string], id: string): int =
       return i
   result = -1
 
-proc genComment(d: PDoc, n: PNode): string =
-  result = ""
+proc genComment(d: PDoc, n: PNode): PRstNode =
   if n.comment.len > 0:
-    let comment = n.comment
-    when false:
-      # RFC: to preseve newlines in comments, this would work:
-      comment = comment.replace("\n", "\n\n")
-    renderRstToOut(d[],
-                   parseRst(comment, toFullPath(d.conf, n.info),
-                            toLinenumber(n.info),
-                            toColumn(n.info) + DocColOffset,
-                            (var dummy: bool; dummy), d.options, d.conf),
-                   result)
+    result = parseRst(n.comment, toFullPath(d.conf, n.info),
+                      toLinenumber(n.info),
+                      toColumn(n.info) + DocColOffset,
+                      d.options, d.conf,
+                      d.sharedState)
 
-proc genRecCommentAux(d: PDoc, n: PNode): string =
-  if n == nil: return ""
+proc genRecCommentAux(d: PDoc, n: PNode): PRstNode =
+  if n == nil: return nil
   result = genComment(d, n)
-  if result == "":
+  if result == nil:
     if n.kind in {nkStmtList, nkStmtListExpr, nkTypeDef, nkConstDef,
                   nkObjectTy, nkRefTy, nkPtrTy, nkAsgn, nkFastAsgn, nkHiddenStdConv}:
       # notin {nkEmpty..nkNilLit, nkEnumTy, nkTupleTy}:
       for i in 0..<n.len:
         result = genRecCommentAux(d, n[i])
-        if result != "": return
+        if result != nil: return
   else:
     n.comment = ""
 
-proc genRecComment(d: PDoc, n: PNode): string =
-  if n == nil: return ""
+proc genRecComment(d: PDoc, n: PNode): PRstNode =
+  if n == nil: return nil
   result = genComment(d, n)
-  if result == "":
+  if result == nil:
     if n.kind in {nkProcDef, nkFuncDef, nkMethodDef, nkIteratorDef,
                   nkMacroDef, nkTemplateDef, nkConverterDef}:
       result = genRecCommentAux(d, n[bodyPos])
@@ -519,7 +546,7 @@ type RunnableState = enum
   rsRunnable
   rsDone
 
-proc getAllRunnableExamplesImpl(d: PDoc; n: PNode, dest: var string,
+proc getAllRunnableExamplesImpl(d: PDoc; n: PNode, dest: var ItemPre,
                                 state: RunnableState, topLevel: bool):
                                RunnableState =
   ##[
@@ -550,8 +577,10 @@ proc getAllRunnableExamplesImpl(d: PDoc; n: PNode, dest: var string,
         let (rdoccmd, code) = prepareExample(d, n, topLevel)
         var msg = "Example:"
         if rdoccmd.len > 0: msg.add " cmd: " & rdoccmd
-        dispA(d.conf, dest, "\n<p><strong class=\"examples_text\">$1</strong></p>\n",
+        var s: string
+        dispA(d.conf, s, "\n<p><strong class=\"examples_text\">$1</strong></p>\n",
             "\n\n\\textbf{$1}\n", [msg])
+        dest.add s
         inc d.listingCounter
         let id = $d.listingCounter
         dest.add(d.config.getOrDefault"doc.listing_start" % [id, "langNim", ""])
@@ -597,7 +626,7 @@ proc getRoutineBody(n: PNode): PNode =
     doAssert result.len == 2
     result = result[1]
 
-proc getAllRunnableExamples(d: PDoc, n: PNode, dest: var string) =
+proc getAllRunnableExamples(d: PDoc, n: PNode, dest: var ItemPre) =
   var n = n
   var state = rsStart
   template fn(n2, topLevel) =
@@ -706,7 +735,7 @@ proc complexName(k: TSymKind, n: PNode, baseName: string): string =
   ## types will be added with a preceding dash. Return types won't be added.
   ##
   ## If you modify the output of this proc, please update the anchor generation
-  ## section of ``doc/docgen.txt``.
+  ## section of ``doc/docgen.rst``.
   result = baseName
   case k
   of skProc, skFunc: discard
@@ -804,7 +833,7 @@ proc genItem(d: PDoc, n, nameNode: PNode, k: TSymKind, docFlags: DocFlags) =
   var result = ""
   var literal, plainName = ""
   var kind = tkEof
-  var comm = ""
+  var comm: ItemPre
   if n.kind in routineDefs:
     getAllRunnableExamples(d, n, comm)
   else:
@@ -840,9 +869,9 @@ proc genItem(d: PDoc, n, nameNode: PNode, k: TSymKind, docFlags: DocFlags) =
 
   let seeSrc = genSeeSrc(d, toFullPath(d.conf, n.info), n.info.line.int)
 
-  d.section[k].add(getConfigVar(d.conf, "doc.item") %
-    ["name", name, "uniqueName", uniqueName,
-     "header", result, "desc", comm, "itemID", $d.id,
+  d.section[k].secItems.add Item(descRst: comm, substitutions: @[
+     "name", name, "uniqueName", uniqueName,
+     "header", result, "itemID", $d.id,
      "header_plain", plainNameEsc, "itemSym", cleanPlainSymbol,
      "itemSymOrID", symbolOrId, "itemSymEnc", plainSymbolEnc,
      "itemSymOrIDEnc", symbolOrIdEnc, "seeSrc", seeSrc,
@@ -886,25 +915,26 @@ proc genItem(d: PDoc, n, nameNode: PNode, k: TSymKind, docFlags: DocFlags) =
   if k == skType and nameNode.kind == nkSym:
     d.types.strTableAdd nameNode.sym
 
-proc genJsonItem(d: PDoc, n, nameNode: PNode, k: TSymKind): JsonNode =
+proc genJsonItem(d: PDoc, n, nameNode: PNode, k: TSymKind): JsonItem =
   if not isVisible(d, nameNode): return
   var
     name = getName(d, nameNode)
     comm = genRecComment(d, n)
     r: TSrcGen
   initTokRender(r, n, {renderNoBody, renderNoComments, renderDocComments})
-  result = %{ "name": %name, "type": %($k), "line": %n.info.line.int,
-                 "col": %n.info.col}
-  if comm.len > 0:
-    result["description"] = %comm
+  result.json = %{ "name": %name, "type": %($k), "line": %n.info.line.int,
+                   "col": %n.info.col}
+  if comm != nil:
+    result.rst = comm
+    result.rstField = "description"
   if r.buf.len > 0:
-    result["code"] = %r.buf
+    result.json["code"] = %r.buf
   if k in routineKinds:
-    result["signature"] = newJObject()
+    result.json["signature"] = newJObject()
     if n[paramsPos][0].kind != nkEmpty:
-      result["signature"]["return"] = %($n[paramsPos][0])
+      result.json["signature"]["return"] = %($n[paramsPos][0])
     if n[paramsPos].len > 1:
-      result["signature"]["arguments"] = newJArray()
+      result.json["signature"]["arguments"] = newJArray()
     for paramIdx in 1 ..< n[paramsPos].len:
       for identIdx in 0 ..< n[paramsPos][paramIdx].len - 2:
         let
@@ -912,22 +942,22 @@ proc genJsonItem(d: PDoc, n, nameNode: PNode, k: TSymKind): JsonNode =
           paramType = $n[paramsPos][paramIdx][^2]
         if n[paramsPos][paramIdx][^1].kind != nkEmpty:
           let paramDefault = $n[paramsPos][paramIdx][^1]
-          result["signature"]["arguments"].add %{"name": %paramName, "type": %paramType, "default": %paramDefault}
+          result.json["signature"]["arguments"].add %{"name": %paramName, "type": %paramType, "default": %paramDefault}
         else:
-          result["signature"]["arguments"].add %{"name": %paramName, "type": %paramType}
+          result.json["signature"]["arguments"].add %{"name": %paramName, "type": %paramType}
     if n[pragmasPos].kind != nkEmpty:
-      result["signature"]["pragmas"] = newJArray()
+      result.json["signature"]["pragmas"] = newJArray()
       for pragma in n[pragmasPos]:
-        result["signature"]["pragmas"].add %($pragma)
+        result.json["signature"]["pragmas"].add %($pragma)
     if n[genericParamsPos].kind != nkEmpty:
-      result["signature"]["genericParams"] = newJArray()
+      result.json["signature"]["genericParams"] = newJArray()
       for genericParam in n[genericParamsPos]:
         var param = %{"name": %($genericParam)}
         if genericParam.sym.typ.sons.len > 0:
           param["types"] = newJArray()
         for kind in genericParam.sym.typ.sons:
           param["types"].add %($kind)
-        result["signature"]["genericParams"].add param
+        result.json["signature"]["genericParams"].add param
 
 proc checkForFalse(n: PNode): bool =
   result = n.kind == nkIdent and cmpIgnoreStyle(n.ident.s, "false") == 0
@@ -946,8 +976,8 @@ proc traceDeps(d: PDoc, it: PNode) =
       traceDeps(d, a)
   elif it.kind == nkSym and belongsToPackage(d.conf, it.sym):
     let external = externalDep(d, it.sym)
-    if d.section[k] != "": d.section[k].add(", ")
-    dispA(d.conf, d.section[k],
+    if d.section[k].finalMarkup != "": d.section[k].finalMarkup.add(", ")
+    dispA(d.conf, d.section[k].finalMarkup,
           "<a class=\"reference external\" href=\"$2\">$1</a>",
           "$1", [esc(d.target, external.prettyLink),
                  changeFileExt(external, "html")])
@@ -956,8 +986,8 @@ proc exportSym(d: PDoc; s: PSym) =
   const k = exportSection
   if s.kind == skModule and belongsToPackage(d.conf, s):
     let external = externalDep(d, s)
-    if d.section[k] != "": d.section[k].add(", ")
-    dispA(d.conf, d.section[k],
+    if d.section[k].finalMarkup != "": d.section[k].finalMarkup.add(", ")
+    dispA(d.conf, d.section[k].finalMarkup,
           "<a class=\"reference external\" href=\"$2\">$1</a>",
           "$1", [esc(d.target, external.prettyLink),
                  changeFileExt(external, "html")])
@@ -968,9 +998,9 @@ proc exportSym(d: PDoc; s: PSym) =
         complexSymbol = complexName(s.kind, s.ast, s.name.s)
         symbolOrId = d.newUniquePlainSymbol(complexSymbol)
         external = externalDep(d, module)
-      if d.section[k] != "": d.section[k].add(", ")
+      if d.section[k].finalMarkup != "": d.section[k].finalMarkup.add(", ")
       # XXX proper anchor generation here
-      dispA(d.conf, d.section[k],
+      dispA(d.conf, d.section[k].finalMarkup,
             "<a href=\"$2#$3\"><span class=\"Identifier\">$1</span></a>",
             "$1", [esc(d.target, s.name.s),
                    changeFileExt(external, "html"),
@@ -1034,13 +1064,16 @@ proc documentRaises*(cache: IdentCache; n: PNode) =
     if p5 != nil: n[pragmasPos].add p5
 
 proc generateDoc*(d: PDoc, n, orig: PNode, docFlags: DocFlags = kDefault) =
+  ## Goes through nim nodes recursively and collects doc comments.
+  ## Main function for `doc`:option: command,
+  ## which is implemented in ``docgen2.nim``.
   template genItemAux(skind) =
     genItem(d, n, n[namePos], skind, docFlags)
   case n.kind
   of nkPragma:
     let pragmaNode = findPragma(n, wDeprecated)
     d.modDeprecationMsg.add(genDeprecationMsg(d, pragmaNode))
-  of nkCommentStmt: d.modDesc.add(genComment(d, n))
+  of nkCommentStmt: d.modDescPre.add(genComment(d, n))
   of nkProcDef, nkFuncDef:
     when useEffectSystem: documentRaises(d.cache, n)
     genItemAux(skProc)
@@ -1079,21 +1112,63 @@ proc generateDoc*(d: PDoc, n, orig: PNode, docFlags: DocFlags = kDefault) =
   of nkExportExceptStmt: discard "transformed into nkExportStmt by semExportExcept"
   of nkFromStmt, nkImportExceptStmt: traceDeps(d, n[0])
   of nkCallKinds:
-    var comm = ""
+    var comm: ItemPre
     getAllRunnableExamples(d, n, comm)
-    if comm != "": d.modDesc.add(comm)
+    if comm.len != 0: d.modDescPre.add(comm)
   else: discard
 
-proc add(d: PDoc; j: JsonNode) =
-  if j != nil: d.jArray.add j
+proc finishGenerateDoc*(d: var PDoc) =
+  ## Perform 2nd RST pass for resolution of links/footnotes/headings...
+  # Main title/subtitle are allowed only in the first RST fragment of document
+  var firstRst = PRstNode(nil)
+  for fragment in d.modDescPre:
+    if fragment.isRst:
+      firstRst = fragment.rst
+      break
+  preparePass2(d.sharedState, firstRst)
+
+  # Finalize fragments of ``.nim`` or ``.rst`` file
+  proc renderItemPre(d: PDoc, fragments: ItemPre, result: var string) =
+    for f in fragments:
+      case f.isRst:
+      of true:
+        var resolved = resolveSubs(d.sharedState, f.rst)
+        renderRstToOut(d[], resolved, result)
+      of false: result &= f.str
+  for k in TSymKind:
+    for item in d.section[k].secItems:
+      var itemDesc: string
+      renderItemPre(d, item.descRst, itemDesc)
+      d.section[k].finalMarkup.add(
+        getConfigVar(d.conf, "doc.item") % (
+            item.substitutions & @["desc", itemDesc]))
+      itemDesc = ""
+    d.section[k].secItems.setLen 0
+  renderItemPre(d, d.modDescPre, d.modDescFinal)
+  d.modDescPre.setLen 0
+  d.hasToc = d.hasToc or d.sharedState.hasToc
+
+  # Finalize fragments of ``.json`` file
+  for i, entry in d.jEntriesPre:
+    if entry.rst != nil:
+      let resolved = resolveSubs(d.sharedState, entry.rst)
+      var str: string
+      renderRstToOut(d[], resolved, str)
+      entry.json[entry.rstField] = %str
+      d.jEntriesFinal.add entry.json
+      d.jEntriesPre[i].rst = nil
+
+proc add(d: PDoc; j: JsonItem) =
+  if j.json != nil or j.rst != nil: d.jEntriesPre.add j
 
 proc generateJson*(d: PDoc, n: PNode, includeComments: bool = true) =
   case n.kind
   of nkCommentStmt:
     if includeComments:
-      d.add %*{"comment": genComment(d, n)}
+      d.add JsonItem(rst: genComment(d, n), rstField: "comment",
+                     json: %Table[string, string]())
     else:
-      d.modDesc.add(genComment(d, n))
+      d.modDescPre.add(genComment(d, n))
   of nkProcDef, nkFuncDef:
     when useEffectSystem: documentRaises(d.cache, n)
     d.add genJsonItem(d, n, n[namePos], skProc)
@@ -1173,11 +1248,11 @@ proc genSection(d: PDoc, kind: TSymKind, groupedToc = false) =
     "Imports", "Types", "Vars", "Lets", "Consts", "Vars", "Procs", "Funcs",
     "Methods", "Iterators", "Converters", "Macros", "Templates", "Exports"
   ]
-  if d.section[kind] == "": return
+  if d.section[kind].finalMarkup == "": return
   var title = sectionNames[kind]
-  d.section[kind] = getConfigVar(d.conf, "doc.section") % [
+  d.section[kind].finalMarkup = getConfigVar(d.conf, "doc.section") % [
       "sectionid", $ord(kind), "sectionTitle", title,
-      "sectionTitleID", $(ord(kind) + 50), "content", d.section[kind]]
+      "sectionTitleID", $(ord(kind) + 50), "content", d.section[kind].finalMarkup]
 
   var tocSource = d.toc
   if groupedToc:
@@ -1209,7 +1284,7 @@ proc genOutFile(d: PDoc, groupedToc = false): string =
   if toc != "" or d.target == outLatex:
     # for Latex $doc.toc will automatically generate TOC if `d.hasToc` is set
     toc = getConfigVar(d.conf, "doc.toc") % ["content", toc]
-  for i in TSymKind: code.add(d.section[i])
+  for i in TSymKind: code.add(d.section[i].finalMarkup)
 
   # Extract the title. Non API modules generate an entry in the index table.
   if d.meta[metaTitle].len != 0:
@@ -1234,7 +1309,7 @@ proc genOutFile(d: PDoc, groupedToc = false): string =
   let seeSrc = genSeeSrc(d, d.filename, 1)
   content = getConfigVar(d.conf, bodyname) % [
       "title", title, "subtitle", subtitle,
-      "tableofcontents", toc, "moduledesc", d.modDesc, "date", getDateStr(),
+      "tableofcontents", toc, "moduledesc", d.modDescFinal, "date", getDateStr(),
       "time", getClockStr(), "content", code,
       "deprecationMsg", d.modDeprecationMsg,
       "theindexhref", relLink(d.conf.outDir, d.destFile.AbsoluteFile,
@@ -1248,7 +1323,7 @@ proc genOutFile(d: PDoc, groupedToc = false): string =
         "dochackjs", relLink(d.conf.outDir, d.destFile.AbsoluteFile,
                              docHackJsFname.RelativeFile),
         "title", title, "subtitle", subtitle, "tableofcontents", toc,
-        "moduledesc", d.modDesc, "date", getDateStr(), "time", getClockStr(),
+        "moduledesc", d.modDescFinal, "date", getDateStr(), "time", getClockStr(),
         "content", content, "author", d.meta[metaAuthor],
         "version", esc(d.target, d.meta[metaVersion]), "analytics", d.analytics,
         "deprecationMsg", d.modDeprecationMsg]
@@ -1297,12 +1372,12 @@ proc writeOutput*(d: PDoc, useWarning = false, groupedToc = false) =
 proc writeOutputJson*(d: PDoc, useWarning = false) =
   runAllExamples(d)
   var modDesc: string
-  for desc in d.modDesc:
+  for desc in d.modDescFinal:
     modDesc &= desc
   let content = %*{"orig": d.filename,
     "nimble": getPackageName(d.conf, d.filename),
     "moduleDescription": modDesc,
-    "entries": d.jArray}
+    "entries": d.jEntriesFinal}
   if optStdout in d.conf.globalOptions:
     write(stdout, $content)
   else:
@@ -1324,12 +1399,14 @@ proc handleDocOutputOptions*(conf: ConfigRef) =
     conf.outDir = AbsoluteDir(conf.outDir / conf.outFile)
 
 proc commandDoc*(cache: IdentCache, conf: ConfigRef) =
+  ## implementation of deprecated ``doc0`` command (without semantic checking)
   handleDocOutputOptions conf
   var ast = parseFile(conf.projectMainIdx, cache, conf)
   if ast == nil: return
   var d = newDocumentor(conf.projectFull, cache, conf)
   d.hasToc = true
   generateDoc(d, ast, ast)
+  finishGenerateDoc(d)
   writeOutput(d)
   generateIndex(d)
 
@@ -1339,14 +1416,13 @@ proc commandRstAux(cache: IdentCache, conf: ConfigRef;
   var d = newDocumentor(filen, cache, conf, outExt)
 
   d.isPureRst = true
-  var rst = parseRst(readFile(filen.string), filen.string,
+  let rst = parseRst(readFile(filen.string), filen.string,
                      line=LineRstInit, column=ColRstInit,
-                     d.hasToc,
-                     {roSupportRawDirective, roSupportMarkdown, roPreferMarkdown},
-                     conf)
-  var modDesc = newStringOfCap(30_000)
-  renderRstToOut(d[], rst, modDesc)
-  d.modDesc = modDesc
+                     {roSupportRawDirective, roSupportMarkdown,
+                      roPreferMarkdown}, conf,
+                     d.sharedState)
+  d.modDescPre = @[ItemFragment(isRst: true, rst: rst)]
+  finishGenerateDoc(d)
   writeOutput(d)
   generateIndex(d)
 
@@ -1357,6 +1433,7 @@ proc commandRst2TeX*(cache: IdentCache, conf: ConfigRef) =
   commandRstAux(cache, conf, conf.projectFull, TexExt)
 
 proc commandJson*(cache: IdentCache, conf: ConfigRef) =
+  ## implementation of a deprecated jsondoc0 command
   var ast = parseFile(conf.projectMainIdx, cache, conf)
   if ast == nil: return
   var d = newDocumentor(conf.projectFull, cache, conf)
@@ -1366,7 +1443,8 @@ proc commandJson*(cache: IdentCache, conf: ConfigRef) =
                warnUser, "the ':test:' attribute is not supported by this backend")
   d.hasToc = true
   generateJson(d, ast)
-  let json = d.jArray
+  finishGenerateDoc(d)
+  let json = d.jEntriesFinal
   let content = pretty(json)
 
   if optStdout in d.conf.globalOptions:

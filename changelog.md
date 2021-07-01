@@ -28,6 +28,9 @@
 - `math.round` now is rounded "away from zero" in JS backend which is consistent
   with other backends. See #9125. Use `-d:nimLegacyJsRound` for previous behavior.
 
+- Instead of deleting the element at the last index,
+  `system.delete()` now raises `IndexDefect` when given index is out of bounds.
+
 - Changed the behavior of `uri.decodeQuery` when there are unencoded `=`
   characters in the decoded values. Prior versions would raise an error. This is
   no longer the case to comply with the HTML spec and other languages
@@ -88,11 +91,14 @@
   The downside is that these defines now have custom logic that doesn't apply for
   other defines.
 
+- Renamed `-d:nimCompilerStackraceHints` to `-d:nimCompilerStacktraceHints`.
 
 
 ## Standard library additions and changes
 
-- Added support for parenthesized expressions in `strformat`
+- `strformat`:
+  added support for parenthesized expressions.
+  added support for const string's instead of just string literals
 
 - Fixed buffer overflow bugs in `net`
 
@@ -110,8 +116,12 @@
 
 - Make `{.requiresInit.}` pragma to work for `distinct` types.
 
-- Added a macros `enumLen` for returning the number of items in an enum to the
-  `typetraits.nim` module.
+- `typetraits`:
+  `distinctBase` now is identity instead of error for non distinct types.
+  Added `enumLen` to return the number of elements in an enum.
+  Added `HoleyEnum` for enums with holes, `OrdinalEnum` for enums without holes.
+  Added `hasClosure`.
+  Added `pointerBase` to return `T` for `ref T | ptr T`.
 
 - `prelude` now works with the JavaScript target.
   Added `sequtils` import to `prelude`.
@@ -158,8 +168,6 @@
   Added `items` for enums with holes.
   Added `symbolName` to return the enum symbol name ignoring the human readable name.
   Added `symbolRank` to return the index in which an enum member is listed in an enum.
-
-- Added `typetraits.HoleyEnum` for enums with holes, `OrdinalEnum` for enums without holes.
 
 - Removed deprecated `iup` module from stdlib, it has already moved to
   [nimble](https://github.com/nim-lang/iup).
@@ -290,7 +298,6 @@
 
 - Added `algorithm.merge`.
 
-
 - Added `std/jsfetch` module [Fetch](https://developer.mozilla.org/docs/Web/API/Fetch_API) wrapper for JavaScript target.
 
 - Added `std/jsheaders` module [Headers](https://developer.mozilla.org/en-US/docs/Web/API/Headers) wrapper for JavaScript target.
@@ -319,8 +326,6 @@
 
 - Added `hasDataBuffered` to `asyncnet`.
 
-- Added `hasClosure` to `std/typetraits`.
-
 - Added `std/tempfiles`.
 
 - Added `genasts.genAst` that avoids the problems inherent with `quote do` and can
@@ -343,8 +348,6 @@
 - The `cstring` doesn't support `[]=` operator in JS backend.
 
 - nil dereference is not allowed at compile time. `cast[ptr int](nil)[]` is rejected at compile time.
-
-- `typetraits.distinctBase` now is identity instead of error for non distinct types.
 
 - `os.copyFile` is now 2.5x faster on OSX, by using `copyfile` from `copyfile.h`;
   use `-d:nimLegacyCopyFile` for OSX < 10.5.
@@ -385,6 +388,8 @@
 ## Compiler changes
 
 - Added `--declaredlocs` to show symbol declaration location in messages.
+
+- You can now enable/disable VM tracing in user code via `vmutils.vmTrace`.
 
 - Deprecated `TaintedString` and `--taintmode`.
 
@@ -427,6 +432,10 @@
 - Added `unsafeIsolate` and `extract` to `std/isolation`.
 
 - `--hint:CC` now goes to stderr (like all other hints) instead of stdout.
+
+- `--hint:all:on|off` is now supported to select or deselect all hints; it
+  differs from `--hints:on|off` which acts as a (reversible) gate.
+  Likewise with `--warning:all:on|off`.
 
 - json build instructions are now generated in `$nimcache/outFileBasename.json`
   instead of `$nimcache/projectName.json`. This allows avoiding recompiling a given project

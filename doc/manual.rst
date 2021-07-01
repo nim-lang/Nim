@@ -989,10 +989,12 @@ Ordinal types have the following characteristics:
 - Ordinal types are countable and ordered. This property allows the operation
   of functions such as `inc`, `ord`, and `dec` on ordinal types to
   be defined.
-- Ordinal values have the smallest possible value. Trying to count further
-  down than the smallest value produces a panic or a static error.
-- Ordinal values have the largest possible value. Trying to count further
-  than the largest value produces a panic or a static error.
+- Ordinal types have a smallest possible value, accessible with `low(type)`.
+  Trying to count further down than the smallest value produces a panic or
+  a static error.
+- Ordinal types have a largest possible value, accessible with `high(type)`.
+  Trying to count further up than the largest value produces a panic or
+  a static error.
 
 Integers, bool, characters, and enumeration types (and subranges of these
 types) belong to ordinal types.
@@ -1095,6 +1097,7 @@ lowest and highest value of the type. For example:
   type
     Subrange = range[0..5]
     PositiveFloat = range[0.0..Inf]
+    Positive* = range[1..high(int)] # as defined in `system`
 
 
 `Subrange` is a subrange of an integer which can only hold the values 0
@@ -1613,7 +1616,7 @@ heterogeneous storage types with few abstractions. The `()` syntax
 can be used to construct tuples. The order of the fields in the constructor
 must match the order of the tuple's definition. Different tuple-types are
 *equivalent* if they specify the same fields of the same type in the same
-order. The *names* of the fields also have to be identical.
+order. The *names* of the fields also have to be the same.
 
 The assignment operator for tuples copies each component.
 The default assignment operator for objects copies each component. Overloading
@@ -1624,15 +1627,16 @@ of the assignment operator is described `here
 
   type
     Person = tuple[name: string, age: int] # type representing a person:
-                                           # a person consists of a name
-                                           # and an age
-  var
-    person: Person
+                                           # it consists of a name and an age.
+  var person: Person
   person = (name: "Peter", age: 30)
-  echo person.name
+  assert person.name == "Peter"
   # the same, but less readable:
   person = ("Peter", 30)
-  echo person[0]
+  assert person[0] == "Peter"
+  assert Person is (string, int)
+  assert (string, int) is Person
+  assert Person isnot tuple[other: string, age: int] # `other` is a different identifier
 
 A tuple with one unnamed field can be constructed with the parentheses and a
 trailing comma:
@@ -4458,10 +4462,8 @@ Example:
       echo "sum: " & $(parseInt(a) + parseInt(b))
     except OverflowDefect:
       echo "overflow!"
-    except ValueError:
-      echo "could not convert string to integer"
-    except IOError:
-      echo "IO error!"
+    except ValueError, IOError:
+      echo "catch multiple exceptions!"
     except:
       echo "Unknown exception!"
     finally:
@@ -7429,17 +7431,6 @@ work properly (in particular regarding constructor and destructor) for
   proc main()=
     var a {.threadvar.}: Foo
 
-InjectStmt pragma
------------------
-
-The `injectStmt` pragma can be used to inject a statement before every
-other statement in the current module. It is only supposed to be used for
-debugging:
-
-.. code-block:: nim
-  {.injectStmt: gcInvariants().}
-
-  # ... complex code here that produces crashes ...
 
 compile-time define pragmas
 ---------------------------

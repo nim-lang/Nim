@@ -51,6 +51,7 @@ type
   SubgraphFlag = enum
     isMutated, # graph might be mutated
     isMutatedDirectly, # graph is mutated directly by a non-var parameter.
+    isMutatedByVarParam, # graph is mutated by a var parameter.
     connectsConstParam # graph is connected to a non-var parameter.
 
   VarFlag = enum
@@ -184,7 +185,7 @@ proc potentialMutation(v: var Partitions; s: PSym; level: int; info: TLineInfo) 
                     {isMutated, isMutatedDirectly}
                   elif s.typ.kind == tyVar and level <= 1:
                     # varParam[i] = v is different from varParam[i][] = v
-                    {}
+                    {isMutatedByVarParam}
                   else:
                     {isMutated}
                 else:
@@ -415,7 +416,6 @@ proc allRoots(n: PNode; result: var seq[(PSym, int)]; level: int) =
 proc destMightOwn(c: var Partitions; dest: var VarIndex; n: PNode) =
   ## Analyse if 'n' is an expression that owns the data, if so mark 'dest'
   ## with 'ownsData'.
-  if n.typ == nil: return
   case n.kind
   of nkEmpty, nkCharLit..nkNilLit:
     # primitive literals including the empty are harmless:
@@ -474,30 +474,31 @@ proc destMightOwn(c: var Partitions; dest: var VarIndex; n: PNode) =
     destMightOwn(c, dest, n[0])
 
   of nkCallKinds:
-    if hasDestructor(n.typ):
-      # calls do construct, what we construct must be destroyed,
-      # so dest cannot be a cursor:
-      dest.flags.incl ownsData
-    elif n.typ.kind in {tyLent, tyVar}:
-      # we know the result is derived from the first argument:
-      var roots: seq[(PSym, int)]
-      allRoots(n[1], roots, RootEscapes)
-      for r in roots:
-        connect(c, dest.sym, r[0], n[1].info)
+    if n.typ != nil:
+      if hasDestructor(n.typ):
+        # calls do construct, what we construct must be destroyed,
+        # so dest cannot be a cursor:
+        dest.flags.incl ownsData
+      elif n.typ.kind in {tyLent, tyVar}:
+        # we know the result is derived from the first argument:
+        var roots: seq[(PSym, int)]
+        allRoots(n[1], roots, RootEscapes)
+        for r in roots:
+          connect(c, dest.sym, r[0], n[1].info)
 
-    else:
-      let magic = if n[0].kind == nkSym: n[0].sym.magic else: mNone
-      # this list is subtle, we try to answer the question if after 'dest = f(src)'
-      # there is a connection betwen 'src' and 'dest' so that mutations to 'src'
-      # also reflect 'dest':
-      if magic in {mNone, mMove, mSlice, mAppendStrCh, mAppendStrStr, mAppendSeqElem, mArrToSeq}:
-        for i in 1..<n.len:
-          # we always have to assume a 'select(...)' like mechanism.
-          # But at least we do filter out simple POD types from the
-          # list of dependencies via the 'hasDestructor' check for
-          # the root's symbol.
-          if hasDestructor(n[i].typ.skipTypes({tyVar, tySink, tyLent, tyGenericInst, tyAlias})):
-            destMightOwn(c, dest, n[i])
+      else:
+        let magic = if n[0].kind == nkSym: n[0].sym.magic else: mNone
+        # this list is subtle, we try to answer the question if after 'dest = f(src)'
+        # there is a connection betwen 'src' and 'dest' so that mutations to 'src'
+        # also reflect 'dest':
+        if magic in {mNone, mMove, mSlice, mAppendStrCh, mAppendStrStr, mAppendSeqElem, mArrToSeq}:
+          for i in 1..<n.len:
+            # we always have to assume a 'select(...)' like mechanism.
+            # But at least we do filter out simple POD types from the
+            # list of dependencies via the 'hasDestructor' check for
+            # the root's symbol.
+            if hasDestructor(n[i].typ.skipTypes({tyVar, tySink, tyLent, tyGenericInst, tyAlias})):
+              destMightOwn(c, dest, n[i])
 
   else:
     # something we cannot handle:
@@ -878,7 +879,7 @@ proc computeGraphPartitions*(s: PSym; n: PNode; g: ModuleGraph; goals: set[Goal]
 
 proc dangerousMutation(g: MutationInfo; v: VarIndex): bool =
   #echo "range ", v.aliveStart, " .. ", v.aliveEnd, " ", v.sym
-  if isMutated in g.flags:
+  if {isMutated, isMutatedByVarParam} * g.flags != {}:
     for m in g.mutations:
       #echo "mutation ", m
       if m in v.aliveStart..v.aliveEnd:
@@ -941,4 +942,5 @@ proc computeCursors*(s: PSym; n: PNode; g: ModuleGraph) =
         discard "cannot cursor into a graph that is mutated"
       else:
         v.sym.flags.incl sfCursor
-        #echo "this is now a cursor ", v.sym, " ", par.s[rid].flags, " ", g.config $ v.sym.info
+        when false:
+          echo "this is now a cursor ", v.sym, " ", par.s[rid].flags, " ", g.config $ v.sym.info

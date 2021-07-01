@@ -997,7 +997,7 @@ Test1
       """
     var error5 = new string
     let output5 = input5.toHtml(error=error5)
-    check(error5[] == "input(6, 1) Error: mismatch in number of footnotes " &
+    check(error5[] == "input(1, 1) Error: mismatch in number of footnotes " &
             "and their refs: 1 (lines 2) != 0 (lines ) for auto-numbered " &
             "footnotes")
 
@@ -1011,7 +1011,7 @@ Test1
       """
     var error6 = new string
     let output6 = input6.toHtml(error=error6)
-    check(error6[] == "input(6, 1) Error: mismatch in number of footnotes " &
+    check(error6[] == "input(1, 1) Error: mismatch in number of footnotes " &
             "and their refs: 1 (lines 3) != 2 (lines 2, 6) for auto-symbol " &
             "footnotes")
 
@@ -1034,7 +1034,8 @@ Test1
       """
     var warnings8 = new seq[string]
     let output8 = input8.toHtml(warnings=warnings8)
-    check(warnings8[] == @["input(4, 1) Warning: unknown substitution " &
+    # TODO: the line 1 is arbitrary because reference lines are not preserved
+    check(warnings8[] == @["input(1, 1) Warning: unknown substitution " &
             "\'citation-som\'"])
 
     # check that footnote group does not break parsing of other directives:
@@ -1134,6 +1135,18 @@ Test1
     let output = input.toHtml
     check "<pre class=\"line-nums\">55\n</pre>" in output
     check "<span class=\"Identifier\">x</span>" in output
+
+  test "Nim code-block indentation":
+    let input = dedent """
+      .. code-block:: nim
+        :number-lines: 55
+         let a = 1
+      """
+    var error = new string
+    let output = input.toHtml(error=error)
+    check(error[] == "input(1, 1) Error: invalid field: " &
+                     "extra arguments were given to number-lines: ' let a = 1'")
+    check "" == output
 
   test "RST admonitions":
     # check that all admonitions are implemented

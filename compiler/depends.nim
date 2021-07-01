@@ -25,7 +25,7 @@ type
     dotGraph: Rope
 
 proc addDependencyAux(b: Backend; importing, imported: string) =
-  b.dotGraph.addf("$1 -> \"$2\";$n", [rope(importing), rope(imported)])
+  b.dotGraph.addf("\"$1\" -> \"$2\";$n", [rope(importing), rope(imported)])
   # s1 -> s2_4[label="[0-9]"];
 
 proc addDotDependency(c: PPassContext, n: PNode): PNode =

@@ -293,6 +293,34 @@ block:
 
     doAssert "test1".match(peg"""{@}$""")
     doAssert "test2".match(peg"""{(!$ .)*} $""")
+
+    doAssert "abbb".match(peg"{a} {b} $2 $^1")
+    doAssert "abBA".match(peg"{a} {b} i$2 i$^2")
+
+    doAssert "abba".match(peg"{a} {b} $^1 {} $^1")
+
+    block:
+      let grammar = peg"""
+program <- {''} stmt* $
+stmt <- call / block
+call <- 'call()' EOL
+EOL <- \n / $
+block <- 'block:' \n indBody
+indBody <- {$^1 ' '+} stmt ($^1 stmt)* {}
+"""
+      let program = """
+call()
+block:
+  block:
+    call()
+    call()
+  call()
+call()
+"""
+      var c: Captures
+      doAssert program.len == program.rawMatch(grammar, 0, c)
+      doAssert c.ml == 1
+
   pegsTest()
   static:
     pegsTest()

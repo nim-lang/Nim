@@ -83,7 +83,7 @@ type
     of pkChar, pkGreedyRepChar: ch: char
     of pkCharChoice, pkGreedyRepSet: charChoice: ref set[char]
     of pkNonTerminal: nt: NonTerminal
-    of pkBackRef..pkBackRefIgnoreStyle: index: range[0..MaxSubpatterns]
+    of pkBackRef..pkBackRefIgnoreStyle: index: range[-MaxSubpatterns..MaxSubpatterns-1]
     else: sons: seq[Peg]
   NonTerminal* = ref NonTerminalObj
 
@@ -106,7 +106,7 @@ proc nt*(p: Peg): NonTerminal = p.nt
   ## Returns the *NonTerminal* object of a given *Peg* variant object
   ## where present.
 
-proc index*(p: Peg): range[0..MaxSubpatterns] = p.index
+proc index*(p: Peg): range[-MaxSubpatterns..MaxSubpatterns-1] = p.index
   ## Returns the back-reference index of a captured sub-pattern in the
   ## *Captures* object for a given *Peg* variant object where present.
 
@@ -304,34 +304,37 @@ proc endAnchor*: Peg {.inline.} =
   ## constructs the PEG ``$`` which matches the end of the input.
   result = !any()
 
-proc capture*(a: Peg): Peg {.noSideEffect, rtl, extern: "npegsCapture".} =
+proc capture*(a: Peg = Peg(kind: pkEmpty)): Peg {.noSideEffect, rtl, extern: "npegsCapture".} =
   ## constructs a capture with the PEG `a`
   result = Peg(kind: pkCapture, sons: @[a])
 
-proc backref*(index: range[1..MaxSubpatterns]): Peg {.
+proc backref*(index: range[1..MaxSubpatterns], reverse: bool = false): Peg {.
   noSideEffect, rtl, extern: "npegs$1".} =
   ## constructs a back reference of the given `index`. `index` starts counting
-  ## from 1.
-  result = Peg(kind: pkBackRef, index: index-1)
+  ## from 1. `reverse` specifies wether indexing starts from the end of the
+  ## capture list.
+  result = Peg(kind: pkBackRef, index: (if reverse: -index else: index - 1))
 
-proc backrefIgnoreCase*(index: range[1..MaxSubpatterns]): Peg {.
+proc backrefIgnoreCase*(index: range[1..MaxSubpatterns], reverse: bool = false): Peg {.
   noSideEffect, rtl, extern: "npegs$1".} =
   ## constructs a back reference of the given `index`. `index` starts counting
-  ## from 1. Ignores case for matching.
-  result = Peg(kind: pkBackRefIgnoreCase, index: index-1)
+  ## from 1. `reverse` specifies wether indexing starts from the end of the
+  ## capture list. Ignores case for matching.
+  result = Peg(kind: pkBackRefIgnoreCase, index: (if reverse: -index else: index - 1))
 
-proc backrefIgnoreStyle*(index: range[1..MaxSubpatterns]): Peg {.
+proc backrefIgnoreStyle*(index: range[1..MaxSubpatterns], reverse: bool = false): Peg {.
   noSideEffect, rtl, extern: "npegs$1".} =
   ## constructs a back reference of the given `index`. `index` starts counting
-  ## from 1. Ignores style for matching.
-  result = Peg(kind: pkBackRefIgnoreStyle, index: index-1)
+  ## from 1. `reverse` specifies wether indexing starts from the end of the
+  ## capture list. Ignores style for matching.
+  result = Peg(kind: pkBackRefIgnoreStyle, index: (if reverse: -index else: index - 1))
 
 proc spaceCost(n: Peg): int =
   case n.kind
   of pkEmpty: discard
   of pkTerminal, pkTerminalIgnoreCase, pkTerminalIgnoreStyle, pkChar,
      pkGreedyRepChar, pkCharChoice, pkGreedyRepSet,
-     pkAny..pkWhitespace, pkGreedyAny:
+     pkAny..pkWhitespace, pkGreedyAny, pkBackRef..pkBackRefIgnoreStyle:
     result = 1
   of pkNonTerminal:
     # we cannot inline a rule with a non-terminal
@@ -561,8 +564,10 @@ template matchOrParse(mopProc: untyped) =
       # Parse handler code must run in an *of* clause of its own for each
       # *PegKind*, so we encapsulate the identical clause body for
       # *pkBackRef..pkBackRefIgnoreStyle* here.
-      if p.index >= c.ml: return -1
-      var (a, b) = c.matches[p.index]
+      var index = p.index
+      if index < 0: index.inc(c.ml)
+      if index < 0 or index >= c.ml: return -1
+      var (a, b) = c.matches[index]
       var n: Peg
       case p.kind
       of pkBackRef:
@@ -822,15 +827,19 @@ template matchOrParse(mopProc: untyped) =
       leave(pkNotPredicate, s, p, start, result)
     of pkCapture:
       enter(pkCapture, s, p, start)
-      var idx = c.ml # reserve a slot for the subpattern
-      inc(c.ml)
-      result = mopProc(s, p.sons[0], start, c)
-      if result >= 0:
-        if idx < MaxSubpatterns:
-          c.matches[idx] = (start, start+result-1)
-        #else: silently ignore the capture
+      if p.sons.len == 0 or p.sons[0].kind == pkEmpty:
+        # empty capture removes last match
+        dec(c.ml)
+        c.matches[c.ml] = (0, 0)
+        result = 0 # match of length 0
       else:
-        c.ml = idx
+        var idx = c.ml # reserve a slot for the subpattern
+        result = mopProc(s, p.sons[0], start, c)
+        if result >= 0:
+          inc(c.ml)
+          if idx < MaxSubpatterns:
+            c.matches[idx] = (start, start+result-1)
+          #else: silently ignore the capture
       leave(pkCapture, s, p, start, result)
     of pkBackRef:
       enter(pkBackRef, s, p, start)
@@ -1395,6 +1404,7 @@ type
     tkCurlyLe,    ## '{'
     tkCurlyRi,    ## '}'
     tkCurlyAt,    ## '{@}'
+    tkEmptyCurl,  ## '{}'
     tkArrow,      ## '<-'
     tkBar,        ## '/'
     tkStar,       ## '*'
@@ -1427,7 +1437,7 @@ type
 const
   tokKindToStr: array[TokKind, string] = [
     "invalid", "[EOF]", ".", "_", "identifier", "string literal",
-    "character set", "(", ")", "{", "}", "{@}",
+    "character set", "(", ")", "{", "}", "{@}", "{}",
     "<-", "/", "*", "+", "&", "!", "?",
     "@", "built-in", "escaped", "$", "$", "^"
   ]
@@ -1564,13 +1574,21 @@ proc getString(c: var PegLexer, tok: var Token) =
 
 proc getDollar(c: var PegLexer, tok: var Token) =
   var pos = c.bufpos + 1
+  var neg = false
+  if pos < c.buf.len and c.buf[pos] == '^':
+    neg = true
+    inc(pos)
   if pos < c.buf.len and c.buf[pos] in {'0'..'9'}:
     tok.kind = tkBackref
     tok.index = 0
     while pos < c.buf.len and c.buf[pos] in {'0'..'9'}:
       tok.index = tok.index * 10 + ord(c.buf[pos]) - ord('0')
       inc(pos)
+    if neg:
+      tok.index = -tok.index
   else:
+    if neg:
+      dec(pos)
     tok.kind = tkDollar
   c.bufpos = pos
 
@@ -1670,6 +1688,10 @@ proc getTok(c: var PegLexer, tok: var Token) =
       tok.kind = tkCurlyAt
       inc(c.bufpos, 2)
       add(tok.literal, "{@}")
+    elif c.buf[c.bufpos] == '}' and c.bufpos < c.buf.len:
+      tok.kind = tkEmptyCurl
+      inc(c.bufpos)
+      add(tok.literal, "{}")
     else:
       tok.kind = tkCurlyLe
       add(tok.literal, '{')
@@ -1705,7 +1727,7 @@ proc getTok(c: var PegLexer, tok: var Token) =
       return
     if c.buf[c.bufpos] in {'\'', '"'} or
         c.buf[c.bufpos] == '$' and c.bufpos+1 < c.buf.len and
-        c.buf[c.bufpos+1] in {'0'..'9'}:
+        c.buf[c.bufpos+1] in {'^', '0'..'9'}:
       case tok.literal
       of "i": tok.modifier = modIgnoreCase
       of "y": tok.modifier = modIgnoreStyle
@@ -1819,10 +1841,13 @@ proc modifiedTerm(s: string, m: Modifier): Peg =
   of modIgnoreStyle: result = termIgnoreStyle(s)
 
 proc modifiedBackref(s: int, m: Modifier): Peg =
+  var
+    reverse = s < 0
+    index = if reverse: -s else: s
   case m
-  of modNone, modVerbatim: result = backref(s)
-  of modIgnoreCase: result = backrefIgnoreCase(s)
-  of modIgnoreStyle: result = backrefIgnoreStyle(s)
+  of modNone, modVerbatim: result = backref(index, reverse)
+  of modIgnoreCase: result = backrefIgnoreCase(index, reverse)
+  of modIgnoreStyle: result = backrefIgnoreStyle(index, reverse)
 
 proc builtin(p: var PegParser): Peg =
   # do not use "y", "skip" or "i" as these would be ambiguous
@@ -1896,6 +1921,9 @@ proc primary(p: var PegParser): Peg =
     result = capture(parseExpr(p)).token(p)
     eat(p, tkCurlyRi)
     inc(p.captures)
+  of tkEmptyCurl:
+    result = capture()
+    getTok(p)
   of tkAny:
     result = any().token(p)
     getTok(p)
@@ -1915,11 +1943,11 @@ proc primary(p: var PegParser): Peg =
     result = startAnchor()
     getTok(p)
   of tkBackref:
+    if abs(p.tok.index) > p.captures or p.tok.index == 0:
+      pegError(p, "invalid back reference index: " & $p.tok.index)
     var m = p.tok.modifier
     if m == modNone: m = p.modifier
     result = modifiedBackref(p.tok.index, m).token(p)
-    if p.tok.index < 0 or p.tok.index > p.captures:
-      pegError(p, "invalid back reference index: " & $p.tok.index)
     getTok(p)
   else:
     pegError(p, "expression expected, but found: " & p.tok.literal)
@@ -1943,7 +1971,7 @@ proc seqExpr(p: var PegParser): Peg =
     case p.tok.kind
     of tkAmp, tkNot, tkAt, tkStringLit, tkCharSet, tkParLe, tkCurlyLe,
        tkAny, tkAnyRune, tkBuiltin, tkEscaped, tkDollar, tkBackref,
-       tkHat, tkCurlyAt:
+       tkHat, tkCurlyAt, tkEmptyCurl:
       result = sequence(result, primary(p))
     of tkIdentifier:
       if not arrowIsNextTok(p):

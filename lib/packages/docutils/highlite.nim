@@ -188,9 +188,6 @@ const
 proc isKeyword(x: openArray[string], y: string): int =
   binarySearch(x, y)
 
-proc isKeywordIgnoreCase(x: openArray[string], y: string): int =
-  binarySearch(x, y, cmpIgnoreCase)
-
 proc nimNextToken(g: var GeneralTokenizer, keywords: openArray[string] = @[]) =
   const
     hexChars = {'0'..'9', 'A'..'F', 'a'..'f', '_'}
