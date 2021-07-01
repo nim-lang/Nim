@@ -137,8 +137,9 @@ proc createTempFile*(prefix, suffix: string, dir = ""): tuple[cfile: File, path:
   # xxx why does above work without `cfile.flushFile` ?
   let dir = getTempDirImpl(dir)
 
+  var state: Rand
   for i in 0 ..< maxRetry:
-    var state = initRand()
+    state = initRand()
     result.path = genTempPath(state, prefix, suffix, dir)
     result.cfile = safeOpen(result.path)
     if result.cfile != nil:
@@ -164,8 +165,9 @@ proc createTempDir*(prefix, suffix: string, dir = ""): string =
     assert dirExists(dir)
     removeDir(dir)
   let dir = getTempDirImpl(dir)
+  var state: Rand
   for i in 0 ..< maxRetry:
-    var state = initRand()
+    state = initRand()
     result = genTempPath(state, prefix, suffix, dir)
     if not existsOrCreateDir(result):
       return
