@@ -1,5 +1,5 @@
 discard """
-  matrix: "--d:oldParseHex"
+  matrix: "--d:nimOldParseHex"
 """
 
 import std/strutils
