@@ -108,6 +108,10 @@ proc getTempDirImpl(dir: string): string {.inline.} =
     result = getTempDir()
 
 proc genTempPath(state: var Rand, prefix, suffix: string, dir = ""): string {.inline.} =
+  ## Generates a path name in `dir`.
+  ##
+  ## If `dir` is empty, (`getTempDir <os.html#getTempDir>`_) will be used.
+  ## The path begins with `prefix` and ends with `suffix`.
   let dir = getTempDirImpl(dir)
   result = dir / (prefix & randomPathName(state, nimTempPathLength) & suffix)
 
