@@ -107,7 +107,7 @@ proc getTempDirImpl(dir: string): string {.inline.} =
   if result.len == 0:
     result = getTempDir()
 
-proc genTempPath(state: var Rand, prefix, suffix: string, dir = ""): string {.inline.} =
+proc genTempPath*(state: var Rand, prefix, suffix: string, dir = ""): string {.inline.} =
   ## Generates a path name in `dir`.
   ##
   ## If `dir` is empty, (`getTempDir <os.html#getTempDir>`_) will be used.
@@ -118,9 +118,9 @@ proc genTempPath(state: var Rand, prefix, suffix: string, dir = ""): string {.in
 proc createTempFile*(prefix, suffix: string, dir = ""): tuple[cfile: File, path: string] =
   ## Creates a new temporary file in the directory `dir`.
   ## 
-  ## This generates a path name and returns a file handle
-  ## to an open file and the path of that file, possibly after
-  ## retrying to ensure it doesn't already exist.
+  ## This generates a path name using `genTempPath(state, prefix, suffix, dir)` and
+  ## returns a file handle and returns a file handle to an open file and 
+  ## the path of that file, possibly after retrying to ensure it doesn't already exist.
   ## 
   ## If failing to create a temporary file, `OSError` will be raised.
   ##
@@ -153,7 +153,8 @@ proc createTempFile*(prefix, suffix: string, dir = ""): tuple[cfile: File, path:
 proc createTempDir*(prefix, suffix: string, dir = ""): string =
   ## Creates a new temporary directory in the directory `dir`.
   ##
-  ## This generates a dir name and creates the directory and returns it,
+  ## This generates a dir name using `genTempPath(state prefix, suffix, dir)`,
+  ## returns a file handle and creates the directory and returns it,
   ## possibly after retrying to ensure it doesn't already exist.
   ##
   ## If failing to create a temporary directory, `OSError` will be raised.

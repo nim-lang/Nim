@@ -5,7 +5,7 @@ internal API for now, API subject to change
 # xxx move other git utilities here; candidate for stdlib.
 
 import std/[os, osproc, strutils, random]
-from std/tempfiles {.all.} import genTempPath
+from std/tempfiles import genTempPath
 
 const commitHead* = "HEAD"
 
