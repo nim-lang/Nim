@@ -29,15 +29,13 @@ implements the required case distinction.
 
 
 import
-  ast, trees, magicsys, options,
+  ast, astalgo, trees, magicsys, options,
   nversion, msgs, idents, types,
   ropes, passes, ccgutils, wordrecg, renderer,
   cgmeth, lowerings, sighashes, modulegraphs, lineinfos, rodutils,
   transf, injectdestructors, sourcemap
 
 import json, sets, math, tables, intsets, strutils
-
-from modulegraphs import ModuleGraph, PPassContext
 
 type
   TJSGen = object of PPassContext
@@ -2236,6 +2234,16 @@ proc genTupleConstr(p: PProc, n: PNode, r: var TCompRes) =
       r.res.addf("Field$#: $#", [i.rope, a.res])
   r.res.add("}")
 
+proc lookupFieldAgain(ty: PType; field: PSym): PSym =
+  var ty = ty
+  while ty != nil:
+    ty = ty.skipTypes(skipPtrs)
+    assert(ty.kind in {tyTuple, tyObject})
+    result = lookupInRecord(ty.n, field.name)
+    if result != nil: break
+    ty = ty[0]
+  if result == nil: result = field
+
 proc genObjConstr(p: PProc, n: PNode, r: var TCompRes) =
   var a: TCompRes
   r.kind = resExpr
@@ -2249,7 +2257,7 @@ proc genObjConstr(p: PProc, n: PNode, r: var TCompRes) =
     gen(p, val, a)
     var f = it[0].sym
     if f.loc.r == nil: f.loc.r = mangleName(p.module, f)
-    fieldIDs.incl(f.id)
+    fieldIDs.incl(lookupFieldAgain(n.typ, f).id)
 
     let typ = val.typ.skipTypes(abstractInst)
     if a.typ == etyBaseIndex:

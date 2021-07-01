@@ -2,9 +2,10 @@ discard """
   targets: "c cpp js"
 """
 
+import stdtest/testutils
+
 # TODO: in future work move existing `system` tests here, where they belong
 
-import stdtest/testutils
 
 template main =
   block: # closure
@@ -41,6 +42,35 @@ template main =
         doAssert rawEnv(inner2) == rawEnv(inner1) # because both use `a`
         # doAssert rawEnv(inner3) != rawEnv(inner1) # because `a` vs `b` # this doesn't hold
     outer()
+
+  block: # system.delete
+    block:
+      var s = @[1]
+      s.delete(0)
+      doAssert s == @[]
+
+    block:
+      var s = @["foo", "bar"]
+      s.delete(1)
+      doAssert s == @["foo"]
+  
+    block:
+      var s: seq[string]
+      doAssertRaises(IndexDefect):
+        s.delete(0)
+
+    block:
+      doAssert not compiles(@["foo"].delete(-1))
+
+    block: # bug #6710
+      var s = @["foo"]
+      s.delete(0)
+      doAssert s == @[]
+  
+    block: # bug #16544: deleting out of bounds index should raise
+      var s = @["foo"]
+      doAssertRaises(IndexDefect):
+        s.delete(1)
 
 static: main()
 main()

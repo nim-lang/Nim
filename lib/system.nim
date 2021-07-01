@@ -1325,30 +1325,6 @@ proc del*[T](x: var seq[T], i: Natural) {.noSideEffect.} =
   movingCopy(x[i], x[xl])
   setLen(x, xl)
 
-proc delete*[T](x: var seq[T], i: Natural) {.noSideEffect.} =
-  ## Deletes the item at index `i` by moving all `x[i+1..]` items by one position.
-  ##
-  ## This is an `O(n)` operation.
-  ##
-  ## See also:
-  ## * `del <#del,seq[T],Natural>`_ for O(1) operation
-  ##
-  ## .. code-block:: Nim
-  ##  var i = @[1, 2, 3, 4, 5]
-  ##  i.delete(2) # => @[1, 2, 4, 5]
-  template defaultImpl =
-    let xl = x.len
-    for j in i.int..xl-2: movingCopy(x[j], x[j+1])
-    setLen(x, xl-1)
-
-  when nimvm:
-    defaultImpl()
-  else:
-    when defined(js):
-      {.emit: "`x`.splice(`i`, 1);".}
-    else:
-      defaultImpl()
-
 proc insert*[T](x: var seq[T], item: sink T, i = 0.Natural) {.noSideEffect.} =
   ## Inserts `item` into `x` at position `i`.
   ##
@@ -2153,6 +2129,40 @@ const
 
 import system/dollars
 export dollars
+
+proc delete*[T](x: var seq[T], i: Natural) {.noSideEffect.} =
+  ## Deletes the item at index `i` by moving all `x[i+1..^1]` items by one position.
+  ##
+  ## This is an `O(n)` operation.
+  ##
+  ## See also:
+  ## * `del <#del,seq[T],Natural>`_ for O(1) operation
+  ##
+  runnableExamples:
+    var s = @[1, 2, 3, 4, 5]
+    s.delete(2)
+    doAssert s == @[1, 2, 4, 5]
+
+    doAssertRaises(IndexDefect):
+      s.delete(4)
+
+  if i > high(x):
+    # xxx this should call `raiseIndexError2(i, high(x))` after some refactoring
+    raise (ref IndexDefect)(msg: "index out of bounds: '" & $i & "' < '" & $x.len & "' failed")
+
+  template defaultImpl =
+    let xl = x.len
+    for j in i.int..xl-2: movingCopy(x[j], x[j+1])
+    setLen(x, xl-1)
+
+  when nimvm:
+    defaultImpl()
+  else:
+    when defined(js):
+      {.emit: "`x`.splice(`i`, 1);".}
+    else:
+      defaultImpl()
+
 
 const
   NimVersion*: string = $NimMajor & "." & $NimMinor & "." & $NimPatch

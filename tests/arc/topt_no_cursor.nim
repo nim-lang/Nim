@@ -8,7 +8,7 @@ doing shady stuff...
 192.168.0.1
 192.168.0.1
 192.168.0.1'''
-  cmd: '''nim c --gc:arc --expandArc:newTarget --expandArc:delete --expandArc:p1 --expandArc:tt --hint:Performance:off --assertions:off --expandArc:extractConfig --expandArc:mergeShadowScope $file'''
+  cmd: '''nim c --gc:arc --expandArc:newTarget --expandArc:delete --expandArc:p1 --expandArc:tt --hint:Performance:off --assertions:off --expandArc:extractConfig --expandArc:mergeShadowScope --expandArc:check $file'''
   nimout: '''--expandArc: newTarget
 
 var
@@ -127,6 +127,36 @@ block :tmp:
         :tmpD
       inc(i, 1)
 `=destroy`(shadowScope)
+-- end of expandArc ------------------------
+--expandArc: check
+
+var par
+this.isValid = fileExists(this.value)
+if dirExists(this.value):
+  var :tmpD
+  par = (dir:
+    wasMoved(:tmpD)
+    `=copy`(:tmpD, this.value)
+    :tmpD, front: "") else:
+  var
+    :tmpD_1
+    :tmpD_2
+    :tmpD_3
+  par = (dir_1: parentDir(this.value), front_1:
+    wasMoved(:tmpD_1)
+    `=copy`(:tmpD_1,
+      :tmpD_3 = splitPath do:
+        wasMoved(:tmpD_2)
+        `=copy`(:tmpD_2, this.value)
+        :tmpD_2
+      :tmpD_3.tail)
+    :tmpD_1)
+  `=destroy`(:tmpD_3)
+if dirExists(par.dir):
+  `=sink`(this.matchDirs, getSubDirs(par.dir, par.front))
+else:
+  `=sink`(this.matchDirs, [])
+`=destroy`(par)
 -- end of expandArc ------------------------'''
 """
 
@@ -322,3 +352,22 @@ proc mergeShadowScope*(c: PContext) =
     c.addInterfaceDecl(sym)
 
 mergeShadowScope(PContext(currentScope: Scope(parent: Scope())))
+
+type
+  Foo = ref object
+    isValid*: bool
+    value*: string
+    matchDirs*: seq[string]
+
+proc getSubDirs(parent, front: string): seq[string] = @[]
+
+method check(this: Foo) {.base.} =
+  this.isValid = fileExists(this.value)
+  let par = if dirExists(this.value): (dir: this.value, front: "")
+            else: (dir: parentDir(this.value), front: splitPath(this.value).tail)
+  if dirExists(par.dir):
+    this.matchDirs = getSubDirs(par.dir, par.front)
+  else:
+    this.matchDirs = @[]
+
+check(Foo())

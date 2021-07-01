@@ -457,6 +457,11 @@ proc semOld(c: PContext; n: PNode): PNode =
     localError(c.config, n[1].info, n[1].sym.name.s & " does not belong to " & getCurrOwner(c).name.s)
   result = n
 
+proc semPrivateAccess(c: PContext, n: PNode): PNode =
+  let t = n[1].typ[0].toObjectFromRefPtrGeneric
+  c.currentScope.allowPrivateAccess.add t.sym
+  result = newNodeIT(nkEmpty, n.info, getSysType(c.graph, n.info, tyVoid))
+
 proc magicsAfterOverloadResolution(c: PContext, n: PNode,
                                    flags: TExprFlags): PNode =
   ## This is the preferred code point to implement magics.
@@ -574,9 +579,6 @@ proc magicsAfterOverloadResolution(c: PContext, n: PNode,
       n[0].sym.magic = mSubU
     result = n
   of mPrivateAccess:
-    var t = n[1].typ[0]
-    if t.kind in {tyRef, tyPtr}: t = t[0]
-    c.currentScope.allowPrivateAccess.add t.sym
-    result = newNodeIT(nkEmpty, n.info, getSysType(c.graph, n.info, tyVoid))
+    result = semPrivateAccess(c, n)
   else:
     result = n

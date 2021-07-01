@@ -215,8 +215,14 @@ proc buildTools(args: string = "") =
                  options = "-d:release " & args)
   when defined(windows): buildVccTool(args)
   bundleNimpretty(args)
-  nimCompileFold("Compile testament", "testament/testament.nim",
-                 options = "-d:release " & args)
+  nimCompileFold("Compile testament", "testament/testament.nim", options = "-d:release " & args)
+
+  # pre-packages a debug version of nim which can help in many cases investigate issuses
+  # withouth having to rebuild compiler.
+  # `-d:nimDebugUtils` only makes sense when temporarily editing/debugging compiler
+  # `-d:debug` should be changed to a flag that doesn't require re-compiling nim
+  # `--opt:speed` is a sensible default even for a debug build, it doesn't affect nim stacktraces
+  nimCompileFold("Compile nim_dbg", "compiler/nim.nim", options = "--opt:speed --stacktrace -d:debug --stacktraceMsgs -d:nimCompilerStacktraceHints " & args, outputName = "nim_dbg")
 
 proc nsis(latest: bool; args: string) =
   bundleNimbleExe(latest, args)
@@ -308,7 +314,7 @@ proc boot(args: string) =
     var nimi = i.thVersion
     if i == 0:
       nimi = nimStart
-      extraOption.add " --skipUserCfg --skipParentCfg"
+      extraOption.add " --skipUserCfg --skipParentCfg -d:nimKochBootstrap"
         # The configs are skipped for bootstrap
         # (1st iteration) to prevent newer flags from breaking bootstrap phase.
       let ret = execCmdEx(nimStart & " --version")
@@ -581,6 +587,11 @@ proc runCI(cmd: string) =
     execFold("Run nimpretty tests", "nim r nimpretty/tester.nim")
     when defined(posix):
       execFold("Run nimsuggest tests", "nim r nimsuggest/tester")
+
+  when not defined(bsd):
+    if not doUseCpp:
+      # the BSDs are overwhelmed already, so only run this test on the other machines:
+      kochExecFold("Boot Nim ORC", "boot -d:release --gc:orc --lib:lib")
 
 proc testUnixInstall(cmdLineRest: string) =
   csource("-d:danger" & cmdLineRest)
