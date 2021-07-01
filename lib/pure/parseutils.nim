@@ -104,9 +104,15 @@ proc parseBin*[T: SomeInteger](s: string, number: var T, start = 0,
       inc count
     else: break
     inc(i)
-  if foundDigit and count <= sizeof(T) * 8:
-    number = output
-    result = i - start
+
+  when not defined(nimOldParseHex):
+    if foundDigit and count <= sizeof(T) * 8:
+      number = output
+      result = i - start
+  else:
+    if foundDigit:
+      number = output
+      result = i - start
 
 proc parseOct*[T: SomeInteger](s: string, number: var T, start = 0,
     maxLen = 0): int {.noSideEffect.} =
@@ -164,9 +170,15 @@ proc parseOct*[T: SomeInteger](s: string, number: var T, start = 0,
       inc count
     else: break
     inc(i)
-  if foundDigit and count <= sizeof(T) * 8 div 3:
-    number = output
-    result = i - start
+
+  when not defined(nimOldParseHex):
+    if foundDigit and count <= sizeof(T) * 8 div 3:
+      number = output
+      result = i - start
+  else:
+    if foundDigit:
+      number = output
+      result = i - start
 
 proc parseHex*[T: SomeInteger](s: string, number: var T, start = 0,
     maxLen = 0): int {.noSideEffect.} =
@@ -224,9 +236,15 @@ proc parseHex*[T: SomeInteger](s: string, number: var T, start = 0,
       inc count
     else: break
     inc(i)
-  if foundDigit and count <= sizeof(T) * 2:
-    number = output
-    result = i - start
+
+  when not defined(nimOldParseHex):
+    if foundDigit and count <= sizeof(T) * 2:
+      number = output
+      result = i - start
+  else:
+    if foundDigit:
+      number = output
+      result = i - start
 
 proc parseIdent*(s: string, ident: var string, start = 0): int =
   ## Parses an identifier and stores it in ``ident``. Returns
