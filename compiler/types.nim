@@ -26,6 +26,29 @@ type
       # most useful, shows: symbol + resolved symbols if it differs, e.g.:
       # tuple[a: MyInt{int}, b: float]
 
+  TTypeRelation* = enum      # order is important!
+    isNone, isConvertible,
+    isIntConv,
+    isSubtype,
+    isSubrange,              # subrange of the wanted type; no type conversion
+                             # but apart from that counts as ``isSubtype``
+    isBothMetaConvertible    # generic proc parameter was matched against
+                             # generic type, e.g., map(mySeq, x=>x+1),
+                             # maybe recoverable by rerun if the parameter is
+                             # the proc's return value
+    isInferred,              # generic proc was matched against a concrete type
+    isInferredConvertible,   # same as above, but requiring proc CC conversion
+    isGeneric,
+    isFromIntLit,            # conversion *from* int literal; proven safe
+    isEqual
+
+  ProcConvMismatch* = enum
+    pcmNoSideEffect
+    pcmNotGcSafe
+    pcmLockDifference
+    pcmNotIterator
+    pcmDifferentCallConv
+
 proc typeToString*(typ: PType; prefer: TPreferedDesc = preferName): string
 template `$`*(typ: PType): string = typeToString(typ)
 
@@ -1471,34 +1494,71 @@ proc skipHiddenSubConv*(n: PNode; g: ModuleGraph; idgen: IdGenerator): PNode =
   else:
     result = n
 
-proc addCallConvMismatch*(message: var string, formal, actual: PType, indented = false) =
-  assert formal.kind == tyProc and actual.kind == tyProc
-  let ambigNimProc = formal.callConv in {ccNimCall, ccClosure} and tfExplicitCallConv notin formal.flags
-  if (ambigNimProc and actual.callConv notin {ccNimCall, ccClosure}) or
-      (not ambigNimProc and formal.callConv != actual.callConv):
-    let
-      got = $(actual.callConv)
-      expected = $(formal.callConv)
-    message.add "\n  Calling convention: mismatch got '{.$1.}', but expected '{.$2.}'." % [got, expected]
+proc getProcConvMismatch*(c: ConfigRef, f, a: PType, rel: var TTypeRelation): set[ProcConvMismatch] =
+  ## Returns a set of the reason of mismatch.
+  ## `rel` is mutated on fail to `isNone`.
+  
+  if tfNoSideEffect in f.flags and tfNoSideEffect notin a.flags:
+    # Formal is pure, but actual is not
+    result.incl pcmNoSideEffect
+    rel = isNone
+  if tfThread in f.flags and a.flags * {tfThread, tfNoSideEffect} == {} and
+    optThreadAnalysis in c.globalOptions:
+    # noSideEffect implies ``tfThread``!
+    result.incl pcmNotGcSafe
+    rel = isNone
+  if f.flags * {tfIterator} != a.flags * {tfIterator}:
+    # One of them is an iterator so not convertible
+    result.incl pcmNotIterator
+    rel = isNone
+  if f.callConv != a.callConv:
+      # valid to pass a 'nimcall' thingie to 'closure':
+      if f.callConv == ccClosure and a.callConv == ccNimCall:
+        if rel != isNone: # If everything else passed, set now
+          if rel == isInferred:
+            rel = isInferredConvertible
+          elif rel == isBothMetaConvertible:
+            rel = isBothMetaConvertible
+          else:
+            rel = isConvertible
+      else:
+        rel = isNone
+        result.incl pcmDifferentCallConv
+  if f.lockLevel.ord != UnspecifiedLockLevel.ord and
+     a.lockLevel.ord != UnspecifiedLockLevel.ord:
+       result.incl pcmLockDifference
+
+proc getProcConvMismatch*(c: ConfigRef, f, a: PType): set[ProcConvMismatch] =
+  var rel: TTypeRelation
+  getProcConvMismatch(c, f, a, rel)
 
 
-proc addPragmaMismatch*(message: var string, formal, actual: PType) =
+proc addPragmaAndCallConvMismatch*(message: var string, formal, actual: PType, conf: ConfigRef) =
   assert formal.kind == tyProc and actual.kind == tyProc
+  let convMismatch = getProcConvMismatch(conf, formal, actual)
   var
-    got = ""
-    expected = ""
-  if tfNoSideEffect in formal.flags and tfNoSideEffect notin actual.flags:
-    expected.add "noSideEffect, "
-  if tfThread in formal.flags and tfThread notin actual.flags:
-    expected.add "gcsafe, "
-  if formal.lockLevel.ord != UnspecifiedLockLevel.ord and
-     actual.lockLevel.ord != UnspecifiedLockLevel.ord:
-    got.add("locks: " & $actual.lockLevel & ", ")
-    expected.add("locks: " & $formal.lockLevel & ", ")
-  if got.len > 0 or expected.len > 0:
-    got.setLen(max(0, got.len - 2)) # Remove ", "
-    expected.setLen(max(0, expected.len - 2)) # Remove ", "
-    message.add "\n  Pragma mismatch: got '{.$1.}', but expected '{.$2.}'." % [got, expected]
+    gotPragmas = ""
+    expectedPragmas = ""
+  for reason in convMismatch:
+    case reason:
+    of pcmDifferentCallConv:
+      let
+        got = $(actual.callConv)
+        expected = $(formal.callConv)
+      message.add "\n  Calling convention: mismatch got '{.$1.}', but expected '{.$2.}'." % [got, expected]
+    of pcmNoSideEffect:
+      expectedPragmas.add "noSideEffect, "
+    of pcmNotGcSafe:
+      expectedPragmas.add "gcsafe, "
+    of pcmLockDifference:
+      gotPragmas.add("locks: " & $actual.lockLevel & ", ")
+      expectedPragmas.add("locks: " & $formal.lockLevel & ", ")
+    else: discard
+  if expectedPragmas.len > 0:
+    gotPragmas.setLen(max(0, gotPragmas.len - 2)) # Remove ", "
+    expectedPragmas.setLen(max(0, expectedPragmas.len - 2)) # Remove ", "
+    message.add "\n  Pragma mismatch: got '{.$1.}', but expected '{.$2.}'." % [gotPragmas, expectedPragmas]
+
 
 proc typeMismatch*(conf: ConfigRef; info: TLineInfo, formal, actual: PType, n: PNode) =
   if formal.kind != tyError and actual.kind != tyError:
@@ -1520,8 +1580,7 @@ proc typeMismatch*(conf: ConfigRef; info: TLineInfo, formal, actual: PType, n: P
     if verbose: msg.addDeclaredLoc(conf, formal)
 
     if formal.kind == tyProc and actual.kind == tyProc:
-      msg.addCallConvMismatch(formal, actual)
-      msg.addPragmaMismatch(formal, actual)
+      msg.addPragmaAndCallConvMismatch(formal, actual, conf)
       case compatibleEffects(formal, actual)
       of efCompat: discard
       of efRaisesDiffer:
