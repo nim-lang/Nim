@@ -1502,30 +1502,34 @@ proc getProcConvMismatch*(c: ConfigRef, f, a: PType, rel: var TTypeRelation): se
     # Formal is pure, but actual is not
     result.incl pcmNoSideEffect
     rel = isNone
+
   if tfThread in f.flags and a.flags * {tfThread, tfNoSideEffect} == {} and
     optThreadAnalysis in c.globalOptions:
     # noSideEffect implies ``tfThread``!
     result.incl pcmNotGcSafe
     rel = isNone
+
   if f.flags * {tfIterator} != a.flags * {tfIterator}:
     # One of them is an iterator so not convertible
     result.incl pcmNotIterator
     rel = isNone
+
   if f.callConv != a.callConv:
       # valid to pass a 'nimcall' thingie to 'closure':
       if f.callConv == ccClosure and a.callConv == ccNimCall:
-        if rel != isNone: # If everything else passed, set now
-          if rel == isInferred:
-            rel = isInferredConvertible
-          elif rel == isBothMetaConvertible:
-            rel = isBothMetaConvertible
-          else:
-            rel = isConvertible
+        case rel
+        of isInferred: rel = isInferredConvertible
+        of isBothMetaConvertible: rel = isBothMetaConvertible
+        elif rel != isNone: rel = isConvertible
       else:
         rel = isNone
         result.incl pcmDifferentCallConv
+
   if f.lockLevel.ord != UnspecifiedLockLevel.ord and
      a.lockLevel.ord != UnspecifiedLockLevel.ord:
+       # proctypeRel has more logic to catch this difference,
+       # so dont need to do `rel = isNone`
+       # but it's a pragma mismatch reason which is why it's here
        result.incl pcmLockDifference
 
 proc getProcConvMismatch*(c: ConfigRef, f, a: PType): set[ProcConvMismatch] =
