@@ -13,20 +13,26 @@
 import std/private/since
 import macros
 
-proc checkPragma(ex, prag: var NimNode) =
+proc checkPragma(ex, prag: var NimNode, addPragmas: openarray[NimNode] = @[]) =
   since (1, 3):
     if ex.kind == nnkPragmaExpr:
       prag = ex[1]
       ex = ex[0]
+    else:
+      if addPragmas.len > 0:
+        prag = newTree(nnkPragma)
+    if prag.kind == nnkPragma:
+      prag.add addPragmas
 
-proc createProcType(p, b: NimNode): NimNode =
+proc createProcType(p, b: NimNode, addPragmas: openarray[NimNode] = @[]):
+    NimNode =
   result = newNimNode(nnkProcTy)
   var
     formalParams = newNimNode(nnkFormalParams).add(b)
     p = p
     prag = newEmptyNode()
 
-  checkPragma(p, prag)
+  checkPragma(p, prag, addPragmas)
 
   case p.kind
   of nnkPar, nnkTupleConstr:
@@ -52,25 +58,8 @@ proc createProcType(p, b: NimNode): NimNode =
   result.add formalParams
   result.add prag
 
-macro `=>`*(p, b: untyped): untyped =
-  ## Syntax sugar for anonymous procedures. It also supports pragmas.
-  runnableExamples:
-    proc passTwoAndTwo(f: (int, int) -> int): int = f(2, 2)
 
-    assert passTwoAndTwo((x, y) => x + y) == 4
-
-    type
-      Bot = object
-        call: (string {.noSideEffect.} -> string)
-
-    var myBot = Bot()
-
-    myBot.call = (name: string) {.noSideEffect.} => "Hello " & name & ", I'm a bot."
-    assert myBot.call("John") == "Hello John, I'm a bot."
-
-    let f = () => (discard) # simplest proc that returns void
-    f()
-
+proc createProc(p, b: NimNode, addPragmas: openarray[NimNode] = @[]): NimNode =
   var
     params = @[ident"auto"]
     name = newEmptyNode()
@@ -78,7 +67,7 @@ macro `=>`*(p, b: untyped): untyped =
     pragma = newEmptyNode()
     p = p
 
-  checkPragma(p, pragma)
+  checkPragma(p, pragma, addPragmas)
 
   if p.kind == nnkInfix and p[0].kind == nnkIdent and p[0].eqIdent"->":
     params[0] = p[2]
@@ -131,6 +120,27 @@ macro `=>`*(p, b: untyped): untyped =
                    pragmas = pragma, name = name,
                    procType = kind)
 
+macro `=>`*(p, b: untyped): untyped =
+  ## Syntax sugar for anonymous procedures. It also supports pragmas.
+  runnableExamples:
+    proc passTwoAndTwo(f: (int, int) -> int): int = f(2, 2)
+
+    assert passTwoAndTwo((x, y) => x + y) == 4
+
+    type
+      Bot = object
+        call: (string {.noSideEffect.} -> string)
+
+    var myBot = Bot()
+
+    myBot.call = (name: string) {.noSideEffect.} => "Hello " & name & ", I'm a bot."
+    assert myBot.call("John") == "Hello John, I'm a bot."
+
+    let f = () => (discard) # simplest proc that returns void
+    f()
+
+  result = createProc(p, b)
+
 macro `->`*(p, b: untyped): untyped =
   ## Syntax sugar for procedure types. It also supports pragmas.
   runnableExamples:
@@ -147,6 +157,30 @@ macro `->`*(p, b: untyped): untyped =
     assert passOne(x {.noSideEffect.} => x + 1) == 2
 
   result = createProcType(p, b)
+
+macro `!=>`*(p, b: untyped): untyped =
+  ## Syntax sugar for anonymous `func` procedures. Supports pragmas.
+  since (1, 3):
+    runnableExamples:
+      proc passOne(f: (int {.noSideEffect.} -> int)): int = f(1)
+
+      assert passOne(x !=> x + 1) == 2
+      # equivalent to:
+      # assert passOne(x {.noSideEffect.} => x + 1) == 2
+      
+    result = createProc(p, b, [ident"noSideEffect"])
+
+macro `!->`*(p, b: untyped): untyped =
+  ## Syntax sugar for `func` procedure types. Supports pragmas.
+  since (1, 3):
+    runnableExamples:
+      proc passOne(f: (int !-> int)): int = f(1)
+      # equivalent to:
+      # proc passOne(f: (int {.noSideEffect.} -> int)): int = f(1)
+
+      assert passOne(x {.noSideEffect.} => x + 1) == 2
+      
+    result = createProcType(p, b, [ident"noSideEffect"])
 
 macro dump*(x: untyped): untyped =
   ## Dumps the content of an expression, useful for debugging.

@@ -63,6 +63,18 @@ template main() =
     doAssert $((float) {.inline.} -> int) == "proc (i0: float): int{.inline.}"
     doAssert $((float, bool) {.inline.} -> int) == "proc (i0: float, i1: bool): int{.inline.}"
 
+  block: # `!=>`
+    block:
+      let f1 = (x: int) !=> x + 1
+      doAssert f1(42) == 43
+
+    block:
+      proc call1(f: () !-> int): int = f()
+      doAssert call1(() !=> 12) == 12
+
+  block: # `!->`
+    doAssert $(float !-> int) == "proc (i0: float): int{.closure, noSideEffect.}"
+    
   block: # capture
     var closure1: () -> int
     for i in 0 .. 10:
