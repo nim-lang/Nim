@@ -2634,7 +2634,7 @@ proc dirInclude(p: var RstParser): PRstNode =
       let saveFileIdx = p.s.currFileIdx
       setCurrFilename(p.s, path)
       getTokens(
-        inputString[startPosition..endPosition].strip(),
+        inputString[startPosition..endPosition],
         q.tok)
       # workaround a GCC bug; more like the interior pointer bug?
       #if find(q.tok[high(q.tok)].symbol, "\0\x01\x02") > 0:
