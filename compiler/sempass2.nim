@@ -225,7 +225,17 @@ proc markGcUnsafe(a: PEffects; reason: PNode) =
 
 when true:
   template markSideEffect(a: PEffects; reason: typed) =
-    if not a.inEnforcedNoSideEffects: a.hasSideEffect = true
+    if not a.inEnforcedNoSideEffects:
+      a.hasSideEffect = true
+      if a.owner.kind in routineKinds:
+        when reason is PNode:
+          if reason.kind == nkSym:
+            a.owner.sideEffectReasons.add reason.sym
+          else:
+            a.owner.sideEffectReasons.add newSym(skUnknown, a.owner.name, nextSymId a.c.idgen,
+                                              a.owner, reason.info, {})
+        else:
+          a.owner.sideEffectReasons.add reason
 else:
   template markSideEffect(a: PEffects; reason: typed) =
     if not a.inEnforcedNoSideEffects: a.hasSideEffect = true
@@ -258,6 +268,33 @@ proc listGcUnsafety(s: PSym; onlyWarning: bool; cycleCheck: var IntSet; conf: Co
 proc listGcUnsafety(s: PSym; onlyWarning: bool; conf: ConfigRef) =
   var cycleCheck = initIntSet()
   listGcUnsafety(s, onlyWarning, cycleCheck, conf)
+
+proc listSideEffects(s: PSym; onlyWarning: bool; cycleCheck: var IntSet; conf: ConfigRef) =
+  for u in s.sideEffectReasons:
+    if u != nil and not cycleCheck.containsOrIncl(u.id):
+      let msgKind = if onlyWarning: warnSideEffect else: errGenerated
+      case u.kind
+      of skLet, skVar:
+        message(conf, s.info, msgKind,
+          ("'$#' accesses global state at '$#'") % [s.name.s, u.name.s])
+      of routineKinds:
+        # recursive call *always* produces only a warning so the full error
+        # message is printed:
+        listSideEffects(u, true, cycleCheck, conf)
+        message(conf, s.info, msgKind,
+          "'$#' has side effects as it calls '$#'" %
+          [s.name.s, u.name.s])
+      of skParam, skForVar:
+        message(conf, s.info, msgKind,
+          "'$#' has side effects as it performs an indirect call via '$#'" %
+          [s.name.s, u.name.s])
+      else:
+        message(conf, u.info, msgKind,
+          "'$#' has side effects as it performs an indirect call here" % s.name.s)
+
+proc listSideEffects(s: PSym; onlyWarning: bool; conf: ConfigRef) =
+  var cycleCheck = initIntSet()
+  listSideEffects(s, onlyWarning, cycleCheck, conf)
 
 proc useVarNoInitCheck(a: PEffects; n: PNode; s: PSym) =
   if {sfGlobal, sfThread} * s.flags != {} and s.kind in {skVar, skLet} and
@@ -1336,6 +1373,7 @@ proc trackProc*(c: PContext; s: PSym, body: PNode) =
     effects[ensuresEffects] = ensuresSpec
 
   var mutationInfo = MutationInfo()
+  var hasMutationSideEffect = false
   if {strictFuncs, views} * c.features != {}:
     var goals: set[Goal] = {}
     if strictFuncs in c.features: goals.incl constParameters
@@ -1343,6 +1381,7 @@ proc trackProc*(c: PContext; s: PSym, body: PNode) =
     var partitions = computeGraphPartitions(s, body, g, goals)
     if not t.hasSideEffect and t.hasDangerousAssign:
       t.hasSideEffect = varpartitions.hasSideEffect(partitions, mutationInfo)
+      hasMutationSideEffect = t.hasSideEffect
     if views in c.features:
       checkBorrowedLocations(partitions, body, g.config)
 
@@ -1357,7 +1396,10 @@ proc trackProc*(c: PContext; s: PSym, body: PNode) =
     when false:
       listGcUnsafety(s, onlyWarning=false, g.config)
     else:
-      localError(g.config, s.info, ("'$1' can have side effects" % s.name.s) & (g.config $ mutationInfo))
+      if hasMutationSideEffect:
+        localError(g.config, s.info, ("'$1' can have side effects" % s.name.s) & (g.config $ mutationInfo))
+      else:
+        listSideEffects(s, false, g.config)
   if not t.gcUnsafe:
     s.typ.flags.incl tfGcSafe
   if not t.hasSideEffect and sfSideEffect notin s.flags:
