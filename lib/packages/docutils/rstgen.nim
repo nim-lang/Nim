@@ -40,7 +40,7 @@
 ##   can be done by simply searching for [footnoteName].
 
 import strutils, os, hashes, strtabs, rstast, rst, highlite, tables, sequtils,
-  algorithm, parseutils
+  algorithm, parseutils, ../../../compiler/lineinfos
 
 import ../../std/private/since
 
@@ -72,11 +72,11 @@ type
     tocPart*: seq[TocEntry]
     hasToc*: bool
     theIndex: string # Contents of the index file to be dumped at the end.
-    options*: RstParseOptions
     findFile*: FindFileHandler
     msgHandler*: MsgHandler
     outDir*: string      ## output directory, initialized by docgen.nim
     destFile*: string    ## output (HTML) file, initialized by docgen.nim
+    files*: seq[string]
     filename*: string         ## source Nim or Rst file
     meta*: array[MetaEnum, string]
     currentSection: string ## \
@@ -112,9 +112,9 @@ proc init(p: var CodeBlockParams) =
 
 proc initRstGenerator*(g: var RstGenerator, target: OutputTarget,
                        config: StringTableRef, filename: string,
-                       options: RstParseOptions,
                        findFile: FindFileHandler = nil,
-                       msgHandler: MsgHandler = nil) =
+                       msgHandler: MsgHandler = nil,
+                       files: seq[string] = @[]) =
   ## Initializes a ``RstGenerator``.
   ##
   ## You need to call this before using a ``RstGenerator`` with any other
@@ -160,9 +160,9 @@ proc initRstGenerator*(g: var RstGenerator, target: OutputTarget,
   g.target = target
   g.tocPart = @[]
   g.filename = filename
+  g.files = files
   g.splitAfter = 20
   g.theIndex = ""
-  g.options = options
   g.findFile = findFile
   g.currentSection = ""
   g.id = 0
@@ -909,7 +909,7 @@ proc renderSmiley(d: PDoc, n: PRstNode, result: var string) =
 
 proc getField1Int(d: PDoc, n: PRstNode, fieldName: string): int =
   template err(msg: string) =
-    d.msgHandler(n.loc.filename, n.loc.line, n.loc.col, meInvalidRstField, msg)
+    rstMessage(d.files, d.msgHandler, n.li, meInvalidRstField, msg)
   let value = n.getFieldValue
   var number: int
   let nChars = parseInt(value, number)
@@ -957,8 +957,7 @@ proc parseCodeBlockField(d: PDoc, n: PRstNode, params: var CodeBlockParams) =
     params.langStr = n.getFieldValue.strip
     params.lang = params.langStr.getSourceLanguage
   else:
-    d.msgHandler(n.loc.filename, n.loc.line, n.loc.col,
-                 mwUnsupportedField, n.getArgument)
+    rstMessage(d.files, d.msgHandler, n.li, mwUnsupportedField, n.getArgument)
 
 proc parseCodeBlockParams(d: PDoc, n: PRstNode): CodeBlockParams =
   ## Iterates over all code block fields and returns processed params.
@@ -1069,8 +1068,7 @@ proc renderCode(d: PDoc, n: PRstNode, result: var string) =
   dispA(d.target, result, blockStart, blockStart, [])
   if params.lang == langNone:
     if len(params.langStr) > 0:
-      d.msgHandler(n.loc.filename, n.loc.line, n.loc.col,
-                   mwUnsupportedLanguage, params.langStr)
+      rstMessage(d.files, d.msgHandler, n.li, mwUnsupportedLanguage, params.langStr)
     for letter in m.text: escChar(d.target, result, letter, emText)
   else:
     renderCodeLang(result, params.lang, m.text, d.target)
@@ -1565,11 +1563,11 @@ proc rstToHtml*(s: string, options: RstParseOptions,
     result = ""
 
   const filen = "input"
-  var d: RstGenerator
-  initRstGenerator(d, outHtml, config, filen, options, myFindFile, msgHandler)
   var dummyHasToc = false
-  var rst = rstParse(s, filen, line=LineRstInit, column=ColRstInit,
-                     dummyHasToc, options, myFindFile, msgHandler)
+  var (rst, files) = rstParse(s, filen, line=LineRstInit, column=ColRstInit,
+                              dummyHasToc, options, myFindFile, msgHandler)
+  var d: RstGenerator
+  initRstGenerator(d, outHtml, config, filen, myFindFile, msgHandler, files)
   result = ""
   renderRstToOut(d, rst, result)
 
@@ -1578,10 +1576,9 @@ proc rstToLatex*(rstSource: string; options: RstParseOptions): string {.inline, 
   ## Convenience proc for `renderRstToOut` and `initRstGenerator`.
   runnableExamples: doAssert rstToLatex("*Hello* **world**", {}) == """\emph{Hello} \textbf{world}"""
   if rstSource.len == 0: return
-  var option: bool
+  var dummyHasToc: bool
+  let (rst, files) = rstParse(rstSource, "", line=LineRstInit, column=ColRstInit,
+                              dummyHasToc, options)
   var rstGenera: RstGenerator
-  rstGenera.initRstGenerator(outLatex, defaultConfig(), "input", options)
-  rstGenera.renderRstToOut(
-      rstParse(rstSource, "", line=LineRstInit, column=ColRstInit,
-               option, options),
-      result)
+  rstGenera.initRstGenerator(outLatex, defaultConfig(), "input", files=files)
+  rstGenera.renderRstToOut(rst, result)

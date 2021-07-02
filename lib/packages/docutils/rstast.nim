@@ -9,7 +9,7 @@
 
 ## This module implements an AST for the `reStructuredText`:idx: parser.
 
-import strutils, json
+import strutils, json, ../../../compiler/lineinfos
 
 type
   RstNodeKind* = enum        ## the possible node kinds of an PRstNode
@@ -77,11 +77,10 @@ type
 
   PRstNode* = ref RstNode    ## an RST node
   RstNodeSeq* = seq[PRstNode]
-  PRstLocation* = ref object ## location inside a file
-    filename*: string
-    line*: int
-    col*: int
-    order*: int                ## only for `rnFootnoteRef`
+  PFootnoteRefInfo* = ref object ## location inside a file, only for
+                                 ## `rnFootnoteRef` (packed for memory saving)
+    li*: TLineInfo
+    order*: int
   RstNode* {.acyclic, final.} = object ## AST node (result of RST parsing)
     case kind*: RstNodeKind ## the node's kind
     of rnLeaf, rnSmiley:
@@ -100,10 +99,12 @@ type
     of rnFootnote, rnCitation, rnOptionListItem:
       order*: int             ## footnote order (for auto-symbol footnotes and
                               ## auto-numbered ones without a label)
-    of rnRef, rnSubstitutionReferences, rnFootnoteRef,
+    of rnRef, rnSubstitutionReferences,
         rnInterpretedText, rnField, rnInlineCode, rnCodeBlock:
-      loc*: PRstLocation      ## To have line/column info for warnings at
+      li*: ref TLineInfo      ## To have line/column info for warnings at
                               ## nodes that are post-processed after parsing
+    of rnFootnoteRef:
+      loc*: PFootnoteRefInfo  # almost the same
     else:
       discard
     anchor*: string           ## anchor, internal link target
@@ -114,9 +115,10 @@ proc len*(n: PRstNode): int =
   result = len(n.sons)
 
 proc newRstNode*(kind: RstNodeKind, sons: seq[PRstNode] = @[],
-                 anchor = "", loc: PRstLocation = nil): PRstNode =
+                 anchor = "", li: ref TLineInfo = nil): PRstNode =
   result = PRstNode(kind: kind, sons: sons)
-  if loc != nil: result.loc = loc
+  result.anchor = anchor
+  if li != nil: result.li = li
 
 proc newRstNode*(kind: RstNodeKind, s: string): PRstNode {.deprecated.} =
   assert kind in {rnLeaf, rnSmiley}

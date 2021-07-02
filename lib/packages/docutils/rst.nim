@@ -196,7 +196,7 @@
 
 import
   os, strutils, rstast, std/enumutils, algorithm, lists, sequtils,
-  std/private/miscdollars
+  std/private/miscdollars, ../../../compiler/lineinfos
 from highlite import SourceLanguage, getSourceLanguage
 
 type
@@ -510,7 +510,9 @@ type
                                   # number, order of occurrence
     msgHandler: MsgHandler      # How to handle errors.
     findFile: FindFileHandler   # How to find files.
-    filename: string
+    files*: seq[string]         # map FileIndex -> file name (for storing
+                                # file names for warnings after 1st stage)
+    currFileIdx: FileIndex      # current index in `files`
     hasToc*: bool
 
   PRstSharedState* = ref RstSharedState
@@ -580,6 +582,23 @@ proc whichRoleAux(sym: string): RstNodeKind =
   else:  # unknown role
     result = rnUnknownRole
 
+proc setCurrFilename(s: PRstSharedState, file1: string) =
+  for i, file2 in s.files:
+    if file1 == file2:
+      s.currFileIdx = i.FileIndex
+      return
+  s.files.add file1
+  s.currFileIdx = (s.files.len - 1).FileIndex
+
+proc getFilename(files: seq[string], fid: FileIndex): string =
+  if fid.int < files.len:
+    result = files[fid.int]
+  else:
+    result = "input"
+
+proc currFilename(s: PRstSharedState): string =
+  getFilename(s.files, s.currFileIdx)
+
 proc newRstSharedState*(options: RstParseOptions,
                         filename: string,
                         findFile: FindFileHandler,
@@ -590,35 +609,38 @@ proc newRstSharedState*(options: RstParseOptions,
       currRoleKind: whichRoleAux(r),
       options: options,
       msgHandler: if not isNil(msgHandler): msgHandler else: defaultMsgHandler,
-      filename: filename,
       findFile: if not isNil(findFile): findFile else: defaultFindFile
   )
+  setCurrFilename(result, filename)
 
 proc curLine(p: RstParser): int = p.line + currentTok(p).line
 
 proc findRelativeFile(p: RstParser; filename: string): string =
-  result = p.s.filename.splitFile.dir / filename
+  result = p.s.currFilename.splitFile.dir / filename
   if not fileExists(result):
     result = p.s.findFile(filename)
 
 proc rstMessage(p: RstParser, msgKind: MsgKind, arg: string) =
-  p.s.msgHandler(p.s.filename, curLine(p),
+  p.s.msgHandler(p.s.currFilename, curLine(p),
                              p.col + currentTok(p).col, msgKind, arg)
 
 proc rstMessage(s: PRstSharedState, msgKind: MsgKind, arg: string) =
-  s.msgHandler(s.filename, LineRstInit, ColRstInit, msgKind, arg)
+  s.msgHandler(s.currFilename, LineRstInit, ColRstInit, msgKind, arg)
 
-proc rstMessage(s: PRstSharedState, loc: PRstLocation,
-                msgKind: MsgKind, arg: string) =
-  ## Print warnings for footnotes/substitutions/references.
-  s.msgHandler(loc.filename, loc.line, loc.col, msgKind, arg)
+proc rstMessage*(files: seq[string], f: MsgHandler,
+                 li: ref TLineInfo | TLineInfo,
+                 msgKind: MsgKind, arg: string) =
+  ## Print warnings using `li: TLineInfo`, i.e. in 2nd-pass warnings for
+  ## footnotes/substitutions/references or from ``rstgen.nim``.
+  let file = getFilename(files, li.fileIndex)
+  f(file, li.line.int, li.col.int, msgKind, arg)
 
 proc rstMessage(p: RstParser, msgKind: MsgKind, arg: string, line, col: int) =
-  p.s.msgHandler(p.s.filename, p.line + line,
+  p.s.msgHandler(p.s.currFilename, p.line + line,
                              p.col + col, msgKind, arg)
 
 proc rstMessage(p: RstParser, msgKind: MsgKind) =
-  p.s.msgHandler(p.s.filename, curLine(p),
+  p.s.msgHandler(p.s.currFilename, curLine(p),
                              p.col + currentTok(p).col, msgKind,
                              currentTok(p).symbol)
 
@@ -940,9 +962,9 @@ proc getAutoSymbol(s: PRstSharedState, order: int): string =
       return fnote.label
 
 proc newRstNodeA(p: var RstParser, kind: RstNodeKind,
-                 loc: PRstLocation = nil): PRstNode =
+                 li: ref TLineInfo = nil): PRstNode =
   ## create node and consume the current anchor
-  result = newRstNode(kind, loc=loc)
+  result = newRstNode(kind, li=li)
   if p.curAnchor != "":
     result.anchor = p.curAnchor
     p.curAnchor = ""
@@ -1160,18 +1182,18 @@ proc whichRole(p: RstParser, sym: string): RstNodeKind =
   if result == rnUnknownRole:
     rstMessage(p, mwUnsupportedLanguage, sym)
 
-proc newLocation(p: RstParser, i: int): PRstLocation =
-  PRstLocation(
-    col: p.col + p.tok[i].col,
-    line: p.line + p.tok[i].line,
-    filename: p.s.filename)
+proc newLocation(p: RstParser, iTok: int): ref TLineInfo =
+  new result
+  result.col = int16(p.col + p.tok[iTok].col)
+  result.line = uint16(p.line + p.tok[iTok].line)
+  result.fileIndex = p.s.currFileIdx
 
-proc newLocation(p: RstParser): PRstLocation =
+proc newLocation(p: RstParser): ref TLineInfo =
   newLocation(p, p.idx)
 
 proc toInlineCode(n: PRstNode, language: string): PRstNode =
   ## Creates rnInlineCode and attaches `n` contents as code (in 3rd son).
-  result = newRstNode(rnInlineCode, loc=n.loc)
+  result = newRstNode(rnInlineCode, li=n.li)
   let args = newRstNode(rnDirArg)
   var lang = language
   if language == "cpp": lang = "c++"
@@ -1225,7 +1247,7 @@ proc parsePostfix(p: var RstParser, n: PRstNode): PRstNode =
       result = newRstNode(newKind, newSons)
     else:  # some link that will be resolved in `resolveSubs`
       newKind = rnRef
-      result = newRstNode(newKind, newSons, loc=n.loc)
+      result = newRstNode(newKind, newSons, li=n.li)
   elif match(p, p.idx, ":w:"):
     # a role:
     let (roleName, lastIdx) = getRefname(p, p.idx+1)
@@ -1318,7 +1340,7 @@ proc parseWordOrRef(p: var RstParser, father: PRstNode) =
     while currentTok(p).kind in {tkWord, tkPunct}:
       if currentTok(p).kind == tkPunct:
         if isInlineMarkupEnd(p, "_", exact=true):
-          reference = newRstNode(rnRef, loc=newLocation(p, saveIdx))
+          reference = newRstNode(rnRef, li=newLocation(p, saveIdx))
           break
         if not validRefnamePunct(currentTok(p).symbol):
           break
@@ -1399,7 +1421,7 @@ proc parseUntil(p: var RstParser, father: PRstNode, postfix: string,
     else: rstMessage(p, meExpected, postfix, line, col)
 
 proc parseMarkdownCodeblock(p: var RstParser): PRstNode =
-  result = newRstNodeA(p, rnCodeBlock, loc=newLocation(p))
+  result = newRstNodeA(p, rnCodeBlock, li=newLocation(p))
   var args = newRstNode(rnDirArg)
   if currentTok(p).kind == tkWord:
     args.add(newLeaf(p))
@@ -1550,12 +1572,12 @@ proc parseInline(p: var RstParser, father: PRstNode) =
         n = n.toOtherRole(k, roleName)
       father.add(n)
     elif isInlineMarkupStart(p, "`"):
-      var n = newRstNode(rnInterpretedText, loc=newLocation(p, p.idx+1))
+      var n = newRstNode(rnInterpretedText, li=newLocation(p, p.idx+1))
       parseUntil(p, n, "`", false) # bug #17260
       n = parsePostfix(p, n)
       father.add(n)
     elif isInlineMarkupStart(p, "|"):
-      var n = newRstNode(rnSubstitutionReferences, loc=newLocation(p, p.idx+1))
+      var n = newRstNode(rnSubstitutionReferences, li=newLocation(p, p.idx+1))
       parseUntil(p, n, "|", false)
       father.add(n)
     elif roSupportMarkdown in p.s.options and
@@ -1564,7 +1586,9 @@ proc parseInline(p: var RstParser, father: PRstNode) =
       discard "parseMarkdownLink already processed it"
     elif isInlineMarkupStart(p, "[") and nextTok(p).symbol != "[" and
          (n = parseFootnoteName(p, reference=true); n != nil):
-      var nn = newRstNode(rnFootnoteRef, loc=newLocation(p, saveIdx+1))
+      var nn = newRstNode(rnFootnoteRef)
+      nn.loc = new PFootnoteRefInfo
+      nn.loc.li = newLocation(p, saveIdx+1)[]
       nn.add n
       let (fnType, _) = getFootnoteType(n)
       case fnType
@@ -1706,7 +1730,7 @@ proc parseField(p: var RstParser): PRstNode =
   ## Returns a parsed rnField node.
   ##
   ## rnField nodes have two children nodes, a rnFieldName and a rnFieldBody.
-  result = newRstNode(rnField, loc=newLocation(p))
+  result = newRstNode(rnField, li=newLocation(p))
   var col = currentTok(p).col
   var fieldname = newRstNode(rnFieldName)
   parseUntil(p, fieldname, ":", false)
@@ -2482,7 +2506,7 @@ proc parseDirective(p: var RstParser, k: RstNodeKind, flags: DirFlags): PRstNode
   ## Both rnDirArg and rnFieldList children nodes might be nil, so you need to
   ## check them before accessing.
   result = newRstNodeA(p, k)
-  if k == rnCodeBlock: result.loc = newLocation(p)
+  if k == rnCodeBlock: result.li = newLocation(p)
   var args: PRstNode = nil
   var options: PRstNode = nil
   if hasArg in flags:
@@ -2607,7 +2631,8 @@ proc dirInclude(p: var RstParser): PRstNode =
 
       var q: RstParser
       initParser(q, p.s)
-      q.s.filename = path
+      let saveFileIdx = p.s.currFileIdx
+      setCurrFilename(p.s, path)
       getTokens(
         inputString[startPosition..endPosition].strip(),
         q.tok)
@@ -2615,6 +2640,7 @@ proc dirInclude(p: var RstParser): PRstNode =
       #if find(q.tok[high(q.tok)].symbol, "\0\x01\x02") > 0:
       #  InternalError("Too many binary zeros in include file")
       result = parseDoc(q)
+      p.s.currFileIdx = saveFileIdx
 
 proc dirCodeBlock(p: var RstParser, nimExtension = false): PRstNode =
   ## Parses a code block.
@@ -2648,7 +2674,7 @@ proc dirCodeBlock(p: var RstParser, nimExtension = false): PRstNode =
     if result.sons[1].isNil: result.sons[1] = newRstNode(rnFieldList)
     assert result.sons[1].kind == rnFieldList
     # Hook the extra field and specify the Nim language as value.
-    var extraNode = newRstNode(rnField, loc=newLocation(p))
+    var extraNode = newRstNode(rnField, li=newLocation(p))
     extraNode.add(newRstNode(rnFieldName))
     extraNode.add(newRstNode(rnFieldBody))
     extraNode.sons[0].add newLeaf("default-language")
@@ -2853,7 +2879,6 @@ proc parseDotDot(p: var RstParser): PRstNode =
 
 proc rstParsePass1*(fragment, filename: string,
                     line, column: int,
-                    options: RstParseOptions,
                     sharedState: PRstSharedState): PRstNode =
   ## Parses an RST `fragment`.
   ## The result should be further processed by
@@ -2886,7 +2911,7 @@ proc resolveSubs*(s: PRstSharedState, n: PRstNode): PRstNode =
       var key = addNodes(n)
       var e = getEnv(key)
       if e != "": result = newLeaf(e)
-      else: rstMessage(s, n.loc, mwUnknownSubstitution, key)
+      else: rstMessage(s.files, s.msgHandler, n.li, mwUnknownSubstitution, key)
   of rnHeadline, rnOverline:
     # fix up section levels depending on presence of a title and subtitle
     if s.hTitleCnt == 2:
@@ -2911,7 +2936,7 @@ proc resolveSubs*(s: PRstSharedState, n: PRstNode): PRstNode =
         result.sons = @[text,             # visible text of reference
                         newLeaf(anchor)]  # link itself
       else:
-        rstMessage(s, n.loc, mwBrokenLink, refn)
+        rstMessage(s.files, s.msgHandler, n.li, mwBrokenLink, refn)
   of rnFootnote:
     var (fnType, num) = getFootnoteType(n.sons[0])
     case fnType
@@ -2938,7 +2963,8 @@ proc resolveSubs*(s: PRstSharedState, n: PRstNode): PRstNode =
       result.add(nn)
     var refn = fnType.prefix
     # create new rnFootnoteRef, add final label, and finalize target refn:
-    result = newRstNode(rnFootnoteRef, loc=n.loc)
+    result = newRstNode(rnFootnoteRef)
+    result.loc = n.loc
     case fnType
     of fnManualNumber:
       addLabel num
@@ -2959,7 +2985,7 @@ proc resolveSubs*(s: PRstSharedState, n: PRstNode): PRstNode =
     if anch != "":
       result.add newLeaf(anch)     # add link
     else:
-      rstMessage(s, n.loc, mwBrokenLink, refn)
+      rstMessage(s.files, s.msgHandler, n.loc.li, mwBrokenLink, refn)
       result.add newLeaf(refn)  # add link
   of rnLeaf:
     discard
@@ -2990,11 +3016,14 @@ proc rstParse*(text, filename: string,
                line, column: int, hasToc: var bool,
                options: RstParseOptions,
                findFile: FindFileHandler = nil,
-               msgHandler: MsgHandler = nil): PRstNode =
-  ## Parses the whole `text`. The result is ready for `rstgen.renderRstToOut`.
+               msgHandler: MsgHandler = nil): (PRstNode, seq[string]) =
+  ## Parses the whole `text`. The result is ready for `rstgen.renderRstToOut`,
+  ## note that 2nd tuple element should be fed to `initRstGenerator`
+  ## argument `files` (it is being filled here at least with `filename`
+  ## and possibly with other files from RST ``.. include::`` statement).
   var sharedState = newRstSharedState(options, filename, findFile, msgHandler)
-  let unresolved = rstParsePass1(text, filename, line, column,
-                                 options, sharedState)
+  let unresolved = rstParsePass1(text, filename, line, column, sharedState)
   preparePass2(sharedState, unresolved)
-  result = resolveSubs(sharedState, unresolved)
+  result[0] = resolveSubs(sharedState, unresolved)
+  result[1] = sharedState.files
   hasToc = sharedState.hasToc

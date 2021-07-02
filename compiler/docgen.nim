@@ -183,11 +183,9 @@ template declareClosures =
 
 proc parseRst(text, filename: string,
               line, column: int,
-              rstOptions: RstParseOptions;
               conf: ConfigRef, sharedState: PRstSharedState): PRstNode =
   declareClosures()
-  result = rstParsePass1(text, filename, line, column, rstOptions,
-                         sharedState)
+  result = rstParsePass1(text, filename, line, column, sharedState)
 
 proc getOutFile2(conf: ConfigRef; filename: RelativeFile,
                  ext: string, guessTarget: bool): AbsoluteFile =
@@ -203,20 +201,26 @@ proc getOutFile2(conf: ConfigRef; filename: RelativeFile,
 proc isLatexCmd(conf: ConfigRef): bool = conf.cmd in {cmdRst2tex, cmdDoc2tex}
 
 proc newDocumentor*(filename: AbsoluteFile; cache: IdentCache; conf: ConfigRef,
-                    outExt: string = HtmlExt, module: PSym = nil): PDoc =
+                    outExt: string = HtmlExt, module: PSym = nil,
+                    isPureRst=false): PDoc =
   declareClosures()
   new(result)
   result.module = module
   result.conf = conf
   result.cache = cache
   result.outDir = conf.outDir.string
-  const options = {roSupportRawDirective, roSupportMarkdown,
-                   roPreferMarkdown, roNimFile}
+  result.isPureRst = isPureRst
+  var options: RstParseOptions = {}
+  if isPureRst:
+    options = {roSupportRawDirective, roSupportMarkdown, roPreferMarkdown}
+  else:
+    options = {roSupportRawDirective, roSupportMarkdown, roPreferMarkdown,
+               roNimFile}
   result.sharedState = newRstSharedState(
       options, filename.string,
       docgenFindFile, compilerMsgHandler)
   initRstGenerator(result[], (if conf.isLatexCmd: outLatex else: outHtml),
-                   conf.configVars, filename.string, options,
+                   conf.configVars, filename.string,
                    docgenFindFile, compilerMsgHandler)
 
   if conf.configVars.hasKey("doc.googleAnalytics"):
@@ -300,8 +304,7 @@ proc genComment(d: PDoc, n: PNode): PRstNode =
     result = parseRst(n.comment, toFullPath(d.conf, n.info),
                       toLinenumber(n.info),
                       toColumn(n.info) + DocColOffset,
-                      d.options, d.conf,
-                      d.sharedState)
+                      d.conf, d.sharedState)
 
 proc genRecCommentAux(d: PDoc, n: PNode): PRstNode =
   if n == nil: return nil
@@ -1172,6 +1175,9 @@ proc finishGenerateDoc*(d: var PDoc) =
       d.jEntriesFinal.add entry.json
       d.jEntriesPre[i].rst = nil
 
+  # pass file map `files` to ``rstgen.nim`` for its warnings
+  d.files = move(d.sharedState.files)
+
 proc add(d: PDoc; j: JsonItem) =
   if j.json != nil or j.rst != nil: d.jEntriesPre.add j
 
@@ -1427,14 +1433,10 @@ proc commandDoc*(cache: IdentCache, conf: ConfigRef) =
 proc commandRstAux(cache: IdentCache, conf: ConfigRef;
                    filename: AbsoluteFile, outExt: string) =
   var filen = addFileExt(filename, "txt")
-  var d = newDocumentor(filen, cache, conf, outExt)
-
-  d.isPureRst = true
+  var d = newDocumentor(filen, cache, conf, outExt, isPureRst=true)
   let rst = parseRst(readFile(filen.string), filen.string,
                      line=LineRstInit, column=ColRstInit,
-                     {roSupportRawDirective, roSupportMarkdown,
-                      roPreferMarkdown}, conf,
-                     d.sharedState)
+                     conf, d.sharedState)
   d.modDescPre = @[ItemFragment(isRst: true, rst: rst)]
   finishGenerateDoc(d)
   writeOutput(d)

@@ -54,8 +54,8 @@ proc toAst(input: string,
       result = ""
 
     var dummyHasToc = false
-    var rst = rstParse(input, filen, line=LineRstInit, column=ColRstInit,
-                       dummyHasToc, rstOptions, myFindFile, testMsgHandler)
+    var (rst, files) = rstParse(input, filen, line=LineRstInit, column=ColRstInit,
+                                dummyHasToc, rstOptions, myFindFile, testMsgHandler)
     result = renderRstToStr(rst)
   except EParseError as e:
     if e.msg != "":

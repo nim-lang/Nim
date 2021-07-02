@@ -420,9 +420,10 @@ Some chapter
             "the following intermediate section level(s) are missing on " &
             "lines 12..15: underline -----)")
 
+  test "RST sections overline":
     # the same as input9good but with overline headings
     # first overline heading has a special meaning: document title
-    let input10 = dedent """
+    let input = dedent """
       ======
       Title0
       ======
@@ -456,20 +457,22 @@ Some chapter
       """
     var option: bool
     var rstGenera: RstGenerator
-    var output10: string
-    rstGenera.initRstGenerator(outHtml, defaultConfig(), "input", {})
-    rstGenera.renderRstToOut(rstParse(input10, "", 1, 1, option, {}), output10)
+    var output: string
+    let (rst, files) = rstParse(input, "", 1, 1, option, {})
+    rstGenera.initRstGenerator(outHtml, defaultConfig(), "input", files=files)
+    rstGenera.renderRstToOut(rst, output)
     doAssert rstGenera.meta[metaTitle] == "Title0"
     doAssert rstGenera.meta[metaSubTitle] == "SubTitle0"
-    doAssert "<h1 id=\"level1\"><center>Level1</center></h1>" in output10
-    doAssert "<h2 id=\"level2\">Level2</h2>" in output10
-    doAssert "<h3 id=\"level3\"><center>Level3</center></h3>" in output10
-    doAssert "<h1 id=\"l1\"><center>L1</center></h1>" in output10
-    doAssert "<h2 id=\"another2\">Another2</h2>" in output10
-    doAssert "<h3 id=\"more3\"><center>More3</center></h3>" in output10
+    doAssert "<h1 id=\"level1\"><center>Level1</center></h1>" in output
+    doAssert "<h2 id=\"level2\">Level2</h2>" in output
+    doAssert "<h3 id=\"level3\"><center>Level3</center></h3>" in output
+    doAssert "<h1 id=\"l1\"><center>L1</center></h1>" in output
+    doAssert "<h2 id=\"another2\">Another2</h2>" in output
+    doAssert "<h3 id=\"more3\"><center>More3</center></h3>" in output
 
+  test "RST sections overline 2":
     # check that a paragraph prevents interpreting overlines as document titles
-    let input11 = dedent """
+    let input = dedent """
       Paragraph
 
       ======
@@ -480,18 +483,20 @@ Some chapter
       SubTitle0
       +++++++++
       """
-    var option11: bool
-    var rstGenera11: RstGenerator
-    var output11: string
-    rstGenera11.initRstGenerator(outHtml, defaultConfig(), "input", {})
-    rstGenera11.renderRstToOut(rstParse(input11, "", 1, 1, option11, {}), output11)
-    doAssert rstGenera11.meta[metaTitle] == ""
-    doAssert rstGenera11.meta[metaSubTitle] == ""
-    doAssert "<h1 id=\"title0\"><center>Title0</center></h1>" in output11
-    doAssert "<h2 id=\"subtitle0\"><center>SubTitle0</center></h2>" in output11
+    var option: bool
+    var rstGenera: RstGenerator
+    var output: string
+    let (rst, files) = rstParse(input, "", 1, 1, option, {})
+    rstGenera.initRstGenerator(outHtml, defaultConfig(), "input", files=files)
+    rstGenera.renderRstToOut(rst, output)
+    doAssert rstGenera.meta[metaTitle] == ""
+    doAssert rstGenera.meta[metaSubTitle] == ""
+    doAssert "<h1 id=\"title0\"><center>Title0</center></h1>" in output
+    doAssert "<h2 id=\"subtitle0\"><center>SubTitle0</center></h2>" in output
 
+  test "RST+Markdown sections":
     # check that RST and Markdown headings don't interfere
-    let input12 = dedent """
+    let input = dedent """
       ======
       Title0
       ======
@@ -509,14 +514,15 @@ Some chapter
       MySection2a
       -----------
       """
-    var option12: bool
-    var rstGenera12: RstGenerator
-    var output12: string
-    rstGenera12.initRstGenerator(outHtml, defaultConfig(), "input", {})
-    rstGenera12.renderRstToOut(rstParse(input12, "", 1, 1, option12, {roSupportMarkdown}), output12)
-    doAssert rstGenera12.meta[metaTitle] == "Title0"
-    doAssert rstGenera12.meta[metaSubTitle] == ""
-    doAssert output12 ==
+    var option: bool
+    var rstGenera: RstGenerator
+    var output: string
+    let (rst, files) = rstParse(input, "", 1, 1, option, {roSupportMarkdown})
+    rstGenera.initRstGenerator(outHtml, defaultConfig(), "input", files=files)
+    rstGenera.renderRstToOut(rst, output)
+    doAssert rstGenera.meta[metaTitle] == "Title0"
+    doAssert rstGenera.meta[metaSubTitle] == ""
+    doAssert output ==
              "\n<h1 id=\"mysection1a\">MySection1a</h1>" & # RST
              "\n<h1 id=\"mysection1b\">MySection1b</h1>" & # Markdown
              "\n<h1 id=\"mysection1c\">MySection1c</h1>" & # RST
@@ -653,8 +659,8 @@ Check that comment disappears:
     let output1 = input1.toHtml
     doAssert output1 == "Check that comment disappears:"
 
-  test "RST line blocks":
-    let input1 = """
+  test "RST line blocks + headings":
+    let input = """
 =====
 Test1
 =====
@@ -667,17 +673,19 @@ Test1
 """
     var option: bool
     var rstGenera: RstGenerator
-    var output1: string
-    rstGenera.initRstGenerator(outHtml, defaultConfig(), "input", {})
-    rstGenera.renderRstToOut(rstParse(input1, "", 1, 1, option, {}), output1)
+    var output: string
+    let (rst, files) = rstParse(input, "", 1, 1, option, {})
+    rstGenera.initRstGenerator(outHtml, defaultConfig(), "input", files=files)
+    rstGenera.renderRstToOut(rst, output)
     doAssert rstGenera.meta[metaTitle] == "Test1"
       # check that title was not overwritten to '|'
-    doAssert output1 == "<p><br/><br/>line block<br/>other line<br/></p>"
-    let output1l = rstToLatex(input1, {})
+    doAssert output == "<p><br/><br/>line block<br/>other line<br/></p>"
+    let output1l = rstToLatex(input, {})
     doAssert "line block\n\n" in output1l
     doAssert "other line\n\n" in output1l
     doAssert output1l.count("\\vspace") == 2 + 2  # +2 surrounding paddings
 
+  test "RST line blocks":
     let input2 = dedent"""
       Paragraph1
       
