@@ -19,13 +19,15 @@ runnableExamples:
 ## See also
 ## ========
 ## * `random module<random.html>`_ for Nim's standard random number generator
+
 type
   MersenneTwister* = object
     ## The Mersenne Twister.
     mt: array[0..623, uint32]
     index: int
 
-proc newMersenneTwister*(seed: uint32): MersenneTwister =
+proc newMersenneTwister*(seed: uint32): MersenneTwister {.deprecated:
+"deprecated, use random.randomize() instead"} =
   ## Creates a new `MersenneTwister` with seed `seed`.
   result.index = 0
   result.mt[0] = seed
@@ -34,6 +36,7 @@ proc newMersenneTwister*(seed: uint32): MersenneTwister =
                                       (result.mt[i-1] shr 30'u32)) + i)
 
 proc generateNumbers(m: var MersenneTwister) =
+
   for i in 0..623:
     var y = (m.mt[i] and 0x80000000'u32) +
             (m.mt[(i+1) mod 624] and 0x7fffffff'u32)
@@ -41,7 +44,8 @@ proc generateNumbers(m: var MersenneTwister) =
     if (y mod 2'u32) != 0:
       m.mt[i] = m.mt[i] xor 0x9908b0df'u32
 
-proc getNum*(m: var MersenneTwister): uint32 =
+proc getNum*(m: var MersenneTwister): uint32 {.deprecated:
+"deprecated, use random.rand() instead"} =
   ## Returns the next pseudorandom `uint32`.
   if m.index == 0:
     generateNumbers(m)
@@ -53,12 +57,14 @@ proc getNum*(m: var MersenneTwister): uint32 =
   result = result xor ((result shl 15'u32) and 0xefc60000'u32)
   result = result xor (result shr 18'u32)
 
-proc getSeq*(mt: var MersenneTwister, len: int): seq[int] =
+proc getSeq*(mt: var MersenneTwister, len: int): seq[int] {.deprecated:
+"deprecated, use random.rand() instead"} =
   ## Returns seq of pseudorandom ints len long.
   for i in 1..len:
     result.add(int(getNum(mt)))
 
-proc sample*[T](mt: var MersenneTwister, arr: seq[T]): T =
+proc sample*[T](mt: var MersenneTwister, arr: seq[T]): T {.deprecated:
+"deprecated, use random.sample() instead"} =
   ## Takes random sample of an seq[T].
   var correspondingValues: seq[uint32]
   var maxVal: uint32 = uint32(4294967295)
