@@ -1532,24 +1532,17 @@ proc getProcConvMismatch*(c: ConfigRef, f, a: PType, rel: var TTypeRelation): se
        # but it's a pragma mismatch reason which is why it's here
        result.incl pcmLockDifference
 
-proc getProcConvMismatch*(c: ConfigRef, f, a: PType): set[ProcConvMismatch] =
-  var rel: TTypeRelation
-  getProcConvMismatch(c, f, a, rel)
-
-
 proc addPragmaAndCallConvMismatch*(message: var string, formal, actual: PType, conf: ConfigRef) =
   assert formal.kind == tyProc and actual.kind == tyProc
-  let convMismatch = getProcConvMismatch(conf, formal, actual)
+  var rel: TTypeRelation
+  let convMismatch = getProcConvMismatch(conf, formal, actual, rel)
   var
     gotPragmas = ""
     expectedPragmas = ""
   for reason in convMismatch:
     case reason:
     of pcmDifferentCallConv:
-      let
-        got = $(actual.callConv)
-        expected = $(formal.callConv)
-      message.add "\n  Calling convention mismatch: got '{.$1.}', but expected '{.$2.}'." % [got, expected]
+      message.add "\n  Calling convention mismatch: got '{.$1.}', but expected '{.$2.}'." % [$actual.callConv, $formal.callConv]
     of pcmNoSideEffect:
       expectedPragmas.add "noSideEffect, "
     of pcmNotGcSafe:
@@ -1557,7 +1550,8 @@ proc addPragmaAndCallConvMismatch*(message: var string, formal, actual: PType, c
     of pcmLockDifference:
       gotPragmas.add("locks: " & $actual.lockLevel & ", ")
       expectedPragmas.add("locks: " & $formal.lockLevel & ", ")
-    else: discard
+    of pcmNotIterator: discard
+
   if expectedPragmas.len > 0:
     gotPragmas.setLen(max(0, gotPragmas.len - 2)) # Remove ", "
     expectedPragmas.setLen(max(0, expectedPragmas.len - 2)) # Remove ", "

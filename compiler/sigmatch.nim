@@ -626,7 +626,7 @@ proc procTypeRel(c: var TCandidate, f, a: PType): TTypeRelation =
     elif a[0] != nil:
       return isNone
     
-    let procConvReason = getProcConvMismatch(c.c.config, f, a, result)
+    discard getProcConvMismatch(c.c.config, f, a, result)
 
     when useEffectSystem:
       if compatibleEffects(f, a) != efCompat: return isNone
