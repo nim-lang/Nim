@@ -1,3 +1,4 @@
+
 #
 #
 #            Nim's Runtime Library
@@ -10,7 +11,8 @@
 ## The [Mersenne Twister](https://en.wikipedia.org/wiki/Mersenne_Twister)
 ## random number generator.
 ##
-## **Note:** The procs in this module work at compile-time.
+## **Note:** The procs in this module work at compile-time
+{.deprecated:"import std/random instead.".}
 
 runnableExamples:
   var rand = newMersenneTwister(uint32.high)  ## must be "var"
@@ -26,8 +28,7 @@ type
     mt: array[0..623, uint32]
     index: int
 
-proc newMersenneTwister*(seed: uint32): MersenneTwister {.deprecated:
-"deprecated, use random.randomize() instead"} =
+proc newMersenneTwister*(seed: uint32): MersenneTwister =
   ## Creates a new `MersenneTwister` with seed `seed`.
   result.index = 0
   result.mt[0] = seed
@@ -44,8 +45,7 @@ proc generateNumbers(m: var MersenneTwister) =
     if (y mod 2'u32) != 0:
       m.mt[i] = m.mt[i] xor 0x9908b0df'u32
 
-proc getNum*(m: var MersenneTwister): uint32 {.deprecated:
-"deprecated, use random.rand() instead"} =
+proc getNum*(m: var MersenneTwister): uint32 =
   ## Returns the next pseudorandom `uint32`.
   if m.index == 0:
     generateNumbers(m)
@@ -56,29 +56,3 @@ proc getNum*(m: var MersenneTwister): uint32 {.deprecated:
   result = result xor ((result shl 7'u32) and 0x9d2c5680'u32)
   result = result xor ((result shl 15'u32) and 0xefc60000'u32)
   result = result xor (result shr 18'u32)
-
-proc getSeq*(mt: var MersenneTwister, len: int): seq[int] {.deprecated:
-"deprecated, use random.rand() instead"} =
-  ## Returns seq of pseudorandom ints len long.
-  for i in 1..len:
-    result.add(int(getNum(mt)))
-
-proc sample*[T](mt: var MersenneTwister, arr: seq[T]): T {.deprecated:
-"deprecated, use random.sample() instead"} =
-  ## Takes random sample of an seq[T].
-  var correspondingValues: seq[uint32]
-  var maxVal: uint32 = uint32(4294967295)
-  let maxValDivLenArr: uint32 = uint32(float32(maxVal) / float32(len(arr)))
-  for i in arr:
-    correspondingValues.add(maxVal)
-    maxVal = maxVal - maxValDivLenArr
-  let randNum = uint32(getNum(mt))
-  var largerNumIndex: uint32 = 0
-  var smallerNumIndex: uint32 = 1
-  while largerNumIndex < uint32(len(correspondingValues))  and smallerNumIndex < uint32(len(correspondingValues)):
-   if randNum < correspondingValues[largerNumIndex] and randNum > correspondingValues[smallerNumIndex]:
-    return arr[largerNumIndex]
-   elif randNum < correspondingValues[correspondingValues.high]:
-     return arr[correspondingValues.high]
-   largerNumIndex = largerNumIndex + 1
-   smallerNumIndex = smallerNumIndex + 1
