@@ -410,7 +410,7 @@ proc sample*[T](r: var Rand; a: openArray[T]): T =
 
   result = a[r.rand(a.low..a.high)]
 
-proc sample*[T](a: openArray[T]): T =
+proc sample*[T](a: openArray[T]): lent T =
   ## Returns a random element from `a`.
   ##
   ## If `randomize <#randomize>`_ has not been called, the order of outcomes
