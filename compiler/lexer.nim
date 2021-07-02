@@ -536,9 +536,9 @@ proc getNumber(L: var Lexer, result: var Token) =
           try:
             len = parseBiggestUInt(result.literal, iNumber)
           except ValueError:
-            raise newException(OverflowDefect, "number out of range: " & $result.literal)
+            raise newException(OverflowDefect, "number out of range: " & result.literal)
           if len != result.literal.len:
-            raise newException(ValueError, "invalid integer: " & $result.literal)
+            raise newException(ValueError, "invalid integer: " & result.literal)
           result.iNumber = cast[int64](iNumber)
         else:
           var iNumber: int64
@@ -546,9 +546,9 @@ proc getNumber(L: var Lexer, result: var Token) =
           try:
             len = parseBiggestInt(result.literal, iNumber)
           except ValueError:
-            raise newException(OverflowDefect, "number out of range: " & $result.literal)
+            raise newException(OverflowDefect, "number out of range: " & result.literal)
           if len != result.literal.len:
-            raise newException(ValueError, "invalid integer: " & $result.literal)
+            raise newException(ValueError, "invalid integer: " & result.literal)
           result.iNumber = iNumber
 
         # Explicit bounds checks.
