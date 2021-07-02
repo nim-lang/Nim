@@ -1549,7 +1549,7 @@ proc addPragmaAndCallConvMismatch*(message: var string, formal, actual: PType, c
       let
         got = $(actual.callConv)
         expected = $(formal.callConv)
-      message.add "\n  Calling convention: mismatch got '{.$1.}', but expected '{.$2.}'." % [got, expected]
+      message.add "\n  Calling convention mismatch: got '{.$1.}', but expected '{.$2.}'." % [got, expected]
     of pcmNoSideEffect:
       expectedPragmas.add "noSideEffect, "
     of pcmNotGcSafe:
