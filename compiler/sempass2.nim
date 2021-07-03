@@ -228,14 +228,16 @@ when true:
     if not a.inEnforcedNoSideEffects:
       a.hasSideEffect = true
       if a.owner.kind in routineKinds:
+        var sym: PSym
         when reason is PNode:
           if reason.kind == nkSym:
-            a.owner.sideEffectReasons.add reason.sym
+            sym = reason.sym
           else:
-            a.owner.sideEffectReasons.add newSym(skUnknown, a.owner.name, nextSymId a.c.idgen,
+            sym = newSym(skUnknown, a.owner.name, nextSymId a.c.idgen,
                                               a.owner, reason.info, {})
         else:
-          a.owner.sideEffectReasons.add reason
+          sym = reason
+        a.owner.sideEffectReasons.add sym
 else:
   template markSideEffect(a: PEffects; reason: typed) =
     if not a.inEnforcedNoSideEffects: a.hasSideEffect = true
@@ -269,32 +271,31 @@ proc listGcUnsafety(s: PSym; onlyWarning: bool; conf: ConfigRef) =
   var cycleCheck = initIntSet()
   listGcUnsafety(s, onlyWarning, cycleCheck, conf)
 
-proc listSideEffects(s: PSym; onlyWarning: bool; cycleCheck: var IntSet; conf: ConfigRef) =
+proc listSideEffects(result: var string; s: PSym; cycleCheck: var IntSet; conf: ConfigRef; indentLevel: int) =
+  template add(msg) =
+    result.add indent(msg, indentLevel)
   for u in s.sideEffectReasons:
     if u != nil and not cycleCheck.containsOrIncl(u.id):
-      let msgKind = if onlyWarning: warnSideEffect else: errGenerated
+      var lineInfo = if result.len == 0: "" else: (conf $ s.info & " Hint: ")
+      var reasonLineInfo = conf $ u.info
       case u.kind
       of skLet, skVar:
-        message(conf, s.info, msgKind,
-          ("'$#' accesses global state at '$#'") % [s.name.s, u.name.s])
+        add("$#'$#' has side effects as it accesses global state '$#' here: $#\n" %
+          [lineInfo, s.name.s, u.name.s, reasonLineInfo])
       of routineKinds:
-        # recursive call *always* produces only a warning so the full error
-        # message is printed:
-        listSideEffects(u, true, cycleCheck, conf)
-        message(conf, s.info, msgKind,
-          "'$#' has side effects as it calls '$#'" %
-          [s.name.s, u.name.s])
+        add("$#'$#' has side effects as it calls '$#' here: $#\n" %
+          [lineInfo, s.name.s, u.name.s, reasonLineInfo])
+        listSideEffects(result, u, cycleCheck, conf, indentLevel + 1)
       of skParam, skForVar:
-        message(conf, s.info, msgKind,
-          "'$#' has side effects as it performs an indirect call via '$#'" %
-          [s.name.s, u.name.s])
+        add("$#'$#' has side effects as it performs an indirect call via '$#' here: $#\n" %
+          [lineInfo, s.name.s, u.name.s, reasonLineInfo])
       else:
-        message(conf, u.info, msgKind,
-          "'$#' has side effects as it performs an indirect call here" % s.name.s)
+        add("$#'$#' has side effects as it performs an indirect call here: $#\n" %
+          [lineInfo, s.name.s, reasonLineInfo])
 
-proc listSideEffects(s: PSym; onlyWarning: bool; conf: ConfigRef) =
+proc listSideEffects(result: var string; s: PSym; conf: ConfigRef) =
   var cycleCheck = initIntSet()
-  listSideEffects(s, onlyWarning, cycleCheck, conf)
+  listSideEffects(result, s, cycleCheck, conf, 0)
 
 proc useVarNoInitCheck(a: PEffects; n: PNode; s: PSym) =
   if {sfGlobal, sfThread} * s.flags != {} and s.kind in {skVar, skLet} and
@@ -1397,9 +1398,13 @@ proc trackProc*(c: PContext; s: PSym, body: PNode) =
       listGcUnsafety(s, onlyWarning=false, g.config)
     else:
       if hasMutationSideEffect:
-        localError(g.config, s.info, ("'$1' can have side effects" % s.name.s) & (g.config $ mutationInfo))
+        localError(g.config, s.info, "'$1' can have side effects$2" % [s.name.s, g.config $ mutationInfo])
+      elif c.compilesContextId == 0: # don't render extended diagnotic messages in `system.compiles` context
+        var msg = ""
+        listSideEffects(msg, s, g.config)
+        message(g.config, s.info, errGenerated, msg)
       else:
-        listSideEffects(s, false, g.config)
+        localError(g.config, s.info, "") # simple error for `system.compiles` context
   if not t.gcUnsafe:
     s.typ.flags.incl tfGcSafe
   if not t.hasSideEffect and sfSideEffect notin s.flags:

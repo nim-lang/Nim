@@ -68,7 +68,6 @@ type
     warnCannotOpen = "CannotOpen",
     warnFileChanged = "FileChanged",
     warnUser = "User",
-    warnSideEffect = "SideEffect",
     # hints
     hintSuccess = "Success", hintSuccessX = "SuccessX",
     hintCC = "CC",
@@ -151,7 +150,6 @@ const
     warnCannotOpen: "cannot open: $1",
     warnFileChanged: "file changed: $1",
     warnUser: "$1",
-    warnSideEffect: "$1",
     hintSuccess: "operation successful: $#",
     # keep in sync with `testament.isSuccess`
     hintSuccessX: "$build\n$loc lines; ${sec}s; $mem; proj: $project; out: $output",
