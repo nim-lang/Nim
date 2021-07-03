@@ -7,7 +7,8 @@
 ## The [Mersenne Twister](https://en.wikipedia.org/wiki/Mersenne_Twister)
 ## random number generator.
 ## .. note:: The procs in this module work at compile-time.
-{.deprecated:"import std/random instead.".}
+
+{.deprecated: "use `std/random` instead.".}
 
 runnableExamples:
   var rand = newMersenneTwister(uint32.high)  ## must be "var"
