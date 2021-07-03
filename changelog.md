@@ -3,7 +3,7 @@
 
 
 ## Changes affecting backward compatibility
-
+- Deprecate std/mersenne
 -  `cuchar` now aliases `uint8` instead of `char`
 
 - `repr` now doesn't insert trailing newline; previous behavior was very inconsistent,
