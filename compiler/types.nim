@@ -1494,53 +1494,51 @@ proc skipHiddenSubConv*(n: PNode; g: ModuleGraph; idgen: IdGenerator): PNode =
   else:
     result = n
 
-proc getProcConvMismatch*(c: ConfigRef, f, a: PType, rel: var TTypeRelation): set[ProcConvMismatch] =
-  ## Returns a set of the reason of mismatch.
-  ## `rel` is mutated on fail to `isNone`.
-  
+proc getProcConvMismatch*(c: ConfigRef, f, a: PType, rel = isNone): (set[ProcConvMismatch], TTypeRelation) =
+  ## Returns a set of the reason of mismatch, and the relation for conversion.
+  result[1] = rel
   if tfNoSideEffect in f.flags and tfNoSideEffect notin a.flags:
     # Formal is pure, but actual is not
-    result.incl pcmNoSideEffect
-    rel = isNone
+    result[0].incl pcmNoSideEffect
+    result[1] = isNone
 
   if tfThread in f.flags and a.flags * {tfThread, tfNoSideEffect} == {} and
     optThreadAnalysis in c.globalOptions:
     # noSideEffect implies ``tfThread``!
-    result.incl pcmNotGcSafe
-    rel = isNone
+    result[0].incl pcmNotGcSafe
+    result[1] = isNone
 
   if f.flags * {tfIterator} != a.flags * {tfIterator}:
     # One of them is an iterator so not convertible
-    result.incl pcmNotIterator
-    rel = isNone
+    result[0].incl pcmNotIterator
+    result[1] = isNone
 
   if f.callConv != a.callConv:
-      # valid to pass a 'nimcall' thingie to 'closure':
-      if f.callConv == ccClosure and a.callConv == ccNimCall:
-        case rel
-        of isInferred: rel = isInferredConvertible
-        of isBothMetaConvertible: rel = isBothMetaConvertible
-        elif rel != isNone: rel = isConvertible
-      else:
-        rel = isNone
-        result.incl pcmDifferentCallConv
+    # valid to pass a 'nimcall' thingie to 'closure':
+    if f.callConv == ccClosure and a.callConv == ccNimCall:
+      case result[1]
+      of isInferred: result[1] = isInferredConvertible
+      of isBothMetaConvertible: result[1] = isBothMetaConvertible
+      elif result[1] != isNone: result[1] = isConvertible
+    else:
+      result[1] = isNone
+      result[0].incl pcmDifferentCallConv
 
   if f.lockLevel.ord != UnspecifiedLockLevel.ord and
      a.lockLevel.ord != UnspecifiedLockLevel.ord:
        # proctypeRel has more logic to catch this difference,
        # so dont need to do `rel = isNone`
        # but it's a pragma mismatch reason which is why it's here
-       result.incl pcmLockDifference
+       result[0].incl pcmLockDifference
 
 proc addPragmaAndCallConvMismatch*(message: var string, formal, actual: PType, conf: ConfigRef) =
   assert formal.kind == tyProc and actual.kind == tyProc
-  var rel: TTypeRelation
-  let convMismatch = getProcConvMismatch(conf, formal, actual, rel)
+  let (convMismatch, _) = getProcConvMismatch(conf, formal, actual)
   var
     gotPragmas = ""
     expectedPragmas = ""
   for reason in convMismatch:
-    case reason:
+    case reason
     of pcmDifferentCallConv:
       message.add "\n  Calling convention mismatch: got '{.$1.}', but expected '{.$2.}'." % [$actual.callConv, $formal.callConv]
     of pcmNoSideEffect:
