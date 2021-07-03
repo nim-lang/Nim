@@ -628,8 +628,7 @@ proc rstMessage(s: PRstSharedState, msgKind: MsgKind, arg: string) =
   s.msgHandler(s.currFilename, LineRstInit, ColRstInit, msgKind, arg)
 
 proc rstMessage*(files: seq[string], f: MsgHandler,
-                 li: ref TLineInfo | TLineInfo,
-                 msgKind: MsgKind, arg: string) =
+                 li: TLineInfo, msgKind: MsgKind, arg: string) =
   ## Print warnings using `li: TLineInfo`, i.e. in 2nd-pass warnings for
   ## footnotes/substitutions/references or from ``rstgen.nim``.
   let file = getFilename(files, li.fileIndex)
@@ -961,10 +960,9 @@ proc getAutoSymbol(s: PRstSharedState, order: int): string =
     if fnote.autoSymIdx == order:
       return fnote.label
 
-proc newRstNodeA(p: var RstParser, kind: RstNodeKind,
-                 li: ref TLineInfo = nil): PRstNode =
+proc newRstNodeA(p: var RstParser, kind: RstNodeKind): PRstNode =
   ## create node and consume the current anchor
-  result = newRstNode(kind, li=li)
+  result = newRstNode(kind)
   if p.curAnchor != "":
     result.anchor = p.curAnchor
     p.curAnchor = ""
@@ -1182,14 +1180,12 @@ proc whichRole(p: RstParser, sym: string): RstNodeKind =
   if result == rnUnknownRole:
     rstMessage(p, mwUnsupportedLanguage, sym)
 
-proc newLocation(p: RstParser, iTok: int): ref TLineInfo =
-  new result
+proc lineInfo(p: RstParser, iTok: int): TLineInfo =
   result.col = int16(p.col + p.tok[iTok].col)
   result.line = uint16(p.line + p.tok[iTok].line)
   result.fileIndex = p.s.currFileIdx
 
-proc newLocation(p: RstParser): ref TLineInfo =
-  newLocation(p, p.idx)
+proc lineInfo(p: RstParser): TLineInfo = lineInfo(p, p.idx)
 
 proc toInlineCode(n: PRstNode, language: string): PRstNode =
   ## Creates rnInlineCode and attaches `n` contents as code (in 3rd son).
@@ -1247,7 +1243,7 @@ proc parsePostfix(p: var RstParser, n: PRstNode): PRstNode =
       result = newRstNode(newKind, newSons)
     else:  # some link that will be resolved in `resolveSubs`
       newKind = rnRef
-      result = newRstNode(newKind, newSons, li=n.li)
+      result = newRstNode(newKind, sons=newSons, li=n.li)
   elif match(p, p.idx, ":w:"):
     # a role:
     let (roleName, lastIdx) = getRefname(p, p.idx+1)
@@ -1340,7 +1336,7 @@ proc parseWordOrRef(p: var RstParser, father: PRstNode) =
     while currentTok(p).kind in {tkWord, tkPunct}:
       if currentTok(p).kind == tkPunct:
         if isInlineMarkupEnd(p, "_", exact=true):
-          reference = newRstNode(rnRef, li=newLocation(p, saveIdx))
+          reference = newRstNode(rnRef, li=lineInfo(p, saveIdx))
           break
         if not validRefnamePunct(currentTok(p).symbol):
           break
@@ -1421,7 +1417,8 @@ proc parseUntil(p: var RstParser, father: PRstNode, postfix: string,
     else: rstMessage(p, meExpected, postfix, line, col)
 
 proc parseMarkdownCodeblock(p: var RstParser): PRstNode =
-  result = newRstNodeA(p, rnCodeBlock, li=newLocation(p))
+  result = newRstNodeA(p, rnCodeBlock)
+  result.li = lineInfo(p)
   var args = newRstNode(rnDirArg)
   if currentTok(p).kind == tkWord:
     args.add(newLeaf(p))
@@ -1572,12 +1569,12 @@ proc parseInline(p: var RstParser, father: PRstNode) =
         n = n.toOtherRole(k, roleName)
       father.add(n)
     elif isInlineMarkupStart(p, "`"):
-      var n = newRstNode(rnInterpretedText, li=newLocation(p, p.idx+1))
+      var n = newRstNode(rnInterpretedText, li=lineInfo(p, p.idx+1))
       parseUntil(p, n, "`", false) # bug #17260
       n = parsePostfix(p, n)
       father.add(n)
     elif isInlineMarkupStart(p, "|"):
-      var n = newRstNode(rnSubstitutionReferences, li=newLocation(p, p.idx+1))
+      var n = newRstNode(rnSubstitutionReferences, li=lineInfo(p, p.idx+1))
       parseUntil(p, n, "|", false)
       father.add(n)
     elif roSupportMarkdown in p.s.options and
@@ -1588,7 +1585,7 @@ proc parseInline(p: var RstParser, father: PRstNode) =
          (n = parseFootnoteName(p, reference=true); n != nil):
       var nn = newRstNode(rnFootnoteRef)
       nn.loc = new PFootnoteRefInfo
-      nn.loc.li = newLocation(p, saveIdx+1)[]
+      nn.loc.li = lineInfo(p, saveIdx+1)
       nn.add n
       let (fnType, _) = getFootnoteType(n)
       case fnType
@@ -1730,7 +1727,7 @@ proc parseField(p: var RstParser): PRstNode =
   ## Returns a parsed rnField node.
   ##
   ## rnField nodes have two children nodes, a rnFieldName and a rnFieldBody.
-  result = newRstNode(rnField, li=newLocation(p))
+  result = newRstNode(rnField, li=lineInfo(p))
   var col = currentTok(p).col
   var fieldname = newRstNode(rnFieldName)
   parseUntil(p, fieldname, ":", false)
@@ -2506,7 +2503,7 @@ proc parseDirective(p: var RstParser, k: RstNodeKind, flags: DirFlags): PRstNode
   ## Both rnDirArg and rnFieldList children nodes might be nil, so you need to
   ## check them before accessing.
   result = newRstNodeA(p, k)
-  if k == rnCodeBlock: result.li = newLocation(p)
+  if k == rnCodeBlock: result.li = lineInfo(p)
   var args: PRstNode = nil
   var options: PRstNode = nil
   if hasArg in flags:
@@ -2674,7 +2671,7 @@ proc dirCodeBlock(p: var RstParser, nimExtension = false): PRstNode =
     if result.sons[1].isNil: result.sons[1] = newRstNode(rnFieldList)
     assert result.sons[1].kind == rnFieldList
     # Hook the extra field and specify the Nim language as value.
-    var extraNode = newRstNode(rnField, li=newLocation(p))
+    var extraNode = newRstNode(rnField, li=lineInfo(p))
     extraNode.add(newRstNode(rnFieldName))
     extraNode.add(newRstNode(rnFieldBody))
     extraNode.sons[0].add newLeaf("default-language")

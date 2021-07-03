@@ -101,10 +101,10 @@ type
                               ## auto-numbered ones without a label)
     of rnRef, rnSubstitutionReferences,
         rnInterpretedText, rnField, rnInlineCode, rnCodeBlock:
-      li*: ref TLineInfo      ## To have line/column info for warnings at
+      li*: TLineInfo          ## To have line/column info for warnings at
                               ## nodes that are post-processed after parsing
     of rnFootnoteRef:
-      loc*: PFootnoteRefInfo  # almost the same
+      loc*: PFootnoteRefInfo  ## almost the same
     else:
       discard
     anchor*: string           ## anchor, internal link target
@@ -115,10 +115,14 @@ proc len*(n: PRstNode): int =
   result = len(n.sons)
 
 proc newRstNode*(kind: RstNodeKind, sons: seq[PRstNode] = @[],
-                 anchor = "", li: ref TLineInfo = nil): PRstNode =
+                 anchor = ""): PRstNode =
   result = PRstNode(kind: kind, sons: sons)
   result.anchor = anchor
-  if li != nil: result.li = li
+
+proc newRstNode*(kind: RstNodeKind, li: TLineInfo,
+                 sons: seq[PRstNode] = @[]): PRstNode =
+  result = PRstNode(kind: kind, sons: sons)
+  result.li = li
 
 proc newRstNode*(kind: RstNodeKind, s: string): PRstNode {.deprecated.} =
   assert kind in {rnLeaf, rnSmiley}
