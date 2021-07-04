@@ -46,14 +46,14 @@
 ## To do so over TCP, use the example below.
 
 runnableExamples("-r:off"):
-  var socket = newSocket()
+  let socket = newSocket()
   socket.connect("google.com", Port(80))
 
 ## For SSL, use the following example:
 
 runnableExamples("-r:off -d:ssl"):
-  var socket = newSocket()
-  var ctx = newContext()
+  let socket = newSocket()
+  let ctx = newContext()
   wrapSocket(ctx, socket)
   socket.connect("google.com", Port(443))
 
@@ -62,7 +62,7 @@ runnableExamples("-r:off -d:ssl"):
 ## simply start sending data immediately.
 
 runnableExamples("-r:off"):
-  var socket = newSocket(AF_INET, SOCK_DGRAM, IPPROTO_UDP)
+  let socket = newSocket(AF_INET, SOCK_DGRAM, IPPROTO_UDP)
   socket.sendTo("192.168.0.1", Port(27960), "status\n")
 
 ## Creating a server
@@ -72,7 +72,7 @@ runnableExamples("-r:off"):
 ## TCP server by calling the `bindAddr` and `listen` procedures.
 
 runnableExamples("-r:off"):
-  var socket = newSocket()
+  let socket = newSocket()
   socket.bindAddr(Port(1234))
   socket.listen()
 
@@ -1232,7 +1232,7 @@ proc setSockOpt*(socket: Socket, opt: SOBool, value: bool,
     level = SOL_SOCKET) {.tags: [WriteIOEffect].} =
   ## Sets option `opt` to a boolean value specified by `value`.
   runnableExamples("-r:off"):
-    var socket = newSocket()
+    let socket = newSocket()
     socket.setSockOpt(OptReusePort, true)
     socket.setSockOpt(OptNoDelay, true, level = IPPROTO_TCP.cint)
   var valuei = cint(if value: 1 else: 0)
