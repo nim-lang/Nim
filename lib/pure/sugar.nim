@@ -20,13 +20,12 @@ proc checkPragma(ex, prag: var NimNode) =
       ex = ex[0]
 
 proc insertPragma(ex: var NimNode; p: NimNode) =
-  since (1, 3):
-    if ex.kind != nnkPragmaExpr:
-      ex = newTree(nnkPragmaExpr,
-        ex,
-        newNimNode(nnkPragma)
-      )
-    ex[1].add p
+  if ex.kind != nnkPragmaExpr:
+    ex = newTree(nnkPragmaExpr,
+      ex,
+      newNimNode(nnkPragma)
+    )
+  ex[1].add p
 
 proc createProcType(p, b: NimNode): NimNode =
   result = newNimNode(nnkProcTy)
@@ -131,11 +130,11 @@ macro `=>`*(p, b: untyped): untyped =
 
     type
       Bot = object
-        call: (string {.noSideEffect.} -> string)
+        call: (string {.inline.} -> string)
 
     var myBot = Bot()
 
-    myBot.call = (name: string) {.noSideEffect.} => "Hello " & name & ", I'm a bot."
+    myBot.call = (name: string) {.inline.} => "Hello " & name & ", I'm a bot."
     assert myBot.call("John") == "Hello John, I'm a bot."
 
     let f = () => (discard) # simplest proc that returns void
@@ -152,41 +151,39 @@ macro `->`*(p, b: untyped): untyped =
 
     assert passTwoAndTwo((x, y) => x + y) == 4
 
-    proc passOne(f: (int {.noSideEffect.} -> int)): int = f(1)
+    proc passOne(f: (int {.inline.} -> int)): int = f(1)
     # is the same as:
-    # proc passOne(f: proc (x: int): int {.noSideEffect.}): int = f(1)
+    # proc passOne(f: proc (x: int): int {.inline.}): int = f(1)
 
-    assert passOne(x {.noSideEffect.} => x + 1) == 2
+    assert passOne(x {.inline.} => x + 1) == 2
 
   result = createProcType(p, b)
 
-macro `!=>`*(p, b: untyped): untyped =
+macro `!=>`*(p, b: untyped): untyped {.since: (1, 5, 1).} =
   ## Syntax sugar for anonymous `func` procedures. Supports pragmas.
-  since (1, 3):
-    runnableExamples:
-      proc passOne(f: (int {.noSideEffect.} -> int)): int = f(1)
+  runnableExamples:
+    proc passOne(f: proc(x: int): int {.noSideEffect.}): int = f(1)
 
-      assert passOne(x !=> x + 1) == 2
-      # equivalent to:
-      # assert passOne(x {.noSideEffect.} => x + 1) == 2
+    assert passOne(x !=> x + 1) == 2
+    # equivalent to:
+    # assert passOne(x {.noSideEffect.} => x + 1) == 2
 
-    var p = p
-    p.insertPragma ident"noSideEffect"
-    result = createProc(p, b)
+  var p = p
+  p.insertPragma ident"noSideEffect"
+  result = createProc(p, b)
 
-macro `!->`*(p, b: untyped): untyped =
+macro `!->`*(p, b: untyped): untyped {.since: (1, 5, 1).} =
   ## Syntax sugar for `func` procedure types. Supports pragmas.
-  since (1, 3):
-    runnableExamples:
-      proc passOne(f: (int !-> int)): int = f(1)
-      # equivalent to:
-      # proc passOne(f: (int {.noSideEffect.} -> int)): int = f(1)
+  runnableExamples:
+    proc passOne(f: (int !-> int)): int = f(1)
+    # equivalent to:
+    # proc passOne(f: (int {.noSideEffect.} -> int)): int = f(1)
 
-      assert passOne(x {.noSideEffect.} => x + 1) == 2
+    assert passOne(proc(x: int): int {.noSideEffect.} = x + 1) == 2
 
-    var p = p
-    p.insertPragma ident"noSideEffect"
-    result = createProcType(p, b)
+  var p = p
+  p.insertPragma ident"noSideEffect"
+  result = createProcType(p, b)
 
 macro dump*(x: untyped): untyped =
   ## Dumps the content of an expression, useful for debugging.
