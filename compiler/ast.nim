@@ -857,7 +857,7 @@ type
     of routineKinds:
       #procInstCache*: seq[PInstantiation]
       gcUnsafetyReason*: PSym  # for better error messages wrt gcsafe
-      sideEffectReasons*: seq[PSym]  # for better side effect error messages
+      sideEffectReasons*: seq[(TLineInfo, PSym)]  # for better side effect error messages
       transformedBody*: PNode  # cached body after transf pass
     of skLet, skVar, skField, skForVar:
       guard*: PSym
