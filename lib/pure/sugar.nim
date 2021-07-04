@@ -13,18 +13,22 @@
 import std/private/since
 import macros
 
-proc checkPragma(ex, prag: var NimNode, addPragmas: openarray[NimNode] = @[]) =
+proc checkPragma(ex, prag: var NimNode) =
   since (1, 3):
     if ex.kind == nnkPragmaExpr:
       prag = ex[1]
       ex = ex[0]
-    else:
-      if addPragmas.len > 0:
-        prag = newTree(nnkPragma)
-    if prag.kind == nnkPragma:
-      prag.add addPragmas
 
-proc createProcType(p, b: NimNode, addPragmas: openarray[NimNode] = @[]):
+proc insertPragma(ex: var NimNode; p: NimNode) =
+  since (1, 3):
+    if ex.kind != nnkPragmaExpr:
+      ex = newTree(nnkPragmaExpr,
+        ex,
+        newNimNode(nnkPragma)
+      )
+    ex[1].add p
+
+proc createProcType(p, b: NimNode):
     NimNode =
   result = newNimNode(nnkProcTy)
   var
@@ -32,7 +36,7 @@ proc createProcType(p, b: NimNode, addPragmas: openarray[NimNode] = @[]):
     p = p
     prag = newEmptyNode()
 
-  checkPragma(p, prag, addPragmas)
+  checkPragma(p, prag)
 
   case p.kind
   of nnkPar, nnkTupleConstr:
@@ -58,8 +62,7 @@ proc createProcType(p, b: NimNode, addPragmas: openarray[NimNode] = @[]):
   result.add formalParams
   result.add prag
 
-
-proc createProc(p, b: NimNode, addPragmas: openarray[NimNode] = @[]): NimNode =
+proc createProc(p, b: NimNode): NimNode =
   var
     params = @[ident"auto"]
     name = newEmptyNode()
@@ -67,7 +70,7 @@ proc createProc(p, b: NimNode, addPragmas: openarray[NimNode] = @[]): NimNode =
     pragma = newEmptyNode()
     p = p
 
-  checkPragma(p, pragma, addPragmas)
+  checkPragma(p, pragma)
 
   if p.kind == nnkInfix and p[0].kind == nnkIdent and p[0].eqIdent"->":
     params[0] = p[2]
@@ -167,8 +170,10 @@ macro `!=>`*(p, b: untyped): untyped =
       assert passOne(x !=> x + 1) == 2
       # equivalent to:
       # assert passOne(x {.noSideEffect.} => x + 1) == 2
-      
-    result = createProc(p, b, [ident"noSideEffect"])
+
+    var p = p
+    p.insertPragma ident"noSideEffect"
+    result = createProc(p, b)
 
 macro `!->`*(p, b: untyped): untyped =
   ## Syntax sugar for `func` procedure types. Supports pragmas.
@@ -179,8 +184,10 @@ macro `!->`*(p, b: untyped): untyped =
       # proc passOne(f: (int {.noSideEffect.} -> int)): int = f(1)
 
       assert passOne(x {.noSideEffect.} => x + 1) == 2
-      
-    result = createProcType(p, b, [ident"noSideEffect"])
+
+    var p = p
+    p.insertPragma ident"noSideEffect"
+    result = createProcType(p, b)
 
 macro dump*(x: untyped): untyped =
   ## Dumps the content of an expression, useful for debugging.
