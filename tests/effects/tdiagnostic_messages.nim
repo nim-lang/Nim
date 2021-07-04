@@ -1,5 +1,5 @@
 discard """
-  errormsg: "\'a\' has side effects"
+  errormsg: "\'a\' can have side effects"
   nimout: '''  tdiagnostic_messages.nim(32, 30) Hint: 'a' calls 'callWithSideEffects' which has side effects
     tdiagnostic_messages.nim(24, 6) Hint: 'callWithSideEffects' called by a `noSideEffect` routine, but has side effects
       tdiagnostic_messages.nim(26, 34) Hint: 'callWithSideEffects' calls 'indirectCallViaVarParam' which has side effects

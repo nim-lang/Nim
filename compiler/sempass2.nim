@@ -296,7 +296,7 @@ proc listSideEffects(result: var string; s: PSym; cycleCheck: var IntSet; conf: 
 
 proc listSideEffects(result: var string; s: PSym; conf: ConfigRef) =
   var cycleCheck = initIntSet()
-  result.add "'$#' has side effects\n" % s.name.s
+  result.add "'$#' can have side effects\n" % s.name.s
   listSideEffects(result, s, cycleCheck, conf, 1)
 
 proc useVarNoInitCheck(a: PEffects; n: PNode; s: PSym) =
