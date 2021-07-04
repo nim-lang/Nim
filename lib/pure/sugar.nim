@@ -28,8 +28,7 @@ proc insertPragma(ex: var NimNode; p: NimNode) =
       )
     ex[1].add p
 
-proc createProcType(p, b: NimNode):
-    NimNode =
+proc createProcType(p, b: NimNode): NimNode =
   result = newNimNode(nnkProcTy)
   var
     formalParams = newNimNode(nnkFormalParams).add(b)

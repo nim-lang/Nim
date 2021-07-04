@@ -74,7 +74,7 @@ template main() =
 
   block: # `!->`
     doAssert $(float !-> int) == "proc (i0: float): int{.closure, noSideEffect.}"
-    
+
   block: # capture
     var closure1: () -> int
     for i in 0 .. 10:
