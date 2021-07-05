@@ -63,7 +63,7 @@ proc finalize(n: NimNode, lhs: NimNode, level: int): NimNode =
 proc process(n: NimNode, lhs: NimNode, level: int): NimNode =
   var n = n.copyNimTree
   var it = n
-  let unsafeAddr2 = bindSym"unsafeAddr"
+  let addr2 = bindSym"addr"
   var old: tuple[n: NimNode, index: int]
   while true:
     if it.len == 0:
@@ -72,7 +72,7 @@ proc process(n: NimNode, lhs: NimNode, level: int): NimNode =
     elif it.kind == nnkCheckedFieldExpr:
       let dot = it[0]
       let obj = dot[0]
-      let objRef = quote do: `unsafeAddr2`(`obj`)
+      let objRef = quote do: `addr2`(`obj`)
         # avoids a copy and preserves lvalue semantics, see tests
       let check = it[1]
       let okSet = check[1]
