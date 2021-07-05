@@ -175,14 +175,13 @@ proc main() =
     doAssert ?.identity(a.d) == nil
     doAssert ?.identity(a.d.i4) == 0
 
-  block:
+  block: # ref semantic propagation
     type
       A = ref object
         a0: A
         a1: seq[A]
         a2: int
       B = object
-      # B = ref object
         b0: int
         case cond: bool
         of false: discard
@@ -203,12 +202,13 @@ proc main() =
 
     block:
       var b = B(cond: false, b0: 3)
-      when false:
-        let p = ?.addr(b.b1)
-      # let p = ?.b.b1.addr
-      # let p = ?.b.b1.unsafeAddr
-      # let p = ?.b.b1
-      # doAssert p == nil
+      let p = ?.addr(b.b1)
+      doAssert p == nil
+      b = B(cond: true, b1: 4.5)
+      let p2 = ?.addr(b.b1)
+      doAssert p2 != nil
+      p2[] = 4.6
+      doAssert b.b1 == 4.6
 
 main()
 static: main()

@@ -41,10 +41,11 @@ import timn/dbgs
 proc process(n: NimNode, lhs: NimNode, level: int): NimNode =
   var n = n.copyNimTree
   var it = n
-  var pit = n.addr
+  var parent = n
+  var parent2 = n
   let unsafeAddr2 = bindSym"unsafeAddr"
+  var old: seq[(NimNode, int)]
   while true:
-    dbg it.repr
     if it.len == 0:
       result = finalize(n, lhs, level)
       break
@@ -54,15 +55,18 @@ proc process(n: NimNode, lhs: NimNode, level: int): NimNode =
       let objRef = quote do: `unsafeAddr2`(`obj`)
         # avoids a copy and preserves lvalue semantics
       let check = it[1]
-      dbg check.repr
-      dbg check.treeRepr
       let okSet = check[1]
       let kind1 = check[2]
       let tmp = genSym(nskLet, "tmpCase")
       let body = process(objRef, tmp, level + 1)
       let tmp3 = nnkDerefExpr.newTree(tmp)
       it[0][0] = tmp3
-      n = nnkDotExpr.newTree(@[tmp, dot[1]])
+      if old.len > 0:
+        let (n1, i1) = old[^1]
+        n1[i1] = nnkDotExpr.newTree(@[tmp, dot[1]])
+      else:
+        n = nnkDotExpr.newTree(@[tmp, dot[1]])
+
         # TODO: can we avoid redundant check?
       let assgn = finalize(n, lhs, level)
       result = quote do:
@@ -82,19 +86,16 @@ proc process(n: NimNode, lhs: NimNode, level: int): NimNode =
       break
     elif it.kind == nnkCall: # consider extending to `nnkCallKinds`
       # `copyNimTree` needed to avoid `typ = nil` issues
-      dbg it.treeRepr
+      old.add (it, 1)
       it = it[1].copyNimTree
-      # it = it[1]
-      dbg it.treeRepr
     else:
+      old.add (it, 0)
       it = it[0]
 
 macro `?.`*(a: typed): auto =
   ## Transforms `a` into an expression that can be safely evaluated even in
   ## presence of intermediate nil pointers/references, in which case a default
   ## value is produced.
-  dbg a.repr
-  dbg a.treeRepr
   let lhs = genSym(nskVar, "lhs")
   let body = process(a, lhs, 0)
   result = quote do:
@@ -102,7 +103,6 @@ macro `?.`*(a: typed): auto =
     block:
       `body`
     `lhs`
-  dbg result.repr
 
 # the code below is not needed for `?.`
 from options import Option, isSome, get, option, unsafeGet, UnpackDefect
