@@ -120,7 +120,8 @@ nimBuildCsourcesIfNeeded(){
       else
         # Note: using git tags would allow fetching just what's needed, unlike git hashes, e.g.
         # via `git clone -q --depth 1 --branch $tag $nim_csourcesUrl`.
-        echo_run git clone -q --depth 1 $nim_csourcesUrl "$nim_csourcesDir"
+        echo_run git clone -q --depth 1 -b $nim_csourcesBranch \
+            $nim_csourcesUrl "$nim_csourcesDir"
         # old `git` versions don't support -C option, using `cd` explicitly:
         echo_run cd "$nim_csourcesDir"
         echo_run git checkout $nim_csourcesHash
