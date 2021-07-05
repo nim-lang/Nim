@@ -31,7 +31,7 @@ proc cloneDependency*(destDirBase: string, url: string, commit = commitHead,
     let saveDir = getCurrentDir()
     setCurrentDir(destDir2)
     try:
-      execRetry fmt"git fetch -q"
+      execRetry "git fetch -q"
       exec fmt"git checkout -q {commit}"
     finally:
       setCurrentDir(saveDir)
