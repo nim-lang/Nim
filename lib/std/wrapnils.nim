@@ -103,6 +103,7 @@ macro `?.`*(a: typed): auto =
     block:
       `body`
     `lhs`
+  dbg result.repr
 
 # the code below is not needed for `?.`
 from options import Option, isSome, get, option, unsafeGet, UnpackDefect
