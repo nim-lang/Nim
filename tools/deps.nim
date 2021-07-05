@@ -28,13 +28,13 @@ proc cloneDependency*(destDirBase: string, url: string, commit = commitHead,
     # from failing
     execRetry fmt"git clone -q {url} {destDir2}"
   if isGitRepo(destDir):
-    let saveDir = getCurrentDir()
+    let oldDir = getCurrentDir()
     setCurrentDir(destDir2)
     try:
       execRetry fmt"git fetch -q"
       exec fmt"git checkout -q {commit}"
     finally:
-      setCurrentDir(saveDir)
+      setCurrentDir(oldDir)
   elif allowBundled:
     discard "this dependency was bundled with Nim, don't do anything"
   else:
