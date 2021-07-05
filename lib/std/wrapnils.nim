@@ -1,6 +1,9 @@
-## This module allows chains of field-access and indexing where the LHS can be nil.
-## This simplifies code by reducing need for if-else branches around intermediate values
-## that may be nil.
+## This module allows evaluating expressions safely against the following conditions:
+## * nil dereferences
+## * field accesses with incorrect discriminant in case objects
+##
+## A default value is returned in those cases.
+## This simplifies code by reducing need for if-else branches.
 ##
 ## Note: experimental module, unstable API.
 
@@ -32,19 +35,36 @@ runnableExamples:
 
   assert (?.f2.x2.x2).x3 == nil  # this terminates ?. early
 
+runnableExamples:
+  # ?. also allows case object
+  type B = object
+    b0: int
+    case cond: bool
+    of false: discard
+    of true:
+      b1: float
+
+  var b = B(cond: false, b0: 3)
+  doAssertRaises(FieldDefect): discard b.b1 # wrong discriminant
+  doAssert ?.b.b1 == 0.0 # safe
+  b = B(cond: true, b1: 4.5)
+  doAssert ?.b.b1 == 4.5
+
+  # lvalue semantics are preserved:
+  if (let p = ?.b.b1.addr; p != nil): p[] = 4.7
+  doAssert b.b1 == 4.7
+
 proc finalize(n: NimNode, lhs: NimNode, level: int): NimNode =
   if level == 0:
     result = quote: `lhs` = `n`
   else:
     result = quote: (let `lhs` = `n`)
-import timn/dbgs
+
 proc process(n: NimNode, lhs: NimNode, level: int): NimNode =
   var n = n.copyNimTree
   var it = n
-  var parent = n
-  var parent2 = n
   let unsafeAddr2 = bindSym"unsafeAddr"
-  var old: seq[(NimNode, int)]
+  var old: tuple[n: NimNode, index: int]
   while true:
     if it.len == 0:
       result = finalize(n, lhs, level)
@@ -53,7 +73,7 @@ proc process(n: NimNode, lhs: NimNode, level: int): NimNode =
       let dot = it[0]
       let obj = dot[0]
       let objRef = quote do: `unsafeAddr2`(`obj`)
-        # avoids a copy and preserves lvalue semantics
+        # avoids a copy and preserves lvalue semantics, see tests
       let check = it[1]
       let okSet = check[1]
       let kind1 = check[2]
@@ -61,13 +81,9 @@ proc process(n: NimNode, lhs: NimNode, level: int): NimNode =
       let body = process(objRef, tmp, level + 1)
       let tmp3 = nnkDerefExpr.newTree(tmp)
       it[0][0] = tmp3
-      if old.len > 0:
-        let (n1, i1) = old[^1]
-        n1[i1] = nnkDotExpr.newTree(@[tmp, dot[1]])
-      else:
-        n = nnkDotExpr.newTree(@[tmp, dot[1]])
-
-        # TODO: can we avoid redundant check?
+      let dot2 = nnkDotExpr.newTree(@[tmp, dot[1]])
+      if old.n != nil: old.n[old.index] = dot2
+      else: n = dot2
       let assgn = finalize(n, lhs, level)
       result = quote do:
         `body`
@@ -86,10 +102,10 @@ proc process(n: NimNode, lhs: NimNode, level: int): NimNode =
       break
     elif it.kind == nnkCall: # consider extending to `nnkCallKinds`
       # `copyNimTree` needed to avoid `typ = nil` issues
-      old.add (it, 1)
+      old = (it, 1)
       it = it[1].copyNimTree
     else:
-      old.add (it, 0)
+      old = (it, 0)
       it = it[0]
 
 macro `?.`*(a: typed): auto =
