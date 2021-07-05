@@ -10,7 +10,7 @@
 import
   intsets, ast, astalgo, msgs, renderer, magicsys, types, idents, trees,
   wordrecg, strutils, options, guards, lineinfos, semfold, semdata,
-  modulegraphs, varpartitions, typeallowed, nilcheck, errorhandling
+  modulegraphs, varpartitions, typeallowed, nilcheck, errorhandling, tables
 
 when defined(useDfa):
   import dfa
@@ -223,30 +223,21 @@ proc markGcUnsafe(a: PEffects; reason: PNode) =
         a.owner.gcUnsafetyReason = newSym(skUnknown, a.owner.name, nextSymId a.c.idgen,
                                           a.owner, reason.info, {})
 
-when true:
-  template markSideEffect(a: PEffects; reason: typed; useLoc: TLineInfo) =
-    if not a.inEnforcedNoSideEffects:
-      a.hasSideEffect = true
-      if a.owner.kind in routineKinds:
-        var sym: PSym
-        when reason is PNode:
-          if reason.kind == nkSym:
-            sym = reason.sym
-          else:
-            var kind = skUnknown
-            case reason.kind
-            of nkHiddenDeref:
-              kind = skParam
-            else: discard
-            sym = newSym(kind, a.owner.name, nextSymId a.c.idgen,
-                                              a.owner, reason.info, {})
+proc markSideEffect(a: PEffects; reason: PNode | PSym; useLoc: TLineInfo) =
+  if not a.inEnforcedNoSideEffects:
+    a.hasSideEffect = true
+    if a.owner.kind in routineKinds:
+      var sym: PSym
+      when reason is PNode:
+        if reason.kind == nkSym:
+          sym = reason.sym
         else:
-          sym = reason
-        a.owner.sideEffectReasons.add (useLoc, sym)
-else:
-  template markSideEffect(a: PEffects; reason: typed) =
-    if not a.inEnforcedNoSideEffects: a.hasSideEffect = true
-    markGcUnsafe(a, reason)
+          let kind = if reason.kind == nkHiddenDeref: skParam else: skUnknown
+          sym = newSym(kind, a.owner.name, nextSymId a.c.idgen, a.owner, reason.info, {})
+      else:
+        sym = reason
+      a.c.sideEffects.mgetOrPut(a.owner.id, @[]).add (useLoc, sym)
+    when false: markGcUnsafe(a, reason)
 
 proc listGcUnsafety(s: PSym; onlyWarning: bool; cycleCheck: var IntSet; conf: ConfigRef) =
   let u = s.gcUnsafetyReason
@@ -276,28 +267,29 @@ proc listGcUnsafety(s: PSym; onlyWarning: bool; conf: ConfigRef) =
   var cycleCheck = initIntSet()
   listGcUnsafety(s, onlyWarning, cycleCheck, conf)
 
-proc listSideEffects(result: var string; s: PSym; cycleCheck: var IntSet; conf: ConfigRef; indentLevel: int) =
-  template add(msg; level = indentLevel) =
-    result.add repeat("  ", level) & msg
-  for (useLineInfo, u) in s.sideEffectReasons:
-    if u != nil and not cycleCheck.containsOrIncl(u.id):
-      case u.kind
-      of skLet, skVar:
-        add("$# Hint: '$#' accesses global state '$#'\n" % [conf $ useLineInfo, s.name.s, u.name.s])
-        add("$# Hint: '$#' accessed by a `noSideEffect` routine\n" % [conf $ u.info, u.name.s], indentLevel + 1)
-      of routineKinds:
-        add("$# Hint: '$#' calls '$#' which has side effects\n" % [conf $ useLineInfo, s.name.s, u.name.s])
-        add("$# Hint: '$#' called by a `noSideEffect` routine, but has side effects\n" % [conf $ u.info, u.name.s], indentLevel + 1)
-        listSideEffects(result, u, cycleCheck, conf, indentLevel + 2)
-      of skParam, skForVar:
-        add("$# Hint: '$#' calls a routine with side effects via hidden pointer indirection\n" % [conf $ useLineInfo, s.name.s])
-      else:
-        add("$# Hint: '$#' calls a routine with side effects via pointer indirection\n" % [conf $ useLineInfo, s.name.s])
+proc listSideEffects(result: var string; s: PSym; cycleCheck: var IntSet; conf: ConfigRef; context: PContext; indentLevel: int) =
+  template addHint(msg; lineInfo; sym; level = indentLevel) =
+    result.addf "$# $# Hint: '$#' $#\n" % [repeat(">", level), conf $ lineInfo, sym, msg]
+  if context.sideEffects.hasKey(s.id):
+    for (useLineInfo, u) in context.sideEffects[s.id]:
+      if u != nil and not cycleCheck.containsOrIncl(u.id):
+        case u.kind
+        of skLet, skVar:
+          addHint("accesses global state '$#'" % u.name.s, useLineInfo, s.name.s)
+          addHint("accessed by `.noSideEffect` '$#'" % s.name.s, u.info, u.name.s, indentLevel + 1)
+        of routineKinds:
+          addHint("calls `.sideEffect` '$#'" % u.name.s, useLineInfo, s.name.s)
+          addHint("called by `.noSideEffect` '$#'" % s.name.s, u.info, u.name.s, indentLevel + 1)
+          listSideEffects(result, u, cycleCheck, conf, context, indentLevel + 2)
+        of skParam, skForVar:
+          addHint("calls routine via hidden pointer indirection", useLineInfo, s.name.s)
+        else:
+          addHint("calls routine via pointer indirection", useLineInfo, s.name.s)
 
-proc listSideEffects(result: var string; s: PSym; conf: ConfigRef) =
+proc listSideEffects(result: var string; s: PSym; conf: ConfigRef; context: PContext) =
   var cycleCheck = initIntSet()
-  result.add "'$#' can have side effects\n" % s.name.s
-  listSideEffects(result, s, cycleCheck, conf, 1)
+  result.addf "'$#' can have side effects\n" % s.name.s
+  listSideEffects(result, s, cycleCheck, conf, context, 1)
 
 proc useVarNoInitCheck(a: PEffects; n: PNode; s: PSym) =
   if {sfGlobal, sfThread} * s.flags != {} and s.kind in {skVar, skLet} and
@@ -1401,7 +1393,7 @@ proc trackProc*(c: PContext; s: PSym, body: PNode) =
         localError(g.config, s.info, "'$1' can have side effects$2" % [s.name.s, g.config $ mutationInfo])
       elif c.compilesContextId == 0: # don't render extended diagnostic messages in `system.compiles` context
         var msg = ""
-        listSideEffects(msg, s, g.config)
+        listSideEffects(msg, s, g.config, t.c)
         message(g.config, s.info, errGenerated, msg)
       else:
         localError(g.config, s.info, "") # simple error for `system.compiles` context

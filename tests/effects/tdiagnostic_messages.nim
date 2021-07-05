@@ -1,22 +1,26 @@
 discard """
-  errormsg: "\'a\' can have side effects"
-  nimout: '''  tdiagnostic_messages.nim(32, 30) Hint: 'a' calls 'callWithSideEffects' which has side effects
-    tdiagnostic_messages.nim(24, 6) Hint: 'callWithSideEffects' called by a `noSideEffect` routine, but has side effects
-      tdiagnostic_messages.nim(26, 34) Hint: 'callWithSideEffects' calls 'indirectCallViaVarParam' which has side effects
-        tdiagnostic_messages.nim(20, 6) Hint: 'indirectCallViaVarParam' called by a `noSideEffect` routine, but has side effects
-          tdiagnostic_messages.nim(21, 7) Hint: 'indirectCallViaVarParam' calls a routine with side effects via hidden pointer indirection
-      tdiagnostic_messages.nim(27, 33) Hint: 'callWithSideEffects' calls 'indirectCallViaPointer' which has side effects
-        tdiagnostic_messages.nim(22, 6) Hint: 'indirectCallViaPointer' called by a `noSideEffect` routine, but has side effects
-          tdiagnostic_messages.nim(23, 32) Hint: 'indirectCallViaPointer' calls a routine with side effects via pointer indirection
-      tdiagnostic_messages.nim(28, 8) Hint: 'callWithSideEffects' calls 'echo' which has side effects
-        ../../lib/system.nim(2004, 6) Hint: 'echo' called by a `noSideEffect` routine, but has side effects
-      tdiagnostic_messages.nim(29, 3) Hint: 'callWithSideEffects' accesses global state 'globalVar'
-        tdiagnostic_messages.nim(19, 5) Hint: 'globalVar' accessed by a `noSideEffect` routine'''
-  file: "tdiagnostic_messages.nim"
-  line: 31
+  nimoutFull: true
+  action: "reject"
+  cmd: "nim r --hint:Conf:off $file"
+  nimout: '''tdiagnostic_messages.nim(35, 6) Error: 'a' can have side effects
+> tdiagnostic_messages.nim(36, 30) Hint: 'a' calls `.sideEffect` 'callWithSideEffects'
+>> tdiagnostic_messages.nim(28, 6) Hint: 'callWithSideEffects' called by `.noSideEffect` 'a'
+>>> tdiagnostic_messages.nim(30, 34) Hint: 'callWithSideEffects' calls `.sideEffect` 'indirectCallViaVarParam'
+>>>> tdiagnostic_messages.nim(24, 6) Hint: 'indirectCallViaVarParam' called by `.noSideEffect` 'callWithSideEffects'
+>>>>> tdiagnostic_messages.nim(25, 7) Hint: 'indirectCallViaVarParam' calls routine via hidden pointer indirection
+>>> tdiagnostic_messages.nim(31, 33) Hint: 'callWithSideEffects' calls `.sideEffect` 'indirectCallViaPointer'
+>>>> tdiagnostic_messages.nim(26, 6) Hint: 'indirectCallViaPointer' called by `.noSideEffect` 'callWithSideEffects'
+>>>>> tdiagnostic_messages.nim(27, 32) Hint: 'indirectCallViaPointer' calls routine via pointer indirection
+>>> tdiagnostic_messages.nim(32, 10) Hint: 'callWithSideEffects' calls `.sideEffect` 'myEcho'
+>>>> tdiagnostic_messages.nim(23, 6) Hint: 'myEcho' called by `.noSideEffect` 'callWithSideEffects'
+>>> tdiagnostic_messages.nim(33, 3) Hint: 'callWithSideEffects' accesses global state 'globalVar'
+>>>> tdiagnostic_messages.nim(22, 5) Hint: 'globalVar' accessed by `.noSideEffect` 'callWithSideEffects'
+
+'''
 """
 
 var globalVar = 0
+proc myEcho(a: string) {.sideEffect.} = discard
 proc indirectCallViaVarParam(call: var proc(): int {.nimcall.}): int =
   call()
 proc indirectCallViaPointer(call: pointer): int =
@@ -25,7 +29,7 @@ proc callWithSideEffects(): int =
   var p = proc (): int {.nimcall.} = 0
   discard indirectCallViaVarParam(p)
   discard indirectCallViaPointer(addr p)
-  echo ""
+  myEcho ""
   globalVar
 
 func a: int =
