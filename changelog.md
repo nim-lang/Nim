@@ -86,8 +86,8 @@
 
 - Deprecated `proc reversed*[T](a: openArray[T], first: Natural, last: int): seq[T]` in `std/algorithm`.
 
--  In `std/macros`, `treeRepr,lispRepr,astGenRepr` now represent SymChoice nodes in a collapsed way,
-   use `-d:nimLegacyMacrosCollapseSymChoice` to get previous behavior.
+- In `std/macros`, `treeRepr,lispRepr,astGenRepr` now represent SymChoice nodes in a collapsed way,
+  use `-d:nimLegacyMacrosCollapseSymChoice` to get previous behavior.
 
 - The configuration subsystem now allows for `-d:release` and `-d:danger` to work as expected.
   The downside is that these defines now have custom logic that doesn't apply for
@@ -95,6 +95,8 @@
 
 - Renamed `-d:nimCompilerStackraceHints` to `-d:nimCompilerStacktraceHints`.
 
+- In `std/dom`, `Interval` is now a `ref object`, same as `Timeout`. Definitions of `setTimeout`,
+  `clearTimeout`, `setInterval`, `clearInterval` were updated.
 
 ## Standard library additions and changes
 
@@ -340,6 +342,8 @@
 - Added setCurrentException for JS backend.
 
 - Added `dom.scrollIntoView` proc with options
+
+- Added `dom.setInterval`, `dom.clearInterval` overloads.
 
 ## Language changes
 
