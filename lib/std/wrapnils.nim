@@ -4,6 +4,14 @@
 ##
 ## Note: experimental module, unstable API.
 
+#[
+TODO:
+consider handling indexing operations, eg:
+doAssert ?.default(seq[int])[3] == default(int)
+]#
+
+import macros
+
 runnableExamples:
   type Foo = ref object
     x1: string
@@ -24,7 +32,110 @@ runnableExamples:
 
   assert (?.f2.x2.x2).x3 == nil  # this terminates ?. early
 
+proc finalize(n: NimNode, lhs: NimNode, level: int): NimNode =
+  if level == 0:
+    result = quote: `lhs` = `n`
+  else:
+    result = quote: (let `lhs` = `n`)
+import timn/dbgs
+proc process(n: NimNode, lhs: NimNode, level: int): NimNode =
+  var n = n.copyNimTree
+  var it = n
+  let unsafeAddr2 = bindSym"unsafeAddr"
+  while true:
+    dbg it.repr
+    if it.len == 0:
+      result = finalize(n, lhs, level)
+      break
+    elif it.kind == nnkCheckedFieldExpr:
+      let dot = it[0]
+      let obj = dot[0]
+      let objRef = quote do: `unsafeAddr2`(`obj`)
+        # avoids a copy and preserves lvalue semantics
+      # let check = n[1]
+      let check = it[1]
+      dbg check.repr
+      dbg check.treeRepr
+      let okSet = check[1]
+      let kind1 = check[2]
+      let tmp = genSym(nskLet, "tmpCase")
+      let body = process(objRef, tmp, level + 1)
+      let tmp3 = nnkDerefExpr.newTree(tmp)
+      it[0][0] = tmp3
+      n = nnkDotExpr.newTree(@[tmp, dot[1]])
+        # TODO: can we avoid redundant check?
+      let assgn = finalize(n, lhs, level)
+      result = quote do:
+        `body`
+        if `tmp3`.`kind1` notin `okSet`: break
+        `assgn`
+      break
+    elif it.kind in {nnkHiddenDeref, nnkDerefExpr}:
+      let tmp = genSym(nskLet, "tmp")
+      let body = process(it[0], tmp, level + 1)
+      it[0] = tmp
+      let assgn = finalize(n, lhs, level)
+      result = quote do:
+        `body`
+        if `tmp` == nil: break
+        `assgn`
+      break
+    elif it.kind == nnkCall: # consider extending to `nnkCallKinds`
+      # `copyNimTree` needed to avoid `typ = nil` issues
+      dbg it.treeRepr
+      it = it[1].copyNimTree
+      # it = it[1]
+      dbg it.treeRepr
+    else:
+      it = it[0]
+
+macro `?.`*(a: typed): auto =
+  ## Transforms `a` into an expression that can be safely evaluated even in
+  ## presence of intermediate nil pointers/references, in which case a default
+  ## value is produced.
+  dbg a.repr
+  dbg a.treeRepr
+  let lhs = genSym(nskVar, "lhs")
+  let body = process(a, lhs, 0)
+  result = quote do:
+    var `lhs`: type(`a`)
+    block:
+      `body`
+    `lhs`
+  dbg result.repr
+
+# the code below is not needed for `?.`
 from options import Option, isSome, get, option, unsafeGet, UnpackDefect
+
+macro `??.`*(a: typed): Option =
+  ## Same as `?.` but returns an `Option`.
+  runnableExamples:
+    import std/options
+    type Foo = ref object
+      x1: ref int
+      x2: int
+    # `?.` can't distinguish between a valid vs invalid default value, but `??.` can:
+    var f1 = Foo(x1: int.new, x2: 2)
+    doAssert (??.f1.x1[]).get == 0 # not enough to tell when the chain was valid.
+    doAssert (??.f1.x1[]).isSome # a nil didn't occur in the chain
+    doAssert (??.f1.x2).get == 2
+
+    var f2: Foo
+    doAssert not (??.f2.x1[]).isSome # f2 was nil
+
+    doAssertRaises(UnpackDefect): discard (??.f2.x1[]).get
+    doAssert ?.f2.x1[] == 0 # in contrast, this returns default(int)
+
+  let lhs = genSym(nskVar, "lhs")
+  let lhs2 = genSym(nskVar, "lhs")
+  let body = process(a, lhs2, 0)
+  result = quote do:
+    var `lhs`: Option[type(`a`)]
+    block:
+      var `lhs2`: type(`a`)
+      `body`
+      `lhs` = option(`lhs2`)
+    `lhs`
 
 template fakeDot*(a: Option, b): untyped =
   ## See top-level example.
@@ -58,51 +169,7 @@ func `[]`*[U](a: Option[U]): auto {.inline.} =
     if a2 != nil:
       result = option(a2[])
 
-import macros
-
-func replace(n: NimNode): NimNode =
-  if n.kind == nnkDotExpr:
-    result = newCall(bindSym"fakeDot", replace(n[0]), n[1])
-  elif n.kind == nnkPar:
-    doAssert n.len == 1
-    result = newCall(bindSym"option", n[0])
-  elif n.kind in {nnkCall, nnkObjConstr}:
-    result = newCall(bindSym"option", n)
-  elif n.len == 0:
-    result = newCall(bindSym"option", n)
-  else:
-    n[0] = replace(n[0])
-    result = n
-
-proc safeGet[T](a: Option[T]): T {.inline.} =
-  get(a, default(T))
-
-macro `?.`*(a: untyped): auto =
-  ## Transforms `a` into an expression that can be safely evaluated even in
-  ## presence of intermediate nil pointers/references, in which case a default
-  ## value is produced.
-  result = replace(a)
-  result = quote do:
-    # `result`.val # TODO: expose a way to do this directly in std/options, e.g.: `getAsIs`
-    safeGet(`result`)
-
-macro `??.`*(a: untyped): Option =
-  ## Same as `?.` but returns an `Option`.
-  runnableExamples:
-    import std/options
-    type Foo = ref object
-      x1: ref int
-      x2: int
-    # `?.` can't distinguish between a valid vs invalid default value, but `??.` can:
-    var f1 = Foo(x1: int.new, x2: 2)
-    doAssert (??.f1.x1[]).get == 0 # not enough to tell when the chain was valid.
-    doAssert (??.f1.x1[]).isSome # a nil didn't occur in the chain
-    doAssert (??.f1.x2).get == 2
-
-    var f2: Foo
-    doAssert not (??.f2.x1[]).isSome # f2 was nil
-    from std/options import UnpackDefect
-    doAssertRaises(UnpackDefect): discard (??.f2.x1[]).get
-    doAssert ?.f2.x1[] == 0 # in contrast, this returns default(int)
-
-  result = replace(a)
+when false:
+  # xxx: expose a way to do this directly in std/options, e.g.: `getAsIs`
+  proc safeGet[T](a: Option[T]): T {.inline.} =
+    get(a, default(T))
