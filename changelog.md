@@ -279,6 +279,10 @@
   issues like https://github.com/nim-lang/Nim/issues/13063 (which affected error messages)
   for modules importing `std/wrapnils`.
   Added `??.` macro which returns an `Option`.
+  `std/wrapnils` can now be used to protect against `FieldDefect` errors in
+  case objects. It now generates optimal code (no overhead compared to manual
+  if-else branches). It preserves lvalue semantics which allows modifying
+  an expression.
 
 - Added `math.frexp` overload procs. Deprecated `c_frexp`, use `frexp` instead.
 
