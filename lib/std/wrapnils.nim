@@ -41,6 +41,7 @@ import timn/dbgs
 proc process(n: NimNode, lhs: NimNode, level: int): NimNode =
   var n = n.copyNimTree
   var it = n
+  var pit = n.addr
   let unsafeAddr2 = bindSym"unsafeAddr"
   while true:
     dbg it.repr
@@ -52,7 +53,6 @@ proc process(n: NimNode, lhs: NimNode, level: int): NimNode =
       let obj = dot[0]
       let objRef = quote do: `unsafeAddr2`(`obj`)
         # avoids a copy and preserves lvalue semantics
-      # let check = n[1]
       let check = it[1]
       dbg check.repr
       dbg check.treeRepr
