@@ -175,12 +175,13 @@ proc main() =
     doAssert ?.identity(a.d) == nil
     doAssert ?.identity(a.d.i4) == 0
 
-  block: # ref semantic propagation
+  block: # lvalue semantic propagation
     type
       A = ref object
         a0: A
         a1: seq[A]
         a2: int
+
       B = object
         b0: int
         case cond: bool
@@ -202,13 +203,17 @@ proc main() =
 
     block:
       var b = B(cond: false, b0: 3)
-      let p = ?.addr(b.b1)
+      let p = ?.b.b1.addr
       doAssert p == nil
       b = B(cond: true, b1: 4.5)
-      let p2 = ?.addr(b.b1)
+      let p2 = ?.b.b1.addr
       doAssert p2 != nil
       p2[] = 4.6
       doAssert b.b1 == 4.6
+      # useful pattern, impossible with Options
+      if (let p3 = ?.b.b1.addr; p3 != nil):
+        p3[] = 4.7
+      doAssert b.b1 == 4.7
 
 main()
 static: main()
