@@ -1,3 +1,11 @@
+#
+#
+#            Nim's Runtime Library
+#        (c) Copyright 2019 Nim Contributors
+#
+#    See the file "copying.txt", included in this
+#    distribution, for details about the copyright.
+
 ## Accurate summation functions.
 runnableExamples:
   import std/math
