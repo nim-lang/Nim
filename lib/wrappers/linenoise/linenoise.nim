@@ -65,7 +65,4 @@ when not defined(windows):
     let buf = linenoiseExtra(prompt, data.addr)
     result.line = $buf
     free(buf)
-    if buf != nil:
-      result.status = lnNormal
-    else:
-      result.status = data.status.ord.ReadlineStatus
+    result.status = if buf != nil: lnNormal else: data.status.ord.ReadlineStatus
