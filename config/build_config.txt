@@ -1,5 +1,5 @@
 nim_comment="key-value pairs for windows/posix bootstrapping build scripts"
 nim_csourcesDir=csources_v1
 nim_csourcesUrl=https://github.com/nim-lang/csources_v1.git
-nim_csourcesBranch=fix-old-glibc
-nim_csourcesHash=fix-old-glibc
+nim_csourcesBranch=master
+nim_csourcesHash=9a7f751d23c49c75a0b6f63a234c575dc0df7231
