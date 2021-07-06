@@ -267,8 +267,7 @@ proc listGcUnsafety(s: PSym; onlyWarning: bool; conf: ConfigRef) =
   var cycleCheck = initIntSet()
   listGcUnsafety(s, onlyWarning, cycleCheck, conf)
 
-proc listSideEffects(result: var string; initialNoSideEffectSym, s: PSym;
-                     cycleCheck: var IntSet; conf: ConfigRef; context: PContext; indentLevel: int) =
+proc listSideEffects(result: var string; s: PSym; cycleCheck: var IntSet; conf: ConfigRef; context: PContext; indentLevel: int) =
   template addHint(msg; lineInfo; sym; level = indentLevel) =
     result.addf "$# $# Hint: '$#' $#\n" % [repeat(">", level), conf $ lineInfo, sym, msg]
   if context.sideEffects.hasKey(s.id):
@@ -277,11 +276,11 @@ proc listSideEffects(result: var string; initialNoSideEffectSym, s: PSym;
         case u.kind
         of skLet, skVar:
           addHint("accesses global state '$#'" % u.name.s, useLineInfo, s.name.s)
-          addHint("accessed by `.noSideEffect` '$#'" % initialNoSideEffectSym.name.s, u.info, u.name.s, indentLevel + 1)
+          addHint("accessed by `.noSideEffect` '$#'" % s.name.s, u.info, u.name.s, indentLevel + 1)
         of routineKinds:
           addHint("calls `.sideEffect` '$#'" % u.name.s, useLineInfo, s.name.s)
-          addHint("called by `.noSideEffect` '$#'" % initialNoSideEffectSym.name.s, u.info, u.name.s, indentLevel + 1)
-          listSideEffects(result, initialNoSideEffectSym, u, cycleCheck, conf, context, indentLevel + 2)
+          addHint("called by `.noSideEffect` '$#'" % s.name.s, u.info, u.name.s, indentLevel + 1)
+          listSideEffects(result, u, cycleCheck, conf, context, indentLevel + 2)
         of skParam, skForVar:
           addHint("calls routine via hidden pointer indirection", useLineInfo, s.name.s)
         else:
@@ -290,7 +289,7 @@ proc listSideEffects(result: var string; initialNoSideEffectSym, s: PSym;
 proc listSideEffects(result: var string; s: PSym; conf: ConfigRef; context: PContext) =
   var cycleCheck = initIntSet()
   result.addf "'$#' can have side effects\n" % s.name.s
-  listSideEffects(result, s, s, cycleCheck, conf, context, 1)
+  listSideEffects(result, s, cycleCheck, conf, context, 1)
 
 proc useVarNoInitCheck(a: PEffects; n: PNode; s: PSym) =
   if {sfGlobal, sfThread} * s.flags != {} and s.kind in {skVar, skLet} and
