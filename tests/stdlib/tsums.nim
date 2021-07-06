@@ -17,7 +17,7 @@ for n in 1 .. 1000:
 assert sumKbn(tc1) == 7.485470860550345
 assert sumKbk(tc1) == 7.485470860550345
 assert sumPairs(tc1) == 7.485470860550345
-assert sumShewchuck(tc1) == 7.485470860550345
+assert sumShewchuk(tc1) == 7.485470860550345
 
 var tc2: seq[float]
 for n in 1 .. 1000:
@@ -25,4 +25,4 @@ for n in 1 .. 1000:
 assert sumKbn(tc2) == -0.6926474305598203
 assert sumKbk(tc2) == -0.6926474305598203
 assert sumPairs(tc2) == -0.6926474305598204
-assert sumShewchuck(tc2) == -0.6926474305598203
+assert sumShewchuk(tc2) == -0.6926474305598203

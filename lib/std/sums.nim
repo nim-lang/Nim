@@ -26,6 +26,7 @@ runnableExamples:
   assert sumKbn(data) =~ result
   assert sumKbk(data) =~ result
   assert sumPairs(data) =~ result
+assert sumShewchuk(data) =~ result
 
 ## See also
 ## ========
@@ -123,7 +124,7 @@ func partials[T](v: openArray[T]): seq[T] {.inline.} =
     setLen(result, i + 1)
     result[i] = x
 
-func sumShewchuck*[T: SomeFloat](x: openArray[T]): T =
+func sumShewchuk*[T: SomeFloat](x: openArray[T]): T =
   ## Shewchuk's summation
   ## Full precision sum of values in iterable. Returns the value of the
   ## sum, rounded to the nearest representable floating-point number
