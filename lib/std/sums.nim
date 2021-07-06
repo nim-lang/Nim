@@ -59,8 +59,8 @@ func sumKbk*[T: SomeFloat](x: openArray[T]): T =
   var ccs = T(0)
   var sum = x[0]
   for i in 1 ..< len(x):
-    var c: T
-    var cc: T
+    var c = T(0)
+    var cc = T(0)
     let xi = x[i]
     var t = sum + xi
     if abs(sum) >= abs(xi):
@@ -104,20 +104,18 @@ func sumPairs*[T: SomeFloat](x: openArray[T]): T =
   let n = len(x)
   if n == 0: T(0) else: sumPairwise(x, 0, n)
 
-func twoSum[T](a, b: T): (T, T) {.inline.} =
-  ## Møller-Knuth's algorithm.
-  ## Improve Deker's algorithm, no branch needed.
-  ## More operations, but still cheap.
-  result[0] = a + b
-  let z = result[0] - a
-  result[1] = (a - (result[0] - z)) + (b - z)
-
-func sumShewchuckAdd[T](v: openArray[T]): seq[T] {.inline.} =
-  for x in v:
+func partials[T](v: openArray[T]): seq[T] {.inline.} =
+  for x in v.items:
     var x = x
     var i = 0
     for y in result.items:
-      let (hi, lo) = twoSum(x, y)
+      var y = y
+      if abs(x) < abs(y):
+        let temp = x
+        x = y
+        y = temp
+      let hi = x + y
+      let lo = y - (hi - x)
       if lo != 0:
         result[i] = lo
         inc(i)
@@ -139,23 +137,27 @@ func sumShewchuck*[T: SomeFloat](x: openArray[T]): T =
   ## Shewchuk, JR. (1996) Adaptive Precision Floating-Point Arithmetic and \
   ## Fast Robust GeometricPredicates.
   ## http://www-2.cs.cmu.edu/afs/cs/project/quake/public/papers/robust-arithmetic.ps
-  let partials = sumShewchuckAdd(x)
-  var n = partials.len
+  let p = partials(x)
+  var hi = T(0)
+  var n = p.len
   if n > 0:
     dec(n)
-    result = partials[n]
-    var lo = 0.0
+    hi = p[n]
+    var lo = T(0)
     while n > 0:
-      var x = result
+      var x = hi
       dec(n)
-      var y = partials[n]
-      let (hi, lo) = twoSum(x, y)
+      var y = p[n]
+      hi = x + y
+      let yr = hi - x
+      let lo = y - yr
       if lo != 0:
         break
-      if n > 0 and
-          ((lo < 0 and partials[n - 1] < 0) or
-           (lo > 0 and partials[n - 1] > 0)):
-        y = lo + lo
+      if n > 0 and ((lo < 0 and p[n - 1] < 0) or
+                    (lo > 0 and p[n - 1] > 0)):
+        y = lo * T(2)
         x = hi + y
-        if y == x - hi:
-          result = x
+        let yr = x - hi
+        if y == yr:
+          hi = x
+  result = hi
