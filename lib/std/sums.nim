@@ -26,7 +26,7 @@ runnableExamples:
   assert sumKbn(data) =~ result
   assert sumKbk(data) =~ result
   assert sumPairs(data) =~ result
-assert sumShewchuk(data) =~ result
+  assert sumShewchuk(data) =~ result
 
 ## See also
 ## ========
