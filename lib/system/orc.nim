@@ -91,13 +91,13 @@ proc free(s: Cell; desc: PNimTypeV2) {.inline.} =
 
   when logOrc: writeCell("free", s, desc)
 
-  if desc.disposeImpl != nil:
-    cast[DisposeProc](desc.disposeImpl)(p)
+  if desc.destructor != nil:
+    cast[DestructorProc](desc.destructor)(p)
 
   when false:
     cstderr.rawWrite desc.name
     cstderr.rawWrite " "
-    if desc.disposeImpl == nil:
+    if desc.destructor == nil:
       cstderr.rawWrite "lacks dispose"
       if desc.traceImpl != nil:
         cstderr.rawWrite ", but has trace\n"
@@ -291,6 +291,7 @@ proc collectColor(s: Cell; desc: PNimTypeV2; col: int; j: var GcEnv) =
     while j.traceStack.len > 0:
       let (entry, desc) = j.traceStack.pop()
       let t = head entry[]
+      entry[] = nil # ensure that the destructor does touch moribund objects!
       if t.color == col and t.rootIdx == 0:
         j.toFree.add(t, desc)
         t.setColor(colBlack)
