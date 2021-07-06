@@ -13,15 +13,6 @@
 ## is used. This suffices because Windows' console already provides the
 ## wanted functionality.
 
-runnableExamples("-r:off"):
-  echo readLineFromStdin("Is Nim awesome? (Y/n): ")
-  var line: string
-  while true:
-    let ok = readLineFromStdin("How are you? ", line)
-    if not ok: break # ctrl-C or ctrl-D will cause a break
-    if line.len > 0: echo line
-  echo "exiting"
-
 import std/private/rdstdin_impl
 
 type ReadLine* = object
@@ -55,13 +46,24 @@ proc readLineFromStdin*(data: var ReadLine) {.tags: [ReadIOEffect, WriteIOEffect
   ## Reads a line from stdin into `data.line`. May raise `IOError`.
   ##
   ## A line of text may be delimited by ``\r``, ``\n`` or ``\r\n``, which are not
-  ## part of the returned string. `data.status` indicates the return status.
+  ## part of the returned string. `data.status` indicates the return status and
+  ## can be queried via `isError`, `isEndOfFile`, `isInterrupt`, `isNormal`.
+  ##
   ## On platforms that support `linenoise`, it will be used.
+  runnableExamples("-r:off"):
+    var data = initReadLine(prompt = "(prompt) ")
+    while true:
+      readLineFromStdin(data) # ctrl-D will exit, ctrl-C will go to next prompt
+      if data.status.isError: echo "error"; break
+      elif data.status.isEndOfFile: echo "^D called"; break
+      elif data.status.isInterrupt: echo "^C called"; continue
+      else: echo data.line
   when hasLinenoise:
-    var data2 = ReadLineResult(line: data.line)
-    readLineStatus(data.prompt, data2)
-    data.line = data2.line
-    data.status = data2.status
+    var data2: LinenoiseData
+    let buf = linenoiseExtra(data.prompt, data2.addr)
+    data.line = $buf
+    free(buf)
+    data.status = if buf != nil: lnNormal else: data2.status.ord.ReadlineStatus
     if data.line.len > 0:
       historyAdd data.line.cstring
   else:
@@ -70,11 +72,19 @@ proc readLineFromStdin*(data: var ReadLine) {.tags: [ReadIOEffect, WriteIOEffect
     data.status = if ok: lnNormal else: lnCtrlUnkown
 
 proc readLineFromStdin*(prompt: string, line: var string): bool =
-  ## Inline overload that returns false on failure.
+  ## Inline overload that returns false on failure or when ^C or ^D was entered.
+  runnableExamples("-r:off"):
+    echo readLineFromStdin("Is Nim awesome? (Y/n): ")
+    var line: string
+    while true:
+      let ok = readLineFromStdin("How are you? ", line)
+      if not ok: break # ctrl-C or ctrl-D will cause a break
+      if line.len > 0: echo line
+    echo "exiting"
   var data = ReadLine(prompt: prompt)
   readLineFromStdin(data)
   line = data.line
-  result = not data.status.isError()
+  result = data.status.isNormal()
 
 proc readLineFromStdin*(prompt: string): string {.inline.} =
   ## Outline overload, raises `IOError` on failure.

@@ -34,10 +34,6 @@ proc printKeyCodes*() {.importc: "linenoisePrintKeyCodes".}
 
 proc free*(s: cstring) {.importc: "free", header: "<stdlib.h>".}
 
-type ReadLineResult* = object
-  line*: string
-  status*: ReadlineStatus
-
 when not defined(windows):
   # C interface
   type LinenoiseStatus = enum
@@ -46,23 +42,6 @@ when not defined(windows):
     linenoiseStatus_ctrl_D
 
   type LinenoiseData* = object
-    status: LinenoiseStatus
+    status*: LinenoiseStatus
 
-  proc linenoiseExtra(prompt: cstring, data: ptr LinenoiseData): cstring {.importc.}
-
-  proc readLineStatus*(prompt: string, result: var ReadLineResult) =
-    ## line editing API that allows returning the line entered and an indicator
-    ## of which control key was entered, allowing user to distinguish between
-    ## for example ctrl-C vs ctrl-D.
-    runnableExamples("-r:off"):
-      var ret: ReadLineResult
-      while true:
-        readLineStatus("name: ", ret) # ctrl-D will exit, ctrl-C will go to next prompt
-        if ret.line.len > 0: echo ret.line
-        if ret.status == lnCtrlD: break
-      echo "exiting"
-    var data: LinenoiseData
-    let buf = linenoiseExtra(prompt, data.addr)
-    result.line = $buf
-    free(buf)
-    result.status = if buf != nil: lnNormal else: data.status.ord.ReadlineStatus
+  proc linenoiseExtra*(prompt: cstring, data: ptr LinenoiseData): cstring {.importc.}
