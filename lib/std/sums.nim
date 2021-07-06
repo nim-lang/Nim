@@ -8,7 +8,7 @@
 
 ## Accurate summation functions.
 
-{.deprecated: "use a nimble package instead.".}
+{.deprecated: "use the nimble package `sums` instead.".}
 
 runnableExamples:
   import std/math
