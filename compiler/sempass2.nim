@@ -276,10 +276,10 @@ proc listSideEffects(result: var string; s: PSym; cycleCheck: var IntSet; conf: 
         case u.kind
         of skLet, skVar:
           addHint("accesses global state '$#'" % u.name.s, useLineInfo, s.name.s)
-          addHint("accessed by `.noSideEffect` '$#'" % s.name.s, u.info, u.name.s, indentLevel + 1)
+          addHint("accessed by '$#'" % s.name.s, u.info, u.name.s, indentLevel + 1)
         of routineKinds:
           addHint("calls `.sideEffect` '$#'" % u.name.s, useLineInfo, s.name.s)
-          addHint("called by `.noSideEffect` '$#'" % s.name.s, u.info, u.name.s, indentLevel + 1)
+          addHint("called by '$#'" % s.name.s, u.info, u.name.s, indentLevel + 1)
           listSideEffects(result, u, cycleCheck, conf, context, indentLevel + 2)
         of skParam, skForVar:
           addHint("calls routine via hidden pointer indirection", useLineInfo, s.name.s)
