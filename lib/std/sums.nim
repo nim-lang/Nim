@@ -8,6 +8,8 @@
 
 ## Accurate summation functions.
 
+{.deprecated: "use a nimble package instead.".}
+
 runnableExamples:
   import std/math
 
