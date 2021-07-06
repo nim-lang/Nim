@@ -98,9 +98,7 @@ proc llReadFromStdin(s: PLLStream, buf: pointer, bufLen: int): int =
   s.rd = 0
   var triples = 0
   var data: ReadLine
-  var iter = 0
   while true:
-    iter.inc
     data.prompt = if s.s.len == 0: ">>> " else: "... "
     readLineFromStdin(data)
     if isEndOfFile(data.status) or isError(data.status):
