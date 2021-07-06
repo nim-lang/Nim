@@ -3010,10 +3010,11 @@ proc resolveSubs*(s: PRstSharedState, n: PRstNode): PRstNode =
       result.sons = newSons
 
 proc rstParse*(text, filename: string,
-               line, column: int, hasToc: var bool,
+               line, column: int,
                options: RstParseOptions,
                findFile: FindFileHandler = nil,
-               msgHandler: MsgHandler = nil): (PRstNode, seq[string]) =
+               msgHandler: MsgHandler = nil):
+              tuple[node: PRstNode, files: seq[string], hasToc: bool] =
   ## Parses the whole `text`. The result is ready for `rstgen.renderRstToOut`,
   ## note that 2nd tuple element should be fed to `initRstGenerator`
   ## argument `files` (it is being filled here at least with `filename`
@@ -3021,6 +3022,6 @@ proc rstParse*(text, filename: string,
   var sharedState = newRstSharedState(options, filename, findFile, msgHandler)
   let unresolved = rstParsePass1(text, filename, line, column, sharedState)
   preparePass2(sharedState, unresolved)
-  result[0] = resolveSubs(sharedState, unresolved)
-  result[1] = sharedState.files
-  hasToc = sharedState.hasToc
+  result.node = resolveSubs(sharedState, unresolved)
+  result.files = sharedState.files
+  result.hasToc = sharedState.hasToc

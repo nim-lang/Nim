@@ -455,10 +455,9 @@ Some chapter
       ~~~~~
 
       """
-    var option: bool
     var rstGenera: RstGenerator
     var output: string
-    let (rst, files) = rstParse(input, "", 1, 1, option, {})
+    let (rst, files, _) = rstParse(input, "", 1, 1, {})
     rstGenera.initRstGenerator(outHtml, defaultConfig(), "input", files=files)
     rstGenera.renderRstToOut(rst, output)
     doAssert rstGenera.meta[metaTitle] == "Title0"
@@ -483,10 +482,9 @@ Some chapter
       SubTitle0
       +++++++++
       """
-    var option: bool
     var rstGenera: RstGenerator
     var output: string
-    let (rst, files) = rstParse(input, "", 1, 1, option, {})
+    let (rst, files, _) = rstParse(input, "", 1, 1, {})
     rstGenera.initRstGenerator(outHtml, defaultConfig(), "input", files=files)
     rstGenera.renderRstToOut(rst, output)
     doAssert rstGenera.meta[metaTitle] == ""
@@ -514,10 +512,9 @@ Some chapter
       MySection2a
       -----------
       """
-    var option: bool
     var rstGenera: RstGenerator
     var output: string
-    let (rst, files) = rstParse(input, "", 1, 1, option, {roSupportMarkdown})
+    let (rst, files, _) = rstParse(input, "", 1, 1, {roSupportMarkdown})
     rstGenera.initRstGenerator(outHtml, defaultConfig(), "input", files=files)
     rstGenera.renderRstToOut(rst, output)
     doAssert rstGenera.meta[metaTitle] == "Title0"
@@ -671,10 +668,9 @@ Test1
 | other line
 
 """
-    var option: bool
     var rstGenera: RstGenerator
     var output: string
-    let (rst, files) = rstParse(input, "", 1, 1, option, {})
+    let (rst, files, _) = rstParse(input, "", 1, 1, {})
     rstGenera.initRstGenerator(outHtml, defaultConfig(), "input", files=files)
     rstGenera.renderRstToOut(rst, output)
     doAssert rstGenera.meta[metaTitle] == "Test1"

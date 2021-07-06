@@ -1563,9 +1563,8 @@ proc rstToHtml*(s: string, options: RstParseOptions,
     result = ""
 
   const filen = "input"
-  var dummyHasToc = false
-  var (rst, files) = rstParse(s, filen, line=LineRstInit, column=ColRstInit,
-                              dummyHasToc, options, myFindFile, msgHandler)
+  let (rst, files, _) = rstParse(s, filen, line=LineRstInit, column=ColRstInit,
+                                 options, myFindFile, msgHandler)
   var d: RstGenerator
   initRstGenerator(d, outHtml, config, filen, myFindFile, msgHandler, files)
   result = ""
@@ -1576,9 +1575,8 @@ proc rstToLatex*(rstSource: string; options: RstParseOptions): string {.inline, 
   ## Convenience proc for `renderRstToOut` and `initRstGenerator`.
   runnableExamples: doAssert rstToLatex("*Hello* **world**", {}) == """\emph{Hello} \textbf{world}"""
   if rstSource.len == 0: return
-  var dummyHasToc: bool
-  let (rst, files) = rstParse(rstSource, "", line=LineRstInit, column=ColRstInit,
-                              dummyHasToc, options)
+  let (rst, files, _) = rstParse(rstSource, "",
+                                 line=LineRstInit, column=ColRstInit, options)
   var rstGenera: RstGenerator
   rstGenera.initRstGenerator(outLatex, defaultConfig(), "input", files=files)
   rstGenera.renderRstToOut(rst, result)
