@@ -33,4 +33,3 @@ hint("Processing", off)
 # sync with `kochdocs.docDefines` or refactor.
 switch("define", "nimExperimentalAsyncjsThen")
 switch("define", "nimExperimentalJsfetch")
-switch("define", "nimExperimentalLinenoiseExtra")

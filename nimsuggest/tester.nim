@@ -334,7 +334,7 @@ proc main() =
     let x = os.paramStr(1)
     let xx = expandFilename x
     failures += runTest(xx)
-    # failures += runEpcTest(xx)
+    failures += runEpcTest(xx)
   else:
     for x in walkFiles(tpath / "t*.nim"):
       echo "Test ", x
