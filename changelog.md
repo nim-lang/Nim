@@ -457,6 +457,9 @@
   the official Nim style guide. To be enabled, this has to be combined either
   with `--styleCheck:error` or `--styleCheck:hint`.
 
+- `nim secret` and other tools relying on `rdstdin.readLineFromStdin` now supports
+  exiting via `^D` for platforms that support `linenoise`.
+
 
 
 ## Tool changes
