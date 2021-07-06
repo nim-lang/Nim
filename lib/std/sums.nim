@@ -1,17 +1,8 @@
-#
-#
-#            Nim's Runtime Library
-#        (c) Copyright 2019 b3liever
-#
-#    See the file "copying.txt", included in this
-#    distribution, for details about the copyright.
-
 ## Accurate summation functions.
-
 runnableExamples:
   import std/math
 
-  template `~=`(x, y: float): bool = abs(x - y) < 1e-4
+  template `=~`(x, y: float): bool = abs(x - y) < 1e-4
 
   let
     n = 1_000_000
@@ -23,15 +14,16 @@ runnableExamples:
 
   let result = first + small * n.float
 
-  doAssert abs(sum(data) - result) > 0.3
-  doAssert sumKbn(data) ~= result
-  doAssert sumPairs(data) ~= result
+  assert abs(sum(data) - result) > 0.3
+  assert sumKbn(data) =~ result
+  assert sumKbk(data) =~ result
+  assert sumPairs(data) =~ result
 
 ## See also
 ## ========
 ## * `math module <math.html>`_ for a standard `sum proc <math.html#sum,openArray[T]>`_
 
-func sumKbn*[T](x: openArray[T]): T =
+func sumKbn*[T: SomeFloat](x: openArray[T]): T =
   ## Kahan-Babuška-Neumaier summation: O(1) error growth, at the expense
   ## of a considerable increase in computational cost.
   ##
@@ -50,6 +42,33 @@ func sumKbn*[T](x: openArray[T]): T =
     sum = t
   result = sum + c
 
+func sumKbk*[T: SomeFloat](x: openArray[T]): T =
+  ## Kahan-Babuška-Klein variant, a second-order "iterative Kahan–Babuška algorithm".
+  ##
+  ## See:
+  ## * https://en.wikipedia.org/wiki/Kahan_summation_algorithm#Further_enhancements
+  var cs = T(0)
+  var ccs = T(0)
+  var sum = x[0]
+  for i in 1 ..< len(x):
+    var c: T
+    var cc: T
+    let xi = x[i]
+    var t = sum + xi
+    if abs(sum) >= abs(xi):
+      c = (sum - t) + xi
+    else:
+      c = (xi - t) + sum
+    sum = t
+    t = cs + c
+    if abs(cs) >= abs(c):
+      cc = (cs - t) + c
+    else:
+      cc = (c - t) + cs
+    cs = t
+    ccs = ccs + cc
+  result = sum + cs + ccs
+
 func sumPairwise[T](x: openArray[T], i0, n: int): T =
   if n < 128:
     result = x[i0]
@@ -59,7 +78,7 @@ func sumPairwise[T](x: openArray[T], i0, n: int): T =
     let n2 = n div 2
     result = sumPairwise(x, i0, n2) + sumPairwise(x, i0 + n2, n - n2)
 
-func sumPairs*[T](x: openArray[T]): T =
+func sumPairs*[T: SomeFloat](x: openArray[T]): T =
   ## Pairwise (cascade) summation of `x[i0:i0+n-1]`, with O(log n) error growth
   ## (vs O(n) for a simple loop) with negligible performance cost if
   ## the base case is large enough.
@@ -76,3 +95,59 @@ func sumPairs*[T](x: openArray[T]): T =
   ##   Analytic-Computational Methods in Applied Mathematics (2000).
   let n = len(x)
   if n == 0: T(0) else: sumPairwise(x, 0, n)
+
+func twoSum[T](a, b: T): (T, T) {.inline.} =
+  ## Møller-Knuth's algorithm.
+  ## Improve Deker's algorithm, no branch needed.
+  ## More operations, but still cheap.
+  result[0] = a + b
+  let z = result[0] - a
+  result[1] = (a - (result[0] - z)) + (b - z)
+
+func sumShewchuckAdd[T](v: openArray[T]): seq[T] {.inline.} =
+  for x in v:
+    var x = x
+    var i = 0
+    for y in result.items:
+      let (hi, lo) = twoSum(x, y)
+      if lo != 0:
+        result[i] = lo
+        inc(i)
+      x = hi
+    setLen(result, i + 1)
+    result[i] = x
+
+func sumShewchuck*[T: SomeFloat](x: openArray[T]): T =
+  ## Shewchuk's summation
+  ## Full precision sum of values in iterable. Returns the value of the
+  ## sum, rounded to the nearest representable floating-point number
+  ## using the round-half-to-even rule
+  ##
+  ## See also:
+  ## - https://docs.python.org/3/library/math.html#math.fsum
+  ## - https://code.activestate.com/recipes/393090/
+  ##
+  ## Reference:
+  ## Shewchuk, JR. (1996) Adaptive Precision Floating-Point Arithmetic and \
+  ## Fast Robust GeometricPredicates.
+  ## http://www-2.cs.cmu.edu/afs/cs/project/quake/public/papers/robust-arithmetic.ps
+  let partials = sumShewchuckAdd(x)
+  var n = partials.len
+  if n > 0:
+    dec(n)
+    result = partials[n]
+    var lo = 0.0
+    while n > 0:
+      var x = result
+      dec(n)
+      var y = partials[n]
+      let (hi, lo) = twoSum(x, y)
+      if lo != 0:
+        break
+      if n > 0 and
+          ((lo < 0 and partials[n - 1] < 0) or
+           (lo > 0 and partials[n - 1] > 0)):
+        y = lo + lo
+        x = hi + y
+        if y == x - hi:
+          result = x
