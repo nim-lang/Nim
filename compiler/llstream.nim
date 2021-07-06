@@ -8,15 +8,8 @@
 #
 
 ## Low-level streams for high performance.
-
-import
-  pathutils
-
-# support `useGnuReadline`, `useLinenoise` for backwards compatibility
-const hasRstdin = (defined(nimUseLinenoise) or defined(useLinenoise) or defined(useGnuReadline)) and
-  not defined(windows)
-
-when hasRstdin: import rdstdin
+import std/rdstdin
+import pathutils
 
 type
   TLLRepl* = proc (s: PLLStream, buf: pointer, bufLen: int): int
@@ -73,15 +66,6 @@ proc llStreamClose*(s: PLLStream) =
   of llsFile:
     close(s.f)
 
-when not declared(readLineFromStdin):
-  # fallback implementation:
-  proc readLineFromStdin(prompt: string, line: var string): bool =
-    stdout.write(prompt)
-    result = readLine(stdin, line)
-    if not result:
-      stdout.write("\n")
-      quit(0)
-
 proc endsWith*(x: string, s: set[char]): bool =
   var i = x.len-1
   while i >= 0 and x[i] == ' ': dec(i)
@@ -112,24 +96,24 @@ proc countTriples(s: string): int =
 proc llReadFromStdin(s: PLLStream, buf: pointer, bufLen: int): int =
   s.s = ""
   s.rd = 0
-  var line = newStringOfCap(120)
   var triples = 0
+  var data: ReadLine
+  var iter = 0
   while true:
-    let prompt = if s.s.len == 0: ">>> " else: "... "
-    var ret: ReadLineResult
-    readLineFromStdin(prompt, ret)
-    case ret.status
-    of lnCtrlUnkown:
-      let line = ret.line
-      s.s.add(line)
-      s.s.add("\n")
-      inc triples, countTriples(line)
-      if not continueLine(line, (triples and 1) == 1): break
-    of lnCtrlC: continue
-    of lnCtrlD:
+    iter.inc
+    data.prompt = if s.s.len == 0: ">>> " else: "... "
+    readLineFromStdin(data)
+    if isEndOfFile(data.status) or isError(data.status):
       s.closed = true
         # better than `quit()` which prevents using in a library or epilogue to complete
       break
+    elif isInterrupt(data.status): continue
+    elif isNormal(data.status):
+      s.s.add(data.line)
+      s.s.add("\n")
+      inc triples, countTriples(data.line)
+      if not continueLine(data.line, (triples and 1) == 1): break
+    else: doAssert false, $data.status
   inc(s.lineOffset)
   result = min(bufLen, s.s.len - s.rd)
   if result > 0:

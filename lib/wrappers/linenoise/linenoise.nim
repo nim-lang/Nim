@@ -7,6 +7,8 @@
 #    distribution, for details about the copyright.
 #
 
+import std/private/rdstdin_impl
+
 type
   Completions* = object
     len*: csize_t
@@ -32,15 +34,9 @@ proc printKeyCodes*() {.importc: "linenoisePrintKeyCodes".}
 
 proc free*(s: cstring) {.importc: "free", header: "<stdlib.h>".}
 
-# stable nim interface
-type Status* = enum
-  lnCtrlUnkown
-  lnCtrlC
-  lnCtrlD
-
 type ReadLineResult* = object
   line*: string
-  status*: Status
+  status*: ReadlineStatus
 
 # when defined(nimExperimentalLinenoiseExtra) and not defined(windows):
 when not defined(windows):
@@ -70,4 +66,7 @@ when not defined(windows):
     let buf = linenoiseExtra(prompt, data.addr)
     result.line = $buf
     free(buf)
-    result.status = data.status.ord.Status
+    if buf != nil:
+      result.status = lnNormal
+    else:
+      result.status = data.status.ord.ReadlineStatus
