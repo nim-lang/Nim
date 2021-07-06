@@ -25,13 +25,13 @@ runnableExamples("-r:off"):
 import std/private/rdstdin_impl
 
 type ReadLine* = object
-  # Opaque object to allow changing implementation
   prompt*: string
   line*: string
   status*: ReadlineStatus
 
 proc initReadLine*(prompt: string): ReadLine = ReadLine(prompt: prompt)
 
+# These APIs are recommended to allow growing `ReadlineStatus`.
 proc isError*(a: ReadlineStatus): bool {.inline.} =
   a == lnCtrlUnkown
 
