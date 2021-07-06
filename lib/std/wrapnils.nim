@@ -2,7 +2,7 @@
 ## * nil dereferences
 ## * field accesses with incorrect discriminant in case objects
 ##
-## A default value is returned in those cases.
+## `default(T)` is returned in those cases when evaluating an expression of type `T`.
 ## This simplifies code by reducing need for if-else branches.
 ##
 ## Note: experimental module, unstable API.
