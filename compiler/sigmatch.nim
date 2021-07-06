@@ -86,21 +86,6 @@ type
 
   TTypeRelFlags* = set[TTypeRelFlag]
 
-  TTypeRelation* = enum      # order is important!
-    isNone, isConvertible,
-    isIntConv,
-    isSubtype,
-    isSubrange,              # subrange of the wanted type; no type conversion
-                             # but apart from that counts as ``isSubtype``
-    isBothMetaConvertible    # generic proc parameter was matched against
-                             # generic type, e.g., map(mySeq, x=>x+1),
-                             # maybe recoverable by rerun if the parameter is
-                             # the proc's return value
-    isInferred,              # generic proc was matched against a concrete type
-    isInferredConvertible,   # same as above, but requiring proc CC conversion
-    isGeneric,
-    isFromIntLit,            # conversion *from* int literal; proven safe
-    isEqual
 
 const
   isNilConversion = isConvertible # maybe 'isIntConv' fits better?
@@ -640,23 +625,9 @@ proc procTypeRel(c: var TCandidate, f, a: PType): TTypeRelation =
         return isNone
     elif a[0] != nil:
       return isNone
+    
+    result = getProcConvMismatch(c.c.config, f, a, result)[1]
 
-    if tfNoSideEffect in f.flags and tfNoSideEffect notin a.flags:
-      return isNone
-    elif tfThread in f.flags and a.flags * {tfThread, tfNoSideEffect} == {} and
-        optThreadAnalysis in c.c.config.globalOptions:
-      # noSideEffect implies ``tfThread``!
-      return isNone
-    elif f.flags * {tfIterator} != a.flags * {tfIterator}:
-      return isNone
-    elif f.callConv != a.callConv:
-      # valid to pass a 'nimcall' thingie to 'closure':
-      if f.callConv == ccClosure and a.callConv == ccNimCall:
-        result = if result == isInferred: isInferredConvertible
-                 elif result == isBothMetaConvertible: isBothMetaConvertible
-                 else: isConvertible
-      else:
-        return isNone
     when useEffectSystem:
       if compatibleEffects(f, a) != efCompat: return isNone
     when defined(drnim):
