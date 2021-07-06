@@ -267,7 +267,8 @@ proc listGcUnsafety(s: PSym; onlyWarning: bool; conf: ConfigRef) =
   var cycleCheck = initIntSet()
   listGcUnsafety(s, onlyWarning, cycleCheck, conf)
 
-proc listSideEffects(result: var string; s: PSym; cycleCheck: var IntSet; conf: ConfigRef; context: PContext; indentLevel: int) =
+proc listSideEffects(result: var string; s: PSym; cycleCheck: var IntSet;
+                     conf: ConfigRef; context: PContext; indentLevel: int) =
   template addHint(msg; lineInfo; sym; level = indentLevel) =
     result.addf "$# $# Hint: '$#' $#\n" % [repeat(">", level), conf $ lineInfo, sym, msg]
   if context.sideEffects.hasKey(s.id):
