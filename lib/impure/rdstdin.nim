@@ -46,13 +46,18 @@ proc isNormal*(a: ReadlineStatus): bool {.inline.} =
 
 import std/os
 
-const hasReadline = not (defined(windows) or defined(genode)) and fileExists(currentSourcePath.parentDir.parentDir / "wrappers/linenoise/linenoise.c")
+const hasLinenoise = not (defined(windows) or defined(genode)) and fileExists(currentSourcePath.parentDir.parentDir / "wrappers/linenoise/linenoise.c")
 
-when hasReadline:
+when hasLinenoise:
   import linenoise
 
 proc readLineFromStdin*(data: var ReadLine) {.tags: [ReadIOEffect, WriteIOEffect].} =
-  when hasReadline:
+  ## Reads a line from stdin into `data.line`. May raise `IOError`.
+  ##
+  ## A line of text may be delimited by ``\r``, ``\n`` or ``\r\n``, which are not
+  ## part of the returned string. `data.status` indicates the return status.
+  ## On platforms that support `linenoise`, it will be used.
+  when hasLinenoise:
     var data2 = ReadLineResult(line: data.line)
     readLineStatus(data.prompt, data2)
     data.line = data2.line
@@ -65,16 +70,13 @@ proc readLineFromStdin*(data: var ReadLine) {.tags: [ReadIOEffect, WriteIOEffect
     data.status = if ok: lnNormal else: lnCtrlUnkown
 
 proc readLineFromStdin*(prompt: string, line: var string): bool =
-  ## Reads a `line` from stdin. May throw an IO exception.
-  ## A line of text may be delimited by `CR`, `LF` or
-  ## `CRLF`. The newline character(s) are not part of the returned string.
-  ## Returns `false` if the end of the file has been reached, `true`
-  ## otherwise. If `false` is returned `line` contains no new data.
+  ## Inline overload that returns false on failure.
   var data = ReadLine(prompt: prompt)
+  readLineFromStdin(data)
   line = data.line
   result = not data.status.isError()
 
 proc readLineFromStdin*(prompt: string): string {.inline.} =
-  ## Reads a line from stdin.
+  ## Outline overload, raises `IOError` on failure.
   if not readLineFromStdin(prompt, result):
     raise newException(IOError, "Linenoise returned nil")

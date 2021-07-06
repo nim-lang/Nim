@@ -345,6 +345,10 @@
 
 - Added `dom.setInterval`, `dom.clearInterval` overloads.
 
+- `rdstdin.readLineFromStdin` (used by `nim secret`) now supports `^D` to indicate
+  end of file for platforms that support `linenoise`.
+
+
 ## Language changes
 
 - `nimscript` now handles `except Exception as e`.
@@ -456,10 +460,6 @@
   enforces that every symbol is written as it was declared, not enforcing
   the official Nim style guide. To be enabled, this has to be combined either
   with `--styleCheck:error` or `--styleCheck:hint`.
-
-- `nim secret` and other tools relying on `rdstdin.readLineFromStdin` now supports
-  exiting via `^D` for platforms that support `linenoise`.
-
 
 
 ## Tool changes
