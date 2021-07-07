@@ -1,6 +1,6 @@
 ﻿#? stdtmpl(subsChar='?') | standard
 #proc generateBuildShellScript(c: ConfigData): string =
-#  result = "#! /bin/sh\n# Generated from niminst\n" &
+#  result = "#!/bin/sh\n# Generated from niminst\n" &
 #           "# Template is in tools/niminst/buildsh.nimf\n" &
 #           "# To regenerate run ``niminst csource`` or ``koch csource``\n"
 
