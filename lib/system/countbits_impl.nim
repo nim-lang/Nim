@@ -9,7 +9,7 @@
 
 ## Contains the used algorithms for counting bits.
 
-from std/private/vmutils import forwardImpl, toUnsigned
+from std/private/vmutils import forwardImpl, castToUnsigned
 
 
 const useBuiltins* = not defined(noIntrinsicsBitOpts)
@@ -66,7 +66,7 @@ func countSetBitsImpl*(x: SomeInteger): int {.inline.} =
   # TODO: figure out if ICC support _popcnt32/_popcnt64 on platform without POPCNT.
   # like GCC and MSVC
   when x is SomeSignedInt:
-    let x = x.toUnsigned
+    let x = x.castToUnsigned
   when nimvm:
     result = forwardImpl(countBitsImpl, x)
   else:

@@ -10,7 +10,7 @@
 # Compilerprocs for strings that do not depend on the string implementation.
 
 import std/private/digitsutils
-
+import std/private/vmutils
 
 proc cmpStrings(a, b: string): int {.inline, compilerproc.} =
   let alen = a.len
@@ -43,28 +43,7 @@ proc hashString(s: string): int {.compilerproc.} =
   h = h + h shl 15
   result = cast[int](h)
 
-when true:
-  proc toUnsignedImpl(T: typedesc[SomeInteger]): auto =
-    when T is int8: default(uint8)
-    elif T is int16: default(uint16)
-    elif T is int32: default(uint32)
-    elif T is int64: default(uint64)
-    elif T is int: default(uint)
-    else: default(T)
-
-  proc toSignedImpl(T: typedesc[SomeInteger]): auto =
-    when T is uint8: default(int8)
-    elif T is uint16: default(int16)
-    elif T is uint32: default(int32)
-    elif T is uint64: default(int64)
-    elif T is uint: default(int)
-    else: default(T)
-
-  template toUnsigned(T: typedesc): untyped = typeof(toUnsignedImpl(T))
-  template toSigned(T: typedesc): untyped = typeof(toSignedImpl(T))
-
-# proc absUnsigned[T](x: int): toUnsigned2[T] {.inline.} =
-proc absUnsigned[T](x: int): toUnsigned(T) {.inline.} =
+proc absUnsigned[T](x: T): auto {.inline.} =
   ## computes `abs(x)` as unsigned without branching, taking care of `T.low`
   type T2 = toUnsigned(T)
   result = (not cast[T2](x)) + 1
