@@ -64,7 +64,8 @@ proc addInt*(result: var string; x: int64) =
   ##   a.addInt(b) # a <- "12345"
   var num: uint64
   if x < 0:
-    num = absUnsigned(x)
+    # num = absUnsigned(x)
+    num =  (not cast[uint64](x)) + 1
     let base = result.len
     setLen(result, base + 1)
     result[base] = '-'
