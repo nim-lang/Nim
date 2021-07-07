@@ -223,6 +223,15 @@ proc rand*(r: var Rand; max: Natural): int {.benign.} =
     if x <= randMax - (randMax mod Ui(max)):
       return int(x mod (uint64(max) + 1u64))
 
+proc rand*(r: var Rand; max: uint64): uint64 {.benign.} =
+  ## Overload for `uint`.
+  if max == 0: return
+  elif max == uint64.high: return next(r)
+  while true:
+    let x = next(r)
+    if x <= randMax - (randMax mod max):
+      return x mod (max + 1)
+
 proc rand*(max: int): int {.benign.} =
   ## Returns a random integer in the range `0..max`.
   ##
@@ -242,6 +251,9 @@ proc rand*(max: int): int {.benign.} =
     randomize(123)
     assert [rand(100), rand(100)] == [96, 63] # implementation defined
 
+  rand(state, max)
+
+proc rand*(max: uint64): uint64 {.benign.} =
   rand(state, max)
 
 proc rand*(r: var Rand; max: range[0.0 .. high(float)]): float {.benign.} =
@@ -306,7 +318,8 @@ proc rand*[T: Ordinal or SomeFloat](r: var Rand; x: HSlice[T, T]): T =
   when T is SomeFloat:
     result = rand(r, x.b - x.a) + x.a
   else: # Integers and Enum types
-    result = T(rand(r, int(x.b) - int(x.a)) + int(x.a))
+    # TODO: js
+    result = cast[T](rand(r, cast[uint64](x.b) - cast[uint64](x.a)) + cast[uint64](x.a))
 
 proc rand*[T: Ordinal or SomeFloat](x: HSlice[T, T]): T =
   ## For a slice `a..b`, returns a value in the range `a..b`.
