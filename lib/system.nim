@@ -1779,7 +1779,6 @@ when not defined(js) and defined(nimV2):
       align: int
       name: cstring
       traceImpl: pointer
-      disposeImpl: pointer
       typeInfoV1: pointer # for backwards compat, usually nil
       flags: int
     PNimTypeV2 = ptr TNimTypeV2

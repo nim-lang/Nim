@@ -3841,7 +3841,7 @@ the operator is in scope (including if it is private).
   doAssert witness == 3
 
 Type bound operators currently include:
-`=destroy`, `=copy`, `=sink`, `=trace`, `=dispose`, `=deepcopy`
+`=destroy`, `=copy`, `=sink`, `=trace`, `=deepcopy`
 (some of which are still implementation defined and not yet documented).
 
 For more details on some of those procs, see
