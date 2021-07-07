@@ -958,7 +958,9 @@ proc bindAddr*(socket: Socket, port = Port(0), address = "") {.
   var aiList = getAddrInfo(realaddr, port, socket.domain)
   if bindAddr(socket.fd, aiList.ai_addr, aiList.ai_addrlen.SockLen) < 0'i32:
     freeaddrinfo(aiList)
-    raiseOSError(osLastError(), "address: $# port: $#" % [address, $port])
+    var address2: string
+    address2.addQuoted address
+    raiseOSError(osLastError(), "address: $# port: $#" % [address2, $port])
   freeaddrinfo(aiList)
 
 proc acceptAddr*(server: Socket, client: var owned(Socket), address: var string,

@@ -80,8 +80,9 @@ proc newOSError*(
   e.msg = osErrorMsg(errorCode)
   if additionalInfo.len > 0:
     if e.msg.len > 0 and e.msg[^1] != '\n': e.msg.add '\n'
-    e.msg.add  "Additional info: "
-    e.msg.addQuoted additionalInfo
+    e.msg.add "Additional info: "
+    e.msg.add additionalInfo
+    e.msg.add "." # makes it obvious where line ends in case of trailing spaces.
   if e.msg == "":
     e.msg = "unknown OS error"
   return e
