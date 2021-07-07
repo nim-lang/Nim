@@ -423,6 +423,7 @@
 
 - TLS: OSX now uses native TLS (`--tlsEmulation:off`), TLS now works with importcpp non-POD types,
   such types must use `.cppNonPod` and `--tlsEmulation:off`should be used.
+
 - Added `--lean` compiler flag to aggressively optimize for size; stdlib/user code
   can query this via `compileOption("lean")` to produce leaner messages in error messages.
 
