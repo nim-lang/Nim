@@ -725,7 +725,7 @@ proc processSwitch*(switch, arg: string, pass: TCmdLinePass, info: TLineInfo;
   of "lean":
     processOnOffSwitch(conf, {optLean}, arg, pass, info)
     if optLean in conf.options:
-      conf.globalOptions.excl optListFullPaths
+      conf.filenameOption = foCanonical
       excl(conf.options, optStackTrace)
       excl(conf.options, optOptimizeSpeed)
       incl(conf.options, optOptimizeSize)
