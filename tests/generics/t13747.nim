@@ -1,6 +1,6 @@
 discard """
   joinable: false
-  matrix: "-d:t13747_case1 -d:t13747_case2 -d:t13747_case3 -d:t13747_case4 -d:t13747_case5 -d:t13747_case6 -d:t13747_case7 -d:t13747_case8 -d:t13747_case9 -d:t13747_case10 -d:t13747_case11"
+  matrix: "-d:t13747_case1; -d:t13747_case2; -d:t13747_case3; -d:t13747_case4; -d:t13747_case5; -d:t13747_case6; -d:t13747_case7; -d:t13747_case8; -d:t13747_case9; -d:t13747_case10; -d:t13747_case11; -d:t13747_case12; -d:t13747_case13"
   # this allows testing each one individually; each of those (except t13747_case1, t13747_case7, t13747_case8) were failing
 """
 
@@ -165,7 +165,7 @@ when defined t13747_case11:
     {.warning[resultshadowed]: off.}:
       discard
   const off = "asdf"
-  fn1(1)
+  fn2(1)
 
 when defined t13747_case12:
   # more pragmas
@@ -182,8 +182,21 @@ when defined t13747_case12:
     {.push warnings: off.}
     {.push warning[GcMem]: off, warning[Uninit]: off.}
   block:
-    doAssert not compiles(fn1(1))
+    doAssert not compiles(fn3(1))
     const off2 = off
     {.pragma: noSideEffect2, noSideEffect.}
-    doAssert compiles(fn1(1))
-    fn1(1)
+    doAssert compiles(fn3(1))
+    fn3(1)
+
+when defined t13747_case13:
+  proc foo[T](a: T = low(T)) = discard
+  proc bar[A](a: A) =
+    foo[A]()
+  foo[int]()
+  bar(1.0)
+
+  proc foo2[T](a = low(T)) = discard
+  proc bar2[A](a: A) =
+    foo2[A]()
+  bar2(2)
+  foo2[int]()

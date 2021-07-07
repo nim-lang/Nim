@@ -370,6 +370,7 @@ proc generateInstance(c: PContext, fn: PSym, pt: TIdTable,
 
   # mixin scope:
   openScope(c)
+  c.genericInstStack.add result
   fillMixinScope(c)
 
   openScope(c)
@@ -422,6 +423,7 @@ proc generateInstance(c: PContext, fn: PSym, pt: TIdTable,
   popProcCon(c)
   popInfoContext(c.config)
   closeScope(c)           # close scope for parameters
+  discard c.genericInstStack.pop
   closeScope(c)           # close scope for 'mixin' declarations
   popOwner(c)
   c.currentScope = oldScope

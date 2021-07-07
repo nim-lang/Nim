@@ -66,7 +66,7 @@ pkg "fragments", "nim c -r fragments/dsl.nim"
 pkg "fusion"
 pkg "gara"
 pkg "glob"
-pkg "ggplotnim", "nim c -d:noCairo -r tests/tests.nim", allowFailure = true # pending https://github.com/mratsim/Arraymancer/pull/508
+pkg "ggplotnim", "nim c -d:noCairo -r tests/tests.nim", allowFailure = true # pending https://github.com/Vindaar/ggplotnim/pull/125
 pkg "gittyup", "nimble test", "https://github.com/disruptek/gittyup", allowFailure = true
 pkg "gnuplot", "nim c gnuplot.nim"
 # pkg "gram", "nim c -r --gc:arc --define:danger tests/test.nim", "https://github.com/disruptek/gram"
@@ -113,7 +113,7 @@ pkg "nimx", "nim c --threads:on test/main.nim", allowFailure = true
 pkg "nitter", "nim c src/nitter.nim", "https://github.com/zedeus/nitter"
 pkg "norm", "nim c -r tests/sqlite/trows.nim"
 pkg "npeg", "nimble testarc"
-pkg "numericalnim", "nim c -r tests/test_integrate.nim",  allowFailure = true # pending https://github.com/mratsim/Arraymancer/pull/508
+pkg "numericalnim", "nim c -r tests/test_integrate.nim"
 pkg "optionsutils"
 pkg "ormin", "nim c -o:orminn ormin.nim"
 pkg "parsetoml"
