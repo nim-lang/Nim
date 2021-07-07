@@ -27,7 +27,7 @@
 
 import macros
 import std/private/since
-from std/private/bitops_utils import forwardImpl, toUnsigned
+from std/private/bitops_utils import forwardImpl, castToUnsigned
 
 func bitnot*[T: SomeInteger](x: T): T {.magic: "BitnotI".}
   ## Computes the `bitwise complement` of the integer `x`.
@@ -72,7 +72,7 @@ func bitsliced*[T: SomeInteger](v: T; slice: Slice[int]): T {.inline, since: (1,
 
   let
     upmost = sizeof(T) * 8 - 1
-    uv     = when v is SomeUnsignedInt: v else: v.toUnsigned
+    uv     = v.castToUnsigned
   (uv shl (upmost - slice.b) shr (upmost - slice.b + slice.a)).T
 
 proc bitslice*[T: SomeInteger](v: var T; slice: Slice[int]) {.inline, since: (1, 3).} =
@@ -84,7 +84,7 @@ proc bitslice*[T: SomeInteger](v: var T; slice: Slice[int]) {.inline, since: (1,
 
   let
     upmost = sizeof(T) * 8 - 1
-    uv     = when v is SomeUnsignedInt: v else: v.toUnsigned
+    uv     = v.castToUnsigned
   v = (uv shl (upmost - slice.b) shr (upmost - slice.b + slice.a)).T
 
 func toMask*[T: SomeInteger](slice: Slice[int]): T {.inline, since: (1, 3).} =
@@ -95,10 +95,7 @@ func toMask*[T: SomeInteger](slice: Slice[int]): T {.inline, since: (1, 3).} =
 
   let
     upmost = sizeof(T) * 8 - 1
-    bitmask = when T is SomeUnsignedInt:
-                bitnot(0.T)
-              else:
-                bitnot(0.T).toUnsigned
+    bitmask = bitnot(0.T).castToUnsigned
   (bitmask shl (upmost - slice.b + slice.a) shr (upmost - slice.b)).T
 
 proc masked*[T: SomeInteger](v, mask :T): T {.inline, since: (1, 3).} =
@@ -506,7 +503,7 @@ func parityBits*(x: SomeInteger): int {.inline.} =
   # Can be used a base if creating ASM version.
   # https://stackoverflow.com/questions/21617970/how-to-check-if-value-has-even-parity-of-bits-or-odd
   when x is SomeSignedInt:
-    let x = x.toUnsigned
+    let x = x.castToUnsigned
   when nimvm:
     result = forwardImpl(parityImpl, x)
   else:
@@ -530,7 +527,7 @@ func firstSetBit*(x: SomeInteger): int {.inline.} =
 
   # GCC builtin 'builtin_ffs' already handle zero input.
   when x is SomeSignedInt:
-    let x = x.toUnsigned
+    let x = x.castToUnsigned
   when nimvm:
     when noUndefined:
       if x == 0:
@@ -573,7 +570,7 @@ func fastLog2*(x: SomeInteger): int {.inline.} =
     doAssert fastLog2(0b0000_1111'u8) == 3
 
   when x is SomeSignedInt:
-    let x = x.toUnsigned
+    let x = x.castToUnsigned
   when noUndefined:
     if x == 0:
       return -1
@@ -616,7 +613,7 @@ func countLeadingZeroBits*(x: SomeInteger): int {.inline.} =
     doAssert countLeadingZeroBits(0b0000_1111'u8) == 4
 
   when x is SomeSignedInt:
-    let x = x.toUnsigned
+    let x = x.castToUnsigned
   when noUndefined:
     if x == 0:
       return 0
@@ -645,7 +642,7 @@ func countTrailingZeroBits*(x: SomeInteger): int {.inline.} =
     doAssert countTrailingZeroBits(0b0000_1111'u8) == 0
 
   when x is SomeSignedInt:
-    let x = x.toUnsigned
+    let x = x.castToUnsigned
   when noUndefined:
     if x == 0:
       return 0

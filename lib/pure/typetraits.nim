@@ -31,7 +31,7 @@ runnableExamples:
   assert C[float] is HoleyEnum
 
 proc name*(t: typedesc): string {.magic: "TypeTrait".} =
-  ## Returns the name of the given type.
+  ## Returns the name of `t`.
   ##
   ## Alias for `system.\`$\`(t) <dollars.html#$,typedesc>`_ since Nim v0.20.
   runnableExamples:
@@ -39,7 +39,7 @@ proc name*(t: typedesc): string {.magic: "TypeTrait".} =
     doAssert name(seq[string]) == "seq[string]"
 
 proc arity*(t: typedesc): int {.magic: "TypeTrait".} =
-  ## Returns the arity of the given type. This is the number of "type"
+  ## Returns the arity of `t`. This is the number of "type"
   ## components or the number of generic parameters a given type `t` has.
   runnableExamples:
     doAssert arity(int) == 0
@@ -88,8 +88,7 @@ proc stripGenericParams*(t: typedesc): typedesc {.magic: "TypeTrait".} =
     doAssert stripGenericParams(int) is int
 
 proc supportsCopyMem*(t: typedesc): bool {.magic: "TypeTrait".}
-  ## This trait returns true if the type `t` is safe to use for
-  ## `copyMem`:idx:.
+  ## Returns true if `t` is safe to use for `copyMem`:idx:.
   ##
   ## Other languages name a type like these `blob`:idx:.
 
@@ -285,9 +284,38 @@ since (1, 1):
 proc hasClosureImpl(n: NimNode): bool = discard "see compiler/vmops.nim"
 
 proc hasClosure*(fn: NimNode): bool {.since: (1, 5, 1).} =
-  ## Return true if the func/proc/etc `fn` has `closure`.
+  ## Returns true if the func/proc/etc `fn` has `closure`.
   ## `fn` has to be a resolved symbol of kind `nnkSym`. This
   ## implies that the macro that calls this proc should accept `typed`
   ## arguments and not `untyped` arguments.
   expectKind fn, nnkSym
   result = hasClosureImpl(fn)
+
+template toUnsigned*(T: typedesc[SomeInteger and not range]): untyped =
+  ## Returns an unsigned type with same bit size as `T`.
+  runnableExamples:
+    assert int8.toUnsigned is uint8
+    assert uint.toUnsigned is uint
+    assert int.toUnsigned is uint
+    # range types are currently unsupported:
+    assert not compiles(toUnsigned(range[0..7]))
+  when T is int8: uint8
+  elif T is int16: uint16
+  elif T is int32: uint32
+  elif T is int64: uint64
+  elif T is int: uint
+  else: T
+
+template toSigned*(T: typedesc[SomeInteger and not range]): untyped =
+  ## Returns a signed type with same bit size as `T`.
+  runnableExamples:
+    assert int8.toSigned is int8
+    assert uint16.toSigned is int16
+    # range types are currently unsupported:
+    assert not compiles(toSigned(range[0..7]))
+  when T is uint8: int8
+  elif T is uint16: int16
+  elif T is uint32: int32
+  elif T is uint64: int64
+  elif T is uint: int
+  else: T

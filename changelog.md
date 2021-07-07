@@ -143,6 +143,7 @@
   Added `HoleyEnum` for enums with holes, `OrdinalEnum` for enums without holes.
   Added `hasClosure`.
   Added `pointerBase` to return `T` for `ref T | ptr T`.
+  Added `toSigned`, `toUnsigned`.
 
 - `prelude` now works with the JavaScript target.
   Added `sequtils` import to `prelude`.

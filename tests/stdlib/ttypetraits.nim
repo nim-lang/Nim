@@ -2,9 +2,9 @@ discard """
   targets: "c cpp js"
 """
 
+# xxx merge with tests/metatype/ttypetraits.nim
+
 import std/typetraits
-
-
 
 macro testClosure(fn: typed, flag: static bool) =
   if flag:
