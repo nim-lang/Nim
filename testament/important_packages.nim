@@ -156,5 +156,5 @@ pkg "winim", allowFailure = true
 pkg "with"
 pkg "ws"
 pkg "yaml", "nim build"
-pkg "zero_functional", "nim c -r -d:nimNoLentIterators test.nim", allowFailure = true # pending https://github.com/zero-functional/zero-functional/pull/70
+pkg "zero_functional", "nim c -r -d:nimNoLentIterators test.nim"
 pkg "zippy"
