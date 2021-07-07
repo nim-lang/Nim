@@ -100,6 +100,8 @@
 
 ## Standard library additions and changes
 
+- Added module `std/smartptrs`.
+
 - `strformat`:
   added support for parenthesized expressions.
   added support for const string's instead of just string literals
