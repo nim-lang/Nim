@@ -1429,7 +1429,7 @@ proc commandDoc*(cache: IdentCache, conf: ConfigRef) =
 proc commandRstAux(cache: IdentCache, conf: ConfigRef;
                    filename: AbsoluteFile, outExt: string) =
   var filen = addFileExt(filename, "txt")
-  var d = newDocumentor(filen, cache, conf, outExt, isPureRst=true)
+  let d = newDocumentor(filen, cache, conf, outExt, isPureRst = true)
   let rst = parseRst(readFile(filen.string), filen.string,
                      line=LineRstInit, column=ColRstInit,
                      conf, d.sharedState)
