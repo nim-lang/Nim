@@ -1065,7 +1065,7 @@ proc createTypeBoundOps(g: ModuleGraph; c: PContext; orig: PType; info: TLineInf
   # 4. We have a custom destructor.
   # 5. We have a (custom) generic destructor.
 
-  # we do not generate '=trace' nor '=dispose' procs if we
+  # we do not generate '=trace' procs if we
   # have the cycle detection disabled, saves code size.
   let lastAttached = if g.config.selectedGC == gcOrc: attachedTrace
                      else: attachedSink

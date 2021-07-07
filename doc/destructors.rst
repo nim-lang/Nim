@@ -42,6 +42,12 @@ written as:
       for i in 0..<x.len: `=destroy`(x.data[i])
       dealloc(x.data)
 
+  proc `=trace`[T](x: var myseq[T]; env: pointer) =
+    # `=trace` allows the cycle collector `--gc:orc`
+    # to understand how to trace the object graph.
+    if x.data != nil:
+      for i in 0..<x.len: `=trace`(x.data[i], env)
+
   proc `=copy`*[T](a: var myseq[T]; b: myseq[T]) =
     # do nothing for self-assignments:
     if a.data == b.data: return
