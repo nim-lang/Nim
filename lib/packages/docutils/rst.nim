@@ -510,7 +510,7 @@ type
                                   # number, order of occurrence
     msgHandler: MsgHandler      # How to handle errors.
     findFile: FindFileHandler   # How to find files.
-    files*: seq[string]         # map FileIndex -> file name (for storing
+    filenames*: seq[string]         # map FileIndex -> file name (for storing
                                 # file names for warnings after 1st stage)
     currFileIdx: FileIndex      # current index in `files`
     hasToc*: bool
