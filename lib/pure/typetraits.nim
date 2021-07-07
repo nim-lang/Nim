@@ -30,6 +30,14 @@ runnableExamples:
   type C[T] = enum h0 = 2, h1 = 4
   assert C[float] is HoleyEnum
 
+runnableExamples:
+  # `toSigned`, `toUnsigned`
+  assert int8.toSigned is int8
+  assert int8.toUnsigned is uint8
+  assert uint.toUnsigned is uint
+  assert int.toUnsigned is uint
+  assert $int32.toUnsigned == "uint32"
+
 proc name*(t: typedesc): string {.magic: "TypeTrait".} =
   ## Returns the name of the given type.
   ##
@@ -284,3 +292,7 @@ proc hasClosure*(fn: NimNode): bool {.since: (1, 5, 1).} =
   ## arguments and not `untyped` arguments.
   expectKind fn, nnkSym
   result = hasClosureImpl(fn)
+
+from std/private/vmutils import toUnsigned, toSigned
+
+export toUnsigned, toSigned

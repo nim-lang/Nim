@@ -10,7 +10,7 @@
 # Compilerprocs for strings that do not depend on the string implementation.
 
 import std/private/digitsutils
-import std/private/vmutils
+
 
 proc cmpStrings(a, b: string): int {.inline, compilerproc.} =
   let alen = a.len
@@ -43,17 +43,6 @@ proc hashString(s: string): int {.compilerproc.} =
   h = h + h shl 15
   result = cast[int](h)
 
-proc absUnsigned[T](x: T): auto {.inline.} =
-  ## computes `abs(x)` as unsigned without branching, taking care of `T.low`
-  type T2 = toUnsigned(T)
-  result = (not cast[T2](x)) + 1
-  when false:
-    # faster than branching via:
-    if x == low(T):
-      num = T2(x)
-    else:
-      num = T2(-x)
-
 proc addInt*(result: var string; x: int64) =
   ## Converts integer to its string representation and appends it to `result`.
   ##
@@ -63,9 +52,12 @@ proc addInt*(result: var string; x: int64) =
   ##     b = 45
   ##   a.addInt(b) # a <- "12345"
   var num: uint64
+
   if x < 0:
-    # num = absUnsigned(x)
-    num =  (not cast[uint64](x)) + 1
+    if x == low(int64):
+      num = uint64(x)
+    else:
+      num = uint64(-x)
     let base = result.len
     setLen(result, base + 1)
     result[base] = '-'

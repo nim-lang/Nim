@@ -1,3 +1,5 @@
+# xxx rename to something more meaningful
+
 template forwardImpl*(impl, arg) {.dirty.} =
   when sizeof(x) <= 4:
     when x is SomeSignedInt:
