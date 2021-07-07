@@ -79,7 +79,7 @@ type
   RstNodeSeq* = seq[PRstNode]
   PFootnoteRefInfo* = ref object ## location inside a file, only for
                                  ## `rnFootnoteRef` (packed for memory saving)
-    li*: TLineInfo
+    info*: TLineInfo
     order*: int
   RstNode* {.acyclic, final.} = object ## AST node (result of RST parsing)
     case kind*: RstNodeKind ## the node's kind
@@ -101,7 +101,7 @@ type
                               ## auto-numbered ones without a label)
     of rnRef, rnSubstitutionReferences,
         rnInterpretedText, rnField, rnInlineCode, rnCodeBlock:
-      li*: TLineInfo          ## To have line/column info for warnings at
+      info*: TLineInfo        ## To have line/column info for warnings at
                               ## nodes that are post-processed after parsing
     of rnFootnoteRef:
       loc*: PFootnoteRefInfo  ## almost the same
@@ -119,10 +119,10 @@ proc newRstNode*(kind: RstNodeKind, sons: seq[PRstNode] = @[],
   result = PRstNode(kind: kind, sons: sons)
   result.anchor = anchor
 
-proc newRstNode*(kind: RstNodeKind, li: TLineInfo,
+proc newRstNode*(kind: RstNodeKind, info: TLineInfo,
                  sons: seq[PRstNode] = @[]): PRstNode =
   result = PRstNode(kind: kind, sons: sons)
-  result.li = li
+  result.info = info
 
 proc newRstNode*(kind: RstNodeKind, s: string): PRstNode {.deprecated.} =
   assert kind in {rnLeaf, rnSmiley}

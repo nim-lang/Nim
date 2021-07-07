@@ -458,7 +458,7 @@ Some chapter
     var rstGenera: RstGenerator
     var output: string
     let (rst, files, _) = rstParse(input, "", 1, 1, {})
-    rstGenera.initRstGenerator(outHtml, defaultConfig(), "input", files=files)
+    rstGenera.initRstGenerator(outHtml, defaultConfig(), "input", filenames = files)
     rstGenera.renderRstToOut(rst, output)
     doAssert rstGenera.meta[metaTitle] == "Title0"
     doAssert rstGenera.meta[metaSubTitle] == "SubTitle0"
@@ -485,7 +485,7 @@ Some chapter
     var rstGenera: RstGenerator
     var output: string
     let (rst, files, _) = rstParse(input, "", 1, 1, {})
-    rstGenera.initRstGenerator(outHtml, defaultConfig(), "input", files=files)
+    rstGenera.initRstGenerator(outHtml, defaultConfig(), "input", filenames=files)
     rstGenera.renderRstToOut(rst, output)
     doAssert rstGenera.meta[metaTitle] == ""
     doAssert rstGenera.meta[metaSubTitle] == ""
@@ -515,7 +515,7 @@ Some chapter
     var rstGenera: RstGenerator
     var output: string
     let (rst, files, _) = rstParse(input, "", 1, 1, {roSupportMarkdown})
-    rstGenera.initRstGenerator(outHtml, defaultConfig(), "input", files=files)
+    rstGenera.initRstGenerator(outHtml, defaultConfig(), "input", filenames=files)
     rstGenera.renderRstToOut(rst, output)
     doAssert rstGenera.meta[metaTitle] == "Title0"
     doAssert rstGenera.meta[metaSubTitle] == ""
@@ -671,7 +671,7 @@ Test1
     var rstGenera: RstGenerator
     var output: string
     let (rst, files, _) = rstParse(input, "", 1, 1, {})
-    rstGenera.initRstGenerator(outHtml, defaultConfig(), "input", files=files)
+    rstGenera.initRstGenerator(outHtml, defaultConfig(), "input", filenames=files)
     rstGenera.renderRstToOut(rst, output)
     doAssert rstGenera.meta[metaTitle] == "Test1"
       # check that title was not overwritten to '|'

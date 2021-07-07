@@ -76,7 +76,7 @@ type
     msgHandler*: MsgHandler
     outDir*: string      ## output directory, initialized by docgen.nim
     destFile*: string    ## output (HTML) file, initialized by docgen.nim
-    files*: seq[string]
+    filenames*: seq[string]
     filename*: string         ## source Nim or Rst file
     meta*: array[MetaEnum, string]
     currentSection: string ## \
@@ -114,7 +114,7 @@ proc initRstGenerator*(g: var RstGenerator, target: OutputTarget,
                        config: StringTableRef, filename: string,
                        findFile: FindFileHandler = nil,
                        msgHandler: MsgHandler = nil,
-                       files: seq[string] = @[]) =
+                       filenames: seq[string] = @[]) =
   ## Initializes a ``RstGenerator``.
   ##
   ## You need to call this before using a ``RstGenerator`` with any other
@@ -160,7 +160,7 @@ proc initRstGenerator*(g: var RstGenerator, target: OutputTarget,
   g.target = target
   g.tocPart = @[]
   g.filename = filename
-  g.files = files
+  g.filenames = filenames
   g.splitAfter = 20
   g.theIndex = ""
   g.findFile = findFile
@@ -909,7 +909,7 @@ proc renderSmiley(d: PDoc, n: PRstNode, result: var string) =
 
 proc getField1Int(d: PDoc, n: PRstNode, fieldName: string): int =
   template err(msg: string) =
-    rstMessage(d.files, d.msgHandler, n.li, meInvalidRstField, msg)
+    rstMessage(d.filenames, d.msgHandler, n.info, meInvalidRstField, msg)
   let value = n.getFieldValue
   var number: int
   let nChars = parseInt(value, number)
@@ -957,7 +957,8 @@ proc parseCodeBlockField(d: PDoc, n: PRstNode, params: var CodeBlockParams) =
     params.langStr = n.getFieldValue.strip
     params.lang = params.langStr.getSourceLanguage
   else:
-    rstMessage(d.files, d.msgHandler, n.li, mwUnsupportedField, n.getArgument)
+    rstMessage(d.filenames, d.msgHandler, n.info, mwUnsupportedField,
+               n.getArgument)
 
 proc parseCodeBlockParams(d: PDoc, n: PRstNode): CodeBlockParams =
   ## Iterates over all code block fields and returns processed params.
@@ -1068,7 +1069,8 @@ proc renderCode(d: PDoc, n: PRstNode, result: var string) =
   dispA(d.target, result, blockStart, blockStart, [])
   if params.lang == langNone:
     if len(params.langStr) > 0:
-      rstMessage(d.files, d.msgHandler, n.li, mwUnsupportedLanguage, params.langStr)
+      rstMessage(d.filenames, d.msgHandler, n.info, mwUnsupportedLanguage,
+                 params.langStr)
     for letter in m.text: escChar(d.target, result, letter, emText)
   else:
     renderCodeLang(result, params.lang, m.text, d.target)
@@ -1563,10 +1565,11 @@ proc rstToHtml*(s: string, options: RstParseOptions,
     result = ""
 
   const filen = "input"
-  let (rst, files, _) = rstParse(s, filen, line=LineRstInit, column=ColRstInit,
-                                 options, myFindFile, msgHandler)
+  let (rst, filenames, _) = rstParse(s, filen,
+                                     line=LineRstInit, column=ColRstInit,
+                                     options, myFindFile, msgHandler)
   var d: RstGenerator
-  initRstGenerator(d, outHtml, config, filen, myFindFile, msgHandler, files)
+  initRstGenerator(d, outHtml, config, filen, myFindFile, msgHandler, filenames)
   result = ""
   renderRstToOut(d, rst, result)
 
@@ -1575,8 +1578,9 @@ proc rstToLatex*(rstSource: string; options: RstParseOptions): string {.inline, 
   ## Convenience proc for `renderRstToOut` and `initRstGenerator`.
   runnableExamples: doAssert rstToLatex("*Hello* **world**", {}) == """\emph{Hello} \textbf{world}"""
   if rstSource.len == 0: return
-  let (rst, files, _) = rstParse(rstSource, "",
-                                 line=LineRstInit, column=ColRstInit, options)
+  let (rst, filenames, _) = rstParse(rstSource, "",
+                                     line=LineRstInit, column=ColRstInit,
+                                     options)
   var rstGenera: RstGenerator
-  rstGenera.initRstGenerator(outLatex, defaultConfig(), "input", files=files)
+  rstGenera.initRstGenerator(outLatex, defaultConfig(), "input", filenames=filenames)
   rstGenera.renderRstToOut(rst, result)

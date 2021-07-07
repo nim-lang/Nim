@@ -1171,8 +1171,8 @@ proc finishGenerateDoc*(d: var PDoc) =
       d.jEntriesFinal.add entry.json
       d.jEntriesPre[i].rst = nil
 
-  # pass file map `files` to ``rstgen.nim`` for its warnings
-  d.files = move(d.sharedState.files)
+  # pass file map `filenames` to ``rstgen.nim`` for its warnings
+  d.filenames = move(d.sharedState.filenames)
 
 proc add(d: PDoc; j: JsonItem) =
   if j.json != nil or j.rst != nil: d.jEntriesPre.add j

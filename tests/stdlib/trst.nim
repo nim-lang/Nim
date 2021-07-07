@@ -53,8 +53,8 @@ proc toAst(input: string,
       # we don't find any files in online mode:
       result = ""
 
-    var (rst, files, _) = rstParse(input, filen, line=LineRstInit, column=ColRstInit,
-                                   rstOptions, myFindFile, testMsgHandler)
+    var (rst, _, _) = rstParse(input, filen, line=LineRstInit, column=ColRstInit,
+                               rstOptions, myFindFile, testMsgHandler)
     result = renderRstToStr(rst)
   except EParseError as e:
     if e.msg != "":
