@@ -11,7 +11,7 @@
 
 import
   intsets, ast, astalgo, trees, msgs, strutils, platform, renderer, options,
-  lineinfos, int128, modulegraphs
+  lineinfos, int128, modulegraphs, astmsgs
 
 type
   TPreferedDesc* = enum
@@ -51,7 +51,12 @@ type
 
 proc typeToString*(typ: PType; prefer: TPreferedDesc = preferName): string
 
-import astmsgs
+proc addTypeDeclVerboseMaybe*(result: var string, conf: ConfigRef; typ: PType) =
+  if optDeclaredLocs in conf.globalOptions:
+    result.add typeToString(typ, preferMixed)
+    result.addDeclaredLoc(conf, typ)
+  else:
+    result.add typeToString(typ)
 
 template `$`*(typ: PType): string = typeToString(typ)
 

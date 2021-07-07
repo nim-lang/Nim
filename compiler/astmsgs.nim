@@ -1,6 +1,6 @@
 # this module avoids ast depending on msgs or vice versa
 import std/strutils
-import options, ast, msgs, types
+import options, ast, msgs
 
 proc typSym*(t: PType): PSym =
   result = t.sym
@@ -26,10 +26,3 @@ proc addDeclaredLoc*(result: var string, conf: ConfigRef; typ: PType) =
 
 proc addDeclaredLocMaybe*(result: var string, conf: ConfigRef; typ: PType) =
   if optDeclaredLocs in conf.globalOptions: addDeclaredLoc(result, conf, typ)
-
-proc addTypeDeclVerboseMaybe*(result: var string, conf: ConfigRef; typ: PType) =
-  if optDeclaredLocs in conf.globalOptions:
-    result.add typeToString(typ, preferMixed)
-    result.addDeclaredLoc(conf, typ)
-  else:
-    result.add typeToString(typ)
