@@ -217,6 +217,7 @@ type
     mcWarning = "Warning",
     mcError = "Error"
 
+  # keep the order in sync with compiler/docgen.nim and compiler/lineinfos.nim:
   MsgKind* = enum          ## the possible messages
     meCannotOpenFile = "cannot open '$1'",
     meExpected = "'$1' expected",
@@ -225,7 +226,7 @@ type
     meNewSectionExpected = "new section expected $1",
     meGeneralParseError = "general parse error",
     meInvalidDirective = "invalid directive: '$1'",
-    meInvalidRstField = "invalid field: $1",
+    meInvalidField = "invalid field: $1",
     meFootnoteMismatch = "mismatch in number of footnotes and their refs: $1",
     mwRedefinitionOfLabel = "redefinition of label '$1'",
     mwUnknownSubstitution = "unknown substitution '$1'",

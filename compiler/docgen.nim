@@ -159,18 +159,18 @@ template declareClosures =
     case msgKind
     of meCannotOpenFile: k = errCannotOpenFile
     of meExpected: k = errXExpected
-    of meGridTableNotImplemented: k = errGridTableNotImplemented
+    of meGridTableNotImplemented: k = errRstGridTableNotImplemented
     of meMarkdownIllformedTable: k = errMarkdownIllformedTable
-    of meNewSectionExpected: k = errNewSectionExpected
-    of meGeneralParseError: k = errGeneralParseError
-    of meInvalidDirective: k = errInvalidDirectiveX
-    of meInvalidRstField: k = errInvalidRstField
-    of meFootnoteMismatch: k = errFootnoteMismatch
-    of mwRedefinitionOfLabel: k = warnRedefinitionOfLabel
-    of mwUnknownSubstitution: k = warnUnknownSubstitutionX
-    of mwBrokenLink: k = warnBrokenLink
-    of mwUnsupportedLanguage: k = warnLanguageXNotSupported
-    of mwUnsupportedField: k = warnFieldXNotSupported
+    of meNewSectionExpected: k = errRstNewSectionExpected
+    of meGeneralParseError: k = errRstGeneralParseError
+    of meInvalidDirective: k = errRstInvalidDirectiveX
+    of meInvalidField: k = errRstInvalidField
+    of meFootnoteMismatch: k = errRstFootnoteMismatch
+    of mwRedefinitionOfLabel: k = warnRstRedefinitionOfLabel
+    of mwUnknownSubstitution: k = warnRstUnknownSubstitutionX
+    of mwBrokenLink: k = warnRstBrokenLink
+    of mwUnsupportedLanguage: k = warnRstLanguageXNotSupported
+    of mwUnsupportedField: k = warnRstFieldXNotSupported
     of mwRstStyle: k = warnRstStyle
     {.gcsafe.}:
       globalError(conf, newLineInfo(conf, AbsoluteFile filename, line, col), k, arg)
@@ -1429,7 +1429,7 @@ proc commandDoc*(cache: IdentCache, conf: ConfigRef) =
 proc commandRstAux(cache: IdentCache, conf: ConfigRef;
                    filename: AbsoluteFile, outExt: string) =
   var filen = addFileExt(filename, "txt")
-  let d = newDocumentor(filen, cache, conf, outExt, isPureRst = true)
+  var d = newDocumentor(filen, cache, conf, outExt, isPureRst = true)
   let rst = parseRst(readFile(filen.string), filen.string,
                      line=LineRstInit, column=ColRstInit,
                      conf, d.sharedState)

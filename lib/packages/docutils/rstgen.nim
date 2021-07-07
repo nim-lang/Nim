@@ -909,7 +909,7 @@ proc renderSmiley(d: PDoc, n: PRstNode, result: var string) =
 
 proc getField1Int(d: PDoc, n: PRstNode, fieldName: string): int =
   template err(msg: string) =
-    rstMessage(d.filenames, d.msgHandler, n.info, meInvalidRstField, msg)
+    rstMessage(d.filenames, d.msgHandler, n.info, meInvalidField, msg)
   let value = n.getFieldValue
   var number: int
   let nChars = parseInt(value, number)
