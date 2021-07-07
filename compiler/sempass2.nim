@@ -270,7 +270,7 @@ proc listGcUnsafety(s: PSym; onlyWarning: bool; conf: ConfigRef) =
 proc listSideEffects(result: var string; s: PSym; cycleCheck: var IntSet;
                      conf: ConfigRef; context: PContext; indentLevel: int) =
   template addHint(msg; lineInfo; sym; level = indentLevel) =
-    result.addf "$# $# Hint: '$#' $#\n" % [repeat(">", level), conf $ lineInfo, sym, msg]
+    result.addf("$# $# Hint: '$#' $#\n", repeat(">", level), conf $ lineInfo, sym, msg)
   if context.sideEffects.hasKey(s.id):
     for (useLineInfo, u) in context.sideEffects[s.id]:
       if u != nil and not cycleCheck.containsOrIncl(u.id):
@@ -289,7 +289,7 @@ proc listSideEffects(result: var string; s: PSym; cycleCheck: var IntSet;
 
 proc listSideEffects(result: var string; s: PSym; conf: ConfigRef; context: PContext) =
   var cycleCheck = initIntSet()
-  result.addf "'$#' can have side effects\n" % s.name.s
+  result.addf("'$#' can have side effects\n", s.name.s)
   listSideEffects(result, s, cycleCheck, conf, context, 1)
 
 proc useVarNoInitCheck(a: PEffects; n: PNode; s: PSym) =
