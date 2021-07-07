@@ -82,7 +82,7 @@ if not exist %nim_csources% (
 
 proc genPosixScript(): string =
   result = fmt"""
-#! /bin/sh
+#!/bin/sh
 # {doNotEdit}
 
 # build development version of the compiler; can be rerun safely.
