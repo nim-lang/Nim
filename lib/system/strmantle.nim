@@ -43,6 +43,24 @@ proc hashString(s: string): int {.compilerproc.} =
   h = h + h shl 15
   result = cast[int](h)
 
+template toUnsigned(T: typedesc[int8]): typedesc = uint8
+template toUnsigned(T: typedesc[int16]): typedesc = uint16
+template toUnsigned(T: typedesc[int32]): typedesc = uint32
+template toUnsigned(T: typedesc[int64]): typedesc = uint64
+template toUnsigned(T: typedesc[int]): typedesc = uint
+template toUnsigned(T: typedesc[uint8|uint16|uint32|uint64]): typedesc = T
+
+proc absUnsigned[T](x: int): toUnsigned(T) {.inline.} =
+  ## computes `abs(x)` as unsigned without branching, taking care of `T.low`
+  type T2 = toUnsigned(T)
+  result = (not cast[T2](x)) + 1
+  when false:
+    # faster than branching via:
+    if x == low(T):
+      num = T2(x)
+    else:
+      num = T2(-x)
+
 proc addInt*(result: var string; x: int64) =
   ## Converts integer to its string representation and appends it to `result`.
   ##
@@ -52,12 +70,8 @@ proc addInt*(result: var string; x: int64) =
   ##     b = 45
   ##   a.addInt(b) # a <- "12345"
   var num: uint64
-
   if x < 0:
-    if x == low(int64):
-      num = uint64(x)
-    else:
-      num = uint64(-x)
+    num = absUnsigned(x)
     let base = result.len
     setLen(result, base + 1)
     result[base] = '-'
