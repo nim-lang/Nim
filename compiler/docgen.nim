@@ -202,7 +202,7 @@ proc isLatexCmd(conf: ConfigRef): bool = conf.cmd in {cmdRst2tex, cmdDoc2tex}
 
 proc newDocumentor*(filename: AbsoluteFile; cache: IdentCache; conf: ConfigRef,
                     outExt: string = HtmlExt, module: PSym = nil,
-                    isPureRst=false): PDoc =
+                    isPureRst = false): PDoc =
   declareClosures()
   new(result)
   result.module = module
