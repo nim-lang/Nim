@@ -43,14 +43,38 @@ proc hashString(s: string): int {.compilerproc.} =
   h = h + h shl 15
   result = cast[int](h)
 
-template toUnsigned(T: typedesc[int8]): typedesc = uint8
-template toUnsigned(T: typedesc[int16]): typedesc = uint16
-template toUnsigned(T: typedesc[int32]): typedesc = uint32
-template toUnsigned(T: typedesc[int64]): typedesc = uint64
-template toUnsigned(T: typedesc[int]): typedesc = uint
-template toUnsigned(T: typedesc[uint8|uint16|uint32|uint64]): typedesc = T
+# template toUnsigned(T: typedesc[SomeInteger]): typedesc =
+# template toUnsigned[T](U: typedesc[T]): typedesc =
+template toUnsigned[T](U: typedesc[T]): untyped =
+  when T is int8: uint8
+  elif T is int16: uint16
+  elif T is int32: uint32
+  elif T is int64: uint64
+  elif T is int: uint
+  else: T
 
-proc absUnsigned[T](x: int): toUnsigned(T) {.inline.} =
+# template toUnsigned2[T](): untyped =
+# template toUnsigned2[T]: untyped =
+type toUnsigned2[T] =
+  when T is int8: uint8
+  elif T is int16: uint16
+  elif T is int32: uint32
+  elif T is int64: uint64
+  elif T is int: uint
+  else: T
+
+# template toUnsigned(T: typedesc[int8]): typedesc = uint8
+# template toUnsigned(T: typedesc[int16]): typedesc = uint16
+# template toUnsigned(T: typedesc[int32]): typedesc = uint32
+# template toUnsigned(T: typedesc[int64]): typedesc = uint64
+# template toUnsigned(T: typedesc[int]): typedesc = uint
+# # template toUnsigned(T: typedesc[uint8|uint16|uint32|uint64]): typedesc = T
+# # template toUnsigned[U: SomeUnsignedInt](T: typedesc[U]): typedesc = U
+# template toUnsigned[U: uint8|uint16|uint32|uint64|uint](T: typedesc[U]): typedesc = U
+
+# proc absUnsigned[T](x: int): toUnsigned(T) {.inline.} =
+# proc absUnsigned[T](x: int): toUnsigned2[T]() {.inline.} =
+proc absUnsigned[T](x: int): toUnsigned2[T] {.inline.} =
   ## computes `abs(x)` as unsigned without branching, taking care of `T.low`
   type T2 = toUnsigned(T)
   result = (not cast[T2](x)) + 1
