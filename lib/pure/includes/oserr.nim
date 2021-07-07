@@ -82,7 +82,7 @@ proc newOSError*(
     if e.msg.len > 0 and e.msg[^1] != '\n': e.msg.add '\n'
     e.msg.add "Additional info: "
     e.msg.add additionalInfo
-    e.msg.add "." # makes it obvious where line ends in case of trailing spaces.
+      # don't add trailing `.` etc, which negatively impacts "jump to file" in IDEs.
   if e.msg == "":
     e.msg = "unknown OS error"
   return e
