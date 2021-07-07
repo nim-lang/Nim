@@ -210,12 +210,8 @@ proc newDocumentor*(filename: AbsoluteFile; cache: IdentCache; conf: ConfigRef,
   result.cache = cache
   result.outDir = conf.outDir.string
   result.isPureRst = isPureRst
-  var options: RstParseOptions = {}
-  if isPureRst:
-    options = {roSupportRawDirective, roSupportMarkdown, roPreferMarkdown}
-  else:
-    options = {roSupportRawDirective, roSupportMarkdown, roPreferMarkdown,
-               roNimFile}
+  var options= {roSupportRawDirective, roSupportMarkdown, roPreferMarkdown}
+  if not isPureRst: options.incl roNimFile
   result.sharedState = newRstSharedState(
       options, filename.string,
       docgenFindFile, compilerMsgHandler)
