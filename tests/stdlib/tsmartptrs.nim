@@ -1,3 +1,10 @@
+discard """
+  matrix: "--threads"
+  targets: "c cpp"
+  exitcode: 0
+  disabled: false
+"""
+
 import std/smartptrs
 
 block:
