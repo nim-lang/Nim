@@ -66,7 +66,7 @@ pkg "fragments", "nim c -r fragments/dsl.nim"
 pkg "fusion"
 pkg "gara"
 pkg "glob"
-pkg "ggplotnim", "nim c -d:noCairo -r tests/tests.nim", allowFailure = true # pending https://github.com/Vindaar/ggplotnim/pull/125
+pkg "ggplotnim", "nim c -d:noCairo -r tests/tests.nim"
 pkg "gittyup", "nimble test", "https://github.com/disruptek/gittyup", allowFailure = true
 pkg "gnuplot", "nim c gnuplot.nim"
 # pkg "gram", "nim c -r --gc:arc --define:danger tests/test.nim", "https://github.com/disruptek/gram"
