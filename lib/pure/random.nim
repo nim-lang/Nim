@@ -204,7 +204,7 @@ proc skipRandomNumbers*(s: var Rand) =
   s.a0 = s0
   s.a1 = s1
 
-proc rand*(r: var Rand; max: Natural): int {.benign.} =
+proc rand*[T: uint | uint64](r: var Rand; max: T): T =
   ## Returns a random integer in the range `0..max` using the given state.
   ##
   ## **See also:**
@@ -215,22 +215,22 @@ proc rand*(r: var Rand; max: Natural): int {.benign.} =
   ## * `rand proc<#rand,typedesc[T]>`_ that accepts an integer or range type
   runnableExamples("-r:off"):
     var r = initRand(123)
-    assert r.rand(100) == 96 # implementation defined
-
+    assert r.rand(100'u) == 96'u # implementation defined
   if max == 0: return
-  while true:
-    let x = next(r)
-    if x <= randMax - (randMax mod Ui(max)):
-      return int(x mod (uint64(max) + 1u64))
+  else:
+    when T is uint64:
+      if max == uint64.high: return next(r)
+    else:
+      let max = uint64(max)
+    while true:
+      let x = next(r)
+      if x <= randMax - (randMax mod max):
+        return T(x mod (max + 1))
 
-proc rand*(r: var Rand; max: uint64): uint64 {.benign.} =
-  ## Overload for `uint`.
-  if max == 0: return
-  elif max == uint64.high: return next(r)
-  while true:
-    let x = next(r)
-    if x <= randMax - (randMax mod max):
-      return x mod (max + 1)
+proc rand*(r: var Rand; max: Natural): int {.benign.} =
+  ## Overload for `Natural`.
+  cast[int](rand(r, uint64(max)))
+    # xxx toUnsigned pending https://github.com/nim-lang/Nim/pull/18445
 
 proc rand*(max: int): int {.benign.} =
   ## Returns a random integer in the range `0..max`.
