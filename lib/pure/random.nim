@@ -218,12 +218,12 @@ proc rand*[T: uint | uint64](r: var Rand; max: T): T =
     assert r.rand(100'u) == 96'u # implementation defined
   if max == 0: return
   else:
-    when T is uint64:
-      if max == uint64.high: return next(r)
-    else:
-      let max = uint64(max)
+    let max = uint64(max)
+    when T.high.uint64 == uint64.high:
+      if max == uint64.high: return T(next(r))
     while true:
       let x = next(r)
+      # avoid `mod` bias
       if x <= randMax - (randMax mod max):
         return T(x mod (max + 1))
 
@@ -656,5 +656,9 @@ when not defined(nimscript) and not defined(standalone):
     ## * `initRand proc<#initRand,int64>`_ that initializes a Rand state
     ##   with a given seed
     state = initRand()
+
+proc rand*[T: uint | uint64](max: T): T {.inline.} =
+  ## Overload using the default RNG.
+  rand(state, max)
 
 {.pop.}

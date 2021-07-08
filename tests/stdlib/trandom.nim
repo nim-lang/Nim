@@ -190,6 +190,48 @@ block: # bug #17467
 
 block: # bug #16360
   var r = initRand()
-  let a = r.rand(cast[uint](int.high) + 1)
-  echo (a,)
+  template test(a) =
+    let a2 = a
+    block:
+      let a3 = r.rand(a2)
+      doAssert a3 <= a2
+      doAssert a3.type is a2.type
+    block:
+      let a3 = rand(a2)
+      doAssert a3 <= a2
+      doAssert a3.type is a2.type
+  test cast[uint](int.high)
+  test cast[uint](int.high) + 1
+  test uint.high - 2
+  test uint.high - 1
+  test uint.high
+  test int.high
+  test int.high - 1
+  test int.high - 2
+  test 0
+  test 0'u
+  test 0'u64
 
+block: # bug #16296
+  var r = initRand()
+  template test(x) =
+    let a2 = x
+    let a3 = r.rand(a2)
+    doAssert a3 <= a2.b
+    doAssert a3 >= a2.a
+    doAssert a3.type is a2.a.type
+
+  test(10'u64 .. uint64.high)
+  test(-2 .. int.high-1)
+  test(int.low .. int.high)
+  test(int.low+1 .. int.high)
+  test(int.low .. int.high-1)
+  test(int.low .. 0)
+  test(int.low .. -1)
+  test(int.low .. 1)
+  test(int64.low .. 1'i64)
+
+block: # bug #17670
+  type UInt48 = range[0'u64..2'u64^48-1]
+  let x = rand(UInt48)
+  doAssert x is UInt48
