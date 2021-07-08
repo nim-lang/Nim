@@ -23,7 +23,7 @@ proc main() =
       x8: seq[int]
       x9: ref Bar
 
-    type Gook = ref object
+    type Goo = ref object
       foo: Foo
 
     proc fun(a: Bar): auto = a.b2
@@ -39,7 +39,7 @@ proc main() =
     var a3 = Foo(x1: 1.2, x3: "abc")
     a3.x2 = a3
 
-    var gook = Gook(foo: a)
+    var goo = Goo(foo: a)
 
     proc initFoo(x1: float): auto =
       witness.inc
@@ -53,8 +53,8 @@ proc main() =
     doAssert a3.x2.x2.x3.len == 3
 
     doAssert ?.a.x2.x2.x3[1] == default(char)
-    # here we only apply wrapnil around gook.foo, not gook (and assume gook is not nil)
-    doAssert ?.(gook.foo).x2.x2.x1 == 0.0
+    # here we only apply wrapnil around goo.foo, not goo (and assume goo is not nil)
+    doAssert ?.(goo.foo).x2.x2.x1 == 0.0
 
     when nimvm: discard
     else:
