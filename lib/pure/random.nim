@@ -213,9 +213,12 @@ proc rand*[T: uint | uint64](r: var Rand; max: T): T =
   ## * `rand proc<#rand,Rand,HSlice[T: Ordinal or float or float32 or float64,T: Ordinal or float or float32 or float64]>`_
   ##   that accepts a slice
   ## * `rand proc<#rand,typedesc[T]>`_ that accepts an integer or range type
-  runnableExamples("-r:off"):
+  runnableExamples:
     var r = initRand(123)
-    assert r.rand(100'u) == 96'u # implementation defined
+    if false:
+      assert r.rand(100'u) == 96'u # implementation defined
+  # pending csources >= 1.4.0 or fixing https://github.com/timotheecour/Nim/issues/251#issuecomment-831599772,
+  # use `runnableExamples("-r:off")` instead of `if false`
   if max == 0: return
   else:
     let max = uint64(max)
