@@ -482,7 +482,8 @@ proc prepareExample(d: PDoc; n: PNode, topLevel: bool): tuple[rdoccmd: string, c
     if n1.kind notin nkStrKinds: globalError(d.conf, n1.info, "string litteral expected")
     rdoccmd = n1.strVal
 
-  let useRenderModule = false
+  # let useRenderModule = false
+  let useRenderModule = true
   let loc = d.conf.toFileLineCol(n.info)
   let code = extractRunnableExamplesSource(d.conf, n)
 
@@ -508,6 +509,7 @@ proc prepareExample(d: PDoc; n: PNode, topLevel: bool): tuple[rdoccmd: string, c
     # still worth fixing as it can affect other code relying on `renderModule`,
     # so we keep this code path here for now, which could still be useful in some
     # other situations.
+    echo (outp.string, "D20210707T232134")
     renderModule(runnableExamples, outp.string, conf = d.conf)
 
   else:
