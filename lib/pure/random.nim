@@ -360,7 +360,7 @@ proc sample*[T, U](r: var Rand; a: openArray[T]; cdf: openArray[U]): T =
   let u = r.rand(float(cdf[^1]))
   a[cdf.upperBound(U(u))]
 
-proc gauss*(r: var Rand; mu = 0.0; sigma = 1.0): float {.since: (1, 3).} =
+proc gauss*(r: var Rand; mu = 0.0; sigma = 1.0): float =
   ## Returns a Gaussian random variate,
   ## with mean `mu` and standard deviation `sigma`
   ## using the given state.
@@ -502,7 +502,7 @@ proc rand*[T: Ordinal or SomeFloat](x: HSlice[T, T]): T {.inline.} =
   ## Overload using the default RNG.
   rand(state, x)
 
-proc gauss*(mu = 0.0; sigma = 1.0): float {.inline.} =
+proc gauss*(mu = 0.0; sigma = 1.0): float {.inline, since: (1, 3).} =
   ## Overload using the default RNG.
   gauss(state, mu, sigma)
 
