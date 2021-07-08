@@ -482,10 +482,10 @@ proc prepareExample(d: PDoc; n: PNode, topLevel: bool): tuple[rdoccmd: string, c
     if n1.kind notin nkStrKinds: globalError(d.conf, n1.info, "string litteral expected")
     rdoccmd = n1.strVal
 
-  # let useRenderModule = false
-  let useRenderModule = true
+  let useRenderModule = false
   let loc = d.conf.toFileLineCol(n.info)
   let code = extractRunnableExamplesSource(d.conf, n)
+  let codeIndent = extractRunnableExamplesSource(d.conf, n, indent = 2)
 
   if d.conf.errorCounter > 0:
     return (rdoccmd, code)
@@ -509,18 +509,24 @@ proc prepareExample(d: PDoc; n: PNode, topLevel: bool): tuple[rdoccmd: string, c
     # still worth fixing as it can affect other code relying on `renderModule`,
     # so we keep this code path here for now, which could still be useful in some
     # other situations.
-    echo (outp.string, "D20210707T232134")
     renderModule(runnableExamples, outp.string, conf = d.conf)
 
   else:
-    let code2 = """
+    var code2 = code
+    if code.len > 0 and "codeReordering" notin code:
+      # hacky but simplest solution, until we devise a way to make `{.line.}`
+      # work without introducing a scope
+      code2 = """
+{.line: $#.}:
+$#
+""" % [$toInstantiationInfo(d.conf, n.info), codeIndent]
+    code2 = """
 #[
 $#
 ]#
 import $#
-{.line: $#.}:
 $#
-""" % [comment, d.filename.quoted, $toInstantiationInfo(d.conf, n.info), code.indent(2)]
+""" % [comment, d.filename.quoted, code2]
     writeFile(outp.string, code2)
 
   if rdoccmd notin d.exampleGroups:
