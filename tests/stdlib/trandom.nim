@@ -3,7 +3,9 @@ discard """
   targets: "c js"
 """
 
-import std/[random, math, os, stats, sets, tables]
+import std/[random, math, stats, sets, tables]
+when not defined(js):
+  import std/os
 
 randomize(233)
 
@@ -202,6 +204,10 @@ block: # bug #16360
       doAssert a3.type is a2.type
   test cast[uint](int.high)
   test cast[uint](int.high) + 1
+  when not defined(js):
+    # pending bug #16411
+    test uint64.high
+    test uint64.high - 1
   test uint.high - 2
   test uint.high - 1
   test uint.high
@@ -220,8 +226,6 @@ block: # bug #16296
     doAssert a3 <= a2.b
     doAssert a3 >= a2.a
     doAssert a3.type is a2.a.type
-
-  test(10'u64 .. uint64.high)
   test(-2 .. int.high-1)
   test(int.low .. int.high)
   test(int.low+1 .. int.high)
@@ -230,8 +234,13 @@ block: # bug #16296
   test(int.low .. -1)
   test(int.low .. 1)
   test(int64.low .. 1'i64)
+  when not defined(js):
+    # pending bug #16411
+    test(10'u64 .. uint64.high)
 
 block: # bug #17670
-  type UInt48 = range[0'u64..2'u64^48-1]
-  let x = rand(UInt48)
-  doAssert x is UInt48
+  when not defined(js):
+    # pending bug #16411
+    type UInt48 = range[0'u64..2'u64^48-1]
+    let x = rand(UInt48)
+    doAssert x is UInt48

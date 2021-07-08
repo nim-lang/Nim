@@ -256,9 +256,6 @@ proc rand*(max: int): int {.benign.} =
 
   rand(state, max)
 
-proc rand*(max: uint64): uint64 {.benign.} =
-  rand(state, max)
-
 proc rand*(r: var Rand; max: range[0.0 .. high(float)]): float {.benign.} =
   ## Returns a random floating point number in the range `0.0..max`
   ## using the given state.
@@ -321,8 +318,10 @@ proc rand*[T: Ordinal or SomeFloat](r: var Rand; x: HSlice[T, T]): T =
   when T is SomeFloat:
     result = rand(r, x.b - x.a) + x.a
   else: # Integers and Enum types
-    # TODO: js
-    result = cast[T](rand(r, cast[uint64](x.b) - cast[uint64](x.a)) + cast[uint64](x.a))
+    when defined(js):
+      result = cast[T](rand(r, cast[uint](x.b) - cast[uint](x.a)) + cast[uint](x.a))
+    else:
+      result = cast[T](rand(r, cast[uint64](x.b) - cast[uint64](x.a)) + cast[uint64](x.a))
 
 proc rand*[T: Ordinal or SomeFloat](x: HSlice[T, T]): T =
   ## For a slice `a..b`, returns a value in the range `a..b`.
