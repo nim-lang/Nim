@@ -1132,6 +1132,9 @@ proc generateDoc*(d: PDoc, n, orig: PNode, docFlags: DocFlags = kDefault) =
 
 proc finishGenerateDoc*(d: var PDoc) =
   ## Perform 2nd RST pass for resolution of links/footnotes/headings...
+  # copy file map `filenames` to ``rstgen.nim`` for its warnings
+  d.filenames = d.sharedState.filenames
+
   # Main title/subtitle are allowed only in the first RST fragment of document
   var firstRst = PRstNode(nil)
   for fragment in d.modDescPre:
@@ -1170,9 +1173,6 @@ proc finishGenerateDoc*(d: var PDoc) =
       entry.json[entry.rstField] = %str
       d.jEntriesFinal.add entry.json
       d.jEntriesPre[i].rst = nil
-
-  # pass file map `filenames` to ``rstgen.nim`` for its warnings
-  d.filenames = move(d.sharedState.filenames)
 
 proc add(d: PDoc; j: JsonItem) =
   if j.json != nil or j.rst != nil: d.jEntriesPre.add j
