@@ -14,10 +14,10 @@ when not compileOption("threads"):
 
 import std/isolation
 
-template checkNotNil(cond: untyped, msg: typed) =
+template checkNotNil(msg: typed) =
   when compileOption("boundChecks"):
     {.line.}:
-      if not cond:
+      if p.isNil:
         raise newException(NilAccessDefect, msg)
 
 type
@@ -47,16 +47,21 @@ template newUniquePtr*[T](val: T): UniquePtr[T] =
   ## .. warning:: Using this template in a loop causes multiple evaluations of `val`.
   newUniquePtr(isolate(val))
 
+proc newUniquePtrU*[T](t: typedesc[T]): UniquePtr[T] =
+  ## Returns a unique pointer. It is not initialized,
+  ## so reading from it before writing to it is undefined behaviour!
+  result.val = cast[ptr T](allocShared(sizeof(T)))
+
 proc isNil*[T](p: UniquePtr[T]): bool {.inline.} =
   p.val == nil
 
 proc `[]`*[T](p: UniquePtr[T]): var T {.inline.} =
   ## Returns a mutable view of the internal value of `p`.
-  checkNotNil(p.val != nil, "deferencing nil unique pointer")
+  checkNotNil("deferencing nil unique pointer")
   p.val[]
 
 proc `[]=`*[T](p: UniquePtr[T], val: T) {.inline.} =
-  checkNotNil(p.val != nil, "deferencing nil unique pointer")
+  checkNotNil("deferencing nil unique pointer")
   p.val[] = val
 
 proc `$`*[T](p: UniquePtr[T]): string {.inline.} =
@@ -96,15 +101,21 @@ template newSharedPtr*[T](val: T): SharedPtr[T] =
   ## .. warning:: Using this template in a loop causes multiple evaluations of `val`.
   newSharedPtr(isolate(val))
 
+proc newSharedPtrU*[T](t: typedesc[T]): SharedPtr[T] =
+  ## Returns a shared pointer. It is not initialized,
+  ## so reading from it before writing to it is undefined behaviour!
+  result.val = cast[typeof(result.val)](allocShared(sizeof(result.val[])))
+  result.val.atomicCounter = 0
+
 proc isNil*[T](p: SharedPtr[T]): bool {.inline.} =
   p.val == nil
 
 proc `[]`*[T](p: SharedPtr[T]): var T {.inline.} =
-  checkNotNil(p.val != nil, "deferencing nil shared pointer")
+  checkNotNil("deferencing nil shared pointer")
   p.val.value
 
 proc `[]=`*[T](p: SharedPtr[T], val: T) {.inline.} =
-  checkNotNil(p.val != nil, "deferencing nil shared pointer")
+  checkNotNil("deferencing nil shared pointer")
   p.val.value = val
 
 proc `$`*[T](p: SharedPtr[T]): string {.inline.} =
@@ -130,7 +141,7 @@ proc isNil*[T](p: ConstPtr[T]): bool {.inline.} =
 
 proc `[]`*[T](p: ConstPtr[T]): lent T {.inline.} =
   ## Returns an immutable view of the internal value of `p`.
-  checkNotNil(SharedPtr[T](p).val != nil, "deferencing nil const pointer")
+  checkNotNil("deferencing nil const pointer")
   SharedPtr[T](p).val.value
 
 proc `[]=`*[T](p: ConstPtr[T], v: T) = {.error: "`ConstPtr` cannot be assigned.".}
