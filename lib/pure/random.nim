@@ -483,7 +483,7 @@ when not defined(nimscript) and not defined(standalone):
     state = initRand()
 
 proc rand*(max: Natural): int {.inline.} =
-  ## Overload using the default RNG, equivalent to `rand(state, max)`.
+  ## Overload using the default RNG, equivalent to `rand(randState, max)`.
   ##
   ## If `randomize <#randomize>`_ has not been called, the sequence of random
   ## numbers returned from this proc will always be the same.
