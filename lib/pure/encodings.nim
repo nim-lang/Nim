@@ -10,15 +10,13 @@
 ## Converts between different character encodings. On UNIX, this uses
 ## the `iconv`:idx: library, on Windows the Windows API.
 ##
-## The following example shows how to change character encodings. The first
-## call of `convert` turns the encoding of `orig` into "CP1252". The second call transforms
-## the encoding of `cp1252` into "ibm850". The last call converts the encoding of `ibm850`
-## to the current encoding which is obtained by `getCurrentEncoding`. Finally the original
-## string is restored.
+## The following example shows how to change character encodings.
 runnableExamples:
   let
     orig = "öäüß"
+    # convert `orig` from "UTF-8" to "CP1252"
     cp1252 = convert(orig, "CP1252", "UTF-8")
+    # convert `cp1252` from "CP1252" to "ibm850"
     ibm850 = convert(cp1252, "ibm850", "CP1252")
     current = getCurrentEncoding()
   assert orig == "\195\182\195\164\195\188\195\159"
@@ -37,7 +35,6 @@ runnableExamples:
   let second = "\211\208\176\215\205\183\200\231" &
       "\208\194\163\172\199\227\184\199\200\231\185\202"
   assert fromGB2312.convert(second) == "有白头如新，倾盖如故"
-
 
 
 import os
