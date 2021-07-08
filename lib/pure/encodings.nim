@@ -325,7 +325,7 @@ else:
     importc: "iconv", importIconv.}
 
 proc getCurrentEncoding*(uiApp = false): string =
-  ## Retrieves the current encoding. On Unix, always "UTF-8" is returned.
+  ## Retrieves the current encoding. On Unix, "UTF-8" is always returned.
   ## The `uiApp` parameter is Windows specific. If true, the UI's code-page
   ## is returned, if false, the Console's code-page is returned.
   when defined(windows):
@@ -452,9 +452,9 @@ when defined(windows):
 else:
   proc convert*(c: EncodingConverter, s: string): string =
     ## Converts `s` to `destEncoding` that was given to the converter `c`. It
-    ## assumed that `s` is in `srcEncoding`.
+    ## assumes that `s` is in `srcEncoding`.
     ##
-    ## .. warning:: utf-16BE, utf-32 conversions are not supported on windows.
+    ## .. warning:: UTF-16BE and UTF-32 conversions are not supported on Windows.
     result = newString(s.len)
     var inLen = csize_t len(s)
     var outLen = csize_t len(result)
@@ -499,7 +499,7 @@ proc convert*(s: string, destEncoding = "UTF-8",
   ## This opens a converter, uses it and closes it again and is thus more
   ## convenient but also likely less efficient than re-using a converter.
   ##
-  ## .. warning:: utf-16BE, utf-32 conversions are not supported on windows.
+  ## .. warning:: UTF-16BE and UTF-32 conversions are not supported on Windows.
   var c = open(destEncoding, srcEncoding)
   try:
     result = convert(c, s)
