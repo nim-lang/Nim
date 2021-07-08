@@ -40,7 +40,7 @@ proc `=destroy`*[T](x: var myseq[T]) =
     x.len = 0
     x.cap = 0
 
-proc `=`*[T](a: var myseq[T]; b: myseq[T]) =
+proc `=copy`*[T](a: var myseq[T]; b: myseq[T]) =
   if a.data == b.data: return
   if a.data != nil:
     `=destroy`(a)
