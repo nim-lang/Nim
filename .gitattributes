@@ -6,3 +6,4 @@
 
 # bug https://github.com/dom96/choosenim/issues/256 for WSL CRLF
 *.sh text eol=lf
+/config/build_config.txt text eol=lf
