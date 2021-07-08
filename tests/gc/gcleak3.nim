@@ -18,9 +18,12 @@ for i in 0..1024:
 
 proc limit*[t](a: var seq[t]) =
   while s.len > 0:
+    #echo i
+    #GC_fullCollect()
     if getOccupiedMem() > 3000_000: quit("still a leak!")
     s.delete(0)
 
 s.limit()
+
 echo "no leak: ", getOccupiedMem()
 
