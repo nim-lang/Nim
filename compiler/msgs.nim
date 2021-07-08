@@ -677,6 +677,10 @@ proc genSuccessX*(conf: ConfigRef) =
     elif optOptimizeSize in conf.options: build.add "size"
     else: build.add "none (DEBUG BUILD, `-d:release` generates faster code)"
       # pending https://github.com/timotheecour/Nim/issues/752, point to optimization.html
+    var flags = ""
+    if isDefined(conf, "danger"): flags.add " -d:danger"
+    elif isDefined(conf, "release"): flags.add " -d:release"
+    if flags.len > 0: build.add "; options:" & flags
   let sec = formatFloat(epochTime() - conf.lastCmdTime, ffDecimal, 3)
   let project = if conf.filenameOption == foAbs: $conf.projectFull else: $conf.projectName
     # xxx honor conf.filenameOption more accurately
