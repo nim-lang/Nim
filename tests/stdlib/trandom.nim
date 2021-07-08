@@ -189,3 +189,7 @@ block: # bug #17467
     doAssert x > 1e-4, $(x, i)
       # This used to fail for each i in 0..<26844, i.e. the 1st produced value
       # was predictable and < 1e-4, skewing distributions.
+
+block: # bug #16425
+  let a = rand(randState, int8)
+  doAssert a is int8
