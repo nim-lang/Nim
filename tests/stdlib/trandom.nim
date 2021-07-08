@@ -187,3 +187,9 @@ block: # bug #17467
     doAssert x > 1e-4, $(x, i)
       # This used to fail for each i in 0..<26844, i.e. the 1st produced value
       # was predictable and < 1e-4, skewing distributions.
+
+block: # bug #16360
+  var r = initRand()
+  let a = r.rand(cast[uint](int.high) + 1)
+  echo (a,)
+
