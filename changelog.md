@@ -24,9 +24,6 @@
 - Type mismatch errors now show more context, use `-d:nimLegacyTypeMismatch` for previous
   behavior.
 
-- `echo` and `debugEcho` will now raise `IOError` if writing to stdout fails.  Previous behavior
-  silently ignored errors.  See #16366.  Use `-d:nimLegacyEchoNoRaise` for previous behavior.
-
 - `math.round` now is rounded "away from zero" in JS backend which is consistent
   with other backends. See #9125. Use `-d:nimLegacyJsRound` for previous behavior.
 
