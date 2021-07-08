@@ -4,7 +4,6 @@ discard """
   exitcode: 0
   disabled: false
 """
-
 import std/smartptrs
 
 block:
@@ -13,7 +12,7 @@ block:
 
   assert $a1 == "nil"
   assert a1.isNil
-  assert $a2 == "UniquePtr(0)"
+  assert $a2 == "(val: 0)"
   assert not a2.isNil
   assert a2[] == 0
 
@@ -23,7 +22,7 @@ block:
   assert $a2 == "nil"
   assert a2.isNil
 
-  assert $a3 == "UniquePtr(0)"
+  assert $a3 == "(val: 0)"
   assert not a3.isNil
   assert a3[] == 0
 
@@ -34,10 +33,10 @@ block:
 
   assert $a1 == "nil"
   assert a1.isNil
-  assert $a2 == "SharedPtr(0)"
+  assert $a2 == "(val: 0)"
   assert not a2.isNil
   assert a2[] == 0
-  assert $a3 == "SharedPtr(0)"
+  assert $a3 == "(val: 0)"
   assert not a3.isNil
   assert a3[] == 0
 
@@ -48,9 +47,10 @@ block:
 
   assert $a1 == "nil"
   assert a1.isNil
-  assert $a2 == "ConstPtr(0)"
+  assert $a2 == "(val: 0)"
   assert not a2.isNil
   assert a2[] == 0
-  assert $a3 == "ConstPtr(0)"
+  assert $a3 == "(val: 0)"
   assert not a3.isNil
   assert a3[] == 0
+
