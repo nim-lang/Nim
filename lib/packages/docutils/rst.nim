@@ -592,10 +592,9 @@ proc setCurrFilename(s: PRstSharedState, file1: string) =
   s.currFileIdx = (s.filenames.len - 1).FileIndex
 
 proc getFilename(filenames: seq[string], fid: FileIndex): string =
-  if fid.int < filenames.len:
-    result = filenames[fid.int]
-  else:
-    result = "input"
+  doAssert(0 <= fid.int and fid.int < filenames.len,
+      "incorrect FileIndex $1 (range 0..$2)" % [$fid.int, $(filenames.len-1)])
+  result = filenames[fid.int]
 
 proc currFilename(s: PRstSharedState): string =
   getFilename(s.filenames, s.currFileIdx)
