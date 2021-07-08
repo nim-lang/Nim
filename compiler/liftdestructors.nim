@@ -432,7 +432,6 @@ proc considerUserDefinedOp(c: var TLiftCtx; t: PType; body, x, y: PNode): bool =
     result = considerAsgnOrSink(c, t, body, x, y, op)
     if op != nil:
       setAttachedOp(c.g, c.idgen.module, t, c.kind, op)
-      body.add newHookCall(c, op, x, y)
 
   of attachedDeepCopy:
     let op = getAttachedOp(c.g, t, attachedDeepCopy)

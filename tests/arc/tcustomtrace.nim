@@ -15,8 +15,10 @@ discard """
 1 1 5
 1 2 6
 1 3 7
-after 6 6'''
+after 6 6
+MEM 0'''
 joinable: false
+  cmd: "nim c --gc:orc $file"
 """
 
 import typetraits
@@ -120,7 +122,7 @@ template `[]=`*[T](x: myseq[T]; i: Natural; y: T) =
   x.data[i] = y
 
 proc createSeq*[T](elems: varargs[T]): myseq[T] =
-  result.cap = elems.len
+  result.cap = max(elems.len, 2)
   result.len = elems.len
   result.data = cast[type(result.data)](alloc(result.cap * sizeof(T)))
   inc allocCount
@@ -144,14 +146,8 @@ proc main =
     for j in 0 ..< nested[i].len:
       echo i, " ", j, " ", nested[i][j]
 
-#main()
+main()
 #echo "after ", allocCount, " ", deallocCount
-
-
-discard """
-  output: "MEM 0"
-  cmd: "nim c --gc:orc $file"
-"""
 
 type
   Node = ref object
