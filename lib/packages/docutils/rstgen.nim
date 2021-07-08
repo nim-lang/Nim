@@ -40,7 +40,7 @@
 ##   can be done by simply searching for [footnoteName].
 
 import strutils, os, hashes, strtabs, rstast, rst, highlite, tables, sequtils,
-  algorithm, parseutils, ../../../compiler/lineinfos
+  algorithm, parseutils, ../../../compiler/lineinfos, std/strbasics
 
 import ../../std/private/since
 
@@ -1572,6 +1572,7 @@ proc rstToHtml*(s: string, options: RstParseOptions,
   initRstGenerator(d, outHtml, config, filen, myFindFile, msgHandler, filenames)
   result = ""
   renderRstToOut(d, rst, result)
+  strbasics.strip(result)
 
 
 proc rstToLatex*(rstSource: string; options: RstParseOptions): string {.inline, since: (1, 3).} =
@@ -1584,3 +1585,4 @@ proc rstToLatex*(rstSource: string; options: RstParseOptions): string {.inline, 
   var rstGenera: RstGenerator
   rstGenera.initRstGenerator(outLatex, defaultConfig(), "input", filenames=filenames)
   rstGenera.renderRstToOut(rst, result)
+  strbasics.strip(result)

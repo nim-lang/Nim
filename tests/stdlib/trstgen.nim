@@ -237,8 +237,7 @@ not in table"""
 <tr><td>D1 <tt class="docutils literal"><span class="pre">""" & id"code" & " " & op"\|" & """</span></tt></td><td>D2</td></tr>
 <tr><td>E1 | text</td><td></td></tr>
 <tr><td></td><td>F2 without pipe</td></tr>
-</table><p>not in table</p>
-""")
+</table><p>not in table</p>""")
     let input2 = """
 | A1 header | A2 |
 | --- | --- |"""
@@ -631,7 +630,7 @@ let x = 1
     let p2 = """<p>Par2 <tt class="docutils literal"><span class="pre">value2</span></tt>.</p>"""
     let p3 = """<p>Par3 <tt class="docutils literal"><span class="pre">""" & id"value3" & "</span></tt>.</p>"
     let p4 = """<p>Par4 <tt class="docutils literal"><span class="pre">value4</span></tt>.</p>"""
-    let expected = p1 & p2 & "\n" & p3 & "\n" & p4 & "\n"
+    let expected = p1 & p2 & "\n" & p3 & "\n" & p4
     check(input.toHtml == expected)
 
   test "role directive":
@@ -690,7 +689,7 @@ Test1
       Paragraph2"""
 
     let output2 = input2.toHtml
-    doAssert "Paragraph1<p><br/></p> <p>Paragraph2</p>\n" == output2
+    doAssert "Paragraph1<p><br/></p> <p>Paragraph2</p>" == output2
 
     let input3 = dedent"""
       | xxx
@@ -857,7 +856,7 @@ Test1
     check("input(6, 1) Warning: RST style: \n" &
           "not enough indentation on line 6" in warnings8[0])
     doAssert output8 == "Paragraph.<ol class=\"upperalpha simple\">" &
-        "<li>stringA</li>\n<li>stringB</li>\n</ol>\n<p>C. string1 string2 </p>\n"
+        "<li>stringA</li>\n<li>stringB</li>\n</ol>\n<p>C. string1 string2 </p>"
 
   test "Markdown enumerated lists":
     let input1 = dedent """
@@ -930,7 +929,7 @@ Test1
       Not references[#note]_[1 #]_ [wrong citation]_ and [not&allowed]_.
       """
     let output2 = input2.toHtml
-    doAssert output2 == "Not references[#note]_[1 #]_ [wrong citation]_ and [not&amp;allowed]_. "
+    doAssert output2 == "Not references[#note]_[1 #]_ [wrong citation]_ and [not&amp;allowed]_."
 
     # check that auto-symbol footnotes work:
     let input3 = dedent """
@@ -1171,7 +1170,7 @@ Test1
         "input(8, 4) Warning: language 'anotherLang' not supported"
         ])
     check(output == "<pre class = \"listing\">\nanything</pre>" &
-                    "<p><pre class = \"listing\">\nsomeCode\n</pre> </p>\n")
+                    "<p><pre class = \"listing\">\nsomeCode\n</pre> </p>")
 
   test "RST admonitions":
     # check that all admonitions are implemented
@@ -1502,7 +1501,7 @@ Test1
     check "(3, 15) Warning: " in warnings[1]
     check "language 'py:class' not supported" in warnings[1]
     check("""<p>See function <span class="py:func">spam</span>.</p>""" & "\n" &
-          """<p>See also <span class="py:class">egg</span>. </p>""" & "\n" ==
+          """<p>See also <span class="py:class">egg</span>. </p>""" ==
           output)
 
   test "(not) Roles: check escaping 1":
