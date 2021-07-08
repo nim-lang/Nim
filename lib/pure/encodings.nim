@@ -451,10 +451,6 @@ when defined(windows):
            else: convertFromWideString(codePageTo, wideString)
 
   proc convert*(c: EncodingConverter, s: string): string =
-    ## Converts `s` to `destEncoding` that was given to the converter `c`. It
-    ## assumed that `s` is in `srcEncoding`.
-    ##
-    ## .. warning:: utf-16BE, utf-32 conversions are not supported on windows.
     result = convertWin(c.src, c.dest, s)
 else:
   proc convert*(c: EncodingConverter, s: string): string =
