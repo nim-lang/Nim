@@ -7,12 +7,18 @@
 #    distribution, for details about the copyright.
 
 ## C++11 like smart pointers. They always use the shared allocator.
+## Experimental API, subject to change.
+
+when not compileOption("threads"):
+  {.error: "Smartptrs requires --threads:on option.".}
+
 import std/isolation
 
-template checkNotNil() =
+template checkNotNil(cond: untyped, msg: typed) =
   when compileOption("boundChecks"):
-    if SharedPtr[T](p).val == nil:
-      raise newException(NilAccessDefect, "deferencing nil const pointer")
+    {.line.}:
+      if not cond:
+        raise newException(NilAccessDefect, msg)
 
 type
   UniquePtr*[T] = object
@@ -46,11 +52,11 @@ proc isNil*[T](p: UniquePtr[T]): bool {.inline.} =
 
 proc `[]`*[T](p: UniquePtr[T]): var T {.inline.} =
   ## Returns a mutable view of the internal value of `p`.
-  checkNotNil()
+  checkNotNil(p.val != nil, "deferencing nil unique pointer")
   p.val[]
 
 proc `[]=`*[T](p: UniquePtr[T], val: T) {.inline.} =
-  checkNotNil()
+  checkNotNil(p.val != nil, "deferencing nil unique pointer")
   p.val[] = val
 
 proc `$`*[T](p: UniquePtr[T]): string {.inline.} =
@@ -94,11 +100,11 @@ proc isNil*[T](p: SharedPtr[T]): bool {.inline.} =
   p.val == nil
 
 proc `[]`*[T](p: SharedPtr[T]): var T {.inline.} =
-  checkNotNil()
+  checkNotNil(p.val != nil, "deferencing nil shared pointer")
   p.val.value
 
 proc `[]=`*[T](p: SharedPtr[T], val: T) {.inline.} =
-  checkNotNil()
+  checkNotNil(p.val != nil, "deferencing nil shared pointer")
   p.val.value = val
 
 proc `$`*[T](p: SharedPtr[T]): string {.inline.} =
@@ -124,7 +130,7 @@ proc isNil*[T](p: ConstPtr[T]): bool {.inline.} =
 
 proc `[]`*[T](p: ConstPtr[T]): lent T {.inline.} =
   ## Returns an immutable view of the internal value of `p`.
-  checkNotNil()
+  checkNotNil(SharedPtr[T](p).val != nil, "deferencing nil const pointer")
   SharedPtr[T](p).val.value
 
 proc `[]=`*[T](p: ConstPtr[T], v: T) = {.error: "`ConstPtr` cannot be assigned.".}
