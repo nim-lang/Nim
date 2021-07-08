@@ -44,46 +44,44 @@
 ## After you create a socket with the `newSocket` procedure, you can easily
 ## connect it to a server running at a known hostname (or IP address) and port.
 ## To do so over TCP, use the example below.
-##
-## .. code-block:: Nim
-##   var socket = newSocket()
-##   socket.connect("google.com", Port(80))
-##
-## For SSL, use the following example (and make sure to compile with `-d:ssl`):
-##
-## .. code-block:: Nim
-##   var socket = newSocket()
-##   var ctx = newContext()
-##   wrapSocket(ctx, socket)
-##   socket.connect("google.com", Port(443))
-##
+
+runnableExamples("-r:off"):
+  let socket = newSocket()
+  socket.connect("google.com", Port(80))
+
+## For SSL, use the following example:
+
+runnableExamples("-r:off -d:ssl"):
+  let socket = newSocket()
+  let ctx = newContext()
+  wrapSocket(ctx, socket)
+  socket.connect("google.com", Port(443))
+
 ## UDP is a connectionless protocol, so UDP sockets don't have to explicitly
 ## call the `connect <net.html#connect%2CSocket%2Cstring>`_ procedure. They can
 ## simply start sending data immediately.
-##
-## .. code-block:: Nim
-##   var socket = newSocket(AF_INET, SOCK_DGRAM, IPPROTO_UDP)
-##   socket.sendTo("192.168.0.1", Port(27960), "status\n")
-##
+
+runnableExamples("-r:off"):
+  let socket = newSocket(AF_INET, SOCK_DGRAM, IPPROTO_UDP)
+  socket.sendTo("192.168.0.1", Port(27960), "status\n")
+
 ## Creating a server
 ## -----------------
 ##
 ## After you create a socket with the `newSocket` procedure, you can create a
 ## TCP server by calling the `bindAddr` and `listen` procedures.
-##
-## .. code-block:: Nim
-##   var socket = newSocket()
-##   socket.bindAddr(Port(1234))
-##   socket.listen()
-##
-## You can then begin accepting connections using the `accept` procedure.
-##
-## .. code-block:: Nim
-##   var client: Socket
-##   var address = ""
-##   while true:
-##     socket.acceptAddr(client, address)
-##     echo("Client connected from: ", address)
+
+runnableExamples("-r:off"):
+  let socket = newSocket()
+  socket.bindAddr(Port(1234))
+  socket.listen()
+
+  # You can then begin accepting connections using the `accept` procedure.
+  var client: Socket
+  var address = ""
+  while true:
+    socket.acceptAddr(client, address)
+    echo "Client connected from: ", address
 
 import std/private/since
 
@@ -960,7 +958,9 @@ proc bindAddr*(socket: Socket, port = Port(0), address = "") {.
   var aiList = getAddrInfo(realaddr, port, socket.domain)
   if bindAddr(socket.fd, aiList.ai_addr, aiList.ai_addrlen.SockLen) < 0'i32:
     freeaddrinfo(aiList)
-    raiseOSError(osLastError())
+    var address2: string
+    address2.addQuoted address
+    raiseOSError(osLastError(), "address: $# port: $#" % [address2, $port])
   freeaddrinfo(aiList)
 
 proc acceptAddr*(server: Socket, client: var owned(Socket), address: var string,
@@ -1233,12 +1233,10 @@ proc getPeerAddr*(socket: Socket): (string, Port) =
 proc setSockOpt*(socket: Socket, opt: SOBool, value: bool,
     level = SOL_SOCKET) {.tags: [WriteIOEffect].} =
   ## Sets option `opt` to a boolean value specified by `value`.
-  ##
-  ## .. code-block:: Nim
-  ##   var socket = newSocket()
-  ##   socket.setSockOpt(OptReusePort, true)
-  ##   socket.setSockOpt(OptNoDelay, true, level=IPPROTO_TCP.toInt)
-  ##
+  runnableExamples("-r:off"):
+    let socket = newSocket()
+    socket.setSockOpt(OptReusePort, true)
+    socket.setSockOpt(OptNoDelay, true, level = IPPROTO_TCP.cint)
   var valuei = cint(if value: 1 else: 0)
   setSockOptInt(socket.fd, cint(level), toCInt(opt), valuei)
 
@@ -2025,10 +2023,8 @@ proc getPrimaryIPAddr*(dest = parseIpAddress("8.8.8.8")): IpAddress =
   ##
   ## Supports IPv4 and v6.
   ## Raises OSError if external networking is not set up.
-  ##
-  ## .. code-block:: Nim
-  ##   echo $getPrimaryIPAddr()  # "192.168.1.2"
-
+  runnableExamples("-r:off"):
+    echo getPrimaryIPAddr() # "192.168.1.2"
   let socket =
     if dest.family == IpAddressFamily.IPv4:
       newSocket(AF_INET, SOCK_DGRAM, IPPROTO_UDP)

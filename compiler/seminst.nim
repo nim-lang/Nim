@@ -146,8 +146,8 @@ proc instantiateBody(c: PContext, n, params: PNode, result, orig: PSym) =
     freshGenSyms(c, b, result, orig, symMap)
     b = semProcBody(c, b)
     result.ast[bodyPos] = hloBody(c, b)
-    trackProc(c, result, result.ast[bodyPos])
     excl(result.flags, sfForward)
+    trackProc(c, result, result.ast[bodyPos])
     dec c.inGenericInst
 
 proc fixupInstantiatedSymbols(c: PContext, s: PSym) =

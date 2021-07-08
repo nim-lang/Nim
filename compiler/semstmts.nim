@@ -1753,8 +1753,6 @@ proc semOverride(c: PContext, s: PSym, n: PNode) =
                 "signature for '" & s.name.s & "' must be proc[T: object](x: var T; y: T)")
   of "=trace":
     bindTypeHook(c, s, n, attachedTrace)
-  of "=dispose":
-    bindTypeHook(c, s, n, attachedDispose)
   else:
     if sfOverriden in s.flags:
       localError(c.config, n.info, errGenerated,

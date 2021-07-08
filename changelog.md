@@ -4,6 +4,8 @@
 
 ## Changes affecting backward compatibility
 
+- Deprecated `std/mersenne`
+
 -  `cuchar` now aliases `uint8` instead of `char`
 
 - `repr` now doesn't insert trailing newline; previous behavior was very inconsistent,
@@ -21,9 +23,6 @@
 
 - Type mismatch errors now show more context, use `-d:nimLegacyTypeMismatch` for previous
   behavior.
-
-- `echo` and `debugEcho` will now raise `IOError` if writing to stdout fails.  Previous behavior
-  silently ignored errors.  See #16366.  Use `-d:nimLegacyEchoNoRaise` for previous behavior.
 
 - `math.round` now is rounded "away from zero" in JS backend which is consistent
   with other backends. See #9125. Use `-d:nimLegacyJsRound` for previous behavior.
@@ -84,8 +83,8 @@
 
 - Deprecated `proc reversed*[T](a: openArray[T], first: Natural, last: int): seq[T]` in `std/algorithm`.
 
--  In `std/macros`, `treeRepr,lispRepr,astGenRepr` now represent SymChoice nodes in a collapsed way,
-   use `-d:nimLegacyMacrosCollapseSymChoice` to get previous behavior.
+- In `std/macros`, `treeRepr,lispRepr,astGenRepr` now represent SymChoice nodes in a collapsed way,
+  use `-d:nimLegacyMacrosCollapseSymChoice` to get previous behavior.
 
 - The configuration subsystem now allows for `-d:release` and `-d:danger` to work as expected.
   The downside is that these defines now have custom logic that doesn't apply for
@@ -93,6 +92,8 @@
 
 - Renamed `-d:nimCompilerStackraceHints` to `-d:nimCompilerStacktraceHints`.
 
+- In `std/dom`, `Interval` is now a `ref object`, same as `Timeout`. Definitions of `setTimeout`,
+  `clearTimeout`, `setInterval`, `clearInterval` were updated.
 
 ## Standard library additions and changes
 
@@ -275,6 +276,10 @@
   issues like https://github.com/nim-lang/Nim/issues/13063 (which affected error messages)
   for modules importing `std/wrapnils`.
   Added `??.` macro which returns an `Option`.
+  `std/wrapnils` can now be used to protect against `FieldDefect` errors in
+  case objects, generates optimal code (no overhead compared to manual
+  if-else branches), and preserves lvalue semantics which allows modifying
+  an expression.
 
 - Added `math.frexp` overload procs. Deprecated `c_frexp`, use `frexp` instead.
 
@@ -339,6 +344,8 @@
 
 - Added `dom.scrollIntoView` proc with options
 
+- Added `dom.setInterval`, `dom.clearInterval` overloads.
+
 - Added `ControlChars`, `GraphicChars`, `PrintableChars`, and `Punctuation` sets to `strutils`.
 
 ## Language changes
@@ -387,7 +394,7 @@
 
 ## Compiler changes
 
-- Added `--declaredlocs` to show symbol declaration location in messages.
+- Added `--declaredLocs` to show symbol declaration location in messages.
 
 - You can now enable/disable VM tracing in user code via `vmutils.vmTrace`.
 
