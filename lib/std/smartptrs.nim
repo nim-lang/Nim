@@ -9,6 +9,11 @@
 ## C++11 like smart pointers. They always use the shared allocator.
 import std/isolation
 
+template checkNotNil() =
+  when compileOption("boundChecks"):
+    if SharedPtr[T](p).val == nil:
+      raise newException(NilAccessDefect, "deferencing nil const pointer")
+
 type
   UniquePtr*[T] = object
     ## Non copyable pointer to a value of type `T` with exclusive ownership.
@@ -33,7 +38,7 @@ proc newUniquePtr[T](val: sink Isolated[T]): UniquePtr[T] {.nodestroy.} =
   # no destructor call for 'val: sink T' here either.
 
 template newUniquePtr*[T](val: T): UniquePtr[T] =
-  ## .. warning:: Using this template in a loop causes multiple evaluations of `value`.
+  ## .. warning:: Using this template in a loop causes multiple evaluations of `val`.
   newUniquePtr(isolate(val))
 
 proc isNil*[T](p: UniquePtr[T]): bool {.inline.} =
@@ -41,16 +46,16 @@ proc isNil*[T](p: UniquePtr[T]): bool {.inline.} =
 
 proc `[]`*[T](p: UniquePtr[T]): var T {.inline.} =
   ## Returns a mutable view of the internal value of `p`.
-  when compileOption("boundChecks"):
-    assert(p.val != nil, "deferencing nil unique pointer")
+  checkNotNil()
   p.val[]
 
 proc `[]=`*[T](p: UniquePtr[T], val: T) {.inline.} =
-  (p[]) = val
+  checkNotNil()
+  p.val[] = val
 
 proc `$`*[T](p: UniquePtr[T]): string {.inline.} =
   if p.val == nil: "nil"
-  else: "UniquePtr(" & $p.val[] & ")"
+  else: "(val: " & $p.val[] & ")"
 
 #------------------------------------------------------------------------------
 
@@ -82,23 +87,23 @@ proc newSharedPtr[T](val: sink Isolated[T]): SharedPtr[T] {.nodestroy.} =
   result.val.value = extract val
 
 template newSharedPtr*[T](val: T): SharedPtr[T] =
-  ## .. warning:: Using this template in a loop causes multiple evaluations of `value`.
+  ## .. warning:: Using this template in a loop causes multiple evaluations of `val`.
   newSharedPtr(isolate(val))
 
 proc isNil*[T](p: SharedPtr[T]): bool {.inline.} =
   p.val == nil
 
 proc `[]`*[T](p: SharedPtr[T]): var T {.inline.} =
-  when compileOption("boundChecks"):
-    assert(p.val != nil, "deferencing nil shared pointer")
+  checkNotNil()
   p.val.value
 
 proc `[]=`*[T](p: SharedPtr[T], val: T) {.inline.} =
-  (p[]) = val
+  checkNotNil()
+  p.val.value = val
 
 proc `$`*[T](p: SharedPtr[T]): string {.inline.} =
   if p.val == nil: "nil"
-  else: "SharedPtr(" & $p.val.value & ")"
+  else: "(val: " & $p.val.value & ")"
 
 #------------------------------------------------------------------------------
 
@@ -111,7 +116,7 @@ proc newConstPtr*[T](val: sink Isolated[T]): ConstPtr[T] =
   ConstPtr[T](newSharedPtr(val))
 
 template newConstPtr*[T](val: T): ConstPtr[T] =
-  ## .. warning:: Using this template in a loop causes multiple evaluations of `value`.
+  ## .. warning:: Using this template in a loop causes multiple evaluations of `val`.
   newConstPtr(isolate(val))
 
 proc isNil*[T](p: ConstPtr[T]): bool {.inline.} =
@@ -119,12 +124,10 @@ proc isNil*[T](p: ConstPtr[T]): bool {.inline.} =
 
 proc `[]`*[T](p: ConstPtr[T]): lent T {.inline.} =
   ## Returns an immutable view of the internal value of `p`.
-  when compileOption("boundChecks"):
-    assert(SharedPtr[T](p).val != nil, "deferencing nil const pointer")
+  checkNotNil()
   SharedPtr[T](p).val.value
 
 proc `[]=`*[T](p: ConstPtr[T], v: T) = {.error: "`ConstPtr` cannot be assigned.".}
 
 proc `$`*[T](p: ConstPtr[T]): string {.inline.} =
-  if SharedPtr[T](p).val == nil: "nil"
-  else: "ConstPtr(" & $SharedPtr[T](p).val.value & ")"
+  $SharedPtr[T](p)
