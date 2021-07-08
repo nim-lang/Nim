@@ -25,10 +25,12 @@ proc main() =
 
   when compileOption("rangeChecks"):
     doAssertRaises(RangeDefect):
-      discard rand(-1)
+      var a = -1
+      discard rand(a)
 
     doAssertRaises(RangeDefect):
-      discard rand(-1.0)
+      var a = -1.0
+      discard rand(a)
 
   # don't use causes integer overflow
   doAssert compiles(rand[int](low(int) .. high(int)))
