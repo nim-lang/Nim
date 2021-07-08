@@ -1258,7 +1258,7 @@ proc renderRstToOut(d: PDoc, n: PRstNode, result: var string) =
     doAssert false, "renderRstToOut"
   of rnLiteralBlock:
     renderAux(d, n, "<pre$2>$1</pre>\n",
-                    "\n\n\\begin{rstpre}\n$2\n$1\n\\end{rstpre}\n\n", result)
+                    "\n\n$2\\begin{rstpre}\n$1\n\\end{rstpre}\n\n", result)
   of rnQuotedLiteralBlock:
     doAssert false, "renderRstToOut"
   of rnLineBlock:
