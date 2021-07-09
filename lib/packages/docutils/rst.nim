@@ -1762,7 +1762,7 @@ proc parseLiteralBlock(p: var RstParser): PRstNode =
   var n = newLeaf("")
   if currentTok(p).kind == tkIndent:
     var indent = currentTok(p).ival
-    inc p.idx
+    while currentTok(p).kind == tkIndent: inc p.idx  # skip blank lines
     while true:
       case currentTok(p).kind
       of tkEof:

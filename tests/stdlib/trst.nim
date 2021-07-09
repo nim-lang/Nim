@@ -196,6 +196,22 @@ suite "RST parsing":
               rnLeaf  'someBlockQuote'
         """)
 
+  test "no redundant blank lines in literal blocks":
+    check(dedent"""
+      Check::
+
+
+        code
+
+      """.toAst ==
+      dedent"""
+        rnInner
+          rnLeaf  'Check'
+          rnLeaf  ':'
+          rnLiteralBlock
+            rnLeaf  'code'
+      """)
+
 suite "RST indentation":
   test "nested bullet lists":
     let input = dedent """
