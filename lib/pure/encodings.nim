@@ -7,7 +7,7 @@
 #    distribution, for details about the copyright.
 #
 
-## Converts between different character encodings. On UNIX, this uses
+## Routines for converting between different character encodings. On UNIX, this uses
 ## the `iconv`:idx: library, on Windows the Windows API.
 ##
 ## The following example shows how to change character encodings.
