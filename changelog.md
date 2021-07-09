@@ -95,6 +95,9 @@
 - In `std/dom`, `Interval` is now a `ref object`, same as `Timeout`. Definitions of `setTimeout`,
   `clearTimeout`, `setInterval`, `clearInterval` were updated.
 
+- Deprecated `codePageToName` and `codePageToName` procs
+  in `std/encodings`.
+
 ## Standard library additions and changes
 
 - `strformat`:

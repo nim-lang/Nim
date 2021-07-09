@@ -248,18 +248,24 @@ when defined(windows):
     proc getCPInfo(codePage: CodePage, lpCPInfo: var CpInfo): int32 {.
       stdcall, importc: "GetCPInfo", dynlib: "kernel32".}
 
-  proc nameToCodePage*(name: string): CodePage =
+  proc nameToCodePageImpl(name: string): CodePage {.inline.} =
     var nameAsInt: int
     if parseInt(name, nameAsInt) == 0: nameAsInt = -1
     for no, na in items(winEncodings):
       if no == nameAsInt or eqEncodingNames(na, name): return CodePage(no)
     result = CodePage(-1)
 
-  proc codePageToName*(c: CodePage): string =
+  proc nameToCodePage*(name: string): CodePage {.deprecated.} =
+    result = nameToCodePageImpl(name)
+
+  proc codePageToNameImpl(c: CodePage): string =
     for no, na in items(winEncodings):
       if no == int(c):
         return if na.len != 0: na else: $no
     result = ""
+
+  proc codePageToName*(c: CodePage): string {.deprecated.} =
+    result = codePageToNameImpl(c)
 
   proc getACP(): CodePage {.stdcall, importc: "GetACP", dynlib: "kernel32".}
   proc getGetConsoleCP(): CodePage {.stdcall, importc: "GetConsoleCP",
@@ -329,7 +335,7 @@ proc getCurrentEncoding*(uiApp = false): string =
   ## The `uiApp` parameter is Windows specific. If true, the UI's code-page
   ## is returned, if false, the Console's code-page is returned.
   when defined(windows):
-    result = codePageToName(if uiApp: getACP() else: getGetConsoleCP())
+    result = codePageToNameImpl(if uiApp: getACP() else: getGetConsoleCP())
   else:
     result = "UTF-8"
 
@@ -343,8 +349,8 @@ proc open*(destEncoding = "UTF-8", srcEncoding = "CP1252"): EncodingConverter =
         "cannot create encoding converter from " &
         srcEncoding & " to " & destEncoding)
   else:
-    result.dest = nameToCodePage(destEncoding)
-    result.src = nameToCodePage(srcEncoding)
+    result.dest = nameToCodePageImpl(destEncoding)
+    result.src = nameToCodePageImpl(srcEncoding)
     if int(result.dest) == -1:
       raise newException(EncodingError,
         "cannot find encoding " & destEncoding)
@@ -434,11 +440,11 @@ when defined(windows):
     let unsupported = [1201, 12000, 12001]
 
     if int(codePageFrom) in unsupported:
-      let message = "encoding from " & codePageToName(codePageFrom) & " is not supported on windows"
+      let message = "encoding from " & codePageToNameImpl(codePageFrom) & " is not supported on windows"
       raise newException(EncodingError, message)
 
     if int(codePageTo) in unsupported:
-      let message = "encoding to " & codePageToName(codePageTo) & " is not supported on windows"
+      let message = "encoding to " & codePageToNameImpl(codePageTo) & " is not supported on windows"
       raise newException(EncodingError, message)
 
     # in case it's already UTF-16 little endian - conversion can be simplified
