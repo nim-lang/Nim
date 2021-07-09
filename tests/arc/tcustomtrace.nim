@@ -150,7 +150,7 @@ proc main =
       echo i, " ", j, " ", nested[i][j]
 
 main()
-#echo "after ", allocCount, " ", deallocCount
+echo "after ", allocCount, " ", deallocCount
 
 type
   Node = ref object
