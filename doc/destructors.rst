@@ -204,6 +204,37 @@ that otherwise would lead to a copy is prevented at compile-time. This looks lik
 but a custom error message (e.g., `{.error: "custom error".}`) will not be emitted
 by the compiler. Notice that there is no `=` before the `{.error.}` pragma.
 
+
+`=trace` hook
+---------------
+
+A custom **container** type can support Nim's cycle collector `--gc:orc` via
+the `=trace` hook. If the container does not implement `=trace`, cyclic data
+structure which are constructed with the help of the container might leak
+memory or resources, but memory safety is not compromised.
+
+The prototype of this hook for a type `T` needs to be:
+
+.. code-block:: nim
+
+  proc `=trace`(dest: var T; env: pointer)
+
+`env` is used by ORC to keep track of its internal state, it should be passed around
+to calls of the built-in `=trace` operation.
+
+The general pattern in `=trace` looks like:
+
+.. code-block:: nim
+
+  proc `=trace`(dest: var T; env: pointer) =
+    for child in childrenThatCanContainPointers(dest):
+      `=trace`(child, env)
+
+
+**Note**: The `=trace` hooks is currently more experimental and less refined
+than the other hooks.
+
+
 Move semantics
 ==============
 

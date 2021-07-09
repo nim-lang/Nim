@@ -1,5 +1,5 @@
 discard """
-  output: '''1
+  outputsub: '''1
 2
 3
 4
