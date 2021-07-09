@@ -18,7 +18,8 @@ discard """
 after 6 6
 MEM 0'''
 joinable: false
-  cmd: "nim c --gc:orc $file"
+  cmd: "nim c --gc:orc -d:useMalloc $file"
+  valgrind: "true"
 """
 
 import typetraits
@@ -73,10 +74,11 @@ proc `=trace`*[T](x: var myseq[T]; env: pointer) =
     for i in 0..<x.len: `=trace`(x[i], env)
 
 proc resize[T](s: var myseq[T]) =
-  if s.cap == 0: s.cap = 8
+  let oldCap = s.cap
+  if oldCap == 0: s.cap = 8
   else: s.cap = (s.cap * 3) shr 1
   if s.data == nil: inc allocCount
-  s.data = cast[type(s.data)](realloc(s.data, s.cap * sizeof(T)))
+  s.data = cast[typeof(s.data)](realloc0(s.data, oldCap * sizeof(T), s.cap * sizeof(T)))
 
 proc reserveSlot[T](x: var myseq[T]): ptr T =
   if x.len >= x.cap: resize(x)
@@ -97,10 +99,11 @@ proc shrink*[T](x: var myseq[T]; newLen: int) =
 proc grow*[T](x: var myseq[T]; newLen: int; value: T) =
   if newLen <= x.len: return
   assert newLen >= 0
-  if x.cap == 0: x.cap = newLen
-  else: x.cap = max(newLen, (x.cap * 3) shr 1)
+  let oldCap = x.cap
+  if oldCap == 0: x.cap = newLen
+  else: x.cap = max(newLen, (oldCap * 3) shr 1)
   if x.data == nil: inc allocCount
-  x.data = cast[type(x.data)](realloc(x.data, x.cap * sizeof(T)))
+  x.data = cast[type(x.data)](realloc0(x.data, oldCap * sizeof(T), x.cap * sizeof(T)))
   for i in x.len..<newLen:
     x.data[i] = value
   x.len = newLen
@@ -124,7 +127,7 @@ template `[]=`*[T](x: myseq[T]; i: Natural; y: T) =
 proc createSeq*[T](elems: varargs[T]): myseq[T] =
   result.cap = max(elems.len, 2)
   result.len = elems.len
-  result.data = cast[type(result.data)](alloc(result.cap * sizeof(T)))
+  result.data = cast[type(result.data)](alloc0(result.cap * sizeof(T)))
   inc allocCount
   when supportsCopyMem(T):
     copyMem(result.data, unsafeAddr(elems[0]), result.cap * sizeof(T))
