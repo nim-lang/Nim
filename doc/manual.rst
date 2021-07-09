@@ -3840,9 +3840,8 @@ the operator is in scope (including if it is private).
   # will still be called upon exiting scope
   doAssert witness == 3
 
-Type bound operators currently include:
-`=destroy`, `=copy`, `=sink`, `=trace`, `=deepcopy`
-(some of which are still implementation defined and not yet documented).
+Type bound operators are:
+`=destroy`, `=copy`, `=sink`, `=trace`, `=deepcopy`.
 
 For more details on some of those procs, see
 `Lifetime-tracking hooks <destructors.html#lifetimeminustracking-hooks>`_.

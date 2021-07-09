@@ -388,6 +388,8 @@
 
 - `typeof(voidStmt)` now works and returns `void`.
 
+- The `gc:orc` algorithm was refined so that custom container types can participate in the
+  cycle collection process.
 
 
 ## Compiler changes

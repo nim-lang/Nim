@@ -416,11 +416,23 @@ proc considerUserDefinedOp(c: var TLiftCtx; t: PType; body, x, y: PNode): bool =
       body.add destructorCall(c, op, x)
       result = true
     #result = addDestructorCall(c, t, body, x)
-  of attachedAsgn, attachedSink, attachedTrace:
+  of attachedAsgn, attachedSink:
     var op = getAttachedOp(c.g, t, c.kind)
     result = considerAsgnOrSink(c, t, body, x, y, op)
     if op != nil:
       setAttachedOp(c.g, c.idgen.module, t, c.kind, op)
+  of attachedTrace:
+    var op = getAttachedOp(c.g, t, c.kind)
+    if op != nil and sfOverriden in op.flags:
+      if op.ast.isGenericRoutine:
+        # patch generic =trace:
+        op = instantiateGeneric(c, op, t, t.typeInst)
+        setAttachedOp(c.g, c.idgen.module, t, c.kind, op)
+
+    result = considerAsgnOrSink(c, t, body, x, y, op)
+    if op != nil:
+      setAttachedOp(c.g, c.idgen.module, t, c.kind, op)
+
   of attachedDeepCopy:
     let op = getAttachedOp(c.g, t, attachedDeepCopy)
     if op != nil:
@@ -1065,7 +1077,7 @@ proc createTypeBoundOps(g: ModuleGraph; c: PContext; orig: PType; info: TLineInf
   # 4. We have a custom destructor.
   # 5. We have a (custom) generic destructor.
 
-  # we do not generate '=trace' nor '=dispose' procs if we
+  # we do not generate '=trace' procs if we
   # have the cycle detection disabled, saves code size.
   let lastAttached = if g.config.selectedGC == gcOrc: attachedTrace
                      else: attachedSink
