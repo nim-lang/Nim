@@ -993,7 +993,7 @@ type
 
 const
   OverloadableSyms* = {skProc, skFunc, skMethod, skIterator,
-    skConverter, skModule, skTemplate, skMacro}
+    skConverter, skModule, skTemplate, skMacro, skEnumField}
 
   GenericTypes*: TTypeKinds = {tyGenericInvocation, tyGenericBody,
     tyGenericParam}

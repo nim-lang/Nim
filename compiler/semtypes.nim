@@ -144,7 +144,7 @@ proc semEnum(c: PContext, n: PNode, prev: PType): PType =
     styleCheckDef(c.config, e)
     onDef(e.info, e)
     if sfGenSym notin e.flags:
-      if not isPure: addInterfaceDecl(c, e)
+      if not isPure: addInterfaceOverloadableSymAt(c, c.currentScope, e)
       else: declarePureEnumField(c, e)
     if isPure and (let conflict = strTableInclReportConflict(symbols, e); conflict != nil):
       wrongRedefinition(c, e.info, e.name.s, conflict.info)

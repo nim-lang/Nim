@@ -2737,7 +2737,7 @@ proc semExpr(c: PContext, n: PNode, flags: TExprFlags = {}): PNode =
         {checkUndeclared, checkModule, checkAmbiguity, checkPureEnumFields}
     var s = qualifiedLookUp(c, n, checks)
     if c.matchedConcept == nil: semCaptureSym(s, c.p.owner)
-    if s.kind in {skProc, skFunc, skMethod, skConverter, skIterator}:
+    if s.kind in {skProc, skFunc, skMethod, skConverter, skIterator, skEnumField}:
       #performProcvarCheck(c, n, s)
       result = symChoice(c, n, s, scClosed)
       if result.kind == nkSym:
