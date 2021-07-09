@@ -234,16 +234,16 @@ proc presentFailedCandidates(c: PContext, n: PNode, errors: CandidateErrors):
         let wanted = err.firstMismatch.formal.typ
         doAssert err.firstMismatch.formal != nil
         candidates.add("\n  required type for " & nameParam &  ": ")
-        candidates.add typeToString(wanted)
-        candidates.addDeclaredLocMaybe(c.config, wanted)
-        candidates.add "\n  but expression "
+        candidates.addTypeDeclVerboseMaybe(c.config, wanted)
+        candidates.add "\n  but expression '"
         if err.firstMismatch.kind == kVarNeeded:
-          candidates.add "$1 is immutable, not 'var'" % renderNotLValue(nArg).quoteExpr
+          candidates.add renderNotLValue(nArg)
+          candidates.add "' is immutable, not 'var'"
         else:
-          candidates.add "$1 is of type: " % renderTree(nArg).quoteExpr
-          var got = nArg.typ
-          candidates.add typeToString(got).quoteExpr
-          candidates.addDeclaredLocMaybe(c.config, got)
+          candidates.add renderTree(nArg)
+          candidates.add "' is of type: "
+          let got = nArg.typ
+          candidates.addTypeDeclVerboseMaybe(c.config, got)
           doAssert wanted != nil
           if got != nil:
             if got.kind == tyProc and wanted.kind == tyProc:

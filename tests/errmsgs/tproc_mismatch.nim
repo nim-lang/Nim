@@ -9,7 +9,7 @@ tproc_mismatch.nim(39, 6) Error: type mismatch: got <proc (){.inline, noSideEffe
 but expected one of:
 proc bar(a: proc ())
   first type mismatch at position: 1
-  required type for a: proc (){.closure.}
+  required type for a: 'proc (){.closure.}'
   but expression 'fn1' is of type: 'proc (){.inline, noSideEffect, gcsafe, locks: 0.}'
   Calling convention mismatch: got '{.inline.}', but expected '{.closure.}'.
 
