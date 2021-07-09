@@ -671,3 +671,20 @@ Conventions
    Furthermore, module names should use `snake_case` and not use capital
    letters, which cause issues when going from an OS without case
    sensitivity to an OS with it.
+
+
+Stdlib bugfixes
+===============
+
+Nim is used for mission critical applications where details like
+"can this proc raise or not" do matter. A "bugfix" that changes the behavior
+from "error is silently ignored" to "error now produces an exception" is
+not acceptable -- **it is not a bug if somebody's code relies on it**.
+
+Instead, deprecate the proc with the questionable edge case behavior and
+introduce a new proc in a new module. It is much easier to handle a compiler
+update that merely produces more deprecation warnings.
+
+This principle also generalizes to full modules: Deprecate the questionable
+module, delegate to a new Nimble package where the API can evolve in its
+own pace.
