@@ -258,7 +258,7 @@ when defined(windows):
   proc nameToCodePage*(name: string): CodePage {.deprecated.} =
     result = nameToCodePageImpl(name)
 
-  proc codePageToNameImpl(c: CodePage): string =
+  proc codePageToNameImpl(c: CodePage): string {.inline.} =
     for no, na in items(winEncodings):
       if no == int(c):
         return if na.len != 0: na else: $no
