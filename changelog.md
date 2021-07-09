@@ -152,7 +152,7 @@
 
 - `jsonutils.toJson` now supports customization via `ToJsonOptions`.
 
-- Added an overload for the `collect` macro that inferes the container type based
+- Added an overload for the `collect` macro that infers the container type based
   on the syntax of the last expression. Works with std seqs, tables and sets.
 
 - Added `randState` template that exposes the default random number generator.
