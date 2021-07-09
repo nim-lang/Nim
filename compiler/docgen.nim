@@ -468,6 +468,10 @@ proc runAllExamples(d: PDoc) =
 
 proc quoted(a: string): string = result.addQuoted(a)
 
+proc toInstantiationInfo(conf: ConfigRef, info: TLineInfo): auto =
+  # xxx expose in compiler/lineinfos.nim
+  (conf.toMsgFilename(info), info.line.int, info.col.int + ColOffset)
+
 proc prepareExample(d: PDoc; n: PNode, topLevel: bool): tuple[rdoccmd: string, code: string] =
   ## returns `rdoccmd` and source code for this runnableExamples
   var rdoccmd = ""
@@ -481,6 +485,7 @@ proc prepareExample(d: PDoc; n: PNode, topLevel: bool): tuple[rdoccmd: string, c
   let useRenderModule = false
   let loc = d.conf.toFileLineCol(n.info)
   let code = extractRunnableExamplesSource(d.conf, n)
+  let codeIndent = extractRunnableExamplesSource(d.conf, n, indent = 2)
 
   if d.conf.errorCounter > 0:
     return (rdoccmd, code)
@@ -489,7 +494,7 @@ proc prepareExample(d: PDoc; n: PNode, topLevel: bool): tuple[rdoccmd: string, c
   let outputDir = d.exampleOutputDir
   createDir(outputDir)
   inc d.exampleCounter
-  let outp = outputDir / RelativeFile(extractFilename(d.filename.changeFileExt"" & ("_examples$1.nim" % $d.exampleCounter)))
+  let outp = outputDir / RelativeFile("$#_examples_$#.nim" % [d.filename.extractFilename.changeFileExt"", $d.exampleCounter])
 
   if useRenderModule:
     var docComment = newTree(nkCommentStmt)
@@ -507,13 +512,21 @@ proc prepareExample(d: PDoc; n: PNode, topLevel: bool): tuple[rdoccmd: string, c
     renderModule(runnableExamples, outp.string, conf = d.conf)
 
   else:
-    let code2 = """
+    var code2 = code
+    if code.len > 0 and "codeReordering" notin code:
+      # hacky but simplest solution, until we devise a way to make `{.line.}`
+      # work without introducing a scope
+      code2 = """
+{.line: $#.}:
+$#
+""" % [$toInstantiationInfo(d.conf, n.info), codeIndent]
+    code2 = """
 #[
-$1
+$#
 ]#
-import $2
-$3
-""" % [comment, d.filename.quoted, code]
+import $#
+$#
+""" % [comment, d.filename.quoted, code2]
     writeFile(outp.string, code2)
 
   if rdoccmd notin d.exampleGroups:
