@@ -1022,7 +1022,7 @@ when defined(windows) or defined(nimdoc):
       raiseOSError(osLastError())
 
     var pcd = cast[PostCallbackDataPtr](allocShared0(sizeof(PostCallbackData)))
-    var flags = WT_EXECUTEINWAITTHREAD.DWORD
+    var flags = WT_EXECUTEINWAITTHREAD.DWORD or WT_EXECUTEONLYONCE.DWORD
 
     proc proccb(fd: AsyncFD, bytesCount: DWORD, errcode: OSErrorCode) =
       closeWaitable(hProcess)
