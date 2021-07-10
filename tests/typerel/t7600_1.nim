@@ -4,8 +4,8 @@ nimout: '''t7600_1.nim(21, 6) Error: type mismatch: got <Thin[system.int]>
 but expected one of:
 proc test[T](x: Paper[T])
   first type mismatch at position: 1
-  required type for x: Paper[test.T]
-  but expression 'tn' is of type: Thin[system.int]
+  required type for x: 'Paper[test.T]'
+  but expression 'tn' is of type: 'Thin[system.int]'
 
 expression: test tn'''
 """
