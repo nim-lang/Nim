@@ -2874,7 +2874,7 @@ proc parseDotDot(p: var RstParser): PRstNode =
   else:
     result = parseComment(p, col)
 
-proc rstParsePass1*(fragment, filename: string,
+proc rstParsePass1*(fragment: string,
                     line, column: int,
                     sharedState: PRstSharedState): PRstNode =
   ## Parses an RST `fragment`.
@@ -3021,7 +3021,7 @@ proc rstParse*(text, filename: string,
   ## argument `filenames` (it is being filled here at least with `filename`
   ## and possibly with other files from RST ``.. include::`` statement).
   var sharedState = newRstSharedState(options, filename, findFile, msgHandler)
-  let unresolved = rstParsePass1(text, filename, line, column, sharedState)
+  let unresolved = rstParsePass1(text, line, column, sharedState)
   preparePass2(sharedState, unresolved)
   result.node = resolveSubs(sharedState, unresolved)
   result.filenames = sharedState.filenames

@@ -185,7 +185,7 @@ proc parseRst(text, filename: string,
               line, column: int,
               conf: ConfigRef, sharedState: PRstSharedState): PRstNode =
   declareClosures()
-  result = rstParsePass1(text, filename, line, column, sharedState)
+  result = rstParsePass1(text, line, column, sharedState)
 
 proc getOutFile2(conf: ConfigRef; filename: RelativeFile,
                  ext: string, guessTarget: bool): AbsoluteFile =
