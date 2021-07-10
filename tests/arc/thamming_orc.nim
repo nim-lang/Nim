@@ -1,6 +1,6 @@
 discard """
   output: '''(allocCount: 1114, deallocCount: 1112)
-created 439 destroyed 402'''
+created 491 destroyed 491'''
   cmd: "nim c --gc:orc -d:nimAllocStats $file"
 """
 
@@ -94,8 +94,8 @@ type
 var destroyed = 0
 
 proc `=destroy`(ll: var LazyListObj) =
-  if ll.tlf == nil and ll.tl == nil: return
   destroyed += 1
+  if ll.tlf == nil and ll.tl == nil: return
 
   when defined(trace20):
     echo "destroying:  ", (destroyed, ll.hd[1].convertTriVal2BigInt)
@@ -140,7 +140,7 @@ proc main =
            "Algorithmic error finding first 20 Hamming numbers!!!"
 
   when not defined(trace20):
-    var lsth: TriVal; created = 0; destroyed = 0
+    var lsth: TriVal
     for h in hammings(200): lsth = h
     doAssert $lsth.convertTriVal2BigInt == "16200",
              "Algorithmic error finding 200th Hamming number!!!"
@@ -149,7 +149,7 @@ let mem = getOccupiedMem()
 main()
 GC_FullCollect()
 let mb = getOccupiedMem() - mem
-#doAssert mb == 0, "Found memory leak of " & $mb & " bytes!!!"
+doAssert mb == 0, "Found memory leak of " & $mb & " bytes!!!"
 
 echo getAllocStats()
 echo "created ", created, " destroyed ", destroyed
