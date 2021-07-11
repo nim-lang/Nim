@@ -74,6 +74,7 @@ import parseutils
 from math import pow, floor, log10
 from algorithm import fill, reverse
 import std/enumutils
+import std/strbasics
 
 from unicode import toLower, toUpper
 export toLower, toUpper
@@ -1805,58 +1806,32 @@ func join*[T: not string](a: openArray[T], sep: string = ""): string =
     add(result, $x)
 
 type
-  SkipTable* = array[char, int]
+  SkipTable* {.deprecated: "no longer used in strutils.find".} = array[char, int]
 
 func initSkipTable*(a: var SkipTable, sub: string) {.rtl,
-    extern: "nsuInitSkipTable".} =
-  ## Preprocess table `a` for `sub`.
-  let m = len(sub)
-  fill(a, m)
+    extern: "nsuInitSkipTable", deprecated: "is a no-op".} =
+  ## Deprecated: Does nothing. Exists solely for backwards compatibility.
+  discard
 
-  for i in 0 ..< m - 1:
-    a[sub[i]] = m - 1 - i
+# Forward declare
+func find*(s, sub: string, start: Natural = 0, last = 0): int {.rtl,
+    extern: "nsuFindStr", deprecated: "use strbasics.indexOf".}
 
 func find*(a: SkipTable, s, sub: string, start: Natural = 0, last = 0): int {.
-    rtl, extern: "nsuFindStrA".} =
-  ## Searches for `sub` in `s` inside range `start..last` using preprocessed
-  ## table `a`. If `last` is unspecified, it defaults to `s.high` (the last
-  ## element).
+    rtl, extern: "nsuFindStrA", deprecated: "use strbasics.indexOf".} =
+  ## Deprecated: use `strbasics.indexOf func<strbasics.html#indexOf,openArray[char],openArray[char]>`_.
   ##
-  ## Searching is case-sensitive. If `sub` is not in `s`, -1 is returned.
-  let
-    last = if last == 0: s.high else: last
-    subLast = sub.len - 1
-
-  if subLast == -1:
-    # this was an empty needle string,
-    # we count this as match in the first possible position:
-    return start
-
-  # This is an implementation of the Boyer-Moore Horspool algorithms
-  # https://en.wikipedia.org/wiki/Boyer%E2%80%93Moore%E2%80%93Horspool_algorithm
-  var skip = start
-
-  while last - skip >= subLast:
-    var i = subLast
-    while s[skip + i] == sub[i]:
-      if i == 0:
-        return skip
-      dec i
-    inc skip, a[s[skip + subLast]]
-  return -1
-
-when not (defined(js) or defined(nimdoc) or defined(nimscript)):
-  func c_memchr(cstr: pointer, c: char, n: csize_t): pointer {.
-                importc: "memchr", header: "<string.h>".}
-  func c_strstr(haystack, needle: cstring): cstring {.
-    importc: "strstr", header: "<string.h>".}
-
-  const hasCStringBuiltin = true
-else:
-  const hasCStringBuiltin = false
+  ## Shorthand for `find(s, sub, start, last)`. Makes no use of the `SkipTable`.
+  ##
+  ## See also:
+  ## * `find func<#find,string,string,Natural,int>`_
+  ## * `strbasics.indexOf func<strbasics.html#indexOf,openArray[char],openArray[char]>`_
+  return strutils.find(s, sub, start=start, last=last)
 
 func find*(s: string, sub: char, start: Natural = 0, last = 0): int {.rtl,
-    extern: "nsuFindChar".} =
+    extern: "nsuFindChar", deprecated: "use strbasics.indexOf".} =
+  ## Deprecated: use `strbasics.indexOf func<strbasics.html#indexOf,openArray[char],char>`_.
+  ##
   ## Searches for `sub` in `s` inside range `start..last` (both ends included).
   ## If `last` is unspecified, it defaults to `s.high` (the last element).
   ##
@@ -1865,26 +1840,22 @@ func find*(s: string, sub: char, start: Natural = 0, last = 0): int {.rtl,
   ## Use `s[start..last].rfind` for a `start`-origin index.
   ##
   ## See also:
+  ## * `strbasics.indexOf func<strbasics.html#indexOf,openArray[char],char>`_
   ## * `rfind func<#rfind,string,char,Natural>`_
   ## * `replace func<#replace,string,char,char>`_
   let last = if last == 0: s.high else: last
-  when nimvm:
-    for i in int(start)..last:
-      if sub == s[i]: return i
+  if last < 0:
+    return -1
+  let index: int = strbasics.indexOf(s[start..last], sub)
+  if index == -1:
+    return -1
   else:
-    when hasCStringBuiltin:
-      let L = last-start+1
-      if L > 0:
-        let found = c_memchr(s[start].unsafeAddr, sub, cast[csize_t](L))
-        if not found.isNil:
-          return cast[ByteAddress](found) -% cast[ByteAddress](s.cstring)
-    else:
-      for i in int(start)..last:
-        if sub == s[i]: return i
-  return -1
+    return start + index
 
 func find*(s: string, chars: set[char], start: Natural = 0, last = 0): int {.
-    rtl, extern: "nsuFindCharSet".} =
+    rtl, extern: "nsuFindCharSet", deprecated: "use strbasics.indexOf".} =
+  ## Deprecated: use `strbasics.indexOf func<strbasics.html#indexOf,openArray[char],set[char]>`_.
+  ##
   ## Searches for `chars` in `s` inside range `start..last` (both ends included).
   ## If `last` is unspecified, it defaults to `s.high` (the last element).
   ##
@@ -1893,15 +1864,21 @@ func find*(s: string, chars: set[char], start: Natural = 0, last = 0): int {.
   ## Use `s[start..last].find` for a `start`-origin index.
   ##
   ## See also:
+  ## * `strbasics.indexOf func<strbasics.html#indexOf,openArray[char],set[char]>`_
   ## * `rfind func<#rfind,string,set[char],Natural>`_
   ## * `multiReplace func<#multiReplace,string,varargs[]>`_
-  let last = if last == 0: s.high else: last
-  for i in int(start)..last:
-    if s[i] in chars: return i
-  return -1
+  let start: int = min(start, s.high)
+  let last: int = if last == 0: s.high else: min(last, s.high)
+  let index: int = strbasics.indexOf(s[start..last], chars)
+  if index == -1:
+    return -1
+  else:
+    return start + index
 
 func find*(s, sub: string, start: Natural = 0, last = 0): int {.rtl,
-    extern: "nsuFindStr".} =
+    extern: "nsuFindStr", deprecated: "use strbasics.indexOf".} =
+  ## Deprecated: use `strbasics.indexOf func<strbasics.html#indexOf,openArray[char],openArray[char]>`_.
+  ##
   ## Searches for `sub` in `s` inside range `start..last` (both ends included).
   ## If `last` is unspecified, it defaults to `s.high` (the last element).
   ##
@@ -1910,33 +1887,31 @@ func find*(s, sub: string, start: Natural = 0, last = 0): int {.rtl,
   ## Use `s[start..last].find` for a `start`-origin index.
   ##
   ## See also:
+  ## * `strbasics.indexOf func<strbasics.html#indexOf,openArray[char],openArray[char]>`_
   ## * `rfind func<#rfind,string,string,Natural>`_
   ## * `replace func<#replace,string,string,string>`_
-  if sub.len > s.len - start: return -1
+
+  if sub.len == 0:
+    if last <= 0:
+      if start <= s.len:
+        return start
+      else:
+        return -1
+    elif last < start:
+      return -1
+  elif last < 0:
+    return -1
+  if s.len == 0: return -1
   if sub.len == 1: return find(s, sub[0], start, last)
 
-  template useSkipTable {.dirty.} =
-    var a {.noinit.}: SkipTable
-    initSkipTable(a, sub)
-    result = find(a, s, sub, start, last)
+  let start: int = min(start, s.high)
+  let last: int = if last == 0: s.high else: min(last, s.high)
 
-  when not hasCStringBuiltin:
-    useSkipTable()
+  let index: int = strbasics.indexOf(s[start..last], sub)
+  if index == -1:
+    return -1
   else:
-    when nimvm:
-      useSkipTable()
-    else:
-      when hasCStringBuiltin:
-        if last == 0 and s.len > start:
-          let found = c_strstr(s[start].unsafeAddr, sub)
-          if not found.isNil:
-            result = cast[ByteAddress](found) -% cast[ByteAddress](s.cstring)
-          else:
-            result = -1
-        else:
-          useSkipTable()
-      else:
-        useSkipTable()
+    return start + index
 
 func rfind*(s: string, sub: char, start: Natural = 0, last = -1): int {.rtl,
     extern: "nsuRFindChar".} =
