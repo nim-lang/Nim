@@ -1815,7 +1815,7 @@ func initSkipTable*(a: var SkipTable, sub: string) {.rtl,
 
 # Forward declare
 func find*(s, sub: string, start: Natural = 0, last = 0): int {.rtl,
-    extern: "nsuFindStr", deprecated: "use strbasics.indexOf".}
+    extern: "nsuFindStr", deprecated: "use strbasics.indexOf", raises: [].}
 
 func find*(a: SkipTable, s, sub: string, start: Natural = 0, last = 0): int {.
     rtl, extern: "nsuFindStrA", deprecated: "use strbasics.indexOf".} =
@@ -1829,7 +1829,7 @@ func find*(a: SkipTable, s, sub: string, start: Natural = 0, last = 0): int {.
   return strutils.find(s, sub, start=start, last=last)
 
 func find*(s: string, sub: char, start: Natural = 0, last = 0): int {.rtl,
-    extern: "nsuFindChar", deprecated: "use strbasics.indexOf".} =
+    extern: "nsuFindChar", deprecated: "use strbasics.indexOf", raises: [].} =
   ## Deprecated: use `strbasics.indexOf func<strbasics.html#indexOf,openArray[char],char>`_.
   ##
   ## Searches for `sub` in `s` inside range `start..last` (both ends included).
@@ -1853,7 +1853,8 @@ func find*(s: string, sub: char, start: Natural = 0, last = 0): int {.rtl,
     return start + index
 
 func find*(s: string, chars: set[char], start: Natural = 0, last = 0): int {.
-    rtl, extern: "nsuFindCharSet", deprecated: "use strbasics.indexOf".} =
+    rtl, extern: "nsuFindCharSet", deprecated: "use strbasics.indexOf",
+    raises: [].} =
   ## Deprecated: use `strbasics.indexOf func<strbasics.html#indexOf,openArray[char],set[char]>`_.
   ##
   ## Searches for `chars` in `s` inside range `start..last` (both ends included).
@@ -1876,7 +1877,7 @@ func find*(s: string, chars: set[char], start: Natural = 0, last = 0): int {.
     return start + index
 
 func find*(s, sub: string, start: Natural = 0, last = 0): int {.rtl,
-    extern: "nsuFindStr", deprecated: "use strbasics.indexOf".} =
+    extern: "nsuFindStr", deprecated: "use strbasics.indexOf", raises: [].} =
   ## Deprecated: use `strbasics.indexOf func<strbasics.html#indexOf,openArray[char],openArray[char]>`_.
   ##
   ## Searches for `sub` in `s` inside range `start..last` (both ends included).
