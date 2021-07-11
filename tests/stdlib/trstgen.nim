@@ -1169,7 +1169,7 @@ Test1
         "input(4, 11) Warning: language 'unsupportedLang' not supported",
         "input(8, 4) Warning: language 'anotherLang' not supported"
         ])
-    check(output == "<pre class = \"listing\">\nanything</pre>" &
+    check(output == "<pre class = \"listing\">anything</pre>" &
                     "<p><pre class = \"listing\">\nsomeCode\n</pre> </p>")
 
   test "RST admonitions":
