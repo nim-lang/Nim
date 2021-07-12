@@ -311,6 +311,18 @@ template fn() =
       doAssert guide == AboutLifeUniverseAndEverythingElse(
         question: "6*9=?", answer: 42)
 
+      block refObject: #bug 17986
+        type A = ref object
+          case is_a: bool
+          of true:
+            a: int
+          else:
+            b: int
+
+        var a = A()
+        fromJson(a, """{"is_a": true, "a":1, "extra_key": 1}""".parse_json, Joptions(allowExtraKeys: true))
+        doAssert $a[] == "(is_a: true, a: 1)"
+
     block testAllowMissingKeys:
       var guide = AboutLifeUniverseAndEverythingElse(
         question: "6*9=?", answer: 54)
