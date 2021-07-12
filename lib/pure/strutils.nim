@@ -1813,21 +1813,6 @@ func initSkipTable*(a: var SkipTable, sub: string) {.rtl,
   ## Deprecated: Does nothing. Exists solely for backwards compatibility.
   discard
 
-# Forward declare
-func find*(s, sub: string, start: Natural = 0, last = 0): int {.rtl,
-    extern: "nsuFindStr", deprecated: "use strbasics.indexOf", raises: [].}
-
-func find*(a: SkipTable, s, sub: string, start: Natural = 0, last = 0): int {.
-    rtl, extern: "nsuFindStrA", deprecated: "use strbasics.indexOf".} =
-  ## Deprecated: use `strbasics.indexOf func<strbasics.html#indexOf,openArray[char],openArray[char]>`_.
-  ##
-  ## Shorthand for `find(s, sub, start, last)`. Makes no use of the `SkipTable`.
-  ##
-  ## See also:
-  ## * `find func<#find,string,string,Natural,int>`_
-  ## * `strbasics.indexOf func<strbasics.html#indexOf,openArray[char],openArray[char]>`_
-  return strutils.find(s, sub, start=start, last=last)
-
 func find*(s: string, sub: char, start: Natural = 0, last = 0): int {.rtl,
     extern: "nsuFindChar", deprecated: "use strbasics.indexOf", raises: [].} =
   ## Deprecated: use `strbasics.indexOf func<strbasics.html#indexOf,openArray[char],char>`_.
@@ -1917,6 +1902,17 @@ func find*(s, sub: string, start: Natural = 0, last = 0): int {.rtl,
     return -1
   else:
     return start + index
+
+func find*(a: SkipTable, s, sub: string, start: Natural = 0, last = 0): int {.
+    rtl, extern: "nsuFindStrA", deprecated: "use strbasics.indexOf".} =
+  ## Deprecated: use `strbasics.indexOf func<strbasics.html#indexOf,openArray[char],openArray[char]>`_.
+  ##
+  ## Shorthand for `find(s, sub, start, last)`. Makes no use of the `SkipTable`.
+  ##
+  ## See also:
+  ## * `find func<#find,string,string,Natural,int>`_
+  ## * `strbasics.indexOf func<strbasics.html#indexOf,openArray[char],openArray[char]>`_
+  return strutils.find(s, sub, start=start, last=last)
 
 func rfind*(s: string, sub: char, start: Natural = 0, last = -1): int {.rtl,
     extern: "nsuRFindChar".} =
