@@ -671,3 +671,48 @@ Conventions
    Furthermore, module names should use `snake_case` and not use capital
    letters, which cause issues when going from an OS without case
    sensitivity to an OS with it.
+
+Introducing change
+------------------
+
+Nim is used for mission critical applications which depend on behaviours that
+are not covered by the test suite. As such, it's important that changes to the
+*stable* parts of the standard library are made avoiding changing the existing
+behaviors, even when the test suite continues to pass. Above all else, additive
+approaches that don't change existing behaviors should be preferred.
+
+Examples of breaking changes include (but are not limited to):
+
+* renaming functions and modules, or moving things
+* raising exceptions of a new type, compared to what's currently being raised
+* changing behavior of existing functions
+    * this includes inputs around edge cases or undocumented behaviors
+* adding overloads or generic `proc`:s, in particular when an unconstrained generic implementation exists already
+    * this may cause code to behave differently depending only on which modules are imported - common examples include `==` and `hash`
+* hiding the old behavior behind a `-d:nimLegacy` flag
+    * legacy flags are suitable for use between major, breaking release of the langauge or non-breaking changes that nontheless are deemed sensitive
+
+Examples of changes that are considered non-breaking include:
+
+* creating a new module, or adding a function with a new name
+    * this may create compile-time issues due to name conflicts
+* changing the behavior of a function where previously it was crashing, raising `Defect` or giving an incorrect result
+* addressing issues whose invalid or undefined behavior can be made a compile-time error
+
+Some behaviors in the standard library are inconsistent or unfortunate. Even so, code may have come to depend on the quirks, and it's often not possible to tell. When encountering such behaviors, consider the following approaches instead:
+
+* document the quirk in manual and tutorials to raise awareness
+* create a separate, stand-alone Nimble package and deprecate the existing function or module
+    * this allows the API to evolve at its own pace - in stand-alone packages, it's also easier to introduce breaking changes since they are not bundled with other changes
+    * the deprecation message should explain why the existing behavior is problematic
+* deprectate the existing function or module, and create a new implementation in a separate module
+    * this approach is suitable for functionality closely tied to the language
+* introduce the new behavior behind a `-d:nimEnable` flag
+    * this approach is suitable for experimental changes and changes which will become default in a future breaking release of Nim, allowing early adopters to experiment with the new behavior
+
+Introducing breaking changes in the standard library, no matter how well intentioned, creates long-term problems for the community, in particular those looking to protomote reusable Nim code in libraries:
+
+* in the Nim distribution, critical security and bugfixes, language changes and community improvements are bundled in a single distribution - it is difficult to make partial upgrades with only benign changes
+    * when one library depends on a legacy behavior, it can no longer be used together with another library that does not, breaking all downstream applications - the standard library is unique in that it sits at the root of _all_ dependency trees
+
+These guidelines apply to released versions of the language - `devel` can always be expected to change.
