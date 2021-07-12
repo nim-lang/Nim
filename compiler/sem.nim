@@ -92,13 +92,10 @@ proc fitNode(c: PContext, formal: PType, arg: PNode; info: TLineInfo): PNode =
     result.typ = formal
   elif arg.kind in nkSymChoices and formal.skipTypes(abstractInst).kind == tyEnum:
     # Pick the right 'sym' from the sym choice by looking at 'formal' type:
-    result = nil
     for ch in arg:
       if sameType(ch.typ, formal):
-        result = getConstExpr(c.module, ch, c.idgen, c.graph)
-        break
-    if result == nil:
-      typeMismatch(c.config, info, formal, arg.typ, arg)
+        return getConstExpr(c.module, ch, c.idgen, c.graph)
+    typeMismatch(c.config, info, formal, arg.typ, arg)
   else:
     result = indexTypesMatch(c, formal, arg.typ, arg)
     if result == nil:
