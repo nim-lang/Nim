@@ -1843,6 +1843,8 @@ func find*(s: string, sub: char, start: Natural = 0, last = 0): int {.rtl,
   ## * `strbasics.indexOf func<strbasics.html#indexOf,openArray[char],char>`_
   ## * `rfind func<#rfind,string,char,Natural>`_
   ## * `replace func<#replace,string,char,char>`_
+  if s.len == 0:
+    return -1
   let last = if last == 0: s.high else: last
   if last < 0:
     return -1
@@ -1868,6 +1870,8 @@ func find*(s: string, chars: set[char], start: Natural = 0, last = 0): int {.
   ## * `strbasics.indexOf func<strbasics.html#indexOf,openArray[char],set[char]>`_
   ## * `rfind func<#rfind,string,set[char],Natural>`_
   ## * `multiReplace func<#multiReplace,string,varargs[]>`_
+  if s.len == 0:
+    return -1
   let start: int = min(start, s.high)
   let last: int = if last == 0: s.high else: min(last, s.high)
   let index: int = strbasics.indexOf(s[start..last], chars)
@@ -1891,7 +1895,7 @@ func find*(s, sub: string, start: Natural = 0, last = 0): int {.rtl,
   ## * `strbasics.indexOf func<strbasics.html#indexOf,openArray[char],openArray[char]>`_
   ## * `rfind func<#rfind,string,string,Natural>`_
   ## * `replace func<#replace,string,string,string>`_
-
+  if sub.len > s.len - start: return -1
   if sub.len == 0:
     if last <= 0:
       if start <= s.len:
