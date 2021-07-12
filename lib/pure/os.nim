@@ -917,21 +917,23 @@ proc getConfigDir*(): string {.rtl, extern: "nos$1",
   ## On non-Windows OSs, this proc conforms to the XDG Base Directory
   ## spec. Thus, this proc returns the value of the `XDG_CONFIG_HOME` environment
   ## variable if it is set, otherwise it returns the default configuration
-  ## directory ("~/.config").
+  ## directory ("~/.config/").
+  ##
+  ## An OS-dependent trailing slash is always present at the end of the
+  ## returned string: `\\` on Windows and `/` on all other OSs.
   ##
   ## See also:
   ## * `getHomeDir proc <#getHomeDir>`_
   ## * `getTempDir proc <#getTempDir>`_
-  ## * `getCacheDir proc <#getCacheDir>`_
-  runnableExamples:
-    from std/strutils import endsWith
-    # See `getHomeDir` for behavior regarding trailing DirSep.
-    assert not getConfigDir().endsWith DirSep
+  ## * `expandTilde proc <#expandTilde,string>`_
+  ## * `getCurrentDir proc <#getCurrentDir>`_
+  ## * `setCurrentDir proc <#setCurrentDir,string>`_
   when defined(windows):
     result = getEnv("APPDATA")
   else:
     result = getEnv("XDG_CONFIG_HOME", getEnv("HOME") / ".config")
-  result.normalizePathEnd(trailingSep = defined(nimLegacyHomeDir))
+  result.normalizePathEnd(trailingSep = true)
+
 
 proc getCacheDir*(): string =
   ## Returns the cache directory of the current user for applications.
@@ -1006,11 +1008,9 @@ proc getTempDir*(): string {.rtl, extern: "nos$1",
   ## See also:
   ## * `getHomeDir proc <#getHomeDir>`_
   ## * `getConfigDir proc <#getConfigDir>`_
-  ## * `getCacheDir proc <#getCacheDir>`_
-  runnableExamples:
-    from std/strutils import endsWith
-    # See `getHomeDir` for behavior regarding trailing DirSep.
-    assert not getTempDir().endsWith(DirSep)
+  ## * `expandTilde proc <#expandTilde,string>`_
+  ## * `getCurrentDir proc <#getCurrentDir>`_
+  ## * `setCurrentDir proc <#setCurrentDir,string>`_
   const tempDirDefault = "/tmp"
   when defined(tempDir):
     const tempDir {.strdefine.}: string = tempDirDefault
@@ -1031,7 +1031,7 @@ proc getTempDir*(): string {.rtl, extern: "nos$1",
         getTempDirImpl(result)
     if result.len == 0:
       result = tempDirDefault
-  result.normalizePathEnd(trailingSep = defined(nimLegacyHomeDir))
+  normalizePathEnd(result, trailingSep=true)
 
 proc expandTilde*(path: string): string {.
   tags: [ReadEnvEffect, ReadIOEffect].} =

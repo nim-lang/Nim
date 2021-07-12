@@ -324,6 +324,8 @@
   zone offsets without colons, e.g. `UTC+7 -> +0700`.
 
 - Added `jsconsole.dir`, `jsconsole.dirxml`, `jsconsole.timeStamp`.
+- In `std/os`, `getHomeDir` and `expandTilde` now do not include trailing `DirSep`, unless `-d:nimLegacyHomeDir` is specified
+  (for a transition period).
 
 - Added dollar `$` and `len` for `jsre.RegExp`.
 
