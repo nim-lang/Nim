@@ -512,6 +512,8 @@ proc keepIf*[T](s: var seq[T], pred: proc(x: T): bool {.closure.})
 func delete*[T](s: var seq[T]; slice: Slice[int]) =
   ## Deletes the items `s[slice]`, raising a defect if the slice contains
   ## elements out of range.
+  ##
+  ## This operation moves all elements after `s[slice]` in linear time.
   runnableExamples:
     var a = @[10, 11, 12, 13, 14]
     doAssertRaises(AssertionDefect): a.delete(4..5)
@@ -523,17 +525,18 @@ func delete*[T](s: var seq[T]; slice: Slice[int]) =
     a.delete(1..<1) # empty slice
     assert a == @[10, 13]
   assert slice.a < s.len and slice.a >= 0 and slice.b < s.len, $(slice, s.len)
-  var i = slice.a
-  var j = min(len(s), slice.b + 1)
-  var newLen = len(s) - j + i
-  while i < newLen:
-    when defined(gcDestructors):
-      s[i] = move(s[j])
-    else:
-      s[i].shallowCopy(s[j])
-    inc(i)
-    inc(j)
-  setLen(s, newLen)
+  if slice.b >= slice.a:
+    var i = slice.a
+    var j = slice.b + 1
+    var newLen = s.len - j + i
+    while i < newLen:
+      when defined(gcDestructors):
+        s[i] = move(s[j])
+      else:
+        s[i].shallowCopy(s[j])
+      inc(i)
+      inc(j)
+    setLen(s, newLen)
 
 func delete*[T](s: var seq[T]; first, last: Natural) {.deprecated: "use `delete(s, first..last)`".} =
   ## Deletes the items of a sequence `s` at positions `first..last`
