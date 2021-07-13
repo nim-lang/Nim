@@ -522,8 +522,7 @@ func delete*[T](s: var seq[T]; slice: Slice[int]) =
     assert a == @[10, 13]
     a.delete(1..<1) # empty slice
     assert a == @[10, 13]
-  assert slice.a < s.len and slice.a >= 0
-  assert slice.b < s.len and slice.b >= slice.a - 1 # allow 5..4 for empty slice, aka 5..<5
+  assert slice.a < s.len and slice.a >= 0 and slice.b < s.len, $(slice, s.len)
   var i = slice.a
   var j = min(len(s), slice.b + 1)
   var newLen = len(s) - j + i
@@ -540,7 +539,7 @@ func delete*[T](s: var seq[T]; first, last: Natural) {.deprecated: "use `delete(
   ## Deletes the items of a sequence `s` at positions `first..last`
   ## (including both ends of the range).
   ## This modifies `s` itself, it does not return a copy.
-  runnableExamples:
+  runnableExamples("--warning:deprecated:off"):
     let outcome = @[1, 1, 1, 1, 1, 1, 1, 1]
     var dest = @[1, 1, 1, 2, 2, 2, 2, 2, 2, 1, 1, 1, 1, 1]
     dest.delete(3, 8)
