@@ -129,6 +129,13 @@ proc execCmdEx2(command: string, args: openArray[string]; timeout: float; workin
   var p = startProcess(command, workingDir = workingDir, args = args,
                        options = {poStdErrToStdOut, poUsePath})
 
+  # There is no way to provide input for the child process
+  # anymore. Closing it will create EOF on stdin instead of eternal
+  # blocking.
+  let instream = inputStream(p)
+  instream.write(input)
+  close instream
+
   if timeout > 0.0:
     let first = epochTime()
 
@@ -142,12 +149,6 @@ proc execCmdEx2(command: string, args: openArray[string]; timeout: float; workin
 
   var outp = outputStream(p)
 
-  # There is no way to provide input for the child process
-  # anymore. Closing it will create EOF on stdin instead of eternal
-  # blocking.
-  let instream = inputStream(p)
-  instream.write(input)
-  close instream
 
   result.exitCode = -1
   var line = newStringOfCap(120)
