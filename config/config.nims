@@ -14,3 +14,9 @@ when defined(nimStrictMode):
     # switch("hint", "ConvFromXtoItselfNotNeeded")
     switch("hintAsError", "ConvFromXtoItselfNotNeeded")
     # future work: XDeclaredButNotUsed
+
+when (NimMajor, NimMinor) == (1,6) or (NimMajor, NimMinor) <= (1,4):
+  # if/when 1.8 comes around, edit this logic as needed individually for each flag.
+  # these can be overridden using user/project/cmdline flags using `switch("undef", "nimLegacyX")`
+  # other `nimLegacy` switches can go here, as needed.
+  switch("define", "nimLegacyHomeDir")
