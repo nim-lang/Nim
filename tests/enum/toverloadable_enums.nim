@@ -1,5 +1,5 @@
 discard """
-  output: '''1
+  output: '''B
 0'''
 joinable: false
 """
@@ -29,7 +29,10 @@ when false:
 
 
 proc p(e: E1): int =
-  echo ord e
+  # test that the 'case' statement is smart enough:
+  case e
+  of value1: echo "A"
+  of value2: echo "B"
 
 
 let v = p value2 # ERROR: ambiguous!
