@@ -509,11 +509,37 @@ proc keepIf*[T](s: var seq[T], pred: proc(x: T): bool {.closure.})
       inc(pos)
   setLen(s, pos)
 
-func delete*[T](s: var seq[T]; first, last: Natural) =
+func delete*[T](s: var seq[T]; slice: Slice[int]) =
+  ## Deletes the items `s[slice]`, raising a defect if the slice contains
+  ## elements out of range.
+  runnableExamples:
+    var a = @[10, 11, 12, 13, 14]
+    doAssertRaises(AssertionDefect): a.delete(4..5)
+    assert a == @[10, 11, 12, 13, 14]
+    a.delete(4..4)
+    assert a == @[10, 11, 12, 13]
+    a.delete(1..2)
+    assert a == @[10, 13]
+    a.delete(1..<1) # empty slice
+    assert a == @[10, 13]
+  assert slice.a < s.len and slice.a >= 0
+  assert slice.b < s.len and slice.b >= slice.a - 1 # allow 5..4 for empty slice, aka 5..<5
+  var i = slice.a
+  var j = min(len(s), slice.b + 1)
+  var newLen = len(s) - j + i
+  while i < newLen:
+    when defined(gcDestructors):
+      s[i] = move(s[j])
+    else:
+      s[i].shallowCopy(s[j])
+    inc(i)
+    inc(j)
+  setLen(s, newLen)
+
+func delete*[T](s: var seq[T]; first, last: Natural) {.deprecated: "use `delete(s, firsst..last)`".} =
   ## Deletes the items of a sequence `s` at positions `first..last`
   ## (including both ends of the range).
   ## This modifies `s` itself, it does not return a copy.
-  ##
   runnableExamples:
     let outcome = @[1, 1, 1, 1, 1, 1, 1, 1]
     var dest = @[1, 1, 1, 2, 2, 2, 2, 2, 2, 1, 1, 1, 1, 1]
