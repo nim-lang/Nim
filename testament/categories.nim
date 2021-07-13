@@ -626,7 +626,7 @@ proc runJoinedTest(r: var TResults, cat: Category, testsDir: string, options: st
               "--path:" & root]
   args.add options.parseCmdLine
   args.add megatestFile
-  var (cmdLine, buf, exitCode) = execCmdEx2(command = compilerPrefix, args = args, input = "")
+  var (cmdLine, buf, exitCode) = execCmdEx2(command = compilerPrefix, args = args, timeout = -1.0, input = "")
   if exitCode != 0:
     echo "$ " & cmdLine & "\n" & buf
     quit(failString & "megatest compilation failed")

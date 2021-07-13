@@ -115,7 +115,7 @@ proc getFileDir(filename: string): string =
   if not result.isAbsolute():
     result = getCurrentDir() / result
 
-proc execCmdEx2(command: string, args: openArray[string]; workingDir, input: string = ""): tuple[
+proc execCmdEx2(command: string, args: openArray[string]; timeout: float; workingDir, input: string = ""): tuple[
                 cmdLine: string,
                 output: string,
                 exitCode: int] {.tags:
@@ -128,6 +128,18 @@ proc execCmdEx2(command: string, args: openArray[string]; workingDir, input: str
   verboseCmd(result.cmdLine)
   var p = startProcess(command, workingDir = workingDir, args = args,
                        options = {poStdErrToStdOut, poUsePath})
+
+  if timeout > 0.0:
+    let first = epochTime()
+
+    while running(p):
+      if epochTime() - first > timeout:
+        terminate(p)
+        close(p)
+        return
+      else:
+        cpuRelax()
+
   var outp = outputStream(p)
 
   # There is no way to provide input for the child process
@@ -513,7 +525,7 @@ proc testSpecHelper(r: var TResults, test: var TTest, expected: TSpec,
                 valgrindOptions.add "--leak-check=yes"
               args = valgrindOptions & exeCmd & args
               exeCmd = "valgrind"
-          var (_, buf, exitCode) = execCmdEx2(exeCmd, args, input = expected.input)
+          var (_, buf, exitCode) = execCmdEx2(exeCmd, args, timeout = expected.timeout, input = expected.input)
           # Treat all failure codes from nodejs as 1. Older versions of nodejs used
           # to return other codes, but for us it is sufficient to know that it's not 0.
           if exitCode != 0: exitCode = 1
