@@ -92,7 +92,7 @@ pkg "msgpack4nim", "nim c -r tests/test_spec.nim"
 pkg "nake", "nim c nakefile.nim"
 pkg "neo", "nim c -d:blas=openblas tests/all.nim"
 pkg "nesm", "nimble tests", allowFailure = true # notice plural 'tests'
-pkg "netty"
+pkg "netty", allowFailure = true # pending https://github.com/treeform/netty/issues/22
 pkg "nico", allowFailure = true
 pkg "nicy", "nim c -r src/nicy.nim"
 pkg "nigui", "nim c -o:niguii -r src/nigui.nim"
