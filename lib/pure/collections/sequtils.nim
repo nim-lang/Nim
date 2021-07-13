@@ -536,7 +536,7 @@ func delete*[T](s: var seq[T]; slice: Slice[int]) =
     inc(j)
   setLen(s, newLen)
 
-func delete*[T](s: var seq[T]; first, last: Natural) {.deprecated: "use `delete(s, firsst..last)`".} =
+func delete*[T](s: var seq[T]; first, last: Natural) {.deprecated: "use `delete(s, first..last)`".} =
   ## Deletes the items of a sequence `s` at positions `first..last`
   ## (including both ends of the range).
   ## This modifies `s` itself, it does not return a copy.
