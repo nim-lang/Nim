@@ -510,13 +510,13 @@ proc keepIf*[T](s: var seq[T], pred: proc(x: T): bool {.closure.})
   setLen(s, pos)
 
 func delete*[T](s: var seq[T]; slice: Slice[int]) =
-  ## Deletes the items `s[slice]`, raising a defect if the slice contains
+  ## Deletes the items `s[slice]`, raising `IndexDefect` if the slice contains
   ## elements out of range.
   ##
   ## This operation moves all elements after `s[slice]` in linear time.
   runnableExamples:
     var a = @[10, 11, 12, 13, 14]
-    doAssertRaises(AssertionDefect): a.delete(4..5)
+    doAssertRaises(IndexDefect): a.delete(4..5)
     assert a == @[10, 11, 12, 13, 14]
     a.delete(4..4)
     assert a == @[10, 11, 12, 13]
@@ -524,7 +524,9 @@ func delete*[T](s: var seq[T]; slice: Slice[int]) =
     assert a == @[10, 13]
     a.delete(1..<1) # empty slice
     assert a == @[10, 13]
-  assert slice.a < s.len and slice.a >= 0 and slice.b < s.len, $(slice, s.len)
+  when compileOption("boundChecks"):
+    if not (slice.a < s.len and slice.a >= 0 and slice.b < s.len):
+      raise newException(IndexDefect, $(slice: slice, len: s.len))
   if slice.b >= slice.a:
     var i = slice.a
     var j = slice.b + 1
