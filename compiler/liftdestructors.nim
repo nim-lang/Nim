@@ -416,12 +416,7 @@ proc considerUserDefinedOp(c: var TLiftCtx; t: PType; body, x, y: PNode): bool =
       body.add destructorCall(c, op, x)
       result = true
     #result = addDestructorCall(c, t, body, x)
-  of attachedAsgn, attachedSink:
-    var op = getAttachedOp(c.g, t, c.kind)
-    result = considerAsgnOrSink(c, t, body, x, y, op)
-    if op != nil:
-      setAttachedOp(c.g, c.idgen.module, t, c.kind, op)
-  of attachedTrace:
+  of attachedAsgn, attachedSink, attachedTrace:
     var op = getAttachedOp(c.g, t, c.kind)
     if op != nil and sfOverriden in op.flags:
       if op.ast.isGenericRoutine:
