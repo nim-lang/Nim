@@ -1,3 +1,7 @@
+discard """
+  targets: "c js"
+"""
+
 import std/sequtils
 import strutils
 from algorithm import sorted
@@ -298,43 +302,45 @@ block: # toSeq test
     doAssert myIter.toSeq == @[1, 2]
     doAssert toSeq(myIter) == @[1, 2]
 
-  block:
-    iterator myIter(): int {.closure.} =
-      yield 1
-      yield 2
+  when not defined(js):
+    # pending #4695
+    block:
+        iterator myIter(): int {.closure.} =
+          yield 1
+          yield 2
 
-    doAssert myIter.toSeq == @[1, 2]
-    doAssert toSeq(myIter) == @[1, 2]
-
-  block:
-    proc myIter(): auto =
-      iterator ret(): int {.closure.} =
-        yield 1
-        yield 2
-      result = ret
-
-    doAssert myIter().toSeq == @[1, 2]
-    doAssert toSeq(myIter()) == @[1, 2]
-
-  block:
-    proc myIter(n: int): auto =
-      var counter = 0
-      iterator ret(): int {.closure.} =
-        while counter < n:
-          yield counter
-          counter.inc
-      result = ret
+        doAssert myIter.toSeq == @[1, 2]
+        doAssert toSeq(myIter) == @[1, 2]
 
     block:
-      let myIter3 = myIter(3)
-      doAssert myIter3.toSeq == @[0, 1, 2]
+      proc myIter(): auto =
+        iterator ret(): int {.closure.} =
+          yield 1
+          yield 2
+        result = ret
+
+      doAssert myIter().toSeq == @[1, 2]
+      doAssert toSeq(myIter()) == @[1, 2]
+
     block:
-      let myIter3 = myIter(3)
-      doAssert toSeq(myIter3) == @[0, 1, 2]
-    block:
-      # makes sure this does not hang forever
-      doAssert myIter(3).toSeq == @[0, 1, 2]
-      doAssert toSeq(myIter(3)) == @[0, 1, 2]
+      proc myIter(n: int): auto =
+        var counter = 0
+        iterator ret(): int {.closure.} =
+          while counter < n:
+            yield counter
+            counter.inc
+        result = ret
+
+      block:
+        let myIter3 = myIter(3)
+        doAssert myIter3.toSeq == @[0, 1, 2]
+      block:
+        let myIter3 = myIter(3)
+        doAssert toSeq(myIter3) == @[0, 1, 2]
+      block:
+        # makes sure this does not hang forever
+        doAssert myIter(3).toSeq == @[0, 1, 2]
+        doAssert toSeq(myIter(3)) == @[0, 1, 2]
 
 block:
   # tests https://github.com/nim-lang/Nim/issues/7187
