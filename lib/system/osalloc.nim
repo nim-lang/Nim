@@ -28,7 +28,20 @@ const doNotUnmap = not (defined(amd64) or defined(i386)) or
                    defined(windows) or defined(nimAllocNoUnmap)
 
 
-when defined(emscripten) and not defined(StandaloneHeapSize):
+when defined(nimAllocPagesViaMalloc):
+  when not defined(gcArc) and not defined(gcOrc):
+    {.error: "-d:nimAllocPagesViaMalloc is only supported with --gc:arc or --gc:orc".}
+
+  proc osAllocPages(size: int): pointer {.inline.} =
+    result = c_malloc(csize_t size)
+    if result == nil: raiseOutOfMem()
+
+  proc osTryAllocPages(size: int): pointer {.inline.} =
+    result = c_malloc(csize_t size)
+
+  proc osDeallocPages(p: pointer, size: int) {.inline.} = c_free(p)
+
+elif defined(emscripten) and not defined(StandaloneHeapSize):
   const
     PROT_READ  = 1             # page can be read
     PROT_WRITE = 2             # page can be written
@@ -197,11 +210,11 @@ elif defined(posix) and not defined(StandaloneHeapSize):
     PROT_WRITE = 2             # page can be written
 
   when defined(netbsd) or defined(openbsd):
-      # OpenBSD security for setjmp/longjmp coroutines
-      var MAP_STACK {.importc: "MAP_STACK", header: "<sys/mman.h>".}: cint
+    # OpenBSD security for setjmp/longjmp coroutines
+    var MAP_STACK {.importc: "MAP_STACK", header: "<sys/mman.h>".}: cint
   else:
     const MAP_STACK = 0             # avoid sideeffects
-    
+
   when defined(macosx) or defined(freebsd):
     const MAP_ANONYMOUS = 0x1000
     const MAP_PRIVATE = 0x02        # Changes are private
