@@ -2,6 +2,8 @@ discard """
   targets: "c js"
 """
 
+# xxx move all tests under `main`
+
 import std/sequtils
 import strutils
 from algorithm import sorted
@@ -193,17 +195,6 @@ block: # keepIf test
   var floats = @[13.0, 12.5, 5.8, 2.0, 6.1, 9.9, 10.1]
   keepIf(floats, proc(x: float): bool = x > 10)
   doAssert floats == @[13.0, 12.5, 10.1]
-
-block: # delete tests
-  let outcome = @[1, 1, 1, 1, 1, 1, 1, 1]
-  var dest = @[1, 1, 1, 2, 2, 2, 2, 2, 2, 1, 1, 1, 1, 1]
-  dest.delete(3, 8)
-  doAssert outcome == dest, """\
-  Deleting range 3-9 from [1,1,1,2,2,2,2,2,2,1,1,1,1,1]
-  is [1,1,1,1,1,1,1,1]"""
-  var x = @[1, 2, 3]
-  x.delete(100, 100)
-  doAssert x == @[1, 2, 3]
 
 block: # insert tests
   var dest = @[1, 1, 1, 1, 1, 1, 1, 1]
@@ -458,4 +449,61 @@ block:
       for i in 0..<len:
         yield i
 
-  doAssert: iter(3).mapIt(2*it).foldl(a + b) == 6
+  when not defined(js):
+    # xxx: obscure CT error: basic_types.nim(16, 16) Error: internal error: symbol has no generated name: true
+    doAssert: iter(3).mapIt(2*it).foldl(a + b) == 6
+
+template main =
+  # xxx move all tests here
+  block: # delete tests
+    let outcome = @[1, 1, 1, 1, 1, 1, 1, 1]
+    var dest = @[1, 1, 1, 2, 2, 2, 2, 2, 2, 1, 1, 1, 1, 1]
+    dest.delete(3, 8)
+    doAssert outcome == dest, """\
+    Deleting range 3-9 from [1,1,1,2,2,2,2,2,2,1,1,1,1,1]
+    is [1,1,1,1,1,1,1,1]"""
+    var x = @[1, 2, 3]
+    x.delete(100, 100)
+    doAssert x == @[1, 2, 3]
+
+  block: # delete tests
+    var a = @[10, 11, 12, 13, 14]
+    doAssertRaises(IndexDefect): a.delete(4..5)
+    doAssertRaises(IndexDefect): a.delete(4..<6)
+    doAssertRaises(IndexDefect): a.delete(-1..1)
+    doAssertRaises(IndexDefect): a.delete(-1 .. -1)
+    doAssertRaises(IndexDefect): a.delete(5..5)
+    doAssertRaises(IndexDefect): a.delete(5..3)
+    doAssertRaises(IndexDefect): a.delete(5..<5) # edge case
+    doAssert a == @[10, 11, 12, 13, 14]
+    a.delete(4..4)
+    doAssert a == @[10, 11, 12, 13]
+    a.delete(1..2)
+    doAssert a == @[10, 13]
+    a.delete(1..<1) # empty slice
+    doAssert a == @[10, 13]
+    a.delete(0..<0)
+    doAssert a == @[10, 13]
+    a.delete(0..0)
+    doAssert a == @[13]
+    a.delete(0..0)
+    doAssert a == @[]
+    doAssertRaises(IndexDefect): a.delete(0..0)
+    doAssertRaises(IndexDefect): a.delete(0..<0) # edge case
+    block:
+      type A = object
+        a0: int
+      var a = @[A(a0: 10), A(a0: 11), A(a0: 12)]
+      a.delete(0..1)
+      doAssert a == @[A(a0: 12)]
+    block:
+      type A = ref object
+      let a0 = A()
+      let a1 = A()
+      let a2 = A()
+      var a = @[a0, a1, a2]
+      a.delete(0..1)
+      doAssert a == @[a2]
+
+static: main()
+main()

@@ -528,17 +528,26 @@ func delete*[T](s: var seq[T]; slice: Slice[int]) =
     if not (slice.a < s.len and slice.a >= 0 and slice.b < s.len):
       raise newException(IndexDefect, $(slice: slice, len: s.len))
   if slice.b >= slice.a:
-    var i = slice.a
-    var j = slice.b + 1
-    var newLen = s.len - j + i
-    while i < newLen:
-      when defined(gcDestructors):
-        s[i] = move(s[j])
+    template defaultImpl =
+      var i = slice.a
+      var j = slice.b + 1
+      var newLen = s.len - j + i
+      while i < newLen:
+        when defined(gcDestructors):
+          s[i] = move(s[j])
+        else:
+          s[i].shallowCopy(s[j])
+        inc(i)
+        inc(j)
+      setLen(s, newLen)
+    when nimvm: defaultImpl()
+    else:
+      when defined(js):
+        let n = slice.b - slice.a + 1
+        let first = slice.a
+        {.emit: "`s`.splice(`first`, `n`);".}
       else:
-        s[i].shallowCopy(s[j])
-      inc(i)
-      inc(j)
-    setLen(s, newLen)
+        defaultImpl()
 
 func delete*[T](s: var seq[T]; first, last: Natural) {.deprecated: "use `delete(s, first..last)`".} =
   ## Deletes the items of a sequence `s` at positions `first..last`
