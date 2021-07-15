@@ -278,7 +278,14 @@ type
     foLegacyRelProj # legacy, shortest of (foAbs, foRelProject)
     foName # lastPathPart, e.g.: foo.nim
     foStacktrace # if optExcessiveStackTrace: foAbs else: foName
+  LocalOverrideAtom* = object
 
+  LocalOverride* = object
+    # StringTableRef
+    # tab*: Table[string, string]
+    lhs*: string
+    rhs*: string
+    prefix*: string
   ConfigRef* {.acyclic.} = ref object ## every global configuration
                           ## fields marked with '*' are subject to
                           ## the incremental compilation mechanisms
@@ -344,6 +351,7 @@ type
     jsonBuildFile*: AbsoluteFile
     prefixDir*, libpath*, nimcacheDir*: AbsoluteDir
     dllOverrides, moduleOverrides*, cfileSpecificOptions*: StringTableRef
+    localOverrides*: seq[LocalOverride]
     projectName*: string # holds a name like 'nim'
     projectPath*: AbsoluteDir # holds a path like /home/alice/projects/nim/compiler/
     projectFull*: AbsoluteFile # projectPath/projectName
@@ -852,6 +860,8 @@ proc findFile*(conf: ConfigRef; f: string; suppressStdlib = false): AbsoluteFile
           result = rawFindFile2(conf, RelativeFile f.toLowerAscii)
   patchModule(conf)
 
+proc canonicalImport*(conf: ConfigRef, file: AbsoluteFile): string
+
 proc findModule*(conf: ConfigRef; modulename, currentModule: string): AbsoluteFile =
   # returns path to module
   var m = addFileExt(modulename, NimExt)
@@ -870,6 +880,23 @@ proc findModule*(conf: ConfigRef; modulename, currentModule: string): AbsoluteFi
       result = AbsoluteFile currentPath / m
     if not fileExists(result):
       result = findFile(conf, m)
+
+  if not result.isEmpty:
+    let canon = canonicalImport(conf, result)
+    let canonCurrentModule = canonicalImport(conf, AbsoluteFile(currentModule)) & '/'
+    for ai in conf.localOverrides:
+      if ai.lhs == canon:
+        # dbg ai, canon, modulename, currentModule
+        dbg canonCurrentModule, ai.prefix
+        if canonCurrentModule.startsWith(ai.prefix & '/'):
+          result = findModule(conf, ai.rhs, currentModule)
+          break
+        # # PRTEMP
+        # let key = getPackageName(conf, result.string) & "_" & splitFile(result).name
+        # if conf.moduleOverrides.hasKey(key):
+        #   let ov = conf.moduleOverrides[key]
+        #   if ov.len > 0: result = AbsoluteFile(ov)
+
   patchModule(conf)
 
 proc findProjectNimFile*(conf: ConfigRef; pkg: string): string =

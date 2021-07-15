@@ -931,6 +931,15 @@ proc processSwitch*(switch, arg: string, pass: TCmdLinePass, info: TLineInfo;
     else: conf.spellSuggestMax = parseInt(arg)
   of "declaredlocs":
     processOnOffSwitchG(conf, {optDeclaredLocs}, arg, pass, info)
+  of "moduleoverride":
+    # --moduleoverride:std/sequtils:/tmp/sequtils2:this/test1,this/test2
+    let args = arg.split(":")
+    if args.len != 3:
+      localError(conf, info, "invalid arg: $1" % arg)
+    else:
+      let prefixes = args[2].split(",")
+      for a in prefixes:
+        conf.localOverrides.add LocalOverride(lhs: args[0], rhs: args[1], prefix: a)
   of "dynliboverride":
     dynlibOverride(conf, switch, arg, pass, info)
   of "dynliboverrideall":
