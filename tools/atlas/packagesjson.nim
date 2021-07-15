@@ -57,20 +57,20 @@ proc getPackages*(workspaceDir: string): seq[Package] =
         if pkg != nil and not uniqueNames.containsOrIncl(pkg.name):
           result.add(pkg)
 
-proc echoPackage*(pkg: Package) =
-  echo(pkg.name & ":")
-  echo("  url:         " & pkg.url & " (" & pkg.downloadMethod & ")")
-  echo("  tags:        " & pkg.tags.join(", "))
-  echo("  description: " & pkg.description)
-  echo("  license:     " & pkg.license)
+proc `$`*(pkg: Package): string =
+  result = pkg.name & ":"
+  result &= "  url:         " & pkg.url & " (" & pkg.downloadMethod & ")"
+  result &= "  tags:        " & pkg.tags.join(", ")
+  result &= "  description: " & pkg.description
+  result &= "  license:     " & pkg.license
   if pkg.web.len > 0:
-    echo("  website:     " & pkg.web)
+    result &= "  website:     " & pkg.web
 
 proc search*(pkgList: seq[Package]; terms: seq[string]) =
   var found = false
   template onFound =
-    echoPackage(pkg)
-    echo(" ")
+    echo pkg
+    echo("")
     found = true
     break forPackage
 
@@ -87,7 +87,7 @@ proc search*(pkgList: seq[Package]; terms: seq[string]) =
             if word in tag.toLower:
               onFound()
     else:
-      echoPackage(pkg)
+      echo(pkg)
       echo(" ")
 
   if not found and terms.len > 0:

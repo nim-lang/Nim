@@ -141,8 +141,7 @@ proc updatePackages(c: var AtlasContext) =
     withDir c.workspace:
       let err = cloneUrl("https://github.com/nim-lang/packages", PackagesDir, false)
       if err != "":
-        echo "[Error] " & err
-        inc c.errors
+        error c, PackageName(PackagesDir), err
 
 proc fillPackageLookupTable(c: var AtlasContext) =
   if not c.hasPackageList:
@@ -273,8 +272,7 @@ proc clone(c: var AtlasContext; start: string): seq[string] =
       withDir c.workspace:
         let err = cloneUrl(w.url, w.name.string, false)
         if err != "":
-          echo "[Error] " & err
-          inc c.errors
+          error c, w.name, err
     if oldErrors == c.errors:
       if not c.keepCommits: checkoutCommit(c, w)
       # even if the checkout fails, we can make use of the somewhat
