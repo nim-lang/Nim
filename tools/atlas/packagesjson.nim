@@ -58,13 +58,13 @@ proc getPackages*(workspaceDir: string): seq[Package] =
           result.add(pkg)
 
 proc `$`*(pkg: Package): string =
-  result = pkg.name & ":"
-  result &= "  url:         " & pkg.url & " (" & pkg.downloadMethod & ")"
-  result &= "  tags:        " & pkg.tags.join(", ")
-  result &= "  description: " & pkg.description
-  result &= "  license:     " & pkg.license
+  result = pkg.name & ":\n"
+  result &= "  url:         " & pkg.url & " (" & pkg.downloadMethod & ")\n"
+  result &= "  tags:        " & pkg.tags.join(", ") & "\n"
+  result &= "  description: " & pkg.description & "\n"
+  result &= "  license:     " & pkg.license & "\n"
   if pkg.web.len > 0:
-    result &= "  website:     " & pkg.web
+    result &= "  website:     " & pkg.web & "\n"
 
 proc search*(pkgList: seq[Package]; terms: seq[string]) =
   var found = false
