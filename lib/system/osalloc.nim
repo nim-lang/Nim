@@ -32,14 +32,24 @@ when defined(nimAllocPagesViaMalloc):
   when not defined(gcArc) and not defined(gcOrc):
     {.error: "-d:nimAllocPagesViaMalloc is only supported with --gc:arc or --gc:orc".}
 
+  proc osTryAllocPages(size: int): pointer {.inline.} =
+    let base = c_malloc(csize_t size + PageSize - 1 + sizeof(uint32))
+    if base == nil: raiseOutOfMem()
+    # memory layout: padding + offset (4 bytes) + user_data
+    # in order to deallocate: read offset at user_data - 4 bytes,
+    # then deallocate user_data - offset
+    let offset = PageSize - (cast[int](base) and (PageSize - 1))
+    cast[ptr uint32](base +! (offset - sizeof(uint32)))[] = uint32(offset)
+    result = base +! offset
+
   proc osAllocPages(size: int): pointer {.inline.} =
-    result = c_malloc(csize_t size)
+    result = osTryAllocPages(size)
     if result == nil: raiseOutOfMem()
 
-  proc osTryAllocPages(size: int): pointer {.inline.} =
-    result = c_malloc(csize_t size)
-
-  proc osDeallocPages(p: pointer, size: int) {.inline.} = c_free(p)
+  proc osDeallocPages(p: pointer, size: int) {.inline.} =
+    # read offset at p - 4 bytes, then deallocate (p - offset) pointer
+    let offset = cast[ptr uint32](p -! sizeof(uint32))[]
+    c_free(p -! offset)
 
 elif defined(emscripten) and not defined(StandaloneHeapSize):
   const
