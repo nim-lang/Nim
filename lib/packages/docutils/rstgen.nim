@@ -40,7 +40,7 @@
 ##   can be done by simply searching for [footnoteName].
 
 import strutils, os, hashes, strtabs, rstast, rst, highlite, tables, sequtils,
-  algorithm, parseutils, ../../../compiler/lineinfos, std/strbasics
+  algorithm, parseutils, "$lib/../compiler/lineinfos", std/strbasics
 
 import ../../std/private/since
 
