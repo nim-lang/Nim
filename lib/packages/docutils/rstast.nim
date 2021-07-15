@@ -115,8 +115,7 @@ proc newRstNode*(kind: RstNodeKind, sons: seq[PRstNode] = @[],
 
 proc newRstNode*(kind: RstNodeKind, info: TLineInfo,
                  sons: seq[PRstNode] = @[]): PRstNode =
-  result = PRstNode(kind: kind, sons: sons)
-  result.info = info
+  result = PRstNode(kind: kind, sons: sons, info: info)
 
 proc newRstNode*(kind: RstNodeKind, s: string): PRstNode {.deprecated.} =
   assert kind in {rnLeaf, rnSmiley}
