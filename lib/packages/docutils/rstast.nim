@@ -110,8 +110,7 @@ proc len*(n: PRstNode): int =
 
 proc newRstNode*(kind: RstNodeKind, sons: seq[PRstNode] = @[],
                  anchor = ""): PRstNode =
-  result = PRstNode(kind: kind, sons: sons)
-  result.anchor = anchor
+  result = PRstNode(kind: kind, sons: sons, anchor: anchor)
 
 proc newRstNode*(kind: RstNodeKind, info: TLineInfo,
                  sons: seq[PRstNode] = @[]): PRstNode =
