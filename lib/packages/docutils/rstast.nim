@@ -9,7 +9,7 @@
 
 ## This module implements an AST for the `reStructuredText`:idx: parser.
 
-import strutils, json, ../../../compiler/lineinfos
+import strutils, json, "$lib/../compiler/lineinfos"
 
 type
   RstNodeKind* = enum        ## the possible node kinds of an PRstNode
