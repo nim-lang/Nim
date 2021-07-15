@@ -18,9 +18,9 @@ jobs:
 
   strategy:
     matrix:
-      Linux_amd64:
-        vmImage: 'ubuntu-18.04'
-        CPU: amd64
+      # Linux_amd64:
+      #   vmImage: 'ubuntu-18.04'
+      #   CPU: amd64
       # # regularly breaks, refs bug #17325
       # Linux_i386:
       #   # on 'ubuntu-16.04' (not supported anymore anyways) it errored with:
