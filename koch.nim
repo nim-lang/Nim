@@ -210,11 +210,11 @@ proc buildTool(toolname, args: string) =
   copyFile(dest="bin" / splitFile(toolname).name.exe, source=toolname.exe)
 
 proc buildTools(args: string = "") =
-  bundleNimsuggest(args)
-  nimCompileFold("Compile nimgrep", "tools/nimgrep.nim",
-                 options = "-d:release " & args)
+  # bundleNimsuggest(args)
+  # nimCompileFold("Compile nimgrep", "tools/nimgrep.nim",
+  #                options = "-d:release " & args)
   when defined(windows): buildVccTool(args)
-  bundleNimpretty(args)
+  # bundleNimpretty(args)
   nimCompileFold("Compile testament", "testament/testament.nim", options = "-d:release " & args)
 
   # pre-packages a debug version of nim which can help in many cases investigate issuses
@@ -222,7 +222,7 @@ proc buildTools(args: string = "") =
   # `-d:nimDebugUtils` only makes sense when temporarily editing/debugging compiler
   # `-d:debug` should be changed to a flag that doesn't require re-compiling nim
   # `--opt:speed` is a sensible default even for a debug build, it doesn't affect nim stacktraces
-  nimCompileFold("Compile nim_dbg", "compiler/nim.nim", options = "--opt:speed --stacktrace -d:debug --stacktraceMsgs -d:nimCompilerStacktraceHints " & args, outputName = "nim_dbg")
+  # nimCompileFold("Compile nim_dbg", "compiler/nim.nim", options = "--opt:speed --stacktrace -d:debug --stacktraceMsgs -d:nimCompilerStacktraceHints " & args, outputName = "nim_dbg")
 
 proc nsis(latest: bool; args: string) =
   bundleNimbleExe(latest, args)
@@ -562,6 +562,8 @@ proc runCI(cmd: string) =
       # if this gives `Additional info: "build/deps" [OSError]`, make sure nimble is >= v0.12.0,
       # otherwise `absolutePath` is needed, refs https://github.com/nim-lang/nimble/issues/901
       execFold("", "nimble install -y --nimbleDir:$# $#" % [buildDeps.quoteShell, a])
+
+    doAssert false
 
     ## run tests
     execFold("Test nimscript", "nim e tests/test_nimscript.nims")
