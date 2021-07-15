@@ -236,7 +236,6 @@ The general pattern in using `=destroy` with `=trace` looks like:
   proc makeTest[T](size: Natural): Test[T] = # custom allocation...
     Test[T](size: size, arr: cast[ptr UncheckedArray[T]](alloc0(sizeof(T) * size)))
 
-  proc `=trace`[T](dest: var Test[T]; env: pointer) # forward declaration
 
   proc `=destroy`[T](dest: var Test[T]) =
     if dest.arr != nil:
