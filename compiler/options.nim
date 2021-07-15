@@ -880,23 +880,14 @@ proc findModule*(conf: ConfigRef; modulename, currentModule: string): AbsoluteFi
       result = AbsoluteFile currentPath / m
     if not fileExists(result):
       result = findFile(conf, m)
-
   if not result.isEmpty:
     let canon = canonicalImport(conf, result)
     let canonCurrentModule = canonicalImport(conf, AbsoluteFile(currentModule)) & '/'
     for ai in conf.localOverrides:
       if ai.lhs == canon:
-        # dbg ai, canon, modulename, currentModule
-        dbg canonCurrentModule, ai.prefix
         if canonCurrentModule.startsWith(ai.prefix & '/'):
           result = findModule(conf, ai.rhs, currentModule)
           break
-        # # PRTEMP
-        # let key = getPackageName(conf, result.string) & "_" & splitFile(result).name
-        # if conf.moduleOverrides.hasKey(key):
-        #   let ov = conf.moduleOverrides[key]
-        #   if ov.len > 0: result = AbsoluteFile(ov)
-
   patchModule(conf)
 
 proc findProjectNimFile*(conf: ConfigRef; pkg: string): string =
