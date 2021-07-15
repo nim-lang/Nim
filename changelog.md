@@ -346,6 +346,9 @@
 
 - Added `dom.setInterval`, `dom.clearInterval` overloads.
 
+- Deprecated `sequtils.delete` and added an overload taking a `Slice` that raises a defect
+  if the slice is out of bounds.
+
 ## Language changes
 
 - `nimscript` now handles `except Exception as e`.
