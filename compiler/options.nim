@@ -960,17 +960,22 @@ proc canonicalImportAux*(conf: ConfigRef, file: AbsoluteFile): string =
   system, std/tables, fusion/pointers, system/assertions, std/private/asciitables
   ]##
   var ret = getRelativePathFromConfigPath(conf, file, isTitle = true)
+  echo "D20210715T122459"
   let dir = getNimbleFile(conf, $file).parentDir.AbsoluteDir
+  echo file, " ", ret, " ", getNimbleFile(conf, $file), " ", dir
   if not dir.isEmpty:
     let relPath = relativeTo(file, dir)
+    echo "relPath: ", relPath
     if not relPath.isEmpty and (ret.isEmpty or relPath.string.len < ret.string.len):
       ret = relPath
   if ret.isEmpty:
     ret = relativeTo(file, conf.projectPath)
+    echo "ret: ", ret
   result = ret.string
 
 proc canonicalImport*(conf: ConfigRef, file: AbsoluteFile): string =
   let ret = canonicalImportAux(conf, file)
+  echo "canonicalImport: ret: ", ret, " file: ", file
   result = ret.nativeToUnixPath.changeFileExt("")
 
 proc canonDynlibName(s: string): string =
