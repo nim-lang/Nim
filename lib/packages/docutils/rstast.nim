@@ -77,10 +77,6 @@ type
 
   PRstNode* = ref RstNode    ## an RST node
   RstNodeSeq* = seq[PRstNode]
-  PFootnoteRefInfo* = ref object ## location inside a file, only for
-                                 ## `rnFootnoteRef` (packed for memory saving)
-    info*: TLineInfo
-    order*: int
   RstNode* {.acyclic, final.} = object ## AST node (result of RST parsing)
     case kind*: RstNodeKind ## the node's kind
     of rnLeaf, rnSmiley:
@@ -100,11 +96,9 @@ type
       order*: int             ## footnote order (for auto-symbol footnotes and
                               ## auto-numbered ones without a label)
     of rnRef, rnSubstitutionReferences,
-        rnInterpretedText, rnField, rnInlineCode, rnCodeBlock:
+        rnInterpretedText, rnField, rnInlineCode, rnCodeBlock, rnFootnoteRef:
       info*: TLineInfo        ## To have line/column info for warnings at
                               ## nodes that are post-processed after parsing
-    of rnFootnoteRef:
-      loc*: PFootnoteRefInfo  ## almost the same
     else:
       discard
     anchor*: string           ## anchor, internal link target
@@ -406,8 +400,6 @@ proc renderRstToStr*(node: PRstNode, indent=0): string =
     result.add "  level=" & $node.level
   of rnFootnote, rnCitation, rnOptionListItem:
     result.add (if node.order == 0:   "" else: "  order=" & $node.order)
-  of rnFootnoteRef:
-    result.add (if node.loc.order == 0:   "" else: "  order=" & $node.loc.order)
   else:
     discard
   result.add (if node.anchor == "": "" else: "  anchor='" & node.anchor & "'")

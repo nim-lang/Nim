@@ -503,10 +503,12 @@ type
     subs: seq[Substitution]     # substitutions
     refs*: seq[Substitution]    # references
     anchors*: seq[AnchorSubst]  # internal target substitutions
-    lineFootnoteNum: seq[int]     # footnote line, auto numbers .. [#]
-    lineFootnoteNumRef: seq[int]  # footnote line, their reference [#]_
-    lineFootnoteSym: seq[int]     # footnote line, auto symbols .. [*]
-    lineFootnoteSymRef: seq[int]  # footnote line, their reference [*]_
+    lineFootnoteNum: seq[TLineInfo]     # footnote line, auto numbers .. [#]
+    lineFootnoteNumRef: seq[TLineInfo]  # footnote line, their reference [#]_
+    currFootnoteNumRef: int             # ... their counter for `resolveSubs`
+    lineFootnoteSym: seq[TLineInfo]     # footnote line, auto symbols .. [*]
+    lineFootnoteSymRef: seq[TLineInfo]  # footnote line, their reference [*]_
+    currFootnoteSymRef: int             # ... their counter for `resolveSubs`
     footnotes: seq[FootnoteSubst] # correspondence b/w footnote label,
                                   # number, order of occurrence
     msgHandler: MsgHandler      # How to handle errors.
@@ -852,11 +854,18 @@ proc addFootnoteNumManual(p: var RstParser, num: int) =
       return
   p.s.footnotes.add((fnManualNumber, num, -1, -1, $num))
 
+proc lineInfo(p: RstParser, iTok: int): TLineInfo =
+  result.col = int16(p.col + p.tok[iTok].col)
+  result.line = uint16(p.line + p.tok[iTok].line)
+  result.fileIndex = p.s.currFileIdx
+
+proc lineInfo(p: RstParser): TLineInfo = lineInfo(p, p.idx)
+
 proc addFootnoteNumAuto(p: var RstParser, label: string) =
   ## add auto-numbered footnote.
   ## Empty label [#] means it'll be resolved by the occurrence.
   if label == "":  # simple auto-numbered [#]
-    p.s.lineFootnoteNum.add curLine(p)
+    p.s.lineFootnoteNum.add lineInfo(p)
     p.s.footnotes.add((fnAutoNumber, -1, p.s.lineFootnoteNum.len, -1, label))
   else:           # auto-numbered with label [#label]
     for fnote in p.s.footnotes:
@@ -866,7 +875,7 @@ proc addFootnoteNumAuto(p: var RstParser, label: string) =
     p.s.footnotes.add((fnAutoNumberLabel, -1, -1, -1, label))
 
 proc addFootnoteSymAuto(p: var RstParser) =
-  p.s.lineFootnoteSym.add curLine(p)
+  p.s.lineFootnoteSym.add lineInfo(p)
   p.s.footnotes.add((fnAutoSymbol, -1, -1, p.s.lineFootnoteSym.len, ""))
 
 proc orderFootnotes(s: PRstSharedState) =
@@ -875,7 +884,15 @@ proc orderFootnotes(s: PRstSharedState) =
   ## Save the result back to `s.footnotes`.
 
   # Report an error if found any mismatch in number of automatic footnotes
-  proc listFootnotes(lines: seq[int]): string =
+  proc listFootnotes(locations: seq[TLineInfo]): string =
+    var lines: seq[string]
+    for info in locations:
+      if s.filenames.len > 1:
+        let file = getFilename(s.filenames, info.fileIndex)
+        lines.add file & ":"
+      else:  # no need to add file name here if there is only 1
+        lines.add ""
+      lines[^1].add $info.line
     result.add $lines.len & " (lines " & join(lines, ", ") & ")"
   if s.lineFootnoteNum.len != s.lineFootnoteNumRef.len:
     rstMessage(s, meFootnoteMismatch,
@@ -1179,13 +1196,6 @@ proc whichRole(p: RstParser, sym: string): RstNodeKind =
   result = whichRoleAux(sym)
   if result == rnUnknownRole:
     rstMessage(p, mwUnsupportedLanguage, sym)
-
-proc lineInfo(p: RstParser, iTok: int): TLineInfo =
-  result.col = int16(p.col + p.tok[iTok].col)
-  result.line = uint16(p.line + p.tok[iTok].line)
-  result.fileIndex = p.s.currFileIdx
-
-proc lineInfo(p: RstParser): TLineInfo = lineInfo(p, p.idx)
 
 proc toInlineCode(n: PRstNode, language: string): PRstNode =
   ## Creates rnInlineCode and attaches `n` contents as code (in 3rd son).
@@ -1584,17 +1594,14 @@ proc parseInline(p: var RstParser, father: PRstNode) =
     elif isInlineMarkupStart(p, "[") and nextTok(p).symbol != "[" and
          (n = parseFootnoteName(p, reference=true); n != nil):
       var nn = newRstNode(rnFootnoteRef)
-      nn.loc = new PFootnoteRefInfo
-      nn.loc.info = lineInfo(p, saveIdx+1)
+      nn.info = lineInfo(p, saveIdx+1)
       nn.add n
       let (fnType, _) = getFootnoteType(n)
       case fnType
       of fnAutoSymbol:
-        p.s.lineFootnoteSymRef.add curLine(p)
-        nn.loc.order = p.s.lineFootnoteSymRef.len
+        p.s.lineFootnoteSymRef.add lineInfo(p)
       of fnAutoNumber:
-        p.s.lineFootnoteNumRef.add curLine(p)
-        nn.loc.order = p.s.lineFootnoteNumRef.len
+        p.s.lineFootnoteNumRef.add lineInfo(p)
       else: discard
       father.add(nn)
     else:
@@ -2961,21 +2968,22 @@ proc resolveSubs*(s: PRstSharedState, n: PRstNode): PRstNode =
       result.add(nn)
     var refn = fnType.prefix
     # create new rnFootnoteRef, add final label, and finalize target refn:
-    result = newRstNode(rnFootnoteRef)
-    result.loc = n.loc
+    result = newRstNode(rnFootnoteRef, info = n.info)
     case fnType
     of fnManualNumber:
       addLabel num
       refn.add $num
     of fnAutoNumber:
-      addLabel getFootnoteNum(s, n.loc.order)
-      refn.add $n.loc.order
+      inc s.currFootnoteNumRef
+      addLabel getFootnoteNum(s, s.currFootnoteNumRef)
+      refn.add $s.currFootnoteNumRef
     of fnAutoNumberLabel:
       addLabel getFootnoteNum(s, rstnodeToRefname(n))
       refn.add rstnodeToRefname(n)
     of fnAutoSymbol:
-      addLabel getAutoSymbol(s, n.loc.order)
-      refn.add $n.loc.order
+      inc s.currFootnoteSymRef
+      addLabel getAutoSymbol(s, s.currFootnoteSymRef)
+      refn.add $s.currFootnoteSymRef
     of fnCitation:
       result.add n.sons[0]
       refn.add rstnodeToRefname(n)
@@ -2983,7 +2991,7 @@ proc resolveSubs*(s: PRstSharedState, n: PRstNode): PRstNode =
     if anch != "":
       result.add newLeaf(anch)     # add link
     else:
-      rstMessage(s.filenames, s.msgHandler, n.loc.info, mwBrokenLink, refn)
+      rstMessage(s.filenames, s.msgHandler, n.info, mwBrokenLink, refn)
       result.add newLeaf(refn)  # add link
   of rnLeaf:
     discard
