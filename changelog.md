@@ -391,6 +391,9 @@
 - The `gc:orc` algorithm was refined so that custom container types can participate in the
   cycle collection process.
 
+- On embedded devices `malloc` can now be used instead of `mmap` via `-d:nimAllocPagesViaMalloc`.
+  This is only supported for `--gc:orc` or `--gc:arc`.
+
 
 ## Compiler changes
 
