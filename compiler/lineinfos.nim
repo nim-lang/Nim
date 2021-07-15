@@ -200,9 +200,7 @@ const
   warnMax* = pred(hintSuccess)
   hintMin* = hintSuccess
   hintMax* = high(TMsgKind)
-  rstWarnings* = {warnRstRedefinitionOfLabel, warnRstUnknownSubstitutionX,
-                  warnRstBrokenLink, warnRstLanguageXNotSupported,
-                  warnRstFieldXNotSupported, warnRstStyle}
+  rstWarnings* = {warnRstRedefinitionOfLabel..warnRstStyle}
 
 type
   TNoteKind* = range[warnMin..hintMax] # "notes" are warnings or hints
