@@ -631,7 +631,7 @@ proc rstMessage(s: PRstSharedState, msgKind: MsgKind, arg: string) =
 
 proc rstMessage*(filenames: seq[string], f: MsgHandler,
                  info: TLineInfo, msgKind: MsgKind, arg: string) =
-  ## Print warnings using `info: TLineInfo`, i.e. in 2nd-pass warnings for
+  ## Print warnings using `info`, i.e. in 2nd-pass warnings for
   ## footnotes/substitutions/references or from ``rstgen.nim``.
   let file = getFilename(filenames, info.fileIndex)
   f(file, info.line.int, info.col.int, msgKind, arg)
