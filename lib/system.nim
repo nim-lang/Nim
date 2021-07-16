@@ -1427,8 +1427,8 @@ type # these work for most platforms:
     ## This is the same as the type `long double` in *C*.
     ## This C type is not supported by Nim's code generator.
 
-  cuchar* {.importc: "unsigned char", nodecl.} = uint8
-    ## This is the same as the type `unsigned char` in *C*.
+  cuchar* {.importc: "unsigned char", nodecl, deprecated: "use `char` or `uint8` instead".} = char
+    ## Deprecated: Use `uint8` instead.
   cushort* {.importc: "unsigned short", nodecl.} = uint16
     ## This is the same as the type `unsigned short` in *C*.
   cuint* {.importc: "unsigned int", nodecl.} = uint32
