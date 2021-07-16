@@ -2134,7 +2134,7 @@ const
 import system/dollars
 export dollars
 
-proc delete*[T](x: var seq[T], i: Natural) {.noSideEffect.} =
+proc delete*[T](x: var seq[T], i: Natural) {.noSideEffect, deprecated: "use sequtils.delete(x, i..i) instead".} =
   ## Deletes the item at index `i` by moving all `x[i+1..^1]` items by one position.
   ##
   ## This is an `O(n)` operation.
@@ -2142,17 +2142,16 @@ proc delete*[T](x: var seq[T], i: Natural) {.noSideEffect.} =
   ## See also:
   ## * `del <#del,seq[T],Natural>`_ for O(1) operation
   ##
+  ## `system.delete` has a most surprising behavior when the index passed to it is out of
+  ## bounds (it deletes the last entry then).
+  ## It is deprecated because of that, instead use the new `sequtils.delete(s, i..i)`.
+  ## But be aware that your code might depend on this quirky behavior so a review process is
+  ## required on your part before you can use `sequtils.delete` instead.
+
   runnableExamples:
     var s = @[1, 2, 3, 4, 5]
     s.delete(2)
     doAssert s == @[1, 2, 4, 5]
-
-    doAssertRaises(IndexDefect):
-      s.delete(4)
-
-  if i > high(x):
-    # xxx this should call `raiseIndexError2(i, high(x))` after some refactoring
-    raise (ref IndexDefect)(msg: "index out of bounds: '" & $i & "' < '" & $x.len & "' failed")
 
   template defaultImpl =
     let xl = x.len

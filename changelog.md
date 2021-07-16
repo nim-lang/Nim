@@ -4,7 +4,14 @@
 
 ## Changes affecting backward compatibility
 
-- Deprecated `std/mersenne`
+- Deprecated `std/mersenne`.
+
+- `system.delete` had a most surprising behavior when the index passed to it was out of
+  bounds (it would delete the last entry then).
+  It is deprecated because of that, instead use the new `sequtils.delete(s, i..i)`.
+  But be aware that your code might depend on this quirky behavior so a review process is
+  required on your part before you can use `sequtils.delete` instead.
+
 
 - `cuchar` is now deprecated as it aliased `char` where arguably it should have aliased `uint8`.
   Please use `char` or `uint8` instead.
