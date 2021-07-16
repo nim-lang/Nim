@@ -66,6 +66,8 @@ template main =
     var a = 1.1'f32
     doAssert $a == "1.1", $a # was failing
 
+proc runtimeOnlyTests =
+  # enable for 'static' once -d:nimFpRoundtrips became the default
   block: # bug #7717
     proc test(f: float) =
       let f2 = $f
@@ -82,3 +84,5 @@ template main =
 
 static: main()
 main()
+
+runtimeOnlyTests()
