@@ -97,7 +97,7 @@ proc nimFloatToStr(f: float): string {.compilerproc.} =
   result = newStringOfCap(8)
   result.addFloat f
 
-when not defined(nimLegacyAddFloat) and not defined(nimscript) and
+when defined(nimFpRoundtrips) and not defined(nimscript) and
     not defined(js) and defined(nimHasDragonBox):
   import schubfach
 
