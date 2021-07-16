@@ -103,13 +103,3 @@ proc z(x: typedesc[int]): int = 0
 
 doAssert int is Monoid
 
-
-# empty concept
-
-type
-  Test = object
-  Empty = concept
-
-doAssert int is Empty
-doAssert seq[int] is Empty
-doAssert Test is Empty

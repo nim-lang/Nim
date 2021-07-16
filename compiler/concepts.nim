@@ -58,8 +58,6 @@ proc semConceptDecl(c: PContext; n: PNode): PNode =
     for i in 0..<n.len-1:
       result[i] = n[i]
     result[^1] = semConceptDecl(c, n[^1])
-  of nkEmpty:
-    result = n
   else:
     localError(c.config, n.info, "unexpected construct in the new-styled concept: " & renderTree(n))
     result = n
@@ -303,8 +301,6 @@ proc conceptMatchNode(c: PContext; n: PNode; m: var MatchCon): bool =
     result = matchSyms(c, n, {skMethod}, m)
   of nkIteratorDef:
     result = matchSyms(c, n, {skIterator}, m)
-  of nkEmpty:
-    result = true
   else:
     # error was reported earlier.
     result = false

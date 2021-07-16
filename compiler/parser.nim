@@ -2058,6 +2058,8 @@ proc parseTypeClass(p: var Parser): PNode =
     skipComment(p, result)
   # an initial IND{>} HAS to follow:
   if not realInd(p):
+    if result.isNewStyleConcept:
+      parMessage(p, "routine expected, but found '$1' (empty new-styled concepts are not allowed)", p.tok)
     result.add(p.emptyNode)
   else:
     result.add(parseStmt(p))
