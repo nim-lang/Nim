@@ -44,7 +44,7 @@ proc `$`(a: MyEnum): string =
   if a == me2: "me2Modif"
   else: system.`$`(a)
 
-template fn() = 
+template fn() =
   block: # toJson, jsonTo
     type Foo = distinct float
     testRoundtrip('x', """120""")
@@ -161,15 +161,16 @@ template fn() =
     doAssert b[2].signbit
     doAssert not b[3].signbit
 
-  block: # bug #15397, bug #13196
-    let a = 0.1
-    let x = 0.12345678901234567890123456789
-    let b = (a + 0.2, 0.3, x)
-    testRoundtripVal(b): "[0.30000000000000004,0.3,0.12345678901234568]"
+  when defined(nimFpRoundtrips):
+    block: # bug #15397, bug #13196
+      let a = 0.1
+      let x = 0.12345678901234567890123456789
+      let b = (a + 0.2, 0.3, x)
+      testRoundtripVal(b): "[0.30000000000000004,0.3,0.12345678901234568]"
 
-    testRoundtripVal(0.12345678901234567890123456789): "0.12345678901234568"
-    testRoundtripVal(epsilon(float64)): "2.220446049250313e-16"
-    testRoundtripVal(1.0 + epsilon(float64)): "1.0000000000000002"
+      testRoundtripVal(0.12345678901234567890123456789): "0.12345678901234568"
+      testRoundtripVal(epsilon(float64)): "2.220446049250313e-16"
+      testRoundtripVal(1.0 + epsilon(float64)): "1.0000000000000002"
 
   block: # case object
     type Foo = object
@@ -433,7 +434,7 @@ template fn() =
           """{"b": true, "bt": false, "btf": "test"}"""
         testRoundtrip(Variant(b: true, bt: true, btt: 'c')):
           """{"b": true, "bt": true, "btt": "c"}"""
-        
+
         # TODO: Add additional tests with missing and extra JSON keys, both when
         # allowed and forbidden analogous to the tests for the not nested
         # variant objects.
