@@ -42,7 +42,7 @@ type
   PULONG_PTR* = ptr uint
   HDC* = Handle
   HGLRC* = Handle
-  BYTE* = cuchar
+  BYTE* = uint8
 
   SECURITY_ATTRIBUTES* {.final, pure.} = object
     nLength*: int32
@@ -717,7 +717,7 @@ const
   FILE_WRITE_DATA* = 0x00000002 # file & pipe
 
 # Error Constants
-const 
+const
   ERROR_FILE_NOT_FOUND* = 2 ## https://docs.microsoft.com/en-us/windows/win32/debug/system-error-codes--0-499-
   ERROR_PATH_NOT_FOUND* = 3
   ERROR_ACCESS_DENIED* = 5

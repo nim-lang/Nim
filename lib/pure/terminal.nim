@@ -761,7 +761,7 @@ template styledWriteLine*(f: File, args: varargs[untyped]) =
   runnableExamples:
     proc error(msg: string) =
       styledWriteLine(stderr, fgRed, "Error: ", resetStyle, msg)
-  
+
   styledWrite(f, args)
   write(f, "\n")
 

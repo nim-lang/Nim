@@ -6,7 +6,8 @@
 
 - Deprecated `std/mersenne`
 
--  `cuchar` now aliases `uint8` instead of `char`
+- `cuchar` is now deprecated as it aliased `char` where arguably it should have aliased `uint8`.
+  Please use `char` or `uint8` instead.
 
 - `repr` now doesn't insert trailing newline; previous behavior was very inconsistent,
   see #16034. Use `-d:nimLegacyReprWithNewline` for previous behavior.
