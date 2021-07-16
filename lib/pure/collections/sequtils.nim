@@ -509,6 +509,9 @@ proc keepIf*[T](s: var seq[T], pred: proc(x: T): bool {.closure.})
       inc(pos)
   setLen(s, pos)
 
+from std/private/system_impl import nil
+export system_impl.delete
+
 func delete*[T](s: var seq[T]; slice: Slice[int]) =
   ## Deletes the items `s[slice]`, raising `IndexDefect` if the slice contains
   ## elements out of range.

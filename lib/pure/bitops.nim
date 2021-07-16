@@ -27,7 +27,7 @@
 
 import macros
 import std/private/since
-from std/private/vmutils import forwardImpl, toUnsigned
+from std/private/system_impl import forwardImpl, toUnsigned
 
 
 
