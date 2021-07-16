@@ -2134,7 +2134,7 @@ const
 import system/dollars
 export dollars
 
-proc delete*[T](x: var seq[T], i: Natural) {.noSideEffect.} =
+proc delete*[T](x: var seq[T], i: Natural) {.noSideEffect, deprecated: "foobar".} =
   ## Deletes the item at index `i` by moving all `x[i+1..^1]` items by one position.
   ##
   ## This is an `O(n)` operation.
