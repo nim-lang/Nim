@@ -7,7 +7,7 @@
 #    distribution, for details about the copyright.
 #
 
-when not defined(nimLegacyAddFloat) and not defined(nimscript) and
+when defined(nimFpRoundtrips) and not defined(nimscript) and
     not defined(js) and defined(nimHasDragonBox):
   import dragonbox
 
