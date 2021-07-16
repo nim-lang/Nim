@@ -190,6 +190,8 @@ block: # bug #17467
       # This used to fail for each i in 0..<26844, i.e. the 1st produced value
       # was predictable and < 1e-4, skewing distributions.
 
+const withUint = false # pending exporting `proc rand[T: uint | uint64](r: var Rand; max: T): T =`
+
 block: # bug #16360
   var r = initRand()
   template test(a) =
@@ -202,21 +204,23 @@ block: # bug #16360
       let a3 = rand(a2)
       doAssert a3 <= a2
       doAssert a3.type is a2.type
-  test cast[uint](int.high)
-  test cast[uint](int.high) + 1
-  when not defined(js):
-    # pending bug #16411
-    test uint64.high
-    test uint64.high - 1
-  test uint.high - 2
-  test uint.high - 1
-  test uint.high
+  when withUint:
+    test cast[uint](int.high)
+    test cast[uint](int.high) + 1
+    when not defined(js):
+      # pending bug #16411
+      test uint64.high
+      test uint64.high - 1
+    test uint.high - 2
+    test uint.high - 1
+    test uint.high
   test int.high
   test int.high - 1
   test int.high - 2
   test 0
-  test 0'u
-  test 0'u64
+  when withUint:
+    test 0'u
+    test 0'u64
 
 block: # bug #16296
   var r = initRand()

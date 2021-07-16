@@ -204,21 +204,8 @@ proc skipRandomNumbers*(s: var Rand) =
   s.a0 = s0
   s.a1 = s1
 
-proc rand*[T: uint | uint64](r: var Rand; max: T): T =
-  ## Returns a random integer in the range `0..max` using the given state.
-  ##
-  ## **See also:**
-  ## * `rand proc<#rand,int>`_ that returns an integer using the default RNG
-  ## * `rand proc<#rand,Rand,range[]>`_ that returns a float
-  ## * `rand proc<#rand,Rand,HSlice[T: Ordinal or float or float32 or float64,T: Ordinal or float or float32 or float64]>`_
-  ##   that accepts a slice
-  ## * `rand proc<#rand,typedesc[T]>`_ that accepts an integer or range type
-  runnableExamples:
-    var r = initRand(123)
-    if false:
-      assert r.rand(100'u) == 96'u # implementation defined
-  # pending csources >= 1.4.0 or fixing https://github.com/timotheecour/Nim/issues/251#issuecomment-831599772,
-  # use `runnableExamples("-r:off")` instead of `if false`
+proc rand[T: uint | uint64](r: var Rand; max: T): T =
+  # xxx export in future work
   if max == 0: return
   else:
     let max = uint64(max)
@@ -231,7 +218,19 @@ proc rand*[T: uint | uint64](r: var Rand; max: T): T =
         return T(x mod (max + 1))
 
 proc rand*(r: var Rand; max: Natural): int {.benign.} =
-  ## Overload for `Natural`.
+  ## Returns a random integer in the range `0..max` using the given state.
+  ##
+  ## **See also:**
+  ## * `rand proc<#rand,int>`_ that returns an integer using the default RNG
+  ## * `rand proc<#rand,Rand,range[]>`_ that returns a float
+  ## * `rand proc<#rand,Rand,HSlice[T: Ordinal or float or float32 or float64,T: Ordinal or float or float32 or float64]>`_
+  ##   that accepts a slice
+  ## * `rand proc<#rand,typedesc[T]>`_ that accepts an integer or range type
+  runnableExamples:
+    var r = initRand(123)
+    if false:
+      assert r.rand(100) == 96 # implementation defined
+  # bootstrap: can't use `runnableExamples("-r:off")`
   cast[int](rand(r, uint64(max)))
     # xxx toUnsigned pending https://github.com/nim-lang/Nim/pull/18445
 
@@ -658,9 +657,5 @@ when not defined(nimscript) and not defined(standalone):
     ## * `initRand proc<#initRand,int64>`_ that initializes a Rand state
     ##   with a given seed
     state = initRand()
-
-proc rand*[T: uint | uint64](max: T): T {.inline.} =
-  ## Overload using the default RNG.
-  rand(state, max)
 
 {.pop.}
