@@ -22,7 +22,7 @@ const
 
 const
   declPragmas = {wImportc, wImportObjC, wImportCpp, wImportJs, wExportc, wExportCpp,
-    wExportNims, wExtern, wDeprecated, wNodecl, wError, wUsed}
+    wExportNims, wExtern, wDeprecated, wNodecl, wError, wUsed, wCustom}
     ## common pragmas for declarations, to a good approximation
   procPragmas* = declPragmas + {FirstCallConv..LastCallConv,
     wMagic, wNoSideEffect, wSideEffect, wNoreturn, wNosinks, wDynlib, wHeader,
@@ -977,6 +977,8 @@ proc singlePragma(c: PContext, sym: PSym, n: PNode, i: var int,
         # whole module
         elif it.kind in nkPragmaCallKinds: deprecatedStmt(c, it)
         else: incl(c.module.flags, sfDeprecated)
+      of wCustom:
+        
       of wVarargs:
         noVal(c, it)
         if sym.typ == nil: invalidPragma(c, it)

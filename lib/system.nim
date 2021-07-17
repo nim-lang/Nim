@@ -111,6 +111,9 @@ proc compileOption*(option, arg: string): bool {.
     when compileOption("opt", "size") and compileOption("gc", "boehm"):
       discard "compiled with optimization for size and uses Boehm's GC"
 
+when not defined(nimHasCustomWarning):
+  {.pragma: custom.}
+
 {.push warning[GcMem]: off, warning[Uninit]: off.}
 # {.push hints: off.}
 
@@ -2134,7 +2137,7 @@ const
 import system/dollars
 export dollars
 
-proc delete*[T](x: var seq[T], i: Natural) {.noSideEffect, deprecated: "foobar".} =
+proc delete*[T](x: var seq[T], i: Natural) {.noSideEffect.} =
   ## Deletes the item at index `i` by moving all `x[i+1..^1]` items by one position.
   ##
   ## This is an `O(n)` operation.

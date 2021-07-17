@@ -887,7 +887,7 @@ when not defined(nimscript):
   include "includes/osenv"
 
 proc getHomeDir*(): string {.rtl, extern: "nos$1",
-  tags: [ReadEnvEffect, ReadIOEffect].} =
+  tags: [ReadEnvEffect, ReadIOEffect], migration(bar, "baz").} =
   ## Returns the home directory of the current user.
   ##
   ## This proc is wrapped by the `expandTilde proc <#expandTilde,string>`_
