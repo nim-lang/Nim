@@ -1168,6 +1168,19 @@ template `[]=`*(n: Indexable, i: int; x: Indexable) = n.sons[i] = x
 template `[]`*(n: Indexable, i: BackwardsIndex): Indexable = n[n.len - i.int]
 template `[]=`*(n: Indexable, i: BackwardsIndex; x: Indexable) = n[n.len - i.int] = x
 
+proc getDeclPragma*(n: PNode): PNode =
+  case n.kind
+  of routineDefs:
+    if n[pragmasPos].kind != nkEmpty: result = n[pragmasPos]
+  of nkTypeDef:
+    if n[0].kind == nkPragmaExpr:
+      result = n[0][1]
+  else:
+    # support as needed
+    doAssert false, "getDeclPragma: unsupported: " & $n.kind
+  if result != nil:
+    assert result.kind == nkPragma, $(result.kind, n.kind)
+
 when defined(useNodeIds):
   const nodeIdToDebug* = -1 # 2322968
   var gNodeId: int
