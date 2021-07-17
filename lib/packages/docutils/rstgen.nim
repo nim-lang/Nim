@@ -76,7 +76,7 @@ type
     msgHandler*: MsgHandler
     outDir*: string      ## output directory, initialized by docgen.nim
     destFile*: string    ## output (HTML) file, initialized by docgen.nim
-    filenames*: seq[string]
+    filenames*: RstFileTable
     filename*: string         ## source Nim or Rst file
     meta*: array[MetaEnum, string]
     currentSection: string ## \
@@ -114,7 +114,7 @@ proc initRstGenerator*(g: var RstGenerator, target: OutputTarget,
                        config: StringTableRef, filename: string,
                        findFile: FindFileHandler = nil,
                        msgHandler: MsgHandler = nil,
-                       filenames: seq[string] = @[]) =
+                       filenames = default(RstFileTable)) =
   ## Initializes a ``RstGenerator``.
   ##
   ## You need to call this before using a ``RstGenerator`` with any other

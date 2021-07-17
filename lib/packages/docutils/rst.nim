@@ -196,7 +196,7 @@
 
 import
   os, strutils, rstast, std/enumutils, algorithm, lists, sequtils,
-  std/private/miscdollars, "$lib/../compiler/lineinfos"
+  std/private/miscdollars, "$lib/../compiler/lineinfos", tables
 from highlite import SourceLanguage, getSourceLanguage
 
 type
@@ -491,7 +491,9 @@ type
     autoNumIdx: int     # order of occurence: fnAutoNumber, fnAutoNumberLabel
     autoSymIdx: int     # order of occurence: fnAutoSymbol
     label: string       # valid for fnAutoNumberLabel
-
+  RstFileTable* = object
+    filenameToIdx*: Table[string, FileIndex]
+    idxToFilename*: seq[string]
   RstSharedState = object
     options: RstParseOptions    # parsing options
     hLevels: LevelMap           # hierarchy of heading styles
@@ -513,7 +515,7 @@ type
                                   # number, order of occurrence
     msgHandler: MsgHandler      # How to handle errors.
     findFile: FindFileHandler   # How to find files.
-    filenames*: seq[string]     # map FileIndex -> file name (for storing
+    filenames*: RstFileTable    # map file name <-> FileIndex (for storing
                                 # file names for warnings after 1st stage)
     currFileIdx: FileIndex      # current index in `filesnames`
     hasToc*: bool
@@ -585,18 +587,21 @@ proc whichRoleAux(sym: string): RstNodeKind =
   else:  # unknown role
     result = rnUnknownRole
 
-proc setCurrFilename(s: PRstSharedState, file1: string) =
-  for i, file2 in s.filenames:
-    if file1 == file2:
-      s.currFileIdx = i.FileIndex
-      return
-  s.filenames.add file1
-  s.currFileIdx = (s.filenames.len - 1).FileIndex
+proc len(filenames: RstFileTable): int = filenames.idxToFilename.len
 
-proc getFilename(filenames: seq[string], fid: FileIndex): string =
+proc setCurrFilename(s: PRstSharedState, file1: string) =
+  let nextIdx = s.filenames.len.FileIndex
+  let v = getOrDefault(s.filenames.filenameToIdx, file1, default = nextIdx)
+  if v == nextIdx:
+    s.filenames.filenameToIdx[file1] = v
+    s.filenames.idxToFilename.add file1
+  s.currFileIdx = v
+
+proc getFilename(filenames: RstFileTable, fid: FileIndex): string =
   doAssert(0 <= fid.int and fid.int < filenames.len,
-      "incorrect FileIndex $1 (range 0..$2)" % [$fid.int, $(filenames.len-1)])
-  result = filenames[fid.int]
+      "incorrect FileIndex $1 (range 0..$2)" % [
+        $fid.int, $(filenames.len - 1)])
+  result = filenames.idxToFilename[fid.int]
 
 proc currFilename(s: PRstSharedState): string =
   getFilename(s.filenames, s.currFileIdx)
@@ -629,7 +634,7 @@ proc rstMessage(p: RstParser, msgKind: MsgKind, arg: string) =
 proc rstMessage(s: PRstSharedState, msgKind: MsgKind, arg: string) =
   s.msgHandler(s.currFilename, LineRstInit, ColRstInit, msgKind, arg)
 
-proc rstMessage*(filenames: seq[string], f: MsgHandler,
+proc rstMessage*(filenames: RstFileTable, f: MsgHandler,
                  info: TLineInfo, msgKind: MsgKind, arg: string) =
   ## Print warnings using `info`, i.e. in 2nd-pass warnings for
   ## footnotes/substitutions/references or from ``rstgen.nim``.
@@ -3023,7 +3028,7 @@ proc rstParse*(text, filename: string,
                options: RstParseOptions,
                findFile: FindFileHandler = nil,
                msgHandler: MsgHandler = nil):
-              tuple[node: PRstNode, filenames: seq[string], hasToc: bool] =
+              tuple[node: PRstNode, filenames: RstFileTable, hasToc: bool] =
   ## Parses the whole `text`. The result is ready for `rstgen.renderRstToOut`,
   ## note that 2nd tuple element should be fed to `initRstGenerator`
   ## argument `filenames` (it is being filled here at least with `filename`
