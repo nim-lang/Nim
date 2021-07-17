@@ -123,6 +123,10 @@ proc versionToCommit(d: Dependency): string =
 
   return ""
 
+proc shortToCommit(short: string): string =
+  let (cc, status) = osproc.execCmdEx("git rev-parse " & quoteShell(short))
+  result = if status == 0: strutils.strip(cc) else: ""
+
 proc checkoutGitCommit(c: var AtlasContext; p: PackageName; commit: string) =
   let (outp, status) = osproc.execCmdEx("git checkout " & quoteShell(commit))
   if status != 0:
@@ -169,6 +173,9 @@ proc toName(p: string): PackageName =
 proc needsCommitLookup(commit: string): bool {.inline} =
   '.' in commit or commit == InvalidCommit
 
+proc isShortCommitHash(commit: string): bool {.inline.} =
+  commit.len >= 4 and commit.len < 40
+
 proc checkoutCommit(c: var AtlasContext; w: Dependency) =
   let dir = c.workspace / w.name.string
   withDir dir:
@@ -179,7 +186,10 @@ proc checkoutCommit(c: var AtlasContext; w: Dependency) =
       if err != "":
         warn c, w.name, err
       else:
-        let requiredCommit = if needsCommitLookup(w.commit): versionToCommit(w) else: w.commit
+        let requiredCommit =
+          if needsCommitLookup(w.commit): versionToCommit(w)
+          elif isShortCommitHash(w.commit): shortToCommit(w.commit)
+          else: w.commit
         let (cc, status) = osproc.execCmdEx("git log -n 1 --format=%H")
         let currentCommit = strutils.strip(cc)
         if requiredCommit == "" or status != 0:
