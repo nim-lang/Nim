@@ -351,6 +351,7 @@
 - Deprecated `sequtils.delete` and added an overload taking a `Slice` that raises a defect
   if the slice is out of bounds.
 
+
 ## Language changes
 
 - `nimscript` now handles `except Exception as e`.
@@ -390,6 +391,9 @@
 
 - Added a new module `std/importutils`, and an API `privateAccess`, which allows access to private fields
   for an object type in the current scope.
+
+- APIs can now indicate they've changed their semantics via macros.migrated, e.g.:
+  `{.migrated(nimMigratedGetHomeDir, "`getHomeDir` now does not end in DirSep, see `normalizePathEnd`").}`
 
 - `typeof(voidStmt)` now works and returns `void`.
 
