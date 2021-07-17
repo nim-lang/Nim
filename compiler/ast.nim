@@ -1169,26 +1169,28 @@ template `[]`*(n: Indexable, i: BackwardsIndex): Indexable = n[n.len - i.int]
 template `[]=`*(n: Indexable, i: BackwardsIndex; x: Indexable) = n[n.len - i.int] = x
 
 proc getDeclPragma*(n: PNode): PNode =
-  #[
-  type F3*{.deprecated: "x3".} = int
-
-  TypeSection
-    TypeDef
-      PragmaExpr
-        Postfix
-          Ident "*"
-          Ident "F3"
-        Pragma
-          ExprColonExpr
-            Ident "deprecated"
-            StrLit "x3"
-      Empty
-      Ident "int"
-  ]#
+  ## return the `nkPragma` node for declaration `n`, or `nil` if no pragma was found.
+  ## Currently only supports routineDefs + {nkTypeDef}.
   case n.kind
   of routineDefs:
     if n[pragmasPos].kind != nkEmpty: result = n[pragmasPos]
   of nkTypeDef:
+    #[
+    type F3*{.deprecated: "x3".} = int
+
+    TypeSection
+      TypeDef
+        PragmaExpr
+          Postfix
+            Ident "*"
+            Ident "F3"
+          Pragma
+            ExprColonExpr
+              Ident "deprecated"
+              StrLit "x3"
+        Empty
+        Ident "int"
+    ]#
     if n[0].kind == nkPragmaExpr:
       result = n[0][1]
   else:
