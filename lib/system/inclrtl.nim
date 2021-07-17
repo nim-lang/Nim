@@ -49,6 +49,3 @@ else:
 
 when defined(nimHasSinkInference):
   {.push sinkInference: on.}
-
-when not defined(nimHasCustomWarning):
-  {.pragma: custom.}

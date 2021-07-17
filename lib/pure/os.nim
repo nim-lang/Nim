@@ -44,7 +44,7 @@
 include system/inclrtl
 import std/private/since
 
-import strutils, pathnorm
+import strutils, pathnorm, macros
 
 const weirdTarget = defined(nimscript) or defined(js)
 
@@ -886,9 +886,8 @@ include "includes/oserr"
 when not defined(nimscript):
   include "includes/osenv"
 
-proc getHomeDir*(): string {.rtl, extern: "nos$1",
-  tags: [ReadEnvEffect, ReadIOEffect].} =
-  # tags: [ReadEnvEffect, ReadIOEffect], custom(nimOsDirsTrailingSlash, "getHomeDir now does not include trailing DirSep").} =
+proc getHomeDir*(): string {.rtl, extern: "nos$1", tags: [ReadEnvEffect, ReadIOEffect],
+  migrated(nimMigratedGetHomeDir, "`getHomeDir` now does not end in DirSep, see `normalizePathEnd`").} =
   ## Returns the home directory of the current user.
   ##
   ## This proc is wrapped by the `expandTilde proc <#expandTilde,string>`_
@@ -911,8 +910,8 @@ proc getHomeDir*(): string {.rtl, extern: "nos$1",
   else: result = getEnv("HOME")
   result.normalizePathEnd(trailingSep = defined(nimLegacyHomeDir))
 
-proc getConfigDir*(): string {.rtl, extern: "nos$1",
-  tags: [ReadEnvEffect, ReadIOEffect].} =
+proc getConfigDir*(): string {.rtl, extern: "nos$1", tags: [ReadEnvEffect, ReadIOEffect],
+  migrated(nimMigratedGetConfigDir, "`getConfigDir` now does not end in DirSep, see `normalizePathEnd`").} =
   ## Returns the config directory of the current user for applications.
   ##
   ## On non-Windows OSs, this proc conforms to the XDG Base Directory
@@ -990,8 +989,8 @@ template getTempDirImpl(result: var string) =
   else:
     getEnvImpl(result, ["TMPDIR", "TEMP", "TMP", "TEMPDIR"])
 
-proc getTempDir*(): string {.rtl, extern: "nos$1",
-  tags: [ReadEnvEffect, ReadIOEffect].} =
+proc getTempDir*(): string {.rtl, extern: "nos$1", tags: [ReadEnvEffect, ReadIOEffect],
+  migrated(nimMigratedGetTempDir, "`getTempDir` now does not end in DirSep, see `normalizePathEnd`").} =
   ## Returns the temporary directory of the current user for applications to
   ## save temporary files in.
   ##

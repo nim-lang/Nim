@@ -21,6 +21,7 @@ import
 from uri import encodeUrl
 from std/private/globs import nativeToUnixPath
 from nodejs import findNodeJs
+import std/private/constants
 
 const
   exportSection = skField
@@ -809,8 +810,13 @@ proc genDeprecationMsg(d: PDoc, n: PNode): string =
        "label" , "Deprecated", "message", ""]
   of 2: # Deprecated w/ a message
     if n[1].kind in {nkStrLit..nkTripleStrLit}:
-      result = getConfigVar(d.conf, "doc.deprecationmsg") % [
-          "label", "Deprecated:", "message", xmltree.escape(n[1].strVal)]
+      let msg = n[1].strVal
+      if msg.startsWith migratedPrefix:
+        result = getConfigVar(d.conf, "doc.deprecationmsg") % [
+            "label", "Migrated:", "message", xmltree.escape(msg[migratedPrefix.len..^1])]
+      else:
+        result = getConfigVar(d.conf, "doc.deprecationmsg") % [
+            "label", "Deprecated:", "message", xmltree.escape(msg)]
   else:
     doAssert false
 

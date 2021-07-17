@@ -8,7 +8,7 @@
 #
 
 include "system/inclrtl"
-import std/private/since
+import std/private/[since, constants]
 
 ## This module contains the interface to the compiler's abstract syntax
 ## tree (`AST`:idx:). Macros operate on this tree.
@@ -1800,3 +1800,23 @@ proc extractDocCommentsAndRunnables*(n: NimNode): NimNode =
         result.add ni
       else: break
     else: break
+
+macro customImpl(msg, body): untyped =
+  result = body
+  addPragma(result, newCall(ident"deprecated", msg))
+
+template migrated*(ident, msg, body): untyped =
+  ## Conditionally generate a migration warning for APIs that were migrated to
+  ## different semantics, to help existing code migrate.
+  runnableExamples("--warningAsError:migrated -d:nimMigratedExample1"):
+    proc fn*(a: int) {.migrated(nimMigratedExample1, "fn can now raise a Defect").} =
+      doAssert a >= 0
+    assert not compiles(fn(10)) # would generate a warning (and )
+  runnableExamples("--warningAsError:migrated"):
+    # With `-d:nimMigratedExample1`, would generate:
+    # Warning:  fn can now raise a Defect; fn was migrated [proc declared in ...] [Migrated]
+    proc fn*(a: int) {.migrated(nimMigratedExample1, "fn can now raise a Defect").} =
+      doAssert a >= 0
+    fn(10)
+  when defined(ident): customImpl(migratedPrefix & msg, body)
+  else: body

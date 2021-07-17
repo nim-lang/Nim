@@ -137,4 +137,3 @@ proc initDefines*(symbols: StringTableRef) =
   defineSymbol("nimHasDragonBox")
   defineSymbol("nimHasHintAll")
   defineSymbol("nimHasTrace")
-  defineSymbol("nimHasCustomWarning")
