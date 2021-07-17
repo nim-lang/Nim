@@ -977,8 +977,14 @@ proc singlePragma(c: PContext, sym: PSym, n: PNode, i: var int,
         # whole module
         elif it.kind in nkPragmaCallKinds: deprecatedStmt(c, it)
         else: incl(c.module.flags, sfDeprecated)
-      of wCustom:
-        
+      # of wCustom:
+      #   let cond = considerQuotedIdent(c, it[1])
+      #   if c.config.isDefined():
+      #     if sym != nil and sym.kind in routineKinds + {skType, skVar, skLet}:
+      #       if it.kind in nkPragmaCallKinds: discard getStrLitNode(c, it)
+      #       incl(sym.flags, sfDeprecated)
+      #     else:
+      #       localError(c.config, it.info, "unsupported")
       of wVarargs:
         noVal(c, it)
         if sym.typ == nil: invalidPragma(c, it)

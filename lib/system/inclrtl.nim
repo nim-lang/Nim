@@ -50,7 +50,5 @@ else:
 when defined(nimHasSinkInference):
   {.push sinkInference: on.}
 
-# when defined(nimMigrationLints):
-#   {.pragma: migration, deprecated: "see nimLegacyHomeDir".}
-# else:
-#   {.pragma: migration.}
+when not defined(nimHasCustomWarning):
+  {.pragma: custom.}

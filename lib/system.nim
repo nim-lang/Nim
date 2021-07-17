@@ -111,9 +111,6 @@ proc compileOption*(option, arg: string): bool {.
     when compileOption("opt", "size") and compileOption("gc", "boehm"):
       discard "compiled with optimization for size and uses Boehm's GC"
 
-when not defined(nimHasCustomWarning):
-  {.pragma: custom.}
-
 {.push warning[GcMem]: off, warning[Uninit]: off.}
 # {.push hints: off.}
 

@@ -887,7 +887,8 @@ when not defined(nimscript):
   include "includes/osenv"
 
 proc getHomeDir*(): string {.rtl, extern: "nos$1",
-  tags: [ReadEnvEffect, ReadIOEffect], migration(bar, "baz").} =
+  tags: [ReadEnvEffect, ReadIOEffect].} =
+  # tags: [ReadEnvEffect, ReadIOEffect], custom(nimOsDirsTrailingSlash, "getHomeDir now does not include trailing DirSep").} =
   ## Returns the home directory of the current user.
   ##
   ## This proc is wrapped by the `expandTilde proc <#expandTilde,string>`_
