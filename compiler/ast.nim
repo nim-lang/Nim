@@ -1192,8 +1192,8 @@ proc getDeclPragma*(n: PNode): PNode =
     if n[0].kind == nkPragmaExpr:
       result = n[0][1]
   else:
-    # support as needed
-    doAssert false, "getDeclPragma: unsupported: " & $n.kind
+    # support as needed for `nkIdentDefs` etc.
+    result = nil
   if result != nil:
     assert result.kind == nkPragma, $(result.kind, n.kind)
 

@@ -39,6 +39,9 @@ proc buzz*[T](a, b: T): T {.deprecated: "since v0.20".} =
   ## This is deprecated with a message.
   result = a + b
 
+type
+  FooBuzz* {.deprecated: "FooBuzz msg".} = int
+
 import std/macros
 
 var aVariable*: array[1, int]
