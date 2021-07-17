@@ -1169,6 +1169,22 @@ template `[]`*(n: Indexable, i: BackwardsIndex): Indexable = n[n.len - i.int]
 template `[]=`*(n: Indexable, i: BackwardsIndex; x: Indexable) = n[n.len - i.int] = x
 
 proc getDeclPragma*(n: PNode): PNode =
+  #[
+  type F3*{.deprecated: "x3".} = int
+
+  TypeSection
+    TypeDef
+      PragmaExpr
+        Postfix
+          Ident "*"
+          Ident "F3"
+        Pragma
+          ExprColonExpr
+            Ident "deprecated"
+            StrLit "x3"
+      Empty
+      Ident "int"
+  ]#
   case n.kind
   of routineDefs:
     if n[pragmasPos].kind != nkEmpty: result = n[pragmasPos]

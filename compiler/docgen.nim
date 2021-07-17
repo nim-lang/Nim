@@ -856,25 +856,6 @@ proc genItem(d: PDoc, n, nameNode: PNode, k: TSymKind, docFlags: DocFlags) =
 
   var pragmaNode = getDeclPragma(n)
   if pragmaNode != nil: pragmaNode = findPragma(pragmaNode, wDeprecated)
-#[
-compensate for a very non-intuitive AST; if it gets updated (and an API is added),
-this can be udpated.
-
-type F3*{.deprecated: "x3".} = int
-
-TypeSection
-  TypeDef
-    PragmaExpr
-      Postfix
-        Ident "*"
-        Ident "F3"
-      Pragma
-        ExprColonExpr
-          Ident "deprecated"
-          StrLit "x3"
-    Empty
-    Ident "int"
-]#
 
   inc(d.id)
   let
