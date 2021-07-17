@@ -349,7 +349,7 @@
 - Added `dom.setInterval`, `dom.clearInterval` overloads.
 
 - Deprecated `sequtils.delete` and added an overload taking a `Slice` that raises a defect
-  if the slice is out of bounds.
+  if the slice is out of bounds, likewise with `strutils.delete`.
 
 ## Language changes
 
