@@ -291,7 +291,10 @@ proc isAbsolute*(path: string): bool {.rtl, noSideEffect, extern: "nos$1", raise
   runnableExamples:
     assert not "".isAbsolute
     assert not ".".isAbsolute
-    when defined(posix):
+    when defined(windows):
+      assert r"C:\".isAbsolute
+      assert not r"D:foo\bar".isAbsolute # relative path in ``D:\``
+    elif defined(posix):
       assert "/".isAbsolute
       assert not "a/".isAbsolute
       assert "/a/".isAbsolute
@@ -301,7 +304,7 @@ proc isAbsolute*(path: string): bool {.rtl, noSideEffect, extern: "nos$1", raise
   when doslikeFileSystem:
     var len = len(path)
     result = (path[0] in {'/', '\\'}) or
-              (len > 1 and path[0] in {'a'..'z', 'A'..'Z'} and path[1] == ':')
+              (len >= 3 and path[0] in {'a'..'z', 'A'..'Z'} and path[1] == ':' and path[2] in {'/', '\\'})
   elif defined(macos):
     # according to https://perldoc.perl.org/File/Spec/Mac.html `:a` is a relative path
     result = path[0] != ':'

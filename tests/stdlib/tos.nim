@@ -27,6 +27,7 @@ Raises
 
 import os, strutils, pathnorm
 from stdtest/specialpaths import buildDir
+import stdtest/testutils
 
 block fileOperations:
   let files = @["these.txt", "are.x", "testing.r", "files.q"]
@@ -427,12 +428,6 @@ block ospaths:
   doAssert unixToNativePath("") == ""
   doAssert unixToNativePath(".") == $CurDir
   doAssert unixToNativePath("..") == $ParDir
-  doAssert isAbsolute(unixToNativePath("/"))
-  doAssert isAbsolute(unixToNativePath("/", "a"))
-  doAssert isAbsolute(unixToNativePath("/a"))
-  doAssert isAbsolute(unixToNativePath("/a", "a"))
-  doAssert isAbsolute(unixToNativePath("/a/b"))
-  doAssert isAbsolute(unixToNativePath("/a/b", "a"))
   doAssert unixToNativePath("a/b") == joinPath("a", "b")
 
   when defined(macos):
@@ -710,3 +705,35 @@ block: # isAdmin
   if isAzure and defined(windows): doAssert isAdmin()
   # In Azure on POSIX tests run as a normal user
   if isAzure and defined(posix): doAssert not isAdmin()
+
+template main =
+  # xxx move all tests here so they get tested in VM (disabling as needed)
+  block: # isAbsolute
+    assertAll:
+      isAbsolute(r"/")
+      isAbsolute(r"/foo")
+      not isAbsolute(r"foo")
+      not isAbsolute(r"")
+      not isAbsolute(r".")
+      not isAbsolute(r"..")
+    when defined(windows):
+      assertAll:
+        isAbsolute(r"C:\")
+        isAbsolute(r"B:/")
+        isAbsolute(r"c:\a")
+        isAbsolute(r"X://ab/")
+        isAbsolute(r"\")
+        not isAbsolute(r"C:")
+        not isAbsolute(r"C:foo")
+        not isAbsolute(r"foo\bar")
+    assertAll:
+      isAbsolute(unixToNativePath("/"))
+      isAbsolute(unixToNativePath("/", "a"))
+      isAbsolute(unixToNativePath("/a"))
+      isAbsolute(unixToNativePath("/a", "a"))
+      isAbsolute(unixToNativePath("/a/b"))
+      isAbsolute(unixToNativePath("/a/b", "a"))
+
+static: main()
+main()
+
