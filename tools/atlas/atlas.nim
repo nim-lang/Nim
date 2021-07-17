@@ -179,7 +179,7 @@ proc isShortCommitHash(commit: string): bool {.inline.} =
 proc checkoutCommit(c: var AtlasContext; w: Dependency) =
   let dir = c.workspace / w.name.string
   withDir dir:
-    if w.commit.len == 0 or cmpIgnoreCase(w.commit, "#head") == 0:
+    if w.commit.len == 0 or cmpIgnoreCase(w.commit, "head") == 0:
       gitPull(c, w.name)
     else:
       let err = isCleanGit(dir)
@@ -252,7 +252,7 @@ proc collectNewDeps(c: var AtlasContext; work: var seq[Dependency];
         tokens.add InvalidCommit
       elif tokens.len == 2 and tokens[1].startsWith("#"):
         # Dependencies can also look like 'requires "sdl2#head"
-        var commit = tokens[1]
+        var commit = tokens[1][1 .. ^1]
         tokens[1] = "=="
         tokens.add commit
 
