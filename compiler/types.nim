@@ -486,7 +486,7 @@ template bindConcreteTypeToUserTypeClass*(tc, concrete: PType) =
 # concept by switching to tyAlias within the instantiated procs.
 # Currently, tyAlias is always skipped with lastSon, which means that
 # we can store information about the matched concept in another position.
-# Then builtInFieldAccess can be modified to properly read the derived
+# Then builtinFieldAccess can be modified to properly read the derived
 # consts and types stored within the concept.
 template isResolvedUserTypeClass*(t: PType): bool =
   tfResolved in t.flags

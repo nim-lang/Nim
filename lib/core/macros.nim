@@ -91,13 +91,13 @@ type
   NimNodeKinds* = set[NimNodeKind]
   NimTypeKind* = enum  # some types are no longer used, see ast.nim
     ntyNone, ntyBool, ntyChar, ntyEmpty,
-    ntyAlias, ntyNil, ntyExpr, ntyStmt,
+    ntyAlias, ntyNil, ntyUntyped, ntyTyped,
     ntyTypeDesc, ntyGenericInvocation, ntyGenericBody, ntyGenericInst,
     ntyGenericParam, ntyDistinct, ntyEnum, ntyOrdinal,
     ntyArray, ntyObject, ntyTuple, ntySet,
     ntyRange, ntyPtr, ntyRef, ntyVar,
     ntySequence, ntyProc, ntyPointer, ntyOpenArray,
-    ntyString, ntyCString, ntyForward, ntyInt,
+    ntyString, ntyCstring, ntyForward, ntyInt,
     ntyInt8, ntyInt16, ntyInt32, ntyInt64,
     ntyFloat, ntyFloat32, ntyFloat64, ntyFloat128,
     ntyUInt, ntyUInt8, ntyUInt16, ntyUInt32, ntyUInt64,
@@ -107,19 +107,33 @@ type
     ntyError,
     ntyBuiltinTypeClass, ntyUserTypeClass, ntyUserTypeClassInst,
     ntyCompositeTypeClass, ntyInferred, ntyAnd, ntyOr, ntyNot,
-    ntyAnything, ntyStatic, ntyFromExpr, ntyOptDeprecated, ntyVoid
+    ntyAnything, ntyStatic, ntyFromExpr, ntyConcept, ntyVoid, ntyIterable
 
   TNimTypeKinds* {.deprecated.} = set[NimTypeKind]
   NimSymKind* = enum
-    nskUnknown, nskConditional, nskDynLib, nskParam,
+    nskUnknown,
+    nskConditional, # deadcode
+    nskDynLib, # deadcode
+    nskParam,
     nskGenericParam, nskTemp, nskModule, nskType, nskVar, nskLet,
     nskConst, nskResult,
     nskProc, nskFunc, nskMethod, nskIterator,
     nskConverter, nskMacro, nskTemplate, nskField,
     nskEnumField, nskForVar, nskLabel,
-    nskStub
+    nskStub, nskPackage , nskAlias
 
   TNimSymKinds* {.deprecated.} = set[NimSymKind]
+
+const
+  ntyExpr* = ntyUntyped ## deprecated alias for `ntyUntyped`
+  ntyStmt* = ntyTyped ## deprecated alias for `ntyTyped`
+  ntyOptDeprecated* = ntyConcept ## deprecated alias for `ntyConcept`
+
+when false:
+  # xxx use this instead, pending fixing ic bug: `tests/ic/tgenerics.nim` wouldl fail
+  {.deprecated: [ntyExpr: ntyUntyped].}
+  {.deprecated: [ntyStmt: ntyTyped].}
+  {.deprecated: [ntyOptDeprecated: ntyConcept].}
 
 type
   NimIdent* {.deprecated.} = object of RootObj

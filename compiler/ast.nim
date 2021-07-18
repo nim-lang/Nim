@@ -30,8 +30,11 @@ type
     ccNoConvention = "noconv"       # needed for generating proper C procs sometimes
 
 type
-  TNodeKind* = enum # order is extremely important, because ranges are used
-                    # to check whether a node belongs to a certain class
+  TNodeKind* = enum ## \
+      ## order is extremely important, because ranges are used
+      ## to check whether a node belongs to a certain class
+      ## see also `tast.sanityCheck` which ensures this is kept insync
+      ## with std/macros.
     nkNone,               # unknown node kind: indicates an error
                           # Expressions:
                           # Atoms:
@@ -222,11 +225,15 @@ type
     nkFuncDef,            # a func
     nkTupleConstr         # a tuple constructor
     nkError               # erroneous AST node
+
+    # fields below are not exported to `macros.NimNodeKind`
     nkModuleRef           # for .rod file support: A (moduleId, itemId) pair
     nkReplayAction        # for .rod file support: A replay action
     nkNilRodNode          # for .rod file support: a 'nil' PNode
 
   TNodeKinds* = set[TNodeKind]
+
+const lastKindExposedInMacros* = nkModuleRef.pred
 
 type
   TSymFlag* = enum    # 47 flags!
@@ -574,9 +581,8 @@ type
                           # order is important for the documentation generator!
     skUnknown,            # unknown symbol: used for parsing assembler blocks
                           # and first phase symbol lookup in generics
-    skConditional,        # symbol for the preprocessor (may become obsolete)
-    skDynLib,             # symbol represents a dynamic library; this is used
-                          # internally; it does not exist in Nim code
+    skConditional,        # deadcode
+    skDynLib,             # deadcode
     skParam,              # a parameter
     skGenericParam,       # a generic parameter; eq in ``proc x[eq=`==`]()``
     skTemp,               # a temporary variable (introduced by compiler)
