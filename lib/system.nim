@@ -2134,7 +2134,12 @@ const
 import system/dollars
 export dollars
 
-proc delete*[T](x: var seq[T], i: Natural) {.noSideEffect.} =
+when defined(nimAuditDelete):
+  {.pragma: auditDelete, deprecated: "review this call for out of bounds behavior".}
+else:
+  {.pragma: auditDelete.}
+
+proc delete*[T](x: var seq[T], i: Natural) {.noSideEffect, auditDelete.} =
   ## Deletes the item at index `i` by moving all `x[i+1..^1]` items by one position.
   ##
   ## This is an `O(n)` operation.
@@ -2147,12 +2152,10 @@ proc delete*[T](x: var seq[T], i: Natural) {.noSideEffect.} =
     s.delete(2)
     doAssert s == @[1, 2, 4, 5]
 
-    doAssertRaises(IndexDefect):
-      s.delete(4)
-
-  if i > high(x):
-    # xxx this should call `raiseIndexError2(i, high(x))` after some refactoring
-    raise (ref IndexDefect)(msg: "index out of bounds: '" & $i & "' < '" & $x.len & "' failed")
+  when defined(nimStrictDelete):
+    if i > high(x):
+      # xxx this should call `raiseIndexError2(i, high(x))` after some refactoring
+      raise (ref IndexDefect)(msg: "index out of bounds: '" & $i & "' < '" & $x.len & "' failed")
 
   template defaultImpl =
     let xl = x.len

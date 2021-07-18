@@ -53,8 +53,8 @@ template main =
       var s = @["foo", "bar"]
       s.delete(1)
       doAssert s == @["foo"]
-  
-    block:
+
+    when false:
       var s: seq[string]
       doAssertRaises(IndexDefect):
         s.delete(0)
@@ -66,8 +66,8 @@ template main =
       var s = @["foo"]
       s.delete(0)
       doAssert s == @[]
-  
-    block: # bug #16544: deleting out of bounds index should raise
+
+    when false: # bug #16544: deleting out of bounds index should raise
       var s = @["foo"]
       doAssertRaises(IndexDefect):
         s.delete(1)
