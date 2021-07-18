@@ -66,10 +66,9 @@ runnableExamples:
 
 from pcre import nil
 import nre/private/util
-import tables
-from strutils import `%`
-import options
-from unicode import runeLenAt
+import std/tables
+from std/strutils import `%`
+import std/options
 
 export options
 
@@ -303,26 +302,27 @@ proc captureCount*(pattern: Regex): int =
 proc captureNameId*(pattern: Regex): Table[string, int] =
   return pattern.captureNameToId
 
-proc matchesCrLf(pattern: Regex): bool =
-  let flags = uint32(getinfo[culong](pattern, pcre.INFO_OPTIONS))
-  let newlineFlags = flags and (pcre.NEWLINE_CRLF or
-                                pcre.NEWLINE_ANY or
-                                pcre.NEWLINE_ANYCRLF)
-  if newLineFlags > 0u32:
-    return true
+when false:
+  proc matchesCrLf(pattern: Regex): bool =
+    let flags = uint32(getinfo[culong](pattern, pcre.INFO_OPTIONS))
+    let newlineFlags = flags and (pcre.NEWLINE_CRLF or
+                                  pcre.NEWLINE_ANY or
+                                  pcre.NEWLINE_ANYCRLF)
+    if newLineFlags > 0u32:
+      return true
 
-  # get flags from build config
-  var confFlags: cint
-  if pcre.config(pcre.CONFIG_NEWLINE, addr confFlags) != 0:
-    assert(false, "CONFIG_NEWLINE apparently got screwed up")
+    # get flags from build config
+    var confFlags: cint
+    if pcre.config(pcre.CONFIG_NEWLINE, addr confFlags) != 0:
+      assert(false, "CONFIG_NEWLINE apparently got screwed up")
 
-  case confFlags
-  of 13: return false
-  of 10: return false
-  of (13 shl 8) or 10: return true
-  of -2: return true
-  of -1: return true
-  else: return false
+    case confFlags
+    of 13: return false
+    of 10: return false
+    of (13 shl 8) or 10: return true
+    of -2: return true
+    of -1: return true
+    else: return false
 
 
 func captureBounds*(pattern: RegexMatch): CaptureBounds = return CaptureBounds(pattern)
@@ -558,10 +558,6 @@ iterator findIter*(str: string, pattern: Regex, start = 0, endpos = int.high): R
   ##
   ## -  `proc findAll(...)` returns a `seq[string]`
   # see pcredemo for explanation
-  let matchesCrLf = pattern.matchesCrLf()
-  let unicode = uint32(getinfo[culong](pattern, pcre.INFO_OPTIONS) and
-    pcre.UTF8) > 0u32
-  let strlen = if endpos == int.high: str.len else: endpos+1
   var offset = start
   var match: Option[RegexMatch]
   var neverMatched = true
@@ -575,26 +571,10 @@ iterator findIter*(str: string, pattern: Regex, start = 0, endpos = int.high): R
     match = str.matchImpl(pattern, offset, endpos, flags)
 
     if match.isNone:
-      # either the end of the input or the string
-      # cannot be split here - we also need to bail
-      # if we've never matched and we've already tried to...
-      if offset >= strlen or neverMatched:
-        break
-
-      if matchesCrLf and offset < (str.len - 1) and
-         str[offset] == '\r' and str[offset + 1] == '\L':
-        # if PCRE treats CrLf as newline, skip both at the same time
-        offset += 2
-      elif unicode:
-        # XXX what about invalid unicode?
-        offset += str.runeLenAt(offset)
-        assert(offset <= strlen)
-      else:
-        offset += 1
+      break
     else:
       neverMatched = false
       offset = match.get.matchBounds.b + 1
-
       yield match.get
 
 proc find*(str: string, pattern: Regex, start = 0, endpos = int.high): Option[RegexMatch] =
