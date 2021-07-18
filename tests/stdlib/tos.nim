@@ -594,12 +594,12 @@ block getTempDir:
       if existsEnv("TMPDIR"):
         let origTmpDir = getEnv("TMPDIR")
         putEnv("TMPDIR", "/mytmp")
-        doAssert getTempDir() == "/mytmp"
+        doAssert getTempDir() == "/mytmp/"
         delEnv("TMPDIR")
-        doAssert getTempDir() == "/tmp"
+        doAssert getTempDir() == "/tmp/"
         putEnv("TMPDIR", origTmpDir)
       else:
-        doAssert getTempDir() == "/tmp"
+        doAssert getTempDir() == "/tmp/"
 
 block: # getCacheDir
   doAssert getCacheDir().dirExists
