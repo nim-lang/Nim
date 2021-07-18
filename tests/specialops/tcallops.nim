@@ -37,3 +37,15 @@ doAssert a(b) == "(12)"
 doAssert a.b(c) == `()`(b, a, c)
 doAssert (a.b)(c) == `()`(a.b, c)
 doAssert `()`(a.b, c) == `()`(`()`(b, a), c)
+block: #issues 6981,9831
+  proc bar[T]() = discard
+  proc bar[T](a:int) = discard
+  bar[int]()#must compile, not be rewritten as `()`(bar)
+
+block: #templates, macros should work too
+  template bar[T]() = discard
+  template bar[T](a:int) = discard
+  bar[int]()
+  macro baz[T]() = discard
+  macro baz[T](a:int) = discard
+  baz[int]()
