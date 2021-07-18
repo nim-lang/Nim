@@ -389,7 +389,7 @@ proc `[]=`*(obj: JsonNode, key: string, val: JsonNode) {.inline.} =
   assert(obj.kind == JObject)
   obj.fields[key] = val
 
-proc `%`*[T: object](o: T): JsonNode =
+proc `%`*[T: object|tuple](o: T): JsonNode =
   ## Construct JsonNode from tuples and objects.
   result = newJObject()
   for k, v in o.fieldPairs: result[k] = %v
