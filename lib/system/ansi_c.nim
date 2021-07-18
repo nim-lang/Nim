@@ -34,7 +34,7 @@ proc c_abort*() {.
 when defined(linux) and defined(amd64):
   type
     C_JmpBuf* {.importc: "jmp_buf", header: "<setjmp.h>", bycopy.} = object
-        abi: array[200 div sizeof(clong), clong]
+      # xxx why `bycopy` only here and not in other `C_JmpBuf` declaration?
 else:
   type
     C_JmpBuf* {.importc: "jmp_buf", header: "<setjmp.h>".} = object
