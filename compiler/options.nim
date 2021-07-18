@@ -65,7 +65,8 @@ type                          # please make sure we have under 32 options
     optSkipProjConfigFile,    # skip the project's cfg/nims config file
     optSkipUserConfigFile,    # skip the users's cfg/nims config file
     optSkipParentConfigFiles, # skip parent dir's cfg/nims config files
-    optNoMain,                # do not generate a "main" proc
+    optNoMain,                # do not generate a c `main` proc
+    optNoNimMain              # do not generate a `NimMain` proc
     optUseColors,             # use colors for hints, warnings, and errors
     optThreads,               # support for multi-threading
     optStdout,                # output to stdout
