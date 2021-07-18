@@ -370,13 +370,13 @@ const
     ## This can be set on the command line during compilation
     ## via `-d:nimMaxDescriptorsFallback=N`
 
-proc listen*(server: AsyncHttpServer; port: Port; address = "") =
-  ## Listen to the given port and address.
+proc listen*(server: AsyncHttpServer; port: Port; address = "", domain = AF_INET) =
+  ## Listen to the given port and address with specific domain.
   when declared(maxDescriptors):
     server.maxFDs = try: maxDescriptors() except: nimMaxDescriptorsFallback
   else:
     server.maxFDs = nimMaxDescriptorsFallback
-  server.socket = newAsyncSocket()
+  server.socket = newAsyncSocket(domain)
   if server.reuseAddr:
     server.socket.setSockOpt(OptReuseAddr, true)
   if server.reusePort:
@@ -402,7 +402,8 @@ proc acceptRequest*(server: AsyncHttpServer,
 proc serve*(server: AsyncHttpServer, port: Port,
             callback: proc (request: Request): Future[void] {.closure, gcsafe.},
             address = "";
-            assumedDescriptorsPerRequest = -1) {.async.} =
+            assumedDescriptorsPerRequest = -1,
+            domain = AF_INET) {.async.} =
   ## Starts the process of listening for incoming HTTP connections on the
   ## specified address and port.
   ##
@@ -415,7 +416,7 @@ proc serve*(server: AsyncHttpServer, port: Port,
   ##
   ## You should prefer to call `acceptRequest` instead with a custom server
   ## loop so that you're in control over the error handling and logging.
-  listen server, port, address
+  listen server, port, address, domain
   while true:
     if shouldAcceptRequest(server, assumedDescriptorsPerRequest):
       var (address, client) = await server.socket.acceptAddr()
