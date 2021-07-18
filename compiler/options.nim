@@ -44,6 +44,8 @@ type                          # please make sure we have under 32 options
     optSinkInference          # 'sink T' inference
     optCursorInference
     optImportHidden
+    optLean                   # stdlib/user code can query it to produce leaner
+                              # messages optimizing for binary size.
 
   TOptions* = set[TOption]
   TGlobalOption* = enum

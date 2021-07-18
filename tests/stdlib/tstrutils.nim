@@ -484,6 +484,11 @@ template main() =
     doAssert(insertSep($12345, ',') == "12,345")
     doAssert(insertSep($0) == "0")
 
+    block: # bug #11352
+      doAssert insertSep($(-100), ',') == "-100"
+      doAssert insertSep($(-100_000), ',') == "-100,000"
+      doAssert insertSep($(100_000), ',') == "100,000"
+
   block: # repeat, spaces
     doAssert(' '.repeat(8) == "        ")
     doAssert(" ".repeat(8) == "        ")
@@ -691,6 +696,18 @@ bar
     doAssert "${1}12 ${-1}$2" % ["a", "b"] == "a12 bb"
     doAssert "$animal eats $food." % ["animal", "The cat", "food", "fish"] ==
              "The cat eats fish."
+
+    var ok = false
+    try: discard "a $key2 b" % ["key", "val"]
+    except ValueError as e:
+      doAssert e.msg == "invalid char '$' at index: '2' for input: 'a $key2 b'", e.msg
+      ok = true
+    doAssert ok
+    
+  block: # addf
+    var a = "foo:"
+    a.addf("$# $3 $# $#", "a", "b", "c")
+    doAssert a == "foo:a c b c"
 
   block: # formatSize
     disableVm:

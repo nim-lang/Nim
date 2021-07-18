@@ -2634,8 +2634,20 @@ func findNormalized(x: string, inArray: openArray[string]): int =
               # security hole...
   return -1
 
-func invalidFormatString() {.noinline.} =
-  raise newException(ValueError, "invalid format string")
+# xxx move to lib/system/chcks.nim and lib/system/jssys.nim, reusable code.
+const nimLean = when defined(nimHasLean): compileOption("lean") else: false
+when nimLean:
+  func raiseParseError() {.noinline, noreturn.} =
+    raise newException(ValueError, "raiseParseError (--lean:off for details)")
+  template raiseParseError(input: string, index: int, msg: string) = raiseParseError()
+else:
+  func raiseParseError(input: string, index: int, msg: string) {.noinline, noreturn.} =
+    # noinline to avoid bloating instruction cache.
+    var ret = "invalid char "
+    ret.addQuoted(input[index])
+    ret.add " at index: '" & $index & "' for input: '" & input & "'"
+    if msg.len > 0: ret.add "\nmsg: " & msg
+    raise newException(ValueError, ret)
 
 func addf*(s: var string, formatstr: string, a: varargs[string, `$`]) {.rtl,
     extern: "nsuAddf".} =
@@ -2644,6 +2656,7 @@ func addf*(s: var string, formatstr: string, a: varargs[string, `$`]) {.rtl,
   var i = 0
   var num = 0
   while i < len(formatstr):
+    template invalidFormatString(msg = "") = raiseParseError(formatstr, i, msg)
     if formatstr[i] == '$' and i+1 < len(formatstr):
       case formatstr[i+1]
       of '#':

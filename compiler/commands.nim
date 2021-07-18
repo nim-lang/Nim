@@ -299,6 +299,7 @@ proc testCompileOption*(conf: ConfigRef; switch: string, info: TLineInfo): bool 
   of "warnings", "w": result = contains(conf.options, optWarns)
   of "hints": result = contains(conf.options, optHints)
   of "threadanalysis": result = contains(conf.globalOptions, optThreadAnalysis)
+  of "lean": result = contains(conf.options, optLean)
   of "stacktrace": result = contains(conf.options, optStackTrace)
   of "stacktracemsgs": result = contains(conf.options, optStackTraceMsgs)
   of "linetrace": result = contains(conf.options, optLineTrace)
@@ -721,6 +722,13 @@ proc processSwitch*(switch, arg: string, pass: TCmdLinePass, info: TLineInfo;
   of "patterns", "trmacros":
     if switch.normalize == "patterns": deprecatedAlias(switch, "trmacros")
     processOnOffSwitch(conf, {optTrMacros}, arg, pass, info)
+  of "lean":
+    processOnOffSwitch(conf, {optLean}, arg, pass, info)
+    if optLean in conf.options:
+      conf.filenameOption = foCanonical
+      excl(conf.options, optStackTrace)
+      excl(conf.options, optOptimizeSpeed)
+      incl(conf.options, optOptimizeSize)
   of "opt":
     expectArg(conf, switch, arg, pass, info)
     case arg.normalize
