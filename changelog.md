@@ -247,6 +247,12 @@
 
 - Removed the optional `longestMatch` parameter of the `critbits._WithPrefix` iterators (it never worked reliably)
 
+- In `times`: added `IsoWeekRange`, a range type to represent the number of weeks in an ISO week-based year
+  added `IsoYear`, a distinct int type to prevent bugs from confusing the ISO week-based year and the regular year
+  added `initDateTime` to create a datetime from a weekday, and ISO 8601 week number and week-based year.
+  added `getIsoWeekAndYear` to get an ISO week number along with the corresponding ISO week-based year from a datetime.
+  added `getIsoWeeksInYear` to return the number of weeks in an ISO week-based year
+
 - In `lists`: renamed `append` to `add` and retained `append` as an alias;
   added `prepend` and `prependMoved` analogously to `add` and `addMoved`;
   added `remove` for `SinglyLinkedList`s.
