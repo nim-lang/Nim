@@ -85,7 +85,7 @@ iterator items*(a: cstring): char {.inline.} =
 
 iterator mitems*(a: var cstring): var char {.inline.} =
   ## Iterates over each item of `a` so that you can modify the yielded value.
-  # xxx this should give CT error in js RT.
+  ## In js at runtime, this will raise a defect since js strings are immutable.
   runnableExamples:
     from std/sugar import collect
     var a = "abc\0def"
@@ -98,20 +98,23 @@ iterator mitems*(a: var cstring): var char {.inline.} =
     assert b == "aBc"
     assert a == "aBc\0def"
 
-  template impl() =
+  when nimvm:
     var i = 0
     let n = len(a)
     while i < n:
       yield a[i]
       inc(i)
-  when defined(js): impl()
   else:
-    when nimvm: impl()
+    when defined(js):
+      # xxx this could give a CT error in js RT, for example
+      # using similar approach as https://github.com/nim-lang/Nim/pull/15877,
+      # but note this isn't perfect as `compiles(block: someCstring[0] = 'x')` is true.
+      doAssert false, "js cstring cannot be mutated"
     else:
-      var i = 0
-      while a[i] != '\0':
-        yield a[i]
-        inc(i)
+      var i2 = 0
+      while a[i2] != '\0':
+        yield a[i2]
+        inc(i2)
 
 iterator items*[T: enum and Ordinal](E: typedesc[T]): T =
   ## Iterates over the values of `E`.

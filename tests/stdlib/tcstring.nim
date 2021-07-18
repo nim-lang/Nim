@@ -7,28 +7,29 @@ from std/sugar import collect
 from stdtest/testutils import whenRuntimeJs, whenVMorJs
 
 template testMitems() =
-  block:
-    var a = "abc"
-    var b = a.cstring
-    let s = collect:
-      for bi in mitems(b):
-        if bi == 'b': bi = 'B'
-        bi
-    whenRuntimeJs:
-      discard # xxx mitems should give CT error instead of @['\x00', '\x00', '\x00']
-    do:
+  whenRuntimeJs:
+    block:
+      var a = "abc"
+      var b = a.cstring
+      doAssertRaises(AssertionDefect):
+        for ai in mitems(b): discard
+  do:
+    block:
+      var a = "abc"
+      var b = a.cstring
+      let s = collect:
+        for bi in mitems(b):
+          if bi == 'b': bi = 'B'
+          bi
       doAssert s == @['a', 'B', 'c']
 
-  block:
-    var a = "abc\0def"
-    var b = a.cstring
-    let s = collect:
-      for bi in mitems(b):
-        if bi == 'b': bi = 'B'
-        bi
-    whenRuntimeJs:
-      discard # ditto
-    do:
+    block:
+      var a = "abc\0def"
+      var b = a.cstring
+      let s = collect:
+        for bi in mitems(b):
+          if bi == 'b': bi = 'B'
+          bi
       doAssert s == @['a', 'B', 'c']
 
 proc mainProc() =
