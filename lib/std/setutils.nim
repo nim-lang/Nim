@@ -21,8 +21,26 @@ import typetraits, macros
     ## The allowed types of a built-in set.
 ]#
 
-template toSet*(iter: untyped): untyped =
+template toSet*[T: set](iter: untyped, _: typedesc[T]): T =
   ## Returns a built-in set from the elements of the iterable `iter`.
+  runnableExamples:
+    var s1: set['a'..'z'] = {'a', 'c'}
+    var s2: set[char] = {'a', 'b'}
+    assert not compiles(s1 + s2) # incompatible type
+    s1 = s1 + s2.toSet(typeof(s1))
+    var s3: set['a'..'z'] = {'a', 'b', 'c'}
+    assert s1 == s3
+    assert "abc".toSet(set['a'..'z']) == s3
+    doAssertRaises(RangeDefect): discard "abc".toSet(set['a'..'b'])
+  # xxx `s1 == {'a', 'b', 'c'}` fails in above example;
+  # it should either succeed or give CT error, refs bug #18396
+  var result: T
+  for x in iter:
+    incl(result, x)
+  result
+
+template toSet*(iter: untyped): untyped =
+  ## Overload that infers the set type.
   runnableExamples:
     assert "helloWorld".toSet == {'W', 'd', 'e', 'h', 'l', 'o', 'r'}
     assert toSet([10u16, 20, 30]) == {10u16, 20, 30}
@@ -30,11 +48,7 @@ template toSet*(iter: untyped): untyped =
     assert toSet(@[1321i16, 321, 90]) == {90i16, 321, 1321}
     assert toSet([false]) == {false}
     assert toSet(0u8..10) == {0u8..10}
-
-  var result: set[elementType(iter)]
-  for x in iter:
-    incl(result, x)
-  result
+  toSet(iter, set[elementType(iter)])
 
 macro enumElementsAsSet(enm: typed): untyped = result = newNimNode(nnkCurly).add(enm.getType[1][1..^1])
 

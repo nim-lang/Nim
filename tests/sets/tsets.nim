@@ -1,6 +1,30 @@
+discard """
+  targets: "c cpp js"
+"""
+
 # Test builtin sets
 
-# xxx these tests are not very good, this should be revisited.
+template main =
+  block:
+    var s1: set[char] = {'a', 'b'}
+    var s2: set['a'..'z'] = {'a', 'c'}
+    doAssert not compiles(s1 + s2)
+    doAssert not compiles(s2 + s1)
+    doAssert not compiles(s1 == s2)
+    doAssert not compiles(s2 == s1)
+    doAssert s1 + s1 == s1
+    doAssert s2 + s2 == s2
+    doAssert s1 + s1 == {'a', 'b'}
+    when false:
+      # xxx this fails in c, , succeeds in vm,js, and gives cgen error in cpp.
+      # refs bug #18396
+      doAssert s2 == {'a', 'c'}
+
+static: main()
+main()
+
+
+# xxx the tests below should be improved and merged inside `main`.
 
 when defined nimTestsTsetsGenerate:
   # to generate enums for this test
