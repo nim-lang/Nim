@@ -13,6 +13,55 @@ template strip2(input: string, args: varargs[untyped]): untyped =
     strip(a)
   a
 
+proc runtimeMain() =
+  block: # indexOf
+    block:
+      const haystack: string = "0123456789ABCDEFGH"
+      doAssert haystack.len == 18
+
+      doAssert haystack.indexOf('A') == 10
+      doAssert haystack.toOpenArray(5, 17).indexOf('A') == 5
+      doAssert haystack.toOpenArray(5, 9).indexOf('A') == -1
+      doAssert haystack.toOpenArray(5, haystack.high).indexOf("A") == 5
+      doAssert haystack.toOpenArray(5, 9).indexOf("A") == -1
+
+      doAssert haystack.indexOf({'A'..'C'}) == 10
+      doAssert haystack.toOpenArray(5, haystack.high).indexOf({'A'..'C'}) == 5
+      doAssert haystack.toOpenArray(5, 10).indexOf({'A'..'C'}) == 5
+      doAssert haystack.toOpenArray(5, 9).indexOf({'A'..'C'}) == -1
+
+    block:
+      const haystack: string = "ABCABABABABCAB"
+      doAssert len(haystack) == 14
+
+      doAssert haystack.indexOf("ABC") == 0
+      doAssert haystack.toOpenArray(0, 13).indexOf("ABC") == 0
+      doAssert haystack.toOpenArray(1, 13).indexOf("ABC") == 8
+      doAssert haystack.toOpenArray(9, 13).indexOf("ABC") == 0
+      doAssert haystack.toOpenArray(10, 13).indexOf("ABC") == -1
+
+      doAssert haystack.toOpenArray(0, 12).indexOf("ABC") == 0
+      doAssert haystack.toOpenArray(1, 12).indexOf("ABC") == 8
+      doAssert haystack.toOpenArray(1, 11).indexOf("ABC") == 8
+      doAssert haystack.toOpenArray(1, 10).indexOf("ABC") == -1
+      doAssert haystack.toOpenArray(1, 3).indexOf("ABC") == -1
+
+    block:
+      const haystack: seq[char] = @['a', 'b', 'c']
+      doAssert haystack.indexOf("abc") == 0
+      doAssert haystack.indexOf("abcd".toOpenArray(0, 3)) == -1
+
+      const needle: seq[char] = @['a', 'b', 'c', 'd']
+      doAssert haystack.indexOf(needle.toOpenArray(0, 3)) == -1
+      doAssert haystack.indexOf(needle.toOpenArray(0, 2)) == 0
+      doAssert haystack.indexOf(needle.toOpenArray(0, 1)) == 0
+      doAssert haystack.indexOf(needle.toOpenArray(1, 2)) == 1
+
+    # searching for empty string
+    doAssert "".indexOf("") == 0
+    doAssert "abc".toOpenArray(1, 2).indexOf("") == 0
+    doAssert "abc".toOpenArray(2, 2).indexOf("") == 0
+
 proc main() =
   block: # strip
     block: # bug #17173
@@ -99,5 +148,36 @@ proc main() =
     doAssert fn("def") == "def"
     doAssert fn(['d','\0', 'f'])[2] == 'f'
 
+  block: # indexOf
+    block:
+      const haystack: string = "0123456789ABCDEFGH"
+      doAssert haystack.len == 18
+
+      doAssert haystack.indexOf("A") == 10
+      doAssert haystack.indexOf({'A'..'C'}) == 10
+
+    block:
+      const haystack: string = "ABCABABABABCAB"
+      doAssert len(haystack) == 14
+
+      doAssert haystack.indexOf("ABC") == 0
+
+    block: # using seq
+      const haystack: seq[char] = @['a', 'b', 'c']
+      doAssert haystack.indexOf("abc") == 0
+
+      doAssert haystack.indexOf(@['a', 'b', 'c']) == 0
+      doAssert haystack.indexOf(@['b', 'c']) == 1
+      doAssert haystack.indexOf(@['a', 'b', 'c', 'd']) == -1
+
+    doAssert "".indexOf("/") == -1
+    doAssert "/".indexOf("/") == 0
+    doAssert "/".indexOf("//") == -1
+
+    # searching for empty string
+    doAssert "".indexOf("") == 0
+    doAssert "abc".indexOf("") == 0
+
 static: main()
 main()
+runtimeMain()
