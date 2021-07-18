@@ -542,10 +542,7 @@ proc rawFileSize(file: File): int64 =
 
 proc endOfFile*(f: File): bool {.tags: [], benign.} =
   ## Returns true if `f` is at the end.
-  var c = c_fgetc(f)
-  discard c_ungetc(c, f)
-  return c < 0'i32
-  #result = c_feof(f) != 0
+  result = c_feof(f) != 0 # fixes bug #16011
 
 proc readAllFile(file: File, len: int64): string =
   # We acquire the filesize beforehand and hope it doesn't change.
