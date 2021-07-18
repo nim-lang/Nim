@@ -173,6 +173,7 @@ var
                                     ## `NIMTEST_ABORT_ON_ERROR` environment variable is set.
 
   checkpoints {.threadvar.}: seq[string]
+  checkResults {.threadvar.}: seq[bool]
   formatters {.threadvar.}: seq[OutputFormatter]
   testsFilters {.threadvar.}: HashSet[string]
   disabledParamFiltering {.threadvar.}: bool
@@ -532,7 +533,7 @@ template test*(name, body) {.dirty.} =
   ## .. code-block::
   ##
   ##  [OK] roses are red
-  bind shouldRun, checkpoints, formatters, ensureInitialized, testEnded, exceptionTypeName, setProgramResult
+  bind checkResults, shouldRun, checkpoints, formatters, ensureInitialized, testEnded, exceptionTypeName, setProgramResult
 
   ensureInitialized()
 
@@ -560,6 +561,10 @@ template test*(name, body) {.dirty.} =
         fail()
 
     finally:
+      if checkpoints.len > 0:
+        let lastCheckFailed = checkResults[^1] == false
+        if testStatusIMPL == TestStatus.OK and lastCheckFailed:
+          testStatusIMPL = TestStatus.FAILED
       if testStatusIMPL == TestStatus.FAILED:
         setProgramResult 1
       let testResult = TestResult(
@@ -598,6 +603,8 @@ template fail* =
   ##
   ## outputs "Checkpoint A" before quitting.
   bind ensureInitialized, setProgramResult
+  if checkResults.len > 0:
+    checkResults[^1] = false
   when declared(testStatusIMPL):
     testStatusIMPL = TestStatus.FAILED
   else:
@@ -614,7 +621,6 @@ template fail* =
 
   if abortOnError: quit(1)
 
-  checkpoints = @[]
 
 template skip* =
   ## Mark the test as skipped. Should be used directly
@@ -630,7 +636,6 @@ template skip* =
   bind checkpoints
 
   testStatusIMPL = TestStatus.SKIPPED
-  checkpoints = @[]
 
 macro check*(conditions: untyped): untyped =
   ## Verify if a statement or a list of statements is true.
@@ -697,13 +702,13 @@ macro check*(conditions: untyped): untyped =
 
   case checked.kind
   of nnkCallKinds:
-
     let (assigns, check, printOuts) = inspectArgs(checked)
     let lineinfo = newStrLitNode(checked.lineInfo)
     let callLit = checked.toStrLit
     result = quote do:
       block:
         `assigns`
+        checkResults.add true
         if not `check`:
           checkpoint(`lineinfo` & ": Check failed: " & `callLit`)
           `printOuts`
@@ -720,6 +725,7 @@ macro check*(conditions: untyped): untyped =
     let callLit = checked.toStrLit
 
     result = quote do:
+      checkResults.add true
       if not `checked`:
         checkpoint(`lineinfo` & ": Check failed: " & `callLit`)
         fail()
