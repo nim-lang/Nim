@@ -475,7 +475,8 @@ proc setOrTableConstr(p: var Parser): PNode =
   #| setOrTableConstr = '{' ((exprColonEqExpr comma)* | ':' ) '}'
   result = newNodeP(nkCurly, p)
   getTok(p) # skip '{'
-  optInd(p, result)
+  flexComment(p, result)
+  optPar(p)
   if p.tok.tokType == tkColon:
     getTok(p) # skip ':'
     result.transitionSonsKind(nkTableConstr)
