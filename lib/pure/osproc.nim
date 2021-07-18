@@ -1558,14 +1558,20 @@ elif not defined(useNimRtl):
 
     pruneProcessSet(readfds, (rd))
 
-  proc hasData*(p: Process): bool =
+  proc hasData*(p: Process, timeoutMicroseconds = -1): bool =
     var rd: TFdSet
-
     FD_ZERO(rd)
     let m = max(0, int(p.outHandle))
     FD_SET(cint(p.outHandle), rd)
 
-    result = int(select(cint(m+1), addr(rd), nil, nil, nil)) == 1
+    if timeoutMicroseconds != -1:
+      var tv = Timeval(
+        tv_sec: posix.Time(0),
+        tv_usec: Suseconds(timeoutMicroseconds)
+      )
+      return int(select(cint(m+1), addr(rd), nil, nil, addr(tv))) == 1
+    else:
+      return int(select(cint(m+1), addr(rd), nil, nil, nil)) == 1
 
 
 proc execCmdEx*(command: string, options: set[ProcessOption] = {
