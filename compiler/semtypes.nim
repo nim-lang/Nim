@@ -993,7 +993,11 @@ proc addParamOrResult(c: PContext, param: PSym, kind: TSymKind) =
       # bug #XXX, fix the gensym'ed parameters owner:
       if param.owner == nil:
         param.owner = getCurrOwner(c)
-    else: addDecl(c, param)
+    else:
+      if param.name.s == "_":
+        param.flags.incl(sfGenSym)
+      else:
+        addDecl(c, param)
 
 template shouldHaveMeta(t) =
   internalAssert c.config, tfHasMeta in t.flags
@@ -1306,8 +1310,12 @@ proc semProcTypeNode(c: PContext, n, genericParams: PNode,
       inc(counter)
       if def != nil and def.kind != nkEmpty:
         arg.ast = copyTree(def)
-      if containsOrIncl(check, arg.name.id):
-        localError(c.config, a[j].info, "attempt to redefine: '" & arg.name.s & "'")
+      # addDecl
+      if arg.name.s == "_":
+        arg.flags.incl(sfGenSym)
+      else:
+        if containsOrIncl(check, arg.name.id):
+          localError(c.config, a[j].info, "attempt to redefine: '" & arg.name.s & "'")
       result.n.add newSymNode(arg)
       rawAddSon(result, finalType)
       addParamOrResult(c, arg, kind)

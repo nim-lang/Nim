@@ -54,6 +54,9 @@ proc mangleParamName(m: BModule; s: PSym): Rope =
   ## we cannot use 'sigConflicts' here since we have a BModule, not a BProc.
   ## Fortunately C's scoping rules are sane enough so that that doesn't
   ## cause any trouble.
+  if s.name.s == "_":
+    result = getTempName(m)
+    return
   result = s.loc.r
   if result == nil:
     var res = s.name.s.mangle
