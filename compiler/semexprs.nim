@@ -49,7 +49,7 @@ template rejectEmptyNode(n: PNode) =
   if n.kind == nkEmpty: illFormedAst(n, c.config)
 
 proc semOperand(c: PContext, n: PNode, flags: TExprFlags = {}): PNode =
-  rejectEmptyNode(n)
+  if n.kind == nkEmpty: return n #rejectEmptyNode(n)
   # same as 'semExprWithType' but doesn't check for proc vars
   result = semExpr(c, n, flags + {efOperand})
   if result.typ != nil:

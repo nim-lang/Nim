@@ -2270,7 +2270,10 @@ proc prepareOperand(c: PContext; formal: PType; a: PNode): PNode =
                   #else: {efDetermineType}
       result = c.semOperand(c, a, flags)
   else:
-    result = a
+    if a.kind in nkCallKinds and a.len > 0 and a[0].kind == nkSym and a[0].sym.magic == mNBindSym:
+      result = a
+    else:
+      result = c.semOperand(c, a, {efDetermineType})
     considerGenSyms(c, result)
 
 proc prepareOperand(c: PContext; a: PNode): PNode =
