@@ -3544,7 +3544,7 @@ separation of types and subsequent identifiers more distinct.
 
 A parameter may be declared with a default value which is used if the caller
 does not provide a value for the argument. The value is just replace by the
-compiler and therefore, if applicable, will be reevaluated at runtime.
+compiler and therefore, if applicable, will be reevaluated at call time.
 
 .. code-block:: nim
   # b is optional with 47 as its default value
