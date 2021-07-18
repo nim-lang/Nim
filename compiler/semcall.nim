@@ -561,7 +561,7 @@ proc semResolvedCall(c: PContext, x: TCandidate,
           else:
             x.call.add c.graph.emptyNode
         of skType:
-          x.call.add newSymNode(s, n.info)
+          x.call.add newSymNodeTypeDesc(s, n.info)
         else:
           internalAssert c.config, false
 
