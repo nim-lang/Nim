@@ -27,6 +27,8 @@
 ## as a new independent table. `b` is initialised with the contents of `a`.
 ## Changing `b` does not affect `a` and vice versa:
 
+import options
+
 runnableExamples:
   var
     a = {1: "one", 2: "two"}.toTable  # creates a Table
@@ -432,6 +434,40 @@ proc getOrDefault*[A, B](t: Table[A, B], key: A, default: B): B =
     doAssert a.getOrDefault('z', 99) == 99
 
   getOrDefaultImpl(t, key, default)
+
+proc getOpt*[A, B](t: Table[A, B], key: A): Option[B] =
+  ## Retrieves the value at `t[key]` if `key` is in `t`. Otherwise, none(B)
+  ## returned.
+  ##
+  ## See also:
+  ## * `[] proc<#[],Table[A,B],A>`_ for retrieving a value of a key
+  ## * `hasKey proc<#hasKey,Table[A,B],A>`_
+  ## * `hasKeyOrPut proc<#hasKeyOrPut,Table[A,B],A,B>`_
+  ## * `mgetOrPut proc<#mgetOrPut,Table[A,B],A,B>`_
+  ## * `getOrDefault proc<#getOrDefault,Table[A,B],A,B>`_ to return
+  ##   a custom value if the key doesn't exist
+  runnableExamples:
+    let a = {'a': 5, 'b': 9}.toTable
+    doAssert a.getOpt('a') == some(5)
+    doAssert a.getOpt('z') == none(int)
+  getOptImpl(t, key)
+
+proc getPtr*[A, B](t: var Table[A, B], key: A): ptr B =
+  ## Retrieves a ptr to the value at `t[key]` if `key` is in `t`. Otherwise,
+  ## nil is returned.
+  ##
+  ## See also:
+  ## * `[] proc<#[],Table[A,B],A>`_ for retrieving a value of a key
+  ## * `hasKey proc<#hasKey,Table[A,B],A>`_
+  ## * `hasKeyOrPut proc<#hasKeyOrPut,Table[A,B],A,B>`_
+  ## * `mgetOrPut proc<#mgetOrPut,Table[A,B],A,B>`_
+  ## * `getOrDefault proc<#getOrDefault,Table[A,B],A,B>`_ to return
+  ##   a custom value if the key doesn't exist
+  runnableExamples:
+    let a = {'a': 5, 'b': 9}.toTable
+    doAssert a.getOpt('a') == some(5)
+    doAssert a.getOpt('z') == none(int)
+  getPtrImpl(t, key)
 
 proc mgetOrPut*[A, B](t: var Table[A, B], key: A, val: B): var B =
   ## Retrieves value at `t[key]` or puts `val` if not present, either way
@@ -1466,6 +1502,40 @@ proc getOrDefault*[A, B](t: OrderedTable[A, B], key: A, default: B): B =
     doAssert a.getOrDefault('z', 99) == 99
 
   getOrDefaultImpl(t, key, default)
+
+proc getOpt*[A, B](t: OrderedTable[A, B], key: A): Option[B] =
+  ## Retrieves the value at `t[key]` if `key` is in `t`. Otherwise, none(B)
+  ## returned.
+  ##
+  ## See also:
+  ## * `[] proc<#[],Table[A,B],A>`_ for retrieving a value of a key
+  ## * `hasKey proc<#hasKey,Table[A,B],A>`_
+  ## * `hasKeyOrPut proc<#hasKeyOrPut,Table[A,B],A,B>`_
+  ## * `mgetOrPut proc<#mgetOrPut,Table[A,B],A,B>`_
+  ## * `getOrDefault proc<#getOrDefault,Table[A,B],A,B>`_ to return
+  ##   a custom value if the key doesn't exist
+  runnableExamples:
+    let a = {'a': 5, 'b': 9}.toTable
+    doAssert a.getOpt('a') == some(5)
+    doAssert a.getOpt('z') == none(int)
+  getOptImpl(t, key)
+
+proc getPtr*[A, B](t: var OrderedTable[A, B], key: A): ptr B =
+  ## Retrieves a ptr to the value at `t[key]` if `key` is in `t`. Otherwise,
+  ## nil is returned.
+  ##
+  ## See also:
+  ## * `[] proc<#[],Table[A,B],A>`_ for retrieving a value of a key
+  ## * `hasKey proc<#hasKey,Table[A,B],A>`_
+  ## * `hasKeyOrPut proc<#hasKeyOrPut,Table[A,B],A,B>`_
+  ## * `mgetOrPut proc<#mgetOrPut,Table[A,B],A,B>`_
+  ## * `getOrDefault proc<#getOrDefault,Table[A,B],A,B>`_ to return
+  ##   a custom value if the key doesn't exist
+  runnableExamples:
+    let a = {'a': 5, 'b': 9}.toTable
+    doAssert a.getOpt('a') == some(5)
+    doAssert a.getOpt('z') == none(int)
+  getPtrImpl(t, key)
 
 proc mgetOrPut*[A, B](t: var OrderedTable[A, B], key: A, val: B): var B =
   ## Retrieves value at `t[key]` or puts `val` if not present, either way
