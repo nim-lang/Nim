@@ -316,14 +316,14 @@ single letter DSLs.
 import macros, parseutils, unicode
 import strutils except format
 
-proc mkDigit(v: int, typ: char): string {.inline.} =
+func mkDigit(v: int, typ: char): string {.inline.} =
   assert(v < 26)
   if v < 10:
     result = $chr(ord('0') + v)
   else:
     result = $chr(ord(if typ == 'x': 'a' else: 'A') + v - 10)
 
-proc alignString*(s: string, minimumWidth: int; align = '\0'; fill = ' '): string =
+func alignString*(s: string, minimumWidth: int; align = '\0'; fill = ' '): string =
   ## Aligns `s` using the `fill` char.
   ## This is only of interest if you want to write a custom `format` proc that
   ## should support the standard format specifiers.
@@ -354,7 +354,7 @@ type
     endPosition*: int              ## End position in the format specifier after
                                    ## `parseStandardFormatSpecifier` returned.
 
-proc formatInt(n: SomeNumber; radix: int; spec: StandardFormatSpecifier): string =
+func formatInt(n: SomeNumber; radix: int; spec: StandardFormatSpecifier): string =
   ## Converts `n` to a string. If `n` is `SomeFloat`, it casts to `int64`.
   ## Conversion is done using `radix`. If result's length is less than
   ## `minimumWidth`, it aligns result to the right or left (depending on `a`)
@@ -416,7 +416,7 @@ proc formatInt(n: SomeNumber; radix: int; spec: StandardFormatSpecifier): string
       if toFill > 0:
         result = repeat(spec.fill, toFill) & result
 
-proc parseStandardFormatSpecifier*(s: string; start = 0;
+func parseStandardFormatSpecifier*(s: string; start = 0;
                                    ignoreUnknownSuffix = false): StandardFormatSpecifier =
   ## An exported helper proc that parses the "standard format specifiers",
   ## as specified by the grammar::

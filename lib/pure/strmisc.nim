@@ -58,7 +58,7 @@ func partition*(s: string, sep: string,
   ## `("", "", s)` if `sep` is not found and `right` is true.
   ##
   ## **See also:**
-  ## * `rpartition proc <#rpartition,string,string>`_
+  ## * `rpartition func <#rpartition,string,string>`_
   runnableExamples:
     doAssert partition("foo:bar:baz", ":") == ("foo", ":", "bar:baz")
     doAssert partition("foo:bar:baz", ":", right = true) == ("foo:bar", ":", "baz")
@@ -78,7 +78,7 @@ func rpartition*(s: string, sep: string): (string, string, string) =
   ## `partition(s, sep, right = true)`.
   ##
   ## **See also:**
-  ## * `partition proc <#partition,string,string,bool>`_
+  ## * `partition func <#partition,string,string,bool>`_
   runnableExamples:
     doAssert rpartition("foo:bar:baz", ":") == ("foo:bar", ":", "baz")
     doAssert rpartition("foobar", ":") == ("", "", "foobar")
