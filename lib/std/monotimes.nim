@@ -15,8 +15,6 @@ meaning that that the following is guaranteed to work:
 ]##
 
 runnableExamples:
-  import std/os
-
   let a = getMonoTime()
   let b = getMonoTime()
   assert a <= b
@@ -56,16 +54,18 @@ when defined(macosx):
 
 when defined(js):
   proc getJsTicks: float =
-    ## Returns ticks in the unit seconds.
+    ## Returns ticks in nanoseconds.
+    # xxx instead, use JsBigInt throughout the API
+    # to avoid `overflowChecks: off` and provide higher precision, but this
+    # requires some care, e.g. because of `proc low*(typ: typedesc[MonoTime]): MonoTime =`
     when defined(nodejs):
       {.emit: """
       let process = require('process');
-      let time = process.hrtime();
-      `result` = time[0] + time[1] / 1000000000;
+      `result` = Number(process.hrtime.bigint());
       """.}
     else:
       proc jsNow(): float {.importjs: "window.performance.now()".}
-      result = jsNow() / 1000
+      result = jsNow() * 1e6
 
   # Workaround for #6752.
   {.push overflowChecks: off.}
@@ -87,13 +87,13 @@ elif defined(windows):
 proc getMonoTime*(): MonoTime {.tags: [TimeEffect].} =
   ## Returns the current `MonoTime` timestamp.
   ##
-  ## When compiled with the JS backend and executed in a browser,
-  ## this proc calls `window.performance.now()`.
+  ## With `js` in browser, this calls `window.performance.now()`, with `-d:nodejs`
+  ## this calls `process.hrtime.bigint();`
+  ##
   ## See [MDN](https://developer.mozilla.org/en-US/docs/Web/API/Performance/now)
   ## for more information.
   when defined(js):
-    let ticks = getJsTicks()
-    result = MonoTime(ticks: (ticks * 1_000_000_000).int64)
+    result = MonoTime(ticks: getJsTicks().int64)
   elif defined(macosx):
     let ticks = mach_absolute_time()
     var machAbsoluteTimeFreq: MachTimebaseInfoData
@@ -114,7 +114,7 @@ proc getMonoTime*(): MonoTime {.tags: [TimeEffect].} =
     let queryPerformanceCounterFreq = 1_000_000_000'u64 div freq
     result = MonoTime(ticks: (ticks * queryPerformanceCounterFreq).int64)
 
-proc ticks*(t: MonoTime): int64 =
+proc ticks*(t: MonoTime): int64 {.inline.} =
   ## Returns the raw ticks value from a `MonoTime`. This value always uses
   ## nanosecond time resolution.
   t.ticks
