@@ -23,6 +23,7 @@ var compilerPrefix* = findExe("nim")
 let isTravis* = existsEnv("TRAVIS")
 let isAppVeyor* = existsEnv("APPVEYOR")
 let isAzure* = existsEnv("TF_BUILD")
+let isDrone* = existsEnv("DRONE")
 
 var skips*: seq[string]
 
@@ -350,6 +351,8 @@ proc parseSpec*(filename: string): TSpec =
           if isAppVeyor: result.err = reDisabled
         of "azure":
           if isAzure: result.err = reDisabled
+        of "drone":
+          if isDrone: result.err = reDisabled
         of "32bit":
           if sizeof(int) == 4:
             result.err = reDisabled
@@ -357,6 +360,8 @@ proc parseSpec*(filename: string): TSpec =
           when defined(freebsd): result.err = reDisabled
         of "arm64":
           when defined(arm64): result.err = reDisabled
+        of "arm":
+          when defined(arm): result.err = reDisabled
         of "i386":
           when defined(i386): result.err = reDisabled
         of "openbsd":

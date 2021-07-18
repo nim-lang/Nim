@@ -1,0 +1,52 @@
+---
+{
+  "kind": "pipeline",
+  "type": "docker",
+  "name": "nim-on-arm64",
+  "platform": {
+    "os": "linux",
+    "arch": "arm64"
+  },
+  "clone": {
+    "depth": 1
+  },
+  "steps": [
+    {
+      "name": "Run Nim CI",
+      "image": "ghcr.io/alaviss/nim-ci:sha-87f5a84",
+      "commands": [
+        ". ci/funs.sh",
+        "nimBuildCsourcesIfNeeded ucpu=arm64",
+        "export PATH=$PWD/bin:$PATH",
+        "nim c koch",
+        "if ! ./koch runCI; then\n  nim c -r tools/ci_testresults\n  exit 1\nfi\n"
+      ]
+    }
+  ]
+}
+---
+{
+  "kind": "pipeline",
+  "type": "docker",
+  "name": "nim-on-arm",
+  "platform": {
+    "os": "linux",
+    "arch": "arm"
+  },
+  "clone": {
+    "depth": 1
+  },
+  "steps": [
+    {
+      "name": "Run Nim CI",
+      "image": "ghcr.io/alaviss/nim-ci:sha-87f5a84",
+      "commands": [
+        ". ci/funs.sh",
+        "nimBuildCsourcesIfNeeded ucpu=arm",
+        "export PATH=$PWD/bin:$PATH",
+        "nim c koch",
+        "if ! ./koch runCI; then\n  nim c -r tools/ci_testresults\n  exit 1\nfi\n"
+      ]
+    }
+  ]
+}
