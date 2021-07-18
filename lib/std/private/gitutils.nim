@@ -4,7 +4,8 @@ internal API for now, API subject to change
 
 # xxx move other git utilities here; candidate for stdlib.
 
-import std/[os, osproc, strutils, tempfiles]
+import std/[os, osproc, strutils, random]
+from std/tempfiles import genTempPath
 
 const commitHead* = "HEAD"
 
@@ -66,12 +67,13 @@ proc diffStrings*(a, b: string): tuple[output: string, same: bool] =
     let b = "ok1\nok2 alt\nok3\nok4\n"
     echo diffStrings(a, b).output
 
-  template tmpFileImpl(prefix, str): auto =
-    let path = genTempPath(prefix, "")
+  template tmpFileImpl(state, prefix, str): auto =
+    let path = genTempPath(state, prefix, "")
     writeFile(path, str)
     path
-  let patha = tmpFileImpl("diffStrings_a_", a)
-  let pathb = tmpFileImpl("diffStrings_b_", b)
+  var state = initRand()
+  let patha = tmpFileImpl(state, "diffStrings_a_", a)
+  let pathb = tmpFileImpl(state, "diffStrings_b_", b)
   defer:
     removeFile(patha)
     removeFile(pathb)
