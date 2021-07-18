@@ -347,6 +347,7 @@ type
     projectName*: string # holds a name like 'nim'
     projectPath*: AbsoluteDir # holds a path like /home/alice/projects/nim/compiler/
     projectFull*: AbsoluteFile # projectPath/projectName
+    projectIsRealFile*: bool # false for stdin, cmdline, invalid path
     projectIsStdin*: bool # whether we're compiling from stdin
     lastMsgWasDot*: set[StdOrrKind] # the last compiler message was a single '.'
     projectMainIdx*: FileIndex # the canonical path id of the main module
