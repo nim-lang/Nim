@@ -658,7 +658,7 @@ else:
     idle: int
     cachedMsgs: CachedMsgs
 
-  proc initNimSuggest*(project: string, nimPath: string = ""): NimSuggest =
+  proc initNimSuggest*(project: string, nimPath: string = "", conf = newConfigRef()): NimSuggest =
     var retval: ModuleGraph
     proc mockCommand(graph: ModuleGraph) =
       retval = graph
@@ -676,7 +676,8 @@ else:
 
       conf.setErrorMaxHighMaybe
       # do not print errors, but log them
-      conf.writelnHook = myLog
+      if isNil(conf.writelnHook):
+        conf.writelnHook = myLog
       conf.structuredErrorHook = nil
 
       # compile the project before showing any input so that we already
@@ -696,7 +697,6 @@ else:
           # if processArgument(pass, p, argsCount): break
     let
       cache = newIdentCache()
-      conf = newConfigRef()
       self = NimProg(
         suggestMode: true,
         processCmdLine: mockCmdLine
@@ -705,8 +705,6 @@ else:
 
     self.processCmdLineAndProjectPath(conf)
 
-    if gMode != mstdin:
-      conf.writelnHook = proc (msg: string) = discard
     # Find Nim's prefix dir.
     if nimPath == "":
       let binaryPath = findExe("nim")
@@ -736,12 +734,8 @@ else:
     var retval: seq[Suggest] = @[]
     let conf = nimsuggest.graph.config
     conf.ideCmd = cmd
-    conf.writelnHook = proc (line: string) =
-      retval.add(Suggest(section: ideMsg, doc: line))
     conf.suggestionResultHook = proc (s: Suggest) =
       retval.add(s)
-    conf.writelnHook = proc (s: string) =
-      stderr.write s & "\n"
     if conf.ideCmd == ideKnown:
       retval.add(Suggest(section: ideKnown, quality: ord(fileInfoKnown(conf, file))))
     elif conf.ideCmd == ideProject:
