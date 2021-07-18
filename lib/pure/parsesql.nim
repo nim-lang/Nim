@@ -1427,7 +1427,7 @@ proc ra(n: SqlNode, s: var SqlWriter) =
     for i in 1..n.len-1:
       if i > 1: s.add(',')
       ra(n.sons[i], s)
-    s.add(");")
+    s.add(")")
   of nkCreateType, nkCreateTypeIfNotExists:
     s.addKeyw("create type")
     if n.kind == nkCreateTypeIfNotExists:
@@ -1446,7 +1446,7 @@ proc ra(n: SqlNode, s: var SqlWriter) =
     for i in 2..n.len-1:
       if i > 2: s.add(", ")
       ra(n.sons[i], s)
-    s.add(");")
+    s.add(")")
   of nkEnumDef:
     s.addKeyw("enum")
     rs(n, s)
