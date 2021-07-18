@@ -43,6 +43,7 @@ import asyncnet, asyncdispatch, parseutils, uri, strutils
 import httpcore
 from nativesockets import getLocalAddr, AF_INET
 import std/private/since
+from times import DateTime, now, `-`, inSeconds
 
 export httpcore except parseHeader
 
@@ -63,6 +64,7 @@ type
     url*: Uri
     hostname*: string    ## The hostname of the client that made the request.
     body*: string
+    disableKeepalive: bool
 
   AsyncHttpServer* = ref object
     socket: AsyncSocket
@@ -70,6 +72,8 @@ type
     reusePort: bool
     maxBody: int ## The maximum content-length that will be read for the body.
     maxFDs: int
+    keepaliveTimeout: int ## The value for keepalive timeout in seconds and \
+      ## after which the connection will be closed.
 
 proc getPort*(self: AsyncHttpServer): Port {.since: (1, 5, 1).} =
   ## Returns the port `self` was bound to.
@@ -85,9 +89,10 @@ proc getPort*(self: AsyncHttpServer): Port {.since: (1, 5, 1).} =
   result = getLocalAddr(self.socket.getFd, AF_INET)[1]
 
 proc newAsyncHttpServer*(reuseAddr = true, reusePort = false,
-                         maxBody = 8388608): AsyncHttpServer =
+                         maxBody = 8388608, keepaliveTimeout = 3600): AsyncHttpServer =
   ## Creates a new `AsyncHttpServer` instance.
-  result = AsyncHttpServer(reuseAddr: reuseAddr, reusePort: reusePort, maxBody: maxBody)
+  result = AsyncHttpServer(reuseAddr: reuseAddr, reusePort: reusePort,
+    maxBody: maxBody, keepaliveTimeout: keepaliveTimeout)
 
 proc addHeaders(msg: var string, headers: HttpHeaders) =
   for k, v in headers:
@@ -336,10 +341,11 @@ proc processRequest(
   # connection will not be closed and will be kept in the connection pool.
 
   # Persistent connections
-  if (request.protocol == HttpVer11 and
+  if not request.disableKeepalive and
+     ((request.protocol == HttpVer11 and
       cmpIgnoreCase(request.headers.getOrDefault("connection"), "close") != 0) or
      (request.protocol == HttpVer10 and
-      cmpIgnoreCase(request.headers.getOrDefault("connection"), "keep-alive") == 0):
+      cmpIgnoreCase(request.headers.getOrDefault("connection"), "keep-alive") == 0)):
     # In HTTP 1.1 we assume that connection is persistent. Unless connection
     # header states otherwise.
     # In HTTP 1.0 we assume that the connection should not be persistent.
@@ -355,14 +361,23 @@ proc processClient(server: AsyncHttpServer, client: AsyncSocket, address: string
   var request = newFutureVar[Request]("asynchttpserver.processClient")
   request.mget().url = initUri()
   request.mget().headers = newHttpHeaders()
+  request.mget().disableKeepalive = false
   var lineFut = newFutureVar[string]("asynchttpserver.processClient")
   lineFut.mget() = newStringOfCap(80)
 
+  let startTimeout = now()
   while not client.isClosed:
+    let fds = activeDescriptors()
+    # The maxFDs should be replaced by the keepaliveConn?
+    if (fds > server.maxFDs) or ((now() - startTimeout).inSeconds > server.keepaliveTimeout):
+      request.mget().disableKeepalive = true
+
     let retry = await processRequest(
       server, request, client, address, lineFut, callback
     )
     if not retry: break
+
+  client.close() # When in doubt, close the connection to not increase the number of open files. 
 
 const
   nimMaxDescriptorsFallback* {.intdefine.} = 16_000 ## fallback value for \
