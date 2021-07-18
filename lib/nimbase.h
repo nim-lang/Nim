@@ -223,7 +223,7 @@ __AVR__
 #  endif
 #  define N_LIB_EXPORT NIM_EXTERNC __attribute__((visibility("default")))
 #  define N_LIB_EXPORT_VAR  __attribute__((visibility("default")))
-#  define N_LIB_IMPORT  extern
+#  define N_LIB_IMPORT NIM_EXTERNC
 #endif
 
 #define N_NOCONV(rettype, name) rettype name
