@@ -1,8 +1,10 @@
 discard """
+  targets: "c js"
   output: '''
 x + y = 30
 '''
 """
+
 import std/[sugar, algorithm, random, sets, tables, strutils]
 
 template main() =
@@ -64,20 +66,25 @@ template main() =
     doAssert $((float, bool) {.inline.} -> int) == "proc (i0: float, i1: bool): int{.inline.}"
 
   block: # capture
-    var closure1: () -> int
-    for i in 0 .. 10:
-      if i == 5:
-        capture i:
-          closure1 = () => i
-    doAssert closure1() == 5
+    template impl =
+      var closure1: () -> int
+      for i in 0 .. 10:
+        if i == 5:
+          capture i:
+            closure1 = () => i
+      doAssert closure1() == 5
 
-    var closure2: () -> (int, int)
-    for i in 0 .. 10:
-      for j in 0 .. 10:
-        if i == 5 and j == 3:
-          capture i, j:
-            closure2 = () => (i, j)
-    doAssert closure2() == (5, 3)
+      var closure2: () -> (int, int)
+      for i in 0 .. 10:
+        for j in 0 .. 10:
+          if i == 5 and j == 3:
+            capture i, j:
+              closure2 = () => (i, j)
+      doAssert closure2() == (5, 3)
+    when defined(js):
+      when nimvm: discard # xxx gives: Error: cannot evaluate at compile time: i`gensym0
+      else: impl()
+    else: impl()
 
     block: # bug #16967
       var s = newSeq[proc (): int](5)
@@ -208,17 +215,16 @@ template main() =
         discard collect(newSeq, for i in 1..3: i)
       foo()
 
-proc mainProc() =
   block: # dump
     # symbols in templates are gensym'd
     let
-      x = 10
-      y = 20
+      x {.inject.} = 10
+      y {.inject.} = 20
     dump(x + y) # x + y = 30
 
   block: # dumpToString
     template square(x): untyped = x * x
-    let x = 10
+    let x {.inject.} = 10
     doAssert dumpToString(square(x)) == "square(x): x * x = 100"
     let s = dumpToString(doAssert 1+1 == 2)
     doAssert "failedAssertImpl" in s
@@ -226,8 +232,5 @@ proc mainProc() =
       doAssertRaises(AssertionDefect): doAssert false
     doAssert "except AssertionDefect" in s2
 
-static:
-  main()
-  mainProc()
+static: main()
 main()
-mainProc()
