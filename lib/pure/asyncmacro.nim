@@ -125,7 +125,7 @@ template await*(f: typed): untyped {.used.} =
   static:
     error "await expects Future[T], got " & $typeof(f)
 
-template await*[T](f: Future[T]): auto {.used.} =
+template await*[T](f: Future[T]): untyped {.used.} =
   var internalTmpFuture: FutureBase = f
   yield internalTmpFuture
   (cast[typeof(f)](internalTmpFuture)).read()

@@ -300,7 +300,7 @@ block gensym2:
   echo x,y,z
 
 block gensym3:
-  macro liftStmts(body: untyped): auto =
+  macro liftStmts(body: untyped): untyped =
     # convert
     #   template x: untyped {.gensym.} =
     #     let z = a + a + b
