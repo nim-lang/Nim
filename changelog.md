@@ -327,6 +327,11 @@
 
 - Added `jsconsole.dir`, `jsconsole.dirxml`, `jsconsole.timeStamp`.
 
+- Added `jshttpclient` module for JavaScript that provides
+  asyncronous `HttpClient` implemented on top of `jsfetch` and
+  synchronous `HttpClient` implemented on top of `jsxmlhttprequest`.
+  Migrated `jsxmlhttprequest` to stdlib.
+
 - Added dollar `$` and `len` for `jsre.RegExp`.
 
 - Added `std/tasks`.
