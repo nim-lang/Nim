@@ -3543,7 +3543,8 @@ separation of types and subsequent identifiers more distinct.
   proc foo(a; b: int; c, d: bool): int
 
 A parameter may be declared with a default value which is used if the caller
-does not provide a value for the argument.
+does not provide a value for the argument. The value is just replace by the
+compiler and therefore, if applicable, will be reevaluated at runtime.
 
 .. code-block:: nim
   # b is optional with 47 as its default value
