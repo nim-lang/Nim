@@ -56,7 +56,10 @@ proc evalTemplateAux(templ, actual: PNode, c: var TemplCtx, result: PNode) =
           #  internalAssert c.config, false
           idTablePut(c.mapping, s, x)
         if sfGenSym in s.flags:
-          result.add newIdentNode(getIdent(c.ic, x.name.s & "`gensym" & $c.instID),
+          # `__gensym` would also be an option, but would need patching
+          # `nep1CheckDefImpl` and identifier comparison.
+          # `:` is similar to `genPrefix` (we could also reuse it)
+          result.add newIdentNode(getIdent(c.ic, x.name.s & ":gensym" & $c.instID),
             if c.instLines: actual.info else: templ.info)
         else:
           result.add newSymNode(x, if c.instLines: actual.info else: templ.info)
