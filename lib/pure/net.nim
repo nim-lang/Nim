@@ -655,7 +655,11 @@ when defineSsl:
           # the SSL_CERT_FILE and SSL_CERT_DIR env vars
           var found = false
           for fn in scanSSLCertificates():
-            if newCTX.SSL_CTX_load_verify_locations(fn, nil) == VerifySuccess:
+            if fn.extractFilename == "":
+              if newCTX.SSL_CTX_load_verify_locations(nil, fn.normalizePathEnd(false)) == VerifySuccess:
+                found = true
+                break
+            elif newCTX.SSL_CTX_load_verify_locations(fn, nil) == VerifySuccess:
               found = true
               break
           if not found:

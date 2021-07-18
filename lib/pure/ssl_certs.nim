@@ -125,7 +125,13 @@ iterator scanSSLCertificates*(useEnvVars = false): string =
           if fileExists(p):
             yield p
         elif dirExists(p):
+          # check if it's a dir where each cert is one file
+          # named by it's hasg
+          for fn in joinPath(p, "*.0").walkFiles:
+            yield p.normalizePathEnd(true)
+            break
           for fn in joinPath(p, "*").walkFiles():
+
             yield fn
     else:
       var
