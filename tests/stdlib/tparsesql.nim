@@ -2,6 +2,7 @@ discard """
   targets: "c js"
 """
 import parsesql
+import unittest
 
 doAssert $parseSQL("SELECT foo FROM table;") == "select foo from table;"
 doAssert $parseSQL("""
@@ -207,3 +208,11 @@ SELECT `SELECT`, `FROM` as `GROUP` FROM `WHERE`;
 doAssert $parseSQL("""
 SELECT "SELECT", "FROM" as "GROUP" FROM "WHERE";
 """) == """select "SELECT", "FROM" as "GROUP" from "WHERE";"""
+
+doAssert $parseSQL("""CREATE TABLE Persons (Personid int NOT NULL AUTO_INCREMENT);""") == """create table Persons(Personid  int  not null  auto_increment );;"""
+
+doAssert $parseSQL("""create table num_tests (s text, u8 tinyint unsigned, s8 tinyint, u int unsigned zerofill, i int, b bigint zerofill);""") == """create table num_tests(s  text , u8  tinyint unsigned , s8  tinyint , u  int unsigned zerofill , i  int , b  bigint zerofill );;"""
+expect SqlParseError:
+  discard parseSQL("""create table num_tests (b bigint zerofill unsigned);""")
+
+doAssert $parseSQL("""create table num_tests (d DOUBLE PRECISION unsigned zerofill, i double, b real zerofill);""") == """create table num_tests(d  DOUBLE PRECISION unsigned zerofill , i  double , b  real zerofill );;"""
