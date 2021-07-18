@@ -7,10 +7,14 @@
 - Deprecated `std/mersenne`.
 
 - `system.delete` had a most surprising behavior when the index passed to it was out of
-  bounds (it would delete the last entry then).
-  It is deprecated because of that, instead use the new `sequtils.delete(s, i..i)`.
-  But be aware that your code might depend on this quirky behavior so a review process is
-  required on your part before you can use `sequtils.delete` instead.
+  bounds (it would delete the last entry then). Compile with `-d:nimStrictDelete` so
+  that an index error is produced instead. But be aware that your code might depend on
+  this quirky behavior so a review process is required on your part before you can
+  use `-d:nimStrictDelete`. To make this review easier, use the `-d:nimAuditDelete`
+  switch, it pretends that `system.delete` is deprecated so that it is easier to see
+  where it was used in your code.
+
+  `-d:nimStrictDelete` will become the default in upcoming versions.
 
 
 - `cuchar` is now deprecated as it aliased `char` where arguably it should have aliased `uint8`.
