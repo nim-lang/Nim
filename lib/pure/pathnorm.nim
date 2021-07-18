@@ -56,12 +56,32 @@ proc isDotDot(x: string; bounds: (int, int)): bool =
 proc isSlash(x: string; bounds: (int, int)): bool =
   bounds[1] == bounds[0] and x[bounds[0]] in {DirSep, AltSep}
 
+when defined(windows):
+  proc isWindowsDrive*(path: openArray[char]): bool =
+    ## Returns true if `path` is a windows drive (length 3, ending in / or \).
+    runnableExamples:
+      assert isWindowsDrive(r"C:\")
+      assert isWindowsDrive(r"b:/")
+      for a in [r"c:\abc", r"c:abc", r"c:", "abc", r"\", "/", ""]: assert not isWindowsDrive(a)
+    path.len == 3 and path[0] in {'a'..'z', 'A'..'Z'} and path[1] == ':' and path[2] in {DirSep, AltSep}
+
 proc addNormalizePath*(x: string; result: var string; state: var int;
     dirSep = DirSep) =
   ## Low level proc. Undocumented.
 
   # state: 0th bit set if isAbsolute path. Other bits count
   # the number of path components.
+  when defined(windows):
+    if state == 0:
+      # C:\ => C:\, C: => C:
+      # this will be handled later: C:\foo\ => C:\foo, C:foo => C:foo
+      if x.isWindowsDrive:
+        result.add x[0]
+        result.add x[1]
+        result.add dirSep
+        state = state or 1
+        inc state, 2
+        return
   var it: PathIter
   it.notFirst = (state shr 1) > 0
   if it.notFirst:

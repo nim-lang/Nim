@@ -656,9 +656,8 @@ block: # normalizePathEnd
   when defined(windows):
     doAssert r"C:\foo\\".normalizePathEnd == r"C:\foo"
     doAssert r"C:\foo".normalizePathEnd(trailingSep = true) == r"C:\foo\"
-    # this one is controversial: we could argue for returning `D:\` instead,
-    # but this is simplest.
-    doAssert r"D:\".normalizePathEnd == r"D:"
+    doAssert r"D:\".normalizePathEnd == r"D:\"
+    doAssert r"D:foo\".normalizePathEnd == r"D:foo"
     doAssert r"E:/".normalizePathEnd(trailingSep = true) == r"E:\"
     doAssert "/".normalizePathEnd == r"\"
 
@@ -709,31 +708,14 @@ block: # isAdmin
 template main =
   # xxx move all tests here so they get tested in VM (disabling as needed)
   block: # isAbsolute
-    assertAll:
-      isAbsolute(r"/")
-      isAbsolute(r"/foo")
-      not isAbsolute(r"foo")
-      not isAbsolute(r"")
-      not isAbsolute(r".")
-      not isAbsolute(r"..")
+    for a in ["/", "/foo", "//"]: doAssert isAbsolute(a)
+    for a in ["", "foo", ".", ".."]: doAssert not isAbsolute(a)
+    for a in ["/", "/a", "/a/b"]:
+      doAssert isAbsolute(unixToNativePath(a))
+      doAssert isAbsolute(unixToNativePath(a, "a"))
     when defined(windows):
-      assertAll:
-        isAbsolute(r"C:\")
-        isAbsolute(r"B:/")
-        isAbsolute(r"c:\a")
-        isAbsolute(r"X://ab/")
-        isAbsolute(r"\")
-        not isAbsolute(r"C:")
-        not isAbsolute(r"C:foo")
-        not isAbsolute(r"foo\bar")
-    assertAll:
-      isAbsolute(unixToNativePath("/"))
-      isAbsolute(unixToNativePath("/", "a"))
-      isAbsolute(unixToNativePath("/a"))
-      isAbsolute(unixToNativePath("/a", "a"))
-      isAbsolute(unixToNativePath("/a/b"))
-      isAbsolute(unixToNativePath("/a/b", "a"))
+      for a in [r"C:\", r"B:/", r"c:\a", r"X://ab/", r"\"]: doAssert isAbsolute(a)
+      for a in [r"C:", r"C:foo", r"foo\bar"]: doAssert not isAbsolute(a)
 
 static: main()
 main()
-

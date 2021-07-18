@@ -42,6 +42,12 @@
 - In `std/os`, `getHomeDir`, `expandTilde`, `getTempDir`, `getConfigDir` now do not include trailing `DirSep`,
   unless `-d:nimLegacyHomeDir` is specified (for a transition period).
 
+- In `std/os`, on windows, APIs are now correctly handling relative paths starting with a drive:
+  `isAbsolute("C:")` is now false
+  `isAbsolute("C:foo")` is now false
+  `normalizePathEnd(r"C:\")` is now `C:\` instead of r"C:"
+  `normalizedPath(r"C:\")` is now `C:\` instead of r"C:", likewise with `normalizePath`
+
 - On POSIX systems, the default signal handlers used for Nim programs (it's
   used for printing the stacktrace on fatal signals) will now re-raise the
   signal for the OS default handlers to handle.

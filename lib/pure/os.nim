@@ -114,6 +114,10 @@ proc normalizePathEnd(path: var string, trailingSep = false) =
   ## a path is absolute or relative, and makes sure trailing sep is `DirSep`,
   ## not `AltSep`. Trailing `/.` are compressed, see examples.
   if path.len == 0: return
+  when defined(windows):
+    if path.isWindowsDrive:
+      path[2] = DirSep
+      return
   var i = path.len
   while i >= 1:
     if path[i-1] in {DirSep, AltSep}: dec(i)
@@ -140,6 +144,8 @@ proc normalizePathEnd(path: string, trailingSep = false): string =
       assert normalizePathEnd(".//./.", trailingSep = false) == "."
       assert normalizePathEnd("", trailingSep = true) == "" # not / !
       assert normalizePathEnd("/", trailingSep = false) == "/" # not "" !
+    when defined(windows):
+      assert normalizePathEnd(r"C:\") == r"C:\" # not "C:" !
   result = path
   result.normalizePathEnd(trailingSep)
 
@@ -302,9 +308,10 @@ proc isAbsolute*(path: string): bool {.rtl, noSideEffect, extern: "nos$1", raise
   if len(path) == 0: return false
 
   when doslikeFileSystem:
-    var len = len(path)
-    result = (path[0] in {'/', '\\'}) or
-              (len >= 3 and path[0] in {'a'..'z', 'A'..'Z'} and path[1] == ':' and path[2] in {'/', '\\'})
+    result = path[0] in {'/', '\\'}
+    if not result and path.len >= 3:
+      when nimvm: result = isWindowsDrive(path[0..2])
+      else: result = isWindowsDrive(toOpenArray(path, 0, 2))
   elif defined(macos):
     # according to https://perldoc.perl.org/File/Spec/Mac.html `:a` is a relative path
     result = path[0] != ':'
@@ -1510,12 +1517,6 @@ proc normalizePath*(path: var string) {.rtl, extern: "nos$1", tags: [].} =
   ## * `absolutePath proc <#absolutePath,string>`_
   ## * `normalizedPath proc <#normalizedPath,string>`_ for outplace version
   ## * `normalizeExe proc <#normalizeExe,string>`_
-  runnableExamples:
-    when defined(posix):
-      var a = "a///b//..//c///d"
-      a.normalizePath()
-      assert a == "a/c/d"
-
   path = pathnorm.normalizePath(path)
   when false:
     let isAbs = isAbsolute(path)
@@ -1553,8 +1554,12 @@ proc normalizedPath*(path: string): string {.rtl, extern: "nos$1", tags: [].} =
   ## * `absolutePath proc <#absolutePath,string>`_
   ## * `normalizePath proc <#normalizePath,string>`_ for the in-place version
   runnableExamples:
+    assert normalizedPath("foo/") == "foo"
     when defined(posix):
       assert normalizedPath("a///b//..//c///d") == "a/c/d"
+    when defined(windows):
+      assert normalizedPath(r"C:\") == r"C:\"
+      assert normalizedPath(r"C:foo\") == r"C:foo"
   result = pathnorm.normalizePath(path)
 
 when defined(windows) and not weirdTarget:
