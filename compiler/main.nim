@@ -260,7 +260,7 @@ proc mainCommand*(graph: ModuleGraph) =
 
   ## command prepass
   if conf.cmd == cmdCrun: conf.globalOptions.incl {optRun, optUseNimcache}
-  if conf.cmd notin cmdBackends + {cmdTcc}: customizeForBackend(backendC)
+  if conf.cmd notin cmdBackends + {cmdTcc, cmdCheck}: customizeForBackend(backendC)
   if conf.outDir.isEmpty:
     # doc like commands can generate a lot of files (especially with --project)
     # so by default should not end up in $PWD nor in $projectPath.
