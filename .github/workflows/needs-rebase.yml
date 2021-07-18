@@ -1,0 +1,26 @@
+# adapted from https://github.com/eps1lon/actions-label-merge-conflict
+
+name: "Pull Request Needs Rebase?"
+
+on:
+  # So that PRs touching the same files as the push are updated
+  push:
+  # So that the `dirtyLabel` is removed if conflicts are resolved
+  # We recommend `pull_request_target` so that github secrets are available.
+  # In `pull_request` we wouldn't be able to change labels of fork PRs
+  pull_request_target:
+    # types: [synchronize]
+    types: [opened, synchronize, reopened]
+
+jobs:
+  needs-rebase:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check if PR needs rebase
+        uses: eps1lon/actions-label-merge-conflict@releases/2.x
+        with:
+          repoToken: "${{ secrets.GITHUB_TOKEN }}"
+          dirtyLabel: "needs-rebase"
+          removeOnDirtyLabel: "no conflicts"
+          # xxx enable this if label change isn't triggering a notification to PR author
+          # commentOnDirty: "conflicts detected, rebase needed"
