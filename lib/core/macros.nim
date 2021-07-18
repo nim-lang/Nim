@@ -139,6 +139,8 @@ const
                    nnkCallStrLit}
   nnkPragmaCallKinds = {nnkExprColonExpr, nnkCall, nnkCallStrLit}
 
+  pragmasPos = 4 # xxx this should be exported, as other similar position symbols from compiler/ast
+
 {.push warnings: off.}
 
 proc toNimIdent*(s: string): NimIdent {.magic: "StrToIdent", noSideEffect, deprecated:
@@ -1800,3 +1802,15 @@ proc extractDocCommentsAndRunnables*(n: NimNode): NimNode =
         result.add ni
       else: break
     else: break
+
+macro addPragmas*(extra, body): untyped =
+  ## similar to `{.pragma: mypragma, args....}` but more flexible, and can
+  ## be exported.
+  runnableExamples:
+    template foo*(body) = addPragmas([noSideEffect, locks: 0], body)
+    proc fn(){.foo.} = discard
+    ## this can replace: `{.pragma: rtl, importc: "nimrtl_$1", dynlib: nimrtl, gcsafe.}`
+    template rtl*(body) = addPragmas([importc: "nimrtl_$1", dynlib: nimrtl, gcsafe], body)
+  result = body
+  result[pragmasPos] = newTree(nnkPragma)
+  for ai in extra: result[pragmasPos].add ai
