@@ -5,6 +5,8 @@
 
 set -e
 
+: ${DESTDIR:=}
+
 if [ $# -eq 1 ] ; then
 # if c.cat[fcUnixBin].len > 0:
   if test -f ?{c.cat[fcUnixBin][0].toUnix}
@@ -26,43 +28,47 @@ if [ $# -eq 1 ] ; then
       echo "  <some other dir> (treated similar to '/opt')"
       echo "To deinstall, use the command:"
       echo "sh deinstall.sh DIR"
+      echo ""
+      echo "You may also use environment variable DESTDIR for staged installs"
+      echo "(DESTDIR is prepended to each install target file). Note that this"
+      echo "is added by Alpine Linux, it's not supported by standard niminst."
       exit 1
       ;;
     "/usr/bin")
-      bindir=/usr/bin
-      configdir=/etc/?proj
-      libdir=/usr/lib/?proj
-      docdir=/usr/share/?proj/doc
-      datadir=/usr/share/?proj/data
-      nimbleDir="/opt/nimble/pkgs/?c.nimblePkgName-?c.version"
+      bindir="$DESTDIR/usr/bin"
+      configdir="$DESTDIR/etc/?proj"
+      libdir="$DESTDIR/usr/lib/?proj"
+      docdir="$DESTDIR/usr/share/doc/?proj"
+      datadir="$DESTDIR/usr/share/?proj/data"
+      nimbleDir="$DESTDIR/usr/share/nimble/pkgs/?c.nimblePkgName-?c.version"
       ;;
     "/usr/local/bin")
-      bindir=/usr/local/bin
-      configdir=/etc/?proj
-      libdir=/usr/local/lib/?proj
-      docdir=/usr/local/share/?proj/doc
-      datadir=/usr/local/share/?proj/data
-      nimbleDir="/opt/nimble/pkgs/?c.nimblePkgName-?c.version"
+      bindir="$DESTDIR/usr/local/bin"
+      configdir="$DESTDIR/etc/?proj"
+      libdir="$DESTDIR/usr/local/lib/?proj"
+      docdir="$DESTDIR/usr/local/share/doc/?proj"
+      datadir="$DESTDIR/usr/local/share/?proj/data"
+      nimbleDir="$DESTDIR/usr/local/share/nimble/pkgs/?c.nimblePkgName-?c.version"
       ;;
     "/opt")
-      bindir="/opt/?proj/bin"
-      configdir="/opt/?proj/config"
-      libdir="/opt/?proj/lib"
-      docdir="/opt/?proj/doc"
-      datadir="/opt/?proj/data"
-      nimbleDir="/opt/nimble/pkgs/?c.nimblePkgName-?c.version"
-      mkdir -p /opt/?proj
+      bindir="$DESTDIR/opt/?proj/bin"
+      configdir="$DESTDIR/opt/?proj/config"
+      libdir="$DESTDIR/opt/?proj/lib"
+      docdir="$DESTDIR/opt/?proj/doc"
+      datadir="$DESTDIR/opt/?proj/data"
+      nimbleDir="$DESTDIR/opt/nimble/pkgs/?c.nimblePkgName-?c.version"
+      mkdir -p $DESTDIR/opt/?proj
       mkdir -p $bindir
       mkdir -p $configdir
       ;;
     *)
-      bindir="$1/?proj/bin"
-      configdir="$1/?proj/config"
-      libdir="$1/?proj/lib"
-      docdir="$1/?proj/doc"
-      datadir="$1/?proj/data"
-      nimbleDir="$1/?proj"
-      mkdir -p $1/?proj
+      bindir="$DESTDIR$1/?proj/bin"
+      configdir="$DESTDIR$1/?proj/config"
+      libdir="$DESTDIR$1/?proj/lib"
+      docdir="$DESTDIR$1/?proj/doc"
+      datadir="$DESTDIR$1/?proj/data"
+      nimbleDir="$DESTDIR$1/?proj"
+      mkdir -p $DESTDIR$1/?proj
       mkdir -p $bindir
       mkdir -p $configdir
       ;;
@@ -131,5 +137,9 @@ else
   echo "  <some other dir> (treated similar to '/opt')"
   echo "To deinstall, use the command:"
   echo "sh deinstall.sh DIR"
+  echo ""
+  echo "You may also use environment variable DESTDIR for staged installs"
+  echo "(DESTDIR is prepended to each install target file). Note that this"
+  echo "is added by Alpine Linux, it's not supported by standard niminst."
   exit 1
 fi
