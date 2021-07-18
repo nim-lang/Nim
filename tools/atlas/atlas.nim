@@ -123,8 +123,12 @@ proc versionToCommit(d: Dependency): string =
 
   return ""
 
+proc shortToCommit(short: string): string =
+  let (cc, status) = osproc.execCmdEx("git rev-parse " & quoteShell(short))
+  result = if status == 0: strutils.strip(cc) else: ""
+
 proc checkoutGitCommit(c: var AtlasContext; p: PackageName; commit: string) =
-  let (outp, status) = osproc.execCmdEx("git checkout " & quoteShell(commit))
+  let (_, status) = osproc.execCmdEx("git checkout " & quoteShell(commit))
   if status != 0:
     error(c, p, "could not checkout commit", commit)
 
@@ -169,17 +173,23 @@ proc toName(p: string): PackageName =
 proc needsCommitLookup(commit: string): bool {.inline} =
   '.' in commit or commit == InvalidCommit
 
+proc isShortCommitHash(commit: string): bool {.inline.} =
+  commit.len >= 4 and commit.len < 40
+
 proc checkoutCommit(c: var AtlasContext; w: Dependency) =
   let dir = c.workspace / w.name.string
   withDir dir:
-    if w.commit.len == 0 or cmpIgnoreCase(w.commit, "#head") == 0:
+    if w.commit.len == 0 or cmpIgnoreCase(w.commit, "head") == 0:
       gitPull(c, w.name)
     else:
       let err = isCleanGit(dir)
       if err != "":
         warn c, w.name, err
       else:
-        let requiredCommit = if needsCommitLookup(w.commit): versionToCommit(w) else: w.commit
+        let requiredCommit =
+          if needsCommitLookup(w.commit): versionToCommit(w)
+          elif isShortCommitHash(w.commit): shortToCommit(w.commit)
+          else: w.commit
         let (cc, status) = osproc.execCmdEx("git log -n 1 --format=%H")
         let currentCommit = strutils.strip(cc)
         if requiredCommit == "" or status != 0:
@@ -191,8 +201,9 @@ proc checkoutCommit(c: var AtlasContext; w: Dependency) =
           if currentCommit != requiredCommit:
             # checkout the later commit:
             # git merge-base --is-ancestor <commit> <commit>
-            let (mergeBase, status) = osproc.execCmdEx("git merge-base " &
+            let (cc, status) = osproc.execCmdEx("git merge-base " &
                 currentCommit.quoteShell & " " & requiredCommit.quoteShell)
+            let mergeBase = strutils.strip(cc)
             if status == 0 and (mergeBase == currentCommit or mergeBase == requiredCommit):
               # conflict resolution: pick the later commit:
               if mergeBase == currentCommit:
@@ -242,7 +253,7 @@ proc collectNewDeps(c: var AtlasContext; work: var seq[Dependency];
         tokens.add InvalidCommit
       elif tokens.len == 2 and tokens[1].startsWith("#"):
         # Dependencies can also look like 'requires "sdl2#head"
-        var commit = tokens[1]
+        var commit = tokens[1][1 .. ^1]
         tokens[1] = "=="
         tokens.add commit
 
