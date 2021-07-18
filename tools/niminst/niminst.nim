@@ -9,7 +9,7 @@
 
 import
   os, strutils, parseopt, parsecfg, strtabs, streams, debcreation,
-  std / sha1
+  std / sha1, osproc, sugar
 
 const
   maxOS = 20 # max number of OSes
@@ -421,9 +421,9 @@ proc parseIniFile(c: var ConfigData) =
 
 # ------------------------- generate source based installation ---------------
 
-proc readCFiles(c: var ConfigData, osA, cpuA: int) =
+proc readCFiles(c: var ConfigData, stagingDir: string, osA, cpuA: int) =
   var p: CfgParser
-  var f = splitFile(c.infile).dir / "mapping.txt"
+  var f = stagingDir / "mapping.txt"
   c.cfiles[osA][cpuA] = @[]
   var input = newFileStream(f, fmRead)
   var section = ""
@@ -515,30 +515,56 @@ proc srcdist(c: var ConfigData) =
   var winIndex = -1
   var intel32Index = -1
   var intel64Index = -1
+  var
+    cmds: seq[string]
+    createCSource: seq[proc() {.closure.}]
+  let cPtr = addr c
   for osA in 1..c.oses.len:
     let osname = c.oses[osA-1]
     if osname.cmpIgnoreStyle("windows") == 0: winIndex = osA
+
     for cpuA in 1..c.cpus.len:
       if c.explicitPlatforms and not c.platforms[osA][cpuA]: continue
       let cpuname = c.cpus[cpuA-1]
       if cpuname.cmpIgnoreStyle("i386") == 0: intel32Index = cpuA
       elif cpuname.cmpIgnoreStyle("amd64") == 0: intel64Index = cpuA
-      var dir = getOutputDir(c) / buildDir(osA, cpuA)
-      if dirExists(dir): removeDir(dir)
+      let
+        dir = getOutputDir(c) / buildDir(osA, cpuA)
+        stagingDir = dir & "_staging"
+      removeDir(dir)
       createDir(dir)
-      var cmd = ("nim compile -f --symbolfiles:off --compileonly " &
-                 "--gen_mapping --cc:gcc --skipUserCfg" &
-                 " --os:$# --cpu:$# $# $#") %
-                 [osname, cpuname, c.nimArgs, c.mainfile]
-      echo(cmd)
-      if execShellCmd(cmd) != 0:
-        quit("Error: call to nim compiler failed")
-      readCFiles(c, osA, cpuA)
-      for i in 0 .. c.cfiles[osA][cpuA].len-1:
-        let dest = dir / extractFilename(c.cfiles[osA][cpuA][i])
-        let relDest = buildDir(osA, cpuA) / extractFilename(c.cfiles[osA][cpuA][i])
-        copyFile(dest=dest, source=c.cfiles[osA][cpuA][i])
-        c.cfiles[osA][cpuA][i] = relDest
+      cmds.add ("nim compile -f --symbolfiles:off --compileonly " &
+                "--gen_mapping --cc:gcc --skipUserCfg --hints:off --warnings:off " &
+                "--nimcache:$# --os:$# --cpu:$# $# $#") %
+                [quoteShell(stagingDir), osname, cpuname, c.nimArgs,
+                 quoteShell(c.mainfile)]
+
+      capture dir, stagingDir, osA, cpuA:
+        # A hack to capture `var`. It's safe since execProcesses don't leave
+        # the stack frame until everything has been executed. Also, the
+        # closures are contained within a variable of this frame.
+        createCSource.add proc () =
+          readCFiles(cPtr[], stagingDir, osA, cpuA)
+          for f in cPtr.cfiles[osA][cpuA].mitems:
+            let dest = dir / extractFilename(f)
+            let relDest = buildDir(osA, cpuA) / extractFilename(f)
+            copyFile(dest=dest, source=f)
+            f = relDest
+          removeDir(stagingDir)
+
+  proc beforeRunEvent(idx: int) =
+    echo cmds[idx]
+
+  proc afterRunEvent(idx: int, p: Process) =
+    if p.peekExitCode == 0:
+      createCSource[idx]()
+    else:
+      stderr.writeLine "Error: command `", cmds[idx], "` exited with error code ", p.peekExitCode()
+
+  if execProcesses(cmds, beforeRunEvent = beforeRunEvent,
+                   afterRunEvent = afterRunEvent) != 0:
+    quit("Error: calls to nim compiler failed")
+
   # second pass: remove duplicate files
   deduplicateFiles(c)
   writeFile(getOutputDir(c) / buildShFile, generateBuildShellScript(c), "\10")

@@ -1047,6 +1047,6 @@ proc writeMapping*(conf: ConfigRef; symbolMapping: Rope) =
   code.add(strutils.escape(conf.libpath.string))
 
   code.addf("\n[Symbols]$n$1", [symbolMapping])
-  let filename = conf.projectPath / RelativeFile"mapping.txt"
+  let filename = conf.getNimcacheDir / RelativeFile"mapping.txt"
   if not writeRope(code, filename):
     rawMessage(conf, errGenerated, "could not write to file: " & filename.string)
