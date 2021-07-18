@@ -128,7 +128,7 @@ proc shortToCommit(short: string): string =
   result = if status == 0: strutils.strip(cc) else: ""
 
 proc checkoutGitCommit(c: var AtlasContext; p: PackageName; commit: string) =
-  let (outp, status) = osproc.execCmdEx("git checkout " & quoteShell(commit))
+  let (_, status) = osproc.execCmdEx("git checkout " & quoteShell(commit))
   if status != 0:
     error(c, p, "could not checkout commit", commit)
 
@@ -201,8 +201,9 @@ proc checkoutCommit(c: var AtlasContext; w: Dependency) =
           if currentCommit != requiredCommit:
             # checkout the later commit:
             # git merge-base --is-ancestor <commit> <commit>
-            let (mergeBase, status) = osproc.execCmdEx("git merge-base " &
+            let (cc, status) = osproc.execCmdEx("git merge-base " &
                 currentCommit.quoteShell & " " & requiredCommit.quoteShell)
+            let mergeBase = strutils.strip(cc)
             if status == 0 and (mergeBase == currentCommit or mergeBase == requiredCommit):
               # conflict resolution: pick the later commit:
               if mergeBase == currentCommit:
