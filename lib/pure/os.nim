@@ -2293,7 +2293,7 @@ iterator walkDir*(dir: string; relative = false, checkDir = false):
   ## Walking is not recursive. If ``relative`` is true (default: false)
   ## the resulting path is shortened to be relative to ``dir``.
   ##
-  ## If `checkDir` is true (default: false), `OSError` is raised when the `dir`
+  ## If `checkDir` is true (default: false), `OSError` is raised when `dir`
   ## doesn't exist.
   ##
   ## Example: This directory structure::
@@ -2395,7 +2395,7 @@ iterator walkDirRec*(dir: string,
   ## If ``relative`` is true (default: false) the resulting path is
   ## shortened to be relative to ``dir``, otherwise the full path is returned.
   ##
-  ## If `checkDir` is true (default: false), `OSError` is raised when the `dir`
+  ## If `checkDir` is true (default: false), `OSError` is raised when `dir`
   ## doesn't exist.
   ##
   ## .. warning:: Modifying the directory structure while the iterator
