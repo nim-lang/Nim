@@ -142,7 +142,7 @@ block tRequiresInit:
 
 type Foo = distinct string
 
-template main() =
+proc main() = # proc instead of template because of MCS/UFCS.
   # xxx put everything here to test under RT + VM
   block: # bug #12282
     block:
@@ -167,6 +167,30 @@ template main() =
         s.Foo.add('c')
         doAssert s.string == "c" # was failing
       test()
+
+  block: # bug #9423
+    block:
+      type Foo = seq[int]
+      type Foo2 = distinct Foo
+      template fn() =
+        var a = Foo2(@[1])
+        a.Foo.add 2
+        doAssert a.Foo == @[1, 2]
+      fn()
+
+    block:
+      type Stack[T] = distinct seq[T]
+      proc newStack[T](): Stack[T] =
+        Stack[T](newSeq[T]())
+      proc push[T](stack: var Stack[T], elem: T) =
+        seq[T](stack).add(elem)
+      proc len[T](stack: Stack[T]): int =
+        seq[T](stack).len
+      proc fn() = 
+        var stack = newStack[int]()
+        stack.push(5)
+        doAssert stack.len == 1
+      fn()
 
 static: main()
 main()

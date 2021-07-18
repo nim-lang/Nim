@@ -227,12 +227,7 @@ proc fromJson*[T](a: var T, b: JsonNode, opt = Joptions()) =
   elif T is uint|uint64: a = T(to(b, uint64))
   elif T is Ordinal: a = cast[T](to(b, int))
   elif T is pointer: a = cast[pointer](to(b, int))
-  elif T is distinct:
-    when nimvm:
-      # bug, potentially related to https://github.com/nim-lang/Nim/issues/12282
-      a = T(jsonTo(b, distinctBase(T)))
-    else:
-      a.distinctBase.fromJson(b)
+  elif T is distinct: a.distinctBase.fromJson(b)
   elif T is string|SomeNumber: a = to(b,T)
   elif T is cstring:
     case b.kind
